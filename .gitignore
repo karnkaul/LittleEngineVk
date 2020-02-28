@@ -1,0 +1,7 @@
+**/.vs/*
+**/.vscode/*
+build/*
+out/*
+
+CMakeSettings.json
+.editorconfig

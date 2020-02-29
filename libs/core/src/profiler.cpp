@@ -2,11 +2,11 @@
 
 namespace le
 {
-Profiler::Profiler(std::string_view id, LogLevel level) : id(id), level(level), dt(Time::elapsed()) {}
+Profiler::Profiler(std::string_view id, log::Level level) : id(id), level(level), dt(Time::elapsed()) {}
 
 Profiler::~Profiler()
 {
 	dt = Time::elapsed() - dt;
-	LOG(level, "[Profile] [%s] [%.3fms]", id.data(), dt.to_s() * 1000.0f);
+	LOG(level, "[Profile] [{}] [{:.3f}ms]", id, dt.to_s() * 1000.0f);
 }
 } // namespace le

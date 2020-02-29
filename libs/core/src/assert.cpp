@@ -75,18 +75,18 @@ void debugBreak()
 	return;
 }
 
-void assertMsg(bool expr, char const* message, char const* fileName, long lineNumber)
+void assertMsg(bool predicate, std::string_view message, std::string_view fileName, u64 lineNumber)
 {
-	if (expr)
+	if (predicate)
 	{
 		return;
 	}
 	std::cerr << "Assertion failed: " << message << " | " << fileName << " (" << lineNumber << ")" << std::endl;
-	LOG_E("Assertion failed: %s | %s (%ld)", message, fileName, lineNumber);
+	LOG_E("Assertion failed: {} | {} ({})", message, fileName, lineNumber);
 	if (IsDebuggerAttached())
 	{
 #if _MSC_VER
-		OutputDebugStringA(message);
+		OutputDebugStringA(message.data());
 #endif
 		debugBreak();
 	}
@@ -95,7 +95,7 @@ void assertMsg(bool expr, char const* message, char const* fileName, long lineNu
 #if defined(LEVK_DEBUG)
 		debugBreak();
 #else
-		assert(false && message);
+		assert(false && message.data());
 #endif
 	}
 	return;

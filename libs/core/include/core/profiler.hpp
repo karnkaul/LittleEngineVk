@@ -8,10 +8,10 @@ namespace le
 struct Profiler
 {
 	std::string id;
-	LogLevel level = LogLevel::Debug;
+	log::Level level = log::Level::Debug;
 	Time dt;
 
-	explicit Profiler(std::string_view id, LogLevel level = LogLevel::Debug);
+	explicit Profiler(std::string_view id, log::Level level = log::Level::Debug);
 	virtual ~Profiler();
 };
 } // namespace le

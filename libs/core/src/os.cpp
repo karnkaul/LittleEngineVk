@@ -69,7 +69,7 @@ stdfs::path os::dirPath(Dir dir)
 	case os::Dir::Executable:
 		if (g_exePath.empty())
 		{
-			LOG_E("[Env] Unknown executable path! Using working directory instead [%s]", g_workingDir.generic_string().data());
+			LOG_E("[OS] Unknown executable path! Using working directory instead [{}]", g_workingDir.generic_string());
 			g_exePath = dirPath(Dir::Working);
 		}
 		return g_exePath;

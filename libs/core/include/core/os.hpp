@@ -5,46 +5,50 @@
 #include "core/std_types.hpp"
 
 #if (defined(_WIN32) || defined(_WIN64))
-#define LE3D_OS_WINX
+#define LEVK_OS_WINX
 #if defined(__arm__)
-#define LE3D_ARCH_ARM64
+#define LEVK_ARCH_ARM64
 #elif !defined(_WIN64)
-#define LE3D_ARCH_X86
+#define LEVK_ARCH_X86
 #else
-#define LE3D_ARCH_x64
+#define LEVK_ARCH_x64
 #endif
 #elif defined(__linux__)
 #if defined(__ANDROID__)
-#define LE3D_OS_ANDROID
+#define LEVK_OS_ANDROID
 #else
-#define LE3D_OS_LINUX
+#define LEVK_OS_LINUX
 #endif
 #if defined(__arm__)
-#define LE3D_ARCH_ARM64
+#define LEVK_ARCH_ARM64
 #elif defined(__x86_64__)
-#define LE3D_ARCH_X64
+#define LEVK_ARCH_X64
 #elif defined(__i386__)
-#define LE3D_ARCH_X86
+#define LEVK_ARCH_X86
 #else
-#define LE3D_ARCH_UNSUPPORTED
+#define LEVK_ARCH_UNSUPPORTED
 #endif
 #else
-#define LE3D_OS_UNSUPPORTED
+#define LEVK_OS_UNSUPPORTED
 #endif
 
 #if defined(_MSC_VER)
-#define LE3D_RUNTIME_MSVC
+#define LEVK_RUNTIME_MSVC
 #elif (defined(__GNUG__) || defined(__clang__))
-#define LE3D_RUNTIME_LIBSTDCXX
+#define LEVK_RUNTIME_LIBSTDCXX
 #else
-#define LE3D_RUNTIME_UNKNOWN
+#define LEVK_RUNTIME_UNKNOWN
 #endif
 
 namespace le
 {
 namespace os
 {
-inline std::string_view g_EOL = "\n";
+#if defined(LEVK_OS_WINX)
+inline const std::string_view g_EOL = "\r\n";
+#else
+inline const std::string_view g_EOL = "\n";
+#endif
 
 enum class Dir
 {

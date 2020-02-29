@@ -6,9 +6,13 @@ namespace le
 template <typename T, T Zero = 0>
 struct TZero final
 {
+	using Type = T;
+
+	constexpr static T Null = Zero;
+
 	T handle;
 
-	constexpr TZero(T handle = Zero) noexcept : handle(handle) {}
+	constexpr TZero(T handle = Null) noexcept : handle(handle) {}
 	TZero(TZero&&) noexcept;
 	TZero& operator=(TZero&&) noexcept;
 	TZero(TZero const&);

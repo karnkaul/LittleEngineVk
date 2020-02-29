@@ -77,7 +77,7 @@ bool IOReader::checkPresence(stdfs::path const& id) const
 {
 	if (!isPresent(id))
 	{
-		LOG_E("!! [%s] not found in %s!", id.generic_string().data(), m_medium.data());
+		LOG_E("!! [{}] not found in {}!", id.generic_string(), m_medium);
 		return false;
 	}
 	return true;
@@ -145,7 +145,7 @@ FileReader::FileReader(stdfs::path prefix) noexcept : IOReader(std::move(prefix)
 	m_medium = "Filesystem (";
 	m_medium += std::move(m_prefix.generic_string());
 	m_medium += ")";
-	LOG_D("[%s] Filesystem mounted, idPrefix: [%s]", utils::tName(*this).data(), m_prefix.generic_string().data());
+	LOG_D("[{}] Filesystem mounted, idPrefix: [{}]", utils::tName(*this), m_prefix.generic_string());
 }
 
 bool FileReader::isPresent(stdfs::path const& id) const
@@ -193,13 +193,12 @@ ZIPReader::ZIPReader(stdfs::path zipPath, stdfs::path idPrefix /* = "" */) : IOR
 	m_medium += ")";
 	if (!stdfs::is_regular_file(m_zipPath))
 	{
-		LOG_E("[%s] [%s] not found on Filesystem!", utils::tName<ZIPReader>().data(), m_zipPath.generic_string().data());
+		LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), m_zipPath.generic_string());
 	}
 	else
 	{
 		PHYSFS_mount(m_zipPath.string().data(), nullptr, 0);
-		LOG_D("[%s] [%s] archive mounted, idPrefix: [%s]", utils::tName(*this).data(), m_zipPath.generic_string().data(),
-			  m_prefix.generic_string().data());
+		LOG_D("[{}] [{}] archive mounted, idPrefix: [{}]", utils::tName<ZIPReader>(), m_zipPath.generic_string(), m_prefix.generic_string());
 	}
 }
 

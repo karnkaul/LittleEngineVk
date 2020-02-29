@@ -31,10 +31,13 @@ endif()
 
 # Constants
 set(GIT_COMMIT_HASH ${GIT_COMMIT_HASH} CACHE STRING "Commit hash" FORCE)
+set(EXT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE INTERNAL "External dependencies root" FORCE)
 
 # External
 # physfs
 add_subdirectory(external/physfs)
+# fmt
+add_subdirectory(external/fmt)
 # glm
 add_subdirectory(external/glm)
 

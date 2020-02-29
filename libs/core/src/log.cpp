@@ -1,16 +1,15 @@
-#include <algorithm>
 #include <array>
-#include <ctime>
-#include <cstdarg>
-#include <cstdint>
-#include <cstring>
+#include <atomic>
 #include <filesystem>
-#include <iostream>
+#include <fstream>
 #include <mutex>
-#include <sstream>
-#include "core/std_types.hpp"
+#include <thread>
+#include <fmt/chrono.h>
 #include "core/log.hpp"
-#if _MSC_VER
+#include "core/os.hpp"
+#include "core/std_types.hpp"
+#include "core/threads.hpp"
+#if defined(LEVK_RUNTIME_MSVC)
 #include "Windows.h"
 #endif
 
@@ -18,72 +17,152 @@ namespace le
 {
 namespace
 {
-std::mutex g_logMutex;
-std::deque<std::string> g_logCache;
-std::array<char const*, (size_t)LogLevel::COUNT_> g_prefixes = {"[D] ", "[I] ", "[W] ", "[E] "};
-
-std::tm* TM(std::time_t const& time)
+class FileLogger final
 {
-#if _MSC_VER
-	static std::tm tm;
-	localtime_s(&tm, &time);
-	return &tm;
-#else
-	return std::localtime(&time);
-#endif
+public:
+	using Lock = std::lock_guard<std::mutex>;
+
+public:
+	static constexpr size_t s_reserveCount = 512;
+
+public:
+	~FileLogger();
+
+public:
+	std::string m_cache;
+	HThread m_hThread;
+	std::atomic<bool> m_bLog;
+	std::mutex m_mutex;
+
+public:
+	void record(std::string line);
+	void dumpToFile(std::filesystem::path const& path);
+	void startLogging(std::filesystem::path path, Time pollRate);
+	void stopLogging();
+};
+
+FileLogger::~FileLogger()
+{
+	stopLogging();
 }
 
-void logInternal(char const* szText, [[maybe_unused]] char const* szFile, [[maybe_unused]] u64 line, LogLevel level, va_list args)
+void FileLogger::startLogging(std::filesystem::path path, Time pollRate)
 {
-	static std::array<char, 1024> s_cacheStr;
-	std::stringstream logText;
-	logText << g_prefixes.at((size_t)level);
-	std::unique_lock<std::mutex> lock(g_logMutex);
-	std::vsnprintf(s_cacheStr.data(), s_cacheStr.size(), szText, args);
-	logText << s_cacheStr.data();
-	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	auto pTM = TM(now);
-	std::snprintf(s_cacheStr.data(), s_cacheStr.size(), " [%02d:%02d:%02d]", pTM->tm_hour, pTM->tm_min, pTM->tm_sec);
-	logText << s_cacheStr.data();
-	g_logMutex.unlock();
-#if defined(LEVK_LOG_SOURCE_LOCATION)
-	static std::string const s_parentStr = "../";
-	auto const file = std::filesystem::path(szFile).generic_string();
-	std::string_view fileStr(file);
-	auto search = fileStr.find(s_parentStr);
-	while (search == 0)
+	m_cache.reserve(s_reserveCount);
+	m_bLog.store(true, std::memory_order_relaxed);
+	std::ifstream iFile(path);
+	if (iFile.good())
 	{
-		fileStr = fileStr.substr(search + s_parentStr.length());
-		search = fileStr.find(s_parentStr);
+		iFile.close();
+		std::filesystem::path backup(path);
+		backup += ".bak";
+		std::filesystem::rename(path, backup);
 	}
-	logText << "[" << fileStr << "|" << line << "]";
+	std::ofstream oFile(path);
+	if (!oFile.good())
+	{
+		return;
+	}
+	oFile.close();
+	m_hThread = threads::newThread([this, pollRate, path]() {
+		LOG_I("Logging to file: {}", std::filesystem::absolute(path).generic_string());
+		while (m_bLog.load(std::memory_order_relaxed))
+		{
+			dumpToFile(path);
+			if (pollRate.to_ms() <= 0)
+			{
+				std::this_thread::yield();
+			}
+			else
+			{
+				std::this_thread::sleep_for(pollRate.usecs);
+			}
+		}
+		LOG_I("File Logging terminated");
+		dumpToFile(path);
+	});
+	return;
+}
+
+void FileLogger::stopLogging()
+{
+	m_bLog.store(false);
+	threads::join(m_hThread);
+	m_cache.clear();
+	return;
+}
+
+void FileLogger::record(std::string line)
+{
+	if (m_hThread != HThread::Null)
+	{
+		Lock lock(m_mutex);
+		m_cache += std::move(line);
+		m_cache += os::g_EOL;
+	}
+	return;
+}
+
+void FileLogger::dumpToFile(std::filesystem::path const& path)
+{
+	std::string temp;
+	{
+		Lock lock(m_mutex);
+		temp = std::move(m_cache);
+		m_cache.clear();
+		m_cache.reserve(s_reserveCount);
+	}
+	if (!temp.empty())
+	{
+		std::ofstream file(path, std::ios_base::app);
+		file.write(temp.data(), (std::streamsize)temp.length());
+	}
+	return;
+}
+
+std::mutex g_logMutex;
+std::array<char, (size_t)log::Level::COUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
+FileLogger g_fileLogger;
+}
+
+log::HFileLogger::~HFileLogger()
+{
+	g_fileLogger.stopLogging();
+}
+
+void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
+{
+	using namespace std::chrono;
+	std::time_t now = system_clock::to_time_t(system_clock::now());
+	std::unique_lock<std::mutex> lock(g_logMutex);
+	auto str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
+	lock.unlock();
+#if defined(LEVK_LOG_SOURCE_LOCATION)
+	constexpr std::string_view parentStr = "../";
+	auto const fileName = std::filesystem::path(file).generic_string();
+	std::string_view fileStr(fileName);
+	for (auto search = fileStr.find(parentStr); search == 0; search = fileStr.find(parentStr))
+	{
+		fileStr = fileStr.substr(search + parentStr.length());
+	}
+	str = fmt::format("{} [{}:{}]", std::move(str), fileStr, line);
 #endif
-	auto logStr = logText.str();
-	g_logMutex.lock();
-	std::cout << logStr << std::endl;
-#if _MSC_VER
-	OutputDebugStringA(logStr.data());
+	lock.lock();
+	fmt::print("{}\n", str);
+#if defined(LEVK_RUNTIME_MSVC)
+	OutputDebugStringA(str.data());
 	OutputDebugStringA("\n");
 #endif
-	g_logCache.push_back(std::move(logStr));
-	while (g_logCache.size() > g_logCacheSize)
+	g_fileLogger.record(std::move(str));
+}
+
+std::unique_ptr<log::HFileLogger> log::logToFile(std::filesystem::path path, Time pollRate)
+{
+	if (!g_fileLogger.m_bLog.load())
 	{
-		g_logCache.pop_front();
+		g_fileLogger.startLogging(std::move(path), pollRate);
+		return std::make_unique<HFileLogger>();
 	}
-}
-} // namespace
-
-void log(LogLevel level, char const* szText, char const* szFile, u64 line, ...)
-{
-	va_list argList;
-	va_start(argList, line);
-	logInternal(szText, szFile, line, level, argList);
-	va_end(argList);
-}
-
-std::deque<std::string> logCache()
-{
-	std::lock_guard<std::mutex> lock(g_logMutex);
-	return std::move(g_logCache);
+	return nullptr;
 }
 } // namespace le

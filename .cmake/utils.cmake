@@ -81,7 +81,7 @@ function(add_target_relaxed_compile_options TARGET_NAME)
 endfunction()
 
 function(add_target_compile_options TARGET_NAME SCOPE)
-	set(CLANG_COMMON -Werror=return-type -Wextra -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits)
+	set(CLANG_COMMON -Werror=return-type -Wextra -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused)
 	if(LX_GCC OR LX_CLANG OR W_GCC OR W_CLANG)
 		set(FLAGS
 			$<$<NOT:$<CONFIG:Debug>>:

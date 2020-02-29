@@ -23,14 +23,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
-		glm
 		core
 	PRIVATE
 		#$<$<BOOL:${LE3D_USE_GLFW}>:glfw>
 		#stb-image
 		#tinyobjloader
-		physfs-static
-		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
 
 		## TODO: Remove later
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>

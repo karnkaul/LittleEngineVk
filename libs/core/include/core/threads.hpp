@@ -5,13 +5,15 @@
 
 namespace le
 {
-using HThread = TZero<s32>;
+using HThread = TZero<u64>;
 
 namespace threads
 {
 HThread newThread(std::function<void()> task);
 void join(HThread& id);
 void joinAll();
+
+HThread::Type thisThreadID();
 
 u32 maxHardwareThreads();
 u32 running();

@@ -25,7 +25,7 @@ void JobCatalog::addJob(Task job, std::string name)
 
 void JobCatalog::startJobs(Task onComplete)
 {
-	LOG_D("%s started. Running and monitoring %d jobs", m_logName.c_str(), m_subJobs.size());
+	LOG_D("[{}] started. Running and monitoring [{}] jobs", m_logName, m_subJobs.size());
 	m_onComplete = onComplete;
 	m_bCompleted = false;
 	m_startTime = Time::elapsed();
@@ -52,9 +52,7 @@ void JobCatalog::update()
 		{
 			[[maybe_unused]] auto id = subJob->ID();
 			iter = m_pendingJobs.erase(iter);
-#if defined(LEVK_DEBUG_LOG)
-			LOG_D("%s Job %d completed. %d jobs remaining", m_logName.c_str(), id, m_pendingJobs.size());
-#endif
+			LOG_D("[{}] Job [{}] completed. [{}] jobs remaining", m_logName, id, m_pendingJobs.size());
 		}
 		else
 		{
@@ -70,10 +68,8 @@ void JobCatalog::update()
 			m_onComplete = nullptr;
 		}
 		m_bCompleted = true;
-#if defined(LEVK_DEBUG_LOG)
-		f32 secs = (Time::elapsed() - m_startTime).to_s();
-		LOG_D("%s completed %d jobs in %.2fs", m_logName.c_str(), m_subJobs.size(), secs);
-#endif
+		[[maybe_unused]] f32 secs = (Time::elapsed() - m_startTime).to_s();
+		LOG_D("{} completed {} jobs in {:.2f}s", m_logName, m_subJobs.size(), secs);
 	}
 	return;
 }

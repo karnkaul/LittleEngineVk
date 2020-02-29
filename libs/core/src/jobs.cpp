@@ -16,12 +16,12 @@ std::unique_ptr<JobManager> uManager;
 std::shared_ptr<HJob> doNow(std::packaged_task<std::any()> task, std::optional<std::string> oName)
 {
 	std::string name = oName ? *oName : "unnamed";
-	LOG_E("[%s] Not initialised! Running [%s] Task on this thread!", utils::tName<JobManager>().data(), name.data());
+	LOG_E("[{}] Not initialised! Running [{}] Task on this thread!", utils::tName<JobManager>(), name);
 	std::shared_ptr<HJob> ret = std::make_shared<HJob>(-1, task.get_future());
 	task();
 	if (oName)
 	{
-		LOG_D("NOWORKER Completed [%s]", oName->data());
+		LOG_D("NOWORKER Completed [{}]", *oName);
 	}
 	return ret;
 }
@@ -36,20 +36,19 @@ void jobs::init(u32 workerCount)
 {
 	if (uManager)
 	{
-		LOG_W("[%s] Already initialised ([%u] workers)!", utils::tName<JobManager>().data(), uManager->workerCount());
+		LOG_W("[{}] Already initialised ([{}] workers)!", utils::tName<JobManager>(), uManager->workerCount());
 		return;
 	}
 	workerCount = std::min(workerCount, threads::maxHardwareThreads());
 	uManager = std::make_unique<JobManager>(workerCount);
 	g_pJobManager = uManager.get();
-	LOG_D("[%s] Spawned [%u] JobWorkers ([%u] hardware threads)", utils::tName<JobManager>().data(), workerCount,
-		  threads::maxHardwareThreads());
+	LOG_D("[{}] Spawned [{}] JobWorkers ([{}] hardware threads)", utils::tName<JobManager>(), workerCount, threads::maxHardwareThreads());
 	return;
 }
 
 void jobs::cleanup()
 {
-	LOGIF_D(uManager, "[%s] Cleaned up (destroyed [%u] JobWorkers)", utils::tName<JobManager>().data(), uManager->workerCount());
+	LOGIF_D(uManager, "[{}] Cleaned up (destroyed [{}] JobWorkers)", utils::tName<JobManager>(), uManager->workerCount());
 	uManager = nullptr;
 	g_pJobManager = nullptr;
 	return;
@@ -92,7 +91,7 @@ JobCatalog* jobs::createCatalogue(std::string name)
 	}
 	else
 	{
-		LOG_E("[%s] Not initialised! Cannot requisition new JobCatalog!", utils::tName<JobManager>().data());
+		LOG_E("[{}] Not initialised! Cannot requisition new JobCatalog!", utils::tName<JobManager>());
 		return nullptr;
 	}
 }
@@ -154,7 +153,7 @@ void jobs::waitForIdle()
 {
 	if (!areWorkersIdle())
 	{
-		LOG_I("[%s] Waiting for workers...", utils::tName<JobManager>().data());
+		LOG_I("[{}] Waiting for workers...", utils::tName<JobManager>());
 	}
 	while (!areWorkersIdle())
 	{

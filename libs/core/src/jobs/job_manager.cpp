@@ -35,7 +35,7 @@ void JobManager::Job::run()
 	}
 	catch (std::exception const& e)
 	{
-		ASSERT_STR(false, e.what());
+		ASSERT(false, e.what());
 		m_exception = e.what();
 	}
 }
@@ -138,7 +138,7 @@ void JobManager::update()
 		uCatalog->update();
 		if (uCatalog->m_bCompleted)
 		{
-			LOG_D("[%s] [%s] JobCatalog completed. Destroying instance.", utils::tName<JobManager>().data(), uCatalog->m_logName.data());
+			LOG_D("[{}] [{}] JobCatalog completed. Destroying instance.", utils::tName<JobManager>(), uCatalog->m_logName);
 			iter = m_catalogs.erase(iter);
 		}
 		else

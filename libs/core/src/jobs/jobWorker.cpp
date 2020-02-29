@@ -44,16 +44,16 @@ void JobWorker::run()
 			m_state = State::Busy;
 			if (!job.m_bSilent)
 			{
-				LOG_D("%s Starting Job %s", m_logName.data(), job.m_logName.data());
+				LOG_D("[{}] Starting Job [{}]", m_logName, job.m_logName);
 			}
 			job.run();
 			if (!job.m_bSilent && job.m_exception.empty())
 			{
-				LOG_D("%s Completed Job %s", m_logName.data(), job.m_logName.data());
+				LOG_D("[{}] Completed Job [{}]", m_logName, job.m_logName);
 			}
 			if (!job.m_exception.empty())
 			{
-				LOG_E("%s Threw an exception running Job %s\n\t%s!", m_logName.data(), job.m_logName.data(), job.m_exception.data());
+				LOG_E("[{}] Threw an exception running Job [{}]\n\t{}!", m_logName, job.m_logName, job.m_exception);
 			}
 		}
 	}

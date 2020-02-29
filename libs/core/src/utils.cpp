@@ -1,0 +1,334 @@
+#include <algorithm>
+#include <array>
+#include <cstring>
+#include <stack>
+#include "core/utils.hpp"
+
+namespace le
+{
+std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount)
+{
+	static std::array suffixes = {"B", "KiB", "MiB", "GiB"};
+	f32 bytes = f32(byteCount);
+	size_t idx = 0;
+	while (bytes > 1024.0f && idx < 4)
+	{
+		++idx;
+		bytes /= 1024.0f;
+	}
+	return std::make_pair(bytes, suffixes[idx < 4 ? idx : 3]);
+}
+
+std::string utils::demangle(std::string_view name)
+{
+	std::string ret(name);
+#if defined(__GNUG__)
+	s32 status = -1;
+	char* szRes = abi::__cxa_demangle(name.data(), nullptr, nullptr, &status);
+	if (status == 0)
+	{
+		ret = szRes;
+	}
+	std::free(szRes);
+#else
+	constexpr std::string_view CLASS = "class ";
+	constexpr std::string_view STRUCT = "struct ";
+	constexpr size_t CLASS_LEN = CLASS.length();
+	constexpr size_t STRUCT_LEN = STRUCT.length();
+	auto idx = ret.find(CLASS);
+	if (idx == 0)
+	{
+		ret = ret.substr(CLASS_LEN);
+	}
+	idx = ret.find(STRUCT);
+	if (idx == 0)
+	{
+		ret = ret.substr(STRUCT_LEN);
+	}
+#endif
+	return ret;
+}
+
+namespace utils
+{
+void strings::toLower(std::string& outString)
+{
+	std::transform(outString.begin(), outString.end(), outString.begin(), ::tolower);
+	return;
+}
+
+void strings::toUpper(std::string& outString)
+{
+	std::transform(outString.begin(), outString.end(), outString.begin(), ::toupper);
+	return;
+}
+
+bool strings::toBool(std::string_view input, bool bDefaultValue)
+{
+	if (!input.empty())
+	{
+		if (input == "true" || input == "True" || input == "1")
+		{
+			return true;
+		}
+		if (input == "false" || input == "False" || input == "0")
+		{
+			return false;
+		}
+	}
+	return bDefaultValue;
+}
+
+s32 strings::toS32(std::string_view input, s32 defaultValue)
+{
+	s32 ret = defaultValue;
+	if (!input.empty())
+	{
+		try
+		{
+			ret = std::atoi(input.data());
+		}
+		catch (std::invalid_argument const&)
+		{
+			ret = defaultValue;
+		}
+	}
+	return ret;
+}
+
+f32 strings::toF32(std::string_view input, f32 defaultValue)
+{
+	f32 ret = defaultValue;
+	if (!input.empty())
+	{
+		try
+		{
+			ret = (f32)std::atof(input.data());
+		}
+		catch (std::invalid_argument const&)
+		{
+			ret = defaultValue;
+		}
+	}
+	return ret;
+}
+
+f64 strings::toF64(std::string_view input, f64 defaultValue)
+{
+	f64 ret = defaultValue;
+	if (!input.empty())
+	{
+		try
+		{
+			ret = std::atof(input.data());
+		}
+		catch (std::invalid_argument const&)
+		{
+			ret = defaultValue;
+		}
+	}
+	return ret;
+}
+
+std::string strings::toText(bytearray rawBuffer)
+{
+	std::vector<char> charBuffer(rawBuffer.size() + 1, 0);
+	for (size_t i = 0; i < rawBuffer.size(); ++i)
+	{
+		charBuffer[i] = static_cast<char>(rawBuffer[i]);
+	}
+	return std::string(charBuffer.data());
+}
+
+std::pair<std::string, std::string> strings::bisect(std::string_view input, char delimiter)
+{
+	size_t idx = input.find(delimiter);
+	return idx < input.size() ? std::pair<std::string, std::string>(input.substr(0, idx), input.substr(idx + 1, input.size()))
+							  : std::pair<std::string, std::string>(std::string(input), {});
+}
+
+void strings::removeChars(std::string& outInput, std::initializer_list<char> toRemove)
+{
+	auto isToRemove = [&toRemove](char c) -> bool { return std::find(toRemove.begin(), toRemove.end(), c) != toRemove.end(); };
+	auto iter = std::remove_if(outInput.begin(), outInput.end(), isToRemove);
+	outInput.erase(iter, outInput.end());
+	return;
+}
+
+void strings::trim(std::string& outInput, std::initializer_list<char> toRemove)
+{
+	auto isIgnored = [&outInput, &toRemove](size_t idx) {
+		return std::find(toRemove.begin(), toRemove.end(), outInput[idx]) != toRemove.end();
+	};
+	size_t startIdx = 0;
+	for (; startIdx < outInput.size() && isIgnored(startIdx); ++startIdx)
+		;
+	size_t endIdx = outInput.size();
+	for (; endIdx > startIdx && isIgnored(endIdx - 1); --endIdx)
+		;
+	outInput = outInput.substr(startIdx, endIdx - startIdx);
+	return;
+}
+
+void strings::removeWhitespace(std::string& outInput)
+{
+	substituteChars(outInput, {std::pair<char, char>('\t', ' '), std::pair<char, char>('\n', ' '), std::pair<char, char>('\r', ' ')});
+	removeChars(outInput, {' '});
+	return;
+}
+
+std::vector<std::string> strings::tokenise(std::string_view s, char delimiter, std::initializer_list<std::pair<char, char>> escape)
+{
+	auto end = s.cend();
+	auto start = end;
+
+	std::stack<std::pair<char, char>> escapeStack;
+	std::vector<std::string> v;
+	bool bEscaping = false;
+	bool bSkipThis = false;
+	for (auto it = s.cbegin(); it != end; ++it)
+	{
+		if (bSkipThis)
+		{
+			bSkipThis = false;
+			continue;
+		}
+		bSkipThis = bEscaping && *it == '\\';
+		if (bSkipThis)
+		{
+			continue;
+		}
+		if (*it != delimiter || bEscaping)
+		{
+			if (start == end)
+			{
+				start = it;
+			}
+			for (auto e : escape)
+			{
+				if (bEscaping && *it == e.second)
+				{
+					if (e.first == escapeStack.top().first)
+					{
+						escapeStack.pop();
+						bEscaping = !escapeStack.empty();
+						break;
+					}
+				}
+				if (*it == e.first)
+				{
+					bEscaping = true;
+					escapeStack.push(e);
+					break;
+				}
+			}
+			bSkipThis = false;
+			continue;
+		}
+		if (start != end)
+		{
+			v.emplace_back(start, it);
+			start = end;
+		}
+		bSkipThis = false;
+	}
+	if (start != end)
+	{
+		v.emplace_back(start, end);
+	}
+	return v;
+}
+
+std::vector<std::string_view> strings::tokeniseInPlace(char* szOutBuf, char delimiter, std::initializer_list<std::pair<char, char>> escape)
+{
+	if (!szOutBuf || *szOutBuf == '\0')
+	{
+		return {};
+	}
+
+	char const* const end = szOutBuf + std::strlen(szOutBuf);
+	char const* start = szOutBuf + std::strlen(szOutBuf);
+	std::stack<std::pair<char, char>> escapeStack;
+	std::vector<std::string_view> v;
+	bool bEscaping = false;
+	bool bSkipThis = false;
+	for (char* it = szOutBuf; it != end; ++it)
+	{
+		if (bSkipThis)
+		{
+			bSkipThis = false;
+			continue;
+		}
+		bSkipThis = bEscaping && *it == '\\';
+		if (bSkipThis)
+		{
+			continue;
+		}
+		if (*it != delimiter || bEscaping)
+		{
+			if (start == end)
+			{
+				start = it;
+			}
+			for (auto e : escape)
+			{
+				if (bEscaping && *it == e.second)
+				{
+					if (e.first == escapeStack.top().first)
+					{
+						escapeStack.pop();
+						bEscaping = !escapeStack.empty();
+						break;
+					}
+				}
+				if (*it == e.first)
+				{
+					bEscaping = true;
+					escapeStack.push(e);
+					break;
+				}
+			}
+			bSkipThis = false;
+			continue;
+		}
+		if (start != end)
+		{
+			*it = '\0';
+			v.push_back(std::string_view(start));
+			start = end;
+		}
+		bSkipThis = false;
+	}
+	if (start != end)
+	{
+		v.push_back(std::string_view(start));
+	}
+	return v;
+}
+
+void strings::substituteChars(std::string& outInput, std::initializer_list<std::pair<char, char>> replacements)
+{
+	std::string::iterator iter = outInput.begin();
+	while (iter != outInput.end())
+	{
+		for (auto const replacement : replacements)
+		{
+			if (*iter == replacement.first)
+			{
+				*iter = replacement.second;
+				break;
+			}
+		}
+		++iter;
+	}
+	return;
+}
+
+bool strings::isCharEnclosedIn(std::string_view str, size_t idx, std::pair<char, char> wrapper)
+{
+	size_t idx_1 = idx - 1;
+	size_t idx1 = idx + 1;
+	return idx_1 < str.length() && idx1 < str.length() && str[idx_1] == wrapper.first && str[idx1] == wrapper.second;
+}
+} // namespace utils
+} // namespace le

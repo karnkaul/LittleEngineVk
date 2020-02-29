@@ -32,18 +32,16 @@ endif()
 # Constants
 set(GIT_COMMIT_HASH ${GIT_COMMIT_HASH} CACHE STRING "Commit hash" FORCE)
 
+# External
+# physfs
+add_subdirectory(external/physfs)
+# glm
+add_subdirectory(external/glm)
+
+# Libraries
+# core
+add_subdirectory(libs/core)
+
 # Executable
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/*.*pp"
-)
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
-add_executable(${PROJECT_NAME} ${SOURCES})
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-set(EXE_NAME ${PROJECT_NAME}-$<CONFIG>${EXE_SUFFIX})
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${EXE_NAME})
-add_target_compile_definitions(${PROJECT_NAME} LEVK)
-add_target_compile_options(${PROJECT_NAME} PRIVATE)
-add_target_link_options(${PROJECT_NAME})
-if(W_MSBUILD)
-	set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-endif()
+# levk
+add_subdirectory(src)

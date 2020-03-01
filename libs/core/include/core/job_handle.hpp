@@ -1,13 +1,17 @@
 #pragma once
 #include <any>
+#include <functional>
 #include <future>
-#include <memory>
+#include <string>
 #include "core/std_types.hpp"
 
 namespace le
 {
 class HJob final
 {
+public:
+	std::string m_exception;
+
 private:
 	std::future<std::any> m_future;
 	s64 m_jobID = -1;

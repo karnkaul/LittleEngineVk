@@ -2,7 +2,7 @@
 #include <string>
 #include "core/std_types.hpp"
 
-#if __linux__
+#if defined(__linux__)
 #undef major
 #undef minor
 #undef patch

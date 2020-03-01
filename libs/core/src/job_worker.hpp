@@ -20,7 +20,7 @@ private:
 private:
 	class JobManager* m_pManager;
 	HThread m_hThread;
-	State m_state = State::Idle;
+	std::atomic<State> m_state = State::Idle;
 	u8 id;
 
 public:

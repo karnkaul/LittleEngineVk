@@ -3,21 +3,22 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <fmt/format.h>
+#include "core/fmt.hpp"
+#include "core/os.hpp"
 #include "core/std_types.hpp"
 #include "core/time.hpp"
 
 #if defined(LEVK_DEBUG)
 /**
  * Variable     : LEVK_DEBUG_LOG
- * Description  : Used to enable LOG_D and LOGIF_D macros (Level::Debug)
+ * Description  : Enables LOG_D and LOGIF_D macros (Level::Debug)
  */
 #if !defined(LEVK_DEBUG_LOG)
 #define LEVK_DEBUG_LOG
 #endif
 /**
  * Variable     : LEVK_LOG_SOURCE_LOCATION
- * Description  : Used to append source file and line number to log output
+ * Description  : Appends source file and line number to log output
  */
 #if !defined(LEVK_LOG_SOURCE_LOCATION)
 #define LEVK_LOG_SOURCE_LOCATION
@@ -56,6 +57,8 @@ enum class Level : u8
 	COUNT_
 };
 
+inline Level g_minLevel = Level::Debug;
+
 struct HFileLogger final
 {
 	~HFileLogger();
@@ -66,7 +69,10 @@ void logText(Level level, std::string text, std::string_view file, u64 line);
 template <typename... Args>
 void fmtLog(Level level, std::string_view text, std::string_view file, u64 line, Args... args)
 {
-	logText(level, fmt::format(text, args...), file, line);
+	if ((u8)level >= (u8)g_minLevel)
+	{
+		logText(level, fmt::format(text, args...), file, line);
+	}
 }
 
 [[nodiscard]] std::unique_ptr<HFileLogger> logToFile(std::filesystem::path path, Time pollRate = Time::from_s(0.5f));

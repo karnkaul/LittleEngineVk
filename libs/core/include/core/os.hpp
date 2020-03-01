@@ -14,10 +14,9 @@
 #define LEVK_ARCH_x64
 #endif
 #elif defined(__linux__)
+#define LEVK_OS_LINUX
 #if defined(__ANDROID__)
 #define LEVK_OS_ANDROID
-#else
-#define LEVK_OS_LINUX
 #endif
 #if defined(__arm__)
 #define LEVK_ARCH_ARM64
@@ -40,16 +39,20 @@
 #define LEVK_RUNTIME_UNKNOWN
 #endif
 
+#if defined(__clang__)
+#define LEVK_COMPILER_CLANG
+#elif defined(__GNUG__)
+#define LEVK_COMPILER_GCC
+#elif defined(_MSC_VER)
+#define LEVK_COMPILER_VCXX
+#else
+#define LEVK_COMPILER_UNKNOWN
+#endif
+
 namespace le
 {
 namespace os
 {
-#if defined(LEVK_OS_WINX)
-inline const std::string_view g_EOL = "\r\n";
-#else
-inline const std::string_view g_EOL = "\n";
-#endif
-
 enum class Dir
 {
 	Working,
@@ -67,5 +70,8 @@ std::string_view argv0();
 std::filesystem::path dirPath(Dir dir);
 std::vector<std::string_view> const& args();
 bool isDefined(std::string_view arg);
+
+bool isDebuggerAttached();
+void debugBreak();
 } // namespace os
 } // namespace le

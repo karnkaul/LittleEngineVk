@@ -1,12 +1,11 @@
 #include <algorithm>
 #include <string>
 #include <sstream>
-#include "core/jobs/job_catalogue.hpp"
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "job_manager.hpp"
-#include "jobWorker.hpp"
+#include "job_worker.hpp"
 
 namespace le
 {
@@ -16,28 +15,18 @@ JobManager::Job::Job() = default;
 
 JobManager::Job::Job(s64 id, Task task, std::string name, bool bSilent) : m_task(std::move(task)), m_id(id), m_bSilent(bSilent)
 {
-	m_logName = "[";
 	m_logName += std::to_string(id);
 	if (!name.empty())
 	{
 		m_logName += "-";
 		m_logName += std::move(name);
 	}
-	m_logName += "]";
 	m_shJob = std::make_shared<HJob>(id, m_task.get_future());
 }
 
 void JobManager::Job::run()
 {
-	try
-	{
-		m_task();
-	}
-	catch (std::exception const& e)
-	{
-		ASSERT(false, e.what());
-		m_exception = e.what();
-	}
+	m_task();
 }
 
 JobManager::JobManager(u8 workerCount)
@@ -69,12 +58,6 @@ std::shared_ptr<HJob> JobManager::enqueue(Task task, std::string name, bool bSil
 	// Wake a sleeping worker
 	m_wakeCV.notify_one();
 	return ret;
-}
-
-JobCatalog* JobManager::createCatalogue(std::string name)
-{
-	m_catalogs.push_back(std::make_unique<JobCatalog>(*this, std::move(name)));
-	return m_catalogs.back().get();
 }
 
 std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask const& indexedTask)
@@ -129,40 +112,31 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask const& indexe
 	return handles;
 }
 
-void JobManager::update()
-{
-	auto iter = m_catalogs.begin();
-	while (iter != m_catalogs.end())
-	{
-		auto& uCatalog = *iter;
-		uCatalog->update();
-		if (uCatalog->m_bCompleted)
-		{
-			LOG_D("[{}] [{}] JobCatalog completed. Destroying instance.", utils::tName<JobManager>(), uCatalog->m_logName);
-			iter = m_catalogs.erase(iter);
-		}
-		else
-		{
-			++iter;
-		}
-	}
-}
-
 bool JobManager::areWorkersIdle() const
 {
-	Lock lock(m_wakeMutex);
 	for (auto& gameWorker : m_jobWorkers)
 	{
-		if (gameWorker->m_state == JobWorker::State::Busy)
+		if (gameWorker->m_state.load() == JobWorker::State::Busy)
 		{
 			return false;
 		}
 	}
+	Lock lock(m_wakeMutex);
 	return m_jobQueue.empty();
 }
 
-u16 JobManager::workerCount() const
+u8 JobManager::workerCount() const
 {
-	return (u16)m_jobWorkers.size();
+	return (u8)m_jobWorkers.size();
+}
+
+void JobManager::waitAll()
+{
+	while (!areWorkersIdle())
+	{
+		std::this_thread::yield();
+	}
+	ASSERT(areWorkersIdle(), "Workers should be idle!");
+	return;
 }
 } // namespace le

@@ -23,11 +23,6 @@ f32 UByte::toF32() const
 	return rawValue / (f32)0xff;
 }
 
-std::string UByte::toString() const
-{
-	return std::to_string(rawValue);
-}
-
 bool operator==(UByte lhs, UByte rhs)
 {
 	return lhs.rawValue == rhs.rawValue;

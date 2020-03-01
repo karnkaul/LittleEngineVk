@@ -1,4 +1,5 @@
-#include "core/jobs/job_handle.hpp"
+#include "core/job_handle.hpp"
+#include "core/log.hpp"
 
 namespace le
 {
@@ -17,7 +18,7 @@ std::any HJob::wait()
 	{
 		return m_future.get();
 	}
-	static std::any fail = false;
+	static const std::any fail = false;
 	return fail;
 }
 

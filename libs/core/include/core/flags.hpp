@@ -5,9 +5,11 @@
 
 namespace le
 {
-template <utils::tName Enum>
+template <typename Enum>
 struct TFlags
 {
+	using Type = Enum;
+
 	std::bitset<size_t(Enum::COUNT_)> bits;
 
 	constexpr TFlags() noexcept = default;
@@ -21,29 +23,29 @@ struct TFlags
 	void set(bool bValue);
 };
 
-template <utils::tName Enum>
+template <typename Enum>
 TFlags<Enum>::TFlags(std::string serialised) : bits(std::move(serialised))
 {
 }
 
-template <utils::tName Enum>
+template <typename Enum>
 TFlags<Enum>::TFlags(char const* szSerialised) : bits(szSerialised)
 {
 }
 
-template <utils::tName Enum>
+template <typename Enum>
 bool TFlags<Enum>::isSet(Enum flag) const
 {
 	return bits[(size_t)flag];
 }
 
-template <utils::tName Enum>
+template <typename Enum>
 void TFlags<Enum>::set(Enum flag, bool bValue)
 {
 	bits[(size_t)flag] = bValue;
 }
 
-template <utils::tName Enum>
+template <typename Enum>
 void TFlags<Enum>::set(std::initializer_list<Enum> flagList, bool bValue)
 {
 	for (auto flag : flagList)
@@ -52,7 +54,7 @@ void TFlags<Enum>::set(std::initializer_list<Enum> flagList, bool bValue)
 	}
 }
 
-template <utils::tName Enum>
+template <typename Enum>
 void TFlags<Enum>::set(std::vector<Enum> const& flagList, bool bValue)
 {
 	for (auto flag : flagList)
@@ -61,7 +63,7 @@ void TFlags<Enum>::set(std::vector<Enum> const& flagList, bool bValue)
 	}
 }
 
-template <utils::tName Enum>
+template <typename Enum>
 void TFlags<Enum>::set(bool bValue)
 {
 	bValue ? bits.set() : bits.reset();

@@ -1,14 +1,21 @@
 #include <algorithm>
 #include <filesystem>
-#if defined(__linux__)
-#include <X11/Xlib.h>
-#include <X11/extensions/Xrandr.h>
-#endif
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/gdata.hpp"
 #include "core/os.hpp"
 #include "threads_impl.hpp"
+#if defined(LEVK_OS_WINX)
+#include <Windows.h>
+#elif defined(LEVK_OS_LINUX)
+#include <cstring>
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <X11/Xlib.h>
+#include <X11/extensions/Xrandr.h>
+#endif
 
 namespace le
 {
@@ -84,5 +91,60 @@ std::vector<std::string_view> const& os::args()
 bool os::isDefined(std::string_view arg)
 {
 	return std::find_if(g_args.begin(), g_args.end(), [arg](std::string_view s) { return s == arg; }) != g_args.end();
+}
+
+bool os::isDebuggerAttached()
+{
+	bool ret = false;
+#if defined(LEVK_OS_WINX)
+	ret = IsDebuggerPresent() != 0;
+#elif defined(LEVK_OS_LINUX)
+	char buf[4096];
+
+	auto const status_fd = ::open("/proc/self/status", O_RDONLY);
+	if (status_fd == -1)
+	{
+		return false;
+	}
+
+	auto const num_read = ::read(status_fd, buf, sizeof(buf) - 1);
+	if (num_read <= 0)
+	{
+		return false;
+	}
+
+	buf[num_read] = '\0';
+	constexpr char tracerPidString[] = "TracerPid:";
+	auto const tracer_pid_ptr = ::strstr(buf, tracerPidString);
+	if (!tracer_pid_ptr)
+	{
+		return false;
+	}
+
+	for (char const* characterPtr = tracer_pid_ptr + sizeof(tracerPidString) - 1; characterPtr <= buf + num_read; ++characterPtr)
+	{
+		if (::isspace(*characterPtr))
+		{
+			continue;
+		}
+		else
+		{
+			ret = ::isdigit(*characterPtr) != 0 && *characterPtr != '0';
+		}
+	}
+#endif
+	return ret;
+}
+
+void os::debugBreak()
+{
+#if defined(LEVK_RUNTIME_MSVC)
+	__debugbreak();
+#elif defined(LEVK_RUNTIME_LIBSTDCXX)
+#ifdef SIGTRAP
+	raise(SIGTRAP);
+#endif
+#endif
+	return;
 }
 } // namespace le

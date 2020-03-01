@@ -4,14 +4,21 @@
 #include <fstream>
 #include <mutex>
 #include <thread>
-#include <fmt/chrono.h>
 #include "core/log.hpp"
-#include "core/os.hpp"
+#if defined(LEVK_COMPILER_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#endif
+#include <fmt/chrono.h>
+#if defined(LEVK_COMPILER_CLANG)
+#pragma clang diagnostic pop
+#endif
+#if defined(LEVK_RUNTIME_MSVC)
+#include <Windows.h>
+#endif
+#include "core/assert.hpp"
 #include "core/std_types.hpp"
 #include "core/threads.hpp"
-#if defined(LEVK_RUNTIME_MSVC)
-#include "Windows.h"
-#endif
 
 namespace le
 {
@@ -43,7 +50,11 @@ public:
 
 FileLogger::~FileLogger()
 {
-	stopLogging();
+	ASSERT(m_hThread == HThread::Null, "FileLogger thread running past main!");
+	if (m_hThread != HThread::Null)
+	{
+		stopLogging();
+	}
 }
 
 void FileLogger::startLogging(std::filesystem::path path, Time pollRate)
@@ -98,7 +109,7 @@ void FileLogger::record(std::string line)
 	{
 		Lock lock(m_mutex);
 		m_cache += std::move(line);
-		m_cache += os::g_EOL;
+		m_cache += "\n";
 	}
 	return;
 }
@@ -123,7 +134,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 std::mutex g_logMutex;
 std::array<char, (size_t)log::Level::COUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
-}
+} // namespace
 
 log::HFileLogger::~HFileLogger()
 {
@@ -132,10 +143,14 @@ log::HFileLogger::~HFileLogger()
 
 void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
 {
-	using namespace std::chrono;
-	std::time_t now = system_clock::to_time_t(system_clock::now());
+	if ((u8)level < (u8)g_minLevel)
+	{
+		return;
+	}
+	std::time_t now = stdch::system_clock::to_time_t(stdch::system_clock::now());
 	std::unique_lock<std::mutex> lock(g_logMutex);
-	auto str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
+	auto str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text),
+						   *std::localtime(&now));
 	lock.unlock();
 #if defined(LEVK_LOG_SOURCE_LOCATION)
 	constexpr std::string_view parentStr = "../";

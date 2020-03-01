@@ -93,11 +93,4 @@ Fixed Fixed::arcTan() const
 {
 	return Fixed(std::atan(toF64()));
 }
-
-std::string Fixed::toString() const
-{
-	std::array<char, 16> buf;
-	std::snprintf(buf.data(), buf.size(), "%.2f", toF32());
-	return std::string(buf.data());
-}
 } // namespace le

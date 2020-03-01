@@ -16,7 +16,6 @@ struct UByte
 
 	u8 toU8() const;
 	f32 toF32() const;
-	std::string toString() const;
 
 	UByte operator+=(UByte rhs);
 	UByte operator-=(UByte rhs);

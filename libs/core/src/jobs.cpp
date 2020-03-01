@@ -5,7 +5,7 @@
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "core/threads.hpp"
-#include "jobs/job_manager.hpp"
+#include "job_manager.hpp"
 
 namespace le
 {
@@ -15,7 +15,7 @@ std::unique_ptr<JobManager> uManager;
 
 std::shared_ptr<HJob> doNow(std::packaged_task<std::any()> task, std::optional<std::string> oName)
 {
-	std::string name = oName ? *oName : "unnamed";
+	std::string_view name = oName ? *oName : "unnamed";
 	LOG_E("[{}] Not initialised! Running [{}] Task on this thread!", utils::tName<JobManager>(), name);
 	std::shared_ptr<HJob> ret = std::make_shared<HJob>(-1, task.get_future());
 	task();
@@ -46,11 +46,16 @@ void jobs::init(u32 workerCount)
 	return;
 }
 
-void jobs::cleanup()
+void jobs::cleanup(bool bFlushQueue)
 {
-	LOGIF_D(uManager, "[{}] Cleaned up (destroyed [{}] JobWorkers)", utils::tName<JobManager>(), uManager->workerCount());
+	if (bFlushQueue && uManager)
+	{
+		uManager->waitAll();
+	}
+	[[maybe_unused]] auto count = uManager ? uManager->workerCount() : 0;
 	uManager = nullptr;
 	g_pJobManager = nullptr;
+	LOGIF_D(count > 0, "[{}] Cleaned up (destroyed [{}] JobWorkers)", utils::tName<JobManager>(), count);
 	return;
 }
 
@@ -79,20 +84,6 @@ std::shared_ptr<HJob> jobs::enqueue(std::function<void()> task, std::string name
 	else
 	{
 		return doNow(std::packaged_task<std::any()>(doTask), bSilent ? std::nullopt : std::optional<std::string>(name));
-	}
-}
-
-JobCatalog* jobs::createCatalogue(std::string name)
-{
-	ASSERT(uManager, "JobManager is null!");
-	if (uManager)
-	{
-		return uManager->createCatalogue(std::move(name));
-	}
-	else
-	{
-		LOG_E("[{}] Not initialised! Cannot requisition new JobCatalog!", utils::tName<JobManager>());
-		return nullptr;
 	}
 }
 
@@ -135,15 +126,6 @@ void jobs::waitAll(std::vector<std::shared_ptr<HJob>> const& handles)
 	return;
 }
 
-void jobs::update()
-{
-	if (uManager)
-	{
-		uManager->update();
-	}
-	return;
-}
-
 bool jobs::areWorkersIdle()
 {
 	return uManager ? uManager->areWorkersIdle() : true;
@@ -159,5 +141,6 @@ void jobs::waitForIdle()
 	{
 		std::this_thread::yield();
 	}
+	return;
 }
 } // namespace le

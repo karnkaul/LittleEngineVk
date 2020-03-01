@@ -1,11 +1,10 @@
 #pragma once
 #include <any>
 #include <future>
-#include <list>
-#include <queue>
 #include <memory>
+#include <queue>
 #include <vector>
-#include "core/jobs/job_handle.hpp"
+#include "core/job_handle.hpp"
 
 namespace le
 {
@@ -24,7 +23,6 @@ private:
 
 	public:
 		std::string m_logName;
-		std::string m_exception;
 		std::shared_ptr<HJob> m_shJob;
 		s64 m_id = -1;
 		bool m_bSilent = true;
@@ -40,7 +38,6 @@ private:
 
 private:
 	std::vector<std::unique_ptr<class JobWorker>> m_jobWorkers;
-	std::list<std::unique_ptr<class JobCatalog>> m_catalogs;
 	std::queue<Job> m_jobQueue;
 	mutable std::mutex m_wakeMutex;
 	std::condition_variable m_wakeCV;
@@ -52,12 +49,11 @@ public:
 
 public:
 	std::shared_ptr<HJob> enqueue(Task task, std::string name = "", bool bSilent = false);
-	JobCatalog* createCatalogue(std::string name);
 	std::vector<std::shared_ptr<HJob>> forEach(IndexedTask const& indexedTask);
 
-	void update();
 	bool areWorkersIdle() const;
-	u16 workerCount() const;
+	u8 workerCount() const;
+	void waitAll();
 
 private:
 	friend class JobWorker;

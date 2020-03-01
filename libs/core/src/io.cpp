@@ -198,7 +198,8 @@ ZIPReader::ZIPReader(stdfs::path zipPath, stdfs::path idPrefix /* = "" */) : IOR
 	else
 	{
 		PHYSFS_mount(m_zipPath.string().data(), nullptr, 0);
-		LOG_D("[{}] [{}] archive mounted, idPrefix: [{}]", utils::tName<ZIPReader>(), m_zipPath.generic_string(), m_prefix.generic_string());
+		LOG_D("[{}] [{}] archive mounted, idPrefix: [{}]", utils::tName<ZIPReader>(), m_zipPath.generic_string(),
+			  m_prefix.generic_string());
 	}
 }
 

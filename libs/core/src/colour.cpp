@@ -1,6 +1,7 @@
 #include <sstream>
 #include "core/assert.hpp"
 #include "core/colour.hpp"
+#include "core/fmt.hpp"
 #include "core/maths.hpp"
 
 namespace le
@@ -73,9 +74,7 @@ Colour& Colour::operator-=(Colour rhs)
 
 std::string Colour::toString() const
 {
-	std::stringstream ret;
-	ret << r.toString() << ", " << g.toString() << ", " << b.toString() << ", " << a.toString();
-	return ret.str();
+	return fmt::format("{}, {}, {}, {}", r.rawValue, g.rawValue, b.rawValue, a.rawValue);
 }
 
 Colour operator+(Colour lhs, Colour rhs)

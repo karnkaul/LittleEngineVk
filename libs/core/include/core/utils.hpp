@@ -1,9 +1,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#if defined(__GNUG__)
-#include <cxxabi.h>
-#endif
 #include "core/std_types.hpp"
 
 namespace le

@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 #include <ostream>
 #include "core/std_types.hpp"
 
@@ -51,8 +50,6 @@ public:
 	bool operator<(Fixed rhs) const;
 	bool operator<=(Fixed rhs) const;
 	bool operator>=(Fixed rhs) const;
-
-	std::string toString() const;
 
 private:
 	friend Fixed operator-(Fixed rhs);

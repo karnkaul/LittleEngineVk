@@ -11,10 +11,8 @@ add_target_compile_definitions(${PROJECT_NAME} LEVK)
 add_target_compile_options(${PROJECT_NAME} PRIVATE)
 target_include_directories(${PROJECT_NAME}
 	SYSTEM PUBLIC "${EXT_DIR}/fmt/include"
-	SYSTEM PUBLIC "${EXT_DIR}/glm"
 	PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
 	PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
-	PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC

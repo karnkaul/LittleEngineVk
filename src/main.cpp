@@ -4,10 +4,10 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "core/jobs.hpp"
-#include "core/os.hpp"
-#include "core/log.hpp"
 #include "core/io.hpp"
+#include "core/jobs.hpp"
+#include "core/log.hpp"
+#include "core/maths.hpp"
 #include "core/os.hpp"
 #include "core/threads.hpp"
 #include "core/map_store.hpp"
@@ -32,8 +32,19 @@ int main(int argc, char** argv)
 			LOG_E("Could not locate data!");
 		}
 		jobs::init(4);
-		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		jobs::cleanup();
+		jobs::enqueue([]() {
+			std::this_thread::sleep_for(stdch::milliseconds(500));
+			throw std::runtime_error("test");
+		});
+		for (s32 i = 0; i < 10; ++i)
+		{
+			jobs::enqueue([i]() {
+				std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
+				LOG_I("Job #{}", i + 1);
+			});
+		}
+		std::this_thread::sleep_for(stdch::milliseconds(2000));
+		jobs::cleanup(true);
 	}
 	threads::joinAll();
 	return 0;

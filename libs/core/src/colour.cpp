@@ -1,7 +1,7 @@
 #include <sstream>
+#include <fmt/format.h>
 #include "core/assert.hpp"
 #include "core/colour.hpp"
-#include "core/fmt.hpp"
 #include "core/maths.hpp"
 
 namespace le

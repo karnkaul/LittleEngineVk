@@ -28,7 +28,6 @@ public:
 	~JobWorker();
 
 private:
-	std::string m_logName;
 	void run();
 
 	friend class JobManager;

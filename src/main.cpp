@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <GLFW/glfw3.h>
 #include "core/io.hpp"
 #include "core/jobs.hpp"
 #include "core/log.hpp"
@@ -11,6 +12,8 @@
 #include "core/os.hpp"
 #include "core/threads.hpp"
 #include "core/map_store.hpp"
+
+#include "window/window.hpp"
 
 int main(int argc, char** argv)
 {
@@ -32,10 +35,6 @@ int main(int argc, char** argv)
 			LOG_E("Could not locate data!");
 		}
 		jobs::init(4);
-		jobs::enqueue([]() {
-			std::this_thread::sleep_for(stdch::milliseconds(500));
-			throw std::runtime_error("test");
-		});
 		for (s32 i = 0; i < 10; ++i)
 		{
 			jobs::enqueue([i]() {
@@ -43,7 +42,15 @@ int main(int argc, char** argv)
 				LOG_I("Job #{}", i + 1);
 			});
 		}
-		std::this_thread::sleep_for(stdch::milliseconds(2000));
+		try
+		{
+			Window window;
+			std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
+		}
+		catch(std::exception const&)
+		{
+			
+		}
 		jobs::cleanup(true);
 	}
 	threads::joinAll();

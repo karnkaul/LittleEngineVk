@@ -10,7 +10,6 @@ std::atomic_bool JobWorker::s_bWork = true;
 
 JobWorker::JobWorker(JobManager& manager, u8 id) : m_pManager(&manager), id(id)
 {
-	m_logName = fmt::format("JobWorker{}", id);
 	m_hThread = threads::newThread([&]() { run(); });
 }
 
@@ -50,7 +49,7 @@ void JobWorker::run()
 			m_state.store(State::Busy);
 			if (!job.m_bSilent)
 			{
-				LOG_D("[{}] Starting Job [{}]", m_logName, job.m_logName);
+				LOG_D("[{}{}] Starting Job [{}]", utils::tName<JobWorker>(), id, job.m_logName);
 			}
 			job.run();
 			if (!job.m_bSilent && job.m_shJob->m_future.valid())
@@ -58,13 +57,13 @@ void JobWorker::run()
 				try
 				{
 					job.m_shJob->m_future.get();
-					LOG_D("[{}] Completed Job [{}]", m_logName, job.m_logName);
+					LOG_D("[{}{}] Completed Job [{}]", utils::tName<JobWorker>(), id, job.m_logName);
 				}
 				catch (std::exception const& e)
 				{
 					job.m_shJob->m_exception = e.what();
 					ASSERT(false, e.what());
-					LOG_E("[{}] Threw an exception running Job [{}]!\n\t{}", m_logName, job.m_logName, job.m_shJob->m_exception);
+					LOG_E("[{}{}] Threw an exception running Job [{}]!\n\t{}", utils::tName<JobWorker>(), id, job.m_logName, job.m_shJob->m_exception);
 				}
 			}
 		}

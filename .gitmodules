@@ -4,3 +4,6 @@
 [submodule "external/fmt"]
 	path = external/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "external/glfw"]
+	path = external/glfw
+	url = https://github.com/glfw/glfw

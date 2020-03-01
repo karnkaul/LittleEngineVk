@@ -3,7 +3,7 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include "core/fmt.hpp"
+#include <fmt/format.h>
 #include "core/os.hpp"
 #include "core/std_types.hpp"
 #include "core/time.hpp"

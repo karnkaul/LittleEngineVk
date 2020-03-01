@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
-set(APP_VERSION "0.0.0.1" CACHE STRING "Application Version" FORCE)
-project(LittleEngineVk VERSION ${APP_VERSION})
+set(LEVK_VERSION "0.0.0.1" CACHE STRING "Application Version" FORCE)
+project(LittleEngineVk VERSION ${LEVK_VERSION})
+
+# Options
+option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
 
 # Includes
 include(.cmake/platform.cmake)
@@ -23,28 +26,26 @@ set(GIT_COMMIT_HASH "[unknown]")
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
 	get_git_commit_hash(GIT_COMMIT_HASH)
-	option(GIT_UPDATE_SUBMODULES "Init/Update submodules during generation" ON)
-	if(GIT_UPDATE_SUBMODULES)
+	option(LEVK_GIT_UPDATE_SUBMODULES "Init/Update submodules during generation" ON)
+	if(LEVK_GIT_UPDATE_SUBMODULES)
 		update_git_submodules(1)
 	endif()
 endif()
 
 # Constants
-set(GIT_COMMIT_HASH ${GIT_COMMIT_HASH} CACHE STRING "Commit hash" FORCE)
+set(LEVK_GIT_COMMIT_HASH ${GIT_COMMIT_HASH} CACHE STRING "Commit hash" FORCE)
 set(EXT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE INTERNAL "External dependencies root" FORCE)
 
 # External
-# physfs
 add_subdirectory(external/physfs)
-# fmt
 add_subdirectory(external/fmt)
-# glm
 add_subdirectory(external/glm)
+if(LEVK_USE_GLFW)
+	add_subdirectory(external/glfw)
+endif()
 
 # Libraries
-# core
 add_subdirectory(libs/core)
 
-# Executable
 # levk
 add_subdirectory(src)

@@ -6,12 +6,13 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 )
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "src" FILES ${SOURCES})
 set(GENERATED_SOURCES
-	"${CMAKE_CURRENT_BINARY_DIR}/generated/build_version.hpp"
+	"${CMAKE_CURRENT_BINARY_DIR}/generated/version/build_version.hpp"
 )
-configure_file_src_to_bin(build_version.hpp.in generated/build_version.hpp)
+configure_file_src_to_bin(version/build_version.hpp.in generated/version/build_version.hpp)
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${GENERATED_SOURCES})
 add_executable(${PROJECT_NAME} ${SOURCES} ${GENERATED_SOURCES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW>)
 add_target_compile_definitions(${PROJECT_NAME} LEVK)
 add_target_compile_options(${PROJECT_NAME} PRIVATE)
 add_target_link_options(${PROJECT_NAME})
@@ -23,13 +24,15 @@ target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		core
 	PRIVATE
-		#$<$<BOOL:${LE3D_USE_GLFW}>:glfw>
+		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 		#stb-image
 		#tinyobjloader
 
-		## TODO: Remove later
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 )
 if(W_MSBUILD)
 	set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+endif()
+if(W_CLANG AND LEVK_USE_GLFW)
+	target_compile_options(glfw PRIVATE -Wno-everything)
 endif()

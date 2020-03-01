@@ -4,7 +4,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <GLFW/glfw3.h>
 #include "core/io.hpp"
 #include "core/jobs.hpp"
 #include "core/log.hpp"
@@ -45,12 +44,23 @@ int main(int argc, char** argv)
 		try
 		{
 			Window window;
-			std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
+			Window::Data data;
+			data.size = {1280, 720};
+			data.title = "LittleEngineVk Demo";
+			if (window.create(data))
+			{
+				while (window.isOpen())
+				{
+					window.pollEvents();
+					std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
+				}
+			}
 		}
 		catch(std::exception const&)
 		{
 			
 		}
+		std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
 		jobs::cleanup(true);
 	}
 	threads::joinAll();

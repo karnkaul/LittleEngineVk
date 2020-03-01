@@ -1,6 +1,8 @@
 #include <mutex>
 #include <unordered_set>
 #if defined(LEVK_USE_GLFW)
+// TODO: Enable after Vulkan CMake integration
+// #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #endif
 #include "core/log.hpp"
@@ -81,31 +83,102 @@ void unregisterWindow(Window* pWindow)
 		}
 	}
 }
-}
+} // namespace
 
 class WindowImpl final
 {
 public:
 #if defined(LEVK_USE_GLFW)
-	static bool s_bGLFWInit;
-
 	GLFWwindow* m_pWindow = nullptr;
 #endif
 
-	WindowImpl()
-	{
-		
-	}
-
 	~WindowImpl()
 	{
-		
+		close();
+		destroy();
+	}
+
+	bool create(Window::Data const& data)
+	{
+#if defined(LEVK_USE_GLFW)
+		// s32 count;
+		// auto ppMonitors = glfwGetMonitors(&count);
+		GLFWmonitor* pTarget = nullptr;
+		if (data.mode != Window::Mode::DecoratedWindow)
+		{
+			LOG_E("NOT IMPLEMENTED");
+			return false;
+		}
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		m_pWindow = glfwCreateWindow(data.size.x, data.size.y, data.title.data(), pTarget, nullptr);
+		if (m_pWindow)
+		{
+			return true;
+		}
+#endif
+		LOG_E("[{}] Failed to create window!", utils::tName<Window>());
+		return false;
+	}
+
+	bool isOpen()
+	{
+#if defined(LEVK_USE_GLFW)
+		return m_pWindow != nullptr && !glfwWindowShouldClose(m_pWindow);
+#endif
+	}
+
+	bool exists()
+	{
+#if defined(LEVK_USE_GLFW)
+		return m_pWindow != nullptr;
+#else
+		return false;
+#endif
+	}
+
+	bool isClosing()
+	{
+#if defined(LEVK_USE_GLFW)
+		return m_pWindow != nullptr && glfwWindowShouldClose(m_pWindow);
+#else
+		return false;
+#endif
+	}
+
+	void pollEvents()
+	{
+#if defined(LEVK_USE_GLFW)
+		if (m_pWindow)
+		{
+			glfwPollEvents();
+		}
+#endif
+		return;
+	}
+
+	void close()
+	{
+#if defined(LEVK_USE_GLFW)
+		if (m_pWindow)
+		{
+			glfwSetWindowShouldClose(m_pWindow, 1);
+		}
+#endif
+		return;
+	}
+
+	void destroy()
+	{
+#if defined(LEVK_USE_GLFW)
+		if (m_pWindow)
+		{
+			glfwDestroyWindow(m_pWindow);
+			m_pWindow = nullptr;
+		}
+#endif
+		return;
 	}
 };
-
-#if defined(LEVK_USE_GLFW)
-bool WindowImpl::s_bGLFWInit = false;
-#endif
 
 Window::Window()
 {
@@ -131,5 +204,50 @@ Window::~Window()
 	unregisterWindow(this);
 }
 
+Window::ID Window::id() const
+{
+	return m_id;
+}
 
+bool Window::isOpen() const
+{
+	return m_uImpl ? m_uImpl->isOpen() : false;
+}
+
+bool Window::isClosing() const
+{
+	return m_uImpl ? m_uImpl->isClosing() : false;
+}
+
+bool Window::create(Data const& data)
+{
+	return m_uImpl ? m_uImpl->create(data) : false;
+}
+
+void Window::pollEvents()
+{
+	if (m_uImpl)
+	{
+		m_uImpl->pollEvents();
+	}
+	return;
+}
+
+void Window::close()
+{
+	if (m_uImpl)
+	{
+		m_uImpl->close();
+	}
+	return;
+}
+
+void Window::destroy()
+{
+	if (m_uImpl)
+	{
+		m_uImpl->destroy();
+	}
+	return;
+}
 } // namespace le

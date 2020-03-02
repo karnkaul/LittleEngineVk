@@ -5,14 +5,7 @@
 #include <mutex>
 #include <thread>
 #include "core/log.hpp"
-#if defined(LEVK_COMPILER_CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-conversion"
-#endif
 #include <fmt/chrono.h>
-#if defined(LEVK_COMPILER_CLANG)
-#pragma clang diagnostic pop
-#endif
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
 #endif

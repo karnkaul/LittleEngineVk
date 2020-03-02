@@ -12,7 +12,7 @@
 #include "core/threads.hpp"
 #include "core/map_store.hpp"
 
-#include "window/window.hpp"
+#include "engine/window.hpp"
 
 int main(int argc, char** argv)
 {
@@ -43,22 +43,44 @@ int main(int argc, char** argv)
 		}
 		try
 		{
-			Window window;
+			Window window, w2;
 			Window::Data data;
 			data.size = {1280, 720};
 			data.title = "LittleEngineVk Demo";
-			if (window.create(data))
-			{
-				while (window.isOpen())
+			auto data2 = data;
+			data2.title += " 2";
+			data2.position = {100, 100};
+			bool bRecreate2 = false;
+			auto token = window.registerInput([&w2, &bRecreate2](Key key, Action action, Mods mods) {
+				if (!w2.isOpen() && key == Key::W && action == le::Action::RELEASE && mods & Mods::CONTROL)
 				{
-					window.pollEvents();
-					std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
+					bRecreate2 = true;
+				}
+			});
+			if (window.create(data) && w2.create(data2))
+			{
+				while (window.isOpen() || w2.isOpen())
+				{
+					Window::pollEvents();
+					std::this_thread::sleep_for(stdch::milliseconds(10));
+					if (window.isClosing())
+					{
+						window.destroy();
+					}
+					if (w2.isClosing())
+					{
+						w2.destroy();
+					}
+					if (bRecreate2)
+					{
+						bRecreate2 = false;
+						w2.create(data2);
+					}
 				}
 			}
 		}
-		catch(std::exception const&)
+		catch (std::exception const&)
 		{
-			
 		}
 		std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
 		jobs::cleanup(true);

@@ -9,6 +9,7 @@
 #include "core/os.hpp"
 #include "core/utils.hpp"
 #include "engine/window.hpp"
+#include "engine/vk/instance.hpp"
 
 namespace le
 {
@@ -16,6 +17,7 @@ namespace
 {
 Window::ID g_nextWindowID = Window::ID::Null;
 std::unordered_set<Window*> g_registeredWindows;
+VkInstance g_vkInstance;
 #if defined(LEVK_USE_GLFW)
 bool g_bGLFWInit = false;
 #endif
@@ -30,6 +32,7 @@ void onGLFWError(s32 code, char const* desc)
 
 bool init()
 {
+	VkInstance::Data data;
 #if defined(LEVK_USE_GLFW)
 	glfwSetErrorCallback(&onGLFWError);
 	if (glfwInit() != GLFW_TRUE)
@@ -47,7 +50,21 @@ bool init()
 		LOG_D("[{}] GLFW initialised successfully", utils::tName<Window>());
 	}
 	g_bGLFWInit = true;
+	u32 glfwExtCount;
+	char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+	data.extensions.reserve((size_t)glfwExtCount);
+	for (u32 i = 0; i < glfwExtCount; ++i)
+	{
+		data.extensions.push_back(glfwExtensions[i]);
+	}
 #endif
+#if defined(LEVK_DEBUG)
+	data.layers.push_back("VK_LAYER_KHRONOS_validation");
+#endif
+	if (!g_vkInstance.init(data))
+	{
+		return false;
+	}
 	return true;
 }
 
@@ -58,6 +75,7 @@ void deinit()
 	LOG_D("[{}] GLFW terminated", utils::tName<Window>());
 	g_bGLFWInit = false;
 #endif
+	g_vkInstance.destroy();
 	return;
 }
 
@@ -108,8 +126,8 @@ public:
 		OnClosed onClosed;
 	};
 
-	glm::ivec2 m_size = {};
 	InputCallbacks m_input;
+	glm::ivec2 m_size = {};
 	Window::ID m_id;
 
 	WindowImpl(Window::ID id) : m_id(id) {}

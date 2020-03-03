@@ -79,8 +79,9 @@ int main(int argc, char** argv)
 				}
 			}
 		}
-		catch (std::exception const&)
+		catch (std::exception const& e)
 		{
+			LOG_E("Exception!\n\t{}", e.what());
 		}
 		std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
 		jobs::cleanup(true);

@@ -55,8 +55,8 @@ function(set_output_directory TARGET_NAME DIRECTORY_PATH)
 	endforeach()
 endfunction()
 
-function(add_target_compile_definitions TARGET_NAME PREFIX)
-	target_compile_definitions(${TARGET_NAME} PRIVATE
+function(add_target_compile_definitions TARGET_NAME PREFIX SCOPE)
+	target_compile_definitions(${TARGET_NAME} ${SCOPE}
 		_UNICODE
 		$<$<NOT:$<CONFIG:Debug>>:
 			NDEBUG
@@ -104,6 +104,9 @@ function(add_target_compile_options TARGET_NAME SCOPE)
 			>
 			/MP
 		)
+	endif()
+	if(PLATFORM STREQUAL "Linux")
+		list(APPEND FLAGS -fPIC)
 	endif()
 	target_compile_options(${TARGET_NAME} ${SCOPE} ${FLAGS})
 endfunction()

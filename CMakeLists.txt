@@ -4,6 +4,14 @@ set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(LEVK_VERSION "0.0.0.1" CACHE STRING "Application Version" FORCE)
 project(LittleEngineVk VERSION ${LEVK_VERSION})
 
+if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+	message(FATAL_ERROR "Unsupported architecture, must be 64-bit")
+endif()
+
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
+	message(FATAL_ERROR "In-source builds are not supported; choose a subdirectory like `out/*` or `build/*` for CMake output")
+endif()
+
 # Options
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
 
@@ -46,6 +54,7 @@ endif()
 
 # Libraries
 add_subdirectory(libs/core)
+add_subdirectory(libs/engine)
 
 # levk
 add_subdirectory(src)

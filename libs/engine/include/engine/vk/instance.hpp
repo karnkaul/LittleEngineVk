@@ -13,19 +13,25 @@ public:
 	{
 		std::vector<char const*> extensions;
 		std::vector<char const*> layers;
+		bool bAddValidationLayers = false;
 	};
 
 private:
-	std::vector<vk::LayerProperties> m_availableLayers;
 	vk::Instance m_instance;
+	vk::DispatchLoaderDynamic m_loader;
+	vk::DebugUtilsMessengerEXT m_debugMessenger;
 
 public:
 	~VkInstance();
 
-	bool init(Data const& data);
+	bool init(Data data);
 	void destroy();
 
 public:
 	vk::Instance const& vkInst() const;
+
+private:
+	bool createInstance(std::vector<char const*> const& extensions, std::vector<char const*> const& layers);
+	bool setupDebugMessenger();
 };
 } // namespace le

@@ -59,9 +59,9 @@ bool init()
 	}
 #endif
 #if defined(LEVK_DEBUG)
-	data.layers.push_back("VK_LAYER_KHRONOS_validation");
+	data.bAddValidationLayers = true;
 #endif
-	if (!g_vkInstance.init(data))
+	if (!g_vkInstance.init(std::move(data)))
 	{
 		return false;
 	}

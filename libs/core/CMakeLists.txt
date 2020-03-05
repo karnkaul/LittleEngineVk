@@ -27,9 +27,8 @@ target_link_libraries(${PROJECT_NAME}
 		glm
 	PRIVATE
 		physfs-static
-		$<$<STREQUAL:${PLATFORM},Linux>:pthread>
-		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
+		$<$<STREQUAL:${PLATFORM},Linux>:
+			pthread
+			stdc++fs
+		>
 )
-if(W_MSBUILD)
-	set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-endif()

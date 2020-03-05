@@ -9,7 +9,11 @@ endif()
 # Vulkan
 find_package(Vulkan)
 if(NOT Vulkan_FOUND)
-	message(FATAL_ERROR "Vulkan not installed! LittleEngineVk requires Vulkan ICD loader, headers, and validation layers!")
+	message(FATAL_ERROR 
+"Vulkan not installed! LittleEngineVk requires Vulkan ICD loader, headers, and validation layers!
+Note: for custom SDK locations, define `VULKAN_SDK` and source `vk-setup-env.sh` into this shell (and runtime environment).
+Make sure to delete CMakeCache.txt before re-configuring!"
+	)
 else()
 	message("== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}")
 endif()
@@ -47,6 +51,6 @@ target_link_libraries(${PROJECT_NAME}
 		#stb-image
 		#tinyobjloader
 )
-if(W_CLANG AND LEVK_USE_GLFW)
+if(WIN64_CLANG AND LEVK_USE_GLFW)
 	target_compile_options(glfw PRIVATE -Wno-everything)
 endif()

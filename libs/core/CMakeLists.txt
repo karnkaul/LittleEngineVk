@@ -1,9 +1,7 @@
 project(core)
 
 # Library
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
-	"${CMAKE_CURRENT_SOURCE_DIR}/*.*pp"
-)
+glob_sources(SOURCES "*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
@@ -27,8 +25,6 @@ target_link_libraries(${PROJECT_NAME}
 		glm
 	PRIVATE
 		physfs-static
-		$<$<STREQUAL:${PLATFORM},Linux>:
-			pthread
-			stdc++fs
-		>
+		$<$<STREQUAL:${PLATFORM},Linux>:pthread>
+		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
 )

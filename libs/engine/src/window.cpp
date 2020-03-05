@@ -10,6 +10,7 @@
 #include "core/utils.hpp"
 #include "engine/window.hpp"
 #include "engine/vk/instance.hpp"
+#include "engine/vk/instanceImpl.hpp"
 
 namespace le
 {
@@ -17,7 +18,6 @@ namespace
 {
 Window::ID g_nextWindowID = Window::ID::Null;
 std::unordered_set<Window*> g_registeredWindows;
-VkInstance g_vkInstance;
 #if defined(LEVK_USE_GLFW)
 bool g_bGLFWInit = false;
 #endif

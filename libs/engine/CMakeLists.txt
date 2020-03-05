@@ -19,10 +19,8 @@ else()
 endif()
 
 # Library
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
-	"${CMAKE_CURRENT_SOURCE_DIR}/*.*pp"
-)
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "src" FILES ${SOURCES})
+glob_sources(SOURCES "*.?pp")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 set(GENERATED_SOURCES
 	"${CMAKE_CURRENT_BINARY_DIR}/generated/version/build_version.hpp"
 )

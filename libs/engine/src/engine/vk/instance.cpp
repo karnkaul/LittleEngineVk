@@ -12,36 +12,39 @@ namespace
 VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
 												  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*)
 {
+	constexpr std::string_view name = "vk::validation";
 	switch (messageSeverity)
 	{
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-		LOG_E("[{}] {}", utils::tName<VkInstance>(), pCallbackData->pMessage);
+	LOG_E("[{}] {}", name, pCallbackData->pMessage);
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		LOG_W("[{}] {}", utils::tName<VkInstance>(), pCallbackData->pMessage);
+		LOG_W("[{}] {}", name, pCallbackData->pMessage);
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		LOG_I("[{}] {}", utils::tName<VkInstance>(), pCallbackData->pMessage);
+		LOG_I("[{}] {}", name, pCallbackData->pMessage);
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		LOG_D("[{}] {}", utils::tName<VkInstance>(), pCallbackData->pMessage);
+		LOG_D("[{}] {}", name, pCallbackData->pMessage);
 		break;
 	}
 	return VK_FALSE;
 }
 } // namespace
 
+std::string const VkInstance::s_tName = utils::tName<VkInstance>();
+
 VkInstance::~VkInstance()
 {
-	destroy();
+	ASSERT(m_instance == vk::Instance(), "VkInstance not explicitly destroyed!");
 }
 
 bool VkInstance::init(Data data)
 {
-	if (m_instance != vk::Instance())
+	if (isInit())
 	{
-		LOG_W("[{}] already initialised!", utils::tName<VkInstance>());
+		LOG_W("[{}] already initialised!", s_tName);
 		return true;
 	}
 	if (data.bAddValidationLayers)
@@ -64,7 +67,7 @@ bool VkInstance::init(Data data)
 		}
 		if (!bFound)
 		{
-			LOG_E("[{}] Required layer [{}] not available!", utils::tName<VkInstance>(), szRequiredLayer);
+			LOG_E("[{}] Required layer [{}] not available!", s_tName, szRequiredLayer);
 			return false;
 		}
 	}
@@ -76,23 +79,48 @@ bool VkInstance::init(Data data)
 	{
 		return false;
 	}
-	LOG_I("[{}] Constructed", utils::tName<VkInstance>());
+	if (!setupDevices(data.layers))
+	{
+		return false;
+	}
+	LOG_I("[{}] Constructed", s_tName);
 	return true;
 }
 
 void VkInstance::destroy()
 {
+	m_devices.clear();
 	if (m_instance != vk::Instance())
 	{
 		if (m_debugMessenger != vk::DebugUtilsMessengerEXT())
 		{
 			m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger, nullptr, m_loader);
 		}
-		vkDestroyInstance(m_instance, nullptr);
+		m_instance.destroy();
 		m_instance = vk::Instance();
-		LOG_I("[{}] Destroyed", utils::tName<VkInstance>());
+		LOG_I("[{}] Destroyed", s_tName);
 	}
 	return;
+}
+
+bool VkInstance::isInit() const
+{
+	return m_instance != vk::Instance();
+}
+
+vk::Instance const& VkInstance::vkInst() const
+{
+	return m_instance;
+}
+
+VkDevice const* VkInstance::device() const
+{
+	return m_pDevice;
+}
+
+VkDevice* VkInstance::device()
+{
+	return m_pDevice;
 }
 
 bool VkInstance::createInstance(std::vector<char const*> const& extensions, std::vector<char const*> const& layers)
@@ -111,7 +139,7 @@ bool VkInstance::createInstance(std::vector<char const*> const& extensions, std:
 	createInfo.enabledLayerCount = (u32)layers.size();
 	if (vk::createInstance(&createInfo, nullptr, &m_instance) != vk::Result::eSuccess)
 	{
-		LOG_E("[{}] Failed to create Vulkan instance!", utils::tName<VkInstance>());
+		LOG_E("[{}] Failed to create Vulkan instance!", s_tName);
 		return false;
 	}
 	return true;
@@ -131,5 +159,30 @@ bool VkInstance::setupDebugMessenger()
 	createInfo.pfnUserCallback = &validationCallback;
 	m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(createInfo, nullptr, m_loader);
 	return m_debugMessenger != vk::DebugUtilsMessengerEXT();
+}
+
+bool VkInstance::setupDevices(std::vector<char const*> const& layers)
+{
+	auto devices = m_instance.enumeratePhysicalDevices();
+	m_devices.reserve(devices.size());
+	for (auto const& device : devices)
+	{
+		m_devices.emplace_back(device, layers);
+		if (m_devices.back().m_type == vk::PhysicalDeviceType::eDiscreteGpu)
+		{
+			m_pDevice = &m_devices.back();
+		}
+	}
+	if (!m_pDevice && !m_devices.empty())
+	{
+		m_pDevice = &m_devices.front();
+	}
+	if (m_pDevice && m_pDevice->m_queueFamilyIndices.isReady())
+	{
+		LOG_D("[{}] GPU: {}", VkDevice::s_tName, m_pDevice->m_name);
+		return true;
+	}
+	LOG_E("[{}] Failed to find a physical device!", s_tName);
+	return false;
 }
 } // namespace le

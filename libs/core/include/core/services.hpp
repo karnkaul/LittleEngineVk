@@ -26,7 +26,7 @@ private:
 		S s;
 
 		template <typename... Args>
-		Model(Args... args);
+		Model(Args&&... args);
 	};
 
 	std::vector<std::unique_ptr<Concept>> m_services;
@@ -36,12 +36,12 @@ public:
 
 public:
 	template <typename Service, typename... Args>
-	void add(Args... args);
+	void add(Args&&... args);
 };
 
 template <typename S>
 template <typename... Args>
-Services::Model<S>::Model(Args... args) : s(std::forward<Args...>(args...))
+Services::Model<S>::Model(Args&&... args) : s(std::forward<Args>(args)...)
 {
 #if defined(LEVK_DEBUG)
 	targetType = utils::tName(s);
@@ -49,8 +49,8 @@ Services::Model<S>::Model(Args... args) : s(std::forward<Args...>(args...))
 }
 
 template <typename Service, typename... Args>
-void Services::add(Args... args)
+void Services::add(Args&&... args)
 {
-	m_services.push_back(std::make_unique<Model<Service>>(std::forward<Args...>(args)...));
+	m_services.push_back(std::make_unique<Model<Service>>(std::forward<Args>(args)...));
 }
 } // namespace le

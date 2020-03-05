@@ -1,9 +1,15 @@
 macro(get_git_commit_hash OUTPUT_VAR)
+	set(${OUTPUT_VAR} "[unknown]")
 	execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
 		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 		OUTPUT_VARIABLE ${OUTPUT_VAR}
 		ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
+endmacro()
+
+macro(glob_sources OUTPUT_VAR PATTERN)
+	set(${OUTPUT_VAR} "")
+	file(GLOB_RECURSE ${OUTPUT_VAR} CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${PATTERN}")
 endmacro()
 
 function(update_git_submodules REQUIRED)

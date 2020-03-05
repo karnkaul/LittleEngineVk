@@ -5,7 +5,7 @@
 #include "core/log.hpp"
 #include "core/gdata.hpp"
 #include "core/os.hpp"
-#include "threads_impl.hpp"
+#include "core/threads.hpp"
 #if defined(LEVK_OS_WINX)
 #include <Windows.h>
 #elif defined(LEVK_OS_LINUX)
@@ -14,8 +14,6 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/Xrandr.h>
 #endif
 
 namespace le
@@ -29,20 +27,21 @@ stdfs::path g_exePath;
 stdfs::path g_workingDir;
 std::string g_exePathStr;
 std::vector<std::string_view> g_args;
-std::thread::id g_mainThreadID = {};
 } // namespace
+
+os::Service::Service(os::Args const& args)
+{
+	init(args);
+	threads::init();
+}
+
+os::Service::~Service()
+{
+	threads::joinAll();
+}
 
 void os::init(Args const& args)
 {
-	g_mainThreadID = std::this_thread::get_id();
-#if defined(__linux__)
-	s32 threadStatus = XInitThreads();
-	if (threadStatus == 0)
-	{
-		LOG_E("[OS] ERROR calling XInitThreads()! UB follows.");
-		threadsImpl::g_maxThreads = 1;
-	}
-#endif
 	g_workingDir = stdfs::absolute(stdfs::current_path());
 	if (args.argc > 0)
 	{
@@ -94,11 +93,6 @@ std::vector<std::string_view> const& os::args()
 bool os::isDefined(std::string_view arg)
 {
 	return std::find_if(g_args.begin(), g_args.end(), [arg](std::string_view s) { return s == arg; }) != g_args.end();
-}
-
-bool os::isMainThread()
-{
-	return std::this_thread::get_id() == g_mainThreadID;
 }
 
 bool os::isDebuggerAttached()

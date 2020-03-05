@@ -63,7 +63,8 @@ void JobWorker::run()
 				{
 					job.m_shJob->m_exception = e.what();
 					ASSERT(false, e.what());
-					LOG_E("[{}{}] Threw an exception running Job [{}]!\n\t{}", utils::tName<JobWorker>(), id, job.m_logName, job.m_shJob->m_exception);
+					LOG_E("[{}{}] Threw an exception running Job [{}]!\n\t{}", utils::tName<JobWorker>(), id, job.m_logName,
+						  job.m_shJob->m_exception);
 				}
 			}
 		}

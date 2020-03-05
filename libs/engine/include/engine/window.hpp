@@ -5,7 +5,7 @@
 #include "core/zero.hpp"
 #include "input_types.hpp"
 
-namespace  le
+namespace le
 {
 class Window final
 {

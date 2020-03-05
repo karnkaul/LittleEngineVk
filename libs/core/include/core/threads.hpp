@@ -9,13 +9,14 @@ using HThread = TZero<u64>;
 
 namespace threads
 {
+void init();
 HThread newThread(std::function<void()> task);
 void join(HThread& id);
 void joinAll();
 
 HThread::Type thisThreadID();
-
+bool isMainThread();
 u32 maxHardwareThreads();
-u32 running();
+u32 runningCount();
 } // namespace threads
 } // namespace le

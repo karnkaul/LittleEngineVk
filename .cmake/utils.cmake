@@ -65,7 +65,7 @@ function(add_target_compile_definitions TARGET_NAME PREFIX SCOPE)
 		$<$<CONFIG:Debug>:
 			${PREFIX}_DEBUG
 		>
-		$<$<BOOL:W_MSBUILD>:_CRT_SECURE_NO_WARNINGS>
+		$<$<OR:$<BOOL:${W_VCXX}>,$<BOOL:${W_CLANG}>>:_CRT_SECURE_NO_WARNINGS>
 	)
 endfunction()
 

@@ -6,7 +6,7 @@
 #endif
 #include "core/assert.hpp"
 #include "core/log.hpp"
-#include "core/os.hpp"
+#include "core/threads.hpp"
 #include "core/utils.hpp"
 #include "engine/window.hpp"
 #include "engine/vk/instance.hpp"
@@ -141,8 +141,8 @@ public:
 	bool create(Window::Data const& data)
 	{
 #if defined(LEVK_USE_GLFW)
-		ASSERT(os::isMainThread(), "Window creation on non-main thread!");
-		if (!os::isMainThread())
+		ASSERT(threads::isMainThread(), "Window creation on non-main thread!");
+		if (!threads::isMainThread())
 		{
 			LOG_E("[{}] Cannot create GLFW window on non-main thread!", utils::tName<Window>());
 			return false;
@@ -264,8 +264,8 @@ public:
 	void close()
 	{
 #if defined(LEVK_USE_GLFW)
-		ASSERT(os::isMainThread(), "Window creation on non-main thread!");
-		if (os::isMainThread() && g_bGLFWInit && m_pWindow)
+		ASSERT(threads::isMainThread(), "Window creation on non-main thread!");
+		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
 			glfwSetWindowShouldClose(m_pWindow, 1);
 		}
@@ -276,8 +276,8 @@ public:
 	void destroy()
 	{
 #if defined(LEVK_USE_GLFW)
-		ASSERT(os::isMainThread(), "Window creation on non-main thread!");
-		if (os::isMainThread() && g_bGLFWInit && m_pWindow)
+		ASSERT(threads::isMainThread(), "Window creation on non-main thread!");
+		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
 			glfwDestroyWindow(m_pWindow);
 			m_pWindow = nullptr;
@@ -291,7 +291,7 @@ public:
 	void setCursorMode(CursorMode mode) const
 	{
 #if defined(LEVK_USE_GLFW)
-		if (os::isMainThread() && g_bGLFWInit && m_pWindow)
+		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
 			s32 val;
 			switch (mode)
@@ -322,7 +322,7 @@ public:
 	{
 		CursorMode ret = CursorMode::Default;
 #if defined(LEVK_USE_GLFW)
-		if (os::isMainThread() && g_bGLFWInit && m_pWindow)
+		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
 			s32 val = glfwGetInputMode(m_pWindow, GLFW_CURSOR);
 			switch (val)
@@ -347,7 +347,7 @@ public:
 	glm::vec2 cursorPos() const
 	{
 #if defined(LEVK_USE_GLFW)
-		if (os::isMainThread() && g_bGLFWInit && m_pWindow)
+		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
 			f64 x, y;
 			glfwGetCursorPos(m_pWindow, &x, &y);
@@ -361,7 +361,7 @@ public:
 	void setCursorPos(glm::vec2 const& pos)
 	{
 #if defined(LEVK_USE_GLFW)
-		if (os::isMainThread() && g_bGLFWInit && m_pWindow)
+		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
 			glfwSetCursorPos(m_pWindow, pos.x, pos.y);
 		}
@@ -372,7 +372,7 @@ public:
 	std::string getClipboard() const
 	{
 #if defined(LEVK_USE_GLFW)
-		if (os::isMainThread() && g_bGLFWInit && m_pWindow)
+		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
 			return glfwGetClipboardString(m_pWindow);
 		}
@@ -415,7 +415,7 @@ public:
 		GamepadState ret;
 #if defined(LEVK_USE_GLFW)
 		GLFWgamepadstate glfwState;
-		if (os::isMainThread() && g_bGLFWInit && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &glfwState))
+		if (threads::isMainThread() && g_bGLFWInit && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &glfwState))
 		{
 			ret.name = glfwGetGamepadName(id);
 			ret.id = id;

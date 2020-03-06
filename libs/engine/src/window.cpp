@@ -215,7 +215,8 @@ public:
 				m_pWindow = nullptr;
 				return false;
 			}
-			m_uDevice = std::make_unique<vuk::Device>(surface);
+			vuk::Device::Data deviceData{surface, m_size};
+			m_uDevice = std::make_unique<vuk::Device>(std::move(deviceData));
 			if (!m_uDevice->m_queueFamilyIndices.isReady())
 			{
 				LOG_E("[{}] Failed to create [{}]", Window::s_tName, utils::tName<vk::SurfaceKHR>());

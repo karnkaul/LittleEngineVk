@@ -37,7 +37,7 @@ public:
 		Service();
 		~Service();
 	};
-	
+
 public:
 	static const std::string s_tName;
 

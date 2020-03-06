@@ -65,4 +65,4 @@ private:
 private:
 	friend class Device;
 };
-} // namespace le
+} // namespace le::vuk

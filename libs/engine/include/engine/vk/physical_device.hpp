@@ -10,6 +10,7 @@ class PhysicalDevice final
 {
 public:
 	static std::string const s_tName;
+	static std::vector<char const*> const s_deviceExtensions;
 
 public:
 	std::string m_name;

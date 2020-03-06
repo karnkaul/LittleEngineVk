@@ -1,10 +1,13 @@
 #include <set>
+#include "core/assert.hpp"
+#include "core/log.hpp"
 #include "core/utils.hpp"
 #include "engine/vk/physical_device.hpp"
 
 namespace le::vuk
 {
 std::string const PhysicalDevice::s_tName = utils::tName<PhysicalDevice>();
+std::vector<char const*> const PhysicalDevice::s_deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 PhysicalDevice::PhysicalDevice(vk::PhysicalDevice device)
 {
@@ -21,5 +24,16 @@ PhysicalDevice::PhysicalDevice(vk::PhysicalDevice device)
 			m_graphicsQueueFamilyIndex.emplace((u32)idx);
 		}
 	}
+	std::set<std::string_view> requiredExtensions = {s_deviceExtensions.begin(), s_deviceExtensions.end()};
+	auto const extensions = m_physicalDevice.enumerateDeviceExtensionProperties();
+	for (auto const& extension : extensions)
+	{
+		requiredExtensions.erase(std::string_view(extension.extensionName));
+	}
+	ASSERT(requiredExtensions.empty(), "Required extension not present!");
+	for (auto extension : requiredExtensions)
+	{
+		LOG_E("[{}] Required extensions not present on physical device [{}]!", s_tName, extension);
+	}
 }
-} // namespace le
+} // namespace le::vuk

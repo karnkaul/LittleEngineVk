@@ -217,4 +217,4 @@ bool Instance::getPhysicalDevices()
 	LOG_E("[{}] Failed to find a physical device!", s_tName);
 	return false;
 }
-} // namespace le
+} // namespace le::vuk

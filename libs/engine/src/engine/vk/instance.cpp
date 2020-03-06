@@ -4,19 +4,20 @@
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "engine/vk/instance.hpp"
+#include "engine/vk/instanceImpl.hpp"
 
-namespace le
+namespace le::vuk
 {
 namespace
 {
 VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
-												  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*)
+												  VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*)
 {
-	constexpr std::string_view name = "vk::validation";
+	static std::string_view const name = "vk::validation";
 	switch (messageSeverity)
 	{
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-	LOG_E("[{}] {}", name, pCallbackData->pMessage);
+		LOG_E("[{}] {}", name, pCallbackData->pMessage);
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
 		LOG_W("[{}] {}", name, pCallbackData->pMessage);
@@ -33,14 +34,27 @@ VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFla
 }
 } // namespace
 
-std::string const VkInstance::s_tName = utils::tName<VkInstance>();
-
-VkInstance::~VkInstance()
+Instance::Service::Service()
 {
-	ASSERT(m_instance == vk::Instance(), "VkInstance not explicitly destroyed!");
+	if (!g_instance.init(g_instanceData))
+	{
+		throw std::runtime_error("Failed to create vk::Instance!");
+	}
 }
 
-bool VkInstance::init(Data data)
+Instance::Service::~Service()
+{
+	g_instance.deinit();
+}
+
+std::string const Instance::s_tName = utils::tName<Instance>();
+
+Instance::~Instance()
+{
+	ASSERT(m_instance == vk::Instance(), "Instance not deinitialised!");
+}
+
+bool Instance::init(Data data)
 {
 	if (isInit())
 	{
@@ -71,15 +85,19 @@ bool VkInstance::init(Data data)
 			return false;
 		}
 	}
-	if (!createInstance(std::move(data.extensions), std::move(data.layers)))
+	m_layers = std::move(data.layers);
+	if (!createInstance(data.extensions))
 	{
 		return false;
 	}
+	vk::DynamicLoader dl;
+	m_loader.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
+	m_loader.init(m_instance);
 	if (data.bAddValidationLayers && !setupDebugMessenger())
 	{
 		return false;
 	}
-	if (!setupDevices(data.layers))
+	if (!getPhysicalDevices())
 	{
 		return false;
 	}
@@ -87,43 +105,61 @@ bool VkInstance::init(Data data)
 	return true;
 }
 
-void VkInstance::destroy()
+void Instance::deinit()
 {
-	m_devices.clear();
-	if (m_instance != vk::Instance())
+	if (isInit())
 	{
-		if (m_debugMessenger != vk::DebugUtilsMessengerEXT())
+		m_physicalDevices.clear();
+		if (m_instance != vk::Instance())
 		{
-			m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger, nullptr, m_loader);
+			if (m_debugMessenger != vk::DebugUtilsMessengerEXT())
+			{
+				m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger, nullptr, m_loader);
+			}
+			m_instance.destroy();
+			m_instance = vk::Instance();
+			LOG_I("[{}] Destroyed", s_tName);
 		}
-		m_instance.destroy();
-		m_instance = vk::Instance();
-		LOG_I("[{}] Destroyed", s_tName);
 	}
 	return;
 }
 
-bool VkInstance::isInit() const
+bool Instance::isInit() const
 {
 	return m_instance != vk::Instance();
 }
 
-vk::Instance const& VkInstance::vkInst() const
+PhysicalDevice const* Instance::activeDevice() const
+{
+	return m_pPhysicalDevice;
+}
+
+PhysicalDevice* Instance::activeDevice()
+{
+	return m_pPhysicalDevice;
+}
+
+vk::DispatchLoaderDynamic const& Instance::vkLoader() const
+{
+	return m_loader;
+}
+
+Instance::operator vk::Instance const&() const
 {
 	return m_instance;
 }
 
-VkDevice const* VkInstance::device() const
+Instance::operator VkInstance() const
 {
-	return m_pDevice;
+	return m_instance;
 }
 
-VkDevice* VkInstance::device()
+void Instance::destroy(vk::SurfaceKHR const& surface)
 {
-	return m_pDevice;
+	m_instance.destroy(surface);
 }
 
-bool VkInstance::createInstance(std::vector<char const*> const& extensions, std::vector<char const*> const& layers)
+bool Instance::createInstance(std::vector<char const*> const& extensions)
 {
 	vk::ApplicationInfo appInfo;
 	appInfo.pApplicationName = "LittleEngineVk Game";
@@ -135,8 +171,8 @@ bool VkInstance::createInstance(std::vector<char const*> const& extensions, std:
 	createInfo.pApplicationInfo = &appInfo;
 	createInfo.ppEnabledExtensionNames = extensions.empty() ? nullptr : extensions.data();
 	createInfo.enabledExtensionCount = (u32)extensions.size();
-	createInfo.ppEnabledLayerNames = layers.empty() ? nullptr : layers.data();
-	createInfo.enabledLayerCount = (u32)layers.size();
+	createInfo.ppEnabledLayerNames = m_layers.empty() ? nullptr : m_layers.data();
+	createInfo.enabledLayerCount = (u32)m_layers.size();
 	if (vk::createInstance(&createInfo, nullptr, &m_instance) != vk::Result::eSuccess)
 	{
 		LOG_E("[{}] Failed to create Vulkan instance!", s_tName);
@@ -145,12 +181,8 @@ bool VkInstance::createInstance(std::vector<char const*> const& extensions, std:
 	return true;
 }
 
-bool VkInstance::setupDebugMessenger()
+bool Instance::setupDebugMessenger()
 {
-	vk::DynamicLoader dl;
-	PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
-	m_loader.init(vkGetInstanceProcAddr);
-	m_loader.init(m_instance);
 	vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 	createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
 								 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
@@ -161,25 +193,25 @@ bool VkInstance::setupDebugMessenger()
 	return m_debugMessenger != vk::DebugUtilsMessengerEXT();
 }
 
-bool VkInstance::setupDevices(std::vector<char const*> const& layers)
+bool Instance::getPhysicalDevices()
 {
 	auto devices = m_instance.enumeratePhysicalDevices();
-	m_devices.reserve(devices.size());
+	m_physicalDevices.reserve(devices.size());
 	for (auto const& device : devices)
 	{
-		m_devices.emplace_back(device, layers);
-		if (m_devices.back().m_type == vk::PhysicalDeviceType::eDiscreteGpu)
+		m_physicalDevices.emplace_back(device);
+		if (m_physicalDevices.back().m_type == vk::PhysicalDeviceType::eDiscreteGpu)
 		{
-			m_pDevice = &m_devices.back();
+			m_pPhysicalDevice = &m_physicalDevices.back();
 		}
 	}
-	if (!m_pDevice && !m_devices.empty())
+	if (!m_pPhysicalDevice && !m_physicalDevices.empty())
 	{
-		m_pDevice = &m_devices.front();
+		m_pPhysicalDevice = &m_physicalDevices.front();
 	}
-	if (m_pDevice && m_pDevice->m_queueFamilyIndices.isReady())
+	if (m_pPhysicalDevice && m_pPhysicalDevice->m_graphicsQueueFamilyIndex.has_value())
 	{
-		LOG_D("[{}] GPU: {}", VkDevice::s_tName, m_pDevice->m_name);
+		LOG_D("[{}] GPU: {}", PhysicalDevice::s_tName, m_pPhysicalDevice->m_name);
 		return true;
 	}
 	LOG_E("[{}] Failed to find a physical device!", s_tName);

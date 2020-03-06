@@ -2,18 +2,23 @@
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include "device.hpp"
+#include "physical_device.hpp"
 
-namespace le
+namespace le::vuk
 {
-class VkInstance final
+class Instance final
 {
 public:
-	struct Data
+	struct Data final
 	{
 		std::vector<char const*> extensions;
 		std::vector<char const*> layers;
 		bool bAddValidationLayers = false;
+	};
+	struct Service final
+	{
+		Service();
+		~Service();
 	};
 
 private:
@@ -30,25 +35,34 @@ private:
 	vk::Instance m_instance;
 	vk::DispatchLoaderDynamic m_loader;
 	vk::DebugUtilsMessengerEXT m_debugMessenger;
-	std::vector<VkDevice> m_devices;
-	VkDevice* m_pDevice = nullptr;
+	std::vector<PhysicalDevice> m_physicalDevices;
+	vuk::PhysicalDevice* m_pPhysicalDevice = nullptr;
 	QueueFamilyIndices m_queueFamilyIndices;
+	std::vector<char const*> m_layers;
 
 public:
-	~VkInstance();
+	~Instance();
 
 	bool init(Data data);
-	void destroy();
+	void deinit();
 
 public:
 	bool isInit() const;
-	vk::Instance const& vkInst() const;
-	VkDevice const* device() const;
-	VkDevice* device();
+	PhysicalDevice const* activeDevice() const;
+	PhysicalDevice* activeDevice();
+	vk::DispatchLoaderDynamic const& vkLoader() const;
+
+public:
+	operator vk::Instance const&() const;
+	operator VkInstance() const;
+	void destroy(vk::SurfaceKHR const& surface);
 
 private:
-	bool createInstance(std::vector<char const*> const& extensions, std::vector<char const*> const& layers);
+	bool createInstance(std::vector<char const*> const& extensions);
 	bool setupDebugMessenger();
-	bool setupDevices(std::vector<char const*> const& layers);
+	bool getPhysicalDevices();
+
+private:
+	friend class Device;
 };
 } // namespace le

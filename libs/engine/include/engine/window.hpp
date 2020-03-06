@@ -22,7 +22,7 @@ public:
 		COUNT_
 	};
 
-	struct Data
+	struct Data final
 	{
 		std::string title;
 		glm::ivec2 size = {};
@@ -31,6 +31,15 @@ public:
 		Mode mode = Mode::DecoratedWindow;
 		bool bCentreCursor = true;
 	};
+
+	struct Service final
+	{
+		Service();
+		~Service();
+	};
+	
+public:
+	static const std::string s_tName;
 
 private:
 	std::unique_ptr<class WindowImpl> m_uImpl;
@@ -50,6 +59,7 @@ public:
 	bool isOpen() const;
 	bool isClosing() const;
 
+public:
 	bool create(Data const& data);
 	void close();
 	void destroy();

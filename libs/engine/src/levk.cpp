@@ -7,6 +7,7 @@
 #include "core/services.hpp"
 #include "engine/levk.hpp"
 #include "engine/window.hpp"
+#include "engine/vk/instance.hpp"
 
 namespace le
 {
@@ -18,6 +19,8 @@ s32 engine::run(s32 argc, char** argv)
 		services.add<os::Service, os::Args>({argc, argv});
 		services.add<log::Service, std::string_view>("debug.log");
 		services.add<jobs::Service, u8>(4);
+		services.add<Window::Service>();
+		services.add<vuk::Instance::Service>();
 	}
 	catch (std::exception const& e)
 	{

@@ -1,7 +1,8 @@
 #pragma once
 #include "engine/vk/instance.hpp"
 
-namespace le
+namespace le::vuk
 {
-inline VkInstance g_vkInstance;
+inline Instance::Data g_instanceData;
+inline Instance g_instance;
 }

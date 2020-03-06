@@ -1,21 +1,22 @@
 #pragma once
 #include <optional>
+#include <unordered_map>
 #include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
 
-namespace le
+namespace le::vuk
 {
-class VkDevice final
+class Device final
 {
 public:
-	struct QueueFamilyIndices
+	struct QueueFamilyIndices final
 	{
 		std::optional<u32> graphics;
 		std::optional<u32> presentation;
 
 		constexpr bool isReady()
 		{
-			return graphics.has_value() /* && presentation.has_value() */;
+			return graphics.has_value() && presentation.has_value();
 		}
 	};
 
@@ -25,14 +26,15 @@ public:
 public:
 	std::string m_name;
 	QueueFamilyIndices m_queueFamilyIndices;
-	vk::PhysicalDeviceType m_type = vk::PhysicalDeviceType::eOther;
+	vk::Queue m_graphicsQueue;
+	vk::Queue m_presentationQueue;
 
 private:
-	vk::PhysicalDevice m_physicalDevice;
 	vk::Device m_device;
+	vk::SurfaceKHR m_surface;
 
 public:
-	VkDevice(vk::PhysicalDevice device, std::vector<char const*> const& validationLayers);
-	~VkDevice();
+	Device(VkSurfaceKHR surface);
+	~Device();
 };
-} // namespace le
+} // namespace le::vuk

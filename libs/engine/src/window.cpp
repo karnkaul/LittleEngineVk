@@ -1,7 +1,7 @@
+#include <memory>
 #include <unordered_set>
 #if defined(LEVK_USE_GLFW)
-// TODO: Enable after Vulkan CMake integration
-// #define GLFW_INCLUDE_VULKAN
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #endif
 #include "core/assert.hpp"
@@ -11,6 +11,7 @@
 #include "engine/window.hpp"
 #include "engine/vk/instance.hpp"
 #include "engine/vk/instanceImpl.hpp"
+#include "engine/vk/device.hpp"
 
 namespace le
 {
@@ -20,51 +21,51 @@ Window::ID g_nextWindowID = Window::ID::Null;
 std::unordered_set<Window*> g_registeredWindows;
 #if defined(LEVK_USE_GLFW)
 bool g_bGLFWInit = false;
+bool g_bGLFWvkExtensionsSet = false;
 #endif
 
 #if defined(LEVK_USE_GLFW)
 void onGLFWError(s32 code, char const* desc)
 {
-	LOG_E("[{}] GLFW Error! [{}]: {}", utils::tName<Window>(), code, desc);
+	LOG_E("[{}] GLFW Error! [{}]: {}", Window::s_tName, code, desc);
 	return;
 }
 #endif
 
 bool init()
 {
-	VkInstance::Data data;
 #if defined(LEVK_USE_GLFW)
 	glfwSetErrorCallback(&onGLFWError);
 	if (glfwInit() != GLFW_TRUE)
 	{
-		LOG_E("[{}] Could not initialise GLFW!", utils::tName<Window>());
+		LOG_E("[{}] Could not initialise GLFW!", Window::s_tName);
 		return false;
 	}
 	else if (glfwVulkanSupported() != GLFW_TRUE)
 	{
-		LOG_E("[{}] Vulkan not supported!", utils::tName<Window>());
+		LOG_E("[{}] Vulkan not supported!", Window::s_tName);
 		return false;
 	}
 	else
 	{
-		LOG_D("[{}] GLFW initialised successfully", utils::tName<Window>());
+		LOG_D("[{}] GLFW initialised successfully", Window::s_tName);
+	}
+	if (!g_bGLFWvkExtensionsSet)
+	{
+		g_bGLFWvkExtensionsSet = true;
+		u32 glfwExtCount;
+		char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+		vuk::g_instanceData.extensions.reserve((size_t)glfwExtCount);
+		for (u32 i = 0; i < glfwExtCount; ++i)
+		{
+			vuk::g_instanceData.extensions.push_back(glfwExtensions[i]);
+		}
 	}
 	g_bGLFWInit = true;
-	u32 glfwExtCount;
-	char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
-	data.extensions.reserve((size_t)glfwExtCount);
-	for (u32 i = 0; i < glfwExtCount; ++i)
-	{
-		data.extensions.push_back(glfwExtensions[i]);
-	}
 #endif
 #if defined(LEVK_DEBUG)
-	data.bAddValidationLayers = true;
+	vuk::g_instanceData.bAddValidationLayers = true;
 #endif
-	if (!g_vkInstance.init(std::move(data)))
-	{
-		return false;
-	}
 	return true;
 }
 
@@ -72,25 +73,17 @@ void deinit()
 {
 #if defined(LEVK_USE_GLFW)
 	glfwTerminate();
-	LOG_D("[{}] GLFW terminated", utils::tName<Window>());
+	LOG_D("[{}] GLFW terminated", Window::s_tName);
 	g_bGLFWInit = false;
 #endif
-	g_vkInstance.destroy();
 	return;
 }
 
-bool registerWindow(Window* pWindow)
+void registerWindow(Window* pWindow)
 {
-	if (g_registeredWindows.empty())
-	{
-		if (!init())
-		{
-			return false;
-		}
-	}
 	g_registeredWindows.insert(pWindow);
-	LOG_D("[{}] registered. Active: [{}]", utils::tName<Window>(), g_registeredWindows.size());
-	return true;
+	LOG_D("[{}] registered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
+	return;
 }
 
 void unregisterWindow(Window* pWindow)
@@ -98,12 +91,9 @@ void unregisterWindow(Window* pWindow)
 	if (auto search = g_registeredWindows.find(pWindow); search != g_registeredWindows.end())
 	{
 		g_registeredWindows.erase(search);
-		LOG_D("[{}] deregistered. Active: [{}]", utils::tName<Window>(), g_registeredWindows.size());
-		if (g_registeredWindows.empty())
-		{
-			deinit();
-		}
+		LOG_D("[{}] deregistered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
 	}
+	return;
 }
 } // namespace
 
@@ -128,6 +118,7 @@ public:
 
 	InputCallbacks m_input;
 	glm::ivec2 m_size = {};
+	std::unique_ptr<vuk::Device> m_uDevice;
 	Window::ID m_id;
 
 	WindowImpl(Window::ID id) : m_id(id) {}
@@ -140,24 +131,26 @@ public:
 
 	bool create(Window::Data const& data)
 	{
+		[[maybe_unused]] auto pPhysicalDevice = vuk::g_instance.activeDevice();
+		ASSERT(pPhysicalDevice, "Physical Device is null!");
 #if defined(LEVK_USE_GLFW)
 		ASSERT(threads::isMainThread(), "Window creation on non-main thread!");
 		if (!threads::isMainThread())
 		{
-			LOG_E("[{}] Cannot create GLFW window on non-main thread!", utils::tName<Window>());
+			LOG_E("[{}] Cannot create GLFW window on non-main thread!", Window::s_tName);
 			return false;
 		}
 		s32 screenCount;
 		GLFWmonitor** ppScreens = glfwGetMonitors(&screenCount);
 		if (screenCount < 1)
 		{
-			LOG_E("[{}] Failed to detect screens!", utils::tName<Window>());
+			LOG_E("[{}] Failed to detect screens!", Window::s_tName);
 			return false;
 		}
 		GLFWvidmode const* mode = glfwGetVideoMode(ppScreens[0]);
 		if (!mode)
 		{
-			LOG_E("[{}] Failed to detect video mode!", utils::tName<Window>());
+			LOG_E("[{}] Failed to detect video mode!", Window::s_tName);
 			return false;
 		}
 		size_t screenIdx = data.screenID < screenCount ? (size_t)data.screenID : 0;
@@ -172,7 +165,7 @@ public:
 		{
 			if (mode->width < width || mode->height < height)
 			{
-				LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", utils::tName<Window>(), width, height, mode->width,
+				LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width,
 					  mode->height);
 				return false;
 			}
@@ -183,7 +176,7 @@ public:
 		{
 			if (mode->width < width || mode->height < height)
 			{
-				LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", utils::tName<Window>(), width, height, mode->width,
+				LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width,
 					  mode->height);
 				return false;
 			}
@@ -214,6 +207,22 @@ public:
 		m_pWindow = glfwCreateWindow(data.size.x, data.size.y, data.title.data(), pTarget, nullptr);
 		if (m_pWindow)
 		{
+			VkSurfaceKHR surface;
+			if (glfwCreateWindowSurface(vuk::g_instance, m_pWindow, nullptr, &surface) != VK_SUCCESS)
+			{
+				LOG_E("[{}] Failed to create [{}]", Window::s_tName, utils::tName<vk::SurfaceKHR>());
+				glfwDestroyWindow(m_pWindow);
+				m_pWindow = nullptr;
+				return false;
+			}
+			m_uDevice = std::make_unique<vuk::Device>(surface);
+			if (!m_uDevice->m_queueFamilyIndices.isReady())
+			{
+				LOG_E("[{}] Failed to create [{}]", Window::s_tName, utils::tName<vk::SurfaceKHR>());
+				glfwDestroyWindow(m_pWindow);
+				m_pWindow = nullptr;
+				return false;
+			}
 			glfwSetWindowPos(m_pWindow, cX, cY);
 			glfwShowWindow(m_pWindow);
 			if (data.bCentreCursor)
@@ -228,11 +237,11 @@ public:
 			glfwSetScrollCallback(m_pWindow, &onScroll);
 			glfwSetDropCallback(m_pWindow, &onFiledrop);
 			glfwSetCursorEnterCallback(m_pWindow, &onFocus);
-			LOG_D("[{}:{}] created", utils::tName<Window>(), m_id);
+			LOG_D("[{}:{}] created", Window::s_tName, m_id);
 			return true;
 		}
 #endif
-		LOG_E("[{}:{}] Failed to create window!", utils::tName<Window>(), m_id);
+		LOG_E("[{}:{}] Failed to create window!", Window::s_tName, m_id);
 		return false;
 	}
 
@@ -279,9 +288,10 @@ public:
 		ASSERT(threads::isMainThread(), "Window creation on non-main thread!");
 		if (threads::isMainThread() && g_bGLFWInit && m_pWindow)
 		{
+			m_uDevice.reset();
 			glfwDestroyWindow(m_pWindow);
 			m_pWindow = nullptr;
-			LOG_D("[{}:{}] closed", utils::tName<Window>(), m_id);
+			LOG_D("[{}:{}] closed", Window::s_tName, m_id);
 		}
 #endif
 		m_size = {};
@@ -486,7 +496,7 @@ public:
 			{
 				pWindow->m_uImpl->m_size = {width, height};
 				pWindow->m_uImpl->m_input.onResize(width, height);
-				LOG_D("[{}:{}] Window resized: [{}x{}]", utils::tName<Window>(), pWindow->m_id, width, height);
+				LOG_D("[{}:{}] Window resized: [{}x{}]", Window::s_tName, pWindow->m_id, width, height);
 			}
 		}
 		return;
@@ -499,7 +509,7 @@ public:
 			if (pWindow->m_uImpl->m_pWindow == pGLFWwindow)
 			{
 				pWindow->m_uImpl->m_input.onInput(Key(key), Action(action), Mods(mods));
-				// LOGIF_D(action == GLFW_PRESS, "[{}:{}] Key pressed: [{}/{}]", utils::tName<Window>(), pWindow->m_id, (char)key, key);
+				// LOGIF_D(action == GLFW_PRESS, "[{}:{}] Key pressed: [{}/{}]", Window::s_tName, pWindow->m_id, (char)key, key);
 			}
 		}
 		return;
@@ -583,25 +593,34 @@ public:
 #endif
 };
 
+Window::Service::Service()
+{
+	if (!init())
+	{
+		throw std::runtime_error("Failed to initialise Window Service!");
+	}
+}
+
+Window::Service::~Service()
+{
+	deinit();
+}
+
+std::string const Window::s_tName = utils::tName<Window>();
+
 Window::Window()
 {
-	if (registerWindow(this))
-	{
-		m_id = ++g_nextWindowID.handle;
-		m_uImpl = std::make_unique<WindowImpl>(m_id);
-		LOG_I("[{}:{}] constructed", utils::tName<Window>(), m_id);
-	}
-	else
-	{
-		throw std::runtime_error("Failed to construct Window object");
-	}
+	registerWindow(this);
+	m_id = ++g_nextWindowID.handle;
+	m_uImpl = std::make_unique<WindowImpl>(m_id);
+	LOG_I("[{}:{}] constructed", s_tName, m_id);
 }
 
 Window::Window(Window&&) = default;
 Window& Window::operator=(Window&&) = default;
 Window::~Window()
 {
-	LOG_I("[{}:{}] destroyed", utils::tName<Window>(), m_id);
+	LOG_I("[{}:{}] destroyed", s_tName, m_id);
 	unregisterWindow(this);
 }
 

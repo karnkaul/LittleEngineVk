@@ -49,38 +49,48 @@ s32 engine::run(s32 argc, char** argv)
 	}
 	try
 	{
-		Window window, w2;
-		Window::Data data;
-		data.size = {1280, 720};
-		data.title = "LittleEngineVk Demo";
-		auto data2 = data;
-		data2.title += " 2";
-		data2.position = {100, 100};
-		bool bRecreate2 = false;
-		auto token = window.registerInput([&w2, &bRecreate2](Key key, Action action, Mods mods) {
-			if (!w2.isOpen() && key == Key::W && action == le::Action::RELEASE && mods & Mods::CONTROL)
-			{
-				bRecreate2 = true;
-			}
-		});
-		if (window.create(data) && w2.create(data2))
+		Window w0, w1;
+		Window::Data data0;
+		data0.size = {1280, 720};
+		data0.title = "LittleEngineVk Demo";
+		auto data1 = data0;
+		data1.title += " 2";
+		data1.position = {100, 100};
+		bool bRecreate0 = false, bRecreate1 = false;
+		auto registerInput = [](Window& listen, Window& recreate, bool& bRecreate, std::shared_ptr<int>& token) {
+			token = listen.registerInput([&](Key key, Action action, Mods mods) {
+				if (!recreate.isOpen() && key == Key::W && action == le::Action::RELEASE && mods & Mods::CONTROL)
+				{
+					bRecreate = true;
+				}
+			});
+		};
+		std::shared_ptr<s32> token0, token1;
+		registerInput(w0, w1, bRecreate1, token0);
+		registerInput(w1, w0, bRecreate0, token1);
+		if (w0.create(data0) && w1.create(data1))
 		{
-			while (window.isOpen() || w2.isOpen())
+			while (w0.isOpen() || w1.isOpen())
 			{
 				Window::pollEvents();
 				std::this_thread::sleep_for(stdch::milliseconds(10));
-				if (window.isClosing())
+				if (w0.isClosing())
 				{
-					window.destroy();
+					w0.destroy();
 				}
-				if (w2.isClosing())
+				if (w1.isClosing())
 				{
-					w2.destroy();
+					w1.destroy();
 				}
-				if (bRecreate2)
+				if (bRecreate1)
 				{
-					bRecreate2 = false;
-					w2.create(data2);
+					bRecreate1 = false;
+					w1.create(data1);
+				}
+				if (bRecreate0)
+				{
+					bRecreate0 = false;
+					w0.create(data0);
 				}
 			}
 		}

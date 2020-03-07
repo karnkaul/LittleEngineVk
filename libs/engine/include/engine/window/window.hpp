@@ -2,7 +2,6 @@
 #include <memory>
 #include <string>
 #include <glm/glm.hpp>
-#include "core/zero.hpp"
 #include "input_types.hpp"
 #include "window_id.hpp"
 
@@ -76,7 +75,7 @@ public:
 	// Callback parameters: (bool bInFocus)
 	[[nodiscard]] OnFocus::Token registerFocus(OnFocus::Callback callback);
 	// Callback parameters: (s32 x, s32 y)
-	[[nodiscard]] OnResize::Token registerResize(OnResize::Callback callback);
+	[[nodiscard]] OnWindowResize::Token registerResize(OnWindowResize::Callback callback);
 	[[nodiscard]] OnClosed::Token registerClosed(OnClosed::Callback callback);
 
 	void setCursorMode(CursorMode mode) const;

@@ -1,11 +1,10 @@
-#include <array>
 #include <set>
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "engine/vuk/instance/device.hpp"
-#include "engine/vuk/instance/instance_impl.hpp"
 #include "engine/vuk/context/swapchain.hpp"
+#include "vuk/instance/instance_impl.hpp"
 
 namespace le::vuk
 {
@@ -40,7 +39,7 @@ Device::Device(vk::Instance const& instance, std::vector<char const*> const& lay
 		{
 			m_queueFamilyIndices.graphics.emplace((u32)idx);
 		}
-		if (static_cast<vk::PhysicalDevice const&>(*m_pPhysicalDevice).getSurfaceSupportKHR((u32)idx, surface))
+		if (validateSurface(surface, (u32)idx))
 		{
 			m_queueFamilyIndices.present.emplace((u32)idx);
 		}
@@ -102,11 +101,21 @@ Device::operator vk::PhysicalDevice const&() const
 
 std::unique_ptr<Swapchain> Device::createSwapchain(SwapchainData const& data, WindowID window) const
 {
-	if (!static_cast<vk::PhysicalDevice const&>(*m_pPhysicalDevice).getSurfaceSupportKHR(m_queueFamilyIndices.present.value(), data.surface))
+	if (!validateSurface(data.surface))
 	{
 		LOG_E("[{}] cannot present to passed [{}]!", s_tName, utils::tName<vk::SurfaceKHR>());
 		return {};
 	}
 	return std::make_unique<Swapchain>(data, window);
+}
+
+bool Device::validateSurface(vk::SurfaceKHR const& surface) const
+{
+	return validateSurface(surface, m_queueFamilyIndices.present.value());
+}
+
+bool Device::validateSurface(vk::SurfaceKHR const& surface, u32 presentFamilyIndex) const
+{
+	return static_cast<vk::PhysicalDevice const&>(*m_pPhysicalDevice).getSurfaceSupportKHR(presentFamilyIndex, surface);
 }
 } // namespace le::vuk

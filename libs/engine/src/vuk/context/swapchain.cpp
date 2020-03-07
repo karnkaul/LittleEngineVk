@@ -3,8 +3,8 @@
 #include "core/utils.hpp"
 #include "engine/window/window.hpp"
 #include "engine/vuk/instance/device.hpp"
-#include "engine/vuk/instance/instance_impl.hpp"
 #include "engine/vuk/context/swapchain.hpp"
+#include "vuk/instance/instance_impl.hpp"
 
 namespace le::vuk
 {
@@ -53,14 +53,6 @@ std::string const Swapchain::s_tName = utils::tName<Swapchain>();
 
 Swapchain::Swapchain(SwapchainData const& data, WindowID window) : m_window(window)
 {
-	ASSERT(g_uInstance.get() && g_uInstance->device(), "Instance/Device is null!");
-	auto const& device = *g_uInstance->device();
-	auto vkPhysicalDevice = static_cast<vk::PhysicalDevice const&>(device);
-	m_details = {
-		vkPhysicalDevice.getSurfaceCapabilitiesKHR(data.surface),
-		vkPhysicalDevice.getSurfaceFormatsKHR(data.surface),
-		vkPhysicalDevice.getSurfacePresentModesKHR(data.surface),
-	};
 	recreate(data);
 	LOG_D("[{}:{}] constructed", s_tName, m_window);
 }
@@ -74,14 +66,19 @@ Swapchain::~Swapchain()
 void Swapchain::recreate(SwapchainData const& data)
 {
 	destroy();
-	ASSERT(g_uInstance.get() && g_uInstance->device(), "Instance/Device is null!");
-	auto const& device = *g_uInstance->device();
+	ASSERT(g_uInstance.get() && g_pDevice, "Instance/Device is null!");
+	auto const& device = *g_pDevice;
 	auto vkDevice = static_cast<vk::Device const&>(device);
+	auto vkPhysicalDevice = static_cast<vk::PhysicalDevice const&>(device);
+	m_details = {
+		vkPhysicalDevice.getSurfaceCapabilitiesKHR(data.surface),
+		vkPhysicalDevice.getSurfaceFormatsKHR(data.surface),
+		vkPhysicalDevice.getSurfacePresentModesKHR(data.surface),
+	};
 	if (!m_details.isReady())
 	{
 		throw std::runtime_error("Failed to create swapchain!");
 	}
-	m_surface = std::move(data.surface);
 	auto const& queueFamilyIndices = device.m_queueFamilyIndices;
 	{
 		vk::SwapchainCreateInfoKHR createInfo;
@@ -116,7 +113,7 @@ void Swapchain::recreate(SwapchainData const& data)
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 		createInfo.presentMode = m_details.bestPresentMode();
 		createInfo.clipped = vk::Bool32(true);
-		createInfo.surface = m_surface;
+		createInfo.surface = data.surface;
 		m_swapchain = vkDevice.createSwapchainKHR(createInfo);
 	}
 	if (m_swapchain == vk::SwapchainKHR())
@@ -150,20 +147,20 @@ void Swapchain::recreate(SwapchainData const& data)
 
 void Swapchain::destroy()
 {
-	ASSERT(g_uInstance.get() && g_uInstance->device(), "Instance/Device is null!");
+	ASSERT(g_uInstance.get() && g_pDevice, "Instance/Device is null!");
 	LOGIF_D(m_swapchain != vk::SwapchainKHR(), "[{}:{}] released", s_tName, m_window);
 	for (auto const& imageView : m_imageViews)
 	{
-		g_uInstance->device()->destroy(imageView);
+		g_pDevice->destroy(imageView);
 	}
 	if (m_swapchain != vk::SwapchainKHR())
 	{
-		g_uInstance->device()->destroy(m_swapchain);
+		g_pDevice->destroy(m_swapchain);
+		m_swapchain = vk::SwapchainKHR();
 	}
-	if (m_surface != vk::SurfaceKHR())
-	{
-		g_uInstance->destroy(m_surface);
-	}
+	m_images.clear();
+	m_imageViews.clear();
+	return;
 }
 
 Swapchain::operator vk::SwapchainKHR const&() const

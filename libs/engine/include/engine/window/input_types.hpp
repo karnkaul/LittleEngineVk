@@ -224,6 +224,6 @@ using OnInput = Delegate<Key, Action, Mods>;
 using OnMouse = Delegate<f64, f64>;
 using OnFocus = Delegate<bool>;
 using OnFiledrop = Delegate<stdfs::path const&>;
-using OnResize = Delegate<s32, s32>;
+using OnWindowResize = Delegate<s32, s32>;
 using OnClosed = Delegate<>;
 } // namespace le

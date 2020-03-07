@@ -4,8 +4,8 @@
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "engine/vuk/instance/instance.hpp"
-#include "engine/vuk/instance/instance_impl.hpp"
-#include "engine/window/window_impl.hpp"
+#include "vuk/instance/instance_impl.hpp"
+#include "window/window_impl.hpp"
 
 namespace le::vuk
 {
@@ -40,12 +40,14 @@ Instance::Service::Service()
 	if (!g_uInstance)
 	{
 		g_uInstance = std::make_unique<Instance>();
+		g_pDevice = g_uInstance->device();
 	}
 }
 
 Instance::Service::~Service()
 {
 	g_uInstance.reset();
+	g_pDevice = nullptr;
 }
 
 std::string const Instance::s_tName = utils::tName<Instance>();
@@ -91,19 +93,22 @@ Instance::Instance()
 		throw std::runtime_error("Failed to create Instance!");
 	}
 	{
-		NativeSurface nativeSurface(m_instance);
-		auto vkSurface = static_cast<vk::SurfaceKHR const&>(nativeSurface);
+		vk::SurfaceKHR dummySurface;
+		Window::Data dummyData;
+		dummyData.size = {128, 128};
 		try
 		{
-			m_uDevice = std::make_unique<Device>(m_instance, m_layers, vkSurface);
+			NativeWindow dummyWindow(dummyData);
+			dummySurface = WindowImpl::generateSurface(this, dummyWindow);
+			m_uDevice = std::make_unique<Device>(m_instance, m_layers, dummySurface);
 		}
 		catch (std::exception const& e)
 		{
-			m_instance.destroy(vkSurface);
+			m_instance.destroy(dummySurface);
 			m_instance.destroy();
 			throw std::runtime_error(e.what());
 		}
-		m_instance.destroy(vkSurface);
+		m_instance.destroy(dummySurface);
 	}
 	LOG_I("[{}] constructed", s_tName);
 }
@@ -122,7 +127,7 @@ Instance::~Instance()
 	}
 }
 
-Device const* Instance::device() const
+Device* Instance::device() const
 {
 	return m_uDevice.get();
 }

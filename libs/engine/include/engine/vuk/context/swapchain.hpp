@@ -31,7 +31,6 @@ public:
 
 private:
 	Details m_details;
-	vk::SurfaceKHR m_surface;
 	vk::SwapchainKHR m_swapchain;
 	std::vector<vk::Image> m_images;
 	std::vector<vk::ImageView> m_imageViews;

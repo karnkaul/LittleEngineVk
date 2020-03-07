@@ -48,15 +48,22 @@ public:
 	explicit operator vk::Device const&() const;
 	explicit operator vk::PhysicalDevice const&() const;
 	std::unique_ptr<class Swapchain> createSwapchain(SwapchainData const& data, WindowID window) const;
+	bool validateSurface(vk::SurfaceKHR const& surface) const;
 
 	template <typename vkType>
 	void destroy(vkType const& handle) const;
+
+private:
+	bool validateSurface(vk::SurfaceKHR const& surface, u32 presentFamilyIndex) const;
 };
 
 template <typename vkType>
 void Device::destroy(vkType const& handle) const
 {
-	m_device.destroy(handle);
+	if (handle != vkType())
+	{
+		m_device.destroy(handle);
+	}
 	return;
 }
 } // namespace le::vuk

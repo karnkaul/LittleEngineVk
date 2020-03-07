@@ -44,7 +44,7 @@ public:
 	~Instance();
 
 public:
-	Device const* device() const;
+	Device* device() const;
 	vk::DispatchLoaderDynamic const& vkLoader() const;
 
 public:
@@ -62,7 +62,10 @@ private:
 template <typename vkType>
 void Instance::destroy(vkType const& handle) const
 {
-	m_instance.destroy(handle);
+	if (handle != vkType())
+	{
+		m_instance.destroy(handle);
+	}
 	return;
 }
 } // namespace le::vuk

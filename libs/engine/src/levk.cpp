@@ -6,8 +6,8 @@
 #include "core/map_store.hpp"
 #include "core/services.hpp"
 #include "engine/levk.hpp"
-#include "engine/window.hpp"
-#include "engine/vk/instance.hpp"
+#include "engine/window/window.hpp"
+#include "engine/vuk/instance/instance.hpp"
 
 namespace le
 {

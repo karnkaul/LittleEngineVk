@@ -2,7 +2,7 @@
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
-#include "engine/vk/physical_device.hpp"
+#include "engine/vuk/instance/physical_device.hpp"
 
 namespace le::vuk
 {
@@ -12,9 +12,9 @@ std::vector<char const*> const PhysicalDevice::s_deviceExtensions = {VK_KHR_SWAP
 PhysicalDevice::PhysicalDevice(vk::PhysicalDevice device)
 {
 	m_physicalDevice = std::move(device);
-	auto const properties = m_physicalDevice.getProperties();
-	m_type = properties.deviceType;
-	m_name = properties.deviceName;
+	m_properties = m_physicalDevice.getProperties();
+	m_type = m_properties.deviceType;
+	m_name = m_properties.deviceName;
 	m_queueFamilies = m_physicalDevice.getQueueFamilyProperties();
 	for (size_t idx = 0; idx < m_queueFamilies.size() && !m_graphicsQueueFamilyIndex.has_value(); ++idx)
 	{
@@ -30,10 +30,24 @@ PhysicalDevice::PhysicalDevice(vk::PhysicalDevice device)
 	{
 		requiredExtensions.erase(std::string_view(extension.extensionName));
 	}
-	ASSERT(requiredExtensions.empty(), "Required extension not present!");
 	for (auto extension : requiredExtensions)
 	{
 		LOG_E("[{}] Required extensions not present on physical device [{}]!", s_tName, extension);
 	}
+	ASSERT(requiredExtensions.empty(), "Required extension not present!");
+	if (!requiredExtensions.empty())
+	{
+		throw std::runtime_error("Required extensions not present on physical device!");
+	}
+}
+
+vk::Device PhysicalDevice::createDevice(vk::DeviceCreateInfo const& createInfo) const
+{
+	return m_physicalDevice.createDevice(createInfo);
+}
+
+PhysicalDevice::operator vk::PhysicalDevice const&() const
+{
+	return m_physicalDevice;
 }
 } // namespace le::vuk

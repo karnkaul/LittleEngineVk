@@ -13,16 +13,23 @@ public:
 	static std::vector<char const*> const s_deviceExtensions;
 
 public:
-	std::string m_name;
+	vk::PhysicalDeviceProperties m_properties;
 	vk::PhysicalDeviceType m_type = vk::PhysicalDeviceType::eOther;
+	std::vector<vk::QueueFamilyProperties> m_queueFamilies;
 	std::optional<u32> m_graphicsQueueFamilyIndex;
+	std::string m_name;
 
 private:
 	vk::PhysicalDevice m_physicalDevice;
-	std::vector<vk::QueueFamilyProperties> m_queueFamilies;
 
 public:
 	PhysicalDevice(vk::PhysicalDevice device);
+
+public:
+	vk::Device createDevice(vk::DeviceCreateInfo const& createInfo) const;
+
+public:
+	explicit operator vk::PhysicalDevice const&() const;
 
 private:
 	friend class Device;

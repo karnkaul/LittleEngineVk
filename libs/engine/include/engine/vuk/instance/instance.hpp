@@ -1,8 +1,9 @@
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include "physical_device.hpp"
+#include "device.hpp"
 
 namespace le::vuk
 {
@@ -35,34 +36,33 @@ private:
 	vk::Instance m_instance;
 	vk::DispatchLoaderDynamic m_loader;
 	vk::DebugUtilsMessengerEXT m_debugMessenger;
-	std::vector<PhysicalDevice> m_physicalDevices;
-	vuk::PhysicalDevice* m_pPhysicalDevice = nullptr;
-	QueueFamilyIndices m_queueFamilyIndices;
 	std::vector<char const*> m_layers;
+	std::unique_ptr<class Device> m_uDevice;
 
 public:
+	Instance();
 	~Instance();
 
-	bool init(Data data);
-	void deinit();
-
 public:
-	bool isInit() const;
-	PhysicalDevice const* activeDevice() const;
-	PhysicalDevice* activeDevice();
+	Device const* device() const;
 	vk::DispatchLoaderDynamic const& vkLoader() const;
 
 public:
-	operator vk::Instance const&() const;
-	operator VkInstance() const;
-	void destroy(vk::SurfaceKHR const& surface);
+	explicit operator vk::Instance const&() const;
+	explicit operator VkInstance() const;
+
+	template <typename vkType>
+	void destroy(vkType const& handle) const;
 
 private:
 	bool createInstance(std::vector<char const*> const& extensions);
 	bool setupDebugMessenger();
-	bool getPhysicalDevices();
-
-private:
-	friend class Device;
 };
+
+template <typename vkType>
+void Instance::destroy(vkType const& handle) const
+{
+	m_instance.destroy(handle);
+	return;
+}
 } // namespace le::vuk

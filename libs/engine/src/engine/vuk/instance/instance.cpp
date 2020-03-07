@@ -3,8 +3,9 @@
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
-#include "engine/vk/instance.hpp"
-#include "engine/vk/instanceImpl.hpp"
+#include "engine/vuk/instance/instance.hpp"
+#include "engine/vuk/instance/instance_impl.hpp"
+#include "engine/window/window_impl.hpp"
 
 namespace le::vuk
 {
@@ -36,31 +37,22 @@ VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFla
 
 Instance::Service::Service()
 {
-	if (!g_instance.init(g_instanceData))
+	if (!g_uInstance)
 	{
-		throw std::runtime_error("Failed to create vk::Instance!");
+		g_uInstance = std::make_unique<Instance>();
 	}
 }
 
 Instance::Service::~Service()
 {
-	g_instance.deinit();
+	g_uInstance.reset();
 }
 
 std::string const Instance::s_tName = utils::tName<Instance>();
 
-Instance::~Instance()
+Instance::Instance()
 {
-	ASSERT(m_instance == vk::Instance(), "Instance not deinitialised!");
-}
-
-bool Instance::init(Data data)
-{
-	if (isInit())
-	{
-		LOG_W("[{}] already initialised!", s_tName);
-		return true;
-	}
+	auto data = std::move(g_instanceData);
 	if (data.bAddValidationLayers)
 	{
 		data.extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -82,61 +74,57 @@ bool Instance::init(Data data)
 		if (!bFound)
 		{
 			LOG_E("[{}] Required layer [{}] not available!", s_tName, szRequiredLayer);
-			return false;
+			throw std::runtime_error("Failed to create Instance!");
 		}
 	}
 	m_layers = std::move(data.layers);
 	if (!createInstance(data.extensions))
 	{
-		return false;
+		throw std::runtime_error("Failed to create Instance!");
 	}
 	vk::DynamicLoader dl;
 	m_loader.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 	m_loader.init(m_instance);
 	if (data.bAddValidationLayers && !setupDebugMessenger())
 	{
-		return false;
+		m_instance.destroy();
+		throw std::runtime_error("Failed to create Instance!");
 	}
-	if (!getPhysicalDevices())
 	{
-		return false;
-	}
-	LOG_I("[{}] Constructed", s_tName);
-	return true;
-}
-
-void Instance::deinit()
-{
-	if (isInit())
-	{
-		m_physicalDevices.clear();
-		if (m_instance != vk::Instance())
+		NativeSurface nativeSurface(m_instance);
+		auto vkSurface = static_cast<vk::SurfaceKHR const&>(nativeSurface);
+		try
 		{
-			if (m_debugMessenger != vk::DebugUtilsMessengerEXT())
-			{
-				m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger, nullptr, m_loader);
-			}
-			m_instance.destroy();
-			m_instance = vk::Instance();
-			LOG_I("[{}] Destroyed", s_tName);
+			m_uDevice = std::make_unique<Device>(m_instance, m_layers, vkSurface);
 		}
+		catch (std::exception const& e)
+		{
+			m_instance.destroy(vkSurface);
+			m_instance.destroy();
+			throw std::runtime_error(e.what());
+		}
+		m_instance.destroy(vkSurface);
 	}
-	return;
+	LOG_I("[{}] constructed", s_tName);
 }
 
-bool Instance::isInit() const
+Instance::~Instance()
 {
-	return m_instance != vk::Instance();
+	m_uDevice.reset();
+	if (m_instance != vk::Instance())
+	{
+		if (m_debugMessenger != vk::DebugUtilsMessengerEXT())
+		{
+			m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger, nullptr, m_loader);
+		}
+		m_instance.destroy();
+		LOG_I("[{}] destroyed", s_tName);
+	}
 }
 
-PhysicalDevice const* Instance::activeDevice() const
+Device const* Instance::device() const
 {
-	return m_pPhysicalDevice;
-}
-
-PhysicalDevice* Instance::activeDevice()
-{
-	return m_pPhysicalDevice;
+	return m_uDevice.get();
 }
 
 vk::DispatchLoaderDynamic const& Instance::vkLoader() const
@@ -152,11 +140,6 @@ Instance::operator vk::Instance const&() const
 Instance::operator VkInstance() const
 {
 	return m_instance;
-}
-
-void Instance::destroy(vk::SurfaceKHR const& surface)
-{
-	m_instance.destroy(surface);
 }
 
 bool Instance::createInstance(std::vector<char const*> const& extensions)
@@ -191,30 +174,5 @@ bool Instance::setupDebugMessenger()
 	createInfo.pfnUserCallback = &validationCallback;
 	m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(createInfo, nullptr, m_loader);
 	return m_debugMessenger != vk::DebugUtilsMessengerEXT();
-}
-
-bool Instance::getPhysicalDevices()
-{
-	auto devices = m_instance.enumeratePhysicalDevices();
-	m_physicalDevices.reserve(devices.size());
-	for (auto const& device : devices)
-	{
-		m_physicalDevices.emplace_back(device);
-		if (m_physicalDevices.back().m_type == vk::PhysicalDeviceType::eDiscreteGpu)
-		{
-			m_pPhysicalDevice = &m_physicalDevices.back();
-		}
-	}
-	if (!m_pPhysicalDevice && !m_physicalDevices.empty())
-	{
-		m_pPhysicalDevice = &m_physicalDevices.front();
-	}
-	if (m_pPhysicalDevice && m_pPhysicalDevice->m_graphicsQueueFamilyIndex.has_value())
-	{
-		LOG_D("[{}] GPU: {}", PhysicalDevice::s_tName, m_pPhysicalDevice->m_name);
-		return true;
-	}
-	LOG_E("[{}] Failed to find a physical device!", s_tName);
-	return false;
 }
 } // namespace le::vuk

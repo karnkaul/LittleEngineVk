@@ -4,14 +4,12 @@
 #include <glm/glm.hpp>
 #include "core/zero.hpp"
 #include "input_types.hpp"
+#include "window_id.hpp"
 
 namespace le
 {
 class Window final
 {
-public:
-	using ID = TZero<s32, -1>;
-
 public:
 	enum class Mode
 	{
@@ -43,7 +41,7 @@ public:
 
 private:
 	std::unique_ptr<class WindowImpl> m_uImpl;
-	ID m_id = ID::Null;
+	WindowID m_id = WindowID::Null;
 
 public:
 	Window();
@@ -55,9 +53,10 @@ public:
 	static void pollEvents();
 
 public:
-	ID id() const;
+	WindowID id() const;
 	bool isOpen() const;
 	bool isClosing() const;
+	glm::ivec2 framebufferSize() const;
 
 public:
 	bool create(Data const& data);

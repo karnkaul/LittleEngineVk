@@ -313,14 +313,18 @@ WindowImpl::~WindowImpl()
 bool WindowImpl::create(Window::Data const& data)
 {
 	ASSERT(vuk::g_uInstance.get() && vuk::g_pDevice, "Instance/Device is null!");
+	auto reset = [&]() {
+		vuk::g_uInstance->destroy(m_surface);
+		m_uNativeWindow.reset();
+	};
 	try
 	{
 		m_uNativeWindow = std::make_unique<NativeWindow>(data);
 		m_surface = generateSurface(vuk::g_uInstance.get(), *m_uNativeWindow);
 		if (m_surface == vk::SurfaceKHR())
 		{
-			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Swapchain::s_tName);
-			m_uNativeWindow.reset();
+			LOG_E("[{}] Failed to create [{}]", Window::s_tName, utils::tName<vk::SurfaceKHR>());
+			reset();
 			return false;
 		}
 		vuk::SwapchainData swapchainData{m_surface, framebufferSize()};
@@ -328,7 +332,7 @@ bool WindowImpl::create(Window::Data const& data)
 		if (!m_uSwapchain)
 		{
 			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Swapchain::s_tName);
-			m_uNativeWindow.reset();
+			reset();
 			return false;
 		}
 #if defined(LEVK_USE_GLFW)
@@ -356,6 +360,7 @@ bool WindowImpl::create(Window::Data const& data)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
+		reset();
 		return false;
 	}
 	LOG_E("[{}:{}] Failed to create window!", Window::s_tName, m_pWindow->m_id);
@@ -457,7 +462,15 @@ void WindowImpl::onFramebufferSize(glm::ivec2 const& size)
 	[[maybe_unused]] bool bValid = vuk::g_pDevice->validateSurface(m_surface);
 	ASSERT(bValid, "Invalid surface");
 	vuk::SwapchainData data{m_surface, size};
-	m_uSwapchain->recreate(data);
+	try
+	{
+		m_uSwapchain->recreate(data);
+	}
+	catch (std::exception const& e)
+	{
+		m_uSwapchain->destroy();
+		LOG_E("[{}:{}] Failed to recreate [{}]!\n\t{}", Window::s_tName, m_pWindow->m_id, vuk::Swapchain::s_tName, e.what());
+	}
 	vuk::g_uInstance->destroy(oldSurface);
 	return;
 }

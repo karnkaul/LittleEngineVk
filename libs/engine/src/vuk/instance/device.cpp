@@ -72,10 +72,6 @@ Device::Device(vk::Instance const& instance, std::vector<char const*> const& lay
 	m_device = m_pPhysicalDevice->createDevice(deviceCreateInfo);
 	m_graphicsQueue = m_device.getQueue(m_queueFamilyIndices.graphics.value(), 0);
 	m_presentationQueue = m_device.getQueue(m_queueFamilyIndices.present.value(), 0);
-	if (!(m_device != vk::Device() && m_graphicsQueue != vk::Queue() && m_presentationQueue != vk::Queue()))
-	{
-		throw std::runtime_error("Failed to create device!");
-	}
 	LOG_I("[{}] constructed. Using GPU: [{}]", s_tName, m_pPhysicalDevice->m_name);
 }
 

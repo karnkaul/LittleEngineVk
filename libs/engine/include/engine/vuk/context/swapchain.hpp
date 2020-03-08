@@ -34,6 +34,8 @@ private:
 	vk::SwapchainKHR m_swapchain;
 	std::vector<vk::Image> m_images;
 	std::vector<vk::ImageView> m_imageViews;
+	std::vector<vk::Framebuffer> m_framebuffers;
+	vk::RenderPass m_defaultRenderPass;
 	WindowID m_window;
 
 public:
@@ -45,5 +47,12 @@ public:
 
 public:
 	operator vk::SwapchainKHR const&() const;
+
+private:
+	void getDetails(vk::SurfaceKHR const& surface);
+	void createSwapchain(SwapchainData const& data);
+	void populateImages();
+	void createRenderPasses();
+	void createFramebuffers();
 };
 } // namespace le::vuk

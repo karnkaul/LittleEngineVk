@@ -1,3 +1,4 @@
+#include <array>
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
@@ -66,60 +67,106 @@ Swapchain::~Swapchain()
 void Swapchain::recreate(SwapchainData const& data)
 {
 	destroy();
-	ASSERT(g_uInstance.get() && g_pDevice, "Instance/Device is null!");
-	auto const& device = *g_pDevice;
-	auto vkDevice = static_cast<vk::Device const&>(device);
-	auto vkPhysicalDevice = static_cast<vk::PhysicalDevice const&>(device);
+	ASSERT(g_pDevice, "Device is null!");
+	getDetails(data.surface);
+	createSwapchain(data);
+	populateImages();
+	createRenderPasses();
+	createFramebuffers();
+	LOG_D("[{}:{}] created; framebuffer size: [{}x{}]", s_tName, m_window, data.framebufferSize.x, data.framebufferSize.y);
+	return;
+}
+
+void Swapchain::destroy()
+{
+	ASSERT(g_pDevice, "Device is null!");
+	LOGIF_D(m_swapchain != vk::SwapchainKHR(), "[{}:{}] released", s_tName, m_window);
+	for (auto const& frameBuffer : m_framebuffers)
+	{
+		g_pDevice->destroy(frameBuffer);
+	}
+	g_pDevice->destroy(m_defaultRenderPass);
+	for (auto const& imageView : m_imageViews)
+	{
+		g_pDevice->destroy(imageView);
+	}
+	if (m_swapchain != vk::SwapchainKHR())
+	{
+		g_pDevice->destroy(m_swapchain);
+	}
+	m_framebuffers.clear();
+	m_defaultRenderPass = vk::RenderPass();
+	m_images.clear();
+	m_imageViews.clear();
+	m_swapchain = vk::SwapchainKHR();
+	m_details = {};
+	return;
+}
+
+Swapchain::operator vk::SwapchainKHR const&() const
+{
+	return m_swapchain;
+}
+
+void Swapchain::getDetails(vk::SurfaceKHR const& surface)
+{
+	auto vkPhysicalDevice = static_cast<vk::PhysicalDevice const&>(*g_pDevice);
 	m_details = {
-		vkPhysicalDevice.getSurfaceCapabilitiesKHR(data.surface),
-		vkPhysicalDevice.getSurfaceFormatsKHR(data.surface),
-		vkPhysicalDevice.getSurfacePresentModesKHR(data.surface),
+		vkPhysicalDevice.getSurfaceCapabilitiesKHR(surface),
+		vkPhysicalDevice.getSurfaceFormatsKHR(surface),
+		vkPhysicalDevice.getSurfacePresentModesKHR(surface),
 	};
 	if (!m_details.isReady())
 	{
-		throw std::runtime_error("Failed to create swapchain!");
+		throw std::runtime_error("Failed to get Swapchain details!");
 	}
-	auto const& queueFamilyIndices = device.m_queueFamilyIndices;
+	return;
+}
+
+void Swapchain::createSwapchain(SwapchainData const& data)
+{
+	auto const& queueFamilyIndices = g_pDevice->m_queueFamilyIndices;
+	auto const& vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	vk::SwapchainCreateInfoKHR createInfo;
+	createInfo.minImageCount = m_details.capabilities.minImageCount + 1;
+	if (m_details.capabilities.maxImageCount != 0 && createInfo.minImageCount > m_details.capabilities.maxImageCount)
 	{
-		vk::SwapchainCreateInfoKHR createInfo;
-		createInfo.minImageCount = m_details.capabilities.minImageCount + 1;
-		if (m_details.capabilities.maxImageCount != 0 && createInfo.minImageCount > m_details.capabilities.maxImageCount)
-		{
-			createInfo.minImageCount = m_details.capabilities.maxImageCount;
-		}
-		auto const format = m_details.bestFormat();
-		m_format = format.format;
-		createInfo.imageFormat = m_format;
-		createInfo.imageColorSpace = format.colorSpace;
-		m_extent = m_details.extent(data.framebufferSize);
-		createInfo.imageExtent = m_extent;
-		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		u32 const graphicsFamilyIndex = queueFamilyIndices.graphics.value();
-		std::array const indices = {graphicsFamilyIndex, queueFamilyIndices.present.value()};
-		if (indices.at(0) != indices.at(1))
-		{
-			createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-			createInfo.queueFamilyIndexCount = (u32)indices.size();
-			createInfo.pQueueFamilyIndices = indices.data();
-		}
-		else
-		{
-			createInfo.imageSharingMode = vk::SharingMode::eExclusive;
-			createInfo.queueFamilyIndexCount = 1;
-			createInfo.pQueueFamilyIndices = &graphicsFamilyIndex;
-		}
-		createInfo.preTransform = m_details.capabilities.currentTransform;
-		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-		createInfo.presentMode = m_details.bestPresentMode();
-		createInfo.clipped = vk::Bool32(true);
-		createInfo.surface = data.surface;
-		m_swapchain = vkDevice.createSwapchainKHR(createInfo);
+		createInfo.minImageCount = m_details.capabilities.maxImageCount;
 	}
-	if (m_swapchain == vk::SwapchainKHR())
+	auto const format = m_details.bestFormat();
+	m_format = format.format;
+	createInfo.imageFormat = m_format;
+	createInfo.imageColorSpace = format.colorSpace;
+	m_extent = m_details.extent(data.framebufferSize);
+	createInfo.imageExtent = m_extent;
+	createInfo.imageArrayLayers = 1;
+	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+	u32 const graphicsFamilyIndex = queueFamilyIndices.graphics.value();
+	std::array const indices = {graphicsFamilyIndex, queueFamilyIndices.present.value()};
+	if (indices.at(0) != indices.at(1))
 	{
-		throw std::runtime_error("Failed to create swapchain!");
+		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+		createInfo.queueFamilyIndexCount = (u32)indices.size();
+		createInfo.pQueueFamilyIndices = indices.data();
 	}
+	else
+	{
+		createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+		createInfo.queueFamilyIndexCount = 1;
+		createInfo.pQueueFamilyIndices = &graphicsFamilyIndex;
+	}
+	createInfo.preTransform = m_details.capabilities.currentTransform;
+	createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+	createInfo.presentMode = m_details.bestPresentMode();
+	createInfo.clipped = vk::Bool32(true);
+	createInfo.surface = data.surface;
+	m_swapchain = vkDevice.createSwapchainKHR(createInfo);
+	return;
+}
+
+void Swapchain::populateImages()
+{
+	auto const vkDevice = static_cast<vk::Device const&>(*g_pDevice);
 	m_images = vkDevice.getSwapchainImagesKHR(m_swapchain);
 	m_imageViews.reserve(m_images.size());
 	for (auto const& image : m_images)
@@ -137,34 +184,57 @@ void Swapchain::recreate(SwapchainData const& data)
 		createInfo.subresourceRange.layerCount = 1;
 		m_imageViews.push_back(vkDevice.createImageView(createInfo));
 	}
-	if (!(m_swapchain != vk::SwapchainKHR() && !m_images.empty() && !m_imageViews.empty()))
+	if (m_images.empty() || m_imageViews.empty())
 	{
-		throw std::runtime_error("Failed to create swapchain!");
+		throw std::runtime_error("Failed to populate Swapchain images!");
 	}
-	LOG_D("[{}:{}] created; framebuffer size: [{}x{}]", s_tName, m_window, data.framebufferSize.x, data.framebufferSize.y);
 	return;
 }
 
-void Swapchain::destroy()
+void Swapchain::createRenderPasses()
 {
-	ASSERT(g_uInstance.get() && g_pDevice, "Instance/Device is null!");
-	LOGIF_D(m_swapchain != vk::SwapchainKHR(), "[{}:{}] released", s_tName, m_window);
+	auto const vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	vk::AttachmentDescription colourDesc;
+	colourDesc.format = m_format;
+	colourDesc.samples = vk::SampleCountFlagBits::e1;
+	colourDesc.loadOp = vk::AttachmentLoadOp::eClear;
+	colourDesc.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	colourDesc.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	colourDesc.initialLayout = vk::ImageLayout::eUndefined;
+	colourDesc.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+	vk::AttachmentReference colourRef;
+	colourRef.attachment = 0;
+	colourRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+	vk::SubpassDescription subpass;
+	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colourRef;
+	vk::RenderPassCreateInfo createInfo;
+	createInfo.attachmentCount = 1;
+	createInfo.pAttachments = &colourDesc;
+	createInfo.subpassCount = 1;
+	createInfo.pSubpasses = &subpass;
+	m_defaultRenderPass = vkDevice.createRenderPass(createInfo);
+	return;
+}
+
+void Swapchain::createFramebuffers()
+{
+	auto const vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	m_framebuffers.reserve(m_imageViews.size());
 	for (auto const& imageView : m_imageViews)
 	{
-		g_pDevice->destroy(imageView);
+		std::array attachments = {imageView};
+		vk::FramebufferCreateInfo createInfo;
+		createInfo.attachmentCount = (u32)attachments.size();
+		createInfo.pAttachments = attachments.data();
+		createInfo.renderPass = m_defaultRenderPass;
+		createInfo.width = m_extent.width;
+		createInfo.height = m_extent.height;
+		createInfo.layers = 1;
+		auto frameBuffer = vkDevice.createFramebuffer(createInfo);
+		m_framebuffers.push_back(std::move(frameBuffer));
 	}
-	if (m_swapchain != vk::SwapchainKHR())
-	{
-		g_pDevice->destroy(m_swapchain);
-		m_swapchain = vk::SwapchainKHR();
-	}
-	m_images.clear();
-	m_imageViews.clear();
 	return;
-}
-
-Swapchain::operator vk::SwapchainKHR const&() const
-{
-	return m_swapchain;
 }
 } // namespace le::vuk

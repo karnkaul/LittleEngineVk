@@ -65,13 +65,18 @@ struct Args
 	char* const* const argv = nullptr;
 };
 
+struct Service final
+{
+	Service(Args const& args);
+	~Service();
+};
+
 void init(Args const& args);
 std::string_view argv0();
 std::filesystem::path dirPath(Dir dir);
 std::vector<std::string_view> const& args();
 bool isDefined(std::string_view arg);
 
-bool isMainThread();
 bool isDebuggerAttached();
 void debugBreak();
 } // namespace os

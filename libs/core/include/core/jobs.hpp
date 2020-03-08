@@ -6,6 +6,14 @@ namespace le
 {
 namespace jobs
 {
+struct Service final
+{
+	bool bFlushQueue;
+
+	Service(u8 workerCount, bool bFlushQueue = false);
+	~Service();
+};
+
 void init(u32 workerCount);
 void cleanup(bool bFlushQueue = false);
 

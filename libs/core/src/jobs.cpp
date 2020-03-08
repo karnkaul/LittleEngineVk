@@ -32,6 +32,16 @@ namespace jobs
 JobManager* g_pJobManager = nullptr;
 } // namespace jobs
 
+jobs::Service::Service(u8 workerCount, bool bFlushQueue) : bFlushQueue(bFlushQueue)
+{
+	init(workerCount);
+}
+
+jobs::Service::~Service()
+{
+	cleanup(bFlushQueue);
+}
+
 void jobs::init(u32 workerCount)
 {
 	if (uManager)

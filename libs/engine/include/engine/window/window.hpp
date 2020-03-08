@@ -2,16 +2,13 @@
 #include <memory>
 #include <string>
 #include <glm/glm.hpp>
-#include "core/zero.hpp"
 #include "input_types.hpp"
+#include "window_id.hpp"
 
-namespace  le
+namespace le
 {
 class Window final
 {
-public:
-	using ID = TZero<s32, -1>;
-
 public:
 	enum class Mode
 	{
@@ -22,7 +19,7 @@ public:
 		COUNT_
 	};
 
-	struct Data
+	struct Data final
 	{
 		std::string title;
 		glm::ivec2 size = {};
@@ -32,9 +29,18 @@ public:
 		bool bCentreCursor = true;
 	};
 
+	struct Service final
+	{
+		Service();
+		~Service();
+	};
+
+public:
+	static const std::string s_tName;
+
 private:
 	std::unique_ptr<class WindowImpl> m_uImpl;
-	ID m_id = ID::Null;
+	WindowID m_id = WindowID::Null;
 
 public:
 	Window();
@@ -46,10 +52,12 @@ public:
 	static void pollEvents();
 
 public:
-	ID id() const;
+	WindowID id() const;
 	bool isOpen() const;
 	bool isClosing() const;
+	glm::ivec2 framebufferSize() const;
 
+public:
 	bool create(Data const& data);
 	void close();
 	void destroy();
@@ -67,7 +75,7 @@ public:
 	// Callback parameters: (bool bInFocus)
 	[[nodiscard]] OnFocus::Token registerFocus(OnFocus::Callback callback);
 	// Callback parameters: (s32 x, s32 y)
-	[[nodiscard]] OnResize::Token registerResize(OnResize::Callback callback);
+	[[nodiscard]] OnWindowResize::Token registerResize(OnWindowResize::Callback callback);
 	[[nodiscard]] OnClosed::Token registerClosed(OnClosed::Callback callback);
 
 	void setCursorMode(CursorMode mode) const;

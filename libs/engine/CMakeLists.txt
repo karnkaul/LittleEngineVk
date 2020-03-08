@@ -6,11 +6,21 @@ if(PLATFORM STREQUAL "Win64" AND NOT LEVK_LIBRARY_TYPE STREQUAL STATIC)
 	message(FATAL_ERROR "`LEVK_LIBRARY_TYPE` must be `STATIC` on Windows; DLLs are not supported!")
 endif()
 
+# Vulkan
+find_package(Vulkan)
+if(NOT Vulkan_FOUND)
+	message(FATAL_ERROR 
+"Vulkan not installed! LittleEngineVk requires Vulkan ICD loader, headers, and validation layers!
+Note: for custom SDK locations, define `VULKAN_SDK` and source `vk-setup-env.sh` into this shell (and runtime environment).
+Make sure to delete CMakeCache.txt before re-configuring!"
+	)
+else()
+	message("== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}")
+endif()
+
 # Library
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
-	"${CMAKE_CURRENT_SOURCE_DIR}/*.*pp"
-)
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "src" FILES ${SOURCES})
+glob_sources(SOURCES "*.?pp")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 set(GENERATED_SOURCES
 	"${CMAKE_CURRENT_BINARY_DIR}/generated/version/build_version.hpp"
 )
@@ -27,16 +37,18 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_SOURCE_DIR}/src"
 		"${CMAKE_CURRENT_BINARY_DIR}/generated"
+		"${Vulkan_INCLUDE_DIRS}"
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		core
 	PRIVATE
-		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
+		${Vulkan_LIBRARIES}
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
+		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 		#stb-image
 		#tinyobjloader
 )
-if(W_CLANG AND LEVK_USE_GLFW)
+if(WIN64_CLANG AND LEVK_USE_GLFW)
 	target_compile_options(glfw PRIVATE -Wno-everything)
 endif()

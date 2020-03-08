@@ -1,13 +1,11 @@
 project(core)
 
 # Library
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
-	"${CMAKE_CURRENT_SOURCE_DIR}/*.*pp"
-)
+glob_sources(SOURCES "*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_compile_definitions(glm INTERFACE GLM_FORCE_RADIANS)
+target_compile_definitions(glm INTERFACE GLM_FORCE_RADIANS GLM_FORCE_SILENT_WARNINGS)
 add_target_compile_definitions(${PROJECT_NAME} LEVK PUBLIC)
 add_target_compile_options(${PROJECT_NAME} PRIVATE)
 if(PLATFORM STREQUAL "Linux")
@@ -30,6 +28,3 @@ target_link_libraries(${PROJECT_NAME}
 		$<$<STREQUAL:${PLATFORM},Linux>:pthread>
 		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
 )
-if(W_MSBUILD)
-	set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-endif()

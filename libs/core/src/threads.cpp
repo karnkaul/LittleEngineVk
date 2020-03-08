@@ -2,8 +2,13 @@
 #include <utility>
 #include <list>
 #include "core/assert.hpp"
+#include "core/log.hpp"
+#include "core/os.hpp"
 #include "core/threads.hpp"
-#include "threads_impl.hpp"
+#if defined(LEVK_OS_LINUX)
+#include <X11/Xlib.h>
+#include <X11/extensions/Xrandr.h>
+#endif
 
 namespace le
 {
@@ -12,9 +17,20 @@ namespace
 HThread::Type g_nextID = HThread::Null;
 std::list<std::pair<HThread::Type, std::thread>> g_threads;
 std::unordered_map<std::thread::id, HThread::Type> g_idMap;
+std::thread::id g_mainThreadID;
 } // namespace
 
-using namespace threadsImpl;
+void threads::init()
+{
+	g_mainThreadID = std::this_thread::get_id();
+#if defined(__linux__)
+	if (XInitThreads() == 0)
+	{
+		LOG_E("[OS] ERROR calling XInitThreads()! UB follows.");
+	}
+#endif
+	return;
+}
 
 HThread threads::newThread(std::function<void()> task)
 {
@@ -61,12 +77,17 @@ HThread::Type threads::thisThreadID()
 	return search != g_idMap.end() ? search->second : HThread::Null;
 }
 
-u32 threads::maxHardwareThreads()
+bool threads::isMainThread()
 {
-	return g_maxThreads;
+	return std::this_thread::get_id() == g_mainThreadID;
 }
 
-u32 threads::running()
+u32 threads::maxHardwareThreads()
+{
+	return std::thread::hardware_concurrency();
+}
+
+u32 threads::runningCount()
 {
 	return (u32)g_threads.size();
 }

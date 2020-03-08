@@ -129,11 +129,6 @@ std::array<char, (size_t)log::Level::COUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 
-log::HFileLogger::~HFileLogger()
-{
-	g_fileLogger.stopLogging();
-}
-
 void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
 {
 	if ((u8)level < (u8)g_minLevel)
@@ -164,13 +159,30 @@ void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused
 	g_fileLogger.record(std::move(str));
 }
 
-std::unique_ptr<log::HFileLogger> log::logToFile(std::filesystem::path path, Time pollRate)
+log::Service::Service(std::filesystem::path const& path, Time pollRate)
+{
+	logToFile(path, pollRate);
+}
+
+log::Service::~Service()
+{
+	stopFileLogging();
+}
+
+void log::logToFile(std::filesystem::path path, Time pollRate)
 {
 	if (!g_fileLogger.m_bLog.load())
 	{
 		g_fileLogger.startLogging(std::move(path), pollRate);
-		return std::make_unique<HFileLogger>();
 	}
-	return nullptr;
+	return;
+}
+
+void log::stopFileLogging()
+{
+	if (g_fileLogger.m_bLog.load())
+	{
+		g_fileLogger.stopLogging();
+	}
 }
 } // namespace le

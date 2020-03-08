@@ -1,9 +1,15 @@
 macro(get_git_commit_hash OUTPUT_VAR)
+	set(${OUTPUT_VAR} "[unknown]")
 	execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
 		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 		OUTPUT_VARIABLE ${OUTPUT_VAR}
 		ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
+endmacro()
+
+macro(glob_sources OUTPUT_VAR PATTERN)
+	set(${OUTPUT_VAR} "")
+	file(GLOB_RECURSE ${OUTPUT_VAR} CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${PATTERN}")
 endmacro()
 
 function(update_git_submodules REQUIRED)
@@ -65,12 +71,12 @@ function(add_target_compile_definitions TARGET_NAME PREFIX SCOPE)
 		$<$<CONFIG:Debug>:
 			${PREFIX}_DEBUG
 		>
-		$<$<BOOL:W_MSBUILD>:_CRT_SECURE_NO_WARNINGS>
+		$<$<BOOL:${MSVC_RUNTIME}>:_CRT_SECURE_NO_WARNINGS>
 	)
 endfunction()
 
 function(add_target_relaxed_compile_options TARGET_NAME)
-	if(LX_CLANG OR W_CLANG)
+	if(LINUX_CLANG OR WIN64_CLANG)
 		set(FLAGS -Wno-documentation -Wno-reserved-id-macro -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-sign-conversion -Wno-switch-enum)
 		set(FLAGS ${FLAGS} -Wno-pedantic -Wno-float-equal -Wno-nonportable-system-include-path -Wno-undef -Wno-cast-qual -Wno-missing-field-initializers -Wno-unused-parameter)
 		set(FLAGS ${FLAGS} -Wno-bad-function-cast -Wno-shadow -Wno-double-promotion -Wno-missing-prototypes -Wno-format-nonliteral -Wno-missing-variable-declarations)
@@ -83,19 +89,19 @@ endfunction()
 
 function(add_target_compile_options TARGET_NAME SCOPE)
 	set(CLANG_COMMON -Werror=return-type -Wextra -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused)
-	if(LX_GCC OR LX_CLANG OR W_GCC OR W_CLANG)
+	if(LINUX_GCC OR LINUX_CLANG OR WIN64_GCC OR WIN64_CLANG)
 		set(FLAGS
 			$<$<NOT:$<CONFIG:Debug>>:
 				-Werror
 			>
 			-Wextra
 			-Werror=return-type
-			$<$<NOT:$<BOOL:${W_CLANG}>>:-fexceptions>
-			$<$<BOOL:${W_CLANG}>:/W4>
-			$<$<OR:$<BOOL:${LX_GCC}>,$<BOOL:${W_GCC}>,$<BOOL:${W_CLANG}>>:-utf-8>
-			$<$<OR:$<BOOL:${LX_CLANG}>,$<BOOL:${W_CLANG}>>:${CLANG_COMMON}>
+			$<$<NOT:$<BOOL:${WIN64_CLANG}>>:-fexceptions>
+			$<$<BOOL:${WIN64_CLANG}>:/W4>
+			$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WIN64_GCC}>,$<BOOL:${WIN64_CLANG}>>:-utf-8>
+			$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WIN64_CLANG}>>:${CLANG_COMMON}>
 		)
-	elseif(W_MSBUILD)
+	elseif(WIN64_MSBUILD)
 		set(FLAGS
 			$<$<NOT:$<CONFIG:Debug>>:
 				/O2
@@ -118,7 +124,7 @@ function(add_target_link_options TARGET_NAME)
 			-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
 		)
 	elseif(PLATFORM STREQUAL "Win64")
-		if(NOT W_GCC)
+		if(NOT WIN64_GCC)
 			target_link_options(${TARGET_NAME} PRIVATE
 				$<$<CONFIG:Debug>:
 					/SUBSYSTEM:CONSOLE

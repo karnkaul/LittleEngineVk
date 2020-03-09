@@ -141,7 +141,7 @@ void Window::setCursorMode(CursorMode mode) const
 
 CursorMode Window::cursorMode() const
 {
-	return m_uImpl ? m_uImpl->cursorMode() : CursorMode::Default;
+	return m_uImpl ? m_uImpl->cursorMode() : CursorMode::eDefault;
 }
 
 glm::vec2 Window::cursorPos() const
@@ -191,5 +191,10 @@ size_t Window::joysticKButtonsCount(s32 id)
 std::string_view Window::toString(s32 key)
 {
 	return WindowImpl::toString(key);
+}
+
+vuk::Swapchain const* Window::swapchain() const
+{
+	return m_uImpl->m_uSwapchain.get();
 }
 } // namespace le

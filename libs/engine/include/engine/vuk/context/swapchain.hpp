@@ -29,7 +29,8 @@ public:
 	vk::Format m_format;
 	vk::Extent2D m_extent;
 
-private:
+	// private:
+public:
 	Details m_details;
 	vk::SwapchainKHR m_swapchain;
 	std::vector<vk::Image> m_images;

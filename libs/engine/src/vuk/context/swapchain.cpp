@@ -126,7 +126,7 @@ void Swapchain::getDetails(vk::SurfaceKHR const& surface)
 void Swapchain::createSwapchain(SwapchainData const& data)
 {
 	auto const& queueFamilyIndices = g_pDevice->m_queueFamilyIndices;
-	auto const& vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	auto const vkDevice = static_cast<vk::Device>(*g_pDevice);
 	vk::SwapchainCreateInfoKHR createInfo;
 	createInfo.minImageCount = m_details.capabilities.minImageCount + 1;
 	if (m_details.capabilities.maxImageCount != 0 && createInfo.minImageCount > m_details.capabilities.maxImageCount)
@@ -166,7 +166,7 @@ void Swapchain::createSwapchain(SwapchainData const& data)
 
 void Swapchain::populateImages()
 {
-	auto const vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	auto const vkDevice = static_cast<vk::Device>(*g_pDevice);
 	m_images = vkDevice.getSwapchainImagesKHR(m_swapchain);
 	m_imageViews.reserve(m_images.size());
 	for (auto const& image : m_images)
@@ -193,7 +193,7 @@ void Swapchain::populateImages()
 
 void Swapchain::createRenderPasses()
 {
-	auto const vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	auto const vkDevice = static_cast<vk::Device>(*g_pDevice);
 	vk::AttachmentDescription colourDesc;
 	colourDesc.format = m_format;
 	colourDesc.samples = vk::SampleCountFlagBits::e1;
@@ -220,7 +220,7 @@ void Swapchain::createRenderPasses()
 
 void Swapchain::createFramebuffers()
 {
-	auto const vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	auto const vkDevice = static_cast<vk::Device>(*g_pDevice);
 	m_framebuffers.reserve(m_imageViews.size());
 	for (auto const& imageView : m_imageViews)
 	{

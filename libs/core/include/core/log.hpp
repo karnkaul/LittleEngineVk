@@ -15,7 +15,7 @@
 #if defined(LEVK_DEBUG)
 /**
  * Variable     : LEVK_DEBUG_LOG
- * Description  : Enables LOG_D and LOGIF_D macros (Level::Debug)
+ * Description  : Enables LOG_D and LOGIF_D macros (Level::eDebug)
  */
 #if !defined(LEVK_LOG_DEBUG)
 #define LEVK_LOG_DEBUG
@@ -42,16 +42,16 @@
 	{                                                                    \
 		le::log::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__); \
 	}
-#define LOG_E(text, ...) LOG(le::log::Level::Error, text, ##__VA_ARGS__)
-#define LOGIF_E(predicate, text, ...) LOGIF(predicate, le::log::Level::Error, text, ##__VA_ARGS__)
-#define LOG_W(text, ...) LOG(le::log::Level::Warning, text, ##__VA_ARGS__)
-#define LOGIF_W(predicate, text, ...) LOGIF(predicate, le::log::Level::Warning, text, ##__VA_ARGS__)
-#define LOG_I(text, ...) LOG(le::log::Level::Info, text, ##__VA_ARGS__)
-#define LOGIF_I(predicate, text, ...) LOGIF(predicate, le::log::Level::Info, text, ##__VA_ARGS__)
+#define LOG_E(text, ...) LOG(le::log::Level::eError, text, ##__VA_ARGS__)
+#define LOGIF_E(predicate, text, ...) LOGIF(predicate, le::log::Level::eError, text, ##__VA_ARGS__)
+#define LOG_W(text, ...) LOG(le::log::Level::eWarning, text, ##__VA_ARGS__)
+#define LOGIF_W(predicate, text, ...) LOGIF(predicate, le::log::Level::eWarning, text, ##__VA_ARGS__)
+#define LOG_I(text, ...) LOG(le::log::Level::eInfo, text, ##__VA_ARGS__)
+#define LOGIF_I(predicate, text, ...) LOGIF(predicate, le::log::Level::eInfo, text, ##__VA_ARGS__)
 
 #if defined(LEVK_LOG_DEBUG)
-#define LOG_D(text, ...) LOG(le::log::Level::Debug, text, ##__VA_ARGS__)
-#define LOGIF_D(predicate, text, ...) LOGIF(predicate, le::log::Level::Debug, text, ##__VA_ARGS__)
+#define LOG_D(text, ...) LOG(le::log::Level::eDebug, text, ##__VA_ARGS__)
+#define LOGIF_D(predicate, text, ...) LOGIF(predicate, le::log::Level::eDebug, text, ##__VA_ARGS__)
 #else
 #define LOG_D(text, ...)
 #define LOGIF_D(predicate, text, ...)
@@ -61,11 +61,11 @@ namespace le::log
 {
 enum class Level : u8
 {
-	Debug = 0,
-	Info,
-	Warning,
-	Error,
-	COUNT_
+	eDebug = 0,
+	eInfo,
+	eWarning,
+	eError,
+	eCOUNT_
 };
 
 struct Service final
@@ -74,7 +74,7 @@ struct Service final
 	~Service();
 };
 
-inline Level g_minLevel = Level::Debug;
+inline Level g_minLevel = Level::eDebug;
 
 void logText(Level level, std::string text, std::string_view file, u64 line);
 

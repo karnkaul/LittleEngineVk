@@ -10,7 +10,7 @@ struct TFlags
 {
 	using Type = Enum;
 
-	std::bitset<size_t(Enum::COUNT_)> bits;
+	std::bitset<size_t(Enum::eCOUNT_)> bits;
 
 	constexpr TFlags() noexcept = default;
 	explicit TFlags(std::string serialised);

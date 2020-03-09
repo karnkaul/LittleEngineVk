@@ -16,7 +16,7 @@ class NativeWindow final
 {
 public:
 #if defined(LEVK_USE_GLFW)
-	class GLFWwindow* m_pWindow = nullptr;
+	struct GLFWwindow* m_pWindow = nullptr;
 #endif
 	glm::ivec2 m_size = {};
 	glm::ivec2 m_initialCentre = {};

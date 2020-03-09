@@ -10,10 +10,11 @@ namespace stdfs = std::filesystem;
 class IOReader
 {
 public:
-	enum class Code
+	enum class Code : u8
 	{
-		Success = 0,
-		NotFound
+		eSuccess = 0,
+		eNotFound,
+		eCOUNT_
 	};
 
 	template <typename Type>
@@ -112,12 +113,12 @@ public:
 template <typename Type>
 typename IOReader::Result<Type> IOReader::notFound()
 {
-	return Result<Type>{Code::NotFound, Type()};
+	return Result<Type>{Code::eNotFound, Type()};
 }
 
 template <typename Type>
 typename IOReader::Result<Type> IOReader::success(Type&& result)
 {
-	return Result<Type>{Code::Success, std::move(result)};
+	return Result<Type>{Code::eSuccess, std::move(result)};
 }
 } // namespace le

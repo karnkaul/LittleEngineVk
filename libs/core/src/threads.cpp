@@ -58,9 +58,8 @@ void threads::join(HThread& id)
 
 void threads::joinAll()
 {
-	for (auto& kvp : g_threads)
+	for (auto& [id, thread] : g_threads)
 	{
-		auto& thread = kvp.second;
 		if (thread.joinable())
 		{
 			thread.join();

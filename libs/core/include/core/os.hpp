@@ -53,10 +53,11 @@ namespace le
 {
 namespace os
 {
-enum class Dir
+enum class Dir : u8
 {
-	Working,
-	Executable
+	eWorking,
+	eExecutable,
+	eCOUNT_
 };
 
 struct Args

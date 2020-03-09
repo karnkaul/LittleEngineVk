@@ -85,14 +85,14 @@ Device::~Device()
 	return;
 }
 
-Device::operator vk::Device const&() const
+Device::operator vk::Device() const
 {
 	return m_device;
 }
 
-Device::operator vk::PhysicalDevice const&() const
+Device::operator vk::PhysicalDevice() const
 {
-	return static_cast<vk::PhysicalDevice const&>(*m_pPhysicalDevice);
+	return static_cast<vk::PhysicalDevice>(*m_pPhysicalDevice);
 }
 
 std::unique_ptr<Swapchain> Device::createSwapchain(SwapchainData const& data, WindowID window) const
@@ -112,6 +112,6 @@ bool Device::validateSurface(vk::SurfaceKHR const& surface) const
 
 bool Device::validateSurface(vk::SurfaceKHR const& surface, u32 presentFamilyIndex) const
 {
-	return static_cast<vk::PhysicalDevice const&>(*m_pPhysicalDevice).getSurfaceSupportKHR(presentFamilyIndex, surface);
+	return static_cast<vk::PhysicalDevice>(*m_pPhysicalDevice).getSurfaceSupportKHR(presentFamilyIndex, surface);
 }
 } // namespace le::vuk

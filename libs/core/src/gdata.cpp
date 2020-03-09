@@ -1,3 +1,5 @@
+#include <sstream>
+#include <fmt/format.h>
 #include "core/gdata.hpp"
 #include "core/utils.hpp"
 
@@ -46,17 +48,17 @@ bool GData::marshall(std::string serialised)
 		std::vector<std::string> tokens = utils::strings::tokenise(rawText, ',', gDataEscapes);
 		for (auto const& token : tokens)
 		{
-			std::pair<std::string, std::string> kvp = utils::strings::bisect(token, ':');
-			if (!kvp.second.empty() && !kvp.first.empty())
+			auto [first, second] = utils::strings::bisect(token, ':');
+			if (!second.empty() && !first.empty())
 			{
-				utils::strings::trim(kvp.first, {' '});
-				utils::strings::trim(kvp.first, {'"'});
-				if (kvp.first != " ")
+				utils::strings::trim(first, {' '});
+				utils::strings::trim(first, {'"'});
+				if (first != " ")
 				{
-					utils::strings::trim(kvp.first, {' '});
+					utils::strings::trim(first, {' '});
 				}
-				utils::strings::trim(kvp.second, {' ', '"'});
-				m_fieldMap.emplace(std::move(kvp.first), std::move(kvp.second));
+				utils::strings::trim(second, {' ', '"'});
+				m_fieldMap.emplace(std::move(first), std::move(second));
 			}
 		}
 		return true;
@@ -69,16 +71,15 @@ std::string GData::unmarshall() const
 {
 	std::string ret = "{";
 	size_t slice = 0;
-	for (auto const& kvp : m_fieldMap)
+	for (auto [key, value] : m_fieldMap)
 	{
-		std::string value = kvp.second;
 		utils::strings::trim(value, {' '});
 		auto space = value.find(' ');
 		if (utils::strings::isCharEnclosedIn(value, space, {'"', '"'}))
 		{
-			value = '\"' + value + '\"';
+			value = fmt::format("\"{}\"", std::move(value));
 		}
-		ret += (kvp.first + ':' + value + ',');
+		ret = fmt::format("{}{}:{},", std::move(ret), std::move(key), std::move(value));
 		slice = 1;
 	}
 	return ret.substr(0, ret.size() - slice) + '}';

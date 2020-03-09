@@ -45,8 +45,8 @@ public:
 	~Device();
 
 public:
-	explicit operator vk::Device const&() const;
-	explicit operator vk::PhysicalDevice const&() const;
+	explicit operator vk::Device() const;
+	explicit operator vk::PhysicalDevice() const;
 	std::unique_ptr<class Swapchain> createSwapchain(SwapchainData const& data, WindowID window) const;
 	bool validateSurface(vk::SurfaceKHR const& surface) const;
 

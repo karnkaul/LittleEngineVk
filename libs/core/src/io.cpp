@@ -110,7 +110,7 @@ IOReader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, s
 		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
 		{
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
-			return success<stdfs::path>(std::move(ret));
+			return success<stdfs::path>(std::move(ret) / name);
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
@@ -129,7 +129,7 @@ IOReader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, S
 		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
 		{
 			auto ret = leaf;
-			return success<stdfs::path>(std::move(ret));
+			return success<stdfs::path>(std::move(ret) / name);
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;

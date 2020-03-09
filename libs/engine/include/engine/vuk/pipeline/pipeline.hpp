@@ -14,7 +14,7 @@ public:
 	struct Data
 	{
 		State state;
-		std::vector<vk::PipelineShaderStageCreateInfo> shaders;
+		class Shader const* pShader = nullptr;
 		vk::RenderPass renderPass;
 		vk::Viewport viewport;
 		vk::Rect2D scissor;
@@ -34,5 +34,8 @@ private:
 public:
 	Pipeline(Data const& data);
 	~Pipeline();
+
+public:
+	explicit operator vk::Pipeline() const;
 };
 } // namespace le::vuk

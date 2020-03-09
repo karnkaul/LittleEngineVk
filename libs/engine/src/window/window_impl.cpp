@@ -1,3 +1,4 @@
+#include <array>
 #include <unordered_set>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -81,7 +82,7 @@ void onMouseButton(GLFWwindow* pGLFWwindow, s32 key, s32 action, s32 mods)
 	{
 		if (pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->m_pWindow == pGLFWwindow)
 		{
-			pWindow->m_input.onInput(Key(key + (s32)Key::MOUSE_BUTTON_1), Action(action), Mods(mods));
+			pWindow->m_input.onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods(mods));
 		}
 	}
 	return;
@@ -189,7 +190,7 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	switch (data.mode)
 	{
 	default:
-	case Window::Mode::DecoratedWindow:
+	case Window::Mode::eDecoratedWindow:
 	{
 		if (mode->width < width || mode->height < height)
 		{
@@ -200,7 +201,7 @@ NativeWindow::NativeWindow(Window::Data const& data)
 		pTarget = nullptr;
 		break;
 	}
-	case Window::Mode::BorderlessWindow:
+	case Window::Mode::eBorderlessWindow:
 	{
 		if (mode->width < width || mode->height < height)
 		{
@@ -212,7 +213,7 @@ NativeWindow::NativeWindow(Window::Data const& data)
 		pTarget = nullptr;
 		break;
 	}
-	case Window::Mode::BorderlessFullscreen:
+	case Window::Mode::eBorderlessFullscreen:
 	{
 		height = (u16)mode->height;
 		width = (u16)mode->width;
@@ -483,15 +484,15 @@ void WindowImpl::setCursorMode(CursorMode mode) const
 		s32 val;
 		switch (mode)
 		{
-		case CursorMode::Default:
+		case CursorMode::eDefault:
 			val = GLFW_CURSOR_NORMAL;
 			break;
 
-		case CursorMode::Hidden:
+		case CursorMode::eHidden:
 			val = GLFW_CURSOR_HIDDEN;
 			break;
 
-		case CursorMode::Disabled:
+		case CursorMode::eDisabled:
 			val = GLFW_CURSOR_DISABLED;
 			break;
 
@@ -507,7 +508,7 @@ void WindowImpl::setCursorMode(CursorMode mode) const
 
 CursorMode WindowImpl::cursorMode() const
 {
-	CursorMode ret = CursorMode::Default;
+	CursorMode ret = CursorMode::eDefault;
 #if defined(LEVK_USE_GLFW)
 	if (threads::isMainThread() && g_bGLFWInit && m_uNativeWindow && m_uNativeWindow->m_pWindow)
 	{
@@ -515,13 +516,13 @@ CursorMode WindowImpl::cursorMode() const
 		switch (val)
 		{
 		case GLFW_CURSOR_NORMAL:
-			ret = CursorMode::Default;
+			ret = CursorMode::eDefault;
 			break;
 		case GLFW_CURSOR_HIDDEN:
-			ret = CursorMode::Hidden;
+			ret = CursorMode::eHidden;
 			break;
 		case GLFW_CURSOR_DISABLED:
-			ret = CursorMode::Disabled;
+			ret = CursorMode::eDisabled;
 			break;
 		default:
 			break;

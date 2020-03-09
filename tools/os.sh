@@ -4,48 +4,45 @@
 # Note: script is meant to be sourced, not called; it does not exit
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-	IS_MACOSX=TRUE
+	is_macosx=true
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
-	[ ! -z "$(grep Microsoft /proc/version)" ] && IS_WSL=TRUE
-	if [ -z "$IS_WSL" ]; then
-		IS_LINUX=TRUE
+	[ ! -z "$(grep Microsoft /proc/version)" ] && is_wsl=true
+	if [ -z "$is_wsl" ]; then
+		is_linux=true
 	else
-		IS_WIN64=TRUE
-		RUN_BATCH="cmd.exe /c "
+		is_win64=true
+		run_batch="cmd.exe /c "
 	fi
 elif [[ "$OSTYPE" == "msys" ]]; then
-	IS_MINGW=TRUE
-	IS_WIN64=TRUE
-	RUN_BATCH="./"
+	is_mingw=true
+	is_win64=true
+	run_batch="./"
 elif [[ "$OSTYPE" == "cygwin" ]]; then
-	IS_CYGWIN=TRUE
-	IS_WIN64=TRUE
-	RUN_BATCH="./"
+	is_cygwin=true
+	is_win64=true
+	run_batch="./"
 fi
 
-if [ "$IS_WIN64" == "TRUE" ]; then
-	[ ! -z  "$(echo $INCLUDE | grep Microsoft)" ] && IS_VCVARS_SET=TRUE
-	[ ! -z  "$(echo $PATH | grep 'Windows Kits')" ] && IS_VCVARS_SET=TRUE
+if [ "$is_win64" == "true" ]; then
+	[ ! -z  "$(echo $INCLUDE | grep Microsoft)" ] && is_vcvars_set=true
+	[ ! -z  "$(echo $PATH | grep 'Windows Kits')" ] && is_vcvars_set=true
 fi
 
 MAKE=make
-if [ "$IS_WIN64" == "TRUE" ]; then
-	EXT=.exe
-	MAKE=mingw32-$MAKE$EXT
+if [ "$is_win64" == "true" ]; then
+	ext=.exe
+	MAKE=mingw32-$MAKE$ext
 else
-	IS_SYMLINKS=TRUE
+	is_symlinks=true
 fi
-CMAKE=cmake$EXT
-NINJA=ninja$EXT
-CLANG_FORMAT=clang-format$EXT
 
 if [ "$1" == "-s" ] || [ "$1" == "--status" ]; then
-	echo -e "IS_MACOSX\t: $IS_MACOSX"
-	echo -e "IS_LINUX\t: $IS_LINUX"
-	echo -e "IS_WIN64\t: $IS_WIN64"
-	echo -e "IS_MINGW\t: $IS_MINGW"
-	echo -e "IS_CYGWIN\t: $IS_CYGWIN"
-	echo -e "IS_WSL\t\t: $IS_WSL"
-	echo -e "IS_SYMLINKS\t: $IS_SYMLINKS"
-	echo -e "IS_VCVARS_SET\t: $IS_VCVARS_SET"
+	echo -e "is_macosx\t: $is_macosx"
+	echo -e "is_linux\t: $is_linux"
+	echo -e "is_win64\t: $is_win64"
+	echo -e "is_mingw\t: $is_mingw"
+	echo -e "is_cygwin\t: $is_cygwin"
+	echo -e "is_wsl\t\t: $is_wsl"
+	echo -e "is_symlinks\t: $is_symlinks"
+	echo -e "is_vcvars_set\t: $is_vcvars_set"
 fi

@@ -4,40 +4,39 @@
 # Requirements:
 #  - clang-format
 
-EXCLUDE=*external/*
-BUILD=*out/*
-PATTERN0="*.h*"
-[ "$1" == "-r" ] && RUN=TRUE
+exclude=*external/*
+build=*out/*
+pattern="*.h*"
 
-THISDIR=$(pwd)
+this_dir=$(pwd)
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./os.sh
-cd "$THISDIR"
+cd "$this_dir"
 
-FILES=$(find . -not -path "$EXCLUDE" -not -path "$BUILD" \( -name $PATTERN0 \))
-COUNT=$(echo -e "$FILES" | wc -l)
-let COUNT=$COUNT-1
-echo -e "== Checking $COUNT headers for:\n\t[#pragma once]\n"
+files=$(find . -not -path "$exclude" -not -path "$build" \( -name $pattern \))
+count=$(echo -e "$files" | wc -l)
+let count=$count-1
+echo -e "== Checking $count headers for:\n\t[#pragma once]\n"
 
-IDX=0
-ERR=false
-for FILE in ${FILES}; do
-	while read -r LINE; do
-		[[ "$LINE" == *"*/" ]] && COMMENTED=false
-		[[ "$LINE" == "/*"* ]] && COMMENTED=true
-		if [[ "$COMMENTED" != "true" ]]; then
-			[[ -z "${LINE// }" || "$LINE" == *"*/" || "$LINE" == "//"* ]] && continue
-			if [[ "$LINE" != "#pragma once" ]]; then
-				let IDX=$IDX+1
-				echo -e "  $IDX. ERROR! $FILE missing '#pragma once'!"
-				ERR=true
+idx=0
+err=false
+for file in ${files}; do
+	while read -r line; do
+		[[ "$line" == *"*/" ]] && commented=false
+		[[ "$line" == "/*"* ]] && commented=true
+		if [[ "$commented" != "true" ]]; then
+			[[ -z "${line// }" || "$line" == *"*/" || "$line" == "//"* ]] && continue
+			if [[ "$line" != "#pragma once" ]]; then
+				let idx=$idx+1
+				echo -e "  $idx. errOR! $file missing '#pragma once'!"
+				err=true
 				break
 			fi
 			break
 		fi
-	done < $FILE
+	done < $file
 done
-if [[ $ERR == "false" ]]; then
+if [[ $err == "false" ]]; then
 	echo -e "  All OK\n"
 fi
 

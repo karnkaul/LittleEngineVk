@@ -1,4 +1,5 @@
 #include "engine/vuk/pipeline/pipeline.hpp"
+#include "engine/vuk/pipeline/shader.hpp"
 #include "vuk/instance/instance_impl.hpp"
 
 namespace le::vuk
@@ -51,15 +52,30 @@ Pipeline::Pipeline(Data const& data)
 	{
 		// TODO
 	}
-	auto const& vkDevice = static_cast<vk::Device const&>(*g_pDevice);
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
+	if (data.pShader)
+	{
+		auto modules = data.pShader->modules();
+		shaderCreateInfo.reserve(modules.size());
+		for (auto const& [type, module] : modules)
+		{
+			vk::PipelineShaderStageCreateInfo createInfo;
+			createInfo.stage = Shader::s_typeToFlagBit[(size_t)type];
+			createInfo.module = module;
+			createInfo.pName = "main";
+			shaderCreateInfo.push_back(std::move(createInfo));
+		}
+	}
+
+	auto const vkDevice = static_cast<vk::Device>(*g_pDevice);
 	vk::PipelineLayoutCreateInfo layoutCreateInfo;
 	layoutCreateInfo.setLayoutCount = 0;
 	layoutCreateInfo.pushConstantRangeCount = 0;
 	m_layout = vkDevice.createPipelineLayout(layoutCreateInfo);
 
 	vk::GraphicsPipelineCreateInfo createInfo;
-	createInfo.stageCount = (u32)data.shaders.size();
-	createInfo.pStages = data.shaders.data();
+	createInfo.stageCount = (u32)shaderCreateInfo.size();
+	createInfo.pStages = shaderCreateInfo.data();
 	createInfo.pVertexInputState = &vertexInputState;
 	createInfo.pInputAssemblyState = &inputAssemblyState;
 	createInfo.pViewportState = &viewportState;
@@ -79,5 +95,10 @@ Pipeline::~Pipeline()
 {
 	g_pDevice->destroy(m_pipeline);
 	g_pDevice->destroy(m_layout);
+}
+
+Pipeline::operator vk::Pipeline() const
+{
+	return m_pipeline;
 }
 } // namespace le::vuk

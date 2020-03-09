@@ -7,16 +7,21 @@
 
 namespace le
 {
+namespace vuk
+{
+class Swapchain;
+}
+
 class Window final
 {
 public:
 	enum class Mode
 	{
-		DecoratedWindow = 0,
-		BorderlessWindow,
-		BorderlessFullscreen,
-		DedicatedFullscreen,
-		COUNT_
+		eDecoratedWindow = 0,
+		eBorderlessWindow,
+		eBorderlessFullscreen,
+		eDedicatedFullscreen,
+		eCOUNT_
 	};
 
 	struct Data final
@@ -25,7 +30,7 @@ public:
 		glm::ivec2 size = {};
 		glm::ivec2 position = {};
 		u8 screenID = 0;
-		Mode mode = Mode::DecoratedWindow;
+		Mode mode = Mode::eDecoratedWindow;
 		bool bCentreCursor = true;
 	};
 
@@ -91,6 +96,9 @@ public:
 	static size_t joysticKButtonsCount(s32 id);
 
 	static std::string_view toString(s32 key);
+
+public:
+	vuk::Swapchain const* swapchain() const;
 
 private:
 	friend class WindowImpl;

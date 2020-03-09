@@ -125,7 +125,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 }
 
 std::mutex g_logMutex;
-std::array<char, (size_t)log::Level::COUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
+std::array<char, (size_t)log::Level::eCOUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 

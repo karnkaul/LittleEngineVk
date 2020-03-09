@@ -22,7 +22,7 @@ void JobWorker::run()
 {
 	while (s_bWork.load(std::memory_order_relaxed))
 	{
-		m_state.store(State::Idle);
+		m_state.store(State::eIdle);
 		std::unique_lock<std::mutex> lock(m_pManager->m_wakeMutex);
 		// Sleep until notified and new job exists / exiting
 		m_pManager->m_wakeCV.wait(lock, [&]() { return !m_pManager->m_jobQueue.empty() || !s_bWork.load(std::memory_order_relaxed); });
@@ -46,7 +46,7 @@ void JobWorker::run()
 		}
 		if (job.m_id >= 0)
 		{
-			m_state.store(State::Busy);
+			m_state.store(State::eBusy);
 			if (!job.m_bSilent)
 			{
 				LOG_D("[{}{}] Starting Job [{}]", utils::tName<JobWorker>(), id, job.m_logName);

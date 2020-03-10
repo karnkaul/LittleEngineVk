@@ -6,9 +6,9 @@
 #include "core/log.hpp"
 #include "core/threads.hpp"
 #include "core/utils.hpp"
-#include "engine/vuk/context/swapchain.hpp"
+#include "vuk/info.hpp"
+#include "vuk/context/swapchain.hpp"
 #include "window_impl.hpp"
-#include "vuk/instance/instance_impl.hpp"
 
 namespace le
 {
@@ -17,7 +17,6 @@ namespace
 std::unordered_set<WindowImpl*> g_registeredWindows;
 #if defined(LEVK_USE_GLFW)
 bool g_bGLFWInit = false;
-bool g_bGLFWvkExtensionsSet = false;
 
 void onGLFWError(s32 code, char const* desc)
 {
@@ -182,12 +181,12 @@ NativeWindow::NativeWindow(Window::Data const& data)
 		LOG_E("[{}] Failed to detect video mode!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
-	size_t screenIdx = data.screenID < screenCount ? (size_t)data.screenID : 0;
+	size_t screenIdx = data.options.screenID < screenCount ? (size_t)data.options.screenID : 0;
 	GLFWmonitor* pTarget = ppScreens[screenIdx];
-	s32 height = data.size.y;
-	s32 width = data.size.x;
+	s32 height = data.config.size.y;
+	s32 width = data.config.size.x;
 	bool bDecorated = true;
-	switch (data.mode)
+	switch (data.config.mode)
 	{
 	default:
 	case Window::Mode::eDecoratedWindow:
@@ -224,8 +223,8 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	m_size = {width, height};
 	s32 cX = (mode->width - width) / 2;
 	s32 cY = (mode->height - height) / 2;
-	cX += data.position.x;
-	cY -= data.position.y;
+	cX += data.config.centreOffset.x;
+	cY -= data.config.centreOffset.y;
 	m_initialCentre = {cX, cY};
 	ASSERT(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
 	glfwWindowHint(GLFW_DECORATED, bDecorated ? 1 : 0);
@@ -234,7 +233,7 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
 	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, false);
-	m_pWindow = glfwCreateWindow(data.size.x, data.size.y, data.title.data(), pTarget, nullptr);
+	m_pWindow = glfwCreateWindow(data.config.size.x, data.config.size.y, data.config.title.data(), pTarget, nullptr);
 	if (!m_pWindow)
 	{
 		throw std::runtime_error("Failed to create Window");
@@ -270,21 +269,7 @@ bool WindowImpl::init()
 	{
 		LOG_D("[{}] GLFW initialised successfully", Window::s_tName);
 	}
-	if (!g_bGLFWvkExtensionsSet)
-	{
-		g_bGLFWvkExtensionsSet = true;
-		u32 glfwExtCount;
-		char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
-		vuk::g_instanceData.extensions.reserve((size_t)glfwExtCount);
-		for (u32 i = 0; i < glfwExtCount; ++i)
-		{
-			vuk::g_instanceData.extensions.push_back(glfwExtensions[i]);
-		}
-	}
 	g_bGLFWInit = true;
-#endif
-#if defined(LEVK_DEBUG)
-	vuk::g_instanceData.bAddValidationLayers = true;
 #endif
 	return true;
 }
@@ -297,6 +282,33 @@ void WindowImpl::deinit()
 	g_bGLFWInit = false;
 #endif
 	return;
+}
+
+std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
+{
+	std::vector<char const*> ret;
+#if defined(LEVK_USE_GLFW)
+	u32 glfwExtCount;
+	char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+	ret.reserve((size_t)glfwExtCount);
+	for (u32 i = 0; i < glfwExtCount; ++i)
+	{
+		ret.push_back(glfwExtensions[i]);
+	}
+#endif
+	return ret;
+}
+
+vuk::Swapchain* WindowImpl::swapchain(WindowID window)
+{
+	for (auto const pImpl : g_registeredWindows)
+	{
+		if (pImpl->m_pWindow->m_id == window)
+		{
+			return pImpl->m_uSwapchain.get();
+		}
+	}
+	return nullptr;
 }
 
 WindowImpl::WindowImpl(Window* pWindow) : m_pWindow(pWindow)
@@ -313,27 +325,30 @@ WindowImpl::~WindowImpl()
 
 bool WindowImpl::create(Window::Data const& data)
 {
-	ASSERT(vuk::g_uInstance.get() && vuk::g_pDevice, "Instance/Device is null!");
-	auto reset = [&]() {
-		vuk::g_uInstance->destroy(m_surface);
-		m_uNativeWindow.reset();
-	};
 	try
 	{
 		m_uNativeWindow = std::make_unique<NativeWindow>(data);
-		m_surface = generateSurface(vuk::g_uInstance.get(), *m_uNativeWindow);
-		if (m_surface == vk::SurfaceKHR())
+		vuk::SwapchainData swapchainData;
+		swapchainData.config.createNewSurface = [&](vk::Instance instance) -> vk::SurfaceKHR {
+			return createSurface(instance, *m_uNativeWindow);
+		};
+		swapchainData.config.framebufferSize = framebufferSize();
+		swapchainData.config.window = m_pWindow->m_id;
+		switch (data.options.colourSpace)
 		{
-			LOG_E("[{}] Failed to create [{}]", Window::s_tName, utils::tName<vk::SurfaceKHR>());
-			reset();
-			return false;
+		case ColourSpace::eRGBLinear:
+			swapchainData.options.format.emplace(vk::Format::eB8G8R8A8Unorm);
+			break;
+		default:
+		case ColourSpace::eSRGBNonLinear:
+			swapchainData.options.format.emplace(vk::Format::eB8G8R8A8Srgb);
+			break;
 		}
-		vuk::SwapchainData swapchainData{m_surface, framebufferSize()};
-		m_uSwapchain = vuk::g_pDevice->createSwapchain(swapchainData, m_pWindow->m_id);
+		m_uSwapchain = std::make_unique<vuk::Swapchain>(swapchainData);
 		if (!m_uSwapchain)
 		{
 			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Swapchain::s_tName);
-			reset();
+			m_uNativeWindow.reset();
 			return false;
 		}
 #if defined(LEVK_USE_GLFW)
@@ -348,7 +363,7 @@ bool WindowImpl::create(Window::Data const& data)
 		glfwSetCursorEnterCallback(m_uNativeWindow->m_pWindow, &onFocus);
 		auto const c = m_uNativeWindow->m_initialCentre;
 		glfwSetWindowPos(m_uNativeWindow->m_pWindow, c.x, c.y);
-		if (data.bCentreCursor)
+		if (data.options.bCentreCursor)
 		{
 			auto const size = m_uNativeWindow->m_size;
 			glfwSetCursorPos(m_uNativeWindow->m_pWindow, size.x / 2, size.y / 2);
@@ -361,7 +376,8 @@ bool WindowImpl::create(Window::Data const& data)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		reset();
+		m_uSwapchain.reset();
+		m_uNativeWindow.reset();
 		return false;
 	}
 	LOG_E("[{}:{}] Failed to create window!", Window::s_tName, m_pWindow->m_id);
@@ -417,7 +433,6 @@ void WindowImpl::destroy()
 		if (m_uNativeWindow)
 		{
 			m_uSwapchain.reset();
-			vuk::g_uInstance->destroy(m_surface);
 			m_uNativeWindow.reset();
 			LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 		}
@@ -428,13 +443,12 @@ void WindowImpl::destroy()
 	return;
 }
 
-vk::SurfaceKHR WindowImpl::generateSurface(vuk::Instance const* pInstance, NativeWindow const& nativeWindow)
+vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow const& nativeWindow)
 {
-	ASSERT(pInstance, "Instance is null!");
 	vk::SurfaceKHR ret;
 #if defined(LEVK_USE_GLFW)
 	VkSurfaceKHR surface;
-	auto result = glfwCreateWindowSurface(static_cast<VkInstance>(*pInstance), nativeWindow.m_pWindow, nullptr, &surface);
+	auto result = glfwCreateWindowSurface(instance, nativeWindow.m_pWindow, nullptr, &surface);
 	ASSERT(result == VK_SUCCESS, "Surface creation failed!");
 	if (result == VK_SUCCESS)
 	{
@@ -458,21 +472,7 @@ glm::ivec2 WindowImpl::framebufferSize()
 
 void WindowImpl::onFramebufferSize(glm::ivec2 const& size)
 {
-	auto oldSurface = m_surface;
-	m_surface = generateSurface(vuk::g_uInstance.get(), *m_uNativeWindow);
-	[[maybe_unused]] bool bValid = vuk::g_pDevice->validateSurface(m_surface);
-	ASSERT(bValid, "Invalid surface");
-	vuk::SwapchainData data{m_surface, size};
-	try
-	{
-		m_uSwapchain->recreate(data);
-	}
-	catch (std::exception const& e)
-	{
-		m_uSwapchain->destroy();
-		LOG_E("[{}:{}] Failed to recreate [{}]!\n\t{}", Window::s_tName, m_pWindow->m_id, vuk::Swapchain::s_tName, e.what());
-	}
-	vuk::g_uInstance->destroy(oldSurface);
+	m_uSwapchain->recreate(size);
 	return;
 }
 

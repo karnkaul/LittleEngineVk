@@ -1,10 +1,10 @@
-#include "engine/vuk/pipeline/pipeline.hpp"
-#include "engine/vuk/pipeline/shader.hpp"
-#include "vuk/instance/instance_impl.hpp"
+#include "vuk/info.hpp"
+#include "pipeline.hpp"
+#include "shader.hpp"
 
-namespace le::vuk
+namespace le
 {
-Pipeline::Pipeline(Data const& data)
+vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)
 {
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
@@ -17,9 +17,7 @@ Pipeline::Pipeline(Data const& data)
 	vk::PipelineViewportStateCreateInfo viewportState;
 	{
 		viewportState.viewportCount = 1;
-		viewportState.pViewports = &data.viewport;
 		viewportState.scissorCount = 1;
-		viewportState.pScissors = &data.scissor;
 	}
 	vk::PipelineRasterizationStateCreateInfo rasterizerState;
 	{
@@ -48,9 +46,11 @@ Pipeline::Pipeline(Data const& data)
 		colorBlendState.attachmentCount = 1;
 		colorBlendState.pAttachments = &colorBlendAttachment;
 	}
-	[[maybe_unused]] vk::DynamicState dynamicState;
+	std::array stateFlags = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+	vk::PipelineDynamicStateCreateInfo dynamicState;
 	{
-		// TODO
+		dynamicState.dynamicStateCount = (u32)stateFlags.size();
+		dynamicState.pDynamicStates = stateFlags.data();
 	}
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	if (data.pShader)
@@ -67,12 +67,6 @@ Pipeline::Pipeline(Data const& data)
 		}
 	}
 
-	auto const vkDevice = static_cast<vk::Device>(*g_pDevice);
-	vk::PipelineLayoutCreateInfo layoutCreateInfo;
-	layoutCreateInfo.setLayoutCount = 0;
-	layoutCreateInfo.pushConstantRangeCount = 0;
-	m_layout = vkDevice.createPipelineLayout(layoutCreateInfo);
-
 	vk::GraphicsPipelineCreateInfo createInfo;
 	createInfo.stageCount = (u32)shaderCreateInfo.size();
 	createInfo.pStages = shaderCreateInfo.data();
@@ -83,22 +77,10 @@ Pipeline::Pipeline(Data const& data)
 	createInfo.pMultisampleState = &multisamplerState;
 	createInfo.pDepthStencilState = nullptr;
 	createInfo.pColorBlendState = &colorBlendState;
-	createInfo.pDynamicState = nullptr;
-	createInfo.layout = m_layout;
+	createInfo.pDynamicState = &dynamicState;
+	createInfo.layout = layout;
 	createInfo.renderPass = data.renderPass;
 	createInfo.subpass = 0;
-	vk::PipelineCache pipelineCache;
-	m_pipeline = vkDevice.createGraphicsPipeline(pipelineCache, createInfo);
+	return g_info.device.createGraphicsPipeline(cache, createInfo);
 }
-
-Pipeline::~Pipeline()
-{
-	g_pDevice->destroy(m_pipeline);
-	g_pDevice->destroy(m_layout);
-}
-
-Pipeline::operator vk::Pipeline() const
-{
-	return m_pipeline;
-}
-} // namespace le::vuk
+} // namespace le

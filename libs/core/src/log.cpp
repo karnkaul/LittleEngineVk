@@ -137,10 +137,21 @@ void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused
 	}
 	std::time_t now = stdch::system_clock::to_time_t(stdch::system_clock::now());
 	std::unique_lock<std::mutex> lock(g_logMutex);
-	auto str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text),
-						   *std::localtime(&now));
+	std::string str;
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	try
+#endif
+	{
+		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text),
+						  *std::localtime(&now));
+	}
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	catch (std::exception const& e)
+	{
+		ASSERT(false, e.what());
+	}
+#endif
 	lock.unlock();
-#if defined(LEVK_LOG_SOURCE_LOCATION)
 	constexpr std::string_view parentStr = "../";
 	auto const fileName = std::filesystem::path(file).generic_string();
 	std::string_view fileStr(fileName);
@@ -148,10 +159,31 @@ void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused
 	{
 		fileStr = fileStr.substr(search + parentStr.length());
 	}
-	str = fmt::format("{} [{}:{}]", std::move(str), fileStr, line);
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	try
+#endif
+	{
+		str = fmt::format("{} [{}:{}]", std::move(str), fileStr, line);
+	}
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	catch (std::exception const& e)
+	{
+		ASSERT(false, e.what());
+	}
 #endif
 	lock.lock();
-	fmt::print("{}\n", str);
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	try
+#endif
+	{
+		fmt::print(stdout, "{} \n", str);
+	}
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	catch (std::exception const& e)
+	{
+		ASSERT(false, e.what());
+	}
+#endif
 #if defined(LEVK_RUNTIME_MSVC)
 	OutputDebugStringA(str.data());
 	OutputDebugStringA("\n");

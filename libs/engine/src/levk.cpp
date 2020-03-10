@@ -7,11 +7,11 @@
 #include "core/services.hpp"
 #include "engine/levk.hpp"
 #include "engine/window/window.hpp"
-#include "engine/vuk/context/swapchain.hpp"
-#include "engine/vuk/instance/instance.hpp"
-#include "engine/vuk/pipeline/pipeline.hpp"
-#include "engine/vuk/pipeline/shader.hpp"
-#include "vuk/instance/instance_impl.hpp"
+#include "vuk/info.hpp"
+#include "vuk/context/swapchain.hpp"
+#include "vuk/rendering/pipeline.hpp"
+#include "vuk/rendering/shader.hpp"
+#include "window/window_impl.hpp"
 
 namespace le
 {
@@ -29,7 +29,16 @@ s32 engine::run(s32 argc, char** argv)
 		services.add<log::Service, std::string_view>("debug.log");
 		services.add<jobs::Service, u8>(4);
 		services.add<Window::Service>();
-		services.add<vuk::Instance::Service>();
+
+		NativeWindow dummyWindow({});
+		vuk::InitData initData;
+#if 1 || defined(LEVK_DEBUG) // Always enabled, for time being
+		initData.options.flags.set(vuk::InitData::Flag::eValidation);
+#endif
+		initData.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
+		initData.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
+
+		services.add<vuk::Service>(std::move(initData));
 	}
 	catch (std::exception const& e)
 	{
@@ -59,7 +68,6 @@ s32 engine::run(s32 argc, char** argv)
 	}
 	try
 	{
-		auto device = static_cast<vk::Device>(*vuk::g_pDevice);
 		vuk::Shader::Data tutorialData;
 		tutorialData.pReader = g_uReader.get();
 		tutorialData.codeIDMap[vuk::Shader::Type::eVertex] = "shaders/tutorial.vert.spv";
@@ -67,16 +75,17 @@ s32 engine::run(s32 argc, char** argv)
 		vuk::Shader tutorialShader(std::move(tutorialData));
 
 		vk::CommandPoolCreateInfo commandPoolCreateInfo;
-		commandPoolCreateInfo.queueFamilyIndex = vuk::g_pDevice->m_queueFamilyIndices.graphics.value();
-		vk::CommandPool commandPool = device.createCommandPool(commandPoolCreateInfo);
+		commandPoolCreateInfo.queueFamilyIndex = vuk::g_info.queueFamilyIndices.graphics;
+		vk::CommandPool commandPool = vuk::g_info.device.createCommandPool(commandPoolCreateInfo);
 
 		Window w0, w1;
 		Window::Data data0;
-		data0.size = {1280, 720};
-		data0.title = "LittleEngineVk Demo";
+		data0.config.size = {1280, 720};
+		data0.config.title = "LittleEngineVk Demo";
 		auto data1 = data0;
-		data1.title += " 2";
-		data1.position = {100, 100};
+		data1.config.title += " 2";
+		data1.config.centreOffset = {100, 100};
+		data1.options.colourSpace = ColourSpace::eRGBLinear;
 		bool bRecreate0 = false, bRecreate1 = false;
 		auto registerInput = [](Window& listen, Window& recreate, bool& bRecreate, std::shared_ptr<int>& token) {
 			token = listen.registerInput([&](Key key, Action action, Mods mods) {
@@ -90,50 +99,50 @@ s32 engine::run(s32 argc, char** argv)
 		registerInput(w0, w1, bRecreate1, token0);
 		registerInput(w1, w0, bRecreate0, token1);
 
+		constexpr size_t maxFrames = 2;
+		size_t frameIdx = 0;
+		struct Swap
+		{
+			vk::Semaphore render;
+			vk::Semaphore present;
+			vk::Fence inFlight;
+		};
+		std::array<Swap, maxFrames> swaps0, swaps1;
+		for (auto& swap : swaps0)
+		{
+			swap.render = vuk::g_info.device.createSemaphore({});
+			swap.present = vuk::g_info.device.createSemaphore({});
+			vk::FenceCreateInfo createInfo;
+			createInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+			swap.inFlight = vuk::g_info.device.createFence(createInfo);
+		}
+
+		for (auto& swap : swaps1)
+		{
+			swap.render = vuk::g_info.device.createSemaphore({});
+			swap.present = vuk::g_info.device.createSemaphore({});
+			vk::FenceCreateInfo createInfo;
+			createInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+			swap.inFlight = vuk::g_info.device.createFence(createInfo);
+		}
+
 		if (w0.create(data0) && w1.create(data1))
 		{
-			vuk::Pipeline::Data pipelineData;
-			auto pSwapchain = w0.swapchain();
+			vk::PipelineLayout pipelineLayout = vuk::g_info.device.createPipelineLayout(vk::PipelineLayoutCreateInfo());
+
+			vuk::PipelineData pipelineData;
 			pipelineData.pShader = &tutorialShader;
-			pipelineData.renderPass = pSwapchain->m_defaultRenderPass;
-			pipelineData.viewport.width = (f32)pSwapchain->m_extent.width;
-			pipelineData.viewport.height = (f32)pSwapchain->m_extent.height;
-			pipelineData.viewport.minDepth = 0.0f;
-			pipelineData.viewport.maxDepth = 1.0f;
-			pipelineData.scissor.offset = vk::Offset2D(0, 0);
-			pipelineData.scissor.extent = pSwapchain->m_extent;
-			vuk::Pipeline pipeline(pipelineData);
+			pipelineData.renderPass = WindowImpl::swapchain(w0.id())->m_defaultRenderPass;
+			vk::Pipeline pipeline0 = vuk::createPipeline(pipelineLayout, pipelineData);
+			pipelineData.renderPass = WindowImpl::swapchain(w1.id())->m_defaultRenderPass;
+			vk::Pipeline pipeline1 = vuk::createPipeline(pipelineLayout, pipelineData);
 
-			vk::CommandBufferAllocateInfo allocInfo;
-			allocInfo.commandPool = commandPool;
-			allocInfo.level = vk::CommandBufferLevel::ePrimary;
-			allocInfo.commandBufferCount = (u32)pSwapchain->m_framebuffers.size();
-			size_t idx = 0;
-			std::vector<vk::CommandBuffer> commandBuffers = device.allocateCommandBuffers(allocInfo);
-			for (auto const& commandBuffer : commandBuffers)
-			{
-				vk::CommandBufferBeginInfo beginInfo;
-				commandBuffer.begin(beginInfo);
-				vk::RenderPassBeginInfo renderPassInfo;
-				renderPassInfo.renderPass = pSwapchain->m_defaultRenderPass;
-				renderPassInfo.framebuffer = pSwapchain->m_framebuffers.at(idx);
-				renderPassInfo.renderArea.extent = pSwapchain->m_extent;
-				vk::ClearValue clearValue(0.0f);
-				renderPassInfo.clearValueCount = 1;
-				renderPassInfo.pClearValues = &clearValue;
-				commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-
-				commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, static_cast<vk::Pipeline>(pipeline));
-				commandBuffer.draw(3, 1, 0, 0);
-
-				commandBuffer.endRenderPass();
-				commandBuffer.end();
-				++idx;
-			}
-
+			Time t = Time::elapsed();
 			while (w0.isOpen() || w1.isOpen())
 			{
-				Window::pollEvents();
+				[[maybe_unused]] Time dt = Time::elapsed() - t;
+				t = Time::elapsed();
+
 				std::this_thread::sleep_for(stdch::milliseconds(10));
 				if (w0.isClosing())
 				{
@@ -153,10 +162,96 @@ s32 engine::run(s32 argc, char** argv)
 					bRecreate0 = false;
 					w0.create(data0);
 				}
+
+				// Render
+				Window::pollEvents();
+
+				try
+				{
+					auto drawFrame = [&](vuk::Swapchain* pSwapchain, vk::Pipeline pipeline, Swap const& swap) {
+						vk::CommandBufferAllocateInfo allocInfo;
+						allocInfo.commandPool = commandPool;
+						allocInfo.level = vk::CommandBufferLevel::ePrimary;
+						allocInfo.commandBufferCount = 1;
+						auto commandBuffer = vuk::g_info.device.allocateCommandBuffers(allocInfo).front();
+						vk::CommandBufferBeginInfo beginInfo;
+						commandBuffer.begin(beginInfo);
+
+						vuk::g_info.device.waitForFences(swap.inFlight, true, maxVal<u64>());
+						auto renderPassInfo = pSwapchain->acquireNextImage(swap.render, swap.inFlight);
+						std::array<f32, 4> const clearColour = {0.0f, 0.0f, 0.0f, 1.0f};
+						vk::ClearValue clearValue(vk::ClearColorValue{clearColour});
+						renderPassInfo.clearValueCount = 1;
+						renderPassInfo.pClearValues = &clearValue;
+						commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
+						vk::Viewport viewport;
+						viewport.minDepth = 0.0f;
+						viewport.maxDepth = 1.0f;
+						viewport.height = (f32)renderPassInfo.renderArea.extent.height;
+						viewport.width = (f32)renderPassInfo.renderArea.extent.width;
+						viewport.x = 0.0f;
+						viewport.y = 0.0f;
+						commandBuffer.setViewport(0, viewport);
+
+						vk::Rect2D scissor({0, 0}, renderPassInfo.renderArea.extent);
+						commandBuffer.setScissor(0, scissor);
+
+						commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, static_cast<vk::Pipeline>(pipeline));
+						commandBuffer.draw(3, 1, 0, 0);
+
+						commandBuffer.endRenderPass();
+						commandBuffer.end();
+
+						vk::SubmitInfo submitInfo;
+						vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+						submitInfo.waitSemaphoreCount = 1;
+						submitInfo.pWaitSemaphores = &swap.render;
+						submitInfo.pWaitDstStageMask = waitStages;
+						submitInfo.commandBufferCount = 1;
+						submitInfo.pCommandBuffers = &commandBuffer;
+						submitInfo.signalSemaphoreCount = 1;
+						submitInfo.pSignalSemaphores = &swap.present;
+						vuk::g_info.device.resetFences(swap.inFlight);
+						vuk::g_info.queues.graphics.front().submit(submitInfo, swap.inFlight);
+
+						pSwapchain->present(swap.present);
+					};
+
+					if (w0.isOpen())
+					{
+						auto const& swap0 = swaps0.at(frameIdx);
+						drawFrame(WindowImpl::swapchain(w0.id()), static_cast<vk::Pipeline>(pipeline0), swap0);
+					}
+					if (w1.isOpen())
+					{
+						auto const& swap1 = swaps1.at(frameIdx);
+						drawFrame(WindowImpl::swapchain(w1.id()), static_cast<vk::Pipeline>(pipeline1), swap1);
+					}
+					frameIdx = (frameIdx + 1) % maxFrames;
+				}
+				catch (std::exception const& e)
+				{
+					LOG_E("EXCEPTION!\n\t{}", e.what());
+				}
 			}
-			device.waitIdle();
+			vuk::g_info.device.waitIdle();
+			vuk::vkDestroy(pipeline0, pipeline1);
+			vuk::vkDestroy(pipelineLayout);
 		}
-		device.destroy(commandPool);
+		for (auto const& swap : swaps0)
+		{
+			vuk::g_info.device.destroy(swap.present);
+			vuk::g_info.device.destroy(swap.render);
+			vuk::g_info.device.destroy(swap.inFlight);
+		}
+		for (auto const& swap : swaps1)
+		{
+			vuk::g_info.device.destroy(swap.present);
+			vuk::g_info.device.destroy(swap.render);
+			vuk::g_info.device.destroy(swap.inFlight);
+		}
+		vuk::g_info.device.destroy(commandPool);
 	}
 	catch (std::exception const& e)
 	{

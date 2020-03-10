@@ -1,9 +1,10 @@
 #pragma once
+#include <array>
 #include <memory>
 #include <string>
 #include <glm/glm.hpp>
 #include "input_types.hpp"
-#include "window_id.hpp"
+#include "common.hpp"
 
 namespace le
 {
@@ -24,14 +25,24 @@ public:
 		eCOUNT_
 	};
 
+	static std::array<std::string_view, (size_t)Mode::eCOUNT_> const s_modeNames;
+
 	struct Data final
 	{
-		std::string title;
-		glm::ivec2 size = {};
-		glm::ivec2 position = {};
-		u8 screenID = 0;
-		Mode mode = Mode::eDecoratedWindow;
-		bool bCentreCursor = true;
+		struct
+		{
+			std::string title;
+			glm::ivec2 size = {32, 32};
+			glm::ivec2 centreOffset = {};
+			Mode mode = Mode::eDecoratedWindow;
+		} config;
+
+		struct
+		{
+			u8 screenID = 0;
+			ColourSpace colourSpace = ColourSpace::eDontCare;
+			bool bCentreCursor = true;
+		} options;
 	};
 
 	struct Service final
@@ -96,9 +107,6 @@ public:
 	static size_t joysticKButtonsCount(s32 id);
 
 	static std::string_view toString(s32 key);
-
-public:
-	vuk::Swapchain const* swapchain() const;
 
 private:
 	friend class WindowImpl;

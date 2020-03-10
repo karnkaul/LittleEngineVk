@@ -1,7 +1,7 @@
-#include <fmt/format.h>
 #include "core/assert.hpp"
-#include "engine/vuk/pipeline/shader.hpp"
-#include "vuk/instance/instance_impl.hpp"
+#include "core/io.hpp"
+#include "vuk/info.hpp"
+#include "shader.hpp"
 
 namespace le::vuk
 {
@@ -10,8 +10,6 @@ std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> const Shader:
 
 Shader::Shader(Data data) : m_id(std::move(data.id))
 {
-	ASSERT(g_pDevice, "Device is null!");
-	auto const device = static_cast<vk::Device>(*vuk::g_pDevice);
 	if (data.codeMap.empty())
 	{
 		ASSERT(!data.codeIDMap.empty() && data.pReader, "Invalid Shader Data!");
@@ -27,16 +25,15 @@ Shader::Shader(Data data) : m_id(std::move(data.id))
 		vk::ShaderModuleCreateInfo createInfo;
 		createInfo.codeSize = code.size();
 		createInfo.pCode = reinterpret_cast<u32 const*>(code.data());
-		m_shaders[type] = device.createShaderModule(createInfo);
+		m_shaders[type] = g_info.device.createShaderModule(createInfo);
 	}
 }
 
 Shader::~Shader()
 {
-	auto const device = static_cast<vk::Device>(*vuk::g_pDevice);
 	for (auto const& [type, shader] : m_shaders)
 	{
-		device.destroy(shader);
+		vkDestroy(shader);
 	}
 }
 
@@ -46,7 +43,7 @@ vk::ShaderModule const* Shader::module(Type type) const
 	{
 		return &search->second;
 	}
-	ASSERT(false, fmt::format("{} Module not present in Shader!", type));
+	ASSERT(false, "Module not present in Shader!");
 	return nullptr;
 }
 

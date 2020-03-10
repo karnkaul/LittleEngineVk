@@ -24,6 +24,9 @@ Window::Service::~Service()
 	WindowImpl::deinit();
 }
 
+std::array<std::string_view, (size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window",
+																						 "Borderless Fullscreen", "Dedicated Fullscreen"};
+
 std::string const Window::s_tName = utils::tName<Window>();
 
 Window::Window()
@@ -191,10 +194,5 @@ size_t Window::joysticKButtonsCount(s32 id)
 std::string_view Window::toString(s32 key)
 {
 	return WindowImpl::toString(key);
-}
-
-vuk::Swapchain const* Window::swapchain() const
-{
-	return m_uImpl->m_uSwapchain.get();
 }
 } // namespace le

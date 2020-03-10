@@ -1,71 +1,62 @@
 #pragma once
 #include <bitset>
-#include <vector>
+#include <initializer_list>
+#include <string>
+#include <type_traits>
 #include "core/std_types.hpp"
 
 namespace le
 {
-template <typename Enum>
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_, typename = std::enable_if_t<std::is_enum_v<Enum>>>
 struct TFlags
 {
 	using Type = Enum;
+	static constexpr size_t size = N;
 
-	std::bitset<size_t(Enum::eCOUNT_)> bits;
+	std::bitset<N> bits;
 
 	constexpr TFlags() noexcept = default;
-	explicit TFlags(std::string serialised);
-	explicit TFlags(char const* szSerialised);
+	explicit TFlags(std::string serialised) : bits(std::move(serialised)) {}
 
-	bool isSet(Enum flag) const;
-	void set(Enum flag, bool bValue);
-	void set(std::initializer_list<Enum> flagList, bool bValue);
-	void set(std::vector<Enum> const& flagList, bool bValue);
-	void set(bool bValue);
+	explicit TFlags(char const* szSerialised) : bits(szSerialised) {}
+
+	bool isSet(Enum flag) const
+	{
+		return bits.test((size_t)flag);
+	}
+
+	void set(Enum flag)
+	{
+		bits.set((size_t)flag);
+	}
+
+	void reset(Enum flag)
+	{
+		bits.reset((size_t)flag);
+	}
+	void set(std::initializer_list<Enum> flagList)
+	{
+		for (auto flag : flagList)
+		{
+			bits.set((size_t)flag);
+		}
+	}
+	void reset(std::initializer_list<Enum> flagList)
+	{
+		for (auto flag : flagList)
+		{
+			bits.reset((size_t)flag);
+		}
+	}
+
+	void set()
+	{
+		bits.set();
+	}
+
+	void reset()
+	{
+		bits.reset();
+	}
 };
-
-template <typename Enum>
-TFlags<Enum>::TFlags(std::string serialised) : bits(std::move(serialised))
-{
-}
-
-template <typename Enum>
-TFlags<Enum>::TFlags(char const* szSerialised) : bits(szSerialised)
-{
-}
-
-template <typename Enum>
-bool TFlags<Enum>::isSet(Enum flag) const
-{
-	return bits[(size_t)flag];
-}
-
-template <typename Enum>
-void TFlags<Enum>::set(Enum flag, bool bValue)
-{
-	bits[(size_t)flag] = bValue;
-}
-
-template <typename Enum>
-void TFlags<Enum>::set(std::initializer_list<Enum> flagList, bool bValue)
-{
-	for (auto flag : flagList)
-	{
-		bits[(size_t)flag] = bValue;
-	}
-}
-
-template <typename Enum>
-void TFlags<Enum>::set(std::vector<Enum> const& flagList, bool bValue)
-{
-	for (auto flag : flagList)
-	{
-		bits[(size_t)flag] = bValue;
-	}
-}
-
-template <typename Enum>
-void TFlags<Enum>::set(bool bValue)
-{
-	bValue ? bits.set() : bits.reset();
-}
 } // namespace le

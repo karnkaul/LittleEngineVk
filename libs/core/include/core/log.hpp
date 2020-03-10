@@ -28,11 +28,11 @@
 #define LEVK_LOG_SOURCE_LOCATION
 #endif
 /**
- * Variable     : LEVK_LOG_FORMAT_EXCEPTIONS
+ * Variable     : LEVK_LOG_CATCH_FMT_EXCEPTIONS
  * Description  : Encloses fmt::format(...) in a try-catch block and calls ASSERT on a runtime exception
  */
-#if !defined(LEVK_LOG_FORMAT_EXCEPTIONS)
-#define LEVK_LOG_FORMAT_EXCEPTIONS
+#if !defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+#define LEVK_LOG_CATCH_FMT_EXCEPTIONS
 #endif
 #endif
 
@@ -83,13 +83,13 @@ void fmtLog(Level level, std::string_view text, std::string_view file, u64 line,
 {
 	if ((u8)level >= (u8)g_minLevel)
 	{
-#if defined(LEVK_LOG_FORMAT_EXCEPTIONS)
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 		try
 #endif
 		{
 			logText(level, fmt::format(text, args...), file, line);
 		}
-#if defined(LEVK_LOG_FORMAT_EXCEPTIONS)
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 		catch (std::exception const& e)
 		{
 			ASSERT(false, e.what());

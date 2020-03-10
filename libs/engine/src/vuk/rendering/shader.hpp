@@ -1,8 +1,8 @@
 #pragma once
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
-#include "core/io.hpp"
 #include "core/std_types.hpp"
 
 namespace le::vuk
@@ -22,8 +22,8 @@ public:
 	{
 		std::string id;
 		std::unordered_map<Type, bytearray> codeMap;
-		std::unordered_map<Type, stdfs::path> codeIDMap;
-		IOReader const* pReader = nullptr;
+		std::unordered_map<Type, std::filesystem::path> codeIDMap;
+		class IOReader const* pReader = nullptr;
 	};
 
 public:

@@ -45,11 +45,12 @@ public:
 	glm::ivec2 m_size = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
 	std::unique_ptr<vuk::Swapchain> m_uSwapchain;
-	vk::SurfaceKHR m_surface;
 	Window* m_pWindow;
 
 	static bool init();
 	static void deinit();
+	static std::vector<char const*> vulkanInstanceExtensions();
+	static vuk::Swapchain* swapchain(WindowID window);
 
 	WindowImpl(Window* pWindow);
 	~WindowImpl();
@@ -61,7 +62,7 @@ public:
 	void close();
 	void destroy();
 
-	static vk::SurfaceKHR generateSurface(vuk::Instance const* pInstance, NativeWindow const& nativeWindow);
+	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
 	glm::ivec2 framebufferSize();
 	void onFramebufferSize(glm::ivec2 const& size);
 

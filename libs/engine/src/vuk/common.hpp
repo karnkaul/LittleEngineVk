@@ -1,9 +1,11 @@
 #pragma once
 #include <functional>
 #include <optional>
+#include <unordered_map>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/flags.hpp"
+#include "core/std_types.hpp"
 #include "engine/window/common.hpp"
 
 namespace le::vuk
@@ -43,20 +45,22 @@ struct InitData final
 	} options;
 };
 
-struct SwapchainData final
+struct ContextData final
 {
+	using GetFramebufferSize = std::function<glm::ivec2()>;
 	struct
 	{
-		CreateSurface createNewSurface;
-		glm::ivec2 framebufferSize = {};
+		CreateSurface getNewSurface;
+		GetFramebufferSize getFramebufferSize;
 		WindowID window;
 	} config;
 
-	struct Options
+	struct
 	{
 		std::optional<vk::Format> format;
 		std::optional<vk::ColorSpaceKHR> colourSpace;
-	};
-	Options options;
+	} options;
 };
+
+extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
 } // namespace le::vuk

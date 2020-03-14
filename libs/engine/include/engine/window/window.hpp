@@ -8,11 +8,6 @@
 
 namespace le
 {
-namespace vuk
-{
-class Swapchain;
-}
-
 class Window final
 {
 public:

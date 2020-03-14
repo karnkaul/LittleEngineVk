@@ -1,9 +1,50 @@
-#include "vuk/info.hpp"
-#include "pipeline.hpp"
+#include "info.hpp"
+#include "rendering.hpp"
 #include "shader.hpp"
 
 namespace le
 {
+std::pair<vk::Image, vk::DeviceMemory> vuk::createImage(ImageData const& data)
+{
+	vk::ImageCreateInfo imageInfo = {};
+	imageInfo.imageType = vk::ImageType::e2D;
+	imageInfo.extent.width = (u32)data.size.x;
+	imageInfo.extent.height = (u32)data.size.y;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = data.format;
+	imageInfo.tiling = data.tiling;
+	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+	imageInfo.usage = data.usage;
+	imageInfo.samples = vk::SampleCountFlagBits::e1;
+	imageInfo.sharingMode = vk::SharingMode::eExclusive;
+	auto image = g_info.device.createImage(imageInfo);
+
+	vk::MemoryRequirements memRequirements = g_info.device.getImageMemoryRequirements(image);
+	vk::MemoryAllocateInfo allocInfo = {};
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
+	auto memory = g_info.device.allocateMemory(allocInfo);
+	g_info.device.bindImageMemory(image, memory, 0);
+	return {image, memory};
+}
+
+vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
+{
+	vk::ImageViewCreateInfo createInfo;
+	createInfo.image = image;
+	createInfo.viewType = vk::ImageViewType::e2D;
+	createInfo.format = format;
+	createInfo.components.r = createInfo.components.g = createInfo.components.b = createInfo.components.a = vk::ComponentSwizzle::eIdentity;
+	createInfo.subresourceRange.aspectMask = aspectFlags;
+	createInfo.subresourceRange.baseMipLevel = 0;
+	createInfo.subresourceRange.levelCount = 1;
+	createInfo.subresourceRange.baseArrayLayer = 0;
+	createInfo.subresourceRange.layerCount = 1;
+	return g_info.device.createImageView(createInfo);
+}
+
 vk::RenderPass vuk::createRenderPass(RenderPassData const& data)
 {
 	vk::AttachmentDescription colourDesc;

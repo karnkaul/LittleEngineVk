@@ -8,8 +8,8 @@ namespace le
 {
 namespace vuk
 {
+class Context;
 class Instance;
-class Swapchain;
 } // namespace vuk
 
 class NativeWindow final
@@ -44,13 +44,13 @@ public:
 	InputCallbacks m_input;
 	glm::ivec2 m_size = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
-	std::unique_ptr<vuk::Swapchain> m_uSwapchain;
+	std::unique_ptr<vuk::Context> m_uContext;
 	Window* m_pWindow;
 
 	static bool init();
 	static void deinit();
 	static std::vector<char const*> vulkanInstanceExtensions();
-	static vuk::Swapchain* swapchain(WindowID window);
+	static vuk::Context* context(WindowID window);
 
 	WindowImpl(Window* pWindow);
 	~WindowImpl();

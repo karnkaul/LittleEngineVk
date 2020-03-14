@@ -9,6 +9,17 @@
 
 namespace le::vuk
 {
+std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
+	{vk::Result::eErrorOutOfHostMemory, "OutOfHostMemory"},
+	{vk::Result::eErrorOutOfDeviceMemory, "OutOfDeviceMemory"},
+	{vk::Result::eSuccess, "Success"},
+	{vk::Result::eSuboptimalKHR, "SubmoptimalSurface"},
+	{vk::Result::eErrorDeviceLost, "DeviceLost"},
+	{vk::Result::eErrorSurfaceLostKHR, "SurfaceLost"},
+	{vk::Result::eErrorFullScreenExclusiveModeLostEXT, "FullScreenExclusiveModeLost"},
+	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
+};
+
 namespace
 {
 static std::string const s_tInstance = utils::tName<vk::Instance>();
@@ -19,15 +30,15 @@ vk::DebugUtilsMessengerEXT g_debugMessenger;
 
 #define VK_LOG_MSG pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN"
 
-VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
-												  VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*)
+VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
+													VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*)
 {
 	static std::string_view const name = "vk::validation";
 	switch (messageSeverity)
 	{
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
 		LOG_E("[{}] {}", name, VK_LOG_MSG);
-		break;
+		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
 		LOG_W("[{}] {}", name, VK_LOG_MSG);
 		break;
@@ -39,7 +50,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFla
 		LOG_D("[{}] {}", name, VK_LOG_MSG);
 		break;
 	}
-	return VK_FALSE;
+	return false;
 }
 
 vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& layers, InitData const& initData)
@@ -258,6 +269,19 @@ void deinit()
 bool Info::isValid(vk::SurfaceKHR surface) const
 {
 	return physicalDevice != vk::PhysicalDevice() ? physicalDevice.getSurfaceSupportKHR(queueFamilyIndices.present, surface) : false;
+}
+
+u32 Info::findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const
+{
+	auto const memProperties = physicalDevice.getMemoryProperties();
+	for (u32 i = 0; i < memProperties.memoryTypeCount; ++i)
+	{
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			return i;
+		}
+	}
+	throw std::runtime_error("Failed to find suitable memory type!");
 }
 
 Service::Service(InitData const& initData)

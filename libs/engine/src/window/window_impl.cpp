@@ -7,7 +7,7 @@
 #include "core/threads.hpp"
 #include "core/utils.hpp"
 #include "vuk/info.hpp"
-#include "vuk/context/swapchain.hpp"
+#include "vuk/context.hpp"
 #include "window_impl.hpp"
 
 namespace le
@@ -299,13 +299,13 @@ std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 	return ret;
 }
 
-vuk::Swapchain* WindowImpl::swapchain(WindowID window)
+vuk::Context* WindowImpl::context(WindowID window)
 {
 	for (auto const pImpl : g_registeredWindows)
 	{
 		if (pImpl->m_pWindow->m_id == window)
 		{
-			return pImpl->m_uSwapchain.get();
+			return pImpl->m_uContext.get();
 		}
 	}
 	return nullptr;
@@ -328,26 +328,26 @@ bool WindowImpl::create(Window::Data const& data)
 	try
 	{
 		m_uNativeWindow = std::make_unique<NativeWindow>(data);
-		vuk::SwapchainData swapchainData;
-		swapchainData.config.createNewSurface = [&](vk::Instance instance) -> vk::SurfaceKHR {
+		vuk::ContextData contextData;
+		contextData.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
-		swapchainData.config.framebufferSize = framebufferSize();
-		swapchainData.config.window = m_pWindow->m_id;
+		contextData.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
+		contextData.config.window = m_pWindow->m_id;
 		switch (data.options.colourSpace)
 		{
 		case ColourSpace::eRGBLinear:
-			swapchainData.options.format.emplace(vk::Format::eB8G8R8A8Unorm);
+			contextData.options.format.emplace(vk::Format::eB8G8R8A8Unorm);
 			break;
 		default:
 		case ColourSpace::eSRGBNonLinear:
-			swapchainData.options.format.emplace(vk::Format::eB8G8R8A8Srgb);
+			contextData.options.format.emplace(vk::Format::eB8G8R8A8Srgb);
 			break;
 		}
-		m_uSwapchain = std::make_unique<vuk::Swapchain>(swapchainData);
-		if (!m_uSwapchain)
+		m_uContext = std::make_unique<vuk::Context>(contextData);
+		if (!m_uContext)
 		{
-			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Swapchain::s_tName);
+			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Context::s_tName);
 			m_uNativeWindow.reset();
 			return false;
 		}
@@ -376,7 +376,8 @@ bool WindowImpl::create(Window::Data const& data)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_uSwapchain.reset();
+		m_uContext.reset();
+		m_uContext.reset();
 		m_uNativeWindow.reset();
 		return false;
 	}
@@ -432,7 +433,8 @@ void WindowImpl::destroy()
 #endif
 		if (m_uNativeWindow)
 		{
-			m_uSwapchain.reset();
+			m_uContext.reset();
+			m_uContext.reset();
 			m_uNativeWindow.reset();
 			LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 		}
@@ -470,9 +472,8 @@ glm::ivec2 WindowImpl::framebufferSize()
 	return ret;
 }
 
-void WindowImpl::onFramebufferSize(glm::ivec2 const& size)
+void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
-	m_uSwapchain->recreate(size);
 	return;
 }
 

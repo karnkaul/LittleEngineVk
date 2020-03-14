@@ -1,5 +1,7 @@
 #pragma once
+#include <utility>
 #include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
 #include "core/std_types.hpp"
 
 namespace le::vuk
@@ -21,6 +23,18 @@ struct PipelineData
 	f32 lineWidth = 1.0f;
 	bool bBlend = false;
 };
+
+struct ImageData
+{
+	glm::ivec2 size = {};
+	vk::Format format;
+	vk::ImageTiling tiling;
+	vk::ImageUsageFlags usage;
+	vk::MemoryPropertyFlags properties;
+};
+
+std::pair<vk::Image, vk::DeviceMemory> createImage(ImageData const& data);
+vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 
 vk::RenderPass createRenderPass(RenderPassData const& data);
 vk::Pipeline createPipeline(vk::PipelineLayout info, PipelineData const& data, vk::PipelineCache cache = vk::PipelineCache());

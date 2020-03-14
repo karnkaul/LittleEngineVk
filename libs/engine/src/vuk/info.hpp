@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
@@ -27,6 +28,8 @@ struct Info final
 	} queues;
 
 	bool isValid(vk::SurfaceKHR surface) const;
+
+	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
 };
 
 inline Info g_info;

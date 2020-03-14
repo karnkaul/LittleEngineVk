@@ -160,6 +160,8 @@ void init(InitData const& initData)
 {
 	std::vector<char const*> requiredLayers;
 	std::set<char const*> requiredExtensionsSet = {initData.config.instanceExtensions.begin(), initData.config.instanceExtensions.end()};
+	InitData::Flags flags;
+	flags.set(InitData::Flag::eValidation, InitData::Flag::eTest);
 	if (initData.options.flags.isSet(InitData::Flag::eValidation))
 	{
 		requiredExtensionsSet.emplace(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

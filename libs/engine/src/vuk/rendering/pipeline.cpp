@@ -4,6 +4,39 @@
 
 namespace le
 {
+vk::RenderPass vuk::createRenderPass(RenderPassData const& data)
+{
+	vk::AttachmentDescription colourDesc;
+	colourDesc.format = data.format;
+	colourDesc.samples = vk::SampleCountFlagBits::e1;
+	colourDesc.loadOp = vk::AttachmentLoadOp::eClear;
+	colourDesc.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	colourDesc.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	colourDesc.initialLayout = vk::ImageLayout::eUndefined;
+	colourDesc.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+	vk::AttachmentReference colourRef;
+	colourRef.attachment = 0;
+	colourRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+	vk::SubpassDescription subpass;
+	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colourRef;
+	vk::RenderPassCreateInfo createInfo;
+	createInfo.attachmentCount = 1;
+	createInfo.pAttachments = &colourDesc;
+	createInfo.subpassCount = 1;
+	createInfo.pSubpasses = &subpass;
+	vk::SubpassDependency dependency;
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	createInfo.dependencyCount = 1;
+	createInfo.pDependencies = &dependency;
+	return g_info.device.createRenderPass(createInfo);
+}
+
 vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)
 {
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;

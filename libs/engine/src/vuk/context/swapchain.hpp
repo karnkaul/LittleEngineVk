@@ -55,6 +55,7 @@ public:
 	void recreate(glm::ivec2 const& framebufferSize);
 
 public:
+	vk::Format format() const;
 	vk::RenderPassBeginInfo acquireNextImage(vk::Semaphore wait, vk::Fence setInUse);
 	vk::Result present(vk::Semaphore wait) const;
 	operator vk::SwapchainKHR() const;

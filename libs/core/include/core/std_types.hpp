@@ -9,8 +9,6 @@
 #include <type_traits>
 #include <vector>
 
-#define ARR_SIZE(arr) sizeof(arr) / sizeof(arr[0])
-
 namespace le
 {
 using u8 = std::uint8_t;
@@ -45,10 +43,15 @@ struct TrueType final : std::true_type
 template <typename Type, typename Code = bool>
 using TResult = std::pair<Code, Type>;
 
-template <typename T>
+template <typename T, typename = std::enable_if_t<std::is_array_v<T>>>
+constexpr size_t arraySize(T const& arr)
+{
+	return sizeof(arr) / sizeof(arr[0]);
+}
+
+template <typename T, typename = std::enable_if<std::is_arithmetic_v<T>>>
 constexpr T maxVal()
 {
-	static_assert(std::is_arithmetic_v<T>, "T must be numeric!");
 	return (std::numeric_limits<T>::max)();
 }
 } // namespace le

@@ -93,6 +93,11 @@ void Swapchain::recreate(glm::ivec2 const& framebufferSize)
 	create();
 }
 
+vk::Format Swapchain::format() const
+{
+	return m_format;
+}
+
 vk::RenderPassBeginInfo Swapchain::acquireNextImage(vk::Semaphore wait, vk::Fence setInUse)
 {
 	[[maybe_unused]] auto result = g_info.device.acquireNextImageKHR(m_swapchain, maxVal<u64>(), wait, {});

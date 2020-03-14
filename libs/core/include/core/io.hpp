@@ -66,7 +66,7 @@ public:
 	std::string_view medium() const;
 	[[nodiscard]] bool checkPresence(stdfs::path const& id) const;
 	[[nodiscard]] bool checkPresences(std::initializer_list<stdfs::path> ids) const;
-	[[nodiscard]] bool checkPresences(Span<stdfs::path const> ids) const;
+	[[nodiscard]] bool checkPresences(ArrayView<stdfs::path const> ids) const;
 
 public:
 	[[nodiscard]] virtual bool isPresent(stdfs::path const& id) const = 0;
@@ -85,7 +85,7 @@ class FileReader : public IOReader
 {
 public:
 	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
-	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, Span<stdfs::path const> anyOf, u8 maxHeight = 10);
+	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight = 10);
 
 public:
 	FileReader(stdfs::path prefix = "") noexcept;

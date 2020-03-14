@@ -93,12 +93,12 @@ bool IOReader::checkPresences(std::initializer_list<stdfs::path> ids) const
 	return bRet;
 }
 
-bool IOReader::checkPresences(Span<stdfs::path const> ids) const
+bool IOReader::checkPresences(ArrayView<stdfs::path const> ids) const
 {
 	bool bRet = true;
-	for (size_t idx = 0; idx < ids.extent; ++idx)
+	for (auto const& id : ids)
 	{
-		bRet &= checkPresence(*(ids.pData + idx));
+		bRet &= checkPresence(id);
 	}
 	return bRet;
 }
@@ -121,14 +121,13 @@ IOReader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, s
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
 
-IOReader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, Span<stdfs::path const> anyOf, u8 maxHeight)
+IOReader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight)
 {
-	for (size_t idx = 0; idx < anyOf.extent; ++idx)
+	for (auto const& name : anyOf)
 	{
-		auto const& name = *(anyOf.pData + idx);
 		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
 		{
-			auto ret = leaf;
+			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
 			return success<stdfs::path>(std::move(ret) / name);
 		}
 	}

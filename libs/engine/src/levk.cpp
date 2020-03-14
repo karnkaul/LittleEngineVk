@@ -69,9 +69,11 @@ s32 engine::run(s32 argc, char** argv)
 	try
 	{
 		vuk::Shader::Data tutorialData;
+		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert.spv"), stdfs::path("shaders/tutorial.frag.spv")};
+		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
 		tutorialData.pReader = g_uReader.get();
-		tutorialData.codeIDMap[vuk::Shader::Type::eVertex] = "shaders/tutorial.vert.spv";
-		tutorialData.codeIDMap[vuk::Shader::Type::eFragment] = "shaders/tutorial.frag.spv";
+		tutorialData.codeIDMap[vuk::Shader::Type::eVertex] = shaderIDs.at(0);
+		tutorialData.codeIDMap[vuk::Shader::Type::eFragment] = shaderIDs.at(1);
 		vuk::Shader tutorialShader(std::move(tutorialData));
 
 		vk::CommandPoolCreateInfo commandPoolCreateInfo;

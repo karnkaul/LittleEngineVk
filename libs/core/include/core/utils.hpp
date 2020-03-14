@@ -1,23 +1,48 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <type_traits>
 #include "core/std_types.hpp"
 
 namespace le
 {
-template <typename Type>
-struct Span
+template <typename T>
+struct ArrayView
 {
-	Type* pData;
-	size_t extent;
+	using Type = T;
+	using iterator = T*;
+	using const_iterator = T const*;
 
-	constexpr Span() noexcept : pData(nullptr), extent(0) {}
-	constexpr Span(Type* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
+	T* pData;
+	size_t const extent;
+
+	constexpr ArrayView() noexcept : pData(nullptr), extent(0) {}
+	constexpr ArrayView(T* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
 
 	template <typename Container>
-	constexpr explicit Span(Container& container) noexcept
+	constexpr explicit ArrayView(Container& container) noexcept
 		: pData(container.empty() ? nullptr : &container.front()), extent(container.size())
 	{
+	}
+
+	iterator begin()
+	{
+		return pData;
+	}
+
+	iterator end()
+	{
+		return pData + extent;
+	}
+
+	const_iterator begin() const
+	{
+		return pData;
+	}
+
+	const_iterator end() const
+	{
+		return pData + extent;
 	}
 };
 

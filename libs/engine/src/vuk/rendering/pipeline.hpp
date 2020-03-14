@@ -4,6 +4,11 @@
 
 namespace le::vuk
 {
+struct RenderPassData
+{
+	vk::Format format;
+};
+
 struct PipelineData
 {
 	class Shader const* pShader = nullptr;
@@ -17,5 +22,6 @@ struct PipelineData
 	bool bBlend = false;
 };
 
+vk::RenderPass createRenderPass(RenderPassData const& data);
 vk::Pipeline createPipeline(vk::PipelineLayout info, PipelineData const& data, vk::PipelineCache cache = vk::PipelineCache());
 } // namespace le::vuk

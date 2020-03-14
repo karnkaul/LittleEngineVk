@@ -22,6 +22,7 @@ struct InitData final
 	enum class Flag
 	{
 		eValidation = 0,
+		eTest,
 		eCOUNT_
 	};
 

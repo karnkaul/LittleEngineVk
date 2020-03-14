@@ -1,8 +1,8 @@
 #pragma once
 #include <bitset>
-#include <initializer_list>
 #include <string>
 #include <type_traits>
+#include "core/assert.hpp"
 #include "core/std_types.hpp"
 
 namespace le
@@ -22,31 +22,36 @@ struct TFlags
 
 	bool isSet(Enum flag) const
 	{
+		ASSERT((size_t)flag < N, "Invalid flag!");
 		return bits.test((size_t)flag);
 	}
 
 	void set(Enum flag)
 	{
+		ASSERT((size_t)flag < N, "Invalid flag!");
 		bits.set((size_t)flag);
 	}
 
 	void reset(Enum flag)
 	{
+		ASSERT((size_t)flag < N, "Invalid flag!");
 		bits.reset((size_t)flag);
 	}
-	void set(std::initializer_list<Enum> flagList)
+
+	template <typename Flag1, typename... FlagN>
+	void set(Flag1 flag1, FlagN... flagN)
 	{
-		for (auto flag : flagList)
-		{
-			bits.set((size_t)flag);
-		}
+		static_assert(std::is_same_v<Flag1, Enum>, "Invalid Flag parameter!");
+		set(flag1);
+		set(flagN...);
 	}
-	void reset(std::initializer_list<Enum> flagList)
+
+	template <typename Flag1, typename... FlagN>
+	void reset(Flag1 flag1, FlagN... flagN)
 	{
-		for (auto flag : flagList)
-		{
-			bits.reset((size_t)flag);
-		}
+		static_assert(std::is_same_v<Flag1, Enum>, "Invalid Flag parameter!");
+		reset(flag1);
+		reset(flagN...);
 	}
 
 	void set()

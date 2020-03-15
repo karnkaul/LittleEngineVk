@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
 #include "engine/window/common.hpp"
 #include "common.hpp"
 
@@ -16,6 +17,9 @@ private:
 		vk::SurfaceCapabilitiesKHR capabilities;
 		std::vector<vk::SurfaceFormatKHR> formats;
 		std::vector<vk::PresentModeKHR> presentModes;
+
+		vk::SurfaceFormatKHR colourFormat;
+		vk::Format depthFormat = vk::Format::eD16Unorm;
 
 		void refresh();
 		bool isReady() const;
@@ -36,42 +40,73 @@ private:
 	{
 		vk::Extent2D extent;
 		std::vector<vk::Image> swapchainImages;
-		vk::DeviceMemory depthMemory;
-		vk::Image depthImage;
+		std::vector<vk::ImageView> swapchainImageViews;
+		vuk::Image depthImage;
 		vk::ImageView depthImageView;
 		std::vector<Frame> frames;
 		vk::SwapchainKHR swapchain;
-		vk::RenderPass renderPass;
 
 		glm::ivec2 size = {};
+		u32 currentImageIndex = 0;
 		u8 imageCount = 0;
+	};
+
+	struct RenderSync final
+	{
+		struct FrameSync
+		{
+			struct
+			{
+				vk::Semaphore render;
+				vk::Semaphore present;
+				vk::Fence drawing;
+			} sync;
+
+			vk::CommandBuffer commandBuffer;
+			vk::CommandPool pool;
+			vk::RenderPassBeginInfo renderPassInfo;
+		};
+
+		std::vector<FrameSync> frames;
+		u32 index = 0;
+
+		FrameSync& frameSync();
+		void next();
 	};
 
 public:
 	static std::string const s_tName;
 
 public:
-	vk::Format m_colourFormat;
-	vk::Format m_depthFormat;
+	vk::RenderPass m_renderPass;
+	u32 m_frameCount = 0;
 
 private:
 	Info m_info;
 	Swapchain m_swapchain;
+	RenderSync m_sync;
 	WindowID m_window;
-	u32 m_currentFrameIndex = 0;
 
 public:
 	Context(ContextData const& data);
 	~Context();
 
-	bool recreateSwapchain();
+public:
+	vk::Viewport transformViewport(ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f}) const;
+	vk::Rect2D transformScissor(ScreenRect const& nRect = {}) const;
 
-	Swapchain const& active() const;
-	vk::RenderPassBeginInfo acquireNextImage(vk::Semaphore wait, vk::Fence setInUse);
-	vk::Result present(vk::Semaphore wait);
+public:
+	vk::CommandBuffer beginRenderPass(BeginPass const& pass = {});
+	void submitPresent();
 
 private:
-	bool createSwapchain();
+	void createRenderPass();
+	void createSwapchain();
 	void destroySwapchain();
+	void cleanup();
+
+	bool recreateSwapchain();
+	vk::RenderPassBeginInfo acquireNextImage(vk::Semaphore wait, vk::Fence setInUse);
+	vk::Result present(vk::Semaphore wait);
 };
 } // namespace le::vuk

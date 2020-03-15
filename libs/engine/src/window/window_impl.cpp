@@ -327,6 +327,7 @@ bool WindowImpl::create(Window::Data const& data)
 {
 	try
 	{
+		vuk::g_info.device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(data);
 		vuk::ContextData contextData;
 		contextData.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
@@ -376,7 +377,6 @@ bool WindowImpl::create(Window::Data const& data)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_uContext.reset();
 		m_uContext.reset();
 		m_uNativeWindow.reset();
 		return false;

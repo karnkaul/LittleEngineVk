@@ -9,17 +9,6 @@
 
 namespace le::vuk
 {
-std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
-	{vk::Result::eErrorOutOfHostMemory, "OutOfHostMemory"},
-	{vk::Result::eErrorOutOfDeviceMemory, "OutOfDeviceMemory"},
-	{vk::Result::eSuccess, "Success"},
-	{vk::Result::eSuboptimalKHR, "SubmoptimalSurface"},
-	{vk::Result::eErrorDeviceLost, "DeviceLost"},
-	{vk::Result::eErrorSurfaceLostKHR, "SurfaceLost"},
-	{vk::Result::eErrorFullScreenExclusiveModeLostEXT, "FullScreenExclusiveModeLost"},
-	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
-};
-
 namespace
 {
 static std::string const s_tInstance = utils::tName<vk::Instance>();

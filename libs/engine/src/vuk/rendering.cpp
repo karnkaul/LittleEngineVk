@@ -1,16 +1,15 @@
 #include "info.hpp"
+#include "context.hpp"
 #include "rendering.hpp"
 #include "shader.hpp"
 
 namespace le
 {
-std::pair<vk::Image, vk::DeviceMemory> vuk::createImage(ImageData const& data)
+vuk::Image vuk::createImage(ImageData const& data)
 {
 	vk::ImageCreateInfo imageInfo = {};
-	imageInfo.imageType = vk::ImageType::e2D;
-	imageInfo.extent.width = (u32)data.size.x;
-	imageInfo.extent.height = (u32)data.size.y;
-	imageInfo.extent.depth = 1;
+	imageInfo.imageType = data.type;
+	imageInfo.extent = data.size;
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
 	imageInfo.format = data.format;
@@ -30,11 +29,11 @@ std::pair<vk::Image, vk::DeviceMemory> vuk::createImage(ImageData const& data)
 	return {image, memory};
 }
 
-vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
+vk::ImageView vuk::createImageView(vk::Image image, vk::ImageViewType type, vk::Format format, vk::ImageAspectFlags aspectFlags)
 {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
-	createInfo.viewType = vk::ImageViewType::e2D;
+	createInfo.viewType = type;
 	createInfo.format = format;
 	createInfo.components.r = createInfo.components.g = createInfo.components.b = createInfo.components.a = vk::ComponentSwizzle::eIdentity;
 	createInfo.subresourceRange.aspectMask = aspectFlags;
@@ -120,6 +119,12 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 		colorBlendState.attachmentCount = 1;
 		colorBlendState.pAttachments = &colorBlendAttachment;
 	}
+	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
+	{
+		depthStencilState.depthTestEnable = true;
+		depthStencilState.depthWriteEnable = true;
+		depthStencilState.depthCompareOp = vk::CompareOp::eLess;
+	}
 	std::array stateFlags = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 	vk::PipelineDynamicStateCreateInfo dynamicState;
 	{
@@ -149,7 +154,7 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 	createInfo.pViewportState = &viewportState;
 	createInfo.pRasterizationState = &rasterizerState;
 	createInfo.pMultisampleState = &multisamplerState;
-	createInfo.pDepthStencilState = nullptr;
+	createInfo.pDepthStencilState = &depthStencilState;
 	createInfo.pColorBlendState = &colorBlendState;
 	createInfo.pDynamicState = &dynamicState;
 	createInfo.layout = layout;

@@ -62,5 +62,33 @@ struct ContextData final
 	} options;
 };
 
+struct Image
+{
+	vk::Image image;
+	vk::DeviceMemory memory;
+};
+
+struct ScreenRect
+{
+	f32 left = 0.0f;
+	f32 top = 0.0f;
+	f32 right = 1.0f;
+	f32 bottom = 1.0f;
+
+	constexpr ScreenRect() noexcept = default;
+	ScreenRect(glm::vec4 const& ltrb) noexcept;
+	explicit ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop = glm::vec2(0.0f)) noexcept;
+
+	f32 aspect() const;
+};
+
+struct BeginPass
+{
+	static const std::array<f32, 4> s_black;
+
+	vk::ClearColorValue colour = vk::ClearColorValue(s_black);
+	vk::ClearDepthStencilValue depth = vk::ClearDepthStencilValue(1.0f, 0.0f);
+};
+
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
 } // namespace le::vuk

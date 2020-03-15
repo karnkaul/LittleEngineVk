@@ -69,4 +69,20 @@ void vkDestroy(vkType object, vkTypes... objects)
 	vkDestroy(object);
 	vkDestroy(objects...);
 }
+
+template <typename vkType>
+void vkFree(vkType memory)
+{
+	if (memory != vkType())
+	{
+		g_info.device.freeMemory(memory);
+	}
+}
+
+template <typename vkType, typename... vkTypes>
+void vkFree(vkType memory0, vkTypes... memoryN)
+{
+	free(memory0);
+	free(memoryN...);
+}
 } // namespace le::vuk

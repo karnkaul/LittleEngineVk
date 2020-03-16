@@ -12,7 +12,7 @@ namespace le::vuk
 {
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
-struct AvailableDevice
+struct AvailableDevice final
 {
 	vk::PhysicalDevice physicalDevice;
 	vk::PhysicalDeviceProperties properties;
@@ -62,13 +62,7 @@ struct ContextData final
 	} options;
 };
 
-struct Image
-{
-	vk::Image image;
-	vk::DeviceMemory memory;
-};
-
-struct ScreenRect
+struct ScreenRect final
 {
 	f32 left = 0.0f;
 	f32 top = 0.0f;
@@ -82,7 +76,16 @@ struct ScreenRect
 	f32 aspect() const;
 };
 
-struct BeginPass
+template <typename T, typename = std::enable_if_t<std::is_same_v<T, vk::Buffer> || std::is_same_v<T, vk::Image>>>
+struct Resource final
+{
+	using vkType = T;
+
+	T resource;
+	vk::DeviceMemory memory;
+};
+
+struct BeginPass final
 {
 	static const std::array<f32, 4> s_black;
 

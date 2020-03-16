@@ -474,6 +474,10 @@ glm::ivec2 WindowImpl::framebufferSize()
 
 void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
+	if (m_uContext)
+	{
+		m_uContext->onFramebufferResize();
+	}
 	return;
 }
 

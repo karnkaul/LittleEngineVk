@@ -1,11 +1,12 @@
 #include "info.hpp"
 #include "context.hpp"
-#include "rendering.hpp"
+#include "utils.hpp"
 #include "shader.hpp"
+#include "draw/vertex.hpp"
 
 namespace le
 {
-vuk::Image vuk::createImage(ImageData const& data)
+vuk::Resource<vk::Image> vuk::createImage(ImageData const& data)
 {
 	vk::ImageCreateInfo imageInfo = {};
 	imageInfo.imageType = data.type;
@@ -17,7 +18,10 @@ vuk::Image vuk::createImage(ImageData const& data)
 	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.usage = data.usage;
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
-	imageInfo.sharingMode = vk::SharingMode::eExclusive;
+	auto const queueIndices = g_info.uniqueQueueIndices(false, true);
+	imageInfo.queueFamilyIndexCount = (u32)queueIndices.size();
+	imageInfo.pQueueFamilyIndices = queueIndices.data();
+	imageInfo.sharingMode = g_info.sharingMode(false, true);
 	auto image = g_info.device.createImage(imageInfo);
 
 	vk::MemoryRequirements memRequirements = g_info.device.getImageMemoryRequirements(image);
@@ -44,10 +48,54 @@ vk::ImageView vuk::createImageView(vk::Image image, vk::ImageViewType type, vk::
 	return g_info.device.createImageView(createInfo);
 }
 
-vk::RenderPass vuk::createRenderPass(RenderPassData const& data)
+vuk::Resource<vk::Buffer> vuk::createBuffer(BufferData const& data)
+{
+	vk::Buffer buffer;
+	vk::DeviceMemory bufferMemory;
+	vk::BufferCreateInfo bufferInfo;
+	bufferInfo.size = data.size;
+	bufferInfo.usage = data.usage;
+	bufferInfo.sharingMode = vuk::g_info.sharingMode(false, true);
+	auto const queues = vuk::g_info.uniqueQueueIndices(false, true);
+	bufferInfo.queueFamilyIndexCount = (u32)queues.size();
+	bufferInfo.pQueueFamilyIndices = queues.data();
+	buffer = vuk::g_info.device.createBuffer(bufferInfo);
+	vk::MemoryRequirements memRequirements = vuk::g_info.device.getBufferMemoryRequirements(buffer);
+	vk::MemoryAllocateInfo allocInfo = {};
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = vuk::g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
+	bufferMemory = vuk::g_info.device.allocateMemory(allocInfo);
+	vuk::g_info.device.bindBufferMemory(buffer, bufferMemory, 0);
+	return {buffer, bufferMemory};
+}
+
+void vuk::copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp)
+{
+	ASSERT(pOp, "Null pointer!");
+	vk::CommandBufferAllocateInfo allocInfo;
+	allocInfo.level = vk::CommandBufferLevel::ePrimary;
+	allocInfo.commandPool = pOp->pool;
+	allocInfo.commandBufferCount = 1;
+	auto commandBuffer = g_info.device.allocateCommandBuffers(allocInfo).front();
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	commandBuffer.begin(beginInfo);
+	vk::BufferCopy copyRegion;
+	copyRegion.size = size;
+	commandBuffer.copyBuffer(src, dst, copyRegion);
+	commandBuffer.end();
+	vk::SubmitInfo submitInfo;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+	pOp->transferred = g_info.device.createFence({});
+	pOp->queue.submit(submitInfo, pOp->transferred);
+	return;
+}
+
+vk::RenderPass vuk::createRenderPass(vk::Format format)
 {
 	vk::AttachmentDescription colourDesc;
-	colourDesc.format = data.format;
+	colourDesc.format = format;
 	colourDesc.samples = vk::SampleCountFlagBits::e1;
 	colourDesc.loadOp = vk::AttachmentLoadOp::eClear;
 	colourDesc.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
@@ -79,8 +127,14 @@ vk::RenderPass vuk::createRenderPass(RenderPassData const& data)
 
 vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)
 {
+	auto const bindingDescription = Vertex::bindingDescription();
+	auto const attributeDescriptions = Vertex::attributeDescriptions();
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
+		vertexInputState.vertexAttributeDescriptionCount = (u32)attributeDescriptions.size();
+		vertexInputState.vertexBindingDescriptionCount = 1;
+		vertexInputState.pVertexAttributeDescriptions = attributeDescriptions.data();
+		vertexInputState.pVertexBindingDescriptions = &bindingDescription;
 	}
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
 	{

@@ -3,7 +3,7 @@
 #include "core/utils.hpp"
 #include "context.hpp"
 #include "info.hpp"
-#include "rendering.hpp"
+#include "utils.hpp"
 
 namespace le::vuk
 {
@@ -91,6 +91,7 @@ Context::Context(ContextData const& data) : m_window(data.config.window)
 	m_info.refresh();
 	if (!m_info.isReady())
 	{
+		vkDestroy<vk::Instance>(m_info.surface);
 		throw std::runtime_error("Failed to create Context!");
 	}
 	m_info.colourFormat = m_info.bestColourFormat();
@@ -140,8 +141,47 @@ vk::Rect2D Context::transformScissor(ScreenRect const& nRect) const
 	return scissor;
 }
 
-vk::CommandBuffer Context::beginRenderPass(BeginPass const& pass)
+void Context::onFramebufferResize()
 {
+	auto const size = m_info.data.config.getFramebufferSize();
+	if (m_flags.isSet(Flag::eRenderPaused))
+	{
+		if (size.x > 0 && size.y > 0)
+		{
+			if (recreateSwapchain())
+			{
+				LOG_I("[{}:{}] Non-zero framebuffer size detected; recreated swapchain [{}x{}]; resuming rendering", s_tName, m_window,
+					  size.x, size.y);
+				m_flags.reset(Flag::eRenderPaused);
+			}
+		}
+	}
+	else
+	{
+		if (size.x <= 0 || size.y <= 0)
+		{
+			LOG_I("[{}:{}] Invalid framebuffer size detected [{}x{}] (minimised surface?); pausing rendering", s_tName, m_window, size.x,
+				  size.y);
+			m_flags.set(Flag::eRenderPaused);
+		}
+		else if ((s32)m_swapchain.extent.width != size.x || (s32)m_swapchain.extent.height != size.y)
+		{
+			auto oldExtent = m_swapchain.extent;
+			if (recreateSwapchain())
+			{
+				LOG_I("[{}:{}] Mismatched framebuffer size detected [{}x{}]; recreated swapchain [{}x{}]", s_tName, m_window, size.x,
+					  size.y, oldExtent.width, oldExtent.height);
+			}
+		}
+	}
+}
+
+TResult<vk::CommandBuffer> Context::beginRenderPass(BeginPass const& pass)
+{
+	if (m_flags.isSet(Flag::eRenderPaused))
+	{
+		return {false, vk::CommandBuffer()};
+	}
 	auto& frame = m_sync.frameSync();
 	if (frame.sync.drawing != vk::Fence())
 	{
@@ -157,12 +197,17 @@ vk::CommandBuffer Context::beginRenderPass(BeginPass const& pass)
 	frame.renderPassInfo.clearValueCount = (u32)clearValues.size();
 	frame.renderPassInfo.pClearValues = clearValues.data();
 	commandBuffer.beginRenderPass(frame.renderPassInfo, vk::SubpassContents::eInline);
-	return commandBuffer;
+	return {true, commandBuffer};
 }
 
-void Context::submitPresent()
+bool Context::submitPresent()
 {
+	if (m_flags.isSet(Flag::eRenderPaused))
+	{
+		return false;
+	}
 	auto const& frame = m_sync.frameSync();
+	// Submit
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 	submitInfo.waitSemaphoreCount = 1;
@@ -173,14 +218,15 @@ void Context::submitPresent()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame.sync.present;
 	g_info.device.resetFences(frame.sync.drawing);
-	g_info.queues.graphics.front().submit(submitInfo, frame.sync.drawing);
+	g_info.queues.graphics.submit(submitInfo, frame.sync.drawing);
 	// Present
 	auto const result = present(frame.sync.present);
-	if (result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR)
+	bool bRet = result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR;
+	if (bRet)
 	{
 		m_sync.next();
 	}
-	return;
+	return bRet;
 }
 
 void Context::createRenderPass()
@@ -232,10 +278,16 @@ void Context::createRenderPass()
 	return;
 }
 
-void Context::createSwapchain()
+bool Context::createSwapchain()
 {
 	// Swapchain
 	auto size = m_info.data.config.getFramebufferSize();
+	if (size.x == 0 || size.y == 0)
+	{
+		LOG_I("[{}:{}] Null framebuffer size detected (minimised surface?); pausing rendering", s_tName, m_window);
+		m_flags.set(Flag::eRenderPaused);
+		return false;
+	}
 	{
 		vk::SwapchainCreateInfoKHR createInfo;
 		createInfo.minImageCount = m_info.capabilities.minImageCount + 1;
@@ -249,19 +301,10 @@ void Context::createSwapchain()
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		std::array const indices = {g_info.queueFamilyIndices.graphics, g_info.queueFamilyIndices.present};
-		if (indices.at(0) != indices.at(1))
-		{
-			createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-			createInfo.queueFamilyIndexCount = (u32)indices.size();
-			createInfo.pQueueFamilyIndices = indices.data();
-		}
-		else
-		{
-			createInfo.imageSharingMode = vk::SharingMode::eExclusive;
-			createInfo.queueFamilyIndexCount = 1;
-			createInfo.pQueueFamilyIndices = &g_info.queueFamilyIndices.graphics;
-		}
+		auto const indices = g_info.uniqueQueueIndices(true, false);
+		createInfo.pQueueFamilyIndices = indices.data();
+		createInfo.queueFamilyIndexCount = (u32)indices.size();
+		createInfo.imageSharingMode = g_info.sharingMode(true, false);
 		createInfo.preTransform = m_info.capabilities.currentTransform;
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 		createInfo.presentMode = m_info.bestPresentMode();
@@ -281,7 +324,7 @@ void Context::createSwapchain()
 		depthImageData.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 		m_swapchain.depthImage = createImage(depthImageData);
 		m_swapchain.depthImageView =
-			createImageView(m_swapchain.depthImage.image, vk::ImageViewType::e2D, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
+			createImageView(m_swapchain.depthImage.resource, vk::ImageViewType::e2D, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		for (auto const& image : m_swapchain.swapchainImages)
 		{
 			auto imageView = createImageView(image, vk::ImageViewType::e2D, m_info.colourFormat.format, vk::ImageAspectFlagBits::eColor);
@@ -326,7 +369,7 @@ void Context::createSwapchain()
 		m_sync.frames.push_back(std::move(frame));
 	}
 	LOG_D("[{}:{}] Swapchain created [{}x{}]", s_tName, m_window, size.x, size.y);
-	return;
+	return true;
 }
 
 void Context::destroySwapchain()
@@ -347,7 +390,7 @@ void Context::destroySwapchain()
 	{
 		vkDestroy(imageView);
 	}
-	vkDestroy(m_swapchain.depthImageView, m_swapchain.depthImage.image, m_swapchain.swapchain);
+	vkDestroy(m_swapchain.depthImageView, m_swapchain.depthImage.resource, m_swapchain.swapchain);
 	vkFree(m_swapchain.depthImage.memory);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}:{}] Swapchain destroyed", s_tName, m_window);
 	m_swapchain = Swapchain();
@@ -367,23 +410,22 @@ void Context::cleanup()
 
 bool Context::recreateSwapchain()
 {
-	LOG_D("[{}:{}] recreating swapchain...", s_tName, m_window);
+	LOG_D("[{}:{}] Recreating Swapchain...", s_tName, m_window);
 	destroySwapchain();
 	auto prevSurface = m_info.surface;
 	m_info.refresh();
 	[[maybe_unused]] bool bReady = m_info.isReady();
 	ASSERT(bReady, "Context not ready!");
-	if (bReady)
+	if (bReady && createSwapchain())
 	{
-		createSwapchain();
 		if (prevSurface != m_info.surface)
 		{
 			vkDestroy<vk::Instance>(prevSurface);
 		}
-		LOG_D("[{}:{}] ... swapchain recreated", s_tName, m_window);
+		LOG_D("[{}:{}] ... Swapchain recreated", s_tName, m_window);
 		return true;
 	}
-	LOG_E("[{}:{}] Failed to recreate swapchain!", s_tName, m_window);
+	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}:{}] Failed to recreate swapchain!", s_tName, m_window);
 	return false;
 }
 

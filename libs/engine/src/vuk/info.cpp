@@ -1,5 +1,4 @@
 #include <memory>
-#include <optional>
 #include <set>
 #include "core/assert.hpp"
 #include "core/log.hpp"
@@ -94,13 +93,17 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		deviceName = properties.deviceName;
 		auto const queueFamilies = g_info.physicalDevice.getQueueFamilyProperties();
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-		std::optional<u32> graphicsFamily, presentFamily;
-		for (size_t idx = 0; idx < queueFamilies.size() && (!graphicsFamily.has_value() || !presentFamily.has_value()); ++idx)
+		std::optional<u32> graphicsFamily, presentFamily, transferFamily;
+		for (size_t idx = 0; idx < queueFamilies.size(); ++idx)
 		{
 			auto const& queueFamily = queueFamilies.at(idx);
 			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
 			{
 				graphicsFamily.emplace((u32)idx);
+			}
+			if (graphicsFamily.has_value() && (u32)idx != graphicsFamily.value() && queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
+			{
+				transferFamily.emplace((u32)idx);
 			}
 			if (g_info.physicalDevice.getSurfaceSupportKHR((u32)idx, surface))
 			{
@@ -112,6 +115,10 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 			throw std::runtime_error("Failed to obtain graphics/present queues from device!");
 		}
 		std::set<u32> uniqueFamilies = {(u32)graphicsFamily.value(), (u32)presentFamily.value()};
+		if (transferFamily.has_value())
+		{
+			uniqueFamilies.emplace(transferFamily.value());
+		}
 		f32 priority = 1.0f;
 		for (auto family : uniqueFamilies)
 		{
@@ -136,6 +143,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		device = g_info.physicalDevice.createDevice(deviceCreateInfo);
 		g_info.queueFamilyIndices.graphics = graphicsFamily.value();
 		g_info.queueFamilyIndices.present = presentFamily.value();
+		g_info.queueFamilyIndices.transfer = transferFamily.has_value() ? transferFamily.value() : graphicsFamily.value();
 	}
 	catch (std::exception const& e)
 	{
@@ -143,10 +151,10 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		{
 			device.destroy();
 		}
-		g_info.instance.destroy(surface);
+		instance.destroy(surface);
 		if (g_debugMessenger != vk::DebugUtilsMessengerEXT())
 		{
-			g_info.instance.destroy(g_debugMessenger, nullptr, g_loader);
+			instance.destroy(g_debugMessenger, nullptr, g_loader);
 		}
 		instance.destroy();
 		throw std::runtime_error(e.what());
@@ -227,12 +235,10 @@ void init(InitData const& initData)
 	g_info.instance = instance;
 	auto device = initDevice(instance, requiredLayers, initData);
 	g_info.device = device;
-	g_info.queues.graphics.resize((size_t)initData.config.graphicsQueueCount);
-	for (auto& queue : g_info.queues.graphics)
-	{
-		queue = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
-	}
+	g_info.queues.graphics = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
+	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, 0);
+
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
 
@@ -260,12 +266,45 @@ bool Info::isValid(vk::SurfaceKHR surface) const
 	return physicalDevice != vk::PhysicalDevice() ? physicalDevice.getSurfaceSupportKHR(queueFamilyIndices.present, surface) : false;
 }
 
+std::vector<u32> Info::uniqueQueueIndices(bool bPresent, bool bTransfer) const
+{
+	std::vector<u32> indices;
+	indices.reserve(3);
+	indices.push_back(queueFamilyIndices.graphics);
+	if (bPresent && queueFamilyIndices.graphics != queueFamilyIndices.present)
+	{
+		indices.push_back(queueFamilyIndices.present);
+	}
+	if (bTransfer && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
+	{
+		indices.push_back(queueFamilyIndices.transfer);
+	}
+	return indices;
+}
+
+vk::SharingMode Info::sharingMode(bool bPresent, bool bTransfer) const
+{
+	if (bPresent && !bTransfer)
+	{
+		return queueFamilyIndices.graphics == queueFamilyIndices.present ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
+	}
+	if (!bPresent && bTransfer)
+	{
+		return queueFamilyIndices.transfer != queueFamilyIndices.graphics ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+	}
+	if (queueFamilyIndices.graphics == queueFamilyIndices.present && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
+	{
+		return vk::SharingMode::eExclusive;
+	}
+	return vk::SharingMode::eConcurrent;
+}
+
 u32 Info::findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const
 {
 	auto const memProperties = physicalDevice.getMemoryProperties();
 	for (u32 i = 0; i < memProperties.memoryTypeCount; ++i)
 	{
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[(size_t)i].propertyFlags & properties) == properties)
 		{
 			return i;
 		}

@@ -1,6 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
+#include "core/flags.hpp"
 #include "engine/window/common.hpp"
 #include "common.hpp"
 
@@ -8,6 +9,14 @@ namespace le::vuk
 {
 class Context final
 {
+public:
+	enum class Flag
+	{
+		eRenderPaused = 0,
+		eCOUNT_
+	};
+	using Flags = TFlags<Flag>;
+
 private:
 	struct Info final
 	{
@@ -41,7 +50,7 @@ private:
 		vk::Extent2D extent;
 		std::vector<vk::Image> swapchainImages;
 		std::vector<vk::ImageView> swapchainImageViews;
-		vuk::Image depthImage;
+		Resource<vk::Image> depthImage;
 		vk::ImageView depthImageView;
 		std::vector<Frame> frames;
 		vk::SwapchainKHR swapchain;
@@ -80,6 +89,7 @@ public:
 public:
 	vk::RenderPass m_renderPass;
 	u32 m_frameCount = 0;
+	Flags m_flags;
 
 private:
 	Info m_info;
@@ -96,12 +106,13 @@ public:
 	vk::Rect2D transformScissor(ScreenRect const& nRect = {}) const;
 
 public:
-	vk::CommandBuffer beginRenderPass(BeginPass const& pass = {});
-	void submitPresent();
+	void onFramebufferResize();
+	TResult<vk::CommandBuffer> beginRenderPass(BeginPass const& pass = {});
+	bool submitPresent();
 
 private:
 	void createRenderPass();
-	void createSwapchain();
+	bool createSwapchain();
 	void destroySwapchain();
 	void cleanup();
 

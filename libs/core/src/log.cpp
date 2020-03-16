@@ -23,7 +23,7 @@ public:
 	using Lock = std::lock_guard<std::mutex>;
 
 public:
-	static constexpr size_t s_reserveCount = 512;
+	static constexpr size_t s_reserveCount = 1024 * 1024;
 
 public:
 	~FileLogger();

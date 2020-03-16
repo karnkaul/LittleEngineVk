@@ -7,12 +7,7 @@
 
 namespace le::vuk
 {
-struct RenderPassData
-{
-	vk::Format format;
-};
-
-struct PipelineData
+struct PipelineData final
 {
 	class Shader const* pShader = nullptr;
 	vk::RenderPass renderPass;
@@ -25,7 +20,16 @@ struct PipelineData
 	bool bBlend = false;
 };
 
-struct ImageData
+struct TransferOp final
+{
+	vk::Queue queue;
+	vk::CommandPool pool;
+
+	vk::Fence transferred;
+	vk::CommandBuffer commandBuffer;
+};
+
+struct ImageData final
 {
 	vk::Extent3D size;
 	vk::Format format;
@@ -35,9 +39,19 @@ struct ImageData
 	vk::ImageType type = vk::ImageType::e2D;
 };
 
-Image createImage(ImageData const& data);
+struct BufferData final
+{
+	vk::DeviceSize size;
+	vk::BufferUsageFlags usage;
+	vk::MemoryPropertyFlags properties;
+};
+
+Resource<vk::Image> createImage(ImageData const& data);
 vk::ImageView createImageView(vk::Image image, vk::ImageViewType type, vk::Format format, vk::ImageAspectFlags aspectFlags);
 
-vk::RenderPass createRenderPass(RenderPassData const& data);
+Resource<vk::Buffer> createBuffer(BufferData const& data);
+void copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp);
+
+vk::RenderPass createRenderPass(vk::Format format);
 vk::Pipeline createPipeline(vk::PipelineLayout info, PipelineData const& data, vk::PipelineCache cache = vk::PipelineCache());
 } // namespace le::vuk

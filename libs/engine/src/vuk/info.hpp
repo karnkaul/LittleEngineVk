@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,16 +20,19 @@ struct Info final
 	{
 		u32 graphics;
 		u32 present;
+		u32 transfer;
 	} queueFamilyIndices;
 
 	struct
 	{
-		std::vector<vk::Queue> graphics;
+		vk::Queue graphics;
 		vk::Queue present;
+		vk::Queue transfer;
 	} queues;
 
 	bool isValid(vk::SurfaceKHR surface) const;
-
+	std::vector<u32> uniqueQueueIndices(bool bPresent, bool bTransfer) const;
+	vk::SharingMode sharingMode(bool bPresent, bool bTransfer) const;
 	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
 };
 

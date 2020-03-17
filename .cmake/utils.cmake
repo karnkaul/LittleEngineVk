@@ -72,6 +72,7 @@ function(add_target_compile_definitions TARGET_NAME PREFIX SCOPE)
 			${PREFIX}_DEBUG
 		>
 		$<$<BOOL:${MSVC_RUNTIME}>:_CRT_SECURE_NO_WARNINGS>
+		$<$<BOOL:${MSVC_RUNTIME}>:WIN32_LEAN_AND_MEAN>
 	)
 endfunction()
 

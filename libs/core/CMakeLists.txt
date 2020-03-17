@@ -5,12 +5,12 @@ glob_sources(SOURCES "*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+# -fPIC for fmt
+set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
+# glm defines
 target_compile_definitions(glm INTERFACE GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SILENT_WARNINGS)
 add_target_compile_definitions(${PROJECT_NAME} LEVK PUBLIC)
 add_target_compile_options(${PROJECT_NAME} PRIVATE)
-if(PLATFORM STREQUAL "Linux")
-	target_compile_options(fmt PUBLIC -fPIC)
-endif()
 target_include_directories(${PROJECT_NAME}
 	SYSTEM PUBLIC
 		"${EXT_DIR}/fmt/include"

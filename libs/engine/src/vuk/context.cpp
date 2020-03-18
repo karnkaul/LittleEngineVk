@@ -73,6 +73,11 @@ vk::Extent2D Context::Info::extent(glm::ivec2 const& framebufferSize) const
 	}
 }
 
+vuk::Context::SwapchainFrame& vuk::Context::Swapchain::swapchainFrame()
+{
+	return frames.at(currentImageIndex);
+}
+
 vuk::Context::RenderSync::FrameSync& vuk::Context::RenderSync::frameSync()
 {
 	ASSERT(index < frames.size(), "Invalid index!");
@@ -176,57 +181,71 @@ void Context::onFramebufferResize()
 	}
 }
 
-TResult<vk::CommandBuffer> Context::beginRenderPass(BeginPass const& pass)
-{
-	if (m_flags.isSet(Flag::eRenderPaused))
-	{
-		return {false, vk::CommandBuffer()};
-	}
-	auto& frame = m_sync.frameSync();
-	if (frame.sync.drawing != vk::Fence())
-	{
-		g_info.device.waitForFences(frame.sync.drawing, true, maxVal<u64>());
-	}
-	g_info.device.resetCommandPool(frame.pool, vk::CommandPoolResetFlagBits::eReleaseResources);
-	frame.renderPassInfo = acquireNextImage(frame.sync.render, frame.sync.drawing);
-	// Begin
-	auto const& commandBuffer = frame.commandBuffer;
-	vk::CommandBufferBeginInfo beginInfo;
-	commandBuffer.begin(beginInfo);
-	std::array<vk::ClearValue, 2> clearValues = {pass.colour, pass.depth};
-	frame.renderPassInfo.clearValueCount = (u32)clearValues.size();
-	frame.renderPassInfo.pClearValues = clearValues.data();
-	commandBuffer.beginRenderPass(frame.renderPassInfo, vk::SubpassContents::eInline);
-	return {true, commandBuffer};
-}
-
-bool Context::submitPresent()
+bool Context::renderFrame(std::function<void(vk::CommandBuffer)> record, BeginPass const& pass)
 {
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
 		return false;
 	}
-	auto const& frame = m_sync.frameSync();
+	auto& frameSync = m_sync.frameSync();
+	// Acquire
+	auto const acquire = g_info.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), frameSync.render, {});
+	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
+	{
+		LOG_D("[{}:{}] Failed to acquire next image [{}]", s_tName, m_window, g_vkResultStr[acquire.result]);
+		recreateSwapchain();
+		return false;
+	}
+	m_swapchain.currentImageIndex = (u32)acquire.value;
+	auto& swapchainFrame = m_swapchain.swapchainFrame();
+	g_info.wait(swapchainFrame.drawing);
+	swapchainFrame.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+	std::array<vk::ClearValue, 2> clearValues = {pass.colour, pass.depth};
+	vk::RenderPassBeginInfo renderPassInfo;
+	renderPassInfo.renderPass = m_renderPass;
+	renderPassInfo.framebuffer = swapchainFrame.framebuffer;
+	renderPassInfo.renderArea.extent = m_swapchain.extent;
+	renderPassInfo.clearValueCount = (u32)clearValues.size();
+	renderPassInfo.pClearValues = clearValues.data();
+	// Begin
+	auto const& commandBuffer = swapchainFrame.commandBuffer;
+	vk::CommandBufferBeginInfo beginInfo;
+	commandBuffer.begin(beginInfo);
+	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+	record(commandBuffer);
+	commandBuffer.endRenderPass();
+	commandBuffer.end();
 	// Submit
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &frame.sync.render;
+	submitInfo.pWaitSemaphores = &frameSync.render;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &frame.commandBuffer;
+	submitInfo.pCommandBuffers = &swapchainFrame.commandBuffer;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &frame.sync.present;
-	g_info.device.resetFences(frame.sync.drawing);
-	g_info.queues.graphics.submit(submitInfo, frame.sync.drawing);
+	submitInfo.pSignalSemaphores = &frameSync.present;
+	g_info.device.resetFences(frameSync.drawing);
+	g_info.queues.graphics.submit(submitInfo, frameSync.drawing);
+	swapchainFrame.drawing = frameSync.drawing;
 	// Present
-	auto const result = present(frame.sync.present);
-	bool bRet = result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR;
-	if (bRet)
+	vk::PresentInfoKHR presentInfo;
+	std::array swapchains = {m_swapchain.swapchain};
+	auto const index = m_swapchain.currentImageIndex;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &frameSync.present;
+	presentInfo.swapchainCount = (u32)swapchains.size();
+	presentInfo.pSwapchains = swapchains.data();
+	presentInfo.pImageIndices = &index;
+	auto const result = g_info.queues.present.presentKHR(&presentInfo);
+	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 	{
-		m_sync.next();
+		LOG_D("[{}:{}] Failed to present image [{}]", s_tName, m_window, g_vkResultStr[result]);
+		recreateSwapchain();
+		return false;
 	}
-	return bRet;
+	m_sync.next();
+	return true;
 }
 
 void Context::createRenderPass()
@@ -329,7 +348,7 @@ bool Context::createSwapchain()
 		{
 			auto imageView = createImageView(image, vk::ImageViewType::e2D, m_info.colourFormat.format, vk::ImageAspectFlagBits::eColor);
 			m_swapchain.swapchainImageViews.push_back(imageView);
-			Frame frame;
+			SwapchainFrame frame;
 			frame.colour = imageView;
 			frame.depth = m_swapchain.depthImageView;
 			std::array attachments = {frame.colour, frame.depth};
@@ -341,6 +360,15 @@ bool Context::createSwapchain()
 			createInfo.height = m_swapchain.extent.height;
 			createInfo.layers = 1;
 			frame.framebuffer = g_info.device.createFramebuffer(createInfo);
+			vk::CommandPoolCreateInfo commandPoolCreateInfo;
+			commandPoolCreateInfo.queueFamilyIndex = vuk::g_info.queueFamilyIndices.graphics;
+			commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+			frame.commandPool = vuk::g_info.device.createCommandPool(commandPoolCreateInfo);
+			vk::CommandBufferAllocateInfo allocInfo;
+			allocInfo.commandPool = frame.commandPool;
+			allocInfo.level = vk::CommandBufferLevel::ePrimary;
+			allocInfo.commandBufferCount = 1;
+			frame.commandBuffer = vuk::g_info.device.allocateCommandBuffers(allocInfo).front();
 			m_swapchain.frames.push_back(std::move(frame));
 		}
 		if (m_swapchain.swapchainImages.empty() || m_swapchain.frames.empty())
@@ -353,19 +381,11 @@ bool Context::createSwapchain()
 	for (u32 i = 0; i < m_frameCount; ++i)
 	{
 		RenderSync::FrameSync frame;
-		frame.sync.render = vuk::g_info.device.createSemaphore({});
-		frame.sync.present = vuk::g_info.device.createSemaphore({});
+		frame.render = vuk::g_info.device.createSemaphore({});
+		frame.present = vuk::g_info.device.createSemaphore({});
 		vk::FenceCreateInfo createInfo;
 		createInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-		frame.sync.drawing = vuk::g_info.device.createFence(createInfo);
-		vk::CommandPoolCreateInfo commandPoolCreateInfo;
-		commandPoolCreateInfo.queueFamilyIndex = vuk::g_info.queueFamilyIndices.graphics;
-		frame.pool = vuk::g_info.device.createCommandPool(commandPoolCreateInfo);
-		vk::CommandBufferAllocateInfo allocInfo;
-		allocInfo.commandPool = frame.pool;
-		allocInfo.level = vk::CommandBufferLevel::ePrimary;
-		allocInfo.commandBufferCount = 1;
-		frame.commandBuffer = vuk::g_info.device.allocateCommandBuffers(allocInfo).front();
+		frame.drawing = vuk::g_info.device.createFence(createInfo);
 		m_sync.frames.push_back(std::move(frame));
 	}
 	LOG_D("[{}:{}] Swapchain created [{}x{}]", s_tName, m_window, size.x, size.y);
@@ -377,14 +397,11 @@ void Context::destroySwapchain()
 	g_info.device.waitIdle();
 	for (auto& frame : m_sync.frames)
 	{
-		g_info.device.destroy(frame.sync.present);
-		g_info.device.destroy(frame.sync.render);
-		g_info.device.destroy(frame.sync.drawing);
-		g_info.device.destroy(frame.pool);
+		vkDestroy(frame.drawing, frame.render, frame.present);
 	}
 	for (auto const& frame : m_swapchain.frames)
 	{
-		vkDestroy(frame.framebuffer);
+		vkDestroy(frame.framebuffer, frame.commandPool);
 	}
 	for (auto const& imageView : m_swapchain.swapchainImageViews)
 	{
@@ -427,47 +444,5 @@ bool Context::recreateSwapchain()
 	}
 	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}:{}] Failed to recreate swapchain!", s_tName, m_window);
 	return false;
-}
-
-vk::RenderPassBeginInfo Context::acquireNextImage(vk::Semaphore wait, vk::Fence setInUse)
-{
-	[[maybe_unused]] auto result = g_info.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), wait, {});
-	if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR)
-	{
-		LOG_D("[{}:{}] Failed to acquire next image [{}]", s_tName, m_window, g_vkResultStr[result.result]);
-		recreateSwapchain();
-		return acquireNextImage(wait, setInUse);
-	}
-	size_t const idx = (size_t)result.value;
-	if (m_swapchain.frames.at(idx).drawing != vk::Fence())
-	{
-		g_info.device.waitForFences(m_swapchain.frames.at(idx).drawing, true, maxVal<u64>());
-	}
-	m_swapchain.frames.at(idx).drawing = setInUse;
-	m_swapchain.currentImageIndex = (u32)idx;
-	vk::RenderPassBeginInfo ret;
-	ret.renderPass = m_renderPass;
-	ret.framebuffer = m_swapchain.frames.at(idx).framebuffer;
-	ret.renderArea.extent = m_swapchain.extent;
-	return ret;
-}
-
-vk::Result Context::present(vk::Semaphore wait)
-{
-	vk::PresentInfoKHR presentInfo;
-	std::array swapchains = {m_swapchain.swapchain};
-	auto const index = m_swapchain.currentImageIndex;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &wait;
-	presentInfo.swapchainCount = (u32)swapchains.size();
-	presentInfo.pSwapchains = swapchains.data();
-	presentInfo.pImageIndices = &index;
-	auto result = g_info.queues.present.presentKHR(&presentInfo);
-	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
-	{
-		LOG_D("[{}:{}] Failed to present image [{}]", s_tName, m_window, g_vkResultStr[result]);
-		recreateSwapchain();
-	}
-	return result;
 }
 } // namespace le::vuk

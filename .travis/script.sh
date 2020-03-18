@@ -1,5 +1,5 @@
 #!/bin/bash
-PROJECT_NAME=cpp-template
+PROJECT_NAME=levk
 
 test $DEBUG && set -x
 set -e

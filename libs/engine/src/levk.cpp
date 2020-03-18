@@ -89,14 +89,14 @@ s32 engine::run(s32 argc, char** argv)
 										  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0};
 
-		auto createStagingBuffer = [](vk::DeviceSize size) -> vuk::Resource<vk::Buffer> {
+		auto createStagingBuffer = [](vk::DeviceSize size) -> vuk::VkResource<vk::Buffer> {
 			vuk::BufferData data;
 			data.size = size;
 			data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 			data.usage = vk::BufferUsageFlagBits::eTransferSrc;
 			return vuk::createBuffer(data);
 		};
-		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> vuk::Resource<vk::Buffer> {
+		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> vuk::VkResource<vk::Buffer> {
 			vuk::BufferData data;
 			data.size = size;
 			data.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
@@ -116,7 +116,7 @@ s32 engine::run(s32 argc, char** argv)
 		auto transferPool = vuk::g_info.device.createCommandPool(commandPoolCreateInfo);
 
 		auto q = vuk::g_info.queues.transfer;
-		vuk::Resource<vk::Buffer> triangle0VB, quad0VBIB;
+		vuk::VkResource<vk::Buffer> triangle0VB, quad0VBIB;
 		{
 			auto d = vuk::g_info.device;
 			std::vector<vuk::TransferOp> ops;
@@ -141,7 +141,7 @@ s32 engine::run(s32 argc, char** argv)
 			ops.push_back(copyBuffer(quad0stage.resource, quad0VBIB.resource, q0vbibSize, q, transferPool));
 			std::vector<vk::Fence> fences;
 			std::for_each(ops.begin(), ops.end(), [&fences](auto const& op) { fences.push_back(op.transferred); });
-			vuk::g_info.device.waitForFences(fences, true, maxVal<u64>());
+			vuk::g_info.waitAll(fences);
 			for (auto& op : ops)
 			{
 				vuk::vkDestroy(op.transferred);
@@ -162,17 +162,22 @@ s32 engine::run(s32 argc, char** argv)
 		data1.config.centreOffset = {100, 100};
 		data1.options.colourSpace = ColourSpace::eRGBLinear;
 		bool bRecreate0 = false, bRecreate1 = false;
-		auto registerInput = [](Window& listen, Window& recreate, bool& bRecreate, std::shared_ptr<int>& token) {
-			token = listen.registerInput([&](Key key, Action action, Mods mods) {
-				if (!recreate.isOpen() && key == Key::eW && action == le::Action::eRelease && mods & Mods::eCONTROL)
+		bool bClose0 = false, bClose1 = false;
+		auto registerInput = [](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
+			token = self.registerInput([&](Key key, Action action, Mods mods) {
+				if (self.isOpen() && key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
+				{
+					bClose = true;
+				}
+				if (!other.isOpen() && (key == Key::eT || key == Key::eN) && action == Action::eRelease && mods & Mods::eCONTROL)
 				{
 					bRecreate = true;
 				}
 			});
 		};
 		std::shared_ptr<s32> token0, token1;
-		registerInput(w0, w1, bRecreate1, token0);
-		registerInput(w1, w0, bRecreate0, token1);
+		registerInput(w0, w1, bRecreate1, bClose0, token0);
+		registerInput(w1, w0, bRecreate0, bClose1, token1);
 		auto createRenderer = [&tutorialShader](vk::Pipeline* pPipeline, vuk::Context** ppContext, WindowID id) {
 			vuk::vkDestroy(*pPipeline);
 			*ppContext = WindowImpl::context(id);
@@ -222,15 +227,23 @@ s32 engine::run(s32 argc, char** argv)
 					w1.create(data1);
 					createRenderer(&pipeline1, &pContext1, w1.id());
 				}
+				if (bClose0)
+				{
+					bClose0 = false;
+					w0.close();
+				}
+				if (bClose1)
+				{
+					bClose1 = false;
+					w1.close();
+				}
 				Window::pollEvents();
 				// Render
 				try
 				{
 					auto drawFrame = [](vuk::Context* pContext, vk::Pipeline pipeline, vk::Buffer vertexBuffer, u32 vertCount,
 										u32 indexCount) -> bool {
-						auto [bResult, commandBuffer] = pContext->beginRenderPass();
-						if (bResult)
-						{
+						return pContext->renderFrame([&](vk::CommandBuffer commandBuffer) {
 							vk::Viewport viewport = pContext->transformViewport();
 							vk::Rect2D scissor = pContext->transformScissor();
 							commandBuffer.setViewport(0, viewport);
@@ -249,13 +262,7 @@ s32 engine::run(s32 argc, char** argv)
 							{
 								commandBuffer.draw(vertCount, 1, 0, 0);
 							}
-
-							commandBuffer.endRenderPass();
-							commandBuffer.end();
-
-							return pContext->submitPresent();
-						}
-						return false;
+						});
 					};
 
 					if (w0.isOpen())
@@ -264,8 +271,8 @@ s32 engine::run(s32 argc, char** argv)
 					}
 					if (w1.isOpen())
 					{
-						drawFrame(pContext1, pipeline1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
-						// drawFrame(pContext1, pipeline1, quad0VB, quad0IB, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
+						// drawFrame(pContext1, pipeline1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
+						drawFrame(pContext1, pipeline1, quad0VBIB.resource, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
 					}
 				}
 				catch (std::exception const& e)

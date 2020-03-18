@@ -304,12 +304,25 @@ u32 Info::findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) con
 	auto const memProperties = physicalDevice.getMemoryProperties();
 	for (u32 i = 0; i < memProperties.memoryTypeCount; ++i)
 	{
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[(size_t)i].propertyFlags & properties) == properties)
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
 		{
 			return i;
 		}
 	}
 	throw std::runtime_error("Failed to find suitable memory type!");
+}
+
+void Info::wait(vk::Fence optional) const
+{
+	if (optional != vk::Fence())
+	{
+		device.waitForFences(optional, true, maxVal<u64>());
+	}
+}
+
+void Info::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const
+{
+	device.waitForFences(std::move(validFences), true, maxVal<u64>());
 }
 
 Service::Service(InitData const& initData)

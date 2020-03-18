@@ -77,7 +77,7 @@ struct ScreenRect final
 };
 
 template <typename T, typename = std::enable_if_t<std::is_same_v<T, vk::Buffer> || std::is_same_v<T, vk::Image>>>
-struct Resource final
+struct VkResource final
 {
 	using vkType = T;
 

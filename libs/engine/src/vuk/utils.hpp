@@ -46,10 +46,10 @@ struct BufferData final
 	vk::MemoryPropertyFlags properties;
 };
 
-Resource<vk::Image> createImage(ImageData const& data);
+VkResource<vk::Image> createImage(ImageData const& data);
 vk::ImageView createImageView(vk::Image image, vk::ImageViewType type, vk::Format format, vk::ImageAspectFlags aspectFlags);
 
-Resource<vk::Buffer> createBuffer(BufferData const& data);
+VkResource<vk::Buffer> createBuffer(BufferData const& data);
 void copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp);
 
 vk::RenderPass createRenderPass(vk::Format format);

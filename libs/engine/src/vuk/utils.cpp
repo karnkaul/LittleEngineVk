@@ -6,7 +6,7 @@
 
 namespace le
 {
-vuk::Resource<vk::Image> vuk::createImage(ImageData const& data)
+vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 {
 	vk::ImageCreateInfo imageInfo = {};
 	imageInfo.imageType = data.type;
@@ -48,7 +48,7 @@ vk::ImageView vuk::createImageView(vk::Image image, vk::ImageViewType type, vk::
 	return g_info.device.createImageView(createInfo);
 }
 
-vuk::Resource<vk::Buffer> vuk::createBuffer(BufferData const& data)
+vuk::VkResource<vk::Buffer> vuk::createBuffer(BufferData const& data)
 {
 	vk::Buffer buffer;
 	vk::DeviceMemory bufferMemory;

@@ -37,12 +37,14 @@ private:
 		vk::Extent2D extent(glm::ivec2 const& framebufferSize) const;
 	};
 
-	struct Frame
+	struct SwapchainFrame
 	{
 		vk::Framebuffer framebuffer;
 		vk::ImageView colour;
 		vk::ImageView depth;
 		vk::Fence drawing;
+		vk::CommandBuffer commandBuffer;
+		vk::CommandPool commandPool;
 	};
 
 	struct Swapchain
@@ -50,30 +52,25 @@ private:
 		vk::Extent2D extent;
 		std::vector<vk::Image> swapchainImages;
 		std::vector<vk::ImageView> swapchainImageViews;
-		Resource<vk::Image> depthImage;
+		VkResource<vk::Image> depthImage;
 		vk::ImageView depthImageView;
-		std::vector<Frame> frames;
+		std::vector<SwapchainFrame> frames;
 		vk::SwapchainKHR swapchain;
 
 		glm::ivec2 size = {};
 		u32 currentImageIndex = 0;
 		u8 imageCount = 0;
+
+		SwapchainFrame& swapchainFrame();
 	};
 
 	struct RenderSync final
 	{
 		struct FrameSync
 		{
-			struct
-			{
-				vk::Semaphore render;
-				vk::Semaphore present;
-				vk::Fence drawing;
-			} sync;
-
-			vk::CommandBuffer commandBuffer;
-			vk::CommandPool pool;
-			vk::RenderPassBeginInfo renderPassInfo;
+			vk::Semaphore render;
+			vk::Semaphore present;
+			vk::Fence drawing;
 		};
 
 		std::vector<FrameSync> frames;
@@ -107,8 +104,8 @@ public:
 
 public:
 	void onFramebufferResize();
-	TResult<vk::CommandBuffer> beginRenderPass(BeginPass const& pass = {});
-	bool submitPresent();
+
+	bool renderFrame(std::function<void(vk::CommandBuffer)> record, BeginPass const& pass = {});
 
 private:
 	void createRenderPass();
@@ -117,7 +114,5 @@ private:
 	void cleanup();
 
 	bool recreateSwapchain();
-	vk::RenderPassBeginInfo acquireNextImage(vk::Semaphore wait, vk::Fence setInUse);
-	vk::Result present(vk::Semaphore wait);
 };
 } // namespace le::vuk

@@ -15,6 +15,7 @@ struct Info final
 	vk::Instance instance;
 	vk::PhysicalDevice physicalDevice;
 	vk::Device device;
+	vk::DescriptorSetLayout matricesLayout;
 
 	struct
 	{
@@ -50,7 +51,32 @@ struct Service final
 template <typename vkOwner = vk::Device, typename vkType>
 void vkDestroy(vkType object)
 {
-	if constexpr (std::is_same_v<vkOwner, vk::Instance>)
+	if constexpr (std::is_same_v<vkType, VkResource<vk::Buffer>>)
+	{
+		if (object.resource != vk::Buffer())
+		{
+			g_info.device.destroyBuffer(object.resource);
+		}
+		if (object.memory != vk::DeviceMemory())
+		{
+			g_info.device.freeMemory(object.memory);
+		}
+	}
+	else if constexpr (std::is_same_v<vkType, vk::DescriptorSetLayout>)
+	{
+		if (object != vk::DescriptorSetLayout())
+		{
+			g_info.device.destroyDescriptorSetLayout(object);
+		}
+	}
+	else if constexpr (std::is_same_v<vkType, vk::DescriptorPool>)
+	{
+		if (object != vk::DescriptorPool())
+		{
+			g_info.device.destroyDescriptorPool(object);
+		}
+	}
+	else if constexpr (std::is_same_v<vkOwner, vk::Instance>)
 	{
 		if (object != vkType() && g_info.instance != vk::Instance())
 		{

@@ -45,6 +45,11 @@ struct InitData final
 	} options;
 };
 
+struct UBOData final
+{
+	vk::DeviceSize size;
+};
+
 struct ContextData final
 {
 	using GetFramebufferSize = std::function<glm::ivec2()>;
@@ -83,14 +88,29 @@ struct VkResource final
 
 	T resource;
 	vk::DeviceMemory memory;
+	vk::DeviceSize size = {};
+};
+
+struct MatricesUBO final
+{
+	glm::mat4 mat_m;
+	glm::mat4 mat_vp;
+	glm::mat4 mat_v;
 };
 
 struct BeginPass final
 {
 	static const std::array<f32, 4> s_black;
 
+	struct
+	{
+		MatricesUBO mats;
+	} ubos;
+
 	vk::ClearColorValue colour = vk::ClearColorValue(s_black);
 	vk::ClearDepthStencilValue depth = vk::ClearDepthStencilValue(1.0f, 0.0f);
+
+	vk::PipelineLayout pipelineLayout;
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;

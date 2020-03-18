@@ -9,6 +9,8 @@ namespace le::vuk
 {
 std::string const Context::s_tName = utils::tName<Context>();
 
+Context::Shared const Context::s_shared = {UBOData{sizeof(MatricesUBO)}};
+
 void Context::Info::refresh()
 {
 	if (surface == vk::SurfaceKHR() || !g_info.isValid(surface))
@@ -73,18 +75,18 @@ vk::Extent2D Context::Info::extent(glm::ivec2 const& framebufferSize) const
 	}
 }
 
-vuk::Context::SwapchainFrame& vuk::Context::Swapchain::swapchainFrame()
+Context::SwapchainFrame& Context::Swapchain::swapchainFrame()
 {
 	return frames.at(currentImageIndex);
 }
 
-vuk::Context::RenderSync::FrameSync& vuk::Context::RenderSync::frameSync()
+Context::RenderSync::FrameSync& Context::RenderSync::frameSync()
 {
 	ASSERT(index < frames.size(), "Invalid index!");
 	return frames.at(index);
 }
 
-void vuk::Context::RenderSync::next()
+void Context::RenderSync::next()
 {
 	index = (index + 1) % (u32)frames.size();
 }
@@ -181,7 +183,7 @@ void Context::onFramebufferResize()
 	}
 }
 
-bool Context::renderFrame(std::function<void(vk::CommandBuffer)> record, BeginPass const& pass)
+bool Context::renderFrame(std::function<void(FrameDriver)> record, BeginPass const& pass)
 {
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
@@ -207,12 +209,18 @@ bool Context::renderFrame(std::function<void(vk::CommandBuffer)> record, BeginPa
 	renderPassInfo.renderArea.extent = m_swapchain.extent;
 	renderPassInfo.clearValueCount = (u32)clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
+	// Set UBOs
+	void* pData = g_info.device.mapMemory(swapchainFrame.ubos.matrices.buffer.memory, 0, s_shared.matrices.size);
+	std::memcpy(pData, &pass.ubos.mats, sizeof(pass.ubos.mats));
+	g_info.device.unmapMemory(swapchainFrame.ubos.matrices.buffer.memory);
+
 	// Begin
 	auto const& commandBuffer = swapchainFrame.commandBuffer;
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	record(commandBuffer);
+	FrameDriver driver{commandBuffer, swapchainFrame.ubos.matrices.descriptorSet};
+	record(std::move(driver));
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
 	// Submit
@@ -230,12 +238,11 @@ bool Context::renderFrame(std::function<void(vk::CommandBuffer)> record, BeginPa
 	swapchainFrame.drawing = frameSync.drawing;
 	// Present
 	vk::PresentInfoKHR presentInfo;
-	std::array swapchains = {m_swapchain.swapchain};
 	auto const index = m_swapchain.currentImageIndex;
-	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.waitSemaphoreCount = 1U;
 	presentInfo.pWaitSemaphores = &frameSync.present;
-	presentInfo.swapchainCount = (u32)swapchains.size();
-	presentInfo.pSwapchains = swapchains.data();
+	presentInfo.swapchainCount = 1U;
+	presentInfo.pSwapchains = &m_swapchain.swapchain;
 	presentInfo.pImageIndices = &index;
 	auto const result = g_info.queues.present.presentKHR(&presentInfo);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
@@ -351,41 +358,92 @@ bool Context::createSwapchain()
 			SwapchainFrame frame;
 			frame.colour = imageView;
 			frame.depth = m_swapchain.depthImageView;
-			std::array attachments = {frame.colour, frame.depth};
-			vk::FramebufferCreateInfo createInfo;
-			createInfo.attachmentCount = (u32)attachments.size();
-			createInfo.pAttachments = attachments.data();
-			createInfo.renderPass = m_renderPass;
-			createInfo.width = m_swapchain.extent.width;
-			createInfo.height = m_swapchain.extent.height;
-			createInfo.layers = 1;
-			frame.framebuffer = g_info.device.createFramebuffer(createInfo);
-			vk::CommandPoolCreateInfo commandPoolCreateInfo;
-			commandPoolCreateInfo.queueFamilyIndex = vuk::g_info.queueFamilyIndices.graphics;
-			commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-			frame.commandPool = vuk::g_info.device.createCommandPool(commandPoolCreateInfo);
-			vk::CommandBufferAllocateInfo allocInfo;
-			allocInfo.commandPool = frame.commandPool;
-			allocInfo.level = vk::CommandBufferLevel::ePrimary;
-			allocInfo.commandBufferCount = 1;
-			frame.commandBuffer = vuk::g_info.device.allocateCommandBuffers(allocInfo).front();
+			{
+				// Framebuffers
+				std::array attachments = {frame.colour, frame.depth};
+				vk::FramebufferCreateInfo createInfo;
+				createInfo.attachmentCount = (u32)attachments.size();
+				createInfo.pAttachments = attachments.data();
+				createInfo.renderPass = m_renderPass;
+				createInfo.width = m_swapchain.extent.width;
+				createInfo.height = m_swapchain.extent.height;
+				createInfo.layers = 1;
+				frame.framebuffer = g_info.device.createFramebuffer(createInfo);
+			}
+			{
+				// Commands
+				vk::CommandPoolCreateInfo commandPoolCreateInfo;
+				commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
+				commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+				frame.commandPool = g_info.device.createCommandPool(commandPoolCreateInfo);
+				vk::CommandBufferAllocateInfo allocInfo;
+				allocInfo.commandPool = frame.commandPool;
+				allocInfo.level = vk::CommandBufferLevel::ePrimary;
+				allocInfo.commandBufferCount = 1;
+				frame.commandBuffer = g_info.device.allocateCommandBuffers(allocInfo).front();
+			}
+			{
+				// UBOs
+				BufferData data;
+				data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+				data.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+				// Matrices
+				data.size = s_shared.matrices.size;
+				frame.ubos.matrices.buffer = createBuffer(data);
+			}
 			m_swapchain.frames.push_back(std::move(frame));
 		}
 		if (m_swapchain.swapchainImages.empty() || m_swapchain.frames.empty())
 		{
 			throw std::runtime_error("Failed to create swapchain!");
 		}
+		m_frameCount = (u32)m_swapchain.frames.size();
 	}
-	m_frameCount = (u32)m_swapchain.frames.size();
+	// Descriptors
+	{
+		// Pool
+		vk::DescriptorPoolSize descPoolSize;
+		descPoolSize.type = vk::DescriptorType::eUniformBuffer;
+		descPoolSize.descriptorCount = m_frameCount;
+		vk::DescriptorPoolCreateInfo createInfo;
+		createInfo.poolSizeCount = 1;
+		createInfo.pPoolSizes = &descPoolSize;
+		createInfo.maxSets = m_frameCount;
+		m_swapchain.descriptorPool = g_info.device.createDescriptorPool(createInfo);
+		// Sets
+		vk::DescriptorSetAllocateInfo allocInfo;
+		allocInfo.descriptorPool = m_swapchain.descriptorPool;
+		allocInfo.descriptorSetCount = m_frameCount;
+		std::vector layouts((size_t)m_frameCount, g_info.matricesLayout);
+		allocInfo.pSetLayouts = layouts.data();
+		auto sets = g_info.device.allocateDescriptorSets(allocInfo);
+		for (size_t idx = 0; idx < sets.size(); ++idx)
+		{
+			auto& swapchainFrame = m_swapchain.frames.at(idx);
+			swapchainFrame.ubos.matrices.descriptorSet = sets.at(idx);
+			vk::DescriptorBufferInfo bufferInfo;
+			bufferInfo.buffer = swapchainFrame.ubos.matrices.buffer.resource;
+			bufferInfo.offset = 0;
+			bufferInfo.range = s_shared.matrices.size;
+			vk::WriteDescriptorSet descWrite;
+			descWrite.dstSet = swapchainFrame.ubos.matrices.descriptorSet;
+			descWrite.dstBinding = 0;
+			descWrite.dstArrayElement = 0;
+			descWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+			descWrite.descriptorCount = 1;
+			descWrite.pBufferInfo = &bufferInfo;
+			g_info.device.updateDescriptorSets(descWrite, {});
+		}
+	}
 	m_sync = RenderSync();
 	for (u32 i = 0; i < m_frameCount; ++i)
 	{
 		RenderSync::FrameSync frame;
-		frame.render = vuk::g_info.device.createSemaphore({});
-		frame.present = vuk::g_info.device.createSemaphore({});
+		frame.render = g_info.device.createSemaphore({});
+		frame.present = g_info.device.createSemaphore({});
 		vk::FenceCreateInfo createInfo;
 		createInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-		frame.drawing = vuk::g_info.device.createFence(createInfo);
+		frame.drawing = g_info.device.createFence(createInfo);
 		m_sync.frames.push_back(std::move(frame));
 	}
 	LOG_D("[{}:{}] Swapchain created [{}x{}]", s_tName, m_window, size.x, size.y);
@@ -401,12 +459,13 @@ void Context::destroySwapchain()
 	}
 	for (auto const& frame : m_swapchain.frames)
 	{
-		vkDestroy(frame.framebuffer, frame.commandPool);
+		vkDestroy(frame.framebuffer, frame.commandPool, frame.ubos.matrices.buffer);
 	}
 	for (auto const& imageView : m_swapchain.swapchainImageViews)
 	{
 		vkDestroy(imageView);
 	}
+	vkDestroy(m_swapchain.descriptorPool);
 	vkDestroy(m_swapchain.depthImageView, m_swapchain.depthImage.resource, m_swapchain.swapchain);
 	vkFree(m_swapchain.depthImage.memory);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}:{}] Swapchain destroyed", s_tName, m_window);

@@ -17,6 +17,12 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
+	struct FrameDriver final
+	{
+		vk::CommandBuffer commandBuffer;
+		vk::DescriptorSet matrices;
+	};
+
 private:
 	struct Info final
 	{
@@ -37,7 +43,12 @@ private:
 		vk::Extent2D extent(glm::ivec2 const& framebufferSize) const;
 	};
 
-	struct SwapchainFrame
+	struct Shared final
+	{
+		UBOData matrices;
+	};
+
+	struct SwapchainFrame final
 	{
 		vk::Framebuffer framebuffer;
 		vk::ImageView colour;
@@ -45,9 +56,17 @@ private:
 		vk::Fence drawing;
 		vk::CommandBuffer commandBuffer;
 		vk::CommandPool commandPool;
+		struct
+		{
+			struct
+			{
+				VkResource<vk::Buffer> buffer;
+				vk::DescriptorSet descriptorSet;
+			} matrices;
+		} ubos;
 	};
 
-	struct Swapchain
+	struct Swapchain final
 	{
 		vk::Extent2D extent;
 		std::vector<vk::Image> swapchainImages;
@@ -56,6 +75,7 @@ private:
 		vk::ImageView depthImageView;
 		std::vector<SwapchainFrame> frames;
 		vk::SwapchainKHR swapchain;
+		vk::DescriptorPool descriptorPool;
 
 		glm::ivec2 size = {};
 		u32 currentImageIndex = 0;
@@ -66,7 +86,7 @@ private:
 
 	struct RenderSync final
 	{
-		struct FrameSync
+		struct FrameSync final
 		{
 			vk::Semaphore render;
 			vk::Semaphore present;
@@ -82,6 +102,9 @@ private:
 
 public:
 	static std::string const s_tName;
+
+private:
+	static Shared const s_shared;
 
 public:
 	vk::RenderPass m_renderPass;
@@ -105,7 +128,7 @@ public:
 public:
 	void onFramebufferResize();
 
-	bool renderFrame(std::function<void(vk::CommandBuffer)> record, BeginPass const& pass = {});
+	bool renderFrame(std::function<void(FrameDriver)> record, BeginPass const& pass = {});
 
 private:
 	void createRenderPass();

@@ -4,6 +4,7 @@
 #include "core/log.hpp"
 #include "core/maths.hpp"
 #include "core/map_store.hpp"
+#include "core/transform.hpp"
 #include "core/services.hpp"
 #include "engine/levk.hpp"
 #include "engine/window/window.hpp"
@@ -147,10 +148,7 @@ s32 engine::run(s32 argc, char** argv)
 				vuk::vkDestroy(op.transferred);
 				vuk::g_info.device.freeCommandBuffers(op.pool, op.commandBuffer);
 			}
-			vuk::g_info.device.destroyBuffer(tri0stage.resource);
-			vuk::g_info.device.destroyBuffer(quad0stage.resource);
-			vuk::g_info.device.freeMemory(tri0stage.memory);
-			vuk::g_info.device.freeMemory(quad0stage.memory);
+			vuk::vkDestroy(tri0stage, quad0stage);
 		}
 
 		Window w0, w1;
@@ -160,7 +158,7 @@ s32 engine::run(s32 argc, char** argv)
 		auto data1 = data0;
 		data1.config.title += " 2";
 		data1.config.centreOffset = {100, 100};
-		data1.options.colourSpace = ColourSpace::eRGBLinear;
+		// data1.options.colourSpace = ColourSpace::eRGBLinear;
 		bool bRecreate0 = false, bRecreate1 = false;
 		bool bClose0 = false, bClose1 = false;
 		auto registerInput = [](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
@@ -178,15 +176,23 @@ s32 engine::run(s32 argc, char** argv)
 		std::shared_ptr<s32> token0, token1;
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createRenderer = [&tutorialShader](vk::Pipeline* pPipeline, vuk::Context** ppContext, WindowID id) {
-			vuk::vkDestroy(*pPipeline);
+		auto createRenderer = [&tutorialShader](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout, vuk::Context** ppContext,
+												WindowID id) {
+			vuk::vkDestroy(*pPipeline, *pLayout);
 			*ppContext = WindowImpl::context(id);
-			vk::PipelineLayout pipelineLayout = vuk::g_info.device.createPipelineLayout(vk::PipelineLayoutCreateInfo());
+			if (!*ppContext)
+			{
+				return;
+			}
+			vk::PipelineLayoutCreateInfo layoutCreateInfo;
+			vk::DescriptorSetLayout setLayout = vuk::g_info.matricesLayout;
+			layoutCreateInfo.setLayoutCount = 1;
+			layoutCreateInfo.pSetLayouts = &setLayout;
+			*pLayout = vuk::g_info.device.createPipelineLayout(layoutCreateInfo);
 			vuk::PipelineData pipelineData;
 			pipelineData.pShader = &tutorialShader;
 			pipelineData.renderPass = (*ppContext)->m_renderPass;
-			*pPipeline = vuk::createPipeline(pipelineLayout, pipelineData);
-			vuk::vkDestroy(pipelineLayout);
+			*pPipeline = vuk::createPipeline(*pLayout, pipelineData);
 			return;
 		};
 
@@ -194,17 +200,45 @@ s32 engine::run(s32 argc, char** argv)
 		{
 			vuk::Context* pContext0 = nullptr;
 			vuk::Context* pContext1 = nullptr;
+			vk::PipelineLayout layout0, layout1;
 			vk::Pipeline pipeline0;
 			vk::Pipeline pipeline1;
 
-			createRenderer(&pipeline0, &pContext0, w0.id());
-			createRenderer(&pipeline1, &pContext1, w1.id());
+			createRenderer(&pipeline0, &layout0, &pContext0, w0.id());
+			createRenderer(&pipeline1, &layout1, &pContext1, w1.id());
+
+			vuk::MatricesUBO mats0;
+			vuk::MatricesUBO mats1;
+			Transform transform0;
 
 			Time t = Time::elapsed();
 			while (w0.isOpen() || w1.isOpen())
 			{
 				[[maybe_unused]] Time dt = Time::elapsed() - t;
 				t = Time::elapsed();
+
+				{
+					// Update matrices
+					transform0.setOrientation(
+						glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+					mats0.mat_m = mats1.mat_m = transform0.model();
+					mats0.mat_v = mats1.mat_v =
+						glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+					if (w0.isOpen())
+					{
+						auto const size = w0.framebufferSize();
+						auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+						proj[1][1] *= -1;
+						mats0.mat_vp = proj * mats0.mat_v;
+					}
+					if (w1.isOpen())
+					{
+						auto const size = w1.framebufferSize();
+						auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+						proj[1][1] *= -1;
+						mats1.mat_vp = proj * mats1.mat_v;
+					}
+				}
 
 				std::this_thread::sleep_for(stdch::milliseconds(10));
 				if (w0.isClosing())
@@ -219,13 +253,13 @@ s32 engine::run(s32 argc, char** argv)
 				{
 					bRecreate0 = false;
 					w0.create(data0);
-					createRenderer(&pipeline0, &pContext0, w0.id());
+					createRenderer(&pipeline0, &layout0, &pContext0, w0.id());
 				}
 				if (bRecreate1)
 				{
 					bRecreate1 = false;
 					w1.create(data1);
-					createRenderer(&pipeline1, &pContext1, w1.id());
+					createRenderer(&pipeline1, &layout1, &pContext1, w1.id());
 				}
 				if (bClose0)
 				{
@@ -241,38 +275,52 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [](vuk::Context* pContext, vk::Pipeline pipeline, vk::Buffer vertexBuffer, u32 vertCount,
-										u32 indexCount) -> bool {
-						return pContext->renderFrame([&](vk::CommandBuffer commandBuffer) {
-							vk::Viewport viewport = pContext->transformViewport();
-							vk::Rect2D scissor = pContext->transformScissor();
-							commandBuffer.setViewport(0, viewport);
-							commandBuffer.setScissor(0, scissor);
-
-							commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-							vk::DeviceSize offsets[] = {0};
-							commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer, offsets);
-							if (indexCount > 0)
-							{
-								vk::DeviceSize offset = vertCount * sizeof(vuk::Vertex);
-								commandBuffer.bindIndexBuffer(vertexBuffer, offset, vk::IndexType::eUint32);
-								commandBuffer.drawIndexed(indexCount, 1, 0, 0, 0);
-							}
-							else
-							{
-								commandBuffer.draw(vertCount, 1, 0, 0);
-							}
-						});
+					auto drawFrame = [](vuk::MatricesUBO* pMats, vuk::Context* pContext, vk::Pipeline pipeline, vk::PipelineLayout layout,
+										vk::Buffer vertexBuffer, u32 vertCount, u32 indexCount) -> bool {
+						vuk::BeginPass pass;
+						pass.ubos.mats = *pMats;
+						pass.pipelineLayout = layout;
+						return pContext->renderFrame(
+							[&](vuk::Context::FrameDriver driver) {
+								vk::Viewport viewport = pContext->transformViewport();
+								vk::Rect2D scissor = pContext->transformScissor();
+								driver.commandBuffer.setViewport(0, viewport);
+								driver.commandBuffer.setScissor(0, scissor);
+								driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+								vk::DeviceSize offsets[] = {0};
+								driver.commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer, offsets);
+								if (indexCount > 0)
+								{
+									vk::DeviceSize offset = vertCount * sizeof(vuk::Vertex);
+									driver.commandBuffer.bindIndexBuffer(vertexBuffer, offset, vk::IndexType::eUint32);
+									driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, driver.matrices,
+																			{});
+									driver.commandBuffer.drawIndexed(indexCount, 1, 0, 0, 0);
+								}
+								else
+								{
+									driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, driver.matrices,
+																			{});
+									driver.commandBuffer.draw(vertCount, 1, 0, 0);
+								}
+							},
+							pass);
 					};
 
 					if (w0.isOpen())
 					{
-						drawFrame(pContext0, pipeline0, quad0VBIB.resource, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
+						auto const size = w0.framebufferSize();
+						auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+						proj[1][1] *= -1;
+						mats0.mat_vp = proj * mats0.mat_v;
+						drawFrame(&mats0, pContext0, pipeline0, layout0, quad0VBIB.resource, (u32)arraySize(quad0Verts),
+								  (u32)arraySize(quad0Indices));
 					}
 					if (w1.isOpen())
 					{
 						// drawFrame(pContext1, pipeline1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
-						drawFrame(pContext1, pipeline1, quad0VBIB.resource, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
+						drawFrame(&mats1, pContext1, pipeline1, layout1, quad0VBIB.resource, (u32)arraySize(quad0Verts),
+								  (u32)arraySize(quad0Indices));
 					}
 				}
 				catch (std::exception const& e)
@@ -281,7 +329,7 @@ s32 engine::run(s32 argc, char** argv)
 				}
 			}
 			vuk::g_info.device.waitIdle();
-			vuk::vkDestroy(pipeline0, pipeline1);
+			vuk::vkDestroy(pipeline0, pipeline1, layout0, layout1);
 			vuk::vkDestroy(transferPool);
 			vuk::g_info.device.destroyBuffer(triangle0VB.resource);
 			vuk::g_info.device.destroyBuffer(quad0VBIB.resource);

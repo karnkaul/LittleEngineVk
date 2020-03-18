@@ -66,7 +66,7 @@ vuk::VkResource<vk::Buffer> vuk::createBuffer(BufferData const& data)
 	allocInfo.memoryTypeIndex = vuk::g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
 	bufferMemory = vuk::g_info.device.allocateMemory(allocInfo);
 	vuk::g_info.device.bindBufferMemory(buffer, bufferMemory, 0);
-	return {buffer, bufferMemory};
+	return {buffer, bufferMemory, data.size};
 }
 
 void vuk::copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp)

@@ -239,11 +239,23 @@ void init(InitData const& initData)
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
 	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, 0);
 
+	// Set Layout
+	vk::DescriptorSetLayoutBinding matricesBinding;
+	matricesBinding.binding = 0;
+	matricesBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+	matricesBinding.descriptorCount = 1;
+	matricesBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
+	setLayoutCreateInfo.bindingCount = 1;
+	setLayoutCreateInfo.pBindings = &matricesBinding;
+	g_info.matricesLayout = device.createDescriptorSetLayout(setLayoutCreateInfo);
+
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
 
 void deinit()
 {
+	vkDestroy(g_info.matricesLayout);
 	if (g_info.device != vk::Device())
 	{
 		g_info.device.destroy();

@@ -91,21 +91,18 @@ struct VkResource final
 	vk::DeviceSize size = {};
 };
 
-struct MatricesUBO final
+namespace ubo
 {
-	glm::mat4 mat_m;
+struct View final
+{
 	glm::mat4 mat_vp;
 	glm::mat4 mat_v;
 };
+} // namespace ubo
 
 struct BeginPass final
 {
 	static const std::array<f32, 4> s_black;
-
-	struct
-	{
-		MatricesUBO mats;
-	} ubos;
 
 	vk::ClearColorValue colour = vk::ClearColorValue(s_black);
 	vk::ClearDepthStencilValue depth = vk::ClearDepthStencilValue(1.0f, 0.0f);

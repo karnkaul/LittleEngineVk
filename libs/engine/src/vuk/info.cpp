@@ -324,19 +324,6 @@ u32 Info::findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) con
 	throw std::runtime_error("Failed to find suitable memory type!");
 }
 
-void Info::wait(vk::Fence optional) const
-{
-	if (optional != vk::Fence())
-	{
-		device.waitForFences(optional, true, maxVal<u64>());
-	}
-}
-
-void Info::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const
-{
-	device.waitForFences(std::move(validFences), true, maxVal<u64>());
-}
-
 Service::Service(InitData const& initData)
 {
 	init(initData);

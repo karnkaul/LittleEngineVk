@@ -1,3 +1,4 @@
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include "core/io.hpp"
 #include "core/jobs.hpp"
@@ -119,7 +120,6 @@ s32 engine::run(s32 argc, char** argv)
 		auto q = vuk::g_info.queues.transfer;
 		vuk::VkResource<vk::Buffer> triangle0VB, quad0VBIB;
 		{
-			auto d = vuk::g_info.device;
 			std::vector<vuk::TransferOp> ops;
 			auto const t0vbSize = sizeof(triangle0Verts);
 			auto const q0vbSize = sizeof(quad0Verts);
@@ -129,20 +129,14 @@ s32 engine::run(s32 argc, char** argv)
 			auto quad0stage = createStagingBuffer(q0vbibSize);
 			triangle0VB = createDeviceBuffer(t0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0VBIB = createDeviceBuffer(q0vbibSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer);
-			auto pMem = d.mapMemory(tri0stage.memory, 0, t0vbSize);
-			std::memcpy(pMem, triangle0Verts, t0vbSize);
-			d.unmapMemory(tri0stage.memory);
-			pMem = vuk::g_info.device.mapMemory(quad0stage.memory, 0, q0vbSize);
-			std::memcpy(pMem, quad0Verts, q0vbSize);
-			vuk::g_info.device.unmapMemory(quad0stage.memory);
-			pMem = vuk::g_info.device.mapMemory(quad0stage.memory, q0vbSize, q0ibSize);
-			std::memcpy(pMem, quad0Indices, q0ibSize);
-			vuk::g_info.device.unmapMemory(quad0stage.memory);
+			vuk::writeToBuffer(tri0stage, triangle0Verts);
+			vuk::writeToBuffer(quad0stage, quad0Verts, q0vbSize);
+			vuk::writeToBuffer(quad0stage, quad0Indices, q0ibSize, q0vbSize);
 			ops.push_back(copyBuffer(tri0stage.resource, triangle0VB.resource, t0vbSize, q, transferPool));
 			ops.push_back(copyBuffer(quad0stage.resource, quad0VBIB.resource, q0vbibSize, q, transferPool));
 			std::vector<vk::Fence> fences;
 			std::for_each(ops.begin(), ops.end(), [&fences](auto const& op) { fences.push_back(op.transferred); });
-			vuk::g_info.waitAll(fences);
+			vuk::waitAll(fences);
 			for (auto& op : ops)
 			{
 				vuk::vkDestroy(op.transferred);
@@ -188,6 +182,12 @@ s32 engine::run(s32 argc, char** argv)
 			vk::DescriptorSetLayout setLayout = vuk::g_info.matricesLayout;
 			layoutCreateInfo.setLayoutCount = 1;
 			layoutCreateInfo.pSetLayouts = &setLayout;
+			vk::PushConstantRange pushConstantRange;
+			pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
+			pushConstantRange.offset = 0;
+			pushConstantRange.size = sizeof(glm::mat4);
+			layoutCreateInfo.pushConstantRangeCount = 1;
+			layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 			*pLayout = vuk::g_info.device.createPipelineLayout(layoutCreateInfo);
 			vuk::PipelineData pipelineData;
 			pipelineData.pShader = &tutorialShader;
@@ -207,8 +207,8 @@ s32 engine::run(s32 argc, char** argv)
 			createRenderer(&pipeline0, &layout0, &pContext0, w0.id());
 			createRenderer(&pipeline1, &layout1, &pContext1, w1.id());
 
-			vuk::MatricesUBO mats0;
-			vuk::MatricesUBO mats1;
+			vuk::ubo::View view0;
+			vuk::ubo::View view1;
 			Transform transform0;
 
 			Time t = Time::elapsed();
@@ -221,22 +221,27 @@ s32 engine::run(s32 argc, char** argv)
 					// Update matrices
 					transform0.setOrientation(
 						glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
-					mats0.mat_m = mats1.mat_m = transform0.model();
-					mats0.mat_v = mats1.mat_v =
+					view0.mat_v = view1.mat_v =
 						glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 					if (w0.isOpen())
 					{
 						auto const size = w0.framebufferSize();
-						auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
-						proj[1][1] *= -1;
-						mats0.mat_vp = proj * mats0.mat_v;
+						if (size.x > 0 && size.y > 0)
+						{
+							auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+							proj[1][1] *= -1;
+							view0.mat_vp = proj * view0.mat_v;
+						}
 					}
 					if (w1.isOpen())
 					{
 						auto const size = w1.framebufferSize();
-						auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
-						proj[1][1] *= -1;
-						mats1.mat_vp = proj * mats1.mat_v;
+						if (size.x > 0 && size.y > 0)
+						{
+							auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+							proj[1][1] *= -1;
+							view1.mat_vp = proj * view1.mat_v;
+						}
 					}
 				}
 
@@ -275,52 +280,51 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [](vuk::MatricesUBO* pMats, vuk::Context* pContext, vk::Pipeline pipeline, vk::PipelineLayout layout,
-										vk::Buffer vertexBuffer, u32 vertCount, u32 indexCount) -> bool {
+					auto drawFrame = [&transform0](vuk::ubo::View* pView, vuk::Context* pContext, vk::Pipeline pipeline,
+												   vk::PipelineLayout layout, vk::Buffer vertexBuffer, u32 vertCount,
+												   u32 indexCount) -> bool {
 						vuk::BeginPass pass;
-						pass.ubos.mats = *pMats;
 						pass.pipelineLayout = layout;
-						return pContext->renderFrame(
-							[&](vuk::Context::FrameDriver driver) {
-								vk::Viewport viewport = pContext->transformViewport();
-								vk::Rect2D scissor = pContext->transformScissor();
-								driver.commandBuffer.setViewport(0, viewport);
-								driver.commandBuffer.setScissor(0, scissor);
-								driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-								vk::DeviceSize offsets[] = {0};
-								driver.commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer, offsets);
-								if (indexCount > 0)
-								{
-									vk::DeviceSize offset = vertCount * sizeof(vuk::Vertex);
-									driver.commandBuffer.bindIndexBuffer(vertexBuffer, offset, vk::IndexType::eUint32);
-									driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, driver.matrices,
-																			{});
-									driver.commandBuffer.drawIndexed(indexCount, 1, 0, 0, 0);
-								}
-								else
-								{
-									driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, driver.matrices,
-																			{});
-									driver.commandBuffer.draw(vertCount, 1, 0, 0);
-								}
-							},
-							pass);
+						auto write = [&](vuk::Context::FrameDriver::UBOs const& ubos) {
+							// Set UBOs
+							vuk::writeToBuffer(ubos.view.buffer, pView);
+						};
+						auto draw = [&](vuk::Context::FrameDriver const& driver) {
+							vk::Viewport viewport = pContext->transformViewport();
+							vk::Rect2D scissor = pContext->transformScissor();
+							driver.commandBuffer.setViewport(0, viewport);
+							driver.commandBuffer.setScissor(0, scissor);
+							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+							vk::DeviceSize offsets[] = {0};
+							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0,
+																	driver.ubos.view.descriptorSet, {});
+							driver.commandBuffer.pushConstants(layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4),
+															   glm::value_ptr(transform0.model()));
+							driver.commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer, offsets);
+							if (indexCount > 0)
+							{
+								vk::DeviceSize offset = vertCount * sizeof(vuk::Vertex);
+								driver.commandBuffer.bindIndexBuffer(vertexBuffer, offset, vk::IndexType::eUint32);
+								driver.commandBuffer.drawIndexed(indexCount, 1, 0, 0, 0);
+							}
+							else
+							{
+								driver.commandBuffer.draw(vertCount, 1, 0, 0);
+							}
+						};
+						return pContext->renderFrame(write, draw, pass);
 					};
 
 					if (w0.isOpen())
 					{
-						auto const size = w0.framebufferSize();
-						auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
-						proj[1][1] *= -1;
-						mats0.mat_vp = proj * mats0.mat_v;
-						drawFrame(&mats0, pContext0, pipeline0, layout0, quad0VBIB.resource, (u32)arraySize(quad0Verts),
+						drawFrame(&view0, pContext0, pipeline0, layout0, quad0VBIB.resource, (u32)arraySize(quad0Verts),
 								  (u32)arraySize(quad0Indices));
 					}
 					if (w1.isOpen())
 					{
-						// drawFrame(pContext1, pipeline1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
-						drawFrame(&mats1, pContext1, pipeline1, layout1, quad0VBIB.resource, (u32)arraySize(quad0Verts),
-								  (u32)arraySize(quad0Indices));
+						drawFrame(&view1, pContext1, pipeline1, layout1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
+						// drawFrame(&view1, pContext1, pipeline1, layout1, quad0VBIB.resource, (u32)arraySize(quad0Verts),
+						//	  (u32)arraySize(quad0Indices));
 					}
 				}
 				catch (std::exception const& e)

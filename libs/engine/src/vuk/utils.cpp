@@ -6,6 +6,19 @@
 
 namespace le
 {
+void vuk::wait(vk::Fence optional)
+{
+	if (optional != vk::Fence())
+	{
+		g_info.device.waitForFences(optional, true, maxVal<u64>());
+	}
+}
+
+void vuk::waitAll(vk::ArrayProxy<const vk::Fence> validFences)
+{
+	g_info.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+}
+
 vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 {
 	vk::ImageCreateInfo imageInfo = {};
@@ -215,5 +228,21 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 	createInfo.renderPass = data.renderPass;
 	createInfo.subpass = 0;
 	return g_info.device.createGraphicsPipeline(cache, createInfo);
+}
+
+bool vuk::writeToBuffer(VkResource<vk::Buffer> buffer, void const* pData, vk::DeviceSize size, vk::DeviceSize offset)
+{
+	if (size == 0)
+	{
+		size = buffer.size;
+	}
+	if (buffer.memory != vk::DeviceMemory() && buffer.resource != vk::Buffer() && buffer.size - offset >= size)
+	{
+		auto pMem = g_info.device.mapMemory(buffer.memory, offset, size);
+		std::memcpy(pMem, pData, size);
+		g_info.device.unmapMemory(buffer.memory);
+		return true;
+	}
+	return false;
 }
 } // namespace le

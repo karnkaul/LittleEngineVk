@@ -46,6 +46,9 @@ struct BufferData final
 	vk::MemoryPropertyFlags properties;
 };
 
+void wait(vk::Fence optional);
+void waitAll(vk::ArrayProxy<const vk::Fence> validFences);
+
 VkResource<vk::Image> createImage(ImageData const& data);
 vk::ImageView createImageView(vk::Image image, vk::ImageViewType type, vk::Format format, vk::ImageAspectFlags aspectFlags);
 
@@ -54,4 +57,6 @@ void copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp*
 
 vk::RenderPass createRenderPass(vk::Format format);
 vk::Pipeline createPipeline(vk::PipelineLayout info, PipelineData const& data, vk::PipelineCache cache = vk::PipelineCache());
+
+bool writeToBuffer(VkResource<vk::Buffer> buffer, void const* pData, vk::DeviceSize size = 0, vk::DeviceSize offset = 0);
 } // namespace le::vuk

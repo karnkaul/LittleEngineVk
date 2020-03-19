@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/flags.hpp"
@@ -17,11 +18,26 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
+	struct UniformData
+	{
+		VkResource<vk::Buffer> buffer;
+		vk::DescriptorSet descriptorSet;
+		vk::DeviceSize offset;
+	};
+
 	struct FrameDriver final
 	{
+		struct UBOs
+		{
+			UniformData view;
+		};
+
+		UBOs ubos;
 		vk::CommandBuffer commandBuffer;
-		vk::DescriptorSet matrices;
 	};
+
+	using Write = std::function<void(FrameDriver::UBOs const&)>;
+	using Draw = std::function<void(FrameDriver const&)>;
 
 private:
 	struct Info final
@@ -45,7 +61,7 @@ private:
 
 	struct Shared final
 	{
-		UBOData matrices;
+		UBOData uboView;
 	};
 
 	struct SwapchainFrame final
@@ -58,11 +74,7 @@ private:
 		vk::CommandPool commandPool;
 		struct
 		{
-			struct
-			{
-				VkResource<vk::Buffer> buffer;
-				vk::DescriptorSet descriptorSet;
-			} matrices;
+			UniformData view;
 		} ubos;
 	};
 
@@ -128,7 +140,7 @@ public:
 public:
 	void onFramebufferResize();
 
-	bool renderFrame(std::function<void(FrameDriver)> record, BeginPass const& pass = {});
+	bool renderFrame(Write write, Draw draw, BeginPass const& pass = {});
 
 private:
 	void createRenderPass();

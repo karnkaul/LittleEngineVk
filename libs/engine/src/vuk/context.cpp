@@ -9,7 +9,7 @@ namespace le::vuk
 {
 std::string const Context::s_tName = utils::tName<Context>();
 
-Context::Shared const Context::s_shared = {UBOData{sizeof(MatricesUBO)}};
+Context::Shared const Context::s_shared = {UBOData{sizeof(ubo::View)}};
 
 void Context::Info::refresh()
 {
@@ -183,13 +183,14 @@ void Context::onFramebufferResize()
 	}
 }
 
-bool Context::renderFrame(std::function<void(FrameDriver)> record, BeginPass const& pass)
+bool Context::renderFrame(Write write, Draw draw, BeginPass const& pass)
 {
-	if (m_flags.isSet(Flag::eRenderPaused))
+	if (m_flags.isSet(Flag::eRenderPaused) || !draw)
 	{
 		return false;
 	}
 	auto& frameSync = m_sync.frameSync();
+	vuk::wait(frameSync.drawing);
 	// Acquire
 	auto const acquire = g_info.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), frameSync.render, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
@@ -200,7 +201,7 @@ bool Context::renderFrame(std::function<void(FrameDriver)> record, BeginPass con
 	}
 	m_swapchain.currentImageIndex = (u32)acquire.value;
 	auto& swapchainFrame = m_swapchain.swapchainFrame();
-	g_info.wait(swapchainFrame.drawing);
+	vuk::wait(swapchainFrame.drawing);
 	swapchainFrame.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
 	std::array<vk::ClearValue, 2> clearValues = {pass.colour, pass.depth};
 	vk::RenderPassBeginInfo renderPassInfo;
@@ -209,18 +210,18 @@ bool Context::renderFrame(std::function<void(FrameDriver)> record, BeginPass con
 	renderPassInfo.renderArea.extent = m_swapchain.extent;
 	renderPassInfo.clearValueCount = (u32)clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
-	// Set UBOs
-	void* pData = g_info.device.mapMemory(swapchainFrame.ubos.matrices.buffer.memory, 0, s_shared.matrices.size);
-	std::memcpy(pData, &pass.ubos.mats, sizeof(pass.ubos.mats));
-	g_info.device.unmapMemory(swapchainFrame.ubos.matrices.buffer.memory);
-
+	FrameDriver::UBOs ubos{swapchainFrame.ubos.view};
+	if (write)
+	{
+		write(ubos);
+	}
 	// Begin
 	auto const& commandBuffer = swapchainFrame.commandBuffer;
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{commandBuffer, swapchainFrame.ubos.matrices.descriptorSet};
-	record(std::move(driver));
+	FrameDriver driver{ubos, commandBuffer};
+	draw(driver);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
 	// Submit
@@ -388,8 +389,9 @@ bool Context::createSwapchain()
 				data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 				data.usage = vk::BufferUsageFlagBits::eUniformBuffer;
 				// Matrices
-				data.size = s_shared.matrices.size;
-				frame.ubos.matrices.buffer = createBuffer(data);
+				data.size = s_shared.uboView.size;
+				frame.ubos.view.buffer = createBuffer(data);
+				frame.ubos.view.offset = 0;
 			}
 			m_swapchain.frames.push_back(std::move(frame));
 		}
@@ -420,13 +422,13 @@ bool Context::createSwapchain()
 		for (size_t idx = 0; idx < sets.size(); ++idx)
 		{
 			auto& swapchainFrame = m_swapchain.frames.at(idx);
-			swapchainFrame.ubos.matrices.descriptorSet = sets.at(idx);
+			swapchainFrame.ubos.view.descriptorSet = sets.at(idx);
 			vk::DescriptorBufferInfo bufferInfo;
-			bufferInfo.buffer = swapchainFrame.ubos.matrices.buffer.resource;
+			bufferInfo.buffer = swapchainFrame.ubos.view.buffer.resource;
 			bufferInfo.offset = 0;
-			bufferInfo.range = s_shared.matrices.size;
+			bufferInfo.range = s_shared.uboView.size;
 			vk::WriteDescriptorSet descWrite;
-			descWrite.dstSet = swapchainFrame.ubos.matrices.descriptorSet;
+			descWrite.dstSet = swapchainFrame.ubos.view.descriptorSet;
 			descWrite.dstBinding = 0;
 			descWrite.dstArrayElement = 0;
 			descWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
@@ -459,7 +461,7 @@ void Context::destroySwapchain()
 	}
 	for (auto const& frame : m_swapchain.frames)
 	{
-		vkDestroy(frame.framebuffer, frame.commandPool, frame.ubos.matrices.buffer);
+		vkDestroy(frame.framebuffer, frame.commandPool, frame.ubos.view.buffer);
 	}
 	for (auto const& imageView : m_swapchain.swapchainImageViews)
 	{

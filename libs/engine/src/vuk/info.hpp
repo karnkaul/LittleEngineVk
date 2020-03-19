@@ -35,9 +35,6 @@ struct Info final
 	std::vector<u32> uniqueQueueIndices(bool bPresent, bool bTransfer) const;
 	vk::SharingMode sharingMode(bool bPresent, bool bTransfer) const;
 	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
-
-	void wait(vk::Fence optional) const;
-	void waitAll(vk::ArrayProxy<const vk::Fence> validFences) const;
 };
 
 inline Info g_info;

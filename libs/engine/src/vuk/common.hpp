@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
+#include "core/colour.hpp"
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
@@ -50,13 +51,14 @@ struct UBOData final
 	vk::DeviceSize size;
 };
 
-struct ContextData final
+struct PresenterData final
 {
-	using GetFramebufferSize = std::function<glm::ivec2()>;
+	using GetSize = std::function<glm::ivec2()>;
 	struct
 	{
 		CreateSurface getNewSurface;
-		GetFramebufferSize getFramebufferSize;
+		GetSize getFramebufferSize;
+		GetSize getWindowSize;
 		WindowID window;
 	} config;
 
@@ -100,14 +102,10 @@ struct View final
 };
 } // namespace ubo
 
-struct BeginPass final
+struct ClearValues final
 {
-	static const std::array<f32, 4> s_black;
-
-	vk::ClearColorValue colour = vk::ClearColorValue(s_black);
-	vk::ClearDepthStencilValue depth = vk::ClearDepthStencilValue(1.0f, 0.0f);
-
-	vk::PipelineLayout pipelineLayout;
+	glm::vec2 depthStencil = {1.0f, 0.0f};
+	Colour colour = colours::Black;
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;

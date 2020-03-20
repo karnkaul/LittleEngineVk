@@ -65,6 +65,11 @@ bool Window::isClosing() const
 	return m_uImpl ? m_uImpl->isClosing() : false;
 }
 
+glm::ivec2 Window::windowSize() const
+{
+	return m_uImpl ? m_uImpl->windowSize() : glm::ivec2(0);
+}
+
 glm::ivec2 Window::framebufferSize() const
 {
 	return m_uImpl ? m_uImpl->framebufferSize() : glm::ivec2(0);

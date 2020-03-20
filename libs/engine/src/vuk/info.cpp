@@ -278,29 +278,32 @@ bool Info::isValid(vk::SurfaceKHR surface) const
 	return physicalDevice != vk::PhysicalDevice() ? physicalDevice.getSurfaceSupportKHR(queueFamilyIndices.present, surface) : false;
 }
 
-std::vector<u32> Info::uniqueQueueIndices(bool bPresent, bool bTransfer) const
+std::vector<u32> Info::uniqueQueueIndices(QFlags flags) const
 {
 	std::vector<u32> indices;
 	indices.reserve(3);
-	indices.push_back(queueFamilyIndices.graphics);
-	if (bPresent && queueFamilyIndices.graphics != queueFamilyIndices.present)
+	if (flags.isSet(QFlag::eGraphics))
+	{
+		indices.push_back(queueFamilyIndices.graphics);
+	}
+	if (flags.isSet(QFlag::ePresent) && queueFamilyIndices.graphics != queueFamilyIndices.present)
 	{
 		indices.push_back(queueFamilyIndices.present);
 	}
-	if (bTransfer && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
+	if (flags.isSet(QFlag::eTransfer) && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
 	{
 		indices.push_back(queueFamilyIndices.transfer);
 	}
 	return indices;
 }
 
-vk::SharingMode Info::sharingMode(bool bPresent, bool bTransfer) const
+vk::SharingMode Info::sharingMode(QFlags flags) const
 {
-	if (bPresent && !bTransfer)
+	if (flags.isSet(QFlag::ePresent) && !flags.isSet(QFlag::eTransfer))
 	{
 		return queueFamilyIndices.graphics == queueFamilyIndices.present ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
 	}
-	if (!bPresent && bTransfer)
+	if (!flags.isSet(QFlag::ePresent) && flags.isSet(QFlag::eTransfer))
 	{
 		return queueFamilyIndices.transfer != queueFamilyIndices.graphics ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
 	}

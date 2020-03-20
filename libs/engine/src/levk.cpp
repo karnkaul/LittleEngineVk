@@ -10,7 +10,8 @@
 #include "engine/levk.hpp"
 #include "engine/window/window.hpp"
 #include "vuk/info.hpp"
-#include "vuk/context.hpp"
+#include "vuk/presenter.hpp"
+#include "vuk/renderer.hpp"
 #include "vuk/utils.hpp"
 #include "vuk/shader.hpp"
 #include "vuk/draw/vertex.hpp"
@@ -150,9 +151,10 @@ s32 engine::run(s32 argc, char** argv)
 		data0.config.size = {1280, 720};
 		data0.config.title = "LittleEngineVk Demo";
 		auto data1 = data0;
+		// data1.config.mode = Window::Mode::eBorderlessFullscreen;
 		data1.config.title += " 2";
 		data1.config.centreOffset = {100, 100};
-		// data1.options.colourSpace = ColourSpace::eRGBLinear;
+		data1.options.colourSpace = ColourSpace::eRGBLinear;
 		bool bRecreate0 = false, bRecreate1 = false;
 		bool bClose0 = false, bClose1 = false;
 		auto registerInput = [](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
@@ -170,14 +172,10 @@ s32 engine::run(s32 argc, char** argv)
 		std::shared_ptr<s32> token0, token1;
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createRenderer = [&tutorialShader](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout, vuk::Context** ppContext,
+		auto createRenderer = [&tutorialShader](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout, vuk::Presenter** ppPresenter,
 												WindowID id) {
 			vuk::vkDestroy(*pPipeline, *pLayout);
-			*ppContext = WindowImpl::context(id);
-			if (!*ppContext)
-			{
-				return;
-			}
+			*ppPresenter = WindowImpl::presenter(id);
 			vk::PipelineLayoutCreateInfo layoutCreateInfo;
 			vk::DescriptorSetLayout setLayout = vuk::g_info.matricesLayout;
 			layoutCreateInfo.setLayoutCount = 1;
@@ -191,21 +189,27 @@ s32 engine::run(s32 argc, char** argv)
 			*pLayout = vuk::g_info.device.createPipelineLayout(layoutCreateInfo);
 			vuk::PipelineData pipelineData;
 			pipelineData.pShader = &tutorialShader;
-			pipelineData.renderPass = (*ppContext)->m_renderPass;
+			pipelineData.renderPass = (*ppPresenter)->m_renderPass;
 			*pPipeline = vuk::createPipeline(*pLayout, pipelineData);
-			return;
+			return std::make_unique<vuk::Renderer>(*ppPresenter, 2);
 		};
 
 		if (w0.create(data0) && w1.create(data1))
 		{
-			vuk::Context* pContext0 = nullptr;
-			vuk::Context* pContext1 = nullptr;
+			std::unique_ptr<vuk::Renderer> uRenderer0, uRenderer1;
+			vuk::Presenter* pPresenter0 = nullptr;
+			vuk::Presenter* pPresenter1 = nullptr;
 			vk::PipelineLayout layout0, layout1;
 			vk::Pipeline pipeline0;
 			vk::Pipeline pipeline1;
-
-			createRenderer(&pipeline0, &layout0, &pContext0, w0.id());
-			createRenderer(&pipeline1, &layout1, &pContext1, w1.id());
+			if (w0.isOpen())
+			{
+				uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
+			}
+			if (w1.isOpen())
+			{
+				uRenderer1 = createRenderer(&pipeline1, &layout1, &pPresenter1, w1.id());
+			}
 
 			vuk::ubo::View view0;
 			vuk::ubo::View view1;
@@ -258,13 +262,13 @@ s32 engine::run(s32 argc, char** argv)
 				{
 					bRecreate0 = false;
 					w0.create(data0);
-					createRenderer(&pipeline0, &layout0, &pContext0, w0.id());
+					uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
 				}
 				if (bRecreate1)
 				{
 					bRecreate1 = false;
 					w1.create(data1);
-					createRenderer(&pipeline1, &layout1, &pContext1, w1.id());
+					uRenderer1 = createRenderer(&pipeline1, &layout1, &pPresenter1, w1.id());
 				}
 				if (bClose0)
 				{
@@ -280,18 +284,18 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [&transform0](vuk::ubo::View* pView, vuk::Context* pContext, vk::Pipeline pipeline,
+					auto drawFrame = [&transform0](vuk::ubo::View* pView, vuk::Renderer* pRenderer, vk::Pipeline pipeline,
 												   vk::PipelineLayout layout, vk::Buffer vertexBuffer, u32 vertCount,
 												   u32 indexCount) -> bool {
-						vuk::BeginPass pass;
-						pass.pipelineLayout = layout;
-						auto write = [&](vuk::Context::FrameDriver::UBOs const& ubos) {
+						vuk::ClearValues clear;
+						clear.colour = Colour(0x030203ff);
+						auto write = [&](vuk::Renderer::FrameDriver::UBOs const& ubos) {
 							// Set UBOs
 							vuk::writeToBuffer(ubos.view.buffer, pView);
 						};
-						auto draw = [&](vuk::Context::FrameDriver const& driver) {
-							vk::Viewport viewport = pContext->transformViewport();
-							vk::Rect2D scissor = pContext->transformScissor();
+						auto draw = [&](vuk::Renderer::FrameDriver const& driver) {
+							vk::Viewport viewport = pRenderer->transformViewport();
+							vk::Rect2D scissor = pRenderer->transformScissor();
 							driver.commandBuffer.setViewport(0, viewport);
 							driver.commandBuffer.setScissor(0, scissor);
 							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
@@ -312,18 +316,18 @@ s32 engine::run(s32 argc, char** argv)
 								driver.commandBuffer.draw(vertCount, 1, 0, 0);
 							}
 						};
-						return pContext->renderFrame(write, draw, pass);
+						return pRenderer->render(write, draw, clear);
 					};
 
-					if (w0.isOpen())
+					if (w0.isOpen() && uRenderer0.get())
 					{
-						drawFrame(&view0, pContext0, pipeline0, layout0, quad0VBIB.resource, (u32)arraySize(quad0Verts),
+						drawFrame(&view0, uRenderer0.get(), pipeline0, layout0, quad0VBIB.resource, (u32)arraySize(quad0Verts),
 								  (u32)arraySize(quad0Indices));
 					}
-					if (w1.isOpen())
+					if (w1.isOpen() && uRenderer1.get())
 					{
-						drawFrame(&view1, pContext1, pipeline1, layout1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
-						// drawFrame(&view1, pContext1, pipeline1, layout1, quad0VBIB.resource, (u32)arraySize(quad0Verts),
+						drawFrame(&view1, uRenderer1.get(), pipeline1, layout1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
+						// drawFrame(&view1, pPresenter1, pipeline1, layout1, quad0VBIB.resource, (u32)arraySize(quad0Verts),
 						//	  (u32)arraySize(quad0Indices));
 					}
 				}

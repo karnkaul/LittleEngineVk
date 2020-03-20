@@ -37,6 +37,7 @@ struct ImageData final
 	vk::ImageUsageFlags usage;
 	vk::MemoryPropertyFlags properties;
 	vk::ImageType type = vk::ImageType::e2D;
+	Info::QFlags queueFlags = Info::QFlags(Info::QFlag::eGraphics, Info::QFlag::eTransfer);
 };
 
 struct BufferData final
@@ -50,7 +51,8 @@ void wait(vk::Fence optional);
 void waitAll(vk::ArrayProxy<const vk::Fence> validFences);
 
 VkResource<vk::Image> createImage(ImageData const& data);
-vk::ImageView createImageView(vk::Image image, vk::ImageViewType type, vk::Format format, vk::ImageAspectFlags aspectFlags);
+vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
+							  vk::ImageViewType typev = vk::ImageViewType::e2D);
 
 VkResource<vk::Buffer> createBuffer(BufferData const& data);
 void copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp);

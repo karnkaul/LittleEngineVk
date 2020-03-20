@@ -7,7 +7,7 @@
 #include "core/threads.hpp"
 #include "core/utils.hpp"
 #include "vuk/info.hpp"
-#include "vuk/context.hpp"
+#include "vuk/presenter.hpp"
 #include "window_impl.hpp"
 
 namespace le
@@ -29,7 +29,7 @@ void onWindowResize(GLFWwindow* pGLFWwindow, s32 width, s32 height)
 	{
 		if (pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->m_pWindow == pGLFWwindow)
 		{
-			pWindow->m_size = {width, height};
+			pWindow->m_windowSize = {width, height};
 			pWindow->m_input.onWindowResize(width, height);
 			LOG_D("[{}:{}] Window resized: [{}x{}]", Window::s_tName, pWindow->m_pWindow->id(), width, height);
 		}
@@ -220,7 +220,6 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	}
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	m_size = {width, height};
 	s32 cX = (mode->width - width) / 2;
 	s32 cY = (mode->height - height) / 2;
 	cX += data.config.centreOffset.x;
@@ -233,7 +232,7 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
 	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, false);
-	m_pWindow = glfwCreateWindow(data.config.size.x, data.config.size.y, data.config.title.data(), pTarget, nullptr);
+	m_pWindow = glfwCreateWindow(width, height, data.config.title.data(), pTarget, nullptr);
 	if (!m_pWindow)
 	{
 		throw std::runtime_error("Failed to create Window");
@@ -249,6 +248,30 @@ NativeWindow::~NativeWindow()
 		glfwDestroyWindow(m_pWindow);
 	}
 #endif
+}
+
+glm::ivec2 NativeWindow::windowSize() const
+{
+	glm::ivec2 ret = {};
+#if defined(LEVK_USE_GLFW)
+	if (m_pWindow)
+	{
+		glfwGetWindowSize(m_pWindow, &ret.x, &ret.y);
+	}
+#endif
+	return ret;
+}
+
+glm::ivec2 NativeWindow::framebufferSize() const
+{
+	glm::ivec2 ret = {};
+#if defined(LEVK_USE_GLFW)
+	if (m_pWindow)
+	{
+		glfwGetFramebufferSize(m_pWindow, &ret.x, &ret.y);
+	}
+#endif
+	return ret;
 }
 
 bool WindowImpl::init()
@@ -299,13 +322,13 @@ std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 	return ret;
 }
 
-vuk::Context* WindowImpl::context(WindowID window)
+vuk::Presenter* WindowImpl::presenter(WindowID window)
 {
 	for (auto const pImpl : g_registeredWindows)
 	{
 		if (pImpl->m_pWindow->m_id == window)
 		{
-			return pImpl->m_uContext.get();
+			return pImpl->m_uPresenter.get();
 		}
 	}
 	return nullptr;
@@ -329,26 +352,27 @@ bool WindowImpl::create(Window::Data const& data)
 	{
 		vuk::g_info.device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(data);
-		vuk::ContextData contextData;
-		contextData.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
+		vuk::PresenterData presenterData;
+		presenterData.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
-		contextData.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
-		contextData.config.window = m_pWindow->m_id;
+		presenterData.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
+		presenterData.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
+		presenterData.config.window = m_pWindow->m_id;
 		switch (data.options.colourSpace)
 		{
 		case ColourSpace::eRGBLinear:
-			contextData.options.format.emplace(vk::Format::eB8G8R8A8Unorm);
+			presenterData.options.format.emplace(vk::Format::eB8G8R8A8Unorm);
 			break;
 		default:
 		case ColourSpace::eSRGBNonLinear:
-			contextData.options.format.emplace(vk::Format::eB8G8R8A8Srgb);
+			presenterData.options.format.emplace(vk::Format::eB8G8R8A8Srgb);
 			break;
 		}
-		m_uContext = std::make_unique<vuk::Context>(contextData);
-		if (!m_uContext)
+		m_uPresenter = std::make_unique<vuk::Presenter>(presenterData);
+		if (!m_uPresenter)
 		{
-			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Context::s_tName);
+			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Presenter::s_tName);
 			m_uNativeWindow.reset();
 			return false;
 		}
@@ -366,7 +390,7 @@ bool WindowImpl::create(Window::Data const& data)
 		glfwSetWindowPos(m_uNativeWindow->m_pWindow, c.x, c.y);
 		if (data.options.bCentreCursor)
 		{
-			auto const size = m_uNativeWindow->m_size;
+			auto const size = m_uNativeWindow->windowSize();
 			glfwSetCursorPos(m_uNativeWindow->m_pWindow, size.x / 2, size.y / 2);
 		}
 		glfwShowWindow(m_uNativeWindow->m_pWindow);
@@ -377,7 +401,7 @@ bool WindowImpl::create(Window::Data const& data)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_uContext.reset();
+		m_uPresenter.reset();
 		m_uNativeWindow.reset();
 		return false;
 	}
@@ -433,12 +457,12 @@ void WindowImpl::destroy()
 #endif
 		if (m_uNativeWindow)
 		{
-			m_uContext.reset();
-			m_uContext.reset();
+			m_uPresenter.reset();
+			m_uPresenter.reset();
 			m_uNativeWindow.reset();
 			LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 		}
-		m_size = {};
+		m_windowSize = m_framebufferSize = {};
 #if defined(LEVK_USE_GLFW)
 	}
 #endif
@@ -460,25 +484,23 @@ vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow con
 	return ret;
 }
 
-glm::ivec2 WindowImpl::framebufferSize()
-{
-	glm::ivec2 ret;
-#if defined(LEVK_USE_GLFW)
-	if (m_uNativeWindow && m_uNativeWindow->m_pWindow)
-	{
-		glfwGetFramebufferSize(m_uNativeWindow->m_pWindow, &ret.x, &ret.y);
-	}
-#endif
-	return ret;
-}
-
 void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
-	if (m_uContext)
+	if (m_uPresenter)
 	{
-		m_uContext->onFramebufferResize();
+		m_uPresenter->onFramebufferResize();
 	}
 	return;
+}
+
+glm::ivec2 WindowImpl::framebufferSize() const
+{
+	return m_uNativeWindow ? m_uNativeWindow->framebufferSize() : glm::ivec2(0);
+}
+
+glm::ivec2 WindowImpl::windowSize() const
+{
+	return m_uNativeWindow ? m_uNativeWindow->windowSize() : glm::ivec2(0);
 }
 
 void WindowImpl::setCursorMode(CursorMode mode) const
@@ -544,8 +566,9 @@ glm::vec2 WindowImpl::cursorPos() const
 	{
 		f64 x, y;
 		glfwGetCursorPos(m_uNativeWindow->m_pWindow, &x, &y);
-		auto size = glm::vec2(m_size.x, m_size.y) * 0.5f;
-		return {(f32)x - size.x, size.y - (f32)y};
+		auto size = windowSize();
+		auto halfSize = glm::vec2(size.x, size.y) * 0.5f;
+		return {(f32)x - halfSize.x, halfSize.y - (f32)y};
 	}
 #endif
 	return {};

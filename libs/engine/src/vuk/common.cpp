@@ -13,8 +13,6 @@ std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
 };
 
-std::array<f32, 4> const BeginPass::s_black = {0.0f, 0.0f, 0.0f, 1.0f};
-
 ScreenRect::ScreenRect(glm::vec4 const& ltrb) noexcept : left(ltrb.x), top(ltrb.y), right(ltrb.z), bottom(ltrb.w) {}
 
 ScreenRect::ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop) noexcept

@@ -66,6 +66,8 @@ public:
 	WindowID id() const;
 	bool isOpen() const;
 	bool isClosing() const;
+
+	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
 
 public:

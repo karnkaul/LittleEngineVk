@@ -1,5 +1,4 @@
 #include "info.hpp"
-#include "context.hpp"
 #include "utils.hpp"
 #include "shader.hpp"
 #include "draw/vertex.hpp"
@@ -31,10 +30,10 @@ vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.usage = data.usage;
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
-	auto const queueIndices = g_info.uniqueQueueIndices(false, true);
+	auto const queueIndices = g_info.uniqueQueueIndices(data.queueFlags);
 	imageInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	imageInfo.pQueueFamilyIndices = queueIndices.data();
-	imageInfo.sharingMode = g_info.sharingMode(false, true);
+	imageInfo.sharingMode = g_info.sharingMode(data.queueFlags);
 	auto image = g_info.device.createImage(imageInfo);
 
 	vk::MemoryRequirements memRequirements = g_info.device.getImageMemoryRequirements(image);
@@ -46,7 +45,7 @@ vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 	return {image, memory};
 }
 
-vk::ImageView vuk::createImageView(vk::Image image, vk::ImageViewType type, vk::Format format, vk::ImageAspectFlags aspectFlags)
+vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type)
 {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
@@ -68,10 +67,11 @@ vuk::VkResource<vk::Buffer> vuk::createBuffer(BufferData const& data)
 	vk::BufferCreateInfo bufferInfo;
 	bufferInfo.size = data.size;
 	bufferInfo.usage = data.usage;
-	bufferInfo.sharingMode = vuk::g_info.sharingMode(false, true);
-	auto const queues = vuk::g_info.uniqueQueueIndices(false, true);
-	bufferInfo.queueFamilyIndexCount = (u32)queues.size();
-	bufferInfo.pQueueFamilyIndices = queues.data();
+	auto const flags = Info::QFlags(Info::QFlag::eGraphics, Info::QFlag::eTransfer);
+	bufferInfo.sharingMode = vuk::g_info.sharingMode(flags);
+	auto const queueIndices = vuk::g_info.uniqueQueueIndices(flags);
+	bufferInfo.queueFamilyIndexCount = (u32)queueIndices.size();
+	bufferInfo.pQueueFamilyIndices = queueIndices.data();
 	buffer = vuk::g_info.device.createBuffer(bufferInfo);
 	vk::MemoryRequirements memRequirements = vuk::g_info.device.getBufferMemoryRequirements(buffer);
 	vk::MemoryAllocateInfo allocInfo = {};

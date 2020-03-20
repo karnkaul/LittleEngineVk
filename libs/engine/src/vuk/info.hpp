@@ -6,12 +6,22 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
+#include "core/flags.hpp"
 #include "vuk/common.hpp"
 
 namespace le::vuk
 {
 struct Info final
 {
+	enum class QFlag
+	{
+		ePresent = 0,
+		eTransfer,
+		eGraphics,
+		eCOUNT_
+	};
+	using QFlags = TFlags<QFlag>;
+
 	vk::Instance instance;
 	vk::PhysicalDevice physicalDevice;
 	vk::Device device;
@@ -32,8 +42,8 @@ struct Info final
 	} queues;
 
 	bool isValid(vk::SurfaceKHR surface) const;
-	std::vector<u32> uniqueQueueIndices(bool bPresent, bool bTransfer) const;
-	vk::SharingMode sharingMode(bool bPresent, bool bTransfer) const;
+	std::vector<u32> uniqueQueueIndices(QFlags flags) const;
+	vk::SharingMode sharingMode(QFlags flags) const;
 	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
 };
 

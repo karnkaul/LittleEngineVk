@@ -16,9 +16,12 @@ struct TFlags
 	std::bitset<N> bits;
 
 	constexpr TFlags() noexcept = default;
-	explicit TFlags(std::string serialised) : bits(std::move(serialised)) {}
 
-	explicit TFlags(char const* szSerialised) : bits(szSerialised) {}
+	template <typename Flag1, typename... FlagN>
+	constexpr TFlags(Flag1 flag1, FlagN... flagN) noexcept
+	{
+		set(flag1, flagN...);
+	}
 
 	bool isSet(Enum flag) const
 	{
@@ -36,6 +39,13 @@ struct TFlags
 	{
 		ASSERT((size_t)flag < N, "Invalid flag!");
 		bits.reset((size_t)flag);
+	}
+
+	template <typename Flag1, typename... FlagN>
+	bool isSet(Flag1 flag1, FlagN... flagN) const
+	{
+		static_assert(std::is_same_v<Flag1, Enum>, "Invalid Flag parameter!");
+		return isSet(flag1) && isSet(flagN...);
 	}
 
 	template <typename Flag1, typename... FlagN>
@@ -63,5 +73,43 @@ struct TFlags
 	{
 		bits.reset();
 	}
+
+	TFlags<Enum, N>& operator|=(TFlags<Enum, N> flags)
+	{
+		bits |= flags.bits;
+		return *this;
+	}
+
+	TFlags<Enum, N>& operator&=(TFlags<Enum, N> flags)
+	{
+		bits &= flags.bits;
+		return *this;
+	}
+
+	TFlags<Enum, N> operator|(TFlags<Enum, N> flags) const
+	{
+		auto ret = *this;
+		ret |= flags;
+		return ret;
+	}
+
+	TFlags<Enum, N> operator&(TFlags<Enum, N> flags) const
+	{
+		auto ret = *this;
+		ret &= flags;
+		return ret;
+	}
 };
+
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+TFlags<Enum, N> operator|(Enum flag1, Enum flag2)
+{
+	return TFlags<Enum, N>(flag1) | TFlags<Enum, N>(flag2);
+}
+
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+TFlags<Enum, N> operator&(Enum flag1, Enum flag2)
+{
+	return TFlags<Enum, N>(flag1) & TFlags<Enum, N>(flag2);
+}
 } // namespace le

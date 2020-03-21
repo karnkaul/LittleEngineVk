@@ -10,24 +10,13 @@ namespace stdfs = std::filesystem;
 class IOReader
 {
 public:
-	enum class Code : u8
-	{
-		eSuccess = 0,
-		eNotFound,
-		eCOUNT_
-	};
-
-	template <typename Type>
-	using Result = TResult<Type, Code>;
-
-public:
 	struct FBytes
 	{
 	private:
 		IOReader const* pReader;
 
 	public:
-		Result<bytearray> operator()(stdfs::path const& id) const;
+		TResult<bytearray> operator()(stdfs::path const& id) const;
 
 	private:
 		friend class IOReader;
@@ -39,7 +28,7 @@ public:
 		IOReader const* pReader;
 
 	public:
-		Result<std::stringstream> operator()(stdfs::path const& id) const;
+		TResult<std::stringstream> operator()(stdfs::path const& id) const;
 
 	private:
 		friend class IOReader;
@@ -60,7 +49,7 @@ public:
 	virtual ~IOReader();
 
 public:
-	[[nodiscard]] Result<std::string> getString(stdfs::path const& id) const;
+	[[nodiscard]] TResult<std::string> getString(stdfs::path const& id) const;
 	[[nodiscard]] FBytes bytesFunctor() const;
 	[[nodiscard]] FStr strFunctor() const;
 	std::string_view medium() const;
@@ -70,30 +59,23 @@ public:
 
 public:
 	[[nodiscard]] virtual bool isPresent(stdfs::path const& id) const = 0;
-	[[nodiscard]] virtual Result<bytearray> getBytes(stdfs::path const& id) const = 0;
-	[[nodiscard]] virtual Result<std::stringstream> getStr(stdfs::path const& id) const = 0;
-
-protected:
-	template <typename Type>
-	static Result<Type> notFound();
-
-	template <typename Type>
-	static Result<Type> success(Type&& result);
+	[[nodiscard]] virtual TResult<bytearray> getBytes(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual TResult<std::stringstream> getStr(stdfs::path const& id) const = 0;
 };
 
 class FileReader : public IOReader
 {
 public:
-	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
-	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight = 10);
+	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
+	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight = 10);
 
 public:
 	FileReader(stdfs::path prefix = "") noexcept;
 
 public:
 	bool isPresent(stdfs::path const& id) const override;
-	Result<bytearray> getBytes(stdfs::path const& id) const override;
-	Result<std::stringstream> getStr(stdfs::path const& id) const override;
+	TResult<bytearray> getBytes(stdfs::path const& id) const override;
+	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
 };
 
 class ZIPReader : public IOReader
@@ -106,19 +88,7 @@ public:
 
 public:
 	bool isPresent(stdfs::path const& id) const override;
-	Result<bytearray> getBytes(stdfs::path const& id) const override;
-	Result<std::stringstream> getStr(stdfs::path const& id) const override;
+	TResult<bytearray> getBytes(stdfs::path const& id) const override;
+	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
 };
-
-template <typename Type>
-typename IOReader::Result<Type> IOReader::notFound()
-{
-	return Result<Type>{Code::eNotFound, Type()};
-}
-
-template <typename Type>
-typename IOReader::Result<Type> IOReader::success(Type&& result)
-{
-	return Result<Type>{Code::eSuccess, std::move(result)};
-}
 } // namespace le

@@ -44,11 +44,11 @@ typename TMapStore<MapContainer>::CResult TMapStore<MapContainer>::get(Key const
 {
 	Lock lock(m_mutex);
 	auto search = m_map.find(id);
-	if (search == m_map.end())
+	if (search != m_map.end())
 	{
-		return {false, nullptr};
+		return search->second;
 	}
-	return {true, &search->second};
+	return {};
 }
 
 template <typename MapContainer>
@@ -56,11 +56,11 @@ typename TMapStore<MapContainer>::Result TMapStore<MapContainer>::get(Key const&
 {
 	Lock lock(m_mutex);
 	auto search = m_map.find(id);
-	if (search == m_map.end())
+	if (search != m_map.end())
 	{
-		return {false, nullptr};
+		return search->second;
 	}
-	return {true, &search->second};
+	return {};
 }
 
 template <typename MapContainer>

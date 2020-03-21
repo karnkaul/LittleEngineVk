@@ -7,12 +7,22 @@ namespace le
 {
 using WindowID = TZero<s32, -1>;
 
+// Most desired in front
+template <typename T>
+using PriorityList = std::vector<T>;
+
 enum class ColourSpace : u8
 {
-	eDontCare = 0,
 	eRGBLinear,
 	eSRGBNonLinear,
 	eCOUNT_,
+};
+
+enum class PresentMode : u8
+{
+	eFIFO,
+	eMailbox,
+	eCOUNT_
 };
 
 constexpr std::array colorSpaceNames = {"Unknown", "RGB Linear", "SRGB Non-linear"};

@@ -18,47 +18,73 @@ void Presenter::Info::refresh()
 	[[maybe_unused]] bool bValid = g_info.isValid(surface);
 	ASSERT(bValid, "Invalid surface!");
 	capabilities = g_info.physicalDevice.getSurfaceCapabilitiesKHR(surface);
-	formats = g_info.physicalDevice.getSurfaceFormatsKHR(surface);
+	colourFormats = g_info.physicalDevice.getSurfaceFormatsKHR(surface);
 	presentModes = g_info.physicalDevice.getSurfacePresentModesKHR(surface);
 }
 
 bool Presenter::Info::isReady() const
 {
-	return !formats.empty() && !presentModes.empty();
+	return !colourFormats.empty() && !presentModes.empty();
 }
 
 vk::SurfaceFormatKHR Presenter::Info::bestColourFormat() const
 {
-	vk::Format desiredFormat = data.options.format.has_value() ? data.options.format.value() : vk::Format::eB8G8R8A8Srgb;
-	vk::ColorSpaceKHR desiredColourSpace =
-		data.options.colourSpace.has_value() ? data.options.colourSpace.value() : vk::ColorSpaceKHR::eSrgbNonlinear;
-	std::map<u8, vk::SurfaceFormatKHR> availableFormats;
-	for (auto const& format : formats)
+	static std::vector<vk::Format> const s_defaultFormats = {vk::Format::eB8G8R8A8Srgb};
+	static std::vector<vk::ColorSpaceKHR> const s_defaultColourSpaces = {vk::ColorSpaceKHR::eSrgbNonlinear};
+	auto const& desiredFormats = data.options.formats.empty() ? s_defaultFormats : data.options.formats;
+	auto const& desiredColourSpaces = data.options.colourSpaces.empty() ? s_defaultColourSpaces : data.options.colourSpaces;
+	std::map<u32, vk::SurfaceFormatKHR> ranked;
+	for (auto const& available : colourFormats)
 	{
-		u8 rank = 0xff;
-		if (format.format == desiredFormat)
+		u16 formatRank = 0;
+		for (auto desired : desiredFormats)
 		{
-			--rank;
+			if (desired == available.format)
+			{
+				break;
+			}
+			++formatRank;
 		}
-		if (format.colorSpace == desiredColourSpace)
+		u16 colourSpaceRank = 0;
+		for (auto desired : desiredColourSpaces)
 		{
-			--rank;
+			if (desired == available.colorSpace)
+			{
+				break;
+			}
+			++formatRank;
 		}
-		availableFormats.emplace(rank, format);
+		ranked.emplace(formatRank + colourSpaceRank, available);
 	}
-	return availableFormats.empty() ? vk::SurfaceFormatKHR() : availableFormats.begin()->second;
+	return ranked.empty() ? vk::SurfaceFormatKHR() : ranked.begin()->second;
+}
+
+vk::Format Presenter::Info::bestDepthFormat() const
+{
+	static PriorityList<vk::Format> const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
+	auto [format, bResult] = supportedFormat(desired, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+	return bResult ? format : vk::Format::eD16Unorm;
 }
 
 vk::PresentModeKHR Presenter::Info::bestPresentMode() const
 {
-	for (auto const& presentMode : presentModes)
+	static std::vector<vk::PresentModeKHR> const s_defaultPresentModes = {vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
+	auto const& desiredPresentModes = data.options.presentModes.empty() ? s_defaultPresentModes : data.options.presentModes;
+	std::map<u32, vk::PresentModeKHR> ranked;
+	for (auto const& available : presentModes)
 	{
-		if (presentMode == vk::PresentModeKHR::eMailbox)
+		u32 rank = 0;
+		for (auto desired : desiredPresentModes)
 		{
-			return presentMode;
+			if (available == desired)
+			{
+				break;
+			}
+			++rank;
 		}
+		ranked.emplace(rank, available);
 	}
-	return vk::PresentModeKHR::eFifo;
+	return ranked.empty() ? vk::PresentModeKHR::eFifo : ranked.begin()->second;
 }
 
 vk::Extent2D Presenter::Info::extent(glm::ivec2 const& windowSize) const
@@ -90,6 +116,8 @@ Presenter::Presenter(PresenterData const& data) : m_window(data.config.window)
 		throw std::runtime_error("Failed to create Presenter!");
 	}
 	m_info.colourFormat = m_info.bestColourFormat();
+	m_info.depthFormat = m_info.bestDepthFormat();
+	m_info.presentMode = m_info.bestPresentMode();
 	try
 	{
 		createRenderPass();
@@ -150,14 +178,14 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 {
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
-		return {false, {}};
+		return {};
 	}
 	auto const acquire = g_info.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
 		LOG_D("[{}:{}] Failed to acquire next image [{}]", s_tName, m_window, g_vkResultStr[acquire.result]);
 		recreateSwapchain();
-		return {false, {}};
+		return {};
 	}
 	m_swapchain.imageIndex = (u32)acquire.value;
 	auto& frame = m_swapchain.frame();
@@ -167,7 +195,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	}
 	frame.bNascent = false;
 	frame.drawing = drawing;
-	return {true, {m_renderPass, frame.framebuffer, m_swapchain.extent}};
+	return DrawFrame{m_renderPass, frame.framebuffer, m_swapchain.extent};
 }
 
 bool Presenter::present(vk::Semaphore wait)
@@ -289,7 +317,7 @@ bool Presenter::createSwapchain()
 		createInfo.imageSharingMode = g_info.sharingMode(flags);
 		createInfo.preTransform = m_info.capabilities.currentTransform;
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-		createInfo.presentMode = m_info.bestPresentMode();
+		createInfo.presentMode = m_info.presentMode;
 		createInfo.clipped = vk::Bool32(true);
 		createInfo.surface = m_info.surface;
 		m_swapchain.swapchain = g_info.device.createSwapchainKHR(createInfo);

@@ -15,8 +15,8 @@ Shader::Shader(Data data) : m_id(std::move(data.id))
 		ASSERT(!data.codeIDMap.empty() && data.pReader, "Invalid Shader Data!");
 		for (auto const& [type, id] : data.codeIDMap)
 		{
-			auto [result, shaderData] = data.pReader->getBytes(id);
-			ASSERT(result == IOReader::Code::eSuccess, "Shader code missing!");
+			auto [shaderData, bResult] = data.pReader->getBytes(id);
+			ASSERT(bResult, "Shader code missing!");
 			data.codeMap[type] = std::move(shaderData);
 		}
 	}

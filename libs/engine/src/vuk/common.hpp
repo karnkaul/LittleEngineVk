@@ -49,6 +49,7 @@ struct InitData final
 struct PresenterData final
 {
 	using GetSize = std::function<glm::ivec2()>;
+
 	struct
 	{
 		CreateSurface getNewSurface;
@@ -59,8 +60,9 @@ struct PresenterData final
 
 	struct
 	{
-		std::optional<vk::Format> format;
-		std::optional<vk::ColorSpaceKHR> colourSpace;
+		PriorityList<vk::Format> formats;
+		PriorityList<vk::ColorSpaceKHR> colourSpaces;
+		PriorityList<vk::PresentModeKHR> presentModes;
 	} options;
 };
 

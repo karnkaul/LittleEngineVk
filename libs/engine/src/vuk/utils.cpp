@@ -6,6 +6,23 @@
 
 namespace le
 {
+TResult<vk::Format> vuk::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+{
+	for (auto format : desired)
+	{
+		vk::FormatProperties props = g_info.physicalDevice.getFormatProperties(format);
+		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features)
+		{
+			return format;
+		}
+		else if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features)
+		{
+			return format;
+		}
+	}
+	return {};
+}
+
 void vuk::wait(vk::Fence optional)
 {
 	if (optional != vk::Fence())
@@ -67,7 +84,7 @@ vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 	imageInfo.sharingMode = g_info.sharingMode(data.queueFlags);
 	ret.resource = g_info.device.createImage(imageInfo);
 	vk::MemoryRequirements memRequirements = g_info.device.getImageMemoryRequirements(ret.resource);
-	vk::MemoryAllocateInfo allocInfo = {};
+	vk::MemoryAllocateInfo allocInfo;
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
 	ret.alloc.memory = g_info.device.allocateMemory(allocInfo);
@@ -180,7 +197,6 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 	vk::PipelineColorBlendStateCreateInfo colorBlendState;
 	{
 		colorBlendState.logicOpEnable = false;
-		colorBlendState.logicOp = vk::LogicOp::eCopy;
 		colorBlendState.attachmentCount = 1;
 		colorBlendState.pAttachments = &colorBlendAttachment;
 	}

@@ -30,12 +30,12 @@ PhysfsHandle::~PhysfsHandle()
 std::unique_ptr<PhysfsHandle> g_uPhysfsHandle;
 } // namespace
 
-IOReader::Result<bytearray> IOReader::FBytes::operator()(stdfs::path const& id) const
+TResult<bytearray> IOReader::FBytes::operator()(stdfs::path const& id) const
 {
 	return pReader->getBytes(pReader->m_prefix / id);
 }
 
-IOReader::Result<std::stringstream> IOReader::FStr::operator()(stdfs::path const& id) const
+TResult<std::stringstream> IOReader::FStr::operator()(stdfs::path const& id) const
 {
 	return pReader->getStr(pReader->m_prefix / id);
 }
@@ -52,10 +52,10 @@ IOReader::IOReader(IOReader const&) = default;
 IOReader& IOReader::operator=(IOReader const&) = default;
 IOReader::~IOReader() = default;
 
-IOReader::Result<std::string> IOReader::getString(stdfs::path const& id) const
+TResult<std::string> IOReader::getString(stdfs::path const& id) const
 {
-	auto [result, str] = getStr(id);
-	return {result, str.str()};
+	auto [str, bResult] = getStr(id);
+	return {str.str(), bResult};
 }
 
 IOReader::FBytes IOReader::bytesFunctor() const
@@ -103,38 +103,38 @@ bool IOReader::checkPresences(ArrayView<stdfs::path const> ids) const
 	return bRet;
 }
 
-IOReader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight)
+TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight)
 {
 	for (auto const& name : anyOf)
 	{
 		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
 		{
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
-			return success<stdfs::path>(std::move(ret) / name);
+			return std::move(ret) / name;
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
 	if (bEnd)
 	{
-		return notFound<stdfs::path>();
+		return {};
 	}
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
 
-IOReader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight)
+TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight)
 {
 	for (auto const& name : anyOf)
 	{
 		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
 		{
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
-			return success<stdfs::path>(std::move(ret) / name);
+			return std::move(ret) / name;
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
 	if (bEnd)
 	{
-		return notFound<stdfs::path>();
+		return {};
 	}
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
@@ -152,7 +152,7 @@ bool FileReader::isPresent(stdfs::path const& id) const
 	return stdfs::is_regular_file(m_prefix / id);
 }
 
-IOReader::Result<std::stringstream> FileReader::getStr(stdfs::path const& id) const
+TResult<std::stringstream> FileReader::getStr(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -161,13 +161,13 @@ IOReader::Result<std::stringstream> FileReader::getStr(stdfs::path const& id) co
 		{
 			std::stringstream buf;
 			buf << file.rdbuf();
-			return success<std::stringstream>(std::move(buf));
+			return std::move(buf);
 		}
 	}
-	return notFound<std::stringstream>();
+	return {};
 }
 
-IOReader::Result<bytearray> FileReader::getBytes(stdfs::path const& id) const
+TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -178,10 +178,10 @@ IOReader::Result<bytearray> FileReader::getBytes(stdfs::path const& id) const
 			auto buf = bytearray((size_t)pos);
 			file.seekg(0, std::ios::beg);
 			file.read((char*)buf.data(), (std::streamsize)pos);
-			return success<bytearray>(std::move(buf));
+			return std::move(buf);
 		}
 	}
-	return notFound<bytearray>();
+	return {};
 }
 
 ZIPReader::ZIPReader(stdfs::path zipPath, stdfs::path idPrefix /* = "" */) : IOReader(std::move(idPrefix)), m_zipPath(std::move(zipPath))
@@ -207,7 +207,7 @@ bool ZIPReader::isPresent(stdfs::path const& id) const
 	return PHYSFS_exists((m_prefix / id).generic_string().data()) != 0;
 }
 
-IOReader::Result<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
+TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -219,14 +219,14 @@ IOReader::Result<std::stringstream> ZIPReader::getStr(stdfs::path const& id) con
 			std::string charBuf((size_t)length, 0);
 			PHYSFS_readBytes(pFile, charBuf.data(), (PHYSFS_uint64)length);
 			buf << charBuf;
-			return success<std::stringstream>(std::move(buf));
+			return std::move(buf);
 		}
 		PHYSFS_close(pFile);
 	}
-	return notFound<std::stringstream>();
+	return {};
 }
 
-IOReader::Result<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
+TResult<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -236,11 +236,11 @@ IOReader::Result<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
 			auto length = PHYSFS_fileLength(pFile);
 			auto buf = bytearray((size_t)length);
 			PHYSFS_readBytes(pFile, buf.data(), (PHYSFS_uint64)length);
-			return success<bytearray>(std::move(buf));
+			return std::move(buf);
 		}
 		PHYSFS_close(pFile);
 	}
-	return notFound<bytearray>();
+	return {};
 }
 
 void ioImpl::initPhysfs()

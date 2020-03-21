@@ -359,15 +359,33 @@ bool WindowImpl::create(Window::Data const& data)
 		presenterData.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
 		presenterData.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
 		presenterData.config.window = m_pWindow->m_id;
-		switch (data.options.colourSpace)
+		for (auto colourSpace : data.options.colourSpaces)
 		{
-		case ColourSpace::eRGBLinear:
-			presenterData.options.format.emplace(vk::Format::eB8G8R8A8Unorm);
-			break;
-		default:
-		case ColourSpace::eSRGBNonLinear:
-			presenterData.options.format.emplace(vk::Format::eB8G8R8A8Srgb);
-			break;
+			switch (colourSpace)
+			{
+			default:
+				break;
+			case ColourSpace::eRGBLinear:
+				presenterData.options.formats.push_back(vk::Format::eB8G8R8A8Unorm);
+				break;
+			case ColourSpace::eSRGBNonLinear:
+				presenterData.options.formats.push_back(vk::Format::eB8G8R8A8Srgb);
+				break;
+			}
+		}
+		for (auto presentMode : data.options.presentModes)
+		{
+			switch (presentMode)
+			{
+			default:
+				break;
+			case PresentMode::eMailbox:
+				presenterData.options.presentModes.push_back(vk::PresentModeKHR::eMailbox);
+				break;
+			case PresentMode::eFIFO:
+				presenterData.options.presentModes.push_back(vk::PresentModeKHR::eFifo);
+				break;
+			}
 		}
 		m_uPresenter = std::make_unique<vuk::Presenter>(presenterData);
 		if (!m_uPresenter)

@@ -115,7 +115,7 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 		vuk::wait(sync.drawing);
 	}
 	// Acquire
-	auto [bResult, acquire] = m_pPresenter->acquireNextImage(sync.renderReady, sync.drawing);
+	auto [acquire, bResult] = m_pPresenter->acquireNextImage(sync.renderReady, sync.drawing);
 	if (!bResult)
 	{
 		return false;

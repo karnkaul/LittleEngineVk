@@ -34,8 +34,9 @@ public:
 
 		struct
 		{
+			PriorityList<ColourSpace> colourSpaces;
+			PriorityList<PresentMode> presentModes;
 			u8 screenID = 0;
-			ColourSpace colourSpace = ColourSpace::eDontCare;
 			bool bCentreCursor = true;
 		} options;
 	};

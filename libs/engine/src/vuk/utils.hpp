@@ -50,6 +50,8 @@ struct BufferData final
 	vk::MemoryPropertyFlags properties;
 };
 
+TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+
 void wait(vk::Fence optional);
 void waitAll(vk::ArrayProxy<const vk::Fence> validFences);
 

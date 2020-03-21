@@ -40,8 +40,18 @@ struct TrueType final : std::true_type
 {
 };
 
-template <typename Type, typename Code = bool>
-using TResult = std::pair<Code, Type>;
+template <typename T>
+struct TResult
+{
+	using type = T;
+
+	T payload;
+	bool bResult = false;
+
+	TResult() = default;
+	TResult(T&& payload) : payload(std::forward<T&&>(payload)), bResult(true) {}
+	TResult(T&& payload, bool bResult) : payload(std::forward<T&&>(payload)), bResult(bResult) {}
+};
 
 template <typename T, typename = std::enable_if_t<std::is_array_v<T>>>
 constexpr size_t arraySize(T const& arr)

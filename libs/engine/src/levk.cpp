@@ -51,9 +51,9 @@ s32 engine::run(s32 argc, char** argv)
 	}
 
 	auto const exeDirectory = os::dirPath(os::Dir::eExecutable);
-	auto [result, dataPath] = FileReader::findUpwards(exeDirectory, {"data"});
+	auto [dataPath, bResult] = FileReader::findUpwards(exeDirectory, {"data"});
 	LOGIF_I(true, "Executable located at: {}", exeDirectory.generic_string());
-	if (result == IOReader::Code::eSuccess)
+	if (bResult)
 	{
 		LOG_D("Found data at: {}", dataPath.generic_string());
 	}
@@ -163,7 +163,7 @@ s32 engine::run(s32 argc, char** argv)
 		// data1.config.mode = Window::Mode::eBorderlessFullscreen;
 		data1.config.title += " 2";
 		data1.config.centreOffset = {100, 100};
-		data1.options.colourSpace = ColourSpace::eRGBLinear;
+		data1.options.colourSpaces = {ColourSpace::eRGBLinear};
 		bool bRecreate0 = false, bRecreate1 = false;
 		bool bClose0 = false, bClose1 = false;
 		bool bWF0 = false;

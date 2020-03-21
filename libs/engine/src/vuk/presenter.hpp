@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <vector>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/delegate.hpp"
@@ -34,15 +35,17 @@ private:
 		vk::SurfaceKHR surface;
 
 		vk::SurfaceCapabilitiesKHR capabilities;
-		std::vector<vk::SurfaceFormatKHR> formats;
+		std::vector<vk::SurfaceFormatKHR> colourFormats;
 		std::vector<vk::PresentModeKHR> presentModes;
 
 		vk::SurfaceFormatKHR colourFormat;
-		vk::Format depthFormat = vk::Format::eD16Unorm;
+		vk::Format depthFormat;
+		vk::PresentModeKHR presentMode;
 
 		void refresh();
 		bool isReady() const;
 		vk::SurfaceFormatKHR bestColourFormat() const;
+		vk::Format bestDepthFormat() const;
 		vk::PresentModeKHR bestPresentMode() const;
 		vk::Extent2D extent(glm::ivec2 const& windowSize) const;
 	};

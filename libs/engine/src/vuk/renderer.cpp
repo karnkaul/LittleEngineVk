@@ -10,11 +10,9 @@ namespace le::vuk
 {
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
-Renderer::Shared const Renderer::s_shared = {UBOData{sizeof(ubo::View)}};
-
-Renderer::Renderer(Presenter* pPresenter, u8 frameCount) : m_pPresenter(pPresenter), m_window(pPresenter->m_window)
+Renderer::Renderer(Data const& data) : m_setLayouts(data.uboSetLayouts), m_pPresenter(data.pPresenter), m_window(data.pPresenter->m_window)
 {
-	create(frameCount);
+	create(data.frameCount);
 }
 
 Renderer::~Renderer()
@@ -45,36 +43,18 @@ void Renderer::create(u8 frameCount)
 		vk::DescriptorSetAllocateInfo allocInfo;
 		allocInfo.descriptorPool = m_descriptorPool;
 		allocInfo.descriptorSetCount = frameCount;
-		std::vector const layouts((size_t)frameCount, g_info.matricesLayout);
+		std::vector const layouts((size_t)frameCount, m_setLayouts.view);
 		allocInfo.pSetLayouts = layouts.data();
-		BufferData data;
-		data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		data.usage = vk::BufferUsageFlagBits::eUniformBuffer;
 		auto sets = g_info.device.allocateDescriptorSets(allocInfo);
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			Renderer::FrameSync frame;
 			frame.renderReady = g_info.device.createSemaphore({});
 			frame.presentReady = g_info.device.createSemaphore({});
-			vk::FenceCreateInfo createInfo;
-			// createInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-			frame.drawing = g_info.device.createFence(createInfo);
-			frame.ubos.view.descriptorSet = sets.at((size_t)idx);
-			data.size = s_shared.uboView.size;
-			frame.ubos.view.buffer = createBuffer(data);
-			frame.ubos.view.offset = 0;
-			vk::DescriptorBufferInfo bufferInfo;
-			bufferInfo.buffer = frame.ubos.view.buffer.resource;
-			bufferInfo.offset = 0;
-			bufferInfo.range = s_shared.uboView.size;
-			vk::WriteDescriptorSet descWrite;
-			descWrite.dstSet = frame.ubos.view.descriptorSet;
-			descWrite.dstBinding = 0;
-			descWrite.dstArrayElement = 0;
-			descWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
-			descWrite.descriptorCount = 1;
-			descWrite.pBufferInfo = &bufferInfo;
-			g_info.device.updateDescriptorSets(descWrite, {});
+			frame.drawing = g_info.device.createFence({});
+			// UBOs
+			// View
+			frame.ubos.view = ubo::Handle<ubo::View>::create(m_setLayouts.view, sets.at((size_t)idx));
 			// Commands
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
 			commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
@@ -98,7 +78,8 @@ void Renderer::destroy()
 	{
 		for (auto& frame : m_frames)
 		{
-			vkDestroy(frame.commandPool, frame.drawing, frame.renderReady, frame.presentReady, frame.ubos.view.buffer);
+			vkDestroy(frame.commandPool, frame.drawing, frame.renderReady, frame.presentReady, frame.ubos.view.buffer.resource);
+			vkFree(frame.ubos.view.buffer.alloc.memory);
 		}
 		vkDestroy(m_descriptorPool);
 		m_descriptorPool = vk::DescriptorPool();
@@ -133,7 +114,6 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	{
 		vuk::wait(sync.drawing);
 	}
-	FrameDriver::UBOs ubos{sync.ubos.view};
 	// Acquire
 	auto [bResult, acquire] = m_pPresenter->acquireNextImage(sync.renderReady, sync.drawing);
 	if (!bResult)
@@ -153,14 +133,14 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	renderPassInfo.pClearValues = clearValues.data();
 	if (write)
 	{
-		write(ubos);
+		write(sync.ubos);
 	}
 	// Begin
 	auto const& commandBuffer = sync.commandBuffer;
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{ubos, commandBuffer};
+	FrameDriver driver{sync.ubos, commandBuffer};
 	draw(driver);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();

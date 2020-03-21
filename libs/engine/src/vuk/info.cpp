@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <set>
 #include "core/assert.hpp"
@@ -91,6 +92,9 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		}
 		auto const properties = g_info.physicalDevice.getProperties();
 		deviceName = properties.deviceName;
+		g_info.deviceLimits = properties.limits;
+		g_info.lineWidthMin = properties.limits.lineWidthRange[0];
+		g_info.lineWidthMax = properties.limits.lineWidthRange[1];
 		auto const queueFamilies = g_info.physicalDevice.getQueueFamilyProperties();
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 		std::optional<u32> graphicsFamily, presentFamily, transferFamily;
@@ -129,6 +133,8 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 			queueCreateInfos.push_back(std::move(queueCreateInfo));
 		}
 		vk::PhysicalDeviceFeatures deviceFeatures;
+		deviceFeatures.fillModeNonSolid = true;
+		deviceFeatures.wideLines = g_info.lineWidthMax > 1.0f;
 		vk::DeviceCreateInfo deviceCreateInfo;
 		deviceCreateInfo.queueCreateInfoCount = (u32)queueCreateInfos.size();
 		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
@@ -239,23 +245,11 @@ void init(InitData const& initData)
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
 	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, 0);
 
-	// Set Layout
-	vk::DescriptorSetLayoutBinding matricesBinding;
-	matricesBinding.binding = 0;
-	matricesBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
-	matricesBinding.descriptorCount = 1;
-	matricesBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
-	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
-	setLayoutCreateInfo.bindingCount = 1;
-	setLayoutCreateInfo.pBindings = &matricesBinding;
-	g_info.matricesLayout = device.createDescriptorSetLayout(setLayoutCreateInfo);
-
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
 
 void deinit()
 {
-	vkDestroy(g_info.matricesLayout);
 	if (g_info.device != vk::Device())
 	{
 		g_info.device.destroy();
@@ -325,6 +319,11 @@ u32 Info::findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) con
 		}
 	}
 	throw std::runtime_error("Failed to find suitable memory type!");
+}
+
+f32 Info::lineWidth(f32 desired) const
+{
+	return std::clamp(desired, lineWidthMin, lineWidthMax);
 }
 
 Service::Service(InitData const& initData)

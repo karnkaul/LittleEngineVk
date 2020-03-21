@@ -348,7 +348,7 @@ void Presenter::destroySwapchain()
 		vkDestroy(frame.framebuffer, frame.colour);
 	}
 	vkDestroy(m_swapchain.depthImageView, m_swapchain.depthImage.resource, m_swapchain.swapchain);
-	vkFree(m_swapchain.depthImage.memory);
+	vkFree(m_swapchain.depthImage.alloc.memory);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}:{}] Swapchain destroyed", s_tName, m_window);
 	m_swapchain = Swapchain();
 	m_onDestroyed();

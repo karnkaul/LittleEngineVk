@@ -1,6 +1,7 @@
+#include <set>
 #include "info.hpp"
 #include "utils.hpp"
-#include "shader.hpp"
+#include "draw/shader.hpp"
 #include "draw/vertex.hpp"
 
 namespace le
@@ -18,8 +19,38 @@ void vuk::waitAll(vk::ArrayProxy<const vk::Fence> validFences)
 	g_info.device.waitForFences(std::move(validFences), true, maxVal<u64>());
 }
 
+vk::DescriptorSetLayout vuk::createDescriptorSetLayout(u32 binding, u32 descriptorCount, vk::ShaderStageFlags stages)
+{
+	vk::DescriptorSetLayoutBinding setLayoutBinding;
+	setLayoutBinding.binding = binding;
+	setLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+	setLayoutBinding.descriptorCount = descriptorCount;
+	setLayoutBinding.stageFlags = stages;
+	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
+	setLayoutCreateInfo.bindingCount = 1;
+	setLayoutCreateInfo.pBindings = &setLayoutBinding;
+	return g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
+}
+
+void vuk::writeUniformDescriptor(VkResource<vk::Buffer> buffer, vk::DescriptorSet descriptorSet, u32 binding)
+{
+	vk::DescriptorBufferInfo bufferInfo;
+	bufferInfo.buffer = buffer.resource;
+	bufferInfo.offset = 0;
+	bufferInfo.range = buffer.alloc.size;
+	vk::WriteDescriptorSet descWrite;
+	descWrite.dstSet = descriptorSet;
+	descWrite.dstBinding = binding;
+	descWrite.dstArrayElement = 0;
+	descWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+	descWrite.descriptorCount = 1;
+	descWrite.pBufferInfo = &bufferInfo;
+	g_info.device.updateDescriptorSets(descWrite, {});
+}
+
 vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 {
+	VkResource<vk::Image> ret;
 	vk::ImageCreateInfo imageInfo = {};
 	imageInfo.imageType = data.type;
 	imageInfo.extent = data.size;
@@ -34,15 +65,15 @@ vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 	imageInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	imageInfo.pQueueFamilyIndices = queueIndices.data();
 	imageInfo.sharingMode = g_info.sharingMode(data.queueFlags);
-	auto image = g_info.device.createImage(imageInfo);
-
-	vk::MemoryRequirements memRequirements = g_info.device.getImageMemoryRequirements(image);
+	ret.resource = g_info.device.createImage(imageInfo);
+	vk::MemoryRequirements memRequirements = g_info.device.getImageMemoryRequirements(ret.resource);
 	vk::MemoryAllocateInfo allocInfo = {};
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
-	auto memory = g_info.device.allocateMemory(allocInfo);
-	g_info.device.bindImageMemory(image, memory, 0);
-	return {image, memory};
+	ret.alloc.memory = g_info.device.allocateMemory(allocInfo);
+	ret.alloc.size = memRequirements.size;
+	g_info.device.bindImageMemory(ret.resource, ret.alloc.memory, 0);
+	return ret;
 }
 
 vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type)
@@ -62,8 +93,7 @@ vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::Image
 
 vuk::VkResource<vk::Buffer> vuk::createBuffer(BufferData const& data)
 {
-	vk::Buffer buffer;
-	vk::DeviceMemory bufferMemory;
+	VkResource<vk::Buffer> ret;
 	vk::BufferCreateInfo bufferInfo;
 	bufferInfo.size = data.size;
 	bufferInfo.usage = data.usage;
@@ -72,14 +102,15 @@ vuk::VkResource<vk::Buffer> vuk::createBuffer(BufferData const& data)
 	auto const queueIndices = vuk::g_info.uniqueQueueIndices(flags);
 	bufferInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	bufferInfo.pQueueFamilyIndices = queueIndices.data();
-	buffer = vuk::g_info.device.createBuffer(bufferInfo);
-	vk::MemoryRequirements memRequirements = vuk::g_info.device.getBufferMemoryRequirements(buffer);
+	ret.resource = vuk::g_info.device.createBuffer(bufferInfo);
+	vk::MemoryRequirements memRequirements = vuk::g_info.device.getBufferMemoryRequirements(ret.resource);
 	vk::MemoryAllocateInfo allocInfo = {};
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = vuk::g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
-	bufferMemory = vuk::g_info.device.allocateMemory(allocInfo);
-	vuk::g_info.device.bindBufferMemory(buffer, bufferMemory, 0);
-	return {buffer, bufferMemory, data.size};
+	ret.alloc.memory = vuk::g_info.device.allocateMemory(allocInfo);
+	ret.alloc.size = data.size;
+	vuk::g_info.device.bindBufferMemory(ret.resource, ret.alloc.memory, ret.alloc.offset);
+	return ret;
 }
 
 void vuk::copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp)
@@ -103,39 +134,6 @@ void vuk::copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, Transf
 	pOp->transferred = g_info.device.createFence({});
 	pOp->queue.submit(submitInfo, pOp->transferred);
 	return;
-}
-
-vk::RenderPass vuk::createRenderPass(vk::Format format)
-{
-	vk::AttachmentDescription colourDesc;
-	colourDesc.format = format;
-	colourDesc.samples = vk::SampleCountFlagBits::e1;
-	colourDesc.loadOp = vk::AttachmentLoadOp::eClear;
-	colourDesc.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	colourDesc.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	colourDesc.initialLayout = vk::ImageLayout::eUndefined;
-	colourDesc.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-	vk::AttachmentReference colourRef;
-	colourRef.attachment = 0;
-	colourRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
-	vk::SubpassDescription subpass;
-	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colourRef;
-	vk::RenderPassCreateInfo createInfo;
-	createInfo.attachmentCount = 1;
-	createInfo.pAttachments = &colourDesc;
-	createInfo.subpassCount = 1;
-	createInfo.pSubpasses = &subpass;
-	vk::SubpassDependency dependency;
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	createInfo.dependencyCount = 1;
-	createInfo.pDependencies = &dependency;
-	return g_info.device.createRenderPass(createInfo);
 }
 
 vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)
@@ -164,7 +162,7 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 		rasterizerState.depthClampEnable = false;
 		rasterizerState.rasterizerDiscardEnable = false;
 		rasterizerState.polygonMode = data.polygonMode;
-		rasterizerState.lineWidth = data.lineWidth;
+		rasterizerState.lineWidth = data.staticLineWidth;
 		rasterizerState.cullMode = data.cullMode;
 		rasterizerState.frontFace = data.frontFace;
 		rasterizerState.depthBiasEnable = false;
@@ -192,7 +190,10 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 		depthStencilState.depthWriteEnable = true;
 		depthStencilState.depthCompareOp = vk::CompareOp::eLess;
 	}
-	std::array stateFlags = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+	auto states = data.dynamicStates;
+	states.insert(vk::DynamicState::eViewport);
+	states.insert(vk::DynamicState::eScissor);
+	std::vector<vk::DynamicState> stateFlags = {states.begin(), states.end()};
 	vk::PipelineDynamicStateCreateInfo dynamicState;
 	{
 		dynamicState.dynamicStateCount = (u32)stateFlags.size();
@@ -230,17 +231,13 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 	return g_info.device.createGraphicsPipeline(cache, createInfo);
 }
 
-bool vuk::writeToBuffer(VkResource<vk::Buffer> buffer, void const* pData, vk::DeviceSize size, vk::DeviceSize offset)
+bool vuk::writeToBuffer(VkResource<vk::Buffer> buffer, void const* pData)
 {
-	if (size == 0)
+	if (buffer.alloc.memory != vk::DeviceMemory() && buffer.resource != vk::Buffer())
 	{
-		size = buffer.size;
-	}
-	if (buffer.memory != vk::DeviceMemory() && buffer.resource != vk::Buffer() && buffer.size - offset >= size)
-	{
-		auto pMem = g_info.device.mapMemory(buffer.memory, offset, size);
-		std::memcpy(pMem, pData, size);
-		g_info.device.unmapMemory(buffer.memory);
+		auto pMem = g_info.device.mapMemory(buffer.alloc.memory, buffer.alloc.offset, buffer.alloc.size);
+		std::memcpy(pMem, pData, buffer.alloc.size);
+		g_info.device.unmapMemory(buffer.alloc.memory);
 		return true;
 	}
 	return false;

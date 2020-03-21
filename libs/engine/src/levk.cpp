@@ -13,7 +13,7 @@
 #include "vuk/presenter.hpp"
 #include "vuk/renderer.hpp"
 #include "vuk/utils.hpp"
-#include "vuk/shader.hpp"
+#include "vuk/draw/shader.hpp"
 #include "vuk/draw/vertex.hpp"
 #include "window/window_impl.hpp"
 
@@ -118,6 +118,8 @@ s32 engine::run(s32 argc, char** argv)
 		commandPoolCreateInfo.queueFamilyIndex = qfi.transfer;
 		auto transferPool = vuk::g_info.device.createCommandPool(commandPoolCreateInfo);
 
+		vk::DescriptorSetLayout viewSetLayout = vuk::createDescriptorSetLayout(0, 1, vk::ShaderStageFlagBits::eVertex);
+
 		auto q = vuk::g_info.queues.transfer;
 		vuk::VkResource<vk::Buffer> triangle0VB, quad0VBIB;
 		{
@@ -131,8 +133,14 @@ s32 engine::run(s32 argc, char** argv)
 			triangle0VB = createDeviceBuffer(t0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0VBIB = createDeviceBuffer(q0vbibSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer);
 			vuk::writeToBuffer(tri0stage, triangle0Verts);
-			vuk::writeToBuffer(quad0stage, quad0Verts, q0vbSize);
-			vuk::writeToBuffer(quad0stage, quad0Indices, q0ibSize, q0vbSize);
+			vuk::VkResource<vk::Buffer> quad0VB, quad0IB;
+			quad0VB.alloc = quad0IB.alloc = quad0stage.alloc;
+			quad0VB.alloc.size = q0vbSize;
+			quad0VB.resource = quad0IB.resource = quad0stage.resource;
+			quad0IB.alloc.offset = quad0VB.alloc.size;
+			quad0IB.alloc.size = q0ibSize;
+			vuk::writeToBuffer(quad0VB, quad0Verts);
+			vuk::writeToBuffer(quad0IB, quad0Indices);
 			ops.push_back(copyBuffer(tri0stage.resource, triangle0VB.resource, t0vbSize, q, transferPool));
 			ops.push_back(copyBuffer(quad0stage.resource, quad0VBIB.resource, q0vbibSize, q, transferPool));
 			std::vector<vk::Fence> fences;
@@ -143,7 +151,8 @@ s32 engine::run(s32 argc, char** argv)
 				vuk::vkDestroy(op.transferred);
 				vuk::g_info.device.freeCommandBuffers(op.pool, op.commandBuffer);
 			}
-			vuk::vkDestroy(tri0stage, quad0stage);
+			vuk::vkFree(tri0stage.alloc.memory, quad0stage.alloc.memory);
+			vuk::vkDestroy(tri0stage.resource, quad0stage.resource);
 		}
 
 		Window w0, w1;
@@ -157,6 +166,7 @@ s32 engine::run(s32 argc, char** argv)
 		data1.options.colourSpace = ColourSpace::eRGBLinear;
 		bool bRecreate0 = false, bRecreate1 = false;
 		bool bClose0 = false, bClose1 = false;
+		bool bWF0 = false;
 		auto registerInput = [](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
 			token = self.registerInput([&](Key key, Action action, Mods mods) {
 				if (self.isOpen() && key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
@@ -169,17 +179,22 @@ s32 engine::run(s32 argc, char** argv)
 				}
 			});
 		};
-		std::shared_ptr<s32> token0, token1;
+		std::shared_ptr<s32> token0, token1, wf0Token;
+		wf0Token = w0.registerInput([&bWF0](Key key, Action action, Mods mods) {
+			if (key == Key::eP && action == Action::eRelease && mods & Mods::eCONTROL)
+			{
+				bWF0 = !bWF0;
+			}
+		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createRenderer = [&tutorialShader](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout, vuk::Presenter** ppPresenter,
-												WindowID id) {
+		auto createRenderer = [&tutorialShader, &viewSetLayout](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout,
+																vuk::Presenter** ppPresenter, WindowID id) {
 			vuk::vkDestroy(*pPipeline, *pLayout);
 			*ppPresenter = WindowImpl::presenter(id);
 			vk::PipelineLayoutCreateInfo layoutCreateInfo;
-			vk::DescriptorSetLayout setLayout = vuk::g_info.matricesLayout;
 			layoutCreateInfo.setLayoutCount = 1;
-			layoutCreateInfo.pSetLayouts = &setLayout;
+			layoutCreateInfo.pSetLayouts = &viewSetLayout;
 			vk::PushConstantRange pushConstantRange;
 			pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
 			pushConstantRange.offset = 0;
@@ -191,7 +206,11 @@ s32 engine::run(s32 argc, char** argv)
 			pipelineData.pShader = &tutorialShader;
 			pipelineData.renderPass = (*ppPresenter)->m_renderPass;
 			*pPipeline = vuk::createPipeline(*pLayout, pipelineData);
-			return std::make_unique<vuk::Renderer>(*ppPresenter, 2);
+			vuk::Renderer::Data data;
+			data.frameCount = 2;
+			data.pPresenter = *ppPresenter;
+			data.uboSetLayouts.view = viewSetLayout;
+			return std::make_unique<vuk::Renderer>(data);
 		};
 
 		if (w0.create(data0) && w1.create(data1))
@@ -200,11 +219,18 @@ s32 engine::run(s32 argc, char** argv)
 			vuk::Presenter* pPresenter0 = nullptr;
 			vuk::Presenter* pPresenter1 = nullptr;
 			vk::PipelineLayout layout0, layout1;
-			vk::Pipeline pipeline0;
+			vk::Pipeline pipeline0, pipeline0wf;
 			vk::Pipeline pipeline1;
 			if (w0.isOpen())
 			{
+				vuk::vkDestroy(pipeline0wf);
 				uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
+				vuk::PipelineData pipelineData;
+				pipelineData.pShader = &tutorialShader;
+				pipelineData.renderPass = pPresenter0->m_renderPass;
+				pipelineData.polygonMode = vk::PolygonMode::eLine;
+				pipelineData.staticLineWidth = vuk::g_info.lineWidth(3.0f);
+				pipeline0wf = vuk::createPipeline(layout0, pipelineData);
 			}
 			if (w1.isOpen())
 			{
@@ -262,7 +288,14 @@ s32 engine::run(s32 argc, char** argv)
 				{
 					bRecreate0 = false;
 					w0.create(data0);
+					vuk::vkDestroy(pipeline0wf);
 					uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
+					vuk::PipelineData pipelineData;
+					pipelineData.pShader = &tutorialShader;
+					pipelineData.renderPass = pPresenter0->m_renderPass;
+					pipelineData.polygonMode = vk::PolygonMode::eLine;
+					pipelineData.staticLineWidth = vuk::g_info.lineWidth(3.0f);
+					pipeline0wf = vuk::createPipeline(layout0, pipelineData);
 				}
 				if (bRecreate1)
 				{
@@ -289,10 +322,7 @@ s32 engine::run(s32 argc, char** argv)
 												   u32 indexCount) -> bool {
 						vuk::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
-						auto write = [&](vuk::Renderer::FrameDriver::UBOs const& ubos) {
-							// Set UBOs
-							vuk::writeToBuffer(ubos.view.buffer, pView);
-						};
+						auto write = [&](vuk::ubo::UBOs const& ubos) { ubos.view.write(*pView); };
 						auto draw = [&](vuk::Renderer::FrameDriver const& driver) {
 							vk::Viewport viewport = pRenderer->transformViewport();
 							vk::Rect2D scissor = pRenderer->transformScissor();
@@ -321,8 +351,8 @@ s32 engine::run(s32 argc, char** argv)
 
 					if (w0.isOpen() && uRenderer0.get())
 					{
-						drawFrame(&view0, uRenderer0.get(), pipeline0, layout0, quad0VBIB.resource, (u32)arraySize(quad0Verts),
-								  (u32)arraySize(quad0Indices));
+						drawFrame(&view0, uRenderer0.get(), bWF0 ? pipeline0wf : pipeline0, layout0, quad0VBIB.resource,
+								  (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
 					}
 					if (w1.isOpen() && uRenderer1.get())
 					{
@@ -337,12 +367,11 @@ s32 engine::run(s32 argc, char** argv)
 				}
 			}
 			vuk::g_info.device.waitIdle();
-			vuk::vkDestroy(pipeline0, pipeline1, layout0, layout1);
+			vuk::vkDestroy(pipeline0, pipeline0wf, pipeline1, layout0, layout1);
 			vuk::vkDestroy(transferPool);
-			vuk::g_info.device.destroyBuffer(triangle0VB.resource);
-			vuk::g_info.device.destroyBuffer(quad0VBIB.resource);
-			vuk::g_info.device.freeMemory(triangle0VB.memory);
-			vuk::g_info.device.freeMemory(quad0VBIB.memory);
+			vuk::vkDestroy(viewSetLayout);
+			vuk::vkDestroy(triangle0VB.resource, quad0VBIB.resource);
+			vuk::vkFree(triangle0VB.alloc.memory, quad0VBIB.alloc.memory);
 		}
 	}
 	catch (std::exception const& e)

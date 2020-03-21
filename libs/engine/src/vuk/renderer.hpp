@@ -2,42 +2,38 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 #include "core/delegate.hpp"
-#include "common.hpp"
-#include "utils.hpp"
+#include "draw/ubo.hpp"
 
 namespace le::vuk
 {
-struct UniformData
-{
-	VkResource<vk::Buffer> buffer;
-	vk::DescriptorSet descriptorSet;
-	vk::DeviceSize offset;
-};
-
 class Renderer final
 {
 public:
-	struct FrameDriver final
+	struct Data final
 	{
-		struct UBOs
+		struct UBOSetLayouts
 		{
-			UniformData view;
+			vk::DescriptorSetLayout view;
 		};
 
-		UBOs ubos;
+		UBOSetLayouts uboSetLayouts;
+		Presenter* pPresenter = nullptr;
+		u8 frameCount = 2;
+	};
+
+	struct FrameDriver final
+	{
+		ubo::UBOs ubos;
 		vk::CommandBuffer commandBuffer;
 	};
 
-	using Write = std::function<void(FrameDriver::UBOs const&)>;
+	using Write = std::function<void(ubo::UBOs const&)>;
 	using Draw = std::function<void(FrameDriver const&)>;
 
 private:
 	struct FrameSync final
 	{
-		struct
-		{
-			UniformData view;
-		} ubos;
+		ubo::UBOs ubos;
 		vk::Semaphore renderReady;
 		vk::Semaphore presentReady;
 		vk::Fence drawing;
@@ -46,22 +42,16 @@ private:
 		bool bNascent = true;
 	};
 
-	struct Shared final
-	{
-		UBOData uboView;
-	};
-
 public:
 	static std::string const s_tName;
-
-private:
-	static Shared const s_shared;
 
 public:
 	vk::DescriptorPool m_descriptorPool;
 
 private:
+	Data::UBOSetLayouts m_setLayouts;
 	std::vector<FrameSync> m_frames;
+
 	size_t m_index = 0;
 	std::vector<Delegate<>::Token> m_callbackTokens;
 	class Presenter* m_pPresenter = nullptr;
@@ -69,7 +59,7 @@ private:
 	u8 m_frameCount = 0;
 
 public:
-	Renderer(Presenter* pPresenter, u8 frameCount);
+	Renderer(Data const& data);
 	~Renderer();
 
 public:

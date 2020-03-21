@@ -46,11 +46,6 @@ struct InitData final
 	} options;
 };
 
-struct UBOData final
-{
-	vk::DeviceSize size;
-};
-
 struct PresenterData final
 {
 	using GetSize = std::function<glm::ivec2()>;
@@ -83,24 +78,21 @@ struct ScreenRect final
 	f32 aspect() const;
 };
 
+struct VkAllocation final
+{
+	vk::DeviceMemory memory;
+	vk::DeviceSize offset = {};
+	vk::DeviceSize size = {};
+};
+
 template <typename T, typename = std::enable_if_t<std::is_same_v<T, vk::Buffer> || std::is_same_v<T, vk::Image>>>
 struct VkResource final
 {
 	using vkType = T;
 
 	T resource;
-	vk::DeviceMemory memory;
-	vk::DeviceSize size = {};
+	VkAllocation alloc;
 };
-
-namespace ubo
-{
-struct View final
-{
-	glm::mat4 mat_vp;
-	glm::mat4 mat_v;
-};
-} // namespace ubo
 
 struct ClearValues final
 {

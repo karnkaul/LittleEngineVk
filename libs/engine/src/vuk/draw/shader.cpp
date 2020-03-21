@@ -1,6 +1,6 @@
 #include "core/assert.hpp"
 #include "core/io.hpp"
-#include "info.hpp"
+#include "vuk/utils.hpp"
 #include "shader.hpp"
 
 namespace le::vuk

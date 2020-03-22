@@ -4,7 +4,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
 #include "core/flags.hpp"
@@ -14,20 +13,10 @@ namespace le::vuk
 {
 struct Info final
 {
-	enum class QFlag
-	{
-		ePresent = 0,
-		eTransfer,
-		eGraphics,
-		eCOUNT_
-	};
-	using QFlags = TFlags<QFlag>;
-
 	vk::Instance instance;
 	vk::PhysicalDevice physicalDevice;
 	vk::PhysicalDeviceLimits deviceLimits;
 	vk::Device device;
-	VmaAllocator vmaAllocator;
 
 	f32 lineWidthMin = 1.0f;
 	f32 lineWidthMax = 1.0f;

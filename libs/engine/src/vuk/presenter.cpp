@@ -4,6 +4,7 @@
 #include "presenter.hpp"
 #include "info.hpp"
 #include "utils.hpp"
+#include "vram.hpp"
 
 namespace le::vuk
 {
@@ -310,7 +311,7 @@ bool Presenter::createSwapchain()
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto flags = vuk::Info::QFlags(vuk::Info::QFlag::eGraphics, vuk::Info::QFlag::eTransfer);
+		auto flags = vuk::QFlags(vuk::QFlag::eGraphics, vuk::QFlag::eTransfer);
 		auto const queueIndices = g_info.uniqueQueueIndices(flags);
 		createInfo.pQueueFamilyIndices = queueIndices.data();
 		createInfo.queueFamilyIndexCount = (u32)queueIndices.size();
@@ -332,7 +333,7 @@ bool Presenter::createSwapchain()
 		depthImageData.size = vk::Extent3D(m_swapchain.extent, 1);
 		depthImageData.tiling = vk::ImageTiling::eOptimal;
 		depthImageData.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-		m_swapchain.depthImage = createImage(depthImageData);
+		m_swapchain.depthImage = vram::createImage(depthImageData);
 		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.image, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		for (auto const& image : images)
 		{
@@ -374,7 +375,8 @@ void Presenter::destroySwapchain()
 	{
 		vkDestroy(frame.framebuffer, frame.colour);
 	}
-	vkDestroy(m_swapchain.depthImageView, m_swapchain.depthImage, m_swapchain.swapchain);
+	vkDestroy(m_swapchain.depthImageView, m_swapchain.swapchain);
+	vram::release(m_swapchain.depthImage);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}:{}] Swapchain destroyed", s_tName, m_window);
 	m_swapchain = Swapchain();
 	m_onDestroyed();

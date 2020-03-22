@@ -14,7 +14,7 @@
 
 #if defined(LEVK_DEBUG)
 /**
- * Variable     : LEVK_DEBUG_LOG
+ * Variable     : LEVK_LOG_DEBUG
  * Description  : Enables LOG_D and LOGIF_D macros (Level::eDebug)
  */
 #if !defined(LEVK_LOG_DEBUG)

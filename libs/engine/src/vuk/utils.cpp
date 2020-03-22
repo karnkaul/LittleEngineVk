@@ -65,38 +65,6 @@ void vuk::writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet,
 	g_info.device.updateDescriptorSets(descWrite, {});
 }
 
-vuk::Image vuk::createImage(ImageData const& data)
-{
-	Image ret;
-	vk::ImageCreateInfo imageInfo;
-	imageInfo.imageType = data.type;
-	imageInfo.extent = data.size;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = data.format;
-	imageInfo.tiling = data.tiling;
-	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.usage = data.usage;
-	imageInfo.samples = vk::SampleCountFlagBits::e1;
-	auto const queueIndices = g_info.uniqueQueueIndices(data.queueFlags);
-	imageInfo.queueFamilyIndexCount = (u32)queueIndices.size();
-	imageInfo.pQueueFamilyIndices = queueIndices.data();
-	imageInfo.sharingMode = g_info.sharingMode(data.queueFlags);
-	VmaAllocationCreateInfo allocationInfo = {};
-	allocationInfo.usage = data.vmaUsage;
-	auto const vkImageInfo = static_cast<VkImageCreateInfo>(imageInfo);
-	VkImage vkImage;
-	if (vmaCreateImage(g_info.vmaAllocator, &vkImageInfo, &allocationInfo, &vkImage, &ret.handle, nullptr) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Allocation error");
-	}
-	ret.image = vkImage;
-	VmaAllocationInfo info;
-	vmaGetAllocationInfo(g_info.vmaAllocator, ret.handle, &info);
-	ret.info = {info.deviceMemory, info.offset, info.size};
-	return ret;
-}
-
 vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type)
 {
 	vk::ImageViewCreateInfo createInfo;
@@ -110,67 +78,6 @@ vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::Image
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
 	return g_info.device.createImageView(createInfo);
-}
-
-vuk::Buffer vuk::createBuffer(BufferData const& data)
-{
-	Buffer ret;
-	vk::BufferCreateInfo bufferInfo;
-	ret.writeSize = bufferInfo.size = data.size;
-	bufferInfo.usage = data.usage;
-	auto const flags = Info::QFlags(Info::QFlag::eGraphics, Info::QFlag::eTransfer);
-	bufferInfo.sharingMode = vuk::g_info.sharingMode(flags);
-	auto const queueIndices = vuk::g_info.uniqueQueueIndices(flags);
-	bufferInfo.queueFamilyIndexCount = (u32)queueIndices.size();
-	bufferInfo.pQueueFamilyIndices = queueIndices.data();
-	VmaAllocationCreateInfo allocationInfo = {};
-	allocationInfo.usage = data.vmaUsage;
-	auto const vkBufferInfo = static_cast<VkBufferCreateInfo>(bufferInfo);
-	VkBuffer vkBuffer;
-	if (vmaCreateBuffer(g_info.vmaAllocator, &vkBufferInfo, &allocationInfo, &vkBuffer, &ret.handle, nullptr) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Allocation error");
-	}
-	ret.buffer = vkBuffer;
-	VmaAllocationInfo info;
-	vmaGetAllocationInfo(g_info.vmaAllocator, ret.handle, &info);
-	ret.info = {info.deviceMemory, info.offset, info.size};
-	return ret;
-}
-
-void vuk::copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp)
-{
-	ASSERT(pOp, "Null pointer!");
-	vk::CommandBufferAllocateInfo allocInfo;
-	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandPool = pOp->pool;
-	allocInfo.commandBufferCount = 1;
-	auto commandBuffer = g_info.device.allocateCommandBuffers(allocInfo).front();
-	vk::CommandBufferBeginInfo beginInfo;
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	commandBuffer.begin(beginInfo);
-	vk::BufferCopy copyRegion;
-	copyRegion.size = size;
-	commandBuffer.copyBuffer(src, dst, copyRegion);
-	commandBuffer.end();
-	vk::SubmitInfo submitInfo;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-	pOp->transferred = g_info.device.createFence({});
-	pOp->queue.submit(submitInfo, pOp->transferred);
-	return;
-}
-
-bool vuk::writeToBuffer(Buffer buffer, void const* pData)
-{
-	if (buffer.info.memory != vk::DeviceMemory() && buffer.buffer != vk::Buffer())
-	{
-		auto pMem = g_info.device.mapMemory(buffer.info.memory, buffer.info.offset, buffer.writeSize);
-		std::memcpy(pMem, pData, (size_t)buffer.writeSize);
-		g_info.device.unmapMemory(buffer.info.memory);
-		return true;
-	}
-	return false;
 }
 
 vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)

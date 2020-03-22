@@ -4,8 +4,9 @@
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
-#include "vuk/info.hpp"
 #include "window/window_impl.hpp"
+#include "info.hpp"
+#include "vram.hpp"
 
 namespace le::vuk
 {
@@ -239,11 +240,7 @@ void init(InitData const& initData)
 		}
 	}
 	auto device = initDevice(instance, requiredLayers, initData);
-	VmaAllocatorCreateInfo allocatorInfo = {};
-	allocatorInfo.instance = instance;
-	allocatorInfo.device = device;
-	allocatorInfo.physicalDevice = g_info.physicalDevice;
-	vmaCreateAllocator(&allocatorInfo, &g_info.vmaAllocator);
+	vram::init(instance, device, g_info.physicalDevice);
 
 	g_info.instance = instance;
 	g_info.device = device;
@@ -255,10 +252,7 @@ void init(InitData const& initData)
 
 void deinit()
 {
-	if (g_info.vmaAllocator != VmaAllocator())
-	{
-		vmaDestroyAllocator(g_info.vmaAllocator);
-	}
+	vram::deinit();
 	if (g_info.device != vk::Device())
 	{
 		g_info.device.destroy();

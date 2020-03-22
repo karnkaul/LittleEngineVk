@@ -13,6 +13,7 @@
 #include "vuk/presenter.hpp"
 #include "vuk/renderer.hpp"
 #include "vuk/utils.hpp"
+#include "vuk/vram.hpp"
 #include "vuk/draw/shader.hpp"
 #include "vuk/draw/vertex.hpp"
 #include "window/window_impl.hpp"
@@ -98,7 +99,7 @@ s32 engine::run(s32 argc, char** argv)
 			data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 			data.usage = vk::BufferUsageFlagBits::eTransferSrc;
 			data.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
-			return vuk::createBuffer(data);
+			return vuk::vram::createBuffer(data);
 		};
 		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> vuk::Buffer {
 			vuk::BufferData data;
@@ -106,12 +107,12 @@ s32 engine::run(s32 argc, char** argv)
 			data.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 			data.usage = flags | vk::BufferUsageFlagBits::eTransferDst;
 			data.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-			return vuk::createBuffer(data);
+			return vuk::vram::createBuffer(data);
 		};
 		auto copyBuffer = [](vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, vk::Queue queue,
 							 vk::CommandPool pool) -> vuk::TransferOp {
 			vuk::TransferOp ret{queue, pool, {}, {}};
-			vuk::copyBuffer(src, dst, size, &ret);
+			vuk::vram::copy(src, dst, size, &ret);
 			return ret;
 		};
 
@@ -135,9 +136,9 @@ s32 engine::run(s32 argc, char** argv)
 			triangle0VB = createDeviceBuffer(t0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0VB = createDeviceBuffer(q0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0IB = createDeviceBuffer(q0ibSize, vk::BufferUsageFlagBits::eIndexBuffer);
-			vuk::writeToBuffer(tri0stage, triangle0Verts);
-			vuk::writeToBuffer(quad0vstage, quad0Verts);
-			vuk::writeToBuffer(quad0istage, quad0Indices);
+			vuk::vram::write(tri0stage, triangle0Verts);
+			vuk::vram::write(quad0vstage, quad0Verts);
+			vuk::vram::write(quad0istage, quad0Indices);
 			ops.push_back(copyBuffer(tri0stage.buffer, triangle0VB.buffer, t0vbSize, q, transferPool));
 			ops.push_back(copyBuffer(quad0vstage.buffer, quad0VB.buffer, q0vbSize, q, transferPool));
 			ops.push_back(copyBuffer(quad0istage.buffer, quad0IB.buffer, q0ibSize, q, transferPool));
@@ -149,7 +150,7 @@ s32 engine::run(s32 argc, char** argv)
 				vuk::vkDestroy(op.transferred);
 				vuk::g_info.device.freeCommandBuffers(op.pool, op.commandBuffer);
 			}
-			vuk::vkDestroy(tri0stage, quad0vstage, quad0istage);
+			vuk::vram::release(tri0stage, quad0vstage, quad0istage);
 		}
 
 		Window w0, w1;
@@ -366,7 +367,7 @@ s32 engine::run(s32 argc, char** argv)
 			vuk::vkDestroy(pipeline0, pipeline0wf, pipeline1, layout0, layout1);
 			vuk::vkDestroy(transferPool);
 			vuk::vkDestroy(viewSetLayout);
-			vuk::vkDestroy(triangle0VB, quad0VB, quad0IB);
+			vuk::vram::release(triangle0VB, quad0VB, quad0IB);
 		}
 	}
 	catch (std::exception const& e)

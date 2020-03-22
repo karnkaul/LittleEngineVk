@@ -1,6 +1,6 @@
 #pragma once
 #include <array>
-#include "vuk/utils.hpp"
+#include "vuk/vram.hpp"
 
 namespace le::vuk::ubo
 {
@@ -16,7 +16,7 @@ struct Handle final
 
 	void write(T const& data) const
 	{
-		writeToBuffer(buffer, &data);
+		vram::write(buffer, &data);
 	}
 
 	static Handle<T> create(vk::DescriptorSetLayout setLayout, vk::DescriptorSet descriptorSet)
@@ -29,7 +29,7 @@ struct Handle final
 		data.usage = vk::BufferUsageFlagBits::eUniformBuffer;
 		data.size = ret.size;
 		data.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-		ret.buffer = createBuffer(data);
+		ret.buffer = vram::createBuffer(data);
 		writeUniformDescriptor(ret.buffer, ret.descriptorSet, T::binding);
 		return ret;
 	}

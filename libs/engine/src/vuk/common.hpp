@@ -12,6 +12,15 @@
 
 namespace le::vuk
 {
+enum class QFlag
+{
+	eGraphics = 0,
+	ePresent,
+	eTransfer,
+	eCOUNT_
+};
+using QFlags = TFlags<QFlag>;
+
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
 struct AvailableDevice final

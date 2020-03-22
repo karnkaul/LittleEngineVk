@@ -92,18 +92,20 @@ s32 engine::run(s32 argc, char** argv)
 										  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0};
 
-		auto createStagingBuffer = [](vk::DeviceSize size) -> vuk::VkResource<vk::Buffer> {
+		auto createStagingBuffer = [](vk::DeviceSize size) -> vuk::Buffer {
 			vuk::BufferData data;
 			data.size = size;
 			data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 			data.usage = vk::BufferUsageFlagBits::eTransferSrc;
+			data.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 			return vuk::createBuffer(data);
 		};
-		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> vuk::VkResource<vk::Buffer> {
+		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> vuk::Buffer {
 			vuk::BufferData data;
 			data.size = size;
 			data.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 			data.usage = flags | vk::BufferUsageFlagBits::eTransferDst;
+			data.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 			return vuk::createBuffer(data);
 		};
 		auto copyBuffer = [](vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, vk::Queue queue,
@@ -121,28 +123,24 @@ s32 engine::run(s32 argc, char** argv)
 		vk::DescriptorSetLayout viewSetLayout = vuk::createDescriptorSetLayout(0, 1, vk::ShaderStageFlagBits::eVertex);
 
 		auto q = vuk::g_info.queues.transfer;
-		vuk::VkResource<vk::Buffer> triangle0VB, quad0VBIB;
+		vuk::Buffer triangle0VB, quad0VB, quad0IB;
 		{
 			std::vector<vuk::TransferOp> ops;
 			auto const t0vbSize = sizeof(triangle0Verts);
 			auto const q0vbSize = sizeof(quad0Verts);
 			auto const q0ibSize = sizeof(quad0Indices);
-			auto const q0vbibSize = q0vbSize + q0ibSize;
 			auto tri0stage = createStagingBuffer(t0vbSize);
-			auto quad0stage = createStagingBuffer(q0vbibSize);
+			auto quad0vstage = createStagingBuffer(q0vbSize);
+			auto quad0istage = createStagingBuffer(q0ibSize);
 			triangle0VB = createDeviceBuffer(t0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
-			quad0VBIB = createDeviceBuffer(q0vbibSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer);
+			quad0VB = createDeviceBuffer(q0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
+			quad0IB = createDeviceBuffer(q0ibSize, vk::BufferUsageFlagBits::eIndexBuffer);
 			vuk::writeToBuffer(tri0stage, triangle0Verts);
-			vuk::VkResource<vk::Buffer> quad0VB, quad0IB;
-			quad0VB.alloc = quad0IB.alloc = quad0stage.alloc;
-			quad0VB.alloc.size = q0vbSize;
-			quad0VB.resource = quad0IB.resource = quad0stage.resource;
-			quad0IB.alloc.offset = quad0VB.alloc.size;
-			quad0IB.alloc.size = q0ibSize;
-			vuk::writeToBuffer(quad0VB, quad0Verts);
-			vuk::writeToBuffer(quad0IB, quad0Indices);
-			ops.push_back(copyBuffer(tri0stage.resource, triangle0VB.resource, t0vbSize, q, transferPool));
-			ops.push_back(copyBuffer(quad0stage.resource, quad0VBIB.resource, q0vbibSize, q, transferPool));
+			vuk::writeToBuffer(quad0vstage, quad0Verts);
+			vuk::writeToBuffer(quad0istage, quad0Indices);
+			ops.push_back(copyBuffer(tri0stage.buffer, triangle0VB.buffer, t0vbSize, q, transferPool));
+			ops.push_back(copyBuffer(quad0vstage.buffer, quad0VB.buffer, q0vbSize, q, transferPool));
+			ops.push_back(copyBuffer(quad0istage.buffer, quad0IB.buffer, q0ibSize, q, transferPool));
 			std::vector<vk::Fence> fences;
 			std::for_each(ops.begin(), ops.end(), [&fences](auto const& op) { fences.push_back(op.transferred); });
 			vuk::waitAll(fences);
@@ -151,8 +149,7 @@ s32 engine::run(s32 argc, char** argv)
 				vuk::vkDestroy(op.transferred);
 				vuk::g_info.device.freeCommandBuffers(op.pool, op.commandBuffer);
 			}
-			vuk::vkFree(tri0stage.alloc.memory, quad0stage.alloc.memory);
-			vuk::vkDestroy(tri0stage.resource, quad0stage.resource);
+			vuk::vkDestroy(tri0stage, quad0vstage, quad0istage);
 		}
 
 		Window w0, w1;
@@ -318,8 +315,8 @@ s32 engine::run(s32 argc, char** argv)
 				try
 				{
 					auto drawFrame = [&transform0](vuk::ubo::View* pView, vuk::Renderer* pRenderer, vk::Pipeline pipeline,
-												   vk::PipelineLayout layout, vk::Buffer vertexBuffer, u32 vertCount,
-												   u32 indexCount) -> bool {
+												   vk::PipelineLayout layout, vk::Buffer vertexBuffer, vk::Buffer indexBuffer,
+												   u32 vertCount, u32 indexCount) -> bool {
 						vuk::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
 						auto write = [&](vuk::ubo::UBOs const& ubos) { ubos.view.write(*pView); };
@@ -337,8 +334,7 @@ s32 engine::run(s32 argc, char** argv)
 							driver.commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer, offsets);
 							if (indexCount > 0)
 							{
-								vk::DeviceSize offset = vertCount * sizeof(vuk::Vertex);
-								driver.commandBuffer.bindIndexBuffer(vertexBuffer, offset, vk::IndexType::eUint32);
+								driver.commandBuffer.bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint32);
 								driver.commandBuffer.drawIndexed(indexCount, 1, 0, 0, 0);
 							}
 							else
@@ -351,13 +347,13 @@ s32 engine::run(s32 argc, char** argv)
 
 					if (w0.isOpen() && uRenderer0.get())
 					{
-						drawFrame(&view0, uRenderer0.get(), bWF0 ? pipeline0wf : pipeline0, layout0, quad0VBIB.resource,
+						drawFrame(&view0, uRenderer0.get(), bWF0 ? pipeline0wf : pipeline0, layout0, quad0VB.buffer, quad0IB.buffer,
 								  (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
 					}
 					if (w1.isOpen() && uRenderer1.get())
 					{
-						drawFrame(&view1, uRenderer1.get(), pipeline1, layout1, triangle0VB.resource, (u32)arraySize(triangle0Verts), 0);
-						// drawFrame(&view1, pPresenter1, pipeline1, layout1, quad0VBIB.resource, (u32)arraySize(quad0Verts),
+						drawFrame(&view1, uRenderer1.get(), pipeline1, layout1, triangle0VB.buffer, {}, (u32)arraySize(triangle0Verts), 0);
+						// drawFrame(&view1, pPresenter1, pipeline1, layout1, quad0VBIB.buffer, (u32)arraySize(quad0Verts),
 						//	  (u32)arraySize(quad0Indices));
 					}
 				}
@@ -370,8 +366,7 @@ s32 engine::run(s32 argc, char** argv)
 			vuk::vkDestroy(pipeline0, pipeline0wf, pipeline1, layout0, layout1);
 			vuk::vkDestroy(transferPool);
 			vuk::vkDestroy(viewSetLayout);
-			vuk::vkDestroy(triangle0VB.resource, quad0VBIB.resource);
-			vuk::vkFree(triangle0VB.alloc.memory, quad0VBIB.alloc.memory);
+			vuk::vkDestroy(triangle0VB, quad0VB, quad0IB);
 		}
 	}
 	catch (std::exception const& e)

@@ -51,7 +51,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 	try
 	{
-		surface = initData.config.createTempSurface(g_info.instance);
+		surface = initData.config.createTempSurface(instance);
 		auto physicalDevices = vk::Instance(instance).enumeratePhysicalDevices();
 		std::vector<AvailableDevice> availableDevices;
 		availableDevices.reserve(physicalDevices.size());
@@ -238,18 +238,27 @@ void init(InitData const& initData)
 			throw std::runtime_error(e.what());
 		}
 	}
-	g_info.instance = instance;
 	auto device = initDevice(instance, requiredLayers, initData);
+	VmaAllocatorCreateInfo allocatorInfo = {};
+	allocatorInfo.instance = instance;
+	allocatorInfo.device = device;
+	allocatorInfo.physicalDevice = g_info.physicalDevice;
+	vmaCreateAllocator(&allocatorInfo, &g_info.vmaAllocator);
+
+	g_info.instance = instance;
 	g_info.device = device;
 	g_info.queues.graphics = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
 	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, 0);
-
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
 
 void deinit()
 {
+	if (g_info.vmaAllocator != VmaAllocator())
+	{
+		vmaDestroyAllocator(g_info.vmaAllocator);
+	}
 	if (g_info.device != vk::Device())
 	{
 		g_info.device.destroy();

@@ -18,6 +18,10 @@ else()
 	message("== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}")
 endif()
 
+# VMA
+target_link_libraries(vma PRIVATE ${Vulkan_LIBRARIES})
+target_include_directories(vma PRIVATE ${Vulkan_INCLUDE_DIRS})
+
 # Library
 glob_sources(SOURCES "*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
@@ -46,6 +50,7 @@ target_link_libraries(${PROJECT_NAME}
 		${Vulkan_LIBRARIES}
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
+		vma
 		#stb-image
 		#tinyobjloader
 )

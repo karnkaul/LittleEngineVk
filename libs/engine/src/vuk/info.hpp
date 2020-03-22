@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
 #include "core/flags.hpp"
@@ -26,6 +27,7 @@ struct Info final
 	vk::PhysicalDevice physicalDevice;
 	vk::PhysicalDeviceLimits deviceLimits;
 	vk::Device device;
+	VmaAllocator vmaAllocator;
 
 	f32 lineWidthMin = 1.0f;
 	f32 lineWidthMax = 1.0f;

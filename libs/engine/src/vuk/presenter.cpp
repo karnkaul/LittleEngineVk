@@ -333,7 +333,7 @@ bool Presenter::createSwapchain()
 		depthImageData.tiling = vk::ImageTiling::eOptimal;
 		depthImageData.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 		m_swapchain.depthImage = createImage(depthImageData);
-		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.resource, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
+		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.image, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		for (auto const& image : images)
 		{
 			Swapchain::Frame frame;
@@ -370,13 +370,11 @@ bool Presenter::createSwapchain()
 void Presenter::destroySwapchain()
 {
 	g_info.device.waitIdle();
-	// m_renderer.reset();
 	for (auto const& frame : m_swapchain.frames)
 	{
 		vkDestroy(frame.framebuffer, frame.colour);
 	}
-	vkDestroy(m_swapchain.depthImageView, m_swapchain.depthImage.resource, m_swapchain.swapchain);
-	vkFree(m_swapchain.depthImage.alloc.memory);
+	vkDestroy(m_swapchain.depthImageView, m_swapchain.depthImage, m_swapchain.swapchain);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}:{}] Swapchain destroyed", s_tName, m_window);
 	m_swapchain = Swapchain();
 	m_onDestroyed();
@@ -385,7 +383,6 @@ void Presenter::destroySwapchain()
 void Presenter::cleanup()
 {
 	destroySwapchain();
-	// m_renderer.destroy();
 	vkDestroy(m_renderPass);
 	m_renderPass = vk::RenderPass();
 	vkDestroy<vk::Instance>(m_info.surface);

@@ -56,6 +56,7 @@ if(LEVK_USE_GLFW)
 	set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
 	add_subdirectory(external/glfw)
 endif()
+add_subdirectory(external/vma)
 
 # Libraries
 add_subdirectory(libs/core)

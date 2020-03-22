@@ -78,8 +78,7 @@ void Renderer::destroy()
 	{
 		for (auto& frame : m_frames)
 		{
-			vkDestroy(frame.commandPool, frame.drawing, frame.renderReady, frame.presentReady, frame.ubos.view.buffer.resource);
-			vkFree(frame.ubos.view.buffer.alloc.memory);
+			vkDestroy(frame.commandPool, frame.drawing, frame.renderReady, frame.presentReady, frame.ubos.view.buffer);
 		}
 		vkDestroy(m_descriptorPool);
 		m_descriptorPool = vk::DescriptorPool();

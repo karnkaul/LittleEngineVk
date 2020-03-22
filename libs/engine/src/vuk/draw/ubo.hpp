@@ -9,7 +9,7 @@ struct Handle final
 {
 	static constexpr vk::DeviceSize size = sizeof(T);
 
-	VkResource<vk::Buffer> buffer;
+	Buffer buffer;
 	vk::DescriptorSetLayout setLayout;
 	vk::DescriptorSet descriptorSet;
 	vk::DeviceSize offset;
@@ -28,6 +28,7 @@ struct Handle final
 		data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 		data.usage = vk::BufferUsageFlagBits::eUniformBuffer;
 		data.size = ret.size;
+		data.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		ret.buffer = createBuffer(data);
 		writeUniformDescriptor(ret.buffer, ret.descriptorSet, T::binding);
 		return ret;

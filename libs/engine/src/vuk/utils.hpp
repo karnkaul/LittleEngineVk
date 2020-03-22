@@ -41,6 +41,7 @@ struct ImageData final
 	vk::MemoryPropertyFlags properties;
 	vk::ImageType type = vk::ImageType::e2D;
 	Info::QFlags queueFlags = Info::QFlags(Info::QFlag::eGraphics, Info::QFlag::eTransfer);
+	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
 struct BufferData final
@@ -48,6 +49,7 @@ struct BufferData final
 	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
 	vk::MemoryPropertyFlags properties;
+	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
 TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
@@ -56,35 +58,28 @@ void wait(vk::Fence optional);
 void waitAll(vk::ArrayProxy<const vk::Fence> validFences);
 
 vk::DescriptorSetLayout createDescriptorSetLayout(u32 binding, u32 descriptorCount, vk::ShaderStageFlags stages);
-void writeUniformDescriptor(VkResource<vk::Buffer> buffer, vk::DescriptorSet descriptorSet, u32 binding);
+void writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet, u32 binding);
 
-VkResource<vk::Image> createImage(ImageData const& data);
+Image createImage(ImageData const& data);
 vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
 							  vk::ImageViewType typev = vk::ImageViewType::e2D);
 
-VkResource<vk::Buffer> createBuffer(BufferData const& data);
+Buffer createBuffer(BufferData const& data);
 void copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp);
+bool writeToBuffer(Buffer buffer, void const* pData);
 
 vk::Pipeline createPipeline(vk::PipelineLayout info, PipelineData const& data, vk::PipelineCache cache = vk::PipelineCache());
-
-bool writeToBuffer(VkResource<vk::Buffer> buffer, void const* pData);
 
 template <typename vkOwner = vk::Device, typename vkType>
 void vkDestroy(vkType object)
 {
-	if constexpr (std::is_same_v<vkType, vk::Buffer>)
+	if constexpr (std::is_same_v<vkType, Buffer>)
 	{
-		if (object != vk::Buffer())
-		{
-			g_info.device.destroyBuffer(object);
-		}
+		vmaDestroyBuffer(g_info.vmaAllocator, object.buffer, object.handle);
 	}
-	else if constexpr (std::is_same_v<vkType, vk::Image>)
+	else if constexpr (std::is_same_v<vkType, Image>)
 	{
-		if (object != vk::Image())
-		{
-			g_info.device.destroyImage(object);
-		}
+		vmaDestroyImage(g_info.vmaAllocator, object.image, object.handle);
 	}
 	else if constexpr (std::is_same_v<vkType, vk::DescriptorSetLayout>)
 	{

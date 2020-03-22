@@ -49,12 +49,12 @@ vk::DescriptorSetLayout vuk::createDescriptorSetLayout(u32 binding, u32 descript
 	return g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
 }
 
-void vuk::writeUniformDescriptor(VkResource<vk::Buffer> buffer, vk::DescriptorSet descriptorSet, u32 binding)
+void vuk::writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet, u32 binding)
 {
 	vk::DescriptorBufferInfo bufferInfo;
-	bufferInfo.buffer = buffer.resource;
+	bufferInfo.buffer = buffer.buffer;
 	bufferInfo.offset = 0;
-	bufferInfo.range = buffer.alloc.size;
+	bufferInfo.range = buffer.writeSize;
 	vk::WriteDescriptorSet descWrite;
 	descWrite.dstSet = descriptorSet;
 	descWrite.dstBinding = binding;
@@ -65,10 +65,10 @@ void vuk::writeUniformDescriptor(VkResource<vk::Buffer> buffer, vk::DescriptorSe
 	g_info.device.updateDescriptorSets(descWrite, {});
 }
 
-vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
+vuk::Image vuk::createImage(ImageData const& data)
 {
-	VkResource<vk::Image> ret;
-	vk::ImageCreateInfo imageInfo = {};
+	Image ret;
+	vk::ImageCreateInfo imageInfo;
 	imageInfo.imageType = data.type;
 	imageInfo.extent = data.size;
 	imageInfo.mipLevels = 1;
@@ -82,14 +82,18 @@ vuk::VkResource<vk::Image> vuk::createImage(ImageData const& data)
 	imageInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	imageInfo.pQueueFamilyIndices = queueIndices.data();
 	imageInfo.sharingMode = g_info.sharingMode(data.queueFlags);
-	ret.resource = g_info.device.createImage(imageInfo);
-	vk::MemoryRequirements memRequirements = g_info.device.getImageMemoryRequirements(ret.resource);
-	vk::MemoryAllocateInfo allocInfo;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
-	ret.alloc.memory = g_info.device.allocateMemory(allocInfo);
-	ret.alloc.size = memRequirements.size;
-	g_info.device.bindImageMemory(ret.resource, ret.alloc.memory, 0);
+	VmaAllocationCreateInfo allocationInfo = {};
+	allocationInfo.usage = data.vmaUsage;
+	auto const vkImageInfo = static_cast<VkImageCreateInfo>(imageInfo);
+	VkImage vkImage;
+	if (vmaCreateImage(g_info.vmaAllocator, &vkImageInfo, &allocationInfo, &vkImage, &ret.handle, nullptr) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Allocation error");
+	}
+	ret.image = vkImage;
+	VmaAllocationInfo info;
+	vmaGetAllocationInfo(g_info.vmaAllocator, ret.handle, &info);
+	ret.info = {info.deviceMemory, info.offset, info.size};
 	return ret;
 }
 
@@ -108,25 +112,29 @@ vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::Image
 	return g_info.device.createImageView(createInfo);
 }
 
-vuk::VkResource<vk::Buffer> vuk::createBuffer(BufferData const& data)
+vuk::Buffer vuk::createBuffer(BufferData const& data)
 {
-	VkResource<vk::Buffer> ret;
+	Buffer ret;
 	vk::BufferCreateInfo bufferInfo;
-	bufferInfo.size = data.size;
+	ret.writeSize = bufferInfo.size = data.size;
 	bufferInfo.usage = data.usage;
 	auto const flags = Info::QFlags(Info::QFlag::eGraphics, Info::QFlag::eTransfer);
 	bufferInfo.sharingMode = vuk::g_info.sharingMode(flags);
 	auto const queueIndices = vuk::g_info.uniqueQueueIndices(flags);
 	bufferInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	bufferInfo.pQueueFamilyIndices = queueIndices.data();
-	ret.resource = vuk::g_info.device.createBuffer(bufferInfo);
-	vk::MemoryRequirements memRequirements = vuk::g_info.device.getBufferMemoryRequirements(ret.resource);
-	vk::MemoryAllocateInfo allocInfo = {};
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = vuk::g_info.findMemoryType(memRequirements.memoryTypeBits, data.properties);
-	ret.alloc.memory = vuk::g_info.device.allocateMemory(allocInfo);
-	ret.alloc.size = data.size;
-	vuk::g_info.device.bindBufferMemory(ret.resource, ret.alloc.memory, ret.alloc.offset);
+	VmaAllocationCreateInfo allocationInfo = {};
+	allocationInfo.usage = data.vmaUsage;
+	auto const vkBufferInfo = static_cast<VkBufferCreateInfo>(bufferInfo);
+	VkBuffer vkBuffer;
+	if (vmaCreateBuffer(g_info.vmaAllocator, &vkBufferInfo, &allocationInfo, &vkBuffer, &ret.handle, nullptr) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Allocation error");
+	}
+	ret.buffer = vkBuffer;
+	VmaAllocationInfo info;
+	vmaGetAllocationInfo(g_info.vmaAllocator, ret.handle, &info);
+	ret.info = {info.deviceMemory, info.offset, info.size};
 	return ret;
 }
 
@@ -151,6 +159,18 @@ void vuk::copyBuffer(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, Transf
 	pOp->transferred = g_info.device.createFence({});
 	pOp->queue.submit(submitInfo, pOp->transferred);
 	return;
+}
+
+bool vuk::writeToBuffer(Buffer buffer, void const* pData)
+{
+	if (buffer.info.memory != vk::DeviceMemory() && buffer.buffer != vk::Buffer())
+	{
+		auto pMem = g_info.device.mapMemory(buffer.info.memory, buffer.info.offset, buffer.writeSize);
+		std::memcpy(pMem, pData, (size_t)buffer.writeSize);
+		g_info.device.unmapMemory(buffer.info.memory);
+		return true;
+	}
+	return false;
 }
 
 vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)
@@ -245,17 +265,5 @@ vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& 
 	createInfo.renderPass = data.renderPass;
 	createInfo.subpass = 0;
 	return g_info.device.createGraphicsPipeline(cache, createInfo);
-}
-
-bool vuk::writeToBuffer(VkResource<vk::Buffer> buffer, void const* pData)
-{
-	if (buffer.alloc.memory != vk::DeviceMemory() && buffer.resource != vk::Buffer())
-	{
-		auto pMem = g_info.device.mapMemory(buffer.alloc.memory, buffer.alloc.offset, buffer.alloc.size);
-		std::memcpy(pMem, pData, buffer.alloc.size);
-		g_info.device.unmapMemory(buffer.alloc.memory);
-		return true;
-	}
-	return false;
 }
 } // namespace le

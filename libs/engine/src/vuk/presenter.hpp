@@ -63,7 +63,7 @@ private:
 			bool bNascent = true;
 		};
 
-		VkResource<vk::Image> depthImage;
+		Image depthImage;
 		vk::ImageView depthImageView;
 		vk::SwapchainKHR swapchain;
 		std::vector<Frame> frames;

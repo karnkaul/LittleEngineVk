@@ -2,6 +2,7 @@
 #include <functional>
 #include <optional>
 #include <unordered_map>
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/colour.hpp"
@@ -80,20 +81,28 @@ struct ScreenRect final
 	f32 aspect() const;
 };
 
-struct VkAllocation final
+struct AllocInfo final
 {
 	vk::DeviceMemory memory;
 	vk::DeviceSize offset = {};
-	vk::DeviceSize size = {};
+	vk::DeviceSize actualSize = {};
 };
 
-template <typename T, typename = std::enable_if_t<std::is_same_v<T, vk::Buffer> || std::is_same_v<T, vk::Image>>>
-struct VkResource final
+struct Resource
 {
-	using vkType = T;
+	AllocInfo info;
+	VmaAllocation handle;
+};
 
-	T resource;
-	VkAllocation alloc;
+struct Buffer final : Resource
+{
+	vk::Buffer buffer;
+	vk::DeviceSize writeSize = {};
+};
+
+struct Image final : Resource
+{
+	vk::Image image;
 };
 
 struct ClearValues final

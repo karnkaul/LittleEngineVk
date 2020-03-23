@@ -152,25 +152,28 @@ void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused
 	}
 #endif
 	lock.unlock();
-	constexpr std::string_view parentStr = "../";
-	auto const fileName = std::filesystem::path(file).generic_string();
-	std::string_view fileStr(fileName);
-	for (auto search = fileStr.find(parentStr); search == 0; search = fileStr.find(parentStr))
+	if constexpr (g_log_bSourceLocation)
 	{
-		fileStr = fileStr.substr(search + parentStr.length());
-	}
+		constexpr std::string_view parentStr = "../";
+		auto const fileName = std::filesystem::path(file).generic_string();
+		std::string_view fileStr(fileName);
+		for (auto search = fileStr.find(parentStr); search == 0; search = fileStr.find(parentStr))
+		{
+			fileStr = fileStr.substr(search + parentStr.length());
+		}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
-	try
+		try
 #endif
-	{
-		str = fmt::format("{} [{}:{}]", std::move(str), fileStr, line);
-	}
+		{
+			str = fmt::format("{} [{}:{}]", std::move(str), fileStr, line);
+		}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
-	catch (std::exception const& e)
-	{
-		ASSERT(false, e.what());
-	}
+		catch (std::exception const& e)
+		{
+			ASSERT(false, e.what());
+		}
 #endif
+	}
 	lock.lock();
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	try

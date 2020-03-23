@@ -25,14 +25,12 @@ enum class ResourceType
 static std::string const s_tName = utils::tName<VRAM>();
 std::array<u64, (size_t)ResourceType::eCOUNT_> g_allocations;
 
-#if defined(LEVK_VRAM_LOG_ALLOCS)
-std::string logCount()
+[[maybe_unused]] std::string logCount()
 {
 	auto [bufferSize, bufferUnit] = utils::friendlySize(g_allocations.at((size_t)ResourceType::eBuffer));
 	auto const [imageSize, imageUnit] = utils::friendlySize(g_allocations.at((size_t)ResourceType::eImage));
 	return fmt::format("Buffers: [{}{}]; Images: [{}{}]", bufferSize, bufferUnit, imageSize, imageUnit);
 }
-#endif
 } // namespace
 
 void vram::init(vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice)
@@ -95,10 +93,11 @@ Buffer vram::createBuffer(BufferData const& data)
 	vmaGetAllocationInfo(g_allocator, ret.handle, &info);
 	ret.info = {info.deviceMemory, info.offset, info.size};
 	g_allocations.at((size_t)ResourceType::eBuffer) += ret.info.actualSize;
-#if defined(LEVK_VRAM_LOG_ALLOCS)
-	auto [size, unit] = utils::friendlySize(ret.info.actualSize);
-	LOG_I("[{}] Buffer allocated: [{}{}] | {}", s_tName, size, unit, logCount());
-#endif
+	if constexpr (g_VRAM_bLogAllocs)
+	{
+		auto [size, unit] = utils::friendlySize(ret.info.actualSize);
+		LOG_I("[{}] Buffer allocated: [{}{}] | {}", s_tName, size, unit, logCount());
+	}
 	return ret;
 }
 
@@ -167,10 +166,11 @@ Image vram::createImage(ImageData const& data)
 	vmaGetAllocationInfo(g_allocator, ret.handle, &info);
 	ret.info = {info.deviceMemory, info.offset, info.size};
 	g_allocations.at((size_t)ResourceType::eImage) += ret.info.actualSize;
-#if defined(LEVK_VRAM_LOG_ALLOCS)
-	auto [size, unit] = utils::friendlySize(ret.info.actualSize);
-	LOG_I("[{}] Image allocated: [{}{}] | {}", s_tName, size, unit, logCount());
-#endif
+	if constexpr (g_VRAM_bLogAllocs)
+	{
+		auto [size, unit] = utils::friendlySize(ret.info.actualSize);
+		LOG_I("[{}] Image allocated: [{}{}] | {}", s_tName, size, unit, logCount());
+	}
 	return ret;
 }
 
@@ -178,10 +178,11 @@ void vram::release(Buffer buffer)
 {
 	vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
 	g_allocations.at((size_t)ResourceType::eBuffer) -= buffer.info.actualSize;
-#if defined(LEVK_VRAM_LOG_ALLOCS)
-	auto [size, unit] = utils::friendlySize(buffer.info.actualSize);
-	LOG_I("[{}] Buffer released: [{}{}] | {}", s_tName, size, unit, logCount());
-#endif
+	if constexpr (g_VRAM_bLogAllocs)
+	{
+		auto [size, unit] = utils::friendlySize(buffer.info.actualSize);
+		LOG_I("[{}] Buffer released: [{}{}] | {}", s_tName, size, unit, logCount());
+	}
 	return;
 }
 
@@ -189,10 +190,11 @@ void vram::release(Image image)
 {
 	vmaDestroyImage(g_allocator, image.image, image.handle);
 	g_allocations.at((size_t)ResourceType::eImage) -= image.info.actualSize;
-#if defined(LEVK_VRAM_LOG_ALLOCS)
-	auto [size, unit] = utils::friendlySize(image.info.actualSize);
-	LOG_I("[{}] Image released: [{}{}] | {}", s_tName, size, unit, logCount());
-#endif
+	if constexpr (g_VRAM_bLogAllocs)
+	{
+		auto [size, unit] = utils::friendlySize(image.info.actualSize);
+		LOG_I("[{}] Image released: [{}{}] | {}", s_tName, size, unit, logCount());
+	}
 	return;
 }
 } // namespace le::vuk

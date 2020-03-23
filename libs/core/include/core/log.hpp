@@ -20,13 +20,7 @@
 #if !defined(LEVK_LOG_DEBUG)
 #define LEVK_LOG_DEBUG
 #endif
-/**
- * Variable     : LEVK_LOG_SOURCE_LOCATION
- * Description  : Appends source file and line number to log output
- */
-#if !defined(LEVK_LOG_SOURCE_LOCATION)
-#define LEVK_LOG_SOURCE_LOCATION
-#endif
+
 /**
  * Variable     : LEVK_LOG_CATCH_FMT_EXCEPTIONS
  * Description  : Encloses fmt::format(...) in a try-catch block and calls ASSERT on a runtime exception
@@ -59,6 +53,11 @@
 
 namespace le::log
 {
+#if defined(LEVK_DEBUG)
+constexpr bool g_log_bSourceLocation = true;
+#else
+constexpr bool g_log_bSourceLocation = false;
+#endif
 enum class Level : u8
 {
 	eDebug = 0,

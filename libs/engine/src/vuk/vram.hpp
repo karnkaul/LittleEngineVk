@@ -1,16 +1,10 @@
 #pragma once
 #include "common.hpp"
 
-/**
- * Variable     : LEVK_VRAM_LOG_ALLOCS
- * Description  : Enables logging VRAM allocations/deallocations
- */
-#if !defined(LEVK_VRAM_LOG_ALLOCS)
-#define LEVK_VRAM_LOG_ALLOCS
-#endif
-
 namespace le::vuk
 {
+constexpr bool g_VRAM_bLogAllocs = true;
+
 struct TransferOp final
 {
 	vk::Queue queue;

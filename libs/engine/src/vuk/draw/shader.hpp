@@ -7,6 +7,8 @@
 
 namespace le::vuk
 {
+namespace stdfs = std::filesystem;
+
 class Shader final
 {
 public:
@@ -22,7 +24,7 @@ public:
 	{
 		std::string id;
 		std::unordered_map<Type, bytearray> codeMap;
-		std::unordered_map<Type, std::filesystem::path> codeIDMap;
+		std::unordered_map<Type, stdfs::path> codeIDMap;
 		class IOReader const* pReader = nullptr;
 	};
 
@@ -42,5 +44,39 @@ public:
 public:
 	vk::ShaderModule const* module(Type type) const;
 	std::unordered_map<Type, vk::ShaderModule> const& modules() const;
+};
+
+class ShaderCompiler final
+{
+public:
+	enum class State
+	{
+		eOffline = 0,
+		eOnline
+	};
+
+public:
+	static std::string const s_tName;
+	static std::string_view s_extension;
+
+private:
+	State m_state;
+
+public:
+	static ShaderCompiler& instance();
+
+public:
+	ShaderCompiler();
+	~ShaderCompiler();
+
+public:
+	State state() const;
+
+public:
+	bool compile(stdfs::path const& src, stdfs::path const& dst, bool bOverwrite);
+	bool compile(stdfs::path const& src, bool bOverwrite);
+
+private:
+	bool statusCheck() const;
 };
 } // namespace le::vuk

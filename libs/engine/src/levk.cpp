@@ -73,13 +73,21 @@ s32 engine::run(s32 argc, char** argv)
 	}
 	try
 	{
-		vuk::Shader::Data tutorialData;
+		auto const vertShaderPath = dataPath / "shaders/tutorial.vert";
+		auto const fragShaderPath = dataPath / "shaders/tutorial.frag";
+		FileMonitor vertMonitor(vertShaderPath, FileMonitor::Mode::eContents);
+		FileMonitor fragMonitor(fragShaderPath, FileMonitor::Mode::eContents);
+		vuk::ShaderCompiler::instance().compile(vertShaderPath, true);
+		vuk::ShaderCompiler::instance().compile(fragShaderPath, true);
+
+		vuk::Shader::Data tutorialShaderData;
+		tutorialShaderData.id = "shaders/tutorial";
 		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert.spv"), stdfs::path("shaders/tutorial.frag.spv")};
 		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
-		tutorialData.pReader = g_uReader.get();
-		tutorialData.codeIDMap[vuk::Shader::Type::eVertex] = shaderIDs.at(0);
-		tutorialData.codeIDMap[vuk::Shader::Type::eFragment] = shaderIDs.at(1);
-		vuk::Shader tutorialShader(std::move(tutorialData));
+		tutorialShaderData.pReader = g_uReader.get();
+		tutorialShaderData.codeIDMap[vuk::Shader::Type::eVertex] = shaderIDs.at(0);
+		tutorialShaderData.codeIDMap[vuk::Shader::Type::eFragment] = shaderIDs.at(1);
+		auto uTutorialShader = std::make_unique<vuk::Shader>(tutorialShaderData);
 
 		vuk::Vertex const triangle0Verts[] = {
 			vuk::Vertex{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -186,7 +194,13 @@ s32 engine::run(s32 argc, char** argv)
 		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createRenderer = [&tutorialShader, &viewSetLayout](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout,
+		auto createPipeline = [&uTutorialShader](vk::Pipeline* pPipeline, vk::PipelineLayout layout, vk::RenderPass renderPass) {
+			vuk::PipelineData pipelineData;
+			pipelineData.pShader = uTutorialShader.get();
+			pipelineData.renderPass = renderPass;
+			*pPipeline = vuk::createPipeline(layout, pipelineData);
+		};
+		auto createRenderer = [&viewSetLayout, &createPipeline](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout,
 																vuk::Presenter** ppPresenter, WindowID id) {
 			vuk::vkDestroy(*pPipeline, *pLayout);
 			*ppPresenter = WindowImpl::presenter(id);
@@ -200,17 +214,13 @@ s32 engine::run(s32 argc, char** argv)
 			layoutCreateInfo.pushConstantRangeCount = 1;
 			layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 			*pLayout = vuk::g_info.device.createPipelineLayout(layoutCreateInfo);
-			vuk::PipelineData pipelineData;
-			pipelineData.pShader = &tutorialShader;
-			pipelineData.renderPass = (*ppPresenter)->m_renderPass;
-			*pPipeline = vuk::createPipeline(*pLayout, pipelineData);
+			createPipeline(pPipeline, *pLayout, (*ppPresenter)->m_renderPass);
 			vuk::Renderer::Data data;
 			data.frameCount = 2;
 			data.pPresenter = *ppPresenter;
 			data.uboSetLayouts.view = viewSetLayout;
 			return std::make_unique<vuk::Renderer>(data);
 		};
-
 		if (w0.create(data0) && w1.create(data1))
 		{
 			std::unique_ptr<vuk::Renderer> uRenderer0, uRenderer1;
@@ -224,7 +234,7 @@ s32 engine::run(s32 argc, char** argv)
 				vuk::vkDestroy(pipeline0wf);
 				uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
 				vuk::PipelineData pipelineData;
-				pipelineData.pShader = &tutorialShader;
+				pipelineData.pShader = uTutorialShader.get();
 				pipelineData.renderPass = pPresenter0->m_renderPass;
 				pipelineData.polygonMode = vk::PolygonMode::eLine;
 				pipelineData.staticLineWidth = vuk::g_info.lineWidth(3.0f);
@@ -246,6 +256,17 @@ s32 engine::run(s32 argc, char** argv)
 				t = Time::elapsed();
 
 				{
+					if (vertMonitor.update() == FileMonitor::State::eModified || fragMonitor.update() == FileMonitor::State::eModified)
+					{
+						LOG_D("{} / {} modified!", vertShaderPath.filename().generic_string(), fragShaderPath.filename().generic_string());
+						vuk::g_info.device.waitIdle();
+						vuk::ShaderCompiler::instance().compile(vertShaderPath, true);
+						vuk::ShaderCompiler::instance().compile(fragShaderPath, true);
+						uTutorialShader = std::make_unique<vuk::Shader>(tutorialShaderData);
+						vuk::vkDestroy(pipeline0, pipeline1);
+						createPipeline(&pipeline0, layout0, WindowImpl::presenter(w0.id())->m_renderPass);
+						createPipeline(&pipeline1, layout1, WindowImpl::presenter(w1.id())->m_renderPass);
+					}
 					// Update matrices
 					transform0.setOrientation(
 						glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -289,7 +310,7 @@ s32 engine::run(s32 argc, char** argv)
 					vuk::vkDestroy(pipeline0wf);
 					uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
 					vuk::PipelineData pipelineData;
-					pipelineData.pShader = &tutorialShader;
+					pipelineData.pShader = uTutorialShader.get();
 					pipelineData.renderPass = pPresenter0->m_renderPass;
 					pipelineData.polygonMode = vk::PolygonMode::eLine;
 					pipelineData.staticLineWidth = vuk::g_info.lineWidth(3.0f);

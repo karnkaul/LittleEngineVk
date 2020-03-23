@@ -20,4 +20,5 @@ void main()
 {
 	gl_Position = view.mat_pv * pushConsts.mat_m * vec4(inPosition, 0.0, 1.0);
 	fragColour = inColour;
+	// fragColour = vec3(1.0);
 }

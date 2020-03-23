@@ -257,4 +257,72 @@ void ioImpl::deinitPhysfs()
 	LOG_D("PhysFS deinitialised");
 	g_uPhysfsHandle = nullptr;
 }
+
+FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode)
+{
+	update();
+}
+
+FileMonitor::FileMonitor(FileMonitor&&) = default;
+FileMonitor& FileMonitor::operator=(FileMonitor&&) = default;
+FileMonitor::~FileMonitor() = default;
+
+FileMonitor::State FileMonitor::update()
+{
+	if (stdfs::is_regular_file(m_path))
+	{
+		auto const lastWriteTime = stdfs::last_write_time(m_path);
+		if (lastWriteTime != m_lastWriteTime)
+		{
+			bool bDirty = m_lastWriteTime != stdfs::file_time_type();
+			m_lastWriteTime = lastWriteTime;
+			if (m_mode == Mode::eContents)
+			{
+				auto [contents, bResult] = m_reader.getString(m_path);
+				if (bResult)
+				{
+					if (contents == m_contents)
+					{
+						bDirty = false;
+					}
+					else
+					{
+						m_contents = std::move(contents);
+						m_lastModifiedTime = m_lastWriteTime;
+					}
+				}
+			}
+			m_state = bDirty ? State::eModified : State::eUpToDate;
+		}
+		else
+		{
+			m_state = State::eUpToDate;
+		}
+	}
+	else
+	{
+		m_state = State::eNotFound;
+	}
+	return m_state;
+}
+
+stdfs::file_time_type FileMonitor::lastWriteTime() const
+{
+	return m_lastWriteTime;
+}
+
+stdfs::file_time_type FileMonitor::lastModifiedTime() const
+{
+	return m_lastModifiedTime;
+}
+
+std::string_view FileMonitor::contents() const
+{
+	ASSERT(m_mode == Mode::eContents, "Monitor not in Contents mode!");
+	if (m_mode != Mode::eContents)
+	{
+		LOG_E("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName(*this), m_path.generic_string());
+	}
+	return m_contents;
+}
 } // namespace le

@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <sstream>
+#include <string_view>
 #include "core/utils.hpp"
 
 namespace le
@@ -90,5 +91,47 @@ public:
 	bool isPresent(stdfs::path const& id) const override;
 	TResult<bytearray> getBytes(stdfs::path const& id) const override;
 	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
+};
+
+class FileMonitor
+{
+public:
+	enum class Mode : u8
+	{
+		eTimestamp = 0,
+		eContents
+	};
+
+	enum class State : u8
+	{
+		eUpToDate = 0,
+		eNotFound,
+		eModified,
+		eCOUNT_
+	};
+
+protected:
+	stdfs::file_time_type m_lastWriteTime = {};
+	stdfs::file_time_type m_lastModifiedTime = {};
+	stdfs::path m_path;
+	std::string m_contents;
+	FileReader m_reader;
+	Mode m_mode;
+	State m_state = State::eNotFound;
+
+public:
+	FileMonitor(stdfs::path const& path, Mode mode);
+	FileMonitor(FileMonitor&&);
+	FileMonitor& operator=(FileMonitor&&);
+	virtual ~FileMonitor();
+
+public:
+	virtual State update();
+
+public:
+	stdfs::file_time_type lastWriteTime() const;
+	stdfs::file_time_type lastModifiedTime() const;
+
+	std::string_view contents() const;
 };
 } // namespace le

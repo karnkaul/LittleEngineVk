@@ -7,7 +7,7 @@
 #include "utils.hpp"
 #include "vram.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 struct VRAM final
 {
@@ -76,8 +76,8 @@ Buffer vram::createBuffer(BufferData const& data)
 	ret.writeSize = bufferInfo.size = data.size;
 	bufferInfo.usage = data.usage;
 	auto const flags = QFlags(QFlag::eGraphics, QFlag::eTransfer);
-	bufferInfo.sharingMode = vuk::g_info.sharingMode(flags);
-	auto const queueIndices = vuk::g_info.uniqueQueueIndices(flags);
+	bufferInfo.sharingMode = gfx::g_info.sharingMode(flags);
+	auto const queueIndices = gfx::g_info.uniqueQueueIndices(flags);
 	bufferInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	bufferInfo.pQueueFamilyIndices = queueIndices.data();
 	VmaAllocationCreateInfo allocationInfo = {};
@@ -197,4 +197,4 @@ void vram::release(Image image)
 	}
 	return;
 }
-} // namespace le::vuk
+} // namespace le::gfx

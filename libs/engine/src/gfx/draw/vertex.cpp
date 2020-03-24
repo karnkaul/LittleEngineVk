@@ -1,6 +1,6 @@
 #include "vertex.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 vk::VertexInputBindingDescription Vertex::bindingDescription(u32 binding)
 {
@@ -30,4 +30,4 @@ std::vector<vk::VertexInputAttributeDescription> Vertex::attributeDescriptions(u
 	ret.push_back(col);
 	return ret;
 }
-} // namespace le::vuk
+} // namespace le::gfx

@@ -8,7 +8,7 @@
 #include "engine/window/common.hpp"
 #include "common.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 class Presenter final
 {
@@ -114,4 +114,4 @@ private:
 private:
 	friend class Renderer;
 };
-} // namespace le::vuk
+} // namespace le::gfx

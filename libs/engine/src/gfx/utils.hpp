@@ -7,7 +7,7 @@
 #include "common.hpp"
 #include "info.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 struct PipelineData final
 {
@@ -95,4 +95,4 @@ void vkFree(vkType memory0, vkTypes... memoryN)
 	vkFree(memory0);
 	vkFree(memoryN...);
 }
-} // namespace le::vuk
+} // namespace le::gfx

@@ -7,9 +7,9 @@
 #include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
 #include "core/flags.hpp"
-#include "vuk/common.hpp"
+#include "common.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 struct Info final
 {
@@ -49,4 +49,4 @@ struct Service final
 	Service(InitData const& initData);
 	~Service();
 };
-} // namespace le::vuk
+} // namespace le::gfx

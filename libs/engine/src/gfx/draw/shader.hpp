@@ -13,7 +13,7 @@
 #endif
 #endif
 
-namespace le::vuk
+namespace le::gfx
 {
 namespace stdfs = std::filesystem;
 
@@ -77,7 +77,7 @@ public:
 private:
 	bool glslToSpirV(stdfs::path const& id, bytearray& out_bytes, FileReader const* pReader);
 	bool loadGlsl(Data& out_data, stdfs::path const& id, Type type);
-	void loadSpirV(std::unordered_map<Type, bytearray> const& byteMap);
+	void loadAllSpirV(std::unordered_map<Type, bytearray> const& byteMap);
 
 	static std::string extension(stdfs::path const& id);
 };
@@ -115,4 +115,4 @@ public:
 private:
 	bool statusCheck() const;
 };
-} // namespace le::vuk
+} // namespace le::gfx

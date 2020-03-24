@@ -4,10 +4,10 @@
 #include "core/log.hpp"
 #include "core/io.hpp"
 #include "core/utils.hpp"
-#include "vuk/utils.hpp"
+#include "gfx/utils.hpp"
 #include "shader.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 std::string const Shader::s_tName = utils::tName<Shader>();
 std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> const Shader::s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
@@ -40,7 +40,7 @@ Shader::Shader(Data data) : m_id(std::move(data.id))
 			}
 		}
 	}
-	loadSpirV(data.codeMap);
+	loadAllSpirV(data.codeMap);
 }
 
 Shader::~Shader()
@@ -87,10 +87,25 @@ FileMonitor::Status Shader::hasReloaded()
 		std::unordered_map<Type, bytearray> spvCode;
 		for (auto& monitor : m_monitors)
 		{
-			if (!glslToSpirV(monitor.id, spvCode[monitor.type], monitor.pReader))
+			if (monitor.monitor.lastStatus() == FileMonitor::Status::eModified)
 			{
-				LOG_E("[{}] Failed to reload Shader!", s_tName);
-				return FileMonitor::Status::eUpToDate;
+				if (!glslToSpirV(monitor.id, spvCode[monitor.type], monitor.pReader))
+				{
+					LOG_E("[{}] Failed to reload Shader!", s_tName);
+					return FileMonitor::Status::eUpToDate;
+				}
+			}
+			else
+			{
+				auto spvID = monitor.id;
+				spvID += ShaderCompiler::s_extension;
+				auto [bytes, bResult] = monitor.pReader->getBytes(spvID);
+				if (!bResult)
+				{
+					LOG_E("[{}] Failed to reload Shader!", s_tName);
+					return FileMonitor::Status::eUpToDate;
+				}
+				spvCode[monitor.type] = std::move(bytes);
 			}
 		}
 		LOG_D("[{}] Reloading...", s_tName);
@@ -98,7 +113,7 @@ FileMonitor::Status Shader::hasReloaded()
 		{
 			vkDestroy(shader);
 		}
-		loadSpirV(spvCode);
+		loadAllSpirV(spvCode);
 		LOG_I("[{}] Reloaded", s_tName);
 		return FileMonitor::Status::eModified;
 	}
@@ -158,7 +173,7 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes, FileReader
 	return false;
 }
 
-void Shader::loadSpirV(std::unordered_map<Type, bytearray> const& byteMap)
+void Shader::loadAllSpirV(std::unordered_map<Type, bytearray> const& byteMap)
 {
 	std::array<vk::ShaderModule, (size_t)Type::eCOUNT_> newModules;
 	for (auto const& [type, code] : byteMap)
@@ -252,4 +267,4 @@ bool ShaderCompiler::statusCheck() const
 	}
 	return true;
 }
-} // namespace le::vuk
+} // namespace le::gfx

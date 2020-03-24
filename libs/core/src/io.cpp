@@ -316,6 +316,11 @@ FileMonitor::Status FileMonitor::update()
 	return m_status;
 }
 
+FileMonitor::Status FileMonitor::lastStatus() const
+{
+	return m_status;
+}
+
 stdfs::file_time_type FileMonitor::lastWriteTime() const
 {
 	return m_lastWriteTime;

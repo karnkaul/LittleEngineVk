@@ -1,7 +1,7 @@
 #pragma once
 #include "common.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 constexpr bool g_VRAM_bLogAllocs = true;
 
@@ -58,4 +58,4 @@ void release(T1 t1, Tn... tn)
 	release(tn...);
 }
 } // namespace vram
-} // namespace le::vuk
+} // namespace le::gfx

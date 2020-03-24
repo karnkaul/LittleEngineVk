@@ -4,7 +4,7 @@
 #include "core/delegate.hpp"
 #include "draw/ubo.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 class Renderer final
 {
@@ -77,4 +77,4 @@ private:
 	FrameSync& frameSync();
 	void next();
 };
-} // namespace le::vuk
+} // namespace le::gfx

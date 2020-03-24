@@ -8,7 +8,7 @@
 #include "info.hpp"
 #include "vram.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 namespace
 {
@@ -338,4 +338,4 @@ Service::~Service()
 {
 	deinit();
 }
-} // namespace le::vuk
+} // namespace le::gfx

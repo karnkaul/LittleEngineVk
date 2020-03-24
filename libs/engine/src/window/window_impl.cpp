@@ -6,8 +6,8 @@
 #include "core/log.hpp"
 #include "core/threads.hpp"
 #include "core/utils.hpp"
-#include "vuk/info.hpp"
-#include "vuk/presenter.hpp"
+#include "gfx/info.hpp"
+#include "gfx/presenter.hpp"
 #include "window_impl.hpp"
 
 namespace le
@@ -322,7 +322,7 @@ std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 	return ret;
 }
 
-vuk::Presenter* WindowImpl::presenter(WindowID window)
+gfx::Presenter* WindowImpl::presenter(WindowID window)
 {
 	for (auto const pImpl : g_registeredWindows)
 	{
@@ -350,9 +350,9 @@ bool WindowImpl::create(Window::Data const& data)
 {
 	try
 	{
-		vuk::g_info.device.waitIdle();
+		gfx::g_info.device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(data);
-		vuk::PresenterData presenterData;
+		gfx::PresenterData presenterData;
 		presenterData.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
@@ -387,10 +387,10 @@ bool WindowImpl::create(Window::Data const& data)
 				break;
 			}
 		}
-		m_uPresenter = std::make_unique<vuk::Presenter>(presenterData);
+		m_uPresenter = std::make_unique<gfx::Presenter>(presenterData);
 		if (!m_uPresenter)
 		{
-			LOG_E("[{}] Failed to create [{}]", Window::s_tName, vuk::Presenter::s_tName);
+			LOG_E("[{}] Failed to create [{}]", Window::s_tName, gfx::Presenter::s_tName);
 			m_uNativeWindow.reset();
 			return false;
 		}

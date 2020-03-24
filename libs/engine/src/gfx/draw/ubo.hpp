@@ -1,8 +1,8 @@
 #pragma once
 #include <array>
-#include "vuk/vram.hpp"
+#include "gfx/vram.hpp"
 
-namespace le::vuk::ubo
+namespace le::gfx::ubo
 {
 template <typename T>
 struct Handle final
@@ -47,4 +47,4 @@ struct UBOs final
 {
 	Handle<View> view;
 };
-} // namespace le::vuk::ubo
+} // namespace le::gfx::ubo

@@ -10,7 +10,7 @@
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 enum class QFlag
 {
@@ -121,4 +121,4 @@ struct ClearValues final
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
-} // namespace le::vuk
+} // namespace le::gfx

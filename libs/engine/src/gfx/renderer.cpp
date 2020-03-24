@@ -6,7 +6,7 @@
 #include "renderer.hpp"
 #include "utils.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
@@ -112,7 +112,7 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	auto& sync = frameSync();
 	if (!sync.bNascent)
 	{
-		vuk::wait(sync.drawing);
+		gfx::wait(sync.drawing);
 	}
 	// Acquire
 	auto [acquire, bResult] = m_pPresenter->acquireNextImage(sync.renderReady, sync.drawing);
@@ -201,4 +201,4 @@ void Renderer::next()
 	m_index = (m_index + 1) % m_frames.size();
 	return;
 }
-} // namespace le::vuk
+} // namespace le::gfx

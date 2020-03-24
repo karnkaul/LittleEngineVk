@@ -6,11 +6,11 @@
 
 namespace le
 {
-namespace vuk
+namespace gfx
 {
 class Presenter;
 class Instance;
-} // namespace vuk
+} // namespace gfx
 
 class NativeWindow final
 {
@@ -48,13 +48,13 @@ public:
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
-	std::unique_ptr<vuk::Presenter> m_uPresenter;
+	std::unique_ptr<gfx::Presenter> m_uPresenter;
 	Window* m_pWindow;
 
 	static bool init();
 	static void deinit();
 	static std::vector<char const*> vulkanInstanceExtensions();
-	static vuk::Presenter* presenter(WindowID window);
+	static gfx::Presenter* presenter(WindowID window);
 
 	WindowImpl(Window* pWindow);
 	~WindowImpl();

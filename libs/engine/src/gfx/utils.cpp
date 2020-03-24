@@ -6,7 +6,7 @@
 
 namespace le
 {
-TResult<vk::Format> vuk::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+TResult<vk::Format> gfx::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
 {
 	for (auto format : desired)
 	{
@@ -23,7 +23,7 @@ TResult<vk::Format> vuk::supportedFormat(PriorityList<vk::Format> const& desired
 	return {};
 }
 
-void vuk::wait(vk::Fence optional)
+void gfx::wait(vk::Fence optional)
 {
 	if (optional != vk::Fence())
 	{
@@ -31,12 +31,12 @@ void vuk::wait(vk::Fence optional)
 	}
 }
 
-void vuk::waitAll(vk::ArrayProxy<const vk::Fence> validFences)
+void gfx::waitAll(vk::ArrayProxy<const vk::Fence> validFences)
 {
 	g_info.device.waitForFences(std::move(validFences), true, maxVal<u64>());
 }
 
-vk::DescriptorSetLayout vuk::createDescriptorSetLayout(u32 binding, u32 descriptorCount, vk::ShaderStageFlags stages)
+vk::DescriptorSetLayout gfx::createDescriptorSetLayout(u32 binding, u32 descriptorCount, vk::ShaderStageFlags stages)
 {
 	vk::DescriptorSetLayoutBinding setLayoutBinding;
 	setLayoutBinding.binding = binding;
@@ -49,7 +49,7 @@ vk::DescriptorSetLayout vuk::createDescriptorSetLayout(u32 binding, u32 descript
 	return g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
 }
 
-void vuk::writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet, u32 binding)
+void gfx::writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet, u32 binding)
 {
 	vk::DescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = buffer.buffer;
@@ -65,7 +65,7 @@ void vuk::writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet,
 	g_info.device.updateDescriptorSets(descWrite, {});
 }
 
-vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type)
+vk::ImageView gfx::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type)
 {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
@@ -80,7 +80,7 @@ vk::ImageView vuk::createImageView(vk::Image image, vk::Format format, vk::Image
 	return g_info.device.createImageView(createInfo);
 }
 
-vk::Pipeline vuk::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)
+vk::Pipeline gfx::createPipeline(vk::PipelineLayout layout, PipelineData const& data, vk::PipelineCache cache)
 {
 	auto const bindingDescription = Vertex::bindingDescription();
 	auto const attributeDescriptions = Vertex::attributeDescriptions();

@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorOutOfHostMemory, "OutOfHostMemory"},
@@ -25,4 +25,4 @@ f32 ScreenRect::aspect() const
 	glm::vec2 const size = {right - left, bottom - top};
 	return size.x / size.y;
 }
-} // namespace le::vuk
+} // namespace le::gfx

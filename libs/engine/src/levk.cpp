@@ -9,13 +9,13 @@
 #include "core/services.hpp"
 #include "engine/levk.hpp"
 #include "engine/window/window.hpp"
-#include "vuk/info.hpp"
-#include "vuk/presenter.hpp"
-#include "vuk/renderer.hpp"
-#include "vuk/utils.hpp"
-#include "vuk/vram.hpp"
-#include "vuk/draw/shader.hpp"
-#include "vuk/draw/vertex.hpp"
+#include "gfx/info.hpp"
+#include "gfx/presenter.hpp"
+#include "gfx/renderer.hpp"
+#include "gfx/utils.hpp"
+#include "gfx/vram.hpp"
+#include "gfx/draw/shader.hpp"
+#include "gfx/draw/vertex.hpp"
 #include "window/window_impl.hpp"
 
 namespace le
@@ -36,14 +36,14 @@ s32 engine::run(s32 argc, char** argv)
 		services.add<Window::Service>();
 
 		NativeWindow dummyWindow({});
-		vuk::InitData initData;
+		gfx::InitData initData;
 #if 1 || defined(LEVK_DEBUG) // Always enabled, for time being
-		initData.options.flags.set(vuk::InitData::Flag::eValidation);
+		initData.options.flags.set(gfx::InitData::Flag::eValidation);
 #endif
 		initData.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
 		initData.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
 
-		services.add<vuk::Service>(std::move(initData));
+		services.add<gfx::Service>(std::move(initData));
 	}
 	catch (std::exception const& e)
 	{
@@ -76,61 +76,61 @@ s32 engine::run(s32 argc, char** argv)
 		auto const vertShaderPath = dataPath / "shaders/tutorial.vert";
 		auto const fragShaderPath = dataPath / "shaders/tutorial.frag";
 
-		vuk::Shader::Data tutorialShaderData;
+		gfx::Shader::Data tutorialShaderData;
 		tutorialShaderData.id = "shaders/tutorial";
 		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert"), stdfs::path("shaders/tutorial.frag")};
 		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
 		tutorialShaderData.pReader = g_uReader.get();
-		tutorialShaderData.codeIDMap[vuk::Shader::Type::eVertex] = shaderIDs.at(0);
-		tutorialShaderData.codeIDMap[vuk::Shader::Type::eFragment] = shaderIDs.at(1);
-		vuk::Shader tutorialShader(tutorialShaderData);
+		tutorialShaderData.codeIDMap[gfx::Shader::Type::eVertex] = shaderIDs.at(0);
+		tutorialShaderData.codeIDMap[gfx::Shader::Type::eFragment] = shaderIDs.at(1);
+		gfx::Shader tutorialShader(tutorialShaderData);
 
-		vuk::Vertex const triangle0Verts[] = {
-			vuk::Vertex{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-			vuk::Vertex{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-			vuk::Vertex{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+		gfx::Vertex const triangle0Verts[] = {
+			gfx::Vertex{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+			gfx::Vertex{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+			gfx::Vertex{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
 		};
 
-		vuk::Vertex const quad0Verts[] = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+		gfx::Vertex const quad0Verts[] = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
 										  {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
 										  {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
 										  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0};
 
-		auto createStagingBuffer = [](vk::DeviceSize size) -> vuk::Buffer {
-			vuk::BufferData data;
+		auto createStagingBuffer = [](vk::DeviceSize size) -> gfx::Buffer {
+			gfx::BufferData data;
 			data.size = size;
 			data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 			data.usage = vk::BufferUsageFlagBits::eTransferSrc;
 			data.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
-			return vuk::vram::createBuffer(data);
+			return gfx::vram::createBuffer(data);
 		};
-		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> vuk::Buffer {
-			vuk::BufferData data;
+		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> gfx::Buffer {
+			gfx::BufferData data;
 			data.size = size;
 			data.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 			data.usage = flags | vk::BufferUsageFlagBits::eTransferDst;
 			data.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-			return vuk::vram::createBuffer(data);
+			return gfx::vram::createBuffer(data);
 		};
 		auto copyBuffer = [](vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, vk::Queue queue,
-							 vk::CommandPool pool) -> vuk::TransferOp {
-			vuk::TransferOp ret{queue, pool, {}, {}};
-			vuk::vram::copy(src, dst, size, &ret);
+							 vk::CommandPool pool) -> gfx::TransferOp {
+			gfx::TransferOp ret{queue, pool, {}, {}};
+			gfx::vram::copy(src, dst, size, &ret);
 			return ret;
 		};
 
 		vk::CommandPoolCreateInfo commandPoolCreateInfo;
-		auto const& qfi = vuk::g_info.queueFamilyIndices;
+		auto const& qfi = gfx::g_info.queueFamilyIndices;
 		commandPoolCreateInfo.queueFamilyIndex = qfi.transfer;
-		auto transferPool = vuk::g_info.device.createCommandPool(commandPoolCreateInfo);
+		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
 
-		vk::DescriptorSetLayout viewSetLayout = vuk::createDescriptorSetLayout(0, 1, vk::ShaderStageFlagBits::eVertex);
+		vk::DescriptorSetLayout viewSetLayout = gfx::createDescriptorSetLayout(0, 1, vk::ShaderStageFlagBits::eVertex);
 
-		auto q = vuk::g_info.queues.transfer;
-		vuk::Buffer triangle0VB, quad0VB, quad0IB;
+		auto q = gfx::g_info.queues.transfer;
+		gfx::Buffer triangle0VB, quad0VB, quad0IB;
 		{
-			std::vector<vuk::TransferOp> ops;
+			std::vector<gfx::TransferOp> ops;
 			auto const t0vbSize = sizeof(triangle0Verts);
 			auto const q0vbSize = sizeof(quad0Verts);
 			auto const q0ibSize = sizeof(quad0Indices);
@@ -140,21 +140,21 @@ s32 engine::run(s32 argc, char** argv)
 			triangle0VB = createDeviceBuffer(t0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0VB = createDeviceBuffer(q0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0IB = createDeviceBuffer(q0ibSize, vk::BufferUsageFlagBits::eIndexBuffer);
-			vuk::vram::write(tri0stage, triangle0Verts);
-			vuk::vram::write(quad0vstage, quad0Verts);
-			vuk::vram::write(quad0istage, quad0Indices);
+			gfx::vram::write(tri0stage, triangle0Verts);
+			gfx::vram::write(quad0vstage, quad0Verts);
+			gfx::vram::write(quad0istage, quad0Indices);
 			ops.push_back(copyBuffer(tri0stage.buffer, triangle0VB.buffer, t0vbSize, q, transferPool));
 			ops.push_back(copyBuffer(quad0vstage.buffer, quad0VB.buffer, q0vbSize, q, transferPool));
 			ops.push_back(copyBuffer(quad0istage.buffer, quad0IB.buffer, q0ibSize, q, transferPool));
 			std::vector<vk::Fence> fences;
 			std::for_each(ops.begin(), ops.end(), [&fences](auto const& op) { fences.push_back(op.transferred); });
-			vuk::waitAll(fences);
+			gfx::waitAll(fences);
 			for (auto& op : ops)
 			{
-				vuk::vkDestroy(op.transferred);
-				vuk::g_info.device.freeCommandBuffers(op.pool, op.commandBuffer);
+				gfx::vkDestroy(op.transferred);
+				gfx::g_info.device.freeCommandBuffers(op.pool, op.commandBuffer);
 			}
-			vuk::vram::release(tri0stage, quad0vstage, quad0istage);
+			gfx::vram::release(tri0stage, quad0vstage, quad0istage);
 		}
 
 		Window w0, w1;
@@ -191,14 +191,14 @@ s32 engine::run(s32 argc, char** argv)
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
 		auto createPipeline = [&tutorialShader](vk::Pipeline* pPipeline, vk::PipelineLayout layout, vk::RenderPass renderPass) {
-			vuk::PipelineData pipelineData;
+			gfx::PipelineData pipelineData;
 			pipelineData.pShader = &tutorialShader;
 			pipelineData.renderPass = renderPass;
-			*pPipeline = vuk::createPipeline(layout, pipelineData);
+			*pPipeline = gfx::createPipeline(layout, pipelineData);
 		};
 		auto createRenderer = [&viewSetLayout, &createPipeline](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout,
-																vuk::Presenter** ppPresenter, WindowID id) {
-			vuk::vkDestroy(*pPipeline, *pLayout);
+																gfx::Presenter** ppPresenter, WindowID id) {
+			gfx::vkDestroy(*pPipeline, *pLayout);
 			*ppPresenter = WindowImpl::presenter(id);
 			vk::PipelineLayoutCreateInfo layoutCreateInfo;
 			layoutCreateInfo.setLayoutCount = 1;
@@ -209,40 +209,40 @@ s32 engine::run(s32 argc, char** argv)
 			pushConstantRange.size = sizeof(glm::mat4);
 			layoutCreateInfo.pushConstantRangeCount = 1;
 			layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-			*pLayout = vuk::g_info.device.createPipelineLayout(layoutCreateInfo);
+			*pLayout = gfx::g_info.device.createPipelineLayout(layoutCreateInfo);
 			createPipeline(pPipeline, *pLayout, (*ppPresenter)->m_renderPass);
-			vuk::Renderer::Data data;
+			gfx::Renderer::Data data;
 			data.frameCount = 2;
 			data.pPresenter = *ppPresenter;
 			data.uboSetLayouts.view = viewSetLayout;
-			return std::make_unique<vuk::Renderer>(data);
+			return std::make_unique<gfx::Renderer>(data);
 		};
 		if (w0.create(data0) && w1.create(data1))
 		{
-			std::unique_ptr<vuk::Renderer> uRenderer0, uRenderer1;
-			vuk::Presenter* pPresenter0 = nullptr;
-			vuk::Presenter* pPresenter1 = nullptr;
+			std::unique_ptr<gfx::Renderer> uRenderer0, uRenderer1;
+			gfx::Presenter* pPresenter0 = nullptr;
+			gfx::Presenter* pPresenter1 = nullptr;
 			vk::PipelineLayout layout0, layout1;
 			vk::Pipeline pipeline0, pipeline0wf;
 			vk::Pipeline pipeline1;
 			if (w0.isOpen())
 			{
-				vuk::vkDestroy(pipeline0wf);
+				gfx::vkDestroy(pipeline0wf);
 				uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
-				vuk::PipelineData pipelineData;
+				gfx::PipelineData pipelineData;
 				pipelineData.pShader = &tutorialShader;
 				pipelineData.renderPass = pPresenter0->m_renderPass;
 				pipelineData.polygonMode = vk::PolygonMode::eLine;
-				pipelineData.staticLineWidth = vuk::g_info.lineWidth(3.0f);
-				pipeline0wf = vuk::createPipeline(layout0, pipelineData);
+				pipelineData.staticLineWidth = gfx::g_info.lineWidth(3.0f);
+				pipeline0wf = gfx::createPipeline(layout0, pipelineData);
 			}
 			if (w1.isOpen())
 			{
 				uRenderer1 = createRenderer(&pipeline1, &layout1, &pPresenter1, w1.id());
 			}
 
-			vuk::ubo::View view0;
-			vuk::ubo::View view1;
+			gfx::ubo::View view0;
+			gfx::ubo::View view1;
 			Transform transform0;
 
 			Time t = Time::elapsed();
@@ -255,16 +255,16 @@ s32 engine::run(s32 argc, char** argv)
 #if defined(LEVK_SHADER_HOT_RELOAD)
 					if (tutorialShader.hasReloaded() == FileMonitor::Status::eModified)
 					{
-						vuk::g_info.device.waitIdle();
-						vuk::vkDestroy(pipeline0, pipeline1, pipeline0wf);
+						gfx::g_info.device.waitIdle();
+						gfx::vkDestroy(pipeline0, pipeline1, pipeline0wf);
 						createPipeline(&pipeline0, layout0, WindowImpl::presenter(w0.id())->m_renderPass);
 						createPipeline(&pipeline1, layout1, WindowImpl::presenter(w1.id())->m_renderPass);
-						vuk::PipelineData pipelineData;
+						gfx::PipelineData pipelineData;
 						pipelineData.pShader = &tutorialShader;
 						pipelineData.renderPass = WindowImpl::presenter(w0.id())->m_renderPass;
 						pipelineData.polygonMode = vk::PolygonMode::eLine;
-						pipelineData.staticLineWidth = vuk::g_info.lineWidth(3.0f);
-						pipeline0wf = vuk::createPipeline(layout0, pipelineData);
+						pipelineData.staticLineWidth = gfx::g_info.lineWidth(3.0f);
+						pipeline0wf = gfx::createPipeline(layout0, pipelineData);
 					}
 #endif
 					// Update matrices
@@ -307,14 +307,14 @@ s32 engine::run(s32 argc, char** argv)
 				{
 					bRecreate0 = false;
 					w0.create(data0);
-					vuk::vkDestroy(pipeline0wf);
+					gfx::vkDestroy(pipeline0wf);
 					uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
-					vuk::PipelineData pipelineData;
+					gfx::PipelineData pipelineData;
 					pipelineData.pShader = &tutorialShader;
 					pipelineData.renderPass = pPresenter0->m_renderPass;
 					pipelineData.polygonMode = vk::PolygonMode::eLine;
-					pipelineData.staticLineWidth = vuk::g_info.lineWidth(3.0f);
-					pipeline0wf = vuk::createPipeline(layout0, pipelineData);
+					pipelineData.staticLineWidth = gfx::g_info.lineWidth(3.0f);
+					pipeline0wf = gfx::createPipeline(layout0, pipelineData);
 				}
 				if (bRecreate1)
 				{
@@ -336,13 +336,13 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [&transform0](vuk::ubo::View* pView, vuk::Renderer* pRenderer, vk::Pipeline pipeline,
+					auto drawFrame = [&transform0](gfx::ubo::View* pView, gfx::Renderer* pRenderer, vk::Pipeline pipeline,
 												   vk::PipelineLayout layout, vk::Buffer vertexBuffer, vk::Buffer indexBuffer,
 												   u32 vertCount, u32 indexCount) -> bool {
-						vuk::ClearValues clear;
+						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
-						auto write = [&](vuk::ubo::UBOs const& ubos) { ubos.view.write(*pView); };
-						auto draw = [&](vuk::Renderer::FrameDriver const& driver) {
+						auto write = [&](gfx::ubo::UBOs const& ubos) { ubos.view.write(*pView); };
+						auto draw = [&](gfx::Renderer::FrameDriver const& driver) {
 							vk::Viewport viewport = pRenderer->transformViewport();
 							vk::Rect2D scissor = pRenderer->transformScissor();
 							driver.commandBuffer.setViewport(0, viewport);
@@ -384,11 +384,11 @@ s32 engine::run(s32 argc, char** argv)
 					LOG_E("EXCEPTION!\n\t{}", e.what());
 				}
 			}
-			vuk::g_info.device.waitIdle();
-			vuk::vkDestroy(pipeline0, pipeline0wf, pipeline1, layout0, layout1);
-			vuk::vkDestroy(transferPool);
-			vuk::vkDestroy(viewSetLayout);
-			vuk::vram::release(triangle0VB, quad0VB, quad0IB);
+			gfx::g_info.device.waitIdle();
+			gfx::vkDestroy(pipeline0, pipeline0wf, pipeline1, layout0, layout1);
+			gfx::vkDestroy(transferPool);
+			gfx::vkDestroy(viewSetLayout);
+			gfx::vram::release(triangle0VB, quad0VB, quad0IB);
 		}
 	}
 	catch (std::exception const& e)

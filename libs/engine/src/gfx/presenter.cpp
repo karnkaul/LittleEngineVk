@@ -6,7 +6,7 @@
 #include "utils.hpp"
 #include "vram.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 std::string const Presenter::s_tName = utils::tName<Presenter>();
 
@@ -192,7 +192,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	auto& frame = m_swapchain.frame();
 	if (!frame.bNascent)
 	{
-		vuk::wait(frame.drawing);
+		gfx::wait(frame.drawing);
 	}
 	frame.bNascent = false;
 	frame.drawing = drawing;
@@ -311,7 +311,7 @@ bool Presenter::createSwapchain()
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto flags = vuk::QFlags(vuk::QFlag::eGraphics, vuk::QFlag::eTransfer);
+		auto flags = gfx::QFlags(gfx::QFlag::eGraphics, gfx::QFlag::eTransfer);
 		auto const queueIndices = g_info.uniqueQueueIndices(flags);
 		createInfo.pQueueFamilyIndices = queueIndices.data();
 		createInfo.queueFamilyIndexCount = (u32)queueIndices.size();
@@ -405,4 +405,4 @@ bool Presenter::recreateSwapchain()
 	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}:{}] Failed to recreate swapchain!", s_tName, m_window);
 	return false;
 }
-} // namespace le::vuk
+} // namespace le::gfx

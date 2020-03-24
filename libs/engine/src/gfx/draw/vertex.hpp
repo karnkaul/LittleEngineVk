@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
 
-namespace le::vuk
+namespace le::gfx
 {
 struct Vertex final
 {
@@ -13,4 +13,4 @@ struct Vertex final
 	static vk::VertexInputBindingDescription bindingDescription(u32 binding = 0);
 	static std::vector<vk::VertexInputAttributeDescription> attributeDescriptions(u32 binding = 0);
 };
-} // namespace le::vuk
+} // namespace le::gfx

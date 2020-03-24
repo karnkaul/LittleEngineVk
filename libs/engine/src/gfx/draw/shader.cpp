@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <fmt/format.h>
 #include "core/assert.hpp"
@@ -13,26 +14,35 @@ std::string const Shader::s_tName = utils::tName<Shader>();
 std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const Shader::s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
 																								  vk::ShaderStageFlagBits::eFragment};
 
-Shader::Shader(ShaderData data) : m_id(std::move(data.id))
+#if defined(LEVK_RESOURCES_UPDATE)
+Shader::ShaderFile::ShaderFile(stdfs::path const& id, stdfs::path const& fullPath, ShaderType type) : File(id, fullPath), type(type) {}
+#endif
+
+Shader::Shader(Info info) : m_id(std::move(info.id))
 {
-	if (data.codeMap.empty())
+	bool const bCodeMapPopulated = std::any_of(info.codeMap.begin(), info.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
+	[[maybe_unused]] bool const bCodeIDsPopulated =
+		std::any_of(info.codeIDMap.begin(), info.codeIDMap.end(), [&](auto const& entry) { return !entry.empty(); });
+	if (!bCodeMapPopulated)
 	{
-		ASSERT(!data.codeIDMap.empty() && data.pReader, "Invalid Shader ShaderData!");
-		for (auto const& [type, id] : data.codeIDMap)
+		ASSERT(bCodeIDsPopulated && info.pReader, "Invalid Shader ShaderData!");
+		for (size_t idx = 0; idx < info.codeIDMap.size(); ++idx)
 		{
+			auto const id = info.codeIDMap.at(idx);
 			auto const ext = extension(id);
+			auto const type = (ShaderType)idx;
 			if (ext == ".vert" || ext == ".frag")
 			{
-				if (!loadGlsl(data, id, type))
+				if (!loadGlsl(info, id, type))
 				{
 					LOG_E("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
 				}
 			}
 			else if (ext == ".spv")
 			{
-				auto [shaderShaderData, bResult] = data.pReader->getBytes(id);
+				auto [shaderShaderData, bResult] = info.pReader->getBytes(id);
 				ASSERT(bResult, "Shader code missing!");
-				data.codeMap[type] = std::move(shaderShaderData);
+				info.codeMap.at(idx) = std::move(shaderShaderData);
 			}
 			else
 			{
@@ -40,7 +50,7 @@ Shader::Shader(ShaderData data) : m_id(std::move(data.id))
 			}
 		}
 	}
-	loadAllSpirV(data.codeMap);
+	loadAllSpirV(info.codeMap);
 }
 
 Shader::~Shader()
@@ -57,9 +67,9 @@ vk::ShaderModule Shader::module(ShaderType type) const
 	return m_shaders.at((size_t)type);
 }
 
-std::unordered_map<ShaderType, vk::ShaderModule> Shader::modules() const
+std::map<ShaderType, vk::ShaderModule> Shader::modules() const
 {
-	std::unordered_map<ShaderType, vk::ShaderModule> ret;
+	std::map<ShaderType, vk::ShaderModule> ret;
 	for (size_t idx = 0; idx < (size_t)ShaderType::eCOUNT_; ++idx)
 	{
 		auto const& module = m_shaders.at(idx);
@@ -71,30 +81,20 @@ std::unordered_map<ShaderType, vk::ShaderModule> Shader::modules() const
 	return ret;
 }
 
-#if defined(LEVK_SHADER_HOT_RELOAD)
-FileMonitor::Status Shader::currentStatus() const
-{
-	return m_lastStatus;
-}
-
+#if defined(LEVK_RESOURCES_UPDATE)
 FileMonitor::Status Shader::update()
 {
-	bool bDirty = false;
-	for (auto& monitor : m_monitors)
+	auto const status = Resource::update();
+	if (status != FileMonitor::Status::eUpToDate)
 	{
-		if (monitor.monitor.update() == FileMonitor::Status::eModified)
+		std::array<bytearray, (size_t)ShaderType::eCOUNT_> spvCode;
+		for (auto& uFile : m_files)
 		{
-			bDirty = true;
-		}
-	}
-	if (bDirty)
-	{
-		std::unordered_map<ShaderType, bytearray> spvCode;
-		for (auto& monitor : m_monitors)
-		{
-			if (monitor.monitor.lastStatus() == FileMonitor::Status::eModified)
+			auto pFile = dynamic_cast<ShaderFile*>(uFile.get());
+			ASSERT(pFile, "Shader contains unknown File subclass!");
+			if (pFile->monitor.lastStatus() == FileMonitor::Status::eModified)
 			{
-				if (!glslToSpirV(monitor.id, spvCode[monitor.type], monitor.pReader))
+				if (!glslToSpirV(pFile->id, spvCode.at((size_t)pFile->type)))
 				{
 					LOG_E("[{}] Failed to reload Shader!", s_tName);
 					return m_lastStatus = FileMonitor::Status::eUpToDate;
@@ -102,15 +102,15 @@ FileMonitor::Status Shader::update()
 			}
 			else
 			{
-				auto spvID = monitor.id;
+				auto spvID = pFile->id;
 				spvID += ShaderCompiler::s_extension;
-				auto [bytes, bResult] = monitor.pReader->getBytes(spvID);
+				auto [bytes, bResult] = m_pReader->getBytes(spvID);
 				if (!bResult)
 				{
 					LOG_E("[{}] Failed to reload Shader!", s_tName);
 					return m_lastStatus = FileMonitor::Status::eUpToDate;
 				}
-				spvCode[monitor.type] = std::move(bytes);
+				spvCode.at((size_t)pFile->type) = std::move(bytes);
 			}
 		}
 		LOG_D("[{}] Reloading...", s_tName);
@@ -120,28 +120,28 @@ FileMonitor::Status Shader::update()
 		}
 		loadAllSpirV(spvCode);
 		LOG_I("[{}] Reloaded", s_tName);
-		return m_lastStatus = FileMonitor::Status::eModified;
 	}
-	return m_lastStatus = FileMonitor::Status::eUpToDate;
+	return m_lastStatus;
 }
 #endif
 
-bool Shader::loadGlsl(ShaderData& out_data, stdfs::path const& id, ShaderType type)
+bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, ShaderType type)
 {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline)
 	{
 		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	auto pFileReader = dynamic_cast<FileReader const*>(out_data.pReader);
-	ASSERT(pFileReader, "Cannot compile shaders without FileReader!");
-	auto [glslCode, bResult] = pFileReader->getString(id);
+	m_pReader = dynamic_cast<FileReader const*>(out_info.pReader);
+	ASSERT(m_pReader, "Cannot compile shaders without FileReader!");
+	auto [glslCode, bResult] = m_pReader->getString(id);
 	if (bResult)
 	{
-		if (glslToSpirV(id, out_data.codeMap[type], pFileReader))
+		if (glslToSpirV(id, out_info.codeMap.at((size_t)type)))
 		{
-#if defined(LEVK_SHADER_HOT_RELOAD)
-			m_monitors.push_back({id, FileMonitor(pFileReader->fullPath(id), FileMonitor::Mode::eContents), type, pFileReader});
+#if defined(LEVK_RESOURCES_UPDATE)
+			auto uFile = std::make_unique<ShaderFile>(id, m_pReader->fullPath(id), type);
+			m_files.push_back(std::move(uFile));
 #endif
 			return true;
 		}
@@ -149,25 +149,25 @@ bool Shader::loadGlsl(ShaderData& out_data, stdfs::path const& id, ShaderType ty
 	return false;
 }
 
-bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes, FileReader const* pReader)
+bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline)
 	{
 		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	ASSERT(pReader, "Cannot compile shaders without FileReader!");
-	auto [glslCode, bResult] = pReader->getString(id);
+	ASSERT(m_pReader, "Cannot compile shaders without FileReader!");
+	auto [glslCode, bResult] = m_pReader->getString(id);
 	if (bResult)
 	{
-		auto const src = pReader->fullPath(id);
+		auto const src = m_pReader->fullPath(id);
 		auto dstID = id;
 		dstID += ShaderCompiler::s_extension;
 		if (!ShaderCompiler::instance().compile(src, true))
 		{
 			return false;
 		}
-		auto [spvCode, bResult] = pReader->getBytes(dstID);
+		auto [spvCode, bResult] = m_pReader->getBytes(dstID);
 		if (!bResult)
 		{
 			return false;
@@ -178,15 +178,19 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes, FileReader
 	return false;
 }
 
-void Shader::loadAllSpirV(std::unordered_map<ShaderType, bytearray> const& byteMap)
+void Shader::loadAllSpirV(std::array<bytearray, (size_t)ShaderType::eCOUNT_> const& byteMap)
 {
 	std::array<vk::ShaderModule, (size_t)ShaderType::eCOUNT_> newModules;
-	for (auto const& [type, code] : byteMap)
+	for (size_t idx = 0; idx < byteMap.size(); ++idx)
 	{
-		vk::ShaderModuleCreateInfo createInfo;
-		createInfo.codeSize = code.size();
-		createInfo.pCode = reinterpret_cast<u32 const*>(code.data());
-		newModules.at((size_t)type) = g_info.device.createShaderModule(createInfo);
+		auto const& code = byteMap.at(idx);
+		if (!code.empty())
+		{
+			vk::ShaderModuleCreateInfo createInfo;
+			createInfo.codeSize = code.size();
+			createInfo.pCode = reinterpret_cast<u32 const*>(code.data());
+			newModules.at(idx) = g_info.device.createShaderModule(createInfo);
+		}
 	}
 	m_shaders = newModules;
 }

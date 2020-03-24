@@ -20,8 +20,6 @@ void writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet, u32 
 vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
 							  vk::ImageViewType typev = vk::ImageViewType::e2D);
 
-vk::Pipeline createPipeline(vk::PipelineLayout info, PipelineData const& data, vk::PipelineCache cache = vk::PipelineCache());
-
 template <typename vkOwner = vk::Device, typename vkType>
 void vkDestroy(vkType object)
 {

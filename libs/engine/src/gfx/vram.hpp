@@ -14,7 +14,7 @@ struct TransferOp final
 	vk::CommandBuffer commandBuffer;
 };
 
-struct ImageData final
+struct ImageInfo final
 {
 	vk::Extent3D size;
 	vk::Format format;
@@ -22,11 +22,11 @@ struct ImageData final
 	vk::ImageUsageFlags usage;
 	vk::MemoryPropertyFlags properties;
 	vk::ImageType type = vk::ImageType::e2D;
-	QFlags queueFlags = QFlags(QFlag::eGraphics, QFlag::eTransfer);
+	QFlags queueFlags = QFlags({QFlag::eGraphics, QFlag::eTransfer});
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
-struct BufferData final
+struct BufferInfo final
 {
 	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
@@ -41,11 +41,11 @@ inline VmaAllocator g_allocator;
 void init(vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice);
 void deinit();
 
-Buffer createBuffer(BufferData const& data);
+Buffer createBuffer(BufferInfo const& info);
 void copy(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp);
 bool write(Buffer buffer, void const* pData);
 
-Image createImage(ImageData const& data);
+Image createImage(ImageInfo const& info);
 
 void release(Buffer buffer);
 void release(Image image);

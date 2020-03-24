@@ -69,34 +69,34 @@ void vram::deinit()
 	return;
 }
 
-Buffer vram::createBuffer(BufferData const& data)
+Buffer vram::createBuffer(BufferInfo const& info)
 {
 	Buffer ret;
 	vk::BufferCreateInfo bufferInfo;
-	ret.writeSize = bufferInfo.size = data.size;
-	bufferInfo.usage = data.usage;
-	auto const flags = QFlags(QFlag::eGraphics, QFlag::eTransfer);
+	ret.writeSize = bufferInfo.size = info.size;
+	bufferInfo.usage = info.usage;
+	auto const flags = QFlags({QFlag::eGraphics, QFlag::eTransfer});
 	bufferInfo.sharingMode = gfx::g_info.sharingMode(flags);
 	auto const queueIndices = gfx::g_info.uniqueQueueIndices(flags);
 	bufferInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	bufferInfo.pQueueFamilyIndices = queueIndices.data();
-	VmaAllocationCreateInfo allocationInfo = {};
-	allocationInfo.usage = data.vmaUsage;
+	VmaAllocationCreateInfo createInfo = {};
+	createInfo.usage = info.vmaUsage;
 	auto const vkBufferInfo = static_cast<VkBufferCreateInfo>(bufferInfo);
 	VkBuffer vkBuffer;
-	if (vmaCreateBuffer(g_allocator, &vkBufferInfo, &allocationInfo, &vkBuffer, &ret.handle, nullptr) != VK_SUCCESS)
+	if (vmaCreateBuffer(g_allocator, &vkBufferInfo, &createInfo, &vkBuffer, &ret.handle, nullptr) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Allocation error");
 	}
 	ret.buffer = vkBuffer;
-	VmaAllocationInfo info;
-	vmaGetAllocationInfo(g_allocator, ret.handle, &info);
-	ret.info = {info.deviceMemory, info.offset, info.size};
+	VmaAllocationInfo allocationInfo;
+	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
+	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	g_allocations.at((size_t)ResourceType::eBuffer) += ret.info.actualSize;
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.info.actualSize);
-		LOG_I("[{}] Buffer allocated: [{}{}] | {}", s_tName, size, unit, logCount());
+		LOG_I("== [{}] Buffer allocated: [{}{}] | {}", s_tName, size, unit, logCount());
 	}
 	return ret;
 }
@@ -136,40 +136,40 @@ bool vram::write(Buffer buffer, void const* pData)
 	return false;
 }
 
-Image vram::createImage(ImageData const& data)
+Image vram::createImage(ImageInfo const& info)
 {
 	Image ret;
 	vk::ImageCreateInfo imageInfo;
-	imageInfo.imageType = data.type;
-	imageInfo.extent = data.size;
+	imageInfo.imageType = info.type;
+	imageInfo.extent = info.size;
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
-	imageInfo.format = data.format;
-	imageInfo.tiling = data.tiling;
+	imageInfo.format = info.format;
+	imageInfo.tiling = info.tiling;
 	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.usage = data.usage;
+	imageInfo.usage = info.usage;
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
-	auto const queueIndices = g_info.uniqueQueueIndices(data.queueFlags);
+	auto const queueIndices = g_info.uniqueQueueIndices(info.queueFlags);
 	imageInfo.queueFamilyIndexCount = (u32)queueIndices.size();
 	imageInfo.pQueueFamilyIndices = queueIndices.data();
-	imageInfo.sharingMode = g_info.sharingMode(data.queueFlags);
-	VmaAllocationCreateInfo allocationInfo = {};
-	allocationInfo.usage = data.vmaUsage;
+	imageInfo.sharingMode = g_info.sharingMode(info.queueFlags);
+	VmaAllocationCreateInfo createInfo = {};
+	createInfo.usage = info.vmaUsage;
 	auto const vkImageInfo = static_cast<VkImageCreateInfo>(imageInfo);
 	VkImage vkImage;
-	if (vmaCreateImage(g_allocator, &vkImageInfo, &allocationInfo, &vkImage, &ret.handle, nullptr) != VK_SUCCESS)
+	if (vmaCreateImage(g_allocator, &vkImageInfo, &createInfo, &vkImage, &ret.handle, nullptr) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Allocation error");
 	}
 	ret.image = vkImage;
-	VmaAllocationInfo info;
-	vmaGetAllocationInfo(g_allocator, ret.handle, &info);
-	ret.info = {info.deviceMemory, info.offset, info.size};
+	VmaAllocationInfo allocationInfo;
+	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
+	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	g_allocations.at((size_t)ResourceType::eImage) += ret.info.actualSize;
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.info.actualSize);
-		LOG_I("[{}] Image allocated: [{}{}] | {}", s_tName, size, unit, logCount());
+		LOG_I("== [{}] Image allocated: [{}{}] | {}", s_tName, size, unit, logCount());
 	}
 	return ret;
 }
@@ -181,7 +181,7 @@ void vram::release(Buffer buffer)
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(buffer.info.actualSize);
-		LOG_I("[{}] Buffer released: [{}{}] | {}", s_tName, size, unit, logCount());
+		LOG_I("-- [{}] Buffer released: [{}{}] | {}", s_tName, size, unit, logCount());
 	}
 	return;
 }
@@ -193,7 +193,7 @@ void vram::release(Image image)
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(image.info.actualSize);
-		LOG_I("[{}] Image released: [{}{}] | {}", s_tName, size, unit, logCount());
+		LOG_I("-- [{}] Image released: [{}{}] | {}", s_tName, size, unit, logCount());
 	}
 	return;
 }

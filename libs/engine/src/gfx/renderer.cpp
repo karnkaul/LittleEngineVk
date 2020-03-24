@@ -10,9 +10,9 @@ namespace le::gfx
 {
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
-Renderer::Renderer(Data const& data) : m_setLayouts(data.uboSetLayouts), m_pPresenter(data.pPresenter), m_window(data.pPresenter->m_window)
+Renderer::Renderer(Info const& info) : m_setLayouts(info.uboSetLayouts), m_pPresenter(info.pPresenter), m_window(info.pPresenter->m_window)
 {
-	create(data.frameCount);
+	create(info.frameCount);
 }
 
 Renderer::~Renderer()

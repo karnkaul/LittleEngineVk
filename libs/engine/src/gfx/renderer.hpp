@@ -9,7 +9,7 @@ namespace le::gfx
 class Renderer final
 {
 public:
-	struct Data final
+	struct Info final
 	{
 		struct UBOSetLayouts
 		{
@@ -49,7 +49,7 @@ public:
 	vk::DescriptorPool m_descriptorPool;
 
 private:
-	Data::UBOSetLayouts m_setLayouts;
+	Info::UBOSetLayouts m_setLayouts;
 	std::vector<FrameSync> m_frames;
 
 	size_t m_index = 0;
@@ -59,7 +59,7 @@ private:
 	u8 m_frameCount = 0;
 
 public:
-	Renderer(Data const& data);
+	Renderer(Info const& info);
 	~Renderer();
 
 public:

@@ -5,6 +5,7 @@
 #include "gfx/presenter.hpp"
 #include "gfx/utils.hpp"
 #include "pipeline.hpp"
+#include "resources.hpp"
 #include "shader.hpp"
 #include "vertex.hpp"
 
@@ -19,26 +20,30 @@ Pipeline::~Pipeline()
 	destroy();
 }
 
-bool Pipeline::create(PipelineData data)
+bool Pipeline::create(Info info)
 {
-	destroy();
-	m_data = std::move(data);
-	ASSERT(m_data.pShader, "Shader is null!");
-	if (!m_data.pShader)
+	m_info = std::move(info);
+	ASSERT(m_info.pShader, "Shader is null!");
+	if (!m_info.pShader)
 	{
-		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_data.name);
+		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_info.name);
 		return false;
 	}
-	m_name = fmt::format("{}-{}", m_data.name, m_data.pShader->m_id);
+	m_name = fmt::format("{}-{}", m_info.name, m_info.pShader->m_id);
 	return recreate();
 }
 
 bool Pipeline::recreate()
 {
+	destroy();
 	auto const pPresenter = WindowImpl::presenter(m_window);
 	ASSERT(pPresenter, "Presneter is null!");
-	ASSERT(m_data.pShader, "Shader is null!");
-	if (!m_data.pShader || !pPresenter)
+	if (!m_info.pShader && g_pResources && !m_info.shaderID.empty())
+	{
+		m_info.pShader = g_pResources->get<Shader>(m_info.shaderID);
+	}
+	ASSERT(m_info.pShader, "Shader is null!");
+	if (!m_info.pShader || !pPresenter)
 	{
 		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_name);
 		return false;
@@ -47,8 +52,8 @@ bool Pipeline::recreate()
 	auto const attributeDescriptions = Vertex::attributeDescriptions();
 	{
 		vk::PipelineLayoutCreateInfo layoutCreateInfo;
-		layoutCreateInfo.setLayoutCount = (u32)m_data.setLayouts.size();
-		layoutCreateInfo.pSetLayouts = m_data.setLayouts.data();
+		layoutCreateInfo.setLayoutCount = (u32)m_info.setLayouts.size();
+		layoutCreateInfo.pSetLayouts = m_info.setLayouts.data();
 		vk::PushConstantRange pushConstantRange;
 		pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
 		pushConstantRange.offset = 0;
@@ -78,10 +83,10 @@ bool Pipeline::recreate()
 	{
 		rasterizerState.depthClampEnable = false;
 		rasterizerState.rasterizerDiscardEnable = false;
-		rasterizerState.polygonMode = m_data.polygonMode;
-		rasterizerState.lineWidth = m_data.staticLineWidth;
-		rasterizerState.cullMode = m_data.cullMode;
-		rasterizerState.frontFace = m_data.frontFace;
+		rasterizerState.polygonMode = m_info.polygonMode;
+		rasterizerState.lineWidth = m_info.staticLineWidth;
+		rasterizerState.cullMode = m_info.cullMode;
+		rasterizerState.frontFace = m_info.frontFace;
 		rasterizerState.depthBiasEnable = false;
 	}
 	vk::PipelineMultisampleStateCreateInfo multisamplerState;
@@ -91,8 +96,8 @@ bool Pipeline::recreate()
 	}
 	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
 	{
-		colorBlendAttachment.colorWriteMask = m_data.colourWriteMask;
-		colorBlendAttachment.blendEnable = m_data.bBlend;
+		colorBlendAttachment.colorWriteMask = m_info.colourWriteMask;
+		colorBlendAttachment.blendEnable = m_info.bBlend;
 	}
 	vk::PipelineColorBlendStateCreateInfo colorBlendState;
 	{
@@ -106,7 +111,7 @@ bool Pipeline::recreate()
 		depthStencilState.depthWriteEnable = true;
 		depthStencilState.depthCompareOp = vk::CompareOp::eLess;
 	}
-	auto states = m_data.dynamicStates;
+	auto states = m_info.dynamicStates;
 	states.insert(vk::DynamicState::eViewport);
 	states.insert(vk::DynamicState::eScissor);
 	std::vector<vk::DynamicState> stateFlags = {states.begin(), states.end()};
@@ -117,7 +122,7 @@ bool Pipeline::recreate()
 	}
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	{
-		auto modules = m_data.pShader->modules();
+		auto modules = m_info.pShader->modules();
 		shaderCreateInfo.reserve(modules.size());
 		for (auto const& [type, module] : modules)
 		{
@@ -150,19 +155,17 @@ bool Pipeline::recreate()
 void Pipeline::destroy()
 {
 	vkDestroy(m_pipeline, m_layout);
+	LOGIF_D(m_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_name);
 	m_pipeline = vk::Pipeline();
 	m_layout = vk::PipelineLayout();
-	LOG_D("[{}] [{}] destroyed", s_tName, m_name);
 }
 
 void Pipeline::update()
 {
-#if defined(LEVK_SHADER_HOT_RELOAD)
-	if (m_data.pShader && m_data.pShader->currentStatus() == FileMonitor::Status::eModified)
+#if defined(LEVK_RESOURCES_UPDATE)
+	if (m_info.pShader && m_info.pShader->currentStatus() == FileMonitor::Status::eModified)
 	{
-		LOG_D("[{}] [{}] Dependent resources changed; recreating...", s_tName, m_name);
 		g_info.device.waitIdle();
-		destroy();
 		recreate();
 	}
 #endif

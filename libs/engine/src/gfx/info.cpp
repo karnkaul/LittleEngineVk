@@ -44,16 +44,16 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 	return false;
 }
 
-vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& layers, InitData const& initData)
+vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& layers, InitInfo const& initInfo)
 {
-	ASSERT(initData.config.graphicsQueueCount > 0, "Invalid queue count!");
+	ASSERT(initInfo.config.graphicsQueueCount > 0, "Invalid queue count!");
 	vk::Device device;
 	vk::SurfaceKHR surface;
 	std::string deviceName;
 	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 	try
 	{
-		surface = initData.config.createTempSurface(instance);
+		surface = initInfo.config.createTempSurface(instance);
 		auto physicalDevices = vk::Instance(instance).enumeratePhysicalDevices();
 		std::vector<AvailableDevice> availableDevices;
 		availableDevices.reserve(physicalDevices.size());
@@ -83,9 +83,9 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 				availableDevices.push_back(std::move(availableDevice));
 			}
 		}
-		if (initData.options.pickDevice)
+		if (initInfo.options.pickDevice)
 		{
-			g_info.physicalDevice = initData.options.pickDevice(availableDevices);
+			g_info.physicalDevice = initInfo.options.pickDevice(availableDevices);
 		}
 		if (g_info.physicalDevice == vk::PhysicalDevice())
 		{
@@ -130,7 +130,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		{
 			vk::DeviceQueueCreateInfo queueCreateInfo;
 			queueCreateInfo.queueFamilyIndex = family;
-			queueCreateInfo.queueCount = family == graphicsFamily.value() ? initData.config.graphicsQueueCount : 1;
+			queueCreateInfo.queueCount = family == graphicsFamily.value() ? initInfo.config.graphicsQueueCount : 1;
 			queueCreateInfo.pQueuePriorities = &priority;
 			queueCreateInfos.push_back(std::move(queueCreateInfo));
 		}
@@ -172,13 +172,13 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 	return device;
 }
 
-void init(InitData const& initData)
+void init(InitInfo const& initInfo)
 {
 	std::vector<char const*> requiredLayers;
-	std::set<char const*> requiredExtensionsSet = {initData.config.instanceExtensions.begin(), initData.config.instanceExtensions.end()};
-	InitData::Flags flags;
-	flags.set(InitData::Flag::eValidation, InitData::Flag::eTest);
-	if (initData.options.flags.isSet(InitData::Flag::eValidation))
+	std::set<char const*> requiredExtensionsSet = {initInfo.config.instanceExtensions.begin(), initInfo.config.instanceExtensions.end()};
+	InitInfo::Flags flags;
+	flags.set({InitInfo::Flag::eValidation, InitInfo::Flag::eTest});
+	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
 		requiredExtensionsSet.emplace(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		requiredLayers.push_back("VK_LAYER_KHRONOS_validation");
@@ -222,7 +222,7 @@ void init(InitData const& initData)
 	vk::DynamicLoader dl;
 	g_loader.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 	g_loader.init(instance);
-	if (initData.options.flags.isSet(InitData::Flag::eValidation))
+	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 		createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
@@ -240,7 +240,7 @@ void init(InitData const& initData)
 			throw std::runtime_error(e.what());
 		}
 	}
-	auto device = initDevice(instance, requiredLayers, initData);
+	auto device = initDevice(instance, requiredLayers, initInfo);
 	vram::init(instance, device, g_info.physicalDevice);
 
 	g_info.instance = instance;
@@ -253,7 +253,10 @@ void init(InitData const& initData)
 
 void deinit()
 {
-	resources::unloadAll();
+	if (g_pResources)
+	{
+		g_pResources->unloadAll();
+	}
 	vram::deinit();
 	if (g_info.device != vk::Device())
 	{
@@ -331,9 +334,9 @@ f32 Info::lineWidth(f32 desired) const
 	return std::clamp(desired, lineWidthMin, lineWidthMax);
 }
 
-Service::Service(InitData const& initData)
+Service::Service(InitInfo const& info)
 {
-	init(initData);
+	init(info);
 }
 
 Service::~Service()

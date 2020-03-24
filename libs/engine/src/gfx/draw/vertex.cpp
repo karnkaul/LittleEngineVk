@@ -2,7 +2,7 @@
 
 namespace le::gfx
 {
-vk::VertexInputBindingDescription Vertex::bindingDescription(u32 binding)
+vk::VertexInputBindingDescription Vertex::bindingDescription()
 {
 	vk::VertexInputBindingDescription ret;
 	ret.binding = binding;
@@ -11,7 +11,7 @@ vk::VertexInputBindingDescription Vertex::bindingDescription(u32 binding)
 	return ret;
 }
 
-std::vector<vk::VertexInputAttributeDescription> Vertex::attributeDescriptions(u32 binding)
+std::vector<vk::VertexInputAttributeDescription> Vertex::attributeDescriptions()
 {
 	std::vector<vk::VertexInputAttributeDescription> ret;
 	vk::VertexInputAttributeDescription pos;

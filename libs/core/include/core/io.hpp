@@ -118,11 +118,13 @@ public:
 	};
 
 protected:
+	static FileReader s_reader;
+
+protected:
 	stdfs::file_time_type m_lastWriteTime = {};
 	stdfs::file_time_type m_lastModifiedTime = {};
 	stdfs::path m_path;
 	std::string m_contents;
-	FileReader m_reader;
 	Mode m_mode;
 	Status m_status = Status::eNotFound;
 
@@ -140,6 +142,7 @@ public:
 	stdfs::file_time_type lastWriteTime() const;
 	stdfs::file_time_type lastModifiedTime() const;
 
+	stdfs::path const& path() const;
 	std::string_view contents() const;
 };
 } // namespace le

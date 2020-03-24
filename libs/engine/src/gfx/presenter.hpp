@@ -31,7 +31,7 @@ public:
 private:
 	struct Info final
 	{
-		PresenterData data;
+		PresenterInfo info;
 		vk::SurfaceKHR surface;
 
 		vk::SurfaceCapabilitiesKHR capabilities;
@@ -91,7 +91,7 @@ private:
 	WindowID m_window;
 
 public:
-	Presenter(PresenterData const& data);
+	Presenter(PresenterInfo const& info);
 	~Presenter();
 
 public:

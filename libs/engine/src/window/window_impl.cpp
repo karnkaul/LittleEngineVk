@@ -159,7 +159,7 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
-NativeWindow::NativeWindow(Window::Data const& data)
+NativeWindow::NativeWindow(Window::Info const& info)
 {
 #if defined(LEVK_USE_GLFW)
 	ASSERT(threads::isMainThread(), "Window creation on non-main thread!");
@@ -181,12 +181,12 @@ NativeWindow::NativeWindow(Window::Data const& data)
 		LOG_E("[{}] Failed to detect video mode!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
-	size_t screenIdx = data.options.screenID < screenCount ? (size_t)data.options.screenID : 0;
+	size_t screenIdx = info.options.screenID < screenCount ? (size_t)info.options.screenID : 0;
 	GLFWmonitor* pTarget = ppScreens[screenIdx];
-	s32 height = data.config.size.y;
-	s32 width = data.config.size.x;
+	s32 height = info.config.size.y;
+	s32 width = info.config.size.x;
 	bool bDecorated = true;
-	switch (data.config.mode)
+	switch (info.config.mode)
 	{
 	default:
 	case Window::Mode::eDecoratedWindow:
@@ -222,8 +222,8 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	s32 cX = (mode->width - width) / 2;
 	s32 cY = (mode->height - height) / 2;
-	cX += data.config.centreOffset.x;
-	cY -= data.config.centreOffset.y;
+	cX += info.config.centreOffset.x;
+	cY -= info.config.centreOffset.y;
 	m_initialCentre = {cX, cY};
 	ASSERT(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
 	glfwWindowHint(GLFW_DECORATED, bDecorated ? 1 : 0);
@@ -232,7 +232,7 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
 	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, false);
-	m_pWindow = glfwCreateWindow(width, height, data.config.title.data(), pTarget, nullptr);
+	m_pWindow = glfwCreateWindow(width, height, info.config.title.data(), pTarget, nullptr);
 	if (!m_pWindow)
 	{
 		throw std::runtime_error("Failed to create Window");
@@ -346,48 +346,48 @@ WindowImpl::~WindowImpl()
 	destroy();
 }
 
-bool WindowImpl::create(Window::Data const& data)
+bool WindowImpl::create(Window::Info const& info)
 {
 	try
 	{
 		gfx::g_info.device.waitIdle();
-		m_uNativeWindow = std::make_unique<NativeWindow>(data);
-		gfx::PresenterData presenterData;
-		presenterData.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
+		m_uNativeWindow = std::make_unique<NativeWindow>(info);
+		gfx::PresenterInfo presenterInfo;
+		presenterInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
-		presenterData.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
-		presenterData.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
-		presenterData.config.window = m_pWindow->m_id;
-		for (auto colourSpace : data.options.colourSpaces)
+		presenterInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
+		presenterInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
+		presenterInfo.config.window = m_pWindow->m_id;
+		for (auto colourSpace : info.options.colourSpaces)
 		{
 			switch (colourSpace)
 			{
 			default:
 				break;
 			case ColourSpace::eRGBLinear:
-				presenterData.options.formats.push_back(vk::Format::eB8G8R8A8Unorm);
+				presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Unorm);
 				break;
 			case ColourSpace::eSRGBNonLinear:
-				presenterData.options.formats.push_back(vk::Format::eB8G8R8A8Srgb);
+				presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Srgb);
 				break;
 			}
 		}
-		for (auto presentMode : data.options.presentModes)
+		for (auto presentMode : info.options.presentModes)
 		{
 			switch (presentMode)
 			{
 			default:
 				break;
 			case PresentMode::eMailbox:
-				presenterData.options.presentModes.push_back(vk::PresentModeKHR::eMailbox);
+				presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eMailbox);
 				break;
 			case PresentMode::eFIFO:
-				presenterData.options.presentModes.push_back(vk::PresentModeKHR::eFifo);
+				presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eFifo);
 				break;
 			}
 		}
-		m_uPresenter = std::make_unique<gfx::Presenter>(presenterData);
+		m_uPresenter = std::make_unique<gfx::Presenter>(presenterInfo);
 		if (!m_uPresenter)
 		{
 			LOG_E("[{}] Failed to create [{}]", Window::s_tName, gfx::Presenter::s_tName);
@@ -406,7 +406,7 @@ bool WindowImpl::create(Window::Data const& data)
 		glfwSetCursorEnterCallback(m_uNativeWindow->m_pWindow, &onFocus);
 		auto const c = m_uNativeWindow->m_initialCentre;
 		glfwSetWindowPos(m_uNativeWindow->m_pWindow, c.x, c.y);
-		if (data.options.bCentreCursor)
+		if (info.options.bCentreCursor)
 		{
 			auto const size = m_uNativeWindow->windowSize();
 			glfwSetCursorPos(m_uNativeWindow->m_pWindow, size.x / 2, size.y / 2);

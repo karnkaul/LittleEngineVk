@@ -1,37 +1,61 @@
 #pragma once
-#include "gfx/common.hpp"
-#include "shader.hpp"
-#include "pipeline.hpp"
+#include <type_traits>
+#include <unordered_map>
+#include "core/map_store.hpp"
+#include "resource.hpp"
 
-namespace le::gfx::resources
+namespace le::gfx
 {
-TResult<Shader*> create(stdfs::path const& id, ShaderData const& data);
+inline class Resources* g_pResources = nullptr;
 
-template <typename T>
-TResult<T*> get(stdfs::path const&)
+class Resources final
 {
-	static_assert(FalseType<T>::value, "Invalid type!");
-}
+public:
+	class Service final
+	{
+	public:
+		Service();
+		~Service();
+	};
 
-template <typename T>
-bool unload(stdfs::path const&)
-{
-	static_assert(FalseType<T>::value, "Invalid type!");
-}
+private:
+	TMapStore<std::unordered_map<std::string, std::unique_ptr<Resource>>> m_resources;
 
-template <typename T>
-void unloadAll()
-{
-	static_assert(FalseType<T>::value, "Invalid type!");
-}
+public:
+	Resources();
+	~Resources();
 
-template <>
-TResult<Shader*> get<Shader>(stdfs::path const& id);
-template <>
-bool unload<Shader>(stdfs::path const& id);
-template <>
-void unloadAll<Shader>();
+	template <typename T, typename = std::enable_if_t<std::is_base_of_v<Resource, T>>>
+	T* create(std::string const& id, typename T::Info info)
+	{
+		auto uT = std::make_unique<T>(std::move(info));
+		if (uT)
+		{
+			uT->setup(id);
+			m_resources.insert(id, std::move(uT));
+		}
+		return get<T>(id);
+	}
 
-void update();
-void unloadAll();
-} // namespace le::gfx::resources
+	template <typename T, typename = std::enable_if_t<std::is_base_of_v<Resource, T>>>
+	T* get(std::string const& id)
+	{
+		auto [pT, bResult] = m_resources.get(id);
+		if (bResult && pT)
+		{
+			return dynamic_cast<T*>(pT->get());
+		}
+		return nullptr;
+	}
+
+	template <typename T, typename = std::enable_if_t<std::is_base_of_v<Resource, T>>>
+	bool unload(std::string const& id)
+	{
+		return m_resources.unload(id);
+	}
+
+	void unloadAll();
+
+	void update();
+};
+} // namespace le::gfx

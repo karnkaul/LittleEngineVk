@@ -22,7 +22,7 @@ public:
 
 	static std::array<std::string_view, (size_t)Mode::eCOUNT_> const s_modeNames;
 
-	struct Data final
+	struct Info final
 	{
 		struct
 		{
@@ -72,7 +72,7 @@ public:
 	glm::ivec2 framebufferSize() const;
 
 public:
-	bool create(Data const& data);
+	bool create(Info const& info);
 	void close();
 	void destroy();
 

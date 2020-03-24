@@ -46,7 +46,7 @@ inline Info g_info;
 
 struct Service final
 {
-	Service(InitData const& initData);
+	Service(InitInfo const& info);
 	~Service();
 };
 } // namespace le::gfx

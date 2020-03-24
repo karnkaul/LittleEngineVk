@@ -41,7 +41,7 @@ struct AvailableDevice final
 	std::vector<vk::QueueFamilyProperties> queueFamilies;
 };
 
-struct InitData final
+struct InitInfo final
 {
 	enum class Flag
 	{
@@ -67,7 +67,7 @@ struct InitData final
 	} options;
 };
 
-struct PresenterData final
+struct PresenterInfo final
 {
 	using GetSize = std::function<glm::ivec2()>;
 
@@ -108,19 +108,19 @@ struct AllocInfo final
 	vk::DeviceSize actualSize = {};
 };
 
-struct Resource
+struct VkResource
 {
 	AllocInfo info;
 	VmaAllocation handle;
 };
 
-struct Buffer final : Resource
+struct Buffer final : VkResource
 {
 	vk::Buffer buffer;
 	vk::DeviceSize writeSize = {};
 };
 
-struct Image final : Resource
+struct Image final : VkResource
 {
 	vk::Image image;
 };
@@ -129,32 +129,6 @@ struct ClearValues final
 {
 	glm::vec2 depthStencil = {1.0f, 0.0f};
 	Colour colour = colours::Black;
-};
-
-struct ShaderData final
-{
-	std::string id;
-	std::unordered_map<ShaderType, bytearray> codeMap;
-	std::unordered_map<ShaderType, stdfs::path> codeIDMap;
-	class IOReader const* pReader = nullptr;
-};
-
-struct PipelineData final
-{
-	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-	vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eNone;
-	vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
-	vk::ColorComponentFlags colourWriteMask =
-		vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-	std::string name;
-	std::set<vk::DynamicState> dynamicStates;
-	std::vector<vk::DescriptorSetLayout> setLayouts;
-	f32 staticLineWidth = 1.0f;
-	class Shader* pShader = nullptr;
-	bool bBlend = false;
-
-	// TODO: REMOVE
-	vk::RenderPass renderPass;
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;

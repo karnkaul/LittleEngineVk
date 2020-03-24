@@ -14,7 +14,7 @@ void Presenter::Info::refresh()
 {
 	if (surface == vk::SurfaceKHR() || !g_info.isValid(surface))
 	{
-		surface = data.config.getNewSurface(g_info.instance);
+		surface = info.config.getNewSurface(g_info.instance);
 	}
 	[[maybe_unused]] bool bValid = g_info.isValid(surface);
 	ASSERT(bValid, "Invalid surface!");
@@ -32,8 +32,8 @@ vk::SurfaceFormatKHR Presenter::Info::bestColourFormat() const
 {
 	static std::vector<vk::Format> const s_defaultFormats = {vk::Format::eB8G8R8A8Srgb};
 	static std::vector<vk::ColorSpaceKHR> const s_defaultColourSpaces = {vk::ColorSpaceKHR::eSrgbNonlinear};
-	auto const& desiredFormats = data.options.formats.empty() ? s_defaultFormats : data.options.formats;
-	auto const& desiredColourSpaces = data.options.colourSpaces.empty() ? s_defaultColourSpaces : data.options.colourSpaces;
+	auto const& desiredFormats = info.options.formats.empty() ? s_defaultFormats : info.options.formats;
+	auto const& desiredColourSpaces = info.options.colourSpaces.empty() ? s_defaultColourSpaces : info.options.colourSpaces;
 	std::map<u32, vk::SurfaceFormatKHR> ranked;
 	for (auto const& available : colourFormats)
 	{
@@ -70,7 +70,7 @@ vk::Format Presenter::Info::bestDepthFormat() const
 vk::PresentModeKHR Presenter::Info::bestPresentMode() const
 {
 	static std::vector<vk::PresentModeKHR> const s_defaultPresentModes = {vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
-	auto const& desiredPresentModes = data.options.presentModes.empty() ? s_defaultPresentModes : data.options.presentModes;
+	auto const& desiredPresentModes = info.options.presentModes.empty() ? s_defaultPresentModes : info.options.presentModes;
 	std::map<u32, vk::PresentModeKHR> ranked;
 	for (auto const& available : presentModes)
 	{
@@ -106,10 +106,10 @@ Presenter::Swapchain::Frame& Presenter::Swapchain::frame()
 	return frames.at(imageIndex);
 }
 
-Presenter::Presenter(PresenterData const& data) : m_window(data.config.window)
+Presenter::Presenter(PresenterInfo const& info) : m_window(info.config.window)
 {
-	ASSERT(data.config.getNewSurface && data.config.getFramebufferSize && data.config.getWindowSize, "Required callbacks are null!");
-	m_info.data = data;
+	ASSERT(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
+	m_info.info = info;
 	m_info.refresh();
 	if (!m_info.isReady())
 	{
@@ -142,7 +142,7 @@ Presenter::~Presenter()
 
 void Presenter::onFramebufferResize()
 {
-	auto const size = m_info.data.config.getFramebufferSize();
+	auto const size = m_info.info.config.getFramebufferSize();
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
 		if (size.x > 0 && size.y > 0)
@@ -290,7 +290,7 @@ bool Presenter::createSwapchain()
 	ASSERT(bReady, "Presenter not ready!");
 	// Swapchain
 	m_info.refresh();
-	auto const framebufferSize = m_info.data.config.getFramebufferSize();
+	auto const framebufferSize = m_info.info.config.getFramebufferSize();
 	if (framebufferSize.x == 0 || framebufferSize.y == 0)
 	{
 		LOG_I("[{}:{}] Null framebuffer size detected (minimised surface?); pausing rendering", s_tName, m_window);
@@ -306,12 +306,12 @@ bool Presenter::createSwapchain()
 		}
 		createInfo.imageFormat = m_info.colourFormat.format;
 		createInfo.imageColorSpace = m_info.colourFormat.colorSpace;
-		auto const windowSize = m_info.data.config.getWindowSize();
+		auto const windowSize = m_info.info.config.getWindowSize();
 		m_swapchain.extent = m_info.extent(windowSize);
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto flags = gfx::QFlags(gfx::QFlag::eGraphics, gfx::QFlag::eTransfer);
+		auto flags = gfx::QFlags({gfx::QFlag::eGraphics, gfx::QFlag::eTransfer});
 		auto const queueIndices = g_info.uniqueQueueIndices(flags);
 		createInfo.pQueueFamilyIndices = queueIndices.data();
 		createInfo.queueFamilyIndexCount = (u32)queueIndices.size();
@@ -327,13 +327,13 @@ bool Presenter::createSwapchain()
 	{
 		auto images = g_info.device.getSwapchainImagesKHR(m_swapchain.swapchain);
 		m_swapchain.frames.reserve(images.size());
-		ImageData depthImageData;
-		depthImageData.format = m_info.depthFormat;
-		depthImageData.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		depthImageData.size = vk::Extent3D(m_swapchain.extent, 1);
-		depthImageData.tiling = vk::ImageTiling::eOptimal;
-		depthImageData.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-		m_swapchain.depthImage = vram::createImage(depthImageData);
+		ImageInfo depthImageInfo;
+		depthImageInfo.format = m_info.depthFormat;
+		depthImageInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		depthImageInfo.size = vk::Extent3D(m_swapchain.extent, 1);
+		depthImageInfo.tiling = vk::ImageTiling::eOptimal;
+		depthImageInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+		m_swapchain.depthImage = vram::createImage(depthImageInfo);
 		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.image, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		for (auto const& image : images)
 		{

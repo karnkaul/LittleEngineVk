@@ -21,7 +21,7 @@ public:
 	glm::ivec2 m_initialCentre = {};
 
 public:
-	NativeWindow(Window::Data const& data);
+	NativeWindow(Window::Info const& info);
 	~NativeWindow();
 
 public:
@@ -59,7 +59,7 @@ public:
 	WindowImpl(Window* pWindow);
 	~WindowImpl();
 
-	bool create(Window::Data const& data);
+	bool create(Window::Info const& info);
 	bool isOpen() const;
 	bool exists() const;
 	bool isClosing() const;

@@ -146,10 +146,7 @@ TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, ArrayView<
 
 FileReader::FileReader(stdfs::path prefix) noexcept : IOReader(std::move(prefix))
 {
-	m_medium = "Filesystem (";
-	m_medium += std::move(m_prefix.generic_string());
-	m_medium += ")";
-	LOG_D("[{}] Filesystem mounted, idPrefix: [{}]", utils::tName<FileReader>(), m_prefix.generic_string());
+	m_medium = fmt::format("Filesystem ({})", m_prefix.generic_string());
 }
 
 bool FileReader::isPresent(stdfs::path const& id) const
@@ -197,9 +194,7 @@ stdfs::path FileReader::fullPath(stdfs::path const& id) const
 ZIPReader::ZIPReader(stdfs::path zipPath, stdfs::path idPrefix /* = "" */) : IOReader(std::move(idPrefix)), m_zipPath(std::move(zipPath))
 {
 	ioImpl::initPhysfs();
-	m_medium = "ZIP (";
-	m_medium += std::move(m_zipPath.generic_string());
-	m_medium += ")";
+	m_medium = fmt::format("ZIP ({})", m_zipPath.generic_string());
 	if (!stdfs::is_regular_file(m_zipPath))
 	{
 		LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), m_zipPath.generic_string());
@@ -268,6 +263,8 @@ void ioImpl::deinitPhysfs()
 	g_uPhysfsHandle = nullptr;
 }
 
+FileReader FileMonitor::s_reader;
+
 FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode)
 {
 	update();
@@ -288,7 +285,7 @@ FileMonitor::Status FileMonitor::update()
 			m_lastWriteTime = lastWriteTime;
 			if (m_mode == Mode::eContents)
 			{
-				auto [contents, bResult] = m_reader.getString(m_path);
+				auto [contents, bResult] = s_reader.getString(m_path);
 				if (bResult)
 				{
 					if (contents == m_contents)
@@ -329,6 +326,11 @@ stdfs::file_time_type FileMonitor::lastWriteTime() const
 stdfs::file_time_type FileMonitor::lastModifiedTime() const
 {
 	return m_lastModifiedTime;
+}
+
+stdfs::path const& FileMonitor::path() const
+{
+	return m_path;
 }
 
 std::string_view FileMonitor::contents() const

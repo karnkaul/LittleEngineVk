@@ -24,12 +24,12 @@ struct Handle final
 		Handle<T> ret;
 		ret.setLayout = setLayout;
 		ret.descriptorSet = descriptorSet;
-		BufferData data;
-		data.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		data.usage = vk::BufferUsageFlagBits::eUniformBuffer;
-		data.size = ret.size;
-		data.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-		ret.buffer = vram::createBuffer(data);
+		BufferInfo info;
+		info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+		info.size = ret.size;
+		info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		ret.buffer = vram::createBuffer(info);
 		writeUniformDescriptor(ret.buffer, ret.descriptorSet, T::binding);
 		return ret;
 	}

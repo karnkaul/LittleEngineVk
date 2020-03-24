@@ -1,77 +1,48 @@
 #include <memory>
-#include "core/log.hpp"
-#include "core/map_store.hpp"
 #include "resources.hpp"
 
 namespace le::gfx
 {
 namespace
 {
-struct Store
-{
-	TMapStore<std::unordered_map<std::string, std::unique_ptr<Shader>>> shaders;
-};
-
-Store g_store;
+std::unique_ptr<Resources> g_uResources;
 } // namespace
 
-TResult<Shader*> resources::create(stdfs::path const& id, ShaderData const& data)
+Resources::Service::Service()
 {
-	auto uShader = std::make_unique<Shader>(data);
-	auto const idStr = id.generic_string();
-	g_store.shaders.insert(idStr, std::move(uShader));
-	LOG_I("[{}] [{}] created", Shader::s_tName, idStr);
-	return get<Shader>(idStr);
+	if (!g_uResources)
+	{
+		g_uResources = std::make_unique<Resources>();
+		g_pResources = g_uResources.get();
+	}
 }
 
-template <>
-TResult<Shader*> resources::get<Shader>(stdfs::path const& id)
+Resources::Service::~Service()
 {
-	auto [uShader, bResult] = g_store.shaders.get(id.generic_string());
-	if (bResult)
-	{
-		return uShader->get();
-	}
-	return nullptr;
+	g_uResources.reset();
+	g_pResources = nullptr;
 }
 
-template <>
-bool resources::unload<Shader>(stdfs::path const& id)
+Resources::Resources() = default;
+
+Resources::~Resources()
 {
-	auto const idStr = id.generic_string();
-	if (g_store.shaders.unload(idStr))
-	{
-		LOG_I("[{}] [{}] destroyed", Shader::s_tName, idStr);
-		return true;
-	}
-	return false;
+	unloadAll();
 }
 
-template <>
-void resources::unloadAll<Shader>()
+void Resources::unloadAll()
 {
-	for (auto& [id, shader] : g_store.shaders.m_map)
+	m_resources.unloadAll();
+}
+
+#if defined(LEVK_RESOURCES_UPDATE)
+void Resources::update()
+{
+	for (auto& [id, uResource] : m_resources.m_map)
 	{
-		LOG_I("[{}] [{}] destroyed", Shader::s_tName, id);
+		uResource->update();
 	}
-	g_store.shaders.unloadAll();
 	return;
 }
-
-void resources::update()
-{
-#if defined(LEVK_SHADER_HOT_RELOAD)
-	for (auto& [id, uShader] : g_store.shaders.m_map)
-	{
-		uShader->update();
-	}
 #endif
-	return;
-}
-
-void resources::unloadAll()
-{
-	unloadAll<Shader>();
-	return;
-}
 } // namespace le::gfx

@@ -7,6 +7,7 @@
 #include "window/window_impl.hpp"
 #include "info.hpp"
 #include "vram.hpp"
+#include "draw/resources.hpp"
 
 namespace le::gfx
 {
@@ -252,6 +253,7 @@ void init(InitData const& initData)
 
 void deinit()
 {
+	resources::unloadAll();
 	vram::deinit();
 	if (g_info.device != vk::Device())
 	{

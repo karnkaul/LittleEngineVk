@@ -9,20 +9,6 @@
 
 namespace le::gfx
 {
-struct PipelineData final
-{
-	class Shader const* pShader = nullptr;
-	vk::RenderPass renderPass;
-	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-	vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eNone;
-	vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
-	vk::ColorComponentFlags colourWriteMask =
-		vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-	std::set<vk::DynamicState> dynamicStates;
-	f32 staticLineWidth = 1.0f;
-	bool bBlend = false;
-};
-
 TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 void wait(vk::Fence optional);

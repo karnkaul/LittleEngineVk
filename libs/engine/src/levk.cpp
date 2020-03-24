@@ -14,6 +14,8 @@
 #include "gfx/renderer.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
+#include "gfx/draw/pipeline.hpp"
+#include "gfx/draw/resources.hpp"
 #include "gfx/draw/shader.hpp"
 #include "gfx/draw/vertex.hpp"
 #include "window/window_impl.hpp"
@@ -76,14 +78,15 @@ s32 engine::run(s32 argc, char** argv)
 		auto const vertShaderPath = dataPath / "shaders/tutorial.vert";
 		auto const fragShaderPath = dataPath / "shaders/tutorial.frag";
 
-		gfx::Shader::Data tutorialShaderData;
+		gfx::ShaderData tutorialShaderData;
 		tutorialShaderData.id = "shaders/tutorial";
 		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert"), stdfs::path("shaders/tutorial.frag")};
 		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
 		tutorialShaderData.pReader = g_uReader.get();
-		tutorialShaderData.codeIDMap[gfx::Shader::Type::eVertex] = shaderIDs.at(0);
-		tutorialShaderData.codeIDMap[gfx::Shader::Type::eFragment] = shaderIDs.at(1);
-		gfx::Shader tutorialShader(tutorialShaderData);
+		tutorialShaderData.codeIDMap[gfx::ShaderType::eVertex] = shaderIDs.at(0);
+		tutorialShaderData.codeIDMap[gfx::ShaderType::eFragment] = shaderIDs.at(1);
+		auto [pShader, bResult] = gfx::resources::create("shaders/tutorial", tutorialShaderData);
+		auto pTutorialShader = pShader;
 
 		gfx::Vertex const triangle0Verts[] = {
 			gfx::Vertex{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -190,27 +193,13 @@ s32 engine::run(s32 argc, char** argv)
 		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createPipeline = [&tutorialShader](vk::Pipeline* pPipeline, vk::PipelineLayout layout, vk::RenderPass renderPass) {
-			gfx::PipelineData pipelineData;
-			pipelineData.pShader = &tutorialShader;
-			pipelineData.renderPass = renderPass;
-			*pPipeline = gfx::createPipeline(layout, pipelineData);
-		};
-		auto createRenderer = [&viewSetLayout, &createPipeline](vk::Pipeline* pPipeline, vk::PipelineLayout* pLayout,
-																gfx::Presenter** ppPresenter, WindowID id) {
-			gfx::vkDestroy(*pPipeline, *pLayout);
+		auto createRenderer = [&viewSetLayout, pTutorialShader](gfx::Pipeline* pPipeline, gfx::Presenter** ppPresenter, WindowID id) {
 			*ppPresenter = WindowImpl::presenter(id);
-			vk::PipelineLayoutCreateInfo layoutCreateInfo;
-			layoutCreateInfo.setLayoutCount = 1;
-			layoutCreateInfo.pSetLayouts = &viewSetLayout;
-			vk::PushConstantRange pushConstantRange;
-			pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
-			pushConstantRange.offset = 0;
-			pushConstantRange.size = sizeof(glm::mat4);
-			layoutCreateInfo.pushConstantRangeCount = 1;
-			layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-			*pLayout = gfx::g_info.device.createPipelineLayout(layoutCreateInfo);
-			createPipeline(pPipeline, *pLayout, (*ppPresenter)->m_renderPass);
+			gfx::PipelineData pipelineData;
+			pipelineData.pShader = pTutorialShader;
+			pipelineData.setLayouts = {viewSetLayout};
+			pipelineData.name = "default";
+			pPipeline->create(std::move(pipelineData));
 			gfx::Renderer::Data data;
 			data.frameCount = 2;
 			data.pPresenter = *ppPresenter;
@@ -220,25 +209,23 @@ s32 engine::run(s32 argc, char** argv)
 		if (w0.create(data0) && w1.create(data1))
 		{
 			std::unique_ptr<gfx::Renderer> uRenderer0, uRenderer1;
-			gfx::Presenter* pPresenter0 = nullptr;
-			gfx::Presenter* pPresenter1 = nullptr;
-			vk::PipelineLayout layout0, layout1;
-			vk::Pipeline pipeline0, pipeline0wf;
-			vk::Pipeline pipeline1;
+			gfx::Presenter *pPresenter0 = nullptr, *pPresenter1 = nullptr;
+			gfx::Pipeline pipeline0(w0.id()), pipeline0wf(w0.id()), pipeline1(w1.id());
+
 			if (w0.isOpen())
 			{
-				gfx::vkDestroy(pipeline0wf);
-				uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
 				gfx::PipelineData pipelineData;
-				pipelineData.pShader = &tutorialShader;
-				pipelineData.renderPass = pPresenter0->m_renderPass;
+				pipelineData.name = "wireframe";
+				pipelineData.setLayouts = {viewSetLayout};
+				pipelineData.pShader = pTutorialShader;
 				pipelineData.polygonMode = vk::PolygonMode::eLine;
 				pipelineData.staticLineWidth = gfx::g_info.lineWidth(3.0f);
-				pipeline0wf = gfx::createPipeline(layout0, pipelineData);
+				pipeline0wf.create(pipelineData);
+				uRenderer0 = createRenderer(&pipeline0, &pPresenter0, w0.id());
 			}
 			if (w1.isOpen())
 			{
-				uRenderer1 = createRenderer(&pipeline1, &layout1, &pPresenter1, w1.id());
+				uRenderer1 = createRenderer(&pipeline1, &pPresenter1, w1.id());
 			}
 
 			gfx::ubo::View view0;
@@ -252,21 +239,11 @@ s32 engine::run(s32 argc, char** argv)
 				t = Time::elapsed();
 
 				{
-#if defined(LEVK_SHADER_HOT_RELOAD)
-					if (tutorialShader.hasReloaded() == FileMonitor::Status::eModified)
-					{
-						gfx::g_info.device.waitIdle();
-						gfx::vkDestroy(pipeline0, pipeline1, pipeline0wf);
-						createPipeline(&pipeline0, layout0, WindowImpl::presenter(w0.id())->m_renderPass);
-						createPipeline(&pipeline1, layout1, WindowImpl::presenter(w1.id())->m_renderPass);
-						gfx::PipelineData pipelineData;
-						pipelineData.pShader = &tutorialShader;
-						pipelineData.renderPass = WindowImpl::presenter(w0.id())->m_renderPass;
-						pipelineData.polygonMode = vk::PolygonMode::eLine;
-						pipelineData.staticLineWidth = gfx::g_info.lineWidth(3.0f);
-						pipeline0wf = gfx::createPipeline(layout0, pipelineData);
-					}
-#endif
+					gfx::resources::update();
+					pipeline0.update();
+					pipeline0wf.update();
+					pipeline1.update();
+
 					// Update matrices
 					transform0.setOrientation(
 						glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -294,7 +271,6 @@ s32 engine::run(s32 argc, char** argv)
 					}
 				}
 
-				std::this_thread::sleep_for(stdch::milliseconds(10));
 				if (w0.isClosing())
 				{
 					w0.destroy();
@@ -307,20 +283,20 @@ s32 engine::run(s32 argc, char** argv)
 				{
 					bRecreate0 = false;
 					w0.create(data0);
-					gfx::vkDestroy(pipeline0wf);
-					uRenderer0 = createRenderer(&pipeline0, &layout0, &pPresenter0, w0.id());
 					gfx::PipelineData pipelineData;
-					pipelineData.pShader = &tutorialShader;
-					pipelineData.renderPass = pPresenter0->m_renderPass;
+					pipelineData.name = "wireframe";
+					pipelineData.setLayouts = {viewSetLayout};
+					pipelineData.pShader = pTutorialShader;
 					pipelineData.polygonMode = vk::PolygonMode::eLine;
 					pipelineData.staticLineWidth = gfx::g_info.lineWidth(3.0f);
-					pipeline0wf = gfx::createPipeline(layout0, pipelineData);
+					pipeline0wf.create(pipelineData);
+					uRenderer0 = createRenderer(&pipeline0, &pPresenter0, w0.id());
 				}
 				if (bRecreate1)
 				{
 					bRecreate1 = false;
 					w1.create(data1);
-					uRenderer1 = createRenderer(&pipeline1, &layout1, &pPresenter1, w1.id());
+					uRenderer1 = createRenderer(&pipeline1, &pPresenter1, w1.id());
 				}
 				if (bClose0)
 				{
@@ -369,12 +345,13 @@ s32 engine::run(s32 argc, char** argv)
 
 					if (w0.isOpen() && uRenderer0.get())
 					{
-						drawFrame(&view0, uRenderer0.get(), bWF0 ? pipeline0wf : pipeline0, layout0, quad0VB.buffer, quad0IB.buffer,
-								  (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
+						drawFrame(&view0, uRenderer0.get(), bWF0 ? pipeline0wf.pipeline() : pipeline0.pipeline(), pipeline0.layout(),
+								  quad0VB.buffer, quad0IB.buffer, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
 					}
 					if (w1.isOpen() && uRenderer1.get())
 					{
-						drawFrame(&view1, uRenderer1.get(), pipeline1, layout1, triangle0VB.buffer, {}, (u32)arraySize(triangle0Verts), 0);
+						drawFrame(&view1, uRenderer1.get(), pipeline1.pipeline(), pipeline1.layout(), triangle0VB.buffer, {},
+								  (u32)arraySize(triangle0Verts), 0);
 						// drawFrame(&view1, pPresenter1, pipeline1, layout1, quad0VBIB.buffer, (u32)arraySize(quad0Verts),
 						//	  (u32)arraySize(quad0Indices));
 					}
@@ -385,7 +362,6 @@ s32 engine::run(s32 argc, char** argv)
 				}
 			}
 			gfx::g_info.device.waitIdle();
-			gfx::vkDestroy(pipeline0, pipeline0wf, pipeline1, layout0, layout1);
 			gfx::vkDestroy(transferPool);
 			gfx::vkDestroy(viewSetLayout);
 			gfx::vram::release(triangle0VB, quad0VB, quad0IB);

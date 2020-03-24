@@ -1,6 +1,5 @@
 #pragma once
 #include <array>
-#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,41 +14,22 @@
 
 namespace le::gfx
 {
-namespace stdfs = std::filesystem;
-
 class Shader final
 {
-public:
-	enum class Type : u8
-	{
-		eVertex = 0,
-		eFragment,
-		eCOUNT_
-	};
-
 #if defined(LEVK_SHADER_HOT_RELOAD)
 private:
 	struct Monitor
 	{
 		stdfs::path id;
 		FileMonitor monitor;
-		Type type;
+		ShaderType type;
 		FileReader const* pReader;
 	};
 #endif
 
 public:
-	struct Data
-	{
-		std::string id;
-		std::unordered_map<Type, bytearray> codeMap;
-		std::unordered_map<Type, stdfs::path> codeIDMap;
-		IOReader const* pReader = nullptr;
-	};
-
-public:
 	static std::string const s_tName;
-	static std::array<vk::ShaderStageFlagBits, size_t(Type::eCOUNT_)> const s_typeToFlagBit;
+	static std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const s_typeToFlagBit;
 
 public:
 	std::string m_id;
@@ -57,27 +37,29 @@ public:
 #if defined(LEVK_SHADER_HOT_RELOAD)
 private:
 	std::vector<Monitor> m_monitors;
+	FileMonitor::Status m_lastStatus = FileMonitor::Status::eUpToDate;
 #endif
 
 private:
-	std::array<vk::ShaderModule, size_t(Type::eCOUNT_)> m_shaders;
+	std::array<vk::ShaderModule, size_t(ShaderType::eCOUNT_)> m_shaders;
 
 public:
-	Shader(Data data);
+	Shader(ShaderData data);
 	~Shader();
 
 public:
-	vk::ShaderModule module(Type type) const;
-	std::unordered_map<Type, vk::ShaderModule> modules() const;
+	vk::ShaderModule module(ShaderType type) const;
+	std::unordered_map<ShaderType, vk::ShaderModule> modules() const;
 
 #if defined(LEVK_SHADER_HOT_RELOAD)
-	FileMonitor::Status hasReloaded();
+	FileMonitor::Status currentStatus() const;
+	FileMonitor::Status update();
 #endif
 
 private:
 	bool glslToSpirV(stdfs::path const& id, bytearray& out_bytes, FileReader const* pReader);
-	bool loadGlsl(Data& out_data, stdfs::path const& id, Type type);
-	void loadAllSpirV(std::unordered_map<Type, bytearray> const& byteMap);
+	bool loadGlsl(ShaderData& out_data, stdfs::path const& id, ShaderType type);
+	void loadAllSpirV(std::unordered_map<ShaderType, bytearray> const& byteMap);
 
 	static std::string extension(stdfs::path const& id);
 };

@@ -10,14 +10,14 @@
 namespace le::gfx
 {
 std::string const Shader::s_tName = utils::tName<Shader>();
-std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> const Shader::s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
-																									vk::ShaderStageFlagBits::eFragment};
+std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const Shader::s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
+																								  vk::ShaderStageFlagBits::eFragment};
 
-Shader::Shader(Data data) : m_id(std::move(data.id))
+Shader::Shader(ShaderData data) : m_id(std::move(data.id))
 {
 	if (data.codeMap.empty())
 	{
-		ASSERT(!data.codeIDMap.empty() && data.pReader, "Invalid Shader Data!");
+		ASSERT(!data.codeIDMap.empty() && data.pReader, "Invalid Shader ShaderData!");
 		for (auto const& [type, id] : data.codeIDMap)
 		{
 			auto const ext = extension(id);
@@ -30,9 +30,9 @@ Shader::Shader(Data data) : m_id(std::move(data.id))
 			}
 			else if (ext == ".spv")
 			{
-				auto [shaderData, bResult] = data.pReader->getBytes(id);
+				auto [shaderShaderData, bResult] = data.pReader->getBytes(id);
 				ASSERT(bResult, "Shader code missing!");
-				data.codeMap[type] = std::move(shaderData);
+				data.codeMap[type] = std::move(shaderShaderData);
 			}
 			else
 			{
@@ -51,28 +51,33 @@ Shader::~Shader()
 	}
 }
 
-vk::ShaderModule Shader::module(Type type) const
+vk::ShaderModule Shader::module(ShaderType type) const
 {
 	ASSERT(m_shaders.at((size_t)type) != vk::ShaderModule(), "Module not present in Shader!");
 	return m_shaders.at((size_t)type);
 }
 
-std::unordered_map<Shader::Type, vk::ShaderModule> Shader::modules() const
+std::unordered_map<ShaderType, vk::ShaderModule> Shader::modules() const
 {
-	std::unordered_map<Type, vk::ShaderModule> ret;
-	for (size_t idx = 0; idx < (size_t)Type::eCOUNT_; ++idx)
+	std::unordered_map<ShaderType, vk::ShaderModule> ret;
+	for (size_t idx = 0; idx < (size_t)ShaderType::eCOUNT_; ++idx)
 	{
 		auto const& module = m_shaders.at(idx);
 		if (module != vk::ShaderModule())
 		{
-			ret[(Type)idx] = module;
+			ret[(ShaderType)idx] = module;
 		}
 	}
 	return ret;
 }
 
 #if defined(LEVK_SHADER_HOT_RELOAD)
-FileMonitor::Status Shader::hasReloaded()
+FileMonitor::Status Shader::currentStatus() const
+{
+	return m_lastStatus;
+}
+
+FileMonitor::Status Shader::update()
 {
 	bool bDirty = false;
 	for (auto& monitor : m_monitors)
@@ -84,7 +89,7 @@ FileMonitor::Status Shader::hasReloaded()
 	}
 	if (bDirty)
 	{
-		std::unordered_map<Type, bytearray> spvCode;
+		std::unordered_map<ShaderType, bytearray> spvCode;
 		for (auto& monitor : m_monitors)
 		{
 			if (monitor.monitor.lastStatus() == FileMonitor::Status::eModified)
@@ -92,7 +97,7 @@ FileMonitor::Status Shader::hasReloaded()
 				if (!glslToSpirV(monitor.id, spvCode[monitor.type], monitor.pReader))
 				{
 					LOG_E("[{}] Failed to reload Shader!", s_tName);
-					return FileMonitor::Status::eUpToDate;
+					return m_lastStatus = FileMonitor::Status::eUpToDate;
 				}
 			}
 			else
@@ -103,7 +108,7 @@ FileMonitor::Status Shader::hasReloaded()
 				if (!bResult)
 				{
 					LOG_E("[{}] Failed to reload Shader!", s_tName);
-					return FileMonitor::Status::eUpToDate;
+					return m_lastStatus = FileMonitor::Status::eUpToDate;
 				}
 				spvCode[monitor.type] = std::move(bytes);
 			}
@@ -115,13 +120,13 @@ FileMonitor::Status Shader::hasReloaded()
 		}
 		loadAllSpirV(spvCode);
 		LOG_I("[{}] Reloaded", s_tName);
-		return FileMonitor::Status::eModified;
+		return m_lastStatus = FileMonitor::Status::eModified;
 	}
-	return FileMonitor::Status::eUpToDate;
+	return m_lastStatus = FileMonitor::Status::eUpToDate;
 }
 #endif
 
-bool Shader::loadGlsl(Data& out_data, stdfs::path const& id, Type type)
+bool Shader::loadGlsl(ShaderData& out_data, stdfs::path const& id, ShaderType type)
 {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline)
 	{
@@ -173,9 +178,9 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes, FileReader
 	return false;
 }
 
-void Shader::loadAllSpirV(std::unordered_map<Type, bytearray> const& byteMap)
+void Shader::loadAllSpirV(std::unordered_map<ShaderType, bytearray> const& byteMap)
 {
-	std::array<vk::ShaderModule, (size_t)Type::eCOUNT_> newModules;
+	std::array<vk::ShaderModule, (size_t)ShaderType::eCOUNT_> newModules;
 	for (auto const& [type, code] : byteMap)
 	{
 		vk::ShaderModuleCreateInfo createInfo;

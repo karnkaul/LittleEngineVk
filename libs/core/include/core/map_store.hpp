@@ -18,8 +18,10 @@ public:
 private:
 	using Lock = std::lock_guard<std::mutex>;
 
-private:
+public:
 	MapContainer m_map;
+
+private:
 	mutable std::mutex m_mutex;
 
 public:
@@ -36,7 +38,7 @@ template <typename MapContainer>
 void TMapStore<MapContainer>::insert(Key const& id, Value&& value)
 {
 	Lock lock(m_mutex);
-	m_map[id] = std::move(value);
+	m_map.emplace(id, std::forward<Value&&>(value));
 }
 
 template <typename MapContainer>
@@ -46,7 +48,7 @@ typename TMapStore<MapContainer>::CResult TMapStore<MapContainer>::get(Key const
 	auto search = m_map.find(id);
 	if (search != m_map.end())
 	{
-		return search->second;
+		return &search->second;
 	}
 	return {};
 }
@@ -58,7 +60,7 @@ typename TMapStore<MapContainer>::Result TMapStore<MapContainer>::get(Key const&
 	auto search = m_map.find(id);
 	if (search != m_map.end())
 	{
-		return search->second;
+		return &search->second;
 	}
 	return {};
 }

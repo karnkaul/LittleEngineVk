@@ -24,6 +24,9 @@ Window::Service::~Service()
 	WindowImpl::deinit();
 }
 
+std::array<std::string_view, (size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window",
+																						 "Borderless Fullscreen", "Dedicated Fullscreen"};
+
 std::string const Window::s_tName = utils::tName<Window>();
 
 Window::Window()
@@ -60,6 +63,11 @@ bool Window::isOpen() const
 bool Window::isClosing() const
 {
 	return m_uImpl ? m_uImpl->isClosing() : false;
+}
+
+glm::ivec2 Window::windowSize() const
+{
+	return m_uImpl ? m_uImpl->windowSize() : glm::ivec2(0);
 }
 
 glm::ivec2 Window::framebufferSize() const
@@ -141,7 +149,7 @@ void Window::setCursorMode(CursorMode mode) const
 
 CursorMode Window::cursorMode() const
 {
-	return m_uImpl ? m_uImpl->cursorMode() : CursorMode::Default;
+	return m_uImpl ? m_uImpl->cursorMode() : CursorMode::eDefault;
 }
 
 glm::vec2 Window::cursorPos() const

@@ -1,9 +1,10 @@
 #pragma once
+#include <array>
 #include <memory>
 #include <string>
 #include <glm/glm.hpp>
 #include "input_types.hpp"
-#include "window_id.hpp"
+#include "common.hpp"
 
 namespace le
 {
@@ -12,21 +13,32 @@ class Window final
 public:
 	enum class Mode
 	{
-		DecoratedWindow = 0,
-		BorderlessWindow,
-		BorderlessFullscreen,
-		DedicatedFullscreen,
-		COUNT_
+		eDecoratedWindow = 0,
+		eBorderlessWindow,
+		eBorderlessFullscreen,
+		eDedicatedFullscreen,
+		eCOUNT_
 	};
+
+	static std::array<std::string_view, (size_t)Mode::eCOUNT_> const s_modeNames;
 
 	struct Data final
 	{
-		std::string title;
-		glm::ivec2 size = {};
-		glm::ivec2 position = {};
-		u8 screenID = 0;
-		Mode mode = Mode::DecoratedWindow;
-		bool bCentreCursor = true;
+		struct
+		{
+			std::string title;
+			glm::ivec2 size = {32, 32};
+			glm::ivec2 centreOffset = {};
+			Mode mode = Mode::eDecoratedWindow;
+		} config;
+
+		struct
+		{
+			PriorityList<ColourSpace> colourSpaces;
+			PriorityList<PresentMode> presentModes;
+			u8 screenID = 0;
+			bool bCentreCursor = true;
+		} options;
 	};
 
 	struct Service final
@@ -55,6 +67,8 @@ public:
 	WindowID id() const;
 	bool isOpen() const;
 	bool isClosing() const;
+
+	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
 
 public:

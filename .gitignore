@@ -3,6 +3,8 @@
 build/*
 out/*
 
+data/shaders/*.spv
+
 CMakeSettings.json
 .editorconfig
 debug.log*

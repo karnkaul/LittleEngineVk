@@ -69,17 +69,17 @@ stdfs::path os::dirPath(Dir dir)
 	switch (dir)
 	{
 	default:
-	case os::Dir::Working:
+	case os::Dir::eWorking:
 		if (g_workingDir.empty())
 		{
 			g_workingDir = stdfs::absolute(stdfs::current_path());
 		}
 		return g_workingDir;
-	case os::Dir::Executable:
+	case os::Dir::eExecutable:
 		if (g_exePath.empty())
 		{
 			LOG_E("[OS] Unknown executable path! Using working directory instead [{}]", g_workingDir.generic_string());
-			g_exePath = dirPath(Dir::Working);
+			g_exePath = dirPath(Dir::eWorking);
 		}
 		return g_exePath;
 	}

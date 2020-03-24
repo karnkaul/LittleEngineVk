@@ -23,7 +23,7 @@ public:
 	using Lock = std::lock_guard<std::mutex>;
 
 public:
-	static constexpr size_t s_reserveCount = 512;
+	static constexpr size_t s_reserveCount = 1024 * 1024;
 
 public:
 	~FileLogger();
@@ -125,7 +125,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 }
 
 std::mutex g_logMutex;
-std::array<char, (size_t)log::Level::COUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
+std::array<char, (size_t)log::Level::eCOUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 
@@ -137,21 +137,56 @@ void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused
 	}
 	std::time_t now = stdch::system_clock::to_time_t(stdch::system_clock::now());
 	std::unique_lock<std::mutex> lock(g_logMutex);
-	auto str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text),
-						   *std::localtime(&now));
-	lock.unlock();
-#if defined(LEVK_LOG_SOURCE_LOCATION)
-	constexpr std::string_view parentStr = "../";
-	auto const fileName = std::filesystem::path(file).generic_string();
-	std::string_view fileStr(fileName);
-	for (auto search = fileStr.find(parentStr); search == 0; search = fileStr.find(parentStr))
-	{
-		fileStr = fileStr.substr(search + parentStr.length());
-	}
-	str = fmt::format("{} [{}:{}]", std::move(str), fileStr, line);
+	std::string str;
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	try
 #endif
+	{
+		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text),
+						  *std::localtime(&now));
+	}
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	catch (std::exception const& e)
+	{
+		ASSERT(false, e.what());
+	}
+#endif
+	lock.unlock();
+	if constexpr (g_log_bSourceLocation)
+	{
+		constexpr std::string_view parentStr = "../";
+		auto const fileName = std::filesystem::path(file).generic_string();
+		std::string_view fileStr(fileName);
+		for (auto search = fileStr.find(parentStr); search == 0; search = fileStr.find(parentStr))
+		{
+			fileStr = fileStr.substr(search + parentStr.length());
+		}
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+		try
+#endif
+		{
+			str = fmt::format("{} [{}:{}]", std::move(str), fileStr, line);
+		}
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+		catch (std::exception const& e)
+		{
+			ASSERT(false, e.what());
+		}
+#endif
+	}
 	lock.lock();
-	fmt::print("{}\n", str);
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	try
+#endif
+	{
+		fmt::print(stdout, "{} \n", str);
+	}
+#if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
+	catch (std::exception const& e)
+	{
+		ASSERT(false, e.what());
+	}
+#endif
 #if defined(LEVK_RUNTIME_MSVC)
 	OutputDebugStringA(str.data());
 	OutputDebugStringA("\n");

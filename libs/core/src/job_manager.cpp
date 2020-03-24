@@ -116,7 +116,7 @@ bool JobManager::areWorkersIdle() const
 {
 	for (auto& gameWorker : m_jobWorkers)
 	{
-		if (gameWorker->m_state.load() == JobWorker::State::Busy)
+		if (gameWorker->m_state.load() == JobWorker::State::eBusy)
 		{
 			return false;
 		}

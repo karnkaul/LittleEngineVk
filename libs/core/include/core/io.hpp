@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <sstream>
+#include <string_view>
 #include "core/utils.hpp"
 
 namespace le
@@ -10,23 +11,13 @@ namespace stdfs = std::filesystem;
 class IOReader
 {
 public:
-	enum class Code
-	{
-		Success = 0,
-		NotFound
-	};
-
-	template <typename Type>
-	using Result = TResult<Type, Code>;
-
-public:
 	struct FBytes
 	{
 	private:
 		IOReader const* pReader;
 
 	public:
-		Result<bytearray> operator()(stdfs::path const& id) const;
+		TResult<bytearray> operator()(stdfs::path const& id) const;
 
 	private:
 		friend class IOReader;
@@ -38,7 +29,7 @@ public:
 		IOReader const* pReader;
 
 	public:
-		Result<std::stringstream> operator()(stdfs::path const& id) const;
+		TResult<std::stringstream> operator()(stdfs::path const& id) const;
 
 	private:
 		friend class IOReader;
@@ -59,40 +50,40 @@ public:
 	virtual ~IOReader();
 
 public:
-	[[nodiscard]] Result<std::string> getString(stdfs::path const& id) const;
+	[[nodiscard]] TResult<std::string> getString(stdfs::path const& id) const;
 	[[nodiscard]] FBytes bytesFunctor() const;
 	[[nodiscard]] FStr strFunctor() const;
-	std::string_view medium() const;
 	[[nodiscard]] bool checkPresence(stdfs::path const& id) const;
 	[[nodiscard]] bool checkPresences(std::initializer_list<stdfs::path> ids) const;
-	[[nodiscard]] bool checkPresences(Span<stdfs::path const> ids) const;
+	[[nodiscard]] bool checkPresences(ArrayView<stdfs::path const> ids) const;
+
+	std::string_view medium() const;
 
 public:
 	[[nodiscard]] virtual bool isPresent(stdfs::path const& id) const = 0;
-	[[nodiscard]] virtual Result<bytearray> getBytes(stdfs::path const& id) const = 0;
-	[[nodiscard]] virtual Result<std::stringstream> getStr(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual TResult<bytearray> getBytes(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual TResult<std::stringstream> getStr(stdfs::path const& id) const = 0;
 
 protected:
-	template <typename Type>
-	static Result<Type> notFound();
-
-	template <typename Type>
-	static Result<Type> success(Type&& result);
+	stdfs::path finalPath(stdfs::path const& id) const;
 };
 
 class FileReader : public IOReader
 {
 public:
-	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
-	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, Span<stdfs::path const> anyOf, u8 maxHeight = 10);
+	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
+	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight = 10);
 
 public:
 	FileReader(stdfs::path prefix = "") noexcept;
 
 public:
 	bool isPresent(stdfs::path const& id) const override;
-	Result<bytearray> getBytes(stdfs::path const& id) const override;
-	Result<std::stringstream> getStr(stdfs::path const& id) const override;
+	TResult<bytearray> getBytes(stdfs::path const& id) const override;
+	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
+
+public:
+	stdfs::path fullPath(stdfs::path const& id) const;
 };
 
 class ZIPReader : public IOReader
@@ -105,19 +96,50 @@ public:
 
 public:
 	bool isPresent(stdfs::path const& id) const override;
-	Result<bytearray> getBytes(stdfs::path const& id) const override;
-	Result<std::stringstream> getStr(stdfs::path const& id) const override;
+	TResult<bytearray> getBytes(stdfs::path const& id) const override;
+	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
 };
 
-template <typename Type>
-typename IOReader::Result<Type> IOReader::notFound()
+class FileMonitor
 {
-	return Result<Type>{Code::NotFound, Type()};
-}
+public:
+	enum class Mode : u8
+	{
+		eTimestamp = 0,
+		eContents
+	};
 
-template <typename Type>
-typename IOReader::Result<Type> IOReader::success(Type&& result)
-{
-	return Result<Type>{Code::Success, std::move(result)};
-}
+	enum class Status : u8
+	{
+		eUpToDate = 0,
+		eNotFound,
+		eModified,
+		eCOUNT_
+	};
+
+protected:
+	stdfs::file_time_type m_lastWriteTime = {};
+	stdfs::file_time_type m_lastModifiedTime = {};
+	stdfs::path m_path;
+	std::string m_contents;
+	FileReader m_reader;
+	Mode m_mode;
+	Status m_status = Status::eNotFound;
+
+public:
+	FileMonitor(stdfs::path const& path, Mode mode);
+	FileMonitor(FileMonitor&&);
+	FileMonitor& operator=(FileMonitor&&);
+	virtual ~FileMonitor();
+
+public:
+	virtual Status update();
+
+public:
+	Status lastStatus() const;
+	stdfs::file_time_type lastWriteTime() const;
+	stdfs::file_time_type lastModifiedTime() const;
+
+	std::string_view contents() const;
+};
 } // namespace le

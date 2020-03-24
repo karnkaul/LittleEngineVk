@@ -6,24 +6,27 @@
 
 namespace le
 {
-namespace vuk
+namespace gfx
 {
+class Presenter;
 class Instance;
-class Swapchain;
-} // namespace vuk
+} // namespace gfx
 
 class NativeWindow final
 {
 public:
 #if defined(LEVK_USE_GLFW)
-	class GLFWwindow* m_pWindow = nullptr;
+	struct GLFWwindow* m_pWindow = nullptr;
 #endif
-	glm::ivec2 m_size = {};
 	glm::ivec2 m_initialCentre = {};
 
 public:
 	NativeWindow(Window::Data const& data);
 	~NativeWindow();
+
+public:
+	glm::ivec2 windowSize() const;
+	glm::ivec2 framebufferSize() const;
 };
 
 class WindowImpl final
@@ -42,14 +45,16 @@ public:
 	};
 
 	InputCallbacks m_input;
-	glm::ivec2 m_size = {};
+	glm::ivec2 m_windowSize = {};
+	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
-	std::unique_ptr<vuk::Swapchain> m_uSwapchain;
-	vk::SurfaceKHR m_surface;
+	std::unique_ptr<gfx::Presenter> m_uPresenter;
 	Window* m_pWindow;
 
 	static bool init();
 	static void deinit();
+	static std::vector<char const*> vulkanInstanceExtensions();
+	static gfx::Presenter* presenter(WindowID window);
 
 	WindowImpl(Window* pWindow);
 	~WindowImpl();
@@ -61,9 +66,10 @@ public:
 	void close();
 	void destroy();
 
-	static vk::SurfaceKHR generateSurface(vuk::Instance const* pInstance, NativeWindow const& nativeWindow);
-	glm::ivec2 framebufferSize();
+	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
 	void onFramebufferSize(glm::ivec2 const& size);
+	glm::ivec2 windowSize() const;
+	glm::ivec2 framebufferSize() const;
 
 	void setCursorMode(CursorMode mode) const;
 	CursorMode cursorMode() const;

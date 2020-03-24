@@ -23,7 +23,7 @@ std::thread::id g_mainThreadID;
 void threads::init()
 {
 	g_mainThreadID = std::this_thread::get_id();
-#if defined(__linux__)
+#if defined(LEVK_OS_LINUX)
 	if (XInitThreads() == 0)
 	{
 		LOG_E("[OS] ERROR calling XInitThreads()! UB follows.");
@@ -58,9 +58,8 @@ void threads::join(HThread& id)
 
 void threads::joinAll()
 {
-	for (auto& kvp : g_threads)
+	for (auto& [id, thread] : g_threads)
 	{
-		auto& thread = kvp.second;
 		if (thread.joinable())
 		{
 			thread.join();

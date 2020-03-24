@@ -16,9 +16,6 @@ set(PHYSFS_VERSION 3.0.2)
 
 # Custom code
 unzip_archive(physfs.zip "${CMAKE_CURRENT_SOURCE_DIR}")
-if(LIBRARIES_PATH)
-	output_directory(${PROJECT_NAME} "${LIBRARIES_PATH}")
-endif()
 
 # Increment this if/when we break backwards compatibility.
 set(PHYSFS_SOVERSION 1)

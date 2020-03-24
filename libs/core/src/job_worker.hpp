@@ -10,8 +10,9 @@ class JobWorker final
 public:
 	enum class State : u8
 	{
-		Idle,
-		Busy,
+		eIdle = 0,
+		eBusy,
+		eCOUNT_
 	};
 
 private:
@@ -20,7 +21,7 @@ private:
 private:
 	class JobManager* m_pManager;
 	HThread m_hThread;
-	std::atomic<State> m_state = State::Idle;
+	std::atomic<State> m_state = State::eIdle;
 	u8 id;
 
 public:

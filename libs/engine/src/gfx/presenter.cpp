@@ -196,7 +196,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	}
 	frame.bNascent = false;
 	frame.drawing = drawing;
-	return DrawFrame{m_renderPass, frame.framebuffer, m_swapchain.extent};
+	return DrawFrame{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
 }
 
 bool Presenter::present(vk::Semaphore wait)
@@ -341,18 +341,6 @@ bool Presenter::createSwapchain()
 			frame.image = image;
 			frame.colour = createImageView(image, m_info.colourFormat.format);
 			frame.depth = m_swapchain.depthImageView;
-			{
-				// Framebuffers
-				std::array const attachments = {frame.colour, frame.depth};
-				vk::FramebufferCreateInfo createInfo;
-				createInfo.attachmentCount = (u32)attachments.size();
-				createInfo.pAttachments = attachments.data();
-				createInfo.renderPass = m_renderPass;
-				createInfo.width = m_swapchain.extent.width;
-				createInfo.height = m_swapchain.extent.height;
-				createInfo.layers = 1;
-				frame.framebuffer = g_info.device.createFramebuffer(createInfo);
-			}
 			m_swapchain.frames.push_back(std::move(frame));
 		}
 		if (m_swapchain.frames.empty())
@@ -373,7 +361,7 @@ void Presenter::destroySwapchain()
 	g_info.device.waitIdle();
 	for (auto const& frame : m_swapchain.frames)
 	{
-		vkDestroy(frame.framebuffer, frame.colour);
+		vkDestroy(frame.colour);
 	}
 	vkDestroy(m_swapchain.depthImageView, m_swapchain.swapchain);
 	vram::release(m_swapchain.depthImage);

@@ -58,7 +58,7 @@ void Renderer::create(u8 frameCount)
 			// Commands
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
 			commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
-			commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+			commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient;
 			frame.commandPool = g_info.device.createCommandPool(commandPoolCreateInfo);
 			vk::CommandBufferAllocateInfo allocInfo;
 			allocInfo.commandPool = frame.commandPool;
@@ -78,7 +78,7 @@ void Renderer::destroy()
 	{
 		for (auto& frame : m_frames)
 		{
-			vkDestroy(frame.commandPool, frame.drawing, frame.renderReady, frame.presentReady);
+			vkDestroy(frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady, frame.presentReady);
 			vram::release(frame.ubos.view.buffer);
 		}
 		vkDestroy(m_descriptorPool);
@@ -109,38 +109,46 @@ void Renderer::reset()
 
 bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 {
-	auto& sync = frameSync();
-	if (!sync.bNascent)
+	auto& frame = frameSync();
+	if (!frame.bNascent)
 	{
-		gfx::wait(sync.drawing);
+		gfx::wait(frame.drawing);
 	}
 	// Acquire
-	auto [acquire, bResult] = m_pPresenter->acquireNextImage(sync.renderReady, sync.drawing);
+	auto [acquire, bResult] = m_pPresenter->acquireNextImage(frame.renderReady, frame.drawing);
 	if (!bResult)
 	{
 		return false;
 	}
-	sync.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+	vkDestroy(frame.framebuffer);
+	vk::FramebufferCreateInfo createInfo;
+	createInfo.attachmentCount = (u32)acquire.attachments.size();
+	createInfo.pAttachments = acquire.attachments.data();
+	createInfo.renderPass = acquire.renderPass;
+	createInfo.width = acquire.swapchainExtent.width;
+	createInfo.height = acquire.swapchainExtent.height;
+	createInfo.layers = 1;
+	frame.framebuffer = g_info.device.createFramebuffer(createInfo);
 	std::array const clearColour = {clear.colour.r.toF32(), clear.colour.g.toF32(), clear.colour.b.toF32(), clear.colour.a.toF32()};
 	vk::ClearColorValue const colour = clearColour;
 	vk::ClearDepthStencilValue const depth = {clear.depthStencil.x, (u32)clear.depthStencil.y};
 	std::array<vk::ClearValue, 2> const clearValues = {colour, depth};
 	vk::RenderPassBeginInfo renderPassInfo;
 	renderPassInfo.renderPass = acquire.renderPass;
-	renderPassInfo.framebuffer = acquire.framebuffer;
+	renderPassInfo.framebuffer = frame.framebuffer;
 	renderPassInfo.renderArea.extent = acquire.swapchainExtent;
 	renderPassInfo.clearValueCount = (u32)clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
 	if (write)
 	{
-		write(sync.ubos);
+		write(frame.ubos);
 	}
 	// Begin
-	auto const& commandBuffer = sync.commandBuffer;
+	auto const& commandBuffer = frame.commandBuffer;
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{sync.ubos, commandBuffer};
+	FrameDriver driver{frame.ubos, commandBuffer};
 	draw(driver);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
@@ -148,15 +156,15 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags const waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &sync.renderReady;
+	submitInfo.pWaitSemaphores = &frame.renderReady;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &sync.presentReady;
-	g_info.device.resetFences(sync.drawing);
-	g_info.queues.graphics.submit(submitInfo, sync.drawing);
-	if (m_pPresenter->present(sync.presentReady))
+	submitInfo.pSignalSemaphores = &frame.presentReady;
+	g_info.device.resetFences(frame.drawing);
+	g_info.queues.graphics.submit(submitInfo, frame.drawing);
+	if (m_pPresenter->present(frame.presentReady))
 	{
 		next();
 		return true;

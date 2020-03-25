@@ -24,8 +24,8 @@ public:
 	struct DrawFrame final
 	{
 		vk::RenderPass renderPass;
-		vk::Framebuffer framebuffer;
 		vk::Extent2D swapchainExtent;
+		std::vector<vk::ImageView> attachments;
 	};
 
 private:
@@ -54,7 +54,6 @@ private:
 	{
 		struct Frame final
 		{
-			vk::Framebuffer framebuffer;
 			vk::ImageView colour;
 			vk::ImageView depth;
 			vk::Fence drawing;
@@ -69,7 +68,6 @@ private:
 		std::vector<Frame> frames;
 
 		vk::Extent2D extent;
-		glm::ivec2 size = {};
 		u32 imageIndex = 0;
 		u8 imageCount = 0;
 

@@ -37,6 +37,7 @@ private:
 		vk::Semaphore renderReady;
 		vk::Semaphore presentReady;
 		vk::Fence drawing;
+		vk::Framebuffer framebuffer;
 		vk::CommandBuffer commandBuffer;
 		vk::CommandPool commandPool;
 		bool bNascent = true;

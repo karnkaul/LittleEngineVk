@@ -1,13 +1,19 @@
 #include <array>
 #include <unordered_set>
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include "core/assert.hpp"
 #include "core/log.hpp"
+#include "core/os.hpp"
 #include "core/threads.hpp"
 #include "core/utils.hpp"
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
+#if defined(LEVK_USE_GLFW)
+#if defined(LEVK_RUNTIME_MSVC)
+#include <Windows.h>
+#endif
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#endif
 #include "window_impl.hpp"
 
 namespace le

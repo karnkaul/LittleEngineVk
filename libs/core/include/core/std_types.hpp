@@ -62,6 +62,6 @@ constexpr size_t arraySize(T const& arr)
 template <typename T, typename = std::enable_if<std::is_arithmetic_v<T>>>
 constexpr T maxVal()
 {
-	return (std::numeric_limits<T>::max)();
+	return std::numeric_limits<T>::max();
 }
 } // namespace le

@@ -1,4 +1,5 @@
 #include <array>
+#include <thread>
 #include <fmt/format.h>
 #include "core/assert.hpp"
 #include "core/log.hpp"
@@ -22,11 +23,21 @@ enum class ResourceType
 	eCOUNT_
 };
 
-static std::string const s_tName = utils::tName<VRAM>();
+struct Stage final
+{
+	Buffer buffer;
+	vk::CommandBuffer commandBuffer;
+	vk::Fence transferred;
+};
+
+constexpr size_t g_stageCount = 8;
+std::string const s_tName = utils::tName<VRAM>();
 std::array<u64, (size_t)ResourceType::eCOUNT_> g_allocations;
 
 Buffer g_staging;
-vk::CommandPool g_stagingPool;
+vk::CommandPool g_transferPool;
+
+std::vector<Stage> g_stages;
 
 Buffer createStagingBuffer(vk::DeviceSize size)
 {
@@ -39,7 +50,51 @@ Buffer createStagingBuffer(vk::DeviceSize size)
 	return vram::createBuffer(info);
 }
 
-TResult<TransferOp> copyBuffer(Buffer const& src, Buffer const& dst, vk::CommandPool commandPool, vk::DeviceSize size)
+Stage& getNextStage(vk::DeviceSize size)
+{
+	if (g_transferPool == vk::CommandPool())
+	{
+		vk::CommandPoolCreateInfo poolInfo;
+		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+		poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
+		g_transferPool = g_info.device.createCommandPool(poolInfo);
+	}
+	if (g_stages.size() < g_stageCount)
+	{
+		Stage newStage;
+		newStage.buffer = createStagingBuffer(size);
+		vk::CommandBufferAllocateInfo commandBufferInfo;
+		commandBufferInfo.commandBufferCount = 1;
+		commandBufferInfo.commandPool = g_transferPool;
+		newStage.commandBuffer = g_info.device.allocateCommandBuffers(commandBufferInfo).front();
+		newStage.transferred = g_info.device.createFence({});
+		g_stages.push_back(newStage);
+		return g_stages.back();
+	}
+	constexpr s32 maxIters = 1000;
+	for (s32 iter = 0; iter < maxIters; ++iter)
+	{
+		for (auto& stage : g_stages)
+		{
+			auto fenceStatus = g_info.device.getFenceStatus(stage.transferred);
+			if (fenceStatus == vk::Result::eSuccess)
+			{
+				g_info.device.resetFences(stage.transferred);
+				stage.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+				if (stage.buffer.writeSize < size)
+				{
+					vram::release(stage.buffer);
+					stage.buffer = createStagingBuffer(std::max(size, stage.buffer.writeSize * 2));
+				}
+				return stage;
+			}
+		}
+		std::this_thread::yield();
+	}
+	throw std::runtime_error("Failed to find available stage!");
+}
+
+TResult<TransferOp> copyBuffer(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
 {
 	if (size == 0)
 	{
@@ -62,7 +117,7 @@ TResult<TransferOp> copyBuffer(Buffer const& src, Buffer const& dst, vk::Command
 	TransferOp ret;
 	vk::CommandBufferAllocateInfo allocInfo;
 	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandPool = commandPool;
+	allocInfo.commandPool = g_transferPool;
 	allocInfo.commandBufferCount = 1;
 	ret.commandBuffer = g_info.device.allocateCommandBuffers(allocInfo).front();
 	vk::CommandBufferBeginInfo beginInfo;
@@ -108,12 +163,19 @@ void vram::init(vk::Instance instance, vk::Device device, vk::PhysicalDevice phy
 
 void vram::deinit()
 {
+	g_info.device.waitIdle();
 	if (g_staging.buffer != vk::Buffer())
 	{
 		release(g_staging);
 		g_staging = Buffer();
 	}
-	vkDestroy(g_stagingPool);
+	for (auto& stage : g_stages)
+	{
+		release(stage.buffer);
+		vkDestroy(stage.transferred);
+	}
+	g_stages.clear();
+	vkDestroy(g_transferPool);
 	bool bErr = false;
 	for (auto val : g_allocations)
 	{
@@ -180,37 +242,33 @@ bool vram::write(Buffer buffer, void const* pData, vk::DeviceSize size)
 
 TResult<TransferOp> vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
 {
-	return copyBuffer(src, dst, g_stagingPool, size);
+	return copyBuffer(src, dst, size);
 }
 
-bool vram::stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size)
+vk::Fence vram::stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size)
 {
 	if (size == 0)
 	{
 		size = deviceBuffer.writeSize;
 	}
-	if (g_staging.writeSize < size)
+	auto& stage = getNextStage(size);
+	if (write(stage.buffer, pData, size))
 	{
-		auto const size = g_staging.writeSize == 0 ? deviceBuffer.writeSize : std::max(g_staging.writeSize * 2, deviceBuffer.writeSize);
-		release(g_staging);
-		g_staging = createStagingBuffer(size);
+		vk::CommandBufferBeginInfo beginInfo;
+		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+		stage.commandBuffer.begin(beginInfo);
+		vk::BufferCopy copyRegion;
+		copyRegion.size = size;
+		stage.commandBuffer.copyBuffer(stage.buffer.buffer, deviceBuffer.buffer, copyRegion);
+		stage.commandBuffer.end();
+		vk::SubmitInfo submitInfo;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &stage.commandBuffer;
+		g_info.queues.transfer.submit(submitInfo, stage.transferred);
+		return stage.transferred;
 	}
-	if (g_stagingPool == vk::CommandPool())
-	{
-		vk::CommandPoolCreateInfo commandPoolCreateInfo;
-		commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
-		g_stagingPool = g_info.device.createCommandPool(commandPoolCreateInfo);
-	}
-	write(g_staging, pData, size);
-	auto [transferOp, bResult] = copyBuffer(g_staging, deviceBuffer, g_stagingPool, size);
-	if (bResult)
-	{
-		wait(transferOp.transferred);
-		g_info.device.freeCommandBuffers(g_stagingPool, transferOp.commandBuffer);
-		vkDestroy(transferOp.transferred);
-		return true;
-	}
-	return false;
+	LOG_E("[{}] Error staging data!", s_tName);
+	return {};
 }
 
 Image vram::createImage(ImageInfo const& info)

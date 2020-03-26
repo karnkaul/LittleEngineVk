@@ -42,7 +42,7 @@ void deinit();
 Buffer createBuffer(BufferInfo const& info);
 bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
 TResult<TransferOp> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
-bool stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
+vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);
 

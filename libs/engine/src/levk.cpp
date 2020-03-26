@@ -117,13 +117,14 @@ s32 engine::run(s32 argc, char** argv)
 		vk::DescriptorSetLayout viewSetLayout = gfx::createDescriptorSetLayout(0, 1, vk::ShaderStageFlagBits::eVertex);
 		gfx::Buffer triangle0VB, quad0VB, quad0IB;
 		{
-			std::vector<gfx::TransferOp> ops;
+			std::vector<vk::Fence> transferFences;
 			triangle0VB = createDeviceBuffer(sizeof(triangle0Verts), vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0VB = createDeviceBuffer(sizeof(quad0Verts), vk::BufferUsageFlagBits::eVertexBuffer);
 			quad0IB = createDeviceBuffer(sizeof(quad0Indices), vk::BufferUsageFlagBits::eIndexBuffer);
-			gfx::vram::stage(triangle0VB, triangle0Verts);
-			gfx::vram::stage(quad0VB, quad0Verts);
-			gfx::vram::stage(quad0IB, quad0Indices);
+			transferFences.push_back(gfx::vram::stage(triangle0VB, triangle0Verts));
+			transferFences.push_back(gfx::vram::stage(quad0VB, quad0Verts));
+			transferFences.push_back(gfx::vram::stage(quad0IB, quad0Indices));
+			gfx::waitAll(transferFences);
 		}
 
 		Window w0, w1;

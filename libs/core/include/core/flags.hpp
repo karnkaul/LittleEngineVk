@@ -19,6 +19,11 @@ struct TFlags
 
 	constexpr TFlags() noexcept = default;
 
+	constexpr /*implicit*/ TFlags(Enum flag) noexcept
+	{
+		set(flag);
+	}
+
 	constexpr TFlags(std::initializer_list<Enum> flags) noexcept
 	{
 		set(flags);

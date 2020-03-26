@@ -7,9 +7,6 @@ constexpr bool g_VRAM_bLogAllocs = true;
 
 struct TransferOp final
 {
-	vk::Queue queue;
-	vk::CommandPool pool;
-
 	vk::Fence transferred;
 	vk::CommandBuffer commandBuffer;
 };
@@ -31,6 +28,7 @@ struct BufferInfo final
 	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
 	vk::MemoryPropertyFlags properties;
+	QFlags queueFlags = QFlags({QFlag::eGraphics, QFlag::eTransfer});
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
@@ -42,8 +40,9 @@ void init(vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalD
 void deinit();
 
 Buffer createBuffer(BufferInfo const& info);
-void copy(vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, TransferOp* pOp);
-bool write(Buffer buffer, void const* pData);
+bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
+TResult<TransferOp> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
+bool stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);
 

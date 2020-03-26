@@ -87,6 +87,10 @@ s32 engine::run(s32 argc, char** argv)
 		tutorialShaderInfo.codeIDMap.at((size_t)gfx::ShaderType::eVertex) = shaderIDs.at(0);
 		tutorialShaderInfo.codeIDMap.at((size_t)gfx::ShaderType::eFragment) = shaderIDs.at(1);
 		auto pTutorialShader = gfx::g_pResources->create<gfx::Shader>("shaders/tutorial", tutorialShaderInfo);
+		vk::CommandPoolCreateInfo commandPoolCreateInfo;
+		auto const& qfi = gfx::g_info.queueFamilyIndices;
+		commandPoolCreateInfo.queueFamilyIndex = qfi.transfer;
+		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
 
 		gfx::Vertex const triangle0Verts[] = {
 			gfx::Vertex{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -100,64 +104,26 @@ s32 engine::run(s32 argc, char** argv)
 										  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0};
 
-		auto createStagingBuffer = [](vk::DeviceSize size) -> gfx::Buffer {
-			gfx::BufferInfo info;
-			info.size = size;
-			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-			info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-			info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
-			return gfx::vram::createBuffer(info);
-		};
 		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> gfx::Buffer {
 			gfx::BufferInfo info;
 			info.size = size;
 			info.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 			info.usage = flags | vk::BufferUsageFlagBits::eTransferDst;
+			info.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
 			info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 			return gfx::vram::createBuffer(info);
 		};
-		auto copyBuffer = [](vk::Buffer src, vk::Buffer dst, vk::DeviceSize size, vk::Queue queue,
-							 vk::CommandPool pool) -> gfx::TransferOp {
-			gfx::TransferOp ret{queue, pool, {}, {}};
-			gfx::vram::copy(src, dst, size, &ret);
-			return ret;
-		};
-
-		vk::CommandPoolCreateInfo commandPoolCreateInfo;
-		auto const& qfi = gfx::g_info.queueFamilyIndices;
-		commandPoolCreateInfo.queueFamilyIndex = qfi.transfer;
-		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
 
 		vk::DescriptorSetLayout viewSetLayout = gfx::createDescriptorSetLayout(0, 1, vk::ShaderStageFlagBits::eVertex);
-
-		auto q = gfx::g_info.queues.transfer;
 		gfx::Buffer triangle0VB, quad0VB, quad0IB;
 		{
 			std::vector<gfx::TransferOp> ops;
-			auto const t0vbSize = sizeof(triangle0Verts);
-			auto const q0vbSize = sizeof(quad0Verts);
-			auto const q0ibSize = sizeof(quad0Indices);
-			auto tri0stage = createStagingBuffer(t0vbSize);
-			auto quad0vstage = createStagingBuffer(q0vbSize);
-			auto quad0istage = createStagingBuffer(q0ibSize);
-			triangle0VB = createDeviceBuffer(t0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
-			quad0VB = createDeviceBuffer(q0vbSize, vk::BufferUsageFlagBits::eVertexBuffer);
-			quad0IB = createDeviceBuffer(q0ibSize, vk::BufferUsageFlagBits::eIndexBuffer);
-			gfx::vram::write(tri0stage, triangle0Verts);
-			gfx::vram::write(quad0vstage, quad0Verts);
-			gfx::vram::write(quad0istage, quad0Indices);
-			ops.push_back(copyBuffer(tri0stage.buffer, triangle0VB.buffer, t0vbSize, q, transferPool));
-			ops.push_back(copyBuffer(quad0vstage.buffer, quad0VB.buffer, q0vbSize, q, transferPool));
-			ops.push_back(copyBuffer(quad0istage.buffer, quad0IB.buffer, q0ibSize, q, transferPool));
-			std::vector<vk::Fence> fences;
-			std::for_each(ops.begin(), ops.end(), [&fences](auto const& op) { fences.push_back(op.transferred); });
-			gfx::waitAll(fences);
-			for (auto& op : ops)
-			{
-				gfx::vkDestroy(op.transferred);
-				gfx::g_info.device.freeCommandBuffers(op.pool, op.commandBuffer);
-			}
-			gfx::vram::release(tri0stage, quad0vstage, quad0istage);
+			triangle0VB = createDeviceBuffer(sizeof(triangle0Verts), vk::BufferUsageFlagBits::eVertexBuffer);
+			quad0VB = createDeviceBuffer(sizeof(quad0Verts), vk::BufferUsageFlagBits::eVertexBuffer);
+			quad0IB = createDeviceBuffer(sizeof(quad0Indices), vk::BufferUsageFlagBits::eIndexBuffer);
+			gfx::vram::stage(triangle0VB, triangle0Verts);
+			gfx::vram::stage(quad0VB, quad0Verts);
+			gfx::vram::stage(quad0IB, quad0Indices);
 		}
 
 		Window w0, w1;

@@ -36,8 +36,8 @@ struct Info final
 	} queues;
 
 	bool isValid(vk::SurfaceKHR surface) const;
-	std::vector<u32> uniqueQueueIndices(QFlags flags) const;
-	vk::SharingMode sharingMode(QFlags flags) const;
+
+	UniqueQueues uniqueQueues(QFlags flags) const;
 	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
 	f32 lineWidth(f32 desired) const;
 };

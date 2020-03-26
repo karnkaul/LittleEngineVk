@@ -280,40 +280,24 @@ bool Info::isValid(vk::SurfaceKHR surface) const
 	return physicalDevice != vk::PhysicalDevice() ? physicalDevice.getSurfaceSupportKHR(queueFamilyIndices.present, surface) : false;
 }
 
-std::vector<u32> Info::uniqueQueueIndices(QFlags flags) const
+UniqueQueues Info::uniqueQueues(QFlags flags) const
 {
-	std::vector<u32> indices;
-	indices.reserve(3);
+	UniqueQueues ret;
+	ret.indices.reserve(3);
 	if (flags.isSet(QFlag::eGraphics))
 	{
-		indices.push_back(queueFamilyIndices.graphics);
+		ret.indices.push_back(queueFamilyIndices.graphics);
 	}
 	if (flags.isSet(QFlag::ePresent) && queueFamilyIndices.graphics != queueFamilyIndices.present)
 	{
-		indices.push_back(queueFamilyIndices.present);
+		ret.indices.push_back(queueFamilyIndices.present);
 	}
 	if (flags.isSet(QFlag::eTransfer) && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
 	{
-		indices.push_back(queueFamilyIndices.transfer);
+		ret.indices.push_back(queueFamilyIndices.transfer);
 	}
-	return indices;
-}
-
-vk::SharingMode Info::sharingMode(QFlags flags) const
-{
-	if (flags.isSet(QFlag::ePresent) && !flags.isSet(QFlag::eTransfer))
-	{
-		return queueFamilyIndices.graphics == queueFamilyIndices.present ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
-	}
-	if (!flags.isSet(QFlag::ePresent) && flags.isSet(QFlag::eTransfer))
-	{
-		return queueFamilyIndices.transfer != queueFamilyIndices.graphics ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
-	}
-	if (queueFamilyIndices.graphics == queueFamilyIndices.present && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
-	{
-		return vk::SharingMode::eExclusive;
-	}
-	return vk::SharingMode::eConcurrent;
+	ret.mode = ret.indices.size() > 1 ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+	return ret;
 }
 
 u32 Info::findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const

@@ -311,11 +311,10 @@ bool Presenter::createSwapchain()
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto flags = gfx::QFlags({gfx::QFlag::eGraphics, gfx::QFlag::eTransfer});
-		auto const queueIndices = g_info.uniqueQueueIndices(flags);
-		createInfo.pQueueFamilyIndices = queueIndices.data();
-		createInfo.queueFamilyIndexCount = (u32)queueIndices.size();
-		createInfo.imageSharingMode = g_info.sharingMode(flags);
+		auto const queues = g_info.uniqueQueues(gfx::QFlag::eGraphics | gfx::QFlag::eTransfer);
+		createInfo.imageSharingMode = queues.mode;
+		createInfo.pQueueFamilyIndices = queues.indices.data();
+		createInfo.queueFamilyIndexCount = (u32)queues.indices.size();
 		createInfo.preTransform = m_info.capabilities.currentTransform;
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 		createInfo.presentMode = m_info.presentMode;
@@ -333,6 +332,7 @@ bool Presenter::createSwapchain()
 		depthImageInfo.size = vk::Extent3D(m_swapchain.extent, 1);
 		depthImageInfo.tiling = vk::ImageTiling::eOptimal;
 		depthImageInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+		depthImageInfo.queueFlags = QFlag::eGraphics;
 		m_swapchain.depthImage = vram::createImage(depthImageInfo);
 		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.image, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		for (auto const& image : images)

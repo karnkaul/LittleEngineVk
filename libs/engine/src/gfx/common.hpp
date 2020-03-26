@@ -87,6 +87,12 @@ struct PresenterInfo final
 	} options;
 };
 
+struct UniqueQueues final
+{
+	vk::SharingMode mode;
+	std::vector<u32> indices;
+};
+
 struct ScreenRect final
 {
 	f32 left = 0.0f;
@@ -112,6 +118,7 @@ struct VkResource
 {
 	AllocInfo info;
 	VmaAllocation handle;
+	QFlags queueFlags;
 };
 
 struct Buffer final : VkResource
@@ -123,6 +130,7 @@ struct Buffer final : VkResource
 struct Image final : VkResource
 {
 	vk::Image image;
+	vk::DeviceSize allocatedSize = {};
 };
 
 struct ClearValues final

@@ -26,6 +26,7 @@ struct Handle final
 		ret.descriptorSet = descriptorSet;
 		BufferInfo info;
 		info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		info.queueFlags = QFlag::eGraphics;
 		info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
 		info.size = ret.size;
 		info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;

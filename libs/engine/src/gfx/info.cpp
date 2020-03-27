@@ -7,6 +7,7 @@
 #include "window/window_impl.hpp"
 #include "info.hpp"
 #include "vram.hpp"
+#include "draw/resource_descriptors.hpp"
 #include "draw/resources.hpp"
 
 namespace le::gfx
@@ -241,23 +242,25 @@ void init(InitInfo const& initInfo)
 		}
 	}
 	auto device = initDevice(instance, requiredLayers, initInfo);
-	vram::init(instance, device, g_info.physicalDevice);
 
 	g_info.instance = instance;
 	g_info.device = device;
 	g_info.queues.graphics = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
 	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, 0);
+	vram::init();
+	rd::init();
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
 
 void deinit()
 {
+	rd::deinit();
+	vram::deinit();
 	if (g_pResources)
 	{
 		g_pResources->unloadAll();
 	}
-	vram::deinit();
 	if (g_info.device != vk::Device())
 	{
 		g_info.device.destroy();
@@ -271,6 +274,7 @@ void deinit()
 		g_info.instance.destroy();
 	}
 	g_info = Info();
+	LOG_I("[{}] and [{}] deinitialised", s_tInstance, s_tDevice);
 	return;
 }
 } // namespace

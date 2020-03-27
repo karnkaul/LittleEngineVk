@@ -15,7 +15,7 @@ Note: for custom SDK locations, define `VULKAN_SDK` and source `vk-setup-env.sh`
 Make sure to delete CMakeCache.txt before re-configuring!"
 	)
 else()
-	message("== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}")
+	message(STATUS "== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}")
 endif()
 
 # VMA

@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 #include "core/delegate.hpp"
-#include "draw/ubo.hpp"
+#include "draw/resource_descriptors.hpp"
 
 namespace le::gfx
 {
@@ -11,29 +11,23 @@ class Renderer final
 public:
 	struct Info final
 	{
-		struct UBOSetLayouts
-		{
-			vk::DescriptorSetLayout view;
-		};
-
-		UBOSetLayouts uboSetLayouts;
 		Presenter* pPresenter = nullptr;
 		u8 frameCount = 2;
 	};
 
 	struct FrameDriver final
 	{
-		ubo::UBOs ubos;
+		rd::Handles descriptorHandles;
 		vk::CommandBuffer commandBuffer;
 	};
 
-	using Write = std::function<void(ubo::UBOs const&)>;
+	using Write = std::function<void(rd::Handles const&)>;
 	using Draw = std::function<void(FrameDriver const&)>;
 
 private:
 	struct FrameSync final
 	{
-		ubo::UBOs ubos;
+		rd::Handles descriptorHandles;
 		vk::Semaphore renderReady;
 		vk::Semaphore presentReady;
 		vk::Fence drawing;
@@ -46,11 +40,8 @@ private:
 public:
 	static std::string const s_tName;
 
-public:
-	vk::DescriptorPool m_descriptorPool;
-
 private:
-	Info::UBOSetLayouts m_setLayouts;
+	vk::DescriptorPool m_descriptorPool;
 	std::vector<FrameSync> m_frames;
 
 	size_t m_index = 0;

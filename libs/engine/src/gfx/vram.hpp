@@ -5,12 +5,6 @@ namespace le::gfx
 {
 constexpr bool g_VRAM_bLogAllocs = true;
 
-struct TransferOp final
-{
-	vk::Fence transferred;
-	vk::CommandBuffer commandBuffer;
-};
-
 struct ImageInfo final
 {
 	vk::Extent3D size;
@@ -36,12 +30,12 @@ namespace vram
 {
 inline VmaAllocator g_allocator;
 
-void init(vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice);
+void init();
 void deinit();
 
 Buffer createBuffer(BufferInfo const& info);
 bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
-TResult<TransferOp> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
+vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
 vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);

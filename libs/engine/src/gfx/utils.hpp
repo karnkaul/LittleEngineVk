@@ -14,11 +14,8 @@ TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk:
 void wait(vk::Fence optional);
 void waitAll(vk::ArrayProxy<const vk::Fence> validFences);
 
-vk::DescriptorSetLayout createDescriptorSetLayout(u32 binding, u32 descriptorCount, vk::ShaderStageFlags stages);
-void writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet, u32 binding);
-
 vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
-							  vk::ImageViewType typev = vk::ImageViewType::e2D);
+							  vk::ImageViewType type = vk::ImageViewType::e2D);
 
 template <typename vkOwner = vk::Device, typename vkType>
 void vkDestroy(vkType object)

@@ -14,6 +14,7 @@
 #include "gfx/renderer.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
+#include "gfx/draw/resource_descriptors.hpp"
 #include "gfx/draw/pipeline.hpp"
 #include "gfx/draw/resources.hpp"
 #include "gfx/draw/shader.hpp"
@@ -114,7 +115,6 @@ s32 engine::run(s32 argc, char** argv)
 			return gfx::vram::createBuffer(info);
 		};
 
-		vk::DescriptorSetLayout viewSetLayout = gfx::createDescriptorSetLayout(0, 1, vk::ShaderStageFlagBits::eVertex);
 		gfx::Buffer triangle0VB, quad0VB, quad0IB;
 		{
 			std::vector<vk::Fence> transferFences;
@@ -160,17 +160,16 @@ s32 engine::run(s32 argc, char** argv)
 		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createRenderer = [&viewSetLayout, pTutorialShader](gfx::Pipeline* pPipeline, gfx::Presenter** ppPresenter, WindowID id) {
+		auto createRenderer = [pTutorialShader](gfx::Pipeline* pPipeline, gfx::Presenter** ppPresenter, WindowID id) {
 			*ppPresenter = WindowImpl::presenter(id);
 			gfx::Pipeline::Info pipelineInfo;
 			pipelineInfo.pShader = pTutorialShader;
-			pipelineInfo.setLayouts = {viewSetLayout};
+			pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.layouts.at((size_t)gfx::rd::Type::eUniformBuffer)};
 			pipelineInfo.name = "default";
 			pPipeline->create(std::move(pipelineInfo));
 			gfx::Renderer::Info info;
 			info.frameCount = 2;
 			info.pPresenter = *ppPresenter;
-			info.uboSetLayouts.view = viewSetLayout;
 			return std::make_unique<gfx::Renderer>(info);
 		};
 		if (w0.create(info0) && w1.create(info1))
@@ -183,7 +182,7 @@ s32 engine::run(s32 argc, char** argv)
 			{
 				gfx::Pipeline::Info pipelineInfo;
 				pipelineInfo.name = "wireframe";
-				pipelineInfo.setLayouts = {viewSetLayout};
+				pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.layouts.at((size_t)gfx::rd::Type::eUniformBuffer)};
 				pipelineInfo.pShader = pTutorialShader;
 				pipelineInfo.polygonMode = vk::PolygonMode::eLine;
 				pipelineInfo.staticLineWidth = gfx::g_info.lineWidth(3.0f);
@@ -254,7 +253,7 @@ s32 engine::run(s32 argc, char** argv)
 					w0.create(info0);
 					gfx::Pipeline::Info pipelineInfo;
 					pipelineInfo.name = "wireframe";
-					pipelineInfo.setLayouts = {viewSetLayout};
+					pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.layouts.at((size_t)gfx::rd::Type::eUniformBuffer)};
 					pipelineInfo.pShader = pTutorialShader;
 					pipelineInfo.polygonMode = vk::PolygonMode::eLine;
 					pipelineInfo.staticLineWidth = gfx::g_info.lineWidth(3.0f);
@@ -286,7 +285,12 @@ s32 engine::run(s32 argc, char** argv)
 												   u32 vertCount, u32 indexCount) -> bool {
 						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
-						auto write = [&](gfx::ubo::UBOs const& ubos) { ubos.view.write(*pView); };
+						gfx::ubo::Flags flags;
+						flags.isTextured = indexCount > 0 ? 1 : 0;
+						auto write = [&](gfx::rd::Handles const& descriptors) {
+							descriptors.view.write(*pView);
+							descriptors.flags.write(flags);
+						};
 						auto draw = [&](gfx::Renderer::FrameDriver const& driver) {
 							vk::Viewport viewport = pRenderer->transformViewport();
 							vk::Rect2D scissor = pRenderer->transformScissor();
@@ -295,7 +299,7 @@ s32 engine::run(s32 argc, char** argv)
 							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 							vk::DeviceSize offsets[] = {0};
 							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0,
-																	driver.ubos.view.descriptorSet, {});
+																	driver.descriptorHandles.view.descriptorSet, {});
 							driver.commandBuffer.pushConstants(layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4),
 															   glm::value_ptr(transform0.model()));
 							driver.commandBuffer.bindVertexBuffers(gfx::Vertex::binding, 1, &vertexBuffer, offsets);
@@ -332,7 +336,6 @@ s32 engine::run(s32 argc, char** argv)
 			}
 			gfx::g_info.device.waitIdle();
 			gfx::vkDestroy(transferPool);
-			gfx::vkDestroy(viewSetLayout);
 			gfx::vram::release(triangle0VB, quad0VB, quad0IB);
 		}
 	}

@@ -1,4 +1,5 @@
 #include <array>
+#include <deque>
 #include <thread>
 #include <fmt/format.h>
 #include "core/assert.hpp"
@@ -23,21 +24,25 @@ enum class ResourceType
 	eCOUNT_
 };
 
+struct Transfer final
+{
+	vk::CommandBuffer commandBuffer;
+	vk::Fence done;
+};
+
 struct Stage final
 {
 	Buffer buffer;
-	vk::CommandBuffer commandBuffer;
-	vk::Fence transferred;
+	Transfer transfer;
 };
 
-constexpr size_t g_stageCount = 8;
 std::string const s_tName = utils::tName<VRAM>();
 std::array<u64, (size_t)ResourceType::eCOUNT_> g_allocations;
 
-Buffer g_staging;
 vk::CommandPool g_transferPool;
 
-std::vector<Stage> g_stages;
+std::deque<Stage> g_stages;
+std::deque<Transfer> g_transfers;
 
 Buffer createStagingBuffer(vk::DeviceSize size)
 {
@@ -50,89 +55,53 @@ Buffer createStagingBuffer(vk::DeviceSize size)
 	return vram::createBuffer(info);
 }
 
-Stage& getNextStage(vk::DeviceSize size)
+Transfer newTransfer()
 {
-	if (g_transferPool == vk::CommandPool())
-	{
-		vk::CommandPoolCreateInfo poolInfo;
-		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
-		g_transferPool = g_info.device.createCommandPool(poolInfo);
-	}
-	if (g_stages.size() < g_stageCount)
-	{
-		Stage newStage;
-		newStage.buffer = createStagingBuffer(size);
-		vk::CommandBufferAllocateInfo commandBufferInfo;
-		commandBufferInfo.commandBufferCount = 1;
-		commandBufferInfo.commandPool = g_transferPool;
-		newStage.commandBuffer = g_info.device.allocateCommandBuffers(commandBufferInfo).front();
-		newStage.transferred = g_info.device.createFence({});
-		g_stages.push_back(newStage);
-		return g_stages.back();
-	}
-	constexpr s32 maxIters = 1000;
-	for (s32 iter = 0; iter < maxIters; ++iter)
-	{
-		for (auto& stage : g_stages)
-		{
-			auto fenceStatus = g_info.device.getFenceStatus(stage.transferred);
-			if (fenceStatus == vk::Result::eSuccess)
-			{
-				g_info.device.resetFences(stage.transferred);
-				stage.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-				if (stage.buffer.writeSize < size)
-				{
-					vram::release(stage.buffer);
-					stage.buffer = createStagingBuffer(std::max(size, stage.buffer.writeSize * 2));
-				}
-				return stage;
-			}
-		}
-		std::this_thread::yield();
-	}
-	throw std::runtime_error("Failed to find available stage!");
+	Transfer ret;
+	vk::CommandBufferAllocateInfo commandBufferInfo;
+	commandBufferInfo.commandBufferCount = 1;
+	commandBufferInfo.commandPool = g_transferPool;
+	ret.commandBuffer = g_info.device.allocateCommandBuffers(commandBufferInfo).front();
+	ret.done = g_info.device.createFence({});
+	return ret;
 }
 
-TResult<TransferOp> copyBuffer(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
+Stage& getNextStage(vk::DeviceSize size)
 {
-	if (size == 0)
+	for (auto& stage : g_stages)
 	{
-		size = src.writeSize;
+		if (g_info.device.getFenceStatus(stage.transfer.done) == vk::Result::eSuccess)
+		{
+			g_info.device.resetFences(stage.transfer.done);
+			stage.transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+			if (stage.buffer.writeSize < size)
+			{
+				vram::release(stage.buffer);
+				stage.buffer = createStagingBuffer(std::max(size, stage.buffer.writeSize * 2));
+			}
+			return stage;
+		}
 	}
-	bool bQueueFlags = src.queueFlags.isSet(QFlag::eTransfer) && dst.queueFlags.isSet(QFlag::eTransfer);
-	bool bSizes = dst.writeSize >= size;
-	ASSERT(bQueueFlags, "Invalid queue flags!");
-	ASSERT(bSizes, "Invalid buffer sizes!");
-	if (!bQueueFlags)
+	Stage newStage;
+	newStage.buffer = createStagingBuffer(size);
+	newStage.transfer = newTransfer();
+	g_stages.push_back(newStage);
+	return g_stages.back();
+}
+
+Transfer& getNextTransfer()
+{
+	for (auto& transfer : g_transfers)
 	{
-		LOG_E("[{}] Source/destination buffers missing QFlag::eTransfer!", s_tName);
-		return {};
+		if (g_info.device.getFenceStatus(transfer.done) == vk::Result::eSuccess)
+		{
+			g_info.device.resetFences(transfer.done);
+			transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+			return transfer;
+		}
 	}
-	if (!bSizes)
-	{
-		LOG_E("[{}] Source buffer is larger than destination buffer!", s_tName);
-		return {};
-	}
-	TransferOp ret;
-	vk::CommandBufferAllocateInfo allocInfo;
-	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandPool = g_transferPool;
-	allocInfo.commandBufferCount = 1;
-	ret.commandBuffer = g_info.device.allocateCommandBuffers(allocInfo).front();
-	vk::CommandBufferBeginInfo beginInfo;
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	ret.commandBuffer.begin(beginInfo);
-	vk::BufferCopy copyRegion;
-	copyRegion.size = size;
-	ret.commandBuffer.copyBuffer(src.buffer, dst.buffer, copyRegion);
-	ret.commandBuffer.end();
-	vk::SubmitInfo submitInfo;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &ret.commandBuffer;
-	ret.transferred = g_info.device.createFence({});
-	g_info.queues.transfer.submit(submitInfo, ret.transferred);
-	return ret;
+	g_transfers.push_back(newTransfer());
+	return g_transfers.back();
 }
 
 [[maybe_unused]] std::string logCount()
@@ -143,39 +112,44 @@ TResult<TransferOp> copyBuffer(Buffer const& src, Buffer const& dst, vk::DeviceS
 }
 } // namespace
 
-void vram::init(vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice)
+void vram::init()
 {
 	if (g_allocator == VmaAllocator())
 	{
 		VmaAllocatorCreateInfo allocatorInfo = {};
-		allocatorInfo.instance = instance;
-		allocatorInfo.device = device;
-		allocatorInfo.physicalDevice = physicalDevice;
+		allocatorInfo.instance = g_info.instance;
+		allocatorInfo.device = g_info.device;
+		allocatorInfo.physicalDevice = g_info.physicalDevice;
 		vmaCreateAllocator(&allocatorInfo, &g_allocator);
-		for (auto& val : g_allocations)
-		{
-			val = 0;
-		}
-		LOG_I("[{}] initialised", s_tName);
+		std::memset(g_allocations.data(), 0, g_allocations.size() * sizeof(u32));
 	}
+	if (g_transferPool == vk::CommandPool())
+	{
+		vk::CommandPoolCreateInfo poolInfo;
+		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+		poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
+		g_transferPool = g_info.device.createCommandPool(poolInfo);
+	}
+	LOG_I("[{}] initialised", s_tName);
 	return;
 }
 
 void vram::deinit()
 {
 	g_info.device.waitIdle();
-	if (g_staging.buffer != vk::Buffer())
-	{
-		release(g_staging);
-		g_staging = Buffer();
-	}
 	for (auto& stage : g_stages)
 	{
 		release(stage.buffer);
-		vkDestroy(stage.transferred);
+		vkDestroy(stage.transfer.done);
+	}
+	for (auto& transfer : g_transfers)
+	{
+		vkDestroy(transfer.done);
 	}
 	g_stages.clear();
+	g_transfers.clear();
 	vkDestroy(g_transferPool);
+	g_transferPool = vk::CommandPool();
 	bool bErr = false;
 	for (auto val : g_allocations)
 	{
@@ -240,9 +214,40 @@ bool vram::write(Buffer buffer, void const* pData, vk::DeviceSize size)
 	return false;
 }
 
-TResult<TransferOp> vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
+vk::Fence vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
 {
-	return copyBuffer(src, dst, size);
+	if (size == 0)
+	{
+		size = src.writeSize;
+	}
+	bool bQueueFlags = src.queueFlags.isSet(QFlag::eTransfer) && dst.queueFlags.isSet(QFlag::eTransfer);
+	bool bSizes = dst.writeSize >= size;
+	ASSERT(bQueueFlags, "Invalid queue flags!");
+	ASSERT(bSizes, "Invalid buffer sizes!");
+	if (!bQueueFlags)
+	{
+		LOG_E("[{}] Source/destination buffers missing QFlag::eTransfer!", s_tName);
+		return {};
+	}
+	if (!bSizes)
+	{
+		LOG_E("[{}] Source buffer is larger than destination buffer!", s_tName);
+		return {};
+	}
+	Transfer& ret = getNextTransfer();
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	ret.commandBuffer.begin(beginInfo);
+	vk::BufferCopy copyRegion;
+	copyRegion.size = size;
+	ret.commandBuffer.copyBuffer(src.buffer, dst.buffer, copyRegion);
+	ret.commandBuffer.end();
+	vk::SubmitInfo submitInfo;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &ret.commandBuffer;
+	ret.done = g_info.device.createFence({});
+	g_info.queues.transfer.submit(submitInfo, ret.done);
+	return ret.done;
 }
 
 vk::Fence vram::stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size)
@@ -256,16 +261,16 @@ vk::Fence vram::stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceS
 	{
 		vk::CommandBufferBeginInfo beginInfo;
 		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		stage.commandBuffer.begin(beginInfo);
+		stage.transfer.commandBuffer.begin(beginInfo);
 		vk::BufferCopy copyRegion;
 		copyRegion.size = size;
-		stage.commandBuffer.copyBuffer(stage.buffer.buffer, deviceBuffer.buffer, copyRegion);
-		stage.commandBuffer.end();
+		stage.transfer.commandBuffer.copyBuffer(stage.buffer.buffer, deviceBuffer.buffer, copyRegion);
+		stage.transfer.commandBuffer.end();
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &stage.commandBuffer;
-		g_info.queues.transfer.submit(submitInfo, stage.transferred);
-		return stage.transferred;
+		submitInfo.pCommandBuffers = &stage.transfer.commandBuffer;
+		g_info.queues.transfer.submit(submitInfo, stage.transfer.done);
+		return stage.transfer.done;
 	}
 	LOG_E("[{}] Error staging data!", s_tName);
 	return {};

@@ -1,16 +1,18 @@
 #include <glm/gtc/matrix_transform.hpp>
+#include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "presenter.hpp"
 #include "info.hpp"
 #include "renderer.hpp"
 #include "utils.hpp"
+#include "draw/resource_descriptors.hpp"
 
 namespace le::gfx
 {
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
-Renderer::Renderer(Info const& info) : m_setLayouts(info.uboSetLayouts), m_pPresenter(info.pPresenter), m_window(info.pPresenter->m_window)
+Renderer::Renderer(Info const& info) : m_pPresenter(info.pPresenter), m_window(info.pPresenter->m_window)
 {
 	create(info.frameCount);
 }
@@ -30,31 +32,17 @@ void Renderer::create(u8 frameCount)
 			m_callbackTokens = {m_pPresenter->registerDestroyed([this]() { destroy(); }),
 								m_pPresenter->registerSwapchainRecreated([this]() { reset(); })};
 		}
-		// Descriptor Pool
-		vk::DescriptorPoolSize descPoolSize;
-		descPoolSize.type = vk::DescriptorType::eUniformBuffer;
-		descPoolSize.descriptorCount = frameCount;
-		vk::DescriptorPoolCreateInfo createInfo;
-		createInfo.poolSizeCount = 1;
-		createInfo.pPoolSizes = &descPoolSize;
-		createInfo.maxSets = frameCount;
-		m_descriptorPool = g_info.device.createDescriptorPool(createInfo);
-		// Descriptor Sets
-		vk::DescriptorSetAllocateInfo allocInfo;
-		allocInfo.descriptorPool = m_descriptorPool;
-		allocInfo.descriptorSetCount = frameCount;
-		std::vector const layouts((size_t)frameCount, m_setLayouts.view);
-		allocInfo.pSetLayouts = layouts.data();
-		auto sets = g_info.device.allocateDescriptorSets(allocInfo);
+		// Descriptors
+		auto descriptorSetup = rd::g_setLayouts.allocateSets(frameCount);
+		ASSERT(descriptorSetup.descriptorHandles.size() == (size_t)frameCount, "Invalid setup!");
+		m_descriptorPool = descriptorSetup.pool;
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			Renderer::FrameSync frame;
 			frame.renderReady = g_info.device.createSemaphore({});
 			frame.presentReady = g_info.device.createSemaphore({});
 			frame.drawing = g_info.device.createFence({});
-			// UBOs
-			// View
-			frame.ubos.view = ubo::Handle<ubo::View>::create(m_setLayouts.view, sets.at((size_t)idx));
+			frame.descriptorHandles = descriptorSetup.descriptorHandles.at((size_t)idx);
 			// Commands
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
 			commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
@@ -79,7 +67,7 @@ void Renderer::destroy()
 		for (auto& frame : m_frames)
 		{
 			vkDestroy(frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady, frame.presentReady);
-			vram::release(frame.ubos.view.buffer);
+			frame.descriptorHandles.release();
 		}
 		vkDestroy(m_descriptorPool);
 		m_descriptorPool = vk::DescriptorPool();
@@ -114,12 +102,17 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	{
 		gfx::wait(frame.drawing);
 	}
+	if (write)
+	{
+		write(frame.descriptorHandles);
+	}
 	// Acquire
 	auto [acquire, bResult] = m_pPresenter->acquireNextImage(frame.renderReady, frame.drawing);
 	if (!bResult)
 	{
 		return false;
 	}
+	// Framebuffer
 	vkDestroy(frame.framebuffer);
 	vk::FramebufferCreateInfo createInfo;
 	createInfo.attachmentCount = (u32)acquire.attachments.size();
@@ -129,6 +122,7 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	createInfo.height = acquire.swapchainExtent.height;
 	createInfo.layers = 1;
 	frame.framebuffer = g_info.device.createFramebuffer(createInfo);
+	// RenderPass
 	std::array const clearColour = {clear.colour.r.toF32(), clear.colour.g.toF32(), clear.colour.b.toF32(), clear.colour.a.toF32()};
 	vk::ClearColorValue const colour = clearColour;
 	vk::ClearDepthStencilValue const depth = {clear.depthStencil.x, (u32)clear.depthStencil.y};
@@ -139,16 +133,12 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	renderPassInfo.renderArea.extent = acquire.swapchainExtent;
 	renderPassInfo.clearValueCount = (u32)clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
-	if (write)
-	{
-		write(frame.ubos);
-	}
 	// Begin
 	auto const& commandBuffer = frame.commandBuffer;
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{frame.ubos, commandBuffer};
+	FrameDriver driver{frame.descriptorHandles, commandBuffer};
 	draw(driver);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();

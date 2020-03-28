@@ -7,6 +7,9 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 # -fPIC for fmt
 set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
+if(MSVC_RUNTIME AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+	target_compile_definitions(fmt PUBLIC FMT_EXCEPTIONS=0)
+endif()
 # glm defines
 target_compile_definitions(glm INTERFACE GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SILENT_WARNINGS)
 add_target_compile_definitions(${PROJECT_NAME} LEVK PUBLIC)
@@ -19,12 +22,12 @@ target_include_directories(${PROJECT_NAME}
 	PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
+set(LINUX_LIBS pthread stdc++fs)
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		fmt
 		glm
 	PRIVATE
 		physfs-static
-		$<$<STREQUAL:${PLATFORM},Linux>:pthread>
-		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
+		$<$<STREQUAL:${PLATFORM},Linux>:${LINUX_LIBS}>
 )

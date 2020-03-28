@@ -79,6 +79,7 @@ public:
 public:
 	static std::string const s_tName;
 	static std::string_view s_extension;
+	static std::string_view s_compiler;
 
 private:
 	Status m_status;

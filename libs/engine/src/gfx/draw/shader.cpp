@@ -38,7 +38,7 @@ Shader::Shader(Info info) : m_id(std::move(info.id))
 					LOG_E("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
 				}
 			}
-			else if (ext == ".spv")
+			else if (ext == ".spv" || ext == ShaderCompiler::s_extension)
 			{
 				auto [shaderShaderData, bResult] = info.pReader->getBytes(id);
 				ASSERT(bResult, "Shader code missing!");
@@ -253,7 +253,7 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 	auto const command = fmt::format("glslc {} -o {}", src.string(), dst.string());
 	if (std::system(command.data()) != 0)
 	{
-		LOG_E("[{}] Shader compilation failed: [{}]", src.generic_string());
+		LOG_E("[{}] Shader compilation failed: [{}]", s_tName, src.generic_string());
 		return false;
 	}
 	LOG_I("[{}] [{}] => [{}] compiled successfully", s_tName, src.generic_string(), dst.generic_string());

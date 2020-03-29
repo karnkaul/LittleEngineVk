@@ -1,7 +1,6 @@
 #pragma once
 #include <functional>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/delegate.hpp"
 #include "core/flags.hpp"

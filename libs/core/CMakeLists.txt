@@ -22,12 +22,12 @@ target_include_directories(${PROJECT_NAME}
 	PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-set(LINUX_LIBS pthread stdc++fs)
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		fmt
 		glm
 	PRIVATE
 		physfs-static
-		$<$<STREQUAL:${PLATFORM},Linux>:${LINUX_LIBS}>
+		$<$<STREQUAL:${PLATFORM},Linux>:pthread>
+		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
 )

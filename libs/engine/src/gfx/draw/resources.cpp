@@ -33,6 +33,7 @@ Resources::~Resources()
 void Resources::unloadAll()
 {
 	m_resources.unloadAll();
+	return;
 }
 
 #if defined(LEVK_RESOURCES_UPDATE)

@@ -12,7 +12,6 @@ struct Handle final
 	static constexpr vk::DeviceSize size = sizeof(T);
 
 	Buffer buffer;
-	vk::DescriptorSetLayout setLayout;
 	vk::DescriptorSet descriptorSet;
 	vk::DeviceSize offset;
 
@@ -22,10 +21,9 @@ struct Handle final
 		return;
 	}
 
-	static Handle<T> create(vk::DescriptorSetLayout setLayout, vk::DescriptorSet descriptorSet)
+	static Handle<T> create(vk::DescriptorSet descriptorSet)
 	{
 		Handle<T> ret;
-		ret.setLayout = setLayout;
 		ret.descriptorSet = descriptorSet;
 		BufferInfo info;
 		info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
@@ -54,6 +52,8 @@ struct View final
 {
 	static constexpr u32 binding = 0;
 
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
+
 	glm::mat4 mat_vp = glm::mat4(1.0f);
 	glm::mat4 mat_v = glm::mat4(1.0f);
 };
@@ -61,6 +61,8 @@ struct View final
 struct Flags final
 {
 	static constexpr u32 binding = 1;
+
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
 	s32 isTextured = 0;
 };

@@ -9,19 +9,22 @@ namespace
 bool g_bSetLayoutsInit = false;
 }
 
+vk::DescriptorSetLayoutBinding const ubo::View::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(binding, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+
+vk::DescriptorSetLayoutBinding const ubo::Flags::s_setLayoutBinding = vk::DescriptorSetLayoutBinding(
+	binding, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+void rd::Handles::release()
+{
+	vram::release(view.buffer, flags.buffer);
+	view = {};
+	flags = {};
+}
+
 rd::SetLayouts rd::SetLayouts::create()
 {
-	vk::DescriptorSetLayoutBinding viewInfo;
-	viewInfo.binding = ubo::View::binding;
-	viewInfo.descriptorCount = 1;
-	viewInfo.stageFlags = vk::ShaderStageFlagBits::eVertex;
-	viewInfo.descriptorType = vk::DescriptorType::eUniformBuffer;
-	vk::DescriptorSetLayoutBinding flagsInfo;
-	flagsInfo.binding = ubo::Flags::binding;
-	flagsInfo.descriptorCount = 1;
-	flagsInfo.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
-	flagsInfo.descriptorType = vk::DescriptorType::eUniformBuffer;
-	std::vector<vk::DescriptorSetLayoutBinding> const bindings = {viewInfo, flagsInfo};
+	std::array const bindings = {ubo::View::s_setLayoutBinding, ubo::Flags::s_setLayoutBinding};
 	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
 	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
 	setLayoutCreateInfo.pBindings = bindings.data();
@@ -34,6 +37,7 @@ rd::SetLayouts rd::SetLayouts::create()
 rd::Setup rd::SetLayouts::allocateSets(u32 descriptorSetCount)
 {
 	Setup ret;
+	// Pool of total descriptors
 	vk::DescriptorPoolSize descPoolSize;
 	descPoolSize.type = vk::DescriptorType::eUniformBuffer;
 	descPoolSize.descriptorCount = descriptorSetCount * descriptorCount;
@@ -42,28 +46,23 @@ rd::Setup rd::SetLayouts::allocateSets(u32 descriptorSetCount)
 	createInfo.pPoolSizes = &descPoolSize;
 	createInfo.maxSets = descriptorSetCount;
 	ret.pool = g_info.device.createDescriptorPool(createInfo);
+	// Allocate sets
 	vk::DescriptorSetAllocateInfo allocInfo;
 	allocInfo.descriptorPool = ret.pool;
 	allocInfo.descriptorSetCount = descriptorSetCount;
-	std::vector const uboLayouts((size_t)descriptorSetCount, layouts.at((size_t)Type::eUniformBuffer));
+	std::vector<vk::DescriptorSetLayout> const uboLayouts((size_t)descriptorSetCount, layouts.at((size_t)Type::eUniformBuffer));
 	allocInfo.pSetLayouts = uboLayouts.data();
 	auto const sets = g_info.device.allocateDescriptorSets(allocInfo);
+	// Write handles
 	ret.descriptorHandles.reserve((size_t)descriptorSetCount);
 	for (u32 idx = 0; idx < descriptorSetCount; ++idx)
 	{
 		Handles handles;
-		handles.view = ubo::Handle<ubo::View>::create(layouts.at((size_t)Type::eUniformBuffer), sets.at(idx));
-		handles.flags = ubo::Handle<ubo::Flags>::create(layouts.at((size_t)Type::eUniformBuffer), sets.at(idx));
+		handles.view = ubo::Handle<ubo::View>::create(sets.at(idx));
+		handles.flags = ubo::Handle<ubo::Flags>::create(sets.at(idx));
 		ret.descriptorHandles.push_back(handles);
 	}
 	return ret;
-}
-
-void rd::Handles::release()
-{
-	vram::release(view.buffer, flags.buffer);
-	view = {};
-	flags = {};
 }
 
 void rd::init()

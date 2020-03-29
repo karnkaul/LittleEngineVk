@@ -3,15 +3,9 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <vulkan/vulkan.hpp>
 #include "core/io.hpp"
+#include "gfx/vulkan.hpp"
 #include "resource.hpp"
-
-// #if defined(LEVK_DEBUG)
-// #if !defined(LEVK_RESOURCES_UPDATE)
-// #define LEVK_RESOURCES_UPDATE
-// #endif
-// #endif
 
 namespace le::gfx
 {

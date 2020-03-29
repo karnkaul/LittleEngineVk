@@ -1,7 +1,6 @@
 #pragma once
 #include <utility>
 #include <set>
-#include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/std_types.hpp"
 #include "common.hpp"

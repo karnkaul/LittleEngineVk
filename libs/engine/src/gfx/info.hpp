@@ -4,7 +4,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
 #include "core/flags.hpp"
 #include "common.hpp"

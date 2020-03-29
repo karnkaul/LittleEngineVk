@@ -9,7 +9,7 @@
 
 namespace le
 {
-using Lock = std::lock_guard<std::mutex>;
+using Lock = std::scoped_lock<std::mutex>;
 
 JobManager::Job::Job() = default;
 

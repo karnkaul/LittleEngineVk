@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <limits>
 #include <utility>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 

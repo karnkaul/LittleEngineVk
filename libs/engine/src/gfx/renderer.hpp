@@ -1,6 +1,5 @@
 #pragma once
 #include <glm/glm.hpp>
-#include <vulkan/vulkan.hpp>
 #include "core/delegate.hpp"
 #include "draw/resource_descriptors.hpp"
 

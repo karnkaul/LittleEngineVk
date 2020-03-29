@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
-#include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
+#include "gfx/vulkan.hpp"
 
 namespace le::gfx
 {

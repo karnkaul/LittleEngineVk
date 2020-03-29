@@ -20,7 +20,7 @@ namespace
 class FileLogger final
 {
 public:
-	using Lock = std::lock_guard<std::mutex>;
+	using Lock = std::scoped_lock<std::mutex>;
 
 public:
 	static constexpr size_t s_reserveCount = 1024 * 1024;
@@ -154,7 +154,7 @@ void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused
 	lock.unlock();
 	if constexpr (g_log_bSourceLocation)
 	{
-		constexpr std::string_view parentStr = "../";
+		static std::string_view const parentStr = "../";
 		auto const fileName = std::filesystem::path(file).generic_string();
 		std::string_view fileStr(fileName);
 		for (auto search = fileStr.find(parentStr); search == 0; search = fileStr.find(parentStr))

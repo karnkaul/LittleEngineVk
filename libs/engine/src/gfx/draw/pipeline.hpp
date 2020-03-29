@@ -1,8 +1,8 @@
 #pragma once
 #include <string>
-#include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
+#include "gfx/vulkan.hpp"
 
 namespace le::gfx
 {

@@ -16,7 +16,7 @@ public:
 
 private:
 	using WToken = std::weak_ptr<int32_t>;
-	using Lock = std::lock_guard<std::mutex>;
+	using Lock = std::scoped_lock<std::mutex>;
 
 private:
 	struct Wrapper

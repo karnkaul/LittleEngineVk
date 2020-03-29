@@ -29,6 +29,5 @@ out gl_PerVertex
 void main()
 {
 	gl_Position = view.mat_pv * pushConsts.mat_m * vec4(inPosition, 0.0, 1.0);
-	fragColour = flags.isTextured == 1 ? inColour : vec3(1.0);
-	// fragColour = vec3(1.0);
+	fragColour = inColour;
 }

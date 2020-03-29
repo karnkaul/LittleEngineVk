@@ -16,7 +16,7 @@ public:
 	using CResult = TResult<Value const*>;
 
 private:
-	using Lock = std::lock_guard<std::mutex>;
+	using Lock = std::scoped_lock<std::mutex>;
 
 public:
 	MapContainer m_map;

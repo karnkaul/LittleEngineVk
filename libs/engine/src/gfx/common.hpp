@@ -5,12 +5,12 @@
 #include <set>
 #include <unordered_map>
 #include <vk_mem_alloc.h>
-#include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/colour.hpp"
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
+#include "vulkan.hpp"
 
 namespace stdfs = std::filesystem;
 

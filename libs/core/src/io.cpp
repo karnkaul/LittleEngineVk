@@ -283,18 +283,34 @@ FileMonitor::Status FileMonitor::update()
 		{
 			bool bDirty = m_lastWriteTime != stdfs::file_time_type();
 			m_lastWriteTime = lastWriteTime;
-			if (m_mode == Mode::eContents)
+			if (m_mode == Mode::eTextContents)
 			{
-				auto [contents, bResult] = s_reader.getString(m_path);
+				auto [text, bResult] = s_reader.getString(m_path);
 				if (bResult)
 				{
-					if (contents == m_contents)
+					if (text == m_text)
 					{
 						bDirty = false;
 					}
 					else
 					{
-						m_contents = std::move(contents);
+						m_text = std::move(text);
+						m_lastModifiedTime = m_lastWriteTime;
+					}
+				}
+			}
+			else if (m_mode == Mode::eBinaryContents)
+			{
+				auto [bytes, bResult] = s_reader.getBytes(m_path);
+				if (bResult)
+				{
+					if (bytes == m_bytes)
+					{
+						bDirty = false;
+					}
+					else
+					{
+						m_bytes = std::move(bytes);
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}
@@ -333,13 +349,23 @@ stdfs::path const& FileMonitor::path() const
 	return m_path;
 }
 
-std::string_view FileMonitor::contents() const
+std::string_view FileMonitor::text() const
 {
-	ASSERT(m_mode == Mode::eContents, "Monitor not in Contents mode!");
-	if (m_mode != Mode::eContents)
+	ASSERT(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
+	if (m_mode != Mode::eTextContents)
 	{
 		LOG_E("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
 	}
-	return m_contents;
+	return m_text;
+}
+
+bytearray const& FileMonitor::bytes() const
+{
+	ASSERT(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
+	if (m_mode != Mode::eBinaryContents)
+	{
+		LOG_E("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
+	}
+	return m_bytes;
 }
 } // namespace le

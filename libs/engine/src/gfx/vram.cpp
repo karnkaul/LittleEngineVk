@@ -40,6 +40,7 @@ std::string const s_tName = utils::tName<VRAM>();
 std::array<u64, (size_t)ResourceType::eCOUNT_> g_allocations;
 
 vk::CommandPool g_transferPool;
+vk::CommandPool g_graphicsPool;
 
 std::deque<Stage> g_stages;
 std::deque<Transfer> g_transfers;
@@ -108,12 +109,14 @@ Transfer& getNextTransfer()
 {
 	auto [bufferSize, bufferUnit] = utils::friendlySize(g_allocations.at((size_t)ResourceType::eBuffer));
 	auto const [imageSize, imageUnit] = utils::friendlySize(g_allocations.at((size_t)ResourceType::eImage));
-	return fmt::format("Buffers: [{}{}]; Images: [{}{}]", bufferSize, bufferUnit, imageSize, imageUnit);
+	return fmt::format("Buffers: [{:.2f}{}]; Images: [{:.2f}{}]", bufferSize, bufferUnit, imageSize, imageUnit);
 }
 } // namespace
 
 void vram::init()
 {
+	vk::CommandPoolCreateInfo poolInfo;
+	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	if (g_allocator == VmaAllocator())
 	{
 		VmaAllocatorCreateInfo allocatorInfo = {};
@@ -125,10 +128,20 @@ void vram::init()
 	}
 	if (g_transferPool == vk::CommandPool())
 	{
-		vk::CommandPoolCreateInfo poolInfo;
-		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 		poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
 		g_transferPool = g_info.device.createCommandPool(poolInfo);
+	}
+	if (g_graphicsPool == vk::CommandPool())
+	{
+		if (g_info.queueFamilyIndices.transfer == g_info.queueFamilyIndices.graphics)
+		{
+			g_graphicsPool = g_transferPool;
+		}
+		else
+		{
+			poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
+			g_graphicsPool = g_info.device.createCommandPool(poolInfo);
+		}
 	}
 	LOG_I("[{}] initialised", s_tName);
 	return;
@@ -148,8 +161,8 @@ void vram::deinit()
 	}
 	g_stages.clear();
 	g_transfers.clear();
-	vkDestroy(g_transferPool);
-	g_transferPool = vk::CommandPool();
+	vkDestroy(g_transferPool, g_graphicsPool);
+	g_transferPool = g_graphicsPool = vk::CommandPool();
 	bool bErr = false;
 	for (auto val : g_allocations)
 	{
@@ -193,7 +206,7 @@ Buffer vram::createBuffer(BufferInfo const& info)
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.writeSize);
-		LOG_I("== [{}] Buffer allocated: [{}{}] | {}", s_tName, size, unit, logCount());
+		LOG_I("== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 	}
 	return ret;
 }
@@ -207,7 +220,7 @@ bool vram::write(Buffer buffer, void const* pData, vk::DeviceSize size)
 			size = buffer.writeSize;
 		}
 		auto pMem = g_info.device.mapMemory(buffer.info.memory, buffer.info.offset, size);
-		std::memcpy(pMem, pData, (size_t)buffer.writeSize);
+		std::memcpy(pMem, pData, size);
 		g_info.device.unmapMemory(buffer.info.memory);
 		return true;
 	}
@@ -276,31 +289,77 @@ vk::Fence vram::stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceS
 	return {};
 }
 
+vk::Fence vram::copy(ArrayView<u8> pixels, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts)
+{
+	auto& stage = getNextStage(pixels.extent);
+	write(stage.buffer, pixels.pData, pixels.extent);
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	stage.transfer.commandBuffer.begin(beginInfo);
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = layouts.first;
+	barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = dst.image;
+	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+	stage.transfer.commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {},
+												 barrier);
+	vk::BufferImageCopy copyRegion;
+	copyRegion.bufferOffset = 0;
+	copyRegion.bufferRowLength = 0;
+	copyRegion.bufferImageHeight = 0;
+	copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+	copyRegion.imageSubresource.mipLevel = 0;
+	copyRegion.imageSubresource.baseArrayLayer = 0;
+	copyRegion.imageSubresource.layerCount = 1;
+	copyRegion.imageOffset = vk::Offset3D(0, 0, 0);
+	copyRegion.imageExtent = dst.extent;
+	stage.transfer.commandBuffer.copyBufferToImage(stage.buffer.buffer, dst.image, vk::ImageLayout::eTransferDstOptimal, copyRegion);
+	barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+	barrier.newLayout = layouts.second;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = dst.image;
+	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+	barrier.dstAccessMask = {};
+	stage.transfer.commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe, {}, {}, {},
+												 barrier);
+	stage.transfer.commandBuffer.end();
+	vk::SubmitInfo submitInfo;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &stage.transfer.commandBuffer;
+	g_info.queues.transfer.submit(submitInfo, stage.transfer.done);
+	return stage.transfer.done;
+}
+
 Image vram::createImage(ImageInfo const& info)
 {
 	Image ret;
-	vk::ImageCreateInfo imageInfo;
-	imageInfo.imageType = info.type;
-	imageInfo.extent = info.size;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = info.format;
-	imageInfo.tiling = info.tiling;
-	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.usage = info.usage;
-	imageInfo.samples = vk::SampleCountFlagBits::e1;
+	vk::ImageCreateInfo imageInfo = info.createInfo;
 	auto const queues = g_info.uniqueQueues(info.queueFlags);
 	imageInfo.sharingMode = queues.mode;
 	imageInfo.queueFamilyIndexCount = (u32)queues.indices.size();
 	imageInfo.pQueueFamilyIndices = queues.indices.data();
-	VmaAllocationCreateInfo createInfo = {};
-	createInfo.usage = info.vmaUsage;
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.usage = info.vmaUsage;
 	auto const vkImageInfo = static_cast<VkImageCreateInfo>(imageInfo);
 	VkImage vkImage;
-	if (vmaCreateImage(g_allocator, &vkImageInfo, &createInfo, &vkImage, &ret.handle, nullptr) != VK_SUCCESS)
+	if (vmaCreateImage(g_allocator, &vkImageInfo, &allocInfo, &vkImage, &ret.handle, nullptr) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Allocation error");
 	}
+	ret.extent = info.createInfo.extent;
 	ret.image = vkImage;
 	auto const requirements = g_info.device.getImageMemoryRequirements(ret.image);
 	ret.queueFlags = info.queueFlags;
@@ -312,21 +371,24 @@ Image vram::createImage(ImageInfo const& info)
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.allocatedSize);
-		LOG_I("== [{}] Image allocated: [{}{}] | {}", s_tName, size, unit, logCount());
+		LOG_I("== [{}] Image allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 	}
 	return ret;
 }
 
 void vram::release(Buffer buffer)
 {
-	vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
-	g_allocations.at((size_t)ResourceType::eBuffer) -= buffer.writeSize;
-	if constexpr (g_VRAM_bLogAllocs)
+	if (buffer.buffer != vk::Buffer())
 	{
-		if (buffer.info.actualSize)
+		vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
+		g_allocations.at((size_t)ResourceType::eBuffer) -= buffer.writeSize;
+		if constexpr (g_VRAM_bLogAllocs)
 		{
-			auto [size, unit] = utils::friendlySize(buffer.writeSize);
-			LOG_I("-- [{}] Buffer released: [{}{}] | {}", s_tName, size, unit, logCount());
+			if (buffer.info.actualSize)
+			{
+				auto [size, unit] = utils::friendlySize(buffer.writeSize);
+				LOG_I("-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+			}
 		}
 	}
 	return;
@@ -334,14 +396,17 @@ void vram::release(Buffer buffer)
 
 void vram::release(Image image)
 {
-	vmaDestroyImage(g_allocator, image.image, image.handle);
-	g_allocations.at((size_t)ResourceType::eImage) -= image.allocatedSize;
-	if constexpr (g_VRAM_bLogAllocs)
+	if (image.image != vk::Image())
 	{
-		if (image.info.actualSize > 0)
+		vmaDestroyImage(g_allocator, image.image, image.handle);
+		g_allocations.at((size_t)ResourceType::eImage) -= image.allocatedSize;
+		if constexpr (g_VRAM_bLogAllocs)
 		{
-			auto [size, unit] = utils::friendlySize(image.allocatedSize);
-			LOG_I("-- [{}] Image released: [{}{}] | {}", s_tName, size, unit, logCount());
+			if (image.info.actualSize > 0)
+			{
+				auto [size, unit] = utils::friendlySize(image.allocatedSize);
+				LOG_I("-- [{}] Image released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+			}
 		}
 	}
 	return;

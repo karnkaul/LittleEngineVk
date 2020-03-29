@@ -28,6 +28,7 @@ public:
 	template <typename T, typename = std::enable_if_t<std::is_base_of_v<Resource, T>>>
 	T* create(std::string const& id, typename T::Info info)
 	{
+		ASSERT(!m_resources.get(id).bResult, "ID already loaded!");
 		auto uT = std::make_unique<T>(std::move(info));
 		if (uT)
 		{
@@ -57,5 +58,10 @@ public:
 	void unloadAll();
 
 	void update();
+
+private:
+	void init();
+
+	friend class Service;
 };
 } // namespace le::gfx

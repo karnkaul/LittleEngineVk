@@ -131,6 +131,7 @@ struct Image final : VkResource
 {
 	vk::Image image;
 	vk::DeviceSize allocatedSize = {};
+	vk::Extent3D extent = {};
 };
 
 struct ClearValues final

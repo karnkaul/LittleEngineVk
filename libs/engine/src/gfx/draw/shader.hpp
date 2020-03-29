@@ -14,13 +14,12 @@ class Shader final : public Resource
 public:
 	struct Info final
 	{
-		std::string id;
 		std::array<bytearray, (size_t)ShaderType::eCOUNT_> codeMap;
 		std::array<stdfs::path, (size_t)ShaderType::eCOUNT_> codeIDMap;
 		class IOReader const* pReader = nullptr;
 	};
 
-#if defined(LEVK_RESOURCES_UPDATE)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 private:
 	struct ShaderFile : File
 	{
@@ -34,24 +33,19 @@ public:
 	static std::string const s_tName;
 	static std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const s_typeToFlagBit;
 
-public:
-	std::string m_id;
-
 private:
 	std::array<vk::ShaderModule, size_t(ShaderType::eCOUNT_)> m_shaders;
 	FileReader const* m_pReader = nullptr;
 
 public:
 	Shader(Info info);
-	~Shader();
+	~Shader() override;
 
 public:
 	vk::ShaderModule module(ShaderType type) const;
 	std::map<ShaderType, vk::ShaderModule> modules() const;
 
-#if defined(LEVK_RESOURCES_UPDATE)
-	FileMonitor::Status update() override;
-#endif
+	Status update() override;
 
 private:
 	bool glslToSpirV(stdfs::path const& id, bytearray& out_bytes);

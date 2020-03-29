@@ -106,7 +106,8 @@ public:
 	enum class Mode : u8
 	{
 		eTimestamp = 0,
-		eContents
+		eTextContents,
+		eBinaryContents
 	};
 
 	enum class Status : u8
@@ -124,7 +125,8 @@ protected:
 	stdfs::file_time_type m_lastWriteTime = {};
 	stdfs::file_time_type m_lastModifiedTime = {};
 	stdfs::path m_path;
-	std::string m_contents;
+	std::string m_text;
+	bytearray m_bytes;
 	Mode m_mode;
 	Status m_status = Status::eNotFound;
 
@@ -143,6 +145,7 @@ public:
 	stdfs::file_time_type lastModifiedTime() const;
 
 	stdfs::path const& path() const;
-	std::string_view contents() const;
+	std::string_view text() const;
+	bytearray const& bytes() const;
 };
 } // namespace le

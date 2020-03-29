@@ -56,6 +56,7 @@ if(LEVK_USE_GLFW)
 	add_subdirectory(external/glfw)
 endif()
 add_subdirectory(external/vma)
+add_subdirectory(external/stb)
 
 # Libraries
 add_subdirectory(libs/core)

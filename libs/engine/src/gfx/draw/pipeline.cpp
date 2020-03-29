@@ -162,8 +162,8 @@ void Pipeline::destroy()
 
 void Pipeline::update()
 {
-#if defined(LEVK_RESOURCES_UPDATE)
-	if (m_info.pShader && m_info.pShader->currentStatus() == FileMonitor::Status::eModified)
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	if (m_info.pShader && m_info.pShader->currentStatus() == Resource::Status::eReloaded)
 	{
 		g_info.device.waitIdle();
 		recreate();

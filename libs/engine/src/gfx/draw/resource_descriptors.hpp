@@ -1,53 +1,65 @@
 #pragma once
+#include <vector>
 #include "gfx/common.hpp"
 #include "gfx/vram.hpp"
 
 namespace le::gfx
 {
-namespace ubo
+class Texture;
+
+namespace rd
 {
-template <typename T>
-struct Handle final
+struct WriteInfo final
 {
-	static constexpr vk::DeviceSize size = sizeof(T);
-
-	Buffer buffer;
-	vk::DescriptorSet descriptorSet;
-	vk::DeviceSize offset;
-
-	void write(T const& data) const
-	{
-		vram::write(buffer, &data);
-		return;
-	}
-
-	static Handle<T> create(vk::DescriptorSet descriptorSet)
-	{
-		Handle<T> ret;
-		ret.descriptorSet = descriptorSet;
-		BufferInfo info;
-		info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		info.queueFlags = QFlag::eGraphics;
-		info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
-		info.size = ret.size;
-		info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-		ret.buffer = vram::createBuffer(info);
-		vk::DescriptorBufferInfo bufferInfo;
-		bufferInfo.buffer = ret.buffer.buffer;
-		bufferInfo.offset = 0;
-		bufferInfo.range = ret.buffer.writeSize;
-		vk::WriteDescriptorSet descWrite;
-		descWrite.dstSet = ret.descriptorSet;
-		descWrite.dstBinding = T::binding;
-		descWrite.dstArrayElement = 0;
-		descWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
-		descWrite.descriptorCount = 1;
-		descWrite.pBufferInfo = &bufferInfo;
-		g_info.device.updateDescriptorSets(descWrite, {});
-		return ret;
-	}
+	vk::DescriptorSet set;
+	vk::DescriptorType type;
+	vk::DescriptorBufferInfo* pBuffer = nullptr;
+	vk::DescriptorImageInfo* pImage = nullptr;
+	u32 binding = 0;
+	u32 arrayElement = 0;
+	u32 count = 1;
 };
 
+struct BufferWriter final
+{
+	Buffer buffer;
+
+	template <typename T>
+	bool write(vk::DescriptorSet set, T const& data, u32 binding = T::binding)
+	{
+		u32 size = (u32)sizeof(T);
+		if (buffer.writeSize < size)
+		{
+			vram::release(buffer);
+			BufferInfo info;
+			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+			info.queueFlags = QFlag::eGraphics;
+			info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+			info.size = sizeof(T);
+			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+			buffer = vram::createBuffer(info);
+		}
+		if (!vram::write(buffer, &data))
+		{
+			return false;
+		}
+		writeBuffer(set, binding, size);
+		return true;
+	}
+
+	void writeBuffer(vk::DescriptorSet set, u32 binding, u32 size) const;
+};
+
+struct TextureWriter
+{
+	void write(vk::DescriptorSet set, Texture const& texture, u32 binding);
+};
+
+void write(WriteInfo const& info);
+} // namespace rd
+
+namespace ubo
+{
 struct View final
 {
 	static constexpr u32 binding = 0;
@@ -76,18 +88,43 @@ enum class Type : u8
 	eCOUNT_
 };
 
-struct Handles final
+class Set final
 {
-	ubo::Handle<ubo::View> view;
-	ubo::Handle<ubo::Flags> flags;
+private:
+	template <typename T>
+	struct Handle final
+	{
+		T writer;
+		u32 binding;
 
-	void release();
+		template <typename U>
+		void write(vk::DescriptorSet set, U const& u)
+		{
+			writer.write(set, u, binding);
+		}
+	};
+
+public:
+	vk::DescriptorSet m_set;
+
+private:
+	Handle<BufferWriter> m_view = {{}, 0};
+	Handle<BufferWriter> m_flags = {{}, 1};
+	Handle<TextureWriter> m_diffuse = {{}, 2};
+
+public:
+	void writeView(ubo::View const& view);
+	void writeFlags(ubo::Flags const& flags);
+	void writeDiffuse(Texture const& diffuse);
+
+public:
+	void destroy();
 };
 
 struct Setup final
 {
-	vk::DescriptorPool pool;
-	std::vector<Handles> descriptorHandles;
+	vk::DescriptorPool descriptorPool;
+	std::vector<Set> sets;
 };
 
 struct SetLayouts final

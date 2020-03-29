@@ -51,7 +51,7 @@ target_link_libraries(${PROJECT_NAME}
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 		vma
-		#stb-image
+		stb-image
 		#tinyobjloader
 )
 if(WIN64_CLANG AND LEVK_USE_GLFW)

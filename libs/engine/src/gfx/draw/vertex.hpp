@@ -11,6 +11,7 @@ struct Vertex final
 
 	glm::vec2 position = {};
 	glm::vec3 colour = {};
+	glm::vec2 texCoord = {};
 
 	static vk::VertexInputBindingDescription bindingDescription();
 	static std::vector<vk::VertexInputAttributeDescription> attributeDescriptions();

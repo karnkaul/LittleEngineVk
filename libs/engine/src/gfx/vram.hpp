@@ -1,4 +1,6 @@
 #pragma once
+#include <utility>
+#include "core/utils.hpp"
 #include "common.hpp"
 
 namespace le::gfx
@@ -7,12 +9,7 @@ constexpr bool g_VRAM_bLogAllocs = true;
 
 struct ImageInfo final
 {
-	vk::Extent3D size;
-	vk::Format format;
-	vk::ImageTiling tiling;
-	vk::ImageUsageFlags usage;
-	vk::MemoryPropertyFlags properties;
-	vk::ImageType type = vk::ImageType::e2D;
+	vk::ImageCreateInfo createInfo;
 	QFlags queueFlags = QFlags({QFlag::eGraphics, QFlag::eTransfer});
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
@@ -35,8 +32,10 @@ void deinit();
 
 Buffer createBuffer(BufferInfo const& info);
 bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
-vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
-vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
+[[nodiscard]] vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
+[[nodiscard]] vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
+
+[[nodiscard]] vk::Fence copy(ArrayView<u8> pixels, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts);
 
 Image createImage(ImageInfo const& info);
 

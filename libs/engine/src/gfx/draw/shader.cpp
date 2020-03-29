@@ -14,11 +14,14 @@ std::string const Shader::s_tName = utils::tName<Shader>();
 std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const Shader::s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
 																								  vk::ShaderStageFlagBits::eFragment};
 
-#if defined(LEVK_RESOURCES_UPDATE)
-Shader::ShaderFile::ShaderFile(stdfs::path const& id, stdfs::path const& fullPath, ShaderType type) : File(id, fullPath), type(type) {}
+#if defined(LEVK_ASSET_HOT_RELOAD)
+Shader::ShaderFile::ShaderFile(stdfs::path const& id, stdfs::path const& fullPath, ShaderType type)
+	: File(id, fullPath, FileMonitor::Mode::eTextContents), type(type)
+{
+}
 #endif
 
-Shader::Shader(Info info) : m_id(std::move(info.id))
+Shader::Shader(Info info)
 {
 	bool const bCodeMapPopulated = std::any_of(info.codeMap.begin(), info.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	[[maybe_unused]] bool const bCodeIDsPopulated =
@@ -81,11 +84,12 @@ std::map<ShaderType, vk::ShaderModule> Shader::modules() const
 	return ret;
 }
 
-#if defined(LEVK_RESOURCES_UPDATE)
-FileMonitor::Status Shader::update()
+Resource::Status Shader::update()
 {
-	auto const status = Resource::update();
-	if (status != FileMonitor::Status::eUpToDate)
+	m_status = Status::eReady;
+	Resource::update();
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	if (m_fileStatus != FileMonitor::Status::eUpToDate)
 	{
 		std::array<bytearray, (size_t)ShaderType::eCOUNT_> spvCode;
 		for (auto& uFile : m_files)
@@ -97,7 +101,8 @@ FileMonitor::Status Shader::update()
 				if (!glslToSpirV(pFile->id, spvCode.at((size_t)pFile->type)))
 				{
 					LOG_E("[{}] Failed to reload Shader!", s_tName);
-					return m_lastStatus = FileMonitor::Status::eUpToDate;
+					m_fileStatus = FileMonitor::Status::eUpToDate;
+					return m_status;
 				}
 			}
 			else
@@ -108,7 +113,8 @@ FileMonitor::Status Shader::update()
 				if (!bResult)
 				{
 					LOG_E("[{}] Failed to reload Shader!", s_tName);
-					return m_lastStatus = FileMonitor::Status::eUpToDate;
+					m_fileStatus = FileMonitor::Status::eUpToDate;
+					return m_status;
 				}
 				spvCode.at((size_t)pFile->type) = std::move(bytes);
 			}
@@ -120,10 +126,11 @@ FileMonitor::Status Shader::update()
 		}
 		loadAllSpirV(spvCode);
 		LOG_I("[{}] Reloaded", s_tName);
+		m_status = Status::eReloaded;
 	}
-	return m_lastStatus;
-}
 #endif
+	return m_status;
+}
 
 bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, ShaderType type)
 {
@@ -139,7 +146,7 @@ bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, ShaderType type)
 	{
 		if (glslToSpirV(id, out_info.codeMap.at((size_t)type)))
 		{
-#if defined(LEVK_RESOURCES_UPDATE)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 			auto uFile = std::make_unique<ShaderFile>(id, m_pReader->fullPath(id), type);
 			m_files.push_back(std::move(uFile));
 #endif

@@ -33,6 +33,20 @@ void vkDestroy(vkType object)
 			g_info.device.destroyDescriptorPool(object);
 		}
 	}
+	else if constexpr (std::is_same_v<vkType, vk::ImageView>)
+	{
+		if (object != vk::ImageView())
+		{
+			g_info.device.destroyImageView(object);
+		}
+	}
+	else if constexpr (std::is_same_v<vkType, vk::Sampler>)
+	{
+		if (object != vk::Sampler())
+		{
+			g_info.device.destroySampler(object);
+		}
+	}
 	else if constexpr (std::is_same_v<vkOwner, vk::Instance>)
 	{
 		if (object != vkType() && g_info.instance != vk::Instance())

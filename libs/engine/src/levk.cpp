@@ -1,5 +1,7 @@
+#include <thread>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <stb/stb_image.h>
 #include "core/io.hpp"
 #include "core/jobs.hpp"
 #include "core/log.hpp"
@@ -18,6 +20,7 @@
 #include "gfx/draw/pipeline.hpp"
 #include "gfx/draw/resources.hpp"
 #include "gfx/draw/shader.hpp"
+#include "gfx/draw/texture.hpp"
 #include "gfx/draw/vertex.hpp"
 #include "window/window_impl.hpp"
 
@@ -81,7 +84,6 @@ s32 engine::run(s32 argc, char** argv)
 		auto const fragShaderPath = dataPath / "shaders/tutorial.frag";
 
 		gfx::Shader::Info tutorialShaderInfo;
-		tutorialShaderInfo.id = "shaders/tutorial";
 		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert"), stdfs::path("shaders/tutorial.frag")};
 		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
 		tutorialShaderInfo.pReader = g_uReader.get();
@@ -99,10 +101,10 @@ s32 engine::run(s32 argc, char** argv)
 			gfx::Vertex{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
 		};
 
-		gfx::Vertex const quad0Verts[] = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-										  {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-										  {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-										  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+		gfx::Vertex const quad0Verts[] = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+										  {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+										  {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+										  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
 		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0};
 
 		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> gfx::Buffer {
@@ -126,6 +128,24 @@ s32 engine::run(s32 argc, char** argv)
 			transferFences.push_back(gfx::vram::stage(quad0IB, quad0Indices));
 			gfx::waitAll(transferFences);
 		}
+
+		gfx::ImageInfo imageInfo;
+		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
+		imageInfo.createInfo.format = vk::Format::eR8G8B8A8Srgb;
+		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
+		imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+		imageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+		imageInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
+		imageInfo.createInfo.imageType = vk::ImageType::e2D;
+		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
+		imageInfo.createInfo.mipLevels = 1;
+		imageInfo.createInfo.arrayLayers = 1;
+		gfx::Texture::Info textureInfo;
+		textureInfo.pReader = g_uReader.get();
+		textureInfo.imgID.channels = 4;
+		textureInfo.imgID.id = dataPath / "textures/texture.jpg";
+		auto pTexture = gfx::g_pResources->create<gfx::Texture>("textures/texture.jpg", textureInfo);
+		auto pBlank = gfx::g_pResources->get<gfx::Texture>("textures/blank");
 
 		Window w0, w1;
 		Window::Info info0;
@@ -205,9 +225,7 @@ s32 engine::run(s32 argc, char** argv)
 				t = Time::elapsed();
 
 				{
-#if defined(LEVK_RESOURCES_UPDATE)
 					gfx::g_pResources->update();
-#endif
 					pipeline0.update();
 					pipeline0wf.update();
 					pipeline1.update();
@@ -280,16 +298,24 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [&transform0](gfx::ubo::View* pView, gfx::Renderer* pRenderer, vk::Pipeline pipeline,
+					auto drawFrame = [pBlank, &transform0](gfx::ubo::View* pView, gfx::Renderer* pRenderer, vk::Pipeline pipeline,
 												   vk::PipelineLayout layout, vk::Buffer vertexBuffer, vk::Buffer indexBuffer,
-												   u32 vertCount, u32 indexCount) -> bool {
+												   u32 vertCount, u32 indexCount, gfx::Texture* pTexture) -> bool {
 						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
 						gfx::ubo::Flags flags;
 						flags.isTextured = indexCount > 0 ? 1 : 0;
-						auto write = [&](gfx::rd::Handles const& descriptors) {
-							descriptors.view.write(*pView);
-							descriptors.flags.write(flags);
+						auto write = [&](gfx::rd::Set& set) {
+							set.writeView(*pView);
+							set.writeFlags(flags);
+							if (pTexture)
+							{
+								set.writeDiffuse(*pTexture);
+							}
+							else
+							{
+								set.writeDiffuse(*pBlank);
+							}
 						};
 						auto draw = [&](gfx::Renderer::FrameDriver const& driver) {
 							vk::Viewport viewport = pRenderer->transformViewport();
@@ -298,8 +324,7 @@ s32 engine::run(s32 argc, char** argv)
 							driver.commandBuffer.setScissor(0, scissor);
 							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 							vk::DeviceSize offsets[] = {0};
-							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0,
-																	driver.descriptorHandles.view.descriptorSet, {});
+							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, driver.set.m_set, {});
 							driver.commandBuffer.pushConstants(layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4),
 															   glm::value_ptr(transform0.model()));
 							driver.commandBuffer.bindVertexBuffers(gfx::Vertex::binding, 1, &vertexBuffer, offsets);
@@ -319,12 +344,12 @@ s32 engine::run(s32 argc, char** argv)
 					if (w0.isOpen() && uRenderer0.get())
 					{
 						drawFrame(&view0, uRenderer0.get(), bWF0 ? pipeline0wf.pipeline() : pipeline0.pipeline(), pipeline0.layout(),
-								  quad0VB.buffer, quad0IB.buffer, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices));
+								  quad0VB.buffer, quad0IB.buffer, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices), pTexture);
 					}
 					if (w1.isOpen() && uRenderer1.get())
 					{
 						drawFrame(&view1, uRenderer1.get(), pipeline1.pipeline(), pipeline1.layout(), triangle0VB.buffer, {},
-								  (u32)arraySize(triangle0Verts), 0);
+								  (u32)arraySize(triangle0Verts), 0, nullptr);
 						// drawFrame(&view1, pPresenter1, pipeline1, layout1, quad0VBIB.buffer, (u32)arraySize(quad0Verts),
 						//	  (u32)arraySize(quad0Indices));
 					}

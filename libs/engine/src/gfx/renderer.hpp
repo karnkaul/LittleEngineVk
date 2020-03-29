@@ -16,17 +16,17 @@ public:
 
 	struct FrameDriver final
 	{
-		rd::Handles descriptorHandles;
+		rd::Set set;
 		vk::CommandBuffer commandBuffer;
 	};
 
-	using Write = std::function<void(rd::Handles const&)>;
+	using Write = std::function<void(rd::Set&)>;
 	using Draw = std::function<void(FrameDriver const&)>;
 
 private:
 	struct FrameSync final
 	{
-		rd::Handles descriptorHandles;
+		rd::Set set;
 		vk::Semaphore renderReady;
 		vk::Semaphore presentReady;
 		vk::Fence drawing;

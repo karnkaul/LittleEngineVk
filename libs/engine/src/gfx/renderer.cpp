@@ -34,15 +34,15 @@ void Renderer::create(u8 frameCount)
 		}
 		// Descriptors
 		auto descriptorSetup = rd::g_setLayouts.allocateSets(frameCount);
-		ASSERT(descriptorSetup.descriptorHandles.size() == (size_t)frameCount, "Invalid setup!");
-		m_descriptorPool = descriptorSetup.pool;
+		ASSERT(descriptorSetup.sets.size() == (size_t)frameCount, "Invalid setup!");
+		m_descriptorPool = descriptorSetup.descriptorPool;
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			Renderer::FrameSync frame;
+			frame.set = descriptorSetup.sets.at((size_t)idx);
 			frame.renderReady = g_info.device.createSemaphore({});
 			frame.presentReady = g_info.device.createSemaphore({});
 			frame.drawing = g_info.device.createFence({});
-			frame.descriptorHandles = descriptorSetup.descriptorHandles.at((size_t)idx);
 			// Commands
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
 			commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
@@ -66,8 +66,8 @@ void Renderer::destroy()
 	{
 		for (auto& frame : m_frames)
 		{
+			frame.set.destroy();
 			vkDestroy(frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady, frame.presentReady);
-			frame.descriptorHandles.release();
 		}
 		vkDestroy(m_descriptorPool);
 		m_descriptorPool = vk::DescriptorPool();
@@ -104,7 +104,7 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	}
 	if (write)
 	{
-		write(frame.descriptorHandles);
+		write(frame.set);
 	}
 	// Acquire
 	auto [acquire, bResult] = m_pPresenter->acquireNextImage(frame.renderReady, frame.drawing);
@@ -138,7 +138,7 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{frame.descriptorHandles, commandBuffer};
+	FrameDriver driver{std::move(frame.set), commandBuffer};
 	draw(driver);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();

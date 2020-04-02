@@ -5,6 +5,8 @@
 
 namespace le::gfx
 {
+class Pipeline;
+
 class Renderer final
 {
 public:
@@ -21,7 +23,7 @@ public:
 	};
 
 	using Write = std::function<void(rd::Set&)>;
-	using Draw = std::function<void(FrameDriver const&)>;
+	using Draw = std::function<Pipeline*(FrameDriver const&)>;
 
 private:
 	struct FrameSync final
@@ -38,6 +40,7 @@ private:
 
 public:
 	static std::string const s_tName;
+	std::string m_name;
 
 private:
 	vk::DescriptorPool m_descriptorPool;

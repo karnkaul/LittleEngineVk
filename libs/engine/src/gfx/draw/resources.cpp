@@ -62,7 +62,9 @@ void Resources::init()
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
-	create<Sampler>("samplers/default", {samplerInfo});
+	Sampler::Info info;
+	info.createInfo = samplerInfo;
+	create<Sampler>("samplers/default", info);
 	Texture::Info textureInfo;
 	static std::array<u8, 4> const white1pxBytes = {0xff, 0xff, 0xff, 0xff};
 	textureInfo.raw.bytes = ArrayView<u8>(white1pxBytes);

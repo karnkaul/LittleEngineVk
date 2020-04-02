@@ -12,6 +12,12 @@
 #include "engine/window/common.hpp"
 #include "vulkan.hpp"
 
+#if defined(LEVK_DEBUG)
+#if !defined(LEVK_VKRESOURCE_NAMES)
+#define LEVK_VKRESOURCE_NAMES
+#endif
+#endif
+
 namespace stdfs = std::filesystem;
 
 namespace le::gfx
@@ -116,6 +122,9 @@ struct AllocInfo final
 
 struct VkResource
 {
+#if defined(LEVK_VKRESOURCE_NAMES)
+	std::string name;
+#endif
 	AllocInfo info;
 	VmaAllocation handle;
 	QFlags queueFlags;

@@ -26,22 +26,24 @@ public:
 	~Resources();
 
 	template <typename T, typename = std::enable_if_t<std::is_base_of_v<Resource, T>>>
-	T* create(std::string const& id, typename T::Info info)
+	T* create(stdfs::path const& id, typename T::Info info)
 	{
-		ASSERT(!m_resources.get(id).bResult, "ID already loaded!");
-		auto uT = std::make_unique<T>(std::move(info));
+		ASSERT(!m_resources.get(id.generic_string()).bResult, "ID already loaded!");
+		auto uT = std::make_unique<T>(id, std::move(info));
+		T* pT = nullptr;
 		if (uT)
 		{
-			uT->setup(id);
-			m_resources.insert(id, std::move(uT));
+			uT->setup();
+			pT = uT.get();
+			m_resources.insert(id.generic_string(), std::move(uT));
 		}
-		return get<T>(id);
+		return pT;
 	}
 
 	template <typename T, typename = std::enable_if_t<std::is_base_of_v<Resource, T>>>
-	T* get(std::string const& id)
+	T* get(stdfs::path const& id)
 	{
-		auto [pT, bResult] = m_resources.get(id);
+		auto [pT, bResult] = m_resources.get(id.generic_string());
 		if (bResult && pT)
 		{
 			return dynamic_cast<T*>(pT->get());
@@ -50,9 +52,9 @@ public:
 	}
 
 	template <typename T, typename = std::enable_if_t<std::is_base_of_v<Resource, T>>>
-	bool unload(std::string const& id)
+	bool unload(stdfs::path const& id)
 	{
-		return m_resources.unload(id);
+		return m_resources.unload(id.generic_string());
 	}
 
 	void unloadAll();

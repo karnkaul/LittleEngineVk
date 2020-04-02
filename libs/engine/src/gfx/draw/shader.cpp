@@ -14,7 +14,7 @@ std::string const Shader::s_tName = utils::tName<Shader>();
 std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const Shader::s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
 																								  vk::ShaderStageFlagBits::eFragment};
 
-Shader::Shader(Info info)
+Shader::Shader(stdfs::path id, Info info) : Resource(std::move(id))
 {
 	bool const bCodeMapPopulated = std::any_of(info.codeMap.begin(), info.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	[[maybe_unused]] bool const bCodeIDsPopulated =
@@ -80,7 +80,7 @@ std::map<ShaderType, vk::ShaderModule> Shader::modules() const
 Resource::Status Shader::update()
 {
 	m_status = Status::eReady;
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 	bool bReload = false;
 	std::array<bytearray, (size_t)ShaderType::eCOUNT_> spvCode;
 	for (auto& file : m_files)
@@ -121,7 +121,7 @@ bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, ShaderType type)
 	{
 		if (glslToSpirV(id, out_info.codeMap.at((size_t)type)))
 		{
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 			m_files.push_back(File(id, m_pReader->fullPath(id), FileMonitor::Mode::eTextContents, type));
 #endif
 			return true;

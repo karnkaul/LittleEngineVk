@@ -53,6 +53,9 @@ Buffer createStagingBuffer(vk::DeviceSize size)
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
 	info.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
+#if defined(LEVK_VKRESOURCE_NAMES)
+	info.name = "vram-staging";
+#endif
 	return vram::createBuffer(info);
 }
 
@@ -71,7 +74,7 @@ Stage& getNextStage(vk::DeviceSize size)
 {
 	for (auto& stage : g_stages)
 	{
-		if (g_info.device.getFenceStatus(stage.transfer.done) == vk::Result::eSuccess)
+		if (isReady(stage.transfer.done))
 		{
 			g_info.device.resetFences(stage.transfer.done);
 			stage.transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -94,7 +97,7 @@ Transfer& getNextTransfer()
 {
 	for (auto& transfer : g_transfers)
 	{
-		if (g_info.device.getFenceStatus(transfer.done) == vk::Result::eSuccess)
+		if (isReady(transfer.done))
 		{
 			g_info.device.resetFences(transfer.done);
 			transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -182,6 +185,10 @@ void vram::deinit()
 Buffer vram::createBuffer(BufferInfo const& info)
 {
 	Buffer ret;
+#if defined(LEVK_VKRESOURCE_NAMES)
+	ASSERT(!info.name.empty(), "Unnamed buffer!");
+	ret.name = info.name;
+#endif
 	vk::BufferCreateInfo bufferInfo;
 	ret.writeSize = bufferInfo.size = info.size;
 	bufferInfo.usage = info.usage;
@@ -206,7 +213,11 @@ Buffer vram::createBuffer(BufferInfo const& info)
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.writeSize);
+#if defined(LEVK_VKRESOURCE_NAMES)
+		LOG_I("== [{}] Buffer [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
+#else
 		LOG_I("== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+#endif
 	}
 	return ret;
 }
@@ -346,6 +357,10 @@ vk::Fence vram::copy(ArrayView<u8> pixels, Image const& dst, std::pair<vk::Image
 Image vram::createImage(ImageInfo const& info)
 {
 	Image ret;
+#if defined(LEVK_VKRESOURCE_NAMES)
+	ASSERT(!info.name.empty(), "Unnamed buffer!");
+	ret.name = info.name;
+#endif
 	vk::ImageCreateInfo imageInfo = info.createInfo;
 	auto const queues = g_info.uniqueQueues(info.queueFlags);
 	imageInfo.sharingMode = queues.mode;
@@ -371,7 +386,11 @@ Image vram::createImage(ImageInfo const& info)
 	if constexpr (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.allocatedSize);
+#if defined(LEVK_VKRESOURCE_NAMES)
+		LOG_I("== [{}] Image [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
+#else
 		LOG_I("== [{}] Image allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+#endif
 	}
 	return ret;
 }
@@ -387,7 +406,11 @@ void vram::release(Buffer buffer)
 			if (buffer.info.actualSize)
 			{
 				auto [size, unit] = utils::friendlySize(buffer.writeSize);
+#if defined(LEVK_VKRESOURCE_NAMES)
+				LOG_I("-- [{}] Buffer [{}] released: [{:.2f}{}] | {}", s_tName, buffer.name, size, unit, logCount());
+#else
 				LOG_I("-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+#endif
 			}
 		}
 	}
@@ -405,7 +428,11 @@ void vram::release(Image image)
 			if (image.info.actualSize > 0)
 			{
 				auto [size, unit] = utils::friendlySize(image.allocatedSize);
+#if defined(LEVK_VKRESOURCE_NAMES)
+				LOG_I("-- [{}] Image [{}] released: [{:.2f}{}] | {}", s_tName, image.name, size, unit, logCount());
+#else
 				LOG_I("-- [{}] Image released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+#endif
 			}
 		}
 	}

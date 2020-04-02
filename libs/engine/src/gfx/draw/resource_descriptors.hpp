@@ -1,5 +1,7 @@
 #pragma once
 #include <vector>
+#include "core/flags.hpp"
+#include "core/utils.hpp"
 #include "gfx/common.hpp"
 #include "gfx/vram.hpp"
 
@@ -37,6 +39,9 @@ struct BufferWriter final
 			info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
 			info.size = sizeof(T);
 			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+#if defined(LEVK_VKRESOURCE_NAMES)
+			info.name = utils::tName<T>();
+#endif
 			buffer = vram::createBuffer(info);
 		}
 		if (!vram::write(buffer, &data))
@@ -76,7 +81,12 @@ struct Flags final
 
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	s32 isTextured = 0;
+	enum
+	{
+		eTEXTURED = 1 << 0,
+	};
+
+	s32 bits = 0;
 };
 } // namespace ubo
 

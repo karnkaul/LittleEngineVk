@@ -108,6 +108,7 @@ Presenter::Swapchain::Frame& Presenter::Swapchain::frame()
 
 Presenter::Presenter(PresenterInfo const& info) : m_window(info.config.window)
 {
+	m_name = fmt::format("{}:{}", s_tName, m_window);
 	ASSERT(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
 	m_info.info = info;
 	m_info.refresh();
@@ -131,7 +132,7 @@ Presenter::Presenter(PresenterInfo const& info) : m_window(info.config.window)
 		text += e.what();
 		throw std::runtime_error(text.data());
 	}
-	LOG_I("[{}:{}] constructed", s_tName, m_window);
+	LOG_I("[{}] constructed", m_name, m_window);
 }
 
 Presenter::~Presenter()
@@ -149,8 +150,8 @@ void Presenter::onFramebufferResize()
 		{
 			if (recreateSwapchain())
 			{
-				LOG_I("[{}:{}] Non-zero framebuffer size detected; recreated swapchain [{}x{}]; resuming rendering", s_tName, m_window,
-					  size.x, size.y);
+				LOG_I("[{}] Non-zero framebuffer size detected; recreated swapchain [{}x{}]; resuming rendering", m_name, m_window, size.x,
+					  size.y);
 				m_flags.reset(Flag::eRenderPaused);
 			}
 		}
@@ -159,7 +160,7 @@ void Presenter::onFramebufferResize()
 	{
 		if (size.x <= 0 || size.y <= 0)
 		{
-			LOG_I("[{}:{}] Invalid framebuffer size detected [{}x{}] (minimised surface?); pausing rendering", s_tName, m_window, size.x,
+			LOG_I("[{}] Invalid framebuffer size detected [{}x{}] (minimised surface?); pausing rendering", m_name, m_window, size.x,
 				  size.y);
 			m_flags.set(Flag::eRenderPaused);
 		}
@@ -168,8 +169,8 @@ void Presenter::onFramebufferResize()
 			auto oldExtent = m_swapchain.extent;
 			if (recreateSwapchain())
 			{
-				LOG_I("[{}:{}] Mismatched framebuffer size detected [{}x{}]; recreated swapchain [{}x{}]", s_tName, m_window, size.x,
-					  size.y, oldExtent.width, oldExtent.height);
+				LOG_I("[{}] Mismatched framebuffer size detected [{}x{}]; recreated swapchain [{}x{}]", m_name, m_window, size.x, size.y,
+					  oldExtent.width, oldExtent.height);
 			}
 		}
 	}
@@ -184,7 +185,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	auto const acquire = g_info.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
-		LOG_D("[{}:{}] Failed to acquire next image [{}]", s_tName, m_window, g_vkResultStr[acquire.result]);
+		LOG_D("[{}] Failed to acquire next image [{}]", m_name, m_window, g_vkResultStr[acquire.result]);
 		recreateSwapchain();
 		return {};
 	}
@@ -216,7 +217,7 @@ bool Presenter::present(vk::Semaphore wait)
 	auto const result = g_info.queues.present.presentKHR(&presentInfo);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 	{
-		LOG_D("[{}:{}] Failed to present image [{}]", s_tName, m_window, g_vkResultStr[result]);
+		LOG_D("[{}] Failed to present image [{}]", m_name, m_window, g_vkResultStr[result]);
 		recreateSwapchain();
 		return false;
 	}
@@ -293,7 +294,7 @@ bool Presenter::createSwapchain()
 	auto const framebufferSize = m_info.info.config.getFramebufferSize();
 	if (framebufferSize.x == 0 || framebufferSize.y == 0)
 	{
-		LOG_I("[{}:{}] Null framebuffer size detected (minimised surface?); pausing rendering", s_tName, m_window);
+		LOG_I("[{}] Null framebuffer size detected (minimised surface?); pausing rendering", m_name, m_window);
 		m_flags.set(Flag::eRenderPaused);
 		return false;
 	}
@@ -338,6 +339,7 @@ bool Presenter::createSwapchain()
 		depthImageInfo.createInfo.mipLevels = 1;
 		depthImageInfo.createInfo.arrayLayers = 1;
 		depthImageInfo.queueFlags = QFlag::eGraphics;
+		depthImageInfo.name = m_name + "_depth";
 		m_swapchain.depthImage = vram::createImage(depthImageInfo);
 		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.image, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		for (auto const& image : images)
@@ -357,7 +359,7 @@ bool Presenter::createSwapchain()
 	{
 		vkDestroy<vk::Instance>(prevSurface);
 	}
-	LOG_D("[{}:{}] Swapchain created [{}x{}]", s_tName, m_window, framebufferSize.x, framebufferSize.y);
+	LOG_D("[{}] Swapchain created [{}x{}]", m_name, m_window, framebufferSize.x, framebufferSize.y);
 	return true;
 }
 
@@ -370,7 +372,7 @@ void Presenter::destroySwapchain()
 	}
 	vkDestroy(m_swapchain.depthImageView, m_swapchain.swapchain);
 	vram::release(m_swapchain.depthImage);
-	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}:{}] Swapchain destroyed", s_tName, m_window);
+	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name, m_window);
 	m_swapchain = Swapchain();
 	m_onDestroyed();
 }
@@ -387,15 +389,15 @@ void Presenter::cleanup()
 
 bool Presenter::recreateSwapchain()
 {
-	LOG_D("[{}:{}] Recreating Swapchain...", s_tName, m_window);
+	LOG_D("[{}] Recreating Swapchain...", m_name, m_window);
 	destroySwapchain();
 	if (createSwapchain())
 	{
-		LOG_D("[{}:{}] ... Swapchain recreated", s_tName, m_window);
+		LOG_D("[{}] ... Swapchain recreated", m_name, m_window);
 		m_onSwapchainRecreated();
 		return true;
 	}
-	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}:{}] Failed to recreate swapchain!", s_tName, m_window);
+	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name, m_window);
 	return false;
 }
 } // namespace le::gfx

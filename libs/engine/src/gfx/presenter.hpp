@@ -75,6 +75,7 @@ private:
 
 public:
 	static std::string const s_tName;
+	std::string m_name;
 
 public:
 	vk::RenderPass m_renderPass;

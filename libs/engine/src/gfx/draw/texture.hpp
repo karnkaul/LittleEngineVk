@@ -1,10 +1,8 @@
 #pragma once
+#include <string>
 #include "core/std_types.hpp"
 #include "gfx/common.hpp"
 #include "resource.hpp"
-#if defined(LEVK_ASSET_HOT_RELOAD)
-#include "core/io.hpp"
-#endif
 
 namespace le::gfx
 {
@@ -22,7 +20,7 @@ public:
 	vk::Sampler m_sampler;
 
 public:
-	Sampler(Info const& info);
+	Sampler(stdfs::path id, Info info);
 	~Sampler() override;
 
 public:
@@ -44,7 +42,7 @@ public:
 	};
 	struct ImgID final
 	{
-		stdfs::path id;
+		stdfs::path assetID;
 		u8 channels = 4;
 	};
 	struct Info final
@@ -70,7 +68,7 @@ private:
 	vk::Fence m_loaded;
 	bool m_bStbiRaw = false;
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 private:
 	Image m_standby;
 	ImgID m_imgID;
@@ -79,7 +77,7 @@ private:
 #endif
 
 public:
-	Texture(Info info);
+	Texture(stdfs::path id, Info info);
 	~Texture() override;
 
 public:

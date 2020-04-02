@@ -80,9 +80,6 @@ s32 engine::run(s32 argc, char** argv)
 	}
 	try
 	{
-		auto const vertShaderPath = dataPath / "shaders/tutorial.vert";
-		auto const fragShaderPath = dataPath / "shaders/tutorial.frag";
-
 		gfx::Shader::Info tutorialShaderInfo;
 		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert"), stdfs::path("shaders/tutorial.frag")};
 		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
@@ -117,12 +114,14 @@ s32 engine::run(s32 argc, char** argv)
 		// clang-format on
 
 		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> gfx::Buffer {
+			static s32 count = 0;
 			gfx::BufferInfo info;
 			info.size = size;
 			info.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 			info.usage = flags | vk::BufferUsageFlagBits::eTransferDst;
 			info.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
 			info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+			info.name = "DeviceBuffer_" + std::to_string(++count);
 			return gfx::vram::createBuffer(info);
 		};
 
@@ -152,8 +151,8 @@ s32 engine::run(s32 argc, char** argv)
 		gfx::Texture::Info textureInfo;
 		textureInfo.pReader = g_uReader.get();
 		textureInfo.imgID.channels = 4;
-		textureInfo.imgID.id = dataPath / "textures/texture.jpg";
-		auto pTexture = gfx::g_pResources->create<gfx::Texture>("textures/texture.jpg", textureInfo);
+		textureInfo.imgID.assetID = "textures/texture.jpg";
+		auto pTexture = gfx::g_pResources->create<gfx::Texture>(textureInfo.imgID.assetID, textureInfo);
 		auto pBlank = gfx::g_pResources->get<gfx::Texture>("textures/blank");
 
 		Window w0, w1;
@@ -307,34 +306,35 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [pBlank, &transform0](gfx::ubo::View* pView, gfx::Renderer* pRenderer, vk::Pipeline pipeline,
-														   vk::PipelineLayout layout, vk::Buffer vertexBuffer, vk::Buffer indexBuffer,
-														   u32 vertCount, u32 indexCount, gfx::Texture* pTexture) -> bool {
+					auto drawFrame = [pBlank, &transform0](gfx::ubo::View* pView, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
+														   vk::Buffer vertexBuffer, vk::Buffer indexBuffer, u32 vertCount, u32 indexCount,
+														   gfx::Texture* pTexture) -> bool {
 						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
 						gfx::ubo::Flags flags;
-						flags.isTextured = indexCount > 0 ? 1 : 0;
 						auto write = [&](gfx::rd::Set& set) {
-							set.writeView(*pView);
-							set.writeFlags(flags);
 							if (pTexture)
 							{
+								flags.bits |= gfx::ubo::Flags::eTEXTURED;
 								set.writeDiffuse(*pTexture);
 							}
 							else
 							{
 								set.writeDiffuse(*pBlank);
 							}
+							set.writeView(*pView);
+							set.writeFlags(flags);
 						};
-						auto draw = [&](gfx::Renderer::FrameDriver const& driver) {
+						auto draw = [&](gfx::Renderer::FrameDriver const& driver) -> gfx::Pipeline* {
 							vk::Viewport viewport = pRenderer->transformViewport();
 							vk::Rect2D scissor = pRenderer->transformScissor();
 							driver.commandBuffer.setViewport(0, viewport);
 							driver.commandBuffer.setScissor(0, scissor);
-							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pPipeline->m_pipeline);
 							vk::DeviceSize offsets[] = {0};
-							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, driver.set.m_set, {});
-							driver.commandBuffer.pushConstants(layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4),
+							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout, 0,
+																	driver.set.m_set, {});
+							driver.commandBuffer.pushConstants(pPipeline->m_layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4),
 															   glm::value_ptr(transform0.model()));
 							driver.commandBuffer.bindVertexBuffers(gfx::Vertex::binding, 1, &vertexBuffer, offsets);
 							if (indexCount > 0)
@@ -346,19 +346,19 @@ s32 engine::run(s32 argc, char** argv)
 							{
 								driver.commandBuffer.draw(vertCount, 1, 0, 0);
 							}
+							return pPipeline;
 						};
 						return pRenderer->render(write, draw, clear);
 					};
 
 					if (w0.isOpen() && uRenderer0.get())
 					{
-						drawFrame(&view0, uRenderer0.get(), bWF0 ? pipeline0wf.pipeline() : pipeline0.pipeline(), pipeline0.layout(),
-								  quad0VB.buffer, quad0IB.buffer, (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices), pTexture);
+						drawFrame(&view0, uRenderer0.get(), bWF0 ? &pipeline0wf : &pipeline0, quad0VB.buffer, quad0IB.buffer,
+								  (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices), pTexture);
 					}
 					if (w1.isOpen() && uRenderer1.get())
 					{
-						drawFrame(&view1, uRenderer1.get(), pipeline1.pipeline(), pipeline1.layout(), triangle0VB.buffer, {},
-								  (u32)arraySize(triangle0Verts), 0, nullptr);
+						drawFrame(&view1, uRenderer1.get(), &pipeline1, triangle0VB.buffer, {}, (u32)arraySize(triangle0Verts), 0, nullptr);
 						// drawFrame(&view1, pPresenter1, pipeline1, layout1, quad0VBIB.buffer, (u32)arraySize(quad0Verts),
 						//	  (u32)arraySize(quad0Indices));
 					}

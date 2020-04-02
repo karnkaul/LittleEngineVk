@@ -10,12 +10,14 @@ constexpr bool g_VRAM_bLogAllocs = true;
 struct ImageInfo final
 {
 	vk::ImageCreateInfo createInfo;
+	std::string name;
 	QFlags queueFlags = QFlags({QFlag::eGraphics, QFlag::eTransfer});
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
 struct BufferInfo final
 {
+	std::string name;
 	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
 	vk::MemoryPropertyFlags properties;

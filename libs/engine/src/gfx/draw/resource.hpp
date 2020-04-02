@@ -1,17 +1,13 @@
 #pragma once
 #include <any>
 #include <string>
-#include "core/std_types.hpp"
+#include "core/io.hpp"
 #include "core/zero.hpp"
 
 #if defined(LEVK_DEBUG)
-#if !defined(LEVK_ASSET_HOT_RELOAD)
-#define LEVK_ASSET_HOT_RELOAD
+#if !defined(LEVK_RESOURCE_HOT_RELOAD)
+#define LEVK_RESOURCE_HOT_RELOAD
 #endif
-#endif
-
-#if defined(LEVK_ASSET_HOT_RELOAD)
-#include "core/io.hpp"
 #endif
 
 namespace le::gfx
@@ -30,7 +26,7 @@ public:
 		eCOUNT_
 	};
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 protected:
 	struct File final
 	{
@@ -46,7 +42,7 @@ protected:
 #endif
 
 public:
-	std::string m_id;
+	stdfs::path m_id;
 	std::string m_tName;
 	GUID const m_guid;
 
@@ -54,14 +50,14 @@ protected:
 	Status m_status = Status::eReady;
 
 public:
-	Resource();
+	Resource(stdfs::path id);
 	virtual ~Resource();
 
 public:
 	virtual Status update() = 0;
 
 public:
-	void setup(std::string id);
+	void setup();
 	Status currentStatus() const;
 };
 } // namespace le::gfx

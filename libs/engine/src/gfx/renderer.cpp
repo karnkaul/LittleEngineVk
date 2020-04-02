@@ -6,6 +6,7 @@
 #include "info.hpp"
 #include "renderer.hpp"
 #include "utils.hpp"
+#include "draw/pipeline.hpp"
 #include "draw/resource_descriptors.hpp"
 
 namespace le::gfx
@@ -15,6 +16,7 @@ std::string const Renderer::s_tName = utils::tName<Renderer>();
 Renderer::Renderer(Info const& info) : m_pPresenter(info.pPresenter), m_window(info.pPresenter->m_window)
 {
 	create(info.frameCount);
+	m_name = fmt::format("{}:{}", s_tName, m_window);
 }
 
 Renderer::~Renderer()
@@ -55,7 +57,7 @@ void Renderer::create(u8 frameCount)
 			frame.commandBuffer = g_info.device.allocateCommandBuffers(allocInfo).front();
 			m_frames.push_back(std::move(frame));
 		}
-		LOG_D("[{}:{}] created", s_tName, m_window);
+		LOG_D("[{}] created", m_name, m_window);
 	}
 	return;
 }
@@ -73,7 +75,7 @@ void Renderer::destroy()
 		m_descriptorPool = vk::DescriptorPool();
 		m_frames.clear();
 		m_index = 0;
-		LOG_D("[{}:{}] destroyed", s_tName, m_window);
+		LOG_D("[{}] destroyed", m_name, m_window);
 	}
 	return;
 }
@@ -90,7 +92,7 @@ void Renderer::reset()
 			g_info.device.resetFences(frame.drawing);
 			g_info.device.resetCommandPool(frame.commandPool, vk::CommandPoolResetFlagBits::eReleaseResources);
 		}
-		LOG_D("[{}:{}] reset", s_tName, m_window);
+		LOG_D("[{}] reset", m_name, m_window);
 	}
 	return;
 }
@@ -138,8 +140,8 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{std::move(frame.set), commandBuffer};
-	draw(driver);
+	FrameDriver driver{frame.set, commandBuffer};
+	auto pPipeline = draw(driver);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
 	// Submit
@@ -153,6 +155,7 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_info.device.resetFences(frame.drawing);
+	pPipeline->m_drawing = frame.drawing;
 	g_info.queues.graphics.submit(submitInfo, frame.drawing);
 	if (m_pPresenter->present(frame.presentReady))
 	{

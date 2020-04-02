@@ -17,7 +17,13 @@ Pipeline::Pipeline(WindowID presenterWindow) : m_window(presenterWindow) {}
 
 Pipeline::~Pipeline()
 {
-	destroy();
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
+	if (m_standby.bReady)
+	{
+		destroy(m_standby.pipeline, m_standby.layout);
+	}
+#endif
+	destroy(m_pipeline, m_layout);
 }
 
 bool Pipeline::create(Info info)
@@ -29,13 +35,12 @@ bool Pipeline::create(Info info)
 		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_info.name);
 		return false;
 	}
-	m_name = fmt::format("{}-{}", m_info.name, m_info.pShader->m_id);
-	return recreate();
+	m_name = fmt::format("{}-{}", m_info.name, m_info.pShader->m_id.generic_string());
+	return create(m_pipeline, m_layout);
 }
 
-bool Pipeline::recreate()
+bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
 {
-	destroy();
 	auto const pPresenter = WindowImpl::presenter(m_window);
 	ASSERT(pPresenter, "Presneter is null!");
 	if (!m_info.pShader && g_pResources && !m_info.shaderID.empty())
@@ -60,7 +65,7 @@ bool Pipeline::recreate()
 		pushConstantRange.size = sizeof(glm::mat4);
 		layoutCreateInfo.pushConstantRangeCount = 1;
 		layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-		m_layout = gfx::g_info.device.createPipelineLayout(layoutCreateInfo);
+		out_layout = gfx::g_info.device.createPipelineLayout(layoutCreateInfo);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
@@ -147,37 +152,38 @@ bool Pipeline::recreate()
 	createInfo.layout = m_layout;
 	createInfo.renderPass = pPresenter->m_renderPass;
 	createInfo.subpass = 0;
-	m_pipeline = g_info.device.createGraphicsPipeline({}, createInfo);
+	out_pipeline = g_info.device.createGraphicsPipeline({}, createInfo);
 	LOG_D("[{}] [{}] created", s_tName, m_name);
 	return true;
 }
 
-void Pipeline::destroy()
+void Pipeline::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
 {
-	vkDestroy(m_pipeline, m_layout);
-	LOGIF_D(m_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_name);
-	m_pipeline = vk::Pipeline();
-	m_layout = vk::PipelineLayout();
+	vkDestroy(out_pipeline, out_layout);
+	LOGIF_D(out_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_name);
+	out_pipeline = vk::Pipeline();
+	out_layout = vk::PipelineLayout();
 }
 
 void Pipeline::update()
 {
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
+	if (m_standby.bReady)
+	{
+		if (isReady(m_drawing))
+		{
+			destroy(m_pipeline, m_layout);
+			m_pipeline = m_standby.pipeline;
+			m_layout = m_standby.layout;
+			m_standby = {};
+			LOG_D("[{}] [{}] ...recreated", s_tName, m_name);
+		}
+	}
 	if (m_info.pShader && m_info.pShader->currentStatus() == Resource::Status::eReloaded)
 	{
-		g_info.device.waitIdle();
-		recreate();
+		LOG_D("[{}] [{}] recreating...", s_tName, m_name);
+		m_standby.bReady = create(m_standby.pipeline, m_standby.layout);
 	}
 #endif
-}
-
-vk::Pipeline Pipeline::pipeline() const
-{
-	return m_pipeline;
-}
-
-vk::PipelineLayout Pipeline::layout() const
-{
-	return m_layout;
 }
 } // namespace le::gfx

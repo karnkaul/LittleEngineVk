@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <set>
 #include "info.hpp"
 #include "utils.hpp"
@@ -34,6 +35,20 @@ void gfx::wait(vk::Fence optional)
 void gfx::waitAll(vk::ArrayProxy<const vk::Fence> validFences)
 {
 	g_info.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+}
+
+bool gfx::isReady(vk::Fence fence)
+{
+	if (fence != vk::Fence())
+	{
+		return g_info.device.getFenceStatus(fence) == vk::Result::eSuccess;
+	}
+	return true;
+}
+
+bool gfx::allReady(ArrayView<vk::Fence const> fences)
+{
+	return std::all_of(fences.begin(), fences.end(), [](auto fence) { return isReady(fence); });
 }
 
 vk::ImageView gfx::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type)

@@ -2,7 +2,7 @@
 #include <string>
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
-#include "gfx/vulkan.hpp"
+#include "resources.hpp"
 
 namespace le::gfx
 {
@@ -28,11 +28,24 @@ public:
 public:
 	static std::string const s_tName;
 
+public:
+	vk::Pipeline m_pipeline;
+	vk::PipelineLayout m_layout;
+	vk::Fence m_drawing;
+
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
+private:
+	struct
+	{
+		vk::Pipeline pipeline;
+		vk::PipelineLayout layout;
+		bool bReady = false;
+	} m_standby;
+#endif
+
 private:
 	Info m_info;
 	std::string m_name;
-	vk::Pipeline m_pipeline;
-	vk::PipelineLayout m_layout;
 	WindowID m_window;
 
 public:
@@ -41,12 +54,10 @@ public:
 
 public:
 	bool create(Info info);
-	bool recreate();
-	void destroy();
 	void update();
 
-public:
-	vk::Pipeline pipeline() const;
-	vk::PipelineLayout layout() const;
+private:
+	bool create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout);
+	void destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout);
 };
 } // namespace le::gfx

@@ -10,9 +10,9 @@
 
 namespace le::gfx
 {
-Sampler::Sampler(Info const& info)
+Sampler::Sampler(stdfs::path id, Info info) : Resource(std::move(id))
 {
-	m_createInfo = info.createInfo;
+	m_createInfo = std::move(info.createInfo);
 	m_sampler = info.sampler;
 	if (m_sampler == vk::Sampler())
 	{
@@ -33,7 +33,7 @@ Resource::Status Sampler::update()
 
 std::string const Texture::s_tName = utils::tName<Texture>();
 
-Texture::Texture(Info info) : m_pSampler(info.pSampler)
+Texture::Texture(stdfs::path id, Info info) : Resource(std::move(id)), m_pSampler(info.pSampler)
 {
 	[[maybe_unused]] bool bAddFileMonitor = false;
 	if (!m_pSampler)
@@ -56,9 +56,9 @@ Texture::Texture(Info info) : m_pSampler(info.pSampler)
 			throw std::runtime_error("Failed to create texture");
 		}
 	}
-	else if (!info.imgID.id.empty())
+	else if (!info.imgID.assetID.empty())
 	{
-		auto [pixels, bResult] = info.pReader->getBytes(info.imgID.id);
+		auto [pixels, bResult] = info.pReader->getBytes(info.imgID.assetID);
 		if (!bResult || !imgToRaw({std::move(pixels), info.imgID.channels}))
 		{
 			throw std::runtime_error("Failed to create texture");
@@ -71,13 +71,13 @@ Texture::Texture(Info info) : m_pSampler(info.pSampler)
 	}
 	m_loaded = load(&m_active);
 	m_imageView = createImageView(m_active.image, vk::Format::eR8G8B8A8Srgb);
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 	if (bAddFileMonitor)
 	{
 		m_pReader = dynamic_cast<FileReader const*>(info.pReader);
 		ASSERT(m_pReader, "FileReader required!");
 		m_imgID = info.imgID;
-		m_files.push_back(File(m_imgID.id, m_pReader->fullPath(m_imgID.id), FileMonitor::Mode::eBinaryContents, {}));
+		m_files.push_back(File(m_imgID.assetID, m_pReader->fullPath(m_imgID.assetID), FileMonitor::Mode::eBinaryContents, {}));
 	}
 #endif
 }
@@ -90,7 +90,7 @@ Texture::~Texture()
 		m_raw = {};
 	}
 	vram::release(m_active);
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 	if (m_standby.image != m_active.image)
 	{
 		vram::release(m_standby);
@@ -103,23 +103,22 @@ Resource::Status Texture::update()
 {
 	if (m_status == Status::eLoading)
 	{
-		auto fenceStatus = g_info.device.getFenceStatus(m_loaded);
-		if (fenceStatus == vk::Result::eSuccess)
+		if (isReady(m_loaded))
 		{
 			m_status = Status::eReady;
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 			if (m_bReloading)
 			{
 				m_status = Status::eReloaded;
 				m_bReloading = false;
 			}
 #endif
-			LOG_D("[{}] [{}] loaded", s_tName, m_id);
+			LOG_D("[{}] [{}] loaded", s_tName, m_id.generic_string());
 		}
 		else
 		{
 			m_status = Status::eLoading;
-			LOG_D("[{}] loading...", m_id);
+			LOG_D("[{}] loading...", m_id.generic_string());
 		}
 	}
 	if (m_status == Status::eLoading)
@@ -127,7 +126,7 @@ Resource::Status Texture::update()
 		// Stall Hot Reloading until this file has finished loading to the GPU
 		return m_status;
 	}
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
 	if (!m_files.empty())
 	{
 		if (m_status == Status::eReloaded)
@@ -152,7 +151,7 @@ Resource::Status Texture::update()
 			auto currentStatus = file.monitor.update();
 			if (currentStatus == FileMonitor::Status::eNotFound)
 			{
-				LOG_E("[{}] [{}] Resource lost!", s_tName, m_id);
+				LOG_E("[{}] [{}] Resource lost!", s_tName, m_id.generic_string());
 			}
 			else if (lastStatus == FileMonitor::Status::eModified && currentStatus == FileMonitor::Status::eUpToDate)
 			{
@@ -164,13 +163,13 @@ Resource::Status Texture::update()
 				auto img = Img{file.monitor.bytes(), m_imgID.channels};
 				if (!imgToRaw(std::move(img)))
 				{
-					LOG_E("[{}] [{}] Failed to reload!", s_tName, m_id);
+					LOG_E("[{}] [{}] Failed to reload!", s_tName, m_id.generic_string());
 				}
 				else
 				{
 					m_loaded = load(&m_standby);
 					m_bReloading = true;
-					LOG_D("[{}] [{}] reloading...", s_tName, m_id);
+					LOG_D("[{}] [{}] reloading...", s_tName, m_id.generic_string());
 				}
 			}
 		}
@@ -184,7 +183,7 @@ TResult<Texture::Img> Texture::idToImg(stdfs::path const& id, u8 channels, IORea
 	auto [pixels, bResult] = pReader->getBytes(id);
 	if (!bResult)
 	{
-		LOG_E("[{}] [{}] Failed to find [{}] on [{}]!", s_tName, m_id, id.generic_string(), pReader->medium());
+		LOG_E("[{}] [{}] Failed to find [{}] on [{}]!", s_tName, m_id.generic_string(), id.generic_string(), pReader->medium());
 		return {};
 	}
 	return Img{std::move(pixels), channels};
@@ -197,7 +196,7 @@ bool Texture::imgToRaw(Img img)
 	auto pOut = stbi_load_from_memory(pIn, (s32)img.bytes.size(), &width, &height, &ch, img.channels);
 	if (!pOut)
 	{
-		LOG_E("[{}] [{}] Failed to load image data!", s_tName, m_id);
+		LOG_E("[{}] [{}] Failed to load image data!", s_tName, m_id.generic_string());
 		return false;
 	}
 	size_t const size = (size_t)(width * height * img.channels);
@@ -223,6 +222,9 @@ vk::Fence Texture::load(Image* out_pImage)
 		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 		imageInfo.createInfo.mipLevels = 1;
 		imageInfo.createInfo.arrayLayers = 1;
+#if defined(LEVK_VKRESOURCE_NAMES)
+		imageInfo.name = m_id.generic_string();
+#endif
 		*out_pImage = vram::createImage(imageInfo);
 	}
 	auto ret = vram::copy(m_raw.bytes, *out_pImage, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});

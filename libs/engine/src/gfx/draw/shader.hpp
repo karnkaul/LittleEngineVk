@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "core/io.hpp"
 #include "gfx/vulkan.hpp"
 #include "resource.hpp"
 
@@ -28,7 +27,7 @@ private:
 	FileReader const* m_pReader = nullptr;
 
 public:
-	Shader(Info info);
+	Shader(stdfs::path id, Info info);
 	~Shader() override;
 
 public:

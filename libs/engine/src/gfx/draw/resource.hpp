@@ -1,4 +1,5 @@
 #pragma once
+#include <any>
 #include <string>
 #include "core/std_types.hpp"
 #include "core/zero.hpp"
@@ -10,7 +11,6 @@
 #endif
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
-#include <memory>
 #include "core/io.hpp"
 #endif
 
@@ -32,20 +32,17 @@ public:
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
 protected:
-	struct File
+	struct File final
 	{
 		FileMonitor monitor;
 		stdfs::path id;
+		std::any data;
 
-		File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode);
-		File(File&&) = default;
-		File& operator=(File&&) = default;
-		virtual ~File() = default;
+		File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode, std::any data);
 	};
 
 protected:
-	std::vector<std::unique_ptr<File>> m_files;
-	FileMonitor::Status m_fileStatus = FileMonitor::Status::eUpToDate;
+	std::vector<File> m_files;
 #endif
 
 public:
@@ -61,7 +58,7 @@ public:
 	virtual ~Resource();
 
 public:
-	virtual Status update();
+	virtual Status update() = 0;
 
 public:
 	void setup(std::string id);

@@ -19,16 +19,6 @@ public:
 		class IOReader const* pReader = nullptr;
 	};
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
-private:
-	struct ShaderFile : File
-	{
-		ShaderType type;
-
-		ShaderFile(stdfs::path const& id, stdfs::path const& fullPath, ShaderType type);
-	};
-#endif
-
 public:
 	static std::string const s_tName;
 	static std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const s_typeToFlagBit;

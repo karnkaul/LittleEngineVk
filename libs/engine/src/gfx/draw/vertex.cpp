@@ -17,7 +17,7 @@ std::vector<vk::VertexInputAttributeDescription> Vertex::attributeDescriptions()
 	vk::VertexInputAttributeDescription pos;
 	pos.binding = binding;
 	pos.location = 0;
-	pos.format = vk::Format::eR32G32Sfloat;
+	pos.format = vk::Format::eR32G32B32Sfloat;
 	pos.offset = offsetof(Vertex, position);
 	ret.push_back(pos);
 	vk::VertexInputAttributeDescription col;

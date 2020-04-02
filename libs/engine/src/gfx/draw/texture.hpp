@@ -24,6 +24,9 @@ public:
 public:
 	Sampler(Info const& info);
 	~Sampler() override;
+
+public:
+	Status update() override;
 };
 
 class Texture final : public Resource
@@ -71,16 +74,13 @@ private:
 private:
 	Image m_standby;
 	ImgID m_imgID;
-	class FileReader const* m_pReader = nullptr;
+	FileReader const* m_pReader = nullptr;
 	bool m_bReloading = false;
 #endif
 
 public:
-	Texture(Info const& info);
+	Texture(Info info);
 	~Texture() override;
-
-public:
-	Status updateStatus();
 
 public:
 	Status update() override;

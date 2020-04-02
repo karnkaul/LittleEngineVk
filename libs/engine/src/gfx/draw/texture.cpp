@@ -18,6 +18,7 @@ Sampler::Sampler(Info const& info)
 	{
 		m_sampler = g_info.device.createSampler(m_createInfo);
 	}
+	m_status = Status::eReady;
 }
 
 Sampler::~Sampler()
@@ -25,9 +26,14 @@ Sampler::~Sampler()
 	vkDestroy(m_sampler);
 }
 
+Resource::Status Sampler::update()
+{
+	return m_status;
+}
+
 std::string const Texture::s_tName = utils::tName<Texture>();
 
-Texture::Texture(Info const& info) : m_pSampler(info.pSampler)
+Texture::Texture(Info info) : m_pSampler(info.pSampler)
 {
 	[[maybe_unused]] bool bAddFileMonitor = false;
 	if (!m_pSampler)
@@ -41,11 +47,11 @@ Texture::Texture(Info const& info) : m_pSampler(info.pSampler)
 	}
 	if (info.raw.bytes.extent > 0)
 	{
-		m_raw = info.raw;
+		m_raw = std::move(info.raw);
 	}
 	else if (!info.img.bytes.empty())
 	{
-		if (!imgToRaw(info.img))
+		if (!imgToRaw(std::move(info.img)))
 		{
 			throw std::runtime_error("Failed to create texture");
 		}
@@ -71,7 +77,7 @@ Texture::Texture(Info const& info) : m_pSampler(info.pSampler)
 		m_pReader = dynamic_cast<FileReader const*>(info.pReader);
 		ASSERT(m_pReader, "FileReader required!");
 		m_imgID = info.imgID;
-		m_files.push_back(std::make_unique<File>(m_imgID.id, m_pReader->fullPath(m_imgID.id), FileMonitor::Mode::eBinaryContents));
+		m_files.push_back(File(m_imgID.id, m_pReader->fullPath(m_imgID.id), FileMonitor::Mode::eBinaryContents, {}));
 	}
 #endif
 }
@@ -93,7 +99,7 @@ Texture::~Texture()
 	vkDestroy(m_imageView);
 }
 
-Texture::Status Texture::updateStatus()
+Resource::Status Texture::update()
 {
 	if (m_status == Status::eLoading)
 	{
@@ -108,25 +114,17 @@ Texture::Status Texture::updateStatus()
 				m_bReloading = false;
 			}
 #endif
-			LOGIF_D(m_status != Status::eReloaded, "[{}] [{}] loaded", s_tName, m_id);
+			LOG_D("[{}] [{}] loaded", s_tName, m_id);
 		}
 		else
 		{
 			m_status = Status::eLoading;
 			LOG_D("[{}] loading...", m_id);
-			ASSERT(m_guid != 4, "WTF");
 		}
-		return m_status;
 	}
-	m_status = Status::eReady;
-	return m_status;
-}
-
-Resource::Status Texture::update()
-{
-	if (updateStatus() == Status::eLoading)
+	if (m_status == Status::eLoading)
 	{
-		// Stall Resource::update() until texture is fully loaded
+		// Stall Hot Reloading until this file has finished loading to the GPU
 		return m_status;
 	}
 #if defined(LEVK_ASSET_HOT_RELOAD)
@@ -146,41 +144,39 @@ Resource::Status Texture::update()
 			}
 			m_imageView = createImageView(m_active.image, vk::Format::eR8G8B8A8Srgb);
 			m_status = Status::eReady;
-			LOG_D("[{}] [{}] reloaded", s_tName, m_id);
 		}
-		else if (m_fileStatus == FileMonitor::Status::eModified)
+		else
 		{
-			Resource::update();
-			if (m_fileStatus != FileMonitor::Status::eUpToDate)
+			auto& file = m_files.front();
+			auto lastStatus = file.monitor.lastStatus();
+			auto currentStatus = file.monitor.update();
+			if (currentStatus == FileMonitor::Status::eNotFound)
 			{
-				return m_status;
+				LOG_E("[{}] [{}] Resource lost!", s_tName, m_id);
 			}
-			if (m_bStbiRaw)
+			else if (lastStatus == FileMonitor::Status::eModified && currentStatus == FileMonitor::Status::eUpToDate)
 			{
-				stbi_image_free((void*)(m_raw.bytes.pData));
-				m_raw = {};
+				if (m_bStbiRaw)
+				{
+					stbi_image_free((void*)(m_raw.bytes.pData));
+					m_raw = {};
+				}
+				auto img = Img{file.monitor.bytes(), m_imgID.channels};
+				if (!imgToRaw(std::move(img)))
+				{
+					LOG_E("[{}] [{}] Failed to reload!", s_tName, m_id);
+				}
+				else
+				{
+					m_loaded = load(&m_standby);
+					m_bReloading = true;
+					LOG_D("[{}] [{}] reloading...", s_tName, m_id);
+				}
 			}
-			auto img = Img{m_files.front()->monitor.bytes(), m_imgID.channels};
-			if (!imgToRaw(std::move(img)))
-			{
-				LOG_E("[{}] [{}] Failed to reload!", s_tName, m_id);
-				m_fileStatus = FileMonitor::Status::eUpToDate;
-			}
-			else
-			{
-				m_loaded = load(&m_standby);
-				m_bReloading = true;
-				LOG_D("[{}] [{}] reloading...", s_tName, m_id);
-			}
-		}
-		else if (m_fileStatus == FileMonitor::Status::eNotFound)
-		{
-			LOG_E("[{}] [{}] Resource lost!", s_tName, m_id);
-			m_fileStatus = FileMonitor::Status::eUpToDate;
 		}
 	}
 #endif
-	return Resource::update();
+	return m_status;
 }
 
 TResult<Texture::Img> Texture::idToImg(stdfs::path const& id, u8 channels, IOReader const* pReader)

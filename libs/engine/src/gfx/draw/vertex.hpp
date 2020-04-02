@@ -9,7 +9,7 @@ struct Vertex final
 {
 	constexpr static u32 binding = 0;
 
-	glm::vec2 position = {};
+	glm::vec3 position = {};
 	glm::vec3 colour = {};
 	glm::vec2 texCoord = {};
 

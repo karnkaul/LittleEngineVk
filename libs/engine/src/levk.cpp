@@ -96,16 +96,25 @@ s32 engine::run(s32 argc, char** argv)
 		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
 
 		gfx::Vertex const triangle0Verts[] = {
-			gfx::Vertex{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-			gfx::Vertex{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-			gfx::Vertex{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+			gfx::Vertex{{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+			gfx::Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+			gfx::Vertex{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
 		};
 
-		gfx::Vertex const quad0Verts[] = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-										  {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-										  {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-										  {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
-		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0};
+		// clang-format off
+		auto const dz = 0.25f;
+		gfx::Vertex const quad0Verts[] = {
+			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+			{{-0.5f, -0.5f, dz}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{0.5f, -0.5f, dz}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+			{{0.5f, 0.5f, dz}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+			{{-0.5f, 0.5f, dz}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+		};
+		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+		// clang-format on
 
 		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> gfx::Buffer {
 			gfx::BufferInfo info;
@@ -299,8 +308,8 @@ s32 engine::run(s32 argc, char** argv)
 				try
 				{
 					auto drawFrame = [pBlank, &transform0](gfx::ubo::View* pView, gfx::Renderer* pRenderer, vk::Pipeline pipeline,
-												   vk::PipelineLayout layout, vk::Buffer vertexBuffer, vk::Buffer indexBuffer,
-												   u32 vertCount, u32 indexCount, gfx::Texture* pTexture) -> bool {
+														   vk::PipelineLayout layout, vk::Buffer vertexBuffer, vk::Buffer indexBuffer,
+														   u32 vertCount, u32 indexCount, gfx::Texture* pTexture) -> bool {
 						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
 						gfx::ubo::Flags flags;

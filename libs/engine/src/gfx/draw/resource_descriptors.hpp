@@ -71,8 +71,8 @@ struct View final
 
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	glm::mat4 mat_vp = glm::mat4(1.0f);
-	glm::mat4 mat_v = glm::mat4(1.0f);
+	alignas(16) glm::mat4 mat_vp = glm::mat4(1.0f);
+	alignas(16) glm::mat4 mat_v = glm::mat4(1.0f);
 };
 
 struct Flags final
@@ -86,7 +86,7 @@ struct Flags final
 		eTEXTURED = 1 << 0,
 	};
 
-	s32 bits = 0;
+	alignas(4) u32 bits = 0;
 };
 } // namespace ubo
 

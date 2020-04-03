@@ -1,6 +1,6 @@
 #version 450
 
-const int TEXTURED = 1 << 0;
+const uint TEXTURED = 1 << 0;
 
 layout(binding = 1) uniform Flags
 {

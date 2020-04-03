@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "gfx/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 #include "resource.hpp"
 
 namespace le::gfx

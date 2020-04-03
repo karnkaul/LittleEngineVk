@@ -1,8 +1,8 @@
 #pragma once
 #include <memory>
+#include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "engine/window/window.hpp"
-#include "gfx/vulkan.hpp"
 
 namespace le
 {

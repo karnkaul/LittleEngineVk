@@ -53,7 +53,12 @@ void os::init(Args const& args)
 		}
 		for (s32 i = 1; i < args.argc; ++i)
 		{
-			g_args.push_back(args.argv[i]);
+			std::string_view arg(args.argv[i]);
+			while (!arg.empty() && arg.at(0) == '-')
+			{
+				arg = arg.substr(1);
+			}
+			g_args.push_back(arg);
 		}
 	}
 	return;

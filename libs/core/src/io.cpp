@@ -115,7 +115,7 @@ TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initi
 		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
 		{
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
-			return std::move(ret) / name;
+			return ret / name;
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
@@ -133,7 +133,7 @@ TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, ArrayView<
 		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
 		{
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
-			return std::move(ret) / name;
+			return ret / name;
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
@@ -163,7 +163,7 @@ TResult<std::stringstream> FileReader::getStr(stdfs::path const& id) const
 		{
 			std::stringstream buf;
 			buf << file.rdbuf();
-			return std::move(buf);
+			return buf;
 		}
 	}
 	return {};
@@ -180,7 +180,7 @@ TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
 			auto buf = bytearray((size_t)pos);
 			file.seekg(0, std::ios::beg);
 			file.read((char*)buf.data(), (std::streamsize)pos);
-			return std::move(buf);
+			return buf;
 		}
 	}
 	return {};
@@ -224,7 +224,7 @@ TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
 			std::string charBuf((size_t)length, 0);
 			PHYSFS_readBytes(pFile, charBuf.data(), (PHYSFS_uint64)length);
 			buf << charBuf;
-			return std::move(buf);
+			return buf;
 		}
 		PHYSFS_close(pFile);
 	}
@@ -241,7 +241,7 @@ TResult<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
 			auto length = PHYSFS_fileLength(pFile);
 			auto buf = bytearray((size_t)length);
 			PHYSFS_readBytes(pFile, buf.data(), (PHYSFS_uint64)length);
-			return std::move(buf);
+			return buf;
 		}
 		PHYSFS_close(pFile);
 	}

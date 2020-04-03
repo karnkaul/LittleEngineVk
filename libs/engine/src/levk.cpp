@@ -40,12 +40,16 @@ s32 engine::run(s32 argc, char** argv)
 		services.add<log::Service, std::string_view>("debug.log");
 		services.add<jobs::Service, u8>(4);
 		services.add<Window::Service>();
-
 		NativeWindow dummyWindow({});
 		gfx::InitInfo initInfo;
-#if 1 || defined(LEVK_DEBUG) // Always enabled, for time being
+#if defined(LEVK_DEBUG)
 		initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
 #endif
+		if (os::isDefined("validation"))
+		{
+			LOG_I("Validation layers requested, enabling...");
+			initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
+		}
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
 		initInfo.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
 

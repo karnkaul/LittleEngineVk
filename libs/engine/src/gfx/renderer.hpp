@@ -18,17 +18,17 @@ public:
 
 	struct FrameDriver final
 	{
-		rd::Set set;
+		rd::Sets sets;
 		vk::CommandBuffer commandBuffer;
 	};
 
-	using Write = std::function<void(rd::Set&)>;
+	using Write = std::function<void(rd::Sets&)>;
 	using Draw = std::function<Pipeline*(FrameDriver const&)>;
 
 private:
 	struct FrameSync final
 	{
-		rd::Set set;
+		rd::Sets sets;
 		vk::Semaphore renderReady;
 		vk::Semaphore presentReady;
 		vk::Fence drawing;

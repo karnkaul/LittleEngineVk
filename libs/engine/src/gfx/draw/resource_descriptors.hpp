@@ -11,6 +11,13 @@ class Texture;
 
 namespace rd
 {
+enum class Type : u8
+{
+	eScene,
+	eObject,
+	eCOUNT_
+};
+
 struct WriteInfo final
 {
 	vk::DescriptorSet set;
@@ -61,14 +68,9 @@ struct TextureWriter
 };
 
 void write(WriteInfo const& info);
-} // namespace rd
 
-namespace ubo
-{
 struct View final
 {
-	static constexpr u32 binding = 0;
-
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
 	alignas(16) glm::mat4 mat_vp = glm::mat4(1.0f);
@@ -77,8 +79,6 @@ struct View final
 
 struct Flags final
 {
-	static constexpr u32 binding = 1;
-
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
 	enum
@@ -86,19 +86,16 @@ struct Flags final
 		eTEXTURED = 1 << 0,
 	};
 
+	alignas(16) glm::vec4 tint = glm::vec4(1.0f);
 	alignas(4) u32 bits = 0;
 };
-} // namespace ubo
 
-namespace rd
+struct Textures final
 {
-enum class Type : u8
-{
-	eUniformBuffer,
-	eCOUNT_
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 };
 
-class Set final
+class Sets final
 {
 private:
 	template <typename T>
@@ -115,41 +112,36 @@ private:
 	};
 
 public:
-	vk::DescriptorSet m_set;
+	std::array<vk::DescriptorSet, (size_t)Type::eCOUNT_> m_sets;
 
 private:
-	Handle<BufferWriter> m_view = {{}, 0};
-	Handle<BufferWriter> m_flags = {{}, 1};
-	Handle<TextureWriter> m_diffuse = {{}, 2};
+	Handle<BufferWriter> m_view;
+	Handle<BufferWriter> m_flags;
+	Handle<TextureWriter> m_diffuse;
 
 public:
-	void writeView(ubo::View const& view);
-	void writeFlags(ubo::Flags const& flags);
+	Sets();
+
+public:
+	void writeView(View const& view);
+	void writeFlags(Flags const& flags);
 	void writeDiffuse(Texture const& diffuse);
 
 public:
 	void destroy();
 };
 
-struct Setup final
-{
-	vk::DescriptorPool descriptorPool;
-	std::vector<Set> sets;
-};
-
 struct SetLayouts final
 {
-	std::array<vk::DescriptorSetLayout, (size_t)Type::eCOUNT_> layouts;
-	u32 descriptorCount = 0;
-
-	Setup allocateSets(u32 descriptorSetCount);
-
-	static SetLayouts create();
+	vk::DescriptorPool descriptorPool;
+	std::vector<Sets> sets;
 };
 
-inline SetLayouts g_setLayouts;
+inline std::array<vk::DescriptorSetLayout, (size_t)Type::eCOUNT_> g_setLayouts;
 
 void init();
 void deinit();
+
+SetLayouts allocateSets(u32 copies);
 } // namespace rd
 } // namespace le::gfx

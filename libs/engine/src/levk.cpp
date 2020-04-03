@@ -157,7 +157,6 @@ s32 engine::run(s32 argc, char** argv)
 		textureInfo.imgID.channels = 4;
 		textureInfo.imgID.assetID = "textures/texture.jpg";
 		auto pTexture = gfx::g_pResources->create<gfx::Texture>(textureInfo.imgID.assetID, textureInfo);
-		auto pBlank = gfx::g_pResources->get<gfx::Texture>("textures/blank");
 
 		Window w0, w1;
 		Window::Info info0;
@@ -196,7 +195,7 @@ s32 engine::run(s32 argc, char** argv)
 			*ppPresenter = WindowImpl::presenter(id);
 			gfx::Pipeline::Info pipelineInfo;
 			pipelineInfo.pShader = pTutorialShader;
-			pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.layouts.at((size_t)gfx::rd::Type::eUniformBuffer)};
+			pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.begin(), gfx::rd::g_setLayouts.end()};
 			pipelineInfo.name = "default";
 			pPipeline->create(std::move(pipelineInfo));
 			gfx::Renderer::Info info;
@@ -214,7 +213,7 @@ s32 engine::run(s32 argc, char** argv)
 			{
 				gfx::Pipeline::Info pipelineInfo;
 				pipelineInfo.name = "wireframe";
-				pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.layouts.at((size_t)gfx::rd::Type::eUniformBuffer)};
+				pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.begin(), gfx::rd::g_setLayouts.end()};
 				pipelineInfo.pShader = pTutorialShader;
 				pipelineInfo.polygonMode = vk::PolygonMode::eLine;
 				pipelineInfo.staticLineWidth = gfx::g_info.lineWidth(3.0f);
@@ -226,8 +225,8 @@ s32 engine::run(s32 argc, char** argv)
 				uRenderer1 = createRenderer(&pipeline1, &pPresenter1, w1.id());
 			}
 
-			gfx::ubo::View view0;
-			gfx::ubo::View view1;
+			gfx::rd::View view0;
+			gfx::rd::View view1;
 			Transform transform0;
 
 			Time t = Time::elapsed();
@@ -283,7 +282,7 @@ s32 engine::run(s32 argc, char** argv)
 					w0.create(info0);
 					gfx::Pipeline::Info pipelineInfo;
 					pipelineInfo.name = "wireframe";
-					pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.layouts.at((size_t)gfx::rd::Type::eUniformBuffer)};
+					pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.begin(), gfx::rd::g_setLayouts.end()};
 					pipelineInfo.pShader = pTutorialShader;
 					pipelineInfo.polygonMode = vk::PolygonMode::eLine;
 					pipelineInfo.staticLineWidth = gfx::g_info.lineWidth(3.0f);
@@ -310,21 +309,17 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [pBlank, &transform0](gfx::ubo::View* pView, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
+					auto drawFrame = [&transform0](gfx::rd::View* pView, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
 														   vk::Buffer vertexBuffer, vk::Buffer indexBuffer, u32 vertCount, u32 indexCount,
 														   gfx::Texture* pTexture) -> bool {
 						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
-						gfx::ubo::Flags flags;
-						auto write = [&](gfx::rd::Set& set) {
+						gfx::rd::Flags flags;
+						auto write = [&](gfx::rd::Sets& set) {
 							if (pTexture)
 							{
-								flags.bits |= gfx::ubo::Flags::eTEXTURED;
+								flags.bits |= gfx::rd::Flags::eTEXTURED;
 								set.writeDiffuse(*pTexture);
-							}
-							else
-							{
-								set.writeDiffuse(*pBlank);
 							}
 							set.writeView(*pView);
 							set.writeFlags(flags);
@@ -336,8 +331,12 @@ s32 engine::run(s32 argc, char** argv)
 							driver.commandBuffer.setScissor(0, scissor);
 							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pPipeline->m_pipeline);
 							vk::DeviceSize offsets[] = {0};
-							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout, 0,
-																	driver.set.m_set, {});
+							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout,
+																	(u32)gfx::rd::Type::eScene,
+																	driver.sets.m_sets.at((size_t)gfx::rd::Type::eScene), {});
+							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout,
+																	(u32)gfx::rd::Type::eObject,
+																	driver.sets.m_sets.at((size_t)gfx::rd::Type::eObject), {});
 							driver.commandBuffer.pushConstants(pPipeline->m_layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4),
 															   glm::value_ptr(transform0.model()));
 							driver.commandBuffer.bindVertexBuffers(gfx::Vertex::binding, 1, &vertexBuffer, offsets);

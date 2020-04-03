@@ -1,15 +1,10 @@
 #version 450
 
-layout(binding = 0) uniform View
+layout(set = 0, binding = 0) uniform View
 {
 	mat4 mat_pv;
 	mat4 mat_v;
 } view;
-
-layout(binding = 1) uniform Flags
-{
-	int isTextured;
-} flags;
 
 layout(push_constant) uniform PushConsts
 {

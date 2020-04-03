@@ -2,12 +2,13 @@
 
 const uint TEXTURED = 1 << 0;
 
-layout(binding = 1) uniform Flags
+layout(set = 1, binding = 0) uniform Flags
 {
+	vec4 tint;
 	int bits;
 } flags;
 
-layout(binding = 2) uniform sampler2D diffuse;
+layout(set = 1, binding = 1) uniform sampler2D diffuse;
 
 layout(location = 0) in vec3 fragColour;
 layout(location = 1) in vec2 texCoord;
@@ -25,4 +26,5 @@ void main()
 	{
 		outColour = vec4(fragColour, 1.0);
 	}
+	outColour *= flags.tint;
 }

@@ -4,13 +4,13 @@
 #include "resources.hpp"
 #include "texture.hpp"
 
-namespace le::gfx
+namespace le::gfx::rd
 {
 namespace
 {
 bool g_bSetLayoutsInit = false;
 
-void writeSet(rd::WriteInfo const& info)
+void writeSet(WriteInfo const& info)
 {
 	vk::WriteDescriptorSet descWrite;
 	descWrite.dstSet = info.set;
@@ -21,30 +21,40 @@ void writeSet(rd::WriteInfo const& info)
 	descWrite.pImageInfo = info.pImage;
 	descWrite.pBufferInfo = info.pBuffer;
 	g_info.device.updateDescriptorSets(descWrite, {});
+	return;
+}
+
+void createLayouts()
+{
+	std::array const sceneBindings = {View::s_setLayoutBinding};
+	std::array const objectBindings = {Flags::s_setLayoutBinding, Textures::s_setLayoutBinding};
+	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
+	setLayoutCreateInfo.bindingCount = (u32)sceneBindings.size();
+	setLayoutCreateInfo.pBindings = sceneBindings.data();
+	rd::g_setLayouts.at((size_t)Type::eScene) = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
+	setLayoutCreateInfo.bindingCount = (u32)objectBindings.size();
+	setLayoutCreateInfo.pBindings = objectBindings.data();
+	rd::g_setLayouts.at((size_t)Type::eObject) = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
+	return;
 }
 } // namespace
 
-vk::DescriptorSetLayoutBinding const ubo::View::s_setLayoutBinding =
-	vk::DescriptorSetLayoutBinding(binding, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-
-vk::DescriptorSetLayoutBinding const ubo::Flags::s_setLayoutBinding = vk::DescriptorSetLayoutBinding(
-	binding, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
-
-void rd::BufferWriter::writeBuffer(vk::DescriptorSet set, u32 binding, u32 size) const
+void BufferWriter::writeBuffer(vk::DescriptorSet set, u32 binding, u32 size) const
 {
 	vk::DescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = buffer.buffer;
 	bufferInfo.offset = 0;
 	bufferInfo.range = size;
-	rd::WriteInfo writeInfo;
+	WriteInfo writeInfo;
 	writeInfo.set = set;
 	writeInfo.binding = binding;
 	writeInfo.pBuffer = &bufferInfo;
 	writeInfo.type = vk::DescriptorType::eUniformBuffer;
 	writeSet(writeInfo);
+	return;
 }
 
-void rd::TextureWriter::write(vk::DescriptorSet set, Texture const& texture, u32 binding)
+void TextureWriter::write(vk::DescriptorSet set, Texture const& texture, u32 binding)
 {
 	ASSERT(texture.m_pSampler, "Sampler is null!");
 	vk::DescriptorImageInfo imageInfo;
@@ -57,109 +67,117 @@ void rd::TextureWriter::write(vk::DescriptorSet set, Texture const& texture, u32
 	writeInfo.binding = binding;
 	writeInfo.type = vk::DescriptorType::eCombinedImageSampler;
 	writeSet(writeInfo);
+	return;
 }
 
-void rd::Set::writeView(ubo::View const& view)
+vk::DescriptorSetLayoutBinding const View::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+
+vk::DescriptorSetLayoutBinding const Flags::s_setLayoutBinding = vk::DescriptorSetLayoutBinding(
+	0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+vk::DescriptorSetLayoutBinding const Textures::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
+
+Sets::Sets()
 {
-	m_view.write(m_set, view);
+	m_view.binding = View::s_setLayoutBinding.binding;
+	m_flags.binding = Flags::s_setLayoutBinding.binding;
+	m_diffuse.binding = Textures::s_setLayoutBinding.binding;
 }
 
-void rd::Set::writeFlags(ubo::Flags const& flags)
+void Sets::writeView(View const& view)
 {
-	m_flags.write(m_set, flags);
+	m_view.write(m_sets.at((size_t)Type::eScene), view);
+	return;
 }
 
-void rd::Set::writeDiffuse(Texture const& diffuse)
+void Sets::writeFlags(Flags const& flags)
 {
-	m_diffuse.write(m_set, diffuse);
+	m_flags.write(m_sets.at((size_t)Type::eObject), flags);
+	return;
 }
 
-void rd::Set::destroy()
+void Sets::writeDiffuse(Texture const& diffuse)
+{
+	m_diffuse.write(m_sets.at((size_t)Type::eObject), diffuse);
+	return;
+}
+
+void Sets::destroy()
 {
 	vram::release(m_view.writer.buffer, m_flags.writer.buffer);
 	m_view.writer.buffer = m_flags.writer.buffer = {};
+	return;
 }
 
-rd::SetLayouts rd::SetLayouts::create()
+SetLayouts allocateSets(u32 copies)
 {
-	vk::DescriptorSetLayoutBinding sampler;
-	sampler.binding = 2;
-	sampler.descriptorCount = 1;
-	sampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-	sampler.stageFlags = vk::ShaderStageFlagBits::eFragment;
-	std::array const bindings = {ubo::View::s_setLayoutBinding, ubo::Flags::s_setLayoutBinding, sampler};
-	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
-	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
-	setLayoutCreateInfo.pBindings = bindings.data();
 	SetLayouts ret;
-	ret.layouts.at((size_t)Type::eUniformBuffer) = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
-	ret.descriptorCount = (u32)bindings.size();
-	return ret;
-}
-
-rd::Setup rd::SetLayouts::allocateSets(u32 descriptorSetCount)
-{
-	Setup ret;
 	// Pool of total descriptors
 	vk::DescriptorPoolSize uboPoolSize;
 	uboPoolSize.type = vk::DescriptorType::eUniformBuffer;
-	uboPoolSize.descriptorCount = descriptorSetCount * 2;
+	uboPoolSize.descriptorCount = copies * 2;
 	vk::DescriptorPoolSize sampler2DPoolSize;
 	sampler2DPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
-	sampler2DPoolSize.descriptorCount = descriptorSetCount * 1;
+	sampler2DPoolSize.descriptorCount = copies * 1;
 	std::array const poolSizes = {uboPoolSize, sampler2DPoolSize};
 	vk::DescriptorPoolCreateInfo createInfo;
 	createInfo.poolSizeCount = poolSizes.size();
 	createInfo.pPoolSizes = poolSizes.data();
-	createInfo.maxSets = descriptorSetCount;
+	createInfo.maxSets = copies * 2; // 2 sets per copy
 	ret.descriptorPool = g_info.device.createDescriptorPool(createInfo);
 	// Allocate sets
 	vk::DescriptorSetAllocateInfo allocInfo;
 	allocInfo.descriptorPool = ret.descriptorPool;
-	allocInfo.descriptorSetCount = descriptorSetCount;
-	std::vector<vk::DescriptorSetLayout> const uboLayouts((size_t)descriptorSetCount, layouts.at((size_t)Type::eUniformBuffer));
-	allocInfo.pSetLayouts = uboLayouts.data();
-	auto const uboSets = g_info.device.allocateDescriptorSets(allocInfo);
+	allocInfo.descriptorSetCount = copies;
+	std::vector<vk::DescriptorSetLayout> const sceneLayouts((size_t)copies, g_setLayouts.at((size_t)Type::eScene));
+	allocInfo.pSetLayouts = sceneLayouts.data();
+	auto const sceneSets = g_info.device.allocateDescriptorSets(allocInfo);
+	std::vector<vk::DescriptorSetLayout> const objectLayouts((size_t)copies, g_setLayouts.at((size_t)Type::eObject));
+	allocInfo.pSetLayouts = objectLayouts.data();
+	auto const objectSets = g_info.device.allocateDescriptorSets(allocInfo);
 	// Write handles
-	ret.sets.reserve((size_t)descriptorSetCount);
-	for (u32 idx = 0; idx < descriptorSetCount; ++idx)
+	ret.sets.reserve((size_t)copies);
+	for (u32 idx = 0; idx < copies; ++idx)
 	{
-		Set set;
-		set.m_set = uboSets.at(idx);
-		set.writeView({});
-		set.writeFlags({});
+		Sets sets;
+		sets.m_sets.at((size_t)Type::eScene) = sceneSets.at(idx);
+		sets.m_sets.at((size_t)Type::eObject) = objectSets.at(idx);
+		sets.writeView({});
+		sets.writeFlags({});
 		auto pTex = g_pResources->get<Texture>("textures/blank");
 		ASSERT(pTex, "blank texture is null!");
-		set.writeDiffuse(*pTex);
-		ret.sets.push_back(set);
+		sets.writeDiffuse(*pTex);
+		ret.sets.push_back(std::move(sets));
 	}
 	return ret;
 }
 
-void rd::init()
+void init()
 {
 	if (!g_bSetLayoutsInit)
 	{
-		g_setLayouts = SetLayouts::create();
+		createLayouts();
 		g_bSetLayoutsInit = true;
 	}
 	return;
 }
 
-void rd::deinit()
+void deinit()
 {
 	if (g_bSetLayoutsInit)
 	{
-		for (auto& layout : g_setLayouts.layouts)
+		for (auto& layout : g_setLayouts)
 		{
 			vkDestroy(layout);
+			layout = vk::DescriptorSetLayout();
 		}
-		g_setLayouts = SetLayouts();
 		g_bSetLayoutsInit = false;
 	}
 }
 
-void rd::write(WriteInfo const& info)
+void write(WriteInfo const& info)
 {
 	vk::WriteDescriptorSet descWrite;
 	descWrite.dstSet = info.set;
@@ -171,4 +189,4 @@ void rd::write(WriteInfo const& info)
 	descWrite.pBufferInfo = info.pBuffer;
 	g_info.device.updateDescriptorSets(descWrite, {});
 }
-} // namespace le::gfx
+} // namespace le::gfx::rd

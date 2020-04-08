@@ -191,13 +191,23 @@ s32 engine::run(s32 argc, char** argv)
 		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createRenderer = [pTutorialShader](gfx::Pipeline* pPipeline, gfx::Presenter** ppPresenter, WindowID id) {
-			*ppPresenter = WindowImpl::presenter(id);
+		auto createPipeline = [pTutorialShader](gfx::Pipeline* pPipeline, std::string_view name, vk::PolygonMode mode = vk::PolygonMode::eFill, f32 lineWidth = 3.0f)
+		{
 			gfx::Pipeline::Info pipelineInfo;
 			pipelineInfo.pShader = pTutorialShader;
 			pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.begin(), gfx::rd::g_setLayouts.end()};
-			pipelineInfo.name = "default";
+			pipelineInfo.name = name;
+			pipelineInfo.polygonMode = mode;
+			pipelineInfo.staticLineWidth = lineWidth;
+			vk::PushConstantRange pcRange;
+			pcRange.size = sizeof(gfx::rd::Push);
+			pcRange.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+			pipelineInfo.pushConstantRanges = {pcRange};
 			pPipeline->create(std::move(pipelineInfo));
+		};
+		auto createRenderer = [&createPipeline](gfx::Pipeline* pPipeline, gfx::Presenter** ppPresenter, WindowID id) {
+			*ppPresenter = WindowImpl::presenter(id);
+			createPipeline(pPipeline, "default");
 			gfx::Renderer::Info info;
 			info.frameCount = 2;
 			info.pPresenter = *ppPresenter;
@@ -211,13 +221,7 @@ s32 engine::run(s32 argc, char** argv)
 
 			if (w0.isOpen())
 			{
-				gfx::Pipeline::Info pipelineInfo;
-				pipelineInfo.name = "wireframe";
-				pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.begin(), gfx::rd::g_setLayouts.end()};
-				pipelineInfo.pShader = pTutorialShader;
-				pipelineInfo.polygonMode = vk::PolygonMode::eLine;
-				pipelineInfo.staticLineWidth = gfx::g_info.lineWidth(3.0f);
-				pipeline0wf.create(pipelineInfo);
+				createPipeline(&pipeline0wf, "wireframe", vk::PolygonMode::eLine);
 				uRenderer0 = createRenderer(&pipeline0, &pPresenter0, w0.id());
 			}
 			if (w1.isOpen())
@@ -234,6 +238,27 @@ s32 engine::run(s32 argc, char** argv)
 			{
 				[[maybe_unused]] Time dt = Time::elapsed() - t;
 				t = Time::elapsed();
+
+				static Time fpsLogTime = Time::from_s(3.0f);
+				static Time fpsLogElapsed;
+				static Time fpsElapsed;
+				static u32 fps = 0;
+				static u32 frames = 0;
+				++frames;
+				fpsElapsed += dt;
+				fpsLogElapsed += dt;
+				if (fpsElapsed >= Time::from_s(1.0f))
+				{
+					fps = frames;
+					frames = 0;
+					fpsElapsed = Time();
+				}
+				if (fpsLogElapsed >= fpsLogTime)
+				{
+					LOG_I("dt: {}, FPS: {}", dt.to_s() * 1000, fps);
+					fps = 0;
+					fpsLogElapsed = Time();
+				}
 
 				{
 					gfx::g_pResources->update();
@@ -270,23 +295,20 @@ s32 engine::run(s32 argc, char** argv)
 
 				if (w0.isClosing())
 				{
+					pipeline0.destroy();
+					pipeline0wf.destroy();
 					w0.destroy();
 				}
 				if (w1.isClosing())
 				{
+					pipeline1.destroy();
 					w1.destroy();
 				}
 				if (bRecreate0)
 				{
 					bRecreate0 = false;
 					w0.create(info0);
-					gfx::Pipeline::Info pipelineInfo;
-					pipelineInfo.name = "wireframe";
-					pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.begin(), gfx::rd::g_setLayouts.end()};
-					pipelineInfo.pShader = pTutorialShader;
-					pipelineInfo.polygonMode = vk::PolygonMode::eLine;
-					pipelineInfo.staticLineWidth = gfx::g_info.lineWidth(3.0f);
-					pipeline0wf.create(pipelineInfo);
+					createPipeline(&pipeline0wf, "wireframe", vk::PolygonMode::eLine);
 					uRenderer0 = createRenderer(&pipeline0, &pPresenter0, w0.id());
 				}
 				if (bRecreate1)
@@ -309,20 +331,25 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [&transform0](gfx::rd::View* pView, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
+					auto drawFrame = [&transform0](gfx::rd::View* pGlobals, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
 														   vk::Buffer vertexBuffer, vk::Buffer indexBuffer, u32 vertCount, u32 indexCount,
 														   gfx::Texture* pTexture) -> bool {
 						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
-						gfx::rd::Flags flags;
-						auto write = [&](gfx::rd::Sets& set) {
+						gfx::rd::Locals locals;
+						locals.mat_m = transform0.model();
+						gfx::rd::Push pc;
+						auto write = [&](gfx::rd::Sets& set)
+						{
+							set.resetTextures();
 							if (pTexture)
 							{
-								flags.bits |= gfx::rd::Flags::eTEXTURED;
-								set.writeDiffuse(*pTexture);
+								locals.flags |= gfx::rd::Locals::eTEXTURED;
+								set.writeDiffuse(*pTexture, 0);
+								pc.diffuseID = 0;
 							}
-							set.writeView(*pView);
-							set.writeFlags(flags);
+							set.writeView(*pGlobals);
+							set.writeLocals(locals, 0);
 						};
 						auto draw = [&](gfx::Renderer::FrameDriver const& driver) -> gfx::Pipeline* {
 							vk::Viewport viewport = pRenderer->transformViewport();
@@ -337,8 +364,7 @@ s32 engine::run(s32 argc, char** argv)
 							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout,
 																	(u32)gfx::rd::Type::eObject,
 																	driver.sets.m_sets.at((size_t)gfx::rd::Type::eObject), {});
-							driver.commandBuffer.pushConstants(pPipeline->m_layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4),
-															   glm::value_ptr(transform0.model()));
+							driver.commandBuffer.pushConstants<gfx::rd::Push>(pPipeline->m_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pc);
 							driver.commandBuffer.bindVertexBuffers(gfx::Vertex::binding, 1, &vertexBuffer, offsets);
 							if (indexCount > 0)
 							{
@@ -380,7 +406,6 @@ s32 engine::run(s32 argc, char** argv)
 	{
 		LOG_E("Exception!\n\t{}", e.what());
 	}
-	std::this_thread::sleep_for(stdch::milliseconds(maths::randomRange(10, 1000)));
 	return 0;
 }
 } // namespace le

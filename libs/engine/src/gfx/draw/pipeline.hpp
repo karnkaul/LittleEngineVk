@@ -20,6 +20,7 @@ public:
 		std::string shaderID;
 		std::set<vk::DynamicState> dynamicStates;
 		std::vector<vk::DescriptorSetLayout> setLayouts;
+		std::vector<vk::PushConstantRange> pushConstantRanges;
 		f32 staticLineWidth = 1.0f;
 		class Shader* pShader = nullptr;
 		bool bBlend = false;
@@ -55,6 +56,7 @@ public:
 public:
 	bool create(Info info);
 	void update();
+	void destroy();
 
 private:
 	bool create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout);

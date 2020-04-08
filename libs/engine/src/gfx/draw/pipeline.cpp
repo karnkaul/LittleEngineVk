@@ -17,13 +17,7 @@ Pipeline::Pipeline(WindowID presenterWindow) : m_window(presenterWindow) {}
 
 Pipeline::~Pipeline()
 {
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
-	if (m_standby.bReady)
-	{
-		destroy(m_standby.pipeline, m_standby.layout);
-	}
-#endif
-	destroy(m_pipeline, m_layout);
+	destroy();
 }
 
 bool Pipeline::create(Info info)
@@ -37,6 +31,19 @@ bool Pipeline::create(Info info)
 	}
 	m_name = fmt::format("{}-{}", m_info.name, m_info.pShader->m_id.generic_string());
 	return create(m_pipeline, m_layout);
+}
+
+void Pipeline::destroy()
+{
+	wait(m_drawing);
+	destroy(m_pipeline, m_layout);
+	m_drawing = vk::Fence();
+#if defined(LEVK_RESOURCE_HOT_RELOAD)
+	if (m_standby.bReady)
+	{
+		destroy(m_standby.pipeline, m_standby.layout);
+	}
+#endif
 }
 
 bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
@@ -59,12 +66,8 @@ bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout
 		vk::PipelineLayoutCreateInfo layoutCreateInfo;
 		layoutCreateInfo.setLayoutCount = (u32)m_info.setLayouts.size();
 		layoutCreateInfo.pSetLayouts = m_info.setLayouts.data();
-		vk::PushConstantRange pushConstantRange;
-		pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
-		pushConstantRange.offset = 0;
-		pushConstantRange.size = sizeof(glm::mat4);
-		layoutCreateInfo.pushConstantRangeCount = 1;
-		layoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+		layoutCreateInfo.pushConstantRangeCount = (u32)m_info.pushConstantRanges.size();
+		layoutCreateInfo.pPushConstantRanges = m_info.pushConstantRanges.data();
 		out_layout = gfx::g_info.device.createPipelineLayout(layoutCreateInfo);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;

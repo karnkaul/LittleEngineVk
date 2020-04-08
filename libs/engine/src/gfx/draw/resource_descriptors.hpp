@@ -18,6 +18,49 @@ enum class Type : u8
 	eCOUNT_
 };
 
+struct View final
+{
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
+
+	alignas(16) glm::mat4 mat_vp = glm::mat4(1.0f);
+	alignas(16) glm::mat4 mat_v = glm::mat4(1.0f);
+	alignas(16) glm::mat4 mat_p = glm::mat4(1.0f);
+	alignas(16) glm::mat4 mat_ui = glm::mat4(1.0f);
+	alignas(16) glm::vec3 pos_v = glm::vec3(0.0f);
+};
+
+struct Locals final
+{
+	constexpr static u32 max = 1024;
+
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
+
+	enum
+	{
+		eTEXTURED = 1 << 0,
+		eSPECULAR = 1 << 1,
+	};
+
+	alignas(16) glm::mat4 mat_m = glm::mat4(1.0f);
+	alignas(16) glm::mat4 mat_n = glm::mat4(1.0f);
+	alignas(16) glm::vec4 tint = glm::vec4(1.0f);
+	alignas(4) u32 flags = 0;
+};
+
+struct Textures final
+{
+	constexpr static u32 max = 1024;
+
+	static vk::DescriptorSetLayoutBinding const s_diffuseLayoutBinding;
+	static vk::DescriptorSetLayoutBinding const s_specularLayoutBinding;
+};
+
+struct Push final
+{
+	u32 localID = 0;
+	u32 diffuseID = 0;
+};
+
 struct WriteInfo final
 {
 	vk::DescriptorSet set;
@@ -34,7 +77,7 @@ struct BufferWriter final
 	Buffer buffer;
 
 	template <typename T>
-	bool write(vk::DescriptorSet set, T const& data, u32 binding = T::binding)
+	bool write(vk::DescriptorSet set, vk::DescriptorType type, T const& data, u32 binding = T::binding, u32 idx = 0)
 	{
 		u32 size = (u32)sizeof(T);
 		if (buffer.writeSize < size)
@@ -43,7 +86,7 @@ struct BufferWriter final
 			BufferInfo info;
 			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 			info.queueFlags = QFlag::eGraphics;
-			info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+			info.usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer;
 			info.size = sizeof(T);
 			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 #if defined(LEVK_VKRESOURCE_NAMES)
@@ -55,45 +98,19 @@ struct BufferWriter final
 		{
 			return false;
 		}
-		writeBuffer(set, binding, size);
+		writeBuffer(set, type, binding, size, idx);
 		return true;
 	}
 
-	void writeBuffer(vk::DescriptorSet set, u32 binding, u32 size) const;
+	void writeBuffer(vk::DescriptorSet set, vk::DescriptorType type, u32 binding, u32 size, u32 idx) const;
 };
 
 struct TextureWriter
 {
-	void write(vk::DescriptorSet set, Texture const& texture, u32 binding);
+	void write(vk::DescriptorSet set, vk::DescriptorType type, Texture const& texture, u32 binding, u32 idx);
 };
 
 void write(WriteInfo const& info);
-
-struct View final
-{
-	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
-
-	alignas(16) glm::mat4 mat_vp = glm::mat4(1.0f);
-	alignas(16) glm::mat4 mat_v = glm::mat4(1.0f);
-};
-
-struct Flags final
-{
-	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
-
-	enum
-	{
-		eTEXTURED = 1 << 0,
-	};
-
-	alignas(16) glm::vec4 tint = glm::vec4(1.0f);
-	alignas(4) u32 bits = 0;
-};
-
-struct Textures final
-{
-	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
-};
 
 class Sets final
 {
@@ -102,12 +119,13 @@ private:
 	struct Handle final
 	{
 		T writer;
+		vk::DescriptorType type;
 		u32 binding;
 
 		template <typename U>
-		void write(vk::DescriptorSet set, U const& u)
+		void write(vk::DescriptorSet set, U const& u, u32 idx)
 		{
-			writer.write(set, u, binding);
+			writer.write(set, type, u, binding, idx);
 		}
 	};
 
@@ -116,16 +134,20 @@ public:
 
 private:
 	Handle<BufferWriter> m_view;
-	Handle<BufferWriter> m_flags;
+	Handle<BufferWriter> m_locals;
 	Handle<TextureWriter> m_diffuse;
+	Handle<TextureWriter> m_specular;
 
 public:
 	Sets();
 
 public:
 	void writeView(View const& view);
-	void writeFlags(Flags const& flags);
-	void writeDiffuse(Texture const& diffuse);
+	void writeLocals(Locals const& flags, u32 idx);
+	void writeDiffuse(Texture const& diffuse, u32 idx);
+	void writeSpecular(Texture const& specular, u32 idx);
+
+	void resetTextures();
 
 public:
 	void destroy();

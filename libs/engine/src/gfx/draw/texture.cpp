@@ -103,7 +103,7 @@ Resource::Status Texture::update()
 {
 	if (m_status == Status::eLoading)
 	{
-		if (isReady(m_loaded))
+		if (isSignalled(m_loaded))
 		{
 			m_status = Status::eReady;
 #if defined(LEVK_RESOURCE_HOT_RELOAD)

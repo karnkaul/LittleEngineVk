@@ -74,7 +74,7 @@ Stage& getNextStage(vk::DeviceSize size)
 {
 	for (auto& stage : g_stages)
 	{
-		if (isReady(stage.transfer.done))
+		if (isSignalled(stage.transfer.done))
 		{
 			g_info.device.resetFences(stage.transfer.done);
 			stage.transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -97,7 +97,7 @@ Transfer& getNextTransfer()
 {
 	for (auto& transfer : g_transfers)
 	{
-		if (isReady(transfer.done))
+		if (isSignalled(transfer.done))
 		{
 			g_info.device.resetFences(transfer.done);
 			transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);

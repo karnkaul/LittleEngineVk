@@ -2,7 +2,6 @@
 #include <functional>
 #include <vector>
 #include <glm/glm.hpp>
-#include "core/delegate.hpp"
 #include "core/flags.hpp"
 #include "engine/window/common.hpp"
 #include "common.hpp"
@@ -12,13 +11,21 @@ namespace le::gfx
 class Presenter final
 {
 public:
-	enum class Flag
+	enum class State : u8
+	{
+		eRunning = 0,
+		eSwapchainDestroyed,
+		eSwapchainRecreated,
+		eDestroyed,
+		eCOUNT_
+	};
+
+	enum class Flag : u8
 	{
 		eRenderPaused = 0,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
-	using OnEvent = Delegate<>;
 
 	struct DrawFrame final
 	{
@@ -78,14 +85,13 @@ public:
 	std::string m_name;
 
 public:
+	Swapchain m_swapchain;
 	vk::RenderPass m_renderPass;
 	Flags m_flags;
+	State m_state = State::eRunning;
 
 private:
 	Info m_info;
-	Swapchain m_swapchain;
-	OnEvent m_onSwapchainRecreated;
-	OnEvent m_onDestroyed;
 	WindowID m_window;
 
 public:
@@ -98,9 +104,6 @@ public:
 	TResult<DrawFrame> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setDrawing = vk::Fence());
 	bool present(vk::Semaphore wait);
 
-	OnEvent::Token registerSwapchainRecreated(OnEvent::Callback callback);
-	OnEvent::Token registerDestroyed(OnEvent::Callback callback);
-
 private:
 	void createRenderPass();
 	bool createSwapchain();
@@ -108,8 +111,5 @@ private:
 	void cleanup();
 
 	bool recreateSwapchain();
-
-private:
-	friend class Renderer;
 };
 } // namespace le::gfx

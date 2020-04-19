@@ -40,6 +40,13 @@ enum class ShaderType : u8
 
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
+namespace vkFlags
+{
+inline vk::ShaderStageFlags const vertShader = vk::ShaderStageFlagBits::eVertex;
+inline vk::ShaderStageFlags const fragShader = vk::ShaderStageFlagBits::eVertex;
+inline vk::ShaderStageFlags const vertFragShader = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+} // namespace vkFlags
+
 struct AvailableDevice final
 {
 	vk::PhysicalDevice physicalDevice;

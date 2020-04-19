@@ -193,10 +193,11 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	auto& frame = m_swapchain.frame();
 	if (!frame.bNascent)
 	{
-		gfx::wait(frame.drawing);
+		gfx::waitFor(frame.drawing);
 	}
 	frame.bNascent = false;
 	frame.drawing = drawing;
+	m_state = State::eRunning;
 	return DrawFrame{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
 }
 
@@ -221,17 +222,8 @@ bool Presenter::present(vk::Semaphore wait)
 		recreateSwapchain();
 		return false;
 	}
+	m_state = State::eRunning;
 	return true;
-}
-
-Presenter::OnEvent::Token Presenter::registerSwapchainRecreated(OnEvent::Callback callback)
-{
-	return m_onSwapchainRecreated.subscribe(callback);
-}
-
-Presenter::OnEvent::Token Presenter::registerDestroyed(OnEvent::Callback callback)
-{
-	return m_onDestroyed.subscribe(callback);
 }
 
 void Presenter::createRenderPass()
@@ -374,7 +366,7 @@ void Presenter::destroySwapchain()
 	vram::release(m_swapchain.depthImage);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name, m_window);
 	m_swapchain = Swapchain();
-	m_onDestroyed();
+	m_state = State::eSwapchainDestroyed;
 }
 
 void Presenter::cleanup()
@@ -384,7 +376,7 @@ void Presenter::cleanup()
 	m_renderPass = vk::RenderPass();
 	vkDestroy<vk::Instance>(m_info.surface);
 	m_info.surface = vk::SurfaceKHR();
-	m_onDestroyed();
+	m_state = State::eDestroyed;
 }
 
 bool Presenter::recreateSwapchain()
@@ -394,7 +386,7 @@ bool Presenter::recreateSwapchain()
 	if (createSwapchain())
 	{
 		LOG_D("[{}] ... Swapchain recreated", m_name, m_window);
-		m_onSwapchainRecreated();
+		m_state = State::eSwapchainRecreated;
 		return true;
 	}
 	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name, m_window);

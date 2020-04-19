@@ -19,7 +19,7 @@ layout(std140, set = 0, binding = 0) uniform View
 	vec3 pos_v;
 } view;
 
-layout(std140, set = 1, binding = 0) buffer readonly Locals
+layout(std140, set = 0, binding = 1) buffer readonly Locals
 {
 	mat4 mat_m;
 	mat4 mat_n;
@@ -27,8 +27,8 @@ layout(std140, set = 1, binding = 0) buffer readonly Locals
 	int flags;
 } locals[MAX_LOCALS];
 
-layout(set = 1, binding = 1) uniform sampler2D diffuse[MAX_TEXTURES];
-layout(set = 1, binding = 2) uniform sampler2D specular[MAX_TEXTURES];
+layout(set = 0, binding = 2) uniform sampler2D diffuse[MAX_TEXTURES];
+layout(set = 0, binding = 3) uniform sampler2D specular[MAX_TEXTURES];
 
 layout(push_constant) uniform Push
 {

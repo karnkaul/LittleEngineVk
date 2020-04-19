@@ -6,7 +6,7 @@
 #include "core/threads.hpp"
 #include "core/utils.hpp"
 #include "gfx/info.hpp"
-#include "gfx/presenter.hpp"
+#include "gfx/renderer.hpp"
 #if defined(LEVK_USE_GLFW)
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
@@ -328,16 +328,31 @@ std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 	return ret;
 }
 
-gfx::Presenter* WindowImpl::presenter(WindowID window)
+WindowImpl* WindowImpl::windowImpl(WindowID window)
 {
-	for (auto const pImpl : g_registeredWindows)
+	for (auto pImpl : g_registeredWindows)
 	{
 		if (pImpl->m_pWindow->m_id == window)
 		{
-			return pImpl->m_uPresenter.get();
+			return pImpl;
 		}
 	}
 	return nullptr;
+}
+
+vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow const& nativeWindow)
+{
+	vk::SurfaceKHR ret;
+#if defined(LEVK_USE_GLFW)
+	VkSurfaceKHR surface;
+	auto result = glfwCreateWindowSurface(instance, nativeWindow.m_pWindow, nullptr, &surface);
+	ASSERT(result == VK_SUCCESS, "Surface creation failed!");
+	if (result == VK_SUCCESS)
+	{
+		ret = surface;
+	}
+#endif
+	return ret;
 }
 
 WindowImpl::WindowImpl(Window* pWindow) : m_pWindow(pWindow)
@@ -358,13 +373,13 @@ bool WindowImpl::create(Window::Info const& info)
 	{
 		gfx::g_info.device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(info);
-		gfx::PresenterInfo presenterInfo;
-		presenterInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
+		gfx::Renderer::Info rendererInfo;
+		rendererInfo.presenterInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
-		presenterInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
-		presenterInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
-		presenterInfo.config.window = m_pWindow->m_id;
+		rendererInfo.presenterInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
+		rendererInfo.presenterInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
+		rendererInfo.presenterInfo.config.window = m_pWindow->m_id;
 		for (auto colourSpace : info.options.colourSpaces)
 		{
 			switch (colourSpace)
@@ -372,10 +387,10 @@ bool WindowImpl::create(Window::Info const& info)
 			default:
 				break;
 			case ColourSpace::eRGBLinear:
-				presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Unorm);
+				rendererInfo.presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Unorm);
 				break;
 			case ColourSpace::eSRGBNonLinear:
-				presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Srgb);
+				rendererInfo.presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Srgb);
 				break;
 			}
 		}
@@ -386,20 +401,16 @@ bool WindowImpl::create(Window::Info const& info)
 			default:
 				break;
 			case PresentMode::eMailbox:
-				presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eMailbox);
+				rendererInfo.presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eMailbox);
 				break;
 			case PresentMode::eFIFO:
-				presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eFifo);
+				rendererInfo.presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eFifo);
 				break;
 			}
 		}
-		m_uPresenter = std::make_unique<gfx::Presenter>(presenterInfo);
-		if (!m_uPresenter)
-		{
-			LOG_E("[{}] Failed to create [{}]", Window::s_tName, gfx::Presenter::s_tName);
-			m_uNativeWindow.reset();
-			return false;
-		}
+		rendererInfo.frameCount = info.config.virtualFrameCount;
+		rendererInfo.windowID = m_pWindow->id();
+		m_uRenderer = std::make_unique<gfx::Renderer>(rendererInfo);
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);
@@ -425,7 +436,7 @@ bool WindowImpl::create(Window::Info const& info)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_uPresenter.reset();
+		m_uRenderer.reset();
 		m_uNativeWindow.reset();
 		return false;
 	}
@@ -481,8 +492,7 @@ void WindowImpl::destroy()
 #endif
 		if (m_uNativeWindow)
 		{
-			m_uPresenter.reset();
-			m_uPresenter.reset();
+			m_uRenderer.reset();
 			m_uNativeWindow.reset();
 			LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 		}
@@ -493,26 +503,11 @@ void WindowImpl::destroy()
 	return;
 }
 
-vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow const& nativeWindow)
-{
-	vk::SurfaceKHR ret;
-#if defined(LEVK_USE_GLFW)
-	VkSurfaceKHR surface;
-	auto result = glfwCreateWindowSurface(instance, nativeWindow.m_pWindow, nullptr, &surface);
-	ASSERT(result == VK_SUCCESS, "Surface creation failed!");
-	if (result == VK_SUCCESS)
-	{
-		ret = surface;
-	}
-#endif
-	return ret;
-}
-
 void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
-	if (m_uPresenter)
+	if (m_uRenderer)
 	{
-		m_uPresenter->onFramebufferResize();
+		m_uRenderer->onFramebufferResize();
 	}
 	return;
 }

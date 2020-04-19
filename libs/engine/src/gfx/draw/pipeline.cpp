@@ -1,19 +1,18 @@
 #include <fmt/format.h>
 #include "core/log.hpp"
-#include "window/window_impl.hpp"
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
 #include "gfx/utils.hpp"
 #include "pipeline.hpp"
 #include "resources.hpp"
 #include "shader.hpp"
-#include "vertex.hpp"
+#include "gfx/draw/common_impl.hpp"
 
 namespace le::gfx
 {
 std::string const Pipeline::s_tName = utils::tName<Pipeline>();
 
-Pipeline::Pipeline(WindowID presenterWindow) : m_window(presenterWindow) {}
+Pipeline::Pipeline() = default;
 
 Pipeline::~Pipeline()
 {
@@ -35,10 +34,12 @@ bool Pipeline::create(Info info)
 
 void Pipeline::destroy()
 {
-	wait(m_drawing);
+	waitAll(m_activeFences);
 	destroy(m_pipeline, m_layout);
-	m_drawing = vk::Fence();
+	m_activeFences.clear();
 #if defined(LEVK_RESOURCE_HOT_RELOAD)
+	waitAll(m_standby.drawing);
+	m_standby.drawing.clear();
 	if (m_standby.bReady)
 	{
 		destroy(m_standby.pipeline, m_standby.layout);
@@ -48,20 +49,18 @@ void Pipeline::destroy()
 
 bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
 {
-	auto const pPresenter = WindowImpl::presenter(m_window);
-	ASSERT(pPresenter, "Presneter is null!");
 	if (!m_info.pShader && g_pResources && !m_info.shaderID.empty())
 	{
 		m_info.pShader = g_pResources->get<Shader>(m_info.shaderID);
 	}
 	ASSERT(m_info.pShader, "Shader is null!");
-	if (!m_info.pShader || !pPresenter)
+	if (!m_info.pShader)
 	{
 		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_name);
 		return false;
 	}
-	auto const bindingDescription = Vertex::bindingDescription();
-	auto const attributeDescriptions = Vertex::attributeDescriptions();
+	auto const bindingDescription = vbo::bindingDescription();
+	auto const attributeDescriptions = vbo::attributeDescriptions();
 	{
 		vk::PipelineLayoutCreateInfo layoutCreateInfo;
 		layoutCreateInfo.setLayoutCount = (u32)m_info.setLayouts.size();
@@ -153,7 +152,7 @@ bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout
 	createInfo.pColorBlendState = &colorBlendState;
 	createInfo.pDynamicState = &dynamicState;
 	createInfo.layout = m_layout;
-	createInfo.renderPass = pPresenter->m_renderPass;
+	createInfo.renderPass = m_info.renderPass;
 	createInfo.subpass = 0;
 	out_pipeline = g_info.device.createGraphicsPipeline({}, createInfo);
 	LOG_D("[{}] [{}] created", s_tName, m_name);
@@ -170,10 +169,14 @@ void Pipeline::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layou
 
 void Pipeline::update()
 {
+	auto fenceSignalled = [](auto fence) { return isSignalled(fence); };
+	m_activeFences.erase(std::remove_if(m_activeFences.begin(), m_activeFences.end(), fenceSignalled), m_activeFences.end());
 #if defined(LEVK_RESOURCE_HOT_RELOAD)
 	if (m_standby.bReady)
 	{
-		if (isReady(m_drawing))
+		auto& dr = m_standby.drawing;
+		dr.erase(std::remove_if(dr.begin(), dr.end(), fenceSignalled), dr.end());
+		if (dr.empty())
 		{
 			destroy(m_pipeline, m_layout);
 			m_pipeline = m_standby.pipeline;
@@ -186,7 +189,15 @@ void Pipeline::update()
 	{
 		LOG_D("[{}] [{}] recreating...", s_tName, m_name);
 		m_standby.bReady = create(m_standby.pipeline, m_standby.layout);
+		m_standby.drawing = std::move(m_activeFences);
+		m_activeFences.clear();
 	}
 #endif
+}
+
+void Pipeline::attach(vk::Fence drawing)
+{
+	ASSERT(drawing != vk::Fence(), "Invalid fence!");
+	m_activeFences.push_back(drawing);
 }
 } // namespace le::gfx

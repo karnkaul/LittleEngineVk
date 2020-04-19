@@ -10,6 +10,7 @@
 #include "core/transform.hpp"
 #include "core/services.hpp"
 #include "engine/levk.hpp"
+#include "engine/gfx/draw/common.hpp"
 #include "engine/window/window.hpp"
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
@@ -21,7 +22,8 @@
 #include "gfx/draw/resources.hpp"
 #include "gfx/draw/shader.hpp"
 #include "gfx/draw/texture.hpp"
-#include "gfx/draw/vertex.hpp"
+#include "engine/gfx/draw/common.hpp"
+#include "gfx/draw/common_impl.hpp"
 #include "window/window_impl.hpp"
 
 namespace le
@@ -96,50 +98,30 @@ s32 engine::run(s32 argc, char** argv)
 		commandPoolCreateInfo.queueFamilyIndex = qfi.transfer;
 		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
 
-		gfx::Vertex const triangle0Verts[] = {
-			gfx::Vertex{{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-			gfx::Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-			gfx::Vertex{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+		gfx::Geometry triangle0geometry;
+		triangle0geometry.vertices = {
+			gfx::Vertex{{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.5f, 0.0f}},
+			gfx::Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+			gfx::Vertex{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
 		};
+		gfx::Mesh* pTriangle0 = gfx::loadMesh("meshes/triangle0", triangle0geometry);
 
 		// clang-format off
 		auto const dz = 0.25f;
-		gfx::Vertex const quad0Verts[] = {
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+		gfx::Geometry quad0geometry;
+		quad0geometry.vertices = {
+			{{-0.5f, -0.5f, -dz}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{0.5f, -0.5f, -dz}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+			{{0.5f, 0.5f, -dz}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+			{{-0.5f, 0.5f, -dz}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
 			{{-0.5f, -0.5f, dz}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
 			{{0.5f, -0.5f, dz}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
 			{{0.5f, 0.5f, dz}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
 			{{-0.5f, 0.5f, dz}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 		};
-		u32 const quad0Indices[] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+		quad0geometry.indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 		// clang-format on
-
-		auto createDeviceBuffer = [](vk::DeviceSize size, vk::BufferUsageFlags flags) -> gfx::Buffer {
-			static s32 count = 0;
-			gfx::BufferInfo info;
-			info.size = size;
-			info.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-			info.usage = flags | vk::BufferUsageFlagBits::eTransferDst;
-			info.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
-			info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-			info.name = "DeviceBuffer_" + std::to_string(++count);
-			return gfx::vram::createBuffer(info);
-		};
-
-		gfx::Buffer triangle0VB, quad0VB, quad0IB;
-		{
-			std::vector<vk::Fence> transferFences;
-			triangle0VB = createDeviceBuffer(sizeof(triangle0Verts), vk::BufferUsageFlagBits::eVertexBuffer);
-			quad0VB = createDeviceBuffer(sizeof(quad0Verts), vk::BufferUsageFlagBits::eVertexBuffer);
-			quad0IB = createDeviceBuffer(sizeof(quad0Indices), vk::BufferUsageFlagBits::eIndexBuffer);
-			transferFences.push_back(gfx::vram::stage(triangle0VB, triangle0Verts));
-			transferFences.push_back(gfx::vram::stage(quad0VB, quad0Verts));
-			transferFences.push_back(gfx::vram::stage(quad0IB, quad0Indices));
-			gfx::waitAll(transferFences);
-		}
+		gfx::Mesh* pQuad0 = gfx::loadMesh("meshes/quad0", quad0geometry);
 
 		gfx::ImageInfo imageInfo;
 		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
@@ -159,9 +141,12 @@ s32 engine::run(s32 argc, char** argv)
 		auto pTexture = gfx::g_pResources->create<gfx::Texture>(textureInfo.imgID.assetID, textureInfo);
 
 		Window w0, w1;
+		auto pW0 = WindowImpl::windowImpl(w0.id());
+		auto pW1 = WindowImpl::windowImpl(w1.id());
 		Window::Info info0;
 		info0.config.size = {1280, 720};
 		info0.config.title = "LittleEngineVk Demo";
+		info0.config.virtualFrameCount = 2;
 		auto info1 = info0;
 		// info1.config.mode = Window::Mode::eBorderlessFullscreen;
 		info1.config.title += " 2";
@@ -191,42 +176,34 @@ s32 engine::run(s32 argc, char** argv)
 		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createPipeline = [pTutorialShader](gfx::Pipeline* pPipeline, std::string_view name, vk::PolygonMode mode = vk::PolygonMode::eFill, f32 lineWidth = 3.0f)
-		{
+		auto createPipeline = [pTutorialShader](gfx::Renderer* pRenderer, std::string_view name,
+												vk::PolygonMode mode = vk::PolygonMode::eFill, f32 lineWidth = 3.0f) -> gfx::Pipeline* {
 			gfx::Pipeline::Info pipelineInfo;
 			pipelineInfo.pShader = pTutorialShader;
-			pipelineInfo.setLayouts = {gfx::rd::g_setLayouts.begin(), gfx::rd::g_setLayouts.end()};
+			pipelineInfo.setLayouts = {gfx::rd::g_setLayout};
 			pipelineInfo.name = name;
 			pipelineInfo.polygonMode = mode;
 			pipelineInfo.staticLineWidth = lineWidth;
 			vk::PushConstantRange pcRange;
 			pcRange.size = sizeof(gfx::rd::Push);
-			pcRange.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+			pcRange.stageFlags = gfx::vkFlags::vertFragShader;
 			pipelineInfo.pushConstantRanges = {pcRange};
-			pPipeline->create(std::move(pipelineInfo));
-		};
-		auto createRenderer = [&createPipeline](gfx::Pipeline* pPipeline, gfx::Presenter** ppPresenter, WindowID id) {
-			*ppPresenter = WindowImpl::presenter(id);
-			createPipeline(pPipeline, "default");
-			gfx::Renderer::Info info;
-			info.frameCount = 2;
-			info.pPresenter = *ppPresenter;
-			return std::make_unique<gfx::Renderer>(info);
+			return pRenderer->createPipeline(std::move(pipelineInfo));
 		};
 		if (w0.create(info0) && w1.create(info1))
 		{
-			std::unique_ptr<gfx::Renderer> uRenderer0, uRenderer1;
-			gfx::Presenter *pPresenter0 = nullptr, *pPresenter1 = nullptr;
-			gfx::Pipeline pipeline0(w0.id()), pipeline0wf(w0.id()), pipeline1(w1.id());
+			gfx::Pipeline *pPipeline0 = nullptr, *pPipeline0wf = nullptr, *pPipeline1 = nullptr;
 
 			if (w0.isOpen())
 			{
-				createPipeline(&pipeline0wf, "wireframe", vk::PolygonMode::eLine);
-				uRenderer0 = createRenderer(&pipeline0, &pPresenter0, w0.id());
+				auto pRenderer0 = WindowImpl::windowImpl(w0.id())->m_uRenderer.get();
+				pPipeline0 = createPipeline(pRenderer0, "default");
+				pPipeline0wf = createPipeline(pRenderer0, "wireframe", vk::PolygonMode::eLine);
 			}
 			if (w1.isOpen())
 			{
-				uRenderer1 = createRenderer(&pipeline1, &pPresenter1, w1.id());
+				auto pRenderer1 = WindowImpl::windowImpl(w1.id())->m_uRenderer.get();
+				pPipeline1 = createPipeline(pRenderer1, "default");
 			}
 
 			gfx::rd::View view0;
@@ -262,9 +239,14 @@ s32 engine::run(s32 argc, char** argv)
 
 				{
 					gfx::g_pResources->update();
-					pipeline0.update();
-					pipeline0wf.update();
-					pipeline1.update();
+					if (pW0->m_uRenderer)
+					{
+						pW0->m_uRenderer->update();
+					}
+					if (pW1->m_uRenderer)
+					{
+						pW1->m_uRenderer->update();
+					}
 
 					// Update matrices
 					transform0.setOrientation(
@@ -295,27 +277,24 @@ s32 engine::run(s32 argc, char** argv)
 
 				if (w0.isClosing())
 				{
-					pipeline0.destroy();
-					pipeline0wf.destroy();
 					w0.destroy();
 				}
 				if (w1.isClosing())
 				{
-					pipeline1.destroy();
 					w1.destroy();
 				}
 				if (bRecreate0)
 				{
 					bRecreate0 = false;
 					w0.create(info0);
-					createPipeline(&pipeline0wf, "wireframe", vk::PolygonMode::eLine);
-					uRenderer0 = createRenderer(&pipeline0, &pPresenter0, w0.id());
+					pPipeline0 = createPipeline(pW0->m_uRenderer.get(), "default");
+					pPipeline0wf = createPipeline(pW0->m_uRenderer.get(), "wireframe", vk::PolygonMode::eLine);
 				}
 				if (bRecreate1)
 				{
 					bRecreate1 = false;
 					w1.create(info1);
-					uRenderer1 = createRenderer(&pipeline1, &pPresenter1, w1.id());
+					pPipeline1 = createPipeline(pW1->m_uRenderer.get(), "default");
 				}
 				if (bClose0)
 				{
@@ -332,15 +311,13 @@ s32 engine::run(s32 argc, char** argv)
 				try
 				{
 					auto drawFrame = [&transform0](gfx::rd::View* pGlobals, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
-														   vk::Buffer vertexBuffer, vk::Buffer indexBuffer, u32 vertCount, u32 indexCount,
-														   gfx::Texture* pTexture) -> bool {
+												   std::vector<gfx::MeshImpl*> meshes, gfx::Texture* pTexture) -> bool {
 						gfx::ClearValues clear;
 						clear.colour = Colour(0x030203ff);
 						gfx::rd::Locals locals;
 						locals.mat_m = transform0.model();
 						gfx::rd::Push pc;
-						auto write = [&](gfx::rd::Sets& set)
-						{
+						auto write = [&](gfx::rd::Set& set) {
 							set.resetTextures();
 							if (pTexture)
 							{
@@ -351,45 +328,45 @@ s32 engine::run(s32 argc, char** argv)
 							set.writeView(*pGlobals);
 							set.writeLocals(locals, 0);
 						};
-						auto draw = [&](gfx::Renderer::FrameDriver const& driver) -> gfx::Pipeline* {
+						auto draw = [&](gfx::Renderer::FrameDriver const& driver) -> std::vector<gfx::Pipeline*> {
 							vk::Viewport viewport = pRenderer->transformViewport();
 							vk::Rect2D scissor = pRenderer->transformScissor();
 							driver.commandBuffer.setViewport(0, viewport);
 							driver.commandBuffer.setScissor(0, scissor);
 							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pPipeline->m_pipeline);
 							vk::DeviceSize offsets[] = {0};
-							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout,
-																	(u32)gfx::rd::Type::eScene,
-																	driver.sets.m_sets.at((size_t)gfx::rd::Type::eScene), {});
-							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout,
-																	(u32)gfx::rd::Type::eObject,
-																	driver.sets.m_sets.at((size_t)gfx::rd::Type::eObject), {});
-							driver.commandBuffer.pushConstants<gfx::rd::Push>(pPipeline->m_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pc);
-							driver.commandBuffer.bindVertexBuffers(gfx::Vertex::binding, 1, &vertexBuffer, offsets);
-							if (indexCount > 0)
+							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout, 0,
+																	driver.set.m_descriptorSet, {});
+
+							for (auto pMesh : meshes)
 							{
-								driver.commandBuffer.bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint32);
-								driver.commandBuffer.drawIndexed(indexCount, 1, 0, 0, 0);
+								driver.commandBuffer.pushConstants<gfx::rd::Push>(pPipeline->m_layout, gfx::vkFlags::vertFragShader, 0, pc);
+								driver.commandBuffer.bindVertexBuffers(0, 1, &pMesh->vbo.buffer, offsets);
+								if (pMesh->indexCount > 0)
+								{
+									driver.commandBuffer.bindIndexBuffer(pMesh->ibo.buffer, 0, vk::IndexType::eUint32);
+									driver.commandBuffer.drawIndexed(pMesh->indexCount, 1, 0, 0, 0);
+								}
+								else
+								{
+									driver.commandBuffer.draw(pMesh->vertexCount, 1, 0, 0);
+								}
 							}
-							else
-							{
-								driver.commandBuffer.draw(vertCount, 1, 0, 0);
-							}
-							return pPipeline;
+							return {pPipeline};
 						};
 						return pRenderer->render(write, draw, clear);
 					};
 
-					if (w0.isOpen() && uRenderer0.get())
+					if (w0.isOpen() && pQuad0->isReady() && pTriangle0->isReady())
 					{
-						drawFrame(&view0, uRenderer0.get(), bWF0 ? &pipeline0wf : &pipeline0, quad0VB.buffer, quad0IB.buffer,
-								  (u32)arraySize(quad0Verts), (u32)arraySize(quad0Indices), pTexture);
+						auto pMesh = pQuad0->uImpl.get();
+						auto pMesh1 = pTriangle0->uImpl.get();
+						drawFrame(&view0, pW0->m_uRenderer.get(), bWF0 ? pPipeline0wf : pPipeline0, {pMesh, pMesh1}, pTexture);
 					}
-					if (w1.isOpen() && uRenderer1.get())
+					if (w1.isOpen() && pTriangle0->isReady())
 					{
-						drawFrame(&view1, uRenderer1.get(), &pipeline1, triangle0VB.buffer, {}, (u32)arraySize(triangle0Verts), 0, nullptr);
-						// drawFrame(&view1, pPresenter1, pipeline1, layout1, quad0VBIB.buffer, (u32)arraySize(quad0Verts),
-						//	  (u32)arraySize(quad0Indices));
+						auto pMesh = pTriangle0->uImpl.get();
+						drawFrame(&view1, pW1->m_uRenderer.get(), pPipeline1, {pMesh}, nullptr);
 					}
 				}
 				catch (std::exception const& e)
@@ -398,8 +375,8 @@ s32 engine::run(s32 argc, char** argv)
 				}
 			}
 			gfx::g_info.device.waitIdle();
+			gfx::unloadAllMeshes();
 			gfx::vkDestroy(transferPool);
-			gfx::vram::release(triangle0VB, quad0VB, quad0IB);
 		}
 	}
 	catch (std::exception const& e)

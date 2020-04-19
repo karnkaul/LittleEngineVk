@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include "core/std_types.hpp"
-#include "engine/window/common.hpp"
 #include "resources.hpp"
 
 namespace le::gfx
@@ -11,6 +10,7 @@ class Pipeline final
 public:
 	struct Info final
 	{
+		vk::RenderPass renderPass;
 		vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
 		vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eNone;
 		vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
@@ -32,7 +32,7 @@ public:
 public:
 	vk::Pipeline m_pipeline;
 	vk::PipelineLayout m_layout;
-	vk::Fence m_drawing;
+	std::vector<vk::Fence> m_activeFences;
 
 #if defined(LEVK_RESOURCE_HOT_RELOAD)
 private:
@@ -40,6 +40,7 @@ private:
 	{
 		vk::Pipeline pipeline;
 		vk::PipelineLayout layout;
+		std::vector<vk::Fence> drawing;
 		bool bReady = false;
 	} m_standby;
 #endif
@@ -50,13 +51,15 @@ private:
 	WindowID m_window;
 
 public:
-	Pipeline(WindowID presenterWindow);
+	Pipeline();
 	~Pipeline();
 
 public:
 	bool create(Info info);
-	void update();
 	void destroy();
+
+	void update();
+	void attach(vk::Fence drawing);
 
 private:
 	bool create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout);

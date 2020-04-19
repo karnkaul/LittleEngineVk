@@ -3,7 +3,7 @@
 #include "info.hpp"
 #include "utils.hpp"
 #include "draw/shader.hpp"
-#include "draw/vertex.hpp"
+#include "engine/gfx/draw/common.hpp"
 
 namespace le
 {
@@ -24,7 +24,7 @@ TResult<vk::Format> gfx::supportedFormat(PriorityList<vk::Format> const& desired
 	return {};
 }
 
-void gfx::wait(vk::Fence optional)
+void gfx::waitFor(vk::Fence optional)
 {
 	if (optional != vk::Fence())
 	{
@@ -34,10 +34,13 @@ void gfx::wait(vk::Fence optional)
 
 void gfx::waitAll(vk::ArrayProxy<const vk::Fence> validFences)
 {
-	g_info.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+	if (!validFences.empty())
+	{
+		g_info.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+	}
 }
 
-bool gfx::isReady(vk::Fence fence)
+bool gfx::isSignalled(vk::Fence fence)
 {
 	if (fence != vk::Fence())
 	{
@@ -46,9 +49,9 @@ bool gfx::isReady(vk::Fence fence)
 	return true;
 }
 
-bool gfx::allReady(ArrayView<vk::Fence const> fences)
+bool gfx::allSignalled(ArrayView<vk::Fence const> fences)
 {
-	return std::all_of(fences.begin(), fences.end(), [](auto fence) { return isReady(fence); });
+	return std::all_of(fences.begin(), fences.end(), [](auto fence) { return isSignalled(fence); });
 }
 
 vk::ImageView gfx::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type)

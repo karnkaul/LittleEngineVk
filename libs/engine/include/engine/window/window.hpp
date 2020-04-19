@@ -30,6 +30,7 @@ public:
 			glm::ivec2 size = {32, 32};
 			glm::ivec2 centreOffset = {};
 			Mode mode = Mode::eDecoratedWindow;
+			u8 virtualFrameCount = 2;
 		} config;
 
 		struct

@@ -8,8 +8,6 @@ namespace le::gfx::rd
 {
 namespace
 {
-bool g_bSetLayoutsInit = false;
-
 void writeSet(WriteInfo const& info)
 {
 	vk::WriteDescriptorSet descWrite;
@@ -26,30 +24,27 @@ void writeSet(WriteInfo const& info)
 
 void createLayouts()
 {
-	std::array const globals = {View::s_setLayoutBinding};
-	std::array const locals = {Locals::s_setLayoutBinding, Textures::s_diffuseLayoutBinding, Textures::s_specularLayoutBinding};
+	std::array const bindings = {View::s_setLayoutBinding, Locals::s_setLayoutBinding, Textures::s_diffuseLayoutBinding,
+								 Textures::s_specularLayoutBinding};
 	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
-	setLayoutCreateInfo.bindingCount = (u32)globals.size();
-	setLayoutCreateInfo.pBindings = globals.data();
-	rd::g_setLayouts.at((size_t)Type::eScene) = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
-	setLayoutCreateInfo.bindingCount = (u32)locals.size();
-	setLayoutCreateInfo.pBindings = locals.data();
-	rd::g_setLayouts.at((size_t)Type::eObject) = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
+	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
+	setLayoutCreateInfo.pBindings = bindings.data();
+	rd::g_setLayout = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
 	return;
 }
 } // namespace
 
-vk::DescriptorSetLayoutBinding const View::s_setLayoutBinding = vk::DescriptorSetLayoutBinding(
-	0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+vk::DescriptorSetLayoutBinding const View::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const Locals::s_setLayoutBinding = vk::DescriptorSetLayoutBinding(
-	0, vk::DescriptorType::eStorageBuffer, Locals::max, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+vk::DescriptorSetLayoutBinding const Locals::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eStorageBuffer, Locals::max, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_diffuseLayoutBinding =
-	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, Textures::max, vk::ShaderStageFlagBits::eFragment);
+	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_specularLayoutBinding =
-	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, Textures::max, vk::ShaderStageFlagBits::eFragment);
+	vk::DescriptorSetLayoutBinding(3, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
 
 void BufferWriter::writeBuffer(vk::DescriptorSet set, vk::DescriptorType type, u32 binding, u32 size, u32 idx) const
 {
@@ -84,7 +79,7 @@ void TextureWriter::write(vk::DescriptorSet set, vk::DescriptorType type, Textur
 	return;
 }
 
-Sets::Sets()
+Set::Set()
 {
 	m_view.binding = View::s_setLayoutBinding.binding;
 	m_view.type = vk::DescriptorType::eUniformBuffer;
@@ -96,31 +91,31 @@ Sets::Sets()
 	m_specular.type = vk::DescriptorType::eCombinedImageSampler;
 }
 
-void Sets::writeView(View const& view)
+void Set::writeView(View const& view)
 {
-	m_view.write(m_sets.at((size_t)Type::eScene), view, 0U);
+	m_view.write(m_descriptorSet, view, 0U);
 	return;
 }
 
-void Sets::writeLocals(Locals const& flags, u32 idx)
+void Set::writeLocals(Locals const& flags, u32 idx)
 {
-	m_locals.write(m_sets.at((size_t)Type::eObject), flags, idx);
+	m_locals.write(m_descriptorSet, flags, idx);
 	return;
 }
 
-void Sets::writeDiffuse(Texture const& diffuse, u32 idx)
+void Set::writeDiffuse(Texture const& diffuse, u32 idx)
 {
-	m_diffuse.write(m_sets.at((size_t)Type::eObject), diffuse, idx);
+	m_diffuse.write(m_descriptorSet, diffuse, idx);
 	return;
 }
 
-void Sets::writeSpecular(Texture const& specular, u32 idx)
+void Set::writeSpecular(Texture const& specular, u32 idx)
 {
-	m_specular.write(m_sets.at((size_t)Type::eObject), specular, idx);
+	m_specular.write(m_descriptorSet, specular, idx);
 	return;
 }
 
-void Sets::resetTextures()
+void Set::resetTextures()
 {
 	auto pTex = g_pResources->get<Texture>("textures/blank");
 	ASSERT(pTex, "blank texture is null!");
@@ -131,7 +126,7 @@ void Sets::resetTextures()
 	}
 }
 
-void Sets::destroy()
+void Set::destroy()
 {
 	vram::release(m_view.writer.buffer, m_locals.writer.buffer);
 	m_view.writer.buffer = m_locals.writer.buffer = {};
@@ -162,50 +157,42 @@ SetLayouts allocateSets(u32 copies)
 	vk::DescriptorSetAllocateInfo allocInfo;
 	allocInfo.descriptorPool = ret.descriptorPool;
 	allocInfo.descriptorSetCount = copies;
-	std::vector<vk::DescriptorSetLayout> const sceneLayouts((size_t)copies, g_setLayouts.at((size_t)Type::eScene));
-	allocInfo.pSetLayouts = sceneLayouts.data();
-	auto const sceneSets = g_info.device.allocateDescriptorSets(allocInfo);
-	std::vector<vk::DescriptorSetLayout> const objectLayouts((size_t)copies, g_setLayouts.at((size_t)Type::eObject));
-	allocInfo.pSetLayouts = objectLayouts.data();
-	auto const objectSets = g_info.device.allocateDescriptorSets(allocInfo);
+	std::vector<vk::DescriptorSetLayout> const setLayouts((size_t)copies * 2, g_setLayout);
+	allocInfo.pSetLayouts = setLayouts.data();
+	auto const sets = g_info.device.allocateDescriptorSets(allocInfo);
 	// Write handles
-	ret.sets.reserve((size_t)copies);
+	ret.set.reserve((size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
-		Sets sets;
-		sets.m_sets.at((size_t)Type::eScene) = sceneSets.at(idx);
-		sets.m_sets.at((size_t)Type::eObject) = objectSets.at(idx);
-		sets.writeView({});
+		Set set;
+		set.m_descriptorSet = sets.at(idx);
+		set.writeView({});
 		for (u32 i = 0; i < Locals::max; ++i)
 		{
-			sets.writeLocals({}, i);
+			set.writeLocals({}, i);
 		}
-		sets.resetTextures();
-		ret.sets.push_back(std::move(sets));
+		set.resetTextures();
+		ret.set.push_back(std::move(set));
 	}
 	return ret;
 }
 
 void init()
 {
-	if (!g_bSetLayoutsInit)
+	if (g_setLayout == vk::DescriptorSetLayout())
 	{
 		createLayouts();
-		g_bSetLayoutsInit = true;
 	}
 	return;
 }
 
 void deinit()
 {
-	if (g_bSetLayoutsInit)
+	if (g_setLayout != vk::DescriptorSetLayout())
 	{
-		for (auto& layout : g_setLayouts)
-		{
-			vkDestroy(layout);
-			layout = vk::DescriptorSetLayout();
-		}
-		g_bSetLayoutsInit = false;
+		vkDestroy(g_setLayout);
+		g_setLayout = vk::DescriptorSetLayout();
 	}
+	return;
 }
 } // namespace le::gfx::rd

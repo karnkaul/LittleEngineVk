@@ -2,7 +2,6 @@
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
-#include "presenter.hpp"
 #include "info.hpp"
 #include "renderer.hpp"
 #include "utils.hpp"
@@ -13,7 +12,7 @@ namespace le::gfx
 {
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
-Renderer::Renderer(Info const& info) : m_pPresenter(info.pPresenter), m_window(info.pPresenter->m_window)
+Renderer::Renderer(Info const& info) : m_presenter(info.presenterInfo), m_window(info.windowID)
 {
 	m_name = fmt::format("{}:{}", s_tName, m_window);
 	create(info.frameCount);
@@ -29,19 +28,14 @@ void Renderer::create(u8 frameCount)
 	if (m_frames.empty() && frameCount > 0)
 	{
 		m_frameCount = frameCount;
-		if (m_callbackTokens.empty())
-		{
-			m_callbackTokens = {m_pPresenter->registerDestroyed([this]() { destroy(); }),
-								m_pPresenter->registerSwapchainRecreated([this]() { reset(); })};
-		}
 		// Descriptors
 		auto descriptorSetup = rd::allocateSets(frameCount);
-		ASSERT(descriptorSetup.sets.size() == (size_t)frameCount, "Invalid setup!");
+		ASSERT(descriptorSetup.set.size() == (size_t)frameCount, "Invalid setup!");
 		m_descriptorPool = descriptorSetup.descriptorPool;
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			Renderer::FrameSync frame;
-			frame.sets = descriptorSetup.sets.at((size_t)idx);
+			frame.set = descriptorSetup.set.at((size_t)idx);
 			frame.renderReady = g_info.device.createSemaphore({});
 			frame.presentReady = g_info.device.createSemaphore({});
 			frame.drawing = g_info.device.createFence({});
@@ -64,11 +58,12 @@ void Renderer::create(u8 frameCount)
 
 void Renderer::destroy()
 {
+	m_pipelines.clear();
 	if (!m_frames.empty())
 	{
 		for (auto& frame : m_frames)
 		{
-			frame.sets.destroy();
+			frame.set.destroy();
 			vkDestroy(frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady, frame.presentReady);
 		}
 		vkDestroy(m_descriptorPool);
@@ -97,19 +92,67 @@ void Renderer::reset()
 	return;
 }
 
+Pipeline* Renderer::createPipeline(Pipeline::Info info)
+{
+	if (info.renderPass == vk::RenderPass())
+	{
+		info.renderPass = m_presenter.m_renderPass;
+	}
+	m_pipelines.push_back({});
+	auto& pipeline = m_pipelines.back();
+	if (!pipeline.create(std::move(info)))
+	{
+		m_pipelines.pop_back();
+		return nullptr;
+	}
+	return &pipeline;
+}
+
+void Renderer::update()
+{
+	switch (m_presenter.m_state)
+	{
+	case Presenter::State::eDestroyed:
+	{
+		destroy();
+		return;
+	}
+	case Presenter::State::eSwapchainDestroyed:
+	{
+		destroy();
+		return;
+	}
+	case Presenter::State::eSwapchainRecreated:
+	{
+		destroy();
+		create(m_frameCount);
+		break;
+	}
+	default:
+	{
+		break;
+	}
+	}
+	for (auto& pipeline : m_pipelines)
+	{
+		pipeline.update();
+	}
+	return;
+}
+
 bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 {
 	auto& frame = frameSync();
 	if (!frame.bNascent)
 	{
-		gfx::wait(frame.drawing);
+		gfx::waitFor(frame.drawing);
 	}
 	if (write)
 	{
-		write(frame.sets);
+		write(frame.set);
 	}
 	// Acquire
-	auto [acquire, bResult] = m_pPresenter->acquireNextImage(frame.renderReady, frame.drawing);
+	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
 	if (!bResult)
 	{
 		return false;
@@ -140,8 +183,8 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{frame.sets, commandBuffer};
-	auto pPipeline = draw(driver);
+	FrameDriver driver{frame.set, commandBuffer};
+	auto pipelines = draw(driver);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
 	// Submit
@@ -155,10 +198,12 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_info.device.resetFences(frame.drawing);
-	// TODO: Fix dependency on potentially dangling fence
-	pPipeline->m_drawing = frame.drawing;
+	for (auto pPipeline : pipelines)
+	{
+		pPipeline->attach(frame.drawing);
+	}
 	g_info.queues.graphics.submit(submitInfo, frame.drawing);
-	if (m_pPresenter->present(frame.presentReady))
+	if (m_presenter.present(frame.presentReady))
 	{
 		next();
 		return true;
@@ -169,7 +214,7 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 vk::Viewport Renderer::transformViewport(ScreenRect const& nRect, glm::vec2 const& depth) const
 {
 	vk::Viewport viewport;
-	auto const& extent = m_pPresenter->m_swapchain.extent;
+	auto const& extent = m_presenter.m_swapchain.extent;
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
 	viewport.minDepth = depth.x;
 	viewport.maxDepth = depth.y;
@@ -184,11 +229,17 @@ vk::Rect2D Renderer::transformScissor(ScreenRect const& nRect) const
 {
 	vk::Rect2D scissor;
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
-	scissor.offset.x = (s32)(nRect.left * m_pPresenter->m_swapchain.extent.width);
-	scissor.offset.y = (s32)(nRect.top * m_pPresenter->m_swapchain.extent.height);
-	scissor.extent.width = (u32)(size.x * m_pPresenter->m_swapchain.extent.width);
-	scissor.extent.height = (u32)(size.y * m_pPresenter->m_swapchain.extent.height);
+	scissor.offset.x = (s32)(nRect.left * m_presenter.m_swapchain.extent.width);
+	scissor.offset.y = (s32)(nRect.top * m_presenter.m_swapchain.extent.height);
+	scissor.extent.width = (u32)(size.x * m_presenter.m_swapchain.extent.width);
+	scissor.extent.height = (u32)(size.y * m_presenter.m_swapchain.extent.height);
 	return scissor;
+}
+
+void Renderer::onFramebufferResize()
+{
+	m_presenter.onFramebufferResize();
+	return;
 }
 
 Renderer::FrameSync& Renderer::frameSync()

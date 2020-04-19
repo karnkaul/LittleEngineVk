@@ -11,13 +11,6 @@ class Texture;
 
 namespace rd
 {
-enum class Type : u8
-{
-	eScene,
-	eObject,
-	eCOUNT_
-};
-
 struct View final
 {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
@@ -110,9 +103,7 @@ struct TextureWriter
 	void write(vk::DescriptorSet set, vk::DescriptorType type, Texture const& texture, u32 binding, u32 idx);
 };
 
-void write(WriteInfo const& info);
-
-class Sets final
+class Set final
 {
 private:
 	template <typename T>
@@ -130,7 +121,7 @@ private:
 	};
 
 public:
-	std::array<vk::DescriptorSet, (size_t)Type::eCOUNT_> m_sets;
+	vk::DescriptorSet m_descriptorSet;
 
 private:
 	Handle<BufferWriter> m_view;
@@ -139,7 +130,7 @@ private:
 	Handle<TextureWriter> m_specular;
 
 public:
-	Sets();
+	Set();
 
 public:
 	void writeView(View const& view);
@@ -156,10 +147,10 @@ public:
 struct SetLayouts final
 {
 	vk::DescriptorPool descriptorPool;
-	std::vector<Sets> sets;
+	std::vector<Set> set;
 };
 
-inline std::array<vk::DescriptorSetLayout, (size_t)Type::eCOUNT_> g_setLayouts;
+inline vk::DescriptorSetLayout g_setLayout;
 
 void init();
 void deinit();

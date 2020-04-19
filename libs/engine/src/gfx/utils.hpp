@@ -11,11 +11,11 @@ namespace le::gfx
 {
 TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
-void wait(vk::Fence optional);
+void waitFor(vk::Fence optional);
 void waitAll(vk::ArrayProxy<vk::Fence const> validFences);
 
-bool isReady(vk::Fence fence);
-bool allReady(ArrayView<vk::Fence const> fences);
+bool isSignalled(vk::Fence fence);
+bool allSignalled(ArrayView<vk::Fence const> fences);
 
 vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
 							  vk::ImageViewType type = vk::ImageViewType::e2D);

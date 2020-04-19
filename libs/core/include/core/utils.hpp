@@ -9,7 +9,7 @@ namespace le
 template <typename T>
 struct ArrayView
 {
-	using Type = T;
+	using value_type = T;
 	using const_iterator = T const*;
 
 	T const* pData;
@@ -19,8 +19,13 @@ struct ArrayView
 	constexpr ArrayView(T const* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
 
 	template <typename Container>
-	constexpr explicit ArrayView(Container const& container) noexcept
+	constexpr ArrayView(Container const& container) noexcept
 		: pData(container.empty() ? nullptr : &container.front()), extent(container.size())
+	{
+	}
+
+	constexpr ArrayView(std::initializer_list<T const> initList) noexcept
+		: pData(initList.size() == 0 ? nullptr : &(*initList.begin())), extent(initList.size())
 	{
 	}
 

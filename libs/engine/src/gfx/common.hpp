@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <optional>
 #include <set>
 #include <unordered_map>
@@ -11,6 +12,8 @@
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
+#include "engine/gfx/draw/shader.hpp"
+#include "engine/gfx/draw/texture.hpp"
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_VKRESOURCE_NAMES)
@@ -30,13 +33,6 @@ enum class QFlag
 	eCOUNT_
 };
 using QFlags = TFlags<QFlag>;
-
-enum class ShaderType : u8
-{
-	eVertex = 0,
-	eFragment,
-	eCOUNT_
-};
 
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
@@ -157,4 +153,56 @@ struct ClearValues final
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
+
+struct ShaderImpl final
+{
+	static std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> const s_typeToFlagBit;
+
+	std::array<vk::ShaderModule, size_t(Shader::Type::eCOUNT_)> shaders;
+
+	vk::ShaderModule module(Shader::Type type) const;
+	std::map<Shader::Type, vk::ShaderModule> modules() const;
+};
+
+struct SamplerImpl final
+{
+	vk::Sampler sampler;
+};
+
+struct TextureImpl final
+{
+	Image active;
+	Texture::Raw raw;
+	vk::ImageView imageView;
+	vk::Fence loaded;
+	bool bStbiRaw = false;
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	Image standby;
+	Texture::ImgID imgID;
+	FileReader const* pReader = nullptr;
+	bool bReloading = false;
+#endif
+};
+
+struct MeshImpl final
+{
+	using ID = TZero<u64, 0>;
+
+	gfx::Buffer vbo;
+	gfx::Buffer ibo;
+	vk::Fence vboCopied;
+	vk::Fence iboCopied;
+	ID meshID;
+	u32 vertexCount = 0;
+	u32 indexCount = 0;
+};
+
+namespace vbo
+{
+constexpr u32 vertexBinding = 0;
+
+vk::VertexInputBindingDescription bindingDescription();
+std::vector<vk::VertexInputAttributeDescription> attributeDescriptions();
+} // namespace vbo
 } // namespace le::gfx

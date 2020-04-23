@@ -1,8 +1,8 @@
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
 #include "resource_descriptors.hpp"
-#include "resources.hpp"
-#include "texture.hpp"
+#include "engine/assets/resources.hpp"
+#include "engine/gfx/draw/texture.hpp"
 
 namespace le::gfx::rd
 {
@@ -66,9 +66,9 @@ void TextureWriter::write(vk::DescriptorSet set, vk::DescriptorType type, Textur
 {
 	ASSERT(texture.m_pSampler, "Sampler is null!");
 	vk::DescriptorImageInfo imageInfo;
-	imageInfo.imageView = texture.m_imageView;
+	imageInfo.imageView = texture.m_uImpl->imageView;
 	imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	imageInfo.sampler = texture.m_pSampler->m_sampler;
+	imageInfo.sampler = texture.m_pSampler->m_uImpl->sampler;
 	WriteInfo writeInfo;
 	writeInfo.set = set;
 	writeInfo.pImage = &imageInfo;

@@ -10,7 +10,10 @@
 #include "core/transform.hpp"
 #include "core/services.hpp"
 #include "engine/levk.hpp"
-#include "engine/gfx/draw/common.hpp"
+#include "engine/assets/resources.hpp"
+#include "engine/gfx/draw/mesh.hpp"
+#include "engine/gfx/draw/shader.hpp"
+#include "engine/gfx/draw/texture.hpp"
 #include "engine/window/window.hpp"
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
@@ -19,11 +22,6 @@
 #include "gfx/vram.hpp"
 #include "gfx/draw/resource_descriptors.hpp"
 #include "gfx/draw/pipeline.hpp"
-#include "gfx/draw/resources.hpp"
-#include "gfx/draw/shader.hpp"
-#include "gfx/draw/texture.hpp"
-#include "engine/gfx/draw/common.hpp"
-#include "gfx/draw/common_impl.hpp"
 #include "window/window_impl.hpp"
 
 namespace le
@@ -90,26 +88,26 @@ s32 engine::run(s32 argc, char** argv)
 		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert"), stdfs::path("shaders/tutorial.frag")};
 		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
 		tutorialShaderInfo.pReader = g_uReader.get();
-		tutorialShaderInfo.codeIDMap.at((size_t)gfx::ShaderType::eVertex) = shaderIDs.at(0);
-		tutorialShaderInfo.codeIDMap.at((size_t)gfx::ShaderType::eFragment) = shaderIDs.at(1);
+		tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
+		tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
 		auto pTutorialShader = gfx::g_pResources->create<gfx::Shader>("shaders/tutorial", tutorialShaderInfo);
 		vk::CommandPoolCreateInfo commandPoolCreateInfo;
 		auto const& qfi = gfx::g_info.queueFamilyIndices;
 		commandPoolCreateInfo.queueFamilyIndex = qfi.transfer;
 		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
 
-		gfx::Geometry triangle0geometry;
-		triangle0geometry.vertices = {
+		gfx::Mesh::Info triangle0info;
+		triangle0info.geometry.vertices = {
 			gfx::Vertex{{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.5f, 0.0f}},
 			gfx::Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 			gfx::Vertex{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
 		};
-		gfx::Mesh* pTriangle0 = gfx::loadMesh("meshes/triangle0", triangle0geometry);
+		gfx::Mesh* pTriangle0 = gfx::g_pResources->create<gfx::Mesh>("meshes/triangle0", triangle0info);
 
 		// clang-format off
 		auto const dz = 0.25f;
-		gfx::Geometry quad0geometry;
-		quad0geometry.vertices = {
+		gfx::Mesh::Info quad0info;
+		quad0info.geometry.vertices = {
 			{{-0.5f, -0.5f, -dz}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
 			{{0.5f, -0.5f, -dz}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
 			{{0.5f, 0.5f, -dz}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
@@ -119,9 +117,9 @@ s32 engine::run(s32 argc, char** argv)
 			{{0.5f, 0.5f, dz}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
 			{{-0.5f, 0.5f, dz}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 		};
-		quad0geometry.indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+		quad0info.geometry.indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 		// clang-format on
-		gfx::Mesh* pQuad0 = gfx::loadMesh("meshes/quad0", quad0geometry);
+		gfx::Mesh* pQuad0 = gfx::g_pResources->create<gfx::Mesh>("meshes/quad0", quad0info);
 
 		gfx::ImageInfo imageInfo;
 		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
@@ -359,13 +357,13 @@ s32 engine::run(s32 argc, char** argv)
 
 					if (w0.isOpen() && pQuad0->isReady() && pTriangle0->isReady())
 					{
-						auto pMesh = pQuad0->uImpl.get();
-						auto pMesh1 = pTriangle0->uImpl.get();
+						auto pMesh = pQuad0->m_uImpl.get();
+						auto pMesh1 = pTriangle0->m_uImpl.get();
 						drawFrame(&view0, pW0->m_uRenderer.get(), bWF0 ? pPipeline0wf : pPipeline0, {pMesh, pMesh1}, pTexture);
 					}
 					if (w1.isOpen() && pTriangle0->isReady())
 					{
-						auto pMesh = pTriangle0->uImpl.get();
+						auto pMesh = pTriangle0->m_uImpl.get();
 						drawFrame(&view1, pW1->m_uRenderer.get(), pPipeline1, {pMesh}, nullptr);
 					}
 				}
@@ -375,7 +373,6 @@ s32 engine::run(s32 argc, char** argv)
 				}
 			}
 			gfx::g_info.device.waitIdle();
-			gfx::unloadAllMeshes();
 			gfx::vkDestroy(transferPool);
 		}
 	}

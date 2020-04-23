@@ -2,8 +2,6 @@
 #include <set>
 #include "info.hpp"
 #include "utils.hpp"
-#include "draw/shader.hpp"
-#include "engine/gfx/draw/common.hpp"
 
 namespace le
 {

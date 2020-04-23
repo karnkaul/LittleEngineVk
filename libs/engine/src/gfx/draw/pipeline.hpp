@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include "core/std_types.hpp"
-#include "resources.hpp"
+#include "engine/assets/resources.hpp"
 
 namespace le::gfx
 {
@@ -34,7 +34,7 @@ public:
 	vk::PipelineLayout m_layout;
 	std::vector<vk::Fence> m_activeFences;
 
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 private:
 	struct
 	{

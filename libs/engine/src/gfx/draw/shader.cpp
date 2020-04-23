@@ -5,17 +5,16 @@
 #include "core/log.hpp"
 #include "core/io.hpp"
 #include "core/utils.hpp"
+#include "engine/gfx/draw/shader.hpp"
 #include "gfx/utils.hpp"
-#include "shader.hpp"
 
 namespace le::gfx
 {
 std::string const Shader::s_tName = utils::tName<Shader>();
-std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const Shader::s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
-																								  vk::ShaderStageFlagBits::eFragment};
 
-Shader::Shader(stdfs::path id, Info info) : Resource(std::move(id))
+Shader::Shader(stdfs::path id, Info info) : Asset(std::move(id))
 {
+	m_uImpl = std::make_unique<ShaderImpl>();
 	bool const bCodeMapPopulated = std::any_of(info.codeMap.begin(), info.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	[[maybe_unused]] bool const bCodeIDsPopulated =
 		std::any_of(info.codeIDMap.begin(), info.codeIDMap.end(), [&](auto const& entry) { return !entry.empty(); });
@@ -26,7 +25,7 @@ Shader::Shader(stdfs::path id, Info info) : Resource(std::move(id))
 		{
 			auto const id = info.codeIDMap.at(idx);
 			auto const ext = extension(id);
-			auto const type = (ShaderType)idx;
+			auto const type = (Type)idx;
 			if (ext == ".vert" || ext == ".frag")
 			{
 				if (!loadGlsl(info, id, type))
@@ -51,44 +50,24 @@ Shader::Shader(stdfs::path id, Info info) : Resource(std::move(id))
 
 Shader::~Shader()
 {
-	for (auto const& shader : m_shaders)
+	for (auto const& shader : m_uImpl->shaders)
 	{
 		vkDestroy(shader);
 	}
 }
 
-vk::ShaderModule Shader::module(ShaderType type) const
-{
-	ASSERT(m_shaders.at((size_t)type) != vk::ShaderModule(), "Module not present in Shader!");
-	return m_shaders.at((size_t)type);
-}
-
-std::map<ShaderType, vk::ShaderModule> Shader::modules() const
-{
-	std::map<ShaderType, vk::ShaderModule> ret;
-	for (size_t idx = 0; idx < (size_t)ShaderType::eCOUNT_; ++idx)
-	{
-		auto const& module = m_shaders.at(idx);
-		if (module != vk::ShaderModule())
-		{
-			ret[(ShaderType)idx] = module;
-		}
-	}
-	return ret;
-}
-
-Resource::Status Shader::update()
+Asset::Status Shader::update()
 {
 	m_status = Status::eReady;
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 	bool bReload = false;
-	std::array<bytearray, (size_t)ShaderType::eCOUNT_> spvCode;
+	std::array<bytearray, (size_t)Type::eCOUNT_> spvCode;
 	for (auto& file : m_files)
 	{
 		if (file.monitor.update() == FileMonitor::Status::eModified)
 		{
 			bReload = true;
-			auto const type = std::any_cast<ShaderType>(file.data);
+			auto const type = std::any_cast<Type>(file.data);
 			if (!glslToSpirV(file.id, spvCode.at((size_t)type)))
 			{
 				LOG_E("[{}] Failed to reload Shader!", s_tName);
@@ -107,7 +86,7 @@ Resource::Status Shader::update()
 	return m_status;
 }
 
-bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, ShaderType type)
+bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, Type type)
 {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline)
 	{
@@ -121,7 +100,7 @@ bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, ShaderType type)
 	{
 		if (glslToSpirV(id, out_info.codeMap.at((size_t)type)))
 		{
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 			m_files.push_back(File(id, m_pReader->fullPath(id), FileMonitor::Mode::eTextContents, type));
 #endif
 			return true;
@@ -159,18 +138,18 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 	return false;
 }
 
-void Shader::loadAllSpirV(std::array<bytearray, (size_t)ShaderType::eCOUNT_> const& byteMap)
+void Shader::loadAllSpirV(std::array<bytearray, (size_t)Type::eCOUNT_> const& byteMap)
 {
 	for (size_t idx = 0; idx < byteMap.size(); ++idx)
 	{
 		auto const& code = byteMap.at(idx);
 		if (!code.empty())
 		{
-			vkDestroy(m_shaders.at(idx));
+			vkDestroy(m_uImpl->shaders.at(idx));
 			vk::ShaderModuleCreateInfo createInfo;
 			createInfo.codeSize = code.size();
 			createInfo.pCode = reinterpret_cast<u32 const*>(code.data());
-			m_shaders.at(idx) = g_info.device.createShaderModule(createInfo);
+			m_uImpl->shaders.at(idx) = g_info.device.createShaderModule(createInfo);
 		}
 	}
 }

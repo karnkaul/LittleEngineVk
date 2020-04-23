@@ -1,23 +1,38 @@
 #pragma once
 #include <string>
+#include <glm/glm.hpp>
 #include "core/std_types.hpp"
-#include "gfx/common.hpp"
-#include "resource.hpp"
+#include "engine/assets/asset.hpp"
 
 namespace le::gfx
 {
-class Sampler final : public Resource
+class Sampler final : public Asset
 {
 public:
+	enum class Filter : u8
+	{
+		eLinear = 0,
+		eNearest,
+		eCOUNT_
+	};
+
+	enum class Mode : u8
+	{
+		eRepeat = 0,
+		eClampEdge,
+		eClampBorder,
+		eCOUNT_
+	};
+
 	struct Info final
 	{
-		vk::SamplerCreateInfo createInfo;
-		vk::Sampler sampler = {};
+		Filter min = Filter::eLinear;
+		Filter mag = Filter::eLinear;
+		Mode mode = Mode::eRepeat;
 	};
 
 public:
-	vk::SamplerCreateInfo m_createInfo;
-	vk::Sampler m_sampler;
+	std::unique_ptr<struct SamplerImpl> m_uImpl;
 
 public:
 	Sampler(stdfs::path id, Info info);
@@ -27,7 +42,7 @@ public:
 	Status update() override;
 };
 
-class Texture final : public Resource
+class Texture final : public Asset
 {
 public:
 	struct Raw final
@@ -59,22 +74,8 @@ public:
 	static std::string const s_tName;
 
 public:
-	vk::ImageView m_imageView;
 	Sampler* m_pSampler;
-
-private:
-	Image m_active;
-	Raw m_raw;
-	vk::Fence m_loaded;
-	bool m_bStbiRaw = false;
-
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
-private:
-	Image m_standby;
-	ImgID m_imgID;
-	FileReader const* m_pReader = nullptr;
-	bool m_bReloading = false;
-#endif
+	std::unique_ptr<struct TextureImpl> m_uImpl;
 
 public:
 	Texture(stdfs::path id, Info info);
@@ -86,6 +87,5 @@ public:
 private:
 	TResult<Img> idToImg(stdfs::path const& id, u8 channels, IOReader const* pReader);
 	bool imgToRaw(Img img);
-	vk::Fence load(Image* out_pImage);
 };
 } // namespace le::gfx

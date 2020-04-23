@@ -5,14 +5,14 @@
 #include "core/zero.hpp"
 
 #if defined(LEVK_DEBUG)
-#if !defined(LEVK_RESOURCE_HOT_RELOAD)
-#define LEVK_RESOURCE_HOT_RELOAD
+#if !defined(LEVK_ASSET_HOT_RELOAD)
+#define LEVK_ASSET_HOT_RELOAD
 #endif
 #endif
 
 namespace le::gfx
 {
-class Resource
+class Asset
 {
 public:
 	using GUID = TZero<s64, -1>;
@@ -26,7 +26,7 @@ public:
 		eCOUNT_
 	};
 
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 protected:
 	struct File final
 	{
@@ -50,8 +50,8 @@ protected:
 	Status m_status = Status::eReady;
 
 public:
-	Resource(stdfs::path id);
-	virtual ~Resource();
+	Asset(stdfs::path id);
+	virtual ~Asset();
 
 public:
 	virtual Status update() = 0;
@@ -59,5 +59,9 @@ public:
 public:
 	void setup();
 	Status currentStatus() const;
+	bool isReady() const;
+
+private:
+	friend class Resources;
 };
 } // namespace le::gfx

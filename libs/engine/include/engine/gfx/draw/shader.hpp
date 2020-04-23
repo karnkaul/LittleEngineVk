@@ -1,29 +1,37 @@
 #pragma once
 #include <array>
+#include <memory>
 #include <string>
 #include <vector>
 #include <map>
-#include <vulkan/vulkan.hpp>
-#include "resource.hpp"
+#include "engine/assets/asset.hpp"
 
 namespace le::gfx
 {
-class Shader final : public Resource
+class Shader final : public Asset
 {
 public:
+	enum class Type : u8
+	{
+		eVertex = 0,
+		eFragment,
+		eCOUNT_
+	};
+
 	struct Info final
 	{
-		std::array<bytearray, (size_t)ShaderType::eCOUNT_> codeMap;
-		std::array<stdfs::path, (size_t)ShaderType::eCOUNT_> codeIDMap;
+		std::array<bytearray, (size_t)Type::eCOUNT_> codeMap;
+		std::array<stdfs::path, (size_t)Type::eCOUNT_> codeIDMap;
 		class IOReader const* pReader = nullptr;
 	};
 
 public:
 	static std::string const s_tName;
-	static std::array<vk::ShaderStageFlagBits, size_t(ShaderType::eCOUNT_)> const s_typeToFlagBit;
+
+public:
+	std::unique_ptr<struct ShaderImpl> m_uImpl;
 
 private:
-	std::array<vk::ShaderModule, size_t(ShaderType::eCOUNT_)> m_shaders;
 	FileReader const* m_pReader = nullptr;
 
 public:
@@ -31,15 +39,12 @@ public:
 	~Shader() override;
 
 public:
-	vk::ShaderModule module(ShaderType type) const;
-	std::map<ShaderType, vk::ShaderModule> modules() const;
-
 	Status update() override;
 
 private:
 	bool glslToSpirV(stdfs::path const& id, bytearray& out_bytes);
-	bool loadGlsl(Info& out_info, stdfs::path const& id, ShaderType type);
-	void loadAllSpirV(std::array<bytearray, (size_t)ShaderType::eCOUNT_> const& byteMap);
+	bool loadGlsl(Info& out_info, stdfs::path const& id, Type type);
+	void loadAllSpirV(std::array<bytearray, (size_t)Type::eCOUNT_> const& byteMap);
 
 	static std::string extension(stdfs::path const& id);
 };
@@ -50,7 +55,8 @@ public:
 	enum class Status
 	{
 		eOffline = 0,
-		eOnline
+		eOnline,
+		eCOUNT_
 	};
 
 public:
@@ -64,7 +70,7 @@ private:
 public:
 	static ShaderCompiler& instance();
 
-public:
+private:
 	ShaderCompiler();
 	~ShaderCompiler();
 

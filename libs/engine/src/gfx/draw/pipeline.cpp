@@ -1,12 +1,11 @@
 #include <fmt/format.h>
 #include "core/log.hpp"
+#include "engine/assets/resources.hpp"
+#include "engine/gfx/draw/shader.hpp"
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
 #include "gfx/utils.hpp"
 #include "pipeline.hpp"
-#include "resources.hpp"
-#include "shader.hpp"
-#include "gfx/draw/common_impl.hpp"
 
 namespace le::gfx
 {
@@ -37,7 +36,7 @@ void Pipeline::destroy()
 	waitAll(m_activeFences);
 	destroy(m_pipeline, m_layout);
 	m_activeFences.clear();
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 	waitAll(m_standby.drawing);
 	m_standby.drawing.clear();
 	if (m_standby.bReady)
@@ -129,12 +128,12 @@ bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout
 	}
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	{
-		auto modules = m_info.pShader->modules();
+		auto modules = m_info.pShader->m_uImpl->modules();
 		shaderCreateInfo.reserve(modules.size());
 		for (auto const& [type, module] : modules)
 		{
 			vk::PipelineShaderStageCreateInfo createInfo;
-			createInfo.stage = Shader::s_typeToFlagBit[(size_t)type];
+			createInfo.stage = ShaderImpl::s_typeToFlagBit[(size_t)type];
 			createInfo.module = module;
 			createInfo.pName = "main";
 			shaderCreateInfo.push_back(std::move(createInfo));
@@ -171,7 +170,7 @@ void Pipeline::update()
 {
 	auto fenceSignalled = [](auto fence) { return isSignalled(fence); };
 	m_activeFences.erase(std::remove_if(m_activeFences.begin(), m_activeFences.end(), fenceSignalled), m_activeFences.end());
-#if defined(LEVK_RESOURCE_HOT_RELOAD)
+#if defined(LEVK_ASSET_HOT_RELOAD)
 	if (m_standby.bReady)
 	{
 		auto& dr = m_standby.drawing;
@@ -185,7 +184,7 @@ void Pipeline::update()
 			LOG_D("[{}] [{}] ...recreated", s_tName, m_name);
 		}
 	}
-	if (m_info.pShader && m_info.pShader->currentStatus() == Resource::Status::eReloaded)
+	if (m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded)
 	{
 		LOG_D("[{}] [{}] recreating...", s_tName, m_name);
 		m_standby.bReady = create(m_standby.pipeline, m_standby.layout);

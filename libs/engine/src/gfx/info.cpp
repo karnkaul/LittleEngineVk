@@ -7,8 +7,8 @@
 #include "window/window_impl.hpp"
 #include "info.hpp"
 #include "vram.hpp"
+#include "engine/assets/resources.hpp"
 #include "draw/resource_descriptors.hpp"
-#include "draw/resources.hpp"
 
 namespace le::gfx
 {

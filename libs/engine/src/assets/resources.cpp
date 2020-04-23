@@ -1,8 +1,8 @@
 #include <memory>
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
-#include "resources.hpp"
-#include "texture.hpp"
+#include "engine/assets/resources.hpp"
+#include "engine/gfx/draw/texture.hpp"
 
 namespace le::gfx
 {
@@ -51,20 +51,7 @@ void Resources::update()
 
 void Resources::init()
 {
-	vk::SamplerCreateInfo samplerInfo;
-	samplerInfo.magFilter = samplerInfo.minFilter = vk::Filter::eLinear;
-	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
-	samplerInfo.unnormalizedCoordinates = false;
-	samplerInfo.compareEnable = false;
-	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-	Sampler::Info info;
-	info.createInfo = samplerInfo;
-	create<Sampler>("samplers/default", info);
+	create<Sampler>("samplers/default", {});
 	Texture::Info textureInfo;
 	static std::array<u8, 4> const white1pxBytes = {0xff, 0xff, 0xff, 0xff};
 	textureInfo.raw.bytes = ArrayView<u8>(white1pxBytes);

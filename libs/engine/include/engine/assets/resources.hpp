@@ -2,6 +2,7 @@
 #include <memory>
 #include <type_traits>
 #include <unordered_map>
+#include "core/assert.hpp"
 #include "core/map_store.hpp"
 #include "asset.hpp"
 

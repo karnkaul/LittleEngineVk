@@ -12,8 +12,8 @@
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
-#include "engine/gfx/draw/shader.hpp"
-#include "engine/gfx/draw/texture.hpp"
+#include "engine/gfx/shader.hpp"
+#include "engine/gfx/texture.hpp"
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_VKRESOURCE_NAMES)

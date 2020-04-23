@@ -1,13 +1,26 @@
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
-#include "engine/gfx/draw/mesh.hpp"
+#include "engine/gfx/mesh.hpp"
+#include "engine/assets/resources.hpp"
 #include "gfx/common.hpp"
 #include "gfx/vram.hpp"
 #include "gfx/utils.hpp"
 
 namespace le::gfx
 {
+Material::Material(stdfs::path id, Info info) : Asset(std::move(id))
+{
+	m_albedo = info.albedo;
+	m_flags = info.flags;
+	m_status = Status::eReady;
+}
+
+Asset::Status Material::update()
+{
+	return m_status;
+}
+
 Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id))
 {
 	auto const idStr = m_id.generic_string();
@@ -20,6 +33,11 @@ Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id))
 	}
 	else
 	{
+		m_material = info.material;
+		if (!m_material.pMaterial)
+		{
+			m_material.pMaterial = g_pResources->get<Material>("materials/default");
+		}
 		BufferInfo bufferInfo;
 		bufferInfo.size = (u32)info.geometry.vertices.size() * sizeof(Vertex);
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;

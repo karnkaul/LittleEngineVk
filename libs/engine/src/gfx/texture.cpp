@@ -4,7 +4,7 @@
 #include "core/io.hpp"
 #include "core/utils.hpp"
 #include "engine/assets/resources.hpp"
-#include "engine/gfx/draw/texture.hpp"
+#include "engine/gfx/texture.hpp"
 #include "gfx/common.hpp"
 #include "gfx/info.hpp"
 #include "gfx/utils.hpp"

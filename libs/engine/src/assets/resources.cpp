@@ -2,7 +2,8 @@
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
 #include "engine/assets/resources.hpp"
-#include "engine/gfx/draw/texture.hpp"
+#include "engine/gfx/mesh.hpp"
+#include "engine/gfx/texture.hpp"
 
 namespace le::gfx
 {
@@ -51,6 +52,7 @@ void Resources::update()
 
 void Resources::init()
 {
+	create<Material>("materials/default", {});
 	create<Sampler>("samplers/default", {});
 	Texture::Info textureInfo;
 	static std::array<u8, 4> const white1pxBytes = {0xff, 0xff, 0xff, 0xff};

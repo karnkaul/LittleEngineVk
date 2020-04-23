@@ -2,7 +2,7 @@
 #include "gfx/vram.hpp"
 #include "resource_descriptors.hpp"
 #include "engine/assets/resources.hpp"
-#include "engine/gfx/draw/texture.hpp"
+#include "engine/gfx/texture.hpp"
 
 namespace le::gfx::rd
 {

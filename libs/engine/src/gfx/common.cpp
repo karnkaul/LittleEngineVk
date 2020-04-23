@@ -1,4 +1,4 @@
-#include "engine/gfx/draw/mesh.hpp"
+#include "engine/gfx/mesh.hpp"
 #include "common.hpp"
 
 namespace le::gfx

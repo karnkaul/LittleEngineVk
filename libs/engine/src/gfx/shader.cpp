@@ -5,7 +5,7 @@
 #include "core/log.hpp"
 #include "core/io.hpp"
 #include "core/utils.hpp"
-#include "engine/gfx/draw/shader.hpp"
+#include "engine/gfx/shader.hpp"
 #include "gfx/utils.hpp"
 
 namespace le::gfx

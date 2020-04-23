@@ -1,7 +1,7 @@
 #include <fmt/format.h>
 #include "core/log.hpp"
 #include "engine/assets/resources.hpp"
-#include "engine/gfx/draw/shader.hpp"
+#include "engine/gfx/shader.hpp"
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
 #include "gfx/utils.hpp"

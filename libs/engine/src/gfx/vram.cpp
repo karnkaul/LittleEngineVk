@@ -182,7 +182,7 @@ void vram::deinit()
 	return;
 }
 
-Buffer vram::createBuffer(BufferInfo const& info)
+Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 {
 	Buffer ret;
 #if defined(LEVK_VKRESOURCE_NAMES)
@@ -212,12 +212,15 @@ Buffer vram::createBuffer(BufferInfo const& info)
 	g_allocations.at((size_t)ResourceType::eBuffer) += ret.writeSize;
 	if constexpr (g_VRAM_bLogAllocs)
 	{
-		auto [size, unit] = utils::friendlySize(ret.writeSize);
+		if (!bSilent)
+		{
+			auto [size, unit] = utils::friendlySize(ret.writeSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-		LOG_I("== [{}] Buffer [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
+			LOG_I("== [{}] Buffer [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
 #else
-		LOG_I("== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+			LOG_I("== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
+		}
 	}
 	return ret;
 }
@@ -395,7 +398,7 @@ Image vram::createImage(ImageInfo const& info)
 	return ret;
 }
 
-void vram::release(Buffer buffer)
+void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 {
 	if (buffer.buffer != vk::Buffer())
 	{
@@ -403,14 +406,17 @@ void vram::release(Buffer buffer)
 		g_allocations.at((size_t)ResourceType::eBuffer) -= buffer.writeSize;
 		if constexpr (g_VRAM_bLogAllocs)
 		{
-			if (buffer.info.actualSize)
+			if (!bSilent)
 			{
-				auto [size, unit] = utils::friendlySize(buffer.writeSize);
+				if (buffer.info.actualSize)
+				{
+					auto [size, unit] = utils::friendlySize(buffer.writeSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-				LOG_I("-- [{}] Buffer [{}] released: [{:.2f}{}] | {}", s_tName, buffer.name, size, unit, logCount());
+					LOG_I("-- [{}] Buffer [{}] released: [{:.2f}{}] | {}", s_tName, buffer.name, size, unit, logCount());
 #else
-				LOG_I("-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+					LOG_I("-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
+				}
 			}
 		}
 	}

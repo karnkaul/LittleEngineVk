@@ -31,6 +31,7 @@ class Material final : public Asset
 public:
 	enum class Flag : u8
 	{
+		eTextured = 0,
 		eLit,
 		eCOUNT_
 	};

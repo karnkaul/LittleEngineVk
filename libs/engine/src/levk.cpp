@@ -121,6 +121,10 @@ s32 engine::run(s32 argc, char** argv)
 		// clang-format on
 		gfx::Mesh* pQuad0 = gfx::g_pResources->create<gfx::Mesh>("meshes/quad0", quad0info);
 
+		gfx::Material::Info texturedInfo;
+		texturedInfo.flags.set(gfx::Material::Flag::eTextured);
+		auto pTextured = gfx::g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
+
 		gfx::ImageInfo imageInfo;
 		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
 		imageInfo.createInfo.format = vk::Format::eR8G8B8A8Srgb;
@@ -136,7 +140,8 @@ s32 engine::run(s32 argc, char** argv)
 		textureInfo.pReader = g_uReader.get();
 		textureInfo.imgID.channels = 4;
 		textureInfo.imgID.assetID = "textures/texture.jpg";
-		auto pTexture = gfx::g_pResources->create<gfx::Texture>(textureInfo.imgID.assetID, textureInfo);
+		pQuad0->m_material.pMaterial = pTextured;
+		pQuad0->m_material.pDiffuse = gfx::g_pResources->create<gfx::Texture>(textureInfo.imgID.assetID, textureInfo);
 
 		Window w0, w1;
 		auto pW0 = WindowImpl::windowImpl(w0.id());
@@ -309,22 +314,46 @@ s32 engine::run(s32 argc, char** argv)
 				try
 				{
 					auto drawFrame = [&transform0](gfx::rd::View* pGlobals, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
-												   std::vector<gfx::MeshImpl*> meshes, gfx::Texture* pTexture) -> bool {
-						gfx::ClearValues clear;
-						clear.colour = Colour(0x030203ff);
-						gfx::rd::Locals locals;
-						locals.mat_m = transform0.model();
-						gfx::rd::Push pc;
+												   std::vector<gfx::Mesh*> meshes) -> bool {
 						auto write = [&](gfx::rd::Set& set) {
+							auto const mg = colours::Magenta;
 							set.resetTextures();
-							if (pTexture)
+							u32 localIdx = 0;
+							u32 diffuseIdx = 0;
+							u32 specularIdx = 0;
+							for (auto& pMesh : meshes)
 							{
-								locals.flags |= gfx::rd::Locals::eTEXTURED;
-								set.writeDiffuse(*pTexture, 0);
-								pc.diffuseID = 0;
+								gfx::rd::Locals locals;
+								locals.mat_m = transform0.model();
+								pMesh->m_uImpl->diffuseIdx = 0;
+								pMesh->m_uImpl->specularIdx = 0;
+								pMesh->m_uImpl->localIdx = localIdx;
+								auto const& tn = pMesh->m_material.tint;
+								locals.tint = {tn.r.toF32(), tn.g.toF32(), tn.b.toF32(), tn.a.toF32()};
+								if (pMesh->m_material.pMaterial->m_flags.isSet(gfx::Material::Flag::eTextured))
+								{
+									locals.flags |= gfx::rd::Locals::eTEXTURED;
+									if (!pMesh->m_material.pDiffuse)
+									{
+										locals.tint = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
+									}
+									else
+									{
+										set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseIdx);
+										pMesh->m_uImpl->diffuseIdx = diffuseIdx;
+										++diffuseIdx;
+									}
+									if (pMesh->m_material.pSpecular)
+									{
+										set.writeSpecular(*pMesh->m_material.pSpecular, specularIdx);
+										pMesh->m_uImpl->specularIdx = specularIdx;
+										++specularIdx;
+									}
+								}
+								set.writeLocals(locals, localIdx);
+								++localIdx;
 							}
 							set.writeView(*pGlobals);
-							set.writeLocals(locals, 0);
 						};
 						auto draw = [&](gfx::Renderer::FrameDriver const& driver) -> std::vector<gfx::Pipeline*> {
 							vk::Viewport viewport = pRenderer->transformViewport();
@@ -336,35 +365,39 @@ s32 engine::run(s32 argc, char** argv)
 							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout, 0,
 																	driver.set.m_descriptorSet, {});
 
+							auto meshes_ = meshes;
 							for (auto pMesh : meshes)
 							{
+								gfx::rd::Push pc;
+								pc.localID = pMesh->m_uImpl->localIdx;
+								pc.diffuseID = pMesh->m_uImpl->diffuseIdx;
+								pc.specularID = pMesh->m_uImpl->specularIdx;
 								driver.commandBuffer.pushConstants<gfx::rd::Push>(pPipeline->m_layout, gfx::vkFlags::vertFragShader, 0, pc);
-								driver.commandBuffer.bindVertexBuffers(0, 1, &pMesh->vbo.buffer, offsets);
-								if (pMesh->indexCount > 0)
+								driver.commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer, offsets);
+								if (pMesh->m_uImpl->indexCount > 0)
 								{
-									driver.commandBuffer.bindIndexBuffer(pMesh->ibo.buffer, 0, vk::IndexType::eUint32);
-									driver.commandBuffer.drawIndexed(pMesh->indexCount, 1, 0, 0, 0);
+									driver.commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer, 0, vk::IndexType::eUint32);
+									driver.commandBuffer.drawIndexed(pMesh->m_uImpl->indexCount, 1, 0, 0, 0);
 								}
 								else
 								{
-									driver.commandBuffer.draw(pMesh->vertexCount, 1, 0, 0);
+									driver.commandBuffer.draw(pMesh->m_uImpl->vertexCount, 1, 0, 0);
 								}
 							}
 							return {pPipeline};
 						};
+						gfx::ClearValues clear;
+						clear.colour = Colour(0x030203ff);
 						return pRenderer->render(write, draw, clear);
 					};
 
 					if (w0.isOpen() && pQuad0->isReady() && pTriangle0->isReady())
 					{
-						auto pMesh = pQuad0->m_uImpl.get();
-						auto pMesh1 = pTriangle0->m_uImpl.get();
-						drawFrame(&view0, pW0->m_uRenderer.get(), bWF0 ? pPipeline0wf : pPipeline0, {pMesh, pMesh1}, pTexture);
+						drawFrame(&view0, pW0->m_uRenderer.get(), bWF0 ? pPipeline0wf : pPipeline0, {pQuad0, pTriangle0});
 					}
 					if (w1.isOpen() && pTriangle0->isReady())
 					{
-						auto pMesh = pTriangle0->m_uImpl.get();
-						drawFrame(&view1, pW1->m_uRenderer.get(), pPipeline1, {pMesh}, nullptr);
+						drawFrame(&view1, pW1->m_uRenderer.get(), pPipeline1, {pTriangle0});
 					}
 				}
 				catch (std::exception const& e)

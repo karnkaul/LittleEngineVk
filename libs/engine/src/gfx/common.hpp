@@ -187,15 +187,16 @@ struct TextureImpl final
 
 struct MeshImpl final
 {
-	using ID = TZero<u64, 0>;
-
 	gfx::Buffer vbo;
 	gfx::Buffer ibo;
 	vk::Fence vboCopied;
 	vk::Fence iboCopied;
-	ID meshID;
 	u32 vertexCount = 0;
 	u32 indexCount = 0;
+
+	u32 localIdx = 0;
+	u32 diffuseIdx = 0;
+	u32 specularIdx = 0;
 };
 
 namespace vbo

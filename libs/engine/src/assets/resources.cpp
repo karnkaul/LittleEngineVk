@@ -56,9 +56,12 @@ void Resources::init()
 	create<Sampler>("samplers/default", {});
 	Texture::Info textureInfo;
 	static std::array<u8, 4> const white1pxBytes = {0xff, 0xff, 0xff, 0xff};
-	textureInfo.raw.bytes = ArrayView<u8>(white1pxBytes);
+	static std::array<u8, 4> const black1pxBytes = {0x0, 0x0, 0x0, 0x0};
 	textureInfo.raw.size = {1, 1};
-	create<Texture>("textures/blank", textureInfo);
+	textureInfo.raw.bytes = ArrayView<u8>(white1pxBytes);
+	create<Texture>("textures/white", textureInfo);
+	textureInfo.raw.bytes = ArrayView<u8>(black1pxBytes);
+	create<Texture>("textures/black", textureInfo);
 	return;
 }
 } // namespace le::gfx

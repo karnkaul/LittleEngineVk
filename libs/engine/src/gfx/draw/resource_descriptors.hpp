@@ -28,10 +28,10 @@ struct Locals final
 
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	enum
+	enum : u32
 	{
 		eTEXTURED = 1 << 0,
-		eSPECULAR = 1 << 1,
+		eLIT = 1 << 1,
 	};
 
 	alignas(16) glm::mat4 mat_m = glm::mat4(1.0f);
@@ -52,6 +52,7 @@ struct Push final
 {
 	u32 localID = 0;
 	u32 diffuseID = 0;
+	u32 specularID = 0;
 };
 
 struct WriteInfo final
@@ -65,83 +66,60 @@ struct WriteInfo final
 	u32 count = 1;
 };
 
-struct BufferWriter final
+struct ViewBuffer final
 {
 	Buffer buffer;
 
-	template <typename T>
-	bool write(vk::DescriptorSet set, vk::DescriptorType type, T const& data, u32 binding = T::binding, u32 idx = 0)
-	{
-		u32 size = (u32)sizeof(T);
-		if (buffer.writeSize < size)
-		{
-			vram::release(buffer);
-			BufferInfo info;
-			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-			info.queueFlags = QFlag::eGraphics;
-			info.usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer;
-			info.size = sizeof(T);
-			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-#if defined(LEVK_VKRESOURCE_NAMES)
-			info.name = utils::tName<T>();
-#endif
-			buffer = vram::createBuffer(info);
-		}
-		if (!vram::write(buffer, &data))
-		{
-			return false;
-		}
-		writeBuffer(set, type, binding, size, idx);
-		return true;
-	}
+	void create();
+	void release();
 
-	void writeBuffer(vk::DescriptorSet set, vk::DescriptorType type, u32 binding, u32 size, u32 idx) const;
+	bool write(View const& view);
 };
 
-struct TextureWriter
+struct LocalsBuffer final
 {
-	void write(vk::DescriptorSet set, vk::DescriptorType type, Texture const& texture, u32 binding, u32 idx);
+	std::array<Buffer, Locals::max> buffers;
+
+	void create();
+	void release();
+
+	bool write(Locals const& locals, u32 idx);
+	Buffer& at(u32 idx);
+};
+
+struct ShaderWriter final
+{
+	vk::DescriptorType type;
+	u32 binding = 0;
+
+	void write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const;
+	void write(vk::DescriptorSet set, Texture const& texture, u32 idx) const;
 };
 
 class Set final
 {
-private:
-	template <typename T>
-	struct Handle final
-	{
-		T writer;
-		vk::DescriptorType type;
-		u32 binding;
-
-		template <typename U>
-		void write(vk::DescriptorSet set, U const& u, u32 idx)
-		{
-			writer.write(set, type, u, binding, idx);
-		}
-	};
-
 public:
 	vk::DescriptorSet m_descriptorSet;
 
 private:
-	Handle<BufferWriter> m_view;
-	Handle<BufferWriter> m_locals;
-	Handle<TextureWriter> m_diffuse;
-	Handle<TextureWriter> m_specular;
+	ViewBuffer m_viewBuffer;
+	LocalsBuffer m_localsBuffer;
+	ShaderWriter m_view;
+	ShaderWriter m_locals;
+	ShaderWriter m_diffuse;
+	ShaderWriter m_specular;
 
 public:
-	Set();
+	void create();
+	void destroy();
 
 public:
 	void writeView(View const& view);
-	void writeLocals(Locals const& flags, u32 idx);
+	void writeLocals(Locals const& locals, u32 idx);
 	void writeDiffuse(Texture const& diffuse, u32 idx);
 	void writeSpecular(Texture const& specular, u32 idx);
 
 	void resetTextures();
-
-public:
-	void destroy();
 };
 
 struct SetLayouts final

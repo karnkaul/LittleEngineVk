@@ -1,3 +1,4 @@
+#include "core/log.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
 #include "resource_descriptors.hpp"
@@ -46,12 +47,91 @@ vk::DescriptorSetLayoutBinding const Textures::s_diffuseLayoutBinding =
 vk::DescriptorSetLayoutBinding const Textures::s_specularLayoutBinding =
 	vk::DescriptorSetLayoutBinding(3, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
 
-void BufferWriter::writeBuffer(vk::DescriptorSet set, vk::DescriptorType type, u32 binding, u32 size, u32 idx) const
+
+void ViewBuffer::create()
+{
+	u32 size = (u32)sizeof(View);
+	BufferInfo info;
+	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+	info.queueFlags = QFlag::eGraphics;
+	info.usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer;
+	info.size = size;
+	info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+#if defined(LEVK_VKRESOURCE_NAMES)
+	info.name = utils::tName<View>();
+#endif
+	buffer = vram::createBuffer(info);
+}
+
+void ViewBuffer::release()
+{
+	vram::release(buffer);
+	buffer = Buffer();
+	return;
+}
+
+bool ViewBuffer::write(View const& view)
+{
+	if (!vram::write(buffer, &view))
+	{
+		return false;
+	}
+	return true;
+}
+
+void LocalsBuffer::create()
+{
+	u32 idx = 0;
+	for (auto& buffer : buffers)
+	{
+		if (buffer.buffer == vk::Buffer())
+		{
+			u32 size = (u32)sizeof(Locals);
+			BufferInfo info;
+			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+			info.queueFlags = QFlag::eGraphics;
+			info.usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer;
+			info.size = size;
+			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+#if defined(LEVK_VKRESOURCE_NAMES)
+			info.name = utils::tName<Locals>();
+#endif
+			buffer = vram::createBuffer(info, true);
+		}
+		++idx;
+	}
+}
+
+void LocalsBuffer::release()
+{
+	for (auto& buffer : buffers)
+	{
+		vram::release(buffer, true);
+		buffer = Buffer();
+	}
+	return;
+}
+
+bool LocalsBuffer::write(Locals const& locals, u32 idx)
+{
+	if (!vram::write(at(idx), &locals))
+	{
+		return false;
+	}
+	return true;
+}
+
+Buffer& LocalsBuffer::at(u32 idx)
+{
+	return buffers.at((size_t)idx);
+}
+
+void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const
 {
 	vk::DescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = buffer.buffer;
 	bufferInfo.offset = 0;
-	bufferInfo.range = size;
+	bufferInfo.range = buffer.writeSize;
 	WriteInfo writeInfo;
 	writeInfo.set = set;
 	writeInfo.binding = binding;
@@ -62,7 +142,7 @@ void BufferWriter::writeBuffer(vk::DescriptorSet set, vk::DescriptorType type, u
 	return;
 }
 
-void TextureWriter::write(vk::DescriptorSet set, vk::DescriptorType type, Texture const& texture, u32 binding, u32 idx)
+void ShaderWriter::write(vk::DescriptorSet set, Texture const& texture, u32 idx) const
 {
 	ASSERT(texture.m_pSampler, "Sampler is null!");
 	vk::DescriptorImageInfo imageInfo;
@@ -79,8 +159,10 @@ void TextureWriter::write(vk::DescriptorSet set, vk::DescriptorType type, Textur
 	return;
 }
 
-Set::Set()
+void Set::create()
 {
+	m_viewBuffer.create();
+	m_localsBuffer.create();
 	m_view.binding = View::s_setLayoutBinding.binding;
 	m_view.type = vk::DescriptorType::eUniformBuffer;
 	m_locals.binding = Locals::s_setLayoutBinding.binding;
@@ -91,15 +173,24 @@ Set::Set()
 	m_specular.type = vk::DescriptorType::eCombinedImageSampler;
 }
 
-void Set::writeView(View const& view)
+void Set::destroy()
 {
-	m_view.write(m_descriptorSet, view, 0U);
+	m_localsBuffer.release();
+	m_viewBuffer.release();
 	return;
 }
 
-void Set::writeLocals(Locals const& flags, u32 idx)
+void Set::writeView(View const& view)
 {
-	m_locals.write(m_descriptorSet, flags, idx);
+	m_viewBuffer.write(view);
+	m_view.write(m_descriptorSet, m_viewBuffer.buffer, 0U);
+	return;
+}
+
+void Set::writeLocals(Locals const& locals, u32 idx)
+{
+	m_localsBuffer.write(locals, idx);
+	m_locals.write(m_descriptorSet, m_localsBuffer.at(idx), idx);
 	return;
 }
 
@@ -117,19 +208,14 @@ void Set::writeSpecular(Texture const& specular, u32 idx)
 
 void Set::resetTextures()
 {
-	auto pTex = g_pResources->get<Texture>("textures/blank");
-	ASSERT(pTex, "blank texture is null!");
+	auto pBlack = g_pResources->get<Texture>("textures/black");
+	auto pWhite = g_pResources->get<Texture>("textures/white");
+	ASSERT(pBlack && pWhite, "blank textures are null!");
 	for (u32 i = 0; i < Textures::max; ++i)
 	{
-		writeDiffuse(*pTex, i);
-		writeSpecular(*pTex, i);
+		writeDiffuse(*pWhite, i);
+		writeSpecular(*pBlack, i);
 	}
-}
-
-void Set::destroy()
-{
-	vram::release(m_view.writer.buffer, m_locals.writer.buffer);
-	m_view.writer.buffer = m_locals.writer.buffer = {};
 	return;
 }
 
@@ -151,13 +237,13 @@ SetLayouts allocateSets(u32 copies)
 	vk::DescriptorPoolCreateInfo createInfo;
 	createInfo.poolSizeCount = poolSizes.size();
 	createInfo.pPoolSizes = poolSizes.data();
-	createInfo.maxSets = copies * 2; // 2 sets per copy
+	createInfo.maxSets = copies; // 2 sets per copy
 	ret.descriptorPool = g_info.device.createDescriptorPool(createInfo);
 	// Allocate sets
 	vk::DescriptorSetAllocateInfo allocInfo;
 	allocInfo.descriptorPool = ret.descriptorPool;
 	allocInfo.descriptorSetCount = copies;
-	std::vector<vk::DescriptorSetLayout> const setLayouts((size_t)copies * 2, g_setLayout);
+	std::vector<vk::DescriptorSetLayout> const setLayouts((size_t)copies, g_setLayout);
 	allocInfo.pSetLayouts = setLayouts.data();
 	auto const sets = g_info.device.allocateDescriptorSets(allocInfo);
 	// Write handles
@@ -166,6 +252,7 @@ SetLayouts allocateSets(u32 copies)
 	{
 		Set set;
 		set.m_descriptorSet = sets.at(idx);
+		set.create();
 		set.writeView({});
 		for (u32 i = 0; i < Locals::max; ++i)
 		{

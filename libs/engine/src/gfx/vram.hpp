@@ -32,7 +32,7 @@ inline VmaAllocator g_allocator;
 void init();
 void deinit();
 
-Buffer createBuffer(BufferInfo const& info);
+Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
 bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
 [[nodiscard]] vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
 [[nodiscard]] vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
@@ -41,7 +41,7 @@ bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);
 
-void release(Buffer buffer);
+void release(Buffer buffer, bool bSilent = false);
 void release(Image image);
 
 template <typename T1, typename... Tn>

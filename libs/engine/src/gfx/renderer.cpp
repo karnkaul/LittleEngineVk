@@ -1,7 +1,10 @@
+#include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>
 #include "core/assert.hpp"
 #include "core/log.hpp"
+#include "core/transform.hpp"
 #include "core/utils.hpp"
+#include "engine/gfx/mesh.hpp"
 #include "info.hpp"
 #include "renderer.hpp"
 #include "utils.hpp"
@@ -140,17 +143,56 @@ void Renderer::update()
 	return;
 }
 
-bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
+bool Renderer::render(Scene const& scene)
 {
+	auto const mg = colours::Magenta;
 	auto& frame = frameSync();
 	if (!frame.bNascent)
 	{
 		gfx::waitFor(frame.drawing);
 	}
-	if (write)
+	// Write sets
+	u32 objectID = 0;
+	u32 diffuseID = 0;
+	u32 specularID = 0;
+	gfx::rd::SSBOModels models;
+	gfx::rd::SSBONormals normals;
+	gfx::rd::SSBOTints tints;
+	gfx::rd::SSBOFlags flags;
+	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
+	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
+	for (auto& batch : scene.batches)
 	{
-		write(frame.set);
+		for (auto [pMesh, pTransform, _] : batch.drawables)
+		{
+			models.mats_m.at(objectID) = pTransform->model();
+			normals.mats_n.at(objectID) = pTransform->normalModel();
+			pMesh->m_uImpl->pc = {};
+			pMesh->m_uImpl->pc.objectID = objectID;
+			tints.tints.at(objectID) = pMesh->m_material.tint.toVec4();
+			if (pMesh->m_material.pMaterial->m_flags.isSet(gfx::Material::Flag::eTextured))
+			{
+				flags.flags.at(objectID) |= gfx::rd::SSBOFlags::eTEXTURED;
+				if (!pMesh->m_material.pDiffuse)
+				{
+					tints.tints.at(objectID) = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
+				}
+				else
+				{
+					frame.set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseID);
+					pMesh->m_uImpl->pc.diffuseID = diffuseID++;
+				}
+				if (pMesh->m_material.pSpecular)
+				{
+					frame.set.writeSpecular(*pMesh->m_material.pSpecular, specularID);
+					pMesh->m_uImpl->pc.specularID = specularID++;
+				}
+			}
+			++objectID;
+		}
 	}
+	frame.set.writeSSBO(models, normals, tints, flags);
+	frame.set.writeView(*scene.pView);
 	// Acquire
 	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
 	if (!bResult)
@@ -168,9 +210,10 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	createInfo.layers = 1;
 	frame.framebuffer = g_info.device.createFramebuffer(createInfo);
 	// RenderPass
-	std::array const clearColour = {clear.colour.r.toF32(), clear.colour.g.toF32(), clear.colour.b.toF32(), clear.colour.a.toF32()};
+	auto const c = scene.clear.colour;
+	std::array const clearColour = {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 	vk::ClearColorValue const colour = clearColour;
-	vk::ClearDepthStencilValue const depth = {clear.depthStencil.x, (u32)clear.depthStencil.y};
+	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 	std::array<vk::ClearValue, 2> const clearValues = {colour, depth};
 	vk::RenderPassBeginInfo renderPassInfo;
 	renderPassInfo.renderPass = acquire.renderPass;
@@ -183,8 +226,37 @@ bool Renderer::render(Write write, Draw draw, ClearValues const& clear)
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	FrameDriver driver{frame.set, commandBuffer};
-	auto pipelines = draw(driver);
+	// Draw
+	std::unordered_set<Pipeline*> pipelines;
+	for (auto& batch : scene.batches)
+	{
+		commandBuffer.setViewport(0, transformViewport(batch.viewport));
+		commandBuffer.setScissor(0, transformScissor(batch.scissor));
+		vk::Pipeline pipeline;
+		for (auto [pMesh, pTransform, pPipeline] : batch.drawables)
+		{
+			if (pipeline != pPipeline->m_pipeline)
+			{
+				pipeline = pPipeline->m_pipeline;
+				commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+			}
+			auto layout = pPipeline->m_layout;
+			vk::DeviceSize offsets[] = {0};
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
+			commandBuffer.pushConstants<PushConstants>(layout, gfx::vkFlags::vertFragShader, 0, pMesh->m_uImpl->pc);
+			commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer, offsets);
+			if (pMesh->m_uImpl->indexCount > 0)
+			{
+				commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer, 0, vk::IndexType::eUint32);
+				commandBuffer.drawIndexed(pMesh->m_uImpl->indexCount, 1, 0, 0, 0);
+			}
+			else
+			{
+				commandBuffer.draw(pMesh->m_uImpl->vertexCount, 1, 0, 0);
+			}
+			pipelines.insert(pPipeline);
+		}
+	}
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
 	// Submit

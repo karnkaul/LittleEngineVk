@@ -313,88 +313,32 @@ s32 engine::run(s32 argc, char** argv)
 				// Render
 				try
 				{
-					auto drawFrame = [&transform0](gfx::rd::View* pGlobals, gfx::Renderer* pRenderer, gfx::Pipeline* pPipeline,
-												   std::vector<gfx::Mesh*> meshes) -> bool {
-						auto write = [&](gfx::rd::Set& set) {
-							auto const mg = colours::Magenta;
-							set.resetTextures();
-							u32 objectID = 0;
-							u32 diffuseID = 0;
-							u32 specularID = 0;
-							gfx::rd::SSBOModels models;
-							gfx::rd::SSBONormals normals;
-							gfx::rd::SSBOTints tints;
-							gfx::rd::SSBOFlags flags;
-							for (auto& pMesh : meshes)
-							{
-								models.mats_m.at(objectID) = transform0.model();
-								normals.mats_n.at(objectID) = transform0.normalModel();
-								pMesh->m_uImpl->pc = {};
-								pMesh->m_uImpl->pc.objectID = objectID;
-								auto const& tn = pMesh->m_material.tint;
-								tints.tints.at(objectID) = {tn.r.toF32(), tn.g.toF32(), tn.b.toF32(), tn.a.toF32()};
-								if (pMesh->m_material.pMaterial->m_flags.isSet(gfx::Material::Flag::eTextured))
-								{
-									flags.flags.at(objectID) |= gfx::rd::SSBOFlags::eTEXTURED;
-									if (!pMesh->m_material.pDiffuse)
-									{
-										tints.tints.at(objectID) = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
-									}
-									else
-									{
-										set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseID);
-										pMesh->m_uImpl->pc.diffuseID = diffuseID++;
-									}
-									if (pMesh->m_material.pSpecular)
-									{
-										set.writeSpecular(*pMesh->m_material.pSpecular, specularID);
-										pMesh->m_uImpl->pc.specularID = specularID++;
-									}
-								}
-								++objectID;
-							}
-							set.writeSSBO(models, normals, tints, flags);
-							set.writeView(*pGlobals);
-						};
-						auto draw = [&](gfx::Renderer::FrameDriver const& driver) -> std::vector<gfx::Pipeline*> {
-							vk::Viewport viewport = pRenderer->transformViewport();
-							vk::Rect2D scissor = pRenderer->transformScissor();
-							driver.commandBuffer.setViewport(0, viewport);
-							driver.commandBuffer.setScissor(0, scissor);
-							driver.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pPipeline->m_pipeline);
-							vk::DeviceSize offsets[] = {0};
-							driver.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pPipeline->m_layout, 0,
-																	driver.set.m_descriptorSet, {});
-
-							auto meshes_ = meshes;
-							for (auto pMesh : meshes)
-							{
-								driver.commandBuffer.pushConstants<gfx::PushConstants>(pPipeline->m_layout, gfx::vkFlags::vertFragShader, 0, pMesh->m_uImpl->pc);
-								driver.commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer, offsets);
-								if (pMesh->m_uImpl->indexCount > 0)
-								{
-									driver.commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer, 0, vk::IndexType::eUint32);
-									driver.commandBuffer.drawIndexed(pMesh->m_uImpl->indexCount, 1, 0, 0, 0);
-								}
-								else
-								{
-									driver.commandBuffer.draw(pMesh->m_uImpl->vertexCount, 1, 0, 0);
-								}
-							}
-							return {pPipeline};
-						};
-						gfx::ClearValues clear;
-						clear.colour = Colour(0x030203ff);
-						return pRenderer->render(write, draw, clear);
-					};
-
-					if (w0.isOpen() && pQuad0->isReady() && pTriangle0->isReady())
+					if (w0.isOpen())
 					{
-						drawFrame(&view0, pW0->m_uRenderer.get(), bWF0 ? pPipeline0wf : pPipeline0, {pQuad0, pTriangle0});
+						gfx::Renderer::Scene scene;
+						scene.clear.colour = Colour(0x030203ff);
+						scene.pView = &view0;
+						if (pQuad0->isReady() && pTriangle0->isReady())
+						{
+							auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
+							gfx::Renderer::Batch batch;
+							batch.drawables = {{pQuad0, &transform0, pPipeline}, {pTriangle0, &transform0, pPipeline}};
+							scene.batches.push_back(std::move(batch));
+							pW0->m_uRenderer->render(scene);
+						}
 					}
 					if (w1.isOpen() && pTriangle0->isReady())
 					{
-						drawFrame(&view1, pW1->m_uRenderer.get(), pPipeline1, {pTriangle0});
+						gfx::Renderer::Scene scene;
+						scene.clear.colour = Colour(0x030203ff);
+						scene.pView = &view1;
+						if (pTriangle0->isReady())
+						{
+							gfx::Renderer::Batch batch;
+							batch.drawables = {{pTriangle0, &transform0, pPipeline1}};
+							scene.batches.push_back(std::move(batch));
+							pW1->m_uRenderer->render(scene);
+						}
 					}
 				}
 				catch (std::exception const& e)

@@ -1,5 +1,6 @@
 #pragma once
 #include <deque>
+#include <vector>
 #include <glm/glm.hpp>
 #include "core/delegate.hpp"
 #include "engine/window/common.hpp"
@@ -9,11 +10,13 @@
 
 namespace le
 {
+class Transform;
 class WindowImpl;
-}
+} // namespace le
 
 namespace le::gfx
 {
+class Mesh;
 class Pipeline;
 
 class Renderer final
@@ -26,14 +29,26 @@ public:
 		u8 frameCount = 2;
 	};
 
-	struct FrameDriver final
+	struct Drawable final
 	{
-		rd::Set set;
-		vk::CommandBuffer commandBuffer;
+		Mesh const* pMesh = nullptr;
+		Transform const* pTransform = nullptr;
+		Pipeline* pPipeline = nullptr;
 	};
 
-	using Write = std::function<void(rd::Set&)>;
-	using Draw = std::function<std::vector<Pipeline*>(FrameDriver const&)>;
+	struct Batch final
+	{
+		ScreenRect viewport;
+		ScreenRect scissor;
+		std::vector<Drawable> drawables;
+	};
+
+	struct Scene final
+	{
+		ClearValues clear;
+		std::vector<Batch> batches;
+		rd::View* pView = nullptr;
+	};
 
 private:
 	struct FrameSync final
@@ -74,7 +89,7 @@ public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
 	void update();
-	bool render(Write write, Draw draw, ClearValues const& clear);
+	bool render(Scene const& scene);
 
 public:
 	vk::Viewport transformViewport(ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f}) const;

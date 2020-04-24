@@ -154,6 +154,13 @@ struct ClearValues final
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
 
+struct PushConstants final
+{
+	u32 objectID = 0;
+	u32 diffuseID = 0;
+	u32 specularID = 0;
+};
+
 struct ShaderImpl final
 {
 	static std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> const s_typeToFlagBit;
@@ -187,16 +194,13 @@ struct TextureImpl final
 
 struct MeshImpl final
 {
-	gfx::Buffer vbo;
-	gfx::Buffer ibo;
+	Buffer vbo;
+	Buffer ibo;
+	PushConstants pc;
 	vk::Fence vboCopied;
 	vk::Fence iboCopied;
 	u32 vertexCount = 0;
 	u32 indexCount = 0;
-
-	u32 localIdx = 0;
-	u32 diffuseIdx = 0;
-	u32 specularIdx = 0;
 };
 
 namespace vbo

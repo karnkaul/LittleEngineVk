@@ -1,7 +1,4 @@
 #version 450 core
-#extension GL_EXT_nonuniform_qualifier : enable 
-
-const uint MAX_LOCALS = 1024;
 
 layout(std140, set = 0, binding = 0) uniform View
 {
@@ -10,15 +7,12 @@ layout(std140, set = 0, binding = 0) uniform View
 	mat4 mat_p;
 	mat4 mat_ui;
 	vec3 pos_v;
-} view;
+};
 
-layout(std430, set = 0, binding = 1) buffer readonly Locals
+layout(std430, set = 0, binding = 1) buffer readonly Models
 {
-	mat4 mat_m;
-	mat4 mat_n;
-	vec4 tint;
-	uint flags;
-} locals[MAX_LOCALS];
+	mat4 mats_m[];
+};
 
 layout(push_constant) uniform Push
 {
@@ -39,7 +33,7 @@ out gl_PerVertex
 
 void main()
 {
-	gl_Position = view.mat_vp * locals[localID].mat_m * vec4(vertPos, 1.0);
+	gl_Position = mat_vp * mats_m[localID] * vec4(vertPos, 1.0);
 	fragColour = vertColour;
 	fragTexCoord = vertTexCoord;
 }

@@ -25,7 +25,8 @@ void writeSet(WriteInfo const& info)
 
 void createLayouts()
 {
-	std::array const bindings = {View::s_setLayoutBinding, Locals::s_setLayoutBinding, Textures::s_diffuseLayoutBinding,
+	std::array const bindings = {View::s_setLayoutBinding,		   SSBOModels::s_setLayoutBinding, SSBONormals::s_setLayoutBinding,
+								 SSBOTints::s_setLayoutBinding,	   SSBOFlags::s_setLayoutBinding,  Textures::s_diffuseLayoutBinding,
 								 Textures::s_specularLayoutBinding};
 	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
 	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
@@ -38,93 +39,23 @@ void createLayouts()
 vk::DescriptorSetLayoutBinding const View::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const Locals::s_setLayoutBinding =
-	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eStorageBuffer, Locals::max, vkFlags::vertFragShader);
+vk::DescriptorSetLayoutBinding const SSBOModels::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
+
+vk::DescriptorSetLayoutBinding const SSBONormals::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
+
+vk::DescriptorSetLayoutBinding const SSBOTints::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(3, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
+
+vk::DescriptorSetLayoutBinding const SSBOFlags::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(4, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_diffuseLayoutBinding =
-	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
+	vk::DescriptorSetLayoutBinding(5, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_specularLayoutBinding =
-	vk::DescriptorSetLayoutBinding(3, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
-
-
-void ViewBuffer::create()
-{
-	u32 size = (u32)sizeof(View);
-	BufferInfo info;
-	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-	info.queueFlags = QFlag::eGraphics;
-	info.usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer;
-	info.size = size;
-	info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-#if defined(LEVK_VKRESOURCE_NAMES)
-	info.name = utils::tName<View>();
-#endif
-	buffer = vram::createBuffer(info);
-}
-
-void ViewBuffer::release()
-{
-	vram::release(buffer);
-	buffer = Buffer();
-	return;
-}
-
-bool ViewBuffer::write(View const& view)
-{
-	if (!vram::write(buffer, &view))
-	{
-		return false;
-	}
-	return true;
-}
-
-void LocalsBuffer::create()
-{
-	u32 idx = 0;
-	for (auto& buffer : buffers)
-	{
-		if (buffer.buffer == vk::Buffer())
-		{
-			u32 size = (u32)sizeof(Locals);
-			BufferInfo info;
-			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-			info.queueFlags = QFlag::eGraphics;
-			info.usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer;
-			info.size = size;
-			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-#if defined(LEVK_VKRESOURCE_NAMES)
-			info.name = utils::tName<Locals>();
-#endif
-			buffer = vram::createBuffer(info, true);
-		}
-		++idx;
-	}
-}
-
-void LocalsBuffer::release()
-{
-	for (auto& buffer : buffers)
-	{
-		vram::release(buffer, true);
-		buffer = Buffer();
-	}
-	return;
-}
-
-bool LocalsBuffer::write(Locals const& locals, u32 idx)
-{
-	if (!vram::write(at(idx), &locals))
-	{
-		return false;
-	}
-	return true;
-}
-
-Buffer& LocalsBuffer::at(u32 idx)
-{
-	return buffers.at((size_t)idx);
-}
+	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
 
 void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const
 {
@@ -161,36 +92,50 @@ void ShaderWriter::write(vk::DescriptorSet set, Texture const& texture, u32 idx)
 
 void Set::create()
 {
-	m_viewBuffer.create();
-	m_localsBuffer.create();
-	m_view.binding = View::s_setLayoutBinding.binding;
-	m_view.type = vk::DescriptorType::eUniformBuffer;
-	m_locals.binding = Locals::s_setLayoutBinding.binding;
-	m_locals.type = vk::DescriptorType::eStorageBuffer;
+	m_view.create(vk::BufferUsageFlagBits::eUniformBuffer);
+	m_models.create(vk::BufferUsageFlagBits::eStorageBuffer);
+	m_normals.create(vk::BufferUsageFlagBits::eStorageBuffer);
+	m_tints.create(vk::BufferUsageFlagBits::eStorageBuffer);
+	m_flags.create(vk::BufferUsageFlagBits::eStorageBuffer);
+	m_view.writer.binding = View::s_setLayoutBinding.binding;
+	m_view.writer.type = View::s_setLayoutBinding.descriptorType;
+	m_models.writer.binding = SSBOModels::s_setLayoutBinding.binding;
+	m_models.writer.type = SSBOModels::s_setLayoutBinding.descriptorType;
+	m_normals.writer.binding = SSBONormals::s_setLayoutBinding.binding;
+	m_normals.writer.type = SSBONormals::s_setLayoutBinding.descriptorType;
+	m_tints.writer.binding = SSBOTints::s_setLayoutBinding.binding;
+	m_tints.writer.type = SSBOTints::s_setLayoutBinding.descriptorType;
+	m_flags.writer.binding = SSBOFlags::s_setLayoutBinding.binding;
+	m_flags.writer.type = SSBOFlags::s_setLayoutBinding.descriptorType;
 	m_diffuse.binding = Textures::s_diffuseLayoutBinding.binding;
-	m_diffuse.type = vk::DescriptorType::eCombinedImageSampler;
+	m_diffuse.type = Textures::s_diffuseLayoutBinding.descriptorType;
 	m_specular.binding = Textures::s_specularLayoutBinding.binding;
-	m_specular.type = vk::DescriptorType::eCombinedImageSampler;
+	m_specular.type = Textures::s_diffuseLayoutBinding.descriptorType;
+	return;
 }
 
 void Set::destroy()
 {
-	m_localsBuffer.release();
-	m_viewBuffer.release();
+	m_view.release();
+	m_models.release();
+	m_normals.release();
+	m_tints.release();
+	m_flags.release();
 	return;
 }
 
 void Set::writeView(View const& view)
 {
-	m_viewBuffer.write(view);
-	m_view.write(m_descriptorSet, m_viewBuffer.buffer, 0U);
+	m_view.write(view, m_descriptorSet);
 	return;
 }
 
-void Set::writeLocals(Locals const& locals, u32 idx)
+void Set::writeSSBO(SSBOModels const& models, SSBONormals const& normals, SSBOTints const& tints, SSBOFlags const& flags)
 {
-	m_localsBuffer.write(locals, idx);
-	m_locals.write(m_descriptorSet, m_localsBuffer.at(idx), idx);
+	m_models.write(models, m_descriptorSet);
+	m_normals.write(normals, m_descriptorSet);
+	m_tints.write(tints, m_descriptorSet);
+	m_flags.write(flags, m_descriptorSet);
 	return;
 }
 
@@ -228,7 +173,7 @@ SetLayouts allocateSets(u32 copies)
 	uboPoolSize.descriptorCount = copies * View::s_setLayoutBinding.descriptorCount;
 	vk::DescriptorPoolSize ssboPoolSize;
 	ssboPoolSize.type = vk::DescriptorType::eStorageBuffer;
-	ssboPoolSize.descriptorCount = copies * Locals::s_setLayoutBinding.descriptorCount;
+	ssboPoolSize.descriptorCount = copies * 4; // 4 members per SSBO
 	vk::DescriptorPoolSize sampler2DPoolSize;
 	sampler2DPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
 	sampler2DPoolSize.descriptorCount =
@@ -254,10 +199,7 @@ SetLayouts allocateSets(u32 copies)
 		set.m_descriptorSet = sets.at(idx);
 		set.create();
 		set.writeView({});
-		for (u32 i = 0; i < Locals::max; ++i)
-		{
-			set.writeLocals({}, i);
-		}
+		set.writeSSBO({}, {}, {}, {});
 		set.resetTextures();
 		ret.set.push_back(std::move(set));
 	}

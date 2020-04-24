@@ -11,6 +11,8 @@ class Texture;
 
 namespace rd
 {
+constexpr static u32 maxObjects = 1024;
+
 struct View final
 {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
@@ -22,10 +24,29 @@ struct View final
 	alignas(16) glm::vec3 pos_v = glm::vec3(0.0f);
 };
 
-struct Locals final
+struct SSBOModels final
 {
-	constexpr static u32 max = 1024;
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
+	std::array<glm::mat4, maxObjects> mats_m = {};
+};
+
+struct SSBONormals final
+{
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
+
+	std::array<glm::mat4, maxObjects> mats_n = {};
+};
+
+struct SSBOTints final
+{
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
+
+	std::array<glm::vec4, maxObjects> tints = {};
+};
+
+struct SSBOFlags final
+{
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
 	enum : u32
@@ -34,10 +55,7 @@ struct Locals final
 		eLIT = 1 << 1,
 	};
 
-	alignas(16) glm::mat4 mat_m = glm::mat4(1.0f);
-	alignas(16) glm::mat4 mat_n = glm::mat4(1.0f);
-	alignas(16) glm::vec4 tint = glm::vec4(1.0f);
-	alignas(4) u32 flags = 0;
+	std::array<u32, maxObjects> flags = {};
 };
 
 struct Textures final
@@ -46,13 +64,6 @@ struct Textures final
 
 	static vk::DescriptorSetLayoutBinding const s_diffuseLayoutBinding;
 	static vk::DescriptorSetLayoutBinding const s_specularLayoutBinding;
-};
-
-struct Push final
-{
-	u32 localID = 0;
-	u32 diffuseID = 0;
-	u32 specularID = 0;
 };
 
 struct WriteInfo final
@@ -66,27 +77,6 @@ struct WriteInfo final
 	u32 count = 1;
 };
 
-struct ViewBuffer final
-{
-	Buffer buffer;
-
-	void create();
-	void release();
-
-	bool write(View const& view);
-};
-
-struct LocalsBuffer final
-{
-	std::array<Buffer, Locals::max> buffers;
-
-	void create();
-	void release();
-
-	bool write(Locals const& locals, u32 idx);
-	Buffer& at(u32 idx);
-};
-
 struct ShaderWriter final
 {
 	vk::DescriptorType type;
@@ -96,16 +86,60 @@ struct ShaderWriter final
 	void write(vk::DescriptorSet set, Texture const& texture, u32 idx) const;
 };
 
+template <typename T>
+struct ShaderBuffer final
+{
+	Buffer buffer;
+	ShaderWriter writer;
+
+	void create(vk::BufferUsageFlags usage)
+	{
+		if (buffer.buffer == vk::Buffer())
+		{
+			u32 size = (u32)sizeof(T);
+			BufferInfo info;
+			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+			info.queueFlags = QFlag::eGraphics;
+			info.usage = usage;
+			info.size = size;
+			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+#if defined(LEVK_VKRESOURCE_NAMES)
+			info.name = utils::tName<T>();
+#endif
+			buffer = vram::createBuffer(info);
+		}
+		return;
+	}
+
+	void release()
+	{
+		vram::release(buffer);
+		buffer = Buffer();
+		return;
+	}
+
+	bool write(T const& data, vk::DescriptorSet set)
+	{
+		if (!vram::write(buffer, &data))
+		{
+			return false;
+		}
+		writer.write(set, buffer, 0);
+		return true;
+	}
+};
+
 class Set final
 {
 public:
 	vk::DescriptorSet m_descriptorSet;
 
 private:
-	ViewBuffer m_viewBuffer;
-	LocalsBuffer m_localsBuffer;
-	ShaderWriter m_view;
-	ShaderWriter m_locals;
+	ShaderBuffer<View> m_view;
+	ShaderBuffer<SSBOModels> m_models;
+	ShaderBuffer<SSBONormals> m_normals;
+	ShaderBuffer<SSBOTints> m_tints;
+	ShaderBuffer<SSBOFlags> m_flags;
 	ShaderWriter m_diffuse;
 	ShaderWriter m_specular;
 
@@ -115,7 +149,7 @@ public:
 
 public:
 	void writeView(View const& view);
-	void writeLocals(Locals const& locals, u32 idx);
+	void writeSSBO(SSBOModels const& models, SSBONormals const& normals, SSBOTints const& tints, SSBOFlags const& flags);
 	void writeDiffuse(Texture const& diffuse, u32 idx);
 	void writeSpecular(Texture const& specular, u32 idx);
 

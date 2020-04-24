@@ -188,7 +188,7 @@ s32 engine::run(s32 argc, char** argv)
 			pipelineInfo.polygonMode = mode;
 			pipelineInfo.staticLineWidth = lineWidth;
 			vk::PushConstantRange pcRange;
-			pcRange.size = sizeof(gfx::rd::Push);
+			pcRange.size = sizeof(gfx::PushConstants);
 			pcRange.stageFlags = gfx::vkFlags::vertFragShader;
 			pipelineInfo.pushConstantRanges = {pcRange};
 			return pRenderer->createPipeline(std::move(pipelineInfo));
@@ -318,41 +318,42 @@ s32 engine::run(s32 argc, char** argv)
 						auto write = [&](gfx::rd::Set& set) {
 							auto const mg = colours::Magenta;
 							set.resetTextures();
-							u32 localIdx = 0;
-							u32 diffuseIdx = 0;
-							u32 specularIdx = 0;
+							u32 objectID = 0;
+							u32 diffuseID = 0;
+							u32 specularID = 0;
+							gfx::rd::SSBOModels models;
+							gfx::rd::SSBONormals normals;
+							gfx::rd::SSBOTints tints;
+							gfx::rd::SSBOFlags flags;
 							for (auto& pMesh : meshes)
 							{
-								gfx::rd::Locals locals;
-								locals.mat_m = transform0.model();
-								pMesh->m_uImpl->diffuseIdx = 0;
-								pMesh->m_uImpl->specularIdx = 0;
-								pMesh->m_uImpl->localIdx = localIdx;
+								models.mats_m.at(objectID) = transform0.model();
+								normals.mats_n.at(objectID) = transform0.normalModel();
+								pMesh->m_uImpl->pc = {};
+								pMesh->m_uImpl->pc.objectID = objectID;
 								auto const& tn = pMesh->m_material.tint;
-								locals.tint = {tn.r.toF32(), tn.g.toF32(), tn.b.toF32(), tn.a.toF32()};
+								tints.tints.at(objectID) = {tn.r.toF32(), tn.g.toF32(), tn.b.toF32(), tn.a.toF32()};
 								if (pMesh->m_material.pMaterial->m_flags.isSet(gfx::Material::Flag::eTextured))
 								{
-									locals.flags |= gfx::rd::Locals::eTEXTURED;
+									flags.flags.at(objectID) |= gfx::rd::SSBOFlags::eTEXTURED;
 									if (!pMesh->m_material.pDiffuse)
 									{
-										locals.tint = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
+										tints.tints.at(objectID) = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
 									}
 									else
 									{
-										set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseIdx);
-										pMesh->m_uImpl->diffuseIdx = diffuseIdx;
-										++diffuseIdx;
+										set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseID);
+										pMesh->m_uImpl->pc.diffuseID = diffuseID++;
 									}
 									if (pMesh->m_material.pSpecular)
 									{
-										set.writeSpecular(*pMesh->m_material.pSpecular, specularIdx);
-										pMesh->m_uImpl->specularIdx = specularIdx;
-										++specularIdx;
+										set.writeSpecular(*pMesh->m_material.pSpecular, specularID);
+										pMesh->m_uImpl->pc.specularID = specularID++;
 									}
 								}
-								set.writeLocals(locals, localIdx);
-								++localIdx;
+								++objectID;
 							}
+							set.writeSSBO(models, normals, tints, flags);
 							set.writeView(*pGlobals);
 						};
 						auto draw = [&](gfx::Renderer::FrameDriver const& driver) -> std::vector<gfx::Pipeline*> {
@@ -368,11 +369,7 @@ s32 engine::run(s32 argc, char** argv)
 							auto meshes_ = meshes;
 							for (auto pMesh : meshes)
 							{
-								gfx::rd::Push pc;
-								pc.localID = pMesh->m_uImpl->localIdx;
-								pc.diffuseID = pMesh->m_uImpl->diffuseIdx;
-								pc.specularID = pMesh->m_uImpl->specularIdx;
-								driver.commandBuffer.pushConstants<gfx::rd::Push>(pPipeline->m_layout, gfx::vkFlags::vertFragShader, 0, pc);
+								driver.commandBuffer.pushConstants<gfx::PushConstants>(pPipeline->m_layout, gfx::vkFlags::vertFragShader, 0, pMesh->m_uImpl->pc);
 								driver.commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer, offsets);
 								if (pMesh->m_uImpl->indexCount > 0)
 								{

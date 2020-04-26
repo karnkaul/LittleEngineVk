@@ -50,22 +50,12 @@ public:
 		ArrayView<u8> bytes;
 		glm::ivec2 size = {};
 	};
-	struct Img final
-	{
-		bytearray bytes;
-		u8 channels = 4;
-	};
-	struct ImgID final
-	{
-		stdfs::path assetID;
-		u8 channels = 4;
-	};
 	struct Info final
 	{
 		stdfs::path samplerID;
-		Img img;
+		bytearray imgBytes;
 		Raw raw;
-		ImgID imgID;
+		stdfs::path assetID;
 		Sampler* pSampler = nullptr;
 		class IOReader const* pReader = nullptr;
 	};
@@ -85,7 +75,7 @@ public:
 	Status update() override;
 
 private:
-	TResult<Img> idToImg(stdfs::path const& id, u8 channels, IOReader const* pReader);
-	bool imgToRaw(Img img);
+	TResult<bytearray> idToImg(stdfs::path const& id, IOReader const* pReader);
+	bool imgToRaw(bytearray img);
 };
 } // namespace le::gfx

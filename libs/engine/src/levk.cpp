@@ -12,6 +12,7 @@
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/mesh.hpp"
+#include "engine/gfx/primitives.hpp"
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
 #include "engine/window/window.hpp"
@@ -97,28 +98,17 @@ s32 engine::run(s32 argc, char** argv)
 		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
 
 		gfx::Mesh::Info triangle0info;
+		// clang-format off
 		triangle0info.geometry.vertices = {
-			gfx::Vertex{{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.5f, 0.0f}},
-			gfx::Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-			gfx::Vertex{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+			{{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {0.5f, 0.0f}},
+			{{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {}, {1.0f, 1.0f}},
+			{{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {}, {0.0f, 1.0f}},
 		};
+		// clang-format on
 		gfx::Mesh* pTriangle0 = gfx::g_pResources->create<gfx::Mesh>("meshes/triangle0", triangle0info);
 
-		// clang-format off
-		auto const dz = 0.25f;
 		gfx::Mesh::Info quad0info;
-		quad0info.geometry.vertices = {
-			{{-0.5f, -0.5f, -dz}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, -0.5f, -dz}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, 0.5f, -dz}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-			{{-0.5f, 0.5f, -dz}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-			{{-0.5f, -0.5f, dz}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, -0.5f, dz}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, 0.5f, dz}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-			{{-0.5f, 0.5f, dz}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-		};
-		quad0info.geometry.indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
-		// clang-format on
+		quad0info.geometry = gfx::createCubedSphere(1.0f, 8);
 		gfx::Mesh* pQuad0 = gfx::g_pResources->create<gfx::Mesh>("meshes/quad0", quad0info);
 
 		gfx::Material::Info texturedInfo;
@@ -138,10 +128,12 @@ s32 engine::run(s32 argc, char** argv)
 		imageInfo.createInfo.arrayLayers = 1;
 		gfx::Texture::Info textureInfo;
 		textureInfo.pReader = g_uReader.get();
-		textureInfo.imgID.channels = 4;
-		textureInfo.imgID.assetID = "textures/texture.jpg";
+		textureInfo.assetID = "textures/container2.png";
+		// textureInfo.assetID = "textures/texture.jpg";
 		pQuad0->m_material.pMaterial = pTextured;
-		pQuad0->m_material.pDiffuse = gfx::g_pResources->create<gfx::Texture>(textureInfo.imgID.assetID, textureInfo);
+		pQuad0->m_material.pDiffuse = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+		textureInfo.assetID = "textures/awesomeface.png";
+		// pQuad0->m_material.pSpecular = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 
 		Window w0, w1;
 		auto pW0 = WindowImpl::windowImpl(w0.id());
@@ -187,6 +179,7 @@ s32 engine::run(s32 argc, char** argv)
 			pipelineInfo.name = name;
 			pipelineInfo.polygonMode = mode;
 			pipelineInfo.staticLineWidth = lineWidth;
+			pipelineInfo.bBlend = true;
 			vk::PushConstantRange pcRange;
 			pcRange.size = sizeof(gfx::PushConstants);
 			pcRange.stageFlags = gfx::vkFlags::vertFragShader;
@@ -212,6 +205,8 @@ s32 engine::run(s32 argc, char** argv)
 			gfx::rd::View view0;
 			gfx::rd::View view1;
 			Transform transform0;
+			Transform transform1;
+			transform1.setPosition({0.0f, 0.0f, 0.5f});
 
 			Time t = Time::elapsed();
 			while (w0.isOpen() || w1.isOpen())
@@ -254,6 +249,8 @@ s32 engine::run(s32 argc, char** argv)
 					// Update matrices
 					transform0.setOrientation(
 						glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+					transform1.setOrientation(
+						glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
 					view0.mat_v = view1.mat_v =
 						glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 					if (w0.isOpen())
@@ -322,7 +319,7 @@ s32 engine::run(s32 argc, char** argv)
 						{
 							auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 							gfx::Renderer::Batch batch;
-							batch.drawables = {{pQuad0, &transform0, pPipeline}, {pTriangle0, &transform0, pPipeline}};
+							batch.drawables = {{pQuad0, &transform1, pPipeline}, {pTriangle0, &transform0, pPipeline}};
 							scene.batches.push_back(std::move(batch));
 							pW0->m_uRenderer->render(scene);
 						}

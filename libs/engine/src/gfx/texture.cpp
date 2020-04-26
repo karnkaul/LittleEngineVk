@@ -84,31 +84,39 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	}
 	if (!m_pSampler)
 	{
-		throw std::runtime_error("Failed to find sampler");
+		LOG_E("[{}] [{}] Failed to find Sampler [{}]!", s_tName, m_id.generic_string(), info.samplerID.generic_string());
+		m_status = Status::eError;
+		return;
 	}
 	if (info.raw.bytes.extent > 0)
 	{
 		m_uImpl->raw = std::move(info.raw);
 	}
-	else if (!info.img.bytes.empty())
+	else if (!info.imgBytes.empty())
 	{
-		if (!imgToRaw(std::move(info.img)))
+		if (!imgToRaw(std::move(info.imgBytes)))
 		{
-			throw std::runtime_error("Failed to create texture");
+			LOG_E("[{}] [{}] Failed to create texture!", s_tName, m_id.generic_string());
+			m_status = Status::eError;
+			return;
 		}
 	}
-	else if (!info.imgID.assetID.empty())
+	else if (!info.assetID.empty())
 	{
-		auto [pixels, bResult] = info.pReader->getBytes(info.imgID.assetID);
-		if (!bResult || !imgToRaw({std::move(pixels), info.imgID.channels}))
+		auto [pixels, bResult] = info.pReader->getBytes(info.assetID);
+		if (!bResult || !imgToRaw(std::move(pixels)))
 		{
-			throw std::runtime_error("Failed to create texture");
+			LOG_E("[{}] [{}] Failed to create texture from [{}]!", s_tName, m_id.generic_string(), info.assetID.generic_string());
+			m_status = Status::eError;
+			return;
 		}
 		bAddFileMonitor = true;
 	}
 	else
 	{
-		throw std::runtime_error("Invalid Info");
+		LOG_E("[{}] [{}] Invalid Info!", s_tName, m_id.generic_string());
+		m_status = Status::eError;
+		return;
 	}
 	m_uImpl->loaded = load(&m_uImpl->active, m_uImpl->raw.size, m_uImpl->raw.bytes, m_id.generic_string());
 	m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
@@ -117,9 +125,8 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	{
 		m_uImpl->pReader = dynamic_cast<FileReader const*>(info.pReader);
 		ASSERT(m_uImpl->pReader, "FileReader required!");
-		m_uImpl->imgID = info.imgID;
-		m_files.push_back(
-			File(m_uImpl->imgID.assetID, m_uImpl->pReader->fullPath(m_uImpl->imgID.assetID), FileMonitor::Mode::eBinaryContents, {}));
+		m_uImpl->imgID = info.assetID;
+		m_files.push_back(File(m_uImpl->imgID, m_uImpl->pReader->fullPath(m_uImpl->imgID), FileMonitor::Mode::eBinaryContents, {}));
 	}
 #endif
 }
@@ -202,8 +209,7 @@ Asset::Status Texture::update()
 					stbi_image_free((void*)(m_uImpl->raw.bytes.pData));
 					m_uImpl->raw = {};
 				}
-				auto img = Img{file.monitor.bytes(), m_uImpl->imgID.channels};
-				if (!imgToRaw(std::move(img)))
+				if (!imgToRaw(file.monitor.bytes()))
 				{
 					LOG_E("[{}] [{}] Failed to reload!", s_tName, m_id.generic_string());
 				}
@@ -221,7 +227,7 @@ Asset::Status Texture::update()
 	return m_status;
 }
 
-TResult<Texture::Img> Texture::idToImg(stdfs::path const& id, u8 channels, IOReader const* pReader)
+TResult<bytearray> Texture::idToImg(stdfs::path const& id, IOReader const* pReader)
 {
 	auto [pixels, bResult] = pReader->getBytes(id);
 	if (!bResult)
@@ -229,20 +235,20 @@ TResult<Texture::Img> Texture::idToImg(stdfs::path const& id, u8 channels, IORea
 		LOG_E("[{}] [{}] Failed to find [{}] on [{}]!", s_tName, m_id.generic_string(), id.generic_string(), pReader->medium());
 		return {};
 	}
-	return Img{std::move(pixels), channels};
+	return TResult<bytearray>(std::move(pixels));
 }
 
-bool Texture::imgToRaw(Img img)
+bool Texture::imgToRaw(bytearray imgBytes)
 {
 	s32 width, height, ch;
-	auto pIn = reinterpret_cast<stbi_uc const*>(img.bytes.data());
-	auto pOut = stbi_load_from_memory(pIn, (s32)img.bytes.size(), &width, &height, &ch, img.channels);
+	auto pIn = reinterpret_cast<stbi_uc const*>(imgBytes.data());
+	auto pOut = stbi_load_from_memory(pIn, (s32)imgBytes.size(), &width, &height, &ch, 4);
 	if (!pOut)
 	{
 		LOG_E("[{}] [{}] Failed to load image data!", s_tName, m_id.generic_string());
 		return false;
 	}
-	size_t const size = (size_t)(width * height * img.channels);
+	size_t const size = (size_t)(width * height * 4);
 	m_uImpl->raw.size = {width, height};
 	m_uImpl->raw.bytes = ArrayView(pOut, size);
 	m_uImpl->bStbiRaw = true;

@@ -31,6 +31,7 @@ Shader::Shader(stdfs::path id, Info info) : Asset(std::move(id))
 				if (!loadGlsl(info, id, type))
 				{
 					LOG_E("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
+					m_status = Status::eError;
 				}
 			}
 			else if (ext == ".spv" || ext == ShaderCompiler::s_extension)
@@ -42,6 +43,7 @@ Shader::Shader(stdfs::path id, Info info) : Asset(std::move(id))
 			else
 			{
 				LOG_E("[{}] Unknown extension! [{}]", s_tName, ext);
+				m_status = Status::eError;
 			}
 		}
 	}
@@ -152,6 +154,7 @@ void Shader::loadAllSpirV(std::array<bytearray, (size_t)Type::eCOUNT_> const& by
 			m_uImpl->shaders.at(idx) = g_info.device.createShaderModule(createInfo);
 		}
 	}
+	return;
 }
 
 std::string Shader::extension(stdfs::path const& id)
@@ -209,7 +212,12 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 		LOG_E("[{}] Destination file exists and overwrite flag not set: [{}]", s_tName, src.generic_string());
 		return false;
 	}
-	auto const command = fmt::format("glslc {} -o {}", src.string(), dst.string());
+#if defined(LEVK_DEBUG)
+	std::string_view const str = "glslc {} -g -o {}";
+#else
+	std::string_view const str = "glslc {} -o {}";
+#endif
+	auto const command = fmt::format(str, src.string(), dst.string());
 	if (std::system(command.data()) != 0)
 	{
 		LOG_E("[{}] Shader compilation failed: [{}]", s_tName, src.generic_string());

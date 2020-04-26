@@ -186,7 +186,7 @@ struct TextureImpl final
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	Image standby;
-	Texture::ImgID imgID;
+	stdfs::path imgID;
 	FileReader const* pReader = nullptr;
 	bool bReloading = false;
 #endif

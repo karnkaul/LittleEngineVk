@@ -5,19 +5,13 @@
 #include "core/colour.hpp"
 #include "core/flags.hpp"
 #include "engine/assets/asset.hpp"
+#include "geometry.hpp"
 
 namespace stdfs = std::filesystem;
 
 namespace le::gfx
 {
 class Texture;
-
-struct Vertex final
-{
-	glm::vec3 position = {};
-	glm::vec3 colour = {};
-	glm::vec2 texCoord = {};
-};
 
 struct Albedo final
 {
@@ -69,11 +63,7 @@ class Mesh final : public Asset
 public:
 	struct Info final
 	{
-		struct
-		{
-			std::vector<Vertex> vertices;
-			std::vector<u32> indices;
-		} geometry;
+		Geometry geometry;
 		Material::Inst material;
 	};
 

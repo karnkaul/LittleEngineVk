@@ -23,7 +23,7 @@ public:
 		std::vector<vk::PushConstantRange> pushConstantRanges;
 		f32 staticLineWidth = 1.0f;
 		class Shader* pShader = nullptr;
-		bool bBlend = false;
+		bool bBlend = true;
 	};
 
 public:

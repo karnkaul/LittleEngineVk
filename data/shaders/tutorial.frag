@@ -50,5 +50,9 @@ void main()
 	{
 		outColour = vec4(fragColour, 1.0);
 	}
+	if (outColour.a < 0.1)
+	{
+		discard;
+	}
 	outColour *= tints[localID];
 }

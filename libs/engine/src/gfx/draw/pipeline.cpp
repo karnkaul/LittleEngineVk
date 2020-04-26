@@ -104,6 +104,12 @@ bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout
 	{
 		colorBlendAttachment.colorWriteMask = m_info.colourWriteMask;
 		colorBlendAttachment.blendEnable = m_info.bBlend;
+		colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
+		colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+		colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+		colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
 	}
 	vk::PipelineColorBlendStateCreateInfo colorBlendState;
 	{

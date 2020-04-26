@@ -11,10 +11,10 @@ gfx::Geometry gfx::createQuad(f32 side /* = 1.0f */)
 	f32 const h = side * 0.5f;
 	// clang-format off
 	ret.vertices = {
-		{{-h, -h, 0.0f}, {}, {}, {1.0f, 0.0f}},
-		{{ h, -h, 0.0f}, {}, {}, {0.0f, 0.0f}},
-		{{ h,  h, 0.0f}, {}, {}, {0.0f, 1.0f}},
-		{{-h,  h, 0.0f}, {}, {}, {1.0f, 1.0f}}
+		{{-h, -h, 0.0f}, {}, {}, {1.0f, 1.0f}},
+		{{ h, -h, 0.0f}, {}, {}, {0.0f, 1.0f}},
+		{{ h,  h, 0.0f}, {}, {}, {0.0f, 0.0f}},
+		{{-h,  h, 0.0f}, {}, {}, {1.0f, 0.0f}}
 	};
 	// clang-format on
 	ret.indices = {0, 1, 2, 2, 3, 0};
@@ -28,15 +28,15 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */)
 	// clang-format off
 	ret.vertices = {
 		// front
-		{{-s, -s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
-		{{ s, -s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
-		{{ s,  s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
-		{{-s,  s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
+		{{-s, -s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
+		{{ s, -s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
+		{{ s,  s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
+		{{-s,  s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
 		// back
-		{{-s, -s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {0.0f, 0.0f}},
-		{{ s, -s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
-		{{ s,  s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
-		{{-s,  s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
+		{{-s, -s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
+		{{ s, -s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
+		{{ s,  s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
+		{{-s,  s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {0.0f, 0.0f}},
 		// left
 		{{-s,  s,  s}, {}, {-1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
 		{{-s,  s, -s}, {}, {-1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
@@ -48,10 +48,10 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */)
 		{{ s, -s, -s}, {}, { 1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
 		{{ s, -s,  s}, {}, { 1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
 		// down
-		{{-s, -s, -s}, {}, { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
-		{{ s, -s, -s}, {}, { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
-		{{ s, -s,  s}, {}, { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
-		{{-s, -s,  s}, {}, { 0.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
+		{{-s, -s, -s}, {}, { 0.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
+		{{ s, -s, -s}, {}, { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
+		{{ s, -s,  s}, {}, { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
+		{{-s, -s,  s}, {}, { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
 		//up
 		{{-s,  s, -s}, {}, { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
 		{{ s,  s, -s}, {}, { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
@@ -114,10 +114,10 @@ gfx::Geometry gfx::createCubedSphere(f32 diam, u8 quadsPerSide)
 		{
 			u = col * duv;
 			glm::vec3 const o = s * glm::vec3((f32)col, (f32)row, 0.0f);
-			points.push_back(std::make_pair(glm::vec3(bl + o), glm::vec2(u, v)));
-			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(s, 0.0f, 0.0f) + o), glm::vec2(u + duv, v)));
-			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(s, s, 0.0f) + o), glm::vec2(u + duv, v + duv)));
-			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(0.0f, s, 0.0f) + o), glm::vec2(u, v + duv)));
+			points.push_back(std::make_pair(glm::vec3(bl + o), glm::vec2(u, 1.0f - v)));
+			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(s, 0.0f, 0.0f) + o), glm::vec2(u + duv, 1.0 - v)));
+			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(s, s, 0.0f) + o), glm::vec2(u + duv, 1.0f - v - duv)));
+			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(0.0f, s, 0.0f) + o), glm::vec2(u, 1.0f - v - duv)));
 		}
 	}
 	auto addSide = [&points, &ret, diam](std::function<glm::vec3(glm::vec3 const&)> transform) {

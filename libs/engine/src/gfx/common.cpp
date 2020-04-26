@@ -74,9 +74,15 @@ std::vector<vk::VertexInputAttributeDescription> vbo::attributeDescriptions()
 	col.format = vk::Format::eR32G32B32Sfloat;
 	col.offset = offsetof(Vertex, colour);
 	ret.push_back(col);
+	vk::VertexInputAttributeDescription norm;
+	norm.binding = vertexBinding;
+	norm.location = 2;
+	norm.format = vk::Format::eR32G32B32Sfloat;
+	norm.offset = offsetof(Vertex, normal);
+	ret.push_back(norm);
 	vk::VertexInputAttributeDescription uv;
 	uv.binding = vertexBinding;
-	uv.location = 2;
+	uv.location = 3;
 	uv.format = vk::Format::eR32G32Sfloat;
 	uv.offset = offsetof(Vertex, texCoord);
 	ret.push_back(uv);

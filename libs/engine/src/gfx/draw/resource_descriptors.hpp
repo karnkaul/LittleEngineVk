@@ -2,6 +2,7 @@
 #include <vector>
 #include "core/flags.hpp"
 #include "core/utils.hpp"
+#include "engine/gfx/mesh.hpp"
 #include "gfx/common.hpp"
 #include "gfx/vram.hpp"
 
@@ -17,32 +18,50 @@ struct View final
 {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	alignas(16) glm::mat4 mat_vp = glm::mat4(1.0f);
-	alignas(16) glm::mat4 mat_v = glm::mat4(1.0f);
-	alignas(16) glm::mat4 mat_p = glm::mat4(1.0f);
-	alignas(16) glm::mat4 mat_ui = glm::mat4(1.0f);
-	alignas(16) glm::vec3 pos_v = glm::vec3(0.0f);
+	alignas(16) glm::mat4 mat_vp;
+	alignas(16) glm::mat4 mat_v;
+	alignas(16) glm::mat4 mat_p;
+	alignas(16) glm::mat4 mat_ui;
+	alignas(16) glm::vec3 pos_v;
 };
 
 struct SSBOModels final
 {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	std::array<glm::mat4, maxObjects> mats_m = {};
+	std::array<glm::mat4, maxObjects> mats_m;
 };
 
 struct SSBONormals final
 {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	std::array<glm::mat4, maxObjects> mats_n = {};
+	std::array<glm::mat4, maxObjects> mats_n;
+};
+
+struct SSBOMaterials final
+{
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
+
+	struct Mat final
+	{
+		alignas(16) glm::vec4 ambient;
+		alignas(16) glm::vec4 diffuse;
+		alignas(16) glm::vec4 specular;
+		alignas(16) f32 shininess;
+
+		Mat() = default;
+		Mat(Material const& material);
+	};
+
+	std::array<Mat, maxObjects> materials;
 };
 
 struct SSBOTints final
 {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	std::array<glm::vec4, maxObjects> tints = {};
+	std::array<glm::vec4, maxObjects> tints;
 };
 
 struct SSBOFlags final
@@ -55,7 +74,16 @@ struct SSBOFlags final
 		eLIT = 1 << 1,
 	};
 
-	std::array<u32, maxObjects> flags = {};
+	std::array<u32, maxObjects> flags;
+};
+
+struct SSBOs final
+{
+	SSBOModels models;
+	SSBONormals normals;
+	SSBOMaterials materials;
+	SSBOTints tints;
+	SSBOFlags flags;
 };
 
 struct Textures final
@@ -138,6 +166,7 @@ private:
 	ShaderBuffer<View> m_view;
 	ShaderBuffer<SSBOModels> m_models;
 	ShaderBuffer<SSBONormals> m_normals;
+	ShaderBuffer<SSBOMaterials> m_materials;
 	ShaderBuffer<SSBOTints> m_tints;
 	ShaderBuffer<SSBOFlags> m_flags;
 	ShaderWriter m_diffuse;
@@ -149,7 +178,7 @@ public:
 
 public:
 	void writeView(View const& view);
-	void writeSSBO(SSBOModels const& models, SSBONormals const& normals, SSBOTints const& tints, SSBOFlags const& flags);
+	void writeSSBOs(SSBOs const& ssbos);
 	void writeDiffuse(Texture const& diffuse, u32 idx);
 	void writeSpecular(Texture const& specular, u32 idx);
 

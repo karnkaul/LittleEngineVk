@@ -15,9 +15,9 @@ class Texture;
 
 struct Albedo final
 {
-	glm::vec3 diffuse = glm::vec3(1.0f);
-	glm::vec3 ambient = glm::vec3(1.0f);
-	glm::vec3 specular = glm::vec3(1.0f);
+	Colour ambient = colours::White;
+	Colour diffuse = colours::White;
+	Colour specular = colours::White;
 };
 
 class Material final : public Asset
@@ -49,7 +49,7 @@ public:
 public:
 	Albedo m_albedo;
 	Flags m_flags;
-	f32 shininess = 32.0f;
+	f32 m_shininess = 32.0f;
 
 public:
 	Material(stdfs::path id, Info info);

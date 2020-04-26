@@ -95,7 +95,7 @@ glm::vec3 Transform::scale() const
 
 bool Transform::isIsotropic() const
 {
-	return m_scale.x == m_scale.y && m_scale.y == m_scale.z && m_pParent != nullptr && m_pParent->isIsotropic();
+	return m_scale.x == m_scale.y && m_scale.y == m_scale.z && (!m_pParent || m_pParent->isIsotropic());
 }
 
 glm::vec3 Transform::worldPosition() const

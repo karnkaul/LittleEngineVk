@@ -51,7 +51,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 	vk::Device device;
 	vk::SurfaceKHR surface;
 	std::string deviceName;
-	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
 	try
 	{
 		surface = initInfo.config.createTempSurface(instance);
@@ -181,7 +181,7 @@ void init(InitInfo const& initInfo)
 	flags.set({InitInfo::Flag::eValidation, InitInfo::Flag::eTest});
 	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
-		requiredExtensionsSet.emplace(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		requiredLayers.push_back("VK_LAYER_KHRONOS_validation");
 	}
 	std::vector<char const*> const requiredExtensions = {requiredExtensionsSet.begin(), requiredExtensionsSet.end()};

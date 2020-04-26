@@ -108,12 +108,12 @@ s32 engine::run(s32 argc, char** argv)
 		gfx::Mesh* pTriangle0 = gfx::g_pResources->create<gfx::Mesh>("meshes/triangle0", triangle0info);
 
 		gfx::Mesh::Info quad0info;
-		quad0info.geometry = gfx::createCubedSphere(1.0f, 8);
+		quad0info.geometry = gfx::createCubedSphere(1.0f, 16);
 		gfx::Mesh* pQuad0 = gfx::g_pResources->create<gfx::Mesh>("meshes/quad0", quad0info);
 
 		gfx::Material::Info texturedInfo;
-		texturedInfo.flags.set(gfx::Material::Flag::eTextured);
-		auto pTextured = gfx::g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
+		texturedInfo.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit});
+		auto pTexturedLit = gfx::g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
 
 		gfx::ImageInfo imageInfo;
 		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
@@ -130,10 +130,10 @@ s32 engine::run(s32 argc, char** argv)
 		textureInfo.pReader = g_uReader.get();
 		textureInfo.assetID = "textures/container2.png";
 		// textureInfo.assetID = "textures/texture.jpg";
-		pQuad0->m_material.pMaterial = pTextured;
+		pQuad0->m_material.pMaterial = pTexturedLit;
 		pQuad0->m_material.pDiffuse = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
-		textureInfo.assetID = "textures/awesomeface.png";
-		// pQuad0->m_material.pSpecular = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+		textureInfo.assetID = "textures/container2_specular.png";
+		pQuad0->m_material.pSpecular = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 
 		Window w0, w1;
 		auto pW0 = WindowImpl::windowImpl(w0.id());
@@ -142,10 +142,11 @@ s32 engine::run(s32 argc, char** argv)
 		info0.config.size = {1280, 720};
 		info0.config.title = "LittleEngineVk Demo";
 		info0.config.virtualFrameCount = 2;
+		info0.config.centreOffset = {-200, -200};
 		auto info1 = info0;
 		// info1.config.mode = Window::Mode::eBorderlessFullscreen;
 		info1.config.title += " 2";
-		info1.config.centreOffset = {100, 100};
+		info1.config.centreOffset = {200, 200};
 		info1.options.colourSpaces = {ColourSpace::eRGBLinear};
 		bool bRecreate0 = false, bRecreate1 = false;
 		bool bClose0 = false, bClose1 = false;
@@ -186,7 +187,7 @@ s32 engine::run(s32 argc, char** argv)
 			pipelineInfo.pushConstantRanges = {pcRange};
 			return pRenderer->createPipeline(std::move(pipelineInfo));
 		};
-		if (w0.create(info0) && w1.create(info1))
+		if (w1.create(info1) && w0.create(info0))
 		{
 			gfx::Pipeline *pPipeline0 = nullptr, *pPipeline0wf = nullptr, *pPipeline1 = nullptr;
 
@@ -203,10 +204,10 @@ s32 engine::run(s32 argc, char** argv)
 			}
 
 			gfx::rd::View view0;
-			gfx::rd::View view1;
+			glm::vec3 cam0Pos = {0.0f, 2.0f, 2.0f};
 			Transform transform0;
 			Transform transform1;
-			transform1.setPosition({0.0f, 0.0f, 0.5f});
+			transform0.setPosition({0.0f, 0.0f, -2.0f});
 
 			Time t = Time::elapsed();
 			while (w0.isOpen() || w1.isOpen())
@@ -251,16 +252,15 @@ s32 engine::run(s32 argc, char** argv)
 						glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
 					transform1.setOrientation(
 						glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
-					view0.mat_v = view1.mat_v =
-						glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+					view0.mat_v = glm::lookAt(cam0Pos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+					view0.pos_v = cam0Pos;
 					if (w0.isOpen())
 					{
 						auto const size = w0.framebufferSize();
 						if (size.x > 0 && size.y > 0)
 						{
-							auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
-							proj[1][1] *= -1;
-							view0.mat_vp = proj * view0.mat_v;
+							view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+							view0.mat_vp = view0.mat_p * view0.mat_v;
 						}
 					}
 					if (w1.isOpen())
@@ -268,9 +268,8 @@ s32 engine::run(s32 argc, char** argv)
 						auto const size = w1.framebufferSize();
 						if (size.x > 0 && size.y > 0)
 						{
-							auto proj = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
-							proj[1][1] *= -1;
-							view1.mat_vp = proj * view1.mat_v;
+							view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+							view0.mat_vp = view0.mat_p * view0.mat_v;
 						}
 					}
 				}
@@ -328,7 +327,7 @@ s32 engine::run(s32 argc, char** argv)
 					{
 						gfx::Renderer::Scene scene;
 						scene.clear.colour = Colour(0x030203ff);
-						scene.pView = &view1;
+						scene.pView = &view0;
 						if (pTriangle0->isReady())
 						{
 							gfx::Renderer::Batch batch;

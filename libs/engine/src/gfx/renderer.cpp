@@ -13,6 +13,19 @@
 
 namespace le::gfx
 {
+namespace
+{
+void resetObject(rd::SSBOs& out_ssbos, u32 objectID, Transform const* pTransform, Mesh const* pMesh)
+{
+	out_ssbos.models.mats_m.at(objectID) = pTransform->model();
+	out_ssbos.normals.mats_n.at(objectID) = pTransform->normalModel();
+	out_ssbos.flags.flags.at(objectID) = 0;
+	out_ssbos.tints.tints.at(objectID) = pMesh->m_material.tint.toVec4();
+	out_ssbos.materials.materials.at(objectID) = *pMesh->m_material.pMaterial;
+	pMesh->m_uImpl->pc.diffuseID = 0;
+	pMesh->m_uImpl->pc.specularID = 0;
+}
+} // namespace
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
 Renderer::Renderer(Info const& info) : m_presenter(info.presenterInfo), m_window(info.windowID)
@@ -149,33 +162,33 @@ bool Renderer::render(Scene const& scene)
 	auto& frame = frameSync();
 	if (!frame.bNascent)
 	{
-		gfx::waitFor(frame.drawing);
+		waitFor(frame.drawing);
 	}
 	// Write sets
 	u32 objectID = 0;
 	u32 diffuseID = 0;
 	u32 specularID = 0;
-	gfx::rd::SSBOModels models;
-	gfx::rd::SSBONormals normals;
-	gfx::rd::SSBOTints tints;
-	gfx::rd::SSBOFlags flags;
+	rd::SSBOs ssbos;
 	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
 	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
 	for (auto& batch : scene.batches)
 	{
 		for (auto [pMesh, pTransform, _] : batch.drawables)
 		{
-			models.mats_m.at(objectID) = pTransform->model();
-			normals.mats_n.at(objectID) = pTransform->normalModel();
+			resetObject(ssbos, objectID, pTransform, pMesh);
+
 			pMesh->m_uImpl->pc = {};
 			pMesh->m_uImpl->pc.objectID = objectID;
-			tints.tints.at(objectID) = pMesh->m_material.tint.toVec4();
-			if (pMesh->m_material.pMaterial->m_flags.isSet(gfx::Material::Flag::eTextured))
+			if (pMesh->m_material.pMaterial->m_flags.isSet(Material::Flag::eLit))
 			{
-				flags.flags.at(objectID) |= gfx::rd::SSBOFlags::eTEXTURED;
+				ssbos.flags.flags.at(objectID) |= rd::SSBOFlags::eLIT;
+			}
+			if (pMesh->m_material.pMaterial->m_flags.isSet(Material::Flag::eTextured))
+			{
+				ssbos.flags.flags.at(objectID) |= rd::SSBOFlags::eTEXTURED;
 				if (!pMesh->m_material.pDiffuse)
 				{
-					tints.tints.at(objectID) = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
+					ssbos.tints.tints.at(objectID) = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
 				}
 				else
 				{
@@ -191,7 +204,7 @@ bool Renderer::render(Scene const& scene)
 			++objectID;
 		}
 	}
-	frame.set.writeSSBO(models, normals, tints, flags);
+	frame.set.writeSSBOs(ssbos);
 	frame.set.writeView(*scene.pView);
 	// Acquire
 	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
@@ -243,7 +256,7 @@ bool Renderer::render(Scene const& scene)
 			auto layout = pPipeline->m_layout;
 			vk::DeviceSize offsets[] = {0};
 			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
-			commandBuffer.pushConstants<PushConstants>(layout, gfx::vkFlags::vertFragShader, 0, pMesh->m_uImpl->pc);
+			commandBuffer.pushConstants<PushConstants>(layout, vkFlags::vertFragShader, 0, pMesh->m_uImpl->pc);
 			commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer, offsets);
 			if (pMesh->m_uImpl->indexCount > 0)
 			{
@@ -291,9 +304,9 @@ vk::Viewport Renderer::transformViewport(ScreenRect const& nRect, glm::vec2 cons
 	viewport.minDepth = depth.x;
 	viewport.maxDepth = depth.y;
 	viewport.width = size.x * extent.width;
-	viewport.height = size.y * extent.height;
+	viewport.height = -(size.y * extent.height);
 	viewport.x = nRect.left * extent.width;
-	viewport.y = nRect.top * extent.height;
+	viewport.y = nRect.top * extent.height - viewport.height;
 	return viewport;
 }
 

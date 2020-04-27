@@ -12,7 +12,7 @@ constexpr glm::vec3 g_nFront = {0.0f, 0.0f, 1.0f};
 struct Vertex final
 {
 	glm::vec3 position = {};
-	glm::vec3 colour = {};
+	glm::vec3 colour = glm::vec3(1.0f);
 	glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec2 texCoord = {};
 };

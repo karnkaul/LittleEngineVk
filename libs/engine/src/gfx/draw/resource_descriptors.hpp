@@ -1,11 +1,16 @@
 #pragma once
+#include <deque>
 #include <vector>
 #include "core/assert.hpp"
 #include "core/flags.hpp"
 #include "core/utils.hpp"
 #include "engine/gfx/mesh.hpp"
+#include "engine/gfx/light.hpp"
 #include "gfx/common.hpp"
 #include "gfx/vram.hpp"
+#if defined(LEVK_VKRESOURCE_NAMES)
+#include "core/utils.hpp"
+#endif
 
 namespace le::gfx
 {
@@ -22,6 +27,7 @@ struct UBOView final
 	alignas(16) glm::mat4 mat_p;
 	alignas(16) glm::mat4 mat_ui;
 	alignas(16) glm::vec3 pos_v;
+	alignas(4) mutable u32 dirLightCount;
 };
 
 struct SSBOModels final
@@ -76,6 +82,24 @@ struct SSBOFlags final
 	std::vector<u32> ssbo;
 };
 
+struct SSBODirLights final
+{
+	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
+
+	struct Light
+	{
+		alignas(16) glm::vec3 ambient;
+		alignas(16) glm::vec3 diffuse;
+		alignas(16) glm::vec3 specular;
+		alignas(16) glm::vec3 direction;
+
+		Light() = default;
+		Light(DirLight const& dirLight);
+	};
+
+	std::vector<Light> ssbo;
+};
+
 struct SSBOs final
 {
 	SSBOModels models;
@@ -83,6 +107,7 @@ struct SSBOs final
 	SSBOMaterials materials;
 	SSBOTints tints;
 	SSBOFlags flags;
+	SSBODirLights dirLights;
 };
 
 struct Textures final
@@ -127,7 +152,11 @@ public:
 	vk::BufferUsageFlags m_usage;
 	u32 m_arraySize;
 
-	UBOHandle(vk::BufferUsageFlags usage) : m_usage(usage) {}
+	UBOHandle() : m_usage(vk::BufferUsageFlagBits::eUniformBuffer)
+	{
+		m_writer.binding = T::s_setLayoutBinding.binding;
+		m_writer.type = T::s_setLayoutBinding.descriptorType;
+	}
 
 	void create()
 	{
@@ -191,17 +220,19 @@ public:
 	std::string m_bufferName;
 #endif
 	vk::BufferUsageFlags m_usage;
-	std::vector<Buf> m_pending;
+	std::deque<Buf> m_pending;
 	u32 m_arraySize = 1;
 
 public:
-	SSBOHandle(vk::BufferUsageFlagBits usage, [[maybe_unused]] std::string name)
+	SSBOHandle()
 		:
 #if defined(LEVK_VKRESOURCE_NAMES)
-		  m_bufferName(std::move(name)),
+		  m_bufferName(utils::tName<T>()),
 #endif
-		  m_usage(usage)
+		  m_usage(vk::BufferUsageFlagBits::eStorageBuffer)
 	{
+		m_writer.binding = T::s_setLayoutBinding.binding;
+		m_writer.type = T::s_setLayoutBinding.descriptorType;
 	}
 
 public:
@@ -214,6 +245,7 @@ public:
 			waitAll(buf.inUse);
 			vram::release(buf.buffer);
 		}
+		m_pending.clear();
 		m_buf.buffer = Buffer();
 		m_buf.inUse.clear();
 		return;
@@ -260,6 +292,10 @@ private:
 			{
 				m_pending.push_back(std::move(m_buf));
 			}
+			else
+			{
+				vram::release(m_buf.buffer);
+			}
 			BufferInfo info;
 			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 			info.queueFlags = QFlag::eGraphics;
@@ -287,6 +323,7 @@ private:
 	SSBOHandle<SSBOMaterials> m_materials;
 	SSBOHandle<SSBOTints> m_tints;
 	SSBOHandle<SSBOFlags> m_flags;
+	SSBOHandle<SSBODirLights> m_dirLights;
 	ShaderWriter m_diffuse;
 	ShaderWriter m_specular;
 

@@ -7,6 +7,7 @@ layout(std140, set = 0, binding = 0) uniform View
 	mat4 mat_p;
 	mat4 mat_ui;
 	vec3 pos_v;
+	uint dirLightCount;
 };
 
 layout(std430, set = 0, binding = 1) buffer readonly Models

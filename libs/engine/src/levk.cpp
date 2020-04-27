@@ -11,6 +11,7 @@
 #include "core/services.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/gfx/light.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/primitives.hpp"
 #include "engine/gfx/shader.hpp"
@@ -113,6 +114,7 @@ s32 engine::run(s32 argc, char** argv)
 
 		gfx::Material::Info texturedInfo;
 		texturedInfo.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit});
+		texturedInfo.albedo.ambient = Colour(0x888888ff);
 		auto pTexturedLit = gfx::g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
 
 		gfx::ImageInfo imageInfo;
@@ -134,6 +136,11 @@ s32 engine::run(s32 argc, char** argv)
 		pQuad0->m_material.pDiffuse = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 		textureInfo.assetID = "textures/container2_specular.png";
 		pQuad0->m_material.pSpecular = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+
+		gfx::DirLight dirLight0, dirLight1;
+		dirLight0.diffuse = Colour(0x0000ffff);
+		dirLight0.direction = glm::normalize(glm::vec3(-1.0, -1.0, -1.0));
+		dirLight1.diffuse = Colour(0xff00ffff);
 
 		Window w0, w1;
 		auto pW0 = WindowImpl::windowImpl(w0.id());
@@ -317,8 +324,9 @@ s32 engine::run(s32 argc, char** argv)
 					if (w0.isOpen())
 					{
 						gfx::Renderer::Scene scene;
+						scene.dirLights = {dirLight0, dirLight1};
 						scene.clear.colour = Colour(0x030203ff);
-						scene.pView = &view0;
+						scene.view = view0;
 						if (pQuad0->isReady() && pTriangle0->isReady())
 						{
 							auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
@@ -335,8 +343,9 @@ s32 engine::run(s32 argc, char** argv)
 					if (w1.isOpen() && pTriangle0->isReady())
 					{
 						gfx::Renderer::Scene scene;
+						scene.dirLights.push_back(dirLight0);
 						scene.clear.colour = Colour(0x030203ff);
-						scene.pView = &view0;
+						scene.view = view0;
 						if (pTriangle0->isReady())
 						{
 							gfx::Renderer::Batch batch;

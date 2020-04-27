@@ -198,8 +198,10 @@ bool Renderer::render(Scene const& scene)
 			ASSERT(objectID == (u32)ssbos.models.ssbo.size(), "Index mismatch! Expect UB in shaders");
 		}
 	}
+	scene.view.dirLightCount = (u32)scene.dirLights.size();
+	std::copy(scene.dirLights.begin(), scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
 	frame.set.writeSSBOs(ssbos);
-	frame.set.writeView(*scene.pView);
+	frame.set.writeView(scene.view);
 	// Acquire
 	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
 	if (!bResult)

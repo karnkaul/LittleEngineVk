@@ -11,10 +11,10 @@ gfx::Geometry gfx::createQuad(f32 side /* = 1.0f */)
 	f32 const h = side * 0.5f;
 	// clang-format off
 	ret.vertices = {
-		{{-h, -h, 0.0f}, {}, {}, {1.0f, 1.0f}},
-		{{ h, -h, 0.0f}, {}, {}, {0.0f, 1.0f}},
-		{{ h,  h, 0.0f}, {}, {}, {0.0f, 0.0f}},
-		{{-h,  h, 0.0f}, {}, {}, {1.0f, 0.0f}}
+		{{-h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		{{ h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{ h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+		{{-h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}
 	};
 	// clang-format on
 	ret.indices = {0, 1, 2, 2, 3, 0};
@@ -28,35 +28,35 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */)
 	// clang-format off
 	ret.vertices = {
 		// front
-		{{-s, -s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
-		{{ s, -s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
-		{{ s,  s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
-		{{-s,  s,  s}, {}, { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
+		{{-s, -s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
+		{{ s, -s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
+		{{ s,  s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
+		{{-s,  s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
 		// back
-		{{-s, -s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
-		{{ s, -s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
-		{{ s,  s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
-		{{-s,  s, -s}, {}, { 0.0f,  0.0f, -1.0f}, {0.0f, 0.0f}},
+		{{-s, -s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
+		{{ s, -s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
+		{{ s,  s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
+		{{-s,  s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {0.0f, 0.0f}},
 		// left
-		{{-s,  s,  s}, {}, {-1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
-		{{-s,  s, -s}, {}, {-1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
-		{{-s, -s, -s}, {}, {-1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
-		{{-s, -s,  s}, {}, {-1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
+		{{-s,  s,  s}, glm::vec3(1.0f), {-1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
+		{{-s,  s, -s}, glm::vec3(1.0f), {-1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
+		{{-s, -s, -s}, glm::vec3(1.0f), {-1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
+		{{-s, -s,  s}, glm::vec3(1.0f), {-1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
 		// right
-		{{ s,  s,  s}, {}, { 1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
-		{{ s,  s, -s}, {}, { 1.0f,  0.0f,  0.0f}, {1.0f, 0.0}},
-		{{ s, -s, -s}, {}, { 1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
-		{{ s, -s,  s}, {}, { 1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
+		{{ s,  s,  s}, glm::vec3(1.0f), { 1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
+		{{ s,  s, -s}, glm::vec3(1.0f), { 1.0f,  0.0f,  0.0f}, {1.0f, 0.0}},
+		{{ s, -s, -s}, glm::vec3(1.0f), { 1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
+		{{ s, -s,  s}, glm::vec3(1.0f), { 1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
 		// down
-		{{-s, -s, -s}, {}, { 0.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
-		{{ s, -s, -s}, {}, { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
-		{{ s, -s,  s}, {}, { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
-		{{-s, -s,  s}, {}, { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
+		{{-s, -s, -s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
+		{{ s, -s, -s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
+		{{ s, -s,  s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
+		{{-s, -s,  s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
 		//up
-		{{-s,  s, -s}, {}, { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
-		{{ s,  s, -s}, {}, { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
-		{{ s,  s,  s}, {}, { 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},
-		{{-s,  s,  s}, {}, { 0.0f,  1.0f,  0.0f}, {0.0f, 1.0f}}
+		{{-s,  s, -s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
+		{{ s,  s, -s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
+		{{ s,  s,  s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},
+		{{-s,  s,  s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {0.0f, 1.0f}}
 	};
 	ret.indices = {
 		 0,  1,  2,  2,  3,  0,
@@ -78,14 +78,14 @@ gfx::Geometry gfx::createCircle(f32 diameter, u16 points)
 	f32 const arc = 360.0f / points;
 	glm::vec3 const norm(0.0f, 0.0f, 1.0f);
 	ret.reserve(1 + 1 + (u32)points, (1 + (u32)points) * 4);
-	u32 const iCentre = ret.addVertex({{}, {}, norm, {0.5f, 0.5f}});
+	u32 const iCentre = ret.addVertex({{}, glm::vec3(1.0f), norm, {0.5f, 0.5f}});
 	for (s32 i = 0; i <= points; ++i)
 	{
 		f32 const x1 = glm::cos(glm::radians(arc * i));
 		f32 const y1 = glm::sin(glm::radians(arc * i));
 		f32 const s1 = (x1 + 1.0f) * 0.5f;
 		f32 const t1 = (y1 + 1.0f) * 0.5f;
-		u32 const iv1 = ret.addVertex({{r * x1, r * y1, 0.0f}, {}, norm, {s1, t1}});
+		u32 const iv1 = ret.addVertex({{r * x1, r * y1, 0.0f}, glm::vec3(1.0f), norm, {s1, t1}});
 		if (i > 0)
 		{
 			ret.addIndices({iCentre, iv1 - 1, iv1});
@@ -133,7 +133,7 @@ gfx::Geometry gfx::createCubedSphere(f32 diam, u8 quadsPerSide)
 			}
 			++idx;
 			auto const pt = transform(p.first) * diam * 0.5f;
-			iV.push_back(ret.addVertex({pt, {}, pt, p.second}));
+			iV.push_back(ret.addVertex({pt, glm::vec3(1.0f), pt, p.second}));
 		}
 		if (iV.size() == 4)
 		{

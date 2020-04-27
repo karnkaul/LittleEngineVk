@@ -3,6 +3,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include "core/delegate.hpp"
+#include "engine/gfx/light.hpp"
 #include "engine/window/common.hpp"
 #include "presenter.hpp"
 #include "draw/pipeline.hpp"
@@ -47,7 +48,8 @@ public:
 	{
 		ClearValues clear;
 		std::vector<Batch> batches;
-		rd::UBOView* pView = nullptr;
+		std::vector<DirLight> dirLights;
+		rd::UBOView view;
 	};
 
 private:

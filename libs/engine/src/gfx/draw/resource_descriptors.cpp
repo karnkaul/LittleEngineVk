@@ -1,5 +1,4 @@
 #include "core/log.hpp"
-#include "core/utils.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
 #include "resource_descriptors.hpp"
@@ -28,7 +27,7 @@ void createLayouts()
 {
 	std::array const bindings = {UBOView::s_setLayoutBinding,		SSBOModels::s_setLayoutBinding,	  SSBONormals::s_setLayoutBinding,
 								 SSBOMaterials::s_setLayoutBinding, SSBOTints::s_setLayoutBinding,	  SSBOFlags::s_setLayoutBinding,
-								 Textures::s_diffuseLayoutBinding,	Textures::s_specularLayoutBinding};
+								 SSBODirLights::s_setLayoutBinding, Textures::s_diffuseLayoutBinding, Textures::s_specularLayoutBinding};
 	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
 	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
 	setLayoutCreateInfo.pBindings = bindings.data();
@@ -42,6 +41,14 @@ SSBOMaterials::Mat::Mat(Material const& material)
 	  diffuse(material.m_albedo.diffuse.toVec4()),
 	  specular(material.m_albedo.specular.toVec4()),
 	  shininess(material.m_shininess)
+{
+}
+
+SSBODirLights::Light::Light(DirLight const& dirLight)
+	: ambient(dirLight.ambient.toVec4()),
+	  diffuse(dirLight.diffuse.toVec4()),
+	  specular(dirLight.specular.toVec4()),
+	  direction(dirLight.direction)
 {
 }
 
@@ -63,11 +70,14 @@ vk::DescriptorSetLayoutBinding const SSBOTints::s_setLayoutBinding =
 vk::DescriptorSetLayoutBinding const SSBOFlags::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(5, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
+vk::DescriptorSetLayoutBinding const SSBODirLights::s_setLayoutBinding =
+	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
+
 vk::DescriptorSetLayoutBinding const Textures::s_diffuseLayoutBinding =
-	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
+	vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_specularLayoutBinding =
-	vk::DescriptorSetLayoutBinding(7, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
+	vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::vertFragShader);
 
 void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const
 {
@@ -103,25 +113,7 @@ void ShaderWriter::write(vk::DescriptorSet set, Texture const& texture, u32 idx)
 }
 
 Set::Set()
-	: m_view(vk::BufferUsageFlagBits::eUniformBuffer),
-	  m_models(vk::BufferUsageFlagBits::eStorageBuffer, utils::tName<SSBOModels>()),
-	  m_normals(vk::BufferUsageFlagBits::eStorageBuffer, utils::tName<SSBONormals>()),
-	  m_materials(vk::BufferUsageFlagBits::eStorageBuffer, utils::tName<SSBOMaterials>()),
-	  m_tints(vk::BufferUsageFlagBits::eStorageBuffer, utils::tName<SSBOTints>()),
-	  m_flags(vk::BufferUsageFlagBits::eStorageBuffer, utils::tName<SSBOFlags>())
 {
-	m_view.m_writer.binding = UBOView::s_setLayoutBinding.binding;
-	m_view.m_writer.type = UBOView::s_setLayoutBinding.descriptorType;
-	m_models.m_writer.binding = SSBOModels::s_setLayoutBinding.binding;
-	m_models.m_writer.type = SSBOModels::s_setLayoutBinding.descriptorType;
-	m_normals.m_writer.binding = SSBONormals::s_setLayoutBinding.binding;
-	m_normals.m_writer.type = SSBONormals::s_setLayoutBinding.descriptorType;
-	m_materials.m_writer.binding = SSBOMaterials::s_setLayoutBinding.binding;
-	m_materials.m_writer.type = SSBOMaterials::s_setLayoutBinding.descriptorType;
-	m_tints.m_writer.binding = SSBOTints::s_setLayoutBinding.binding;
-	m_tints.m_writer.type = SSBOTints::s_setLayoutBinding.descriptorType;
-	m_flags.m_writer.binding = SSBOFlags::s_setLayoutBinding.binding;
-	m_flags.m_writer.type = SSBOFlags::s_setLayoutBinding.descriptorType;
 	m_diffuse.binding = Textures::s_diffuseLayoutBinding.binding;
 	m_diffuse.type = Textures::s_diffuseLayoutBinding.descriptorType;
 	m_specular.binding = Textures::s_specularLayoutBinding.binding;
@@ -135,6 +127,7 @@ void Set::update()
 	m_materials.update();
 	m_tints.update();
 	m_flags.update();
+	m_dirLights.update();
 	return;
 }
 
@@ -146,6 +139,7 @@ void Set::attach(vk::Fence drawing)
 	m_materials.m_buf.inUse.push_back(drawing);
 	m_tints.m_buf.inUse.push_back(drawing);
 	m_flags.m_buf.inUse.push_back(drawing);
+	m_dirLights.m_buf.inUse.push_back(drawing);
 	return;
 }
 
@@ -157,6 +151,7 @@ void Set::destroy()
 	m_materials.release();
 	m_tints.release();
 	m_flags.release();
+	m_dirLights.release();
 	return;
 }
 
@@ -174,16 +169,24 @@ void Set::initSSBOs()
 	ssbos.materials.ssbo.push_back({});
 	ssbos.tints.ssbo.push_back({});
 	ssbos.flags.ssbo.push_back({});
+	ssbos.dirLights.ssbo.push_back({});
 	writeSSBOs(ssbos);
 }
 
 void Set::writeSSBOs(SSBOs const& ssbos)
 {
+	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty()
+			   && !ssbos.flags.ssbo.empty(),
+		   "Empty SSBOs!");
 	m_models.write(ssbos.models, m_descriptorSet);
 	m_normals.write(ssbos.normals, m_descriptorSet);
 	m_materials.write(ssbos.materials, m_descriptorSet);
 	m_tints.write(ssbos.tints, m_descriptorSet);
 	m_flags.write(ssbos.flags, m_descriptorSet);
+	if (!ssbos.dirLights.ssbo.empty())
+	{
+		m_dirLights.write(ssbos.dirLights, m_descriptorSet);
+	}
 	return;
 }
 
@@ -221,7 +224,7 @@ SetLayouts allocateSets(u32 copies)
 	uboPoolSize.descriptorCount = copies * UBOView::s_setLayoutBinding.descriptorCount;
 	vk::DescriptorPoolSize ssboPoolSize;
 	ssboPoolSize.type = vk::DescriptorType::eStorageBuffer;
-	ssboPoolSize.descriptorCount = copies * 5; // 5 members per SSBO
+	ssboPoolSize.descriptorCount = copies * 6; // 6 members per SSBO
 	vk::DescriptorPoolSize sampler2DPoolSize;
 	sampler2DPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
 	sampler2DPoolSize.descriptorCount =

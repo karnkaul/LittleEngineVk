@@ -13,19 +13,6 @@
 
 namespace le::gfx
 {
-namespace
-{
-void resetObject(rd::SSBOs& out_ssbos, u32 objectID, Transform const* pTransform, Mesh const* pMesh)
-{
-	out_ssbos.models.mats_m.at(objectID) = pTransform->model();
-	out_ssbos.normals.mats_n.at(objectID) = pTransform->normalModel();
-	out_ssbos.flags.flags.at(objectID) = 0;
-	out_ssbos.tints.tints.at(objectID) = pMesh->m_material.tint.toVec4();
-	out_ssbos.materials.materials.at(objectID) = *pMesh->m_material.pMaterial;
-	pMesh->m_uImpl->pc.diffuseID = 0;
-	pMesh->m_uImpl->pc.specularID = 0;
-}
-} // namespace
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
 Renderer::Renderer(Info const& info) : m_presenter(info.presenterInfo), m_window(info.windowID)
@@ -169,26 +156,32 @@ bool Renderer::render(Scene const& scene)
 	u32 diffuseID = 0;
 	u32 specularID = 0;
 	rd::SSBOs ssbos;
+	frame.set.update();
 	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
 	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
 	for (auto& batch : scene.batches)
 	{
 		for (auto [pMesh, pTransform, _] : batch.drawables)
 		{
-			resetObject(ssbos, objectID, pTransform, pMesh);
-
+			pMesh->m_uImpl->pc.diffuseID = 0;
+			pMesh->m_uImpl->pc.specularID = 0;
+			ssbos.models.ssbo.push_back(pTransform->model());
+			ssbos.normals.ssbo.push_back(pTransform->normalModel());
+			ssbos.materials.ssbo.push_back(*pMesh->m_material.pMaterial);
+			ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
+			ssbos.flags.ssbo.push_back(0);
 			pMesh->m_uImpl->pc = {};
 			pMesh->m_uImpl->pc.objectID = objectID;
 			if (pMesh->m_material.pMaterial->m_flags.isSet(Material::Flag::eLit))
 			{
-				ssbos.flags.flags.at(objectID) |= rd::SSBOFlags::eLIT;
+				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
 			}
 			if (pMesh->m_material.pMaterial->m_flags.isSet(Material::Flag::eTextured))
 			{
-				ssbos.flags.flags.at(objectID) |= rd::SSBOFlags::eTEXTURED;
+				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eTEXTURED;
 				if (!pMesh->m_material.pDiffuse)
 				{
-					ssbos.tints.tints.at(objectID) = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
+					ssbos.tints.ssbo.at(objectID) = {mg.r.toF32(), mg.g.toF32(), mg.b.toF32(), mg.a.toF32()};
 				}
 				else
 				{
@@ -202,6 +195,7 @@ bool Renderer::render(Scene const& scene)
 				}
 			}
 			++objectID;
+			ASSERT(objectID == (u32)ssbos.models.ssbo.size(), "Index mismatch! Expect UB in shaders");
 		}
 	}
 	frame.set.writeSSBOs(ssbos);
@@ -287,6 +281,7 @@ bool Renderer::render(Scene const& scene)
 	{
 		pPipeline->attach(frame.drawing);
 	}
+	frame.set.attach(frame.drawing);
 	g_info.queues.graphics.submit(submitInfo, frame.drawing);
 	if (m_presenter.present(frame.presentReady))
 	{

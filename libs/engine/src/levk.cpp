@@ -164,10 +164,15 @@ s32 engine::run(s32 argc, char** argv)
 			});
 		};
 		std::shared_ptr<s32> token0, token1, wf0Token;
-		wf0Token = w0.registerInput([&bWF0](Key key, Action action, Mods mods) {
+		bool bTEMP = false;
+		wf0Token = w0.registerInput([&bWF0, &bTEMP](Key key, Action action, Mods mods) {
 			if (key == Key::eP && action == Action::eRelease && mods & Mods::eCONTROL)
 			{
 				bWF0 = !bWF0;
+			}
+			if (key == Key::eS && action == Action::eRelease && mods & Mods::eCONTROL)
+			{
+				bTEMP = !bTEMP;
 			}
 		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
@@ -203,7 +208,7 @@ s32 engine::run(s32 argc, char** argv)
 				pPipeline1 = createPipeline(pRenderer1, "default");
 			}
 
-			gfx::rd::View view0;
+			gfx::rd::UBOView view0;
 			glm::vec3 cam0Pos = {0.0f, 2.0f, 2.0f};
 			Transform transform0;
 			Transform transform1;
@@ -318,7 +323,11 @@ s32 engine::run(s32 argc, char** argv)
 						{
 							auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 							gfx::Renderer::Batch batch;
-							batch.drawables = {{pQuad0, &transform1, pPipeline}, {pTriangle0, &transform0, pPipeline}};
+							batch.drawables = {{pQuad0, &transform1, pPipeline}};
+							if (bTEMP)
+							{
+								batch.drawables.push_back({pTriangle0, &transform0, pPipeline});
+							}
 							scene.batches.push_back(std::move(batch));
 							pW0->m_uRenderer->render(scene);
 						}

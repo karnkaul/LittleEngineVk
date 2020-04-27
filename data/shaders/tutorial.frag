@@ -96,7 +96,7 @@ void main()
 		diffuseColour = vec4(vec3(dirLight.diffuse) * lambert, 1.0) * diffuseColour;
 		specularColour = vec4(vec3(dirLight.specular) * phong, 1.0) * vec4(1.0) * specularColour;
 	}
-	outColour = max(ambientColour, 0.0) + max(diffuseColour, 0.0) + max(specularColour, 0.0);
+	outColour = min(max(ambientColour, 0.0) + max(diffuseColour, 0.0) + max(specularColour, 0.0), 1.0);
 	if (outColour.a < 0.1)
 	{
 		discard;

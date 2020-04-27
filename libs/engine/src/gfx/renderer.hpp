@@ -47,7 +47,7 @@ public:
 	{
 		ClearValues clear;
 		std::vector<Batch> batches;
-		rd::View* pView = nullptr;
+		rd::UBOView* pView = nullptr;
 	};
 
 private:

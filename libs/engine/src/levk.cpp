@@ -113,7 +113,6 @@ s32 engine::run(s32 argc, char** argv)
 		gfx::Mesh* pQuad0 = gfx::g_pResources->create<gfx::Mesh>("meshes/quad0", quad0info);
 
 		gfx::Material::Info texturedInfo;
-		texturedInfo.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit});
 		texturedInfo.albedo.ambient = Colour(0x888888ff);
 		auto pTexturedLit = gfx::g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
 
@@ -132,6 +131,7 @@ s32 engine::run(s32 argc, char** argv)
 		textureInfo.pReader = g_uReader.get();
 		textureInfo.assetID = "textures/container2.png";
 		// textureInfo.assetID = "textures/texture.jpg";
+		pQuad0->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit});
 		pQuad0->m_material.pMaterial = pTexturedLit;
 		pQuad0->m_material.pDiffuse = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 		textureInfo.assetID = "textures/container2_specular.png";
@@ -194,7 +194,7 @@ s32 engine::run(s32 argc, char** argv)
 			pipelineInfo.staticLineWidth = lineWidth;
 			pipelineInfo.bBlend = true;
 			vk::PushConstantRange pcRange;
-			pcRange.size = sizeof(gfx::PushConstants);
+			pcRange.size = sizeof(gfx::rd::PushConstants);
 			pcRange.stageFlags = gfx::vkFlags::vertFragShader;
 			pipelineInfo.pushConstantRanges = {pcRange};
 			return pRenderer->createPipeline(std::move(pipelineInfo));

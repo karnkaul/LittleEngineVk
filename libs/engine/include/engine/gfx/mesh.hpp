@@ -38,17 +38,16 @@ public:
 		Texture* pDiffuse = nullptr;
 		Texture* pSpecular = nullptr;
 		Colour tint = colours::White;
+		Flags flags;
 	};
 
 	struct Info final
 	{
 		Albedo albedo;
-		Flags flags;
 	};
 
 public:
 	Albedo m_albedo;
-	Flags m_flags;
 	f32 m_shininess = 32.0f;
 
 public:

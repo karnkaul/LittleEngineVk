@@ -231,7 +231,7 @@ SetLayouts allocateSets(u32 copies)
 		copies * (Textures::s_diffuseLayoutBinding.descriptorCount + Textures::s_specularLayoutBinding.descriptorCount);
 	std::array const poolSizes = {uboPoolSize, ssboPoolSize, sampler2DPoolSize};
 	vk::DescriptorPoolCreateInfo createInfo;
-	createInfo.poolSizeCount = poolSizes.size();
+	createInfo.poolSizeCount = (u32)poolSizes.size();
 	createInfo.pPoolSizes = poolSizes.data();
 	createInfo.maxSets = copies; // 2 sets per copy
 	ret.descriptorPool = g_info.device.createDescriptorPool(createInfo);

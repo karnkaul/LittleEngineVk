@@ -12,7 +12,6 @@ namespace le::gfx
 Material::Material(stdfs::path id, Info info) : Asset(std::move(id))
 {
 	m_albedo = info.albedo;
-	m_flags = info.flags;
 	m_status = Status::eReady;
 }
 

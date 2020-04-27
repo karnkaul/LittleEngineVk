@@ -118,6 +118,13 @@ struct Textures final
 	static vk::DescriptorSetLayoutBinding const s_specularLayoutBinding;
 };
 
+struct PushConstants final
+{
+	u32 objectID = 0;
+	u32 diffuseID = 0;
+	u32 specularID = 0;
+};
+
 struct WriteInfo final
 {
 	vk::DescriptorSet set;

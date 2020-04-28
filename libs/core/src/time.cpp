@@ -18,12 +18,12 @@ std::string Time::toString(Time time)
 	{
 		ret << h << ":";
 	}
-	s32 m = s32((time.to_s() / 60) - (h * 60));
+	s32 m = s32((time.to_s() / 60) - f32(h * 60));
 	if (m > 0)
 	{
 		ret << m << ":";
 	}
-	f32 s = (f32(time.to_ms()) / 1000.0f) - (h * 60 * 60) - (m * 60);
+	f32 s = (f32(time.to_ms()) / 1000.0f) - f32(h * 60 * 60) - f32(m * 60);
 	if (s > 0.0f)
 	{
 		ret << s;

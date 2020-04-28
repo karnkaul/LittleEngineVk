@@ -81,8 +81,8 @@ gfx::Geometry gfx::createCircle(f32 diameter, u16 points)
 	u32 const iCentre = ret.addVertex({{}, glm::vec3(1.0f), norm, {0.5f, 0.5f}});
 	for (s32 i = 0; i <= points; ++i)
 	{
-		f32 const x1 = glm::cos(glm::radians(arc * i));
-		f32 const y1 = glm::sin(glm::radians(arc * i));
+		f32 const x1 = glm::cos(glm::radians(arc * (f32)i));
+		f32 const y1 = glm::sin(glm::radians(arc * (f32)i));
 		f32 const s1 = (x1 + 1.0f) * 0.5f;
 		f32 const t1 = (y1 + 1.0f) * 0.5f;
 		u32 const iv1 = ret.addVertex({{r * x1, r * y1, 0.0f}, glm::vec3(1.0f), norm, {s1, t1}});
@@ -109,10 +109,10 @@ gfx::Geometry gfx::createCubedSphere(f32 diam, u8 quadsPerSide)
 	f32 v = 0.0f;
 	for (s32 row = 0; row < quadsPerSide; ++row)
 	{
-		v = row * duv;
+		v = (f32)row * duv;
 		for (s32 col = 0; col < quadsPerSide; ++col)
 		{
-			u = col * duv;
+			u = (f32)col * duv;
 			glm::vec3 const o = s * glm::vec3((f32)col, (f32)row, 0.0f);
 			points.push_back(std::make_pair(glm::vec3(bl + o), glm::vec2(u, 1.0f - v)));
 			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(s, 0.0f, 0.0f) + o), glm::vec2(u + duv, 1.0 - v)));

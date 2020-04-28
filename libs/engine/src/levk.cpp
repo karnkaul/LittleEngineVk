@@ -271,7 +271,7 @@ s32 engine::run(s32 argc, char** argv)
 						auto const size = w0.framebufferSize();
 						if (size.x > 0 && size.y > 0)
 						{
-							view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+							view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / (f32)size.y, 0.1f, 10.0f);
 							view0.mat_vp = view0.mat_p * view0.mat_v;
 						}
 					}
@@ -280,7 +280,7 @@ s32 engine::run(s32 argc, char** argv)
 						auto const size = w1.framebufferSize();
 						if (size.x > 0 && size.y > 0)
 						{
-							view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / size.y, 0.1f, 10.0f);
+							view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / (f32)size.y, 0.1f, 10.0f);
 							view0.mat_vp = view0.mat_p * view0.mat_v;
 						}
 					}

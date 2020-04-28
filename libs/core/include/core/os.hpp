@@ -73,7 +73,7 @@ struct Service final
 };
 
 void init(Args const& args);
-std::string_view argv0();
+std::string argv0();
 std::filesystem::path dirPath(Dir dir);
 std::vector<std::string_view> const& args();
 bool isDefined(std::string_view arg);

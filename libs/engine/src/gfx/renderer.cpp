@@ -309,10 +309,10 @@ vk::Viewport Renderer::transformViewport(ScreenRect const& nRect, glm::vec2 cons
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
 	viewport.minDepth = depth.x;
 	viewport.maxDepth = depth.y;
-	viewport.width = size.x * extent.width;
-	viewport.height = -(size.y * extent.height);
-	viewport.x = nRect.left * extent.width;
-	viewport.y = nRect.top * extent.height - viewport.height;
+	viewport.width = size.x * (f32)extent.width;
+	viewport.height = -(size.y * (f32)extent.height);
+	viewport.x = nRect.left * (f32)extent.width;
+	viewport.y = nRect.top * (f32)extent.height - (f32)viewport.height;
 	return viewport;
 }
 
@@ -320,10 +320,10 @@ vk::Rect2D Renderer::transformScissor(ScreenRect const& nRect) const
 {
 	vk::Rect2D scissor;
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
-	scissor.offset.x = (s32)(nRect.left * m_presenter.m_swapchain.extent.width);
-	scissor.offset.y = (s32)(nRect.top * m_presenter.m_swapchain.extent.height);
-	scissor.extent.width = (u32)(size.x * m_presenter.m_swapchain.extent.width);
-	scissor.extent.height = (u32)(size.y * m_presenter.m_swapchain.extent.height);
+	scissor.offset.x = (s32)(nRect.left * (f32)m_presenter.m_swapchain.extent.width);
+	scissor.offset.y = (s32)(nRect.top * (f32)m_presenter.m_swapchain.extent.height);
+	scissor.extent.width = (u32)(size.x * (f32)m_presenter.m_swapchain.extent.width);
+	scissor.extent.height = (u32)(size.y * (f32)m_presenter.m_swapchain.extent.height);
 	return scissor;
 }
 

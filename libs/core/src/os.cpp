@@ -64,7 +64,7 @@ void os::init(Args const& args)
 	return;
 }
 
-std::string_view os::argv0()
+std::string os::argv0()
 {
 	return g_exeLocation.generic_string();
 }

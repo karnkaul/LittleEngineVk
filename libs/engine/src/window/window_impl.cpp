@@ -7,7 +7,7 @@
 #include "core/utils.hpp"
 #include "gfx/common.hpp"
 #include "gfx/info.hpp"
-#include "gfx/renderer.hpp"
+#include "gfx/renderer_impl.hpp"
 #if defined(LEVK_USE_GLFW)
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
@@ -374,7 +374,7 @@ bool WindowImpl::create(Window::Info const& info)
 	{
 		gfx::g_info.device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(info);
-		gfx::Renderer::Info rendererInfo;
+		gfx::RendererImpl::Info rendererInfo;
 		rendererInfo.presenterInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
@@ -391,7 +391,7 @@ bool WindowImpl::create(Window::Info const& info)
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		m_uRenderer = std::make_unique<gfx::Renderer>(rendererInfo);
+		m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo);
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);
@@ -417,7 +417,7 @@ bool WindowImpl::create(Window::Info const& info)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_uRenderer.reset();
+		m_renderer.m_uImpl.reset();
 		m_uNativeWindow.reset();
 		return false;
 	}
@@ -473,7 +473,7 @@ void WindowImpl::destroy()
 #endif
 		if (m_uNativeWindow)
 		{
-			m_uRenderer.reset();
+			m_renderer.m_uImpl.reset();
 			m_uNativeWindow.reset();
 			LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 		}
@@ -486,9 +486,9 @@ void WindowImpl::destroy()
 
 void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
-	if (m_uRenderer)
+	if (m_renderer.m_uImpl)
 	{
-		m_uRenderer->onFramebufferResize();
+		m_renderer.m_uImpl->onFramebufferResize();
 	}
 	return;
 }

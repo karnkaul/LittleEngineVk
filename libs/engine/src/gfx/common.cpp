@@ -14,19 +14,6 @@ std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
 };
 
-ScreenRect::ScreenRect(glm::vec4 const& ltrb) noexcept : left(ltrb.x), top(ltrb.y), right(ltrb.z), bottom(ltrb.w) {}
-
-ScreenRect::ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop) noexcept
-	: left(leftTop.x), top(leftTop.y), right(leftTop.x + size.x), bottom(leftTop.y + size.y)
-{
-}
-
-f32 ScreenRect::aspect() const
-{
-	glm::vec2 const size = {right - left, bottom - top};
-	return size.x / size.y;
-}
-
 vk::ShaderModule ShaderImpl::module(Shader::Type type) const
 {
 	ASSERT(shaders.at((size_t)type) != vk::ShaderModule(), "Module not present in Shader!");

@@ -4,10 +4,9 @@
 #include <glm/glm.hpp>
 #include "core/delegate.hpp"
 #include "engine/window/common.hpp"
-
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/pipeline.hpp"
-
+#include "engine/gfx/renderer.hpp"
 #include "presenter.hpp"
 #include "pipeline_impl.hpp"
 #include "resource_descriptors.hpp"
@@ -22,7 +21,7 @@ namespace le::gfx
 {
 class Mesh;
 
-class Renderer final
+class RendererImpl final
 {
 public:
 	struct Info final
@@ -30,28 +29,6 @@ public:
 		PresenterInfo presenterInfo;
 		WindowID windowID;
 		u8 frameCount = 2;
-	};
-
-	struct Drawable final
-	{
-		Mesh const* pMesh = nullptr;
-		Transform const* pTransform = nullptr;
-		Pipeline* pPipeline = nullptr;
-	};
-
-	struct Batch final
-	{
-		ScreenRect viewport;
-		ScreenRect scissor;
-		std::vector<Drawable> drawables;
-	};
-
-	struct Scene final
-	{
-		ClearValues clear;
-		std::vector<Batch> batches;
-		std::vector<DirLight> dirLights;
-		rd::UBOView view;
 	};
 
 private:
@@ -68,7 +45,6 @@ private:
 	};
 
 public:
-	static std::string const s_tName;
 	std::string m_name;
 
 private:
@@ -82,8 +58,8 @@ private:
 	u8 m_frameCount = 0;
 
 public:
-	Renderer(Info const& info);
-	~Renderer();
+	RendererImpl(Info const& info);
+	~RendererImpl();
 
 public:
 	void create(u8 frameCount = 2);
@@ -93,7 +69,7 @@ public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
 	void update();
-	bool render(Scene const& scene);
+	bool render(Renderer::Scene const& scene);
 
 public:
 	vk::Viewport transformViewport(ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f}) const;

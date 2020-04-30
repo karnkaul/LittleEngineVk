@@ -85,7 +85,7 @@ void main()
 		vec4 colour = vec4(fragColour, 1.0);
 		ambientColour *= colour;
 		diffuseColour *= colour;
-		specularColour = vec4(0.0);
+		specularColour *= colour;
 	}
 	if ((flags[objectID] & eLIT) != 0)
 	{

@@ -36,6 +36,13 @@ void createLayouts()
 }
 } // namespace
 
+UBOView::UBOView() = default;
+
+UBOView::UBOView(Renderer::View const& view, u32 dirLightCount)
+	: mat_vp(view.mat_vp), mat_v(view.mat_v), mat_p(view.mat_p), mat_ui(view.mat_ui), pos_v(view.pos_v), dirLightCount(dirLightCount)
+{
+}
+
 SSBOMaterials::Mat::Mat(Material const& material)
 	: ambient(material.m_albedo.ambient.toVec4()),
 	  diffuse(material.m_albedo.diffuse.toVec4()),

@@ -139,20 +139,6 @@ struct UniqueQueues final
 	std::vector<u32> indices;
 };
 
-struct ScreenRect final
-{
-	f32 left = 0.0f;
-	f32 top = 0.0f;
-	f32 right = 1.0f;
-	f32 bottom = 1.0f;
-
-	constexpr ScreenRect() noexcept = default;
-	ScreenRect(glm::vec4 const& ltrb) noexcept;
-	explicit ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop = glm::vec2(0.0f)) noexcept;
-
-	f32 aspect() const;
-};
-
 struct AllocInfo final
 {
 	vk::DeviceMemory memory;
@@ -181,12 +167,6 @@ struct Image final : VkResource
 	vk::Image image;
 	vk::DeviceSize allocatedSize = {};
 	vk::Extent3D extent = {};
-};
-
-struct ClearValues final
-{
-	glm::vec2 depthStencil = {1.0f, 0.0f};
-	Colour colour = colours::Black;
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;

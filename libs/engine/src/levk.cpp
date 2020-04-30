@@ -14,16 +14,13 @@
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/primitives.hpp"
+#include "engine/gfx/renderer.hpp"
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
 #include "engine/window/window.hpp"
 #include "gfx/info.hpp"
-#include "gfx/presenter.hpp"
-#include "gfx/renderer.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
-#include "gfx/resource_descriptors.hpp"
-#include "gfx/pipeline_impl.hpp"
 #include "window/window_impl.hpp"
 
 namespace le
@@ -200,17 +197,17 @@ s32 engine::run(s32 argc, char** argv)
 
 			if (w0.isOpen())
 			{
-				auto pRenderer0 = WindowImpl::windowImpl(w0.id())->m_uRenderer.get();
-				pPipeline0 = createPipeline(pRenderer0, "default");
-				pPipeline0wf = createPipeline(pRenderer0, "wireframe", gfx::PolygonMode::eLine);
+				auto& renderer0 = WindowImpl::windowImpl(w0.id())->m_renderer;
+				pPipeline0 = createPipeline(&renderer0, "default");
+				pPipeline0wf = createPipeline(&renderer0, "wireframe", gfx::PolygonMode::eLine);
 			}
 			if (w1.isOpen())
 			{
-				auto pRenderer1 = WindowImpl::windowImpl(w1.id())->m_uRenderer.get();
-				pPipeline1 = createPipeline(pRenderer1, "default");
+				auto& renderer1 = WindowImpl::windowImpl(w1.id())->m_renderer;
+				pPipeline1 = createPipeline(&renderer1, "default");
 			}
 
-			gfx::rd::UBOView view0;
+			gfx::Renderer::View view0;
 			glm::vec3 cam0Pos = {0.0f, 2.0f, 2.0f};
 			Transform transform0;
 			Transform transform1;
@@ -245,14 +242,8 @@ s32 engine::run(s32 argc, char** argv)
 
 				{
 					gfx::g_pResources->update();
-					if (pW0->m_uRenderer)
-					{
-						pW0->m_uRenderer->update();
-					}
-					if (pW1->m_uRenderer)
-					{
-						pW1->m_uRenderer->update();
-					}
+					pW0->m_renderer.update();
+					pW1->m_renderer.update();
 
 					// Update matrices
 					transform0.setOrientation(
@@ -293,14 +284,14 @@ s32 engine::run(s32 argc, char** argv)
 				{
 					bRecreate0 = false;
 					w0.create(info0);
-					pPipeline0 = createPipeline(pW0->m_uRenderer.get(), "default");
-					pPipeline0wf = createPipeline(pW0->m_uRenderer.get(), "wireframe", gfx::PolygonMode::eLine);
+					pPipeline0 = createPipeline(&pW0->m_renderer, "default");
+					pPipeline0wf = createPipeline(&pW0->m_renderer, "wireframe", gfx::PolygonMode::eLine);
 				}
 				if (bRecreate1)
 				{
 					bRecreate1 = false;
 					w1.create(info1);
-					pPipeline1 = createPipeline(pW1->m_uRenderer.get(), "default");
+					pPipeline1 = createPipeline(&pW1->m_renderer, "default");
 				}
 				if (bClose0)
 				{
@@ -332,7 +323,7 @@ s32 engine::run(s32 argc, char** argv)
 								batch.drawables.push_back({pTriangle0, &transform0, pPipeline});
 							}
 							scene.batches.push_back(std::move(batch));
-							pW0->m_uRenderer->render(scene);
+							pW0->m_renderer.render(scene);
 						}
 					}
 					if (w1.isOpen() && pTriangle0->isReady())
@@ -346,7 +337,7 @@ s32 engine::run(s32 argc, char** argv)
 							gfx::Renderer::Batch batch;
 							batch.drawables = {{pTriangle0, &transform0, pPipeline1}};
 							scene.batches.push_back(std::move(batch));
-							pW1->m_uRenderer->render(scene);
+							pW1->m_renderer.render(scene);
 						}
 					}
 				}

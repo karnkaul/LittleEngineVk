@@ -6,27 +6,65 @@
 #include "core/utils.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "info.hpp"
-#include "renderer.hpp"
 #include "utils.hpp"
 #include "pipeline_impl.hpp"
+#include "renderer_impl.hpp"
 #include "resource_descriptors.hpp"
 
 namespace le::gfx
 {
+ScreenRect::ScreenRect(glm::vec4 const& ltrb) noexcept : left(ltrb.x), top(ltrb.y), right(ltrb.z), bottom(ltrb.w) {}
+
+ScreenRect::ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop) noexcept
+	: left(leftTop.x), top(leftTop.y), right(leftTop.x + size.x), bottom(leftTop.y + size.y)
+{
+}
+
+f32 ScreenRect::aspect() const
+{
+	glm::vec2 const size = {right - left, bottom - top};
+	return size.x / size.y;
+}
+
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
-Renderer::Renderer(Info const& info) : m_presenter(info.presenterInfo), m_window(info.windowID)
+Pipeline* Renderer::createPipeline(Pipeline::Info info)
 {
-	m_name = fmt::format("{}:{}", s_tName, m_window);
+	if (m_uImpl)
+	{
+		return m_uImpl->createPipeline(std::move(info));
+	}
+	return nullptr;
+}
+
+void Renderer::update()
+{
+	if (m_uImpl)
+	{
+		m_uImpl->update();
+	}
+}
+
+void Renderer::render(Scene const& scene)
+{
+	if (m_uImpl)
+	{
+		m_uImpl->render(scene);
+	}
+}
+
+RendererImpl::RendererImpl(Info const& info) : m_presenter(info.presenterInfo), m_window(info.windowID)
+{
+	m_name = fmt::format("{}:{}", Renderer::s_tName, m_window);
 	create(info.frameCount);
 }
 
-Renderer::~Renderer()
+RendererImpl::~RendererImpl()
 {
 	destroy();
 }
 
-void Renderer::create(u8 frameCount)
+void RendererImpl::create(u8 frameCount)
 {
 	if (m_frames.empty() && frameCount > 0)
 	{
@@ -37,7 +75,7 @@ void Renderer::create(u8 frameCount)
 		m_descriptorPool = descriptorSetup.descriptorPool;
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
-			Renderer::FrameSync frame;
+			RendererImpl::FrameSync frame;
 			frame.set = descriptorSetup.set.at((size_t)idx);
 			frame.renderReady = g_info.device.createSemaphore({});
 			frame.presentReady = g_info.device.createSemaphore({});
@@ -59,7 +97,7 @@ void Renderer::create(u8 frameCount)
 	return;
 }
 
-void Renderer::destroy()
+void RendererImpl::destroy()
 {
 	m_pipelines.clear();
 	if (!m_frames.empty())
@@ -78,7 +116,7 @@ void Renderer::destroy()
 	return;
 }
 
-void Renderer::reset()
+void RendererImpl::reset()
 {
 	if (m_frameCount > 0)
 	{
@@ -95,7 +133,7 @@ void Renderer::reset()
 	return;
 }
 
-Pipeline* Renderer::createPipeline(Pipeline::Info info)
+Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 {
 	PipelineImpl::Info implInfo;
 	implInfo.renderPass = m_presenter.m_renderPass;
@@ -120,7 +158,7 @@ Pipeline* Renderer::createPipeline(Pipeline::Info info)
 	return &pipeline;
 }
 
-void Renderer::update()
+void RendererImpl::update()
 {
 	switch (m_presenter.m_state)
 	{
@@ -152,7 +190,7 @@ void Renderer::update()
 	return;
 }
 
-bool Renderer::render(Scene const& scene)
+bool RendererImpl::render(Renderer::Scene const& scene)
 {
 	auto const mg = colours::Magenta;
 	auto& frame = frameSync();
@@ -211,10 +249,10 @@ bool Renderer::render(Scene const& scene)
 			ASSERT(objectID == (u32)ssbos.models.ssbo.size(), "Index mismatch! Expect UB in shaders");
 		}
 	}
-	scene.view.dirLightCount = (u32)scene.dirLights.size();
+	rd::UBOView view(scene.view, (u32)scene.dirLights.size());
 	std::copy(scene.dirLights.begin(), scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
 	frame.set.writeSSBOs(ssbos);
-	frame.set.writeView(scene.view);
+	frame.set.writeView(view);
 	// Acquire
 	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
 	if (!bResult)
@@ -311,7 +349,7 @@ bool Renderer::render(Scene const& scene)
 	return false;
 }
 
-vk::Viewport Renderer::transformViewport(ScreenRect const& nRect, glm::vec2 const& depth) const
+vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 const& depth) const
 {
 	vk::Viewport viewport;
 	auto const& extent = m_presenter.m_swapchain.extent;
@@ -325,7 +363,7 @@ vk::Viewport Renderer::transformViewport(ScreenRect const& nRect, glm::vec2 cons
 	return viewport;
 }
 
-vk::Rect2D Renderer::transformScissor(ScreenRect const& nRect) const
+vk::Rect2D RendererImpl::transformScissor(ScreenRect const& nRect) const
 {
 	vk::Rect2D scissor;
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
@@ -336,19 +374,19 @@ vk::Rect2D Renderer::transformScissor(ScreenRect const& nRect) const
 	return scissor;
 }
 
-void Renderer::onFramebufferResize()
+void RendererImpl::onFramebufferResize()
 {
 	m_presenter.onFramebufferResize();
 	return;
 }
 
-Renderer::FrameSync& Renderer::frameSync()
+RendererImpl::FrameSync& RendererImpl::frameSync()
 {
 	ASSERT(m_index < m_frames.size(), "Invalid index!");
 	return m_frames.at(m_index);
 }
 
-void Renderer::next()
+void RendererImpl::next()
 {
 	m_frames.at(m_index).bNascent = false;
 	m_index = (m_index + 1) % m_frames.size();

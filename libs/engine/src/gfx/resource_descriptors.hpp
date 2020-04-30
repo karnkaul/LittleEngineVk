@@ -6,6 +6,7 @@
 #include "core/utils.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/light.hpp"
+#include "engine/gfx/renderer.hpp"
 #include "gfx/common.hpp"
 #include "gfx/vram.hpp"
 #if defined(LEVK_VKRESOURCE_NAMES)
@@ -27,7 +28,10 @@ struct UBOView final
 	alignas(16) glm::mat4 mat_p;
 	alignas(16) glm::mat4 mat_ui;
 	alignas(16) glm::vec3 pos_v;
-	alignas(4) mutable u32 dirLightCount;
+	alignas(4) u32 dirLightCount;
+
+	UBOView();
+	UBOView(Renderer::View const& view, u32 dirLightCount);
 };
 
 struct SSBOModels final

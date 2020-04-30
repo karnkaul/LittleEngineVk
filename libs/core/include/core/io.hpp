@@ -105,14 +105,14 @@ class FileMonitor
 public:
 	enum class Mode : u8
 	{
-		eTimestamp = 0,
+		eTimestamp,
 		eTextContents,
 		eBinaryContents
 	};
 
 	enum class Status : u8
 	{
-		eUpToDate = 0,
+		eUpToDate,
 		eNotFound,
 		eModified,
 		eCOUNT_

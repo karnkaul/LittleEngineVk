@@ -22,8 +22,8 @@
 #include "gfx/renderer.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
-#include "gfx/draw/resource_descriptors.hpp"
-#include "gfx/draw/pipeline.hpp"
+#include "gfx/resource_descriptors.hpp"
+#include "gfx/pipeline_impl.hpp"
 #include "window/window_impl.hpp"
 
 namespace le
@@ -185,18 +185,13 @@ s32 engine::run(s32 argc, char** argv)
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
 		auto createPipeline = [pTutorialShader](gfx::Renderer* pRenderer, std::string_view name,
-												vk::PolygonMode mode = vk::PolygonMode::eFill, f32 lineWidth = 3.0f) -> gfx::Pipeline* {
+												gfx::PolygonMode mode = gfx::PolygonMode::eFill, f32 lineWidth = 3.0f) -> gfx::Pipeline* {
 			gfx::Pipeline::Info pipelineInfo;
 			pipelineInfo.pShader = pTutorialShader;
-			pipelineInfo.setLayouts = {gfx::rd::g_setLayout};
 			pipelineInfo.name = name;
 			pipelineInfo.polygonMode = mode;
-			pipelineInfo.staticLineWidth = lineWidth;
+			pipelineInfo.lineWidth = lineWidth;
 			pipelineInfo.bBlend = true;
-			vk::PushConstantRange pcRange;
-			pcRange.size = sizeof(gfx::rd::PushConstants);
-			pcRange.stageFlags = gfx::vkFlags::vertFragShader;
-			pipelineInfo.pushConstantRanges = {pcRange};
 			return pRenderer->createPipeline(std::move(pipelineInfo));
 		};
 		if (w1.create(info1) && w0.create(info0))
@@ -207,7 +202,7 @@ s32 engine::run(s32 argc, char** argv)
 			{
 				auto pRenderer0 = WindowImpl::windowImpl(w0.id())->m_uRenderer.get();
 				pPipeline0 = createPipeline(pRenderer0, "default");
-				pPipeline0wf = createPipeline(pRenderer0, "wireframe", vk::PolygonMode::eLine);
+				pPipeline0wf = createPipeline(pRenderer0, "wireframe", gfx::PolygonMode::eLine);
 			}
 			if (w1.isOpen())
 			{
@@ -299,7 +294,7 @@ s32 engine::run(s32 argc, char** argv)
 					bRecreate0 = false;
 					w0.create(info0);
 					pPipeline0 = createPipeline(pW0->m_uRenderer.get(), "default");
-					pPipeline0wf = createPipeline(pW0->m_uRenderer.get(), "wireframe", vk::PolygonMode::eLine);
+					pPipeline0wf = createPipeline(pW0->m_uRenderer.get(), "wireframe", gfx::PolygonMode::eLine);
 				}
 				if (bRecreate1)
 				{

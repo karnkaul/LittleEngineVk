@@ -19,7 +19,7 @@ public:
 
 	enum class Status : u8
 	{
-		eReady = 0,
+		eReady,
 		eLoading,
 		eReloaded,
 		eError,

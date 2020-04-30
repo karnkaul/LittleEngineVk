@@ -5,7 +5,7 @@
 
 namespace le::gfx
 {
-class Pipeline final
+class PipelineImpl final
 {
 public:
 	struct Info final
@@ -51,8 +51,8 @@ private:
 	WindowID m_window;
 
 public:
-	Pipeline();
-	~Pipeline();
+	PipelineImpl();
+	~PipelineImpl();
 
 public:
 	bool create(Info info);

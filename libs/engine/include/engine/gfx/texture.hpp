@@ -11,14 +11,14 @@ class Sampler final : public Asset
 public:
 	enum class Filter : u8
 	{
-		eLinear = 0,
+		eLinear,
 		eNearest,
 		eCOUNT_
 	};
 
 	enum class Mode : u8
 	{
-		eRepeat = 0,
+		eRepeat,
 		eClampEdge,
 		eClampBorder,
 		eCOUNT_

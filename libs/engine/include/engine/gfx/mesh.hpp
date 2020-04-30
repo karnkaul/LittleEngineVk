@@ -25,11 +25,10 @@ class Material final : public Asset
 public:
 	enum class Flag : u8
 	{
-		eTextured = 0,
+		eTextured,
 		eLit,
 		eCOUNT_
 	};
-
 	using Flags = TFlags<Flag>;
 
 	struct Inst final

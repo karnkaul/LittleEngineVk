@@ -22,7 +22,7 @@ public:
 
 	enum class Flag : u8
 	{
-		eRenderPaused = 0,
+		eRenderPaused,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;

@@ -5,6 +5,7 @@
 #include "core/os.hpp"
 #include "core/threads.hpp"
 #include "core/utils.hpp"
+#include "gfx/common.hpp"
 #include "gfx/info.hpp"
 #include "gfx/renderer.hpp"
 #if defined(LEVK_USE_GLFW)
@@ -382,31 +383,11 @@ bool WindowImpl::create(Window::Info const& info)
 		rendererInfo.presenterInfo.config.window = m_pWindow->m_id;
 		for (auto colourSpace : info.options.colourSpaces)
 		{
-			switch (colourSpace)
-			{
-			default:
-				break;
-			case ColourSpace::eRGBLinear:
-				rendererInfo.presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Unorm);
-				break;
-			case ColourSpace::eSRGBNonLinear:
-				rendererInfo.presenterInfo.options.formats.push_back(vk::Format::eB8G8R8A8Srgb);
-				break;
-			}
+			rendererInfo.presenterInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((size_t)colourSpace));
 		}
 		for (auto presentMode : info.options.presentModes)
 		{
-			switch (presentMode)
-			{
-			default:
-				break;
-			case PresentMode::eMailbox:
-				rendererInfo.presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eMailbox);
-				break;
-			case PresentMode::eFIFO:
-				rendererInfo.presenterInfo.options.presentModes.push_back(vk::PresentModeKHR::eFifo);
-				break;
-			}
+			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();

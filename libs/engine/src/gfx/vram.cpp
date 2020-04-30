@@ -19,7 +19,7 @@ namespace
 {
 enum class ResourceType
 {
-	eBuffer = 0,
+	eBuffer,
 	eImage,
 	eCOUNT_
 };

@@ -13,7 +13,7 @@ class Shader final : public Asset
 public:
 	enum class Type : u8
 	{
-		eVertex = 0,
+		eVertex,
 		eFragment,
 		eCOUNT_
 	};
@@ -54,7 +54,7 @@ class ShaderCompiler final
 public:
 	enum class Status
 	{
-		eOffline = 0,
+		eOffline,
 		eOnline,
 		eCOUNT_
 	};

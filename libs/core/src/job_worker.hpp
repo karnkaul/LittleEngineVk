@@ -10,7 +10,7 @@ class JobWorker final
 public:
 	enum class State : u8
 	{
-		eIdle = 0,
+		eIdle,
 		eBusy,
 		eCOUNT_
 	};

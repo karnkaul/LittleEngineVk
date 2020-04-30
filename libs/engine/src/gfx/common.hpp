@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -8,10 +9,12 @@
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
+#include "core/assert.hpp"
 #include "core/colour.hpp"
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
+#include "engine/gfx/pipeline.hpp"
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
 
@@ -27,7 +30,7 @@ namespace le::gfx
 {
 enum class QFlag
 {
-	eGraphics = 0,
+	eGraphics,
 	ePresent,
 	eTransfer,
 	eCOUNT_
@@ -35,6 +38,41 @@ enum class QFlag
 using QFlags = TFlags<QFlag>;
 
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
+
+// clang-format off
+constexpr std::array g_colourSpaceMap = 
+{
+	vk::Format::eB8G8R8A8Srgb,
+	vk::Format::eB8G8R8A8Unorm
+};
+
+constexpr std::array g_presentModeMap = 
+{
+	vk::PresentModeKHR::eFifo,
+	vk::PresentModeKHR::eMailbox,
+	vk::PresentModeKHR::eImmediate,
+};
+
+constexpr std::array g_polygonModeMap = 
+{
+	vk::PolygonMode::eFill,
+	vk::PolygonMode::eLine
+};
+
+constexpr std::array g_cullModeMap = 
+{
+	vk::CullModeFlagBits::eNone,
+	vk::CullModeFlagBits::eBack,
+	vk::CullModeFlagBits::eFront
+};
+
+constexpr std::array g_frontFaceMap = 
+{
+	vk::FrontFace::eCounterClockwise,
+	vk::FrontFace::eClockwise
+};
+// clang-format on 
+
 
 namespace vkFlags
 {
@@ -54,8 +92,7 @@ struct InitInfo final
 {
 	enum class Flag
 	{
-		eValidation = 0,
-		eTest,
+		eValidation,
 		eCOUNT_
 	};
 

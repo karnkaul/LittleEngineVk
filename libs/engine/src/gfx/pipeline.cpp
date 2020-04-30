@@ -5,20 +5,20 @@
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
 #include "gfx/utils.hpp"
-#include "pipeline.hpp"
+#include "pipeline_impl.hpp"
 
 namespace le::gfx
 {
-std::string const Pipeline::s_tName = utils::tName<Pipeline>();
+std::string const PipelineImpl::s_tName = utils::tName<PipelineImpl>();
 
-Pipeline::Pipeline() = default;
+PipelineImpl::PipelineImpl() = default;
 
-Pipeline::~Pipeline()
+PipelineImpl::~PipelineImpl()
 {
 	destroy();
 }
 
-bool Pipeline::create(Info info)
+bool PipelineImpl::create(Info info)
 {
 	m_info = std::move(info);
 	ASSERT(m_info.pShader, "Shader is null!");
@@ -31,7 +31,7 @@ bool Pipeline::create(Info info)
 	return create(m_pipeline, m_layout);
 }
 
-void Pipeline::destroy()
+void PipelineImpl::destroy()
 {
 	waitAll(m_activeFences);
 	destroy(m_pipeline, m_layout);
@@ -46,7 +46,7 @@ void Pipeline::destroy()
 #endif
 }
 
-bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
+bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
 {
 	if (!m_info.pShader && g_pResources && !m_info.shaderID.empty())
 	{
@@ -164,7 +164,7 @@ bool Pipeline::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout
 	return true;
 }
 
-void Pipeline::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
+void PipelineImpl::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
 {
 	vkDestroy(out_pipeline, out_layout);
 	LOGIF_D(out_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_name);
@@ -172,7 +172,7 @@ void Pipeline::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layou
 	out_layout = vk::PipelineLayout();
 }
 
-void Pipeline::update()
+void PipelineImpl::update()
 {
 	auto fenceSignalled = [](auto fence) { return isSignalled(fence); };
 	m_activeFences.erase(std::remove_if(m_activeFences.begin(), m_activeFences.end(), fenceSignalled), m_activeFences.end());
@@ -200,7 +200,7 @@ void Pipeline::update()
 #endif
 }
 
-void Pipeline::attach(vk::Fence drawing)
+void PipelineImpl::attach(vk::Fence drawing)
 {
 	ASSERT(drawing != vk::Fence(), "Invalid fence!");
 	m_activeFences.push_back(drawing);

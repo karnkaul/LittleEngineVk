@@ -8,7 +8,7 @@
 #include "info.hpp"
 #include "vram.hpp"
 #include "engine/assets/resources.hpp"
-#include "draw/resource_descriptors.hpp"
+#include "resource_descriptors.hpp"
 
 namespace le::gfx
 {
@@ -178,7 +178,7 @@ void init(InitInfo const& initInfo)
 	std::vector<char const*> requiredLayers;
 	std::set<char const*> requiredExtensionsSet = {initInfo.config.instanceExtensions.begin(), initInfo.config.instanceExtensions.end()};
 	InitInfo::Flags flags;
-	flags.set({InitInfo::Flag::eValidation, InitInfo::Flag::eTest});
+	flags.set(InitInfo::Flag::eValidation);
 	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
 		requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

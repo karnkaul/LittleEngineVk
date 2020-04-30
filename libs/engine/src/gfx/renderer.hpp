@@ -3,11 +3,14 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include "core/delegate.hpp"
-#include "engine/gfx/light.hpp"
 #include "engine/window/common.hpp"
+
+#include "engine/gfx/light.hpp"
+#include "engine/gfx/pipeline.hpp"
+
 #include "presenter.hpp"
-#include "draw/pipeline.hpp"
-#include "draw/resource_descriptors.hpp"
+#include "pipeline_impl.hpp"
+#include "resource_descriptors.hpp"
 
 namespace le
 {
@@ -18,7 +21,6 @@ class WindowImpl;
 namespace le::gfx
 {
 class Mesh;
-class Pipeline;
 
 class Renderer final
 {

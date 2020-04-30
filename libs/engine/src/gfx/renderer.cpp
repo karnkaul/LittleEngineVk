@@ -8,8 +8,8 @@
 #include "info.hpp"
 #include "renderer.hpp"
 #include "utils.hpp"
-#include "draw/pipeline.hpp"
-#include "draw/resource_descriptors.hpp"
+#include "pipeline_impl.hpp"
+#include "resource_descriptors.hpp"
 
 namespace le::gfx
 {
@@ -97,13 +97,22 @@ void Renderer::reset()
 
 Pipeline* Renderer::createPipeline(Pipeline::Info info)
 {
-	if (info.renderPass == vk::RenderPass())
-	{
-		info.renderPass = m_presenter.m_renderPass;
-	}
+	PipelineImpl::Info implInfo;
+	implInfo.renderPass = m_presenter.m_renderPass;
+	implInfo.pShader = info.pShader;
+	implInfo.setLayouts = {rd::g_setLayout};
+	implInfo.name = info.name;
+	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
+	implInfo.staticLineWidth = info.lineWidth;
+	implInfo.bBlend = info.bBlend;
+	vk::PushConstantRange pcRange;
+	pcRange.size = sizeof(rd::PushConstants);
+	pcRange.stageFlags = vkFlags::vertFragShader;
+	implInfo.pushConstantRanges = {pcRange};
 	m_pipelines.push_back({});
 	auto& pipeline = m_pipelines.back();
-	if (!pipeline.create(std::move(info)))
+	pipeline.m_uImpl = std::make_unique<class PipelineImpl>();
+	if (!pipeline.m_uImpl->create(std::move(implInfo)))
 	{
 		m_pipelines.pop_back();
 		return nullptr;
@@ -138,7 +147,7 @@ void Renderer::update()
 	}
 	for (auto& pipeline : m_pipelines)
 	{
-		pipeline.update();
+		pipeline.m_uImpl->update();
 	}
 	return;
 }
@@ -240,7 +249,7 @@ bool Renderer::render(Scene const& scene)
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 	// Draw
-	std::unordered_set<Pipeline*> pipelines;
+	std::unordered_set<PipelineImpl*> pipelines;
 	size_t batchIdx = 0;
 	size_t drawableIdx = 0;
 	for (auto& batch : scene.batches)
@@ -250,12 +259,12 @@ bool Renderer::render(Scene const& scene)
 		vk::Pipeline pipeline;
 		for (auto [pMesh, pTransform, pPipeline] : batch.drawables)
 		{
-			if (pipeline != pPipeline->m_pipeline)
+			if (pipeline != pPipeline->m_uImpl->m_pipeline)
 			{
-				pipeline = pPipeline->m_pipeline;
+				pipeline = pPipeline->m_uImpl->m_pipeline;
 				commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 			}
-			auto layout = pPipeline->m_layout;
+			auto layout = pPipeline->m_uImpl->m_layout;
 			vk::DeviceSize offsets[] = {0};
 			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
 			commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, pushConstants.at(batchIdx).at(drawableIdx));
@@ -269,7 +278,7 @@ bool Renderer::render(Scene const& scene)
 			{
 				commandBuffer.draw(pMesh->m_uImpl->vertexCount, 1, 0, 0);
 			}
-			pipelines.insert(pPipeline);
+			pipelines.insert(pPipeline->m_uImpl.get());
 			++drawableIdx;
 		}
 		drawableIdx = 0;

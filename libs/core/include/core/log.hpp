@@ -60,7 +60,7 @@ constexpr bool g_log_bSourceLocation = false;
 #endif
 enum class Level : u8
 {
-	eDebug = 0,
+	eDebug,
 	eInfo,
 	eWarning,
 	eError,

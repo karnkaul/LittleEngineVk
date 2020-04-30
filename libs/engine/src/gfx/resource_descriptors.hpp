@@ -81,6 +81,7 @@ struct SSBOFlags final
 	{
 		eTEXTURED = 1 << 0,
 		eLIT = 1 << 1,
+		eOPAQUE = 1 << 2,
 	};
 
 	std::vector<u32> ssbo;

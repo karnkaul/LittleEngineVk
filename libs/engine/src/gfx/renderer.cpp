@@ -4,6 +4,7 @@
 #include "core/log.hpp"
 #include "core/transform.hpp"
 #include "core/utils.hpp"
+#include "engine/assets/resources.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "info.hpp"
 #include "utils.hpp"
@@ -143,13 +144,14 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
 	implInfo.staticLineWidth = info.lineWidth;
 	implInfo.bBlend = info.bBlend;
+	implInfo.window = m_window;
 	vk::PushConstantRange pcRange;
 	pcRange.size = sizeof(rd::PushConstants);
 	pcRange.stageFlags = vkFlags::vertFragShader;
 	implInfo.pushConstantRanges = {pcRange};
 	m_pipelines.push_back({});
 	auto& pipeline = m_pipelines.back();
-	pipeline.m_uImpl = std::make_unique<class PipelineImpl>();
+	pipeline.m_uImpl = std::make_unique<PipelineImpl>(&pipeline);
 	if (!pipeline.m_uImpl->create(std::move(implInfo)))
 	{
 		m_pipelines.pop_back();
@@ -224,6 +226,10 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 			if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
 			{
 				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
+			}
+			if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
+			{
+				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eOPAQUE;
 			}
 			if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 			{

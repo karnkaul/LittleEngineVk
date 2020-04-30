@@ -4,6 +4,7 @@ const uint MAX_TEXTURES = 1024;
 
 const uint eTEXTURED = 1 << 0;
 const uint eLIT = 1 << 1;
+const uint eOPAQUE = 1 << 2;
 
 struct Material
 {
@@ -108,9 +109,13 @@ void main()
 		specularColour *= specularLight;
 	}
 	outColour = min(max(ambientColour, 0.0) + max(diffuseColour, 0.0) + max(specularColour, 0.0), 1.0);
+	outColour *= tints[objectID];
+	if ((flags[objectID] & eOPAQUE) != 0)
+	{
+		outColour.a = 1.0;
+	}
 	if (outColour.a < 0.1)
 	{
 		discard;
 	}
-	outColour *= tints[objectID];
 }

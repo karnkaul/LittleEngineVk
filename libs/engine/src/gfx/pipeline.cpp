@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 #include "core/log.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/gfx/pipeline.hpp"
 #include "engine/gfx/shader.hpp"
 #include "gfx/info.hpp"
 #include "gfx/presenter.hpp"
@@ -9,9 +10,9 @@
 
 namespace le::gfx
 {
-std::string const PipelineImpl::s_tName = utils::tName<PipelineImpl>();
+std::string const PipelineImpl::s_tName = utils::tName<Pipeline>();
 
-PipelineImpl::PipelineImpl() = default;
+PipelineImpl::PipelineImpl(Pipeline* pPipeline) : m_pPipeline(pPipeline) {}
 
 PipelineImpl::~PipelineImpl()
 {
@@ -27,7 +28,7 @@ bool PipelineImpl::create(Info info)
 		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_info.name);
 		return false;
 	}
-	m_name = fmt::format("{}-{}", m_info.name, m_info.pShader->m_id.generic_string());
+	m_pPipeline->m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, m_info.pShader->m_id.generic_string());
 	return create(m_pipeline, m_layout);
 }
 
@@ -55,7 +56,7 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 	ASSERT(m_info.pShader, "Shader is null!");
 	if (!m_info.pShader)
 	{
-		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_name);
+		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_pPipeline->m_name);
 		return false;
 	}
 	auto const bindingDescription = vbo::bindingDescription();
@@ -160,14 +161,14 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 	createInfo.renderPass = m_info.renderPass;
 	createInfo.subpass = 0;
 	out_pipeline = g_info.device.createGraphicsPipeline({}, createInfo);
-	LOG_D("[{}] [{}] created", s_tName, m_name);
+	LOG_D("[{}] [{}] created", s_tName, m_pPipeline->m_name);
 	return true;
 }
 
 void PipelineImpl::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
 {
 	vkDestroy(out_pipeline, out_layout);
-	LOGIF_D(out_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_name);
+	LOGIF_D(out_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_pPipeline->m_name);
 	out_pipeline = vk::Pipeline();
 	out_layout = vk::PipelineLayout();
 }
@@ -187,12 +188,12 @@ void PipelineImpl::update()
 			m_pipeline = m_standby.pipeline;
 			m_layout = m_standby.layout;
 			m_standby = {};
-			LOG_D("[{}] [{}] ...recreated", s_tName, m_name);
+			LOG_D("[{}] [{}] ...recreated", s_tName, m_pPipeline->m_name);
 		}
 	}
 	if (m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded)
 	{
-		LOG_D("[{}] [{}] recreating...", s_tName, m_name);
+		LOG_D("[{}] [{}] recreating...", s_tName, m_pPipeline->m_name);
 		m_standby.bReady = create(m_standby.pipeline, m_standby.layout);
 		m_standby.drawing = std::move(m_activeFences);
 		m_activeFences.clear();

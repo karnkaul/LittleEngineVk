@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string>
 
 namespace le::gfx
 {
@@ -42,6 +43,7 @@ public:
 	};
 
 public:
+	std::string m_name;
 	std::unique_ptr<class PipelineImpl> m_uImpl;
 };
 } // namespace le::gfx

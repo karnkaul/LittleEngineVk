@@ -11,16 +11,14 @@
 #include "core/services.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/gfx/geometry.hpp"
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/mesh.hpp"
-#include "engine/gfx/primitives.hpp"
 #include "engine/gfx/renderer.hpp"
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
 #include "engine/window/window.hpp"
 #include "gfx/info.hpp"
-#include "gfx/utils.hpp"
-#include "gfx/vram.hpp"
 #include "window/window_impl.hpp"
 
 namespace le
@@ -84,16 +82,12 @@ s32 engine::run(s32 argc, char** argv)
 	try
 	{
 		gfx::Shader::Info tutorialShaderInfo;
-		std::array shaderIDs = {stdfs::path("shaders/tutorial.vert"), stdfs::path("shaders/tutorial.frag")};
+		std::array shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
 		ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
 		tutorialShaderInfo.pReader = g_uReader.get();
 		tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
 		tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
-		auto pTutorialShader = gfx::g_pResources->create<gfx::Shader>("shaders/tutorial", tutorialShaderInfo);
-		vk::CommandPoolCreateInfo commandPoolCreateInfo;
-		auto const& qfi = gfx::g_info.queueFamilyIndices;
-		commandPoolCreateInfo.queueFamilyIndex = qfi.transfer;
-		auto transferPool = gfx::g_info.device.createCommandPool(commandPoolCreateInfo);
+		auto pShader = gfx::g_pResources->create<gfx::Shader>("shaders/uber", tutorialShaderInfo);
 
 		gfx::Mesh::Info triangle0info;
 		// clang-format off
@@ -113,23 +107,13 @@ s32 engine::run(s32 argc, char** argv)
 		texturedInfo.albedo.ambient = Colour(0x888888ff);
 		auto pTexturedLit = gfx::g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
 
-		gfx::ImageInfo imageInfo;
-		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
-		imageInfo.createInfo.format = vk::Format::eR8G8B8A8Srgb;
-		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
-		imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-		imageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		imageInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
-		imageInfo.createInfo.imageType = vk::ImageType::e2D;
-		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
-		imageInfo.createInfo.mipLevels = 1;
-		imageInfo.createInfo.arrayLayers = 1;
 		gfx::Texture::Info textureInfo;
 		textureInfo.pReader = g_uReader.get();
 		textureInfo.assetID = "textures/container2.png";
 		// textureInfo.assetID = "textures/texture.jpg";
-		pQuad0->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit});
+		pQuad0->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
 		pQuad0->m_material.pMaterial = pTexturedLit;
+		pQuad0->m_material.tint.a = 0x88;
 		pQuad0->m_material.pDiffuse = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 		textureInfo.assetID = "textures/container2_specular.png";
 		pQuad0->m_material.pSpecular = gfx::g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
@@ -181,10 +165,10 @@ s32 engine::run(s32 argc, char** argv)
 		});
 		registerInput(w0, w1, bRecreate1, bClose0, token0);
 		registerInput(w1, w0, bRecreate0, bClose1, token1);
-		auto createPipeline = [pTutorialShader](gfx::Renderer* pRenderer, std::string_view name,
+		auto createPipeline = [pShader](gfx::Renderer* pRenderer, std::string_view name,
 												gfx::PolygonMode mode = gfx::PolygonMode::eFill, f32 lineWidth = 3.0f) -> gfx::Pipeline* {
 			gfx::Pipeline::Info pipelineInfo;
-			pipelineInfo.pShader = pTutorialShader;
+			pipelineInfo.pShader = pShader;
 			pipelineInfo.name = name;
 			pipelineInfo.polygonMode = mode;
 			pipelineInfo.lineWidth = lineWidth;
@@ -305,7 +289,9 @@ s32 engine::run(s32 argc, char** argv)
 				}
 				Window::pollEvents();
 				// Render
+#if defined(LEVK_DEBUG)
 				try
+#endif
 				{
 					if (w0.isOpen())
 					{
@@ -341,13 +327,13 @@ s32 engine::run(s32 argc, char** argv)
 						}
 					}
 				}
+#if defined(LEVK_DEBUG)
 				catch (std::exception const& e)
 				{
 					LOG_E("EXCEPTION!\n\t{}", e.what());
 				}
+#endif
 			}
-			gfx::g_info.device.waitIdle();
-			gfx::vkDestroy(transferPool);
 		}
 	}
 	catch (std::exception const& e)

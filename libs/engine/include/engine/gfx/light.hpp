@@ -1,5 +1,4 @@
 #pragma once
-#include <glm/glm.hpp>
 #include "core/colour.hpp"
 #include "geometry.hpp"
 

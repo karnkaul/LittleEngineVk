@@ -1,7 +1,9 @@
 #pragma once
 #include <string>
+#include <vector>
+#include <vulkan/vulkan.hpp>
 #include "core/std_types.hpp"
-#include "engine/assets/resources.hpp"
+#include "engine/window/common.hpp"
 
 namespace le::gfx
 {
@@ -22,6 +24,7 @@ public:
 		std::vector<vk::DescriptorSetLayout> setLayouts;
 		std::vector<vk::PushConstantRange> pushConstantRanges;
 		f32 staticLineWidth = 1.0f;
+		WindowID window;
 		class Shader* pShader = nullptr;
 		bool bBlend = true;
 	};
@@ -47,11 +50,10 @@ private:
 
 private:
 	Info m_info;
-	std::string m_name;
-	WindowID m_window;
+	class Pipeline* m_pPipeline;
 
 public:
-	PipelineImpl();
+	PipelineImpl(Pipeline* pPipeline);
 	~PipelineImpl();
 
 public:

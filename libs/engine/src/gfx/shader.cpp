@@ -223,7 +223,7 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 		LOG_E("[{}] Shader compilation failed: [{}]", s_tName, src.generic_string());
 		return false;
 	}
-	LOG_I("[{}] [{}] => [{}] compiled successfully", s_tName, src.generic_string(), dst.generic_string());
+	LOG_I("[{}] [{}] => [{}] compiled successfully", s_tName, src.filename().generic_string(), dst.filename().generic_string());
 	return true;
 }
 

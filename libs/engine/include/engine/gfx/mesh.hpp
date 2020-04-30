@@ -1,13 +1,10 @@
 #pragma once
-#include <filesystem>
 #include <memory>
 #include <glm/glm.hpp>
 #include "core/colour.hpp"
 #include "core/flags.hpp"
 #include "engine/assets/asset.hpp"
 #include "geometry.hpp"
-
-namespace stdfs = std::filesystem;
 
 namespace le::gfx
 {
@@ -27,6 +24,7 @@ public:
 	{
 		eTextured,
 		eLit,
+		eOpaque,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;

@@ -27,6 +27,11 @@ f32 ScreenRect::aspect() const
 	return size.x / size.y;
 }
 
+Renderer::Renderer() = default;
+Renderer::Renderer(Renderer&&) = default;
+Renderer& Renderer::operator=(Renderer&&) = default;
+Renderer::~Renderer() = default;
+
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
 Pipeline* Renderer::createPipeline(Pipeline::Info info)

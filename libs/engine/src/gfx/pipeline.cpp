@@ -12,7 +12,15 @@ namespace le::gfx
 {
 std::string const PipelineImpl::s_tName = utils::tName<Pipeline>();
 
+Pipeline::Pipeline() = default;
+Pipeline::Pipeline(Pipeline&&) = default;
+Pipeline& Pipeline::operator=(Pipeline&&) = default;
+Pipeline::~Pipeline() = default;
+
 PipelineImpl::PipelineImpl(Pipeline* pPipeline) : m_pPipeline(pPipeline) {}
+
+PipelineImpl::PipelineImpl(PipelineImpl&&) = default;
+PipelineImpl& PipelineImpl::operator=(PipelineImpl&&) = default;
 
 PipelineImpl::~PipelineImpl()
 {

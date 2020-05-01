@@ -32,6 +32,9 @@ private:
 	std::vector<std::unique_ptr<Concept>> m_services;
 
 public:
+	Services();
+	Services(Services&&);
+	Services& operator=(Services&&);
 	~Services();
 
 public:

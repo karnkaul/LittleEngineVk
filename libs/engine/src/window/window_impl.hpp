@@ -3,7 +3,6 @@
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "engine/window/window.hpp"
-#include "engine/gfx/renderer.hpp"
 
 namespace le
 {
@@ -45,7 +44,6 @@ public:
 	};
 
 	InputCallbacks m_input;
-	gfx::Renderer m_renderer;
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;

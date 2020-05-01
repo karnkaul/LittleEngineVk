@@ -5,7 +5,7 @@
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/texture.hpp"
 
-namespace le::gfx
+namespace le
 {
 namespace
 {
@@ -52,16 +52,16 @@ void Resources::update()
 
 void Resources::init()
 {
-	create<Material>("materials/default", {});
-	create<Sampler>("samplers/default", {});
-	Texture::Info textureInfo;
+	create<gfx::Material>("materials/default", {});
+	create<gfx::Sampler>("samplers/default", {});
+	gfx::Texture::Info textureInfo;
 	static std::array<u8, 4> const white1pxBytes = {0xff, 0xff, 0xff, 0xff};
 	static std::array<u8, 4> const black1pxBytes = {0x0, 0x0, 0x0, 0x0};
 	textureInfo.raw.size = {1, 1};
 	textureInfo.raw.bytes = ArrayView<u8>(white1pxBytes);
-	create<Texture>("textures/white", textureInfo);
+	create<gfx::Texture>("textures/white", textureInfo);
 	textureInfo.raw.bytes = ArrayView<u8>(black1pxBytes);
-	create<Texture>("textures/black", textureInfo);
+	create<gfx::Texture>("textures/black", textureInfo);
 	return;
 }
-} // namespace le::gfx
+} // namespace le

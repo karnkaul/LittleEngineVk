@@ -54,6 +54,8 @@ private:
 
 public:
 	PipelineImpl(Pipeline* pPipeline);
+	PipelineImpl(PipelineImpl&&);
+	PipelineImpl& operator=(PipelineImpl&&);
 	~PipelineImpl();
 
 public:

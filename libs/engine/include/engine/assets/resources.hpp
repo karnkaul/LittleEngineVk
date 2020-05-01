@@ -6,7 +6,7 @@
 #include "core/map_store.hpp"
 #include "asset.hpp"
 
-namespace le::gfx
+namespace le
 {
 inline class Resources* g_pResources = nullptr;
 
@@ -68,4 +68,4 @@ private:
 
 	friend class Service;
 };
-} // namespace le::gfx
+} // namespace le

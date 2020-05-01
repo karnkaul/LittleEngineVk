@@ -71,6 +71,12 @@ public:
 	static std::string const s_tName;
 
 public:
+	Renderer();
+	Renderer(Renderer&&);
+	Renderer& operator=(Renderer&&);
+	~Renderer();
+
+public:
 	std::unique_ptr<class RendererImpl> m_uImpl;
 
 public:

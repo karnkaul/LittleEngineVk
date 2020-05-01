@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include "input_types.hpp"
 #include "common.hpp"
+#include "engine/gfx/renderer.hpp"
 
 namespace le
 {
@@ -52,6 +53,7 @@ public:
 	static const std::string s_tName;
 
 private:
+	gfx::Renderer m_renderer;
 	std::unique_ptr<class WindowImpl> m_uImpl;
 	WindowID m_id = WindowID::Null;
 
@@ -65,6 +67,9 @@ public:
 	static void pollEvents();
 
 public:
+	gfx::Renderer const& renderer() const;
+	gfx::Renderer& renderer();
+
 	WindowID id() const;
 	bool isOpen() const;
 	bool isClosing() const;

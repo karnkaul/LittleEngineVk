@@ -43,6 +43,12 @@ public:
 	};
 
 public:
+	Pipeline();
+	Pipeline(Pipeline&&);
+	Pipeline& operator=(Pipeline&&);
+	~Pipeline();
+
+public:
 	std::string m_name;
 	std::unique_ptr<class PipelineImpl> m_uImpl;
 };

@@ -50,6 +50,16 @@ void Window::pollEvents()
 	return;
 }
 
+gfx::Renderer const& Window::renderer() const
+{
+	return m_renderer;
+}
+
+gfx::Renderer& Window::renderer()
+{
+	return m_renderer;
+}
+
 WindowID Window::id() const
 {
 	return m_id;

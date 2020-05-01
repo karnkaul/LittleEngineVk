@@ -3,7 +3,7 @@
 #include "core/utils.hpp"
 #include "engine/assets/asset.hpp"
 
-namespace le::gfx
+namespace le
 {
 namespace
 {
@@ -39,4 +39,4 @@ bool Asset::isReady() const
 {
 	return m_status == Status::eReady;
 }
-} // namespace le::gfx
+} // namespace le

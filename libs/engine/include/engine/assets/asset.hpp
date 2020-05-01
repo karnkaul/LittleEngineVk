@@ -10,7 +10,7 @@
 #endif
 #endif
 
-namespace le::gfx
+namespace le
 {
 class Asset
 {
@@ -64,4 +64,4 @@ public:
 private:
 	friend class Resources;
 };
-} // namespace le::gfx
+} // namespace le

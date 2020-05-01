@@ -391,7 +391,7 @@ bool WindowImpl::create(Window::Info const& info)
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo);
+		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo);
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);
@@ -417,7 +417,7 @@ bool WindowImpl::create(Window::Info const& info)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_renderer.m_uImpl.reset();
+		m_pWindow->m_renderer.m_uImpl.reset();
 		m_uNativeWindow.reset();
 		return false;
 	}
@@ -473,7 +473,7 @@ void WindowImpl::destroy()
 #endif
 		if (m_uNativeWindow)
 		{
-			m_renderer.m_uImpl.reset();
+			m_pWindow->m_renderer.m_uImpl.reset();
 			m_uNativeWindow.reset();
 			LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 		}
@@ -486,9 +486,9 @@ void WindowImpl::destroy()
 
 void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
-	if (m_renderer.m_uImpl)
+	if (m_pWindow->m_renderer.m_uImpl)
 	{
-		m_renderer.m_uImpl->onFramebufferResize();
+		m_pWindow->m_renderer.m_uImpl->onFramebufferResize();
 	}
 	return;
 }

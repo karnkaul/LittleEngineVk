@@ -13,10 +13,12 @@ private:
 	Services m_services;
 
 public:
-	Service(s32 argc, char** argv);
+	Service();
 	Service(Service&&);
 	Service& operator=(Service&&);
 	~Service();
+
+	bool start(s32 argc, char** argv);
 };
 
 stdfs::path exePath();

@@ -67,6 +67,7 @@ RendererImpl::RendererImpl(Info const& info) : m_presenter(info.presenterInfo), 
 
 RendererImpl::~RendererImpl()
 {
+	m_pipelines.clear();
 	destroy();
 }
 
@@ -105,7 +106,10 @@ void RendererImpl::create(u8 frameCount)
 
 void RendererImpl::destroy()
 {
-	m_pipelines.clear();
+	for (auto& pipeline : m_pipelines)
+	{
+		pipeline.m_uImpl->m_activeFences.clear();
+	}
 	if (!m_frames.empty())
 	{
 		for (auto& frame : m_frames)

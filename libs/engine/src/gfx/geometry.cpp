@@ -103,8 +103,8 @@ gfx::Geometry gfx::createCircle(f32 diameter, u16 points)
 	u32 const iCentre = ret.addVertex({{}, glm::vec3(1.0f), norm, {0.5f, 0.5f}});
 	for (s32 i = 0; i <= points; ++i)
 	{
-		f32 const x1 = glm::cos(glm::radians(arc * i));
-		f32 const y1 = glm::sin(glm::radians(arc * i));
+		f32 const x1 = glm::cos(glm::radians(arc * (f32)i));
+		f32 const y1 = glm::sin(glm::radians(arc * (f32)i));
 		f32 const s1 = (x1 + 1.0f) * 0.5f;
 		f32 const t1 = (y1 + 1.0f) * 0.5f;
 		u32 const iv1 = ret.addVertex({{r * x1, r * y1, 0.0f}, glm::vec3(1.0f), norm, {s1, t1}});
@@ -127,10 +127,10 @@ gfx::Geometry gfx::createCone(f32 diam, f32 height, u16 points)
 	u32 const baseCentre = verts.addVertex({glm::vec3(0.0f), glm::vec3(1.0f), nBase, glm::vec2(0.5f)});
 	for (s32 i = 0; i < points; ++i)
 	{
-		f32 const x0 = glm::cos(glm::radians(angle * i));
-		f32 const z0 = glm::sin(glm::radians(angle * i));
-		f32 const x1 = glm::cos(glm::radians(angle * (i + 1)));
-		f32 const z1 = glm::sin(glm::radians(angle * (i + 1)));
+		f32 const x0 = glm::cos(glm::radians(angle * (f32)i));
+		f32 const z0 = glm::sin(glm::radians(angle * (f32)i));
+		f32 const x1 = glm::cos(glm::radians(angle * (f32)(i + 1)));
+		f32 const z1 = glm::sin(glm::radians(angle * (f32)(i + 1)));
 		f32 const s0 = (x0 + 1.0f) * 0.5f;
 		f32 const t0 = (z0 + 1.0f) * 0.5f;
 		f32 const s1 = (x1 + 1.0f) * 0.5f;

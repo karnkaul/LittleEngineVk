@@ -19,7 +19,6 @@ public:
 	glm::vec3 m_position = glm::vec3(0.0f);
 	glm::quat m_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 	f32 m_fov = 45.0f;
-	f32 m_aspectRatio = 0.0f;
 
 public:
 	Camera();

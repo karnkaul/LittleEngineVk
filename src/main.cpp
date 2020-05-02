@@ -25,7 +25,11 @@ std::unique_ptr<IOReader> g_uReader;
 
 int main(int argc, char** argv)
 {
-	engine::Service engine(argc, argv);
+	engine::Service engine;
+	if (!engine.start(argc, argv))
+	{
+		return 1;
+	}
 	g_uReader = std::make_unique<FileReader>(engine::dataPath());
 	gfx::Shader::Info tutorialShaderInfo;
 	std::array shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
@@ -182,12 +186,13 @@ int main(int argc, char** argv)
 				g_pResources->update();
 				w0.renderer().update();
 				w1.renderer().update();
-				
+
 				freeCam.tick(dt);
 
 				// Update matrices
 				transform0.setOrientation(glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
-				transform01.setOrientation(glm::rotate(transform01.orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
+				transform01.setOrientation(
+					glm::rotate(transform01.orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
 				transform1.setOrientation(glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
 				view0.mat_v = freeCam.view();
 				view0.pos_v = freeCam.m_position;

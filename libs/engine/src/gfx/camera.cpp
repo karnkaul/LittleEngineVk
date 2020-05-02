@@ -36,15 +36,15 @@ glm::mat4 Camera::view() const
 
 glm::mat4 Camera::perspectiveProj(f32 aspect, f32 near, f32 far) const
 {
-	return glm::perspective(glm::radians(m_fov), m_aspectRatio > 0.0f ? m_aspectRatio : aspect, near, far);
+	return glm::perspective(glm::radians(m_fov), aspect, near, far);
 }
 
 glm::mat4 Camera::orthographicProj(f32 aspect, f32 zoom, f32 near, f32 far) const
 {
 	ASSERT(zoom > 0.0f, "Invalid zoom!");
-	f32 ar = m_aspectRatio > 0.0f ? m_aspectRatio : aspect;
-	f32 w = ar > 1.0f ? 1.0f : 1.0f * ar;
-	f32 h = ar > 1.0f ? 1.0f / ar : 1.0f;
+	f32 const ar = aspect;
+	f32 const w = ar > 1.0f ? 1.0f : 1.0f * ar;
+	f32 const h = ar > 1.0f ? 1.0f / ar : 1.0f;
 	return glm::ortho(-w / zoom, w / zoom, -h / zoom, h / zoom, near, far);
 }
 

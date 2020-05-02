@@ -1,9 +1,9 @@
 #pragma once
 #include <utility>
 #include <set>
-#include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "core/std_types.hpp"
+#include "core/utils.hpp"
 #include "common.hpp"
 #include "info.hpp"
 
@@ -11,16 +11,14 @@ namespace le::gfx
 {
 TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
-void wait(vk::Fence optional);
-void waitAll(vk::ArrayProxy<const vk::Fence> validFences);
+void waitFor(vk::Fence optional);
+void waitAll(vk::ArrayProxy<vk::Fence const> validFences);
 
-vk::DescriptorSetLayout createDescriptorSetLayout(u32 binding, u32 descriptorCount, vk::ShaderStageFlags stages);
-void writeUniformDescriptor(Buffer buffer, vk::DescriptorSet descriptorSet, u32 binding);
+bool isSignalled(vk::Fence fence);
+bool allSignalled(ArrayView<vk::Fence const> fences);
 
 vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
-							  vk::ImageViewType typev = vk::ImageViewType::e2D);
-
-vk::Pipeline createPipeline(vk::PipelineLayout info, PipelineData const& data, vk::PipelineCache cache = vk::PipelineCache());
+							  vk::ImageViewType type = vk::ImageViewType::e2D);
 
 template <typename vkOwner = vk::Device, typename vkType>
 void vkDestroy(vkType object)
@@ -37,6 +35,20 @@ void vkDestroy(vkType object)
 		if (object != vk::DescriptorPool())
 		{
 			g_info.device.destroyDescriptorPool(object);
+		}
+	}
+	else if constexpr (std::is_same_v<vkType, vk::ImageView>)
+	{
+		if (object != vk::ImageView())
+		{
+			g_info.device.destroyImageView(object);
+		}
+	}
+	else if constexpr (std::is_same_v<vkType, vk::Sampler>)
+	{
+		if (object != vk::Sampler())
+		{
+			g_info.device.destroySampler(object);
 		}
 	}
 	else if constexpr (std::is_same_v<vkOwner, vk::Instance>)

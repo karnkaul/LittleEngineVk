@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include "input_types.hpp"
 #include "common.hpp"
+#include "engine/gfx/renderer.hpp"
 
 namespace le
 {
@@ -22,7 +23,7 @@ public:
 
 	static std::array<std::string_view, (size_t)Mode::eCOUNT_> const s_modeNames;
 
-	struct Data final
+	struct Info final
 	{
 		struct
 		{
@@ -30,6 +31,7 @@ public:
 			glm::ivec2 size = {32, 32};
 			glm::ivec2 centreOffset = {};
 			Mode mode = Mode::eDecoratedWindow;
+			u8 virtualFrameCount = 2;
 		} config;
 
 		struct
@@ -51,6 +53,7 @@ public:
 	static const std::string s_tName;
 
 private:
+	gfx::Renderer m_renderer;
 	std::unique_ptr<class WindowImpl> m_uImpl;
 	WindowID m_id = WindowID::Null;
 
@@ -64,6 +67,9 @@ public:
 	static void pollEvents();
 
 public:
+	gfx::Renderer const& renderer() const;
+	gfx::Renderer& renderer();
+
 	WindowID id() const;
 	bool isOpen() const;
 	bool isClosing() const;
@@ -72,7 +78,7 @@ public:
 	glm::ivec2 framebufferSize() const;
 
 public:
-	bool create(Data const& data);
+	bool create(Info const& info);
 	void close();
 	void destroy();
 

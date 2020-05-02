@@ -13,8 +13,8 @@ using PriorityList = std::vector<T>;
 
 enum class ColourSpace : u8
 {
-	eRGBLinear,
 	eSRGBNonLinear,
+	eRGBLinear,
 	eCOUNT_,
 };
 
@@ -22,6 +22,7 @@ enum class PresentMode : u8
 {
 	eFIFO,
 	eMailbox,
+	eImmediate,
 	eCOUNT_
 };
 

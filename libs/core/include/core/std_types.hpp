@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <limits>
 #include <utility>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 
@@ -62,6 +63,6 @@ constexpr size_t arraySize(T const& arr)
 template <typename T, typename = std::enable_if<std::is_arithmetic_v<T>>>
 constexpr T maxVal()
 {
-	return (std::numeric_limits<T>::max)();
+	return std::numeric_limits<T>::max();
 }
 } // namespace le

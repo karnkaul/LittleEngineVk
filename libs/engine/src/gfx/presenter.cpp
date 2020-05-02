@@ -14,7 +14,7 @@ void Presenter::Info::refresh()
 {
 	if (surface == vk::SurfaceKHR() || !g_info.isValid(surface))
 	{
-		surface = data.config.getNewSurface(g_info.instance);
+		surface = info.config.getNewSurface(g_info.instance);
 	}
 	[[maybe_unused]] bool bValid = g_info.isValid(surface);
 	ASSERT(bValid, "Invalid surface!");
@@ -32,8 +32,8 @@ vk::SurfaceFormatKHR Presenter::Info::bestColourFormat() const
 {
 	static std::vector<vk::Format> const s_defaultFormats = {vk::Format::eB8G8R8A8Srgb};
 	static std::vector<vk::ColorSpaceKHR> const s_defaultColourSpaces = {vk::ColorSpaceKHR::eSrgbNonlinear};
-	auto const& desiredFormats = data.options.formats.empty() ? s_defaultFormats : data.options.formats;
-	auto const& desiredColourSpaces = data.options.colourSpaces.empty() ? s_defaultColourSpaces : data.options.colourSpaces;
+	auto const& desiredFormats = info.options.formats.empty() ? s_defaultFormats : info.options.formats;
+	auto const& desiredColourSpaces = info.options.colourSpaces.empty() ? s_defaultColourSpaces : info.options.colourSpaces;
 	std::map<u32, vk::SurfaceFormatKHR> ranked;
 	for (auto const& available : colourFormats)
 	{
@@ -70,7 +70,7 @@ vk::Format Presenter::Info::bestDepthFormat() const
 vk::PresentModeKHR Presenter::Info::bestPresentMode() const
 {
 	static std::vector<vk::PresentModeKHR> const s_defaultPresentModes = {vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
-	auto const& desiredPresentModes = data.options.presentModes.empty() ? s_defaultPresentModes : data.options.presentModes;
+	auto const& desiredPresentModes = info.options.presentModes.empty() ? s_defaultPresentModes : info.options.presentModes;
 	std::map<u32, vk::PresentModeKHR> ranked;
 	for (auto const& available : presentModes)
 	{
@@ -106,10 +106,11 @@ Presenter::Swapchain::Frame& Presenter::Swapchain::frame()
 	return frames.at(imageIndex);
 }
 
-Presenter::Presenter(PresenterData const& data) : m_window(data.config.window)
+Presenter::Presenter(PresenterInfo const& info) : m_window(info.config.window)
 {
-	ASSERT(data.config.getNewSurface && data.config.getFramebufferSize && data.config.getWindowSize, "Required callbacks are null!");
-	m_info.data = data;
+	m_name = fmt::format("{}:{}", s_tName, m_window);
+	ASSERT(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
+	m_info.info = info;
 	m_info.refresh();
 	if (!m_info.isReady())
 	{
@@ -131,7 +132,7 @@ Presenter::Presenter(PresenterData const& data) : m_window(data.config.window)
 		text += e.what();
 		throw std::runtime_error(text.data());
 	}
-	LOG_I("[{}:{}] constructed", s_tName, m_window);
+	LOG_I("[{}] constructed", m_name, m_window);
 }
 
 Presenter::~Presenter()
@@ -142,15 +143,15 @@ Presenter::~Presenter()
 
 void Presenter::onFramebufferResize()
 {
-	auto const size = m_info.data.config.getFramebufferSize();
+	auto const size = m_info.info.config.getFramebufferSize();
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
 		if (size.x > 0 && size.y > 0)
 		{
 			if (recreateSwapchain())
 			{
-				LOG_I("[{}:{}] Non-zero framebuffer size detected; recreated swapchain [{}x{}]; resuming rendering", s_tName, m_window,
-					  size.x, size.y);
+				LOG_I("[{}] Non-zero framebuffer size detected; recreated swapchain [{}x{}]; resuming rendering", m_name, m_window, size.x,
+					  size.y);
 				m_flags.reset(Flag::eRenderPaused);
 			}
 		}
@@ -159,7 +160,7 @@ void Presenter::onFramebufferResize()
 	{
 		if (size.x <= 0 || size.y <= 0)
 		{
-			LOG_I("[{}:{}] Invalid framebuffer size detected [{}x{}] (minimised surface?); pausing rendering", s_tName, m_window, size.x,
+			LOG_I("[{}] Invalid framebuffer size detected [{}x{}] (minimised surface?); pausing rendering", m_name, m_window, size.x,
 				  size.y);
 			m_flags.set(Flag::eRenderPaused);
 		}
@@ -168,8 +169,8 @@ void Presenter::onFramebufferResize()
 			auto oldExtent = m_swapchain.extent;
 			if (recreateSwapchain())
 			{
-				LOG_I("[{}:{}] Mismatched framebuffer size detected [{}x{}]; recreated swapchain [{}x{}]", s_tName, m_window, size.x,
-					  size.y, oldExtent.width, oldExtent.height);
+				LOG_I("[{}] Mismatched framebuffer size detected [{}x{}]; recreated swapchain [{}x{}]", m_name, m_window, size.x, size.y,
+					  oldExtent.width, oldExtent.height);
 			}
 		}
 	}
@@ -184,7 +185,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	auto const acquire = g_info.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
-		LOG_D("[{}:{}] Failed to acquire next image [{}]", s_tName, m_window, g_vkResultStr[acquire.result]);
+		LOG_D("[{}] Failed to acquire next image [{}]", m_name, m_window, g_vkResultStr[acquire.result]);
 		recreateSwapchain();
 		return {};
 	}
@@ -192,11 +193,12 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	auto& frame = m_swapchain.frame();
 	if (!frame.bNascent)
 	{
-		gfx::wait(frame.drawing);
+		gfx::waitFor(frame.drawing);
 	}
 	frame.bNascent = false;
 	frame.drawing = drawing;
-	return DrawFrame{m_renderPass, frame.framebuffer, m_swapchain.extent};
+	m_state = State::eRunning;
+	return DrawFrame{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
 }
 
 bool Presenter::present(vk::Semaphore wait)
@@ -216,21 +218,12 @@ bool Presenter::present(vk::Semaphore wait)
 	auto const result = g_info.queues.present.presentKHR(&presentInfo);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 	{
-		LOG_D("[{}:{}] Failed to present image [{}]", s_tName, m_window, g_vkResultStr[result]);
+		LOG_D("[{}] Failed to present image [{}]", m_name, m_window, g_vkResultStr[result]);
 		recreateSwapchain();
 		return false;
 	}
+	m_state = State::eRunning;
 	return true;
-}
-
-Presenter::OnEvent::Token Presenter::registerSwapchainRecreated(OnEvent::Callback callback)
-{
-	return m_onSwapchainRecreated.subscribe(callback);
-}
-
-Presenter::OnEvent::Token Presenter::registerDestroyed(OnEvent::Callback callback)
-{
-	return m_onDestroyed.subscribe(callback);
 }
 
 void Presenter::createRenderPass()
@@ -290,10 +283,10 @@ bool Presenter::createSwapchain()
 	ASSERT(bReady, "Presenter not ready!");
 	// Swapchain
 	m_info.refresh();
-	auto const framebufferSize = m_info.data.config.getFramebufferSize();
+	auto const framebufferSize = m_info.info.config.getFramebufferSize();
 	if (framebufferSize.x == 0 || framebufferSize.y == 0)
 	{
-		LOG_I("[{}:{}] Null framebuffer size detected (minimised surface?); pausing rendering", s_tName, m_window);
+		LOG_I("[{}] Null framebuffer size detected (minimised surface?); pausing rendering", m_name, m_window);
 		m_flags.set(Flag::eRenderPaused);
 		return false;
 	}
@@ -306,16 +299,15 @@ bool Presenter::createSwapchain()
 		}
 		createInfo.imageFormat = m_info.colourFormat.format;
 		createInfo.imageColorSpace = m_info.colourFormat.colorSpace;
-		auto const windowSize = m_info.data.config.getWindowSize();
+		auto const windowSize = m_info.info.config.getWindowSize();
 		m_swapchain.extent = m_info.extent(windowSize);
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto flags = gfx::QFlags(gfx::QFlag::eGraphics, gfx::QFlag::eTransfer);
-		auto const queueIndices = g_info.uniqueQueueIndices(flags);
-		createInfo.pQueueFamilyIndices = queueIndices.data();
-		createInfo.queueFamilyIndexCount = (u32)queueIndices.size();
-		createInfo.imageSharingMode = g_info.sharingMode(flags);
+		auto const queues = g_info.uniqueQueues(gfx::QFlag::eGraphics | gfx::QFlag::eTransfer);
+		createInfo.imageSharingMode = queues.mode;
+		createInfo.pQueueFamilyIndices = queues.indices.data();
+		createInfo.queueFamilyIndexCount = (u32)queues.indices.size();
 		createInfo.preTransform = m_info.capabilities.currentTransform;
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 		createInfo.presentMode = m_info.presentMode;
@@ -327,13 +319,20 @@ bool Presenter::createSwapchain()
 	{
 		auto images = g_info.device.getSwapchainImagesKHR(m_swapchain.swapchain);
 		m_swapchain.frames.reserve(images.size());
-		ImageData depthImageData;
-		depthImageData.format = m_info.depthFormat;
-		depthImageData.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		depthImageData.size = vk::Extent3D(m_swapchain.extent, 1);
-		depthImageData.tiling = vk::ImageTiling::eOptimal;
-		depthImageData.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-		m_swapchain.depthImage = vram::createImage(depthImageData);
+		ImageInfo depthImageInfo;
+		depthImageInfo.createInfo.format = m_info.depthFormat;
+		depthImageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+		depthImageInfo.createInfo.extent = vk::Extent3D(m_swapchain.extent, 1);
+		depthImageInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
+		depthImageInfo.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+		depthImageInfo.createInfo.samples = vk::SampleCountFlagBits::e1;
+		depthImageInfo.createInfo.imageType = vk::ImageType::e2D;
+		depthImageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
+		depthImageInfo.createInfo.mipLevels = 1;
+		depthImageInfo.createInfo.arrayLayers = 1;
+		depthImageInfo.queueFlags = QFlag::eGraphics;
+		depthImageInfo.name = m_name + "_depth";
+		m_swapchain.depthImage = vram::createImage(depthImageInfo);
 		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.image, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		for (auto const& image : images)
 		{
@@ -341,18 +340,6 @@ bool Presenter::createSwapchain()
 			frame.image = image;
 			frame.colour = createImageView(image, m_info.colourFormat.format);
 			frame.depth = m_swapchain.depthImageView;
-			{
-				// Framebuffers
-				std::array const attachments = {frame.colour, frame.depth};
-				vk::FramebufferCreateInfo createInfo;
-				createInfo.attachmentCount = (u32)attachments.size();
-				createInfo.pAttachments = attachments.data();
-				createInfo.renderPass = m_renderPass;
-				createInfo.width = m_swapchain.extent.width;
-				createInfo.height = m_swapchain.extent.height;
-				createInfo.layers = 1;
-				frame.framebuffer = g_info.device.createFramebuffer(createInfo);
-			}
 			m_swapchain.frames.push_back(std::move(frame));
 		}
 		if (m_swapchain.frames.empty())
@@ -364,7 +351,7 @@ bool Presenter::createSwapchain()
 	{
 		vkDestroy<vk::Instance>(prevSurface);
 	}
-	LOG_D("[{}:{}] Swapchain created [{}x{}]", s_tName, m_window, framebufferSize.x, framebufferSize.y);
+	LOG_D("[{}] Swapchain created [{}x{}]", m_name, m_window, framebufferSize.x, framebufferSize.y);
 	return true;
 }
 
@@ -373,13 +360,13 @@ void Presenter::destroySwapchain()
 	g_info.device.waitIdle();
 	for (auto const& frame : m_swapchain.frames)
 	{
-		vkDestroy(frame.framebuffer, frame.colour);
+		vkDestroy(frame.colour);
 	}
 	vkDestroy(m_swapchain.depthImageView, m_swapchain.swapchain);
 	vram::release(m_swapchain.depthImage);
-	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}:{}] Swapchain destroyed", s_tName, m_window);
+	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name, m_window);
 	m_swapchain = Swapchain();
-	m_onDestroyed();
+	m_state = State::eSwapchainDestroyed;
 }
 
 void Presenter::cleanup()
@@ -389,20 +376,20 @@ void Presenter::cleanup()
 	m_renderPass = vk::RenderPass();
 	vkDestroy<vk::Instance>(m_info.surface);
 	m_info.surface = vk::SurfaceKHR();
-	m_onDestroyed();
+	m_state = State::eDestroyed;
 }
 
 bool Presenter::recreateSwapchain()
 {
-	LOG_D("[{}:{}] Recreating Swapchain...", s_tName, m_window);
+	LOG_D("[{}] Recreating Swapchain...", m_name, m_window);
 	destroySwapchain();
 	if (createSwapchain())
 	{
-		LOG_D("[{}:{}] ... Swapchain recreated", s_tName, m_window);
-		m_onSwapchainRecreated();
+		LOG_D("[{}] ... Swapchain recreated", m_name, m_window);
+		m_state = State::eSwapchainRecreated;
 		return true;
 	}
-	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}:{}] Failed to recreate swapchain!", s_tName, m_window);
+	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name, m_window);
 	return false;
 }
 } // namespace le::gfx

@@ -50,6 +50,16 @@ void Window::pollEvents()
 	return;
 }
 
+gfx::Renderer const& Window::renderer() const
+{
+	return m_renderer;
+}
+
+gfx::Renderer& Window::renderer()
+{
+	return m_renderer;
+}
+
 WindowID Window::id() const
 {
 	return m_id;
@@ -75,9 +85,9 @@ glm::ivec2 Window::framebufferSize() const
 	return m_uImpl ? m_uImpl->framebufferSize() : glm::ivec2(0);
 }
 
-bool Window::create(Data const& data)
+bool Window::create(Info const& info)
 {
-	return m_uImpl ? m_uImpl->create(data) : false;
+	return m_uImpl ? m_uImpl->create(info) : false;
 }
 
 void Window::close()

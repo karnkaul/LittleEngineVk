@@ -1,13 +1,20 @@
 #include <array>
 #include <unordered_set>
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include "core/assert.hpp"
 #include "core/log.hpp"
+#include "core/os.hpp"
 #include "core/threads.hpp"
 #include "core/utils.hpp"
+#include "gfx/common.hpp"
 #include "gfx/info.hpp"
-#include "gfx/presenter.hpp"
+#include "gfx/renderer_impl.hpp"
+#if defined(LEVK_USE_GLFW)
+#if defined(LEVK_RUNTIME_MSVC)
+#include <Windows.h>
+#endif
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#endif
 #include "window_impl.hpp"
 
 namespace le
@@ -159,7 +166,35 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
-NativeWindow::NativeWindow(Window::Data const& data)
+f32 GamepadState::getAxis(PadAxis axis) const
+{
+	size_t idx = size_t(axis);
+#if defined(LEVK_USE_GLFW)
+	s32 max = 0;
+	glfwGetJoystickAxes(id, &max);
+	if (idx < (size_t)max)
+	{
+		return joyState.axes.at(idx);
+	}
+#endif
+	return 0.0f;
+}
+
+bool GamepadState::isPressed(Key button) const
+{
+	size_t idx = (size_t)button - (size_t)Key::eGamepadButtonA;
+#if defined(LEVK_USE_GLFW)
+	s32 max = 0;
+	glfwGetJoystickButtons(id, &max);
+	if (idx < (size_t)max)
+	{
+		return joyState.buttons[idx];
+	}
+#endif
+	return false;
+}
+
+NativeWindow::NativeWindow(Window::Info const& info)
 {
 #if defined(LEVK_USE_GLFW)
 	ASSERT(threads::isMainThread(), "Window creation on non-main thread!");
@@ -181,12 +216,12 @@ NativeWindow::NativeWindow(Window::Data const& data)
 		LOG_E("[{}] Failed to detect video mode!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
-	size_t screenIdx = data.options.screenID < screenCount ? (size_t)data.options.screenID : 0;
+	size_t screenIdx = info.options.screenID < screenCount ? (size_t)info.options.screenID : 0;
 	GLFWmonitor* pTarget = ppScreens[screenIdx];
-	s32 height = data.config.size.y;
-	s32 width = data.config.size.x;
+	s32 height = info.config.size.y;
+	s32 width = info.config.size.x;
 	bool bDecorated = true;
-	switch (data.config.mode)
+	switch (info.config.mode)
 	{
 	default:
 	case Window::Mode::eDecoratedWindow:
@@ -222,8 +257,8 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	s32 cX = (mode->width - width) / 2;
 	s32 cY = (mode->height - height) / 2;
-	cX += data.config.centreOffset.x;
-	cY -= data.config.centreOffset.y;
+	cX += info.config.centreOffset.x;
+	cY -= info.config.centreOffset.y;
 	m_initialCentre = {cX, cY};
 	ASSERT(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
 	glfwWindowHint(GLFW_DECORATED, bDecorated ? 1 : 0);
@@ -232,7 +267,7 @@ NativeWindow::NativeWindow(Window::Data const& data)
 	glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
 	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, false);
-	m_pWindow = glfwCreateWindow(width, height, data.config.title.data(), pTarget, nullptr);
+	m_pWindow = glfwCreateWindow(width, height, info.config.title.data(), pTarget, nullptr);
 	if (!m_pWindow)
 	{
 		throw std::runtime_error("Failed to create Window");
@@ -322,16 +357,31 @@ std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 	return ret;
 }
 
-gfx::Presenter* WindowImpl::presenter(WindowID window)
+WindowImpl* WindowImpl::windowImpl(WindowID window)
 {
-	for (auto const pImpl : g_registeredWindows)
+	for (auto pImpl : g_registeredWindows)
 	{
 		if (pImpl->m_pWindow->m_id == window)
 		{
-			return pImpl->m_uPresenter.get();
+			return pImpl;
 		}
 	}
 	return nullptr;
+}
+
+vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow const& nativeWindow)
+{
+	vk::SurfaceKHR ret;
+#if defined(LEVK_USE_GLFW)
+	VkSurfaceKHR surface;
+	auto result = glfwCreateWindowSurface(instance, nativeWindow.m_pWindow, nullptr, &surface);
+	ASSERT(result == VK_SUCCESS, "Surface creation failed!");
+	if (result == VK_SUCCESS)
+	{
+		ret = surface;
+	}
+#endif
+	return ret;
 }
 
 WindowImpl::WindowImpl(Window* pWindow) : m_pWindow(pWindow)
@@ -346,54 +396,30 @@ WindowImpl::~WindowImpl()
 	destroy();
 }
 
-bool WindowImpl::create(Window::Data const& data)
+bool WindowImpl::create(Window::Info const& info)
 {
 	try
 	{
 		gfx::g_info.device.waitIdle();
-		m_uNativeWindow = std::make_unique<NativeWindow>(data);
-		gfx::PresenterData presenterData;
-		presenterData.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
+		m_uNativeWindow = std::make_unique<NativeWindow>(info);
+		gfx::RendererImpl::Info rendererInfo;
+		rendererInfo.presenterInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
-		presenterData.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
-		presenterData.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
-		presenterData.config.window = m_pWindow->m_id;
-		for (auto colourSpace : data.options.colourSpaces)
+		rendererInfo.presenterInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
+		rendererInfo.presenterInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
+		rendererInfo.presenterInfo.config.window = m_pWindow->m_id;
+		for (auto colourSpace : info.options.colourSpaces)
 		{
-			switch (colourSpace)
-			{
-			default:
-				break;
-			case ColourSpace::eRGBLinear:
-				presenterData.options.formats.push_back(vk::Format::eB8G8R8A8Unorm);
-				break;
-			case ColourSpace::eSRGBNonLinear:
-				presenterData.options.formats.push_back(vk::Format::eB8G8R8A8Srgb);
-				break;
-			}
+			rendererInfo.presenterInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((size_t)colourSpace));
 		}
-		for (auto presentMode : data.options.presentModes)
+		for (auto presentMode : info.options.presentModes)
 		{
-			switch (presentMode)
-			{
-			default:
-				break;
-			case PresentMode::eMailbox:
-				presenterData.options.presentModes.push_back(vk::PresentModeKHR::eMailbox);
-				break;
-			case PresentMode::eFIFO:
-				presenterData.options.presentModes.push_back(vk::PresentModeKHR::eFifo);
-				break;
-			}
+			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));
 		}
-		m_uPresenter = std::make_unique<gfx::Presenter>(presenterData);
-		if (!m_uPresenter)
-		{
-			LOG_E("[{}] Failed to create [{}]", Window::s_tName, gfx::Presenter::s_tName);
-			m_uNativeWindow.reset();
-			return false;
-		}
+		rendererInfo.frameCount = info.config.virtualFrameCount;
+		rendererInfo.windowID = m_pWindow->id();
+		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo);
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);
@@ -406,7 +432,7 @@ bool WindowImpl::create(Window::Data const& data)
 		glfwSetCursorEnterCallback(m_uNativeWindow->m_pWindow, &onFocus);
 		auto const c = m_uNativeWindow->m_initialCentre;
 		glfwSetWindowPos(m_uNativeWindow->m_pWindow, c.x, c.y);
-		if (data.options.bCentreCursor)
+		if (info.options.bCentreCursor)
 		{
 			auto const size = m_uNativeWindow->windowSize();
 			glfwSetCursorPos(m_uNativeWindow->m_pWindow, size.x / 2, size.y / 2);
@@ -419,7 +445,7 @@ bool WindowImpl::create(Window::Data const& data)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_uPresenter.reset();
+		m_pWindow->m_renderer.m_uImpl.reset();
 		m_uNativeWindow.reset();
 		return false;
 	}
@@ -475,8 +501,7 @@ void WindowImpl::destroy()
 #endif
 		if (m_uNativeWindow)
 		{
-			m_uPresenter.reset();
-			m_uPresenter.reset();
+			m_pWindow->m_renderer.m_uImpl.reset();
 			m_uNativeWindow.reset();
 			LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 		}
@@ -487,26 +512,11 @@ void WindowImpl::destroy()
 	return;
 }
 
-vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow const& nativeWindow)
-{
-	vk::SurfaceKHR ret;
-#if defined(LEVK_USE_GLFW)
-	VkSurfaceKHR surface;
-	auto result = glfwCreateWindowSurface(instance, nativeWindow.m_pWindow, nullptr, &surface);
-	ASSERT(result == VK_SUCCESS, "Surface creation failed!");
-	if (result == VK_SUCCESS)
-	{
-		ret = surface;
-	}
-#endif
-	return ret;
-}
-
 void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
-	if (m_uPresenter)
+	if (m_pWindow->m_renderer.m_uImpl)
 	{
-		m_uPresenter->onFramebufferResize();
+		m_pWindow->m_renderer.m_uImpl->onFramebufferResize();
 	}
 	return;
 }

@@ -1,9 +1,7 @@
 #pragma once
 #include <functional>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
-#include "core/delegate.hpp"
 #include "core/flags.hpp"
 #include "engine/window/common.hpp"
 #include "common.hpp"
@@ -13,25 +11,33 @@ namespace le::gfx
 class Presenter final
 {
 public:
-	enum class Flag
+	enum class State : u8
 	{
-		eRenderPaused = 0,
+		eRunning = 0,
+		eSwapchainDestroyed,
+		eSwapchainRecreated,
+		eDestroyed,
+		eCOUNT_
+	};
+
+	enum class Flag : u8
+	{
+		eRenderPaused,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
-	using OnEvent = Delegate<>;
 
 	struct DrawFrame final
 	{
 		vk::RenderPass renderPass;
-		vk::Framebuffer framebuffer;
 		vk::Extent2D swapchainExtent;
+		std::vector<vk::ImageView> attachments;
 	};
 
 private:
 	struct Info final
 	{
-		PresenterData data;
+		PresenterInfo info;
 		vk::SurfaceKHR surface;
 
 		vk::SurfaceCapabilitiesKHR capabilities;
@@ -54,7 +60,6 @@ private:
 	{
 		struct Frame final
 		{
-			vk::Framebuffer framebuffer;
 			vk::ImageView colour;
 			vk::ImageView depth;
 			vk::Fence drawing;
@@ -69,7 +74,6 @@ private:
 		std::vector<Frame> frames;
 
 		vk::Extent2D extent;
-		glm::ivec2 size = {};
 		u32 imageIndex = 0;
 		u8 imageCount = 0;
 
@@ -78,20 +82,20 @@ private:
 
 public:
 	static std::string const s_tName;
+	std::string m_name;
 
 public:
+	Swapchain m_swapchain;
 	vk::RenderPass m_renderPass;
 	Flags m_flags;
+	State m_state = State::eRunning;
 
 private:
 	Info m_info;
-	Swapchain m_swapchain;
-	OnEvent m_onSwapchainRecreated;
-	OnEvent m_onDestroyed;
 	WindowID m_window;
 
 public:
-	Presenter(PresenterData const& data);
+	Presenter(PresenterInfo const& info);
 	~Presenter();
 
 public:
@@ -100,9 +104,6 @@ public:
 	TResult<DrawFrame> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setDrawing = vk::Fence());
 	bool present(vk::Semaphore wait);
 
-	OnEvent::Token registerSwapchainRecreated(OnEvent::Callback callback);
-	OnEvent::Token registerDestroyed(OnEvent::Callback callback);
-
 private:
 	void createRenderPass();
 	bool createSwapchain();
@@ -110,8 +111,5 @@ private:
 	void cleanup();
 
 	bool recreateSwapchain();
-
-private:
-	friend class Renderer;
 };
 } // namespace le::gfx

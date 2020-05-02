@@ -2,6 +2,10 @@
 
 namespace le
 {
+Services::Services() = default;
+Services::Services(Services&&) = default;
+Services& Services::operator=(Services&&) = default;
+
 Services::~Services()
 {
 	while (!m_services.empty())

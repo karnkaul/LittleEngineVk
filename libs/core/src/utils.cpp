@@ -34,10 +34,10 @@ std::string utils::demangle(std::string_view name)
 	}
 	std::free(szRes);
 #else
-	constexpr std::string_view CLASS = "class ";
-	constexpr std::string_view STRUCT = "struct ";
-	constexpr size_t CLASS_LEN = CLASS.length();
-	constexpr size_t STRUCT_LEN = STRUCT.length();
+	static std::string_view const CLASS = "class ";
+	static std::string_view const STRUCT = "struct ";
+	static size_t const CLASS_LEN = CLASS.length();
+	static size_t const STRUCT_LEN = STRUCT.length();
 	auto idx = ret.find(CLASS);
 	if (idx == 0)
 	{

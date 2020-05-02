@@ -1,16 +1,29 @@
 #pragma once
+#include <array>
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <optional>
 #include <set>
 #include <unordered_map>
-#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
+#include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
+#include "core/assert.hpp"
 #include "core/colour.hpp"
+#include "core/log.hpp"
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
+#include "engine/gfx/pipeline.hpp"
+#include "engine/gfx/shader.hpp"
+#include "engine/gfx/texture.hpp"
+
+#if defined(LEVK_DEBUG)
+#if !defined(LEVK_VKRESOURCE_NAMES)
+#define LEVK_VKRESOURCE_NAMES
+#endif
+#endif
 
 namespace stdfs = std::filesystem;
 
@@ -18,21 +31,56 @@ namespace le::gfx
 {
 enum class QFlag
 {
-	eGraphics = 0,
+	eGraphics,
 	ePresent,
 	eTransfer,
 	eCOUNT_
 };
 using QFlags = TFlags<QFlag>;
 
-enum class ShaderType : u8
+using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
+
+// clang-format off
+constexpr std::array g_colourSpaceMap = 
 {
-	eVertex = 0,
-	eFragment,
-	eCOUNT_
+	vk::Format::eB8G8R8A8Srgb,
+	vk::Format::eB8G8R8A8Unorm
 };
 
-using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
+constexpr std::array g_presentModeMap = 
+{
+	vk::PresentModeKHR::eFifo,
+	vk::PresentModeKHR::eMailbox,
+	vk::PresentModeKHR::eImmediate,
+};
+
+constexpr std::array g_polygonModeMap = 
+{
+	vk::PolygonMode::eFill,
+	vk::PolygonMode::eLine
+};
+
+constexpr std::array g_cullModeMap = 
+{
+	vk::CullModeFlagBits::eNone,
+	vk::CullModeFlagBits::eBack,
+	vk::CullModeFlagBits::eFront
+};
+
+constexpr std::array g_frontFaceMap = 
+{
+	vk::FrontFace::eCounterClockwise,
+	vk::FrontFace::eClockwise
+};
+// clang-format on 
+
+
+namespace vkFlags
+{
+inline vk::ShaderStageFlags const vertShader = vk::ShaderStageFlagBits::eVertex;
+inline vk::ShaderStageFlags const fragShader = vk::ShaderStageFlagBits::eVertex;
+inline vk::ShaderStageFlags const vertFragShader = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+} // namespace vkFlags
 
 struct AvailableDevice final
 {
@@ -41,12 +89,11 @@ struct AvailableDevice final
 	std::vector<vk::QueueFamilyProperties> queueFamilies;
 };
 
-struct InitData final
+struct InitInfo final
 {
 	enum class Flag
 	{
-		eValidation = 0,
-		eTest,
+		eValidation,
 		eCOUNT_
 	};
 
@@ -64,10 +111,11 @@ struct InitData final
 	{
 		PickDevice pickDevice;
 		Flags flags;
+		log::Level validationLog = log::Level::eWarning;
 	} options;
 };
 
-struct PresenterData final
+struct PresenterInfo final
 {
 	using GetSize = std::function<glm::ivec2()>;
 
@@ -87,18 +135,10 @@ struct PresenterData final
 	} options;
 };
 
-struct ScreenRect final
+struct UniqueQueues final
 {
-	f32 left = 0.0f;
-	f32 top = 0.0f;
-	f32 right = 1.0f;
-	f32 bottom = 1.0f;
-
-	constexpr ScreenRect() noexcept = default;
-	ScreenRect(glm::vec4 const& ltrb) noexcept;
-	explicit ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop = glm::vec2(0.0f)) noexcept;
-
-	f32 aspect() const;
+	vk::SharingMode mode;
+	std::vector<u32> indices;
 };
 
 struct AllocInfo final
@@ -108,54 +148,77 @@ struct AllocInfo final
 	vk::DeviceSize actualSize = {};
 };
 
-struct Resource
+struct VkResource
 {
+#if defined(LEVK_VKRESOURCE_NAMES)
+	std::string name;
+#endif
 	AllocInfo info;
 	VmaAllocation handle;
+	QFlags queueFlags;
 };
 
-struct Buffer final : Resource
+struct Buffer final : VkResource
 {
 	vk::Buffer buffer;
 	vk::DeviceSize writeSize = {};
 };
 
-struct Image final : Resource
+struct Image final : VkResource
 {
 	vk::Image image;
-};
-
-struct ClearValues final
-{
-	glm::vec2 depthStencil = {1.0f, 0.0f};
-	Colour colour = colours::Black;
-};
-
-struct ShaderData final
-{
-	std::string id;
-	std::unordered_map<ShaderType, bytearray> codeMap;
-	std::unordered_map<ShaderType, stdfs::path> codeIDMap;
-	class IOReader const* pReader = nullptr;
-};
-
-struct PipelineData final
-{
-	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-	vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eNone;
-	vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
-	vk::ColorComponentFlags colourWriteMask =
-		vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-	std::string name;
-	std::set<vk::DynamicState> dynamicStates;
-	std::vector<vk::DescriptorSetLayout> setLayouts;
-	f32 staticLineWidth = 1.0f;
-	class Shader* pShader = nullptr;
-	bool bBlend = false;
-
-	// TODO: REMOVE
-	vk::RenderPass renderPass;
+	vk::DeviceSize allocatedSize = {};
+	vk::Extent3D extent = {};
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
+
+struct ShaderImpl final
+{
+	static std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> const s_typeToFlagBit;
+
+	std::array<vk::ShaderModule, size_t(Shader::Type::eCOUNT_)> shaders;
+
+	vk::ShaderModule module(Shader::Type type) const;
+	std::map<Shader::Type, vk::ShaderModule> modules() const;
+};
+
+struct SamplerImpl final
+{
+	vk::Sampler sampler;
+};
+
+struct TextureImpl final
+{
+	Image active;
+	Texture::Raw raw;
+	vk::ImageView imageView;
+	vk::Fence loaded;
+	bool bStbiRaw = false;
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	Image standby;
+	stdfs::path imgID;
+	FileReader const* pReader = nullptr;
+	bool bReloading = false;
+#endif
+};
+
+struct MeshImpl final
+{
+	Buffer vbo;
+	Buffer ibo;
+	vk::Fence vboCopied;
+	vk::Fence iboCopied;
+	u32 vertexCount = 0;
+	u32 indexCount = 0;
+};
+
+namespace vbo
+{
+constexpr u32 vertexBinding = 0;
+
+vk::VertexInputBindingDescription bindingDescription();
+std::vector<vk::VertexInputAttributeDescription> attributeDescriptions();
+} // namespace vbo
 } // namespace le::gfx

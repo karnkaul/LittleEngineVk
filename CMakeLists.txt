@@ -47,7 +47,6 @@ set(EXT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE INTERNAL "External depe
 # External
 add_subdirectory(external/physfs)
 add_subdirectory(external/fmt)
-target_compile_definitions(fmt PUBLIC FMT_EXCEPTIONS=0)
 add_subdirectory(external/glm)
 if(LEVK_USE_GLFW)
 	set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
@@ -57,6 +56,7 @@ if(LEVK_USE_GLFW)
 	add_subdirectory(external/glfw)
 endif()
 add_subdirectory(external/vma)
+add_subdirectory(external/stb)
 
 # Libraries
 add_subdirectory(libs/core)

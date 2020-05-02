@@ -1,5 +1,7 @@
 #pragma once
+#include <algorithm>
 #include <bitset>
+#include <initializer_list>
 #include <string>
 #include <type_traits>
 #include "core/assert.hpp"
@@ -17,10 +19,14 @@ struct TFlags
 
 	constexpr TFlags() noexcept = default;
 
-	template <typename Flag1, typename... FlagN>
-	constexpr TFlags(Flag1 flag1, FlagN... flagN) noexcept
+	constexpr /*implicit*/ TFlags(Enum flag) noexcept
 	{
-		set(flag1, flagN...);
+		set(flag);
+	}
+
+	constexpr TFlags(std::initializer_list<Enum> flags) noexcept
+	{
+		set(flags);
 	}
 
 	bool isSet(Enum flag) const
@@ -41,27 +47,25 @@ struct TFlags
 		bits.reset((size_t)flag);
 	}
 
-	template <typename Flag1, typename... FlagN>
-	bool isSet(Flag1 flag1, FlagN... flagN) const
+	bool allSet(std::initializer_list<Enum> flags) const
 	{
-		static_assert(std::is_same_v<Flag1, Enum>, "Invalid Flag parameter!");
-		return isSet(flag1) && isSet(flagN...);
+		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });
 	}
 
-	template <typename Flag1, typename... FlagN>
-	void set(Flag1 flag1, FlagN... flagN)
+	void set(std::initializer_list<Enum> flags)
 	{
-		static_assert(std::is_same_v<Flag1, Enum>, "Invalid Flag parameter!");
-		set(flag1);
-		set(flagN...);
+		for (auto flag : flags)
+		{
+			set(flag);
+		}
 	}
 
-	template <typename Flag1, typename... FlagN>
-	void reset(Flag1 flag1, FlagN... flagN)
+	void reset(std::initializer_list<Enum> flags)
 	{
-		static_assert(std::is_same_v<Flag1, Enum>, "Invalid Flag parameter!");
-		reset(flag1);
-		reset(flagN...);
+		for (auto flag : flags)
+		{
+			reset(flag);
+		}
 	}
 
 	void set()

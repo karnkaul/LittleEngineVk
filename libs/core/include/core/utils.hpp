@@ -9,31 +9,30 @@ namespace le
 template <typename T>
 struct ArrayView
 {
-	using Type = T;
-	using iterator = T*;
+	using value_type = T;
 	using const_iterator = T const*;
 
-	T* pData;
-	size_t const extent;
+	T const* pData;
+	size_t extent;
 
 	constexpr ArrayView() noexcept : pData(nullptr), extent(0) {}
-	constexpr ArrayView(T* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
+	constexpr ArrayView(T const* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
 
 	template <typename Container>
-	constexpr explicit ArrayView(Container& container) noexcept
+	constexpr ArrayView(Container const& container) noexcept
 		: pData(container.empty() ? nullptr : &container.front()), extent(container.size())
 	{
 	}
 
-	iterator begin()
+	constexpr ArrayView(std::initializer_list<T const> initList) noexcept
+		: pData(initList.size() == 0 ? nullptr : &(*initList.begin())), extent(initList.size())
 	{
-		return pData;
 	}
 
-	iterator end()
-	{
-		return pData + extent;
-	}
+	ArrayView<T>(ArrayView<T>&&) noexcept = default;
+	ArrayView<T>& operator=(ArrayView<T>&&) noexcept = default;
+	ArrayView<T>(ArrayView<T> const&) noexcept = default;
+	ArrayView<T>& operator=(ArrayView<T> const&) noexcept = default;
 
 	const_iterator begin() const
 	{

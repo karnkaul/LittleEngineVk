@@ -62,6 +62,7 @@ function(set_output_directory TARGET_NAME DIRECTORY_PATH)
 endfunction()
 
 function(add_target_compile_definitions TARGET_NAME PREFIX SCOPE)
+	set(MSVC_FLAGS WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 	target_compile_definitions(${TARGET_NAME} ${SCOPE}
 		_UNICODE
 		$<$<NOT:$<CONFIG:Debug>>:
@@ -71,21 +72,8 @@ function(add_target_compile_definitions TARGET_NAME PREFIX SCOPE)
 		$<$<CONFIG:Debug>:
 			${PREFIX}_DEBUG
 		>
-		$<$<BOOL:${MSVC_RUNTIME}>:_CRT_SECURE_NO_WARNINGS>
-		$<$<BOOL:${MSVC_RUNTIME}>:WIN32_LEAN_AND_MEAN>
+		$<$<BOOL:${MSVC_RUNTIME}>:${MSVC_FLAGS}>
 	)
-endfunction()
-
-function(add_target_relaxed_compile_options TARGET_NAME)
-	if(LINUX_CLANG OR WIN64_CLANG)
-		set(FLAGS -Wno-documentation -Wno-reserved-id-macro -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-sign-conversion -Wno-switch-enum)
-		set(FLAGS ${FLAGS} -Wno-pedantic -Wno-float-equal -Wno-nonportable-system-include-path -Wno-undef -Wno-cast-qual -Wno-missing-field-initializers -Wno-unused-parameter)
-		set(FLAGS ${FLAGS} -Wno-bad-function-cast -Wno-shadow -Wno-double-promotion -Wno-missing-prototypes -Wno-format-nonliteral -Wno-missing-variable-declarations)
-		if(NOT CI_BUILD AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-			set(FLAGS ${FLAGS} -Wno-implicit-int-conversion -Wno-extra-semi-stmt)
-		endif()
-	endif()
-	target_compile_options(${TARGET_NAME} PRIVATE ${FLAGS})
 endfunction()
 
 function(add_target_compile_options TARGET_NAME SCOPE)

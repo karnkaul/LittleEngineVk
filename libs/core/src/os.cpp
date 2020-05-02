@@ -53,13 +53,18 @@ void os::init(Args const& args)
 		}
 		for (s32 i = 1; i < args.argc; ++i)
 		{
-			g_args.push_back(args.argv[i]);
+			std::string_view arg(args.argv[i]);
+			while (!arg.empty() && arg.at(0) == '-')
+			{
+				arg = arg.substr(1);
+			}
+			g_args.push_back(arg);
 		}
 	}
 	return;
 }
 
-std::string_view os::argv0()
+std::string os::argv0()
 {
 	return g_exeLocation.generic_string();
 }

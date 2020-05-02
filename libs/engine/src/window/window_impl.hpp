@@ -1,15 +1,14 @@
 #pragma once
 #include <memory>
-#include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
 #include "engine/window/window.hpp"
 
 namespace le
 {
 namespace gfx
 {
-class Presenter;
-class Instance;
+class Renderer;
 } // namespace gfx
 
 class NativeWindow final
@@ -21,7 +20,7 @@ public:
 	glm::ivec2 m_initialCentre = {};
 
 public:
-	NativeWindow(Window::Data const& data);
+	NativeWindow(Window::Info const& info);
 	~NativeWindow();
 
 public:
@@ -48,26 +47,26 @@ public:
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
-	std::unique_ptr<gfx::Presenter> m_uPresenter;
 	Window* m_pWindow;
 
 	static bool init();
 	static void deinit();
 	static std::vector<char const*> vulkanInstanceExtensions();
-	static gfx::Presenter* presenter(WindowID window);
+	static WindowImpl* windowImpl(WindowID window);
+	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
 
 	WindowImpl(Window* pWindow);
 	~WindowImpl();
 
-	bool create(Window::Data const& data);
+	bool create(Window::Info const& info);
 	bool isOpen() const;
 	bool exists() const;
 	bool isClosing() const;
 	void close();
 	void destroy();
 
-	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
 	void onFramebufferSize(glm::ivec2 const& size);
+
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
 

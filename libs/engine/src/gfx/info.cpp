@@ -7,7 +7,8 @@
 #include "window/window_impl.hpp"
 #include "info.hpp"
 #include "vram.hpp"
-#include "draw/resources.hpp"
+#include "engine/assets/resources.hpp"
+#include "resource_descriptors.hpp"
 
 namespace le::gfx
 {
@@ -31,29 +32,38 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 		LOG_E("[{}] {}", name, VK_LOG_MSG);
 		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		LOG_W("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_info.validationLog <= (u8)log::Level::eWarning)
+		{
+			LOG_W("[{}] {}", name, VK_LOG_MSG);
+		}
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		LOG_I("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_info.validationLog <= (u8)log::Level::eInfo)
+		{
+			LOG_I("[{}] {}", name, VK_LOG_MSG);
+		}
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		LOG_D("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_info.validationLog <= (u8)log::Level::eDebug)
+		{
+			LOG_D("[{}] {}", name, VK_LOG_MSG);
+		}
 		break;
 	}
 	return false;
 }
 
-vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& layers, InitData const& initData)
+vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& layers, InitInfo const& initInfo)
 {
-	ASSERT(initData.config.graphicsQueueCount > 0, "Invalid queue count!");
+	ASSERT(initInfo.config.graphicsQueueCount > 0, "Invalid queue count!");
 	vk::Device device;
 	vk::SurfaceKHR surface;
 	std::string deviceName;
-	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
 	try
 	{
-		surface = initData.config.createTempSurface(instance);
+		surface = initInfo.config.createTempSurface(instance);
 		auto physicalDevices = vk::Instance(instance).enumeratePhysicalDevices();
 		std::vector<AvailableDevice> availableDevices;
 		availableDevices.reserve(physicalDevices.size());
@@ -83,9 +93,9 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 				availableDevices.push_back(std::move(availableDevice));
 			}
 		}
-		if (initData.options.pickDevice)
+		if (initInfo.options.pickDevice)
 		{
-			g_info.physicalDevice = initData.options.pickDevice(availableDevices);
+			g_info.physicalDevice = initInfo.options.pickDevice(availableDevices);
 		}
 		if (g_info.physicalDevice == vk::PhysicalDevice())
 		{
@@ -130,7 +140,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		{
 			vk::DeviceQueueCreateInfo queueCreateInfo;
 			queueCreateInfo.queueFamilyIndex = family;
-			queueCreateInfo.queueCount = family == graphicsFamily.value() ? initData.config.graphicsQueueCount : 1;
+			queueCreateInfo.queueCount = family == graphicsFamily.value() ? initInfo.config.graphicsQueueCount : 1;
 			queueCreateInfo.pQueuePriorities = &priority;
 			queueCreateInfos.push_back(std::move(queueCreateInfo));
 		}
@@ -172,15 +182,14 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 	return device;
 }
 
-void init(InitData const& initData)
+void init(InitInfo const& initInfo)
 {
 	std::vector<char const*> requiredLayers;
-	std::set<char const*> requiredExtensionsSet = {initData.config.instanceExtensions.begin(), initData.config.instanceExtensions.end()};
-	InitData::Flags flags;
-	flags.set(InitData::Flag::eValidation, InitData::Flag::eTest);
-	if (initData.options.flags.isSet(InitData::Flag::eValidation))
+	std::set<char const*> requiredExtensionsSet = {initInfo.config.instanceExtensions.begin(), initInfo.config.instanceExtensions.end()};
+	g_info.validationLog = initInfo.options.validationLog;
+	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
-		requiredExtensionsSet.emplace(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		requiredLayers.push_back("VK_LAYER_KHRONOS_validation");
 	}
 	std::vector<char const*> const requiredExtensions = {requiredExtensionsSet.begin(), requiredExtensionsSet.end()};
@@ -222,7 +231,7 @@ void init(InitData const& initData)
 	vk::DynamicLoader dl;
 	g_loader.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 	g_loader.init(instance);
-	if (initData.options.flags.isSet(InitData::Flag::eValidation))
+	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 		createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
@@ -240,21 +249,26 @@ void init(InitData const& initData)
 			throw std::runtime_error(e.what());
 		}
 	}
-	auto device = initDevice(instance, requiredLayers, initData);
-	vram::init(instance, device, g_info.physicalDevice);
+	auto device = initDevice(instance, requiredLayers, initInfo);
 
 	g_info.instance = instance;
 	g_info.device = device;
 	g_info.queues.graphics = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
 	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, 0);
+	vram::init();
+	rd::init();
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
 
 void deinit()
 {
-	resources::unloadAll();
+	rd::deinit();
 	vram::deinit();
+	if (g_pResources)
+	{
+		g_pResources->unloadAll();
+	}
 	if (g_info.device != vk::Device())
 	{
 		g_info.device.destroy();
@@ -268,6 +282,7 @@ void deinit()
 		g_info.instance.destroy();
 	}
 	g_info = Info();
+	LOG_I("[{}] and [{}] deinitialised", s_tInstance, s_tDevice);
 	return;
 }
 } // namespace
@@ -277,40 +292,24 @@ bool Info::isValid(vk::SurfaceKHR surface) const
 	return physicalDevice != vk::PhysicalDevice() ? physicalDevice.getSurfaceSupportKHR(queueFamilyIndices.present, surface) : false;
 }
 
-std::vector<u32> Info::uniqueQueueIndices(QFlags flags) const
+UniqueQueues Info::uniqueQueues(QFlags flags) const
 {
-	std::vector<u32> indices;
-	indices.reserve(3);
+	UniqueQueues ret;
+	ret.indices.reserve(3);
 	if (flags.isSet(QFlag::eGraphics))
 	{
-		indices.push_back(queueFamilyIndices.graphics);
+		ret.indices.push_back(queueFamilyIndices.graphics);
 	}
 	if (flags.isSet(QFlag::ePresent) && queueFamilyIndices.graphics != queueFamilyIndices.present)
 	{
-		indices.push_back(queueFamilyIndices.present);
+		ret.indices.push_back(queueFamilyIndices.present);
 	}
 	if (flags.isSet(QFlag::eTransfer) && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
 	{
-		indices.push_back(queueFamilyIndices.transfer);
+		ret.indices.push_back(queueFamilyIndices.transfer);
 	}
-	return indices;
-}
-
-vk::SharingMode Info::sharingMode(QFlags flags) const
-{
-	if (flags.isSet(QFlag::ePresent) && !flags.isSet(QFlag::eTransfer))
-	{
-		return queueFamilyIndices.graphics == queueFamilyIndices.present ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
-	}
-	if (!flags.isSet(QFlag::ePresent) && flags.isSet(QFlag::eTransfer))
-	{
-		return queueFamilyIndices.transfer != queueFamilyIndices.graphics ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
-	}
-	if (queueFamilyIndices.graphics == queueFamilyIndices.present && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
-	{
-		return vk::SharingMode::eExclusive;
-	}
-	return vk::SharingMode::eConcurrent;
+	ret.mode = ret.indices.size() > 1 ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+	return ret;
 }
 
 u32 Info::findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const
@@ -331,9 +330,9 @@ f32 Info::lineWidth(f32 desired) const
 	return std::clamp(desired, lineWidthMin, lineWidthMax);
 }
 
-Service::Service(InitData const& initData)
+Service::Service(InitInfo const& info)
 {
-	init(initData);
+	init(info);
 }
 
 Service::~Service()

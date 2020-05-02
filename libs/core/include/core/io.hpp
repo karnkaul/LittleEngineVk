@@ -105,24 +105,28 @@ class FileMonitor
 public:
 	enum class Mode : u8
 	{
-		eTimestamp = 0,
-		eContents
+		eTimestamp,
+		eTextContents,
+		eBinaryContents
 	};
 
 	enum class Status : u8
 	{
-		eUpToDate = 0,
+		eUpToDate,
 		eNotFound,
 		eModified,
 		eCOUNT_
 	};
 
 protected:
+	static FileReader s_reader;
+
+protected:
 	stdfs::file_time_type m_lastWriteTime = {};
 	stdfs::file_time_type m_lastModifiedTime = {};
 	stdfs::path m_path;
-	std::string m_contents;
-	FileReader m_reader;
+	std::string m_text;
+	bytearray m_bytes;
 	Mode m_mode;
 	Status m_status = Status::eNotFound;
 
@@ -140,6 +144,8 @@ public:
 	stdfs::file_time_type lastWriteTime() const;
 	stdfs::file_time_type lastModifiedTime() const;
 
-	std::string_view contents() const;
+	stdfs::path const& path() const;
+	std::string_view text() const;
+	bytearray const& bytes() const;
 };
 } // namespace le

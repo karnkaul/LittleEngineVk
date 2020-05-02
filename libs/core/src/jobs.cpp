@@ -15,7 +15,7 @@ std::unique_ptr<JobManager> uManager;
 
 std::shared_ptr<HJob> doNow(std::packaged_task<std::any()> task, std::optional<std::string> oName)
 {
-	std::string_view name = oName ? *oName : "unnamed";
+	std::string const& name = oName ? *oName : "unnamed";
 	LOG_E("[{}] Not initialised! Running [{}] Task on this thread!", utils::tName<JobManager>(), name);
 	std::shared_ptr<HJob> ret = std::make_shared<HJob>(-1, task.get_future());
 	task();

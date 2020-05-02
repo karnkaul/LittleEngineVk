@@ -48,5 +48,6 @@ void main()
 	fragPos = vec3(mats_m[objectID] * pos);
 	fragColour = vertColour;
 	fragNormal = normalize(vec3(mats_n[objectID] * vec4(vertNormal, 1.0)));
+	fragNormal = normalize(mat3(mats_n[objectID]) * vertNormal);
 	fragTexCoord = vertTexCoord;
 }

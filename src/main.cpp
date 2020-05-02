@@ -7,6 +7,7 @@
 #include "core/transform.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/gfx/camera.hpp"
 #include "engine/gfx/geometry.hpp"
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/mesh.hpp"
@@ -44,9 +45,11 @@ int main(int argc, char** argv)
 	// clang-format on
 	gfx::Mesh* pTriangle0 = g_pResources->create<gfx::Mesh>("meshes/triangle0", triangle0info);
 
-	gfx::Mesh::Info quad0info;
-	quad0info.geometry = gfx::createCubedSphere(1.0f, 16);
-	gfx::Mesh* pQuad0 = g_pResources->create<gfx::Mesh>("meshes/quad0", quad0info);
+	gfx::Mesh::Info meshInfo;
+	meshInfo.geometry = gfx::createCone();
+	gfx::Mesh* pMesh0 = g_pResources->create<gfx::Mesh>("mesh0", meshInfo);
+	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
+	gfx::Mesh* pMesh1 = g_pResources->create<gfx::Mesh>("mesh1", meshInfo);
 
 	gfx::Material::Info texturedInfo;
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
@@ -54,19 +57,23 @@ int main(int argc, char** argv)
 
 	gfx::Texture::Info textureInfo;
 	textureInfo.pReader = g_uReader.get();
+	pMesh0->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
+	pMesh0->m_material.pMaterial = pTexturedLit;
+	pMesh0->m_material.tint.a = 0x88;
+	pMesh1->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
+	pMesh1->m_material.pMaterial = pTexturedLit;
+	pMesh1->m_material.tint.a = 0xcc;
 	textureInfo.assetID = "textures/container2.png";
-	// textureInfo.assetID = "textures/texture.jpg";
-	pQuad0->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
-	pQuad0->m_material.pMaterial = pTexturedLit;
-	pQuad0->m_material.tint.a = 0x88;
-	pQuad0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 	textureInfo.assetID = "textures/container2_specular.png";
-	pQuad0->m_material.pSpecular = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 
-	gfx::DirLight dirLight0, dirLight1;
+	gfx::DirLight dirLight0;
 	dirLight0.diffuse = Colour(0x0000ffff);
-	dirLight0.direction = glm::normalize(glm::vec3(-1.0, -1.0, -1.0));
+	dirLight0.direction = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
+	gfx::DirLight dirLight1;
 	dirLight1.diffuse = Colour(0xff00ffff);
+	dirLight1.direction = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
 
 	Window w0, w1;
 	Window::Info info0;
@@ -115,9 +122,11 @@ int main(int argc, char** argv)
 		pipelineInfo.name = name;
 		pipelineInfo.polygonMode = mode;
 		pipelineInfo.lineWidth = lineWidth;
+		// pipelineInfo.cullMode = gfx::CullMode::eClockwise;
 		pipelineInfo.bBlend = true;
 		return pRenderer->createPipeline(std::move(pipelineInfo));
 	};
+	gfx::FreeCam freeCam(&w0);
 	if (w1.create(info1) && w0.create(info0))
 	{
 		gfx::Pipeline *pPipeline0 = nullptr, *pPipeline0wf = nullptr, *pPipeline1 = nullptr;
@@ -135,10 +144,12 @@ int main(int argc, char** argv)
 		}
 
 		gfx::Renderer::View view0;
-		glm::vec3 cam0Pos = {0.0f, 2.0f, 2.0f};
-		Transform transform0;
+		gfx::Renderer::View view1;
+		freeCam.m_position = {0.0f, 1.0f, 2.0f};
+		Transform transform0, transform01;
 		Transform transform1;
 		transform0.setPosition({0.0f, 0.0f, -2.0f});
+		transform01.setPosition({1.0f, 1.0f, -2.0f});
 
 		Time t = Time::elapsed();
 		while (w0.isOpen() || w1.isOpen())
@@ -171,18 +182,23 @@ int main(int argc, char** argv)
 				g_pResources->update();
 				w0.renderer().update();
 				w1.renderer().update();
+				
+				freeCam.tick(dt);
 
 				// Update matrices
 				transform0.setOrientation(glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+				transform01.setOrientation(glm::rotate(transform01.orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
 				transform1.setOrientation(glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
-				view0.mat_v = glm::lookAt(cam0Pos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-				view0.pos_v = cam0Pos;
+				view0.mat_v = freeCam.view();
+				view0.pos_v = freeCam.m_position;
+				view1.mat_v = glm::lookAt(view0.pos_v, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				view1.pos_v = freeCam.m_position;
 				if (w0.isOpen())
 				{
 					auto const size = w0.framebufferSize();
 					if (size.x > 0 && size.y > 0)
 					{
-						view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / (f32)size.y, 0.1f, 10.0f);
+						view0.mat_p = freeCam.perspectiveProj((f32)size.x / (f32)size.y);
 						view0.mat_vp = view0.mat_p * view0.mat_v;
 					}
 				}
@@ -191,8 +207,8 @@ int main(int argc, char** argv)
 					auto const size = w1.framebufferSize();
 					if (size.x > 0 && size.y > 0)
 					{
-						view0.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / (f32)size.y, 0.1f, 10.0f);
-						view0.mat_vp = view0.mat_p * view0.mat_v;
+						view1.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / (f32)size.y, 0.1f, 10.0f);
+						view1.mat_vp = view1.mat_p * view1.mat_v;
 					}
 				}
 			}
@@ -240,11 +256,11 @@ int main(int argc, char** argv)
 					scene.dirLights = {dirLight0, dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view0;
-					if (pQuad0->isReady() && pTriangle0->isReady())
+					if (pMesh0->isReady() && pTriangle0->isReady())
 					{
 						auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 						gfx::Renderer::Batch batch;
-						batch.drawables = {{pQuad0, &transform1, pPipeline}};
+						batch.drawables = {{pMesh0, &transform01, pPipeline}, {pMesh1, &transform0, pPipeline}};
 						if (bTEMP)
 						{
 							batch.drawables.push_back({pTriangle0, &transform0, pPipeline});
@@ -258,7 +274,7 @@ int main(int argc, char** argv)
 					gfx::Renderer::Scene scene;
 					scene.dirLights.push_back(dirLight0);
 					scene.clear.colour = Colour(0x030203ff);
-					scene.view = view0;
+					scene.view = view1;
 					if (pTriangle0->isReady())
 					{
 						gfx::Renderer::Batch batch;

@@ -147,6 +147,7 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	implInfo.setLayouts = {rd::g_setLayout};
 	implInfo.name = info.name;
 	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
+	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
 	implInfo.staticLineWidth = info.lineWidth;
 	implInfo.bBlend = info.bBlend;
 	implInfo.window = m_window;

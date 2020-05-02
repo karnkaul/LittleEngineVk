@@ -32,14 +32,23 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 		LOG_E("[{}] {}", name, VK_LOG_MSG);
 		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		LOG_W("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_info.validationLog <= (u8)log::Level::eWarning)
+		{
+			LOG_W("[{}] {}", name, VK_LOG_MSG);
+		}
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		LOG_I("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_info.validationLog <= (u8)log::Level::eInfo)
+		{
+			LOG_I("[{}] {}", name, VK_LOG_MSG);
+		}
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		LOG_D("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_info.validationLog <= (u8)log::Level::eDebug)
+		{
+			LOG_D("[{}] {}", name, VK_LOG_MSG);
+		}
 		break;
 	}
 	return false;
@@ -177,8 +186,7 @@ void init(InitInfo const& initInfo)
 {
 	std::vector<char const*> requiredLayers;
 	std::set<char const*> requiredExtensionsSet = {initInfo.config.instanceExtensions.begin(), initInfo.config.instanceExtensions.end()};
-	InitInfo::Flags flags;
-	flags.set(InitInfo::Flag::eValidation);
+	g_info.validationLog = initInfo.options.validationLog;
 	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
 		requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

@@ -166,6 +166,34 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
+f32 GamepadState::getAxis(PadAxis axis) const
+{
+	size_t idx = size_t(axis);
+#if defined(LEVK_USE_GLFW)
+	s32 max = 0;
+	glfwGetJoystickAxes(id, &max);
+	if (idx < (size_t)max)
+	{
+		return joyState.axes.at(idx);
+	}
+#endif
+	return 0.0f;
+}
+
+bool GamepadState::isPressed(Key button) const
+{
+	size_t idx = (size_t)button - (size_t)Key::eGamepadButtonA;
+#if defined(LEVK_USE_GLFW)
+	s32 max = 0;
+	glfwGetJoystickButtons(id, &max);
+	if (idx < (size_t)max)
+	{
+		return joyState.buttons[idx];
+	}
+#endif
+	return false;
+}
+
 NativeWindow::NativeWindow(Window::Info const& info)
 {
 #if defined(LEVK_USE_GLFW)

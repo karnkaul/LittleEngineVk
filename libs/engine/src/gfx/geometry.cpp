@@ -103,8 +103,8 @@ gfx::Geometry gfx::createCircle(f32 diameter, u16 points)
 	u32 const iCentre = ret.addVertex({{}, glm::vec3(1.0f), norm, {0.5f, 0.5f}});
 	for (s32 i = 0; i <= points; ++i)
 	{
-		f32 const x1 = glm::cos(glm::radians(arc * (f32)i));
-		f32 const y1 = glm::sin(glm::radians(arc * (f32)i));
+		f32 const x1 = glm::cos(glm::radians(arc * i));
+		f32 const y1 = glm::sin(glm::radians(arc * i));
 		f32 const s1 = (x1 + 1.0f) * 0.5f;
 		f32 const t1 = (y1 + 1.0f) * 0.5f;
 		u32 const iv1 = ret.addVertex({{r * x1, r * y1, 0.0f}, glm::vec3(1.0f), norm, {s1, t1}});
@@ -114,6 +114,42 @@ gfx::Geometry gfx::createCircle(f32 diameter, u16 points)
 		}
 	}
 	return ret;
+}
+
+gfx::Geometry gfx::createCone(f32 diam, f32 height, u16 points)
+{
+	ASSERT(points < 1000, "Max points is 1000");
+	f32 const r = diam * 0.5f;
+	Geometry verts;
+	f32 const angle = 360.0f / points;
+	glm::vec3 const nBase(0.0f, -1.0f, 0.0f);
+	verts.reserve(1 + (u32)points * 5, (u32)points * 5 * 3);
+	u32 const baseCentre = verts.addVertex({glm::vec3(0.0f), glm::vec3(1.0f), nBase, glm::vec2(0.5f)});
+	for (s32 i = 0; i < points; ++i)
+	{
+		f32 const x0 = glm::cos(glm::radians(angle * i));
+		f32 const z0 = glm::sin(glm::radians(angle * i));
+		f32 const x1 = glm::cos(glm::radians(angle * (i + 1)));
+		f32 const z1 = glm::sin(glm::radians(angle * (i + 1)));
+		f32 const s0 = (x0 + 1.0f) * 0.5f;
+		f32 const t0 = (z0 + 1.0f) * 0.5f;
+		f32 const s1 = (x1 + 1.0f) * 0.5f;
+		f32 const t1 = (z1 + 1.0f) * 0.5f;
+		glm::vec3 const v0(r * x0, 0.0f, r * z0);
+		glm::vec3 const v1(r * x1, 0.0f, r * z1);
+		// Base circle arc
+		u32 const i0 = verts.addVertex({v0, glm::vec3(1.0f), nBase, {s0, t0}});
+		u32 const i1 = verts.addVertex({v1, glm::vec3(1.0f), nBase, {s1, t1}});
+		verts.addIndices({baseCentre, i1, i0}); // reverse winding; bottom face is "front"
+		// Face
+		glm::vec3 const v2(0.0f, height, 0.0f);
+		auto const nFace = glm::normalize(glm::cross(v2 - v0, v1 - v0));
+		u32 const i2 = verts.addVertex({v0, glm::vec3(1.0f), nFace, {s0, 1.0f}});
+		u32 const i3 = verts.addVertex({v1, glm::vec3(1.0f), nFace, {s1, 1.0f}});
+		u32 const i4 = verts.addVertex({v2, glm::vec3(1.0f), nFace, {0.5f, 0.5f}});
+		verts.addIndices({i2, i3, i4});
+	}
+	return verts;
 }
 
 gfx::Geometry gfx::createCubedSphere(f32 diam, u8 quadsPerSide)

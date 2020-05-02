@@ -71,13 +71,13 @@ public:
 	static std::string const s_tName;
 
 public:
+	std::unique_ptr<class RendererImpl> m_uImpl;
+
+public:
 	Renderer();
 	Renderer(Renderer&&);
 	Renderer& operator=(Renderer&&);
 	~Renderer();
-
-public:
-	std::unique_ptr<class RendererImpl> m_uImpl;
 
 public:
 	Pipeline* createPipeline(Pipeline::Info info);

@@ -93,7 +93,8 @@ int main(int argc, char** argv)
 	bool bRecreate0 = false, bRecreate1 = false;
 	bool bClose0 = false, bClose1 = false;
 	bool bWF0 = false;
-	auto registerInput = [](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
+	bool bDisableCam = false;
+	auto registerInput = [&bDisableCam](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
 		token = self.registerInput([&](Key key, Action action, Mods mods) {
 			if (self.isOpen() && key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
 			{
@@ -102,6 +103,17 @@ int main(int argc, char** argv)
 			if (!other.isOpen() && (key == Key::eT || key == Key::eN) && action == Action::eRelease && mods & Mods::eCONTROL)
 			{
 				bRecreate = true;
+			}
+			if (key == Key::eLeftControl || key == Key::eRightControl)
+			{
+				if (bDisableCam && action == Action::eRelease)
+				{
+					bDisableCam = false;
+				}
+				if (!bDisableCam && action == Action::ePress)
+				{
+					bDisableCam = true;
+				}
 			}
 		});
 	};
@@ -187,6 +199,7 @@ int main(int argc, char** argv)
 				w0.renderer().update();
 				w1.renderer().update();
 
+				freeCam.m_state.flags.bits[(size_t)gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
 				freeCam.tick(dt);
 
 				// Update matrices
@@ -220,10 +233,12 @@ int main(int argc, char** argv)
 
 			if (w0.isClosing())
 			{
+				freeCam.reset(false, false);
 				w0.destroy();
 			}
 			if (w1.isClosing())
 			{
+				freeCam.reset(false, false);
 				w1.destroy();
 			}
 			if (bRecreate0)

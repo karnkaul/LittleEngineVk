@@ -133,7 +133,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		std::set<u32> uniqueFamilies = {(u32)graphicsFamily.value(), (u32)presentFamily.value()};
 		if (transferFamily.has_value())
 		{
-			uniqueFamilies.emplace(transferFamily.value());
+			uniqueFamilies.insert(transferFamily.value());
 		}
 		f32 priority = 1.0f;
 		for (auto family : uniqueFamilies)

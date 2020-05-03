@@ -230,14 +230,14 @@ std::vector<std::string> strings::tokenise(std::string_view s, char delimiter, s
 		}
 		if (start != end)
 		{
-			v.emplace_back(start, it);
+			v.push_back({start, it});
 			start = end;
 		}
 		bSkipThis = false;
 	}
 	if (start != end)
 	{
-		v.emplace_back(start, end);
+		v.push_back({start, end});
 	}
 	return v;
 }

@@ -1,9 +1,8 @@
 #pragma once
 #include <unordered_set>
 #include <utility>
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include "core/flags.hpp"
+#include "geometry.hpp"
 #include "engine/window/input_types.hpp"
 
 namespace le
@@ -13,11 +12,12 @@ class Window;
 
 namespace le::gfx
 {
+// Camera faces -Z
 class Camera
 {
 public:
-	glm::vec3 m_position = glm::vec3(0.0f);
-	glm::quat m_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+	glm::vec3 m_position = {};
+	glm::quat m_orientation = g_qIdentity;
 	f32 m_fov = 45.0f;
 
 public:
@@ -86,11 +86,9 @@ private:
 
 public:
 	FreeCam(Window* pWindow);
-	FreeCam(FreeCam&&);
-	FreeCam& operator=(FreeCam&&);
-	~FreeCam() override;
 
 public:
 	void tick(Time dt) override;
+	void reset(bool bOrientation, bool bPosition);
 };
 } // namespace le::gfx

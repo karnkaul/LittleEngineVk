@@ -3,8 +3,6 @@
 #include "core/log.hpp"
 #include "core/maths.hpp"
 #include "engine/gfx/geometry.hpp"
-// #include "engine/gfx/utils.hpp"
-// #include "engine/window/input.hpp"
 #include "engine/gfx/camera.hpp"
 #include "engine/window/window.hpp"
 
@@ -23,8 +21,8 @@ glm::mat4 Camera::view() const
 #if defined(LEVK_DEBUG)
 	if (s_bTEST)
 	{
-		glm::vec3 const nFront = -glm::normalize(glm::rotate(m_orientation, g_nFront));
-		glm::vec3 const nUp = glm::normalize(glm::rotate(m_orientation, g_nUp));
+		glm::vec3 const nFront = glm::normalize(m_orientation * -g_nFront);
+		glm::vec3 const nUp = glm::normalize(m_orientation * g_nUp);
 		return glm::lookAt(m_position, m_position + nFront, nUp);
 	}
 	else
@@ -60,37 +58,34 @@ FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
 	ASSERT(m_pWindow, "Window is null!");
 	m_state.speed = m_config.defaultSpeed;
 	m_tMove = m_pWindow->registerInput([this](Key key, Action action, Mods /*mods*/) {
-		if (m_state.flags.isSet(Flag::eEnabled))
+		switch (action)
 		{
-			switch (action)
+		case Action::ePress:
+		{
+			m_state.heldKeys.insert(key);
+			break;
+		}
+		case Action::eRelease:
+		{
+			if (!m_state.flags.isSet(Flag::eFixedSpeed) && key == Key::eMouseButton3)
 			{
-			case Action::ePress:
+				m_state.speed = m_config.defaultSpeed;
+			}
+			m_state.heldKeys.erase(key);
+			break;
+		}
+		default:
+			break;
+		}
+		if (key == Key::eMouseButton2 && m_state.flags.isSet(Flag::eEnabled))
+		{
+			bool const bLook = action == Action::ePress;
+			if (!bLook || !m_state.flags.isSet(Flag::eLooking))
 			{
-				m_state.heldKeys.emplace(key);
-				break;
+				m_state.flags.reset(Flag::eTracking);
 			}
-			case Action::eRelease:
-			{
-				if (!m_state.flags.isSet(Flag::eFixedSpeed) && key == Key::eMouseButton3)
-				{
-					m_state.speed = m_config.defaultSpeed;
-				}
-				m_state.heldKeys.erase(key);
-				break;
-			}
-			default:
-				break;
-			}
-			if (key == Key::eMouseButton2)
-			{
-				bool bLook = action == Action::ePress;
-				if (m_state.flags.isSet(Flag::eLooking) ^ bLook)
-				{
-					m_state.flags.reset(Flag::eTracking);
-				}
-				m_state.flags.bits[((size_t)Flag::eLooking)] = bLook;
-				m_pWindow->setCursorMode(bLook ? CursorMode::eDisabled : CursorMode::eDefault);
-			}
+			m_state.flags.bits[((size_t)Flag::eLooking)] = bLook;
+			m_pWindow->setCursorMode(bLook ? CursorMode::eDisabled : CursorMode::eDefault);
 		}
 	});
 	m_tLook = m_pWindow->registerMouse([this](f64 x, f64 y) {
@@ -110,32 +105,28 @@ FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
 	return;
 }
 
-FreeCam::FreeCam(FreeCam&&) = default;
-FreeCam& FreeCam::operator=(FreeCam&&) = default;
-FreeCam::~FreeCam() = default;
-
 void FreeCam::tick(Time dt)
 {
 	if (!m_state.flags.isSet(Flag::eEnabled))
 	{
 		return;
 	}
-	GamepadState pad0 = m_pWindow->getGamepadState(0);
-
+	GamepadState const pad0 = m_pWindow->getGamepadState(0);
+	f32 const dt_s = dt.to_s();
 	// Speed
 	if (!m_state.flags.isSet(Flag::eFixedSpeed))
 	{
 		if (pad0.isPressed(Key::eGamepadButtonLeftBumper))
 		{
-			m_state.dSpeed -= (dt.to_s() * 10);
+			m_state.dSpeed -= (dt_s * 10);
 		}
 		else if (pad0.isPressed(Key::eGamepadButtonRightBumper))
 		{
-			m_state.dSpeed += (dt.to_s() * 10);
+			m_state.dSpeed += (dt_s * 10);
 		}
 		if (m_state.dSpeed * m_state.dSpeed > 0.0f)
 		{
-			m_state.speed = maths::clamp(m_state.speed + (m_state.dSpeed * dt.to_s() * 100), m_config.minSpeed, m_config.maxSpeed);
+			m_state.speed = maths::clamp(m_state.speed + (m_state.dSpeed * dt_s * 100), m_config.minSpeed, m_config.maxSpeed);
 			m_state.dSpeed = maths::lerp(m_state.dSpeed, 0.0f, 0.75f);
 			if (m_state.dSpeed * m_state.dSpeed < 0.01f)
 			{
@@ -145,46 +136,47 @@ void FreeCam::tick(Time dt)
 	}
 
 	// Elevation
-	f32 elevation =
-		m_pWindow->triggerToAxis(pad0.getAxis(PadAxis::eRightTrigger)) - m_pWindow->triggerToAxis(pad0.getAxis(PadAxis::eLeftTrigger));
-	if (elevation * elevation > 0.01f)
+	glm::vec2 const padTrigger(pad0.getAxis(PadAxis::eRightTrigger), pad0.getAxis(PadAxis::eLeftTrigger));
+	f32 const elevation = Window::triggerToAxis(padTrigger.x) - Window::triggerToAxis(padTrigger.y);
+	if (std::abs(elevation) > 0.01f)
 	{
-		m_position.y += (elevation * dt.to_s() * m_state.speed);
+		m_position.y += (elevation * dt_s * m_state.speed);
 	}
 
 	// Look
-	f32 dLook = m_config.padLookSens * dt.to_s();
-	glm::vec2 const padRight(pad0.getAxis(PadAxis::eRightX), -pad0.getAxis(PadAxis::eRightY));
+	f32 dLook = m_config.padLookSens * dt_s;
+	glm::vec2 const padRight(pad0.getAxis(PadAxis::eRightX), pad0.getAxis(PadAxis::eRightY));
 	if (glm::length2(padRight) > m_config.padStickEpsilon)
 	{
-		m_state.pitch += (padRight.y * dLook);
 		m_state.yaw += (padRight.x * dLook);
+		m_state.pitch += (-padRight.y * dLook);
 	}
 
 	dLook = m_config.mouseLookSens;
-	glm::vec2 dCursorPos = m_state.cursorPos.second - m_state.cursorPos.first;
+	glm::vec2 const dCursorPos = m_state.cursorPos.second - m_state.cursorPos.first;
 	if (glm::length2(dCursorPos) > m_config.mouseLookEpsilon)
 	{
 		m_state.yaw += (dCursorPos.x * dLook);
 		m_state.pitch += (-dCursorPos.y * dLook);
 		m_state.cursorPos.first = m_state.cursorPos.second;
 	}
-	glm::quat pitch = glm::angleAxis(glm::radians(m_state.pitch), g_nRight);
-	glm::quat yaw = glm::angleAxis(glm::radians(m_state.yaw), -g_nUp);
+	glm::quat const pitch = glm::angleAxis(glm::radians(m_state.pitch), g_nRight);
+	glm::quat const yaw = glm::angleAxis(glm::radians(m_state.yaw), -g_nUp);
 	m_orientation = yaw * pitch;
 
 	// Move
-	glm::vec3 dPos = glm::vec3(0.0f);
+	glm::vec3 dPos = {};
 	glm::vec3 const nForward = glm::normalize(glm::rotate(m_orientation, -g_nFront));
 	glm::vec3 const nRight = glm::normalize(glm::rotate(m_orientation, g_nRight));
-	glm::vec2 const padLeft(pad0.getAxis(PadAxis::eLeftX), -pad0.getAxis(PadAxis::eLeftY));
+	glm::vec2 const padLeft(pad0.getAxis(PadAxis::eLeftX), pad0.getAxis(PadAxis::eLeftY));
 
 	if (glm::length2(padLeft) > m_config.padStickEpsilon)
 	{
-		dPos += (nForward * padLeft.y);
 		dPos += (nRight * padLeft.x);
+		dPos += (nForward * -padLeft.y);
 	}
 
+	glm::vec3 dPosKB = {};
 	for (auto key : m_state.heldKeys)
 	{
 		switch (key)
@@ -195,37 +187,54 @@ void FreeCam::tick(Time dt)
 		case Key::eW:
 		case Key::eUp:
 		{
-			dPos += nForward;
+			dPosKB += nForward;
 			break;
 		}
-
 		case Key::eD:
 		case Key::eRight:
 		{
-			dPos += nRight;
+			dPosKB += nRight;
 			break;
 		}
-
 		case Key::eS:
 		case Key::eDown:
 		{
-			dPos -= nForward;
+			dPosKB -= nForward;
 			break;
 		}
-
 		case Key::eA:
 		case Key::eLeft:
 		{
-			dPos -= nRight;
+			dPosKB -= nRight;
 			break;
 		}
 		}
 	}
+	if (glm::length2(dPosKB) > 0.0f)
+	{
+		dPos += glm::normalize(dPosKB);
+	}
 	if (glm::length2(dPos) > 0.0f)
 	{
-		dPos = glm::normalize(dPos);
-		m_position += (dPos * dt.to_s() * m_state.speed);
+		m_position += (dPos * dt_s * m_state.speed);
 	}
+	return;
+}
+
+void FreeCam::reset(bool bOrientation, bool bPosition)
+{
+	m_state.dSpeed = 0.0f;
+	if (bOrientation)
+	{
+		m_state.pitch = m_state.yaw = 0.0f;
+		m_orientation = g_qIdentity;
+	}
+	if (bPosition)
+	{
+		m_position = {};
+	}
+	m_state.heldKeys.clear();
+	m_state.flags.reset({Flag::eTracking, Flag::eLooking});
 	return;
 }
 } // namespace le::gfx

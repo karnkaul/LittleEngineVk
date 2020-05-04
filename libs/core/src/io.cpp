@@ -276,10 +276,15 @@ FileMonitor::~FileMonitor() = default;
 
 FileMonitor::Status FileMonitor::update()
 {
-	if (stdfs::is_regular_file(m_path))
+	std::error_code errCode;
+	if (stdfs::is_regular_file(m_path, errCode))
 	{
-		auto const lastWriteTime = stdfs::last_write_time(m_path);
-		if (lastWriteTime != m_lastWriteTime)
+		auto const lastWriteTime = stdfs::last_write_time(m_path, errCode);
+		if (errCode)
+		{
+			return m_status;
+		}
+		if (lastWriteTime != m_lastWriteTime || m_status == Status::eNotFound)
 		{
 			bool bDirty = m_lastWriteTime != stdfs::file_time_type();
 			m_lastWriteTime = lastWriteTime;

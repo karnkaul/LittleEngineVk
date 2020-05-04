@@ -68,6 +68,7 @@ int main(int argc, char** argv)
 	pMesh1->m_material.pMaterial = pTexturedLit;
 	pMesh1->m_material.tint.a = 0xcc;
 	textureInfo.assetID = "textures/container2.png";
+	pMesh0->m_material.flags.set(gfx::Material::Flag::eDropColour);
 	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 	textureInfo.assetID = "textures/container2_specular.png";
 	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);

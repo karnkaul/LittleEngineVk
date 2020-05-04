@@ -230,7 +230,7 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 			pc.objectID = objectID;
 			ssbos.models.ssbo.push_back(pTransform->model());
 			ssbos.normals.ssbo.push_back(pTransform->normalModel());
-			ssbos.materials.ssbo.push_back(*pMesh->m_material.pMaterial);
+			ssbos.materials.ssbo.push_back({*pMesh->m_material.pMaterial, pMesh->m_material.dropColour});
 			ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
 			ssbos.flags.ssbo.push_back(0);
 			if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
@@ -240,6 +240,10 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 			if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
 			{
 				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eOPAQUE;
+			}
+			if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
+			{
+				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eDROP_COLOUR;
 			}
 			if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 			{

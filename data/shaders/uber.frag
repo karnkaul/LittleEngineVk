@@ -5,12 +5,14 @@ const uint MAX_TEXTURES = 1024;
 const uint eTEXTURED = 1 << 0;
 const uint eLIT = 1 << 1;
 const uint eOPAQUE = 1 << 2;
+const uint eDROP_COLOUR = 1 << 3;
 
 struct Material
 {
 	vec4 ambient;
 	vec4 diffuse;
 	vec4 specular;
+	vec4 dropColour;
 	float shininess;
 };
 
@@ -114,7 +116,7 @@ void main()
 	{
 		outColour.a = 1.0;
 	}
-	if (outColour.a < 0.1)
+	if (outColour.a < 0.1 || ((flags[objectID] & eDROP_COLOUR) != 0 && vec3(outColour) == vec3(materials[objectID].dropColour)))
 	{
 		discard;
 	}

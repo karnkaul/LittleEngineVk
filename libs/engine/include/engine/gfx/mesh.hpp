@@ -25,6 +25,7 @@ public:
 		eTextured,
 		eLit,
 		eOpaque,
+		eDropColour,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
@@ -35,6 +36,7 @@ public:
 		Texture* pDiffuse = nullptr;
 		Texture* pSpecular = nullptr;
 		Colour tint = colours::White;
+		Colour dropColour = colours::Black;
 		Flags flags;
 	};
 

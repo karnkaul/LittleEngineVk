@@ -64,6 +64,7 @@ public:
 	static std::string const s_tName;
 
 public:
+	glm::ivec2 m_size = {};
 	Sampler* m_pSampler;
 	std::unique_ptr<struct TextureImpl> m_uImpl;
 

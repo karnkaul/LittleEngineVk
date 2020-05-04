@@ -57,10 +57,11 @@ struct SSBOMaterials final
 		alignas(16) glm::vec4 ambient;
 		alignas(16) glm::vec4 diffuse;
 		alignas(16) glm::vec4 specular;
+		alignas(16) glm::vec4 dropColour;
 		alignas(16) f32 shininess;
 
 		Mat() = default;
-		Mat(Material const& material);
+		Mat(Material const& material, Colour dropColour);
 	};
 
 	std::vector<Mat> ssbo;
@@ -82,6 +83,7 @@ struct SSBOFlags final
 		eTEXTURED = 1 << 0,
 		eLIT = 1 << 1,
 		eOPAQUE = 1 << 2,
+		eDROP_COLOUR = 1 << 3,
 	};
 
 	std::vector<u32> ssbo;

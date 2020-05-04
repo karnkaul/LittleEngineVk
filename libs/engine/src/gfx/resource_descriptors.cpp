@@ -43,10 +43,11 @@ UBOView::UBOView(Renderer::View const& view, u32 dirLightCount)
 {
 }
 
-SSBOMaterials::Mat::Mat(Material const& material)
+SSBOMaterials::Mat::Mat(Material const& material, Colour dropColour)
 	: ambient(material.m_albedo.ambient.toVec4()),
 	  diffuse(material.m_albedo.diffuse.toVec4()),
 	  specular(material.m_albedo.specular.toVec4()),
+	  dropColour(dropColour.toVec4()),
 	  shininess(material.m_shininess)
 {
 }

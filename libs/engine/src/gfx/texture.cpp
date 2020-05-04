@@ -90,6 +90,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	}
 	if (info.raw.bytes.extent > 0)
 	{
+		m_size = info.raw.size;
 		m_uImpl->raw = std::move(info.raw);
 	}
 	else if (!info.imgBytes.empty())
@@ -200,7 +201,7 @@ Asset::Status Texture::update()
 			auto currentStatus = file.monitor.update();
 			if (currentStatus == FileMonitor::Status::eNotFound)
 			{
-				LOG_E("[{}] [{}] Resource lost!", s_tName, m_id.generic_string());
+				LOG_W("[{}] [{}] Resource not ready / lost!", s_tName, m_id.generic_string());
 			}
 			else if (lastStatus == FileMonitor::Status::eModified && currentStatus == FileMonitor::Status::eUpToDate)
 			{
@@ -240,16 +241,16 @@ TResult<bytearray> Texture::idToImg(stdfs::path const& id, IOReader const* pRead
 
 bool Texture::imgToRaw(bytearray imgBytes)
 {
-	s32 width, height, ch;
+	s32 ch;
 	auto pIn = reinterpret_cast<stbi_uc const*>(imgBytes.data());
-	auto pOut = stbi_load_from_memory(pIn, (s32)imgBytes.size(), &width, &height, &ch, 4);
+	auto pOut = stbi_load_from_memory(pIn, (s32)imgBytes.size(), &m_size.x, &m_size.y, &ch, 4);
 	if (!pOut)
 	{
 		LOG_E("[{}] [{}] Failed to load image data!", s_tName, m_id.generic_string());
 		return false;
 	}
-	size_t const size = (size_t)(width * height * 4);
-	m_uImpl->raw.size = {width, height};
+	size_t const size = (size_t)(m_size.x * m_size.y * 4);
+	m_uImpl->raw.size = m_size;
 	m_uImpl->raw.bytes = ArrayView(pOut, size);
 	m_uImpl->bStbiRaw = true;
 	return true;

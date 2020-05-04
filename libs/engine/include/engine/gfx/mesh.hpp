@@ -26,6 +26,7 @@ public:
 		eLit,
 		eOpaque,
 		eDropColour,
+		eUI,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
@@ -72,6 +73,9 @@ public:
 public:
 	Mesh(stdfs::path id, Info info);
 	~Mesh() override;
+
+public:
+	void updateGeometry(Geometry geometry);
 
 public:
 	Status update() override;

@@ -226,6 +226,7 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 		pushConstants.back().reserve(batch.drawables.size());
 		for (auto [pMesh, pTransform, _] : batch.drawables)
 		{
+			ASSERT(pMesh && pTransform && pMesh->m_material.pMaterial, "Mesh / Transform / Material is null!");
 			rd::PushConstants pc;
 			pc.objectID = objectID;
 			ssbos.models.ssbo.push_back(pTransform->model());
@@ -244,6 +245,10 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 			if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
 			{
 				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eDROP_COLOUR;
+			}
+			if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
+			{
+				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
 			}
 			if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 			{
@@ -317,6 +322,7 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 		vk::Pipeline pipeline;
 		for (auto [pMesh, pTransform, pPipeline] : batch.drawables)
 		{
+			ASSERT(pPipeline, "Pipeline is null!");
 			if (pipeline != pPipeline->m_uImpl->m_pipeline)
 			{
 				pipeline = pPipeline->m_uImpl->m_pipeline;
@@ -326,10 +332,10 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 			vk::DeviceSize offsets[] = {0};
 			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
 			commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, pushConstants.at(batchIdx).at(drawableIdx));
-			commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer, offsets);
+			commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, offsets);
 			if (pMesh->m_uImpl->indexCount > 0)
 			{
-				commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer, 0, vk::IndexType::eUint32);
+				commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
 				commandBuffer.drawIndexed(pMesh->m_uImpl->indexCount, 1, 0, 0, 0);
 			}
 			else

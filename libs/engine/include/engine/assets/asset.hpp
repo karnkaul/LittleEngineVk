@@ -50,7 +50,7 @@ protected:
 	Status m_status = Status::eReady;
 
 public:
-	Asset(stdfs::path id);
+	explicit Asset(stdfs::path id);
 	virtual ~Asset();
 
 public:

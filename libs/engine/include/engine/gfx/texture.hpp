@@ -28,6 +28,7 @@ public:
 	{
 		Filter min = Filter::eLinear;
 		Filter mag = Filter::eLinear;
+		Filter mip = Filter::eLinear;
 		Mode mode = Mode::eRepeat;
 	};
 

@@ -15,6 +15,7 @@ namespace le::gfx
 namespace
 {
 std::array const g_filters = {vk::Filter::eLinear, vk::Filter::eNearest};
+std::array const g_mipModes = {vk::SamplerMipmapMode::eLinear, vk::SamplerMipmapMode::eNearest};
 std::array const g_modes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToBorder};
 
 vk::Fence load(Image* out_pImage, glm::ivec2 const& size, ArrayView<u8> bytes, [[maybe_unused]] std::string const& name)
@@ -53,7 +54,7 @@ Sampler::Sampler(stdfs::path id, Info info) : Asset(std::move(id))
 	samplerInfo.unnormalizedCoordinates = false;
 	samplerInfo.compareEnable = false;
 	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+	samplerInfo.mipmapMode = g_mipModes.at((size_t)info.mip);
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;

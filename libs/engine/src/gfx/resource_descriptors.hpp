@@ -84,6 +84,7 @@ struct SSBOFlags final
 		eLIT = 1 << 1,
 		eOPAQUE = 1 << 2,
 		eDROP_COLOUR = 1 << 3,
+		eUI = 1 << 4,
 	};
 
 	std::vector<u32> ssbo;

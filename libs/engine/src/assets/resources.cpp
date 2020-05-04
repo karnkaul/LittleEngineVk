@@ -2,6 +2,7 @@
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/gfx/font.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/texture.hpp"
 
@@ -54,6 +55,11 @@ void Resources::init()
 {
 	create<gfx::Material>("materials/default", {});
 	create<gfx::Sampler>("samplers/default", {});
+	gfx::Sampler::Info fontSampler;
+	fontSampler.mode = gfx::Sampler::Mode::eClampEdge;
+	fontSampler.min = gfx::Sampler::Filter::eNearest;
+	fontSampler.mip = gfx::Sampler::Filter::eNearest;
+	create<gfx::Sampler>("samplers/font", std::move(fontSampler));
 	gfx::Texture::Info textureInfo;
 	static std::array<u8, 4> const white1pxBytes = {0xff, 0xff, 0xff, 0xff};
 	static std::array<u8, 4> const black1pxBytes = {0x0, 0x0, 0x0, 0x0};

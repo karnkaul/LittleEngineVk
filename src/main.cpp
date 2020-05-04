@@ -1,4 +1,5 @@
 #include "core/assert.hpp"
+#include "core/gdata.hpp"
 #include "core/io.hpp"
 #include "core/jobs.hpp"
 #include "core/log.hpp"
@@ -8,6 +9,7 @@
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/camera.hpp"
+#include "engine/gfx/font.hpp"
 #include "engine/gfx/geometry.hpp"
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/mesh.hpp"
@@ -37,7 +39,13 @@ int main(int argc, char** argv)
 	tutorialShaderInfo.pReader = g_uReader.get();
 	tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
 	tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
-	auto pShader = g_pResources->create<gfx::Shader>("shaders/uber", tutorialShaderInfo);
+	auto pShader = g_pResources->create<gfx::Shader>("shaders/uber", std::move(tutorialShaderInfo));
+
+	gfx::Font::Info fontInfo;
+	GData fontData(g_uReader->getString("fonts/default.json").payload);
+	fontInfo.deserialise(fontData);
+	fontInfo.image = g_uReader->getBytes(stdfs::path("fonts") / fontInfo.sheetID).payload;
+	auto pFont = g_pResources->create<gfx::Font>("fonts/default", std::move(fontInfo));
 
 	gfx::Mesh::Info triangle0info;
 	// clang-format off
@@ -143,7 +151,18 @@ int main(int argc, char** argv)
 		pipelineInfo.bBlend = true;
 		return pRenderer->createPipeline(std::move(pipelineInfo));
 	};
+
 	gfx::FreeCam freeCam(&w0);
+
+	gfx::Text2D text;
+	gfx::Text2D::Info textInfo;
+	textInfo.data.colour = colours::White;
+	textInfo.data.scale = 0.25f;
+	textInfo.pFont = pFont;
+	textInfo.pShader = pShader;
+	textInfo.id = "text-Hello";
+	text.setup(textInfo);
+
 	if (w1.create(info1) && w0.create(info0))
 	{
 		gfx::Pipeline *pPipeline0 = nullptr, *pPipeline0wf = nullptr, *pPipeline1 = nullptr;
@@ -165,6 +184,7 @@ int main(int argc, char** argv)
 		freeCam.m_position = {0.0f, 1.0f, 2.0f};
 		Transform transform0, transform01;
 		Transform transform1;
+		Transform textTransform;
 		transform0.setPosition({0.0f, 0.0f, -2.0f});
 		transform01.setPosition({1.0f, 1.0f, -2.0f});
 
@@ -174,7 +194,6 @@ int main(int argc, char** argv)
 			[[maybe_unused]] Time dt = Time::elapsed() - t;
 			t = Time::elapsed();
 
-			static Time fpsLogTime = Time::from_s(3.0f);
 			static Time fpsLogElapsed;
 			static Time fpsElapsed;
 			static u32 fps = 0;
@@ -188,13 +207,6 @@ int main(int argc, char** argv)
 				frames = 0;
 				fpsElapsed = Time();
 			}
-			if (fpsLogElapsed >= fpsLogTime)
-			{
-				LOG_I("dt: {}, FPS: {}", dt.to_s() * 1000, fps);
-				fps = 0;
-				fpsLogElapsed = Time();
-			}
-
 			{
 				g_pResources->update();
 				w0.renderer().update();
@@ -202,6 +214,8 @@ int main(int argc, char** argv)
 
 				freeCam.m_state.flags.bits[(size_t)gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
 				freeCam.tick(dt);
+
+				text.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
 
 				// Update matrices
 				transform0.setOrientation(glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -217,6 +231,7 @@ int main(int argc, char** argv)
 					auto const size = w0.framebufferSize();
 					if (size.x > 0 && size.y > 0)
 					{
+						view0.mat_ui = freeCam.uiProj({size, 2.0f});
 						view0.mat_p = freeCam.perspectiveProj((f32)size.x / (f32)size.y);
 						view0.mat_vp = view0.mat_p * view0.mat_v;
 					}
@@ -277,20 +292,18 @@ int main(int argc, char** argv)
 					scene.dirLights = {dirLight0, dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view0;
-					if (pMesh0->isReady() && pTriangle0->isReady())
+					auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
+					gfx::Renderer::Batch batch;
+					batch.drawables = {
+						{pMesh0, &transform01, pPipeline}, {pMesh1, &transform0, pPipeline}, {text.mesh(), &textTransform, pPipeline}};
+					if (bTEMP)
 					{
-						auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
-						gfx::Renderer::Batch batch;
-						batch.drawables = {{pMesh0, &transform01, pPipeline}, {pMesh1, &transform0, pPipeline}};
-						if (bTEMP)
-						{
-							batch.drawables.push_back({pTriangle0, &transform0, pPipeline});
-						}
-						scene.batches.push_back(std::move(batch));
-						w0.renderer().render(scene);
+						batch.drawables.push_back({pTriangle0, &transform0, pPipeline});
 					}
+					scene.batches.push_back(std::move(batch));
+					w0.renderer().render(scene);
 				}
-				if (w1.isOpen() && pTriangle0->isReady())
+				if (w1.isOpen())
 				{
 					gfx::Renderer::Scene scene;
 					scene.dirLights.push_back(dirLight0);

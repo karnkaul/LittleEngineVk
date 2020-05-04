@@ -1,11 +1,13 @@
 #pragma once
 #include <array>
+#include <deque>
 #include <filesystem>
 #include <functional>
 #include <map>
 #include <optional>
 #include <set>
 #include <unordered_map>
+#include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
@@ -206,10 +208,16 @@ struct TextureImpl final
 
 struct MeshImpl final
 {
-	Buffer vbo;
-	Buffer ibo;
-	vk::Fence vboCopied;
-	vk::Fence iboCopied;
+	struct Data
+	{
+		Buffer buffer;
+		vk::Fence copied;
+	};
+	
+	Data vbo;
+	Data ibo;
+	std::deque<Data> oldVbo;
+	std::deque<Data> oldIbo;
 	u32 vertexCount = 0;
 	u32 indexCount = 0;
 };

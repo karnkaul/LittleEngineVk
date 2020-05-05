@@ -212,14 +212,13 @@ struct MeshImpl final
 	{
 		Buffer buffer;
 		vk::Fence copied;
+		u32 count = 0;
+		void* pMem = nullptr;
 	};
 	
 	Data vbo;
 	Data ibo;
-	std::deque<Data> oldVbo;
-	std::deque<Data> oldIbo;
-	u32 vertexCount = 0;
-	u32 indexCount = 0;
+	std::deque<Data> toRelease;
 };
 
 namespace vbo

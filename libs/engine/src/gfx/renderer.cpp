@@ -215,15 +215,15 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 	u32 diffuseID = 0;
 	u32 specularID = 0;
 	rd::SSBOs ssbos;
-	std::vector<std::vector<rd::PushConstants>> pushConstants;
-	pushConstants.reserve(scene.batches.size());
+	std::vector<std::vector<rd::PushConstants>> push;
+	push.reserve(scene.batches.size());
 	frame.set.update();
 	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
 	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
 	for (auto& batch : scene.batches)
 	{
-		pushConstants.push_back({});
-		pushConstants.back().reserve(batch.drawables.size());
+		push.push_back({});
+		push.back().reserve(batch.drawables.size());
 		for (auto [pMesh, pTransform, _] : batch.drawables)
 		{
 			ASSERT(pMesh && pTransform && pMesh->m_material.pMaterial, "Mesh / Transform / Material is null!");
@@ -269,7 +269,7 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 					pc.specularID = specularID++;
 				}
 			}
-			pushConstants.back().push_back(pc);
+			push.back().push_back(pc);
 			++objectID;
 			ASSERT(objectID == (u32)ssbos.models.ssbo.size(), "Index mismatch! Expect UB in shaders");
 		}
@@ -322,27 +322,30 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 		vk::Pipeline pipeline;
 		for (auto [pMesh, pTransform, pPipeline] : batch.drawables)
 		{
-			ASSERT(pPipeline, "Pipeline is null!");
-			if (pipeline != pPipeline->m_uImpl->m_pipeline)
+			if (pMesh->isReady())
 			{
-				pipeline = pPipeline->m_uImpl->m_pipeline;
-				commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+				ASSERT(pPipeline, "Pipeline is null!");
+				if (pipeline != pPipeline->m_uImpl->m_pipeline)
+				{
+					pipeline = pPipeline->m_uImpl->m_pipeline;
+					commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+				}
+				auto layout = pPipeline->m_uImpl->m_layout;
+				vk::DeviceSize offsets[] = {0};
+				commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
+				commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
+				commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, offsets);
+				if (pMesh->m_uImpl->ibo.count > 0)
+				{
+					commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
+					commandBuffer.drawIndexed(pMesh->m_uImpl->ibo.count, 1, 0, 0, 0);
+				}
+				else
+				{
+					commandBuffer.draw(pMesh->m_uImpl->vbo.count, 1, 0, 0);
+				}
+				pipelines.insert(pPipeline->m_uImpl.get());
 			}
-			auto layout = pPipeline->m_uImpl->m_layout;
-			vk::DeviceSize offsets[] = {0};
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
-			commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, pushConstants.at(batchIdx).at(drawableIdx));
-			commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, offsets);
-			if (pMesh->m_uImpl->indexCount > 0)
-			{
-				commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
-				commandBuffer.drawIndexed(pMesh->m_uImpl->indexCount, 1, 0, 0, 0);
-			}
-			else
-			{
-				commandBuffer.draw(pMesh->m_uImpl->vertexCount, 1, 0, 0);
-			}
-			pipelines.insert(pPipeline->m_uImpl.get());
 			++drawableIdx;
 		}
 		drawableIdx = 0;

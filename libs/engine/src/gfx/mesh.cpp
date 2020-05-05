@@ -12,14 +12,22 @@ namespace le::gfx
 {
 namespace
 {
-Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsageFlagBits usage)
+Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsageFlagBits usage, bool bHostVisible)
 {
 	BufferInfo bufferInfo;
 	bufferInfo.size = size;
-	bufferInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+	if (bHostVisible)
+	{
+		bufferInfo.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+	}
+	else
+	{
+		bufferInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
 	bufferInfo.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
-	bufferInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	bufferInfo.name = name;
 	return vram::createBuffer(bufferInfo);
 };
@@ -36,7 +44,7 @@ Asset::Status Material::update()
 	return m_status;
 }
 
-Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id))
+Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id)), m_type(info.type)
 {
 	auto const idStr = m_id.generic_string();
 	m_uImpl = std::make_unique<MeshImpl>();
@@ -51,6 +59,17 @@ Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id))
 
 Mesh::~Mesh()
 {
+	if (m_type == Type::eDynamic)
+	{
+		if (m_uImpl->vbo.pMem)
+		{
+			vram::unmapMemory(m_uImpl->vbo.buffer);
+		}
+		if (m_uImpl->ibo.pMem)
+		{
+			vram::unmapMemory(m_uImpl->ibo.buffer);
+		}
+	}
 	vram::release(m_uImpl->vbo.buffer, m_uImpl->ibo.buffer);
 }
 
@@ -63,32 +82,61 @@ void Mesh::updateGeometry(Geometry geometry)
 	auto const idStr = m_id.generic_string();
 	auto const vSize = (vk::DeviceSize)geometry.vertices.size() * sizeof(Vertex);
 	auto const iSize = (vk::DeviceSize)geometry.indices.size() * sizeof(u32);
+	auto const bHostVisible = m_type == Type::eDynamic;
 	if (vSize > m_uImpl->vbo.buffer.writeSize)
 	{
 		if (m_uImpl->vbo.buffer.writeSize > 0)
 		{
-			m_uImpl->oldVbo.push_back(std::move(m_uImpl->vbo));
+			m_uImpl->toRelease.push_back(std::move(m_uImpl->vbo));
+			m_uImpl->vbo = {};
 		}
 		std::string const name = idStr + "_VBO";
-		m_uImpl->vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer);
+		m_uImpl->vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer, bHostVisible);
+		if (bHostVisible)
+		{
+			m_uImpl->vbo.pMem = vram::mapMemory(m_uImpl->vbo.buffer, vSize);
+		}
 	}
 	if (iSize > m_uImpl->ibo.buffer.writeSize)
 	{
 		if (m_uImpl->ibo.buffer.writeSize > 0)
 		{
-			m_uImpl->oldIbo.push_back(std::move(m_uImpl->ibo));
+			m_uImpl->toRelease.push_back(std::move(m_uImpl->ibo));
+			m_uImpl->ibo = {};
 		}
 		std::string const name = idStr + "_IBO";
-		m_uImpl->ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer);
+		m_uImpl->ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer, bHostVisible);
+		if (bHostVisible)
+		{
+			m_uImpl->ibo.pMem = vram::mapMemory(m_uImpl->ibo.buffer, iSize);
+		}
 	}
-	m_uImpl->vbo.copied = vram::stage(m_uImpl->vbo.buffer, geometry.vertices.data(), vSize);
-	if (!geometry.indices.empty())
+	switch (m_type)
 	{
-		m_uImpl->ibo.copied = vram::stage(m_uImpl->ibo.buffer, geometry.indices.data(), iSize);
+	case Type::eStatic:
+	{
+		m_uImpl->vbo.copied = vram::stage(m_uImpl->vbo.buffer, geometry.vertices.data(), vSize);
+		if (!geometry.indices.empty())
+		{
+			m_uImpl->ibo.copied = vram::stage(m_uImpl->ibo.buffer, geometry.indices.data(), iSize);
+		}
+		m_status = Status::eLoading;
+		break;
 	}
-	m_uImpl->vertexCount = (u32)geometry.vertices.size();
-	m_uImpl->indexCount = (u32)geometry.indices.size();
-	m_status = Status::eLoading;
+	case Type::eDynamic:
+	{
+		std::memcpy(m_uImpl->vbo.pMem, geometry.vertices.data(), vSize);
+		if (!geometry.indices.empty())
+		{
+			std::memcpy(m_uImpl->ibo.pMem, geometry.indices.data(), iSize);
+		}
+		break;
+	}
+	default:
+		break;
+	}
+	m_uImpl->vbo.count = (u32)geometry.vertices.size();
+	m_uImpl->ibo.count = (u32)geometry.indices.size();
 	return;
 }
 
@@ -101,16 +149,19 @@ Asset::Status Mesh::update()
 			m_status = Status::eReady;
 		}
 	}
-	auto removeCopied = [](MeshImpl::Data const& data) -> bool {
+	auto removeCopied = [this](MeshImpl::Data const& data) -> bool {
 		if (isSignalled(data.copied))
 		{
+			if (m_type == Type::eDynamic)
+			{
+				vram::unmapMemory(data.buffer);
+			}
 			vram::release(data.buffer);
 			return true;
 		}
 		return false;
 	};
-	m_uImpl->oldVbo.erase(std::remove_if(m_uImpl->oldVbo.begin(), m_uImpl->oldVbo.end(), removeCopied), m_uImpl->oldVbo.end());
-	m_uImpl->oldIbo.erase(std::remove_if(m_uImpl->oldIbo.begin(), m_uImpl->oldIbo.end(), removeCopied), m_uImpl->oldIbo.end());
+	m_uImpl->toRelease.erase(std::remove_if(m_uImpl->toRelease.begin(), m_uImpl->toRelease.end(), removeCopied), m_uImpl->toRelease.end());
 	return m_status;
 }
 } // namespace le::gfx

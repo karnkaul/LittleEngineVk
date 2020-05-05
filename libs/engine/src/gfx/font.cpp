@@ -263,6 +263,7 @@ bool Text2D::setup(Info info)
 	meshID += "_mesh";
 	meshInfo.material = info.pFont->m_material;
 	meshInfo.geometry = info.pFont->generate(m_data);
+	meshInfo.type = Mesh::Type::eDynamic;
 	m_uMesh = std::make_unique<Mesh>(std::move(meshID), std::move(meshInfo));
 	m_uMesh->m_material = info.pFont->m_material;
 	return true;

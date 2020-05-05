@@ -57,18 +57,29 @@ public:
 	Status update() override;
 };
 
-class Mesh final : public Asset
+class Mesh : public Asset
 {
 public:
+	enum class Type : u8
+	{
+		eStatic,
+		eDynamic,
+		eCOUNT_
+	};
+
 	struct Info final
 	{
 		Geometry geometry;
 		Material::Inst material;
+		Type type = Type::eStatic;
 	};
 
 public:
 	Material::Inst m_material;
 	std::unique_ptr<struct MeshImpl> m_uImpl;
+
+protected:
+	Type m_type;
 
 public:
 	Mesh(stdfs::path id, Info info);

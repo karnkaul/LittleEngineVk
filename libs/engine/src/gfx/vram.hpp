@@ -34,6 +34,8 @@ void deinit();
 
 Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
 bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
+[[nodiscard]] void* mapMemory(Buffer const& src, vk::DeviceSize size = 0);
+void unmapMemory(Buffer const& buffer);
 [[nodiscard]] vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
 [[nodiscard]] vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 

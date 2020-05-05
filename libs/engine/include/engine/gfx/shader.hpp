@@ -28,10 +28,8 @@ public:
 public:
 	static std::string const s_tName;
 
-public:
-	std::unique_ptr<struct ShaderImpl> m_uImpl;
-
 private:
+	std::unique_ptr<struct ShaderImpl> m_uImpl;
 	FileReader const* m_pReader = nullptr;
 
 public:
@@ -47,6 +45,10 @@ private:
 	void loadAllSpirV(std::array<bytearray, (size_t)Type::eCOUNT_> const& byteMap);
 
 	static std::string extension(stdfs::path const& id);
+
+private:
+	friend class Pipeline;
+	friend class PipelineImpl;
 };
 
 class ShaderCompiler final

@@ -76,9 +76,9 @@ public:
 
 public:
 	Material::Inst m_material;
-	std::unique_ptr<struct MeshImpl> m_uImpl;
 
 protected:
+	std::unique_ptr<struct MeshImpl> m_uImpl;
 	Type m_type;
 
 public:
@@ -90,5 +90,9 @@ public:
 
 public:
 	Status update() override;
+
+private:
+	friend class Renderer;
+	friend class RendererImpl;
 };
 } // namespace le::gfx

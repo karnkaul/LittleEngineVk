@@ -6,7 +6,8 @@
 namespace le
 {
 class Transform;
-}
+class WindowImpl;
+} // namespace le
 
 namespace le::gfx
 {
@@ -70,7 +71,7 @@ public:
 public:
 	static std::string const s_tName;
 
-public:
+private:
 	std::unique_ptr<class RendererImpl> m_uImpl;
 
 public:
@@ -84,5 +85,8 @@ public:
 
 	void update();
 	void render(Scene const& scene);
+
+private:
+	friend class le::WindowImpl;
 };
 } // namespace le::gfx

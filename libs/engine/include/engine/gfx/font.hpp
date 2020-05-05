@@ -102,11 +102,9 @@ public:
 
 protected:
 	Font::Text m_data;
+	std::unique_ptr<Mesh> m_uMesh;
 	Font* m_pFont = nullptr;
 	Shader* m_pShader = nullptr;
-
-protected:
-	std::unique_ptr<Mesh> m_uMesh;
 
 public:
 	bool setup(Info info);

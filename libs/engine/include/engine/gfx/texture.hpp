@@ -6,6 +6,11 @@
 
 namespace le::gfx
 {
+namespace rd
+{
+struct ShaderWriter;
+}
+
 class Sampler final : public Asset
 {
 public:
@@ -32,7 +37,7 @@ public:
 		Mode mode = Mode::eRepeat;
 	};
 
-public:
+private:
 	std::unique_ptr<struct SamplerImpl> m_uImpl;
 
 public:
@@ -41,6 +46,9 @@ public:
 
 public:
 	Status update() override;
+
+private:
+	friend struct rd::ShaderWriter;
 };
 
 class Texture final : public Asset
@@ -66,7 +74,9 @@ public:
 
 public:
 	glm::ivec2 m_size = {};
-	Sampler* m_pSampler;
+	Sampler* m_pSampler = nullptr;
+
+private:
 	std::unique_ptr<struct TextureImpl> m_uImpl;
 
 public:
@@ -79,5 +89,8 @@ public:
 private:
 	TResult<bytearray> idToImg(stdfs::path const& id, IOReader const* pReader);
 	bool imgToRaw(bytearray img);
+
+private:
+	friend struct rd::ShaderWriter;
 };
 } // namespace le::gfx

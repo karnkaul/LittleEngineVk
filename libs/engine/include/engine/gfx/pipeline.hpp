@@ -50,6 +50,12 @@ public:
 
 public:
 	std::string m_name;
+
+private:
 	std::unique_ptr<class PipelineImpl> m_uImpl;
+
+private:
+	friend class Renderer;
+	friend class RendererImpl;
 };
 } // namespace le::gfx

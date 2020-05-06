@@ -38,7 +38,7 @@ public:
 
 	struct Drawable final
 	{
-		Mesh const* pMesh = nullptr;
+		std::vector<Mesh const*> meshes;
 		Transform const* pTransform = nullptr;
 		Pipeline* pPipeline = nullptr;
 	};

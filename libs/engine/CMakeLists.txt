@@ -57,7 +57,7 @@ target_link_libraries(${PROJECT_NAME}
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 		vma
 		stb-image
-		#tinyobjloader
+		tinyobjloader
 )
 if(WIN64_CLANG AND LEVK_USE_GLFW)
 	target_compile_options(glfw PRIVATE -Wno-everything)

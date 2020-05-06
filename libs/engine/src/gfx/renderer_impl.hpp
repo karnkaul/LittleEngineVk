@@ -53,6 +53,8 @@ private:
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
 
+	u32 m_maxDiffuseID = 0;
+	u32 m_maxSpecularID = 0;
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;

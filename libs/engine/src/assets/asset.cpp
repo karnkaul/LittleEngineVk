@@ -19,9 +19,12 @@ Asset::File::File(stdfs::path const& id, stdfs::path const& fullPath, FileMonito
 
 Asset::Asset(stdfs::path id) : m_id(std::move(id)), m_guid(++g_nextGUID.handle) {}
 
+Asset::Asset(Asset&&) = default;
+Asset& Asset::operator=(Asset&&) = default;
+
 Asset::~Asset()
 {
-	LOG_I("-- [{}] [{}] destroyed", m_tName, m_id.generic_string());
+	LOGIF_I(!m_id.empty(), "-- [{}] [{}] destroyed", m_tName, m_id.generic_string());
 }
 
 void Asset::setup()
@@ -38,5 +41,10 @@ Asset::Status Asset::currentStatus() const
 bool Asset::isReady() const
 {
 	return m_status == Status::eReady;
+}
+
+Asset::GUID Asset::guid() const
+{
+	return m_guid;
 }
 } // namespace le

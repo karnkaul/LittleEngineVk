@@ -70,14 +70,12 @@ public:
 
 private:
 	std::array<Glyph, maxVal<u8>()> m_glyphs;
-	Material m_dummyMat;
 	Material::Inst m_material;
 	Glyph m_blankGlyph;
 	std::unique_ptr<class Texture> m_uSheet;
 
 public:
 	Font(stdfs::path id, Info info);
-	~Font();
 
 public:
 	Geometry generate(Text const& text) const;

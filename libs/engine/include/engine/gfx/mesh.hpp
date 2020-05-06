@@ -83,6 +83,8 @@ protected:
 
 public:
 	Mesh(stdfs::path id, Info info);
+	Mesh(Mesh&&);
+	Mesh& operator=(Mesh&&);
 	~Mesh() override;
 
 public:

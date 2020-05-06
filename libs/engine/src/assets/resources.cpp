@@ -54,6 +54,7 @@ void Resources::update()
 void Resources::init()
 {
 	create<gfx::Material>("materials/default", {});
+	create<gfx::Material>("materials/font", {});
 	create<gfx::Sampler>("samplers/default", {});
 	gfx::Sampler::Info fontSampler;
 	fontSampler.mode = gfx::Sampler::Mode::eClampEdge;

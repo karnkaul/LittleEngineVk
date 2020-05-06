@@ -81,6 +81,8 @@ private:
 
 public:
 	Texture(stdfs::path id, Info info);
+	Texture(Texture&&);
+	Texture& operator=(Texture&&);
 	~Texture() override;
 
 public:

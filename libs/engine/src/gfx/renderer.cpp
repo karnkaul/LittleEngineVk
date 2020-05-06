@@ -224,55 +224,69 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 	{
 		push.push_back({});
 		push.back().reserve(batch.drawables.size());
-		for (auto [pMesh, pTransform, _] : batch.drawables)
+		for (auto& [meshes, pTransform, _] : batch.drawables)
 		{
-			ASSERT(pMesh && pTransform && pMesh->m_material.pMaterial, "Mesh / Transform / Material is null!");
-			rd::PushConstants pc;
-			pc.objectID = objectID;
-			ssbos.models.ssbo.push_back(pTransform->model());
-			ssbos.normals.ssbo.push_back(pTransform->normalModel());
-			ssbos.materials.ssbo.push_back({*pMesh->m_material.pMaterial, pMesh->m_material.dropColour});
-			ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
-			ssbos.flags.ssbo.push_back(0);
-			if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
+			ASSERT(!meshes.empty() && pTransform, "Mesh / Transform is null!");
+			auto mat_m = pTransform->model();
+			auto mat_n = pTransform->normalModel();
+			for (auto pMesh : meshes)
 			{
-				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
-			}
-			if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
-			{
-				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eOPAQUE;
-			}
-			if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
-			{
-				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eDROP_COLOUR;
-			}
-			if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
-			{
-				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
-			}
-			if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
-			{
-				ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eTEXTURED;
-				if (!pMesh->m_material.pDiffuse)
+				rd::PushConstants pc;
+				pc.objectID = objectID;
+				ssbos.models.ssbo.push_back(mat_m);
+				ssbos.normals.ssbo.push_back(mat_n);
+				ssbos.materials.ssbo.push_back({*pMesh->m_material.pMaterial, pMesh->m_material.dropColour});
+				ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
+				ssbos.flags.ssbo.push_back(0);
+				if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
 				{
-					ssbos.tints.ssbo.at(objectID) = mg.toVec4();
-					pc.diffuseID = 0;
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
 				}
-				else
+				if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
 				{
-					frame.set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseID);
-					pc.diffuseID = diffuseID++;
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eOPAQUE;
 				}
-				if (pMesh->m_material.pSpecular)
+				if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
 				{
-					frame.set.writeSpecular(*pMesh->m_material.pSpecular, specularID);
-					pc.specularID = specularID++;
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eDROP_COLOUR;
 				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
+				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eTEXTURED;
+					if (!pMesh->m_material.pDiffuse)
+					{
+						ssbos.tints.ssbo.at(objectID) = mg.toVec4();
+						pc.diffuseID = 0;
+					}
+					else
+					{
+						frame.set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseID);
+						pc.diffuseID = diffuseID++;
+					}
+					if (pMesh->m_material.pSpecular)
+					{
+						frame.set.writeSpecular(*pMesh->m_material.pSpecular, specularID);
+						pc.specularID = specularID++;
+					}
+				}
+				push.back().push_back(pc);
+				++objectID;
 			}
-			push.back().push_back(pc);
-			++objectID;
-			ASSERT(objectID == (u32)ssbos.models.ssbo.size(), "Index mismatch! Expect UB in shaders");
 		}
+	}
+	m_maxDiffuseID = std::max(m_maxDiffuseID, diffuseID);
+	m_maxSpecularID = std::max(m_maxSpecularID, specularID);
+	for (u32 id = diffuseID; id < m_maxDiffuseID; ++id)
+	{
+		frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), id);
+	}
+	for (u32 id = specularID; id < m_maxSpecularID; ++id)
+	{
+		frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), id);
 	}
 	rd::UBOView view(scene.view, (u32)scene.dirLights.size());
 	std::copy(scene.dirLights.begin(), scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
@@ -320,33 +334,36 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 		commandBuffer.setViewport(0, transformViewport(batch.viewport));
 		commandBuffer.setScissor(0, transformScissor(batch.scissor));
 		vk::Pipeline pipeline;
-		for (auto [pMesh, pTransform, pPipeline] : batch.drawables)
+		for (auto& [meshes, pTransform, pPipeline] : batch.drawables)
 		{
-			if (pMesh->isReady())
+			for (auto pMesh : meshes)
 			{
-				ASSERT(pPipeline, "Pipeline is null!");
-				if (pipeline != pPipeline->m_uImpl->m_pipeline)
+				if (pMesh->isReady())
 				{
-					pipeline = pPipeline->m_uImpl->m_pipeline;
-					commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+					ASSERT(pPipeline, "Pipeline is null!");
+					if (pipeline != pPipeline->m_uImpl->m_pipeline)
+					{
+						pipeline = pPipeline->m_uImpl->m_pipeline;
+						commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+					}
+					auto layout = pPipeline->m_uImpl->m_layout;
+					vk::DeviceSize offsets[] = {0};
+					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
+					commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
+					commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, offsets);
+					if (pMesh->m_uImpl->ibo.count > 0)
+					{
+						commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
+						commandBuffer.drawIndexed(pMesh->m_uImpl->ibo.count, 1, 0, 0, 0);
+					}
+					else
+					{
+						commandBuffer.draw(pMesh->m_uImpl->vbo.count, 1, 0, 0);
+					}
+					pipelines.insert(pPipeline->m_uImpl.get());
 				}
-				auto layout = pPipeline->m_uImpl->m_layout;
-				vk::DeviceSize offsets[] = {0};
-				commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
-				commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
-				commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, offsets);
-				if (pMesh->m_uImpl->ibo.count > 0)
-				{
-					commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
-					commandBuffer.drawIndexed(pMesh->m_uImpl->ibo.count, 1, 0, 0, 0);
-				}
-				else
-				{
-					commandBuffer.draw(pMesh->m_uImpl->vbo.count, 1, 0, 0);
-				}
-				pipelines.insert(pPipeline->m_uImpl.get());
+				++drawableIdx;
 			}
-			++drawableIdx;
 		}
 		drawableIdx = 0;
 		++batchIdx;

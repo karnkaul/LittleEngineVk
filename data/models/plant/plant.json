@@ -1,0 +1,8 @@
+{
+	"id": "models/plant",
+	"obj": "plant.obj",
+	"mtl": "plant.mtl",
+	"scale": 0.05,
+	"sampler": "samplers/default",
+	"dropColour": true
+}

@@ -90,6 +90,14 @@ void main()
 		diffuseColour *= colour;
 		specularColour *= colour;
 	}
+	if ((flags[objectID] & eDROP_COLOUR) != 0)
+	{
+		vec4 oc = max(ambientColour, 0.0) + max(diffuseColour, 0.0) + max(specularColour, 0.0);
+		if (vec3(oc) == vec3(materials[objectID].dropColour))
+		{
+			discard;
+		}
+	}
 	if ((flags[objectID] & eLIT) != 0)
 	{
 		vec4 ambientLight = vec4(0.0);
@@ -102,7 +110,7 @@ void main()
 			vec3 reflectDir = reflect(vec3(dirLight.direction), normal);
 			float lambert = max(dot(vec3(-dirLight.direction), normal), 0.0);
 			float phong = pow(max(dot(reflectDir, toView), 0.0), materials[objectID].shininess);
-			ambientLight += vec4(vec3(dirLight.ambient), 1.0) ;
+			ambientLight += vec4(vec3(dirLight.ambient), 1.0);
 			diffuseLight += vec4(vec3(dirLight.diffuse) * lambert, 1.0);
 			specularLight += vec4(vec3(dirLight.specular) * phong, 1.0) * vec4(1.0);
 		}
@@ -116,7 +124,7 @@ void main()
 	{
 		outColour.a = 1.0;
 	}
-	if (outColour.a < 0.1 || ((flags[objectID] & eDROP_COLOUR) != 0 && vec3(outColour) == vec3(materials[objectID].dropColour)))
+	if (outColour.a < 0.1)
 	{
 		discard;
 	}

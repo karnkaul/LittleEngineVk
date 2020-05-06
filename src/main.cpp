@@ -13,6 +13,7 @@
 #include "engine/gfx/geometry.hpp"
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/mesh.hpp"
+#include "engine/gfx/model.hpp"
 #include "engine/gfx/renderer.hpp"
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
@@ -58,10 +59,17 @@ int main(int argc, char** argv)
 	gfx::Mesh* pTriangle0 = g_pResources->create<gfx::Mesh>("meshes/triangle0", triangle0info);
 
 	gfx::Mesh::Info meshInfo;
-	meshInfo.geometry = gfx::createCone();
+	meshInfo.geometry = gfx::createQuad();
 	gfx::Mesh* pMesh0 = g_pResources->create<gfx::Mesh>("mesh0", meshInfo);
 	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
 	gfx::Mesh* pMesh1 = g_pResources->create<gfx::Mesh>("mesh1", meshInfo);
+
+	gfx::Model::LoadRequest model0lr;
+	model0lr.jsonID = "models/plant";
+	model0lr.pReader = g_uReader.get();
+	auto model0info = gfx::Model::parseOBJ(model0lr);
+	auto const model0id = model0info.id;
+	auto pModel0 = g_pResources->create<gfx::Model>(model0id, model0info);
 
 	gfx::Material::Info texturedInfo;
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
@@ -80,12 +88,16 @@ int main(int argc, char** argv)
 	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 	textureInfo.assetID = "textures/container2_specular.png";
 	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	textureInfo.assetID = "textures/awesomeface.png";
+	pMesh0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	pMesh0->m_material.pSpecular = nullptr;
+	pMesh0->m_material.flags.reset(gfx::Material::Flag::eOpaque);
 
 	gfx::DirLight dirLight0;
-	dirLight0.diffuse = Colour(0x0000ffff);
+	dirLight0.diffuse = Colour(0xffffffff);
 	dirLight0.direction = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
 	gfx::DirLight dirLight1;
-	dirLight1.diffuse = Colour(0xff00ffff);
+	dirLight1.diffuse = Colour(0xffffffff);
 	dirLight1.direction = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
 
 	Window w0, w1;
@@ -128,7 +140,8 @@ int main(int argc, char** argv)
 	};
 	std::shared_ptr<s32> token0, token1, wf0Token;
 	bool bTEMP = false;
-	wf0Token = w0.registerInput([&bWF0, &bTEMP](Key key, Action action, Mods mods) {
+	bool bToggleModel0 = false;
+	wf0Token = w0.registerInput([&bWF0, &bTEMP, &bToggleModel0](Key key, Action action, Mods mods) {
 		if (key == Key::eP && action == Action::eRelease && mods & Mods::eCONTROL)
 		{
 			bWF0 = !bWF0;
@@ -136,6 +149,10 @@ int main(int argc, char** argv)
 		if (key == Key::eS && action == Action::eRelease && mods & Mods::eCONTROL)
 		{
 			bTEMP = !bTEMP;
+		}
+		if (key == Key::eM && action == Action::eRelease && mods & Mods::eCONTROL)
+		{
+			bToggleModel0 = true;
 		}
 	});
 	registerInput(w0, w1, bRecreate1, bClose0, token0);
@@ -182,11 +199,12 @@ int main(int argc, char** argv)
 		gfx::Renderer::View view0;
 		gfx::Renderer::View view1;
 		freeCam.m_position = {0.0f, 1.0f, 2.0f};
-		Transform transform0, transform01;
+		Transform transform0, transform01, tr02;
 		Transform transform1;
 		Transform textTransform;
 		transform0.setPosition({0.0f, 0.0f, -2.0f});
 		transform01.setPosition({1.0f, 1.0f, -2.0f});
+		tr02.setPosition({-1.0f, 1.0f, -2.0f});
 
 		Time t = Time::elapsed();
 		while (w0.isOpen() || w1.isOpen())
@@ -212,6 +230,25 @@ int main(int argc, char** argv)
 				w0.renderer().update();
 				w1.renderer().update();
 
+				if (bToggleModel0)
+				{
+					if (pModel0)
+					{
+						g_pResources->unload<gfx::Model>(pModel0->m_id);
+						pModel0 = nullptr;
+					}
+					else
+					{
+						gfx::Model::LoadRequest model0lr;
+						model0lr.jsonID = "models/plant";
+						model0lr.pReader = g_uReader.get();
+						auto model0info = gfx::Model::parseOBJ(model0lr);
+						auto const model0id = model0info.id;
+						pModel0 = g_pResources->create<gfx::Model>(model0id, model0info);
+					}
+					bToggleModel0 = false;
+				}
+
 				freeCam.m_state.flags.bits[(size_t)gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
 				freeCam.tick(dt);
 
@@ -222,6 +259,7 @@ int main(int argc, char** argv)
 				transform01.setOrientation(
 					glm::rotate(transform01.orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
 				transform1.setOrientation(glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
+				tr02.setOrientation(glm::rotate(tr02.orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 				view0.mat_v = freeCam.view();
 				view0.pos_v = freeCam.m_position;
 				view1.mat_v = glm::lookAt(view0.pos_v, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -294,11 +332,23 @@ int main(int argc, char** argv)
 					scene.view = view0;
 					auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 					gfx::Renderer::Batch batch;
-					batch.drawables = {
-						{pMesh0, &transform01, pPipeline}, {pMesh1, &transform0, pPipeline}, {text.mesh(), &textTransform, pPipeline}};
+					batch.drawables = {{{pMesh0}, &transform01, pPipeline},
+									   {{pMesh1}, &transform0, pPipeline},
+									   {{text.mesh()}, &textTransform, pPipeline}};
+					gfx::Renderer::Drawable model0drawable;
+					if (pModel0 && pModel0->isReady())
+					{
+						pModel0->fillMeshes(model0drawable.meshes);
+					}
+					if (!model0drawable.meshes.empty())
+					{
+						model0drawable.pPipeline = pPipeline;
+						model0drawable.pTransform = &tr02;
+						batch.drawables.push_back(std::move(model0drawable));
+					}
 					if (bTEMP)
 					{
-						batch.drawables.push_back({pTriangle0, &transform0, pPipeline});
+						batch.drawables.push_back({{pTriangle0}, &transform0, pPipeline});
 					}
 					scene.batches.push_back(std::move(batch));
 					w0.renderer().render(scene);
@@ -312,7 +362,7 @@ int main(int argc, char** argv)
 					if (pTriangle0->isReady())
 					{
 						gfx::Renderer::Batch batch;
-						batch.drawables = {{pTriangle0, &transform0, pPipeline1}};
+						batch.drawables = {{{pTriangle0}, &transform0, pPipeline1}};
 						scene.batches.push_back(std::move(batch));
 						w1.renderer().render(scene);
 					}

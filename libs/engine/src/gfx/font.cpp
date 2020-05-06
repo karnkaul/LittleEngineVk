@@ -100,7 +100,7 @@ bool Font::Info::deserialise(JSONObj const& json)
 
 std::string const Font::s_tName = utils::tName<Font>();
 
-Font::Font(stdfs::path id, Info info) : Asset(std::move(id)), m_dummyMat(m_id, {})
+Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 {
 	Texture::Info sheetInfo;
 	stdfs::path texID = m_id;
@@ -112,6 +112,12 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id)), m_dummyMat(m_id, {
 	sheetInfo.samplerID = info.samplerID;
 	sheetInfo.imgBytes = std::move(info.image);
 	m_uSheet = std::make_unique<Texture>(std::move(texID), std::move(sheetInfo));
+	if (m_uSheet->currentStatus() == Status::eError)
+	{
+		m_status = Status::eError;
+		return;
+	}
+	m_uSheet->setup();
 	glm::ivec2 maxCell = glm::vec2(0);
 	s32 maxXAdv = 0;
 	for (auto const& glyph : info.glyphs)
@@ -134,7 +140,8 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id)), m_dummyMat(m_id, {
 	m_material = info.material;
 	if (!m_material.pMaterial)
 	{
-		m_material.pMaterial = &m_dummyMat;
+		ASSERT(g_pResources, "Resources is null!");
+		m_material.pMaterial = g_pResources->get<Material>("materials/font");
 	}
 	m_material.pDiffuse = m_uSheet.get();
 	m_material.flags.set({Material::Flag::eTextured, Material::Flag::eUI, Material::Flag::eDropColour});
@@ -142,11 +149,9 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id)), m_dummyMat(m_id, {
 	m_status = Status::eReady;
 }
 
-Font::~Font() = default;
-
 Geometry Font::generate(Text const& text) const
 {
-	if (text.text.empty() || !isReady())
+	if (text.text.empty() || !m_uSheet || !isReady())
 	{
 		return {};
 	}
@@ -231,6 +236,11 @@ Geometry Font::generate(Text const& text) const
 
 Asset::Status Font::update()
 {
+	if (!m_uSheet)
+	{
+		m_status = Status::eMoved;
+		return m_status;
+	}
 	return m_status;
 }
 
@@ -265,8 +275,13 @@ bool Text2D::setup(Info info)
 	meshInfo.geometry = info.pFont->generate(m_data);
 	meshInfo.type = Mesh::Type::eDynamic;
 	m_uMesh = std::make_unique<Mesh>(std::move(meshID), std::move(meshInfo));
-	m_uMesh->m_material = info.pFont->m_material;
-	return true;
+	if (m_uMesh->currentStatus() != Asset::Status::eError)
+	{
+		m_uMesh->m_material = info.pFont->m_material;
+		m_uMesh->setup();
+		return true;
+	}
+	return false;
 }
 
 void Text2D::update()

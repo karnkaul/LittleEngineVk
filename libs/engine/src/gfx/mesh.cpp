@@ -57,25 +57,33 @@ Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id)), m_type(info.type)
 	updateGeometry(std::move(info.geometry));
 }
 
+Mesh::Mesh(Mesh&&) = default;
+Mesh& Mesh::operator=(Mesh&&) = default;
+
 Mesh::~Mesh()
 {
-	if (m_type == Type::eDynamic)
+	if (m_uImpl)
 	{
-		if (m_uImpl->vbo.pMem)
+		waitFor(m_uImpl->vbo.copied);
+		waitFor(m_uImpl->ibo.copied);
+		if (m_type == Type::eDynamic)
 		{
-			vram::unmapMemory(m_uImpl->vbo.buffer);
+			if (m_uImpl->vbo.pMem)
+			{
+				vram::unmapMemory(m_uImpl->vbo.buffer);
+			}
+			if (m_uImpl->ibo.pMem)
+			{
+				vram::unmapMemory(m_uImpl->ibo.buffer);
+			}
 		}
-		if (m_uImpl->ibo.pMem)
-		{
-			vram::unmapMemory(m_uImpl->ibo.buffer);
-		}
+		vram::release(m_uImpl->vbo.buffer, m_uImpl->ibo.buffer);
 	}
-	vram::release(m_uImpl->vbo.buffer, m_uImpl->ibo.buffer);
 }
 
 void Mesh::updateGeometry(Geometry geometry)
 {
-	if (geometry.vertices.empty())
+	if (!m_uImpl || geometry.vertices.empty())
 	{
 		return;
 	}
@@ -142,10 +150,16 @@ void Mesh::updateGeometry(Geometry geometry)
 
 Asset::Status Mesh::update()
 {
+	if (!m_uImpl)
+	{
+		m_status = Status::eMoved;
+		return m_status;
+	}
 	if (m_status == Status::eLoading)
 	{
 		if (allSignalled({m_uImpl->vbo.copied, m_uImpl->ibo.copied}))
 		{
+			m_uImpl->vbo.copied = m_uImpl->ibo.copied = vk::Fence();
 			m_status = Status::eReady;
 		}
 	}

@@ -133,29 +133,42 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 #endif
 }
 
+Texture::Texture(Texture&&) = default;
+Texture& Texture::operator=(Texture&&) = default;
+
 Texture::~Texture()
 {
-	if (m_uImpl->bStbiRaw)
+	if (m_uImpl)
 	{
-		stbi_image_free((void*)(m_uImpl->raw.bytes.pData));
-		m_uImpl->raw = {};
-	}
-	vram::release(m_uImpl->active);
+		if (m_uImpl->bStbiRaw)
+		{
+			stbi_image_free((void*)(m_uImpl->raw.bytes.pData));
+			m_uImpl->raw = {};
+		}
+		waitFor(m_uImpl->loaded);
+		vram::release(m_uImpl->active);
 #if defined(LEVK_ASSET_HOT_RELOAD)
-	if (m_uImpl->standby.image != m_uImpl->active.image)
-	{
-		vram::release(m_uImpl->standby);
-	}
+		if (m_uImpl->standby.image != m_uImpl->active.image)
+		{
+			vram::release(m_uImpl->standby);
+		}
 #endif
-	vkDestroy(m_uImpl->imageView);
+		vkDestroy(m_uImpl->imageView);
+	}
 }
 
 Asset::Status Texture::update()
 {
+	if (!m_uImpl)
+	{
+		m_status = Status::eMoved;
+		return m_status;
+	}
 	if (m_status == Status::eLoading)
 	{
 		if (isSignalled(m_uImpl->loaded))
 		{
+			m_uImpl->loaded = vk::Fence();
 			m_status = Status::eReady;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 			if (m_uImpl->bReloading)
@@ -242,6 +255,10 @@ TResult<bytearray> Texture::idToImg(stdfs::path const& id, IOReader const* pRead
 
 bool Texture::imgToRaw(bytearray imgBytes)
 {
+	if (!m_uImpl)
+	{
+		return false;
+	}
 	s32 ch;
 	auto pIn = reinterpret_cast<stbi_uc const*>(imgBytes.data());
 	auto pOut = stbi_load_from_memory(pIn, (s32)imgBytes.size(), &m_size.x, &m_size.y, &ch, 4);

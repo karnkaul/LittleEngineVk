@@ -1,5 +1,6 @@
 #include <array>
 #include <deque>
+#include <mutex>
 #include <thread>
 #include <fmt/format.h>
 #include "core/assert.hpp"
@@ -44,6 +45,7 @@ vk::CommandPool g_graphicsPool;
 
 std::deque<Stage> g_stages;
 std::deque<Transfer> g_transfers;
+std::mutex g_mutex;
 
 Buffer createStagingBuffer(vk::DeviceSize size)
 {
@@ -72,6 +74,7 @@ Transfer newTransfer()
 
 Stage& getNextStage(vk::DeviceSize size)
 {
+	std::unique_lock<std::mutex> lock(g_mutex);
 	for (auto& stage : g_stages)
 	{
 		if (isSignalled(stage.transfer.done))
@@ -86,15 +89,18 @@ Stage& getNextStage(vk::DeviceSize size)
 			return stage;
 		}
 	}
+	lock.unlock();
 	Stage newStage;
 	newStage.buffer = createStagingBuffer(size);
 	newStage.transfer = newTransfer();
+	lock.lock();
 	g_stages.push_back(newStage);
 	return g_stages.back();
 }
 
 Transfer& getNextTransfer()
 {
+	std::unique_lock<std::mutex> lock(g_mutex);
 	for (auto& transfer : g_transfers)
 	{
 		if (isSignalled(transfer.done))
@@ -153,6 +159,7 @@ void vram::init()
 void vram::deinit()
 {
 	g_info.device.waitIdle();
+	std::unique_lock<std::mutex> lock(g_mutex);
 	for (auto& stage : g_stages)
 	{
 		release(stage.buffer);

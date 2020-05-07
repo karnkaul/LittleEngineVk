@@ -65,12 +65,22 @@ int main(int argc, char** argv)
 	gfx::Mesh* pMesh1 = g_pResources->create<gfx::Mesh>("mesh1", meshInfo);
 
 	gfx::Model::LoadRequest model0lr;
-	model0lr.jsonID = "models/plant";
+	model0lr.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
 	model0lr.pReader = g_uReader.get();
-	auto model0info = gfx::Model::parseOBJ(model0lr);
-	auto const model0id = model0info.id;
-	auto pModel0 = g_pResources->create<gfx::Model>(model0id, model0info);
-
+	gfx::Model* pModel0 = nullptr;
+	gfx::Model* pModel1 = nullptr;
+	jobs::enqueue([&pModel0, &model0lr]() {
+		auto model0info = gfx::Model::parseOBJ(model0lr);
+		auto model0id = model0info.id;
+		model0id += "_0";
+		pModel0 = g_pResources->create<gfx::Model>(model0id, model0info);
+	});
+	jobs::enqueue([&pModel1, &model0lr]() {
+		auto model1info = gfx::Model::parseOBJ(model0lr);
+		auto model1id = model1info.id;
+		model1id += "_1";
+		pModel1 = g_pResources->create<gfx::Model>(model1id, model1info);
+	});
 	gfx::Material::Info texturedInfo;
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
 	auto pTexturedLit = g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
@@ -141,6 +151,9 @@ int main(int argc, char** argv)
 	std::shared_ptr<s32> token0, token1, wf0Token;
 	bool bTEMP = false;
 	bool bToggleModel0 = false;
+	gfx::Model::Info m0info;
+	gfx::Model::Info m1info;
+	Time reloadTime;
 	wf0Token = w0.registerInput([&bWF0, &bTEMP, &bToggleModel0](Key key, Action action, Mods mods) {
 		if (key == Key::eP && action == Action::eRelease && mods & Mods::eCONTROL)
 		{
@@ -199,12 +212,13 @@ int main(int argc, char** argv)
 		gfx::Renderer::View view0;
 		gfx::Renderer::View view1;
 		freeCam.m_position = {0.0f, 1.0f, 2.0f};
-		Transform transform0, transform01, tr02;
+		Transform transform0, transform01, tr02, tr03;
 		Transform transform1;
 		Transform textTransform;
 		transform0.setPosition({0.0f, 0.0f, -2.0f});
 		transform01.setPosition({1.0f, 1.0f, -2.0f});
 		tr02.setPosition({-1.0f, 1.0f, -2.0f});
+		tr03.setPosition({0.0f, -1.0f, -3.0f});
 
 		Time t = Time::elapsed();
 		while (w0.isOpen() || w1.isOpen())
@@ -232,23 +246,40 @@ int main(int argc, char** argv)
 
 				if (bToggleModel0)
 				{
-					if (pModel0)
+					if (pModel0 && pModel1)
 					{
 						g_pResources->unload<gfx::Model>(pModel0->m_id);
+						g_pResources->unload<gfx::Model>(pModel1->m_id);
 						pModel0 = nullptr;
+						pModel1 = nullptr;
 					}
 					else
 					{
-						gfx::Model::LoadRequest model0lr;
-						model0lr.jsonID = "models/plant";
-						model0lr.pReader = g_uReader.get();
-						auto model0info = gfx::Model::parseOBJ(model0lr);
-						auto const model0id = model0info.id;
-						pModel0 = g_pResources->create<gfx::Model>(model0id, model0info);
+						reloadTime = Time::elapsed();
+						jobs::enqueue(
+							[&]() {
+								m0info = gfx::Model::parseOBJ(model0lr);
+								LOG_I("{} data loaded in: {}s", m0info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
+								auto model0id = m0info.id;
+								model0id += "_0";
+								pModel0 = g_pResources->create<gfx::Model>(model0id, std::move(m0info));
+								LOG_I("{} total load time: {}s", m0info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
+							},
+							"Model0-Reload");
+						jobs::enqueue(
+							[&]() {
+								m1info = gfx::Model::parseOBJ(model0lr);
+								LOG_I("{} data loaded in: {}s", m1info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
+								auto model1id = m1info.id;
+								model1id += "_1";
+								pModel1 = g_pResources->create<gfx::Model>(model1id, std::move(m1info));
+								LOG_I("{} total load time: {}s", m1info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
+							},
+							"Model1-Reload");
 					}
 					bToggleModel0 = false;
 				}
-
+				
 				freeCam.m_state.flags.bits[(size_t)gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
 				freeCam.tick(dt);
 
@@ -336,7 +367,7 @@ int main(int argc, char** argv)
 									   {{pMesh1}, &transform0, pPipeline},
 									   {{text.mesh()}, &textTransform, pPipeline}};
 					gfx::Renderer::Drawable model0drawable;
-					if (pModel0 && pModel0->isReady())
+					if (pModel0)
 					{
 						pModel0->fillMeshes(model0drawable.meshes);
 					}
@@ -345,6 +376,17 @@ int main(int argc, char** argv)
 						model0drawable.pPipeline = pPipeline;
 						model0drawable.pTransform = &tr02;
 						batch.drawables.push_back(std::move(model0drawable));
+					}
+					gfx::Renderer::Drawable model1drawable;
+					if (pModel1)
+					{
+						pModel1->fillMeshes(model1drawable.meshes);
+					}
+					if (!model1drawable.meshes.empty())
+					{
+						model1drawable.pPipeline = pPipeline;
+						model1drawable.pTransform = &tr03;
+						batch.drawables.push_back(std::move(model1drawable));
 					}
 					if (bTEMP)
 					{

@@ -105,6 +105,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	}
 	else if (!info.assetID.empty())
 	{
+		ASSERT(info.pReader, "Reader is null!");
 		auto [pixels, bResult] = info.pReader->getBytes(info.assetID);
 		if (!bResult || !imgToRaw(std::move(pixels)))
 		{

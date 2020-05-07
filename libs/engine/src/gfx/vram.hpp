@@ -5,7 +5,11 @@
 
 namespace le::gfx
 {
+#if defined(LEVK_DEBUG)
 constexpr bool g_VRAM_bLogAllocs = true;
+#else
+constexpr bool g_VRAM_bLogAllocs = false;
+#endif
 
 struct ImageInfo final
 {

@@ -141,7 +141,7 @@ size_t OBJParser::texIdx(std::string_view texName)
 		}
 	}
 	Model::TexData tex;
-	tex.filename = m_modelID / texName;
+	tex.filename = m_jsonID.parent_path() / texName;
 	tex.id = std::move(id);
 	tex.samplerID = m_samplerID;
 	m_info.textures.push_back(std::move(tex));
@@ -336,7 +336,6 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	{
 		Texture::Info texInfo;
 		texInfo.imgBytes = std::move(texture.bytes);
-		texInfo.assetID = texture.id;
 		texInfo.samplerID = std::move(texture.samplerID);
 		Texture newTex(texture.id, std::move(texInfo));
 		newTex.setup();
@@ -351,6 +350,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 		newMat.setup();
 		m_loadedMaterials.emplace(idStr, std::move(newMat));
 		Material::Inst newInst;
+		newInst.tint = info.tint;
 		auto search = m_loadedMaterials.find(idStr);
 		if (search != m_loadedMaterials.end())
 		{

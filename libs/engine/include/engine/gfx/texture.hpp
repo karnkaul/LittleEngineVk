@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <string>
 #include <glm/glm.hpp>
 #include "core/std_types.hpp"
@@ -89,8 +90,44 @@ public:
 	Status update() override;
 
 private:
-	TResult<bytearray> idToImg(stdfs::path const& id, IOReader const* pReader);
-	bool imgToRaw(bytearray img);
+	friend struct rd::ShaderWriter;
+};
+
+class Cubemap final : public Asset
+{
+public:
+	struct Raw final
+	{
+		ArrayView<u8> bytes;
+		glm::ivec2 size = {};
+	};
+	struct Info final
+	{
+		std::array<stdfs::path, 6> rludfbIDs;
+		std::array<bytearray, 6> rludfb;
+		stdfs::path samplerID;
+		Sampler* pSampler = nullptr;
+		class IOReader const* pReader = nullptr;
+	};
+
+public:
+	static std::string const s_tName;
+
+public:
+	glm::ivec2 m_size = {};
+	Sampler* m_pSampler = nullptr;
+
+private:
+	std::unique_ptr<struct CubemapImpl> m_uImpl;
+
+public:
+	Cubemap(stdfs::path id, Info info);
+	Cubemap(Cubemap&&);
+	Cubemap& operator=(Cubemap&&);
+	~Cubemap() override;
+
+public:
+	Status update() override;
 
 private:
 	friend struct rd::ShaderWriter;

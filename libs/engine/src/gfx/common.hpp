@@ -206,6 +206,21 @@ struct TextureImpl final
 #endif
 };
 
+struct CubemapImpl final
+{
+	std::array<Texture::Raw, 6> rludfb;
+	vk::Fence loaded;
+	Image active;
+	vk::ImageView imageView;
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	Image standby;
+	std::array<stdfs::path, 6> imgIDs;
+	FileReader const* pReader = nullptr;
+	bool bReloading = false;
+#endif
+};
+
 struct MeshImpl final
 {
 	struct Data

@@ -279,7 +279,7 @@ int main(int argc, char** argv)
 					}
 					bToggleModel0 = false;
 				}
-				
+
 				freeCam.m_state.flags.bits[(size_t)gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
 				freeCam.tick(dt);
 

@@ -78,6 +78,15 @@ Mesh::~Mesh()
 			}
 		}
 		vram::release(m_uImpl->vbo.buffer, m_uImpl->ibo.buffer);
+		for (auto& data : m_uImpl->toRelease)
+		{
+			waitFor(data.copied);
+			if (m_type == Type::eDynamic)
+			{
+				vram::unmapMemory(data.buffer);
+			}
+			vram::release(data.buffer);
+		}
 	}
 }
 

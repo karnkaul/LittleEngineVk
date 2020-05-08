@@ -171,7 +171,7 @@ Geometry Font::generate(Text const& text) const
 	}
 	f32 const lineHeight = ((f32)maxCell.y) * text.scale;
 	f32 const linePad = lineHeight * text.nYPad;
-	f32 const textHeight = lineCount * lineHeight;
+	f32 const textHeight = (f32)lineCount * lineHeight;
 	glm::vec2 const realTopLeft = text.pos;
 	glm::vec2 textTL = realTopLeft;
 	size_t nextLineIdx = 0;
@@ -190,14 +190,14 @@ Geometry Font::generate(Text const& text) const
 			}
 			else
 			{
-				lineWidth += m_glyphs.at((size_t)ch).xAdv;
+				lineWidth += (f32)m_glyphs.at((size_t)ch).xAdv;
 			}
 		}
 		lineWidth *= text.scale;
 		++nextLineIdx;
 		xPos = 0.0f;
 		textTL = realTopLeft + textTLoffset * glm::vec2(lineWidth, textHeight);
-		textTL.y -= (lineHeight + (yIdx * (lineHeight + linePad)));
+		textTL.y -= (lineHeight + ((f32)yIdx * (lineHeight + linePad)));
 	};
 	updateTextTL();
 
@@ -217,19 +217,19 @@ Geometry Font::generate(Text const& text) const
 		}
 		auto const& search = m_glyphs.at((size_t)c);
 		auto const& glyph = search.ch == '\0' ? m_blankGlyph : search;
-		auto const offset = glm::vec3(xPos - glyph.offset.x * text.scale, glyph.offset.y * text.scale, 0.0f);
+		auto const offset = glm::vec3(xPos - (f32)glyph.offset.x * text.scale, (f32)glyph.offset.y * text.scale, 0.0f);
 		auto const tl = glm::vec3(textTL.x, textTL.y, text.pos.z) + offset;
-		auto const s = (f32)glyph.st.x / texSize.x;
-		auto const t = (f32)glyph.st.y / texSize.y;
-		auto const u = s + (f32)glyph.uv.x / texSize.x;
-		auto const v = t + (f32)glyph.uv.y / texSize.y;
-		glm::vec2 const cell = {glyph.cell.x * text.scale, glyph.cell.y * text.scale};
+		auto const s = (f32)glyph.st.x / (f32)texSize.x;
+		auto const t = (f32)glyph.st.y / (f32)texSize.y;
+		auto const u = s + (f32)glyph.uv.x / (f32)texSize.x;
+		auto const v = t + (f32)glyph.uv.y / (f32)texSize.y;
+		glm::vec2 const cell = {(f32)glyph.cell.x * text.scale, (f32)glyph.cell.y * text.scale};
 		auto const v0 = ret.addVertex({tl, colour, normal, glm::vec2(s, t)});
 		auto const v1 = ret.addVertex({tl + glm::vec3(cell.x, 0.0f, 0.0f), colour, normal, glm::vec2(u, t)});
 		auto const v2 = ret.addVertex({tl + glm::vec3(cell.x, -cell.y, 0.0f), colour, normal, glm::vec2(u, v)});
 		auto const v3 = ret.addVertex({tl + glm::vec3(0.0f, -cell.y, 0.0f), colour, normal, glm::vec2(s, v)});
 		ret.addIndices({v0, v1, v2, v2, v3, v0});
-		xPos += (glyph.xAdv * text.scale);
+		xPos += ((f32)glyph.xAdv * text.scale);
 	}
 	return ret;
 }
@@ -296,7 +296,6 @@ void Text2D::update(Font::Text data)
 		m_data = std::move(data);
 		m_uMesh->updateGeometry(m_pFont->generate(m_data));
 	}
-	update();
 	return;
 }
 
@@ -310,7 +309,6 @@ void Text2D::updateText(std::string text)
 			update(std::move(m_data));
 		}
 	}
-	update();
 	return;
 }
 

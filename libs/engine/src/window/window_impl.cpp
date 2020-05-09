@@ -1,5 +1,4 @@
 #include <array>
-#include <unordered_set>
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/os.hpp"
@@ -342,6 +341,14 @@ void WindowImpl::deinit()
 	return;
 }
 
+void WindowImpl::updateActive()
+{
+	for (auto pImpl : g_registeredWindows)
+	{
+		pImpl->m_pWindow->m_renderer.update();
+	}
+}
+
 std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 {
 	std::vector<char const*> ret;
@@ -367,6 +374,28 @@ WindowImpl* WindowImpl::windowImpl(WindowID window)
 		}
 	}
 	return nullptr;
+}
+
+gfx::RendererImpl* WindowImpl::rendererImpl(WindowID window)
+{
+	for (auto pImpl : g_registeredWindows)
+	{
+		if (pImpl->m_pWindow->m_id == window)
+		{
+			return pImpl->m_pWindow->m_renderer.m_uImpl.get();
+		}
+	}
+	return nullptr;
+}
+
+std::unordered_set<s32> WindowImpl::active()
+{
+	std::unordered_set<s32> ret;
+	for (auto pImpl : g_registeredWindows)
+	{
+		ret.insert(pImpl->m_pWindow->m_id);
+	}
+	return ret;
 }
 
 vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow const& nativeWindow)

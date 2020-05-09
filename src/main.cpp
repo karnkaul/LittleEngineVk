@@ -240,9 +240,7 @@ int main(int argc, char** argv)
 				fpsElapsed = Time();
 			}
 			{
-				g_pResources->update();
-				w0.renderer().update();
-				w1.renderer().update();
+				engine.update();
 
 				if (bToggleModel0)
 				{

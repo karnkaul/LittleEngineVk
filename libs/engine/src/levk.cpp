@@ -3,6 +3,7 @@
 #include "core/utils.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
+#include "gfx/deferred.hpp"
 #include "gfx/info.hpp"
 #include "window/window_impl.hpp"
 
@@ -17,6 +18,13 @@ stdfs::path g_dataPath;
 namespace engine
 {
 Service::Service() = default;
+Service::Service(Service&&) = default;
+Service& Service::operator=(Service&&) = default;
+Service::~Service()
+{
+	g_exePath.clear();
+	g_dataPath.clear();
+}
 
 bool Service::start(s32 argc, char** argv)
 {
@@ -57,13 +65,11 @@ bool Service::start(s32 argc, char** argv)
 	return true;
 }
 
-Service::Service(Service&&) = default;
-Service& Service::operator=(Service&&) = default;
-
-Service::~Service()
+void Service::update()
 {
-	g_exePath.clear();
-	g_dataPath.clear();
+	gfx::deferred::update();
+	g_pResources->update();
+	WindowImpl::updateActive();
 }
 } // namespace engine
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <utility>
 #include "core/utils.hpp"
+#include "engine/window/common.hpp"
 #include "common.hpp"
 
 namespace le::gfx

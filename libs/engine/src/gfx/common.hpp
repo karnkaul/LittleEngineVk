@@ -233,7 +233,6 @@ struct MeshImpl final
 	
 	Data vbo;
 	Data ibo;
-	std::deque<Data> toRelease;
 };
 
 namespace vbo

@@ -19,6 +19,7 @@ public:
 	~Service();
 
 	bool start(s32 argc, char** argv);
+	void update();
 };
 
 stdfs::path exePath();

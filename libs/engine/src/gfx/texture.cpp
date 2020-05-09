@@ -6,6 +6,7 @@
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/texture.hpp"
 #include "gfx/common.hpp"
+#include "gfx/deferred.hpp"
 #include "gfx/info.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/vram.hpp"
@@ -181,15 +182,13 @@ Texture::~Texture()
 			stbi_image_free((void*)(m_uImpl->raw.bytes.pData));
 			m_uImpl->raw = {};
 		}
-		waitFor(m_uImpl->loaded);
-		vram::release(m_uImpl->active);
+		deferred::release(m_uImpl->active, m_uImpl->imageView);
 #if defined(LEVK_ASSET_HOT_RELOAD)
 		if (m_uImpl->standby.image != m_uImpl->active.image)
 		{
-			vram::release(m_uImpl->standby);
+			deferred::release(m_uImpl->standby);
 		}
 #endif
-		vkDestroy(m_uImpl->imageView);
 	}
 }
 
@@ -232,16 +231,9 @@ Asset::Status Texture::update()
 	{
 		if (m_status == Status::eReloaded)
 		{
-			g_info.device.waitIdle();
-			vkDestroy(m_uImpl->imageView);
-			if (m_uImpl->standby.image != vk::Image())
-			{
-				if (m_uImpl->active.image != m_uImpl->standby.image)
-				{
-					vram::release(m_uImpl->active);
-				}
-				m_uImpl->active = m_uImpl->standby;
-			}
+			deferred::release(m_uImpl->active, m_uImpl->imageView);
+			m_uImpl->active = m_uImpl->standby;
+			m_uImpl->standby = {};
 			m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
 			m_status = Status::eReady;
 		}
@@ -375,15 +367,13 @@ Cubemap::~Cubemap()
 		{
 			stbi_image_free((void*)(raw.bytes.pData));
 		}
-		waitFor(m_uImpl->loaded);
-		vram::release(m_uImpl->active);
+		deferred::release(m_uImpl->active, m_uImpl->imageView);
 #if defined(LEVK_ASSET_HOT_RELOAD)
 		if (m_uImpl->standby.image != m_uImpl->active.image)
 		{
-			vram::release(m_uImpl->standby);
+			deferred::release(m_uImpl->standby);
 		}
 #endif
-		vkDestroy(m_uImpl->imageView);
 	}
 }
 
@@ -425,13 +415,11 @@ Asset::Status Cubemap::update()
 	{
 		if (m_status == Status::eReloaded)
 		{
-			g_info.device.waitIdle();
-			vkDestroy(m_uImpl->imageView);
 			if (m_uImpl->standby.image != vk::Image())
 			{
 				if (m_uImpl->active.image != m_uImpl->standby.image)
 				{
-					vram::release(m_uImpl->active);
+					deferred::release(m_uImpl->active, m_uImpl->imageView);
 				}
 				m_uImpl->active = m_uImpl->standby;
 			}

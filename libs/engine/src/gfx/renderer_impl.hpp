@@ -53,6 +53,7 @@ private:
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
 
+	u64 m_drawnFrames = 0;
 	u32 m_maxDiffuseID = 0;
 	u32 m_maxSpecularID = 0;
 	size_t m_index = 0;
@@ -66,7 +67,6 @@ public:
 public:
 	void create(u8 frameCount = 2);
 	void destroy();
-	void reset();
 
 	Pipeline* createPipeline(Pipeline::Info info);
 
@@ -76,6 +76,9 @@ public:
 public:
 	vk::Viewport transformViewport(ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f}) const;
 	vk::Rect2D transformScissor(ScreenRect const& nRect = {}) const;
+
+	u64 framesDrawn() const;
+	u8 virtualFrameCount() const;
 
 private:
 	void onFramebufferResize();

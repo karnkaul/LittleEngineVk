@@ -1,6 +1,6 @@
 #include <array>
 #include <deque>
-#include <mutex>
+#include <unordered_map>
 #include <thread>
 #include <fmt/format.h>
 #include "core/assert.hpp"
@@ -10,6 +10,8 @@
 #include "info.hpp"
 #include "utils.hpp"
 #include "vram.hpp"
+#include "window/window_impl.hpp"
+#include "gfx/renderer_impl.hpp"
 
 namespace le::gfx
 {
@@ -292,7 +294,6 @@ vk::Fence vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
 	vk::SubmitInfo submitInfo;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &ret.commandBuffer;
-	ret.done = g_info.device.createFence({});
 	g_info.queues.transfer.submit(submitInfo, ret.done);
 	return ret.done;
 }

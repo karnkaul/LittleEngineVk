@@ -5,6 +5,7 @@
 #include "engine/gfx/mesh.hpp"
 #include "engine/assets/resources.hpp"
 #include "gfx/common.hpp"
+#include "gfx/deferred.hpp"
 #include "gfx/vram.hpp"
 #include "gfx/utils.hpp"
 
@@ -64,29 +65,13 @@ Mesh::~Mesh()
 {
 	if (m_uImpl)
 	{
-		waitFor(m_uImpl->vbo.copied);
-		waitFor(m_uImpl->ibo.copied);
 		if (m_type == Type::eDynamic)
 		{
-			if (m_uImpl->vbo.pMem)
-			{
-				vram::unmapMemory(m_uImpl->vbo.buffer);
-			}
-			if (m_uImpl->ibo.pMem)
-			{
-				vram::unmapMemory(m_uImpl->ibo.buffer);
-			}
+			vram::unmapMemory(m_uImpl->vbo.buffer);
+			vram::unmapMemory(m_uImpl->ibo.buffer);
 		}
-		vram::release(m_uImpl->vbo.buffer, m_uImpl->ibo.buffer);
-		for (auto& data : m_uImpl->toRelease)
-		{
-			waitFor(data.copied);
-			if (m_type == Type::eDynamic)
-			{
-				vram::unmapMemory(data.buffer);
-			}
-			vram::release(data.buffer);
-		}
+		deferred::release(m_uImpl->vbo.buffer);
+		deferred::release(m_uImpl->ibo.buffer);
 	}
 }
 
@@ -104,7 +89,11 @@ void Mesh::updateGeometry(Geometry geometry)
 	{
 		if (m_uImpl->vbo.buffer.writeSize > 0)
 		{
-			m_uImpl->toRelease.push_back(std::move(m_uImpl->vbo));
+			if (bHostVisible)
+			{
+				vram::unmapMemory(m_uImpl->vbo.buffer);
+			}
+			deferred::release(m_uImpl->vbo.buffer);
 			m_uImpl->vbo = {};
 		}
 		std::string const name = idStr + "_VBO";
@@ -118,7 +107,11 @@ void Mesh::updateGeometry(Geometry geometry)
 	{
 		if (m_uImpl->ibo.buffer.writeSize > 0)
 		{
-			m_uImpl->toRelease.push_back(std::move(m_uImpl->ibo));
+			if (bHostVisible)
+			{
+				vram::unmapMemory(m_uImpl->ibo.buffer);
+			}
+			deferred::release(m_uImpl->ibo.buffer);
 			m_uImpl->ibo = {};
 		}
 		std::string const name = idStr + "_IBO";
@@ -172,19 +165,6 @@ Asset::Status Mesh::update()
 			m_status = Status::eReady;
 		}
 	}
-	auto removeCopied = [this](MeshImpl::Data const& data) -> bool {
-		if (isSignalled(data.copied))
-		{
-			if (m_type == Type::eDynamic)
-			{
-				vram::unmapMemory(data.buffer);
-			}
-			vram::release(data.buffer);
-			return true;
-		}
-		return false;
-	};
-	m_uImpl->toRelease.erase(std::remove_if(m_uImpl->toRelease.begin(), m_uImpl->toRelease.end(), removeCopied), m_uImpl->toRelease.end());
 	return m_status;
 }
 } // namespace le::gfx

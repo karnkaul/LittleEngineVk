@@ -5,6 +5,7 @@
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "window/window_impl.hpp"
+#include "deferred.hpp"
 #include "info.hpp"
 #include "vram.hpp"
 #include "engine/assets/resources.hpp"
@@ -263,6 +264,7 @@ void init(InitInfo const& initInfo)
 
 void deinit()
 {
+	deferred::deinit();
 	rd::deinit();
 	vram::deinit();
 	if (g_pResources)

@@ -106,12 +106,9 @@ void RendererImpl::create(u8 frameCount)
 
 void RendererImpl::destroy()
 {
-	for (auto& pipeline : m_pipelines)
-	{
-		pipeline.m_uImpl->m_activeFences.clear();
-	}
 	if (!m_frames.empty())
 	{
+		g_info.device.waitIdle();
 		for (auto& frame : m_frames)
 		{
 			frame.set.destroy();
@@ -121,24 +118,8 @@ void RendererImpl::destroy()
 		m_descriptorPool = vk::DescriptorPool();
 		m_frames.clear();
 		m_index = 0;
+		m_drawnFrames = 0;
 		LOG_D("[{}] destroyed", m_name);
-	}
-	return;
-}
-
-void RendererImpl::reset()
-{
-	if (m_frameCount > 0)
-	{
-		create(m_frameCount);
-		g_info.device.waitIdle();
-		for (auto& frame : m_frames)
-		{
-			frame.bNascent = true;
-			g_info.device.resetFences(frame.drawing);
-			g_info.device.resetCommandPool(frame.commandPool, vk::CommandPoolResetFlagBits::eReleaseResources);
-		}
-		LOG_D("[{}] reset", m_name);
 	}
 	return;
 }
@@ -381,10 +362,6 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_info.device.resetFences(frame.drawing);
-	for (auto pPipeline : pipelines)
-	{
-		pPipeline->attach(frame.drawing);
-	}
 	frame.set.attach(frame.drawing);
 	g_info.queues.graphics.submit(submitInfo, frame.drawing);
 	if (m_presenter.present(frame.presentReady))
@@ -420,6 +397,16 @@ vk::Rect2D RendererImpl::transformScissor(ScreenRect const& nRect) const
 	return scissor;
 }
 
+u64 RendererImpl::framesDrawn() const
+{
+	return m_drawnFrames;
+}
+
+u8 RendererImpl::virtualFrameCount() const
+{
+	return m_frameCount;
+}
+
 void RendererImpl::onFramebufferResize()
 {
 	m_presenter.onFramebufferResize();
@@ -436,6 +423,7 @@ void RendererImpl::next()
 {
 	m_frames.at(m_index).bNascent = false;
 	m_index = (m_index + 1) % m_frames.size();
+	++m_drawnFrames;
 	return;
 }
 } // namespace le::gfx

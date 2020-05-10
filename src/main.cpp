@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 	skyboxPipeInfo.name = "skybox";
 	skyboxPipeInfo.pShader = pShader;
 	skyboxPipeInfo.bDepthWrite = false;
-	gfx::Pipeline *pSkyPipe = nullptr;
+	gfx::Pipeline* pSkyPipe = nullptr;
 
 	Window w0, w1;
 	Window::Info info0;

@@ -38,6 +38,7 @@ struct Stage final
 {
 	Buffer buffer;
 	Transfer transfer;
+	size_t bufferID = 0;
 };
 
 std::string const s_tName = utils::tName<VRAM>();
@@ -45,11 +46,11 @@ std::array<u64, (size_t)ResourceType::eCOUNT_> g_allocations;
 
 vk::CommandPool g_transferPool;
 
-std::deque<Stage> g_stages;
-std::deque<Transfer> g_transfers;
+std::unordered_map<std::thread::id, std::deque<Stage>> g_stages;
+std::unordered_map<std::thread::id, std::deque<Transfer>> g_transfers;
 std::mutex g_mutex;
 
-Buffer createStagingBuffer(vk::DeviceSize size)
+Buffer createStagingBuffer(vk::DeviceSize size, [[maybe_unused]] size_t bufferID)
 {
 	gfx::BufferInfo info;
 	info.size = size;
@@ -58,7 +59,7 @@ Buffer createStagingBuffer(vk::DeviceSize size)
 	info.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 #if defined(LEVK_VKRESOURCE_NAMES)
-	info.name = "vram-staging";
+	info.name = fmt::format("vram-staging-{}:{}", threads::thisThreadID(), bufferID);
 #endif
 	return vram::createBuffer(info);
 }
@@ -77,8 +78,9 @@ Transfer newTransfer()
 Stage& getNextStage(vk::DeviceSize size)
 {
 	std::unique_lock<std::mutex> lock(g_mutex);
-	[[maybe_unused]] auto const count = g_stages.size();
-	for (auto& stage : g_stages)
+	auto& stages = g_stages[std::this_thread::get_id()];
+	auto const count = stages.size();
+	for (auto& stage : stages)
 	{
 		if (isSignalled(stage.transfer.done))
 		{
@@ -87,26 +89,27 @@ Stage& getNextStage(vk::DeviceSize size)
 			if (stage.buffer.writeSize < size)
 			{
 				vram::release(stage.buffer);
-				stage.buffer = createStagingBuffer(std::max(size, stage.buffer.writeSize * 2));
+				stage.buffer = createStagingBuffer(std::max(size, stage.buffer.writeSize * 2), stage.bufferID);
 			}
 			return stage;
 		}
 	}
 	Stage newStage;
-	newStage.buffer = createStagingBuffer(size);
+	newStage.buffer = createStagingBuffer(size, count);
 	newStage.transfer = newTransfer();
+	newStage.bufferID = count;
 	if constexpr (g_VRAM_bLogAllocs)
 	{
-		LOG_I("[{}] Created staging buffer [{}]", s_tName, count);
+		LOG_I("[{}] Created staging buffer [{}:{}]", s_tName, threads::thisThreadID(), newStage.bufferID);
 	}
-	g_stages.push_back(newStage);
-	return g_stages.back();
+	stages.push_back(std::move(newStage));
+	return stages.back();
 }
 
 Transfer& getNextTransfer()
 {
 	std::unique_lock<std::mutex> lock(g_mutex);
-	auto& transfers = g_transfers;
+	auto& transfers = g_transfers[std::this_thread::get_id()];
 	[[maybe_unused]] auto const count = transfers.size();
 	for (auto& transfer : transfers)
 	{
@@ -117,12 +120,12 @@ Transfer& getNextTransfer()
 			return transfer;
 		}
 	}
-	g_transfers.push_back(newTransfer());
+	transfers.push_back(newTransfer());
 	if constexpr (g_VRAM_bLogAllocs)
 	{
-		LOG_I("[{}] Created transfer command buffer [{}]", s_tName, count);
+		LOG_I("[{}] Created transfer command buffer [{}:{}]", s_tName, threads::thisThreadID(), count);
 	}
-	return g_transfers.back();
+	return transfers.back();
 }
 
 [[maybe_unused]] std::string logCount()
@@ -158,14 +161,20 @@ void vram::init()
 void vram::deinit()
 {
 	g_info.device.waitIdle();
-	for (auto& stage : g_stages)
+	for (auto& [_, stages] : g_stages)
 	{
-		release(stage.buffer);
-		vkDestroy(stage.transfer.done);
+		for (auto& stage : stages)
+		{
+			release(stage.buffer);
+			vkDestroy(stage.transfer.done);
+		}
 	}
-	for (auto& transfer : g_transfers)
+	for (auto& [_, transfers] : g_transfers)
 	{
-		vkDestroy(transfer.done);
+		for (auto& transfer : transfers)
+		{
+			vkDestroy(transfer.done);
+		}
 	}
 	g_stages.clear();
 	g_transfers.clear();

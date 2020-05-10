@@ -44,7 +44,7 @@ void unmapMemory(Buffer const& buffer);
 [[nodiscard]] vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
 [[nodiscard]] vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
-[[nodiscard]] vk::Fence copy(ArrayView<ArrayView<u8>> pixels, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts);
+[[nodiscard]] vk::Fence copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts);
 
 Image createImage(ImageInfo const& info);
 

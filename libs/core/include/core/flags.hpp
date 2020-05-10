@@ -47,6 +47,18 @@ struct TFlags
 		bits.reset((size_t)flag);
 	}
 
+	void flip(Enum flag)
+	{
+		ASSERT((size_t)flag < N, "Invalid flag");
+		bits.flip((size_t)flag);
+	}
+
+	typename std::bitset<N>::reference operator[](Enum flag)
+	{
+		ASSERT((size_t)flag < N, "Invalid flag!");
+		return bits[(size_t)flag];
+	}
+
 	bool allSet(std::initializer_list<Enum> flags) const
 	{
 		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });

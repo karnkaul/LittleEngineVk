@@ -12,6 +12,7 @@ class WindowImpl;
 namespace le::gfx
 {
 class Mesh;
+class Cubemap;
 
 struct ScreenRect final
 {
@@ -40,7 +41,7 @@ public:
 	{
 		std::vector<Mesh const*> meshes;
 		Transform const* pTransform = nullptr;
-		Pipeline* pPipeline = nullptr;
+		Pipeline const* pPipeline = nullptr;
 	};
 
 	struct Batch final
@@ -58,6 +59,8 @@ public:
 		glm::mat4 mat_ui = {};
 		glm::vec3 pos_v = {};
 		u32 dirLightCount = 0;
+		// TODO: Replace with Skybox
+		Cubemap const* pSkybox = nullptr;
 	};
 
 	struct Scene final

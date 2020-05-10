@@ -85,6 +85,7 @@ struct SSBOFlags final
 		eOPAQUE = 1 << 2,
 		eDROP_COLOUR = 1 << 3,
 		eUI = 1 << 4,
+		eSKYBOX = 1 << 5,
 	};
 
 	std::vector<u32> ssbo;
@@ -124,6 +125,9 @@ struct Textures final
 
 	static vk::DescriptorSetLayoutBinding const s_diffuseLayoutBinding;
 	static vk::DescriptorSetLayoutBinding const s_specularLayoutBinding;
+	static vk::DescriptorSetLayoutBinding const s_cubemapLayoutBinding;
+
+	static u32 total();
 };
 
 struct PushConstants final
@@ -150,7 +154,7 @@ struct ShaderWriter final
 	u32 binding = 0;
 
 	void write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const;
-	void write(vk::DescriptorSet set, Texture const& texture, u32 idx) const;
+	void write(vk::DescriptorSet set, ShaderTex const& tex, u32 idx) const;
 };
 
 template <typename T>
@@ -341,6 +345,7 @@ private:
 	SSBOHandle<SSBODirLights> m_dirLights;
 	ShaderWriter m_diffuse;
 	ShaderWriter m_specular;
+	ShaderWriter m_cubemap;
 
 public:
 	Set();
@@ -356,6 +361,7 @@ public:
 	void writeSSBOs(SSBOs const& ssbos);
 	void writeDiffuse(Texture const& diffuse, u32 idx);
 	void writeSpecular(Texture const& specular, u32 idx);
+	void writeCubemap(Cubemap const& cubemap);
 
 	void resetTextures();
 };

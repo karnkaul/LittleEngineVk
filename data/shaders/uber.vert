@@ -1,6 +1,7 @@
 #version 450 core
 
 const uint eUI = 1 << 4;
+const uint eSKYBOX = 1 << 5;
 
 layout(std140, set = 0, binding = 0) uniform View
 {
@@ -51,7 +52,12 @@ void main()
 {
 	vec4 pos = vec4(vertPos, 1.0);
 	vec4 mPos = mats_m[objectID] * pos;
-	if ((flags[objectID] & eUI) != 0)
+	if ((flags[objectID] & eSKYBOX) != 0)
+	{
+		mat4 view = mat4(mat3(mat_v));
+		gl_Position = mat_p * view * mPos;
+	}
+	else if ((flags[objectID] & eUI) != 0)
 	{
 		gl_Position = mat_ui * mPos;
 	}

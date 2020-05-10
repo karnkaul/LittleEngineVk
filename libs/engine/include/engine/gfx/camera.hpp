@@ -42,6 +42,7 @@ public:
 	enum class Flag : u8
 	{
 		eEnabled,
+		eKeyToggle_Look,
 		eFixedSpeed,
 		eTracking,
 		eLooking,
@@ -59,6 +60,8 @@ public:
 		f32 mouseLookEpsilon = 0.2f;
 		f32 padLookSens = 50.0f;
 		f32 padStickEpsilon = 0.05f;
+
+		Key lookToggle = Key::eL;
 	};
 	struct State
 	{

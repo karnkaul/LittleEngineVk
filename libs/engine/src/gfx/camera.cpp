@@ -77,6 +77,14 @@ FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
 		default:
 			break;
 		}
+		if (m_state.flags.isSet(Flag::eEnabled))
+		{
+			if (m_state.flags.isSet(Flag::eKeyToggle_Look) && key == m_config.lookToggle && action == Action::eRelease)
+			{
+				m_state.flags.flip(Flag::eLooking);
+				m_state.flags.reset(Flag::eTracking);
+			}
+		}
 		if (key == Key::eMouseButton2 && m_state.flags.isSet(Flag::eEnabled))
 		{
 			bool const bLook = action == Action::ePress;
@@ -84,7 +92,7 @@ FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
 			{
 				m_state.flags.reset(Flag::eTracking);
 			}
-			m_state.flags.bits[((size_t)Flag::eLooking)] = bLook;
+			m_state.flags[Flag::eLooking] = bLook;
 			m_pWindow->setCursorMode(bLook ? CursorMode::eDisabled : CursorMode::eDefault);
 		}
 	});

@@ -69,6 +69,12 @@ void Resources::init()
 	create<gfx::Texture>("textures/white", textureInfo);
 	textureInfo.raw.bytes = ArrayView<u8>(black1pxBytes);
 	create<gfx::Texture>("textures/black", textureInfo);
+	gfx::Cubemap::Info cubemapInfo;
+	gfx::Texture::Raw b1px;
+	b1px.bytes = ArrayView<u8>(black1pxBytes);
+	b1px.size = {1, 1};
+	cubemapInfo.rludfbRaw = {b1px, b1px, b1px, b1px, b1px, b1px};
+	create<gfx::Cubemap>("cubemaps/black", std::move(cubemapInfo));
 	return;
 }
 } // namespace le

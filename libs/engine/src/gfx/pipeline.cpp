@@ -124,8 +124,8 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 	}
 	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
 	{
-		depthStencilState.depthTestEnable = true;
-		depthStencilState.depthWriteEnable = true;
+		depthStencilState.depthTestEnable = m_info.bDepthTest;
+		depthStencilState.depthWriteEnable = m_info.bDepthWrite;
 		depthStencilState.depthCompareOp = vk::CompareOp::eLess;
 	}
 	auto states = m_info.dynamicStates;

@@ -80,7 +80,7 @@ constexpr std::array g_frontFaceMap =
 namespace vkFlags
 {
 inline vk::ShaderStageFlags const vertShader = vk::ShaderStageFlagBits::eVertex;
-inline vk::ShaderStageFlags const fragShader = vk::ShaderStageFlagBits::eVertex;
+inline vk::ShaderStageFlags const fragShader = vk::ShaderStageFlagBits::eFragment;
 inline vk::ShaderStageFlags const vertFragShader = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 } // namespace vkFlags
 
@@ -185,6 +185,12 @@ struct ShaderImpl final
 	std::map<Shader::Type, vk::ShaderModule> modules() const;
 };
 
+struct ShaderTex final
+{
+	vk::ImageView imageView;
+	vk::Sampler sampler;
+};
+
 struct SamplerImpl final
 {
 	vk::Sampler sampler;
@@ -194,7 +200,7 @@ struct TextureImpl final
 {
 	Image active;
 	Texture::Raw raw;
-	vk::ImageView imageView;
+	ShaderTex tex;
 	vk::Fence loaded;
 	bool bStbiRaw = false;
 
@@ -211,7 +217,8 @@ struct CubemapImpl final
 	std::array<Texture::Raw, 6> rludfb;
 	vk::Fence loaded;
 	Image active;
-	vk::ImageView imageView;
+	ShaderTex tex;
+	bool bStbiRaw = true;
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	Image standby;

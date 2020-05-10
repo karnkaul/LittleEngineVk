@@ -89,12 +89,10 @@ int main(int argc, char** argv)
 	textureInfo.pReader = g_uReader.get();
 	pMesh0->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
 	pMesh0->m_material.pMaterial = pTexturedLit;
-	pMesh0->m_material.tint.a = 0x88;
 	pMesh1->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
 	pMesh1->m_material.pMaterial = pTexturedLit;
 	pMesh1->m_material.tint.a = 0xcc;
 	textureInfo.assetID = "textures/container2.png";
-	pMesh0->m_material.flags.set(gfx::Material::Flag::eDropColour);
 	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
 	textureInfo.assetID = "textures/container2_specular.png";
 	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
@@ -109,6 +107,24 @@ int main(int argc, char** argv)
 	gfx::DirLight dirLight1;
 	dirLight1.diffuse = Colour(0xffffffff);
 	dirLight1.direction = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
+
+	gfx::Cubemap::Info cubemapInfo;
+	cubemapInfo.pReader = g_uReader.get();
+	stdfs::path const& cp = "skyboxes/sky_dusk";
+	cubemapInfo.rludfbIDs = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
+	gfx::Cubemap cubemap("skyboxes/sky_dusk_cubemap", cubemapInfo);
+	cubemap.setup();
+	gfx::Mesh::Info cubeInfo;
+	cubeInfo.geometry = gfx::createCube();
+	cubeInfo.material.pMaterial = g_pResources->get<gfx::Material>("materials/default");
+	cubeInfo.material.flags.set(gfx::Material::Flag::eSkybox);
+	cubeInfo.type = gfx::Mesh::Type::eStatic;
+	gfx::Mesh* pCube = g_pResources->create<gfx::Mesh>("skybox-cube", std::move(cubeInfo));
+	gfx::Pipeline::Info skyboxPipeInfo;
+	skyboxPipeInfo.name = "skybox";
+	skyboxPipeInfo.pShader = pShader;
+	skyboxPipeInfo.bDepthWrite = false;
+	gfx::Pipeline* pSkyPipe = nullptr;
 
 	Window w0, w1;
 	Window::Info info0;
@@ -202,6 +218,7 @@ int main(int argc, char** argv)
 			auto& renderer0 = w0.renderer();
 			pPipeline0 = createPipeline(&renderer0, "default");
 			pPipeline0wf = createPipeline(&renderer0, "wireframe", gfx::PolygonMode::eLine);
+			pSkyPipe = renderer0.createPipeline(skyboxPipeInfo);
 		}
 		if (w1.isOpen())
 		{
@@ -330,6 +347,7 @@ int main(int argc, char** argv)
 				w0.create(info0);
 				pPipeline0 = createPipeline(&w0.renderer(), "default");
 				pPipeline0wf = createPipeline(&w0.renderer(), "wireframe", gfx::PolygonMode::eLine);
+				pSkyPipe = w0.renderer().createPipeline(skyboxPipeInfo);
 			}
 			if (bRecreate1)
 			{
@@ -359,9 +377,12 @@ int main(int argc, char** argv)
 					scene.dirLights = {dirLight0, dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view0;
+					scene.view.pSkybox = &cubemap;
 					auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 					gfx::Renderer::Batch batch;
-					batch.drawables = {{{pMesh0}, &transform01, pPipeline},
+					Transform noTransform;
+					batch.drawables = {{{pCube}, &noTransform, pSkyPipe},
+									   {{pMesh0}, &transform01, pPipeline},
 									   {{pMesh1}, &transform0, pPipeline},
 									   {{text.mesh()}, &textTransform, pPipeline}};
 					gfx::Renderer::Drawable model0drawable;

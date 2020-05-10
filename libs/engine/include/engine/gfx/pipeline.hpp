@@ -40,6 +40,8 @@ public:
 		CullMode cullMode = CullMode::eNone;
 		FrontFace frontFace = FrontFace::eFront;
 		bool bBlend = true;
+		bool bDepthWrite = true;
+		bool bDepthTest = true;
 	};
 
 public:

@@ -27,6 +27,8 @@ public:
 		WindowID window;
 		class Shader* pShader = nullptr;
 		bool bBlend = true;
+		bool bDepthTest = true;
+		bool bDepthWrite = true;
 	};
 
 public:

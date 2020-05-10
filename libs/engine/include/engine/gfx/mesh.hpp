@@ -9,6 +9,7 @@
 namespace le::gfx
 {
 class Texture;
+class Cubemap;
 
 struct Albedo final
 {
@@ -27,6 +28,7 @@ public:
 		eOpaque,
 		eDropColour,
 		eUI,
+		eSkybox,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
@@ -36,6 +38,7 @@ public:
 		Material* pMaterial = nullptr;
 		Texture* pDiffuse = nullptr;
 		Texture* pSpecular = nullptr;
+		Cubemap* pCubemap = nullptr;
 		Colour tint = colours::White;
 		Colour dropColour = colours::Black;
 		Flags flags;

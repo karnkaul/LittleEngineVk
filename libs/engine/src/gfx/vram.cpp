@@ -343,13 +343,13 @@ vk::Fence vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::
 	u32 layerIdx = 0;
 	u32 const layerCount = (u32)pixelsArr.extent;
 	std::vector<vk::BufferImageCopy> copyRegions;
-	auto const regionExtent = vk::Extent3D(dst.extent.width / layerCount, dst.extent.height / layerCount, dst.extent.depth);
 	for (auto pixels : pixelsArr)
 	{
-		void* pStart = (u8*)pMem + (layerIdx * layerSize);
+		auto const offset = layerIdx * layerSize;
+		void* pStart = (u8*)pMem + offset;
 		std::memcpy(pStart, pixels.pData, pixels.extent);
 		vk::BufferImageCopy copyRegion;
-		copyRegion.bufferOffset = 0;
+		copyRegion.bufferOffset = offset;
 		copyRegion.bufferRowLength = 0;
 		copyRegion.bufferImageHeight = 0;
 		copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
@@ -357,7 +357,7 @@ vk::Fence vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::
 		copyRegion.imageSubresource.baseArrayLayer = (u32)layerIdx;
 		copyRegion.imageSubresource.layerCount = 1;
 		copyRegion.imageOffset = vk::Offset3D(0, 0, 0);
-		copyRegion.imageExtent = regionExtent;
+		copyRegion.imageExtent = dst.extent;
 		copyRegions.push_back(std::move(copyRegion));
 		++layerIdx;
 	}

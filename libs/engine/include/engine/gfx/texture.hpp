@@ -9,7 +9,7 @@ namespace le::gfx
 {
 namespace rd
 {
-struct ShaderWriter;
+class Set;
 }
 
 class Sampler final : public Asset
@@ -49,7 +49,8 @@ public:
 	Status update() override;
 
 private:
-	friend struct rd::ShaderWriter;
+	friend class Texture;
+	friend class Cubemap;
 };
 
 class Texture final : public Asset
@@ -90,21 +91,17 @@ public:
 	Status update() override;
 
 private:
-	friend struct rd::ShaderWriter;
+	friend class rd::Set;
 };
 
 class Cubemap final : public Asset
 {
 public:
-	struct Raw final
-	{
-		ArrayView<u8> bytes;
-		glm::ivec2 size = {};
-	};
 	struct Info final
 	{
 		std::array<stdfs::path, 6> rludfbIDs;
 		std::array<bytearray, 6> rludfb;
+		std::array<Texture::Raw, 6> rludfbRaw;
 		stdfs::path samplerID;
 		Sampler* pSampler = nullptr;
 		class IOReader const* pReader = nullptr;
@@ -130,6 +127,6 @@ public:
 	Status update() override;
 
 private:
-	friend struct rd::ShaderWriter;
+	friend class rd::Set;
 };
 } // namespace le::gfx

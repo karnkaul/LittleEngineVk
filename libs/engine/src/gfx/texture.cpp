@@ -158,7 +158,8 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 		return;
 	}
 	m_uImpl->loaded = load(&m_uImpl->active, m_uImpl->raw.size, {m_uImpl->raw.bytes}, idStr);
-	m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+	m_uImpl->tex.imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+	m_uImpl->tex.sampler = m_pSampler->m_uImpl->sampler;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	if (bAddFileMonitor)
 	{
@@ -182,7 +183,7 @@ Texture::~Texture()
 			stbi_image_free((void*)(m_uImpl->raw.bytes.pData));
 			m_uImpl->raw = {};
 		}
-		deferred::release(m_uImpl->active, m_uImpl->imageView);
+		deferred::release(m_uImpl->active, m_uImpl->tex.imageView);
 #if defined(LEVK_ASSET_HOT_RELOAD)
 		if (m_uImpl->standby.image != m_uImpl->active.image)
 		{
@@ -231,10 +232,11 @@ Asset::Status Texture::update()
 	{
 		if (m_status == Status::eReloaded)
 		{
-			deferred::release(m_uImpl->active, m_uImpl->imageView);
+			deferred::release(m_uImpl->active, m_uImpl->tex.imageView);
 			m_uImpl->active = m_uImpl->standby;
 			m_uImpl->standby = {};
-			m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+			m_uImpl->tex.imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+			m_uImpl->tex.sampler = m_pSampler->m_uImpl->sampler;
 			m_status = Status::eReady;
 		}
 		else
@@ -292,8 +294,12 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 		m_status = Status::eError;
 		return;
 	}
-	glm::ivec2 size = {};
-	if (!info.rludfb.at(0).empty())
+	if (info.rludfbRaw.at(0).bytes.extent > 0)
+	{
+		m_uImpl->bStbiRaw = false;
+		m_uImpl->rludfb = std::move(info.rludfbRaw);
+	}
+	else if (!info.rludfb.at(0).empty())
 	{
 		size_t idx = 0;
 		for (auto& bytes : info.rludfb)
@@ -305,7 +311,6 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 				m_status = Status::eError;
 				return;
 			}
-			size += raw.size;
 			m_uImpl->rludfb.at(idx++) = std::move(raw);
 		}
 	}
@@ -329,11 +334,11 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 				m_status = Status::eError;
 				return;
 			}
-			size += raw.size;
 			m_uImpl->rludfb.at(idx++) = std::move(raw);
 		}
 		bAddFileMonitor = true;
 	}
+	glm::ivec2 const size = m_uImpl->rludfb.at(0).size;
 	std::array<ArrayView<u8>, 6> rludfb;
 	size_t idx = 0;
 	for (auto const& raw : m_uImpl->rludfb)
@@ -341,7 +346,9 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 		rludfb.at(idx++) = raw.bytes;
 	}
 	m_uImpl->loaded = load(&m_uImpl->active, size, rludfb, idStr);
-	m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+	m_uImpl->tex.imageView =
+		createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+	m_uImpl->tex.sampler = m_pSampler->m_uImpl->sampler;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	if (bAddFileMonitor)
 	{
@@ -363,11 +370,14 @@ Cubemap::~Cubemap()
 {
 	if (m_uImpl)
 	{
-		for (auto const& raw : m_uImpl->rludfb)
+		if (m_uImpl->bStbiRaw)
 		{
-			stbi_image_free((void*)(raw.bytes.pData));
+			for (auto const& raw : m_uImpl->rludfb)
+			{
+				stbi_image_free((void*)(raw.bytes.pData));
+			}
 		}
-		deferred::release(m_uImpl->active, m_uImpl->imageView);
+		deferred::release(m_uImpl->active, m_uImpl->tex.imageView);
 #if defined(LEVK_ASSET_HOT_RELOAD)
 		if (m_uImpl->standby.image != m_uImpl->active.image)
 		{
@@ -419,11 +429,11 @@ Asset::Status Cubemap::update()
 			{
 				if (m_uImpl->active.image != m_uImpl->standby.image)
 				{
-					deferred::release(m_uImpl->active, m_uImpl->imageView);
+					deferred::release(m_uImpl->active, m_uImpl->tex.imageView);
 				}
 				m_uImpl->active = m_uImpl->standby;
 			}
-			m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+			m_uImpl->tex.imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
 			m_status = Status::eReady;
 		}
 		else

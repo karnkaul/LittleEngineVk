@@ -135,6 +135,8 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
 	implInfo.staticLineWidth = info.lineWidth;
 	implInfo.bBlend = info.bBlend;
+	implInfo.bDepthTest = info.bDepthTest;
+	implInfo.bDepthWrite = info.bDepthWrite;
 	implInfo.window = m_window;
 	vk::PushConstantRange pcRange;
 	pcRange.size = sizeof(rd::PushConstants);
@@ -201,6 +203,8 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 	frame.set.update();
 	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
 	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
+	auto pSkybox = scene.view.pSkybox ? scene.view.pSkybox : g_pResources->get<Cubemap>("cubemaps/black");
+	frame.set.writeCubemap(*pSkybox);
 	for (auto& batch : scene.batches)
 	{
 		push.push_back({});
@@ -234,6 +238,10 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 				if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
+				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eSkybox))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eSKYBOX;
 				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 				{

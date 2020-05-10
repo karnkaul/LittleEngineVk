@@ -112,19 +112,12 @@ int main(int argc, char** argv)
 	cubemapInfo.pReader = g_uReader.get();
 	stdfs::path const& cp = "skyboxes/sky_dusk";
 	cubemapInfo.rludfbIDs = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
-	gfx::Cubemap cubemap("skyboxes/sky_dusk_cubemap", cubemapInfo);
-	cubemap.setup();
-	gfx::Mesh::Info cubeInfo;
-	cubeInfo.geometry = gfx::createCube();
-	cubeInfo.material.pMaterial = g_pResources->get<gfx::Material>("materials/default");
-	cubeInfo.material.flags.set(gfx::Material::Flag::eSkybox);
-	cubeInfo.type = gfx::Mesh::Type::eStatic;
-	gfx::Mesh* pCube = g_pResources->create<gfx::Mesh>("skybox-cube", std::move(cubeInfo));
+	gfx::Cubemap* pCubemap = g_pResources->create<gfx::Cubemap>("skyboxes/sky_dusk_cubemap", cubemapInfo);
 	gfx::Pipeline::Info skyboxPipeInfo;
 	skyboxPipeInfo.name = "skybox";
 	skyboxPipeInfo.pShader = pShader;
 	skyboxPipeInfo.bDepthWrite = false;
-	gfx::Pipeline* pSkyPipe = nullptr;
+	gfx::Pipeline *pSkyPipe = nullptr;
 
 	Window w0, w1;
 	Window::Info info0;
@@ -199,6 +192,7 @@ int main(int argc, char** argv)
 	};
 
 	gfx::FreeCam freeCam(&w0);
+	freeCam.m_state.flags.set(gfx::FreeCam::Flag::eKeyToggle_Look);
 
 	gfx::Text2D text;
 	gfx::Text2D::Info textInfo;
@@ -295,7 +289,7 @@ int main(int argc, char** argv)
 					bToggleModel0 = false;
 				}
 
-				freeCam.m_state.flags.bits[(size_t)gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
+				freeCam.m_state.flags[gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
 				freeCam.tick(dt);
 
 				text.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
@@ -377,12 +371,11 @@ int main(int argc, char** argv)
 					scene.dirLights = {dirLight0, dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view0;
-					scene.view.pSkybox = &cubemap;
+					scene.view.skybox = {pCubemap, pSkyPipe};
 					auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 					gfx::Renderer::Batch batch;
 					Transform noTransform;
-					batch.drawables = {{{pCube}, &noTransform, pSkyPipe},
-									   {{pMesh0}, &transform01, pPipeline},
+					batch.drawables = {{{pMesh0}, &transform01, pPipeline},
 									   {{pMesh1}, &transform0, pPipeline},
 									   {{text.mesh()}, &textTransform, pPipeline}};
 					gfx::Renderer::Drawable model0drawable;
@@ -412,7 +405,7 @@ int main(int argc, char** argv)
 						batch.drawables.push_back({{pTriangle0}, &transform0, pPipeline});
 					}
 					scene.batches.push_back(std::move(batch));
-					w0.renderer().render(scene);
+					w0.renderer().render(std::move(scene));
 				}
 				if (w1.isOpen())
 				{
@@ -423,9 +416,10 @@ int main(int argc, char** argv)
 					if (pTriangle0->isReady())
 					{
 						gfx::Renderer::Batch batch;
+						Transform noTransform;
 						batch.drawables = {{{pTriangle0}, &transform0, pPipeline1}};
 						scene.batches.push_back(std::move(batch));
-						w1.renderer().render(scene);
+						w1.renderer().render(std::move(scene));
 					}
 				}
 			}

@@ -1,5 +1,7 @@
 #pragma once
+#include <deque>
 #include <memory>
+#include <vector>
 #include "light.hpp"
 #include "pipeline.hpp"
 
@@ -37,6 +39,12 @@ public:
 		Colour colour = colours::Black;
 	};
 
+	struct Skybox final
+	{
+		Cubemap* pCubemap = nullptr;
+		Pipeline* pPipeline = nullptr;
+	};
+
 	struct Drawable final
 	{
 		std::vector<Mesh const*> meshes;
@@ -48,7 +56,7 @@ public:
 	{
 		ScreenRect viewport;
 		ScreenRect scissor;
-		std::vector<Drawable> drawables;
+		std::deque<Drawable> drawables;
 	};
 
 	struct View final
@@ -59,15 +67,14 @@ public:
 		glm::mat4 mat_ui = {};
 		glm::vec3 pos_v = {};
 		u32 dirLightCount = 0;
-		// TODO: Replace with Skybox
-		Cubemap const* pSkybox = nullptr;
+		Skybox skybox;
 	};
 
 	struct Scene final
 	{
 		View view;
 		ClearValues clear;
-		std::vector<Batch> batches;
+		std::deque<Batch> batches;
 		std::vector<DirLight> dirLights;
 	};
 
@@ -87,7 +94,7 @@ public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
 	void update();
-	void render(Scene const& scene);
+	void render(Scene scene);
 
 private:
 	friend class le::WindowImpl;

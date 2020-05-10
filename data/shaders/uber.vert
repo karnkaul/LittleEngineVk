@@ -54,8 +54,7 @@ void main()
 	vec4 mPos = mats_m[objectID] * pos;
 	if ((flags[objectID] & eSKYBOX) != 0)
 	{
-		mat4 view = mat4(mat3(mat_v));
-		gl_Position = mat_p * view * mPos;
+		gl_Position = mat_p * mat4(mat3(mat_v)) * mPos;
 	}
 	else if ((flags[objectID] & eUI) != 0)
 	{

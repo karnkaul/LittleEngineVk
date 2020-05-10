@@ -48,12 +48,12 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */)
 	f32 const s = side * 0.5f;
 	// clang-format off
 	ret.vertices = {
-		// front
+		// back
 		{{-s, -s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
 		{{ s, -s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
 		{{ s,  s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
 		{{-s,  s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
-		// back
+		// front
 		{{-s, -s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
 		{{ s, -s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
 		{{ s,  s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
@@ -73,7 +73,7 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */)
 		{{ s, -s, -s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
 		{{ s, -s,  s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
 		{{-s, -s,  s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
-		//up
+		// up
 		{{-s,  s, -s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
 		{{ s,  s, -s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
 		{{ s,  s,  s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},

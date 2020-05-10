@@ -18,6 +18,9 @@ private:
 	mutable bool m_bDirty = false;
 
 public:
+	static Transform const s_identity;
+
+public:
 	Transform();
 	Transform(Transform&&);
 	Transform& operator=(Transform&&);

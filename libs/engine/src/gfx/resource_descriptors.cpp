@@ -112,7 +112,7 @@ void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) c
 	return;
 }
 
-void ShaderWriter::write(vk::DescriptorSet set, ShaderTex const& tex, u32 idx) const
+void ShaderWriter::write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx) const
 {
 	vk::DescriptorImageInfo imageInfo;
 	imageInfo.imageView = tex.imageView;
@@ -210,19 +210,19 @@ void Set::writeSSBOs(SSBOs const& ssbos)
 
 void Set::writeDiffuse(Texture const& diffuse, u32 idx)
 {
-	m_diffuse.write(m_descriptorSet, diffuse.m_uImpl->tex, idx);
+	m_diffuse.write(m_descriptorSet, *diffuse.m_uImpl, idx);
 	return;
 }
 
 void Set::writeSpecular(Texture const& specular, u32 idx)
 {
-	m_specular.write(m_descriptorSet, specular.m_uImpl->tex, idx);
+	m_specular.write(m_descriptorSet, *specular.m_uImpl, idx);
 	return;
 }
 
 void Set::writeCubemap(Cubemap const& cubemap)
 {
-	m_cubemap.write(m_descriptorSet, cubemap.m_uImpl->tex, 0);
+	m_cubemap.write(m_descriptorSet, *cubemap.m_uImpl, 0);
 	return;
 }
 
@@ -230,7 +230,7 @@ void Set::resetTextures()
 {
 	auto pBlack = g_pResources->get<Texture>("textures/black");
 	auto pWhite = g_pResources->get<Texture>("textures/white");
-	auto pCubemap = g_pResources->get<Cubemap>("cubemaps/black");
+	auto pCubemap = g_pResources->get<Cubemap>("cubemaps/blank");
 	ASSERT(pBlack && pWhite && pCubemap, "blank textures are null!");
 	for (u32 i = 0; i < Textures::max; ++i)
 	{

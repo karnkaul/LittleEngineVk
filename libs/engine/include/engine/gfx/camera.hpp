@@ -50,8 +50,16 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
-	struct Config
+	struct KeyToggle final
 	{
+		Key key;
+		Mods mods = (Mods)0;
+		Action action = Action::eRelease;
+	};
+
+	struct Config final
+	{
+		KeyToggle lookToggle = {Key::eL, Mods::eCONTROL};
 		f32 defaultSpeed = 2.0f;
 		f32 minSpeed = 1.0f;
 		f32 maxSpeed = 1000.0f;
@@ -60,10 +68,8 @@ public:
 		f32 mouseLookEpsilon = 0.2f;
 		f32 padLookSens = 50.0f;
 		f32 padStickEpsilon = 0.05f;
-
-		Key lookToggle = Key::eL;
 	};
-	struct State
+	struct State final
 	{
 		std::unordered_set<Key> heldKeys;
 		std::pair<glm::vec2, glm::vec2> cursorPos = {{0.0f, 0.0f}, {0.0f, 0.0f}};

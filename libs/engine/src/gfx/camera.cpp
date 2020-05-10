@@ -57,7 +57,7 @@ FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
 {
 	ASSERT(m_pWindow, "Window is null!");
 	m_state.speed = m_config.defaultSpeed;
-	m_tMove = m_pWindow->registerInput([this](Key key, Action action, Mods /*mods*/) {
+	m_tMove = m_pWindow->registerInput([this](Key key, Action action, Mods mods) {
 		switch (action)
 		{
 		case Action::ePress:
@@ -77,13 +77,11 @@ FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
 		default:
 			break;
 		}
-		if (m_state.flags.isSet(Flag::eEnabled))
+		if (m_state.flags.isSet(Flag::eKeyToggle_Look) && key == m_config.lookToggle.key && action == m_config.lookToggle.action
+			&& (m_config.lookToggle.mods == (Mods)0 || m_config.lookToggle.mods & mods))
 		{
-			if (m_state.flags.isSet(Flag::eKeyToggle_Look) && key == m_config.lookToggle && action == Action::eRelease)
-			{
-				m_state.flags.flip(Flag::eLooking);
-				m_state.flags.reset(Flag::eTracking);
-			}
+			m_state.flags.flip(Flag::eLooking);
+			m_state.flags.reset(Flag::eTracking);
 		}
 		if (key == Key::eMouseButton2 && m_state.flags.isSet(Flag::eEnabled))
 		{

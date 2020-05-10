@@ -154,7 +154,7 @@ struct ShaderWriter final
 	u32 binding = 0;
 
 	void write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const;
-	void write(vk::DescriptorSet set, ShaderTex const& tex, u32 idx) const;
+	void write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx) const;
 };
 
 template <typename T>

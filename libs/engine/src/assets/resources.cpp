@@ -53,9 +53,13 @@ void Resources::update()
 
 void Resources::init()
 {
-	create<gfx::Material>("materials/default", {});
+	auto pDefault = create<gfx::Material>("materials/default", {});
 	create<gfx::Material>("materials/font", {});
 	create<gfx::Sampler>("samplers/default", {});
+	gfx::Mesh::Info cubeInfo;
+	cubeInfo.material.pMaterial = pDefault;
+	cubeInfo.geometry = gfx::createCube();
+	create<gfx::Mesh>("meshes/cube", std::move(cubeInfo));
 	gfx::Sampler::Info fontSampler;
 	fontSampler.mode = gfx::Sampler::Mode::eClampEdge;
 	fontSampler.min = gfx::Sampler::Filter::eNearest;
@@ -74,7 +78,7 @@ void Resources::init()
 	b1px.bytes = ArrayView<u8>(black1pxBytes);
 	b1px.size = {1, 1};
 	cubemapInfo.rludfbRaw = {b1px, b1px, b1px, b1px, b1px, b1px};
-	create<gfx::Cubemap>("cubemaps/black", std::move(cubemapInfo));
+	create<gfx::Cubemap>("cubemaps/blank", std::move(cubemapInfo));
 	return;
 }
 } // namespace le

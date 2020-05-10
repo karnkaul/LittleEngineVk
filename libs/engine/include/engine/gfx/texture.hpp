@@ -115,7 +115,7 @@ public:
 	Sampler* m_pSampler = nullptr;
 
 private:
-	std::unique_ptr<struct CubemapImpl> m_uImpl;
+	std::unique_ptr<struct TextureImpl> m_uImpl;
 
 public:
 	Cubemap(stdfs::path id, Info info);

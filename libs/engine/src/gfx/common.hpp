@@ -185,12 +185,6 @@ struct ShaderImpl final
 	std::map<Shader::Type, vk::ShaderModule> modules() const;
 };
 
-struct ShaderTex final
-{
-	vk::ImageView imageView;
-	vk::Sampler sampler;
-};
-
 struct SamplerImpl final
 {
 	vk::Sampler sampler;
@@ -199,30 +193,16 @@ struct SamplerImpl final
 struct TextureImpl final
 {
 	Image active;
-	Texture::Raw raw;
-	ShaderTex tex;
+	std::vector<Texture::Raw> raws;
+	vk::ImageView imageView;
+	vk::Sampler sampler;
+	vk::ImageViewType type = vk::ImageViewType::e2D;
 	vk::Fence loaded;
 	bool bStbiRaw = false;
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	Image standby;
-	stdfs::path imgID;
-	FileReader const* pReader = nullptr;
-	bool bReloading = false;
-#endif
-};
-
-struct CubemapImpl final
-{
-	std::array<Texture::Raw, 6> rludfb;
-	vk::Fence loaded;
-	Image active;
-	ShaderTex tex;
-	bool bStbiRaw = true;
-
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	Image standby;
-	std::array<stdfs::path, 6> imgIDs;
+	std::vector<stdfs::path> imgIDs;
 	FileReader const* pReader = nullptr;
 	bool bReloading = false;
 #endif

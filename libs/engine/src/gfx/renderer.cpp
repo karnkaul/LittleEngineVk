@@ -51,11 +51,11 @@ void Renderer::update()
 	}
 }
 
-void Renderer::render(Scene const& scene)
+void Renderer::render(Scene scene)
 {
 	if (m_uImpl)
 	{
-		m_uImpl->render(scene);
+		m_uImpl->render(std::move(scene));
 	}
 }
 
@@ -185,7 +185,7 @@ void RendererImpl::update()
 	return;
 }
 
-bool RendererImpl::render(Renderer::Scene const& scene)
+bool RendererImpl::render(Renderer::Scene scene)
 {
 	auto const mg = colours::Magenta;
 	auto& frame = frameSync();
@@ -198,17 +198,23 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 	u32 diffuseID = 0;
 	u32 specularID = 0;
 	rd::SSBOs ssbos;
-	std::vector<std::vector<rd::PushConstants>> push;
-	push.reserve(scene.batches.size());
+	std::deque<std::deque<rd::PushConstants>> push;
 	frame.set.update();
 	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
 	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
-	auto pSkybox = scene.view.pSkybox ? scene.view.pSkybox : g_pResources->get<Cubemap>("cubemaps/black");
-	frame.set.writeCubemap(*pSkybox);
+	frame.set.writeCubemap(*g_pResources->get<Cubemap>("cubemaps/blank"));
+	bool bSkybox = false;
+	if (scene.view.skybox.pCubemap && scene.view.skybox.pPipeline)
+	{
+		auto pTransform = &Transform::s_identity;
+		auto pMesh = g_pResources->get<Mesh>("meshes/cube");
+		scene.batches.push_front({{}, {}, {{{pMesh}, pTransform, scene.view.skybox.pPipeline}}});
+		frame.set.writeCubemap(*scene.view.skybox.pCubemap);
+		bSkybox = true;
+	}
 	for (auto& batch : scene.batches)
 	{
 		push.push_back({});
-		push.back().reserve(batch.drawables.size());
 		for (auto& [meshes, pTransform, _] : batch.drawables)
 		{
 			ASSERT(!meshes.empty() && pTransform, "Mesh / Transform is null!");
@@ -223,6 +229,11 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 				ssbos.materials.ssbo.push_back({*pMesh->m_material.pMaterial, pMesh->m_material.dropColour});
 				ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
 				ssbos.flags.ssbo.push_back(0);
+				if (bSkybox)
+				{
+					bSkybox = false;
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eSKYBOX;
+				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
@@ -238,10 +249,6 @@ bool RendererImpl::render(Renderer::Scene const& scene)
 				if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
-				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eSkybox))
-				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eSKYBOX;
 				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 				{

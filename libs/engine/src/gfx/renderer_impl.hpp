@@ -71,7 +71,7 @@ public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
 	void update();
-	bool render(Renderer::Scene const& scene);
+	bool render(Renderer::Scene scene);
 
 public:
 	vk::Viewport transformViewport(ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f}) const;

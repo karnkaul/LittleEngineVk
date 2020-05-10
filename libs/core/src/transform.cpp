@@ -5,6 +5,8 @@
 
 namespace le
 {
+Transform const Transform::s_identity;
+
 Transform::Transform() = default;
 Transform::Transform(Transform&&) = default;
 Transform& Transform::operator=(Transform&&) = default;

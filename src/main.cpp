@@ -8,6 +8,7 @@
 #include "core/transform.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/ecs/registry.hpp"
 #include "engine/gfx/camera.hpp"
 #include "engine/gfx/font.hpp"
 #include "engine/gfx/geometry.hpp"
@@ -48,6 +49,7 @@ int main(int argc, char** argv)
 	fontInfo.image = g_uReader->getBytes(stdfs::path("fonts") / fontInfo.sheetID).payload;
 	auto pFont = g_pResources->create<gfx::Font>("fonts/default", std::move(fontInfo));
 
+	ecs::Registry registry;
 	gfx::Mesh::Info triangle0info;
 	// clang-format off
 		triangle0info.geometry.vertices = {
@@ -63,6 +65,11 @@ int main(int argc, char** argv)
 	gfx::Mesh* pMesh0 = g_pResources->create<gfx::Mesh>("mesh0", meshInfo);
 	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
 	gfx::Mesh* pMesh1 = g_pResources->create<gfx::Mesh>("mesh1", meshInfo);
+
+	auto eid0 = registry.spawnEntity("entity0");
+	[[maybe_unused]] auto pTC0 = registry.addComponent<ecs::Data<Transform>>(eid0);
+	auto pMC0 = registry.addComponent<ecs::Data<gfx::Mesh*>>(eid0);
+	pMC0->data = pMesh0;
 
 	gfx::Model::LoadRequest model0lr;
 	model0lr.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
@@ -129,7 +136,6 @@ int main(int argc, char** argv)
 	// info1.config.mode = Window::Mode::eBorderlessFullscreen;
 	info1.config.title += " 2";
 	info1.config.centreOffset = {200, 200};
-	info1.options.colourSpaces = {ColourSpace::eRGBLinear};
 	bool bRecreate0 = false, bRecreate1 = false;
 	bool bClose0 = false, bClose1 = false;
 	bool bWF0 = false;
@@ -163,18 +169,26 @@ int main(int argc, char** argv)
 	gfx::Model::Info m0info;
 	gfx::Model::Info m1info;
 	Time reloadTime;
-	wf0Token = w0.registerInput([&bWF0, &bTEMP, &bToggleModel0](Key key, Action action, Mods mods) {
-		if (key == Key::eP && action == Action::eRelease && mods & Mods::eCONTROL)
+	wf0Token = w0.registerInput([eid0, &registry, &bWF0, &bTEMP, &bToggleModel0](Key key, Action action, Mods mods) {
+		if (key == Key::eP && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
 			bWF0 = !bWF0;
 		}
-		if (key == Key::eS && action == Action::eRelease && mods & Mods::eCONTROL)
+		if (key == Key::eS && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
 			bTEMP = !bTEMP;
 		}
-		if (key == Key::eM && action == Action::eRelease && mods & Mods::eCONTROL)
+		if (key == Key::eM && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
 			bToggleModel0 = true;
+		}
+		if (key == Key::eD && action == Action::eRelease && (mods & Mods::eCONTROL))
+		{
+			registry.destroyEntity(eid0);
+		}
+		if (key == Key::eE && action == Action::eRelease && (mods & Mods::eCONTROL))
+		{
+			registry.setEnabled(eid0, !registry.isEnabled(eid0));
 		}
 	});
 	registerInput(w0, w1, bRecreate1, bClose0, token0);
@@ -252,6 +266,7 @@ int main(int argc, char** argv)
 			}
 			{
 				engine.update();
+				registry.cleanDestroyed();
 
 				if (bToggleModel0)
 				{
@@ -374,7 +389,6 @@ int main(int argc, char** argv)
 					scene.view.skybox = {pCubemap, pSkyPipe};
 					auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 					gfx::Renderer::Batch batch;
-					Transform noTransform;
 					batch.drawables = {{{pMesh0}, &transform01, pPipeline},
 									   {{pMesh1}, &transform0, pPipeline},
 									   {{text.mesh()}, &textTransform, pPipeline}};
@@ -404,20 +418,37 @@ int main(int argc, char** argv)
 					{
 						batch.drawables.push_back({{pTriangle0}, &transform0, pPipeline});
 					}
+					auto view = registry.view<ecs::Data<Transform>, ecs::Data<gfx::Mesh*>>();
+					for (auto& [eid, query] : view)
+					{
+						auto pTransform = &query.get<ecs::Data<Transform>>()->data;
+						auto pMesh = query.get<ecs::Data<gfx::Mesh*>>()->data;
+						batch.drawables.push_back({{pMesh}, pTransform, pPipeline});
+					}
 					scene.batches.push_back(std::move(batch));
 					w0.renderer().render(std::move(scene));
 				}
 				if (w1.isOpen())
 				{
 					gfx::Renderer::Scene scene;
-					scene.dirLights.push_back(dirLight0);
+					scene.dirLights = {dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view1;
 					if (pTriangle0->isReady())
 					{
 						gfx::Renderer::Batch batch;
-						Transform noTransform;
 						batch.drawables = {{{pTriangle0}, &transform0, pPipeline1}};
+						gfx::Renderer::Drawable model0drawable;
+						if (pModel0)
+						{
+							pModel0->fillMeshes(model0drawable.meshes);
+						}
+						if (!model0drawable.meshes.empty())
+						{
+							model0drawable.pPipeline = pPipeline1;
+							model0drawable.pTransform = &tr02;
+							batch.drawables.push_back(std::move(model0drawable));
+						}
 						scene.batches.push_back(std::move(batch));
 						w1.renderer().render(std::move(scene));
 					}

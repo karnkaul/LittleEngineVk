@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <typeinfo>
 #include <type_traits>
 #include "core/std_types.hpp"
 

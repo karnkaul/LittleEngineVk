@@ -187,7 +187,7 @@ void RendererImpl::update()
 
 bool RendererImpl::render(Renderer::Scene scene)
 {
-	auto const mg = colours::Magenta;
+	auto const mg = colours::magenta;
 	auto& frame = frameSync();
 	if (!frame.bNascent)
 	{

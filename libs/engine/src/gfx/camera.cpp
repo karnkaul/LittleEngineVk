@@ -32,12 +32,12 @@ glm::mat4 Camera::view() const
 	}
 }
 
-glm::mat4 Camera::perspectiveProj(f32 aspect, f32 near, f32 far) const
+glm::mat4 Camera::perspective(f32 aspect, f32 near, f32 far) const
 {
 	return glm::perspective(glm::radians(m_fov), aspect, near, far);
 }
 
-glm::mat4 Camera::orthographicProj(f32 aspect, f32 zoom, f32 near, f32 far) const
+glm::mat4 Camera::ortho(f32 aspect, f32 zoom, f32 near, f32 far) const
 {
 	ASSERT(zoom > 0.0f, "Invalid zoom!");
 	f32 const ar = aspect;
@@ -46,7 +46,7 @@ glm::mat4 Camera::orthographicProj(f32 aspect, f32 zoom, f32 near, f32 far) cons
 	return glm::ortho(-w / zoom, w / zoom, -h / zoom, h / zoom, near, far);
 }
 
-glm::mat4 Camera::uiProj(glm::vec3 const& uiSpace) const
+glm::mat4 Camera::ui(glm::vec3 const& uiSpace) const
 {
 	f32 const w = uiSpace.x * 0.5f;
 	f32 const h = uiSpace.y * 0.5f;

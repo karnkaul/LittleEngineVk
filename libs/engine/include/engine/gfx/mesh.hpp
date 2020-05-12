@@ -13,9 +13,9 @@ class Cubemap;
 
 struct Albedo final
 {
-	Colour ambient = colours::White;
-	Colour diffuse = colours::White;
-	Colour specular = colours::White;
+	Colour ambient = colours::white;
+	Colour diffuse = colours::white;
+	Colour specular = colours::white;
 };
 
 class Material final : public Asset
@@ -39,8 +39,8 @@ public:
 		Texture* pDiffuse = nullptr;
 		Texture* pSpecular = nullptr;
 		Cubemap* pCubemap = nullptr;
-		Colour tint = colours::White;
-		Colour dropColour = colours::Black;
+		Colour tint = colours::white;
+		Colour dropColour = colours::black;
 		Flags flags;
 	};
 

@@ -54,15 +54,17 @@ struct TResult
 	TResult(T&& payload, bool bResult) : payload(std::forward<T&&>(payload)), bResult(bResult) {}
 };
 
-template <typename T, typename = std::enable_if_t<std::is_array_v<T>>>
+template <typename T>
 constexpr size_t arraySize(T const& arr)
 {
+	static_assert(std::is_array_v<T>, "T must be an array!");
 	return sizeof(arr) / sizeof(arr[0]);
 }
 
-template <typename T, typename = std::enable_if<std::is_arithmetic_v<T>>>
+template <typename T>
 constexpr T maxVal()
 {
+	static_assert(std::is_arithmetic_v<T>, "T must be arithemtic!");
 	return std::numeric_limits<T>::max();
 }
 } // namespace le

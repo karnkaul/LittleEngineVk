@@ -36,7 +36,7 @@ public:
 	struct ClearValues final
 	{
 		glm::vec2 depthStencil = {1.0f, 0.0f};
-		Colour colour = colours::Black;
+		Colour colour = colours::black;
 	};
 
 	struct Skybox final

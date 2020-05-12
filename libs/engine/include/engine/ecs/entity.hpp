@@ -1,39 +1,22 @@
 #pragma once
-#include <string>
 #include "core/std_types.hpp"
-#include "core/flags.hpp"
 
-namespace le::ecs
+namespace le
 {
-class Entity final
+struct Entity final
 {
-public:
 	using ID = u64;
 
-public:
-	constexpr static ID s_invalidID = 0;
-	static std::string const s_tName;
-
-private:
-	ID m_id = s_invalidID;
-#if defined(LEVK_DEBUG)
-public:
-	bool m_bDebugThis = false;
-#endif
-
-public:
-	constexpr static void nextID(ID* out_pID)
-	{
-		++(*out_pID);
-	}
-
-public:
-	inline ID id() const
-	{
-		return m_id;
-	}
-
-private:
-	friend class Registry;
+	ID id = 0;
 };
-} // namespace le::ecs
+
+inline bool operator==(Entity lhs, Entity rhs)
+{
+	return lhs.id == rhs.id;
+}
+
+inline bool operator!=(Entity lhs, Entity rhs)
+{
+	return !(lhs == rhs);
+}
+} // namespace le

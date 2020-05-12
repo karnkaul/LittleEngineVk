@@ -1,12 +1,10 @@
 #pragma once
 #include "core/std_types.hpp"
 #include "core/time.hpp"
-#include "core/zero.hpp"
+#include "entity.hpp"
 
-namespace le::ecs
+namespace le
 {
-class Entity;
-
 class Component
 {
 public:
@@ -14,7 +12,7 @@ public:
 
 private:
 	Sign m_sign = 0;
-	Entity* m_pOwner = nullptr;
+	Entity m_owner;
 
 public:
 	Component();
@@ -22,24 +20,13 @@ public:
 	Component& operator=(Component&&) noexcept;
 	virtual ~Component();
 
-public:
-	Entity* entity();
-	Entity const* entity() const;
-
 protected:
 	virtual void onCreate();
 
 private:
-	void create(Entity* pOwner, Sign sign);
+	void create(Entity owner, Sign sign);
 
 private:
 	friend class Registry;
 };
-
-template <typename T>
-class Data : public Component
-{
-public:
-	T data;
-};
-} // namespace le::ecs
+} // namespace le

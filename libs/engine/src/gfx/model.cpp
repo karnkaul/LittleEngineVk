@@ -331,6 +331,8 @@ std::string const Model::s_tName = utils::tName<Model>();
 Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 {
 	ASSERT(!(info.meshData.empty() && info.preloaded.empty()), "No mesh data!");
+	m_meshes = std::move(info.preloaded);
+	m_meshes.reserve(m_meshes.size() + info.meshData.size());
 	std::copy(info.preloaded.begin(), info.preloaded.end(), std::back_inserter(m_meshes));
 	for (auto& texture : info.textures)
 	{
@@ -398,14 +400,9 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	m_status = Status::eLoading;
 }
 
-size_t Model::meshCount() const
+std::vector<Mesh const*> Model::meshes() const
 {
-	return m_meshes.size();
-}
-
-void Model::fillMeshes(std::vector<Mesh const*>& out_meshes) const
-{
-	std::copy(m_meshes.begin(), m_meshes.end(), std::back_inserter(out_meshes));
+	return m_meshes;
 }
 
 Asset::Status Model::update()

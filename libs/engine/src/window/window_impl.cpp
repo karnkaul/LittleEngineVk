@@ -442,6 +442,11 @@ bool WindowImpl::create(Window::Info const& info)
 		{
 			rendererInfo.presenterInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((size_t)colourSpace));
 		}
+		if (os::isDefined("immediate"))
+		{
+			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
+			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)PresentMode::eImmediate));
+		}
 		for (auto presentMode : info.options.presentModes)
 		{
 			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));

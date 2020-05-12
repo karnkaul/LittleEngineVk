@@ -1,16 +1,18 @@
 #pragma once
 #include <algorithm>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "core/time.hpp"
 #include "entity.hpp"
 #include "component.hpp"
 
-namespace le::ecs
+namespace le
 {
 struct CompQuery final
 {
@@ -36,24 +38,24 @@ public:
 		eCOUNT_,
 	};
 
-protected:
-	enum class EntityFlag : u8
+	enum class Flag : u8
 	{
 		eDisabled,
 		eDestroyed,
+		eDebug,
 		eCOUNT_
 	};
-	using EntityFlags = TFlags<EntityFlag>;
+	using Flags = TFlags<Flag>;
 
 protected:
-	std::unordered_map<Entity::ID, Entity> m_entities;
-	std::unordered_map<Entity::ID, EntityFlags> m_entityFlags;
+	std::unordered_map<Entity::ID, Flags> m_entityFlags;
 	std::unordered_map<Entity::ID, std::string> m_entityNames;
 	std::unordered_map<Component::Sign, std::string> m_componentNames;
 	std::unordered_map<Entity::ID, std::unordered_map<Component::Sign, std::unique_ptr<Component>>> m_db;
+	mutable std::mutex m_mutex;
 
 private:
-	Entity::ID m_nextID = Entity::s_invalidID;
+	Entity::ID m_nextID = 0;
 	DestroyMode m_destroyMode;
 
 public:
@@ -61,8 +63,6 @@ public:
 
 public:
 	Registry(DestroyMode destroyMode = DestroyMode::eDeferred);
-	Registry(Registry&&);
-	Registry& operator=(Registry&&);
 	virtual ~Registry();
 
 public:
@@ -79,82 +79,67 @@ public:
 		return sizeof...(Comps);
 	}
 
-	template <typename Comp1, typename... Comps>
-	static std::vector<Component::Sign> getSigns()
-	{
-		std::vector<Component::Sign> ret;
-		ret.reserve(count<Comp1, Comps...>());
-		ret.push_back(signature<Comp1>());
-		(ret.push_back(signature<Comps>()), ...);
-		return ret;
-	}
-
 public:
+	Entity spawnEntity(std::string name);
+
 	template <typename Comp1, typename... Comps>
-	Entity::ID spawnEntity(std::string name)
+	Entity spawnEntity(std::string name)
 	{
-		auto eEntity = spawnEntity(name);
-		if (auto pEntity = entity(eEntity))
-		{
-			addComponent_Impl<Comp1, Comps...>(pEntity);
-			return pEntity->m_id;
-		}
-		return Entity::s_invalidID;
+		auto entity = spawnEntity(std::move(name));
+		addComponent_Impl<Comp1, Comps...>(entity);
 	}
 
-	Entity::ID spawnEntity(std::string name);
-	Entity* entity(Entity::ID id);
-	Entity const* entity(Entity::ID id) const;
-	bool destroyEntity(Entity::ID id);
-	bool destroyComponents(Entity::ID id);
-	bool setEnabled(Entity::ID id, bool bEnabled);
+	bool destroyEntity(Entity entity);
+	bool destroyComponents(Entity entity);
+	bool setEnabled(Entity entity, bool bEnabled);
+	bool setDebug(Entity entity, bool bDebug);
 
-	bool isEnabled(Entity::ID id) const;
-	bool isAlive(Entity::ID id) const;
+	bool isEnabled(Entity entity) const;
+	bool isAlive(Entity entity) const;
+	bool isDebugSet(Entity entity) const;
 
 	template <typename Comp, typename... Args>
-	Comp* addComponent(Entity::ID id, Args... args)
+	Comp* addComponent(Entity entity, Args... args)
 	{
-		if (auto pEntity = entity(id))
+		if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 		{
-			return dynamic_cast<Comp*>(addComponent_Impl<Comp>(pEntity, std::forward<Args>(args)...));
+			return dynamic_cast<Comp*>(addComponent_Impl<Comp>(entity, std::forward<Args>(args)...));
 		}
 		return nullptr;
 	}
 
 	template <typename Comp1, typename Comp2, typename... Comps>
-	void addComponent(Entity::ID id)
+	void addComponent(Entity entity)
 	{
-		if (auto pEntity = entity(id))
+		if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 		{
-			addComponent_Impl<Comp1, Comp2, Comps...>(pEntity);
+			addComponent_Impl<Comp1, Comp2, Comps...>(entity);
 		}
 		return;
 	}
 
 	template <typename Comp>
-	Comp const* component(Entity::ID id) const
+	Comp const* component(Entity entity) const
 	{
-		return component<Registry const, Comp const>(this, id);
+		return component<Registry const, Comp const>(this, entity.id);
 	}
 
 	template <typename Comp>
-	Comp* component(Entity::ID id)
+	Comp* component(Entity entity)
 	{
-		return component<Registry, Comp>(this, id);
+		return component<Registry, Comp>(this, entity.id);
 	}
 
 	template <typename Comp>
-	bool destroyComponent(Entity::ID id)
+	bool destroyComponent(Entity entity)
 	{
 		static_assert(std::is_base_of_v<Component, Comp>, "Comp must derive from Component!");
-		if (entity(id))
+		if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 		{
 			auto const sign = signature<Comp>();
-			auto search = m_db[id].find(sign);
-			if (search != m_db[id].end())
+			if (auto search = m_db[entity.id].find(sign); search != m_db[entity.id].end())
 			{
-				detach(search->second.get(), id);
+				detach(search->second.get(), entity);
 				return true;
 			}
 		}
@@ -162,15 +147,15 @@ public:
 	}
 
 	template <typename Comp1, typename... Comps>
-	std::unordered_map<Entity::ID, CompQuery> view(bool bOnlyEnabled = true) const
+	std::unordered_map<Entity::ID, CompQuery> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {}) const
 	{
-		return view<Registry const, Comp1, Comps...>(this, bOnlyEnabled);
+		return view<Registry const, Comp1, Comps...>(this, mask, pattern);
 	}
 
 	template <typename Comp1, typename... Comps>
-	std::unordered_map<Entity::ID, CompQuery> view(bool bOnlyEnabled = true)
+	std::unordered_map<Entity::ID, CompQuery> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {})
 	{
-		return view<Registry, Comp1, Comps...>(this, bOnlyEnabled);
+		return view<Registry, Comp1, Comps...>(this, mask, pattern);
 	}
 
 public:
@@ -178,18 +163,18 @@ public:
 
 private:
 	template <typename Comp, typename... Args>
-	Component* addComponent_Impl(Entity* pEntity, Args... args)
+	Component* addComponent_Impl(Entity entity, Args... args)
 	{
 		static_assert(std::is_base_of_v<Component, Comp>, "Comp must derive from Component!");
 		static_assert((std::is_constructible_v<Comp, Args> && ...), "Cannot construct Comp with given Args...");
-		return attach(signature<Comp>(), std::make_unique<Comp>(std::forward<Args>(args)...), pEntity);
+		return attach(signature<Comp>(), std::make_unique<Comp>(std::forward<Args>(args)...), entity);
 	}
 
 	template <typename Comp1, typename Comp2, typename... Comps>
-	void addComponent_Impl(Entity* pEntity)
+	void addComponent_Impl(Entity entity)
 	{
-		addComponent_Impl<Comp1>(pEntity);
-		addComponent_Impl<Comp2, Comps...>(pEntity);
+		addComponent_Impl<Comp1>(entity);
+		addComponent_Impl<Comp2, Comps...>(entity);
 	}
 
 	// const helper
@@ -198,12 +183,12 @@ private:
 	{
 		static_assert(std::is_base_of_v<Component, Comp>, "Comp must derive from Component!");
 		auto const sign = signature<Comp>();
+		std::unique_lock<std::mutex> lock(pThis->m_mutex);
 		auto cSearch = pThis->m_db.find(id);
 		if (cSearch != pThis->m_db.end())
 		{
 			auto& cmap = cSearch->second;
-			auto search = cmap.find(sign);
-			if (search != cmap.end())
+			if (auto search = cmap.find(sign); search != cmap.end())
 			{
 				return dynamic_cast<Comp*>(search->second.get());
 			}
@@ -213,24 +198,24 @@ private:
 
 	// const helper
 	template <typename T, typename Comp1, typename... Comps>
-	static std::unordered_map<Entity::ID, CompQuery> view(T* pThis, bool bOnlyEnabled)
+	static std::unordered_map<Entity::ID, CompQuery> view(T* pThis, Flags mask, Flags pattern)
 	{
 		std::unordered_map<Entity::ID, CompQuery> ret;
-		auto const signs = getSigns<Comp1, Comps...>();
-		for (auto& [id, _] : pThis->m_entities)
+		auto const signs = {signature<Comp1>(), (signature<Comps>(), ...)};
+		std::unique_lock<std::mutex> lock(pThis->m_mutex);
+		for (auto& [id, flags] : pThis->m_entityFlags)
 		{
-			auto flags = pThis->m_entityFlags[id];
-			if (!flags.isSet(EntityFlag::eDestroyed) && (!bOnlyEnabled || !flags.isSet(EntityFlag::eDisabled)))
+			if ((flags & mask) == (pattern & mask))
 			{
-				auto& components = pThis->m_db[id];
-				bool const bHasAll = std::all_of(signs.begin(), signs.end(),
-												 [&components](auto sign) -> bool { return components.find(sign) != components.end(); });
+				auto& comps = pThis->m_db[id];
+				auto checkSigns = [&comps](auto sign) -> bool { return comps.find(sign) != comps.end(); };
+				bool const bHasAll = std::all_of(signs.begin(), signs.end(), checkSigns);
 				if (bHasAll)
 				{
 					auto& ref = ret[id];
 					for (auto sign : signs)
 					{
-						ref.results[sign] = components[sign].get();
+						ref.results[sign] = comps[sign].get();
 						ASSERT(ref.results[sign] != nullptr, "Invariant violated");
 					}
 				}
@@ -239,11 +224,11 @@ private:
 		return ret;
 	}
 
-	Component* attach(Component::Sign sign, std::unique_ptr<Component>&& uComp, Entity* pEntity);
+	Component* attach(Component::Sign sign, std::unique_ptr<Component>&& uComp, Entity entity);
 	void detach(Component const* pComponent, Entity::ID id);
 
-	using EntityMap = std::unordered_map<Entity::ID, Entity>;
-	EntityMap::iterator destroyEntity(EntityMap::iterator iter, Entity::ID id);
+	using EFMap = std::unordered_map<Entity::ID, Flags>;
+	EFMap::iterator destroyEntity(EFMap::iterator iter, Entity::ID id);
 };
 
 template <typename Comp>
@@ -266,4 +251,4 @@ Comp* CompQuery::get(T* pThis)
 	auto const search = pThis->results.find(sign);
 	return search != pThis->results.end() ? dynamic_cast<Comp*>(search->second) : nullptr;
 }
-} // namespace le::ecs
+} // namespace le

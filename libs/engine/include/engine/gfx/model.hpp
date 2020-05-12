@@ -46,7 +46,7 @@ public:
 		std::vector<MeshData> meshData;
 		std::vector<Mesh const*> preloaded;
 		Mesh::Type type = Mesh::Type::eStatic;
-		Colour tint = colours::White;
+		Colour tint = colours::white;
 		bool bDropColour = false;
 	};
 
@@ -66,15 +66,14 @@ public:
 	Model(stdfs::path id, Info info);
 
 protected:
-	std::deque<Mesh const*> m_meshes;
+	std::vector<Mesh const*> m_meshes;
 	std::deque<Material::Inst> m_materials;
 	std::deque<Mesh> m_loadedMeshes;
 	std::unordered_map<std::string, Material> m_loadedMaterials;
 	std::unordered_map<std::string, Texture> m_loadedTextures;
 
 public:
-	size_t meshCount() const;
-	void fillMeshes(std::vector<Mesh const*>& out_meshes) const;
+	std::vector<Mesh const*> meshes() const;
 
 public:
 	Status update() override;

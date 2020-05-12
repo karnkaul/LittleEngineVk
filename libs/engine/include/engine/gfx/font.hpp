@@ -62,7 +62,7 @@ public:
 		f32 nYPad = 0.2f;
 		HAlign halign = HAlign::Centre;
 		VAlign valign = VAlign::Middle;
-		Colour colour = colours::White;
+		Colour colour = colours::white;
 	};
 
 public:

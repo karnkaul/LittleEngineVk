@@ -8,6 +8,7 @@
 #include "core/transform.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/ecs/components.hpp"
 #include "engine/ecs/registry.hpp"
 #include "engine/gfx/camera.hpp"
 #include "engine/gfx/font.hpp"
@@ -19,18 +20,33 @@
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
 #include "engine/window/window.hpp"
+#include "tests/ecs_test.hpp"
 
 using namespace le;
 
 namespace
 {
 std::unique_ptr<IOReader> g_uReader;
+
+bool runTests()
+{
+	if (test::ecs::run() != 0)
+	{
+		ASSERT(false, "ECS test failed!");
+		return false;
+	}
+	return true;
+}
 } // namespace
 
 int main(int argc, char** argv)
 {
 	engine::Service engine;
 	if (!engine.start(argc, argv))
+	{
+		return 1;
+	}
+	if (!runTests())
 	{
 		return 1;
 	}
@@ -49,7 +65,7 @@ int main(int argc, char** argv)
 	fontInfo.image = g_uReader->getBytes(stdfs::path("fonts") / fontInfo.sheetID).payload;
 	auto pFont = g_pResources->create<gfx::Font>("fonts/default", std::move(fontInfo));
 
-	ecs::Registry registry;
+	Registry registry;
 	gfx::Mesh::Info triangle0info;
 	// clang-format off
 		triangle0info.geometry.vertices = {
@@ -67,24 +83,25 @@ int main(int argc, char** argv)
 	gfx::Mesh* pMesh1 = g_pResources->create<gfx::Mesh>("mesh1", meshInfo);
 
 	auto eid0 = registry.spawnEntity("entity0");
-	[[maybe_unused]] auto pTC0 = registry.addComponent<ecs::Data<Transform>>(eid0);
-	auto pMC0 = registry.addComponent<ecs::Data<gfx::Mesh*>>(eid0);
-	pMC0->data = pMesh0;
+	auto eid1 = registry.spawnEntity("entity1");
+	auto eid2 = registry.spawnEntity("entity2");
+	auto eid3 = registry.spawnEntity("entity3");
 
 	gfx::Model::LoadRequest model0lr;
 	model0lr.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
 	model0lr.pReader = g_uReader.get();
+	stdfs::path model0id, model1id;
 	gfx::Model* pModel0 = nullptr;
 	gfx::Model* pModel1 = nullptr;
-	jobs::enqueue([&pModel0, &model0lr]() {
+	jobs::enqueue([&pModel0, &model0lr, &model0id]() {
 		auto model0info = gfx::Model::parseOBJ(model0lr);
-		auto model0id = model0info.id;
+		model0id = model0info.id;
 		model0id += "_0";
 		pModel0 = g_pResources->create<gfx::Model>(model0id, model0info);
 	});
-	jobs::enqueue([&pModel1, &model0lr]() {
+	jobs::enqueue([&pModel1, &model0lr, &model1id]() {
 		auto model1info = gfx::Model::parseOBJ(model0lr);
-		auto model1id = model1info.id;
+		model1id = model1info.id;
 		model1id += "_1";
 		pModel1 = g_pResources->create<gfx::Model>(model1id, model1info);
 	});
@@ -205,17 +222,22 @@ int main(int argc, char** argv)
 		return pRenderer->createPipeline(std::move(pipelineInfo));
 	};
 
-	gfx::FreeCam freeCam(&w0);
-	freeCam.m_state.flags.set(gfx::FreeCam::Flag::eKeyToggle_Look);
+	gfx::FreeCam freeCam0(&w0), freeCam1(&w1);
+	freeCam0.m_state.flags.set(gfx::FreeCam::Flag::eKeyToggle_Look);
+	freeCam1.m_state.flags = freeCam0.m_state.flags;
 
-	gfx::Text2D text;
+	gfx::Text2D fpsText, ftText;
 	gfx::Text2D::Info textInfo;
-	textInfo.data.colour = colours::White;
+	textInfo.data.colour = colours::white;
 	textInfo.data.scale = 0.25f;
 	textInfo.pFont = pFont;
 	textInfo.pShader = pShader;
-	textInfo.id = "text-Hello";
-	text.setup(textInfo);
+	textInfo.id = "fps";
+	fpsText.setup(textInfo);
+	textInfo.data.colour = colours::cyan;
+	textInfo.data.pos.y -= 100.0f;
+	textInfo.id = "ft";
+	ftText.setup(textInfo);
 
 	if (w1.create(info1) && w0.create(info0))
 	{
@@ -236,20 +258,29 @@ int main(int argc, char** argv)
 
 		gfx::Renderer::View view0;
 		gfx::Renderer::View view1;
-		freeCam.m_position = {0.0f, 1.0f, 2.0f};
-		Transform transform0, transform01, tr02, tr03;
+		freeCam0.m_position = {0.0f, 1.0f, 2.0f};
+
+		registry.addComponent<CData<Transform>>(eid0)->data.setPosition({1.0f, 1.0f, -2.0f});
+		registry.addComponent<CResource<gfx::Mesh>>(eid0, pMesh0->m_id);
+
+		registry.addComponent<CData<Transform>>(eid1)->data.setPosition({0.0f, 0.0f, -2.0f});
+		registry.addComponent<CResource<gfx::Mesh>>(eid1, pMesh1->m_id);
+
+		registry.addComponent<CData<Transform>>(eid2)->data.setPosition({-1.0f, 1.0f, -2.0f});
+		registry.addComponent<CResource<gfx::Model>>(eid2, model0id);
+
+		registry.addComponent<CData<Transform>>(eid3)->data.setPosition({0.0f, -1.0f, -3.0f});
+		registry.addComponent<CResource<gfx::Model>>(eid3, model1id);
+
 		Transform transform1;
-		Transform textTransform;
-		transform0.setPosition({0.0f, 0.0f, -2.0f});
-		transform01.setPosition({1.0f, 1.0f, -2.0f});
-		tr02.setPosition({-1.0f, 1.0f, -2.0f});
-		tr03.setPosition({0.0f, -1.0f, -3.0f});
 
 		Time t = Time::elapsed();
+		Time ft;
 		while (w0.isOpen() || w1.isOpen())
 		{
-			[[maybe_unused]] Time dt = Time::elapsed() - t;
+			Time dt = Time::elapsed() - t;
 			t = Time::elapsed();
+			Time fStart = Time::elapsed();
 
 			static Time fpsLogElapsed;
 			static Time fpsElapsed;
@@ -304,28 +335,48 @@ int main(int argc, char** argv)
 					bToggleModel0 = false;
 				}
 
-				freeCam.m_state.flags[gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
-				freeCam.tick(dt);
+				freeCam0.m_state.flags[gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
+				freeCam0.tick(dt);
+				freeCam1.m_state.flags[gfx::FreeCam::Flag::eEnabled] = !bDisableCam;
+				freeCam1.tick(dt);
 
-				text.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
+				fpsText.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
+				ftText.updateText(fmt::format("{:.3}ms", ft.to_s() * 1000));
+
+				if (auto pM = registry.component<CResource<gfx::Model>>(eid2))
+				{
+					pM->m_id = model0id;
+				}
+				if (auto pM = registry.component<CResource<gfx::Model>>(eid3))
+				{
+					pM->m_id = model1id;
+				}
 
 				// Update matrices
-				transform0.setOrientation(glm::rotate(transform0.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
-				transform01.setOrientation(
-					glm::rotate(transform01.orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
+				if (auto pT = registry.component<CData<Transform>>(eid1))
+				{
+					pT->data.setOrientation(glm::rotate(pT->data.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+				}
+				if (auto pT = registry.component<CData<Transform>>(eid0))
+				{
+					pT->data.setOrientation(glm::rotate(pT->data.orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
+				}
 				transform1.setOrientation(glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
-				tr02.setOrientation(glm::rotate(tr02.orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
-				view0.mat_v = freeCam.view();
-				view0.pos_v = freeCam.m_position;
-				view1.mat_v = glm::lookAt(view0.pos_v, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-				view1.pos_v = freeCam.m_position;
+				if (auto pT = registry.component<CData<Transform>>(eid2))
+				{
+					pT->data.setOrientation(glm::rotate(pT->data.orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
+				}
+				view0.mat_v = freeCam0.view();
+				view0.pos_v = freeCam0.m_position;
+				view1.mat_v = freeCam1.view();
+				view1.pos_v = freeCam1.m_position;
 				if (w0.isOpen())
 				{
 					auto const size = w0.framebufferSize();
 					if (size.x > 0 && size.y > 0)
 					{
-						view0.mat_ui = freeCam.uiProj({size, 2.0f});
-						view0.mat_p = freeCam.perspectiveProj((f32)size.x / (f32)size.y);
+						view0.mat_ui = freeCam0.ui({size, 2.0f});
+						view0.mat_p = freeCam0.perspective((f32)size.x / (f32)size.y);
 						view0.mat_vp = view0.mat_p * view0.mat_v;
 					}
 				}
@@ -334,7 +385,8 @@ int main(int argc, char** argv)
 					auto const size = w1.framebufferSize();
 					if (size.x > 0 && size.y > 0)
 					{
-						view1.mat_p = glm::perspective(glm::radians(45.0f), (f32)size.x / (f32)size.y, 0.1f, 10.0f);
+						view1.mat_ui = freeCam1.ui({size, 2.0f});
+						view1.mat_p = freeCam1.perspective((f32)size.x / (f32)size.y, 0.1f, 10.0f);
 						view1.mat_vp = view1.mat_p * view1.mat_v;
 					}
 				}
@@ -342,12 +394,12 @@ int main(int argc, char** argv)
 
 			if (w0.isClosing())
 			{
-				freeCam.reset(false, false);
+				freeCam0.reset(false, false);
 				w0.destroy();
 			}
 			if (w1.isClosing())
 			{
-				freeCam.reset(false, false);
+				freeCam1.reset(false, false);
 				w1.destroy();
 			}
 			if (bRecreate0)
@@ -375,6 +427,7 @@ int main(int argc, char** argv)
 				w1.close();
 			}
 			Window::pollEvents();
+			ft = Time::elapsed() - fStart;
 			// Render
 #if defined(LEVK_DEBUG)
 			try
@@ -389,42 +442,32 @@ int main(int argc, char** argv)
 					scene.view.skybox = {pCubemap, pSkyPipe};
 					auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
 					gfx::Renderer::Batch batch;
-					batch.drawables = {{{pMesh0}, &transform01, pPipeline},
-									   {{pMesh1}, &transform0, pPipeline},
-									   {{text.mesh()}, &textTransform, pPipeline}};
-					gfx::Renderer::Drawable model0drawable;
-					if (pModel0)
-					{
-						pModel0->fillMeshes(model0drawable.meshes);
-					}
-					if (!model0drawable.meshes.empty())
-					{
-						model0drawable.pPipeline = pPipeline;
-						model0drawable.pTransform = &tr02;
-						batch.drawables.push_back(std::move(model0drawable));
-					}
-					gfx::Renderer::Drawable model1drawable;
-					if (pModel1)
-					{
-						pModel1->fillMeshes(model1drawable.meshes);
-					}
-					if (!model1drawable.meshes.empty())
-					{
-						model1drawable.pPipeline = pPipeline;
-						model1drawable.pTransform = &tr03;
-						batch.drawables.push_back(std::move(model1drawable));
-					}
 					if (bTEMP)
 					{
-						batch.drawables.push_back({{pTriangle0}, &transform0, pPipeline});
+						batch.drawables.push_back({{pTriangle0}, &transform1, pPipeline});
 					}
-					auto view = registry.view<ecs::Data<Transform>, ecs::Data<gfx::Mesh*>>();
-					for (auto& [eid, query] : view)
 					{
-						auto pTransform = &query.get<ecs::Data<Transform>>()->data;
-						auto pMesh = query.get<ecs::Data<gfx::Mesh*>>()->data;
-						batch.drawables.push_back({{pMesh}, pTransform, pPipeline});
+						auto view = registry.view<CData<Transform>, CResource<gfx::Model>>();
+						for (auto& [eid, query] : view)
+						{
+							if (auto pModel = query.get<CResource<gfx::Model>>()->get())
+							{
+								batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline});
+							}
+						}
 					}
+					{
+						auto view = registry.view<CData<Transform>, CResource<gfx::Mesh>>();
+						for (auto& [eid, query] : view)
+						{
+							if (auto pMesh = query.get<CResource<gfx::Mesh>>()->get())
+							{
+								batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline});
+							}
+						}
+					}
+					batch.drawables.push_back({{fpsText.mesh()}, &Transform::s_identity, pPipeline});
+					batch.drawables.push_back({{ftText.mesh()}, &Transform::s_identity, pPipeline});
 					scene.batches.push_back(std::move(batch));
 					w0.renderer().render(std::move(scene));
 				}
@@ -434,24 +477,33 @@ int main(int argc, char** argv)
 					scene.dirLights = {dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view1;
+					gfx::Renderer::Batch batch;
 					if (pTriangle0->isReady())
 					{
-						gfx::Renderer::Batch batch;
-						batch.drawables = {{{pTriangle0}, &transform0, pPipeline1}};
-						gfx::Renderer::Drawable model0drawable;
-						if (pModel0)
-						{
-							pModel0->fillMeshes(model0drawable.meshes);
-						}
-						if (!model0drawable.meshes.empty())
-						{
-							model0drawable.pPipeline = pPipeline1;
-							model0drawable.pTransform = &tr02;
-							batch.drawables.push_back(std::move(model0drawable));
-						}
-						scene.batches.push_back(std::move(batch));
-						w1.renderer().render(std::move(scene));
+						batch.drawables = {{{pTriangle0}, &transform1, pPipeline1}};
 					}
+					{
+						auto view = registry.view<CData<Transform>, CResource<gfx::Model>>();
+						for (auto& [eid, query] : view)
+						{
+							if (auto pModel = query.get<CResource<gfx::Model>>()->get())
+							{
+								batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline1});
+							}
+						}
+					}
+					{
+						auto view = registry.view<CData<Transform>, CResource<gfx::Mesh>>();
+						for (auto& [eid, query] : view)
+						{
+							if (auto pMesh = query.get<CResource<gfx::Mesh>>()->get())
+							{
+								batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline1});
+							}
+						}
+					}
+					scene.batches.push_back(std::move(batch));
+					w1.renderer().render(std::move(scene));
 				}
 			}
 #if defined(LEVK_DEBUG)

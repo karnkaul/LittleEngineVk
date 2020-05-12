@@ -9,9 +9,11 @@
 
 namespace le
 {
-template <typename Enum, size_t N = (size_t)Enum::eCOUNT_, typename = std::enable_if_t<std::is_enum_v<Enum>>>
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
 struct TFlags
 {
+	static_assert(std::is_enum_v<Enum>, "Enum must be an enum!");
+
 	using Type = Enum;
 	static constexpr size_t size = N;
 
@@ -127,5 +129,17 @@ template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
 TFlags<Enum, N> operator&(Enum flag1, Enum flag2)
 {
 	return TFlags<Enum, N>(flag1) & TFlags<Enum, N>(flag2);
+}
+
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+bool operator==(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
+{
+	return lhs.bits == rhs.bits;
+}
+
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+bool operator!=(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
+{
+	return !(lhs == rhs);
 }
 } // namespace le

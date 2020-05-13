@@ -54,11 +54,11 @@ struct TResult
 	TResult(T&& payload, bool bResult) : payload(std::forward<T&&>(payload)), bResult(bResult) {}
 };
 
-template <typename T>
-constexpr size_t arraySize(T const& arr)
+template <typename T, size_t N>
+constexpr size_t arraySize(T (&)[N])
 {
 	static_assert(std::is_array_v<T>, "T must be an array!");
-	return sizeof(arr) / sizeof(arr[0]);
+	return N;
 }
 
 template <typename T>

@@ -28,7 +28,7 @@ Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsageFlag
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
-	bufferInfo.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
+	bufferInfo.queueFlags = QFlag::eGraphics | QFlag::eTransfer;
 	bufferInfo.name = name;
 	return vram::createBuffer(bufferInfo);
 };

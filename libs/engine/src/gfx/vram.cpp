@@ -52,11 +52,11 @@ std::mutex g_mutex;
 
 Buffer createStagingBuffer(vk::DeviceSize size, [[maybe_unused]] size_t bufferID)
 {
-	gfx::BufferInfo info;
+	BufferInfo info;
 	info.size = size;
 	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-	info.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
+	info.queueFlags = QFlag::eGraphics | QFlag::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 #if defined(LEVK_VKRESOURCE_NAMES)
 	info.name = fmt::format("vram-staging-{}:{}", threads::thisThreadID(), bufferID);
@@ -71,7 +71,7 @@ Transfer newTransfer()
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = g_transferPool;
 	ret.commandBuffer = g_info.device.allocateCommandBuffers(commandBufferInfo).front();
-	ret.done = g_info.device.createFence({});
+	ret.done = createFence(false);
 	return ret;
 }
 
@@ -84,7 +84,7 @@ Stage& getNextStage(vk::DeviceSize size)
 	{
 		if (isSignalled(stage.transfer.done))
 		{
-			g_info.device.resetFences(stage.transfer.done);
+			resetFence(stage.transfer.done);
 			stage.transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
 			if (stage.buffer.writeSize < size)
 			{
@@ -115,7 +115,7 @@ Transfer& getNextTransfer()
 	{
 		if (isSignalled(transfer.done))
 		{
-			g_info.device.resetFences(transfer.done);
+			resetFence(transfer.done);
 			transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
 			return transfer;
 		}

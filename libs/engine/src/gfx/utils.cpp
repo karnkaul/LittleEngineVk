@@ -22,6 +22,12 @@ TResult<vk::Format> gfx::supportedFormat(PriorityList<vk::Format> const& desired
 	return {};
 }
 
+vk::Fence gfx::createFence(bool bSignalled)
+{
+	vk::FenceCreateFlags flags = bSignalled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags();
+	return g_info.device.createFence(flags);
+}
+
 void gfx::waitFor(vk::Fence optional)
 {
 	if (optional != vk::Fence())
@@ -35,6 +41,22 @@ void gfx::waitAll(vk::ArrayProxy<const vk::Fence> validFences)
 	if (!validFences.empty())
 	{
 		g_info.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+	}
+}
+
+void gfx::resetFence(vk::Fence optional)
+{
+	if (optional != vk::Fence())
+	{
+		g_info.device.resetFences(optional);
+	}
+}
+
+void gfx::resetAll(vk::ArrayProxy<const vk::Fence> validFences)
+{
+	if (!validFences.empty())
+	{
+		g_info.device.resetFences(std::move(validFences));
 	}
 }
 

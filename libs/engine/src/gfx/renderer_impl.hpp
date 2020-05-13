@@ -41,7 +41,6 @@ private:
 		vk::Framebuffer framebuffer;
 		vk::CommandBuffer commandBuffer;
 		vk::CommandPool commandPool;
-		bool bNascent = true;
 	};
 
 public:

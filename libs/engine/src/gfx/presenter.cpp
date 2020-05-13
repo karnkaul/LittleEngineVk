@@ -191,11 +191,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	}
 	m_swapchain.imageIndex = (u32)acquire.value;
 	auto& frame = m_swapchain.frame();
-	if (!frame.bNascent)
-	{
-		gfx::waitFor(frame.drawing);
-	}
-	frame.bNascent = false;
+	waitFor(frame.drawing);
 	frame.drawing = drawing;
 	m_state = State::eRunning;
 	return DrawFrame{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
@@ -304,7 +300,7 @@ bool Presenter::createSwapchain()
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto const queues = g_info.uniqueQueues(gfx::QFlag::eGraphics | gfx::QFlag::eTransfer);
+		auto const queues = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 		createInfo.imageSharingMode = queues.mode;
 		createInfo.pQueueFamilyIndices = queues.indices.data();
 		createInfo.queueFamilyIndexCount = (u32)queues.indices.size();
@@ -365,7 +361,7 @@ void Presenter::destroySwapchain()
 	vkDestroy(m_swapchain.depthImageView, m_swapchain.swapchain);
 	vram::release(m_swapchain.depthImage);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name, m_window);
-	m_swapchain = Swapchain();
+	m_swapchain = {};
 	m_state = State::eSwapchainDestroyed;
 }
 

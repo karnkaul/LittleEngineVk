@@ -23,8 +23,8 @@ vk::Fence load(Image* out_pImage, glm::ivec2 const& size, ArrayView<ArrayView<u8
 {
 	if (out_pImage->image == vk::Image() || out_pImage->extent.width != (u32)size.x || out_pImage->extent.height != (u32)size.y)
 	{
-		gfx::ImageInfo imageInfo;
-		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
+		ImageInfo imageInfo;
+		imageInfo.queueFlags = QFlag::eTransfer | QFlag::eGraphics;
 		imageInfo.createInfo.format = vk::Format::eR8G8B8A8Srgb;
 		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 		imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;

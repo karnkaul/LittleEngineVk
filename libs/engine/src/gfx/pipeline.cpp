@@ -71,7 +71,7 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 		layoutCreateInfo.pSetLayouts = m_info.setLayouts.data();
 		layoutCreateInfo.pushConstantRangeCount = (u32)m_info.pushConstantRanges.size();
 		layoutCreateInfo.pPushConstantRanges = m_info.pushConstantRanges.data();
-		out_layout = gfx::g_info.device.createPipelineLayout(layoutCreateInfo);
+		out_layout = g_info.device.createPipelineLayout(layoutCreateInfo);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{

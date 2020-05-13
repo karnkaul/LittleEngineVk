@@ -11,8 +11,11 @@ namespace le::gfx
 {
 TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
+vk::Fence createFence(bool bSignalled);
 void waitFor(vk::Fence optional);
 void waitAll(vk::ArrayProxy<vk::Fence const> validFences);
+void resetFence(vk::Fence optional);
+void resetAll(vk::ArrayProxy<vk::Fence const> validFences);
 
 bool isSignalled(vk::Fence fence);
 bool allSignalled(ArrayView<vk::Fence const> fences);

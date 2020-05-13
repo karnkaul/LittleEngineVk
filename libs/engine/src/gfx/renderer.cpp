@@ -86,7 +86,7 @@ void RendererImpl::create(u8 frameCount)
 			frame.set = descriptorSetup.set.at((size_t)idx);
 			frame.renderReady = g_info.device.createSemaphore({});
 			frame.presentReady = g_info.device.createSemaphore({});
-			frame.drawing = g_info.device.createFence({});
+			frame.drawing = createFence(true);
 			// Commands
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
 			commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
@@ -189,17 +189,13 @@ bool RendererImpl::render(Renderer::Scene scene)
 {
 	auto const mg = colours::magenta;
 	auto& frame = frameSync();
-	if (!frame.bNascent)
-	{
-		waitFor(frame.drawing);
-	}
+	waitFor(frame.drawing);
 	// Write sets
 	u32 objectID = 0;
 	u32 diffuseID = 0;
 	u32 specularID = 0;
 	rd::SSBOs ssbos;
 	std::deque<std::deque<rd::PushConstants>> push;
-	frame.set.update();
 	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
 	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
 	frame.set.writeCubemap(*g_pResources->get<Cubemap>("cubemaps/blank"));
@@ -377,7 +373,6 @@ bool RendererImpl::render(Renderer::Scene scene)
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_info.device.resetFences(frame.drawing);
-	frame.set.attach(frame.drawing);
 	g_info.queues.graphics.submit(submitInfo, frame.drawing);
 	if (m_presenter.present(frame.presentReady))
 	{
@@ -436,7 +431,6 @@ RendererImpl::FrameSync& RendererImpl::frameSync()
 
 void RendererImpl::next()
 {
-	m_frames.at(m_index).bNascent = false;
 	m_index = (m_index + 1) % m_frames.size();
 	++m_drawnFrames;
 	return;

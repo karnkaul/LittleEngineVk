@@ -138,29 +138,6 @@ Set::Set()
 	m_cubemap.type = Textures::s_cubemapLayoutBinding.descriptorType;
 }
 
-void Set::update()
-{
-	m_models.update();
-	m_normals.update();
-	m_materials.update();
-	m_tints.update();
-	m_flags.update();
-	m_dirLights.update();
-	return;
-}
-
-void Set::attach(vk::Fence drawing)
-{
-	m_view.m_buf.inUse.push_back(drawing);
-	m_models.m_buf.inUse.push_back(drawing);
-	m_normals.m_buf.inUse.push_back(drawing);
-	m_materials.m_buf.inUse.push_back(drawing);
-	m_tints.m_buf.inUse.push_back(drawing);
-	m_flags.m_buf.inUse.push_back(drawing);
-	m_dirLights.m_buf.inUse.push_back(drawing);
-	return;
-}
-
 void Set::destroy()
 {
 	m_view.release();

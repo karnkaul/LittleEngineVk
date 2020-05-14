@@ -59,6 +59,15 @@ target_link_libraries(${PROJECT_NAME}
 		stb-image
 		tinyobjloader
 )
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
+	set(PRECOMPILE
+		<vulkan/vulkan.hpp>
+		<vk_mem_alloc.h>
+		<stb/stb_image.h>
+		<tinyobjloader/tiny_obj_loader.h>
+	)
+	target_precompile_headers(${PROJECT_NAME} PRIVATE ${PRECOMPILE})
+endif()
 if(WIN64_CLANG AND LEVK_USE_GLFW)
 	target_compile_options(glfw PRIVATE -Wno-everything)
 endif()

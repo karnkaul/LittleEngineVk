@@ -5,6 +5,7 @@
 #include "engine/assets/resources.hpp"
 #include "gfx/deferred.hpp"
 #include "gfx/info.hpp"
+#include "gfx/vram.hpp"
 #include "window/window_impl.hpp"
 
 namespace le
@@ -67,6 +68,7 @@ bool Service::start(s32 argc, char** argv)
 
 void Service::update()
 {
+	gfx::vram::update();
 	gfx::deferred::update();
 	g_pResources->update();
 	WindowImpl::updateActive();

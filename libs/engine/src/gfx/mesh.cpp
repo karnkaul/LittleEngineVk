@@ -159,9 +159,10 @@ Asset::Status Mesh::update()
 	}
 	if (m_status == Status::eLoading)
 	{
-		if (allSignalled({m_uImpl->vbo.copied, m_uImpl->ibo.copied}))
+		auto const vboState = utils::futureState(m_uImpl->vbo.copied);
+		auto const iboState = utils::futureState(m_uImpl->ibo.copied);
+		if (vboState == FutureState::eReady && (m_uImpl->ibo.count == 0 || iboState == FutureState::eReady))
 		{
-			m_uImpl->vbo.copied = m_uImpl->ibo.copied = vk::Fence();
 			m_status = Status::eReady;
 		}
 	}

@@ -452,7 +452,10 @@ int main(int argc, char** argv)
 						{
 							if (auto pModel = query.get<CResource<gfx::Model>>()->get())
 							{
-								batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline});
+								if (pModel->isReady())
+								{
+									batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline});
+								}
 							}
 						}
 					}
@@ -462,7 +465,10 @@ int main(int argc, char** argv)
 						{
 							if (auto pMesh = query.get<CResource<gfx::Mesh>>()->get())
 							{
-								batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline});
+								if (pMesh->isReady())
+								{
+									batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline});
+								}
 							}
 						}
 					}
@@ -488,7 +494,10 @@ int main(int argc, char** argv)
 						{
 							if (auto pModel = query.get<CResource<gfx::Model>>()->get())
 							{
-								batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline1});
+								if (pModel->isReady())
+								{
+									batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline1});
+								}
 							}
 						}
 					}
@@ -498,7 +507,10 @@ int main(int argc, char** argv)
 						{
 							if (auto pMesh = query.get<CResource<gfx::Mesh>>()->get())
 							{
-								batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline1});
+								if (pMesh->isReady())
+								{
+									batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline1});
+								}
 							}
 						}
 					}

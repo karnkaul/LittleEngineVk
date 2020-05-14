@@ -19,7 +19,7 @@ std::array const g_filters = {vk::Filter::eLinear, vk::Filter::eNearest};
 std::array const g_mipModes = {vk::SamplerMipmapMode::eLinear, vk::SamplerMipmapMode::eNearest};
 std::array const g_modes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToBorder};
 
-vk::Fence load(Image* out_pImage, glm::ivec2 const& size, ArrayView<ArrayView<u8>> bytes, [[maybe_unused]] std::string const& name)
+std::future<void> load(Image* out_pImage, glm::ivec2 const& size, ArrayView<ArrayView<u8>> bytes, [[maybe_unused]] std::string const& name)
 {
 	if (out_pImage->image == vk::Image() || out_pImage->extent.width != (u32)size.x || out_pImage->extent.height != (u32)size.y)
 	{
@@ -157,7 +157,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 		m_status = Status::eError;
 		return;
 	}
-	m_uImpl->loaded = load(&m_uImpl->active, m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
+	m_uImpl->copied = load(&m_uImpl->active, m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
 	m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
 #if defined(LEVK_ASSET_HOT_RELOAD)
@@ -202,9 +202,8 @@ Asset::Status Texture::update()
 	auto const idStr = m_id.generic_string();
 	if (m_status == Status::eLoading)
 	{
-		if (isSignalled(m_uImpl->loaded))
+		if (utils::futureState(m_uImpl->copied) == FutureState::eReady)
 		{
-			m_uImpl->loaded = vk::Fence();
 			m_status = Status::eReady;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 			if (m_uImpl->bReloading)
@@ -262,7 +261,7 @@ Asset::Status Texture::update()
 					}
 					m_size = raw.size;
 					m_uImpl->raws = {std::move(raw)};
-					m_uImpl->loaded = load(&m_uImpl->standby, m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
+					m_uImpl->copied = load(&m_uImpl->standby, m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
 					m_status = Status::eLoading;
 					m_uImpl->bReloading = true;
 					LOG_D("[{}] [{}] reloading...", s_tName, idStr);
@@ -345,7 +344,7 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	{
 		rludfb.at(idx++) = raw.bytes;
 	}
-	m_uImpl->loaded = load(&m_uImpl->active, m_size, rludfb, idStr);
+	m_uImpl->copied = load(&m_uImpl->active, m_size, rludfb, idStr);
 	m_uImpl->imageView =
 		createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
@@ -398,9 +397,8 @@ Asset::Status Cubemap::update()
 	}
 	if (m_status == Status::eLoading)
 	{
-		if (isSignalled(m_uImpl->loaded))
+		if (utils::futureState(m_uImpl->copied) == FutureState::eReady)
 		{
-			m_uImpl->loaded = vk::Fence();
 			m_status = Status::eReady;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 			if (m_uImpl->bReloading)
@@ -470,7 +468,7 @@ Asset::Status Cubemap::update()
 						{
 							rludfb.at(idx++) = raw.bytes;
 						}
-						m_uImpl->loaded = load(&m_uImpl->active, m_size, rludfb, idStr);
+						m_uImpl->copied = load(&m_uImpl->active, m_size, rludfb, idStr);
 						m_status = Status::eLoading;
 						m_uImpl->bReloading = true;
 						LOG_D("[{}] [{}] reloading...", s_tName, idStr);

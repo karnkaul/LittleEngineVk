@@ -1,4 +1,5 @@
 #pragma once
+#include <future>
 #include <utility>
 #include "core/utils.hpp"
 #include "engine/window/common.hpp"
@@ -37,14 +38,17 @@ inline VmaAllocator g_allocator;
 void init();
 void deinit();
 
+void update();
+
 Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
 bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
 [[nodiscard]] void* mapMemory(Buffer const& src, vk::DeviceSize size = 0);
 void unmapMemory(Buffer const& buffer);
-[[nodiscard]] vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
-[[nodiscard]] vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
+[[nodiscard]] std::future<void> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
+[[nodiscard]] std::future<void> stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
-[[nodiscard]] vk::Fence copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts);
+[[nodiscard]] std::future<void> copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst,
+									 std::pair<vk::ImageLayout, vk::ImageLayout> layouts);
 
 Image createImage(ImageInfo const& info);
 

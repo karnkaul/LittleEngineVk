@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>
 #include "core/assert.hpp"
@@ -187,6 +188,10 @@ void RendererImpl::update()
 
 bool RendererImpl::render(Renderer::Scene scene)
 {
+	if (std::any_of(scene.batches.begin(), scene.batches.end(), [](Renderer::Batch const& batch) -> bool { return batch.drawables.empty(); }))
+	{
+		return false;
+	}
 	auto const mg = colours::magenta;
 	auto& frame = frameSync();
 	waitFor(frame.drawing);

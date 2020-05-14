@@ -402,7 +402,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 
 std::vector<Mesh const*> Model::meshes() const
 {
-	return m_meshes;
+	return m_status == Status::eReady ? m_meshes : std::vector<Mesh const*>();
 }
 
 Asset::Status Model::update()

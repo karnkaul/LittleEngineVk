@@ -3,6 +3,7 @@
 #include <deque>
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <map>
 #include <optional>
 #include <set>
@@ -197,7 +198,7 @@ struct TextureImpl final
 	vk::ImageView imageView;
 	vk::Sampler sampler;
 	vk::ImageViewType type = vk::ImageViewType::e2D;
-	vk::Fence loaded;
+	std::future<void> copied;
 	bool bStbiRaw = false;
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
@@ -213,7 +214,7 @@ struct MeshImpl final
 	struct Data
 	{
 		Buffer buffer;
-		vk::Fence copied;
+		std::future<void> copied;
 		u32 count = 0;
 		void* pMem = nullptr;
 	};

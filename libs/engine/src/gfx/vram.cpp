@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <deque>
 #include <unordered_map>
@@ -28,29 +29,37 @@ enum class ResourceType
 	eCOUNT_
 };
 
-struct Transfer final
-{
-	vk::CommandBuffer commandBuffer;
-	vk::Fence done;
-};
-
 struct Stage final
 {
-	Buffer buffer;
-	Transfer transfer;
-	size_t bufferID = 0;
+	struct Command final
+	{
+		Buffer buffer;
+		vk::CommandBuffer commandBuffer;
+		std::promise<void> promise;
+		size_t bufferID = 0;
+	};
+
+	std::deque<Command> commands;
+
+	Command& next(vk::DeviceSize bufferSize);
+};
+
+struct Submit final
+{
+	std::deque<Stage> stages;
+	vk::Fence done;
 };
 
 std::string const s_tName = utils::tName<VRAM>();
 std::array<u64, (size_t)ResourceType::eCOUNT_> g_allocations;
 
-vk::CommandPool g_transferPool;
+std::unordered_map<std::thread::id, Stage> g_active;
+std::unordered_map<std::thread::id, vk::CommandPool> g_pools;
+std::deque<Submit> g_submitted;
 
-std::unordered_map<std::thread::id, std::deque<Stage>> g_stages;
-std::unordered_map<std::thread::id, std::deque<Transfer>> g_transfers;
 std::mutex g_mutex;
 
-Buffer createStagingBuffer(vk::DeviceSize size, [[maybe_unused]] size_t bufferID)
+Buffer createStagingBuffer(vk::DeviceSize size)
 {
 	BufferInfo info;
 	info.size = size;
@@ -59,73 +68,43 @@ Buffer createStagingBuffer(vk::DeviceSize size, [[maybe_unused]] size_t bufferID
 	info.queueFlags = QFlag::eGraphics | QFlag::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 #if defined(LEVK_VKRESOURCE_NAMES)
-	info.name = fmt::format("vram-staging-{}:{}", threads::thisThreadID(), bufferID);
+	info.name = fmt::format("vram-staging-{}", threads::thisThreadID());
 #endif
 	return vram::createBuffer(info);
 }
 
-Transfer newTransfer()
+Stage::Command newCommand(vk::DeviceSize bufferSize)
 {
-	Transfer ret;
+	auto const id = std::this_thread::get_id();
+	std::unique_lock<std::mutex> lock(g_mutex);
+	auto& pool = g_pools[id];
+	lock.unlock();
+	if (pool == vk::CommandPool())
+	{
+		vk::CommandPoolCreateInfo poolInfo;
+		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+		poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
+		pool = g_info.device.createCommandPool(poolInfo);
+		if constexpr (g_VRAM_bLogAllocs)
+		{
+			LOG_I("[{}] Created command pool for thread [{}]", s_tName, threads::thisThreadID());
+		}
+	}
+	Stage::Command ret;
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
-	commandBufferInfo.commandPool = g_transferPool;
+	commandBufferInfo.commandPool = pool;
 	ret.commandBuffer = g_info.device.allocateCommandBuffers(commandBufferInfo).front();
-	ret.done = createFence(false);
+	ret.buffer = createStagingBuffer(std::max(bufferSize, ret.buffer.writeSize * 2));
 	return ret;
 }
 
-Stage& getNextStage(vk::DeviceSize size)
+void addCommand(Stage::Command&& command)
 {
+	auto const id = std::this_thread::get_id();
 	std::unique_lock<std::mutex> lock(g_mutex);
-	auto& stages = g_stages[std::this_thread::get_id()];
-	auto const count = stages.size();
-	for (auto& stage : stages)
-	{
-		if (isSignalled(stage.transfer.done))
-		{
-			resetFence(stage.transfer.done);
-			stage.transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-			if (stage.buffer.writeSize < size)
-			{
-				vram::release(stage.buffer);
-				stage.buffer = createStagingBuffer(std::max(size, stage.buffer.writeSize * 2), stage.bufferID);
-			}
-			return stage;
-		}
-	}
-	Stage newStage;
-	newStage.buffer = createStagingBuffer(size, count);
-	newStage.transfer = newTransfer();
-	newStage.bufferID = count;
-	if constexpr (g_VRAM_bLogAllocs)
-	{
-		LOG_I("[{}] Created staging buffer [{}:{}]", s_tName, threads::thisThreadID(), newStage.bufferID);
-	}
-	stages.push_back(std::move(newStage));
-	return stages.back();
-}
-
-Transfer& getNextTransfer()
-{
-	std::unique_lock<std::mutex> lock(g_mutex);
-	auto& transfers = g_transfers[std::this_thread::get_id()];
-	[[maybe_unused]] auto const count = transfers.size();
-	for (auto& transfer : transfers)
-	{
-		if (isSignalled(transfer.done))
-		{
-			resetFence(transfer.done);
-			transfer.commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-			return transfer;
-		}
-	}
-	transfers.push_back(newTransfer());
-	if constexpr (g_VRAM_bLogAllocs)
-	{
-		LOG_I("[{}] Created transfer command buffer [{}:{}]", s_tName, threads::thisThreadID(), count);
-	}
-	return transfers.back();
+	auto& stage = g_active[id];
+	stage.commands.push_back(std::move(command));
 }
 
 [[maybe_unused]] std::string logCount()
@@ -147,13 +126,6 @@ void vram::init()
 		vmaCreateAllocator(&allocatorInfo, &g_allocator);
 		std::memset(g_allocations.data(), 0, g_allocations.size() * sizeof(u32));
 	}
-	if (g_transferPool == vk::CommandPool())
-	{
-		vk::CommandPoolCreateInfo poolInfo;
-		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
-		g_transferPool = g_info.device.createCommandPool(poolInfo);
-	}
 	LOG_I("[{}] initialised", s_tName);
 	return;
 }
@@ -161,24 +133,30 @@ void vram::init()
 void vram::deinit()
 {
 	g_info.device.waitIdle();
-	for (auto& [_, stages] : g_stages)
+	std::unique_lock<std::mutex> lock(g_mutex);
+	for (auto& [_, pool] : g_pools)
 	{
-		for (auto& stage : stages)
+		vkDestroy(pool);
+	}
+	for (auto& [_, stage] : g_active)
+	{
+		for (auto& command : stage.commands)
 		{
-			release(stage.buffer);
-			vkDestroy(stage.transfer.done);
+			release(command.buffer);
 		}
 	}
-	for (auto& [_, transfers] : g_transfers)
+	for (auto& submit : g_submitted)
 	{
-		for (auto& transfer : transfers)
+		for (auto& stage : submit.stages)
 		{
-			vkDestroy(transfer.done);
+			for (auto& command : stage.commands)
+			{
+				release(command.buffer);
+			}
 		}
+		vkDestroy(submit.done);
 	}
-	g_stages.clear();
-	g_transfers.clear();
-	vkDestroy(g_transferPool);
+	g_submitted.clear();
 	bool bErr = false;
 	for (auto val : g_allocations)
 	{
@@ -193,6 +171,54 @@ void vram::deinit()
 		LOG_I("[{}] deinitialised", s_tName);
 	}
 	return;
+}
+
+void vram::update()
+{
+	auto removeDone = [](Submit& submit) -> bool {
+		if (isSignalled(submit.done))
+		{
+			for (auto& stage : submit.stages)
+			{
+				for (auto& command : stage.commands)
+				{
+					command.promise.set_value();
+					release(command.buffer);
+				}
+			}
+			vkDestroy(submit.done);
+			return true;
+		}
+		return false;
+	};
+	g_submitted.erase(std::remove_if(g_submitted.begin(), g_submitted.end(), removeDone), g_submitted.end());
+	std::unique_lock<std::mutex> lock(g_mutex);
+	size_t commandCount = 0;
+	for (auto& [_, stage] : g_active)
+	{
+		commandCount += stage.commands.size();
+	}
+	if (commandCount > 0)
+	{
+		std::vector<vk::CommandBuffer> buffers;
+		buffers.reserve(commandCount);
+		Submit submit;
+		submit.done = createFence(false);
+		for (auto& [_, stage] : g_active)
+		{
+			for (auto& command : stage.commands)
+			{
+				buffers.push_back(command.commandBuffer);
+			}
+			submit.stages.push_back(std::move(stage));
+		}
+		vk::SubmitInfo submitInfo;
+		submitInfo.commandBufferCount = (u32)commandCount;
+		submitInfo.pCommandBuffers = buffers.data();
+		g_info.queues.transfer.submit(submitInfo, submit.done);
+		g_submitted.push_back(std::move(submit));
+	}
+	g_active.clear();
 }
 
 Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
@@ -246,7 +272,6 @@ bool vram::write(Buffer buffer, void const* pData, vk::DeviceSize size)
 		{
 			size = buffer.writeSize;
 		}
-		std::unique_lock<std::mutex> lock(g_mutex);
 		auto pMem = mapMemory(buffer, size);
 		std::memcpy(pMem, pData, size);
 		unmapMemory(buffer);
@@ -262,16 +287,18 @@ void* vram::mapMemory(Buffer const& buffer, vk::DeviceSize size)
 		size = buffer.writeSize;
 	}
 	void* pRet;
+	std::unique_lock<std::mutex> lock(g_mutex);
 	vmaMapMemory(g_allocator, buffer.handle, &pRet);
 	return pRet;
 }
 
 void vram::unmapMemory(Buffer const& buffer)
 {
+	std::unique_lock<std::mutex> lock(g_mutex);
 	vmaUnmapMemory(g_allocator, buffer.handle);
 }
 
-vk::Fence vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
+std::future<void> vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
 {
 	if (size == 0)
 	{
@@ -291,52 +318,45 @@ vk::Fence vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
 		LOG_E("[{}] Source buffer is larger than destination buffer!", s_tName);
 		return {};
 	}
-	Transfer& ret = getNextTransfer();
-	std::unique_lock<std::mutex> lock(g_mutex);
+	auto command = newCommand(size);
 	vk::CommandBufferBeginInfo beginInfo;
 	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	ret.commandBuffer.begin(beginInfo);
+	command.commandBuffer.begin(beginInfo);
 	vk::BufferCopy copyRegion;
 	copyRegion.size = size;
-	ret.commandBuffer.copyBuffer(src.buffer, dst.buffer, copyRegion);
-	ret.commandBuffer.end();
-	vk::SubmitInfo submitInfo;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &ret.commandBuffer;
-	g_info.queues.transfer.submit(submitInfo, ret.done);
-	return ret.done;
+	command.commandBuffer.copyBuffer(src.buffer, dst.buffer, copyRegion);
+	command.commandBuffer.end();
+	auto ret = command.promise.get_future();
+	addCommand(std::move(command));
+	return std::move(ret);
 }
 
-vk::Fence vram::stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size)
+std::future<void> vram::stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size)
 {
 	if (size == 0)
 	{
 		size = deviceBuffer.writeSize;
 	}
-	auto& stage = getNextStage(size);
-	if (write(stage.buffer, pData, size))
+	auto command = newCommand(size);
+	if (write(command.buffer, pData, size))
 	{
-		std::unique_lock<std::mutex> lock(g_mutex);
 		vk::CommandBufferBeginInfo beginInfo;
 		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		stage.transfer.commandBuffer.begin(beginInfo);
+		command.commandBuffer.begin(beginInfo);
 		vk::BufferCopy copyRegion;
 		copyRegion.size = size;
-		stage.transfer.commandBuffer.copyBuffer(stage.buffer.buffer, deviceBuffer.buffer, copyRegion);
-		stage.transfer.commandBuffer.end();
-		vk::SubmitInfo submitInfo;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &stage.transfer.commandBuffer;
-		g_info.queues.transfer.submit(submitInfo, stage.transfer.done);
-		return stage.transfer.done;
+		command.commandBuffer.copyBuffer(command.buffer.buffer, deviceBuffer.buffer, copyRegion);
+		command.commandBuffer.end();
+		auto ret = command.promise.get_future();
+		addCommand(std::move(command));
+		return std::move(ret);
 	}
 	LOG_E("[{}] Error staging data!", s_tName);
 	return {};
 }
 
-vk::Fence vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts)
+std::future<void> vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts)
 {
-	std::vector<vk::Fence> ret;
 	size_t imgSize = 0;
 	size_t layerSize = 0;
 	for (auto pixels : pixelsArr)
@@ -346,9 +366,8 @@ vk::Fence vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::
 		imgSize += layerSize;
 	}
 	ASSERT(layerSize > 0 && imgSize > 0, "Invalid image data!");
-	auto& stage = getNextStage(imgSize);
-	std::unique_lock<std::mutex> lock(g_mutex);
-	auto pMem = mapMemory(stage.buffer);
+	auto command = newCommand(imgSize);
+	auto pMem = mapMemory(command.buffer);
 	u32 layerIdx = 0;
 	u32 const layerCount = (u32)pixelsArr.extent;
 	std::vector<vk::BufferImageCopy> copyRegions;
@@ -370,10 +389,10 @@ vk::Fence vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::
 		copyRegions.push_back(std::move(copyRegion));
 		++layerIdx;
 	}
-	unmapMemory(stage.buffer);
+	unmapMemory(command.buffer);
 	vk::CommandBufferBeginInfo beginInfo;
 	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	stage.transfer.commandBuffer.begin(beginInfo);
+	command.commandBuffer.begin(beginInfo);
 	vk::ImageMemoryBarrier barrier;
 	barrier.oldLayout = layouts.first;
 	barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
@@ -386,10 +405,9 @@ vk::Fence vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = layerCount;
 	barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-	stage.transfer.commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {},
-												 barrier);
+	command.commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 
-	stage.transfer.commandBuffer.copyBufferToImage(stage.buffer.buffer, dst.image, vk::ImageLayout::eTransferDstOptimal, copyRegions);
+	command.commandBuffer.copyBufferToImage(command.buffer.buffer, dst.image, vk::ImageLayout::eTransferDstOptimal, copyRegions);
 	barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
 	barrier.newLayout = layouts.second;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -402,14 +420,12 @@ vk::Fence vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, std::
 	barrier.subresourceRange.layerCount = layerCount;
 	barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
 	barrier.dstAccessMask = {};
-	stage.transfer.commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe, {}, {}, {},
-												 barrier);
-	stage.transfer.commandBuffer.end();
-	vk::SubmitInfo submitInfo;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &stage.transfer.commandBuffer;
-	g_info.queues.transfer.submit(submitInfo, stage.transfer.done);
-	return stage.transfer.done;
+	command.commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe, {}, {}, {},
+										  barrier);
+	command.commandBuffer.end();
+	auto ret = command.promise.get_future();
+	addCommand(std::move(command));
+	return std::move(ret);
 }
 
 Image vram::createImage(ImageInfo const& info)

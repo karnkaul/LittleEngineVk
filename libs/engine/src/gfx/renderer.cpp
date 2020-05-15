@@ -188,7 +188,8 @@ void RendererImpl::update()
 
 bool RendererImpl::render(Renderer::Scene scene)
 {
-	if (std::any_of(scene.batches.begin(), scene.batches.end(), [](Renderer::Batch const& batch) -> bool { return batch.drawables.empty(); }))
+	if (scene.batches.empty()
+		|| std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }))
 	{
 		return false;
 	}

@@ -9,6 +9,7 @@ namespace le
 {
 std::string const s_tEName = utils::tName<Entity>();
 std::string const Registry::s_tName = utils::tName<Registry>();
+std::unordered_map<std::type_index, Component::Sign> Registry::s_signs;
 
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
 {

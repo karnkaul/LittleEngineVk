@@ -107,7 +107,6 @@ struct InitInfo final
 	{
 		std::vector<char const*> instanceExtensions;
 		CreateSurface createTempSurface;
-		u8 graphicsQueueCount = 1;
 	} config;
 
 	struct
@@ -115,6 +114,7 @@ struct InitInfo final
 		PickDevice pickDevice;
 		Flags flags;
 		log::Level validationLog = log::Level::eWarning;
+		bool bDedicatedTransfer = true;
 	} options;
 };
 
@@ -159,6 +159,7 @@ struct VkResource
 	AllocInfo info;
 	VmaAllocation handle;
 	QFlags queueFlags;
+	vk::SharingMode mode;
 };
 
 struct Buffer final : VkResource
@@ -172,6 +173,12 @@ struct Image final : VkResource
 	vk::Image image;
 	vk::DeviceSize allocatedSize = {};
 	vk::Extent3D extent = {};
+};
+
+struct LayoutTransition final
+{
+	vk::ImageLayout pre;
+	vk::ImageLayout post;
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;

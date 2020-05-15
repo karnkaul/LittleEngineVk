@@ -128,7 +128,7 @@ void ShaderWriter::write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx)
 	return;
 }
 
-Set::Set()
+Set::Set() : m_view(vk::BufferUsageFlagBits::eUniformBuffer)
 {
 	m_diffuse.binding = Textures::s_diffuseLayoutBinding.binding;
 	m_diffuse.type = Textures::s_diffuseLayoutBinding.descriptorType;
@@ -152,7 +152,7 @@ void Set::destroy()
 
 void Set::writeView(UBOView const& view)
 {
-	m_view.write(view, m_descriptorSet);
+	m_view.writeValue(view, m_descriptorSet);
 	return;
 }
 
@@ -173,14 +173,14 @@ void Set::writeSSBOs(SSBOs const& ssbos)
 	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty()
 			   && !ssbos.flags.ssbo.empty(),
 		   "Empty SSBOs!");
-	m_models.write(ssbos.models, m_descriptorSet);
-	m_normals.write(ssbos.normals, m_descriptorSet);
-	m_materials.write(ssbos.materials, m_descriptorSet);
-	m_tints.write(ssbos.tints, m_descriptorSet);
-	m_flags.write(ssbos.flags, m_descriptorSet);
+	m_models.writeArray(ssbos.models.ssbo, m_descriptorSet);
+	m_normals.writeArray(ssbos.normals.ssbo, m_descriptorSet);
+	m_materials.writeArray(ssbos.materials.ssbo, m_descriptorSet);
+	m_tints.writeArray(ssbos.tints.ssbo, m_descriptorSet);
+	m_flags.writeArray(ssbos.flags.ssbo, m_descriptorSet);
 	if (!ssbos.dirLights.ssbo.empty())
 	{
-		m_dirLights.write(ssbos.dirLights, m_descriptorSet);
+		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_descriptorSet);
 	}
 	return;
 }

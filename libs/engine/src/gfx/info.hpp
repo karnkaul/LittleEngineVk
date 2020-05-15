@@ -21,6 +21,7 @@ struct Info final
 	f32 lineWidthMin = 1.0f;
 	f32 lineWidthMax = 1.0f;
 	log::Level validationLog = log::Level::eWarning;
+	std::optional<u32> transferQueueIndex;
 
 	struct
 	{

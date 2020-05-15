@@ -41,16 +41,14 @@ void deinit();
 void update();
 
 Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
-bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
+bool write(Buffer const& buffer, void const* pData, vk::DeviceSize size = 0);
 [[nodiscard]] void* mapMemory(Buffer const& src, vk::DeviceSize size = 0);
 void unmapMemory(Buffer const& buffer);
 [[nodiscard]] std::future<void> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
 [[nodiscard]] std::future<void> stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
-[[nodiscard]] std::future<void> copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst,
-									 std::pair<vk::ImageLayout, vk::ImageLayout> layouts);
-
 Image createImage(ImageInfo const& info);
+[[nodiscard]] std::future<void> copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, LayoutTransition layouts);
 
 void release(Buffer buffer, bool bSilent = false);
 void release(Image image);

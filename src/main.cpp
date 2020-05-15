@@ -447,14 +447,16 @@ int main(int argc, char** argv)
 						batch.drawables.push_back({{pTriangle0}, &transform1, pPipeline});
 					}
 					{
-						auto view = registry.view<CData<Transform>, CResource<gfx::Model>>();
+						auto const& r = registry;
+						auto view = r.view<CData<Transform>, CResource<gfx::Model>>();
 						for (auto& [eid, query] : view)
 						{
-							if (auto pModel = query.get<CResource<gfx::Model>>()->get())
+							auto& [cTransform, cModel] = query;
+							if (auto pModel = cModel->get())
 							{
 								if (pModel->isReady())
 								{
-									batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline});
+									batch.drawables.push_back({pModel->meshes(), &cTransform->data, pPipeline});
 								}
 							}
 						}
@@ -463,11 +465,12 @@ int main(int argc, char** argv)
 						auto view = registry.view<CData<Transform>, CResource<gfx::Mesh>>();
 						for (auto& [eid, query] : view)
 						{
-							if (auto pMesh = query.get<CResource<gfx::Mesh>>()->get())
+							auto& [cTransform, cMesh] = query;
+							if (auto pMesh = cMesh->get())
 							{
 								if (pMesh->isReady())
 								{
-									batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline});
+									batch.drawables.push_back({{pMesh}, &cTransform->data, pPipeline});
 								}
 							}
 						}
@@ -492,11 +495,12 @@ int main(int argc, char** argv)
 						auto view = registry.view<CData<Transform>, CResource<gfx::Model>>();
 						for (auto& [eid, query] : view)
 						{
-							if (auto pModel = query.get<CResource<gfx::Model>>()->get())
+							auto& [cTransform, cModel] = query;
+							if (auto pModel = cModel->get())
 							{
 								if (pModel->isReady())
 								{
-									batch.drawables.push_back({pModel->meshes(), &query.get<CData<Transform>>()->data, pPipeline1});
+									batch.drawables.push_back({pModel->meshes(), &cTransform->data, pPipeline1});
 								}
 							}
 						}
@@ -505,11 +509,12 @@ int main(int argc, char** argv)
 						auto view = registry.view<CData<Transform>, CResource<gfx::Mesh>>();
 						for (auto& [eid, query] : view)
 						{
-							if (auto pMesh = query.get<CResource<gfx::Mesh>>()->get())
+							auto& [cTransform, cMesh] = query;
+							if (auto pMesh = cMesh->get())
 							{
 								if (pMesh->isReady())
 								{
-									batch.drawables.push_back({{pMesh}, &query.get<CData<Transform>>()->data, pPipeline1});
+									batch.drawables.push_back({{pMesh}, &cTransform->data, pPipeline1});
 								}
 							}
 						}

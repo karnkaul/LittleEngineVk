@@ -159,61 +159,7 @@ struct ShaderWriter final
 };
 
 template <typename T>
-class UBOHandle final
-{
-public:
-	Buffer m_buffer;
-	ShaderWriter m_writer;
-	vk::BufferUsageFlags m_usage;
-	u32 m_arraySize;
-
-	UBOHandle() : m_usage(vk::BufferUsageFlagBits::eUniformBuffer)
-	{
-		m_writer.binding = T::s_setLayoutBinding.binding;
-		m_writer.type = T::s_setLayoutBinding.descriptorType;
-	}
-
-	void create()
-	{
-		u32 const size = (u32)sizeof(T);
-		if (m_buffer.writeSize < size)
-		{
-			deferred::release(m_buffer);
-			BufferInfo info;
-			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-			info.queueFlags = QFlag::eGraphics;
-			info.usage = m_usage;
-			info.size = size;
-			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-#if defined(LEVK_VKRESOURCE_NAMES)
-			info.name = utils::tName<T>();
-#endif
-			m_buffer = vram::createBuffer(info);
-		}
-		return;
-	}
-
-	void release()
-	{
-		deferred::release(m_buffer);
-		m_buffer = Buffer();
-		return;
-	}
-
-	bool write(T const& data, vk::DescriptorSet set)
-	{
-		create();
-		if (!vram::write(m_buffer, &data))
-		{
-			return false;
-		}
-		m_writer.write(set, m_buffer, 0);
-		return true;
-	}
-};
-
-template <typename T>
-class SSBOHandle final
+class GPUBuffer
 {
 public:
 	Buffer m_buffer;
@@ -222,35 +168,24 @@ public:
 	std::string m_bufferName;
 #endif
 	vk::BufferUsageFlags m_usage;
-	u32 m_arraySize = 1;
 
 public:
-	SSBOHandle()
+	GPUBuffer(vk::BufferUsageFlags flags = vk::BufferUsageFlagBits::eStorageBuffer)
 		:
 #if defined(LEVK_VKRESOURCE_NAMES)
 		  m_bufferName(utils::tName<T>()),
 #endif
-		  m_usage(vk::BufferUsageFlagBits::eStorageBuffer)
+		  m_usage(flags)
 	{
 		m_writer.binding = T::s_setLayoutBinding.binding;
 		m_writer.type = T::s_setLayoutBinding.descriptorType;
 	}
 
 public:
-	void release()
+	bool writeValue(T const& data, vk::DescriptorSet set)
 	{
-		deferred::release(m_buffer);
-		m_buffer = Buffer();
-		return;
-	}
-
-	bool write(T const& ssbo, vk::DescriptorSet set)
-	{
-		m_arraySize = (u32)ssbo.ssbo.size();
-		ASSERT(m_arraySize > 0, "Empty buffer!");
-		u32 const tSize = (u32)(sizeof(ssbo.ssbo.at(0)));
-		create(tSize);
-		if (!vram::write(m_buffer, ssbo.ssbo.data(), (vk::DeviceSize)(ssbo.ssbo.size() * tSize)))
+		create((vk::DeviceSize)sizeof(T));
+		if (!vram::write(m_buffer, &data))
 		{
 			return false;
 		}
@@ -258,10 +193,30 @@ public:
 		return true;
 	}
 
-private:
-	void create(u32 tSize)
+	template <typename U>
+	bool writeArray(std::vector<U> const& arr, vk::DescriptorSet set)
 	{
-		u32 const size = tSize * m_arraySize;
+		ASSERT(arr.size() > 0, "Empty buffer!");
+		vk::DeviceSize const size = (vk::DeviceSize)sizeof(U) * (vk::DeviceSize)arr.size();
+		create(size);
+		if (!vram::write(m_buffer, arr.data(), size))
+		{
+			return false;
+		}
+		m_writer.write(set, m_buffer, 0);
+		return true;
+	}
+
+	void release()
+	{
+		deferred::release(m_buffer);
+		m_buffer = Buffer();
+		return;
+	}
+
+private:
+	void create(vk::DeviceSize size)
+	{
 		if (m_buffer.writeSize < size)
 		{
 			deferred::release(m_buffer);
@@ -286,13 +241,13 @@ public:
 	vk::DescriptorSet m_descriptorSet;
 
 private:
-	UBOHandle<UBOView> m_view;
-	SSBOHandle<SSBOModels> m_models;
-	SSBOHandle<SSBONormals> m_normals;
-	SSBOHandle<SSBOMaterials> m_materials;
-	SSBOHandle<SSBOTints> m_tints;
-	SSBOHandle<SSBOFlags> m_flags;
-	SSBOHandle<SSBODirLights> m_dirLights;
+	GPUBuffer<UBOView> m_view;
+	GPUBuffer<SSBOModels> m_models;
+	GPUBuffer<SSBONormals> m_normals;
+	GPUBuffer<SSBOMaterials> m_materials;
+	GPUBuffer<SSBOTints> m_tints;
+	GPUBuffer<SSBOFlags> m_flags;
+	GPUBuffer<SSBODirLights> m_dirLights;
 	ShaderWriter m_diffuse;
 	ShaderWriter m_specular;
 	ShaderWriter m_cubemap;

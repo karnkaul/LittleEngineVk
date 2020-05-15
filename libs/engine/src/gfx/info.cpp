@@ -58,7 +58,6 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 
 vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& layers, InitInfo const& initInfo)
 {
-	ASSERT(initInfo.config.graphicsQueueCount > 0, "Invalid queue count!");
 	vk::Device device;
 	vk::SurfaceKHR surface;
 	std::string deviceName;
@@ -115,35 +114,52 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		for (size_t idx = 0; idx < queueFamilies.size(); ++idx)
 		{
 			auto const& queueFamily = queueFamilies.at(idx);
-			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
+			if (!graphicsFamily.has_value())
 			{
-				graphicsFamily.emplace((u32)idx);
+				if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
+				{
+					graphicsFamily.emplace((u32)idx);
+				}
 			}
-			if (graphicsFamily.has_value() && (u32)idx != graphicsFamily.value() && queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
+			if (initInfo.options.bDedicatedTransfer && !transferFamily.has_value())
 			{
-				transferFamily.emplace((u32)idx);
+				if (graphicsFamily.has_value() && (u32)idx != graphicsFamily.value()
+					&& queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
+				{
+					transferFamily.emplace((u32)idx);
+				}
 			}
-			if (g_info.physicalDevice.getSurfaceSupportKHR((u32)idx, surface))
+			if (!presentFamily.has_value())
 			{
-				presentFamily.emplace((u32)idx);
+				if (g_info.physicalDevice.getSurfaceSupportKHR((u32)idx, surface))
+				{
+					presentFamily.emplace((u32)idx);
+				}
 			}
 		}
 		if (!graphicsFamily.has_value() || !presentFamily.has_value())
 		{
 			throw std::runtime_error("Failed to obtain graphics/present queues from device!");
 		}
-		std::set<u32> uniqueFamilies = {(u32)graphicsFamily.value(), (u32)presentFamily.value()};
+		std::set<u32> uniqueFamilies = {graphicsFamily.value(), presentFamily.value()};
 		if (transferFamily.has_value())
 		{
 			uniqueFamilies.insert(transferFamily.value());
 		}
 		f32 priority = 1.0f;
+		f32 const priorities[] = {0.7f, 0.3f};
 		for (auto family : uniqueFamilies)
 		{
 			vk::DeviceQueueCreateInfo queueCreateInfo;
 			queueCreateInfo.queueFamilyIndex = family;
-			queueCreateInfo.queueCount = family == graphicsFamily.value() ? initInfo.config.graphicsQueueCount : 1;
+			queueCreateInfo.queueCount = 1;
 			queueCreateInfo.pQueuePriorities = &priority;
+			if (initInfo.options.bDedicatedTransfer && !transferFamily.has_value() && family == graphicsFamily.value())
+			{
+				queueCreateInfo.queueCount = 2;
+				queueCreateInfo.pQueuePriorities = priorities;
+				g_info.transferQueueIndex = 1;
+			}
 			queueCreateInfos.push_back(std::move(queueCreateInfo));
 		}
 		vk::PhysicalDeviceFeatures deviceFeatures;
@@ -163,7 +179,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		device = g_info.physicalDevice.createDevice(deviceCreateInfo);
 		g_info.queueFamilyIndices.graphics = graphicsFamily.value();
 		g_info.queueFamilyIndices.present = presentFamily.value();
-		g_info.queueFamilyIndices.transfer = transferFamily.has_value() ? transferFamily.value() : graphicsFamily.value();
+		g_info.queueFamilyIndices.transfer = transferFamily.value_or(graphicsFamily.value());
 	}
 	catch (std::exception const& e)
 	{
@@ -236,10 +252,10 @@ void init(InitInfo const& initInfo)
 	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
-		createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-									 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
-		createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
-								 | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
+		using vksev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+		createInfo.messageSeverity = vksev::eError | vksev::eWarning | vksev::eInfo | vksev::eVerbose;
+		using vktype = vk::DebugUtilsMessageTypeFlagBitsEXT;
+		createInfo.messageType = vktype::eGeneral | vktype::ePerformance | vktype::eValidation;
 		createInfo.pfnUserCallback = &validationCallback;
 		try
 		{
@@ -257,7 +273,7 @@ void init(InitInfo const& initInfo)
 	g_info.device = device;
 	g_info.queues.graphics = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
-	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, 0);
+	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, g_info.transferQueueIndex.value_or(0));
 	vram::init();
 	rd::init();
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);

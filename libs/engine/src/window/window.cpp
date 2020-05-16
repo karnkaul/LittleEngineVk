@@ -176,19 +176,19 @@ void Window::setCursorPos(glm::vec2 const& pos) const
 	return;
 }
 
-std::string Window::getClipboard() const
+std::string Window::clipboard() const
 {
-	return m_uImpl ? m_uImpl->getClipboard() : std::string();
+	return m_uImpl ? m_uImpl->clipboard() : std::string();
 }
 
-JoyState Window::getJoyState(s32 id)
+JoyState Window::joyState(s32 id)
 {
-	return WindowImpl::getJoyState(id);
+	return WindowImpl::joyState(id);
 }
 
-GamepadState Window::getGamepadState(s32 id)
+GamepadState Window::gamepadState(s32 id)
 {
-	return WindowImpl::getGamepadState(id);
+	return WindowImpl::gamepadState(id);
 }
 
 f32 Window::triggerToAxis(f32 triggerValue)

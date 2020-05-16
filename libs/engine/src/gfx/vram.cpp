@@ -102,7 +102,7 @@ Stage::Command newCommand(vk::DeviceSize bufferSize)
 void addCommand(Stage::Command&& command)
 {
 	auto const id = std::this_thread::get_id();
-	std::unique_lock<std::mutex> lock(g_mutex);
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	auto& stage = g_active[id];
 	stage.commands.push_back(std::move(command));
 }
@@ -133,7 +133,7 @@ void vram::init()
 void vram::deinit()
 {
 	g_info.device.waitIdle();
-	std::unique_lock<std::mutex> lock(g_mutex);
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	for (auto& [_, pool] : g_pools)
 	{
 		vkDestroy(pool);
@@ -194,7 +194,7 @@ void vram::update()
 		return false;
 	};
 	g_submitted.erase(std::remove_if(g_submitted.begin(), g_submitted.end(), removeDone), g_submitted.end());
-	std::unique_lock<std::mutex> lock(g_mutex);
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	size_t commandCount = 0;
 	for (auto& [_, stage] : g_active)
 	{
@@ -290,14 +290,14 @@ void* vram::mapMemory(Buffer const& buffer, vk::DeviceSize size)
 		size = buffer.writeSize;
 	}
 	void* pRet;
-	std::unique_lock<std::mutex> lock(g_mutex);
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	vmaMapMemory(g_allocator, buffer.handle, &pRet);
 	return pRet;
 }
 
 void vram::unmapMemory(Buffer const& buffer)
 {
-	std::unique_lock<std::mutex> lock(g_mutex);
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	vmaUnmapMemory(g_allocator, buffer.handle);
 }
 
@@ -309,7 +309,7 @@ std::future<void> vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSiz
 	}
 #if defined(LEVK_DEBUG)
 	auto const uq = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT((uq.indices.size() == 1 || uq.mode == vk::SharingMode::eConcurrent) && dst.mode == uq.mode, "Exclusive queues!");
+	ASSERT((uq.indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
 	bool const bQueueFlags = src.queueFlags.isSet(QFlag::eTransfer) && dst.queueFlags.isSet(QFlag::eTransfer);
 	bool const bSizes = dst.writeSize >= size;
@@ -346,7 +346,7 @@ std::future<void> vram::stage(Buffer const& deviceBuffer, void const* pData, vk:
 	}
 #if defined(LEVK_DEBUG)
 	auto const uq = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT((uq.indices.size() == 1 || uq.mode == vk::SharingMode::eConcurrent) && deviceBuffer.mode == uq.mode, "Exclusive queues!");
+	ASSERT((uq.indices.size() == 1 || deviceBuffer.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
 	bool const bQueueFlags = deviceBuffer.queueFlags.isSet(QFlag::eTransfer);
 	ASSERT(bQueueFlags, "Invalid queue flags!");
@@ -453,7 +453,7 @@ std::future<void> vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& ds
 	ASSERT(layerSize > 0 && imgSize > 0, "Invalid image data!");
 #if defined(LEVK_DEBUG)
 	auto const uq = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT((uq.indices.size() == 1 || uq.mode == vk::SharingMode::eConcurrent) && dst.mode == uq.mode, "Exclusive queues!");
+	ASSERT((uq.indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
 	auto command = newCommand(imgSize);
 	auto pMem = mapMemory(command.buffer);

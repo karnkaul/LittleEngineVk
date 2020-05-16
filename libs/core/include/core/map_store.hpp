@@ -20,9 +20,10 @@ private:
 	mutable std::mutex m_mutex;
 
 public:
-	void insert(Key const& id, Value&& value);
-	[[nodiscard]] TResult<Value const*> get(Key const& id) const;
-	[[nodiscard]] TResult<Value*> get(Key const& id);
+	template <typename... Args>
+	void emplace(Key const& id, Args&&... args);
+	[[nodiscard]] TResult<Value const*> find(Key const& id) const;
+	[[nodiscard]] TResult<Value*> find(Key const& id);
 	[[nodiscard]] bool isLoaded(Key const& id) const;
 	bool unload(Key const& id);
 	void unloadAll();
@@ -30,14 +31,15 @@ public:
 };
 
 template <typename M>
-void TMapStore<M>::insert(Key const& id, Value&& value)
+template <typename... Args>
+void TMapStore<M>::emplace(Key const& id, Args&&... args)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	m_map.emplace(id, std::forward<Value&&>(value));
+	m_map.emplace(id, std::forward<Args&&>(args)...);
 }
 
 template <typename M>
-TResult<typename TMapStore<M>::Value const*> TMapStore<M>::get(Key const& id) const
+TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) const
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	auto search = m_map.find(id);
@@ -49,7 +51,7 @@ TResult<typename TMapStore<M>::Value const*> TMapStore<M>::get(Key const& id) co
 }
 
 template <typename M>
-TResult<typename TMapStore<M>::Value*> TMapStore<M>::get(Key const& id)
+TResult<typename TMapStore<M>::Value*> TMapStore<M>::find(Key const& id)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	auto search = m_map.find(id);

@@ -79,7 +79,7 @@ void deferred::release(std::function<void()> func)
 {
 	Deferred deferred;
 	deferred.func = std::move(func);
-	std::unique_lock<std::mutex> lock(g_mutex);
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	auto const active = WindowImpl::active();
 	for (auto const& window : active)
 	{
@@ -94,7 +94,7 @@ void deferred::release(std::function<void()> func)
 
 void deferred::update()
 {
-	std::unique_lock<std::mutex> lock(g_mutex);
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	auto const active = WindowImpl::active();
 	auto iter = std::remove_if(g_deferred.begin(), g_deferred.end(), [&](auto& deferred) {
 		if (isStale(deferred, active))

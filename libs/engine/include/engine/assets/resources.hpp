@@ -31,14 +31,14 @@ public:
 	T* create(stdfs::path const& id, typename T::Info info)
 	{
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		ASSERT(!m_resources.get(id.generic_string()).bResult, "ID already loaded!");
+		ASSERT(!m_resources.find(id.generic_string()).bResult, "ID already loaded!");
 		auto uT = std::make_unique<T>(id, std::move(info));
 		T* pT = nullptr;
 		if (uT && uT->m_status != Asset::Status::eError)
 		{
 			uT->setup();
 			pT = uT.get();
-			m_resources.insert(id.generic_string(), std::move(uT));
+			m_resources.emplace(id.generic_string(), std::move(uT));
 		}
 		return pT;
 	}
@@ -47,7 +47,7 @@ public:
 	T* get(stdfs::path const& id)
 	{
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		auto [pT, bResult] = m_resources.get(id.generic_string());
+		auto [pT, bResult] = m_resources.find(id.generic_string());
 		if (bResult && pT)
 		{
 			return dynamic_cast<T*>(pT->get());

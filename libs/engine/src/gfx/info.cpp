@@ -274,6 +274,7 @@ void init(InitInfo const& initInfo)
 	g_info.queues.graphics = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
 	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
 	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, g_info.transferQueueIndex.value_or(0));
+
 	vram::init();
 	rd::init();
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);

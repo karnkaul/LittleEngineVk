@@ -117,7 +117,7 @@ void FreeCam::tick(Time dt)
 	{
 		return;
 	}
-	GamepadState const pad0 = m_pWindow->getGamepadState(0);
+	GamepadState const pad0 = m_pWindow->gamepadState(0);
 	f32 const dt_s = dt.to_s();
 	// Speed
 	if (!m_state.flags.isSet(Flag::eFixedSpeed))
@@ -142,7 +142,7 @@ void FreeCam::tick(Time dt)
 	}
 
 	// Elevation
-	glm::vec2 const padTrigger(pad0.getAxis(PadAxis::eRightTrigger), pad0.getAxis(PadAxis::eLeftTrigger));
+	glm::vec2 const padTrigger(pad0.axis(PadAxis::eRightTrigger), pad0.axis(PadAxis::eLeftTrigger));
 	f32 const elevation = Window::triggerToAxis(padTrigger.x) - Window::triggerToAxis(padTrigger.y);
 	if (std::abs(elevation) > 0.01f)
 	{
@@ -151,7 +151,7 @@ void FreeCam::tick(Time dt)
 
 	// Look
 	f32 dLook = m_config.padLookSens * dt_s;
-	glm::vec2 const padRight(pad0.getAxis(PadAxis::eRightX), pad0.getAxis(PadAxis::eRightY));
+	glm::vec2 const padRight(pad0.axis(PadAxis::eRightX), pad0.axis(PadAxis::eRightY));
 	if (glm::length2(padRight) > m_config.padStickEpsilon)
 	{
 		m_state.yaw += (padRight.x * dLook);
@@ -174,7 +174,7 @@ void FreeCam::tick(Time dt)
 	glm::vec3 dPos = {};
 	glm::vec3 const nForward = glm::normalize(glm::rotate(m_orientation, -g_nFront));
 	glm::vec3 const nRight = glm::normalize(glm::rotate(m_orientation, g_nRight));
-	glm::vec2 const padLeft(pad0.getAxis(PadAxis::eLeftX), pad0.getAxis(PadAxis::eLeftY));
+	glm::vec2 const padLeft(pad0.axis(PadAxis::eLeftX), pad0.axis(PadAxis::eLeftY));
 
 	if (glm::length2(padLeft) > m_config.padStickEpsilon)
 	{

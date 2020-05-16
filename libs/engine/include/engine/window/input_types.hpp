@@ -213,7 +213,7 @@ struct GamepadState
 	std::string name;
 	s32 id = 0;
 
-	f32 getAxis(PadAxis axis) const;
+	f32 axis(PadAxis axis) const;
 	bool isPressed(Key button) const;
 };
 

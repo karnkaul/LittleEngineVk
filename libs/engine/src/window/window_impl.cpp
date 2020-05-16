@@ -165,7 +165,7 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
-f32 GamepadState::getAxis(PadAxis axis) const
+f32 GamepadState::axis(PadAxis axis) const
 {
 	size_t idx = size_t(axis);
 #if defined(LEVK_USE_GLFW)
@@ -647,7 +647,7 @@ void WindowImpl::setCursorPos(glm::vec2 const& pos)
 	return;
 }
 
-std::string WindowImpl::getClipboard() const
+std::string WindowImpl::clipboard() const
 {
 #if defined(LEVK_USE_GLFW)
 	if (threads::isMainThread() && g_bGLFWInit && m_uNativeWindow && m_uNativeWindow->m_pWindow)
@@ -658,7 +658,7 @@ std::string WindowImpl::getClipboard() const
 	return {};
 }
 
-JoyState WindowImpl::getJoyState(s32 id)
+JoyState WindowImpl::joyState(s32 id)
 {
 	JoyState ret;
 #if defined(LEVK_USE_GLFW)
@@ -688,7 +688,7 @@ JoyState WindowImpl::getJoyState(s32 id)
 	return ret;
 }
 
-GamepadState WindowImpl::getGamepadState(s32 id)
+GamepadState WindowImpl::gamepadState(s32 id)
 {
 	GamepadState ret;
 #if defined(LEVK_USE_GLFW)
@@ -697,7 +697,7 @@ GamepadState WindowImpl::getGamepadState(s32 id)
 	{
 		ret.name = glfwGetGamepadName(id);
 		ret.id = id;
-		ret.joyState = getJoyState(id);
+		ret.joyState = joyState(id);
 	}
 #endif
 	return ret;

@@ -1,7 +1,8 @@
 #pragma once
 #include <functional>
-#include "core/std_types.hpp"
-#include "core/zero.hpp"
+#include "std_types.hpp"
+#include "time.hpp"
+#include "zero.hpp"
 
 namespace le
 {
@@ -18,5 +19,7 @@ HThread::Type thisThreadID();
 bool isMainThread();
 u32 maxHardwareThreads();
 u32 runningCount();
+
+void sleep(Time duration = {});
 } // namespace threads
 } // namespace le

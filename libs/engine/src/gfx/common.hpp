@@ -14,7 +14,7 @@
 #include <glm/glm.hpp>
 #include "core/assert.hpp"
 #include "core/colour.hpp"
-#include "core/log.hpp"
+#include "core/log_config.hpp"
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"

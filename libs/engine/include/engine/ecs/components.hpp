@@ -29,12 +29,12 @@ public:
 public:
 	T* get()
 	{
-		return dynamic_cast<T*>(g_pResources->get<T>(m_id));
+		return dynamic_cast<T*>(Resources::inst().get<T>(m_id));
 	}
 
 	T const* get() const
 	{
-		return dynamic_cast<T*>(g_pResources->get<T>(m_id));
+		return dynamic_cast<T*>(Resources::inst().get<T>(m_id));
 	}
 };
 } // namespace le

@@ -202,14 +202,14 @@ bool RendererImpl::render(Renderer::Scene scene)
 	u32 specularID = 0;
 	rd::SSBOs ssbos;
 	std::deque<std::deque<rd::PushConstants>> push;
-	frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), diffuseID++);
-	frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), specularID++);
-	frame.set.writeCubemap(*g_pResources->get<Cubemap>("cubemaps/blank"));
+	frame.set.writeDiffuse(*Resources::inst().get<Texture>("textures/white"), diffuseID++);
+	frame.set.writeSpecular(*Resources::inst().get<Texture>("textures/black"), specularID++);
+	frame.set.writeCubemap(*Resources::inst().get<Cubemap>("cubemaps/blank"));
 	bool bSkybox = false;
 	if (scene.view.skybox.pCubemap && scene.view.skybox.pPipeline)
 	{
 		auto pTransform = &Transform::s_identity;
-		auto pMesh = g_pResources->get<Mesh>("meshes/cube");
+		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
 		scene.batches.push_front({{}, {}, {{{pMesh}, pTransform, scene.view.skybox.pPipeline}}});
 		frame.set.writeCubemap(*scene.view.skybox.pCubemap);
 		bSkybox = true;
@@ -280,11 +280,11 @@ bool RendererImpl::render(Renderer::Scene scene)
 	m_maxSpecularID = std::max(m_maxSpecularID, specularID);
 	for (u32 id = diffuseID; id < m_maxDiffuseID; ++id)
 	{
-		frame.set.writeDiffuse(*g_pResources->get<Texture>("textures/white"), id);
+		frame.set.writeDiffuse(*Resources::inst().get<Texture>("textures/white"), id);
 	}
 	for (u32 id = specularID; id < m_maxSpecularID; ++id)
 	{
-		frame.set.writeSpecular(*g_pResources->get<Texture>("textures/black"), id);
+		frame.set.writeSpecular(*Resources::inst().get<Texture>("textures/black"), id);
 	}
 	rd::UBOView view(scene.view, (u32)scene.dirLights.size());
 	std::copy(scene.dirLights.begin(), scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));

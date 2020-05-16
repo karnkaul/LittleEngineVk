@@ -76,7 +76,7 @@ void FileLogger::startLogging(std::filesystem::path path, Time pollRate)
 			}
 			else
 			{
-				std::this_thread::sleep_for(pollRate.usecs);
+				threads::sleep(pollRate);
 			}
 		}
 		LOG_I("File Logging terminated");

@@ -53,7 +53,7 @@ Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id)), m_type(info.type)
 	m_material = info.material;
 	if (!m_material.pMaterial)
 	{
-		m_material.pMaterial = g_pResources->get<Material>("materials/default");
+		m_material.pMaterial = Resources::inst().get<Material>("materials/default");
 	}
 	updateGeometry(std::move(info.geometry));
 }

@@ -112,7 +112,7 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask const& indexe
 	return handles;
 }
 
-bool JobManager::areWorkersIdle() const
+bool JobManager::isIdle() const
 {
 	for (auto& gameWorker : m_jobWorkers)
 	{
@@ -130,13 +130,13 @@ u8 JobManager::workerCount() const
 	return (u8)m_jobWorkers.size();
 }
 
-void JobManager::waitAll()
+void JobManager::waitIdle()
 {
-	while (!areWorkersIdle())
+	while (!isIdle())
 	{
 		std::this_thread::yield();
 	}
-	ASSERT(areWorkersIdle(), "Workers should be idle!");
+	ASSERT(isIdle(), "Workers should be idle!");
 	return;
 }
 } // namespace le

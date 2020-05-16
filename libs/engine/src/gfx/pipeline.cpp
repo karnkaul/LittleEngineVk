@@ -53,9 +53,9 @@ void PipelineImpl::destroy()
 
 bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
 {
-	if (!m_info.pShader && g_pResources && !m_info.shaderID.empty())
+	if (!m_info.pShader && !m_info.shaderID.empty())
 	{
-		m_info.pShader = g_pResources->get<Shader>(m_info.shaderID);
+		m_info.pShader = Resources::inst().get<Shader>(m_info.shaderID);
 	}
 	ASSERT(m_info.pShader, "Shader is null!");
 	if (!m_info.pShader)

@@ -51,9 +51,9 @@ public:
 	std::shared_ptr<HJob> enqueue(Task task, std::string name = "", bool bSilent = false);
 	std::vector<std::shared_ptr<HJob>> forEach(IndexedTask const& indexedTask);
 
-	bool areWorkersIdle() const;
+	bool isIdle() const;
 	u8 workerCount() const;
-	void waitAll();
+	void waitIdle();
 
 private:
 	friend class JobWorker;

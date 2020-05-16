@@ -56,6 +56,13 @@ private:
 class Texture final : public Asset
 {
 public:
+	enum class Space
+	{
+		eSRGBNonLinear,
+		eRGBLinear,
+		eCOUNT_
+	};
+
 	struct Raw final
 	{
 		ArrayView<u8> bytes;
@@ -67,6 +74,7 @@ public:
 		bytearray imgBytes;
 		Raw raw;
 		stdfs::path assetID;
+		Space mode = Space::eSRGBNonLinear;
 		Sampler* pSampler = nullptr;
 		class IOReader const* pReader = nullptr;
 	};
@@ -76,6 +84,7 @@ public:
 
 public:
 	glm::ivec2 m_size = {};
+	Space m_mode;
 	Sampler* m_pSampler = nullptr;
 
 private:
@@ -103,6 +112,7 @@ public:
 		std::array<bytearray, 6> rludfb;
 		std::array<Texture::Raw, 6> rludfbRaw;
 		stdfs::path samplerID;
+		Texture::Space mode = Texture::Space::eSRGBNonLinear;
 		Sampler* pSampler = nullptr;
 		class IOReader const* pReader = nullptr;
 	};
@@ -112,6 +122,7 @@ public:
 
 public:
 	glm::ivec2 m_size = {};
+	Texture::Space m_mode;
 	Sampler* m_pSampler = nullptr;
 
 private:

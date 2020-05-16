@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-#include "core/std_types.hpp"
+#include "std_types.hpp"
 
 #if (defined(_WIN32) || defined(_WIN64))
 #define LEVK_OS_WINX

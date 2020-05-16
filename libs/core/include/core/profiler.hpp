@@ -1,17 +1,30 @@
 #pragma once
+#include <optional>
+#include <unordered_map>
 #include <string>
-#include "core/log.hpp"
-#include "core/time.hpp"
+#include "log_config.hpp"
+#include "time.hpp"
 
 namespace le
 {
-struct Profiler
+struct Profiler final
 {
-	std::string id;
-	log::Level level;
-	Time dt;
+	struct Data final
+	{
+		std::string id;
+		Time dt;
+	};
 
-	explicit Profiler(std::string_view id, log::Level level = log::Level::eDebug);
-	virtual ~Profiler();
+	static std::optional<std::unordered_map<std::string, Data>> s_record;
+
+	Data data;
+	Time start;
+	Time end;
+	std::optional<log::Level> level;
+
+	explicit Profiler(std::string_view id, std::optional<log::Level> level = log::Level::eInfo);
+	~Profiler();
+
+	static void clear();
 };
 } // namespace le

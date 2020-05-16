@@ -5,7 +5,7 @@
 #include <vector>
 #if defined(LEVK_DEBUG)
 #include <string>
-#include "core/utils.hpp"
+#include "utils.hpp"
 #endif
 
 namespace le

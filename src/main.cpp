@@ -57,13 +57,13 @@ int main(int argc, char** argv)
 	tutorialShaderInfo.pReader = g_uReader.get();
 	tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
 	tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
-	auto pShader = g_pResources->create<gfx::Shader>("shaders/uber", std::move(tutorialShaderInfo));
+	auto pShader = Resources::inst().create<gfx::Shader>("shaders/uber", std::move(tutorialShaderInfo));
 
 	gfx::Font::Info fontInfo;
 	GData fontData(g_uReader->getString("fonts/default.json").payload);
 	fontInfo.deserialise(fontData);
 	fontInfo.image = g_uReader->getBytes(stdfs::path("fonts") / fontInfo.sheetID).payload;
-	auto pFont = g_pResources->create<gfx::Font>("fonts/default", std::move(fontInfo));
+	auto pFont = Resources::inst().create<gfx::Font>("fonts/default", std::move(fontInfo));
 
 	Registry registry;
 	gfx::Mesh::Info triangle0info;
@@ -74,13 +74,13 @@ int main(int argc, char** argv)
 			{{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {}, {0.0f, 1.0f}},
 		};
 	// clang-format on
-	gfx::Mesh* pTriangle0 = g_pResources->create<gfx::Mesh>("meshes/triangle0", triangle0info);
+	gfx::Mesh* pTriangle0 = Resources::inst().create<gfx::Mesh>("meshes/triangle0", triangle0info);
 
 	gfx::Mesh::Info meshInfo;
 	meshInfo.geometry = gfx::createQuad();
-	gfx::Mesh* pMesh0 = g_pResources->create<gfx::Mesh>("mesh0", meshInfo);
+	gfx::Mesh* pMesh0 = Resources::inst().create<gfx::Mesh>("mesh0", meshInfo);
 	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
-	gfx::Mesh* pMesh1 = g_pResources->create<gfx::Mesh>("mesh1", meshInfo);
+	gfx::Mesh* pMesh1 = Resources::inst().create<gfx::Mesh>("mesh1", meshInfo);
 
 	auto eid0 = registry.spawnEntity("entity0");
 	auto eid1 = registry.spawnEntity("entity1");
@@ -97,17 +97,18 @@ int main(int argc, char** argv)
 		auto model0info = gfx::Model::parseOBJ(model0lr);
 		model0id = model0info.id;
 		model0id += "_0";
-		pModel0 = g_pResources->create<gfx::Model>(model0id, model0info);
+		pModel0 = Resources::inst().create<gfx::Model>(model0id, model0info);
 	});
 	jobs::enqueue([&pModel1, &model0lr, &model1id]() {
 		auto model1info = gfx::Model::parseOBJ(model0lr);
 		model1id = model1info.id;
 		model1id += "_1";
-		pModel1 = g_pResources->create<gfx::Model>(model1id, model1info);
+		model1info.mode = gfx::Texture::Space::eRGBLinear;
+		pModel1 = Resources::inst().create<gfx::Model>(model1id, model1info);
 	});
 	gfx::Material::Info texturedInfo;
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
-	auto pTexturedLit = g_pResources->create<gfx::Material>("materials/textured", texturedInfo);
+	auto pTexturedLit = Resources::inst().create<gfx::Material>("materials/textured", texturedInfo);
 
 	gfx::Texture::Info textureInfo;
 	textureInfo.pReader = g_uReader.get();
@@ -117,11 +118,11 @@ int main(int argc, char** argv)
 	pMesh1->m_material.pMaterial = pTexturedLit;
 	pMesh1->m_material.tint.a = 0xcc;
 	textureInfo.assetID = "textures/container2.png";
-	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse = Resources::inst().create<gfx::Texture>(textureInfo.assetID, textureInfo);
 	textureInfo.assetID = "textures/container2_specular.png";
-	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular = Resources::inst().create<gfx::Texture>(textureInfo.assetID, textureInfo);
 	textureInfo.assetID = "textures/awesomeface.png";
-	pMesh0->m_material.pDiffuse = g_pResources->create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	pMesh0->m_material.pDiffuse = Resources::inst().create<gfx::Texture>(textureInfo.assetID, textureInfo);
 	pMesh0->m_material.pSpecular = nullptr;
 	pMesh0->m_material.flags.reset(gfx::Material::Flag::eOpaque);
 
@@ -136,7 +137,7 @@ int main(int argc, char** argv)
 	cubemapInfo.pReader = g_uReader.get();
 	stdfs::path const& cp = "skyboxes/sky_dusk";
 	cubemapInfo.rludfbIDs = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
-	gfx::Cubemap* pCubemap = g_pResources->create<gfx::Cubemap>("skyboxes/sky_dusk_cubemap", cubemapInfo);
+	gfx::Cubemap* pCubemap = Resources::inst().create<gfx::Cubemap>("skyboxes/sky_dusk_cubemap", cubemapInfo);
 	gfx::Pipeline::Info skyboxPipeInfo;
 	skyboxPipeInfo.name = "skybox";
 	skyboxPipeInfo.pShader = pShader;
@@ -150,6 +151,7 @@ int main(int argc, char** argv)
 	info0.config.virtualFrameCount = 2;
 	info0.config.centreOffset = {-200, -200};
 	auto info1 = info0;
+	info1.options.colourSpaces.push_back({ColourSpace::eRGBLinear});
 	// info1.config.mode = Window::Mode::eBorderlessFullscreen;
 	info1.config.title += " 2";
 	info1.config.centreOffset = {200, 200};
@@ -297,14 +299,14 @@ int main(int argc, char** argv)
 			}
 			{
 				engine.update();
-				registry.cleanDestroyed();
+				registry.sweep();
 
 				if (bToggleModel0)
 				{
 					if (pModel0 && pModel1)
 					{
-						g_pResources->unload<gfx::Model>(pModel0->m_id);
-						g_pResources->unload<gfx::Model>(pModel1->m_id);
+						Resources::inst().unload<gfx::Model>(pModel0->m_id);
+						Resources::inst().unload<gfx::Model>(pModel1->m_id);
 						pModel0 = nullptr;
 						pModel1 = nullptr;
 					}
@@ -317,7 +319,7 @@ int main(int argc, char** argv)
 								LOG_I("{} data loaded in: {}s", m0info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
 								auto model0id = m0info.id;
 								model0id += "_0";
-								pModel0 = g_pResources->create<gfx::Model>(model0id, std::move(m0info));
+								pModel0 = Resources::inst().create<gfx::Model>(model0id, std::move(m0info));
 								LOG_I("{} total load time: {}s", m0info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
 							},
 							"Model0-Reload");
@@ -326,8 +328,9 @@ int main(int argc, char** argv)
 								m1info = gfx::Model::parseOBJ(model0lr);
 								LOG_I("{} data loaded in: {}s", m1info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
 								auto model1id = m1info.id;
+								m1info.mode = gfx::Texture::Space::eRGBLinear;
 								model1id += "_1";
-								pModel1 = g_pResources->create<gfx::Model>(model1id, std::move(m1info));
+								pModel1 = Resources::inst().create<gfx::Model>(model1id, std::move(m1info));
 								LOG_I("{} total load time: {}s", m1info.id.generic_string(), (Time::elapsed() - reloadTime).to_s());
 							},
 							"Model1-Reload");

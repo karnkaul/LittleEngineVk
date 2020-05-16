@@ -339,6 +339,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 		Texture::Info texInfo;
 		texInfo.imgBytes = std::move(texture.bytes);
 		texInfo.samplerID = std::move(texture.samplerID);
+		texInfo.mode = info.mode;
 		Texture newTex(texture.id, std::move(texInfo));
 		newTex.setup();
 		m_loadedTextures.emplace(texture.id.generic_string(), std::move(newTex));

@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <sstream>
 #include <string_view>
-#include "core/utils.hpp"
+#include "utils.hpp"
 
 namespace le
 {

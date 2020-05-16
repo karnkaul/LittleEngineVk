@@ -1,6 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
-#include "core/std_types.hpp"
+#include "std_types.hpp"
 
 namespace le
 {

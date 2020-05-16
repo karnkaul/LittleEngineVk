@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "core/log.hpp"
+#include "core/log_config.hpp"
 #include "core/std_types.hpp"
 #include "core/flags.hpp"
 #include "common.hpp"

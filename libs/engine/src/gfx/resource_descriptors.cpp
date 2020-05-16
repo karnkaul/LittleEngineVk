@@ -205,9 +205,9 @@ void Set::writeCubemap(Cubemap const& cubemap)
 
 void Set::resetTextures()
 {
-	auto pBlack = g_pResources->get<Texture>("textures/black");
-	auto pWhite = g_pResources->get<Texture>("textures/white");
-	auto pCubemap = g_pResources->get<Cubemap>("cubemaps/blank");
+	auto pBlack = Resources::inst().get<Texture>("textures/black");
+	auto pWhite = Resources::inst().get<Texture>("textures/white");
+	auto pCubemap = Resources::inst().get<Cubemap>("cubemaps/blank");
 	ASSERT(pBlack && pWhite && pCubemap, "blank textures are null!");
 	for (u32 i = 0; i < Textures::max; ++i)
 	{

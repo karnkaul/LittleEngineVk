@@ -140,9 +140,9 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 	m_material = info.material;
 	if (!m_material.pMaterial)
 	{
-		ASSERT(g_pResources, "Resources is null!");
-		m_material.pMaterial = g_pResources->get<Material>("materials/font");
+		m_material.pMaterial = Resources::inst().get<Material>("materials/default");
 	}
+	ASSERT(m_material.pMaterial, "Material is null!");
 	m_material.pDiffuse = m_uSheet.get();
 	m_material.flags.set({Material::Flag::eTextured, Material::Flag::eUI, Material::Flag::eDropColour});
 	m_material.flags.reset({Material::Flag::eOpaque, Material::Flag::eLit});
@@ -250,11 +250,11 @@ bool Text2D::setup(Info info)
 	m_pShader = info.pShader;
 	if (!m_pFont)
 	{
-		m_pFont = g_pResources->get<Font>("fonts/default");
+		m_pFont = Resources::inst().get<Font>("fonts/default");
 	}
 	if (!m_pShader)
 	{
-		m_pShader = g_pResources->get<Shader>("shaders/monolithic");
+		m_pShader = Resources::inst().get<Shader>("shaders/monolithic");
 	}
 	ASSERT(m_pFont && m_pFont->isReady(), "Font is null!");
 	ASSERT(m_pShader, "Shader is null!");

@@ -23,6 +23,7 @@ Service::Service(Service&&) = default;
 Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
+	Resources::inst().deinit();
 	g_exePath.clear();
 	g_dataPath.clear();
 }
@@ -56,7 +57,7 @@ bool Service::start(s32 argc, char** argv)
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
 		initInfo.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
 		m_services.add<gfx::Service>(std::move(initInfo));
-		m_services.add<Resources::Service>();
+		Resources::inst().init();
 	}
 	catch (std::exception const& e)
 	{
@@ -70,7 +71,7 @@ void Service::update()
 {
 	gfx::vram::update();
 	gfx::deferred::update();
-	g_pResources->update();
+	Resources::inst().update();
 	WindowImpl::updateActive();
 }
 } // namespace engine

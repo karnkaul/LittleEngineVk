@@ -17,15 +17,18 @@ namespace
 {
 std::array const g_filters = {vk::Filter::eLinear, vk::Filter::eNearest};
 std::array const g_mipModes = {vk::SamplerMipmapMode::eLinear, vk::SamplerMipmapMode::eNearest};
-std::array const g_modes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToBorder};
+std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge,
+								   vk::SamplerAddressMode::eClampToBorder};
+std::array const g_texModes = {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Snorm};
 
-std::future<void> load(Image* out_pImage, glm::ivec2 const& size, ArrayView<ArrayView<u8>> bytes, [[maybe_unused]] std::string const& name)
+std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, ArrayView<ArrayView<u8>> bytes,
+					   [[maybe_unused]] std::string const& name)
 {
 	if (out_pImage->image == vk::Image() || out_pImage->extent.width != (u32)size.x || out_pImage->extent.height != (u32)size.y)
 	{
 		ImageInfo imageInfo;
 		imageInfo.queueFlags = QFlag::eTransfer | QFlag::eGraphics;
-		imageInfo.createInfo.format = vk::Format::eR8G8B8A8Srgb;
+		imageInfo.createInfo.format = texMode;
 		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 		imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
 		if (bytes.extent > 1)
@@ -70,7 +73,7 @@ Sampler::Sampler(stdfs::path id, Info info) : Asset(std::move(id))
 	vk::SamplerCreateInfo samplerInfo;
 	samplerInfo.magFilter = g_filters.at((size_t)info.min);
 	samplerInfo.minFilter = g_filters.at((size_t)info.mag);
-	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_modes.at((size_t)info.mode);
+	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes.at((size_t)info.mode);
 	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	samplerInfo.unnormalizedCoordinates = false;
 	samplerInfo.compareEnable = false;
@@ -103,7 +106,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	if (!m_pSampler)
 	{
 		auto const id = info.samplerID.empty() ? "samplers/default" : info.samplerID.generic_string();
-		m_pSampler = g_pResources->get<Sampler>(id);
+		m_pSampler = Resources::inst().get<Sampler>(id);
 	}
 	if (!m_pSampler)
 	{
@@ -157,8 +160,9 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 		m_status = Status::eError;
 		return;
 	}
-	m_uImpl->copied = load(&m_uImpl->active, m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
-	m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+	m_mode = info.mode;
+	m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
+	m_uImpl->imageView = createImageView(m_uImpl->active.image, g_texModes.at((size_t)m_mode));
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	if (bAddFileMonitor)
@@ -261,7 +265,8 @@ Asset::Status Texture::update()
 					}
 					m_size = raw.size;
 					m_uImpl->raws = {std::move(raw)};
-					m_uImpl->copied = load(&m_uImpl->standby, m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
+					m_uImpl->copied = load(&m_uImpl->standby, g_texModes.at((size_t)m_mode), m_uImpl->raws.back().size,
+										   {m_uImpl->raws.back().bytes}, idStr);
 					m_status = Status::eLoading;
 					m_uImpl->bReloading = true;
 					LOG_D("[{}] [{}] reloading...", s_tName, idStr);
@@ -284,7 +289,7 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	if (!m_pSampler)
 	{
 		auto const id = info.samplerID.empty() ? "samplers/default" : info.samplerID.generic_string();
-		m_pSampler = g_pResources->get<Sampler>(id);
+		m_pSampler = Resources::inst().get<Sampler>(id);
 	}
 	if (!m_pSampler)
 	{
@@ -344,7 +349,8 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	{
 		rludfb.at(idx++) = raw.bytes;
 	}
-	m_uImpl->copied = load(&m_uImpl->active, m_size, rludfb, idStr);
+	m_mode = info.mode;
+	m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_size, rludfb, idStr);
 	m_uImpl->imageView =
 		createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
@@ -468,7 +474,7 @@ Asset::Status Cubemap::update()
 						{
 							rludfb.at(idx++) = raw.bytes;
 						}
-						m_uImpl->copied = load(&m_uImpl->active, m_size, rludfb, idStr);
+						m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_size, rludfb, idStr);
 						m_status = Status::eLoading;
 						m_uImpl->bReloading = true;
 						LOG_D("[{}] [{}] reloading...", s_tName, idStr);

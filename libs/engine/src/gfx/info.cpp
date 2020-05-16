@@ -8,7 +8,6 @@
 #include "deferred.hpp"
 #include "info.hpp"
 #include "vram.hpp"
-#include "engine/assets/resources.hpp"
 #include "resource_descriptors.hpp"
 
 namespace le::gfx
@@ -285,10 +284,6 @@ void deinit()
 	deferred::deinit();
 	rd::deinit();
 	vram::deinit();
-	if (g_pResources)
-	{
-		g_pResources->unloadAll();
-	}
 	if (g_info.device != vk::Device())
 	{
 		g_info.device.destroy();

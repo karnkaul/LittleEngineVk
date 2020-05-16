@@ -46,6 +46,7 @@ public:
 		std::vector<MeshData> meshData;
 		std::vector<Mesh const*> preloaded;
 		Mesh::Type type = Mesh::Type::eStatic;
+		Texture::Space mode = Texture::Space::eSRGBNonLinear;
 		Colour tint = colours::white;
 		bool bDropColour = false;
 	};

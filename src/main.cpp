@@ -41,29 +41,22 @@ bool runTests()
 
 int main(int argc, char** argv)
 {
-	engine::Service engine;
-	if (!engine.start(argc, argv))
-	{
-		return 1;
-	}
+	engine::Service engine(argc, argv);
 	if (!runTests())
 	{
 		return 1;
 	}
-	g_uReader = std::make_unique<FileReader>(engine::dataPath());
-	gfx::Shader::Info tutorialShaderInfo;
-	std::array shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
-	ASSERT(g_uReader->checkPresences(ArrayView<stdfs::path const>(shaderIDs)), "Shaders missing!");
-	tutorialShaderInfo.pReader = g_uReader.get();
-	tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
-	tutorialShaderInfo.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
-	auto pShader = Resources::inst().create<gfx::Shader>("shaders/uber", std::move(tutorialShaderInfo));
-
-	gfx::Font::Info fontInfo;
-	GData fontData(g_uReader->getString("fonts/default.json").payload);
-	fontInfo.deserialise(fontData);
-	fontInfo.image = g_uReader->getBytes(stdfs::path("fonts") / fontInfo.sheetID).payload;
-	auto pFont = Resources::inst().create<gfx::Font>("fonts/default", std::move(fontInfo));
+	auto [dataPath, bResult] = FileReader::findUpwards(engine::exePath(), {"data"});
+	if (!bResult)
+	{
+		LOG_E("FATAL: Could not locate data!");
+		return 1;
+	}
+	g_uReader = std::make_unique<FileReader>(dataPath);
+	if (!engine.start(*g_uReader))
+	{
+		return 1;
+	}
 
 	Registry registry;
 	gfx::Mesh::Info triangle0info;
@@ -140,7 +133,6 @@ int main(int argc, char** argv)
 	gfx::Cubemap* pCubemap = Resources::inst().create<gfx::Cubemap>("skyboxes/sky_dusk_cubemap", cubemapInfo);
 	gfx::Pipeline::Info skyboxPipeInfo;
 	skyboxPipeInfo.name = "skybox";
-	skyboxPipeInfo.pShader = pShader;
 	skyboxPipeInfo.bDepthWrite = false;
 	gfx::Pipeline* pSkyPipe = nullptr;
 
@@ -212,10 +204,9 @@ int main(int argc, char** argv)
 	});
 	registerInput(w0, w1, bRecreate1, bClose0, token0);
 	registerInput(w1, w0, bRecreate0, bClose1, token1);
-	auto createPipeline = [pShader](gfx::Renderer* pRenderer, std::string_view name, gfx::PolygonMode mode = gfx::PolygonMode::eFill,
-									f32 lineWidth = 3.0f) -> gfx::Pipeline* {
+	auto createPipeline = [](gfx::Renderer* pRenderer, std::string_view name, gfx::PolygonMode mode = gfx::PolygonMode::eFill,
+							 f32 lineWidth = 3.0f) -> gfx::Pipeline* {
 		gfx::Pipeline::Info pipelineInfo;
-		pipelineInfo.pShader = pShader;
 		pipelineInfo.name = name;
 		pipelineInfo.polygonMode = mode;
 		pipelineInfo.lineWidth = lineWidth;
@@ -228,18 +219,21 @@ int main(int argc, char** argv)
 	freeCam0.m_state.flags.set(gfx::FreeCam::Flag::eKeyToggle_Look);
 	freeCam1.m_state.flags = freeCam0.m_state.flags;
 
-	gfx::Text2D fpsText, ftText;
+	gfx::Text2D fpsText, ftText, triText;
 	gfx::Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
 	textInfo.data.scale = 0.25f;
-	textInfo.pFont = pFont;
-	textInfo.pShader = pShader;
 	textInfo.id = "fps";
 	fpsText.setup(textInfo);
+	textInfo.data.scale = 0.15f;
 	textInfo.data.colour = colours::cyan;
 	textInfo.data.pos.y -= 100.0f;
 	textInfo.id = "ft";
 	ftText.setup(textInfo);
+	textInfo.data.colour = colours::yellow;
+	textInfo.data.pos.y -= 100.0f;
+	textInfo.id = "tris";
+	triText.setup(textInfo);
 
 	if (w1.create(info1) && w0.create(info0))
 	{
@@ -345,6 +339,7 @@ int main(int argc, char** argv)
 
 				fpsText.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
 				ftText.updateText(fmt::format("{:.3}ms", ft.to_s() * 1000));
+				triText.updateText(fmt::format("{} triangles", w0.renderer().m_stats.trisDrawn));
 
 				if (auto pM = registry.component<CResource<gfx::Model>>(eid2))
 				{
@@ -480,6 +475,7 @@ int main(int argc, char** argv)
 					}
 					batch.drawables.push_back({{fpsText.mesh()}, &Transform::s_identity, pPipeline});
 					batch.drawables.push_back({{ftText.mesh()}, &Transform::s_identity, pPipeline});
+					batch.drawables.push_back({{triText.mesh()}, &Transform::s_identity, pPipeline});
 					scene.batches.push_back(std::move(batch));
 					w0.renderer().render(std::move(scene));
 				}

@@ -9,6 +9,8 @@
 
 namespace le
 {
+class IOReader;
+
 class Resources final
 {
 private:
@@ -23,7 +25,7 @@ private:
 	~Resources();
 
 public:
-	void init();
+	void init(IOReader const& data);
 
 	template <typename T>
 	T* create(stdfs::path const& id, typename T::Info info)

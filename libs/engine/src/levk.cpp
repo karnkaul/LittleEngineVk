@@ -13,36 +13,30 @@ namespace le
 namespace
 {
 stdfs::path g_exePath;
-stdfs::path g_dataPath;
 } // namespace
 
 namespace engine
 {
-Service::Service() = default;
+Service::Service(s32 argc, char* const* const argv)
+{
+	g_exePath = argv[0];
+	m_services.add<os::Service>(os::Args{argc, argv});
+	m_services.add<log::Service>(std::string_view("debug.log"));
+	m_services.add<jobs::Service>(4);
+}
+
 Service::Service(Service&&) = default;
 Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
 	Resources::inst().deinit();
 	g_exePath.clear();
-	g_dataPath.clear();
 }
 
-bool Service::start(s32 argc, char** argv)
+bool Service::start(IOReader const& data)
 {
-	g_exePath = argv[0];
-	auto [dataPath, bResult] = FileReader::findUpwards(g_exePath.parent_path(), {"data"});
-	if (!bResult)
-	{
-		LOG_E("[{}] Could not locate data!", utils::tName<Service>());
-		return false;
-	}
-	g_dataPath = std::move(dataPath);
 	try
 	{
-		m_services.add<os::Service, os::Args>({argc, argv});
-		m_services.add<log::Service, std::string_view>("debug.log");
-		m_services.add<jobs::Service, u8>(4);
 		m_services.add<Window::Service>();
 		NativeWindow dummyWindow({});
 		gfx::InitInfo initInfo;
@@ -57,7 +51,7 @@ bool Service::start(s32 argc, char** argv)
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
 		initInfo.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
 		m_services.add<gfx::Service>(std::move(initInfo));
-		Resources::inst().init();
+		Resources::inst().init(data);
 	}
 	catch (std::exception const& e)
 	{
@@ -79,10 +73,5 @@ void Service::update()
 stdfs::path engine::exePath()
 {
 	return g_exePath;
-}
-
-stdfs::path engine::dataPath()
-{
-	return g_dataPath;
 }
 } // namespace le

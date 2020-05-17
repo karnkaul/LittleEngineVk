@@ -1,5 +1,5 @@
 #pragma once
-#include <filesystem>
+#include "core/io.hpp"
 #include "core/std_types.hpp"
 #include "core/services.hpp"
 
@@ -13,15 +13,14 @@ private:
 	Services m_services;
 
 public:
-	Service();
+	Service(s32 argc, char* const* const argv);
 	Service(Service&&);
 	Service& operator=(Service&&);
 	~Service();
 
-	bool start(s32 argc, char** argv);
+	bool start(IOReader const& data);
 	void update();
 };
 
 stdfs::path exePath();
-stdfs::path dataPath();
 } // namespace le::engine

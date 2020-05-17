@@ -78,8 +78,16 @@ public:
 		std::vector<DirLight> dirLights;
 	};
 
+	struct Stats final
+	{
+		u64 trisDrawn = 0;
+	};
+
 public:
 	static std::string const s_tName;
+
+public:
+	Stats m_stats;
 
 private:
 	std::unique_ptr<class RendererImpl> m_uImpl;

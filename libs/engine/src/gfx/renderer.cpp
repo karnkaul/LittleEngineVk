@@ -60,10 +60,17 @@ void Renderer::render(Scene scene)
 	}
 }
 
-RendererImpl::RendererImpl(Info const& info) : m_presenter(info.presenterInfo), m_window(info.windowID)
+RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
+	: m_presenter(info.presenterInfo), m_pRenderer(pOwner), m_window(info.windowID)
 {
 	m_name = fmt::format("{}:{}", Renderer::s_tName, m_window);
 	create(info.frameCount);
+	Pipeline::Info pipelineInfo;
+	pipelineInfo.name = "default";
+	m_pipes.pDefault = createPipeline(std::move(pipelineInfo));
+	pipelineInfo.name = "skybox";
+	pipelineInfo.bDepthWrite = false;
+	m_pipes.pSkybox = createPipeline(std::move(pipelineInfo));
 }
 
 RendererImpl::~RendererImpl()
@@ -206,14 +213,20 @@ bool RendererImpl::render(Renderer::Scene scene)
 	frame.set.writeSpecular(*Resources::inst().get<Texture>("textures/black"), specularID++);
 	frame.set.writeCubemap(*Resources::inst().get<Cubemap>("cubemaps/blank"));
 	bool bSkybox = false;
-	if (scene.view.skybox.pCubemap && scene.view.skybox.pPipeline)
+	if (scene.view.skybox.pCubemap)
 	{
+		if (!scene.view.skybox.pPipeline)
+		{
+			scene.view.skybox.pPipeline = m_pipes.pSkybox;
+		}
+		ASSERT(scene.view.skybox.pPipeline, "Pipeline is null!");
 		auto pTransform = &Transform::s_identity;
 		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
 		scene.batches.push_front({{}, {}, {{{pMesh}, pTransform, scene.view.skybox.pPipeline}}});
 		frame.set.writeCubemap(*scene.view.skybox.pCubemap);
 		bSkybox = true;
 	}
+	u64 tris = 0;
 	for (auto& batch : scene.batches)
 	{
 		push.push_back({});
@@ -224,6 +237,8 @@ bool RendererImpl::render(Renderer::Scene scene)
 			auto mat_n = pTransform->normalModel();
 			for (auto pMesh : meshes)
 			{
+				ASSERT(pMesh, "Mesh is null!");
+				tris += pMesh->m_triCount;
 				rd::PushConstants pc;
 				pc.objectID = objectID;
 				ssbos.models.ssbo.push_back(mat_m);
@@ -336,8 +351,12 @@ bool RendererImpl::render(Renderer::Scene scene)
 		{
 			for (auto pMesh : meshes)
 			{
-				if (pMesh->isReady())
+				if (pMesh->isReady() && pMesh->m_triCount > 0)
 				{
+					if (!pPipeline)
+					{
+						pPipeline = m_pipes.pDefault;
+					}
 					ASSERT(pPipeline, "Pipeline is null!");
 					if (pipeline != pPipeline->m_uImpl->m_pipeline)
 					{
@@ -383,6 +402,7 @@ bool RendererImpl::render(Renderer::Scene scene)
 	if (m_presenter.present(frame.presentReady))
 	{
 		next();
+		m_pRenderer->m_stats.trisDrawn = tris;
 		return true;
 	}
 	return false;

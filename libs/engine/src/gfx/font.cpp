@@ -247,37 +247,27 @@ Asset::Status Font::update()
 bool Text2D::setup(Info info)
 {
 	m_pFont = info.pFont;
-	m_pShader = info.pShader;
 	if (!m_pFont)
 	{
 		m_pFont = Resources::inst().get<Font>("fonts/default");
 	}
-	if (!m_pShader)
-	{
-		m_pShader = Resources::inst().get<Shader>("shaders/monolithic");
-	}
 	ASSERT(m_pFont && m_pFont->isReady(), "Font is null!");
-	ASSERT(m_pShader, "Shader is null!");
 	if (!m_pFont || !m_pFont->isReady())
 	{
 		return false;
 	}
 	m_data = std::move(info.data);
 	Mesh::Info meshInfo;
-	// TODO: Allow empty strings
-	if (m_data.text.empty())
-	{
-		m_data.text = " ";
-	}
 	stdfs::path meshID = info.id;
 	meshID += "_mesh";
-	meshInfo.material = info.pFont->m_material;
-	meshInfo.geometry = info.pFont->generate(m_data);
+	meshInfo.material = m_pFont->m_material;
+	meshInfo.geometry = m_pFont->generate(m_data);
 	meshInfo.type = Mesh::Type::eDynamic;
 	m_uMesh = std::make_unique<Mesh>(std::move(meshID), std::move(meshInfo));
 	if (m_uMesh->currentStatus() != Asset::Status::eError)
 	{
-		m_uMesh->m_material = info.pFont->m_material;
+		m_uMesh->m_material = m_pFont->m_material;
+		m_uMesh->m_material.tint = info.data.colour;
 		m_uMesh->setup();
 		return true;
 	}
@@ -306,7 +296,7 @@ void Text2D::updateText(std::string text)
 		if (text != m_data.text)
 		{
 			m_data.text = std::move(text);
-			update(std::move(m_data));
+			update(m_data);
 		}
 	}
 	return;
@@ -319,6 +309,6 @@ Mesh const* Text2D::mesh() const
 
 bool Text2D::isReady() const
 {
-	return m_uMesh->isReady() && m_pFont->isReady() && m_pShader->isReady();
+	return m_uMesh->isReady() && m_pFont->isReady();
 }
 } // namespace le::gfx

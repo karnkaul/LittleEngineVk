@@ -79,6 +79,7 @@ public:
 
 public:
 	Material::Inst m_material;
+	u64 m_triCount = 0;
 
 protected:
 	std::unique_ptr<struct MeshImpl> m_uImpl;

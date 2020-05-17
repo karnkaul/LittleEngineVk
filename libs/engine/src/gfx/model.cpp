@@ -1,13 +1,22 @@
+#include <unordered_map>
 #include <unordered_set>
 #include <fmt/format.h>
+#include <glm/gtx/hash.hpp>
 #include <tinyobjloader/tiny_obj_loader.h>
 #include "core/assert.hpp"
 #include "core/colour.hpp"
+#include "core/profiler.hpp"
 #include "core/gdata.hpp"
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "engine/gfx/model.hpp"
 #include "gfx/info.hpp"
+
+#if defined(LEVK_DEBUG)
+#if !defined(LEVK_PROFILE_MODEL_LOADS)
+#define LEVK_PROFILE_MODEL_LOADS
+#endif
+#endif
 
 namespace le::gfx
 {
@@ -68,7 +77,7 @@ OBJParser::OBJParser(Data data)
 	bool bOK = false;
 	{
 #if defined(LEVK_PROFILE_MODEL_LOADS)
-		Profiler pr(idStr + "-TinyObj", LogLevel::Info);
+		Profiler pr(idStr + "-TinyObj");
 #endif
 		bOK = tinyobj::LoadObj(&m_attrib, &m_shapes, &m_materials, &warn, &err, &data.objBuf, &m_matStrReader);
 	}
@@ -95,7 +104,7 @@ OBJParser::OBJParser(Data data)
 		m_info.id = m_modelID;
 		{
 #if defined(LEVK_PROFILE_MODEL_LOADS)
-			Profiler pr(idStr + "-MeshData", LogLevel::Info);
+			Profiler pr(idStr + "-MeshData");
 #endif
 			for (auto const& shape : m_shapes)
 			{
@@ -103,7 +112,7 @@ OBJParser::OBJParser(Data data)
 			}
 		}
 #if defined(LEVK_PROFILE_MODEL_LOADS)
-		Profiler pr(idStr + "-TexData", LogLevel::Info);
+		Profiler pr(idStr + "-TexData");
 #endif
 		for (auto& texture : m_info.textures)
 		{
@@ -222,35 +231,43 @@ std::string OBJParser::name(tinyobj::shape_t const& shape)
 Geometry OBJParser::vertices(tinyobj::shape_t const& shape)
 {
 	Geometry ret;
-	ret.reserve((u32)m_attrib.vertices.size(), (u32)m_attrib.vertices.size());
+	ret.reserve((u32)m_attrib.vertices.size(), (u32)shape.mesh.indices.size());
+	std::unordered_map<size_t, u32> hashToVertIdx;
+	hashToVertIdx.reserve(shape.mesh.indices.size());
 	for (auto const& idx : shape.mesh.indices)
 	{
-		f32 const vx = m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 0) * m_scale;
-		f32 const vy = m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 1) * m_scale;
-		f32 const vz = m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 2) * m_scale;
-		f32 const cr = m_attrib.colors.at(3 * (size_t)idx.vertex_index + 0);
-		f32 const cg = m_attrib.colors.at(3 * (size_t)idx.vertex_index + 1);
-		f32 const cb = m_attrib.colors.at(3 * (size_t)idx.vertex_index + 2);
-		f32 const nx = m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 0);
-		f32 const ny = m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 1);
-		f32 const nz = m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 2);
-		auto const& t = m_attrib.texcoords;
-		f32 const tx = t.empty() || idx.texcoord_index < 0 ? 0.0f : t.at(2 * (size_t)idx.texcoord_index + 0);
-		f32 const ty = 1.0f - (t.empty() || idx.texcoord_index < 0 ? 0.0f : t.at(2 * (size_t)idx.texcoord_index + 1));
-		bool bFound = false;
-		for (size_t i = 0; i < ret.vertices.size(); ++i)
+		// clang-format off
+		glm::vec3 const p = {
+			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 0) * m_scale,
+			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 1) * m_scale,
+			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 2) * m_scale
+		};
+		glm::vec3 const c = {
+			m_attrib.colors.at(3 * (size_t)idx.vertex_index + 0),
+			m_attrib.colors.at(3 * (size_t)idx.vertex_index + 1),
+			m_attrib.colors.at(3 * (size_t)idx.vertex_index + 2)
+		};
+		glm::vec3 const n = {
+			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 0),
+			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 1),
+			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 2)
+		};
+		auto const& at = m_attrib.texcoords;
+		glm::vec2 const t = {
+			at.empty() || idx.texcoord_index < 0 ? 0.0f : at.at(2 * (size_t)idx.texcoord_index + 0),
+			1.0f - (at.empty() || idx.texcoord_index < 0 ? 0.0f : at.at(2 * (size_t)idx.texcoord_index + 1)),
+		};
+		// clang-format on
+		auto const hash = std::hash<glm::vec3>()(p) ^ std::hash<glm::vec3>()(n) ^ std::hash<glm::vec3>()(c) ^ std::hash<glm::vec2>()(t);
+		if (auto search = hashToVertIdx.find(hash); search != hashToVertIdx.end())
 		{
-			auto const& v = ret.vertices.at(i);
-			if (v.position == glm::vec3(vx, vy, vz) && v.normal == glm::vec3(nx, ny, nz) && v.texCoord == glm::vec2(tx, ty))
-			{
-				bFound = true;
-				ret.indices.push_back((u32)i);
-				break;
-			}
+			ret.indices.push_back((u32)search->second);
 		}
-		if (!bFound)
+		else
 		{
-			ret.indices.push_back(ret.addVertex({{vx, vy, vz}, {cr, cg, cb}, {nx, ny, nz}, {tx, ty}}));
+			auto const idx = ret.addVertex({p, c, n, t});
+			ret.indices.push_back(idx);
+			hashToVertIdx[hash] = idx;
 		}
 	}
 	ret.vertices.shrink_to_fit();
@@ -330,6 +347,9 @@ std::string const Model::s_tName = utils::tName<Model>();
 
 Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 {
+#if defined(LEVK_PROFILE_MODEL_LOADS)
+	Profiler pr(m_id.generic_string());
+#endif
 	ASSERT(!(info.meshData.empty() && info.preloaded.empty()), "No mesh data!");
 	m_meshes = std::move(info.preloaded);
 	m_meshes.reserve(m_meshes.size() + info.meshData.size());

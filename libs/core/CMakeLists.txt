@@ -11,7 +11,8 @@ if(MSVC_RUNTIME AND NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	target_compile_definitions(fmt PUBLIC FMT_EXCEPTIONS=0)
 endif()
 # glm defines
-target_compile_definitions(glm INTERFACE GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SILENT_WARNINGS)
+target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SILENT_WARNINGS GLM_ENABLE_EXPERIMENTAL GLM_EXT_INCLUDED)
+
 add_target_compile_definitions(${PROJECT_NAME} LEVK PUBLIC)
 add_target_compile_options(${PROJECT_NAME} PRIVATE)
 target_include_directories(${PROJECT_NAME}

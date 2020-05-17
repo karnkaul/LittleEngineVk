@@ -31,15 +31,14 @@ PipelineImpl::~PipelineImpl()
 bool PipelineImpl::create(Info info)
 {
 	m_info = std::move(info);
-	ASSERT(m_info.pShader, "Shader is null!");
-	if (!m_info.pShader)
+	if (m_info.shaderID.empty())
 	{
-		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_info.name);
-		return false;
+		m_info.shaderID = "shaders/default";
 	}
-	m_pPipeline->m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, m_info.pShader->m_id.generic_string());
+	m_pPipeline->m_name = fmt::format("{}:{}-?", m_info.window, m_info.name);
 	if (create(m_pipeline, m_layout))
 	{
+		m_pPipeline->m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, m_info.pShader->m_id.generic_string());
 		LOG_D("[{}] [{}] created", s_tName, m_pPipeline->m_name);
 		return true;
 	}

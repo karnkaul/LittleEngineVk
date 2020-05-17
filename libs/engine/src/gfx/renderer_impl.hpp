@@ -20,6 +20,7 @@ class WindowImpl;
 namespace le::gfx
 {
 class Mesh;
+class Renderer;
 
 class RendererImpl final
 {
@@ -51,6 +52,12 @@ private:
 	vk::DescriptorPool m_descriptorPool;
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
+	Renderer* m_pRenderer;
+	struct
+	{
+		Pipeline* pDefault = nullptr;
+		Pipeline* pSkybox = nullptr;
+	} m_pipes;
 
 	u64 m_drawnFrames = 0;
 	u32 m_maxDiffuseID = 0;
@@ -60,7 +67,7 @@ private:
 	u8 m_frameCount = 0;
 
 public:
-	RendererImpl(Info const& info);
+	RendererImpl(Info const& info, Renderer* pOwner);
 	~RendererImpl();
 
 public:

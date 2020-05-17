@@ -30,21 +30,7 @@ PhysfsHandle::~PhysfsHandle()
 std::unique_ptr<PhysfsHandle> g_uPhysfsHandle;
 } // namespace
 
-TResult<bytearray> IOReader::FBytes::operator()(stdfs::path const& id) const
-{
-	return pReader->getBytes(id);
-}
-
-TResult<std::stringstream> IOReader::FStr::operator()(stdfs::path const& id) const
-{
-	return pReader->getStr(id);
-}
-
-IOReader::IOReader(stdfs::path prefix) noexcept : m_prefix(std::move(prefix)), m_medium("Undefined")
-{
-	m_getBytes.pReader = this;
-	m_getStr.pReader = this;
-}
+IOReader::IOReader(stdfs::path prefix) noexcept : m_prefix(std::move(prefix)), m_medium("Undefined") {}
 
 IOReader::IOReader(IOReader&&) noexcept = default;
 IOReader& IOReader::operator=(IOReader&&) noexcept = default;
@@ -56,16 +42,6 @@ TResult<std::string> IOReader::getString(stdfs::path const& id) const
 {
 	auto [str, bResult] = getStr(id);
 	return {str.str(), bResult};
-}
-
-IOReader::FBytes IOReader::bytesFunctor() const
-{
-	return m_getBytes;
-}
-
-IOReader::FStr IOReader::strFunctor() const
-{
-	return m_getStr;
 }
 
 bool IOReader::checkPresence(stdfs::path const& id) const

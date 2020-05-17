@@ -453,7 +453,7 @@ bool WindowImpl::create(Window::Info const& info)
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo);
+		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo, &m_pWindow->m_renderer);
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);

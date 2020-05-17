@@ -87,7 +87,7 @@ Stage::Command newCommand(vk::DeviceSize bufferSize)
 		pool = g_info.device.createCommandPool(poolInfo);
 		if constexpr (g_VRAM_bLogAllocs)
 		{
-			LOG_I("[{}] Created command pool for thread [{}]", s_tName, threads::thisThreadID());
+			LOG(g_VRAM_logLevel, "[{}] Created command pool for thread [{}]", s_tName, threads::thisThreadID());
 		}
 	}
 	Stage::Command ret;
@@ -258,9 +258,9 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 		{
 			auto [size, unit] = utils::friendlySize(ret.writeSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-			LOG_I("== [{}] Buffer [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
+			LOG(g_VRAM_logLevel, "== [{}] Buffer [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
 #else
-			LOG_I("== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+			LOG(g_VRAM_logLevel, "== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 		}
 	}
@@ -285,20 +285,27 @@ bool vram::write(Buffer const& buffer, void const* pData, vk::DeviceSize size)
 
 void* vram::mapMemory(Buffer const& buffer, vk::DeviceSize size)
 {
-	if (size == 0)
+	void* pRet = nullptr;
+	if (buffer.writeSize > 0)
 	{
-		size = buffer.writeSize;
+		if (size == 0)
+		{
+			size = buffer.writeSize;
+		}
+
+		std::scoped_lock<std::mutex> lock(g_mutex);
+		vmaMapMemory(g_allocator, buffer.handle, &pRet);
 	}
-	void* pRet;
-	std::scoped_lock<std::mutex> lock(g_mutex);
-	vmaMapMemory(g_allocator, buffer.handle, &pRet);
 	return pRet;
 }
 
 void vram::unmapMemory(Buffer const& buffer)
 {
-	std::scoped_lock<std::mutex> lock(g_mutex);
-	vmaUnmapMemory(g_allocator, buffer.handle);
+	if (buffer.writeSize > 0)
+	{
+		std::scoped_lock<std::mutex> lock(g_mutex);
+		vmaUnmapMemory(g_allocator, buffer.handle);
+	}
 }
 
 std::future<void> vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size)
@@ -407,9 +414,9 @@ Image vram::createImage(ImageInfo const& info)
 	{
 		auto [size, unit] = utils::friendlySize(ret.allocatedSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-		LOG_I("== [{}] Image [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
+		LOG(g_VRAM_logLevel, "== [{}] Image [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
 #else
-		LOG_I("== [{}] Image allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+		LOG(g_VRAM_logLevel, "== [{}] Image allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 	}
 	return ret;
@@ -429,9 +436,9 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 				{
 					auto [size, unit] = utils::friendlySize(buffer.writeSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-					LOG_I("-- [{}] Buffer [{}] released: [{:.2f}{}] | {}", s_tName, buffer.name, size, unit, logCount());
+					LOG(g_VRAM_logLevel, "-- [{}] Buffer [{}] released: [{:.2f}{}] | {}", s_tName, buffer.name, size, unit, logCount());
 #else
-					LOG_I("-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+					LOG(g_VRAM_logLevel, "-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 				}
 			}
@@ -529,9 +536,9 @@ void vram::release(Image image)
 			{
 				auto [size, unit] = utils::friendlySize(image.allocatedSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-				LOG_I("-- [{}] Image [{}] released: [{:.2f}{}] | {}", s_tName, image.name, size, unit, logCount());
+				LOG(g_VRAM_logLevel, "-- [{}] Image [{}] released: [{:.2f}{}] | {}", s_tName, image.name, size, unit, logCount());
 #else
-				LOG_I("-- [{}] Image released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+				LOG(g_VRAM_logLevel, "-- [{}] Image released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 			}
 		}

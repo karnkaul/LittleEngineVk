@@ -49,7 +49,6 @@ Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id)), m_type(info.type)
 {
 	auto const idStr = m_id.generic_string();
 	m_uImpl = std::make_unique<MeshImpl>();
-	ASSERT(!info.geometry.vertices.empty(), "No vertex data!");
 	m_material = info.material;
 	if (!m_material.pMaterial)
 	{
@@ -147,6 +146,7 @@ void Mesh::updateGeometry(Geometry geometry)
 	}
 	m_uImpl->vbo.count = (u32)geometry.vertices.size();
 	m_uImpl->ibo.count = (u32)geometry.indices.size();
+	m_triCount = iSize > 0 ? (u64)m_uImpl->ibo.count / 3 : (u64)m_uImpl->vbo.count / 3;
 	return;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <future>
 #include <utility>
+#include "core/log_config.hpp"
 #include "core/utils.hpp"
 #include "engine/window/common.hpp"
 #include "common.hpp"
@@ -12,6 +13,8 @@ constexpr bool g_VRAM_bLogAllocs = true;
 #else
 constexpr bool g_VRAM_bLogAllocs = false;
 #endif
+
+inline log::Level g_VRAM_logLevel = log::Level::eDebug;
 
 struct ImageInfo final
 {

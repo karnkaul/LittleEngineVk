@@ -6,7 +6,6 @@
 #include "core/threads.hpp"
 #include "core/maths.hpp"
 #include "core/utils.hpp"
-#include "engine/ecs/components.hpp"
 #include "engine/ecs/registry.hpp"
 #include "ecs_test.hpp"
 
@@ -16,22 +15,22 @@ namespace test
 {
 namespace
 {
-class A : public Component
+struct A
 {
 };
-class B : public Component
+struct B
 {
 };
-class C : public Component
+struct C
 {
 };
-class D : public Component
+struct D
 {
 };
-class E : public Component
+struct E
 {
 };
-class F : public Component
+struct F
 {
 };
 } // namespace

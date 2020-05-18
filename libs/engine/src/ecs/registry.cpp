@@ -2,15 +2,16 @@
 #include <map>
 #include "core/log.hpp"
 #include "core/utils.hpp"
-#include "engine/ecs/component.hpp"
 #include "engine/ecs/registry.hpp"
 
 namespace le
 {
 std::string const s_tEName = utils::tName<Entity>();
 std::string const Registry::s_tName = utils::tName<Registry>();
-std::unordered_map<std::type_index, Component::Sign> Registry::s_signs;
+std::unordered_map<std::type_index, Registry::Signature> Registry::s_signs;
 std::mutex Registry::s_mutex;
+
+Registry::Component::~Component() = default;
 
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
 {
@@ -148,14 +149,14 @@ Registry::EFMap::iterator Registry::destroyEntity_Impl(EFMap::iterator iter, Ent
 	return iter;
 }
 
-Component* Registry::addComponent_Impl(Component::Sign sign, std::unique_ptr<Component>&& uComp, Entity entity)
+Registry::Component* Registry::addComponent_Impl(Signature sign, std::unique_ptr<Component>&& uComp, Entity entity)
 {
 	if (m_componentNames[sign].empty())
 	{
 		m_componentNames[sign] = utils::tName(*uComp);
 	}
 	auto const id = entity.id;
-	uComp->create(entity, sign);
+	uComp->sign = sign;
 	ASSERT(m_db[id].find(sign) == m_db[id].end(), "Duplicate Component!");
 	m_db[id][sign] = std::move(uComp);
 	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", s_tName, m_componentNames[sign], s_tEName, id,
@@ -165,7 +166,7 @@ Component* Registry::addComponent_Impl(Component::Sign sign, std::unique_ptr<Com
 
 void Registry::destroyComponent_Impl(Component const* pComponent, Entity::ID id)
 {
-	auto const sign = pComponent->m_sign;
+	auto const sign = pComponent->sign;
 	m_db[id].erase(sign);
 	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", s_tName, m_componentNames[sign], s_tEName, id,
 		  m_entityNames[id]);

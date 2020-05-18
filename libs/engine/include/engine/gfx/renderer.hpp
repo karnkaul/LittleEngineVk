@@ -44,8 +44,8 @@ public:
 	struct Skybox final
 	{
 		ScreenRect viewport;
-		Cubemap* pCubemap = nullptr;
-		Pipeline* pPipeline = nullptr;
+		Cubemap const* pCubemap = nullptr;
+		Pipeline const* pPipeline = nullptr;
 	};
 
 	struct Drawable final

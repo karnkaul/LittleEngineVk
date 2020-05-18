@@ -4,12 +4,25 @@
 #include <type_traits>
 #include <unordered_map>
 #include "core/assert.hpp"
+#include "core/io.hpp"
 #include "core/map_store.hpp"
 #include "asset.hpp"
 
 namespace le
 {
-class IOReader;
+template <typename T>
+struct TAsset
+{
+	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+
+	stdfs::path id;
+
+	TAsset() = default;
+	TAsset(stdfs::path id) : id(std::move(id)) {}
+
+	T* get();
+	T const* get() const;
+};
 
 class Resources final
 {
@@ -78,4 +91,16 @@ public:
 
 	void update();
 };
+
+template <typename T>
+T* TAsset<T>::get()
+{
+	return id.empty() ? nullptr : dynamic_cast<T*>(Resources::inst().get<T>(id));
+}
+
+template <typename T>
+T const* TAsset<T>::get() const
+{
+	return id.empty() ? nullptr : dynamic_cast<T*>(Resources::inst().get<T>(id));
+}
 } // namespace le

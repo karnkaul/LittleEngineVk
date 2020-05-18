@@ -8,7 +8,6 @@
 #include "core/transform.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
-#include "engine/ecs/components.hpp"
 #include "engine/ecs/registry.hpp"
 #include "engine/gfx/camera.hpp"
 #include "engine/gfx/font.hpp"
@@ -244,17 +243,17 @@ int main(int argc, char** argv)
 		gfx::Renderer::View view1;
 		freeCam0.m_position = {0.0f, 1.0f, 2.0f};
 
-		registry.addComponent<CData<Transform>>(eid0)->data.setPosition({1.0f, 1.0f, -2.0f});
-		registry.addComponent<CResource<gfx::Mesh>>(eid0, pMesh0->m_id);
+		registry.addComponent<Transform>(eid0)->setPosition({1.0f, 1.0f, -2.0f});
+		registry.addComponent<TAsset<gfx::Mesh>>(eid0, pMesh0->m_id);
 
-		registry.addComponent<CData<Transform>>(eid1)->data.setPosition({0.0f, 0.0f, -2.0f});
-		registry.addComponent<CResource<gfx::Mesh>>(eid1, pMesh1->m_id);
+		registry.addComponent<Transform>(eid1)->setPosition({0.0f, 0.0f, -2.0f});
+		registry.addComponent<TAsset<gfx::Mesh>>(eid1, pMesh1->m_id);
 
-		registry.addComponent<CData<Transform>>(eid2)->data.setPosition({-1.0f, 1.0f, -2.0f});
-		registry.addComponent<CResource<gfx::Model>>(eid2, model0id);
+		registry.addComponent<Transform>(eid2)->setPosition({-1.0f, 1.0f, -2.0f});
+		registry.addComponent<TAsset<gfx::Model>>(eid2, model0id);
 
-		registry.addComponent<CData<Transform>>(eid3)->data.setPosition({0.0f, -1.0f, -3.0f});
-		registry.addComponent<CResource<gfx::Model>>(eid3, model1id);
+		registry.addComponent<Transform>(eid3)->setPosition({0.0f, -1.0f, -3.0f});
+		registry.addComponent<TAsset<gfx::Model>>(eid3, model1id);
 
 		Transform transform1;
 
@@ -329,28 +328,28 @@ int main(int argc, char** argv)
 				ftText.updateText(fmt::format("{:.3}ms", ft.to_s() * 1000));
 				triText.updateText(fmt::format("{} triangles", w0.renderer().m_stats.trisDrawn));
 
-				if (auto pM = registry.component<CResource<gfx::Model>>(eid2))
+				if (auto pM = registry.component<TAsset<gfx::Model>>(eid2))
 				{
-					pM->m_id = model0id;
+					pM->id = model0id;
 				}
-				if (auto pM = registry.component<CResource<gfx::Model>>(eid3))
+				if (auto pM = registry.component<TAsset<gfx::Model>>(eid3))
 				{
-					pM->m_id = model1id;
+					pM->id = model1id;
 				}
 
 				// Update matrices
-				if (auto pT = registry.component<CData<Transform>>(eid1))
+				if (auto pT = registry.component<Transform>(eid1))
 				{
-					pT->data.setOrientation(glm::rotate(pT->data.orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
 				}
-				if (auto pT = registry.component<CData<Transform>>(eid0))
+				if (auto pT = registry.component<Transform>(eid0))
 				{
-					pT->data.setOrientation(glm::rotate(pT->data.orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
+					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
 				}
 				transform1.setOrientation(glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
-				if (auto pT = registry.component<CData<Transform>>(eid2))
+				if (auto pT = registry.component<Transform>(eid2))
 				{
-					pT->data.setOrientation(glm::rotate(pT->data.orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
+					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 				}
 				view0.mat_v = freeCam0.view();
 				view0.pos_v = freeCam0.m_position;
@@ -433,30 +432,24 @@ int main(int argc, char** argv)
 					}
 					{
 						auto const& r = registry;
-						auto view = r.view<CData<Transform>, CResource<gfx::Model>>();
-						for (auto& [eid, query] : view)
+						auto view = r.view<Transform, TAsset<gfx::Model>>();
+						for (auto& query : view)
 						{
-							auto& [cTransform, cModel] = query;
-							if (auto pModel = cModel->get())
+							auto& [pTransform, cModel] = query;
+							if (auto pModel = cModel->get(); pModel && pModel->isReady())
 							{
-								if (pModel->isReady())
-								{
-									batch.drawables.push_back({pModel->meshes(), &cTransform->data, pPipeline});
-								}
+								batch.drawables.push_back({pModel->meshes(), pTransform, pPipeline});
 							}
 						}
 					}
 					{
-						auto view = registry.view<CData<Transform>, CResource<gfx::Mesh>>();
-						for (auto& [eid, query] : view)
+						auto view = registry.view<Transform, TAsset<gfx::Mesh>>();
+						for (auto& query : view)
 						{
-							auto& [cTransform, cMesh] = query;
-							if (auto pMesh = cMesh->get())
+							auto& [pTransform, cMesh] = query;
+							if (auto pMesh = cMesh->get(); pMesh && pMesh->isReady())
 							{
-								if (pMesh->isReady())
-								{
-									batch.drawables.push_back({{pMesh}, &cTransform->data, pPipeline});
-								}
+								batch.drawables.push_back({{pMesh}, pTransform, pPipeline});
 							}
 						}
 					}
@@ -478,30 +471,24 @@ int main(int argc, char** argv)
 						batch.drawables = {{{pTriangle0}, &transform1}};
 					}
 					{
-						auto view = registry.view<CData<Transform>, CResource<gfx::Model>>();
-						for (auto& [eid, query] : view)
+						auto view = registry.view<Transform, TAsset<gfx::Model>>();
+						for (auto& query : view)
 						{
-							auto& [cTransform, cModel] = query;
-							if (auto pModel = cModel->get())
+							auto& [pTransform, cModel] = query;
+							if (auto pModel = cModel->get(); pModel && pModel->isReady())
 							{
-								if (pModel->isReady())
-								{
-									batch.drawables.push_back({pModel->meshes(), &cTransform->data});
-								}
+								batch.drawables.push_back({pModel->meshes(), pTransform});
 							}
 						}
 					}
 					{
-						auto view = registry.view<CData<Transform>, CResource<gfx::Mesh>>();
-						for (auto& [eid, query] : view)
+						auto view = registry.view<Transform, TAsset<gfx::Mesh>>();
+						for (auto& query : view)
 						{
-							auto& [cTransform, cMesh] = query;
-							if (auto pMesh = cMesh->get())
+							auto& [pTransform, cMesh] = query;
+							if (auto pMesh = cMesh->get(); pMesh && pMesh->isReady())
 							{
-								if (pMesh->isReady())
-								{
-									batch.drawables.push_back({{pMesh}, &cTransform->data});
-								}
+								batch.drawables.push_back({{pMesh}, pTransform});
 							}
 						}
 					}

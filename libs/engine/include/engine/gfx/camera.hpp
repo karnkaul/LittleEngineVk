@@ -1,9 +1,8 @@
 #pragma once
 #include <unordered_set>
 #include <utility>
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include "core/flags.hpp"
+#include "geometry.hpp"
 #include "engine/window/input_types.hpp"
 
 namespace le
@@ -13,11 +12,12 @@ class Window;
 
 namespace le::gfx
 {
+// Camera faces -Z
 class Camera
 {
 public:
-	glm::vec3 m_position = glm::vec3(0.0f);
-	glm::quat m_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+	glm::vec3 m_position = {};
+	glm::quat m_orientation = g_qIdentity;
 	f32 m_fov = 45.0f;
 
 public:
@@ -31,9 +31,9 @@ public:
 
 public:
 	glm::mat4 view() const;
-	glm::mat4 perspectiveProj(f32 aspect, f32 near = 0.1f, f32 far = 100.0f) const;
-	glm::mat4 orthographicProj(f32 aspect, f32 zoom = 1.0f, f32 near = 0.1f, f32 far = 100.0f) const;
-	glm::mat4 uiProj(glm::vec3 const& uiSpace) const;
+	glm::mat4 perspective(f32 aspect, f32 near = 0.1f, f32 far = 100.0f) const;
+	glm::mat4 ortho(f32 aspect, f32 zoom = 1.0f, f32 near = 0.1f, f32 far = 100.0f) const;
+	glm::mat4 ui(glm::vec3 const& uiSpace) const;
 };
 
 class FreeCam : public Camera
@@ -42,6 +42,7 @@ public:
 	enum class Flag : u8
 	{
 		eEnabled,
+		eKeyToggle_Look,
 		eFixedSpeed,
 		eTracking,
 		eLooking,
@@ -49,8 +50,16 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
-	struct Config
+	struct KeyToggle final
 	{
+		Key key;
+		Mods mods = (Mods)0;
+		Action action = Action::eRelease;
+	};
+
+	struct Config final
+	{
+		KeyToggle lookToggle = {Key::eL, Mods::eCONTROL};
 		f32 defaultSpeed = 2.0f;
 		f32 minSpeed = 1.0f;
 		f32 maxSpeed = 1000.0f;
@@ -60,7 +69,7 @@ public:
 		f32 padLookSens = 50.0f;
 		f32 padStickEpsilon = 0.05f;
 	};
-	struct State
+	struct State final
 	{
 		std::unordered_set<Key> heldKeys;
 		std::pair<glm::vec2, glm::vec2> cursorPos = {{0.0f, 0.0f}, {0.0f, 0.0f}};
@@ -86,11 +95,9 @@ private:
 
 public:
 	FreeCam(Window* pWindow);
-	FreeCam(FreeCam&&);
-	FreeCam& operator=(FreeCam&&);
-	~FreeCam() override;
 
 public:
 	void tick(Time dt) override;
+	void reset(bool bOrientation, bool bPosition);
 };
 } // namespace le::gfx

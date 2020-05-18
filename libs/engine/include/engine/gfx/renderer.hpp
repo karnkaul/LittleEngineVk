@@ -1,16 +1,20 @@
 #pragma once
+#include <deque>
 #include <memory>
+#include <vector>
 #include "light.hpp"
 #include "pipeline.hpp"
 
 namespace le
 {
 class Transform;
-}
+class WindowImpl;
+} // namespace le
 
 namespace le::gfx
 {
 class Mesh;
+class Cubemap;
 
 struct ScreenRect final
 {
@@ -32,21 +36,27 @@ public:
 	struct ClearValues final
 	{
 		glm::vec2 depthStencil = {1.0f, 0.0f};
-		Colour colour = colours::Black;
+		Colour colour = colours::black;
+	};
+
+	struct Skybox final
+	{
+		Cubemap* pCubemap = nullptr;
+		Pipeline* pPipeline = nullptr;
 	};
 
 	struct Drawable final
 	{
-		Mesh const* pMesh = nullptr;
+		std::vector<Mesh const*> meshes;
 		Transform const* pTransform = nullptr;
-		Pipeline* pPipeline = nullptr;
+		Pipeline const* pPipeline = nullptr;
 	};
 
 	struct Batch final
 	{
 		ScreenRect viewport;
 		ScreenRect scissor;
-		std::vector<Drawable> drawables;
+		std::deque<Drawable> drawables;
 	};
 
 	struct View final
@@ -57,20 +67,29 @@ public:
 		glm::mat4 mat_ui = {};
 		glm::vec3 pos_v = {};
 		u32 dirLightCount = 0;
+		Skybox skybox;
 	};
 
 	struct Scene final
 	{
 		View view;
 		ClearValues clear;
-		std::vector<Batch> batches;
+		std::deque<Batch> batches;
 		std::vector<DirLight> dirLights;
+	};
+
+	struct Stats final
+	{
+		u64 trisDrawn = 0;
 	};
 
 public:
 	static std::string const s_tName;
 
 public:
+	Stats m_stats;
+
+private:
 	std::unique_ptr<class RendererImpl> m_uImpl;
 
 public:
@@ -83,6 +102,9 @@ public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
 	void update();
-	void render(Scene const& scene);
+	void render(Scene scene);
+
+private:
+	friend class le::WindowImpl;
 };
 } // namespace le::gfx

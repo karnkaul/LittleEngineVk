@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "core/log.hpp"
+#include "core/log_config.hpp"
 #include "core/std_types.hpp"
 #include "core/flags.hpp"
 #include "common.hpp"
@@ -21,6 +21,7 @@ struct Info final
 	f32 lineWidthMin = 1.0f;
 	f32 lineWidthMax = 1.0f;
 	log::Level validationLog = log::Level::eWarning;
+	std::optional<u32> transferQueueIndex;
 
 	struct
 	{

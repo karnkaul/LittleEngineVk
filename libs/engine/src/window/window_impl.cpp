@@ -1,5 +1,4 @@
 #include <array>
-#include <unordered_set>
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/os.hpp"
@@ -166,7 +165,7 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
-f32 GamepadState::getAxis(PadAxis axis) const
+f32 GamepadState::axis(PadAxis axis) const
 {
 	size_t idx = size_t(axis);
 #if defined(LEVK_USE_GLFW)
@@ -342,6 +341,14 @@ void WindowImpl::deinit()
 	return;
 }
 
+void WindowImpl::updateActive()
+{
+	for (auto pImpl : g_registeredWindows)
+	{
+		pImpl->m_pWindow->m_renderer.update();
+	}
+}
+
 std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 {
 	std::vector<char const*> ret;
@@ -367,6 +374,28 @@ WindowImpl* WindowImpl::windowImpl(WindowID window)
 		}
 	}
 	return nullptr;
+}
+
+gfx::RendererImpl* WindowImpl::rendererImpl(WindowID window)
+{
+	for (auto pImpl : g_registeredWindows)
+	{
+		if (pImpl->m_pWindow->m_id == window)
+		{
+			return pImpl->m_pWindow->m_renderer.m_uImpl.get();
+		}
+	}
+	return nullptr;
+}
+
+std::unordered_set<s32> WindowImpl::active()
+{
+	std::unordered_set<s32> ret;
+	for (auto pImpl : g_registeredWindows)
+	{
+		ret.insert(pImpl->m_pWindow->m_id);
+	}
+	return ret;
 }
 
 vk::SurfaceKHR WindowImpl::createSurface(vk::Instance instance, NativeWindow const& nativeWindow)
@@ -413,13 +442,18 @@ bool WindowImpl::create(Window::Info const& info)
 		{
 			rendererInfo.presenterInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((size_t)colourSpace));
 		}
+		if (os::isDefined("immediate"))
+		{
+			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
+			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)PresentMode::eImmediate));
+		}
 		for (auto presentMode : info.options.presentModes)
 		{
 			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo);
+		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo, &m_pWindow->m_renderer);
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);
@@ -613,7 +647,7 @@ void WindowImpl::setCursorPos(glm::vec2 const& pos)
 	return;
 }
 
-std::string WindowImpl::getClipboard() const
+std::string WindowImpl::clipboard() const
 {
 #if defined(LEVK_USE_GLFW)
 	if (threads::isMainThread() && g_bGLFWInit && m_uNativeWindow && m_uNativeWindow->m_pWindow)
@@ -624,7 +658,7 @@ std::string WindowImpl::getClipboard() const
 	return {};
 }
 
-JoyState WindowImpl::getJoyState(s32 id)
+JoyState WindowImpl::joyState(s32 id)
 {
 	JoyState ret;
 #if defined(LEVK_USE_GLFW)
@@ -654,7 +688,7 @@ JoyState WindowImpl::getJoyState(s32 id)
 	return ret;
 }
 
-GamepadState WindowImpl::getGamepadState(s32 id)
+GamepadState WindowImpl::gamepadState(s32 id)
 {
 	GamepadState ret;
 #if defined(LEVK_USE_GLFW)
@@ -663,7 +697,7 @@ GamepadState WindowImpl::getGamepadState(s32 id)
 	{
 		ret.name = glfwGetGamepadName(id);
 		ret.id = id;
-		ret.joyState = getJoyState(id);
+		ret.joyState = joyState(id);
 	}
 #endif
 	return ret;

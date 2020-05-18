@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <functional>
 #include <glm/gtx/rotate_vector.hpp>
 #include "core/assert.hpp"
 #include "engine/gfx/geometry.hpp"
@@ -33,10 +32,10 @@ gfx::Geometry gfx::createQuad(f32 side /* = 1.0f */)
 	f32 const h = side * 0.5f;
 	// clang-format off
 	ret.vertices = {
-		{{-h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-		{{ h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{ h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-		{{-h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}
+		{{-h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{ h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		{{ h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+		{{-h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}
 	};
 	// clang-format on
 	ret.indices = {0, 1, 2, 2, 3, 0};
@@ -49,12 +48,12 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */)
 	f32 const s = side * 0.5f;
 	// clang-format off
 	ret.vertices = {
-		// front
+		// back
 		{{-s, -s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
 		{{ s, -s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
 		{{ s,  s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
 		{{-s,  s,  s}, glm::vec3(1.0f), { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
-		// back
+		// front
 		{{-s, -s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
 		{{ s, -s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
 		{{ s,  s, -s}, glm::vec3(1.0f), { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
@@ -74,7 +73,7 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */)
 		{{ s, -s, -s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
 		{{ s, -s,  s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
 		{{-s, -s,  s}, glm::vec3(1.0f), { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
-		//up
+		// up
 		{{-s,  s, -s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
 		{{ s,  s, -s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
 		{{ s,  s,  s}, glm::vec3(1.0f), { 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},
@@ -152,6 +151,32 @@ gfx::Geometry gfx::createCone(f32 diam, f32 height, u16 points)
 	return verts;
 }
 
+namespace
+{
+template <typename F>
+void addSide(std::vector<std::pair<glm::vec3, glm::vec2>>& out_points, gfx::Geometry& out_ret, f32 diam, F transform)
+{
+	s32 idx = 0;
+	std::vector<u32> iV;
+	iV.reserve(4);
+	for (auto const& p : out_points)
+	{
+		if (iV.size() == 4)
+		{
+			out_ret.addIndices({iV[0], iV[1], iV[2], iV[2], iV[3], iV[0]});
+			iV.clear();
+		}
+		++idx;
+		auto const pt = transform(p.first) * diam * 0.5f;
+		iV.push_back(out_ret.addVertex({pt, glm::vec3(1.0f), pt, p.second}));
+	}
+	if (iV.size() == 4)
+	{
+		out_ret.addIndices({iV[0], iV[1], iV[2], iV[2], iV[3], iV[0]});
+	}
+};
+} // namespace
+
 gfx::Geometry gfx::createCubedSphere(f32 diam, u8 quadsPerSide)
 {
 	ASSERT(quadsPerSide < 30, "Max quads per side is 30");
@@ -178,32 +203,13 @@ gfx::Geometry gfx::createCubedSphere(f32 diam, u8 quadsPerSide)
 			points.push_back(std::make_pair(glm::vec3(bl + glm::vec3(0.0f, s, 0.0f) + o), glm::vec2(u, 1.0f - v - duv)));
 		}
 	}
-	auto addSide = [&points, &ret, diam](std::function<glm::vec3(glm::vec3 const&)> transform) {
-		s32 idx = 0;
-		std::vector<u32> iV;
-		iV.reserve(4);
-		for (auto const& p : points)
-		{
-			if (iV.size() == 4)
-			{
-				ret.addIndices({iV[0], iV[1], iV[2], iV[2], iV[3], iV[0]});
-				iV.clear();
-			}
-			++idx;
-			auto const pt = transform(p.first) * diam * 0.5f;
-			iV.push_back(ret.addVertex({pt, glm::vec3(1.0f), pt, p.second}));
-		}
-		if (iV.size() == 4)
-		{
-			ret.addIndices({iV[0], iV[1], iV[2], iV[2], iV[3], iV[0]});
-		}
-	};
-	addSide([](auto const& p) { return glm::normalize(p); });
-	addSide([](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(180.0f), g_nUp)); });
-	addSide([](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(90.0f), g_nUp)); });
-	addSide([](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(-90.0f), g_nUp)); });
-	addSide([](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(90.0f), g_nRight)); });
-	addSide([](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(-90.0f), g_nRight)); });
+
+	addSide(points, ret, diam, [](auto const& p) { return glm::normalize(p); });
+	addSide(points, ret, diam, [](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(180.0f), g_nUp)); });
+	addSide(points, ret, diam, [](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(90.0f), g_nUp)); });
+	addSide(points, ret, diam, [](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(-90.0f), g_nUp)); });
+	addSide(points, ret, diam, [](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(90.0f), g_nRight)); });
+	addSide(points, ret, diam, [](auto const& p) { return glm::normalize(glm::rotate(p, glm::radians(-90.0f), g_nRight)); });
 	return ret;
 }
 } // namespace le

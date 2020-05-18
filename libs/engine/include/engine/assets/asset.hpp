@@ -23,6 +23,7 @@ public:
 		eLoading,
 		eReloaded,
 		eError,
+		eMoved,
 		eCOUNT_
 	};
 
@@ -44,13 +45,15 @@ protected:
 public:
 	stdfs::path m_id;
 	std::string m_tName;
-	GUID const m_guid;
 
 protected:
+	GUID m_guid;
 	Status m_status = Status::eReady;
 
 public:
-	Asset(stdfs::path id);
+	explicit Asset(stdfs::path id);
+	Asset(Asset&&);
+	Asset& operator=(Asset&&);
 	virtual ~Asset();
 
 public:
@@ -60,6 +63,7 @@ public:
 	void setup();
 	Status currentStatus() const;
 	bool isReady() const;
+	GUID guid() const;
 
 private:
 	friend class Resources;

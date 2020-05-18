@@ -23,7 +23,6 @@ private:
 	{
 		Callback callback;
 		WToken wToken;
-		explicit Wrapper(Callback callback, Token token);
 	};
 
 private:
@@ -45,16 +44,11 @@ public:
 };
 
 template <typename... Args>
-Delegate<Args...>::Wrapper::Wrapper(Callback callback, Token token) : callback(std::move(callback)), wToken(token)
-{
-}
-
-template <typename... Args>
 typename Delegate<Args...>::Token Delegate<Args...>::subscribe(Callback callback)
 {
 	Lock lock(m_mutex);
 	Token token = std::make_shared<int32_t>(int32_t(m_callbacks.size()));
-	m_callbacks.emplace_back(std::move(callback), token);
+	m_callbacks.push_back({std::move(callback), token});
 	return token;
 }
 

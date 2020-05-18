@@ -5,7 +5,7 @@
 #include <vector>
 #if defined(LEVK_DEBUG)
 #include <string>
-#include "core/utils.hpp"
+#include "utils.hpp"
 #endif
 
 namespace le
@@ -38,8 +38,14 @@ public:
 	~Services();
 
 public:
-	template <typename Service, typename... Args>
-	void add(Args&&... args);
+	template <typename T, typename... Args>
+	T& add(Args&&... args);
+
+	template <typename T>
+	T* locate();
+
+	template <typename T>
+	T const* locate() const;
 };
 
 template <typename S>
@@ -51,9 +57,40 @@ Services::Model<S>::Model(Args&&... args) : s(std::forward<Args>(args)...)
 #endif
 }
 
-template <typename Service, typename... Args>
-void Services::add(Args&&... args)
+template <typename T, typename... Args>
+T& Services::add(Args&&... args)
 {
-	m_services.push_back(std::make_unique<Model<Service>>(std::forward<Args>(args)...));
+	auto uT = std::make_unique<Model<T>>(std::forward<Args>(args)...);
+	auto& ret = uT->s;
+	m_services.push_back(std::move(uT));
+	return ret;
+}
+
+template <typename T>
+T* Services::locate()
+{
+	for (auto& uConcept : m_services)
+	{
+		auto pModel = dynamic_cast<Model<T>*>(uConcept.get());
+		if (pModel)
+		{
+			return &pModel->s;
+		}
+	}
+	return nullptr;
+}
+
+template <typename T>
+T const* Services::locate() const
+{
+	for (auto& uConcept : m_services)
+	{
+		auto pModel = dynamic_cast<Model<T>*>(uConcept.get());
+		if (pModel)
+		{
+			return &pModel->s;
+		}
+	}
+	return nullptr;
 }
 } // namespace le

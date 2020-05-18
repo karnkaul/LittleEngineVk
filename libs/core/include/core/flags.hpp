@@ -4,14 +4,16 @@
 #include <initializer_list>
 #include <string>
 #include <type_traits>
-#include "core/assert.hpp"
-#include "core/std_types.hpp"
+#include "assert.hpp"
+#include "std_types.hpp"
 
 namespace le
 {
-template <typename Enum, size_t N = (size_t)Enum::eCOUNT_, typename = std::enable_if_t<std::is_enum_v<Enum>>>
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
 struct TFlags
 {
+	static_assert(std::is_enum_v<Enum>, "Enum must be an enum!");
+
 	using Type = Enum;
 	static constexpr size_t size = N;
 
@@ -45,6 +47,18 @@ struct TFlags
 	{
 		ASSERT((size_t)flag < N, "Invalid flag!");
 		bits.reset((size_t)flag);
+	}
+
+	void flip(Enum flag)
+	{
+		ASSERT((size_t)flag < N, "Invalid flag");
+		bits.flip((size_t)flag);
+	}
+
+	typename std::bitset<N>::reference operator[](Enum flag)
+	{
+		ASSERT((size_t)flag < N, "Invalid flag!");
+		return bits[(size_t)flag];
 	}
 
 	bool allSet(std::initializer_list<Enum> flags) const
@@ -115,5 +129,17 @@ template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
 TFlags<Enum, N> operator&(Enum flag1, Enum flag2)
 {
 	return TFlags<Enum, N>(flag1) & TFlags<Enum, N>(flag2);
+}
+
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+bool operator==(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
+{
+	return lhs.bits == rhs.bits;
+}
+
+template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+bool operator!=(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
+{
+	return !(lhs == rhs);
 }
 } // namespace le

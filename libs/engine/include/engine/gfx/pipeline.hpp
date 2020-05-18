@@ -40,6 +40,8 @@ public:
 		CullMode cullMode = CullMode::eNone;
 		FrontFace frontFace = FrontFace::eFront;
 		bool bBlend = true;
+		bool bDepthWrite = true;
+		bool bDepthTest = true;
 	};
 
 public:
@@ -50,6 +52,12 @@ public:
 
 public:
 	std::string m_name;
+
+private:
 	std::unique_ptr<class PipelineImpl> m_uImpl;
+
+private:
+	friend class Renderer;
+	friend class RendererImpl;
 };
 } // namespace le::gfx

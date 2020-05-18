@@ -2,7 +2,7 @@
 #include <list>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include "core/std_types.hpp"
+#include "std_types.hpp"
 
 namespace le
 {
@@ -16,6 +16,9 @@ private:
 	std::list<Transform*> m_children;
 	Transform* m_pParent = nullptr;
 	mutable bool m_bDirty = false;
+
+public:
+	static Transform const s_identity;
 
 public:
 	Transform();

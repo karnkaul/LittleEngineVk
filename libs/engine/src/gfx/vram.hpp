@@ -1,11 +1,20 @@
 #pragma once
+#include <future>
 #include <utility>
+#include "core/log_config.hpp"
 #include "core/utils.hpp"
+#include "engine/window/common.hpp"
 #include "common.hpp"
 
 namespace le::gfx
 {
+#if defined(LEVK_DEBUG)
 constexpr bool g_VRAM_bLogAllocs = true;
+#else
+constexpr bool g_VRAM_bLogAllocs = false;
+#endif
+
+inline log::Level g_VRAM_logLevel = log::Level::eDebug;
 
 struct ImageInfo final
 {
@@ -32,14 +41,17 @@ inline VmaAllocator g_allocator;
 void init();
 void deinit();
 
-Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
-bool write(Buffer buffer, void const* pData, vk::DeviceSize size = 0);
-[[nodiscard]] vk::Fence copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
-[[nodiscard]] vk::Fence stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
+void update();
 
-[[nodiscard]] vk::Fence copy(ArrayView<u8> pixels, Image const& dst, std::pair<vk::ImageLayout, vk::ImageLayout> layouts);
+Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
+bool write(Buffer const& buffer, void const* pData, vk::DeviceSize size = 0);
+[[nodiscard]] void* mapMemory(Buffer const& src, vk::DeviceSize size = 0);
+void unmapMemory(Buffer const& buffer);
+[[nodiscard]] std::future<void> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
+[[nodiscard]] std::future<void> stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);
+[[nodiscard]] std::future<void> copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, LayoutTransition layouts);
 
 void release(Buffer buffer, bool bSilent = false);
 void release(Image image);

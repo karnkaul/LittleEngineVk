@@ -1,7 +1,7 @@
 #pragma once
 #include <chrono>
-#include "core/std_types.hpp"
-#include "core/fixed.hpp"
+#include "std_types.hpp"
+#include "fixed.hpp"
 
 namespace le
 {

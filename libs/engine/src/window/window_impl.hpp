@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <unordered_set>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 #include "engine/window/window.hpp"
@@ -9,6 +10,7 @@ namespace le
 namespace gfx
 {
 class Renderer;
+class RendererImpl;
 } // namespace gfx
 
 class NativeWindow final
@@ -51,8 +53,11 @@ public:
 
 	static bool init();
 	static void deinit();
+	static void updateActive();
 	static std::vector<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
+	static gfx::RendererImpl* rendererImpl(WindowID window);
+	static std::unordered_set<s32> active();
 	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
 
 	WindowImpl(Window* pWindow);
@@ -74,9 +79,9 @@ public:
 	CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;
 	void setCursorPos(glm::vec2 const& pos);
-	std::string getClipboard() const;
-	static JoyState getJoyState(s32 id);
-	static GamepadState getGamepadState(s32 id);
+	std::string clipboard() const;
+	static JoyState joyState(s32 id);
+	static GamepadState gamepadState(s32 id);
 	static f32 triggerToAxis(f32 triggerValue);
 	static size_t joystickAxesCount(s32 id);
 	static size_t joysticKButtonsCount(s32 id);

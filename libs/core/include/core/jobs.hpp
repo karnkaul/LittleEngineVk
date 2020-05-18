@@ -23,7 +23,7 @@ std::vector<std::shared_ptr<HJob>> forEach(IndexedTask const& indexedTask);
 
 void waitAll(std::vector<std::shared_ptr<HJob>> const& handles);
 
-[[nodiscard]] bool areWorkersIdle();
-void waitForIdle();
+[[nodiscard]] bool isIdle();
+void waitIdle();
 } // namespace jobs
 } // namespace le

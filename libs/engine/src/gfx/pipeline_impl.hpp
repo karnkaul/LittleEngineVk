@@ -27,6 +27,8 @@ public:
 		WindowID window;
 		class Shader* pShader = nullptr;
 		bool bBlend = true;
+		bool bDepthTest = true;
+		bool bDepthWrite = true;
 	};
 
 public:
@@ -35,18 +37,6 @@ public:
 public:
 	vk::Pipeline m_pipeline;
 	vk::PipelineLayout m_layout;
-	std::vector<vk::Fence> m_activeFences;
-
-#if defined(LEVK_ASSET_HOT_RELOAD)
-private:
-	struct
-	{
-		vk::Pipeline pipeline;
-		vk::PipelineLayout layout;
-		std::vector<vk::Fence> drawing;
-		bool bReady = false;
-	} m_standby;
-#endif
 
 private:
 	Info m_info;
@@ -63,7 +53,6 @@ public:
 	void destroy();
 
 	void update();
-	void attach(vk::Fence drawing);
 
 private:
 	bool create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout);

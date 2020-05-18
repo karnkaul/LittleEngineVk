@@ -1,17 +1,20 @@
 #pragma once
 #include <array>
+#include <deque>
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <map>
 #include <optional>
 #include <set>
 #include <unordered_map>
+#include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 #include "core/assert.hpp"
 #include "core/colour.hpp"
-#include "core/log.hpp"
+#include "core/log_config.hpp"
 #include "core/flags.hpp"
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
@@ -78,7 +81,7 @@ constexpr std::array g_frontFaceMap =
 namespace vkFlags
 {
 inline vk::ShaderStageFlags const vertShader = vk::ShaderStageFlagBits::eVertex;
-inline vk::ShaderStageFlags const fragShader = vk::ShaderStageFlagBits::eVertex;
+inline vk::ShaderStageFlags const fragShader = vk::ShaderStageFlagBits::eFragment;
 inline vk::ShaderStageFlags const vertFragShader = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 } // namespace vkFlags
 
@@ -104,7 +107,6 @@ struct InitInfo final
 	{
 		std::vector<char const*> instanceExtensions;
 		CreateSurface createTempSurface;
-		u8 graphicsQueueCount = 1;
 	} config;
 
 	struct
@@ -112,6 +114,7 @@ struct InitInfo final
 		PickDevice pickDevice;
 		Flags flags;
 		log::Level validationLog = log::Level::eWarning;
+		bool bDedicatedTransfer = true;
 	} options;
 };
 
@@ -156,6 +159,7 @@ struct VkResource
 	AllocInfo info;
 	VmaAllocation handle;
 	QFlags queueFlags;
+	vk::SharingMode mode;
 };
 
 struct Buffer final : VkResource
@@ -169,6 +173,12 @@ struct Image final : VkResource
 	vk::Image image;
 	vk::DeviceSize allocatedSize = {};
 	vk::Extent3D extent = {};
+};
+
+struct LayoutTransition final
+{
+	vk::ImageLayout pre;
+	vk::ImageLayout post;
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
@@ -191,14 +201,16 @@ struct SamplerImpl final
 struct TextureImpl final
 {
 	Image active;
-	Texture::Raw raw;
+	std::vector<Texture::Raw> raws;
 	vk::ImageView imageView;
-	vk::Fence loaded;
+	vk::Sampler sampler;
+	vk::ImageViewType type = vk::ImageViewType::e2D;
+	std::future<void> copied;
 	bool bStbiRaw = false;
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	Image standby;
-	stdfs::path imgID;
+	std::vector<stdfs::path> imgIDs;
 	FileReader const* pReader = nullptr;
 	bool bReloading = false;
 #endif
@@ -206,12 +218,16 @@ struct TextureImpl final
 
 struct MeshImpl final
 {
-	Buffer vbo;
-	Buffer ibo;
-	vk::Fence vboCopied;
-	vk::Fence iboCopied;
-	u32 vertexCount = 0;
-	u32 indexCount = 0;
+	struct Data
+	{
+		Buffer buffer;
+		std::future<void> copied;
+		u32 count = 0;
+		void* pMem = nullptr;
+	};
+	
+	Data vbo;
+	Data ibo;
 };
 
 namespace vbo

@@ -9,12 +9,13 @@
 namespace le::gfx
 {
 class Texture;
+class Cubemap;
 
 struct Albedo final
 {
-	Colour ambient = colours::White;
-	Colour diffuse = colours::White;
-	Colour specular = colours::White;
+	Colour ambient = colours::white;
+	Colour diffuse = colours::white;
+	Colour specular = colours::white;
 };
 
 class Material final : public Asset
@@ -25,6 +26,9 @@ public:
 		eTextured,
 		eLit,
 		eOpaque,
+		eDropColour,
+		eUI,
+		eSkybox,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
@@ -34,7 +38,9 @@ public:
 		Material* pMaterial = nullptr;
 		Texture* pDiffuse = nullptr;
 		Texture* pSpecular = nullptr;
-		Colour tint = colours::White;
+		Cubemap* pCubemap = nullptr;
+		Colour tint = colours::white;
+		Colour dropColour = colours::black;
 		Flags flags;
 	};
 
@@ -54,24 +60,45 @@ public:
 	Status update() override;
 };
 
-class Mesh final : public Asset
+class Mesh : public Asset
 {
 public:
+	enum class Type : u8
+	{
+		eStatic,
+		eDynamic,
+		eCOUNT_
+	};
+
 	struct Info final
 	{
 		Geometry geometry;
 		Material::Inst material;
+		Type type = Type::eStatic;
 	};
 
 public:
 	Material::Inst m_material;
+	u64 m_triCount = 0;
+
+protected:
 	std::unique_ptr<struct MeshImpl> m_uImpl;
+	Type m_type;
 
 public:
 	Mesh(stdfs::path id, Info info);
+	Mesh(Mesh&&);
+	Mesh& operator=(Mesh&&);
 	~Mesh() override;
 
 public:
+	void updateGeometry(Geometry geometry);
+
+public:
 	Status update() override;
+
+private:
+	friend class Renderer;
+	friend class RendererImpl;
 };
 } // namespace le::gfx

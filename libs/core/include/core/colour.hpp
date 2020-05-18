@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
-#include "core/std_types.hpp"
-#include "core/ubyte.hpp"
+#include "std_types.hpp"
+#include "ubyte.hpp"
 
 namespace le
 {
@@ -48,14 +48,14 @@ bool operator!=(Colour lhs, Colour rhs);
 
 namespace colours
 {
-constexpr Colour Black(0x000000ff);
-constexpr Colour White(0xffffffff);
-constexpr Colour Red(0xff0000ff);
-constexpr Colour Green(0x00ff00ff);
-constexpr Colour Blue(0x0000ffff);
-constexpr Colour Yellow(0xffff00ff);
-constexpr Colour Magenta(0xff00ffff);
-constexpr Colour Cyan(0x00ffffff);
-constexpr Colour Transparent(0x0);
+constexpr Colour black(0x000000ff);
+constexpr Colour white(0xffffffff);
+constexpr Colour red(0xff0000ff);
+constexpr Colour green(0x00ff00ff);
+constexpr Colour blue(0x0000ffff);
+constexpr Colour yellow(0xffff00ff);
+constexpr Colour magenta(0xff00ffff);
+constexpr Colour cyan(0x00ffffff);
+constexpr Colour transparent(0x0);
 } // namespace colours
 } // namespace le

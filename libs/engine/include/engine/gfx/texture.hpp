@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <string>
 #include <glm/glm.hpp>
 #include "core/std_types.hpp"
@@ -6,6 +7,11 @@
 
 namespace le::gfx
 {
+namespace rd
+{
+class Set;
+}
+
 class Sampler final : public Asset
 {
 public:
@@ -28,10 +34,11 @@ public:
 	{
 		Filter min = Filter::eLinear;
 		Filter mag = Filter::eLinear;
+		Filter mip = Filter::eLinear;
 		Mode mode = Mode::eRepeat;
 	};
 
-public:
+private:
 	std::unique_ptr<struct SamplerImpl> m_uImpl;
 
 public:
@@ -40,11 +47,22 @@ public:
 
 public:
 	Status update() override;
+
+private:
+	friend class Texture;
+	friend class Cubemap;
 };
 
 class Texture final : public Asset
 {
 public:
+	enum class Space
+	{
+		eSRGBNonLinear,
+		eRGBLinear,
+		eCOUNT_
+	};
+
 	struct Raw final
 	{
 		ArrayView<u8> bytes;
@@ -56,6 +74,7 @@ public:
 		bytearray imgBytes;
 		Raw raw;
 		stdfs::path assetID;
+		Space mode = Space::eSRGBNonLinear;
 		Sampler* pSampler = nullptr;
 		class IOReader const* pReader = nullptr;
 	};
@@ -64,18 +83,61 @@ public:
 	static std::string const s_tName;
 
 public:
-	Sampler* m_pSampler;
+	glm::ivec2 m_size = {};
+	Space m_mode;
+	Sampler* m_pSampler = nullptr;
+
+private:
 	std::unique_ptr<struct TextureImpl> m_uImpl;
 
 public:
 	Texture(stdfs::path id, Info info);
+	Texture(Texture&&);
+	Texture& operator=(Texture&&);
 	~Texture() override;
 
 public:
 	Status update() override;
 
 private:
-	TResult<bytearray> idToImg(stdfs::path const& id, IOReader const* pReader);
-	bool imgToRaw(bytearray img);
+	friend class rd::Set;
+};
+
+class Cubemap final : public Asset
+{
+public:
+	struct Info final
+	{
+		std::array<stdfs::path, 6> rludfbIDs;
+		std::array<bytearray, 6> rludfb;
+		std::array<Texture::Raw, 6> rludfbRaw;
+		stdfs::path samplerID;
+		Texture::Space mode = Texture::Space::eSRGBNonLinear;
+		Sampler* pSampler = nullptr;
+		class IOReader const* pReader = nullptr;
+	};
+
+public:
+	static std::string const s_tName;
+
+public:
+	glm::ivec2 m_size = {};
+	Texture::Space m_mode;
+	Sampler* m_pSampler = nullptr;
+
+private:
+	std::unique_ptr<struct TextureImpl> m_uImpl;
+
+public:
+	Cubemap(stdfs::path id, Info info);
+	Cubemap(Cubemap&&);
+	Cubemap& operator=(Cubemap&&);
+	~Cubemap() override;
+
+public:
+	Status update() override;
+
+private:
+	friend class rd::Set;
 };
 } // namespace le::gfx

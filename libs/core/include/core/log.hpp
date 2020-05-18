@@ -4,12 +4,13 @@
 #include <memory>
 #include <string>
 #include <fmt/format.h>
-#include "core/os.hpp"
-#include "core/std_types.hpp"
-#include "core/time.hpp"
+#include "log_config.hpp"
+#include "os.hpp"
+#include "std_types.hpp"
+#include "time.hpp"
 #if defined(LEVK_DEBUG)
 #include <stdexcept>
-#include "core/assert.hpp"
+#include "assert.hpp"
 #endif
 
 #if defined(LEVK_DEBUG)
@@ -53,27 +54,11 @@
 
 namespace le::log
 {
-#if defined(LEVK_DEBUG)
-constexpr bool g_log_bSourceLocation = true;
-#else
-constexpr bool g_log_bSourceLocation = false;
-#endif
-enum class Level : u8
-{
-	eDebug,
-	eInfo,
-	eWarning,
-	eError,
-	eCOUNT_
-};
-
 struct Service final
 {
 	Service(std::filesystem::path const& path, Time pollRate = Time::from_s(0.5f));
 	~Service();
 };
-
-inline Level g_minLevel = Level::eDebug;
 
 void logText(Level level, std::string text, std::string_view file, u64 line);
 

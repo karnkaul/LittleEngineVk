@@ -8,6 +8,7 @@
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/renderer.hpp"
 #include "gfx/common.hpp"
+#include "gfx/deferred.hpp"
 #include "gfx/vram.hpp"
 #if defined(LEVK_VKRESOURCE_NAMES)
 #include "core/utils.hpp"
@@ -57,10 +58,11 @@ struct SSBOMaterials final
 		alignas(16) glm::vec4 ambient;
 		alignas(16) glm::vec4 diffuse;
 		alignas(16) glm::vec4 specular;
+		alignas(16) glm::vec4 dropColour;
 		alignas(16) f32 shininess;
 
 		Mat() = default;
-		Mat(Material const& material);
+		Mat(Material const& material, Colour dropColour);
 	};
 
 	std::vector<Mat> ssbo;
@@ -82,6 +84,9 @@ struct SSBOFlags final
 		eTEXTURED = 1 << 0,
 		eLIT = 1 << 1,
 		eOPAQUE = 1 << 2,
+		eDROP_COLOUR = 1 << 3,
+		eUI = 1 << 4,
+		eSKYBOX = 1 << 5,
 	};
 
 	std::vector<u32> ssbo;
@@ -121,6 +126,9 @@ struct Textures final
 
 	static vk::DescriptorSetLayoutBinding const s_diffuseLayoutBinding;
 	static vk::DescriptorSetLayoutBinding const s_specularLayoutBinding;
+	static vk::DescriptorSetLayoutBinding const s_cubemapLayoutBinding;
+
+	static u32 total();
 };
 
 struct PushConstants final
@@ -147,167 +155,71 @@ struct ShaderWriter final
 	u32 binding = 0;
 
 	void write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const;
-	void write(vk::DescriptorSet set, Texture const& texture, u32 idx) const;
+	void write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx) const;
 };
 
 template <typename T>
-class UBOHandle final
+class GPUBuffer
 {
 public:
-	struct Buf
-	{
-		Buffer buffer;
-		std::vector<vk::Fence> inUse;
-	};
-	Buf m_buf;
-	ShaderWriter m_writer;
-	vk::BufferUsageFlags m_usage;
-	u32 m_arraySize;
-
-	UBOHandle() : m_usage(vk::BufferUsageFlagBits::eUniformBuffer)
-	{
-		m_writer.binding = T::s_setLayoutBinding.binding;
-		m_writer.type = T::s_setLayoutBinding.descriptorType;
-	}
-
-	void create()
-	{
-		u32 const size = (u32)sizeof(T);
-		if (m_buf.buffer.writeSize < size)
-		{
-			if (!m_buf.inUse.empty())
-			{
-				waitAll(m_buf.inUse);
-				m_buf.inUse.clear();
-			}
-			BufferInfo info;
-			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-			info.queueFlags = QFlag::eGraphics;
-			info.usage = m_usage;
-			info.size = size;
-			info.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-#if defined(LEVK_VKRESOURCE_NAMES)
-			info.name = utils::tName<T>();
-#endif
-			m_buf.buffer = vram::createBuffer(info);
-		}
-		return;
-	}
-
-	void release()
-	{
-		waitAll(m_buf.inUse);
-		vram::release(m_buf.buffer);
-		m_buf.buffer = Buffer();
-		m_buf.inUse.clear();
-		return;
-	}
-
-	bool write(T const& data, vk::DescriptorSet set)
-	{
-		create();
-		if (!vram::write(m_buf.buffer, &data))
-		{
-			return false;
-		}
-		m_writer.write(set, m_buf.buffer, 0);
-		return true;
-	}
-};
-
-template <typename T>
-class SSBOHandle final
-{
-public:
-	struct Buf
-	{
-		Buffer buffer;
-		std::vector<vk::Fence> inUse;
-	};
-
-public:
-	Buf m_buf;
+	Buffer m_buffer;
 	ShaderWriter m_writer;
 #if defined(LEVK_VKRESOURCE_NAMES)
 	std::string m_bufferName;
 #endif
 	vk::BufferUsageFlags m_usage;
-	std::deque<Buf> m_pending;
-	u32 m_arraySize = 1;
 
 public:
-	SSBOHandle()
+	GPUBuffer(vk::BufferUsageFlags flags = vk::BufferUsageFlagBits::eStorageBuffer)
 		:
 #if defined(LEVK_VKRESOURCE_NAMES)
 		  m_bufferName(utils::tName<T>()),
 #endif
-		  m_usage(vk::BufferUsageFlagBits::eStorageBuffer)
+		  m_usage(flags)
 	{
 		m_writer.binding = T::s_setLayoutBinding.binding;
 		m_writer.type = T::s_setLayoutBinding.descriptorType;
 	}
 
 public:
-	void release()
+	bool writeValue(T const& data, vk::DescriptorSet set)
 	{
-		waitAll(m_buf.inUse);
-		vram::release(m_buf.buffer);
-		for (auto& buf : m_pending)
-		{
-			waitAll(buf.inUse);
-			vram::release(buf.buffer);
-		}
-		m_pending.clear();
-		m_buf.buffer = Buffer();
-		m_buf.inUse.clear();
-		return;
-	}
-
-	void update()
-	{
-		for (auto iter = m_pending.begin(); iter != m_pending.end();)
-		{
-			auto& buf = *iter;
-			if (allSignalled(buf.inUse))
-			{
-				vram::release(buf.buffer);
-				iter = m_pending.erase(iter);
-			}
-			else
-			{
-				++iter;
-			}
-		}
-	}
-
-	bool write(T const& ssbo, vk::DescriptorSet set)
-	{
-		m_arraySize = (u32)ssbo.ssbo.size();
-		ASSERT(m_arraySize > 0, "Empty buffer!");
-		u32 const tSize = (u32)(sizeof(ssbo.ssbo.at(0)));
-		create(tSize);
-		if (!vram::write(m_buf.buffer, ssbo.ssbo.data(), (vk::DeviceSize)(ssbo.ssbo.size() * tSize)))
+		create((vk::DeviceSize)sizeof(T));
+		if (!vram::write(m_buffer, &data))
 		{
 			return false;
 		}
-		m_writer.write(set, m_buf.buffer, 0);
+		m_writer.write(set, m_buffer, 0);
 		return true;
 	}
 
-private:
-	void create(u32 tSize)
+	template <typename U>
+	bool writeArray(std::vector<U> const& arr, vk::DescriptorSet set)
 	{
-		u32 const size = tSize * m_arraySize;
-		if (m_buf.buffer.writeSize < size)
+		ASSERT(arr.size() > 0, "Empty buffer!");
+		vk::DeviceSize const size = (vk::DeviceSize)sizeof(U) * (vk::DeviceSize)arr.size();
+		create(size);
+		if (!vram::write(m_buffer, arr.data(), size))
 		{
-			if (!m_buf.inUse.empty())
-			{
-				m_pending.push_back(std::move(m_buf));
-			}
-			else
-			{
-				vram::release(m_buf.buffer);
-			}
+			return false;
+		}
+		m_writer.write(set, m_buffer, 0);
+		return true;
+	}
+
+	void release()
+	{
+		deferred::release(m_buffer);
+		m_buffer = Buffer();
+		return;
+	}
+
+private:
+	void create(vk::DeviceSize size)
+	{
+		if (m_buffer.writeSize < size)
+		{
+			deferred::release(m_buffer);
 			BufferInfo info;
 			info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 			info.queueFlags = QFlag::eGraphics;
@@ -317,7 +229,7 @@ private:
 #if defined(LEVK_VKRESOURCE_NAMES)
 			info.name = m_bufferName;
 #endif
-			m_buf.buffer = vram::createBuffer(info);
+			m_buffer = vram::createBuffer(info);
 		}
 		return;
 	}
@@ -329,23 +241,22 @@ public:
 	vk::DescriptorSet m_descriptorSet;
 
 private:
-	UBOHandle<UBOView> m_view;
-	SSBOHandle<SSBOModels> m_models;
-	SSBOHandle<SSBONormals> m_normals;
-	SSBOHandle<SSBOMaterials> m_materials;
-	SSBOHandle<SSBOTints> m_tints;
-	SSBOHandle<SSBOFlags> m_flags;
-	SSBOHandle<SSBODirLights> m_dirLights;
+	GPUBuffer<UBOView> m_view;
+	GPUBuffer<SSBOModels> m_models;
+	GPUBuffer<SSBONormals> m_normals;
+	GPUBuffer<SSBOMaterials> m_materials;
+	GPUBuffer<SSBOTints> m_tints;
+	GPUBuffer<SSBOFlags> m_flags;
+	GPUBuffer<SSBODirLights> m_dirLights;
 	ShaderWriter m_diffuse;
 	ShaderWriter m_specular;
+	ShaderWriter m_cubemap;
 
 public:
 	Set();
 
 public:
 	void initSSBOs();
-	void update();
-	void attach(vk::Fence drawing);
 	void destroy();
 
 public:
@@ -353,6 +264,7 @@ public:
 	void writeSSBOs(SSBOs const& ssbos);
 	void writeDiffuse(Texture const& diffuse, u32 idx);
 	void writeSpecular(Texture const& specular, u32 idx);
+	void writeCubemap(Cubemap const& cubemap);
 
 	void resetTextures();
 };

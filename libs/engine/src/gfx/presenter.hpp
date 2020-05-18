@@ -65,7 +65,6 @@ private:
 			vk::Fence drawing;
 
 			vk::Image image;
-			bool bNascent = true;
 		};
 
 		Image depthImage;

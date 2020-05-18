@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <sstream>
 #include <string_view>
-#include "core/utils.hpp"
+#include "utils.hpp"
 
 namespace le
 {
@@ -10,36 +10,9 @@ namespace stdfs = std::filesystem;
 
 class IOReader
 {
-public:
-	struct FBytes
-	{
-	private:
-		IOReader const* pReader;
-
-	public:
-		TResult<bytearray> operator()(stdfs::path const& id) const;
-
-	private:
-		friend class IOReader;
-	};
-
-	struct FStr
-	{
-	private:
-		IOReader const* pReader;
-
-	public:
-		TResult<std::stringstream> operator()(stdfs::path const& id) const;
-
-	private:
-		friend class IOReader;
-	};
-
 protected:
 	stdfs::path m_prefix;
 	std::string m_medium;
-	FBytes m_getBytes;
-	FStr m_getStr;
 
 public:
 	explicit IOReader(stdfs::path prefix) noexcept;
@@ -51,8 +24,6 @@ public:
 
 public:
 	[[nodiscard]] TResult<std::string> getString(stdfs::path const& id) const;
-	[[nodiscard]] FBytes bytesFunctor() const;
-	[[nodiscard]] FStr strFunctor() const;
 	[[nodiscard]] bool checkPresence(stdfs::path const& id) const;
 	[[nodiscard]] bool checkPresences(std::initializer_list<stdfs::path> ids) const;
 	[[nodiscard]] bool checkPresences(ArrayView<stdfs::path const> ids) const;

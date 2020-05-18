@@ -60,7 +60,7 @@ void jobs::cleanup(bool bFlushQueue)
 {
 	if (bFlushQueue && uManager)
 	{
-		uManager->waitAll();
+		uManager->waitIdle();
 	}
 	[[maybe_unused]] auto count = uManager ? uManager->workerCount() : 0;
 	uManager = nullptr;
@@ -136,20 +136,18 @@ void jobs::waitAll(std::vector<std::shared_ptr<HJob>> const& handles)
 	return;
 }
 
-bool jobs::areWorkersIdle()
+bool jobs::isIdle()
 {
-	return uManager ? uManager->areWorkersIdle() : true;
+	return uManager ? uManager->isIdle() : true;
 }
 
-void jobs::waitForIdle()
+void jobs::waitIdle()
 {
-	if (!areWorkersIdle())
+	if (!isIdle())
 	{
 		LOG_I("[{}] Waiting for workers...", utils::tName<JobManager>());
-	}
-	while (!areWorkersIdle())
-	{
-		std::this_thread::yield();
+		uManager->waitIdle();
+		LOG_I("[{}] ... workers idle", utils::tName<JobManager>());
 	}
 	return;
 }

@@ -20,9 +20,6 @@ namespace
 class FileLogger final
 {
 public:
-	using Lock = std::scoped_lock<std::mutex>;
-
-public:
 	static constexpr size_t s_reserveCount = 1024 * 1024;
 
 public:
@@ -79,7 +76,7 @@ void FileLogger::startLogging(std::filesystem::path path, Time pollRate)
 			}
 			else
 			{
-				std::this_thread::sleep_for(pollRate.usecs);
+				threads::sleep(pollRate);
 			}
 		}
 		LOG_I("File Logging terminated");
@@ -100,7 +97,7 @@ void FileLogger::record(std::string line)
 {
 	if (m_hThread != HThread::Null)
 	{
-		Lock lock(m_mutex);
+		std::scoped_lock<std::mutex> lock(m_mutex);
 		m_cache += std::move(line);
 		m_cache += "\n";
 	}
@@ -111,7 +108,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 {
 	std::string temp;
 	{
-		Lock lock(m_mutex);
+		std::scoped_lock<std::mutex> lock(m_mutex);
 		temp = std::move(m_cache);
 		m_cache.clear();
 		m_cache.reserve(s_reserveCount);

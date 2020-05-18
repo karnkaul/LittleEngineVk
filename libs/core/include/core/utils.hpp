@@ -1,11 +1,22 @@
 #pragma once
+#include <future>
 #include <string>
 #include <vector>
+#include <typeinfo>
 #include <type_traits>
-#include "core/std_types.hpp"
+#include "std_types.hpp"
 
 namespace le
 {
+enum class FutureState : u8
+{
+	eInvalid,
+	eDeferred,
+	eReady,
+	eTimeout,
+	eCOUNT_
+};
+
 template <typename T>
 struct ArrayView
 {
@@ -47,6 +58,26 @@ struct ArrayView
 
 namespace utils
 {
+template <typename T>
+FutureState futureState(std::future<T> const& future)
+{
+	if (future.valid())
+	{
+		auto const status = future.wait_for(std::chrono::milliseconds(0));
+		switch (status)
+		{
+		default:
+		case std::future_status::deferred:
+			return FutureState::eDeferred;
+		case std::future_status::ready:
+			return FutureState::eReady;
+		case std::future_status::timeout:
+			return FutureState::eTimeout;
+		}
+	}
+	return FutureState::eInvalid;
+}
+
 std::pair<f32, std::string_view> friendlySize(u64 byteCount);
 
 std::string demangle(std::string_view name);

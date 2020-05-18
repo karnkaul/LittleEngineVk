@@ -102,10 +102,10 @@ public:
 	CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;
 	void setCursorPos(glm::vec2 const& pos) const;
-	std::string getClipboard() const;
+	std::string clipboard() const;
 
-	static JoyState getJoyState(s32 id);
-	static GamepadState getGamepadState(s32 id);
+	static JoyState joyState(s32 id);
+	static GamepadState gamepadState(s32 id);
 	static f32 triggerToAxis(f32 triggerValue);
 	static size_t joystickAxesCount(s32 id);
 	static size_t joysticKButtonsCount(s32 id);

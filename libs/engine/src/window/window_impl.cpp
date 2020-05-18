@@ -628,9 +628,7 @@ glm::vec2 WindowImpl::cursorPos() const
 	{
 		f64 x, y;
 		glfwGetCursorPos(m_uNativeWindow->m_pWindow, &x, &y);
-		auto size = windowSize();
-		auto halfSize = glm::vec2(size.x, size.y) * 0.5f;
-		return {(f32)x - halfSize.x, halfSize.y - (f32)y};
+		return {(f32)x, (f32)y};
 	}
 #endif
 	return {};

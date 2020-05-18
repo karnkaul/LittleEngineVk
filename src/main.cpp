@@ -131,10 +131,6 @@ int main(int argc, char** argv)
 	stdfs::path const& cp = "skyboxes/sky_dusk";
 	cubemapInfo.rludfbIDs = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
 	gfx::Cubemap* pCubemap = Resources::inst().create<gfx::Cubemap>("skyboxes/sky_dusk_cubemap", cubemapInfo);
-	gfx::Pipeline::Info skyboxPipeInfo;
-	skyboxPipeInfo.name = "skybox";
-	skyboxPipeInfo.bDepthWrite = false;
-	gfx::Pipeline* pSkyPipe = nullptr;
 
 	Window w0, w1;
 	Window::Info info0;
@@ -237,19 +233,11 @@ int main(int argc, char** argv)
 
 	if (w1.create(info1) && w0.create(info0))
 	{
-		gfx::Pipeline *pPipeline0 = nullptr, *pPipeline0wf = nullptr, *pPipeline1 = nullptr;
+		gfx::Pipeline* pPipeline0wf = nullptr;
 
 		if (w0.isOpen())
 		{
-			auto& renderer0 = w0.renderer();
-			pPipeline0 = createPipeline(&renderer0, "default");
-			pPipeline0wf = createPipeline(&renderer0, "wireframe", gfx::PolygonMode::eLine);
-			pSkyPipe = renderer0.createPipeline(skyboxPipeInfo);
-		}
-		if (w1.isOpen())
-		{
-			auto& renderer1 = w1.renderer();
-			pPipeline1 = createPipeline(&renderer1, "default");
+			pPipeline0wf = createPipeline(&w0.renderer(), "wireframe", gfx::PolygonMode::eLine);
 		}
 
 		gfx::Renderer::View view0;
@@ -404,15 +392,12 @@ int main(int argc, char** argv)
 			{
 				bRecreate0 = false;
 				w0.create(info0);
-				pPipeline0 = createPipeline(&w0.renderer(), "default");
 				pPipeline0wf = createPipeline(&w0.renderer(), "wireframe", gfx::PolygonMode::eLine);
-				pSkyPipe = w0.renderer().createPipeline(skyboxPipeInfo);
 			}
 			if (bRecreate1)
 			{
 				bRecreate1 = false;
 				w1.create(info1);
-				pPipeline1 = createPipeline(&w1.renderer(), "default");
 			}
 			if (bClose0)
 			{
@@ -434,14 +419,16 @@ int main(int argc, char** argv)
 				if (w0.isOpen())
 				{
 					gfx::Renderer::Scene scene;
+					auto const smol = glm::vec2(0.66f);
 					scene.dirLights = {dirLight0, dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view0;
-					scene.view.skybox = {pCubemap, pSkyPipe};
-					auto pPipeline = bWF0 ? pPipeline0wf : pPipeline0;
+					scene.view.skybox.pCubemap = pCubemap;
+					auto pPipeline = bWF0 ? pPipeline0wf : nullptr;
 					gfx::Renderer::Batch batch;
 					if (bTEMP)
 					{
+						batch.viewport = scene.view.skybox.viewport = w0.renderer().clampToView(w0.cursorPos(), smol);
 						batch.drawables.push_back({{pTriangle0}, &transform1, pPipeline});
 					}
 					{
@@ -488,7 +475,7 @@ int main(int argc, char** argv)
 					gfx::Renderer::Batch batch;
 					if (pTriangle0->isReady())
 					{
-						batch.drawables = {{{pTriangle0}, &transform1, pPipeline1}};
+						batch.drawables = {{{pTriangle0}, &transform1}};
 					}
 					{
 						auto view = registry.view<CData<Transform>, CResource<gfx::Model>>();
@@ -499,7 +486,7 @@ int main(int argc, char** argv)
 							{
 								if (pModel->isReady())
 								{
-									batch.drawables.push_back({pModel->meshes(), &cTransform->data, pPipeline1});
+									batch.drawables.push_back({pModel->meshes(), &cTransform->data});
 								}
 							}
 						}
@@ -513,7 +500,7 @@ int main(int argc, char** argv)
 							{
 								if (pMesh->isReady())
 								{
-									batch.drawables.push_back({{pMesh}, &cTransform->data, pPipeline1});
+									batch.drawables.push_back({{pMesh}, &cTransform->data});
 								}
 							}
 						}

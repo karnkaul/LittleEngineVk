@@ -3,6 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "core/assert.hpp"
 #include "core/log.hpp"
+#include "core/maths.hpp"
 #include "core/transform.hpp"
 #include "core/utils.hpp"
 #include "engine/assets/resources.hpp"
@@ -12,14 +13,21 @@
 #include "pipeline_impl.hpp"
 #include "renderer_impl.hpp"
 #include "resource_descriptors.hpp"
+#include "window/window_impl.hpp"
 
 namespace le::gfx
 {
 ScreenRect::ScreenRect(glm::vec4 const& ltrb) noexcept : left(ltrb.x), top(ltrb.y), right(ltrb.z), bottom(ltrb.w) {}
 
-ScreenRect::ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop) noexcept
-	: left(leftTop.x), top(leftTop.y), right(leftTop.x + size.x), bottom(leftTop.y + size.y)
+ScreenRect ScreenRect::sizeTL(glm::vec2 const& size, glm::vec2 const& leftTop)
 {
+	return ScreenRect({leftTop.x, leftTop.y, leftTop.x + size.x, leftTop.y + size.y});
+}
+
+ScreenRect ScreenRect::sizeCentre(glm::vec2 const& size, glm::vec2 const& centre)
+{
+	auto const leftTop = centre - (glm::vec2(0.5f) * size);
+	return ScreenRect({leftTop.x, leftTop.y, leftTop.x + size.x, leftTop.y + size.y});
 }
 
 f32 ScreenRect::aspect() const
@@ -58,6 +66,16 @@ void Renderer::render(Scene scene)
 	{
 		m_uImpl->render(std::move(scene));
 	}
+}
+
+glm::vec2 Renderer::screenToN(glm::vec2 const& screenXY) const
+{
+	return m_uImpl ? m_uImpl->screenToN(screenXY) : screenXY;
+}
+
+ScreenRect Renderer::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
+{
+	return m_uImpl ? m_uImpl->clampToView(screenXY, nViewport, padding) : ScreenRect::sizeCentre(nViewport);
 }
 
 RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
@@ -222,7 +240,7 @@ bool RendererImpl::render(Renderer::Scene scene)
 		ASSERT(scene.view.skybox.pPipeline, "Pipeline is null!");
 		auto pTransform = &Transform::s_identity;
 		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
-		scene.batches.push_front({{}, {}, {{{pMesh}, pTransform, scene.view.skybox.pPipeline}}});
+		scene.batches.push_front({scene.view.skybox.viewport, {}, {{{pMesh}, pTransform, scene.view.skybox.pPipeline}}});
 		frame.set.writeCubemap(*scene.view.skybox.pCubemap);
 		bSkybox = true;
 	}
@@ -441,6 +459,33 @@ u64 RendererImpl::framesDrawn() const
 u8 RendererImpl::virtualFrameCount() const
 {
 	return m_frameCount;
+}
+
+glm::vec2 RendererImpl::screenToN(glm::vec2 const& screenXY) const
+{
+	auto pWindow = WindowImpl::windowImpl(m_window);
+	if (pWindow)
+	{
+		auto const size = pWindow->windowSize();
+		return {screenXY.x / (f32)size.x, screenXY.y / (f32)size.y};
+	}
+	return {};
+}
+
+ScreenRect RendererImpl::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
+{
+	auto pWindow = WindowImpl::windowImpl(m_window);
+	if (pWindow)
+	{
+		auto const size = pWindow->windowSize();
+		auto const half = nViewport * 0.5f;
+		f32 const x = maths::clamp(screenXY.x, 0.0f + padding.x, (f32)size.x - padding.x);
+		f32 const y = maths::clamp(screenXY.y, 0.0f + padding.y, (f32)size.y - padding.y);
+		f32 const nX = maths::clamp(x / (f32)size.x, 0.0f + half.x, 1.0f - half.x);
+		f32 const nY = maths::clamp(y / (f32)size.y, 0.0f + half.y, 1.0f - half.y);
+		return ScreenRect::sizeCentre(nViewport, {nX, nY});
+	}
+	return ScreenRect::sizeCentre(nViewport);
 }
 
 void RendererImpl::onFramebufferResize()

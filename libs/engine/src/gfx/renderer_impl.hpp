@@ -86,6 +86,9 @@ public:
 	u64 framesDrawn() const;
 	u8 virtualFrameCount() const;
 
+	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
+	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
+
 private:
 	void onFramebufferResize();
 	FrameSync& frameSync();

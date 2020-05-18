@@ -25,7 +25,9 @@ struct ScreenRect final
 
 	constexpr ScreenRect() noexcept = default;
 	ScreenRect(glm::vec4 const& ltrb) noexcept;
-	explicit ScreenRect(glm::vec2 const& size, glm::vec2 const& leftTop = glm::vec2(0.0f)) noexcept;
+
+	static ScreenRect sizeTL(glm::vec2 const& size, glm::vec2 const& leftTop = glm::vec2(0.0f));
+	static ScreenRect sizeCentre(glm::vec2 const& size, glm::vec2 const& centre = glm::vec2(0.5f));
 
 	f32 aspect() const;
 };
@@ -41,6 +43,7 @@ public:
 
 	struct Skybox final
 	{
+		ScreenRect viewport;
 		Cubemap* pCubemap = nullptr;
 		Pipeline* pPipeline = nullptr;
 	};
@@ -103,6 +106,9 @@ public:
 
 	void update();
 	void render(Scene scene);
+
+	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
+	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
 
 private:
 	friend class le::WindowImpl;

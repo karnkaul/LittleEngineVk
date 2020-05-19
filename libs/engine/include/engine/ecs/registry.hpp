@@ -13,11 +13,19 @@
 #include "core/flags.hpp"
 #include "core/log_config.hpp"
 #include "core/std_types.hpp"
-#include "core/time.hpp"
-#include "entity.hpp"
 
 namespace le
 {
+// Entity is a glorified, type-safe ID
+struct Entity final
+{
+	using ID = u64;
+	ID id = 0;
+};
+
+bool operator==(Entity lhs, Entity rhs);
+bool operator!=(Entity lhs, Entity rhs);
+
 class Registry
 {
 public:
@@ -38,13 +46,14 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
+	// Hash code of component type
 	using Signature = size_t;
 
-	// id => [components]
-	template <typename... Comp>
-	using View = std::deque<std::tuple<Comp*...>>;
+	template <typename... T>
+	using View = std::deque<std::tuple<T*...>>;
 
 private:
+	// Concept
 	struct Component
 	{
 		Signature sign = 0;
@@ -57,9 +66,7 @@ private:
 		T t;
 
 		template <typename... Args>
-		Model(Args&&... args) : t(std::forward<Args>(args)...)
-		{
-		}
+		Model(Args&&... args);
 	};
 
 public:
@@ -93,14 +100,14 @@ public:
 	virtual ~Registry();
 
 public:
-	template <typename Comp>
+	template <typename T>
 	static Signature signature();
 
-	template <typename... Comps>
-	static std::array<Signature, sizeof...(Comps)> signatures();
+	template <typename... Ts>
+	static std::array<Signature, sizeof...(Ts)> signatures();
 
 public:
-	template <typename... Comps>
+	template <typename... Ts>
 	Entity spawnEntity(std::string name);
 
 	bool setEnabled(Entity entity, bool bEnabled);
@@ -112,26 +119,26 @@ public:
 	bool destroyEntity(Entity const& entity);
 	bool destroyEntity(Entity& out_entity);
 
-	template <typename Comp, typename... Args>
-	Comp* addComponent(Entity entity, Args... args);
+	template <typename T, typename... Args>
+	T* addComponent(Entity entity, Args... args);
 
-	template <typename Comp1, typename Comp2, typename... Comps>
+	template <typename T1, typename T2, typename... Ts>
 	void addComponent(Entity entity);
 
-	template <typename Comp>
-	Comp const* component(Entity entity) const;
+	template <typename T>
+	T const* component(Entity entity) const;
 
-	template <typename Comp>
-	Comp* component(Entity entity);
+	template <typename T>
+	T* component(Entity entity);
 
-	template <typename... Comps>
+	template <typename... Ts>
 	bool destroyComponent(Entity entity);
 
-	template <typename Comp1, typename... Comps>
-	View<Comp1 const, Comps const...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {}) const;
+	template <typename T1, typename... Ts>
+	View<T1 const, Ts const...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {}) const;
 
-	template <typename Comp1, typename... Comps>
-	View<Comp1, Comps...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {});
+	template <typename T1, typename... Ts>
+	View<T1, Ts...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {});
 
 	void sweep();
 
@@ -141,7 +148,7 @@ private:
 	// _Impl functions are not thread safe; they rely on mutexes being locked
 	// const helpers help with DRY for const and non-const overloads
 
-	template <typename Comp>
+	template <typename T>
 	static Signature signature_Impl();
 
 	Entity spawnEntity_Impl(std::string name);
@@ -149,104 +156,110 @@ private:
 	using EFMap = std::unordered_map<Entity::ID, Flags>;
 	EFMap::iterator destroyEntity_Impl(EFMap::iterator iter, Entity::ID id);
 
-	template <typename Comp, typename... Args>
+	template <typename T, typename... Args>
 	Component* addComponent_Impl(Entity entity, Args... args);
 
-	template <typename Comp1, typename Comp2, typename... Comps>
+	template <typename T1, typename T2, typename... Ts>
 	void addComponent_Impl(Entity entity);
 
-	Component* addComponent_Impl(Signature sign, std::unique_ptr<Component>&& uComp, Entity entity);
+	Component* addComponent_Impl(Signature sign, std::unique_ptr<Component>&& uT, Entity entity);
 
-	template <typename Comp>
-	static Comp* component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>>& compMap);
+	template <typename T>
+	static T* component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>>& compMap);
 
-	template <typename Comp>
-	static Comp const* component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>> const& compMap);
+	template <typename T>
+	static T const* component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>> const& compMap);
 
 	void destroyComponent_Impl(Component const* pComponent, Entity::ID id);
 	bool destroyComponent_Impl(Entity::ID id);
 
 	// const helper
-	template <typename T, typename Comp>
-	static Comp* component_Impl(T* pThis, Entity::ID id);
+	template <typename Th, typename T>
+	static T* component_Impl(Th* pThis, Entity::ID id);
 
 	// const helper
-	template <typename T, typename Comp1, typename... Comps>
-	static View<Comp1, Comps...> view(T* pThis, Flags mask, Flags pattern);
+	template <typename Th, typename T1, typename... Ts>
+	static View<T1, Ts...> view(Th* pThis, Flags mask, Flags pattern);
 };
 
-template <typename Comp>
+template <typename T>
+template <typename... Args>
+Registry::Model<T>::Model(Args&&... args) : t(std::forward<Args>(args)...)
+{
+}
+
+template <typename T>
 Registry::Signature Registry::signature()
 {
 	std::scoped_lock<std::mutex> lock(s_mutex);
-	return signature_Impl<Comp>();
+	return signature_Impl<T>();
 }
 
-template <typename... Comps>
-std::array<Registry::Signature, sizeof...(Comps)> Registry::signatures()
+template <typename... Ts>
+std::array<Registry::Signature, sizeof...(Ts)> Registry::signatures()
 {
 	std::scoped_lock<std::mutex> lock(s_mutex);
-	return std::array<Signature, sizeof...(Comps)>{signature_Impl<Comps>()...};
+	return std::array<Signature, sizeof...(Ts)>{signature_Impl<Ts>()...};
 }
 
-template <typename... Comps>
+template <typename... Ts>
 Entity Registry::spawnEntity(std::string name)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	auto entity = spawnEntity_Impl(std::move(name));
-	if constexpr (sizeof...(Comps) > 0)
+	if constexpr (sizeof...(Ts) > 0)
 	{
-		addComponent_Impl<Comps...>(entity);
+		addComponent_Impl<Ts...>(entity);
 	}
 	return entity;
 }
 
-template <typename Comp, typename... Args>
-Comp* Registry::addComponent(Entity entity, Args... args)
+template <typename T, typename... Args>
+T* Registry::addComponent(Entity entity, Args... args)
 {
-	static_assert((std::is_constructible_v<Comp, Args> && ...), "Cannot construct Comp with given Args...");
+	static_assert((std::is_constructible_v<T, Args> && ...), "Cannot construct Comp with given Args...");
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 	{
-		return &static_cast<Model<Comp>*>(addComponent_Impl<Comp>(entity, std::forward<Args>(args)...))->t;
+		return &static_cast<Model<T>*>(addComponent_Impl<T>(entity, std::forward<Args>(args)...))->t;
 	}
 	return nullptr;
 }
 
-template <typename Comp1, typename Comp2, typename... Comps>
+template <typename T1, typename T2, typename... Ts>
 void Registry::addComponent(Entity entity)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 	{
-		addComponent_Impl<Comp1, Comp2, Comps...>(entity);
+		addComponent_Impl<T1, T2, Ts...>(entity);
 	}
 	return;
 }
 
-template <typename Comp>
-Comp const* Registry::component(Entity entity) const
+template <typename T>
+T const* Registry::component(Entity entity) const
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	return component_Impl<Registry const, Comp const>(this, entity.id);
+	return component_Impl<Registry const, T const>(this, entity.id);
 }
 
-template <typename Comp>
-Comp* Registry::component(Entity entity)
+template <typename T>
+T* Registry::component(Entity entity)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	return component_Impl<Registry, Comp>(this, entity.id);
+	return component_Impl<Registry, T>(this, entity.id);
 }
 
-template <typename... Comps>
+template <typename... Ts>
 bool Registry::destroyComponent(Entity entity)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	if constexpr (sizeof...(Comps) > 0)
+	if constexpr (sizeof...(Ts) > 0)
 	{
 		if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 		{
-			auto const signs = signatures<Comps...>();
+			auto const signs = signatures<Ts...>();
 			for (auto sign : signs)
 			{
 				if (auto search = m_db[entity.id].find(sign); search != m_db[entity.id].end())
@@ -264,22 +277,22 @@ bool Registry::destroyComponent(Entity entity)
 	}
 }
 
-template <typename Comp1, typename... Comps>
-typename Registry::View<Comp1 const, Comps const...> Registry::view(Flags mask, Flags pattern) const
+template <typename T1, typename... Ts>
+typename Registry::View<T1 const, Ts const...> Registry::view(Flags mask, Flags pattern) const
 {
-	return view<Registry const, Comp1 const, Comps const...>(this, mask, pattern);
+	return view<Registry const, T1 const, Ts const...>(this, mask, pattern);
 }
 
-template <typename Comp1, typename... Comps>
-typename Registry::View<Comp1, Comps...> Registry::view(Flags mask, Flags pattern)
+template <typename T1, typename... Ts>
+typename Registry::View<T1, Ts...> Registry::view(Flags mask, Flags pattern)
 {
-	return view<Registry, Comp1, Comps...>(this, mask, pattern);
+	return view<Registry, T1, Ts...>(this, mask, pattern);
 }
 
-template <typename Comp>
+template <typename T>
 Registry::Signature Registry::signature_Impl()
 {
-	auto const& t = typeid(Comp);
+	auto const& t = typeid(T);
 	auto const index = std::type_index(t);
 	auto search = s_signs.find(index);
 	if (search == s_signs.end())
@@ -291,54 +304,54 @@ Registry::Signature Registry::signature_Impl()
 	return search->second;
 }
 
-template <typename Comp, typename... Args>
+template <typename T, typename... Args>
 Registry::Component* Registry::addComponent_Impl(Entity entity, Args... args)
 {
-	return addComponent_Impl(signature<Comp>(), std::make_unique<Model<Comp>>(std::forward<Args>(args)...), entity);
+	return addComponent_Impl(signature<T>(), std::make_unique<Model<T>>(std::forward<Args>(args)...), entity);
 }
 
-template <typename Comp1, typename Comp2, typename... Comps>
+template <typename T1, typename T2, typename... Ts>
 void Registry::addComponent_Impl(Entity entity)
 {
-	addComponent_Impl<Comp1>(entity);
-	addComponent_Impl<Comp2, Comps...>(entity);
+	addComponent_Impl<T1>(entity);
+	addComponent_Impl<T2, Ts...>(entity);
 }
 
-template <typename Comp>
-Comp* Registry::component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>>& compMap)
+template <typename T>
+T* Registry::component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>>& compMap)
 {
-	if (auto search = compMap.find(signature<Comp>()); search != compMap.end())
+	if (auto search = compMap.find(signature<T>()); search != compMap.end())
 	{
-		return &static_cast<Model<Comp>*>(search->second.get())->t;
+		return &static_cast<Model<T>*>(search->second.get())->t;
 	}
 	return nullptr;
 }
 
-template <typename Comp>
-Comp const* Registry::component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>> const& compMap)
+template <typename T>
+T const* Registry::component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>> const& compMap)
 {
-	if (auto search = compMap.find(signature<Comp>()); search != compMap.end())
+	if (auto search = compMap.find(signature<T>()); search != compMap.end())
 	{
-		return &static_cast<Model<Comp>*>(search->second.get())->t;
+		return &static_cast<Model<T>*>(search->second.get())->t;
 	}
 	return nullptr;
 }
 
-template <typename T, typename Comp>
-Comp* Registry::component_Impl(T* pThis, Entity::ID id)
+template <typename Th, typename T>
+T* Registry::component_Impl(Th* pThis, Entity::ID id)
 {
 	if (auto search = pThis->m_db.find(id); search != pThis->m_db.end())
 	{
-		return component_Impl<Comp>(search->second);
+		return component_Impl<T>(search->second);
 	}
 	return nullptr;
 }
 
-template <typename T, typename Comp1, typename... Comps>
-typename Registry::View<Comp1, Comps...> Registry::view(T* pThis, Flags mask, Flags pattern)
+template <typename Th, typename T1, typename... Ts>
+typename Registry::View<T1, Ts...> Registry::view(Th* pThis, Flags mask, Flags pattern)
 {
-	View<Comp1, Comps...> ret;
-	static auto const signs = signatures<Comp1, Comps...>();
+	View<T1, Ts...> ret;
+	static auto const signs = signatures<T1, Ts...>();
 	std::scoped_lock<std::mutex> lock(pThis->m_mutex);
 	for (auto const [id, flags] : pThis->m_entityFlags)
 	{
@@ -350,7 +363,7 @@ typename Registry::View<Comp1, Comps...> Registry::view(T* pThis, Flags mask, Fl
 				auto checkSigns = [&compMap](auto sign) -> bool { return compMap.find(sign) != compMap.end(); };
 				if (std::all_of(signs.begin(), signs.end(), checkSigns))
 				{
-					ret.push_back(std::make_tuple(component_Impl<Comp1>(compMap), (component_Impl<Comps>(compMap))...));
+					ret.push_back(std::make_tuple(component_Impl<T1>(compMap), (component_Impl<Ts>(compMap))...));
 				}
 			}
 		}

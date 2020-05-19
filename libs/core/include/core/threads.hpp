@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <thread>
 #include "std_types.hpp"
 #include "time.hpp"
 #include "zero.hpp"
@@ -21,5 +22,14 @@ u32 maxHardwareThreads();
 u32 runningCount();
 
 void sleep(Time duration = {});
+
+template <typename F>
+void sleepUntil(F f)
+{
+	while (!f())
+	{
+		sleep();
+	}
+}
 } // namespace threads
 } // namespace le

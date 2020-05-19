@@ -1,4 +1,3 @@
-#include <thread>
 #include <utility>
 #include <list>
 #include "core/assert.hpp"

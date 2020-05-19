@@ -11,6 +11,16 @@ std::string const Registry::s_tName = utils::tName<Registry>();
 std::unordered_map<std::type_index, Registry::Signature> Registry::s_signs;
 std::mutex Registry::s_mutex;
 
+bool operator==(Entity lhs, Entity rhs)
+{
+	return lhs.id == rhs.id;
+}
+
+bool operator!=(Entity lhs, Entity rhs)
+{
+	return !(lhs == rhs);
+}
+
 Registry::Component::~Component() = default;
 
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)

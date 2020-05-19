@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <memory>
+#include <shared_mutex>
 #include <type_traits>
 #include <unordered_map>
 #include "core/assert.hpp"
@@ -24,11 +25,15 @@ struct TAsset
 	T const* get() const;
 };
 
+// Resources is a static singleton, it does not participate in RAII,
+// and requires explicit calls to `init()` / `deinit()`.
 class Resources final
 {
 private:
 	TMapStore<std::unordered_map<std::string, std::unique_ptr<Asset>>> m_resources;
-	std::atomic_bool m_bActive;
+	std::mutex m_mutex;			   // Locked for init()/deinit()
+	std::shared_mutex m_semaphore; // Blocks deinit() until all API threads have returned
+	std::atomic_bool m_bActive;	   // API on/off switch
 
 public:
 	static Resources& inst();
@@ -40,22 +45,25 @@ private:
 public:
 	void init(IOReader const& data);
 
+	// Construction of Assets will occur in parallel,
+	// but insertion into map is mutex locked (by TMapStore)
 	template <typename T>
 	T* create(stdfs::path const& id, typename T::Info info)
 	{
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		if (!m_bActive.load())
-		{
-			return nullptr;
-		}
-		ASSERT(!m_resources.find(id.generic_string()).bResult, "ID already loaded!");
-		auto uT = std::make_unique<T>(id, std::move(info));
 		T* pT = nullptr;
-		if (uT && uT->m_status != Asset::Status::eError)
+		ASSERT(m_bActive.load(), "Resources inactive!");
+		if (m_bActive.load())
 		{
-			uT->setup();
-			pT = uT.get();
-			m_resources.emplace(id.generic_string(), std::move(uT));
+			std::shared_lock<std::shared_mutex> lock(m_semaphore);
+			ASSERT(!m_resources.find(id.generic_string()).bResult, "ID already loaded!");
+			auto uT = std::make_unique<T>(id, std::move(info));
+			if (uT && uT->m_status != Asset::Status::eError)
+			{
+				uT->setup();
+				pT = uT.get();
+				m_resources.emplace(id.generic_string(), std::move(uT));
+			}
 		}
 		return pT;
 	}
@@ -63,15 +71,16 @@ public:
 	template <typename T>
 	T* get(stdfs::path const& id)
 	{
+		std::shared_lock<std::shared_mutex> lock(m_semaphore);
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		if (!m_bActive.load())
+		ASSERT(m_bActive.load(), "Resources inactive!");
+		if (m_bActive.load())
 		{
-			return nullptr;
-		}
-		auto [pT, bResult] = m_resources.find(id.generic_string());
-		if (bResult && pT)
-		{
-			return dynamic_cast<T*>(pT->get());
+			auto [pT, bResult] = m_resources.find(id.generic_string());
+			if (bResult && pT)
+			{
+				return dynamic_cast<T*>(pT->get());
+			}
 		}
 		return nullptr;
 	}
@@ -79,17 +88,14 @@ public:
 	template <typename T>
 	bool unload(stdfs::path const& id)
 	{
+		std::shared_lock<std::shared_mutex> lock(m_semaphore);
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		if (!m_bActive.load())
-		{
-			return false;
-		}
-		return m_resources.unload(id.generic_string());
+		ASSERT(m_bActive.load(), "Resources inactive!");
+		return m_bActive.load() ? m_resources.unload(id.generic_string()) : false;
 	}
 
-	void deinit();
-
 	void update();
+	void deinit();
 };
 
 template <typename T>

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <thread>
 #include "core/assert.hpp"
@@ -153,5 +154,14 @@ void os::debugBreak()
 #endif
 #endif
 	return;
+}
+
+bool os::sysCall(std::string_view command)
+{
+	if (std::system(command.data()) == 0)
+	{
+		return true;
+	}
+	return false;
 }
 } // namespace le

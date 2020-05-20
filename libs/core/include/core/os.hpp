@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <fmt/format.h>
 #include "std_types.hpp"
 
 #if (defined(_WIN32) || defined(_WIN64))
@@ -80,5 +81,14 @@ bool isDefined(std::string_view arg);
 
 bool isDebuggerAttached();
 void debugBreak();
+
+bool sysCall(std::string_view command);
+
+template <typename Arg1, typename... Args>
+bool sysCall(std::string_view expr, Arg1 arg1, Args... args)
+{
+	auto const command = fmt::format(expr, std::forward<Arg1>(arg1), std::forward<Args>(args)...);
+	return sysCall(command);
+}
 } // namespace os
 } // namespace le

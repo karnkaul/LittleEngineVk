@@ -1,16 +1,20 @@
 #include <algorithm>
-#include <cstdlib>
-#include <fmt/format.h>
 #include "core/assert.hpp"
 #include "core/log.hpp"
 #include "core/io.hpp"
 #include "core/utils.hpp"
 #include "engine/gfx/shader.hpp"
 #include "gfx/utils.hpp"
+#if defined(LEVK_SHADER_COMPILER)
+#include "core/os.hpp"
+#endif
 
 namespace le::gfx
 {
 std::string const Shader::s_tName = utils::tName<Shader>();
+std::string_view Shader::s_spvExt = ".spv";
+std::string_view Shader::s_vertExt = ".vert";
+std::string_view Shader::s_fragExt = ".frag";
 
 Shader::Shader(stdfs::path id, Info info) : Asset(std::move(id))
 {
@@ -23,27 +27,34 @@ Shader::Shader(stdfs::path id, Info info) : Asset(std::move(id))
 		ASSERT(bCodeIDsPopulated && info.pReader, "Invalid Shader ShaderData!");
 		for (size_t idx = 0; idx < info.codeIDMap.size(); ++idx)
 		{
-			auto const id = info.codeIDMap.at(idx);
+			auto& id = info.codeIDMap.at(idx);
 			auto const ext = extension(id);
-			auto const type = (Type)idx;
-			if (ext == ".vert" || ext == ".frag")
+			bool bSpv = true;
+			if (ext == s_vertExt || ext == s_fragExt)
 			{
-				if (!loadGlsl(info, id, type))
+#if defined(LEVK_SHADER_COMPILER)
+				if (!loadGlsl(info, id, (Type)idx))
 				{
 					LOG_E("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
 					m_status = Status::eError;
+					return;
 				}
+				bSpv = false;
+#else
+				id += s_spvExt;
+#endif
 			}
-			else if (ext == ".spv" || ext == ShaderCompiler::s_extension)
+			if (bSpv)
 			{
 				auto [shaderShaderData, bResult] = info.pReader->getBytes(id);
 				ASSERT(bResult, "Shader code missing!");
+				if (!bResult)
+				{
+					LOG_E("[{}] [{}] Shader code missing: [{}]!", s_tName, m_id.generic_string(), id.generic_string());
+					m_status = Status::eError;
+					return;
+				}
 				info.codeMap.at(idx) = std::move(shaderShaderData);
-			}
-			else
-			{
-				LOG_E("[{}] Unknown extension! [{}]", s_tName, ext);
-				m_status = Status::eError;
 			}
 		}
 	}
@@ -88,6 +99,7 @@ Asset::Status Shader::update()
 	return m_status;
 }
 
+#if defined(LEVK_SHADER_COMPILER)
 bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, Type type)
 {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline)
@@ -124,7 +136,7 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 	{
 		auto const src = m_pReader->fullPath(id);
 		auto dstID = id;
-		dstID += ShaderCompiler::s_extension;
+		dstID += s_spvExt;
 		if (!ShaderCompiler::instance().compile(src, true))
 		{
 			return false;
@@ -139,6 +151,7 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 	}
 	return false;
 }
+#endif
 
 void Shader::loadAllSpirV(std::array<bytearray, (size_t)Type::eCOUNT_> const& byteMap)
 {
@@ -167,8 +180,8 @@ std::string Shader::extension(stdfs::path const& id)
 	return {};
 }
 
+#if defined(LEVK_SHADER_COMPILER)
 std::string const ShaderCompiler::s_tName = utils::tName<ShaderCompiler>();
-std::string_view ShaderCompiler::s_extension = ".spv";
 
 ShaderCompiler& ShaderCompiler::instance()
 {
@@ -212,13 +225,7 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 		LOG_E("[{}] Destination file exists and overwrite flag not set: [{}]", s_tName, src.generic_string());
 		return false;
 	}
-#if defined(LEVK_DEBUG)
-	std::string_view const str = "glslc {} -g -o {}";
-#else
-	std::string_view const str = "glslc {} -o {}";
-#endif
-	auto const command = fmt::format(str, src.string(), dst.string());
-	if (std::system(command.data()) != 0)
+	if (!os::sysCall("glslc {} -o {}", src.string(), dst.string()))
 	{
 		LOG_E("[{}] Shader compilation failed: [{}]", s_tName, src.generic_string());
 		return false;
@@ -230,7 +237,7 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 bool ShaderCompiler::compile(stdfs::path const& src, bool bOverwrite)
 {
 	auto dst = src;
-	dst += s_extension;
+	dst += Shader::s_spvExt;
 	return compile(src, dst, bOverwrite);
 }
 
@@ -243,4 +250,5 @@ bool ShaderCompiler::statusCheck() const
 	}
 	return true;
 }
+#endif
 } // namespace le::gfx

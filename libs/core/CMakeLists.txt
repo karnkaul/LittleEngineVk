@@ -1,4 +1,4 @@
-project(core)
+project(levk-core)
 
 # Library
 glob_sources(SOURCES "*.?pp")
@@ -33,13 +33,3 @@ target_link_libraries(${PROJECT_NAME}
 		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
 )
 
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
-	set(PRECOMPILE
-		<deque>
-		<filesystem>
-		<string>
-		<unordered_map>
-		<vector>
-	)
-	target_precompile_headers(${PROJECT_NAME} PUBLIC ${PRECOMPILE})
-endif()

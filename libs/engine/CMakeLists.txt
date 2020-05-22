@@ -1,4 +1,4 @@
-project(levk)
+project(levk-engine)
 
 set(LEVK_LIBRARY_TYPE STATIC CACHE STRING "levk library type (STATIC/SHARED)")
 
@@ -50,7 +50,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
-		core
+		levk-core
 	PRIVATE
 		${Vulkan_LIBRARIES}
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
@@ -59,15 +59,20 @@ target_link_libraries(${PROJECT_NAME}
 		stb-image
 		tinyobjloader
 )
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
+if(WIN64_CLANG AND LEVK_USE_GLFW)
+	target_compile_options(glfw PRIVATE -Wno-everything)
+endif()
+if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 	set(PRECOMPILE
+		<deque>
+		<filesystem>
+		<string>
+		<unordered_map>
+		<vector>
 		<vulkan/vulkan.hpp>
 		<vk_mem_alloc.h>
 		<stb/stb_image.h>
 		<tinyobjloader/tiny_obj_loader.h>
 	)
 	target_precompile_headers(${PROJECT_NAME} PRIVATE ${PRECOMPILE})
-endif()
-if(WIN64_CLANG AND LEVK_USE_GLFW)
-	target_compile_options(glfw PRIVATE -Wno-everything)
 endif()

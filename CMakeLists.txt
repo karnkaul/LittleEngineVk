@@ -13,6 +13,7 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
 
 # Options
+option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
 
 # Includes

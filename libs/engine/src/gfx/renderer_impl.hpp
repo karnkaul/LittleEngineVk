@@ -29,7 +29,8 @@ public:
 	{
 		PresenterInfo presenterInfo;
 		WindowID windowID;
-		u8 frameCount = 2;
+		u8 frameCount = 3;
+		bool bGUI = false;
 	};
 
 private:
@@ -65,6 +66,7 @@ private:
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;
+	bool m_bGUI = false;
 
 public:
 	RendererImpl(Info const& info, Renderer* pOwner);

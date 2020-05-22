@@ -7,6 +7,12 @@
 #include "common.hpp"
 #include "engine/gfx/renderer.hpp"
 
+#define GUI(expr)                                  \
+	if (le::Window::guiWindow() != le::WindowID()) \
+	{                                              \
+		expr;                                      \
+	}
+
 namespace le
 {
 class Window final
@@ -31,7 +37,8 @@ public:
 			glm::ivec2 size = {32, 32};
 			glm::ivec2 centreOffset = {};
 			Mode mode = Mode::eDecoratedWindow;
-			u8 virtualFrameCount = 2;
+			u8 virtualFrameCount = 3;
+			bool bEnableGUI = false;
 		} config;
 
 		struct
@@ -55,7 +62,7 @@ public:
 private:
 	gfx::Renderer m_renderer;
 	std::unique_ptr<class WindowImpl> m_uImpl;
-	WindowID m_id = WindowID::Null;
+	WindowID m_id = WindowID::s_null;
 
 public:
 	Window();
@@ -65,6 +72,16 @@ public:
 
 public:
 	static void pollEvents();
+	// Pass WindowID::s_null for global registration
+	[[nodiscard]] static OnText::Token registerText(OnText::Callback callback, WindowID window);
+	// Pass WindowID::s_null for global registration
+	[[nodiscard]] static OnInput::Token registerInput(OnInput::Callback callback, WindowID window);
+	// Pass WindowID::s_null for global registration
+	[[nodiscard]] static OnMouse::Token registerMouse(OnMouse::Callback callback, WindowID window);
+	// Pass WindowID::s_null for global registration
+	[[nodiscard]] static OnMouse::Token registerScroll(OnMouse::Callback callback, WindowID window);
+
+	static WindowID guiWindow();
 
 public:
 	gfx::Renderer const& renderer() const;
@@ -73,14 +90,10 @@ public:
 	WindowID id() const;
 	bool isOpen() const;
 	bool isClosing() const;
+	bool isFocused() const;
 
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
-
-public:
-	bool create(Info const& info);
-	void close();
-	void destroy();
 
 public:
 	[[nodiscard]] OnText::Token registerText(OnText::Callback callback);
@@ -97,6 +110,11 @@ public:
 	// Callback parameters: (s32 x, s32 y)
 	[[nodiscard]] OnWindowResize::Token registerResize(OnWindowResize::Callback callback);
 	[[nodiscard]] OnClosed::Token registerClosed(OnClosed::Callback callback);
+
+public:
+	bool create(Info const& info);
+	void close();
+	void destroy();
 
 	void setCursorMode(CursorMode mode) const;
 	CursorMode cursorMode() const;

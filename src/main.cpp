@@ -1,3 +1,4 @@
+#include <imgui.h>
 #include "core/assert.hpp"
 #include "core/gdata.hpp"
 #include "core/io.hpp"
@@ -135,9 +136,9 @@ int main(int argc, char** argv)
 	Window::Info info0;
 	info0.config.size = {1280, 720};
 	info0.config.title = "LittleEngineVk Demo";
-	info0.config.virtualFrameCount = 2;
 	info0.config.centreOffset = {-200, -200};
 	auto info1 = info0;
+	info0.config.bEnableGUI = true;
 	info1.options.colourSpaces.push_back({ColourSpace::eRGBLinear});
 	// info1.config.mode = Window::Mode::eBorderlessFullscreen;
 	info1.config.title += " 2";
@@ -146,36 +147,34 @@ int main(int argc, char** argv)
 	bool bClose0 = false, bClose1 = false;
 	bool bWF0 = false;
 	bool bDisableCam = false;
-	auto registerInput = [&bDisableCam](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
-		token = self.registerInput([&](Key key, Action action, Mods mods) {
-			if (self.isOpen() && key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
-			{
-				bClose = true;
-			}
-			if (!other.isOpen() && (key == Key::eT || key == Key::eN) && action == Action::eRelease && mods & Mods::eCONTROL)
-			{
-				bRecreate = true;
-			}
-			if (key == Key::eLeftControl || key == Key::eRightControl)
-			{
-				if (bDisableCam && action == Action::eRelease)
-				{
-					bDisableCam = false;
-				}
-				if (!bDisableCam && action == Action::ePress)
-				{
-					bDisableCam = true;
-				}
-			}
-		});
-	};
-	std::shared_ptr<s32> token0, token1, wf0Token;
 	bool bTEMP = false;
 	bool bToggleModel0 = false;
 	gfx::Model::Info m0info;
 	gfx::Model::Info m1info;
 	Time reloadTime;
-	wf0Token = w0.registerInput([eid0, &registry, &bWF0, &bTEMP, &bToggleModel0](Key key, Action action, Mods mods) {
+	auto onInput = [&w0, &w1, eid0, &registry, &bWF0, &bTEMP, &bToggleModel0, &bRecreate0, &bRecreate1, &bClose0, &bClose1,
+					&bDisableCam](Key key, Action action, Mods mods) {
+		if (key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
+		{
+			bClose0 = w0.isFocused();
+			bClose1 = w1.isFocused();
+		}
+		if ((key == Key::eT || key == Key::eN) && action == Action::eRelease && mods & Mods::eCONTROL)
+		{
+			bRecreate0 = !w0.isOpen();
+			bRecreate1 = !w1.isOpen();
+		}
+		if (key == Key::eLeftControl || key == Key::eRightControl)
+		{
+			if (bDisableCam && action == Action::eRelease)
+			{
+				bDisableCam = false;
+			}
+			if (!bDisableCam && action == Action::ePress)
+			{
+				bDisableCam = true;
+			}
+		}
 		if (key == Key::eP && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
 			bWF0 = !bWF0;
@@ -196,19 +195,8 @@ int main(int argc, char** argv)
 		{
 			registry.setEnabled(eid0, !registry.isEnabled(eid0));
 		}
-	});
-	registerInput(w0, w1, bRecreate1, bClose0, token0);
-	registerInput(w1, w0, bRecreate0, bClose1, token1);
-	auto createPipeline = [](gfx::Renderer* pRenderer, std::string_view name, gfx::PolygonMode mode = gfx::PolygonMode::eFill,
-							 f32 lineWidth = 3.0f) -> gfx::Pipeline* {
-		gfx::Pipeline::Info pipelineInfo;
-		pipelineInfo.name = name;
-		pipelineInfo.polygonMode = mode;
-		pipelineInfo.lineWidth = lineWidth;
-		// pipelineInfo.cullMode = gfx::CullMode::eClockwise;
-		pipelineInfo.bBlend = true;
-		return pRenderer->createPipeline(std::move(pipelineInfo));
 	};
+	auto token = Window::registerInput(onInput, {});
 
 	gfx::FreeCam freeCam0(&w0), freeCam1(&w1);
 	freeCam0.m_state.flags.set(gfx::FreeCam::Flag::eKeyToggle_Look);
@@ -236,7 +224,10 @@ int main(int argc, char** argv)
 
 		if (w0.isOpen())
 		{
-			pPipeline0wf = createPipeline(&w0.renderer(), "wireframe", gfx::PolygonMode::eLine);
+			gfx::Pipeline::Info pipelineInfo;
+			pipelineInfo.name = "wireframe";
+			pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
+			pPipeline0wf = w0.renderer().createPipeline(std::move(pipelineInfo));
 		}
 
 		gfx::Renderer::View view0;
@@ -279,6 +270,44 @@ int main(int argc, char** argv)
 				fpsElapsed = Time();
 			}
 			{
+				// handle events
+				Window::pollEvents();
+				if (w0.isClosing())
+				{
+					freeCam0.reset(false, false);
+					w0.destroy();
+				}
+				if (w1.isClosing())
+				{
+					freeCam1.reset(false, false);
+					w1.destroy();
+				}
+				if (bRecreate0)
+				{
+					bRecreate0 = false;
+					w0.create(info0);
+					gfx::Pipeline::Info pipelineInfo;
+					pipelineInfo.name = "wireframe";
+					pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
+					pPipeline0wf = w0.renderer().createPipeline(std::move(pipelineInfo));
+				}
+				if (bRecreate1)
+				{
+					bRecreate1 = false;
+					w1.create(info1);
+				}
+				if (bClose0)
+				{
+					bClose0 = false;
+					w0.close();
+				}
+				if (bClose1)
+				{
+					bClose1 = false;
+					w1.close();
+				}
+
+				// Tick
 				engine.update();
 				registry.sweep();
 
@@ -377,39 +406,12 @@ int main(int argc, char** argv)
 				}
 			}
 
-			if (w0.isClosing())
-			{
-				freeCam0.reset(false, false);
-				w0.destroy();
-			}
-			if (w1.isClosing())
-			{
-				freeCam1.reset(false, false);
-				w1.destroy();
-			}
-			if (bRecreate0)
-			{
-				bRecreate0 = false;
-				w0.create(info0);
-				pPipeline0wf = createPipeline(&w0.renderer(), "wireframe", gfx::PolygonMode::eLine);
-			}
-			if (bRecreate1)
-			{
-				bRecreate1 = false;
-				w1.create(info1);
-			}
-			if (bClose0)
-			{
-				bClose0 = false;
-				w0.close();
-			}
-			if (bClose1)
-			{
-				bClose1 = false;
-				w1.close();
-			}
-			Window::pollEvents();
+			// GUI
+			GUI(ImGui::GetIO().WantTextInput = true);
+			GUI(ImGui::ShowDemoWindow());
+
 			ft = Time::elapsed() - fStart;
+
 			// Render
 #if defined(LEVK_DEBUG)
 			try

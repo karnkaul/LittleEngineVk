@@ -3,11 +3,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "core/assert.hpp"
 #include "core/log.hpp"
-#include "core/maths.hpp"
 #include "core/transform.hpp"
 #include "core/utils.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/mesh.hpp"
+#include "gui.hpp"
 #include "info.hpp"
 #include "utils.hpp"
 #include "pipeline_impl.hpp"
@@ -89,10 +89,28 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
 	pipelineInfo.name = "skybox";
 	pipelineInfo.bDepthWrite = false;
 	m_pipes.pSkybox = createPipeline(std::move(pipelineInfo));
+	m_bGUI = info.bGUI;
+	if (m_bGUI)
+	{
+		gui::Info guiInfo;
+		guiInfo.renderPass = m_presenter.m_renderPass;
+		guiInfo.imageCount = m_frameCount;
+		guiInfo.minImageCount = 2;
+		guiInfo.window = m_window;
+		if (!gui::init(guiInfo))
+		{
+			LOG_E("[{}] Failed to initialise GUI!", m_name);
+			m_bGUI = false;
+		}
+	}
 }
 
 RendererImpl::~RendererImpl()
 {
+	if (m_bGUI)
+	{
+		deferred::release([]() { gui::deinit(); });
+	}
 	m_pipelines.clear();
 	destroy();
 }
@@ -204,6 +222,10 @@ void RendererImpl::update()
 		break;
 	}
 	}
+	if (m_bGUI)
+	{
+		gfx::gui::newFrame();
+	}
 	for (auto& pipeline : m_pipelines)
 	{
 		pipeline.m_uImpl->update();
@@ -217,6 +239,10 @@ bool RendererImpl::render(Renderer::Scene scene)
 		|| std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }))
 	{
 		return false;
+	}
+	if (m_bGUI)
+	{
+		gui::render();
 	}
 	auto const mg = colours::magenta;
 	auto& frame = frameSync();
@@ -385,7 +411,7 @@ bool RendererImpl::render(Renderer::Scene scene)
 					vk::DeviceSize offsets[] = {0};
 					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
 					commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
-					commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, offsets);
+					commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize const*)offsets);
 					if (pMesh->m_uImpl->ibo.count > 0)
 					{
 						commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
@@ -402,6 +428,10 @@ bool RendererImpl::render(Renderer::Scene scene)
 		}
 		drawableIdx = 0;
 		++batchIdx;
+	}
+	if (m_bGUI)
+	{
+		gui::renderDrawData(commandBuffer);
 	}
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
@@ -479,10 +509,10 @@ ScreenRect RendererImpl::clampToView(glm::vec2 const& screenXY, glm::vec2 const&
 	{
 		auto const size = pWindow->windowSize();
 		auto const half = nViewport * 0.5f;
-		f32 const x = maths::clamp(screenXY.x, 0.0f + padding.x, (f32)size.x - padding.x);
-		f32 const y = maths::clamp(screenXY.y, 0.0f + padding.y, (f32)size.y - padding.y);
-		f32 const nX = maths::clamp(x / (f32)size.x, 0.0f + half.x, 1.0f - half.x);
-		f32 const nY = maths::clamp(y / (f32)size.y, 0.0f + half.y, 1.0f - half.y);
+		f32 const x = std::clamp(screenXY.x, 0.0f + padding.x, (f32)size.x - padding.x);
+		f32 const y = std::clamp(screenXY.y, 0.0f + padding.y, (f32)size.y - padding.y);
+		f32 const nX = std::clamp(x / (f32)size.x, 0.0f + half.x, 1.0f - half.x);
+		f32 const nY = std::clamp(y / (f32)size.y, 0.0f + half.y, 1.0f - half.y);
 		return ScreenRect::sizeCentre(nViewport, {nX, nY});
 	}
 	return ScreenRect::sizeCentre(nViewport);

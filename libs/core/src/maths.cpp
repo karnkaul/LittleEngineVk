@@ -1,4 +1,3 @@
-#include <cmath>
 #include "core/maths.hpp"
 
 namespace le
@@ -6,11 +5,6 @@ namespace le
 namespace
 {
 static std::random_device rd;
-}
-
-bool maths::isNearlyEqual(f32 lhs, f32 rhs, f32 epsilon)
-{
-	return std::abs(lhs - rhs) < epsilon;
 }
 
 maths::RandomGen::RandomGen(s32 minS32, s32 maxS32, f32 minF32, f32 maxF32) noexcept

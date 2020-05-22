@@ -44,33 +44,33 @@ using QFlags = TFlags<QFlag>;
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
 // clang-format off
-constexpr std::array g_colourSpaceMap = 
+[[maybe_unused]] constexpr std::array g_colourSpaceMap = 
 {
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm
 };
 
-constexpr std::array g_presentModeMap = 
+[[maybe_unused]] constexpr std::array g_presentModeMap = 
 {
 	vk::PresentModeKHR::eFifo,
 	vk::PresentModeKHR::eMailbox,
 	vk::PresentModeKHR::eImmediate,
 };
 
-constexpr std::array g_polygonModeMap = 
+[[maybe_unused]] constexpr std::array g_polygonModeMap = 
 {
 	vk::PolygonMode::eFill,
 	vk::PolygonMode::eLine
 };
 
-constexpr std::array g_cullModeMap = 
+[[maybe_unused]] constexpr std::array g_cullModeMap = 
 {
 	vk::CullModeFlagBits::eNone,
 	vk::CullModeFlagBits::eBack,
 	vk::CullModeFlagBits::eFront
 };
 
-constexpr std::array g_frontFaceMap = 
+[[maybe_unused]] constexpr std::array g_frontFaceMap = 
 {
 	vk::FrontFace::eCounterClockwise,
 	vk::FrontFace::eClockwise

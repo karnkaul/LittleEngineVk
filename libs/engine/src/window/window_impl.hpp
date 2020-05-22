@@ -45,7 +45,8 @@ public:
 		OnClosed onClosed;
 	};
 
-	InputCallbacks m_input;
+	static std::unordered_map<WindowID::type, InputCallbacks> s_input;
+
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
@@ -59,6 +60,8 @@ public:
 	static gfx::RendererImpl* rendererImpl(WindowID window);
 	static std::unordered_set<s32> active();
 	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
+	static void* nativeHandle(WindowID window);
+	static WindowID guiWindow();
 
 	WindowImpl(Window* pWindow);
 	~WindowImpl();
@@ -67,6 +70,7 @@ public:
 	bool isOpen() const;
 	bool exists() const;
 	bool isClosing() const;
+	bool isFocused() const;
 	void close();
 	void destroy();
 

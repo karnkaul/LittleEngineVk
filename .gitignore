@@ -8,3 +8,5 @@ data/shaders/*.spv
 CMakeSettings.json
 .editorconfig
 debug.log*
+imgui.ini
+

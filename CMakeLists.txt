@@ -15,6 +15,7 @@ endif()
 # Options
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
+option(LEVK_USE_IMGUI "Use ImGui (only with GLFW)" ON)
 
 # Includes
 include(.cmake/platform.cmake)
@@ -59,6 +60,9 @@ endif()
 add_subdirectory(external/vma)
 add_subdirectory(external/stb)
 add_subdirectory(external/tinyobjloader)
+if(LEVK_USE_IMGUI)
+	add_subdirectory(external/imgui)
+endif()
 
 # Libraries
 add_subdirectory(libs/core)

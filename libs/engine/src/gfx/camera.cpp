@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <glm/gtx/quaternion.hpp>
 #include "core/assert.hpp"
 #include "core/log.hpp"
@@ -132,7 +133,7 @@ void FreeCam::tick(Time dt)
 		}
 		if (m_state.dSpeed * m_state.dSpeed > 0.0f)
 		{
-			m_state.speed = maths::clamp(m_state.speed + (m_state.dSpeed * dt_s * 100), m_config.minSpeed, m_config.maxSpeed);
+			m_state.speed = std::clamp(m_state.speed + (m_state.dSpeed * dt_s * 100), m_config.minSpeed, m_config.maxSpeed);
 			m_state.dSpeed = maths::lerp(m_state.dSpeed, 0.0f, 0.75f);
 			if (m_state.dSpeed * m_state.dSpeed < 0.01f)
 			{

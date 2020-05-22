@@ -26,5 +26,5 @@ enum class PresentMode : u8
 	eCOUNT_
 };
 
-constexpr std::array colorSpaceNames = {"Unknown", "RGB Linear", "SRGB Non-linear"};
+[[maybe_unused]] constexpr std::array colorSpaceNames = {"Unknown", "RGB Linear", "SRGB Non-linear"};
 } // namespace le

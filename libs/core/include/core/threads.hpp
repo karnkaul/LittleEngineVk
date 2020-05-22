@@ -16,7 +16,7 @@ HThread newThread(std::function<void()> task);
 void join(HThread& id);
 void joinAll();
 
-HThread::Type thisThreadID();
+HThread thisThreadID();
 bool isMainThread();
 u32 maxHardwareThreads();
 u32 runningCount();

@@ -40,8 +40,8 @@ public:
 
 FileLogger::~FileLogger()
 {
-	ASSERT(m_hThread == HThread::Null, "FileLogger thread running past main!");
-	if (m_hThread != HThread::Null)
+	ASSERT(m_hThread == HThread::s_null, "FileLogger thread running past main!");
+	if (m_hThread != HThread::s_null)
 	{
 		stopLogging();
 	}
@@ -95,7 +95,7 @@ void FileLogger::stopLogging()
 
 void FileLogger::record(std::string line)
 {
-	if (m_hThread != HThread::Null)
+	if (m_hThread != HThread::s_null)
 	{
 		std::scoped_lock<std::mutex> lock(m_mutex);
 		m_cache += std::move(line);

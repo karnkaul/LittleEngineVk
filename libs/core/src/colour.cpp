@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <sstream>
 #include <fmt/format.h>
 #include "core/assert.hpp"
@@ -94,7 +95,7 @@ Colour operator-(Colour lhs, Colour rhs)
 
 Colour& operator*=(f32 n, Colour& c)
 {
-	n = maths::clamp(n, 0.0f, 1.0f);
+	n = std::clamp(n, 0.0f, 1.0f);
 	c.r = n * c.r;
 	c.g = n * c.g;
 	c.b = n * c.b;

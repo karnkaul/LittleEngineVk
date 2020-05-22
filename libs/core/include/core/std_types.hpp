@@ -10,6 +10,13 @@
 #include <type_traits>
 #include <vector>
 
+#if defined(near)
+#undef near
+#endif
+#if defined(far)
+#undef far
+#endif
+
 namespace le
 {
 using u8 = std::uint8_t;
@@ -57,7 +64,6 @@ struct TResult
 template <typename T, size_t N>
 constexpr size_t arraySize(T (&)[N])
 {
-	static_assert(std::is_array_v<T>, "T must be an array!");
 	return N;
 }
 

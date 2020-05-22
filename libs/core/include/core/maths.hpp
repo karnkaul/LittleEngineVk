@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <limits>
 #include <random>
 #include "std_types.hpp"
@@ -6,19 +7,14 @@
 
 namespace le::maths
 {
-using Time = le::Time;
-
-// Returns val E [min, max]
-template <typename T>
-T const& clamp(T const& val, T const& min, T const& max);
-
 template <typename T>
 T randomRange(T min, T max);
 
 template <typename T>
 T lerp(T const& min, T const& max, f32 alpha);
 
-bool isNearlyEqual(f32 lhs, f32 rhs, f32 epsilon = std::numeric_limits<f32>::epsilon());
+template <typename T>
+bool equals(T lhs, T rhs, T epsilon = std::numeric_limits<T>::epsilon());
 
 class RandomGen
 {
@@ -42,9 +38,9 @@ public:
 };
 
 template <typename T>
-T const& clamp(T const& val, T const& min, T const& max)
+bool equals(T lhs, T rhs, T epsilon)
 {
-	return (val < min) ? min : (val > max) ? max : val;
+	return std::abs(lhs - rhs) < epsilon;
 }
 
 template <typename T>

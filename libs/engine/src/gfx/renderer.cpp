@@ -6,6 +6,7 @@
 #include "core/transform.hpp"
 #include "core/utils.hpp"
 #include "engine/assets/resources.hpp"
+#include "engine/editor/editor.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "gui.hpp"
 #include "info.hpp"
@@ -30,10 +31,15 @@ ScreenRect ScreenRect::sizeCentre(glm::vec2 const& size, glm::vec2 const& centre
 	return ScreenRect({leftTop.x, leftTop.y, leftTop.x + size.x, leftTop.y + size.y});
 }
 
+glm::vec2 ScreenRect::size() const
+{
+	return glm::vec2(right - left, bottom - top);
+}
+
 f32 ScreenRect::aspect() const
 {
-	glm::vec2 const size = {right - left, bottom - top};
-	return size.x / size.y;
+	glm::vec2 const s = size();
+	return s.x / s.y;
 }
 
 Renderer::Renderer() = default;
@@ -102,6 +108,12 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
 			LOG_E("[{}] Failed to initialise GUI!", m_name);
 			m_bGUI = false;
 		}
+#if defined(LEVK_EDITOR)
+		else
+		{
+			editor::init();
+		}
+#endif
 	}
 }
 
@@ -109,7 +121,12 @@ RendererImpl::~RendererImpl()
 {
 	if (m_bGUI)
 	{
-		deferred::release([]() { gui::deinit(); });
+		deferred::release([]() {
+#if defined(LEVK_EDITOR)
+			editor::deinit();
+#endif
+			gui::deinit();
+		});
 	}
 	m_pipelines.clear();
 	destroy();
@@ -408,10 +425,9 @@ bool RendererImpl::render(Renderer::Scene scene)
 						commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 					}
 					auto layout = pPipeline->m_uImpl->m_layout;
-					vk::DeviceSize offsets[] = {0};
 					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
 					commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
-					commandBuffer.bindVertexBuffers(0, 1, &pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize const*)offsets);
+					commandBuffer.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pMesh->m_uImpl->ibo.count > 0)
 					{
 						commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);

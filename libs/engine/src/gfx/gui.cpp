@@ -1,6 +1,6 @@
 #include <stdexcept>
 #include "core/assert.hpp"
-#include "core/log.hpp"
+#include "core/colour.hpp"
 #include "gui.hpp"
 #include "info.hpp"
 #include "utils.hpp"
@@ -19,10 +19,10 @@ namespace le::gfx
 namespace
 {
 bool g_bInit = false;
+bool g_bNewFrame = false;
 
 #if defined(LEVK_USE_IMGUI)
 vk::DescriptorPool g_pool;
-bool g_bNewFrame = false;
 
 vk::DescriptorPool createPool()
 {
@@ -118,18 +118,18 @@ void gui::deinit()
 #if defined(LEVK_USE_IMGUI)
 		ImGui_ImplVulkan_Shutdown();
 		ImGui::DestroyContext();
-		g_bNewFrame = false;
 		vkDestroy(g_pool);
 		g_pool = vk::DescriptorPool();
 #endif
 		g_bInit = false;
+		g_bNewFrame = false;
 	}
 	return;
 }
 
 void gui::newFrame()
 {
-	if (isInit())
+	if (isInit() && !g_bNewFrame)
 	{
 #if defined(LEVK_USE_IMGUI)
 		ImGui_ImplVulkan_NewFrame();
@@ -137,36 +137,39 @@ void gui::newFrame()
 		ImGui_ImplGlfw_NewFrame();
 #else
 		LOG_E("NOT IMPLEMENTED");
+		return;
 #endif
-		if (!g_bNewFrame)
-		{
-			ImGui::NewFrame();
-			g_bNewFrame = true;
-		}
+		ImGui::NewFrame();
 #endif
+		g_bNewFrame = true;
 	}
 	return;
 }
 
 void gui::renderDrawData([[maybe_unused]] vk::CommandBuffer commandBuffer)
 {
-#if defined(LEVK_USE_IMGUI)
-	if (isInit(); auto pData = ImGui::GetDrawData())
+	if (isInit())
 	{
-		ImGui_ImplVulkan_RenderDrawData(pData, commandBuffer);
-	}
+#if defined(LEVK_USE_IMGUI)
+		if (auto pData = ImGui::GetDrawData())
+		{
+			ImGui_ImplVulkan_RenderDrawData(pData, commandBuffer);
+		}
 #endif
+	}
+	return;
 }
 
 void gui::render()
 {
-#if defined(LEVK_USE_IMGUI)
 	if (isInit() && g_bNewFrame)
 	{
+#if defined(LEVK_USE_IMGUI)
 		ImGui::Render();
+#endif
 		g_bNewFrame = false;
 	}
-#endif
+	return;
 }
 
 bool gui::isInit()

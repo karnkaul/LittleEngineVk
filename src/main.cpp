@@ -10,6 +10,7 @@
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/ecs/registry.hpp"
+#include "engine/editor/editor.hpp"
 #include "engine/gfx/camera.hpp"
 #include "engine/gfx/font.hpp"
 #include "engine/gfx/geometry.hpp"
@@ -27,6 +28,7 @@ using namespace le;
 namespace
 {
 std::unique_ptr<IOReader> g_uReader;
+bool g_bRunTests = false;
 
 bool runTests()
 {
@@ -42,7 +44,7 @@ bool runTests()
 int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
-	if (!runTests())
+	if (g_bRunTests && !runTests())
 	{
 		return 1;
 	}
@@ -149,11 +151,13 @@ int main(int argc, char** argv)
 	bool bDisableCam = false;
 	bool bTEMP = false;
 	bool bToggleModel0 = false;
+	bool bEditor = false;
+	bool bAltPressed = false;
 	gfx::Model::Info m0info;
 	gfx::Model::Info m1info;
 	Time reloadTime;
-	auto onInput = [&w0, &w1, eid0, &registry, &bWF0, &bTEMP, &bToggleModel0, &bRecreate0, &bRecreate1, &bClose0, &bClose1,
-					&bDisableCam](Key key, Action action, Mods mods) {
+	auto onInput = [&w0, &w1, eid0, &registry, &bWF0, &bTEMP, &bToggleModel0, &bEditor, &bRecreate0, &bRecreate1, &bClose0, &bClose1,
+					&bDisableCam, &bAltPressed](Key key, Action action, Mods mods) {
 		if (key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
 		{
 			bClose0 = w0.isFocused();
@@ -163,6 +167,17 @@ int main(int argc, char** argv)
 		{
 			bRecreate0 = !w0.isOpen();
 			bRecreate1 = !w1.isOpen();
+		}
+		if (key == Key::eLeftAlt || key == Key::eRightAlt)
+		{
+			if (action == Action::ePress)
+			{
+				bAltPressed = true;
+			}
+			else if (action == Action::eRelease)
+			{
+				bAltPressed = false;
+			}
 		}
 		if (key == Key::eLeftControl || key == Key::eRightControl)
 		{
@@ -186,6 +201,10 @@ int main(int argc, char** argv)
 		if (key == Key::eM && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
 			bToggleModel0 = true;
+		}
+		if (key == Key::eF3 && action == Action::eRelease)
+		{
+			bEditor = !bEditor;
 		}
 		if (key == Key::eD && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
@@ -217,6 +236,8 @@ int main(int argc, char** argv)
 	textInfo.data.pos.y -= 100.0f;
 	textInfo.id = "tris";
 	triText.setup(textInfo);
+
+	gfx::ScreenRect gameRect;
 
 	if (w1.create(info1) && w0.create(info0))
 	{
@@ -310,7 +331,21 @@ int main(int argc, char** argv)
 				// Tick
 				engine.update();
 				registry.sweep();
+				gameRect = {};
 
+#if defined(LEVK_EDITOR)
+				static auto const smol = glm::vec2(0.66f);
+				if (bEditor && w0.isOpen())
+				{
+					static glm::vec2 centre = glm::vec2(0.5f * (f32)w0.windowSize().x, 0.0f);
+					if (bAltPressed)
+					{
+						centre = w0.cursorPos();
+					}
+					gameRect = w0.renderer().clampToView(centre, smol);
+					editor::render(gameRect, w0.framebufferSize());
+				}
+#endif
 				if (bToggleModel0)
 				{
 					if (pModel0 && pModel1)
@@ -366,19 +401,25 @@ int main(int argc, char** argv)
 					pM->id = model1id;
 				}
 
-				// Update matrices
-				if (auto pT = registry.component<Transform>(eid1))
+#if defined(LEVK_EDITOR)
+				if (editor::g_bTickGame)
+#endif
 				{
-					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
-				}
-				if (auto pT = registry.component<Transform>(eid0))
-				{
-					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
-				}
-				transform1.setOrientation(glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
-				if (auto pT = registry.component<Transform>(eid2))
-				{
-					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
+					// Update matrices
+					if (auto pT = registry.component<Transform>(eid1))
+					{
+						pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+					}
+					if (auto pT = registry.component<Transform>(eid0))
+					{
+						pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
+					}
+					transform1.setOrientation(
+						glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
+					if (auto pT = registry.component<Transform>(eid2))
+					{
+						pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
+					}
 				}
 				view0.mat_v = freeCam0.view();
 				view0.pos_v = freeCam0.m_position;
@@ -407,8 +448,11 @@ int main(int argc, char** argv)
 			}
 
 			// GUI
-			GUI(ImGui::GetIO().WantTextInput = true);
-			GUI(ImGui::ShowDemoWindow());
+			static bool s_bImGuiDemo = false;
+			if (s_bImGuiDemo)
+			{
+				GUI(ImGui::ShowDemoWindow(&s_bImGuiDemo));
+			}
 
 			ft = Time::elapsed() - fStart;
 
@@ -420,16 +464,15 @@ int main(int argc, char** argv)
 				if (w0.isOpen())
 				{
 					gfx::Renderer::Scene scene;
-					auto const smol = glm::vec2(0.66f);
 					scene.dirLights = {dirLight0, dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view0;
 					scene.view.skybox.pCubemap = pCubemap;
 					auto pPipeline = bWF0 ? pPipeline0wf : nullptr;
 					gfx::Renderer::Batch batch;
+					batch.viewport = scene.view.skybox.viewport = gameRect;
 					if (bTEMP)
 					{
-						batch.viewport = scene.view.skybox.viewport = w0.renderer().clampToView(w0.cursorPos(), smol);
 						batch.drawables.push_back({{pTriangle0}, &transform1, pPipeline});
 					}
 					{

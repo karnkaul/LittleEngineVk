@@ -15,7 +15,12 @@ endif()
 # Options
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
-option(LEVK_USE_IMGUI "Use ImGui (only with GLFW)" ON)
+option(LEVK_USE_IMGUI "Use ImGui" ON)
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
+	option(LEVK_EDITOR "Enable Editor" ON)
+else()
+	option(LEVK_EDITOR "Enable Editor" OFF)
+endif()
 
 # Includes
 include(.cmake/platform.cmake)

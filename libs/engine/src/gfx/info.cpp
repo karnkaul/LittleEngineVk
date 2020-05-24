@@ -97,9 +97,16 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		{
 			g_info.physicalDevice = initInfo.options.pickDevice(availableDevices);
 		}
+		if (g_info.physicalDevice == vk::PhysicalDevice() && !availableDevices.empty())
+		{
+			g_info.physicalDevice = availableDevices.front().physicalDevice;
+		}
 		if (g_info.physicalDevice == vk::PhysicalDevice())
 		{
-			instance.destroy(surface);
+			if (surface != vk::SurfaceKHR())
+			{
+				instance.destroy(surface);
+			}
 			throw std::runtime_error("Failed to select a physical device!");
 		}
 		auto const properties = g_info.physicalDevice.getProperties();
@@ -186,7 +193,10 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		{
 			device.destroy();
 		}
-		instance.destroy(surface);
+		if (surface != vk::SurfaceKHR())
+		{
+			instance.destroy(surface);
+		}
 		if (g_debugMessenger != vk::DebugUtilsMessengerEXT())
 		{
 			instance.destroy(g_debugMessenger, nullptr, g_loader);

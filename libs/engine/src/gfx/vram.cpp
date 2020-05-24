@@ -124,6 +124,7 @@ void vram::init()
 		allocatorInfo.device = g_info.device;
 		allocatorInfo.physicalDevice = g_info.physicalDevice;
 		vmaCreateAllocator(&allocatorInfo, &g_allocator);
+		std::scoped_lock<std::mutex> lock(g_mutex);
 		std::memset(g_allocations.data(), 0, g_allocations.size() * sizeof(u32));
 	}
 	LOG_I("[{}] initialised", s_tName);
@@ -251,6 +252,7 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	g_allocations.at((size_t)ResourceType::eBuffer) += ret.writeSize;
 	if constexpr (g_VRAM_bLogAllocs)
 	{
@@ -409,6 +411,7 @@ Image vram::createImage(ImageInfo const& info)
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	ret.allocatedSize = requirements.size;
 	ret.mode = queues.mode;
+	std::scoped_lock<std::mutex> lock(g_mutex);
 	g_allocations.at((size_t)ResourceType::eImage) += ret.allocatedSize;
 	if constexpr (g_VRAM_bLogAllocs)
 	{
@@ -427,6 +430,7 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 	if (buffer.buffer != vk::Buffer())
 	{
 		vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
+		std::scoped_lock<std::mutex> lock(g_mutex);
 		g_allocations.at((size_t)ResourceType::eBuffer) -= buffer.writeSize;
 		if constexpr (g_VRAM_bLogAllocs)
 		{
@@ -529,6 +533,7 @@ void vram::release(Image image)
 	if (image.image != vk::Image())
 	{
 		vmaDestroyImage(g_allocator, image.image, image.handle);
+		std::scoped_lock<std::mutex> lock(g_mutex);
 		g_allocations.at((size_t)ResourceType::eImage) -= image.allocatedSize;
 		if constexpr (g_VRAM_bLogAllocs)
 		{

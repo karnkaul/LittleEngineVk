@@ -1,6 +1,6 @@
 #version 450 core
 
-const uint MAX_TEXTURES = 1024;
+#extension GL_EXT_nonuniform_qualifier : enable
 
 const uint eTEXTURED = 1 << 0;
 const uint eLIT = 1 << 1;
@@ -55,8 +55,8 @@ layout(std430, set = 0, binding = 6) buffer readonly Lights
 	DirLight dirLights[];
 };
 
-layout(set = 0, binding = 10) uniform sampler2D diffuse[MAX_TEXTURES];
-layout(set = 0, binding = 11) uniform sampler2D specular[MAX_TEXTURES];
+layout(set = 0, binding = 10) uniform sampler2D diffuse[];
+layout(set = 0, binding = 11) uniform sampler2D specular[];
 layout(set = 0, binding = 12) uniform samplerCube skybox;
 
 layout(push_constant) uniform Push

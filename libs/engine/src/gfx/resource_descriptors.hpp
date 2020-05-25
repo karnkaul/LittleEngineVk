@@ -124,10 +124,11 @@ struct Textures final
 {
 	constexpr static u32 max = 1024;
 
-	static vk::DescriptorSetLayoutBinding const s_diffuseLayoutBinding;
-	static vk::DescriptorSetLayoutBinding const s_specularLayoutBinding;
+	static vk::DescriptorSetLayoutBinding s_diffuseLayoutBinding;
+	static vk::DescriptorSetLayoutBinding s_specularLayoutBinding;
 	static vk::DescriptorSetLayoutBinding const s_cubemapLayoutBinding;
 
+	static void clampDiffSpecCount(u32 hardwareMax);
 	static u32 total();
 };
 

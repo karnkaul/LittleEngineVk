@@ -82,14 +82,20 @@ vk::DescriptorSetLayoutBinding const SSBOFlags::s_setLayoutBinding =
 vk::DescriptorSetLayoutBinding const SSBODirLights::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const Textures::s_diffuseLayoutBinding =
+vk::DescriptorSetLayoutBinding Textures::s_diffuseLayoutBinding =
 	vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::fragShader);
 
-vk::DescriptorSetLayoutBinding const Textures::s_specularLayoutBinding =
+vk::DescriptorSetLayoutBinding Textures::s_specularLayoutBinding =
 	vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_cubemapLayoutBinding =
 	vk::DescriptorSetLayoutBinding(12, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
+
+void Textures::clampDiffSpecCount(u32 hardwareMax)
+{
+	s_diffuseLayoutBinding.descriptorCount = std::min(hardwareMax, s_diffuseLayoutBinding.descriptorCount);
+	s_specularLayoutBinding.descriptorCount = std::min(hardwareMax, s_specularLayoutBinding.descriptorCount);
+}
 
 u32 Textures::total()
 {

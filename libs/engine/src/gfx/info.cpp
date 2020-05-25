@@ -92,6 +92,8 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 				AvailableDevice availableDevice;
 				availableDevice.properties = physicalDevice.getProperties();
 				availableDevice.queueFamilies = physicalDevice.getQueueFamilyProperties();
+				availableDevice.features = physicalDevice.getFeatures();
+				availableDevice.features2 = physicalDevice.getFeatures2();
 				availableDevice.physicalDevice = physicalDevice;
 				if (availableDevice.properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 				{
@@ -121,6 +123,7 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		g_info.deviceLimits = properties.limits;
 		g_info.lineWidthMin = properties.limits.lineWidthRange[0];
 		g_info.lineWidthMax = properties.limits.lineWidthRange[1];
+		rd::Textures::clampDiffSpecCount(g_info.deviceLimits.maxPerStageDescriptorSamplers);
 		auto const queueFamilyProperties = g_info.physicalDevice.getQueueFamilyProperties();
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 		std::unordered_map<u32, QueueFamily> queueFamilies;
@@ -205,10 +208,13 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		vk::PhysicalDeviceFeatures deviceFeatures;
 		deviceFeatures.fillModeNonSolid = true;
 		deviceFeatures.wideLines = g_info.lineWidthMax > 1.0f;
+		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures;
+		descriptorIndexingFeatures.runtimeDescriptorArray = true;
 		vk::DeviceCreateInfo deviceCreateInfo;
 		deviceCreateInfo.queueCreateInfoCount = (u32)queueCreateInfos.size();
 		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
 		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+		deviceCreateInfo.pNext = &descriptorIndexingFeatures;
 		if (!layers.empty())
 		{
 			deviceCreateInfo.enabledLayerCount = (u32)layers.size();

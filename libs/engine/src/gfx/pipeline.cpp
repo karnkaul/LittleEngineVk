@@ -3,10 +3,9 @@
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/pipeline.hpp"
 #include "engine/gfx/shader.hpp"
-#include "gfx/deferred.hpp"
-#include "gfx/info.hpp"
-#include "gfx/presenter.hpp"
-#include "gfx/utils.hpp"
+#include "deferred.hpp"
+#include "device.hpp"
+#include "presenter.hpp"
 #include "pipeline_impl.hpp"
 
 namespace le::gfx
@@ -70,7 +69,7 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 		layoutCreateInfo.pSetLayouts = m_info.setLayouts.data();
 		layoutCreateInfo.pushConstantRangeCount = (u32)m_info.pushConstantRanges.size();
 		layoutCreateInfo.pPushConstantRanges = m_info.pushConstantRanges.data();
-		out_layout = g_info.device.createPipelineLayout(layoutCreateInfo);
+		out_layout = g_device.device.createPipelineLayout(layoutCreateInfo);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
@@ -163,7 +162,7 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 	createInfo.layout = m_layout;
 	createInfo.renderPass = m_info.renderPass;
 	createInfo.subpass = 0;
-	out_pipeline = g_info.device.createGraphicsPipeline({}, createInfo);
+	out_pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
 	return true;
 }
 

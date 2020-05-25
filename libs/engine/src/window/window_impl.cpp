@@ -5,8 +5,8 @@
 #include "core/threads.hpp"
 #include "core/utils.hpp"
 #include "gfx/common.hpp"
+#include "gfx/device.hpp"
 #include "gfx/gui.hpp"
-#include "gfx/info.hpp"
 #include "gfx/renderer_impl.hpp"
 #if defined(LEVK_USE_GLFW)
 #if defined(LEVK_RUNTIME_MSVC)
@@ -376,7 +376,10 @@ std::unordered_set<s32> WindowImpl::active()
 	std::unordered_set<s32> ret;
 	for (auto pImpl : g_registeredWindows)
 	{
-		ret.insert(pImpl->m_pWindow->m_id);
+		if (pImpl->isOpen())
+		{
+			ret.insert(pImpl->m_pWindow->m_id);
+		}
 	}
 	return ret;
 }
@@ -442,7 +445,7 @@ bool WindowImpl::create(Window::Info const& info)
 {
 	try
 	{
-		gfx::g_info.device.waitIdle();
+		gfx::g_device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(info);
 		gfx::RendererImpl::Info rendererInfo;
 		rendererInfo.presenterInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {

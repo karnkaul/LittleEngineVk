@@ -8,11 +8,9 @@
 #include "core/log.hpp"
 #include "core/threads.hpp"
 #include "core/utils.hpp"
-#include "info.hpp"
-#include "utils.hpp"
+#include "device.hpp"
 #include "vram.hpp"
-#include "window/window_impl.hpp"
-#include "gfx/renderer_impl.hpp"
+#include "renderer_impl.hpp"
 
 namespace le::gfx
 {
@@ -83,8 +81,8 @@ Stage::Command newCommand(vk::DeviceSize bufferSize)
 	{
 		vk::CommandPoolCreateInfo poolInfo;
 		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		poolInfo.queueFamilyIndex = g_info.queues.transfer.familyIndex;
-		pool = g_info.device.createCommandPool(poolInfo);
+		poolInfo.queueFamilyIndex = g_device.queues.transfer.familyIndex;
+		pool = g_device.device.createCommandPool(poolInfo);
 		if constexpr (g_VRAM_bLogAllocs)
 		{
 			LOG(g_VRAM_logLevel, "[{}] Created command pool for thread [{}]", s_tName, threads::thisThreadID());
@@ -94,7 +92,7 @@ Stage::Command newCommand(vk::DeviceSize bufferSize)
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = pool;
-	ret.commandBuffer = g_info.device.allocateCommandBuffers(commandBufferInfo).front();
+	ret.commandBuffer = g_device.device.allocateCommandBuffers(commandBufferInfo).front();
 	ret.buffer = createStagingBuffer(std::max(bufferSize, ret.buffer.writeSize * 2));
 	return ret;
 }
@@ -120,9 +118,9 @@ void vram::init()
 	if (g_allocator == VmaAllocator())
 	{
 		VmaAllocatorCreateInfo allocatorInfo = {};
-		allocatorInfo.instance = g_info.instance;
-		allocatorInfo.device = g_info.device;
-		allocatorInfo.physicalDevice = g_info.physicalDevice;
+		allocatorInfo.instance = g_instance.instance;
+		allocatorInfo.device = g_device.device;
+		allocatorInfo.physicalDevice = g_instance.physicalDevice;
 		vmaCreateAllocator(&allocatorInfo, &g_allocator);
 		std::scoped_lock<std::mutex> lock(g_mutex);
 		std::memset(g_allocations.data(), 0, g_allocations.size() * sizeof(u32));
@@ -133,11 +131,11 @@ void vram::init()
 
 void vram::deinit()
 {
-	g_info.device.waitIdle();
+	g_device.device.waitIdle();
 	std::scoped_lock<std::mutex> lock(g_mutex);
 	for (auto& [_, pool] : g_pools)
 	{
-		vkDestroy(pool);
+		g_device.destroy(pool);
 	}
 	g_pools.clear();
 	for (auto& [_, stage] : g_active)
@@ -157,7 +155,7 @@ void vram::deinit()
 				release(command.buffer);
 			}
 		}
-		vkDestroy(submit.done);
+		g_device.destroy(submit.done);
 	}
 	g_submitted.clear();
 	bool bErr = false;
@@ -179,7 +177,7 @@ void vram::deinit()
 void vram::update()
 {
 	auto removeDone = [](Submit& submit) -> bool {
-		if (isSignalled(submit.done))
+		if (g_device.isSignalled(submit.done))
 		{
 			for (auto& stage : submit.stages)
 			{
@@ -189,7 +187,7 @@ void vram::update()
 					release(command.buffer);
 				}
 			}
-			vkDestroy(submit.done);
+			g_device.destroy(submit.done);
 			return true;
 		}
 		return false;
@@ -206,7 +204,7 @@ void vram::update()
 		std::vector<vk::CommandBuffer> buffers;
 		buffers.reserve(commandCount);
 		Submit submit;
-		submit.done = createFence(false);
+		submit.done = g_device.createFence(false);
 		for (auto& [_, stage] : g_active)
 		{
 			for (auto& command : stage.commands)
@@ -218,7 +216,7 @@ void vram::update()
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = (u32)commandCount;
 		submitInfo.pCommandBuffers = buffers.data();
-		g_info.queues.transfer.queue.submit(submitInfo, submit.done);
+		g_device.queues.transfer.queue.submit(submitInfo, submit.done);
 		g_submitted.push_back(std::move(submit));
 	}
 	g_active.clear();
@@ -234,7 +232,7 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	vk::BufferCreateInfo bufferInfo;
 	ret.writeSize = bufferInfo.size = info.size;
 	bufferInfo.usage = info.usage;
-	auto const queues = g_info.uniqueQueues(info.queueFlags);
+	auto const queues = g_device.uniqueQueues(info.queueFlags);
 	bufferInfo.sharingMode = queues.mode;
 	bufferInfo.queueFamilyIndexCount = (u32)queues.indices.size();
 	bufferInfo.pQueueFamilyIndices = queues.indices.data();
@@ -317,7 +315,7 @@ std::future<void> vram::copy(Buffer const& src, Buffer const& dst, vk::DeviceSiz
 		size = src.writeSize;
 	}
 #if defined(LEVK_DEBUG)
-	auto const uq = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
+	auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 	ASSERT((uq.indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
 	bool const bQueueFlags = src.queueFlags.isSet(QFlag::eTransfer) && dst.queueFlags.isSet(QFlag::eTransfer);
@@ -354,7 +352,7 @@ std::future<void> vram::stage(Buffer const& deviceBuffer, void const* pData, vk:
 		size = deviceBuffer.writeSize;
 	}
 #if defined(LEVK_DEBUG)
-	auto const uq = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
+	auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 	ASSERT((uq.indices.size() == 1 || deviceBuffer.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
 	bool const bQueueFlags = deviceBuffer.queueFlags.isSet(QFlag::eTransfer);
@@ -390,7 +388,7 @@ Image vram::createImage(ImageInfo const& info)
 	ret.name = info.name;
 #endif
 	vk::ImageCreateInfo imageInfo = info.createInfo;
-	auto const queues = g_info.uniqueQueues(info.queueFlags);
+	auto const queues = g_device.uniqueQueues(info.queueFlags);
 	imageInfo.sharingMode = queues.mode;
 	imageInfo.queueFamilyIndexCount = (u32)queues.indices.size();
 	imageInfo.pQueueFamilyIndices = queues.indices.data();
@@ -404,7 +402,7 @@ Image vram::createImage(ImageInfo const& info)
 	}
 	ret.extent = info.createInfo.extent;
 	ret.image = vkImage;
-	auto const requirements = g_info.device.getImageMemoryRequirements(ret.image);
+	auto const requirements = g_device.device.getImageMemoryRequirements(ret.image);
 	ret.queueFlags = info.queueFlags;
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
@@ -463,7 +461,7 @@ std::future<void> vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& ds
 	}
 	ASSERT(layerSize > 0 && imgSize > 0, "Invalid image data!");
 #if defined(LEVK_DEBUG)
-	auto const uq = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
+	auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 	ASSERT((uq.indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
 	auto command = newCommand(imgSize);

@@ -1,6 +1,6 @@
 #include "deferred.hpp"
 #include "renderer_impl.hpp"
-#include "utils.hpp"
+#include "device.hpp"
 #include "vram.hpp"
 #include "window/window_impl.hpp"
 
@@ -66,13 +66,13 @@ void deferred::release(Image image, vk::ImageView imageView)
 {
 	release([image = std::move(image), imageView] {
 		vram::release(std::move(image));
-		vkDestroy(imageView);
+		g_device.destroy(imageView);
 	});
 }
 
 void deferred::release(vk::Pipeline pipeline, vk::PipelineLayout layout)
 {
-	release([pipeline, layout]() { vkDestroy(pipeline, layout); });
+	release([pipeline, layout]() { g_device.destroy(pipeline, layout); });
 }
 
 void deferred::release(std::function<void()> func)
@@ -109,7 +109,7 @@ void deferred::update()
 
 void deferred::deinit()
 {
-	g_info.device.waitIdle();
+	g_device.waitIdle();
 	for (auto& deferred : g_deferred)
 	{
 		deferred.func();

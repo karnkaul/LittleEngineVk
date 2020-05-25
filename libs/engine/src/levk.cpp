@@ -5,7 +5,7 @@
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
 #include "gfx/deferred.hpp"
-#include "gfx/info.hpp"
+#include "gfx/device.hpp"
 #include "gfx/vram.hpp"
 #include "window/window_impl.hpp"
 

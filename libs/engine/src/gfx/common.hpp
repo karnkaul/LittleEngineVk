@@ -189,6 +189,14 @@ struct LayoutTransition final
 	vk::ImageLayout post;
 };
 
+struct ImageViewInfo final
+{
+	vk::Image image;
+	vk::Format format;
+	vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
+	vk::ImageViewType type = vk::ImageViewType::e2D;
+};
+
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
 
 struct ShaderImpl final

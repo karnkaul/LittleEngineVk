@@ -4,7 +4,7 @@
 #include "core/io.hpp"
 #include "core/utils.hpp"
 #include "engine/gfx/shader.hpp"
-#include "gfx/utils.hpp"
+#include "device.hpp"
 #if defined(LEVK_SHADER_COMPILER)
 #include "core/os.hpp"
 #endif
@@ -65,7 +65,7 @@ Shader::~Shader()
 {
 	for (auto const& shader : m_uImpl->shaders)
 	{
-		vkDestroy(shader);
+		g_device.destroy(shader);
 	}
 }
 
@@ -160,11 +160,11 @@ void Shader::loadAllSpirV(std::array<bytearray, (size_t)Type::eCOUNT_> const& by
 		auto const& code = byteMap.at(idx);
 		if (!code.empty())
 		{
-			vkDestroy(m_uImpl->shaders.at(idx));
+			g_device.destroy(m_uImpl->shaders.at(idx));
 			vk::ShaderModuleCreateInfo createInfo;
 			createInfo.codeSize = code.size();
 			createInfo.pCode = reinterpret_cast<u32 const*>(code.data());
-			m_uImpl->shaders.at(idx) = g_info.device.createShaderModule(createInfo);
+			m_uImpl->shaders.at(idx) = g_device.device.createShaderModule(createInfo);
 		}
 	}
 	return;

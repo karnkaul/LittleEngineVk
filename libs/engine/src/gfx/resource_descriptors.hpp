@@ -7,9 +7,9 @@
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/renderer.hpp"
-#include "gfx/common.hpp"
-#include "gfx/deferred.hpp"
-#include "gfx/vram.hpp"
+#include "common.hpp"
+#include "deferred.hpp"
+#include "vram.hpp"
 #if defined(LEVK_VKRESOURCE_NAMES)
 #include "core/utils.hpp"
 #endif
@@ -129,7 +129,7 @@ struct Textures final
 	static vk::DescriptorSetLayoutBinding const s_cubemapLayoutBinding;
 
 	static u32 total();
-	static void clampDiffSpecCount(u32 count);
+	static void clampDiffSpecCount(u32 hardwareMax);
 };
 
 struct PushConstants final
@@ -239,7 +239,8 @@ private:
 class Set final
 {
 public:
-	vk::DescriptorSet m_descriptorSet;
+	vk::DescriptorPool m_pool;
+	vk::DescriptorSet m_set;
 
 private:
 	GPUBuffer<UBOView> m_view;
@@ -270,17 +271,11 @@ public:
 	void resetTextures();
 };
 
-struct SetLayouts final
-{
-	vk::DescriptorPool descriptorPool;
-	std::vector<Set> set;
-};
-
 inline vk::DescriptorSetLayout g_setLayout;
 
 void init();
 void deinit();
 
-SetLayouts allocateSets(u32 copies);
+std::vector<Set> allocateSets(u32 copies);
 } // namespace rd
 } // namespace le::gfx

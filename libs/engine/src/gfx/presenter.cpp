@@ -2,8 +2,7 @@
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "presenter.hpp"
-#include "info.hpp"
-#include "utils.hpp"
+#include "device.hpp"
 #include "vram.hpp"
 
 namespace le::gfx
@@ -12,15 +11,15 @@ std::string const Presenter::s_tName = utils::tName<Presenter>();
 
 void Presenter::Info::refresh()
 {
-	if (surface == vk::SurfaceKHR() || !g_info.isValid(surface))
+	if (surface == vk::SurfaceKHR() || !g_device.isValid(surface))
 	{
-		surface = info.config.getNewSurface(g_info.instance);
+		surface = info.config.getNewSurface(g_instance.instance);
 	}
-	[[maybe_unused]] bool bValid = g_info.isValid(surface);
+	[[maybe_unused]] bool bValid = g_device.isValid(surface);
 	ASSERT(bValid, "Invalid surface!");
-	capabilities = g_info.physicalDevice.getSurfaceCapabilitiesKHR(surface);
-	colourFormats = g_info.physicalDevice.getSurfaceFormatsKHR(surface);
-	presentModes = g_info.physicalDevice.getSurfacePresentModesKHR(surface);
+	capabilities = g_instance.physicalDevice.getSurfaceCapabilitiesKHR(surface);
+	colourFormats = g_instance.physicalDevice.getSurfaceFormatsKHR(surface);
+	presentModes = g_instance.physicalDevice.getSurfacePresentModesKHR(surface);
 }
 
 bool Presenter::Info::isReady() const
@@ -63,7 +62,8 @@ vk::SurfaceFormatKHR Presenter::Info::bestColourFormat() const
 vk::Format Presenter::Info::bestDepthFormat() const
 {
 	static PriorityList<vk::Format> const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
-	auto [format, bResult] = supportedFormat(desired, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+	auto [format, bResult] =
+		g_instance.supportedFormat(desired, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 	return bResult ? format : vk::Format::eD16Unorm;
 }
 
@@ -114,7 +114,7 @@ Presenter::Presenter(PresenterInfo const& info) : m_window(info.config.window)
 	m_info.refresh();
 	if (!m_info.isReady())
 	{
-		vkDestroy<vk::Instance>(m_info.surface);
+		g_instance.destroy(m_info.surface);
 		throw std::runtime_error("Failed to create Presenter!");
 	}
 	m_info.colourFormat = m_info.bestColourFormat();
@@ -182,7 +182,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	{
 		return {};
 	}
-	auto const acquire = g_info.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
+	auto const acquire = g_device.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
 		LOG_D("[{}] Failed to acquire next image [{}]", m_name, m_window, g_vkResultStr[acquire.result]);
@@ -191,7 +191,7 @@ TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawR
 	}
 	m_swapchain.imageIndex = (u32)acquire.value;
 	auto& frame = m_swapchain.frame();
-	waitFor(frame.drawing);
+	g_device.waitFor(frame.drawing);
 	frame.drawing = drawing;
 	m_state = State::eRunning;
 	return DrawFrame{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
@@ -211,7 +211,7 @@ bool Presenter::present(vk::Semaphore wait)
 	presentInfo.swapchainCount = 1U;
 	presentInfo.pSwapchains = &m_swapchain.swapchain;
 	presentInfo.pImageIndices = &index;
-	auto const result = g_info.queues.present.queue.presentKHR(&presentInfo);
+	auto const result = g_device.queues.present.queue.presentKHR(&presentInfo);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 	{
 		LOG_D("[{}] Failed to present image [{}]", m_name, m_window, g_vkResultStr[result]);
@@ -267,7 +267,7 @@ void Presenter::createRenderPass()
 	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
 	createInfo.dependencyCount = 1;
 	createInfo.pDependencies = &dependency;
-	m_renderPass = g_info.device.createRenderPass(createInfo);
+	m_renderPass = g_device.device.createRenderPass(createInfo);
 	return;
 }
 
@@ -300,7 +300,7 @@ bool Presenter::createSwapchain()
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto const queues = g_info.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
+		auto const queues = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 		createInfo.imageSharingMode = queues.mode;
 		createInfo.pQueueFamilyIndices = queues.indices.data();
 		createInfo.queueFamilyIndexCount = (u32)queues.indices.size();
@@ -309,11 +309,11 @@ bool Presenter::createSwapchain()
 		createInfo.presentMode = m_info.presentMode;
 		createInfo.clipped = vk::Bool32(true);
 		createInfo.surface = m_info.surface;
-		m_swapchain.swapchain = g_info.device.createSwapchainKHR(createInfo);
+		m_swapchain.swapchain = g_device.device.createSwapchainKHR(createInfo);
 	}
 	// Frames
 	{
-		auto images = g_info.device.getSwapchainImagesKHR(m_swapchain.swapchain);
+		auto images = g_device.device.getSwapchainImagesKHR(m_swapchain.swapchain);
 		m_swapchain.frames.reserve(images.size());
 		ImageInfo depthImageInfo;
 		depthImageInfo.createInfo.format = m_info.depthFormat;
@@ -329,12 +329,19 @@ bool Presenter::createSwapchain()
 		depthImageInfo.queueFlags = QFlag::eGraphics;
 		depthImageInfo.name = m_name + "_depth";
 		m_swapchain.depthImage = vram::createImage(depthImageInfo);
-		m_swapchain.depthImageView = createImageView(m_swapchain.depthImage.image, m_info.depthFormat, vk::ImageAspectFlagBits::eDepth);
+		ImageViewInfo viewInfo;
+		viewInfo.image = m_swapchain.depthImage.image;
+		viewInfo.format = m_info.depthFormat;
+		viewInfo.aspectFlags = vk::ImageAspectFlagBits::eDepth;
+		m_swapchain.depthImageView = g_device.createImageView(viewInfo);
+		viewInfo.format = m_info.colourFormat.format;
+		viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
 		for (auto const& image : images)
 		{
 			Swapchain::Frame frame;
 			frame.image = image;
-			frame.colour = createImageView(image, m_info.colourFormat.format);
+			viewInfo.image = image;
+			frame.colour = g_device.createImageView(viewInfo);
 			frame.depth = m_swapchain.depthImageView;
 			m_swapchain.frames.push_back(std::move(frame));
 		}
@@ -345,7 +352,7 @@ bool Presenter::createSwapchain()
 	}
 	if (prevSurface != m_info.surface)
 	{
-		vkDestroy<vk::Instance>(prevSurface);
+		g_instance.destroy(prevSurface);
 	}
 	LOG_D("[{}] Swapchain created [{}x{}]", m_name, m_window, framebufferSize.x, framebufferSize.y);
 	return true;
@@ -353,12 +360,12 @@ bool Presenter::createSwapchain()
 
 void Presenter::destroySwapchain()
 {
-	g_info.device.waitIdle();
+	g_device.waitIdle();
 	for (auto const& frame : m_swapchain.frames)
 	{
-		vkDestroy(frame.colour);
+		g_device.destroy(frame.colour);
 	}
-	vkDestroy(m_swapchain.depthImageView, m_swapchain.swapchain);
+	g_device.destroy(m_swapchain.depthImageView, m_swapchain.swapchain);
 	vram::release(m_swapchain.depthImage);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name, m_window);
 	m_swapchain = {};
@@ -368,9 +375,9 @@ void Presenter::destroySwapchain()
 void Presenter::cleanup()
 {
 	destroySwapchain();
-	vkDestroy(m_renderPass);
+	g_device.destroy(m_renderPass);
 	m_renderPass = vk::RenderPass();
-	vkDestroy<vk::Instance>(m_info.surface);
+	g_instance.destroy(m_info.surface);
 	m_info.surface = vk::SurfaceKHR();
 	m_state = State::eDestroyed;
 }

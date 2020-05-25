@@ -8,9 +8,8 @@
 #include "engine/assets/resources.hpp"
 #include "engine/editor/editor.hpp"
 #include "engine/gfx/mesh.hpp"
+#include "device.hpp"
 #include "gui.hpp"
-#include "info.hpp"
-#include "utils.hpp"
 #include "pipeline_impl.hpp"
 #include "renderer_impl.hpp"
 #include "resource_descriptors.hpp"
@@ -167,26 +166,26 @@ void RendererImpl::create(u8 frameCount)
 	{
 		m_frameCount = frameCount;
 		// Descriptors
-		auto descriptorSetup = rd::allocateSets(frameCount);
-		ASSERT(descriptorSetup.set.size() == (size_t)frameCount, "Invalid setup!");
-		m_descriptorPool = descriptorSetup.descriptorPool;
+		auto sets = rd::allocateSets(frameCount);
+		ASSERT(sets.size() == (size_t)frameCount, "Invalid descriptor sets!");
+		m_frames.reserve((size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			RendererImpl::FrameSync frame;
-			frame.set = descriptorSetup.set.at((size_t)idx);
-			frame.renderReady = g_info.device.createSemaphore({});
-			frame.presentReady = g_info.device.createSemaphore({});
-			frame.drawing = createFence(true);
+			frame.set = sets.at((size_t)idx);
+			frame.renderReady = g_device.device.createSemaphore({});
+			frame.presentReady = g_device.device.createSemaphore({});
+			frame.drawing = g_device.createFence(true);
 			// Commands
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
-			commandPoolCreateInfo.queueFamilyIndex = g_info.queues.graphics.familyIndex;
+			commandPoolCreateInfo.queueFamilyIndex = g_device.queues.graphics.familyIndex;
 			commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient;
-			frame.commandPool = g_info.device.createCommandPool(commandPoolCreateInfo);
+			frame.commandPool = g_device.device.createCommandPool(commandPoolCreateInfo);
 			vk::CommandBufferAllocateInfo allocInfo;
 			allocInfo.commandPool = frame.commandPool;
 			allocInfo.level = vk::CommandBufferLevel::ePrimary;
 			allocInfo.commandBufferCount = 1;
-			frame.commandBuffer = g_info.device.allocateCommandBuffers(allocInfo).front();
+			frame.commandBuffer = g_device.device.allocateCommandBuffers(allocInfo).front();
 			m_frames.push_back(std::move(frame));
 		}
 		LOG_D("[{}] created", m_name);
@@ -198,14 +197,12 @@ void RendererImpl::destroy()
 {
 	if (!m_frames.empty())
 	{
-		g_info.device.waitIdle();
+		g_device.device.waitIdle();
 		for (auto& frame : m_frames)
 		{
 			frame.set.destroy();
-			vkDestroy(frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady, frame.presentReady);
+			g_device.destroy(frame.set.m_pool, frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady, frame.presentReady);
 		}
-		vkDestroy(m_descriptorPool);
-		m_descriptorPool = vk::DescriptorPool();
 		m_frames.clear();
 		m_index = 0;
 		m_drawnFrames = 0;
@@ -290,217 +287,20 @@ bool RendererImpl::render(Renderer::Scene scene)
 	{
 		gui::render();
 	}
-	auto const mg = colours::magenta;
 	auto& frame = frameSync();
-	waitFor(frame.drawing);
-	// Write sets
-	u32 objectID = 0;
-	rd::SSBOs ssbos;
-	TexSet diffuse;
-	TexSet specular;
-	std::deque<std::deque<rd::PushConstants>> push;
-	auto const pWhite = Resources::inst().get<Texture>("textures/white");
-	auto const pBlack = Resources::inst().get<Texture>("textures/black");
-	diffuse.add(pWhite);
-	specular.add(pBlack);
-	frame.set.writeCubemap(*Resources::inst().get<Cubemap>("cubemaps/blank"));
-	bool bSkybox = false;
-	if (scene.view.skybox.pCubemap)
-	{
-		if (!scene.view.skybox.pPipeline)
-		{
-			scene.view.skybox.pPipeline = m_pipes.pSkybox;
-		}
-		ASSERT(scene.view.skybox.pPipeline, "Pipeline is null!");
-		auto pTransform = &Transform::s_identity;
-		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
-		scene.batches.push_front({scene.view.skybox.viewport, {}, {{{pMesh}, pTransform, scene.view.skybox.pPipeline}}});
-		frame.set.writeCubemap(*scene.view.skybox.pCubemap);
-		bSkybox = true;
-	}
-	u64 tris = 0;
-	for (auto& batch : scene.batches)
-	{
-		push.push_back({});
-		for (auto& [meshes, pTransform, _] : batch.drawables)
-		{
-			ASSERT(!meshes.empty() && pTransform, "Mesh / Transform is null!");
-			auto mat_m = pTransform->model();
-			auto mat_n = pTransform->normalModel();
-			for (auto pMesh : meshes)
-			{
-				ASSERT(pMesh, "Mesh is null!");
-				tris += pMesh->m_triCount;
-				rd::PushConstants pc;
-				pc.objectID = objectID;
-				ssbos.models.ssbo.push_back(mat_m);
-				ssbos.normals.ssbo.push_back(mat_n);
-				ssbos.materials.ssbo.push_back({*pMesh->m_material.pMaterial, pMesh->m_material.dropColour});
-				ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
-				ssbos.flags.ssbo.push_back(0);
-				if (bSkybox)
-				{
-					bSkybox = false;
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eSKYBOX;
-				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
-				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
-				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
-				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eOPAQUE;
-				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
-				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eDROP_COLOUR;
-				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
-				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
-				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
-				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eTEXTURED;
-					if (!pMesh->m_material.pDiffuse)
-					{
-						ssbos.tints.ssbo.at(objectID) = mg.toVec4();
-						pc.diffuseID = 0;
-					}
-					else
-					{
-						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
-					}
-					if (pMesh->m_material.pSpecular)
-					{
-						pc.specularID = specular.add(pMesh->m_material.pSpecular);
-					}
-				}
-				push.back().push_back(pc);
-				++objectID;
-			}
-		}
-	}
-	u32 lastDiffuseID = diffuse.total();
-	u32 lastSpecularID = specular.total();
-	m_maxDiffuseID = std::max(m_maxDiffuseID, lastDiffuseID);
-	m_maxSpecularID = std::max(m_maxSpecularID, lastSpecularID);
-	for (u32 id = lastDiffuseID; id < m_maxDiffuseID; ++id)
-	{
-		diffuse.add(pWhite);
-	}
-	for (u32 id = lastSpecularID; id < m_maxSpecularID; ++id)
-	{
-		specular.add(pBlack);
-	}
-	rd::UBOView view(scene.view, (u32)scene.dirLights.size());
-	std::copy(scene.dirLights.begin(), scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
-	frame.set.writeDiffuse(diffuse.textures);
-	frame.set.writeSpecular(specular.textures);
-	frame.set.writeSSBOs(ssbos);
-	frame.set.writeView(view);
+	g_device.waitFor(frame.drawing);
+	auto push = writeSets(scene, frame);
 	// Acquire
 	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
-	if (!bResult)
+	if (bResult)
 	{
-		return false;
-	}
-	// Framebuffer
-	vkDestroy(frame.framebuffer);
-	vk::FramebufferCreateInfo createInfo;
-	createInfo.attachmentCount = (u32)acquire.attachments.size();
-	createInfo.pAttachments = acquire.attachments.data();
-	createInfo.renderPass = acquire.renderPass;
-	createInfo.width = acquire.swapchainExtent.width;
-	createInfo.height = acquire.swapchainExtent.height;
-	createInfo.layers = 1;
-	frame.framebuffer = g_info.device.createFramebuffer(createInfo);
-	// RenderPass
-	auto const c = scene.clear.colour;
-	std::array const clearColour = {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
-	vk::ClearColorValue const colour = clearColour;
-	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
-	std::array<vk::ClearValue, 2> const clearValues = {colour, depth};
-	vk::RenderPassBeginInfo renderPassInfo;
-	renderPassInfo.renderPass = acquire.renderPass;
-	renderPassInfo.framebuffer = frame.framebuffer;
-	renderPassInfo.renderArea.extent = acquire.swapchainExtent;
-	renderPassInfo.clearValueCount = (u32)clearValues.size();
-	renderPassInfo.pClearValues = clearValues.data();
-	// Begin
-	auto const& commandBuffer = frame.commandBuffer;
-	vk::CommandBufferBeginInfo beginInfo;
-	commandBuffer.begin(beginInfo);
-	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	// Draw
-	std::unordered_set<PipelineImpl*> pipelines;
-	size_t batchIdx = 0;
-	size_t drawableIdx = 0;
-	for (auto& batch : scene.batches)
-	{
-		commandBuffer.setViewport(0, transformViewport(batch.viewport));
-		commandBuffer.setScissor(0, transformScissor(batch.scissor));
-		vk::Pipeline pipeline;
-		for (auto& [meshes, pTransform, pPipeline] : batch.drawables)
+		u64 const tris = doRenderPass(scene, acquire, frame, push);
+		if (submit(frame))
 		{
-			for (auto pMesh : meshes)
-			{
-				if (pMesh->isReady() && pMesh->m_triCount > 0)
-				{
-					if (!pPipeline)
-					{
-						pPipeline = m_pipes.pDefault;
-					}
-					ASSERT(pPipeline, "Pipeline is null!");
-					if (pipeline != pPipeline->m_uImpl->m_pipeline)
-					{
-						pipeline = pPipeline->m_uImpl->m_pipeline;
-						commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-					}
-					auto layout = pPipeline->m_uImpl->m_layout;
-					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_descriptorSet, {});
-					commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
-					commandBuffer.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
-					if (pMesh->m_uImpl->ibo.count > 0)
-					{
-						commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
-						commandBuffer.drawIndexed(pMesh->m_uImpl->ibo.count, 1, 0, 0, 0);
-					}
-					else
-					{
-						commandBuffer.draw(pMesh->m_uImpl->vbo.count, 1, 0, 0);
-					}
-					pipelines.insert(pPipeline->m_uImpl.get());
-				}
-				++drawableIdx;
-			}
+			next();
+			m_pRenderer->m_stats.trisDrawn = tris;
+			return true;
 		}
-		drawableIdx = 0;
-		++batchIdx;
-	}
-	if (m_bGUI)
-	{
-		gui::renderDrawData(commandBuffer);
-	}
-	commandBuffer.endRenderPass();
-	commandBuffer.end();
-	// Submit
-	vk::SubmitInfo submitInfo;
-	vk::PipelineStageFlags const waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &frame.renderReady;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &frame.presentReady;
-	g_info.device.resetFences(frame.drawing);
-	g_info.queues.graphics.queue.submit(submitInfo, frame.drawing);
-	if (m_presenter.present(frame.presentReady))
-	{
-		next();
-		m_pRenderer->m_stats.trisDrawn = tris;
-		return true;
 	}
 	return false;
 }
@@ -584,5 +384,213 @@ void RendererImpl::next()
 	m_index = (m_index + 1) % m_frames.size();
 	++m_drawnFrames;
 	return;
+}
+
+RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSync& out_frame) const
+{
+	auto const mg = colours::magenta.toVec4();
+	u32 objectID = 0;
+	rd::SSBOs ssbos;
+	TexSet diffuse;
+	TexSet specular;
+	std::deque<std::deque<rd::PushConstants>> push;
+	auto const pWhite = Resources::inst().get<Texture>("textures/white");
+	auto const pBlack = Resources::inst().get<Texture>("textures/black");
+	diffuse.add(pWhite);
+	specular.add(pBlack);
+	out_frame.set.writeCubemap(*Resources::inst().get<Cubemap>("cubemaps/blank"));
+	bool bSkybox = false;
+	if (out_scene.view.skybox.pCubemap)
+	{
+		if (!out_scene.view.skybox.pPipeline)
+		{
+			out_scene.view.skybox.pPipeline = m_pipes.pSkybox;
+		}
+		ASSERT(out_scene.view.skybox.pPipeline, "Pipeline is null!");
+		auto pTransform = &Transform::s_identity;
+		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
+		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{pMesh}, pTransform, out_scene.view.skybox.pPipeline}}});
+		out_frame.set.writeCubemap(*out_scene.view.skybox.pCubemap);
+		bSkybox = true;
+	}
+	for (auto& batch : out_scene.batches)
+	{
+		push.push_back({});
+		for (auto& [meshes, pTransform, _] : batch.drawables)
+		{
+			ASSERT(!meshes.empty() && pTransform, "Mesh / Transform is null!");
+			for (auto pMesh : meshes)
+			{
+				ASSERT(pMesh, "Mesh is null!");
+				rd::PushConstants pc;
+				pc.objectID = objectID;
+				ssbos.models.ssbo.push_back(pTransform->model());
+				ssbos.normals.ssbo.push_back(pTransform->normalModel());
+				ssbos.materials.ssbo.push_back({*pMesh->m_material.pMaterial, pMesh->m_material.dropColour});
+				ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
+				ssbos.flags.ssbo.push_back(0);
+				if (bSkybox)
+				{
+					bSkybox = false;
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eSKYBOX;
+				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
+				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eOPAQUE;
+				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eDROP_COLOUR;
+				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
+				}
+				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
+				{
+					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eTEXTURED;
+					if (!pMesh->m_material.pDiffuse)
+					{
+						ssbos.tints.ssbo.at(objectID) = mg;
+						pc.diffuseID = 0;
+					}
+					else
+					{
+						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
+					}
+					if (pMesh->m_material.pSpecular)
+					{
+						pc.specularID = specular.add(pMesh->m_material.pSpecular);
+					}
+				}
+				push.back().push_back(pc);
+				++objectID;
+			}
+		}
+	}
+	u32 lastDiffuseID = diffuse.total();
+	u32 lastSpecularID = specular.total();
+	m_maxDiffuseID = std::max(m_maxDiffuseID, lastDiffuseID);
+	m_maxSpecularID = std::max(m_maxSpecularID, lastSpecularID);
+	for (u32 id = lastDiffuseID; id < m_maxDiffuseID; ++id)
+	{
+		diffuse.textures.push_back(pWhite);
+	}
+	for (u32 id = lastSpecularID; id < m_maxSpecularID; ++id)
+	{
+		specular.textures.push_back(pBlack);
+	}
+	rd::UBOView view(out_scene.view, (u32)out_scene.dirLights.size());
+	std::copy(out_scene.dirLights.begin(), out_scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
+	out_frame.set.writeDiffuse(diffuse.textures);
+	out_frame.set.writeSpecular(specular.textures);
+	out_frame.set.writeSSBOs(ssbos);
+	out_frame.set.writeView(view);
+	return push;
+}
+
+u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, FrameSync& frame, PCDeq const& push) const
+{
+	// Framebuffer
+	g_device.destroy(frame.framebuffer);
+	vk::FramebufferCreateInfo createInfo;
+	createInfo.attachmentCount = (u32)acquire.attachments.size();
+	createInfo.pAttachments = acquire.attachments.data();
+	createInfo.renderPass = acquire.renderPass;
+	createInfo.width = acquire.swapchainExtent.width;
+	createInfo.height = acquire.swapchainExtent.height;
+	createInfo.layers = 1;
+	frame.framebuffer = g_device.device.createFramebuffer(createInfo);
+	// RenderPass
+	auto const c = scene.clear.colour;
+	std::array const clearColour = {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
+	vk::ClearColorValue const colour = clearColour;
+	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
+	std::array<vk::ClearValue, 2> const clearValues = {colour, depth};
+	vk::RenderPassBeginInfo renderPassInfo;
+	renderPassInfo.renderPass = acquire.renderPass;
+	renderPassInfo.framebuffer = frame.framebuffer;
+	renderPassInfo.renderArea.extent = acquire.swapchainExtent;
+	renderPassInfo.clearValueCount = (u32)clearValues.size();
+	renderPassInfo.pClearValues = clearValues.data();
+	// Begin
+	auto const& commandBuffer = frame.commandBuffer;
+	vk::CommandBufferBeginInfo beginInfo;
+	commandBuffer.begin(beginInfo);
+	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+	// Draw
+	std::unordered_set<PipelineImpl*> pipelines;
+	size_t batchIdx = 0;
+	size_t drawableIdx = 0;
+	u64 tris = 0;
+	for (auto& batch : scene.batches)
+	{
+		commandBuffer.setViewport(0, transformViewport(batch.viewport));
+		commandBuffer.setScissor(0, transformScissor(batch.scissor));
+		vk::Pipeline pipeline;
+		for (auto& [meshes, pTransform, pPipe] : batch.drawables)
+		{
+			for (auto pMesh : meshes)
+			{
+				if (pMesh->isReady() && pMesh->m_triCount > 0)
+				{
+					tris += pMesh->m_triCount;
+
+					auto pPipeline = pPipe ? pPipe : m_pipes.pDefault;
+					ASSERT(pPipeline, "Pipeline is null!");
+					if (pipeline != pPipeline->m_uImpl->m_pipeline)
+					{
+						pipeline = pPipeline->m_uImpl->m_pipeline;
+						commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+					}
+					auto layout = pPipeline->m_uImpl->m_layout;
+					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_set, {});
+					commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
+					commandBuffer.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
+					if (pMesh->m_uImpl->ibo.count > 0)
+					{
+						commandBuffer.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
+						commandBuffer.drawIndexed(pMesh->m_uImpl->ibo.count, 1, 0, 0, 0);
+					}
+					else
+					{
+						commandBuffer.draw(pMesh->m_uImpl->vbo.count, 1, 0, 0);
+					}
+					pipelines.insert(pPipeline->m_uImpl.get());
+				}
+				++drawableIdx;
+			}
+		}
+		drawableIdx = 0;
+		++batchIdx;
+	}
+	if (m_bGUI)
+	{
+		gui::renderDrawData(commandBuffer);
+	}
+	commandBuffer.endRenderPass();
+	commandBuffer.end();
+	return tris;
+}
+
+bool RendererImpl::submit(FrameSync const& frame)
+{
+	// Submit
+	vk::SubmitInfo submitInfo;
+	vk::PipelineStageFlags const waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &frame.renderReady;
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &frame.commandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &frame.presentReady;
+	g_device.device.resetFences(frame.drawing);
+	g_device.queues.graphics.queue.submit(submitInfo, frame.drawing);
+	return m_presenter.present(frame.presentReady);
 }
 } // namespace le::gfx

@@ -2,8 +2,7 @@
 #include "core/assert.hpp"
 #include "core/colour.hpp"
 #include "gui.hpp"
-#include "info.hpp"
-#include "utils.hpp"
+#include "device.hpp"
 #include "renderer_impl.hpp"
 #include "window/window_impl.hpp"
 #if defined(LEVK_USE_IMGUI)
@@ -43,7 +42,7 @@ vk::DescriptorPool createPool()
 	pool_info.maxSets = (u32)(1000 * arraySize(pool_sizes));
 	pool_info.poolSizeCount = (u32)arraySize(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
-	g_pool = g_info.device.createDescriptorPool(pool_info);
+	g_pool = g_device.device.createDescriptorPool(pool_info);
 	return g_pool;
 }
 #endif
@@ -70,11 +69,11 @@ bool gui::init(Info const& info)
 		if (bRet)
 		{
 			ImGui_ImplVulkan_InitInfo initInfo = {};
-			initInfo.Instance = g_info.instance;
-			initInfo.Device = g_info.device;
-			initInfo.PhysicalDevice = g_info.physicalDevice;
-			initInfo.Queue = g_info.queues.graphics.queue;
-			initInfo.QueueFamily = g_info.queues.graphics.familyIndex;
+			initInfo.Instance = g_instance.instance;
+			initInfo.Device = g_device.device;
+			initInfo.PhysicalDevice = g_instance.physicalDevice;
+			initInfo.Queue = g_device.queues.graphics.queue;
+			initInfo.QueueFamily = g_device.queues.graphics.familyIndex;
 			initInfo.MinImageCount = (u32)info.minImageCount;
 			initInfo.ImageCount = (u32)info.imageCount;
 			initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -84,12 +83,12 @@ bool gui::init(Info const& info)
 			{
 				vk::CommandPoolCreateInfo poolInfo;
 				poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-				poolInfo.queueFamilyIndex = g_info.queues.graphics.familyIndex;
-				auto pool = g_info.device.createCommandPool(poolInfo);
+				poolInfo.queueFamilyIndex = g_device.queues.graphics.familyIndex;
+				auto pool = g_device.device.createCommandPool(poolInfo);
 				vk::CommandBufferAllocateInfo commandBufferInfo;
 				commandBufferInfo.commandBufferCount = 1;
 				commandBufferInfo.commandPool = pool;
-				auto commandBuffer = g_info.device.allocateCommandBuffers(commandBufferInfo).front();
+				auto commandBuffer = g_device.device.allocateCommandBuffers(commandBufferInfo).front();
 				vk::CommandBufferBeginInfo beginInfo;
 				beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 				commandBuffer.begin(beginInfo);
@@ -98,11 +97,11 @@ bool gui::init(Info const& info)
 				vk::SubmitInfo endInfo;
 				endInfo.commandBufferCount = 1;
 				endInfo.pCommandBuffers = &commandBuffer;
-				auto done = createFence(false);
-				g_info.queues.graphics.queue.submit(endInfo, done);
-				waitFor(done);
+				auto done = g_device.createFence(false);
+				g_device.queues.graphics.queue.submit(endInfo, done);
+				g_device.waitFor(done);
 				ImGui_ImplVulkan_DestroyFontUploadObjects();
-				vkDestroy(pool, done);
+				g_device.destroy(pool, done);
 			}
 		}
 #endif
@@ -118,7 +117,7 @@ void gui::deinit()
 #if defined(LEVK_USE_IMGUI)
 		ImGui_ImplVulkan_Shutdown();
 		ImGui::DestroyContext();
-		vkDestroy(g_pool);
+		g_device.destroy(g_pool);
 		g_pool = vk::DescriptorPool();
 #endif
 		g_bInit = false;

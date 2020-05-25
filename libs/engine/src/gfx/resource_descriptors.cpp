@@ -1,6 +1,6 @@
 #include "core/log.hpp"
-#include "gfx/utils.hpp"
-#include "gfx/vram.hpp"
+#include "device.hpp"
+#include "vram.hpp"
 #include "resource_descriptors.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/texture.hpp"
@@ -19,7 +19,7 @@ void writeSet(WriteInfo const& info)
 	descWrite.descriptorCount = info.count;
 	descWrite.pImageInfo = info.pImage;
 	descWrite.pBufferInfo = info.pBuffer;
-	g_info.device.updateDescriptorSets(descWrite, {});
+	g_device.device.updateDescriptorSets(descWrite, {});
 	return;
 }
 
@@ -32,7 +32,7 @@ void createLayouts()
 	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
 	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
 	setLayoutCreateInfo.pBindings = bindings.data();
-	rd::g_setLayout = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
+	rd::g_setLayout = g_device.device.createDescriptorSetLayout(setLayoutCreateInfo);
 	return;
 }
 } // namespace
@@ -96,10 +96,11 @@ u32 Textures::total()
 	return s_diffuseLayoutBinding.descriptorCount + s_specularLayoutBinding.descriptorCount + s_cubemapLayoutBinding.descriptorCount;
 }
 
-void Textures::clampDiffSpecCount(u32 count)
+void Textures::clampDiffSpecCount(u32 hardwareMax)
 {
-	s_diffuseLayoutBinding.descriptorCount = std::min(s_diffuseLayoutBinding.descriptorCount, (count - 1) / 2);
-	s_specularLayoutBinding.descriptorCount = std::min(s_specularLayoutBinding.descriptorCount, (count - 1) / 2);
+	u32 const diffSpecMax = (hardwareMax - 1) / 2; // (total - cubemap) / (diffuse + specular)
+	s_diffuseLayoutBinding.descriptorCount = std::min(s_diffuseLayoutBinding.descriptorCount, diffSpecMax);
+	s_specularLayoutBinding.descriptorCount = std::min(s_specularLayoutBinding.descriptorCount, diffSpecMax);
 }
 
 void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer) const
@@ -165,7 +166,7 @@ void Set::destroy()
 
 void Set::writeView(UBOView const& view)
 {
-	m_view.writeValue(view, m_descriptorSet);
+	m_view.writeValue(view, m_set);
 	return;
 }
 
@@ -186,14 +187,14 @@ void Set::writeSSBOs(SSBOs const& ssbos)
 	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty()
 			   && !ssbos.flags.ssbo.empty(),
 		   "Empty SSBOs!");
-	m_models.writeArray(ssbos.models.ssbo, m_descriptorSet);
-	m_normals.writeArray(ssbos.normals.ssbo, m_descriptorSet);
-	m_materials.writeArray(ssbos.materials.ssbo, m_descriptorSet);
-	m_tints.writeArray(ssbos.tints.ssbo, m_descriptorSet);
-	m_flags.writeArray(ssbos.flags.ssbo, m_descriptorSet);
+	m_models.writeArray(ssbos.models.ssbo, m_set);
+	m_normals.writeArray(ssbos.normals.ssbo, m_set);
+	m_materials.writeArray(ssbos.materials.ssbo, m_set);
+	m_tints.writeArray(ssbos.tints.ssbo, m_set);
+	m_flags.writeArray(ssbos.flags.ssbo, m_set);
 	if (!ssbos.dirLights.ssbo.empty())
 	{
-		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_descriptorSet);
+		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_set);
 	}
 	return;
 }
@@ -206,7 +207,7 @@ void Set::writeDiffuse(std::deque<Texture const*> const& diffuse)
 	{
 		diffuseImpl.push_back(pTex->m_uImpl.get());
 	}
-	m_diffuse.write(m_descriptorSet, diffuseImpl);
+	m_diffuse.write(m_set, diffuseImpl);
 	return;
 }
 
@@ -218,13 +219,13 @@ void Set::writeSpecular(std::deque<Texture const*> const& specular)
 	{
 		specularImpl.push_back(pTex->m_uImpl.get());
 	}
-	m_specular.write(m_descriptorSet, specularImpl);
+	m_specular.write(m_set, specularImpl);
 	return;
 }
 
 void Set::writeCubemap(Cubemap const& cubemap)
 {
-	m_cubemap.write(m_descriptorSet, {cubemap.m_uImpl.get()});
+	m_cubemap.write(m_set, {cubemap.m_uImpl.get()});
 	return;
 }
 
@@ -242,42 +243,41 @@ void Set::resetTextures()
 	return;
 }
 
-SetLayouts allocateSets(u32 copies)
+std::vector<Set> allocateSets(u32 copies)
 {
-	SetLayouts ret;
-	// Pool of total descriptors
-	vk::DescriptorPoolSize uboPoolSize;
-	uboPoolSize.type = vk::DescriptorType::eUniformBuffer;
-	uboPoolSize.descriptorCount = copies * UBOView::s_setLayoutBinding.descriptorCount;
-	vk::DescriptorPoolSize ssboPoolSize;
-	ssboPoolSize.type = vk::DescriptorType::eStorageBuffer;
-	ssboPoolSize.descriptorCount = copies * 6; // 6 members per SSBO
-	vk::DescriptorPoolSize samplerPoolSize;
-	samplerPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
-	samplerPoolSize.descriptorCount = copies * Textures::total();
-	std::array const poolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
-	vk::DescriptorPoolCreateInfo createInfo;
-	createInfo.poolSizeCount = (u32)poolSizes.size();
-	createInfo.pPoolSizes = poolSizes.data();
-	createInfo.maxSets = copies; // 2 sets per copy
-	ret.descriptorPool = g_info.device.createDescriptorPool(createInfo);
-	// Allocate sets
-	vk::DescriptorSetAllocateInfo allocInfo;
-	allocInfo.descriptorPool = ret.descriptorPool;
-	allocInfo.descriptorSetCount = copies;
-	std::vector<vk::DescriptorSetLayout> const setLayouts((size_t)copies, g_setLayout);
-	allocInfo.pSetLayouts = setLayouts.data();
-	auto const sets = g_info.device.allocateDescriptorSets(allocInfo);
-	// Write handles
-	ret.set.reserve((size_t)copies);
+	std::vector<Set> ret;
+	ret.reserve((size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
 		Set set;
-		set.m_descriptorSet = sets.at(idx);
+		// Pool of descriptors
+		vk::DescriptorPoolSize uboPoolSize;
+		uboPoolSize.type = vk::DescriptorType::eUniformBuffer;
+		uboPoolSize.descriptorCount = UBOView::s_setLayoutBinding.descriptorCount;
+		vk::DescriptorPoolSize ssboPoolSize;
+		ssboPoolSize.type = vk::DescriptorType::eStorageBuffer;
+		ssboPoolSize.descriptorCount = 6; // 6 members per SSBO
+		vk::DescriptorPoolSize samplerPoolSize;
+		samplerPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
+		samplerPoolSize.descriptorCount = Textures::total();
+		std::array const poolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
+		vk::DescriptorPoolCreateInfo createInfo;
+		createInfo.poolSizeCount = (u32)poolSizes.size();
+		createInfo.pPoolSizes = poolSizes.data();
+		createInfo.maxSets = 1;
+		set.m_pool = g_device.device.createDescriptorPool(createInfo);
+		// Allocate sets
+		vk::DescriptorSetAllocateInfo allocInfo;
+		allocInfo.descriptorPool = set.m_pool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &g_setLayout;
+		auto const sets = g_device.device.allocateDescriptorSets(allocInfo);
+		// Write handles
+		set.m_set = sets.front();
 		set.writeView({});
 		set.initSSBOs();
 		set.resetTextures();
-		ret.set.push_back(std::move(set));
+		ret.push_back(std::move(set));
 	}
 	return ret;
 }
@@ -295,7 +295,7 @@ void deinit()
 {
 	if (g_setLayout != vk::DescriptorSetLayout())
 	{
-		vkDestroy(g_setLayout);
+		g_device.destroy(g_setLayout);
 		g_setLayout = vk::DescriptorSetLayout();
 	}
 	return;

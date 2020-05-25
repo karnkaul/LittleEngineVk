@@ -45,12 +45,13 @@ private:
 		vk::CommandPool commandPool;
 	};
 
+	using PCDeq = std::deque<std::deque<rd::PushConstants>>;
+
 public:
 	std::string m_name;
 
 private:
 	Presenter m_presenter;
-	vk::DescriptorPool m_descriptorPool;
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
 	Renderer* m_pRenderer;
@@ -61,8 +62,8 @@ private:
 	} m_pipes;
 
 	u64 m_drawnFrames = 0;
-	u32 m_maxDiffuseID = 0;
-	u32 m_maxSpecularID = 0;
+	mutable u32 m_maxDiffuseID = 0;
+	mutable u32 m_maxSpecularID = 0;
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;
@@ -95,6 +96,10 @@ private:
 	void onFramebufferResize();
 	FrameSync& frameSync();
 	void next();
+
+	PCDeq writeSets(Renderer::Scene& out_scene, FrameSync& out_frame) const;
+	u64 doRenderPass(Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, FrameSync& out_frame, PCDeq const& push) const;
+	bool submit(FrameSync const& frame);
 
 	friend class le::WindowImpl;
 };

@@ -71,7 +71,6 @@ void Resources::init(IOReader const& data)
 		{
 			gfx::Shader::Info info;
 			std::array shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
-			ASSERT(data.checkPresences(shaderIDs), "Shaders missing!");
 			info.pReader = &data;
 			info.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
 			info.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);

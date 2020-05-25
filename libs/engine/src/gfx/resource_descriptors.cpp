@@ -83,26 +83,26 @@ vk::DescriptorSetLayoutBinding const SSBODirLights::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding Textures::s_diffuseLayoutBinding =
-	vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::fragShader);
+	vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding Textures::s_specularLayoutBinding =
-	vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::fragShader);
+	vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_cubemapLayoutBinding =
 	vk::DescriptorSetLayoutBinding(12, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
-
-void Textures::clampDiffSpecCount(u32 hardwareMax)
-{
-	s_diffuseLayoutBinding.descriptorCount = std::min(hardwareMax, s_diffuseLayoutBinding.descriptorCount);
-	s_specularLayoutBinding.descriptorCount = std::min(hardwareMax, s_specularLayoutBinding.descriptorCount);
-}
 
 u32 Textures::total()
 {
 	return s_diffuseLayoutBinding.descriptorCount + s_specularLayoutBinding.descriptorCount + s_cubemapLayoutBinding.descriptorCount;
 }
 
-void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const
+void Textures::clampDiffSpecCount(u32 count)
+{
+	s_diffuseLayoutBinding.descriptorCount = std::min(s_diffuseLayoutBinding.descriptorCount, (count - 1) / 2);
+	s_specularLayoutBinding.descriptorCount = std::min(s_specularLayoutBinding.descriptorCount, (count - 1) / 2);
+}
+
+void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer) const
 {
 	vk::DescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = buffer.buffer;
@@ -111,24 +111,31 @@ void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) c
 	WriteInfo writeInfo;
 	writeInfo.set = set;
 	writeInfo.binding = binding;
-	writeInfo.arrayElement = idx;
+	writeInfo.arrayElement = 0;
 	writeInfo.pBuffer = &bufferInfo;
 	writeInfo.type = type;
 	writeSet(writeInfo);
 	return;
 }
 
-void ShaderWriter::write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx) const
+void ShaderWriter::write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const
 {
-	vk::DescriptorImageInfo imageInfo;
-	imageInfo.imageView = tex.imageView;
-	imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	imageInfo.sampler = tex.sampler;
+	std::vector<vk::DescriptorImageInfo> imageInfos;
+	imageInfos.reserve(textures.size());
+	for (auto pTex : textures)
+	{
+		vk::DescriptorImageInfo imageInfo;
+		imageInfo.imageView = pTex->imageView;
+		imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageInfo.sampler = pTex->sampler;
+		imageInfos.push_back(imageInfo);
+	}
 	WriteInfo writeInfo;
 	writeInfo.set = set;
-	writeInfo.pImage = &imageInfo;
+	writeInfo.pImage = imageInfos.data();
 	writeInfo.binding = binding;
-	writeInfo.arrayElement = idx;
+	writeInfo.arrayElement = 0;
+	writeInfo.count = (u32)imageInfos.size();
 	writeInfo.type = type;
 	writeSet(writeInfo);
 	return;
@@ -191,21 +198,33 @@ void Set::writeSSBOs(SSBOs const& ssbos)
 	return;
 }
 
-void Set::writeDiffuse(Texture const& diffuse, u32 idx)
+void Set::writeDiffuse(std::deque<Texture const*> const& diffuse)
 {
-	m_diffuse.write(m_descriptorSet, *diffuse.m_uImpl, idx);
+	std::vector<TextureImpl const*> diffuseImpl;
+	diffuseImpl.reserve(diffuse.size());
+	for (auto pTex : diffuse)
+	{
+		diffuseImpl.push_back(pTex->m_uImpl.get());
+	}
+	m_diffuse.write(m_descriptorSet, diffuseImpl);
 	return;
 }
 
-void Set::writeSpecular(Texture const& specular, u32 idx)
+void Set::writeSpecular(std::deque<Texture const*> const& specular)
 {
-	m_specular.write(m_descriptorSet, *specular.m_uImpl, idx);
+	std::vector<TextureImpl const*> specularImpl;
+	specularImpl.reserve(specular.size());
+	for (auto pTex : specular)
+	{
+		specularImpl.push_back(pTex->m_uImpl.get());
+	}
+	m_specular.write(m_descriptorSet, specularImpl);
 	return;
 }
 
 void Set::writeCubemap(Cubemap const& cubemap)
 {
-	m_cubemap.write(m_descriptorSet, *cubemap.m_uImpl, 0);
+	m_cubemap.write(m_descriptorSet, {cubemap.m_uImpl.get()});
 	return;
 }
 
@@ -215,11 +234,10 @@ void Set::resetTextures()
 	auto pWhite = Resources::inst().get<Texture>("textures/white");
 	auto pCubemap = Resources::inst().get<Cubemap>("cubemaps/blank");
 	ASSERT(pBlack && pWhite && pCubemap, "blank textures are null!");
-	for (u32 i = 0; i < Textures::max; ++i)
-	{
-		writeDiffuse(*pWhite, i);
-		writeSpecular(*pBlack, i);
-	}
+	std::deque<Texture const*> diffuse(Textures::s_diffuseLayoutBinding.descriptorCount, pWhite);
+	std::deque<Texture const*> specular(Textures::s_specularLayoutBinding.descriptorCount, pBlack);
+	writeDiffuse(diffuse);
+	writeSpecular(specular);
 	writeCubemap(*pCubemap);
 	return;
 }

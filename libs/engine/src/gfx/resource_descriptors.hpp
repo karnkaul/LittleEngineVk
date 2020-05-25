@@ -128,8 +128,8 @@ struct Textures final
 	static vk::DescriptorSetLayoutBinding s_specularLayoutBinding;
 	static vk::DescriptorSetLayoutBinding const s_cubemapLayoutBinding;
 
-	static void clampDiffSpecCount(u32 hardwareMax);
 	static u32 total();
+	static void clampDiffSpecCount(u32 count);
 };
 
 struct PushConstants final
@@ -155,8 +155,8 @@ struct ShaderWriter final
 	vk::DescriptorType type;
 	u32 binding = 0;
 
-	void write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const;
-	void write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx) const;
+	void write(vk::DescriptorSet set, Buffer const& buffer) const;
+	void write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const;
 };
 
 template <typename T>
@@ -190,7 +190,7 @@ public:
 		{
 			return false;
 		}
-		m_writer.write(set, m_buffer, 0);
+		m_writer.write(set, m_buffer);
 		return true;
 	}
 
@@ -204,7 +204,7 @@ public:
 		{
 			return false;
 		}
-		m_writer.write(set, m_buffer, 0);
+		m_writer.write(set, m_buffer);
 		return true;
 	}
 
@@ -263,8 +263,8 @@ public:
 public:
 	void writeView(UBOView const& view);
 	void writeSSBOs(SSBOs const& ssbos);
-	void writeDiffuse(Texture const& diffuse, u32 idx);
-	void writeSpecular(Texture const& specular, u32 idx);
+	void writeDiffuse(std::deque<Texture const*> const& diffuse);
+	void writeSpecular(std::deque<Texture const*> const& specular);
 	void writeCubemap(Cubemap const& cubemap);
 
 	void resetTextures();

@@ -93,7 +93,6 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 				availableDevice.properties = physicalDevice.getProperties();
 				availableDevice.queueFamilies = physicalDevice.getQueueFamilyProperties();
 				availableDevice.features = physicalDevice.getFeatures();
-				availableDevice.features2 = physicalDevice.getFeatures2();
 				availableDevice.physicalDevice = physicalDevice;
 				if (availableDevice.properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 				{

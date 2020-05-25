@@ -18,6 +18,35 @@
 
 namespace le::gfx
 {
+namespace
+{
+struct TexSet final
+{
+	std::unordered_map<Texture const*, u32> idxMap;
+	std::deque<Texture const*> textures;
+
+	u32 add(Texture const* pTex);
+	u32 total() const;
+};
+
+u32 TexSet::add(Texture const* pTex)
+{
+	if (auto search = idxMap.find(pTex); search != idxMap.end())
+	{
+		return search->second;
+	}
+	u32 const idx = (u32)textures.size();
+	idxMap[pTex] = idx;
+	textures.push_back(pTex);
+	return idx;
+}
+
+u32 TexSet::total() const
+{
+	return (u32)textures.size();
+}
+} // namespace
+
 ScreenRect::ScreenRect(glm::vec4 const& ltrb) noexcept : left(ltrb.x), top(ltrb.y), right(ltrb.z), bottom(ltrb.w) {}
 
 ScreenRect ScreenRect::sizeTL(glm::vec2 const& size, glm::vec2 const& leftTop)
@@ -266,12 +295,14 @@ bool RendererImpl::render(Renderer::Scene scene)
 	waitFor(frame.drawing);
 	// Write sets
 	u32 objectID = 0;
-	u32 diffuseID = 0;
-	u32 specularID = 0;
 	rd::SSBOs ssbos;
+	TexSet diffuse;
+	TexSet specular;
 	std::deque<std::deque<rd::PushConstants>> push;
-	frame.set.writeDiffuse(*Resources::inst().get<Texture>("textures/white"), diffuseID++);
-	frame.set.writeSpecular(*Resources::inst().get<Texture>("textures/black"), specularID++);
+	auto const pWhite = Resources::inst().get<Texture>("textures/white");
+	auto const pBlack = Resources::inst().get<Texture>("textures/black");
+	diffuse.add(pWhite);
+	specular.add(pBlack);
 	frame.set.writeCubemap(*Resources::inst().get<Cubemap>("cubemaps/blank"));
 	bool bSkybox = false;
 	if (scene.view.skybox.pCubemap)
@@ -338,13 +369,11 @@ bool RendererImpl::render(Renderer::Scene scene)
 					}
 					else
 					{
-						frame.set.writeDiffuse(*pMesh->m_material.pDiffuse, diffuseID);
-						pc.diffuseID = diffuseID++;
+						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
 					}
 					if (pMesh->m_material.pSpecular)
 					{
-						frame.set.writeSpecular(*pMesh->m_material.pSpecular, specularID);
-						pc.specularID = specularID++;
+						pc.specularID = specular.add(pMesh->m_material.pSpecular);
 					}
 				}
 				push.back().push_back(pc);
@@ -352,18 +381,22 @@ bool RendererImpl::render(Renderer::Scene scene)
 			}
 		}
 	}
-	m_maxDiffuseID = std::max(m_maxDiffuseID, diffuseID);
-	m_maxSpecularID = std::max(m_maxSpecularID, specularID);
-	for (u32 id = diffuseID; id < m_maxDiffuseID; ++id)
+	u32 lastDiffuseID = diffuse.total();
+	u32 lastSpecularID = specular.total();
+	m_maxDiffuseID = std::max(m_maxDiffuseID, lastDiffuseID);
+	m_maxSpecularID = std::max(m_maxSpecularID, lastSpecularID);
+	for (u32 id = lastDiffuseID; id < m_maxDiffuseID; ++id)
 	{
-		frame.set.writeDiffuse(*Resources::inst().get<Texture>("textures/white"), id);
+		diffuse.add(pWhite);
 	}
-	for (u32 id = specularID; id < m_maxSpecularID; ++id)
+	for (u32 id = lastSpecularID; id < m_maxSpecularID; ++id)
 	{
-		frame.set.writeSpecular(*Resources::inst().get<Texture>("textures/black"), id);
+		specular.add(pBlack);
 	}
 	rd::UBOView view(scene.view, (u32)scene.dirLights.size());
 	std::copy(scene.dirLights.begin(), scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
+	frame.set.writeDiffuse(diffuse.textures);
+	frame.set.writeSpecular(specular.textures);
 	frame.set.writeSSBOs(ssbos);
 	frame.set.writeView(view);
 	// Acquire

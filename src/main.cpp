@@ -239,7 +239,7 @@ int main(int argc, char** argv)
 
 	gfx::ScreenRect gameRect;
 
-	if (w1.create(info1) && w0.create(info0))
+	if (/*w1.create(info1) &&*/ w0.create(info0))
 	{
 		gfx::Pipeline* pPipeline0wf = nullptr;
 
@@ -389,7 +389,7 @@ int main(int argc, char** argv)
 				freeCam1.tick(dt);
 
 				fpsText.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
-				ftText.updateText(fmt::format("{:.3}ms", ft.to_s() * 1000));
+				ftText.updateText(fmt::format("{:.3}ms", dt.to_s() * 1000));
 				triText.updateText(fmt::format("{} triangles", w0.renderer().m_stats.trisDrawn));
 
 				if (auto pM = registry.component<TAsset<gfx::Model>>(eid2))

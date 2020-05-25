@@ -32,11 +32,6 @@ std::string Time::toString(Time time)
 	return ret.str();
 }
 
-Time Time::from_us(s64 duration)
-{
-	return Time(duration);
-}
-
 Time Time::from_ms(s32 milliSeconds)
 {
 	return Time(s64(milliSeconds) * 1000);

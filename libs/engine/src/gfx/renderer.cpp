@@ -150,7 +150,7 @@ void RendererImpl::create(u8 frameCount)
 			frame.drawing = createFence(true);
 			// Commands
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
-			commandPoolCreateInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
+			commandPoolCreateInfo.queueFamilyIndex = g_info.queues.graphics.familyIndex;
 			commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient;
 			frame.commandPool = g_info.device.createCommandPool(commandPoolCreateInfo);
 			vk::CommandBufferAllocateInfo allocInfo;
@@ -462,7 +462,7 @@ bool RendererImpl::render(Renderer::Scene scene)
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_info.device.resetFences(frame.drawing);
-	g_info.queues.graphics.submit(submitInfo, frame.drawing);
+	g_info.queues.graphics.queue.submit(submitInfo, frame.drawing);
 	if (m_presenter.present(frame.presentReady))
 	{
 		next();

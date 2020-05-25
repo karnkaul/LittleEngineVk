@@ -138,6 +138,13 @@ struct PresenterInfo final
 	} options;
 };
 
+struct Queue final
+{
+	vk::Queue queue;
+	u32 familyIndex = 0;
+	u32 arrayIndex = 0;
+};
+
 struct UniqueQueues final
 {
 	vk::SharingMode mode;

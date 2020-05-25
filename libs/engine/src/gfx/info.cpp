@@ -17,6 +17,13 @@ namespace
 static std::string const s_tInstance = utils::tName<vk::Instance>();
 static std::string const s_tDevice = utils::tName<vk::Device>();
 
+struct QueueFamily final
+{
+	u32 index = 0;
+	u32 queueCount = 0;
+	QFlags flags;
+};
+
 vk::DispatchLoaderDynamic g_loader;
 vk::DebugUtilsMessengerEXT g_debugMessenger;
 
@@ -114,59 +121,86 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		g_info.deviceLimits = properties.limits;
 		g_info.lineWidthMin = properties.limits.lineWidthRange[0];
 		g_info.lineWidthMax = properties.limits.lineWidthRange[1];
-		auto const queueFamilies = g_info.physicalDevice.getQueueFamilyProperties();
+		auto const queueFamilyProperties = g_info.physicalDevice.getQueueFamilyProperties();
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-		std::optional<u32> graphicsFamily, presentFamily, transferFamily;
-		for (size_t idx = 0; idx < queueFamilies.size(); ++idx)
+		std::unordered_map<u32, QueueFamily> queueFamilies;
+		QFlags found;
+		size_t graphicsFamilyIdx = 0;
+		for (size_t idx = 0; idx < queueFamilyProperties.size() && !found.bits.all(); ++idx)
 		{
-			auto const& queueFamily = queueFamilies.at(idx);
-			if (!graphicsFamily.has_value())
+			auto const& queueFamily = queueFamilyProperties.at(idx);
+			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
 			{
-				if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
+				if (!found.isSet(QFlag::eGraphics))
 				{
-					graphicsFamily.emplace((u32)idx);
+					QueueFamily& family = queueFamilies[(u32)idx];
+					family.index = (u32)idx;
+					family.queueCount = queueFamily.queueCount;
+					family.flags |= QFlag::eGraphics;
+					found.set(QFlag::eGraphics);
+					graphicsFamilyIdx = idx;
 				}
 			}
-			if (initInfo.options.bDedicatedTransfer && !transferFamily.has_value())
+			if (g_info.physicalDevice.getSurfaceSupportKHR((u32)idx, surface))
 			{
-				if (graphicsFamily.has_value() && (u32)idx != graphicsFamily.value()
-					&& queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
+				if (!found.isSet(QFlag::ePresent))
 				{
-					transferFamily.emplace((u32)idx);
+					QueueFamily& family = queueFamilies[(u32)idx];
+					family.index = (u32)idx;
+					family.queueCount = queueFamily.queueCount;
+					family.flags |= QFlag::ePresent;
+					found.set(QFlag::ePresent);
 				}
 			}
-			if (!presentFamily.has_value())
+			if (initInfo.options.bDedicatedTransfer && queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
 			{
-				if (g_info.physicalDevice.getSurfaceSupportKHR((u32)idx, surface))
+				if (found.isSet(QFlag::eGraphics) && idx != graphicsFamilyIdx && !found.isSet(QFlag::eTransfer))
 				{
-					presentFamily.emplace((u32)idx);
+					QueueFamily& family = queueFamilies[(u32)idx];
+					family.index = (u32)idx;
+					family.queueCount = queueFamily.queueCount;
+					family.flags |= QFlag::eTransfer;
+					found.set(QFlag::eTransfer);
 				}
 			}
 		}
-		if (!graphicsFamily.has_value() || !presentFamily.has_value())
+		if (!found.isSet(QFlag::eGraphics) || !found.isSet(QFlag::ePresent))
 		{
 			throw std::runtime_error("Failed to obtain graphics/present queues from device!");
 		}
-		std::set<u32> uniqueFamilies = {graphicsFamily.value(), presentFamily.value()};
-		if (transferFamily.has_value())
-		{
-			uniqueFamilies.insert(transferFamily.value());
-		}
 		f32 priority = 1.0f;
 		f32 const priorities[] = {0.7f, 0.3f};
-		for (auto family : uniqueFamilies)
+		for (auto& [index, queueFamily] : queueFamilies)
 		{
 			vk::DeviceQueueCreateInfo queueCreateInfo;
-			queueCreateInfo.queueFamilyIndex = family;
+			queueCreateInfo.queueFamilyIndex = index;
 			queueCreateInfo.queueCount = 1;
 			queueCreateInfo.pQueuePriorities = &priority;
-			if (initInfo.options.bDedicatedTransfer && !transferFamily.has_value() && family == graphicsFamily.value())
+			if (queueFamily.flags.isSet(QFlag::eGraphics))
+			{
+				g_info.queues.graphics.familyIndex = index;
+			}
+			if (queueFamily.flags.isSet(QFlag::ePresent))
+			{
+				g_info.queues.present.familyIndex = index;
+			}
+			if (queueFamily.flags.isSet(QFlag::eTransfer))
+			{
+				g_info.queues.transfer.familyIndex = index;
+			}
+			if (initInfo.options.bDedicatedTransfer && !found.isSet(QFlag::eTransfer) && queueFamily.flags.isSet(QFlag::eGraphics)
+				&& queueFamily.queueCount > 1)
 			{
 				queueCreateInfo.queueCount = 2;
 				queueCreateInfo.pQueuePriorities = priorities;
-				g_info.transferQueueIndex = 1;
+				g_info.queues.transfer.arrayIndex = 1;
+				found.set(QFlag::eTransfer);
 			}
 			queueCreateInfos.push_back(std::move(queueCreateInfo));
+		}
+		if (!found.isSet(QFlag::eTransfer))
+		{
+			g_info.queues.transfer = g_info.queues.graphics;
 		}
 		vk::PhysicalDeviceFeatures deviceFeatures;
 		deviceFeatures.fillModeNonSolid = true;
@@ -183,9 +217,6 @@ vk::Device initDevice(vk::Instance instance, std::vector<char const*> const& lay
 		deviceCreateInfo.enabledExtensionCount = (u32)deviceExtensions.size();
 		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.empty() ? nullptr : deviceExtensions.data();
 		device = g_info.physicalDevice.createDevice(deviceCreateInfo);
-		g_info.queueFamilyIndices.graphics = graphicsFamily.value();
-		g_info.queueFamilyIndices.present = presentFamily.value();
-		g_info.queueFamilyIndices.transfer = transferFamily.value_or(graphicsFamily.value());
 	}
 	catch (std::exception const& e)
 	{
@@ -280,9 +311,9 @@ void init(InitInfo const& initInfo)
 
 	g_info.instance = instance;
 	g_info.device = device;
-	g_info.queues.graphics = device.getQueue(g_info.queueFamilyIndices.graphics, 0);
-	g_info.queues.present = device.getQueue(g_info.queueFamilyIndices.present, 0);
-	g_info.queues.transfer = device.getQueue(g_info.queueFamilyIndices.transfer, g_info.transferQueueIndex.value_or(0));
+	g_info.queues.graphics.queue = device.getQueue(g_info.queues.graphics.familyIndex, g_info.queues.graphics.arrayIndex);
+	g_info.queues.present.queue = device.getQueue(g_info.queues.present.familyIndex, g_info.queues.present.arrayIndex);
+	g_info.queues.transfer.queue = device.getQueue(g_info.queues.transfer.familyIndex, g_info.queues.transfer.arrayIndex);
 
 	vram::init();
 	rd::init();
@@ -314,7 +345,7 @@ void deinit()
 
 bool Info::isValid(vk::SurfaceKHR surface) const
 {
-	return physicalDevice != vk::PhysicalDevice() ? physicalDevice.getSurfaceSupportKHR(queueFamilyIndices.present, surface) : false;
+	return physicalDevice != vk::PhysicalDevice() ? physicalDevice.getSurfaceSupportKHR(queues.present.familyIndex, surface) : false;
 }
 
 UniqueQueues Info::uniqueQueues(QFlags flags) const
@@ -323,15 +354,15 @@ UniqueQueues Info::uniqueQueues(QFlags flags) const
 	ret.indices.reserve(3);
 	if (flags.isSet(QFlag::eGraphics))
 	{
-		ret.indices.push_back(queueFamilyIndices.graphics);
+		ret.indices.push_back(queues.graphics.familyIndex);
 	}
-	if (flags.isSet(QFlag::ePresent) && queueFamilyIndices.graphics != queueFamilyIndices.present)
+	if (flags.isSet(QFlag::ePresent) && queues.graphics.familyIndex != queues.present.familyIndex)
 	{
-		ret.indices.push_back(queueFamilyIndices.present);
+		ret.indices.push_back(queues.present.familyIndex);
 	}
-	if (flags.isSet(QFlag::eTransfer) && queueFamilyIndices.transfer != queueFamilyIndices.graphics)
+	if (flags.isSet(QFlag::eTransfer) && queues.transfer.familyIndex != queues.graphics.familyIndex)
 	{
-		ret.indices.push_back(queueFamilyIndices.transfer);
+		ret.indices.push_back(queues.transfer.familyIndex);
 	}
 	ret.mode = ret.indices.size() > 1 ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
 	return ret;

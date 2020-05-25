@@ -21,20 +21,12 @@ struct Info final
 	f32 lineWidthMin = 1.0f;
 	f32 lineWidthMax = 1.0f;
 	log::Level validationLog = log::Level::eWarning;
-	std::optional<u32> transferQueueIndex;
 
 	struct
 	{
-		u32 graphics;
-		u32 present;
-		u32 transfer;
-	} queueFamilyIndices;
-
-	struct
-	{
-		vk::Queue graphics;
-		vk::Queue present;
-		vk::Queue transfer;
+		Queue graphics;
+		Queue present;
+		Queue transfer;
 	} queues;
 
 	bool isValid(vk::SurfaceKHR surface) const;

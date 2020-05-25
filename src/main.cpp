@@ -284,7 +284,7 @@ int main(int argc, char** argv)
 			++frames;
 			fpsElapsed += dt;
 			fpsLogElapsed += dt;
-			if (fpsElapsed >= Time::from_s(1.0f))
+			if (fpsElapsed >= 1s)
 			{
 				fps = frames;
 				frames = 0;

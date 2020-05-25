@@ -73,8 +73,8 @@ bool gui::init(Info const& info)
 			initInfo.Instance = g_info.instance;
 			initInfo.Device = g_info.device;
 			initInfo.PhysicalDevice = g_info.physicalDevice;
-			initInfo.Queue = g_info.queues.graphics;
-			initInfo.QueueFamily = g_info.queueFamilyIndices.graphics;
+			initInfo.Queue = g_info.queues.graphics.queue;
+			initInfo.QueueFamily = g_info.queues.graphics.familyIndex;
 			initInfo.MinImageCount = (u32)info.minImageCount;
 			initInfo.ImageCount = (u32)info.imageCount;
 			initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -84,7 +84,7 @@ bool gui::init(Info const& info)
 			{
 				vk::CommandPoolCreateInfo poolInfo;
 				poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-				poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.graphics;
+				poolInfo.queueFamilyIndex = g_info.queues.graphics.familyIndex;
 				auto pool = g_info.device.createCommandPool(poolInfo);
 				vk::CommandBufferAllocateInfo commandBufferInfo;
 				commandBufferInfo.commandBufferCount = 1;
@@ -99,7 +99,7 @@ bool gui::init(Info const& info)
 				endInfo.commandBufferCount = 1;
 				endInfo.pCommandBuffers = &commandBuffer;
 				auto done = createFence(false);
-				g_info.queues.graphics.submit(endInfo, done);
+				g_info.queues.graphics.queue.submit(endInfo, done);
 				waitFor(done);
 				ImGui_ImplVulkan_DestroyFontUploadObjects();
 				vkDestroy(pool, done);

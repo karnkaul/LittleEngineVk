@@ -211,7 +211,7 @@ bool Presenter::present(vk::Semaphore wait)
 	presentInfo.swapchainCount = 1U;
 	presentInfo.pSwapchains = &m_swapchain.swapchain;
 	presentInfo.pImageIndices = &index;
-	auto const result = g_info.queues.present.presentKHR(&presentInfo);
+	auto const result = g_info.queues.present.queue.presentKHR(&presentInfo);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 	{
 		LOG_D("[{}] Failed to present image [{}]", m_name, m_window, g_vkResultStr[result]);

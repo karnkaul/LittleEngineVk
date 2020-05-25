@@ -83,7 +83,7 @@ Stage::Command newCommand(vk::DeviceSize bufferSize)
 	{
 		vk::CommandPoolCreateInfo poolInfo;
 		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		poolInfo.queueFamilyIndex = g_info.queueFamilyIndices.transfer;
+		poolInfo.queueFamilyIndex = g_info.queues.transfer.familyIndex;
 		pool = g_info.device.createCommandPool(poolInfo);
 		if constexpr (g_VRAM_bLogAllocs)
 		{
@@ -218,7 +218,7 @@ void vram::update()
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = (u32)commandCount;
 		submitInfo.pCommandBuffers = buffers.data();
-		g_info.queues.transfer.submit(submitInfo, submit.done);
+		g_info.queues.transfer.queue.submit(submitInfo, submit.done);
 		g_submitted.push_back(std::move(submit));
 	}
 	g_active.clear();

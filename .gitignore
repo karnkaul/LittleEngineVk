@@ -2,6 +2,7 @@
 **/.vscode/*
 build/*
 out/*
+redist/*
 
 data/shaders/*.spv
 

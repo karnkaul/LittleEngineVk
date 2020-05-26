@@ -239,8 +239,11 @@ private:
 class Set final
 {
 public:
-	vk::DescriptorPool m_pool;
-	vk::DescriptorSet m_set;
+	vk::DescriptorPool m_bufferPool;
+	vk::DescriptorPool m_samplerPool;
+	vk::DescriptorSet m_bufferSet;
+	vk::DescriptorSet m_samplerSet;
+	vk::DescriptorSetLayout m_samplerLayout;
 
 private:
 	GPUBuffer<UBOView> m_view;
@@ -261,21 +264,22 @@ public:
 	void initSSBOs();
 	void destroy();
 
+	void update(vk::DescriptorSetLayout samplerLayout);
+
 public:
 	void writeView(UBOView const& view);
 	void writeSSBOs(SSBOs const& ssbos);
 	void writeDiffuse(std::deque<Texture const*> const& diffuse);
 	void writeSpecular(std::deque<Texture const*> const& specular);
 	void writeCubemap(Cubemap const& cubemap);
-
-	void resetTextures();
 };
 
-inline vk::DescriptorSetLayout g_setLayout;
+inline vk::DescriptorSetLayout g_bufferLayout;
 
 void init();
 void deinit();
 
-std::vector<Set> allocateSets(vk::DescriptorSetLayout setLayout, u32 copies);
+vk::DescriptorSetLayout createSamplerLayout(u32 diffuse, u32 specular);
+std::vector<Set> allocateSets(vk::DescriptorSetLayout samplerLayout, u32 copies);
 } // namespace rd
 } // namespace le::gfx

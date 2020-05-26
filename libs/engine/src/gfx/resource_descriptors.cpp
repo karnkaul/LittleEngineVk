@@ -22,19 +22,6 @@ void writeSet(WriteInfo const& info)
 	g_device.device.updateDescriptorSets(descWrite, {});
 	return;
 }
-
-void createLayouts()
-{
-	std::array const bindings = {UBOView::s_setLayoutBinding,		SSBOModels::s_setLayoutBinding,	  SSBONormals::s_setLayoutBinding,
-								 SSBOMaterials::s_setLayoutBinding, SSBOTints::s_setLayoutBinding,	  SSBOFlags::s_setLayoutBinding,
-								 SSBODirLights::s_setLayoutBinding, Textures::s_diffuseLayoutBinding, Textures::s_specularLayoutBinding,
-								 Textures::s_cubemapLayoutBinding};
-	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
-	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
-	setLayoutCreateInfo.pBindings = bindings.data();
-	rd::g_setLayout = g_device.device.createDescriptorSetLayout(setLayoutCreateInfo);
-	return;
-}
 } // namespace
 
 UBOView::UBOView() = default;
@@ -83,13 +70,13 @@ vk::DescriptorSetLayoutBinding const SSBODirLights::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding Textures::s_diffuseLayoutBinding =
-	vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
+	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding Textures::s_specularLayoutBinding =
-	vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
+	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_cubemapLayoutBinding =
-	vk::DescriptorSetLayoutBinding(12, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
+	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
 
 u32 Textures::total()
 {
@@ -164,9 +151,28 @@ void Set::destroy()
 	return;
 }
 
+void Set::update(vk::DescriptorSetLayout samplerLayout)
+{
+	if (samplerLayout != vk::DescriptorSetLayout() && m_samplerLayout != samplerLayout)
+	{
+		m_samplerLayout = samplerLayout;
+		g_device.device.resetDescriptorPool(m_samplerPool);
+		// Allocate sets
+		vk::DescriptorSetAllocateInfo allocInfo;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.descriptorPool = m_samplerPool;
+		allocInfo.pSetLayouts = &m_samplerLayout;
+		auto const samplerSets = g_device.device.allocateDescriptorSets(allocInfo);
+		// Write handles
+		m_samplerSet = samplerSets.front();
+		LOG_D("Sampler Descriptor Set recreated");
+	}
+	return;
+}
+
 void Set::writeView(UBOView const& view)
 {
-	m_view.writeValue(view, m_set);
+	m_view.writeValue(view, m_bufferSet);
 	return;
 }
 
@@ -187,14 +193,14 @@ void Set::writeSSBOs(SSBOs const& ssbos)
 	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty()
 			   && !ssbos.flags.ssbo.empty(),
 		   "Empty SSBOs!");
-	m_models.writeArray(ssbos.models.ssbo, m_set);
-	m_normals.writeArray(ssbos.normals.ssbo, m_set);
-	m_materials.writeArray(ssbos.materials.ssbo, m_set);
-	m_tints.writeArray(ssbos.tints.ssbo, m_set);
-	m_flags.writeArray(ssbos.flags.ssbo, m_set);
+	m_models.writeArray(ssbos.models.ssbo, m_bufferSet);
+	m_normals.writeArray(ssbos.normals.ssbo, m_bufferSet);
+	m_materials.writeArray(ssbos.materials.ssbo, m_bufferSet);
+	m_tints.writeArray(ssbos.tints.ssbo, m_bufferSet);
+	m_flags.writeArray(ssbos.flags.ssbo, m_bufferSet);
 	if (!ssbos.dirLights.ssbo.empty())
 	{
-		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_set);
+		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_bufferSet);
 	}
 	return;
 }
@@ -207,7 +213,7 @@ void Set::writeDiffuse(std::deque<Texture const*> const& diffuse)
 	{
 		diffuseImpl.push_back(pTex->m_uImpl.get());
 	}
-	m_diffuse.write(m_set, diffuseImpl);
+	m_diffuse.write(m_samplerSet, diffuseImpl);
 	return;
 }
 
@@ -219,31 +225,30 @@ void Set::writeSpecular(std::deque<Texture const*> const& specular)
 	{
 		specularImpl.push_back(pTex->m_uImpl.get());
 	}
-	m_specular.write(m_set, specularImpl);
+	m_specular.write(m_samplerSet, specularImpl);
 	return;
 }
 
 void Set::writeCubemap(Cubemap const& cubemap)
 {
-	m_cubemap.write(m_set, {cubemap.m_uImpl.get()});
+	m_cubemap.write(m_samplerSet, {cubemap.m_uImpl.get()});
 	return;
 }
 
-void Set::resetTextures()
+vk::DescriptorSetLayout createSamplerLayout(u32 diffuse, u32 specular)
 {
-	auto pBlack = Resources::inst().get<Texture>("textures/black");
-	auto pWhite = Resources::inst().get<Texture>("textures/white");
-	auto pCubemap = Resources::inst().get<Cubemap>("cubemaps/blank");
-	ASSERT(pBlack && pWhite && pCubemap, "blank textures are null!");
-	std::deque<Texture const*> diffuse(Textures::s_diffuseLayoutBinding.descriptorCount, pWhite);
-	std::deque<Texture const*> specular(Textures::s_specularLayoutBinding.descriptorCount, pBlack);
-	writeDiffuse(diffuse);
-	writeSpecular(specular);
-	writeCubemap(*pCubemap);
-	return;
+	auto diffuseBinding = Textures::s_diffuseLayoutBinding;
+	diffuseBinding.descriptorCount = diffuse;
+	auto specularBinding = Textures::s_specularLayoutBinding;
+	specularBinding.descriptorCount = specular;
+	std::array const textureBindings = {diffuseBinding, specularBinding, Textures::s_cubemapLayoutBinding};
+	vk::DescriptorSetLayoutCreateInfo samplerLayoutInfo;
+	samplerLayoutInfo.bindingCount = (u32)textureBindings.size();
+	samplerLayoutInfo.pBindings = textureBindings.data();
+	return g_device.device.createDescriptorSetLayout(samplerLayoutInfo);
 }
 
-std::vector<Set> allocateSets(vk::DescriptorSetLayout layout, u32 copies)
+std::vector<Set> allocateSets(vk::DescriptorSetLayout samplerLayout, u32 copies)
 {
 	std::vector<Set> ret;
 	ret.reserve((size_t)copies);
@@ -260,23 +265,30 @@ std::vector<Set> allocateSets(vk::DescriptorSetLayout layout, u32 copies)
 		vk::DescriptorPoolSize samplerPoolSize;
 		samplerPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
 		samplerPoolSize.descriptorCount = Textures::total();
-		std::array const poolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
+		std::array const bufferPoolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
+		std::array const samplerPoolSizes = {samplerPoolSize};
 		vk::DescriptorPoolCreateInfo createInfo;
-		createInfo.poolSizeCount = (u32)poolSizes.size();
-		createInfo.pPoolSizes = poolSizes.data();
+		createInfo.poolSizeCount = (u32)bufferPoolSizes.size();
+		createInfo.pPoolSizes = bufferPoolSizes.data();
 		createInfo.maxSets = 1;
-		set.m_pool = g_device.device.createDescriptorPool(createInfo);
+		set.m_bufferPool = g_device.device.createDescriptorPool(createInfo);
+		createInfo.poolSizeCount = (u32)samplerPoolSizes.size();
+		createInfo.pPoolSizes = samplerPoolSizes.data();
+		set.m_samplerPool = g_device.device.createDescriptorPool(createInfo);
 		// Allocate sets
 		vk::DescriptorSetAllocateInfo allocInfo;
-		allocInfo.descriptorPool = set.m_pool;
+		allocInfo.descriptorPool = set.m_bufferPool;
 		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &layout;
-		auto const sets = g_device.device.allocateDescriptorSets(allocInfo);
+		allocInfo.pSetLayouts = &g_bufferLayout;
+		auto const bufferSets = g_device.device.allocateDescriptorSets(allocInfo);
+		allocInfo.descriptorPool = set.m_samplerPool;
+		allocInfo.pSetLayouts = &samplerLayout;
+		auto const samplerSets = g_device.device.allocateDescriptorSets(allocInfo);
 		// Write handles
-		set.m_set = sets.front();
+		set.m_bufferSet = bufferSets.front();
+		set.m_samplerSet = samplerSets.front();
 		set.writeView({});
 		set.initSSBOs();
-		set.resetTextures();
 		ret.push_back(std::move(set));
 	}
 	return ret;
@@ -284,19 +296,26 @@ std::vector<Set> allocateSets(vk::DescriptorSetLayout layout, u32 copies)
 
 void init()
 {
-	if (g_setLayout == vk::DescriptorSetLayout())
+	if (g_bufferLayout == vk::DescriptorSetLayout())
 	{
-		createLayouts();
+		std::array const bufferBindings = {UBOView::s_setLayoutBinding,		 SSBOModels::s_setLayoutBinding,
+										   SSBONormals::s_setLayoutBinding,	 SSBOMaterials::s_setLayoutBinding,
+										   SSBOTints::s_setLayoutBinding,	 SSBOFlags::s_setLayoutBinding,
+										   SSBODirLights::s_setLayoutBinding};
+		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
+		bufferLayoutInfo.bindingCount = (u32)bufferBindings.size();
+		bufferLayoutInfo.pBindings = bufferBindings.data();
+		rd::g_bufferLayout = g_device.device.createDescriptorSetLayout(bufferLayoutInfo);
 	}
 	return;
 }
 
 void deinit()
 {
-	if (g_setLayout != vk::DescriptorSetLayout())
+	if (g_bufferLayout != vk::DescriptorSetLayout())
 	{
-		g_device.destroy(g_setLayout);
-		g_setLayout = vk::DescriptorSetLayout();
+		g_device.destroy(g_bufferLayout);
+		g_bufferLayout = vk::DescriptorSetLayout();
 	}
 	return;
 }

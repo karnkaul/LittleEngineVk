@@ -54,7 +54,7 @@ private:
 	Presenter m_presenter;
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
-	vk::DescriptorSetLayout m_setLayout;
+	vk::DescriptorSetLayout m_samplerLayout;
 	Renderer* m_pRenderer;
 	struct
 	{
@@ -63,8 +63,8 @@ private:
 	} m_pipes;
 
 	u64 m_drawnFrames = 0;
-	mutable u32 m_maxDiffuseID = 0;
-	mutable u32 m_maxSpecularID = 0;
+	u32 m_diffuseCount = 0;
+	u32 m_specularCount = 0;
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;
@@ -98,8 +98,8 @@ private:
 	FrameSync& frameSync();
 	void next();
 
-	PCDeq writeSets(Renderer::Scene& out_scene, FrameSync& out_frame) const;
-	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push) const;
+	PCDeq writeSets(Renderer::Scene& out_scene, FrameSync& out_frame);
+	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push);
 	bool submit(FrameSync const& frame);
 
 	friend class le::WindowImpl;

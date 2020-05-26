@@ -18,10 +18,10 @@ public:
 		vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
 		vk::ColorComponentFlags colourWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
 												  | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+		vk::DescriptorSetLayout samplerLayout;
 		std::string name;
 		std::string shaderID;
 		std::set<vk::DynamicState> dynamicStates;
-		std::vector<vk::DescriptorSetLayout> setLayouts;
 		std::vector<vk::PushConstantRange> pushConstantRanges;
 		f32 staticLineWidth = 1.0f;
 		WindowID window;
@@ -41,6 +41,7 @@ public:
 private:
 	Info m_info;
 	class Pipeline* m_pPipeline;
+	bool m_bOutOfDate = false;
 
 public:
 	PipelineImpl(Pipeline* pPipeline);
@@ -50,7 +51,7 @@ public:
 
 public:
 	bool create(Info info);
-	bool create(std::vector<vk::DescriptorSetLayout> setLayouts);
+	bool update(vk::DescriptorSetLayout samplerLayout);
 	void destroy();
 
 	void update();

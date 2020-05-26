@@ -116,7 +116,6 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
 	: m_presenter(info.presenterInfo), m_pRenderer(pOwner), m_window(info.windowID)
 {
 	m_name = fmt::format("{}:{}", Renderer::s_tName, m_window);
-	m_setLayout = rd::g_setLayout;
 	create(info.frameCount);
 	Pipeline::Info pipelineInfo;
 	pipelineInfo.name = "default";
@@ -167,7 +166,9 @@ void RendererImpl::create(u8 frameCount)
 	{
 		m_frameCount = frameCount;
 		// Descriptors
-		auto sets = rd::allocateSets(m_setLayout, frameCount);
+		m_diffuseCount = m_specularCount = 1;
+		m_samplerLayout = rd::createSamplerLayout(m_diffuseCount, m_specularCount);
+		auto sets = rd::allocateSets(m_samplerLayout, frameCount);
 		ASSERT(sets.size() == (size_t)frameCount, "Invalid descriptor sets!");
 		m_frames.reserve((size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx)
@@ -202,11 +203,15 @@ void RendererImpl::destroy()
 		for (auto& frame : m_frames)
 		{
 			frame.set.destroy();
-			g_device.destroy(frame.set.m_pool, frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady, frame.presentReady);
+			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing,
+							 frame.renderReady, frame.presentReady);
 		}
+		g_device.destroy(m_samplerLayout);
+		m_samplerLayout = vk::DescriptorSetLayout();
 		m_frames.clear();
 		m_index = 0;
 		m_drawnFrames = 0;
+		m_diffuseCount = m_specularCount = 0;
 		LOG_D("[{}] destroyed", m_name);
 	}
 	return;
@@ -217,7 +222,7 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	PipelineImpl::Info implInfo;
 	implInfo.renderPass = m_presenter.m_renderPass;
 	implInfo.pShader = info.pShader;
-	implInfo.setLayouts = {m_setLayout};
+	implInfo.samplerLayout = m_samplerLayout;
 	implInfo.name = info.name;
 	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
 	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
@@ -386,7 +391,7 @@ void RendererImpl::next()
 	return;
 }
 
-RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSync& out_frame) const
+RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSync& out_frame)
 {
 	auto const mg = colours::magenta.toVec4();
 	u32 objectID = 0;
@@ -398,8 +403,8 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 	auto const pBlack = Resources::inst().get<Texture>("textures/black");
 	diffuse.add(pWhite);
 	specular.add(pBlack);
-	out_frame.set.writeCubemap(*Resources::inst().get<Cubemap>("cubemaps/blank"));
 	bool bSkybox = false;
+	Cubemap const* pCubemap = Resources::inst().get<Cubemap>("cubemaps/blank");
 	if (out_scene.view.skybox.pCubemap)
 	{
 		if (!out_scene.view.skybox.pPipeline)
@@ -410,7 +415,10 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 		auto pTransform = &Transform::s_identity;
 		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
 		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{pMesh}, pTransform, out_scene.view.skybox.pPipeline}}});
-		out_frame.set.writeCubemap(*out_scene.view.skybox.pCubemap);
+		if (out_scene.view.skybox.pCubemap)
+		{
+			pCubemap = out_scene.view.skybox.pCubemap;
+		}
 		bSkybox = true;
 	}
 	for (auto& batch : out_scene.batches)
@@ -472,20 +480,29 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 			}
 		}
 	}
-	u32 lastDiffuseID = diffuse.total();
-	u32 lastSpecularID = specular.total();
-	m_maxDiffuseID = std::max(m_maxDiffuseID, lastDiffuseID);
-	m_maxSpecularID = std::max(m_maxSpecularID, lastSpecularID);
-	for (u32 id = lastDiffuseID; id < m_maxDiffuseID; ++id)
+	if (diffuse.total() == 0)
 	{
-		diffuse.textures.push_back(pWhite);
+		diffuse.add(pWhite);
 	}
-	for (u32 id = lastSpecularID; id < m_maxSpecularID; ++id)
+	if (specular.total() == 0)
 	{
-		specular.textures.push_back(pBlack);
+		specular.add(pBlack);
 	}
+	u32 const diffuseCount = diffuse.total();
+	u32 const specularCount = specular.total();
+	if (m_diffuseCount != diffuseCount || m_specularCount != specularCount)
+	{
+		deferred::release([layout = m_samplerLayout]() { g_device.destroy(layout); });
+		m_samplerLayout = rd::createSamplerLayout(diffuseCount, specularCount);
+	}
+	m_diffuseCount = diffuseCount;
+	m_specularCount = specularCount;
+	out_frame.set.update(m_samplerLayout);
+
 	rd::UBOView view(out_scene.view, (u32)out_scene.dirLights.size());
 	std::copy(out_scene.dirLights.begin(), out_scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
+
+	out_frame.set.writeCubemap(*pCubemap);
 	out_frame.set.writeDiffuse(diffuse.textures);
 	out_frame.set.writeSpecular(specular.textures);
 	out_frame.set.writeSSBOs(ssbos);
@@ -493,7 +510,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 	return push;
 }
 
-u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push) const
+u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push)
 {
 	// Framebuffer
 	g_device.destroy(out_frame.framebuffer);
@@ -542,13 +559,16 @@ u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scen
 
 					auto pPipeline = pPipe ? pPipe : m_pipes.pDefault;
 					ASSERT(pPipeline, "Pipeline is null!");
+					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_samplerLayout);
+					ASSERT(bOk, "Pipeline update failure!");
 					if (pipeline != pPipeline->m_uImpl->m_pipeline)
 					{
 						pipeline = pPipeline->m_uImpl->m_pipeline;
 						commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 					}
 					auto layout = pPipeline->m_uImpl->m_layout;
-					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, out_frame.set.m_set, {});
+					std::vector const sets = {out_frame.set.m_bufferSet, out_frame.set.m_samplerSet};
+					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, sets, {});
 					commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					commandBuffer.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pMesh->m_uImpl->ibo.count > 0)

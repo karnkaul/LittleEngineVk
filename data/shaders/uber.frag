@@ -55,9 +55,9 @@ layout(std430, set = 0, binding = 6) buffer readonly Lights
 	DirLight dirLights[];
 };
 
-layout(set = 0, binding = 10) uniform sampler2D diffuse[];
-layout(set = 0, binding = 11) uniform sampler2D specular[];
-layout(set = 0, binding = 12) uniform samplerCube skybox;
+layout(set = 1, binding = 0) uniform sampler2D diffuse[];
+layout(set = 1, binding = 1) uniform sampler2D specular[];
+layout(set = 1, binding = 2) uniform samplerCube skybox;
 
 layout(push_constant) uniform Push
 {

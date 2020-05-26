@@ -7,6 +7,7 @@
 #include "device.hpp"
 #include "presenter.hpp"
 #include "pipeline_impl.hpp"
+#include "resource_descriptors.hpp"
 
 namespace le::gfx
 {
@@ -30,6 +31,7 @@ PipelineImpl::~PipelineImpl()
 bool PipelineImpl::create(Info info)
 {
 	m_info = std::move(info);
+	ASSERT(m_info.samplerLayout != vk::DescriptorSetLayout(), "Null descriptor set layout!");
 	if (m_info.shaderID.empty())
 	{
 		m_info.shaderID = "shaders/default";
@@ -44,10 +46,20 @@ bool PipelineImpl::create(Info info)
 	return false;
 }
 
-bool PipelineImpl::create(std::vector<vk::DescriptorSetLayout> setLayouts)
+bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
 {
-	m_info.setLayouts = std::move(setLayouts);
-	return create(m_pipeline, m_layout);
+	if (samplerLayout != vk::DescriptorSetLayout() && (samplerLayout != m_info.samplerLayout || m_bOutOfDate))
+	{
+		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); });
+		m_info.samplerLayout = samplerLayout;
+		if (create(m_pipeline, m_layout))
+		{
+			LOG_D("[{}] [{}] recreated", s_tName, m_pPipeline->m_name);
+			return true;
+		}
+		return false;
+	}
+	return true;
 }
 
 void PipelineImpl::destroy()
@@ -71,8 +83,9 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 	auto const attributeDescriptions = vbo::attributeDescriptions();
 	{
 		vk::PipelineLayoutCreateInfo layoutCreateInfo;
-		layoutCreateInfo.setLayoutCount = (u32)m_info.setLayouts.size();
-		layoutCreateInfo.pSetLayouts = m_info.setLayouts.data();
+		std::vector const setLayouts = {rd::g_bufferLayout, m_info.samplerLayout};
+		layoutCreateInfo.setLayoutCount = (u32)setLayouts.size();
+		layoutCreateInfo.pSetLayouts = setLayouts.data();
 		layoutCreateInfo.pushConstantRangeCount = (u32)m_info.pushConstantRanges.size();
 		layoutCreateInfo.pPushConstantRanges = m_info.pushConstantRanges.data();
 		out_layout = g_device.device.createPipelineLayout(layoutCreateInfo);
@@ -169,6 +182,7 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 	createInfo.renderPass = m_info.renderPass;
 	createInfo.subpass = 0;
 	out_pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
+	m_bOutOfDate = false;
 	return true;
 }
 
@@ -183,18 +197,7 @@ void PipelineImpl::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_l
 void PipelineImpl::update()
 {
 #if defined(LEVK_ASSET_HOT_RELOAD)
-	if (m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded)
-	{
-		vk::Pipeline pipeline;
-		vk::PipelineLayout layout;
-		if (create(pipeline, layout))
-		{
-			destroy(m_pipeline, m_layout);
-			LOG_D("[{}] [{}] recreated", s_tName, m_pPipeline->m_name);
-			m_pipeline = pipeline;
-			m_layout = layout;
-		}
-	}
+	m_bOutOfDate = m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded;
 #endif
 }
 } // namespace le::gfx

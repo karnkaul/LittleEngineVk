@@ -1,10 +1,11 @@
 #include "core/jobs.hpp"
 #include "core/log.hpp"
+#include "core/time.hpp"
 #include "core/utils.hpp"
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
 #include "gfx/deferred.hpp"
-#include "gfx/info.hpp"
+#include "gfx/device.hpp"
 #include "gfx/vram.hpp"
 #include "window/window_impl.hpp"
 
@@ -19,6 +20,7 @@ namespace engine
 {
 Service::Service(s32 argc, char* const* const argv)
 {
+	Time::resetElapsed();
 	g_exePath = argv[0];
 	m_services.add<os::Service>(os::Args{argc, argv});
 	m_services.add<log::Service>(std::string_view("debug.log"));

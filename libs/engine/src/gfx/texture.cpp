@@ -5,11 +5,10 @@
 #include "core/utils.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/texture.hpp"
-#include "gfx/common.hpp"
-#include "gfx/deferred.hpp"
-#include "gfx/info.hpp"
-#include "gfx/utils.hpp"
-#include "gfx/vram.hpp"
+#include "common.hpp"
+#include "deferred.hpp"
+#include "device.hpp"
+#include "vram.hpp"
 
 namespace le::gfx
 {
@@ -82,13 +81,13 @@ Sampler::Sampler(stdfs::path id, Info info) : Asset(std::move(id))
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
-	m_uImpl->sampler = g_info.device.createSampler(samplerInfo);
+	m_uImpl->sampler = g_device.device.createSampler(samplerInfo);
 	m_status = Status::eReady;
 }
 
 Sampler::~Sampler()
 {
-	vkDestroy(m_uImpl->sampler);
+	g_device.destroy(m_uImpl->sampler);
 }
 
 Asset::Status Sampler::update()
@@ -162,7 +161,10 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	}
 	m_mode = info.mode;
 	m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
-	m_uImpl->imageView = createImageView(m_uImpl->active.image, g_texModes.at((size_t)m_mode));
+	ImageViewInfo viewInfo;
+	viewInfo.image = m_uImpl->active.image;
+	viewInfo.format = g_texModes.at((size_t)m_mode);
+	m_uImpl->imageView = g_device.createImageView(viewInfo);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	if (bAddFileMonitor)
@@ -237,7 +239,10 @@ Asset::Status Texture::update()
 			deferred::release(m_uImpl->active, m_uImpl->imageView);
 			m_uImpl->active = m_uImpl->standby;
 			m_uImpl->standby = {};
-			m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb);
+			ImageViewInfo viewInfo;
+			viewInfo.image = m_uImpl->active.image;
+			viewInfo.format = g_texModes.at((size_t)m_mode);
+			m_uImpl->imageView = g_device.createImageView(viewInfo);
 			m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
 			m_status = Status::eReady;
 		}
@@ -351,8 +356,12 @@ Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	}
 	m_mode = info.mode;
 	m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_size, rludfb, idStr);
-	m_uImpl->imageView =
-		createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+	ImageViewInfo viewInfo;
+	viewInfo.image = m_uImpl->active.image;
+	viewInfo.format = vk::Format::eR8G8B8A8Srgb;
+	viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
+	viewInfo.type = vk::ImageViewType::eCube;
+	m_uImpl->imageView = g_device.createImageView(viewInfo);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	if (bAddFileMonitor)
@@ -439,8 +448,12 @@ Asset::Status Cubemap::update()
 				}
 				m_uImpl->active = m_uImpl->standby;
 			}
-			m_uImpl->imageView = createImageView(m_uImpl->active.image, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor,
-												 vk::ImageViewType::eCube);
+			ImageViewInfo viewInfo;
+			viewInfo.image = m_uImpl->active.image;
+			viewInfo.format = vk::Format::eR8G8B8A8Srgb;
+			viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
+			viewInfo.type = vk::ImageViewType::eCube;
+			m_uImpl->imageView = g_device.createImageView(viewInfo);
 			m_status = Status::eReady;
 		}
 		else

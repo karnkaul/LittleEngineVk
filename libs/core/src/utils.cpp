@@ -314,7 +314,7 @@ void strings::substituteChars(std::string& outInput, std::initializer_list<std::
 	std::string::iterator iter = outInput.begin();
 	while (iter != outInput.end())
 	{
-		for (auto const replacement : replacements)
+		for (auto const& replacement : replacements)
 		{
 			if (*iter == replacement.first)
 			{

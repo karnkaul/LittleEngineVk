@@ -108,7 +108,7 @@ s32 ecs::run()
 			{
 				jobs::enqueue(
 					[&registry, &entities]() {
-						Time wait = Time::from_us(maths::randomRange(0, 3000));
+						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						size_t const idx = (size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.destroyEntity(entities.at(idx));
@@ -116,7 +116,7 @@ s32 ecs::run()
 					"", true);
 				jobs::enqueue(
 					[&registry, &entities]() {
-						Time wait = Time::from_us(maths::randomRange(0, 3000));
+						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						size_t const idx = (size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.destroyComponent<A, B, D>(entities.at(idx));
@@ -124,7 +124,7 @@ s32 ecs::run()
 					"", true);
 				jobs::enqueue(
 					[&registry, &entities]() {
-						Time wait = Time::from_us(maths::randomRange(0, 3000));
+						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						size_t const idx = (size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.setEnabled(entities.at(idx), false);

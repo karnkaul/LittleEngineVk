@@ -1,6 +1,6 @@
 #include "core/log.hpp"
-#include "gfx/utils.hpp"
-#include "gfx/vram.hpp"
+#include "device.hpp"
+#include "vram.hpp"
 #include "resource_descriptors.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/texture.hpp"
@@ -19,7 +19,7 @@ void writeSet(WriteInfo const& info)
 	descWrite.descriptorCount = info.count;
 	descWrite.pImageInfo = info.pImage;
 	descWrite.pBufferInfo = info.pBuffer;
-	g_info.device.updateDescriptorSets(descWrite, {});
+	g_device.device.updateDescriptorSets(descWrite, {});
 	return;
 }
 
@@ -32,7 +32,7 @@ void createLayouts()
 	vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo;
 	setLayoutCreateInfo.bindingCount = (u32)bindings.size();
 	setLayoutCreateInfo.pBindings = bindings.data();
-	rd::g_setLayout = g_info.device.createDescriptorSetLayout(setLayoutCreateInfo);
+	rd::g_setLayout = g_device.device.createDescriptorSetLayout(setLayoutCreateInfo);
 	return;
 }
 } // namespace
@@ -82,11 +82,11 @@ vk::DescriptorSetLayoutBinding const SSBOFlags::s_setLayoutBinding =
 vk::DescriptorSetLayoutBinding const SSBODirLights::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const Textures::s_diffuseLayoutBinding =
-	vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::fragShader);
+vk::DescriptorSetLayoutBinding Textures::s_diffuseLayoutBinding =
+	vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
 
-vk::DescriptorSetLayoutBinding const Textures::s_specularLayoutBinding =
-	vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eCombinedImageSampler, Textures::max, vkFlags::fragShader);
+vk::DescriptorSetLayoutBinding Textures::s_specularLayoutBinding =
+	vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_cubemapLayoutBinding =
 	vk::DescriptorSetLayoutBinding(12, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
@@ -96,7 +96,14 @@ u32 Textures::total()
 	return s_diffuseLayoutBinding.descriptorCount + s_specularLayoutBinding.descriptorCount + s_cubemapLayoutBinding.descriptorCount;
 }
 
-void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const
+void Textures::clampDiffSpecCount(u32 hardwareMax)
+{
+	u32 const diffSpecMax = (hardwareMax - 1) / 2; // (total - cubemap) / (diffuse + specular)
+	s_diffuseLayoutBinding.descriptorCount = std::min(s_diffuseLayoutBinding.descriptorCount, diffSpecMax);
+	s_specularLayoutBinding.descriptorCount = std::min(s_specularLayoutBinding.descriptorCount, diffSpecMax);
+}
+
+void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer) const
 {
 	vk::DescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = buffer.buffer;
@@ -105,24 +112,31 @@ void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) c
 	WriteInfo writeInfo;
 	writeInfo.set = set;
 	writeInfo.binding = binding;
-	writeInfo.arrayElement = idx;
+	writeInfo.arrayElement = 0;
 	writeInfo.pBuffer = &bufferInfo;
 	writeInfo.type = type;
 	writeSet(writeInfo);
 	return;
 }
 
-void ShaderWriter::write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx) const
+void ShaderWriter::write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const
 {
-	vk::DescriptorImageInfo imageInfo;
-	imageInfo.imageView = tex.imageView;
-	imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	imageInfo.sampler = tex.sampler;
+	std::vector<vk::DescriptorImageInfo> imageInfos;
+	imageInfos.reserve(textures.size());
+	for (auto pTex : textures)
+	{
+		vk::DescriptorImageInfo imageInfo;
+		imageInfo.imageView = pTex->imageView;
+		imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageInfo.sampler = pTex->sampler;
+		imageInfos.push_back(imageInfo);
+	}
 	WriteInfo writeInfo;
 	writeInfo.set = set;
-	writeInfo.pImage = &imageInfo;
+	writeInfo.pImage = imageInfos.data();
 	writeInfo.binding = binding;
-	writeInfo.arrayElement = idx;
+	writeInfo.arrayElement = 0;
+	writeInfo.count = (u32)imageInfos.size();
 	writeInfo.type = type;
 	writeSet(writeInfo);
 	return;
@@ -152,7 +166,7 @@ void Set::destroy()
 
 void Set::writeView(UBOView const& view)
 {
-	m_view.writeValue(view, m_descriptorSet);
+	m_view.writeValue(view, m_set);
 	return;
 }
 
@@ -173,33 +187,45 @@ void Set::writeSSBOs(SSBOs const& ssbos)
 	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty()
 			   && !ssbos.flags.ssbo.empty(),
 		   "Empty SSBOs!");
-	m_models.writeArray(ssbos.models.ssbo, m_descriptorSet);
-	m_normals.writeArray(ssbos.normals.ssbo, m_descriptorSet);
-	m_materials.writeArray(ssbos.materials.ssbo, m_descriptorSet);
-	m_tints.writeArray(ssbos.tints.ssbo, m_descriptorSet);
-	m_flags.writeArray(ssbos.flags.ssbo, m_descriptorSet);
+	m_models.writeArray(ssbos.models.ssbo, m_set);
+	m_normals.writeArray(ssbos.normals.ssbo, m_set);
+	m_materials.writeArray(ssbos.materials.ssbo, m_set);
+	m_tints.writeArray(ssbos.tints.ssbo, m_set);
+	m_flags.writeArray(ssbos.flags.ssbo, m_set);
 	if (!ssbos.dirLights.ssbo.empty())
 	{
-		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_descriptorSet);
+		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_set);
 	}
 	return;
 }
 
-void Set::writeDiffuse(Texture const& diffuse, u32 idx)
+void Set::writeDiffuse(std::deque<Texture const*> const& diffuse)
 {
-	m_diffuse.write(m_descriptorSet, *diffuse.m_uImpl, idx);
+	std::vector<TextureImpl const*> diffuseImpl;
+	diffuseImpl.reserve(diffuse.size());
+	for (auto pTex : diffuse)
+	{
+		diffuseImpl.push_back(pTex->m_uImpl.get());
+	}
+	m_diffuse.write(m_set, diffuseImpl);
 	return;
 }
 
-void Set::writeSpecular(Texture const& specular, u32 idx)
+void Set::writeSpecular(std::deque<Texture const*> const& specular)
 {
-	m_specular.write(m_descriptorSet, *specular.m_uImpl, idx);
+	std::vector<TextureImpl const*> specularImpl;
+	specularImpl.reserve(specular.size());
+	for (auto pTex : specular)
+	{
+		specularImpl.push_back(pTex->m_uImpl.get());
+	}
+	m_specular.write(m_set, specularImpl);
 	return;
 }
 
 void Set::writeCubemap(Cubemap const& cubemap)
 {
-	m_cubemap.write(m_descriptorSet, *cubemap.m_uImpl, 0);
+	m_cubemap.write(m_set, {cubemap.m_uImpl.get()});
 	return;
 }
 
@@ -209,51 +235,49 @@ void Set::resetTextures()
 	auto pWhite = Resources::inst().get<Texture>("textures/white");
 	auto pCubemap = Resources::inst().get<Cubemap>("cubemaps/blank");
 	ASSERT(pBlack && pWhite && pCubemap, "blank textures are null!");
-	for (u32 i = 0; i < Textures::max; ++i)
-	{
-		writeDiffuse(*pWhite, i);
-		writeSpecular(*pBlack, i);
-	}
+	std::deque<Texture const*> diffuse(Textures::s_diffuseLayoutBinding.descriptorCount, pWhite);
+	std::deque<Texture const*> specular(Textures::s_specularLayoutBinding.descriptorCount, pBlack);
+	writeDiffuse(diffuse);
+	writeSpecular(specular);
 	writeCubemap(*pCubemap);
 	return;
 }
 
-SetLayouts allocateSets(u32 copies)
+std::vector<Set> allocateSets(vk::DescriptorSetLayout layout, u32 copies)
 {
-	SetLayouts ret;
-	// Pool of total descriptors
-	vk::DescriptorPoolSize uboPoolSize;
-	uboPoolSize.type = vk::DescriptorType::eUniformBuffer;
-	uboPoolSize.descriptorCount = copies * UBOView::s_setLayoutBinding.descriptorCount;
-	vk::DescriptorPoolSize ssboPoolSize;
-	ssboPoolSize.type = vk::DescriptorType::eStorageBuffer;
-	ssboPoolSize.descriptorCount = copies * 6; // 6 members per SSBO
-	vk::DescriptorPoolSize samplerPoolSize;
-	samplerPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
-	samplerPoolSize.descriptorCount = copies * Textures::total();
-	std::array const poolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
-	vk::DescriptorPoolCreateInfo createInfo;
-	createInfo.poolSizeCount = (u32)poolSizes.size();
-	createInfo.pPoolSizes = poolSizes.data();
-	createInfo.maxSets = copies; // 2 sets per copy
-	ret.descriptorPool = g_info.device.createDescriptorPool(createInfo);
-	// Allocate sets
-	vk::DescriptorSetAllocateInfo allocInfo;
-	allocInfo.descriptorPool = ret.descriptorPool;
-	allocInfo.descriptorSetCount = copies;
-	std::vector<vk::DescriptorSetLayout> const setLayouts((size_t)copies, g_setLayout);
-	allocInfo.pSetLayouts = setLayouts.data();
-	auto const sets = g_info.device.allocateDescriptorSets(allocInfo);
-	// Write handles
-	ret.set.reserve((size_t)copies);
+	std::vector<Set> ret;
+	ret.reserve((size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
 		Set set;
-		set.m_descriptorSet = sets.at(idx);
+		// Pool of descriptors
+		vk::DescriptorPoolSize uboPoolSize;
+		uboPoolSize.type = vk::DescriptorType::eUniformBuffer;
+		uboPoolSize.descriptorCount = UBOView::s_setLayoutBinding.descriptorCount;
+		vk::DescriptorPoolSize ssboPoolSize;
+		ssboPoolSize.type = vk::DescriptorType::eStorageBuffer;
+		ssboPoolSize.descriptorCount = 6; // 6 members per SSBO
+		vk::DescriptorPoolSize samplerPoolSize;
+		samplerPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
+		samplerPoolSize.descriptorCount = Textures::total();
+		std::array const poolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
+		vk::DescriptorPoolCreateInfo createInfo;
+		createInfo.poolSizeCount = (u32)poolSizes.size();
+		createInfo.pPoolSizes = poolSizes.data();
+		createInfo.maxSets = 1;
+		set.m_pool = g_device.device.createDescriptorPool(createInfo);
+		// Allocate sets
+		vk::DescriptorSetAllocateInfo allocInfo;
+		allocInfo.descriptorPool = set.m_pool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &layout;
+		auto const sets = g_device.device.allocateDescriptorSets(allocInfo);
+		// Write handles
+		set.m_set = sets.front();
 		set.writeView({});
 		set.initSSBOs();
 		set.resetTextures();
-		ret.set.push_back(std::move(set));
+		ret.push_back(std::move(set));
 	}
 	return ret;
 }
@@ -271,7 +295,7 @@ void deinit()
 {
 	if (g_setLayout != vk::DescriptorSetLayout())
 	{
-		vkDestroy(g_setLayout);
+		g_device.destroy(g_setLayout);
 		g_setLayout = vk::DescriptorSetLayout();
 	}
 	return;

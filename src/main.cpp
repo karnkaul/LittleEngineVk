@@ -1,3 +1,4 @@
+#include <imgui.h>
 #include "core/assert.hpp"
 #include "core/gdata.hpp"
 #include "core/io.hpp"
@@ -9,6 +10,7 @@
 #include "engine/levk.hpp"
 #include "engine/assets/resources.hpp"
 #include "engine/ecs/registry.hpp"
+#include "engine/editor/editor.hpp"
 #include "engine/gfx/camera.hpp"
 #include "engine/gfx/font.hpp"
 #include "engine/gfx/geometry.hpp"
@@ -26,6 +28,7 @@ using namespace le;
 namespace
 {
 std::unique_ptr<IOReader> g_uReader;
+bool g_bRunTests = false;
 
 bool runTests()
 {
@@ -41,7 +44,7 @@ bool runTests()
 int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
-	if (!runTests())
+	if (g_bRunTests && !runTests())
 	{
 		return 1;
 	}
@@ -135,9 +138,9 @@ int main(int argc, char** argv)
 	Window::Info info0;
 	info0.config.size = {1280, 720};
 	info0.config.title = "LittleEngineVk Demo";
-	info0.config.virtualFrameCount = 2;
 	info0.config.centreOffset = {-200, -200};
 	auto info1 = info0;
+	info0.config.bEnableGUI = true;
 	info1.options.colourSpaces.push_back({ColourSpace::eRGBLinear});
 	// info1.config.mode = Window::Mode::eBorderlessFullscreen;
 	info1.config.title += " 2";
@@ -146,36 +149,47 @@ int main(int argc, char** argv)
 	bool bClose0 = false, bClose1 = false;
 	bool bWF0 = false;
 	bool bDisableCam = false;
-	auto registerInput = [&bDisableCam](Window& self, Window& other, bool& bRecreate, bool& bClose, std::shared_ptr<int>& token) {
-		token = self.registerInput([&](Key key, Action action, Mods mods) {
-			if (self.isOpen() && key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
-			{
-				bClose = true;
-			}
-			if (!other.isOpen() && (key == Key::eT || key == Key::eN) && action == Action::eRelease && mods & Mods::eCONTROL)
-			{
-				bRecreate = true;
-			}
-			if (key == Key::eLeftControl || key == Key::eRightControl)
-			{
-				if (bDisableCam && action == Action::eRelease)
-				{
-					bDisableCam = false;
-				}
-				if (!bDisableCam && action == Action::ePress)
-				{
-					bDisableCam = true;
-				}
-			}
-		});
-	};
-	std::shared_ptr<s32> token0, token1, wf0Token;
 	bool bTEMP = false;
 	bool bToggleModel0 = false;
+	bool bEditor = false;
+	bool bAltPressed = false;
 	gfx::Model::Info m0info;
 	gfx::Model::Info m1info;
 	Time reloadTime;
-	wf0Token = w0.registerInput([eid0, &registry, &bWF0, &bTEMP, &bToggleModel0](Key key, Action action, Mods mods) {
+	auto onInput = [&w0, &w1, eid0, &registry, &bWF0, &bTEMP, &bToggleModel0, &bEditor, &bRecreate0, &bRecreate1, &bClose0, &bClose1,
+					&bDisableCam, &bAltPressed](Key key, Action action, Mods mods) {
+		if (key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
+		{
+			bClose0 = w0.isFocused();
+			bClose1 = w1.isFocused();
+		}
+		if ((key == Key::eT || key == Key::eN) && action == Action::eRelease && mods & Mods::eCONTROL)
+		{
+			bRecreate0 = !w0.isOpen();
+			bRecreate1 = !w1.isOpen();
+		}
+		if (key == Key::eLeftAlt || key == Key::eRightAlt)
+		{
+			if (action == Action::ePress)
+			{
+				bAltPressed = true;
+			}
+			else if (action == Action::eRelease)
+			{
+				bAltPressed = false;
+			}
+		}
+		if (key == Key::eLeftControl || key == Key::eRightControl)
+		{
+			if (bDisableCam && action == Action::eRelease)
+			{
+				bDisableCam = false;
+			}
+			if (!bDisableCam && action == Action::ePress)
+			{
+				bDisableCam = true;
+			}
+		}
 		if (key == Key::eP && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
 			bWF0 = !bWF0;
@@ -188,6 +202,10 @@ int main(int argc, char** argv)
 		{
 			bToggleModel0 = true;
 		}
+		if (key == Key::eF3 && action == Action::eRelease)
+		{
+			bEditor = !bEditor;
+		}
 		if (key == Key::eD && action == Action::eRelease && (mods & Mods::eCONTROL))
 		{
 			registry.destroyEntity(eid0);
@@ -196,19 +214,8 @@ int main(int argc, char** argv)
 		{
 			registry.setEnabled(eid0, !registry.isEnabled(eid0));
 		}
-	});
-	registerInput(w0, w1, bRecreate1, bClose0, token0);
-	registerInput(w1, w0, bRecreate0, bClose1, token1);
-	auto createPipeline = [](gfx::Renderer* pRenderer, std::string_view name, gfx::PolygonMode mode = gfx::PolygonMode::eFill,
-							 f32 lineWidth = 3.0f) -> gfx::Pipeline* {
-		gfx::Pipeline::Info pipelineInfo;
-		pipelineInfo.name = name;
-		pipelineInfo.polygonMode = mode;
-		pipelineInfo.lineWidth = lineWidth;
-		// pipelineInfo.cullMode = gfx::CullMode::eClockwise;
-		pipelineInfo.bBlend = true;
-		return pRenderer->createPipeline(std::move(pipelineInfo));
 	};
+	auto token = Window::registerInput(onInput, {});
 
 	gfx::FreeCam freeCam0(&w0), freeCam1(&w1);
 	freeCam0.m_state.flags.set(gfx::FreeCam::Flag::eKeyToggle_Look);
@@ -230,13 +237,18 @@ int main(int argc, char** argv)
 	textInfo.id = "tris";
 	triText.setup(textInfo);
 
-	if (w1.create(info1) && w0.create(info0))
+	gfx::ScreenRect gameRect;
+
+	if (/*w1.create(info1) &&*/ w0.create(info0))
 	{
 		gfx::Pipeline* pPipeline0wf = nullptr;
 
 		if (w0.isOpen())
 		{
-			pPipeline0wf = createPipeline(&w0.renderer(), "wireframe", gfx::PolygonMode::eLine);
+			gfx::Pipeline::Info pipelineInfo;
+			pipelineInfo.name = "wireframe";
+			pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
+			pPipeline0wf = w0.renderer().createPipeline(std::move(pipelineInfo));
 		}
 
 		gfx::Renderer::View view0;
@@ -272,16 +284,68 @@ int main(int argc, char** argv)
 			++frames;
 			fpsElapsed += dt;
 			fpsLogElapsed += dt;
-			if (fpsElapsed >= Time::from_s(1.0f))
+			if (fpsElapsed >= 1s)
 			{
 				fps = frames;
 				frames = 0;
 				fpsElapsed = Time();
 			}
 			{
+				// handle events
+				Window::pollEvents();
+				if (w0.isClosing())
+				{
+					freeCam0.reset(false, false);
+					w0.destroy();
+				}
+				if (w1.isClosing())
+				{
+					freeCam1.reset(false, false);
+					w1.destroy();
+				}
+				if (bRecreate0)
+				{
+					bRecreate0 = false;
+					w0.create(info0);
+					gfx::Pipeline::Info pipelineInfo;
+					pipelineInfo.name = "wireframe";
+					pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
+					pPipeline0wf = w0.renderer().createPipeline(std::move(pipelineInfo));
+				}
+				if (bRecreate1)
+				{
+					bRecreate1 = false;
+					w1.create(info1);
+				}
+				if (bClose0)
+				{
+					bClose0 = false;
+					w0.close();
+				}
+				if (bClose1)
+				{
+					bClose1 = false;
+					w1.close();
+				}
+
+				// Tick
 				engine.update();
 				registry.sweep();
+				gameRect = {};
 
+#if defined(LEVK_EDITOR)
+				static auto const smol = glm::vec2(0.66f);
+				if (bEditor && w0.isOpen())
+				{
+					static glm::vec2 centre = glm::vec2(0.5f * (f32)w0.windowSize().x, 0.0f);
+					if (bAltPressed)
+					{
+						centre = w0.cursorPos();
+					}
+					gameRect = w0.renderer().clampToView(centre, smol);
+					editor::render(gameRect, w0.framebufferSize());
+				}
+#endif
 				if (bToggleModel0)
 				{
 					if (pModel0 && pModel1)
@@ -325,7 +389,7 @@ int main(int argc, char** argv)
 				freeCam1.tick(dt);
 
 				fpsText.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
-				ftText.updateText(fmt::format("{:.3}ms", ft.to_s() * 1000));
+				ftText.updateText(fmt::format("{:.3}ms", dt.to_s() * 1000));
 				triText.updateText(fmt::format("{} triangles", w0.renderer().m_stats.trisDrawn));
 
 				if (auto pM = registry.component<TAsset<gfx::Model>>(eid2))
@@ -337,19 +401,25 @@ int main(int argc, char** argv)
 					pM->id = model1id;
 				}
 
-				// Update matrices
-				if (auto pT = registry.component<Transform>(eid1))
+#if defined(LEVK_EDITOR)
+				if (editor::g_bTickGame)
+#endif
 				{
-					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
-				}
-				if (auto pT = registry.component<Transform>(eid0))
-				{
-					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
-				}
-				transform1.setOrientation(glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
-				if (auto pT = registry.component<Transform>(eid2))
-				{
-					pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
+					// Update matrices
+					if (auto pT = registry.component<Transform>(eid1))
+					{
+						pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+					}
+					if (auto pT = registry.component<Transform>(eid0))
+					{
+						pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
+					}
+					transform1.setOrientation(
+						glm::rotate(transform1.orientation(), glm::radians(dt.to_s() * 15), glm::vec3(0.0f, 1.0f, 0.0f)));
+					if (auto pT = registry.component<Transform>(eid2))
+					{
+						pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
+					}
 				}
 				view0.mat_v = freeCam0.view();
 				view0.pos_v = freeCam0.m_position;
@@ -377,39 +447,15 @@ int main(int argc, char** argv)
 				}
 			}
 
-			if (w0.isClosing())
+			// GUI
+			static bool s_bImGuiDemo = false;
+			if (s_bImGuiDemo)
 			{
-				freeCam0.reset(false, false);
-				w0.destroy();
+				GUI(ImGui::ShowDemoWindow(&s_bImGuiDemo));
 			}
-			if (w1.isClosing())
-			{
-				freeCam1.reset(false, false);
-				w1.destroy();
-			}
-			if (bRecreate0)
-			{
-				bRecreate0 = false;
-				w0.create(info0);
-				pPipeline0wf = createPipeline(&w0.renderer(), "wireframe", gfx::PolygonMode::eLine);
-			}
-			if (bRecreate1)
-			{
-				bRecreate1 = false;
-				w1.create(info1);
-			}
-			if (bClose0)
-			{
-				bClose0 = false;
-				w0.close();
-			}
-			if (bClose1)
-			{
-				bClose1 = false;
-				w1.close();
-			}
-			Window::pollEvents();
+
 			ft = Time::elapsed() - fStart;
+
 			// Render
 #if defined(LEVK_DEBUG)
 			try
@@ -418,16 +464,15 @@ int main(int argc, char** argv)
 				if (w0.isOpen())
 				{
 					gfx::Renderer::Scene scene;
-					auto const smol = glm::vec2(0.66f);
 					scene.dirLights = {dirLight0, dirLight1};
 					scene.clear.colour = Colour(0x030203ff);
 					scene.view = view0;
 					scene.view.skybox.pCubemap = pCubemap;
 					auto pPipeline = bWF0 ? pPipeline0wf : nullptr;
 					gfx::Renderer::Batch batch;
+					batch.viewport = scene.view.skybox.viewport = gameRect;
 					if (bTEMP)
 					{
-						batch.viewport = scene.view.skybox.viewport = w0.renderer().clampToView(w0.cursorPos(), smol);
 						batch.drawables.push_back({{pTriangle0}, &transform1, pPipeline});
 					}
 					{

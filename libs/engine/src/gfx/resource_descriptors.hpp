@@ -7,9 +7,9 @@
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/renderer.hpp"
-#include "gfx/common.hpp"
-#include "gfx/deferred.hpp"
-#include "gfx/vram.hpp"
+#include "common.hpp"
+#include "deferred.hpp"
+#include "vram.hpp"
 #if defined(LEVK_VKRESOURCE_NAMES)
 #include "core/utils.hpp"
 #endif
@@ -124,11 +124,12 @@ struct Textures final
 {
 	constexpr static u32 max = 1024;
 
-	static vk::DescriptorSetLayoutBinding const s_diffuseLayoutBinding;
-	static vk::DescriptorSetLayoutBinding const s_specularLayoutBinding;
+	static vk::DescriptorSetLayoutBinding s_diffuseLayoutBinding;
+	static vk::DescriptorSetLayoutBinding s_specularLayoutBinding;
 	static vk::DescriptorSetLayoutBinding const s_cubemapLayoutBinding;
 
 	static u32 total();
+	static void clampDiffSpecCount(u32 hardwareMax);
 };
 
 struct PushConstants final
@@ -154,8 +155,8 @@ struct ShaderWriter final
 	vk::DescriptorType type;
 	u32 binding = 0;
 
-	void write(vk::DescriptorSet set, Buffer const& buffer, u32 idx) const;
-	void write(vk::DescriptorSet set, TextureImpl const& tex, u32 idx) const;
+	void write(vk::DescriptorSet set, Buffer const& buffer) const;
+	void write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const;
 };
 
 template <typename T>
@@ -189,7 +190,7 @@ public:
 		{
 			return false;
 		}
-		m_writer.write(set, m_buffer, 0);
+		m_writer.write(set, m_buffer);
 		return true;
 	}
 
@@ -203,7 +204,7 @@ public:
 		{
 			return false;
 		}
-		m_writer.write(set, m_buffer, 0);
+		m_writer.write(set, m_buffer);
 		return true;
 	}
 
@@ -238,7 +239,8 @@ private:
 class Set final
 {
 public:
-	vk::DescriptorSet m_descriptorSet;
+	vk::DescriptorPool m_pool;
+	vk::DescriptorSet m_set;
 
 private:
 	GPUBuffer<UBOView> m_view;
@@ -262,17 +264,11 @@ public:
 public:
 	void writeView(UBOView const& view);
 	void writeSSBOs(SSBOs const& ssbos);
-	void writeDiffuse(Texture const& diffuse, u32 idx);
-	void writeSpecular(Texture const& specular, u32 idx);
+	void writeDiffuse(std::deque<Texture const*> const& diffuse);
+	void writeSpecular(std::deque<Texture const*> const& specular);
 	void writeCubemap(Cubemap const& cubemap);
 
 	void resetTextures();
-};
-
-struct SetLayouts final
-{
-	vk::DescriptorPool descriptorPool;
-	std::vector<Set> set;
 };
 
 inline vk::DescriptorSetLayout g_setLayout;
@@ -280,6 +276,6 @@ inline vk::DescriptorSetLayout g_setLayout;
 void init();
 void deinit();
 
-SetLayouts allocateSets(u32 copies);
+std::vector<Set> allocateSets(vk::DescriptorSetLayout setLayout, u32 copies);
 } // namespace rd
 } // namespace le::gfx

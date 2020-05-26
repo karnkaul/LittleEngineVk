@@ -10,7 +10,7 @@
 #include "core/log.hpp"
 #include "core/utils.hpp"
 #include "engine/gfx/model.hpp"
-#include "gfx/info.hpp"
+#include "device.hpp"
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_PROFILE_MODEL_LOADS)

@@ -56,7 +56,7 @@ namespace le::log
 {
 struct Service final
 {
-	Service(std::filesystem::path const& path, Time pollRate = Time::from_s(0.5f));
+	Service(std::filesystem::path const& path, Time pollRate = 500ms);
 	~Service();
 };
 
@@ -82,6 +82,6 @@ void fmtLog(Level level, std::string_view text, std::string_view file, u64 line,
 	}
 }
 
-void logToFile(std::filesystem::path path, Time pollRate = Time::from_s(0.5f));
+void logToFile(std::filesystem::path path, Time pollRate = 500ms);
 void stopFileLogging();
 } // namespace le::log

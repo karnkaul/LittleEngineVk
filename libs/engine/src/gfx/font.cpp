@@ -71,7 +71,7 @@ bool Font::Info::deserialise(JSONObj const& json)
 		sheetID = json.getString("sheetID");
 		samplerID = json.getString("sampler", "font");
 		auto glyphsData = json.getGData("glyphs");
-		for (auto const [key, value] : glyphsData.allFields())
+		for (auto const& [key, value] : glyphsData.allFields())
 		{
 			if (!key.empty())
 			{

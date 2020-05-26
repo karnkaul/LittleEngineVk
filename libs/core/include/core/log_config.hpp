@@ -1,5 +1,6 @@
 #pragma once
 #include "std_types.hpp"
+#include <string>
 
 namespace le::log
 {
@@ -23,4 +24,7 @@ inline Level g_minLevel =
 #else
 	Level::eInfo;
 #endif
+
+using OnLog = void (*)(std::string_view, Level);
+inline OnLog g_onLog = nullptr;
 } // namespace le::log

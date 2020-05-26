@@ -44,33 +44,33 @@ using QFlags = TFlags<QFlag>;
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
 // clang-format off
-constexpr std::array g_colourSpaceMap = 
+[[maybe_unused]] constexpr std::array g_colourSpaceMap = 
 {
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm
 };
 
-constexpr std::array g_presentModeMap = 
+[[maybe_unused]] constexpr std::array g_presentModeMap = 
 {
 	vk::PresentModeKHR::eFifo,
 	vk::PresentModeKHR::eMailbox,
 	vk::PresentModeKHR::eImmediate,
 };
 
-constexpr std::array g_polygonModeMap = 
+[[maybe_unused]] constexpr std::array g_polygonModeMap = 
 {
 	vk::PolygonMode::eFill,
 	vk::PolygonMode::eLine
 };
 
-constexpr std::array g_cullModeMap = 
+[[maybe_unused]] constexpr std::array g_cullModeMap = 
 {
 	vk::CullModeFlagBits::eNone,
 	vk::CullModeFlagBits::eBack,
 	vk::CullModeFlagBits::eFront
 };
 
-constexpr std::array g_frontFaceMap = 
+[[maybe_unused]] constexpr std::array g_frontFaceMap = 
 {
 	vk::FrontFace::eCounterClockwise,
 	vk::FrontFace::eClockwise
@@ -89,6 +89,7 @@ struct AvailableDevice final
 {
 	vk::PhysicalDevice physicalDevice;
 	vk::PhysicalDeviceProperties properties;
+	vk::PhysicalDeviceFeatures features;
 	std::vector<vk::QueueFamilyProperties> queueFamilies;
 };
 
@@ -138,6 +139,13 @@ struct PresenterInfo final
 	} options;
 };
 
+struct Queue final
+{
+	vk::Queue queue;
+	u32 familyIndex = 0;
+	u32 arrayIndex = 0;
+};
+
 struct UniqueQueues final
 {
 	vk::SharingMode mode;
@@ -179,6 +187,14 @@ struct LayoutTransition final
 {
 	vk::ImageLayout pre;
 	vk::ImageLayout post;
+};
+
+struct ImageViewInfo final
+{
+	vk::Image image;
+	vk::Format format;
+	vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
+	vk::ImageViewType type = vk::ImageViewType::e2D;
 };
 
 extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;

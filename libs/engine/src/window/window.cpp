@@ -8,7 +8,7 @@ namespace le
 {
 namespace
 {
-WindowID g_nextWindowID = WindowID::Null;
+WindowID g_nextWindowID = WindowID::s_null;
 } // namespace
 
 Window::Service::Service()
@@ -50,6 +50,31 @@ void Window::pollEvents()
 	return;
 }
 
+OnText::Token Window::registerText(OnText::Callback callback, WindowID window)
+{
+	return WindowImpl::s_input[window].onText.subscribe(callback);
+}
+
+OnInput::Token Window::registerInput(OnInput::Callback callback, WindowID window)
+{
+	return WindowImpl::s_input[window].onInput.subscribe(callback);
+}
+
+OnMouse::Token Window::registerMouse(OnMouse::Callback callback, WindowID window)
+{
+	return WindowImpl::s_input[window].onMouse.subscribe(callback);
+}
+
+OnMouse::Token Window::registerScroll(OnMouse::Callback callback, WindowID window)
+{
+	return WindowImpl::s_input[window].onScroll.subscribe(callback);
+}
+
+WindowID Window::guiWindow()
+{
+	return WindowImpl::guiWindow();
+}
+
 gfx::Renderer const& Window::renderer() const
 {
 	return m_renderer;
@@ -73,6 +98,11 @@ bool Window::isOpen() const
 bool Window::isClosing() const
 {
 	return m_uImpl ? m_uImpl->isClosing() : false;
+}
+
+bool Window::isFocused() const
+{
+	return m_uImpl ? m_uImpl->isFocused() : false;
 }
 
 glm::ivec2 Window::windowSize() const
@@ -107,45 +137,44 @@ void Window::destroy()
 	}
 	return;
 }
-
 OnText::Token Window::registerText(OnText::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onText.subscribe(callback) : OnText::Token();
+	return WindowImpl::s_input[m_id].onText.subscribe(callback);
 }
 
 OnInput::Token Window::registerInput(OnInput::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onInput.subscribe(callback) : OnInput::Token();
+	return WindowImpl::s_input[m_id].onInput.subscribe(callback);
 }
 
 OnMouse::Token Window::registerMouse(OnMouse::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onMouse.subscribe(callback) : OnMouse::Token();
+	return WindowImpl::s_input[m_id].onMouse.subscribe(callback);
 }
 
 OnMouse::Token Window::registerScroll(OnMouse::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onScroll.subscribe(callback) : OnMouse::Token();
+	return WindowImpl::s_input[m_id].onScroll.subscribe(callback);
 }
 
 OnFiledrop::Token Window::registerFiledrop(OnFiledrop::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onFiledrop.subscribe(callback) : OnFiledrop::Token();
+	return WindowImpl::s_input[m_id].onFiledrop.subscribe(callback);
 }
 
 OnFocus::Token Window::registerFocus(OnFocus::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onFocus.subscribe(callback) : OnFocus::Token();
+	return WindowImpl::s_input[m_id].onFocus.subscribe(callback);
 }
 
 OnWindowResize::Token Window::registerResize(OnWindowResize::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onWindowResize.subscribe(callback) : OnWindowResize::Token();
+	return WindowImpl::s_input[m_id].onWindowResize.subscribe(callback);
 }
 
 OnClosed::Token Window::registerClosed(OnClosed::Callback callback)
 {
-	return m_uImpl ? m_uImpl->m_input.onClosed.subscribe(callback) : OnClosed::Token();
+	return WindowImpl::s_input[m_id].onClosed.subscribe(callback);
 }
 
 void Window::setCursorMode(CursorMode mode) const

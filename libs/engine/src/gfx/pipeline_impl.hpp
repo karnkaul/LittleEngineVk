@@ -50,6 +50,7 @@ public:
 
 public:
 	bool create(Info info);
+	bool create(std::vector<vk::DescriptorSetLayout> setLayouts);
 	void destroy();
 
 	void update();

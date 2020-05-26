@@ -54,6 +54,7 @@ private:
 	Presenter m_presenter;
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
+	vk::DescriptorSetLayout m_setLayout;
 	Renderer* m_pRenderer;
 	struct
 	{
@@ -98,7 +99,7 @@ private:
 	void next();
 
 	PCDeq writeSets(Renderer::Scene& out_scene, FrameSync& out_frame) const;
-	u64 doRenderPass(Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, FrameSync& out_frame, PCDeq const& push) const;
+	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push) const;
 	bool submit(FrameSync const& frame);
 
 	friend class le::WindowImpl;

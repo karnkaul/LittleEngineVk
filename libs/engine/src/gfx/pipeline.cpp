@@ -44,6 +44,12 @@ bool PipelineImpl::create(Info info)
 	return false;
 }
 
+bool PipelineImpl::create(std::vector<vk::DescriptorSetLayout> setLayouts)
+{
+	m_info.setLayouts = std::move(setLayouts);
+	return create(m_pipeline, m_layout);
+}
+
 void PipelineImpl::destroy()
 {
 	destroy(m_pipeline, m_layout);

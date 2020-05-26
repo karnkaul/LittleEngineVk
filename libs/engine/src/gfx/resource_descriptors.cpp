@@ -243,7 +243,7 @@ void Set::resetTextures()
 	return;
 }
 
-std::vector<Set> allocateSets(u32 copies)
+std::vector<Set> allocateSets(vk::DescriptorSetLayout layout, u32 copies)
 {
 	std::vector<Set> ret;
 	ret.reserve((size_t)copies);
@@ -270,7 +270,7 @@ std::vector<Set> allocateSets(u32 copies)
 		vk::DescriptorSetAllocateInfo allocInfo;
 		allocInfo.descriptorPool = set.m_pool;
 		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &g_setLayout;
+		allocInfo.pSetLayouts = &layout;
 		auto const sets = g_device.device.allocateDescriptorSets(allocInfo);
 		// Write handles
 		set.m_set = sets.front();

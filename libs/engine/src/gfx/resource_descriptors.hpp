@@ -276,6 +276,6 @@ inline vk::DescriptorSetLayout g_setLayout;
 void init();
 void deinit();
 
-std::vector<Set> allocateSets(u32 copies);
+std::vector<Set> allocateSets(vk::DescriptorSetLayout setLayout, u32 copies);
 } // namespace rd
 } // namespace le::gfx

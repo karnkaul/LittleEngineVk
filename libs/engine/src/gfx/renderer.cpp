@@ -116,6 +116,7 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
 	: m_presenter(info.presenterInfo), m_pRenderer(pOwner), m_window(info.windowID)
 {
 	m_name = fmt::format("{}:{}", Renderer::s_tName, m_window);
+	m_setLayout = rd::g_setLayout;
 	create(info.frameCount);
 	Pipeline::Info pipelineInfo;
 	pipelineInfo.name = "default";
@@ -166,7 +167,7 @@ void RendererImpl::create(u8 frameCount)
 	{
 		m_frameCount = frameCount;
 		// Descriptors
-		auto sets = rd::allocateSets(frameCount);
+		auto sets = rd::allocateSets(m_setLayout, frameCount);
 		ASSERT(sets.size() == (size_t)frameCount, "Invalid descriptor sets!");
 		m_frames.reserve((size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx)
@@ -216,7 +217,7 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	PipelineImpl::Info implInfo;
 	implInfo.renderPass = m_presenter.m_renderPass;
 	implInfo.pShader = info.pShader;
-	implInfo.setLayouts = {rd::g_setLayout};
+	implInfo.setLayouts = {m_setLayout};
 	implInfo.name = info.name;
 	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
 	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
@@ -289,12 +290,11 @@ bool RendererImpl::render(Renderer::Scene scene)
 	}
 	auto& frame = frameSync();
 	g_device.waitFor(frame.drawing);
-	auto push = writeSets(scene, frame);
-	// Acquire
+	auto const push = writeSets(scene, frame);
 	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
 	if (bResult)
 	{
-		u64 const tris = doRenderPass(scene, acquire, frame, push);
+		u64 const tris = doRenderPass(frame, scene, acquire, push);
 		if (submit(frame))
 		{
 			next();
@@ -493,10 +493,10 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 	return push;
 }
 
-u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, FrameSync& frame, PCDeq const& push) const
+u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push) const
 {
 	// Framebuffer
-	g_device.destroy(frame.framebuffer);
+	g_device.destroy(out_frame.framebuffer);
 	vk::FramebufferCreateInfo createInfo;
 	createInfo.attachmentCount = (u32)acquire.attachments.size();
 	createInfo.pAttachments = acquire.attachments.data();
@@ -504,7 +504,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, Presenter::DrawFram
 	createInfo.width = acquire.swapchainExtent.width;
 	createInfo.height = acquire.swapchainExtent.height;
 	createInfo.layers = 1;
-	frame.framebuffer = g_device.device.createFramebuffer(createInfo);
+	out_frame.framebuffer = g_device.device.createFramebuffer(createInfo);
 	// RenderPass
 	auto const c = scene.clear.colour;
 	std::array const clearColour = {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
@@ -513,12 +513,12 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, Presenter::DrawFram
 	std::array<vk::ClearValue, 2> const clearValues = {colour, depth};
 	vk::RenderPassBeginInfo renderPassInfo;
 	renderPassInfo.renderPass = acquire.renderPass;
-	renderPassInfo.framebuffer = frame.framebuffer;
+	renderPassInfo.framebuffer = out_frame.framebuffer;
 	renderPassInfo.renderArea.extent = acquire.swapchainExtent;
 	renderPassInfo.clearValueCount = (u32)clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
 	// Begin
-	auto const& commandBuffer = frame.commandBuffer;
+	auto const& commandBuffer = out_frame.commandBuffer;
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
 	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
@@ -548,7 +548,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, Presenter::DrawFram
 						commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 					}
 					auto layout = pPipeline->m_uImpl->m_layout;
-					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, frame.set.m_set, {});
+					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, out_frame.set.m_set, {});
 					commandBuffer.pushConstants<rd::PushConstants>(layout, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					commandBuffer.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pMesh->m_uImpl->ibo.count > 0)

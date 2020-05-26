@@ -122,7 +122,7 @@ struct SSBOs final
 
 struct Textures final
 {
-	constexpr static u32 max = 1024;
+	static u32 s_max;
 
 	static vk::DescriptorSetLayoutBinding s_diffuseLayoutBinding;
 	static vk::DescriptorSetLayoutBinding s_specularLayoutBinding;
@@ -263,6 +263,7 @@ public:
 public:
 	void initSSBOs();
 	void destroy();
+	void resetTextures();
 
 	void update(vk::DescriptorSetLayout samplerLayout);
 

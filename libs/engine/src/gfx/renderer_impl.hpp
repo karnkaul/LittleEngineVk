@@ -63,8 +63,8 @@ private:
 	} m_pipes;
 
 	u64 m_drawnFrames = 0;
-	u32 m_diffuseCount = 0;
-	u32 m_specularCount = 0;
+	u32 m_maxDiffuse = 0;
+	u32 m_maxSpecular = 0;
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;

@@ -166,8 +166,7 @@ void RendererImpl::create(u8 frameCount)
 	{
 		m_frameCount = frameCount;
 		// Descriptors
-		m_diffuseCount = m_specularCount = 1;
-		m_samplerLayout = rd::createSamplerLayout(m_diffuseCount, m_specularCount);
+		m_samplerLayout = rd::createSamplerLayout(rd::Textures::s_max, rd::Textures::s_max);
 		auto sets = rd::allocateSets(m_samplerLayout, frameCount);
 		ASSERT(sets.size() == (size_t)frameCount, "Invalid descriptor sets!");
 		m_frames.reserve((size_t)frameCount);
@@ -211,7 +210,7 @@ void RendererImpl::destroy()
 		m_frames.clear();
 		m_index = 0;
 		m_drawnFrames = 0;
-		m_diffuseCount = m_specularCount = 0;
+		m_maxDiffuse = m_maxSpecular = 0;
 		LOG_D("[{}] destroyed", m_name);
 	}
 	return;
@@ -488,17 +487,16 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 	{
 		specular.add(pBlack);
 	}
-	u32 const diffuseCount = diffuse.total();
-	u32 const specularCount = specular.total();
-	if (m_diffuseCount != diffuseCount || m_specularCount != specularCount)
+	m_maxDiffuse = std::max(m_maxDiffuse, diffuse.total());
+	m_maxSpecular = std::max(m_maxSpecular, specular.total());
+	for (u32 idx = diffuse.total(); idx < m_maxDiffuse; ++idx)
 	{
-		deferred::release([layout = m_samplerLayout]() { g_device.destroy(layout); });
-		m_samplerLayout = rd::createSamplerLayout(diffuseCount, specularCount);
+		diffuse.textures.push_back(pWhite);
 	}
-	m_diffuseCount = diffuseCount;
-	m_specularCount = specularCount;
-	out_frame.set.update(m_samplerLayout);
-
+	for (u32 idx = specular.total(); idx < m_maxSpecular; ++idx)
+	{
+		specular.textures.push_back(pBlack);
+	}
 	rd::UBOView view(out_scene.view, (u32)out_scene.dirLights.size());
 	std::copy(out_scene.dirLights.begin(), out_scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
 

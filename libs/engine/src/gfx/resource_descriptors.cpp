@@ -48,6 +48,8 @@ SSBODirLights::Light::Light(DirLight const& dirLight)
 {
 }
 
+u32 Textures::s_max = 1024;
+
 vk::DescriptorSetLayoutBinding const UBOView::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vkFlags::vertFragShader);
 
@@ -70,10 +72,10 @@ vk::DescriptorSetLayoutBinding const SSBODirLights::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
 vk::DescriptorSetLayoutBinding Textures::s_diffuseLayoutBinding =
-	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
+	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eCombinedImageSampler, s_max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding Textures::s_specularLayoutBinding =
-	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, max, vkFlags::fragShader);
+	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, s_max, vkFlags::fragShader);
 
 vk::DescriptorSetLayoutBinding const Textures::s_cubemapLayoutBinding =
 	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
@@ -85,9 +87,8 @@ u32 Textures::total()
 
 void Textures::clampDiffSpecCount(u32 hardwareMax)
 {
-	u32 const diffSpecMax = (hardwareMax - 1) / 2; // (total - cubemap) / (diffuse + specular)
-	s_diffuseLayoutBinding.descriptorCount = std::min(s_diffuseLayoutBinding.descriptorCount, diffSpecMax);
-	s_specularLayoutBinding.descriptorCount = std::min(s_specularLayoutBinding.descriptorCount, diffSpecMax);
+	s_max = std::min(s_max, (hardwareMax - 1) / 2); // (total - cubemap) / (diffuse + specular)
+	s_diffuseLayoutBinding.descriptorCount = s_specularLayoutBinding.descriptorCount = s_max;
 }
 
 void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer) const
@@ -151,20 +152,27 @@ void Set::destroy()
 	return;
 }
 
+void Set::resetTextures()
+{
+	std::deque<Texture const*> const diffuse((size_t)Textures::s_max, Resources::inst().get<Texture>("textures/white"));
+	std::deque<Texture const*> const specular((size_t)Textures::s_max, Resources::inst().get<Texture>("textures/black"));
+	writeDiffuse(diffuse);
+	writeSpecular(specular);
+}
+
 void Set::update(vk::DescriptorSetLayout samplerLayout)
 {
 	if (samplerLayout != vk::DescriptorSetLayout() && m_samplerLayout != samplerLayout)
 	{
 		m_samplerLayout = samplerLayout;
 		g_device.device.resetDescriptorPool(m_samplerPool);
-		// Allocate sets
 		vk::DescriptorSetAllocateInfo allocInfo;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.descriptorPool = m_samplerPool;
 		allocInfo.pSetLayouts = &m_samplerLayout;
 		auto const samplerSets = g_device.device.allocateDescriptorSets(allocInfo);
-		// Write handles
 		m_samplerSet = samplerSets.front();
+		resetTextures();
 		LOG_D("Sampler Descriptor Set recreated");
 	}
 	return;
@@ -289,6 +297,7 @@ std::vector<Set> allocateSets(vk::DescriptorSetLayout samplerLayout, u32 copies)
 		set.m_samplerSet = samplerSets.front();
 		set.writeView({});
 		set.initSSBOs();
+		set.resetTextures();
 		ret.push_back(std::move(set));
 	}
 	return ret;

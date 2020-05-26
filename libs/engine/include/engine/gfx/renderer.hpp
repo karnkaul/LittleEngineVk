@@ -70,7 +70,6 @@ public:
 		glm::mat4 mat_p = {};
 		glm::mat4 mat_ui = {};
 		glm::vec3 pos_v = {};
-		u32 dirLightCount = 0;
 		Skybox skybox;
 	};
 

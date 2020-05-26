@@ -14,14 +14,15 @@ struct Deferred
 	{
 		u64 lastFrame = 0;
 		s16 remaining = 0;
+		u8 pad = 0;
 	};
 	using WinID = s32;
 
 	std::function<void()> func;
 	std::unordered_map<WinID, Entry> drawingMap;
 };
-std::deque<Deferred> g_deferred;
 
+std::deque<Deferred> g_deferred;
 std::mutex g_mutex;
 
 bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
@@ -45,7 +46,7 @@ bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
 			else
 			{
 				s16 diff = -(s16)(pRenderer->framesDrawn() - entry.lastFrame);
-				entry.remaining = diff + (s16)pRenderer->virtualFrameCount();
+				entry.remaining = diff + (s16)pRenderer->virtualFrameCount() + (s16)entry.pad;
 			}
 		}
 		if (entry.remaining > 0)
@@ -75,7 +76,7 @@ void deferred::release(vk::Pipeline pipeline, vk::PipelineLayout layout)
 	release([pipeline, layout]() { g_device.destroy(pipeline, layout); });
 }
 
-void deferred::release(std::function<void()> func)
+void deferred::release(std::function<void()> func, u8 extraFrames)
 {
 	Deferred deferred;
 	deferred.func = std::move(func);
@@ -86,7 +87,7 @@ void deferred::release(std::function<void()> func)
 		auto const pRenderer = WindowImpl::rendererImpl(window);
 		if (pRenderer)
 		{
-			deferred.drawingMap[window] = {pRenderer->framesDrawn(), (s16)pRenderer->virtualFrameCount()};
+			deferred.drawingMap[window] = {pRenderer->framesDrawn(), (s16)pRenderer->virtualFrameCount(), extraFrames};
 		}
 	}
 	g_deferred.push_back(std::move(deferred));

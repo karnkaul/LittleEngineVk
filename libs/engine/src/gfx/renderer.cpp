@@ -158,14 +158,14 @@ void RendererImpl::create(u8 frameCount)
 	{
 		m_frameCount = frameCount;
 		// Descriptors
-		m_samplerLayout = rd::createSamplerLayout(rd::Textures::s_max, rd::Textures::s_max);
-		auto sets = rd::allocateSets(m_samplerLayout, frameCount);
-		ASSERT(sets.size() == (size_t)frameCount, "Invalid descriptor sets!");
+		auto setLayouts = rd::allocateSets(frameCount);
+		ASSERT(setLayouts.sets.size() == (size_t)frameCount, "Invalid descriptor sets!");
+		m_samplerLayout = setLayouts.samplerLayout;
 		m_frames.reserve((size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			RendererImpl::FrameSync frame;
-			frame.set = sets.at((size_t)idx);
+			frame.set = setLayouts.sets.at((size_t)idx);
 			frame.renderReady = g_device.device.createSemaphore({});
 			frame.presentReady = g_device.device.createSemaphore({});
 			frame.drawing = g_device.createFence(true);
@@ -202,11 +202,21 @@ void RendererImpl::destroy()
 		m_frames.clear();
 		m_index = 0;
 		m_drawnFrames = 0;
-		m_maxDiffuse = m_maxSpecular = 0;
+		m_texCount = {0, 0};
 		LOG_D("[{}] destroyed", m_name);
 	}
 	return;
 }
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+void RendererImpl::pollAssets()
+{
+	for (auto& pipeline : m_pipelines)
+	{
+		pipeline.m_uImpl->pollShaders();
+	}
+}
+#endif
 
 Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 {
@@ -293,7 +303,7 @@ vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 
 	viewport.minDepth = depth.x;
 	viewport.maxDepth = depth.y;
 	viewport.width = size.x * (f32)extent.width;
-	viewport.height = -(size.y * (f32)extent.height);
+	viewport.height = -(size.y * (f32)extent.height); // flip viewport about X axis
 	viewport.x = nRect.left * (f32)extent.width;
 	viewport.y = nRect.top * (f32)extent.height - (f32)viewport.height;
 	return viewport;
@@ -302,11 +312,12 @@ vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 
 vk::Rect2D RendererImpl::transformScissor(ScreenRect const& nRect) const
 {
 	vk::Rect2D scissor;
+	auto const& extent = m_presenter.m_swapchain.extent;
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
-	scissor.offset.x = (s32)(nRect.left * (f32)m_presenter.m_swapchain.extent.width);
-	scissor.offset.y = (s32)(nRect.top * (f32)m_presenter.m_swapchain.extent.height);
-	scissor.extent.width = (u32)(size.x * (f32)m_presenter.m_swapchain.extent.width);
-	scissor.extent.height = (u32)(size.y * (f32)m_presenter.m_swapchain.extent.height);
+	scissor.offset.x = (s32)(nRect.left * (f32)extent.width);
+	scissor.offset.y = (s32)(nRect.top * (f32)extent.height);
+	scissor.extent.width = (u32)(size.x * (f32)extent.width);
+	scissor.extent.height = (u32)(size.y * (f32)extent.height);
 	return scissor;
 }
 
@@ -370,7 +381,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 {
 	auto const mg = colours::magenta.toVec4();
 	u32 objectID = 0;
-	rd::SSBOs ssbos;
+	rd::StorageBuffers ssbos;
 	TexSet diffuse;
 	TexSet specular;
 	std::deque<std::deque<rd::PushConstants>> push;
@@ -415,27 +426,27 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 				if (bSkybox)
 				{
 					bSkybox = false;
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eSKYBOX;
+					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eSKYBOX;
 				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
 				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eLIT;
+					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eLIT;
 				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
 				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eOPAQUE;
+					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eOPAQUE;
 				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
 				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eDROP_COLOUR;
+					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eDROP_COLOUR;
 				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
 				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eUI;
+					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eUI;
 				}
 				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 				{
-					ssbos.flags.ssbo.at(objectID) |= rd::SSBOFlags::eTEXTURED;
+					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
 					if (!pMesh->m_material.pDiffuse)
 					{
 						ssbos.tints.ssbo.at(objectID) = mg;
@@ -455,25 +466,16 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 			}
 		}
 	}
-	if (diffuse.total() == 0)
-	{
-		diffuse.add(pWhite);
-	}
-	if (specular.total() == 0)
-	{
-		specular.add(pBlack);
-	}
-	m_maxDiffuse = std::max(m_maxDiffuse, diffuse.total());
-	m_maxSpecular = std::max(m_maxSpecular, specular.total());
-	for (u32 idx = diffuse.total(); idx < m_maxDiffuse; ++idx)
+	for (u32 idx = diffuse.total(); idx < m_texCount.diffuse; ++idx)
 	{
 		diffuse.textures.push_back(pWhite);
 	}
-	for (u32 idx = specular.total(); idx < m_maxSpecular; ++idx)
+	for (u32 idx = specular.total(); idx < m_texCount.specular; ++idx)
 	{
 		specular.textures.push_back(pBlack);
 	}
-	rd::UBOView view(out_scene.view, (u32)out_scene.dirLights.size());
+	m_texCount = {diffuse.total(), specular.total()};
+	rd::View view(out_scene.view, (u32)out_scene.dirLights.size());
 	std::copy(out_scene.dirLights.begin(), out_scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
 
 	out_frame.set.writeCubemap(*pCubemap);
@@ -530,7 +532,6 @@ u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scen
 				if (pMesh->isReady() && pMesh->m_triCount > 0)
 				{
 					tris += pMesh->m_triCount;
-
 					auto pPipeline = pPipe ? pPipe : m_pipes.pDefault;
 					ASSERT(pPipeline, "Pipeline is null!");
 					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_samplerLayout);

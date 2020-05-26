@@ -123,9 +123,9 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 		instance.deviceLimits = properties.limits;
 		instance.lineWidthMin = properties.limits.lineWidthRange[0];
 		instance.lineWidthMax = properties.limits.lineWidthRange[1];
-		rd::Textures::clampDiffSpecCount(instance.deviceLimits.maxPerStageDescriptorSamplers);
+		rd::ImageSamplers::clampDiffSpecCount(instance.deviceLimits.maxPerStageDescriptorSamplers);
 	}
-	catch (std::exception const& e)
+	catch (std::exception const&)
 	{
 		if (surface != vk::SurfaceKHR())
 		{
@@ -249,7 +249,7 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 		device.queues.transfer.queue = device.device.getQueue(device.queues.transfer.familyIndex, device.queues.transfer.arrayIndex);
 		instance.instance.destroy(surface);
 	}
-	catch (std::exception const& e)
+	catch (std::exception const&)
 	{
 		if (device.device != vk::Device())
 		{

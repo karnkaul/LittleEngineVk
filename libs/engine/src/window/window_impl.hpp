@@ -54,6 +54,9 @@ public:
 
 	static bool init();
 	static void deinit();
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	static void pollAssets();
+#endif
 	static std::vector<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::RendererImpl* rendererImpl(WindowID window);

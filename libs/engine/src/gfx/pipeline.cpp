@@ -50,11 +50,13 @@ bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
 {
 	bool bOutOfDate = samplerLayout != vk::DescriptorSetLayout() && samplerLayout != m_info.samplerLayout;
 #if defined(LEVK_ASSET_HOT_RELOAD)
-	bOutOfDate |= m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded;
+	bOutOfDate |= m_bShaderReloaded;
+	m_bShaderReloaded = false;
 #endif
 	if (bOutOfDate)
 	{
-		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); });
+		// Add a frame of padding since this frame hasn't completed drawing yet
+		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); }, 1);
 		m_info.samplerLayout = samplerLayout;
 		if (create())
 		{
@@ -74,6 +76,13 @@ void PipelineImpl::destroy()
 	m_layout = vk::PipelineLayout();
 	return;
 }
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+void PipelineImpl::pollShaders()
+{
+	m_bShaderReloaded |= m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded;
+}
+#endif
 
 bool PipelineImpl::create()
 {
@@ -190,6 +199,9 @@ bool PipelineImpl::create()
 	createInfo.renderPass = m_info.renderPass;
 	createInfo.subpass = 0;
 	m_pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	m_bShaderReloaded = false;
+#endif
 	return true;
 }
 } // namespace le::gfx

@@ -41,6 +41,9 @@ public:
 private:
 	Info m_info;
 	class Pipeline* m_pPipeline;
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	bool m_bShaderReloaded = false;
+#endif
 
 public:
 	PipelineImpl(Pipeline* pPipeline);
@@ -52,6 +55,10 @@ public:
 	bool create(Info info);
 	bool update(vk::DescriptorSetLayout samplerLayout);
 	void destroy();
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	void pollShaders();
+#endif
 
 private:
 	bool create();

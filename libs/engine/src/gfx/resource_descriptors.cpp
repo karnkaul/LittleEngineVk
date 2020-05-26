@@ -7,31 +7,14 @@
 
 namespace le::gfx::rd
 {
-namespace
-{
-void writeSet(WriteInfo const& info)
-{
-	vk::WriteDescriptorSet descWrite;
-	descWrite.dstSet = info.set;
-	descWrite.dstBinding = info.binding;
-	descWrite.dstArrayElement = info.arrayElement;
-	descWrite.descriptorType = info.type;
-	descWrite.descriptorCount = info.count;
-	descWrite.pImageInfo = info.pImage;
-	descWrite.pBufferInfo = info.pBuffer;
-	g_device.device.updateDescriptorSets(descWrite, {});
-	return;
-}
-} // namespace
+View::View() = default;
 
-UBOView::UBOView() = default;
-
-UBOView::UBOView(Renderer::View const& view, u32 dirLightCount)
+View::View(Renderer::View const& view, u32 dirLightCount)
 	: mat_vp(view.mat_vp), mat_v(view.mat_v), mat_p(view.mat_p), mat_ui(view.mat_ui), pos_v(view.pos_v), dirLightCount(dirLightCount)
 {
 }
 
-SSBOMaterials::Mat::Mat(Material const& material, Colour dropColour)
+Materials::Mat::Mat(Material const& material, Colour dropColour)
 	: ambient(material.m_albedo.ambient.toVec4()),
 	  diffuse(material.m_albedo.diffuse.toVec4()),
 	  specular(material.m_albedo.specular.toVec4()),
@@ -40,7 +23,7 @@ SSBOMaterials::Mat::Mat(Material const& material, Colour dropColour)
 {
 }
 
-SSBODirLights::Light::Light(DirLight const& dirLight)
+DirLights::Light::Light(DirLight const& dirLight)
 	: ambient(dirLight.ambient.toVec4()),
 	  diffuse(dirLight.diffuse.toVec4()),
 	  specular(dirLight.specular.toVec4()),
@@ -48,66 +31,67 @@ SSBODirLights::Light::Light(DirLight const& dirLight)
 {
 }
 
-u32 Textures::s_max = 1024;
+u32 ImageSamplers::s_max = 1024;
 
-vk::DescriptorSetLayoutBinding const UBOView::s_setLayoutBinding =
+vk::DescriptorSetLayoutBinding const View::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const SSBOModels::s_setLayoutBinding =
+vk::DescriptorSetLayoutBinding const Models::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const SSBONormals::s_setLayoutBinding =
+vk::DescriptorSetLayoutBinding const Normals::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const SSBOMaterials::s_setLayoutBinding =
+vk::DescriptorSetLayoutBinding const Materials::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(3, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const SSBOTints::s_setLayoutBinding =
+vk::DescriptorSetLayoutBinding const Tints::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(4, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const SSBOFlags::s_setLayoutBinding =
+vk::DescriptorSetLayoutBinding const Flags::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(5, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding const SSBODirLights::s_setLayoutBinding =
+vk::DescriptorSetLayoutBinding const DirLights::s_setLayoutBinding =
 	vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1, vkFlags::vertFragShader);
 
-vk::DescriptorSetLayoutBinding Textures::s_diffuseLayoutBinding =
+vk::DescriptorSetLayoutBinding ImageSamplers::s_diffuseLayoutBinding =
 	vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eCombinedImageSampler, s_max, vkFlags::fragShader);
 
-vk::DescriptorSetLayoutBinding Textures::s_specularLayoutBinding =
+vk::DescriptorSetLayoutBinding ImageSamplers::s_specularLayoutBinding =
 	vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, s_max, vkFlags::fragShader);
 
-vk::DescriptorSetLayoutBinding const Textures::s_cubemapLayoutBinding =
+vk::DescriptorSetLayoutBinding const ImageSamplers::s_cubemapLayoutBinding =
 	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
 
-u32 Textures::total()
+u32 ImageSamplers::total()
 {
 	return s_diffuseLayoutBinding.descriptorCount + s_specularLayoutBinding.descriptorCount + s_cubemapLayoutBinding.descriptorCount;
 }
 
-void Textures::clampDiffSpecCount(u32 hardwareMax)
+void ImageSamplers::clampDiffSpecCount(u32 hardwareMax)
 {
 	s_max = std::min(s_max, (hardwareMax - 1) / 2); // (total - cubemap) / (diffuse + specular)
 	s_diffuseLayoutBinding.descriptorCount = s_specularLayoutBinding.descriptorCount = s_max;
 }
 
-void ShaderWriter::write(vk::DescriptorSet set, Buffer const& buffer) const
+void Writer::write(vk::DescriptorSet set, Buffer const& buffer) const
 {
 	vk::DescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = buffer.buffer;
 	bufferInfo.offset = 0;
 	bufferInfo.range = buffer.writeSize;
-	WriteInfo writeInfo;
-	writeInfo.set = set;
-	writeInfo.binding = binding;
-	writeInfo.arrayElement = 0;
-	writeInfo.pBuffer = &bufferInfo;
-	writeInfo.type = type;
-	writeSet(writeInfo);
+	vk::WriteDescriptorSet descWrite;
+	descWrite.dstSet = set;
+	descWrite.dstBinding = binding;
+	descWrite.dstArrayElement = 0;
+	descWrite.descriptorType = type;
+	descWrite.descriptorCount = 1;
+	descWrite.pBufferInfo = &bufferInfo;
+	g_device.device.updateDescriptorSets(descWrite, {});
 	return;
 }
 
-void ShaderWriter::write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const
+void Writer::write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const
 {
 	std::vector<vk::DescriptorImageInfo> imageInfos;
 	imageInfos.reserve(textures.size());
@@ -119,25 +103,30 @@ void ShaderWriter::write(vk::DescriptorSet set, std::vector<TextureImpl const*> 
 		imageInfo.sampler = pTex->sampler;
 		imageInfos.push_back(imageInfo);
 	}
-	WriteInfo writeInfo;
-	writeInfo.set = set;
-	writeInfo.pImage = imageInfos.data();
-	writeInfo.binding = binding;
-	writeInfo.arrayElement = 0;
-	writeInfo.count = (u32)imageInfos.size();
-	writeInfo.type = type;
-	writeSet(writeInfo);
+	vk::WriteDescriptorSet descWrite;
+	descWrite.dstSet = set;
+	descWrite.dstBinding = binding;
+	descWrite.dstArrayElement = 0;
+	descWrite.descriptorType = type;
+	descWrite.descriptorCount = (u32)imageInfos.size();
+	descWrite.pImageInfo = imageInfos.data();
+	g_device.device.updateDescriptorSets(descWrite, {});
 	return;
+}
+
+void Descriptor<ImageSamplers>::writeArray(std::vector<TextureImpl const*> const& textures, vk::DescriptorSet set) const
+{
+	m_writer.write(set, textures);
 }
 
 Set::Set() : m_view(vk::BufferUsageFlagBits::eUniformBuffer)
 {
-	m_diffuse.binding = Textures::s_diffuseLayoutBinding.binding;
-	m_diffuse.type = Textures::s_diffuseLayoutBinding.descriptorType;
-	m_specular.binding = Textures::s_specularLayoutBinding.binding;
-	m_specular.type = Textures::s_diffuseLayoutBinding.descriptorType;
-	m_cubemap.binding = Textures::s_cubemapLayoutBinding.binding;
-	m_cubemap.type = Textures::s_cubemapLayoutBinding.descriptorType;
+	m_diffuse.m_writer.binding = ImageSamplers::s_diffuseLayoutBinding.binding;
+	m_diffuse.m_writer.type = ImageSamplers::s_diffuseLayoutBinding.descriptorType;
+	m_specular.m_writer.binding = ImageSamplers::s_specularLayoutBinding.binding;
+	m_specular.m_writer.type = ImageSamplers::s_diffuseLayoutBinding.descriptorType;
+	m_cubemap.m_writer.binding = ImageSamplers::s_cubemapLayoutBinding.binding;
+	m_cubemap.m_writer.type = ImageSamplers::s_cubemapLayoutBinding.descriptorType;
 }
 
 void Set::destroy()
@@ -152,33 +141,15 @@ void Set::destroy()
 	return;
 }
 
-void Set::resetTextures()
+void Set::resetTextures(SamplerCounts const& counts)
 {
-	std::deque<Texture const*> const diffuse((size_t)Textures::s_max, Resources::inst().get<Texture>("textures/white"));
-	std::deque<Texture const*> const specular((size_t)Textures::s_max, Resources::inst().get<Texture>("textures/black"));
+	std::deque<Texture const*> const diffuse((size_t)counts.diffuse, Resources::inst().get<Texture>("textures/white"));
+	std::deque<Texture const*> const specular((size_t)counts.specular, Resources::inst().get<Texture>("textures/black"));
 	writeDiffuse(diffuse);
 	writeSpecular(specular);
 }
 
-void Set::update(vk::DescriptorSetLayout samplerLayout)
-{
-	if (samplerLayout != vk::DescriptorSetLayout() && m_samplerLayout != samplerLayout)
-	{
-		m_samplerLayout = samplerLayout;
-		g_device.device.resetDescriptorPool(m_samplerPool);
-		vk::DescriptorSetAllocateInfo allocInfo;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.descriptorPool = m_samplerPool;
-		allocInfo.pSetLayouts = &m_samplerLayout;
-		auto const samplerSets = g_device.device.allocateDescriptorSets(allocInfo);
-		m_samplerSet = samplerSets.front();
-		resetTextures();
-		LOG_D("Sampler Descriptor Set recreated");
-	}
-	return;
-}
-
-void Set::writeView(UBOView const& view)
+void Set::writeView(View const& view)
 {
 	m_view.writeValue(view, m_bufferSet);
 	return;
@@ -186,7 +157,7 @@ void Set::writeView(UBOView const& view)
 
 void Set::initSSBOs()
 {
-	SSBOs ssbos;
+	StorageBuffers ssbos;
 	ssbos.models.ssbo.push_back({});
 	ssbos.normals.ssbo.push_back({});
 	ssbos.materials.ssbo.push_back({});
@@ -196,7 +167,7 @@ void Set::initSSBOs()
 	writeSSBOs(ssbos);
 }
 
-void Set::writeSSBOs(SSBOs const& ssbos)
+void Set::writeSSBOs(StorageBuffers const& ssbos)
 {
 	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty()
 			   && !ssbos.flags.ssbo.empty(),
@@ -221,7 +192,7 @@ void Set::writeDiffuse(std::deque<Texture const*> const& diffuse)
 	{
 		diffuseImpl.push_back(pTex->m_uImpl.get());
 	}
-	m_diffuse.write(m_samplerSet, diffuseImpl);
+	m_diffuse.writeArray(diffuseImpl, m_samplerSet);
 	return;
 }
 
@@ -233,46 +204,55 @@ void Set::writeSpecular(std::deque<Texture const*> const& specular)
 	{
 		specularImpl.push_back(pTex->m_uImpl.get());
 	}
-	m_specular.write(m_samplerSet, specularImpl);
+	m_specular.writeArray(specularImpl, m_samplerSet);
 	return;
 }
 
 void Set::writeCubemap(Cubemap const& cubemap)
 {
-	m_cubemap.write(m_samplerSet, {cubemap.m_uImpl.get()});
+	m_cubemap.writeArray({cubemap.m_uImpl.get()}, m_samplerSet);
 	return;
 }
 
 vk::DescriptorSetLayout createSamplerLayout(u32 diffuse, u32 specular)
 {
-	auto diffuseBinding = Textures::s_diffuseLayoutBinding;
+	auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
 	diffuseBinding.descriptorCount = diffuse;
-	auto specularBinding = Textures::s_specularLayoutBinding;
+	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
 	specularBinding.descriptorCount = specular;
-	std::array const textureBindings = {diffuseBinding, specularBinding, Textures::s_cubemapLayoutBinding};
+	std::array const textureBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
 	vk::DescriptorSetLayoutCreateInfo samplerLayoutInfo;
 	samplerLayoutInfo.bindingCount = (u32)textureBindings.size();
 	samplerLayoutInfo.pBindings = textureBindings.data();
 	return g_device.device.createDescriptorSetLayout(samplerLayoutInfo);
 }
 
-std::vector<Set> allocateSets(vk::DescriptorSetLayout samplerLayout, u32 copies)
+SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 {
-	std::vector<Set> ret;
-	ret.reserve((size_t)copies);
+	SetLayouts ret;
+	auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
+	diffuseBinding.descriptorCount = samplerCounts.diffuse;
+	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
+	specularBinding.descriptorCount = samplerCounts.specular;
+	std::array const textureBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
+	vk::DescriptorSetLayoutCreateInfo samplerLayoutInfo;
+	samplerLayoutInfo.bindingCount = (u32)textureBindings.size();
+	samplerLayoutInfo.pBindings = textureBindings.data();
+	ret.samplerLayout = g_device.device.createDescriptorSetLayout(samplerLayoutInfo);
+	ret.sets.reserve((size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
 		Set set;
 		// Pool of descriptors
 		vk::DescriptorPoolSize uboPoolSize;
 		uboPoolSize.type = vk::DescriptorType::eUniformBuffer;
-		uboPoolSize.descriptorCount = UBOView::s_setLayoutBinding.descriptorCount;
+		uboPoolSize.descriptorCount = View::s_setLayoutBinding.descriptorCount;
 		vk::DescriptorPoolSize ssboPoolSize;
 		ssboPoolSize.type = vk::DescriptorType::eStorageBuffer;
 		ssboPoolSize.descriptorCount = 6; // 6 members per SSBO
 		vk::DescriptorPoolSize samplerPoolSize;
 		samplerPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
-		samplerPoolSize.descriptorCount = Textures::total();
+		samplerPoolSize.descriptorCount = ImageSamplers::total();
 		std::array const bufferPoolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
 		std::array const samplerPoolSizes = {samplerPoolSize};
 		vk::DescriptorPoolCreateInfo createInfo;
@@ -290,15 +270,15 @@ std::vector<Set> allocateSets(vk::DescriptorSetLayout samplerLayout, u32 copies)
 		allocInfo.pSetLayouts = &g_bufferLayout;
 		auto const bufferSets = g_device.device.allocateDescriptorSets(allocInfo);
 		allocInfo.descriptorPool = set.m_samplerPool;
-		allocInfo.pSetLayouts = &samplerLayout;
+		allocInfo.pSetLayouts = &ret.samplerLayout;
 		auto const samplerSets = g_device.device.allocateDescriptorSets(allocInfo);
 		// Write handles
 		set.m_bufferSet = bufferSets.front();
 		set.m_samplerSet = samplerSets.front();
 		set.writeView({});
 		set.initSSBOs();
-		set.resetTextures();
-		ret.push_back(std::move(set));
+		set.resetTextures(samplerCounts);
+		ret.sets.push_back(std::move(set));
 	}
 	return ret;
 }
@@ -307,10 +287,9 @@ void init()
 {
 	if (g_bufferLayout == vk::DescriptorSetLayout())
 	{
-		std::array const bufferBindings = {UBOView::s_setLayoutBinding,		 SSBOModels::s_setLayoutBinding,
-										   SSBONormals::s_setLayoutBinding,	 SSBOMaterials::s_setLayoutBinding,
-										   SSBOTints::s_setLayoutBinding,	 SSBOFlags::s_setLayoutBinding,
-										   SSBODirLights::s_setLayoutBinding};
+		std::array const bufferBindings = {View::s_setLayoutBinding,	  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,
+										   Materials::s_setLayoutBinding, Tints::s_setLayoutBinding,  Flags::s_setLayoutBinding,
+										   DirLights::s_setLayoutBinding};
 		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
 		bufferLayoutInfo.bindingCount = (u32)bufferBindings.size();
 		bufferLayoutInfo.pBindings = bufferBindings.data();

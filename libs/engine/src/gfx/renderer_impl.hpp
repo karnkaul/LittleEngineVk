@@ -62,9 +62,14 @@ private:
 		Pipeline* pSkybox = nullptr;
 	} m_pipes;
 
+	struct
+	{
+		u32 diffuse = 0;
+		u32 specular = 0;
+	} m_texCount;
+
 	u64 m_drawnFrames = 0;
-	u32 m_maxDiffuse = 0;
-	u32 m_maxSpecular = 0;
+
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;
@@ -77,6 +82,10 @@ public:
 public:
 	void create(u8 frameCount = 2);
 	void destroy();
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	void pollAssets();
+#endif
 
 	Pipeline* createPipeline(Pipeline::Info info);
 	bool render(Renderer::Scene scene);

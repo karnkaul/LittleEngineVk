@@ -105,7 +105,6 @@ public:
 public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
-	void update();
 	void render(Scene scene);
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;

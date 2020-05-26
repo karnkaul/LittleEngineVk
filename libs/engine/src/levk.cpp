@@ -6,6 +6,7 @@
 #include "engine/assets/resources.hpp"
 #include "gfx/deferred.hpp"
 #include "gfx/device.hpp"
+#include "gfx/ext_gui.hpp"
 #include "gfx/vram.hpp"
 #include "window/window_impl.hpp"
 
@@ -68,7 +69,7 @@ void Service::update()
 	gfx::vram::update();
 	gfx::deferred::update();
 	Resources::inst().update();
-	WindowImpl::updateActive();
+	gfx::ext_gui::newFrame();
 }
 } // namespace engine
 

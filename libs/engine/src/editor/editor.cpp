@@ -16,7 +16,7 @@
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
 #endif
-#include "gfx/gui.hpp"
+#include "gfx/ext_gui.hpp"
 
 namespace le
 {
@@ -241,7 +241,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 
 bool editor::init()
 {
-	if (!g_bInit && gfx::gui::isInit())
+	if (!g_bInit && gfx::ext_gui::isInit())
 	{
 		g_onLogChain = log::g_onLog;
 		log::g_onLog = &guiLog;
@@ -263,7 +263,7 @@ void editor::deinit()
 
 bool editor::render(gfx::ScreenRect const& scene, glm::ivec2 const& fbSize)
 {
-	if (gfx::gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
+	if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 	{
 		auto const logHeight = fbSize.y - (s32)(scene.bottom * (f32)fbSize.y);
 		glm::ivec2 const leftPanelSize = {(s32)(scene.left * (f32)fbSize.x), fbSize.y - logHeight};

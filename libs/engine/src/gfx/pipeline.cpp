@@ -37,7 +37,7 @@ bool PipelineImpl::create(Info info)
 		m_info.shaderID = "shaders/default";
 	}
 	m_pPipeline->m_name = fmt::format("{}:{}-?", m_info.window, m_info.name);
-	if (create(m_pipeline, m_layout))
+	if (create())
 	{
 		m_pPipeline->m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, m_info.pShader->m_id.generic_string());
 		LOG_D("[{}] [{}] created", s_tName, m_pPipeline->m_name);
@@ -48,11 +48,15 @@ bool PipelineImpl::create(Info info)
 
 bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
 {
-	if (samplerLayout != vk::DescriptorSetLayout() && (samplerLayout != m_info.samplerLayout || m_bOutOfDate))
+	bool bOutOfDate = samplerLayout != vk::DescriptorSetLayout() && samplerLayout != m_info.samplerLayout;
+#if defined(LEVK_ASSET_HOT_RELOAD)
+	bOutOfDate |= m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded;
+#endif
+	if (bOutOfDate)
 	{
 		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); });
 		m_info.samplerLayout = samplerLayout;
-		if (create(m_pipeline, m_layout))
+		if (create())
 		{
 			LOG_D("[{}] [{}] recreated", s_tName, m_pPipeline->m_name);
 			return true;
@@ -64,10 +68,14 @@ bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
 
 void PipelineImpl::destroy()
 {
-	destroy(m_pipeline, m_layout);
+	deferred::release(m_pipeline, m_layout);
+	LOGIF_D(m_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_pPipeline->m_name);
+	m_pipeline = vk::Pipeline();
+	m_layout = vk::PipelineLayout();
+	return;
 }
 
-bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
+bool PipelineImpl::create()
 {
 	if (!m_info.pShader && !m_info.shaderID.empty())
 	{
@@ -88,7 +96,7 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 		layoutCreateInfo.pSetLayouts = setLayouts.data();
 		layoutCreateInfo.pushConstantRangeCount = (u32)m_info.pushConstantRanges.size();
 		layoutCreateInfo.pPushConstantRanges = m_info.pushConstantRanges.data();
-		out_layout = g_device.device.createPipelineLayout(layoutCreateInfo);
+		m_layout = g_device.device.createPipelineLayout(layoutCreateInfo);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
@@ -181,23 +189,7 @@ bool PipelineImpl::create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_la
 	createInfo.layout = m_layout;
 	createInfo.renderPass = m_info.renderPass;
 	createInfo.subpass = 0;
-	out_pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
-	m_bOutOfDate = false;
+	m_pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
 	return true;
-}
-
-void PipelineImpl::destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout)
-{
-	deferred::release(out_pipeline, out_layout);
-	LOGIF_D(out_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_pPipeline->m_name);
-	out_pipeline = vk::Pipeline();
-	out_layout = vk::PipelineLayout();
-}
-
-void PipelineImpl::update()
-{
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	m_bOutOfDate = m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded;
-#endif
 }
 } // namespace le::gfx

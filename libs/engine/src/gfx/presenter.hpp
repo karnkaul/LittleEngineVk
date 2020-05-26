@@ -11,12 +11,11 @@ namespace le::gfx
 class Presenter final
 {
 public:
-	enum class State : u8
+	enum class Outcome : u8
 	{
-		eRunning = 0,
-		eSwapchainDestroyed,
+		eSuccess = 0,
+		ePaused,
 		eSwapchainRecreated,
-		eDestroyed,
 		eCOUNT_
 	};
 
@@ -27,11 +26,21 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
-	struct DrawFrame final
+	struct Pass final
 	{
 		vk::RenderPass renderPass;
 		vk::Extent2D swapchainExtent;
 		std::vector<vk::ImageView> attachments;
+	};
+
+	template <typename T>
+	struct TOutcome final
+	{
+		T payload = {};
+		Outcome outcome;
+
+		TOutcome(Outcome outcome) : outcome(outcome){};
+		TOutcome(T&& payload) : payload(std::forward<T>(payload)), outcome(Outcome::eSuccess) {}
 	};
 
 private:
@@ -87,7 +96,6 @@ public:
 	Swapchain m_swapchain;
 	vk::RenderPass m_renderPass;
 	Flags m_flags;
-	State m_state = State::eRunning;
 
 private:
 	Info m_info;
@@ -100,8 +108,8 @@ public:
 public:
 	void onFramebufferResize();
 
-	TResult<DrawFrame> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setDrawing = vk::Fence());
-	bool present(vk::Semaphore wait);
+	TOutcome<Pass> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setDrawing = vk::Fence());
+	Outcome present(vk::Semaphore wait);
 
 private:
 	void createRenderPass();

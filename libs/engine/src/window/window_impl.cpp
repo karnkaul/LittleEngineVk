@@ -6,7 +6,7 @@
 #include "core/utils.hpp"
 #include "gfx/common.hpp"
 #include "gfx/device.hpp"
-#include "gfx/gui.hpp"
+#include "gfx/ext_gui.hpp"
 #include "gfx/renderer_impl.hpp"
 #if defined(LEVK_USE_GLFW)
 #if defined(LEVK_RUNTIME_MSVC)
@@ -332,14 +332,6 @@ void WindowImpl::deinit()
 	return;
 }
 
-void WindowImpl::updateActive()
-{
-	for (auto pImpl : g_registeredWindows)
-	{
-		pImpl->m_pWindow->m_renderer.update();
-	}
-}
-
 std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 {
 	std::vector<char const*> ret;
@@ -415,7 +407,7 @@ void* WindowImpl::nativeHandle(WindowID window)
 
 WindowID WindowImpl::guiWindow()
 {
-	if (gfx::gui::isInit())
+	if (gfx::ext_gui::isInit())
 	{
 		for (auto pWindow : g_registeredWindows)
 		{

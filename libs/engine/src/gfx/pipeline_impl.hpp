@@ -41,7 +41,6 @@ public:
 private:
 	Info m_info;
 	class Pipeline* m_pPipeline;
-	bool m_bOutOfDate = false;
 
 public:
 	PipelineImpl(Pipeline* pPipeline);
@@ -54,10 +53,7 @@ public:
 	bool update(vk::DescriptorSetLayout samplerLayout);
 	void destroy();
 
-	void update();
-
 private:
-	bool create(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout);
-	void destroy(vk::Pipeline& out_pipeline, vk::PipelineLayout& out_layout);
+	bool create();
 };
 } // namespace le::gfx

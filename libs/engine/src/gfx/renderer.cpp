@@ -9,7 +9,7 @@
 #include "engine/editor/editor.hpp"
 #include "engine/gfx/mesh.hpp"
 #include "device.hpp"
-#include "gui.hpp"
+#include "ext_gui.hpp"
 #include "pipeline_impl.hpp"
 #include "renderer_impl.hpp"
 #include "resource_descriptors.hpp"
@@ -86,14 +86,6 @@ Pipeline* Renderer::createPipeline(Pipeline::Info info)
 	return nullptr;
 }
 
-void Renderer::update()
-{
-	if (m_uImpl)
-	{
-		m_uImpl->update();
-	}
-}
-
 void Renderer::render(Scene scene)
 {
 	if (m_uImpl)
@@ -126,12 +118,12 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
 	m_bGUI = info.bGUI;
 	if (m_bGUI)
 	{
-		gui::Info guiInfo;
+		ext_gui::Info guiInfo;
 		guiInfo.renderPass = m_presenter.m_renderPass;
 		guiInfo.imageCount = m_frameCount;
 		guiInfo.minImageCount = 2;
 		guiInfo.window = m_window;
-		if (!gui::init(guiInfo))
+		if (!ext_gui::init(guiInfo))
 		{
 			LOG_E("[{}] Failed to initialise GUI!", m_name);
 			m_bGUI = false;
@@ -153,7 +145,7 @@ RendererImpl::~RendererImpl()
 #if defined(LEVK_EDITOR)
 			editor::deinit();
 #endif
-			gui::deinit();
+			ext_gui::deinit();
 		});
 	}
 	m_pipelines.clear();
@@ -245,42 +237,6 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	return &pipeline;
 }
 
-void RendererImpl::update()
-{
-	switch (m_presenter.m_state)
-	{
-	case Presenter::State::eDestroyed:
-	{
-		destroy();
-		return;
-	}
-	case Presenter::State::eSwapchainDestroyed:
-	{
-		destroy();
-		return;
-	}
-	case Presenter::State::eSwapchainRecreated:
-	{
-		destroy();
-		create(m_frameCount);
-		break;
-	}
-	default:
-	{
-		break;
-	}
-	}
-	if (m_bGUI)
-	{
-		gfx::gui::newFrame();
-	}
-	for (auto& pipeline : m_pipelines)
-	{
-		pipeline.m_uImpl->update();
-	}
-	return;
-}
-
 bool RendererImpl::render(Renderer::Scene scene)
 {
 	if (scene.batches.empty()
@@ -290,23 +246,43 @@ bool RendererImpl::render(Renderer::Scene scene)
 	}
 	if (m_bGUI)
 	{
-		gui::render();
+		ext_gui::render();
 	}
 	auto& frame = frameSync();
 	g_device.waitFor(frame.drawing);
 	auto const push = writeSets(scene, frame);
-	auto [acquire, bResult] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
-	if (bResult)
+	auto [pass, result] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
+	bool bRecreate = false;
+	bool bRendered = false;
+	switch (result)
 	{
-		u64 const tris = doRenderPass(frame, scene, acquire, push);
-		if (submit(frame))
+	case Presenter::Outcome::eSuccess:
+	{
+		u64 const tris = doRenderPass(frame, scene, pass, push);
+		result = submit(frame);
+		bRecreate = result == Presenter::Outcome::eSwapchainRecreated;
+		if (result == Presenter::Outcome::eSuccess)
 		{
 			next();
 			m_pRenderer->m_stats.trisDrawn = tris;
-			return true;
+			bRendered = true;
 		}
+		break;
 	}
-	return false;
+	case Presenter::Outcome::eSwapchainRecreated:
+	{
+		bRecreate = true;
+		break;
+	}
+	default:
+		break;
+	}
+	if (bRecreate)
+	{
+		destroy();
+		create(m_frameCount);
+	}
+	return bRendered;
 }
 
 vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 const& depth) const
@@ -508,16 +484,16 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 	return push;
 }
 
-u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push)
+u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::Pass const& pass, PCDeq const& push)
 {
 	// Framebuffer
 	g_device.destroy(out_frame.framebuffer);
 	vk::FramebufferCreateInfo createInfo;
-	createInfo.attachmentCount = (u32)acquire.attachments.size();
-	createInfo.pAttachments = acquire.attachments.data();
-	createInfo.renderPass = acquire.renderPass;
-	createInfo.width = acquire.swapchainExtent.width;
-	createInfo.height = acquire.swapchainExtent.height;
+	createInfo.attachmentCount = (u32)pass.attachments.size();
+	createInfo.pAttachments = pass.attachments.data();
+	createInfo.renderPass = pass.renderPass;
+	createInfo.width = pass.swapchainExtent.width;
+	createInfo.height = pass.swapchainExtent.height;
 	createInfo.layers = 1;
 	out_frame.framebuffer = g_device.device.createFramebuffer(createInfo);
 	// RenderPass
@@ -527,9 +503,9 @@ u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scen
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 	std::array<vk::ClearValue, 2> const clearValues = {colour, depth};
 	vk::RenderPassBeginInfo renderPassInfo;
-	renderPassInfo.renderPass = acquire.renderPass;
+	renderPassInfo.renderPass = pass.renderPass;
 	renderPassInfo.framebuffer = out_frame.framebuffer;
-	renderPassInfo.renderArea.extent = acquire.swapchainExtent;
+	renderPassInfo.renderArea.extent = pass.swapchainExtent;
 	renderPassInfo.clearValueCount = (u32)clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
 	// Begin
@@ -588,14 +564,14 @@ u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scen
 	}
 	if (m_bGUI)
 	{
-		gui::renderDrawData(commandBuffer);
+		ext_gui::renderDrawData(commandBuffer);
 	}
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
 	return tris;
 }
 
-bool RendererImpl::submit(FrameSync const& frame)
+Presenter::Outcome RendererImpl::submit(FrameSync const& frame)
 {
 	// Submit
 	vk::SubmitInfo submitInfo;

@@ -3,7 +3,7 @@
 #include "core/std_types.hpp"
 #include "engine/window/common.hpp"
 
-namespace le::gfx::gui
+namespace le::gfx::ext_gui
 {
 struct Info final
 {
@@ -21,4 +21,4 @@ void renderDrawData(vk::CommandBuffer commandBuffer);
 void render();
 
 bool isInit();
-} // namespace le::gfx::gui
+} // namespace le::gfx::ext_gui

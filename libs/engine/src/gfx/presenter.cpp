@@ -176,32 +176,31 @@ void Presenter::onFramebufferResize()
 	}
 }
 
-TResult<Presenter::DrawFrame> Presenter::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence drawing)
+Presenter::TOutcome<Presenter::Pass> Presenter::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence drawing)
 {
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
-		return {};
+		return Outcome::ePaused;
 	}
 	auto const acquire = g_device.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
 		LOG_D("[{}] Failed to acquire next image [{}]", m_name, m_window, g_vkResultStr[acquire.result]);
 		recreateSwapchain();
-		return {};
+		return Outcome::eSwapchainRecreated;
 	}
 	m_swapchain.imageIndex = (u32)acquire.value;
 	auto& frame = m_swapchain.frame();
 	g_device.waitFor(frame.drawing);
 	frame.drawing = drawing;
-	m_state = State::eRunning;
-	return DrawFrame{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
+	return Pass{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
 }
 
-bool Presenter::present(vk::Semaphore wait)
+Presenter::Outcome Presenter::present(vk::Semaphore wait)
 {
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
-		return false;
+		return Outcome::ePaused;
 	}
 	// Present
 	vk::PresentInfoKHR presentInfo;
@@ -216,10 +215,9 @@ bool Presenter::present(vk::Semaphore wait)
 	{
 		LOG_D("[{}] Failed to present image [{}]", m_name, m_window, g_vkResultStr[result]);
 		recreateSwapchain();
-		return false;
+		return Outcome::eSwapchainRecreated;
 	}
-	m_state = State::eRunning;
-	return true;
+	return Outcome::eSuccess;
 }
 
 void Presenter::createRenderPass()
@@ -369,7 +367,6 @@ void Presenter::destroySwapchain()
 	vram::release(m_swapchain.depthImage);
 	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name, m_window);
 	m_swapchain = {};
-	m_state = State::eSwapchainDestroyed;
 }
 
 void Presenter::cleanup()
@@ -379,7 +376,6 @@ void Presenter::cleanup()
 	m_renderPass = vk::RenderPass();
 	g_instance.destroy(m_info.surface);
 	m_info.surface = vk::SurfaceKHR();
-	m_state = State::eDestroyed;
 }
 
 bool Presenter::recreateSwapchain()
@@ -389,7 +385,6 @@ bool Presenter::recreateSwapchain()
 	if (createSwapchain())
 	{
 		LOG_D("[{}] ... Swapchain recreated", m_name, m_window);
-		m_state = State::eSwapchainRecreated;
 		return true;
 	}
 	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name, m_window);

@@ -79,8 +79,6 @@ public:
 	void destroy();
 
 	Pipeline* createPipeline(Pipeline::Info info);
-
-	void update();
 	bool render(Renderer::Scene scene);
 
 public:
@@ -99,8 +97,8 @@ private:
 	void next();
 
 	PCDeq writeSets(Renderer::Scene& out_scene, FrameSync& out_frame);
-	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::DrawFrame const& acquire, PCDeq const& push);
-	bool submit(FrameSync const& frame);
+	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::Pass const& pass, PCDeq const& push);
+	Presenter::Outcome submit(FrameSync const& frame);
 
 	friend class le::WindowImpl;
 };

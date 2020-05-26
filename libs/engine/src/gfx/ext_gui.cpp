@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include "core/assert.hpp"
 #include "core/colour.hpp"
-#include "gui.hpp"
+#include "ext_gui.hpp"
 #include "device.hpp"
 #include "renderer_impl.hpp"
 #include "window/window_impl.hpp"
@@ -48,7 +48,7 @@ vk::DescriptorPool createPool()
 #endif
 } // namespace
 
-bool gui::init(Info const& info)
+bool ext_gui::init(Info const& info)
 {
 	bool bRet = false;
 	if (!isInit())
@@ -110,7 +110,7 @@ bool gui::init(Info const& info)
 	return bRet;
 }
 
-void gui::deinit()
+void ext_gui::deinit()
 {
 	if (isInit())
 	{
@@ -126,7 +126,7 @@ void gui::deinit()
 	return;
 }
 
-void gui::newFrame()
+void ext_gui::newFrame()
 {
 	if (isInit() && !g_bNewFrame)
 	{
@@ -145,7 +145,7 @@ void gui::newFrame()
 	return;
 }
 
-void gui::renderDrawData([[maybe_unused]] vk::CommandBuffer commandBuffer)
+void ext_gui::renderDrawData([[maybe_unused]] vk::CommandBuffer commandBuffer)
 {
 	if (isInit())
 	{
@@ -159,7 +159,7 @@ void gui::renderDrawData([[maybe_unused]] vk::CommandBuffer commandBuffer)
 	return;
 }
 
-void gui::render()
+void ext_gui::render()
 {
 	if (isInit() && g_bNewFrame)
 	{
@@ -171,7 +171,7 @@ void gui::render()
 	return;
 }
 
-bool gui::isInit()
+bool ext_gui::isInit()
 {
 	return g_bInit;
 }

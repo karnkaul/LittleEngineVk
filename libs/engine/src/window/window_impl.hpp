@@ -54,7 +54,6 @@ public:
 
 	static bool init();
 	static void deinit();
-	static void updateActive();
 	static std::vector<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::RendererImpl* rendererImpl(WindowID window);

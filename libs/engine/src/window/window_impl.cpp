@@ -786,4 +786,13 @@ void WindowImpl::pollEvents()
 #endif
 	return;
 }
+
+void WindowImpl::renderAll()
+{
+	for (auto pWindow : g_registeredWindows)
+	{
+		pWindow->m_pWindow->m_renderer.render();
+	}
+	return;
+}
 } // namespace le

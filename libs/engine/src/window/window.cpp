@@ -50,6 +50,12 @@ void Window::pollEvents()
 	return;
 }
 
+void Window::renderAll()
+{
+	WindowImpl::renderAll();
+	return;
+}
+
 OnText::Token Window::registerText(OnText::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onText.subscribe(callback);
@@ -137,6 +143,7 @@ void Window::destroy()
 	}
 	return;
 }
+
 OnText::Token Window::registerText(OnText::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onText.subscribe(callback);

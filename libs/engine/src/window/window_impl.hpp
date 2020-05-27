@@ -93,5 +93,6 @@ public:
 	static size_t joysticKButtonsCount(s32 id);
 	static std::string_view toString(s32 key);
 	static void pollEvents();
+	static void renderAll();
 };
 } // namespace le

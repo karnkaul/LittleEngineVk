@@ -502,7 +502,7 @@ int main(int argc, char** argv)
 					batch.drawables.push_back({{ftText.mesh()}, &Transform::s_identity, pPipeline});
 					batch.drawables.push_back({{triText.mesh()}, &Transform::s_identity, pPipeline});
 					scene.batches.push_back(std::move(batch));
-					w0.renderer().render(std::move(scene));
+					w0.renderer().submit(std::move(scene));
 				}
 				if (w1.isOpen())
 				{
@@ -538,8 +538,9 @@ int main(int argc, char** argv)
 						}
 					}
 					scene.batches.push_back(std::move(batch));
-					w1.renderer().render(std::move(scene));
+					w1.renderer().submit(std::move(scene));
 				}
+				Window::renderAll();
 			}
 #if defined(LEVK_DEBUG)
 			catch (std::exception const& e)

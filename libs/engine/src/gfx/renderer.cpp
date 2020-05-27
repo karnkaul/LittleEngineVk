@@ -86,11 +86,17 @@ Pipeline* Renderer::createPipeline(Pipeline::Info info)
 	return nullptr;
 }
 
-void Renderer::render(Scene scene)
+void Renderer::submit(Scene scene)
+{
+	m_scene = std::move(scene);
+	return;
+}
+
+void Renderer::render()
 {
 	if (m_uImpl)
 	{
-		m_uImpl->render(std::move(scene));
+		m_uImpl->render(std::move(m_scene));
 	}
 }
 

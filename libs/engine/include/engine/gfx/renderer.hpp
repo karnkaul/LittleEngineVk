@@ -94,6 +94,7 @@ public:
 
 private:
 	std::unique_ptr<class RendererImpl> m_uImpl;
+	Scene m_scene;
 
 public:
 	Renderer();
@@ -104,10 +105,13 @@ public:
 public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
-	void render(Scene scene);
+	void submit(Scene scene);
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
 	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
+
+private:
+	void render();
 
 private:
 	friend class le::WindowImpl;

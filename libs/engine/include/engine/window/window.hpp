@@ -72,6 +72,8 @@ public:
 
 public:
 	static void pollEvents();
+	static void renderAll();
+
 	// Pass WindowID::s_null for global registration
 	[[nodiscard]] static OnText::Token registerText(OnText::Callback callback, WindowID window);
 	// Pass WindowID::s_null for global registration

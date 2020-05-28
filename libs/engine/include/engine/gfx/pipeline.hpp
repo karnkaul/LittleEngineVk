@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include "core/flags.hpp"
 
 namespace le::gfx
 {
@@ -31,6 +32,15 @@ enum class FrontFace : s8
 class Pipeline final
 {
 public:
+	enum class Flag
+	{
+		eBlend,
+		eDepthTest,
+		eDepthWrite,
+		eCOUNT_
+	};
+	using Flags = TFlags<Flag>;
+
 	struct Info final
 	{
 		std::string name;
@@ -39,10 +49,11 @@ public:
 		PolygonMode polygonMode = PolygonMode::eFill;
 		CullMode cullMode = CullMode::eNone;
 		FrontFace frontFace = FrontFace::eFront;
-		bool bBlend = true;
-		bool bDepthWrite = true;
-		bool bDepthTest = true;
+		Flags flags = Flag::eBlend | Flag::eDepthTest | Flag::eDepthWrite;
 	};
+
+public:
+	std::unique_ptr<class PipelineImpl> m_uImpl;
 
 public:
 	Pipeline();
@@ -51,13 +62,6 @@ public:
 	~Pipeline();
 
 public:
-	std::string m_name;
-
-private:
-	std::unique_ptr<class PipelineImpl> m_uImpl;
-
-private:
-	friend class Renderer;
-	friend class RendererImpl;
+	std::string const& name() const;
 };
 } // namespace le::gfx

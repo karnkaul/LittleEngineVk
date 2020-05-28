@@ -507,7 +507,59 @@ vk::ImageView Device::createImageView(ImageViewInfo const& info)
 	createInfo.subresourceRange.levelCount = 1;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
-	return g_device.device.createImageView(createInfo);
+	return device.createImageView(createInfo);
+}
+
+vk::PipelineLayout Device::createPipelineLayout(vk::ArrayProxy<vk::PushConstantRange const> pushConstants,
+												vk::ArrayProxy<vk::DescriptorSetLayout const> setLayouts)
+{
+	vk::PipelineLayoutCreateInfo createInfo;
+	createInfo.setLayoutCount = setLayouts.size();
+	createInfo.pSetLayouts = setLayouts.data();
+	createInfo.pushConstantRangeCount = pushConstants.size();
+	createInfo.pPushConstantRanges = pushConstants.data();
+	return device.createPipelineLayout(createInfo);
+}
+
+vk::DescriptorSetLayout Device::createDescriptorSetLayout(vk::ArrayProxy<vk::DescriptorSetLayoutBinding const> bindings)
+{
+	vk::DescriptorSetLayoutCreateInfo createInfo;
+	createInfo.bindingCount = bindings.size();
+	createInfo.pBindings = bindings.data();
+	return device.createDescriptorSetLayout(createInfo);
+}
+
+vk::DescriptorPool Device::createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoolSize const> poolSizes, u32 maxSets)
+{
+	vk::DescriptorPoolCreateInfo createInfo;
+	createInfo.poolSizeCount = poolSizes.size();
+	createInfo.pPoolSizes = poolSizes.data();
+	createInfo.maxSets = maxSets;
+	return device.createDescriptorPool(createInfo);
+}
+
+std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts,
+															  u32 setCount)
+{
+	vk::DescriptorSetAllocateInfo allocInfo;
+	allocInfo.descriptorPool = pool;
+	allocInfo.descriptorSetCount = setCount;
+	allocInfo.pSetLayouts = layouts.data();
+	return device.allocateDescriptorSets(allocInfo);
+}
+
+vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments,
+										vk::ArrayProxy<vk::SubpassDescription const> subpasses,
+										vk::ArrayProxy<vk::SubpassDependency> dependencies)
+{
+	vk::RenderPassCreateInfo createInfo;
+	createInfo.attachmentCount = attachments.size();
+	createInfo.pAttachments = attachments.data();
+	createInfo.subpassCount = subpasses.size();
+	createInfo.pSubpasses = subpasses.data();
+	createInfo.dependencyCount = dependencies.size();
+	createInfo.pDependencies = dependencies.data();
+	return device.createRenderPass(createInfo);
 }
 
 Service::Service(InitInfo const& info)

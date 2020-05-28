@@ -20,6 +20,14 @@ class Texture;
 
 namespace rd
 {
+namespace vbo
+{
+constexpr u32 vertexBinding = 0;
+
+std::vector<vk::VertexInputBindingDescription> vertexBindings();
+std::vector<vk::VertexInputAttributeDescription> vertexAttributes();
+} // namespace vbo
+
 // UBO
 struct View final
 {
@@ -136,6 +144,8 @@ struct PushConstants final
 	u32 objectID = 0;
 	u32 diffuseID = 0;
 	u32 specularID = 0;
+
+	static std::vector<vk::PushConstantRange> ranges();
 };
 
 struct Writer final

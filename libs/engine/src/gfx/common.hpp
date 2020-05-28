@@ -197,16 +197,43 @@ struct ImageViewInfo final
 	vk::ImageViewType type = vk::ImageViewType::e2D;
 };
 
-extern std::unordered_map<vk::Result, std::string_view> g_vkResultStr;
+inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
+	{vk::Result::eErrorOutOfHostMemory, "OutOfHostMemory"},
+	{vk::Result::eErrorOutOfDeviceMemory, "OutOfDeviceMemory"},
+	{vk::Result::eSuccess, "Success"},
+	{vk::Result::eSuboptimalKHR, "SubmoptimalSurface"},
+	{vk::Result::eErrorDeviceLost, "DeviceLost"},
+	{vk::Result::eErrorSurfaceLostKHR, "SurfaceLost"},
+	{vk::Result::eErrorFullScreenExclusiveModeLostEXT, "FullScreenExclusiveModeLost"},
+	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
+};
 
 struct ShaderImpl final
 {
-	static std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> const s_typeToFlagBit;
+	static constexpr std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
+																										vk::ShaderStageFlagBits::eFragment};
 
 	std::array<vk::ShaderModule, size_t(Shader::Type::eCOUNT_)> shaders;
 
-	vk::ShaderModule module(Shader::Type type) const;
-	std::map<Shader::Type, vk::ShaderModule> modules() const;
+	inline vk::ShaderModule module(Shader::Type type) const
+	{
+		ASSERT(shaders.at((size_t)type) != vk::ShaderModule(), "Module not present in Shader!");
+		return shaders.at((size_t)type);
+	}
+
+	inline std::map<Shader::Type, vk::ShaderModule> modules() const
+	{
+		std::map<Shader::Type, vk::ShaderModule> ret;
+		for (size_t idx = 0; idx < (size_t)Shader::Type::eCOUNT_; ++idx)
+		{
+			auto const& module = shaders.at(idx);
+			if (module != vk::ShaderModule())
+			{
+				ret[(Shader::Type)idx] = module;
+			}
+		}
+		return ret;
+	}
 };
 
 struct SamplerImpl final
@@ -246,19 +273,4 @@ struct MeshImpl final
 	Data vbo;
 	Data ibo;
 };
-
-namespace vbo
-{
-constexpr u32 vertexBinding = 0;
-
-vk::VertexInputBindingDescription bindingDescription();
-std::vector<vk::VertexInputAttributeDescription> attributeDescriptions();
-} // namespace vbo
-
-vk::PipelineLayout createPipelineLayout(vk::ArrayProxy<vk::PushConstantRange const> pushConstants, vk::ArrayProxy<vk::DescriptorSetLayout const> setLayouts);
-
-vk::DescriptorSetLayout createDescriptorSetLayout(vk::ArrayProxy<vk::DescriptorSetLayoutBinding const> bindings);
-vk::DescriptorPool createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoolSize const> poolSizes, u32 maxSets = 1);
-
-vk::RenderPass createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments, vk::ArrayProxy<vk::SubpassDescription const> subpasses, vk::ArrayProxy<vk::SubpassDependency> dependencies);
 } // namespace le::gfx

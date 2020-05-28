@@ -258,7 +258,7 @@ void Presenter::createRenderPass()
 	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	m_renderPass = gfx::createRenderPass(attachments, subpass, dependency);
+	m_renderPass = g_device.createRenderPass(attachments, subpass, dependency);
 	return;
 }
 

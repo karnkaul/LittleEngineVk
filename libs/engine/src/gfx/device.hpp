@@ -57,6 +57,18 @@ struct Device final
 
 	vk::ImageView createImageView(ImageViewInfo const& info);
 
+	vk::PipelineLayout createPipelineLayout(vk::ArrayProxy<vk::PushConstantRange const> pushConstants,
+											vk::ArrayProxy<vk::DescriptorSetLayout const> setLayouts);
+
+	vk::DescriptorSetLayout createDescriptorSetLayout(vk::ArrayProxy<vk::DescriptorSetLayoutBinding const> bindings);
+	vk::DescriptorPool createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoolSize const> poolSizes, u32 maxSets = 1);
+	std::vector<vk::DescriptorSet> allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts,
+														  u32 setCount = 1);
+
+	vk::RenderPass createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments,
+									vk::ArrayProxy<vk::SubpassDescription const> subpasses,
+									vk::ArrayProxy<vk::SubpassDependency> dependencies);
+
 	template <typename vkType>
 	void destroy(vkType object) const;
 

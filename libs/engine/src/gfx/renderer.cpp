@@ -119,7 +119,7 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
 	pipelineInfo.name = "default";
 	m_pipes.pDefault = createPipeline(std::move(pipelineInfo));
 	pipelineInfo.name = "skybox";
-	pipelineInfo.bDepthWrite = false;
+	pipelineInfo.flags.reset(Pipeline::Flag::eDepthWrite);
 	m_pipes.pSkybox = createPipeline(std::move(pipelineInfo));
 	m_bGUI = info.bGUI;
 	if (m_bGUI)
@@ -227,30 +227,27 @@ void RendererImpl::pollAssets()
 Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 {
 	PipelineImpl::Info implInfo;
-	implInfo.renderPass = m_presenter.m_renderPass;
-	implInfo.pShader = info.pShader;
-	implInfo.samplerLayout = m_samplerLayout;
 	implInfo.name = info.name;
+	implInfo.vertexBindings = rd::vbo::vertexBindings();
+	implInfo.vertexAttributes = rd::vbo::vertexAttributes();
+	implInfo.pushConstantRanges = rd::PushConstants::ranges();
+	implInfo.renderPass = m_presenter.m_renderPass;
 	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
 	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
-	implInfo.staticLineWidth = info.lineWidth;
-	implInfo.bBlend = info.bBlend;
-	implInfo.bDepthTest = info.bDepthTest;
-	implInfo.bDepthWrite = info.bDepthWrite;
+	implInfo.frontFace = g_frontFaceMap.at((size_t)info.frontFace);
+	implInfo.samplerLayout = m_samplerLayout;
 	implInfo.window = m_window;
-	vk::PushConstantRange pcRange;
-	pcRange.size = sizeof(rd::PushConstants);
-	pcRange.stageFlags = vkFlags::vertFragShader;
-	implInfo.pushConstantRanges = {pcRange};
-	m_pipelines.push_back({});
-	auto& pipeline = m_pipelines.back();
-	pipeline.m_uImpl = std::make_unique<PipelineImpl>(&pipeline);
+	implInfo.staticLineWidth = info.lineWidth;
+	implInfo.pShader = info.pShader;
+	implInfo.flags = info.flags;
+	Pipeline pipeline;
+	pipeline.m_uImpl = std::make_unique<PipelineImpl>();
 	if (!pipeline.m_uImpl->create(std::move(implInfo)))
 	{
-		m_pipelines.pop_back();
 		return nullptr;
 	}
-	return &pipeline;
+	m_pipelines.push_back(std::move(pipeline));
+	return &m_pipelines.back();
 }
 
 bool RendererImpl::render(Renderer::Scene scene)

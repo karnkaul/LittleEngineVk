@@ -7,6 +7,45 @@
 
 namespace le::gfx::rd
 {
+std::vector<vk::VertexInputBindingDescription> vbo::vertexBindings()
+{
+	vk::VertexInputBindingDescription ret;
+	ret.binding = vertexBinding;
+	ret.stride = sizeof(Vertex);
+	ret.inputRate = vk::VertexInputRate::eVertex;
+	return {ret};
+}
+
+std::vector<vk::VertexInputAttributeDescription> vbo::vertexAttributes()
+{
+	std::vector<vk::VertexInputAttributeDescription> ret;
+	vk::VertexInputAttributeDescription pos;
+	pos.binding = vertexBinding;
+	pos.location = 0;
+	pos.format = vk::Format::eR32G32B32Sfloat;
+	pos.offset = offsetof(Vertex, position);
+	ret.push_back(pos);
+	vk::VertexInputAttributeDescription col;
+	col.binding = vertexBinding;
+	col.location = 1;
+	col.format = vk::Format::eR32G32B32Sfloat;
+	col.offset = offsetof(Vertex, colour);
+	ret.push_back(col);
+	vk::VertexInputAttributeDescription norm;
+	norm.binding = vertexBinding;
+	norm.location = 2;
+	norm.format = vk::Format::eR32G32B32Sfloat;
+	norm.offset = offsetof(Vertex, normal);
+	ret.push_back(norm);
+	vk::VertexInputAttributeDescription uv;
+	uv.binding = vertexBinding;
+	uv.location = 3;
+	uv.format = vk::Format::eR32G32Sfloat;
+	uv.offset = offsetof(Vertex, texCoord);
+	ret.push_back(uv);
+	return ret;
+}
+
 View::View() = default;
 
 View::View(Renderer::View const& view, u32 dirLightCount)
@@ -72,6 +111,14 @@ void ImageSamplers::clampDiffSpecCount(u32 hardwareMax)
 {
 	s_max = std::min(s_max, (hardwareMax - 1) / 2); // (total - cubemap) / (diffuse + specular)
 	s_diffuseLayoutBinding.descriptorCount = s_specularLayoutBinding.descriptorCount = s_max;
+}
+
+std::vector<vk::PushConstantRange> PushConstants::ranges()
+{
+	vk::PushConstantRange pcRange;
+	pcRange.size = sizeof(PushConstants);
+	pcRange.stageFlags = vkFlags::vertFragShader;
+	return {pcRange};
 }
 
 void Writer::write(vk::DescriptorSet set, Buffer const& buffer) const
@@ -222,7 +269,7 @@ SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
 	specularBinding.descriptorCount = samplerCounts.specular;
 	std::array const samplerBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
-	ret.samplerLayout = createDescriptorSetLayout(samplerBindings);
+	ret.samplerLayout = g_device.createDescriptorSetLayout(samplerBindings);
 	ret.sets.reserve((size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
@@ -239,20 +286,12 @@ SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 		samplerPoolSize.descriptorCount = ImageSamplers::total();
 		std::array const bufferPoolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
 		std::array const samplerPoolSizes = {samplerPoolSize};
-		set.m_bufferPool = createDescriptorPool(bufferPoolSizes);
-		set.m_samplerPool = createDescriptorPool(samplerPoolSizes);
+		set.m_bufferPool = g_device.createDescriptorPool(bufferPoolSizes);
+		set.m_samplerPool = g_device.createDescriptorPool(samplerPoolSizes);
 		// Allocate sets
-		vk::DescriptorSetAllocateInfo allocInfo;
-		allocInfo.descriptorPool = set.m_bufferPool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &g_bufferLayout;
-		auto const bufferSets = g_device.device.allocateDescriptorSets(allocInfo);
-		allocInfo.descriptorPool = set.m_samplerPool;
-		allocInfo.pSetLayouts = &ret.samplerLayout;
-		auto const samplerSets = g_device.device.allocateDescriptorSets(allocInfo);
+		set.m_bufferSet = g_device.allocateDescriptorSets(set.m_bufferPool, g_bufferLayout).front();
+		set.m_samplerSet = g_device.allocateDescriptorSets(set.m_samplerPool, ret.samplerLayout).front();
 		// Write handles
-		set.m_bufferSet = bufferSets.front();
-		set.m_samplerSet = samplerSets.front();
 		set.writeView({});
 		set.initSSBOs();
 		set.resetTextures(samplerCounts);

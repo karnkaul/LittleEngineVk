@@ -396,7 +396,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 	diffuse.add(pWhite);
 	specular.add(pBlack);
 	bool bSkybox = false;
-	Cubemap const* pCubemap = Resources::inst().get<Cubemap>("cubemaps/blank");
+	auto const* pCubemap = Resources::inst().get<Texture>("cubemaps/blank");
 	if (out_scene.view.skybox.pCubemap)
 	{
 		if (!out_scene.view.skybox.pPipeline)

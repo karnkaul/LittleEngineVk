@@ -112,12 +112,14 @@ int main(int argc, char** argv)
 	pMesh1->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
 	pMesh1->m_material.pMaterial = pTexturedLit;
 	pMesh1->m_material.tint.a = 0xcc;
-	textureInfo.assetID = "textures/container2.png";
-	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse = Resources::inst().create<gfx::Texture>(textureInfo.assetID, textureInfo);
-	textureInfo.assetID = "textures/container2_specular.png";
-	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular = Resources::inst().create<gfx::Texture>(textureInfo.assetID, textureInfo);
-	textureInfo.assetID = "textures/awesomeface.png";
-	pMesh0->m_material.pDiffuse = Resources::inst().create<gfx::Texture>(textureInfo.assetID, textureInfo);
+	textureInfo.ids = {"textures/container2.png"};
+	pMesh1->m_material.pDiffuse = pMesh0->m_material.pDiffuse =
+		Resources::inst().create<gfx::Texture>(textureInfo.ids.front(), textureInfo);
+	textureInfo.ids = {"textures/container2_specular.png"};
+	pMesh1->m_material.pSpecular = pMesh0->m_material.pSpecular =
+		Resources::inst().create<gfx::Texture>(textureInfo.ids.front(), textureInfo);
+	textureInfo.ids = {"textures/awesomeface.png"};
+	pMesh0->m_material.pDiffuse = Resources::inst().create<gfx::Texture>(textureInfo.ids.front(), textureInfo);
 	pMesh0->m_material.pSpecular = nullptr;
 	pMesh0->m_material.flags.reset(gfx::Material::Flag::eOpaque);
 
@@ -128,11 +130,12 @@ int main(int argc, char** argv)
 	dirLight1.diffuse = Colour(0xffffffff);
 	dirLight1.direction = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
 
-	gfx::Cubemap::Info cubemapInfo;
+	gfx::Texture::Info cubemapInfo;
 	cubemapInfo.pReader = g_uReader.get();
+	cubemapInfo.type = gfx::Texture::Type::eCube;
 	stdfs::path const& cp = "skyboxes/sky_dusk";
-	cubemapInfo.rludfbIDs = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
-	gfx::Cubemap* pCubemap = Resources::inst().create<gfx::Cubemap>("skyboxes/sky_dusk_cubemap", cubemapInfo);
+	cubemapInfo.ids = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
+	auto pCubemap = Resources::inst().create<gfx::Texture>("skyboxes/sky_dusk_cubemap", cubemapInfo);
 
 	Window w0, w1;
 	Window::Info info0;

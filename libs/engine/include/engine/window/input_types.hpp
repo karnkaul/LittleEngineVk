@@ -7,7 +7,7 @@
 
 namespace le
 {
-enum class Action : u8
+enum class Action : s8
 {
 	eRelease = 0,
 	ePress = 1,
@@ -182,7 +182,7 @@ enum Mods
 	eNUM_LOCK = 0x0020
 };
 
-enum class PadAxis : u8
+enum class PadAxis : s8
 {
 	eLeftX = 0,
 	eLeftY = 1,
@@ -192,7 +192,7 @@ enum class PadAxis : u8
 	eRightTrigger = 5,
 };
 
-enum class CursorMode : u8
+enum class CursorMode : s8
 {
 	eDefault = 0,
 	eHidden,

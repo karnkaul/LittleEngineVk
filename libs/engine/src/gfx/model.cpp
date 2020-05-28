@@ -357,7 +357,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	for (auto& texture : info.textures)
 	{
 		Texture::Info texInfo;
-		texInfo.imgBytes = std::move(texture.bytes);
+		texInfo.bytes = {std::move(texture.bytes)};
 		texInfo.samplerID = std::move(texture.samplerID);
 		texInfo.mode = info.mode;
 		Texture newTex(texture.id, std::move(texInfo));

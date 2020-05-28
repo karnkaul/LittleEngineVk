@@ -208,23 +208,10 @@ void Set::writeSpecular(std::deque<Texture const*> const& specular)
 	return;
 }
 
-void Set::writeCubemap(Cubemap const& cubemap)
+void Set::writeCubemap(Texture const& cubemap)
 {
 	m_cubemap.writeArray({cubemap.m_uImpl.get()}, m_samplerSet);
 	return;
-}
-
-vk::DescriptorSetLayout createSamplerLayout(u32 diffuse, u32 specular)
-{
-	auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
-	diffuseBinding.descriptorCount = diffuse;
-	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
-	specularBinding.descriptorCount = specular;
-	std::array const textureBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
-	vk::DescriptorSetLayoutCreateInfo samplerLayoutInfo;
-	samplerLayoutInfo.bindingCount = (u32)textureBindings.size();
-	samplerLayoutInfo.pBindings = textureBindings.data();
-	return g_device.device.createDescriptorSetLayout(samplerLayoutInfo);
 }
 
 SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
@@ -234,11 +221,8 @@ SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 	diffuseBinding.descriptorCount = samplerCounts.diffuse;
 	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
 	specularBinding.descriptorCount = samplerCounts.specular;
-	std::array const textureBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
-	vk::DescriptorSetLayoutCreateInfo samplerLayoutInfo;
-	samplerLayoutInfo.bindingCount = (u32)textureBindings.size();
-	samplerLayoutInfo.pBindings = textureBindings.data();
-	ret.samplerLayout = g_device.device.createDescriptorSetLayout(samplerLayoutInfo);
+	std::array const samplerBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
+	ret.samplerLayout = createDescriptorSetLayout(samplerBindings);
 	ret.sets.reserve((size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
@@ -255,14 +239,8 @@ SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 		samplerPoolSize.descriptorCount = ImageSamplers::total();
 		std::array const bufferPoolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
 		std::array const samplerPoolSizes = {samplerPoolSize};
-		vk::DescriptorPoolCreateInfo createInfo;
-		createInfo.poolSizeCount = (u32)bufferPoolSizes.size();
-		createInfo.pPoolSizes = bufferPoolSizes.data();
-		createInfo.maxSets = 1;
-		set.m_bufferPool = g_device.device.createDescriptorPool(createInfo);
-		createInfo.poolSizeCount = (u32)samplerPoolSizes.size();
-		createInfo.pPoolSizes = samplerPoolSizes.data();
-		set.m_samplerPool = g_device.device.createDescriptorPool(createInfo);
+		set.m_bufferPool = createDescriptorPool(bufferPoolSizes);
+		set.m_samplerPool = createDescriptorPool(samplerPoolSizes);
 		// Allocate sets
 		vk::DescriptorSetAllocateInfo allocInfo;
 		allocInfo.descriptorPool = set.m_bufferPool;

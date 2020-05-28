@@ -42,14 +42,14 @@ public:
 
 	struct Text
 	{
-		enum class HAlign : u8
+		enum class HAlign : s8
 		{
 			Centre = 0,
 			Left,
 			Right
 		};
 
-		enum class VAlign : u8
+		enum class VAlign : s8
 		{
 			Middle = 0,
 			Top,

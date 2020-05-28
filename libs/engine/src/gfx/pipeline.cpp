@@ -98,15 +98,8 @@ bool PipelineImpl::create()
 	}
 	auto const bindingDescription = vbo::bindingDescription();
 	auto const attributeDescriptions = vbo::attributeDescriptions();
-	{
-		vk::PipelineLayoutCreateInfo layoutCreateInfo;
-		std::vector const setLayouts = {rd::g_bufferLayout, m_info.samplerLayout};
-		layoutCreateInfo.setLayoutCount = (u32)setLayouts.size();
-		layoutCreateInfo.pSetLayouts = setLayouts.data();
-		layoutCreateInfo.pushConstantRangeCount = (u32)m_info.pushConstantRanges.size();
-		layoutCreateInfo.pPushConstantRanges = m_info.pushConstantRanges.data();
-		m_layout = g_device.device.createPipelineLayout(layoutCreateInfo);
-	}
+	std::vector const setLayouts = {rd::g_bufferLayout, m_info.samplerLayout};
+	m_layout = createPipelineLayout(m_info.pushConstantRanges, setLayouts);
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
 		vertexInputState.vertexAttributeDescriptionCount = (u32)attributeDescriptions.size();

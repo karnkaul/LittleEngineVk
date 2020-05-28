@@ -54,7 +54,7 @@ namespace le
 {
 namespace os
 {
-enum class Dir : u8
+enum class Dir : s8
 {
 	eWorking,
 	eExecutable,

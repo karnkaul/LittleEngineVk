@@ -29,7 +29,7 @@ bool operator!=(Entity lhs, Entity rhs);
 class Registry
 {
 public:
-	enum class DestroyMode : u8
+	enum class DestroyMode : s8
 	{
 		eDeferred,	// destroyEntity() sets eDestroyed
 		eImmediate, // destroyEntity() erases Entity
@@ -37,7 +37,7 @@ public:
 	};
 
 	// Desired flags can be combined with a mask as per-Entity filters for view()
-	enum class Flag : u8
+	enum class Flag : s8
 	{
 		eDisabled,
 		eDestroyed,

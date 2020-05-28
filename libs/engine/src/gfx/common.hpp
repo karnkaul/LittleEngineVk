@@ -220,7 +220,8 @@ struct TextureImpl final
 	std::vector<Texture::Raw> raws;
 	vk::ImageView imageView;
 	vk::Sampler sampler;
-	vk::ImageViewType type = vk::ImageViewType::e2D;
+	vk::ImageViewType type;
+	vk::Format colourSpace;
 	std::future<void> copied;
 	bool bStbiRaw = false;
 
@@ -253,4 +254,11 @@ constexpr u32 vertexBinding = 0;
 vk::VertexInputBindingDescription bindingDescription();
 std::vector<vk::VertexInputAttributeDescription> attributeDescriptions();
 } // namespace vbo
+
+vk::PipelineLayout createPipelineLayout(vk::ArrayProxy<vk::PushConstantRange const> pushConstants, vk::ArrayProxy<vk::DescriptorSetLayout const> setLayouts);
+
+vk::DescriptorSetLayout createDescriptorSetLayout(vk::ArrayProxy<vk::DescriptorSetLayoutBinding const> bindings);
+vk::DescriptorPool createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoolSize const> poolSizes, u32 maxSets = 1);
+
+vk::RenderPass createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments, vk::ArrayProxy<vk::SubpassDescription const> subpasses, vk::ArrayProxy<vk::SubpassDependency> dependencies);
 } // namespace le::gfx

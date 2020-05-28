@@ -54,19 +54,20 @@ void Resources::init(IOReader const& data)
 		}
 		{
 			gfx::Texture::Info info;
-			info.raw.size = {1, 1};
-			info.raw.bytes = ArrayView<u8>(white1pxBytes);
+			info.type = gfx::Texture::Type::e2D;
+			info.raws = {{ArrayView<u8>(white1pxBytes), {1, 1}}};
 			create<gfx::Texture>("textures/white", info);
-			info.raw.bytes = ArrayView<u8>(black1pxBytes);
+			info.raws.back().bytes = ArrayView<u8>(black1pxBytes);
 			create<gfx::Texture>("textures/black", info);
 		}
 		{
-			gfx::Cubemap::Info info;
+			gfx::Texture::Info info;
 			gfx::Texture::Raw b1px;
 			b1px.bytes = ArrayView<u8>(black1pxBytes);
 			b1px.size = {1, 1};
-			info.rludfbRaw = {b1px, b1px, b1px, b1px, b1px, b1px};
-			create<gfx::Cubemap>("cubemaps/blank", std::move(info));
+			info.raws = {b1px, b1px, b1px, b1px, b1px, b1px};
+			info.type = gfx::Texture::Type::eCube;
+			create<gfx::Texture>("cubemaps/blank", std::move(info));
 		}
 		{
 			gfx::Shader::Info info;

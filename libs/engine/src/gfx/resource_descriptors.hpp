@@ -219,7 +219,7 @@ public:
 	void writeSSBOs(StorageBuffers const& ssbos);
 	void writeDiffuse(std::deque<Texture const*> const& diffuse);
 	void writeSpecular(std::deque<Texture const*> const& specular);
-	void writeCubemap(Cubemap const& cubemap);
+	void writeCubemap(Texture const& cubemap);
 };
 
 struct SetLayouts final

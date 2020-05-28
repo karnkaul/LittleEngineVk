@@ -11,14 +11,14 @@ using WindowID = TZero<s32, -1>;
 template <typename T>
 using PriorityList = std::vector<T>;
 
-enum class ColourSpace : u8
+enum class ColourSpace : s8
 {
 	eSRGBNonLinear,
 	eRGBLinear,
 	eCOUNT_,
 };
 
-enum class PresentMode : u8
+enum class PresentMode : s8
 {
 	eFIFO,
 	eMailbox,

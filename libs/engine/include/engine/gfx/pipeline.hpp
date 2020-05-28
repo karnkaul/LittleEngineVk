@@ -6,14 +6,14 @@ namespace le::gfx
 {
 class Shader;
 
-enum class PolygonMode : u8
+enum class PolygonMode : s8
 {
 	eFill,
 	eLine,
 	eCOUNT_
 };
 
-enum class CullMode : u8
+enum class CullMode : s8
 {
 	eNone,
 	eCounterClockwise,
@@ -21,7 +21,7 @@ enum class CullMode : u8
 	eCOUNT_
 };
 
-enum class FrontFace : u8
+enum class FrontFace : s8
 {
 	eFront,
 	eBack,

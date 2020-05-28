@@ -21,7 +21,7 @@ struct Albedo final
 class Material final : public Asset
 {
 public:
-	enum class Flag : u8
+	enum class Flag : s8
 	{
 		eTextured,
 		eLit,
@@ -63,7 +63,7 @@ public:
 class Mesh : public Asset
 {
 public:
-	enum class Type : u8
+	enum class Type : s8
 	{
 		eStatic,
 		eDynamic,

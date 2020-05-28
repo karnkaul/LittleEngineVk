@@ -8,7 +8,7 @@
 
 namespace le
 {
-enum class FutureState : u8
+enum class FutureState : s8
 {
 	eInvalid,
 	eDeferred,

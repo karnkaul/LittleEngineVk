@@ -11,7 +11,7 @@ namespace le::gfx
 class Presenter final
 {
 public:
-	enum class Outcome : u8
+	enum class Outcome : s8
 	{
 		eSuccess = 0,
 		ePaused,
@@ -19,7 +19,7 @@ public:
 		eCOUNT_
 	};
 
-	enum class Flag : u8
+	enum class Flag : s8
 	{
 		eRenderPaused,
 		eCOUNT_

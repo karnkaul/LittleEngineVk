@@ -15,14 +15,14 @@ class Set;
 class Sampler final : public Asset
 {
 public:
-	enum class Filter : u8
+	enum class Filter : s8
 	{
 		eLinear,
 		eNearest,
 		eCOUNT_
 	};
 
-	enum class Mode : u8
+	enum class Mode : s8
 	{
 		eRepeat,
 		eClampEdge,
@@ -38,7 +38,7 @@ public:
 		Mode mode = Mode::eRepeat;
 	};
 
-private:
+public:
 	std::unique_ptr<struct SamplerImpl> m_uImpl;
 
 public:
@@ -47,22 +47,23 @@ public:
 
 public:
 	Status update() override;
-
-private:
-	friend class Texture;
-	friend class Cubemap;
 };
 
 class Texture final : public Asset
 {
 public:
-	enum class Space
+	enum class Space : s8
 	{
 		eSRGBNonLinear,
 		eRGBLinear,
 		eCOUNT_
 	};
-
+	enum class Type : s8
+	{
+		e2D,
+		eCube,
+		eCOUNT_
+	};
 	struct Raw final
 	{
 		ArrayView<u8> bytes;
@@ -70,24 +71,22 @@ public:
 	};
 	struct Info final
 	{
+		std::vector<stdfs::path> ids;
+		std::vector<bytearray> bytes;
+		std::vector<Raw> raws;
 		stdfs::path samplerID;
-		bytearray imgBytes;
-		Raw raw;
-		stdfs::path assetID;
 		Space mode = Space::eSRGBNonLinear;
+		Type type = Type::e2D;
 		Sampler* pSampler = nullptr;
 		class IOReader const* pReader = nullptr;
 	};
 
 public:
-	static std::string const s_tName;
-
-public:
 	glm::ivec2 m_size = {};
-	Space m_mode;
+	Space m_colourSpace;
 	Sampler* m_pSampler = nullptr;
 
-private:
+public:
 	std::unique_ptr<struct TextureImpl> m_uImpl;
 
 public:
@@ -99,45 +98,9 @@ public:
 public:
 	Status update() override;
 
-private:
-	friend class rd::Set;
-};
-
-class Cubemap final : public Asset
-{
-public:
-	struct Info final
-	{
-		std::array<stdfs::path, 6> rludfbIDs;
-		std::array<bytearray, 6> rludfb;
-		std::array<Texture::Raw, 6> rludfbRaw;
-		stdfs::path samplerID;
-		Texture::Space mode = Texture::Space::eSRGBNonLinear;
-		Sampler* pSampler = nullptr;
-		class IOReader const* pReader = nullptr;
-	};
-
-public:
-	static std::string const s_tName;
-
-public:
-	glm::ivec2 m_size = {};
-	Texture::Space m_mode;
-	Sampler* m_pSampler = nullptr;
-
-private:
-	std::unique_ptr<struct TextureImpl> m_uImpl;
-
-public:
-	Cubemap(stdfs::path id, Info info);
-	Cubemap(Cubemap&&);
-	Cubemap& operator=(Cubemap&&);
-	~Cubemap() override;
-
-public:
-	Status update() override;
-
-private:
-	friend class rd::Set;
+#if defined(LEVK_ASSET_HOT_RELOAD)
+protected:
+	void onReload() override;
+#endif
 };
 } // namespace le::gfx

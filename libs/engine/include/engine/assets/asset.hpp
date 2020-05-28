@@ -1,5 +1,4 @@
 #pragma once
-#include <any>
 #include <string>
 #include "core/io.hpp"
 #include "core/zero.hpp"
@@ -10,6 +9,15 @@
 #endif
 #endif
 
+// Hot Reload will reload assets on changes to linked files (filesystem only)
+// Asset::update() will track modified files and trigger reload after a
+// period of time (200ms by default); and a final onReload() if successful.
+#if defined(LEVK_ASSET_HOT_RELOAD)
+#include <functional>
+#include <unordered_set>
+#include "core/time.hpp"
+#endif
+
 namespace le
 {
 class Asset
@@ -17,29 +25,39 @@ class Asset
 public:
 	using GUID = TZero<s64, -1>;
 
-	enum class Status : u8
+	enum class Status : s8
 	{
-		eReady,
-		eLoading,
-		eReloaded,
-		eError,
-		eMoved,
+		eReady,	   // ready to use
+		eLoading,  // transferring resources
+		eReloaded, // finished reloading (only for one frame)
+		eError,	   // cannot be used
+		eMoved,	   // cannot be used
 		eCOUNT_
 	};
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
 protected:
+	// encapsulates file-level reload logic
 	struct File final
 	{
 		FileMonitor monitor;
+		// file-level callback, invoked when modified, aborts reload on receiving false
+		std::function<bool(File const*)> onModified;
+		// Asset ID
 		stdfs::path id;
-		std::any data;
 
-		File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode, std::any data);
+		File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode, std::function<bool(File const*)> onModified);
 	};
 
 protected:
+	// add files to track here (in derived constructor)
 	std::vector<File> m_files;
+	// time to wait before triggering reload
+	Time m_reloadDelay = 200ms;
+
+private:
+	std::unordered_set<File const*> m_modified;
+	Time m_reloadStart;
 #endif
 
 public:
@@ -57,13 +75,21 @@ public:
 	virtual ~Asset();
 
 public:
-	virtual Status update() = 0;
+	// overrides must call Asset::update() for hot reload logic
+	virtual Status update();
 
 public:
 	void setup();
+
 	Status currentStatus() const;
 	bool isReady() const;
 	GUID guid() const;
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+protected:
+	// invoked when all files have successfully been reloaded
+	virtual void onReload();
+#endif
 
 private:
 	friend class Resources;

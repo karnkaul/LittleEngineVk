@@ -1,7 +1,10 @@
 #include "engine/gfx/mesh.hpp"
 #include "common.hpp"
+#include "device.hpp"
 
-namespace le::gfx
+namespace le
+{
+namespace gfx
 {
 std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorOutOfHostMemory, "OutOfHostMemory"},
@@ -75,4 +78,47 @@ std::vector<vk::VertexInputAttributeDescription> vbo::attributeDescriptions()
 	ret.push_back(uv);
 	return ret;
 }
-} // namespace le::gfx
+} // namespace gfx
+
+vk::PipelineLayout gfx::createPipelineLayout(vk::ArrayProxy<vk::PushConstantRange const> pushConstants,
+											 vk::ArrayProxy<vk::DescriptorSetLayout const> setLayouts)
+{
+	vk::PipelineLayoutCreateInfo createInfo;
+	createInfo.setLayoutCount = setLayouts.size();
+	createInfo.pSetLayouts = setLayouts.data();
+	createInfo.pushConstantRangeCount = pushConstants.size();
+	createInfo.pPushConstantRanges = pushConstants.data();
+	return g_device.device.createPipelineLayout(createInfo);
+}
+
+vk::DescriptorSetLayout gfx::createDescriptorSetLayout(vk::ArrayProxy<vk::DescriptorSetLayoutBinding const> bindings)
+{
+	vk::DescriptorSetLayoutCreateInfo createInfo;
+	createInfo.bindingCount = bindings.size();
+	createInfo.pBindings = bindings.data();
+	return g_device.device.createDescriptorSetLayout(createInfo);
+}
+
+vk::DescriptorPool gfx::createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoolSize const> poolSizes, u32 maxSets)
+{
+	vk::DescriptorPoolCreateInfo createInfo;
+	createInfo.poolSizeCount = poolSizes.size();
+	createInfo.pPoolSizes = poolSizes.data();
+	createInfo.maxSets = maxSets;
+	return g_device.device.createDescriptorPool(createInfo);
+}
+
+vk::RenderPass gfx::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments,
+									 vk::ArrayProxy<vk::SubpassDescription const> subpasses,
+									 vk::ArrayProxy<vk::SubpassDependency> dependencies)
+{
+	vk::RenderPassCreateInfo createInfo;
+	createInfo.attachmentCount = attachments.size();
+	createInfo.pAttachments = attachments.data();
+	createInfo.subpassCount = subpasses.size();
+	createInfo.pSubpasses = subpasses.data();
+	createInfo.dependencyCount = dependencies.size();
+	createInfo.pDependencies = dependencies.data();
+	return g_device.device.createRenderPass(createInfo);
+}
+} // namespace le

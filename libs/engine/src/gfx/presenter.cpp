@@ -222,28 +222,28 @@ Presenter::Outcome Presenter::present(vk::Semaphore wait)
 
 void Presenter::createRenderPass()
 {
-	std::array<vk::AttachmentDescription, 2> descriptions;
+	std::array<vk::AttachmentDescription, 2> attachments;
 	vk::AttachmentReference colourAttachment, depthAttachment;
 	{
-		descriptions.at(0).format = m_info.colourFormat.format;
-		descriptions.at(0).samples = vk::SampleCountFlagBits::e1;
-		descriptions.at(0).loadOp = vk::AttachmentLoadOp::eClear;
-		descriptions.at(0).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		descriptions.at(0).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		descriptions.at(0).initialLayout = vk::ImageLayout::eUndefined;
-		descriptions.at(0).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		attachments.at(0).format = m_info.colourFormat.format;
+		attachments.at(0).samples = vk::SampleCountFlagBits::e1;
+		attachments.at(0).loadOp = vk::AttachmentLoadOp::eClear;
+		attachments.at(0).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments.at(0).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(0).initialLayout = vk::ImageLayout::eUndefined;
+		attachments.at(0).finalLayout = vk::ImageLayout::ePresentSrcKHR;
 		colourAttachment.attachment = 0;
 		colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
 	}
 	{
-		descriptions.at(1).format = m_info.depthFormat;
-		descriptions.at(1).samples = vk::SampleCountFlagBits::e1;
-		descriptions.at(1).loadOp = vk::AttachmentLoadOp::eClear;
-		descriptions.at(1).storeOp = vk::AttachmentStoreOp::eDontCare;
-		descriptions.at(1).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		descriptions.at(1).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		descriptions.at(1).initialLayout = vk::ImageLayout::eUndefined;
-		descriptions.at(1).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		attachments.at(1).format = m_info.depthFormat;
+		attachments.at(1).samples = vk::SampleCountFlagBits::e1;
+		attachments.at(1).loadOp = vk::AttachmentLoadOp::eClear;
+		attachments.at(1).storeOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(1).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments.at(1).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(1).initialLayout = vk::ImageLayout::eUndefined;
+		attachments.at(1).finalLayout = vk::ImageLayout::ePresentSrcKHR;
 		depthAttachment.attachment = 1;
 		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	}
@@ -252,20 +252,13 @@ void Presenter::createRenderPass()
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colourAttachment;
 	subpass.pDepthStencilAttachment = &depthAttachment;
-	vk::RenderPassCreateInfo createInfo;
-	createInfo.attachmentCount = (u32)descriptions.size();
-	createInfo.pAttachments = descriptions.data();
-	createInfo.subpassCount = 1;
-	createInfo.pSubpasses = &subpass;
 	vk::SubpassDependency dependency;
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
 	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	createInfo.dependencyCount = 1;
-	createInfo.pDependencies = &dependency;
-	m_renderPass = g_device.device.createRenderPass(createInfo);
+	m_renderPass = gfx::createRenderPass(attachments, subpass, dependency);
 	return;
 }
 

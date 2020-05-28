@@ -110,7 +110,7 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 		info.samplerID = "samplers/font";
 	}
 	sheetInfo.samplerID = info.samplerID;
-	sheetInfo.imgBytes = std::move(info.image);
+	sheetInfo.bytes = {std::move(info.image)};
 	m_uSheet = std::make_unique<Texture>(std::move(texID), std::move(sheetInfo));
 	if (m_uSheet->currentStatus() == Status::eError)
 	{

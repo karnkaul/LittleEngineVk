@@ -69,10 +69,7 @@ void Service::update()
 	gfx::vram::update();
 	gfx::deferred::update();
 	Resources::inst().update();
-	gfx::ext_gui::newFrame();
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	WindowImpl::pollAssets();
-#endif
+	WindowImpl::update();
 }
 } // namespace engine
 

@@ -214,15 +214,19 @@ void RendererImpl::destroy()
 	return;
 }
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
-void RendererImpl::pollAssets()
+void RendererImpl::update()
 {
+#if defined(LEVK_ASSET_HOT_RELOAD)
 	for (auto& pipeline : m_pipelines)
 	{
 		pipeline.m_uImpl->pollShaders();
 	}
-}
 #endif
+	if (m_bGUI)
+	{
+		gfx::ext_gui::newFrame();
+	}
+}
 
 Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 {

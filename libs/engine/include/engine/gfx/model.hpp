@@ -19,6 +19,7 @@ public:
 		stdfs::path samplerID;
 		stdfs::path filename;
 		bytearray bytes;
+		size_t hash = 0;
 	};
 	struct MatData final
 	{
@@ -29,13 +30,15 @@ public:
 		Albedo albedo;
 		f32 shininess = 32.0f;
 		Material::Flags flags;
+		size_t hash = 0;
 	};
 	struct MeshData final
 	{
 		Geometry geometry;
-		std::string id;
+		stdfs::path id;
 		std::vector<size_t> materialIndices;
 		f32 shininess = 32.0f;
+		size_t hash = 0;
 	};
 
 	struct Info final
@@ -61,6 +64,8 @@ public:
 	static std::string const s_tName;
 
 public:
+	static size_t idHash(stdfs::path const& id);
+	static size_t strHash(std::string_view id);
 	static Info parseOBJ(LoadRequest const& request);
 
 public:
@@ -70,8 +75,8 @@ protected:
 	std::vector<Mesh const*> m_meshes;
 	std::deque<Material::Inst> m_materials;
 	std::deque<Mesh> m_loadedMeshes;
-	std::unordered_map<std::string, Material> m_loadedMaterials;
-	std::unordered_map<std::string, Texture> m_loadedTextures;
+	std::unordered_map<size_t, Material> m_loadedMaterials;
+	std::unordered_map<size_t, Texture> m_loadedTextures;
 
 public:
 	std::vector<Mesh const*> meshes() const;

@@ -83,9 +83,7 @@ public:
 	void create(u8 frameCount = 2);
 	void destroy();
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	void pollAssets();
-#endif
+	void update();
 
 	Pipeline* createPipeline(Pipeline::Info info);
 	bool render(Renderer::Scene scene);

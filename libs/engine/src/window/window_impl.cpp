@@ -332,18 +332,16 @@ void WindowImpl::deinit()
 	return;
 }
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
-void WindowImpl::pollAssets()
+void WindowImpl::update()
 {
 	for (auto pWindow : g_registeredWindows)
 	{
 		if (auto pRenderer = pWindow->m_pWindow->m_renderer.m_uImpl.get())
 		{
-			pRenderer->pollAssets();
+			pRenderer->update();
 		}
 	}
 }
-#endif
 
 std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 {

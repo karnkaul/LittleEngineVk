@@ -110,8 +110,7 @@ ScreenRect Renderer::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nVi
 	return m_uImpl ? m_uImpl->clampToView(screenXY, nViewport, padding) : ScreenRect::sizeCentre(nViewport);
 }
 
-RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
-	: m_presenter(info.presenterInfo), m_pRenderer(pOwner), m_window(info.windowID)
+RendererImpl::RendererImpl(Info const& info, Renderer* pOwner) : m_context(info.contextInfo), m_pRenderer(pOwner), m_window(info.windowID)
 {
 	m_name = fmt::format("{}:{}", Renderer::s_tName, m_window);
 	create(info.frameCount);
@@ -125,7 +124,7 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner)
 	if (m_bGUI)
 	{
 		ext_gui::Info guiInfo;
-		guiInfo.renderPass = m_presenter.m_renderPass;
+		guiInfo.renderPass = m_renderPass;
 		guiInfo.imageCount = m_frameCount;
 		guiInfo.minImageCount = 2;
 		guiInfo.window = m_window;
@@ -160,6 +159,10 @@ RendererImpl::~RendererImpl()
 
 void RendererImpl::create(u8 frameCount)
 {
+	if (m_renderPass == vk::RenderPass())
+	{
+		m_renderPass = rd::createSingleRenderPass(m_context.colourFormat(), m_context.depthFormat());
+	}
 	if (m_frames.empty() && frameCount > 0)
 	{
 		m_frameCount = frameCount;
@@ -203,8 +206,9 @@ void RendererImpl::destroy()
 			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing,
 							 frame.renderReady, frame.presentReady);
 		}
-		g_device.destroy(m_samplerLayout);
+		g_device.destroy(m_samplerLayout, m_renderPass);
 		m_samplerLayout = vk::DescriptorSetLayout();
+		m_renderPass = vk::RenderPass();
 		m_frames.clear();
 		m_index = 0;
 		m_drawnFrames = 0;
@@ -235,7 +239,7 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	implInfo.vertexBindings = rd::vbo::vertexBindings();
 	implInfo.vertexAttributes = rd::vbo::vertexAttributes();
 	implInfo.pushConstantRanges = rd::PushConstants::ranges();
-	implInfo.renderPass = m_presenter.m_renderPass;
+	implInfo.renderPass = m_renderPass;
 	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
 	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
 	implInfo.frontFace = g_frontFaceMap.at((size_t)info.frontFace);
@@ -268,17 +272,17 @@ bool RendererImpl::render(Renderer::Scene scene)
 	auto& frame = frameSync();
 	g_device.waitFor(frame.drawing);
 	auto const push = writeSets(scene, frame);
-	auto [pass, result] = m_presenter.acquireNextImage(frame.renderReady, frame.drawing);
+	auto [target, result] = m_context.acquireNextImage(frame.renderReady, frame.drawing);
 	bool bRecreate = false;
 	bool bRendered = false;
 	switch (result)
 	{
-	case Presenter::Outcome::eSuccess:
+	case RenderContext::Outcome::eSuccess:
 	{
-		u64 const tris = doRenderPass(frame, scene, pass, push);
+		u64 const tris = doRenderPass(frame, scene, target, push);
 		result = submit(frame);
-		bRecreate = result == Presenter::Outcome::eSwapchainRecreated;
-		if (result == Presenter::Outcome::eSuccess)
+		bRecreate = result == RenderContext::Outcome::eSwapchainRecreated;
+		if (result == RenderContext::Outcome::eSuccess)
 		{
 			next();
 			m_pRenderer->m_stats.trisDrawn = tris;
@@ -286,7 +290,7 @@ bool RendererImpl::render(Renderer::Scene scene)
 		}
 		break;
 	}
-	case Presenter::Outcome::eSwapchainRecreated:
+	case RenderContext::Outcome::eSwapchainRecreated:
 	{
 		bRecreate = true;
 		break;
@@ -305,7 +309,7 @@ bool RendererImpl::render(Renderer::Scene scene)
 vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 const& depth) const
 {
 	vk::Viewport viewport;
-	auto const& extent = m_presenter.m_swapchain.extent;
+	auto const& extent = m_context.m_swapchain.extent;
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
 	viewport.minDepth = depth.x;
 	viewport.maxDepth = depth.y;
@@ -319,7 +323,7 @@ vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 
 vk::Rect2D RendererImpl::transformScissor(ScreenRect const& nRect) const
 {
 	vk::Rect2D scissor;
-	auto const& extent = m_presenter.m_swapchain.extent;
+	auto const& extent = m_context.m_swapchain.extent;
 	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
 	scissor.offset.x = (s32)(nRect.left * (f32)extent.width);
 	scissor.offset.y = (s32)(nRect.top * (f32)extent.height);
@@ -367,7 +371,7 @@ ScreenRect RendererImpl::clampToView(glm::vec2 const& screenXY, glm::vec2 const&
 
 void RendererImpl::onFramebufferResize()
 {
-	m_presenter.onFramebufferResize();
+	m_context.onFramebufferResize();
 	return;
 }
 
@@ -493,16 +497,17 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene, FrameSyn
 	return push;
 }
 
-u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::Pass const& pass, PCDeq const& push)
+u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, RenderTarget const& target, PCDeq const& push)
 {
 	// Framebuffer
 	g_device.destroy(out_frame.framebuffer);
 	vk::FramebufferCreateInfo createInfo;
-	createInfo.attachmentCount = (u32)pass.attachments.size();
-	createInfo.pAttachments = pass.attachments.data();
-	createInfo.renderPass = pass.renderPass;
-	createInfo.width = pass.swapchainExtent.width;
-	createInfo.height = pass.swapchainExtent.height;
+	auto const attachments = target.attachments();
+	createInfo.attachmentCount = (u32)attachments.size();
+	createInfo.pAttachments = attachments.data();
+	createInfo.renderPass = m_renderPass;
+	createInfo.width = target.extent.width;
+	createInfo.height = target.extent.height;
 	createInfo.layers = 1;
 	out_frame.framebuffer = g_device.device.createFramebuffer(createInfo);
 	// RenderPass
@@ -512,9 +517,9 @@ u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scen
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 	std::array<vk::ClearValue, 2> const clearValues = {colour, depth};
 	vk::RenderPassBeginInfo renderPassInfo;
-	renderPassInfo.renderPass = pass.renderPass;
+	renderPassInfo.renderPass = m_renderPass;
 	renderPassInfo.framebuffer = out_frame.framebuffer;
-	renderPassInfo.renderArea.extent = pass.swapchainExtent;
+	renderPassInfo.renderArea.extent = target.extent;
 	renderPassInfo.clearValueCount = (u32)clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
 	// Begin
@@ -541,7 +546,7 @@ u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scen
 					tris += pMesh->m_triCount;
 					auto pPipeline = pPipe ? pPipe : m_pipes.pDefault;
 					ASSERT(pPipeline, "Pipeline is null!");
-					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_samplerLayout);
+					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_renderPass, m_samplerLayout);
 					ASSERT(bOk, "Pipeline update failure!");
 					if (pipeline != pPipeline->m_uImpl->m_pipeline)
 					{
@@ -579,7 +584,7 @@ u64 RendererImpl::doRenderPass(FrameSync& out_frame, Renderer::Scene const& scen
 	return tris;
 }
 
-Presenter::Outcome RendererImpl::submit(FrameSync const& frame)
+RenderContext::Outcome RendererImpl::submit(FrameSync const& frame)
 {
 	// Submit
 	vk::SubmitInfo submitInfo;
@@ -593,6 +598,6 @@ Presenter::Outcome RendererImpl::submit(FrameSync const& frame)
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_device.device.resetFences(frame.drawing);
 	g_device.queues.graphics.queue.submit(submitInfo, frame.drawing);
-	return m_presenter.present(frame.presentReady);
+	return m_context.present(frame.presentReady);
 }
 } // namespace le::gfx

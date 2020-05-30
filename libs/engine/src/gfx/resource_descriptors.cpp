@@ -5,7 +5,9 @@
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/texture.hpp"
 
-namespace le::gfx::rd
+namespace le::gfx
+{
+namespace rd
 {
 std::vector<vk::VertexInputBindingDescription> vbo::vertexBindings()
 {
@@ -260,8 +262,34 @@ void Set::writeCubemap(Texture const& cubemap)
 	m_cubemap.writeArray({cubemap.m_uImpl.get()}, m_samplerSet);
 	return;
 }
+} // namespace rd
 
-SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
+void rd::init()
+{
+	if (g_bufferLayout == vk::DescriptorSetLayout())
+	{
+		std::array const bufferBindings = {View::s_setLayoutBinding,	  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,
+										   Materials::s_setLayoutBinding, Tints::s_setLayoutBinding,  Flags::s_setLayoutBinding,
+										   DirLights::s_setLayoutBinding};
+		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
+		bufferLayoutInfo.bindingCount = (u32)bufferBindings.size();
+		bufferLayoutInfo.pBindings = bufferBindings.data();
+		rd::g_bufferLayout = g_device.device.createDescriptorSetLayout(bufferLayoutInfo);
+	}
+	return;
+}
+
+void rd::deinit()
+{
+	if (g_bufferLayout != vk::DescriptorSetLayout())
+	{
+		g_device.destroy(g_bufferLayout);
+		g_bufferLayout = vk::DescriptorSetLayout();
+	}
+	return;
+}
+
+rd::SetLayouts rd::allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 {
 	SetLayouts ret;
 	auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
@@ -300,28 +328,44 @@ SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 	return ret;
 }
 
-void init()
+vk::RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth)
 {
-	if (g_bufferLayout == vk::DescriptorSetLayout())
+	std::array<vk::AttachmentDescription, 2> attachments;
+	vk::AttachmentReference colourAttachment, depthAttachment;
 	{
-		std::array const bufferBindings = {View::s_setLayoutBinding,	  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,
-										   Materials::s_setLayoutBinding, Tints::s_setLayoutBinding,  Flags::s_setLayoutBinding,
-										   DirLights::s_setLayoutBinding};
-		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
-		bufferLayoutInfo.bindingCount = (u32)bufferBindings.size();
-		bufferLayoutInfo.pBindings = bufferBindings.data();
-		rd::g_bufferLayout = g_device.device.createDescriptorSetLayout(bufferLayoutInfo);
+		attachments.at(0).format = colour;
+		attachments.at(0).samples = vk::SampleCountFlagBits::e1;
+		attachments.at(0).loadOp = vk::AttachmentLoadOp::eClear;
+		attachments.at(0).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments.at(0).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(0).initialLayout = vk::ImageLayout::eUndefined;
+		attachments.at(0).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		colourAttachment.attachment = 0;
+		colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
 	}
-	return;
-}
-
-void deinit()
-{
-	if (g_bufferLayout != vk::DescriptorSetLayout())
 	{
-		g_device.destroy(g_bufferLayout);
-		g_bufferLayout = vk::DescriptorSetLayout();
+		attachments.at(1).format = depth;
+		attachments.at(1).samples = vk::SampleCountFlagBits::e1;
+		attachments.at(1).loadOp = vk::AttachmentLoadOp::eClear;
+		attachments.at(1).storeOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(1).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments.at(1).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(1).initialLayout = vk::ImageLayout::eUndefined;
+		attachments.at(1).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		depthAttachment.attachment = 1;
+		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	}
-	return;
+	vk::SubpassDescription subpass;
+	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colourAttachment;
+	subpass.pDepthStencilAttachment = &depthAttachment;
+	vk::SubpassDependency dependency;
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	return g_device.createRenderPass(attachments, subpass, dependency);
 }
-} // namespace le::gfx::rd
+} // namespace le::gfx

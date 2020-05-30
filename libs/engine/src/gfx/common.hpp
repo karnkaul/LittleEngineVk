@@ -119,7 +119,7 @@ struct InitInfo final
 	} options;
 };
 
-struct PresenterInfo final
+struct ContextInfo final
 {
 	using GetSize = std::function<glm::ivec2()>;
 
@@ -195,6 +195,24 @@ struct ImageViewInfo final
 	vk::Format format;
 	vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
 	vk::ImageViewType type = vk::ImageViewType::e2D;
+};
+
+struct RenderImage final
+{
+	vk::Image image;
+	vk::ImageView view;
+};
+
+struct RenderTarget final
+{
+	RenderImage colour;
+	RenderImage depth;
+	vk::Extent2D extent;
+
+	inline std::vector<vk::ImageView> attachments() const
+	{
+		return {colour.view, depth.view};
+	}
 };
 
 inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {

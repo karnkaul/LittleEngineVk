@@ -5,7 +5,7 @@
 #include "engine/gfx/shader.hpp"
 #include "deferred.hpp"
 #include "device.hpp"
-#include "presenter.hpp"
+#include "render_context.hpp"
 #include "pipeline_impl.hpp"
 #include "resource_descriptors.hpp"
 
@@ -51,9 +51,10 @@ bool PipelineImpl::create(Info info)
 	return false;
 }
 
-bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
+bool PipelineImpl::update(vk::RenderPass renderPass, vk::DescriptorSetLayout samplerLayout)
 {
-	bool bOutOfDate = samplerLayout != vk::DescriptorSetLayout() && samplerLayout != m_info.samplerLayout;
+	bool bOutOfDate = renderPass != vk::RenderPass() && renderPass != m_info.renderPass;
+	bOutOfDate |= samplerLayout != vk::DescriptorSetLayout() && samplerLayout != m_info.samplerLayout;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	bOutOfDate |= m_bShaderReloaded;
 	m_bShaderReloaded = false;
@@ -63,6 +64,7 @@ bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
 		// Add a frame of padding since this frame hasn't completed drawing yet
 		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); }, 1);
 		m_info.samplerLayout = samplerLayout;
+		m_info.renderPass = renderPass;
 		if (create())
 		{
 			LOG_D("[{}] [{}] recreated", s_tName, m_name);

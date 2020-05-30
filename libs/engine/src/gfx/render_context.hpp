@@ -8,7 +8,13 @@
 
 namespace le::gfx
 {
-class Presenter final
+struct RenderFrame final
+{
+	RenderTarget swapchain;
+	vk::Fence drawn;
+};
+
+class RenderContext final
 {
 public:
 	enum class Outcome : s8
@@ -26,13 +32,6 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
-	struct Pass final
-	{
-		vk::RenderPass renderPass;
-		vk::Extent2D swapchainExtent;
-		std::vector<vk::ImageView> attachments;
-	};
-
 	template <typename T>
 	struct TOutcome final
 	{
@@ -46,7 +45,7 @@ public:
 private:
 	struct Info final
 	{
-		PresenterInfo info;
+		ContextInfo info;
 		vk::SurfaceKHR surface;
 
 		vk::SurfaceCapabilitiesKHR capabilities;
@@ -67,25 +66,16 @@ private:
 
 	struct Swapchain final
 	{
-		struct Frame final
-		{
-			vk::ImageView colour;
-			vk::ImageView depth;
-			vk::Fence drawing;
-
-			vk::Image image;
-		};
-
 		Image depthImage;
 		vk::ImageView depthImageView;
 		vk::SwapchainKHR swapchain;
-		std::vector<Frame> frames;
+		std::vector<RenderFrame> frames;
 
 		vk::Extent2D extent;
 		u32 imageIndex = 0;
 		u8 imageCount = 0;
 
-		Frame& frame();
+		RenderFrame& frame();
 	};
 
 public:
@@ -94,7 +84,6 @@ public:
 
 public:
 	Swapchain m_swapchain;
-	vk::RenderPass m_renderPass;
 	Flags m_flags;
 
 private:
@@ -102,17 +91,19 @@ private:
 	WindowID m_window;
 
 public:
-	Presenter(PresenterInfo const& info);
-	~Presenter();
+	RenderContext(ContextInfo const& info);
+	~RenderContext();
 
 public:
 	void onFramebufferResize();
 
-	TOutcome<Pass> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setDrawing = vk::Fence());
+	TOutcome<RenderTarget> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn);
 	Outcome present(vk::Semaphore wait);
 
+	vk::Format colourFormat() const;
+	vk::Format depthFormat() const;
+
 private:
-	void createRenderPass();
 	bool createSwapchain();
 	void destroySwapchain();
 	void cleanup();

@@ -7,7 +7,7 @@
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/pipeline.hpp"
 #include "engine/gfx/renderer.hpp"
-#include "presenter.hpp"
+#include "render_context.hpp"
 #include "pipeline_impl.hpp"
 #include "resource_descriptors.hpp"
 
@@ -27,7 +27,7 @@ class RendererImpl final
 public:
 	struct Info final
 	{
-		PresenterInfo presenterInfo;
+		ContextInfo contextInfo;
 		WindowID windowID;
 		u8 frameCount = 3;
 		bool bGUI = false;
@@ -51,10 +51,11 @@ public:
 	std::string m_name;
 
 private:
-	Presenter m_presenter;
+	RenderContext m_context;
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
 	vk::DescriptorSetLayout m_samplerLayout;
+	vk::RenderPass m_renderPass;
 	Renderer* m_pRenderer;
 	struct
 	{
@@ -104,8 +105,8 @@ private:
 	void next();
 
 	PCDeq writeSets(Renderer::Scene& out_scene, FrameSync& out_frame);
-	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::Pass const& pass, PCDeq const& push);
-	Presenter::Outcome submit(FrameSync const& frame);
+	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, RenderTarget const& target, PCDeq const& push);
+	RenderContext::Outcome submit(FrameSync const& frame);
 
 	friend class le::WindowImpl;
 };

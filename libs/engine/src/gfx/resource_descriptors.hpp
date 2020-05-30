@@ -244,6 +244,7 @@ void init();
 void deinit();
 
 SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts = {});
+vk::RenderPass createSingleRenderPass(vk::Format colourFormat, vk::Format depthFormat);
 
 template <typename T>
 Descriptor<T>::Descriptor(vk::BufferUsageFlags flags)

@@ -53,7 +53,7 @@ public:
 
 public:
 	bool create(Info info);
-	bool update(vk::DescriptorSetLayout samplerLayout);
+	bool update(vk::RenderPass renderPass, vk::DescriptorSetLayout samplerLayout);
 	void destroy();
 
 #if defined(LEVK_ASSET_HOT_RELOAD)

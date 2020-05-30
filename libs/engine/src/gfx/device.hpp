@@ -69,6 +69,9 @@ struct Device final
 									vk::ArrayProxy<vk::SubpassDescription const> subpasses,
 									vk::ArrayProxy<vk::SubpassDependency> dependencies);
 
+	vk::Framebuffer createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent,
+									  u32 layers = 1);
+
 	template <typename vkType>
 	void destroy(vkType object) const;
 

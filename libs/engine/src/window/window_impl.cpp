@@ -423,7 +423,7 @@ WindowID WindowImpl::guiWindow()
 		for (auto pWindow : g_registeredWindows)
 		{
 			auto const id = pWindow->m_pWindow->m_id;
-			if (auto pImpl = rendererImpl(id); pImpl && pImpl->m_bGUI)
+			if (auto pImpl = rendererImpl(id); pImpl && pImpl->m_bExtGUI)
 			{
 				return id;
 			}
@@ -472,7 +472,7 @@ bool WindowImpl::create(Window::Info const& info)
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		rendererInfo.bGUI = info.config.bEnableGUI;
+		rendererInfo.bExtGUI = info.config.bEnableGUI;
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);

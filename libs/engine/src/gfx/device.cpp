@@ -562,6 +562,19 @@ vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription
 	return device.createRenderPass(createInfo);
 }
 
+vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent,
+										  u32 layers)
+{
+	vk::FramebufferCreateInfo createInfo;
+	createInfo.attachmentCount = attachments.size();
+	createInfo.pAttachments = attachments.data();
+	createInfo.renderPass = renderPass;
+	createInfo.width = extent.width;
+	createInfo.height = extent.height;
+	createInfo.layers = layers;
+	return device.createFramebuffer(createInfo);
+}
+
 Service::Service(InitInfo const& info)
 {
 	init(info);

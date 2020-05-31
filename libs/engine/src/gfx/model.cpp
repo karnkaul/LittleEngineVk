@@ -59,7 +59,7 @@ private:
 	Model::MeshData processShape(tinyobj::shape_t const& shape);
 	size_t texIdx(std::string_view texName);
 	size_t matIdx(tinyobj::material_t const& fromMat, std::string_view id);
-	std::string name(tinyobj::shape_t const& shape);
+	std::string meshName(tinyobj::shape_t const& shape);
 	Geometry vertices(tinyobj::shape_t const& shape);
 	std::vector<size_t> materials(tinyobj::shape_t const& shape);
 };
@@ -133,7 +133,9 @@ OBJParser::OBJParser(Data data)
 Model::MeshData OBJParser::processShape(tinyobj::shape_t const& shape)
 {
 	Model::MeshData meshData;
-	meshData.id = name(shape);
+	auto name = meshName(shape);
+	meshData.hash = Model::strHash(name);
+	meshData.id = std::move(name);
 	meshData.geometry = vertices(shape);
 	meshData.materialIndices = materials(shape);
 	return meshData;
@@ -142,9 +144,10 @@ Model::MeshData OBJParser::processShape(tinyobj::shape_t const& shape)
 size_t OBJParser::texIdx(std::string_view texName)
 {
 	auto id = fmt::format("{}-{}", m_modelID.generic_string(), texName);
+	auto const hash = Model::strHash(id);
 	for (size_t idx = 0; idx < m_info.textures.size(); ++idx)
 	{
-		if (m_info.textures.at(idx).id == id)
+		if (m_info.textures.at(idx).hash == hash)
 		{
 			return idx;
 		}
@@ -152,6 +155,7 @@ size_t OBJParser::texIdx(std::string_view texName)
 	Model::TexData tex;
 	tex.filename = m_jsonID.parent_path() / texName;
 	tex.id = std::move(id);
+	tex.hash = hash;
 	tex.samplerID = m_samplerID;
 	m_info.textures.push_back(std::move(tex));
 	return m_info.textures.size() - 1;
@@ -159,15 +163,17 @@ size_t OBJParser::texIdx(std::string_view texName)
 
 size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_view id)
 {
+	auto const hash = Model::strHash(id);
 	for (size_t idx = 0; idx < m_info.materials.size(); ++idx)
 	{
-		if (m_info.materials.at(idx).id == id)
+		if (m_info.materials.at(idx).hash == hash)
 		{
 			return idx;
 		}
 	}
 	Model::MatData mat;
 	mat.id = id;
+	mat.hash = hash;
 	mat.flags.set({Material::Flag::eLit, Material::Flag::eTextured, Material::Flag::eOpaque});
 	switch (fromMat.illum)
 	{
@@ -216,7 +222,7 @@ size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_view id
 	return m_info.materials.size() - 1;
 }
 
-std::string OBJParser::name(tinyobj::shape_t const& shape)
+std::string OBJParser::meshName(tinyobj::shape_t const& shape)
 {
 	std::string ret = fmt::format("{}-{}", m_modelID.generic_string(), shape.name);
 	if (m_meshIDs.find(ret) != m_meshIDs.end())
@@ -294,6 +300,16 @@ std::vector<size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 }
 } // namespace
 
+size_t Model::idHash(stdfs::path const& id)
+{
+	return std::hash<std::string>()(id.generic_string());
+}
+
+size_t Model::strHash(std::string_view id)
+{
+	return std::hash<std::string_view>()(id);
+}
+
 Model::Info Model::parseOBJ(LoadRequest const& request)
 {
 	ASSERT(request.pReader, "Reader is null!");
@@ -357,47 +373,40 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	for (auto& texture : info.textures)
 	{
 		Texture::Info texInfo;
-		texInfo.imgBytes = std::move(texture.bytes);
+		texInfo.bytes = {std::move(texture.bytes)};
 		texInfo.samplerID = std::move(texture.samplerID);
 		texInfo.mode = info.mode;
 		Texture newTex(texture.id, std::move(texInfo));
 		newTex.setup();
-		m_loadedTextures.emplace(texture.id.generic_string(), std::move(newTex));
+		m_loadedTextures.emplace(texture.hash, std::move(newTex));
 	}
 	for (auto& material : info.materials)
 	{
-		auto const idStr = material.id.generic_string();
 		Material::Info matInfo;
 		matInfo.albedo = material.albedo;
 		Material newMat(material.id, std::move(matInfo));
 		newMat.setup();
-		m_loadedMaterials.emplace(idStr, std::move(newMat));
+		m_loadedMaterials.emplace(material.hash, std::move(newMat));
 		Material::Inst newInst;
 		newInst.tint = info.tint;
-		auto search = m_loadedMaterials.find(idStr);
-		if (search != m_loadedMaterials.end())
-		{
-			newInst.pMaterial = &search->second;
-		}
+		auto search = m_loadedMaterials.find(material.hash);
+		ASSERT(search != m_loadedMaterials.end(), "Invalid material index!");
+		newInst.pMaterial = &search->second;
 		if (!material.diffuseIndices.empty())
 		{
 			size_t idx = material.diffuseIndices.front();
 			ASSERT(idx < info.textures.size(), "Invalid texture index!");
-			auto search = m_loadedTextures.find(info.textures.at(idx).id.generic_string());
-			if (search != m_loadedTextures.end())
-			{
-				newInst.pDiffuse = &search->second;
-			}
+			auto search = m_loadedTextures.find(info.textures.at(idx).hash);
+			ASSERT(search != m_loadedTextures.end(), "Invalid texture index");
+			newInst.pDiffuse = &search->second;
 		}
 		if (!material.specularIndices.empty())
 		{
 			size_t idx = material.specularIndices.front();
 			ASSERT(idx < info.textures.size(), "Invalid texture index!");
-			auto search = m_loadedTextures.find(info.textures.at(idx).id.generic_string());
-			if (search != m_loadedTextures.end())
-			{
-				newInst.pSpecular = &search->second;
-			}
+			auto search = m_loadedTextures.find(info.textures.at(idx).hash);
+			ASSERT(search != m_loadedTextures.end(), "Invalid texture index!");
+			newInst.pSpecular = &search->second;
 		}
 		newInst.flags = material.flags;
 		m_materials.push_back(std::move(newInst));

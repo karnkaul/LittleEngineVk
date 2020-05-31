@@ -1,15 +1,15 @@
 #include <map>
 #include "core/log.hpp"
 #include "core/utils.hpp"
-#include "presenter.hpp"
+#include "render_context.hpp"
 #include "device.hpp"
 #include "vram.hpp"
 
 namespace le::gfx
 {
-std::string const Presenter::s_tName = utils::tName<Presenter>();
+std::string const RenderContext::s_tName = utils::tName<RenderContext>();
 
-void Presenter::Info::refresh()
+void RenderContext::Info::refresh()
 {
 	if (surface == vk::SurfaceKHR() || !g_device.isValid(surface))
 	{
@@ -22,12 +22,12 @@ void Presenter::Info::refresh()
 	presentModes = g_instance.physicalDevice.getSurfacePresentModesKHR(surface);
 }
 
-bool Presenter::Info::isReady() const
+bool RenderContext::Info::isReady() const
 {
 	return !colourFormats.empty() && !presentModes.empty();
 }
 
-vk::SurfaceFormatKHR Presenter::Info::bestColourFormat() const
+vk::SurfaceFormatKHR RenderContext::Info::bestColourFormat() const
 {
 	static std::vector<vk::Format> const s_defaultFormats = {vk::Format::eB8G8R8A8Srgb};
 	static std::vector<vk::ColorSpaceKHR> const s_defaultColourSpaces = {vk::ColorSpaceKHR::eSrgbNonlinear};
@@ -59,7 +59,7 @@ vk::SurfaceFormatKHR Presenter::Info::bestColourFormat() const
 	return ranked.empty() ? vk::SurfaceFormatKHR() : ranked.begin()->second;
 }
 
-vk::Format Presenter::Info::bestDepthFormat() const
+vk::Format RenderContext::Info::bestDepthFormat() const
 {
 	static PriorityList<vk::Format> const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
 	auto [format, bResult] =
@@ -67,7 +67,7 @@ vk::Format Presenter::Info::bestDepthFormat() const
 	return bResult ? format : vk::Format::eD16Unorm;
 }
 
-vk::PresentModeKHR Presenter::Info::bestPresentMode() const
+vk::PresentModeKHR RenderContext::Info::bestPresentMode() const
 {
 	static std::vector<vk::PresentModeKHR> const s_defaultPresentModes = {vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
 	auto const& desiredPresentModes = info.options.presentModes.empty() ? s_defaultPresentModes : info.options.presentModes;
@@ -88,7 +88,7 @@ vk::PresentModeKHR Presenter::Info::bestPresentMode() const
 	return ranked.empty() ? vk::PresentModeKHR::eFifo : ranked.begin()->second;
 }
 
-vk::Extent2D Presenter::Info::extent(glm::ivec2 const& windowSize) const
+vk::Extent2D RenderContext::Info::extent(glm::ivec2 const& windowSize) const
 {
 	if (capabilities.currentExtent.width != maxVal<u32>())
 	{
@@ -101,12 +101,12 @@ vk::Extent2D Presenter::Info::extent(glm::ivec2 const& windowSize) const
 	}
 }
 
-Presenter::Swapchain::Frame& Presenter::Swapchain::frame()
+RenderFrame& RenderContext::Swapchain::frame()
 {
 	return frames.at(imageIndex);
 }
 
-Presenter::Presenter(PresenterInfo const& info) : m_window(info.config.window)
+RenderContext::RenderContext(ContextInfo const& info) : m_window(info.config.window)
 {
 	m_name = fmt::format("{}:{}", s_tName, m_window);
 	ASSERT(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
@@ -115,33 +115,32 @@ Presenter::Presenter(PresenterInfo const& info) : m_window(info.config.window)
 	if (!m_info.isReady())
 	{
 		g_instance.destroy(m_info.surface);
-		throw std::runtime_error("Failed to create Presenter!");
+		throw std::runtime_error("Failed to create RenderContext!");
 	}
 	m_info.colourFormat = m_info.bestColourFormat();
 	m_info.depthFormat = m_info.bestDepthFormat();
 	m_info.presentMode = m_info.bestPresentMode();
 	try
 	{
-		createRenderPass();
 		createSwapchain();
 	}
 	catch (std::exception const& e)
 	{
 		cleanup();
-		std::string text = "Failed to create Presenter! ";
+		std::string text = "Failed to create RenderContext! ";
 		text += e.what();
 		throw std::runtime_error(text.data());
 	}
 	LOG_I("[{}] constructed", m_name, m_window);
 }
 
-Presenter::~Presenter()
+RenderContext::~RenderContext()
 {
 	cleanup();
 	LOG_I("[{}:{}] destroyed", s_tName, m_window);
 }
 
-void Presenter::onFramebufferResize()
+void RenderContext::onFramebufferResize()
 {
 	auto const size = m_info.info.config.getFramebufferSize();
 	if (m_flags.isSet(Flag::eRenderPaused))
@@ -176,7 +175,7 @@ void Presenter::onFramebufferResize()
 	}
 }
 
-Presenter::TOutcome<Presenter::Pass> Presenter::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence drawing)
+RenderContext::TOutcome<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn)
 {
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
@@ -191,12 +190,12 @@ Presenter::TOutcome<Presenter::Pass> Presenter::acquireNextImage(vk::Semaphore s
 	}
 	m_swapchain.imageIndex = (u32)acquire.value;
 	auto& frame = m_swapchain.frame();
-	g_device.waitFor(frame.drawing);
-	frame.drawing = drawing;
-	return Pass{m_renderPass, m_swapchain.extent, {frame.colour, frame.depth}};
+	g_device.waitFor(frame.drawn);
+	frame.drawn = setOnDrawn;
+	return RenderTarget{frame.swapchain};
 }
 
-Presenter::Outcome Presenter::present(vk::Semaphore wait)
+RenderContext::Outcome RenderContext::present(vk::Semaphore wait)
 {
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
@@ -220,61 +219,22 @@ Presenter::Outcome Presenter::present(vk::Semaphore wait)
 	return Outcome::eSuccess;
 }
 
-void Presenter::createRenderPass()
+vk::Format RenderContext::colourFormat() const
 {
-	std::array<vk::AttachmentDescription, 2> descriptions;
-	vk::AttachmentReference colourAttachment, depthAttachment;
-	{
-		descriptions.at(0).format = m_info.colourFormat.format;
-		descriptions.at(0).samples = vk::SampleCountFlagBits::e1;
-		descriptions.at(0).loadOp = vk::AttachmentLoadOp::eClear;
-		descriptions.at(0).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		descriptions.at(0).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		descriptions.at(0).initialLayout = vk::ImageLayout::eUndefined;
-		descriptions.at(0).finalLayout = vk::ImageLayout::ePresentSrcKHR;
-		colourAttachment.attachment = 0;
-		colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
-	}
-	{
-		descriptions.at(1).format = m_info.depthFormat;
-		descriptions.at(1).samples = vk::SampleCountFlagBits::e1;
-		descriptions.at(1).loadOp = vk::AttachmentLoadOp::eClear;
-		descriptions.at(1).storeOp = vk::AttachmentStoreOp::eDontCare;
-		descriptions.at(1).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		descriptions.at(1).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		descriptions.at(1).initialLayout = vk::ImageLayout::eUndefined;
-		descriptions.at(1).finalLayout = vk::ImageLayout::ePresentSrcKHR;
-		depthAttachment.attachment = 1;
-		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-	}
-	vk::SubpassDescription subpass;
-	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colourAttachment;
-	subpass.pDepthStencilAttachment = &depthAttachment;
-	vk::RenderPassCreateInfo createInfo;
-	createInfo.attachmentCount = (u32)descriptions.size();
-	createInfo.pAttachments = descriptions.data();
-	createInfo.subpassCount = 1;
-	createInfo.pSubpasses = &subpass;
-	vk::SubpassDependency dependency;
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	createInfo.dependencyCount = 1;
-	createInfo.pDependencies = &dependency;
-	m_renderPass = g_device.device.createRenderPass(createInfo);
-	return;
+	return m_info.colourFormat.format;
 }
 
-bool Presenter::createSwapchain()
+vk::Format RenderContext::depthFormat() const
+{
+	return m_info.depthFormat;
+}
+
+bool RenderContext::createSwapchain()
 {
 	auto prevSurface = m_info.surface;
 	m_info.refresh();
 	[[maybe_unused]] bool bReady = m_info.isReady();
-	ASSERT(bReady, "Presenter not ready!");
+	ASSERT(bReady, "RenderContext not ready!");
 	// Swapchain
 	m_info.refresh();
 	auto const framebufferSize = m_info.info.config.getFramebufferSize();
@@ -336,11 +296,13 @@ bool Presenter::createSwapchain()
 		viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
 		for (auto const& image : images)
 		{
-			Swapchain::Frame frame;
-			frame.image = image;
+			RenderFrame frame;
+			frame.swapchain.colour.image = image;
+			frame.swapchain.depth.image = m_swapchain.depthImage.image;
 			viewInfo.image = image;
-			frame.colour = g_device.createImageView(viewInfo);
-			frame.depth = m_swapchain.depthImageView;
+			frame.swapchain.colour.view = g_device.createImageView(viewInfo);
+			frame.swapchain.depth.view = m_swapchain.depthImageView;
+			frame.swapchain.extent = m_swapchain.extent;
 			m_swapchain.frames.push_back(std::move(frame));
 		}
 		if (m_swapchain.frames.empty())
@@ -356,12 +318,12 @@ bool Presenter::createSwapchain()
 	return true;
 }
 
-void Presenter::destroySwapchain()
+void RenderContext::destroySwapchain()
 {
 	g_device.waitIdle();
 	for (auto const& frame : m_swapchain.frames)
 	{
-		g_device.destroy(frame.colour);
+		g_device.destroy(frame.swapchain.colour.view);
 	}
 	g_device.destroy(m_swapchain.depthImageView, m_swapchain.swapchain);
 	vram::release(m_swapchain.depthImage);
@@ -369,16 +331,14 @@ void Presenter::destroySwapchain()
 	m_swapchain = {};
 }
 
-void Presenter::cleanup()
+void RenderContext::cleanup()
 {
 	destroySwapchain();
-	g_device.destroy(m_renderPass);
-	m_renderPass = vk::RenderPass();
 	g_instance.destroy(m_info.surface);
 	m_info.surface = vk::SurfaceKHR();
 }
 
-bool Presenter::recreateSwapchain()
+bool RenderContext::recreateSwapchain()
 {
 	LOG_D("[{}] Recreating Swapchain...", m_name, m_window);
 	destroySwapchain();

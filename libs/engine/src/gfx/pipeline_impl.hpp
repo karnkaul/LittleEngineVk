@@ -1,9 +1,10 @@
 #pragma once
+#include <set>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include "core/std_types.hpp"
 #include "engine/window/common.hpp"
+#include "engine/gfx/pipeline.hpp"
 
 namespace le::gfx
 {
@@ -12,27 +13,28 @@ class PipelineImpl final
 public:
 	struct Info final
 	{
-		vk::RenderPass renderPass;
-		vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-		vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eNone;
-		vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
-		vk::ColorComponentFlags colourWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
-												  | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-		vk::DescriptorSetLayout samplerLayout;
+		using CCFlag = vk::ColorComponentFlagBits;
 		std::string name;
 		std::string shaderID;
-		std::set<vk::DynamicState> dynamicStates;
+		std::vector<vk::VertexInputBindingDescription> vertexBindings;
+		std::vector<vk::VertexInputAttributeDescription> vertexAttributes;
 		std::vector<vk::PushConstantRange> pushConstantRanges;
-		f32 staticLineWidth = 1.0f;
+		std::set<vk::DynamicState> dynamicStates;
+		vk::RenderPass renderPass;
+		vk::PolygonMode polygonMode;
+		vk::CullModeFlagBits cullMode;
+		vk::FrontFace frontFace;
+		vk::DescriptorSetLayout samplerLayout;
+		vk::ColorComponentFlags colourWriteMask = CCFlag::eR | CCFlag::eG | CCFlag::eB | CCFlag::eA;
 		WindowID window;
+		f32 staticLineWidth = 1.0f;
 		class Shader* pShader = nullptr;
-		bool bBlend = true;
-		bool bDepthTest = true;
-		bool bDepthWrite = true;
+		Pipeline::Flags flags;
 	};
 
 public:
 	static std::string const s_tName;
+	std::string m_name;
 
 public:
 	vk::Pipeline m_pipeline;
@@ -40,20 +42,19 @@ public:
 
 private:
 	Info m_info;
-	class Pipeline* m_pPipeline;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	bool m_bShaderReloaded = false;
 #endif
 
 public:
-	PipelineImpl(Pipeline* pPipeline);
+	PipelineImpl();
 	PipelineImpl(PipelineImpl&&);
 	PipelineImpl& operator=(PipelineImpl&&);
 	~PipelineImpl();
 
 public:
 	bool create(Info info);
-	bool update(vk::DescriptorSetLayout samplerLayout);
+	bool update(vk::RenderPass renderPass, vk::DescriptorSetLayout samplerLayout);
 	void destroy();
 
 #if defined(LEVK_ASSET_HOT_RELOAD)

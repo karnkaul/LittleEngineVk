@@ -5,8 +5,49 @@
 #include "engine/assets/resources.hpp"
 #include "engine/gfx/texture.hpp"
 
-namespace le::gfx::rd
+namespace le::gfx
 {
+namespace rd
+{
+std::vector<vk::VertexInputBindingDescription> vbo::vertexBindings()
+{
+	vk::VertexInputBindingDescription ret;
+	ret.binding = vertexBinding;
+	ret.stride = sizeof(Vertex);
+	ret.inputRate = vk::VertexInputRate::eVertex;
+	return {ret};
+}
+
+std::vector<vk::VertexInputAttributeDescription> vbo::vertexAttributes()
+{
+	std::vector<vk::VertexInputAttributeDescription> ret;
+	vk::VertexInputAttributeDescription pos;
+	pos.binding = vertexBinding;
+	pos.location = 0;
+	pos.format = vk::Format::eR32G32B32Sfloat;
+	pos.offset = offsetof(Vertex, position);
+	ret.push_back(pos);
+	vk::VertexInputAttributeDescription col;
+	col.binding = vertexBinding;
+	col.location = 1;
+	col.format = vk::Format::eR32G32B32Sfloat;
+	col.offset = offsetof(Vertex, colour);
+	ret.push_back(col);
+	vk::VertexInputAttributeDescription norm;
+	norm.binding = vertexBinding;
+	norm.location = 2;
+	norm.format = vk::Format::eR32G32B32Sfloat;
+	norm.offset = offsetof(Vertex, normal);
+	ret.push_back(norm);
+	vk::VertexInputAttributeDescription uv;
+	uv.binding = vertexBinding;
+	uv.location = 3;
+	uv.format = vk::Format::eR32G32Sfloat;
+	uv.offset = offsetof(Vertex, texCoord);
+	ret.push_back(uv);
+	return ret;
+}
+
 View::View() = default;
 
 View::View(Renderer::View const& view, u32 dirLightCount)
@@ -72,6 +113,14 @@ void ImageSamplers::clampDiffSpecCount(u32 hardwareMax)
 {
 	s_max = std::min(s_max, (hardwareMax - 1) / 2); // (total - cubemap) / (diffuse + specular)
 	s_diffuseLayoutBinding.descriptorCount = s_specularLayoutBinding.descriptorCount = s_max;
+}
+
+std::vector<vk::PushConstantRange> PushConstants::ranges()
+{
+	vk::PushConstantRange pcRange;
+	pcRange.size = sizeof(PushConstants);
+	pcRange.stageFlags = vkFlags::vertFragShader;
+	return {pcRange};
 }
 
 void Writer::write(vk::DescriptorSet set, Buffer const& buffer) const
@@ -208,37 +257,47 @@ void Set::writeSpecular(std::deque<Texture const*> const& specular)
 	return;
 }
 
-void Set::writeCubemap(Cubemap const& cubemap)
+void Set::writeCubemap(Texture const& cubemap)
 {
 	m_cubemap.writeArray({cubemap.m_uImpl.get()}, m_samplerSet);
 	return;
 }
+} // namespace rd
 
-vk::DescriptorSetLayout createSamplerLayout(u32 diffuse, u32 specular)
+void rd::init()
 {
-	auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
-	diffuseBinding.descriptorCount = diffuse;
-	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
-	specularBinding.descriptorCount = specular;
-	std::array const textureBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
-	vk::DescriptorSetLayoutCreateInfo samplerLayoutInfo;
-	samplerLayoutInfo.bindingCount = (u32)textureBindings.size();
-	samplerLayoutInfo.pBindings = textureBindings.data();
-	return g_device.device.createDescriptorSetLayout(samplerLayoutInfo);
+	if (g_bufferLayout == vk::DescriptorSetLayout())
+	{
+		std::array const bufferBindings = {View::s_setLayoutBinding,	  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,
+										   Materials::s_setLayoutBinding, Tints::s_setLayoutBinding,  Flags::s_setLayoutBinding,
+										   DirLights::s_setLayoutBinding};
+		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
+		bufferLayoutInfo.bindingCount = (u32)bufferBindings.size();
+		bufferLayoutInfo.pBindings = bufferBindings.data();
+		rd::g_bufferLayout = g_device.device.createDescriptorSetLayout(bufferLayoutInfo);
+	}
+	return;
 }
 
-SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
+void rd::deinit()
+{
+	if (g_bufferLayout != vk::DescriptorSetLayout())
+	{
+		g_device.destroy(g_bufferLayout);
+		g_bufferLayout = vk::DescriptorSetLayout();
+	}
+	return;
+}
+
+rd::SetLayouts rd::allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 {
 	SetLayouts ret;
 	auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
 	diffuseBinding.descriptorCount = samplerCounts.diffuse;
 	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
 	specularBinding.descriptorCount = samplerCounts.specular;
-	std::array const textureBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
-	vk::DescriptorSetLayoutCreateInfo samplerLayoutInfo;
-	samplerLayoutInfo.bindingCount = (u32)textureBindings.size();
-	samplerLayoutInfo.pBindings = textureBindings.data();
-	ret.samplerLayout = g_device.device.createDescriptorSetLayout(samplerLayoutInfo);
+	std::array const samplerBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
+	ret.samplerLayout = g_device.createDescriptorSetLayout(samplerBindings);
 	ret.sets.reserve((size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
@@ -255,26 +314,12 @@ SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 		samplerPoolSize.descriptorCount = ImageSamplers::total();
 		std::array const bufferPoolSizes = {uboPoolSize, ssboPoolSize, samplerPoolSize};
 		std::array const samplerPoolSizes = {samplerPoolSize};
-		vk::DescriptorPoolCreateInfo createInfo;
-		createInfo.poolSizeCount = (u32)bufferPoolSizes.size();
-		createInfo.pPoolSizes = bufferPoolSizes.data();
-		createInfo.maxSets = 1;
-		set.m_bufferPool = g_device.device.createDescriptorPool(createInfo);
-		createInfo.poolSizeCount = (u32)samplerPoolSizes.size();
-		createInfo.pPoolSizes = samplerPoolSizes.data();
-		set.m_samplerPool = g_device.device.createDescriptorPool(createInfo);
+		set.m_bufferPool = g_device.createDescriptorPool(bufferPoolSizes);
+		set.m_samplerPool = g_device.createDescriptorPool(samplerPoolSizes);
 		// Allocate sets
-		vk::DescriptorSetAllocateInfo allocInfo;
-		allocInfo.descriptorPool = set.m_bufferPool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &g_bufferLayout;
-		auto const bufferSets = g_device.device.allocateDescriptorSets(allocInfo);
-		allocInfo.descriptorPool = set.m_samplerPool;
-		allocInfo.pSetLayouts = &ret.samplerLayout;
-		auto const samplerSets = g_device.device.allocateDescriptorSets(allocInfo);
+		set.m_bufferSet = g_device.allocateDescriptorSets(set.m_bufferPool, g_bufferLayout).front();
+		set.m_samplerSet = g_device.allocateDescriptorSets(set.m_samplerPool, ret.samplerLayout).front();
 		// Write handles
-		set.m_bufferSet = bufferSets.front();
-		set.m_samplerSet = samplerSets.front();
 		set.writeView({});
 		set.initSSBOs();
 		set.resetTextures(samplerCounts);
@@ -283,28 +328,44 @@ SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 	return ret;
 }
 
-void init()
+vk::RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth)
 {
-	if (g_bufferLayout == vk::DescriptorSetLayout())
+	std::array<vk::AttachmentDescription, 2> attachments;
+	vk::AttachmentReference colourAttachment, depthAttachment;
 	{
-		std::array const bufferBindings = {View::s_setLayoutBinding,	  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,
-										   Materials::s_setLayoutBinding, Tints::s_setLayoutBinding,  Flags::s_setLayoutBinding,
-										   DirLights::s_setLayoutBinding};
-		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
-		bufferLayoutInfo.bindingCount = (u32)bufferBindings.size();
-		bufferLayoutInfo.pBindings = bufferBindings.data();
-		rd::g_bufferLayout = g_device.device.createDescriptorSetLayout(bufferLayoutInfo);
+		attachments.at(0).format = colour;
+		attachments.at(0).samples = vk::SampleCountFlagBits::e1;
+		attachments.at(0).loadOp = vk::AttachmentLoadOp::eClear;
+		attachments.at(0).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments.at(0).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(0).initialLayout = vk::ImageLayout::eUndefined;
+		attachments.at(0).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		colourAttachment.attachment = 0;
+		colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
 	}
-	return;
-}
-
-void deinit()
-{
-	if (g_bufferLayout != vk::DescriptorSetLayout())
 	{
-		g_device.destroy(g_bufferLayout);
-		g_bufferLayout = vk::DescriptorSetLayout();
+		attachments.at(1).format = depth;
+		attachments.at(1).samples = vk::SampleCountFlagBits::e1;
+		attachments.at(1).loadOp = vk::AttachmentLoadOp::eClear;
+		attachments.at(1).storeOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(1).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments.at(1).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments.at(1).initialLayout = vk::ImageLayout::eUndefined;
+		attachments.at(1).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		depthAttachment.attachment = 1;
+		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	}
-	return;
+	vk::SubpassDescription subpass;
+	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colourAttachment;
+	subpass.pDepthStencilAttachment = &depthAttachment;
+	vk::SubpassDependency dependency;
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	return g_device.createRenderPass(attachments, subpass, dependency);
 }
-} // namespace le::gfx::rd
+} // namespace le::gfx

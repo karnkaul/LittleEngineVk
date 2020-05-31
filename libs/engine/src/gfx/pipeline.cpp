@@ -5,7 +5,7 @@
 #include "engine/gfx/shader.hpp"
 #include "deferred.hpp"
 #include "device.hpp"
-#include "presenter.hpp"
+#include "render_context.hpp"
 #include "pipeline_impl.hpp"
 #include "resource_descriptors.hpp"
 
@@ -18,8 +18,13 @@ Pipeline::Pipeline(Pipeline&&) = default;
 Pipeline& Pipeline::operator=(Pipeline&&) = default;
 Pipeline::~Pipeline() = default;
 
-PipelineImpl::PipelineImpl(Pipeline* pPipeline) : m_pPipeline(pPipeline) {}
+std::string const& Pipeline::name() const
+{
+	static std::string const s_empty = "";
+	return m_uImpl ? m_uImpl->m_name : s_empty;
+}
 
+PipelineImpl::PipelineImpl() = default;
 PipelineImpl::PipelineImpl(PipelineImpl&&) = default;
 PipelineImpl& PipelineImpl::operator=(PipelineImpl&&) = default;
 
@@ -36,19 +41,20 @@ bool PipelineImpl::create(Info info)
 	{
 		m_info.shaderID = "shaders/default";
 	}
-	m_pPipeline->m_name = fmt::format("{}:{}-?", m_info.window, m_info.name);
+	m_name = fmt::format("{}:{}-?", m_info.window, m_info.name);
 	if (create())
 	{
-		m_pPipeline->m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, m_info.pShader->m_id.generic_string());
-		LOG_D("[{}] [{}] created", s_tName, m_pPipeline->m_name);
+		m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, m_info.pShader->m_id.generic_string());
+		LOG_D("[{}] [{}] created", s_tName, m_name);
 		return true;
 	}
 	return false;
 }
 
-bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
+bool PipelineImpl::update(vk::RenderPass renderPass, vk::DescriptorSetLayout samplerLayout)
 {
-	bool bOutOfDate = samplerLayout != vk::DescriptorSetLayout() && samplerLayout != m_info.samplerLayout;
+	bool bOutOfDate = renderPass != vk::RenderPass() && renderPass != m_info.renderPass;
+	bOutOfDate |= samplerLayout != vk::DescriptorSetLayout() && samplerLayout != m_info.samplerLayout;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	bOutOfDate |= m_bShaderReloaded;
 	m_bShaderReloaded = false;
@@ -58,9 +64,10 @@ bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
 		// Add a frame of padding since this frame hasn't completed drawing yet
 		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); }, 1);
 		m_info.samplerLayout = samplerLayout;
+		m_info.renderPass = renderPass;
 		if (create())
 		{
-			LOG_D("[{}] [{}] recreated", s_tName, m_pPipeline->m_name);
+			LOG_D("[{}] [{}] recreated", s_tName, m_name);
 			return true;
 		}
 		return false;
@@ -71,7 +78,7 @@ bool PipelineImpl::update(vk::DescriptorSetLayout samplerLayout)
 void PipelineImpl::destroy()
 {
 	deferred::release(m_pipeline, m_layout);
-	LOGIF_D(m_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_pPipeline->m_name);
+	LOGIF_D(m_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_name);
 	m_pipeline = vk::Pipeline();
 	m_layout = vk::PipelineLayout();
 	return;
@@ -93,26 +100,17 @@ bool PipelineImpl::create()
 	ASSERT(m_info.pShader, "Shader is null!");
 	if (!m_info.pShader)
 	{
-		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_pPipeline->m_name);
+		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_name);
 		return false;
 	}
-	auto const bindingDescription = vbo::bindingDescription();
-	auto const attributeDescriptions = vbo::attributeDescriptions();
-	{
-		vk::PipelineLayoutCreateInfo layoutCreateInfo;
-		std::vector const setLayouts = {rd::g_bufferLayout, m_info.samplerLayout};
-		layoutCreateInfo.setLayoutCount = (u32)setLayouts.size();
-		layoutCreateInfo.pSetLayouts = setLayouts.data();
-		layoutCreateInfo.pushConstantRangeCount = (u32)m_info.pushConstantRanges.size();
-		layoutCreateInfo.pPushConstantRanges = m_info.pushConstantRanges.data();
-		m_layout = g_device.device.createPipelineLayout(layoutCreateInfo);
-	}
+	std::vector const setLayouts = {rd::g_bufferLayout, m_info.samplerLayout};
+	m_layout = g_device.createPipelineLayout(m_info.pushConstantRanges, setLayouts);
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
-		vertexInputState.vertexAttributeDescriptionCount = (u32)attributeDescriptions.size();
-		vertexInputState.vertexBindingDescriptionCount = 1;
-		vertexInputState.pVertexAttributeDescriptions = attributeDescriptions.data();
-		vertexInputState.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputState.vertexBindingDescriptionCount = (u32)m_info.vertexBindings.size();
+		vertexInputState.pVertexBindingDescriptions = m_info.vertexBindings.data();
+		vertexInputState.vertexAttributeDescriptionCount = (u32)m_info.vertexAttributes.size();
+		vertexInputState.pVertexAttributeDescriptions = m_info.vertexAttributes.data();
 	}
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
 	{
@@ -142,7 +140,7 @@ bool PipelineImpl::create()
 	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
 	{
 		colorBlendAttachment.colorWriteMask = m_info.colourWriteMask;
-		colorBlendAttachment.blendEnable = m_info.bBlend;
+		colorBlendAttachment.blendEnable = m_info.flags.isSet(Pipeline::Flag::eBlend);
 		colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
 		colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
 		colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
@@ -158,8 +156,8 @@ bool PipelineImpl::create()
 	}
 	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
 	{
-		depthStencilState.depthTestEnable = m_info.bDepthTest;
-		depthStencilState.depthWriteEnable = m_info.bDepthWrite;
+		depthStencilState.depthTestEnable = m_info.flags.isSet(Pipeline::Flag::eDepthTest);
+		depthStencilState.depthWriteEnable = m_info.flags.isSet(Pipeline::Flag::eDepthWrite);
 		depthStencilState.depthCompareOp = vk::CompareOp::eLess;
 	}
 	auto states = m_info.dynamicStates;

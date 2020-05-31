@@ -39,7 +39,7 @@ public:
 class FreeCam : public Camera
 {
 public:
-	enum class Flag : u8
+	enum class Flag : s8
 	{
 		eEnabled,
 		eKeyToggle_Look,

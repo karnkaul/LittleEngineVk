@@ -17,7 +17,7 @@ namespace le::gfx
 class Shader final : public Asset
 {
 public:
-	enum class Type : u8
+	enum class Type : s8
 	{
 		eVertex,
 		eFragment,
@@ -38,6 +38,7 @@ public:
 	static std::string_view s_fragExt;
 
 private:
+	std::array<bytearray, (size_t)Type::eCOUNT_> m_codeMap;
 	std::unique_ptr<struct ShaderImpl> m_uImpl;
 	FileReader const* m_pReader = nullptr;
 
@@ -48,12 +49,17 @@ public:
 public:
 	Status update() override;
 
+#if defined(LEVK_ASSET_HOT_RELOAD)
+protected:
+	void onReload() override;
+#endif
+
 private:
 #if defined(LEVK_SHADER_COMPILER)
 	bool glslToSpirV(stdfs::path const& id, bytearray& out_bytes);
 	bool loadGlsl(Info& out_info, stdfs::path const& id, Type type);
 #endif
-	void loadAllSpirV(std::array<bytearray, (size_t)Type::eCOUNT_> const& byteMap);
+	void loadAllSpirV();
 
 	static std::string extension(stdfs::path const& id);
 

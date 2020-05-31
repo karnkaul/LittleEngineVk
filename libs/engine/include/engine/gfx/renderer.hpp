@@ -14,7 +14,7 @@ class WindowImpl;
 namespace le::gfx
 {
 class Mesh;
-class Cubemap;
+class Texture;
 
 struct ScreenRect final
 {
@@ -45,7 +45,7 @@ public:
 	struct Skybox final
 	{
 		ScreenRect viewport;
-		Cubemap const* pCubemap = nullptr;
+		Texture const* pCubemap = nullptr;
 		Pipeline const* pPipeline = nullptr;
 	};
 

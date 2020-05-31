@@ -332,18 +332,16 @@ void WindowImpl::deinit()
 	return;
 }
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
-void WindowImpl::pollAssets()
+void WindowImpl::update()
 {
 	for (auto pWindow : g_registeredWindows)
 	{
 		if (auto pRenderer = pWindow->m_pWindow->m_renderer.m_uImpl.get())
 		{
-			pRenderer->pollAssets();
+			pRenderer->update();
 		}
 	}
 }
-#endif
 
 std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 {
@@ -425,7 +423,7 @@ WindowID WindowImpl::guiWindow()
 		for (auto pWindow : g_registeredWindows)
 		{
 			auto const id = pWindow->m_pWindow->m_id;
-			if (auto pImpl = rendererImpl(id); pImpl && pImpl->m_bGUI)
+			if (auto pImpl = rendererImpl(id); pImpl && pImpl->m_bExtGUI)
 			{
 				return id;
 			}
@@ -453,28 +451,28 @@ bool WindowImpl::create(Window::Info const& info)
 		gfx::g_device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(info);
 		gfx::RendererImpl::Info rendererInfo;
-		rendererInfo.presenterInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
+		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
 			return createSurface(instance, *m_uNativeWindow);
 		};
-		rendererInfo.presenterInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
-		rendererInfo.presenterInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
-		rendererInfo.presenterInfo.config.window = m_pWindow->m_id;
+		rendererInfo.contextInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
+		rendererInfo.contextInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
+		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
 		for (auto colourSpace : info.options.colourSpaces)
 		{
-			rendererInfo.presenterInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((size_t)colourSpace));
+			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((size_t)colourSpace));
 		}
 		if (os::isDefined("immediate"))
 		{
 			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
-			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)PresentMode::eImmediate));
+			rendererInfo.contextInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)PresentMode::eImmediate));
 		}
 		for (auto presentMode : info.options.presentModes)
 		{
-			rendererInfo.presenterInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));
+			rendererInfo.contextInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		rendererInfo.bGUI = info.config.bEnableGUI;
+		rendererInfo.bExtGUI = info.config.bEnableGUI;
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);

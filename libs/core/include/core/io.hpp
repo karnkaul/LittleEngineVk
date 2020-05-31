@@ -74,14 +74,14 @@ public:
 class FileMonitor
 {
 public:
-	enum class Mode : u8
+	enum class Mode : s8
 	{
 		eTimestamp,
 		eTextContents,
 		eBinaryContents
 	};
 
-	enum class Status : u8
+	enum class Status : s8
 	{
 		eUpToDate,
 		eNotFound,

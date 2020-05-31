@@ -9,7 +9,7 @@ constexpr bool g_log_bSourceLocation = true;
 #else
 constexpr bool g_log_bSourceLocation = false;
 #endif
-enum class Level : u8
+enum class Level : s8
 {
 	eDebug,
 	eInfo,

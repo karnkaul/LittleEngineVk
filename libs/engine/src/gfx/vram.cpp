@@ -132,7 +132,6 @@ void vram::init()
 void vram::deinit()
 {
 	g_device.device.waitIdle();
-	std::scoped_lock<std::mutex> lock(g_mutex);
 	for (auto& [_, pool] : g_pools)
 	{
 		g_device.destroy(pool);

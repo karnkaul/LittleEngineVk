@@ -7,7 +7,7 @@
 #include "engine/gfx/light.hpp"
 #include "engine/gfx/pipeline.hpp"
 #include "engine/gfx/renderer.hpp"
-#include "presenter.hpp"
+#include "render_context.hpp"
 #include "pipeline_impl.hpp"
 #include "resource_descriptors.hpp"
 
@@ -27,10 +27,10 @@ class RendererImpl final
 public:
 	struct Info final
 	{
-		PresenterInfo presenterInfo;
+		ContextInfo contextInfo;
 		WindowID windowID;
 		u8 frameCount = 3;
-		bool bGUI = false;
+		bool bExtGUI = false;
 	};
 
 private:
@@ -51,10 +51,11 @@ public:
 	std::string m_name;
 
 private:
-	Presenter m_presenter;
+	RenderContext m_context;
 	std::deque<Pipeline> m_pipelines;
 	std::vector<FrameSync> m_frames;
 	vk::DescriptorSetLayout m_samplerLayout;
+	vk::RenderPass m_renderPass;
 	Renderer* m_pRenderer;
 	struct
 	{
@@ -73,7 +74,7 @@ private:
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;
-	bool m_bGUI = false;
+	bool m_bExtGUI = false;
 
 public:
 	RendererImpl(Info const& info, Renderer* pOwner);
@@ -83,9 +84,7 @@ public:
 	void create(u8 frameCount = 2);
 	void destroy();
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	void pollAssets();
-#endif
+	void update();
 
 	Pipeline* createPipeline(Pipeline::Info info);
 	bool render(Renderer::Scene scene);
@@ -101,13 +100,15 @@ public:
 	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
 
 private:
+	bool initExtGUI() const;
 	void onFramebufferResize();
 	FrameSync& frameSync();
+	FrameSync const& frameSync() const;
 	void next();
 
-	PCDeq writeSets(Renderer::Scene& out_scene, FrameSync& out_frame);
-	u64 doRenderPass(FrameSync& out_frame, Renderer::Scene const& scene, Presenter::Pass const& pass, PCDeq const& push);
-	Presenter::Outcome submit(FrameSync const& frame);
+	PCDeq writeSets(Renderer::Scene& out_scene);
+	u64 doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target) const;
+	RenderContext::Outcome submit();
 
 	friend class le::WindowImpl;
 };

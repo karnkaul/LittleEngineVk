@@ -19,6 +19,7 @@ std::array const g_mipModes = {vk::SamplerMipmapMode::eLinear, vk::SamplerMipmap
 std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge,
 								   vk::SamplerAddressMode::eClampToBorder};
 std::array const g_texModes = {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Snorm};
+std::array const g_texTypes = {vk::ImageViewType::e2D, vk::ImageViewType::eCube};
 
 std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, ArrayView<ArrayView<u8>> bytes,
 					   [[maybe_unused]] std::string const& name)
@@ -92,15 +93,18 @@ Sampler::~Sampler()
 
 Asset::Status Sampler::update()
 {
+	Asset::update();
 	return m_status;
 }
 
-std::string const Texture::s_tName = utils::tName<Texture>();
-
 Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(info.pSampler)
 {
-	auto const idStr = m_id.generic_string();
+	m_colourSpace = info.mode;
 	m_uImpl = std::make_unique<TextureImpl>();
+	m_uImpl->type = g_texTypes.at((size_t)info.type);
+	m_uImpl->colourSpace = g_texModes.at((size_t)m_colourSpace);
+	m_tName = utils::tName<Texture>();
+	auto const idStr = m_id.generic_string();
 	[[maybe_unused]] bool bAddFileMonitor = false;
 	if (!m_pSampler)
 	{
@@ -109,70 +113,106 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	}
 	if (!m_pSampler)
 	{
-		LOG_E("[{}] [{}] Failed to find Sampler [{}]!", s_tName, idStr, info.samplerID.generic_string());
+		LOG_E("[{}] [{}] Failed to find Sampler [{}]!", m_tName, idStr, info.samplerID.generic_string());
 		m_status = Status::eError;
 		return;
 	}
-	if (info.raw.bytes.extent > 0)
+	if (!info.raws.empty())
 	{
-		m_size = info.raw.size;
-		m_uImpl->raws = {std::move(info.raw)};
-	}
-	else if (!info.imgBytes.empty())
-	{
-		auto [raw, bResult] = imgToRaw(std::move(info.imgBytes), s_tName, id.generic_string());
-		if (!bResult)
+		m_uImpl->bStbiRaw = false;
+		for (auto& raw : info.raws)
 		{
-			LOG_E("[{}] [{}] Failed to create texture!", s_tName, idStr);
-			m_status = Status::eError;
-			return;
+			m_uImpl->raws.push_back(std::move(raw));
 		}
-		m_size = raw.size;
-		m_uImpl->raws = {std::move(raw)};
+	}
+	else if (!info.bytes.empty())
+	{
+		for (auto& bytes : info.bytes)
+		{
+			auto [raw, bResult] = imgToRaw(std::move(bytes), m_tName, idStr);
+			if (!bResult)
+			{
+				LOG_E("[{}] [{}] Failed to create texture!", m_tName, idStr);
+				m_status = Status::eError;
+				return;
+			}
+			m_uImpl->raws.push_back(std::move(raw));
+		}
 		m_uImpl->bStbiRaw = true;
 	}
-	else if (!info.assetID.empty())
+	else if (!info.ids.empty())
 	{
 		ASSERT(info.pReader, "Reader is null!");
-		auto [pixels, bBytes] = info.pReader->getBytes(info.assetID);
-		if (!bBytes)
+		for (auto const& assetID : info.ids)
 		{
-			LOG_E("[{}] [{}] Failed to create texture from [{}]!", s_tName, idStr, info.assetID.generic_string());
-			m_status = Status::eError;
-			return;
+			auto [pixels, bPixels] = info.pReader->getBytes(assetID);
+			if (!bPixels)
+			{
+				LOG_E("[{}] [{}] Failed to create texture from [{}]!", m_tName, idStr, assetID.generic_string());
+				m_status = Status::eError;
+				return;
+			}
+			auto [raw, bResult] = imgToRaw(std::move(pixels), m_tName, idStr);
+			if (!bResult)
+			{
+				LOG_E("[{}] [{}] Failed to create texture from [{}]!", m_tName, idStr, assetID.generic_string());
+				m_status = Status::eError;
+				return;
+			}
+			m_uImpl->raws.push_back(std::move(raw));
 		}
-		auto [raw, bRaw] = imgToRaw(std::move(pixels), s_tName, id.generic_string());
-		if (!bRaw)
-		{
-			LOG_E("[{}] [{}] Failed to create texture from [{}]!", s_tName, idStr, info.assetID.generic_string());
-			m_status = Status::eError;
-			return;
-		}
-		m_size = raw.size;
-		m_uImpl->raws = {std::move(raw)};
 		m_uImpl->bStbiRaw = true;
 		bAddFileMonitor = true;
 	}
 	else
 	{
-		LOG_E("[{}] [{}] Invalid Info!", s_tName, idStr);
+		ASSERT(false, "Invalid Info!");
+		LOG_E("[{}] [{}] Invalid Texture Info!", m_tName, idStr);
 		m_status = Status::eError;
 		return;
 	}
-	m_mode = info.mode;
-	m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_uImpl->raws.back().size, {m_uImpl->raws.back().bytes}, idStr);
+	m_size = m_uImpl->raws.back().size;
+	std::vector<ArrayView<u8>> views;
+	for (auto const& raw : m_uImpl->raws)
+	{
+		views.push_back(raw.bytes);
+	}
+	m_uImpl->copied = load(&m_uImpl->active, m_uImpl->colourSpace, m_size, views, idStr);
 	ImageViewInfo viewInfo;
 	viewInfo.image = m_uImpl->active.image;
-	viewInfo.format = g_texModes.at((size_t)m_mode);
+	viewInfo.format = g_texModes.at((size_t)m_colourSpace);
+	viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
+	viewInfo.type = m_uImpl->type;
 	m_uImpl->imageView = g_device.createImageView(viewInfo);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
 #if defined(LEVK_ASSET_HOT_RELOAD)
+	m_reloadDelay = 500ms;
 	if (bAddFileMonitor)
 	{
 		m_uImpl->pReader = dynamic_cast<FileReader const*>(info.pReader);
 		ASSERT(m_uImpl->pReader, "FileReader required!");
-		m_uImpl->imgIDs = {info.assetID};
-		m_files.push_back(File(info.assetID, m_uImpl->pReader->fullPath(info.assetID), FileMonitor::Mode::eBinaryContents, {}));
+		size_t idx = 0;
+		for (auto const& id : info.ids)
+		{
+			m_uImpl->imgIDs.push_back(id);
+			auto onModified = [this, idx](File const* pFile) -> bool {
+				auto const idStr = m_id.generic_string();
+				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), m_tName, idStr);
+				if (!bResult)
+				{
+					LOG_E("[{}] [{}] Failed to reload!", m_tName, idStr);
+					return false;
+				}
+				if (m_uImpl->bStbiRaw)
+				{
+					stbi_image_free((void*)(m_uImpl->raws.at(idx).bytes.pData));
+				}
+				m_uImpl->raws.at(idx) = std::move(raw);
+				return true;
+			};
+			++idx;
+			m_files.push_back(File(id, m_uImpl->pReader->fullPath(id), FileMonitor::Mode::eBinaryContents, onModified));
+		}
 	}
 #endif
 }
@@ -184,210 +224,9 @@ Texture::~Texture()
 {
 	if (m_uImpl)
 	{
-		if (m_uImpl->bStbiRaw)
+		for (auto& raw : m_uImpl->raws)
 		{
-			stbi_image_free((void*)(m_uImpl->raws.back().bytes.pData));
-		}
-		deferred::release(m_uImpl->active, m_uImpl->imageView);
-#if defined(LEVK_ASSET_HOT_RELOAD)
-		if (m_uImpl->standby.image != m_uImpl->active.image)
-		{
-			deferred::release(m_uImpl->standby);
-		}
-#endif
-	}
-}
-
-Asset::Status Texture::update()
-{
-	if (!m_uImpl)
-	{
-		m_status = Status::eMoved;
-		return m_status;
-	}
-	auto const idStr = m_id.generic_string();
-	if (m_status == Status::eLoading)
-	{
-		if (utils::futureState(m_uImpl->copied) == FutureState::eReady)
-		{
-			m_status = Status::eReady;
-#if defined(LEVK_ASSET_HOT_RELOAD)
-			if (m_uImpl->bReloading)
-			{
-				m_status = Status::eReloaded;
-				m_uImpl->bReloading = false;
-			}
-#endif
-			LOG_D("[{}] [{}] loaded", s_tName, idStr);
-		}
-		else
-		{
-			m_status = Status::eLoading;
-			LOG_D("[{}] loading...", idStr);
-		}
-	}
-	if (m_status == Status::eLoading)
-	{
-		// Stall Hot Reloading until this file has finished loading to the GPU
-		return m_status;
-	}
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	if (!m_files.empty())
-	{
-		if (m_status == Status::eReloaded)
-		{
-			deferred::release(m_uImpl->active, m_uImpl->imageView);
-			m_uImpl->active = m_uImpl->standby;
-			m_uImpl->standby = {};
-			ImageViewInfo viewInfo;
-			viewInfo.image = m_uImpl->active.image;
-			viewInfo.format = g_texModes.at((size_t)m_mode);
-			m_uImpl->imageView = g_device.createImageView(viewInfo);
-			m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
-			m_status = Status::eReady;
-		}
-		else
-		{
-			auto& file = m_files.front();
-			auto lastStatus = file.monitor.lastStatus();
-			auto currentStatus = file.monitor.update();
-			if (currentStatus == FileMonitor::Status::eNotFound)
-			{
-				LOG_W("[{}] [{}] Resource not ready / lost!", s_tName, idStr);
-			}
-			else if (lastStatus == FileMonitor::Status::eModified && currentStatus == FileMonitor::Status::eUpToDate)
-			{
-				auto [raw, bResult] = imgToRaw(file.monitor.bytes(), s_tName, idStr);
-				if (!bResult)
-				{
-					LOG_E("[{}] [{}] Failed to reload!", s_tName, idStr);
-				}
-				else
-				{
-					if (m_uImpl->bStbiRaw)
-					{
-						stbi_image_free((void*)(m_uImpl->raws.back().bytes.pData));
-					}
-					m_size = raw.size;
-					m_uImpl->raws = {std::move(raw)};
-					m_uImpl->copied = load(&m_uImpl->standby, g_texModes.at((size_t)m_mode), m_uImpl->raws.back().size,
-										   {m_uImpl->raws.back().bytes}, idStr);
-					m_status = Status::eLoading;
-					m_uImpl->bReloading = true;
-					LOG_D("[{}] [{}] reloading...", s_tName, idStr);
-				}
-			}
-		}
-	}
-#endif
-	return m_status;
-}
-
-std::string const Cubemap::s_tName = utils::tName<Cubemap>();
-
-Cubemap::Cubemap(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(info.pSampler)
-{
-	m_uImpl = std::make_unique<TextureImpl>();
-	m_uImpl->type = vk::ImageViewType::eCube;
-	auto const idStr = m_id.generic_string();
-	[[maybe_unused]] bool bAddFileMonitor = false;
-	if (!m_pSampler)
-	{
-		auto const id = info.samplerID.empty() ? "samplers/default" : info.samplerID.generic_string();
-		m_pSampler = Resources::inst().get<Sampler>(id);
-	}
-	if (!m_pSampler)
-	{
-		LOG_E("[{}] [{}] Failed to find Sampler [{}]!", s_tName, idStr, info.samplerID.generic_string());
-		m_status = Status::eError;
-		return;
-	}
-	if (info.rludfbRaw.at(0).bytes.extent > 0)
-	{
-		m_uImpl->bStbiRaw = false;
-		for (auto& raw : info.rludfbRaw)
-		{
-			m_uImpl->raws.push_back(std::move(raw));
-		}
-	}
-	else if (!info.rludfb.at(0).empty())
-	{
-		for (auto& bytes : info.rludfb)
-		{
-			auto [raw, bRaw] = imgToRaw(std::move(bytes), s_tName, idStr);
-			if (!bRaw)
-			{
-				LOG_E("[{}] [{}] Failed to create texture!", s_tName, idStr);
-				m_status = Status::eError;
-				return;
-			}
-			m_uImpl->raws.push_back(std::move(raw));
-		}
-	}
-	else
-	{
-		ASSERT(info.pReader, "Reader is null!");
-		for (auto assetID : info.rludfbIDs)
-		{
-			auto [pixels, bPixels] = info.pReader->getBytes(assetID);
-			if (!bPixels)
-			{
-				LOG_E("[{}] [{}] Failed to create texture from [{}]!", s_tName, idStr, assetID.generic_string());
-				m_status = Status::eError;
-				return;
-			}
-			auto [raw, bRaw] = imgToRaw(std::move(pixels), s_tName, idStr);
-			if (!bRaw)
-			{
-				LOG_E("[{}] [{}] Failed to create texture from [{}]!", s_tName, idStr, assetID.generic_string());
-				m_status = Status::eError;
-				return;
-			}
-			m_uImpl->raws.push_back(std::move(raw));
-		}
-		bAddFileMonitor = true;
-	}
-	m_size = m_uImpl->raws.back().size;
-	std::array<ArrayView<u8>, 6> rludfb;
-	size_t idx = 0;
-	for (auto const& raw : m_uImpl->raws)
-	{
-		rludfb.at(idx++) = raw.bytes;
-	}
-	m_mode = info.mode;
-	m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_size, rludfb, idStr);
-	ImageViewInfo viewInfo;
-	viewInfo.image = m_uImpl->active.image;
-	viewInfo.format = vk::Format::eR8G8B8A8Srgb;
-	viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
-	viewInfo.type = vk::ImageViewType::eCube;
-	m_uImpl->imageView = g_device.createImageView(viewInfo);
-	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	if (bAddFileMonitor)
-	{
-		m_uImpl->pReader = dynamic_cast<FileReader const*>(info.pReader);
-		ASSERT(m_uImpl->pReader, "FileReader required!");
-		size_t idx = 0;
-		for (auto const& id : info.rludfbIDs)
-		{
-			m_uImpl->imgIDs.push_back(id);
-			m_files.push_back(File(id, m_uImpl->pReader->fullPath(id), FileMonitor::Mode::eBinaryContents, idx++));
-		}
-	}
-#endif
-}
-
-Cubemap::Cubemap(Cubemap&&) = default;
-Cubemap& Cubemap::operator=(Cubemap&&) = default;
-
-Cubemap::~Cubemap()
-{
-	if (m_uImpl)
-	{
-		if (m_uImpl->bStbiRaw)
-		{
-			for (auto const& raw : m_uImpl->raws)
+			if (m_uImpl->bStbiRaw && raw.bytes.pData)
 			{
 				stbi_image_free((void*)(raw.bytes.pData));
 			}
@@ -402,7 +241,7 @@ Cubemap::~Cubemap()
 	}
 }
 
-Asset::Status Cubemap::update()
+Asset::Status Texture::update()
 {
 	auto const idStr = m_id.generic_string();
 	if (!m_uImpl)
@@ -410,93 +249,57 @@ Asset::Status Cubemap::update()
 		m_status = Status::eMoved;
 		return m_status;
 	}
+	Asset::update();
 	if (m_status == Status::eLoading)
 	{
 		if (utils::futureState(m_uImpl->copied) == FutureState::eReady)
 		{
 			m_status = Status::eReady;
+			LOG_D("[{}] [{}] loaded", m_tName, idStr);
 #if defined(LEVK_ASSET_HOT_RELOAD)
 			if (m_uImpl->bReloading)
 			{
 				m_status = Status::eReloaded;
 				m_uImpl->bReloading = false;
+				LOG_I("[{}] [{}] reloaded", m_tName, idStr);
 			}
 #endif
-			LOG_D("[{}] [{}] loaded", s_tName, idStr);
 		}
 		else
 		{
-			m_status = Status::eLoading;
-			LOG_D("[{}] loading...", idStr);
+			return m_status;
 		}
-	}
-	if (m_status == Status::eLoading)
-	{
-		// Stall Hot Reloading until this file has finished loading to the GPU
-		return m_status;
 	}
 #if defined(LEVK_ASSET_HOT_RELOAD)
-	if (!m_files.empty())
+	if (m_status == Status::eReloaded)
 	{
-		if (m_status == Status::eReloaded)
-		{
-			if (m_uImpl->standby.image != vk::Image())
-			{
-				if (m_uImpl->active.image != m_uImpl->standby.image)
-				{
-					deferred::release(m_uImpl->active, m_uImpl->imageView);
-				}
-				m_uImpl->active = m_uImpl->standby;
-			}
-			ImageViewInfo viewInfo;
-			viewInfo.image = m_uImpl->active.image;
-			viewInfo.format = vk::Format::eR8G8B8A8Srgb;
-			viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
-			viewInfo.type = vk::ImageViewType::eCube;
-			m_uImpl->imageView = g_device.createImageView(viewInfo);
-			m_status = Status::eReady;
-		}
-		else
-		{
-			for (auto& file : m_files)
-			{
-				auto lastStatus = file.monitor.lastStatus();
-				auto currentStatus = file.monitor.update();
-				if (currentStatus == FileMonitor::Status::eNotFound)
-				{
-					LOG_W("[{}] [{}] Resource not ready / lost!", s_tName, idStr);
-				}
-				else if (lastStatus == FileMonitor::Status::eModified && currentStatus == FileMonitor::Status::eUpToDate)
-				{
-					auto [raw, bResult] = imgToRaw(file.monitor.bytes(), s_tName, idStr);
-					if (!bResult)
-					{
-						LOG_E("[{}] [{}] Failed to reload!", s_tName, idStr);
-					}
-					else
-					{
-						size_t idx = std::any_cast<size_t>(file.data);
-						if (m_uImpl->bStbiRaw)
-						{
-							stbi_image_free((void*)(m_uImpl->raws.at(idx).bytes.pData));
-						}
-						m_uImpl->raws.at(idx) = std::move(raw);
-						std::array<ArrayView<u8>, 6> rludfb;
-						idx = 0;
-						for (auto const& raw : m_uImpl->raws)
-						{
-							rludfb.at(idx++) = raw.bytes;
-						}
-						m_uImpl->copied = load(&m_uImpl->active, g_texModes.at((size_t)m_mode), m_size, rludfb, idStr);
-						m_status = Status::eLoading;
-						m_uImpl->bReloading = true;
-						LOG_D("[{}] [{}] reloading...", s_tName, idStr);
-					}
-				}
-			}
-		}
+		deferred::release(m_uImpl->active, m_uImpl->imageView);
+		m_uImpl->active = m_uImpl->standby;
+		m_uImpl->standby = {};
+		ImageViewInfo viewInfo;
+		viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
+		viewInfo.image = m_uImpl->active.image;
+		viewInfo.format = m_uImpl->colourSpace;
+		viewInfo.type = m_uImpl->type;
+		m_uImpl->imageView = g_device.createImageView(viewInfo);
 	}
 #endif
 	return m_status;
 }
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+void Texture::onReload()
+{
+	auto const idStr = m_id.generic_string();
+	std::vector<ArrayView<u8>> views;
+	for (auto const& raw : m_uImpl->raws)
+	{
+		views.push_back(raw.bytes);
+	}
+	m_uImpl->copied = load(&m_uImpl->standby, m_uImpl->colourSpace, m_size, views, idStr);
+	m_status = Status::eLoading;
+	m_uImpl->bReloading = true;
+	LOG_D("[{}] [{}] reloading...", m_tName, idStr);
+}
+#endif
 } // namespace le::gfx

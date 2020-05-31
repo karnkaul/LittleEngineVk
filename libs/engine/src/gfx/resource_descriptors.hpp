@@ -20,6 +20,14 @@ class Texture;
 
 namespace rd
 {
+namespace vbo
+{
+constexpr u32 vertexBinding = 0;
+
+std::vector<vk::VertexInputBindingDescription> vertexBindings();
+std::vector<vk::VertexInputAttributeDescription> vertexAttributes();
+} // namespace vbo
+
 // UBO
 struct View final
 {
@@ -136,6 +144,8 @@ struct PushConstants final
 	u32 objectID = 0;
 	u32 diffuseID = 0;
 	u32 specularID = 0;
+
+	static std::vector<vk::PushConstantRange> ranges();
 };
 
 struct Writer final
@@ -219,7 +229,7 @@ public:
 	void writeSSBOs(StorageBuffers const& ssbos);
 	void writeDiffuse(std::deque<Texture const*> const& diffuse);
 	void writeSpecular(std::deque<Texture const*> const& specular);
-	void writeCubemap(Cubemap const& cubemap);
+	void writeCubemap(Texture const& cubemap);
 };
 
 struct SetLayouts final
@@ -234,6 +244,7 @@ void init();
 void deinit();
 
 SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts = {});
+vk::RenderPass createSingleRenderPass(vk::Format colourFormat, vk::Format depthFormat);
 
 template <typename T>
 Descriptor<T>::Descriptor(vk::BufferUsageFlags flags)

@@ -8,7 +8,7 @@ namespace le
 class JobWorker final
 {
 public:
-	enum class State : u8
+	enum class State : s8
 	{
 		eIdle,
 		eBusy,

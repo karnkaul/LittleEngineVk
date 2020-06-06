@@ -5,6 +5,7 @@
 #include "core/maths.hpp"
 #include "engine/gfx/geometry.hpp"
 #include "engine/gfx/camera.hpp"
+#include "engine/window/input_types.hpp"
 #include "engine/window/window.hpp"
 
 namespace le::gfx
@@ -118,7 +119,7 @@ void FreeCam::tick(Time dt)
 	{
 		return;
 	}
-	GamepadState const pad0 = m_pWindow->gamepadState(0);
+	GamepadState pad0 = m_pWindow->gamepadState(0);
 	f32 const dt_s = dt.to_s();
 	// Speed
 	if (!m_state.flags.isSet(Flag::eFixedSpeed))

@@ -227,6 +227,11 @@ GamepadState Window::gamepadState(s32 id)
 	return WindowImpl::gamepadState(id);
 }
 
+std::vector<GamepadState> Window::activeGamepadStates()
+{
+	return WindowImpl::activeGamepadStates();
+}
+
 f32 Window::triggerToAxis(f32 triggerValue)
 {
 	return WindowImpl::triggerToAxis(triggerValue);

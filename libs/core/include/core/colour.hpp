@@ -36,6 +36,8 @@ public:
 
 	std::string toString() const;
 	glm::vec4 toVec4() const;
+	glm::vec4 toSRGB() const;
+	glm::vec4 toRGB() const;
 };
 
 Colour operator+(Colour lhs, Colour rhs);

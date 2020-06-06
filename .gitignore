@@ -1,5 +1,7 @@
 **/.vs/*
 **/.vscode/*
+**/compile_commands.json
+**/.clangd
 build/*
 out/*
 redist/*

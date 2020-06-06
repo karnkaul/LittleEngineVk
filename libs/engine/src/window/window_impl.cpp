@@ -157,7 +157,7 @@ f32 GamepadState::axis(PadAxis axis) const
 #if defined(LEVK_USE_GLFW)
 	s32 max = 0;
 	glfwGetJoystickAxes(id, &max);
-	if (idx < (size_t)max)
+	if (idx < (size_t)max && idx < joyState.axes.size())
 	{
 		return joyState.axes.at(idx);
 	}
@@ -171,9 +171,9 @@ bool GamepadState::isPressed(Key button) const
 #if defined(LEVK_USE_GLFW)
 	s32 max = 0;
 	glfwGetJoystickButtons(id, &max);
-	if (idx < (size_t)max)
+	if (idx < (size_t)max && idx < joyState.buttons.size())
 	{
-		return joyState.buttons[idx];
+		return joyState.buttons.at(idx);
 	}
 #endif
 	return false;
@@ -448,7 +448,6 @@ bool WindowImpl::create(Window::Info const& info)
 {
 	try
 	{
-		gfx::g_device.waitIdle();
 		m_uNativeWindow = std::make_unique<NativeWindow>(info);
 		gfx::RendererImpl::Info rendererInfo;
 		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
@@ -722,12 +721,41 @@ GamepadState WindowImpl::gamepadState([[maybe_unused]] s32 id)
 {
 	GamepadState ret;
 #if defined(LEVK_USE_GLFW)
-	GLFWgamepadstate glfwState;
-	if (threads::isMainThread() && g_bGLFWInit && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &glfwState))
+	GLFWgamepadstate state;
+	if (threads::isMainThread() && g_bGLFWInit && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
 	{
 		ret.name = glfwGetGamepadName(id);
 		ret.id = id;
-		ret.joyState = joyState(id);
+		ret.joyState.buttons = std::vector<u8>(15, 0);
+		ret.joyState.axes = std::vector<f32>(6, 0);
+		std::memcpy(ret.joyState.buttons.data(), state.buttons, ret.joyState.buttons.size());
+		std::memcpy(ret.joyState.axes.data(), state.axes, ret.joyState.axes.size() * sizeof(f32));
+	}
+#endif
+	return ret;
+}
+
+std::vector<GamepadState> WindowImpl::activeGamepadStates()
+{
+	std::vector<GamepadState> ret;
+#if defined(LEVK_USE_GLFW)
+	if (threads::isMainThread() && g_bGLFWInit)
+	{
+		for (s32 id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id)
+		{
+			GLFWgamepadstate state;
+			if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
+			{
+				GamepadState padi;
+				padi.name = glfwGetGamepadName(id);
+				padi.id = id;
+				padi.joyState.buttons = std::vector<u8>(15, 0);
+				padi.joyState.axes = std::vector<f32>(6, 0);
+				std::memcpy(padi.joyState.buttons.data(), state.buttons, padi.joyState.buttons.size());
+				std::memcpy(padi.joyState.axes.data(), state.axes, padi.joyState.axes.size() * sizeof(f32));
+				ret.push_back(std::move(padi));
+			}
+		}
 	}
 #endif
 	return ret;

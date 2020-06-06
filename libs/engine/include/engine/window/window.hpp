@@ -126,6 +126,7 @@ public:
 
 	static JoyState joyState(s32 id);
 	static GamepadState gamepadState(s32 id);
+	static std::vector<GamepadState> activeGamepadStates();
 	static f32 triggerToAxis(f32 triggerValue);
 	static size_t joystickAxesCount(s32 id);
 	static size_t joysticKButtonsCount(s32 id);

@@ -5,9 +5,13 @@
 #include "engine/gfx/mesh.hpp"
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
+#include "engine/levk.hpp"
+#include <core/utils.hpp>
 
 namespace le
 {
+std::string const Resources::s_tName = utils::tName<Resources>();
+
 Resources& Resources::inst()
 {
 	static Resources s_inst;
@@ -28,10 +32,17 @@ Resources::~Resources()
 	}
 }
 
-void Resources::init(IOReader const& data)
+bool Resources::init(IOReader const& data)
 {
 	constexpr static std::array<u8, 4> white1pxBytes = {0xff, 0xff, 0xff, 0xff};
 	constexpr static std::array<u8, 4> black1pxBytes = {0x0, 0x0, 0x0, 0x0};
+	static std::array const shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
+	static stdfs::path const fontID = "fonts/default.json";
+	if (!data.checkPresences(shaderIDs) || !data.checkPresence(fontID))
+	{
+		LOG_E("[{}] Failed to locate required shaders/fonts!", s_tName);
+		return false;
+	}
 	std::scoped_lock<std::mutex> lock(m_mutex); // block deinit()
 	if (!m_bActive.load())
 	{
@@ -71,8 +82,9 @@ void Resources::init(IOReader const& data)
 		}
 		{
 			gfx::Shader::Info info;
-			std::array shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
+
 			info.pReader = &data;
+			ASSERT(data.checkPresences(shaderIDs), "Uber Shader not found!");
 			info.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
 			info.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
 			create<gfx::Shader>("shaders/default", std::move(info));
@@ -88,7 +100,7 @@ void Resources::init(IOReader const& data)
 			create<gfx::Font>("fonts/default", std::move(fontInfo));
 		}
 	}
-	return;
+	return true;
 }
 
 void Resources::update()

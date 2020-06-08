@@ -16,10 +16,14 @@ endif()
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
 option(LEVK_USE_IMGUI "Use ImGui" ON)
+option(LEVK_BUILD_DEMO "Build demo" ON)
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
 	option(LEVK_EDITOR "Enable Editor" ON)
 else()
 	option(LEVK_EDITOR "Enable Editor" OFF)
+endif()
+if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
+	set(LEVK_USE_PCH OFF CACHE "" BOOL FORCE)
 endif()
 
 # Includes
@@ -71,7 +75,9 @@ endif()
 
 # Libraries
 add_subdirectory(libs/core)
-add_subdirectory(libs/engine)
-
-# levk
 add_subdirectory(src)
+
+# demo
+if(LEVK_BUILD_DEMO)
+	add_subdirectory(demo)
+endif()

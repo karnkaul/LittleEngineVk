@@ -93,8 +93,8 @@ void setStyle()
 	toSRGB(pColours[ImGuiCol_Tab]);
 	toSRGB(pColours[ImGuiCol_TabHovered]);
 	toSRGB(pColours[ImGuiCol_TabActive]);
-    toSRGB(pColours[ImGuiCol_TabUnfocused]);
-    toSRGB(pColours[ImGuiCol_TabUnfocusedActive]);
+	toSRGB(pColours[ImGuiCol_TabUnfocused]);
+	toSRGB(pColours[ImGuiCol_TabUnfocusedActive]);
 	toSRGB(pColours[ImGuiCol_PlotLines]);
 	toSRGB(pColours[ImGuiCol_PlotLinesHovered]);
 	toSRGB(pColours[ImGuiCol_PlotHistogram]);

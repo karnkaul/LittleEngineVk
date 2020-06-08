@@ -36,6 +36,9 @@ private:
 	std::atomic_bool m_bActive;	   // API on/off switch
 
 public:
+	static std::string const s_tName;
+
+public:
 	static Resources& inst();
 
 private:
@@ -43,7 +46,7 @@ private:
 	~Resources();
 
 public:
-	void init(IOReader const& data);
+	bool init(IOReader const& data);
 
 	// Construction of Assets will occur in parallel,
 	// but insertion into map is mutex locked (by TMapStore)

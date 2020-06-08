@@ -48,18 +48,36 @@ int main(int argc, char** argv)
 	{
 		return 1;
 	}
-	auto [dataPath, bResult] = FileReader::findUpwards(engine::exePath(), {"data"});
-	if (!bResult)
+	g_uReader = std::make_unique<FileReader>();
 	{
-		LOG_E("FATAL: Could not locate data!");
-		return 1;
+		auto [engineData, bResult] = FileReader::findUpwards(engine::exePath(), {"engine_data"});
+		if (!bResult)
+		{
+			LOG_E("Failed to locate engine data!");
+			return 1;
+		}
+		if (!g_uReader->mount(engineData))
+		{
+			LOG_E("Failed to mount engine data [{}]!", engineData.generic_string());
+			return 1;
+		}
 	}
-	g_uReader = std::make_unique<FileReader>(dataPath);
-	if (!engine.start(*g_uReader))
 	{
-		return 1;
+		auto [dataPath, bResult] = FileReader::findUpwards(engine::exePath(), {"demo/data"});
+		if (!bResult)
+		{
+			LOG_E("FATAL: Could not locate demo data!");
+			return 1;
+		}
+		if (!g_uReader->mount(dataPath))
+		{
+			return 1;
+		}
+		if (!engine.start(*g_uReader))
+		{
+			return 1;
+		}
 	}
-
 	Registry registry;
 	gfx::Mesh::Info triangle0info;
 	// clang-format off

@@ -1,7 +1,9 @@
 #pragma once
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <random>
+#include <type_traits>
 #include "std_types.hpp"
 #include "time.hpp"
 
@@ -16,26 +18,48 @@ T lerp(T const& min, T const& max, f32 alpha);
 template <typename T>
 bool equals(T lhs, T rhs, T epsilon = std::numeric_limits<T>::epsilon());
 
-class RandomGen
+class Random
 {
-public:
-	std::pair<s32, s32> m_s32Range;
-
 protected:
-	std::mt19937 m_intGen;
-	std::mt19937 m_realGen;
-	std::uniform_int_distribution<s32> m_intDist;
-	std::uniform_real_distribution<f32> m_realDist;
+	std::random_device m_device;
+	std::mt19937 m_engine;
 
 public:
-	RandomGen(s32 minS32, s32 maxS32, f32 minF32 = 0.0f, f32 maxF32 = 1.0f) noexcept;
-	virtual ~RandomGen();
+	inline void seed(std::optional<u32> value = {})
+	{
+		m_engine = std::mt19937(value ? *value : m_device());
+	}
 
-public:
-	void seed(s32 seed);
-	s32 nextS32();
-	f32 nextF32();
+	template <typename T, template <typename> typename Dist, typename... Args>
+	T inRange(Args... args);
+
+	template <typename T>
+	T inRange(T min, T max);
 };
+
+template <typename T, template <typename> typename Dist, typename... Args>
+T Random::inRange(Args... args)
+{
+	Dist<T> dist(std::forward<Args>(args)...);
+	return dist(m_engine);
+}
+
+template <typename T>
+T Random::inRange(T min, T max)
+{
+	if constexpr (std::is_integral_v<T>)
+	{
+		return inRange<T, std::uniform_int_distribution>(min, max);
+	}
+	else if constexpr (std::is_floating_point_v<T>)
+	{
+		return inRange<T, std::uniform_real_distribution>(min, max);
+	}
+	else
+	{
+		static_assert(alwaysFalse<T>, "Invalid type!");
+	}
+}
 
 template <typename T>
 bool equals(T lhs, T rhs, T epsilon)
@@ -44,16 +68,17 @@ bool equals(T lhs, T rhs, T epsilon)
 }
 
 template <typename T>
-T randomRange(T, T)
+T randomRange(T min, T max)
 {
-	static_assert(alwaysFalse<T>, "Only s32 and f32 are supported as T!");
+	static Random s_random;
+	static bool s_bSeeded = false;
+	if (!s_bSeeded)
+	{
+		s_random.seed();
+		s_bSeeded = true;
+	}
+	return s_random.inRange<T>(min, max);
 }
-
-template <>
-s32 randomRange<s32>(s32 min, s32 max);
-
-template <>
-f32 randomRange<f32>(f32 min, f32 max);
 
 template <typename T>
 T lerp(T const& min, T const& max, f32 alpha)

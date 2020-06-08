@@ -1,5 +1,8 @@
+#include <algorithm>
 #include <sstream>
 #include <fmt/format.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/color_space.hpp>
 #include "core/assert.hpp"
 #include "core/colour.hpp"
 #include "core/maths.hpp"
@@ -82,6 +85,16 @@ glm::vec4 Colour::toVec4() const
 	return {r.toF32(), g.toF32(), b.toF32(), a.toF32()};
 }
 
+glm::vec4 Colour::toSRGB() const
+{
+	return glm::convertLinearToSRGB(toVec4());
+}
+
+glm::vec4 Colour::toRGB() const
+{
+	return glm::convertSRGBToLinear(toVec4());
+}
+
 Colour operator+(Colour lhs, Colour rhs)
 {
 	return lhs += rhs;
@@ -94,7 +107,7 @@ Colour operator-(Colour lhs, Colour rhs)
 
 Colour& operator*=(f32 n, Colour& c)
 {
-	n = maths::clamp(n, 0.0f, 1.0f);
+	n = std::clamp(n, 0.0f, 1.0f);
 	c.r = n * c.r;
 	c.g = n * c.g;
 	c.b = n * c.b;

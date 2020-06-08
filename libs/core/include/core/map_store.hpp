@@ -27,7 +27,7 @@ public:
 	[[nodiscard]] bool isLoaded(Key const& id) const;
 	bool unload(Key const& id);
 	void unloadAll();
-	u32 count() const;
+	u64 count() const;
 };
 
 template <typename M>
@@ -42,8 +42,7 @@ template <typename M>
 TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) const
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	auto search = m_map.find(id);
-	if (search != m_map.end())
+	if (auto search = m_map.find(id); search != m_map.end())
 	{
 		return &search->second;
 	}
@@ -54,8 +53,7 @@ template <typename M>
 TResult<typename TMapStore<M>::Value*> TMapStore<M>::find(Key const& id)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	auto search = m_map.find(id);
-	if (search != m_map.end())
+	if (auto search = m_map.find(id); search != m_map.end())
 	{
 		return &search->second;
 	}
@@ -73,8 +71,7 @@ template <typename M>
 bool TMapStore<M>::unload(Key const& id)
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	auto search = m_map.find(id);
-	if (search != m_map.end())
+	if (auto search = m_map.find(id); search != m_map.end())
 	{
 		m_map.erase(search);
 		return true;
@@ -91,9 +88,9 @@ void TMapStore<M>::unloadAll()
 }
 
 template <typename M>
-u32 TMapStore<M>::count() const
+u64 TMapStore<M>::count() const
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
-	return (u32)m_map.size();
+	return (u64)m_map.size();
 }
 } // namespace le

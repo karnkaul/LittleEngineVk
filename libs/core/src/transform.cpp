@@ -129,26 +129,33 @@ glm::vec3 Transform::worldScale() const
 
 glm::mat4 Transform::model() const
 {
-	if (m_bDirty)
-	{
-		auto const base = glm::mat4(1.0f);
-		auto const t = glm::translate(base, m_position);
-		auto const r = glm::toMat4(m_orientation);
-		auto const s = glm::scale(base, m_scale);
-		m_mat = t * r * s;
-		m_bDirty = false;
-	}
+	updateMats();
 	return m_pParent ? m_pParent->model() * m_mat : m_mat;
 }
 
 glm::mat4 Transform::normalModel() const
 {
-	if (!isIsotropic())
+	updateMats();
+	return m_normalMat;
+}
+
+bool Transform::isUpToDate() const
+{
+	return !m_bDirty && m_pParent ? m_pParent->isUpToDate() : true;
+}
+
+void Transform::updateMats() const
+{
+	if (m_bDirty)
 	{
-		glm::mat3 normal = model();
-		normal = glm::inverse(glm::transpose(normal));
-		return glm::mat4(normal);
+		static auto const base = glm::mat4(1.0f);
+		auto const t = glm::translate(base, m_position);
+		auto const r = glm::toMat4(m_orientation);
+		auto const s = glm::scale(base, m_scale);
+		m_mat = t * r * s;
+		m_normalMat = isIsotropic() ? m_mat : glm::mat4(glm::inverse(glm::transpose(glm::mat3(m_mat))));
+		m_bDirty = false;
 	}
-	return model();
+	return;
 }
 } // namespace le

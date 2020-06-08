@@ -1,10 +1,20 @@
 **/.vs/*
 **/.vscode/*
+**/compile_commands.json
+**/.clangd
 build/*
 out/*
-
-data/shaders/*.spv
-
-CMakeSettings.json
+redist/*
 .editorconfig
+
+# RenderDoc capture config (local)
+*.cap
+# SPIR-V shaders (generated)
+engine_data/shaders/*.spv
+# Visual Studio config (local)
+CMakeSettings.json
+# Log files (local)
 debug.log*
+# Dear ImGui config (local)
+imgui.ini
+

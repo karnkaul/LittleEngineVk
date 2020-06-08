@@ -77,16 +77,15 @@ function(add_target_compile_definitions TARGET_NAME PREFIX SCOPE)
 endfunction()
 
 function(add_target_compile_options TARGET_NAME SCOPE)
-	set(CLANG_COMMON -Werror=return-type -Wextra -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused)
+	set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused)
 	if(LINUX_GCC OR LINUX_CLANG OR WIN64_GCC OR WIN64_CLANG)
 		set(FLAGS
-			$<$<NOT:$<CONFIG:Debug>>:
-				-Werror
-			>
 			-Wextra
 			-Werror=return-type
+			$<$<NOT:$<CONFIG:Debug>>:-Werror>
 			$<$<NOT:$<BOOL:${WIN64_CLANG}>>:-fexceptions>
 			$<$<BOOL:${WIN64_CLANG}>:/W4>
+			$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
 			$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WIN64_GCC}>,$<BOOL:${WIN64_CLANG}>>:-utf-8>
 			$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WIN64_CLANG}>>:${CLANG_COMMON}>
 		)

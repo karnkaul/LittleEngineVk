@@ -11,11 +11,10 @@ namespace stdfs = std::filesystem;
 class IOReader
 {
 protected:
-	stdfs::path m_prefix;
 	std::string m_medium;
 
 public:
-	explicit IOReader(stdfs::path prefix) noexcept;
+	IOReader() noexcept;
 	IOReader(IOReader&&) noexcept;
 	IOReader& operator=(IOReader&&) noexcept;
 	IOReader(IOReader const&);
@@ -24,6 +23,7 @@ public:
 
 public:
 	[[nodiscard]] TResult<std::string> getString(stdfs::path const& id) const;
+	[[nodiscard]] bool isPresent(stdfs::path const& id) const;
 	[[nodiscard]] bool checkPresence(stdfs::path const& id) const;
 	[[nodiscard]] bool checkPresences(std::initializer_list<stdfs::path> ids) const;
 	[[nodiscard]] bool checkPresences(ArrayView<stdfs::path const> ids) const;
@@ -31,57 +31,66 @@ public:
 	std::string_view medium() const;
 
 public:
-	[[nodiscard]] virtual bool isPresent(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual bool mount(stdfs::path path) = 0;
 	[[nodiscard]] virtual TResult<bytearray> getBytes(stdfs::path const& id) const = 0;
 	[[nodiscard]] virtual TResult<std::stringstream> getStr(stdfs::path const& id) const = 0;
 
 protected:
-	stdfs::path finalPath(stdfs::path const& id) const;
+	virtual TResult<stdfs::path> findPrefixed(stdfs::path const& id) const = 0;
 };
 
-class FileReader : public IOReader
+class FileReader final : public IOReader
 {
+private:
+	std::vector<stdfs::path> m_prefixes;
+
 public:
 	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
 	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight = 10);
 
 public:
-	FileReader(stdfs::path prefix = "") noexcept;
-
-public:
-	bool isPresent(stdfs::path const& id) const override;
-	TResult<bytearray> getBytes(stdfs::path const& id) const override;
-	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
+	FileReader() noexcept;
 
 public:
 	stdfs::path fullPath(stdfs::path const& id) const;
-};
-
-class ZIPReader : public IOReader
-{
-protected:
-	stdfs::path m_zipPath;
 
 public:
-	ZIPReader(stdfs::path zipPath, stdfs::path idPrefix = "");
-
-public:
-	bool isPresent(stdfs::path const& id) const override;
+	bool mount(stdfs::path path) override;
 	TResult<bytearray> getBytes(stdfs::path const& id) const override;
 	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
+
+protected:
+	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
+
+private:
+	std::vector<stdfs::path> finalPaths(stdfs::path const& id) const;
+};
+
+class ZIPReader final : public IOReader
+{
+public:
+	ZIPReader();
+
+public:
+	bool mount(stdfs::path path) override;
+	TResult<bytearray> getBytes(stdfs::path const& id) const override;
+	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
+
+protected:
+	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
 };
 
 class FileMonitor
 {
 public:
-	enum class Mode : u8
+	enum class Mode : s8
 	{
 		eTimestamp,
 		eTextContents,
 		eBinaryContents
 	};
 
-	enum class Status : u8
+	enum class Status : s8
 	{
 		eUpToDate,
 		eNotFound,

@@ -71,8 +71,7 @@ T* Services::locate()
 {
 	for (auto& uConcept : m_services)
 	{
-		auto pModel = dynamic_cast<Model<T>*>(uConcept.get());
-		if (pModel)
+		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel)
 		{
 			return &pModel->s;
 		}
@@ -85,8 +84,7 @@ T const* Services::locate() const
 {
 	for (auto& uConcept : m_services)
 	{
-		auto pModel = dynamic_cast<Model<T>*>(uConcept.get());
-		if (pModel)
+		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel)
 		{
 			return &pModel->s;
 		}

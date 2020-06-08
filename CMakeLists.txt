@@ -13,7 +13,18 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
 
 # Options
+option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
+option(LEVK_USE_IMGUI "Use ImGui" ON)
+option(LEVK_BUILD_DEMO "Build demo" ON)
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
+	option(LEVK_EDITOR "Enable Editor" ON)
+else()
+	option(LEVK_EDITOR "Enable Editor" OFF)
+endif()
+if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
+	set(LEVK_USE_PCH OFF CACHE "" BOOL FORCE)
+endif()
 
 # Includes
 include(.cmake/platform.cmake)
@@ -58,10 +69,15 @@ endif()
 add_subdirectory(external/vma)
 add_subdirectory(external/stb)
 add_subdirectory(external/tinyobjloader)
+if(LEVK_USE_IMGUI)
+	add_subdirectory(external/imgui)
+endif()
 
 # Libraries
 add_subdirectory(libs/core)
-add_subdirectory(libs/engine)
-
-# levk
 add_subdirectory(src)
+
+# demo
+if(LEVK_BUILD_DEMO)
+	add_subdirectory(demo)
+endif()

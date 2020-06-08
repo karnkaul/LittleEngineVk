@@ -6,13 +6,13 @@
 namespace le
 {
 namespace stdch = std::chrono;
+using namespace std::chrono_literals;
 
 struct Time
 {
 	stdch::microseconds usecs;
 
 	static std::string toString(Time time);
-	static Time from_us(s64 microSeconds);
 	static Time from_ms(s32 milliSeconds);
 	static Time from_s(f32 seconds);
 	static Time elapsed();
@@ -21,6 +21,10 @@ struct Time
 	static void resetElapsed();
 
 	constexpr Time() noexcept : usecs(0) {}
+	template <typename T>
+	constexpr Time(stdch::duration<s64, T> duration) : usecs(stdch::duration_cast<stdch::microseconds>(duration))
+	{
+	}
 	explicit constexpr Time(s64 usecs) noexcept : usecs(usecs) {}
 	explicit constexpr Time(stdch::microseconds usecs) noexcept : usecs(usecs) {}
 

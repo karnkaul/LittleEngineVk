@@ -40,8 +40,8 @@ public:
 
 FileLogger::~FileLogger()
 {
-	ASSERT(m_hThread == HThread::Null, "FileLogger thread running past main!");
-	if (m_hThread != HThread::Null)
+	ASSERT(m_hThread == HThread::s_null, "FileLogger thread running past main!");
+	if (m_hThread != HThread::s_null)
 	{
 		stopLogging();
 	}
@@ -95,7 +95,7 @@ void FileLogger::stopLogging()
 
 void FileLogger::record(std::string line)
 {
-	if (m_hThread != HThread::Null)
+	if (m_hThread != HThread::s_null)
 	{
 		std::scoped_lock<std::mutex> lock(m_mutex);
 		m_cache += std::move(line);
@@ -126,7 +126,7 @@ std::array<char, (size_t)log::Level::eCOUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 
-void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
+void log::logText(Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
 {
 	if ((u8)level < (u8)g_minLevel)
 	{
@@ -172,6 +172,10 @@ void log::logText([[maybe_unused]] Level level, std::string text, [[maybe_unused
 #endif
 	}
 	lock.lock();
+	if (g_onLog)
+	{
+		g_onLog(str, level);
+	}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	try
 #endif

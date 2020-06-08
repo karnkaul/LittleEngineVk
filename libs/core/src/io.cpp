@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <fstream>
 #include <physfs/physfs.h>
 #include "core/assert.hpp"
@@ -30,8 +31,7 @@ PhysfsHandle::~PhysfsHandle()
 std::unique_ptr<PhysfsHandle> g_uPhysfsHandle;
 } // namespace
 
-IOReader::IOReader(stdfs::path prefix) noexcept : m_prefix(std::move(prefix)), m_medium("Undefined") {}
-
+IOReader::IOReader() noexcept = default;
 IOReader::IOReader(IOReader&&) noexcept = default;
 IOReader& IOReader::operator=(IOReader&&) noexcept = default;
 IOReader::IOReader(IOReader const&) = default;
@@ -42,6 +42,11 @@ TResult<std::string> IOReader::getString(stdfs::path const& id) const
 {
 	auto [str, bResult] = getStr(id);
 	return {str.str(), bResult};
+}
+
+bool IOReader::isPresent(const stdfs::path& id) const
+{
+	return findPrefixed(id).bResult;
 }
 
 bool IOReader::checkPresence(stdfs::path const& id) const
@@ -77,11 +82,6 @@ bool IOReader::checkPresences(ArrayView<stdfs::path const> ids) const
 std::string_view IOReader::medium() const
 {
 	return m_medium;
-}
-
-stdfs::path IOReader::finalPath(stdfs::path const& id) const
-{
-	return id.has_root_directory() ? id : m_prefix / id;
 }
 
 TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight)
@@ -120,36 +120,30 @@ TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, ArrayView<
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
 
-FileReader::FileReader(stdfs::path prefix) noexcept : IOReader(std::move(prefix))
+FileReader::FileReader() noexcept
 {
-	m_medium = fmt::format("Filesystem ({})", m_prefix.generic_string());
+	m_medium = "Filesystem";
 }
 
-bool FileReader::isPresent(stdfs::path const& id) const
+bool FileReader::mount(stdfs::path path)
 {
-	return stdfs::is_regular_file(finalPath(id));
-}
-
-TResult<std::stringstream> FileReader::getStr(stdfs::path const& id) const
-{
-	if (checkPresence(id))
+	auto const pathStr = path.generic_string();
+	if (!stdfs::is_directory(path))
 	{
-		std::ifstream file(finalPath(id));
-		if (file.good())
-		{
-			std::stringstream buf;
-			buf << file.rdbuf();
-			return buf;
-		}
+		LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<FileReader>(), pathStr);
+		return false;
 	}
-	return {};
+	LOG_D("[{}] [{}] directory mounted", utils::tName<FileReader>(), pathStr);
+	m_prefixes.push_back(std::move(path));
+	return true;
 }
 
 TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
 {
-	if (checkPresence(id))
+	auto [path, bResult] = findPrefixed(id);
+	if (bResult)
 	{
-		std::ifstream file(finalPath(id), std::ios::binary | std::ios::ate);
+		std::ifstream file(std::move(path), std::ios::binary | std::ios::ate);
 		if (file.good())
 		{
 			auto pos = file.tellg();
@@ -162,37 +156,89 @@ TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
 	return {};
 }
 
+TResult<std::stringstream> FileReader::getStr(stdfs::path const& id) const
+{
+	auto [path, bResult] = findPrefixed(id);
+	if (bResult)
+	{
+		std::ifstream file(std::move(path));
+		if (file.good())
+		{
+			std::stringstream buf;
+			buf << file.rdbuf();
+			return buf;
+		}
+	}
+	return {};
+}
+
+TResult<stdfs::path> FileReader::findPrefixed(stdfs::path const& id) const
+{
+	auto const paths = finalPaths(id);
+	for (auto const& path : paths)
+	{
+		if (stdfs::is_regular_file(path))
+		{
+			return stdfs::path(path);
+		}
+	}
+	return {};
+}
+
+std::vector<stdfs::path> FileReader::finalPaths(stdfs::path const& id) const
+{
+	if (id.has_root_directory())
+	{
+		return {id};
+	}
+	std::vector<stdfs::path> ret;
+	ret.reserve(m_prefixes.size());
+	for (auto const& prefix : m_prefixes)
+	{
+		ret.push_back(prefix / id);
+	}
+	return ret;
+}
+
 stdfs::path FileReader::fullPath(stdfs::path const& id) const
 {
-	return stdfs::absolute(finalPath(id));
+	auto [path, bResult] = findPrefixed(id);
+	return bResult ? stdfs::absolute(path) : id;
 }
 
-ZIPReader::ZIPReader(stdfs::path zipPath, stdfs::path idPrefix /* = "" */) : IOReader(std::move(idPrefix)), m_zipPath(std::move(zipPath))
+ZIPReader::ZIPReader()
+{
+	m_medium = "ZIP";
+}
+
+bool ZIPReader::mount(stdfs::path path)
 {
 	ioImpl::initPhysfs();
-	m_medium = fmt::format("ZIP ({})", m_zipPath.generic_string());
-	if (!stdfs::is_regular_file(m_zipPath))
+	auto pathStr = path.generic_string();
+	if (!stdfs::is_regular_file(path))
 	{
-		LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), m_zipPath.generic_string());
+		LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
+		return false;
 	}
-	else
-	{
-		PHYSFS_mount(m_zipPath.string().data(), nullptr, 0);
-		LOG_D("[{}] [{}] archive mounted, idPrefix: [{}]", utils::tName<ZIPReader>(), m_zipPath.generic_string(),
-			  m_prefix.generic_string());
-	}
+	PHYSFS_mount(path.string().data(), nullptr, 0);
+	LOG_D("[{}] [{}] archive mounted", utils::tName<ZIPReader>(), pathStr);
+	return true;
 }
 
-bool ZIPReader::isPresent(stdfs::path const& id) const
+TResult<stdfs::path> ZIPReader::findPrefixed(stdfs::path const& id) const
 {
-	return PHYSFS_exists((finalPath(id)).generic_string().data()) != 0;
+	if (PHYSFS_exists(id.generic_string().data()) != 0)
+	{
+		return stdfs::path(id);
+	}
+	return {};
 }
 
 TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
-		auto pFile = PHYSFS_openRead((finalPath(id)).generic_string().data());
+		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile)
 		{
 			std::stringstream buf;
@@ -211,7 +257,7 @@ TResult<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
-		auto pFile = PHYSFS_openRead((finalPath(id)).generic_string().data());
+		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile)
 		{
 			auto length = PHYSFS_fileLength(pFile);

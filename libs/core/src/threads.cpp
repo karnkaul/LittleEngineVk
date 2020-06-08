@@ -1,4 +1,3 @@
-#include <thread>
 #include <utility>
 #include <list>
 #include "core/assert.hpp"
@@ -14,9 +13,9 @@ namespace le
 {
 namespace
 {
-HThread::Type g_nextID = HThread::Null;
-std::list<std::pair<HThread::Type, std::thread>> g_threads;
-std::unordered_map<std::thread::id, HThread::Type> g_idMap;
+HThread g_nextID = HThread::s_null;
+std::list<std::pair<HThread::type, std::thread>> g_threads;
+std::unordered_map<std::thread::id, HThread> g_idMap;
 std::thread::id g_mainThreadID;
 } // namespace
 
@@ -34,7 +33,7 @@ void threads::init()
 
 HThread threads::newThread(std::function<void()> task)
 {
-	g_threads.emplace_back(++g_nextID, std::thread(task));
+	g_threads.emplace_back(++g_nextID.handle, std::thread(task));
 	g_idMap[g_threads.back().second.get_id()] = g_nextID;
 	return HThread(g_nextID);
 }
@@ -70,10 +69,10 @@ void threads::joinAll()
 	return;
 }
 
-HThread::Type threads::thisThreadID()
+HThread threads::thisThreadID()
 {
 	auto search = g_idMap.find(std::this_thread::get_id());
-	return search != g_idMap.end() ? search->second : HThread::Null;
+	return search != g_idMap.end() ? search->second : HThread();
 }
 
 bool threads::isMainThread()

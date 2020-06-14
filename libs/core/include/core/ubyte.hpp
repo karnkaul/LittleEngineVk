@@ -4,7 +4,11 @@
 
 namespace le
 {
-// \brief 1-byte unsigned integer structure, useful to store values between 0x00-ff
+///
+/// \brief Single byte unsigned integer structure
+/// 
+/// Useful for storing values between 0x00-0xff
+///
 struct UByte
 {
 	u8 rawValue;
@@ -15,6 +19,10 @@ struct UByte
 	explicit UByte(std::string_view hex);
 
 	u8 toU8() const;
+	///
+	/// \brief Obtain normalised value
+	/// \returns Value in [0.0f, 1.0f]
+	///
 	f32 toF32() const;
 
 	UByte operator+=(UByte rhs);

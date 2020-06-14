@@ -17,6 +17,9 @@ enum class FutureState : s8
 	eCOUNT_
 };
 
+///
+/// \brief View-only class for arrays / STL containers / `std::initializer_list`s
+///
 template <typename T>
 struct ArrayView
 {
@@ -63,7 +66,8 @@ FutureState futureState(std::future<T> const& future)
 {
 	if (future.valid())
 	{
-		auto const status = future.wait_for(std::chrono::milliseconds(0));
+		using namespace std::chrono_literals;
+		auto const status = future.wait_for(0ms);
 		switch (status)
 		{
 		default:
@@ -78,16 +82,36 @@ FutureState futureState(std::future<T> const& future)
 	return FutureState::eInvalid;
 }
 
+template <typename T>
+bool isReady(std::future<T> const& future)
+{
+	using namespace std::chrono_literals;
+	return future.valid() && future.wait_for(0ms) == std::future_status::ready;
+}
+
+///
+/// \brief Convert `byteCount` bytes into human-friendly format
+/// \returns pair of size in `f32` and the corresponding unit
+///
 std::pair<f32, std::string_view> friendlySize(u64 byteCount);
 
+///
+/// \brief Demangle a compiler symbol name
+///
 std::string demangle(std::string_view name);
 
+///
+/// \brief Obtain demangled type name of an object
+///
 template <typename T>
 std::string tName(T const& t)
 {
 	return demangle(typeid(t).name());
 }
 
+///
+/// \brief Obtain demangled type name of a type
+///
 template <typename T>
 std::string tName()
 {
@@ -107,21 +131,39 @@ f64 toF64(std::string_view input, f64 defaultValue = -1.0);
 
 std::string toText(bytearray rawBuffer);
 
-// Slices a string into a pair via the first occurence of a delimiter
+///
+/// \brief Slice a string into a pair via the first occurence of `delimiter`
+///
 std::pair<std::string, std::string> bisect(std::string_view input, char delimiter);
-// Removes all occurrences of toRemove from outInput
+///
+/// \brief Remove all occurrences of `toRemove` from `outInput`
+///
 void removeChars(std::string& outInput, std::initializer_list<char> toRemove);
-// Removes leading and trailing characters
+///
+/// \brief Remove leading and trailing characters
+///
 void trim(std::string& outInput, std::initializer_list<char> toRemove);
-// Removes all tabs and spaces
+///
+/// \brief Remove all tabs and spaces
+///
 void removeWhitespace(std::string& outInput);
-// Tokenises a string via a delimiter, skipping over any delimiters within escape characters
+///
+/// \brief Tokenise a string via `delimiter`, skipping over any delimiters within `escape` characters
+///
 std::vector<std::string> tokenise(std::string_view s, char delimiter, std::initializer_list<std::pair<char, char>> escape);
+///
+/// \brief Tokenise a string in place via `delimiter`, skipping over any delimiters within `escape` characters
+///
 std::vector<std::string_view> tokeniseInPlace(char* szOutBuf, char delimiter, std::initializer_list<std::pair<char, char>> escape);
 
-// Substitutes an input set of chars with a given replacement
-void substituteChars(std::string& outInput, std::initializer_list<std::pair<char, char>> replacements);
-// Returns true if str[idx - 1] = wrapper.first && str[idx + 1] == wrapper.second
+///
+/// \brief Substitute an input set of chars with a given replacement
+///
+void substituteChars(std::string& out_input, std::initializer_list<std::pair<char, char>> replacements);
+///
+/// \brief Check if `str` is enclosed in a pair of `char`s
+/// \returns `true` if `str[idx - 1] = wrapper.first && str[idx + 1] == wrapper.second`
+///
 bool isCharEnclosedIn(std::string_view str, size_t idx, std::pair<char, char> wrapper);
 } // namespace strings
 } // namespace utils

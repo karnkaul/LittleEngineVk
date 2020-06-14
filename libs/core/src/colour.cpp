@@ -75,11 +75,6 @@ Colour& Colour::operator-=(Colour rhs)
 	return *this;
 }
 
-std::string Colour::toString() const
-{
-	return fmt::format("{}, {}, {}, {}", r.rawValue, g.rawValue, b.rawValue, a.rawValue);
-}
-
 glm::vec4 Colour::toVec4() const
 {
 	return {r.toF32(), g.toF32(), b.toF32(), a.toF32()};

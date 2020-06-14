@@ -5,7 +5,9 @@
 
 namespace le
 {
-// \brief Pseudo-JSON serialisable data container
+///
+/// \brief Pseudo-JSON serialisable data container
+///
 class GData
 {
 protected:
@@ -13,7 +15,9 @@ protected:
 
 public:
 	GData();
-	// Pass serialised data to marhshall and load fields
+	///
+	/// \brief Marhshall `serialised` and load fields
+	///
 	explicit GData(std::string serialised);
 	GData(GData&&);
 	GData& operator=(GData&&);
@@ -21,11 +25,18 @@ public:
 	GData& operator=(GData const&);
 	virtual ~GData();
 
-	// Marhshalls and load fields from serialised data
+	///
+	/// \brief Marhshall and load fields from serialised data
+	///
 	bool marshall(std::string serialised);
-	// Returns original raw data, without whitespaces and enclosing braces
+	///
+	/// \brief Unmarshall all fields into a string
+	/// \returns Original raw data, without whitespaces and enclosing braces
+	///
 	[[nodiscard]] std::string unmarshall() const;
-	// Clears raw data and fields
+	///
+	/// \brief Clear raw data and fields
+	///
 	void clear();
 
 	[[nodiscard]] std::string getString(std::string const& key, std::string defaultValue = "") const;

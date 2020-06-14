@@ -1,5 +1,6 @@
 #include "core/job_handle.hpp"
 #include "core/log.hpp"
+#include "core/utils.hpp"
 
 namespace le
 {
@@ -24,11 +25,11 @@ std::any HJob::wait()
 
 bool HJob::hasCompleted() const
 {
-	return !m_future.valid() || m_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
+	return !m_future.valid() || isReady();
 }
 
 bool HJob::isReady() const
 {
-	return m_future.valid() && m_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
+	return utils::isReady(m_future);
 }
 } // namespace le

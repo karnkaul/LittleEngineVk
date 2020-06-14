@@ -14,7 +14,7 @@ u32 Fixed::toU32() const
 		val = -val;
 	}
 	u32 floor = u32(val);
-	if ((floor * f64(SCALE_FACTOR)) - f64(value) >= 0.5)
+	if ((floor * f64(s_scaleFactor)) - f64(value) >= 0.5)
 	{
 		return floor + 1;
 	}
@@ -24,7 +24,7 @@ u32 Fixed::toU32() const
 s32 Fixed::toS32() const
 {
 	s32 floor = s32(toF64());
-	if ((floor * f64(SCALE_FACTOR)) - f64(value) >= 0.5)
+	if ((floor * f64(s_scaleFactor)) - f64(value) >= 0.5)
 	{
 		return floor + 1;
 	}
@@ -33,12 +33,12 @@ s32 Fixed::toS32() const
 
 f32 Fixed::toF32() const
 {
-	return f32(value) / f32(SCALE_FACTOR);
+	return f32(value) / f32(s_scaleFactor);
 }
 
 f64 Fixed::toF64() const
 {
-	return f64(value) / f64(SCALE_FACTOR);
+	return f64(value) / f64(s_scaleFactor);
 }
 
 Fixed Fixed::power(f32 exponent) const
@@ -59,7 +59,7 @@ Fixed Fixed::sqrt() const
 
 Fixed Fixed::inverse() const
 {
-	return Fixed(SCALE_FACTOR, value);
+	return Fixed(s_scaleFactor, value);
 }
 
 Fixed Fixed::sin() const

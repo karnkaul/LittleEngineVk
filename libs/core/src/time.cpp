@@ -32,17 +32,6 @@ std::string Time::toString(Time time)
 	return ret.str();
 }
 
-Time Time::from_ms(s32 milliSeconds)
-{
-	return Time(s64(milliSeconds) * 1000);
-}
-
-Time Time::from_s(f32 seconds)
-{
-	seconds = seconds * 1000.0f * 1000.0f;
-	return Time(s64(seconds));
-}
-
 Time Time::elapsed()
 {
 	return Time(stdch::duration_cast<stdch::microseconds>(stdch::high_resolution_clock::now() - s_localEpoch).count());

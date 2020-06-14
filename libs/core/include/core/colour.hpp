@@ -5,18 +5,34 @@
 
 namespace le
 {
-// \brief Compressed wrapper struct for SFML Color
+///
+/// \brief Compressed wrapper struct for Colour
+///
 struct Colour
 {
 public:
-	static Colour lerp(Colour min, Colour max, f32 alpha);
-
 	UByte r;
 	UByte g;
 	UByte b;
 	UByte a;
 
+	///
+	/// \brief Interpolate between two Colour instances
+	/// \param alpha: [0.0f, 1.0f] fraction of max
+	/// \param max: Colour contributing to alpha
+	/// \param min: Colour contributing to 1.0f - alpha
+	/// \returns interpolated Colour
+	static Colour lerp(Colour min, Colour max, f32 alpha);
+
+	///
+	/// \brief Default constructor
+	///
 	constexpr Colour() = default;
+	///
+	/// \brief Construct from a 32-bit mask (RGBA)
+	///
+	/// eg: 0xffff00ff for opaque yellow
+	///
 	constexpr explicit Colour(u32 mask) noexcept
 	{
 		a = mask & 0xff;
@@ -27,22 +43,63 @@ public:
 		mask >>= 8;
 		r = mask & 0xff;
 	}
+	///
+	/// \brief Construct from a vec4 (XYZW => RGBA)
+	///
 	explicit Colour(glm::vec4 const& colour) noexcept;
+	///
+	/// \brief Construct from a vec3 (XYZ => RGB, A = 0xff)
+	///
 	explicit Colour(glm::vec3 const& colour) noexcept;
+	///
+	/// \brief Construct from a string mask
+	///
+	/// default: RGB => 0x0,  A => 0xff
+	///
 	explicit Colour(std::string_view hex);
 
+	///
+	/// \brief Additive blend
+	///
 	Colour& operator+=(Colour rhs);
+	///
+	/// \brief Additive blend
+	///
 	Colour& operator-=(Colour rhs);
 
-	std::string toString() const;
+	///
+	/// \brief Convert to GLSL format 
+	///
+	/// Each component will be normalised to [0.0f, 1.0f]
+	///
 	glm::vec4 toVec4() const;
+	///
+	/// \brief Convert colour space to sRGB
+	///
 	glm::vec4 toSRGB() const;
+	///
+	/// \brief Convert colour space to RGB
+	///
 	glm::vec4 toRGB() const;
 };
 
+///
+/// \brief Additive blend
+///
 Colour operator+(Colour lhs, Colour rhs);
+///
+/// \brief Additive blend
+///
 Colour operator-(Colour lhs, Colour rhs);
+///
+/// \brief Multiplicative blend
+/// \param n: [0.0f, 1.0f] blend fraction
+///
 Colour& operator*=(f32 n, Colour& colour);
+///
+/// \brief Multiplicative blend
+/// \param n: [0.0f, 1.0f] blend fraction
+///
 Colour operator*(f32 n, Colour colour);
 
 bool operator==(Colour lhs, Colour rhs);

@@ -25,6 +25,11 @@ endif()
 if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 	set(LEVK_USE_PCH OFF CACHE "" BOOL FORCE)
 endif()
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+	option(LEVK_BUILD_TESTS "Build Tests" ON)
+else()
+	option(LEVK_BUILD_TESTS "Build Tests" OFF)
+endif()
 
 # Includes
 include(.cmake/platform.cmake)
@@ -77,7 +82,16 @@ endif()
 add_subdirectory(libs/core)
 add_subdirectory(src)
 
-# demo
+# Demo
 if(LEVK_BUILD_DEMO)
 	add_subdirectory(demo)
+endif()
+
+# Tests
+enable_testing()
+
+if(LEVK_BUILD_TESTS)
+	include(CTest)
+	enable_testing()
+	add_subdirectory(src/tests)
 endif()

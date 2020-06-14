@@ -10,6 +10,9 @@
 
 namespace le
 {
+///
+/// \brief Struct representing a semantic version
+///
 struct Version
 {
 private:
@@ -19,6 +22,9 @@ private:
 	u32 tw;
 
 public:
+	///
+	/// \brief Parse string into version
+	///
 	Version(std::string_view serialised);
 	explicit constexpr Version(u32 major = 0, u32 minor = 0, u32 patch = 0, u32 tweak = 0) noexcept
 		: mj(major), mn(minor), pa(patch), tw(tweak)
@@ -32,6 +38,9 @@ public:
 	u32 tweak() const;
 	std::string toString(bool bFull) const;
 
+	///
+	/// \brief Upgrade version if less than rhs
+	///
 	bool upgrade(Version const& rhs);
 
 	bool operator==(Version const& rhs);

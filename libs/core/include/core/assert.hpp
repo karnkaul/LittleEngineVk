@@ -20,5 +20,8 @@
 
 namespace le
 {
+///
+/// \brief Trigger a break (if debugger present) / assert if predicate is false
+///
 void assertMsg(bool predicate, std::string_view message, std::string_view fileName, u64 lineNumber);
 } // namespace le

@@ -7,3 +7,6 @@
 [submodule "external/glfw"]
 	path = external/glfw
 	url = https://github.com/glfw/glfw
+[submodule "docs"]
+	path = docs
+	url = https://github.com/karnkaul/levk-docs.git

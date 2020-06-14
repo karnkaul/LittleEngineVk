@@ -1,18 +1,14 @@
 #include <array>
 #include <string>
 #include "core/jobs.hpp"
-#include "core/log.hpp"
 #include "core/profiler.hpp"
 #include "core/threads.hpp"
 #include "core/maths.hpp"
 #include "core/utils.hpp"
 #include "engine/ecs/registry.hpp"
-#include "ecs_test.hpp"
 
 using namespace le;
 
-namespace test
-{
 namespace
 {
 struct A
@@ -35,9 +31,10 @@ struct F
 };
 } // namespace
 
-s32 ecs::run()
+int main()
 {
 	{
+		jobs::Service service(4);
 		Registry registry(Registry::DestroyMode::eImmediate);
 		registry.m_logLevel.reset();
 		constexpr s32 entityCount = 10000;
@@ -134,7 +131,6 @@ s32 ecs::run()
 		}
 		{
 			constexpr s32 viewIters = 10;
-			Profiler p(fmt::format("6x{} views ({} entities, 1-6 components)", viewIters, entityCount));
 			for (s32 i = 0; i < viewIters; ++i)
 			{
 				auto viewA = registry.view<A>();
@@ -143,8 +139,6 @@ s32 ecs::run()
 				auto viewAB = registry.view<A, B>();
 				auto viewABC = registry.view<A, B, C>();
 				auto viewCEF = registry.view<C, E, F>();
-				LOG_I("Counts: A: {}, B: {}, C: {}, AB: {}, ABC: {}, CEF: {}", viewA.size(), viewB.size(), viewC.size(), viewAB.size(),
-					  viewABC.size(), viewCEF.size());
 			}
 		}
 		jobs::waitIdle();
@@ -153,7 +147,5 @@ s32 ecs::run()
 		//		toggle multiple objects multiple times
 		// - spawn, add, get, destroy
 	}
-	LOG_I("[test] ECS test passed");
 	return 0;
 }
-} // namespace test

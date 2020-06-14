@@ -9,15 +9,27 @@
 
 namespace le::maths
 {
+///
+/// \brief Obtain a random number between min and max
+///
 template <typename T>
 T randomRange(T min, T max);
 
+///
+/// \brief Linearly interpolate between `min` to `max` based on `alpha`
+///
 template <typename T>
 T lerp(T const& min, T const& max, f32 alpha);
 
+///
+/// \brief Check whether `abs(lhs - rhs)` is less than `epsilon`
+///
 template <typename T>
 bool equals(T lhs, T rhs, T epsilon = std::numeric_limits<T>::epsilon());
 
+///
+/// \brief Random Number Generator
+///
 class Random
 {
 protected:
@@ -25,14 +37,23 @@ protected:
 	std::mt19937 m_engine;
 
 public:
+	///
+	/// \brief Recreate and seed the engine with `value`
+	///
 	inline void seed(std::optional<u32> value = {})
 	{
 		m_engine = std::mt19937(value ? *value : m_device());
 	}
 
+	///
+	/// \brief Obtain a random number given `Dist` distrubtion
+	///
 	template <typename T, template <typename> typename Dist, typename... Args>
 	T inRange(Args... args);
 
+	///
+	/// \brief Obtain an integral/floating point random number using a uniform distribution
+	///
 	template <typename T>
 	T inRange(T min, T max);
 };

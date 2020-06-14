@@ -21,33 +21,17 @@
 #include "engine/gfx/shader.hpp"
 #include "engine/gfx/texture.hpp"
 #include "engine/window/window.hpp"
-#include "tests/ecs_test.hpp"
 
 using namespace le;
 
 namespace
 {
 std::unique_ptr<IOReader> g_uReader;
-bool g_bRunTests = false;
-
-bool runTests()
-{
-	if (test::ecs::run() != 0)
-	{
-		ASSERT(false, "ECS test failed!");
-		return false;
-	}
-	return true;
-}
 } // namespace
 
 int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
-	if (g_bRunTests && !runTests())
-	{
-		return 1;
-	}
 	g_uReader = std::make_unique<FileReader>();
 	{
 		auto [engineData, bResult] = FileReader::findUpwards(engine::exePath(), {"engine_data"});
@@ -73,10 +57,10 @@ int main(int argc, char** argv)
 		{
 			return 1;
 		}
-		if (!engine.start(*g_uReader))
-		{
-			return 1;
-		}
+	}
+	if (!engine.start(*g_uReader))
+	{
+		return 1;
 	}
 	Registry registry;
 	gfx::Mesh::Info triangle0info;

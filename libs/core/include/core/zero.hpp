@@ -2,7 +2,9 @@
 
 namespace le
 {
-// Encapsulates Zero initialised T (primitive type)
+///
+/// \brief Struct to encapsulate zero-initialised `T` (primitive type)
+///
 template <typename T, T Zero = 0>
 struct TZero final
 {

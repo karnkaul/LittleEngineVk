@@ -10,6 +10,9 @@
 
 namespace le
 {
+///
+/// \brief Type-erased container for objects used as services
+///
 class Services final
 {
 private:
@@ -38,12 +41,21 @@ public:
 	~Services();
 
 public:
+	///
+	/// \brief Add a new service object
+	///
 	template <typename T, typename... Args>
 	T& add(Args&&... args);
 
+	///
+	/// \brief Locate an existing service object
+	///
 	template <typename T>
 	T* locate();
 
+	///
+	/// \brief Locate an existing service object
+	///
 	template <typename T>
 	T const* locate() const;
 };

@@ -8,14 +8,23 @@ namespace le
 namespace stdch = std::chrono;
 using namespace std::chrono_literals;
 
+///
+/// \brief Wrapper for a time span
+///
+/// Not a time point!
+///
 struct Time
 {
 	stdch::microseconds usecs;
 
 	static std::string toString(Time time);
-	static Time from_ms(s32 milliSeconds);
-	static Time from_s(f32 seconds);
+	///
+	/// \brief Obtain time elapsed since clock was reset (since epoch if never reset)
+	///
 	static Time elapsed();
+	///
+	/// \brief Obtain time elapsed since epoch
+	///
 	static Time sinceEpoch();
 	static Time clamp(Time val, Time min, Time max);
 	static void resetElapsed();
@@ -28,7 +37,13 @@ struct Time
 	explicit constexpr Time(s64 usecs) noexcept : usecs(usecs) {}
 	explicit constexpr Time(stdch::microseconds usecs) noexcept : usecs(usecs) {}
 
+	///
+	/// \brief Scale time by `magnitude`
+	///
 	Time& scale(f32 magnitude);
+	///
+	/// \brief Obtained scaled time
+	///
 	Time scaled(f32 magnitude) const;
 
 	Time& operator-();
@@ -44,8 +59,17 @@ struct Time
 	bool operator>(Time const& rhs);
 	bool operator>=(Time const& rhs);
 
+	///
+	/// \brief Serialise to seconds
+	///
 	f32 to_s() const;
+	///
+	/// \brief Serialise to milliseconds
+	///
 	s32 to_ms() const;
+	///
+	/// \brief Serialise to microseconds
+	///
 	s64 to_us() const;
 };
 

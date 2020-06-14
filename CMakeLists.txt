@@ -17,13 +17,26 @@ option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
 option(LEVK_USE_IMGUI "Use ImGui" ON)
 option(LEVK_BUILD_DEMO "Build demo" ON)
+option(LEVK_BUILD_DOCS "Build documentation (Requires Doxygen)" ON)
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
 	option(LEVK_EDITOR "Enable Editor" ON)
 else()
 	option(LEVK_EDITOR "Enable Editor" OFF)
 endif()
 if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
-	set(LEVK_USE_PCH OFF CACHE "" BOOL FORCE)
+	set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
+endif()
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+	option(LEVK_BUILD_TESTS "Build Tests" ON)
+else()
+	option(LEVK_BUILD_TESTS "Build Tests" OFF)
+endif()
+
+execute_process(COMMAND doxygen --version RESULT_VARIABLE DOXYGEN_NOTFOUND OUTPUT_QUIET)
+if(DOXYGEN_NOTFOUND)
+	set(LEVK_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+else()
+	set(LEVK_DOXYGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE STRING "" FORCE)
 endif()
 
 # Includes
@@ -77,7 +90,16 @@ endif()
 add_subdirectory(libs/core)
 add_subdirectory(src)
 
-# demo
+# Demo
 if(LEVK_BUILD_DEMO)
 	add_subdirectory(demo)
+endif()
+
+# Tests
+enable_testing()
+
+if(LEVK_BUILD_TESTS)
+	include(CTest)
+	enable_testing()
+	add_subdirectory(src/tests)
 endif()

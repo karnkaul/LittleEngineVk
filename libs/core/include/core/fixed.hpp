@@ -4,20 +4,22 @@
 
 namespace le
 {
-// \brief Fixed point POD using constant scale factor
+///
+/// \brief Fixed point POD using constant integral scale factor
+///
 struct Fixed final
 {
 public:
-	static constexpr u32 SCALE_FACTOR = 10000;
+	static constexpr u32 s_scaleFactor = 10000;
 
 private:
 	s32 value;
 
 public:
 	constexpr Fixed() noexcept : value(0) {}
-	constexpr explicit Fixed(f32 value) noexcept : value(s32(value * SCALE_FACTOR)) {}
-	constexpr explicit Fixed(f64 value) noexcept : value(s32(value * SCALE_FACTOR)) {}
-	constexpr Fixed(s32 numerator, s32 denominator = 1) noexcept : value(s32(s64(numerator) * s64(SCALE_FACTOR) / s64(denominator))){};
+	constexpr explicit Fixed(f32 value) noexcept : value(s32(value * s_scaleFactor)) {}
+	constexpr explicit Fixed(f64 value) noexcept : value(s32(value * s_scaleFactor)) {}
+	constexpr Fixed(s32 numerator, s32 denominator = 1) noexcept : value(s32(s64(numerator) * s64(s_scaleFactor) / s64(denominator))){};
 
 	u32 toU32() const;
 	s32 toS32() const;
@@ -78,7 +80,7 @@ inline Fixed& Fixed::operator-=(Fixed rhs)
 inline Fixed& Fixed::operator*=(Fixed rhs)
 {
 	s64 largeVal = static_cast<s64>(value) * static_cast<s64>(rhs.value);
-	value = s32(largeVal / SCALE_FACTOR);
+	value = s32(largeVal / s_scaleFactor);
 	return *this;
 }
 
@@ -90,7 +92,7 @@ inline Fixed& Fixed::operator/=(Fixed rhs)
 	}
 	else
 	{
-		s64 largeVal = static_cast<s64>(value) * SCALE_FACTOR;
+		s64 largeVal = static_cast<s64>(value) * s_scaleFactor;
 		value = s32(largeVal / rhs.value);
 	}
 	return *this;

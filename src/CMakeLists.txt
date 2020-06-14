@@ -82,3 +82,9 @@ if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 	)
 	target_precompile_headers(${PROJECT_NAME} PRIVATE ${PRECOMPILE})
 endif()
+
+# Docs
+if(LEVK_BUILD_DOCS)
+	set(BUILD_DOCS_CMD echo "Running Doxygen..." && doxygen Doxyfile)
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${BUILD_DOCS_CMD} WORKING_DIRECTORY "${LEVK_DOXYGEN_DIR}")
+endif()

@@ -54,14 +54,23 @@
 
 namespace le::log
 {
+///
+/// \brief RAII wrapper for file logging
+///
 struct Service final
 {
 	Service(std::filesystem::path const& path, Time pollRate = 500ms);
 	~Service();
 };
 
+///
+/// \brief Print to `stdout`
+///
 void logText(Level level, std::string text, std::string_view file, u64 line);
 
+///
+/// \brief Print to `stdout`
+///
 template <typename... Args>
 void fmtLog(Level level, std::string_view text, std::string_view file, u64 line, Args... args)
 {
@@ -82,6 +91,14 @@ void fmtLog(Level level, std::string_view text, std::string_view file, u64 line,
 	}
 }
 
+///
+/// \brief Start file logging (on another thread)
+/// \param path fully qualified path to store log file as
+/// \param pollRate rate at which file logging thread polls for new logs
+///
 void logToFile(std::filesystem::path path, Time pollRate = 500ms);
+///
+/// \brief Stop file logging
+///
 void stopFileLogging();
 } // namespace le::log

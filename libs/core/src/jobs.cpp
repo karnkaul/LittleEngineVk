@@ -39,7 +39,7 @@ jobs::Service::Service(u8 workerCount, bool bFlushQueue) : bFlushQueue(bFlushQue
 
 jobs::Service::~Service()
 {
-	cleanup(bFlushQueue);
+	deinit(bFlushQueue);
 }
 
 void jobs::init(u32 workerCount)
@@ -56,7 +56,7 @@ void jobs::init(u32 workerCount)
 	return;
 }
 
-void jobs::cleanup(bool bFlushQueue)
+void jobs::deinit(bool bFlushQueue)
 {
 	if (bFlushQueue && uManager)
 	{

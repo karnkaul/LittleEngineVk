@@ -114,9 +114,9 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask const& indexe
 
 bool JobManager::isIdle() const
 {
-	for (auto& gameWorker : m_jobWorkers)
+	for (auto& worker : m_jobWorkers)
 	{
-		if (gameWorker->m_state.load() == JobWorker::State::eBusy)
+		if (worker->m_state.load() == JobWorker::State::eBusy)
 		{
 			return false;
 		}

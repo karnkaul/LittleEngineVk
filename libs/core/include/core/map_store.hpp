@@ -6,6 +6,9 @@
 
 namespace le
 {
+///
+/// \brief Convenience wrapper for storing mapped objects
+///
 template <typename MapContainer>
 class TMapStore final
 {
@@ -20,13 +23,34 @@ private:
 	mutable std::mutex m_mutex;
 
 public:
+	///
+	/// \brief Construct and emplace object mapped to `id`
+	///
 	template <typename... Args>
 	void emplace(Key const& id, Args&&... args);
+	///
+	/// \brief Find object mapped to `id`
+	///
 	[[nodiscard]] TResult<Value const*> find(Key const& id) const;
+	///
+	/// \brief Find object mapped to `id`
+	///
 	[[nodiscard]] TResult<Value*> find(Key const& id);
+	///
+	/// \brief Check whether `id` has been loaded
+	///
 	[[nodiscard]] bool isLoaded(Key const& id) const;
+	///
+	/// \brief Destroy object mapped to `id`
+	///
 	bool unload(Key const& id);
+	///
+	/// \brief Destroy all objects
+	///
 	void unloadAll();
+	///
+	/// \brief Obtain number of loaded objects
+	///
 	u64 count() const;
 };
 

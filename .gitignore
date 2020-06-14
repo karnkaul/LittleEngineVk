@@ -2,6 +2,7 @@
 **/.vscode/*
 **/compile_commands.json
 **/.clangd
+Testing/*
 build/*
 out/*
 redist/*
@@ -17,4 +18,3 @@ CMakeSettings.json
 debug.log*
 # Dear ImGui config (local)
 imgui.ini
-

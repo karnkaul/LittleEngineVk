@@ -16,6 +16,12 @@
 #if defined(far)
 #undef far
 #endif
+#if defined(min)
+#undef min
+#endif
+#if defined(max)
+#undef max
+#endif
 
 namespace le
 {
@@ -48,6 +54,9 @@ struct TrueType final : std::true_type
 {
 };
 
+///
+/// \brief Structured Binding of a payload and a `bool` (indicating the result of an operation)
+///
 template <typename T>
 struct TResult
 {
@@ -61,12 +70,18 @@ struct TResult
 	TResult(T&& payload, bool bResult) : payload(std::forward<T&&>(payload)), bResult(bResult) {}
 };
 
+///
+/// \brief Obtain the number of elements in a stack array
+///
 template <typename T, size_t N>
 constexpr size_t arraySize(T (&)[N])
 {
 	return N;
 }
 
+///
+/// \brief Obtain the max value for `T`
+///
 template <typename T>
 constexpr T maxVal()
 {

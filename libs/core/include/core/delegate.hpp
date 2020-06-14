@@ -7,6 +7,9 @@
 
 namespace le
 {
+///
+/// \brief Wrapper for thread-safe invocation of multiple registered callbacks
+///
 template <typename... Args>
 class Delegate
 {
@@ -30,16 +33,34 @@ private:
 	mutable std::mutex m_mutex;
 
 public:
-	// Returns shared_ptr to be owned by caller
+	///
+	/// \brief Register callback and obtain token
+	/// \returns Subscription token (discard to unregister)
+	///
 	[[nodiscard]] Token subscribe(Callback callback);
-	// Cleans up dead callbacks; returns live count
+	///
+	/// \brief Clean up dead callbacks and invoke the rest
+	/// \returns Count of registered callbacks
+	///
 	uint32_t operator()(Args... t);
-	// Skips dead callbacks; returns live count
+	///
+	/// \brief Skip dead callbacks and invoke the rest; returns live count
+	/// \returns Count of registered callbacks
+	///
 	uint32_t operator()(Args... t) const;
-	// Returns true if any previously distributed Token is still alive
+	///
+	/// \brief Check if any registered callbacks exist
+	/// \returns `true` if any previously distributed Token is still alive
+	///
+	/// Calls `cleanup()`
 	[[nodiscard]] bool isAlive();
+	///
+	/// \brief Clear all registered callbacks
+	///
 	void clear();
-	// Remove expired weak_ptrs
+	///
+	/// \brief Remove unregistered callbacks
+	///
 	void cleanup();
 };
 

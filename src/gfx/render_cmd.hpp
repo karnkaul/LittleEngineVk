@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
-#include "core/assert.hpp"
-#include "pipeline_impl.hpp"
+#include <core/assert.hpp>
+#include <gfx/pipeline_impl.hpp>
 
 namespace le::gfx
 {

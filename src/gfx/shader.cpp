@@ -1,12 +1,12 @@
 #include <algorithm>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/io.hpp"
-#include "core/utils.hpp"
-#include "engine/gfx/shader.hpp"
-#include "device.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/io.hpp>
+#include <core/utils.hpp>
+#include <engine/gfx/shader.hpp>
+#include <gfx/device.hpp>
 #if defined(LEVK_SHADER_COMPILER)
-#include "core/os.hpp"
+#include <core/os.hpp>
 #endif
 
 namespace le::gfx

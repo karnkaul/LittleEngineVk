@@ -1,13 +1,13 @@
 #include <array>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/os.hpp"
-#include "core/threads.hpp"
-#include "core/utils.hpp"
-#include "gfx/common.hpp"
-#include "gfx/device.hpp"
-#include "gfx/ext_gui.hpp"
-#include "gfx/renderer_impl.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/os.hpp>
+#include <core/threads.hpp>
+#include <core/utils.hpp>
+#include <gfx/common.hpp>
+#include <gfx/device.hpp>
+#include <gfx/ext_gui.hpp>
+#include <gfx/renderer_impl.hpp>
 #if defined(LEVK_USE_GLFW)
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
@@ -15,7 +15,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #endif
-#include "window_impl.hpp"
+#include <window/window_impl.hpp>
 
 namespace le
 {
@@ -800,6 +800,18 @@ std::string_view WindowImpl::toString([[maybe_unused]] s32 key)
 	ret = glfwGetKeyName(key, 0);
 #endif
 	return ret;
+}
+
+bool WindowImpl::anyActive()
+{
+	for (auto pWindow : g_registeredWindows)
+	{
+		if (pWindow->isOpen())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void WindowImpl::pollEvents()

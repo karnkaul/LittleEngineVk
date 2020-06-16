@@ -1,7 +1,7 @@
 #include <fmt/format.h>
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/assets/asset.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/assets/asset.hpp>
 
 namespace le
 {

@@ -2,9 +2,9 @@
 #include <array>
 #include <memory>
 #include <glm/glm.hpp>
-#include "core/gdata.hpp"
-#include "engine/assets/asset.hpp"
-#include "engine/gfx/mesh.hpp"
+#include <core/gdata.hpp>
+#include <engine/assets/asset.hpp>
+#include <engine/gfx/mesh.hpp>
 
 namespace le::gfx
 {

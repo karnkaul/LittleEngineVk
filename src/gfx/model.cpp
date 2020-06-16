@@ -3,14 +3,14 @@
 #include <fmt/format.h>
 #include <glm/gtx/hash.hpp>
 #include <tinyobjloader/tiny_obj_loader.h>
-#include "core/assert.hpp"
-#include "core/colour.hpp"
-#include "core/profiler.hpp"
-#include "core/gdata.hpp"
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/gfx/model.hpp"
-#include "device.hpp"
+#include <core/assert.hpp>
+#include <core/colour.hpp>
+#include <core/profiler.hpp>
+#include <core/gdata.hpp>
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/gfx/model.hpp>
+#include <gfx/device.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_PROFILE_MODEL_LOADS)

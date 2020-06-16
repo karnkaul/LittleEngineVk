@@ -1,12 +1,12 @@
 #include <algorithm>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/gfx/mesh.hpp"
-#include "engine/assets/resources.hpp"
-#include "common.hpp"
-#include "deferred.hpp"
-#include "vram.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <engine/assets/resources.hpp>
+#include <gfx/common.hpp>
+#include <gfx/deferred.hpp>
+#include <gfx/vram.hpp>
 
 namespace le::gfx
 {

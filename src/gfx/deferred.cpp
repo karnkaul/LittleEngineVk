@@ -1,8 +1,8 @@
-#include "deferred.hpp"
-#include "renderer_impl.hpp"
-#include "device.hpp"
-#include "vram.hpp"
-#include "window/window_impl.hpp"
+#include <gfx/deferred.hpp>
+#include <gfx/renderer_impl.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
+#include <window/window_impl.hpp>
 
 namespace le::gfx
 {

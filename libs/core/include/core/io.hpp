@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <sstream>
 #include <string_view>
-#include "utils.hpp"
+#include <core/utils.hpp>
 
 namespace le
 {
@@ -36,11 +36,11 @@ public:
 	///
 	/// \brief Check if `id`s are present to load, and log errors if not
 	///
-	[[nodiscard]] bool checkPresences(std::initializer_list<stdfs::path> ids) const;
+	[[nodiscard]] bool checkPresences(Span<stdfs::path> ids) const;
 	///
 	/// \brief Check if `id`s are present to load, and log errors if not
 	///
-	[[nodiscard]] bool checkPresences(ArrayView<stdfs::path const> ids) const;
+	[[nodiscard]] bool checkPresences(std::initializer_list<stdfs::path> ids) const;
 	///
 	/// \brief Obtain data as `std::string`
 	/// \returns Structured binding of data and a `bool` indicating success/failure
@@ -78,7 +78,7 @@ protected:
 class FileReader final : public IOReader
 {
 private:
-	std::vector<stdfs::path> m_prefixes;
+	std::vector<stdfs::path> m_dirs;
 
 public:
 	///
@@ -87,14 +87,14 @@ public:
 	/// \param anyOf list of `id`s to search for a match for
 	/// \param maxHeight maximum recursive depth
 	///
-	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
+	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight = 10);
 	///
 	/// \brief Obtain full path to directory containing any of `anyOf` `id`s.
 	/// \param leaf directory to start searching upwards from
 	/// \param anyOf list of `id`s to search for a match for
 	/// \param maxHeight maximum recursive depth
 	///
-	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight = 10);
+	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
 
 public:
 	FileReader() noexcept;
@@ -125,6 +125,9 @@ private:
 ///
 class ZIPReader final : public IOReader
 {
+private:
+	std::vector<stdfs::path> m_zips;
+
 public:
 	ZIPReader();
 

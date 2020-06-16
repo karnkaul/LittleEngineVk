@@ -4,13 +4,13 @@
 #include <unordered_map>
 #include <thread>
 #include <fmt/format.h>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/threads.hpp"
-#include "core/utils.hpp"
-#include "device.hpp"
-#include "vram.hpp"
-#include "renderer_impl.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/threads.hpp>
+#include <core/utils.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
+#include <gfx/renderer_impl.hpp>
 
 namespace le::gfx
 {
@@ -448,7 +448,7 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 	return;
 }
 
-std::future<void> vram::copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, LayoutTransition layouts)
+std::future<void> vram::copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutTransition layouts)
 {
 	size_t imgSize = 0;
 	size_t layerSize = 0;

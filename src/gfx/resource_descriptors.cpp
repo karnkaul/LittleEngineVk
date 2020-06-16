@@ -1,9 +1,9 @@
-#include "core/log.hpp"
-#include "device.hpp"
-#include "vram.hpp"
-#include "resource_descriptors.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/texture.hpp"
+#include <core/log.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
+#include <gfx/resource_descriptors.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/texture.hpp>
 
 namespace le::gfx
 {

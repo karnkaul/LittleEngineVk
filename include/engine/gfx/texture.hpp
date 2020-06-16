@@ -2,8 +2,8 @@
 #include <array>
 #include <string>
 #include <glm/glm.hpp>
-#include "core/std_types.hpp"
-#include "engine/assets/asset.hpp"
+#include <core/std_types.hpp>
+#include <engine/assets/asset.hpp>
 
 namespace le::gfx
 {
@@ -66,7 +66,7 @@ public:
 	};
 	struct Raw final
 	{
-		ArrayView<u8> bytes;
+		Span<u8> bytes;
 		glm::ivec2 size = {};
 	};
 	struct Info final

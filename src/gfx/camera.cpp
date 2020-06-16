@@ -1,12 +1,12 @@
 #include <algorithm>
 #include <glm/gtx/quaternion.hpp>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/maths.hpp"
-#include "engine/gfx/geometry.hpp"
-#include "engine/gfx/camera.hpp"
-#include "engine/window/input_types.hpp"
-#include "engine/window/window.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/maths.hpp>
+#include <engine/gfx/geometry.hpp>
+#include <engine/gfx/camera.hpp>
+#include <engine/window/input_types.hpp>
+#include <engine/window/window.hpp>
 
 namespace le::gfx
 {

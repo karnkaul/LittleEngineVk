@@ -1,6 +1,6 @@
 #pragma once
 #include <functional>
-#include "common.hpp"
+#include <gfx/common.hpp>
 
 namespace le::gfx::deferred
 {

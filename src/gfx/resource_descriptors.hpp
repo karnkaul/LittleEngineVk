@@ -1,17 +1,17 @@
 #pragma once
 #include <deque>
 #include <vector>
-#include "core/assert.hpp"
-#include "core/flags.hpp"
-#include "core/utils.hpp"
-#include "engine/gfx/mesh.hpp"
-#include "engine/gfx/light.hpp"
-#include "engine/gfx/renderer.hpp"
-#include "common.hpp"
-#include "deferred.hpp"
-#include "vram.hpp"
+#include <core/assert.hpp>
+#include <core/flags.hpp>
+#include <core/utils.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <engine/gfx/light.hpp>
+#include <engine/gfx/renderer.hpp>
+#include <gfx/common.hpp>
+#include <gfx/deferred.hpp>
+#include <gfx/vram.hpp>
 #if defined(LEVK_VKRESOURCE_NAMES)
-#include "core/utils.hpp"
+#include <core/utils.hpp>
 #endif
 
 namespace le::gfx

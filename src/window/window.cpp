@@ -1,8 +1,8 @@
 #include <memory>
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/window/window.hpp"
-#include "window_impl.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/window/window.hpp>
+#include <window/window_impl.hpp>
 
 namespace le
 {
@@ -42,6 +42,11 @@ Window::~Window()
 {
 	m_uImpl.reset();
 	LOG_I("[{}:{}] destroyed", s_tName, m_id);
+}
+
+bool Window::anyActive()
+{
+	return WindowImpl::anyActive();
 }
 
 void Window::pollEvents()

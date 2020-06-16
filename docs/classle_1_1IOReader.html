@@ -87,12 +87,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:acea63bde240832bd293551a03247ada2"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1IOReader.html#acea63bde240832bd293551a03247ada2">checkPresence</a> (stdfs::path const &amp;id) const</td></tr>
 <tr class="memdesc:acea63bde240832bd293551a03247ada2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check if an <code>id</code> is present to load, and log an error if not.  <a href="classle_1_1IOReader.html#acea63bde240832bd293551a03247ada2">More...</a><br /></td></tr>
 <tr class="separator:acea63bde240832bd293551a03247ada2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aefdd1b7bcf6ed41807e74e5c63b010da"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1IOReader.html#aefdd1b7bcf6ed41807e74e5c63b010da">checkPresences</a> (<a class="el" href="structle_1_1Span.html">Span</a>&lt; stdfs::path &gt; ids) const</td></tr>
+<tr class="memdesc:aefdd1b7bcf6ed41807e74e5c63b010da"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check if <code>id</code>s are present to load, and log errors if not.  <a href="classle_1_1IOReader.html#aefdd1b7bcf6ed41807e74e5c63b010da">More...</a><br /></td></tr>
+<tr class="separator:aefdd1b7bcf6ed41807e74e5c63b010da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ec8a69f98e0d9e0499a5386beb7ee1a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1IOReader.html#a0ec8a69f98e0d9e0499a5386beb7ee1a">checkPresences</a> (std::initializer_list&lt; stdfs::path &gt; ids) const</td></tr>
 <tr class="memdesc:a0ec8a69f98e0d9e0499a5386beb7ee1a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check if <code>id</code>s are present to load, and log errors if not.  <a href="classle_1_1IOReader.html#a0ec8a69f98e0d9e0499a5386beb7ee1a">More...</a><br /></td></tr>
 <tr class="separator:a0ec8a69f98e0d9e0499a5386beb7ee1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a56b1e41d084622642a85d5797bf53e40"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1IOReader.html#a56b1e41d084622642a85d5797bf53e40">checkPresences</a> (<a class="el" href="structle_1_1ArrayView.html">ArrayView</a>&lt; stdfs::path const &gt; ids) const</td></tr>
-<tr class="memdesc:a56b1e41d084622642a85d5797bf53e40"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check if <code>id</code>s are present to load, and log errors if not.  <a href="classle_1_1IOReader.html#a56b1e41d084622642a85d5797bf53e40">More...</a><br /></td></tr>
-<tr class="separator:a56b1e41d084622642a85d5797bf53e40"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6d4a5a4036246dc8fcaced015ae42845"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structle_1_1TResult.html">TResult</a>&lt; std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1IOReader.html#a6d4a5a4036246dc8fcaced015ae42845">getString</a> (stdfs::path const &amp;id) const</td></tr>
 <tr class="memdesc:a6d4a5a4036246dc8fcaced015ae42845"><td class="mdescLeft">&#160;</td><td class="mdescRight">Obtain data as <code>std::string</code>  <a href="classle_1_1IOReader.html#a6d4a5a4036246dc8fcaced015ae42845">More...</a><br /></td></tr>
 <tr class="separator:a6d4a5a4036246dc8fcaced015ae42845"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -237,8 +237,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a56b1e41d084622642a85d5797bf53e40"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a56b1e41d084622642a85d5797bf53e40">&#9670;&nbsp;</a></span>checkPresences() <span class="overload">[1/2]</span></h2>
+<a id="aefdd1b7bcf6ed41807e74e5c63b010da"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aefdd1b7bcf6ed41807e74e5c63b010da">&#9670;&nbsp;</a></span>checkPresences() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -246,7 +246,7 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="memname">bool le::IOReader::checkPresences </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structle_1_1ArrayView.html">ArrayView</a>&lt; stdfs::path const &gt;&#160;</td>
+          <td class="paramtype"><a class="el" href="structle_1_1Span.html">Span</a>&lt; stdfs::path &gt;&#160;</td>
           <td class="paramname"><em>ids</em></td><td>)</td>
           <td> const</td>
         </tr>

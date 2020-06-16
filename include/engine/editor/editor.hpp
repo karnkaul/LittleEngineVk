@@ -1,7 +1,7 @@
 #pragma once
 #if defined(LEVK_EDITOR)
 #include <glm/glm.hpp>
-#include "engine/gfx/renderer.hpp"
+#include <engine/gfx/renderer.hpp>
 
 namespace le::editor
 {

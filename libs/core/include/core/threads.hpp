@@ -1,9 +1,9 @@
 #pragma once
 #include <functional>
 #include <thread>
-#include "std_types.hpp"
-#include "time.hpp"
-#include "zero.hpp"
+#include <core/std_types.hpp>
+#include <core/time.hpp>
+#include <core/zero.hpp>
 
 namespace le
 {

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
-#include "core/io.hpp"
-#include "core/zero.hpp"
+#include <core/io.hpp>
+#include <core/zero.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_ASSET_HOT_RELOAD)
@@ -15,7 +15,7 @@
 #if defined(LEVK_ASSET_HOT_RELOAD)
 #include <functional>
 #include <unordered_set>
-#include "core/time.hpp"
+#include <core/time.hpp>
 #endif
 
 namespace le
@@ -38,16 +38,7 @@ public:
 #if defined(LEVK_ASSET_HOT_RELOAD)
 protected:
 	// encapsulates file-level reload logic
-	struct File final
-	{
-		FileMonitor monitor;
-		// file-level callback, invoked when modified, aborts reload on receiving false
-		std::function<bool(File const*)> onModified;
-		// Asset ID
-		stdfs::path id;
-
-		File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode, std::function<bool(File const*)> onModified);
-	};
+	struct File;
 
 protected:
 	// add files to track here (in derived constructor)
@@ -94,4 +85,17 @@ protected:
 private:
 	friend class Resources;
 };
+
+#if defined(LEVK_ASSET_HOT_RELOAD)
+struct Asset::File final
+{
+	FileMonitor monitor;
+	// file-level callback, invoked when modified, aborts reload on receiving false
+	std::function<bool(File const*)> onModified;
+	// Asset ID
+	stdfs::path id;
+
+	File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode, std::function<bool(File const*)> onModified);
+};
+#endif
 } // namespace le

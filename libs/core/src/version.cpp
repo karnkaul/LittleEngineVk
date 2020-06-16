@@ -1,8 +1,8 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include "core/version.hpp"
-#include "core/utils.hpp"
+#include <core/version.hpp>
+#include <core/utils.hpp>
 
 namespace le
 {

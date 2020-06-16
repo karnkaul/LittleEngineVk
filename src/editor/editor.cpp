@@ -1,22 +1,14 @@
-// TODO: REMOVE
-#if !defined(LEVK_EDITOR)
-#define LEVK_EDITOR
-#endif
-#if !defined(LEVK_USE_IMGUI)
-#define LEVK_USE_IMGUI
-#endif
-
 #include <deque>
 #include <mutex>
-#include "core/log_config.hpp"
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/editor/editor.hpp"
+#include <core/log_config.hpp>
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/editor/editor.hpp>
 #if defined(LEVK_EDITOR)
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
 #endif
-#include "gfx/ext_gui.hpp"
+#include <gfx/ext_gui.hpp>
 
 namespace le
 {

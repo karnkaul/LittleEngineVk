@@ -1,7 +1,7 @@
 #pragma once
 #include <atomic>
-#include "core/std_types.hpp"
-#include "core/threads.hpp"
+#include <core/std_types.hpp>
+#include <core/threads.hpp>
 
 namespace le
 {

@@ -11,7 +11,7 @@ redist/*
 # RenderDoc capture config (local)
 *.cap
 # SPIR-V shaders (generated)
-engine_data/shaders/*.spv
+*.spv
 # Visual Studio config (local)
 CMakeSettings.json
 # Log files (local)

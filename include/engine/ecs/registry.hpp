@@ -10,9 +10,9 @@
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
-#include "core/flags.hpp"
-#include "core/log_config.hpp"
-#include "core/std_types.hpp"
+#include <core/flags.hpp>
+#include <core/log_config.hpp>
+#include <core/std_types.hpp>
 
 namespace le
 {

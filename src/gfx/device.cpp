@@ -1,14 +1,14 @@
 #include <algorithm>
 #include <memory>
 #include <set>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "window/window_impl.hpp"
-#include "deferred.hpp"
-#include "device.hpp"
-#include "vram.hpp"
-#include "resource_descriptors.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <window/window_impl.hpp>
+#include <gfx/deferred.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
+#include <gfx/resource_descriptors.hpp>
 
 namespace le::gfx
 {
@@ -490,7 +490,7 @@ bool Device::isSignalled(vk::Fence fence) const
 	return true;
 }
 
-bool Device::allSignalled(ArrayView<vk::Fence const> fences) const
+bool Device::allSignalled(Span<vk::Fence const> fences) const
 {
 	return std::all_of(fences.begin(), fences.end(), [this](auto fence) { return isSignalled(fence); });
 }

@@ -1,26 +1,28 @@
+#if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
-#include "core/assert.hpp"
-#include "core/gdata.hpp"
-#include "core/io.hpp"
-#include "core/jobs.hpp"
-#include "core/log.hpp"
-#include "core/maths.hpp"
-#include "core/map_store.hpp"
-#include "core/transform.hpp"
-#include "engine/levk.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/ecs/registry.hpp"
-#include "engine/editor/editor.hpp"
-#include "engine/gfx/camera.hpp"
-#include "engine/gfx/font.hpp"
-#include "engine/gfx/geometry.hpp"
-#include "engine/gfx/light.hpp"
-#include "engine/gfx/mesh.hpp"
-#include "engine/gfx/model.hpp"
-#include "engine/gfx/renderer.hpp"
-#include "engine/gfx/shader.hpp"
-#include "engine/gfx/texture.hpp"
-#include "engine/window/window.hpp"
+#endif
+#include <core/assert.hpp>
+#include <core/gdata.hpp>
+#include <core/io.hpp>
+#include <core/jobs.hpp>
+#include <core/log.hpp>
+#include <core/maths.hpp>
+#include <core/map_store.hpp>
+#include <core/transform.hpp>
+#include <engine/levk.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/ecs/registry.hpp>
+#include <engine/editor/editor.hpp>
+#include <engine/gfx/camera.hpp>
+#include <engine/gfx/font.hpp>
+#include <engine/gfx/geometry.hpp>
+#include <engine/gfx/light.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <engine/gfx/model.hpp>
+#include <engine/gfx/renderer.hpp>
+#include <engine/gfx/shader.hpp>
+#include <engine/gfx/texture.hpp>
+#include <engine/window/window.hpp>
 
 using namespace le;
 
@@ -33,43 +35,23 @@ int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
 	g_uReader = std::make_unique<FileReader>();
-	{
-		auto [engineData, bResult] = FileReader::findUpwards(engine::exePath(), {"engine_data"});
-		if (!bResult)
-		{
-			LOG_E("Failed to locate engine data!");
-			return 1;
-		}
-		if (!g_uReader->mount(engineData))
-		{
-			LOG_E("Failed to mount engine data [{}]!", engineData.generic_string());
-			return 1;
-		}
-	}
-	{
-		auto [dataPath, bResult] = FileReader::findUpwards(engine::exePath(), {"demo/data"});
-		if (!bResult)
-		{
-			LOG_E("FATAL: Could not locate demo data!");
-			return 1;
-		}
-		if (!g_uReader->mount(dataPath))
-		{
-			return 1;
-		}
-	}
-	if (!engine.start(*g_uReader))
+	engine::Info info;
+	info.pReader = g_uReader.get();
+	info.dataPaths = engine.locateData({{{"data"}}, {{"demo/data"}}});
+	if (!engine.init(info))
 	{
 		return 1;
 	}
+	Window mainWindow;
+
 	Registry registry;
 	gfx::Mesh::Info triangle0info;
 	// clang-format off
-		triangle0info.geometry.vertices = {
-			{{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {0.5f, 0.0f}},
-			{{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {}, {1.0f, 1.0f}},
-			{{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {}, {0.0f, 1.0f}},
-		};
+	triangle0info.geometry.vertices = {
+		{{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {0.5f, 0.0f}},
+		{{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {}, {1.0f, 1.0f}},
+		{{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {}, {0.0f, 1.0f}},
+	};
 	// clang-format on
 	gfx::Mesh* pTriangle0 = Resources::inst().create<gfx::Mesh>("meshes/triangle0", triangle0info);
 
@@ -139,13 +121,14 @@ int main(int argc, char** argv)
 	cubemapInfo.ids = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
 	auto pCubemap = Resources::inst().create<gfx::Texture>("skyboxes/sky_dusk_cubemap", cubemapInfo);
 
-	Window w0, w1;
+	Window w1;
 	Window::Info info0;
 	info0.config.size = {1280, 720};
 	info0.config.title = "LittleEngineVk Demo";
 	info0.config.centreOffset = {-200, -200};
-	auto info1 = info0;
 	info0.config.bEnableGUI = true;
+	auto info1 = info0;
+	info1.config.bEnableGUI = false;
 	info1.options.colourSpaces.push_back({ColourSpace::eRGBLinear});
 	// info1.config.mode = Window::Mode::eBorderlessFullscreen;
 	info1.config.title += " 2";
@@ -161,16 +144,16 @@ int main(int argc, char** argv)
 	gfx::Model::Info m0info;
 	gfx::Model::Info m1info;
 	Time reloadTime;
-	auto onInput = [&w0, &w1, eid0, &registry, &bWF0, &bTEMP, &bToggleModel0, &bEditor, &bRecreate0, &bRecreate1, &bClose0, &bClose1,
-					&bDisableCam, &bAltPressed](Key key, Action action, Mods mods) {
+	auto onInput = [&mainWindow, &w1, eid0, &registry, &bWF0, &bTEMP, &bToggleModel0, &bEditor, &bRecreate0, &bRecreate1, &bClose0,
+					&bClose1, &bDisableCam, &bAltPressed](Key key, Action action, Mods mods) {
 		if (key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
 		{
-			bClose0 = w0.isFocused();
+			bClose0 = mainWindow.isFocused();
 			bClose1 = w1.isFocused();
 		}
 		if ((key == Key::eT || key == Key::eN) && action == Action::eRelease && mods & Mods::eCONTROL)
 		{
-			bRecreate0 = !w0.isOpen();
+			bRecreate0 = !mainWindow.isOpen();
 			bRecreate1 = !w1.isOpen();
 		}
 		if (key == Key::eLeftAlt || key == Key::eRightAlt)
@@ -222,7 +205,7 @@ int main(int argc, char** argv)
 	};
 	auto token = Window::registerInput(onInput, {});
 
-	gfx::FreeCam freeCam0(&w0), freeCam1(&w1);
+	gfx::FreeCam freeCam0(&mainWindow), freeCam1(&w1);
 	freeCam0.m_state.flags.set(gfx::FreeCam::Flag::eKeyToggle_Look);
 	freeCam1.m_state.flags = freeCam0.m_state.flags;
 
@@ -244,16 +227,16 @@ int main(int argc, char** argv)
 
 	gfx::ScreenRect gameRect;
 
-	if (/*w1.create(info1) &&*/ w0.create(info0))
+	if (/*w1.create(info1) &&*/ mainWindow.create(info0))
 	{
 		gfx::Pipeline* pPipeline0wf = nullptr;
 
-		if (w0.isOpen())
+		if (mainWindow.isOpen())
 		{
 			gfx::Pipeline::Info pipelineInfo;
 			pipelineInfo.name = "wireframe";
 			pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
-			pPipeline0wf = w0.renderer().createPipeline(std::move(pipelineInfo));
+			pPipeline0wf = mainWindow.renderer().createPipeline(std::move(pipelineInfo));
 		}
 
 		gfx::Renderer::View view0;
@@ -276,7 +259,7 @@ int main(int argc, char** argv)
 
 		Time t = Time::elapsed();
 		Time ft;
-		while (w0.isOpen() || w1.isOpen())
+		while (Window::anyActive())
 		{
 			Time dt = Time::elapsed() - t;
 			t = Time::elapsed();
@@ -298,10 +281,10 @@ int main(int argc, char** argv)
 			{
 				// handle events
 				Window::pollEvents();
-				if (w0.isClosing())
+				if (mainWindow.isClosing())
 				{
 					freeCam0.reset(false, false);
-					w0.destroy();
+					mainWindow.destroy();
 				}
 				if (w1.isClosing())
 				{
@@ -311,11 +294,11 @@ int main(int argc, char** argv)
 				if (bRecreate0)
 				{
 					bRecreate0 = false;
-					w0.create(info0);
+					mainWindow.create(info0);
 					gfx::Pipeline::Info pipelineInfo;
 					pipelineInfo.name = "wireframe";
 					pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
-					pPipeline0wf = w0.renderer().createPipeline(std::move(pipelineInfo));
+					pPipeline0wf = mainWindow.renderer().createPipeline(std::move(pipelineInfo));
 				}
 				if (bRecreate1)
 				{
@@ -325,7 +308,7 @@ int main(int argc, char** argv)
 				if (bClose0)
 				{
 					bClose0 = false;
-					w0.close();
+					mainWindow.close();
 				}
 				if (bClose1)
 				{
@@ -340,15 +323,15 @@ int main(int argc, char** argv)
 
 #if defined(LEVK_EDITOR)
 				static auto const smol = glm::vec2(0.66f);
-				if (bEditor && w0.isOpen())
+				if (bEditor && mainWindow.isOpen())
 				{
-					static glm::vec2 centre = glm::vec2(0.5f * (f32)w0.windowSize().x, 0.0f);
+					static glm::vec2 centre = glm::vec2(0.5f * (f32)mainWindow.windowSize().x, 0.0f);
 					if (bAltPressed)
 					{
-						centre = w0.cursorPos();
+						centre = mainWindow.cursorPos();
 					}
-					gameRect = w0.renderer().clampToView(centre, smol);
-					editor::render(gameRect, w0.framebufferSize());
+					gameRect = mainWindow.renderer().clampToView(centre, smol);
+					editor::render(gameRect, mainWindow.framebufferSize());
 				}
 #endif
 				if (bToggleModel0)
@@ -395,7 +378,7 @@ int main(int argc, char** argv)
 
 				fpsText.updateText(fmt::format("{}FPS", fps == 0 ? frames : fps));
 				ftText.updateText(fmt::format("{:.3}ms", dt.to_s() * 1000));
-				triText.updateText(fmt::format("{} triangles", w0.renderer().m_stats.trisDrawn));
+				triText.updateText(fmt::format("{} triangles", mainWindow.renderer().m_stats.trisDrawn));
 
 				if (auto pM = registry.component<TAsset<gfx::Model>>(eid2))
 				{
@@ -430,9 +413,9 @@ int main(int argc, char** argv)
 				view0.pos_v = freeCam0.m_position;
 				view1.mat_v = freeCam1.view();
 				view1.pos_v = freeCam1.m_position;
-				if (w0.isOpen())
+				if (mainWindow.isOpen())
 				{
-					auto const size = w0.framebufferSize();
+					auto const size = mainWindow.framebufferSize();
 					if (size.x > 0 && size.y > 0)
 					{
 						view0.mat_ui = freeCam0.ui({size, 2.0f});
@@ -451,14 +434,14 @@ int main(int argc, char** argv)
 					}
 				}
 			}
-
+#if defined(LEVK_USE_IMGUI)
 			// GUI
 			static bool s_bImGuiDemo = false;
 			if (s_bImGuiDemo)
 			{
 				GUI(ImGui::ShowDemoWindow(&s_bImGuiDemo));
 			}
-
+#endif
 			ft = Time::elapsed() - fStart;
 
 			// Render
@@ -466,7 +449,7 @@ int main(int argc, char** argv)
 			try
 #endif
 			{
-				if (w0.isOpen())
+				if (mainWindow.isOpen())
 				{
 					gfx::Renderer::Scene scene;
 					scene.dirLights = {dirLight0, dirLight1};
@@ -507,7 +490,7 @@ int main(int argc, char** argv)
 					batch.drawables.push_back({{ftText.mesh()}, &Transform::s_identity, pPipeline});
 					batch.drawables.push_back({{triText.mesh()}, &Transform::s_identity, pPipeline});
 					scene.batches.push_back(std::move(batch));
-					w0.renderer().submit(std::move(scene));
+					mainWindow.renderer().submit(std::move(scene));
 				}
 				if (w1.isOpen())
 				{

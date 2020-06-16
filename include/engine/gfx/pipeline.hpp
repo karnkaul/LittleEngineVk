@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
-#include "core/flags.hpp"
+#include <core/flags.hpp>
 
 namespace le::gfx
 {

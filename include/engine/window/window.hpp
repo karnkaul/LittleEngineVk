@@ -3,9 +3,9 @@
 #include <memory>
 #include <string>
 #include <glm/glm.hpp>
-#include "input_types.hpp"
-#include "common.hpp"
-#include "engine/gfx/renderer.hpp"
+#include <engine/window/input_types.hpp>
+#include <engine/window/common.hpp>
+#include <engine/gfx/renderer.hpp>
 
 #define GUI(expr)                                  \
 	if (le::Window::guiWindow() != le::WindowID()) \
@@ -71,6 +71,7 @@ public:
 	~Window();
 
 public:
+	static bool anyActive();
 	static void pollEvents();
 	static void renderAll();
 

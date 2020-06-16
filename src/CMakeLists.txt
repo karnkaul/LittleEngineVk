@@ -85,6 +85,7 @@ endif()
 
 # Docs
 if(LEVK_BUILD_DOCS)
-	set(BUILD_DOCS_CMD echo "Running Doxygen..." && doxygen Doxyfile)
+	# 
+	set(BUILD_DOCS_CMD echo "Running Doxygen, building docs to ${LEVK_DOXYGEN_DOCS_DIR}..." && rm -rf ${LEVK_DOXYGEN_DOCS_DIR} && doxygen Doxyfile)
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${BUILD_DOCS_CMD} WORKING_DIRECTORY "${LEVK_DOXYGEN_DIR}")
 endif()

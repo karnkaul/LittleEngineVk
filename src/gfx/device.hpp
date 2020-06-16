@@ -4,10 +4,10 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "core/log_config.hpp"
-#include "core/std_types.hpp"
-#include "core/flags.hpp"
-#include "common.hpp"
+#include <core/log_config.hpp>
+#include <core/std_types.hpp>
+#include <core/flags.hpp>
+#include <gfx/common.hpp>
 
 namespace le::gfx
 {
@@ -53,7 +53,7 @@ struct Device final
 	void resetAll(vk::ArrayProxy<vk::Fence const> validFences) const;
 
 	bool isSignalled(vk::Fence fence) const;
-	bool allSignalled(ArrayView<vk::Fence const> fences) const;
+	bool allSignalled(Span<vk::Fence const> fences) const;
 
 	vk::ImageView createImageView(ImageViewInfo const& info);
 

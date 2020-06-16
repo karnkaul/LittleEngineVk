@@ -1,13 +1,13 @@
 #include <fmt/format.h>
-#include "core/log.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/pipeline.hpp"
-#include "engine/gfx/shader.hpp"
-#include "deferred.hpp"
-#include "device.hpp"
-#include "render_context.hpp"
-#include "pipeline_impl.hpp"
-#include "resource_descriptors.hpp"
+#include <core/log.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/pipeline.hpp>
+#include <engine/gfx/shader.hpp>
+#include <gfx/deferred.hpp>
+#include <gfx/device.hpp>
+#include <gfx/render_context.hpp>
+#include <gfx/pipeline_impl.hpp>
+#include <gfx/resource_descriptors.hpp>
 
 namespace le::gfx
 {
@@ -196,7 +196,16 @@ bool PipelineImpl::create()
 	createInfo.layout = m_layout;
 	createInfo.renderPass = m_info.renderPass;
 	createInfo.subpass = 0;
-	m_pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
+#if VK_HEADER_VERSION >= 131
+	auto pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
+#else
+	auto [result, pipeline] = g_device.device.createGraphicsPipeline({}, createInfo);
+	if (result != vk::Result::eSuccess)
+	{
+		return false;
+	}
+#endif
+	m_pipeline = pipeline;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	m_bShaderReloaded = false;
 #endif

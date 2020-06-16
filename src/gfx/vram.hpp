@@ -1,10 +1,10 @@
 #pragma once
 #include <future>
 #include <utility>
-#include "core/log_config.hpp"
-#include "core/utils.hpp"
-#include "engine/window/common.hpp"
-#include "common.hpp"
+#include <core/log_config.hpp>
+#include <core/utils.hpp>
+#include <engine/window/common.hpp>
+#include <gfx/common.hpp>
 
 namespace le::gfx
 {
@@ -51,7 +51,7 @@ void unmapMemory(Buffer const& buffer);
 [[nodiscard]] std::future<void> stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);
-[[nodiscard]] std::future<void> copy(ArrayView<ArrayView<u8>> pixelsArr, Image const& dst, LayoutTransition layouts);
+[[nodiscard]] std::future<void> copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutTransition layouts);
 
 void release(Buffer buffer, bool bSilent = false);
 void release(Image image);

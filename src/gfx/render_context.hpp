@@ -2,9 +2,9 @@
 #include <functional>
 #include <vector>
 #include <glm/glm.hpp>
-#include "core/flags.hpp"
-#include "engine/window/common.hpp"
-#include "common.hpp"
+#include <core/flags.hpp>
+#include <engine/window/common.hpp>
+#include <gfx/common.hpp>
 
 namespace le::gfx
 {
@@ -43,7 +43,7 @@ public:
 	};
 
 private:
-	struct Info final
+	struct Metadata final
 	{
 		ContextInfo info;
 		vk::SurfaceKHR surface;
@@ -87,7 +87,7 @@ public:
 	Flags m_flags;
 
 private:
-	Info m_info;
+	Metadata m_metadata;
 	WindowID m_window;
 
 public:

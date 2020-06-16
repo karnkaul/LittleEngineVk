@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "core/version.hpp"
+#include <core/version.hpp>
 
 namespace le::os
 {

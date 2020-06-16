@@ -1,10 +1,10 @@
 #pragma once
 #include <memory>
 #include <glm/glm.hpp>
-#include "core/colour.hpp"
-#include "core/flags.hpp"
-#include "engine/assets/asset.hpp"
-#include "geometry.hpp"
+#include <core/colour.hpp>
+#include <core/flags.hpp>
+#include <engine/assets/asset.hpp>
+#include <engine/gfx/geometry.hpp>
 
 namespace le::gfx
 {

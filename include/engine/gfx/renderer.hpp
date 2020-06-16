@@ -2,8 +2,8 @@
 #include <deque>
 #include <memory>
 #include <vector>
-#include "light.hpp"
-#include "pipeline.hpp"
+#include <engine/gfx/light.hpp>
+#include <engine/gfx/pipeline.hpp>
 
 namespace le
 {

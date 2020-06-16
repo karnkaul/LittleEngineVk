@@ -3,10 +3,10 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
-#include "engine/assets/asset.hpp"
-#include "engine/gfx/geometry.hpp"
-#include "engine/gfx/mesh.hpp"
-#include "engine/gfx/texture.hpp"
+#include <engine/assets/asset.hpp>
+#include <engine/gfx/geometry.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <engine/gfx/texture.hpp>
 
 namespace le::gfx
 {

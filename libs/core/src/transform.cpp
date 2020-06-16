@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <glm/gtx/matrix_decompose.hpp>
-#include "core/assert.hpp"
-#include "core/transform.hpp"
+#include <core/assert.hpp>
+#include <core/transform.hpp>
 
 namespace le
 {

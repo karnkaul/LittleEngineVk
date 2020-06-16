@@ -2,8 +2,8 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-#include "core/std_types.hpp"
-#include "core/delegate.hpp"
+#include <core/std_types.hpp>
+#include <core/delegate.hpp>
 
 namespace le
 {

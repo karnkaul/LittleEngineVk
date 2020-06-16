@@ -1,15 +1,15 @@
 #include <map>
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "render_context.hpp"
-#include "device.hpp"
-#include "vram.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <gfx/render_context.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
 
 namespace le::gfx
 {
 std::string const RenderContext::s_tName = utils::tName<RenderContext>();
 
-void RenderContext::Info::refresh()
+void RenderContext::Metadata::refresh()
 {
 	if (surface == vk::SurfaceKHR() || !g_device.isValid(surface))
 	{
@@ -22,12 +22,12 @@ void RenderContext::Info::refresh()
 	presentModes = g_instance.physicalDevice.getSurfacePresentModesKHR(surface);
 }
 
-bool RenderContext::Info::isReady() const
+bool RenderContext::Metadata::isReady() const
 {
 	return !colourFormats.empty() && !presentModes.empty();
 }
 
-vk::SurfaceFormatKHR RenderContext::Info::bestColourFormat() const
+vk::SurfaceFormatKHR RenderContext::Metadata::bestColourFormat() const
 {
 	static std::vector<vk::Format> const s_defaultFormats = {vk::Format::eB8G8R8A8Srgb};
 	static std::vector<vk::ColorSpaceKHR> const s_defaultColourSpaces = {vk::ColorSpaceKHR::eSrgbNonlinear};
@@ -59,7 +59,7 @@ vk::SurfaceFormatKHR RenderContext::Info::bestColourFormat() const
 	return ranked.empty() ? vk::SurfaceFormatKHR() : ranked.begin()->second;
 }
 
-vk::Format RenderContext::Info::bestDepthFormat() const
+vk::Format RenderContext::Metadata::bestDepthFormat() const
 {
 	static PriorityList<vk::Format> const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
 	auto [format, bResult] =
@@ -67,7 +67,7 @@ vk::Format RenderContext::Info::bestDepthFormat() const
 	return bResult ? format : vk::Format::eD16Unorm;
 }
 
-vk::PresentModeKHR RenderContext::Info::bestPresentMode() const
+vk::PresentModeKHR RenderContext::Metadata::bestPresentMode() const
 {
 	static std::vector<vk::PresentModeKHR> const s_defaultPresentModes = {vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
 	auto const& desiredPresentModes = info.options.presentModes.empty() ? s_defaultPresentModes : info.options.presentModes;
@@ -88,7 +88,7 @@ vk::PresentModeKHR RenderContext::Info::bestPresentMode() const
 	return ranked.empty() ? vk::PresentModeKHR::eFifo : ranked.begin()->second;
 }
 
-vk::Extent2D RenderContext::Info::extent(glm::ivec2 const& windowSize) const
+vk::Extent2D RenderContext::Metadata::extent(glm::ivec2 const& windowSize) const
 {
 	if (capabilities.currentExtent.width != maxVal<u32>())
 	{
@@ -110,16 +110,16 @@ RenderContext::RenderContext(ContextInfo const& info) : m_window(info.config.win
 {
 	m_name = fmt::format("{}:{}", s_tName, m_window);
 	ASSERT(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
-	m_info.info = info;
-	m_info.refresh();
-	if (!m_info.isReady())
+	m_metadata.info = info;
+	m_metadata.refresh();
+	if (!m_metadata.isReady())
 	{
-		g_instance.destroy(m_info.surface);
+		g_instance.destroy(m_metadata.surface);
 		throw std::runtime_error("Failed to create RenderContext!");
 	}
-	m_info.colourFormat = m_info.bestColourFormat();
-	m_info.depthFormat = m_info.bestDepthFormat();
-	m_info.presentMode = m_info.bestPresentMode();
+	m_metadata.colourFormat = m_metadata.bestColourFormat();
+	m_metadata.depthFormat = m_metadata.bestDepthFormat();
+	m_metadata.presentMode = m_metadata.bestPresentMode();
 	try
 	{
 		createSwapchain();
@@ -142,7 +142,7 @@ RenderContext::~RenderContext()
 
 void RenderContext::onFramebufferResize()
 {
-	auto const size = m_info.info.config.getFramebufferSize();
+	auto const size = m_metadata.info.config.getFramebufferSize();
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
 		if (size.x > 0 && size.y > 0)
@@ -221,23 +221,23 @@ RenderContext::Outcome RenderContext::present(vk::Semaphore wait)
 
 vk::Format RenderContext::colourFormat() const
 {
-	return m_info.colourFormat.format;
+	return m_metadata.colourFormat.format;
 }
 
 vk::Format RenderContext::depthFormat() const
 {
-	return m_info.depthFormat;
+	return m_metadata.depthFormat;
 }
 
 bool RenderContext::createSwapchain()
 {
-	auto prevSurface = m_info.surface;
-	m_info.refresh();
-	[[maybe_unused]] bool bReady = m_info.isReady();
+	auto prevSurface = m_metadata.surface;
+	m_metadata.refresh();
+	[[maybe_unused]] bool bReady = m_metadata.isReady();
 	ASSERT(bReady, "RenderContext not ready!");
 	// Swapchain
-	m_info.refresh();
-	auto const framebufferSize = m_info.info.config.getFramebufferSize();
+	m_metadata.refresh();
+	auto const framebufferSize = m_metadata.info.config.getFramebufferSize();
 	if (framebufferSize.x == 0 || framebufferSize.y == 0)
 	{
 		LOG_I("[{}] Null framebuffer size detected (minimised surface?); pausing rendering", m_name, m_window);
@@ -246,15 +246,15 @@ bool RenderContext::createSwapchain()
 	}
 	{
 		vk::SwapchainCreateInfoKHR createInfo;
-		createInfo.minImageCount = m_info.capabilities.minImageCount + 1;
-		if (m_info.capabilities.maxImageCount != 0 && createInfo.minImageCount > m_info.capabilities.maxImageCount)
+		createInfo.minImageCount = m_metadata.capabilities.minImageCount + 1;
+		if (m_metadata.capabilities.maxImageCount != 0 && createInfo.minImageCount > m_metadata.capabilities.maxImageCount)
 		{
-			createInfo.minImageCount = m_info.capabilities.maxImageCount;
+			createInfo.minImageCount = m_metadata.capabilities.maxImageCount;
 		}
-		createInfo.imageFormat = m_info.colourFormat.format;
-		createInfo.imageColorSpace = m_info.colourFormat.colorSpace;
-		auto const windowSize = m_info.info.config.getWindowSize();
-		m_swapchain.extent = m_info.extent(windowSize);
+		createInfo.imageFormat = m_metadata.colourFormat.format;
+		createInfo.imageColorSpace = m_metadata.colourFormat.colorSpace;
+		auto const windowSize = m_metadata.info.config.getWindowSize();
+		m_swapchain.extent = m_metadata.extent(windowSize);
 		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
@@ -262,11 +262,11 @@ bool RenderContext::createSwapchain()
 		createInfo.imageSharingMode = queues.mode;
 		createInfo.pQueueFamilyIndices = queues.indices.data();
 		createInfo.queueFamilyIndexCount = (u32)queues.indices.size();
-		createInfo.preTransform = m_info.capabilities.currentTransform;
+		createInfo.preTransform = m_metadata.capabilities.currentTransform;
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-		createInfo.presentMode = m_info.presentMode;
+		createInfo.presentMode = m_metadata.presentMode;
 		createInfo.clipped = vk::Bool32(true);
-		createInfo.surface = m_info.surface;
+		createInfo.surface = m_metadata.surface;
 		m_swapchain.swapchain = g_device.device.createSwapchainKHR(createInfo);
 	}
 	// Frames
@@ -274,7 +274,7 @@ bool RenderContext::createSwapchain()
 		auto images = g_device.device.getSwapchainImagesKHR(m_swapchain.swapchain);
 		m_swapchain.frames.reserve(images.size());
 		ImageInfo depthImageInfo;
-		depthImageInfo.createInfo.format = m_info.depthFormat;
+		depthImageInfo.createInfo.format = m_metadata.depthFormat;
 		depthImageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 		depthImageInfo.createInfo.extent = vk::Extent3D(m_swapchain.extent, 1);
 		depthImageInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
@@ -289,10 +289,10 @@ bool RenderContext::createSwapchain()
 		m_swapchain.depthImage = vram::createImage(depthImageInfo);
 		ImageViewInfo viewInfo;
 		viewInfo.image = m_swapchain.depthImage.image;
-		viewInfo.format = m_info.depthFormat;
+		viewInfo.format = m_metadata.depthFormat;
 		viewInfo.aspectFlags = vk::ImageAspectFlagBits::eDepth;
 		m_swapchain.depthImageView = g_device.createImageView(viewInfo);
-		viewInfo.format = m_info.colourFormat.format;
+		viewInfo.format = m_metadata.colourFormat.format;
 		viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
 		for (auto const& image : images)
 		{
@@ -310,7 +310,7 @@ bool RenderContext::createSwapchain()
 			throw std::runtime_error("Failed to create swapchain!");
 		}
 	}
-	if (prevSurface != m_info.surface)
+	if (prevSurface != m_metadata.surface)
 	{
 		g_instance.destroy(prevSurface);
 	}
@@ -334,8 +334,8 @@ void RenderContext::destroySwapchain()
 void RenderContext::cleanup()
 {
 	destroySwapchain();
-	g_instance.destroy(m_info.surface);
-	m_info.surface = vk::SurfaceKHR();
+	g_instance.destroy(m_metadata.surface);
+	m_metadata.surface = vk::SurfaceKHR();
 }
 
 bool RenderContext::recreateSwapchain()

@@ -3,7 +3,7 @@
 #include <unordered_set>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
-#include "engine/window/window.hpp"
+#include <engine/window/window.hpp>
 
 namespace le
 {
@@ -91,6 +91,8 @@ public:
 	static size_t joystickAxesCount(s32 id);
 	static size_t joysticKButtonsCount(s32 id);
 	static std::string_view toString(s32 key);
+
+	static bool anyActive();
 	static void pollEvents();
 	static void renderAll();
 };

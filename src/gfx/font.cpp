@@ -1,9 +1,9 @@
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/font.hpp"
-#include "engine/gfx/shader.hpp"
-#include "engine/gfx/texture.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/font.hpp>
+#include <engine/gfx/shader.hpp>
+#include <engine/gfx/texture.hpp>
 
 namespace le::gfx
 {

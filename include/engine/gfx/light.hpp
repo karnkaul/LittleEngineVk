@@ -1,6 +1,6 @@
 #pragma once
-#include "core/colour.hpp"
-#include "geometry.hpp"
+#include <core/colour.hpp>
+#include <engine/gfx/geometry.hpp>
 
 namespace le::gfx
 {

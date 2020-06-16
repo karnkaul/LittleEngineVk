@@ -4,14 +4,14 @@
 #include <fstream>
 #include <mutex>
 #include <thread>
-#include "core/log.hpp"
+#include <core/log.hpp>
 #include <fmt/chrono.h>
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
 #endif
-#include "core/assert.hpp"
-#include "core/std_types.hpp"
-#include "core/threads.hpp"
+#include <core/assert.hpp>
+#include <core/std_types.hpp>
+#include <core/threads.hpp>
 
 namespace le
 {

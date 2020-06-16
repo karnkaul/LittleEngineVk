@@ -2,7 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <string>
-#include "core/fixed.hpp"
+#include <core/fixed.hpp>
 
 namespace le
 {

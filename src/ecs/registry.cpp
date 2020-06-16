@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <map>
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/ecs/registry.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/ecs/registry.hpp>
 
 namespace le
 {

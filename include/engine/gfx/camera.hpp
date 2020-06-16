@@ -1,9 +1,9 @@
 #pragma once
 #include <unordered_set>
 #include <utility>
-#include "core/flags.hpp"
-#include "geometry.hpp"
-#include "engine/window/input_types.hpp"
+#include <core/flags.hpp>
+#include <engine/gfx/geometry.hpp>
+#include <engine/window/input_types.hpp>
 
 namespace le
 {

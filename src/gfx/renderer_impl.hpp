@@ -2,14 +2,14 @@
 #include <deque>
 #include <vector>
 #include <glm/glm.hpp>
-#include "core/delegate.hpp"
-#include "engine/window/common.hpp"
-#include "engine/gfx/light.hpp"
-#include "engine/gfx/pipeline.hpp"
-#include "engine/gfx/renderer.hpp"
-#include "render_context.hpp"
-#include "pipeline_impl.hpp"
-#include "resource_descriptors.hpp"
+#include <core/delegate.hpp>
+#include <engine/window/common.hpp>
+#include <engine/gfx/light.hpp>
+#include <engine/gfx/pipeline.hpp>
+#include <engine/gfx/renderer.hpp>
+#include <gfx/render_context.hpp>
+#include <gfx/pipeline_impl.hpp>
+#include <gfx/resource_descriptors.hpp>
 
 namespace le
 {
@@ -34,16 +34,7 @@ public:
 	};
 
 private:
-	struct FrameSync final
-	{
-		rd::Set set;
-		vk::Semaphore renderReady;
-		vk::Semaphore presentReady;
-		vk::Fence drawing;
-		vk::Framebuffer framebuffer;
-		vk::CommandBuffer commandBuffer;
-		vk::CommandPool commandPool;
-	};
+	struct FrameSync;
 
 	using PCDeq = std::deque<std::deque<rd::PushConstants>>;
 
@@ -111,5 +102,16 @@ private:
 	RenderContext::Outcome submit();
 
 	friend class le::WindowImpl;
+};
+
+struct RendererImpl::FrameSync final
+{
+	rd::Set set;
+	vk::Semaphore renderReady;
+	vk::Semaphore presentReady;
+	vk::Fence drawing;
+	vk::Framebuffer framebuffer;
+	vk::CommandBuffer commandBuffer;
+	vk::CommandPool commandPool;
 };
 } // namespace le::gfx

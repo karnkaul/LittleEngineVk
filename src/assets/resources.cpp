@@ -1,11 +1,11 @@
-#include "core/log.hpp"
-#include "core/threads.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/font.hpp"
-#include "engine/gfx/mesh.hpp"
-#include "engine/gfx/shader.hpp"
-#include "engine/gfx/texture.hpp"
-#include "engine/levk.hpp"
+#include <core/log.hpp>
+#include <core/threads.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/font.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <engine/gfx/shader.hpp>
+#include <engine/gfx/texture.hpp>
+#include <engine/levk.hpp>
 #include <core/utils.hpp>
 
 namespace le
@@ -66,15 +66,15 @@ bool Resources::init(IOReader const& data)
 		{
 			gfx::Texture::Info info;
 			info.type = gfx::Texture::Type::e2D;
-			info.raws = {{ArrayView<u8>(white1pxBytes), {1, 1}}};
+			info.raws = {{Span<u8>(white1pxBytes), {1, 1}}};
 			create<gfx::Texture>("textures/white", info);
-			info.raws.back().bytes = ArrayView<u8>(black1pxBytes);
+			info.raws.back().bytes = Span<u8>(black1pxBytes);
 			create<gfx::Texture>("textures/black", info);
 		}
 		{
 			gfx::Texture::Info info;
 			gfx::Texture::Raw b1px;
-			b1px.bytes = ArrayView<u8>(black1pxBytes);
+			b1px.bytes = Span<u8>(black1pxBytes);
 			b1px.size = {1, 1};
 			info.raws = {b1px, b1px, b1px, b1px, b1px, b1px};
 			info.type = gfx::Texture::Type::eCube;

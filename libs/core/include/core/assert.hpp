@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "std_types.hpp"
+#include <core/std_types.hpp>
 
 #if defined(LEVK_DEBUG)
 /**

@@ -4,13 +4,13 @@
 #include <memory>
 #include <string>
 #include <fmt/format.h>
-#include "log_config.hpp"
-#include "os.hpp"
-#include "std_types.hpp"
-#include "time.hpp"
+#include <core/log_config.hpp>
+#include <core/os.hpp>
+#include <core/std_types.hpp>
+#include <core/time.hpp>
 #if defined(LEVK_DEBUG)
 #include <stdexcept>
-#include "assert.hpp"
+#include <core/assert.hpp>
 #endif
 
 #if defined(LEVK_DEBUG)

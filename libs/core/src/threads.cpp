@@ -1,9 +1,9 @@
 #include <utility>
 #include <list>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/os.hpp"
-#include "core/threads.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/os.hpp>
+#include <core/threads.hpp>
 #if defined(LEVK_OS_LINUX)
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>

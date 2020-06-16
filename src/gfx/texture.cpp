@@ -1,14 +1,14 @@
 #include <array>
 #include <stb/stb_image.h>
-#include "core/log.hpp"
-#include "core/io.hpp"
-#include "core/utils.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/texture.hpp"
-#include "common.hpp"
-#include "deferred.hpp"
-#include "device.hpp"
-#include "vram.hpp"
+#include <core/log.hpp>
+#include <core/io.hpp>
+#include <core/utils.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/texture.hpp>
+#include <gfx/common.hpp>
+#include <gfx/deferred.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
 
 namespace le::gfx
 {
@@ -21,7 +21,7 @@ std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerA
 std::array const g_texModes = {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Snorm};
 std::array const g_texTypes = {vk::ImageViewType::e2D, vk::ImageViewType::eCube};
 
-std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, ArrayView<ArrayView<u8>> bytes,
+std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, Span<Span<u8>> bytes,
 					   [[maybe_unused]] std::string const& name)
 {
 	if (out_pImage->image == vk::Image() || out_pImage->extent.width != (u32)size.x || out_pImage->extent.height != (u32)size.y)
@@ -62,7 +62,7 @@ TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::
 		return {};
 	}
 	size_t const size = (size_t)(ret.size.x * ret.size.y * 4);
-	ret.bytes = ArrayView(pOut, size);
+	ret.bytes = Span(pOut, size);
 	return ret;
 }
 } // namespace
@@ -172,7 +172,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 		return;
 	}
 	m_size = m_uImpl->raws.back().size;
-	std::vector<ArrayView<u8>> views;
+	std::vector<Span<u8>> views;
 	for (auto const& raw : m_uImpl->raws)
 	{
 		views.push_back(raw.bytes);
@@ -291,7 +291,7 @@ Asset::Status Texture::update()
 void Texture::onReload()
 {
 	auto const idStr = m_id.generic_string();
-	std::vector<ArrayView<u8>> views;
+	std::vector<Span<u8>> views;
 	for (auto const& raw : m_uImpl->raws)
 	{
 		views.push_back(raw.bytes);

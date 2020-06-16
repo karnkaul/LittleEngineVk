@@ -1,7 +1,7 @@
 #include <sstream>
 #include <fmt/format.h>
-#include "core/gdata.hpp"
-#include "core/utils.hpp"
+#include <core/gdata.hpp>
+#include <core/utils.hpp>
 
 namespace le
 {

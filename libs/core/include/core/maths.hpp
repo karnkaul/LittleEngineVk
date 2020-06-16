@@ -4,8 +4,8 @@
 #include <optional>
 #include <random>
 #include <type_traits>
-#include "std_types.hpp"
-#include "time.hpp"
+#include <core/std_types.hpp>
+#include <core/time.hpp>
 
 namespace le::maths
 {

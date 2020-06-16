@@ -3,9 +3,9 @@
 #include <fmt/format.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
-#include "core/assert.hpp"
-#include "core/colour.hpp"
-#include "core/maths.hpp"
+#include <core/assert.hpp>
+#include <core/colour.hpp>
+#include <core/maths.hpp>
 
 namespace le
 {

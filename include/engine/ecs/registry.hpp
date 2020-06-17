@@ -141,8 +141,10 @@ public:
 	View<T1, Ts...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {});
 
 	void sweep();
+	void clear();
 
 	size_t entityCount() const;
+	std::string_view entityName(Entity entity) const;
 
 private:
 	// _Impl functions are not thread safe; they rely on mutexes being locked

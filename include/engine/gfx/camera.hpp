@@ -91,12 +91,10 @@ private:
 	OnMouse::Token m_tLook;
 	OnMouse::Token m_tZoom;
 	OnFocus::Token m_tFocus;
-	Window* m_pWindow;
+	Window* m_pWindow = nullptr;
 
 public:
-	FreeCam(Window* pWindow);
-
-public:
+	void init(Window* pWindow);
 	void tick(Time dt) override;
 	void reset(bool bOrientation, bool bPosition);
 };

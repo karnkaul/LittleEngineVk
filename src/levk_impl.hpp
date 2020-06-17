@@ -1,10 +1,11 @@
 #pragma once
-#include <engine/window/common.hpp>
+#include <memory>
+#include <engine/window/window.hpp>
 
 namespace le
 {
 struct App
 {
-	WindowID mainWindow;
+	std::unique_ptr<Window> uWindow;
 };
 } // namespace le

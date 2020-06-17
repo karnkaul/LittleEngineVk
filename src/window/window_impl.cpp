@@ -4,6 +4,7 @@
 #include <core/os.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
+#include <editor/editor.hpp>
 #include <gfx/common.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
@@ -22,6 +23,9 @@ namespace le
 namespace
 {
 std::unordered_set<WindowImpl*> g_registeredWindows;
+#if defined(LEVK_EDITOR)
+WindowImpl* g_pEditorWindow = nullptr;
+#endif
 
 #if defined(LEVK_USE_GLFW)
 bool g_bGLFWInit = false;
@@ -334,6 +338,12 @@ void WindowImpl::deinit()
 
 void WindowImpl::update()
 {
+#if defined(LEVK_EDITOR)
+	if (g_pEditorWindow && g_pEditorWindow->isOpen())
+	{
+		gfx::ext_gui::newFrame();
+	}
+#endif
 	for (auto pWindow : g_registeredWindows)
 	{
 		if (auto pRenderer = pWindow->m_pWindow->m_renderer.m_uImpl.get())
@@ -416,19 +426,20 @@ void* WindowImpl::nativeHandle(WindowID window)
 	return nullptr;
 }
 
-WindowID WindowImpl::guiWindow()
+WindowID WindowImpl::editorWindow()
 {
+#if defined(LEVK_EDITOR)
 	if (gfx::ext_gui::isInit())
 	{
 		for (auto pWindow : g_registeredWindows)
 		{
-			auto const id = pWindow->m_pWindow->m_id;
-			if (auto pImpl = rendererImpl(id); pImpl && pImpl->m_bExtGUI)
+			if (pWindow == g_pEditorWindow)
 			{
-				return id;
+				return pWindow->m_pWindow->m_id;
 			}
 		}
 	}
+#endif
 	return {};
 }
 
@@ -439,6 +450,16 @@ WindowImpl::WindowImpl(Window* pWindow) : m_pWindow(pWindow)
 
 WindowImpl::~WindowImpl()
 {
+#if defined(LEVK_EDITOR)
+	if (this == g_pEditorWindow)
+	{
+		gfx::deferred::release([]() {
+			editor::deinit();
+			gfx::ext_gui::deinit();
+		});
+		g_pEditorWindow = nullptr;
+	}
+#endif
 	unregisterWindow(this);
 	close();
 	destroy();
@@ -471,7 +492,6 @@ bool WindowImpl::create(Window::Info const& info)
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		rendererInfo.bExtGUI = info.config.bEnableGUI;
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);
@@ -492,6 +512,20 @@ bool WindowImpl::create(Window::Info const& info)
 		glfwShowWindow(m_uNativeWindow->m_pWindow);
 #endif
 		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo, &m_pWindow->m_renderer);
+#if defined(LEVK_EDITOR)
+		if (!g_pEditorWindow && !gfx::ext_gui::isInit())
+		{
+			if (!m_pWindow->m_renderer.m_uImpl->initExtGUI())
+			{
+				LOG_E("[{}] Failed to initialise Editor!", Window::s_tName);
+			}
+			else
+			{
+				g_pEditorWindow = this;
+				editor::init(m_pWindow->m_id);
+			}
+		}
+#endif
 		LOG_D("[{}:{}] created", Window::s_tName, m_pWindow->m_id);
 		return true;
 	}
@@ -827,9 +861,16 @@ void WindowImpl::pollEvents()
 
 void WindowImpl::renderAll()
 {
+	bool bExtGUI = false;
 	for (auto pWindow : g_registeredWindows)
 	{
-		pWindow->m_pWindow->m_renderer.render();
+#if defined(LEVK_EDITOR)
+		if (g_pEditorWindow)
+		{
+			bExtGUI = g_pEditorWindow == pWindow;
+		}
+#endif
+		pWindow->m_pWindow->m_renderer.render(bExtGUI);
 	}
 	return;
 }

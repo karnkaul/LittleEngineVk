@@ -4,6 +4,7 @@
 #include <vector>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
+#include <engine/gfx/screen_rect.hpp>
 
 namespace le
 {
@@ -15,23 +16,6 @@ namespace le::gfx
 {
 class Mesh;
 class Texture;
-
-struct ScreenRect final
-{
-	f32 left = 0.0f;
-	f32 top = 0.0f;
-	f32 right = 1.0f;
-	f32 bottom = 1.0f;
-
-	constexpr ScreenRect() noexcept = default;
-	ScreenRect(glm::vec4 const& ltrb) noexcept;
-
-	static ScreenRect sizeTL(glm::vec2 const& size, glm::vec2 const& leftTop = glm::vec2(0.0f));
-	static ScreenRect sizeCentre(glm::vec2 const& size, glm::vec2 const& centre = glm::vec2(0.5f));
-
-	glm::vec2 size() const;
-	f32 aspect() const;
-};
 
 class Renderer final
 {
@@ -95,6 +79,7 @@ public:
 private:
 	std::unique_ptr<class RendererImpl> m_uImpl;
 	Scene m_scene;
+	ScreenRect m_sceneView;
 
 public:
 	Renderer();
@@ -105,15 +90,16 @@ public:
 public:
 	Pipeline* createPipeline(Pipeline::Info info);
 
-	void submit(Scene scene);
+	void submit(Scene scene, ScreenRect const& sceneView);
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
 	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
 
 private:
-	void render();
+	void render(bool bEditor);
 
 private:
 	friend class le::WindowImpl;
+	friend class RendererImpl;
 };
 } // namespace le::gfx

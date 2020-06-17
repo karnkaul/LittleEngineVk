@@ -136,10 +136,26 @@ void Registry::sweep()
 	return;
 }
 
+void Registry::clear()
+{
+	std::scoped_lock<std::mutex> lock(m_mutex);
+	m_db.clear();
+	m_entityFlags.clear();
+	m_entityNames.clear();
+	m_componentNames.clear();
+}
+
 size_t Registry::entityCount() const
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	return m_entityFlags.size();
+}
+
+std::string_view Registry::entityName(Entity entity) const
+{
+	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto search = m_entityNames.find(entity.id);
+	return search != m_entityNames.end() ? search->second : std::string_view();
 }
 
 Entity Registry::spawnEntity_Impl(std::string name)

@@ -97,8 +97,12 @@ public:
 		return m_bActive.load() ? m_resources.unload(id.generic_string()) : false;
 	}
 
+	bool unload(stdfs::path const& id);
+
 	void update();
 	void deinit();
+
+	void waitIdle();
 };
 
 template <typename T>

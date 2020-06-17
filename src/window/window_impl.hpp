@@ -61,7 +61,7 @@ public:
 	static std::unordered_set<s32> active();
 	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
 	static void* nativeHandle(WindowID window);
-	static WindowID guiWindow();
+	static WindowID editorWindow();
 
 	WindowImpl(Window* pWindow);
 	~WindowImpl();

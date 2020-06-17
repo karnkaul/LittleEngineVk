@@ -1,16 +1,18 @@
 #include <core/jobs.hpp>
 #include <core/log.hpp>
+#include <core/os.hpp>
 #include <core/time.hpp>
 #include <core/utils.hpp>
 #include <engine/levk.hpp>
 #include <engine/assets/resources.hpp>
+#include <engine/game/world.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/vram.hpp>
-#include <levk_impl.hpp>
 #include <window/window_impl.hpp>
-#include <core/os.hpp>
+#include <editor/editor.hpp>
+#include <levk_impl.hpp>
 
 namespace le::engine
 {
@@ -32,6 +34,9 @@ Service::Service(Service&&) = default;
 Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
+	World::stopActive();
+	Resources::inst().waitIdle();
+	World::destroyAll();
 	Resources::inst().deinit();
 	g_app = {};
 }
@@ -85,6 +90,14 @@ bool Service::init(Info const& info)
 			}
 		}
 		Resources::inst().init(*pReader);
+		if (info.windowInfo)
+		{
+			g_app.uWindow = std::make_unique<Window>();
+			if (!g_app.uWindow->create(*info.windowInfo))
+			{
+				throw std::runtime_error("Failed to create Window!");
+			}
+		}
 	}
 	catch (std::exception const& e)
 	{
@@ -94,11 +107,26 @@ bool Service::init(Info const& info)
 	return true;
 }
 
-void Service::update()
+bool Service::tick(Time dt) const
 {
-	gfx::vram::update();
 	gfx::deferred::update();
 	Resources::inst().update();
 	WindowImpl::update();
+	gfx::ScreenRect gameRect;
+#if defined(LEVK_EDITOR)
+	gameRect = editor::tick(dt);
+#endif
+	gfx::vram::update();
+	return World::tick(dt, gameRect);
+}
+
+bool Service::submitScene() const
+{
+	return World::submitScene(g_app.uWindow->renderer());
+}
+
+Window* Service::mainWindow()
+{
+	return g_app.uWindow.get();
 }
 } // namespace le::engine

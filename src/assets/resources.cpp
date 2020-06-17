@@ -117,15 +117,32 @@ void Resources::update()
 	return;
 }
 
+bool Resources::unload(stdfs::path const& id)
+{
+	std::shared_lock<std::shared_mutex> lock(m_semaphore);
+	ASSERT(m_bActive.load(), "Resources inactive!");
+	return m_bActive.load() ? m_resources.unload(id.generic_string()) : false;
+}
+
 void Resources::deinit()
 {
-	std::unique_lock<std::shared_mutex> semLock(m_semaphore); // block create()
-	std::scoped_lock<std::mutex> lock(m_mutex);				  // block init()
+	std::scoped_lock<std::mutex> initLock(m_mutex); // block init()
+	waitIdle();
+	std::unique_lock<std::shared_mutex> apiLock(m_semaphore); // block create(), get(), unload()
 	if (m_bActive.load())
 	{
 		m_bActive.store(false);
 		m_resources.unloadAll();
 	}
 	return;
+}
+
+void Resources::waitIdle()
+{
+	while (!m_semaphore.try_lock())
+	{
+		threads::sleep();
+	}
+	m_semaphore.unlock();
 }
 } // namespace le

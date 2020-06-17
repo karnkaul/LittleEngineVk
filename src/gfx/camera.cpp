@@ -55,8 +55,9 @@ glm::mat4 Camera::ui(glm::vec3 const& uiSpace) const
 	return glm::ortho(-w, w, -h, h, -uiSpace.z, uiSpace.z);
 }
 
-FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
+void FreeCam::init(Window* pWindow)
 {
+	m_pWindow = pWindow;
 	ASSERT(m_pWindow, "Window is null!");
 	m_state.speed = m_config.defaultSpeed;
 	m_tMove = m_pWindow->registerInput([this](Key key, Action action, Mods mods) {
@@ -115,6 +116,11 @@ FreeCam::FreeCam(Window* pWindow) : m_pWindow(pWindow)
 
 void FreeCam::tick(Time dt)
 {
+	ASSERT(m_pWindow, "Window is null!");
+	if (!m_pWindow)
+	{
+		return;
+	}
 	if (!m_state.flags.isSet(Flag::eEnabled))
 	{
 		return;

@@ -81,9 +81,9 @@ OnMouse::Token Window::registerScroll(OnMouse::Callback callback, WindowID windo
 	return WindowImpl::s_input[window].onScroll.subscribe(callback);
 }
 
-WindowID Window::guiWindow()
+WindowID Window::editorWindow()
 {
-	return WindowImpl::guiWindow();
+	return WindowImpl::editorWindow();
 }
 
 gfx::Renderer const& Window::renderer() const

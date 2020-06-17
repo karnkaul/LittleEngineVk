@@ -105,8 +105,7 @@ protected:
 public:
 	bool setup(Info info);
 
-	void update();
-	void update(Font::Text data);
+	void updateText(Font::Text data);
 	void updateText(std::string text);
 
 	Mesh const* mesh() const;

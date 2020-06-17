@@ -1,17 +1,13 @@
 #pragma once
-#include <initializer_list>
+#include <optional>
 #include <vector>
+#include <core/time.hpp>
 #include <core/io.hpp>
 #include <core/std_types.hpp>
 #include <core/services.hpp>
 #include <core/os.hpp>
-
-namespace stdfs = std::filesystem;
-
-namespace le
-{
-class Window;
-}
+#include <engine/gfx/screen_rect.hpp>
+#include <engine/window/window.hpp>
 
 namespace le::engine
 {
@@ -23,6 +19,7 @@ struct DataSearch final
 
 struct Info final
 {
+	std::optional<Window::Info> windowInfo;
 	std::vector<stdfs::path> dataPaths;
 	IOReader* pReader = nullptr;
 };
@@ -46,7 +43,10 @@ public:
 	std::vector<stdfs::path> locateData(std::vector<DataSearch> const& searchPatterns);
 
 	bool init(Info const& info = {});
-	void update();
+	bool tick(Time dt) const;
+	bool submitScene() const;
+
+	static Window* mainWindow();
 };
 
 stdfs::path exePath();

@@ -146,7 +146,7 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 	m_material.pDiffuse = m_uSheet.get();
 	m_material.flags.set({Material::Flag::eTextured, Material::Flag::eUI, Material::Flag::eDropColour});
 	m_material.flags.reset({Material::Flag::eOpaque, Material::Flag::eLit});
-	m_status = Status::eReady;
+	m_status = Status::eLoading;
 }
 
 Geometry Font::generate(Text const& text) const
@@ -241,6 +241,7 @@ Asset::Status Font::update()
 		m_status = Status::eMoved;
 		return m_status;
 	}
+	m_status = m_uSheet->update();
 	return m_status;
 }
 
@@ -251,8 +252,8 @@ bool Text2D::setup(Info info)
 	{
 		m_pFont = Resources::inst().get<Font>("fonts/default");
 	}
-	ASSERT(m_pFont && m_pFont->isReady(), "Font is null!");
-	if (!m_pFont || !m_pFont->isReady())
+	ASSERT(m_pFont, "Font is null!");
+	if (!m_pFont)
 	{
 		return false;
 	}
@@ -274,12 +275,7 @@ bool Text2D::setup(Info info)
 	return false;
 }
 
-void Text2D::update()
-{
-	m_uMesh->update();
-}
-
-void Text2D::update(Font::Text data)
+void Text2D::updateText(Font::Text data)
 {
 	if (m_uMesh->isReady() && m_pFont && m_pFont->isReady())
 	{
@@ -296,7 +292,7 @@ void Text2D::updateText(std::string text)
 		if (text != m_data.text)
 		{
 			m_data.text = std::move(text);
-			update(m_data);
+			updateText(m_data);
 		}
 	}
 	return;
@@ -304,7 +300,8 @@ void Text2D::updateText(std::string text)
 
 Mesh const* Text2D::mesh() const
 {
-	return m_uMesh.get();
+	m_uMesh->update();
+	return m_uMesh->isReady() && m_pFont && m_pFont->isReady() ? m_uMesh.get() : nullptr;
 }
 
 bool Text2D::isReady() const

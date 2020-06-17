@@ -7,12 +7,6 @@
 #include <engine/window/common.hpp>
 #include <engine/gfx/renderer.hpp>
 
-#define GUI(expr)                                  \
-	if (le::Window::guiWindow() != le::WindowID()) \
-	{                                              \
-		expr;                                      \
-	}
-
 namespace le
 {
 class Window final
@@ -38,7 +32,6 @@ public:
 			glm::ivec2 centreOffset = {};
 			Mode mode = Mode::eDecoratedWindow;
 			u8 virtualFrameCount = 3;
-			bool bEnableGUI = false;
 		} config;
 
 		struct
@@ -84,7 +77,7 @@ public:
 	// Pass WindowID::s_null for global registration
 	[[nodiscard]] static OnMouse::Token registerScroll(OnMouse::Callback callback, WindowID window);
 
-	static WindowID guiWindow();
+	static WindowID editorWindow();
 
 public:
 	gfx::Renderer const& renderer() const;

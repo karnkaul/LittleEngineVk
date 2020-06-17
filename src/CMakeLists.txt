@@ -35,10 +35,6 @@ set(GENERATED_SOURCES
 configure_file_src_to_bin(version/build_version.hpp.in generated/version/build_version.hpp)
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${GENERATED_SOURCES})
 add_library(${PROJECT_NAME} ${LEVK_LIBRARY_TYPE} ${SOURCES} ${GENERATED_SOURCES})
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW> $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI> $<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>)
-add_target_compile_definitions(${PROJECT_NAME} LEVK PUBLIC)
-add_target_compile_options(${PROJECT_NAME} PRIVATE)
 if(LINUX_CLANG AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
 	# Ignore Vulkan.hpp warnings
 	message(STATUS "clang ${CMAKE_CXX_COMPILER_VERSION} detected; adding -Wno-deprecated-copy for vulkan.hpp")
@@ -56,11 +52,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		levk-core
-		$<$<BOOL:${LEVK_USE_IMGUI}>:imgui>
 	PRIVATE
+		levk-interface
 		${Vulkan_LIBRARIES}
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
+		$<$<BOOL:${LEVK_USE_IMGUI}>:imgui>
 		vma
 		stb-image
 		tinyobjloader

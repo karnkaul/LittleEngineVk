@@ -54,9 +54,9 @@ public:
 	///
 	Transform* parent();
 
-	glm::vec3 position() const;
-	glm::quat orientation() const;
-	glm::vec3 scale() const;
+	glm::vec3 const& position() const;
+	glm::quat const& orientation() const;
+	glm::vec3 const& scale() const;
 	///
 	/// \brief Check if scale is uniform across all axes
 	///
@@ -94,5 +94,9 @@ public:
 	/// \brief Recompute transformation matrices if stale
 	///
 	void updateMats() const;
+	///
+	/// \brief Obtain children parented to this Transform
+	///
+	std::list<Transform*> const& children() const;
 };
 } // namespace le

@@ -6,7 +6,7 @@ indent_size = 4
 # Optional: git will commit as lf, this will only affect local files
 # end_of_line = lf
 
-[*.{py,md,yml}]
+[*.{py,md,yml,sh}]
 indent_style = space
 indent_size = 2
 

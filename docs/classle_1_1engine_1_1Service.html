@@ -44,6 +44,7 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="classle_1_1engine_1_1Service-members.html">List of all members</a>  </div>
   <div class="headertitle">
 <div class="title">le::engine::Service Class Reference<span class="mlabels"><span class="mlabel">final</span></span></div>  </div>
@@ -67,8 +68,15 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a9f7b3890a0eae17c19684dbd3305cd55"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae6a350774c0503a04f57114f53432ea1"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1engine_1_1Service.html#ae6a350774c0503a04f57114f53432ea1">init</a> (<a class="el" href="structle_1_1engine_1_1Info.html">Info</a> const &amp;info={})</td></tr>
 <tr class="separator:ae6a350774c0503a04f57114f53432ea1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a36df222c43c170f44040b077caaf4ba4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1engine_1_1Service.html#a36df222c43c170f44040b077caaf4ba4">update</a> ()</td></tr>
-<tr class="separator:a36df222c43c170f44040b077caaf4ba4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a56056b43e4fae35672de381d7f69fc98"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1engine_1_1Service.html#a56056b43e4fae35672de381d7f69fc98">tick</a> (<a class="el" href="structle_1_1Time.html">Time</a> dt) const</td></tr>
+<tr class="separator:a56056b43e4fae35672de381d7f69fc98"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a41972e2cda1a4121283d3755d10a6547"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1engine_1_1Service.html#a41972e2cda1a4121283d3755d10a6547">submitScene</a> () const</td></tr>
+<tr class="separator:a41972e2cda1a4121283d3755d10a6547"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:abd3eb2fae38da750223aa804b6688f16"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classle_1_1Window.html">Window</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1engine_1_1Service.html#abd3eb2fae38da750223aa804b6688f16">mainWindow</a> ()</td></tr>
+<tr class="separator:abd3eb2fae38da750223aa804b6688f16"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a0f5dbbb97847150de921efa2403ef8ff"></a>
@@ -180,6 +188,31 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="abd3eb2fae38da750223aa804b6688f16"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abd3eb2fae38da750223aa804b6688f16">&#9670;&nbsp;</a></span>mainWindow()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static <a class="el" href="classle_1_1Window.html">Window</a>* le::engine::Service::mainWindow </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ab0991347155d74b2be04a6f334c7b9be"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab0991347155d74b2be04a6f334c7b9be">&#9670;&nbsp;</a></span>operator=()</h2>
 
@@ -198,17 +231,35 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a36df222c43c170f44040b077caaf4ba4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a36df222c43c170f44040b077caaf4ba4">&#9670;&nbsp;</a></span>update()</h2>
+<a id="a41972e2cda1a4121283d3755d10a6547"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a41972e2cda1a4121283d3755d10a6547">&#9670;&nbsp;</a></span>submitScene()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void le::engine::Service::update </td>
+          <td class="memname">bool le::engine::Service::submitScene </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a56056b43e4fae35672de381d7f69fc98"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a56056b43e4fae35672de381d7f69fc98">&#9670;&nbsp;</a></span>tick()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool le::engine::Service::tick </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structle_1_1Time.html">Time</a>&#160;</td>
+          <td class="paramname"><em>dt</em></td><td>)</td>
+          <td> const</td>
         </tr>
       </table>
 </div><div class="memdoc">

@@ -32,6 +32,7 @@ public:
 		stdfs::path jsonID;
 		stdfs::path modelID;
 		stdfs::path samplerID;
+		glm::vec3 origin = glm::vec3(0.0f);
 		f32 scale = 1.0f;
 		IOReader const* pReader = nullptr;
 		bool bDropColour = false;
@@ -49,6 +50,7 @@ private:
 	std::unordered_set<std::string> m_meshIDs;
 	std::vector<tinyobj::shape_t> m_shapes;
 	std::vector<tinyobj::material_t> m_materials;
+	glm::vec3 m_origin;
 	f32 m_scale = 1.0f;
 	bool m_bDropColour = false;
 
@@ -64,11 +66,31 @@ private:
 	std::vector<size_t> materials(tinyobj::shape_t const& shape);
 };
 
+glm::vec3 getVec3(GData const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f))
+{
+	auto vec = json.getVecString(id);
+	glm::vec3 ret = def;
+	if (vec.size() > 0)
+	{
+		ret.x = utils::strings::toF32(vec.at(0), def.x);
+	}
+	if (vec.size() > 1)
+	{
+		ret.y = utils::strings::toF32(vec.at(1), def.y);
+	}
+	if (vec.size() > 2)
+	{
+		ret.z = utils::strings::toF32(vec.at(2), def.z);
+	}
+	return ret;
+}
+
 OBJParser::OBJParser(Data data)
 	: m_matStrReader(data.mtlBuf),
 	  m_modelID(std::move(data.modelID)),
 	  m_jsonID(std::move(data.jsonID)),
 	  m_samplerID(std::move(data.samplerID)),
+	  m_origin(data.origin),
 	  m_scale(data.scale),
 	  m_bDropColour(data.bDropColour)
 {
@@ -243,7 +265,7 @@ Geometry OBJParser::vertices(tinyobj::shape_t const& shape)
 	for (auto const& idx : shape.mesh.indices)
 	{
 		// clang-format off
-		glm::vec3 const p = {
+		glm::vec3 const p = m_origin * m_scale + glm::vec3{
 			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 0) * m_scale,
 			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 1) * m_scale,
 			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 2) * m_scale
@@ -353,6 +375,7 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		objData.scale = (f32)json.getF64("scale", 1.0f);
 		objData.pReader = request.pReader;
 		objData.bDropColour = json.getBool("dropColour", false);
+		objData.origin = getVec3(json, "origin");
 		OBJParser parser(std::move(objData));
 		return std::move(parser.m_info);
 	}
@@ -434,6 +457,13 @@ std::vector<Mesh const*> Model::meshes() const
 {
 	return m_status == Status::eReady ? m_meshes : std::vector<Mesh const*>();
 }
+
+#if defined(LEVK_EDITOR)
+std::deque<Mesh>& Model::loadedMeshes()
+{
+	return m_loadedMeshes;
+}
+#endif
 
 Asset::Status Model::update()
 {

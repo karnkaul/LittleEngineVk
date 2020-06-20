@@ -84,6 +84,7 @@ public:
 public:
 	glm::ivec2 m_size = {};
 	Space m_colourSpace;
+	Type m_type;
 	Sampler* m_pSampler = nullptr;
 
 public:

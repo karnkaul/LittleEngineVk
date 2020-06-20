@@ -5,15 +5,20 @@
 #include <core/utils.hpp>
 #include <editor/editor.hpp>
 #if defined(LEVK_EDITOR)
-#if defined(LEVK_USE_IMGUI)
+#include <fmt/format.h>
 #include <imgui.h>
-#endif
 #include <core/maths.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <gfx/ext_gui.hpp>
+#include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
+#include <engine/gfx/font.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <engine/gfx/model.hpp>
+#include <engine/gfx/shader.hpp>
+#include <engine/gfx/texture.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
 
@@ -55,6 +60,16 @@ struct
 {
 	Entity entity;
 	Transform* pTransform = nullptr;
+	struct
+	{
+		bool bSelectID = false;
+		bool bSelectMat = false;
+		bool bSelectDiffuse = false;
+	} mesh;
+	struct
+	{
+		bool bSelectID = false;
+	} model;
 } g_inspecting;
 World* g_pWorld = nullptr;
 
@@ -191,6 +206,104 @@ void drawLeftPanel(glm::ivec2 const& panelSize)
 	return;
 }
 
+template <typename T>
+void listAssets(std::string_view tabName)
+{
+	if (ImGui::BeginTabItem(tabName.data()))
+	{
+		auto assets = Resources::inst().loaded<T>();
+		static s32 selected = -1;
+		for (size_t i = 0; i < assets.size(); ++i)
+		{
+			auto pAsset = assets.at(i);
+			if (ImGui::Selectable(pAsset->m_id.generic_string().data(), selected == (s32)i))
+			{
+				selected = (s32)i;
+			}
+		}
+		ImGui::EndTabItem();
+	}
+}
+
+template <typename T>
+bool dummy(T&)
+{
+	return true;
+}
+
+template <typename T, typename F, typename F2>
+void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter,
+				  bool bNone = true)
+{
+	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+											| ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf
+											| ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+	ImGui::TreeNodeEx(pAsset ? pAsset->m_id.generic_string().data() : "[None]", flags);
+	if (ImGui::IsItemClicked() || out_bSelect)
+	{
+		out_bSelect = true;
+		for (auto pBool : unselect)
+		{
+			*pBool = false;
+		}
+		ImGui::SetNextWindowSize(ImVec2(300.0f, 200.0f), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
+		{
+			if (bNone && ImGui::Selectable("[None]"))
+			{
+				onSelected(nullptr);
+				out_bSelect = false;
+			}
+			auto assets = Resources::inst().loaded<T>();
+			for (auto pAsset : assets)
+			{
+				if (!filter || filter(*pAsset))
+				{
+					if (ImGui::Selectable(pAsset->m_id.generic_string().data()))
+					{
+						onSelected(pAsset);
+						out_bSelect = false;
+					}
+				}
+			}
+		}
+		ImGui::End();
+	}
+}
+
+void inspectMaterial(gfx::Mesh& out_mesh, size_t idx)
+{
+	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
+	{
+		inspectAsset<gfx::Material>(
+			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat,
+			{&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, false);
+		inspectAsset<gfx::Texture>(
+			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse,
+			{&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; },
+			[](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; });
+		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
+		ImGui::Checkbox("Drop Colour", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;
+		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eOpaque];
+		ImGui::Checkbox("Opaque", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eOpaque] = bOut;
+		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eTextured];
+		ImGui::Checkbox("Textured", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eTextured] = bOut;
+		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eLit];
+		ImGui::Checkbox("Lit", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eLit] = bOut;
+		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eUI];
+		ImGui::Checkbox("UI", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eUI] = bOut;
+		ImGui::TreePop();
+	}
+}
+
 void drawRightPanel(glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
@@ -209,6 +322,34 @@ void drawRightPanel(glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
 		ImGui::End();
 		return;
 	}
+	static bool s_bAssets = false;
+	s_bAssets |= ImGui::Button("Resources");
+	if (s_bAssets)
+	{
+		ImGui::SetNextWindowSize(ImVec2(500.0f, 300.0f), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Loaded Assets", &s_bAssets, ImGuiWindowFlags_NoSavedSettings))
+		{
+			if (ImGui::BeginTabBar(""))
+			{
+				listAssets<gfx::Model>("Models");
+				listAssets<gfx::Mesh>("Meshes");
+				listAssets<gfx::Font>("Fonts");
+				listAssets<gfx::Texture>("Textures");
+				listAssets<gfx::Material>("Materials");
+				listAssets<gfx::Sampler>("Samplers");
+				listAssets<gfx::Shader>("Shaders");
+				ImGui::EndTabBar();
+			}
+		}
+		ImGui::End();
+	}
+	static bool s_bImGuiDemo = false;
+	s_bImGuiDemo |= ImGui::Button("ImGui Demo");
+	if (s_bImGuiDemo)
+	{
+		ImGui::ShowDemoWindow(&s_bImGuiDemo);
+	}
+	ImGui::Separator();
 	if (g_pWorld && g_inspecting.entity != Entity() && g_inspecting.pTransform)
 	{
 		auto& registry = g_pWorld->registry();
@@ -240,6 +381,41 @@ void drawRightPanel(glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
 			if (isDifferent(rot, rotOrg))
 			{
 				g_inspecting.pTransform->setOrientation(glm::quat(rot));
+			}
+			ImGui::Separator();
+
+			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
+			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
+			if (pTMesh && pMesh)
+			{
+				if (ImGui::TreeNode("Mesh"))
+				{
+					inspectAsset<gfx::Mesh>(
+						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID,
+						{&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
+						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>);
+
+					inspectMaterial(*pMesh, 0);
+					ImGui::TreePop();
+				}
+			}
+			auto pTModel = registry.component<TAsset<gfx::Model>>(g_inspecting.entity);
+			auto pModel = pTModel ? pTModel->get() : nullptr;
+			if (pTModel && pModel)
+			{
+				if (ImGui::TreeNode("Model"))
+				{
+					inspectAsset<gfx::Model>(
+						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
+						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>);
+					auto& meshes = pModel->loadedMeshes();
+					size_t idx = 0;
+					for (auto& mesh : meshes)
+					{
+						inspectMaterial(mesh, idx++);
+					}
+					ImGui::TreePop();
+				}
 			}
 		}
 	}
@@ -372,7 +548,7 @@ void editor::deinit()
 
 gfx::ScreenRect editor::tick([[maybe_unused]] Time dt)
 {
-	static auto const smol = glm::vec2(0.66f);
+	static auto const smol = glm::vec2(0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
 	if (g_data.enabled && pWindow && pWindow->isOpen())
 	{

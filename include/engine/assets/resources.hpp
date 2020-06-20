@@ -32,7 +32,7 @@ class Resources final
 private:
 	TMapStore<std::unordered_map<std::string, std::unique_ptr<Asset>>> m_resources;
 	std::mutex m_mutex;			   // Locked for init()/deinit()
-	std::shared_mutex m_semaphore; // Blocks deinit() until all API threads have returned
+	mutable std::shared_mutex m_semaphore; // Blocks deinit() until all API threads have returned
 	std::atomic_bool m_bActive;	   // API on/off switch
 
 public:
@@ -72,7 +72,7 @@ public:
 	}
 
 	template <typename T>
-	T* get(stdfs::path const& id)
+	T* get(stdfs::path const& id) const
 	{
 		std::shared_lock<std::shared_mutex> lock(m_semaphore);
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
@@ -103,6 +103,25 @@ public:
 	void deinit();
 
 	void waitIdle();
+
+#if defined(LEVK_EDITOR)
+	template <typename T>
+	std::vector<T*> loaded() const
+	{
+		std::shared_lock<std::shared_mutex> lock(m_semaphore);
+		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+		ASSERT(m_bActive.load(), "Resources inactive!");
+		std::vector<T*> ret;
+		for (auto& [id, uT] : m_resources.m_map)
+		{
+			if (auto pT = dynamic_cast<T*>(uT.get()))
+			{
+				ret.push_back(pT);
+			}
+		}
+		return ret;
+	}
+#endif
 };
 
 template <typename T>

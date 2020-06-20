@@ -1,4 +1,3 @@
-#include "engine/gfx/screen_rect.hpp"
 #include <initializer_list>
 #include <core/assert.hpp>
 #include <core/gdata.hpp>

@@ -322,6 +322,30 @@ std::vector<size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 }
 } // namespace
 
+stdfs::path Model::LoadRequest::getModelID()
+{
+	if (modelID.empty())
+	{
+		ASSERT(pReader, "Reader is null!");
+		if (!pReader)
+		{
+			LOG_E("[{}] Reader is null!", s_tName);
+			return {};
+		}
+		auto id = (jsonID / jsonID.filename());
+		id += ".json";
+		auto [jsonStr, bResult] = pReader->getString(id);
+		if (!bResult)
+		{
+			LOG_E("[{}] [{}] not found!", s_tName, jsonID.generic_string());
+			return {};
+		}
+		GData json(std::move(jsonStr));
+		modelID = json.getString("id", "models/UNNAMED");
+	}
+	return modelID;
+}
+
 size_t Model::idHash(stdfs::path const& id)
 {
 	return std::hash<std::string>()(id.generic_string());

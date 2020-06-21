@@ -58,7 +58,10 @@ public:
 	struct LoadRequest final
 	{
 		stdfs::path jsonID;
+		stdfs::path modelID;
 		IOReader const* pReader = nullptr;
+
+		stdfs::path getModelID();
 	};
 
 public:

@@ -1,7 +1,7 @@
 #pragma once
 #include <atomic>
 #include <memory>
-#include <shared_mutex>
+#include <mutex>
 #include <type_traits>
 #include <unordered_map>
 #include <core/assert.hpp>
@@ -11,34 +11,56 @@
 
 namespace le
 {
+///
+/// \brief "Component" wrapper for Asset types
+///
 template <typename T>
 struct TAsset
 {
 	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
 
+	///
+	/// \brief Asset ID
+	///
 	stdfs::path id;
 
 	TAsset() = default;
 	TAsset(stdfs::path id) : id(std::move(id)) {}
 
+	///
+	/// \brief Obtain Asset pointed to by id
+	/// \returns Asset*, if loaded in Resources, else `nullptr`
+	///
 	T* get();
+	///
+	/// \brief Obtain Asset pointed to by id
+	/// \returns Asset*, if loaded in Resources, else `nullptr`
+	///
 	T const* get() const;
 };
 
-// Resources is a static singleton, it does not participate in RAII,
-// and requires explicit calls to `init()` / `deinit()`.
+///
+/// \brief Singleton for managing all classes derived from Asset
+///
+/// Important: Resources is a static singleton, it does not participate in RAII, and requires explicit calls to `init()` / `deinit()`.
+///
 class Resources final
 {
+public:
+	using Semaphore = TSemaphore<u32>;
+
 private:
 	TMapStore<std::unordered_map<std::string, std::unique_ptr<Asset>>> m_resources;
-	std::mutex m_mutex;			   // Locked for init()/deinit()
-	mutable std::shared_mutex m_semaphore; // Blocks deinit() until all API threads have returned
-	std::atomic_bool m_bActive;	   // API on/off switch
+	mutable Semaphore m_semaphore;
+	std::atomic_bool m_bActive;
 
 public:
 	static std::string const s_tName;
 
 public:
+	///
+	/// \brief Reference to Resources singleton instance
+	///
 	static Resources& inst();
 
 private:
@@ -48,37 +70,45 @@ private:
 public:
 	bool init(IOReader const& data);
 
-	// Construction of Assets will occur in parallel,
-	// but insertion into map is mutex locked (by TMapStore)
+	///
+	/// \brief Construct and store an Asset
+	///
+	/// Construction of Assets will occur in parallel, but insertion into map is mutex locked
+	///
 	template <typename T>
 	T* create(stdfs::path const& id, typename T::Info info)
 	{
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		T* pT = nullptr;
 		ASSERT(m_bActive.load(), "Resources inactive!");
+		T* pT = nullptr;
 		if (m_bActive.load())
 		{
-			std::shared_lock<std::shared_mutex> lock(m_semaphore);
+			auto semaphore = setBusy();
 			ASSERT(!m_resources.find(id.generic_string()).bResult, "ID already loaded!");
 			auto uT = std::make_unique<T>(id, std::move(info));
 			if (uT && uT->m_status != Asset::Status::eError)
 			{
 				uT->setup();
 				pT = uT.get();
+				std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
 				m_resources.emplace(id.generic_string(), std::move(uT));
 			}
 		}
 		return pT;
 	}
 
+	///
+	/// \brief Obtain loaded asset
+	/// \returns Asset*, if loaded, else `nullptr`
+	///
 	template <typename T>
 	T* get(stdfs::path const& id) const
 	{
-		std::shared_lock<std::shared_mutex> lock(m_semaphore);
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
 		ASSERT(m_bActive.load(), "Resources inactive!");
 		if (m_bActive.load())
 		{
+			std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
 			auto [pT, bResult] = m_resources.find(id.generic_string());
 			if (bResult && pT)
 			{
@@ -88,30 +118,44 @@ public:
 		return nullptr;
 	}
 
+	///
+	/// \brief Unloaded a loaded asset
+	/// \returns `true` if unloaded, `false` if not present
+	///
 	template <typename T>
 	bool unload(stdfs::path const& id)
 	{
-		std::shared_lock<std::shared_mutex> lock(m_semaphore);
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
 		ASSERT(m_bActive.load(), "Resources inactive!");
-		return m_bActive.load() ? m_resources.unload(id.generic_string()) : false;
+		if (m_bActive.load())
+		{
+			std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
+			return m_resources.unload(id.generic_string());
+		}
+		return false;
 	}
 
+	///
+	/// \brief Unloaded a loaded asset
+	/// \returns `true` if unloaded, `false` if not present
+	///
 	bool unload(stdfs::path const& id);
 
 	void update();
 	void deinit();
 
+	Semaphore::Handle setBusy() const;
 	void waitIdle();
 
 #if defined(LEVK_EDITOR)
 	template <typename T>
 	std::vector<T*> loaded() const
 	{
-		std::shared_lock<std::shared_mutex> lock(m_semaphore);
+		auto semaphore = setBusy();
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
 		ASSERT(m_bActive.load(), "Resources inactive!");
 		std::vector<T*> ret;
+		std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
 		for (auto& [id, uT] : m_resources.m_map)
 		{
 			if (auto pT = dynamic_cast<T*>(uT.get()))

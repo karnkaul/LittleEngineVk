@@ -98,26 +98,28 @@ bool DemoWorld::start()
 	gfx::Model::LoadRequest model0lr;
 	model0lr.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
 	model0lr.pReader = g_uReader.get();
+	m_data.model0id = model0lr.getModelID();
+	m_data.model0id += "_0";
 	jobs::enqueue([this, model0lr]() {
+		auto semaphore = Resources::inst().setBusy();
 		auto model0info = gfx::Model::parseOBJ(model0lr);
-		m_data.model0id = model0info.id;
-		m_data.model0id += "_0";
 		if (auto pModel = m_registry.component<TAsset<gfx::Model>>(m_data.eid2))
 		{
 			pModel->id = m_data.model0id;
 		}
-		m_res.pModel0 = Resources::inst().create<gfx::Model>(m_data.model0id, model0info);
+		m_res.pModel0 = Resources::inst().create<gfx::Model>(m_data.model0id, std::move(model0info));
 	});
+	m_data.model1id = model0lr.getModelID();
+	m_data.model1id += "_1";
 	jobs::enqueue([this, model0lr]() {
+		auto semaphore = Resources::inst().setBusy();
 		auto model1info = gfx::Model::parseOBJ(model0lr);
-		m_data.model1id = model1info.id;
-		m_data.model1id += "_1";
 		if (auto pModel = m_registry.component<TAsset<gfx::Model>>(m_data.eid3))
 		{
 			pModel->id = m_data.model1id;
 		}
 		model1info.mode = gfx::Texture::Space::eRGBLinear;
-		m_res.pModel1 = Resources::inst().create<gfx::Model>(m_data.model1id, model1info);
+		m_res.pModel1 = Resources::inst().create<gfx::Model>(m_data.model1id, std::move(model1info));
 	});
 	gfx::Material::Info texturedInfo;
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
@@ -245,22 +247,20 @@ void DemoWorld::tick(Time dt)
 			m_data.reloadTime = Time::elapsed();
 			jobs::enqueue(
 				[this]() {
+					auto semaphore = Resources::inst().setBusy();
 					auto m0info = gfx::Model::parseOBJ(m_data.modelLoadReq);
 					LOG_I("{} data loaded in: {}s", m0info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
-					auto model0id = m0info.id;
-					model0id += "_0";
-					m_res.pModel0 = Resources::inst().create<gfx::Model>(model0id, std::move(m0info));
+					m_res.pModel0 = Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
 					LOG_I("{} total load time: {}s", m0info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
 				},
 				"Model0-Reload");
 			jobs::enqueue(
 				[this]() {
+					auto semaphore = Resources::inst().setBusy();
 					auto m1info = gfx::Model::parseOBJ(m_data.modelLoadReq);
 					LOG_I("{} data loaded in: {}s", m1info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
-					auto model1id = m1info.id;
 					m1info.mode = gfx::Texture::Space::eRGBLinear;
-					model1id += "_1";
-					m_res.pModel1 = Resources::inst().create<gfx::Model>(model1id, std::move(m1info));
+					m_res.pModel1 = Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
 					LOG_I("{} total load time: {}s", m1info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
 				},
 				"Model1-Reload");

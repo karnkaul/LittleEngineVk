@@ -49,7 +49,7 @@ public:
 
 public:
 	std::shared_ptr<HJob> enqueue(Task task, std::string name = "", bool bSilent = false);
-	std::vector<std::shared_ptr<HJob>> forEach(IndexedTask const& indexedTask);
+	std::vector<std::shared_ptr<HJob>> forEach(IndexedTask indexedTask);
 
 	bool isIdle() const;
 	u8 workerCount() const;

@@ -46,7 +46,7 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	gfx::Renderer::Batch batch;
 	{
 		auto view = registry.view<Transform, TAsset<gfx::Model>>();
-		for (auto& query : view)
+		for (auto& [entity, query] : view)
 		{
 			auto& [pTransform, cModel] = query;
 			if (auto pModel = cModel->get(); pModel && pModel->isReady())
@@ -57,7 +57,7 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	}
 	{
 		auto view = registry.view<Transform, TAsset<gfx::Mesh>>();
-		for (auto& query : view)
+		for (auto& [entity, query] : view)
 		{
 			auto& [pTransform, cMesh] = query;
 			if (auto pMesh = cMesh->get(); pMesh && pMesh->isReady())
@@ -68,13 +68,14 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	}
 	{
 		auto view = registry.view<UIComponent>();
-		for (auto& query : view)
+		for (auto& [entity, query] : view)
 		{
 			auto& [pUI] = query;
 			auto meshes = pUI->meshes();
 			if (!meshes.empty())
 			{
-				batch.drawables.push_back({pUI->meshes(), &Transform::s_identity, info.pUIpipe});
+				auto pTransform = registry.component<Transform>(entity);
+				batch.drawables.push_back({pUI->meshes(), pTransform ? pTransform : &Transform::s_identity, info.pUIpipe});
 			}
 		}
 	}

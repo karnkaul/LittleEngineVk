@@ -23,6 +23,11 @@ struct Entity final
 	ID id = 0;
 };
 
+struct EntityHasher final
+{
+	size_t operator()(Entity const& entity) const;
+};
+
 bool operator==(Entity lhs, Entity rhs);
 bool operator!=(Entity lhs, Entity rhs);
 
@@ -50,7 +55,7 @@ public:
 	using Signature = size_t;
 
 	template <typename... T>
-	using View = std::deque<std::tuple<T*...>>;
+	using View = std::unordered_map<Entity, std::tuple<T*...>, EntityHasher>;
 
 private:
 	// Concept
@@ -365,7 +370,7 @@ typename Registry::View<T1, Ts...> Registry::view(Th* pThis, Flags mask, Flags p
 				auto checkSigns = [&compMap](auto sign) -> bool { return compMap.find(sign) != compMap.end(); };
 				if (std::all_of(signs.begin(), signs.end(), checkSigns))
 				{
-					ret.push_back(std::make_tuple(component_Impl<T1>(compMap), (component_Impl<Ts>(compMap))...));
+					ret[Entity{id}] = (std::make_tuple(component_Impl<T1>(compMap), (component_Impl<Ts>(compMap))...));
 				}
 			}
 		}

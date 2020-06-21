@@ -1,4 +1,3 @@
-#include "engine/gfx/screen_rect.hpp"
 #include <algorithm>
 #include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>

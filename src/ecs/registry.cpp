@@ -21,6 +21,11 @@ bool operator!=(Entity lhs, Entity rhs)
 	return !(lhs == rhs);
 }
 
+size_t EntityHasher::operator()(Entity const& entity) const
+{
+	return std::hash<Entity::ID>()(entity.id);
+}
+
 Registry::Component::~Component() = default;
 
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)

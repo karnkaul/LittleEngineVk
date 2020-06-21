@@ -60,7 +60,7 @@ std::shared_ptr<HJob> JobManager::enqueue(Task task, std::string name, bool bSil
 	return ret;
 }
 
-std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask const& indexedTask)
+std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask indexedTask)
 {
 	size_t idx = indexedTask.startIdx;
 	std::vector<std::shared_ptr<HJob>> handles;
@@ -78,7 +78,7 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask const& indexe
 			taskName = name.str();
 		}
 		handles.push_back(enqueue(
-			[start, end, &indexedTask]() -> std::any {
+			[start, end, indexedTask]() -> std::any {
 				for (size_t i = start; i < end; ++i)
 				{
 					indexedTask.task(i);
@@ -100,7 +100,7 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask const& indexe
 			taskName = name.str();
 		}
 		handles.push_back(enqueue(
-			[start, end, &indexedTask]() -> std::any {
+			[start, end, indexedTask]() -> std::any {
 				for (size_t i = start; i < end; ++i)
 				{
 					indexedTask.task(i);

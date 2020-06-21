@@ -297,9 +297,6 @@ void inspectMaterial(gfx::Mesh& out_mesh, size_t idx)
 		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eLit];
 		ImGui::Checkbox("Lit", &bOut);
 		out_mesh.m_material.flags[gfx::Material::Flag::eLit] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eUI];
-		ImGui::Checkbox("UI", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eUI] = bOut;
 		ImGui::TreePop();
 	}
 }

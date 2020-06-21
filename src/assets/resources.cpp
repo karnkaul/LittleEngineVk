@@ -21,6 +21,7 @@ Resources& Resources::inst()
 Resources::Resources()
 {
 	m_bActive.store(false);
+	m_semaphore = std::make_shared<s32>(0);
 }
 
 Resources::~Resources()
@@ -108,7 +109,7 @@ void Resources::update()
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
+		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 		for (auto& [id, uResource] : m_resources.m_map)
 		{
 			uResource->update();
@@ -122,7 +123,7 @@ bool Resources::unload(stdfs::path const& id)
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
+		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 		return m_resources.unload(id.generic_string());
 	}
 	return false;
@@ -130,9 +131,9 @@ bool Resources::unload(stdfs::path const& id)
 
 void Resources::deinit()
 {
-	m_semaphore.waitIdle();
-	ASSERT(m_semaphore.isIdle(), "Resources in use!");
-	std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
+	waitIdle();
+	ASSERT(m_semaphore.use_count() == 1, "Resources in use!");
+	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 	m_resources.unloadAll();
 	if (m_bActive.load())
 	{
@@ -141,13 +142,16 @@ void Resources::deinit()
 	return;
 }
 
-Resources::Semaphore::Handle Resources::setBusy() const
+Resources::Semaphore Resources::setBusy() const
 {
-	return m_semaphore.handle();
+	return m_semaphore;
 }
 
 void Resources::waitIdle()
 {
-	m_semaphore.waitIdle();
+	while (m_semaphore.use_count() > 1)
+	{
+		threads::sleep();
+	}
 }
 } // namespace le

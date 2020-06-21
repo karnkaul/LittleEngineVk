@@ -60,61 +60,6 @@ struct Span
 	}
 };
 
-///
-/// \brief Class emulating a counting semaphore
-///
-template <typename T, T Zero = T{}>
-class TSemaphore
-{
-public:
-	///
-	/// \brief Handle to owning Semaphore
-	///
-	class Handle
-	{
-	protected:
-		T* m_pCounter;
-		std::mutex* m_pMutex;
-		std::condition_variable* m_pCV;
-
-	public:
-		Handle(T& counter, std::condition_variable& condVar, std::mutex& mutex);
-		~Handle();
-	};
-
-public:
-	///
-	/// \brief Mutex for m_cv and m_counter (and user)
-	///
-	mutable std::mutex m_mutex;
-
-protected:
-	///
-	/// \brief Used to wait until semaphore is idle
-	///
-	mutable std::condition_variable m_cv;
-	///
-	/// \brief Counter
-	///
-	mutable T m_counter = Zero;
-
-public:
-	///
-	/// \brief Obtain new handle (and increment semaphore)
-	/// \returns Handle to this Semaphore
-	///
-	Handle handle() const;
-	///
-	/// \brief Check if semaphore is idle
-	/// \returns `true` if idle
-	///
-	bool isIdle() const;
-	///
-	/// \brief Wait until semaphore is idle
-	///
-	void waitIdle();
-};
-
 namespace utils
 {
 template <typename T>
@@ -223,42 +168,4 @@ void substituteChars(std::string& out_input, std::initializer_list<std::pair<cha
 bool isCharEnclosedIn(std::string_view str, size_t idx, std::pair<char, char> wrapper);
 } // namespace strings
 } // namespace utils
-
-template <typename T, T Zero>
-TSemaphore<T, Zero>::Handle::Handle(T& counter, std::condition_variable& condVar, std::mutex& mutex)
-	: m_pMutex(&mutex), m_pCV(&condVar), m_pCounter(&counter)
-{
-	std::scoped_lock lock(*m_pMutex);
-	++*m_pCounter;
-}
-
-template <typename T, T Zero>
-TSemaphore<T, Zero>::Handle::~Handle()
-{
-	ASSERT(m_pCV, "condition variable is null!");
-	std::scoped_lock lock(*m_pMutex);
-	--*m_pCounter;
-	m_pCV->notify_one();
-}
-
-template <typename T, T Zero>
-typename TSemaphore<T, Zero>::Handle TSemaphore<T, Zero>::handle() const
-{
-	return Handle(m_counter, m_cv, m_mutex);
-}
-
-template <typename T, T Zero>
-bool TSemaphore<T, Zero>::isIdle() const
-{
-	std::scoped_lock<std::mutex> lock(m_mutex);
-	return m_counter == Zero;
-}
-
-template <typename T, T Zero>
-void TSemaphore<T, Zero>::waitIdle()
-{
-	std::unique_lock lock(m_mutex);
-	m_cv.wait(lock, [this]() { return m_counter == 0; });
-	return;
-}
 } // namespace le

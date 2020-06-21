@@ -1,0 +1,32 @@
+{
+	"textures": [
+		{
+			"id": "textures/container2.png",
+			"colour_space": "srgb",
+			"sampler": "samplers/default"
+		},
+		{
+			"id": "textures/container2_specular.png",
+			"colour_space": "srgb",
+			"sampler": "samplers/default"
+		},
+		{
+			"id": "textures/awesomeface.png",
+			"colour_space": "srgb",
+			"sampler": "samplers/default"
+		}
+	],
+	"cubemaps": [
+		{
+			"id": "skyboxes/sky_dusk",
+			"textures": [
+				"skyboxes/sky_dusk/right.jpg",
+				"skyboxes/sky_dusk/left.jpg",
+				"skyboxes/sky_dusk/up.jpg",
+				"skyboxes/sky_dusk/down.jpg",
+				"skyboxes/sky_dusk/front.jpg",
+				"skyboxes/sky_dusk/back.jpg"
+			]
+		}
+	]
+}

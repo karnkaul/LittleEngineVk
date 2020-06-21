@@ -6,8 +6,10 @@
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/map_store.hpp>
+#include <core/threads.hpp>
 #include <core/transform.hpp>
 #include <engine/levk.hpp>
+#include <engine/assets/manifest.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/ecs/registry.hpp>
 #include <engine/game/scene_builder.hpp>
@@ -55,12 +57,13 @@ private:
 	{
 		gfx::Texture* pCubemap = nullptr;
 		gfx::Mesh* pTriangle0 = nullptr;
-		gfx::Mesh* pMesh0 = nullptr;
-		gfx::Mesh* pMesh1 = nullptr;
+		gfx::Mesh* pQuad = nullptr;
+		gfx::Mesh* pSphere = nullptr;
 		gfx::Model* pModel0 = nullptr;
 		gfx::Model* pModel1 = nullptr;
 	} m_res;
 	gfx::Pipeline* m_pPipeline0wf = nullptr;
+	std::unique_ptr<AssetManifest> m_uManifest;
 
 protected:
 	bool start() override;
@@ -71,29 +74,19 @@ protected:
 
 bool DemoWorld::start()
 {
-	gfx::Mesh::Info triangle0info;
+	gfx::Mesh::Info meshInfo;
 	// clang-format off
-	triangle0info.geometry.vertices = {
+	meshInfo.geometry.vertices = {
 		{{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {0.5f, 0.0f}},
 		{{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {}, {1.0f, 1.0f}},
 		{{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {}, {0.0f, 1.0f}},
 	};
 	// clang-format on
-	m_res.pTriangle0 = Resources::inst().create<gfx::Mesh>("meshes/triangle0", triangle0info);
-
-	gfx::Mesh::Info meshInfo;
+	m_res.pTriangle0 = Resources::inst().create<gfx::Mesh>("demo/triangle", meshInfo);
 	meshInfo.geometry = gfx::createQuad();
-	m_res.pMesh0 = Resources::inst().create<gfx::Mesh>("mesh0", meshInfo);
+	m_res.pQuad = Resources::inst().create<gfx::Mesh>("demo/quad", meshInfo);
 	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
-	m_res.pMesh1 = Resources::inst().create<gfx::Mesh>("mesh1", meshInfo);
-
-	m_data.eid0 = spawnEntity("entity0");
-	m_data.eid1 = spawnEntity("entity1");
-	m_data.eid2 = spawnEntity("entity2");
-	m_data.eid3 = spawnEntity("entity3");
-	m_data.eui0 = spawnEntity("ui0", false);
-	m_data.eui1 = spawnEntity("ui1", false);
-	m_data.eui2 = spawnEntity("ui2", false);
+	m_res.pSphere = Resources::inst().create<gfx::Mesh>("demo/sphere", meshInfo);
 
 	gfx::Model::LoadRequest model0lr;
 	model0lr.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
@@ -125,39 +118,33 @@ bool DemoWorld::start()
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
 	auto pTexturedLit = Resources::inst().create<gfx::Material>("materials/textured", texturedInfo);
 
+	m_uManifest = std::make_unique<AssetManifest>(*g_uReader, "demo.manifest");
+	m_uManifest->start();
 	gfx::Texture::Info textureInfo;
 	textureInfo.pReader = g_uReader.get();
-	m_res.pMesh0->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
-	m_res.pMesh0->m_material.pMaterial = pTexturedLit;
-	m_res.pMesh1->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
-	m_res.pMesh1->m_material.pMaterial = pTexturedLit;
-	m_res.pMesh1->m_material.tint.a = 0xcc;
-	textureInfo.ids = {"textures/container2.png"};
-	m_res.pMesh1->m_material.pDiffuse = m_res.pMesh0->m_material.pDiffuse =
-		Resources::inst().create<gfx::Texture>(textureInfo.ids.front(), textureInfo);
-	textureInfo.ids = {"textures/container2_specular.png"};
-	m_res.pMesh1->m_material.pSpecular = m_res.pMesh0->m_material.pSpecular =
-		Resources::inst().create<gfx::Texture>(textureInfo.ids.front(), textureInfo);
-	textureInfo.ids = {"textures/awesomeface.png"};
-	m_res.pMesh0->m_material.pDiffuse = Resources::inst().create<gfx::Texture>(textureInfo.ids.front(), textureInfo);
-	m_res.pMesh0->m_material.pSpecular = nullptr;
-	m_res.pMesh0->m_material.flags.reset(gfx::Material::Flag::eOpaque);
+	m_res.pQuad->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
+	m_res.pQuad->m_material.pMaterial = pTexturedLit;
+	m_res.pSphere->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
+	m_res.pSphere->m_material.pMaterial = pTexturedLit;
+	m_res.pSphere->m_material.tint.a = 0xcc;
+	m_res.pQuad->m_material.pSpecular = nullptr;
+	m_res.pQuad->m_material.flags.reset(gfx::Material::Flag::eOpaque);
 
 	m_data.dirLight0.diffuse = Colour(0xffffffff);
 	m_data.dirLight0.direction = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
 	m_data.dirLight1.diffuse = Colour(0xffffffff);
 	m_data.dirLight1.direction = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
 
-	gfx::Texture::Info cubemapInfo;
-	cubemapInfo.pReader = g_uReader.get();
-	cubemapInfo.type = gfx::Texture::Type::eCube;
-	stdfs::path const& cp = "skyboxes/sky_dusk";
-	cubemapInfo.ids = {cp / "right.jpg", cp / "left.jpg", cp / "up.jpg", cp / "down.jpg", cp / "front.jpg", cp / "back.jpg"};
-	jobs::enqueue(
-		[this, cubemapInfo]() { m_res.pCubemap = Resources::inst().create<gfx::Texture>("skyboxes/sky_dusk_cubemap", cubemapInfo); });
-
 	m_data.modelLoadReq.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
 	m_data.modelLoadReq.pReader = g_uReader.get();
+
+	m_data.eid0 = spawnEntity("quad");
+	m_data.eid1 = spawnEntity("sphere");
+	m_data.eid2 = spawnEntity("model0");
+	m_data.eid3 = spawnEntity("model1");
+	m_data.eui0 = spawnEntity("fps");
+	m_data.eui1 = spawnEntity("dt", false);
+	m_data.eui2 = spawnEntity("tris", false);
 
 	gfx::Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
@@ -199,10 +186,10 @@ bool DemoWorld::start()
 		{});
 
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
-	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid0, m_res.pMesh0->m_id);
+	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid0, m_res.pQuad->m_id);
 
 	auto& t2 = m_registry.component<Transform>(m_data.eid1)->setPosition({0.0f, 0.0f, -2.0f});
-	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid1, m_res.pMesh1->m_id);
+	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid1, m_res.pSphere->m_id);
 
 	m_registry.component<Transform>(m_data.eid2)->setPosition({-1.0f, 1.0f, -2.0f}).setParent(&t2);
 	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid2, m_data.model0id);
@@ -223,6 +210,10 @@ bool DemoWorld::start()
 
 void DemoWorld::tick(Time dt)
 {
+	if (m_uManifest && m_uManifest->update() == AssetManifest::Status::eIdle)
+	{
+		m_uManifest.reset();
+	}
 	if (m_data.bQuit)
 	{
 		window()->close();
@@ -233,6 +224,11 @@ void DemoWorld::tick(Time dt)
 		window()->destroy();
 		return;
 	}
+	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
+	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
+	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
+	m_res.pCubemap = Resources::inst().get<gfx::Texture>("skyboxes/sky_dusk");
+
 	if (m_data.bLoadUnloadModels)
 	{
 		if (m_res.pModel0 && m_res.pModel1)
@@ -293,6 +289,7 @@ void DemoWorld::tick(Time dt)
 
 	m_data.view.mat_v = m_data.freeCam.view();
 	m_data.view.pos_v = m_data.freeCam.m_position;
+	m_data.view.skybox.pCubemap = m_res.pCubemap;
 	auto const size = window()->framebufferSize();
 	if (size.x > 0 && size.y > 0)
 	{
@@ -309,12 +306,16 @@ gfx::Renderer::Scene DemoWorld::buildScene() const
 	builder.info.clearValues.colour = Colour(0x030203ff);
 	builder.info.view = m_data.view;
 	builder.info.p3Dpipe = m_data.bWireframe ? m_pPipeline0wf : nullptr;
-	builder.info.pSkybox = m_res.pCubemap;
+	builder.info.pSkybox = Resources::inst().get<gfx::Texture>("cubemaps/sky_dusk");
 	return builder.build(m_registry);
 }
 
 void DemoWorld::stop()
 {
+	if (m_uManifest)
+	{
+		m_uManifest->update(true);
+	}
 	m_data = {};
 	auto unload = [](std::initializer_list<stdfs::path const*> ids) {
 		for (auto pID : ids)
@@ -335,7 +336,7 @@ void DemoWorld::stop()
 	{
 		unload({&m_res.pCubemap->m_id});
 	}
-	unload({&m_res.pMesh0->m_id, &m_res.pMesh1->m_id, &m_res.pTriangle0->m_id});
+	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id});
 	unloadModels({m_res.pModel0, m_res.pModel1});
 }
 } // namespace

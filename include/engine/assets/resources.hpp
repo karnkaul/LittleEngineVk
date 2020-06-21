@@ -47,11 +47,12 @@ struct TAsset
 class Resources final
 {
 public:
-	using Semaphore = TSemaphore<u32>;
+	using Semaphore = std::shared_ptr<s32>;
 
 private:
 	TMapStore<std::unordered_map<std::string, std::unique_ptr<Asset>>> m_resources;
-	mutable Semaphore m_semaphore;
+	Semaphore m_semaphore;
+	mutable std::mutex m_mutex;
 	std::atomic_bool m_bActive;
 
 public:
@@ -68,6 +69,9 @@ private:
 	~Resources();
 
 public:
+	///
+	/// \brief Initialise singleton and turn on service
+	///
 	bool init(IOReader const& data);
 
 	///
@@ -84,14 +88,24 @@ public:
 		if (m_bActive.load())
 		{
 			auto semaphore = setBusy();
-			ASSERT(!m_resources.find(id.generic_string()).bResult, "ID already loaded!");
-			auto uT = std::make_unique<T>(id, std::move(info));
-			if (uT && uT->m_status != Asset::Status::eError)
+			std::unique_lock<decltype(m_mutex)> lock(m_mutex);
+			bool const bLoaded = m_resources.find(id.generic_string()).bResult;
+			lock.unlock();
+			ASSERT(!bLoaded, "ID already loaded!");
+			if (bLoaded)
 			{
-				uT->setup();
-				pT = uT.get();
-				std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
-				m_resources.emplace(id.generic_string(), std::move(uT));
+				pT = get<T>(id);
+			}
+			else
+			{
+				auto uT = std::make_unique<T>(id, std::move(info));
+				if (uT && uT->m_status != Asset::Status::eError)
+				{
+					uT->setup();
+					pT = uT.get();
+					lock.lock();
+					m_resources.emplace(id.generic_string(), std::move(uT));
+				}
 			}
 		}
 		return pT;
@@ -108,7 +122,7 @@ public:
 		ASSERT(m_bActive.load(), "Resources inactive!");
 		if (m_bActive.load())
 		{
-			std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
+			std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 			auto [pT, bResult] = m_resources.find(id.generic_string());
 			if (bResult && pT)
 			{
@@ -129,7 +143,7 @@ public:
 		ASSERT(m_bActive.load(), "Resources inactive!");
 		if (m_bActive.load())
 		{
-			std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
+			std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 			return m_resources.unload(id.generic_string());
 		}
 		return false;
@@ -141,10 +155,23 @@ public:
 	///
 	bool unload(stdfs::path const& id);
 
+	///
+	/// \brief Update all loaded Assets
+	///
 	void update();
+	///
+	/// \brief Unload all assets and turn off service
+	///
 	void deinit();
 
-	Semaphore::Handle setBusy() const;
+	///
+	/// \brief Acquire busy semaphore
+	/// \returns Handle to owned Semaphore
+	///
+	[[nodiscard]] Semaphore setBusy() const;
+	///
+	/// \brief Wait until owned semaphore is idle
+	///
 	void waitIdle();
 
 #if defined(LEVK_EDITOR)
@@ -155,7 +182,7 @@ public:
 		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
 		ASSERT(m_bActive.load(), "Resources inactive!");
 		std::vector<T*> ret;
-		std::scoped_lock<std::mutex> lock(m_semaphore.m_mutex);
+		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 		for (auto& [id, uT] : m_resources.m_map)
 		{
 			if (auto pT = dynamic_cast<T*>(uT.get()))

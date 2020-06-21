@@ -46,7 +46,6 @@ struct Submit final
 {
 	std::deque<Stage> stages;
 	vk::Fence done;
-	bool bDone = false;
 };
 
 std::string const s_tName = utils::tName<VRAM>();
@@ -177,7 +176,7 @@ void vram::deinit()
 void vram::update()
 {
 	auto removeDone = [](Submit& submit) -> bool {
-		if (submit.bDone)
+		if (g_device.isSignalled(submit.done))
 		{
 			for (auto& stage : submit.stages)
 			{
@@ -189,10 +188,6 @@ void vram::update()
 			}
 			g_device.destroy(submit.done);
 			return true;
-		}
-		if (g_device.isSignalled(submit.done))
-		{
-			submit.bDone = true;
 		}
 		return false;
 	};

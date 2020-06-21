@@ -2,17 +2,14 @@
 	"textures": [
 		{
 			"id": "textures/container2.png",
-			"colour_space": "srgb",
 			"sampler": "samplers/default"
 		},
 		{
 			"id": "textures/container2_specular.png",
-			"colour_space": "srgb",
 			"sampler": "samplers/default"
 		},
 		{
 			"id": "textures/awesomeface.png",
-			"colour_space": "srgb",
 			"sampler": "samplers/default"
 		}
 	],

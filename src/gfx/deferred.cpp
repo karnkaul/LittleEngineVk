@@ -45,8 +45,8 @@ bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
 			}
 			else
 			{
-				s16 diff = -(s16)(pRenderer->framesDrawn() - entry.lastFrame);
-				entry.remaining = diff + (s16)pRenderer->virtualFrameCount() + (s16)entry.pad;
+				s16 diff = (s16)(pRenderer->framesDrawn() - entry.lastFrame);
+				entry.remaining = (s16)pRenderer->virtualFrameCount() + (s16)entry.pad - diff;
 			}
 		}
 		if (entry.remaining > 0)

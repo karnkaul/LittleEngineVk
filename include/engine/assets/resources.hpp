@@ -198,12 +198,28 @@ public:
 template <typename T>
 T* TAsset<T>::get()
 {
-	return id.empty() ? nullptr : dynamic_cast<T*>(Resources::inst().get<T>(id));
+	if (!id.empty())
+	{
+		auto pAsset = Resources::inst().get<T>(id);
+		if (pAsset && pAsset->isReady())
+		{
+			return dynamic_cast<T*>(pAsset);
+		}
+	}
+	return nullptr;
 }
 
 template <typename T>
 T const* TAsset<T>::get() const
 {
-	return id.empty() ? nullptr : dynamic_cast<T*>(Resources::inst().get<T>(id));
+	if (!id.empty())
+	{
+		auto pAsset = Resources::inst().get<T>(id);
+		if (pAsset && pAsset->isReady())
+		{
+			return dynamic_cast<T*>(pAsset);
+		}
+	}
+	return nullptr;
 }
 } // namespace le

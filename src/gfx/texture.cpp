@@ -186,6 +186,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	m_uImpl->imageView = g_device.createImageView(viewInfo);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
 	m_type = info.type;
+	m_status = Status::eLoading;
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	m_reloadDelay = 500ms;
 	if (bAddFileMonitor)

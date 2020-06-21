@@ -73,7 +73,8 @@ Public Types</h2></td></tr>
 <a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141a4917f92a94d37dee5c4a923e4e1d1754">Status::eExtractingData</a>, 
 <a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141ab247b3a34f1a73fba56a67fb0ae61746">Status::eLoadingAssets</a>, 
 <br />
-&#160;&#160;<a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141adffba12187104ad3dda7170cb0d2a679">Status::eTerminating</a>, 
+&#160;&#160;<a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141aea41221b078fbbb6d24b6df994fe5555">Status::eWaitingForAssets</a>, 
+<a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141adffba12187104ad3dda7170cb0d2a679">Status::eTerminating</a>, 
 <a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141a946db550abb284f3a919132343c4d984">Status::eError</a>
 <br />
  }</td></tr>
@@ -92,8 +93,8 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a4c36bcf437ad2e9f4c527ae98ab5b2f5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structle_1_1AssetManifest_1_1Info.html">Info</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a4c36bcf437ad2e9f4c527ae98ab5b2f5">m_info</a></td></tr>
-<tr class="separator:a4c36bcf437ad2e9f4c527ae98ab5b2f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a55c951c1c66f474e78e66b0c5039301c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structle_1_1AssetManifest_1_1Info.html">Info</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a55c951c1c66f474e78e66b0c5039301c">m_cache</a></td></tr>
+<tr class="separator:a55c951c1c66f474e78e66b0c5039301c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -117,12 +118,18 @@ Protected Member Functions</h2></td></tr>
 Protected Attributes</h2></td></tr>
 <tr class="memitem:a84a10f1f819f0ccc2ace83da8ea0e24f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1GData.html">GData</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a84a10f1f819f0ccc2ace83da8ea0e24f">m_manifest</a></td></tr>
 <tr class="separator:a84a10f1f819f0ccc2ace83da8ea0e24f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c36bcf437ad2e9f4c527ae98ab5b2f5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structle_1_1AssetManifest_1_1Info.html">Info</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a4c36bcf437ad2e9f4c527ae98ab5b2f5">m_info</a></td></tr>
+<tr class="separator:a4c36bcf437ad2e9f4c527ae98ab5b2f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2cd588f7c989aa349a2a341d1e3b0466"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structle_1_1AssetManifest_1_1Data.html">Data</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a2cd588f7c989aa349a2a341d1e3b0466">m_data</a></td></tr>
 <tr class="separator:a2cd588f7c989aa349a2a341d1e3b0466"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2e5220c008128398421a4dde0b318650"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::shared_ptr&lt; <a class="el" href="classle_1_1HJob.html">HJob</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a2e5220c008128398421a4dde0b318650">m_running</a></td></tr>
 <tr class="separator:a2e5220c008128398421a4dde0b318650"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3f6c6d16670997903ee9972f03889ca3"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">Resources::Semaphore</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a3f6c6d16670997903ee9972f03889ca3">m_semaphores</a></td></tr>
-<tr class="separator:a3f6c6d16670997903ee9972f03889ca3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8208b6ba59a363640e7830d4cc34c823"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classle_1_1Asset.html">Asset</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a8208b6ba59a363640e7830d4cc34c823">m_loading</a></td></tr>
+<tr class="separator:a8208b6ba59a363640e7830d4cc34c823"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad601a64eb85d6d024d96142f5cdc8e30"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#ad601a64eb85d6d024d96142f5cdc8e30">m_mutex</a></td></tr>
+<tr class="separator:ad601a64eb85d6d024d96142f5cdc8e30"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a65e411c4037602203566757d8cebb2f9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">Resources::Semaphore</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a65e411c4037602203566757d8cebb2f9">m_semaphore</a></td></tr>
+<tr class="separator:a65e411c4037602203566757d8cebb2f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a60d366ad0890b6f482d59b4a89fcfc6a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a60d366ad0890b6f482d59b4a89fcfc6a">m_status</a> = <a class="el" href="classle_1_1AssetManifest.html#ad2976b4fd287466393b473521e813141a7b9cf82c13307a24d74c2fec226a83cc">Status::eIdle</a></td></tr>
 <tr class="separator:a60d366ad0890b6f482d59b4a89fcfc6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0df42d6929854816ed4c5e66064453a2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1IOReader.html">IOReader</a> const  *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1AssetManifest.html#a0df42d6929854816ed4c5e66064453a2">m_pReader</a> = nullptr</td></tr>
@@ -153,6 +160,7 @@ Protected Attributes</h2></td></tr>
 <tr><td class="fieldname"><a id="ad2976b4fd287466393b473521e813141a40faffa4a16516bfa3ce3310bacf9fe1"></a>eExtractingIDs&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ad2976b4fd287466393b473521e813141a4917f92a94d37dee5c4a923e4e1d1754"></a>eExtractingData&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ad2976b4fd287466393b473521e813141ab247b3a34f1a73fba56a67fb0ae61746"></a>eLoadingAssets&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ad2976b4fd287466393b473521e813141aea41221b078fbbb6d24b6df994fe5555"></a>eWaitingForAssets&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ad2976b4fd287466393b473521e813141adffba12187104ad3dda7170cb0d2a679"></a>eTerminating&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ad2976b4fd287466393b473521e813141a946db550abb284f3a919132343c4d984"></a>eError&#160;</td><td class="fielddoc"></td></tr>
 </table>
@@ -368,6 +376,20 @@ Protected Attributes</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
+<a id="a55c951c1c66f474e78e66b0c5039301c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a55c951c1c66f474e78e66b0c5039301c">&#9670;&nbsp;</a></span>m_cache</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structle_1_1AssetManifest_1_1Info.html">Info</a> le::AssetManifest::m_cache</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a2cd588f7c989aa349a2a341d1e3b0466"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2cd588f7c989aa349a2a341d1e3b0466">&#9670;&nbsp;</a></span>m_data</h2>
 
@@ -395,11 +417,41 @@ Protected Attributes</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="structle_1_1AssetManifest_1_1Info.html">Info</a> le::AssetManifest::m_info</td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a8208b6ba59a363640e7830d4cc34c823"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8208b6ba59a363640e7830d4cc34c823">&#9670;&nbsp;</a></span>m_loading</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;<a class="el" href="classle_1_1Asset.html">Asset</a>*&gt; le::AssetManifest::m_loading</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 </div>
@@ -415,6 +467,28 @@ Protected Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="classle_1_1GData.html">GData</a> le::AssetManifest::m_manifest</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad601a64eb85d6d024d96142f5cdc8e30"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad601a64eb85d6d024d96142f5cdc8e30">&#9670;&nbsp;</a></span>m_mutex</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::mutex le::AssetManifest::m_mutex</td>
         </tr>
       </table>
   </td>
@@ -470,8 +544,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a3f6c6d16670997903ee9972f03889ca3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3f6c6d16670997903ee9972f03889ca3">&#9670;&nbsp;</a></span>m_semaphores</h2>
+<a id="a65e411c4037602203566757d8cebb2f9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a65e411c4037602203566757d8cebb2f9">&#9670;&nbsp;</a></span>m_semaphore</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -480,7 +554,7 @@ Protected Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt;<a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">Resources::Semaphore</a>&gt; le::AssetManifest::m_semaphores</td>
+          <td class="memname"><a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">Resources::Semaphore</a> le::AssetManifest::m_semaphore</td>
         </tr>
       </table>
   </td>

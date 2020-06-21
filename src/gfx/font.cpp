@@ -301,11 +301,11 @@ void Text2D::updateText(std::string text)
 Mesh const* Text2D::mesh() const
 {
 	m_uMesh->update();
-	return m_uMesh->isReady() && m_pFont && m_pFont->isReady() ? m_uMesh.get() : nullptr;
+	return isReady() ? m_uMesh.get() : nullptr;
 }
 
 bool Text2D::isReady() const
 {
-	return m_uMesh->isReady() && m_pFont->isReady();
+	return m_uMesh->isReady() && m_pFont && m_pFont->isReady();
 }
 } // namespace le::gfx

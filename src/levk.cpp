@@ -9,12 +9,15 @@
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
+#include <gfx/renderer_impl.hpp>
 #include <gfx/vram.hpp>
 #include <window/window_impl.hpp>
 #include <editor/editor.hpp>
 #include <levk_impl.hpp>
 
-namespace le::engine
+namespace le
+{
+namespace engine
 {
 namespace
 {
@@ -110,13 +113,11 @@ bool Service::init(Info const& info)
 bool Service::tick(Time dt) const
 {
 	gfx::deferred::update();
-	Resources::inst().update();
-	WindowImpl::update();
+	update();
 	gfx::ScreenRect gameRect;
 #if defined(LEVK_EDITOR)
 	gameRect = editor::tick(dt);
 #endif
-	gfx::vram::update();
 	return World::tick(dt, gameRect);
 }
 
@@ -129,4 +130,25 @@ Window* Service::mainWindow()
 {
 	return g_app.uWindow.get();
 }
-} // namespace le::engine
+} // namespace engine
+
+void engine::update()
+{
+	Resources::inst().update();
+	WindowImpl::update();
+	gfx::vram::update();
+}
+
+gfx::Texture::Space engine::colourSpace()
+{
+	if (g_app.uWindow)
+	{
+		auto const pRenderer = WindowImpl::rendererImpl(g_app.uWindow->id());
+		if (pRenderer && pRenderer->colourSpace() == ColourSpace::eSRGBNonLinear)
+		{
+			return gfx::Texture::Space::eSRGBNonLinear;
+		}
+	}
+	return gfx::Texture::Space::eRGBLinear;
+}
+} // namespace le

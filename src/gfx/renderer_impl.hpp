@@ -89,6 +89,8 @@ public:
 	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
 	bool initExtGUI() const;
 
+	ColourSpace colourSpace() const;
+
 private:
 	void onFramebufferResize();
 	FrameSync& frameSync();

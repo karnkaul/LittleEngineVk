@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <core/gdata.hpp>
 #include <core/jobs.hpp>
@@ -31,6 +32,7 @@ public:
 		eExtractingIDs,
 		eExtractingData,
 		eLoadingAssets,
+		eWaitingForAssets,
 		eTerminating,
 		eError,
 	};
@@ -70,7 +72,9 @@ protected:
 	Info m_info;
 	Data m_data;
 	std::vector<std::shared_ptr<HJob>> m_running;
-	std::vector<Resources::Semaphore> m_semaphores;
+	std::vector<Asset*> m_loading;
+	std::mutex m_mutex;
+	Resources::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
 	IOReader const* m_pReader = nullptr;
 

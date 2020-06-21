@@ -6,6 +6,7 @@
 #include <core/threads.hpp>
 #include <core/utils.hpp>
 #include <engine/assets/manifest.hpp>
+#include <levk_impl.hpp>
 
 namespace le
 {
@@ -98,6 +99,7 @@ AssetManifest::~AssetManifest()
 {
 	while (update(true) != Status::eIdle)
 	{
+		engine::update();
 		threads::sleep();
 	}
 }
@@ -156,15 +158,16 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 	}
 	case Status::eLoadingAssets:
 	{
-		if (eraseDone() || bTerminate)
+		if (eraseDone())
 		{
 			m_info = {};
-			m_semaphores.clear();
+			m_loading.clear();
+			m_semaphore.reset();
 			m_status = Status::eIdle;
 		}
 	}
 	}
-	bool const bTerminating = bTerminate && m_status != Status::eIdle && m_status != Status::eError;
+	bool const bTerminating = bTerminate && m_status == Status::eLoadingAssets;
 	return bTerminating ? Status::eTerminating : m_status;
 }
 
@@ -214,11 +217,7 @@ void AssetManifest::extractIDs()
 				{
 					AssetData<Texture> data;
 					data.id = id;
-					data.info.mode = Texture::Space::eSRGBNonLinear;
-					if (colourSpace == "rgb")
-					{
-						data.info.mode = Texture::Space::eRGBLinear;
-					}
+					data.info.mode = engine::colourSpace();
 					data.info.samplerID = m_manifest.getString("sampler");
 					data.info.pReader = m_pReader;
 					m_info.textures.push_back(std::move(data));
@@ -239,11 +238,7 @@ void AssetManifest::extractIDs()
 				{
 					AssetData<Texture> data;
 					data.id = id;
-					data.info.mode = Texture::Space::eSRGBNonLinear;
-					if (colourSpace == "rgb")
-					{
-						data.info.mode = Texture::Space::eRGBLinear;
-					}
+					data.info.mode = engine::colourSpace();
 					data.info.type = Texture::Type::eCube;
 					data.info.samplerID = m_manifest.getString("sampler");
 					data.info.pReader = m_pReader;
@@ -293,19 +288,20 @@ void AssetManifest::extractData()
 void AssetManifest::loadAssets()
 {
 	m_status = Status::eLoadingAssets;
+	m_semaphore = Resources::inst().setBusy();
 	IndexedTask task;
 	task.task = [this](size_t idx) {
 		auto& texture = m_info.textures.at(idx);
-		m_semaphores.push_back(Resources::inst().setBusy());
-		Resources::inst().create<Texture>(std::move(texture.id), std::move(texture.info));
+		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		m_loading.push_back(Resources::inst().create<Texture>(std::move(texture.id), std::move(texture.info)));
 	};
 	task.name = "Textures";
 	task.iterationCount = m_info.textures.size();
 	addJobs(task);
 	task.task = [this](size_t idx) {
 		auto& cubemap = m_info.cubemaps.at(idx);
-		m_semaphores.push_back(Resources::inst().setBusy());
-		Resources::inst().create<Texture>(std::move(cubemap.id), std::move(cubemap.info));
+		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		m_loading.push_back(Resources::inst().create<Texture>(std::move(cubemap.id), std::move(cubemap.info)));
 	};
 	task.name = "Cubemaps";
 	task.iterationCount = m_info.cubemaps.size();
@@ -314,10 +310,18 @@ void AssetManifest::loadAssets()
 
 bool AssetManifest::eraseDone()
 {
-	auto iter =
-		std::remove_if(m_running.begin(), m_running.end(), [](std::shared_ptr<HJob> const& sJob) -> bool { return sJob->isReady(); });
-	m_running.erase(iter, m_running.end());
-	return m_running.empty();
+	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+	if (!m_running.empty())
+	{
+		auto iter = std::remove_if(m_running.begin(), m_running.end(), [](auto const& sJob) -> bool { return sJob->hasCompleted(); });
+		m_running.erase(iter, m_running.end());
+	}
+	if (!m_loading.empty())
+	{
+		auto iter = std::remove_if(m_loading.begin(), m_loading.end(), [](Asset* pAsset) { return pAsset->isReady(); });
+		m_loading.erase(iter, m_loading.end());
+	}
+	return m_running.empty() && m_loading.empty();
 }
 
 void AssetManifest::addJobs(IndexedTask const& task)

@@ -27,6 +27,7 @@ public:
 
 	enum class Status : s8
 	{
+		eIdle,
 		eReady,	   // ready to use
 		eLoading,  // transferring resources
 		eReloaded, // finished reloading (only for one frame)
@@ -57,7 +58,7 @@ public:
 
 protected:
 	GUID m_guid;
-	Status m_status = Status::eReady;
+	Status m_status = Status::eIdle;
 
 public:
 	explicit Asset(stdfs::path id);

@@ -212,6 +212,10 @@ void DemoWorld::tick(Time dt)
 {
 	if (m_uManifest && m_uManifest->update() == AssetManifest::Status::eIdle)
 	{
+		m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
+		m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
+		m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
+		m_res.pCubemap = Resources::inst().get<gfx::Texture>("skyboxes/sky_dusk");
 		m_uManifest.reset();
 	}
 	if (m_data.bQuit)
@@ -221,13 +225,10 @@ void DemoWorld::tick(Time dt)
 	if (window()->isClosing())
 	{
 		m_data.freeCam.reset(false, false);
+		m_uManifest.reset();
 		window()->destroy();
 		return;
 	}
-	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
-	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
-	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
-	m_res.pCubemap = Resources::inst().get<gfx::Texture>("skyboxes/sky_dusk");
 
 	if (m_data.bLoadUnloadModels)
 	{

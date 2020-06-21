@@ -48,7 +48,7 @@ bool World::loadWorld(ID id)
 			s_pActive = nullptr;
 		}
 		auto const& uWorld = search->second;
-		if (uWorld->start())
+		if (uWorld->startImpl())
 		{
 			s_pActive = uWorld.get();
 			return true;
@@ -110,12 +110,22 @@ bool World::start(ID id)
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
 		auto const& uWorld = search->second;
-		if (uWorld->start())
+		if (uWorld->startImpl())
 		{
 			s_pActive = uWorld.get();
 			return true;
 		}
 		uWorld->stop();
+	}
+	return false;
+}
+
+bool World::startImpl()
+{
+	if (start())
+	{
+		LOG_I("[{}] started", utils::tName(*this));
+		return true;
 	}
 	return false;
 }
@@ -137,6 +147,7 @@ void World::stopImpl()
 {
 	stop();
 	m_registry.clear();
+	LOG_I("[{}] stopped", utils::tName(*this));
 }
 
 #if defined(LEVK_EDITOR)

@@ -85,6 +85,7 @@ protected:
 	class Window* window() const;
 
 private:
+	bool startImpl();
 	void tickImpl(Time dt);
 	void stopImpl();
 

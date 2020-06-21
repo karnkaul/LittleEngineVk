@@ -335,6 +335,15 @@ bool RendererImpl::initExtGUI() const
 	return ext_gui::init(guiInfo);
 }
 
+ColourSpace RendererImpl::colourSpace() const
+{
+	if (m_context.colourFormat() == vk::Format::eB8G8R8A8Srgb)
+	{
+		return ColourSpace::eSRGBNonLinear;
+	}
+	return ColourSpace::eRGBLinear;
+}
+
 void RendererImpl::onFramebufferResize()
 {
 	m_context.onFramebufferResize();

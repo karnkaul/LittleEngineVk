@@ -1,5 +1,6 @@
 #include <core/log.hpp>
 #include <core/threads.hpp>
+#include <core/time.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
@@ -101,6 +102,7 @@ bool Resources::init(IOReader const& data)
 			create<gfx::Font>("fonts/default", std::move(fontInfo));
 		}
 	}
+	LOG_I("[{}] initialised", s_tName);
 	return true;
 }
 
@@ -139,6 +141,7 @@ void Resources::deinit()
 	{
 		m_bActive.store(false);
 	}
+	LOG_I("[{}] deinitialised", s_tName);
 	return;
 }
 
@@ -149,9 +152,16 @@ Resources::Semaphore Resources::setBusy() const
 
 void Resources::waitIdle()
 {
-	while (m_semaphore.use_count() > 1)
+	Time const timeout = 5s;
+	Time elapsed;
+	Time const start = Time::elapsed();
+	while (m_semaphore.use_count() > 1 && elapsed < timeout)
 	{
+		elapsed = Time::elapsed() - start;
 		threads::sleep();
 	}
+	bool bTimeout = elapsed > timeout;
+	ASSERT(!bTimeout, "Timeout waiting for Resources! Expect a crash");
+	LOGIF_E(bTimeout, "[{}] Timeout waiting for Resources! Expect crashes/hangs!", s_tName);
 }
 } // namespace le

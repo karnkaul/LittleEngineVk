@@ -47,9 +47,6 @@ $(function() {
 <li>m_bytes
 : <a class="el" href="classle_1_1FileMonitor.html#a4ffbedb1084f74f820abf68d868bbba8">le::FileMonitor</a>
 </li>
-<li>m_cache
-: <a class="el" href="classle_1_1AssetManifest.html#a55c951c1c66f474e78e66b0c5039301c">le::AssetManifest</a>
-</li>
 <li>m_colourSpace
 : <a class="el" href="classle_1_1gfx_1_1Texture.html#ae5b67237396cb0278912e9ff9147ec1b">le::gfx::Texture</a>
 </li>
@@ -93,14 +90,14 @@ $(function() {
 <li>m_id
 : <a class="el" href="classle_1_1Asset.html#ac1bb7fe3a6efcfc479c79749406d9e2e">le::Asset</a>
 </li>
-<li>m_info
-: <a class="el" href="classle_1_1AssetManifest.html#a4c36bcf437ad2e9f4c527ae98ab5b2f5">le::AssetManifest</a>
-</li>
 <li>m_lastModifiedTime
 : <a class="el" href="classle_1_1FileMonitor.html#a30450adbb806b0dd8a293faf84c7a649">le::FileMonitor</a>
 </li>
 <li>m_lastWriteTime
 : <a class="el" href="classle_1_1FileMonitor.html#a38b8fc55a554067497d9cca93d1901d3">le::FileMonitor</a>
+</li>
+<li>m_loaded
+: <a class="el" href="classle_1_1AssetManifest.html#a6ba8678052677b71ec15e99069e5c876">le::AssetManifest</a>
 </li>
 <li>m_loadedMaterials
 : <a class="el" href="classle_1_1gfx_1_1Model.html#aa34bb9e0c8eaacf92781855476dfea68">le::gfx::Model</a>
@@ -193,6 +190,9 @@ $(function() {
 : <a class="el" href="classle_1_1Asset.html#a3a00b238e6f39499962b937486231f65">le::Asset</a>
 , <a class="el" href="classle_1_1World.html#a5214cd0ad43715c6ff1bf60f69c4eff8">le::World</a>
 </li>
+<li>m_toLoad
+: <a class="el" href="classle_1_1AssetManifest.html#a596f1ecc60a789031b4eaf1f0aa48692">le::AssetManifest</a>
+</li>
 <li>m_triCount
 : <a class="el" href="classle_1_1gfx_1_1Mesh.html#a2d5edc2012c107533125f161fd92342b">le::gfx::Mesh</a>
 </li>
@@ -242,11 +242,15 @@ $(function() {
 <li>material
 : <a class="el" href="structle_1_1gfx_1_1Mesh_1_1Info.html#aef3340a70acab97e0de90da34dac93f2">le::gfx::Mesh::Info</a>
 </li>
+<li>materialID
+: <a class="el" href="structle_1_1gfx_1_1Font_1_1Info.html#aa78eddeb5986455b99046fb03cd19138">le::gfx::Font::Info</a>
+</li>
 <li>materialIndices
 : <a class="el" href="structle_1_1gfx_1_1Model_1_1MeshData.html#a8d5fafc2ec0b439829028d47fd2a0943">le::gfx::Model::MeshData</a>
 </li>
 <li>materials
-: <a class="el" href="structle_1_1AssetManifest_1_1Info.html#a0085c7b327ba19ca9b937f3d393efeef">le::AssetManifest::Info</a>
+: <a class="el" href="structle_1_1AssetList.html#a69c5baa038c7d6b7c56da9ca8b916583">le::AssetList</a>
+, <a class="el" href="structle_1_1AssetManifest_1_1Info.html#a0085c7b327ba19ca9b937f3d393efeef">le::AssetManifest::Info</a>
 , <a class="el" href="structle_1_1gfx_1_1Model_1_1Info.html#a0c3f18c583945f96871ddb3f96b5c803">le::gfx::Model::Info</a>
 </li>
 <li>maxSpeed
@@ -256,7 +260,7 @@ $(function() {
 : <a class="el" href="classle_1_1IOReader.html#a0037005b79dbb89c4e8c761b04d225a8">le::IOReader</a>
 </li>
 <li>Mesh()
-: <a class="el" href="classle_1_1gfx_1_1Mesh.html#a0564ff85470edb65f02844abb549ce67">le::gfx::Mesh</a>
+: <a class="el" href="classle_1_1gfx_1_1Mesh.html#a3f495cc2b07a3ed20e7eb644c84b4187">le::gfx::Mesh</a>
 </li>
 <li>mesh()
 : <a class="el" href="classle_1_1gfx_1_1Text2D.html#aa5401a177de5bbe24b1fa118aae948ff">le::gfx::Text2D</a>
@@ -265,7 +269,8 @@ $(function() {
 : <a class="el" href="structle_1_1gfx_1_1Model_1_1Info.html#a75eb0f1f3e320c92576a18a20907b8e1">le::gfx::Model::Info</a>
 </li>
 <li>meshes
-: <a class="el" href="structle_1_1AssetManifest_1_1Info.html#aaaa61491a6311c064f02d7540792fa56">le::AssetManifest::Info</a>
+: <a class="el" href="structle_1_1AssetList.html#a46f62acdc4f085333d033f84675e73b8">le::AssetList</a>
+, <a class="el" href="structle_1_1AssetManifest_1_1Info.html#aaaa61491a6311c064f02d7540792fa56">le::AssetManifest::Info</a>
 , <a class="el" href="classle_1_1gfx_1_1Model.html#a82ff855b1808ca0efcb452d8f6005c87">le::gfx::Model</a>
 , <a class="el" href="structle_1_1gfx_1_1Renderer_1_1Drawable.html#ab91f069c626cbcea14063613050e6123">le::gfx::Renderer::Drawable</a>
 , <a class="el" href="structle_1_1UIComponent.html#a5d20b191511535f70e27d8ab5c30b74e">le::UIComponent</a>
@@ -305,11 +310,9 @@ $(function() {
 <li>model()
 : <a class="el" href="classle_1_1Transform.html#a7ea7f9a4934208b2f0b38fd35109741a">le::Transform</a>
 </li>
-<li>modelID
-: <a class="el" href="structle_1_1gfx_1_1Model_1_1LoadRequest.html#a18b4e999cfcab36175a14cd736eddd1c">le::gfx::Model::LoadRequest</a>
-</li>
 <li>models
-: <a class="el" href="structle_1_1AssetManifest_1_1Info.html#acb6b384eac91dd465acbaf0af6621506">le::AssetManifest::Info</a>
+: <a class="el" href="structle_1_1AssetList.html#a584053f0325ad11431682ba827ecb935">le::AssetList</a>
+, <a class="el" href="structle_1_1AssetManifest_1_1Info.html#acb6b384eac91dd465acbaf0af6621506">le::AssetManifest::Info</a>
 </li>
 <li>mods
 : <a class="el" href="structle_1_1gfx_1_1FreeCam_1_1KeyToggle.html#a85077db8ae97a1bed542e206495c10f8">le::gfx::FreeCam::KeyToggle</a>

@@ -39,13 +39,14 @@ public:
 private:
 	struct
 	{
-		gfx::Model::LoadRequest modelLoadReq;
-		stdfs::path model0id, model1id;
+		stdfs::path model0id, model1id, skyboxID;
+		std::vector<std::shared_ptr<HJob>> modelReloads;
 		gfx::Renderer::View view;
 		gfx::FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
+		Entity skybox;
 		OnInput::Token inputToken;
 		Time reloadTime;
 		bool bLoadUnloadModels = false;
@@ -55,12 +56,9 @@ private:
 	} m_data;
 	struct
 	{
-		gfx::Texture* pCubemap = nullptr;
 		gfx::Mesh* pTriangle0 = nullptr;
 		gfx::Mesh* pQuad = nullptr;
 		gfx::Mesh* pSphere = nullptr;
-		gfx::Model* pModel0 = nullptr;
-		gfx::Model* pModel1 = nullptr;
 	} m_res;
 	gfx::Pipeline* m_pPipeline0wf = nullptr;
 	std::unique_ptr<AssetManifest> m_uManifest;
@@ -88,32 +86,9 @@ bool DemoWorld::start()
 	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
 	m_res.pSphere = Resources::inst().create<gfx::Mesh>("demo/sphere", meshInfo);
 
-	gfx::Model::LoadRequest model0lr;
-	model0lr.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
-	model0lr.pReader = g_uReader.get();
-	m_data.model0id = model0lr.getModelID();
-	m_data.model0id += "_0";
-	jobs::enqueue([this, model0lr]() {
-		auto semaphore = Resources::inst().setBusy();
-		auto model0info = gfx::Model::parseOBJ(model0lr);
-		if (auto pModel = m_registry.component<TAsset<gfx::Model>>(m_data.eid2))
-		{
-			pModel->id = m_data.model0id;
-		}
-		m_res.pModel0 = Resources::inst().create<gfx::Model>(m_data.model0id, std::move(model0info));
-	});
-	m_data.model1id = model0lr.getModelID();
-	m_data.model1id += "_1";
-	jobs::enqueue([this, model0lr]() {
-		auto semaphore = Resources::inst().setBusy();
-		auto model1info = gfx::Model::parseOBJ(model0lr);
-		if (auto pModel = m_registry.component<TAsset<gfx::Model>>(m_data.eid3))
-		{
-			pModel->id = m_data.model1id;
-		}
-		model1info.mode = gfx::Texture::Space::eRGBLinear;
-		m_res.pModel1 = Resources::inst().create<gfx::Model>(m_data.model1id, std::move(model1info));
-	});
+	m_data.skyboxID = "skyboxes/sky_dusk";
+	m_data.model0id = "models/plant";
+	m_data.model1id = g_uReader->isPresent("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : m_data.model0id;
 	gfx::Material::Info texturedInfo;
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
 	auto pTexturedLit = Resources::inst().create<gfx::Material>("materials/textured", texturedInfo);
@@ -135,9 +110,6 @@ bool DemoWorld::start()
 	m_data.dirLight1.diffuse = Colour(0xffffffff);
 	m_data.dirLight1.direction = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
 
-	m_data.modelLoadReq.jsonID = g_uReader->checkPresence("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : "models/plant";
-	m_data.modelLoadReq.pReader = g_uReader.get();
-
 	m_data.eid0 = spawnEntity("quad");
 	m_data.eid1 = spawnEntity("sphere");
 	m_data.eid2 = spawnEntity("model0");
@@ -145,6 +117,7 @@ bool DemoWorld::start()
 	m_data.eui0 = spawnEntity("fps");
 	m_data.eui1 = spawnEntity("dt", false);
 	m_data.eui2 = spawnEntity("tris", false);
+	m_data.skybox = spawnEntity("skybox", false);
 
 	gfx::Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
@@ -160,6 +133,8 @@ bool DemoWorld::start()
 	textInfo.data.pos.y -= 100.0f;
 	textInfo.id = "tris";
 	m_registry.addComponent<UIComponent>(m_data.eui2)->setText(textInfo);
+
+	m_registry.addComponent<TAsset<gfx::Texture>>(m_data.skybox)->id = m_data.skyboxID;
 
 	m_data.freeCam.init(window());
 	m_data.freeCam.m_position = {0.0f, 1.0f, 2.0f};
@@ -215,7 +190,6 @@ void DemoWorld::tick(Time dt)
 		m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
 		m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
 		m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
-		m_res.pCubemap = Resources::inst().get<gfx::Texture>("skyboxes/sky_dusk");
 		m_uManifest.reset();
 	}
 	if (m_data.bQuit)
@@ -230,37 +204,45 @@ void DemoWorld::tick(Time dt)
 		return;
 	}
 
-	if (m_data.bLoadUnloadModels)
+	auto iter =
+		std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto sJob) -> bool { return sJob->hasCompleted(); });
+	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
+
+	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
 	{
-		if (m_res.pModel0 && m_res.pModel1)
+		if (Resources::inst().get<gfx::Model>(m_data.model0id))
 		{
-			Resources::inst().unload<gfx::Model>(m_res.pModel0->m_id);
-			Resources::inst().unload<gfx::Model>(m_res.pModel1->m_id);
-			m_res.pModel0 = nullptr;
-			m_res.pModel1 = nullptr;
+			Resources::inst().unload<gfx::Model>(m_data.model0id);
+			if (Resources::inst().get<gfx::Model>(m_data.model1id))
+			{
+				Resources::inst().unload<gfx::Model>(m_data.model1id);
+			}
 		}
 		else
 		{
-			m_data.reloadTime = Time::elapsed();
-			jobs::enqueue(
+			m_data.modelReloads.push_back(jobs::enqueue(
 				[this]() {
 					auto semaphore = Resources::inst().setBusy();
-					auto m0info = gfx::Model::parseOBJ(m_data.modelLoadReq);
-					LOG_I("{} data loaded in: {}s", m0info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
-					m_res.pModel0 = Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
-					LOG_I("{} total load time: {}s", m0info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
+					gfx::Model::LoadRequest mlr;
+					mlr.assetID = m_data.model0id;
+					mlr.pReader = g_uReader.get();
+					auto m0info = gfx::Model::parseOBJ(mlr);
+					Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
 				},
-				"Model0-Reload");
-			jobs::enqueue(
-				[this]() {
-					auto semaphore = Resources::inst().setBusy();
-					auto m1info = gfx::Model::parseOBJ(m_data.modelLoadReq);
-					LOG_I("{} data loaded in: {}s", m1info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
-					m1info.mode = gfx::Texture::Space::eRGBLinear;
-					m_res.pModel1 = Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
-					LOG_I("{} total load time: {}s", m1info.id.generic_string(), (Time::elapsed() - m_data.reloadTime).to_s());
-				},
-				"Model1-Reload");
+				"Model0-Reload"));
+			if (m_data.model0id != m_data.model1id)
+			{
+				m_data.modelReloads.push_back(jobs::enqueue(
+					[this]() {
+						auto semaphore = Resources::inst().setBusy();
+						gfx::Model::LoadRequest mlr;
+						mlr.assetID = m_data.model1id;
+						mlr.pReader = g_uReader.get();
+						auto m1info = gfx::Model::parseOBJ(mlr);
+						Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
+					},
+					"Model1-Reload"));
+			}
 		}
 		m_data.bLoadUnloadModels = false;
 	}
@@ -290,7 +272,7 @@ void DemoWorld::tick(Time dt)
 
 	m_data.view.mat_v = m_data.freeCam.view();
 	m_data.view.pos_v = m_data.freeCam.m_position;
-	m_data.view.skybox.pCubemap = m_res.pCubemap;
+	m_data.view.skybox.pCubemap = m_registry.component<TAsset<gfx::Texture>>(m_data.skybox)->get();
 	auto const size = window()->framebufferSize();
 	if (size.x > 0 && size.y > 0)
 	{
@@ -317,28 +299,15 @@ void DemoWorld::stop()
 	{
 		m_uManifest->update(true);
 	}
-	m_data = {};
 	auto unload = [](std::initializer_list<stdfs::path const*> ids) {
 		for (auto pID : ids)
 		{
 			Resources::inst().unload(*pID);
 		}
 	};
-	auto unloadModels = [&unload](std::initializer_list<gfx::Model const*> models) {
-		for (auto pModel : models)
-		{
-			if (pModel)
-			{
-				unload({&pModel->m_id});
-			}
-		}
-	};
-	if (m_res.pCubemap)
-	{
-		unload({&m_res.pCubemap->m_id});
-	}
-	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id});
-	unloadModels({m_res.pModel0, m_res.pModel1});
+	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id, &m_data.model0id, &m_data.model1id, &m_data.skyboxID});
+	m_data = {};
+	m_res = {};
 }
 } // namespace
 

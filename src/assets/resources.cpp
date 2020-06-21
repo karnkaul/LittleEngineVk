@@ -99,6 +99,7 @@ bool Resources::init(IOReader const& data)
 			auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
 			ASSERT(bImg, "Default font not found!");
 			fontInfo.image = std::move(img);
+			fontInfo.material.pMaterial = get<gfx::Material>(fontInfo.materialID);
 			create<gfx::Font>("fonts/default", std::move(fontInfo));
 		}
 	}

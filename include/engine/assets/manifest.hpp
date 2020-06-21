@@ -23,13 +23,28 @@ struct AssetData
 	stdfs::path id;
 };
 
+struct AssetList final
+{
+	std::vector<stdfs::path> shaders;
+	std::vector<stdfs::path> textures;
+	std::vector<stdfs::path> cubemaps;
+	std::vector<stdfs::path> materials;
+	std::vector<stdfs::path> meshes;
+	std::vector<stdfs::path> models;
+	std::vector<stdfs::path> fonts;
+
+	AssetList operator*(AssetList const& rhs) const;
+	AssetList operator-(AssetList const& rhs) const;
+
+	bool isEmpty() const;
+};
+
 class AssetManifest
 {
 public:
 	enum class Status : s8
 	{
 		eIdle,
-		eExtractingIDs,
 		eExtractingData,
 		eLoadingAssets,
 		eWaitingForAssets,
@@ -37,10 +52,6 @@ public:
 		eError,
 	};
 
-public:
-	static std::string const s_tName;
-
-public:
 	struct Info final
 	{
 		std::vector<AssetData<gfx::Shader>> shaders;
@@ -51,11 +62,14 @@ public:
 		std::vector<AssetData<gfx::Model>> models;
 		std::vector<AssetData<gfx::Font>> fonts;
 
-		Info operator*(Info const& rhs) const;
-		Info operator-(Info const& rhs) const;
+		void importList(AssetList ids);
 
+		AssetList exportList() const;
 		bool isEmpty() const;
 	};
+
+public:
+	static std::string const s_tName;
 
 protected:
 	struct Data final
@@ -65,11 +79,11 @@ protected:
 	};
 
 public:
-	Info m_cache;
+	AssetList m_loaded;
 
 protected:
 	GData m_manifest;
-	Info m_info;
+	Info m_toLoad;
 	Data m_data;
 	std::vector<std::shared_ptr<HJob>> m_running;
 	std::vector<Asset*> m_loading;
@@ -87,10 +101,11 @@ public:
 	Status update(bool bTerminate = false);
 
 protected:
-	void extractIDs();
-	void extractData();
+	AssetList parse();
+	void loadData();
 	void loadAssets();
 	bool eraseDone();
-	void addJobs(IndexedTask const& task);
+	void addJobs(IndexedTask task);
+	void addJobs(TResult<IndexedTask> task);
 };
 } // namespace le

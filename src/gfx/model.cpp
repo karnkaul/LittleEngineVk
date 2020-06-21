@@ -123,7 +123,6 @@ OBJParser::OBJParser(Data data)
 	}
 	if (bOK)
 	{
-		m_info.id = m_modelID;
 		{
 #if defined(LEVK_PROFILE_MODEL_LOADS)
 			Profiler pr(idStr + "-MeshData");
@@ -322,30 +321,6 @@ std::vector<size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 }
 } // namespace
 
-stdfs::path Model::LoadRequest::getModelID()
-{
-	if (modelID.empty())
-	{
-		ASSERT(pReader, "Reader is null!");
-		if (!pReader)
-		{
-			LOG_E("[{}] Reader is null!", s_tName);
-			return {};
-		}
-		auto id = (jsonID / jsonID.filename());
-		id += ".json";
-		auto [jsonStr, bResult] = pReader->getString(id);
-		if (!bResult)
-		{
-			LOG_E("[{}] [{}] not found!", s_tName, jsonID.generic_string());
-			return {};
-		}
-		GData json(std::move(jsonStr));
-		modelID = json.getString("id", "models/UNNAMED");
-	}
-	return modelID;
-}
-
 size_t Model::idHash(stdfs::path const& id)
 {
 	return std::hash<std::string>()(id.generic_string());
@@ -364,7 +339,7 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		LOG_E("[{}] Reader is null!", s_tName);
 		return {};
 	}
-	auto jsonID = (request.jsonID / request.jsonID.filename());
+	auto jsonID = (request.assetID / request.assetID.filename());
 	jsonID += ".json";
 	auto [jsonStr, bResult] = request.pReader->getString(jsonID);
 	if (!bResult)
@@ -375,11 +350,11 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 	GData json(std::move(jsonStr));
 	if (json.fieldCount() == 0 || !json.contains("mtl") || !json.contains("obj"))
 	{
-		LOG_E("[{}] No data in json: [{}]!", s_tName, request.jsonID.generic_string());
+		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
 		return {};
 	}
-	auto const objPath = request.jsonID / json.getString("obj", "");
-	auto const mtlPath = request.jsonID / json.getString("mtl", "");
+	auto const objPath = request.assetID / json.getString("obj", "");
+	auto const mtlPath = request.assetID / json.getString("mtl", "");
 	if (!request.pReader->checkPresence(objPath) || !request.pReader->checkPresence(mtlPath))
 	{
 		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, request.pReader->medium(), objPath.generic_string(),
@@ -394,7 +369,7 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		objData.objBuf = std::move(objBuf);
 		objData.mtlBuf = std::move(mtlBuf);
 		objData.jsonID = std::move(jsonID);
-		objData.modelID = json.getString("id", "models/UNNAMED");
+		objData.modelID = request.assetID;
 		objData.samplerID = json.getString("sampler", "samplers/default");
 		objData.scale = (f32)json.getF64("scale", 1.0f);
 		objData.pReader = request.pReader;

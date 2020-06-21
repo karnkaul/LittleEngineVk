@@ -14,13 +14,12 @@ using namespace gfx;
 
 namespace
 {
-template <typename T>
-std::vector<AssetData<T>> intersect(std::vector<AssetData<T>> const& lhs, std::vector<AssetData<T>> const& rhs)
+std::vector<stdfs::path> intersect(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs)
 {
-	std::vector<AssetData<T>> ret;
+	std::vector<stdfs::path> ret;
 	for (auto& asset : lhs)
 	{
-		auto const search = std::find_if(rhs.begin(), rhs.end(), [&asset](AssetData<T> const& rhs) -> bool { return asset.id == rhs.id; });
+		auto const search = std::find_if(rhs.begin(), rhs.end(), [&asset](stdfs::path const& rhs) -> bool { return asset == rhs; });
 		if (search != rhs.end())
 		{
 			ret.push_back(asset);
@@ -29,15 +28,37 @@ std::vector<AssetData<T>> intersect(std::vector<AssetData<T>> const& lhs, std::v
 	return ret;
 }
 
-template <typename T>
-void subtract(std::vector<AssetData<T>> const& lhs, std::vector<AssetData<T>>& out_rhs)
+void subtract(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path>& out_rhs)
 {
 	for (auto& asset : lhs)
 	{
-		auto iter =
-			std::remove_if(out_rhs.begin(), out_rhs.end(), [&asset](AssetData<T> const& rhs) -> bool { return asset.id == rhs.id; });
+		auto iter = std::remove_if(out_rhs.begin(), out_rhs.end(), [&asset](stdfs::path const& rhs) -> bool { return asset == rhs; });
 		out_rhs.erase(iter, out_rhs.end());
 	}
+}
+
+template <typename T>
+std::vector<AssetData<T>> importTList(std::vector<stdfs::path> src)
+{
+	std::vector<AssetData<T>> ret;
+	for (auto& id : src)
+	{
+		AssetData<T> data;
+		data.id = std::move(id);
+		ret.push_back(std::move(data));
+	}
+	return ret;
+}
+
+template <typename T>
+std::vector<stdfs::path> exportTList(std::vector<AssetData<T>> const& src)
+{
+	std::vector<stdfs::path> ret;
+	for (auto const& data : src)
+	{
+		ret.push_back(data.id);
+	}
+	return ret;
 }
 
 template <typename... T>
@@ -45,11 +66,36 @@ bool empty(std::vector<T> const&... out_vecs)
 {
 	return (out_vecs.empty() && ...);
 }
+
+template <typename T>
+TResult<IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
+								 std::vector<Asset*>& out_assets, std::mutex& mutex, std::string_view jobName)
+{
+	IndexedTask task;
+	if (!out_toLoad.empty())
+	{
+		task.task = [&out_toLoad, &out_loaded, &out_assets, &mutex](size_t idx) {
+			auto& asset = out_toLoad.at(idx);
+			auto pAsset = Resources::inst().create<T>(std::move(asset.id), std::move(asset.info));
+			if (pAsset)
+			{
+				std::scoped_lock<decltype(mutex)> lock(mutex);
+				out_assets.push_back(pAsset);
+				out_loaded.push_back(asset.id);
+			}
+		};
+		task.name = jobName;
+		task.bSilent = false;
+		task.iterationCount = out_toLoad.size();
+		return task;
+	}
+	return {};
+}
 } // namespace
 
-AssetManifest::Info AssetManifest::Info::operator*(const Info& rhs) const
+AssetList AssetList::operator*(const AssetList& rhs) const
 {
-	Info ret;
+	AssetList ret;
 	ret.shaders = intersect(shaders, rhs.shaders);
 	ret.textures = intersect(textures, rhs.textures);
 	ret.cubemaps = intersect(cubemaps, rhs.cubemaps);
@@ -60,9 +106,9 @@ AssetManifest::Info AssetManifest::Info::operator*(const Info& rhs) const
 	return ret;
 }
 
-AssetManifest::Info AssetManifest::Info::operator-(const Info& rhs) const
+AssetList AssetList::operator-(const AssetList& rhs) const
 {
-	Info ret = rhs;
+	AssetList ret = rhs;
 	subtract(shaders, ret.shaders);
 	subtract(textures, ret.textures);
 	subtract(cubemaps, ret.cubemaps);
@@ -70,6 +116,30 @@ AssetManifest::Info AssetManifest::Info::operator-(const Info& rhs) const
 	subtract(meshes, ret.meshes);
 	subtract(models, ret.models);
 	subtract(fonts, ret.fonts);
+	return ret;
+}
+
+void AssetManifest::Info::importList(AssetList ids)
+{
+	shaders = importTList<Shader>(ids.shaders);
+	textures = importTList<Texture>(ids.textures);
+	cubemaps = importTList<Texture>(ids.cubemaps);
+	materials = importTList<Material>(ids.materials);
+	meshes = importTList<Mesh>(ids.meshes);
+	models = importTList<Model>(ids.models);
+	fonts = importTList<Font>(ids.fonts);
+}
+
+AssetList AssetManifest::Info::exportList() const
+{
+	AssetList ret;
+	ret.shaders = exportTList(shaders);
+	ret.textures = exportTList(shaders);
+	ret.cubemaps = exportTList(cubemaps);
+	ret.materials = exportTList(materials);
+	ret.meshes = exportTList(meshes);
+	ret.models = exportTList(models);
+	ret.fonts = exportTList(fonts);
 	return ret;
 }
 
@@ -106,7 +176,11 @@ AssetManifest::~AssetManifest()
 
 void AssetManifest::start()
 {
-	extractIDs();
+	parse();
+	if (!m_toLoad.isEmpty())
+	{
+		loadData();
+	}
 }
 
 AssetManifest::Status AssetManifest::update(bool bTerminate)
@@ -115,29 +189,10 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 	{
 	default:
 	{
-		break;
-	}
-	case Status::eIdle:
-	{
-		if (m_info.isEmpty() && !bTerminate)
+		if (bTerminate)
 		{
-			extractIDs();
-		}
-		break;
-	}
-	case Status::eExtractingIDs:
-	{
-		if (eraseDone())
-		{
-			if (bTerminate)
-			{
-				m_status = Status::eIdle;
-			}
-			else
-			{
-				m_cache = m_info;
-				extractData();
-			}
+			m_status = Status::eIdle;
+			m_loaded = {};
 		}
 		break;
 	}
@@ -148,6 +203,7 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 			if (bTerminate)
 			{
 				m_status = Status::eIdle;
+				m_loaded = {};
 			}
 			else
 			{
@@ -160,10 +216,14 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 	{
 		if (eraseDone())
 		{
-			m_info = {};
+			m_toLoad = {};
 			m_loading.clear();
 			m_semaphore.reset();
 			m_status = Status::eIdle;
+			if (bTerminate)
+			{
+				m_loaded = {};
+			}
 		}
 	}
 	}
@@ -171,118 +231,194 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 	return bTerminating ? Status::eTerminating : m_status;
 }
 
-void AssetManifest::extractIDs()
+AssetList AssetManifest::parse()
 {
-	m_status = Status::eExtractingIDs;
-	m_running.push_back(jobs::enqueue(
-		[this]() {
-			auto const shaders = m_manifest.getGDatas("shaders");
-			for (auto const& shader : shaders)
+	auto const shaders = m_manifest.getGDatas("shaders");
+	for (auto const& shader : shaders)
+	{
+		auto assetID = shader.getString("id");
+		if (!assetID.empty())
+		{
+			if (Resources::inst().get<Shader>(assetID))
 			{
-				auto assetID = shader.getString("id");
-				if (!assetID.empty())
+				m_loaded.shaders.push_back(std::move(assetID));
+			}
+			else
+			{
+				AssetData<Shader> data;
+				data.info.pReader = m_pReader;
+				data.id = std::move(assetID);
+				bool const bOptional = shader.getBool("optional", false);
+				bool bFound = false;
+				auto const resourceIDs = shader.getGDatas("resource_ids");
+				for (auto const& resourceID : resourceIDs)
 				{
-					AssetData<Shader> data;
-					data.info.pReader = m_pReader;
-					data.id = std::move(assetID);
-					auto const resourceIDs = shader.getGDatas("resource_ids");
-					for (auto const& resourceID : resourceIDs)
+					auto const typeStr = resourceID.getString("type");
+					auto const id = resourceID.getString("id");
+					bool const bPresent = bOptional ? m_pReader->checkPresence(id) : m_pReader->isPresent(id);
+					if (!id.empty() && !typeStr.empty() && bPresent)
 					{
-						auto const typeStr = resourceID.getString("type");
-						auto const id = resourceID.getString("id");
-						if (!id.empty() && !typeStr.empty() && m_pReader->checkPresence(id))
+						Shader::Type type = Shader::Type::eFragment;
+						if (typeStr == "vertex")
 						{
-							Shader::Type type = Shader::Type::eFragment;
-							if (typeStr == "vertex")
-							{
-								type = Shader::Type::eVertex;
-							}
-							data.info.codeIDMap[(size_t)type] = id;
-							m_info.shaders.push_back(std::move(data));
-							m_data.idCount.fetch_add(1);
+							type = Shader::Type::eVertex;
 						}
+						data.info.codeIDMap[(size_t)type] = id;
+						bFound = true;
 					}
 				}
-			}
-		},
-		"", true));
-	m_running.push_back(jobs::enqueue(
-		[this]() {
-			auto const textures = m_manifest.getGDatas("textures");
-			for (auto const& texture : textures)
-			{
-				auto const id = texture.getString("id");
-				auto const colourSpace = texture.getString("colour_space");
-				if (!id.empty() && m_pReader->checkPresence(id))
+				if (bFound)
 				{
-					AssetData<Texture> data;
-					data.id = id;
-					data.info.mode = engine::colourSpace();
-					data.info.samplerID = m_manifest.getString("sampler");
-					data.info.pReader = m_pReader;
-					m_info.textures.push_back(std::move(data));
+					m_toLoad.shaders.push_back(std::move(data));
 					m_data.idCount.fetch_add(1);
 				}
 			}
-		},
-		"", true));
-	m_running.push_back(jobs::enqueue(
-		[this]() {
-			auto const cubemaps = m_manifest.getGDatas("cubemaps");
-			for (auto const& cubemap : cubemaps)
+		}
+	}
+	auto const textures = m_manifest.getGDatas("textures");
+	for (auto const& texture : textures)
+	{
+		auto const id = texture.getString("id");
+		auto const colourSpace = texture.getString("colour_space");
+		bool const bPresent = texture.getBool("optional", false) ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
+		if (!id.empty() && bPresent)
+		{
+			if (Resources::inst().get<Texture>(id))
 			{
-				auto const id = cubemap.getString("id");
-				auto const colourSpace = cubemap.getString("colour_space");
-				auto const resourceIDs = cubemap.getVecString("textures");
-				if (!id.empty())
+				m_loaded.textures.push_back(std::move(id));
+			}
+			else
+			{
+				AssetData<Texture> data;
+				data.id = id;
+				data.info.mode = engine::colourSpace();
+				data.info.samplerID = m_manifest.getString("sampler");
+				data.info.pReader = m_pReader;
+				m_toLoad.textures.push_back(std::move(data));
+				m_data.idCount.fetch_add(1);
+			}
+		}
+	}
+	auto const cubemaps = m_manifest.getGDatas("cubemaps");
+	for (auto const& cubemap : cubemaps)
+	{
+		auto const assetID = cubemap.getString("id");
+		auto const colourSpace = cubemap.getString("colour_space");
+		auto const resourceIDs = cubemap.getVecString("textures");
+		bool const bOptional = cubemap.getBool("optional", false);
+		bool bMissing = false;
+		if (!assetID.empty())
+		{
+			if (Resources::inst().get<Texture>(assetID))
+			{
+				m_loaded.cubemaps.push_back(std::move(assetID));
+			}
+			else
+			{
+				AssetData<Texture> data;
+				data.id = assetID;
+				data.info.mode = engine::colourSpace();
+				data.info.type = Texture::Type::eCube;
+				data.info.samplerID = m_manifest.getString("sampler");
+				data.info.pReader = m_pReader;
+				for (auto const& id : resourceIDs)
 				{
-					AssetData<Texture> data;
-					data.id = id;
-					data.info.mode = engine::colourSpace();
-					data.info.type = Texture::Type::eCube;
-					data.info.samplerID = m_manifest.getString("sampler");
-					data.info.pReader = m_pReader;
-					for (auto const& resourceID : resourceIDs)
+					bool const bPresent = bOptional ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
+					if (bPresent)
 					{
-						data.info.ids.push_back(resourceID);
+						data.info.ids.push_back(id);
 					}
-					m_info.cubemaps.push_back(std::move(data));
+					else
+					{
+						bMissing = true;
+						break;
+					}
+				}
+				if (!bMissing)
+				{
+					m_toLoad.cubemaps.push_back(std::move(data));
 					m_data.idCount.fetch_add(1);
 				}
 			}
-		},
-		"", true));
+		}
+	}
+	auto const models = m_manifest.getGDatas("models");
+	for (auto const& model : models)
+	{
+		auto const modelID = model.getString("id");
+		if (!modelID.empty())
+		{
+			if (Resources::inst().get<Model>(modelID))
+			{
+				m_loaded.models.push_back(modelID);
+			}
+			else
+			{
+				bool const bOptional = model.getBool("optional", false);
+				AssetData<Model> data;
+				data.id = modelID;
+				auto jsonID = data.id / data.id.filename();
+				jsonID += ".json";
+				bool const bPresent = bOptional ? m_pReader->isPresent(jsonID) : m_pReader->checkPresence(jsonID);
+				if (bPresent)
+				{
+					m_toLoad.models.push_back(std::move(data));
+					m_data.idCount.fetch_add(1);
+				}
+			}
+		}
+	}
+	return m_toLoad.exportList();
 }
 
-void AssetManifest::extractData()
+void AssetManifest::loadData()
 {
 	m_status = Status::eExtractingData;
 	IndexedTask task;
-	task.task = [this](size_t idx) {
-		auto& texture = m_info.textures.at(idx);
-		auto [bytes, bResult] = m_pReader->getBytes(texture.id);
-		if (bResult)
-		{
-			texture.info.bytes = {std::move(bytes)};
-		}
-	};
-	task.name = "TextureData";
-	task.iterationCount = m_info.textures.size();
-	addJobs(task);
-	task.task = [this](size_t idx) {
-		auto& cubemap = m_info.cubemaps.at(idx);
-		for (auto id : cubemap.info.ids)
-		{
-			auto [bytes, bResult] = m_pReader->getBytes(id);
+	if (!m_toLoad.textures.empty())
+	{
+		task.task = [this](size_t idx) {
+			auto& texture = m_toLoad.textures.at(idx);
+			auto [bytes, bResult] = m_pReader->getBytes(texture.id);
 			if (bResult)
 			{
-				cubemap.info.bytes.push_back(std::move(bytes));
+				texture.info.bytes = {std::move(bytes)};
 			}
-		}
-	};
-	task.name = "CubemapData";
-	task.iterationCount = m_info.cubemaps.size() - 1;
-	addJobs(task);
+		};
+		task.name = "Manifest-0:Textures";
+		task.iterationCount = m_toLoad.textures.size();
+		addJobs(std::move(task));
+	}
+	if (!m_toLoad.cubemaps.empty())
+	{
+		task.task = [this](size_t idx) {
+			auto& cubemap = m_toLoad.cubemaps.at(idx);
+			for (auto id : cubemap.info.ids)
+			{
+				auto [bytes, bResult] = m_pReader->getBytes(id);
+				if (bResult)
+				{
+					cubemap.info.bytes.push_back(std::move(bytes));
+				}
+			}
+		};
+		task.name = "Manifest-0:Cubemaps";
+		task.iterationCount = m_toLoad.cubemaps.size();
+		addJobs(std::move(task));
+	}
+	if (!m_toLoad.models.empty())
+	{
+		task.task = [this](size_t idx) {
+			auto& model = m_toLoad.models.at(idx);
+			gfx::Model::LoadRequest mlr;
+			mlr.assetID = model.id;
+			mlr.pReader = m_pReader;
+			model.info = gfx::Model::parseOBJ(mlr);
+		};
+		task.name = "Manifest-0:Models";
+		task.iterationCount = m_toLoad.models.size();
+		addJobs(std::move(task));
+	}
 }
 
 void AssetManifest::loadAssets()
@@ -290,22 +426,10 @@ void AssetManifest::loadAssets()
 	m_status = Status::eLoadingAssets;
 	m_semaphore = Resources::inst().setBusy();
 	IndexedTask task;
-	task.task = [this](size_t idx) {
-		auto& texture = m_info.textures.at(idx);
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
-		m_loading.push_back(Resources::inst().create<Texture>(std::move(texture.id), std::move(texture.info)));
-	};
-	task.name = "Textures";
-	task.iterationCount = m_info.textures.size();
-	addJobs(task);
-	task.task = [this](size_t idx) {
-		auto& cubemap = m_info.cubemaps.at(idx);
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
-		m_loading.push_back(Resources::inst().create<Texture>(std::move(cubemap.id), std::move(cubemap.info)));
-	};
-	task.name = "Cubemaps";
-	task.iterationCount = m_info.cubemaps.size();
-	addJobs(task);
+	addJobs(loadTAssets(m_toLoad.shaders, m_loaded.shaders, m_loading, m_mutex, "Manifest-1:Shaders"));
+	addJobs(loadTAssets(m_toLoad.textures, m_loaded.textures, m_loading, m_mutex, "Manifest-1:Textures"));
+	addJobs(loadTAssets(m_toLoad.cubemaps, m_loaded.cubemaps, m_loading, m_mutex, "Manifest-1:Cubemaps"));
+	addJobs(loadTAssets(m_toLoad.models, m_loaded.models, m_loading, m_mutex, "Manifest-1:Models"));
 }
 
 bool AssetManifest::eraseDone()
@@ -324,9 +448,18 @@ bool AssetManifest::eraseDone()
 	return m_running.empty() && m_loading.empty();
 }
 
-void AssetManifest::addJobs(IndexedTask const& task)
+void AssetManifest::addJobs(IndexedTask task)
 {
-	auto hjobs = jobs::forEach(task);
+	auto hjobs = jobs::forEach(std::move(task));
 	std::move(hjobs.begin(), hjobs.end(), std::back_inserter(m_running));
+}
+
+void AssetManifest::addJobs(TResult<IndexedTask> task)
+{
+	if (task.bResult)
+	{
+		auto hjobs = jobs::forEach(task.payload);
+		std::move(hjobs.begin(), hjobs.end(), std::back_inserter(m_running));
+	}
 }
 } // namespace le

@@ -65,37 +65,27 @@ void Font::Glyph::deserialise(u8 c, JSONObj const& json)
 
 bool Font::Info::deserialise(JSONObj const& json)
 {
-	if (json.contains("id"))
+	sheetID = json.getString("sheetID");
+	samplerID = json.getString("sampler", "samplers/font");
+	materialID = json.getString("materialID", "materials/default");
+	auto glyphsData = json.getGData("glyphs");
+	for (auto const& [key, value] : glyphsData.allFields())
 	{
-		id = json.getString("id");
-		sheetID = json.getString("sheetID");
-		samplerID = json.getString("sampler", "font");
-		auto glyphsData = json.getGData("glyphs");
-		for (auto const& [key, value] : glyphsData.allFields())
+		if (!key.empty())
 		{
-			if (!key.empty())
+			Glyph glyph;
+			glyph.deserialise((u8)key.at(0), GData(value));
+			if (glyph.cell.x > 0 && glyph.cell.y > 0)
 			{
-				Glyph glyph;
-				glyph.deserialise((u8)key.at(0), GData(value));
-				if (glyph.cell.x > 0 && glyph.cell.y > 0)
-				{
-					glyphs.push_back(std::move(glyph));
-				}
-				else
-				{
-					LOG_W("[{}] [{}] Could not deserialise Glyph '{}'!", Font::s_tName, id.generic_string(), key.at(0));
-				}
+				glyphs.push_back(std::move(glyph));
+			}
+			else
+			{
+				LOG_W("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key.at(0));
 			}
 		}
-		if (json.contains("material"))
-		{
-			// TODO
-			LOG_E("NOT IMPLEMENTED");
-			// material.deserialise(json.getGData("material"));
-		}
-		return true;
 	}
-	return false;
+	return true;
 }
 
 std::string const Font::s_tName = utils::tName<Font>();

@@ -11,6 +11,11 @@
 		{
 			"id": "textures/awesomeface.png",
 			"sampler": "samplers/default"
+		},
+		{
+			"id": "textures/test.png",
+			"sampler": "samplers/default",
+			"optional": true
 		}
 	],
 	"cubemaps": [
@@ -24,6 +29,19 @@
 				"skyboxes/sky_dusk/front.jpg",
 				"skyboxes/sky_dusk/back.jpg"
 			]
+		}
+	],
+	"models": [
+		{
+			"id": "models/plant"
+		},
+		{
+			"id": "models/test/nanosuit",
+			"optional": true
+		},
+		{
+			"id": "models/test/fox",
+			"optional": true
 		}
 	]
 }

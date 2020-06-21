@@ -31,9 +31,9 @@ public:
 	struct Info final
 	{
 		Material::Inst material;
-		stdfs::path id;
 		stdfs::path sheetID;
-		std::string samplerID;
+		stdfs::path samplerID;
+		stdfs::path materialID;
 		std::vector<Glyph> glyphs;
 		bytearray image;
 

@@ -44,7 +44,7 @@ void JobWorker::run()
 			// Wake a sleeping worker (if queue is not empty yet)
 			m_pManager->m_wakeCV.notify_one();
 		}
-		if (job.m_id >= 0 && job.m_shJob->m_jobID >= 0)
+		if (job.m_shJob->m_jobID.load() >= 0)
 		{
 			m_state.store(State::eBusy);
 			job.m_shJob->m_status.store(HJob::Status::eBusy);

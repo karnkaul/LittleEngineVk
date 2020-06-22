@@ -9,7 +9,6 @@
 #include <core/threads.hpp>
 #include <core/transform.hpp>
 #include <engine/levk.hpp>
-#include <engine/assets/manifest.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/ecs/registry.hpp>
 #include <engine/game/scene_builder.hpp>
@@ -61,13 +60,15 @@ private:
 		gfx::Mesh* pSphere = nullptr;
 	} m_res;
 	gfx::Pipeline* m_pPipeline0wf = nullptr;
-	std::unique_ptr<AssetManifest> m_uManifest;
 
 protected:
 	bool start() override;
 	void tick(Time dt) override;
 	gfx::Renderer::Scene buildScene() const override;
 	void stop() override;
+
+	stdfs::path manifestID() const override;
+	void onManifestLoaded() override;
 };
 
 bool DemoWorld::start()
@@ -93,8 +94,6 @@ bool DemoWorld::start()
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
 	auto pTexturedLit = Resources::inst().create<gfx::Material>("materials/textured", texturedInfo);
 
-	m_uManifest = std::make_unique<AssetManifest>(*g_uReader, "demo.manifest");
-	m_uManifest->start();
 	gfx::Texture::Info textureInfo;
 	textureInfo.pReader = g_uReader.get();
 	m_res.pQuad->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
@@ -185,22 +184,9 @@ bool DemoWorld::start()
 
 void DemoWorld::tick(Time dt)
 {
-	if (m_uManifest && m_uManifest->update() == AssetManifest::Status::eIdle)
-	{
-		m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
-		m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
-		m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
-		m_uManifest.reset();
-	}
 	if (m_data.bQuit)
 	{
 		window()->close();
-	}
-	if (window()->isClosing())
-	{
-		m_data.freeCam.reset(false, false);
-		m_uManifest.reset();
-		window()->destroy();
 		return;
 	}
 
@@ -295,19 +281,27 @@ gfx::Renderer::Scene DemoWorld::buildScene() const
 
 void DemoWorld::stop()
 {
-	if (m_uManifest)
-	{
-		m_uManifest->update(true);
-	}
 	auto unload = [](std::initializer_list<stdfs::path const*> ids) {
 		for (auto pID : ids)
 		{
 			Resources::inst().unload(*pID);
 		}
 	};
-	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id, &m_data.model0id, &m_data.model1id, &m_data.skyboxID});
+	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id});
 	m_data = {};
 	m_res = {};
+}
+
+stdfs::path DemoWorld::manifestID() const
+{
+	return "demo.manifest";
+}
+
+void DemoWorld::onManifestLoaded()
+{
+	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
+	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
+	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
 }
 } // namespace
 

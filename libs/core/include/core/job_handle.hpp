@@ -28,7 +28,7 @@ public:
 private:
 	std::future<std::any> m_future;
 	std::atomic<Status> m_status;
-	s64 m_jobID = -1;
+	std::atomic<s64> m_jobID = -1;
 
 public:
 	HJob(s64 jobID, std::future<std::any>&& future) noexcept;

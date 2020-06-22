@@ -101,6 +101,7 @@ bool Service::init(Info const& info)
 				throw std::runtime_error("Failed to create Window!");
 			}
 		}
+		g_app.pReader = pReader;
 	}
 	catch (std::exception const& e)
 	{
@@ -137,6 +138,12 @@ void engine::update()
 	Resources::inst().update();
 	WindowImpl::update();
 	gfx::vram::update();
+}
+
+IOReader const& engine::reader()
+{
+	ASSERT(g_app.pReader, "IOReader is null!");
+	return *g_app.pReader;
 }
 
 gfx::Texture::Space engine::colourSpace()

@@ -3,9 +3,17 @@
 #include <engine/game/scene_builder.hpp>
 #include <engine/levk.hpp>
 #include <editor/editor.hpp>
+#include <assets/manifest.hpp>
+#include <levk_impl.hpp>
 
 namespace le
 {
+namespace
+{
+std::unique_ptr<AssetManifest> g_uManifest;
+AssetList g_loadedAssets;
+} // namespace
+
 std::unordered_map<s32, std::unique_ptr<World>> World::s_worlds;
 std::unordered_map<std::type_index, World*> World::s_worldByType;
 World* World::s_pActive = nullptr;
@@ -48,6 +56,16 @@ bool World::loadWorld(ID id)
 			s_pActive = nullptr;
 		}
 		auto const& uWorld = search->second;
+		auto const manifestID = uWorld->manifestID();
+		if (!manifestID.empty() && engine::reader().isPresent(manifestID))
+		{
+			g_uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+			auto const loadList = g_uManifest->parse();
+			auto const toLoad = loadList - g_loadedAssets;
+			auto const toUnload = g_loadedAssets - loadList;
+			g_uManifest->m_toLoad.importList(toLoad);
+			g_uManifest->unload(toUnload);
+		}
 		if (uWorld->startImpl())
 		{
 			s_pActive = uWorld.get();
@@ -100,6 +118,14 @@ bool World::destroyEntity(Entity entity)
 	return m_registry.destroyEntity(entity);
 }
 
+stdfs::path World::manifestID() const
+{
+	static stdfs::path const s_empty;
+	return s_empty;
+}
+
+void World::onManifestLoaded() {}
+
 Window* World::window() const
 {
 	return engine::Service::mainWindow();
@@ -110,6 +136,11 @@ bool World::start(ID id)
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
 		auto const& uWorld = search->second;
+		auto const manifestID = uWorld->manifestID();
+		if (engine::reader().isPresent(manifestID))
+		{
+			g_uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+		}
 		if (uWorld->startImpl())
 		{
 			s_pActive = uWorld.get();
@@ -124,6 +155,10 @@ bool World::startImpl()
 {
 	if (start())
 	{
+		if (g_uManifest)
+		{
+			g_uManifest->start();
+		}
 		LOG_I("[{}] started", utils::tName(*this));
 		return true;
 	}
@@ -133,18 +168,44 @@ bool World::startImpl()
 void World::tickImpl(Time dt)
 {
 	m_registry.sweep();
-	bool bTick = true;
+	bool bTick = !window()->isClosing();
+	if (g_uManifest)
+	{
+		auto const status = g_uManifest->update(!bTick);
+		switch (status)
+		{
+		case AssetManifest::Status::eIdle:
+		{
+			if (bTick)
+			{
+				onManifestLoaded();
+			}
+			g_loadedAssets = std::move(g_uManifest->m_loaded);
+			g_uManifest.reset();
+			break;
+		}
+		default:
+		{
+			break;
+		}
+		}
+	}
 #if defined(LEVK_EDITOR)
-	bTick = editor::g_bTickGame;
+	bTick &= editor::g_bTickGame;
 #endif
 	if (bTick)
 	{
 		tick(dt);
 	}
+	if (window()->isClosing())
+	{
+		window()->destroy();
+	}
 }
 
 void World::stopImpl()
 {
+	g_uManifest.reset();
 	stop();
 	m_registry.clear();
 	LOG_I("[{}] stopped", utils::tName(*this));
@@ -170,6 +231,8 @@ bool World::stopActive()
 
 void World::destroyAll()
 {
+	g_loadedAssets = {};
+	g_uManifest.reset();
 	s_pActive = nullptr;
 	s_worlds.clear();
 	s_worldByType.clear();

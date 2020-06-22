@@ -13,7 +13,7 @@ using Lock = std::scoped_lock<std::mutex>;
 
 JobManager::Job::Job() = default;
 
-JobManager::Job::Job(s64 id, Task task, std::string name, bool bSilent) : m_task(std::move(task)), m_id(id), m_bSilent(bSilent)
+JobManager::Job::Job(s64 id, Task task, std::string name, bool bSilent) : m_task(std::move(task)), m_bSilent(bSilent)
 {
 	m_logName += std::to_string(id);
 	if (!name.empty())

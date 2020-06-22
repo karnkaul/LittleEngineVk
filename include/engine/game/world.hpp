@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include <memory>
 #include <type_traits>
 #include <typeindex>
@@ -14,6 +15,8 @@
 
 namespace le
 {
+namespace stdfs = std::filesystem;
+
 namespace engine
 {
 class Service;
@@ -80,6 +83,10 @@ protected:
 	virtual void tick(Time dt) = 0;
 	virtual gfx::Renderer::Scene buildScene() const = 0;
 	virtual void stop() = 0;
+
+protected:
+	virtual stdfs::path manifestID() const;
+	virtual void onManifestLoaded();
 
 protected:
 	class Window* window() const;

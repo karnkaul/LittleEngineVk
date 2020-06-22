@@ -24,7 +24,6 @@ private:
 	public:
 		std::string m_logName;
 		std::shared_ptr<HJob> m_shJob;
-		s64 m_id = -1;
 		bool m_bSilent = true;
 
 	public:

@@ -2,11 +2,10 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <vector>
 #include <core/gdata.hpp>
 #include <core/jobs.hpp>
 #include <core/std_types.hpp>
-#include <core/io.hpp>
+#include <engine/assets/asset_list.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
@@ -21,22 +20,6 @@ struct AssetData
 {
 	typename T::Info info;
 	stdfs::path id;
-};
-
-struct AssetList final
-{
-	std::vector<stdfs::path> shaders;
-	std::vector<stdfs::path> textures;
-	std::vector<stdfs::path> cubemaps;
-	std::vector<stdfs::path> materials;
-	std::vector<stdfs::path> meshes;
-	std::vector<stdfs::path> models;
-	std::vector<stdfs::path> fonts;
-
-	AssetList operator*(AssetList const& rhs) const;
-	AssetList operator-(AssetList const& rhs) const;
-
-	bool isEmpty() const;
 };
 
 class AssetManifest
@@ -80,10 +63,10 @@ protected:
 
 public:
 	AssetList m_loaded;
+	Info m_toLoad;
 
 protected:
 	GData m_manifest;
-	Info m_toLoad;
 	Data m_data;
 	std::vector<std::shared_ptr<HJob>> m_running;
 	std::vector<Asset*> m_loading;
@@ -99,9 +82,11 @@ public:
 public:
 	void start();
 	Status update(bool bTerminate = false);
+	AssetList parse();
+
+	void unload(AssetList const& list) const;
 
 protected:
-	AssetList parse();
 	void loadData();
 	void loadAssets();
 	bool eraseDone(bool bWaitingJobs);

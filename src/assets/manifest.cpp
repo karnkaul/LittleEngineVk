@@ -1,11 +1,12 @@
 #include <algorithm>
+#include <sstream>
 #include <utility>
 #include <core/assert.hpp>
 #include <core/jobs.hpp>
 #include <core/log.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
-#include <engine/assets/manifest.hpp>
+#include <assets/manifest.hpp>
 #include <levk_impl.hpp>
 
 namespace le
@@ -14,29 +15,6 @@ using namespace gfx;
 
 namespace
 {
-std::vector<stdfs::path> intersect(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs)
-{
-	std::vector<stdfs::path> ret;
-	for (auto& asset : lhs)
-	{
-		auto const search = std::find_if(rhs.begin(), rhs.end(), [&asset](stdfs::path const& rhs) -> bool { return asset == rhs; });
-		if (search != rhs.end())
-		{
-			ret.push_back(asset);
-		}
-	}
-	return ret;
-}
-
-void subtract(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path>& out_rhs)
-{
-	for (auto& asset : lhs)
-	{
-		auto iter = std::remove_if(out_rhs.begin(), out_rhs.end(), [&asset](stdfs::path const& rhs) -> bool { return asset == rhs; });
-		out_rhs.erase(iter, out_rhs.end());
-	}
-}
-
 template <typename T>
 std::vector<AssetData<T>> importTList(std::vector<stdfs::path> src)
 {
@@ -93,32 +71,6 @@ TResult<IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vec
 }
 } // namespace
 
-AssetList AssetList::operator*(const AssetList& rhs) const
-{
-	AssetList ret;
-	ret.shaders = intersect(shaders, rhs.shaders);
-	ret.textures = intersect(textures, rhs.textures);
-	ret.cubemaps = intersect(cubemaps, rhs.cubemaps);
-	ret.materials = intersect(materials, rhs.materials);
-	ret.meshes = intersect(meshes, rhs.meshes);
-	ret.models = intersect(models, rhs.models);
-	ret.fonts = intersect(fonts, rhs.fonts);
-	return ret;
-}
-
-AssetList AssetList::operator-(const AssetList& rhs) const
-{
-	AssetList ret = rhs;
-	subtract(shaders, ret.shaders);
-	subtract(textures, ret.textures);
-	subtract(cubemaps, ret.cubemaps);
-	subtract(materials, ret.materials);
-	subtract(meshes, ret.meshes);
-	subtract(models, ret.models);
-	subtract(fonts, ret.fonts);
-	return ret;
-}
-
 void AssetManifest::Info::importList(AssetList ids)
 {
 	shaders = importTList<Shader>(ids.shaders);
@@ -134,7 +86,7 @@ AssetList AssetManifest::Info::exportList() const
 {
 	AssetList ret;
 	ret.shaders = exportTList(shaders);
-	ret.textures = exportTList(shaders);
+	ret.textures = exportTList(textures);
 	ret.cubemaps = exportTList(cubemaps);
 	ret.materials = exportTList(materials);
 	ret.meshes = exportTList(meshes);
@@ -146,6 +98,26 @@ AssetList AssetManifest::Info::exportList() const
 bool AssetManifest::Info::isEmpty() const
 {
 	return empty(shaders, textures, cubemaps, materials, meshes, models, fonts);
+}
+
+std::string AssetList::print() const
+{
+	std::stringstream ret;
+	auto add = [&ret](std::vector<stdfs::path> const& vec, std::string_view title) {
+		ret << title << "\n";
+		for (auto const& id : vec)
+		{
+			ret << "\t" << id.generic_string() << "\n";
+		}
+	};
+	add(shaders, "Shaders");
+	add(textures, "Textures");
+	add(cubemaps, "Cubemaps");
+	add(materials, "Materials");
+	add(meshes, "Meshes");
+	add(models, "Models");
+	add(fonts, "Fonts");
+	return ret.str();
 }
 
 std::string const AssetManifest::s_tName = utils::tName<AssetManifest>();
@@ -369,6 +341,23 @@ AssetList AssetManifest::parse()
 		}
 	}
 	return m_toLoad.exportList();
+}
+
+void AssetManifest::unload(const AssetList& list) const
+{
+	auto unload = [](std::vector<stdfs::path> const& ids) {
+		for (auto const& id : ids)
+		{
+			Resources::inst().unload(id);
+		}
+	};
+	unload(list.shaders);
+	unload(list.textures);
+	unload(list.cubemaps);
+	unload(list.materials);
+	unload(list.meshes);
+	unload(list.models);
+	unload(list.fonts);
 }
 
 void AssetManifest::loadData()

@@ -37,7 +37,7 @@ bool HJob::discard()
 {
 	if (m_status.load() == Status::eWaiting)
 	{
-		m_jobID = -1;
+		m_jobID.store(-1);
 		return true;
 	}
 	return false;

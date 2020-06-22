@@ -43,6 +43,7 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#friends">Friends</a> &#124;
@@ -57,6 +58,15 @@ $(function() {
 
 <p><code>#include &lt;job_handle.hpp&gt;</code></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:ae5a0190a71699ca3d8471dbb8ba0e332"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1HJob.html#ae5a0190a71699ca3d8471dbb8ba0e332">Status</a> : s8 { <a class="el" href="classle_1_1HJob.html#ae5a0190a71699ca3d8471dbb8ba0e332a7b9cf82c13307a24d74c2fec226a83cc">Status::eIdle</a>, 
+<a class="el" href="classle_1_1HJob.html#ae5a0190a71699ca3d8471dbb8ba0e332a461b3545bb9682d8cc63f54b501e489f">Status::eWaiting</a>, 
+<a class="el" href="classle_1_1HJob.html#ae5a0190a71699ca3d8471dbb8ba0e332ad04db4cb6122851c46a8014c97c2f1e4">Status::eBusy</a>, 
+<a class="el" href="classle_1_1HJob.html#ae5a0190a71699ca3d8471dbb8ba0e332a96185b36eea839439536b9e5754c3f21">Status::eDone</a>
+ }</td></tr>
+<tr class="separator:ae5a0190a71699ca3d8471dbb8ba0e332"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ab9d1ff2739fb97b4a95285293e06f732"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1HJob.html#ab9d1ff2739fb97b4a95285293e06f732">HJob</a> (<a class="el" href="namespacele.html#af102ad97535d937c823a88bede36a503">s64</a> jobID, std::future&lt; std::any &gt; &amp;&amp;future) noexcept</td></tr>
@@ -75,6 +85,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a048e14f7d3569fb7472f7bf4991e8d37"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1HJob.html#a048e14f7d3569fb7472f7bf4991e8d37">isReady</a> () const</td></tr>
 <tr class="memdesc:a048e14f7d3569fb7472f7bf4991e8d37"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check whether this job task is ready.  <a href="classle_1_1HJob.html#a048e14f7d3569fb7472f7bf4991e8d37">More...</a><br /></td></tr>
 <tr class="separator:a048e14f7d3569fb7472f7bf4991e8d37"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a947cabd234169d08117b94866c373eb1"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1HJob.html#a947cabd234169d08117b94866c373eb1">discard</a> ()</td></tr>
+<tr class="memdesc:a947cabd234169d08117b94866c373eb1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Discard this job (if waiting in queue)  <a href="classle_1_1HJob.html#a947cabd234169d08117b94866c373eb1">More...</a><br /></td></tr>
+<tr class="separator:a947cabd234169d08117b94866c373eb1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -90,7 +103,36 @@ Friends</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Handle to a scheduled/running/completed job task. </p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="ae5a0190a71699ca3d8471dbb8ba0e332"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae5a0190a71699ca3d8471dbb8ba0e332">&#9670;&nbsp;</a></span>Status</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="classle_1_1HJob.html#ae5a0190a71699ca3d8471dbb8ba0e332">le::HJob::Status</a> : <a class="el" href="namespacele.html#af9e0cf7215603bba4aa12fe79e815d5f">s8</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ae5a0190a71699ca3d8471dbb8ba0e332a7b9cf82c13307a24d74c2fec226a83cc"></a>eIdle&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ae5a0190a71699ca3d8471dbb8ba0e332a461b3545bb9682d8cc63f54b501e489f"></a>eWaiting&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ae5a0190a71699ca3d8471dbb8ba0e332ad04db4cb6122851c46a8014c97c2f1e4"></a>eBusy&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ae5a0190a71699ca3d8471dbb8ba0e332a96185b36eea839439536b9e5754c3f21"></a>eDone&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ab9d1ff2739fb97b4a95285293e06f732"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab9d1ff2739fb97b4a95285293e06f732">&#9670;&nbsp;</a></span>HJob()</h2>
 
@@ -145,6 +187,25 @@ Friends</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a947cabd234169d08117b94866c373eb1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a947cabd234169d08117b94866c373eb1">&#9670;&nbsp;</a></span>discard()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool le::HJob::discard </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Discard this job (if waiting in queue) </p>
+
+</div>
+</div>
 <a id="a52ee5e3d33786fc289c8288ad76c5e43"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a52ee5e3d33786fc289c8288ad76c5e43">&#9670;&nbsp;</a></span>hasCompleted()</h2>
 

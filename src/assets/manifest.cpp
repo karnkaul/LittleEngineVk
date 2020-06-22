@@ -198,7 +198,7 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 	}
 	case Status::eExtractingData:
 	{
-		if (eraseDone())
+		if (eraseDone(bTerminate))
 		{
 			if (bTerminate)
 			{
@@ -214,7 +214,7 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 	}
 	case Status::eLoadingAssets:
 	{
-		if (eraseDone())
+		if (eraseDone(bTerminate))
 		{
 			m_toLoad = {};
 			m_loading.clear();
@@ -432,12 +432,19 @@ void AssetManifest::loadAssets()
 	addJobs(loadTAssets(m_toLoad.models, m_loaded.models, m_loading, m_mutex, "Manifest-1:Models"));
 }
 
-bool AssetManifest::eraseDone()
+bool AssetManifest::eraseDone(bool bWaitingJobs)
 {
 	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 	if (!m_running.empty())
 	{
-		auto iter = std::remove_if(m_running.begin(), m_running.end(), [](auto const& sJob) -> bool { return sJob->hasCompleted(); });
+		auto iter = std::remove_if(m_running.begin(), m_running.end(), [bWaitingJobs](auto const& sJob) -> bool {
+			bool bRet = sJob->hasCompleted();
+			if (bWaitingJobs)
+			{
+				bRet |= sJob->discard();
+			}
+			return bRet;
+		});
 		m_running.erase(iter, m_running.end());
 	}
 	if (!m_loading.empty())

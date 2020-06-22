@@ -1,5 +1,6 @@
 #pragma once
 #include <any>
+#include <atomic>
 #include <functional>
 #include <future>
 #include <string>
@@ -13,10 +14,20 @@ namespace le
 class HJob final
 {
 public:
+	enum class Status : s8
+	{
+		eIdle,
+		eWaiting,
+		eBusy,
+		eDone,
+	};
+
+public:
 	std::string m_exception;
 
 private:
 	std::future<std::any> m_future;
+	std::atomic<Status> m_status;
 	s64 m_jobID = -1;
 
 public:
@@ -40,6 +51,10 @@ public:
 	/// \brief Check whether this job task is ready
 	///
 	bool isReady() const;
+	///
+	/// \brief Discard this job (if waiting in queue)
+	///
+	bool discard();
 
 private:
 	friend class JobWorker;

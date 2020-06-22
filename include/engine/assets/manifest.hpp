@@ -104,7 +104,7 @@ protected:
 	AssetList parse();
 	void loadData();
 	void loadAssets();
-	bool eraseDone();
+	bool eraseDone(bool bWaitingJobs);
 	void addJobs(IndexedTask task);
 	void addJobs(TResult<IndexedTask> task);
 };

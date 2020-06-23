@@ -8,24 +8,29 @@ namespace
 std::vector<stdfs::path> intersect(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs)
 {
 	std::vector<stdfs::path> ret;
-	for (auto& asset : lhs)
+	for (auto const& id : lhs)
 	{
-		auto const search = std::find_if(rhs.begin(), rhs.end(), [&asset](stdfs::path const& rhs) -> bool { return asset == rhs; });
+		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](stdfs::path const& rhs) -> bool { return id == rhs; });
 		if (search != rhs.end())
 		{
-			ret.push_back(asset);
+			ret.push_back(id);
 		}
 	}
 	return ret;
 }
 
-void subtract(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path>& out_rhs)
+std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs)
 {
-	for (auto& asset : lhs)
+	std::vector<stdfs::path> ret;
+	for (auto const& id : lhs)
 	{
-		auto iter = std::remove_if(out_rhs.begin(), out_rhs.end(), [&asset](stdfs::path const& rhs) -> bool { return asset == rhs; });
-		out_rhs.erase(iter, out_rhs.end());
+		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](stdfs::path const& rhs) -> bool { return id == rhs; });
+		if (search == rhs.end())
+		{
+			ret.push_back(id);
+		}
 	}
+	return ret;
 }
 } // namespace
 
@@ -44,14 +49,14 @@ AssetList AssetList::operator*(const AssetList& rhs) const
 
 AssetList AssetList::operator-(const AssetList& rhs) const
 {
-	AssetList ret = rhs;
-	subtract(shaders, ret.shaders);
-	subtract(textures, ret.textures);
-	subtract(cubemaps, ret.cubemaps);
-	subtract(materials, ret.materials);
-	subtract(meshes, ret.meshes);
-	subtract(models, ret.models);
-	subtract(fonts, ret.fonts);
+	AssetList ret;
+	ret.shaders = subtract(shaders, rhs.shaders);
+	ret.textures = subtract(textures, rhs.textures);
+	ret.cubemaps = subtract(cubemaps, rhs.cubemaps);
+	ret.materials = subtract(materials, rhs.materials);
+	ret.meshes = subtract(meshes, rhs.meshes);
+	ret.models = subtract(models, rhs.models);
+	ret.fonts = subtract(fonts, rhs.fonts);
 	return ret;
 }
 

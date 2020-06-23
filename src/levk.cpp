@@ -111,6 +111,11 @@ bool Service::init(Info const& info)
 	return true;
 }
 
+bool Service::start(World::ID world)
+{
+	return World::start(world);
+}
+
 bool Service::tick(Time dt) const
 {
 	gfx::deferred::update();
@@ -126,12 +131,27 @@ bool Service::submitScene() const
 {
 	return World::submitScene(g_app.uWindow->renderer());
 }
+} // namespace engine
 
-Window* Service::mainWindow()
+bool engine::isTerminating()
+{
+	return g_app.uWindow && g_app.uWindow->isClosing();
+}
+
+Window* engine::mainWindow()
 {
 	return g_app.uWindow.get();
 }
-} // namespace engine
+
+glm::ivec2 engine::windowSize()
+{
+	return g_app.uWindow ? g_app.uWindow->windowSize() : glm::ivec2(0);
+}
+
+glm::ivec2 engine::framebufferSize()
+{
+	return g_app.uWindow ? g_app.uWindow->framebufferSize() : glm::ivec2(0);
+}
 
 void engine::update()
 {

@@ -45,7 +45,7 @@ public:
 		std::vector<AssetData<gfx::Model>> models;
 		std::vector<AssetData<gfx::Font>> fonts;
 
-		void importList(AssetList ids);
+		void intersect(AssetList ids);
 
 		AssetList exportList() const;
 		bool isEmpty() const;
@@ -74,6 +74,7 @@ protected:
 	Resources::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
 	IOReader const* m_pReader = nullptr;
+	bool m_bParsed = false;
 
 public:
 	AssetManifest(IOReader const& reader, stdfs::path const& id);
@@ -84,7 +85,7 @@ public:
 	Status update(bool bTerminate = false);
 	AssetList parse();
 
-	void unload(AssetList const& list) const;
+	static void unload(AssetList const& list);
 
 protected:
 	void loadData();

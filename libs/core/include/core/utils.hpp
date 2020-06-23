@@ -111,6 +111,11 @@ std::string tName(T const& t)
 }
 
 ///
+/// \brief Remove namespace prefixes from a type string
+///
+void removeNamesapces(std::string& out_name);
+
+///
 /// \brief Obtain demangled type name of a type
 ///
 template <typename T>

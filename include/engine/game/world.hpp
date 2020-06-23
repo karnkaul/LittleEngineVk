@@ -5,6 +5,7 @@
 #include <typeindex>
 #include <unordered_map>
 #include <core/assert.hpp>
+#include <core/flags.hpp>
 #include <core/std_types.hpp>
 #include <core/utils.hpp>
 #include <core/time.hpp>
@@ -28,8 +29,19 @@ public:
 	using ID = TZero<s32, -1>;
 
 protected:
+	enum class Flag : s8
+	{
+		eSkipManifestUnload,
+		eCOUNT_
+	};
+	using Flags = TFlags<Flag>;
+
+	Flags m_flags;
+
+protected:
 	Registry m_registry = Registry(Registry::DestroyMode::eDeferred);
 	std::string m_tName;
+	ID m_previousWorldID;
 
 #if defined(LEVK_EDITOR)
 public:
@@ -53,6 +65,9 @@ public:
 	template <typename T, typename... Args>
 	static ID addWorld(Args... args);
 
+	template <typename T1, typename T2, typename... Tn>
+	static void addWorld();
+
 	template <typename T>
 	static T* getWorld();
 
@@ -63,8 +78,14 @@ public:
 	static bool removeWorld(ID id);
 
 	static bool loadWorld(ID id);
-
 	static World* active();
+
+	static bool loadingManifest();
+	static bool worldLoadPending();
+
+#if defined(LEVK_EDITOR)
+	static std::vector<World*> allWorlds();
+#endif
 
 public:
 	World();
@@ -92,7 +113,7 @@ protected:
 	class Window* window() const;
 
 private:
-	bool startImpl();
+	bool startImpl(ID previous = {});
 	void tickImpl(Time dt);
 	void stopImpl();
 
@@ -106,8 +127,6 @@ private:
 	static void destroyAll();
 	static bool tick(Time dt, gfx::ScreenRect const& sceneRect);
 	static bool submitScene(gfx::Renderer& renderer);
-	// TODO: private
-public:
 	static bool start(ID id);
 
 private:
@@ -134,6 +153,13 @@ World::ID World::addWorld(Args... args)
 		}
 	}
 	return s_lastID;
+}
+
+template <typename T1, typename T2, typename... Tn>
+void World::addWorld()
+{
+	addWorld<T1>();
+	addWorld<T2, Tn...>();
 }
 
 template <typename T>

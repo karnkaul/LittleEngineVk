@@ -142,37 +142,9 @@ RenderContext::~RenderContext()
 
 void RenderContext::onFramebufferResize()
 {
+	m_flags.set(Flag::eOutOfDate);
 	auto const size = m_metadata.info.config.getFramebufferSize();
-	if (m_flags.isSet(Flag::eRenderPaused))
-	{
-		if (size.x > 0 && size.y > 0)
-		{
-			if (recreateSwapchain())
-			{
-				LOG_I("[{}] Non-zero framebuffer size detected; recreated swapchain [{}x{}]; resuming rendering", m_name, m_window, size.x,
-					  size.y);
-				m_flags.reset(Flag::eRenderPaused);
-			}
-		}
-	}
-	else
-	{
-		if (size.x <= 0 || size.y <= 0)
-		{
-			LOG_I("[{}] Invalid framebuffer size detected [{}x{}] (minimised surface?); pausing rendering", m_name, m_window, size.x,
-				  size.y);
-			m_flags.set(Flag::eRenderPaused);
-		}
-		else if ((s32)m_swapchain.extent.width != size.x || (s32)m_swapchain.extent.height != size.y)
-		{
-			auto oldExtent = m_swapchain.extent;
-			if (recreateSwapchain())
-			{
-				LOG_I("[{}] Mismatched framebuffer size detected [{}x{}]; recreated swapchain [{}x{}]", m_name, m_window, size.x, size.y,
-					  oldExtent.width, oldExtent.height);
-			}
-		}
-	}
+	m_flags[Flag::eRenderPaused] = size.x == 0 || size.y == 0;
 }
 
 RenderContext::TOutcome<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn)
@@ -181,12 +153,15 @@ RenderContext::TOutcome<RenderTarget> RenderContext::acquireNextImage(vk::Semaph
 	{
 		return Outcome::ePaused;
 	}
+	if (m_flags.isSet(Flag::eOutOfDate))
+	{
+		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
+	}
 	auto const acquire = g_device.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
 		LOG_D("[{}] Failed to acquire next image [{}]", m_name, m_window, g_vkResultStr[acquire.result]);
-		recreateSwapchain();
-		return Outcome::eSwapchainRecreated;
+		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
 	}
 	m_swapchain.imageIndex = (u32)acquire.value;
 	auto& frame = m_swapchain.frame();
@@ -200,6 +175,10 @@ RenderContext::Outcome RenderContext::present(vk::Semaphore wait)
 	if (m_flags.isSet(Flag::eRenderPaused))
 	{
 		return Outcome::ePaused;
+	}
+	if (m_flags.isSet(Flag::eOutOfDate))
+	{
+		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
 	}
 	// Present
 	vk::PresentInfoKHR presentInfo;
@@ -315,6 +294,7 @@ bool RenderContext::createSwapchain()
 		g_instance.destroy(prevSurface);
 	}
 	LOG_D("[{}] Swapchain created [{}x{}]", m_name, m_window, framebufferSize.x, framebufferSize.y);
+	m_flags.reset({Flag::eOutOfDate, Flag::eRenderPaused});
 	return true;
 }
 

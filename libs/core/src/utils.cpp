@@ -36,20 +36,27 @@ std::string utils::demangle(std::string_view name)
 #else
 	static std::string_view const CLASS = "class ";
 	static std::string_view const STRUCT = "struct ";
-	static size_t const CLASS_LEN = CLASS.length();
-	static size_t const STRUCT_LEN = STRUCT.length();
 	auto idx = ret.find(CLASS);
 	if (idx == 0)
 	{
-		ret = ret.substr(CLASS_LEN);
+		ret = ret.substr(CLASS.size());
 	}
 	idx = ret.find(STRUCT);
 	if (idx == 0)
 	{
-		ret = ret.substr(STRUCT_LEN);
+		ret = ret.substr(STRUCT.size());
 	}
 #endif
 	return ret;
+}
+
+void utils::removeNamesapces(std::string& out_name)
+{
+	auto const idx = out_name.find_last_of("::");
+	if (idx != std::string::npos)
+	{
+		out_name = out_name.substr(idx + 1);
+	}
 }
 
 namespace utils

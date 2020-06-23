@@ -16,16 +16,12 @@ using namespace gfx;
 namespace
 {
 template <typename T>
-std::vector<AssetData<T>> importTList(std::vector<stdfs::path> src)
+void intersectTlist(std::vector<AssetData<T>>& out_data, std::vector<stdfs::path> const& src)
 {
-	std::vector<AssetData<T>> ret;
-	for (auto& id : src)
-	{
-		AssetData<T> data;
-		data.id = std::move(id);
-		ret.push_back(std::move(data));
-	}
-	return ret;
+	auto iter = std::remove_if(out_data.begin(), out_data.end(), [&src](auto const& data) {
+		return std::find_if(src.begin(), src.end(), [&data](auto const& id) { return data.id == id; }) == src.end();
+	});
+	out_data.erase(iter, out_data.end());
 }
 
 template <typename T>
@@ -71,15 +67,15 @@ TResult<IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vec
 }
 } // namespace
 
-void AssetManifest::Info::importList(AssetList ids)
+void AssetManifest::Info::intersect(AssetList ids)
 {
-	shaders = importTList<Shader>(ids.shaders);
-	textures = importTList<Texture>(ids.textures);
-	cubemaps = importTList<Texture>(ids.cubemaps);
-	materials = importTList<Material>(ids.materials);
-	meshes = importTList<Mesh>(ids.meshes);
-	models = importTList<Model>(ids.models);
-	fonts = importTList<Font>(ids.fonts);
+	intersectTlist<Shader>(shaders, ids.shaders);
+	intersectTlist<Texture>(textures, ids.textures);
+	intersectTlist<Texture>(cubemaps, ids.cubemaps);
+	intersectTlist<Material>(materials, ids.materials);
+	intersectTlist<Mesh>(meshes, ids.meshes);
+	intersectTlist<Model>(models, ids.models);
+	intersectTlist<Font>(fonts, ids.fonts);
 }
 
 AssetList AssetManifest::Info::exportList() const
@@ -148,7 +144,10 @@ AssetManifest::~AssetManifest()
 
 void AssetManifest::start()
 {
-	parse();
+	if (!m_bParsed)
+	{
+		parse();
+	}
 	if (!m_toLoad.isEmpty())
 	{
 		loadData();
@@ -205,6 +204,7 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 
 AssetList AssetManifest::parse()
 {
+	AssetList all;
 	auto const shaders = m_manifest.getGDatas("shaders");
 	for (auto const& shader : shaders)
 	{
@@ -213,6 +213,7 @@ AssetList AssetManifest::parse()
 		{
 			if (Resources::inst().get<Shader>(assetID))
 			{
+				all.shaders.push_back(assetID);
 				m_loaded.shaders.push_back(std::move(assetID));
 			}
 			else
@@ -241,6 +242,7 @@ AssetList AssetManifest::parse()
 				}
 				if (bFound)
 				{
+					all.shaders.push_back(data.id);
 					m_toLoad.shaders.push_back(std::move(data));
 					m_data.idCount.fetch_add(1);
 				}
@@ -257,6 +259,7 @@ AssetList AssetManifest::parse()
 		{
 			if (Resources::inst().get<Texture>(id))
 			{
+				all.textures.push_back(id);
 				m_loaded.textures.push_back(std::move(id));
 			}
 			else
@@ -266,6 +269,7 @@ AssetList AssetManifest::parse()
 				data.info.mode = engine::colourSpace();
 				data.info.samplerID = m_manifest.getString("sampler");
 				data.info.pReader = m_pReader;
+				all.textures.push_back(id);
 				m_toLoad.textures.push_back(std::move(data));
 				m_data.idCount.fetch_add(1);
 			}
@@ -283,6 +287,7 @@ AssetList AssetManifest::parse()
 		{
 			if (Resources::inst().get<Texture>(assetID))
 			{
+				all.cubemaps.push_back(assetID);
 				m_loaded.cubemaps.push_back(std::move(assetID));
 			}
 			else
@@ -308,6 +313,7 @@ AssetList AssetManifest::parse()
 				}
 				if (!bMissing)
 				{
+					all.cubemaps.push_back(data.id);
 					m_toLoad.cubemaps.push_back(std::move(data));
 					m_data.idCount.fetch_add(1);
 				}
@@ -322,7 +328,8 @@ AssetList AssetManifest::parse()
 		{
 			if (Resources::inst().get<Model>(modelID))
 			{
-				m_loaded.models.push_back(modelID);
+				all.models.push_back(modelID);
+				m_loaded.models.push_back(std::move(modelID));
 			}
 			else
 			{
@@ -334,16 +341,18 @@ AssetList AssetManifest::parse()
 				bool const bPresent = bOptional ? m_pReader->isPresent(jsonID) : m_pReader->checkPresence(jsonID);
 				if (bPresent)
 				{
+					all.models.push_back(data.id);
 					m_toLoad.models.push_back(std::move(data));
 					m_data.idCount.fetch_add(1);
 				}
 			}
 		}
 	}
-	return m_toLoad.exportList();
+	m_bParsed = true;
+	return all;
 }
 
-void AssetManifest::unload(const AssetList& list) const
+void AssetManifest::unload(const AssetList& list)
 {
 	auto unload = [](std::vector<stdfs::path> const& ids) {
 		for (auto const& id : ids)
@@ -438,7 +447,7 @@ bool AssetManifest::eraseDone(bool bWaitingJobs)
 	}
 	if (!m_loading.empty())
 	{
-		auto iter = std::remove_if(m_loading.begin(), m_loading.end(), [](Asset* pAsset) { return pAsset->isReady(); });
+		auto iter = std::remove_if(m_loading.begin(), m_loading.end(), [](Asset* pAsset) { return !pAsset->isBusy(); });
 		m_loading.erase(iter, m_loading.end());
 	}
 	return m_running.empty() && m_loading.empty();

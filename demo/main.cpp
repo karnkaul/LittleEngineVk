@@ -11,9 +11,9 @@
 #include <engine/levk.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/ecs/registry.hpp>
+#include <engine/game/freecam.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/game/world.hpp>
-#include <engine/gfx/camera.hpp>
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <engine/gfx/light.hpp>
@@ -30,6 +30,77 @@ namespace
 {
 std::unique_ptr<IOReader> g_uReader;
 
+class TestWorld : public World
+{
+private:
+	struct
+	{
+		bool bLoaded = false;
+		OnInput::Token token;
+		World::ID prevID;
+		Entity mainText;
+		Entity elapsedText;
+		Time elapsed;
+	} m_data;
+
+	gfx::Camera m_camera;
+
+protected:
+	bool start() override
+	{
+		m_data.token = window()->registerInput([this](Key key, Action action, Mods mods) {
+			if (key == Key::eP && action == Action::eRelease && (mods & Mods::eCONTROL))
+			{
+				if (!loadWorld(m_previousWorldID))
+				{
+					LOG_D("[{}] Failed to load World{}", m_tName, m_previousWorldID);
+				}
+			}
+		});
+		m_data.mainText = m_registry.spawnEntity<UIComponent>("mainText");
+		m_data.elapsedText = m_registry.spawnEntity<UIComponent>("elapsedText");
+		gfx::Text2D::Info info;
+		info.data.colour = colours::white;
+		info.data.text = "Test World";
+		info.data.scale = 0.25f;
+		info.id = "title";
+		m_registry.component<UIComponent>(m_data.mainText)->setText(std::move(info));
+		info.data.text = "0";
+		info.data.pos = {0.0f, -100.0f, 0.0f};
+		info.id = "elapsed";
+		m_data.elapsed = {};
+		m_registry.component<UIComponent>(m_data.elapsedText)->setText(std::move(info));
+		m_camera.m_position = {0.0f, 1.0f, 2.0f};
+		return true;
+	}
+
+	void tick(Time dt) override
+	{
+		m_data.elapsed += dt;
+		m_registry.component<UIComponent>(m_data.elapsedText)->uText->updateText(fmt::format("{:.1f}", m_data.elapsed.to_s()));
+	}
+
+	void stop() override
+	{
+		m_data = {};
+	}
+
+	gfx::Renderer::Scene buildScene() const override
+	{
+		return SceneBuilder(m_camera).build(m_registry);
+	}
+
+	stdfs::path manifestID() const override
+	{
+		return "test.manifest";
+	}
+
+	void onManifestLoaded() override
+	{
+		m_data.bLoaded = true;
+	}
+};
+
 class DemoWorld : public World
 {
 public:
@@ -41,7 +112,7 @@ private:
 		stdfs::path model0id, model1id, skyboxID;
 		std::vector<std::shared_ptr<HJob>> modelReloads;
 		gfx::Renderer::View view;
-		gfx::FreeCam freeCam;
+		FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
@@ -130,6 +201,7 @@ bool DemoWorld::start()
 	m_registry.addComponent<UIComponent>(m_data.eui1)->setText(textInfo);
 	textInfo.data.colour = colours::yellow;
 	textInfo.data.pos.y -= 100.0f;
+	textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
 	m_registry.addComponent<UIComponent>(m_data.eui2)->setText(textInfo);
 
@@ -155,6 +227,14 @@ bool DemoWorld::start()
 			if (key == Key::eM && action == Action::eRelease && (mods & Mods::eCONTROL))
 			{
 				m_data.bLoadUnloadModels = true;
+			}
+			if (key == Key::eN && action == Action::eRelease && (mods & Mods::eCONTROL))
+			{
+				auto const pWorld = getWorld<TestWorld>();
+				if (!pWorld || !loadWorld(pWorld->id()))
+				{
+					LOG_E("[{}] Failed to load (World{})", m_tName, pWorld->id());
+				}
 			}
 		},
 		{});
@@ -233,7 +313,7 @@ void DemoWorld::tick(Time dt)
 		m_data.bLoadUnloadModels = false;
 	}
 
-	m_data.freeCam.m_state.flags[gfx::FreeCam::Flag::eEnabled] = !m_data.bDisableCam;
+	m_data.freeCam.m_state.flags[FreeCam::Flag::eEnabled] = !m_data.bDisableCam;
 	m_data.freeCam.tick(dt);
 
 	m_registry.component<UIComponent>(m_data.eui0)->uText->updateText(fmt::format("{}FPS", m_fps));
@@ -270,13 +350,16 @@ void DemoWorld::tick(Time dt)
 
 gfx::Renderer::Scene DemoWorld::buildScene() const
 {
-	SceneBuilder builder;
-	builder.info.dirLights = {m_data.dirLight0, m_data.dirLight1};
-	builder.info.clearValues.colour = Colour(0x030203ff);
-	builder.info.view = m_data.view;
-	builder.info.p3Dpipe = m_data.bWireframe ? m_pPipeline0wf : nullptr;
-	builder.info.pSkybox = Resources::inst().get<gfx::Texture>("cubemaps/sky_dusk");
-	return builder.build(m_registry);
+	SceneBuilder::Info info;
+	info.pCamera = &m_data.freeCam;
+	info.dirLights = {m_data.dirLight0, m_data.dirLight1};
+	info.clearColour = Colour(0x030203ff);
+	info.p3Dpipe = m_data.bWireframe ? m_pPipeline0wf : nullptr;
+	info.skyboxCubemapID = "skyboxes/sky_dusk";
+	info.uiSpace = {1280.0f, 720.0f};
+	info.bDynamicUI = false;
+	info.bClampUIViewport = true;
+	return SceneBuilder(std::move(info)).build(m_registry);
 }
 
 void DemoWorld::stop()
@@ -287,7 +370,8 @@ void DemoWorld::stop()
 			Resources::inst().unload(*pID);
 		}
 	};
-	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id});
+	stdfs::path const matID = "materials/textured";
+	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id, &matID});
 	m_data = {};
 	m_res = {};
 }
@@ -321,11 +405,13 @@ int main(int argc, char** argv)
 	{
 		return 1;
 	}
-
-	World::ID worldID = World::addWorld<DemoWorld>();
+	World::addWorld<DemoWorld, TestWorld>();
 	auto pWorld = World::getWorld<DemoWorld>();
 
-	World::start(worldID);
+	if (!engine.start(0))
+	{
+		return 1;
+	}
 
 	Time t = Time::elapsed();
 	while (Window::anyActive())

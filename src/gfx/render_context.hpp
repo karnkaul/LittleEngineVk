@@ -28,6 +28,7 @@ public:
 	enum class Flag : s8
 	{
 		eRenderPaused,
+		eOutOfDate,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;

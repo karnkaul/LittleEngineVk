@@ -116,6 +116,11 @@ bool Asset::isReady() const
 	return m_status == Status::eReady;
 }
 
+bool Asset::isBusy() const
+{
+	return m_status == Status::eLoading;
+}
+
 Asset::GUID Asset::guid() const
 {
 	return m_guid;

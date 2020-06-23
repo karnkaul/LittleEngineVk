@@ -75,6 +75,7 @@ public:
 
 	Status currentStatus() const;
 	bool isReady() const;
+	bool isBusy() const;
 	GUID guid() const;
 
 #if defined(LEVK_ASSET_HOT_RELOAD)

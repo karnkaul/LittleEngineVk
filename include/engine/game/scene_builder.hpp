@@ -1,5 +1,6 @@
 #pragma once
 #include <engine/ecs/registry.hpp>
+#include <engine/gfx/camera.hpp>
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
@@ -26,20 +27,34 @@ struct UIComponent final
 	std::vector<gfx::Mesh const*> meshes() const;
 };
 
-struct SceneBuilder
+class SceneBuilder
 {
+public:
 	struct Info final
 	{
-		gfx::Renderer::View view;
-		gfx::Renderer::ClearValues clearValues;
 		std::vector<gfx::DirLight> dirLights;
-		gfx::Texture const* pSkybox = nullptr;
+		stdfs::path skyboxCubemapID;
+		glm::vec2 uiSpace = {0.0f, 0.0f};
+		gfx::Camera const* pCamera = nullptr;
 		gfx::Pipeline const* p3Dpipe = nullptr;
 		gfx::Pipeline const* pUIpipe = nullptr;
+		bool bDynamicUI = true;
+		bool bClampUIViewport = false;
+		Colour clearColour = colours::black;
 	};
 
-	Info info;
+protected:
+	Info m_info;
 
+public:
+	SceneBuilder(gfx::Camera const& camera);
+	SceneBuilder(Info info);
+
+public:
+	static f32 framebufferAspect();
+	static glm::vec2 uiSpace(glm::vec2 const& uiSpace);
+
+public:
 	virtual gfx::Renderer::Scene build(Registry const& registry) const;
 };
 } // namespace le

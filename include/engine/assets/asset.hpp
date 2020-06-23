@@ -28,11 +28,12 @@ public:
 	enum class Status : s8
 	{
 		eIdle,
-		eReady,	   // ready to use
-		eLoading,  // transferring resources
-		eReloaded, // finished reloading (only for one frame)
-		eError,	   // cannot be used
-		eMoved,	   // cannot be used
+		eReady,		// ready to use
+		eLoading,	// transferring resources
+		eReloading, // reloading (only relevant if `LEVK_ASSET_HOT_RELOAD` is defined)
+		eReloaded,	// finished reloading (only for one frame)
+		eError,		// cannot be used
+		eMoved,		// cannot be used
 		eCOUNT_
 	};
 
@@ -45,11 +46,14 @@ protected:
 	// add files to track here (in derived constructor)
 	std::vector<File> m_files;
 	// time to wait before triggering reload
-	Time m_reloadDelay = 200ms;
+	Time m_reloadDelay = 10ms;
 
 private:
 	std::unordered_set<File const*> m_modified;
 	Time m_reloadStart;
+	Time m_reloadWait;
+	u8 m_reloadTries = 3;
+	u8 m_reloadFails = 0;
 #endif
 
 public:

@@ -476,9 +476,9 @@ Asset::Status Model::update()
 	std::for_each(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto& kvp) { kvp.second.update(); });
 	if (m_status == Status::eLoading)
 	{
-		bool bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return mesh.isReady(); });
+		bool bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return !mesh.isBusy(); });
 		bool bTextures =
-			std::all_of(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto const& kvp) { return kvp.second.isReady(); });
+			std::all_of(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto const& kvp) { return !kvp.second.isBusy(); });
 		if (bMeshes && bTextures)
 		{
 			m_status = Status::eReady;

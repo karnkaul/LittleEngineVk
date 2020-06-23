@@ -441,6 +441,7 @@ UniqueQueues Device::uniqueQueues(QFlags flags) const
 void Device::waitIdle() const
 {
 	device.waitIdle();
+	deferred::flush();
 }
 
 vk::Fence Device::createFence(bool bSignalled) const

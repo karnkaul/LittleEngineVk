@@ -70,6 +70,8 @@ bool Service::init(Info const& info)
 		NativeWindow dummyWindow({});
 		gfx::InitInfo initInfo;
 #if defined(LEVK_DEBUG)
+		gfx::g_VRAM_bLogAllocs = info.bLogVRAMallocations;
+		gfx::g_VRAM_logLevel = info.vramLogLevel;
 		initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
 #endif
 		if (os::isDefined("validation"))

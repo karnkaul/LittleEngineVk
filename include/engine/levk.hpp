@@ -9,6 +9,9 @@
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/window/window.hpp>
 #include <engine/game/world.hpp>
+#if defined(LEVK_DEBUG)
+#include <core/log_config.hpp>
+#endif
 
 namespace le::engine
 {
@@ -23,6 +26,10 @@ struct Info final
 	std::optional<Window::Info> windowInfo;
 	std::vector<stdfs::path> dataPaths;
 	IOReader* pReader = nullptr;
+#if defined(LEVK_DEBUG)
+	bool bLogVRAMallocations = false;
+	log::Level vramLogLevel = log::Level::eDebug;
+#endif
 };
 
 class Service final

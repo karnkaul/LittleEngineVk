@@ -110,7 +110,11 @@ void deferred::update()
 
 void deferred::deinit()
 {
-	g_device.waitIdle();
+	flush();
+}
+
+void deferred::flush()
+{
 	for (auto& deferred : g_deferred)
 	{
 		deferred.func();

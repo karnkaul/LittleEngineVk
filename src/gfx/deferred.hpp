@@ -12,4 +12,5 @@ void release(std::function<void()> func, u8 extraFrames = 0);
 
 void update();
 void deinit();
+void flush();
 } // namespace le::gfx::deferred

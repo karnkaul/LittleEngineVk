@@ -269,6 +269,7 @@ AssetList AssetManifest::parse()
 				data.info.mode = engine::colourSpace();
 				data.info.samplerID = m_manifest.getString("sampler");
 				data.info.pReader = m_pReader;
+				data.info.ids = {id};
 				all.textures.push_back(id);
 				m_toLoad.textures.push_back(std::move(data));
 				m_data.idCount.fetch_add(1);
@@ -373,37 +374,6 @@ void AssetManifest::loadData()
 {
 	m_status = Status::eExtractingData;
 	IndexedTask task;
-	if (!m_toLoad.textures.empty())
-	{
-		task.task = [this](size_t idx) {
-			auto& texture = m_toLoad.textures.at(idx);
-			auto [bytes, bResult] = m_pReader->getBytes(texture.id);
-			if (bResult)
-			{
-				texture.info.bytes = {std::move(bytes)};
-			}
-		};
-		task.name = "Manifest-0:Textures";
-		task.iterationCount = m_toLoad.textures.size();
-		addJobs(std::move(task));
-	}
-	if (!m_toLoad.cubemaps.empty())
-	{
-		task.task = [this](size_t idx) {
-			auto& cubemap = m_toLoad.cubemaps.at(idx);
-			for (auto id : cubemap.info.ids)
-			{
-				auto [bytes, bResult] = m_pReader->getBytes(id);
-				if (bResult)
-				{
-					cubemap.info.bytes.push_back(std::move(bytes));
-				}
-			}
-		};
-		task.name = "Manifest-0:Cubemaps";
-		task.iterationCount = m_toLoad.cubemaps.size();
-		addJobs(std::move(task));
-	}
 	if (!m_toLoad.models.empty())
 	{
 		task.task = [this](size_t idx) {

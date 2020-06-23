@@ -9,7 +9,7 @@
 namespace le::gfx
 {
 #if defined(LEVK_DEBUG)
-constexpr bool g_VRAM_bLogAllocs = true;
+inline bool g_VRAM_bLogAllocs = false;
 #else
 constexpr bool g_VRAM_bLogAllocs = false;
 #endif

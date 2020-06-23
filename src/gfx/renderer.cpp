@@ -442,7 +442,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
 					if (pMesh->m_material.pDiffuse)
 					{
-						ASSERT(pMesh->m_material.pDiffuse->isReady(), "Texture not ready!");
+						ASSERT(!pMesh->m_material.pDiffuse->isBusy(), "Texture busy!");
 						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
 					}
 					else
@@ -452,7 +452,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 					}
 					if (pMesh->m_material.pSpecular)
 					{
-						ASSERT(pMesh->m_material.pSpecular->isReady(), "Texture not ready!");
+						ASSERT(!pMesh->m_material.pSpecular->isBusy(), "Texture busy!");
 						pc.specularID = specular.add(pMesh->m_material.pSpecular);
 					}
 				}

@@ -228,14 +228,6 @@ bool DemoWorld::start()
 			{
 				m_data.bLoadUnloadModels = true;
 			}
-			if (key == Key::eN && action == Action::eRelease && (mods & Mods::eCONTROL))
-			{
-				auto const pWorld = getWorld<TestWorld>();
-				if (!pWorld || !loadWorld(pWorld->id()))
-				{
-					LOG_E("[{}] Failed to load (World{})", m_tName, pWorld->id());
-				}
-			}
 		},
 		{});
 
@@ -397,7 +389,6 @@ int main(int argc, char** argv)
 	Window::Info info0;
 	info0.config.size = {1280, 720};
 	info0.config.title = "LittleEngineVk Demo";
-	info0.config.centreOffset = {-200, -200};
 	info.windowInfo = info0;
 	info.pReader = g_uReader.get();
 	info.dataPaths = engine.locateData({{{"data"}}, {{"demo/data"}}});

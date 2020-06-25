@@ -44,6 +44,7 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pro-attribs">Protected Attributes</a> &#124;
@@ -60,6 +61,16 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structle_1_1SceneBuilder_1_1Info.html">Info</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:accf1f7ae53eb3208a11aa37ffa745827"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#accf1f7ae53eb3208a11aa37ffa745827">Flag</a> : s8 { <a class="el" href="classle_1_1SceneBuilder.html#accf1f7ae53eb3208a11aa37ffa745827a2a0ceb156c6801b45964ec0a3d4a505f">Flag::eDynamicUI</a>, 
+<a class="el" href="classle_1_1SceneBuilder.html#accf1f7ae53eb3208a11aa37ffa745827a50408ad62aca366b0448273ea2e3b276">Flag::eScissoredUI</a>, 
+<a class="el" href="classle_1_1SceneBuilder.html#accf1f7ae53eb3208a11aa37ffa745827a98ce873df53900dd5454baba574ecb06">Flag::eCOUNT_</a>
+ }</td></tr>
+<tr class="separator:accf1f7ae53eb3208a11aa37ffa745827"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad84c70cb897411f365921f98ba0e1524"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#ad84c70cb897411f365921f98ba0e1524">Flags</a> = <a class="el" href="structle_1_1TFlags.html">TFlags</a>&lt; <a class="el" href="classle_1_1SceneBuilder.html#accf1f7ae53eb3208a11aa37ffa745827">Flag</a> &gt;</td></tr>
+<tr class="separator:ad84c70cb897411f365921f98ba0e1524"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a65055540b504e8c7cbf03feb2d8682af"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#a65055540b504e8c7cbf03feb2d8682af">SceneBuilder</a> (<a class="el" href="classle_1_1gfx_1_1Camera.html">gfx::Camera</a> const &amp;camera)</td></tr>
@@ -73,14 +84,61 @@ Public Member Functions</h2></td></tr>
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a9e96d964620b6af6f9e5ec78148c40f1"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="namespacele.html#afdb0b0272a15d6baa52cee8bfc6cf5f8">f32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#a9e96d964620b6af6f9e5ec78148c40f1">framebufferAspect</a> ()</td></tr>
 <tr class="separator:a9e96d964620b6af6f9e5ec78148c40f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7ea6fe8e1d0610e9c93d532ccf368448"><td class="memItemLeft" align="right" valign="top">static glm::vec2&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#a7ea6fe8e1d0610e9c93d532ccf368448">uiSpace</a> (glm::vec2 const &amp;uiSpace)</td></tr>
-<tr class="separator:a7ea6fe8e1d0610e9c93d532ccf368448"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0c563021f86500ca724a347b3343e7af"><td class="memItemLeft" align="right" valign="top">static glm::vec3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#a0c563021f86500ca724a347b3343e7af">uiProjection</a> (glm::vec3 const &amp;uiSpace, glm::ivec2 const &amp;framebuffer)</td></tr>
+<tr class="separator:a0c563021f86500ca724a347b3343e7af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a23407def60fdee53da660ba37fbc1d32"><td class="memItemLeft" align="right" valign="top">static glm::vec3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#a23407def60fdee53da660ba37fbc1d32">uiProjection</a> (glm::vec3 const &amp;uiSpace)</td></tr>
+<tr class="separator:a23407def60fdee53da660ba37fbc1d32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
 <tr class="memitem:aa18fc27d1e28ec067c01d25154bd70e5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structle_1_1SceneBuilder_1_1Info.html">Info</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1SceneBuilder.html#aa18fc27d1e28ec067c01d25154bd70e5">m_info</a></td></tr>
 <tr class="separator:aa18fc27d1e28ec067c01d25154bd70e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Member Typedef Documentation</h2>
+<a id="ad84c70cb897411f365921f98ba0e1524"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad84c70cb897411f365921f98ba0e1524">&#9670;&nbsp;</a></span>Flags</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="classle_1_1SceneBuilder.html#ad84c70cb897411f365921f98ba0e1524">le::SceneBuilder::Flags</a> =  <a class="el" href="structle_1_1TFlags.html">TFlags</a>&lt;<a class="el" href="classle_1_1SceneBuilder.html#accf1f7ae53eb3208a11aa37ffa745827">Flag</a>&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="accf1f7ae53eb3208a11aa37ffa745827"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#accf1f7ae53eb3208a11aa37ffa745827">&#9670;&nbsp;</a></span>Flag</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="classle_1_1SceneBuilder.html#accf1f7ae53eb3208a11aa37ffa745827">le::SceneBuilder::Flag</a> : <a class="el" href="namespacele.html#af9e0cf7215603bba4aa12fe79e815d5f">s8</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="accf1f7ae53eb3208a11aa37ffa745827a2a0ceb156c6801b45964ec0a3d4a505f"></a>eDynamicUI&#160;</td><td class="fielddoc"><p>UI follows screen size and aspect ratio. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="accf1f7ae53eb3208a11aa37ffa745827a50408ad62aca366b0448273ea2e3b276"></a>eScissoredUI&#160;</td><td class="fielddoc"><p>UI clipped to match its aspect ratio. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="accf1f7ae53eb3208a11aa37ffa745827a98ce873df53900dd5454baba574ecb06"></a>eCOUNT_&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
 <h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a65055540b504e8c7cbf03feb2d8682af"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a65055540b504e8c7cbf03feb2d8682af">&#9670;&nbsp;</a></span>SceneBuilder() <span class="overload">[1/2]</span></h2>
@@ -170,8 +228,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a7ea6fe8e1d0610e9c93d532ccf368448"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7ea6fe8e1d0610e9c93d532ccf368448">&#9670;&nbsp;</a></span>uiSpace()</h2>
+<a id="a23407def60fdee53da660ba37fbc1d32"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a23407def60fdee53da660ba37fbc1d32">&#9670;&nbsp;</a></span>uiProjection() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -180,11 +238,47 @@ Protected Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">static glm::vec2 le::SceneBuilder::uiSpace </td>
+          <td class="memname">static glm::vec3 le::SceneBuilder::uiProjection </td>
           <td>(</td>
-          <td class="paramtype">glm::vec2 const &amp;&#160;</td>
+          <td class="paramtype">glm::vec3 const &amp;&#160;</td>
           <td class="paramname"><em>uiSpace</em></td><td>)</td>
           <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0c563021f86500ca724a347b3343e7af"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0c563021f86500ca724a347b3343e7af">&#9670;&nbsp;</a></span>uiProjection() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static glm::vec3 le::SceneBuilder::uiProjection </td>
+          <td>(</td>
+          <td class="paramtype">glm::vec3 const &amp;&#160;</td>
+          <td class="paramname"><em>uiSpace</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">glm::ivec2 const &amp;&#160;</td>
+          <td class="paramname"><em>framebuffer</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
   </td>

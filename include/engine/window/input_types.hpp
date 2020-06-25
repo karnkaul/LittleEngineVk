@@ -172,14 +172,18 @@ enum class Key
 	eGamepadButtonTriangle = eGamepadButtonY,
 };
 
-enum Mods
+struct Mods
 {
-	eSHIFT = 0x0001,
-	eCONTROL = 0x0002,
-	eALT = 0x0004,
-	eSUPER = 0x0008,
-	eCAPS_LOCK = 0x0010,
-	eNUM_LOCK = 0x0020
+	enum VALUE
+	{
+		eNONE = 0,
+		eSHIFT = 0x0001,
+		eCONTROL = 0x0002,
+		eALT = 0x0004,
+		eSUPER = 0x0008,
+		eCAPS_LOCK = 0x0010,
+		eNUM_LOCK = 0x0020
+	};
 };
 
 enum class PadAxis : s8
@@ -220,7 +224,7 @@ struct GamepadState
 namespace stdfs = std::filesystem;
 
 using OnText = Delegate<char>;
-using OnInput = Delegate<Key, Action, Mods>;
+using OnInput = Delegate<Key, Action, Mods::VALUE>;
 using OnMouse = Delegate<f64, f64>;
 using OnFocus = Delegate<bool>;
 using OnFiledrop = Delegate<stdfs::path const&>;

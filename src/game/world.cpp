@@ -152,7 +152,7 @@ bool World::startImpl(ID previous)
 
 void World::tickImpl(Time dt)
 {
-	m_registry.sweep();
+	m_registry.flush();
 	bool bTick = !window()->isClosing();
 	if (g_uManifest)
 	{
@@ -186,6 +186,7 @@ void World::tickImpl(Time dt)
 	{
 		window()->destroy();
 	}
+	m_input.flush();
 }
 
 void World::stopImpl()
@@ -286,7 +287,7 @@ World* World::active()
 	return s_pActive;
 }
 
-bool World::loadingManifest()
+bool World::isBusy()
 {
 	return g_uManifest.get() != nullptr;
 }

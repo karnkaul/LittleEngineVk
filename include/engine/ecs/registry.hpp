@@ -145,7 +145,7 @@ public:
 	template <typename T1, typename... Ts>
 	View<T1, Ts...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {});
 
-	void sweep();
+	void flush();
 	void clear();
 
 	size_t entityCount() const;

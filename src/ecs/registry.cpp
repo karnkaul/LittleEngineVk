@@ -121,7 +121,7 @@ bool Registry::destroyEntity(Entity& out_entity)
 	return false;
 }
 
-void Registry::sweep()
+void Registry::flush()
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	for (auto iter = m_entityFlags.begin(); iter != m_entityFlags.end();)

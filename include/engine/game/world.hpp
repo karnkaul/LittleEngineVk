@@ -9,10 +9,11 @@
 #include <core/std_types.hpp>
 #include <core/utils.hpp>
 #include <core/time.hpp>
+#include <core/transform.hpp>
 #include <core/zero.hpp>
 #include <engine/ecs/registry.hpp>
+#include <engine/game/input_mapper.hpp>
 #include <engine/gfx/renderer.hpp>
-#include <core/transform.hpp>
 
 namespace le
 {
@@ -39,6 +40,7 @@ protected:
 	Flags m_flags;
 
 protected:
+	InputMapper m_input;
 	Registry m_registry = Registry(Registry::DestroyMode::eDeferred);
 	std::string m_tName;
 	ID m_previousWorldID;
@@ -80,7 +82,7 @@ public:
 	static bool loadWorld(ID id);
 	static World* active();
 
-	static bool loadingManifest();
+	static bool isBusy();
 	static bool worldLoadPending();
 
 #if defined(LEVK_EDITOR)

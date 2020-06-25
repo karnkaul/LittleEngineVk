@@ -1,4 +1,5 @@
 #pragma once
+#include <core/flags.hpp>
 #include <engine/ecs/registry.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/font.hpp>
@@ -30,17 +31,35 @@ struct UIComponent final
 class SceneBuilder
 {
 public:
+	enum class Flag : s8
+	{
+		///
+		/// \brief UI follows screen size and aspect ratio
+		///
+		eDynamicUI,
+		///
+		/// \brief UI clipped to match its aspect ratio
+		///
+		eScissoredUI,
+		eCOUNT_
+	};
+	using Flags = TFlags<Flag>;
+
+public:
 	struct Info final
 	{
 		std::vector<gfx::DirLight> dirLights;
 		stdfs::path skyboxCubemapID;
-		glm::vec2 uiSpace = {0.0f, 0.0f};
+		///
+		/// \brief UI Transformation Space (z is depth)
+		///
+		glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
 		gfx::Camera const* pCamera = nullptr;
 		gfx::Pipeline const* p3Dpipe = nullptr;
 		gfx::Pipeline const* pUIpipe = nullptr;
-		bool bDynamicUI = true;
-		bool bClampUIViewport = false;
+		glm::vec2 clearDepth = {1.0f, 0.0f};
 		Colour clearColour = colours::black;
+		Flags flags = Flag::eDynamicUI;
 	};
 
 protected:
@@ -52,7 +71,8 @@ public:
 
 public:
 	static f32 framebufferAspect();
-	static glm::vec2 uiSpace(glm::vec2 const& uiSpace);
+	static glm::vec3 uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& framebuffer);
+	static glm::vec3 uiProjection(glm::vec3 const& uiSpace);
 
 public:
 	virtual gfx::Renderer::Scene build(Registry const& registry) const;

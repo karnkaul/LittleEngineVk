@@ -12,7 +12,7 @@ void FreeCam::init(Window* pWindow)
 	m_pWindow = pWindow;
 	ASSERT(m_pWindow, "Window is null!");
 	m_state.speed = m_config.defaultSpeed;
-	m_tMove = m_pWindow->registerInput([this](Key key, Action action, Mods mods) {
+	m_tMove = m_pWindow->registerInput([this](Key key, Action action, Mods::VALUE mods) {
 		switch (action)
 		{
 		case Action::ePress:
@@ -33,7 +33,7 @@ void FreeCam::init(Window* pWindow)
 			break;
 		}
 		if (m_state.flags.isSet(Flag::eKeyToggle_Look) && key == m_config.lookToggle.key && action == m_config.lookToggle.action
-			&& (m_config.lookToggle.mods == (Mods)0 || m_config.lookToggle.mods & mods))
+			&& (m_config.lookToggle.mods == Mods::eNONE || m_config.lookToggle.mods & mods))
 		{
 			m_state.flags.flip(Flag::eLooking);
 			m_state.flags.reset(Flag::eTracking);

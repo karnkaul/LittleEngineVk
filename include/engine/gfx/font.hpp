@@ -110,5 +110,6 @@ public:
 
 	Mesh const* mesh() const;
 	bool isReady() const;
+	bool isBusy() const;
 };
 } // namespace le::gfx

@@ -65,11 +65,10 @@ void onFramebufferResize(GLFWwindow* pGLFWwindow, s32 width, s32 height)
 
 void onKey(GLFWwindow* pGLFWwindow, s32 key, s32 /*scancode*/, s32 action, s32 mods)
 {
-	WindowImpl::s_input[WindowID::s_null].onInput(Key(key), Action(action), Mods(mods));
+	WindowImpl::s_input[WindowID::s_null].onInput(Key(key), Action(action), Mods::VALUE(mods));
 	if (auto pWindow = find(pGLFWwindow); pWindow)
 	{
-		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key), Action(action), Mods(mods));
-		// LOGIF_D(action == GLFW_PRESS, "[{}:{}] Key pressed: [{}/{}]", Window::s_tName, pWindow->id(), (char)key, key);
+		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key), Action(action), Mods::VALUE(mods));
 	}
 	return;
 }
@@ -86,10 +85,10 @@ void onMouse(GLFWwindow* pGLFWwindow, f64 x, f64 y)
 
 void onMouseButton(GLFWwindow* pGLFWwindow, s32 key, s32 action, s32 mods)
 {
-	WindowImpl::s_input[WindowID::s_null].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods(mods));
+	WindowImpl::s_input[WindowID::s_null].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods::VALUE(mods));
 	if (auto pWindow = find(pGLFWwindow); pWindow)
 	{
-		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods(mods));
+		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods::VALUE(mods));
 	}
 	return;
 }

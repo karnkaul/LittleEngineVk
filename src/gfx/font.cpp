@@ -298,4 +298,9 @@ bool Text2D::isReady() const
 {
 	return m_uMesh->isReady() && m_pFont && m_pFont->isReady();
 }
+
+bool Text2D::isBusy() const
+{
+	return m_uMesh->isBusy() || !m_pFont || m_pFont->isBusy();
+}
 } // namespace le::gfx

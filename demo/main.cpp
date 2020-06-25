@@ -48,7 +48,7 @@ private:
 protected:
 	bool start() override
 	{
-		m_data.token = window()->registerInput([this](Key key, Action action, Mods mods) {
+		m_data.token = window()->registerInput([this](Key key, Action action, Mods::VALUE mods) {
 			if (key == Key::eP && action == Action::eRelease && (mods & Mods::eCONTROL))
 			{
 				if (!loadWorld(m_previousWorldID))
@@ -211,7 +211,7 @@ bool DemoWorld::start()
 	m_data.freeCam.m_position = {0.0f, 1.0f, 2.0f};
 
 	m_data.inputToken = Window::registerInput(
-		[this](Key key, Action action, Mods mods) {
+		[this](Key key, Action action, Mods::VALUE mods) {
 			if (key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
 			{
 				m_data.bQuit = true;
@@ -251,6 +251,11 @@ bool DemoWorld::start()
 		m_pPipeline0wf = window()->renderer().createPipeline(std::move(pipelineInfo));
 	}
 
+	m_input.mapTrigger("jump", Key::eSpace);
+	m_input.mapTrigger("die", Key::eK, Action::ePress, Mods::eSHIFT);
+	m_input.mapTrigger("die", Key::eD, Action::eRelease, Mods::eCONTROL);
+	m_input.mapState("crouch", Key::eLeftAlt);
+	m_input.mapRange("move", Key::eUp, Key::eDown);
 	return true;
 }
 
@@ -260,6 +265,30 @@ void DemoWorld::tick(Time dt)
 	{
 		window()->close();
 		return;
+	}
+
+	static std::vector<std::string> const triggers = {"jump", "die"}, states = {"crouch"}, ranges = {"move"};
+	for (auto const& trigger : triggers)
+	{
+		if (m_input.isTriggered(trigger))
+		{
+			LOG_I("{} triggerred!", trigger);
+		}
+	}
+	for (auto const& state : states)
+	{
+		if (m_input.isHeld(state))
+		{
+			LOG_I("{} held!", state);
+		}
+	}
+	for (auto const& range : ranges)
+	{
+		f32 const value = m_input.range(range);
+		if (value != 0.0f)
+		{
+			LOG_I("{} range: {}", range, value);
+		}
 	}
 
 	auto iter =
@@ -348,9 +377,8 @@ gfx::Renderer::Scene DemoWorld::buildScene() const
 	info.clearColour = Colour(0x030203ff);
 	info.p3Dpipe = m_data.bWireframe ? m_pPipeline0wf : nullptr;
 	info.skyboxCubemapID = "skyboxes/sky_dusk";
-	info.uiSpace = {1280.0f, 720.0f};
-	info.bDynamicUI = false;
-	info.bClampUIViewport = true;
+	info.uiSpace = {1280.0f, 720.0f, 2.0f};
+	info.flags = SceneBuilder::Flag::eScissoredUI;
 	return SceneBuilder(std::move(info)).build(m_registry);
 }
 

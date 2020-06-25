@@ -14,4 +14,5 @@ struct App
 IOReader const& reader();
 gfx::Texture::Space colourSpace();
 void update();
+Window* window();
 } // namespace le::engine

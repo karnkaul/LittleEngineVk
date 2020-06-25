@@ -22,7 +22,7 @@ public:
 	struct KeyToggle final
 	{
 		Key key;
-		Mods mods = (Mods)0;
+		Mods::VALUE mods = Mods::eNONE;
 		Action action = Action::eRelease;
 	};
 

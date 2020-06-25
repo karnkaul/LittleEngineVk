@@ -162,6 +162,11 @@ void engine::update()
 	gfx::vram::update();
 }
 
+Window* engine::window()
+{
+	return g_app.uWindow.get();
+}
+
 IOReader const& engine::reader()
 {
 	ASSERT(g_app.pReader, "IOReader is null!");

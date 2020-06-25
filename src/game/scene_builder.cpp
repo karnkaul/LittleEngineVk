@@ -50,33 +50,38 @@ f32 SceneBuilder::framebufferAspect()
 	return ifbSize.x == 0 || ifbSize.y == 0 ? 1.0f : (f32)ifbSize.x / (f32)ifbSize.y;
 }
 
-glm::vec2 SceneBuilder::uiSpace(glm::vec2 const& uiSpace)
+glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& framebuffer)
+{
+	f32 const uiX = uiSpace.x == 0.0f ? 1.0f : uiSpace.x;
+	f32 const uiY = uiSpace.y == 0.0f ? 1.0f : uiSpace.y;
+	f32 const uiAspect = uiX / uiY;
+	f32 const fbAspect = (f32)(framebuffer.x == 0 ? 1 : framebuffer.x) / (f32)(framebuffer.y == 0 ? 1 : framebuffer.y);
+	f32 const x = uiAspect > fbAspect ? uiX : uiX * (fbAspect / uiAspect);
+	f32 const y = fbAspect > uiAspect ? uiY : uiY * (uiAspect / fbAspect);
+	return {x, y, uiSpace.z};
+}
+
+glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace)
 {
 	auto const ifbSize = engine::framebufferSize();
-	glm::vec2 const fbSize = {(f32)ifbSize.x, (f32)ifbSize.y};
-	f32 const uiAspect = uiSpace.x / uiSpace.y;
-	f32 const fbAspect = fbSize.x / fbSize.y;
-	f32 const x = uiAspect > fbAspect ? uiSpace.x : uiSpace.x * (fbAspect / uiAspect);
-	f32 const y = fbAspect > uiAspect ? uiSpace.y : uiSpace.y * (uiAspect / fbAspect);
-	return {x, y};
+	return uiProjection(uiSpace, {ifbSize.x == 0 ? 1 : ifbSize.x, ifbSize.y == 0 ? 1 : ifbSize.y});
 }
 
 gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 {
 	ASSERT(m_info.pCamera, "Camera is null!");
+	auto const ifbSize = engine::framebufferSize();
+	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
+	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fbSize, m_info.uiSpace.z) : m_info.uiSpace;
+	auto const uiProj = m_info.flags.isSet(Flag::eDynamicUI) ? glm::vec3(fbSize, m_info.uiSpace.z) : uiProjection(uiSpace, ifbSize);
 	gfx::Renderer::Scene scene;
-	scene.clear = {{1.0f, 0.0f}, m_info.clearColour};
+	scene.clear = {m_info.clearDepth, m_info.clearColour};
 	scene.dirLights = m_info.dirLights;
 	scene.view.pos_v = m_info.pCamera->m_position;
 	scene.view.mat_v = m_info.pCamera->view();
-	auto const ifbSize = engine::framebufferSize();
-	glm::vec2 const fbSize = {(f32)ifbSize.x, (f32)ifbSize.y};
-	f32 const fbAspect = fbSize.x == 0.0f || fbSize.y == 0.0f ? 1.0f : fbSize.x / fbSize.y;
-	auto const uiSp = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? fbSize : m_info.uiSpace;
-	auto const ui = m_info.bDynamicUI ? fbSize : uiSpace(uiSp);
-	scene.view.mat_p = m_info.pCamera->perspective(fbAspect);
+	scene.view.mat_p = m_info.pCamera->perspective(fbSize.x / fbSize.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
-	scene.view.mat_ui = m_info.pCamera->ui({ui, 2.0f});
+	scene.view.mat_ui = m_info.pCamera->ui(uiProj);
 	if (!m_info.skyboxCubemapID.empty())
 	{
 		auto pCubemap = Resources::inst().get<gfx::Texture>(m_info.skyboxCubemapID);
@@ -128,9 +133,9 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	}
 	if (!batchUI.drawables.empty())
 	{
-		if (m_info.bClampUIViewport)
+		if (!m_info.flags.isSet(Flag::eDynamicUI) && m_info.flags.isSet(Flag::eScissoredUI))
 		{
-			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSp.x / ui.x, uiSp.y / ui.y});
+			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSpace.x / uiProj.x, uiSpace.y / uiProj.y});
 		}
 		scene.batches.push_back(std::move(batchUI));
 	}

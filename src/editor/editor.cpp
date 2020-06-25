@@ -418,9 +418,9 @@ void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const&
 	World* pNewWorld = nullptr;
 	auto worldName = std::string(g_pWorld ? g_pWorld->name() : "[None]");
 	utils::removeNamesapces(worldName);
-	if (World::worldLoadPending())
+	if (g_pWorld && g_pWorld->isBusy())
 	{
-		ImGui::LabelText("", "[World Loading]");
+		ImGui::LabelText("", "%s (Busy)", worldName.data());
 	}
 	else if (ImGui::BeginCombo("", worldName.data()))
 	{
@@ -550,7 +550,7 @@ bool editor::init(WindowID editorWindow)
 		log::g_onLog = &guiLog;
 		g_data.window = editorWindow;
 		g_data.inputToken = Window::registerInput(
-			[](Key key, Action action, Mods mods) {
+			[](Key key, Action action, Mods::VALUE mods) {
 				if (key == Key::eE && action == Action::eRelease && mods & Mods::eCONTROL)
 				{
 					g_data.enabled = !g_data.enabled;

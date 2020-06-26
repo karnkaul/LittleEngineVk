@@ -144,8 +144,7 @@ OBJParser::OBJParser(Data data)
 			}
 			else
 			{
-				LOG_W("[{}] [{}] Failed to load texture [{}] from [{}]", Model::s_tName, idStr, texture.filename.generic_string(),
-					  data.pReader->medium());
+				LOG_W("[{}] [{}] Failed to load texture [{}] from [{}]", Model::s_tName, idStr, texture.filename.generic_string(), data.pReader->medium());
 			}
 		}
 	}
@@ -357,8 +356,7 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 	auto const mtlPath = request.assetID / json.getString("mtl", "");
 	if (!request.pReader->checkPresence(objPath) || !request.pReader->checkPresence(mtlPath))
 	{
-		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, request.pReader->medium(), objPath.generic_string(),
-			  mtlPath.generic_string());
+		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, request.pReader->medium(), objPath.generic_string(), mtlPath.generic_string());
 		return {};
 	}
 	auto [objBuf, bObjResult] = request.pReader->getStr(objPath);
@@ -477,8 +475,7 @@ Asset::Status Model::update()
 	if (m_status == Status::eLoading)
 	{
 		bool bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return !mesh.isBusy(); });
-		bool bTextures =
-			std::all_of(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto const& kvp) { return !kvp.second.isBusy(); });
+		bool bTextures = std::all_of(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto const& kvp) { return !kvp.second.isBusy(); });
 		if (bMeshes && bTextures)
 		{
 			m_status = Status::eReady;

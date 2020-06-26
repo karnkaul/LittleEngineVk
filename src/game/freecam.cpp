@@ -7,6 +7,8 @@
 
 namespace le
 {
+using namespace input;
+
 void FreeCam::init(Window* pWindow)
 {
 	m_pWindow = pWindow;
@@ -77,7 +79,7 @@ void FreeCam::tick(Time dt)
 	{
 		return;
 	}
-	GamepadState pad0 = m_pWindow->gamepadState(0);
+	Gamepad pad0 = m_pWindow->gamepadState(0);
 	f32 const dt_s = dt.to_s();
 	// Speed
 	if (!m_state.flags.isSet(Flag::eFixedSpeed))
@@ -143,8 +145,13 @@ void FreeCam::tick(Time dt)
 	}
 
 	glm::vec3 dPosKB = {};
+	bool bIgnoreDPos = false;
 	for (auto key : m_state.heldKeys)
 	{
+		if (bIgnoreDPos)
+		{
+			break;
+		}
 		switch (key)
 		{
 		default:
@@ -174,13 +181,21 @@ void FreeCam::tick(Time dt)
 			dPosKB -= nRight;
 			break;
 		}
+		case Key::eLeftShift:
+		case Key::eRightShift:
+		case Key::eLeftControl:
+		case Key::eRightControl:
+		{
+			bIgnoreDPos = true;
+			break;
+		}
 		}
 	}
-	if (glm::length2(dPosKB) > 0.0f)
+	if (!bIgnoreDPos && glm::length2(dPosKB) > 0.0f)
 	{
 		dPos += glm::normalize(dPosKB);
 	}
-	if (glm::length2(dPos) > 0.0f)
+	if (!bIgnoreDPos && glm::length2(dPos) > 0.0f)
 	{
 		m_position += (dPos * dt_s * m_state.speed);
 	}

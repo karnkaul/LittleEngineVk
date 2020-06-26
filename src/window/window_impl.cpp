@@ -20,6 +20,8 @@
 
 namespace le
 {
+using namespace input;
+
 namespace
 {
 std::unordered_set<WindowImpl*> g_registeredWindows;
@@ -154,7 +156,7 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
-f32 GamepadState::axis(PadAxis axis) const
+f32 Gamepad::axis(PadAxis axis) const
 {
 	[[maybe_unused]] size_t idx = size_t(axis);
 #if defined(LEVK_USE_GLFW)
@@ -168,7 +170,7 @@ f32 GamepadState::axis(PadAxis axis) const
 	return 0.0f;
 }
 
-bool GamepadState::isPressed(Key button) const
+bool Gamepad::isPressed(Key button) const
 {
 	[[maybe_unused]] size_t idx = (size_t)button - (size_t)Key::eGamepadButtonA;
 #if defined(LEVK_USE_GLFW)
@@ -216,8 +218,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 	{
 		if (mode->width < width || mode->height < height)
 		{
-			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width,
-				  mode->height);
+			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		pTarget = nullptr;
@@ -227,8 +228,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 	{
 		if (mode->width < width || mode->height < height)
 		{
-			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width,
-				  mode->height);
+			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		bDecorated = false;
@@ -470,9 +470,7 @@ bool WindowImpl::create(Window::Info const& info)
 	{
 		m_uNativeWindow = std::make_unique<NativeWindow>(info);
 		gfx::RendererImpl::Info rendererInfo;
-		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
-			return createSurface(instance, *m_uNativeWindow);
-		};
+		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR { return createSurface(instance, *m_uNativeWindow); };
 		rendererInfo.contextInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
 		rendererInfo.contextInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
 		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
@@ -720,9 +718,9 @@ std::string WindowImpl::clipboard() const
 	return {};
 }
 
-JoyState WindowImpl::joyState([[maybe_unused]] s32 id)
+Joystick WindowImpl::joyState([[maybe_unused]] s32 id)
 {
-	JoyState ret;
+	Joystick ret;
 #if defined(LEVK_USE_GLFW)
 	if (threads::isMainThread() && g_bGLFWInit && glfwJoystickPresent(id))
 	{
@@ -750,9 +748,9 @@ JoyState WindowImpl::joyState([[maybe_unused]] s32 id)
 	return ret;
 }
 
-GamepadState WindowImpl::gamepadState([[maybe_unused]] s32 id)
+Gamepad WindowImpl::gamepadState([[maybe_unused]] s32 id)
 {
-	GamepadState ret;
+	Gamepad ret;
 #if defined(LEVK_USE_GLFW)
 	GLFWgamepadstate state;
 	if (threads::isMainThread() && g_bGLFWInit && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
@@ -768,9 +766,9 @@ GamepadState WindowImpl::gamepadState([[maybe_unused]] s32 id)
 	return ret;
 }
 
-std::vector<GamepadState> WindowImpl::activeGamepadStates()
+std::vector<Gamepad> WindowImpl::activeGamepads()
 {
-	std::vector<GamepadState> ret;
+	std::vector<Gamepad> ret;
 #if defined(LEVK_USE_GLFW)
 	if (threads::isMainThread() && g_bGLFWInit)
 	{
@@ -779,7 +777,7 @@ std::vector<GamepadState> WindowImpl::activeGamepadStates()
 			GLFWgamepadstate state;
 			if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
 			{
-				GamepadState padi;
+				Gamepad padi;
 				padi.name = glfwGetGamepadName(id);
 				padi.id = id;
 				padi.joyState.buttons = std::vector<u8>(15, 0);

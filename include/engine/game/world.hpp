@@ -12,7 +12,7 @@
 #include <core/transform.hpp>
 #include <core/zero.hpp>
 #include <engine/ecs/registry.hpp>
-#include <engine/game/input_mapper.hpp>
+#include <engine/game/input.hpp>
 #include <engine/gfx/renderer.hpp>
 
 namespace le
@@ -40,9 +40,9 @@ protected:
 	Flags m_flags;
 
 protected:
-	InputMapper m_input;
 	Registry m_registry = Registry(Registry::DestroyMode::eDeferred);
 	std::string m_tName;
+	input::CtxWrapper m_inputContext;
 	ID m_previousWorldID;
 
 #if defined(LEVK_EDITOR)
@@ -109,6 +109,7 @@ protected:
 
 protected:
 	virtual stdfs::path manifestID() const;
+	virtual stdfs::path inputMapID() const;
 	virtual void onManifestLoaded();
 
 protected:

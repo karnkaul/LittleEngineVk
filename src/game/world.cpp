@@ -104,6 +104,12 @@ stdfs::path World::manifestID() const
 	return s_empty;
 }
 
+stdfs::path World::inputMapID() const
+{
+	static stdfs::path const s_empty;
+	return s_empty;
+}
+
 void World::onManifestLoaded() {}
 
 Window* World::window() const
@@ -137,6 +143,24 @@ bool World::start(ID id)
 bool World::startImpl(ID previous)
 {
 	m_previousWorldID = previous;
+	m_inputContext = {};
+#if defined(LEVK_DEBUG)
+	m_inputContext.context.m_name = m_tName;
+#endif
+	auto const inputMap = inputMapID();
+	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
+	{
+		auto [str, bResult] = engine::reader().getString(inputMap);
+		if (bResult)
+		{
+			GData json(std::move(str));
+			if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
+			{
+				LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_tName, parsed, inputMap.generic_string());
+			}
+		}
+	}
+	input::registerContext(m_inputContext);
 	if (start())
 	{
 		if (g_uManifest)
@@ -147,6 +171,7 @@ bool World::startImpl(ID previous)
 		return true;
 	}
 	m_previousWorldID = {};
+	m_inputContext.token.reset();
 	return false;
 }
 
@@ -186,11 +211,11 @@ void World::tickImpl(Time dt)
 	{
 		window()->destroy();
 	}
-	m_input.flush();
 }
 
 void World::stopImpl()
 {
+	m_inputContext.token.reset();
 	g_uManifest.reset();
 	stop();
 	m_registry.clear();

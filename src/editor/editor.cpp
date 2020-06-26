@@ -24,6 +24,8 @@
 
 namespace le
 {
+using namespace input;
+
 struct Editor final
 {
 };
@@ -129,8 +131,7 @@ bool isDifferent(glm::vec3 const& lhs, glm::vec3 const& rhs)
 
 void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
 {
-	static ImGuiTreeNodeFlags const baseFlags =
-		ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+	static ImGuiTreeNodeFlags const baseFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 	auto const children = root.children();
 	auto search = emap.find(&root);
 	if (search != emap.end())
@@ -200,9 +201,8 @@ template <typename T, typename F, typename F2>
 void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter,
 				  glm::ivec2 const& pos, bool bNone = true)
 {
-	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
-											| ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf
-											| ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
+											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
 	ImGui::TreeNodeEx(pAsset ? pAsset->m_id.generic_string().data() : "[None]", flags);
 	if (ImGui::IsItemClicked() || out_bSelect)
@@ -243,14 +243,12 @@ void inspectMaterial(gfx::Mesh& out_mesh, size_t idx, glm::ivec2 const& pos)
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
 		inspectAsset<gfx::Material>(
-			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat,
-			{&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
 			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, false);
 		inspectAsset<gfx::Texture>(
-			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse,
-			{&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; },
-			[](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; }, pos);
+			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; }, [](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; },
+			pos);
 		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
 		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;
@@ -276,8 +274,7 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 	static s32 const s_xPad = 2;
 	static s32 const s_dy = 2;
 
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2(s_xPad, (f32)s_dy), ImGuiCond_Always);
 	if (!ImGui::Begin("Inspector", nullptr, flags))
@@ -356,10 +353,8 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 				if (ImGui::TreeNode("Mesh"))
 				{
 					inspectAsset<gfx::Mesh>(
-						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID,
-						{&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>,
-						inspectPos);
+						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
+						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, inspectPos);
 
 					inspectMaterial(*pMesh, 0, inspectPos);
 					ImGui::TreePop();
@@ -373,8 +368,7 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 				{
 					inspectAsset<gfx::Model>(
 						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
-						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>,
-						inspectPos);
+						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, inspectPos);
 					auto& meshes = pModel->loadedMeshes();
 					size_t idx = 0;
 					for (auto& mesh : meshes)
@@ -399,8 +393,7 @@ void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const&
 	static s32 const s_xPad = 2;
 	static s32 const s_dy = 2;
 
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2((f32)(fbSize.x - panelSize.x + s_xPad), (f32)s_dy), ImGuiCond_Always);
 	if (!ImGui::Begin("Scene", nullptr, flags))
@@ -469,8 +462,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 	{
 		return;
 	}
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2((f32)fbSize.x, (f32)(logHeight - s_yPad)), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2(0.0f, (f32)(fbSize.y - logHeight + s_yPad)), ImGuiCond_Always);
 	if (!ImGui::Begin("Log", nullptr, flags))

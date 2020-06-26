@@ -1,0 +1,115 @@
+#pragma once
+#include <tuple>
+#include <variant>
+#include <vector>
+#include <unordered_map>
+#include <glm/vec2.hpp>
+#include <core/gdata.hpp>
+#include <engine/window/input_types.hpp>
+
+namespace le::input
+{
+struct Snapshot final
+{
+	std::vector<Gamepad> padStates;
+	std::vector<std::tuple<Key, Action, Mods::VALUE>> keys;
+	std::vector<Key> held;
+	std::vector<char> text;
+};
+
+using Trigger = std::tuple<Key, Action, Mods::VALUE>;
+using State = Key;
+using Range = std::variant<std::tuple<PadAxis, bool, s32>, std::pair<Key, Key>>;
+
+using OnTrigger = std::function<void()>;
+using OnState = std::function<void()>;
+using OnRange = std::function<void(f32)>;
+
+enum class Mode : s8
+{
+	ePassthrough,
+	eBlockAll,
+	eBlockOnCallback,
+	eCOUNT_
+};
+
+struct Binding final
+{
+	std::vector<Trigger> triggers;
+	std::vector<State> states;
+	std::vector<Range> ranges;
+};
+
+struct Callback final
+{
+	OnTrigger onTrigger;
+	OnState onState;
+	OnRange onRange;
+};
+
+struct Map final
+{
+	std::unordered_map<std::string, Binding> bindings;
+
+	void addTrigger(std::string const& id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
+	void addTrigger(std::string const& id, std::initializer_list<Trigger> triggers);
+	void addState(std::string const& id, State state);
+	void addState(std::string const& id, std::initializer_list<State> states);
+	void addRange(std::string const& id, PadAxis axis, bool bReverse = false, s32 padID = 0);
+	void addRange(std::string const& id, Key min, Key max);
+	void addRange(std::string const& id, std::initializer_list<Range> ranges);
+
+	u16 deserialise(GData const& json);
+	void clear();
+
+	u16 size() const;
+	bool isEmpty() const;
+};
+
+class Context final
+{
+private:
+	struct Callback final
+	{
+		OnTrigger onTrigger;
+		OnState onState;
+		OnRange onRange;
+	};
+
+#if defined(LEVK_DEBUG)
+public:
+	std::string m_name;
+#endif
+
+private:
+	Map m_map;
+	std::unordered_map<std::string, Callback> m_callbacks;
+	Mode m_mode;
+
+public:
+	Context(Mode mode = Mode::ePassthrough);
+	Context(Context&&);
+	Context& operator=(Context&&);
+	Context(Context const&);
+	Context& operator=(Context const&);
+	~Context();
+
+public:
+	void mapTrigger(std::string const& id, OnTrigger callback);
+	void mapState(std::string const& id, OnState callback);
+	void mapRange(std::string const& id, OnRange callback);
+
+	void addTrigger(std::string const& id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
+	void addState(std::string const& id, State state);
+	void addRange(std::string const& id, PadAxis axis, bool bReverse = false, s32 padID = 0);
+	void addRange(std::string const& id, Key min, Key max);
+
+	void setMode(Mode mode);
+
+	u16 deserialise(GData const& json);
+	void import(Map map);
+
+public:
+	bool isConsumed(Snapshot const& snapshot) const;
+};
+} // namespace le::input

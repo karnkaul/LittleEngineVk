@@ -167,9 +167,7 @@ void strings::removeChars(std::string& outInput, std::initializer_list<char> toR
 
 void strings::trim(std::string& outInput, std::initializer_list<char> toRemove)
 {
-	auto isIgnored = [&outInput, &toRemove](size_t idx) {
-		return std::find(toRemove.begin(), toRemove.end(), outInput[idx]) != toRemove.end();
-	};
+	auto isIgnored = [&outInput, &toRemove](size_t idx) { return std::find(toRemove.begin(), toRemove.end(), outInput[idx]) != toRemove.end(); };
 	size_t startIdx = 0;
 	for (; startIdx < outInput.size() && isIgnored(startIdx); ++startIdx)
 		;

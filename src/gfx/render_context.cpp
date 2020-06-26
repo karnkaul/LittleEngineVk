@@ -62,8 +62,7 @@ vk::SurfaceFormatKHR RenderContext::Metadata::bestColourFormat() const
 vk::Format RenderContext::Metadata::bestDepthFormat() const
 {
 	static PriorityList<vk::Format> const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
-	auto [format, bResult] =
-		g_instance.supportedFormat(desired, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+	auto [format, bResult] = g_instance.supportedFormat(desired, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 	return bResult ? format : vk::Format::eD16Unorm;
 }
 

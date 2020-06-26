@@ -391,8 +391,7 @@ f32 Instance::lineWidth(f32 desired) const
 	return std::clamp(desired, lineWidthMin, lineWidthMax);
 }
 
-TResult<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling,
-											  vk::FormatFeatureFlags features)
+TResult<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
 {
 	for (auto format : desired)
 	{
@@ -559,8 +558,7 @@ vk::DescriptorPool Device::createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoo
 	return device.createDescriptorPool(createInfo);
 }
 
-std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts,
-															  u32 setCount)
+std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts, u32 setCount)
 {
 	vk::DescriptorSetAllocateInfo allocInfo;
 	allocInfo.descriptorPool = pool;
@@ -569,8 +567,7 @@ std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool
 	return device.allocateDescriptorSets(allocInfo);
 }
 
-vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments,
-										vk::ArrayProxy<vk::SubpassDescription const> subpasses,
+vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments, vk::ArrayProxy<vk::SubpassDescription const> subpasses,
 										vk::ArrayProxy<vk::SubpassDependency> dependencies)
 {
 	vk::RenderPassCreateInfo createInfo;
@@ -583,8 +580,7 @@ vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription
 	return device.createRenderPass(createInfo);
 }
 
-vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent,
-										  u32 layers)
+vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers)
 {
 	vk::FramebufferCreateInfo createInfo;
 	createInfo.attachmentCount = attachments.size();

@@ -139,8 +139,7 @@ void log::logText(Level level, std::string text, [[maybe_unused]] std::string_vi
 	try
 #endif
 	{
-		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text),
-						  *std::localtime(&now));
+		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
 	}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	catch (std::exception const& e)

@@ -6,6 +6,7 @@
 #include <engine/levk.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
+#include <game/input_impl.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
@@ -37,6 +38,7 @@ Service::Service(Service&&) = default;
 Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
+	input::deinit();
 	World::stopActive();
 	Resources::inst().waitIdle();
 	World::destroyAll();
@@ -103,6 +105,7 @@ bool Service::init(Info const& info)
 				throw std::runtime_error("Failed to create Window!");
 			}
 		}
+		input::init(*g_app.uWindow);
 		g_app.pReader = pReader;
 	}
 	catch (std::exception const& e)
@@ -124,7 +127,13 @@ bool Service::tick(Time dt) const
 	update();
 	gfx::ScreenRect gameRect;
 #if defined(LEVK_EDITOR)
+	if (editor::g_bTickGame)
+	{
+		input::fire();
+	}
 	gameRect = editor::tick(dt);
+#else
+	input::fire();
 #endif
 	return World::tick(dt, gameRect);
 }

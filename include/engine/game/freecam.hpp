@@ -21,14 +21,14 @@ public:
 
 	struct KeyToggle final
 	{
-		Key key;
-		Mods::VALUE mods = Mods::eNONE;
-		Action action = Action::eRelease;
+		input::Key key;
+		input::Mods::VALUE mods = input::Mods::eNONE;
+		input::Action action = input::Action::eRelease;
 	};
 
 	struct Config final
 	{
-		KeyToggle lookToggle = {Key::eL, Mods::eCONTROL};
+		KeyToggle lookToggle = {input::Key::eL, input::Mods::eCONTROL};
 		f32 defaultSpeed = 2.0f;
 		f32 minSpeed = 1.0f;
 		f32 maxSpeed = 1000.0f;
@@ -40,7 +40,7 @@ public:
 	};
 	struct State final
 	{
-		std::unordered_set<Key> heldKeys;
+		std::unordered_set<input::Key> heldKeys;
 		std::pair<glm::vec2, glm::vec2> cursorPos = {{0.0f, 0.0f}, {0.0f, 0.0f}};
 
 		f32 speed = 2.0f;
@@ -56,10 +56,10 @@ public:
 	Config m_config;
 
 private:
-	OnInput::Token m_tMove;
-	OnMouse::Token m_tLook;
-	OnMouse::Token m_tZoom;
-	OnFocus::Token m_tFocus;
+	input::OnInput::Token m_tMove;
+	input::OnMouse::Token m_tLook;
+	input::OnMouse::Token m_tZoom;
+	input::OnFocus::Token m_tFocus;
 	Window* m_pWindow = nullptr;
 
 public:

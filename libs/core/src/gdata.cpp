@@ -10,8 +10,7 @@ namespace
 std::initializer_list<std::pair<char, char>> gDataEscapes = {{'{', '}'}, {'[', ']'}, {'"', '"'}};
 
 template <typename T>
-T get(std::unordered_map<std::string, std::string> const& table, std::string const& key, T (*Adaptor)(std::string_view, T),
-	  T const& defaultValue)
+T get(std::unordered_map<std::string, std::string> const& table, std::string const& key, T (*Adaptor)(std::string_view, T), T const& defaultValue)
 {
 	auto search = table.find(key);
 	if (search != table.end())

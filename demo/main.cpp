@@ -12,6 +12,7 @@
 #include <engine/assets/resources.hpp>
 #include <engine/ecs/registry.hpp>
 #include <engine/game/freecam.hpp>
+#include <engine/game/input.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/game/world.hpp>
 #include <engine/gfx/font.hpp>
@@ -35,12 +36,11 @@ class TestWorld : public World
 private:
 	struct
 	{
-		bool bLoaded = false;
-		OnInput::Token token;
 		World::ID prevID;
 		Entity mainText;
 		Entity elapsedText;
 		Time elapsed;
+		bool bLoaded = false;
 	} m_data;
 
 	gfx::Camera m_camera;
@@ -48,15 +48,13 @@ private:
 protected:
 	bool start() override
 	{
-		m_data.token = window()->registerInput([this](Key key, Action action, Mods::VALUE mods) {
-			if (key == Key::eP && action == Action::eRelease && (mods & Mods::eCONTROL))
+		m_inputContext.context.mapTrigger("load_prev", [this]() {
+			if (!loadWorld(m_previousWorldID))
 			{
-				if (!loadWorld(m_previousWorldID))
-				{
-					LOG_D("[{}] Failed to load World{}", m_tName, m_previousWorldID);
-				}
+				LOG_E("[{}] Failed to load World{}", m_tName, m_previousWorldID);
 			}
 		});
+		m_inputContext.context.addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
 		m_data.mainText = m_registry.spawnEntity<UIComponent>("mainText");
 		m_data.elapsedText = m_registry.spawnEntity<UIComponent>("elapsedText");
 		gfx::Text2D::Info info;
@@ -117,7 +115,7 @@ private:
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
 		Entity skybox;
-		OnInput::Token inputToken;
+		input::CtxWrapper temp;
 		Time reloadTime;
 		bool bLoadUnloadModels = false;
 		bool bWireframe = false;
@@ -139,6 +137,7 @@ protected:
 	void stop() override;
 
 	stdfs::path manifestID() const override;
+	stdfs::path inputMapID() const override;
 	void onManifestLoaded() override;
 };
 
@@ -210,27 +209,6 @@ bool DemoWorld::start()
 	m_data.freeCam.init(window());
 	m_data.freeCam.m_position = {0.0f, 1.0f, 2.0f};
 
-	m_data.inputToken = Window::registerInput(
-		[this](Key key, Action action, Mods::VALUE mods) {
-			if (key == Key::eW && action == Action::eRelease && mods & Mods::eCONTROL)
-			{
-				m_data.bQuit = true;
-			}
-			if ((key == Key::eLeftControl || key == Key::eRightControl) && (action == Action::eRelease || action == Action::ePress))
-			{
-				m_data.bDisableCam = action == Action::ePress;
-			}
-			if (key == Key::eP && action == Action::eRelease && (mods & Mods::eCONTROL))
-			{
-				m_data.bWireframe = !m_data.bWireframe;
-			}
-			if (key == Key::eM && action == Action::eRelease && (mods & Mods::eCONTROL))
-			{
-				m_data.bLoadUnloadModels = true;
-			}
-		},
-		{});
-
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
 	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid0, m_res.pQuad->m_id);
 
@@ -251,11 +229,17 @@ bool DemoWorld::start()
 		m_pPipeline0wf = window()->renderer().createPipeline(std::move(pipelineInfo));
 	}
 
-	m_input.mapTrigger("jump", Key::eSpace);
-	m_input.mapTrigger("die", Key::eK, Action::ePress, Mods::eSHIFT);
-	m_input.mapTrigger("die", Key::eD, Action::eRelease, Mods::eCONTROL);
-	m_input.mapState("crouch", Key::eLeftAlt);
-	m_input.mapRange("move", Key::eUp, Key::eDown);
+	m_inputContext.context.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
+	m_inputContext.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
+	m_inputContext.context.mapTrigger("quit", [this]() { m_data.bQuit = true; });
+	m_inputContext.context.mapState("run", []() { LOG_D("RUNNING!"); });
+
+#if defined(LEVK_DEBUG)
+	m_data.temp.context.m_name = "Demo-Temp";
+#endif
+	m_data.temp.context.setMode(input::Mode::eBlockAll);
+	m_data.temp.context.mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
+	m_data.temp.context.addTrigger("test2", input::Key::eK);
 	return true;
 }
 
@@ -267,32 +251,18 @@ void DemoWorld::tick(Time dt)
 		return;
 	}
 
-	static std::vector<std::string> const triggers = {"jump", "die"}, states = {"crouch"}, ranges = {"move"};
-	for (auto const& trigger : triggers)
+	static Time elapsed;
+	elapsed += dt;
+	if (elapsed >= 5s && !m_data.temp.token)
 	{
-		if (m_input.isTriggered(trigger))
-		{
-			LOG_I("{} triggerred!", trigger);
-		}
+		input::registerContext(m_data.temp);
 	}
-	for (auto const& state : states)
+	if (elapsed >= 10s && m_data.temp.token)
 	{
-		if (m_input.isHeld(state))
-		{
-			LOG_I("{} held!", state);
-		}
-	}
-	for (auto const& range : ranges)
-	{
-		f32 const value = m_input.range(range);
-		if (value != 0.0f)
-		{
-			LOG_I("{} range: {}", range, value);
-		}
+		m_data.temp.token.reset();
 	}
 
-	auto iter =
-		std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto sJob) -> bool { return sJob->hasCompleted(); });
+	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto sJob) -> bool { return sJob->hasCompleted(); });
 	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
 
 	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
@@ -399,6 +369,11 @@ void DemoWorld::stop()
 stdfs::path DemoWorld::manifestID() const
 {
 	return "demo.manifest";
+}
+
+stdfs::path DemoWorld::inputMapID() const
+{
+	return "demo.input";
 }
 
 void DemoWorld::onManifestLoaded()

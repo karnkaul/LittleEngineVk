@@ -69,7 +69,7 @@ Asset::Status Asset::update()
 					else
 					{
 						m_reloadStart = Time::elapsed();
-						m_reloadWait.scale(m_reloadFails * 2);
+						m_reloadWait.scale(m_reloadFails * 2.0f);
 						LOG_I("[{}] [{}] Retrying reload in [{}ms]!", m_tName, idStr, m_reloadWait.to_ms());
 						break;
 					}

@@ -35,14 +35,14 @@ class WindowImpl final
 public:
 	struct InputCallbacks
 	{
-		OnText onText;
-		OnInput onInput;
-		OnMouse onMouse;
-		OnMouse onScroll;
-		OnFiledrop onFiledrop;
-		OnFocus onFocus;
-		OnWindowResize onWindowResize;
-		OnClosed onClosed;
+		input::OnText onText;
+		input::OnInput onInput;
+		input::OnMouse onMouse;
+		input::OnMouse onScroll;
+		input::OnFiledrop onFiledrop;
+		input::OnFocus onFocus;
+		input::OnWindowResize onWindowResize;
+		input::OnClosed onClosed;
 	};
 
 	static std::unordered_map<WindowID::type, InputCallbacks> s_input;
@@ -79,14 +79,14 @@ public:
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
 
-	void setCursorMode(CursorMode mode) const;
-	CursorMode cursorMode() const;
+	void setCursorMode(input::CursorMode mode) const;
+	input::CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;
 	void setCursorPos(glm::vec2 const& pos);
 	std::string clipboard() const;
-	static JoyState joyState(s32 id);
-	static GamepadState gamepadState(s32 id);
-	static std::vector<GamepadState> activeGamepadStates();
+	static input::Joystick joyState(s32 id);
+	static input::Gamepad gamepadState(s32 id);
+	static std::vector<input::Gamepad> activeGamepads();
 	static f32 triggerToAxis(f32 triggerValue);
 	static size_t joystickAxesCount(s32 id);
 	static size_t joysticKButtonsCount(s32 id);

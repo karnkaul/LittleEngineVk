@@ -42,8 +42,8 @@ bool empty(std::vector<T> const&... out_vecs)
 }
 
 template <typename T>
-TResult<IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
-								 std::vector<Asset*>& out_assets, std::mutex& mutex, std::string_view jobName)
+TResult<IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded, std::vector<Asset*>& out_assets,
+								 std::mutex& mutex, std::string_view jobName)
 {
 	IndexedTask task;
 	if (!out_toLoad.empty())

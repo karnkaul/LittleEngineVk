@@ -4,8 +4,9 @@
 #include <vector>
 #include <core/std_types.hpp>
 #include <core/delegate.hpp>
+#include <core/utils.hpp>
 
-namespace le
+namespace le::input
 {
 enum class Action : s8
 {
@@ -188,6 +189,7 @@ struct Mods
 
 enum class PadAxis : s8
 {
+	eUnknown,
 	eLeftX = 0,
 	eLeftY = 1,
 	eRightX = 2,
@@ -203,7 +205,7 @@ enum class CursorMode : s8
 	eDisabled,
 };
 
-struct JoyState
+struct Joystick
 {
 	std::string name;
 	std::vector<f32> axes;
@@ -211,9 +213,9 @@ struct JoyState
 	s32 id = 0;
 };
 
-struct GamepadState
+struct Gamepad
 {
-	JoyState joyState;
+	Joystick joyState;
 	std::string name;
 	s32 id = 0;
 
@@ -230,4 +232,9 @@ using OnFocus = Delegate<bool>;
 using OnFiledrop = Delegate<stdfs::path const&>;
 using OnWindowResize = Delegate<s32, s32>;
 using OnClosed = Delegate<>;
-} // namespace le
+
+Key parseKey(std::string_view str);
+Action parseAction(std::string_view str);
+Mods::VALUE parseMods(Span<std::string> vec);
+PadAxis parseAxis(std::string_view str);
+} // namespace le::input

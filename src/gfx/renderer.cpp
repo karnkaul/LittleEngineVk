@@ -152,8 +152,8 @@ void RendererImpl::destroy()
 		for (auto& frame : m_frames)
 		{
 			frame.set.destroy();
-			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing,
-							 frame.renderReady, frame.presentReady);
+			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady,
+							 frame.presentReady);
 		}
 		g_device.destroy(m_samplerLayout, m_renderPass);
 		m_samplerLayout = vk::DescriptorSetLayout();
@@ -205,9 +205,8 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 
 bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 {
-	bool const bEmpty = (scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool {
-							 return batch.drawables.empty();
-						 }));
+	bool const bEmpty =
+		(scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }));
 	if (bExtGUI)
 	{
 		ext_gui::render();
@@ -506,8 +505,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_renderPass, m_samplerLayout);
 					ASSERT(bOk, "Pipeline update failure!");
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
-					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0,
-														 push.at(batchIdx).at(drawableIdx));
+					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					cmd.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pMesh->m_uImpl->ibo.count > 0)
 					{

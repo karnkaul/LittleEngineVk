@@ -16,13 +16,11 @@ namespace
 {
 std::array const g_filters = {vk::Filter::eLinear, vk::Filter::eNearest};
 std::array const g_mipModes = {vk::SamplerMipmapMode::eLinear, vk::SamplerMipmapMode::eNearest};
-std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge,
-								   vk::SamplerAddressMode::eClampToBorder};
+std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToBorder};
 std::array const g_texModes = {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Snorm};
 std::array const g_texTypes = {vk::ImageViewType::e2D, vk::ImageViewType::eCube};
 
-std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, Span<Span<u8>> bytes,
-					   [[maybe_unused]] std::string const& name)
+std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, Span<Span<u8>> bytes, [[maybe_unused]] std::string const& name)
 {
 	if (out_pImage->image == vk::Image() || out_pImage->extent.width != (u32)size.x || out_pImage->extent.height != (u32)size.y)
 	{

@@ -506,7 +506,7 @@ vk::ImageView Device::createImageView(ImageViewInfo const& info)
 	createInfo.subresourceRange.baseMipLevel = 0;
 	createInfo.subresourceRange.levelCount = 1;
 	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
+	createInfo.subresourceRange.layerCount = info.type == vk::ImageViewType::eCube ? 6 : 1;
 	return device.createImageView(createInfo);
 }
 

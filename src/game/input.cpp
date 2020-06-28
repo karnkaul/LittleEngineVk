@@ -7,6 +7,7 @@
 #include <engine/game/input_context.hpp>
 #include <engine/window/window.hpp>
 #include <game/input_impl.hpp>
+#include <window/window_impl.hpp>
 #include <levk_impl.hpp>
 
 namespace le
@@ -15,10 +16,14 @@ namespace
 {
 glm::vec2 g_cursorPos;
 std::deque<std::pair<std::weak_ptr<s8>, input::Context const*>> g_contexts;
+WindowID g_mainWindow;
+bool g_bActive = true;
+
 struct
 {
 	input::OnInput::Token input;
 	input::OnText::Token text;
+	input::OnMouse::Token scroll;
 } g_tokens;
 
 struct
@@ -27,7 +32,8 @@ struct
 	std::vector<input::Gamepad> gamepads;
 	std::vector<char> text;
 	std::unordered_set<input::Key> held;
-	glm::vec2 mousePos;
+	glm::vec2 mousePos = {};
+	glm::vec2 mouseScroll = {};
 } g_raw;
 } // namespace
 
@@ -48,8 +54,23 @@ glm::vec2 const& input::cursorPosition()
 	return g_cursorPos;
 }
 
+bool input::isInFocus()
+{
+	if (auto pWindow = WindowImpl::windowImpl(g_mainWindow))
+	{
+		return pWindow->isFocused();
+	}
+	return false;
+}
+
+void input::setActive(bool bActive)
+{
+	g_bActive = bActive;
+}
+
 void input::init(Window& out_mainWindow)
 {
+	g_mainWindow = out_mainWindow.id();
 	g_tokens.input = out_mainWindow.registerInput([](Key key, Action action, Mods::VALUE mods) {
 		g_raw.keys.push_back({key, action, mods});
 		if (action == Action::ePress)
@@ -62,20 +83,31 @@ void input::init(Window& out_mainWindow)
 		}
 	});
 	g_tokens.text = out_mainWindow.registerText([](char c) { g_raw.text.push_back(c); });
+	g_tokens.scroll = out_mainWindow.registerScroll([](f32 x, f32 y) { g_raw.mouseScroll += glm::vec2(x, y); });
 }
 
 void input::fire()
 {
+	if (!g_bActive)
+	{
+		return;
+	}
 	if (auto pWindow = engine::window(); !g_contexts.empty())
 	{
 		auto iter = std::remove_if(g_contexts.begin(), g_contexts.end(), [](auto const& context) { return !context.first.lock(); });
 		g_contexts.erase(iter, g_contexts.end());
+		for (auto& context : g_contexts)
+		{
+			context.second->m_bFired = false;
+		}
 		g_cursorPos = pWindow->cursorPos();
 		Snapshot snapshot;
 		snapshot.padStates = pWindow->activeGamepads();
 		snapshot.keys = std::move(g_raw.keys);
 		snapshot.text = std::move(g_raw.text);
 		snapshot.held.reserve(g_raw.held.size());
+		snapshot.mouseScroll = g_raw.mouseScroll;
+		g_raw.mouseScroll = {};
 		for (auto c : g_raw.held)
 		{
 			snapshot.held.push_back(c);

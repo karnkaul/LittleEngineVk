@@ -156,7 +156,7 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
-f32 Gamepad::axis(PadAxis axis) const
+f32 Gamepad::axis(Axis axis) const
 {
 	[[maybe_unused]] size_t idx = size_t(axis);
 #if defined(LEVK_USE_GLFW)

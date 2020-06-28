@@ -139,7 +139,8 @@ enum class Key
 	eRightSuper = 347,
 	eMenu = 348,
 
-	eMouseButton1 = 500,
+	eMouseButtonBegin = 500,
+	eMouseButton1 = eMouseButtonBegin,
 	eMouseButton2 = 501,
 	eMouseButton3 = 502,
 	eMouseButton4 = 503,
@@ -147,12 +148,14 @@ enum class Key
 	eMouseButton6 = 505,
 	eMouseButton7 = 506,
 	eMouseButton8 = 507,
+	eMouseButtonEnd,
 	eMouseButtonLast = eMouseButton8,
 	eMouseButtonLeft = eMouseButton1,
 	eMouseButtonRight = eMouseButton2,
 	eMouseButtonMiddle = eMouseButton3,
 
-	eGamepadButtonA = 600,
+	eGamepadButtonBegin = 600,
+	eGamepadButtonA = eGamepadButtonBegin,
 	eGamepadButtonB = 601,
 	eGamepadButtonX = 602,
 	eGamepadButtonY = 603,
@@ -167,6 +170,7 @@ enum class Key
 	eGamepadButtonDpadRight = 612,
 	eGamepadButtonDpadDown = 613,
 	eGamepadButtonDpadLeft = 614,
+	eGamepadButtonEnd,
 	eGamepadButtonCross = eGamepadButtonA,
 	eGamepadButtonCircle = eGamepadButtonB,
 	eGamepadButtonSquare = eGamepadButtonX,
@@ -187,15 +191,20 @@ struct Mods
 	};
 };
 
-enum class PadAxis : s8
+enum class Axis : s8
 {
 	eUnknown,
 	eLeftX = 0,
-	eLeftY = 1,
-	eRightX = 2,
-	eRightY = 3,
-	eLeftTrigger = 4,
-	eRightTrigger = 5,
+	eLeftY,
+	eRightX,
+	eRightY,
+	eLeftTrigger,
+	eRightTrigger,
+
+	eMouseBegin = 100,
+	eMouseScrollX = eMouseBegin,
+	eMouseScrollY,
+	eMouseEnd
 };
 
 enum class CursorMode : s8
@@ -219,7 +228,7 @@ struct Gamepad
 	std::string name;
 	s32 id = 0;
 
-	f32 axis(PadAxis axis) const;
+	f32 axis(Axis axis) const;
 	bool isPressed(Key button) const;
 };
 
@@ -233,8 +242,12 @@ using OnFiledrop = Delegate<stdfs::path const&>;
 using OnWindowResize = Delegate<s32, s32>;
 using OnClosed = Delegate<>;
 
+bool isMouseButton(Key key);
+bool isGamepadButton(Key key);
+bool isMouseAxis(Axis axis);
+
 Key parseKey(std::string_view str);
 Action parseAction(std::string_view str);
 Mods::VALUE parseMods(Span<std::string> vec);
-PadAxis parseAxis(std::string_view str);
+Axis parseAxis(std::string_view str);
 } // namespace le::input

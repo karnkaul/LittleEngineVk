@@ -39,10 +39,10 @@ void Map::addState(std::string const& id, std::initializer_list<State> states)
 	}
 }
 
-void Map::addRange(std::string const& id, PadAxis axis, bool bReverse, s32 padID)
+void Map::addRange(std::string const& id, Axis axis, bool bReverse)
 {
 	auto& binding = bindings[id];
-	Range range = std::make_tuple(axis, bReverse, padID);
+	Range range = std::make_pair(axis, bReverse);
 	binding.ranges.push_back(std::move(range));
 }
 
@@ -112,20 +112,19 @@ u16 Map::deserialise(GData const& json)
 		[this](std::string const& id, GData const& range) {
 			Key const keyMin = parseKey(range.getString("key_min"));
 			Key const keyMax = parseKey(range.getString("key_max"));
-			PadAxis const axis = parseAxis(range.getString("pad_axis"));
+			Axis const axis = parseAxis(range.getString("pad_axis"));
 			if (keyMin != Key::eUnknown && keyMax != Key::eUnknown)
 			{
 				addRange(id, keyMin, keyMax);
 			}
-			else if (axis != PadAxis::eUnknown)
+			else if (axis != Axis::eUnknown)
 			{
 				bool const bReverse = range.getBool("reverse", false);
-				s32 const padID = range.getS32("padID", 0);
-				addRange(id, axis, bReverse, padID);
+				addRange(id, axis, bReverse);
 			}
 			else
 			{
-				ASSERT(false, "Unknown Key/PadAxis!");
+				ASSERT(false, "Unknown Key/Axis!");
 			}
 		});
 #if defined(LEVK_DEBUG)
@@ -153,7 +152,7 @@ bool Map::isEmpty() const
 	return bindings.empty();
 }
 
-Context::Context(Mode mode) : m_mode(mode) {}
+Context::Context(Mode mode, s32 padID) : m_mode(mode), m_padID(padID) {}
 Context::Context(Context&&) = default;
 Context& Context::operator=(Context&&) = default;
 Context::Context(Context const&) = default;
@@ -188,9 +187,9 @@ void Context::addState(std::string const& id, State state)
 	m_map.addState(id, state);
 }
 
-void Context::addRange(std::string const& id, PadAxis axis, bool bReverse, s32 padID)
+void Context::addRange(std::string const& id, Axis axis, bool bReverse)
 {
-	m_map.addRange(id, axis, bReverse, padID);
+	m_map.addRange(id, axis, bReverse);
 }
 
 void Context::addRange(std::string const& id, Key min, Key max)
@@ -203,6 +202,11 @@ void Context::setMode(Mode mode)
 	m_mode = mode;
 }
 
+void Context::setGamepadID(s32 id)
+{
+	m_padID = id;
+}
+
 u16 Context::deserialise(GData const& json)
 {
 	if (json.contains("mode"))
@@ -212,6 +216,10 @@ u16 Context::deserialise(GData const& json)
 			m_mode = search->second;
 		}
 	}
+	if (json.contains("gamepad_id"))
+	{
+		m_padID = json.getS32("gamepad_id", m_padID);
+	}
 	return m_map.deserialise(json);
 }
 
@@ -220,84 +228,160 @@ void Context::import(Map map)
 	m_map = std::move(map);
 }
 
+bool Context::wasFired() const
+{
+	return m_bFired;
+}
+
 bool Context::isConsumed(Snapshot const& snapshot) const
 {
-	bool bFired = false;
+	m_bFired = true;
+	bool bConsumed = false;
+	auto const padID = m_padID;
+	auto padSearch = std::find_if(snapshot.padStates.begin(), snapshot.padStates.end(), [padID](auto const& padState) -> bool { return padState.id == padID; });
+	Gamepad const* pGamepad = padSearch != snapshot.padStates.end() ? &(*padSearch) : nullptr;
 	for (auto const& [key, map] : m_map.bindings)
 	{
 		if (auto search = m_callbacks.find(key); search != m_callbacks.end())
 		{
 			auto const& callbacks = search->second;
-			if (callbacks.onTrigger && !snapshot.keys.empty())
+			if (callbacks.onTrigger)
 			{
-				auto search = std::find_if(map.triggers.begin(), map.triggers.end(), [&snapshot](auto const& trigger) -> bool {
-					return std::find(snapshot.keys.begin(), snapshot.keys.end(), trigger) != snapshot.keys.end();
-				});
-				if (search != map.triggers.end())
+				// Triggers are only fired once until key is released; so if key is in current snapshot or is pressed but was not held before
+				for (auto const& trigger : map.triggers)
 				{
-					callbacks.onTrigger();
-					bFired = true;
+					auto const tKey = std::get<Key>(trigger);
+					if (isGamepadButton(tKey))
+					{
+						if (auto search = m_padHeld.find(tKey); search == m_padHeld.end() && pGamepad && pGamepad->isPressed(tKey))
+						{
+							// All pressed gamepad keys will be added to m_padHeld before returning
+							callbacks.onTrigger();
+							bConsumed = true;
+							break;
+						}
+					}
+					else
+					{
+						// Keyboard keys will be present in current snapshot
+						if (auto search = std::find(snapshot.keys.begin(), snapshot.keys.end(), trigger); search != snapshot.keys.end())
+						{
+							callbacks.onTrigger();
+							bConsumed = true;
+							break;
+						}
+					}
 				}
 			}
-			else if (callbacks.onState && !snapshot.held.empty())
+			else if (callbacks.onState)
 			{
-				auto search = std::find_if(map.states.begin(), map.states.end(), [&snapshot](auto const& key) -> bool {
-					return std::find(snapshot.held.begin(), snapshot.held.end(), key) != snapshot.held.end();
-				});
-				if (search != map.states.end())
+				// States are fired all the time, and will be active (true) if _any_ registered key is pressed/held
+				bool bHeld = false;
+				for (auto const& state : map.states)
 				{
-					callbacks.onState();
-					bFired = true;
+					if (pGamepad && isGamepadButton(state))
+					{
+						bHeld |= pGamepad->isPressed(state);
+					}
+					else
+					{
+						bHeld |= std::find(snapshot.held.begin(), snapshot.held.end(), state) != snapshot.held.end();
+					}
 				}
+				callbacks.onState(bHeld);
+				bConsumed = true;
 			}
 			else if (callbacks.onRange && (!snapshot.padStates.empty() || !snapshot.held.empty()))
 			{
+				// Ranges are always fired, values are accumulated among all registered axes/key combos and clamped
 				f32 value = 0.0f;
 				for (auto const& range : map.ranges)
 				{
-					if (auto pPad = std::get_if<std::tuple<PadAxis, bool, s32>>(&range))
+					if (auto pPad = std::get_if<std::pair<Axis, bool>>(&range))
 					{
-						auto const id = std::get<s32>(*pPad);
-						auto search = std::find_if(snapshot.padStates.begin(), snapshot.padStates.end(),
-												   [id](auto const& padState) -> bool { return padState.id == id; });
-						if (search != snapshot.padStates.end())
+						auto const axis = std::get<Axis>(*pPad);
+						f32 const coeff = std::get<bool>(*pPad) ? -1.0f : 1.0f;
+						if (isMouseAxis(axis))
 						{
-							auto const& padState = *search;
-							auto const axis = std::get<PadAxis>(*pPad);
-							f32 const coeff = std::get<bool>(*pPad) ? -1.0f : 1.0f;
 							switch (axis)
 							{
-							case PadAxis::eLeftTrigger:
-							case PadAxis::eRightTrigger:
+							default:
+								break;
+							case Axis::eMouseScrollX:
 							{
-								value += Window::triggerToAxis(padState.axis(axis));
+								value += snapshot.mouseScroll.x;
+								break;
+							}
+							case Axis::eMouseScrollY:
+							{
+								value += snapshot.mouseScroll.y;
+								break;
+							}
+							}
+						}
+						else if (pGamepad)
+						{
+							switch (axis)
+							{
+							case Axis::eLeftTrigger:
+							case Axis::eRightTrigger:
+							{
+								value += Window::triggerToAxis(pGamepad->axis(axis));
 								break;
 							}
 							default:
 							{
-								value += padState.axis(axis);
+								value += pGamepad->axis(axis);
 							}
 							}
-							value *= coeff;
 						}
+						value *= coeff;
 					}
 					else if (auto pKey = std::get_if<std::pair<Key, Key>>(&range))
 					{
-						bool const key1 = std::find(snapshot.held.begin(), snapshot.held.end(), pKey->first) != snapshot.held.end();
-						bool const key2 = std::find(snapshot.held.begin(), snapshot.held.end(), pKey->second) != snapshot.held.end();
-						f32 const lhs = key1 ? 1.0f : 0.0f;
-						f32 const rhs = key2 ? -1.0f : 0.0f;
+						bool bMin = false;
+						bool bMax = false;
+						if (pGamepad)
+						{
+							bMin = isGamepadButton(pKey->first) && pGamepad->isPressed(pKey->first);
+							bMax = isGamepadButton(pKey->second) && pGamepad->isPressed(pKey->second);
+						}
+						bMin |= std::find(snapshot.held.begin(), snapshot.held.end(), pKey->first) != snapshot.held.end();
+						bMax |= std::find(snapshot.held.begin(), snapshot.held.end(), pKey->second) != snapshot.held.end();
+						f32 const lhs = bMin ? -1.0f : 0.0f;
+						f32 const rhs = bMax ? 1.0f : 0.0f;
 						value += lhs + rhs;
 					}
 					else
 					{
 						ASSERT(false, "Invariant violated!");
 					}
-					callbacks.onRange(value);
-					bFired = true;
 				}
+				callbacks.onRange(std::clamp(value, -1.0f, 1.0f));
+				bConsumed = true;
 			}
 		}
+	}
+	if (pGamepad)
+	{
+		// Store currently held keys; needed to ignore triggers fired above until released
+		for (s32 i = (s32)Key::eGamepadButtonBegin; i < (s32)Key::eGamepadButtonEnd; ++i)
+		{
+			Key key = (Key)i;
+			if (pGamepad->isPressed(key))
+			{
+				m_padHeld.insert(key);
+			}
+			else
+			{
+				m_padHeld.erase(key);
+			}
+		}
+	}
+	else
+	{
+		// No gamepad any more, clear all held keys
+		m_padHeld.clear();
 	}
 	bool bRet;
 	switch (m_mode)
@@ -314,7 +398,8 @@ bool Context::isConsumed(Snapshot const& snapshot) const
 	}
 	case Mode::eBlockOnCallback:
 	{
-		bRet = bFired;
+		// True if triggered / has state/range callbacks
+		bRet = bConsumed;
 	}
 	}
 	return bRet;

@@ -22,7 +22,7 @@ namespace stdfs = std::filesystem;
 namespace engine
 {
 class Service;
-}
+} // namespace engine
 
 class World
 {
@@ -111,9 +111,6 @@ protected:
 	virtual stdfs::path manifestID() const;
 	virtual stdfs::path inputMapID() const;
 	virtual void onManifestLoaded();
-
-protected:
-	class Window* window() const;
 
 private:
 	bool startImpl(ID previous = {});

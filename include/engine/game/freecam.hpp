@@ -1,7 +1,7 @@
 #include <unordered_set>
 #include <core/flags.hpp>
+#include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
-#include <engine/window/input_types.hpp>
 
 namespace le
 {
@@ -56,14 +56,13 @@ public:
 	Config m_config;
 
 private:
-	input::OnInput::Token m_tMove;
-	input::OnMouse::Token m_tLook;
-	input::OnMouse::Token m_tZoom;
-	input::OnFocus::Token m_tFocus;
-	Window* m_pWindow = nullptr;
+	input::CtxWrapper m_input;
+	glm::vec2 m_dXZ = {};
+	glm::vec2 m_dY = {};
+	glm::vec2 m_padLook = {};
 
 public:
-	void init(Window* pWindow);
+	void init();
 	void tick(Time dt);
 	void reset(bool bOrientation, bool bPosition);
 };

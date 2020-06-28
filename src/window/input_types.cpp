@@ -1,10 +1,12 @@
 #include <unordered_map>
 #include <engine/window/input_types.hpp>
 
-namespace le::input
+namespace le
 {
 namespace
 {
+using namespace input;
+
 std::unordered_map<std::string_view, Key> const g_keyMap = {
 	{"space", Key::eSpace},
 	{"'", Key::eApostrophe},
@@ -139,9 +141,9 @@ std::unordered_map<std::string_view, Key> const g_keyMap = {
 
 std::unordered_map<std::string_view, Mods::VALUE> const g_modsMap = {{"ctrl", Mods::eCONTROL}, {"alt", Mods::eALT}, {"shift", Mods::eSHIFT}};
 
-std::unordered_map<std::string_view, PadAxis> const g_axisMap = {
-	{"gamepad_left_x", PadAxis::eLeftX},   {"gamepad_left_y", PadAxis::eLeftY},	  {"gamepad_right_x", PadAxis::eRightX},
-	{"gamepad_right_y", PadAxis::eRightY}, {"gamepad_lt", PadAxis::eLeftTrigger}, {"gamepad_rt", PadAxis::eRightTrigger},
+std::unordered_map<std::string_view, Axis> const g_axisMap = {
+	{"gamepad_left_x", Axis::eLeftX},	{"gamepad_left_y", Axis::eLeftY},	{"gamepad_right_x", Axis::eRightX},
+	{"gamepad_right_y", Axis::eRightY}, {"gamepad_lt", Axis::eLeftTrigger}, {"gamepad_rt", Axis::eRightTrigger},
 };
 
 template <typename T>
@@ -155,12 +157,28 @@ T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str
 }
 } // namespace
 
-Key parseKey(std::string_view str)
+bool input::isMouseButton(Key key)
+{
+	return (s32)key >= (s32)Key::eMouseButtonBegin && (s32)key < (s32)Key::eMouseButtonEnd;
+}
+
+bool input::isGamepadButton(Key key)
+{
+	auto ret = (s32)key >= (s32)Key::eGamepadButtonBegin && (s32)key < (s32)Key::eGamepadButtonEnd;
+	return ret;
+}
+
+bool input::isMouseAxis(Axis axis)
+{
+	return (s32)axis >= (s32)Axis::eMouseBegin && (s32)axis < (s32)Axis::eMouseEnd;
+}
+
+Key input::parseKey(std::string_view str)
 {
 	return parse(g_keyMap, str, Key::eUnknown);
 }
 
-Action parseAction(std::string_view str)
+Action input::parseAction(std::string_view str)
 {
 	if (str == "press")
 	{
@@ -169,7 +187,7 @@ Action parseAction(std::string_view str)
 	return Action::eRelease;
 }
 
-Mods::VALUE parseMods(Span<std::string> vec)
+Mods::VALUE input::parseMods(Span<std::string> vec)
 {
 	s32 ret = 0;
 	for (auto str : vec)
@@ -179,8 +197,8 @@ Mods::VALUE parseMods(Span<std::string> vec)
 	return static_cast<Mods::VALUE>(ret);
 }
 
-PadAxis parseAxis(std::string_view str)
+Axis input::parseAxis(std::string_view str)
 {
-	return parse(g_axisMap, str, PadAxis::eUnknown);
+	return parse(g_axisMap, str, Axis::eUnknown);
 }
-} // namespace le::input
+} // namespace le

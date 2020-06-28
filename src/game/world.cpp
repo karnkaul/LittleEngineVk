@@ -112,11 +112,6 @@ stdfs::path World::inputMapID() const
 
 void World::onManifestLoaded() {}
 
-Window* World::window() const
-{
-	return engine::mainWindow();
-}
-
 bool World::start(ID id)
 {
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
@@ -178,7 +173,7 @@ bool World::startImpl(ID previous)
 void World::tickImpl(Time dt)
 {
 	m_registry.flush();
-	bool bTick = !window()->isClosing();
+	bool bTick = !engine::mainWindow()->isClosing();
 	if (g_uManifest)
 	{
 		auto const status = g_uManifest->update(!bTick);
@@ -207,9 +202,9 @@ void World::tickImpl(Time dt)
 	{
 		tick(dt);
 	}
-	if (window()->isClosing())
+	if (engine::mainWindow()->isClosing())
 	{
-		window()->destroy();
+		engine::mainWindow()->destroy();
 	}
 }
 

@@ -109,7 +109,6 @@ private:
 	{
 		stdfs::path model0id, model1id, skyboxID;
 		std::vector<std::shared_ptr<HJob>> modelReloads;
-		gfx::Renderer::View view;
 		FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
@@ -119,7 +118,6 @@ private:
 		Time reloadTime;
 		bool bLoadUnloadModels = false;
 		bool bWireframe = false;
-		bool bDisableCam = false;
 		bool bQuit = false;
 	} m_data;
 	struct
@@ -206,8 +204,9 @@ bool DemoWorld::start()
 
 	m_registry.addComponent<TAsset<gfx::Texture>>(m_data.skybox)->id = m_data.skyboxID;
 
-	m_data.freeCam.init(window());
+	m_data.freeCam.init();
 	m_data.freeCam.m_position = {0.0f, 1.0f, 2.0f};
+	m_data.freeCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
 
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
 	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid0, m_res.pQuad->m_id);
@@ -226,13 +225,16 @@ bool DemoWorld::start()
 		gfx::Pipeline::Info pipelineInfo;
 		pipelineInfo.name = "wireframe";
 		pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
-		m_pPipeline0wf = window()->renderer().createPipeline(std::move(pipelineInfo));
+		m_pPipeline0wf = engine::mainWindow()->renderer().createPipeline(std::move(pipelineInfo));
 	}
 
 	m_inputContext.context.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
 	m_inputContext.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
 	m_inputContext.context.mapTrigger("quit", [this]() { m_data.bQuit = true; });
-	m_inputContext.context.mapState("run", []() { LOG_D("RUNNING!"); });
+	m_inputContext.context.mapState("run", [](bool bActive) { LOGIF_I(bActive, "RUNNING!"); });
+	m_inputContext.context.mapState("pause_cam", [this](bool bActive) { m_data.freeCam.m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
+	m_inputContext.context.addState("pause_cam", input::Key::eLeftControl);
+	m_inputContext.context.addState("pause_cam", input::Key::eRightControl);
 
 #if defined(LEVK_DEBUG)
 	m_data.temp.context.m_name = "Demo-Temp";
@@ -247,7 +249,7 @@ void DemoWorld::tick(Time dt)
 {
 	if (m_data.bQuit)
 	{
-		window()->close();
+		engine::mainWindow()->close();
 		return;
 	}
 
@@ -304,12 +306,11 @@ void DemoWorld::tick(Time dt)
 		m_data.bLoadUnloadModels = false;
 	}
 
-	m_data.freeCam.m_state.flags[FreeCam::Flag::eEnabled] = !m_data.bDisableCam;
 	m_data.freeCam.tick(dt);
 
 	m_registry.component<UIComponent>(m_data.eui0)->uText->updateText(fmt::format("{}FPS", m_fps));
 	m_registry.component<UIComponent>(m_data.eui1)->uText->updateText(fmt::format("{:.3}ms", dt.to_s() * 1000));
-	m_registry.component<UIComponent>(m_data.eui2)->uText->updateText(fmt::format("{} triangles", window()->renderer().m_stats.trisDrawn));
+	m_registry.component<UIComponent>(m_data.eui2)->uText->updateText(fmt::format("{} triangles", engine::mainWindow()->renderer().m_stats.trisDrawn));
 
 	{
 		// Update matrices
@@ -325,17 +326,6 @@ void DemoWorld::tick(Time dt)
 		{
 			pT->setOrientation(glm::rotate(pT->orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 		}
-	}
-
-	m_data.view.mat_v = m_data.freeCam.view();
-	m_data.view.pos_v = m_data.freeCam.m_position;
-	m_data.view.skybox.pCubemap = m_registry.component<TAsset<gfx::Texture>>(m_data.skybox)->get();
-	auto const size = window()->framebufferSize();
-	if (size.x > 0 && size.y > 0)
-	{
-		m_data.view.mat_ui = m_data.freeCam.ui({size, 2.0f});
-		m_data.view.mat_p = m_data.freeCam.perspective((f32)size.x / (f32)size.y);
-		m_data.view.mat_vp = m_data.view.mat_p * m_data.view.mat_v;
 	}
 }
 

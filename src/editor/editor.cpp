@@ -574,7 +574,7 @@ void editor::deinit()
 	return;
 }
 
-gfx::ScreenRect editor::tick([[maybe_unused]] Time dt)
+void editor::tick([[maybe_unused]] Time dt)
 {
 	static auto const smol = glm::vec2(0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
@@ -586,12 +586,12 @@ gfx::ScreenRect editor::tick([[maybe_unused]] Time dt)
 		{
 			centre = pWindow->cursorPos();
 		}
-		auto const scene = pWindow->m_pWindow->renderer().clampToView(centre, smol);
+		g_gameRect = pWindow->m_pWindow->renderer().clampToView(centre, smol);
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
-			auto const logHeight = fbSize.y - (s32)(scene.bottom * (f32)fbSize.y);
-			glm::ivec2 const leftPanelSize = {(s32)(scene.left * (f32)fbSize.x), fbSize.y - logHeight};
-			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(scene.right * (f32)fbSize.x), fbSize.y - logHeight};
+			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);
+			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.left * (f32)fbSize.x), fbSize.y - logHeight};
+			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.right * (f32)fbSize.x), fbSize.y - logHeight};
 			auto pActive = World::active();
 			if (!pActive || pActive != g_pWorld)
 			{
@@ -601,10 +601,12 @@ gfx::ScreenRect editor::tick([[maybe_unused]] Time dt)
 			drawLog(fbSize, logHeight);
 			drawLeftPanel(fbSize, leftPanelSize);
 			drawRightPanel(fbSize, rightPanelSize);
-			return scene;
 		}
 	}
-	return {};
+	else
+	{
+		g_gameRect = {};
+	}
 }
 } // namespace le
 #endif

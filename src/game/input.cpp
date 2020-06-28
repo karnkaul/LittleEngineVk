@@ -6,6 +6,7 @@
 #include <engine/game/input.hpp>
 #include <engine/game/input_context.hpp>
 #include <engine/window/window.hpp>
+#include <editor/editor.hpp>
 #include <game/input_impl.hpp>
 #include <window/window_impl.hpp>
 #include <levk_impl.hpp>
@@ -14,7 +15,6 @@ namespace le
 {
 namespace
 {
-glm::vec2 g_cursorPos;
 std::deque<std::pair<std::weak_ptr<s8>, input::Context const*>> g_contexts;
 WindowID g_mainWindow;
 bool g_bActive = true;
@@ -32,7 +32,8 @@ struct
 	std::vector<input::Gamepad> gamepads;
 	std::vector<char> text;
 	std::unordered_set<input::Key> held;
-	glm::vec2 mousePos = {};
+	glm::vec2 actualCursorPos = {};
+	glm::vec2 virtualCursorPos = {};
 	glm::vec2 mouseScroll = {};
 } g_raw;
 } // namespace
@@ -49,9 +50,47 @@ input::Token input::registerContext(Context const& context)
 	return token;
 }
 
-glm::vec2 const& input::cursorPosition()
+glm::vec2 const& input::cursorPosition(bool bIgnoreDisabled)
 {
-	return g_cursorPos;
+	return bIgnoreDisabled ? g_raw.actualCursorPos : g_raw.virtualCursorPos;
+}
+
+glm::vec2 input::screenToWorld(glm::vec2 const& screen)
+{
+	glm::vec2 ret = screen;
+	if (auto pWindow = WindowImpl::windowImpl(g_mainWindow))
+	{
+		auto const iSize = pWindow->windowSize();
+		auto const size = glm::vec2(iSize.x, iSize.y);
+		ret.x = ret.x - ((f32)size.x * 0.5f);
+		ret.y = ((f32)size.y * 0.5f) - ret.y;
+#if defined(LEVK_EDITOR)
+		auto const gameRect = editor::g_gameRect.size();
+		if (gameRect.x < 1.0f || gameRect.y < 1.0f)
+		{
+			auto const iFbSize = pWindow->framebufferSize();
+			glm::vec2 const fbSize = {(f32)iFbSize.x, (f32)iFbSize.y};
+			glm::vec2 const gameOrigin = editor::g_gameRect.midPoint();
+			glm::vec2 const delta = glm::vec2(0.5f) - gameOrigin;
+			ret += glm::vec2(delta.x * fbSize.x, -delta.y * fbSize.y);
+			ret /= gameRect;
+		}
+#endif
+	}
+	return ret;
+}
+
+glm::vec2 input::worldToUI(const glm::vec2& world)
+{
+	glm::vec2 ret = world;
+	if (auto pWindow = WindowImpl::windowImpl(g_mainWindow))
+	{
+		auto const iSize = pWindow->framebufferSize();
+		auto const size = glm::vec2(iSize.x, iSize.y);
+		glm::vec2 const coeff = {engine::g_uiSpace.x / size.x, engine::g_uiSpace.y / size.y};
+		ret *= coeff;
+	}
+	return ret;
 }
 
 bool input::isInFocus()
@@ -100,7 +139,11 @@ void input::fire()
 		{
 			context.second->m_bFired = false;
 		}
-		g_cursorPos = pWindow->cursorPos();
+		g_raw.actualCursorPos = screenToWorld(pWindow->cursorPos());
+		if (pWindow->cursorMode() != CursorMode::eDisabled)
+		{
+			g_raw.virtualCursorPos = g_raw.actualCursorPos;
+		}
 		Snapshot snapshot;
 		snapshot.padStates = pWindow->activeGamepads();
 		snapshot.keys = std::move(g_raw.keys);

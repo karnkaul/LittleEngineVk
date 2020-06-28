@@ -125,13 +125,14 @@ bool Service::tick(Time dt) const
 {
 	gfx::deferred::update();
 	update();
-	gfx::ScreenRect gameRect;
+	gfx::ScreenRect gameRect = {};
 #if defined(LEVK_EDITOR)
 	if (editor::g_bTickGame)
 	{
 		input::fire();
 	}
-	gameRect = editor::tick(dt);
+	editor::tick(dt);
+	gameRect = editor::g_gameRect;
 #else
 	input::fire();
 #endif

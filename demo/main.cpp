@@ -114,6 +114,7 @@ private:
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
 		Entity skybox;
+		Entity pointer;
 		input::CtxWrapper temp;
 		Time reloadTime;
 		bool bLoadUnloadModels = false;
@@ -185,6 +186,7 @@ bool DemoWorld::start()
 	m_data.eui1 = spawnEntity("dt", false);
 	m_data.eui2 = spawnEntity("tris", false);
 	m_data.skybox = spawnEntity("skybox", false);
+	m_data.pointer = spawnEntity("pointer");
 
 	gfx::Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
@@ -201,6 +203,7 @@ bool DemoWorld::start()
 	textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
 	m_registry.addComponent<UIComponent>(m_data.eui2)->setText(textInfo);
+	m_registry.addComponent<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).m_material.tint = colours::cyan;
 
 	m_registry.addComponent<TAsset<gfx::Texture>>(m_data.skybox)->id = m_data.skyboxID;
 
@@ -311,6 +314,8 @@ void DemoWorld::tick(Time dt)
 	m_registry.component<UIComponent>(m_data.eui0)->uText->updateText(fmt::format("{}FPS", m_fps));
 	m_registry.component<UIComponent>(m_data.eui1)->uText->updateText(fmt::format("{:.3}ms", dt.to_s() * 1000));
 	m_registry.component<UIComponent>(m_data.eui2)->uText->updateText(fmt::format("{} triangles", engine::mainWindow()->renderer().m_stats.trisDrawn));
+	[[maybe_unused]] auto& quadT = m_registry.component<Transform>(m_data.pointer)->setPosition({input::worldToUI(input::cursorPosition()), 1.0f});
+	// quadT.setOrientation(glm::rotate(quadT.orientation(), glm::radians(dt.to_s() * 50), gfx::g_nFront));
 
 	{
 		// Update matrices
@@ -424,10 +429,6 @@ int main(int argc, char** argv)
 			engine.tick(dt);
 
 			pWorld->m_fps = fps == 0 ? frames : fps;
-
-#if defined(LEVK_EDITOR)
-			// if (editor::g_bTickGame)
-#endif
 		}
 
 		// Render

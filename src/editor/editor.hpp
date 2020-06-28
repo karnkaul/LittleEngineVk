@@ -8,9 +8,10 @@
 namespace le::editor
 {
 inline bool g_bTickGame = true;
+inline gfx::ScreenRect g_gameRect = {};
 
 bool init(WindowID editorWindow);
 void deinit();
-gfx::ScreenRect tick(Time dt);
+void tick(Time dt);
 } // namespace le::editor
 #endif

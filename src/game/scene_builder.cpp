@@ -3,14 +3,37 @@
 #include <engine/gfx/model.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/levk.hpp>
+#include <levk_impl.hpp>
 
 namespace le
 {
-void UIComponent::setText(gfx::Text2D::Info info)
+gfx::Text2D& UIComponent::setText(gfx::Text2D::Info info)
 {
 	uText = std::make_unique<gfx::Text2D>();
 	uText->setup(std::move(info));
 	flags.set(Flag::eText);
+	return *uText;
+}
+
+gfx::Mesh& UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
+{
+	gfx::Geometry geometry = gfx::createQuad(size, pivot);
+	if (!uMesh)
+	{
+		gfx::Mesh::Info info;
+		info.geometry = std::move(geometry);
+		info.type = gfx::Mesh::Type::eDynamic;
+		info.material.flags.set(gfx::Material::Flag::eUI);
+		stdfs::path meshID = id.empty() ? "(ui)" : id;
+		meshID += "_quad";
+		uMesh = std::make_unique<gfx::Mesh>(std::move(meshID), std::move(info));
+	}
+	else
+	{
+		uMesh->updateGeometry(std::move(geometry));
+	}
+	flags.set(Flag::eMesh);
+	return *uMesh;
 }
 
 void UIComponent::reset(Flags toReset)
@@ -18,10 +41,11 @@ void UIComponent::reset(Flags toReset)
 	auto resetPtr = [&toReset](Flag flag, auto& m) {
 		if (toReset.isSet(flag))
 		{
-			m.reset();
+			m = nullptr;
 		}
 	};
 	resetPtr(Flag::eText, uText);
+	resetPtr(Flag::eMesh, uMesh);
 }
 
 std::vector<gfx::Mesh const*> UIComponent::meshes() const
@@ -30,6 +54,10 @@ std::vector<gfx::Mesh const*> UIComponent::meshes() const
 	if (flags.isSet(Flag::eText) && uText && uText->isReady())
 	{
 		ret.push_back(uText->mesh());
+	}
+	if (flags.isSet(Flag::eMesh) && uMesh && uMesh->isReady())
+	{
+		ret.push_back(uMesh.get());
 	}
 	return ret;
 }
@@ -73,7 +101,7 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	auto const ifbSize = engine::framebufferSize();
 	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
 	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fbSize, m_info.uiSpace.z) : m_info.uiSpace;
-	auto const uiProj = m_info.flags.isSet(Flag::eDynamicUI) ? glm::vec3(fbSize, m_info.uiSpace.z) : uiProjection(uiSpace, ifbSize);
+	engine::g_uiSpace = m_info.flags.isSet(Flag::eDynamicUI) ? glm::vec3(fbSize, m_info.uiSpace.z) : uiProjection(uiSpace, ifbSize);
 	gfx::Renderer::Scene scene;
 	scene.clear = {m_info.clearDepth, m_info.clearColour};
 	scene.dirLights = m_info.dirLights;
@@ -81,7 +109,7 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	scene.view.mat_v = m_info.pCamera->view();
 	scene.view.mat_p = m_info.pCamera->perspective(fbSize.x / fbSize.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
-	scene.view.mat_ui = m_info.pCamera->ui(uiProj);
+	scene.view.mat_ui = m_info.pCamera->ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
 		auto pCubemap = Resources::inst().get<gfx::Texture>(m_info.skyboxCubemapID);
@@ -135,7 +163,7 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	{
 		if (!m_info.flags.isSet(Flag::eDynamicUI) && m_info.flags.isSet(Flag::eScissoredUI))
 		{
-			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSpace.x / uiProj.x, uiSpace.y / uiProj.y});
+			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSpace.x / engine::g_uiSpace.x, uiSpace.y / engine::g_uiSpace.y});
 		}
 		scene.batches.push_back(std::move(batchUI));
 	}

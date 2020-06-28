@@ -26,16 +26,17 @@ void Geometry::addIndices(std::vector<u32> newIndices)
 
 namespace le
 {
-gfx::Geometry gfx::createQuad(f32 side /* = 1.0f */)
+gfx::Geometry gfx::createQuad(glm::vec2 const& size, glm::vec2 const& origin)
 {
 	Geometry ret;
-	f32 const h = side * 0.5f;
+	f32 const x = size.x * 0.5f;
+	f32 const y = size.y * 0.5f;
 	// clang-format off
 	ret.vertices = {
-		{{-h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{ h, -h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-		{{ h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-		{{-h,  h, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}
+		{{-origin.x - x, -origin.y - y, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{-origin.x + x, -origin.y - y, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-origin.x + x, -origin.y + y, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+		{{-origin.x - x, -origin.y + y, 0.0f}, glm::vec3(1.0f), {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}
 	};
 	// clang-format on
 	ret.indices = {0, 1, 2, 2, 3, 0};

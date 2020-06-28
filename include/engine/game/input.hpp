@@ -16,7 +16,9 @@ struct CtxWrapper final
 void registerContext(CtxWrapper const& context);
 [[nodiscard]] Token registerContext(Context const& context);
 
-glm::vec2 const& cursorPosition();
+glm::vec2 const& cursorPosition(bool bIgnoreDisabled = false);
+glm::vec2 screenToWorld(glm::vec2 const& screen);
+glm::vec2 worldToUI(glm::vec2 const& world);
 bool isInFocus();
 void setActive(bool bActive);
 } // namespace le::input

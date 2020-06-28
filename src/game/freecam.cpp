@@ -120,7 +120,7 @@ void FreeCam::tick(Time dt)
 	// Look
 	if (m_state.flags.isSet(Flag::eEnabled) && m_state.flags.isSet(Flag::eLooking))
 	{
-		m_state.cursorPos.second = input::cursorPosition();
+		m_state.cursorPos.second = input::cursorPosition(true);
 		if (!m_state.flags.isSet(Flag::eTracking))
 		{
 			m_state.cursorPos.first = m_state.cursorPos.second;
@@ -140,7 +140,7 @@ void FreeCam::tick(Time dt)
 	if (glm::length2(dCursorPos) > m_config.mouseLookEpsilon)
 	{
 		m_state.yaw += (dCursorPos.x * dLook);
-		m_state.pitch += (-dCursorPos.y * dLook);
+		m_state.pitch += (dCursorPos.y * dLook);
 		m_state.cursorPos.first = m_state.cursorPos.second;
 	}
 	glm::quat const pitch = glm::angleAxis(glm::radians(m_state.pitch), gfx::g_nRight);

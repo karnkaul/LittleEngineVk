@@ -19,6 +19,7 @@ struct ScreenRect final
 	static ScreenRect sizeTL(glm::vec2 const& size, glm::vec2 const& leftTop = glm::vec2(0.0f));
 	static ScreenRect sizeCentre(glm::vec2 const& size, glm::vec2 const& centre = glm::vec2(0.5f));
 
+	glm::vec2 midPoint() const;
 	glm::vec2 size() const;
 	f32 aspect() const;
 

@@ -1,23 +1,28 @@
 #pragma once
+#include <filesystem>
 #include <memory>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 #include <core/assert.hpp>
+#include <core/flags.hpp>
 #include <core/std_types.hpp>
 #include <core/utils.hpp>
 #include <core/time.hpp>
+#include <core/transform.hpp>
 #include <core/zero.hpp>
 #include <engine/ecs/registry.hpp>
+#include <engine/game/input.hpp>
 #include <engine/gfx/renderer.hpp>
-#include <core/transform.hpp>
 
 namespace le
 {
+namespace stdfs = std::filesystem;
+
 namespace engine
 {
 class Service;
-}
+} // namespace engine
 
 class World
 {
@@ -25,8 +30,20 @@ public:
 	using ID = TZero<s32, -1>;
 
 protected:
+	enum class Flag : s8
+	{
+		eSkipManifestUnload,
+		eCOUNT_
+	};
+	using Flags = TFlags<Flag>;
+
+	Flags m_flags;
+
+protected:
 	Registry m_registry = Registry(Registry::DestroyMode::eDeferred);
 	std::string m_tName;
+	input::CtxWrapper m_inputContext;
+	ID m_previousWorldID;
 
 #if defined(LEVK_EDITOR)
 public:
@@ -50,6 +67,9 @@ public:
 	template <typename T, typename... Args>
 	static ID addWorld(Args... args);
 
+	template <typename T1, typename T2, typename... Tn>
+	static void addWorld();
+
 	template <typename T>
 	static T* getWorld();
 
@@ -60,8 +80,14 @@ public:
 	static bool removeWorld(ID id);
 
 	static bool loadWorld(ID id);
-
 	static World* active();
+
+	static bool isBusy();
+	static bool worldLoadPending();
+
+#if defined(LEVK_EDITOR)
+	static std::vector<World*> allWorlds();
+#endif
 
 public:
 	World();
@@ -82,9 +108,12 @@ protected:
 	virtual void stop() = 0;
 
 protected:
-	class Window* window() const;
+	virtual stdfs::path manifestID() const;
+	virtual stdfs::path inputMapID() const;
+	virtual void onManifestLoaded();
 
 private:
+	bool startImpl(ID previous = {});
 	void tickImpl(Time dt);
 	void stopImpl();
 
@@ -98,8 +127,6 @@ private:
 	static void destroyAll();
 	static bool tick(Time dt, gfx::ScreenRect const& sceneRect);
 	static bool submitScene(gfx::Renderer& renderer);
-	// TODO: private
-public:
 	static bool start(ID id);
 
 private:
@@ -126,6 +153,13 @@ World::ID World::addWorld(Args... args)
 		}
 	}
 	return s_lastID;
+}
+
+template <typename T1, typename T2, typename... Tn>
+void World::addWorld()
+{
+	addWorld<T1>();
+	addWorld<T2, Tn...>();
 }
 
 template <typename T>

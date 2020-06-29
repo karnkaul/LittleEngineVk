@@ -5,20 +5,27 @@
 #include <core/utils.hpp>
 #include <editor/editor.hpp>
 #if defined(LEVK_EDITOR)
-#if defined(LEVK_USE_IMGUI)
+#include <fmt/format.h>
 #include <imgui.h>
-#endif
 #include <core/maths.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <gfx/ext_gui.hpp>
+#include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
+#include <engine/gfx/font.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <engine/gfx/model.hpp>
+#include <engine/gfx/shader.hpp>
+#include <engine/gfx/texture.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
 
 namespace le
 {
+using namespace input;
+
 struct Editor final
 {
 };
@@ -55,6 +62,16 @@ struct
 {
 	Entity entity;
 	Transform* pTransform = nullptr;
+	struct
+	{
+		bool bSelectID = false;
+		bool bSelectMat = false;
+		bool bSelectDiffuse = false;
+	} mesh;
+	struct
+	{
+		bool bSelectID = false;
+	} model;
 } g_inspecting;
 World* g_pWorld = nullptr;
 
@@ -114,8 +131,7 @@ bool isDifferent(glm::vec3 const& lhs, glm::vec3 const& rhs)
 
 void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
 {
-	static ImGuiTreeNodeFlags const baseFlags =
-		ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+	static ImGuiTreeNodeFlags const baseFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 	auto const children = root.children();
 	auto search = emap.find(&root);
 	if (search != emap.end())
@@ -156,42 +172,100 @@ void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
 	}
 }
 
-void drawLeftPanel(glm::ivec2 const& panelSize)
+template <typename T>
+void listAssets(std::string_view tabName)
 {
-	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
+	if (ImGui::BeginTabItem(tabName.data()))
 	{
-		return;
-	}
-	static s32 const s_xPad = 2;
-	static s32 const s_dy = 2;
-
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
-	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
-	ImGui::SetNextWindowPos(ImVec2(s_xPad, (f32)s_dy), ImGuiCond_Always);
-	if (!ImGui::Begin("Scene", nullptr, flags))
-	{
-		ImGui::End();
-		return;
-	}
-	char const* szPlayPause = editor::g_bTickGame ? "Pause" : "Play";
-	if (ImGui::Button(szPlayPause))
-	{
-		editor::g_bTickGame = !editor::g_bTickGame;
-		LOG_I("[{}] {}", s_tName, editor::g_bTickGame ? "Resumed" : "Paused");
-	}
-	if (g_pWorld)
-	{
-		for (auto pTransform : g_pWorld->m_root.children())
+		auto assets = Resources::inst().loaded<T>();
+		static s32 selected = -1;
+		for (size_t i = 0; i < assets.size(); ++i)
 		{
-			walkGraph(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
+			auto pAsset = assets.at(i);
+			if (ImGui::Selectable(pAsset->m_id.generic_string().data(), selected == (s32)i))
+			{
+				selected = (s32)i;
+			}
 		}
+		ImGui::EndTabItem();
 	}
-	ImGui::End();
-	return;
 }
 
-void drawRightPanel(glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+template <typename T>
+bool dummy(T&)
+{
+	return true;
+}
+
+template <typename T, typename F, typename F2>
+void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter,
+				  glm::ivec2 const& pos, bool bNone = true)
+{
+	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
+											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+	ImGui::TreeNodeEx(pAsset ? pAsset->m_id.generic_string().data() : "[None]", flags);
+	if (ImGui::IsItemClicked() || out_bSelect)
+	{
+		out_bSelect = true;
+		for (auto pBool : unselect)
+		{
+			*pBool = false;
+		}
+		ImGui::SetNextWindowSize(ImVec2(300.0f, 200.0f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2((f32)pos.x, (f32)pos.y), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
+		{
+			if (bNone && ImGui::Selectable("[None]"))
+			{
+				onSelected(nullptr);
+				out_bSelect = false;
+			}
+			auto assets = Resources::inst().loaded<T>();
+			for (auto pAsset : assets)
+			{
+				if (!filter || filter(*pAsset))
+				{
+					if (ImGui::Selectable(pAsset->m_id.generic_string().data()))
+					{
+						onSelected(pAsset);
+						out_bSelect = false;
+					}
+				}
+			}
+		}
+		ImGui::End();
+	}
+}
+
+void inspectMaterial(gfx::Mesh& out_mesh, size_t idx, glm::ivec2 const& pos)
+{
+	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
+	{
+		inspectAsset<gfx::Material>(
+			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, false);
+		inspectAsset<gfx::Texture>(
+			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; }, [](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; },
+			pos);
+		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
+		ImGui::Checkbox("Drop Colour", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;
+		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eOpaque];
+		ImGui::Checkbox("Opaque", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eOpaque] = bOut;
+		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eTextured];
+		ImGui::Checkbox("Textured", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eTextured] = bOut;
+		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eLit];
+		ImGui::Checkbox("Lit", &bOut);
+		out_mesh.m_material.flags[gfx::Material::Flag::eLit] = bOut;
+		ImGui::TreePop();
+	}
+}
+
+void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -200,15 +274,43 @@ void drawRightPanel(glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
 	static s32 const s_xPad = 2;
 	static s32 const s_dy = 2;
 
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
-	ImGui::SetNextWindowPos(ImVec2((f32)(fbSize.x - panelSize.x + s_xPad), (f32)s_dy), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(s_xPad, (f32)s_dy), ImGuiCond_Always);
 	if (!ImGui::Begin("Inspector", nullptr, flags))
 	{
 		ImGui::End();
 		return;
 	}
+	static bool s_bAssets = false;
+	s_bAssets |= ImGui::Button("Resources");
+	if (s_bAssets)
+	{
+		ImGui::SetNextWindowPos(ImVec2((f32)(panelSize.x + s_xPad), 200.0f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(500.0f, 300.0f), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Loaded Assets", &s_bAssets, ImGuiWindowFlags_NoSavedSettings))
+		{
+			if (ImGui::BeginTabBar(""))
+			{
+				listAssets<gfx::Model>("Models");
+				listAssets<gfx::Mesh>("Meshes");
+				listAssets<gfx::Font>("Fonts");
+				listAssets<gfx::Texture>("Textures");
+				listAssets<gfx::Material>("Materials");
+				listAssets<gfx::Sampler>("Samplers");
+				listAssets<gfx::Shader>("Shaders");
+				ImGui::EndTabBar();
+			}
+		}
+		ImGui::End();
+	}
+	static bool s_bImGuiDemo = false;
+	s_bImGuiDemo |= ImGui::Button("ImGui Demo");
+	if (s_bImGuiDemo)
+	{
+		ImGui::ShowDemoWindow(&s_bImGuiDemo);
+	}
+	ImGui::Separator();
 	if (g_pWorld && g_inspecting.entity != Entity() && g_inspecting.pTransform)
 	{
 		auto& registry = g_pWorld->registry();
@@ -241,7 +343,110 @@ void drawRightPanel(glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
 			{
 				g_inspecting.pTransform->setOrientation(glm::quat(rot));
 			}
+			ImGui::Separator();
+
+			auto const inspectPos = glm::ivec2(panelSize.x + s_xPad * 4, 200.0f);
+			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
+			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
+			if (pTMesh && pMesh)
+			{
+				if (ImGui::TreeNode("Mesh"))
+				{
+					inspectAsset<gfx::Mesh>(
+						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
+						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, inspectPos);
+
+					inspectMaterial(*pMesh, 0, inspectPos);
+					ImGui::TreePop();
+				}
+			}
+			auto pTModel = registry.component<TAsset<gfx::Model>>(g_inspecting.entity);
+			auto pModel = pTModel ? pTModel->get() : nullptr;
+			if (pTModel && pModel)
+			{
+				if (ImGui::TreeNode("Model"))
+				{
+					inspectAsset<gfx::Model>(
+						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
+						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, inspectPos);
+					auto& meshes = pModel->loadedMeshes();
+					size_t idx = 0;
+					for (auto& mesh : meshes)
+					{
+						inspectMaterial(mesh, idx++, inspectPos);
+					}
+					ImGui::TreePop();
+				}
+			}
 		}
+	}
+	ImGui::End();
+	return;
+}
+
+void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+{
+	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
+	{
+		return;
+	}
+	static s32 const s_xPad = 2;
+	static s32 const s_dy = 2;
+
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2((f32)(fbSize.x - panelSize.x + s_xPad), (f32)s_dy), ImGuiCond_Always);
+	if (!ImGui::Begin("Scene", nullptr, flags))
+	{
+		ImGui::End();
+		return;
+	}
+	char const* szPlayPause = editor::g_bTickGame ? "Pause" : "Play";
+	if (ImGui::Button(szPlayPause))
+	{
+		editor::g_bTickGame = !editor::g_bTickGame;
+		LOG_I("[{}] {}", s_tName, editor::g_bTickGame ? "Resumed" : "Paused");
+	}
+	ImGui::Separator();
+	World* pNewWorld = nullptr;
+	auto worldName = std::string(g_pWorld ? g_pWorld->name() : "[None]");
+	utils::removeNamesapces(worldName);
+	if (g_pWorld && g_pWorld->isBusy())
+	{
+		ImGui::LabelText("", "%s (Busy)", worldName.data());
+	}
+	else if (ImGui::BeginCombo("", worldName.data()))
+	{
+		auto const worlds = World::allWorlds();
+		static size_t s_selected = 0;
+		for (size_t i = 0; i < worlds.size(); ++i)
+		{
+			bool const bSelected = s_selected == i;
+			auto name = std::string(worlds.at(i)->name());
+			utils::removeNamesapces(name);
+			if (ImGui::Selectable(name.data(), bSelected))
+			{
+				s_selected = i;
+				pNewWorld = worlds.at(i);
+			}
+			if (bSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::Separator();
+	if (g_pWorld)
+	{
+		for (auto pTransform : g_pWorld->m_root.children())
+		{
+			walkGraph(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
+		}
+	}
+	if (pNewWorld && pNewWorld != g_pWorld)
+	{
+		World::loadWorld(pNewWorld->id());
 	}
 	ImGui::End();
 	return;
@@ -257,8 +462,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 	{
 		return;
 	}
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2((f32)fbSize.x, (f32)(logHeight - s_yPad)), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2(0.0f, (f32)(fbSize.y - logHeight + s_yPad)), ImGuiCond_Always);
 	if (!ImGui::Begin("Log", nullptr, flags))
@@ -338,7 +542,7 @@ bool editor::init(WindowID editorWindow)
 		log::g_onLog = &guiLog;
 		g_data.window = editorWindow;
 		g_data.inputToken = Window::registerInput(
-			[](Key key, Action action, Mods mods) {
+			[](Key key, Action action, Mods::VALUE mods) {
 				if (key == Key::eE && action == Action::eRelease && mods & Mods::eCONTROL)
 				{
 					g_data.enabled = !g_data.enabled;
@@ -370,9 +574,9 @@ void editor::deinit()
 	return;
 }
 
-gfx::ScreenRect editor::tick([[maybe_unused]] Time dt)
+void editor::tick([[maybe_unused]] Time dt)
 {
-	static auto const smol = glm::vec2(0.66f);
+	static auto const smol = glm::vec2(0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
 	if (g_data.enabled && pWindow && pWindow->isOpen())
 	{
@@ -382,12 +586,12 @@ gfx::ScreenRect editor::tick([[maybe_unused]] Time dt)
 		{
 			centre = pWindow->cursorPos();
 		}
-		auto const scene = pWindow->m_pWindow->renderer().clampToView(centre, smol);
+		g_gameRect = pWindow->m_pWindow->renderer().clampToView(centre, smol);
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
-			auto const logHeight = fbSize.y - (s32)(scene.bottom * (f32)fbSize.y);
-			glm::ivec2 const leftPanelSize = {(s32)(scene.left * (f32)fbSize.x), fbSize.y - logHeight};
-			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(scene.right * (f32)fbSize.x), fbSize.y - logHeight};
+			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);
+			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.left * (f32)fbSize.x), fbSize.y - logHeight};
+			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.right * (f32)fbSize.x), fbSize.y - logHeight};
 			auto pActive = World::active();
 			if (!pActive || pActive != g_pWorld)
 			{
@@ -395,12 +599,14 @@ gfx::ScreenRect editor::tick([[maybe_unused]] Time dt)
 			}
 			g_pWorld = pActive;
 			drawLog(fbSize, logHeight);
-			drawLeftPanel(leftPanelSize);
+			drawLeftPanel(fbSize, leftPanelSize);
 			drawRightPanel(fbSize, rightPanelSize);
-			return scene;
 		}
 	}
-	return {};
+	else
+	{
+		g_gameRect = {};
+	}
 }
 } // namespace le
 #endif

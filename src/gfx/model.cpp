@@ -32,6 +32,7 @@ public:
 		stdfs::path jsonID;
 		stdfs::path modelID;
 		stdfs::path samplerID;
+		glm::vec3 origin = glm::vec3(0.0f);
 		f32 scale = 1.0f;
 		IOReader const* pReader = nullptr;
 		bool bDropColour = false;
@@ -49,6 +50,7 @@ private:
 	std::unordered_set<std::string> m_meshIDs;
 	std::vector<tinyobj::shape_t> m_shapes;
 	std::vector<tinyobj::material_t> m_materials;
+	glm::vec3 m_origin;
 	f32 m_scale = 1.0f;
 	bool m_bDropColour = false;
 
@@ -64,11 +66,31 @@ private:
 	std::vector<size_t> materials(tinyobj::shape_t const& shape);
 };
 
+glm::vec3 getVec3(GData const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f))
+{
+	auto vec = json.getVecString(id);
+	glm::vec3 ret = def;
+	if (vec.size() > 0)
+	{
+		ret.x = utils::strings::toF32(vec.at(0), def.x);
+	}
+	if (vec.size() > 1)
+	{
+		ret.y = utils::strings::toF32(vec.at(1), def.y);
+	}
+	if (vec.size() > 2)
+	{
+		ret.z = utils::strings::toF32(vec.at(2), def.z);
+	}
+	return ret;
+}
+
 OBJParser::OBJParser(Data data)
 	: m_matStrReader(data.mtlBuf),
 	  m_modelID(std::move(data.modelID)),
 	  m_jsonID(std::move(data.jsonID)),
 	  m_samplerID(std::move(data.samplerID)),
+	  m_origin(data.origin),
 	  m_scale(data.scale),
 	  m_bDropColour(data.bDropColour)
 {
@@ -101,7 +123,6 @@ OBJParser::OBJParser(Data data)
 	}
 	if (bOK)
 	{
-		m_info.id = m_modelID;
 		{
 #if defined(LEVK_PROFILE_MODEL_LOADS)
 			Profiler pr(idStr + "-MeshData");
@@ -123,8 +144,7 @@ OBJParser::OBJParser(Data data)
 			}
 			else
 			{
-				LOG_W("[{}] [{}] Failed to load texture [{}] from [{}]", Model::s_tName, idStr, texture.filename.generic_string(),
-					  data.pReader->medium());
+				LOG_W("[{}] [{}] Failed to load texture [{}] from [{}]", Model::s_tName, idStr, texture.filename.generic_string(), data.pReader->medium());
 			}
 		}
 	}
@@ -243,7 +263,7 @@ Geometry OBJParser::vertices(tinyobj::shape_t const& shape)
 	for (auto const& idx : shape.mesh.indices)
 	{
 		// clang-format off
-		glm::vec3 const p = {
+		glm::vec3 const p = m_origin * m_scale + glm::vec3{
 			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 0) * m_scale,
 			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 1) * m_scale,
 			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 2) * m_scale
@@ -318,7 +338,7 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		LOG_E("[{}] Reader is null!", s_tName);
 		return {};
 	}
-	auto jsonID = (request.jsonID / request.jsonID.filename());
+	auto jsonID = (request.assetID / request.assetID.filename());
 	jsonID += ".json";
 	auto [jsonStr, bResult] = request.pReader->getString(jsonID);
 	if (!bResult)
@@ -329,15 +349,14 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 	GData json(std::move(jsonStr));
 	if (json.fieldCount() == 0 || !json.contains("mtl") || !json.contains("obj"))
 	{
-		LOG_E("[{}] No data in json: [{}]!", s_tName, request.jsonID.generic_string());
+		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
 		return {};
 	}
-	auto const objPath = request.jsonID / json.getString("obj", "");
-	auto const mtlPath = request.jsonID / json.getString("mtl", "");
+	auto const objPath = request.assetID / json.getString("obj", "");
+	auto const mtlPath = request.assetID / json.getString("mtl", "");
 	if (!request.pReader->checkPresence(objPath) || !request.pReader->checkPresence(mtlPath))
 	{
-		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, request.pReader->medium(), objPath.generic_string(),
-			  mtlPath.generic_string());
+		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, request.pReader->medium(), objPath.generic_string(), mtlPath.generic_string());
 		return {};
 	}
 	auto [objBuf, bObjResult] = request.pReader->getStr(objPath);
@@ -348,11 +367,12 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		objData.objBuf = std::move(objBuf);
 		objData.mtlBuf = std::move(mtlBuf);
 		objData.jsonID = std::move(jsonID);
-		objData.modelID = json.getString("id", "models/UNNAMED");
+		objData.modelID = request.assetID;
 		objData.samplerID = json.getString("sampler", "samplers/default");
 		objData.scale = (f32)json.getF64("scale", 1.0f);
 		objData.pReader = request.pReader;
 		objData.bDropColour = json.getBool("dropColour", false);
+		objData.origin = getVec3(json, "origin");
 		OBJParser parser(std::move(objData));
 		return std::move(parser.m_info);
 	}
@@ -435,6 +455,13 @@ std::vector<Mesh const*> Model::meshes() const
 	return m_status == Status::eReady ? m_meshes : std::vector<Mesh const*>();
 }
 
+#if defined(LEVK_EDITOR)
+std::deque<Mesh>& Model::loadedMeshes()
+{
+	return m_loadedMeshes;
+}
+#endif
+
 Asset::Status Model::update()
 {
 	if (m_meshes.empty())
@@ -447,9 +474,8 @@ Asset::Status Model::update()
 	std::for_each(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto& kvp) { kvp.second.update(); });
 	if (m_status == Status::eLoading)
 	{
-		bool bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return mesh.isReady(); });
-		bool bTextures =
-			std::all_of(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto const& kvp) { return kvp.second.isReady(); });
+		bool bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return !mesh.isBusy(); });
+		bool bTextures = std::all_of(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto const& kvp) { return !kvp.second.isBusy(); });
 		if (bMeshes && bTextures)
 		{
 			m_status = Status::eReady;

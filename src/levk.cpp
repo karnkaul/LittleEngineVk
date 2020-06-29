@@ -6,15 +6,19 @@
 #include <engine/levk.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
+#include <game/input_impl.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
+#include <gfx/renderer_impl.hpp>
 #include <gfx/vram.hpp>
 #include <window/window_impl.hpp>
 #include <editor/editor.hpp>
 #include <levk_impl.hpp>
 
-namespace le::engine
+namespace le
+{
+namespace engine
 {
 namespace
 {
@@ -34,6 +38,7 @@ Service::Service(Service&&) = default;
 Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
+	input::deinit();
 	World::stopActive();
 	Resources::inst().waitIdle();
 	World::destroyAll();
@@ -67,6 +72,8 @@ bool Service::init(Info const& info)
 		NativeWindow dummyWindow({});
 		gfx::InitInfo initInfo;
 #if defined(LEVK_DEBUG)
+		gfx::g_VRAM_bLogAllocs = info.bLogVRAMallocations;
+		gfx::g_VRAM_logLevel = info.vramLogLevel;
 		initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
 #endif
 		if (os::isDefined("validation"))
@@ -98,6 +105,8 @@ bool Service::init(Info const& info)
 				throw std::runtime_error("Failed to create Window!");
 			}
 		}
+		input::init(*g_app.uWindow);
+		g_app.pReader = pReader;
 	}
 	catch (std::exception const& e)
 	{
@@ -107,16 +116,26 @@ bool Service::init(Info const& info)
 	return true;
 }
 
+bool Service::start(World::ID world)
+{
+	return World::start(world);
+}
+
 bool Service::tick(Time dt) const
 {
 	gfx::deferred::update();
-	Resources::inst().update();
-	WindowImpl::update();
-	gfx::ScreenRect gameRect;
+	update();
+	gfx::ScreenRect gameRect = {};
 #if defined(LEVK_EDITOR)
-	gameRect = editor::tick(dt);
+	if (editor::g_bTickGame)
+	{
+		input::fire();
+	}
+	editor::tick(dt);
+	gameRect = editor::g_gameRect;
+#else
+	input::fire();
 #endif
-	gfx::vram::update();
 	return World::tick(dt, gameRect);
 }
 
@@ -124,9 +143,56 @@ bool Service::submitScene() const
 {
 	return World::submitScene(g_app.uWindow->renderer());
 }
+} // namespace engine
 
-Window* Service::mainWindow()
+bool engine::isTerminating()
+{
+	return g_app.uWindow && g_app.uWindow->isClosing();
+}
+
+Window* engine::mainWindow()
 {
 	return g_app.uWindow.get();
 }
-} // namespace le::engine
+
+glm::ivec2 engine::windowSize()
+{
+	return g_app.uWindow ? g_app.uWindow->windowSize() : glm::ivec2(0);
+}
+
+glm::ivec2 engine::framebufferSize()
+{
+	return g_app.uWindow ? g_app.uWindow->framebufferSize() : glm::ivec2(0);
+}
+
+void engine::update()
+{
+	Resources::inst().update();
+	WindowImpl::update();
+	gfx::vram::update();
+}
+
+Window* engine::window()
+{
+	return g_app.uWindow.get();
+}
+
+IOReader const& engine::reader()
+{
+	ASSERT(g_app.pReader, "IOReader is null!");
+	return *g_app.pReader;
+}
+
+gfx::Texture::Space engine::colourSpace()
+{
+	if (g_app.uWindow)
+	{
+		auto const pRenderer = WindowImpl::rendererImpl(g_app.uWindow->id());
+		if (pRenderer && pRenderer->colourSpace() == ColourSpace::eSRGBNonLinear)
+		{
+			return gfx::Texture::Space::eSRGBNonLinear;
+		}
+	}
+	return gfx::Texture::Space::eRGBLinear;
+}
+} // namespace le

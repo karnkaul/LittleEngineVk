@@ -69,13 +69,13 @@ public:
 	static void renderAll();
 
 	// Pass WindowID::s_null for global registration
-	[[nodiscard]] static OnText::Token registerText(OnText::Callback callback, WindowID window);
+	[[nodiscard]] static input::OnText::Token registerText(input::OnText::Callback callback, WindowID window);
 	// Pass WindowID::s_null for global registration
-	[[nodiscard]] static OnInput::Token registerInput(OnInput::Callback callback, WindowID window);
+	[[nodiscard]] static input::OnInput::Token registerInput(input::OnInput::Callback callback, WindowID window);
 	// Pass WindowID::s_null for global registration
-	[[nodiscard]] static OnMouse::Token registerMouse(OnMouse::Callback callback, WindowID window);
+	[[nodiscard]] static input::OnMouse::Token registerMouse(input::OnMouse::Callback callback, WindowID window);
 	// Pass WindowID::s_null for global registration
-	[[nodiscard]] static OnMouse::Token registerScroll(OnMouse::Callback callback, WindowID window);
+	[[nodiscard]] static input::OnMouse::Token registerScroll(input::OnMouse::Callback callback, WindowID window);
 
 	static WindowID editorWindow();
 
@@ -92,35 +92,35 @@ public:
 	glm::ivec2 framebufferSize() const;
 
 public:
-	[[nodiscard]] OnText::Token registerText(OnText::Callback callback);
+	[[nodiscard]] input::OnText::Token registerText(input::OnText::Callback callback);
 	// Callback parameters: (Key key, Action action, Mods mods)
-	[[nodiscard]] OnInput::Token registerInput(OnInput::Callback callback);
+	[[nodiscard]] input::OnInput::Token registerInput(input::OnInput::Callback callback);
 	// Callback parameters: (f64 x, f64 y)
-	[[nodiscard]] OnMouse::Token registerMouse(OnMouse::Callback callback);
+	[[nodiscard]] input::OnMouse::Token registerMouse(input::OnMouse::Callback callback);
 	// Callback parameters: (f32 dx, f32 dy)
-	[[nodiscard]] OnMouse::Token registerScroll(OnMouse::Callback callback);
+	[[nodiscard]] input::OnMouse::Token registerScroll(input::OnMouse::Callback callback);
 	// Callback parameters: (std::filesystem::path filepath)
-	[[nodiscard]] OnFiledrop::Token registerFiledrop(OnFiledrop::Callback callback);
+	[[nodiscard]] input::OnFiledrop::Token registerFiledrop(input::OnFiledrop::Callback callback);
 	// Callback parameters: (bool bInFocus)
-	[[nodiscard]] OnFocus::Token registerFocus(OnFocus::Callback callback);
+	[[nodiscard]] input::OnFocus::Token registerFocus(input::OnFocus::Callback callback);
 	// Callback parameters: (s32 x, s32 y)
-	[[nodiscard]] OnWindowResize::Token registerResize(OnWindowResize::Callback callback);
-	[[nodiscard]] OnClosed::Token registerClosed(OnClosed::Callback callback);
+	[[nodiscard]] input::OnWindowResize::Token registerResize(input::OnWindowResize::Callback callback);
+	[[nodiscard]] input::OnClosed::Token registerClosed(input::OnClosed::Callback callback);
 
 public:
 	bool create(Info const& info);
 	void close();
 	void destroy();
 
-	void setCursorMode(CursorMode mode) const;
-	CursorMode cursorMode() const;
+	void setCursorMode(input::CursorMode mode) const;
+	input::CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;
 	void setCursorPos(glm::vec2 const& pos) const;
 	std::string clipboard() const;
 
-	static JoyState joyState(s32 id);
-	static GamepadState gamepadState(s32 id);
-	static std::vector<GamepadState> activeGamepadStates();
+	static input::Joystick joyState(s32 id);
+	static input::Gamepad gamepadState(s32 id);
+	static std::vector<input::Gamepad> activeGamepads();
 	static f32 triggerToAxis(f32 triggerValue);
 	static size_t joystickAxesCount(s32 id);
 	static size_t joysticKButtonsCount(s32 id);

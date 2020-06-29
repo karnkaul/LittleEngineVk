@@ -36,20 +36,27 @@ std::string utils::demangle(std::string_view name)
 #else
 	static std::string_view const CLASS = "class ";
 	static std::string_view const STRUCT = "struct ";
-	static size_t const CLASS_LEN = CLASS.length();
-	static size_t const STRUCT_LEN = STRUCT.length();
 	auto idx = ret.find(CLASS);
 	if (idx == 0)
 	{
-		ret = ret.substr(CLASS_LEN);
+		ret = ret.substr(CLASS.size());
 	}
 	idx = ret.find(STRUCT);
 	if (idx == 0)
 	{
-		ret = ret.substr(STRUCT_LEN);
+		ret = ret.substr(STRUCT.size());
 	}
 #endif
 	return ret;
+}
+
+void utils::removeNamesapces(std::string& out_name)
+{
+	auto const idx = out_name.find_last_of("::");
+	if (idx != std::string::npos)
+	{
+		out_name = out_name.substr(idx + 1);
+	}
 }
 
 namespace utils
@@ -160,9 +167,7 @@ void strings::removeChars(std::string& outInput, std::initializer_list<char> toR
 
 void strings::trim(std::string& outInput, std::initializer_list<char> toRemove)
 {
-	auto isIgnored = [&outInput, &toRemove](size_t idx) {
-		return std::find(toRemove.begin(), toRemove.end(), outInput[idx]) != toRemove.end();
-	};
+	auto isIgnored = [&outInput, &toRemove](size_t idx) { return std::find(toRemove.begin(), toRemove.end(), outInput[idx]) != toRemove.end(); };
 	size_t startIdx = 0;
 	for (; startIdx < outInput.size() && isIgnored(startIdx); ++startIdx)
 		;

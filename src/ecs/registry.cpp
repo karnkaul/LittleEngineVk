@@ -21,6 +21,11 @@ bool operator!=(Entity lhs, Entity rhs)
 	return !(lhs == rhs);
 }
 
+size_t EntityHasher::operator()(Entity const& entity) const
+{
+	return std::hash<Entity::ID>()(entity.id);
+}
+
 Registry::Component::~Component() = default;
 
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
@@ -116,7 +121,7 @@ bool Registry::destroyEntity(Entity& out_entity)
 	return false;
 }
 
-void Registry::sweep()
+void Registry::flush()
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	for (auto iter = m_entityFlags.begin(); iter != m_entityFlags.end();)
@@ -185,8 +190,7 @@ Registry::Component* Registry::addComponent_Impl(Signature sign, std::unique_ptr
 	uComp->sign = sign;
 	ASSERT(m_db[id].find(sign) == m_db[id].end(), "Duplicate Component!");
 	m_db[id][sign] = std::move(uComp);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", s_tName, m_componentNames[sign], s_tEName, id,
-		  m_entityNames[id]);
+	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", s_tName, m_componentNames[sign], s_tEName, id, m_entityNames[id]);
 	return m_db[id][sign].get();
 }
 
@@ -194,8 +198,7 @@ void Registry::destroyComponent_Impl(Component const* pComponent, Entity::ID id)
 {
 	auto const sign = pComponent->sign;
 	m_db[id].erase(sign);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", s_tName, m_componentNames[sign], s_tEName, id,
-		  m_entityNames[id]);
+	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", s_tName, m_componentNames[sign], s_tEName, id, m_entityNames[id]);
 	return;
 }
 
@@ -203,8 +206,8 @@ bool Registry::destroyComponent_Impl(Entity::ID id)
 {
 	if (auto search = m_db.find(id); search != m_db.end())
 	{
-		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] components detached from [{}:{}] [{}] and destroyed", s_tName, search->second.size(),
-			  s_tEName, id, m_entityNames[id]);
+		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] components detached from [{}:{}] [{}] and destroyed", s_tName, search->second.size(), s_tEName, id,
+			  m_entityNames[id]);
 		m_db.erase(search);
 		return true;
 	}

@@ -1,5 +1,6 @@
 #include <core/log.hpp>
 #include <core/threads.hpp>
+#include <core/time.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
@@ -21,6 +22,7 @@ Resources& Resources::inst()
 Resources::Resources()
 {
 	m_bActive.store(false);
+	m_semaphore = std::make_shared<s32>(0);
 }
 
 Resources::~Resources()
@@ -43,9 +45,9 @@ bool Resources::init(IOReader const& data)
 		LOG_E("[{}] Failed to locate required shaders/fonts!", s_tName);
 		return false;
 	}
-	std::scoped_lock<std::mutex> lock(m_mutex); // block deinit()
 	if (!m_bActive.load())
 	{
+		auto semaphore = setBusy();
 		m_bActive.store(true);
 		{
 			create<gfx::Material>("materials/default", {});
@@ -97,18 +99,20 @@ bool Resources::init(IOReader const& data)
 			auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
 			ASSERT(bImg, "Default font not found!");
 			fontInfo.image = std::move(img);
+			fontInfo.material.pMaterial = get<gfx::Material>(fontInfo.materialID);
 			create<gfx::Font>("fonts/default", std::move(fontInfo));
 		}
 	}
+	LOG_I("[{}] initialised", s_tName);
 	return true;
 }
 
 void Resources::update()
 {
 	ASSERT(m_bActive.load(), "Resources inactive!");
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	if (m_bActive.load())
 	{
+		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 		for (auto& [id, uResource] : m_resources.m_map)
 		{
 			uResource->update();
@@ -119,30 +123,46 @@ void Resources::update()
 
 bool Resources::unload(stdfs::path const& id)
 {
-	std::shared_lock<std::shared_mutex> lock(m_semaphore);
 	ASSERT(m_bActive.load(), "Resources inactive!");
-	return m_bActive.load() ? m_resources.unload(id.generic_string()) : false;
+	if (m_bActive.load())
+	{
+		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		return m_resources.unload(id.generic_string());
+	}
+	return false;
 }
 
 void Resources::deinit()
 {
-	std::scoped_lock<std::mutex> initLock(m_mutex); // block init()
 	waitIdle();
-	std::unique_lock<std::shared_mutex> apiLock(m_semaphore); // block create(), get(), unload()
+	ASSERT(m_semaphore.use_count() == 1, "Resources in use!");
+	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+	m_resources.unloadAll();
 	if (m_bActive.load())
 	{
 		m_bActive.store(false);
-		m_resources.unloadAll();
 	}
+	LOG_I("[{}] deinitialised", s_tName);
 	return;
+}
+
+Resources::Semaphore Resources::setBusy() const
+{
+	return m_semaphore;
 }
 
 void Resources::waitIdle()
 {
-	while (!m_semaphore.try_lock())
+	Time const timeout = 5s;
+	Time elapsed;
+	Time const start = Time::elapsed();
+	while (m_semaphore.use_count() > 1 && elapsed < timeout)
 	{
+		elapsed = Time::elapsed() - start;
 		threads::sleep();
 	}
-	m_semaphore.unlock();
+	bool bTimeout = elapsed > timeout;
+	ASSERT(!bTimeout, "Timeout waiting for Resources! Expect a crash");
+	LOGIF_E(bTimeout, "[{}] Timeout waiting for Resources! Expect crashes/hangs!", s_tName);
 }
 } // namespace le

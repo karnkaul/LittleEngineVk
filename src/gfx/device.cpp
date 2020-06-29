@@ -391,8 +391,7 @@ f32 Instance::lineWidth(f32 desired) const
 	return std::clamp(desired, lineWidthMin, lineWidthMax);
 }
 
-TResult<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling,
-											  vk::FormatFeatureFlags features)
+TResult<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
 {
 	for (auto format : desired)
 	{
@@ -441,6 +440,7 @@ UniqueQueues Device::uniqueQueues(QFlags flags) const
 void Device::waitIdle() const
 {
 	device.waitIdle();
+	deferred::flush();
 }
 
 vk::Fence Device::createFence(bool bSignalled) const
@@ -453,7 +453,17 @@ void Device::waitFor(vk::Fence optional) const
 {
 	if (optional != vk::Fence())
 	{
+#if defined(LEVK_DEBUG)
+		constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+		auto const result = g_device.device.waitForFences(optional, true, s_wait);
+		ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+		if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
+		{
+			LOG_E("[{}] Fence wait failure!", s_tDevice);
+		}
+#else
 		g_device.device.waitForFences(optional, true, maxVal<u64>());
+#endif
 	}
 }
 
@@ -461,7 +471,17 @@ void Device::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const
 {
 	if (!validFences.empty())
 	{
+#if defined(LEVK_DEBUG)
+		constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+		auto const result = g_device.device.waitForFences(std::move(validFences), true, s_wait);
+		ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+		if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
+		{
+			LOG_E("[{}] Fence wait failure!", s_tDevice);
+		}
+#else
 		g_device.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+#endif
 	}
 }
 
@@ -538,8 +558,7 @@ vk::DescriptorPool Device::createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoo
 	return device.createDescriptorPool(createInfo);
 }
 
-std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts,
-															  u32 setCount)
+std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts, u32 setCount)
 {
 	vk::DescriptorSetAllocateInfo allocInfo;
 	allocInfo.descriptorPool = pool;
@@ -548,8 +567,7 @@ std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool
 	return device.allocateDescriptorSets(allocInfo);
 }
 
-vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments,
-										vk::ArrayProxy<vk::SubpassDescription const> subpasses,
+vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments, vk::ArrayProxy<vk::SubpassDescription const> subpasses,
 										vk::ArrayProxy<vk::SubpassDependency> dependencies)
 {
 	vk::RenderPassCreateInfo createInfo;
@@ -562,8 +580,7 @@ vk::RenderPass Device::createRenderPass(vk::ArrayProxy<vk::AttachmentDescription
 	return device.createRenderPass(createInfo);
 }
 
-vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent,
-										  u32 layers)
+vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers)
 {
 	vk::FramebufferCreateInfo createInfo;
 	createInfo.attachmentCount = attachments.size();

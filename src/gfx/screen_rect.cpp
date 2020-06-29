@@ -15,6 +15,11 @@ ScreenRect ScreenRect::sizeCentre(glm::vec2 const& size, glm::vec2 const& centre
 	return ScreenRect({leftTop.x, leftTop.y, leftTop.x + size.x, leftTop.y + size.y});
 }
 
+glm::vec2 ScreenRect::midPoint() const
+{
+	return {(right + left) * 0.5f, (bottom + top) * 0.5f};
+}
+
 glm::vec2 ScreenRect::size() const
 {
 	return glm::vec2(right - left, bottom - top);

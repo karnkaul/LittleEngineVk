@@ -75,9 +75,9 @@ Public Types</h2></td></tr>
 <tr class="separator:a01b809019e834282f192c289b1fe3c73"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abc3c4e2b3d87d2b7aa1aafb937bae182"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#abc3c4e2b3d87d2b7aa1aafb937bae182">Signature</a> = <a class="el" href="namespacele.html#a39b8460028fc5dd6f2d9ffeafa7307ed">size_t</a></td></tr>
 <tr class="separator:abc3c4e2b3d87d2b7aa1aafb937bae182"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3763aca99d0917b29ca84a4333cc3f8e"><td class="memTemplParams" colspan="2">template&lt;typename... T&gt; </td></tr>
-<tr class="memitem:a3763aca99d0917b29ca84a4333cc3f8e"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#a3763aca99d0917b29ca84a4333cc3f8e">View</a> = std::deque&lt; std::tuple&lt; T *... &gt; &gt;</td></tr>
-<tr class="separator:a3763aca99d0917b29ca84a4333cc3f8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa2b4dd2da1dc2b08c391487037db9368"><td class="memTemplParams" colspan="2">template&lt;typename... T&gt; </td></tr>
+<tr class="memitem:aa2b4dd2da1dc2b08c391487037db9368"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#aa2b4dd2da1dc2b08c391487037db9368">View</a> = std::unordered_map&lt; <a class="el" href="structle_1_1Entity.html">Entity</a>, std::tuple&lt; T *... &gt;, <a class="el" href="structle_1_1EntityHasher.html">EntityHasher</a> &gt;</td></tr>
+<tr class="separator:aa2b4dd2da1dc2b08c391487037db9368"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
@@ -118,13 +118,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:afca7d9bcc5586c3f376b87d5daa01463"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#afca7d9bcc5586c3f376b87d5daa01463">destroyComponent</a> (<a class="el" href="structle_1_1Entity.html">Entity</a> entity)</td></tr>
 <tr class="separator:afca7d9bcc5586c3f376b87d5daa01463"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a66656791676186bfb37f188ac11740d2"><td class="memTemplParams" colspan="2">template&lt;typename T1 , typename... Ts&gt; </td></tr>
-<tr class="memitem:a66656791676186bfb37f188ac11740d2"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Registry.html#a3763aca99d0917b29ca84a4333cc3f8e">View</a>&lt; T1 const, Ts const ... &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#a66656791676186bfb37f188ac11740d2">view</a> (<a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> mask=<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1a05506081854bf82f3c49501d68693121">Flag::eDestroyed</a>|<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1ab32b520e58e1334ea07d4df5a4c5c402">Flag::eDisabled</a>, <a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> pattern={}) const</td></tr>
+<tr class="memitem:a66656791676186bfb37f188ac11740d2"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Registry.html#aa2b4dd2da1dc2b08c391487037db9368">View</a>&lt; T1 const, Ts const ... &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#a66656791676186bfb37f188ac11740d2">view</a> (<a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> mask=<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1a05506081854bf82f3c49501d68693121">Flag::eDestroyed</a>|<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1ab32b520e58e1334ea07d4df5a4c5c402">Flag::eDisabled</a>, <a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> pattern={}) const</td></tr>
 <tr class="separator:a66656791676186bfb37f188ac11740d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a61daf9a1b6becfa894f7a8b702c3a57c"><td class="memTemplParams" colspan="2">template&lt;typename T1 , typename... Ts&gt; </td></tr>
-<tr class="memitem:a61daf9a1b6becfa894f7a8b702c3a57c"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Registry.html#a3763aca99d0917b29ca84a4333cc3f8e">View</a>&lt; T1, Ts... &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#a61daf9a1b6becfa894f7a8b702c3a57c">view</a> (<a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> mask=<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1a05506081854bf82f3c49501d68693121">Flag::eDestroyed</a>|<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1ab32b520e58e1334ea07d4df5a4c5c402">Flag::eDisabled</a>, <a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> pattern={})</td></tr>
+<tr class="memitem:a61daf9a1b6becfa894f7a8b702c3a57c"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Registry.html#aa2b4dd2da1dc2b08c391487037db9368">View</a>&lt; T1, Ts... &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#a61daf9a1b6becfa894f7a8b702c3a57c">view</a> (<a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> mask=<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1a05506081854bf82f3c49501d68693121">Flag::eDestroyed</a>|<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1ab32b520e58e1334ea07d4df5a4c5c402">Flag::eDisabled</a>, <a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a> pattern={})</td></tr>
 <tr class="separator:a61daf9a1b6becfa894f7a8b702c3a57c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a90b6bac9648f158db35f7a758e3a7287"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#a90b6bac9648f158db35f7a758e3a7287">sweep</a> ()</td></tr>
-<tr class="separator:a90b6bac9648f158db35f7a758e3a7287"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb8e534b91a4ee5fa4a99c37fd769010"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#abb8e534b91a4ee5fa4a99c37fd769010">flush</a> ()</td></tr>
+<tr class="separator:abb8e534b91a4ee5fa4a99c37fd769010"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a66b932273445ee1ef608d59d3163be0a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#a66b932273445ee1ef608d59d3163be0a">clear</a> ()</td></tr>
 <tr class="separator:a66b932273445ee1ef608d59d3163be0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab962764447d5b3e5292140149615bee2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacele.html#a39b8460028fc5dd6f2d9ffeafa7307ed">size_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Registry.html#ab962764447d5b3e5292140149615bee2">entityCount</a> () const</td></tr>
@@ -193,8 +193,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a3763aca99d0917b29ca84a4333cc3f8e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3763aca99d0917b29ca84a4333cc3f8e">&#9670;&nbsp;</a></span>View</h2>
+<a id="aa2b4dd2da1dc2b08c391487037db9368"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa2b4dd2da1dc2b08c391487037db9368">&#9670;&nbsp;</a></span>View</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -202,7 +202,7 @@ Protected Attributes</h2></td></tr>
 template&lt;typename... T&gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">using <a class="el" href="classle_1_1Registry.html#a3763aca99d0917b29ca84a4333cc3f8e">le::Registry::View</a> =  std::deque&lt;std::tuple&lt;T*...&gt; &gt;</td>
+          <td class="memname">using <a class="el" href="classle_1_1Registry.html#aa2b4dd2da1dc2b08c391487037db9368">le::Registry::View</a> =  std::unordered_map&lt;<a class="el" href="structle_1_1Entity.html">Entity</a>, std::tuple&lt;T*...&gt;, <a class="el" href="structle_1_1EntityHasher.html">EntityHasher</a>&gt;</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -508,6 +508,23 @@ template&lt;typename... Ts&gt; </div>
 
 </div>
 </div>
+<a id="abb8e534b91a4ee5fa4a99c37fd769010"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abb8e534b91a4ee5fa4a99c37fd769010">&#9670;&nbsp;</a></span>flush()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void le::Registry::flush </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ab10d8413f69bd99ccae1cc8777c61109"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab10d8413f69bd99ccae1cc8777c61109">&#9670;&nbsp;</a></span>isAlive()</h2>
 
@@ -686,23 +703,6 @@ template&lt;typename... Ts&gt; </div>
 
 </div>
 </div>
-<a id="a90b6bac9648f158db35f7a758e3a7287"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a90b6bac9648f158db35f7a758e3a7287">&#9670;&nbsp;</a></span>sweep()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void le::Registry::sweep </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a61daf9a1b6becfa894f7a8b702c3a57c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a61daf9a1b6becfa894f7a8b702c3a57c">&#9670;&nbsp;</a></span>view() <span class="overload">[1/2]</span></h2>
 
@@ -712,7 +712,7 @@ template&lt;typename... Ts&gt; </div>
 template&lt;typename T1 , typename... Ts&gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="classle_1_1Registry.html#a3763aca99d0917b29ca84a4333cc3f8e">Registry::View</a>&lt; T1, Ts... &gt; le::Registry::view </td>
+          <td class="memname"><a class="el" href="classle_1_1Registry.html#aa2b4dd2da1dc2b08c391487037db9368">Registry::View</a>&lt; T1, Ts... &gt; le::Registry::view </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a>&#160;</td>
           <td class="paramname"><em>mask</em> = <code><a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1a05506081854bf82f3c49501d68693121">Flag::eDestroyed</a>&#160;|&#160;<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1ab32b520e58e1334ea07d4df5a4c5c402">Flag::eDisabled</a></code>, </td>
@@ -742,7 +742,7 @@ template&lt;typename T1 , typename... Ts&gt; </div>
 template&lt;typename T1 , typename... Ts&gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="classle_1_1Registry.html#a3763aca99d0917b29ca84a4333cc3f8e">Registry::View</a>&lt; T1 const, Ts const ... &gt; le::Registry::view </td>
+          <td class="memname"><a class="el" href="classle_1_1Registry.html#aa2b4dd2da1dc2b08c391487037db9368">Registry::View</a>&lt; T1 const, Ts const ... &gt; le::Registry::view </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="classle_1_1Registry.html#a01b809019e834282f192c289b1fe3c73">Flags</a>&#160;</td>
           <td class="paramname"><em>mask</em> = <code><a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1a05506081854bf82f3c49501d68693121">Flag::eDestroyed</a>&#160;|&#160;<a class="el" href="classle_1_1Registry.html#abb5b3287e2dddbbc449bf1a206259fb1ab32b520e58e1334ea07d4df5a4c5c402">Flag::eDisabled</a></code>, </td>

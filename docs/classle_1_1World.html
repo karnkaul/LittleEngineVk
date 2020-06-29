@@ -46,6 +46,7 @@ $(function() {
 <a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pro-types">Protected Types</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="#pro-attribs">Protected Attributes</a> &#124;
 <a href="#friends">Friends</a> &#124;
@@ -84,6 +85,9 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a880defea55429999599bb8fda893fef1"><td class="memTemplParams" colspan="2">template&lt;typename T , typename... Args&gt; </td></tr>
 <tr class="memitem:a880defea55429999599bb8fda893fef1"><td class="memTemplItemLeft" align="right" valign="top">static <a class="el" href="classle_1_1World.html#aaa246a90829687fa45477ad5e2162621">ID</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a880defea55429999599bb8fda893fef1">addWorld</a> (Args... args)</td></tr>
 <tr class="separator:a880defea55429999599bb8fda893fef1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a6d697eb3e9a902c1af76eb48fe21b4"><td class="memTemplParams" colspan="2">template&lt;typename T1 , typename T2 , typename... Tn&gt; </td></tr>
+<tr class="memitem:a3a6d697eb3e9a902c1af76eb48fe21b4"><td class="memTemplItemLeft" align="right" valign="top">static void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a3a6d697eb3e9a902c1af76eb48fe21b4">addWorld</a> ()</td></tr>
+<tr class="separator:a3a6d697eb3e9a902c1af76eb48fe21b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa392d4527a8b66018e71a4067b14cd7d"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:aa392d4527a8b66018e71a4067b14cd7d"><td class="memTemplItemLeft" align="right" valign="top">static T *&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#aa392d4527a8b66018e71a4067b14cd7d">getWorld</a> ()</td></tr>
 <tr class="separator:aa392d4527a8b66018e71a4067b14cd7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -98,8 +102,19 @@ Static Public Member Functions</h2></td></tr>
 <tr class="separator:aa4e4473b450d3d70a2091107e99f80cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a32406dcb843f0ce36b7a696c52d079b6"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classle_1_1World.html">World</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a32406dcb843f0ce36b7a696c52d079b6">active</a> ()</td></tr>
 <tr class="separator:a32406dcb843f0ce36b7a696c52d079b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aea60eeee2ae68d2ca71e3ec76ddd70f3"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#aea60eeee2ae68d2ca71e3ec76ddd70f3">start</a> (<a class="el" href="classle_1_1World.html#aaa246a90829687fa45477ad5e2162621">ID</a> <a class="el" href="classle_1_1World.html#a124988a323e22df6444a5735e7bb4bbe">id</a>)</td></tr>
-<tr class="separator:aea60eeee2ae68d2ca71e3ec76ddd70f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af5e8d442d69f35ac2f8ae714dc220314"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#af5e8d442d69f35ac2f8ae714dc220314">isBusy</a> ()</td></tr>
+<tr class="separator:af5e8d442d69f35ac2f8ae714dc220314"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adfd239b35d7c9f9a655e9606f1bd983b"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#adfd239b35d7c9f9a655e9606f1bd983b">worldLoadPending</a> ()</td></tr>
+<tr class="separator:adfd239b35d7c9f9a655e9606f1bd983b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-types"></a>
+Protected Types</h2></td></tr>
+<tr class="memitem:a8aa8b503b41ca0047c2bc59174226af8"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a8aa8b503b41ca0047c2bc59174226af8">Flag</a> : s8 { <a class="el" href="classle_1_1World.html#a8aa8b503b41ca0047c2bc59174226af8a85bdaa65495fdc86dab7db4997cfc247">Flag::eSkipManifestUnload</a>, 
+<a class="el" href="classle_1_1World.html#a8aa8b503b41ca0047c2bc59174226af8a98ce873df53900dd5454baba574ecb06">Flag::eCOUNT_</a>
+ }</td></tr>
+<tr class="separator:a8aa8b503b41ca0047c2bc59174226af8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aefa68cb5de8b01ee2a09e41415d3ec7b"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#aefa68cb5de8b01ee2a09e41415d3ec7b">Flags</a> = <a class="el" href="structle_1_1TFlags.html">TFlags</a>&lt; <a class="el" href="classle_1_1World.html#a8aa8b503b41ca0047c2bc59174226af8">Flag</a> &gt;</td></tr>
+<tr class="separator:aefa68cb5de8b01ee2a09e41415d3ec7b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
@@ -111,15 +126,25 @@ Protected Member Functions</h2></td></tr>
 <tr class="separator:a3db2e069b1cb323ccec4f9cb859a640d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2da5a80647c293c1b8742229fa739377"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a2da5a80647c293c1b8742229fa739377">stop</a> ()=0</td></tr>
 <tr class="separator:a2da5a80647c293c1b8742229fa739377"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aadfc15268ea96746e5fdbe6e0ea3bc3b"><td class="memItemLeft" align="right" valign="top">virtual stdfs::path&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#aadfc15268ea96746e5fdbe6e0ea3bc3b">manifestID</a> () const</td></tr>
+<tr class="separator:aadfc15268ea96746e5fdbe6e0ea3bc3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80b9afe05934bc07de96c4e20b6a7af7"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a80b9afe05934bc07de96c4e20b6a7af7">onManifestLoaded</a> ()</td></tr>
+<tr class="separator:a80b9afe05934bc07de96c4e20b6a7af7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a454d4328e134c9ee9b0a26401f1ad118"><td class="memItemLeft" align="right" valign="top">class <a class="el" href="classle_1_1Window.html">Window</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a454d4328e134c9ee9b0a26401f1ad118">window</a> () const</td></tr>
 <tr class="separator:a454d4328e134c9ee9b0a26401f1ad118"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
+<tr class="memitem:a5de2b9cd6c260a1d3ce095bed683ae36"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1World.html#aefa68cb5de8b01ee2a09e41415d3ec7b">Flags</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a5de2b9cd6c260a1d3ce095bed683ae36">m_flags</a></td></tr>
+<tr class="separator:a5de2b9cd6c260a1d3ce095bed683ae36"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a24a852ce6d30d4de1b16743da27cabcc"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1InputMapper.html">InputMapper</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a24a852ce6d30d4de1b16743da27cabcc">m_input</a></td></tr>
+<tr class="separator:a24a852ce6d30d4de1b16743da27cabcc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa28580dc9df73ef90f7a91fc8f8770ad"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Registry.html">Registry</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#aa28580dc9df73ef90f7a91fc8f8770ad">m_registry</a> = <a class="el" href="classle_1_1Registry.html">Registry</a>(<a class="el" href="classle_1_1Registry.html#a94a07e2be4b4089625656800a252991aaaf15e622936042b36ffe0258ae7cc271">Registry::DestroyMode::eDeferred</a>)</td></tr>
 <tr class="separator:aa28580dc9df73ef90f7a91fc8f8770ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5214cd0ad43715c6ff1bf60f69c4eff8"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#a5214cd0ad43715c6ff1bf60f69c4eff8">m_tName</a></td></tr>
 <tr class="separator:a5214cd0ad43715c6ff1bf60f69c4eff8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af00b336e12b7f3f38dff809efd962396"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1World.html#aaa246a90829687fa45477ad5e2162621">ID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1World.html#af00b336e12b7f3f38dff809efd962396">m_previousWorldID</a></td></tr>
+<tr class="separator:af00b336e12b7f3f38dff809efd962396"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="friends"></a>
 Friends</h2></td></tr>
@@ -127,6 +152,28 @@ Friends</h2></td></tr>
 <tr class="separator:ae8ec47530cccbba290f48d41e3153b2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Typedef Documentation</h2>
+<a id="aefa68cb5de8b01ee2a09e41415d3ec7b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aefa68cb5de8b01ee2a09e41415d3ec7b">&#9670;&nbsp;</a></span>Flags</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="classle_1_1World.html#aefa68cb5de8b01ee2a09e41415d3ec7b">le::World::Flags</a> =  <a class="el" href="structle_1_1TFlags.html">TFlags</a>&lt;<a class="el" href="classle_1_1World.html#a8aa8b503b41ca0047c2bc59174226af8">Flag</a>&gt;</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="aaa246a90829687fa45477ad5e2162621"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aaa246a90829687fa45477ad5e2162621">&#9670;&nbsp;</a></span>ID</h2>
 
@@ -138,6 +185,33 @@ Friends</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="a8aa8b503b41ca0047c2bc59174226af8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8aa8b503b41ca0047c2bc59174226af8">&#9670;&nbsp;</a></span>Flag</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="classle_1_1World.html#a8aa8b503b41ca0047c2bc59174226af8">le::World::Flag</a> : <a class="el" href="namespacele.html#af9e0cf7215603bba4aa12fe79e815d5f">s8</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a8aa8b503b41ca0047c2bc59174226af8a85bdaa65495fdc86dab7db4997cfc247"></a>eSkipManifestUnload&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8aa8b503b41ca0047c2bc59174226af8a98ce873df53900dd5454baba574ecb06"></a>eCOUNT_&#160;</td><td class="fielddoc"></td></tr>
+</table>
 
 </div>
 </div>
@@ -210,8 +284,32 @@ Friends</h2></td></tr>
 
 </div>
 </div>
+<a id="a3a6d697eb3e9a902c1af76eb48fe21b4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3a6d697eb3e9a902c1af76eb48fe21b4">&#9670;&nbsp;</a></span>addWorld() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T1 , typename T2 , typename... Tn&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void le::World::addWorld</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a880defea55429999599bb8fda893fef1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a880defea55429999599bb8fda893fef1">&#9670;&nbsp;</a></span>addWorld()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a880defea55429999599bb8fda893fef1">&#9670;&nbsp;</a></span>addWorld() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -348,6 +446,31 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
+<a id="af5e8d442d69f35ac2f8ae714dc220314"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af5e8d442d69f35ac2f8ae714dc220314">&#9670;&nbsp;</a></span>isBusy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static bool le::World::isBusy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="aa4e4473b450d3d70a2091107e99f80cd"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa4e4473b450d3d70a2091107e99f80cd">&#9670;&nbsp;</a></span>loadWorld()</h2>
 
@@ -374,6 +497,31 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
+<a id="aadfc15268ea96746e5fdbe6e0ea3bc3b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aadfc15268ea96746e5fdbe6e0ea3bc3b">&#9670;&nbsp;</a></span>manifestID()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual stdfs::path le::World::manifestID </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="aa4ad915bd33e957644faf8c9e57df926"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa4ad915bd33e957644faf8c9e57df926">&#9670;&nbsp;</a></span>name()</h2>
 
@@ -387,6 +535,31 @@ template&lt;typename T &gt; </div>
           <td> const</td>
         </tr>
       </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a80b9afe05934bc07de96c4e20b6a7af7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a80b9afe05934bc07de96c4e20b6a7af7">&#9670;&nbsp;</a></span>onManifestLoaded()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void le::World::onManifestLoaded </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 </div>
@@ -470,7 +643,7 @@ template&lt;typename T &gt; </div>
 </div>
 </div>
 <a id="a267f9d77473691092b15c61540bfe51c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a267f9d77473691092b15c61540bfe51c">&#9670;&nbsp;</a></span>start() <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a267f9d77473691092b15c61540bfe51c">&#9670;&nbsp;</a></span>start()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -488,32 +661,6 @@ template&lt;typename T &gt; </div>
   </td>
   <td class="mlabels-right">
 <span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">pure virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aea60eeee2ae68d2ca71e3ec76ddd70f3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aea60eeee2ae68d2ca71e3ec76ddd70f3">&#9670;&nbsp;</a></span>start() <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">static bool le::World::start </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="classle_1_1World.html#aaa246a90829687fa45477ad5e2162621">ID</a>&#160;</td>
-          <td class="paramname"><em>id</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
@@ -614,6 +761,31 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
+<a id="adfd239b35d7c9f9a655e9606f1bd983b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adfd239b35d7c9f9a655e9606f1bd983b">&#9670;&nbsp;</a></span>worldLoadPending()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static bool le::World::worldLoadPending </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <h2 class="groupheader">Friends And Related Function Documentation</h2>
 <a id="ae8ec47530cccbba290f48d41e3153b2e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae8ec47530cccbba290f48d41e3153b2e">&#9670;&nbsp;</a></span>engine::Service</h2>
@@ -638,6 +810,72 @@ template&lt;typename T &gt; </div>
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
+<a id="a5de2b9cd6c260a1d3ce095bed683ae36"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5de2b9cd6c260a1d3ce095bed683ae36">&#9670;&nbsp;</a></span>m_flags</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classle_1_1World.html#aefa68cb5de8b01ee2a09e41415d3ec7b">Flags</a> le::World::m_flags</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a24a852ce6d30d4de1b16743da27cabcc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a24a852ce6d30d4de1b16743da27cabcc">&#9670;&nbsp;</a></span>m_input</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classle_1_1InputMapper.html">InputMapper</a> le::World::m_input</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af00b336e12b7f3f38dff809efd962396"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af00b336e12b7f3f38dff809efd962396">&#9670;&nbsp;</a></span>m_previousWorldID</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classle_1_1World.html#aaa246a90829687fa45477ad5e2162621">ID</a> le::World::m_previousWorldID</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="aa28580dc9df73ef90f7a91fc8f8770ad"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa28580dc9df73ef90f7a91fc8f8770ad">&#9670;&nbsp;</a></span>m_registry</h2>
 

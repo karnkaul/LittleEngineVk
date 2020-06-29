@@ -75,8 +75,14 @@ Mesh::~Mesh()
 
 void Mesh::updateGeometry(Geometry geometry)
 {
-	if (!m_uImpl || geometry.vertices.empty())
+	if (!m_uImpl)
 	{
+		m_status = Status::eMoved;
+		return;
+	}
+	if (geometry.vertices.empty())
+	{
+		m_status = Status::eReady;
 		return;
 	}
 	auto const idStr = m_id.generic_string();
@@ -138,6 +144,7 @@ void Mesh::updateGeometry(Geometry geometry)
 		{
 			std::memcpy(m_uImpl->ibo.pMem, geometry.indices.data(), iSize);
 		}
+		m_status = Status::eReady;
 		break;
 	}
 	default:

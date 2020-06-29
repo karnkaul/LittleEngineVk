@@ -274,7 +274,6 @@ struct TextureImpl final
 	Image standby;
 	std::vector<stdfs::path> imgIDs;
 	FileReader const* pReader = nullptr;
-	bool bReloading = false;
 #endif
 };
 

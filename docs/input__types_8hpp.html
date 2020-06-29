@@ -59,6 +59,8 @@ $(function() {
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structle_1_1Mods.html">le::Mods</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structle_1_1JoyState.html">le::JoyState</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structle_1_1GamepadState.html">le::GamepadState</a></td></tr>
@@ -73,8 +75,8 @@ Namespaces</h2></td></tr>
 Typedefs</h2></td></tr>
 <tr class="memitem:a3861b7f27d526e4984e334adb4b0334c"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele.html#a3861b7f27d526e4984e334adb4b0334c">le::OnText</a> = Delegate&lt; char &gt;</td></tr>
 <tr class="separator:a3861b7f27d526e4984e334adb4b0334c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5c724c1d86ff7edb3d2da2e5cfb69bc1"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele.html#a5c724c1d86ff7edb3d2da2e5cfb69bc1">le::OnInput</a> = Delegate&lt; Key, Action, Mods &gt;</td></tr>
-<tr class="separator:a5c724c1d86ff7edb3d2da2e5cfb69bc1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3dc0e3f4b5c2d85374856b230c665785"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele.html#a3dc0e3f4b5c2d85374856b230c665785">le::OnInput</a> = Delegate&lt; Key, Action, Mods::VALUE &gt;</td></tr>
+<tr class="separator:a3dc0e3f4b5c2d85374856b230c665785"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3087bc48f68d02d39ac859906e5ceff5"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele.html#a3087bc48f68d02d39ac859906e5ceff5">le::OnMouse</a> = Delegate&lt; f64, f64 &gt;</td></tr>
 <tr class="separator:a3087bc48f68d02d39ac859906e5ceff5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae3b13d6e1d2e92a17eb213688253291e"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele.html#ae3b13d6e1d2e92a17eb213688253291e">le::OnFocus</a> = Delegate&lt; bool &gt;</td></tr>
@@ -285,17 +287,6 @@ Enumerations</h2></td></tr>
 <br />
  }</td></tr>
 <tr class="separator:afc051342bc0dc4e9d85e2f80a433a808"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4ef8382baa15ca62002acfd846d20134"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele.html#a4ef8382baa15ca62002acfd846d20134">le::Mods</a> { <br />
-&#160;&#160;<a class="el" href="namespacele.html#a4ef8382baa15ca62002acfd846d20134a1c14e5b5370d8832de61de607a645b39">le::eSHIFT</a> = 0x0001, 
-<a class="el" href="namespacele.html#a4ef8382baa15ca62002acfd846d20134a173be32a89c5c3a66da9e7ff80554911">le::eCONTROL</a> = 0x0002, 
-<a class="el" href="namespacele.html#a4ef8382baa15ca62002acfd846d20134a1aaea94a3a7ddb10aee349fa4dd70f1f">le::eALT</a> = 0x0004, 
-<a class="el" href="namespacele.html#a4ef8382baa15ca62002acfd846d20134ab722e31af4a1c57dca166bdb89dc6d01">le::eSUPER</a> = 0x0008, 
-<br />
-&#160;&#160;<a class="el" href="namespacele.html#a4ef8382baa15ca62002acfd846d20134a8b406125b8634e0be0b50141f2e05825">le::eCAPS_LOCK</a> = 0x0010, 
-<a class="el" href="namespacele.html#a4ef8382baa15ca62002acfd846d20134a6da66f05369ccdd65b9a8f8c743ace44">le::eNUM_LOCK</a> = 0x0020
-<br />
- }</td></tr>
-<tr class="separator:a4ef8382baa15ca62002acfd846d20134"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f6f1be49d2229d14c2a0e5ddbc279e0"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele.html#a1f6f1be49d2229d14c2a0e5ddbc279e0">le::PadAxis</a> : s8 { <br />
 &#160;&#160;<a class="el" href="namespacele.html#a1f6f1be49d2229d14c2a0e5ddbc279e0a7ea7f801892a6358b5aeb4579bc6942d">le::PadAxis::eLeftX</a> = 0, 
 <a class="el" href="namespacele.html#a1f6f1be49d2229d14c2a0e5ddbc279e0a4f7a2881873ce562c24028d6e0516670">le::PadAxis::eLeftY</a> = 1, 

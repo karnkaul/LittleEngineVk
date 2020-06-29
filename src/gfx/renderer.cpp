@@ -1,4 +1,3 @@
-#include "engine/gfx/screen_rect.hpp"
 #include <algorithm>
 #include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>
@@ -153,8 +152,8 @@ void RendererImpl::destroy()
 		for (auto& frame : m_frames)
 		{
 			frame.set.destroy();
-			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing,
-							 frame.renderReady, frame.presentReady);
+			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady,
+							 frame.presentReady);
 		}
 		g_device.destroy(m_samplerLayout, m_renderPass);
 		m_samplerLayout = vk::DescriptorSetLayout();
@@ -206,9 +205,8 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 
 bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 {
-	bool const bEmpty = (scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool {
-							 return batch.drawables.empty();
-						 }));
+	bool const bEmpty =
+		(scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }));
 	if (bExtGUI)
 	{
 		ext_gui::render();
@@ -336,6 +334,15 @@ bool RendererImpl::initExtGUI() const
 	return ext_gui::init(guiInfo);
 }
 
+ColourSpace RendererImpl::colourSpace() const
+{
+	if (m_context.colourFormat() == vk::Format::eB8G8R8A8Srgb)
+	{
+		return ColourSpace::eSRGBNonLinear;
+	}
+	return ColourSpace::eRGBLinear;
+}
+
 void RendererImpl::onFramebufferResize()
 {
 	m_context.onFramebufferResize();
@@ -434,7 +441,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
 					if (pMesh->m_material.pDiffuse)
 					{
-						ASSERT(pMesh->m_material.pDiffuse->isReady(), "Texture not ready!");
+						ASSERT(!pMesh->m_material.pDiffuse->isBusy(), "Texture busy!");
 						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
 					}
 					else
@@ -444,7 +451,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 					}
 					if (pMesh->m_material.pSpecular)
 					{
-						ASSERT(pMesh->m_material.pSpecular->isReady(), "Texture not ready!");
+						ASSERT(!pMesh->m_material.pSpecular->isBusy(), "Texture busy!");
 						pc.specularID = specular.add(pMesh->m_material.pSpecular);
 					}
 				}
@@ -498,8 +505,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_renderPass, m_samplerLayout);
 					ASSERT(bOk, "Pipeline update failure!");
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
-					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0,
-														 push.at(batchIdx).at(drawableIdx));
+					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					cmd.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pMesh->m_uImpl->ibo.count > 0)
 					{

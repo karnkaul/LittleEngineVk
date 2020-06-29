@@ -74,12 +74,14 @@ Inheritance diagram for le::Asset:</div>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
 Public Types</h2></td></tr>
 <tr class="memitem:a31aa8ac8fc4366d75037554016cb8291"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291">Status</a> : s8 { <br />
-&#160;&#160;<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291ae25389fdbd87cc583cb309cf7f349634">Status::eReady</a>, 
+&#160;&#160;<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a7b9cf82c13307a24d74c2fec226a83cc">Status::eIdle</a>, 
+<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291ae25389fdbd87cc583cb309cf7f349634">Status::eReady</a>, 
 <a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291ab8ccd1e1bafa581419b6fe300db8b782">Status::eLoading</a>, 
-<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a40508d7c8a96bc7ccccff699ee3ba9a1">Status::eReloaded</a>, 
-<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a946db550abb284f3a919132343c4d984">Status::eError</a>, 
+<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291aa49983dad2fd5693cfe1990b8e0882aa">Status::eReloading</a>, 
 <br />
-&#160;&#160;<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a070056768e06fdfbb47663f980e2416c">Status::eMoved</a>, 
+&#160;&#160;<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a40508d7c8a96bc7ccccff699ee3ba9a1">Status::eReloaded</a>, 
+<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a946db550abb284f3a919132343c4d984">Status::eError</a>, 
+<a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a070056768e06fdfbb47663f980e2416c">Status::eMoved</a>, 
 <a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a98ce873df53900dd5454baba574ecb06">Status::eCOUNT_</a>
 <br />
  }</td></tr>
@@ -105,6 +107,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a9a3c78447d644d02b366f28cf1b257d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a62683bd5ff9f5b794e2d528243ad11e4"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Asset.html#a62683bd5ff9f5b794e2d528243ad11e4">isReady</a> () const</td></tr>
 <tr class="separator:a62683bd5ff9f5b794e2d528243ad11e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1e8adc11029b0d3c3c85f63bded6f2e7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Asset.html#a1e8adc11029b0d3c3c85f63bded6f2e7">isBusy</a> () const</td></tr>
+<tr class="separator:a1e8adc11029b0d3c3c85f63bded6f2e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a56bd09255eec18164e15a44c6af2a23b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Asset.html#ab0a84a9e1ccab7b7d8257596acf7ab72">GUID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Asset.html#a56bd09255eec18164e15a44c6af2a23b">guid</a> () const</td></tr>
 <tr class="separator:a56bd09255eec18164e15a44c6af2a23b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -119,7 +123,7 @@ Public Attributes</h2></td></tr>
 Protected Attributes</h2></td></tr>
 <tr class="memitem:a405e68e55800b26bb915da996cdf7410"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Asset.html#ab0a84a9e1ccab7b7d8257596acf7ab72">GUID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Asset.html#a405e68e55800b26bb915da996cdf7410">m_guid</a></td></tr>
 <tr class="separator:a405e68e55800b26bb915da996cdf7410"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af998d26f2fec47e127e90af364b79ada"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Asset.html#af998d26f2fec47e127e90af364b79ada">m_status</a> = <a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291ae25389fdbd87cc583cb309cf7f349634">Status::eReady</a></td></tr>
+<tr class="memitem:af998d26f2fec47e127e90af364b79ada"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Asset.html#af998d26f2fec47e127e90af364b79ada">m_status</a> = <a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a7b9cf82c13307a24d74c2fec226a83cc">Status::eIdle</a></td></tr>
 <tr class="separator:af998d26f2fec47e127e90af364b79ada"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="friends"></a>
@@ -163,8 +167,10 @@ Friends</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291ae25389fdbd87cc583cb309cf7f349634"></a>eReady&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291a7b9cf82c13307a24d74c2fec226a83cc"></a>eIdle&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291ae25389fdbd87cc583cb309cf7f349634"></a>eReady&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291ab8ccd1e1bafa581419b6fe300db8b782"></a>eLoading&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291aa49983dad2fd5693cfe1990b8e0882aa"></a>eReloading&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291a40508d7c8a96bc7ccccff699ee3ba9a1"></a>eReloaded&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291a946db550abb284f3a919132343c4d984"></a>eError&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="a31aa8ac8fc4366d75037554016cb8291a070056768e06fdfbb47663f980e2416c"></a>eMoved&#160;</td><td class="fielddoc"></td></tr>
@@ -269,6 +275,23 @@ Friends</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="classle_1_1Asset.html#ab0a84a9e1ccab7b7d8257596acf7ab72">GUID</a> le::Asset::guid </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1e8adc11029b0d3c3c85f63bded6f2e7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1e8adc11029b0d3c3c85f63bded6f2e7">&#9670;&nbsp;</a></span>isBusy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool le::Asset::isBusy </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -427,7 +450,7 @@ Friends</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291">Status</a> le::Asset::m_status = <a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291ae25389fdbd87cc583cb309cf7f349634">Status::eReady</a></td>
+          <td class="memname"><a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291">Status</a> le::Asset::m_status = <a class="el" href="classle_1_1Asset.html#a31aa8ac8fc4366d75037554016cb8291a7b9cf82c13307a24d74c2fec226a83cc">Status::eIdle</a></td>
         </tr>
       </table>
   </td>

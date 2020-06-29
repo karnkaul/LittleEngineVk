@@ -19,8 +19,8 @@ RenderCmd::~RenderCmd()
 	end();
 }
 
-void RenderCmd::begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent,
-					  vk::ArrayProxy<vk::ClearValue const> clearValues, vk::SubpassContents subpassContents)
+void RenderCmd::begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, vk::ArrayProxy<vk::ClearValue const> clearValues,
+					  vk::SubpassContents subpassContents)
 {
 	ASSERT(m_commandBuffer != vk::CommandBuffer(), "Null command buffer!");
 	ASSERT(!m_bRecording, "Command buffer already recording!");

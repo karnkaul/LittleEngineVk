@@ -43,7 +43,7 @@ public:
 
 	struct Info final
 	{
-		stdfs::path id;
+		glm::vec3 origin = glm::vec3(0.0f);
 		std::vector<TexData> textures;
 		std::vector<MatData> materials;
 		std::vector<MeshData> meshData;
@@ -56,7 +56,7 @@ public:
 
 	struct LoadRequest final
 	{
-		stdfs::path jsonID;
+		stdfs::path assetID;
 		IOReader const* pReader = nullptr;
 	};
 
@@ -80,6 +80,9 @@ protected:
 
 public:
 	std::vector<Mesh const*> meshes() const;
+#if defined(LEVK_EDITOR)
+	std::deque<Mesh>& loadedMeshes();
+#endif
 
 public:
 	Status update() override;

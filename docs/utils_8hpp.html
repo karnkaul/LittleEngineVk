@@ -54,10 +54,12 @@ $(function() {
 <div class="textblock"><code>#include &lt;cstring&gt;</code><br />
 <code>#include &lt;future&gt;</code><br />
 <code>#include &lt;initializer_list&gt;</code><br />
+<code>#include &lt;mutex&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &lt;typeinfo&gt;</code><br />
 <code>#include &lt;type_traits&gt;</code><br />
+<code>#include &lt;<a class="el" href="assert_8hpp.html">core/assert.hpp</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="std__types_8hpp.html">core/std_types.hpp</a>&gt;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
@@ -106,6 +108,9 @@ Functions</h2></td></tr>
 <tr class="memitem:aa5723057f436fe1de4c59f69ccb96171"><td class="memTemplItemLeft" align="right" valign="top">std::string&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacele_1_1utils.html#aa5723057f436fe1de4c59f69ccb96171">le::utils::tName</a> (T const &amp;t)</td></tr>
 <tr class="memdesc:aa5723057f436fe1de4c59f69ccb96171"><td class="mdescLeft">&#160;</td><td class="mdescRight">Obtain demangled type name of an object.  <a href="namespacele_1_1utils.html#aa5723057f436fe1de4c59f69ccb96171">More...</a><br /></td></tr>
 <tr class="separator:aa5723057f436fe1de4c59f69ccb96171"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0f85888a6bbe9dd27baf2d000e616890"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacele_1_1utils.html#a0f85888a6bbe9dd27baf2d000e616890">le::utils::removeNamesapces</a> (std::string &amp;out_name)</td></tr>
+<tr class="memdesc:a0f85888a6bbe9dd27baf2d000e616890"><td class="mdescLeft">&#160;</td><td class="mdescRight">Remove namespace prefixes from a type string.  <a href="namespacele_1_1utils.html#a0f85888a6bbe9dd27baf2d000e616890">More...</a><br /></td></tr>
+<tr class="separator:a0f85888a6bbe9dd27baf2d000e616890"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5ab67d58224ee08f1387295ceb55973f"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:a5ab67d58224ee08f1387295ceb55973f"><td class="memTemplItemLeft" align="right" valign="top">std::string&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacele_1_1utils.html#a5ab67d58224ee08f1387295ceb55973f">le::utils::tName</a> ()</td></tr>
 <tr class="memdesc:a5ab67d58224ee08f1387295ceb55973f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Obtain demangled type name of a type.  <a href="namespacele_1_1utils.html#a5ab67d58224ee08f1387295ceb55973f">More...</a><br /></td></tr>

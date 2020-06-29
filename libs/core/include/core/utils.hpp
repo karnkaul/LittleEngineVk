@@ -2,10 +2,12 @@
 #include <cstring>
 #include <future>
 #include <initializer_list>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <typeinfo>
 #include <type_traits>
+#include <core/assert.hpp>
 #include <core/std_types.hpp>
 
 namespace le
@@ -107,6 +109,11 @@ std::string tName(T const& t)
 {
 	return demangle(typeid(t).name());
 }
+
+///
+/// \brief Remove namespace prefixes from a type string
+///
+void removeNamesapces(std::string& out_name);
 
 ///
 /// \brief Obtain demangled type name of a type

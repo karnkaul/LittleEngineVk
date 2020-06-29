@@ -1,0 +1,49 @@
+{
+	"mode": "passthrough",
+	"bindings": [
+		{
+			"id": "wireframe",
+			"triggers": [
+				{
+					"key": "p",
+					"mods": [
+						"ctrl"
+					]
+				}
+			]
+		},
+		{
+			"id": "reload_models",
+			"triggers": [
+				{
+					"key": "m",
+					"mods": [
+						"ctrl"
+					]
+				}
+			]
+		},
+		{
+			"id": "quit",
+			"triggers": [
+				{
+					"key": "w",
+					"mods": [
+						"ctrl"
+					]
+				}
+			]
+		},
+		{
+			"id": "run",
+			"states": [
+				{
+					"key": "left_shift"
+				},
+				{
+					"key": "right_shift"
+				}
+			]
+		}
+	]
+}

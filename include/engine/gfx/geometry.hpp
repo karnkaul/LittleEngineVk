@@ -29,7 +29,7 @@ struct Geometry final
 	void addIndices(std::vector<u32> newIndices);
 };
 
-Geometry createQuad(f32 side = 1.0f);
+Geometry createQuad(glm::vec2 const& size = {1.0f, 1.0f}, glm::vec2 const& origin = {0.0f, 0.0f});
 Geometry createCube(f32 side = 1.0f);
 Geometry createCircle(f32 diameter = 1.0f, u16 points = 16);
 Geometry createCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 16);

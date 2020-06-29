@@ -43,6 +43,7 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
@@ -52,33 +53,53 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
+<p>Singleton for managing all classes derived from <a class="el" href="classle_1_1Asset.html">Asset</a>.  
+ <a href="classle_1_1Resources.html#details">More...</a></p>
+
 <p><code>#include &lt;resources.hpp&gt;</code></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a6a98919f0b7f60b2c2ac0902b419114b"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">Semaphore</a> = std::shared_ptr&lt; <a class="el" href="namespacele.html#ae91909e6ad816de8befedf38bd648d7d">s32</a> &gt;</td></tr>
+<tr class="separator:a6a98919f0b7f60b2c2ac0902b419114b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ab81f6c076e1582663d081833d5472068"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#ab81f6c076e1582663d081833d5472068">init</a> (<a class="el" href="classle_1_1IOReader.html">IOReader</a> const &amp;data)</td></tr>
+<tr class="memdesc:ab81f6c076e1582663d081833d5472068"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialise singleton and turn on service.  <a href="classle_1_1Resources.html#ab81f6c076e1582663d081833d5472068">More...</a><br /></td></tr>
 <tr class="separator:ab81f6c076e1582663d081833d5472068"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab04594a9ca6d64b17ca3f3608a341835"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:ab04594a9ca6d64b17ca3f3608a341835"><td class="memTemplItemLeft" align="right" valign="top">T *&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#ab04594a9ca6d64b17ca3f3608a341835">create</a> (stdfs::path const &amp;id, typename T::Info info)</td></tr>
+<tr class="memdesc:ab04594a9ca6d64b17ca3f3608a341835"><td class="mdescLeft">&#160;</td><td class="mdescRight">Construct and store an <a class="el" href="classle_1_1Asset.html">Asset</a>.  <a href="classle_1_1Resources.html#ab04594a9ca6d64b17ca3f3608a341835">More...</a><br /></td></tr>
 <tr class="separator:ab04594a9ca6d64b17ca3f3608a341835"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abd86a60bbe829026c85c157a1d2964bc"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:abd86a60bbe829026c85c157a1d2964bc"><td class="memTemplItemLeft" align="right" valign="top">T *&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#abd86a60bbe829026c85c157a1d2964bc">get</a> (stdfs::path const &amp;id)</td></tr>
-<tr class="separator:abd86a60bbe829026c85c157a1d2964bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6010fac85499d86419f3a93df6837efc"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:a6010fac85499d86419f3a93df6837efc"><td class="memTemplItemLeft" align="right" valign="top">T *&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a6010fac85499d86419f3a93df6837efc">get</a> (stdfs::path const &amp;id) const</td></tr>
+<tr class="memdesc:a6010fac85499d86419f3a93df6837efc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Obtain loaded asset.  <a href="classle_1_1Resources.html#a6010fac85499d86419f3a93df6837efc">More...</a><br /></td></tr>
+<tr class="separator:a6010fac85499d86419f3a93df6837efc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4d53a853d370b9c436ded7a050f849c2"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:a4d53a853d370b9c436ded7a050f849c2"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a4d53a853d370b9c436ded7a050f849c2">unload</a> (stdfs::path const &amp;id)</td></tr>
+<tr class="memdesc:a4d53a853d370b9c436ded7a050f849c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unloaded a loaded asset.  <a href="classle_1_1Resources.html#a4d53a853d370b9c436ded7a050f849c2">More...</a><br /></td></tr>
 <tr class="separator:a4d53a853d370b9c436ded7a050f849c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8304c6e32ec1449a264ba821127782d1"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a8304c6e32ec1449a264ba821127782d1">unload</a> (stdfs::path const &amp;id)</td></tr>
+<tr class="memdesc:a8304c6e32ec1449a264ba821127782d1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unloaded a loaded asset.  <a href="classle_1_1Resources.html#a8304c6e32ec1449a264ba821127782d1">More...</a><br /></td></tr>
 <tr class="separator:a8304c6e32ec1449a264ba821127782d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0f23b0e9a0a83920afd057245ad3d453"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a0f23b0e9a0a83920afd057245ad3d453">update</a> ()</td></tr>
+<tr class="memdesc:a0f23b0e9a0a83920afd057245ad3d453"><td class="mdescLeft">&#160;</td><td class="mdescRight">Update all loaded Assets.  <a href="classle_1_1Resources.html#a0f23b0e9a0a83920afd057245ad3d453">More...</a><br /></td></tr>
 <tr class="separator:a0f23b0e9a0a83920afd057245ad3d453"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad92e4f21d935779a8b16e7026e2470e3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#ad92e4f21d935779a8b16e7026e2470e3">deinit</a> ()</td></tr>
+<tr class="memdesc:ad92e4f21d935779a8b16e7026e2470e3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unload all assets and turn off service.  <a href="classle_1_1Resources.html#ad92e4f21d935779a8b16e7026e2470e3">More...</a><br /></td></tr>
 <tr class="separator:ad92e4f21d935779a8b16e7026e2470e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a9615061ccdaa27b21da0b1f6378869"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">Semaphore</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a3a9615061ccdaa27b21da0b1f6378869">setBusy</a> () const</td></tr>
+<tr class="memdesc:a3a9615061ccdaa27b21da0b1f6378869"><td class="mdescLeft">&#160;</td><td class="mdescRight">Acquire busy semaphore.  <a href="classle_1_1Resources.html#a3a9615061ccdaa27b21da0b1f6378869">More...</a><br /></td></tr>
+<tr class="separator:a3a9615061ccdaa27b21da0b1f6378869"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae16addac99b3866f74ab71986c8b026"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#aae16addac99b3866f74ab71986c8b026">waitIdle</a> ()</td></tr>
+<tr class="memdesc:aae16addac99b3866f74ab71986c8b026"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wait until owned semaphore is idle.  <a href="classle_1_1Resources.html#aae16addac99b3866f74ab71986c8b026">More...</a><br /></td></tr>
 <tr class="separator:aae16addac99b3866f74ab71986c8b026"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a773d3d8c3ab7e8532c7cd62c443470a8"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classle_1_1Resources.html">Resources</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a773d3d8c3ab7e8532c7cd62c443470a8">inst</a> ()</td></tr>
+<tr class="memdesc:a773d3d8c3ab7e8532c7cd62c443470a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference to <a class="el" href="classle_1_1Resources.html" title="Singleton for managing all classes derived from Asset.">Resources</a> singleton instance.  <a href="classle_1_1Resources.html#a773d3d8c3ab7e8532c7cd62c443470a8">More...</a><br /></td></tr>
 <tr class="separator:a773d3d8c3ab7e8532c7cd62c443470a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-attribs"></a>
@@ -86,6 +107,24 @@ Static Public Attributes</h2></td></tr>
 <tr class="memitem:a4c7c1765407813663ca3b502b2df4585"><td class="memItemLeft" align="right" valign="top">static std::string const&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classle_1_1Resources.html#a4c7c1765407813663ca3b502b2df4585">s_tName</a></td></tr>
 <tr class="separator:a4c7c1765407813663ca3b502b2df4585"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Singleton for managing all classes derived from <a class="el" href="classle_1_1Asset.html">Asset</a>. </p>
+<p>Important: <a class="el" href="classle_1_1Resources.html" title="Singleton for managing all classes derived from Asset.">Resources</a> is a static singleton, it does not participate in RAII, and requires explicit calls to <code><a class="el" href="classle_1_1Resources.html#ab81f6c076e1582663d081833d5472068" title="Initialise singleton and turn on service.">init()</a></code> / <code><a class="el" href="classle_1_1Resources.html#ad92e4f21d935779a8b16e7026e2470e3" title="Unload all assets and turn off service.">deinit()</a></code>. </p>
+</div><h2 class="groupheader">Member Typedef Documentation</h2>
+<a id="a6a98919f0b7f60b2c2ac0902b419114b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6a98919f0b7f60b2c2ac0902b419114b">&#9670;&nbsp;</a></span>Semaphore</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">le::Resources::Semaphore</a> =  std::shared_ptr&lt;<a class="el" href="namespacele.html#ae91909e6ad816de8befedf38bd648d7d">s32</a>&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="ab04594a9ca6d64b17ca3f3608a341835"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab04594a9ca6d64b17ca3f3608a341835">&#9670;&nbsp;</a></span>create()</h2>
@@ -123,6 +162,9 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 
+<p>Construct and store an <a class="el" href="classle_1_1Asset.html">Asset</a>. </p>
+<p>Construction of Assets will occur in parallel, but insertion into map is mutex locked </p>
+
 </div>
 </div>
 <a id="ad92e4f21d935779a8b16e7026e2470e3"></a>
@@ -140,10 +182,12 @@ template&lt;typename T &gt; </div>
       </table>
 </div><div class="memdoc">
 
+<p>Unload all assets and turn off service. </p>
+
 </div>
 </div>
-<a id="abd86a60bbe829026c85c157a1d2964bc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#abd86a60bbe829026c85c157a1d2964bc">&#9670;&nbsp;</a></span>get()</h2>
+<a id="a6010fac85499d86419f3a93df6837efc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6010fac85499d86419f3a93df6837efc">&#9670;&nbsp;</a></span>get()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -158,7 +202,7 @@ template&lt;typename T &gt; </div>
           <td>(</td>
           <td class="paramtype">stdfs::path const &amp;&#160;</td>
           <td class="paramname"><em>id</em></td><td>)</td>
-          <td></td>
+          <td> const</td>
         </tr>
       </table>
   </td>
@@ -167,6 +211,9 @@ template&lt;typename T &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
+
+<p>Obtain loaded asset. </p>
+<dl class="section return"><dt>Returns</dt><dd>Asset*, if loaded, else <code>nullptr</code> </dd></dl>
 
 </div>
 </div>
@@ -185,6 +232,8 @@ template&lt;typename T &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Initialise singleton and turn on service. </p>
 
 </div>
 </div>
@@ -210,6 +259,28 @@ template&lt;typename T &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
+
+<p>Reference to <a class="el" href="classle_1_1Resources.html" title="Singleton for managing all classes derived from Asset.">Resources</a> singleton instance. </p>
+
+</div>
+</div>
+<a id="a3a9615061ccdaa27b21da0b1f6378869"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3a9615061ccdaa27b21da0b1f6378869">&#9670;&nbsp;</a></span>setBusy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classle_1_1Resources.html#a6a98919f0b7f60b2c2ac0902b419114b">Semaphore</a> le::Resources::setBusy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Acquire busy semaphore. </p>
+<dl class="section return"><dt>Returns</dt><dd>Handle to owned Semaphore </dd></dl>
 
 </div>
 </div>
@@ -239,6 +310,9 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 
+<p>Unloaded a loaded asset. </p>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if unloaded, <code>false</code> if not present </dd></dl>
+
 </div>
 </div>
 <a id="a8304c6e32ec1449a264ba821127782d1"></a>
@@ -257,6 +331,9 @@ template&lt;typename T &gt; </div>
       </table>
 </div><div class="memdoc">
 
+<p>Unloaded a loaded asset. </p>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if unloaded, <code>false</code> if not present </dd></dl>
+
 </div>
 </div>
 <a id="a0f23b0e9a0a83920afd057245ad3d453"></a>
@@ -274,6 +351,8 @@ template&lt;typename T &gt; </div>
       </table>
 </div><div class="memdoc">
 
+<p>Update all loaded Assets. </p>
+
 </div>
 </div>
 <a id="aae16addac99b3866f74ab71986c8b026"></a>
@@ -290,6 +369,8 @@ template&lt;typename T &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Wait until owned semaphore is idle. </p>
 
 </div>
 </div>

@@ -46,7 +46,6 @@ struct Submit final
 {
 	std::deque<Stage> stages;
 	vk::Fence done;
-	bool bDone = false;
 };
 
 std::string const s_tName = utils::tName<VRAM>();
@@ -84,7 +83,7 @@ Stage::Command newCommand(vk::DeviceSize bufferSize)
 		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 		poolInfo.queueFamilyIndex = g_device.queues.transfer.familyIndex;
 		pool = g_device.device.createCommandPool(poolInfo);
-		if constexpr (g_VRAM_bLogAllocs)
+		if (g_VRAM_bLogAllocs)
 		{
 			LOG(g_VRAM_logLevel, "[{}] Created command pool for thread [{}]", s_tName, threads::thisThreadID());
 		}
@@ -177,7 +176,7 @@ void vram::deinit()
 void vram::update()
 {
 	auto removeDone = [](Submit& submit) -> bool {
-		if (submit.bDone)
+		if (g_device.isSignalled(submit.done))
 		{
 			for (auto& stage : submit.stages)
 			{
@@ -189,10 +188,6 @@ void vram::update()
 			}
 			g_device.destroy(submit.done);
 			return true;
-		}
-		if (g_device.isSignalled(submit.done))
-		{
-			submit.bDone = true;
 		}
 		return false;
 	};
@@ -256,7 +251,7 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	std::scoped_lock<std::mutex> lock(g_mutex);
 	g_allocations.at((size_t)ResourceType::eBuffer) += ret.writeSize;
-	if constexpr (g_VRAM_bLogAllocs)
+	if (g_VRAM_bLogAllocs)
 	{
 		if (!bSilent)
 		{
@@ -415,7 +410,7 @@ Image vram::createImage(ImageInfo const& info)
 	ret.mode = queues.mode;
 	std::scoped_lock<std::mutex> lock(g_mutex);
 	g_allocations.at((size_t)ResourceType::eImage) += ret.allocatedSize;
-	if constexpr (g_VRAM_bLogAllocs)
+	if (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.allocatedSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
@@ -434,7 +429,7 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 		vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
 		std::scoped_lock<std::mutex> lock(g_mutex);
 		g_allocations.at((size_t)ResourceType::eBuffer) -= buffer.writeSize;
-		if constexpr (g_VRAM_bLogAllocs)
+		if (g_VRAM_bLogAllocs)
 		{
 			if (!bSilent)
 			{
@@ -537,7 +532,7 @@ void vram::release(Image image)
 		vmaDestroyImage(g_allocator, image.image, image.handle);
 		std::scoped_lock<std::mutex> lock(g_mutex);
 		g_allocations.at((size_t)ResourceType::eImage) -= image.allocatedSize;
-		if constexpr (g_VRAM_bLogAllocs)
+		if (g_VRAM_bLogAllocs)
 		{
 			if (image.info.actualSize > 0)
 			{

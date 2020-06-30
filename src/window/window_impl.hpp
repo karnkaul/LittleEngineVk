@@ -50,6 +50,7 @@ public:
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
+	std::vector<PresentMode> m_presentModes;
 	Window* m_pWindow;
 
 	static bool init();
@@ -75,6 +76,9 @@ public:
 	void destroy();
 
 	void onFramebufferSize(glm::ivec2 const& size);
+
+	PresentMode presentMode() const;
+	bool setPresentMode(PresentMode mode);
 
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;

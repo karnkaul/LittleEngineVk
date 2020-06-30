@@ -481,11 +481,11 @@ bool WindowImpl::create(Window::Info const& info)
 		if (os::isDefined("immediate"))
 		{
 			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
-			rendererInfo.contextInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)PresentMode::eImmediate));
+			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)PresentMode::eImmediate);
 		}
 		for (auto presentMode : info.options.presentModes)
 		{
-			rendererInfo.contextInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));
+			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)presentMode);
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
@@ -509,6 +509,12 @@ bool WindowImpl::create(Window::Info const& info)
 		glfwShowWindow(m_uNativeWindow->m_pWindow);
 #endif
 		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo, &m_pWindow->m_renderer);
+		m_presentModes.clear();
+		m_presentModes.reserve(m_pWindow->m_renderer.m_uImpl->m_context.m_metadata.presentModes.size());
+		for (auto mode : m_pWindow->m_renderer.m_uImpl->m_context.m_metadata.presentModes)
+		{
+			m_presentModes.push_back((PresentMode)mode);
+		}
 #if defined(LEVK_EDITOR)
 		if (!g_pEditorWindow && !gfx::ext_gui::isInit())
 		{
@@ -615,6 +621,16 @@ void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 		m_pWindow->m_renderer.m_uImpl->onFramebufferResize();
 	}
 	return;
+}
+
+PresentMode WindowImpl::presentMode() const
+{
+	return m_pWindow->m_renderer.m_uImpl ? (PresentMode)m_pWindow->m_renderer.m_uImpl->presentMode() : PresentMode::eFifo;
+}
+
+bool WindowImpl::setPresentMode(PresentMode mode)
+{
+	return m_pWindow->m_renderer.m_uImpl ? m_pWindow->m_renderer.m_uImpl->setPresentMode((vk::PresentModeKHR)mode) : false;
 }
 
 glm::ivec2 WindowImpl::framebufferSize() const

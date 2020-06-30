@@ -17,15 +17,15 @@ enum class PolygonMode : s8
 enum class CullMode : s8
 {
 	eNone,
-	eCounterClockwise,
-	eClockwise,
+	eFront,
+	eBack,
 	eCOUNT_
 };
 
 enum class FrontFace : s8
 {
-	eFront,
-	eBack,
+	eCounterClockwise,
+	eClockwise,
 	eCOUNT_
 };
 
@@ -48,7 +48,7 @@ public:
 		f32 lineWidth = 1.0f;
 		PolygonMode polygonMode = PolygonMode::eFill;
 		CullMode cullMode = CullMode::eNone;
-		FrontFace frontFace = FrontFace::eFront;
+		FrontFace frontFace = FrontFace::eCounterClockwise;
 		Flags flags = Flag::eBlend | Flag::eDepthTest | Flag::eDepthWrite;
 	};
 

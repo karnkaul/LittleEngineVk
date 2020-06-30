@@ -20,11 +20,10 @@ enum class ColourSpace : s8
 
 enum class PresentMode : s8
 {
-	eFIFO,
-	eMailbox,
 	eImmediate,
+	eMailbox,
+	eFifo,
+	eFifoRelaxed,
 	eCOUNT_
 };
-
-[[maybe_unused]] constexpr std::array colorSpaceNames = {"Unknown", "RGB Linear", "SRGB Non-linear"};
 } // namespace le

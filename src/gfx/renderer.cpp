@@ -185,9 +185,9 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	implInfo.vertexAttributes = rd::vbo::vertexAttributes();
 	implInfo.pushConstantRanges = rd::PushConstants::ranges();
 	implInfo.renderPass = m_renderPass;
-	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
-	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
-	implInfo.frontFace = g_frontFaceMap.at((size_t)info.frontFace);
+	implInfo.polygonMode = (vk::PolygonMode)info.polygonMode;
+	implInfo.cullMode = (vk::CullModeFlagBits)info.cullMode;
+	implInfo.frontFace = (vk::FrontFace)info.frontFace;
 	implInfo.samplerLayout = m_samplerLayout;
 	implInfo.window = m_window;
 	implInfo.staticLineWidth = info.lineWidth;
@@ -341,6 +341,27 @@ ColourSpace RendererImpl::colourSpace() const
 		return ColourSpace::eSRGBNonLinear;
 	}
 	return ColourSpace::eRGBLinear;
+}
+
+vk::PresentModeKHR RendererImpl::presentMode() const
+{
+	return m_context.m_metadata.presentMode;
+}
+
+std::vector<vk::PresentModeKHR> const& RendererImpl::presentModes() const
+{
+	return m_context.m_metadata.presentModes;
+}
+
+bool RendererImpl::setPresentMode(vk::PresentModeKHR mode)
+{
+	auto const& modes = presentModes();
+	if (auto search = std::find(modes.begin(), modes.end(), mode); search != modes.end())
+	{
+		m_context.m_metadata.info.options.presentModes = {mode};
+		return m_context.recreateSwapchain();
+	}
+	return false;
 }
 
 void RendererImpl::onFramebufferResize()

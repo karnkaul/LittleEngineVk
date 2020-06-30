@@ -86,9 +86,9 @@ public:
 public:
 	Swapchain m_swapchain;
 	Flags m_flags;
+	Metadata m_metadata;
 
 private:
-	Metadata m_metadata;
 	WindowID m_window;
 
 public:
@@ -104,11 +104,11 @@ public:
 	vk::Format colourFormat() const;
 	vk::Format depthFormat() const;
 
+	bool recreateSwapchain();
+
 private:
 	bool createSwapchain();
 	void destroySwapchain();
 	void cleanup();
-
-	bool recreateSwapchain();
 };
 } // namespace le::gfx

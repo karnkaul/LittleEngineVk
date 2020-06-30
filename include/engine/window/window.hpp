@@ -112,6 +112,10 @@ public:
 	void close();
 	void destroy();
 
+	PresentMode presentMode() const;
+	std::vector<PresentMode> supportedPresentModes() const;
+	bool setPresentMode(PresentMode mode);
+
 	void setCursorMode(input::CursorMode mode) const;
 	input::CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;

@@ -91,6 +91,10 @@ public:
 
 	ColourSpace colourSpace() const;
 
+	vk::PresentModeKHR presentMode() const;
+	std::vector<vk::PresentModeKHR> const& presentModes() const;
+	bool setPresentMode(vk::PresentModeKHR mode);
+
 private:
 	void onFramebufferResize();
 	FrameSync& frameSync();

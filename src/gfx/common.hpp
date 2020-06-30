@@ -49,32 +49,6 @@ using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm
 };
-
-[[maybe_unused]] constexpr std::array g_presentModeMap = 
-{
-	vk::PresentModeKHR::eFifo,
-	vk::PresentModeKHR::eMailbox,
-	vk::PresentModeKHR::eImmediate,
-};
-
-[[maybe_unused]] constexpr std::array g_polygonModeMap = 
-{
-	vk::PolygonMode::eFill,
-	vk::PolygonMode::eLine
-};
-
-[[maybe_unused]] constexpr std::array g_cullModeMap = 
-{
-	vk::CullModeFlagBits::eNone,
-	vk::CullModeFlagBits::eBack,
-	vk::CullModeFlagBits::eFront
-};
-
-[[maybe_unused]] constexpr std::array g_frontFaceMap = 
-{
-	vk::FrontFace::eCounterClockwise,
-	vk::FrontFace::eClockwise
-};
 // clang-format on 
 
 

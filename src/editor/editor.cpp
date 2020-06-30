@@ -191,6 +191,32 @@ void listAssets(std::string_view tabName)
 	}
 }
 
+void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
+{
+	static bool s_bAssets = false;
+	s_bAssets |= ImGui::Button("Resources");
+	if (s_bAssets)
+	{
+		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Loaded Assets", &s_bAssets, ImGuiWindowFlags_NoSavedSettings))
+		{
+			if (ImGui::BeginTabBar("Resources"))
+			{
+				listAssets<gfx::Model>("Models");
+				listAssets<gfx::Mesh>("Meshes");
+				listAssets<gfx::Font>("Fonts");
+				listAssets<gfx::Texture>("Textures");
+				listAssets<gfx::Material>("Materials");
+				listAssets<gfx::Sampler>("Samplers");
+				listAssets<gfx::Shader>("Shaders");
+				ImGui::EndTabBar();
+			}
+		}
+		ImGui::End();
+	}
+}
+
 template <typename T>
 bool dummy(T&)
 {
@@ -198,8 +224,8 @@ bool dummy(T&)
 }
 
 template <typename T, typename F, typename F2>
-void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter,
-				  glm::ivec2 const& pos, bool bNone = true)
+void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter, glm::vec2 const& pos,
+				  glm::vec2 const& size, bool bNone = true)
 {
 	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
 											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -212,8 +238,8 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 		{
 			*pBool = false;
 		}
-		ImGui::SetNextWindowSize(ImVec2(300.0f, 200.0f), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ImVec2((f32)pos.x, (f32)pos.y), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
 		{
 			if (bNone && ImGui::Selectable("[None]"))
@@ -238,17 +264,17 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 	}
 }
 
-void inspectMaterial(gfx::Mesh& out_mesh, size_t idx, glm::ivec2 const& pos)
+void inspectMaterial(gfx::Mesh& out_mesh, size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
 {
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
 		inspectAsset<gfx::Material>(
 			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
-			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, false);
+			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, size, false);
 		inspectAsset<gfx::Texture>(
 			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
 			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; }, [](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; },
-			pos);
+			pos, size);
 		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
 		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;
@@ -265,52 +291,8 @@ void inspectMaterial(gfx::Mesh& out_mesh, size_t idx, glm::ivec2 const& pos)
 	}
 }
 
-void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 {
-	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
-	{
-		return;
-	}
-	static s32 const s_xPad = 2;
-	static s32 const s_dy = 2;
-
-	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
-	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
-	ImGui::SetNextWindowPos(ImVec2(s_xPad, (f32)s_dy), ImGuiCond_Always);
-	if (!ImGui::Begin("Inspector", nullptr, flags))
-	{
-		ImGui::End();
-		return;
-	}
-	static bool s_bAssets = false;
-	s_bAssets |= ImGui::Button("Resources");
-	if (s_bAssets)
-	{
-		ImGui::SetNextWindowPos(ImVec2((f32)(panelSize.x + s_xPad), 200.0f), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(500.0f, 300.0f), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin("Loaded Assets", &s_bAssets, ImGuiWindowFlags_NoSavedSettings))
-		{
-			if (ImGui::BeginTabBar(""))
-			{
-				listAssets<gfx::Model>("Models");
-				listAssets<gfx::Mesh>("Meshes");
-				listAssets<gfx::Font>("Fonts");
-				listAssets<gfx::Texture>("Textures");
-				listAssets<gfx::Material>("Materials");
-				listAssets<gfx::Sampler>("Samplers");
-				listAssets<gfx::Shader>("Shaders");
-				ImGui::EndTabBar();
-			}
-		}
-		ImGui::End();
-	}
-	static bool s_bImGuiDemo = false;
-	s_bImGuiDemo |= ImGui::Button("ImGui Demo");
-	if (s_bImGuiDemo)
-	{
-		ImGui::ShowDemoWindow(&s_bImGuiDemo);
-	}
-	ImGui::Separator();
 	if (g_pWorld && g_inspecting.entity != Entity() && g_inspecting.pTransform)
 	{
 		auto& registry = g_pWorld->registry();
@@ -329,14 +311,14 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 		}
 		else
 		{
-			auto pos = g_inspecting.pTransform->position();
+			auto posn = g_inspecting.pTransform->position();
 			auto const& orn = g_inspecting.pTransform->orientation();
 			auto rot = glm::eulerAngles(orn);
 			auto const rotOrg = rot;
-			ImGui::DragFloat3("Pos", &pos.x, 0.1f);
-			if (isDifferent(pos, g_inspecting.pTransform->position()))
+			ImGui::DragFloat3("Pos", &posn.x, 0.1f);
+			if (isDifferent(posn, g_inspecting.pTransform->position()))
 			{
-				g_inspecting.pTransform->setPosition(pos);
+				g_inspecting.pTransform->setPosition(posn);
 			}
 			ImGui::DragFloat3("Orn", &rot.x, 0.01f);
 			if (isDifferent(rot, rotOrg))
@@ -345,7 +327,6 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 			}
 			ImGui::Separator();
 
-			auto const inspectPos = glm::ivec2(panelSize.x + s_xPad * 4, 200.0f);
 			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
 			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
 			if (pTMesh && pMesh)
@@ -354,9 +335,9 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 				{
 					inspectAsset<gfx::Mesh>(
 						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, inspectPos);
+						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, pos, size);
 
-					inspectMaterial(*pMesh, 0, inspectPos);
+					inspectMaterial(*pMesh, 0, pos, size);
 					ImGui::TreePop();
 				}
 			}
@@ -368,46 +349,78 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 				{
 					inspectAsset<gfx::Model>(
 						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
-						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, inspectPos);
+						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
 					auto& meshes = pModel->loadedMeshes();
 					size_t idx = 0;
 					for (auto& mesh : meshes)
 					{
-						inspectMaterial(mesh, idx++, inspectPos);
+						inspectMaterial(mesh, idx++, pos, size);
 					}
 					ImGui::TreePop();
 				}
 			}
 		}
 	}
-	ImGui::End();
-	return;
 }
 
-void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+void playButton()
 {
-	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
-	{
-		return;
-	}
-	static s32 const s_xPad = 2;
-	static s32 const s_dy = 2;
-
-	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
-	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
-	ImGui::SetNextWindowPos(ImVec2((f32)(fbSize.x - panelSize.x + s_xPad), (f32)s_dy), ImGuiCond_Always);
-	if (!ImGui::Begin("Scene", nullptr, flags))
-	{
-		ImGui::End();
-		return;
-	}
 	char const* szPlayPause = editor::g_bTickGame ? "Pause" : "Play";
 	if (ImGui::Button(szPlayPause))
 	{
 		editor::g_bTickGame = !editor::g_bTickGame;
 		LOG_I("[{}] {}", s_tName, editor::g_bTickGame ? "Resumed" : "Paused");
 	}
-	ImGui::Separator();
+}
+
+void presentModeDropdown()
+{
+	if (auto pWindow = WindowImpl::windowImpl(g_data.window))
+	{
+		static std::array<std::string_view, 4> const s_presentModes = {"Off", "Triple Buffer", "Double Buffer", "Double Buffer (Relaxed)"};
+		auto presentMode = pWindow->presentMode();
+		if (ImGui::BeginCombo("Vsync", s_presentModes[(size_t)presentMode].data()))
+		{
+			auto const& presentModes = pWindow->m_presentModes;
+			static size_t s_selected = 100;
+			size_t previous = s_selected;
+			for (size_t i = 0; i < presentModes.size() && i < s_presentModes.size(); ++i)
+			{
+				if (s_selected > s_presentModes.size() && presentMode == presentModes.at(i))
+				{
+					s_selected = i;
+					previous = s_selected;
+				}
+				bool const bSelected = s_selected == i;
+				auto const iMode = presentModes.at(i);
+				if (ImGui::Selectable(s_presentModes[(size_t)iMode].data(), bSelected))
+				{
+					s_selected = i;
+				}
+				if (bSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			if (previous != s_selected)
+			{
+				auto const newPresentMode = presentModes.at(s_selected);
+				if (pWindow->setPresentMode(newPresentMode))
+				{
+					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, s_presentModes[(size_t)presentMode], s_presentModes[(size_t)newPresentMode]);
+				}
+				else
+				{
+					LOG_E("[{}] Failed to switch present mode!", s_tName);
+				}
+			}
+			ImGui::EndCombo();
+		}
+	}
+}
+
+void worldSelectDropdown()
+{
 	World* pNewWorld = nullptr;
 	auto worldName = std::string(g_pWorld ? g_pWorld->name() : "[None]");
 	utils::removeNamesapces(worldName);
@@ -415,7 +428,7 @@ void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const&
 	{
 		ImGui::LabelText("", "%s (Busy)", worldName.data());
 	}
-	else if (ImGui::BeginCombo("", worldName.data()))
+	else if (ImGui::BeginCombo("Worlds", worldName.data()))
 	{
 		auto const worlds = World::allWorlds();
 		static size_t s_selected = 0;
@@ -436,17 +449,76 @@ void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const&
 		}
 		ImGui::EndCombo();
 	}
-	ImGui::Separator();
-	if (g_pWorld)
-	{
-		for (auto pTransform : g_pWorld->m_root.children())
-		{
-			walkGraph(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
-		}
-	}
 	if (pNewWorld && pNewWorld != g_pWorld)
 	{
 		World::loadWorld(pNewWorld->id());
+	}
+}
+
+void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+{
+	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
+	{
+		return;
+	}
+	static s32 const s_xPad = 2;
+	static s32 const s_dy = 2;
+
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(s_xPad, (f32)s_dy), ImGuiCond_Always);
+	if (ImGui::Begin("Inspector", nullptr, flags))
+	{
+		resourcesWindow({(f32)(panelSize.x + s_xPad), 200.0f}, {500.0f, 300.0f});
+		static bool s_bImGuiDemo = false;
+		s_bImGuiDemo |= ImGui::Button("ImGui Demo");
+		if (s_bImGuiDemo)
+		{
+			ImGui::ShowDemoWindow(&s_bImGuiDemo);
+		}
+		ImGui::Separator();
+		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {300.0f, 200.0f});
+	}
+	ImGui::End();
+	return;
+}
+
+void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+{
+	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
+	{
+		return;
+	}
+	static s32 const s_xPad = 2;
+	static s32 const s_dy = 2;
+
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGui::SetNextWindowSize(ImVec2((f32)(panelSize.x - s_xPad - s_xPad), (f32)(panelSize.y - s_dy)), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2((f32)(fbSize.x - panelSize.x + s_xPad), (f32)s_dy), ImGuiCond_Always);
+	if (ImGui::Begin("Scene", nullptr, flags))
+	{
+		playButton();
+		if (ImGui::BeginTabBar("Right"))
+		{
+			if (ImGui::BeginTabItem("Scene"))
+			{
+				if (g_pWorld)
+				{
+					for (auto pTransform : g_pWorld->m_root.children())
+					{
+						walkGraph(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
+					}
+				}
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Options"))
+			{
+				presentModeDropdown();
+				worldSelectDropdown();
+				ImGui::EndTabItem();
+			}
+			ImGui::EndTabBar();
+		}
 	}
 	ImGui::End();
 	return;
@@ -455,80 +527,92 @@ void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const&
 void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 {
 	static s32 const s_yPad = 3;
-	static s32 s_logLevel = 0;
-	bool bClear = false;
-
 	if (logHeight - s_yPad <= g_minDim.y)
 	{
 		return;
 	}
+
+	static s32 s_logLevel = 0;
+	static char szFilter[64] = {0};
+	bool bClear = false;
+	std::string_view logFilter;
+
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2((f32)fbSize.x, (f32)(logHeight - s_yPad)), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2(0.0f, (f32)(fbSize.y - logHeight + s_yPad)), ImGuiCond_Always);
-	if (!ImGui::Begin("Log", nullptr, flags))
+	if (ImGui::Begin("Log", nullptr, flags))
 	{
-		ImGui::End();
-		return;
-	}
-	// Widgets
-	{
-		ImGui::SameLine();
-		bClear = ImGui::Button("Clear");
-		ImGui::SameLine();
-		ImGui::Checkbox("Auto-scroll", &g_bAutoScroll);
-	}
-	{
-		ImGui::SameLine();
-		ImGui::RadioButton("All", &s_logLevel, 0);
-		ImGui::SameLine();
-		ImGui::RadioButton("Info", &s_logLevel, 1);
-		ImGui::SameLine();
-		ImGui::RadioButton("Warning", &s_logLevel, 2);
-		ImGui::SameLine();
-		ImGui::RadioButton("Error", &s_logLevel, 3);
-	}
-	{
-		ImGui::SameLine();
-		// Arrow buttons with Repeater
-		f32 const spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-		s32 counter = (s32)g_maxLogEntries;
-		ImGui::PushButtonRepeat(true);
-		if (ImGui::ArrowButton("##left", ImGuiDir_Left))
+		// Widgets
 		{
-			counter--;
+			ImGui::SameLine();
+			bClear = ImGui::Button("Clear");
+			ImGui::SameLine();
+			ImGui::Checkbox("Auto-scroll", &g_bAutoScroll);
 		}
-		ImGui::SameLine(0.0f, spacing);
-		if (ImGui::ArrowButton("##right", ImGuiDir_Right))
 		{
-			counter++;
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(200.0f);
+			ImGui::InputText("Filter", szFilter, arraySize(szFilter));
+			logFilter = szFilter;
 		}
-		ImGui::PopButtonRepeat();
-		ImGui::SameLine();
-		ImGui::Text("%d", counter);
-		g_maxLogEntries = (size_t)std::clamp(counter, 10, 1000);
-	}
-	ImGui::Separator();
-	{
-		ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
-		if (bClear)
 		{
-			clearLog();
+			ImGui::SameLine();
+			ImGui::RadioButton("All", &s_logLevel, 0);
+			ImGui::SameLine();
+			ImGui::RadioButton("Info", &s_logLevel, 1);
+			ImGui::SameLine();
+			ImGui::RadioButton("Warning", &s_logLevel, 2);
+			ImGui::SameLine();
+			ImGui::RadioButton("Error", &s_logLevel, 3);
 		}
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-		std::scoped_lock<std::mutex> lock(g_logMutex);
-		for (auto const& entry : g_logEntries)
 		{
-			if ((s32)entry.level >= s_logLevel)
+			ImGui::SameLine();
+			// Arrow buttons with Repeater
+			f32 const spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+			constexpr static s32 s_minCounter = 1, s_maxCounter = 20;
+			s32 logEntries = (s32)g_maxLogEntries / 100;
+			ImGui::PushButtonRepeat(true);
+			if (ImGui::ArrowButton("##left", ImGuiDir_Left) && logEntries > s_minCounter)
 			{
-				ImGui::TextColored(entry.imColour, "%s", entry.text.data());
+				--logEntries;
 			}
+			ImGui::SameLine(0.0f, spacing);
+			if (ImGui::ArrowButton("##right", ImGuiDir_Right) && logEntries < s_maxCounter)
+			{
+				++logEntries;
+			}
+			ImGui::PopButtonRepeat();
+			ImGui::SameLine();
+			ImGui::Text("%d", logEntries * 100);
+			g_maxLogEntries = (size_t)logEntries * 100;
 		}
-		ImGui::PopStyleVar();
-		if (g_bAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 		{
-			ImGui::SetScrollHereY(1.0f);
+			ImGui::Separator();
+			ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+			if (bClear)
+			{
+				clearLog();
+			}
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+			std::scoped_lock<std::mutex> lock(g_logMutex);
+			while (g_logEntries.size() > g_maxLogEntries)
+			{
+				g_logEntries.pop_front();
+			}
+			for (auto const& entry : g_logEntries)
+			{
+				if ((s32)entry.level >= s_logLevel && (logFilter.empty() || entry.text.find(logFilter) != std::string::npos))
+				{
+					ImGui::TextColored(entry.imColour, "%s", entry.text.data());
+				}
+			}
+			ImGui::PopStyleVar();
+			if (g_bAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+			{
+				ImGui::SetScrollHereY(1.0f);
+			}
+			ImGui::EndChild();
 		}
-		ImGui::EndChild();
 	}
 	ImGui::End();
 }

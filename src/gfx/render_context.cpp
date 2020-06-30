@@ -214,7 +214,7 @@ bool RenderContext::createSwapchain()
 	[[maybe_unused]] bool bReady = m_metadata.isReady();
 	ASSERT(bReady, "RenderContext not ready!");
 	// Swapchain
-	m_metadata.refresh();
+	m_metadata.presentMode = m_metadata.bestPresentMode();
 	auto const framebufferSize = m_metadata.info.config.getFramebufferSize();
 	if (framebufferSize.x == 0 || framebufferSize.y == 0)
 	{

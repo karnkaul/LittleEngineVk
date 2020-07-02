@@ -10,8 +10,6 @@ namespace le::gfx
 {
 class Shader;
 
-using JSONObj = GData;
-
 class Font final : public Asset
 {
 public:
@@ -26,7 +24,7 @@ public:
 		s32 orgSizePt = 0;
 		bool bBlank = false;
 
-		void deserialise(u8 c, JSONObj const& json);
+		void deserialise(u8 c, GData const& json);
 	};
 	struct Info final
 	{
@@ -37,7 +35,7 @@ public:
 		std::vector<Glyph> glyphs;
 		bytearray image;
 
-		bool deserialise(JSONObj const& json);
+		bool deserialise(GData const& json);
 	};
 
 	struct Text

@@ -15,6 +15,7 @@ public:
 		eFixedSpeed,
 		eTracking,
 		eLooking,
+		eKeyLook,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;

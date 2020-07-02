@@ -95,7 +95,9 @@ bool Resources::init(IOReader const& data)
 			gfx::Font::Info fontInfo;
 			auto [str, bResult] = data.getString("fonts/default.json");
 			ASSERT(bResult, "Default font not found!");
-			fontInfo.deserialise(GData(std::move(str)));
+			GData fontData;
+			fontData.read(std::move(str));
+			fontInfo.deserialise(fontData);
 			auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
 			ASSERT(bImg, "Default font not found!");
 			fontInfo.image = std::move(img);

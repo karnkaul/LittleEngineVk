@@ -231,20 +231,20 @@ bool RenderContext::createSwapchain()
 		}
 		createInfo.imageFormat = m_metadata.colourFormat.format;
 		createInfo.imageColorSpace = m_metadata.colourFormat.colorSpace;
-		auto const windowSize = m_metadata.info.config.getWindowSize();
-		m_swapchain.extent = m_metadata.extent(windowSize);
-		createInfo.imageExtent = m_swapchain.extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
 		auto const queues = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 		createInfo.imageSharingMode = queues.mode;
 		createInfo.pQueueFamilyIndices = queues.indices.data();
 		createInfo.queueFamilyIndexCount = (u32)queues.indices.size();
-		createInfo.preTransform = m_metadata.capabilities.currentTransform;
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 		createInfo.presentMode = m_metadata.presentMode;
 		createInfo.clipped = vk::Bool32(true);
+		m_metadata.refresh();
 		createInfo.surface = m_metadata.surface;
+		createInfo.preTransform = m_metadata.capabilities.currentTransform;
+		auto const windowSize = m_metadata.info.config.getWindowSize();
+		m_swapchain.extent = createInfo.imageExtent = m_metadata.extent(windowSize);
 		m_swapchain.swapchain = g_device.device.createSwapchainKHR(createInfo);
 	}
 	// Frames

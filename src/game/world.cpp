@@ -148,7 +148,8 @@ bool World::startImpl(ID previous)
 		auto [str, bResult] = engine::reader().getString(inputMap);
 		if (bResult)
 		{
-			GData json(std::move(str));
+			GData json;
+			json.read(std::move(str));
 			if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
 			{
 				LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_tName, parsed, inputMap.generic_string());

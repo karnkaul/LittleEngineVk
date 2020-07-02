@@ -124,7 +124,7 @@ AssetManifest::AssetManifest(IOReader const& reader, stdfs::path const& id) : m_
 	auto [data, bResult] = m_pReader->getString(id);
 	if (bResult)
 	{
-		m_manifest = GData(std::move(data));
+		m_manifest.read(std::move(data));
 	}
 	else
 	{
@@ -205,7 +205,7 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 AssetList AssetManifest::parse()
 {
 	AssetList all;
-	auto const shaders = m_manifest.getGDatas("shaders");
+	auto const shaders = m_manifest.getDataArray("shaders");
 	for (auto const& shader : shaders)
 	{
 		auto assetID = shader.getString("id");
@@ -221,9 +221,9 @@ AssetList AssetManifest::parse()
 				AssetData<Shader> data;
 				data.info.pReader = m_pReader;
 				data.id = std::move(assetID);
-				bool const bOptional = shader.getBool("optional", false);
+				bool const bOptional = shader.getBool("optional");
 				bool bFound = false;
-				auto const resourceIDs = shader.getGDatas("resource_ids");
+				auto const resourceIDs = shader.getDataArray("resource_ids");
 				for (auto const& resourceID : resourceIDs)
 				{
 					auto const typeStr = resourceID.getString("type");
@@ -249,12 +249,11 @@ AssetList AssetManifest::parse()
 			}
 		}
 	}
-	auto const textures = m_manifest.getGDatas("textures");
+	auto const textures = m_manifest.getDataArray("textures");
 	for (auto const& texture : textures)
 	{
 		auto const id = texture.getString("id");
-		auto const colourSpace = texture.getString("colour_space");
-		bool const bPresent = texture.getBool("optional", false) ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
+		bool const bPresent = texture.getBool("optional") ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
 		if (!id.empty() && bPresent)
 		{
 			if (Resources::inst().get<Texture>(id))
@@ -276,13 +275,12 @@ AssetList AssetManifest::parse()
 			}
 		}
 	}
-	auto const cubemaps = m_manifest.getGDatas("cubemaps");
+	auto const cubemaps = m_manifest.getDataArray("cubemaps");
 	for (auto const& cubemap : cubemaps)
 	{
 		auto const assetID = cubemap.getString("id");
-		auto const colourSpace = cubemap.getString("colour_space");
-		auto const resourceIDs = cubemap.getVecString("textures");
-		bool const bOptional = cubemap.getBool("optional", false);
+		auto const resourceIDs = cubemap.getArray("textures");
+		bool const bOptional = cubemap.getBool("optional");
 		bool bMissing = false;
 		if (!assetID.empty())
 		{
@@ -321,7 +319,7 @@ AssetList AssetManifest::parse()
 			}
 		}
 	}
-	auto const models = m_manifest.getGDatas("models");
+	auto const models = m_manifest.getDataArray("models");
 	for (auto const& model : models)
 	{
 		auto const modelID = model.getString("id");
@@ -334,7 +332,7 @@ AssetList AssetManifest::parse()
 			}
 			else
 			{
-				bool const bOptional = model.getBool("optional", false);
+				bool const bOptional = model.getBool("optional");
 				AssetData<Model> data;
 				data.id = modelID;
 				auto jsonID = data.id / data.id.filename();

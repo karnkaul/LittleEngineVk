@@ -190,7 +190,7 @@ Action input::parseAction(std::string_view str)
 Mods::VALUE input::parseMods(Span<std::string> vec)
 {
 	s32 ret = 0;
-	for (auto str : vec)
+	for (auto const& str : vec)
 	{
 		ret |= (s32)parse(g_modsMap, str, Mods::eNONE);
 	}

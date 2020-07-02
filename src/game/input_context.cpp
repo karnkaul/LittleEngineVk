@@ -65,7 +65,7 @@ void Map::addRange(std::string const& id, std::initializer_list<Range> ranges)
 u16 Map::deserialise(GData const& json)
 {
 	u16 ret = 0;
-	auto const bindingsData = json.getGDatas("bindings");
+	auto const bindingsData = json.getDataArray("bindings");
 	using bind = std::function<void(std::string const&, GData const&)>;
 	auto parse = [&bindingsData, &ret](bind addTrigger, bind addState, bind addRange) {
 		for (auto const& entry : bindingsData)
@@ -73,19 +73,19 @@ u16 Map::deserialise(GData const& json)
 			if (entry.contains("id"))
 			{
 				auto const id = entry.getString("id");
-				auto const triggers = entry.getGDatas("triggers");
+				auto const triggers = entry.getDataArray("triggers");
 				for (auto const& trigger : triggers)
 				{
 					addTrigger(id, trigger);
 					++ret;
 				}
-				auto const states = entry.getGDatas("states");
+				auto const states = entry.getDataArray("states");
 				for (auto const& state : states)
 				{
 					addState(id, state);
 					++ret;
 				}
-				auto const ranges = entry.getGDatas("ranges");
+				auto const ranges = entry.getDataArray("ranges");
 				for (auto const& range : ranges)
 				{
 					addRange(id, range);
@@ -98,7 +98,7 @@ u16 Map::deserialise(GData const& json)
 		[this](std::string const& id, GData const& trigger) {
 			Key const key = parseKey(trigger.getString("key"));
 			Action const action = parseAction(trigger.getString("action"));
-			Mods::VALUE const mods = parseMods(trigger.getVecString("mods"));
+			Mods::VALUE const mods = parseMods(trigger.getArray("mods"));
 			ASSERT(key != Key::eUnknown, "Unknown Key!");
 			addTrigger(id, key, action, mods);
 		},
@@ -119,7 +119,7 @@ u16 Map::deserialise(GData const& json)
 			}
 			else if (axis != Axis::eUnknown)
 			{
-				bool const bReverse = range.getBool("reverse", false);
+				bool const bReverse = range.getBool("reverse");
 				addRange(id, axis, bReverse);
 			}
 			else
@@ -218,7 +218,7 @@ u16 Context::deserialise(GData const& json)
 	}
 	if (json.contains("gamepad_id"))
 	{
-		m_padID = json.getS32("gamepad_id", m_padID);
+		m_padID = json.getS32("gamepad_id");
 	}
 	return m_map.deserialise(json);
 }

@@ -383,6 +383,7 @@ int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
 	g_uReader = std::make_unique<FileReader>();
+
 	engine::Info info;
 	Window::Info info0;
 	info0.config.size = {1280, 720};

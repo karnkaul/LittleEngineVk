@@ -15,6 +15,7 @@ void FreeCam::init()
 	m_input.context.mapTrigger("look_toggle", [this]() {
 		if (m_state.flags.isSet(Flag::eKeyToggle_Look))
 		{
+			m_state.flags.flip(Flag::eKeyLook);
 			m_state.flags.flip(Flag::eLooking);
 			m_state.flags.reset(Flag::eTracking);
 		}
@@ -22,14 +23,13 @@ void FreeCam::init()
 	m_input.context.addTrigger("look_toggle", m_config.lookToggle.key, m_config.lookToggle.action, m_config.lookToggle.mods);
 
 	m_input.context.mapState("looking", [this](bool bActive) {
-		if (!bActive || !m_state.flags.isSet(Flag::eLooking))
+		if (!m_state.flags.isSet(Flag::eKeyLook))
 		{
-			m_state.flags.reset(Flag::eTracking);
-		}
-		m_state.flags[Flag::eLooking] = bActive;
-		if (auto pWindow = engine::mainWindow())
-		{
-			pWindow->setCursorMode(bActive ? CursorMode::eDisabled : CursorMode::eDefault);
+			if (!bActive || !m_state.flags.isSet(Flag::eLooking))
+			{
+				m_state.flags.reset(Flag::eTracking);
+			}
+			m_state.flags[Flag::eLooking] = bActive;
 		}
 	});
 	m_input.context.addState("looking", Key::eMouseButton2);
@@ -84,6 +84,11 @@ void FreeCam::init()
 
 void FreeCam::tick(Time dt)
 {
+	if (auto pWindow = engine::mainWindow())
+	{
+		pWindow->setCursorMode(m_state.flags.isSet(Flag::eLooking) ? CursorMode::eDisabled : CursorMode::eDefault);
+	}
+
 	if (!m_state.flags.isSet(Flag::eEnabled))
 	{
 		return;

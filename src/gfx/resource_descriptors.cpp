@@ -1,9 +1,9 @@
-#include "core/log.hpp"
-#include "device.hpp"
-#include "vram.hpp"
-#include "resource_descriptors.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/texture.hpp"
+#include <core/log.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
+#include <gfx/resource_descriptors.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/texture.hpp>
 
 namespace le::gfx
 {
@@ -65,10 +65,7 @@ Materials::Mat::Mat(Material const& material, Colour dropColour)
 }
 
 DirLights::Light::Light(DirLight const& dirLight)
-	: ambient(dirLight.ambient.toVec4()),
-	  diffuse(dirLight.diffuse.toVec4()),
-	  specular(dirLight.specular.toVec4()),
-	  direction(dirLight.direction)
+	: ambient(dirLight.ambient.toVec4()), diffuse(dirLight.diffuse.toVec4()), specular(dirLight.specular.toVec4()), direction(dirLight.direction)
 {
 }
 
@@ -218,8 +215,7 @@ void Set::initSSBOs()
 
 void Set::writeSSBOs(StorageBuffers const& ssbos)
 {
-	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty()
-			   && !ssbos.flags.ssbo.empty(),
+	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty() && !ssbos.flags.ssbo.empty(),
 		   "Empty SSBOs!");
 	m_models.writeArray(ssbos.models.ssbo, m_bufferSet);
 	m_normals.writeArray(ssbos.normals.ssbo, m_bufferSet);
@@ -268,9 +264,8 @@ void rd::init()
 {
 	if (g_bufferLayout == vk::DescriptorSetLayout())
 	{
-		std::array const bufferBindings = {View::s_setLayoutBinding,	  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,
-										   Materials::s_setLayoutBinding, Tints::s_setLayoutBinding,  Flags::s_setLayoutBinding,
-										   DirLights::s_setLayoutBinding};
+		std::array const bufferBindings = {View::s_setLayoutBinding,  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,	Materials::s_setLayoutBinding,
+										   Tints::s_setLayoutBinding, Flags::s_setLayoutBinding,  DirLights::s_setLayoutBinding};
 		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
 		bufferLayoutInfo.bindingCount = (u32)bufferBindings.size();
 		bufferLayoutInfo.pBindings = bufferBindings.data();

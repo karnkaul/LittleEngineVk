@@ -1,5 +1,5 @@
 #pragma once
-#include "std_types.hpp"
+#include <core/std_types.hpp>
 #include <string>
 
 namespace le::log

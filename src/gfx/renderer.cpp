@@ -1,20 +1,20 @@
 #include <algorithm>
 #include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/transform.hpp"
-#include "core/utils.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/editor/editor.hpp"
-#include "engine/gfx/mesh.hpp"
-#include "device.hpp"
-#include "ext_gui.hpp"
-#include "pipeline_impl.hpp"
-#include "render_cmd.hpp"
-#include "renderer_impl.hpp"
-#include "resource_descriptors.hpp"
-#include "window/window_impl.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/transform.hpp>
+#include <core/utils.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/mesh.hpp>
+#include <gfx/device.hpp>
+#include <gfx/ext_gui.hpp>
+#include <gfx/pipeline_impl.hpp>
+#include <gfx/render_cmd.hpp>
+#include <gfx/renderer_impl.hpp>
+#include <gfx/resource_descriptors.hpp>
+#include <editor/editor.hpp>
+#include <window/window_impl.hpp>
 
 namespace le::gfx
 {
@@ -47,30 +47,6 @@ u32 TexSet::total() const
 }
 } // namespace
 
-ScreenRect::ScreenRect(glm::vec4 const& ltrb) noexcept : left(ltrb.x), top(ltrb.y), right(ltrb.z), bottom(ltrb.w) {}
-
-ScreenRect ScreenRect::sizeTL(glm::vec2 const& size, glm::vec2 const& leftTop)
-{
-	return ScreenRect({leftTop.x, leftTop.y, leftTop.x + size.x, leftTop.y + size.y});
-}
-
-ScreenRect ScreenRect::sizeCentre(glm::vec2 const& size, glm::vec2 const& centre)
-{
-	auto const leftTop = centre - (glm::vec2(0.5f) * size);
-	return ScreenRect({leftTop.x, leftTop.y, leftTop.x + size.x, leftTop.y + size.y});
-}
-
-glm::vec2 ScreenRect::size() const
-{
-	return glm::vec2(right - left, bottom - top);
-}
-
-f32 ScreenRect::aspect() const
-{
-	glm::vec2 const s = size();
-	return s.x / s.y;
-}
-
 Renderer::Renderer() = default;
 Renderer::Renderer(Renderer&&) = default;
 Renderer& Renderer::operator=(Renderer&&) = default;
@@ -87,17 +63,18 @@ Pipeline* Renderer::createPipeline(Pipeline::Info info)
 	return nullptr;
 }
 
-void Renderer::submit(Scene scene)
+void Renderer::submit(Scene scene, ScreenRect const& sceneView)
 {
 	m_scene = std::move(scene);
+	m_sceneView = sceneView;
 	return;
 }
 
-void Renderer::render()
+void Renderer::render(bool bEditor)
 {
 	if (m_uImpl)
 	{
-		m_uImpl->render(std::move(m_scene));
+		m_uImpl->render(std::move(m_scene), bEditor);
 	}
 }
 
@@ -121,34 +98,10 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner) : m_context(info.
 	pipelineInfo.name = "skybox";
 	pipelineInfo.flags.reset(Pipeline::Flag::eDepthWrite);
 	m_pipes.pSkybox = createPipeline(std::move(pipelineInfo));
-	m_bExtGUI = info.bExtGUI;
-	if (m_bExtGUI)
-	{
-		if (!initExtGUI())
-		{
-			LOG_E("[{}] Failed to initialise GUI!", m_name);
-			m_bExtGUI = false;
-		}
-#if defined(LEVK_EDITOR)
-		else
-		{
-			editor::init();
-		}
-#endif
-	}
 }
 
 RendererImpl::~RendererImpl()
 {
-	if (m_bExtGUI)
-	{
-		deferred::release([]() {
-#if defined(LEVK_EDITOR)
-			editor::deinit();
-#endif
-			ext_gui::deinit();
-		});
-	}
 	m_pipelines.clear();
 	destroy();
 }
@@ -199,8 +152,8 @@ void RendererImpl::destroy()
 		for (auto& frame : m_frames)
 		{
 			frame.set.destroy();
-			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing,
-							 frame.renderReady, frame.presentReady);
+			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady,
+							 frame.presentReady);
 		}
 		g_device.destroy(m_samplerLayout, m_renderPass);
 		m_samplerLayout = vk::DescriptorSetLayout();
@@ -222,10 +175,6 @@ void RendererImpl::update()
 		pipeline.m_uImpl->pollShaders();
 	}
 #endif
-	if (m_bExtGUI)
-	{
-		gfx::ext_gui::newFrame();
-	}
 }
 
 Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
@@ -236,9 +185,9 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	implInfo.vertexAttributes = rd::vbo::vertexAttributes();
 	implInfo.pushConstantRanges = rd::PushConstants::ranges();
 	implInfo.renderPass = m_renderPass;
-	implInfo.polygonMode = g_polygonModeMap.at((size_t)info.polygonMode);
-	implInfo.cullMode = g_cullModeMap.at((size_t)info.cullMode);
-	implInfo.frontFace = g_frontFaceMap.at((size_t)info.frontFace);
+	implInfo.polygonMode = (vk::PolygonMode)info.polygonMode;
+	implInfo.cullMode = (vk::CullModeFlagBits)info.cullMode;
+	implInfo.frontFace = (vk::FrontFace)info.frontFace;
 	implInfo.samplerLayout = m_samplerLayout;
 	implInfo.window = m_window;
 	implInfo.staticLineWidth = info.lineWidth;
@@ -254,20 +203,17 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	return &m_pipelines.back();
 }
 
-bool RendererImpl::render(Renderer::Scene scene)
+bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 {
-	if (scene.batches.empty()
-		|| std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }))
-	{
-		return false;
-	}
-	if (m_bExtGUI)
+	bool const bEmpty =
+		(scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }));
+	if (bExtGUI)
 	{
 		ext_gui::render();
 	}
 	auto& frame = frameSync();
 	g_device.waitFor(frame.drawing);
-	auto const push = writeSets(scene);
+	auto const push = bEmpty ? PCDeq() : writeSets(scene);
 	auto [target, result] = m_context.acquireNextImage(frame.renderReady, frame.drawing);
 	bool bRecreate = false;
 	bool bRendered = false;
@@ -277,7 +223,18 @@ bool RendererImpl::render(Renderer::Scene scene)
 	{
 		g_device.destroy(frame.framebuffer);
 		frame.framebuffer = g_device.createFramebuffer(m_renderPass, target.attachments(), target.extent);
-		u64 const tris = doRenderPass(scene, push, target);
+		u64 tris = 0;
+		if (bEmpty)
+		{
+			static auto const c = colours::black;
+			vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
+			vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
+			RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
+		}
+		else
+		{
+			tris = doRenderPass(scene, push, target, bExtGUI);
+		}
 		result = submit();
 		bRecreate = result == RenderContext::Outcome::eSwapchainRecreated;
 		if (result == RenderContext::Outcome::eSuccess)
@@ -377,6 +334,36 @@ bool RendererImpl::initExtGUI() const
 	return ext_gui::init(guiInfo);
 }
 
+ColourSpace RendererImpl::colourSpace() const
+{
+	if (m_context.colourFormat() == vk::Format::eB8G8R8A8Srgb)
+	{
+		return ColourSpace::eSRGBNonLinear;
+	}
+	return ColourSpace::eRGBLinear;
+}
+
+vk::PresentModeKHR RendererImpl::presentMode() const
+{
+	return m_context.m_metadata.presentMode;
+}
+
+std::vector<vk::PresentModeKHR> const& RendererImpl::presentModes() const
+{
+	return m_context.m_metadata.presentModes;
+}
+
+bool RendererImpl::setPresentMode(vk::PresentModeKHR mode)
+{
+	auto const& modes = presentModes();
+	if (auto search = std::find(modes.begin(), modes.end(), mode); search != modes.end())
+	{
+		m_context.m_metadata.info.options.presentModes = {mode};
+		return m_context.recreateSwapchain();
+	}
+	return false;
+}
+
 void RendererImpl::onFramebufferResize()
 {
 	m_context.onFramebufferResize();
@@ -427,6 +414,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{pMesh}, pTransform, out_scene.view.skybox.pPipeline}}});
 		if (out_scene.view.skybox.pCubemap)
 		{
+			ASSERT(out_scene.view.skybox.pCubemap->isReady(), "Skybox Cubemap is not ready!");
 			pCubemap = out_scene.view.skybox.pCubemap;
 		}
 		bSkybox = true;
@@ -472,17 +460,19 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
-					if (!pMesh->m_material.pDiffuse)
+					if (pMesh->m_material.pDiffuse)
+					{
+						ASSERT(!pMesh->m_material.pDiffuse->isBusy(), "Texture busy!");
+						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
+					}
+					else
 					{
 						ssbos.tints.ssbo.at(objectID) = mg;
 						pc.diffuseID = 0;
 					}
-					else
-					{
-						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
-					}
 					if (pMesh->m_material.pSpecular)
 					{
+						ASSERT(!pMesh->m_material.pSpecular->isBusy(), "Texture busy!");
 						pc.specularID = specular.add(pMesh->m_material.pSpecular);
 					}
 				}
@@ -510,12 +500,11 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	return push;
 }
 
-u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target) const
+u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target, bool bExtGUI) const
 {
 	auto const& frame = frameSync();
 	auto const c = scene.clear.colour;
-	std::array const clearColour = {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
-	vk::ClearColorValue const colour = clearColour;
+	vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 	RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
 	std::unordered_set<PipelineImpl*> pipelines;
@@ -524,7 +513,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 	u64 tris = 0;
 	for (auto& batch : scene.batches)
 	{
-		cmd.setViewportScissor(transformViewport(batch.viewport), transformScissor(batch.scissor));
+		cmd.setViewportScissor(transformViewport(batch.viewport.adjust(m_pRenderer->m_sceneView)), transformScissor(batch.scissor));
 		for (auto& [meshes, pTransform, pPipe] : batch.drawables)
 		{
 			for (auto pMesh : meshes)
@@ -537,8 +526,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_renderPass, m_samplerLayout);
 					ASSERT(bOk, "Pipeline update failure!");
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
-					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0,
-														 push.at(batchIdx).at(drawableIdx));
+					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					cmd.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pMesh->m_uImpl->ibo.count > 0)
 					{
@@ -557,7 +545,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 		drawableIdx = 0;
 		++batchIdx;
 	}
-	if (m_bExtGUI)
+	if (bExtGUI)
 	{
 		ext_gui::renderDrawData(frame.commandBuffer);
 	}

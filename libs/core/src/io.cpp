@@ -1,12 +1,12 @@
 #include <filesystem>
 #include <fstream>
 #include <physfs/physfs.h>
-#include "core/assert.hpp"
-#include "core/io.hpp"
-#include "core/log.hpp"
-#include "core/os.hpp"
-#include "core/utils.hpp"
-#include "io_impl.hpp"
+#include <core/assert.hpp>
+#include <core/io.hpp>
+#include <core/log.hpp>
+#include <core/os.hpp>
+#include <core/utils.hpp>
+#include <io_impl.hpp>
 
 namespace le
 {
@@ -59,7 +59,7 @@ bool IOReader::checkPresence(stdfs::path const& id) const
 	return true;
 }
 
-bool IOReader::checkPresences(std::initializer_list<stdfs::path> ids) const
+bool IOReader::checkPresences(Span<stdfs::path> ids) const
 {
 	bool bRet = true;
 	for (auto const& id : ids)
@@ -69,14 +69,9 @@ bool IOReader::checkPresences(std::initializer_list<stdfs::path> ids) const
 	return bRet;
 }
 
-bool IOReader::checkPresences(ArrayView<stdfs::path const> ids) const
+bool IOReader::checkPresences(std::initializer_list<stdfs::path> ids) const
 {
-	bool bRet = true;
-	for (auto const& id : ids)
-	{
-		bRet &= checkPresence(id);
-	}
-	return bRet;
+	return checkPresences(Span<stdfs::path>(ids));
 }
 
 std::string_view IOReader::medium() const
@@ -84,7 +79,7 @@ std::string_view IOReader::medium() const
 	return m_medium;
 }
 
-TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight)
+TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight)
 {
 	for (auto const& name : anyOf)
 	{
@@ -102,22 +97,9 @@ TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initi
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
 
-TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, ArrayView<stdfs::path const> anyOf, u8 maxHeight)
+TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight)
 {
-	for (auto const& name : anyOf)
-	{
-		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
-		{
-			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
-			return ret / name;
-		}
-	}
-	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
-	if (bEnd)
-	{
-		return {};
-	}
-	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
+	return findUpwards(leaf.parent_path(), Span<stdfs::path>(anyOf), maxHeight - 1);
 }
 
 FileReader::FileReader() noexcept
@@ -128,14 +110,19 @@ FileReader::FileReader() noexcept
 bool FileReader::mount(stdfs::path path)
 {
 	auto const pathStr = path.generic_string();
-	if (!stdfs::is_directory(path))
+	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end())
 	{
-		LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<FileReader>(), pathStr);
-		return false;
+		if (!stdfs::is_directory(path))
+		{
+			LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<FileReader>(), pathStr);
+			return false;
+		}
+		LOG_D("[{}] [{}] directory mounted", utils::tName<FileReader>(), pathStr);
+		m_dirs.push_back(std::move(path));
+		return true;
 	}
-	LOG_D("[{}] [{}] directory mounted", utils::tName<FileReader>(), pathStr);
-	m_prefixes.push_back(std::move(path));
-	return true;
+	LOG_W("[{}] [{}] directory already mounted", utils::tName<FileReader>(), pathStr);
+	return false;
 }
 
 TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
@@ -192,8 +179,8 @@ std::vector<stdfs::path> FileReader::finalPaths(stdfs::path const& id) const
 		return {id};
 	}
 	std::vector<stdfs::path> ret;
-	ret.reserve(m_prefixes.size());
-	for (auto const& prefix : m_prefixes)
+	ret.reserve(m_dirs.size());
+	for (auto const& prefix : m_dirs)
 	{
 		ret.push_back(prefix / id);
 	}
@@ -215,14 +202,20 @@ bool ZIPReader::mount(stdfs::path path)
 {
 	ioImpl::initPhysfs();
 	auto pathStr = path.generic_string();
-	if (!stdfs::is_regular_file(path))
+	if (std::find(m_zips.begin(), m_zips.end(), path) == m_zips.end())
 	{
-		LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
-		return false;
+		if (!stdfs::is_regular_file(path))
+		{
+			LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
+			return false;
+		}
+		PHYSFS_mount(path.string().data(), nullptr, 0);
+		LOG_D("[{}] [{}] archive mounted", utils::tName<ZIPReader>(), pathStr);
+		m_zips.push_back(std::move(path));
+		return true;
 	}
-	PHYSFS_mount(path.string().data(), nullptr, 0);
-	LOG_D("[{}] [{}] archive mounted", utils::tName<ZIPReader>(), pathStr);
-	return true;
+	LOG_W("[{}] [{}] archive already mounted", utils::tName<FileReader>(), pathStr);
+	return false;
 }
 
 TResult<stdfs::path> ZIPReader::findPrefixed(stdfs::path const& id) const

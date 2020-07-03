@@ -10,9 +10,9 @@
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
-#include "core/flags.hpp"
-#include "core/log_config.hpp"
-#include "core/std_types.hpp"
+#include <core/flags.hpp>
+#include <core/log_config.hpp>
+#include <core/std_types.hpp>
 
 namespace le
 {
@@ -21,6 +21,11 @@ struct Entity final
 {
 	using ID = u64;
 	ID id = 0;
+};
+
+struct EntityHasher final
+{
+	size_t operator()(Entity const& entity) const;
 };
 
 bool operator==(Entity lhs, Entity rhs);
@@ -50,7 +55,7 @@ public:
 	using Signature = size_t;
 
 	template <typename... T>
-	using View = std::deque<std::tuple<T*...>>;
+	using View = std::unordered_map<Entity, std::tuple<T*...>, EntityHasher>;
 
 private:
 	// Concept
@@ -140,9 +145,11 @@ public:
 	template <typename T1, typename... Ts>
 	View<T1, Ts...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {});
 
-	void sweep();
+	void flush();
+	void clear();
 
 	size_t entityCount() const;
+	std::string_view entityName(Entity entity) const;
 
 private:
 	// _Impl functions are not thread safe; they rely on mutexes being locked
@@ -363,7 +370,7 @@ typename Registry::View<T1, Ts...> Registry::view(Th* pThis, Flags mask, Flags p
 				auto checkSigns = [&compMap](auto sign) -> bool { return compMap.find(sign) != compMap.end(); };
 				if (std::all_of(signs.begin(), signs.end(), checkSigns))
 				{
-					ret.push_back(std::make_tuple(component_Impl<T1>(compMap), (component_Impl<Ts>(compMap))...));
+					ret[Entity{id}] = (std::make_tuple(component_Impl<T1>(compMap), (component_Impl<Ts>(compMap))...));
 				}
 			}
 		}

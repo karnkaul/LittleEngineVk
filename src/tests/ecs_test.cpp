@@ -1,11 +1,11 @@
 #include <array>
 #include <string>
-#include "core/jobs.hpp"
-#include "core/profiler.hpp"
-#include "core/threads.hpp"
-#include "core/maths.hpp"
-#include "core/utils.hpp"
-#include "engine/ecs/registry.hpp"
+#include <core/jobs.hpp>
+#include <core/profiler.hpp>
+#include <core/threads.hpp>
+#include <core/maths.hpp>
+#include <core/utils.hpp>
+#include <engine/ecs/registry.hpp>
 
 using namespace le;
 

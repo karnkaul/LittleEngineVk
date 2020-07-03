@@ -1,7 +1,7 @@
 #include <fmt/format.h>
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/assets/asset.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/assets/asset.hpp>
 
 namespace le
 {
@@ -35,7 +35,7 @@ void Asset::setup()
 
 Asset::Status Asset::update()
 {
-	if (m_status == Status::eLoading || m_status == Status::eMoved)
+	if (m_status == Status::eLoading || m_status == Status::eMoved || m_status == Status::eReloading)
 	{
 		return m_status;
 	}
@@ -47,7 +47,7 @@ Asset::Status Asset::update()
 	}
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	auto const idStr = m_id.generic_string();
-	if (m_reloadStart > Time() && Time::elapsed() - m_reloadStart > m_reloadDelay)
+	if (m_reloadFails < m_reloadTries && m_reloadStart > Time() && Time::elapsed() - m_reloadStart > m_reloadWait)
 	{
 		// reload all modified files
 		bool bSuccess = true;
@@ -58,20 +58,31 @@ Asset::Status Asset::update()
 				if (!pModified->onModified(pModified))
 				{
 					// failed to load file, abort reload
-					LOG_W("[{}] [{}] Failed to reload file data!", m_tName, idStr);
 					bSuccess = false;
-					m_status = Status::eError;
-					break;
+					++m_reloadFails;
+					if (m_reloadFails >= m_reloadTries)
+					{
+						LOG_E("[{}] [{}] Failed to reload file data! (Re-save to retry)", m_tName, idStr);
+						m_status = Status::eError;
+						break;
+					}
+					else
+					{
+						m_reloadStart = Time::elapsed();
+						m_reloadWait.scale(m_reloadFails * 2.0f);
+						LOG_I("[{}] [{}] Retrying reload in [{}ms]!", m_tName, idStr, m_reloadWait.to_ms());
+						break;
+					}
 				}
 			}
 		}
-		// clear this block
-		m_modified.clear();
-		m_reloadStart = {};
 		if (bSuccess)
 		{
+			m_modified.clear();
+			m_reloadStart = m_reloadWait = {};
+			m_reloadFails = 0;
 			// all files loaded successfully, trigger resource re-upload
-			m_status = Status::eLoading;
+			m_status = Status::eReloading;
 			onReload();
 			// skip reload check this frame
 			return m_status;
@@ -89,7 +100,7 @@ Asset::Status Asset::update()
 		case FileMonitor::Status::eNotFound:
 		{
 			// file may still be being written out; try increasing reload delay!
-			LOG_W("[{}] [{}] Resource not ready / lost!", m_tName, idStr);
+			LOG_E("[{}] [{}] Resource not ready / lost!", m_tName, idStr);
 			m_status = Status::eError;
 			break;
 		}
@@ -98,6 +109,15 @@ Asset::Status Asset::update()
 			// add to tracking and reset reload timer
 			m_modified.insert(&file);
 			m_reloadStart = Time::elapsed();
+			if (m_reloadWait == Time())
+			{
+				m_reloadWait = m_reloadDelay;
+			}
+			if (m_reloadFails >= m_reloadTries)
+			{
+				m_reloadWait = m_reloadDelay;
+				m_reloadFails = 0;
+			}
 			break;
 		}
 		}
@@ -114,6 +134,11 @@ Asset::Status Asset::currentStatus() const
 bool Asset::isReady() const
 {
 	return m_status == Status::eReady;
+}
+
+bool Asset::isBusy() const
+{
+	return m_status == Status::eLoading;
 }
 
 Asset::GUID Asset::guid() const

@@ -1,9 +1,9 @@
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/font.hpp"
-#include "engine/gfx/shader.hpp"
-#include "engine/gfx/texture.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/font.hpp>
+#include <engine/gfx/shader.hpp>
+#include <engine/gfx/texture.hpp>
 
 namespace le::gfx
 {
@@ -51,51 +51,44 @@ glm::vec2 textTLOffset(Font::Text::HAlign h, Font::Text::VAlign v)
 }
 } // namespace
 
-void Font::Glyph::deserialise(u8 c, JSONObj const& json)
+void Font::Glyph::deserialise(u8 c, GData const& json)
 {
 	ch = c;
-	st = {json.getS32("x", 0), json.getS32("y", 0)};
-	cell = {json.getS32("width", 0), json.getS32("height", 0)};
+	st = {json.getS32("x"), json.getS32("y")};
+	cell = {json.getS32("width"), json.getS32("height")};
 	uv = cell;
-	offset = {json.getS32("originX", 0), json.getS32("originY", 0)};
-	xAdv = json.getS32("advance", cell.x);
-	orgSizePt = json.getS32("size", 0);
-	bBlank = json.getBool("isBlank", false);
+	offset = {json.getS32("originX"), json.getS32("originY")};
+	xAdv = json.contains("advance") ? json.getS32("advance") : cell.x;
+	orgSizePt = json.getS32("size");
+	bBlank = json.getBool("isBlank");
 }
 
-bool Font::Info::deserialise(JSONObj const& json)
+bool Font::Info::deserialise(GData const& json)
 {
-	if (json.contains("id"))
+	sheetID = json.getString("sheetID");
+	samplerID = json.contains("sampler") ? json.getString("sampler") : "samplers/font";
+	materialID = json.contains("material") ? json.getString("material") : "materials/default";
+	auto glyphsData = json.getData("glyphs");
+	for (auto& [key, value] : glyphsData.allFields())
 	{
-		id = json.getString("id");
-		sheetID = json.getString("sheetID");
-		samplerID = json.getString("sampler", "font");
-		auto glyphsData = json.getGData("glyphs");
-		for (auto const& [key, value] : glyphsData.allFields())
+		if (!key.empty())
 		{
-			if (!key.empty())
+			Glyph glyph;
+			GData data;
+			[[maybe_unused]] bool const bSuccess = data.read(std::move(value));
+			ASSERT(bSuccess, "Failed to extract glyph!");
+			glyph.deserialise((u8)key.at(0), data);
+			if (glyph.cell.x > 0 && glyph.cell.y > 0)
 			{
-				Glyph glyph;
-				glyph.deserialise((u8)key.at(0), GData(value));
-				if (glyph.cell.x > 0 && glyph.cell.y > 0)
-				{
-					glyphs.push_back(std::move(glyph));
-				}
-				else
-				{
-					LOG_W("[{}] [{}] Could not deserialise Glyph '{}'!", Font::s_tName, id.generic_string(), key.at(0));
-				}
+				glyphs.push_back(std::move(glyph));
+			}
+			else
+			{
+				LOG_W("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key.at(0));
 			}
 		}
-		if (json.contains("material"))
-		{
-			// TODO
-			LOG_E("NOT IMPLEMENTED");
-			// material.deserialise(json.getGData("material"));
-		}
-		return true;
 	}
-	return false;
+	return true;
 }
 
 std::string const Font::s_tName = utils::tName<Font>();
@@ -146,7 +139,7 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 	m_material.pDiffuse = m_uSheet.get();
 	m_material.flags.set({Material::Flag::eTextured, Material::Flag::eUI, Material::Flag::eDropColour});
 	m_material.flags.reset({Material::Flag::eOpaque, Material::Flag::eLit});
-	m_status = Status::eReady;
+	m_status = Status::eLoading;
 }
 
 Geometry Font::generate(Text const& text) const
@@ -241,6 +234,7 @@ Asset::Status Font::update()
 		m_status = Status::eMoved;
 		return m_status;
 	}
+	m_status = m_uSheet->update();
 	return m_status;
 }
 
@@ -251,8 +245,8 @@ bool Text2D::setup(Info info)
 	{
 		m_pFont = Resources::inst().get<Font>("fonts/default");
 	}
-	ASSERT(m_pFont && m_pFont->isReady(), "Font is null!");
-	if (!m_pFont || !m_pFont->isReady())
+	ASSERT(m_pFont, "Font is null!");
+	if (!m_pFont)
 	{
 		return false;
 	}
@@ -274,12 +268,7 @@ bool Text2D::setup(Info info)
 	return false;
 }
 
-void Text2D::update()
-{
-	m_uMesh->update();
-}
-
-void Text2D::update(Font::Text data)
+void Text2D::updateText(Font::Text data)
 {
 	if (m_uMesh->isReady() && m_pFont && m_pFont->isReady())
 	{
@@ -296,7 +285,7 @@ void Text2D::updateText(std::string text)
 		if (text != m_data.text)
 		{
 			m_data.text = std::move(text);
-			update(m_data);
+			updateText(m_data);
 		}
 	}
 	return;
@@ -304,11 +293,17 @@ void Text2D::updateText(std::string text)
 
 Mesh const* Text2D::mesh() const
 {
-	return m_uMesh.get();
+	m_uMesh->update();
+	return isReady() ? m_uMesh.get() : nullptr;
 }
 
 bool Text2D::isReady() const
 {
-	return m_uMesh->isReady() && m_pFont->isReady();
+	return m_uMesh->isReady() && m_pFont && m_pFont->isReady();
+}
+
+bool Text2D::isBusy() const
+{
+	return m_uMesh->isBusy() || !m_pFont || m_pFont->isBusy();
 }
 } // namespace le::gfx

@@ -1,10 +1,14 @@
 #pragma once
+#include <cstring>
 #include <future>
+#include <initializer_list>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <typeinfo>
 #include <type_traits>
-#include "std_types.hpp"
+#include <core/assert.hpp>
+#include <core/std_types.hpp>
 
 namespace le
 {
@@ -18,10 +22,10 @@ enum class FutureState : s8
 };
 
 ///
-/// \brief View-only class for arrays / STL containers / `std::initializer_list`s
+/// \brief View-only class for an object / an array / `std::vector`
 ///
 template <typename T>
-struct ArrayView
+struct Span
 {
 	using value_type = T;
 	using const_iterator = T const*;
@@ -29,24 +33,21 @@ struct ArrayView
 	T const* pData;
 	size_t extent;
 
-	constexpr ArrayView() noexcept : pData(nullptr), extent(0) {}
-	constexpr ArrayView(T const* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
+	constexpr Span() noexcept : pData(nullptr), extent(0) {}
+	constexpr explicit Span(T const* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
+	constexpr Span(T const& data) noexcept : pData(&data), extent(1) {}
 
 	template <typename Container>
-	constexpr ArrayView(Container const& container) noexcept
-		: pData(container.empty() ? nullptr : &container.front()), extent(container.size())
+	constexpr Span(Container const& container) noexcept : pData(container.empty() ? nullptr : &container.front()), extent(container.size())
 	{
 	}
 
-	constexpr ArrayView(std::initializer_list<T const> initList) noexcept
-		: pData(initList.size() == 0 ? nullptr : &(*initList.begin())), extent(initList.size())
-	{
-	}
+	constexpr explicit Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size()) {}
 
-	ArrayView<T>(ArrayView<T>&&) noexcept = default;
-	ArrayView<T>& operator=(ArrayView<T>&&) noexcept = default;
-	ArrayView<T>(ArrayView<T> const&) noexcept = default;
-	ArrayView<T>& operator=(ArrayView<T> const&) noexcept = default;
+	Span<T>(Span<T>&&) noexcept = default;
+	Span<T>& operator=(Span<T>&&) noexcept = default;
+	Span<T>(Span<T> const&) noexcept = default;
+	Span<T>& operator=(Span<T> const&) noexcept = default;
 
 	const_iterator begin() const
 	{
@@ -108,6 +109,11 @@ std::string tName(T const& t)
 {
 	return demangle(typeid(t).name());
 }
+
+///
+/// \brief Remove namespace prefixes from a type string
+///
+void removeNamesapces(std::string& out_name);
 
 ///
 /// \brief Obtain demangled type name of a type

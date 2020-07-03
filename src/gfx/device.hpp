@@ -4,10 +4,10 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "core/log_config.hpp"
-#include "core/std_types.hpp"
-#include "core/flags.hpp"
-#include "common.hpp"
+#include <core/log_config.hpp>
+#include <core/std_types.hpp>
+#include <core/flags.hpp>
+#include <gfx/common.hpp>
 
 namespace le::gfx
 {
@@ -53,7 +53,7 @@ struct Device final
 	void resetAll(vk::ArrayProxy<vk::Fence const> validFences) const;
 
 	bool isSignalled(vk::Fence fence) const;
-	bool allSignalled(ArrayView<vk::Fence const> fences) const;
+	bool allSignalled(Span<vk::Fence const> fences) const;
 
 	vk::ImageView createImageView(ImageViewInfo const& info);
 
@@ -62,15 +62,12 @@ struct Device final
 
 	vk::DescriptorSetLayout createDescriptorSetLayout(vk::ArrayProxy<vk::DescriptorSetLayoutBinding const> bindings);
 	vk::DescriptorPool createDescriptorPool(vk::ArrayProxy<vk::DescriptorPoolSize const> poolSizes, u32 maxSets = 1);
-	std::vector<vk::DescriptorSet> allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts,
-														  u32 setCount = 1);
+	std::vector<vk::DescriptorSet> allocateDescriptorSets(vk::DescriptorPool pool, vk::ArrayProxy<vk::DescriptorSetLayout> layouts, u32 setCount = 1);
 
-	vk::RenderPass createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments,
-									vk::ArrayProxy<vk::SubpassDescription const> subpasses,
+	vk::RenderPass createRenderPass(vk::ArrayProxy<vk::AttachmentDescription const> attachments, vk::ArrayProxy<vk::SubpassDescription const> subpasses,
 									vk::ArrayProxy<vk::SubpassDependency> dependencies);
 
-	vk::Framebuffer createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent,
-									  u32 layers = 1);
+	vk::Framebuffer createFramebuffer(vk::RenderPass renderPass, vk::ArrayProxy<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers = 1);
 
 	template <typename vkType>
 	void destroy(vkType object) const;

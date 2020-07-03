@@ -2,14 +2,14 @@
 #include <deque>
 #include <vector>
 #include <glm/glm.hpp>
-#include "core/delegate.hpp"
-#include "engine/window/common.hpp"
-#include "engine/gfx/light.hpp"
-#include "engine/gfx/pipeline.hpp"
-#include "engine/gfx/renderer.hpp"
-#include "render_context.hpp"
-#include "pipeline_impl.hpp"
-#include "resource_descriptors.hpp"
+#include <core/delegate.hpp>
+#include <engine/window/common.hpp>
+#include <engine/gfx/light.hpp>
+#include <engine/gfx/pipeline.hpp>
+#include <engine/gfx/renderer.hpp>
+#include <gfx/render_context.hpp>
+#include <gfx/pipeline_impl.hpp>
+#include <gfx/resource_descriptors.hpp>
 
 namespace le
 {
@@ -30,20 +30,10 @@ public:
 		ContextInfo contextInfo;
 		WindowID windowID;
 		u8 frameCount = 3;
-		bool bExtGUI = false;
 	};
 
 private:
-	struct FrameSync final
-	{
-		rd::Set set;
-		vk::Semaphore renderReady;
-		vk::Semaphore presentReady;
-		vk::Fence drawing;
-		vk::Framebuffer framebuffer;
-		vk::CommandBuffer commandBuffer;
-		vk::CommandPool commandPool;
-	};
+	struct FrameSync;
 
 	using PCDeq = std::deque<std::deque<rd::PushConstants>>;
 
@@ -74,7 +64,6 @@ private:
 	size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;
-	bool m_bExtGUI = false;
 
 public:
 	RendererImpl(Info const& info, Renderer* pOwner);
@@ -87,7 +76,7 @@ public:
 	void update();
 
 	Pipeline* createPipeline(Pipeline::Info info);
-	bool render(Renderer::Scene scene);
+	bool render(Renderer::Scene scene, bool bExtGUI);
 
 public:
 	vk::Viewport transformViewport(ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f}) const;
@@ -98,18 +87,35 @@ public:
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
 	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
+	bool initExtGUI() const;
+
+	ColourSpace colourSpace() const;
+
+	vk::PresentModeKHR presentMode() const;
+	std::vector<vk::PresentModeKHR> const& presentModes() const;
+	bool setPresentMode(vk::PresentModeKHR mode);
 
 private:
-	bool initExtGUI() const;
 	void onFramebufferResize();
 	FrameSync& frameSync();
 	FrameSync const& frameSync() const;
 	void next();
 
 	PCDeq writeSets(Renderer::Scene& out_scene);
-	u64 doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target) const;
+	u64 doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target, bool bExtGUI) const;
 	RenderContext::Outcome submit();
 
 	friend class le::WindowImpl;
+};
+
+struct RendererImpl::FrameSync final
+{
+	rd::Set set;
+	vk::Semaphore renderReady;
+	vk::Semaphore presentReady;
+	vk::Fence drawing;
+	vk::Framebuffer framebuffer;
+	vk::CommandBuffer commandBuffer;
+	vk::CommandPool commandPool;
 };
 } // namespace le::gfx

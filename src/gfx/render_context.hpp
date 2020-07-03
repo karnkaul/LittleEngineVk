@@ -2,9 +2,9 @@
 #include <functional>
 #include <vector>
 #include <glm/glm.hpp>
-#include "core/flags.hpp"
-#include "engine/window/common.hpp"
-#include "common.hpp"
+#include <core/flags.hpp>
+#include <engine/window/common.hpp>
+#include <gfx/common.hpp>
 
 namespace le::gfx
 {
@@ -28,6 +28,7 @@ public:
 	enum class Flag : s8
 	{
 		eRenderPaused,
+		eOutOfDate,
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
@@ -43,7 +44,7 @@ public:
 	};
 
 private:
-	struct Info final
+	struct Metadata final
 	{
 		ContextInfo info;
 		vk::SurfaceKHR surface;
@@ -85,9 +86,9 @@ public:
 public:
 	Swapchain m_swapchain;
 	Flags m_flags;
+	Metadata m_metadata;
 
 private:
-	Info m_info;
 	WindowID m_window;
 
 public:
@@ -103,11 +104,11 @@ public:
 	vk::Format colourFormat() const;
 	vk::Format depthFormat() const;
 
+	bool recreateSwapchain();
+
 private:
 	bool createSwapchain();
 	void destroySwapchain();
 	void cleanup();
-
-	bool recreateSwapchain();
 };
 } // namespace le::gfx

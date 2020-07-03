@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
-#include "core/std_types.hpp"
-#include "core/zero.hpp"
+#include <core/std_types.hpp>
+#include <core/zero.hpp>
 
 namespace le
 {
@@ -20,11 +20,10 @@ enum class ColourSpace : s8
 
 enum class PresentMode : s8
 {
-	eFIFO,
-	eMailbox,
 	eImmediate,
+	eMailbox,
+	eFifo,
+	eFifoRelaxed,
 	eCOUNT_
 };
-
-[[maybe_unused]] constexpr std::array colorSpaceNames = {"Unknown", "RGB Linear", "SRGB Non-linear"};
 } // namespace le

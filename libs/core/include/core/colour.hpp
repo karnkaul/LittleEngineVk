@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
-#include "std_types.hpp"
-#include "ubyte.hpp"
+#include <core/std_types.hpp>
+#include <core/ubyte.hpp>
 
 namespace le
 {

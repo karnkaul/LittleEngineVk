@@ -1,8 +1,8 @@
 #include <memory>
-#include "core/log.hpp"
-#include "core/utils.hpp"
-#include "engine/window/window.hpp"
-#include "window_impl.hpp"
+#include <core/log.hpp>
+#include <core/utils.hpp>
+#include <engine/window/window.hpp>
+#include <window/window_impl.hpp>
 
 namespace le
 {
@@ -24,8 +24,8 @@ Window::Service::~Service()
 	WindowImpl::deinit();
 }
 
-std::array<std::string_view, (size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window",
-																						 "Borderless Fullscreen", "Dedicated Fullscreen"};
+std::array<std::string_view, (size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen",
+																						 "Dedicated Fullscreen"};
 
 std::string const Window::s_tName = utils::tName<Window>();
 
@@ -44,6 +44,11 @@ Window::~Window()
 	LOG_I("[{}:{}] destroyed", s_tName, m_id);
 }
 
+bool Window::anyActive()
+{
+	return WindowImpl::anyActive();
+}
+
 void Window::pollEvents()
 {
 	WindowImpl::pollEvents();
@@ -56,29 +61,29 @@ void Window::renderAll()
 	return;
 }
 
-OnText::Token Window::registerText(OnText::Callback callback, WindowID window)
+input::OnText::Token Window::registerText(input::OnText::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onText.subscribe(callback);
 }
 
-OnInput::Token Window::registerInput(OnInput::Callback callback, WindowID window)
+input::OnInput::Token Window::registerInput(input::OnInput::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onInput.subscribe(callback);
 }
 
-OnMouse::Token Window::registerMouse(OnMouse::Callback callback, WindowID window)
+input::OnMouse::Token Window::registerMouse(input::OnMouse::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onMouse.subscribe(callback);
 }
 
-OnMouse::Token Window::registerScroll(OnMouse::Callback callback, WindowID window)
+input::OnMouse::Token Window::registerScroll(input::OnMouse::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onScroll.subscribe(callback);
 }
 
-WindowID Window::guiWindow()
+WindowID Window::editorWindow()
 {
-	return WindowImpl::guiWindow();
+	return WindowImpl::editorWindow();
 }
 
 gfx::Renderer const& Window::renderer() const
@@ -144,47 +149,47 @@ void Window::destroy()
 	return;
 }
 
-OnText::Token Window::registerText(OnText::Callback callback)
+input::OnText::Token Window::registerText(input::OnText::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onText.subscribe(callback);
 }
 
-OnInput::Token Window::registerInput(OnInput::Callback callback)
+input::OnInput::Token Window::registerInput(input::OnInput::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onInput.subscribe(callback);
 }
 
-OnMouse::Token Window::registerMouse(OnMouse::Callback callback)
+input::OnMouse::Token Window::registerMouse(input::OnMouse::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onMouse.subscribe(callback);
 }
 
-OnMouse::Token Window::registerScroll(OnMouse::Callback callback)
+input::OnMouse::Token Window::registerScroll(input::OnMouse::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onScroll.subscribe(callback);
 }
 
-OnFiledrop::Token Window::registerFiledrop(OnFiledrop::Callback callback)
+input::OnFiledrop::Token Window::registerFiledrop(input::OnFiledrop::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onFiledrop.subscribe(callback);
 }
 
-OnFocus::Token Window::registerFocus(OnFocus::Callback callback)
+input::OnFocus::Token Window::registerFocus(input::OnFocus::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onFocus.subscribe(callback);
 }
 
-OnWindowResize::Token Window::registerResize(OnWindowResize::Callback callback)
+input::OnWindowResize::Token Window::registerResize(input::OnWindowResize::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onWindowResize.subscribe(callback);
 }
 
-OnClosed::Token Window::registerClosed(OnClosed::Callback callback)
+input::OnClosed::Token Window::registerClosed(input::OnClosed::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onClosed.subscribe(callback);
 }
 
-void Window::setCursorMode(CursorMode mode) const
+void Window::setCursorMode(input::CursorMode mode) const
 {
 	if (m_uImpl)
 	{
@@ -193,9 +198,9 @@ void Window::setCursorMode(CursorMode mode) const
 	return;
 }
 
-CursorMode Window::cursorMode() const
+input::CursorMode Window::cursorMode() const
 {
-	return m_uImpl ? m_uImpl->cursorMode() : CursorMode::eDefault;
+	return m_uImpl ? m_uImpl->cursorMode() : input::CursorMode::eDefault;
 }
 
 glm::vec2 Window::cursorPos() const
@@ -217,19 +222,19 @@ std::string Window::clipboard() const
 	return m_uImpl ? m_uImpl->clipboard() : std::string();
 }
 
-JoyState Window::joyState(s32 id)
+input::Joystick Window::joyState(s32 id)
 {
 	return WindowImpl::joyState(id);
 }
 
-GamepadState Window::gamepadState(s32 id)
+input::Gamepad Window::gamepadState(s32 id)
 {
 	return WindowImpl::gamepadState(id);
 }
 
-std::vector<GamepadState> Window::activeGamepadStates()
+std::vector<input::Gamepad> Window::activeGamepads()
 {
-	return WindowImpl::activeGamepadStates();
+	return WindowImpl::activeGamepads();
 }
 
 f32 Window::triggerToAxis(f32 triggerValue)

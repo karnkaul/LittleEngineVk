@@ -1,8 +1,8 @@
-#include "deferred.hpp"
-#include "renderer_impl.hpp"
-#include "device.hpp"
-#include "vram.hpp"
-#include "window/window_impl.hpp"
+#include <gfx/deferred.hpp>
+#include <gfx/renderer_impl.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
+#include <window/window_impl.hpp>
 
 namespace le::gfx
 {
@@ -45,8 +45,8 @@ bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
 			}
 			else
 			{
-				s16 diff = -(s16)(pRenderer->framesDrawn() - entry.lastFrame);
-				entry.remaining = diff + (s16)pRenderer->virtualFrameCount() + (s16)entry.pad;
+				s16 diff = (s16)(pRenderer->framesDrawn() - entry.lastFrame);
+				entry.remaining = (s16)pRenderer->virtualFrameCount() + (s16)entry.pad - diff;
 			}
 		}
 		if (entry.remaining > 0)
@@ -110,7 +110,11 @@ void deferred::update()
 
 void deferred::deinit()
 {
-	g_device.waitIdle();
+	flush();
+}
+
+void deferred::flush()
+{
 	for (auto& deferred : g_deferred)
 	{
 		deferred.func();

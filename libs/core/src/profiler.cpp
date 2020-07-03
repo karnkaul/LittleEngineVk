@@ -1,5 +1,5 @@
-#include "core/log.hpp"
-#include "core/profiler.hpp"
+#include <core/log.hpp>
+#include <core/profiler.hpp>
 
 namespace le
 {

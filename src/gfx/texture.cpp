@@ -1,14 +1,14 @@
 #include <array>
 #include <stb/stb_image.h>
-#include "core/log.hpp"
-#include "core/io.hpp"
-#include "core/utils.hpp"
-#include "engine/assets/resources.hpp"
-#include "engine/gfx/texture.hpp"
-#include "common.hpp"
-#include "deferred.hpp"
-#include "device.hpp"
-#include "vram.hpp"
+#include <core/log.hpp>
+#include <core/io.hpp>
+#include <core/utils.hpp>
+#include <engine/assets/resources.hpp>
+#include <engine/gfx/texture.hpp>
+#include <gfx/common.hpp>
+#include <gfx/deferred.hpp>
+#include <gfx/device.hpp>
+#include <gfx/vram.hpp>
 
 namespace le::gfx
 {
@@ -16,13 +16,11 @@ namespace
 {
 std::array const g_filters = {vk::Filter::eLinear, vk::Filter::eNearest};
 std::array const g_mipModes = {vk::SamplerMipmapMode::eLinear, vk::SamplerMipmapMode::eNearest};
-std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge,
-								   vk::SamplerAddressMode::eClampToBorder};
+std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToBorder};
 std::array const g_texModes = {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Snorm};
 std::array const g_texTypes = {vk::ImageViewType::e2D, vk::ImageViewType::eCube};
 
-std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, ArrayView<ArrayView<u8>> bytes,
-					   [[maybe_unused]] std::string const& name)
+std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& size, Span<Span<u8>> bytes, [[maybe_unused]] std::string const& name)
 {
 	if (out_pImage->image == vk::Image() || out_pImage->extent.width != (u32)size.x || out_pImage->extent.height != (u32)size.y)
 	{
@@ -50,7 +48,7 @@ std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& 
 	return vram::copy(bytes, *out_pImage, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 }
 
-TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id)
+TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id, log::Level errLevel)
 {
 	Texture::Raw ret;
 	s32 ch;
@@ -58,11 +56,11 @@ TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::
 	auto pOut = stbi_load_from_memory(pIn, (s32)imgBytes.size(), &ret.size.x, &ret.size.y, &ch, 4);
 	if (!pOut)
 	{
-		LOG_E("[{}] [{}] Failed to load image data!", tName, id);
+		LOG(errLevel, "[{}] [{}] Failed to load image data!", tName, id);
 		return {};
 	}
 	size_t const size = (size_t)(ret.size.x * ret.size.y * 4);
-	ret.bytes = ArrayView(pOut, size);
+	ret.bytes = Span(pOut, size);
 	return ret;
 }
 } // namespace
@@ -129,7 +127,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	{
 		for (auto& bytes : info.bytes)
 		{
-			auto [raw, bResult] = imgToRaw(std::move(bytes), m_tName, idStr);
+			auto [raw, bResult] = imgToRaw(std::move(bytes), m_tName, idStr, log::Level::eError);
 			if (!bResult)
 			{
 				LOG_E("[{}] [{}] Failed to create texture!", m_tName, idStr);
@@ -152,7 +150,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 				m_status = Status::eError;
 				return;
 			}
-			auto [raw, bResult] = imgToRaw(std::move(pixels), m_tName, idStr);
+			auto [raw, bResult] = imgToRaw(std::move(pixels), m_tName, idStr, log::Level::eError);
 			if (!bResult)
 			{
 				LOG_E("[{}] [{}] Failed to create texture from [{}]!", m_tName, idStr, assetID.generic_string());
@@ -172,7 +170,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 		return;
 	}
 	m_size = m_uImpl->raws.back().size;
-	std::vector<ArrayView<u8>> views;
+	std::vector<Span<u8>> views;
 	for (auto const& raw : m_uImpl->raws)
 	{
 		views.push_back(raw.bytes);
@@ -185,8 +183,10 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	viewInfo.type = m_uImpl->type;
 	m_uImpl->imageView = g_device.createImageView(viewInfo);
 	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
+	m_type = info.type;
+	m_status = Status::eLoading;
 #if defined(LEVK_ASSET_HOT_RELOAD)
-	m_reloadDelay = 500ms;
+	m_reloadDelay = 50ms;
 	if (bAddFileMonitor)
 	{
 		m_uImpl->pReader = dynamic_cast<FileReader const*>(info.pReader);
@@ -197,18 +197,17 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 			m_uImpl->imgIDs.push_back(id);
 			auto onModified = [this, idx](File const* pFile) -> bool {
 				auto const idStr = m_id.generic_string();
-				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), m_tName, idStr);
-				if (!bResult)
+				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), m_tName, idStr, log::Level::eWarning);
+				if (bResult)
 				{
-					LOG_E("[{}] [{}] Failed to reload!", m_tName, idStr);
-					return false;
+					if (m_uImpl->bStbiRaw)
+					{
+						stbi_image_free((void*)(m_uImpl->raws.at(idx).bytes.pData));
+					}
+					m_uImpl->raws.at(idx) = std::move(raw);
+					return true;
 				}
-				if (m_uImpl->bStbiRaw)
-				{
-					stbi_image_free((void*)(m_uImpl->raws.at(idx).bytes.pData));
-				}
-				m_uImpl->raws.at(idx) = std::move(raw);
-				return true;
+				return false;
 			};
 			++idx;
 			m_files.push_back(File(id, m_uImpl->pReader->fullPath(id), FileMonitor::Mode::eBinaryContents, onModified));
@@ -250,20 +249,20 @@ Asset::Status Texture::update()
 		return m_status;
 	}
 	Asset::update();
-	if (m_status == Status::eLoading)
+	if (m_status == Status::eLoading || m_status == Status::eReloading)
 	{
 		if (utils::futureState(m_uImpl->copied) == FutureState::eReady)
 		{
-			m_status = Status::eReady;
-			LOG_D("[{}] [{}] loaded", m_tName, idStr);
-#if defined(LEVK_ASSET_HOT_RELOAD)
-			if (m_uImpl->bReloading)
+			if (m_status == Status::eReloading)
 			{
 				m_status = Status::eReloaded;
-				m_uImpl->bReloading = false;
 				LOG_I("[{}] [{}] reloaded", m_tName, idStr);
 			}
-#endif
+			else
+			{
+				LOG_D("[{}] [{}] loaded", m_tName, idStr);
+				m_status = Status::eReady;
+			}
 		}
 		else
 		{
@@ -291,14 +290,12 @@ Asset::Status Texture::update()
 void Texture::onReload()
 {
 	auto const idStr = m_id.generic_string();
-	std::vector<ArrayView<u8>> views;
+	std::vector<Span<u8>> views;
 	for (auto const& raw : m_uImpl->raws)
 	{
 		views.push_back(raw.bytes);
 	}
 	m_uImpl->copied = load(&m_uImpl->standby, m_uImpl->colourSpace, m_size, views, idStr);
-	m_status = Status::eLoading;
-	m_uImpl->bReloading = true;
 	LOG_D("[{}] [{}] reloading...", m_tName, idStr);
 }
 #endif

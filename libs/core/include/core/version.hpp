@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "std_types.hpp"
+#include <core/std_types.hpp>
 
 #if defined(__linux__)
 #undef major
@@ -26,10 +26,7 @@ public:
 	/// \brief Parse string into version
 	///
 	Version(std::string_view serialised);
-	explicit constexpr Version(u32 major = 0, u32 minor = 0, u32 patch = 0, u32 tweak = 0) noexcept
-		: mj(major), mn(minor), pa(patch), tw(tweak)
-	{
-	}
+	explicit constexpr Version(u32 major = 0, u32 minor = 0, u32 patch = 0, u32 tweak = 0) noexcept : mj(major), mn(minor), pa(patch), tw(tweak) {}
 
 public:
 	u32 major() const;

@@ -2,10 +2,11 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-#include "core/std_types.hpp"
-#include "core/delegate.hpp"
+#include <core/std_types.hpp>
+#include <core/delegate.hpp>
+#include <core/utils.hpp>
 
-namespace le
+namespace le::input
 {
 enum class Action : s8
 {
@@ -138,7 +139,8 @@ enum class Key
 	eRightSuper = 347,
 	eMenu = 348,
 
-	eMouseButton1 = 500,
+	eMouseButtonBegin = 500,
+	eMouseButton1 = eMouseButtonBegin,
 	eMouseButton2 = 501,
 	eMouseButton3 = 502,
 	eMouseButton4 = 503,
@@ -146,12 +148,14 @@ enum class Key
 	eMouseButton6 = 505,
 	eMouseButton7 = 506,
 	eMouseButton8 = 507,
+	eMouseButtonEnd,
 	eMouseButtonLast = eMouseButton8,
 	eMouseButtonLeft = eMouseButton1,
 	eMouseButtonRight = eMouseButton2,
 	eMouseButtonMiddle = eMouseButton3,
 
-	eGamepadButtonA = 600,
+	eGamepadButtonBegin = 600,
+	eGamepadButtonA = eGamepadButtonBegin,
 	eGamepadButtonB = 601,
 	eGamepadButtonX = 602,
 	eGamepadButtonY = 603,
@@ -166,30 +170,41 @@ enum class Key
 	eGamepadButtonDpadRight = 612,
 	eGamepadButtonDpadDown = 613,
 	eGamepadButtonDpadLeft = 614,
+	eGamepadButtonEnd,
 	eGamepadButtonCross = eGamepadButtonA,
 	eGamepadButtonCircle = eGamepadButtonB,
 	eGamepadButtonSquare = eGamepadButtonX,
 	eGamepadButtonTriangle = eGamepadButtonY,
 };
 
-enum Mods
+struct Mods
 {
-	eSHIFT = 0x0001,
-	eCONTROL = 0x0002,
-	eALT = 0x0004,
-	eSUPER = 0x0008,
-	eCAPS_LOCK = 0x0010,
-	eNUM_LOCK = 0x0020
+	enum VALUE
+	{
+		eNONE = 0,
+		eSHIFT = 0x0001,
+		eCONTROL = 0x0002,
+		eALT = 0x0004,
+		eSUPER = 0x0008,
+		eCAPS_LOCK = 0x0010,
+		eNUM_LOCK = 0x0020
+	};
 };
 
-enum class PadAxis : s8
+enum class Axis : s8
 {
+	eUnknown,
 	eLeftX = 0,
-	eLeftY = 1,
-	eRightX = 2,
-	eRightY = 3,
-	eLeftTrigger = 4,
-	eRightTrigger = 5,
+	eLeftY,
+	eRightX,
+	eRightY,
+	eLeftTrigger,
+	eRightTrigger,
+
+	eMouseBegin = 100,
+	eMouseScrollX = eMouseBegin,
+	eMouseScrollY,
+	eMouseEnd
 };
 
 enum class CursorMode : s8
@@ -199,7 +214,7 @@ enum class CursorMode : s8
 	eDisabled,
 };
 
-struct JoyState
+struct Joystick
 {
 	std::string name;
 	std::vector<f32> axes;
@@ -207,23 +222,32 @@ struct JoyState
 	s32 id = 0;
 };
 
-struct GamepadState
+struct Gamepad
 {
-	JoyState joyState;
+	Joystick joyState;
 	std::string name;
 	s32 id = 0;
 
-	f32 axis(PadAxis axis) const;
+	f32 axis(Axis axis) const;
 	bool isPressed(Key button) const;
 };
 
 namespace stdfs = std::filesystem;
 
 using OnText = Delegate<char>;
-using OnInput = Delegate<Key, Action, Mods>;
+using OnInput = Delegate<Key, Action, Mods::VALUE>;
 using OnMouse = Delegate<f64, f64>;
 using OnFocus = Delegate<bool>;
 using OnFiledrop = Delegate<stdfs::path const&>;
 using OnWindowResize = Delegate<s32, s32>;
 using OnClosed = Delegate<>;
-} // namespace le
+
+bool isMouseButton(Key key);
+bool isGamepadButton(Key key);
+bool isMouseAxis(Axis axis);
+
+Key parseKey(std::string_view str);
+Action parseAction(std::string_view str);
+Mods::VALUE parseMods(Span<std::string> vec);
+Axis parseAxis(std::string_view str);
+} // namespace le::input

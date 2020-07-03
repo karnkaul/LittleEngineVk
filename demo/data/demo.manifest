@@ -1,0 +1,47 @@
+{
+	"textures": [
+		{
+			"id": "textures/container2.png",
+			"sampler": "samplers/default"
+		},
+		{
+			"id": "textures/container2_specular.png",
+			"sampler": "samplers/default"
+		},
+		{
+			"id": "textures/awesomeface.png",
+			"sampler": "samplers/default"
+		},
+		{
+			"id": "textures/test.png",
+			"sampler": "samplers/default",
+			"optional": true
+		}
+	],
+	"cubemaps": [
+		{
+			"id": "skyboxes/sky_dusk",
+			"textures": [
+				"skyboxes/sky_dusk/right.jpg",
+				"skyboxes/sky_dusk/left.jpg",
+				"skyboxes/sky_dusk/up.jpg",
+				"skyboxes/sky_dusk/down.jpg",
+				"skyboxes/sky_dusk/front.jpg",
+				"skyboxes/sky_dusk/back.jpg"
+			]
+		}
+	],
+	"models": [
+		{
+			"id": "models/plant"
+		},
+		{
+			"id": "models/test/nanosuit",
+			"optional": true
+		},
+		{
+			"id": "models/test/fox",
+			"optional": true
+		}
+	]
+}

@@ -1,8 +1,8 @@
-#include "job_worker.hpp"
-#include "job_manager.hpp"
-#include "core/assert.hpp"
-#include "core/utils.hpp"
-#include "core/log.hpp"
+#include <job_worker.hpp>
+#include <job_manager.hpp>
+#include <core/assert.hpp>
+#include <core/utils.hpp>
+#include <core/log.hpp>
 
 namespace le
 {
@@ -44,9 +44,10 @@ void JobWorker::run()
 			// Wake a sleeping worker (if queue is not empty yet)
 			m_pManager->m_wakeCV.notify_one();
 		}
-		if (job.m_id >= 0)
+		if (job.m_shJob->m_jobID.load() >= 0)
 		{
 			m_state.store(State::eBusy);
+			job.m_shJob->m_status.store(HJob::Status::eBusy);
 			if (!job.m_bSilent)
 			{
 				LOG_D("[{}{}] Starting Job [{}]", utils::tName<JobWorker>(), id, job.m_logName);
@@ -63,10 +64,10 @@ void JobWorker::run()
 				{
 					job.m_shJob->m_exception = e.what();
 					ASSERT(false, e.what());
-					LOG_E("[{}{}] Threw an exception running Job [{}]!\n\t{}", utils::tName<JobWorker>(), id, job.m_logName,
-						  job.m_shJob->m_exception);
+					LOG_E("[{}{}] Threw an exception running Job [{}]!\n\t{}", utils::tName<JobWorker>(), id, job.m_logName, job.m_shJob->m_exception);
 				}
 			}
+			job.m_shJob->m_status.store(HJob::Status::eDone);
 		}
 	}
 }

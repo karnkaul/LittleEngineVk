@@ -1,4 +1,4 @@
-#include "core/maths.hpp"
+#include <core/maths.hpp>
 
 namespace le
 {

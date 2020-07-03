@@ -2,11 +2,11 @@
 #include <cstdlib>
 #include <filesystem>
 #include <thread>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/gdata.hpp"
-#include "core/os.hpp"
-#include "core/threads.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/gdata.hpp>
+#include <core/os.hpp>
+#include <core/threads.hpp>
 #if defined(LEVK_OS_WINX)
 #include <Windows.h>
 #elif defined(LEVK_OS_LINUX)
@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <iostream>
 #endif
 
 namespace le
@@ -108,36 +109,32 @@ bool os::isDebuggerAttached()
 	ret = IsDebuggerPresent() != 0;
 #elif defined(LEVK_OS_LINUX)
 	char buf[4096];
-
 	auto const status_fd = ::open("/proc/self/status", O_RDONLY);
 	if (status_fd == -1)
 	{
 		return false;
 	}
-
 	auto const num_read = ::read(status_fd, buf, sizeof(buf) - 1);
 	if (num_read <= 0)
 	{
 		return false;
 	}
-
-	buf[num_read] = '\0';
+	buf[(size_t)num_read] = '\0';
 	constexpr char tracerPidString[] = "TracerPid:";
 	auto const tracer_pid_ptr = ::strstr(buf, tracerPidString);
 	if (!tracer_pid_ptr)
 	{
 		return false;
 	}
-
-	for (char const* characterPtr = tracer_pid_ptr + sizeof(tracerPidString) - 1; characterPtr <= buf + num_read; ++characterPtr)
+	for (char const* pChar = tracer_pid_ptr + sizeof(tracerPidString) - 1; pChar <= buf + num_read && *pChar != '\n'; ++pChar)
 	{
-		if (::isspace(*characterPtr))
+		if (::isspace(*pChar))
 		{
 			continue;
 		}
 		else
 		{
-			ret = ::isdigit(*characterPtr) != 0 && *characterPtr != '0';
+			ret = ::isdigit(*pChar) != 0 && *pChar != '0';
 		}
 	}
 #endif

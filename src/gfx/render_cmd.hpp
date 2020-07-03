@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
-#include "core/assert.hpp"
-#include "pipeline_impl.hpp"
+#include <core/assert.hpp>
+#include <gfx/pipeline_impl.hpp>
 
 namespace le::gfx
 {
@@ -21,8 +21,8 @@ public:
 	~RenderCmd();
 
 public:
-	void begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent,
-			   vk::ArrayProxy<vk::ClearValue const> clearValues, vk::SubpassContents subpassContents = vk::SubpassContents::eInline);
+	void begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, vk::ArrayProxy<vk::ClearValue const> clearValues,
+			   vk::SubpassContents subpassContents = vk::SubpassContents::eInline);
 
 	void setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const;
 

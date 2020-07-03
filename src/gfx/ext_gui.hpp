@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
-#include "core/std_types.hpp"
-#include "engine/window/common.hpp"
+#include <core/std_types.hpp>
+#include <engine/window/common.hpp>
 
 namespace le::gfx::ext_gui
 {

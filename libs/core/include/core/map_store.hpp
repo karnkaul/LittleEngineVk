@@ -1,8 +1,7 @@
 #pragma once
 #include <map>
-#include <mutex>
 #include <unordered_map>
-#include "std_types.hpp"
+#include <core/std_types.hpp>
 
 namespace le
 {
@@ -18,9 +17,6 @@ public:
 
 public:
 	MapContainer m_map;
-
-private:
-	mutable std::mutex m_mutex;
 
 public:
 	///
@@ -58,14 +54,12 @@ template <typename M>
 template <typename... Args>
 void TMapStore<M>::emplace(Key const& id, Args&&... args)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	m_map.emplace(id, std::forward<Args&&>(args)...);
 }
 
 template <typename M>
 TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	if (auto search = m_map.find(id); search != m_map.end())
 	{
 		return &search->second;
@@ -76,7 +70,6 @@ TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) c
 template <typename M>
 TResult<typename TMapStore<M>::Value*> TMapStore<M>::find(Key const& id)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	if (auto search = m_map.find(id); search != m_map.end())
 	{
 		return &search->second;
@@ -87,14 +80,12 @@ TResult<typename TMapStore<M>::Value*> TMapStore<M>::find(Key const& id)
 template <typename M>
 bool TMapStore<M>::isLoaded(Key const& id) const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	return m_map.find(id) != m_map.end();
 }
 
 template <typename M>
 bool TMapStore<M>::unload(Key const& id)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	if (auto search = m_map.find(id); search != m_map.end())
 	{
 		m_map.erase(search);
@@ -106,7 +97,6 @@ bool TMapStore<M>::unload(Key const& id)
 template <typename M>
 void TMapStore<M>::unloadAll()
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	m_map.clear();
 	return;
 }
@@ -114,7 +104,6 @@ void TMapStore<M>::unloadAll()
 template <typename M>
 u64 TMapStore<M>::count() const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
 	return (u64)m_map.size();
 }
 } // namespace le

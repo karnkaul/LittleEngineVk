@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <glm/gtx/matrix_decompose.hpp>
-#include "core/assert.hpp"
-#include "core/transform.hpp"
+#include <core/assert.hpp>
+#include <core/transform.hpp>
 
 namespace le
 {
@@ -18,7 +18,11 @@ Transform::~Transform()
 	}
 	for (auto pChild : m_children)
 	{
-		pChild->m_pParent = nullptr;
+		pChild->m_pParent = m_pParent;
+		if (m_pParent)
+		{
+			m_pParent->m_children.push_back(pChild);
+		}
 		pChild->m_bDirty = true;
 	}
 }
@@ -80,17 +84,17 @@ Transform& Transform::setParent(Transform* pParent)
 	return *this;
 }
 
-glm::vec3 Transform::position() const
+glm::vec3 const& Transform::position() const
 {
 	return m_position;
 }
 
-glm::quat Transform::orientation() const
+glm::quat const& Transform::orientation() const
 {
 	return m_orientation;
 }
 
-glm::vec3 Transform::scale() const
+glm::vec3 const& Transform::scale() const
 {
 	return m_scale;
 }
@@ -157,5 +161,10 @@ void Transform::updateMats() const
 		m_bDirty = false;
 	}
 	return;
+}
+
+std::list<Transform*> const& Transform::children() const
+{
+	return m_children;
 }
 } // namespace le

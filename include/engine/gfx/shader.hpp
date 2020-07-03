@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "engine/assets/asset.hpp"
+#include <engine/assets/asset.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_SHADER_COMPILER)

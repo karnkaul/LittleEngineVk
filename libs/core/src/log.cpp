@@ -4,14 +4,14 @@
 #include <fstream>
 #include <mutex>
 #include <thread>
-#include "core/log.hpp"
+#include <core/log.hpp>
 #include <fmt/chrono.h>
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
 #endif
-#include "core/assert.hpp"
-#include "core/std_types.hpp"
-#include "core/threads.hpp"
+#include <core/assert.hpp>
+#include <core/std_types.hpp>
+#include <core/threads.hpp>
 
 namespace le
 {
@@ -139,8 +139,7 @@ void log::logText(Level level, std::string text, [[maybe_unused]] std::string_vi
 	try
 #endif
 	{
-		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text),
-						  *std::localtime(&now));
+		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
 	}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	catch (std::exception const& e)

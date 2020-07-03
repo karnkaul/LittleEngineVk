@@ -2,15 +2,13 @@
 #include <array>
 #include <memory>
 #include <glm/glm.hpp>
-#include "core/gdata.hpp"
-#include "engine/assets/asset.hpp"
-#include "engine/gfx/mesh.hpp"
+#include <core/gdata.hpp>
+#include <engine/assets/asset.hpp>
+#include <engine/gfx/mesh.hpp>
 
 namespace le::gfx
 {
 class Shader;
-
-using JSONObj = GData;
 
 class Font final : public Asset
 {
@@ -26,18 +24,18 @@ public:
 		s32 orgSizePt = 0;
 		bool bBlank = false;
 
-		void deserialise(u8 c, JSONObj const& json);
+		void deserialise(u8 c, GData const& json);
 	};
 	struct Info final
 	{
 		Material::Inst material;
-		stdfs::path id;
 		stdfs::path sheetID;
-		std::string samplerID;
+		stdfs::path samplerID;
+		stdfs::path materialID;
 		std::vector<Glyph> glyphs;
 		bytearray image;
 
-		bool deserialise(JSONObj const& json);
+		bool deserialise(GData const& json);
 	};
 
 	struct Text
@@ -105,11 +103,11 @@ protected:
 public:
 	bool setup(Info info);
 
-	void update();
-	void update(Font::Text data);
+	void updateText(Font::Text data);
 	void updateText(std::string text);
 
 	Mesh const* mesh() const;
 	bool isReady() const;
+	bool isBusy() const;
 };
 } // namespace le::gfx

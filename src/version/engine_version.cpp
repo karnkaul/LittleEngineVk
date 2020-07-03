@@ -1,5 +1,5 @@
-#include "engine/version/engine_version.hpp"
-#include "version/build_version.hpp"
+#include <engine/version/engine_version.hpp>
+#include <version/build_version.hpp>
 
 namespace le::os
 {

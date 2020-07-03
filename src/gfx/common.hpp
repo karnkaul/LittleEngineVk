@@ -12,15 +12,15 @@
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
-#include "core/assert.hpp"
-#include "core/colour.hpp"
-#include "core/log_config.hpp"
-#include "core/flags.hpp"
-#include "core/std_types.hpp"
-#include "engine/window/common.hpp"
-#include "engine/gfx/pipeline.hpp"
-#include "engine/gfx/shader.hpp"
-#include "engine/gfx/texture.hpp"
+#include <core/assert.hpp>
+#include <core/colour.hpp>
+#include <core/log_config.hpp>
+#include <core/flags.hpp>
+#include <core/std_types.hpp>
+#include <engine/window/common.hpp>
+#include <engine/gfx/pipeline.hpp>
+#include <engine/gfx/shader.hpp>
+#include <engine/gfx/texture.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_VKRESOURCE_NAMES)
@@ -48,32 +48,6 @@ using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 {
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm
-};
-
-[[maybe_unused]] constexpr std::array g_presentModeMap = 
-{
-	vk::PresentModeKHR::eFifo,
-	vk::PresentModeKHR::eMailbox,
-	vk::PresentModeKHR::eImmediate,
-};
-
-[[maybe_unused]] constexpr std::array g_polygonModeMap = 
-{
-	vk::PolygonMode::eFill,
-	vk::PolygonMode::eLine
-};
-
-[[maybe_unused]] constexpr std::array g_cullModeMap = 
-{
-	vk::CullModeFlagBits::eNone,
-	vk::CullModeFlagBits::eBack,
-	vk::CullModeFlagBits::eFront
-};
-
-[[maybe_unused]] constexpr std::array g_frontFaceMap = 
-{
-	vk::FrontFace::eCounterClockwise,
-	vk::FrontFace::eClockwise
 };
 // clang-format on 
 
@@ -274,7 +248,6 @@ struct TextureImpl final
 	Image standby;
 	std::vector<stdfs::path> imgIDs;
 	FileReader const* pReader = nullptr;
-	bool bReloading = false;
 #endif
 };
 

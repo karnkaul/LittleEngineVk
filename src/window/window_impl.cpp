@@ -1,13 +1,14 @@
 #include <array>
-#include "core/assert.hpp"
-#include "core/log.hpp"
-#include "core/os.hpp"
-#include "core/threads.hpp"
-#include "core/utils.hpp"
-#include "gfx/common.hpp"
-#include "gfx/device.hpp"
-#include "gfx/ext_gui.hpp"
-#include "gfx/renderer_impl.hpp"
+#include <core/assert.hpp>
+#include <core/log.hpp>
+#include <core/os.hpp>
+#include <core/threads.hpp>
+#include <core/utils.hpp>
+#include <editor/editor.hpp>
+#include <gfx/common.hpp>
+#include <gfx/device.hpp>
+#include <gfx/ext_gui.hpp>
+#include <gfx/renderer_impl.hpp>
 #if defined(LEVK_USE_GLFW)
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
@@ -15,13 +16,18 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #endif
-#include "window_impl.hpp"
+#include <window/window_impl.hpp>
 
 namespace le
 {
+using namespace input;
+
 namespace
 {
 std::unordered_set<WindowImpl*> g_registeredWindows;
+#if defined(LEVK_EDITOR)
+WindowImpl* g_pEditorWindow = nullptr;
+#endif
 
 #if defined(LEVK_USE_GLFW)
 bool g_bGLFWInit = false;
@@ -61,11 +67,10 @@ void onFramebufferResize(GLFWwindow* pGLFWwindow, s32 width, s32 height)
 
 void onKey(GLFWwindow* pGLFWwindow, s32 key, s32 /*scancode*/, s32 action, s32 mods)
 {
-	WindowImpl::s_input[WindowID::s_null].onInput(Key(key), Action(action), Mods(mods));
+	WindowImpl::s_input[WindowID::s_null].onInput(Key(key), Action(action), Mods::VALUE(mods));
 	if (auto pWindow = find(pGLFWwindow); pWindow)
 	{
-		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key), Action(action), Mods(mods));
-		// LOGIF_D(action == GLFW_PRESS, "[{}:{}] Key pressed: [{}/{}]", Window::s_tName, pWindow->id(), (char)key, key);
+		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key), Action(action), Mods::VALUE(mods));
 	}
 	return;
 }
@@ -82,10 +87,10 @@ void onMouse(GLFWwindow* pGLFWwindow, f64 x, f64 y)
 
 void onMouseButton(GLFWwindow* pGLFWwindow, s32 key, s32 action, s32 mods)
 {
-	WindowImpl::s_input[WindowID::s_null].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods(mods));
+	WindowImpl::s_input[WindowID::s_null].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods::VALUE(mods));
 	if (auto pWindow = find(pGLFWwindow); pWindow)
 	{
-		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods(mods));
+		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods::VALUE(mods));
 	}
 	return;
 }
@@ -151,7 +156,7 @@ void unregisterWindow(WindowImpl* pWindow)
 
 } // namespace
 
-f32 GamepadState::axis(PadAxis axis) const
+f32 Gamepad::axis(Axis axis) const
 {
 	[[maybe_unused]] size_t idx = size_t(axis);
 #if defined(LEVK_USE_GLFW)
@@ -165,7 +170,7 @@ f32 GamepadState::axis(PadAxis axis) const
 	return 0.0f;
 }
 
-bool GamepadState::isPressed(Key button) const
+bool Gamepad::isPressed(Key button) const
 {
 	[[maybe_unused]] size_t idx = (size_t)button - (size_t)Key::eGamepadButtonA;
 #if defined(LEVK_USE_GLFW)
@@ -213,8 +218,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 	{
 		if (mode->width < width || mode->height < height)
 		{
-			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width,
-				  mode->height);
+			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		pTarget = nullptr;
@@ -224,8 +228,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 	{
 		if (mode->width < width || mode->height < height)
 		{
-			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width,
-				  mode->height);
+			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		bDecorated = false;
@@ -334,6 +337,12 @@ void WindowImpl::deinit()
 
 void WindowImpl::update()
 {
+#if defined(LEVK_EDITOR)
+	if (g_pEditorWindow && g_pEditorWindow->isOpen())
+	{
+		gfx::ext_gui::newFrame();
+	}
+#endif
 	for (auto pWindow : g_registeredWindows)
 	{
 		if (auto pRenderer = pWindow->m_pWindow->m_renderer.m_uImpl.get())
@@ -416,19 +425,20 @@ void* WindowImpl::nativeHandle(WindowID window)
 	return nullptr;
 }
 
-WindowID WindowImpl::guiWindow()
+WindowID WindowImpl::editorWindow()
 {
+#if defined(LEVK_EDITOR)
 	if (gfx::ext_gui::isInit())
 	{
 		for (auto pWindow : g_registeredWindows)
 		{
-			auto const id = pWindow->m_pWindow->m_id;
-			if (auto pImpl = rendererImpl(id); pImpl && pImpl->m_bExtGUI)
+			if (pWindow == g_pEditorWindow)
 			{
-				return id;
+				return pWindow->m_pWindow->m_id;
 			}
 		}
 	}
+#endif
 	return {};
 }
 
@@ -439,6 +449,16 @@ WindowImpl::WindowImpl(Window* pWindow) : m_pWindow(pWindow)
 
 WindowImpl::~WindowImpl()
 {
+#if defined(LEVK_EDITOR)
+	if (this == g_pEditorWindow)
+	{
+		gfx::deferred::release([]() {
+			editor::deinit();
+			gfx::ext_gui::deinit();
+		});
+		g_pEditorWindow = nullptr;
+	}
+#endif
 	unregisterWindow(this);
 	close();
 	destroy();
@@ -450,9 +470,7 @@ bool WindowImpl::create(Window::Info const& info)
 	{
 		m_uNativeWindow = std::make_unique<NativeWindow>(info);
 		gfx::RendererImpl::Info rendererInfo;
-		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR {
-			return createSurface(instance, *m_uNativeWindow);
-		};
+		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR { return createSurface(instance, *m_uNativeWindow); };
 		rendererInfo.contextInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
 		rendererInfo.contextInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
 		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
@@ -463,15 +481,14 @@ bool WindowImpl::create(Window::Info const& info)
 		if (os::isDefined("immediate"))
 		{
 			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
-			rendererInfo.contextInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)PresentMode::eImmediate));
+			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)PresentMode::eImmediate);
 		}
 		for (auto presentMode : info.options.presentModes)
 		{
-			rendererInfo.contextInfo.options.presentModes.push_back(gfx::g_presentModeMap.at((size_t)presentMode));
+			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)presentMode);
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		rendererInfo.bExtGUI = info.config.bEnableGUI;
 #if defined(LEVK_USE_GLFW)
 		glfwSetWindowSizeCallback(m_uNativeWindow->m_pWindow, &onWindowResize);
 		glfwSetFramebufferSizeCallback(m_uNativeWindow->m_pWindow, &onFramebufferResize);
@@ -492,6 +509,26 @@ bool WindowImpl::create(Window::Info const& info)
 		glfwShowWindow(m_uNativeWindow->m_pWindow);
 #endif
 		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo, &m_pWindow->m_renderer);
+		m_presentModes.clear();
+		m_presentModes.reserve(m_pWindow->m_renderer.m_uImpl->m_context.m_metadata.presentModes.size());
+		for (auto mode : m_pWindow->m_renderer.m_uImpl->m_context.m_metadata.presentModes)
+		{
+			m_presentModes.push_back((PresentMode)mode);
+		}
+#if defined(LEVK_EDITOR)
+		if (!g_pEditorWindow && !gfx::ext_gui::isInit())
+		{
+			if (!m_pWindow->m_renderer.m_uImpl->initExtGUI())
+			{
+				LOG_E("[{}] Failed to initialise Editor!", Window::s_tName);
+			}
+			else
+			{
+				g_pEditorWindow = this;
+				editor::init(m_pWindow->m_id);
+			}
+		}
+#endif
 		LOG_D("[{}:{}] created", Window::s_tName, m_pWindow->m_id);
 		return true;
 	}
@@ -584,6 +621,16 @@ void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 		m_pWindow->m_renderer.m_uImpl->onFramebufferResize();
 	}
 	return;
+}
+
+PresentMode WindowImpl::presentMode() const
+{
+	return m_pWindow->m_renderer.m_uImpl ? (PresentMode)m_pWindow->m_renderer.m_uImpl->presentMode() : PresentMode::eFifo;
+}
+
+bool WindowImpl::setPresentMode(PresentMode mode)
+{
+	return m_pWindow->m_renderer.m_uImpl ? m_pWindow->m_renderer.m_uImpl->setPresentMode((vk::PresentModeKHR)mode) : false;
 }
 
 glm::ivec2 WindowImpl::framebufferSize() const
@@ -687,9 +734,9 @@ std::string WindowImpl::clipboard() const
 	return {};
 }
 
-JoyState WindowImpl::joyState([[maybe_unused]] s32 id)
+Joystick WindowImpl::joyState([[maybe_unused]] s32 id)
 {
-	JoyState ret;
+	Joystick ret;
 #if defined(LEVK_USE_GLFW)
 	if (threads::isMainThread() && g_bGLFWInit && glfwJoystickPresent(id))
 	{
@@ -717,9 +764,9 @@ JoyState WindowImpl::joyState([[maybe_unused]] s32 id)
 	return ret;
 }
 
-GamepadState WindowImpl::gamepadState([[maybe_unused]] s32 id)
+Gamepad WindowImpl::gamepadState([[maybe_unused]] s32 id)
 {
-	GamepadState ret;
+	Gamepad ret;
 #if defined(LEVK_USE_GLFW)
 	GLFWgamepadstate state;
 	if (threads::isMainThread() && g_bGLFWInit && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
@@ -735,9 +782,9 @@ GamepadState WindowImpl::gamepadState([[maybe_unused]] s32 id)
 	return ret;
 }
 
-std::vector<GamepadState> WindowImpl::activeGamepadStates()
+std::vector<Gamepad> WindowImpl::activeGamepads()
 {
-	std::vector<GamepadState> ret;
+	std::vector<Gamepad> ret;
 #if defined(LEVK_USE_GLFW)
 	if (threads::isMainThread() && g_bGLFWInit)
 	{
@@ -746,7 +793,7 @@ std::vector<GamepadState> WindowImpl::activeGamepadStates()
 			GLFWgamepadstate state;
 			if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
 			{
-				GamepadState padi;
+				Gamepad padi;
 				padi.name = glfwGetGamepadName(id);
 				padi.id = id;
 				padi.joyState.buttons = std::vector<u8>(15, 0);
@@ -802,6 +849,18 @@ std::string_view WindowImpl::toString([[maybe_unused]] s32 key)
 	return ret;
 }
 
+bool WindowImpl::anyActive()
+{
+	for (auto pWindow : g_registeredWindows)
+	{
+		if (pWindow->isOpen())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void WindowImpl::pollEvents()
 {
 #if defined(LEVK_USE_GLFW)
@@ -815,9 +874,16 @@ void WindowImpl::pollEvents()
 
 void WindowImpl::renderAll()
 {
+	bool bExtGUI = false;
 	for (auto pWindow : g_registeredWindows)
 	{
-		pWindow->m_pWindow->m_renderer.render();
+#if defined(LEVK_EDITOR)
+		if (g_pEditorWindow)
+		{
+			bExtGUI = g_pEditorWindow == pWindow;
+		}
+#endif
+		pWindow->m_pWindow->m_renderer.render(bExtGUI);
 	}
 	return;
 }

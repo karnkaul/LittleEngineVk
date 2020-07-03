@@ -1,16 +1,16 @@
 #include <stdexcept>
-#include "core/assert.hpp"
-#include "core/colour.hpp"
-#include "ext_gui.hpp"
-#include "device.hpp"
-#include "renderer_impl.hpp"
-#include "window/window_impl.hpp"
+#include <core/assert.hpp>
+#include <core/colour.hpp>
+#include <gfx/ext_gui.hpp>
+#include <gfx/device.hpp>
+#include <gfx/renderer_impl.hpp>
+#include <window/window_impl.hpp>
 #if defined(LEVK_USE_IMGUI)
 #include <glm/gtc/color_space.hpp>
-#include "imgui.h"
-#include "imgui_impl_vulkan.h"
+#include <imgui.h>
+#include <imgui_impl_vulkan.h>
 #if defined(LEVK_USE_GLFW)
-#include "imgui_impl_glfw.h"
+#include <imgui_impl_glfw.h>
 #endif
 #endif
 
@@ -109,7 +109,7 @@ void setStyle()
 #endif
 } // namespace
 
-bool ext_gui::init(Info const& info)
+bool ext_gui::init([[maybe_unused]] Info const& info)
 {
 	bool bRet = false;
 	if (!isInit())

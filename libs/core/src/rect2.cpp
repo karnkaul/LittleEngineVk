@@ -1,4 +1,4 @@
-#include "core/rect2.hpp"
+#include <core/rect2.hpp>
 
 namespace le
 {

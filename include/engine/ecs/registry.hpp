@@ -25,7 +25,7 @@ struct Entity final
 
 struct EntityHasher final
 {
-	size_t operator()(Entity const& entity) const;
+	std::size_t operator()(Entity const& entity) const;
 };
 
 bool operator==(Entity lhs, Entity rhs);
@@ -52,7 +52,7 @@ public:
 	using Flags = TFlags<Flag>;
 
 	// Hash code of component type
-	using Signature = size_t;
+	using Signature = std::size_t;
 
 	template <typename... T>
 	using View = std::unordered_map<Entity, std::tuple<T*...>, EntityHasher>;
@@ -148,7 +148,7 @@ public:
 	void flush();
 	void clear();
 
-	size_t entityCount() const;
+	std::size_t entityCount() const;
 	std::string_view entityName(Entity entity) const;
 
 private:

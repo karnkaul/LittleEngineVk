@@ -115,8 +115,8 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 	s32 maxXAdv = 0;
 	for (auto const& glyph : info.glyphs)
 	{
-		ASSERT(glyph.ch != '\0' && m_glyphs[(size_t)glyph.ch].ch == '\0', "Invalid/duplicate glyph!");
-		m_glyphs.at((size_t)glyph.ch) = glyph;
+		ASSERT(glyph.ch != '\0' && m_glyphs[(std::size_t)glyph.ch].ch == '\0', "Invalid/duplicate glyph!");
+		m_glyphs.at((std::size_t)glyph.ch) = glyph;
 		maxCell.x = std::max(maxCell.x, glyph.cell.x);
 		maxCell.y = std::max(maxCell.y, glyph.cell.y);
 		maxXAdv = std::max(maxXAdv, glyph.xAdv);
@@ -151,11 +151,11 @@ Geometry Font::generate(Text const& text) const
 	glm::ivec2 maxCell = glm::vec2(0);
 	for (auto c : text.text)
 	{
-		maxCell.x = std::max(maxCell.x, m_glyphs.at((size_t)c).cell.x);
-		maxCell.y = std::max(maxCell.y, m_glyphs.at((size_t)c).cell.y);
+		maxCell.x = std::max(maxCell.x, m_glyphs.at((std::size_t)c).cell.x);
+		maxCell.y = std::max(maxCell.y, m_glyphs.at((std::size_t)c).cell.y);
 	}
 	u32 lineCount = 1;
-	for (size_t idx = 0; idx < text.text.size(); ++idx)
+	for (std::size_t idx = 0; idx < text.text.size(); ++idx)
 	{
 		if (text.text[idx] == '\n')
 		{
@@ -167,7 +167,7 @@ Geometry Font::generate(Text const& text) const
 	f32 const textHeight = (f32)lineCount * lineHeight;
 	glm::vec2 const realTopLeft = text.pos;
 	glm::vec2 textTL = realTopLeft;
-	size_t nextLineIdx = 0;
+	std::size_t nextLineIdx = 0;
 	s32 yIdx = 0;
 	f32 xPos = 0.0f;
 	f32 lineWidth = 0.0f;
@@ -183,7 +183,7 @@ Geometry Font::generate(Text const& text) const
 			}
 			else
 			{
-				lineWidth += (f32)m_glyphs.at((size_t)ch).xAdv;
+				lineWidth += (f32)m_glyphs.at((std::size_t)ch).xAdv;
 			}
 		}
 		lineWidth *= text.scale;
@@ -208,7 +208,7 @@ Geometry Font::generate(Text const& text) const
 			updateTextTL();
 			continue;
 		}
-		auto const& search = m_glyphs.at((size_t)c);
+		auto const& search = m_glyphs.at((std::size_t)c);
 		auto const& glyph = search.ch == '\0' ? m_blankGlyph : search;
 		auto const offset = glm::vec3(xPos - (f32)glyph.offset.x * text.scale, (f32)glyph.offset.y * text.scale, 0.0f);
 		auto const tl = glm::vec3(textTL.x, textTL.y, text.pos.z) + offset;

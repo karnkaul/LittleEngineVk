@@ -189,8 +189,8 @@ void Set::destroy()
 
 void Set::resetTextures(SamplerCounts const& counts)
 {
-	std::deque<Texture const*> const diffuse((size_t)counts.diffuse, Resources::inst().get<Texture>("textures/white"));
-	std::deque<Texture const*> const specular((size_t)counts.specular, Resources::inst().get<Texture>("textures/black"));
+	std::deque<Texture const*> const diffuse((std::size_t)counts.diffuse, Resources::inst().get<Texture>("textures/white"));
+	std::deque<Texture const*> const specular((std::size_t)counts.specular, Resources::inst().get<Texture>("textures/black"));
 	writeDiffuse(diffuse);
 	writeSpecular(specular);
 }
@@ -293,7 +293,7 @@ rd::SetLayouts rd::allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 	specularBinding.descriptorCount = samplerCounts.specular;
 	std::array const samplerBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
 	ret.samplerLayout = g_device.createDescriptorSetLayout(samplerBindings);
-	ret.sets.reserve((size_t)copies);
+	ret.sets.reserve((std::size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
 		Set set;

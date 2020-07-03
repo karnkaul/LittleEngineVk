@@ -134,7 +134,7 @@ TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
 		if (file.good())
 		{
 			auto pos = file.tellg();
-			auto buf = bytearray((size_t)pos);
+			auto buf = bytearray((std::size_t)pos);
 			file.seekg(0, std::ios::beg);
 			file.read((char*)buf.data(), (std::streamsize)pos);
 			return buf;
@@ -236,7 +236,7 @@ TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
 		{
 			std::stringstream buf;
 			auto length = PHYSFS_fileLength(pFile);
-			std::string charBuf((size_t)length, 0);
+			std::string charBuf((std::size_t)length, 0);
 			PHYSFS_readBytes(pFile, charBuf.data(), (PHYSFS_uint64)length);
 			buf << charBuf;
 			return buf;
@@ -254,7 +254,7 @@ TResult<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
 		if (pFile)
 		{
 			auto length = PHYSFS_fileLength(pFile);
-			auto buf = bytearray((size_t)length);
+			auto buf = bytearray((std::size_t)length);
 			PHYSFS_readBytes(pFile, buf.data(), (PHYSFS_uint64)length);
 			return buf;
 		}

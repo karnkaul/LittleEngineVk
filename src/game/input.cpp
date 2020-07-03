@@ -155,7 +155,7 @@ void input::fire()
 		{
 			snapshot.held.push_back(c);
 		}
-		size_t processed = 0;
+		std::size_t processed = 0;
 #if defined(LEVK_DEBUG)
 		static bool s_bWasConsuming = false;
 		bool bConsumed = false;

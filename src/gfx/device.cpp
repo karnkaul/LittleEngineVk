@@ -79,7 +79,7 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 		{
 			std::set<std::string_view> missingExtensions(deviceExtensions.begin(), deviceExtensions.end());
 			auto const extensions = physicalDevice.enumerateDeviceExtensionProperties();
-			for (size_t idx = 0; idx < extensions.size() && !missingExtensions.empty(); ++idx)
+			for (std::size_t idx = 0; idx < extensions.size() && !missingExtensions.empty(); ++idx)
 			{
 				missingExtensions.erase(std::string_view(extensions.at(idx).extensionName));
 			}
@@ -149,8 +149,8 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 		std::unordered_map<u32, QueueFamily> queueFamilies;
 		QFlags found;
-		size_t graphicsFamilyIdx = 0;
-		for (size_t idx = 0; idx < queueFamilyProperties.size() && !found.bits.all(); ++idx)
+		std::size_t graphicsFamilyIdx = 0;
+		for (std::size_t idx = 0; idx < queueFamilyProperties.size() && !found.bits.all(); ++idx)
 		{
 			auto const& queueFamily = queueFamilyProperties.at(idx);
 			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)

@@ -24,8 +24,8 @@ Window::Service::~Service()
 	WindowImpl::deinit();
 }
 
-std::array<std::string_view, (size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen",
-																						 "Dedicated Fullscreen"};
+std::array<std::string_view, (std::size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen",
+																							  "Dedicated Fullscreen"};
 
 std::string const Window::s_tName = utils::tName<Window>();
 
@@ -242,12 +242,12 @@ f32 Window::triggerToAxis(f32 triggerValue)
 	return WindowImpl::triggerToAxis(triggerValue);
 }
 
-size_t Window::joystickAxesCount(s32 id)
+std::size_t Window::joystickAxesCount(s32 id)
 {
 	return WindowImpl::joystickAxesCount(id);
 }
 
-size_t Window::joysticKButtonsCount(s32 id)
+std::size_t Window::joysticKButtonsCount(s32 id)
 {
 	return WindowImpl::joysticKButtonsCount(id);
 }

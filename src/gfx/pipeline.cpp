@@ -176,7 +176,7 @@ bool PipelineImpl::create()
 		for (auto const& [type, module] : modules)
 		{
 			vk::PipelineShaderStageCreateInfo createInfo;
-			createInfo.stage = ShaderImpl::s_typeToFlagBit[(size_t)type];
+			createInfo.stage = ShaderImpl::s_typeToFlagBit[(std::size_t)type];
 			createInfo.module = module;
 			createInfo.pName = "main";
 			shaderCreateInfo.push_back(std::move(createInfo));

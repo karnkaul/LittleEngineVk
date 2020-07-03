@@ -34,7 +34,7 @@ struct Stage final
 		Buffer buffer;
 		vk::CommandBuffer commandBuffer;
 		std::promise<void> promise;
-		size_t bufferID = 0;
+		std::size_t bufferID = 0;
 	};
 
 	std::deque<Command> commands;
@@ -49,7 +49,7 @@ struct Submit final
 };
 
 std::string const s_tName = utils::tName<VRAM>();
-std::array<u64, (size_t)ResourceType::eCOUNT_> g_allocations;
+std::array<u64, (std::size_t)ResourceType::eCOUNT_> g_allocations;
 
 std::unordered_map<std::thread::id, Stage> g_active;
 std::unordered_map<std::thread::id, vk::CommandPool> g_pools;
@@ -107,8 +107,8 @@ void addCommand(Stage::Command&& command)
 
 [[maybe_unused]] std::string logCount()
 {
-	auto [bufferSize, bufferUnit] = utils::friendlySize(g_allocations.at((size_t)ResourceType::eBuffer));
-	auto const [imageSize, imageUnit] = utils::friendlySize(g_allocations.at((size_t)ResourceType::eImage));
+	auto [bufferSize, bufferUnit] = utils::friendlySize(g_allocations.at((std::size_t)ResourceType::eBuffer));
+	auto const [imageSize, imageUnit] = utils::friendlySize(g_allocations.at((std::size_t)ResourceType::eImage));
 	return fmt::format("Buffers: [{:.2f}{}]; Images: [{:.2f}{}]", bufferSize, bufferUnit, imageSize, imageUnit);
 }
 } // namespace
@@ -193,7 +193,7 @@ void vram::update()
 	};
 	g_submitted.erase(std::remove_if(g_submitted.begin(), g_submitted.end(), removeDone), g_submitted.end());
 	std::scoped_lock<std::mutex> lock(g_mutex);
-	size_t commandCount = 0;
+	std::size_t commandCount = 0;
 	for (auto& [_, stage] : g_active)
 	{
 		commandCount += stage.commands.size();
@@ -250,7 +250,7 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	std::scoped_lock<std::mutex> lock(g_mutex);
-	g_allocations.at((size_t)ResourceType::eBuffer) += ret.writeSize;
+	g_allocations.at((std::size_t)ResourceType::eBuffer) += ret.writeSize;
 	if (g_VRAM_bLogAllocs)
 	{
 		if (!bSilent)
@@ -409,7 +409,7 @@ Image vram::createImage(ImageInfo const& info)
 	ret.allocatedSize = requirements.size;
 	ret.mode = queues.mode;
 	std::scoped_lock<std::mutex> lock(g_mutex);
-	g_allocations.at((size_t)ResourceType::eImage) += ret.allocatedSize;
+	g_allocations.at((std::size_t)ResourceType::eImage) += ret.allocatedSize;
 	if (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.allocatedSize);
@@ -428,7 +428,7 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 	{
 		vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
 		std::scoped_lock<std::mutex> lock(g_mutex);
-		g_allocations.at((size_t)ResourceType::eBuffer) -= buffer.writeSize;
+		g_allocations.at((std::size_t)ResourceType::eBuffer) -= buffer.writeSize;
 		if (g_VRAM_bLogAllocs)
 		{
 			if (!bSilent)
@@ -450,8 +450,8 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 
 std::future<void> vram::copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutTransition layouts)
 {
-	size_t imgSize = 0;
-	size_t layerSize = 0;
+	std::size_t imgSize = 0;
+	std::size_t layerSize = 0;
 	for (auto pixels : pixelsArr)
 	{
 		ASSERT(layerSize == 0 || layerSize == pixels.extent, "Invalid image data!");
@@ -531,7 +531,7 @@ void vram::release(Image image)
 	{
 		vmaDestroyImage(g_allocator, image.image, image.handle);
 		std::scoped_lock<std::mutex> lock(g_mutex);
-		g_allocations.at((size_t)ResourceType::eImage) -= image.allocatedSize;
+		g_allocations.at((std::size_t)ResourceType::eImage) -= image.allocatedSize;
 		if (g_VRAM_bLogAllocs)
 		{
 			if (image.info.actualSize > 0)

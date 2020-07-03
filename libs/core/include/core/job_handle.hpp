@@ -66,11 +66,11 @@ private:
 ///
 struct IndexedTask final
 {
-	std::function<void(size_t)> task;
+	std::function<void(std::size_t)> task;
 	std::string name;
-	size_t iterationCount = 0;
-	size_t iterationsPerJob = 1;
-	size_t startIdx = 0;
+	std::size_t iterationCount = 0;
+	std::size_t iterationsPerJob = 1;
+	std::size_t startIdx = 0;
 	bool bSilent = true;
 };
 } // namespace le

@@ -87,8 +87,8 @@ bool Resources::init(IOReader const& data)
 
 			info.pReader = &data;
 			ASSERT(data.checkPresences(shaderIDs), "Uber Shader not found!");
-			info.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
-			info.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
+			info.codeIDMap.at((std::size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
+			info.codeIDMap.at((std::size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
 			create<gfx::Shader>("shaders/default", std::move(info));
 		}
 		{
@@ -96,13 +96,19 @@ bool Resources::init(IOReader const& data)
 			auto [str, bResult] = data.getString("fonts/default.json");
 			ASSERT(bResult, "Default font not found!");
 			GData fontData;
-			fontData.read(std::move(str));
-			fontInfo.deserialise(fontData);
-			auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
-			ASSERT(bImg, "Default font not found!");
-			fontInfo.image = std::move(img);
-			fontInfo.material.pMaterial = get<gfx::Material>(fontInfo.materialID);
-			create<gfx::Font>("fonts/default", std::move(fontInfo));
+			if (fontData.read(std::move(str)))
+			{
+				fontInfo.deserialise(fontData);
+				auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
+				ASSERT(bImg, "Default font not found!");
+				fontInfo.image = std::move(img);
+				fontInfo.material.pMaterial = get<gfx::Material>(fontInfo.materialID);
+				create<gfx::Font>("fonts/default", std::move(fontInfo));
+			}
+			else
+			{
+				LOG_E("[{}] Failed to create default font!", s_tName);
+			}
 		}
 	}
 	LOG_I("[{}] initialised", s_tName);
@@ -123,13 +129,13 @@ void Resources::update()
 	return;
 }
 
-bool Resources::unload(stdfs::path const& id)
+bool Resources::unload(Hash hash)
 {
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
 		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
-		return m_resources.unload(id.generic_string());
+		return m_resources.unload(hash);
 	}
 	return false;
 }

@@ -119,7 +119,7 @@ void onFiledrop(GLFWwindow* pGLFWwindow, s32 count, char const** szPaths)
 {
 	if (auto pWindow = find(pGLFWwindow); pWindow)
 	{
-		for (size_t idx = 0; idx < (size_t)count; ++idx)
+		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx)
 		{
 			stdfs::path path(szPaths[idx]);
 		}
@@ -158,11 +158,11 @@ void unregisterWindow(WindowImpl* pWindow)
 
 f32 Gamepad::axis(Axis axis) const
 {
-	[[maybe_unused]] size_t idx = size_t(axis);
+	[[maybe_unused]] std::size_t idx = std::size_t(axis);
 #if defined(LEVK_USE_GLFW)
 	s32 max = 0;
 	glfwGetJoystickAxes(id, &max);
-	if (idx < (size_t)max && idx < joyState.axes.size())
+	if (idx < (std::size_t)max && idx < joyState.axes.size())
 	{
 		return joyState.axes.at(idx);
 	}
@@ -172,11 +172,11 @@ f32 Gamepad::axis(Axis axis) const
 
 bool Gamepad::isPressed(Key button) const
 {
-	[[maybe_unused]] size_t idx = (size_t)button - (size_t)Key::eGamepadButtonA;
+	[[maybe_unused]] std::size_t idx = (std::size_t)button - (std::size_t)Key::eGamepadButtonA;
 #if defined(LEVK_USE_GLFW)
 	s32 max = 0;
 	glfwGetJoystickButtons(id, &max);
-	if (idx < (size_t)max && idx < joyState.buttons.size())
+	if (idx < (std::size_t)max && idx < joyState.buttons.size())
 	{
 		return joyState.buttons.at(idx);
 	}
@@ -206,7 +206,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 		LOG_E("[{}] Failed to detect video mode!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
-	size_t screenIdx = info.options.screenID < screenCount ? (size_t)info.options.screenID : 0;
+	std::size_t screenIdx = info.options.screenID < screenCount ? (std::size_t)info.options.screenID : 0;
 	GLFWmonitor* pTarget = ppScreens[screenIdx];
 	s32 height = info.config.size.y;
 	s32 width = info.config.size.x;
@@ -358,7 +358,7 @@ std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
 #if defined(LEVK_USE_GLFW)
 	u32 glfwExtCount;
 	char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
-	ret.reserve((size_t)glfwExtCount);
+	ret.reserve((std::size_t)glfwExtCount);
 	for (u32 i = 0; i < glfwExtCount; ++i)
 	{
 		ret.push_back(glfwExtensions[i]);
@@ -476,7 +476,7 @@ bool WindowImpl::create(Window::Info const& info)
 		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
 		for (auto colourSpace : info.options.colourSpaces)
 		{
-			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((size_t)colourSpace));
+			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((std::size_t)colourSpace));
 		}
 		if (os::isDefined("immediate"))
 		{
@@ -743,13 +743,13 @@ Joystick WindowImpl::joyState([[maybe_unused]] s32 id)
 		ret.id = id;
 		s32 count;
 		auto const axes = glfwGetJoystickAxes(id, &count);
-		ret.axes.reserve((size_t)count);
+		ret.axes.reserve((std::size_t)count);
 		for (s32 idx = 0; idx < count; ++idx)
 		{
 			ret.axes.push_back(axes[idx]);
 		}
 		auto const buttons = glfwGetJoystickButtons(id, &count);
-		ret.buttons.reserve((size_t)count);
+		ret.buttons.reserve((std::size_t)count);
 		for (s32 idx = 0; idx < count; ++idx)
 		{
 			ret.buttons.push_back(buttons[idx]);
@@ -817,24 +817,24 @@ f32 WindowImpl::triggerToAxis([[maybe_unused]] f32 triggerValue)
 	return ret;
 }
 
-size_t WindowImpl::joystickAxesCount([[maybe_unused]] s32 id)
+std::size_t WindowImpl::joystickAxesCount([[maybe_unused]] s32 id)
 {
-	size_t ret = 0;
+	std::size_t ret = 0;
 #if defined(LEVK_USE_GLFW)
 	s32 max;
 	glfwGetJoystickAxes(id, &max);
-	ret = size_t(max);
+	ret = std::size_t(max);
 #endif
 	return ret;
 }
 
-size_t WindowImpl::joysticKButtonsCount([[maybe_unused]] s32 id)
+std::size_t WindowImpl::joysticKButtonsCount([[maybe_unused]] s32 id)
 {
-	size_t ret = 0;
+	std::size_t ret = 0;
 #if defined(LEVK_USE_GLFW)
 	s32 max;
 	glfwGetJoystickButtons(id, &max);
-	ret = size_t(max);
+	ret = std::size_t(max);
 #endif
 	return ret;
 }

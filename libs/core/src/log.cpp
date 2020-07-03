@@ -20,7 +20,7 @@ namespace
 class FileLogger final
 {
 public:
-	static constexpr size_t s_reserveCount = 1024 * 1024;
+	static constexpr std::size_t s_reserveCount = 1024 * 1024;
 
 public:
 	~FileLogger();
@@ -122,7 +122,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 }
 
 std::mutex g_logMutex;
-std::array<char, (size_t)log::Level::eCOUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
+std::array<char, (std::size_t)log::Level::eCOUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 
@@ -139,7 +139,7 @@ void log::logText(Level level, std::string text, [[maybe_unused]] std::string_vi
 	try
 #endif
 	{
-		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
+		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(std::size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
 	}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	catch (std::exception const& e)

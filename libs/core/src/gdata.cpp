@@ -22,9 +22,11 @@ struct Escape final
 	void add(std::pair<char, char> match);
 };
 
-std::string sanitise(std::string_view str, size_t start, size_t end);
-bool isWhitespace(char c);
-bool isBoolean(std::string_view str, size_t first);
+std::string const g_tName = utils::tName<GData>();
+
+std::string sanitise(std::string_view str, std::size_t start, std::size_t end);
+bool isWhitespace(char c, u64* out_pLine = nullptr);
+bool isBoolean(std::string_view str, std::size_t first);
 
 s64 Escape::stackSize(char c)
 {
@@ -57,7 +59,7 @@ void Escape::add(std::pair<char, char> match)
 	sequences.push_back({match, 0});
 }
 
-std::string sanitise(std::string_view str, size_t begin = 0, size_t end = 0)
+std::string sanitise(std::string_view str, std::size_t begin = 0, std::size_t end = 0)
 {
 	std::string ret;
 	ret.reserve(end - begin);
@@ -66,7 +68,7 @@ std::string sanitise(std::string_view str, size_t begin = 0, size_t end = 0)
 	{
 		end = str.size();
 	}
-	for (size_t idx = begin; idx < end; ++idx)
+	for (std::size_t idx = begin; idx < end; ++idx)
 	{
 		if (idx > 0 && str.at(idx) == '\\' && str.at(idx - 1) == '\\')
 		{
@@ -80,19 +82,27 @@ std::string sanitise(std::string_view str, size_t begin = 0, size_t end = 0)
 	return ret;
 }
 
-bool isWhitespace(char c)
+bool isWhitespace(char c, u64* out_pLine)
 {
-	return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+	if (c == '\n' || c == '\r')
+	{
+		if (out_pLine)
+		{
+			++*out_pLine;
+		}
+		return true;
+	}
+	return c == ' ' || c == '\t';
 }
 
-bool isBoolean(std::string_view str, size_t begin)
+bool isBoolean(std::string_view str, std::size_t begin)
 {
 	static std::array<std::string_view, 2> const s_valid = {"true", "false"};
 	if (begin < str.size())
 	{
 		for (auto const& valid : s_valid)
 		{
-			size_t const end = begin + valid.size();
+			std::size_t const end = begin + valid.size();
 			if (end < str.size() && std::string_view(str.data() + begin, end - begin) == valid)
 			{
 				return true;
@@ -108,12 +118,9 @@ bool GData::read(std::string json)
 	m_raw = std::move(json);
 	bool bStarted = false;
 	u64 line = 1;
-	for (size_t idx = 0; idx < m_raw.size();)
+	for (std::size_t idx = 0; idx < m_raw.size();)
 	{
-		while (idx < m_raw.size() && isWhitespace(m_raw.at(idx)))
-		{
-			++idx;
-		}
+		advance(idx, line);
 		if (idx >= m_raw.size())
 		{
 			break;
@@ -121,20 +128,16 @@ bool GData::read(std::string json)
 		ASSERT(idx < m_raw.size(), "Invariant violated!");
 		if (bStarted)
 		{
-			while (idx < m_raw.size() && (m_raw.at(idx) == '}' || isWhitespace(m_raw.at(idx))))
+			while (idx < m_raw.size() && (m_raw.at(idx) == '}' || isWhitespace(m_raw.at(idx), &line)))
 			{
 				++idx;
-			}
-			if (idx == m_raw.size())
-			{
-				break;
 			}
 		}
 		else
 		{
 			if (m_raw.at(idx) != '{')
 			{
-				LOG_E("[{}] Expected [{}] at index [{}] (line: {})", utils::tName<GData>(), idx, line);
+				LOG_E("[{}] Expected '{' at index [{}] (line: {})", g_tName, idx, line);
 				return false;
 			}
 			++idx;
@@ -152,13 +155,13 @@ bool GData::read(std::string json)
 		}
 		if (m_fields.find(key) != m_fields.end())
 		{
-			LOG_W("[{}] [{}] Duplicate key! Overwriting value...", utils::tName<GData>(), key);
+			LOG_W("[{}] Duplicate key [{}] at index [{}] (line: {})! Overwriting value...", g_tName, key, idx, line);
 		}
 		m_fields[key] = {begin, end};
 	}
 	if (m_fields.empty())
 	{
-		LOG_W("[{}] Empty json / nothing parsed", utils::tName<GData>());
+		LOG_W("[{}] Empty json / nothing parsed", g_tName);
 		return false;
 	}
 	return true;
@@ -183,7 +186,7 @@ std::vector<std::string> GData::getArray(std::string const& key) const
 		std::string_view value(m_raw.data() + begin, end - begin);
 		if (value.size() > 2 && value.at(0) == '[' && value.at(value.size() - 1) == ']')
 		{
-			size_t idx = 1;
+			std::size_t idx = 1;
 			Escape escape;
 			escape.add({'[', ']'});
 			escape.add({'{', '}'});
@@ -194,7 +197,7 @@ std::vector<std::string> GData::getArray(std::string const& key) const
 				{
 					++idx;
 				}
-				size_t first = idx;
+				std::size_t first = idx;
 				while (idx < value.size())
 				{
 					s64 const stack = escape.stackSize(value.at(idx));
@@ -206,7 +209,7 @@ std::vector<std::string> GData::getArray(std::string const& key) const
 					}
 					++idx;
 				}
-				size_t last = idx >= value.size() ? value.size() - 1 : idx;
+				std::size_t last = idx >= value.size() ? value.size() - 1 : idx;
 				if (value.at(last) == ']')
 				{
 					--last;
@@ -239,8 +242,10 @@ std::vector<GData> GData::getDataArray(std::string const& key) const
 	for (auto& str : array)
 	{
 		GData data;
-		data.read(std::move(str));
-		ret.push_back(std::move(data));
+		if (data.read(std::move(str)))
+		{
+			ret.push_back(std::move(data));
+		}
 	}
 	return ret;
 }
@@ -251,7 +256,10 @@ GData GData::getData(std::string const& key) const
 	if (auto search = m_fields.find(key); search != m_fields.end())
 	{
 		auto const [begin, end] = search->second;
-		ret.read(std::string(m_raw.data() + begin, end - begin));
+		if (!ret.read(std::string(m_raw.data() + begin, end - begin)))
+		{
+			ret.clear();
+		}
 	}
 	return ret;
 }
@@ -326,7 +334,7 @@ void GData::clear()
 	m_raw.clear();
 }
 
-size_t GData::fieldCount() const
+std::size_t GData::fieldCount() const
 {
 	return m_fields.size();
 }
@@ -341,18 +349,19 @@ std::unordered_map<std::string, std::string> GData::allFields() const
 	return ret;
 }
 
-std::string GData::parseKey(size_t& out_idx, u64& out_line)
+std::string GData::parseKey(std::size_t& out_idx, u64& out_line)
 {
+	static std::string_view const s_failure = "failed to extract key!";
 	if (out_idx >= m_raw.size())
 	{
-		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), failed to extract key!", utils::tName<GData>(), out_idx, out_line);
+		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), {}", g_tName, out_idx, out_line, s_failure);
 		return {};
 	}
 	advance(out_idx, out_line);
 	char c = m_raw.at(out_idx);
 	if (c != '\"')
 	{
-		LOG_E("[{}] Expected: [\"] at index [{}] (line: {}), failed to extract key!", utils::tName<GData>(), out_idx, out_line);
+		LOG_E("[{}] Expected: '\"' at index [{}] (line: {}), {}!", g_tName, out_idx, out_line, s_failure);
 		return {};
 	}
 	++out_idx;
@@ -360,11 +369,11 @@ std::string GData::parseKey(size_t& out_idx, u64& out_line)
 	{
 		++out_idx;
 	}
-	size_t const start = out_idx;
+	std::size_t const start = out_idx;
 	++out_idx;
 	if (out_idx >= m_raw.size())
 	{
-		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), failed to extract key!", utils::tName<GData>(), out_idx, out_line);
+		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), {}", g_tName, out_idx, out_line, s_failure);
 		return {};
 	}
 	while (out_idx < m_raw.size() && m_raw.at(out_idx) != '"')
@@ -376,7 +385,7 @@ std::string GData::parseKey(size_t& out_idx, u64& out_line)
 	advance(out_idx, out_line);
 	if (out_idx >= m_raw.size() || m_raw.at(out_idx) != ':')
 	{
-		LOG_E("[{}] Expected [:] after key [{}] at index [{}] (line: {}), failed to extract key!", utils::tName<GData>(), ret, out_idx, out_line);
+		LOG_E("[{}] Expected ':' after key [{}] at index [{}] (line: {}), {}", g_tName, ret, out_idx, out_line, s_failure);
 		return {};
 	}
 	++out_idx;
@@ -384,11 +393,12 @@ std::string GData::parseKey(size_t& out_idx, u64& out_line)
 	return ret;
 }
 
-std::pair<size_t, size_t> GData::parseValue(size_t& out_idx, u64& out_line)
+std::pair<std::size_t, std::size_t> GData::parseValue(std::size_t& out_idx, u64& out_line)
 {
+	static std::string_view const s_failure = "failed to extract value!";
 	if (out_idx >= m_raw.size())
 	{
-		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), failed to extract value!", utils::tName<GData>(), out_idx, out_line);
+		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), {}", g_tName, out_idx, out_line, s_failure);
 		return {};
 	}
 	advance(out_idx, out_line);
@@ -418,7 +428,7 @@ std::pair<size_t, size_t> GData::parseValue(size_t& out_idx, u64& out_line)
 		{
 			stack = escape.stackSize(x);
 		}
-		return stack == 0 && ((bQuoted && x == '\"') || (bArray && x == ']') || x == ',' || x == '}' || (bBoolean && isWhitespace(x)));
+		return stack == 0 && ((bQuoted && x == '\"') || (bArray && x == ']') || x == ',' || x == '}' || (bBoolean && isWhitespace(x, &out_line)));
 	};
 	if (bQuoted)
 	{
@@ -427,11 +437,11 @@ std::pair<size_t, size_t> GData::parseValue(size_t& out_idx, u64& out_line)
 	}
 	if (out_idx >= m_raw.size())
 	{
-		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), failed to extract value!", utils::tName<GData>(), out_idx, out_line);
+		LOG_E("[{}] Unexpected end of string at index [{}] (line: {}), {}", g_tName, out_idx, out_line, s_failure);
 		return {};
 	}
 	advance(out_idx, out_line);
-	size_t const begin = out_idx;
+	std::size_t const begin = out_idx;
 	bool const bNegativeOrNumeric = begin < m_raw.size() && (std::isdigit(m_raw.at(begin)) || m_raw.at(begin) == '-');
 	while (out_idx < m_raw.size() && !isEnd())
 	{
@@ -439,27 +449,24 @@ std::pair<size_t, size_t> GData::parseValue(size_t& out_idx, u64& out_line)
 		{
 			if (bNumeric && !std::isdigit(m_raw.at(out_idx)) && m_raw.at(out_idx) != '.' && !bNegativeOrNumeric)
 			{
-				LOG_E("[{}] Expected [0-9] at index [{}] (line: {}), failed to extract value!", utils::tName<GData>(), out_idx, out_line);
+				LOG_E("[{}] Expected numeric value at index [{}] (line: {}), {}", g_tName, out_idx, out_line, s_failure);
 				return {};
 			}
 		}
-		if (m_raw.at(out_idx) == '\n')
-		{
-			++out_line;
-		}
+		isWhitespace(m_raw.at(out_idx), &out_line);
 		++out_idx;
 	}
 	if (out_idx >= m_raw.size() || !isEnd(true))
 	{
 		char e = bQuoted ? '\"' : bArray ? ']' : '}';
-		LOG_E("[{}] Expected [{}] at index [{}] (line: {}), failed to extract value!", utils::tName<GData>(), e, out_idx, out_line);
+		LOG_E("[{}] Expected '{}' at index [{}] (line: {}), {}", g_tName, e, out_idx, out_line, s_failure);
 		return {};
 	}
 	if (bArray || bObject)
 	{
 		++out_idx;
 	}
-	size_t const end = out_idx;
+	std::size_t const end = out_idx;
 	if (bQuoted)
 	{
 		++out_idx;
@@ -467,7 +474,7 @@ std::pair<size_t, size_t> GData::parseValue(size_t& out_idx, u64& out_line)
 	advance(out_idx, out_line);
 	if (out_idx >= m_raw.size() || (m_raw.at(out_idx) != ',' && m_raw.at(out_idx) != '}'))
 	{
-		LOG_E("[{}] Unterminated value at index [{}] (line: {}), failed to extract value!", utils::tName<GData>(), out_idx, out_line);
+		LOG_E("[{}] Unterminated value at index [{}] (line: {}), {}", g_tName, out_idx, out_line, s_failure);
 		return {};
 	}
 	++out_idx;
@@ -475,14 +482,10 @@ std::pair<size_t, size_t> GData::parseValue(size_t& out_idx, u64& out_line)
 	return {begin, end};
 }
 
-void GData::advance(size_t& out_idx, size_t& out_line) const
+void GData::advance(std::size_t& out_idx, std::size_t& out_line) const
 {
-	while (out_idx < m_raw.size() && isWhitespace(m_raw.at(out_idx)))
+	while (out_idx < m_raw.size() && isWhitespace(m_raw.at(out_idx), &out_line))
 	{
-		if (m_raw.at(out_idx) == '\n')
-		{
-			++out_line;
-		}
 		++out_idx;
 	}
 }

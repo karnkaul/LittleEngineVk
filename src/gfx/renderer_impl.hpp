@@ -61,7 +61,7 @@ private:
 
 	u64 m_drawnFrames = 0;
 
-	size_t m_index = 0;
+	std::size_t m_index = 0;
 	WindowID m_window;
 	u8 m_frameCount = 0;
 

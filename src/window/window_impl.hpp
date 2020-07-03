@@ -92,8 +92,8 @@ public:
 	static input::Gamepad gamepadState(s32 id);
 	static std::vector<input::Gamepad> activeGamepads();
 	static f32 triggerToAxis(f32 triggerValue);
-	static size_t joystickAxesCount(s32 id);
-	static size_t joysticKButtonsCount(s32 id);
+	static std::size_t joystickAxesCount(s32 id);
+	static std::size_t joysticKButtonsCount(s32 id);
 	static std::string_view toString(s32 key);
 
 	static bool anyActive();

@@ -13,7 +13,7 @@ std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount)
 {
 	static std::array suffixes = {"B", "KiB", "MiB", "GiB"};
 	f32 bytes = f32(byteCount);
-	size_t idx = 0;
+	std::size_t idx = 0;
 	while (bytes > 1024.0f && idx < 4)
 	{
 		++idx;
@@ -143,7 +143,7 @@ f64 strings::toF64(std::string_view input, f64 defaultValue)
 std::string strings::toText(bytearray rawBuffer)
 {
 	std::vector<char> charBuffer(rawBuffer.size() + 1, 0);
-	for (size_t i = 0; i < rawBuffer.size(); ++i)
+	for (std::size_t i = 0; i < rawBuffer.size(); ++i)
 	{
 		charBuffer[i] = static_cast<char>(rawBuffer[i]);
 	}
@@ -152,7 +152,7 @@ std::string strings::toText(bytearray rawBuffer)
 
 std::pair<std::string, std::string> strings::bisect(std::string_view input, char delimiter)
 {
-	size_t idx = input.find(delimiter);
+	std::size_t idx = input.find(delimiter);
 	return idx < input.size() ? std::pair<std::string, std::string>(input.substr(0, idx), input.substr(idx + 1, input.size()))
 							  : std::pair<std::string, std::string>(std::string(input), {});
 }
@@ -167,11 +167,11 @@ void strings::removeChars(std::string& outInput, std::initializer_list<char> toR
 
 void strings::trim(std::string& outInput, std::initializer_list<char> toRemove)
 {
-	auto isIgnored = [&outInput, &toRemove](size_t idx) { return std::find(toRemove.begin(), toRemove.end(), outInput[idx]) != toRemove.end(); };
-	size_t startIdx = 0;
+	auto isIgnored = [&outInput, &toRemove](std::size_t idx) { return std::find(toRemove.begin(), toRemove.end(), outInput[idx]) != toRemove.end(); };
+	std::size_t startIdx = 0;
 	for (; startIdx < outInput.size() && isIgnored(startIdx); ++startIdx)
 		;
-	size_t endIdx = outInput.size();
+	std::size_t endIdx = outInput.size();
 	for (; endIdx > startIdx && isIgnored(endIdx - 1); --endIdx)
 		;
 	outInput = outInput.substr(startIdx, endIdx - startIdx);
@@ -332,10 +332,10 @@ void strings::substituteChars(std::string& outInput, std::initializer_list<std::
 	return;
 }
 
-bool strings::isCharEnclosedIn(std::string_view str, size_t idx, std::pair<char, char> wrapper)
+bool strings::isCharEnclosedIn(std::string_view str, std::size_t idx, std::pair<char, char> wrapper)
 {
-	size_t idx_1 = idx - 1;
-	size_t idx1 = idx + 1;
+	std::size_t idx_1 = idx - 1;
+	std::size_t idx1 = idx + 1;
 	return idx_1 < str.length() && idx1 < str.length() && str[idx_1] == wrapper.first && str[idx1] == wrapper.second;
 }
 } // namespace utils

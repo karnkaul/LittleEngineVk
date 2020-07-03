@@ -62,13 +62,13 @@ std::shared_ptr<HJob> JobManager::enqueue(Task task, std::string name, bool bSil
 
 std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask indexedTask)
 {
-	size_t idx = indexedTask.startIdx;
+	std::size_t idx = indexedTask.startIdx;
 	std::vector<std::shared_ptr<HJob>> handles;
 	u16 buckets = u16(indexedTask.iterationCount / indexedTask.iterationsPerJob);
 	for (u16 bucket = 0; bucket < buckets; ++bucket)
 	{
-		size_t start = idx;
-		size_t end = start + indexedTask.iterationsPerJob;
+		std::size_t start = idx;
+		std::size_t end = start + indexedTask.iterationsPerJob;
 		end = end < start ? start : end > indexedTask.iterationCount ? indexedTask.iterationCount : end;
 		std::string taskName;
 		if (!indexedTask.bSilent)
@@ -79,7 +79,7 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask indexedTask)
 		}
 		handles.push_back(enqueue(
 			[start, end, indexedTask]() -> std::any {
-				for (size_t i = start; i < end; ++i)
+				for (std::size_t i = start; i < end; ++i)
 				{
 					indexedTask.task(i);
 				}
@@ -90,8 +90,8 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask indexedTask)
 	}
 	if (idx < indexedTask.iterationCount)
 	{
-		size_t start = idx;
-		size_t end = indexedTask.iterationCount;
+		std::size_t start = idx;
+		std::size_t end = indexedTask.iterationCount;
 		std::string taskName;
 		if (!indexedTask.bSilent)
 		{
@@ -101,7 +101,7 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask indexedTask)
 		}
 		handles.push_back(enqueue(
 			[start, end, indexedTask]() -> std::any {
-				for (size_t i = start; i < end; ++i)
+				for (std::size_t i = start; i < end; ++i)
 				{
 					indexedTask.task(i);
 				}

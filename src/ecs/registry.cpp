@@ -21,7 +21,7 @@ bool operator!=(Entity lhs, Entity rhs)
 	return !(lhs == rhs);
 }
 
-size_t EntityHasher::operator()(Entity const& entity) const
+std::size_t EntityHasher::operator()(Entity const& entity) const
 {
 	return std::hash<Entity::ID>()(entity.id);
 }
@@ -150,7 +150,7 @@ void Registry::clear()
 	m_componentNames.clear();
 }
 
-size_t Registry::entityCount() const
+std::size_t Registry::entityCount() const
 {
 	std::scoped_lock<std::mutex> lock(m_mutex);
 	return m_entityFlags.size();

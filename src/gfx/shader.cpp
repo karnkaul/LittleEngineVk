@@ -25,7 +25,7 @@ Shader::Shader(stdfs::path id, Info info) : Asset(std::move(id))
 	if (!bCodeMapPopulated)
 	{
 		ASSERT(bCodeIDsPopulated && info.pReader, "Invalid Shader ShaderData!");
-		for (size_t idx = 0; idx < info.codeIDMap.size(); ++idx)
+		for (std::size_t idx = 0; idx < info.codeIDMap.size(); ++idx)
 		{
 			auto& id = info.codeIDMap.at(idx);
 			auto const ext = extension(id);
@@ -116,7 +116,7 @@ bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, Type type)
 	m_pReader = dynamic_cast<FileReader const*>(out_info.pReader);
 	ASSERT(m_pReader, "Cannot compile shaders without FileReader!");
 	auto [glslCode, bResult] = m_pReader->getString(id);
-	return bResult && glslToSpirV(id, out_info.codeMap.at((size_t)type));
+	return bResult && glslToSpirV(id, out_info.codeMap.at((std::size_t)type));
 }
 
 bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
@@ -151,7 +151,7 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 
 void Shader::loadAllSpirV()
 {
-	for (size_t idx = 0; idx < m_codeMap.size(); ++idx)
+	for (std::size_t idx = 0; idx < m_codeMap.size(); ++idx)
 	{
 		auto const& code = m_codeMap.at(idx);
 		if (!code.empty())

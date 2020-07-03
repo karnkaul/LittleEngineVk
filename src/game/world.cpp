@@ -149,10 +149,16 @@ bool World::startImpl(ID previous)
 		if (bResult)
 		{
 			GData json;
-			json.read(std::move(str));
-			if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
+			if (json.read(std::move(str)))
 			{
-				LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_tName, parsed, inputMap.generic_string());
+				if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
+				{
+					LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_tName, parsed, inputMap.generic_string());
+				}
+			}
+			else
+			{
+				LOG_W("[{}] Failed to read input mappings from [{}]!", m_tName, inputMap.generic_string());
 			}
 		}
 	}

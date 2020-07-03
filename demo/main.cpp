@@ -126,6 +126,9 @@ private:
 		gfx::Mesh* pTriangle0 = nullptr;
 		gfx::Mesh* pQuad = nullptr;
 		gfx::Mesh* pSphere = nullptr;
+		Hash container2 = "textures/container2.png";
+		Hash container2_specular = "textures/container2_specular.png";
+		Hash awesomeface = "textures/awesomeface.png";
 	} m_res;
 	gfx::Pipeline* m_pPipeline0wf = nullptr;
 
@@ -262,7 +265,7 @@ void DemoWorld::tick(Time dt)
 	{
 		input::registerContext(m_data.temp);
 	}
-	if (elapsed >= 10s && m_data.temp.token)
+	if (elapsed >= 8s && m_data.temp.token)
 	{
 		m_data.temp.token.reset();
 	}
@@ -373,9 +376,9 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
-	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
-	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
+	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.container2);
+	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>(m_res.container2_specular);
+	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.awesomeface);
 }
 } // namespace
 

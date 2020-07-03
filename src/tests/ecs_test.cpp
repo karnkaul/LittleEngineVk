@@ -107,7 +107,7 @@ int main()
 					[&registry, &entities]() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
-						size_t const idx = (size_t)maths::randomRange(0, (s32)entities.size() - 1);
+						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.destroyEntity(entities.at(idx));
 					},
 					"", true);
@@ -115,7 +115,7 @@ int main()
 					[&registry, &entities]() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
-						size_t const idx = (size_t)maths::randomRange(0, (s32)entities.size() - 1);
+						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.destroyComponent<A, B, D>(entities.at(idx));
 					},
 					"", true);
@@ -123,7 +123,7 @@ int main()
 					[&registry, &entities]() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
-						size_t const idx = (size_t)maths::randomRange(0, (s32)entities.size() - 1);
+						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.setEnabled(entities.at(idx), false);
 					},
 					"", true);

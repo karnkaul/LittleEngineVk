@@ -59,11 +59,11 @@ public:
 
 private:
 	Model::MeshData processShape(tinyobj::shape_t const& shape);
-	size_t texIdx(std::string_view texName);
-	size_t matIdx(tinyobj::material_t const& fromMat, std::string_view id);
+	std::size_t texIdx(std::string_view texName);
+	std::size_t matIdx(tinyobj::material_t const& fromMat, std::string_view id);
 	std::string meshName(tinyobj::shape_t const& shape);
 	Geometry vertices(tinyobj::shape_t const& shape);
-	std::vector<size_t> materials(tinyobj::shape_t const& shape);
+	std::vector<std::size_t> materials(tinyobj::shape_t const& shape);
 };
 
 glm::vec3 getVec3(GData const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f))
@@ -161,11 +161,11 @@ Model::MeshData OBJParser::processShape(tinyobj::shape_t const& shape)
 	return meshData;
 }
 
-size_t OBJParser::texIdx(std::string_view texName)
+std::size_t OBJParser::texIdx(std::string_view texName)
 {
 	auto id = fmt::format("{}-{}", m_modelID.generic_string(), texName);
 	auto const hash = Model::strHash(id);
-	for (size_t idx = 0; idx < m_info.textures.size(); ++idx)
+	for (std::size_t idx = 0; idx < m_info.textures.size(); ++idx)
 	{
 		if (m_info.textures.at(idx).hash == hash)
 		{
@@ -181,10 +181,10 @@ size_t OBJParser::texIdx(std::string_view texName)
 	return m_info.textures.size() - 1;
 }
 
-size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_view id)
+std::size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_view id)
 {
 	auto const hash = Model::strHash(id);
-	for (size_t idx = 0; idx < m_info.materials.size(); ++idx)
+	for (std::size_t idx = 0; idx < m_info.materials.size(); ++idx)
 	{
 		if (m_info.materials.at(idx).hash == hash)
 		{
@@ -258,30 +258,30 @@ Geometry OBJParser::vertices(tinyobj::shape_t const& shape)
 {
 	Geometry ret;
 	ret.reserve((u32)m_attrib.vertices.size(), (u32)shape.mesh.indices.size());
-	std::unordered_map<size_t, u32> hashToVertIdx;
+	std::unordered_map<std::size_t, u32> hashToVertIdx;
 	hashToVertIdx.reserve(shape.mesh.indices.size());
 	for (auto const& idx : shape.mesh.indices)
 	{
 		// clang-format off
 		glm::vec3 const p = m_origin * m_scale + glm::vec3{
-			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 0) * m_scale,
-			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 1) * m_scale,
-			m_attrib.vertices.at(3 * (size_t)idx.vertex_index + 2) * m_scale
+			m_attrib.vertices.at(3 * (std::size_t)idx.vertex_index + 0) * m_scale,
+			m_attrib.vertices.at(3 * (std::size_t)idx.vertex_index + 1) * m_scale,
+			m_attrib.vertices.at(3 * (std::size_t)idx.vertex_index + 2) * m_scale
 		};
 		glm::vec3 const c = {
-			m_attrib.colors.at(3 * (size_t)idx.vertex_index + 0),
-			m_attrib.colors.at(3 * (size_t)idx.vertex_index + 1),
-			m_attrib.colors.at(3 * (size_t)idx.vertex_index + 2)
+			m_attrib.colors.at(3 * (std::size_t)idx.vertex_index + 0),
+			m_attrib.colors.at(3 * (std::size_t)idx.vertex_index + 1),
+			m_attrib.colors.at(3 * (std::size_t)idx.vertex_index + 2)
 		};
 		glm::vec3 const n = {
-			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 0),
-			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 1),
-			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (size_t)idx.normal_index + 2)
+			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (std::size_t)idx.normal_index + 0),
+			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (std::size_t)idx.normal_index + 1),
+			m_attrib.normals.empty() || idx.normal_index < 0 ? 0.0f : m_attrib.normals.at(3 * (std::size_t)idx.normal_index + 2)
 		};
 		auto const& at = m_attrib.texcoords;
 		glm::vec2 const t = {
-			at.empty() || idx.texcoord_index < 0 ? 0.0f : at.at(2 * (size_t)idx.texcoord_index + 0),
-			1.0f - (at.empty() || idx.texcoord_index < 0 ? 0.0f : at.at(2 * (size_t)idx.texcoord_index + 1)),
+			at.empty() || idx.texcoord_index < 0 ? 0.0f : at.at(2 * (std::size_t)idx.texcoord_index + 0),
+			1.0f - (at.empty() || idx.texcoord_index < 0 ? 0.0f : at.at(2 * (std::size_t)idx.texcoord_index + 1)),
 		};
 		// clang-format on
 		auto const hash = std::hash<glm::vec3>()(p) ^ std::hash<glm::vec3>()(n) ^ std::hash<glm::vec3>()(c) ^ std::hash<glm::vec2>()(t);
@@ -301,31 +301,31 @@ Geometry OBJParser::vertices(tinyobj::shape_t const& shape)
 	return ret;
 }
 
-std::vector<size_t> OBJParser::materials(tinyobj::shape_t const& shape)
+std::vector<std::size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 {
-	std::unordered_set<size_t> uniqueIndices;
+	std::unordered_set<std::size_t> uniqueIndices;
 	if (!shape.mesh.material_ids.empty())
 	{
 		for (auto materialIdx : shape.mesh.material_ids)
 		{
 			if (materialIdx >= 0)
 			{
-				auto const& fromMat = m_materials.at((size_t)materialIdx);
+				auto const& fromMat = m_materials.at((std::size_t)materialIdx);
 				std::string const id = fmt::format("{}-{}", m_modelID.generic_string(), fromMat.name);
 				uniqueIndices.insert(matIdx(fromMat, id));
 			}
 		}
 	}
-	return std::vector<size_t>(uniqueIndices.begin(), uniqueIndices.end());
+	return std::vector<std::size_t>(uniqueIndices.begin(), uniqueIndices.end());
 }
 } // namespace
 
-size_t Model::idHash(stdfs::path const& id)
+std::size_t Model::idHash(stdfs::path const& id)
 {
 	return std::hash<std::string>()(id.generic_string());
 }
 
-size_t Model::strHash(std::string_view id)
+std::size_t Model::strHash(std::string_view id)
 {
 	return std::hash<std::string_view>()(id);
 }
@@ -347,7 +347,10 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		return {};
 	}
 	GData json;
-	json.read(std::move(jsonStr));
+	if (!json.read(std::move(jsonStr)))
+	{
+		LOG_E("[{}] Failed to read json: [{}]!", s_tName, jsonID.generic_string());
+	}
 	if (json.fieldCount() == 0 || !json.contains("mtl") || !json.contains("obj"))
 	{
 		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
@@ -415,7 +418,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 		newInst.pMaterial = &search->second;
 		if (!material.diffuseIndices.empty())
 		{
-			size_t idx = material.diffuseIndices.front();
+			std::size_t idx = material.diffuseIndices.front();
 			ASSERT(idx < info.textures.size(), "Invalid texture index!");
 			auto search = m_loadedTextures.find(info.textures.at(idx).hash);
 			ASSERT(search != m_loadedTextures.end(), "Invalid texture index");
@@ -423,7 +426,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 		}
 		if (!material.specularIndices.empty())
 		{
-			size_t idx = material.specularIndices.front();
+			std::size_t idx = material.specularIndices.front();
 			ASSERT(idx < info.textures.size(), "Invalid texture index!");
 			auto search = m_loadedTextures.find(info.textures.at(idx).hash);
 			ASSERT(search != m_loadedTextures.end(), "Invalid texture index!");
@@ -437,7 +440,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 		Mesh::Info meshInfo;
 		if (!meshData.materialIndices.empty())
 		{
-			size_t idx = meshData.materialIndices.front();
+			std::size_t idx = meshData.materialIndices.front();
 			ASSERT(idx < m_materials.size(), "Invalid material index!");
 			meshInfo.material = m_materials.at(idx);
 		}

@@ -53,7 +53,7 @@ struct LogEntry final
 	log::Level level;
 };
 
-size_t g_maxLogEntries = 500;
+std::size_t g_maxLogEntries = 500;
 std::deque<LogEntry> g_logEntries;
 
 glm::ivec2 const g_minDim = glm::ivec2(100, 100);
@@ -179,7 +179,7 @@ void listAssets(std::string_view tabName)
 	{
 		auto assets = Resources::inst().loaded<T>();
 		static s32 selected = -1;
-		for (size_t i = 0; i < assets.size(); ++i)
+		for (std::size_t i = 0; i < assets.size(); ++i)
 		{
 			auto pAsset = assets.at(i);
 			if (ImGui::Selectable(pAsset->m_id.generic_string().data(), selected == (s32)i))
@@ -264,7 +264,7 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 	}
 }
 
-void inspectMaterial(gfx::Mesh& out_mesh, size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
+void inspectMaterial(gfx::Mesh& out_mesh, std::size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
 {
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
@@ -351,7 +351,7 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
 						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
 					auto& meshes = pModel->loadedMeshes();
-					size_t idx = 0;
+					std::size_t idx = 0;
 					for (auto& mesh : meshes)
 					{
 						inspectMaterial(mesh, idx++, pos, size);
@@ -379,12 +379,12 @@ void presentModeDropdown()
 	{
 		static std::array<std::string_view, 4> const s_presentModes = {"Off", "Triple Buffer", "Double Buffer", "Double Buffer (Relaxed)"};
 		auto presentMode = pWindow->presentMode();
-		if (ImGui::BeginCombo("Vsync", s_presentModes[(size_t)presentMode].data()))
+		if (ImGui::BeginCombo("Vsync", s_presentModes[(std::size_t)presentMode].data()))
 		{
 			auto const& presentModes = pWindow->m_presentModes;
-			static size_t s_selected = 100;
-			size_t previous = s_selected;
-			for (size_t i = 0; i < presentModes.size() && i < s_presentModes.size(); ++i)
+			static std::size_t s_selected = 100;
+			std::size_t previous = s_selected;
+			for (std::size_t i = 0; i < presentModes.size() && i < s_presentModes.size(); ++i)
 			{
 				if (s_selected > s_presentModes.size() && presentMode == presentModes.at(i))
 				{
@@ -393,7 +393,7 @@ void presentModeDropdown()
 				}
 				bool const bSelected = s_selected == i;
 				auto const iMode = presentModes.at(i);
-				if (ImGui::Selectable(s_presentModes[(size_t)iMode].data(), bSelected))
+				if (ImGui::Selectable(s_presentModes[(std::size_t)iMode].data(), bSelected))
 				{
 					s_selected = i;
 				}
@@ -407,7 +407,8 @@ void presentModeDropdown()
 				auto const newPresentMode = presentModes.at(s_selected);
 				if (pWindow->setPresentMode(newPresentMode))
 				{
-					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, s_presentModes[(size_t)presentMode], s_presentModes[(size_t)newPresentMode]);
+					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, s_presentModes[(std::size_t)presentMode],
+						  s_presentModes[(std::size_t)newPresentMode]);
 				}
 				else
 				{
@@ -431,8 +432,8 @@ void worldSelectDropdown()
 	else if (ImGui::BeginCombo("Worlds", worldName.data()))
 	{
 		auto const worlds = World::allWorlds();
-		static size_t s_selected = 0;
-		for (size_t i = 0; i < worlds.size(); ++i)
+		static std::size_t s_selected = 0;
+		for (std::size_t i = 0; i < worlds.size(); ++i)
 		{
 			bool const bSelected = s_selected == i;
 			auto name = std::string(worlds.at(i)->name());
@@ -584,7 +585,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 			ImGui::PopButtonRepeat();
 			ImGui::SameLine();
 			ImGui::Text("%d", logEntries * 100);
-			g_maxLogEntries = (size_t)logEntries * 100;
+			g_maxLogEntries = (std::size_t)logEntries * 100;
 		}
 		{
 			ImGui::Separator();

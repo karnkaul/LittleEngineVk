@@ -48,7 +48,7 @@ TResult<IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vec
 	IndexedTask task;
 	if (!out_toLoad.empty())
 	{
-		task.task = [&out_toLoad, &out_loaded, &out_assets, &mutex](size_t idx) {
+		task.task = [&out_toLoad, &out_loaded, &out_assets, &mutex](std::size_t idx) {
 			auto& asset = out_toLoad.at(idx);
 			auto pAsset = Resources::inst().create<T>(std::move(asset.id), std::move(asset.info));
 			if (pAsset)
@@ -124,7 +124,11 @@ AssetManifest::AssetManifest(IOReader const& reader, stdfs::path const& id) : m_
 	auto [data, bResult] = m_pReader->getString(id);
 	if (bResult)
 	{
-		m_manifest.read(std::move(data));
+		if (!m_manifest.read(std::move(data)))
+		{
+			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), m_pReader->medium());
+			m_manifest.clear();
+		}
 	}
 	else
 	{
@@ -236,7 +240,7 @@ AssetList AssetManifest::parse()
 						{
 							type = Shader::Type::eVertex;
 						}
-						data.info.codeIDMap[(size_t)type] = id;
+						data.info.codeIDMap[(std::size_t)type] = id;
 						bFound = true;
 					}
 				}
@@ -374,7 +378,7 @@ void AssetManifest::loadData()
 	IndexedTask task;
 	if (!m_toLoad.models.empty())
 	{
-		task.task = [this](size_t idx) {
+		task.task = [this](std::size_t idx) {
 			auto& model = m_toLoad.models.at(idx);
 			gfx::Model::LoadRequest mlr;
 			mlr.assetID = model.id;

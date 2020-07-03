@@ -43,13 +43,20 @@ if [ "$nobuild" == "false" ]; then
 fi
 
 if [ "$push" == "true" ]; then
-  [[ "$force_push" == "true" ]] && f=--force-with-lease
+  commit="commit -m \"[Automated] Update docs\""
+  push="push"
+  msg="Created a commit and pushed"
+  if [[ "$force_push" == "true" ]]; then
+    commit="commit --amend"
+    push="push --force-with-lease"
+    msg="Amended commit and force pushed"
+  fi
   git checkout $branch
   git fetch
   git add .
-  git commit -m "[Automated] Update docs"
-  git push $f
-  echo "== Pushed ./$docs to $remote/$branch =="
+  git $commit
+  git $push
+  echo "== $msg ./$docs to $remote/$branch =="
 fi
 
 cd "$this_dir"

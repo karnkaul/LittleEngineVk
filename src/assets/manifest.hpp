@@ -57,8 +57,8 @@ public:
 protected:
 	struct Data final
 	{
-		std::atomic<size_t> idCount = 0;
-		std::atomic<size_t> dataCount = 0;
+		std::atomic<std::size_t> idCount = 0;
+		std::atomic<std::size_t> dataCount = 0;
 	};
 
 public:

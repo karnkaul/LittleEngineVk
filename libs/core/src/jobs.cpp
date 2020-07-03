@@ -105,7 +105,7 @@ std::vector<std::shared_ptr<HJob>> jobs::forEach(IndexedTask const& indexedTask)
 	}
 	else
 	{
-		for (size_t startIdx = indexedTask.startIdx; startIdx < indexedTask.iterationCount * indexedTask.iterationsPerJob; ++startIdx)
+		for (std::size_t startIdx = indexedTask.startIdx; startIdx < indexedTask.iterationCount * indexedTask.iterationsPerJob; ++startIdx)
 		{
 			std::optional<std::string> oName;
 			if (!indexedTask.bSilent)

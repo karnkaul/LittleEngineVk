@@ -12,10 +12,10 @@ class GData final
 {
 private:
 	std::string m_raw;
-	std::unordered_map<std::string, std::pair<size_t, size_t>> m_fields;
+	std::unordered_map<std::string, std::pair<std::size_t, std::size_t>> m_fields;
 
 public:
-	bool read(std::string json);
+	[[nodiscard]] bool read(std::string json);
 
 	template <typename T = std::string>
 	T get(std::string const& key) const;
@@ -30,13 +30,13 @@ public:
 
 	bool contains(std::string const& key) const;
 	void clear();
-	size_t fieldCount() const;
+	std::size_t fieldCount() const;
 	std::unordered_map<std::string, std::string> allFields() const;
 
 private:
-	std::string parseKey(size_t& out_idx, u64& out_line);
-	std::pair<size_t, size_t> parseValue(size_t& out_idx, u64& out_line);
-	void advance(size_t& out_idx, size_t& out_line) const;
+	std::string parseKey(std::size_t& out_idx, u64& out_line);
+	std::pair<std::size_t, std::size_t> parseValue(std::size_t& out_idx, u64& out_line);
+	void advance(std::size_t& out_idx, std::size_t& out_line) const;
 };
 
 template <typename T>

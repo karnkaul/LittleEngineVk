@@ -7,27 +7,51 @@
 doxyfile=Doxyfile
 docs=docs
 remote=origin
-branch=gh-pages
+branch=master
 
-if [ -z ./$doxyfile ]; then
-  echo "$doxyfile not found in $(pwd)!"
-  exit 1
-fi
+push=false
+nobuild=false
+clean=false
+force_push=false
 
-deploy=false
-[ "$1" == "-d" ] && deploy=true
+for arg in "$@"; do
+  [ "$arg" == "-p" ] && push=true
+  [ "$arg" == "-c" ] && clean=true
+  [ "$arg" == "-n" ] && nobuild=true
+  [ "$arg" == "-f" ] && force_push=true
+done
 
 this_dir=$(pwd)
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./os.sh
-cd "$this_dir"
 
-doxygen Doxyfile
-echo "== Built docs using ./$doxyfile to ./$docs =="
+cd "$this_dir/$docs"
 
-if [ "$deploy" == "true" ]; then
-	git subtree push --prefix $docs $remote $branch
-	echo "== Pushed ./$docs to $remote/$branch =="
+if [ ! -f ./$doxyfile ]; then
+  echo "$doxyfile not found in $(pwd)!"
+  exit 1
 fi
+
+if [ "$clean" == "true" ]; then
+  rm -rf *.html *.css *.js *.png *.jpg
+  echo "-- Cleaned ./$docs --"
+fi
+
+if [ "$nobuild" == "false" ]; then
+  doxygen $doxyfile
+  echo "== Built docs using ./$docs/$doxyfile =="
+fi
+
+if [ "$push" == "true" ]; then
+  [[ "$force_push" == "true" ]] && f=--force-with-lease
+  git checkout $branch
+  git fetch
+  git add .
+  git commit -m "[Automated] Update docs"
+  git push $f
+  echo "== Pushed ./$docs to $remote/$branch =="
+fi
+
+cd "$this_dir"
 
 exit

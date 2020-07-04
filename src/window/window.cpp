@@ -49,6 +49,11 @@ bool Window::anyActive()
 	return WindowImpl::anyActive();
 }
 
+bool Window::anyExist()
+{
+	return WindowImpl::anyExist();
+}
+
 void Window::pollEvents()
 {
 	WindowImpl::pollEvents();

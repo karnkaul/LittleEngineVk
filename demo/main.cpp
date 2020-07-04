@@ -255,7 +255,7 @@ void DemoWorld::tick(Time dt)
 {
 	if (m_data.bQuit)
 	{
-		engine::mainWindow()->close();
+		engine::terminate();
 		return;
 	}
 
@@ -407,7 +407,7 @@ int main(int argc, char** argv)
 	}
 
 	Time t = Time::elapsed();
-	while (Window::anyActive())
+	while (engine.isRunning())
 	{
 		Time dt = Time::elapsed() - t;
 		t = Time::elapsed();
@@ -426,9 +426,6 @@ int main(int argc, char** argv)
 			fpsElapsed = Time();
 		}
 		{
-			// handle events
-			Window::pollEvents();
-
 			// Tick
 			engine.tick(dt);
 
@@ -440,8 +437,10 @@ int main(int argc, char** argv)
 		try
 #endif
 		{
-			engine.submitScene();
-			Window::renderAll();
+			if (engine.submitScene())
+			{
+				engine.render();
+			}
 		}
 #if defined(LEVK_DEBUG)
 		catch (std::exception const& e)

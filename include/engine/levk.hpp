@@ -60,6 +60,10 @@ public:
 	///
 	bool start(World::ID world);
 	///
+	/// \brief Check whether any windows are active
+	///
+	bool isRunning() const;
+	///
 	/// \brief Update all services and tick active world
 	/// \returns `false` if no world is active
 	///
@@ -69,8 +73,16 @@ public:
 	/// \returns `false` if no world is active
 	///
 	bool submitScene() const;
+	///
+	/// \brief Render all active windows
+	///
+	void render() const;
 };
 
+///
+/// \brief Start shutdown of main window
+///
+bool terminate();
 ///
 /// \brief Obtain whether the engine is shutting down
 ///

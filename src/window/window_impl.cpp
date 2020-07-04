@@ -153,7 +153,6 @@ void unregisterWindow(WindowImpl* pWindow)
 	}
 	return;
 }
-
 } // namespace
 
 f32 Gamepad::axis(Axis axis) const
@@ -383,12 +382,12 @@ gfx::RendererImpl* WindowImpl::rendererImpl(WindowID window)
 	return nullptr;
 }
 
-std::unordered_set<s32> WindowImpl::active()
+std::unordered_set<s32> WindowImpl::allExisting()
 {
 	std::unordered_set<s32> ret;
 	for (auto pImpl : g_registeredWindows)
 	{
-		if (pImpl->isOpen())
+		if (pImpl->exists())
 		{
 			ret.insert(pImpl->m_pWindow->m_id);
 		}
@@ -861,6 +860,18 @@ bool WindowImpl::anyActive()
 	return false;
 }
 
+bool WindowImpl::anyExist()
+{
+	for (auto pWindow : g_registeredWindows)
+	{
+		if (pWindow->exists())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void WindowImpl::pollEvents()
 {
 #if defined(LEVK_USE_GLFW)
@@ -877,13 +888,16 @@ void WindowImpl::renderAll()
 	bool bExtGUI = false;
 	for (auto pWindow : g_registeredWindows)
 	{
-#if defined(LEVK_EDITOR)
-		if (g_pEditorWindow)
+		if (!pWindow->isClosing())
 		{
-			bExtGUI = g_pEditorWindow == pWindow;
-		}
+#if defined(LEVK_EDITOR)
+			if (g_pEditorWindow)
+			{
+				bExtGUI = g_pEditorWindow == pWindow;
+			}
 #endif
-		pWindow->m_pWindow->m_renderer.render(bExtGUI);
+			pWindow->m_pWindow->m_renderer.render(bExtGUI);
+		}
 	}
 	return;
 }

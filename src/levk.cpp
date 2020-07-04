@@ -121,29 +121,56 @@ bool Service::start(World::ID world)
 	return World::start(world);
 }
 
+bool Service::isRunning() const
+{
+	return Window::anyExist();
+}
+
 bool Service::tick(Time dt) const
 {
+	Window::pollEvents();
 	gfx::deferred::update();
 	update();
 	gfx::ScreenRect gameRect = {};
-#if defined(LEVK_EDITOR)
-	if (editor::g_bTickGame)
+	if (!isTerminating())
 	{
-		input::fire();
-	}
-	editor::tick(dt);
-	gameRect = editor::g_gameRect;
+#if defined(LEVK_EDITOR)
+		if (editor::g_bTickGame)
+		{
+			input::fire();
+		}
+		editor::tick(dt);
+		gameRect = editor::g_gameRect;
 #else
-	input::fire();
+		input::fire();
 #endif
+	}
 	return World::tick(dt, gameRect);
 }
 
 bool Service::submitScene() const
 {
-	return World::submitScene(g_app.uWindow->renderer());
+	return !isTerminating() && World::submitScene(g_app.uWindow->renderer());
+}
+
+void Service::render() const
+{
+	if (!isTerminating())
+	{
+		Window::renderAll();
+	}
 }
 } // namespace engine
+
+bool engine::terminate()
+{
+	if (g_app.uWindow && g_app.uWindow->isOpen())
+	{
+		g_app.uWindow->close();
+		return true;
+	}
+	return false;
+}
 
 bool engine::isTerminating()
 {
@@ -170,6 +197,14 @@ void engine::update()
 	Resources::inst().update();
 	WindowImpl::update();
 	gfx::vram::update();
+}
+
+void engine::destroyWindow()
+{
+	if (g_app.uWindow)
+	{
+		g_app.uWindow->destroy();
+	}
 }
 
 Window* engine::window()

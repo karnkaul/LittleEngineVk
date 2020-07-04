@@ -16,6 +16,8 @@ inline glm::vec3 g_uiSpace = {};
 
 IOReader const& reader();
 gfx::Texture::Space colourSpace();
-void update();
 Window* window();
+
+void update();
+void destroyWindow();
 } // namespace le::engine

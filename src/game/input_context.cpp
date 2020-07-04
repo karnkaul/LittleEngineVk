@@ -25,18 +25,16 @@ void Map::addTrigger(std::string const& id, std::initializer_list<Trigger> trigg
 	}
 }
 
+void Map::addState(std::string const& id, Key key)
+{
+	auto& binding = bindings[id];
+	binding.states.push_back({key});
+}
+
 void Map::addState(std::string const& id, State state)
 {
 	auto& binding = bindings[id];
-	binding.states.push_back(state);
-}
-
-void Map::addState(std::string const& id, std::initializer_list<State> states)
-{
-	for (auto const& state : states)
-	{
-		addState(id, state);
-	}
+	binding.states.push_back(std::move(state));
 }
 
 void Map::addRange(std::string const& id, Axis axis, bool bReverse)
@@ -51,15 +49,6 @@ void Map::addRange(std::string const& id, Key min, Key max)
 	auto& binding = bindings[id];
 	Range range = std::make_pair(min, max);
 	binding.ranges.emplace_back(std::move(range));
-}
-
-void Map::addRange(std::string const& id, std::initializer_list<Range> ranges)
-{
-	for (auto const& range : ranges)
-	{
-		auto& binding = bindings[id];
-		binding.ranges.push_back(std::move(range));
-	}
 }
 
 u16 Map::deserialise(GData const& json)
@@ -103,11 +92,24 @@ u16 Map::deserialise(GData const& json)
 			addTrigger(id, key, action, mods);
 		},
 		[this](std::string const& id, GData const& state) {
+			std::vector<std::string> keysStr;
+			if (state.contains("keys"))
 			{
-				Key const key = parseKey(state.getString("key"));
-				ASSERT(key != Key::eUnknown, "Unknown Key!");
-				addState(id, key);
+				keysStr = state.getArray("keys");
 			}
+			else if (state.contains("key"))
+			{
+				keysStr = {state.getString("key")};
+			}
+			std::vector<Key> keys;
+			keys.reserve(keysStr.size());
+			for (auto const& keyStr : keysStr)
+			{
+				auto const key = parseKey(keyStr);
+				ASSERT(key != Key::eUnknown, "Unknown Key!");
+				keys.push_back(key);
+			}
+			addState(id, std::move(keys));
 		},
 		[this](std::string const& id, GData const& range) {
 			Key const keyMin = parseKey(range.getString("key_min"));
@@ -182,9 +184,14 @@ void Context::addTrigger(std::string const& id, Key key, Action action, Mods::VA
 	m_map.addTrigger(id, key, action, mods);
 }
 
+void Context::addState(std::string const& id, Key key)
+{
+	m_map.addState(id, key);
+}
+
 void Context::addState(std::string const& id, State state)
 {
-	m_map.addState(id, state);
+	m_map.addState(id, std::move(state));
 }
 
 void Context::addRange(std::string const& id, Axis axis, bool bReverse)
@@ -279,14 +286,19 @@ bool Context::isConsumed(Snapshot const& snapshot) const
 				bool bHeld = false;
 				for (auto const& state : map.states)
 				{
-					if (pGamepad && isGamepadButton(state))
+					bool bCombo = !state.empty();
+					for (auto key : state)
 					{
-						bHeld |= pGamepad->isPressed(state);
+						if (pGamepad && isGamepadButton(key))
+						{
+							bCombo &= pGamepad->isPressed(key);
+						}
+						else
+						{
+							bCombo &= std::find(snapshot.held.begin(), snapshot.held.end(), key) != snapshot.held.end();
+						}
 					}
-					else
-					{
-						bHeld |= std::find(snapshot.held.begin(), snapshot.held.end(), state) != snapshot.held.end();
-					}
+					bHeld |= bCombo;
 				}
 				callbacks.onState(bHeld);
 				bConsumed = true;

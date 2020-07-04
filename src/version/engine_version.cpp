@@ -1,7 +1,7 @@
 #include <engine/version/engine_version.hpp>
 #include <version/build_version.hpp>
 
-namespace le::os
+namespace le::engine
 {
 Version const engineVersion()
 {
@@ -20,4 +20,4 @@ std::string_view const buildVersion()
 	static const std::string_view s_buildVersion = LEVK_BUILD_VERSION;
 	return s_buildVersion;
 }
-} // namespace le::os
+} // namespace le::engine

@@ -21,7 +21,7 @@ struct Snapshot final
 };
 
 using Trigger = std::tuple<Key, Action, Mods::VALUE>;
-using State = Key;
+using State = std::vector<Key>;
 using Range = std::variant<std::pair<Axis, bool>, std::pair<Key, Key>>;
 
 using OnTrigger = std::function<void()>;
@@ -56,11 +56,10 @@ struct Map final
 
 	void addTrigger(std::string const& id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
 	void addTrigger(std::string const& id, std::initializer_list<Trigger> triggers);
+	void addState(std::string const& id, Key key);
 	void addState(std::string const& id, State state);
-	void addState(std::string const& id, std::initializer_list<State> states);
 	void addRange(std::string const& id, Axis axis, bool bReverse = false);
 	void addRange(std::string const& id, Key min, Key max);
-	void addRange(std::string const& id, std::initializer_list<Range> ranges);
 
 	u16 deserialise(GData const& json);
 	void clear();
@@ -106,6 +105,7 @@ public:
 	void mapRange(std::string const& id, OnRange callback);
 
 	void addTrigger(std::string const& id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
+	void addState(std::string const& id, Key key);
 	void addState(std::string const& id, State state);
 	void addRange(std::string const& id, Axis axis, bool bReverse = false);
 	void addRange(std::string const& id, Key min, Key max);

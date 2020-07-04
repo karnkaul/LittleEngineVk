@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <core/assert.hpp>
+#include <core/atomic_counter.hpp>
 #include <core/hash.hpp>
 #include <core/io.hpp>
 #include <core/map_store.hpp>
@@ -23,10 +24,10 @@ struct TAsset
 	///
 	/// \brief Asset ID
 	///
-	stdfs::path id;
+	Hash id;
 
 	TAsset() = default;
-	TAsset(stdfs::path id) : id(std::move(id)) {}
+	TAsset(stdfs::path id) : id(id) {}
 
 	///
 	/// \brief Obtain Asset pointed to by id
@@ -48,11 +49,11 @@ struct TAsset
 class Resources final
 {
 public:
-	using Semaphore = std::shared_ptr<s32>;
+	using Semaphore = Counter<s32>::Semaphore;
 
 private:
 	TMapStore<std::unordered_map<Hash, std::unique_ptr<Asset>>> m_resources;
-	Semaphore m_semaphore;
+	mutable Counter<s32> m_counter;
 	mutable std::mutex m_mutex;
 	std::atomic_bool m_bActive;
 
@@ -211,7 +212,7 @@ std::vector<T*> Resources::loaded() const
 template <typename T>
 T* TAsset<T>::get()
 {
-	if (!id.empty())
+	if (id > 0)
 	{
 		auto pAsset = Resources::inst().get<T>(id);
 		if (pAsset && pAsset->isReady())
@@ -225,7 +226,7 @@ T* TAsset<T>::get()
 template <typename T>
 T const* TAsset<T>::get() const
 {
-	if (!id.empty())
+	if (id > 0)
 	{
 		auto pAsset = Resources::inst().get<T>(id);
 		if (pAsset && pAsset->isReady())

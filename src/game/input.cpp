@@ -123,6 +123,7 @@ void input::init(Window& out_mainWindow)
 	});
 	g_tokens.text = out_mainWindow.registerText([](char c) { g_raw.text.push_back(c); });
 	g_tokens.scroll = out_mainWindow.registerScroll([](f64 x, f64 y) { g_raw.mouseScroll += glm::vec2((f32)x, (f32)y); });
+	g_bActive = true;
 }
 
 void input::fire()

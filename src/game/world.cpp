@@ -114,6 +114,7 @@ void World::onManifestLoaded() {}
 
 bool World::start(ID id)
 {
+	input::setActive(true);
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
 		auto const& uWorld = search->second;
@@ -180,7 +181,7 @@ bool World::startImpl(ID previous)
 void World::tickImpl(Time dt)
 {
 	m_registry.flush();
-	bool bTick = !engine::mainWindow()->isClosing();
+	bool bTick = !engine::isTerminating();
 	if (g_uManifest)
 	{
 		auto const status = g_uManifest->update(!bTick);
@@ -209,9 +210,9 @@ void World::tickImpl(Time dt)
 	{
 		tick(dt);
 	}
-	if (engine::mainWindow()->isClosing())
+	if (!g_uManifest && engine::isTerminating())
 	{
-		engine::mainWindow()->destroy();
+		engine::destroyWindow();
 	}
 }
 
@@ -253,6 +254,10 @@ void World::destroyAll()
 
 bool World::tick(Time dt, gfx::ScreenRect const& sceneRect)
 {
+	if (!engine::mainWindow())
+	{
+		return false;
+	}
 	if (g_pWaitingToStart && !g_uManifest)
 	{
 		ID previousID;

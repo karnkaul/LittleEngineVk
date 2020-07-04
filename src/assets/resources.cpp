@@ -22,7 +22,6 @@ Resources& Resources::inst()
 Resources::Resources()
 {
 	m_bActive.store(false);
-	m_semaphore = std::make_shared<s32>(0);
 }
 
 Resources::~Resources()
@@ -143,7 +142,7 @@ bool Resources::unload(Hash hash)
 void Resources::deinit()
 {
 	waitIdle();
-	ASSERT(m_semaphore.use_count() == 1, "Resources in use!");
+	ASSERT(m_counter.isZero(false), "Resources in use!");
 	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
 	m_resources.unloadAll();
 	if (m_bActive.load())
@@ -156,15 +155,15 @@ void Resources::deinit()
 
 Resources::Semaphore Resources::setBusy() const
 {
-	return m_semaphore;
+	return Semaphore(m_counter);
 }
 
 void Resources::waitIdle()
 {
-	Time const timeout = 5s;
+	constexpr Time timeout = 5s;
 	Time elapsed;
 	Time const start = Time::elapsed();
-	while (m_semaphore.use_count() > 1 && elapsed < timeout)
+	while (!m_counter.isZero(true) && elapsed < timeout)
 	{
 		elapsed = Time::elapsed() - start;
 		threads::sleep();

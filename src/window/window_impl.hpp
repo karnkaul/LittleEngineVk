@@ -59,7 +59,7 @@ public:
 	static std::vector<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::RendererImpl* rendererImpl(WindowID window);
-	static std::unordered_set<s32> active();
+	static std::unordered_set<s32> allExisting();
 	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
 	static void* nativeHandle(WindowID window);
 	static WindowID editorWindow();
@@ -97,6 +97,7 @@ public:
 	static std::string_view toString(s32 key);
 
 	static bool anyActive();
+	static bool anyExist();
 	static void pollEvents();
 	static void renderAll();
 };

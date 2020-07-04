@@ -8,11 +8,20 @@
 
 namespace le
 {
+///
+/// \brief Dumb wrapper for reading JSON strings
+///
+/// Supported:
+/// 	1. arrays ([...]), objects ({...}), and values
+/// 	2. escaped characters (\")
+///
 class GData final
 {
 private:
+	using Span = std::pair<std::size_t, std::size_t>;
+
 	std::string m_raw;
-	std::unordered_map<std::string, std::pair<std::size_t, std::size_t>> m_fields;
+	std::unordered_map<std::string, Span> m_fields;
 
 public:
 	[[nodiscard]] bool read(std::string json);
@@ -20,23 +29,55 @@ public:
 	template <typename T = std::string>
 	T get(std::string const& key) const;
 
+	///
+	/// \brief Obtain string value corresponding to `key`
+	///
 	std::string getString(std::string const& key) const;
+	///
+	/// \brief Obtain array value corresponding to `key` (must be enclosed in [])
+	///
 	std::vector<std::string> getArray(std::string const& key) const;
+	///
+	/// \brief Obtain array of GData per array value corresponding to `key`
+	///
 	std::vector<GData> getDataArray(std::string const& key) const;
+	///
+	/// \brief Obtain GData of value corresponding to `key` (must be enclosed in {})
+	///
 	GData getData(std::string const& key) const;
+	///
+	/// \brief Obtain `s32` value corresponding to `key`
+	///
 	s32 getS32(std::string const& key) const;
+	///
+	/// \brief Obtain `f64` value corresponding to `key`
+	///
 	f64 getF64(std::string const& key) const;
+	///
+	/// \brief Obtain `bool` value corresponding to `key`
+	///
 	bool getBool(std::string const& key) const;
 
+	///
+	/// \brief Obtain whether `key` was parsed and is present in map
+	///
 	bool contains(std::string const& key) const;
+	///
+	/// \brief Reset (as if default constructed)
+	///
 	void clear();
+	///
+	/// \brief Obtain the count of fields parsed and saved
+	///
 	std::size_t fieldCount() const;
+	///
+	/// \brief Obtain all fields
+	///
 	std::unordered_map<std::string, std::string> allFields() const;
-
-private:
-	std::string parseKey(std::size_t& out_idx, u64& out_line);
-	std::pair<std::size_t, std::size_t> parseValue(std::size_t& out_idx, u64& out_line);
-	void advance(std::size_t& out_idx, std::size_t& out_line) const;
+	///
+	/// \brief Obtain original raw string
+	///
+	std::string const& original() const;
 };
 
 template <typename T>

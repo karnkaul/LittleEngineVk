@@ -65,6 +65,7 @@ public:
 
 public:
 	static bool anyActive();
+	static bool anyExist();
 	static void pollEvents();
 	static void renderAll();
 

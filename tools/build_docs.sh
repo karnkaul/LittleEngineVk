@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # This script builds docs using Doxygen and pushes the docs subtree to a git branch
 # Requirements:
 #  - doxygen
@@ -7,7 +5,7 @@
 doxyfile=Doxyfile
 docs=docs
 remote=origin
-branch=master
+branch=gh-pages
 
 push=false
 nobuild=false
@@ -43,20 +41,20 @@ if [ "$nobuild" == "false" ]; then
 fi
 
 if [ "$push" == "true" ]; then
-  commit="commit -m \"[Automated] Update docs\""
-  push="push"
-  msg="Created a commit and pushed"
-  if [[ "$force_push" == "true" ]]; then
-    commit="commit --amend"
-    push="push --force-with-lease"
-    msg="Amended commit and force pushed"
-  fi
   git checkout $branch
   git fetch
   git add .
-  git $commit
+  push="push"
+  if [[ "$force_push" == "true" ]]; then
+    git commit --amend --no-edit
+    push="$push --force-with-lease"
+    log_msg="Amended commit and force pushed"
+  else
+    git commit -m "[Automated] Update docs"
+    log_msg="Created a commit and pushed"
+  fi
   git $push
-  echo "== $msg ./$docs to $remote/$branch =="
+  echo "== $log_msg ./$docs to $remote/$branch =="
 fi
 
 cd "$this_dir"

@@ -17,9 +17,10 @@ namespace le
 ///
 class GData final
 {
-private:
+public:
 	using Span = std::pair<std::size_t, std::size_t>;
 
+private:
 	std::string m_raw;
 	std::unordered_map<std::string, Span> m_fields;
 
@@ -87,6 +88,10 @@ T GData::get(std::string const& key) const
 	{
 		return static_cast<T>(getString(key));
 	}
+	else if constexpr (std::is_same_v<T, bool>)
+	{
+		return getBool(key);
+	}
 	else if constexpr (std::is_integral_v<T>)
 	{
 		return static_cast<T>(getS32(key));
@@ -107,6 +112,9 @@ T GData::get(std::string const& key) const
 	{
 		return getDataArray(key);
 	}
-	static_assert(alwaysFalse<T>, "Invalid type!");
+	else
+	{
+		static_assert(alwaysFalse<T>, "Invalid type!");
+	}
 }
 } // namespace le

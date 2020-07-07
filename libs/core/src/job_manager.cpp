@@ -7,13 +7,13 @@
 #include <job_manager.hpp>
 #include <job_worker.hpp>
 
-namespace le
+namespace le::jobs
 {
 using Lock = std::scoped_lock<std::mutex>;
 
-JobManager::Job::Job() = default;
+Manager::Job::Job() = default;
 
-JobManager::Job::Job(s64 id, Task task, std::string name, bool bSilent) : m_task(std::move(task)), m_bSilent(bSilent)
+Manager::Job::Job(s64 id, Task task, std::string name, bool bSilent) : m_task(std::move(task)), m_bSilent(bSilent)
 {
 	m_logName += std::to_string(id);
 	if (!name.empty())
@@ -21,35 +21,35 @@ JobManager::Job::Job(s64 id, Task task, std::string name, bool bSilent) : m_task
 		m_logName += "-";
 		m_logName += std::move(name);
 	}
-	m_shJob = std::make_shared<HJob>(id, m_task.get_future());
+	m_shJob = std::make_shared<Handle>(id, m_task.get_future());
 }
 
-void JobManager::Job::run()
+void Manager::Job::run()
 {
 	m_task();
 }
 
-JobManager::JobManager(u8 workerCount)
+Manager::Manager(u8 workerCount)
 {
-	JobWorker::s_bWork.store(true, std::memory_order_seq_cst);
+	Worker::s_bWork.store(true, std::memory_order_seq_cst);
 	for (u8 i = 0; i < workerCount; ++i)
 	{
-		m_jobWorkers.push_back(std::make_unique<JobWorker>(*this, i));
+		m_jobWorkers.push_back(std::make_unique<Worker>(*this, i));
 	}
 }
 
-JobManager::~JobManager()
+Manager::~Manager()
 {
-	JobWorker::s_bWork.store(false, std::memory_order_seq_cst);
+	Worker::s_bWork.store(false, std::memory_order_seq_cst);
 	// Wake all sleeping workers
 	m_wakeCV.notify_all();
 	// Join all worker threads
 	m_jobWorkers.clear();
 }
 
-std::shared_ptr<HJob> JobManager::enqueue(Task task, std::string name, bool bSilent)
+std::shared_ptr<Handle> Manager::enqueue(Task task, std::string name, bool bSilent)
 {
-	std::shared_ptr<HJob> ret;
+	std::shared_ptr<Handle> ret;
 	{
 		Lock lock(m_wakeMutex);
 		m_jobQueue.emplace(++m_nextJobID, std::move(task), std::move(name), bSilent);
@@ -60,10 +60,10 @@ std::shared_ptr<HJob> JobManager::enqueue(Task task, std::string name, bool bSil
 	return ret;
 }
 
-std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask indexedTask)
+std::vector<std::shared_ptr<Handle>> Manager::forEach(IndexedTask indexedTask)
 {
 	std::size_t idx = indexedTask.startIdx;
-	std::vector<std::shared_ptr<HJob>> handles;
+	std::vector<std::shared_ptr<Handle>> handles;
 	u16 buckets = u16(indexedTask.iterationCount / indexedTask.iterationsPerJob);
 	for (u16 bucket = 0; bucket < buckets; ++bucket)
 	{
@@ -112,11 +112,11 @@ std::vector<std::shared_ptr<HJob>> JobManager::forEach(IndexedTask indexedTask)
 	return handles;
 }
 
-bool JobManager::isIdle() const
+bool Manager::isIdle() const
 {
 	for (auto& worker : m_jobWorkers)
 	{
-		if (worker->m_state.load() == JobWorker::State::eBusy)
+		if (worker->m_state.load() == Worker::State::eBusy)
 		{
 			return false;
 		}
@@ -125,12 +125,12 @@ bool JobManager::isIdle() const
 	return m_jobQueue.empty();
 }
 
-u8 JobManager::workerCount() const
+u8 Manager::workerCount() const
 {
 	return (u8)m_jobWorkers.size();
 }
 
-void JobManager::waitIdle()
+void Manager::waitIdle()
 {
 	while (!isIdle())
 	{
@@ -139,4 +139,4 @@ void JobManager::waitIdle()
 	ASSERT(isIdle(), "Workers should be idle!");
 	return;
 }
-} // namespace le
+} // namespace le::jobs

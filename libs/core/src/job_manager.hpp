@@ -6,9 +6,9 @@
 #include <vector>
 #include <core/job_handle.hpp>
 
-namespace le
+namespace le::jobs
 {
-class JobManager final
+class Manager final
 {
 public:
 	static constexpr s32 INVALID_ID = -1;
@@ -23,7 +23,7 @@ private:
 
 	public:
 		std::string m_logName;
-		std::shared_ptr<HJob> m_shJob;
+		std::shared_ptr<Handle> m_shJob;
 		bool m_bSilent = true;
 
 	public:
@@ -36,25 +36,25 @@ private:
 	};
 
 private:
-	std::vector<std::unique_ptr<class JobWorker>> m_jobWorkers;
+	std::vector<std::unique_ptr<class Worker>> m_jobWorkers;
 	std::queue<Job> m_jobQueue;
 	mutable std::mutex m_wakeMutex;
 	std::condition_variable m_wakeCV;
 	s64 m_nextJobID = 0;
 
 public:
-	JobManager(u8 workerCount);
-	~JobManager();
+	Manager(u8 workerCount);
+	~Manager();
 
 public:
-	std::shared_ptr<HJob> enqueue(Task task, std::string name = "", bool bSilent = false);
-	std::vector<std::shared_ptr<HJob>> forEach(IndexedTask indexedTask);
+	std::shared_ptr<Handle> enqueue(Task task, std::string name = "", bool bSilent = false);
+	std::vector<std::shared_ptr<Handle>> forEach(IndexedTask indexedTask);
 
 	bool isIdle() const;
 	u8 workerCount() const;
 	void waitIdle();
 
 private:
-	friend class JobWorker;
+	friend class Worker;
 };
-} // namespace le
+} // namespace le::jobs

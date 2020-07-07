@@ -4,21 +4,21 @@
 #include <core/utils.hpp>
 #include <core/log.hpp>
 
-namespace le
+namespace le::jobs
 {
-std::atomic_bool JobWorker::s_bWork = true;
+std::atomic_bool Worker::s_bWork = true;
 
-JobWorker::JobWorker(JobManager& manager, u8 id) : m_pManager(&manager), id(id)
+Worker::Worker(Manager& manager, u8 id) : m_pManager(&manager), id(id)
 {
 	m_hThread = threads::newThread([&]() { run(); });
 }
 
-JobWorker::~JobWorker()
+Worker::~Worker()
 {
 	threads::join(m_hThread);
 }
 
-void JobWorker::run()
+void Worker::run()
 {
 	while (s_bWork.load(std::memory_order_relaxed))
 	{
@@ -30,7 +30,7 @@ void JobWorker::run()
 		{
 			break;
 		}
-		JobManager::Job job;
+		Manager::Job job;
 		bool bNotify = false;
 		if (!m_pManager->m_jobQueue.empty())
 		{
@@ -47,10 +47,10 @@ void JobWorker::run()
 		if (job.m_shJob->m_jobID.load() >= 0)
 		{
 			m_state.store(State::eBusy);
-			job.m_shJob->m_status.store(HJob::Status::eBusy);
+			job.m_shJob->m_status.store(Handle::Status::eBusy);
 			if (!job.m_bSilent)
 			{
-				LOG_D("[{}{}] Starting Job [{}]", utils::tName<JobWorker>(), id, job.m_logName);
+				LOG_D("[{}{}] Starting Job [{}]", utils::tName<Worker>(), id, job.m_logName);
 			}
 			job.run();
 			if (!job.m_bSilent && job.m_shJob->m_future.valid())
@@ -58,17 +58,17 @@ void JobWorker::run()
 				try
 				{
 					job.m_shJob->m_future.get();
-					LOG_D("[{}{}] Completed Job [{}]", utils::tName<JobWorker>(), id, job.m_logName);
+					LOG_D("[{}{}] Completed Job [{}]", utils::tName<Worker>(), id, job.m_logName);
 				}
 				catch (std::exception const& e)
 				{
 					job.m_shJob->m_exception = e.what();
 					ASSERT(false, e.what());
-					LOG_E("[{}{}] Threw an exception running Job [{}]!\n\t{}", utils::tName<JobWorker>(), id, job.m_logName, job.m_shJob->m_exception);
+					LOG_E("[{}{}] Threw an exception running Job [{}]!\n\t{}", utils::tName<Worker>(), id, job.m_logName, job.m_shJob->m_exception);
 				}
 			}
-			job.m_shJob->m_status.store(HJob::Status::eDone);
+			job.m_shJob->m_status.store(Handle::Status::eDone);
 		}
 	}
 }
-} // namespace le
+} // namespace le::jobs

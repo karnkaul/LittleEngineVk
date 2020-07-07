@@ -68,7 +68,7 @@ public:
 protected:
 	GData m_manifest;
 	Data m_data;
-	std::vector<std::shared_ptr<HJob>> m_running;
+	std::vector<std::shared_ptr<jobs::Handle>> m_running;
 	std::vector<Asset*> m_loading;
 	std::mutex m_mutex;
 	Resources::Semaphore m_semaphore;
@@ -91,7 +91,7 @@ protected:
 	void loadData();
 	void loadAssets();
 	bool eraseDone(bool bWaitingJobs);
-	void addJobs(IndexedTask task);
-	void addJobs(TResult<IndexedTask> task);
+	void addJobs(jobs::IndexedTask task);
+	void addJobs(TResult<jobs::IndexedTask> task);
 };
 } // namespace le

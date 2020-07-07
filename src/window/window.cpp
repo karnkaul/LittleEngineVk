@@ -111,6 +111,11 @@ bool Window::isOpen() const
 	return m_uImpl ? m_uImpl->isOpen() : false;
 }
 
+bool Window::exists() const
+{
+	return m_uImpl ? m_uImpl->exists() : false;
+}
+
 bool Window::isClosing() const
 {
 	return m_uImpl ? m_uImpl->isClosing() : false;

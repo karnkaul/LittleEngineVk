@@ -31,20 +31,20 @@ void deinit(bool bFlushQueue = false);
 ///
 /// \brief Enqueue a job task that returns `std::any`
 ///
-std::shared_ptr<HJob> enqueue(std::function<std::any()> task, std::string name = "", bool bSilent = false);
+std::shared_ptr<Handle> enqueue(std::function<std::any()> task, std::string name = "", bool bSilent = false);
 ///
 /// \brief Enqueue a job task
 ///
-std::shared_ptr<HJob> enqueue(std::function<void()> task, std::string name = "", bool bSilent = false);
+std::shared_ptr<Handle> enqueue(std::function<void()> task, std::string name = "", bool bSilent = false);
 ///
 /// \brief Distribute an `IndexedTask` across all workers
 ///
-std::vector<std::shared_ptr<HJob>> forEach(IndexedTask const& indexedTask);
+std::vector<std::shared_ptr<Handle>> forEach(IndexedTask const& indexedTask);
 
 ///
 /// \brief Block until all passed jobs are ready
 ///
-void waitAll(std::vector<std::shared_ptr<HJob>> const& handles);
+void waitAll(std::vector<std::shared_ptr<Handle>> const& handles);
 
 ///
 /// \brief Check whether any job tasks are running

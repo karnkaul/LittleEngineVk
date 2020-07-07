@@ -2,6 +2,7 @@
 #include <optional>
 #include <unordered_map>
 #include <string>
+#include <core/hash.hpp>
 #include <core/log_config.hpp>
 #include <core/time.hpp>
 
@@ -15,7 +16,7 @@ struct Profiler final
 		Time dt;
 	};
 
-	static std::optional<std::unordered_map<std::string, Data>> s_record;
+	static std::optional<std::unordered_map<Hash, Data>> s_record;
 
 	Data data;
 	Time start;

@@ -3,7 +3,7 @@
 
 namespace le
 {
-std::optional<std::unordered_map<std::string, Profiler::Data>> Profiler::s_record;
+std::optional<std::unordered_map<Hash, Profiler::Data>> Profiler::s_record;
 
 Profiler::Profiler(std::string_view id, std::optional<log::Level> level) : start(Time::elapsed()), level(level)
 {
@@ -17,7 +17,7 @@ Profiler::~Profiler()
 	LOGIF(level, *level, "[PROFILE] [{:.3f}ms] [{}]", data.dt.to_s() * 1000.0f, data.id);
 	if (s_record.has_value())
 	{
-		auto id = data.id;
+		auto const id = Hash(data.id);
 		s_record.value()[id] = std::move(data);
 	}
 }

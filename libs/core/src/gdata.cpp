@@ -23,6 +23,7 @@ struct Escape final
 };
 
 std::string const g_tName = utils::tName<GData>();
+constexpr std::size_t g_bufSize = 128;
 
 s64 Escape::stackSize(char c)
 {
@@ -248,6 +249,40 @@ std::pair<std::size_t, std::size_t> parseValue(std::string& out_text, std::size_
 	advance(out_text, out_idx, out_line);
 	return {begin, end};
 }
+
+template <typename T>
+T parseNumeric(std::string const& key, std::unordered_map<std::string, GData::Span> const& fields, std::string const& raw)
+{
+	T ret = {};
+	if (auto search = fields.find(key); search != fields.end())
+	{
+		auto const [begin, end] = search->second;
+		std::string_view value(raw.data() + begin, end - begin);
+		std::array<char, g_bufSize> buffer;
+		std::memcpy(buffer.data(), value.data(), std::min(value.size(), buffer.size()));
+		buffer.at(value.size()) = '\0';
+		try
+		{
+			if constexpr (std::is_integral_v<T>)
+			{
+				ret = (T)std::atoi(buffer.data());
+			}
+			else if constexpr (std::is_floating_point_v<T>)
+			{
+				ret = (T)std::atof(buffer.data());
+			}
+			else
+			{
+				static_assert(alwaysFalse<T>, "Invalid type!");
+			}
+		}
+		catch (const std::exception& e)
+		{
+			LOG_E("[{}] Failed to parse [{}] into [{}]! {}", g_tName, key, utils::tName<T>(), e.what());
+		}
+	}
+	return ret;
+}
 } // namespace
 
 bool GData::read(std::string json)
@@ -403,46 +438,12 @@ GData GData::getData(std::string const& key) const
 
 s32 GData::getS32(std::string const& key) const
 {
-	s32 ret = 0;
-	if (auto search = m_fields.find(key); search != m_fields.end())
-	{
-		auto const [begin, end] = search->second;
-		try
-		{
-			std::string_view value(m_raw.data() + begin, end - begin);
-			std::array<char, 128> buffer;
-			std::memcpy(buffer.data(), value.data(), value.size());
-			buffer.at(value.size()) = '\0';
-			ret = (s32)std::atoi(buffer.data());
-		}
-		catch (const std::exception& e)
-		{
-			LOG_E("[{}] Failed to parse [{}] into f32! {}", e.what());
-		}
-	}
-	return ret;
+	return parseNumeric<s32>(key, m_fields, m_raw);
 }
 
 f64 GData::getF64(std::string const& key) const
 {
-	f64 ret = 0;
-	if (auto search = m_fields.find(key); search != m_fields.end())
-	{
-		auto const [begin, end] = search->second;
-		try
-		{
-			std::string_view value(m_raw.data() + begin, end - begin);
-			std::array<char, 128> buffer;
-			std::memcpy(buffer.data(), value.data(), value.size());
-			buffer.at(value.size()) = '\0';
-			ret = (f64)std::atof(buffer.data());
-		}
-		catch (const std::exception& e)
-		{
-			LOG_E("[{}] Failed to parse [{}] into f32! {}", e.what());
-		}
-	}
-	return ret;
+	return parseNumeric<f64>(key, m_fields, m_raw);
 }
 
 bool GData::getBool(std::string const& key) const

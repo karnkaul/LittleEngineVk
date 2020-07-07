@@ -6,12 +6,12 @@
 #include <string>
 #include <core/std_types.hpp>
 
-namespace le
+namespace le::jobs
 {
 ///
 /// \brief Handle to a scheduled/running/completed job task
 ///
-class HJob final
+class Handle final
 {
 public:
 	enum class Status : s8
@@ -31,8 +31,8 @@ private:
 	std::atomic<s64> m_jobID = -1;
 
 public:
-	HJob(s64 jobID, std::future<std::any>&& future) noexcept;
-	~HJob();
+	Handle(s64 jobID, std::future<std::any>&& future) noexcept;
+	~Handle();
 
 	///
 	/// \brief Obtain job ID
@@ -57,8 +57,8 @@ public:
 	bool discard();
 
 private:
-	friend class JobWorker;
-	friend class JobManager;
+	friend class Worker;
+	friend class Manager;
 };
 
 ///
@@ -73,4 +73,4 @@ struct IndexedTask final
 	std::size_t startIdx = 0;
 	bool bSilent = true;
 };
-} // namespace le
+} // namespace le::jobs

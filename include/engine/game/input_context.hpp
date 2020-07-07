@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <glm/vec2.hpp>
 #include <core/gdata.hpp>
+#include <core/hash.hpp>
 #include <engine/window/input_types.hpp>
 
 namespace le::input
@@ -52,14 +53,14 @@ struct Callback final
 
 struct Map final
 {
-	std::unordered_map<std::string, Binding> bindings;
+	std::unordered_map<Hash, Binding> bindings;
 
-	void addTrigger(std::string const& id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
-	void addTrigger(std::string const& id, std::initializer_list<Trigger> triggers);
-	void addState(std::string const& id, Key key);
-	void addState(std::string const& id, State state);
-	void addRange(std::string const& id, Axis axis, bool bReverse = false);
-	void addRange(std::string const& id, Key min, Key max);
+	void addTrigger(Hash id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
+	void addTrigger(Hash id, std::initializer_list<Trigger> triggers);
+	void addState(Hash id, Key key);
+	void addState(Hash id, State state);
+	void addRange(Hash id, Axis axis, bool bReverse = false);
+	void addRange(Hash id, Key min, Key max);
 
 	u16 deserialise(GData const& json);
 	void clear();
@@ -86,7 +87,7 @@ public:
 private:
 	Map m_map;
 	mutable std::unordered_set<Key> m_padHeld;
-	std::unordered_map<std::string, Callback> m_callbacks;
+	std::unordered_map<Hash, Callback> m_callbacks;
 	Mode m_mode;
 	s32 m_padID;
 	mutable bool m_bFired = false;
@@ -100,15 +101,15 @@ public:
 	~Context();
 
 public:
-	void mapTrigger(std::string const& id, OnTrigger callback);
-	void mapState(std::string const& id, OnState callback);
-	void mapRange(std::string const& id, OnRange callback);
+	void mapTrigger(Hash id, OnTrigger callback);
+	void mapState(Hash id, OnState callback);
+	void mapRange(Hash id, OnRange callback);
 
-	void addTrigger(std::string const& id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
-	void addState(std::string const& id, Key key);
-	void addState(std::string const& id, State state);
-	void addRange(std::string const& id, Axis axis, bool bReverse = false);
-	void addRange(std::string const& id, Key min, Key max);
+	void addTrigger(Hash id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
+	void addState(Hash id, Key key);
+	void addState(Hash id, State state);
+	void addRange(Hash id, Axis axis, bool bReverse = false);
+	void addRange(Hash id, Key min, Key max);
 
 	void setMode(Mode mode);
 	void setGamepadID(s32 id);

@@ -7,13 +7,13 @@
 
 namespace le
 {
+namespace threads
+{
 ///
 /// \brief Handle for a running thread
 ///
-using HThread = TZero<u64>;
+using Handle = TZero<u64>;
 
-namespace threads
-{
 ///
 /// \brief Initialise threads
 ///
@@ -21,11 +21,11 @@ void init();
 ///
 /// \brief Create a new thread
 ///
-HThread newThread(std::function<void()> task);
+Handle newThread(std::function<void()> task);
 ///
 /// \brief Join a thread
 ///
-void join(HThread& id);
+void join(Handle& id);
 ///
 /// \brief Join all running threads
 ///
@@ -34,7 +34,7 @@ void joinAll();
 ///
 /// \brief Obtain the handle for this thread
 ///
-HThread thisThreadID();
+Handle thisThreadID();
 ///
 /// \brief Check whether this is the main thread (which called `init()`)
 ///

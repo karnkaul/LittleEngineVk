@@ -11,13 +11,13 @@ std::unordered_map<std::string_view, Mode> const g_modeMap = {
 	{"passthrough", Mode::ePassthrough}, {"block_all", Mode::eBlockAll}, {"block", Mode::eBlockAll}, {"block_on_callback", Mode::eBlockOnCallback}};
 }
 
-void Map::addTrigger(std::string const& id, Key key, Action action, Mods::VALUE mods)
+void Map::addTrigger(Hash id, Key key, Action action, Mods::VALUE mods)
 {
 	auto& binding = bindings[id];
 	binding.triggers.push_back({key, action, mods});
 }
 
-void Map::addTrigger(std::string const& id, std::initializer_list<Trigger> triggers)
+void Map::addTrigger(Hash id, std::initializer_list<Trigger> triggers)
 {
 	for (auto const& trigger : triggers)
 	{
@@ -25,26 +25,26 @@ void Map::addTrigger(std::string const& id, std::initializer_list<Trigger> trigg
 	}
 }
 
-void Map::addState(std::string const& id, Key key)
+void Map::addState(Hash id, Key key)
 {
 	auto& binding = bindings[id];
 	binding.states.push_back({key});
 }
 
-void Map::addState(std::string const& id, State state)
+void Map::addState(Hash id, State state)
 {
 	auto& binding = bindings[id];
 	binding.states.push_back(std::move(state));
 }
 
-void Map::addRange(std::string const& id, Axis axis, bool bReverse)
+void Map::addRange(Hash id, Axis axis, bool bReverse)
 {
 	auto& binding = bindings[id];
 	Range range = std::make_pair(axis, bReverse);
 	binding.ranges.push_back(std::move(range));
 }
 
-void Map::addRange(std::string const& id, Key min, Key max)
+void Map::addRange(Hash id, Key min, Key max)
 {
 	auto& binding = bindings[id];
 	Range range = std::make_pair(min, max);
@@ -54,27 +54,27 @@ void Map::addRange(std::string const& id, Key min, Key max)
 u16 Map::deserialise(GData const& json)
 {
 	u16 ret = 0;
-	auto const bindingsData = json.getDataArray("bindings");
+	auto const bindingsData = json.get<std::vector<GData>>("bindings");
 	using bind = std::function<void(std::string const&, GData const&)>;
 	auto parse = [&bindingsData, &ret](bind addTrigger, bind addState, bind addRange) {
 		for (auto const& entry : bindingsData)
 		{
 			if (entry.contains("id"))
 			{
-				auto const id = entry.getString("id");
-				auto const triggers = entry.getDataArray("triggers");
+				auto const id = entry.get("id");
+				auto const triggers = entry.get<std::vector<GData>>("triggers");
 				for (auto const& trigger : triggers)
 				{
 					addTrigger(id, trigger);
 					++ret;
 				}
-				auto const states = entry.getDataArray("states");
+				auto const states = entry.get<std::vector<GData>>("states");
 				for (auto const& state : states)
 				{
 					addState(id, state);
 					++ret;
 				}
-				auto const ranges = entry.getDataArray("ranges");
+				auto const ranges = entry.get<std::vector<GData>>("ranges");
 				for (auto const& range : ranges)
 				{
 					addRange(id, range);
@@ -84,22 +84,22 @@ u16 Map::deserialise(GData const& json)
 		}
 	};
 	parse(
-		[this](std::string const& id, GData const& trigger) {
-			Key const key = parseKey(trigger.getString("key"));
-			Action const action = parseAction(trigger.getString("action"));
-			Mods::VALUE const mods = parseMods(trigger.getArray("mods"));
+		[this](Hash id, GData const& trigger) {
+			Key const key = parseKey(trigger.get("key"));
+			Action const action = parseAction(trigger.get("action"));
+			Mods::VALUE const mods = parseMods(trigger.get<std::vector<std::string>>("mods"));
 			ASSERT(key != Key::eUnknown, "Unknown Key!");
 			addTrigger(id, key, action, mods);
 		},
-		[this](std::string const& id, GData const& state) {
+		[this](Hash id, GData const& state) {
 			std::vector<std::string> keysStr;
 			if (state.contains("keys"))
 			{
-				keysStr = state.getArray("keys");
+				keysStr = state.get<std::vector<std::string>>("keys");
 			}
 			else if (state.contains("key"))
 			{
-				keysStr = {state.getString("key")};
+				keysStr = {state.get("key")};
 			}
 			std::vector<Key> keys;
 			keys.reserve(keysStr.size());
@@ -111,17 +111,17 @@ u16 Map::deserialise(GData const& json)
 			}
 			addState(id, std::move(keys));
 		},
-		[this](std::string const& id, GData const& range) {
-			Key const keyMin = parseKey(range.getString("key_min"));
-			Key const keyMax = parseKey(range.getString("key_max"));
-			Axis const axis = parseAxis(range.getString("pad_axis"));
+		[this](Hash id, GData const& range) {
+			Key const keyMin = parseKey(range.get("key_min"));
+			Key const keyMax = parseKey(range.get("key_max"));
+			Axis const axis = parseAxis(range.get("pad_axis"));
 			if (keyMin != Key::eUnknown && keyMax != Key::eUnknown)
 			{
 				addRange(id, keyMin, keyMax);
 			}
 			else if (axis != Axis::eUnknown)
 			{
-				bool const bReverse = range.getBool("reverse");
+				bool const bReverse = range.get<bool>("reverse");
 				addRange(id, axis, bReverse);
 			}
 			else
@@ -161,45 +161,45 @@ Context::Context(Context const&) = default;
 Context& Context::operator=(Context const&) = default;
 Context::~Context() = default;
 
-void Context::mapTrigger(std::string const& id, OnTrigger callback)
+void Context::mapTrigger(Hash id, OnTrigger callback)
 {
 	auto& callbacks = m_callbacks[id];
 	callbacks.onTrigger = std::move(callback);
 }
 
-void Context::mapState(std::string const& id, OnState callback)
+void Context::mapState(Hash id, OnState callback)
 {
 	auto& callbacks = m_callbacks[id];
 	callbacks.onState = std::move(callback);
 }
 
-void Context::mapRange(std::string const& id, OnRange callback)
+void Context::mapRange(Hash id, OnRange callback)
 {
 	auto& callbacks = m_callbacks[id];
 	callbacks.onRange = std::move(callback);
 }
 
-void Context::addTrigger(std::string const& id, Key key, Action action, Mods::VALUE mods)
+void Context::addTrigger(Hash id, Key key, Action action, Mods::VALUE mods)
 {
 	m_map.addTrigger(id, key, action, mods);
 }
 
-void Context::addState(std::string const& id, Key key)
+void Context::addState(Hash id, Key key)
 {
 	m_map.addState(id, key);
 }
 
-void Context::addState(std::string const& id, State state)
+void Context::addState(Hash id, State state)
 {
 	m_map.addState(id, std::move(state));
 }
 
-void Context::addRange(std::string const& id, Axis axis, bool bReverse)
+void Context::addRange(Hash id, Axis axis, bool bReverse)
 {
 	m_map.addRange(id, axis, bReverse);
 }
 
-void Context::addRange(std::string const& id, Key min, Key max)
+void Context::addRange(Hash id, Key min, Key max)
 {
 	m_map.addRange(id, min, max);
 }
@@ -218,14 +218,14 @@ u16 Context::deserialise(GData const& json)
 {
 	if (json.contains("mode"))
 	{
-		if (auto search = g_modeMap.find(json.getString("mode")); search != g_modeMap.end())
+		if (auto search = g_modeMap.find(json.get("mode")); search != g_modeMap.end())
 		{
 			m_mode = search->second;
 		}
 	}
 	if (json.contains("gamepad_id"))
 	{
-		m_padID = json.getS32("gamepad_id");
+		m_padID = json.get<s32>("gamepad_id");
 	}
 	return m_map.deserialise(json);
 }

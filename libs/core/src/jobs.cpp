@@ -11,13 +11,13 @@ namespace le
 {
 namespace
 {
-std::unique_ptr<JobManager> uManager;
+std::unique_ptr<jobs::Manager> uManager;
 
-std::shared_ptr<HJob> doNow(std::packaged_task<std::any()> task, std::optional<std::string> oName)
+std::shared_ptr<jobs::Handle> doNow(std::packaged_task<std::any()> task, std::optional<std::string> oName)
 {
 	std::string const& name = oName ? *oName : "unnamed";
-	LOG_E("[{}] Not initialised! Running [{}] Task on this thread!", utils::tName<JobManager>(), name);
-	std::shared_ptr<HJob> ret = std::make_shared<HJob>(-1, task.get_future());
+	LOG_E("[{}] Not initialised! Running [{}] Task on this thread!", utils::tName<jobs::Manager>(), name);
+	std::shared_ptr<jobs::Handle> ret = std::make_shared<jobs::Handle>(-1, task.get_future());
 	task();
 	if (oName)
 	{
@@ -29,7 +29,7 @@ std::shared_ptr<HJob> doNow(std::packaged_task<std::any()> task, std::optional<s
 
 namespace jobs
 {
-JobManager* g_pJobManager = nullptr;
+Manager* g_pManager = nullptr;
 } // namespace jobs
 
 jobs::Service::Service(u8 workerCount, bool bFlushQueue) : bFlushQueue(bFlushQueue)
@@ -46,13 +46,12 @@ void jobs::init(u32 workerCount)
 {
 	if (uManager)
 	{
-		LOG_W("[{}] Already initialised ([{}] workers)!", utils::tName<JobManager>(), uManager->workerCount());
+		LOG_W("[{}] Already initialised ([{}] workers)!", utils::tName<Manager>(), uManager->workerCount());
 		return;
 	}
 	workerCount = std::min(workerCount, threads::maxHardwareThreads());
-	uManager = std::make_unique<JobManager>(workerCount);
-	g_pJobManager = uManager.get();
-	LOG_D("[{}] Spawned [{}] JobWorkers ([{}] hardware threads)", utils::tName<JobManager>(), workerCount, threads::maxHardwareThreads());
+	uManager = std::make_unique<Manager>(workerCount);
+	LOG_D("[{}] Spawned [{}] JobWorkers ([{}] hardware threads)", utils::tName<Manager>(), workerCount, threads::maxHardwareThreads());
 	return;
 }
 
@@ -63,13 +62,12 @@ void jobs::deinit(bool bFlushQueue)
 		uManager->waitIdle();
 	}
 	[[maybe_unused]] auto count = uManager ? uManager->workerCount() : 0;
-	uManager = nullptr;
-	g_pJobManager = nullptr;
-	LOGIF_D(count > 0, "[{}] Cleaned up (destroyed [{}] JobWorkers)", utils::tName<JobManager>(), count);
+	uManager.reset();
+	LOGIF_D(count > 0, "[{}] Cleaned up (destroyed [{}] JobWorkers)", utils::tName<Manager>(), count);
 	return;
 }
 
-std::shared_ptr<HJob> jobs::enqueue(std::function<std::any()> task, std::string name /* = "" */, bool bSilent /* = false */)
+std::shared_ptr<jobs::Handle> jobs::enqueue(std::function<std::any()> task, std::string name /* = "" */, bool bSilent /* = false */)
 {
 	if (uManager)
 	{
@@ -81,7 +79,7 @@ std::shared_ptr<HJob> jobs::enqueue(std::function<std::any()> task, std::string 
 	}
 }
 
-std::shared_ptr<HJob> jobs::enqueue(std::function<void()> task, std::string name /* = "" */, bool bSilent /* = false */)
+std::shared_ptr<jobs::Handle> jobs::enqueue(std::function<void()> task, std::string name /* = "" */, bool bSilent /* = false */)
 {
 	auto doTask = [task]() -> std::any {
 		task();
@@ -97,7 +95,7 @@ std::shared_ptr<HJob> jobs::enqueue(std::function<void()> task, std::string name
 	}
 }
 
-std::vector<std::shared_ptr<HJob>> jobs::forEach(IndexedTask const& indexedTask)
+std::vector<std::shared_ptr<jobs::Handle>> jobs::forEach(IndexedTask const& indexedTask)
 {
 	if (uManager)
 	{
@@ -124,7 +122,7 @@ std::vector<std::shared_ptr<HJob>> jobs::forEach(IndexedTask const& indexedTask)
 	return {};
 }
 
-void jobs::waitAll(std::vector<std::shared_ptr<HJob>> const& handles)
+void jobs::waitAll(std::vector<std::shared_ptr<Handle>> const& handles)
 {
 	for (auto& handle : handles)
 	{
@@ -145,9 +143,9 @@ void jobs::waitIdle()
 {
 	if (!isIdle())
 	{
-		LOG_I("[{}] Waiting for workers...", utils::tName<JobManager>());
+		LOG_I("[{}] Waiting for workers...", utils::tName<Manager>());
 		uManager->waitIdle();
-		LOG_I("[{}] ... workers idle", utils::tName<JobManager>());
+		LOG_I("[{}] ... workers idle", utils::tName<Manager>());
 	}
 	return;
 }

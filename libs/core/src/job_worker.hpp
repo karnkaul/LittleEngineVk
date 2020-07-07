@@ -3,9 +3,9 @@
 #include <core/std_types.hpp>
 #include <core/threads.hpp>
 
-namespace le
+namespace le::jobs
 {
-class JobWorker final
+class Worker final
 {
 public:
 	enum class State : s8
@@ -19,18 +19,18 @@ private:
 	static std::atomic_bool s_bWork;
 
 private:
-	class JobManager* m_pManager;
-	HThread m_hThread;
+	class Manager* m_pManager;
+	threads::Handle m_hThread;
 	std::atomic<State> m_state = State::eIdle;
 	u8 id;
 
 public:
-	JobWorker(JobManager& manager, u8 id);
-	~JobWorker();
+	Worker(Manager& manager, u8 id);
+	~Worker();
 
 private:
 	void run();
 
-	friend class JobManager;
+	friend class Manager;
 };
-} // namespace le
+} // namespace le::jobs

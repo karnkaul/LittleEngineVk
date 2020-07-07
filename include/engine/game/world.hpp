@@ -112,22 +112,23 @@ protected:
 	virtual stdfs::path inputMapID() const;
 	virtual void onManifestLoaded();
 
-private:
-	bool startImpl(ID previous = {});
-	void tickImpl(Time dt);
-	void stopImpl();
-
 #if defined(LEVK_EDITOR)
 public:
 	Registry& registry();
 #endif
 
 private:
+	bool startImpl(ID previous = {});
+	void tickImpl(Time dt);
+	void stopImpl();
+
+private:
+	static bool start(ID id);
+	static void startNext();
 	static bool stopActive();
 	static void destroyAll();
 	static bool tick(Time dt, gfx::ScreenRect const& sceneRect);
-	static bool submitScene(gfx::Renderer& renderer);
-	static bool start(ID id);
+	static bool submitScene(gfx::Renderer& out_renderer);
 
 private:
 	friend class engine::Service;

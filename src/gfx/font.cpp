@@ -54,21 +54,21 @@ glm::vec2 textTLOffset(Font::Text::HAlign h, Font::Text::VAlign v)
 void Font::Glyph::deserialise(u8 c, GData const& json)
 {
 	ch = c;
-	st = {json.getS32("x"), json.getS32("y")};
-	cell = {json.getS32("width"), json.getS32("height")};
+	st = {json.get<s32>("x"), json.get<s32>("y")};
+	cell = {json.get<s32>("width"), json.get<s32>("height")};
 	uv = cell;
-	offset = {json.getS32("originX"), json.getS32("originY")};
-	xAdv = json.contains("advance") ? json.getS32("advance") : cell.x;
-	orgSizePt = json.getS32("size");
-	bBlank = json.getBool("isBlank");
+	offset = {json.get<s32>("originX"), json.get<s32>("originY")};
+	xAdv = json.contains("advance") ? json.get<s32>("advance") : cell.x;
+	orgSizePt = json.get<s32>("size");
+	bBlank = json.get<bool>("isBlank");
 }
 
 bool Font::Info::deserialise(GData const& json)
 {
-	sheetID = json.getString("sheetID");
-	samplerID = json.contains("sampler") ? json.getString("sampler") : "samplers/font";
-	materialID = json.contains("material") ? json.getString("material") : "materials/default";
-	auto glyphsData = json.getData("glyphs");
+	sheetID = json.get("sheetID");
+	samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/font";
+	materialID = json.contains("material") ? json.get("material") : "materials/default";
+	auto glyphsData = json.get<GData>("glyphs");
 	for (auto& [key, value] : glyphsData.allFields())
 	{
 		if (!key.empty())

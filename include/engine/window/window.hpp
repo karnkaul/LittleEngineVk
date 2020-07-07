@@ -86,6 +86,7 @@ public:
 
 	WindowID id() const;
 	bool isOpen() const;
+	bool exists() const;
 	bool isClosing() const;
 	bool isFocused() const;
 

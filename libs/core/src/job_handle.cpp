@@ -2,18 +2,18 @@
 #include <core/log.hpp>
 #include <core/utils.hpp>
 
-namespace le
+namespace le::jobs
 {
-HJob::HJob(s64 jobID, std::future<std::any>&& future) noexcept : m_future(std::move(future)), m_status(Status::eWaiting), m_jobID(jobID) {}
+Handle::Handle(s64 jobID, std::future<std::any>&& future) noexcept : m_future(std::move(future)), m_status(Status::eWaiting), m_jobID(jobID) {}
 
-HJob::~HJob() = default;
+Handle::~Handle() = default;
 
-s64 HJob::ID() const
+s64 Handle::ID() const
 {
 	return m_jobID;
 }
 
-std::any HJob::wait()
+std::any Handle::wait()
 {
 	if (m_future.valid())
 	{
@@ -23,17 +23,17 @@ std::any HJob::wait()
 	return fail;
 }
 
-bool HJob::hasCompleted() const
+bool Handle::hasCompleted() const
 {
 	return m_status.load() == Status::eDone;
 }
 
-bool HJob::isReady() const
+bool Handle::isReady() const
 {
 	return utils::isReady(m_future);
 }
 
-bool HJob::discard()
+bool Handle::discard()
 {
 	if (m_status.load() == Status::eWaiting)
 	{
@@ -42,4 +42,4 @@ bool HJob::discard()
 	}
 	return false;
 }
-} // namespace le
+} // namespace le::jobs

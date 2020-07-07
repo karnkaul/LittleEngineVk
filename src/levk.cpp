@@ -129,11 +129,15 @@ bool Service::isRunning() const
 bool Service::tick(Time dt) const
 {
 	Window::pollEvents();
-	gfx::deferred::update();
 	update();
-	gfx::ScreenRect gameRect = {};
-	if (!isTerminating())
+	bool const bShutdown = isShuttingDown();
+	if (bShutdown)
 	{
+		shutdown();
+	}
+	else
+	{
+		gfx::ScreenRect gameRect = {};
 #if defined(LEVK_EDITOR)
 		if (editor::g_bTickGame)
 		{
@@ -144,35 +148,47 @@ bool Service::tick(Time dt) const
 #else
 		input::fire();
 #endif
+		if (!World::tick(dt, gameRect))
+		{
+			LOG_E("[{}] Failed to tick World!", tName);
+		}
 	}
-	return World::tick(dt, gameRect);
+	return !bShutdown;
 }
 
-bool Service::submitScene() const
+void Service::submitScene() const
 {
-	return !isTerminating() && World::submitScene(g_app.uWindow->renderer());
+	if (!isShuttingDown() && g_app.uWindow)
+	{
+		if (!World::submitScene(g_app.uWindow->renderer()))
+		{
+			LOG_E("[{}] Error submitting World scene!", tName);
+		}
+	}
 }
 
 void Service::render() const
 {
-	if (!isTerminating())
+	if (!isShuttingDown())
 	{
 		Window::renderAll();
 	}
 }
-} // namespace engine
 
-bool engine::terminate()
+bool Service::shutdown()
 {
-	if (g_app.uWindow && g_app.uWindow->isOpen())
+	if (g_app.uWindow && g_app.uWindow->exists())
 	{
+		World::destroyAll();
 		g_app.uWindow->close();
+		destroyWindow();
 		return true;
 	}
 	return false;
 }
+} // namespace engine
 
-bool engine::isTerminating()
+bool engine::isShuttingDown()
 {
 	return g_app.uWindow && g_app.uWindow->isClosing();
 }
@@ -197,6 +213,7 @@ void engine::update()
 	Resources::inst().update();
 	WindowImpl::update();
 	gfx::vram::update();
+	gfx::deferred::update();
 }
 
 void engine::destroyWindow()

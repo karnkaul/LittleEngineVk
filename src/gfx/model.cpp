@@ -68,7 +68,7 @@ private:
 
 glm::vec3 getVec3(GData const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f))
 {
-	auto vec = json.getArray(id);
+	auto const vec = json.get<std::vector<std::string>>(id);
 	glm::vec3 ret = def;
 	if (vec.size() > 0)
 	{
@@ -356,8 +356,8 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
 		return {};
 	}
-	auto const objPath = request.assetID / json.getString("obj");
-	auto const mtlPath = request.assetID / json.getString("mtl");
+	auto const objPath = request.assetID / json.get("obj");
+	auto const mtlPath = request.assetID / json.get("mtl");
 	if (!request.pReader->checkPresence(objPath) || !request.pReader->checkPresence(mtlPath))
 	{
 		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, request.pReader->medium(), objPath.generic_string(), mtlPath.generic_string());
@@ -372,10 +372,10 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		objData.mtlBuf = std::move(mtlBuf);
 		objData.jsonID = std::move(jsonID);
 		objData.modelID = request.assetID;
-		objData.samplerID = json.contains("sampler") ? json.getString("sampler") : "samplers/default";
-		objData.scale = json.contains("scale") ? (f32)json.getF64("scale") : 1.0f;
+		objData.samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/default";
+		objData.scale = json.contains("scale") ? json.get<f32>("scale") : 1.0f;
 		objData.pReader = request.pReader;
-		objData.bDropColour = json.getBool("dropColour");
+		objData.bDropColour = json.get<bool>("dropColour");
 		objData.origin = getVec3(json, "origin");
 		OBJParser parser(std::move(objData));
 		return std::move(parser.m_info);

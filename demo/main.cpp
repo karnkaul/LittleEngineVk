@@ -108,7 +108,7 @@ private:
 	struct
 	{
 		stdfs::path model0id, model1id, skyboxID;
-		std::vector<std::shared_ptr<HJob>> modelReloads;
+		std::vector<std::shared_ptr<jobs::Handle>> modelReloads;
 		FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
@@ -255,7 +255,7 @@ void DemoWorld::tick(Time dt)
 {
 	if (m_data.bQuit)
 	{
-		engine::terminate();
+		engine::Service::shutdown();
 		return;
 	}
 
@@ -382,6 +382,35 @@ void DemoWorld::onManifestLoaded()
 }
 } // namespace
 
+struct FPS final
+{
+	Time updated;
+	Time elapsed;
+	u32 fps = 0;
+	u32 frames = 0;
+	bool bSet = false;
+
+	u32 update();
+};
+
+u32 FPS::update()
+{
+	if (updated > Time())
+	{
+		elapsed += (Time::elapsed() - updated);
+	}
+	updated = Time::elapsed();
+	++frames;
+	if (elapsed >= 1s)
+	{
+		fps = frames;
+		frames = 0;
+		elapsed = {};
+		bSet = true;
+	}
+	return bSet ? fps : frames;
+}
+
 int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
@@ -406,48 +435,32 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	FPS fps;
 	Time t = Time::elapsed();
 	while (engine.isRunning())
 	{
-		Time dt = Time::elapsed() - t;
-		t = Time::elapsed();
-
-		static Time fpsLogElapsed;
-		static Time fpsElapsed;
-		static u32 fps = 0;
-		static u32 frames = 0;
-		++frames;
-		fpsElapsed += dt;
-		fpsLogElapsed += dt;
-		if (fpsElapsed >= 1s)
+		Time const newT = Time::elapsed();
+		Time const dt = newT - t;
+		t = newT;
+		pWorld->m_fps = fps.update();
+		// Tick
+		if (engine.tick(dt))
 		{
-			fps = frames;
-			frames = 0;
-			fpsElapsed = Time();
-		}
-		{
-			// Tick
-			engine.tick(dt);
-
-			pWorld->m_fps = fps == 0 ? frames : fps;
-		}
-
-		// Render
+			// Render
 #if defined(LEVK_DEBUG)
-		try
+			try
 #endif
-		{
-			if (engine.submitScene())
 			{
+				engine.submitScene();
 				engine.render();
 			}
-		}
 #if defined(LEVK_DEBUG)
-		catch (std::exception const& e)
-		{
-			LOG_E("EXCEPTION!\n\t{}", e.what());
-		}
+			catch (std::exception const& e)
+			{
+				LOG_E("EXCEPTION!\n\t{}", e.what());
+			}
 #endif
+		}
 	}
 	return 0;
 }

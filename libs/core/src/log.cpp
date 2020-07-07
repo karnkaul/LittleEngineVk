@@ -27,7 +27,7 @@ public:
 
 public:
 	std::string m_cache;
-	HThread m_hThread;
+	threads::Handle m_hThread;
 	std::atomic<bool> m_bLog;
 	std::mutex m_mutex;
 
@@ -40,8 +40,8 @@ public:
 
 FileLogger::~FileLogger()
 {
-	ASSERT(m_hThread == HThread::s_null, "FileLogger thread running past main!");
-	if (m_hThread != HThread::s_null)
+	ASSERT(m_hThread == threads::Handle::s_null, "FileLogger thread running past main!");
+	if (m_hThread != threads::Handle::s_null)
 	{
 		stopLogging();
 	}
@@ -95,7 +95,7 @@ void FileLogger::stopLogging()
 
 void FileLogger::record(std::string line)
 {
-	if (m_hThread != HThread::s_null)
+	if (m_hThread != threads::Handle::s_null)
 	{
 		std::scoped_lock<std::mutex> lock(m_mutex);
 		m_cache += std::move(line);
@@ -122,7 +122,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 }
 
 std::mutex g_logMutex;
-std::array<char, (std::size_t)log::Level::eCOUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
+EnumArray<char, log::Level> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 

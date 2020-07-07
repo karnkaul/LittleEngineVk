@@ -10,9 +10,12 @@ namespace le
 {
 namespace
 {
-std::unique_ptr<AssetManifest> g_uManifest;
-AssetList g_loadedAssets;
-World* g_pWaitingToStart = nullptr;
+struct
+{
+	std::unique_ptr<AssetManifest> uManifest;
+	AssetList loadedAssets;
+	World* pNext = nullptr;
+} g_data;
 } // namespace
 
 std::unordered_map<s32, std::unique_ptr<World>> World::s_worlds;
@@ -49,14 +52,47 @@ bool World::removeWorld(ID id)
 
 bool World::loadWorld(ID id)
 {
+	if (isBusy())
+	{
+		LOG_W("[{}] Busy, ignoring request to load World{}", utils::tName<World>(), id);
+		return false;
+	}
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
-		g_pWaitingToStart = search->second.get();
+		g_data.pNext = search->second.get();
 		return true;
 	}
 	LOG_E("[{}] Failed to find World{}", utils::tName<World>(), id);
 	return false;
 }
+
+World* World::active()
+{
+	return s_pActive;
+}
+
+bool World::isBusy()
+{
+	return g_data.uManifest.get() != nullptr;
+}
+
+bool World::worldLoadPending()
+{
+	return g_data.pNext != nullptr;
+}
+
+#if defined(LEVK_EDITOR)
+std::vector<World*> World::allWorlds()
+{
+	std::vector<World*> ret;
+	for (auto& [id, uWorld] : s_worlds)
+	{
+		ret.push_back(uWorld.get());
+	}
+	std::sort(ret.begin(), ret.end(), [](auto pLHS, auto pRHS) { return pLHS->m_id < pRHS->m_id; });
+	return ret;
+}
+#endif
 
 World::ID World::id() const
 {
@@ -112,29 +148,12 @@ stdfs::path World::inputMapID() const
 
 void World::onManifestLoaded() {}
 
-bool World::start(ID id)
+#if defined(LEVK_EDITOR)
+Registry& World::registry()
 {
-	input::setActive(true);
-	if (auto search = s_worlds.find(id); search != s_worlds.end())
-	{
-		auto const& uWorld = search->second;
-		auto const manifestID = uWorld->manifestID();
-		if (engine::reader().isPresent(manifestID))
-		{
-			g_uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
-		}
-		if (uWorld->startImpl())
-		{
-			s_pActive = uWorld.get();
-			return true;
-		}
-		uWorld->stopImpl();
-		LOG_E("[{}] Failed to start World{}!", utils::tName<World>(), id);
-		return false;
-	}
-	LOG_E("[{}] Failed to find World{}!", utils::tName<World>(), id);
-	return false;
+	return m_registry;
 }
+#endif
 
 bool World::startImpl(ID previous)
 {
@@ -166,10 +185,6 @@ bool World::startImpl(ID previous)
 	input::registerContext(m_inputContext);
 	if (start())
 	{
-		if (g_uManifest)
-		{
-			g_uManifest->start();
-		}
 		LOG_I("[{}] started", utils::tName(*this));
 		return true;
 	}
@@ -181,20 +196,17 @@ bool World::startImpl(ID previous)
 void World::tickImpl(Time dt)
 {
 	m_registry.flush();
-	bool bTick = !engine::isTerminating();
-	if (g_uManifest)
+	bool bTick = true;
+	if (g_data.uManifest)
 	{
-		auto const status = g_uManifest->update(!bTick);
+		auto const status = g_data.uManifest->update();
 		switch (status)
 		{
 		case AssetManifest::Status::eIdle:
 		{
-			if (bTick)
-			{
-				onManifestLoaded();
-			}
-			g_loadedAssets = std::move(g_uManifest->m_loaded);
-			g_uManifest.reset();
+			onManifestLoaded();
+			g_data.loadedAssets = std::move(g_data.uManifest->m_loaded);
+			g_data.uManifest.reset();
 			break;
 		}
 		default:
@@ -210,27 +222,86 @@ void World::tickImpl(Time dt)
 	{
 		tick(dt);
 	}
-	if (!g_uManifest && engine::isTerminating())
-	{
-		engine::destroyWindow();
-	}
 }
 
 void World::stopImpl()
 {
 	m_inputContext.token.reset();
-	g_uManifest.reset();
+	g_data.uManifest.reset();
 	stop();
 	m_registry.clear();
 	LOG_I("[{}] stopped", utils::tName(*this));
 }
 
-#if defined(LEVK_EDITOR)
-Registry& World::registry()
+bool World::start(ID id)
 {
-	return m_registry;
+	input::setActive(true);
+	if (auto search = s_worlds.find(id); search != s_worlds.end())
+	{
+		auto const& uWorld = search->second;
+		auto const manifestID = uWorld->manifestID();
+		if (engine::reader().isPresent(manifestID))
+		{
+			g_data.uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+		}
+		if (uWorld->startImpl())
+		{
+			if (g_data.uManifest)
+			{
+				g_data.uManifest->start();
+			}
+			s_pActive = uWorld.get();
+			return true;
+		}
+		uWorld->stopImpl();
+		LOG_E("[{}] Failed to start World{}!", utils::tName<World>(), id);
+		return false;
+	}
+	LOG_E("[{}] Failed to find World{}!", utils::tName<World>(), id);
+	return false;
 }
-#endif
+
+void World::startNext()
+{
+	ID previousID;
+	bool bSkipUnload = false;
+	if (s_pActive)
+	{
+		previousID = s_pActive->m_id;
+		s_pActive->stopImpl();
+		bSkipUnload = s_pActive->m_flags.isSet(Flag::eSkipManifestUnload);
+		s_pActive = nullptr;
+	}
+	auto const manifestID = g_data.pNext->manifestID();
+	auto toUnload = g_data.loadedAssets;
+	if (!manifestID.empty() && engine::reader().isPresent(manifestID))
+	{
+		g_data.uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+		auto const loadList = g_data.uManifest->parse();
+		auto const toLoad = loadList - g_data.loadedAssets;
+		toUnload = g_data.loadedAssets - loadList;
+		g_data.uManifest->m_toLoad.intersect(toLoad);
+	}
+	if (bSkipUnload)
+	{
+		toUnload = {};
+	}
+	AssetManifest::unload(toUnload);
+	g_data.loadedAssets = g_data.loadedAssets - toUnload;
+	if (g_data.pNext->startImpl(previousID))
+	{
+		s_pActive = g_data.pNext;
+		if (g_data.uManifest)
+		{
+			g_data.uManifest->start();
+		}
+	}
+	else
+	{
+		LOG_E("[{}] Failed to start World{}", utils::tName<World>(), g_data.pNext->id());
+	}
+	g_data.pNext = nullptr;
+}
 
 bool World::stopActive()
 {
@@ -245,8 +316,8 @@ bool World::stopActive()
 
 void World::destroyAll()
 {
-	g_loadedAssets = {};
-	g_uManifest.reset();
+	stopActive();
+	g_data = {};
 	s_pActive = nullptr;
 	s_worlds.clear();
 	s_worldByType.clear();
@@ -258,87 +329,26 @@ bool World::tick(Time dt, gfx::ScreenRect const& sceneRect)
 	{
 		return false;
 	}
-	if (g_pWaitingToStart && !g_uManifest)
+	if (g_data.pNext && !g_data.uManifest)
 	{
-		ID previousID;
-		bool bSkipUnload = false;
-		if (s_pActive)
-		{
-			previousID = s_pActive->m_id;
-			s_pActive->stopImpl();
-			bSkipUnload = s_pActive->m_flags.isSet(Flag::eSkipManifestUnload);
-			s_pActive = nullptr;
-		}
-		auto const manifestID = g_pWaitingToStart->manifestID();
-		auto toUnload = g_loadedAssets;
-		if (!manifestID.empty() && engine::reader().isPresent(manifestID))
-		{
-			g_uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
-			auto const loadList = g_uManifest->parse();
-			auto const toLoad = loadList - g_loadedAssets;
-			toUnload = g_loadedAssets - loadList;
-			g_uManifest->m_toLoad.intersect(toLoad);
-		}
-		if (bSkipUnload)
-		{
-			toUnload = {};
-		}
-		AssetManifest::unload(toUnload);
-		g_loadedAssets = g_loadedAssets - toUnload;
-		if (g_pWaitingToStart->startImpl(previousID))
-		{
-			s_pActive = g_pWaitingToStart;
-		}
-		else
-		{
-			LOG_E("[{}] Failed to start World{}", utils::tName<World>(), g_pWaitingToStart->id());
-		}
-		g_pWaitingToStart = nullptr;
+		startNext();
 	}
 	if (s_pActive)
 	{
-		s_pActive->tickImpl(dt);
 		s_pActive->m_worldRect = sceneRect;
+		s_pActive->tickImpl(dt);
 		return true;
 	}
 	return false;
 }
 
-bool World::submitScene(gfx::Renderer& renderer)
+bool World::submitScene(gfx::Renderer& out_renderer)
 {
 	if (s_pActive)
 	{
-		renderer.submit(s_pActive->buildScene(), s_pActive->m_worldRect);
+		out_renderer.submit(s_pActive->buildScene(), s_pActive->m_worldRect);
 		return true;
 	}
 	return false;
 }
-
-World* World::active()
-{
-	return s_pActive;
-}
-
-bool World::isBusy()
-{
-	return g_uManifest.get() != nullptr;
-}
-
-bool World::worldLoadPending()
-{
-	return g_pWaitingToStart != nullptr;
-}
-
-#if defined(LEVK_EDITOR)
-std::vector<World*> World::allWorlds()
-{
-	std::vector<World*> ret;
-	for (auto& [id, uWorld] : s_worlds)
-	{
-		ret.push_back(uWorld.get());
-	}
-	std::sort(ret.begin(), ret.end(), [](auto pLHS, auto pRHS) { return pLHS->m_id < pRHS->m_id; });
-	return ret;
-}
-#endif
 } // namespace le

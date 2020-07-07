@@ -13,9 +13,9 @@ namespace le
 {
 namespace
 {
-HThread g_nextID = HThread::s_null;
-std::list<std::pair<HThread::type, std::thread>> g_threads;
-std::unordered_map<std::thread::id, HThread> g_idMap;
+threads::Handle g_nextID = threads::Handle::s_null;
+std::list<std::pair<threads::Handle::type, std::thread>> g_threads;
+std::unordered_map<std::thread::id, threads::Handle> g_idMap;
 std::thread::id g_mainThreadID;
 } // namespace
 
@@ -31,14 +31,14 @@ void threads::init()
 	return;
 }
 
-HThread threads::newThread(std::function<void()> task)
+threads::Handle threads::newThread(std::function<void()> task)
 {
 	g_threads.emplace_back(++g_nextID.handle, std::thread(task));
 	g_idMap[g_threads.back().second.get_id()] = g_nextID;
-	return HThread(g_nextID);
+	return Handle(g_nextID);
 }
 
-void threads::join(HThread& id)
+void threads::join(Handle& id)
 {
 	auto search = std::find_if(g_threads.begin(), g_threads.end(), [id](auto const& t) -> bool { return t.first == id; });
 	if (search != g_threads.end())
@@ -51,7 +51,7 @@ void threads::join(HThread& id)
 		g_idMap.erase(thread.get_id());
 		g_threads.erase(search);
 	}
-	id = HThread();
+	id = Handle();
 	return;
 }
 
@@ -69,10 +69,10 @@ void threads::joinAll()
 	return;
 }
 
-HThread threads::thisThreadID()
+threads::Handle threads::thisThreadID()
 {
 	auto search = g_idMap.find(std::this_thread::get_id());
-	return search != g_idMap.end() ? search->second : HThread();
+	return search != g_idMap.end() ? search->second : Handle();
 }
 
 bool threads::isMainThread()

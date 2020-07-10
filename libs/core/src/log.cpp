@@ -12,6 +12,7 @@
 #include <core/assert.hpp>
 #include <core/std_types.hpp>
 #include <core/threads.hpp>
+#include <core/utils.hpp>
 
 namespace le
 {
@@ -29,7 +30,7 @@ public:
 	std::string m_cache;
 	threads::Handle m_hThread;
 	std::atomic<bool> m_bLog;
-	std::mutex m_mutex;
+	Lockable<std::mutex> m_mutex;
 
 public:
 	void record(std::string line);
@@ -97,7 +98,7 @@ void FileLogger::record(std::string line)
 {
 	if (m_hThread != threads::Handle::s_null)
 	{
-		std::scoped_lock<std::mutex> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		m_cache += std::move(line);
 		m_cache += "\n";
 	}
@@ -108,7 +109,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 {
 	std::string temp;
 	{
-		std::scoped_lock<std::mutex> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		temp = std::move(m_cache);
 		m_cache.clear();
 		m_cache.reserve(s_reserveCount);
@@ -121,7 +122,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 	return;
 }
 
-std::mutex g_logMutex;
+Lockable<std::mutex> g_logMutex;
 EnumArray<char, log::Level> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
@@ -133,7 +134,7 @@ void log::logText(Level level, std::string text, [[maybe_unused]] std::string_vi
 		return;
 	}
 	std::time_t now = stdch::system_clock::to_time_t(stdch::system_clock::now());
-	std::unique_lock<std::mutex> lock(g_logMutex);
+	auto lock = g_logMutex.lock<std::unique_lock>();
 	std::string str;
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	try

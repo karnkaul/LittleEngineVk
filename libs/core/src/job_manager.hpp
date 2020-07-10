@@ -5,6 +5,7 @@
 #include <queue>
 #include <vector>
 #include <core/job_handle.hpp>
+#include <core/utils.hpp>
 
 namespace le::jobs
 {
@@ -38,7 +39,7 @@ private:
 private:
 	std::vector<std::unique_ptr<class Worker>> m_jobWorkers;
 	std::queue<Job> m_jobQueue;
-	mutable std::mutex m_wakeMutex;
+	mutable Lockable<std::mutex> m_wakeMutex;
 	std::condition_variable m_wakeCV;
 	s64 m_nextJobID = 0;
 

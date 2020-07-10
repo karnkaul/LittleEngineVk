@@ -119,7 +119,7 @@ void Resources::update()
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		for (auto& [id, uResource] : m_resources.m_map)
 		{
 			uResource->update();
@@ -133,7 +133,7 @@ bool Resources::unload(Hash hash)
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		return m_resources.unload(hash);
 	}
 	return false;
@@ -143,7 +143,7 @@ void Resources::deinit()
 {
 	waitIdle();
 	ASSERT(m_counter.isZero(false), "Resources in use!");
-	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	m_resources.unloadAll();
 	if (m_bActive.load())
 	{

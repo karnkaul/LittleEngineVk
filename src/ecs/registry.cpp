@@ -9,7 +9,7 @@ namespace le
 std::string const s_tEName = utils::tName<Entity>();
 std::string const Registry::s_tName = utils::tName<Registry>();
 std::unordered_map<std::type_index, Registry::Signature> Registry::s_signs;
-std::mutex Registry::s_mutex;
+Lockable<std::mutex> Registry::s_mutex;
 
 bool operator==(Entity lhs, Entity rhs)
 {
@@ -44,7 +44,7 @@ Registry::~Registry()
 
 bool Registry::setEnabled(Entity entity, bool bEnabled)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if (auto search = m_entityFlags.find(entity.id); search != m_entityFlags.end())
 	{
 		search->second[Flag::eDisabled] = !bEnabled;
@@ -55,7 +55,7 @@ bool Registry::setEnabled(Entity entity, bool bEnabled)
 
 bool Registry::setDebug(Entity entity, bool bDebug)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if (auto search = m_entityFlags.find(entity.id); search != m_entityFlags.end())
 	{
 		search->second[Flag::eDebug] = !bDebug;
@@ -66,28 +66,28 @@ bool Registry::setDebug(Entity entity, bool bDebug)
 
 bool Registry::isEnabled(Entity entity) const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	auto search = m_entityFlags.find(entity.id);
 	return search != m_entityFlags.end() && !search->second.isSet(Flag::eDisabled);
 }
 
 bool Registry::isAlive(Entity entity) const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	auto search = m_entityFlags.find(entity.id);
 	return search != m_entityFlags.end() && !search->second.isSet(Flag::eDestroyed);
 }
 
 bool Registry::isDebugSet(Entity entity) const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	auto search = m_entityFlags.find(entity.id);
 	return search != m_entityFlags.end() && search->second.isSet(Flag::eDebug);
 }
 
 bool Registry::destroyEntity(Entity const& entity)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if (auto search = m_entityFlags.find(entity.id); search != m_entityFlags.end())
 	{
 		switch (m_destroyMode)
@@ -123,7 +123,7 @@ bool Registry::destroyEntity(Entity& out_entity)
 
 void Registry::flush()
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	for (auto iter = m_entityFlags.begin(); iter != m_entityFlags.end();)
 	{
 		Entity const entity = {iter->first};
@@ -143,7 +143,7 @@ void Registry::flush()
 
 void Registry::clear()
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	m_db.clear();
 	m_entityFlags.clear();
 	m_entityNames.clear();
@@ -152,13 +152,13 @@ void Registry::clear()
 
 std::size_t Registry::entityCount() const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	return m_entityFlags.size();
 }
 
 std::string_view Registry::entityName(Entity entity) const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	auto search = m_entityNames.find(entity.id);
 	return search != m_entityNames.end() ? search->second : std::string_view();
 }

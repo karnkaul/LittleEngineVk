@@ -23,7 +23,7 @@ void Worker::run()
 	while (s_bWork.load(std::memory_order_relaxed))
 	{
 		m_state.store(State::eIdle);
-		std::unique_lock<std::mutex> lock(m_pManager->m_wakeMutex);
+		auto lock = m_pManager->m_wakeMutex.lock<std::unique_lock>();
 		// Sleep until notified and new job exists / exiting
 		m_pManager->m_wakeCV.wait(lock, [&]() { return !m_pManager->m_jobQueue.empty() || !s_bWork.load(std::memory_order_relaxed); });
 		if (!s_bWork.load(std::memory_order_relaxed))

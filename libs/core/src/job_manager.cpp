@@ -3,14 +3,11 @@
 #include <sstream>
 #include <core/assert.hpp>
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <job_manager.hpp>
 #include <job_worker.hpp>
 
 namespace le::jobs
 {
-using Lock = std::scoped_lock<std::mutex>;
-
 Manager::Job::Job() = default;
 
 Manager::Job::Job(s64 id, Task task, std::string name, bool bSilent) : m_task(std::move(task)), m_bSilent(bSilent)
@@ -51,7 +48,7 @@ std::shared_ptr<Handle> Manager::enqueue(Task task, std::string name, bool bSile
 {
 	std::shared_ptr<Handle> ret;
 	{
-		Lock lock(m_wakeMutex);
+		auto lock = m_wakeMutex.lock();
 		m_jobQueue.emplace(++m_nextJobID, std::move(task), std::move(name), bSilent);
 		ret = m_jobQueue.back().m_shJob;
 	}
@@ -121,7 +118,7 @@ bool Manager::isIdle() const
 			return false;
 		}
 	}
-	Lock lock(m_wakeMutex);
+	auto lock = m_wakeMutex.lock();
 	return m_jobQueue.empty();
 }
 

@@ -43,7 +43,7 @@ bool empty(std::vector<T> const&... out_vecs)
 
 template <typename T>
 TResult<jobs::IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded, std::vector<Asset*>& out_assets,
-									   std::mutex& mutex, std::string_view jobName)
+									   Lockable<std::mutex>& mutex, std::string_view jobName)
 {
 	jobs::IndexedTask task;
 	if (!out_toLoad.empty())
@@ -53,7 +53,7 @@ TResult<jobs::IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, st
 			auto pAsset = Resources::inst().create<T>(std::move(asset.id), std::move(asset.info));
 			if (pAsset)
 			{
-				std::scoped_lock<decltype(mutex)> lock(mutex);
+				auto lock = mutex.lock();
 				out_assets.push_back(pAsset);
 				out_loaded.push_back(asset.id);
 			}
@@ -404,7 +404,7 @@ void AssetManifest::loadAssets()
 
 bool AssetManifest::eraseDone(bool bWaitingJobs)
 {
-	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if (!m_running.empty())
 	{
 		auto iter = std::remove_if(m_running.begin(), m_running.end(), [bWaitingJobs](auto const& sJob) -> bool {

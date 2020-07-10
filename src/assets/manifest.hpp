@@ -1,10 +1,10 @@
 #pragma once
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <core/gdata.hpp>
 #include <core/jobs.hpp>
 #include <core/std_types.hpp>
+#include <core/utils.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/font.hpp>
@@ -70,7 +70,7 @@ protected:
 	Data m_data;
 	std::vector<std::shared_ptr<jobs::Handle>> m_running;
 	std::vector<Asset*> m_loading;
-	std::mutex m_mutex;
+	Lockable<std::mutex> m_mutex;
 	Resources::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
 	IOReader const* m_pReader = nullptr;

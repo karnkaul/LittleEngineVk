@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <deque>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <tuple>
@@ -13,6 +12,7 @@
 #include <core/flags.hpp>
 #include <core/log_config.hpp>
 #include <core/std_types.hpp>
+#include <core/utils.hpp>
 
 namespace le
 {
@@ -81,7 +81,7 @@ private:
 	// Shared cache of computed signs
 	static std::unordered_map<std::type_index, Signature> s_signs;
 	// Thread-safe static mutex
-	static std::mutex s_mutex;
+	static Lockable<std::mutex> s_mutex;
 
 public:
 	// Adjusts log::Level on database changes (unset to disable)
@@ -94,7 +94,7 @@ protected:
 	// Database of id => [Sign => [component]]
 	std::unordered_map<Entity::ID, std::unordered_map<Signature, std::unique_ptr<Component>>> m_db;
 	// Thread-safe member mutex
-	mutable std::mutex m_mutex;
+	mutable Lockable<std::mutex> m_mutex;
 
 private:
 	Entity::ID m_nextID = 0;
@@ -198,21 +198,21 @@ Registry::Model<T>::Model(Args&&... args) : t(std::forward<Args>(args)...)
 template <typename T>
 Registry::Signature Registry::signature()
 {
-	std::scoped_lock<std::mutex> lock(s_mutex);
+	auto lock = s_mutex.lock();
 	return signature_Impl<T>();
 }
 
 template <typename... Ts>
 std::array<Registry::Signature, sizeof...(Ts)> Registry::signatures()
 {
-	std::scoped_lock<std::mutex> lock(s_mutex);
+	auto lock = s_mutex.lock();
 	return std::array<Signature, sizeof...(Ts)>{signature_Impl<Ts>()...};
 }
 
 template <typename... Ts>
 Entity Registry::spawnEntity(std::string name)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	auto entity = spawnEntity_Impl(std::move(name));
 	if constexpr (sizeof...(Ts) > 0)
 	{
@@ -225,7 +225,7 @@ template <typename T, typename... Args>
 T* Registry::addComponent(Entity entity, Args... args)
 {
 	static_assert((std::is_constructible_v<T, Args> && ...), "Cannot construct Comp with given Args...");
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 	{
 		return &static_cast<Model<T>*>(addComponent_Impl<T>(entity, std::forward<Args>(args)...))->t;
@@ -236,7 +236,7 @@ T* Registry::addComponent(Entity entity, Args... args)
 template <typename T1, typename T2, typename... Ts>
 void Registry::addComponent(Entity entity)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if (m_entityFlags.find(entity.id) != m_entityFlags.end())
 	{
 		addComponent_Impl<T1, T2, Ts...>(entity);
@@ -247,21 +247,21 @@ void Registry::addComponent(Entity entity)
 template <typename T>
 T const* Registry::component(Entity entity) const
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	return component_Impl<Registry const, T const>(this, entity.id);
 }
 
 template <typename T>
 T* Registry::component(Entity entity)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	return component_Impl<Registry, T>(this, entity.id);
 }
 
 template <typename... Ts>
 bool Registry::destroyComponent(Entity entity)
 {
-	std::scoped_lock<std::mutex> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if constexpr (sizeof...(Ts) > 0)
 	{
 		if (m_entityFlags.find(entity.id) != m_entityFlags.end())
@@ -359,7 +359,7 @@ typename Registry::View<T1, Ts...> Registry::view(Th* pThis, Flags mask, Flags p
 {
 	View<T1, Ts...> ret;
 	static auto const signs = signatures<T1, Ts...>();
-	std::scoped_lock<std::mutex> lock(pThis->m_mutex);
+	auto lock = pThis->m_mutex.lock();
 	for (auto const [id, flags] : pThis->m_entityFlags)
 	{
 		if ((flags & mask) == (pattern & mask))

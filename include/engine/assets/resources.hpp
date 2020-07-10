@@ -8,6 +8,7 @@
 #include <core/atomic_counter.hpp>
 #include <core/hash.hpp>
 #include <core/io.hpp>
+#include <core/utils.hpp>
 #include <core/map_store.hpp>
 #include <engine/assets/asset.hpp>
 
@@ -54,7 +55,7 @@ public:
 private:
 	TMapStore<std::unordered_map<Hash, std::unique_ptr<Asset>>> m_resources;
 	mutable Counter<s32> m_counter;
-	mutable std::mutex m_mutex;
+	mutable Lockable<std::mutex> m_mutex;
 	std::atomic_bool m_bActive;
 
 public:
@@ -136,7 +137,7 @@ T* Resources::create(stdfs::path const& id, typename T::Info info)
 	{
 		auto const hash = Hash(id.generic_string());
 		auto semaphore = setBusy();
-		std::unique_lock<decltype(m_mutex)> lock(m_mutex);
+		auto lock = m_mutex.lock<std::unique_lock>();
 		bool const bLoaded = m_resources.find(hash).bResult;
 		lock.unlock();
 		ASSERT(!bLoaded, "ID already loaded!");
@@ -166,7 +167,7 @@ T* Resources::get(Hash hash) const
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		auto [pT, bResult] = m_resources.find(hash);
 		if (bResult && pT)
 		{
@@ -183,7 +184,7 @@ bool Resources::unload(Hash hash)
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		return m_resources.unload(hash);
 	}
 	return false;
@@ -197,7 +198,7 @@ std::vector<T*> Resources::loaded() const
 	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	std::vector<T*> ret;
-	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	for (auto& [id, uT] : m_resources.m_map)
 	{
 		if (auto pT = dynamic_cast<T*>(uT.get()))

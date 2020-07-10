@@ -6,9 +6,10 @@
 #include <editor/editor.hpp>
 #if defined(LEVK_EDITOR)
 #include <fmt/format.h>
+#include <glm/gtc/quaternion.hpp>
 #include <imgui.h>
 #include <core/maths.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <core/utils.hpp>
 #include <gfx/ext_gui.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
@@ -35,7 +36,7 @@ namespace
 {
 bool g_bInit = false;
 log::OnLog g_onLogChain = nullptr;
-std::mutex g_logMutex;
+Lockable<std::mutex> g_logMutex;
 
 struct
 {
@@ -107,7 +108,7 @@ void guiLog(std::string_view text, log::Level level)
 	entry.text = std::string(text);
 	entry.level = level;
 	entry.imColour = fromColour(fromLevel(level));
-	std::scoped_lock<std::mutex> lock(g_logMutex);
+	auto lock = g_logMutex.lock();
 	g_logEntries.push_back(std::move(entry));
 	while (g_logEntries.size() > g_maxLogEntries)
 	{
@@ -595,7 +596,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 				clearLog();
 			}
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-			std::scoped_lock<std::mutex> lock(g_logMutex);
+			auto lock = g_logMutex.lock();
 			while (g_logEntries.size() > g_maxLogEntries)
 			{
 				g_logEntries.pop_front();

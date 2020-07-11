@@ -1,9 +1,9 @@
 #include <array>
 #include <string>
-#include <core/jobs.hpp>
 #include <core/profiler.hpp>
 #include <core/threads.hpp>
 #include <core/maths.hpp>
+#include <core/tasks.hpp>
 #include <core/utils.hpp>
 #include <engine/ecs/registry.hpp>
 
@@ -34,7 +34,7 @@ struct F
 int main()
 {
 	{
-		jobs::Service service(4);
+		tasks::Service service(4);
 		Registry registry(Registry::DestroyMode::eImmediate);
 		registry.m_logLevel.reset();
 		constexpr s32 entityCount = 10000;
@@ -42,7 +42,7 @@ int main()
 		s32 idx = 0;
 		for (auto& entity : entities)
 		{
-			jobs::enqueue(
+			tasks::enqueue(
 				[&entity, &registry, &idx]() {
 					entity = registry.spawnEntity("e" + std::to_string(idx++));
 					auto const toss = maths::randomRange(0, 1 << 7);
@@ -96,37 +96,38 @@ int main()
 						}
 					}
 				},
-				"", true);
+				{});
 		}
-		jobs::waitIdle();
-		// registry.m_logLevel = log::Level::eInfo;
+		tasks::waitIdle(false);
+		registry.m_logLevel = log::Level::eInfo;
+		std::vector<std::shared_ptr<tasks::Handle>> handles;
 		{
 			for (s32 i = 0; i < entityCount / 10; ++i)
 			{
-				jobs::enqueue(
+				handles.push_back(tasks::enqueue(
 					[&registry, &entities]() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.destroyEntity(entities.at(idx));
 					},
-					"", true);
-				jobs::enqueue(
+					{}));
+				handles.push_back(tasks::enqueue(
 					[&registry, &entities]() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.destroyComponent<A, B, D>(entities.at(idx));
 					},
-					"", true);
-				jobs::enqueue(
+					{}));
+				handles.push_back(tasks::enqueue(
 					[&registry, &entities]() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.setEnabled(entities.at(idx), false);
 					},
-					"", true);
+					{}));
 			}
 		}
 		{
@@ -141,7 +142,8 @@ int main()
 				auto viewCEF = registry.view<C, E, F>();
 			}
 		}
-		jobs::waitIdle();
+		handles.at(maths::randomRange((std::size_t)0, handles.size() - 1))->discard();
+		tasks::wait(handles);
 		// To test:
 		// - flags: disabled, destroyed, debug
 		//		toggle multiple objects multiple times

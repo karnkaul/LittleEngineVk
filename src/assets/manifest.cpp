@@ -2,7 +2,6 @@
 #include <sstream>
 #include <utility>
 #include <core/assert.hpp>
-#include <core/jobs.hpp>
 #include <core/log.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
@@ -42,26 +41,23 @@ bool empty(std::vector<T> const&... out_vecs)
 }
 
 template <typename T>
-TResult<jobs::IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded, std::vector<Asset*>& out_assets,
-									   Lockable<std::mutex>& mutex, std::string_view jobName)
+std::vector<std::shared_ptr<tasks::Handle>> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
+														std::vector<Asset*>& out_assets, Lockable<std::mutex>& mutex, std::string_view jobName)
 {
-	jobs::IndexedTask task;
+	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+	tasks::List taskList;
 	if (!out_toLoad.empty())
 	{
-		task.task = [&out_toLoad, &out_loaded, &out_assets, &mutex](std::size_t idx) {
-			auto& asset = out_toLoad.at(idx);
-			auto pAsset = Resources::inst().create<T>(std::move(asset.id), std::move(asset.info));
+		auto task = [&out_loaded, &out_assets, &mutex](AssetData<T>& data) {
+			auto pAsset = Resources::inst().create<T>(data.id, std::move(data.info));
 			if (pAsset)
 			{
 				auto lock = mutex.lock();
 				out_assets.push_back(pAsset);
-				out_loaded.push_back(asset.id);
+				out_loaded.push_back(std::move(data.id));
 			}
 		};
-		task.name = jobName;
-		task.bSilent = false;
-		task.iterationCount = out_toLoad.size();
-		return task;
+		return tasks::forEach<AssetData<T>>(out_toLoad, task, jobName);
 	}
 	return {};
 }
@@ -375,19 +371,15 @@ void AssetManifest::unload(const AssetList& list)
 void AssetManifest::loadData()
 {
 	m_status = Status::eExtractingData;
-	jobs::IndexedTask task;
 	if (!m_toLoad.models.empty())
 	{
-		task.task = [this](std::size_t idx) {
-			auto& model = m_toLoad.models.at(idx);
+		auto task = [this](AssetData<Model>& data) {
 			gfx::Model::LoadRequest mlr;
-			mlr.assetID = model.id;
+			mlr.assetID = data.id;
 			mlr.pReader = m_pReader;
-			model.info = gfx::Model::parseOBJ(mlr);
+			data.info = gfx::Model::parseOBJ(mlr);
 		};
-		task.name = "Manifest-0:Models";
-		task.iterationCount = m_toLoad.models.size();
-		addJobs(std::move(task));
+		addJobs(tasks::forEach<AssetData<Model>>(m_toLoad.models, task, "Manifest-0:Models"));
 	}
 }
 
@@ -395,7 +387,6 @@ void AssetManifest::loadAssets()
 {
 	m_status = Status::eLoadingAssets;
 	m_semaphore = Resources::inst().setBusy();
-	jobs::IndexedTask task;
 	addJobs(loadTAssets(m_toLoad.shaders, m_loaded.shaders, m_loading, m_mutex, "Manifest-1:Shaders"));
 	addJobs(loadTAssets(m_toLoad.textures, m_loaded.textures, m_loading, m_mutex, "Manifest-1:Textures"));
 	addJobs(loadTAssets(m_toLoad.cubemaps, m_loaded.cubemaps, m_loading, m_mutex, "Manifest-1:Cubemaps"));
@@ -408,7 +399,7 @@ bool AssetManifest::eraseDone(bool bWaitingJobs)
 	if (!m_running.empty())
 	{
 		auto iter = std::remove_if(m_running.begin(), m_running.end(), [bWaitingJobs](auto const& sJob) -> bool {
-			bool bRet = sJob->hasCompleted();
+			bool bRet = sJob->hasCompleted(true);
 			if (bWaitingJobs)
 			{
 				bRet |= sJob->discard();
@@ -425,18 +416,8 @@ bool AssetManifest::eraseDone(bool bWaitingJobs)
 	return m_running.empty() && m_loading.empty();
 }
 
-void AssetManifest::addJobs(jobs::IndexedTask task)
+void AssetManifest::addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles)
 {
-	auto hjobs = jobs::forEach(std::move(task));
-	std::move(hjobs.begin(), hjobs.end(), std::back_inserter(m_running));
-}
-
-void AssetManifest::addJobs(TResult<jobs::IndexedTask> task)
-{
-	if (task.bResult)
-	{
-		auto hjobs = jobs::forEach(task.payload);
-		std::move(hjobs.begin(), hjobs.end(), std::back_inserter(m_running));
-	}
+	std::move(handles.begin(), handles.end(), std::back_inserter(m_running));
 }
 } // namespace le

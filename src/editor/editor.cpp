@@ -330,7 +330,7 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 
 			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
 			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
-			if (pTMesh && pMesh)
+			if (pTMesh)
 			{
 				if (ImGui::TreeNode("Mesh"))
 				{
@@ -338,20 +338,24 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
 						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, pos, size);
 
-					inspectMaterial(*pMesh, 0, pos, size);
+					if (pMesh)
+					{
+						inspectMaterial(*pMesh, 0, pos, size);
+					}
 					ImGui::TreePop();
 				}
 			}
 			auto pTModel = registry.component<TAsset<gfx::Model>>(g_inspecting.entity);
 			auto pModel = pTModel ? pTModel->get() : nullptr;
-			if (pTModel && pModel)
+			if (pTModel)
 			{
 				if (ImGui::TreeNode("Model"))
 				{
 					inspectAsset<gfx::Model>(
 						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
 						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
-					auto& meshes = pModel->loadedMeshes();
+					static std::deque<gfx::Mesh> s_empty;
+					auto& meshes = pModel ? pModel->loadedMeshes() : s_empty;
 					std::size_t idx = 0;
 					for (auto& mesh : meshes)
 					{

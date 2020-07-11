@@ -1,6 +1,6 @@
-#include <core/jobs.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
+#include <core/tasks.hpp>
 #include <core/time.hpp>
 #include <core/utils.hpp>
 #include <engine/levk.hpp>
@@ -31,7 +31,7 @@ Service::Service(s32 argc, char const* const* const argv)
 	Time::resetElapsed();
 	m_services.add<os::Service>(os::Args{argc, argv});
 	m_services.add<log::Service>(std::string_view("debug.log"));
-	m_services.add<jobs::Service>(4);
+	m_services.add<tasks::Service>(4);
 }
 
 Service::Service(Service&&) = default;

@@ -2,7 +2,7 @@
 #include <core/assert.hpp>
 #include <core/gdata.hpp>
 #include <core/io.hpp>
-#include <core/jobs.hpp>
+#include <core/tasks.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/map_store.hpp>
@@ -108,7 +108,7 @@ private:
 	struct
 	{
 		stdfs::path model0id, model1id, skyboxID;
-		std::vector<std::shared_ptr<jobs::Handle>> modelReloads;
+		std::vector<std::shared_ptr<tasks::Handle>> modelReloads;
 		FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
@@ -224,7 +224,8 @@ bool DemoWorld::start()
 	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid2, m_data.model0id);
 
 	m_registry.component<Transform>(m_data.eid3)->setPosition({0.0f, -1.0f, -3.0f});
-	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, m_data.model1id);
+	// m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, m_data.model1id);
+	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, "");
 
 	if (!m_pPipeline0wf)
 	{
@@ -270,7 +271,7 @@ void DemoWorld::tick(Time dt)
 		m_data.temp.token.reset();
 	}
 
-	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto sJob) -> bool { return sJob->hasCompleted(); });
+	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto const& handle) -> bool { return handle->hasCompleted(true); });
 	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
 
 	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
@@ -285,7 +286,7 @@ void DemoWorld::tick(Time dt)
 		}
 		else
 		{
-			m_data.modelReloads.push_back(jobs::enqueue(
+			m_data.modelReloads.push_back(tasks::enqueue(
 				[this]() {
 					auto semaphore = Resources::inst().setBusy();
 					gfx::Model::LoadRequest mlr;
@@ -297,7 +298,7 @@ void DemoWorld::tick(Time dt)
 				"Model0-Reload"));
 			if (m_data.model0id != m_data.model1id)
 			{
-				m_data.modelReloads.push_back(jobs::enqueue(
+				m_data.modelReloads.push_back(tasks::enqueue(
 					[this]() {
 						auto semaphore = Resources::inst().setBusy();
 						gfx::Model::LoadRequest mlr;

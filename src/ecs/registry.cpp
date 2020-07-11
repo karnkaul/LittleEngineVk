@@ -6,6 +6,8 @@
 
 namespace le
 {
+bool g_bDestroyed = false;
+
 std::string const s_tEName = utils::tName<Entity>();
 std::string const Registry::s_tName = utils::tName<Registry>();
 std::unordered_map<std::type_index, Registry::Signature> Registry::s_signs;
@@ -40,6 +42,7 @@ Registry::~Registry()
 		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] Entities destroyed", s_tName, m_entityFlags.size());
 	}
 	LOG_D("[{}] Destroyed", s_tName);
+	g_bDestroyed = true;
 }
 
 bool Registry::setEnabled(Entity entity, bool bEnabled)
@@ -196,6 +199,7 @@ Registry::Component* Registry::addComponent_Impl(Signature sign, std::unique_ptr
 
 void Registry::destroyComponent_Impl(Component const* pComponent, Entity::ID id)
 {
+	ASSERT(!g_bDestroyed, "Registry destroyed!");
 	auto const sign = pComponent->sign;
 	m_db[id].erase(sign);
 	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", s_tName, m_componentNames[sign], s_tEName, id, m_entityNames[id]);
@@ -204,6 +208,7 @@ void Registry::destroyComponent_Impl(Component const* pComponent, Entity::ID id)
 
 bool Registry::destroyComponent_Impl(Entity::ID id)
 {
+	ASSERT(!g_bDestroyed, "Registry destroyed!");
 	if (auto search = m_db.find(id); search != m_db.end())
 	{
 		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] components detached from [{}:{}] [{}] and destroyed", s_tName, search->second.size(), s_tEName, id,

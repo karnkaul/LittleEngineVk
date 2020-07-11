@@ -49,6 +49,11 @@ struct Span
 	Span<T>(Span<T> const&) noexcept = default;
 	Span<T>& operator=(Span<T> const&) noexcept = default;
 
+	std::size_t size() const
+	{
+		return extent;
+	}
+
 	const_iterator begin() const
 	{
 		return pData;
@@ -57,6 +62,12 @@ struct Span
 	const_iterator end() const
 	{
 		return pData + extent;
+	}
+
+	T const& at(std::size_t idx) const
+	{
+		ASSERT(idx < extent, "OOB access!");
+		return *(pData + idx);
 	}
 };
 

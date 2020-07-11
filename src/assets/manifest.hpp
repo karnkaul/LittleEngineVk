@@ -2,8 +2,8 @@
 #include <atomic>
 #include <memory>
 #include <core/gdata.hpp>
-#include <core/jobs.hpp>
 #include <core/std_types.hpp>
+#include <core/tasks.hpp>
 #include <core/utils.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/resources.hpp>
@@ -68,7 +68,7 @@ public:
 protected:
 	GData m_manifest;
 	Data m_data;
-	std::vector<std::shared_ptr<jobs::Handle>> m_running;
+	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<Asset*> m_loading;
 	Lockable<std::mutex> m_mutex;
 	Resources::Semaphore m_semaphore;
@@ -91,7 +91,6 @@ protected:
 	void loadData();
 	void loadAssets();
 	bool eraseDone(bool bWaitingJobs);
-	void addJobs(jobs::IndexedTask task);
-	void addJobs(TResult<jobs::IndexedTask> task);
+	void addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles);
 };
 } // namespace le

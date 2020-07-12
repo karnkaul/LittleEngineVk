@@ -34,7 +34,7 @@ public:
 		stdfs::path samplerID;
 		glm::vec3 origin = glm::vec3(0.0f);
 		f32 scale = 1.0f;
-		IOReader const* pReader = nullptr;
+		io::Reader const* pReader = nullptr;
 		bool bDropColour = false;
 	};
 

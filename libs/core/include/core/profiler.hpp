@@ -21,9 +21,9 @@ struct Profiler final
 	Data data;
 	Time start;
 	Time end;
-	std::optional<log::Level> level;
+	std::optional<io::Level> level;
 
-	explicit Profiler(std::string_view id, std::optional<log::Level> level = log::Level::eInfo);
+	explicit Profiler(std::string_view id, std::optional<io::Level> level = io::Level::eInfo);
 	~Profiler();
 
 	static void clear();

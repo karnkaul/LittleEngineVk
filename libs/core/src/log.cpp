@@ -13,6 +13,7 @@
 #include <core/std_types.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
+#include <io_impl.hpp>
 
 namespace le
 {
@@ -123,11 +124,11 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 }
 
 Lockable<std::mutex> g_logMutex;
-EnumArray<char, log::Level> g_prefixes = {'D', 'I', 'W', 'E'};
+EnumArray<char, io::Level> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 
-void log::logText(Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
+void io::log(Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
 {
 	if ((u8)level < (u8)g_minLevel)
 	{
@@ -195,17 +196,18 @@ void log::logText(Level level, std::string text, [[maybe_unused]] std::string_vi
 	g_fileLogger.record(std::move(str));
 }
 
-log::Service::Service(std::filesystem::path const& path, Time pollRate)
+io::Service::Service(std::filesystem::path const& path, Time pollRate)
 {
 	logToFile(path, pollRate);
 }
 
-log::Service::~Service()
+io::Service::~Service()
 {
 	stopFileLogging();
+	impl::deinitPhysfs();
 }
 
-void log::logToFile(std::filesystem::path path, Time pollRate)
+void io::logToFile(std::filesystem::path path, Time pollRate)
 {
 	if (!g_fileLogger.m_bLog.load())
 	{
@@ -214,7 +216,7 @@ void log::logToFile(std::filesystem::path path, Time pollRate)
 	return;
 }
 
-void log::stopFileLogging()
+void io::stopFileLogging()
 {
 	if (g_fileLogger.m_bLog.load())
 	{

@@ -35,7 +35,7 @@ static std::string const s_tName = utils::tName<Editor>();
 namespace
 {
 bool g_bInit = false;
-log::OnLog g_onLogChain = nullptr;
+io::OnLog g_onLogChain = nullptr;
 Lockable<std::mutex> g_logMutex;
 
 struct
@@ -51,7 +51,7 @@ struct LogEntry final
 {
 	std::string text;
 	ImVec4 imColour;
-	log::Level level;
+	io::Level level;
 };
 
 std::size_t g_maxLogEntries = 500;
@@ -80,15 +80,15 @@ World* g_pWorld = nullptr;
 bool g_bAutoScroll = true;
 #endif
 
-Colour fromLevel(log::Level level)
+Colour fromLevel(io::Level level)
 {
 	switch (level)
 	{
-	case log::Level::eError:
+	case io::Level::eError:
 		return colours::red;
-	case log::Level::eWarning:
+	case io::Level::eWarning:
 		return colours::yellow;
-	case log::Level::eDebug:
+	case io::Level::eDebug:
 		return Colour(0x888888ff);
 	default:
 		return colours::white;
@@ -102,7 +102,7 @@ ImVec4 fromColour(Colour colour)
 }
 #endif
 
-void guiLog(std::string_view text, log::Level level)
+void guiLog(std::string_view text, io::Level level)
 {
 	LogEntry entry;
 	entry.text = std::string(text);
@@ -628,8 +628,8 @@ bool editor::init(WindowID editorWindow)
 {
 	if (!g_bInit && gfx::ext_gui::isInit())
 	{
-		g_onLogChain = log::g_onLog;
-		log::g_onLog = &guiLog;
+		g_onLogChain = io::g_onLog;
+		io::g_onLog = &guiLog;
 		g_data.window = editorWindow;
 		g_data.inputToken = Window::registerInput(
 			[](Key key, Action action, Mods::VALUE mods) {
@@ -656,7 +656,7 @@ void editor::deinit()
 {
 	if (g_bInit)
 	{
-		log::g_onLog = g_onLogChain;
+		io::g_onLog = g_onLogChain;
 		g_onLogChain = nullptr;
 		g_bInit = false;
 		g_data = {};

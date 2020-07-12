@@ -30,7 +30,7 @@ Service::Service(s32 argc, char const* const* const argv)
 {
 	Time::resetElapsed();
 	m_services.add<os::Service>(os::Args{argc, argv});
-	m_services.add<log::Service>(std::string_view("debug.log"));
+	m_services.add<io::Service>(std::string_view("debug.log"));
 	m_services.add<tasks::Service>(4);
 }
 
@@ -54,7 +54,7 @@ std::vector<stdfs::path> Service::locateData(std::vector<DataSearch> const& sear
 	for (auto const& pattern : searchPatterns)
 	{
 		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
-		auto [found, bResult] = FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
+		auto [found, bResult] = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
 		LOGIF_W(!bResult, "[{}] Failed to locate data!", tName);
 		if (bResult)
 		{
@@ -85,8 +85,8 @@ bool Service::init(Info const& info)
 		initInfo.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
-		FileReader fileReader;
-		IOReader* pReader = info.pReader ? info.pReader : &fileReader;
+		io::FileReader fileReader;
+		io::Reader* pReader = info.pReader ? info.pReader : &fileReader;
 		std::vector<stdfs::path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;
 		for (auto const& path : dataPaths)
@@ -229,9 +229,9 @@ Window* engine::window()
 	return g_app.uWindow.get();
 }
 
-IOReader const& engine::reader()
+io::Reader const& engine::reader()
 {
-	ASSERT(g_app.pReader, "IOReader is null!");
+	ASSERT(g_app.pReader, "io::Reader is null!");
 	return *g_app.pReader;
 }
 

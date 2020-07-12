@@ -88,7 +88,7 @@ struct InitInfo final
 	{
 		PickDevice pickDevice;
 		Flags flags;
-		log::Level validationLog = log::Level::eWarning;
+		io::Level validationLog = io::Level::eWarning;
 		bool bDedicatedTransfer = true;
 	} options;
 };
@@ -247,7 +247,7 @@ struct TextureImpl final
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	Image standby;
 	std::vector<stdfs::path> imgIDs;
-	FileReader const* pReader = nullptr;
+	io::FileReader const* pReader = nullptr;
 #endif
 };
 

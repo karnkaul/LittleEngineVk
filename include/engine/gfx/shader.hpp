@@ -28,7 +28,7 @@ public:
 	{
 		EnumArray<bytearray, Type> codeMap;
 		EnumArray<stdfs::path, Type> codeIDMap;
-		class IOReader const* pReader = nullptr;
+		class io::Reader const* pReader = nullptr;
 	};
 
 public:
@@ -40,7 +40,7 @@ public:
 private:
 	EnumArray<bytearray, Type> m_codeMap;
 	std::unique_ptr<struct ShaderImpl> m_uImpl;
-	FileReader const* m_pReader = nullptr;
+	io::FileReader const* m_pReader = nullptr;
 
 public:
 	Shader(stdfs::path id, Info info);

@@ -2,13 +2,13 @@
 #include <fstream>
 #include <physfs/physfs.h>
 #include <core/assert.hpp>
-#include <core/io.hpp>
 #include <core/log.hpp>
+#include <core/reader.hpp>
 #include <core/os.hpp>
 #include <core/utils.hpp>
 #include <io_impl.hpp>
 
-namespace le
+namespace le::io
 {
 namespace
 {
@@ -31,25 +31,25 @@ PhysfsHandle::~PhysfsHandle()
 std::unique_ptr<PhysfsHandle> g_uPhysfsHandle;
 } // namespace
 
-IOReader::IOReader() noexcept = default;
-IOReader::IOReader(IOReader&&) noexcept = default;
-IOReader& IOReader::operator=(IOReader&&) noexcept = default;
-IOReader::IOReader(IOReader const&) = default;
-IOReader& IOReader::operator=(IOReader const&) = default;
-IOReader::~IOReader() = default;
+Reader::Reader() noexcept = default;
+Reader::Reader(Reader&&) noexcept = default;
+Reader& Reader::operator=(Reader&&) noexcept = default;
+Reader::Reader(Reader const&) = default;
+Reader& Reader::operator=(Reader const&) = default;
+Reader::~Reader() = default;
 
-TResult<std::string> IOReader::getString(stdfs::path const& id) const
+TResult<std::string> Reader::getString(stdfs::path const& id) const
 {
 	auto [str, bResult] = getStr(id);
 	return {str.str(), bResult};
 }
 
-bool IOReader::isPresent(const stdfs::path& id) const
+bool Reader::isPresent(const stdfs::path& id) const
 {
 	return findPrefixed(id).bResult;
 }
 
-bool IOReader::checkPresence(stdfs::path const& id) const
+bool Reader::checkPresence(stdfs::path const& id) const
 {
 	if (!isPresent(id))
 	{
@@ -59,7 +59,7 @@ bool IOReader::checkPresence(stdfs::path const& id) const
 	return true;
 }
 
-bool IOReader::checkPresences(Span<stdfs::path> ids) const
+bool Reader::checkPresences(Span<stdfs::path> ids) const
 {
 	bool bRet = true;
 	for (auto const& id : ids)
@@ -69,12 +69,12 @@ bool IOReader::checkPresences(Span<stdfs::path> ids) const
 	return bRet;
 }
 
-bool IOReader::checkPresences(std::initializer_list<stdfs::path> ids) const
+bool Reader::checkPresences(std::initializer_list<stdfs::path> ids) const
 {
 	return checkPresences(Span<stdfs::path>(ids));
 }
 
-std::string_view IOReader::medium() const
+std::string_view Reader::medium() const
 {
 	return m_medium;
 }
@@ -200,7 +200,7 @@ ZIPReader::ZIPReader()
 
 bool ZIPReader::mount(stdfs::path path)
 {
-	ioImpl::initPhysfs();
+	impl::initPhysfs();
 	auto pathStr = path.generic_string();
 	if (std::find(m_zips.begin(), m_zips.end(), path) == m_zips.end())
 	{
@@ -263,7 +263,7 @@ TResult<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
 	return {};
 }
 
-void ioImpl::initPhysfs()
+void impl::initPhysfs()
 {
 	if (!g_uPhysfsHandle)
 	{
@@ -272,7 +272,7 @@ void ioImpl::initPhysfs()
 	}
 }
 
-void ioImpl::deinitPhysfs()
+void impl::deinitPhysfs()
 {
 	LOG_D("PhysFS deinitialised");
 	g_uPhysfsHandle = nullptr;
@@ -388,4 +388,4 @@ bytearray const& FileMonitor::bytes() const
 	}
 	return m_bytes;
 }
-} // namespace le
+} // namespace le::io

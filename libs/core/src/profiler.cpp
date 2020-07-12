@@ -5,7 +5,7 @@ namespace le
 {
 std::optional<std::unordered_map<Hash, Profiler::Data>> Profiler::s_record;
 
-Profiler::Profiler(std::string_view id, std::optional<log::Level> level) : start(Time::elapsed()), level(level)
+Profiler::Profiler(std::string_view id, std::optional<io::Level> level) : start(Time::elapsed()), level(level)
 {
 	data.id = id;
 }

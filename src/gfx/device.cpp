@@ -40,20 +40,20 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 		ASSERT(false, VK_LOG_MSG);
 		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)log::Level::eWarning)
+		if ((u8)g_instance.validationLog <= (u8)io::Level::eWarning)
 		{
 			LOG_W("[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)log::Level::eInfo)
+		if ((u8)g_instance.validationLog <= (u8)io::Level::eInfo)
 		{
 			LOG_I("[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)log::Level::eDebug)
+		if ((u8)g_instance.validationLog <= (u8)io::Level::eDebug)
 		{
 			LOG_D("[{}] {}", name, VK_LOG_MSG);
 		}

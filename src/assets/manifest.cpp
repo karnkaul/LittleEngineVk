@@ -114,9 +114,9 @@ std::string AssetList::print() const
 
 std::string const AssetManifest::s_tName = utils::tName<AssetManifest>();
 
-AssetManifest::AssetManifest(IOReader const& reader, stdfs::path const& id) : m_pReader(&reader)
+AssetManifest::AssetManifest(io::Reader const& reader, stdfs::path const& id) : m_pReader(&reader)
 {
-	ASSERT(m_pReader, "IOReader is null!");
+	ASSERT(m_pReader, "io::Reader is null!");
 	auto [data, bResult] = m_pReader->getString(id);
 	if (bResult)
 	{

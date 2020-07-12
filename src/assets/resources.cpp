@@ -33,7 +33,7 @@ Resources::~Resources()
 	}
 }
 
-bool Resources::init(IOReader const& data)
+bool Resources::init(io::Reader const& data)
 {
 	constexpr static std::array<u8, 4> white1pxBytes = {0xff, 0xff, 0xff, 0xff};
 	constexpr static std::array<u8, 4> black1pxBytes = {0x0, 0x0, 0x0, 0x0};

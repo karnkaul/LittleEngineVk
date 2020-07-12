@@ -2,7 +2,7 @@
 #include <core/std_types.hpp>
 #include <string>
 
-namespace le::log
+namespace le::io
 {
 #if defined(LEVK_DEBUG)
 constexpr bool g_log_bSourceLocation = true;
@@ -27,4 +27,4 @@ inline Level g_minLevel =
 
 using OnLog = void (*)(std::string_view, Level);
 inline OnLog g_onLog = nullptr;
-} // namespace le::log
+} // namespace le::io

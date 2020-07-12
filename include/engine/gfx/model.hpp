@@ -57,7 +57,7 @@ public:
 	struct LoadRequest final
 	{
 		stdfs::path assetID;
-		IOReader const* pReader = nullptr;
+		io::Reader const* pReader = nullptr;
 	};
 
 public:

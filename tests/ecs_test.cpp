@@ -99,7 +99,7 @@ int main()
 				{});
 		}
 		tasks::waitIdle(false);
-		registry.m_logLevel = log::Level::eInfo;
+		registry.m_logLevel = io::Level::eInfo;
 		std::vector<std::shared_ptr<tasks::Handle>> handles;
 		{
 			for (s32 i = 0; i < entityCount / 10; ++i)

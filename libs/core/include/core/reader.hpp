@@ -8,21 +8,23 @@ namespace le
 {
 namespace stdfs = std::filesystem;
 
+namespace io
+{
 ///
 /// \brief Abstract base class for reading data from various IO
 ///
-class IOReader
+class Reader
 {
 protected:
 	std::string m_medium;
 
 public:
-	IOReader() noexcept;
-	IOReader(IOReader&&) noexcept;
-	IOReader& operator=(IOReader&&) noexcept;
-	IOReader(IOReader const&);
-	IOReader& operator=(IOReader const&);
-	virtual ~IOReader();
+	Reader() noexcept;
+	Reader(Reader&&) noexcept;
+	Reader& operator=(Reader&&) noexcept;
+	Reader(Reader const&);
+	Reader& operator=(Reader const&);
+	virtual ~Reader();
 
 public:
 	///
@@ -75,7 +77,7 @@ protected:
 ///
 /// \brief Concrete class for filesystem IO
 ///
-class FileReader final : public IOReader
+class FileReader final : public Reader
 {
 private:
 	std::vector<stdfs::path> m_dirs;
@@ -123,7 +125,7 @@ private:
 ///
 /// \brief Concrete class for `.zip` IO
 ///
-class ZIPReader final : public IOReader
+class ZIPReader final : public Reader
 {
 private:
 	std::vector<stdfs::path> m_zips;
@@ -171,7 +173,7 @@ public:
 	};
 
 protected:
-	static FileReader s_reader;
+	static io::FileReader s_reader;
 
 protected:
 	stdfs::file_time_type m_lastWriteTime = {};
@@ -227,4 +229,5 @@ public:
 	/// Note: only valid for `eBinaryContents` mode
 	bytearray const& bytes() const;
 };
+} // namespace io
 } // namespace le

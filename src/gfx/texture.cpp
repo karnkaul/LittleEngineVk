@@ -1,7 +1,7 @@
 #include <array>
 #include <stb/stb_image.h>
 #include <core/log.hpp>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/utils.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/texture.hpp>
@@ -48,7 +48,7 @@ std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& 
 	return vram::copy(bytes, *out_pImage, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 }
 
-TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id, log::Level errLevel)
+TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id, io::Level errLevel)
 {
 	Texture::Raw ret;
 	s32 ch;
@@ -127,7 +127,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	{
 		for (auto& bytes : info.bytes)
 		{
-			auto [raw, bResult] = imgToRaw(std::move(bytes), m_tName, idStr, log::Level::eError);
+			auto [raw, bResult] = imgToRaw(std::move(bytes), m_tName, idStr, io::Level::eError);
 			if (!bResult)
 			{
 				LOG_E("[{}] [{}] Failed to create texture!", m_tName, idStr);
@@ -150,7 +150,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 				m_status = Status::eError;
 				return;
 			}
-			auto [raw, bResult] = imgToRaw(std::move(pixels), m_tName, idStr, log::Level::eError);
+			auto [raw, bResult] = imgToRaw(std::move(pixels), m_tName, idStr, io::Level::eError);
 			if (!bResult)
 			{
 				LOG_E("[{}] [{}] Failed to create texture from [{}]!", m_tName, idStr, assetID.generic_string());
@@ -189,15 +189,15 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	m_reloadDelay = 50ms;
 	if (bAddFileMonitor)
 	{
-		m_uImpl->pReader = dynamic_cast<FileReader const*>(info.pReader);
-		ASSERT(m_uImpl->pReader, "FileReader required!");
+		m_uImpl->pReader = dynamic_cast<io::FileReader const*>(info.pReader);
+		ASSERT(m_uImpl->pReader, "io::FileReader required!");
 		std::size_t idx = 0;
 		for (auto const& id : info.ids)
 		{
 			m_uImpl->imgIDs.push_back(id);
 			auto onModified = [this, idx](File const* pFile) -> bool {
 				auto const idStr = m_id.generic_string();
-				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), m_tName, idStr, log::Level::eWarning);
+				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), m_tName, idStr, io::Level::eWarning);
 				if (bResult)
 				{
 					if (m_uImpl->bStbiRaw)
@@ -210,7 +210,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 				return false;
 			};
 			++idx;
-			m_files.push_back(File(id, m_uImpl->pReader->fullPath(id), FileMonitor::Mode::eBinaryContents, onModified));
+			m_files.push_back(File(id, m_uImpl->pReader->fullPath(id), io::FileMonitor::Mode::eBinaryContents, onModified));
 		}
 	}
 #endif

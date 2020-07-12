@@ -73,11 +73,11 @@ protected:
 	Lockable<std::mutex> m_mutex;
 	Resources::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
-	IOReader const* m_pReader = nullptr;
+	io::Reader const* m_pReader = nullptr;
 	bool m_bParsed = false;
 
 public:
-	AssetManifest(IOReader const& reader, stdfs::path const& id);
+	AssetManifest(io::Reader const& reader, stdfs::path const& id);
 	~AssetManifest();
 
 public:

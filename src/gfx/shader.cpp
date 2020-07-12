@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <core/assert.hpp>
 #include <core/log.hpp>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/utils.hpp>
 #include <engine/gfx/shader.hpp>
 #include <gfx/device.hpp>
@@ -44,7 +44,7 @@ Shader::Shader(stdfs::path id, Info info) : Asset(std::move(id))
 						}
 						return true;
 					};
-					m_files.push_back(File(id, m_pReader->fullPath(id), FileMonitor::Mode::eTextContents, onReloaded));
+					m_files.push_back(File(id, m_pReader->fullPath(id), io::FileMonitor::Mode::eTextContents, onReloaded));
 #endif
 				}
 				else
@@ -113,8 +113,8 @@ bool Shader::loadGlsl(Info& out_info, stdfs::path const& id, Type type)
 		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	m_pReader = dynamic_cast<FileReader const*>(out_info.pReader);
-	ASSERT(m_pReader, "Cannot compile shaders without FileReader!");
+	m_pReader = dynamic_cast<io::FileReader const*>(out_info.pReader);
+	ASSERT(m_pReader, "Cannot compile shaders without io::FileReader!");
 	auto [glslCode, bResult] = m_pReader->getString(id);
 	return bResult && glslToSpirV(id, out_info.codeMap.at((std::size_t)type));
 }
@@ -126,7 +126,7 @@ bool Shader::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	ASSERT(m_pReader, "Cannot compile shaders without FileReader!");
+	ASSERT(m_pReader, "Cannot compile shaders without io::FileReader!");
 	auto [glslCode, bResult] = m_pReader->getString(id);
 	if (bResult)
 	{

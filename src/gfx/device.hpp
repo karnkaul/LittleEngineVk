@@ -19,7 +19,7 @@ struct Instance final
 
 	f32 lineWidthMin = 1.0f;
 	f32 lineWidthMax = 1.0f;
-	log::Level validationLog = log::Level::eWarning;
+	io::Level validationLog = io::Level::eWarning;
 
 	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
 	f32 lineWidth(f32 desired) const;

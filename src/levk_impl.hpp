@@ -9,12 +9,12 @@ namespace le::engine
 struct App
 {
 	std::unique_ptr<Window> uWindow;
-	IOReader const* pReader = nullptr;
+	io::Reader const* pReader = nullptr;
 };
 
 inline glm::vec3 g_uiSpace = {};
 
-IOReader const& reader();
+io::Reader const& reader();
 gfx::Texture::Space colourSpace();
 Window* window();
 

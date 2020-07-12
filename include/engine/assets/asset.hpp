@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/zero.hpp>
 
 #if defined(LEVK_DEBUG)
@@ -95,13 +95,13 @@ private:
 #if defined(LEVK_ASSET_HOT_RELOAD)
 struct Asset::File final
 {
-	FileMonitor monitor;
+	io::FileMonitor monitor;
 	// file-level callback, invoked when modified, aborts reload on receiving false
 	std::function<bool(File const*)> onModified;
 	// Asset ID
 	stdfs::path id;
 
-	File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode, std::function<bool(File const*)> onModified);
+	File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(File const*)> onModified);
 };
 #endif
 } // namespace le

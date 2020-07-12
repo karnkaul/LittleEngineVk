@@ -1,7 +1,7 @@
 #include <initializer_list>
 #include <core/assert.hpp>
 #include <core/gdata.hpp>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/tasks.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
@@ -29,7 +29,7 @@ using namespace le;
 
 namespace
 {
-std::unique_ptr<IOReader> g_uReader;
+std::unique_ptr<io::Reader> g_uReader;
 
 class TestWorld : public World
 {
@@ -415,7 +415,7 @@ u32 FPS::update()
 int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
-	g_uReader = std::make_unique<FileReader>();
+	g_uReader = std::make_unique<io::FileReader>();
 
 	engine::Info info;
 	Window::Info info0;

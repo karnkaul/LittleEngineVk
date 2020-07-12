@@ -7,7 +7,7 @@
 #include <core/assert.hpp>
 #include <core/atomic_counter.hpp>
 #include <core/hash.hpp>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/utils.hpp>
 #include <core/map_store.hpp>
 #include <engine/assets/asset.hpp>
@@ -75,7 +75,7 @@ public:
 	///
 	/// \brief Initialise singleton and turn on service
 	///
-	bool init(IOReader const& data);
+	bool init(io::Reader const& data);
 
 	///
 	/// \brief Construct and store an Asset

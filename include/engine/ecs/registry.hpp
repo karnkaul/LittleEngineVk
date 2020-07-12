@@ -84,8 +84,8 @@ private:
 	static Lockable<std::mutex> s_mutex;
 
 public:
-	// Adjusts log::Level on database changes (unset to disable)
-	std::optional<log::Level> m_logLevel = log::Level::eInfo;
+	// Adjusts io::Level on database changes (unset to disable)
+	std::optional<io::Level> m_logLevel = io::Level::eInfo;
 
 protected:
 	std::unordered_map<Entity::ID, Flags> m_entityFlags; // Every Entity has a Flags, even if not in m_db

@@ -78,7 +78,7 @@ public:
 		Space mode = Space::eSRGBNonLinear;
 		Type type = Type::e2D;
 		Sampler* pSampler = nullptr;
-		class IOReader const* pReader = nullptr;
+		class io::Reader const* pReader = nullptr;
 	};
 
 public:

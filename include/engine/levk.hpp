@@ -2,7 +2,7 @@
 #include <optional>
 #include <vector>
 #include <core/time.hpp>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/std_types.hpp>
 #include <core/services.hpp>
 #include <core/os.hpp>
@@ -25,10 +25,10 @@ struct Info final
 {
 	std::optional<Window::Info> windowInfo;
 	std::vector<stdfs::path> dataPaths;
-	IOReader* pReader = nullptr;
+	io::Reader* pReader = nullptr;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
-	log::Level vramLogLevel = log::Level::eDebug;
+	io::Level vramLogLevel = io::Level::eDebug;
 #endif
 };
 

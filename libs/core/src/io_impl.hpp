@@ -1,8 +1,8 @@
 #pragma once
 #include <memory>
 
-namespace le::ioImpl
+namespace le::io::impl
 {
 void initPhysfs();
 void deinitPhysfs();
-} // namespace le::ioImpl
+} // namespace le::io::impl

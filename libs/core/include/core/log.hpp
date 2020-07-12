@@ -31,28 +31,28 @@
 #endif
 #endif
 
-#define LOG(level, text, ...) le::log::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__)
-#define LOGIF(predicate, level, text, ...)                               \
-	if (predicate)                                                       \
-	{                                                                    \
-		le::log::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__); \
+#define LOG(level, text, ...) le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__)
+#define LOGIF(predicate, level, text, ...)                              \
+	if (predicate)                                                      \
+	{                                                                   \
+		le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__); \
 	}
-#define LOG_E(text, ...) LOG(le::log::Level::eError, text, ##__VA_ARGS__)
-#define LOGIF_E(predicate, text, ...) LOGIF(predicate, le::log::Level::eError, text, ##__VA_ARGS__)
-#define LOG_W(text, ...) LOG(le::log::Level::eWarning, text, ##__VA_ARGS__)
-#define LOGIF_W(predicate, text, ...) LOGIF(predicate, le::log::Level::eWarning, text, ##__VA_ARGS__)
-#define LOG_I(text, ...) LOG(le::log::Level::eInfo, text, ##__VA_ARGS__)
-#define LOGIF_I(predicate, text, ...) LOGIF(predicate, le::log::Level::eInfo, text, ##__VA_ARGS__)
+#define LOG_E(text, ...) LOG(le::io::Level::eError, text, ##__VA_ARGS__)
+#define LOGIF_E(predicate, text, ...) LOGIF(predicate, le::io::Level::eError, text, ##__VA_ARGS__)
+#define LOG_W(text, ...) LOG(le::io::Level::eWarning, text, ##__VA_ARGS__)
+#define LOGIF_W(predicate, text, ...) LOGIF(predicate, le::io::Level::eWarning, text, ##__VA_ARGS__)
+#define LOG_I(text, ...) LOG(le::io::Level::eInfo, text, ##__VA_ARGS__)
+#define LOGIF_I(predicate, text, ...) LOGIF(predicate, le::io::Level::eInfo, text, ##__VA_ARGS__)
 
 #if defined(LEVK_LOG_DEBUG)
-#define LOG_D(text, ...) LOG(le::log::Level::eDebug, text, ##__VA_ARGS__)
-#define LOGIF_D(predicate, text, ...) LOGIF(predicate, le::log::Level::eDebug, text, ##__VA_ARGS__)
+#define LOG_D(text, ...) LOG(le::io::Level::eDebug, text, ##__VA_ARGS__)
+#define LOGIF_D(predicate, text, ...) LOGIF(predicate, le::io::Level::eDebug, text, ##__VA_ARGS__)
 #else
 #define LOG_D(text, ...)
 #define LOGIF_D(predicate, text, ...)
 #endif
 
-namespace le::log
+namespace le::io
 {
 ///
 /// \brief RAII wrapper for file logging
@@ -66,7 +66,7 @@ struct Service final
 ///
 /// \brief Print to `stdout`
 ///
-void logText(Level level, std::string text, std::string_view file, u64 line);
+void log(Level level, std::string text, std::string_view file, u64 line);
 
 ///
 /// \brief Print to `stdout`
@@ -80,7 +80,7 @@ void fmtLog(Level level, std::string_view text, std::string_view file, u64 line,
 		try
 #endif
 		{
-			logText(level, fmt::format(text, args...), file, line);
+			log(level, fmt::format(text, args...), file, line);
 		}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 		catch (std::exception const& e)
@@ -101,4 +101,4 @@ void logToFile(std::filesystem::path path, Time pollRate = 500ms);
 /// \brief Stop file logging
 ///
 void stopFileLogging();
-} // namespace le::log
+} // namespace le::io

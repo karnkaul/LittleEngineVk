@@ -231,39 +231,4 @@ std::string Window::clipboard() const
 {
 	return m_uImpl ? m_uImpl->clipboard() : std::string();
 }
-
-input::Joystick Window::joyState(s32 id)
-{
-	return WindowImpl::joyState(id);
-}
-
-input::Gamepad Window::gamepadState(s32 id)
-{
-	return WindowImpl::gamepadState(id);
-}
-
-std::vector<input::Gamepad> Window::activeGamepads()
-{
-	return WindowImpl::activeGamepads();
-}
-
-f32 Window::triggerToAxis(f32 triggerValue)
-{
-	return WindowImpl::triggerToAxis(triggerValue);
-}
-
-std::size_t Window::joystickAxesCount(s32 id)
-{
-	return WindowImpl::joystickAxesCount(id);
-}
-
-std::size_t Window::joysticKButtonsCount(s32 id)
-{
-	return WindowImpl::joysticKButtonsCount(id);
-}
-
-std::string_view Window::toString(s32 key)
-{
-	return WindowImpl::toString(key);
-}
 } // namespace le

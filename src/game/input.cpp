@@ -146,7 +146,7 @@ void input::fire()
 			g_raw.virtualCursorPos = g_raw.actualCursorPos;
 		}
 		Snapshot snapshot;
-		snapshot.padStates = pWindow->activeGamepads();
+		snapshot.padStates = activeGamepads();
 		snapshot.keys = std::move(g_raw.keys);
 		snapshot.text = std::move(g_raw.text);
 		snapshot.held.reserve(g_raw.held.size());

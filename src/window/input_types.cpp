@@ -1,4 +1,7 @@
 #include <unordered_map>
+#if defined(LEVK_USE_GLFW)
+#include <GLFW/glfw3.h>
+#endif
 #include <engine/window/input_types.hpp>
 
 namespace le
@@ -200,5 +203,117 @@ Mods::VALUE input::parseMods(Span<std::string> vec)
 Axis input::parseAxis(std::string_view str)
 {
 	return parse(g_axisMap, str, Axis::eUnknown);
+}
+
+std::vector<Gamepad> input::activeGamepads()
+{
+	std::vector<Gamepad> ret;
+#if defined(LEVK_USE_GLFW)
+	for (s32 id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id)
+	{
+		GLFWgamepadstate state;
+		if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
+		{
+			Gamepad padi;
+			padi.name = glfwGetGamepadName(id);
+			padi.id = id;
+			padi.joyState.buttons = std::vector<u8>(15, 0);
+			padi.joyState.axes = std::vector<f32>(6, 0);
+			std::memcpy(padi.joyState.buttons.data(), state.buttons, padi.joyState.buttons.size());
+			std::memcpy(padi.joyState.axes.data(), state.axes, padi.joyState.axes.size() * sizeof(f32));
+			ret.push_back(std::move(padi));
+		}
+	}
+#endif
+	return ret;
+}
+
+Joystick input::joyState([[maybe_unused]] s32 id)
+{
+	Joystick ret;
+#if defined(LEVK_USE_GLFW)
+	if (glfwJoystickPresent(id))
+	{
+		ret.id = id;
+		s32 count;
+		auto const axes = glfwGetJoystickAxes(id, &count);
+		ret.axes.reserve((std::size_t)count);
+		for (s32 idx = 0; idx < count; ++idx)
+		{
+			ret.axes.push_back(axes[idx]);
+		}
+		auto const buttons = glfwGetJoystickButtons(id, &count);
+		ret.buttons.reserve((std::size_t)count);
+		for (s32 idx = 0; idx < count; ++idx)
+		{
+			ret.buttons.push_back(buttons[idx]);
+		}
+		auto const szName = glfwGetJoystickName(id);
+		if (szName)
+		{
+			ret.name = szName;
+		}
+	}
+#endif
+	return ret;
+}
+
+Gamepad input::gamepadState([[maybe_unused]] s32 id)
+{
+	Gamepad ret;
+#if defined(LEVK_USE_GLFW)
+	GLFWgamepadstate state;
+	if (glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
+	{
+		ret.name = glfwGetGamepadName(id);
+		ret.id = id;
+		ret.joyState.buttons = std::vector<u8>(15, 0);
+		ret.joyState.axes = std::vector<f32>(6, 0);
+		std::memcpy(ret.joyState.buttons.data(), state.buttons, ret.joyState.buttons.size());
+		std::memcpy(ret.joyState.axes.data(), state.axes, ret.joyState.axes.size() * sizeof(f32));
+	}
+#endif
+	return ret;
+}
+
+f32 input::triggerToAxis([[maybe_unused]] f32 triggerValue)
+{
+	f32 ret = triggerValue;
+#if defined(LEVK_USE_GLFW)
+	ret = (triggerValue + 1.0f) * 0.5f;
+#endif
+	return ret;
+}
+
+std::size_t input::joystickAxesCount([[maybe_unused]] s32 id)
+{
+	std::size_t ret = 0;
+#if defined(LEVK_USE_GLFW)
+	s32 max;
+	glfwGetJoystickAxes(id, &max);
+	ret = std::size_t(max);
+#endif
+	return ret;
+}
+
+std::size_t input::joysticKButtonsCount([[maybe_unused]] s32 id)
+{
+	std::size_t ret = 0;
+#if defined(LEVK_USE_GLFW)
+	s32 max;
+	glfwGetJoystickButtons(id, &max);
+	ret = std::size_t(max);
+#endif
+	return ret;
+}
+
+std::string_view input::toString([[maybe_unused]] s32 key)
+{
+	static const std::string_view blank = "";
+	std::string_view ret = blank;
+#if defined(LEVK_USE_GLFW)
+	ret = glfwGetKeyName(key, 0);
+#endif
+	return ret;
 }
 } // namespace le

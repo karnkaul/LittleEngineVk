@@ -18,7 +18,7 @@ struct
 } g_data;
 } // namespace
 
-std::unordered_map<s32, std::unique_ptr<World>> World::s_worlds;
+std::unordered_map<World::ID, std::unique_ptr<World>> World::s_worlds;
 std::unordered_map<std::type_index, World*> World::s_worldByType;
 World* World::s_pActive = nullptr;
 World::ID World::s_lastID;

@@ -338,7 +338,7 @@ bool Context::isConsumed(Snapshot const& snapshot) const
 							case Axis::eLeftTrigger:
 							case Axis::eRightTrigger:
 							{
-								value += Window::triggerToAxis(pGamepad->axis(axis));
+								value += triggerToAxis(pGamepad->axis(axis));
 								break;
 							}
 							default:

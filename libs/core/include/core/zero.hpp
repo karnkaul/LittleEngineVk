@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <utility>
 
 namespace le
@@ -54,3 +55,15 @@ TZero<T, Zero>::operator T() const
 	return handle;
 }
 } // namespace le
+
+namespace std
+{
+template <typename T, T Zero>
+struct hash<le::TZero<T, Zero>>
+{
+	size_t operator()(le::TZero<T, Zero> zero) const
+	{
+		return std::hash<T>()(zero.handle);
+	}
+};
+} // namespace std

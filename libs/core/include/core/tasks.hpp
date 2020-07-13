@@ -86,15 +86,15 @@ std::vector<std::shared_ptr<Handle>> enqueue(List taskList);
 ///
 /// \brief Enqueue a task per item in a container
 ///
-template <typename T, template <typename, typename...> typename C>
-std::vector<std::shared_ptr<Handle>> forEach(C<T>& out_itemList, std::function<void(T&)> task, std::string_view prefix)
+template <typename T, template <typename, typename...> typename C, typename... Args>
+std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::function<void(T&)> task, std::string_view prefix)
 {
 	if (task)
 	{
 		List newTasks;
 		newTasks.reserve(out_itemList.size());
 		std::size_t idx = 0;
-		for (typename C<T>::iterator iter = out_itemList.begin(); iter != out_itemList.end(); ++iter)
+		for (typename C<T, Args...>::iterator iter = out_itemList.begin(); iter != out_itemList.end(); ++iter)
 		{
 			std::string name = prefix.empty() ? std::string() : fmt::format("{}-{}", prefix, idx++);
 			auto newTask = [&out_itemList, iter, task]() mutable { task(*iter); };
@@ -108,8 +108,8 @@ std::vector<std::shared_ptr<Handle>> forEach(C<T>& out_itemList, std::function<v
 ///
 /// \brief Wait for all tasks to complete
 ///
-template <template <typename, typename...> typename C>
-void wait(C<std::shared_ptr<Handle>>& out_handles)
+template <template <typename, typename...> typename C, typename... Args>
+void wait(C<std::shared_ptr<Handle>, Args...>& out_handles)
 {
 	for (auto& handle : out_handles)
 	{

@@ -82,7 +82,7 @@ bool Service::init(Info const& info)
 			initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
 		}
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
-		initInfo.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
+		initInfo.config.createTempSurface = [&](vk::Instance instance) -> vk::SurfaceKHR { return dummyWindow.createSurface(instance); };
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
 		io::FileReader fileReader;

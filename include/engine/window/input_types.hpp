@@ -250,4 +250,12 @@ Key parseKey(std::string_view str);
 Action parseAction(std::string_view str);
 Mods::VALUE parseMods(Span<std::string> vec);
 Axis parseAxis(std::string_view str);
+
+std::vector<Gamepad> activeGamepads();
+Joystick joyState(s32 id);
+Gamepad gamepadState(s32 id);
+f32 triggerToAxis(f32 triggerValue);
+std::size_t joystickAxesCount(s32 id);
+std::size_t joysticKButtonsCount(s32 id);
+std::string_view toString(s32 key);
 } // namespace le::input

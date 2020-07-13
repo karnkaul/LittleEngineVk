@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include <functional>
 #include <type_traits>
 #include <core/std_types.hpp>
 

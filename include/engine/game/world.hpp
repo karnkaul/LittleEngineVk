@@ -58,7 +58,7 @@ private:
 	std::type_index m_type = std::type_index(typeid(World));
 
 private:
-	static std::unordered_map<s32, std::unique_ptr<World>> s_worlds;
+	static std::unordered_map<ID, std::unique_ptr<World>> s_worlds;
 	static std::unordered_map<std::type_index, World*> s_worldByType;
 	static World* s_pActive;
 	static ID s_lastID;

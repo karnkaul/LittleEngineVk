@@ -1,0 +1,25 @@
+version: 0.0.0.{build}
+
+image: Visual Studio 2019
+
+environment:
+  VULKAN_SDK: C:/VulkanSDK/1.2.141.2
+  VK_LAYER_PATH: "$VULKAN_SDK/etc/vulkan/explicit_layer.d"
+
+cache:
+  - VulkanSDK.exe
+
+install:
+  - if not exist VulkanSDK.exe curl -L --silent --show-error --output VulkanSDK.exe https://vulkan.lunarg.com/sdk/download/1.2.141.2/windows/VulkanSDK-1.2.141.2-Installer.exe?Human=true
+  - VulkanSDK.exe /S
+
+before_build:
+- cmd: >-
+    set "PATH=%VULKAN_SDK%/source/Vulkan-Headers/include;%VULKAN_SDK%/lib;%VULKAN_SDK%/bin;%PATH%"
+
+    cmake -G "Visual Studio 16 2019" . -B out
+
+build:
+  project: out/LittleEngineVk.sln
+  parallel: true
+  verbosity: minimal

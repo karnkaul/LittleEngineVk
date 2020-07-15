@@ -35,11 +35,6 @@ set(GENERATED_SOURCES
 configure_file_src_to_bin(version/build_version.hpp.in generated/version/build_version.hpp)
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${GENERATED_SOURCES})
 add_library(${PROJECT_NAME} ${LEVK_LIBRARY_TYPE} ${SOURCES} ${GENERATED_SOURCES})
-if(LINUX_CLANG AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
-	# Ignore Vulkan.hpp warnings
-	message(STATUS "clang ${CMAKE_CXX_COMPILER_VERSION} detected; adding -Wno-deprecated-copy for vulkan.hpp")
-	target_compile_options(${PROJECT_NAME} PUBLIC -Wno-deprecated-copy)
-endif()
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	INTERFACE SYSTEM
 		"${CMAKE_CURRENT_SOURCE_DIR}/../include"
@@ -62,9 +57,6 @@ target_link_libraries(${PROJECT_NAME}
 		stb-image
 		tinyobjloader
 )
-if(WIN64_CLANG AND LEVK_USE_GLFW)
-	target_compile_options(glfw PRIVATE -Wno-everything)
-endif()
 if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 	set(PRECOMPILE
 		<deque>

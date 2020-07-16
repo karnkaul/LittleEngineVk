@@ -1,9 +1,8 @@
 #pragma once
 #include <memory>
 #include <unordered_set>
-#include <vulkan/vulkan.hpp>
-#include <glm/glm.hpp>
 #include <engine/window/window.hpp>
+#include <window/native_window.hpp>
 
 namespace le
 {
@@ -12,23 +11,6 @@ namespace gfx
 class Renderer;
 class RendererImpl;
 } // namespace gfx
-
-class NativeWindow final
-{
-public:
-#if defined(LEVK_USE_GLFW)
-	struct GLFWwindow* m_pWindow = nullptr;
-#endif
-	glm::ivec2 m_initialCentre = {};
-
-public:
-	NativeWindow(Window::Info const& info);
-	~NativeWindow();
-
-public:
-	glm::ivec2 windowSize() const;
-	glm::ivec2 framebufferSize() const;
-};
 
 class WindowImpl final
 {
@@ -45,7 +27,7 @@ public:
 		input::OnClosed onClosed;
 	};
 
-	static std::unordered_map<WindowID::type, InputCallbacks> s_input;
+	static std::unordered_map<WindowID, InputCallbacks> s_input;
 
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
@@ -53,14 +35,15 @@ public:
 	std::vector<PresentMode> m_presentModes;
 	Window* m_pWindow;
 
+	static WindowImpl* find(void* pNativeHandle);
+
 	static bool init();
 	static void deinit();
 	static void update();
 	static std::vector<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::RendererImpl* rendererImpl(WindowID window);
-	static std::unordered_set<s32> active();
-	static vk::SurfaceKHR createSurface(vk::Instance instance, NativeWindow const& nativeWindow);
+	static std::unordered_set<s32> allExisting();
 	static void* nativeHandle(WindowID window);
 	static WindowID editorWindow();
 
@@ -88,15 +71,9 @@ public:
 	glm::vec2 cursorPos() const;
 	void setCursorPos(glm::vec2 const& pos);
 	std::string clipboard() const;
-	static input::Joystick joyState(s32 id);
-	static input::Gamepad gamepadState(s32 id);
-	static std::vector<input::Gamepad> activeGamepads();
-	static f32 triggerToAxis(f32 triggerValue);
-	static size_t joystickAxesCount(s32 id);
-	static size_t joysticKButtonsCount(s32 id);
-	static std::string_view toString(s32 key);
 
 	static bool anyActive();
+	static bool anyExist();
 	static void pollEvents();
 	static void renderAll();
 };

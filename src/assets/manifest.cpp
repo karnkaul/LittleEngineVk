@@ -2,7 +2,6 @@
 #include <sstream>
 #include <utility>
 #include <core/assert.hpp>
-#include <core/jobs.hpp>
 #include <core/log.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
@@ -42,26 +41,23 @@ bool empty(std::vector<T> const&... out_vecs)
 }
 
 template <typename T>
-TResult<IndexedTask> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded, std::vector<Asset*>& out_assets,
-								 std::mutex& mutex, std::string_view jobName)
+std::vector<std::shared_ptr<tasks::Handle>> loadTAssets(std::vector<AssetData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
+														std::vector<Asset*>& out_assets, Lockable<std::mutex>& mutex, std::string_view jobName)
 {
-	IndexedTask task;
+	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+	tasks::List taskList;
 	if (!out_toLoad.empty())
 	{
-		task.task = [&out_toLoad, &out_loaded, &out_assets, &mutex](size_t idx) {
-			auto& asset = out_toLoad.at(idx);
-			auto pAsset = Resources::inst().create<T>(std::move(asset.id), std::move(asset.info));
+		auto task = [&out_loaded, &out_assets, &mutex](AssetData<T>& data) {
+			auto pAsset = Resources::inst().create<T>(data.id, std::move(data.info));
 			if (pAsset)
 			{
-				std::scoped_lock<decltype(mutex)> lock(mutex);
+				auto lock = mutex.lock();
 				out_assets.push_back(pAsset);
-				out_loaded.push_back(asset.id);
+				out_loaded.push_back(std::move(data.id));
 			}
 		};
-		task.name = jobName;
-		task.bSilent = false;
-		task.iterationCount = out_toLoad.size();
-		return task;
+		return tasks::forEach<AssetData<T>>(out_toLoad, task, jobName);
 	}
 	return {};
 }
@@ -118,13 +114,17 @@ std::string AssetList::print() const
 
 std::string const AssetManifest::s_tName = utils::tName<AssetManifest>();
 
-AssetManifest::AssetManifest(IOReader const& reader, stdfs::path const& id) : m_pReader(&reader)
+AssetManifest::AssetManifest(io::Reader const& reader, stdfs::path const& id) : m_pReader(&reader)
 {
-	ASSERT(m_pReader, "IOReader is null!");
+	ASSERT(m_pReader, "io::Reader is null!");
 	auto [data, bResult] = m_pReader->getString(id);
 	if (bResult)
 	{
-		m_manifest.read(std::move(data));
+		if (!m_manifest.read(std::move(data)))
+		{
+			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), m_pReader->medium());
+			m_manifest.clear();
+		}
 	}
 	else
 	{
@@ -205,10 +205,10 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 AssetList AssetManifest::parse()
 {
 	AssetList all;
-	auto const shaders = m_manifest.getDataArray("shaders");
+	auto const shaders = m_manifest.get<std::vector<GData>>("shaders");
 	for (auto const& shader : shaders)
 	{
-		auto assetID = shader.getString("id");
+		auto assetID = shader.get("id");
 		if (!assetID.empty())
 		{
 			if (Resources::inst().get<Shader>(assetID))
@@ -221,13 +221,13 @@ AssetList AssetManifest::parse()
 				AssetData<Shader> data;
 				data.info.pReader = m_pReader;
 				data.id = std::move(assetID);
-				bool const bOptional = shader.getBool("optional");
+				bool const bOptional = shader.get<bool>("optional");
 				bool bFound = false;
-				auto const resourceIDs = shader.getDataArray("resource_ids");
+				auto const resourceIDs = shader.get<std::vector<GData>>("resource_ids");
 				for (auto const& resourceID : resourceIDs)
 				{
-					auto const typeStr = resourceID.getString("type");
-					auto const id = resourceID.getString("id");
+					auto const typeStr = resourceID.get("type");
+					auto const id = resourceID.get("id");
 					bool const bPresent = bOptional ? m_pReader->checkPresence(id) : m_pReader->isPresent(id);
 					if (!id.empty() && !typeStr.empty() && bPresent)
 					{
@@ -236,7 +236,7 @@ AssetList AssetManifest::parse()
 						{
 							type = Shader::Type::eVertex;
 						}
-						data.info.codeIDMap[(size_t)type] = id;
+						data.info.codeIDMap[(std::size_t)type] = id;
 						bFound = true;
 					}
 				}
@@ -249,11 +249,11 @@ AssetList AssetManifest::parse()
 			}
 		}
 	}
-	auto const textures = m_manifest.getDataArray("textures");
+	auto const textures = m_manifest.get<std::vector<GData>>("textures");
 	for (auto const& texture : textures)
 	{
-		auto const id = texture.getString("id");
-		bool const bPresent = texture.getBool("optional") ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
+		auto const id = texture.get("id");
+		bool const bPresent = texture.get<bool>("optional") ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
 		if (!id.empty() && bPresent)
 		{
 			if (Resources::inst().get<Texture>(id))
@@ -266,7 +266,7 @@ AssetList AssetManifest::parse()
 				AssetData<Texture> data;
 				data.id = id;
 				data.info.mode = engine::colourSpace();
-				data.info.samplerID = m_manifest.getString("sampler");
+				data.info.samplerID = m_manifest.get("sampler");
 				data.info.pReader = m_pReader;
 				data.info.ids = {id};
 				all.textures.push_back(id);
@@ -275,12 +275,12 @@ AssetList AssetManifest::parse()
 			}
 		}
 	}
-	auto const cubemaps = m_manifest.getDataArray("cubemaps");
+	auto const cubemaps = m_manifest.get<std::vector<GData>>("cubemaps");
 	for (auto const& cubemap : cubemaps)
 	{
-		auto const assetID = cubemap.getString("id");
-		auto const resourceIDs = cubemap.getArray("textures");
-		bool const bOptional = cubemap.getBool("optional");
+		auto const assetID = cubemap.get("id");
+		auto const resourceIDs = cubemap.get<std::vector<std::string>>("textures");
+		bool const bOptional = cubemap.get<bool>("optional");
 		bool bMissing = false;
 		if (!assetID.empty())
 		{
@@ -295,7 +295,7 @@ AssetList AssetManifest::parse()
 				data.id = assetID;
 				data.info.mode = engine::colourSpace();
 				data.info.type = Texture::Type::eCube;
-				data.info.samplerID = m_manifest.getString("sampler");
+				data.info.samplerID = m_manifest.get("sampler");
 				data.info.pReader = m_pReader;
 				for (auto const& id : resourceIDs)
 				{
@@ -319,10 +319,10 @@ AssetList AssetManifest::parse()
 			}
 		}
 	}
-	auto const models = m_manifest.getDataArray("models");
+	auto const models = m_manifest.get<std::vector<GData>>("models");
 	for (auto const& model : models)
 	{
-		auto const modelID = model.getString("id");
+		auto const modelID = model.get("id");
 		if (!modelID.empty())
 		{
 			if (Resources::inst().get<Model>(modelID))
@@ -332,7 +332,7 @@ AssetList AssetManifest::parse()
 			}
 			else
 			{
-				bool const bOptional = model.getBool("optional");
+				bool const bOptional = model.get<bool>("optional");
 				AssetData<Model> data;
 				data.id = modelID;
 				auto jsonID = data.id / data.id.filename();
@@ -371,19 +371,15 @@ void AssetManifest::unload(const AssetList& list)
 void AssetManifest::loadData()
 {
 	m_status = Status::eExtractingData;
-	IndexedTask task;
 	if (!m_toLoad.models.empty())
 	{
-		task.task = [this](size_t idx) {
-			auto& model = m_toLoad.models.at(idx);
+		auto task = [this](AssetData<Model>& data) {
 			gfx::Model::LoadRequest mlr;
-			mlr.assetID = model.id;
+			mlr.assetID = data.id;
 			mlr.pReader = m_pReader;
-			model.info = gfx::Model::parseOBJ(mlr);
+			data.info = gfx::Model::parseOBJ(mlr);
 		};
-		task.name = "Manifest-0:Models";
-		task.iterationCount = m_toLoad.models.size();
-		addJobs(std::move(task));
+		addJobs(tasks::forEach<AssetData<Model>>(m_toLoad.models, task, "Manifest-0:Models"));
 	}
 }
 
@@ -391,7 +387,6 @@ void AssetManifest::loadAssets()
 {
 	m_status = Status::eLoadingAssets;
 	m_semaphore = Resources::inst().setBusy();
-	IndexedTask task;
 	addJobs(loadTAssets(m_toLoad.shaders, m_loaded.shaders, m_loading, m_mutex, "Manifest-1:Shaders"));
 	addJobs(loadTAssets(m_toLoad.textures, m_loaded.textures, m_loading, m_mutex, "Manifest-1:Textures"));
 	addJobs(loadTAssets(m_toLoad.cubemaps, m_loaded.cubemaps, m_loading, m_mutex, "Manifest-1:Cubemaps"));
@@ -400,11 +395,11 @@ void AssetManifest::loadAssets()
 
 bool AssetManifest::eraseDone(bool bWaitingJobs)
 {
-	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+	auto lock = m_mutex.lock();
 	if (!m_running.empty())
 	{
 		auto iter = std::remove_if(m_running.begin(), m_running.end(), [bWaitingJobs](auto const& sJob) -> bool {
-			bool bRet = sJob->hasCompleted();
+			bool bRet = sJob->hasCompleted(true);
 			if (bWaitingJobs)
 			{
 				bRet |= sJob->discard();
@@ -421,18 +416,8 @@ bool AssetManifest::eraseDone(bool bWaitingJobs)
 	return m_running.empty() && m_loading.empty();
 }
 
-void AssetManifest::addJobs(IndexedTask task)
+void AssetManifest::addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles)
 {
-	auto hjobs = jobs::forEach(std::move(task));
-	std::move(hjobs.begin(), hjobs.end(), std::back_inserter(m_running));
-}
-
-void AssetManifest::addJobs(TResult<IndexedTask> task)
-{
-	if (task.bResult)
-	{
-		auto hjobs = jobs::forEach(task.payload);
-		std::move(hjobs.begin(), hjobs.end(), std::back_inserter(m_running));
-	}
+	std::move(handles.begin(), handles.end(), std::back_inserter(m_running));
 }
 } // namespace le

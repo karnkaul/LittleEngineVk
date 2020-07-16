@@ -22,7 +22,6 @@ Resources& Resources::inst()
 Resources::Resources()
 {
 	m_bActive.store(false);
-	m_semaphore = std::make_shared<s32>(0);
 }
 
 Resources::~Resources()
@@ -34,7 +33,7 @@ Resources::~Resources()
 	}
 }
 
-bool Resources::init(IOReader const& data)
+bool Resources::init(io::Reader const& data)
 {
 	constexpr static std::array<u8, 4> white1pxBytes = {0xff, 0xff, 0xff, 0xff};
 	constexpr static std::array<u8, 4> black1pxBytes = {0x0, 0x0, 0x0, 0x0};
@@ -87,8 +86,8 @@ bool Resources::init(IOReader const& data)
 
 			info.pReader = &data;
 			ASSERT(data.checkPresences(shaderIDs), "Uber Shader not found!");
-			info.codeIDMap.at((size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
-			info.codeIDMap.at((size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
+			info.codeIDMap.at((std::size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
+			info.codeIDMap.at((std::size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
 			create<gfx::Shader>("shaders/default", std::move(info));
 		}
 		{
@@ -96,13 +95,19 @@ bool Resources::init(IOReader const& data)
 			auto [str, bResult] = data.getString("fonts/default.json");
 			ASSERT(bResult, "Default font not found!");
 			GData fontData;
-			fontData.read(std::move(str));
-			fontInfo.deserialise(fontData);
-			auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
-			ASSERT(bImg, "Default font not found!");
-			fontInfo.image = std::move(img);
-			fontInfo.material.pMaterial = get<gfx::Material>(fontInfo.materialID);
-			create<gfx::Font>("fonts/default", std::move(fontInfo));
+			if (fontData.read(std::move(str)))
+			{
+				fontInfo.deserialise(fontData);
+				auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
+				ASSERT(bImg, "Default font not found!");
+				fontInfo.image = std::move(img);
+				fontInfo.material.pMaterial = get<gfx::Material>(fontInfo.materialID);
+				create<gfx::Font>("fonts/default", std::move(fontInfo));
+			}
+			else
+			{
+				LOG_E("[{}] Failed to create default font!", s_tName);
+			}
 		}
 	}
 	LOG_I("[{}] initialised", s_tName);
@@ -114,7 +119,7 @@ void Resources::update()
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		for (auto& [id, uResource] : m_resources.m_map)
 		{
 			uResource->update();
@@ -123,13 +128,13 @@ void Resources::update()
 	return;
 }
 
-bool Resources::unload(stdfs::path const& id)
+bool Resources::unload(Hash hash)
 {
 	ASSERT(m_bActive.load(), "Resources inactive!");
 	if (m_bActive.load())
 	{
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
-		return m_resources.unload(id.generic_string());
+		auto lock = m_mutex.lock();
+		return m_resources.unload(hash);
 	}
 	return false;
 }
@@ -137,8 +142,8 @@ bool Resources::unload(stdfs::path const& id)
 void Resources::deinit()
 {
 	waitIdle();
-	ASSERT(m_semaphore.use_count() == 1, "Resources in use!");
-	std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
+	ASSERT(m_counter.isZero(false), "Resources in use!");
+	auto lock = m_mutex.lock();
 	m_resources.unloadAll();
 	if (m_bActive.load())
 	{
@@ -150,15 +155,15 @@ void Resources::deinit()
 
 Resources::Semaphore Resources::setBusy() const
 {
-	return m_semaphore;
+	return Semaphore(m_counter);
 }
 
 void Resources::waitIdle()
 {
-	Time const timeout = 5s;
+	constexpr Time timeout = 5s;
 	Time elapsed;
 	Time const start = Time::elapsed();
-	while (m_semaphore.use_count() > 1 && elapsed < timeout)
+	while (!m_counter.isZero(true) && elapsed < timeout)
 	{
 		elapsed = Time::elapsed() - start;
 		threads::sleep();

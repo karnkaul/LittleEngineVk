@@ -1,8 +1,8 @@
 #include <initializer_list>
 #include <core/assert.hpp>
 #include <core/gdata.hpp>
-#include <core/io.hpp>
-#include <core/jobs.hpp>
+#include <core/reader.hpp>
+#include <core/tasks.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/map_store.hpp>
@@ -29,7 +29,7 @@ using namespace le;
 
 namespace
 {
-std::unique_ptr<IOReader> g_uReader;
+std::unique_ptr<io::Reader> g_uReader;
 
 class TestWorld : public World
 {
@@ -108,7 +108,7 @@ private:
 	struct
 	{
 		stdfs::path model0id, model1id, skyboxID;
-		std::vector<std::shared_ptr<HJob>> modelReloads;
+		std::vector<std::shared_ptr<tasks::Handle>> modelReloads;
 		FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
@@ -126,6 +126,9 @@ private:
 		gfx::Mesh* pTriangle0 = nullptr;
 		gfx::Mesh* pQuad = nullptr;
 		gfx::Mesh* pSphere = nullptr;
+		Hash container2 = "textures/container2.png";
+		Hash container2_specular = "textures/container2_specular.png";
+		Hash awesomeface = "textures/awesomeface.png";
 	} m_res;
 	gfx::Pipeline* m_pPipeline0wf = nullptr;
 
@@ -221,7 +224,8 @@ bool DemoWorld::start()
 	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid2, m_data.model0id);
 
 	m_registry.component<Transform>(m_data.eid3)->setPosition({0.0f, -1.0f, -3.0f});
-	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, m_data.model1id);
+	// m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, m_data.model1id);
+	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, "");
 
 	if (!m_pPipeline0wf)
 	{
@@ -252,7 +256,7 @@ void DemoWorld::tick(Time dt)
 {
 	if (m_data.bQuit)
 	{
-		engine::mainWindow()->close();
+		engine::Service::shutdown();
 		return;
 	}
 
@@ -262,12 +266,12 @@ void DemoWorld::tick(Time dt)
 	{
 		input::registerContext(m_data.temp);
 	}
-	if (elapsed >= 10s && m_data.temp.token)
+	if (elapsed >= 8s && m_data.temp.token)
 	{
 		m_data.temp.token.reset();
 	}
 
-	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto sJob) -> bool { return sJob->hasCompleted(); });
+	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto const& handle) -> bool { return handle->hasCompleted(true); });
 	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
 
 	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
@@ -282,7 +286,7 @@ void DemoWorld::tick(Time dt)
 		}
 		else
 		{
-			m_data.modelReloads.push_back(jobs::enqueue(
+			m_data.modelReloads.push_back(tasks::enqueue(
 				[this]() {
 					auto semaphore = Resources::inst().setBusy();
 					gfx::Model::LoadRequest mlr;
@@ -294,7 +298,7 @@ void DemoWorld::tick(Time dt)
 				"Model0-Reload"));
 			if (m_data.model0id != m_data.model1id)
 			{
-				m_data.modelReloads.push_back(jobs::enqueue(
+				m_data.modelReloads.push_back(tasks::enqueue(
 					[this]() {
 						auto semaphore = Resources::inst().setBusy();
 						gfx::Model::LoadRequest mlr;
@@ -373,16 +377,45 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/container2.png");
-	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>("textures/container2_specular.png");
-	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>("textures/awesomeface.png");
+	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.container2);
+	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>(m_res.container2_specular);
+	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.awesomeface);
 }
 } // namespace
+
+struct FPS final
+{
+	Time updated;
+	Time elapsed;
+	u32 fps = 0;
+	u32 frames = 0;
+	bool bSet = false;
+
+	u32 update();
+};
+
+u32 FPS::update()
+{
+	if (updated > Time())
+	{
+		elapsed += (Time::elapsed() - updated);
+	}
+	updated = Time::elapsed();
+	++frames;
+	if (elapsed >= 1s)
+	{
+		fps = frames;
+		frames = 0;
+		elapsed = {};
+		bSet = true;
+	}
+	return bSet ? fps : frames;
+}
 
 int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
-	g_uReader = std::make_unique<FileReader>();
+	g_uReader = std::make_unique<io::FileReader>();
 
 	engine::Info info;
 	Window::Info info0;
@@ -403,49 +436,32 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	FPS fps;
 	Time t = Time::elapsed();
-	while (Window::anyActive())
+	while (engine.isRunning())
 	{
-		Time dt = Time::elapsed() - t;
-		t = Time::elapsed();
-
-		static Time fpsLogElapsed;
-		static Time fpsElapsed;
-		static u32 fps = 0;
-		static u32 frames = 0;
-		++frames;
-		fpsElapsed += dt;
-		fpsLogElapsed += dt;
-		if (fpsElapsed >= 1s)
+		Time const newT = Time::elapsed();
+		Time const dt = newT - t;
+		t = newT;
+		pWorld->m_fps = fps.update();
+		// Tick
+		if (engine.tick(dt))
 		{
-			fps = frames;
-			frames = 0;
-			fpsElapsed = Time();
-		}
-		{
-			// handle events
-			Window::pollEvents();
-
-			// Tick
-			engine.tick(dt);
-
-			pWorld->m_fps = fps == 0 ? frames : fps;
-		}
-
-		// Render
+			// Render
 #if defined(LEVK_DEBUG)
-		try
+			try
 #endif
-		{
-			engine.submitScene();
-			Window::renderAll();
-		}
+			{
+				engine.submitScene();
+				engine.render();
+			}
 #if defined(LEVK_DEBUG)
-		catch (std::exception const& e)
-		{
-			LOG_E("EXCEPTION!\n\t{}", e.what());
-		}
+			catch (std::exception const& e)
+			{
+				LOG_E("EXCEPTION!\n\t{}", e.what());
+			}
 #endif
+		}
 	}
 	return 0;
 }

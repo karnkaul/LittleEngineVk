@@ -14,13 +14,13 @@ namespace le
 /// \param `Enum`: enum [class] type
 /// \param `N`: number of bits (defaults to Enum::eCOUNT_)
 ///
-template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
 struct TFlags
 {
 	static_assert(std::is_enum_v<Enum>, "Enum must be an enum!");
 
 	using Type = Enum;
-	static constexpr size_t size = N;
+	static constexpr std::size_t size = N;
 
 	std::bitset<N> bits;
 
@@ -47,8 +47,8 @@ struct TFlags
 	///
 	bool isSet(Enum flag) const
 	{
-		ASSERT((size_t)flag < N, "Invalid flag!");
-		return bits.test((size_t)flag);
+		ASSERT((std::size_t)flag < N, "Invalid flag!");
+		return bits.test((std::size_t)flag);
 	}
 
 	///
@@ -56,8 +56,8 @@ struct TFlags
 	///
 	void set(Enum flag)
 	{
-		ASSERT((size_t)flag < N, "Invalid flag!");
-		bits.set((size_t)flag);
+		ASSERT((std::size_t)flag < N, "Invalid flag!");
+		bits.set((std::size_t)flag);
 	}
 
 	///
@@ -65,8 +65,8 @@ struct TFlags
 	///
 	void reset(Enum flag)
 	{
-		ASSERT((size_t)flag < N, "Invalid flag!");
-		bits.reset((size_t)flag);
+		ASSERT((std::size_t)flag < N, "Invalid flag!");
+		bits.reset((std::size_t)flag);
 	}
 
 	///
@@ -112,8 +112,8 @@ struct TFlags
 	///
 	void flip(Enum flag)
 	{
-		ASSERT((size_t)flag < N, "Invalid flag");
-		bits.flip((size_t)flag);
+		ASSERT((std::size_t)flag < N, "Invalid flag");
+		bits.flip((std::size_t)flag);
 	}
 
 	//
@@ -129,8 +129,8 @@ struct TFlags
 	///
 	typename std::bitset<N>::reference operator[](Enum flag)
 	{
-		ASSERT((size_t)flag < N, "Invalid flag!");
-		return bits[(size_t)flag];
+		ASSERT((std::size_t)flag < N, "Invalid flag!");
+		return bits[(std::size_t)flag];
 	}
 
 	///
@@ -196,25 +196,25 @@ struct TFlags
 	}
 };
 
-template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
 TFlags<Enum, N> operator|(Enum flag1, Enum flag2)
 {
 	return TFlags<Enum, N>(flag1) | TFlags<Enum, N>(flag2);
 }
 
-template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
 TFlags<Enum, N> operator&(Enum flag1, Enum flag2)
 {
 	return TFlags<Enum, N>(flag1) & TFlags<Enum, N>(flag2);
 }
 
-template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
 bool operator==(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
 {
 	return lhs.bits == rhs.bits;
 }
 
-template <typename Enum, size_t N = (size_t)Enum::eCOUNT_>
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
 bool operator!=(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
 {
 	return !(lhs == rhs);

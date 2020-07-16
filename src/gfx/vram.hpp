@@ -14,7 +14,7 @@ inline bool g_VRAM_bLogAllocs = false;
 constexpr bool g_VRAM_bLogAllocs = false;
 #endif
 
-inline log::Level g_VRAM_logLevel = log::Level::eDebug;
+inline io::Level g_VRAM_logLevel = io::Level::eDebug;
 
 struct ImageInfo final
 {

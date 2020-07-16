@@ -19,26 +19,26 @@ public:
 		stdfs::path samplerID;
 		stdfs::path filename;
 		bytearray bytes;
-		size_t hash = 0;
+		std::size_t hash = 0;
 	};
 	struct MatData final
 	{
 		stdfs::path id;
-		std::vector<size_t> diffuseIndices;
-		std::vector<size_t> specularIndices;
-		std::vector<size_t> bumpIndices;
+		std::vector<std::size_t> diffuseIndices;
+		std::vector<std::size_t> specularIndices;
+		std::vector<std::size_t> bumpIndices;
 		Albedo albedo;
 		f32 shininess = 32.0f;
 		Material::Flags flags;
-		size_t hash = 0;
+		std::size_t hash = 0;
 	};
 	struct MeshData final
 	{
 		Geometry geometry;
 		stdfs::path id;
-		std::vector<size_t> materialIndices;
+		std::vector<std::size_t> materialIndices;
 		f32 shininess = 32.0f;
-		size_t hash = 0;
+		std::size_t hash = 0;
 	};
 
 	struct Info final
@@ -57,15 +57,15 @@ public:
 	struct LoadRequest final
 	{
 		stdfs::path assetID;
-		IOReader const* pReader = nullptr;
+		io::Reader const* pReader = nullptr;
 	};
 
 public:
 	static std::string const s_tName;
 
 public:
-	static size_t idHash(stdfs::path const& id);
-	static size_t strHash(std::string_view id);
+	static std::size_t idHash(stdfs::path const& id);
+	static std::size_t strHash(std::string_view id);
 	static Info parseOBJ(LoadRequest const& request);
 
 public:
@@ -75,8 +75,8 @@ protected:
 	std::vector<Mesh const*> m_meshes;
 	std::deque<Material::Inst> m_materials;
 	std::deque<Mesh> m_loadedMeshes;
-	std::unordered_map<size_t, Material> m_loadedMaterials;
-	std::unordered_map<size_t, Texture> m_loadedTextures;
+	std::unordered_map<std::size_t, Material> m_loadedMaterials;
+	std::unordered_map<std::size_t, Texture> m_loadedTextures;
 
 public:
 	std::vector<Mesh const*> meshes() const;

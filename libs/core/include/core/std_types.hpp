@@ -2,6 +2,7 @@
 #if defined(__MINGW32__)
 #define __STDC_FORMAT_MACROS
 #endif
+#include <array>
 #include <cstdint>
 #include <cstddef>
 #include <limits>
@@ -35,8 +36,10 @@ using s32 = std::int32_t;
 using s64 = std::int64_t;
 using f32 = float;
 using f64 = double;
-using size_t = std::size_t;
 using bytearray = std::vector<std::byte>;
+
+template <typename T, typename E, std::size_t N = (std::size_t)E::eCOUNT_>
+using EnumArray = std::array<T, N>;
 
 template <typename... Ts>
 constexpr bool alwaysFalse = false;
@@ -73,8 +76,8 @@ struct TResult
 ///
 /// \brief Obtain the number of elements in a stack array
 ///
-template <typename T, size_t N>
-constexpr size_t arraySize(T (&)[N])
+template <typename T, std::size_t N>
+constexpr std::size_t arraySize(T (&)[N])
 {
 	return N;
 }

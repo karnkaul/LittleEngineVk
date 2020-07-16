@@ -31,10 +31,10 @@ struct Span
 	using const_iterator = T const*;
 
 	T const* pData;
-	size_t extent;
+	std::size_t extent;
 
 	constexpr Span() noexcept : pData(nullptr), extent(0) {}
-	constexpr explicit Span(T const* pData, size_t extent) noexcept : pData(pData), extent(extent) {}
+	constexpr explicit Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent) {}
 	constexpr Span(T const& data) noexcept : pData(&data), extent(1) {}
 
 	template <typename Container>
@@ -49,6 +49,11 @@ struct Span
 	Span<T>(Span<T> const&) noexcept = default;
 	Span<T>& operator=(Span<T> const&) noexcept = default;
 
+	std::size_t size() const
+	{
+		return extent;
+	}
+
 	const_iterator begin() const
 	{
 		return pData;
@@ -57,6 +62,24 @@ struct Span
 	const_iterator end() const
 	{
 		return pData + extent;
+	}
+
+	T const& at(std::size_t idx) const
+	{
+		ASSERT(idx < extent, "OOB access!");
+		return *(pData + idx);
+	}
+};
+
+template <typename M>
+struct Lockable final
+{
+	M mutex;
+
+	template <template <typename...> typename L = std::scoped_lock>
+	L<M> lock()
+	{
+		return L<M>(mutex);
 	}
 };
 
@@ -170,7 +193,7 @@ void substituteChars(std::string& out_input, std::initializer_list<std::pair<cha
 /// \brief Check if `str` is enclosed in a pair of `char`s
 /// \returns `true` if `str[idx - 1] = wrapper.first && str[idx + 1] == wrapper.second`
 ///
-bool isCharEnclosedIn(std::string_view str, size_t idx, std::pair<char, char> wrapper);
+bool isCharEnclosedIn(std::string_view str, std::size_t idx, std::pair<char, char> wrapper);
 } // namespace strings
 } // namespace utils
 } // namespace le

@@ -26,9 +26,9 @@ public:
 
 	struct Info final
 	{
-		std::array<bytearray, (size_t)Type::eCOUNT_> codeMap;
-		std::array<stdfs::path, (size_t)Type::eCOUNT_> codeIDMap;
-		class IOReader const* pReader = nullptr;
+		EnumArray<bytearray, Type> codeMap;
+		EnumArray<stdfs::path, Type> codeIDMap;
+		class io::Reader const* pReader = nullptr;
 	};
 
 public:
@@ -38,9 +38,9 @@ public:
 	static std::string_view s_fragExt;
 
 private:
-	std::array<bytearray, (size_t)Type::eCOUNT_> m_codeMap;
+	EnumArray<bytearray, Type> m_codeMap;
 	std::unique_ptr<struct ShaderImpl> m_uImpl;
-	FileReader const* m_pReader = nullptr;
+	io::FileReader const* m_pReader = nullptr;
 
 public:
 	Shader(stdfs::path id, Info info);

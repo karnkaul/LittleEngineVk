@@ -24,8 +24,8 @@ Window::Service::~Service()
 	WindowImpl::deinit();
 }
 
-std::array<std::string_view, (size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen",
-																						 "Dedicated Fullscreen"};
+std::array<std::string_view, (std::size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen",
+																							  "Dedicated Fullscreen"};
 
 std::string const Window::s_tName = utils::tName<Window>();
 
@@ -47,6 +47,11 @@ Window::~Window()
 bool Window::anyActive()
 {
 	return WindowImpl::anyActive();
+}
+
+bool Window::anyExist()
+{
+	return WindowImpl::anyExist();
 }
 
 void Window::pollEvents()
@@ -104,6 +109,11 @@ WindowID Window::id() const
 bool Window::isOpen() const
 {
 	return m_uImpl ? m_uImpl->isOpen() : false;
+}
+
+bool Window::exists() const
+{
+	return m_uImpl ? m_uImpl->exists() : false;
 }
 
 bool Window::isClosing() const
@@ -220,40 +230,5 @@ void Window::setCursorPos(glm::vec2 const& pos) const
 std::string Window::clipboard() const
 {
 	return m_uImpl ? m_uImpl->clipboard() : std::string();
-}
-
-input::Joystick Window::joyState(s32 id)
-{
-	return WindowImpl::joyState(id);
-}
-
-input::Gamepad Window::gamepadState(s32 id)
-{
-	return WindowImpl::gamepadState(id);
-}
-
-std::vector<input::Gamepad> Window::activeGamepads()
-{
-	return WindowImpl::activeGamepads();
-}
-
-f32 Window::triggerToAxis(f32 triggerValue)
-{
-	return WindowImpl::triggerToAxis(triggerValue);
-}
-
-size_t Window::joystickAxesCount(s32 id)
-{
-	return WindowImpl::joystickAxesCount(id);
-}
-
-size_t Window::joysticKButtonsCount(s32 id)
-{
-	return WindowImpl::joysticKButtonsCount(id);
-}
-
-std::string_view Window::toString(s32 key)
-{
-	return WindowImpl::toString(key);
 }
 } // namespace le

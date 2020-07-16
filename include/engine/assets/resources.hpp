@@ -5,7 +5,10 @@
 #include <type_traits>
 #include <unordered_map>
 #include <core/assert.hpp>
-#include <core/io.hpp>
+#include <core/atomic_counter.hpp>
+#include <core/hash.hpp>
+#include <core/reader.hpp>
+#include <core/utils.hpp>
 #include <core/map_store.hpp>
 #include <engine/assets/asset.hpp>
 
@@ -22,10 +25,10 @@ struct TAsset
 	///
 	/// \brief Asset ID
 	///
-	stdfs::path id;
+	Hash id;
 
 	TAsset() = default;
-	TAsset(stdfs::path id) : id(std::move(id)) {}
+	TAsset(stdfs::path id) : id(id) {}
 
 	///
 	/// \brief Obtain Asset pointed to by id
@@ -47,12 +50,12 @@ struct TAsset
 class Resources final
 {
 public:
-	using Semaphore = std::shared_ptr<s32>;
+	using Semaphore = Counter<s32>::Semaphore;
 
 private:
-	TMapStore<std::unordered_map<std::string, std::unique_ptr<Asset>>> m_resources;
-	Semaphore m_semaphore;
-	mutable std::mutex m_mutex;
+	TMapStore<std::unordered_map<Hash, std::unique_ptr<Asset>>> m_resources;
+	mutable Counter<s32> m_counter;
+	mutable Lockable<std::mutex> m_mutex;
 	std::atomic_bool m_bActive;
 
 public:
@@ -72,7 +75,7 @@ public:
 	///
 	/// \brief Initialise singleton and turn on service
 	///
-	bool init(IOReader const& data);
+	bool init(io::Reader const& data);
 
 	///
 	/// \brief Construct and store an Asset
@@ -80,81 +83,25 @@ public:
 	/// Construction of Assets will occur in parallel, but insertion into map is mutex locked
 	///
 	template <typename T>
-	T* create(stdfs::path const& id, typename T::Info info)
-	{
-		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		ASSERT(m_bActive.load(), "Resources inactive!");
-		T* pT = nullptr;
-		if (m_bActive.load())
-		{
-			auto semaphore = setBusy();
-			std::unique_lock<decltype(m_mutex)> lock(m_mutex);
-			bool const bLoaded = m_resources.find(id.generic_string()).bResult;
-			lock.unlock();
-			ASSERT(!bLoaded, "ID already loaded!");
-			if (bLoaded)
-			{
-				pT = get<T>(id);
-			}
-			else
-			{
-				auto uT = std::make_unique<T>(id, std::move(info));
-				if (uT && uT->m_status != Asset::Status::eError)
-				{
-					uT->setup();
-					pT = uT.get();
-					lock.lock();
-					m_resources.emplace(id.generic_string(), std::move(uT));
-				}
-			}
-		}
-		return pT;
-	}
-
+	T* create(stdfs::path const& id, typename T::Info info);
 	///
 	/// \brief Obtain loaded asset
 	/// \returns Asset*, if loaded, else `nullptr`
 	///
 	template <typename T>
-	T* get(stdfs::path const& id) const
-	{
-		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		ASSERT(m_bActive.load(), "Resources inactive!");
-		if (m_bActive.load())
-		{
-			std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
-			auto [pT, bResult] = m_resources.find(id.generic_string());
-			if (bResult && pT)
-			{
-				return dynamic_cast<T*>(pT->get());
-			}
-		}
-		return nullptr;
-	}
-
+	T* get(Hash hash) const;
 	///
 	/// \brief Unloaded a loaded asset
 	/// \returns `true` if unloaded, `false` if not present
 	///
 	template <typename T>
-	bool unload(stdfs::path const& id)
-	{
-		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		ASSERT(m_bActive.load(), "Resources inactive!");
-		if (m_bActive.load())
-		{
-			std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
-			return m_resources.unload(id.generic_string());
-		}
-		return false;
-	}
+	bool unload(Hash hash);
 
 	///
 	/// \brief Unloaded a loaded asset
 	/// \returns `true` if unloaded, `false` if not present
 	///
-	bool unload(stdfs::path const& id);
-
+	bool unload(Hash hash);
 	///
 	/// \brief Update all loaded Assets
 	///
@@ -176,29 +123,97 @@ public:
 
 #if defined(LEVK_EDITOR)
 	template <typename T>
-	std::vector<T*> loaded() const
-	{
-		auto semaphore = setBusy();
-		static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
-		ASSERT(m_bActive.load(), "Resources inactive!");
-		std::vector<T*> ret;
-		std::scoped_lock<decltype(m_mutex)> lock(m_mutex);
-		for (auto& [id, uT] : m_resources.m_map)
-		{
-			if (auto pT = dynamic_cast<T*>(uT.get()))
-			{
-				ret.push_back(pT);
-			}
-		}
-		return ret;
-	}
+	std::vector<T*> loaded() const;
 #endif
 };
 
 template <typename T>
+T* Resources::create(stdfs::path const& id, typename T::Info info)
+{
+	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+	ASSERT(m_bActive.load(), "Resources inactive!");
+	T* pT = nullptr;
+	if (m_bActive.load())
+	{
+		auto const hash = Hash(id.generic_string());
+		auto semaphore = setBusy();
+		auto lock = m_mutex.lock<std::unique_lock>();
+		bool const bLoaded = m_resources.find(hash).bResult;
+		lock.unlock();
+		ASSERT(!bLoaded, "ID already loaded!");
+		if (bLoaded)
+		{
+			pT = get<T>(id);
+		}
+		else
+		{
+			auto uT = std::make_unique<T>(id, std::move(info));
+			if (uT && uT->m_status != Asset::Status::eError)
+			{
+				uT->setup();
+				pT = uT.get();
+				lock.lock();
+				m_resources.emplace(hash, std::move(uT));
+			}
+		}
+	}
+	return pT;
+}
+
+template <typename T>
+T* Resources::get(Hash hash) const
+{
+	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+	ASSERT(m_bActive.load(), "Resources inactive!");
+	if (m_bActive.load())
+	{
+		auto lock = m_mutex.lock();
+		auto [pT, bResult] = m_resources.find(hash);
+		if (bResult && pT)
+		{
+			return dynamic_cast<T*>(pT->get());
+		}
+	}
+	return nullptr;
+}
+
+template <typename T>
+bool Resources::unload(Hash hash)
+{
+	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+	ASSERT(m_bActive.load(), "Resources inactive!");
+	if (m_bActive.load())
+	{
+		auto lock = m_mutex.lock();
+		return m_resources.unload(hash);
+	}
+	return false;
+}
+
+#if defined(LEVK_EDITOR)
+template <typename T>
+std::vector<T*> Resources::loaded() const
+{
+	auto semaphore = setBusy();
+	static_assert(std::is_base_of_v<Asset, T>, "T must derive from Asset!");
+	ASSERT(m_bActive.load(), "Resources inactive!");
+	std::vector<T*> ret;
+	auto lock = m_mutex.lock();
+	for (auto& [id, uT] : m_resources.m_map)
+	{
+		if (auto pT = dynamic_cast<T*>(uT.get()))
+		{
+			ret.push_back(pT);
+		}
+	}
+	return ret;
+}
+#endif
+
+template <typename T>
 T* TAsset<T>::get()
 {
-	if (!id.empty())
+	if (id > 0)
 	{
 		auto pAsset = Resources::inst().get<T>(id);
 		if (pAsset && pAsset->isReady())
@@ -212,7 +227,7 @@ T* TAsset<T>::get()
 template <typename T>
 T const* TAsset<T>::get() const
 {
-	if (!id.empty())
+	if (id > 0)
 	{
 		auto pAsset = Resources::inst().get<T>(id);
 		if (pAsset && pAsset->isReady())

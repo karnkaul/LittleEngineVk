@@ -11,7 +11,7 @@ Asset::GUID g_nextGUID = 0;
 }
 
 #if defined(LEVK_ASSET_HOT_RELOAD)
-Asset::File::File(stdfs::path const& id, stdfs::path const& fullPath, FileMonitor::Mode mode, std::function<bool(File const*)> onModified)
+Asset::File::File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(File const*)> onModified)
 	: monitor(fullPath, mode), onModified(onModified), id(id)
 {
 }
@@ -95,16 +95,16 @@ Asset::Status Asset::update()
 		switch (status)
 		{
 		default:
-		case FileMonitor::Status::eUpToDate:
+		case io::FileMonitor::Status::eUpToDate:
 			break;
-		case FileMonitor::Status::eNotFound:
+		case io::FileMonitor::Status::eNotFound:
 		{
 			// file may still be being written out; try increasing reload delay!
 			LOG_E("[{}] [{}] Resource not ready / lost!", m_tName, idStr);
 			m_status = Status::eError;
 			break;
 		}
-		case FileMonitor::Status::eModified:
+		case io::FileMonitor::Status::eModified:
 		{
 			// add to tracking and reset reload timer
 			m_modified.insert(&file);

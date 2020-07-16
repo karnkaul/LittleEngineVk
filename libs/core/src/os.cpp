@@ -119,7 +119,7 @@ bool os::isDebuggerAttached()
 	{
 		return false;
 	}
-	buf[(size_t)num_read] = '\0';
+	buf[(std::size_t)num_read] = '\0';
 	constexpr char tracerPidString[] = "TracerPid:";
 	auto const tracer_pid_ptr = ::strstr(buf, tracerPidString);
 	if (!tracer_pid_ptr)

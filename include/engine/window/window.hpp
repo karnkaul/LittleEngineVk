@@ -21,7 +21,7 @@ public:
 		eCOUNT_
 	};
 
-	static std::array<std::string_view, (size_t)Mode::eCOUNT_> const s_modeNames;
+	static std::array<std::string_view, (std::size_t)Mode::eCOUNT_> const s_modeNames;
 
 	struct Info final
 	{
@@ -65,6 +65,7 @@ public:
 
 public:
 	static bool anyActive();
+	static bool anyExist();
 	static void pollEvents();
 	static void renderAll();
 
@@ -85,6 +86,7 @@ public:
 
 	WindowID id() const;
 	bool isOpen() const;
+	bool exists() const;
 	bool isClosing() const;
 	bool isFocused() const;
 
@@ -121,15 +123,6 @@ public:
 	glm::vec2 cursorPos() const;
 	void setCursorPos(glm::vec2 const& pos) const;
 	std::string clipboard() const;
-
-	static input::Joystick joyState(s32 id);
-	static input::Gamepad gamepadState(s32 id);
-	static std::vector<input::Gamepad> activeGamepads();
-	static f32 triggerToAxis(f32 triggerValue);
-	static size_t joystickAxesCount(s32 id);
-	static size_t joysticKButtonsCount(s32 id);
-
-	static std::string_view toString(s32 key);
 
 private:
 	friend class WindowImpl;

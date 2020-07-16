@@ -12,6 +12,8 @@
 #include <core/assert.hpp>
 #include <core/std_types.hpp>
 #include <core/threads.hpp>
+#include <core/utils.hpp>
+#include <io_impl.hpp>
 
 namespace le
 {
@@ -20,16 +22,16 @@ namespace
 class FileLogger final
 {
 public:
-	static constexpr size_t s_reserveCount = 1024 * 1024;
+	static constexpr std::size_t s_reserveCount = 1024 * 1024;
 
 public:
 	~FileLogger();
 
 public:
 	std::string m_cache;
-	HThread m_hThread;
+	threads::Handle m_hThread;
 	std::atomic<bool> m_bLog;
-	std::mutex m_mutex;
+	Lockable<std::mutex> m_mutex;
 
 public:
 	void record(std::string line);
@@ -40,8 +42,8 @@ public:
 
 FileLogger::~FileLogger()
 {
-	ASSERT(m_hThread == HThread::s_null, "FileLogger thread running past main!");
-	if (m_hThread != HThread::s_null)
+	ASSERT(m_hThread == threads::Handle::s_null, "FileLogger thread running past main!");
+	if (m_hThread != threads::Handle::s_null)
 	{
 		stopLogging();
 	}
@@ -95,9 +97,9 @@ void FileLogger::stopLogging()
 
 void FileLogger::record(std::string line)
 {
-	if (m_hThread != HThread::s_null)
+	if (m_hThread != threads::Handle::s_null)
 	{
-		std::scoped_lock<std::mutex> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		m_cache += std::move(line);
 		m_cache += "\n";
 	}
@@ -108,7 +110,7 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 {
 	std::string temp;
 	{
-		std::scoped_lock<std::mutex> lock(m_mutex);
+		auto lock = m_mutex.lock();
 		temp = std::move(m_cache);
 		m_cache.clear();
 		m_cache.reserve(s_reserveCount);
@@ -121,25 +123,25 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 	return;
 }
 
-std::mutex g_logMutex;
-std::array<char, (size_t)log::Level::eCOUNT_> g_prefixes = {'D', 'I', 'W', 'E'};
+Lockable<std::mutex> g_logMutex;
+EnumArray<char, io::Level> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 
-void log::logText(Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
+void io::log(Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
 {
 	if ((u8)level < (u8)g_minLevel)
 	{
 		return;
 	}
 	std::time_t now = stdch::system_clock::to_time_t(stdch::system_clock::now());
-	std::unique_lock<std::mutex> lock(g_logMutex);
+	auto lock = g_logMutex.lock<std::unique_lock>();
 	std::string str;
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	try
 #endif
 	{
-		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
+		str = fmt::format("[{}] [T{}] {} [{:%H:%M:%S}]", g_prefixes.at(std::size_t(level)), threads::thisThreadID(), std::move(text), *std::localtime(&now));
 	}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 	catch (std::exception const& e)
@@ -194,17 +196,18 @@ void log::logText(Level level, std::string text, [[maybe_unused]] std::string_vi
 	g_fileLogger.record(std::move(str));
 }
 
-log::Service::Service(std::filesystem::path const& path, Time pollRate)
+io::Service::Service(std::filesystem::path const& path, Time pollRate)
 {
 	logToFile(path, pollRate);
 }
 
-log::Service::~Service()
+io::Service::~Service()
 {
 	stopFileLogging();
+	impl::deinitPhysfs();
 }
 
-void log::logToFile(std::filesystem::path path, Time pollRate)
+void io::logToFile(std::filesystem::path path, Time pollRate)
 {
 	if (!g_fileLogger.m_bLog.load())
 	{
@@ -213,7 +216,7 @@ void log::logToFile(std::filesystem::path path, Time pollRate)
 	return;
 }
 
-void log::stopFileLogging()
+void io::stopFileLogging()
 {
 	if (g_fileLogger.m_bLog.load())
 	{

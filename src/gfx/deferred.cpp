@@ -1,3 +1,4 @@
+#include <core/utils.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/renderer_impl.hpp>
 #include <gfx/device.hpp>
@@ -23,7 +24,7 @@ struct Deferred
 };
 
 std::deque<Deferred> g_deferred;
-std::mutex g_mutex;
+Lockable<std::mutex> g_mutex;
 
 bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
 {
@@ -80,8 +81,8 @@ void deferred::release(std::function<void()> func, u8 extraFrames)
 {
 	Deferred deferred;
 	deferred.func = std::move(func);
-	std::scoped_lock<std::mutex> lock(g_mutex);
-	auto const active = WindowImpl::active();
+	auto lock = g_mutex.lock();
+	auto const active = WindowImpl::allExisting();
 	for (auto const& window : active)
 	{
 		auto const pRenderer = WindowImpl::rendererImpl(window);
@@ -95,8 +96,8 @@ void deferred::release(std::function<void()> func, u8 extraFrames)
 
 void deferred::update()
 {
-	std::scoped_lock<std::mutex> lock(g_mutex);
-	auto const active = WindowImpl::active();
+	auto lock = g_mutex.lock();
+	auto const active = WindowImpl::allExisting();
 	auto iter = std::remove_if(g_deferred.begin(), g_deferred.end(), [&](auto& deferred) {
 		if (isStale(deferred, active))
 		{

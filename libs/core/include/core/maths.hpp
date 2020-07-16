@@ -10,6 +10,15 @@
 namespace le::maths
 {
 ///
+/// \brief Obtain the absolute value of `val`
+///
+template <typename T>
+T abs(T val)
+{
+	return val < 0 ? -val : val;
+}
+
+///
 /// \brief Obtain a random number between min and max
 ///
 template <typename T>

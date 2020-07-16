@@ -2,7 +2,7 @@
 #include <optional>
 #include <vector>
 #include <core/time.hpp>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/std_types.hpp>
 #include <core/services.hpp>
 #include <core/os.hpp>
@@ -25,10 +25,10 @@ struct Info final
 {
 	std::optional<Window::Info> windowInfo;
 	std::vector<stdfs::path> dataPaths;
-	IOReader* pReader = nullptr;
+	io::Reader* pReader = nullptr;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
-	log::Level vramLogLevel = log::Level::eDebug;
+	io::Level vramLogLevel = io::Level::eDebug;
 #endif
 };
 
@@ -60,21 +60,35 @@ public:
 	///
 	bool start(World::ID world);
 	///
+	/// \brief Check whether any windows are active
+	///
+	bool isRunning() const;
+
+	///
 	/// \brief Update all services and tick active world
-	/// \returns `false` if no world is active
+	/// \returns `false` if shutting down
 	///
 	bool tick(Time dt) const;
 	///
 	/// \brief Submit scene from active world
 	/// \returns `false` if no world is active
 	///
-	bool submitScene() const;
+	void submitScene() const;
+	///
+	/// \brief Render all active windows
+	///
+	void render() const;
+
+	///
+	/// \brief Shutdown engine and close main window
+	///
+	static bool shutdown();
 };
 
 ///
 /// \brief Obtain whether the engine is shutting down
 ///
-bool isTerminating();
+bool isShuttingDown();
 ///
 /// \brief Obtain the main window
 ///

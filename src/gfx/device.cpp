@@ -40,20 +40,20 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 		ASSERT(false, VK_LOG_MSG);
 		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)log::Level::eWarning)
+		if ((u8)g_instance.validationLog <= (u8)io::Level::eWarning)
 		{
 			LOG_W("[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)log::Level::eInfo)
+		if ((u8)g_instance.validationLog <= (u8)io::Level::eInfo)
 		{
 			LOG_I("[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)log::Level::eDebug)
+		if ((u8)g_instance.validationLog <= (u8)io::Level::eDebug)
 		{
 			LOG_D("[{}] {}", name, VK_LOG_MSG);
 		}
@@ -79,7 +79,7 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 		{
 			std::set<std::string_view> missingExtensions(deviceExtensions.begin(), deviceExtensions.end());
 			auto const extensions = physicalDevice.enumerateDeviceExtensionProperties();
-			for (size_t idx = 0; idx < extensions.size() && !missingExtensions.empty(); ++idx)
+			for (std::size_t idx = 0; idx < extensions.size() && !missingExtensions.empty(); ++idx)
 			{
 				missingExtensions.erase(std::string_view(extensions.at(idx).extensionName));
 			}
@@ -149,8 +149,8 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 		std::unordered_map<u32, QueueFamily> queueFamilies;
 		QFlags found;
-		size_t graphicsFamilyIdx = 0;
-		for (size_t idx = 0; idx < queueFamilyProperties.size() && !found.bits.all(); ++idx)
+		std::size_t graphicsFamilyIdx = 0;
+		for (std::size_t idx = 0; idx < queueFamilyProperties.size() && !found.bits.all(); ++idx)
 		{
 			auto const& queueFamily = queueFamilyProperties.at(idx);
 			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)

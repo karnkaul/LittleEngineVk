@@ -1,7 +1,7 @@
 #include <array>
 #include <stb/stb_image.h>
 #include <core/log.hpp>
-#include <core/io.hpp>
+#include <core/reader.hpp>
 #include <core/utils.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/texture.hpp>
@@ -48,7 +48,7 @@ std::future<void> load(Image* out_pImage, vk::Format texMode, glm::ivec2 const& 
 	return vram::copy(bytes, *out_pImage, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 }
 
-TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id, log::Level errLevel)
+TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id, io::Level errLevel)
 {
 	Texture::Raw ret;
 	s32 ch;
@@ -59,7 +59,7 @@ TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::
 		LOG(errLevel, "[{}] [{}] Failed to load image data!", tName, id);
 		return {};
 	}
-	size_t const size = (size_t)(ret.size.x * ret.size.y * 4);
+	std::size_t const size = (std::size_t)(ret.size.x * ret.size.y * 4);
 	ret.bytes = Span(pOut, size);
 	return ret;
 }
@@ -69,14 +69,14 @@ Sampler::Sampler(stdfs::path id, Info info) : Asset(std::move(id))
 {
 	m_uImpl = std::make_unique<SamplerImpl>();
 	vk::SamplerCreateInfo samplerInfo;
-	samplerInfo.magFilter = g_filters.at((size_t)info.min);
-	samplerInfo.minFilter = g_filters.at((size_t)info.mag);
-	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes.at((size_t)info.mode);
+	samplerInfo.magFilter = g_filters.at((std::size_t)info.min);
+	samplerInfo.minFilter = g_filters.at((std::size_t)info.mag);
+	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes.at((std::size_t)info.mode);
 	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	samplerInfo.unnormalizedCoordinates = false;
 	samplerInfo.compareEnable = false;
 	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	samplerInfo.mipmapMode = g_mipModes.at((size_t)info.mip);
+	samplerInfo.mipmapMode = g_mipModes.at((std::size_t)info.mip);
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
@@ -99,8 +99,8 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 {
 	m_colourSpace = info.mode;
 	m_uImpl = std::make_unique<TextureImpl>();
-	m_uImpl->type = g_texTypes.at((size_t)info.type);
-	m_uImpl->colourSpace = g_texModes.at((size_t)m_colourSpace);
+	m_uImpl->type = g_texTypes.at((std::size_t)info.type);
+	m_uImpl->colourSpace = g_texModes.at((std::size_t)m_colourSpace);
 	m_tName = utils::tName<Texture>();
 	auto const idStr = m_id.generic_string();
 	[[maybe_unused]] bool bAddFileMonitor = false;
@@ -127,7 +127,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	{
 		for (auto& bytes : info.bytes)
 		{
-			auto [raw, bResult] = imgToRaw(std::move(bytes), m_tName, idStr, log::Level::eError);
+			auto [raw, bResult] = imgToRaw(std::move(bytes), m_tName, idStr, io::Level::eError);
 			if (!bResult)
 			{
 				LOG_E("[{}] [{}] Failed to create texture!", m_tName, idStr);
@@ -150,7 +150,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 				m_status = Status::eError;
 				return;
 			}
-			auto [raw, bResult] = imgToRaw(std::move(pixels), m_tName, idStr, log::Level::eError);
+			auto [raw, bResult] = imgToRaw(std::move(pixels), m_tName, idStr, io::Level::eError);
 			if (!bResult)
 			{
 				LOG_E("[{}] [{}] Failed to create texture from [{}]!", m_tName, idStr, assetID.generic_string());
@@ -178,7 +178,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	m_uImpl->copied = load(&m_uImpl->active, m_uImpl->colourSpace, m_size, views, idStr);
 	ImageViewInfo viewInfo;
 	viewInfo.image = m_uImpl->active.image;
-	viewInfo.format = g_texModes.at((size_t)m_colourSpace);
+	viewInfo.format = g_texModes.at((std::size_t)m_colourSpace);
 	viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
 	viewInfo.type = m_uImpl->type;
 	m_uImpl->imageView = g_device.createImageView(viewInfo);
@@ -189,15 +189,15 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	m_reloadDelay = 50ms;
 	if (bAddFileMonitor)
 	{
-		m_uImpl->pReader = dynamic_cast<FileReader const*>(info.pReader);
-		ASSERT(m_uImpl->pReader, "FileReader required!");
-		size_t idx = 0;
+		m_uImpl->pReader = dynamic_cast<io::FileReader const*>(info.pReader);
+		ASSERT(m_uImpl->pReader, "io::FileReader required!");
+		std::size_t idx = 0;
 		for (auto const& id : info.ids)
 		{
 			m_uImpl->imgIDs.push_back(id);
 			auto onModified = [this, idx](File const* pFile) -> bool {
 				auto const idStr = m_id.generic_string();
-				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), m_tName, idStr, log::Level::eWarning);
+				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), m_tName, idStr, io::Level::eWarning);
 				if (bResult)
 				{
 					if (m_uImpl->bStbiRaw)
@@ -210,7 +210,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 				return false;
 			};
 			++idx;
-			m_files.push_back(File(id, m_uImpl->pReader->fullPath(id), FileMonitor::Mode::eBinaryContents, onModified));
+			m_files.push_back(File(id, m_uImpl->pReader->fullPath(id), io::FileMonitor::Mode::eBinaryContents, onModified));
 		}
 	}
 #endif

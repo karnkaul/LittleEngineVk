@@ -117,13 +117,13 @@ void RendererImpl::create(u8 frameCount)
 		m_frameCount = frameCount;
 		// Descriptors
 		auto setLayouts = rd::allocateSets(frameCount);
-		ASSERT(setLayouts.sets.size() == (size_t)frameCount, "Invalid descriptor sets!");
+		ASSERT(setLayouts.sets.size() == (std::size_t)frameCount, "Invalid descriptor sets!");
 		m_samplerLayout = setLayouts.samplerLayout;
-		m_frames.reserve((size_t)frameCount);
+		m_frames.reserve((std::size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			RendererImpl::FrameSync frame;
-			frame.set = setLayouts.sets.at((size_t)idx);
+			frame.set = setLayouts.sets.at((std::size_t)idx);
 			frame.renderReady = g_device.device.createSemaphore({});
 			frame.presentReady = g_device.device.createSemaphore({});
 			frame.drawing = g_device.createFence(true);
@@ -508,8 +508,8 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 	RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
 	std::unordered_set<PipelineImpl*> pipelines;
-	size_t batchIdx = 0;
-	size_t drawableIdx = 0;
+	std::size_t batchIdx = 0;
+	std::size_t drawableIdx = 0;
 	u64 tris = 0;
 	for (auto& batch : scene.batches)
 	{

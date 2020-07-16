@@ -88,7 +88,7 @@ struct InitInfo final
 	{
 		PickDevice pickDevice;
 		Flags flags;
-		log::Level validationLog = log::Level::eWarning;
+		io::Level validationLog = io::Level::eWarning;
 		bool bDedicatedTransfer = true;
 	} options;
 };
@@ -202,21 +202,21 @@ inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 
 struct ShaderImpl final
 {
-	static constexpr std::array<vk::ShaderStageFlagBits, size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
+	static constexpr std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
 																										vk::ShaderStageFlagBits::eFragment};
 
-	std::array<vk::ShaderModule, size_t(Shader::Type::eCOUNT_)> shaders;
+	std::array<vk::ShaderModule, std::size_t(Shader::Type::eCOUNT_)> shaders;
 
 	inline vk::ShaderModule module(Shader::Type type) const
 	{
-		ASSERT(shaders.at((size_t)type) != vk::ShaderModule(), "Module not present in Shader!");
-		return shaders.at((size_t)type);
+		ASSERT(shaders.at((std::size_t)type) != vk::ShaderModule(), "Module not present in Shader!");
+		return shaders.at((std::size_t)type);
 	}
 
 	inline std::map<Shader::Type, vk::ShaderModule> modules() const
 	{
 		std::map<Shader::Type, vk::ShaderModule> ret;
-		for (size_t idx = 0; idx < (size_t)Shader::Type::eCOUNT_; ++idx)
+		for (std::size_t idx = 0; idx < (std::size_t)Shader::Type::eCOUNT_; ++idx)
 		{
 			auto const& module = shaders.at(idx);
 			if (module != vk::ShaderModule())
@@ -247,7 +247,7 @@ struct TextureImpl final
 #if defined(LEVK_ASSET_HOT_RELOAD)
 	Image standby;
 	std::vector<stdfs::path> imgIDs;
-	FileReader const* pReader = nullptr;
+	io::FileReader const* pReader = nullptr;
 #endif
 };
 

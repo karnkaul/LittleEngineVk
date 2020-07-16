@@ -123,6 +123,7 @@ void input::init(Window& out_mainWindow)
 	});
 	g_tokens.text = out_mainWindow.registerText([](char c) { g_raw.text.push_back(c); });
 	g_tokens.scroll = out_mainWindow.registerScroll([](f64 x, f64 y) { g_raw.mouseScroll += glm::vec2((f32)x, (f32)y); });
+	g_bActive = true;
 }
 
 void input::fire()
@@ -145,7 +146,7 @@ void input::fire()
 			g_raw.virtualCursorPos = g_raw.actualCursorPos;
 		}
 		Snapshot snapshot;
-		snapshot.padStates = pWindow->activeGamepads();
+		snapshot.padStates = activeGamepads();
 		snapshot.keys = std::move(g_raw.keys);
 		snapshot.text = std::move(g_raw.text);
 		snapshot.held.reserve(g_raw.held.size());
@@ -155,7 +156,7 @@ void input::fire()
 		{
 			snapshot.held.push_back(c);
 		}
-		size_t processed = 0;
+		std::size_t processed = 0;
 #if defined(LEVK_DEBUG)
 		static bool s_bWasConsuming = false;
 		bool bConsumed = false;

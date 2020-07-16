@@ -4,7 +4,6 @@ project(levk-core)
 glob_sources(SOURCES "*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 # -fPIC for fmt
 set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
 if(MSVC_RUNTIME AND NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")

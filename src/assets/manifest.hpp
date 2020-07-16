@@ -1,10 +1,10 @@
 #pragma once
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <core/gdata.hpp>
-#include <core/jobs.hpp>
 #include <core/std_types.hpp>
+#include <core/tasks.hpp>
+#include <core/utils.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/font.hpp>
@@ -57,8 +57,8 @@ public:
 protected:
 	struct Data final
 	{
-		std::atomic<size_t> idCount = 0;
-		std::atomic<size_t> dataCount = 0;
+		std::atomic<std::size_t> idCount = 0;
+		std::atomic<std::size_t> dataCount = 0;
 	};
 
 public:
@@ -68,16 +68,16 @@ public:
 protected:
 	GData m_manifest;
 	Data m_data;
-	std::vector<std::shared_ptr<HJob>> m_running;
+	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<Asset*> m_loading;
-	std::mutex m_mutex;
+	Lockable<std::mutex> m_mutex;
 	Resources::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
-	IOReader const* m_pReader = nullptr;
+	io::Reader const* m_pReader = nullptr;
 	bool m_bParsed = false;
 
 public:
-	AssetManifest(IOReader const& reader, stdfs::path const& id);
+	AssetManifest(io::Reader const& reader, stdfs::path const& id);
 	~AssetManifest();
 
 public:
@@ -91,7 +91,6 @@ protected:
 	void loadData();
 	void loadAssets();
 	bool eraseDone(bool bWaitingJobs);
-	void addJobs(IndexedTask task);
-	void addJobs(TResult<IndexedTask> task);
+	void addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles);
 };
 } // namespace le

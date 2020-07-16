@@ -1,6 +1,6 @@
-#include <core/jobs.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
+#include <core/tasks.hpp>
 #include <core/time.hpp>
 #include <core/utils.hpp>
 #include <engine/levk.hpp>
@@ -30,8 +30,8 @@ Service::Service(s32 argc, char const* const* const argv)
 {
 	Time::resetElapsed();
 	m_services.add<os::Service>(os::Args{argc, argv});
-	m_services.add<log::Service>(std::string_view("debug.log"));
-	m_services.add<jobs::Service>(4);
+	m_services.add<io::Service>(std::string_view("debug.log"));
+	m_services.add<tasks::Service>(4);
 }
 
 Service::Service(Service&&) = default;
@@ -54,7 +54,7 @@ std::vector<stdfs::path> Service::locateData(std::vector<DataSearch> const& sear
 	for (auto const& pattern : searchPatterns)
 	{
 		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
-		auto [found, bResult] = FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
+		auto [found, bResult] = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
 		LOGIF_W(!bResult, "[{}] Failed to locate data!", tName);
 		if (bResult)
 		{
@@ -82,11 +82,11 @@ bool Service::init(Info const& info)
 			initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
 		}
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
-		initInfo.config.createTempSurface = [&](vk::Instance instance) { return WindowImpl::createSurface(instance, dummyWindow); };
+		initInfo.config.createTempSurface = [&](vk::Instance instance) -> vk::SurfaceKHR { return dummyWindow.createSurface(instance); };
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
-		FileReader fileReader;
-		IOReader* pReader = info.pReader ? info.pReader : &fileReader;
+		io::FileReader fileReader;
+		io::Reader* pReader = info.pReader ? info.pReader : &fileReader;
 		std::vector<stdfs::path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;
 		for (auto const& path : dataPaths)
@@ -121,31 +121,74 @@ bool Service::start(World::ID world)
 	return World::start(world);
 }
 
-bool Service::tick(Time dt) const
+bool Service::isRunning() const
 {
-	gfx::deferred::update();
-	update();
-	gfx::ScreenRect gameRect = {};
-#if defined(LEVK_EDITOR)
-	if (editor::g_bTickGame)
-	{
-		input::fire();
-	}
-	editor::tick(dt);
-	gameRect = editor::g_gameRect;
-#else
-	input::fire();
-#endif
-	return World::tick(dt, gameRect);
+	return Window::anyExist();
 }
 
-bool Service::submitScene() const
+bool Service::tick(Time dt) const
 {
-	return World::submitScene(g_app.uWindow->renderer());
+	Window::pollEvents();
+	update();
+	bool const bShutdown = isShuttingDown();
+	if (bShutdown)
+	{
+		shutdown();
+	}
+	else
+	{
+		gfx::ScreenRect gameRect = {};
+#if defined(LEVK_EDITOR)
+		if (editor::g_bTickGame)
+		{
+			input::fire();
+		}
+		editor::tick(dt);
+		gameRect = editor::g_gameRect;
+#else
+		input::fire();
+#endif
+		if (!World::tick(dt, gameRect))
+		{
+			LOG_E("[{}] Failed to tick World!", tName);
+		}
+	}
+	return !bShutdown;
+}
+
+void Service::submitScene() const
+{
+	if (!isShuttingDown() && g_app.uWindow)
+	{
+		if (!World::submitScene(g_app.uWindow->renderer()))
+		{
+			LOG_E("[{}] Error submitting World scene!", tName);
+		}
+	}
+}
+
+void Service::render() const
+{
+	if (!isShuttingDown())
+	{
+		Window::renderAll();
+	}
+}
+
+bool Service::shutdown()
+{
+	if (g_app.uWindow && g_app.uWindow->exists())
+	{
+		World::destroyAll();
+		g_app.uWindow->close();
+		destroyWindow();
+		return true;
+	}
+	return false;
 }
 } // namespace engine
 
-bool engine::isTerminating()
+bool engine::isShuttingDown()
 {
 	return g_app.uWindow && g_app.uWindow->isClosing();
 }
@@ -170,6 +213,15 @@ void engine::update()
 	Resources::inst().update();
 	WindowImpl::update();
 	gfx::vram::update();
+	gfx::deferred::update();
+}
+
+void engine::destroyWindow()
+{
+	if (g_app.uWindow)
+	{
+		g_app.uWindow->destroy();
+	}
 }
 
 Window* engine::window()
@@ -177,9 +229,9 @@ Window* engine::window()
 	return g_app.uWindow.get();
 }
 
-IOReader const& engine::reader()
+io::Reader const& engine::reader()
 {
-	ASSERT(g_app.pReader, "IOReader is null!");
+	ASSERT(g_app.pReader, "io::Reader is null!");
 	return *g_app.pReader;
 }
 

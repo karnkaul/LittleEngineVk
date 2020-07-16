@@ -6,9 +6,10 @@
 #include <editor/editor.hpp>
 #if defined(LEVK_EDITOR)
 #include <fmt/format.h>
+#include <glm/gtc/quaternion.hpp>
 #include <imgui.h>
 #include <core/maths.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <core/utils.hpp>
 #include <gfx/ext_gui.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
@@ -34,8 +35,8 @@ static std::string const s_tName = utils::tName<Editor>();
 namespace
 {
 bool g_bInit = false;
-log::OnLog g_onLogChain = nullptr;
-std::mutex g_logMutex;
+io::OnLog g_onLogChain = nullptr;
+Lockable<std::mutex> g_logMutex;
 
 struct
 {
@@ -50,10 +51,10 @@ struct LogEntry final
 {
 	std::string text;
 	ImVec4 imColour;
-	log::Level level;
+	io::Level level;
 };
 
-size_t g_maxLogEntries = 500;
+std::size_t g_maxLogEntries = 500;
 std::deque<LogEntry> g_logEntries;
 
 glm::ivec2 const g_minDim = glm::ivec2(100, 100);
@@ -79,15 +80,15 @@ World* g_pWorld = nullptr;
 bool g_bAutoScroll = true;
 #endif
 
-Colour fromLevel(log::Level level)
+Colour fromLevel(io::Level level)
 {
 	switch (level)
 	{
-	case log::Level::eError:
+	case io::Level::eError:
 		return colours::red;
-	case log::Level::eWarning:
+	case io::Level::eWarning:
 		return colours::yellow;
-	case log::Level::eDebug:
+	case io::Level::eDebug:
 		return Colour(0x888888ff);
 	default:
 		return colours::white;
@@ -101,13 +102,13 @@ ImVec4 fromColour(Colour colour)
 }
 #endif
 
-void guiLog(std::string_view text, log::Level level)
+void guiLog(std::string_view text, io::Level level)
 {
 	LogEntry entry;
 	entry.text = std::string(text);
 	entry.level = level;
 	entry.imColour = fromColour(fromLevel(level));
-	std::scoped_lock<std::mutex> lock(g_logMutex);
+	auto lock = g_logMutex.lock();
 	g_logEntries.push_back(std::move(entry));
 	while (g_logEntries.size() > g_maxLogEntries)
 	{
@@ -179,7 +180,7 @@ void listAssets(std::string_view tabName)
 	{
 		auto assets = Resources::inst().loaded<T>();
 		static s32 selected = -1;
-		for (size_t i = 0; i < assets.size(); ++i)
+		for (std::size_t i = 0; i < assets.size(); ++i)
 		{
 			auto pAsset = assets.at(i);
 			if (ImGui::Selectable(pAsset->m_id.generic_string().data(), selected == (s32)i))
@@ -264,7 +265,7 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 	}
 }
 
-void inspectMaterial(gfx::Mesh& out_mesh, size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
+void inspectMaterial(gfx::Mesh& out_mesh, std::size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
 {
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
@@ -329,7 +330,7 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 
 			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
 			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
-			if (pTMesh && pMesh)
+			if (pTMesh)
 			{
 				if (ImGui::TreeNode("Mesh"))
 				{
@@ -337,21 +338,25 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
 						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, pos, size);
 
-					inspectMaterial(*pMesh, 0, pos, size);
+					if (pMesh)
+					{
+						inspectMaterial(*pMesh, 0, pos, size);
+					}
 					ImGui::TreePop();
 				}
 			}
 			auto pTModel = registry.component<TAsset<gfx::Model>>(g_inspecting.entity);
 			auto pModel = pTModel ? pTModel->get() : nullptr;
-			if (pTModel && pModel)
+			if (pTModel)
 			{
 				if (ImGui::TreeNode("Model"))
 				{
 					inspectAsset<gfx::Model>(
 						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
 						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
-					auto& meshes = pModel->loadedMeshes();
-					size_t idx = 0;
+					static std::deque<gfx::Mesh> s_empty;
+					auto& meshes = pModel ? pModel->loadedMeshes() : s_empty;
+					std::size_t idx = 0;
 					for (auto& mesh : meshes)
 					{
 						inspectMaterial(mesh, idx++, pos, size);
@@ -379,12 +384,12 @@ void presentModeDropdown()
 	{
 		static std::array<std::string_view, 4> const s_presentModes = {"Off", "Triple Buffer", "Double Buffer", "Double Buffer (Relaxed)"};
 		auto presentMode = pWindow->presentMode();
-		if (ImGui::BeginCombo("Vsync", s_presentModes[(size_t)presentMode].data()))
+		if (ImGui::BeginCombo("Vsync", s_presentModes[(std::size_t)presentMode].data()))
 		{
 			auto const& presentModes = pWindow->m_presentModes;
-			static size_t s_selected = 100;
-			size_t previous = s_selected;
-			for (size_t i = 0; i < presentModes.size() && i < s_presentModes.size(); ++i)
+			static std::size_t s_selected = 100;
+			std::size_t previous = s_selected;
+			for (std::size_t i = 0; i < presentModes.size() && i < s_presentModes.size(); ++i)
 			{
 				if (s_selected > s_presentModes.size() && presentMode == presentModes.at(i))
 				{
@@ -393,7 +398,7 @@ void presentModeDropdown()
 				}
 				bool const bSelected = s_selected == i;
 				auto const iMode = presentModes.at(i);
-				if (ImGui::Selectable(s_presentModes[(size_t)iMode].data(), bSelected))
+				if (ImGui::Selectable(s_presentModes[(std::size_t)iMode].data(), bSelected))
 				{
 					s_selected = i;
 				}
@@ -407,7 +412,8 @@ void presentModeDropdown()
 				auto const newPresentMode = presentModes.at(s_selected);
 				if (pWindow->setPresentMode(newPresentMode))
 				{
-					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, s_presentModes[(size_t)presentMode], s_presentModes[(size_t)newPresentMode]);
+					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, s_presentModes[(std::size_t)presentMode],
+						  s_presentModes[(std::size_t)newPresentMode]);
 				}
 				else
 				{
@@ -431,8 +437,8 @@ void worldSelectDropdown()
 	else if (ImGui::BeginCombo("Worlds", worldName.data()))
 	{
 		auto const worlds = World::allWorlds();
-		static size_t s_selected = 0;
-		for (size_t i = 0; i < worlds.size(); ++i)
+		static std::size_t s_selected = 0;
+		for (std::size_t i = 0; i < worlds.size(); ++i)
 		{
 			bool const bSelected = s_selected == i;
 			auto name = std::string(worlds.at(i)->name());
@@ -584,7 +590,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 			ImGui::PopButtonRepeat();
 			ImGui::SameLine();
 			ImGui::Text("%d", logEntries * 100);
-			g_maxLogEntries = (size_t)logEntries * 100;
+			g_maxLogEntries = (std::size_t)logEntries * 100;
 		}
 		{
 			ImGui::Separator();
@@ -594,7 +600,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 				clearLog();
 			}
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-			std::scoped_lock<std::mutex> lock(g_logMutex);
+			auto lock = g_logMutex.lock();
 			while (g_logEntries.size() > g_maxLogEntries)
 			{
 				g_logEntries.pop_front();
@@ -622,8 +628,8 @@ bool editor::init(WindowID editorWindow)
 {
 	if (!g_bInit && gfx::ext_gui::isInit())
 	{
-		g_onLogChain = log::g_onLog;
-		log::g_onLog = &guiLog;
+		g_onLogChain = io::g_onLog;
+		io::g_onLog = &guiLog;
 		g_data.window = editorWindow;
 		g_data.inputToken = Window::registerInput(
 			[](Key key, Action action, Mods::VALUE mods) {
@@ -650,7 +656,7 @@ void editor::deinit()
 {
 	if (g_bInit)
 	{
-		log::g_onLog = g_onLogChain;
+		io::g_onLog = g_onLogChain;
 		g_onLogChain = nullptr;
 		g_bInit = false;
 		g_data = {};

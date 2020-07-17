@@ -5,6 +5,7 @@
 #include <editor/editor.hpp>
 #include <assets/manifest.hpp>
 #include <levk_impl.hpp>
+#include <game/input_impl.hpp>
 
 namespace le
 {
@@ -26,7 +27,7 @@ World::ID World::s_lastID;
 World::World() = default;
 World::~World()
 {
-	LOG_I("[{}] World{} Destroyed", m_tName.empty() ? "UnknownWorld" : m_tName, m_id);
+	LOG_I("[{}] World{} Destroyed", m_name.empty() ? "UnknownWorld" : m_name, m_id);
 }
 
 World* World::getWorld(ID id)
@@ -101,7 +102,7 @@ World::ID World::id() const
 
 std::string_view World::name() const
 {
-	return m_tName;
+	return m_name;
 }
 
 bool World::switchWorld(ID newWorld)
@@ -160,7 +161,7 @@ bool World::startImpl(ID previous)
 	m_previousWorldID = previous;
 	m_inputContext = {};
 #if defined(LEVK_DEBUG)
-	m_inputContext.context.m_name = m_tName;
+	m_inputContext.context.m_name = m_name;
 #endif
 	auto const inputMap = inputMapID();
 	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
@@ -173,12 +174,12 @@ bool World::startImpl(ID previous)
 			{
 				if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
 				{
-					LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_tName, parsed, inputMap.generic_string());
+					LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_name, parsed, inputMap.generic_string());
 				}
 			}
 			else
 			{
-				LOG_W("[{}] Failed to read input mappings from [{}]!", m_tName, inputMap.generic_string());
+				LOG_W("[{}] Failed to read input mappings from [{}]!", m_name, inputMap.generic_string());
 			}
 		}
 	}
@@ -235,7 +236,7 @@ void World::stopImpl()
 
 bool World::start(ID id)
 {
-	input::setActive(true);
+	input::g_bFire = true;
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
 		auto const& uWorld = search->second;
@@ -342,11 +343,12 @@ bool World::tick(Time dt, gfx::ScreenRect const& sceneRect)
 	return false;
 }
 
-bool World::submitScene(gfx::Renderer& out_renderer)
+bool World::submitScene(gfx::Renderer& out_renderer, gfx::Camera const& camera)
 {
 	if (s_pActive)
 	{
-		out_renderer.submit(s_pActive->buildScene(), s_pActive->m_worldRect);
+		auto const builder = s_pActive->sceneBuilder();
+		out_renderer.submit(builder.build(camera, s_pActive->m_registry), s_pActive->m_worldRect);
 		return true;
 	}
 	return false;

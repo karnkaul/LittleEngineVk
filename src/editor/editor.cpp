@@ -647,6 +647,7 @@ bool editor::init(WindowID editorWindow)
 		{
 			g_data.focusToken = pWindow->m_pWindow->registerFocus([](bool) { g_data.bAltPressed = false; });
 		}
+		g_editorCam.init(true);
 		return g_bInit = true;
 	}
 	return false;
@@ -660,12 +661,15 @@ void editor::deinit()
 		g_onLogChain = nullptr;
 		g_bInit = false;
 		g_data = {};
+		g_editorCam = {};
 	}
 	return;
 }
 
 void editor::tick([[maybe_unused]] Time dt)
 {
+	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
+	g_editorCam.tick(dt);
 	static auto const smol = glm::vec2(0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
 	if (g_data.enabled && pWindow && pWindow->isOpen())

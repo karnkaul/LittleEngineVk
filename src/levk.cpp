@@ -139,14 +139,12 @@ bool Service::tick(Time dt) const
 	{
 		gfx::ScreenRect gameRect = {};
 #if defined(LEVK_EDITOR)
-		if (editor::g_bTickGame)
-		{
-			input::fire();
-		}
+		input::g_bEditorOnly = !editor::g_bTickGame;
+#endif
+		input::fire();
+#if defined(LEVK_EDITOR)
 		editor::tick(dt);
 		gameRect = editor::g_gameRect;
-#else
-		input::fire();
 #endif
 		if (!World::tick(dt, gameRect))
 		{
@@ -158,9 +156,17 @@ bool Service::tick(Time dt) const
 
 void Service::submitScene() const
 {
-	if (!isShuttingDown() && g_app.uWindow)
+	if (!isShuttingDown() && g_app.uWindow && World::s_pActive)
 	{
-		if (!World::submitScene(g_app.uWindow->renderer()))
+		gfx::Camera const* pCamera = World::s_pActive->sceneCamPtr();
+#if defined(LEVK_EDITOR)
+		if (!editor::g_bTickGame)
+		{
+			pCamera = &editor::g_editorCam;
+		}
+#endif
+		ASSERT(pCamera, "Camera is null!");
+		if (!World::submitScene(g_app.uWindow->renderer(), *pCamera))
 		{
 			LOG_E("[{}] Error submitting World scene!", tName);
 		}

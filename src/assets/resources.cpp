@@ -13,12 +13,6 @@ namespace le
 {
 std::string const Resources::s_tName = utils::tName<Resources>();
 
-Resources& Resources::inst()
-{
-	static Resources s_inst;
-	return s_inst;
-}
-
 Resources::Resources()
 {
 	m_bActive.store(false);

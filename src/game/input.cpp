@@ -15,9 +15,13 @@ namespace le
 {
 namespace
 {
-std::deque<std::pair<std::weak_ptr<s8>, input::Context const*>> g_contexts;
+using Contexts = std::deque<std::pair<std::weak_ptr<s8>, input::Context const*>>;
+Contexts g_contexts;
+#if defined(LEVK_EDITOR)
+Contexts g_editorContexts;
+#endif
+
 WindowID g_mainWindow;
-bool g_bActive = true;
 
 struct
 {
@@ -102,11 +106,6 @@ bool input::isInFocus()
 	return false;
 }
 
-void input::setActive(bool bActive)
-{
-	g_bActive = bActive;
-}
-
 void input::init(Window& out_mainWindow)
 {
 	g_mainWindow = out_mainWindow.id();
@@ -123,79 +122,108 @@ void input::init(Window& out_mainWindow)
 	});
 	g_tokens.text = out_mainWindow.registerText([](char c) { g_raw.text.push_back(c); });
 	g_tokens.scroll = out_mainWindow.registerScroll([](f64 x, f64 y) { g_raw.mouseScroll += glm::vec2((f32)x, (f32)y); });
-	g_bActive = true;
+	g_bFire = true;
+#if defined(LEVK_EDITOR)
+	g_bEditorOnly = false;
+#endif
 }
+
+#if defined(LEVK_EDITOR)
+void input::registerEditorContext(CtxWrapper const& context)
+{
+	context.token = registerEditorContext(context.context);
+}
+
+input::Token input::registerEditorContext(Context const& context)
+{
+	Token token = std::make_shared<s8>(0);
+	g_editorContexts.emplace_front(token, &(context));
+	return token;
+}
+#endif
 
 void input::fire()
 {
-	if (!g_bActive)
+	if (!g_bFire)
 	{
 		return;
 	}
-	if (auto pWindow = engine::window(); !g_contexts.empty())
-	{
-		auto iter = std::remove_if(g_contexts.begin(), g_contexts.end(), [](auto const& context) { return !context.first.lock(); });
-		g_contexts.erase(iter, g_contexts.end());
-		for (auto& context : g_contexts)
-		{
-			context.second->m_bFired = false;
-		}
-		g_raw.actualCursorPos = screenToWorld(pWindow->cursorPos());
-		if (pWindow->cursorMode() != CursorMode::eDisabled)
-		{
-			g_raw.virtualCursorPos = g_raw.actualCursorPos;
-		}
-		Snapshot snapshot;
-		snapshot.padStates = activeGamepads();
-		snapshot.keys = std::move(g_raw.keys);
-		snapshot.text = std::move(g_raw.text);
-		snapshot.held.reserve(g_raw.held.size());
-		snapshot.mouseScroll = g_raw.mouseScroll;
-		g_raw.mouseScroll = {};
-		for (auto c : g_raw.held)
-		{
-			snapshot.held.push_back(c);
-		}
-		std::size_t processed = 0;
-#if defined(LEVK_DEBUG)
-		static bool s_bWasConsuming = false;
-		bool bConsumed = false;
+	static bool s_bWasConsuming = false;
+#if defined(LEVK_EDITOR)
+	static bool s_bWasConsumingEditor = false;
 #endif
-		for (auto const& [token, pMapping] : g_contexts)
+	auto fireContexts = [](Contexts& contexts, [[maybe_unused]] bool& out_bWasConsuming) {
+		if (auto pWindow = engine::window(); !contexts.empty())
 		{
-			ASSERT(token.lock(), "Invalid token!");
-			ASSERT(pMapping, "Null Context!");
+			auto iter = std::remove_if(contexts.begin(), contexts.end(), [](auto const& context) { return !context.first.lock(); });
+			contexts.erase(iter, contexts.end());
+			for (auto& context : contexts)
+			{
+				context.second->m_bFired = false;
+			}
+			g_raw.actualCursorPos = screenToWorld(pWindow->cursorPos());
+			if (pWindow->cursorMode() != CursorMode::eDisabled)
+			{
+				g_raw.virtualCursorPos = g_raw.actualCursorPos;
+			}
+			Snapshot snapshot;
+			snapshot.padStates = activeGamepads();
+			snapshot.keys = std::move(g_raw.keys);
+			snapshot.text = std::move(g_raw.text);
+			snapshot.held.reserve(g_raw.held.size());
+			snapshot.mouseScroll = g_raw.mouseScroll;
+			g_raw.mouseScroll = {};
+			for (auto c : g_raw.held)
+			{
+				snapshot.held.push_back(c);
+			}
+			std::size_t processed = 0;
+#if defined(LEVK_DEBUG)
+			bool bConsumed = false;
+#endif
+			for (auto const& [token, pMapping] : contexts)
+			{
+				ASSERT(token.lock(), "Invalid token!");
+				ASSERT(pMapping, "Null Context!");
 #if defined(LEVK_DEBUG)
 
 #endif
-			if (token.lock() && pMapping->isConsumed(snapshot))
-			{
+				if (token.lock() && pMapping->isConsumed(snapshot))
+				{
 #if defined(LEVK_DEBUG)
-				static Context const* pPrev = nullptr;
-				if (pPrev != pMapping)
-				{
-					static std::string_view const s_unknown = "Unknown";
-					std::string_view const name = pMapping->m_name.empty() ? s_unknown : pMapping->m_name;
-					LOG_I("[{}] [{}:{}] blocking [{}] remaining input contexts", utils::tName<Context>(), name, processed, g_contexts.size() - processed - 1);
-					pPrev = pMapping;
-				}
-				bConsumed = true;
-				if (!s_bWasConsuming)
-				{
-					s_bWasConsuming = bConsumed;
-				}
+					static Context const* pPrev = nullptr;
+					if (pPrev != pMapping)
+					{
+						static std::string_view const s_unknown = "Unknown";
+						std::string_view const name = pMapping->m_name.empty() ? s_unknown : pMapping->m_name;
+						LOG_I("[{}] [{}:{}] blocking [{}] remaining input contexts", utils::tName<Context>(), name, processed, contexts.size() - processed - 1);
+						pPrev = pMapping;
+					}
+					bConsumed = true;
+					if (!out_bWasConsuming)
+					{
+						out_bWasConsuming = bConsumed;
+					}
 #endif
-				break;
+					break;
+				}
+				++processed;
 			}
-			++processed;
-		}
 #if defined(LEVK_DEBUG)
-		if (s_bWasConsuming && !bConsumed)
-		{
-			LOG_I("[{}] blocking context(s) expired", utils::tName<Context>());
-			s_bWasConsuming = false;
-		}
+			if (out_bWasConsuming && !bConsumed)
+			{
+				LOG_I("[{}] blocking context(s) expired", utils::tName<Context>());
+				out_bWasConsuming = false;
+			}
 #endif
+		}
+	};
+#if defined(LEVK_EDITOR)
+	fireContexts(g_editorContexts, s_bWasConsumingEditor);
+	if (!g_bEditorOnly)
+#endif
+	{
+		fireContexts(g_contexts, s_bWasConsuming);
 	}
 	return;
 }

@@ -1,3 +1,4 @@
+#pragma once
 #include <unordered_set>
 #include <core/flags.hpp>
 #include <engine/game/input.hpp>
@@ -63,7 +64,11 @@ private:
 	glm::vec2 m_padLook = {};
 
 public:
+#if defined(LEVK_EDITOR)
+	void init(bool bEditorContext = false);
+#else
 	void init();
+#endif
 	void tick(Time dt);
 	void reset(bool bOrientation, bool bPosition);
 };

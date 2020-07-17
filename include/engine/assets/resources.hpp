@@ -8,6 +8,7 @@
 #include <core/atomic_counter.hpp>
 #include <core/hash.hpp>
 #include <core/reader.hpp>
+#include <core/singleton.hpp>
 #include <core/utils.hpp>
 #include <core/map_store.hpp>
 #include <engine/assets/asset.hpp>
@@ -47,7 +48,7 @@ struct TAsset
 ///
 /// Important: Resources is a static singleton, it does not participate in RAII, and requires explicit calls to `init()` / `deinit()`.
 ///
-class Resources final
+class Resources final : public Singleton<Resources>
 {
 public:
 	using Semaphore = Counter<s32>::Semaphore;
@@ -60,12 +61,6 @@ private:
 
 public:
 	static std::string const s_tName;
-
-public:
-	///
-	/// \brief Reference to Resources singleton instance
-	///
-	static Resources& inst();
 
 private:
 	Resources();
@@ -125,6 +120,9 @@ public:
 	template <typename T>
 	std::vector<T*> loaded() const;
 #endif
+
+private:
+	friend class Singleton<Resources>;
 };
 
 template <typename T>

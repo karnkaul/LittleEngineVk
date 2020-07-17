@@ -43,15 +43,13 @@ private:
 		bool bLoaded = false;
 	} m_data;
 
-	gfx::Camera m_camera;
-
 protected:
 	bool start() override
 	{
 		m_inputContext.context.mapTrigger("load_prev", [this]() {
 			if (!loadWorld(m_previousWorldID))
 			{
-				LOG_E("[{}] Failed to load World{}", m_tName, m_previousWorldID);
+				LOG_E("[{}] Failed to load World{}", m_name, m_previousWorldID);
 			}
 		});
 		m_inputContext.context.addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
@@ -68,7 +66,11 @@ protected:
 		info.id = "elapsed";
 		m_data.elapsed = {};
 		m_registry.component<UIComponent>(m_data.elapsedText)->setText(std::move(info));
-		m_camera.m_position = {0.0f, 1.0f, 2.0f};
+		if (!m_uSceneCam)
+		{
+			setSceneCamera();
+		}
+		m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
 		return true;
 	}
 
@@ -83,9 +85,10 @@ protected:
 		m_data = {};
 	}
 
-	gfx::Renderer::Scene buildScene() const override
+	SceneBuilder const& sceneBuilder() const override
 	{
-		return SceneBuilder(m_camera).build(m_registry);
+		static SceneBuilder s_builder;
+		return s_builder;
 	}
 
 	stdfs::path manifestID() const override
@@ -109,7 +112,6 @@ private:
 	{
 		stdfs::path model0id, model1id, skyboxID;
 		std::vector<std::shared_ptr<tasks::Handle>> modelReloads;
-		FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
@@ -135,7 +137,7 @@ private:
 protected:
 	bool start() override;
 	void tick(Time dt) override;
-	gfx::Renderer::Scene buildScene() const override;
+	SceneBuilder const& sceneBuilder() const override;
 	void stop() override;
 
 	stdfs::path manifestID() const override;
@@ -210,9 +212,14 @@ bool DemoWorld::start()
 
 	m_registry.addComponent<TAsset<gfx::Texture>>(m_data.skybox)->id = m_data.skyboxID;
 
-	m_data.freeCam.init();
-	m_data.freeCam.m_position = {0.0f, 1.0f, 2.0f};
-	m_data.freeCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
+	if (!m_uSceneCam)
+	{
+		auto& sceneCam = setSceneCamera<FreeCam>();
+		sceneCam.init();
+		sceneCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
+	}
+	m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
+	m_uSceneCam->m_orientation = gfx::g_qIdentity;
 
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
 	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid0, m_res.pQuad->m_id);
@@ -239,7 +246,7 @@ bool DemoWorld::start()
 	m_inputContext.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
 	m_inputContext.context.mapTrigger("quit", [this]() { m_data.bQuit = true; });
 	m_inputContext.context.mapState("run", [](bool bActive) { LOGIF_I(bActive, "RUNNING!"); });
-	m_inputContext.context.mapState("pause_cam", [this](bool bActive) { m_data.freeCam.m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
+	m_inputContext.context.mapState("pause_cam", [this](bool bActive) { sceneCamera<FreeCam>().m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
 	m_inputContext.context.addState("pause_cam", input::Key::eLeftControl);
 	m_inputContext.context.addState("pause_cam", input::Key::eRightControl);
 
@@ -313,7 +320,7 @@ void DemoWorld::tick(Time dt)
 		m_data.bLoadUnloadModels = false;
 	}
 
-	m_data.freeCam.tick(dt);
+	sceneCamera<FreeCam>().tick(dt);
 
 	m_registry.component<UIComponent>(m_data.eui0)->uText->updateText(fmt::format("{}FPS", m_fps));
 	m_registry.component<UIComponent>(m_data.eui1)->uText->updateText(fmt::format("{:.3}ms", dt.to_s() * 1000));
@@ -338,17 +345,18 @@ void DemoWorld::tick(Time dt)
 	}
 }
 
-gfx::Renderer::Scene DemoWorld::buildScene() const
+SceneBuilder const& DemoWorld::sceneBuilder() const
 {
+	static SceneBuilder s_sceneBuilder;
 	SceneBuilder::Info info;
-	info.pCamera = &m_data.freeCam;
 	info.dirLights = {m_data.dirLight0, m_data.dirLight1};
 	info.clearColour = Colour(0x030203ff);
 	info.p3Dpipe = m_data.bWireframe ? m_pPipeline0wf : nullptr;
 	info.skyboxCubemapID = "skyboxes/sky_dusk";
 	info.uiSpace = {1280.0f, 720.0f, 2.0f};
 	info.flags = SceneBuilder::Flag::eScissoredUI;
-	return SceneBuilder(std::move(info)).build(m_registry);
+	s_sceneBuilder = SceneBuilder(std::move(info));
+	return s_sceneBuilder;
 }
 
 void DemoWorld::stop()

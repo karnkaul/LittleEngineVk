@@ -17,7 +17,7 @@ Asset::File::File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMo
 }
 #endif
 
-Asset::Asset(stdfs::path id) : m_id(std::move(id)), m_guid(++g_nextGUID.handle) {}
+Asset::Asset(stdfs::path id) : m_id(std::move(id)), m_guid(++g_nextGUID.payload) {}
 
 Asset::Asset(Asset&&) = default;
 Asset& Asset::operator=(Asset&&) = default;

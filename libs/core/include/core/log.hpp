@@ -72,7 +72,7 @@ void log(Level level, std::string text, std::string_view file, u64 line);
 /// \brief Print to `stdout`
 ///
 template <typename... Args>
-void fmtLog(Level level, std::string_view text, std::string_view file, u64 line, Args... args)
+void fmtLog(Level level, std::string_view text, std::string_view file, u64 line, Args&&... args)
 {
 	if ((u8)level >= (u8)g_minLevel)
 	{
@@ -80,7 +80,7 @@ void fmtLog(Level level, std::string_view text, std::string_view file, u64 line,
 		try
 #endif
 		{
-			log(level, fmt::format(text, args...), file, line);
+			log(level, fmt::format(text, std::forward<Args>(args)...), file, line);
 		}
 #if defined(LEVK_LOG_CATCH_FMT_EXCEPTIONS)
 		catch (std::exception const& e)

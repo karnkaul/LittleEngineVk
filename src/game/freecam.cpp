@@ -9,11 +9,15 @@ namespace le
 {
 using namespace input;
 
+#if defined(LEVK_EDITOR)
+void FreeCam::init(bool bEditorContext)
+#else
 void FreeCam::init()
+#endif
 {
 	m_input = {};
 	m_input.context.mapTrigger("look_toggle", [this]() {
-		if (m_state.flags.isSet(Flag::eKeyToggle_Look))
+		if (m_state.flags.isSet(Flag::eEnabled) && m_state.flags.isSet(Flag::eKeyToggle_Look))
 		{
 			m_state.flags.flip(Flag::eKeyLook);
 			m_state.flags.flip(Flag::eLooking);
@@ -23,7 +27,7 @@ void FreeCam::init()
 	m_input.context.addTrigger("look_toggle", m_config.lookToggle.key, m_config.lookToggle.action, m_config.lookToggle.mods);
 
 	m_input.context.mapState("looking", [this](bool bActive) {
-		if (!m_state.flags.isSet(Flag::eKeyLook))
+		if (m_state.flags.isSet(Flag::eEnabled) && !m_state.flags.isSet(Flag::eKeyLook))
 		{
 			if (!bActive || !m_state.flags.isSet(Flag::eLooking))
 			{
@@ -34,16 +38,31 @@ void FreeCam::init()
 	});
 	m_input.context.addState("looking", Key::eMouseButton2);
 
-	m_input.context.mapRange("look_x", [this](f32 value) { m_padLook.x = value; });
-	m_input.context.mapRange("look_y", [this](f32 value) { m_padLook.y = value; });
+	m_input.context.mapRange("look_x", [this](f32 value) {
+		if (m_state.flags.isSet(Flag::eEnabled))
+		{
+			m_padLook.x = value;
+		}
+	});
+	m_input.context.mapRange("look_y", [this](f32 value) {
+		if (m_state.flags.isSet(Flag::eEnabled))
+		{
+			m_padLook.y = value;
+		}
+	});
 	m_input.context.addRange("look_x", Axis::eRightX);
 	m_input.context.addRange("look_y", Axis::eRightY);
 
-	m_input.context.mapTrigger("reset_speed", [this]() { m_state.speed = m_config.defaultSpeed; });
+	m_input.context.mapTrigger("reset_speed", [this]() {
+		if (m_state.flags.isSet(Flag::eEnabled))
+		{
+			m_state.speed = m_config.defaultSpeed;
+		}
+	});
 	m_input.context.addTrigger("reset_speed", Key::eMouseButton3);
 
 	m_input.context.mapRange("speed", [this](f32 value) {
-		if (!m_state.flags.isSet(Flag::eFixedSpeed))
+		if (m_state.flags.isSet(Flag::eEnabled) && !m_state.flags.isSet(Flag::eFixedSpeed))
 		{
 			m_state.dSpeed += (value * 0.1f);
 		}
@@ -52,13 +71,13 @@ void FreeCam::init()
 	m_input.context.addRange("speed", Key::eGamepadButtonLeftBumper, Key::eGamepadButtonRightBumper);
 
 	m_input.context.mapRange("move_x", [this](f32 value) {
-		if (value * value > m_config.padStickEpsilon)
+		if (m_state.flags.isSet(Flag::eEnabled) && value * value > m_config.padStickEpsilon)
 		{
 			m_dXZ.x = value;
 		}
 	});
 	m_input.context.mapRange("move_y", [this](f32 value) {
-		if (value * value > m_config.padStickEpsilon)
+		if (m_state.flags.isSet(Flag::eEnabled) && value * value > m_config.padStickEpsilon)
 		{
 			m_dXZ.y = -value;
 		}
@@ -70,12 +89,31 @@ void FreeCam::init()
 	m_input.context.addRange("move_y", Key::eDown, Key::eUp);
 	m_input.context.addRange("move_y", Key::eS, Key::eW);
 
-	m_input.context.mapRange("elevation_up", [this](f32 value) { m_dY.x = value; });
-	m_input.context.mapRange("elevation_down", [this](f32 value) { m_dY.y = value; });
+	m_input.context.mapRange("elevation_up", [this](f32 value) {
+		if (m_state.flags.isSet(Flag::eEnabled))
+		{
+			m_dY.x = value;
+		}
+	});
+	m_input.context.mapRange("elevation_down", [this](f32 value) {
+		if (m_state.flags.isSet(Flag::eEnabled))
+		{
+			m_dY.y = value;
+		}
+	});
 	m_input.context.addRange("elevation_up", Axis::eLeftTrigger);
 	m_input.context.addRange("elevation_down", Axis::eRightTrigger);
 
-	input::registerContext(m_input);
+#if defined(LEVK_EDITOR)
+	if (bEditorContext)
+	{
+		input::registerEditorContext(m_input);
+	}
+	else
+#endif
+	{
+		input::registerContext(m_input);
+	}
 
 	m_state.speed = m_config.defaultSpeed;
 	m_state.flags.set(Flag::eEnabled);
@@ -84,14 +122,14 @@ void FreeCam::init()
 
 void FreeCam::tick(Time dt)
 {
-	if (auto pWindow = engine::mainWindow())
-	{
-		pWindow->setCursorMode(m_state.flags.isSet(Flag::eLooking) ? CursorMode::eDisabled : CursorMode::eDefault);
-	}
-
 	if (!m_state.flags.isSet(Flag::eEnabled))
 	{
 		return;
+	}
+
+	if (auto pWindow = engine::mainWindow())
+	{
+		pWindow->setCursorMode(m_state.flags.isSet(Flag::eLooking) ? CursorMode::eDisabled : CursorMode::eDefault);
 	}
 
 	if (!input::isInFocus() || !m_input.context.wasFired())

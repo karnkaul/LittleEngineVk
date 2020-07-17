@@ -58,7 +58,7 @@ public:
 	/// \brief Obtain a random number given `Dist` distrubtion
 	///
 	template <typename T, template <typename> typename Dist, typename... Args>
-	T inRange(Args... args);
+	T inRange(Args&&... args);
 
 	///
 	/// \brief Obtain an integral/floating point random number using a uniform distribution
@@ -68,7 +68,7 @@ public:
 };
 
 template <typename T, template <typename> typename Dist, typename... Args>
-T Random::inRange(Args... args)
+T Random::inRange(Args&&... args)
 {
 	Dist<T> dist(std::forward<Args>(args)...);
 	return dist(m_engine);

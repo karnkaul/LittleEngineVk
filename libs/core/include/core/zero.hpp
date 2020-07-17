@@ -14,9 +14,9 @@ struct TZero final
 
 	constexpr static T s_null = Zero;
 
-	T handle;
+	T payload;
 
-	constexpr TZero(T handle = s_null) noexcept : handle(handle) {}
+	constexpr TZero(T payload = s_null) noexcept : payload(payload) {}
 	TZero(TZero&&) noexcept;
 	TZero& operator=(TZero&&) noexcept;
 	TZero(TZero const&);
@@ -35,8 +35,8 @@ TZero<T, Zero>::TZero(TZero&& rhs) noexcept
 template <typename T, T Zero>
 TZero<T, Zero>& TZero<T, Zero>::operator=(TZero&& rhs) noexcept
 {
-	handle = rhs.handle;
-	rhs.handle = Zero;
+	payload = rhs.payload;
+	rhs.payload = Zero;
 	return *this;
 }
 
@@ -52,7 +52,7 @@ TZero<T, Zero>::~TZero() = default;
 template <typename T, T Zero>
 TZero<T, Zero>::operator T() const
 {
-	return handle;
+	return payload;
 }
 } // namespace le
 
@@ -63,7 +63,7 @@ struct hash<le::TZero<T, Zero>>
 {
 	size_t operator()(le::TZero<T, Zero> zero) const
 	{
-		return std::hash<T>()(zero.handle);
+		return std::hash<T>()(zero.payload);
 	}
 };
 } // namespace std

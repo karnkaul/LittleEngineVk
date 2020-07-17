@@ -62,15 +62,9 @@ std::vector<gfx::Mesh const*> UIComponent::meshes() const
 	return ret;
 }
 
-SceneBuilder::SceneBuilder(gfx::Camera const& camera)
-{
-	m_info.pCamera = &camera;
-}
+SceneBuilder::SceneBuilder() = default;
 
-SceneBuilder::SceneBuilder(Info info) : m_info(std::move(info))
-{
-	ASSERT(m_info.pCamera, "Camera cannot be null!");
-}
+SceneBuilder::SceneBuilder(Info info) : m_info(std::move(info)) {}
 
 f32 SceneBuilder::framebufferAspect()
 {
@@ -95,9 +89,8 @@ glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace)
 	return uiProjection(uiSpace, {ifbSize.x == 0 ? 1 : ifbSize.x, ifbSize.y == 0 ? 1 : ifbSize.y});
 }
 
-gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
+gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry const& registry) const
 {
-	ASSERT(m_info.pCamera, "Camera is null!");
 	auto const ifbSize = engine::framebufferSize();
 	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
 	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fbSize, m_info.uiSpace.z) : m_info.uiSpace;
@@ -105,11 +98,11 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	gfx::Renderer::Scene scene;
 	scene.clear = {m_info.clearDepth, m_info.clearColour};
 	scene.dirLights = m_info.dirLights;
-	scene.view.pos_v = m_info.pCamera->m_position;
-	scene.view.mat_v = m_info.pCamera->view();
-	scene.view.mat_p = m_info.pCamera->perspective(fbSize.x / fbSize.y);
+	scene.view.pos_v = camera.m_position;
+	scene.view.mat_v = camera.view();
+	scene.view.mat_p = camera.perspective(fbSize.x / fbSize.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
-	scene.view.mat_ui = m_info.pCamera->ui(engine::g_uiSpace);
+	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
 		auto pCubemap = Resources::inst().get<gfx::Texture>(m_info.skyboxCubemapID);

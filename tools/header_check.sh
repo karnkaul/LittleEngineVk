@@ -28,7 +28,7 @@ for file in ${files}; do
 			[[ -z "${line// }" || "$line" == *"*/" || "$line" == "//"* ]] && continue
 			if [[ "$line" != "#pragma once" ]]; then
 				let idx=$idx+1
-				echo -e "  $idx. errOR! $file missing '#pragma once'!"
+				echo -e "  $idx. ERROR! $file missing '#pragma once'!"
 				err=true
 				break
 			fi

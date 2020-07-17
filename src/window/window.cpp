@@ -31,7 +31,7 @@ std::string const Window::s_tName = utils::tName<Window>();
 
 Window::Window()
 {
-	m_id = ++g_nextWindowID.handle;
+	m_id = ++g_nextWindowID.payload;
 	m_uImpl = std::make_unique<WindowImpl>(this);
 	LOG_I("[{}:{}] constructed", s_tName, m_id);
 }

@@ -8,8 +8,6 @@
 
 namespace le::gfx
 {
-class Shader;
-
 class Font final : public Asset
 {
 public:

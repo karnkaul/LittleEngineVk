@@ -167,15 +167,7 @@ void RendererImpl::destroy()
 	return;
 }
 
-void RendererImpl::update()
-{
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	for (auto& pipeline : m_pipelines)
-	{
-		pipeline.m_uImpl->pollShaders();
-	}
-#endif
-}
+void RendererImpl::update() {}
 
 Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 {
@@ -191,7 +183,7 @@ Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
 	implInfo.samplerLayout = m_samplerLayout;
 	implInfo.window = m_window;
 	implInfo.staticLineWidth = info.lineWidth;
-	implInfo.pShader = info.pShader;
+	implInfo.shader = info.shader;
 	implInfo.flags = info.flags;
 	Pipeline pipeline;
 	pipeline.m_uImpl = std::make_unique<PipelineImpl>();

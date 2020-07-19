@@ -4,7 +4,6 @@
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
-#include <engine/gfx/shader.hpp>
 #include <engine/gfx/texture.hpp>
 #include <engine/levk.hpp>
 #include <core/utils.hpp>
@@ -46,14 +45,6 @@ bool Resources::init(io::Reader const& data)
 			create<gfx::Material>("materials/default", {});
 		}
 		{
-			create<gfx::Sampler>("samplers/default", {});
-			gfx::Sampler::Info info;
-			info.mode = gfx::Sampler::Mode::eClampEdge;
-			info.min = gfx::Sampler::Filter::eNearest;
-			info.mip = gfx::Sampler::Filter::eNearest;
-			create<gfx::Sampler>("samplers/font", std::move(info));
-		}
-		{
 			gfx::Mesh::Info info;
 			info.geometry = gfx::createCube();
 			create<gfx::Mesh>("meshes/cube", std::move(info));
@@ -74,15 +65,6 @@ bool Resources::init(io::Reader const& data)
 			info.raws = {b1px, b1px, b1px, b1px, b1px, b1px};
 			info.type = gfx::Texture::Type::eCube;
 			create<gfx::Texture>("cubemaps/blank", std::move(info));
-		}
-		{
-			gfx::Shader::Info info;
-
-			info.pReader = &data;
-			ASSERT(data.checkPresences(shaderIDs), "Uber Shader not found!");
-			info.codeIDMap.at((std::size_t)gfx::Shader::Type::eVertex) = shaderIDs.at(0);
-			info.codeIDMap.at((std::size_t)gfx::Shader::Type::eFragment) = shaderIDs.at(1);
-			create<gfx::Shader>("shaders/default", std::move(info));
 		}
 		{
 			gfx::Font::Info fontInfo;

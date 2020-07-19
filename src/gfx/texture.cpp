@@ -5,18 +5,17 @@
 #include <core/utils.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/texture.hpp>
+#include <engine/resources/resources.hpp>
 #include <gfx/common.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
+#include <resources/resources_impl.hpp>
 
 namespace le::gfx
 {
 namespace
 {
-std::array const g_filters = {vk::Filter::eLinear, vk::Filter::eNearest};
-std::array const g_mipModes = {vk::SamplerMipmapMode::eLinear, vk::SamplerMipmapMode::eNearest};
-std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToBorder};
 std::array const g_texModes = {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Snorm};
 std::array const g_texTypes = {vk::ImageViewType::e2D, vk::ImageViewType::eCube};
 
@@ -65,37 +64,7 @@ TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::
 }
 } // namespace
 
-Sampler::Sampler(stdfs::path id, Info info) : Asset(std::move(id))
-{
-	m_uImpl = std::make_unique<SamplerImpl>();
-	vk::SamplerCreateInfo samplerInfo;
-	samplerInfo.magFilter = g_filters.at((std::size_t)info.min);
-	samplerInfo.minFilter = g_filters.at((std::size_t)info.mag);
-	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes.at((std::size_t)info.mode);
-	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
-	samplerInfo.unnormalizedCoordinates = false;
-	samplerInfo.compareEnable = false;
-	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	samplerInfo.mipmapMode = g_mipModes.at((std::size_t)info.mip);
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-	m_uImpl->sampler = g_device.device.createSampler(samplerInfo);
-	m_status = Status::eReady;
-}
-
-Sampler::~Sampler()
-{
-	g_device.destroy(m_uImpl->sampler);
-}
-
-Asset::Status Sampler::update()
-{
-	Asset::update();
-	return m_status;
-}
-
-Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(info.pSampler)
+Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_sampler(info.sampler)
 {
 	m_colourSpace = info.mode;
 	m_uImpl = std::make_unique<TextureImpl>();
@@ -104,16 +73,17 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	m_tName = utils::tName<Texture>();
 	auto const idStr = m_id.generic_string();
 	[[maybe_unused]] bool bAddFileMonitor = false;
-	if (!m_pSampler)
+	if (m_sampler.guid == 0 || resources::status(m_sampler) != resources::Status::eReady)
 	{
 		auto const id = info.samplerID.empty() ? "samplers/default" : info.samplerID.generic_string();
-		m_pSampler = Resources::inst().get<Sampler>(id);
-	}
-	if (!m_pSampler)
-	{
-		LOG_E("[{}] [{}] Failed to find Sampler [{}]!", m_tName, idStr, info.samplerID.generic_string());
-		m_status = Status::eError;
-		return;
+		auto [sampler, bResult] = resources::find<resources::Sampler>(id);
+		if (!bResult)
+		{
+			LOG_E("[{}] [{}] Failed to find Sampler [{}]!", m_tName, idStr, info.samplerID.generic_string());
+			m_status = Status::eError;
+			return;
+		}
+		m_sampler = sampler;
 	}
 	if (!info.raws.empty())
 	{
@@ -182,7 +152,7 @@ Texture::Texture(stdfs::path id, Info info) : Asset(std::move(id)), m_pSampler(i
 	viewInfo.aspectFlags = vk::ImageAspectFlagBits::eColor;
 	viewInfo.type = m_uImpl->type;
 	m_uImpl->imageView = g_device.createImageView(viewInfo);
-	m_uImpl->sampler = m_pSampler->m_uImpl->sampler;
+	m_uImpl->sampler = resources::impl(m_sampler)->sampler;
 	m_type = info.type;
 	m_status = Status::eLoading;
 #if defined(LEVK_ASSET_HOT_RELOAD)

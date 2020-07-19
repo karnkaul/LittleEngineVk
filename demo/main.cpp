@@ -21,7 +21,6 @@
 #include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
 #include <engine/gfx/renderer.hpp>
-#include <engine/gfx/shader.hpp>
 #include <engine/gfx/texture.hpp>
 #include <engine/window/window.hpp>
 

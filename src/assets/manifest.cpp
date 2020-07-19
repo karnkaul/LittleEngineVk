@@ -5,17 +5,20 @@
 #include <core/log.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
+#include <engine/resources/resources.hpp>
 #include <assets/manifest.hpp>
+#include <resources/resources_impl.hpp>
 #include <levk_impl.hpp>
 
 namespace le
 {
 using namespace gfx;
+using namespace resources;
 
 namespace
 {
 template <typename T>
-void intersectTlist(std::vector<AssetData<T>>& out_data, std::vector<stdfs::path> const& src)
+void intersectTlist(std::vector<T>& out_data, std::vector<stdfs::path> const& src)
 {
 	auto iter = std::remove_if(out_data.begin(), out_data.end(), [&src](auto const& data) {
 		return std::find_if(src.begin(), src.end(), [&data](auto const& id) { return data.id == id; }) == src.end();
@@ -24,7 +27,7 @@ void intersectTlist(std::vector<AssetData<T>>& out_data, std::vector<stdfs::path
 }
 
 template <typename T>
-std::vector<stdfs::path> exportTList(std::vector<AssetData<T>> const& src)
+std::vector<stdfs::path> exportTList(std::vector<T> const& src)
 {
 	std::vector<stdfs::path> ret;
 	for (auto const& data : src)
@@ -61,17 +64,36 @@ std::vector<std::shared_ptr<tasks::Handle>> loadTAssets(std::vector<AssetData<T>
 	}
 	return {};
 }
+
+template <typename T>
+std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
+														   std::vector<resources::GUID>& out_assets, Lockable<std::mutex>& mutex, std::string_view jobName)
+{
+	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Asset!");
+	tasks::List taskList;
+	if (!out_toLoad.empty())
+	{
+		auto task = [&out_loaded, &out_assets, &mutex](ResourceData<T>& data) {
+			auto resource = resources::load<T>(data.id, std::move(data.createInfo));
+			auto lock = mutex.lock();
+			out_assets.push_back(resource.guid);
+			out_loaded.push_back(std::move(data.id));
+		};
+		return tasks::forEach<ResourceData<T>>(out_toLoad, task, jobName);
+	}
+	return {};
+}
 } // namespace
 
 void AssetManifest::Info::intersect(AssetList ids)
 {
-	intersectTlist<Shader>(shaders, ids.shaders);
-	intersectTlist<Texture>(textures, ids.textures);
-	intersectTlist<Texture>(cubemaps, ids.cubemaps);
-	intersectTlist<Material>(materials, ids.materials);
-	intersectTlist<Mesh>(meshes, ids.meshes);
-	intersectTlist<Model>(models, ids.models);
-	intersectTlist<Font>(fonts, ids.fonts);
+	intersectTlist(shaders, ids.shaders);
+	intersectTlist(textures, ids.textures);
+	intersectTlist(cubemaps, ids.cubemaps);
+	intersectTlist(materials, ids.materials);
+	intersectTlist(meshes, ids.meshes);
+	intersectTlist(models, ids.models);
+	intersectTlist(fonts, ids.fonts);
 }
 
 AssetList AssetManifest::Info::exportList() const
@@ -211,15 +233,14 @@ AssetList AssetManifest::parse()
 		auto assetID = shader.get("id");
 		if (!assetID.empty())
 		{
-			if (Resources::inst().get<Shader>(assetID))
+			if (resources::find<Shader>(assetID).bResult)
 			{
 				all.shaders.push_back(assetID);
 				m_loaded.shaders.push_back(std::move(assetID));
 			}
 			else
 			{
-				AssetData<Shader> data;
-				data.info.pReader = m_pReader;
+				ResourceData<Shader> data;
 				data.id = std::move(assetID);
 				bool const bOptional = shader.get<bool>("optional");
 				bool bFound = false;
@@ -236,7 +257,7 @@ AssetList AssetManifest::parse()
 						{
 							type = Shader::Type::eVertex;
 						}
-						data.info.codeIDMap[(std::size_t)type] = id;
+						data.createInfo.codeIDMap[(std::size_t)type] = id;
 						bFound = true;
 					}
 				}
@@ -256,14 +277,14 @@ AssetList AssetManifest::parse()
 		bool const bPresent = texture.get<bool>("optional") ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
 		if (!id.empty() && bPresent)
 		{
-			if (Resources::inst().get<Texture>(id))
+			if (Resources::inst().get<gfx::Texture>(id))
 			{
 				all.textures.push_back(id);
 				m_loaded.textures.push_back(std::move(id));
 			}
 			else
 			{
-				AssetData<Texture> data;
+				AssetData<gfx::Texture> data;
 				data.id = id;
 				data.info.mode = engine::colourSpace();
 				data.info.samplerID = m_manifest.get("sampler");
@@ -284,17 +305,17 @@ AssetList AssetManifest::parse()
 		bool bMissing = false;
 		if (!assetID.empty())
 		{
-			if (Resources::inst().get<Texture>(assetID))
+			if (Resources::inst().get<gfx::Texture>(assetID))
 			{
 				all.cubemaps.push_back(assetID);
 				m_loaded.cubemaps.push_back(std::move(assetID));
 			}
 			else
 			{
-				AssetData<Texture> data;
+				AssetData<gfx::Texture> data;
 				data.id = assetID;
 				data.info.mode = engine::colourSpace();
-				data.info.type = Texture::Type::eCube;
+				data.info.type = gfx::Texture::Type::eCube;
 				data.info.samplerID = m_manifest.get("sampler");
 				data.info.pReader = m_pReader;
 				for (auto const& id : resourceIDs)
@@ -387,7 +408,7 @@ void AssetManifest::loadAssets()
 {
 	m_status = Status::eLoadingAssets;
 	m_semaphore = Resources::inst().setBusy();
-	addJobs(loadTAssets(m_toLoad.shaders, m_loaded.shaders, m_loading, m_mutex, "Manifest-1:Shaders"));
+	addJobs(loadTResources(m_toLoad.shaders, m_loaded.shaders, m_loading2, m_mutex, "Manifest-1:Shaders"));
 	addJobs(loadTAssets(m_toLoad.textures, m_loaded.textures, m_loading, m_mutex, "Manifest-1:Textures"));
 	addJobs(loadTAssets(m_toLoad.cubemaps, m_loaded.cubemaps, m_loading, m_mutex, "Manifest-1:Cubemaps"));
 	addJobs(loadTAssets(m_toLoad.models, m_loaded.models, m_loading, m_mutex, "Manifest-1:Models"));
@@ -413,7 +434,12 @@ bool AssetManifest::eraseDone(bool bWaitingJobs)
 		auto iter = std::remove_if(m_loading.begin(), m_loading.end(), [](Asset* pAsset) { return !pAsset->isBusy(); });
 		m_loading.erase(iter, m_loading.end());
 	}
-	return m_running.empty() && m_loading.empty();
+	if (!m_loading2.empty())
+	{
+		auto iter = std::remove_if(m_loading2.begin(), m_loading2.end(), [](resources::GUID guid) { return !resources::isLoading(guid); });
+		m_loading2.erase(iter, m_loading2.end());
+	}
+	return m_running.empty() && m_loading.empty() && m_loading2.empty();
 }
 
 void AssetManifest::addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles)

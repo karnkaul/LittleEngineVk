@@ -12,6 +12,7 @@
 #include <gfx/ext_gui.hpp>
 #include <gfx/renderer_impl.hpp>
 #include <gfx/vram.hpp>
+#include <resources/resources_impl.hpp>
 #include <window/window_impl.hpp>
 #include <editor/editor.hpp>
 #include <levk_impl.hpp>
@@ -41,8 +42,10 @@ Service::~Service()
 	input::deinit();
 	World::stopActive();
 	Resources::inst().waitIdle();
+	resources::waitIdle();
 	World::destroyAll();
 	Resources::inst().deinit();
+	resources::deinit();
 	g_app = {};
 }
 
@@ -96,6 +99,8 @@ bool Service::init(Info const& info)
 				throw std::runtime_error("Failed to mount data path" + path.generic_string() + "!");
 			}
 		}
+		g_app.pReader = pReader;
+		m_services.add<resources::Service>();
 		Resources::inst().init(*pReader);
 		if (info.windowInfo)
 		{
@@ -106,10 +111,10 @@ bool Service::init(Info const& info)
 			}
 		}
 		input::init(*g_app.uWindow);
-		g_app.pReader = pReader;
 	}
 	catch (std::exception const& e)
 	{
+		g_app.pReader = nullptr;
 		LOG_E("[{}] Failed to initialise engine services: {}", tName, e.what());
 		return false;
 	}
@@ -217,6 +222,7 @@ glm::ivec2 engine::framebufferSize()
 void engine::update()
 {
 	Resources::inst().update();
+	resources::update();
 	WindowImpl::update();
 	gfx::vram::update();
 	gfx::deferred::update();

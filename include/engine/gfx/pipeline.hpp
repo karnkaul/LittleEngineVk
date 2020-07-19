@@ -2,11 +2,10 @@
 #include <memory>
 #include <string>
 #include <core/flags.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le::gfx
 {
-class Shader;
-
 enum class PolygonMode : s8
 {
 	eFill,
@@ -44,7 +43,7 @@ public:
 	struct Info final
 	{
 		std::string name;
-		Shader* pShader = nullptr;
+		resources::Shader shader;
 		f32 lineWidth = 1.0f;
 		PolygonMode polygonMode = PolygonMode::eFill;
 		CullMode cullMode = CullMode::eNone;

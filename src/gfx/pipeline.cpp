@@ -1,13 +1,14 @@
 #include <fmt/format.h>
 #include <core/log.hpp>
 #include <engine/assets/resources.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/gfx/pipeline.hpp>
-#include <engine/gfx/shader.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/render_context.hpp>
 #include <gfx/pipeline_impl.hpp>
 #include <gfx/resource_descriptors.hpp>
+#include <resources/resources_impl.hpp>
 
 namespace le::gfx
 {
@@ -44,7 +45,13 @@ bool PipelineImpl::create(Info info)
 	m_name = fmt::format("{}:{}-?", m_info.window, m_info.name);
 	if (create())
 	{
-		m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, m_info.pShader->m_id.generic_string());
+		m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, resources::info(m_info.shader).id.generic_string());
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+		if (auto pImpl = resources::impl(m_info.shader))
+		{
+			m_reloadToken = pImpl->onReload.subscribe([this]() { m_bShaderReloaded = true; });
+		}
+#endif
 		LOG_D("[{}] [{}] created", s_tName, m_name);
 		return true;
 	}
@@ -84,21 +91,19 @@ void PipelineImpl::destroy()
 	return;
 }
 
-#if defined(LEVK_ASSET_HOT_RELOAD)
-void PipelineImpl::pollShaders()
-{
-	m_bShaderReloaded |= m_info.pShader && m_info.pShader->currentStatus() == Asset::Status::eReloaded;
-}
-#endif
-
 bool PipelineImpl::create()
 {
-	if (!m_info.pShader && !m_info.shaderID.empty())
+	if ((m_info.shader.guid == 0 || m_info.shader.status() != resources::Status::eReady) && !m_info.shaderID.empty())
 	{
-		m_info.pShader = Resources::inst().get<Shader>(m_info.shaderID);
+		auto [shader, bResult] = resources::findShader(m_info.shaderID);
+		if (bResult)
+		{
+			m_info.shader = shader;
+		}
 	}
-	ASSERT(m_info.pShader, "Shader is null!");
-	if (!m_info.pShader)
+	ASSERT(m_info.shader.status() == resources::Status::eReady, "Shader is not ready!");
+	auto pShaderImpl = resources::impl(m_info.shader);
+	if (m_info.shader.status() != resources::Status::eReady || !pShaderImpl)
 	{
 		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_name);
 		return false;
@@ -171,12 +176,13 @@ bool PipelineImpl::create()
 	}
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	{
-		auto modules = m_info.pShader->m_uImpl->modules();
+		auto modules = pShaderImpl->modules();
+		ASSERT(!modules.empty(), "No shader modules!");
 		shaderCreateInfo.reserve(modules.size());
 		for (auto const& [type, module] : modules)
 		{
 			vk::PipelineShaderStageCreateInfo createInfo;
-			createInfo.stage = ShaderImpl::s_typeToFlagBit[(std::size_t)type];
+			createInfo.stage = resources::Shader::Impl::s_typeToFlagBit[(std::size_t)type];
 			createInfo.module = module;
 			createInfo.pName = "main";
 			shaderCreateInfo.push_back(std::move(createInfo));

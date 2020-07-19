@@ -10,8 +10,8 @@
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
-#include <engine/gfx/shader.hpp>
 #include <engine/gfx/texture.hpp>
+#include <engine/resources/resources.hpp>
 
 namespace le
 {
@@ -19,6 +19,13 @@ template <typename T>
 struct AssetData
 {
 	typename T::Info info;
+	stdfs::path id;
+};
+
+template <typename T>
+struct ResourceData final
+{
+	typename T::CreateInfo createInfo;
 	stdfs::path id;
 };
 
@@ -37,7 +44,7 @@ public:
 
 	struct Info final
 	{
-		std::vector<AssetData<gfx::Shader>> shaders;
+		std::vector<ResourceData<resources::Shader>> shaders;
 		std::vector<AssetData<gfx::Texture>> textures;
 		std::vector<AssetData<gfx::Texture>> cubemaps;
 		std::vector<AssetData<gfx::Material>> materials;
@@ -70,6 +77,7 @@ protected:
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<Asset*> m_loading;
+	std::vector<resources::GUID> m_loading2;
 	Lockable<std::mutex> m_mutex;
 	Resources::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;

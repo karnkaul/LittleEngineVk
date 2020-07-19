@@ -114,7 +114,7 @@ bool ext_gui::init([[maybe_unused]] Info const& info)
 	bool bRet = false;
 	if (!isInit())
 	{
-		ASSERT(info.window != WindowID(), "Invalid WindowID!");
+		ASSERT(info.window.payload != WindowID::s_null, "Invalid WindowID!");
 #if defined(LEVK_USE_IMGUI)
 		bRet = true;
 		IMGUI_CHECKVERSION();

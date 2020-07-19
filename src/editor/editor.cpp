@@ -13,15 +13,16 @@
 #include <gfx/ext_gui.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
-#include <engine/gfx/shader.hpp>
 #include <engine/gfx/texture.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
+#include <resources/resources_impl.hpp>
 
 namespace le
 {
@@ -192,6 +193,25 @@ void listAssets(std::string_view tabName)
 	}
 }
 
+template <typename T>
+void listResources(std::string_view tabName)
+{
+	if (ImGui::BeginTabItem(tabName.data()))
+	{
+		auto resources = resources::loaded<T>();
+		static s32 selected = -1;
+		for (std::size_t i = 0; i < resources.size(); ++i)
+		{
+			auto resource = resources.at(i);
+			if (ImGui::Selectable(resource.info().id.generic_string().data(), selected == (s32)i))
+			{
+				selected = (s32)i;
+			}
+		}
+		ImGui::EndTabItem();
+	}
+}
+
 void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 {
 	static bool s_bAssets = false;
@@ -208,9 +228,9 @@ void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 				listAssets<gfx::Mesh>("Meshes");
 				listAssets<gfx::Font>("Fonts");
 				listAssets<gfx::Texture>("Textures");
+				listResources<resources::Sampler>("Samplers");
 				listAssets<gfx::Material>("Materials");
-				listAssets<gfx::Sampler>("Samplers");
-				listAssets<gfx::Shader>("Shaders");
+				listResources<resources::Shader>("Shaders");
 				ImGui::EndTabBar();
 			}
 		}
@@ -256,6 +276,48 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 					if (ImGui::Selectable(pAsset->m_id.generic_string().data()))
 					{
 						onSelected(pAsset);
+						out_bSelect = false;
+					}
+				}
+			}
+		}
+		ImGui::End();
+	}
+}
+
+template <typename T, typename F, typename F2>
+void inspectResource(T resource, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter,
+					 glm::vec2 const& pos, glm::vec2 const& size, bool bNone = true)
+{
+	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
+											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+	auto const id = resources::info(resource).id;
+	ImGui::TreeNodeEx(id.empty() ? "[None]" : id.generic_string().data(), flags);
+	if (ImGui::IsItemClicked() || out_bSelect)
+	{
+		out_bSelect = true;
+		for (auto pBool : unselect)
+		{
+			*pBool = false;
+		}
+		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
+		{
+			if (bNone && ImGui::Selectable("[None]"))
+			{
+				onSelected(nullptr);
+				out_bSelect = false;
+			}
+			auto resources = resources::loaded<T>();
+			for (auto resource : resources)
+			{
+				if (!filter || filter(resource))
+				{
+					if (ImGui::Selectable(resources::info(resource).id.generic_string().data()))
+					{
+						onSelected(resource);
 						out_bSelect = false;
 					}
 				}

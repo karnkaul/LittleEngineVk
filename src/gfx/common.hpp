@@ -19,7 +19,6 @@
 #include <core/std_types.hpp>
 #include <engine/window/common.hpp>
 #include <engine/gfx/pipeline.hpp>
-#include <engine/gfx/shader.hpp>
 #include <engine/gfx/texture.hpp>
 
 #if defined(LEVK_DEBUG)
@@ -198,39 +197,6 @@ inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorSurfaceLostKHR, "SurfaceLost"},
 	{vk::Result::eErrorFullScreenExclusiveModeLostEXT, "FullScreenExclusiveModeLost"},
 	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
-};
-
-struct ShaderImpl final
-{
-	static constexpr std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
-																										vk::ShaderStageFlagBits::eFragment};
-
-	std::array<vk::ShaderModule, std::size_t(Shader::Type::eCOUNT_)> shaders;
-
-	inline vk::ShaderModule module(Shader::Type type) const
-	{
-		ASSERT(shaders.at((std::size_t)type) != vk::ShaderModule(), "Module not present in Shader!");
-		return shaders.at((std::size_t)type);
-	}
-
-	inline std::map<Shader::Type, vk::ShaderModule> modules() const
-	{
-		std::map<Shader::Type, vk::ShaderModule> ret;
-		for (std::size_t idx = 0; idx < (std::size_t)Shader::Type::eCOUNT_; ++idx)
-		{
-			auto const& module = shaders.at(idx);
-			if (module != vk::ShaderModule())
-			{
-				ret[(Shader::Type)idx] = module;
-			}
-		}
-		return ret;
-	}
-};
-
-struct SamplerImpl final
-{
-	vk::Sampler sampler;
 };
 
 struct TextureImpl final

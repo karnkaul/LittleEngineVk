@@ -5,12 +5,10 @@
 #include <core/flags.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/gfx/geometry.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le::gfx
 {
-class Texture;
-class Cubemap;
-
 struct Albedo final
 {
 	Colour ambient = colours::white;
@@ -36,9 +34,8 @@ public:
 	struct Inst final
 	{
 		Material* pMaterial = nullptr;
-		Texture* pDiffuse = nullptr;
-		Texture* pSpecular = nullptr;
-		Cubemap* pCubemap = nullptr;
+		resources::Texture diffuse;
+		resources::Texture specular;
 		Colour tint = colours::white;
 		Colour dropColour = colours::black;
 		Flags flags;

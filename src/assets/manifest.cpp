@@ -277,19 +277,19 @@ AssetList AssetManifest::parse()
 		bool const bPresent = texture.get<bool>("optional") ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
 		if (!id.empty() && bPresent)
 		{
-			if (Resources::inst().get<gfx::Texture>(id))
+			if (resources::findTexture(id).bResult)
 			{
 				all.textures.push_back(id);
 				m_loaded.textures.push_back(std::move(id));
 			}
 			else
 			{
-				AssetData<gfx::Texture> data;
+				ResourceData<resources::Texture> data;
 				data.id = id;
-				data.info.mode = engine::colourSpace();
-				data.info.samplerID = m_manifest.get("sampler");
-				data.info.pReader = m_pReader;
-				data.info.ids = {id};
+				// TODO: Uncomment
+				// data.createInfo.info.mode = engine::colourSpace();
+				data.createInfo.samplerID = m_manifest.get("sampler");
+				data.createInfo.ids = {id};
 				all.textures.push_back(id);
 				m_toLoad.textures.push_back(std::move(data));
 				m_data.idCount.fetch_add(1);
@@ -305,25 +305,24 @@ AssetList AssetManifest::parse()
 		bool bMissing = false;
 		if (!assetID.empty())
 		{
-			if (Resources::inst().get<gfx::Texture>(assetID))
+			if (resources::findTexture(assetID).bResult)
 			{
 				all.cubemaps.push_back(assetID);
 				m_loaded.cubemaps.push_back(std::move(assetID));
 			}
 			else
 			{
-				AssetData<gfx::Texture> data;
+				ResourceData<resources::Texture> data;
 				data.id = assetID;
-				data.info.mode = engine::colourSpace();
-				data.info.type = gfx::Texture::Type::eCube;
-				data.info.samplerID = m_manifest.get("sampler");
-				data.info.pReader = m_pReader;
+				data.createInfo.info.mode = engine::colourSpace();
+				data.createInfo.info.type = resources::Texture::Type::eCube;
+				data.createInfo.samplerID = m_manifest.get("sampler");
 				for (auto const& id : resourceIDs)
 				{
 					bool const bPresent = bOptional ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
 					if (bPresent)
 					{
-						data.info.ids.push_back(id);
+						data.createInfo.ids.push_back(id);
 					}
 					else
 					{
@@ -380,9 +379,15 @@ void AssetManifest::unload(const AssetList& list)
 			Resources::inst().unload(id);
 		}
 	};
-	unload(list.shaders);
-	unload(list.textures);
-	unload(list.cubemaps);
+	auto unload2 = [](std::vector<stdfs::path> const& ids) {
+		for (auto const& id : ids)
+		{
+			resources::unload(id);
+		}
+	};
+	unload2(list.shaders);
+	unload2(list.textures);
+	unload2(list.cubemaps);
 	unload(list.materials);
 	unload(list.meshes);
 	unload(list.models);
@@ -409,8 +414,8 @@ void AssetManifest::loadAssets()
 	m_status = Status::eLoadingAssets;
 	m_semaphore = Resources::inst().setBusy();
 	addJobs(loadTResources(m_toLoad.shaders, m_loaded.shaders, m_loading2, m_mutex, "Manifest-1:Shaders"));
-	addJobs(loadTAssets(m_toLoad.textures, m_loaded.textures, m_loading, m_mutex, "Manifest-1:Textures"));
-	addJobs(loadTAssets(m_toLoad.cubemaps, m_loaded.cubemaps, m_loading, m_mutex, "Manifest-1:Cubemaps"));
+	addJobs(loadTResources(m_toLoad.textures, m_loaded.textures, m_loading2, m_mutex, "Manifest-1:Textures"));
+	addJobs(loadTResources(m_toLoad.cubemaps, m_loaded.cubemaps, m_loading2, m_mutex, "Manifest-1:Cubemaps"));
 	addJobs(loadTAssets(m_toLoad.models, m_loaded.models, m_loading, m_mutex, "Manifest-1:Models"));
 }
 

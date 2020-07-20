@@ -5,6 +5,7 @@
 #include <core/gdata.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/gfx/mesh.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le::gfx
 {
@@ -68,10 +69,11 @@ private:
 	std::array<Glyph, maxVal<u8>()> m_glyphs;
 	Material::Inst m_material;
 	Glyph m_blankGlyph;
-	std::unique_ptr<class Texture> m_uSheet;
+	resources::Texture m_sheet;
 
 public:
 	Font(stdfs::path id, Info info);
+	~Font();
 
 public:
 	Geometry generate(Text const& text) const;

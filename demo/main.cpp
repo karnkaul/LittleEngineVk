@@ -21,7 +21,7 @@
 #include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
 #include <engine/gfx/renderer.hpp>
-#include <engine/gfx/texture.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 
 using namespace le;
@@ -167,14 +167,11 @@ bool DemoWorld::start()
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
 	auto pTexturedLit = Resources::inst().create<gfx::Material>("materials/textured", texturedInfo);
 
-	gfx::Texture::Info textureInfo;
-	textureInfo.pReader = g_uReader.get();
 	m_res.pQuad->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
 	m_res.pQuad->m_material.pMaterial = pTexturedLit;
 	m_res.pSphere->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
 	m_res.pSphere->m_material.pMaterial = pTexturedLit;
 	m_res.pSphere->m_material.tint.a = 0xcc;
-	m_res.pQuad->m_material.pSpecular = nullptr;
 	m_res.pQuad->m_material.flags.reset(gfx::Material::Flag::eOpaque);
 
 	m_data.dirLight0.diffuse = Colour(0xffffffff);
@@ -208,8 +205,6 @@ bool DemoWorld::start()
 	textInfo.id = "tris";
 	m_registry.addComponent<UIComponent>(m_data.eui2)->setText(textInfo);
 	m_registry.addComponent<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).m_material.tint = colours::cyan;
-
-	m_registry.addComponent<TAsset<gfx::Texture>>(m_data.skybox)->id = m_data.skyboxID;
 
 	if (!m_uSceneCam)
 	{
@@ -384,9 +379,9 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.container2);
-	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>(m_res.container2_specular);
-	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.awesomeface);
+	m_res.pSphere->m_material.diffuse = resources::findTexture(m_res.container2).payload;
+	m_res.pSphere->m_material.specular = resources::findTexture(m_res.container2_specular).payload;
+	m_res.pQuad->m_material.diffuse = resources::findTexture(m_res.awesomeface).payload;
 }
 } // namespace
 

@@ -19,7 +19,6 @@
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
-#include <engine/gfx/texture.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
 #include <resources/resources_impl.hpp>
@@ -227,7 +226,7 @@ void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 				listAssets<gfx::Model>("Models");
 				listAssets<gfx::Mesh>("Meshes");
 				listAssets<gfx::Font>("Fonts");
-				listAssets<gfx::Texture>("Textures");
+				listResources<resources::Texture>("Textures");
 				listResources<resources::Sampler>("Samplers");
 				listAssets<gfx::Material>("Materials");
 				listResources<resources::Shader>("Shaders");
@@ -307,7 +306,7 @@ void inspectResource(T resource, std::string_view selector, bool& out_bSelect, s
 		{
 			if (bNone && ImGui::Selectable("[None]"))
 			{
-				onSelected(nullptr);
+				onSelected({});
 				out_bSelect = false;
 			}
 			auto resources = resources::loaded<T>();
@@ -334,10 +333,10 @@ void inspectMaterial(gfx::Mesh& out_mesh, std::size_t idx, glm::vec2 const& pos,
 		inspectAsset<gfx::Material>(
 			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
 			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, size, false);
-		inspectAsset<gfx::Texture>(
-			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; }, [](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; },
-			pos, size);
+		inspectResource<resources::Texture>(
+			out_mesh.m_material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			[&out_mesh](resources::Texture tex) { out_mesh.m_material.diffuse.guid = tex.guid; },
+			[](resources::Texture& tex) { return resources::info(tex).type == resources::Texture::Type::e2D; }, pos, size);
 		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
 		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;

@@ -7,6 +7,7 @@
 #include <core/utils.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/mesh.hpp>
+#include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/pipeline_impl.hpp>
@@ -22,22 +23,22 @@ namespace
 {
 struct TexSet final
 {
-	std::unordered_map<Texture const*, u32> idxMap;
-	std::deque<Texture const*> textures;
+	std::unordered_map<resources::GUID, u32> idxMap;
+	std::deque<resources::Texture> textures;
 
-	u32 add(Texture const* pTex);
+	u32 add(resources::Texture tex);
 	u32 total() const;
 };
 
-u32 TexSet::add(Texture const* pTex)
+u32 TexSet::add(resources::Texture tex)
 {
-	if (auto search = idxMap.find(pTex); search != idxMap.end())
+	if (auto search = idxMap.find(tex.guid); search != idxMap.end())
 	{
 		return search->second;
 	}
 	u32 const idx = (u32)textures.size();
-	idxMap[pTex] = idx;
-	textures.push_back(pTex);
+	idxMap[tex.guid] = idx;
+	textures.push_back(tex);
 	return idx;
 }
 
@@ -388,13 +389,15 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	rd::StorageBuffers ssbos;
 	TexSet diffuse, specular;
 	PCDeq push;
-	auto const pWhite = Resources::inst().get<Texture>("textures/white");
-	auto const pBlack = Resources::inst().get<Texture>("textures/black");
-	diffuse.add(pWhite);
-	specular.add(pBlack);
+	auto const [white, bWhite] = resources::findTexture("textures/white");
+	auto const [black, bBlack] = resources::findTexture("textures/black");
+	auto const [blank, bBlank] = resources::findTexture("cubemaps/blank");
+	ASSERT(bWhite && bBlack && bBlank, "Default textures missing!");
+	diffuse.add(white);
+	specular.add(black);
 	bool bSkybox = false;
-	auto const* pCubemap = Resources::inst().get<Texture>("cubemaps/blank");
-	if (out_scene.view.skybox.pCubemap)
+	resources::Texture cubemap = blank;
+	if (out_scene.view.skybox.cubemap.status() == resources::Status::eReady)
 	{
 		if (!out_scene.view.skybox.pPipeline)
 		{
@@ -404,11 +407,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 		auto pTransform = &Transform::s_identity;
 		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
 		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{pMesh}, pTransform, out_scene.view.skybox.pPipeline}}});
-		if (out_scene.view.skybox.pCubemap)
-		{
-			ASSERT(out_scene.view.skybox.pCubemap->isReady(), "Skybox Cubemap is not ready!");
-			pCubemap = out_scene.view.skybox.pCubemap;
-		}
+		cubemap = out_scene.view.skybox.cubemap;
 		bSkybox = true;
 	}
 	u32 objectID = 0;
@@ -452,20 +451,18 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
-					if (pMesh->m_material.pDiffuse)
+					if (pMesh->m_material.diffuse.status() == resources::Status::eReady)
 					{
-						ASSERT(!pMesh->m_material.pDiffuse->isBusy(), "Texture busy!");
-						pc.diffuseID = diffuse.add(pMesh->m_material.pDiffuse);
+						pc.diffuseID = diffuse.add(pMesh->m_material.diffuse);
 					}
 					else
 					{
 						ssbos.tints.ssbo.at(objectID) = mg;
 						pc.diffuseID = 0;
 					}
-					if (pMesh->m_material.pSpecular)
+					if (pMesh->m_material.specular.status() == resources::Status::eReady)
 					{
-						ASSERT(!pMesh->m_material.pSpecular->isBusy(), "Texture busy!");
-						pc.specularID = specular.add(pMesh->m_material.pSpecular);
+						pc.specularID = specular.add(pMesh->m_material.specular);
 					}
 				}
 				push.back().push_back(pc);
@@ -475,16 +472,16 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	}
 	for (u32 idx = diffuse.total(); idx < m_texCount.diffuse; ++idx)
 	{
-		diffuse.textures.push_back(pWhite);
+		diffuse.textures.push_back(white);
 	}
 	for (u32 idx = specular.total(); idx < m_texCount.specular; ++idx)
 	{
-		specular.textures.push_back(pBlack);
+		specular.textures.push_back(black);
 	}
 	m_texCount = {diffuse.total(), specular.total()};
 	rd::View view(out_scene.view, (u32)out_scene.dirLights.size());
 	std::copy(out_scene.dirLights.begin(), out_scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
-	frame.set.writeCubemap(*pCubemap);
+	frame.set.writeCubemap(cubemap);
 	frame.set.writeDiffuse(diffuse.textures);
 	frame.set.writeSpecular(specular.textures);
 	frame.set.writeSSBOs(ssbos);

@@ -2,7 +2,7 @@
 #include <core/utils.hpp>
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/font.hpp>
-#include <engine/gfx/texture.hpp>
+#include <engine/resources/resources.hpp>
 
 namespace le::gfx
 {
@@ -94,7 +94,7 @@ std::string const Font::s_tName = utils::tName<Font>();
 
 Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 {
-	Texture::Info sheetInfo;
+	resources::Texture::CreateInfo sheetInfo;
 	stdfs::path texID = m_id;
 	texID += "_sheet";
 	if (info.samplerID.empty())
@@ -103,13 +103,12 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 	}
 	sheetInfo.samplerID = info.samplerID;
 	sheetInfo.bytes = {std::move(info.image)};
-	m_uSheet = std::make_unique<Texture>(std::move(texID), std::move(sheetInfo));
-	if (m_uSheet->currentStatus() == Status::eError)
+	m_sheet = resources::load(texID, std::move(sheetInfo));
+	if (m_sheet.status() == resources::Status::eError)
 	{
 		m_status = Status::eError;
 		return;
 	}
-	m_uSheet->setup();
 	glm::ivec2 maxCell = glm::vec2(0);
 	s32 maxXAdv = 0;
 	for (auto const& glyph : info.glyphs)
@@ -135,7 +134,7 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 		m_material.pMaterial = Resources::inst().get<Material>("materials/default");
 	}
 	ASSERT(m_material.pMaterial, "Material is null!");
-	m_material.pDiffuse = m_uSheet.get();
+	m_material.diffuse = m_sheet;
 	m_material.flags.set({Material::Flag::eTextured, Material::Flag::eUI, Material::Flag::eDropColour});
 	m_material.flags.reset({Material::Flag::eOpaque, Material::Flag::eLit});
 	m_status = Status::eLoading;
@@ -143,7 +142,7 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 
 Geometry Font::generate(Text const& text) const
 {
-	if (text.text.empty() || !m_uSheet || !isReady())
+	if (text.text.empty() || !isReady())
 	{
 		return {};
 	}
@@ -198,7 +197,7 @@ Geometry Font::generate(Text const& text) const
 	ret.reserve(4 * quadCount, 6 * quadCount);
 	auto const normal = glm::vec3(0.0f);
 	auto const colour = glm::vec3(1.0f);
-	auto const texSize = m_uSheet->m_size;
+	auto const texSize = m_sheet.info().size;
 	for (auto const c : text.text)
 	{
 		if (c == '\n')
@@ -226,14 +225,14 @@ Geometry Font::generate(Text const& text) const
 	return ret;
 }
 
+Font::~Font()
+{
+	resources::unload(m_sheet);
+}
+
 Asset::Status Font::update()
 {
-	if (!m_uSheet)
-	{
-		m_status = Status::eMoved;
-		return m_status;
-	}
-	m_status = m_uSheet->update();
+	m_status = (Status)m_sheet.status();
 	return m_status;
 }
 

@@ -7,6 +7,7 @@
 #include <gfx/common.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/vram.hpp>
+#include <resources/resources_impl.hpp>
 
 namespace le::gfx
 {

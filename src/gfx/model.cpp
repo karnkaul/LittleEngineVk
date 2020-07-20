@@ -10,7 +10,9 @@
 #include <core/log.hpp>
 #include <core/utils.hpp>
 #include <engine/gfx/model.hpp>
+#include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
+#include <resources/resources_impl.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_PROFILE_MODEL_LOADS)
@@ -396,13 +398,12 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	std::copy(info.preloaded.begin(), info.preloaded.end(), std::back_inserter(m_meshes));
 	for (auto& texture : info.textures)
 	{
-		Texture::Info texInfo;
+		resources::Texture::CreateInfo texInfo;
 		texInfo.bytes = {std::move(texture.bytes)};
 		texInfo.samplerID = std::move(texture.samplerID);
-		texInfo.mode = info.mode;
-		Texture newTex(texture.id, std::move(texInfo));
-		newTex.setup();
-		m_loadedTextures.emplace(texture.hash, std::move(newTex));
+		texInfo.info.mode = info.mode;
+		auto newTex = resources::load(texture.id, std::move(texInfo));
+		m_textures.emplace(texture.hash, std::move(newTex));
 	}
 	for (auto& material : info.materials)
 	{
@@ -420,17 +421,17 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 		{
 			std::size_t idx = material.diffuseIndices.front();
 			ASSERT(idx < info.textures.size(), "Invalid texture index!");
-			auto search = m_loadedTextures.find(info.textures.at(idx).hash);
-			ASSERT(search != m_loadedTextures.end(), "Invalid texture index");
-			newInst.pDiffuse = &search->second;
+			auto search = m_textures.find(info.textures.at(idx).hash);
+			ASSERT(search != m_textures.end(), "Invalid texture index");
+			newInst.diffuse = search->second;
 		}
 		if (!material.specularIndices.empty())
 		{
 			std::size_t idx = material.specularIndices.front();
 			ASSERT(idx < info.textures.size(), "Invalid texture index!");
-			auto search = m_loadedTextures.find(info.textures.at(idx).hash);
-			ASSERT(search != m_loadedTextures.end(), "Invalid texture index!");
-			newInst.pSpecular = &search->second;
+			auto search = m_textures.find(info.textures.at(idx).hash);
+			ASSERT(search != m_textures.end(), "Invalid texture index!");
+			newInst.specular = search->second;
 		}
 		newInst.flags = material.flags;
 		m_materials.push_back(std::move(newInst));
@@ -454,6 +455,14 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	m_status = Status::eLoading;
 }
 
+Model::~Model()
+{
+	for (auto const& [_, texture] : m_textures)
+	{
+		resources::unload(texture);
+	}
+}
+
 std::vector<Mesh const*> Model::meshes() const
 {
 	return m_status == Status::eReady ? m_meshes : std::vector<Mesh const*>();
@@ -475,11 +484,10 @@ Asset::Status Model::update()
 	}
 	std::for_each(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto& mesh) { mesh.update(); });
 	std::for_each(m_loadedMaterials.begin(), m_loadedMaterials.end(), [](auto& kvp) { kvp.second.update(); });
-	std::for_each(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto& kvp) { kvp.second.update(); });
 	if (m_status == Status::eLoading)
 	{
 		bool bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return !mesh.isBusy(); });
-		bool bTextures = std::all_of(m_loadedTextures.begin(), m_loadedTextures.end(), [](auto const& kvp) { return !kvp.second.isBusy(); });
+		bool bTextures = std::all_of(m_textures.begin(), m_textures.end(), [](auto const& kvp) { return kvp.second.status() == resources::Status::eReady; });
 		if (bMeshes && bTextures)
 		{
 			m_status = Status::eReady;

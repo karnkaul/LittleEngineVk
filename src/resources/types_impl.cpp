@@ -293,6 +293,11 @@ Texture::Info const& Texture::info() const
 	return resources::info(*this);
 }
 
+Status Texture::status() const
+{
+	return resources::status(*this);
+}
+
 bool Sampler::Impl::make(CreateInfo& out_info)
 {
 	vk::SamplerCreateInfo samplerInfo;
@@ -415,17 +420,22 @@ bool Texture::Impl::make(CreateInfo& out_info)
 		for (auto const& id : out_info.ids)
 		{
 			imgIDs.push_back(id);
-			auto onModified = [this, idx](Monitor::File const* pFile) -> bool {
-				auto const idStr = this->id.generic_string();
-				auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
-				if (bResult)
+			auto onModified = [guid = this->guid, idx](Monitor::File const* pFile) -> bool {
+				Texture tex;
+				tex.guid = guid;
+				if (auto pImpl = resources::impl(tex))
 				{
-					if (bStbiRaw)
+					auto const idStr = resources::info(tex).id.generic_string();
+					auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
+					if (bResult)
 					{
-						stbi_image_free((void*)(raws.at(idx).bytes.pData));
+						if (pImpl->bStbiRaw)
+						{
+							stbi_image_free((void*)(pImpl->raws.at(idx).bytes.pData));
+						}
+						pImpl->raws.at(idx) = std::move(raw);
+						return true;
 					}
-					raws.at(idx) = std::move(raw);
-					return true;
 				}
 				return false;
 			};
@@ -490,7 +500,9 @@ bool Texture::Impl::checkReload()
 		if (monitor.update())
 		{
 			auto const idStr = id.generic_string();
-			auto const& info = resources::info(resources::findTexture(guid).payload);
+			Texture texture;
+			texture.guid = guid;
+			auto const& info = resources::info(texture);
 			std::vector<Span<u8>> views;
 			for (auto const& raw : raws)
 			{

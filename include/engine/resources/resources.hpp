@@ -35,6 +35,8 @@ Status status(Texture texture);
 bool unload(Texture texture);
 bool unloadTexture(Hash id);
 
+bool unload(Hash id);
+
 template <typename T>
 T load(stdfs::path const& id, typename T::CreateInfo createInfo)
 {

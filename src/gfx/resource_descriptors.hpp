@@ -7,6 +7,7 @@
 #include <engine/gfx/mesh.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/renderer.hpp>
+#include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/vram.hpp>
@@ -16,8 +17,6 @@
 
 namespace le::gfx
 {
-class Texture;
-
 namespace rd
 {
 namespace vbo
@@ -154,7 +153,7 @@ struct Writer final
 	u32 binding = 0;
 
 	void write(vk::DescriptorSet set, Buffer const& buffer) const;
-	void write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const;
+	void write(vk::DescriptorSet set, std::vector<resources::Texture> const& textures) const;
 };
 
 template <typename T>
@@ -182,12 +181,12 @@ private:
 };
 
 template <>
-class Descriptor<ImageSamplers> final
+class Descriptor<ImageSamplers>
 {
 public:
 	Writer m_writer;
 
-	void writeArray(std::vector<TextureImpl const*> const& textures, vk::DescriptorSet set) const;
+	void writeArray(std::vector<resources::Texture> const& textures, vk::DescriptorSet set) const;
 };
 
 struct SamplerCounts final
@@ -227,9 +226,9 @@ public:
 public:
 	void writeView(View const& view);
 	void writeSSBOs(StorageBuffers const& ssbos);
-	void writeDiffuse(std::deque<Texture const*> const& diffuse);
-	void writeSpecular(std::deque<Texture const*> const& specular);
-	void writeCubemap(Texture const& cubemap);
+	void writeDiffuse(std::deque<resources::Texture> const& diffuse);
+	void writeSpecular(std::deque<resources::Texture> const& specular);
+	void writeCubemap(resources::Texture cubemap);
 };
 
 struct SetLayouts final

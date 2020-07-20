@@ -6,7 +6,6 @@
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/renderer.hpp>
-#include <engine/gfx/texture.hpp>
 
 namespace le
 {

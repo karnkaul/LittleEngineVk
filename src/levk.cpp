@@ -247,16 +247,16 @@ io::Reader const& engine::reader()
 	return *g_app.pReader;
 }
 
-gfx::Texture::Space engine::colourSpace()
+resources::Texture::Space engine::colourSpace()
 {
 	if (g_app.uWindow)
 	{
 		auto const pRenderer = WindowImpl::rendererImpl(g_app.uWindow->id());
 		if (pRenderer && pRenderer->colourSpace() == ColourSpace::eSRGBNonLinear)
 		{
-			return gfx::Texture::Space::eSRGBNonLinear;
+			return resources::Texture::Space::eSRGBNonLinear;
 		}
 	}
-	return gfx::Texture::Space::eRGBLinear;
+	return resources::Texture::Space::eRGBLinear;
 }
 } // namespace le

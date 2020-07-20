@@ -2,6 +2,7 @@
 #include <engine/assets/resources.hpp>
 #include <engine/gfx/model.hpp>
 #include <engine/game/scene_builder.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/levk.hpp>
 #include <levk_impl.hpp>
 
@@ -105,10 +106,10 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
-		auto pCubemap = Resources::inst().get<gfx::Texture>(m_info.skyboxCubemapID);
-		if (pCubemap && pCubemap->isReady())
+		auto [cubemap, bCubemap] = resources::findTexture(m_info.skyboxCubemapID);
+		if (bCubemap && cubemap.status() == resources::Status::eReady)
 		{
-			scene.view.skybox.pCubemap = pCubemap;
+			scene.view.skybox.cubemap = cubemap;
 		}
 	}
 	gfx::Renderer::Batch batch3D;

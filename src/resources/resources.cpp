@@ -367,6 +367,11 @@ bool resources::unloadTexture(Hash id)
 	return g_bInit ? unload(g_textures, id) : false;
 }
 
+bool resources::unload(Hash id)
+{
+	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) : false;
+}
+
 resources::Shader::Impl* resources::impl(Shader shader)
 {
 	return g_bInit ? findImpl(g_shaders, shader.guid) : nullptr;

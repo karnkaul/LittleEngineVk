@@ -1,8 +1,9 @@
 #pragma once
 #include <memory>
 #include <glm/vec3.hpp>
-#include <engine/gfx/texture.hpp>
+#include <core/reader.hpp>
 #include <engine/window/window.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le::engine
 {
@@ -15,7 +16,7 @@ struct App
 inline glm::vec3 g_uiSpace = {};
 
 io::Reader const& reader();
-gfx::Texture::Space colourSpace();
+resources::Texture::Space colourSpace();
 Window* window();
 
 void update();

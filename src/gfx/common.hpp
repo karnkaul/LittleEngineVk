@@ -19,7 +19,6 @@
 #include <core/std_types.hpp>
 #include <engine/window/common.hpp>
 #include <engine/gfx/pipeline.hpp>
-#include <engine/gfx/texture.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_VKRESOURCE_NAMES)
@@ -197,24 +196,6 @@ inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorSurfaceLostKHR, "SurfaceLost"},
 	{vk::Result::eErrorFullScreenExclusiveModeLostEXT, "FullScreenExclusiveModeLost"},
 	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
-};
-
-struct TextureImpl final
-{
-	Image active;
-	std::vector<Texture::Raw> raws;
-	vk::ImageView imageView;
-	vk::Sampler sampler;
-	vk::ImageViewType type;
-	vk::Format colourSpace;
-	std::future<void> copied;
-	bool bStbiRaw = false;
-
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	Image standby;
-	std::vector<stdfs::path> imgIDs;
-	io::FileReader const* pReader = nullptr;
-#endif
 };
 
 struct MeshImpl final

@@ -10,7 +10,6 @@
 #include <engine/gfx/font.hpp>
 #include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
-#include <engine/gfx/texture.hpp>
 #include <engine/resources/resources.hpp>
 
 namespace le
@@ -45,8 +44,8 @@ public:
 	struct Info final
 	{
 		std::vector<ResourceData<resources::Shader>> shaders;
-		std::vector<AssetData<gfx::Texture>> textures;
-		std::vector<AssetData<gfx::Texture>> cubemaps;
+		std::vector<ResourceData<resources::Texture>> textures;
+		std::vector<ResourceData<resources::Texture>> cubemaps;
 		std::vector<AssetData<gfx::Material>> materials;
 		std::vector<AssetData<gfx::Mesh>> meshes;
 		std::vector<AssetData<gfx::Model>> models;

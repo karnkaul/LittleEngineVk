@@ -43,10 +43,10 @@ public:
 
 	struct Info final
 	{
-		std::vector<ResourceData<resources::Shader>> shaders;
-		std::vector<ResourceData<resources::Texture>> textures;
-		std::vector<ResourceData<resources::Texture>> cubemaps;
-		std::vector<AssetData<gfx::Material>> materials;
+		std::vector<ResourceData<res::Shader>> shaders;
+		std::vector<ResourceData<res::Texture>> textures;
+		std::vector<ResourceData<res::Texture>> cubemaps;
+		std::vector<ResourceData<res::Material>> materials;
 		std::vector<AssetData<gfx::Mesh>> meshes;
 		std::vector<AssetData<gfx::Model>> models;
 		std::vector<AssetData<gfx::Font>> fonts;
@@ -76,7 +76,7 @@ protected:
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<Asset*> m_loading;
-	std::vector<resources::GUID> m_loading2;
+	std::vector<res::GUID> m_loading2;
 	Lockable<std::mutex> m_mutex;
 	Resources::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;

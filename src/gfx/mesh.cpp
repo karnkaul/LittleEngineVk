@@ -3,7 +3,7 @@
 #include <core/log.hpp>
 #include <core/utils.hpp>
 #include <engine/gfx/mesh.hpp>
-#include <engine/assets/resources.hpp>
+#include <engine/resources/resources.hpp>
 #include <gfx/common.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/vram.hpp>
@@ -34,25 +34,18 @@ Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsageFlag
 };
 } // namespace
 
-Material::Material(stdfs::path id, Info info) : Asset(std::move(id))
-{
-	m_albedo = info.albedo;
-	m_status = Status::eReady;
-}
-
-Asset::Status Material::update()
-{
-	return m_status;
-}
-
 Mesh::Mesh(stdfs::path id, Info info) : Asset(std::move(id)), m_type(info.type)
 {
 	auto const idStr = m_id.generic_string();
 	m_uImpl = std::make_unique<MeshImpl>();
 	m_material = info.material;
-	if (!m_material.pMaterial)
+	if (m_material.material.status() != res::Status::eReady)
 	{
-		m_material.pMaterial = Resources::inst().get<Material>("materials/default");
+		auto [material, bMaterial] = res::findMaterial("materials/default");
+		if (bMaterial)
+		{
+			m_material.material = material;
+		}
 	}
 	updateGeometry(std::move(info.geometry));
 }

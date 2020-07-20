@@ -1,9 +1,12 @@
 #pragma once
 #include <vector>
 #include <glm/vec2.hpp>
+#include <core/colour.hpp>
+#include <core/flags.hpp>
 #include <core/hash.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
+#include <engine/gfx/geometry.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_RESOURCES_HOT_RELOAD)
@@ -11,7 +14,7 @@
 #endif
 #endif
 
-namespace le::resources
+namespace le::res
 {
 using GUID = TZero<u64>;
 
@@ -75,6 +78,32 @@ struct Texture final : Resource
 	Status status() const;
 };
 
+struct Material final : Resource
+{
+	enum class Flag : s8
+	{
+		eTextured,
+		eLit,
+		eOpaque,
+		eDropColour,
+		eUI,
+		eSkybox,
+		eCOUNT_
+	};
+	using Flags = TFlags<Flag>;
+
+	struct Inst;
+	struct Info;
+	struct CreateInfo;
+
+	struct Impl;
+
+	static std::string const s_tName;
+
+	Info const& info() const;
+	Status status() const;
+};
+
 enum class Shader::Type : s8
 {
 	eVertex,
@@ -87,7 +116,6 @@ struct Shader::Info
 };
 struct Shader::CreateInfo
 {
-	Info info;
 	EnumArray<bytearray, Type> codeMap;
 	EnumArray<stdfs::path, Type> codeIDMap;
 };
@@ -115,7 +143,10 @@ struct Sampler::Info
 };
 struct Sampler::CreateInfo
 {
-	Info info;
+	Filter min = Filter::eLinear;
+	Filter mag = Filter::eLinear;
+	Filter mip = Filter::eLinear;
+	Mode mode = Mode::eRepeat;
 };
 
 enum class Texture::Space : s8
@@ -139,8 +170,8 @@ struct Texture::Info
 {
 	stdfs::path id;
 	glm::ivec2 size = {};
-	Space mode = Space::eSRGBNonLinear;
-	Type type = Type::e2D;
+	Space mode;
+	Type type;
 	Sampler sampler;
 };
 struct Texture::CreateInfo
@@ -149,6 +180,28 @@ struct Texture::CreateInfo
 	std::vector<bytearray> bytes;
 	std::vector<Raw> raws;
 	stdfs::path samplerID;
-	Info info;
+	Space mode = Space::eSRGBNonLinear;
+	Type type = Type::e2D;
 };
-} // namespace le::resources
+
+struct Material::Inst
+{
+	Material material;
+	res::Texture diffuse;
+	res::Texture specular;
+	Colour tint = colours::white;
+	Colour dropColour = colours::black;
+	Flags flags;
+};
+struct Material::Info
+{
+	stdfs::path id;
+	gfx::Albedo albedo;
+	f32 shininess = 0.0f;
+};
+struct Material::CreateInfo
+{
+	gfx::Albedo albedo;
+	f32 shininess = 32.0f;
+};
+} // namespace le::res

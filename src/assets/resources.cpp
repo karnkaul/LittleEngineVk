@@ -6,6 +6,7 @@
 #include <engine/gfx/mesh.hpp>
 #include <engine/levk.hpp>
 #include <core/utils.hpp>
+#include <engine/resources/resources.hpp>
 
 namespace le
 {
@@ -39,9 +40,6 @@ bool Resources::init(io::Reader const& data)
 		auto semaphore = setBusy();
 		m_bActive.store(true);
 		{
-			create<gfx::Material>("materials/default", {});
-		}
-		{
 			gfx::Mesh::Info info;
 			info.geometry = gfx::createCube();
 			create<gfx::Mesh>("meshes/cube", std::move(info));
@@ -57,7 +55,11 @@ bool Resources::init(io::Reader const& data)
 				auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
 				ASSERT(bImg, "Default font not found!");
 				fontInfo.image = std::move(img);
-				fontInfo.material.pMaterial = get<gfx::Material>(fontInfo.materialID);
+				auto [material, bMaterial] = res::findMaterial(fontInfo.materialID);
+				if (bMaterial)
+				{
+					fontInfo.material.material = material;
+				}
 				create<gfx::Font>("fonts/default", std::move(fontInfo));
 			}
 			else

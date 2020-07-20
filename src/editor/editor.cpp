@@ -197,7 +197,7 @@ void listResources(std::string_view tabName)
 {
 	if (ImGui::BeginTabItem(tabName.data()))
 	{
-		auto resources = resources::loaded<T>();
+		auto resources = res::loaded<T>();
 		static s32 selected = -1;
 		for (std::size_t i = 0; i < resources.size(); ++i)
 		{
@@ -226,10 +226,10 @@ void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 				listAssets<gfx::Model>("Models");
 				listAssets<gfx::Mesh>("Meshes");
 				listAssets<gfx::Font>("Fonts");
-				listResources<resources::Texture>("Textures");
-				listResources<resources::Sampler>("Samplers");
-				listAssets<gfx::Material>("Materials");
-				listResources<resources::Shader>("Shaders");
+				listResources<res::Texture>("Textures");
+				listResources<res::Sampler>("Samplers");
+				listResources<res::Material>("Materials");
+				listResources<res::Shader>("Shaders");
 				ImGui::EndTabBar();
 			}
 		}
@@ -291,7 +291,7 @@ void inspectResource(T resource, std::string_view selector, bool& out_bSelect, s
 	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
 											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-	auto const id = resources::info(resource).id;
+	auto const id = res::info(resource).id;
 	ImGui::TreeNodeEx(id.empty() ? "[None]" : id.generic_string().data(), flags);
 	if (ImGui::IsItemClicked() || out_bSelect)
 	{
@@ -309,14 +309,15 @@ void inspectResource(T resource, std::string_view selector, bool& out_bSelect, s
 				onSelected({});
 				out_bSelect = false;
 			}
-			auto resources = resources::loaded<T>();
+			auto resources = res::loaded<T>();
 			for (auto resource : resources)
 			{
 				if (!filter || filter(resource))
 				{
-					if (ImGui::Selectable(resources::info(resource).id.generic_string().data()))
+					if (ImGui::Selectable(res::info(resource).id.generic_string().data()))
 					{
 						onSelected(resource);
+						LOG_I("[le::resources] initialised");
 						out_bSelect = false;
 					}
 				}
@@ -330,25 +331,25 @@ void inspectMaterial(gfx::Mesh& out_mesh, std::size_t idx, glm::vec2 const& pos,
 {
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
-		inspectAsset<gfx::Material>(
-			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
-			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, size, false);
-		inspectResource<resources::Texture>(
+		inspectResource<res::Material>(
+			out_mesh.m_material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			[&out_mesh](res::Material mat) { out_mesh.m_material.material = mat; }, &dummy<res::Material>, pos, size, false);
+		inspectResource<res::Texture>(
 			out_mesh.m_material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[&out_mesh](resources::Texture tex) { out_mesh.m_material.diffuse.guid = tex.guid; },
-			[](resources::Texture& tex) { return resources::info(tex).type == resources::Texture::Type::e2D; }, pos, size);
-		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
+			[&out_mesh](res::Texture tex) { out_mesh.m_material.diffuse.guid = tex.guid; },
+			[](res::Texture& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
+		bool bOut = out_mesh.m_material.flags[res::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eOpaque];
+		out_mesh.m_material.flags[res::Material::Flag::eDropColour] = bOut;
+		bOut = out_mesh.m_material.flags[res::Material::Flag::eOpaque];
 		ImGui::Checkbox("Opaque", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eOpaque] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eTextured];
+		out_mesh.m_material.flags[res::Material::Flag::eOpaque] = bOut;
+		bOut = out_mesh.m_material.flags[res::Material::Flag::eTextured];
 		ImGui::Checkbox("Textured", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eTextured] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eLit];
+		out_mesh.m_material.flags[res::Material::Flag::eTextured] = bOut;
+		bOut = out_mesh.m_material.flags[res::Material::Flag::eLit];
 		ImGui::Checkbox("Lit", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eLit] = bOut;
+		out_mesh.m_material.flags[res::Material::Flag::eLit] = bOut;
 		ImGui::TreePop();
 	}
 }

@@ -94,7 +94,7 @@ std::string const Font::s_tName = utils::tName<Font>();
 
 Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 {
-	resources::Texture::CreateInfo sheetInfo;
+	res::Texture::CreateInfo sheetInfo;
 	stdfs::path texID = m_id;
 	texID += "_sheet";
 	if (info.samplerID.empty())
@@ -103,8 +103,8 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 	}
 	sheetInfo.samplerID = info.samplerID;
 	sheetInfo.bytes = {std::move(info.image)};
-	m_sheet = resources::load(texID, std::move(sheetInfo));
-	if (m_sheet.status() == resources::Status::eError)
+	m_sheet = res::load(texID, std::move(sheetInfo));
+	if (m_sheet.status() == res::Status::eError)
 	{
 		m_status = Status::eError;
 		return;
@@ -129,14 +129,18 @@ Font::Font(stdfs::path id, Info info) : Asset(std::move(id))
 		m_blankGlyph.xAdv = maxXAdv;
 	}
 	m_material = info.material;
-	if (!m_material.pMaterial)
+	if (m_material.material.status() != res::Status::eReady)
 	{
-		m_material.pMaterial = Resources::inst().get<Material>("materials/default");
+		auto [material, bMaterial] = res::findMaterial("materials/default");
+		if (bMaterial)
+		{
+			m_material.material = material;
+		}
 	}
-	ASSERT(m_material.pMaterial, "Material is null!");
+	ASSERT(m_material.material.status() == res::Status::eReady, "Material is not ready!");
 	m_material.diffuse = m_sheet;
-	m_material.flags.set({Material::Flag::eTextured, Material::Flag::eUI, Material::Flag::eDropColour});
-	m_material.flags.reset({Material::Flag::eOpaque, Material::Flag::eLit});
+	m_material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eUI, res::Material::Flag::eDropColour});
+	m_material.flags.reset({res::Material::Flag::eOpaque, res::Material::Flag::eLit});
 	m_status = Status::eLoading;
 }
 
@@ -227,7 +231,7 @@ Geometry Font::generate(Text const& text) const
 
 Font::~Font()
 {
-	resources::unload(m_sheet);
+	res::unload(m_sheet);
 }
 
 Asset::Status Font::update()

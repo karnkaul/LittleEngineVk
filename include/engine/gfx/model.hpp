@@ -29,7 +29,7 @@ public:
 		std::vector<std::size_t> bumpIndices;
 		Albedo albedo;
 		f32 shininess = 32.0f;
-		Material::Flags flags;
+		res::Material::Flags flags;
 		std::size_t hash = 0;
 	};
 	struct MeshData final
@@ -49,7 +49,7 @@ public:
 		std::vector<MeshData> meshData;
 		std::vector<Mesh const*> preloaded;
 		Mesh::Type type = Mesh::Type::eStatic;
-		resources::Texture::Space mode = resources::Texture::Space::eSRGBNonLinear;
+		res::Texture::Space mode = res::Texture::Space::eSRGBNonLinear;
 		Colour tint = colours::white;
 		bool bDropColour = false;
 	};
@@ -74,10 +74,10 @@ public:
 
 protected:
 	std::vector<Mesh const*> m_meshes;
-	std::deque<Material::Inst> m_materials;
+	std::deque<res::Material::Inst> m_materials;
 	std::deque<Mesh> m_loadedMeshes;
-	std::unordered_map<std::size_t, Material> m_loadedMaterials;
-	std::unordered_map<std::size_t, resources::Texture> m_textures;
+	std::unordered_map<std::size_t, res::Material> m_loadedMaterials;
+	std::unordered_map<std::size_t, res::Texture> m_textures;
 
 public:
 	std::vector<Mesh const*> meshes() const;

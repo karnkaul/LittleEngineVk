@@ -196,7 +196,7 @@ std::size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_vi
 	Model::MatData mat;
 	mat.id = id;
 	mat.hash = hash;
-	mat.flags.set({Material::Flag::eLit, Material::Flag::eTextured, Material::Flag::eOpaque});
+	mat.flags.set({res::Material::Flag::eLit, res::Material::Flag::eTextured, res::Material::Flag::eOpaque});
 	switch (fromMat.illum)
 	{
 	default:
@@ -204,12 +204,12 @@ std::size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_vi
 	case 0:
 	case 1:
 	{
-		mat.flags.reset(Material::Flag::eLit);
+		mat.flags.reset(res::Material::Flag::eLit);
 		break;
 	}
 	case 4:
 	{
-		mat.flags.reset(Material::Flag::eOpaque);
+		mat.flags.reset(res::Material::Flag::eOpaque);
 		break;
 	}
 	}
@@ -222,11 +222,11 @@ std::size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_vi
 	}
 	if (fromMat.diffuse_texname.empty())
 	{
-		mat.flags.reset(Material::Flag::eTextured);
+		mat.flags.reset(res::Material::Flag::eTextured);
 	}
 	if (m_bDropColour)
 	{
-		mat.flags.set(Material::Flag::eDropColour);
+		mat.flags.set(res::Material::Flag::eDropColour);
 	}
 	if (!fromMat.diffuse_texname.empty())
 	{
@@ -398,25 +398,24 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	std::copy(info.preloaded.begin(), info.preloaded.end(), std::back_inserter(m_meshes));
 	for (auto& texture : info.textures)
 	{
-		resources::Texture::CreateInfo texInfo;
+		res::Texture::CreateInfo texInfo;
 		texInfo.bytes = {std::move(texture.bytes)};
 		texInfo.samplerID = std::move(texture.samplerID);
-		texInfo.info.mode = info.mode;
-		auto newTex = resources::load(texture.id, std::move(texInfo));
+		texInfo.mode = info.mode;
+		auto newTex = res::load(texture.id, std::move(texInfo));
 		m_textures.emplace(texture.hash, std::move(newTex));
 	}
 	for (auto& material : info.materials)
 	{
-		Material::Info matInfo;
+		res::Material::CreateInfo matInfo;
 		matInfo.albedo = material.albedo;
-		Material newMat(material.id, std::move(matInfo));
-		newMat.setup();
+		auto newMat = res::load(material.id, std::move(matInfo));
 		m_loadedMaterials.emplace(material.hash, std::move(newMat));
-		Material::Inst newInst;
+		res::Material::Inst newInst;
 		newInst.tint = info.tint;
 		auto search = m_loadedMaterials.find(material.hash);
 		ASSERT(search != m_loadedMaterials.end(), "Invalid material index!");
-		newInst.pMaterial = &search->second;
+		newInst.material = search->second;
 		if (!material.diffuseIndices.empty())
 		{
 			std::size_t idx = material.diffuseIndices.front();
@@ -459,7 +458,11 @@ Model::~Model()
 {
 	for (auto const& [_, texture] : m_textures)
 	{
-		resources::unload(texture);
+		res::unload(texture);
+	}
+	for (auto const& [_, material] : m_loadedMaterials)
+	{
+		res::unload(material);
 	}
 }
 
@@ -483,12 +486,13 @@ Asset::Status Model::update()
 		return m_status;
 	}
 	std::for_each(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto& mesh) { mesh.update(); });
-	std::for_each(m_loadedMaterials.begin(), m_loadedMaterials.end(), [](auto& kvp) { kvp.second.update(); });
 	if (m_status == Status::eLoading)
 	{
-		bool bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return !mesh.isBusy(); });
-		bool bTextures = std::all_of(m_textures.begin(), m_textures.end(), [](auto const& kvp) { return kvp.second.status() == resources::Status::eReady; });
-		if (bMeshes && bTextures)
+		bool const bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return !mesh.isBusy(); });
+		bool const bTextures = std::all_of(m_textures.begin(), m_textures.end(), [](auto const& kvp) { return kvp.second.status() == res::Status::eReady; });
+		bool const bMaterials =
+			std::all_of(m_loadedMaterials.begin(), m_loadedMaterials.end(), [](auto const& kvp) { return kvp.second.status() == res::Status::eReady; });
+		if (bMeshes && bTextures && bMaterials)
 		{
 			m_status = Status::eReady;
 		}

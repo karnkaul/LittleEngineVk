@@ -4,7 +4,7 @@
 #include <resources/monitor.hpp>
 
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-namespace le::resources
+namespace le::res
 {
 Monitor::File::File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(File const*)> onModified)
 	: monitor(fullPath, mode), onModified(onModified), id(id)
@@ -86,5 +86,5 @@ bool Monitor::update()
 	}
 	return false;
 }
-} // namespace le::resources
+} // namespace le::res
 #endif

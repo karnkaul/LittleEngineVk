@@ -163,16 +163,16 @@ bool DemoWorld::start()
 	m_data.skyboxID = "skyboxes/sky_dusk";
 	m_data.model0id = "models/plant";
 	m_data.model1id = g_uReader->isPresent("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : m_data.model0id;
-	gfx::Material::Info texturedInfo;
+	res::Material::CreateInfo texturedInfo;
 	texturedInfo.albedo.ambient = Colour(0x888888ff);
-	auto pTexturedLit = Resources::inst().create<gfx::Material>("materials/textured", texturedInfo);
+	auto texturedLit = res::load("materials/textured", texturedInfo);
 
-	m_res.pQuad->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
-	m_res.pQuad->m_material.pMaterial = pTexturedLit;
-	m_res.pSphere->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
-	m_res.pSphere->m_material.pMaterial = pTexturedLit;
+	m_res.pQuad->m_material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
+	m_res.pQuad->m_material.material = texturedLit;
+	m_res.pSphere->m_material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
+	m_res.pSphere->m_material.material = texturedLit;
 	m_res.pSphere->m_material.tint.a = 0xcc;
-	m_res.pQuad->m_material.flags.reset(gfx::Material::Flag::eOpaque);
+	m_res.pQuad->m_material.flags.reset(res::Material::Flag::eOpaque);
 
 	m_data.dirLight0.diffuse = Colour(0xffffffff);
 	m_data.dirLight0.direction = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
@@ -379,9 +379,9 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.pSphere->m_material.diffuse = resources::findTexture(m_res.container2).payload;
-	m_res.pSphere->m_material.specular = resources::findTexture(m_res.container2_specular).payload;
-	m_res.pQuad->m_material.diffuse = resources::findTexture(m_res.awesomeface).payload;
+	m_res.pSphere->m_material.diffuse = res::findTexture(m_res.container2).payload;
+	m_res.pSphere->m_material.specular = res::findTexture(m_res.container2_specular).payload;
+	m_res.pQuad->m_material.diffuse = res::findTexture(m_res.awesomeface).payload;
 }
 } // namespace
 

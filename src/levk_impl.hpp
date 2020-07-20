@@ -16,7 +16,7 @@ struct App
 inline glm::vec3 g_uiSpace = {};
 
 io::Reader const& reader();
-resources::Texture::Space colourSpace();
+res::Texture::Space colourSpace();
 Window* window();
 
 void update();

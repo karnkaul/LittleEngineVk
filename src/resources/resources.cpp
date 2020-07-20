@@ -15,7 +15,7 @@ namespace le
 {
 namespace
 {
-using namespace resources;
+using namespace res;
 
 template <typename T, typename TImpl = void>
 struct Map
@@ -33,29 +33,32 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 {
 	GUID guid = ++g_nextGUID;
 	TImpl impl;
+	typename T::Info info;
 	impl.id = id;
 	impl.guid = guid;
-	if (impl.make(out_createInfo))
+	LOGIF_W(id.empty(), "[{}] Empty resource ID!", T::s_tName);
+	if (!id.empty() && impl.make(out_createInfo, info))
 	{
 		T resource;
 		resource.guid = guid;
-		out_createInfo.info.id = impl.id = id;
+		info.id = impl.id = id;
 		impl.guid = guid;
-		TResource<T, TImpl> tResource{std::move(out_createInfo.info), resource, std::move(impl)};
+		TResource<T, TImpl> tResource{std::move(info), resource, std::move(impl)};
 		auto lock = out_map.mutex.template lock<std::unique_lock>();
 		auto const guid = resource.guid;
 		out_map.ids[id] = guid;
-		bool const bLoading = tResource.impl.status == Status::eLoading;
-		out_map.resources.emplace(guid, std::move(tResource));
-		if (bLoading)
+		if constexpr (std::is_base_of_v<ILoadable, TImpl>)
 		{
+			tResource.impl.status = Status::eLoading;
+			out_map.resources.emplace(guid, std::move(tResource));
 			out_map.loading[guid] = &out_map.resources.find(guid).payload->impl;
-			LOG_I("== [{}] [{}] loading...", T::s_tName, id.generic_string());
+			LOG_I("++ [{}] [{}] [{}] loading...", guid, T::s_tName, id.generic_string());
 		}
 		else
 		{
-			out_map.resources.find(guid).payload->impl.bLoadedOnce = true;
-			LOG_I("== [{}] [{}] loaded", T::s_tName, id.generic_string());
+			tResource.impl.status = Status::eReady;
+			out_map.resources.emplace(guid, std::move(tResource));
+			LOG_I("== [{}] [{}] [{}] loaded", guid, T::s_tName, id.generic_string());
 		}
 		return resource;
 	}
@@ -104,7 +107,7 @@ TImpl* findImpl(Map<T, TImpl>& map, GUID guid)
 template <typename T, typename TImpl>
 typename T::Info const& findInfo(Map<T, TImpl>& out_map, GUID guid)
 {
-	static typename T::Info const s_default;
+	static typename T::Info const s_default{};
 	auto lock = out_map.mutex.template lock<std::shared_lock>();
 	auto [pResource, bResult] = out_map.resources.find(guid);
 	if (bResult)
@@ -112,6 +115,18 @@ typename T::Info const& findInfo(Map<T, TImpl>& out_map, GUID guid)
 		return pResource->info;
 	}
 	return s_default;
+}
+
+template <typename T, typename TImpl>
+typename T::Info* findInfoRW(Map<T, TImpl>& out_map, GUID guid)
+{
+	auto lock = out_map.mutex.template lock<std::shared_lock>();
+	auto [pResource, bResult] = out_map.resources.find(guid);
+	if (bResult)
+	{
+		return &pResource->info;
+	}
+	return nullptr;
 }
 
 template <typename T, typename TImpl>
@@ -125,7 +140,7 @@ bool unload(Map<T, TImpl>& out_map, Hash id)
 		auto [tResource, bResult] = out_map.resources.find(guid);
 		if (bResult)
 		{
-			LOG_I("-- [{}] [{}] unloaded", T::s_tName, tResource->impl.id.generic_string());
+			LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->impl.id.generic_string());
 			tResource->impl.release();
 		}
 		return out_map.resources.unload(guid);
@@ -140,7 +155,7 @@ bool unload(Map<T, TImpl>& out_map, GUID guid)
 	auto [tResource, bResult] = out_map.resources.find(guid);
 	if (bResult)
 	{
-		LOG_I("-- [{}] [{}] unloaded", T::s_tName, tResource->impl.id.generic_string());
+		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->impl.id.generic_string());
 		tResource->impl.release();
 		out_map.ids.erase(tResource->impl.id);
 	}
@@ -161,10 +176,12 @@ void update(Map<T, TImpl>& out_map)
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 				if (pImpl->bLoadedOnce)
 				{
+					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, pImpl->id.generic_string());
 					pImpl->onReload();
 				}
 #endif
 				pImpl->bLoadedOnce = true;
+				pImpl->status = Status::eReady;
 				iter = out_map.loading.erase(iter);
 			}
 			else
@@ -183,10 +200,13 @@ void update(Map<T, TImpl>& out_map)
 			{
 				if constexpr (std::is_base_of_v<ILoadable, TImpl>)
 				{
+					LOG_D("++ [{}] [{}] [{}] reloading...", guid, T::s_tName, tResource.impl.id.generic_string());
+					tResource.impl.status = Status::eReloading;
 					out_map.loading[guid] = &tResource.impl;
 				}
 				else
 				{
+					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, tResource.impl.id.generic_string());
 					tResource.impl.onReload();
 				}
 			}
@@ -222,7 +242,7 @@ void release(Map<T, TImpl>& out_map)
 	for (auto iter = out_map.resources.m_map.begin(); iter != out_map.resources.m_map.end();)
 	{
 		auto& [guid, tResource] = *iter;
-		LOG_I("-- [{}] [{}] unloaded", T::s_tName, tResource.impl.id.generic_string());
+		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource.impl.id.generic_string());
 		tResource.impl.release();
 		iter = out_map.resources.m_map.erase(iter);
 	}
@@ -264,154 +284,218 @@ bool isLoading(Map<T, TImpl> const& map, GUID guid)
 Map<Shader, Shader::Impl> g_shaders;
 Map<Sampler, Sampler::Impl> g_samplers;
 Map<Texture, Texture::Impl> g_textures;
+Map<Material, Material::Impl> g_materials;
 
 bool g_bInit = false;
 Counter<s32> g_counter;
 } // namespace
 
-resources::Semaphore resources::acquire()
+res::Semaphore res::acquire()
 {
 	return Semaphore(g_counter);
 }
 
-resources::Shader resources::load(stdfs::path const& id, Shader::CreateInfo createInfo)
+res::Shader res::load(stdfs::path const& id, Shader::CreateInfo createInfo)
 {
 	return g_bInit ? make(g_shaders, createInfo, id) : Shader();
 }
 
-TResult<resources::Shader> resources::findShader(Hash id)
-{
-	return g_bInit ? find(g_shaders, id) : TResult<Shader>();
-}
-
-resources::Shader::Info const& resources::info(Shader shader)
-{
-	static Shader::Info const s_default;
-	return g_bInit ? findInfo(g_shaders, shader.guid) : s_default;
-}
-
-Status resources::status(Shader shader)
-{
-	return g_bInit ? status(g_shaders, shader.guid) : Status::eIdle;
-}
-
-bool resources::unload(Shader shader)
-{
-	return g_bInit ? unload(g_shaders, shader.guid) : false;
-}
-
-bool resources::unloadShader(Hash id)
-{
-	return g_bInit ? unload(g_shaders, id) : false;
-}
-
-resources::Sampler resources::load(stdfs::path const& id, Sampler::CreateInfo createInfo)
+res::Sampler res::load(stdfs::path const& id, Sampler::CreateInfo createInfo)
 {
 	return g_bInit ? make(g_samplers, createInfo, id) : Sampler();
 }
 
-TResult<resources::Sampler> resources::findSampler(Hash id)
-{
-	return g_bInit ? find(g_samplers, id) : TResult<Sampler>();
-}
-
-resources::Sampler::Info const& resources::info(Sampler sampler)
-{
-	static Sampler::Info const s_default;
-	return g_bInit ? findInfo(g_samplers, sampler.guid) : s_default;
-}
-
-resources::Status resources::status(Sampler sampler)
-{
-	return g_bInit ? status(g_samplers, sampler.guid) : Status::eIdle;
-}
-
-bool resources::unload(Sampler sampler)
-{
-	return g_bInit ? unload(g_samplers, sampler.guid) : false;
-}
-
-bool resources::unloadSampler(Hash id)
-{
-	return g_bInit ? unload(g_samplers, id) : false;
-}
-
-resources::Texture resources::load(stdfs::path const& id, Texture::CreateInfo createInfo)
+res::Texture res::load(stdfs::path const& id, Texture::CreateInfo createInfo)
 {
 	return g_bInit ? make(g_textures, createInfo, id) : Texture();
 }
 
-TResult<resources::Texture> resources::findTexture(Hash id)
+res::Material res::load(stdfs::path const& id, Material::CreateInfo createInfo)
+{
+	return g_bInit ? make(g_materials, createInfo, id) : Material();
+}
+
+TResult<res::Shader> res::findShader(Hash id)
+{
+	return g_bInit ? find(g_shaders, id) : TResult<Shader>();
+}
+
+TResult<res::Sampler> res::findSampler(Hash id)
+{
+	return g_bInit ? find(g_samplers, id) : TResult<Sampler>();
+}
+
+TResult<res::Texture> res::findTexture(Hash id)
 {
 	return g_bInit ? find(g_textures, id) : TResult<Texture>();
 }
 
-resources::Texture::Info const& resources::info(Texture texture)
+TResult<res::Material> res::findMaterial(Hash id)
 {
-	static Texture::Info const s_default;
+	return g_bInit ? find(g_materials, id) : TResult<Material>();
+}
+
+res::Shader::Info const& res::info(Shader shader)
+{
+	static Shader::Info const s_default{};
+	return g_bInit ? findInfo(g_shaders, shader.guid) : s_default;
+}
+
+res::Sampler::Info const& res::info(Sampler sampler)
+{
+	static Sampler::Info const s_default{};
+	return g_bInit ? findInfo(g_samplers, sampler.guid) : s_default;
+}
+
+res::Texture::Info const& res::info(Texture texture)
+{
+	static Texture::Info const s_default{};
 	return g_bInit ? findInfo(g_textures, texture.guid) : s_default;
 }
 
-resources::Status resources::status(Texture texture)
+res::Material::Info const& res::info(Material material)
+{
+	static Material::Info const s_default{};
+	return g_bInit ? findInfo(g_materials, material.guid) : s_default;
+}
+
+Status res::status(Shader shader)
+{
+	return g_bInit ? status(g_shaders, shader.guid) : Status::eIdle;
+}
+
+res::Status res::status(Sampler sampler)
+{
+	return g_bInit ? status(g_samplers, sampler.guid) : Status::eIdle;
+}
+
+res::Status res::status(Texture texture)
 {
 	return g_bInit ? status(g_textures, texture.guid) : Status::eIdle;
 }
 
-bool resources::unload(Texture texture)
+res::Status res::status(Material material)
+{
+	return g_bInit ? status(g_materials, material.guid) : Status::eIdle;
+}
+
+bool res::unload(Shader shader)
+{
+	return g_bInit ? unload(g_shaders, shader.guid) : false;
+}
+
+bool res::unload(Sampler sampler)
+{
+	return g_bInit ? unload(g_samplers, sampler.guid) : false;
+}
+
+bool res::unload(Texture texture)
 {
 	return g_bInit ? unload(g_textures, texture.guid) : false;
 }
 
-bool resources::unloadTexture(Hash id)
+bool res::unload(Material material)
+{
+	return g_bInit ? unload(g_materials, material.guid) : false;
+}
+
+bool res::unloadShader(Hash id)
+{
+	return g_bInit ? unload(g_shaders, id) : false;
+}
+
+bool res::unloadSampler(Hash id)
+{
+	return g_bInit ? unload(g_samplers, id) : false;
+}
+
+bool res::unloadTexture(Hash id)
 {
 	return g_bInit ? unload(g_textures, id) : false;
 }
 
-bool resources::unload(Hash id)
+bool res::unloadMaterial(Hash id)
 {
-	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) : false;
+	return g_bInit ? unload(g_materials, id) : false;
 }
 
-resources::Shader::Impl* resources::impl(Shader shader)
+res::Shader::Impl* res::impl(Shader shader)
 {
 	return g_bInit ? findImpl(g_shaders, shader.guid) : nullptr;
 }
 
-resources::Sampler::Impl* resources::impl(Sampler sampler)
+res::Sampler::Impl* res::impl(Sampler sampler)
 {
 	return g_bInit ? findImpl(g_samplers, sampler.guid) : nullptr;
 }
 
-resources::Texture::Impl* resources::impl(Texture texture)
+res::Texture::Impl* res::impl(Texture texture)
 {
 	return g_bInit ? findImpl(g_textures, texture.guid) : nullptr;
 }
 
-std::vector<Shader> resources::loadedShaders()
+res::Material::Impl* res::impl(Material material)
+{
+	return g_bInit ? findImpl(g_materials, material.guid) : nullptr;
+}
+
+Shader::Info* res::infoRW(Shader shader)
+{
+	return g_bInit ? findInfoRW(g_shaders, shader.guid) : nullptr;
+}
+
+Sampler::Info* res::infoRW(Sampler sampler)
+{
+	return g_bInit ? findInfoRW(g_samplers, sampler.guid) : nullptr;
+}
+
+Texture::Info* res::infoRW(Texture texture)
+{
+	return g_bInit ? findInfoRW(g_textures, texture.guid) : nullptr;
+}
+
+Material::Info* res::infoRW(Material material)
+{
+	return g_bInit ? findInfoRW(g_materials, material.guid) : nullptr;
+}
+
+#if defined(LEVK_EDITOR)
+std::vector<Shader> res::loadedShaders()
 {
 	return g_bInit ? loaded(g_shaders) : std::vector<Shader>();
 }
 
-std::vector<Sampler> resources::loadedSamplers()
+std::vector<Sampler> res::loadedSamplers()
 {
 	return g_bInit ? loaded(g_samplers) : std::vector<Sampler>();
 }
 
-std::vector<Texture> resources::loadedTextures()
+std::vector<Texture> res::loadedTextures()
 {
 	return g_bInit ? loaded(g_textures) : std::vector<Texture>();
 }
 
-bool resources::isLoading(GUID guid)
+std::vector<Material> res::loadedMaterials()
+{
+	return g_bInit ? loaded(g_materials) : std::vector<Material>();
+}
+#endif
+
+bool res::unload(Hash id)
+{
+	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) || unloadMaterial(id) : false;
+}
+
+bool res::isLoading(GUID guid)
 {
 	if (g_bInit)
 	{
-		return isLoading(g_shaders, guid) || isLoading(g_samplers, guid) || isLoading(g_textures, guid);
+		return isLoading(g_shaders, guid) || isLoading(g_samplers, guid) || isLoading(g_textures, guid) || isLoading(g_materials, guid);
 	}
 	return false;
 }
 
-void resources::init()
+void res::init()
 {
 	if (!g_bInit)
 	{
@@ -430,15 +514,14 @@ void resources::init()
 		{
 			load("samplers/default", Sampler::CreateInfo());
 			Sampler::CreateInfo info;
-			info.info.mode = Sampler::Mode::eClampEdge;
-			info.info.min = Sampler::Filter::eNearest;
-			info.info.mip = Sampler::Filter::eNearest;
+			info.mode = Sampler::Mode::eClampEdge;
+			info.min = Sampler::Filter::eNearest;
+			info.mip = Sampler::Filter::eNearest;
 			load("samplers/font", std::move(info));
-			LOG_I("[le::resources] initialised");
 		}
 		{
 			Texture::CreateInfo info;
-			info.info.type = Texture::Type::e2D;
+			info.type = Texture::Type::e2D;
 			info.raws = {{Span<u8>(white1pxBytes), {1, 1}}};
 			load("textures/white", info);
 			info.raws.back().bytes = Span<u8>(black1pxBytes);
@@ -450,20 +533,24 @@ void resources::init()
 			b1px.bytes = Span<u8>(black1pxBytes);
 			b1px.size = {1, 1};
 			info.raws = {b1px, b1px, b1px, b1px, b1px, b1px};
-			info.info.type = Texture::Type::eCube;
+			info.type = Texture::Type::eCube;
 			load("cubemaps/blank", std::move(info));
 		}
+		{
+			load("materials/default", Material::CreateInfo());
+		}
+		LOG_I("[le::resources] initialised");
 	}
 }
 
-void resources::update()
+void res::update()
 {
 	update(g_shaders);
 	update(g_samplers);
 	update(g_textures);
 }
 
-void resources::waitIdle()
+void res::waitIdle()
 {
 	constexpr Time timeout = 5s;
 	Time elapsed;
@@ -481,7 +568,7 @@ void resources::waitIdle()
 	waitLoading(g_textures);
 }
 
-void resources::deinit()
+void res::deinit()
 {
 	if (g_bInit)
 	{
@@ -494,12 +581,12 @@ void resources::deinit()
 	}
 }
 
-resources::Service::Service()
+res::Service::Service()
 {
 	init();
 }
 
-resources::Service::~Service()
+res::Service::~Service()
 {
 	deinit();
 }

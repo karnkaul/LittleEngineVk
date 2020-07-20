@@ -27,7 +27,7 @@ public:
 	};
 	struct Info final
 	{
-		Material::Inst material;
+		res::Material::Inst material;
 		stdfs::path sheetID;
 		stdfs::path samplerID;
 		stdfs::path materialID;
@@ -67,9 +67,9 @@ public:
 
 private:
 	std::array<Glyph, maxVal<u8>()> m_glyphs;
-	Material::Inst m_material;
+	res::Material::Inst m_material;
 	Glyph m_blankGlyph;
-	resources::Texture m_sheet;
+	res::Texture m_sheet;
 
 public:
 	Font(stdfs::path id, Info info);

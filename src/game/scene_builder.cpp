@@ -24,7 +24,7 @@ gfx::Mesh& UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
 		gfx::Mesh::Info info;
 		info.geometry = std::move(geometry);
 		info.type = gfx::Mesh::Type::eDynamic;
-		info.material.flags.set(gfx::Material::Flag::eUI);
+		info.material.flags.set(res::Material::Flag::eUI);
 		stdfs::path meshID = id.empty() ? "(ui)" : id;
 		meshID += "_quad";
 		uMesh = std::make_unique<gfx::Mesh>(std::move(meshID), std::move(info));
@@ -106,8 +106,8 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
-		auto [cubemap, bCubemap] = resources::findTexture(m_info.skyboxCubemapID);
-		if (bCubemap && cubemap.status() == resources::Status::eReady)
+		auto [cubemap, bCubemap] = res::findTexture(m_info.skyboxCubemapID);
+		if (bCubemap && cubemap.status() == res::Status::eReady)
 		{
 			scene.view.skybox.cubemap = cubemap;
 		}

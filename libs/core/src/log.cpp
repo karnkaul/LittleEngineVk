@@ -203,8 +203,8 @@ io::Service::Service(std::filesystem::path const& path, Time pollRate)
 
 io::Service::~Service()
 {
-	stopFileLogging();
 	impl::deinitPhysfs();
+	stopFileLogging();
 }
 
 void io::logToFile(std::filesystem::path path, Time pollRate)

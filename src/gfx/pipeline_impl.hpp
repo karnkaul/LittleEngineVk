@@ -29,7 +29,7 @@ public:
 		vk::ColorComponentFlags colourWriteMask = CCFlag::eR | CCFlag::eG | CCFlag::eB | CCFlag::eA;
 		WindowID window;
 		f32 staticLineWidth = 1.0f;
-		resources::Shader shader;
+		res::Shader shader;
 		Pipeline::Flags flags;
 	};
 

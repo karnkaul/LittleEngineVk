@@ -10,7 +10,7 @@
 #include <core/time.hpp>
 #include <core/reader.hpp>
 
-namespace le::resources
+namespace le::res
 {
 class Monitor final
 {
@@ -48,5 +48,5 @@ struct Monitor::File final
 
 	File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(File const*)> onModified);
 };
-} // namespace le::resources
+} // namespace le::res
 #endif

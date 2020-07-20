@@ -23,14 +23,14 @@ namespace
 {
 struct TexSet final
 {
-	std::unordered_map<resources::GUID, u32> idxMap;
-	std::deque<resources::Texture> textures;
+	std::unordered_map<res::GUID, u32> idxMap;
+	std::deque<res::Texture> textures;
 
-	u32 add(resources::Texture tex);
+	u32 add(res::Texture tex);
 	u32 total() const;
 };
 
-u32 TexSet::add(resources::Texture tex)
+u32 TexSet::add(res::Texture tex)
 {
 	if (auto search = idxMap.find(tex.guid); search != idxMap.end())
 	{
@@ -389,15 +389,15 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	rd::StorageBuffers ssbos;
 	TexSet diffuse, specular;
 	PCDeq push;
-	auto const [white, bWhite] = resources::findTexture("textures/white");
-	auto const [black, bBlack] = resources::findTexture("textures/black");
-	auto const [blank, bBlank] = resources::findTexture("cubemaps/blank");
+	auto const [white, bWhite] = res::findTexture("textures/white");
+	auto const [black, bBlack] = res::findTexture("textures/black");
+	auto const [blank, bBlank] = res::findTexture("cubemaps/blank");
 	ASSERT(bWhite && bBlack && bBlank, "Default textures missing!");
 	diffuse.add(white);
 	specular.add(black);
 	bool bSkybox = false;
-	resources::Texture cubemap = blank;
-	if (out_scene.view.skybox.cubemap.status() == resources::Status::eReady)
+	res::Texture cubemap = blank;
+	if (out_scene.view.skybox.cubemap.status() == res::Status::eReady)
 	{
 		if (!out_scene.view.skybox.pPipeline)
 		{
@@ -424,7 +424,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 				pc.objectID = objectID;
 				ssbos.models.ssbo.push_back(pTransform->model());
 				ssbos.normals.ssbo.push_back(pTransform->normalModel());
-				ssbos.materials.ssbo.push_back({*pMesh->m_material.pMaterial, pMesh->m_material.dropColour});
+				ssbos.materials.ssbo.push_back({pMesh->m_material.material.info(), pMesh->m_material.dropColour});
 				ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
 				ssbos.flags.ssbo.push_back(0);
 				if (bSkybox)
@@ -432,26 +432,26 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 					bSkybox = false;
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eSKYBOX;
 				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eLit))
+				if (pMesh->m_material.flags.isSet(res::Material::Flag::eLit))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eLIT;
 				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eOpaque))
+				if (pMesh->m_material.flags.isSet(res::Material::Flag::eOpaque))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eOPAQUE;
 				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eDropColour))
+				if (pMesh->m_material.flags.isSet(res::Material::Flag::eDropColour))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eDROP_COLOUR;
 				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eUI))
+				if (pMesh->m_material.flags.isSet(res::Material::Flag::eUI))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eUI;
 				}
-				if (pMesh->m_material.flags.isSet(Material::Flag::eTextured))
+				if (pMesh->m_material.flags.isSet(res::Material::Flag::eTextured))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
-					if (pMesh->m_material.diffuse.status() == resources::Status::eReady)
+					if (pMesh->m_material.diffuse.status() == res::Status::eReady)
 					{
 						pc.diffuseID = diffuse.add(pMesh->m_material.diffuse);
 					}
@@ -460,7 +460,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 						ssbos.tints.ssbo.at(objectID) = mg;
 						pc.diffuseID = 0;
 					}
-					if (pMesh->m_material.specular.status() == resources::Status::eReady)
+					if (pMesh->m_material.specular.status() == res::Status::eReady)
 					{
 						pc.specularID = specular.add(pMesh->m_material.specular);
 					}

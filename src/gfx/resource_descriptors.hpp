@@ -69,7 +69,7 @@ struct Materials final
 		alignas(16) glm::vec4 dropColour;
 		alignas(16) f32 shininess;
 		Mat() = default;
-		Mat(Material const& material, Colour dropColour);
+		Mat(res::Material::Info const& material, Colour dropColour);
 	};
 	std::vector<Mat> ssbo;
 };
@@ -153,7 +153,7 @@ struct Writer final
 	u32 binding = 0;
 
 	void write(vk::DescriptorSet set, Buffer const& buffer) const;
-	void write(vk::DescriptorSet set, std::vector<resources::Texture> const& textures) const;
+	void write(vk::DescriptorSet set, std::vector<res::Texture> const& textures) const;
 };
 
 template <typename T>
@@ -186,7 +186,7 @@ class Descriptor<ImageSamplers>
 public:
 	Writer m_writer;
 
-	void writeArray(std::vector<resources::Texture> const& textures, vk::DescriptorSet set) const;
+	void writeArray(std::vector<res::Texture> const& textures, vk::DescriptorSet set) const;
 };
 
 struct SamplerCounts final
@@ -226,9 +226,9 @@ public:
 public:
 	void writeView(View const& view);
 	void writeSSBOs(StorageBuffers const& ssbos);
-	void writeDiffuse(std::deque<resources::Texture> const& diffuse);
-	void writeSpecular(std::deque<resources::Texture> const& specular);
-	void writeCubemap(resources::Texture cubemap);
+	void writeDiffuse(std::deque<res::Texture> const& diffuse);
+	void writeSpecular(std::deque<res::Texture> const& specular);
+	void writeCubemap(res::Texture cubemap);
 };
 
 struct SetLayouts final

@@ -4,7 +4,7 @@
 #include <core/delegate.hpp>
 #include <resources/monitor.hpp>
 
-namespace le::resources
+namespace le::res
 {
 template <typename T, typename TImpl>
 struct TResource final
@@ -55,7 +55,7 @@ struct Shader::Impl : ImplBase, IReloadable
 
 	static std::string extension(stdfs::path const& id);
 
-	bool make(CreateInfo& out_info);
+	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 
 	vk::ShaderModule module(Shader::Type type) const;
@@ -77,7 +77,7 @@ struct Sampler::Impl : ImplBase
 {
 	vk::Sampler sampler;
 
-	bool make(CreateInfo& out_info);
+	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 };
 
@@ -97,7 +97,7 @@ struct Texture::Impl : ImplBase, ILoadable, IReloadable
 	std::vector<stdfs::path> imgIDs;
 #endif
 
-	bool make(CreateInfo& out_info);
+	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 
 	bool update() override;
@@ -106,13 +106,28 @@ struct Texture::Impl : ImplBase, ILoadable, IReloadable
 #endif
 };
 
+struct Material::Impl : ImplBase
+{
+	bool make(CreateInfo& out_createInfo, Info& out_info);
+	void release();
+};
+
 Shader::Impl* impl(Shader shader);
 Sampler::Impl* impl(Sampler sampler);
 Texture::Impl* impl(Texture texture);
+Material::Impl* impl(Material material);
 
+Shader::Info* infoRW(Shader shader);
+Sampler::Info* infoRW(Sampler sampler);
+Texture::Info* infoRW(Texture texture);
+Material::Info* infoRW(Material material);
+
+#if defined(LEVK_EDITOR)
 std::vector<Shader> loadedShaders();
 std::vector<Sampler> loadedSamplers();
 std::vector<Texture> loadedTextures();
+std::vector<Material> loadedMaterials();
+#endif
 
 bool isLoading(GUID guid);
 
@@ -121,6 +136,7 @@ void update();
 void waitIdle();
 void deinit();
 
+#if defined(LEVK_EDITOR)
 template <typename T>
 std::vector<T> loaded()
 {
@@ -136,15 +152,20 @@ std::vector<T> loaded()
 	{
 		return loadedTextures();
 	}
+	else if constexpr (std::is_same_v<T, Material>)
+	{
+		return loadedMaterials();
+	}
 	else
 	{
 		static_assert(alwaysFalse<T>, "Invalid Type!");
 	}
 }
+#endif
 
 struct Service final
 {
 	Service();
 	~Service();
 };
-} // namespace le::resources
+} // namespace le::res

@@ -7,7 +7,7 @@
 #if defined(LEVK_SHADER_COMPILER)
 #include <core/os.hpp>
 
-namespace le::resources
+namespace le::res
 {
 std::string const ShaderCompiler::s_tName = utils::tName<ShaderCompiler>();
 
@@ -70,5 +70,5 @@ bool ShaderCompiler::statusCheck() const
 	}
 	return true;
 }
-} // namespace le::resources
+} // namespace le::res
 #endif

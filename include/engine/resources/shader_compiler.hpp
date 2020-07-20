@@ -13,7 +13,7 @@ namespace le
 namespace stdfs = std::filesystem;
 }
 
-namespace le::resources
+namespace le::res
 {
 #if defined(LEVK_SHADER_COMPILER)
 class ShaderCompiler final : public Singleton<ShaderCompiler>
@@ -50,4 +50,4 @@ private:
 	friend class Singleton<ShaderCompiler>;
 };
 #endif
-} // namespace le::resources
+} // namespace le::res

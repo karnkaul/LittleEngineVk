@@ -42,10 +42,10 @@ Service::~Service()
 	input::deinit();
 	World::stopActive();
 	Resources::inst().waitIdle();
-	resources::waitIdle();
+	res::waitIdle();
 	World::destroyAll();
 	Resources::inst().deinit();
-	resources::deinit();
+	res::deinit();
 	g_app = {};
 }
 
@@ -100,7 +100,7 @@ bool Service::init(Info const& info)
 			}
 		}
 		g_app.pReader = pReader;
-		m_services.add<resources::Service>();
+		m_services.add<res::Service>();
 		Resources::inst().init(*pReader);
 		if (info.windowInfo)
 		{
@@ -222,7 +222,7 @@ glm::ivec2 engine::framebufferSize()
 void engine::update()
 {
 	Resources::inst().update();
-	resources::update();
+	res::update();
 	WindowImpl::update();
 	gfx::vram::update();
 	gfx::deferred::update();
@@ -247,16 +247,16 @@ io::Reader const& engine::reader()
 	return *g_app.pReader;
 }
 
-resources::Texture::Space engine::colourSpace()
+res::Texture::Space engine::colourSpace()
 {
 	if (g_app.uWindow)
 	{
 		auto const pRenderer = WindowImpl::rendererImpl(g_app.uWindow->id());
 		if (pRenderer && pRenderer->colourSpace() == ColourSpace::eSRGBNonLinear)
 		{
-			return resources::Texture::Space::eSRGBNonLinear;
+			return res::Texture::Space::eSRGBNonLinear;
 		}
 	}
-	return resources::Texture::Space::eRGBLinear;
+	return res::Texture::Space::eRGBLinear;
 }
 } // namespace le

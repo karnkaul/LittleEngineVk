@@ -9,7 +9,7 @@
 #include <resources/resources_impl.hpp>
 #include <levk_impl.hpp>
 
-namespace le::resources
+namespace le::res
 {
 namespace
 {
@@ -67,10 +67,51 @@ TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::
 std::string const Shader::s_tName = utils::tName<Shader>();
 std::string const Sampler::s_tName = utils::tName<Sampler>();
 std::string const Texture::s_tName = utils::tName<Texture>();
+std::string const Material::s_tName = utils::tName<Material>();
 
 std::string_view Shader::Impl::s_spvExt = ".spv";
 std::string_view Shader::Impl::s_vertExt = ".vert";
 std::string_view Shader::Impl::s_fragExt = ".frag";
+
+Shader::Info const& Shader::info() const
+{
+	return res::info(*this);
+}
+
+Sampler::Info const& Sampler::info() const
+{
+	return res::info(*this);
+}
+
+Texture::Info const& Texture::info() const
+{
+	return res::info(*this);
+}
+
+Material::Info const& Material::info() const
+{
+	return res::info(*this);
+}
+
+Status Shader::status() const
+{
+	return res::status(*this);
+}
+
+Status Sampler::status() const
+{
+	return res::status(*this);
+}
+
+Status Texture::status() const
+{
+	return res::status(*this);
+}
+
+Status Material::status() const
+{
+	return res::status(*this);
+}
 
 std::string Shader::Impl::extension(stdfs::path const& id)
 {
@@ -82,17 +123,17 @@ std::string Shader::Impl::extension(stdfs::path const& id)
 	return {};
 }
 
-bool Shader::Impl::make(CreateInfo& out_info)
+bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 {
-	bool const bCodeMapPopulated = std::any_of(out_info.codeMap.begin(), out_info.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
+	bool const bCodeMapPopulated = std::any_of(out_createInfo.codeMap.begin(), out_createInfo.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	[[maybe_unused]] bool const bCodeIDsPopulated =
-		std::any_of(out_info.codeIDMap.begin(), out_info.codeIDMap.end(), [&](auto const& entry) { return !entry.empty(); });
+		std::any_of(out_createInfo.codeIDMap.begin(), out_createInfo.codeIDMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	if (!bCodeMapPopulated)
 	{
 		ASSERT(bCodeIDsPopulated, "Invalid Shader ShaderData!");
-		for (std::size_t idx = 0; idx < out_info.codeIDMap.size(); ++idx)
+		for (std::size_t idx = 0; idx < out_createInfo.codeIDMap.size(); ++idx)
 		{
-			auto& codeID = out_info.codeIDMap.at(idx);
+			auto& codeID = out_createInfo.codeIDMap.at(idx);
 			auto const ext = extension(codeID);
 			bool bSpv = true;
 			if (ext == s_vertExt || ext == s_fragExt)
@@ -107,7 +148,7 @@ bool Shader::Impl::make(CreateInfo& out_info)
 						bool bSuccess = false;
 						Shader shader;
 						shader.guid = guid;
-						if (auto pImpl = resources::impl(shader))
+						if (auto pImpl = res::impl(shader))
 						{
 							if (pImpl->glslToSpirV(pFile->id, pImpl->codeMap.at(idx)))
 							{
@@ -143,12 +184,11 @@ bool Shader::Impl::make(CreateInfo& out_info)
 					LOG_E("[{}] [{}] Shader code missing: [{}]!", s_tName, id.generic_string(), codeID.generic_string());
 					return false;
 				}
-				out_info.codeMap.at(idx) = std::move(shaderShaderData);
+				out_createInfo.codeMap.at(idx) = std::move(shaderShaderData);
 			}
 		}
 	}
 	loadAllSpirV();
-	this->status = Status::eReady;
 	return true;
 }
 
@@ -245,7 +285,6 @@ void Shader::Impl::loadAllSpirV()
 			shaders.at(idx) = gfx::g_device.device.createShaderModule(createInfo);
 		}
 	}
-	status = Status::eReady;
 }
 
 vk::ShaderModule Shader::Impl::module(Shader::Type type) const
@@ -268,52 +307,25 @@ std::map<Shader::Type, vk::ShaderModule> Shader::Impl::modules() const
 	return ret;
 }
 
-Shader::Info const& Shader::info() const
-{
-	return resources::info(*this);
-}
-
-Status Shader::status() const
-{
-	return resources::status(*this);
-}
-
-Sampler::Info const& Sampler::info() const
-{
-	return resources::info(*this);
-}
-
-Status Sampler::status() const
-{
-	return resources::status(*this);
-}
-
-Texture::Info const& Texture::info() const
-{
-	return resources::info(*this);
-}
-
-Status Texture::status() const
-{
-	return resources::status(*this);
-}
-
-bool Sampler::Impl::make(CreateInfo& out_info)
+bool Sampler::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 {
 	vk::SamplerCreateInfo samplerInfo;
-	samplerInfo.magFilter = g_filters.at((std::size_t)out_info.info.min);
-	samplerInfo.minFilter = g_filters.at((std::size_t)out_info.info.mag);
-	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes.at((std::size_t)out_info.info.mode);
+	samplerInfo.magFilter = g_filters.at((std::size_t)out_createInfo.min);
+	samplerInfo.minFilter = g_filters.at((std::size_t)out_createInfo.mag);
+	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes.at((std::size_t)out_createInfo.mode);
 	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	samplerInfo.unnormalizedCoordinates = false;
 	samplerInfo.compareEnable = false;
 	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	samplerInfo.mipmapMode = g_mipModes.at((std::size_t)out_info.info.mip);
+	samplerInfo.mipmapMode = g_mipModes.at((std::size_t)out_createInfo.mip);
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 	sampler = gfx::g_device.device.createSampler(samplerInfo);
-	status = Status::eReady;
+	out_info.min = out_createInfo.min;
+	out_info.mag = out_createInfo.mag;
+	out_info.mip = out_createInfo.mip;
+	out_info.mode = out_createInfo.mode;
 	return true;
 }
 
@@ -321,42 +333,41 @@ void Sampler::Impl::release()
 {
 	gfx::deferred::release([sampler = this->sampler]() { gfx::g_device.destroy(sampler); });
 	sampler = vk::Sampler();
-	status = Status::eIdle;
 }
 
-bool Texture::Impl::make(CreateInfo& out_info)
+bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 {
-	auto& info = out_info.info;
 	auto const idStr = id.generic_string();
-	if (info.sampler.guid == 0 || resources::status(info.sampler) != Status::eReady)
+	auto [sampler, bSampler] = res::findSampler(out_createInfo.samplerID);
+	if (sampler.guid == res::GUID::s_null || sampler.status() != Status::eReady || out_info.sampler.status() != Status::eReady)
 	{
-		auto [sampler, bResult] = resources::find<Sampler>("samplers/default");
+		auto [dSampler, bResult] = res::find<Sampler>("samplers/default");
 		if (!bResult)
 		{
 			LOG_E("[{}] [{}] Failed to locate default sampler", Texture::s_tName, idStr);
 			return false;
 		}
-		info.sampler = sampler;
+		out_info.sampler = dSampler;
 	}
-	if (resources::status(info.sampler) != Status::eReady)
+	if (out_info.sampler.status() != Status::eReady)
 	{
 		LOG_E("[{}] [{}] Sampler not ready!", Texture::s_tName, idStr);
 		return false;
 	}
-	type = g_texTypes.at((std::size_t)info.type);
-	colourSpace = g_texModes.at((std::size_t)info.mode);
+	type = g_texTypes.at((std::size_t)out_createInfo.type);
+	colourSpace = g_texModes.at((std::size_t)out_createInfo.mode);
 	[[maybe_unused]] bool bAddFileMonitor = false;
-	if (!out_info.raws.empty())
+	if (!out_createInfo.raws.empty())
 	{
 		bStbiRaw = false;
-		for (auto& raw : out_info.raws)
+		for (auto& raw : out_createInfo.raws)
 		{
 			raws.push_back(std::move(raw));
 		}
 	}
-	else if (!out_info.bytes.empty())
+	else if (!out_createInfo.bytes.empty())
 	{
-		for (auto& bytes : out_info.bytes)
+		for (auto& bytes : out_createInfo.bytes)
 		{
 			auto [raw, bResult] = imgToRaw(std::move(bytes), Texture::s_tName, idStr, io::Level::eError);
 			if (!bResult)
@@ -368,9 +379,9 @@ bool Texture::Impl::make(CreateInfo& out_info)
 		}
 		bStbiRaw = true;
 	}
-	else if (!out_info.ids.empty())
+	else if (!out_createInfo.ids.empty())
 	{
-		for (auto const& assetID : out_info.ids)
+		for (auto const& assetID : out_createInfo.ids)
 		{
 			auto [pixels, bPixels] = engine::reader().getBytes(assetID);
 			if (!bPixels)
@@ -395,14 +406,13 @@ bool Texture::Impl::make(CreateInfo& out_info)
 		LOG_E("[{}] [{}] Invalid Texture Info!", Texture::s_tName, idStr);
 		return false;
 	}
-	info.size = raws.back().size;
+	out_info.size = raws.back().size;
 	std::vector<Span<u8>> views;
 	for (auto const& raw : raws)
 	{
 		views.push_back(raw.bytes);
 	}
-	copied = load(active, colourSpace, info.size, views, idStr);
-	status = Status::eLoading;
+	copied = load(active, colourSpace, out_info.size, views, idStr);
 	gfx::ImageViewInfo viewInfo;
 	viewInfo.image = active.image;
 	viewInfo.format = colourSpace;
@@ -417,15 +427,15 @@ bool Texture::Impl::make(CreateInfo& out_info)
 		auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 		ASSERT(pReader, "io::FileReader required!");
 		std::size_t idx = 0;
-		for (auto const& id : out_info.ids)
+		for (auto const& id : out_createInfo.ids)
 		{
 			imgIDs.push_back(id);
 			auto onModified = [guid = this->guid, idx](Monitor::File const* pFile) -> bool {
-				Texture tex;
-				tex.guid = guid;
-				if (auto pImpl = resources::impl(tex))
+				Texture texture;
+				texture.guid = guid;
+				if (auto pImpl = res::impl(texture); auto pInfo = res::infoRW(texture))
 				{
-					auto const idStr = resources::info(tex).id.generic_string();
+					auto const idStr = pInfo->id.generic_string();
 					auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
 					if (bResult)
 					{
@@ -433,6 +443,7 @@ bool Texture::Impl::make(CreateInfo& out_info)
 						{
 							stbi_image_free((void*)(pImpl->raws.at(idx).bytes.pData));
 						}
+						pInfo->size = raw.size;
 						pImpl->raws.at(idx) = std::move(raw);
 						return true;
 					}
@@ -444,6 +455,8 @@ bool Texture::Impl::make(CreateInfo& out_info)
 		}
 	}
 #endif
+	out_info.mode = out_createInfo.mode;
+	out_info.type = out_createInfo.type;
 	return true;
 }
 
@@ -478,7 +491,6 @@ bool Texture::Impl::update()
 				imageView = gfx::g_device.createImageView(viewInfo);
 			}
 #endif
-			status = Status::eReady;
 			return true;
 		}
 		return false;
@@ -495,6 +507,7 @@ bool Texture::Impl::checkReload()
 {
 	switch (status)
 	{
+	case Status::eError:
 	case Status::eReady:
 	{
 		if (monitor.update())
@@ -502,15 +515,13 @@ bool Texture::Impl::checkReload()
 			auto const idStr = id.generic_string();
 			Texture texture;
 			texture.guid = guid;
-			auto const& info = resources::info(texture);
+			auto const& info = texture.info();
 			std::vector<Span<u8>> views;
 			for (auto const& raw : raws)
 			{
 				views.push_back(raw.bytes);
 			}
 			copied = load(standby, colourSpace, info.size, views, idStr);
-			status = Status::eReloading;
-			LOG_D("[{}] [{}] reloading...", Texture::s_tName, idStr);
 			return true;
 		}
 		return false;
@@ -542,6 +553,14 @@ void Texture::Impl::release()
 #endif
 	active = {};
 	imageView = vk::ImageView();
-	status = Status::eIdle;
 }
-} // namespace le::resources
+
+bool Material::Impl::make(CreateInfo& out_createInfo, Info& out_info)
+{
+	out_info.albedo = out_createInfo.albedo;
+	out_info.shininess = out_createInfo.shininess;
+	return true;
+}
+
+void Material::Impl::release() {}
+} // namespace le::res

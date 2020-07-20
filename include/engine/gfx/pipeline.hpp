@@ -43,7 +43,7 @@ public:
 	struct Info final
 	{
 		std::string name;
-		resources::Shader shader;
+		res::Shader shader;
 		f32 lineWidth = 1.0f;
 		PolygonMode polygonMode = PolygonMode::eFill;
 		CullMode cullMode = CullMode::eNone;

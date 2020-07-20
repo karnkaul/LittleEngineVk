@@ -29,7 +29,7 @@ public:
 	struct Skybox final
 	{
 		ScreenRect viewport;
-		resources::Texture cubemap;
+		res::Texture cubemap;
 		Pipeline const* pPipeline = nullptr;
 	};
 

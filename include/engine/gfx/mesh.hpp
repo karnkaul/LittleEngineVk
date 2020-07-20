@@ -1,7 +1,6 @@
 #pragma once
 #include <memory>
 #include <glm/glm.hpp>
-#include <core/colour.hpp>
 #include <core/flags.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/gfx/geometry.hpp>
@@ -9,54 +8,6 @@
 
 namespace le::gfx
 {
-struct Albedo final
-{
-	Colour ambient = colours::white;
-	Colour diffuse = colours::white;
-	Colour specular = colours::white;
-};
-
-class Material final : public Asset
-{
-public:
-	enum class Flag : s8
-	{
-		eTextured,
-		eLit,
-		eOpaque,
-		eDropColour,
-		eUI,
-		eSkybox,
-		eCOUNT_
-	};
-	using Flags = TFlags<Flag>;
-
-	struct Inst final
-	{
-		Material* pMaterial = nullptr;
-		resources::Texture diffuse;
-		resources::Texture specular;
-		Colour tint = colours::white;
-		Colour dropColour = colours::black;
-		Flags flags;
-	};
-
-	struct Info final
-	{
-		Albedo albedo;
-	};
-
-public:
-	Albedo m_albedo;
-	f32 m_shininess = 32.0f;
-
-public:
-	Material(stdfs::path id, Info info);
-
-public:
-	Status update() override;
-};
-
 class Mesh : public Asset
 {
 public:
@@ -70,12 +21,12 @@ public:
 	struct Info final
 	{
 		Geometry geometry;
-		Material::Inst material;
+		res::Material::Inst material;
 		Type type = Type::eStatic;
 	};
 
 public:
-	Material::Inst m_material;
+	res::Material::Inst m_material;
 	u64 m_triCount = 0;
 
 protected:

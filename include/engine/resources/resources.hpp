@@ -8,7 +8,7 @@ namespace le
 {
 namespace stdfs = std::filesystem;
 
-namespace resources
+namespace res
 {
 using Semaphore = Counter<s32>::Semaphore;
 
@@ -34,6 +34,13 @@ Texture::Info const& info(Texture texture);
 Status status(Texture texture);
 bool unload(Texture texture);
 bool unloadTexture(Hash id);
+
+Material load(stdfs::path const& id, Material::CreateInfo createInfo);
+TResult<Material> findMaterial(Hash id);
+Material::Info const& info(Material material);
+Status status(Material material);
+bool unload(Material material);
+bool unloadMaterial(Hash id);
 
 bool unload(Hash id);
 
@@ -70,5 +77,5 @@ TResult<T> find(Hash id)
 		static_assert(alwaysFalse<T>, "Invalid type!");
 	}
 }
-} // namespace resources
+} // namespace res
 } // namespace le

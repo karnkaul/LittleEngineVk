@@ -2,7 +2,6 @@
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
 #include <gfx/resource_descriptors.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/resources/resources.hpp>
 #include <resources/resources_impl.hpp>
 

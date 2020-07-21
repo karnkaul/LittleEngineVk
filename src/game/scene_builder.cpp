@@ -1,6 +1,4 @@
 #include <core/transform.hpp>
-#include <engine/assets/resources.hpp>
-#include <engine/gfx/model.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/levk.hpp>
@@ -124,11 +122,11 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	gfx::Renderer::Batch batch3D;
 	gfx::Renderer::Batch batchUI;
 	{
-		auto view = registry.view<Transform, TAsset<gfx::Model>>();
+		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, cModel] = query;
-			if (auto pModel = cModel->get(); pModel && pModel->isReady())
+			auto& [pTransform, pModel] = query;
+			if (pModel->status() == res::Status::eReady)
 			{
 				batch3D.drawables.push_back({pModel->meshes(), pTransform, m_info.p3Dpipe});
 			}

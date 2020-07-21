@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <core/delegate.hpp>
@@ -13,7 +14,7 @@ struct TResource final
 
 	typename T::Info info;
 	T resource;
-	TImpl impl;
+	std::unique_ptr<TImpl> uImpl;
 };
 
 struct ImplBase
@@ -26,7 +27,10 @@ struct ImplBase
 
 struct ILoadable
 {
-	virtual bool update() = 0;
+	bool update()
+	{
+		return true;
+	}
 };
 
 struct IReloadable
@@ -34,7 +38,10 @@ struct IReloadable
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 	Delegate<> onReload;
 
-	virtual bool checkReload() = 0;
+	bool checkReload()
+	{
+		return true;
+	}
 #endif
 };
 
@@ -69,7 +76,7 @@ struct Shader::Impl : ImplBase, IReloadable
 	void loadAllSpirV();
 
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-	bool checkReload() override;
+	bool checkReload();
 #endif
 };
 
@@ -100,9 +107,9 @@ struct Texture::Impl : ImplBase, ILoadable, IReloadable
 	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 
-	bool update() override;
+	bool update();
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-	bool checkReload() override;
+	bool checkReload();
 #endif
 };
 
@@ -128,7 +135,7 @@ struct Mesh::Impl : ImplBase, ILoadable
 	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 
-	bool update() override;
+	bool update();
 
 	void updateGeometry(Info& out_info, gfx::Geometry geometry);
 };
@@ -143,7 +150,7 @@ struct Font::Impl : ImplBase, ILoadable
 	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 
-	bool update() override;
+	bool update();
 
 	gfx::Geometry generate(Text const& text) const;
 };
@@ -154,6 +161,7 @@ Texture::Impl* impl(Texture texture);
 Material::Impl* impl(Material material);
 Mesh::Impl* impl(Mesh mesh);
 Font::Impl* impl(Font font);
+Model::Impl* impl(Model model);
 
 Shader::Info* infoRW(Shader shader);
 Sampler::Info* infoRW(Sampler sampler);
@@ -161,6 +169,7 @@ Texture::Info* infoRW(Texture texture);
 Material::Info* infoRW(Material material);
 Mesh::Info* infoRW(Mesh mesh);
 Font::Info* infoRW(Font font);
+Model::Info* infoRW(Model model);
 
 #if defined(LEVK_EDITOR)
 std::vector<Shader> loadedShaders();
@@ -169,6 +178,7 @@ std::vector<Texture> loadedTextures();
 std::vector<Material> loadedMaterials();
 std::vector<Mesh> loadedMeshes();
 std::vector<Font> loadedFonts();
+std::vector<Model> loadedModels();
 #endif
 
 bool isLoading(GUID guid);
@@ -205,6 +215,10 @@ std::vector<T> loaded()
 	else if constexpr (std::is_same_v<T, Font>)
 	{
 		return loadedFonts();
+	}
+	else if constexpr (std::is_same_v<T, Model>)
+	{
+		return loadedModels();
 	}
 	else
 	{

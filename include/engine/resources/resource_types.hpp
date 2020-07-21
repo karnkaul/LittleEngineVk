@@ -139,6 +139,26 @@ struct Font final : Resource
 	gfx::Geometry generate(Text const& text) const;
 };
 
+struct Model final : Resource
+{
+	struct TexData;
+	struct MatData;
+	struct MeshData;
+	struct Info;
+	struct CreateInfo;
+
+	class Impl;
+
+	static std::string const s_tName;
+
+	static CreateInfo parseOBJ(stdfs::path const& assetID);
+
+	Info const& info() const;
+	Status status() const;
+
+	std::vector<Mesh> meshes() const;
+};
+
 struct InfoBase
 {
 	stdfs::path id;
@@ -312,5 +332,52 @@ struct Font::Text
 	HAlign halign = HAlign::Centre;
 	VAlign valign = VAlign::Middle;
 	Colour colour = colours::white;
+};
+
+struct Model::TexData
+{
+	stdfs::path id;
+	stdfs::path samplerID;
+	stdfs::path filename;
+	bytearray bytes;
+	Hash hash;
+};
+struct Model::MatData
+{
+	stdfs::path id;
+	std::vector<std::size_t> diffuseIndices;
+	std::vector<std::size_t> specularIndices;
+	std::vector<std::size_t> bumpIndices;
+	gfx::Albedo albedo;
+	f32 shininess = 32.0f;
+	res::Material::Flags flags;
+	Hash hash;
+};
+struct Model::MeshData
+{
+	gfx::Geometry geometry;
+	stdfs::path id;
+	std::vector<std::size_t> materialIndices;
+	f32 shininess = 32.0f;
+	Hash hash;
+};
+struct Model::Info : InfoBase
+{
+	glm::vec3 origin;
+	res::Mesh::Type type;
+	res::Texture::Space mode;
+	Colour tint;
+};
+struct Model::CreateInfo
+{
+	glm::vec3 origin = glm::vec3(0.0f);
+	std::vector<TexData> textures;
+	std::vector<MatData> materials;
+	std::vector<MeshData> meshData;
+	std::vector<res::Mesh> preloaded;
+	res::Mesh::Type type = res::Mesh::Type::eStatic;
+	res::Texture::Space mode = res::Texture::Space::eSRGBNonLinear;
+	Colour tint = colours::white;
+	bool bDropColour = false;
 };
 } // namespace le::res

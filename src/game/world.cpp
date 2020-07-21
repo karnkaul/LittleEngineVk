@@ -3,9 +3,9 @@
 #include <engine/game/scene_builder.hpp>
 #include <engine/levk.hpp>
 #include <editor/editor.hpp>
-#include <assets/manifest.hpp>
-#include <levk_impl.hpp>
 #include <game/input_impl.hpp>
+#include <resources/manifest.hpp>
+#include <levk_impl.hpp>
 
 namespace le
 {

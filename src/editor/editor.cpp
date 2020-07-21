@@ -11,15 +11,14 @@
 #include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <gfx/ext_gui.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
-#include <engine/gfx/model.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
 #include <resources/resources_impl.hpp>
+#include <resources/model_impl.hpp>
 
 namespace le
 {
@@ -172,25 +171,6 @@ void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
 }
 
 template <typename T>
-void listAssets(std::string_view tabName)
-{
-	if (ImGui::BeginTabItem(tabName.data()))
-	{
-		auto assets = Resources::inst().loaded<T>();
-		static s32 selected = -1;
-		for (std::size_t i = 0; i < assets.size(); ++i)
-		{
-			auto pAsset = assets.at(i);
-			if (ImGui::Selectable(pAsset->m_id.generic_string().data(), selected == (s32)i))
-			{
-				selected = (s32)i;
-			}
-		}
-		ImGui::EndTabItem();
-	}
-}
-
-template <typename T>
 void listResources(std::string_view tabName)
 {
 	if (ImGui::BeginTabItem(tabName.data()))
@@ -221,7 +201,7 @@ void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 		{
 			if (ImGui::BeginTabBar("Resources"))
 			{
-				listAssets<gfx::Model>("Models");
+				listResources<res::Model>("Models");
 				listResources<res::Mesh>("Meshes");
 				listResources<res::Font>("Fonts");
 				listResources<res::Texture>("Textures");
@@ -239,47 +219,6 @@ template <typename T>
 bool dummy(T&)
 {
 	return true;
-}
-
-template <typename T, typename F, typename F2>
-void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter, glm::vec2 const& pos,
-				  glm::vec2 const& size, bool bNone = true)
-{
-	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
-											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-
-	ImGui::TreeNodeEx(pAsset ? pAsset->m_id.generic_string().data() : "[None]", flags);
-	if (ImGui::IsItemClicked() || out_bSelect)
-	{
-		out_bSelect = true;
-		for (auto pBool : unselect)
-		{
-			*pBool = false;
-		}
-		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
-		{
-			if (bNone && ImGui::Selectable("[None]"))
-			{
-				onSelected(nullptr);
-				out_bSelect = false;
-			}
-			auto assets = Resources::inst().loaded<T>();
-			for (auto pAsset : assets)
-			{
-				if (!filter || filter(*pAsset))
-				{
-					if (ImGui::Selectable(pAsset->m_id.generic_string().data()))
-					{
-						onSelected(pAsset);
-						out_bSelect = false;
-					}
-				}
-			}
-		}
-		ImGui::End();
-	}
 }
 
 template <typename T, typename F, typename F2>
@@ -410,17 +349,17 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 					ImGui::TreePop();
 				}
 			}
-			auto pTModel = registry.component<TAsset<gfx::Model>>(g_inspecting.entity);
-			auto pModel = pTModel ? pTModel->get() : nullptr;
-			if (pTModel)
+			auto pModel = registry.component<res::Model>(g_inspecting.entity);
+			auto pModelImpl = pModel ? res::impl(*pModel) : nullptr;
+			if (pModel)
 			{
 				if (ImGui::TreeNode("Model"))
 				{
-					inspectAsset<gfx::Model>(
-						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
-						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
+					inspectResource<res::Model>(
+						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { pModel->guid = model.guid; },
+						&dummy<res::Model>, pos, size);
 					static std::deque<res::Mesh> s_empty;
-					auto& meshes = pModel ? pModel->loadedMeshes() : s_empty;
+					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 					std::size_t idx = 0;
 					for (auto& mesh : meshes)
 					{

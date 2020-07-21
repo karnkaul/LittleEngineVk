@@ -2,23 +2,15 @@
 #include <atomic>
 #include <memory>
 #include <core/gdata.hpp>
+#include <core/reader.hpp>
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
 #include <core/utils.hpp>
-#include <engine/assets/asset_list.hpp>
-#include <engine/assets/resources.hpp>
-#include <engine/gfx/model.hpp>
+#include <engine/resources/asset_list.hpp>
 #include <engine/resources/resources.hpp>
 
 namespace le
 {
-template <typename T>
-struct AssetData
-{
-	typename T::Info info;
-	stdfs::path id;
-};
-
 template <typename T>
 struct ResourceData final
 {
@@ -46,7 +38,7 @@ public:
 		std::vector<ResourceData<res::Texture>> cubemaps;
 		std::vector<ResourceData<res::Material>> materials;
 		std::vector<ResourceData<res::Mesh>> meshes;
-		std::vector<AssetData<gfx::Model>> models;
+		std::vector<ResourceData<res::Model>> models;
 		std::vector<ResourceData<res::Font>> fonts;
 
 		void intersect(AssetList ids);
@@ -73,10 +65,9 @@ protected:
 	GData m_manifest;
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
-	std::vector<Asset*> m_loading;
-	std::vector<res::GUID> m_loading2;
+	std::vector<res::GUID> m_loading;
 	Lockable<std::mutex> m_mutex;
-	Resources::Semaphore m_semaphore;
+	res::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
 	io::Reader const* m_pReader = nullptr;
 	bool m_bParsed = false;

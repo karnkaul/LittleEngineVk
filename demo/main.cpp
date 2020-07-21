@@ -9,7 +9,6 @@
 #include <core/threads.hpp>
 #include <core/transform.hpp>
 #include <engine/levk.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/ecs/registry.hpp>
 #include <engine/game/freecam.hpp>
 #include <engine/game/input.hpp>
@@ -17,7 +16,6 @@
 #include <engine/game/world.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <engine/gfx/light.hpp>
-#include <engine/gfx/model.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
@@ -220,11 +218,11 @@ bool DemoWorld::start()
 	m_registry.addComponent<res::Mesh>(m_data.eid1, m_res.sphere);
 
 	m_registry.component<Transform>(m_data.eid2)->setPosition({-1.0f, 1.0f, -2.0f}).setParent(&t2);
-	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid2, m_data.model0id);
+	m_registry.addComponent<res::Model>(m_data.eid2);
 
 	m_registry.component<Transform>(m_data.eid3)->setPosition({0.0f, -1.0f, -3.0f});
 	// m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, m_data.model1id);
-	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, "");
+	m_registry.addComponent<res::Model>(m_data.eid3);
 
 	if (!m_pPipeline0wf)
 	{
@@ -273,38 +271,38 @@ void DemoWorld::tick(Time dt)
 	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto const& handle) -> bool { return handle->hasCompleted(true); });
 	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
 
-	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
-	{
-		if (Resources::inst().get<gfx::Model>(m_data.model0id))
-		{
-			Resources::inst().unload<gfx::Model>(m_data.model0id);
-			if (Resources::inst().get<gfx::Model>(m_data.model1id))
-			{
-				Resources::inst().unload<gfx::Model>(m_data.model1id);
-			}
-		}
-		else
-		{
-			m_data.modelReloads.push_back(tasks::enqueue(
-				[this]() {
-					auto semaphore = Resources::inst().setBusy();
-					auto m0info = gfx::Model::parseOBJ(m_data.model0id);
-					Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
-				},
-				"Model0-Reload"));
-			if (m_data.model0id != m_data.model1id)
-			{
-				m_data.modelReloads.push_back(tasks::enqueue(
-					[this]() {
-						auto semaphore = Resources::inst().setBusy();
-						auto m1info = gfx::Model::parseOBJ(m_data.model1id);
-						Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
-					},
-					"Model1-Reload"));
-			}
-		}
-		m_data.bLoadUnloadModels = false;
-	}
+	// if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
+	// {
+	// 	if (Resources::inst().get<gfx::Model>(m_data.model0id))
+	// 	{
+	// 		Resources::inst().unload<gfx::Model>(m_data.model0id);
+	// 		if (Resources::inst().get<gfx::Model>(m_data.model1id))
+	// 		{
+	// 			Resources::inst().unload<gfx::Model>(m_data.model1id);
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		m_data.modelReloads.push_back(tasks::enqueue(
+	// 			[this]() {
+	// 				auto semaphore = Resources::inst().setBusy();
+	// 				auto m0info = gfx::Model::parseOBJ(m_data.model0id);
+	// 				Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
+	// 			},
+	// 			"Model0-Reload"));
+	// 		if (m_data.model0id != m_data.model1id)
+	// 		{
+	// 			m_data.modelReloads.push_back(tasks::enqueue(
+	// 				[this]() {
+	// 					auto semaphore = Resources::inst().setBusy();
+	// 					auto m1info = gfx::Model::parseOBJ(m_data.model1id);
+	// 					Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
+	// 				},
+	// 				"Model1-Reload"));
+	// 		}
+	// 	}
+	// 	m_data.bLoadUnloadModels = false;
+	// }
 
 	sceneCamera<FreeCam>().tick(dt);
 
@@ -371,6 +369,14 @@ void DemoWorld::onManifestLoaded()
 	m_res.sphere.material().diffuse = res::findTexture(m_res.container2).payload;
 	m_res.sphere.material().specular = res::findTexture(m_res.container2_specular).payload;
 	m_res.quad.material().diffuse = res::findTexture(m_res.awesomeface).payload;
+	if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
+	{
+		pModel->guid = res::findModel(m_data.model1id).payload.guid;
+	}
+	if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
+	{
+		pModel->guid = res::findModel(m_data.model0id).payload.guid;
+	}
 }
 } // namespace
 

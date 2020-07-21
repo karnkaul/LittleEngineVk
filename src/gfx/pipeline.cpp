@@ -1,6 +1,5 @@
 #include <fmt/format.h>
 #include <core/log.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <gfx/deferred.hpp>

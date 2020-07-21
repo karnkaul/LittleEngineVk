@@ -296,18 +296,8 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 					auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 					ASSERT(pReader, "FileReader needed!");
-					auto onReloaded = [guid = this->guid, idx](Monitor::File const* pFile) -> bool {
-						bool bSuccess = false;
-						Shader shader;
-						shader.guid = guid;
-						if (auto pImpl = res::impl(shader))
-						{
-							if (pImpl->glslToSpirV(pFile->id, pImpl->codeMap.at(idx)))
-							{
-								bSuccess = true;
-							}
-						}
-						if (!bSuccess)
+					auto onReloaded = [this, idx](Monitor::File const* pFile) -> bool {
+						if (!glslToSpirV(pFile->id, codeMap.at(idx)))
 						{
 							LOG_E("[{}] Failed to reload Shader!", s_tName);
 							return false;
@@ -582,21 +572,21 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 		for (auto const& id : out_createInfo.ids)
 		{
 			imgIDs.push_back(id);
-			auto onModified = [guid = this->guid, idx](Monitor::File const* pFile) -> bool {
+			auto onModified = [this, idx](Monitor::File const* pFile) -> bool {
 				Texture texture;
 				texture.guid = guid;
-				if (auto pImpl = res::impl(texture); auto pInfo = res::infoRW(texture))
+				if (auto pInfo = res::infoRW(texture))
 				{
 					auto const idStr = pInfo->id.generic_string();
 					auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
 					if (bResult)
 					{
-						if (pImpl->bStbiRaw)
+						if (bStbiRaw)
 						{
-							stbi_image_free((void*)(pImpl->raws.at(idx).bytes.pData));
+							stbi_image_free((void*)(raws.at(idx).bytes.pData));
 						}
 						pInfo->size = raw.size;
-						pImpl->raws.at(idx) = std::move(raw);
+						raws.at(idx) = std::move(raw);
 						return true;
 					}
 				}

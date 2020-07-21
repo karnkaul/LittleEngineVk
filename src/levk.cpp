@@ -4,7 +4,6 @@
 #include <core/time.hpp>
 #include <core/utils.hpp>
 #include <engine/levk.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
 #include <game/input_impl.hpp>
 #include <gfx/deferred.hpp>
@@ -41,10 +40,8 @@ Service::~Service()
 {
 	input::deinit();
 	World::stopActive();
-	Resources::inst().waitIdle();
 	res::waitIdle();
 	World::destroyAll();
-	Resources::inst().deinit();
 	res::deinit();
 	g_app = {};
 }
@@ -101,7 +98,6 @@ bool Service::init(Info const& info)
 		}
 		g_app.pReader = pReader;
 		m_services.add<res::Service>();
-		Resources::inst().init(*pReader);
 		if (info.windowInfo)
 		{
 			g_app.uWindow = std::make_unique<Window>();
@@ -221,7 +217,6 @@ glm::ivec2 engine::framebufferSize()
 
 void engine::update()
 {
-	Resources::inst().update();
 	res::update();
 	WindowImpl::update();
 	gfx::vram::update();

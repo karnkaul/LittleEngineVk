@@ -9,6 +9,7 @@
 #include <engine/resources/resources.hpp>
 #include <gfx/vram.hpp>
 #include <resources/resources_impl.hpp>
+#include <resources/model_impl.hpp>
 #include <levk_impl.hpp>
 
 namespace le
@@ -32,32 +33,32 @@ template <typename T, typename TImpl>
 T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::path const& id)
 {
 	GUID guid = ++g_nextGUID;
-	TImpl impl;
+	std::unique_ptr<TImpl> uImpl = std::make_unique<TImpl>();
 	typename T::Info info;
-	impl.id = id;
-	impl.guid = guid;
+	uImpl->id = id;
+	uImpl->guid = guid;
 	LOGIF_W(id.empty(), "[{}] Empty resource ID!", T::s_tName);
-	if (!id.empty() && impl.make(out_createInfo, info))
+	if (!id.empty() && uImpl->make(out_createInfo, info))
 	{
 		T resource;
 		resource.guid = guid;
-		info.id = impl.id = id;
-		impl.guid = guid;
-		TResource<T, TImpl> tResource{std::move(info), resource, std::move(impl)};
+		info.id = uImpl->id = id;
+		uImpl->guid = guid;
+		TImpl* pImpl = uImpl.get();
+		TResource<T, TImpl> tResource{std::move(info), resource, std::move(uImpl)};
 		auto lock = out_map.mutex.template lock<std::unique_lock>();
 		auto const guid = resource.guid;
 		out_map.ids[id] = guid;
-		if (std::is_base_of_v<ILoadable, TImpl> && tResource.impl.status != Status::eReady)
+		out_map.resources.emplace(guid, std::move(tResource));
+		if (std::is_base_of_v<ILoadable, TImpl> && pImpl->status != Status::eReady)
 		{
-			tResource.impl.status = Status::eLoading;
-			out_map.resources.emplace(guid, std::move(tResource));
-			out_map.loading[guid] = &out_map.resources.find(guid).payload->impl;
+			pImpl->status = Status::eLoading;
+			out_map.loading[guid] = pImpl;
 			LOG_I("++ [{}] [{}] [{}] loading...", guid, T::s_tName, id.generic_string());
 		}
 		else
 		{
-			tResource.impl.status = Status::eReady;
-			out_map.resources.emplace(guid, std::move(tResource));
+			pImpl->status = Status::eReady;
 			LOG_I("== [{}] [{}] [{}] loaded", guid, T::s_tName, id.generic_string());
 		}
 		return resource;
@@ -99,7 +100,7 @@ TImpl* findImpl(Map<T, TImpl>& map, GUID guid)
 	auto [pResource, bResult] = map.resources.find(guid);
 	if (bResult)
 	{
-		return &pResource->impl;
+		return pResource->uImpl.get();
 	}
 	return nullptr;
 }
@@ -140,9 +141,9 @@ bool unload(Map<T, TImpl>& out_map, Hash id)
 		auto [tResource, bResult] = out_map.resources.find(guid);
 		if (bResult)
 		{
-			LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->impl.id.generic_string());
+			LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
 			lock.unlock();
-			tResource->impl.release();
+			tResource->uImpl->release();
 			lock.lock();
 		}
 		return out_map.resources.unload(guid);
@@ -157,10 +158,10 @@ bool unload(Map<T, TImpl>& out_map, GUID guid)
 	auto [tResource, bResult] = out_map.resources.find(guid);
 	if (bResult)
 	{
-		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->impl.id.generic_string());
-		out_map.ids.erase(tResource->impl.id);
+		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
+		out_map.ids.erase(tResource->uImpl->id);
 		lock.unlock();
-		tResource->impl.release();
+		tResource->uImpl->release();
 		lock.lock();
 	}
 	return out_map.resources.unload(guid);
@@ -203,18 +204,18 @@ void update(Map<T, TImpl>& out_map)
 		auto lock = out_map.mutex.template lock<std::shared_lock>();
 		for (auto& [guid, tResource] : out_map.resources.m_map)
 		{
-			if (tResource.impl.checkReload())
+			if (tResource.uImpl->checkReload())
 			{
 				if constexpr (std::is_base_of_v<ILoadable, TImpl>)
 				{
-					LOG_D("++ [{}] [{}] [{}] reloading...", guid, T::s_tName, tResource.impl.id.generic_string());
-					tResource.impl.status = Status::eReloading;
-					out_map.loading[guid] = &tResource.impl;
+					LOG_D("++ [{}] [{}] [{}] reloading...", guid, T::s_tName, tResource.uImpl->id.generic_string());
+					tResource.uImpl->status = Status::eReloading;
+					out_map.loading[guid] = tResource.uImpl.get();
 				}
 				else
 				{
-					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, tResource.impl.id.generic_string());
-					tResource.impl.onReload();
+					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, tResource.uImpl->id.generic_string());
+					tResource.uImpl->onReload();
 				}
 			}
 		}
@@ -249,9 +250,9 @@ void release(Map<T, TImpl>& out_map)
 	for (auto iter = out_map.resources.m_map.begin(); iter != out_map.resources.m_map.end();)
 	{
 		auto& [guid, tResource] = *iter;
-		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource.impl.id.generic_string());
+		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource.uImpl->id.generic_string());
 		lock.unlock();
-		tResource.impl.release();
+		tResource.uImpl->release();
 		lock.lock();
 		iter = out_map.resources.m_map.erase(iter);
 	}
@@ -286,7 +287,7 @@ std::vector<T> loaded(Map<T, TImpl> const& map)
 		{
 			s_cache.push_back(&tResource);
 		}
-		std::sort(s_cache.begin(), s_cache.end(), [](auto pLhs, auto pRhs) { return pLhs->impl.id < pRhs->impl.id; });
+		std::sort(s_cache.begin(), s_cache.end(), [](auto pLhs, auto pRhs) { return pLhs->uImpl->id < pRhs->uImpl->id; });
 	}
 	ret.reserve(s_cache.size());
 	for (auto const& pRes : s_cache)
@@ -309,6 +310,7 @@ Map<Texture, Texture::Impl> g_textures;
 Map<Material, Material::Impl> g_materials;
 Map<Mesh, Mesh::Impl> g_meshes;
 Map<Font, Font::Impl> g_fonts;
+Map<Model, Model::Impl> g_models;
 
 bool g_bInit = false;
 Counter<s32> g_counter;
@@ -505,6 +507,37 @@ bool res::unloadFont(Hash id)
 	return g_bInit ? unload(g_fonts, id) : false;
 }
 
+res::Model res::load(stdfs::path const& id, Model::CreateInfo createInfo)
+{
+	return g_bInit ? make(g_models, createInfo, id) : res::Model();
+}
+
+TResult<Model> res::findModel(Hash id)
+{
+	return g_bInit ? find(g_models, id) : TResult<Model>();
+}
+
+Model::Info const& res::info(Model model)
+{
+	static Model::Info const s_default{};
+	return g_bInit ? findInfo(g_models, model.guid) : s_default;
+}
+
+Status res::status(Model model)
+{
+	return g_bInit ? status(g_models, model.guid) : Status::eIdle;
+}
+
+bool res::unload(Model model)
+{
+	return g_bInit ? unload(g_models, model.guid) : false;
+}
+
+bool res::unloadModel(Hash id)
+{
+	return g_bInit ? unload(g_models, id) : false;
+}
+
 res::Shader::Impl* res::impl(Shader shader)
 {
 	return g_bInit ? findImpl(g_shaders, shader.guid) : nullptr;
@@ -533,6 +566,11 @@ res::Mesh::Impl* res::impl(Mesh mesh)
 res::Font::Impl* res::impl(Font font)
 {
 	return g_bInit ? findImpl(g_fonts, font.guid) : nullptr;
+}
+
+res::Model::Impl* res::impl(Model model)
+{
+	return g_bInit ? findImpl(g_models, model.guid) : nullptr;
 }
 
 Shader::Info* res::infoRW(Shader shader)
@@ -565,6 +603,11 @@ Font::Info* res::infoRW(Font font)
 	return g_bInit ? findInfoRW(g_fonts, font.guid) : nullptr;
 }
 
+Model::Info* res::infoRW(Model model)
+{
+	return g_bInit ? findInfoRW(g_models, model.guid) : nullptr;
+}
+
 #if defined(LEVK_EDITOR)
 std::vector<Shader> res::loadedShaders()
 {
@@ -595,11 +638,17 @@ std::vector<Font> res::loadedFonts()
 {
 	return g_bInit ? loaded(g_fonts) : std::vector<Font>();
 }
+
+std::vector<Model> res::loadedModels()
+{
+	return g_bInit ? loaded(g_models) : std::vector<Model>();
+}
 #endif
 
 bool res::unload(Hash id)
 {
-	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) || unloadMaterial(id) || unloadMesh(id) || unloadFont(id) : false;
+	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) || unloadMaterial(id) || unloadMesh(id) || unloadFont(id) || unloadModel(id)
+				   : false;
 }
 
 bool res::isLoading(GUID guid)
@@ -607,7 +656,7 @@ bool res::isLoading(GUID guid)
 	if (g_bInit)
 	{
 		return isLoading(g_shaders, guid) || isLoading(g_samplers, guid) || isLoading(g_textures, guid) || isLoading(g_materials, guid)
-			   || isLoading(g_meshes, guid) || isLoading(g_fonts, guid);
+			   || isLoading(g_meshes, guid) || isLoading(g_fonts, guid) || isLoading(g_models, guid);
 	}
 	return false;
 }
@@ -696,6 +745,7 @@ void res::update()
 	update(g_materials);
 	update(g_meshes);
 	update(g_fonts);
+	update(g_models);
 }
 
 void res::waitIdle()
@@ -717,6 +767,7 @@ void res::waitIdle()
 	waitLoading(g_materials);
 	waitLoading(g_meshes);
 	waitLoading(g_fonts);
+	waitLoading(g_models);
 }
 
 void res::deinit()
@@ -730,6 +781,7 @@ void res::deinit()
 		release(g_materials);
 		release(g_meshes);
 		release(g_fonts);
+		release(g_models);
 		g_bInit = false;
 		LOG_I("[le::resources] deinitialised");
 	}

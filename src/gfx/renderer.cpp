@@ -5,7 +5,6 @@
 #include <core/log.hpp>
 #include <core/transform.hpp>
 #include <core/utils.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>

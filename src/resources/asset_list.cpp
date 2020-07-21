@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <engine/assets/asset_list.hpp>
+#include <engine/resources/asset_list.hpp>
 
 namespace le
 {

@@ -28,9 +28,7 @@ res::Mesh UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
 		info.geometry = std::move(geometry);
 		info.type = res::Mesh::Type::eDynamic;
 		info.material.flags.set(res::Material::Flag::eUI);
-		stdfs::path meshID = id.empty() ? "(ui)" : id;
-		meshID += "_quad";
-		mesh = res::load(meshID, std::move(info));
+		mesh = res::load((id.empty() ? "(ui)" : id) / "quad", std::move(info));
 	}
 	else
 	{

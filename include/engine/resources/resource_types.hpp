@@ -11,6 +11,9 @@
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_RESOURCES_HOT_RELOAD)
+///
+/// \brief Enable resource reloading on file changes (requires FileReader)
+///
 #define LEVK_RESOURCES_HOT_RELOAD
 #endif
 #endif
@@ -19,6 +22,9 @@ namespace le::res
 {
 using GUID = TZero<u64>;
 
+///
+/// \brief Resource status
+///
 enum class Status : s8
 {
 	eIdle,
@@ -29,11 +35,27 @@ enum class Status : s8
 	eCOUNT_
 };
 
+///
+/// \brief Base struct for all resources
+///
+/// All derived types define the following subtypes:
+/// 	Info		: read-only data corresponding to handle
+/// 	CreateInfo	: setup data passed to resources::load
+/// 	Impl		: implementation detail (internal to engine)
+///
 struct Resource
 {
+	///
+	/// \brief Unique ID per Resource; this is the only data member in all derived types
+	///
 	GUID guid;
 };
 
+///
+/// \brief Handle for Vulkan shader program
+///
+/// GLSL to SPIR-V compilation is supported if LEVK_SHADER_COMPILER is defined
+///
 struct Shader final : Resource
 {
 	enum class Type : s8;
@@ -48,6 +70,9 @@ struct Shader final : Resource
 	Status status() const;
 };
 
+///
+/// \brief Handle for Vulkan Image Sampler
+///
 struct Sampler final : Resource
 {
 	enum class Filter : s8;
@@ -63,6 +88,9 @@ struct Sampler final : Resource
 	Status status() const;
 };
 
+///
+/// \brief Handle for Vulkan Image and ImageView
+///
 struct Texture final : Resource
 {
 	enum class Space : s8;
@@ -79,6 +107,9 @@ struct Texture final : Resource
 	Status status() const;
 };
 
+///
+/// \brief Handle for base material used in Mesh
+///
 struct Material final : Resource
 {
 	enum class Flag : s8
@@ -105,6 +136,9 @@ struct Material final : Resource
 	Status status() const;
 };
 
+///
+/// \brief Handle for drawable resource using Geometry
+///
 struct Mesh final : Resource
 {
 	enum class Type : s8;
@@ -122,6 +156,9 @@ struct Mesh final : Resource
 	Material::Inst& material();
 };
 
+///
+/// \brief Handle for bitmap font using texture atlas
+///
 struct Font final : Resource
 {
 	struct Glyph;
@@ -139,6 +176,9 @@ struct Font final : Resource
 	gfx::Geometry generate(Text const& text) const;
 };
 
+///
+/// \brief Handle for model described as a number of meshes, materials, and textures
+///
 struct Model final : Resource
 {
 	struct TexData;
@@ -151,7 +191,7 @@ struct Model final : Resource
 
 	static std::string const s_tName;
 
-	static CreateInfo parseOBJ(stdfs::path const& assetID);
+	static CreateInfo parseOBJ(stdfs::path const& resourceID);
 
 	Info const& info() const;
 	Status status() const;

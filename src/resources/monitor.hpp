@@ -43,7 +43,7 @@ struct Monitor::File final
 	io::FileMonitor monitor;
 	// file-level callback, invoked when modified, aborts reload on receiving false
 	std::function<bool(File const*)> onModified;
-	// Asset ID
+	// Resource ID
 	stdfs::path id;
 
 	File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(File const*)> onModified);

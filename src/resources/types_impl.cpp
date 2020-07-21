@@ -294,6 +294,7 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 				if (loadGlsl(codeID, (Type)idx))
 				{
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
+					monitor = {};
 					auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 					ASSERT(pReader, "FileReader needed!");
 					auto onReloaded = [this, idx](Monitor::File const* pFile) -> bool {
@@ -523,18 +524,18 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	}
 	else if (!out_createInfo.ids.empty())
 	{
-		for (auto const& assetID : out_createInfo.ids)
+		for (auto const& resourceID : out_createInfo.ids)
 		{
-			auto [pixels, bPixels] = engine::reader().getBytes(assetID);
+			auto [pixels, bPixels] = engine::reader().getBytes(resourceID);
 			if (!bPixels)
 			{
-				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, assetID.generic_string());
+				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
 				return false;
 			}
 			auto [raw, bResult] = imgToRaw(std::move(pixels), Texture::s_tName, idStr, io::Level::eError);
 			if (!bResult)
 			{
-				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, assetID.generic_string());
+				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
 				return false;
 			}
 			raws.push_back(std::move(raw));
@@ -841,8 +842,7 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 {
 	res::Texture::CreateInfo sheetInfo;
-	stdfs::path texID = id;
-	texID += "_sheet";
+	stdfs::path texID = id / "sheet";
 	if (out_createInfo.samplerID.empty())
 	{
 		out_createInfo.samplerID = "samplers/font";

@@ -221,7 +221,6 @@ bool DemoWorld::start()
 	m_registry.addComponent<res::Model>(m_data.eid2);
 
 	m_registry.component<Transform>(m_data.eid3)->setPosition({0.0f, -1.0f, -3.0f});
-	// m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, m_data.model1id);
 	m_registry.addComponent<res::Model>(m_data.eid3);
 
 	if (!m_pPipeline0wf)

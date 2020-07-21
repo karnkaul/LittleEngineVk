@@ -175,29 +175,57 @@ void listResources(std::string_view tabName)
 {
 	if (ImGui::BeginTabItem(tabName.data()))
 	{
+		static char szFilter[128];
+		std::string_view resourceFilter;
+		ImGui::SetNextItemWidth(200.0f);
+		ImGui::InputText("Filter", szFilter, arraySize(szFilter));
+		ImGui::Separator();
+		static ImGuiTreeNodeFlags const baseFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+		ImGuiTreeNodeFlags nodeFlags = baseFlags;
+		resourceFilter = szFilter;
 		auto resources = res::loaded<T>();
-		static s32 selected = -1;
-		for (std::size_t i = 0; i < resources.size(); ++i)
+		if (!resourceFilter.empty())
 		{
-			auto resource = resources.at(i);
-			if (ImGui::Selectable(resource.info().id.generic_string().data(), selected == (s32)i))
+			for (auto& kvp : resources.entries)
 			{
-				selected = (s32)i;
+				auto& [dir, entries] = kvp;
+				auto iter = std::remove_if(entries.begin(), entries.end(), [kvp, resourceFilter](auto const& entry) -> bool {
+					return (stdfs::path(kvp.first) / stdfs::path(entry.first)).generic_string().find(resourceFilter) == std::string::npos;
+				});
+				entries.erase(iter, entries.end());
+			}
+		}
+		for (auto const& [dir, entries] : resources.entries)
+		{
+			if (!entries.empty() && ImGui::TreeNode(dir.data()))
+			{
+				nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+				for (auto const& entry : entries)
+				{
+					ImGui::Selectable(entry.first.data());
+				}
+				ImGui::TreePop();
 			}
 		}
 		ImGui::EndTabItem();
 	}
 }
 
+template <typename T>
+bool dummy(T&)
+{
+	return true;
+}
+
 void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 {
-	static bool s_bAssets = false;
-	s_bAssets |= ImGui::Button("Resources");
-	if (s_bAssets)
+	static bool s_bResources = false;
+	s_bResources |= ImGui::Button("Resources");
+	if (s_bResources)
 	{
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin("Loaded Assets", &s_bAssets, ImGuiWindowFlags_NoSavedSettings))
+		if (ImGui::Begin("Loaded Resources", &s_bResources, ImGuiWindowFlags_NoSavedSettings))
 		{
 			if (ImGui::BeginTabBar("Resources"))
 			{
@@ -213,12 +241,6 @@ void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 		}
 		ImGui::End();
 	}
-}
-
-template <typename T>
-bool dummy(T&)
-{
-	return true;
 }
 
 template <typename T, typename F, typename F2>
@@ -241,22 +263,42 @@ void inspectResource(T resource, std::string_view selector, bool& out_bSelect, s
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
 		{
+			static char szFilter[128];
+			std::string_view resourceFilter;
+			ImGui::SetNextItemWidth(200.0f);
+			ImGui::InputText("Filter", szFilter, arraySize(szFilter));
+			ImGui::Separator();
 			if (bNone && ImGui::Selectable("[None]"))
 			{
 				onSelected({});
 				out_bSelect = false;
 			}
+			resourceFilter = szFilter;
 			auto resources = res::loaded<T>();
-			for (auto resource : resources)
+			if (!resourceFilter.empty())
 			{
-				if (!filter || filter(resource))
+				for (auto& kvp : resources.entries)
 				{
-					if (ImGui::Selectable(res::info(resource).id.generic_string().data()))
+					auto& [dir, entries] = kvp;
+					auto iter = std::remove_if(entries.begin(), entries.end(), [kvp, resourceFilter](auto const& entry) -> bool {
+						return (stdfs::path(kvp.first) / stdfs::path(entry.first)).generic_string().find(resourceFilter) == std::string::npos;
+					});
+					entries.erase(iter, entries.end());
+				}
+			}
+			for (auto const& [dir, entries] : resources.entries)
+			{
+				if (!entries.empty() && ImGui::TreeNode(dir.data()))
+				{
+					for (auto const& entry : entries)
 					{
-						onSelected(resource);
-						LOG_I("[le::resources] initialised");
-						out_bSelect = false;
+						if (filter(entry.second) && ImGui::Selectable(entry.first.data()))
+						{
+							onSelected(entry.second);
+							out_bSelect = false;
+						}
 					}
+					ImGui::TreePop();
 				}
 			}
 		}
@@ -276,11 +318,11 @@ void inspectMaterial(res::Mesh mesh, std::size_t idx, glm::vec2 const& pos, glm:
 	{
 		inspectResource<res::Material>(
 			pInfo->material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
-			[pInfo](res::Material mat) { pInfo->material.material = mat; }, &dummy<res::Material>, pos, size, false);
+			[pInfo](res::Material const& mat) { pInfo->material.material = mat; }, &dummy<res::Material const&>, pos, size, false);
 		inspectResource<res::Texture>(
 			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[pInfo](res::Texture tex) { pInfo->material.diffuse.guid = tex.guid; },
-			[](res::Texture& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
+			[pInfo](res::Texture const& tex) { pInfo->material.diffuse.guid = tex.guid; },
+			[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
 		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
 		pInfo->material.flags[res::Material::Flag::eDropColour] = bOut;
@@ -340,7 +382,7 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 				{
 					inspectResource<res::Mesh>(
 						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pMesh](res::Mesh mesh) { pMesh->guid = mesh.guid; }, &dummy<res::Mesh>, pos, size);
+						[pMesh](res::Mesh const& mesh) { pMesh->guid = mesh.guid; }, &dummy<res::Mesh const&>, pos, size);
 
 					if (pMesh)
 					{
@@ -355,9 +397,9 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 			{
 				if (ImGui::TreeNode("Model"))
 				{
-					inspectResource<res::Model>(
-						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { pModel->guid = model.guid; },
-						&dummy<res::Model>, pos, size);
+					inspectResource(
+						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model const& model) { pModel->guid = model.guid; },
+						&dummy<res::Model const&>, pos, size);
 					static std::deque<res::Mesh> s_empty;
 					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 					std::size_t idx = 0;

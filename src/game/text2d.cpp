@@ -27,13 +27,11 @@ bool Text2D::setup(Info info)
 	m_data = std::move(info.data);
 	auto fontInfo = res::info(m_font);
 	res::Mesh::CreateInfo meshInfo;
-	stdfs::path meshID = info.id;
-	meshID += "_mesh";
 	meshInfo.material = fontInfo.material;
 	meshInfo.material.tint = info.data.colour;
 	meshInfo.geometry = m_font.generate(m_data);
 	meshInfo.type = res::Mesh::Type::eDynamic;
-	m_mesh = res::load(meshID, std::move(meshInfo));
+	m_mesh = res::load(info.id / "mesh", std::move(meshInfo));
 	if (m_mesh.status() != res::Status::eError)
 	{
 		return true;

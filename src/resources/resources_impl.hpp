@@ -7,6 +7,27 @@
 
 namespace le::res
 {
+#if defined(LEVK_EDITOR)
+template <typename T>
+struct TreeView final
+{
+	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource");
+
+	using Name = std::string;
+	using Dir = std::string;
+	using Entry = std::pair<Name, T>;
+
+	std::map<Dir, std::vector<Entry>> entries;
+
+	void add(stdfs::path const& id, T const& t)
+	{
+		Dir dir = id.parent_path().generic_string();
+		Name name = id.filename().generic_string();
+		entries[std::move(dir)].push_back({std::move(name), T{t}});
+	}
+};
+#endif
+
 template <typename T, typename TImpl>
 struct TResource final
 {
@@ -172,13 +193,13 @@ Font::Info* infoRW(Font font);
 Model::Info* infoRW(Model model);
 
 #if defined(LEVK_EDITOR)
-std::vector<Shader> loadedShaders();
-std::vector<Sampler> loadedSamplers();
-std::vector<Texture> loadedTextures();
-std::vector<Material> loadedMaterials();
-std::vector<Mesh> loadedMeshes();
-std::vector<Font> loadedFonts();
-std::vector<Model> loadedModels();
+TreeView<Shader> const& loadedShaders();
+TreeView<Sampler> const& loadedSamplers();
+TreeView<Texture> const& loadedTextures();
+TreeView<Material> const& loadedMaterials();
+TreeView<Mesh> const& loadedMeshes();
+TreeView<Font> const& loadedFonts();
+TreeView<Model> const& loadedModels();
 #endif
 
 bool isLoading(GUID guid);
@@ -190,7 +211,7 @@ void deinit();
 
 #if defined(LEVK_EDITOR)
 template <typename T>
-std::vector<T> loaded()
+TreeView<T> const& loaded()
 {
 	if constexpr (std::is_same_v<T, Shader>)
 	{

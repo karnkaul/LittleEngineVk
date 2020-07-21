@@ -7,7 +7,12 @@ namespace le
 {
 namespace stdfs = std::filesystem;
 
-struct AssetList final
+namespace res
+{
+///
+/// \brief List of resource IDs
+///
+struct ResourceList final
 {
 	std::vector<stdfs::path> shaders;
 	std::vector<stdfs::path> textures;
@@ -17,11 +22,24 @@ struct AssetList final
 	std::vector<stdfs::path> models;
 	std::vector<stdfs::path> fonts;
 
-	AssetList operator*(AssetList const& rhs) const;
-	AssetList operator-(AssetList const& rhs) const;
+	///
+	/// \brief Intersect with `rhs`
+	///
+	ResourceList operator*(ResourceList const& rhs) const;
+	///
+	/// \brief Subtract intersection of `rhs`
+	///
+	ResourceList operator-(ResourceList const& rhs) const;
 
+	///
+	/// \brief Check if any resourceIDs are present
+	///
 	bool isEmpty() const;
 
+	///
+	/// \brief Obtain string output of entire list
+	///
 	std::string print() const;
 };
+} // namespace res
 } // namespace le

@@ -1,7 +1,7 @@
 #include <algorithm>
-#include <engine/resources/asset_list.hpp>
+#include <engine/resources/resource_list.hpp>
 
-namespace le
+namespace le::res
 {
 namespace
 {
@@ -34,9 +34,9 @@ std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vect
 }
 } // namespace
 
-AssetList AssetList::operator*(const AssetList& rhs) const
+ResourceList ResourceList::operator*(const ResourceList& rhs) const
 {
-	AssetList ret;
+	ResourceList ret;
 	ret.shaders = intersect(shaders, rhs.shaders);
 	ret.textures = intersect(textures, rhs.textures);
 	ret.cubemaps = intersect(cubemaps, rhs.cubemaps);
@@ -47,9 +47,9 @@ AssetList AssetList::operator*(const AssetList& rhs) const
 	return ret;
 }
 
-AssetList AssetList::operator-(const AssetList& rhs) const
+ResourceList ResourceList::operator-(const ResourceList& rhs) const
 {
-	AssetList ret;
+	ResourceList ret;
 	ret.shaders = subtract(shaders, rhs.shaders);
 	ret.textures = subtract(textures, rhs.textures);
 	ret.cubemaps = subtract(cubemaps, rhs.cubemaps);
@@ -60,4 +60,4 @@ AssetList AssetList::operator-(const AssetList& rhs) const
 	return ret;
 }
 
-} // namespace le
+} // namespace le::res

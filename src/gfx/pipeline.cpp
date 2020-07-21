@@ -41,10 +41,10 @@ bool PipelineImpl::create(Info info)
 	{
 		m_info.shaderID = "shaders/default";
 	}
-	m_name = fmt::format("{}:{}-?", m_info.window, m_info.name);
+	m_name = fmt::format("{}:{}:?", m_info.window, m_info.name);
 	if (create())
 	{
-		m_name = fmt::format("{}:{}-{}", m_info.window, m_info.name, res::info(m_info.shader).id.generic_string());
+		m_name = fmt::format("{}:{}:{}", m_info.window, m_info.name, res::info(m_info.shader).id.generic_string());
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 		if (auto pImpl = res::impl(m_info.shader))
 		{

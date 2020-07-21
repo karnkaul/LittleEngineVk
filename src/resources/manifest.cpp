@@ -10,11 +10,8 @@
 #include <resources/resources_impl.hpp>
 #include <levk_impl.hpp>
 
-namespace le
+namespace le::res
 {
-using namespace gfx;
-using namespace res;
-
 namespace
 {
 template <typename T>
@@ -45,18 +42,18 @@ bool empty(std::vector<T> const&... out_vecs)
 
 template <typename T>
 std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
-														   std::vector<GUID>& out_assets, Lockable<std::mutex>& mutex, std::string_view jobName)
+														   std::vector<GUID>& out_resources, Lockable<std::mutex>& mutex, std::string_view jobName)
 {
-	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Asset!");
+	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource!");
 	tasks::List taskList;
 	if (!out_toLoad.empty())
 	{
-		auto task = [&out_loaded, &out_assets, &mutex](ResourceData<T>& data) {
+		auto task = [&out_loaded, &out_resources, &mutex](ResourceData<T>& data) {
 			auto resource = load<T>(data.id, std::move(data.createInfo));
 			if (resource.guid > GUID::s_null)
 			{
 				auto lock = mutex.lock();
-				out_assets.push_back(resource.guid);
+				out_resources.push_back(resource.guid);
 				out_loaded.push_back(std::move(data.id));
 			}
 		};
@@ -66,7 +63,7 @@ std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceD
 }
 } // namespace
 
-void AssetManifest::Info::intersect(AssetList ids)
+void Manifest::Info::intersect(ResourceList ids)
 {
 	intersectTlist(shaders, ids.shaders);
 	intersectTlist(textures, ids.textures);
@@ -77,9 +74,9 @@ void AssetManifest::Info::intersect(AssetList ids)
 	intersectTlist(fonts, ids.fonts);
 }
 
-AssetList AssetManifest::Info::exportList() const
+ResourceList Manifest::Info::exportList() const
 {
-	AssetList ret;
+	ResourceList ret;
 	ret.shaders = exportTList(shaders);
 	ret.textures = exportTList(textures);
 	ret.cubemaps = exportTList(cubemaps);
@@ -90,12 +87,12 @@ AssetList AssetManifest::Info::exportList() const
 	return ret;
 }
 
-bool AssetManifest::Info::isEmpty() const
+bool Manifest::Info::isEmpty() const
 {
 	return empty(shaders, textures, cubemaps, materials, meshes, models, fonts);
 }
 
-std::string AssetList::print() const
+std::string ResourceList::print() const
 {
 	std::stringstream ret;
 	auto add = [&ret](std::vector<stdfs::path> const& vec, std::string_view title) {
@@ -115,9 +112,9 @@ std::string AssetList::print() const
 	return ret.str();
 }
 
-std::string const AssetManifest::s_tName = utils::tName<AssetManifest>();
+std::string const Manifest::s_tName = utils::tName<Manifest>();
 
-AssetManifest::AssetManifest(io::Reader const& reader, stdfs::path const& id) : m_pReader(&reader)
+Manifest::Manifest(io::Reader const& reader, stdfs::path const& id) : m_pReader(&reader)
 {
 	ASSERT(m_pReader, "io::Reader is null!");
 	auto [data, bResult] = m_pReader->getString(id);
@@ -136,7 +133,7 @@ AssetManifest::AssetManifest(io::Reader const& reader, stdfs::path const& id) : 
 	}
 }
 
-AssetManifest::~AssetManifest()
+Manifest::~Manifest()
 {
 	while (update(true) != Status::eIdle)
 	{
@@ -145,7 +142,7 @@ AssetManifest::~AssetManifest()
 	}
 }
 
-void AssetManifest::start()
+void Manifest::start()
 {
 	if (!m_bParsed)
 	{
@@ -157,7 +154,7 @@ void AssetManifest::start()
 	}
 }
 
-AssetManifest::Status AssetManifest::update(bool bTerminate)
+Manifest::Status Manifest::update(bool bTerminate)
 {
 	switch (m_status)
 	{
@@ -181,12 +178,12 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 			}
 			else
 			{
-				loadAssets();
+				loadResources();
 			}
 		}
 		break;
 	}
-	case Status::eLoadingAssets:
+	case Status::eLoadingResources:
 	{
 		if (eraseDone(bTerminate))
 		{
@@ -201,28 +198,28 @@ AssetManifest::Status AssetManifest::update(bool bTerminate)
 		}
 	}
 	}
-	bool const bTerminating = bTerminate && m_status == Status::eLoadingAssets;
+	bool const bTerminating = bTerminate && m_status == Status::eLoadingResources;
 	return bTerminating ? Status::eTerminating : m_status;
 }
 
-AssetList AssetManifest::parse()
+ResourceList Manifest::parse()
 {
-	AssetList all;
+	ResourceList all;
 	auto const shaders = m_manifest.get<std::vector<GData>>("shaders");
 	for (auto const& shader : shaders)
 	{
-		auto assetID = shader.get("id");
-		if (!assetID.empty())
+		auto resourceID = shader.get("id");
+		if (!resourceID.empty())
 		{
-			if (find<Shader>(assetID).bResult)
+			if (find<Shader>(resourceID).bResult)
 			{
-				all.shaders.push_back(assetID);
-				m_loaded.shaders.push_back(std::move(assetID));
+				all.shaders.push_back(resourceID);
+				m_loaded.shaders.push_back(std::move(resourceID));
 			}
 			else
 			{
 				ResourceData<Shader> data;
-				data.id = std::move(assetID);
+				data.id = std::move(resourceID);
 				bool const bOptional = shader.get<bool>("optional");
 				bool bFound = false;
 				auto const resourceIDs = shader.get<std::vector<GData>>("resource_ids");
@@ -279,21 +276,21 @@ AssetList AssetManifest::parse()
 	auto const cubemaps = m_manifest.get<std::vector<GData>>("cubemaps");
 	for (auto const& cubemap : cubemaps)
 	{
-		auto const assetID = cubemap.get("id");
+		auto const resourceID = cubemap.get("id");
 		auto const resourceIDs = cubemap.get<std::vector<std::string>>("textures");
 		bool const bOptional = cubemap.get<bool>("optional");
 		bool bMissing = false;
-		if (!assetID.empty())
+		if (!resourceID.empty())
 		{
-			if (findTexture(assetID).bResult)
+			if (findTexture(resourceID).bResult)
 			{
-				all.cubemaps.push_back(assetID);
-				m_loaded.cubemaps.push_back(std::move(assetID));
+				all.cubemaps.push_back(resourceID);
+				m_loaded.cubemaps.push_back(std::move(resourceID));
 			}
 			else
 			{
 				ResourceData<Texture> data;
-				data.id = assetID;
+				data.id = resourceID;
 				data.createInfo.mode = engine::colourSpace();
 				data.createInfo.type = Texture::Type::eCube;
 				data.createInfo.samplerID = m_manifest.get("sampler");
@@ -351,7 +348,7 @@ AssetList AssetManifest::parse()
 	return all;
 }
 
-void AssetManifest::unload(const AssetList& list)
+void Manifest::unload(const ResourceList& list)
 {
 	auto unload = [](std::vector<stdfs::path> const& ids) {
 		for (auto const& id : ids)
@@ -368,7 +365,7 @@ void AssetManifest::unload(const AssetList& list)
 	unload(list.fonts);
 }
 
-void AssetManifest::loadData()
+void Manifest::loadData()
 {
 	m_status = Status::eExtractingData;
 	if (!m_toLoad.models.empty())
@@ -378,9 +375,9 @@ void AssetManifest::loadData()
 	}
 }
 
-void AssetManifest::loadAssets()
+void Manifest::loadResources()
 {
-	m_status = Status::eLoadingAssets;
+	m_status = Status::eLoadingResources;
 	m_semaphore = acquire();
 	addJobs(loadTResources(m_toLoad.shaders, m_loaded.shaders, m_loading, m_mutex, "Manifest-1:Shaders"));
 	addJobs(loadTResources(m_toLoad.textures, m_loaded.textures, m_loading, m_mutex, "Manifest-1:Textures"));
@@ -388,7 +385,7 @@ void AssetManifest::loadAssets()
 	addJobs(loadTResources(m_toLoad.models, m_loaded.models, m_loading, m_mutex, "Manifest-1:Models"));
 }
 
-bool AssetManifest::eraseDone(bool bWaitingJobs)
+bool Manifest::eraseDone(bool bWaitingJobs)
 {
 	auto lock = m_mutex.lock();
 	if (!m_running.empty())
@@ -411,8 +408,8 @@ bool AssetManifest::eraseDone(bool bWaitingJobs)
 	return m_running.empty() && m_loading.empty() && m_loading.empty();
 }
 
-void AssetManifest::addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles)
+void Manifest::addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles)
 {
 	std::move(handles.begin(), handles.end(), std::back_inserter(m_running));
 }
-} // namespace le
+} // namespace le::res

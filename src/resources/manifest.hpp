@@ -6,10 +6,10 @@
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
 #include <core/utils.hpp>
-#include <engine/resources/asset_list.hpp>
+#include <engine/resources/resource_list.hpp>
 #include <engine/resources/resources.hpp>
 
-namespace le
+namespace le::res
 {
 template <typename T>
 struct ResourceData final
@@ -18,15 +18,15 @@ struct ResourceData final
 	stdfs::path id;
 };
 
-class AssetManifest
+class Manifest
 {
 public:
 	enum class Status : s8
 	{
 		eIdle,
 		eExtractingData,
-		eLoadingAssets,
-		eWaitingForAssets,
+		eLoadingResources,
+		eWaitingForResources,
 		eTerminating,
 		eError,
 	};
@@ -41,9 +41,9 @@ public:
 		std::vector<ResourceData<res::Model>> models;
 		std::vector<ResourceData<res::Font>> fonts;
 
-		void intersect(AssetList ids);
+		void intersect(ResourceList ids);
 
-		AssetList exportList() const;
+		ResourceList exportList() const;
 		bool isEmpty() const;
 	};
 
@@ -58,7 +58,7 @@ protected:
 	};
 
 public:
-	AssetList m_loaded;
+	ResourceList m_loaded;
 	Info m_toLoad;
 
 protected:
@@ -73,20 +73,20 @@ protected:
 	bool m_bParsed = false;
 
 public:
-	AssetManifest(io::Reader const& reader, stdfs::path const& id);
-	~AssetManifest();
+	Manifest(io::Reader const& reader, stdfs::path const& id);
+	~Manifest();
 
 public:
 	void start();
 	Status update(bool bTerminate = false);
-	AssetList parse();
+	ResourceList parse();
 
-	static void unload(AssetList const& list);
+	static void unload(ResourceList const& list);
 
 protected:
 	void loadData();
-	void loadAssets();
+	void loadResources();
 	bool eraseDone(bool bWaitingJobs);
 	void addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles);
 };
-} // namespace le
+} // namespace le::res

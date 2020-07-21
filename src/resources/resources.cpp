@@ -271,31 +271,25 @@ Status status(Map<T, TImpl>& map, GUID guid)
 	return Status::eIdle;
 }
 
+#if defined(LEVK_EDITOR)
 template <typename T, typename TImpl>
-std::vector<T> loaded(Map<T, TImpl> const& map)
+TreeView<T> const& loaded(Map<T, TImpl> const& map)
 {
-	std::vector<T> ret;
+	static TreeView<T> s_ret;
 	static GUID::type s_guid;
-	static std::vector<TResource<T, TImpl> const*> s_cache;
 	auto lock = map.mutex.template lock<std::shared_lock>();
-	if (s_cache.size() != map.resources.m_map.size() || g_nextGUID > s_guid)
+	if (s_ret.entries.size() != map.resources.m_map.size() || g_nextGUID > s_guid)
 	{
 		s_guid = g_nextGUID;
-		s_cache.clear();
-		s_cache.reserve(map.resources.m_map.size());
+		s_ret.entries.clear();
 		for (auto& [_, tResource] : map.resources.m_map)
 		{
-			s_cache.push_back(&tResource);
+			s_ret.add(tResource.uImpl->id, tResource.resource);
 		}
-		std::sort(s_cache.begin(), s_cache.end(), [](auto pLhs, auto pRhs) { return pLhs->uImpl->id < pRhs->uImpl->id; });
 	}
-	ret.reserve(s_cache.size());
-	for (auto const& pRes : s_cache)
-	{
-		ret.push_back(pRes->resource);
-	}
-	return ret;
+	return s_ret;
 }
+#endif
 
 template <typename T, typename TImpl>
 bool isLoading(Map<T, TImpl> const& map, GUID guid)
@@ -609,39 +603,46 @@ Model::Info* res::infoRW(Model model)
 }
 
 #if defined(LEVK_EDITOR)
-std::vector<Shader> res::loadedShaders()
+TreeView<Shader> const& res::loadedShaders()
 {
-	return g_bInit ? loaded(g_shaders) : std::vector<Shader>();
+	static TreeView<Shader> const s_default{};
+	return g_bInit ? loaded(g_shaders) : s_default;
 }
 
-std::vector<Sampler> res::loadedSamplers()
+TreeView<Sampler> const& res::loadedSamplers()
 {
-	return g_bInit ? loaded(g_samplers) : std::vector<Sampler>();
+	static TreeView<Sampler> const s_default{};
+	return g_bInit ? loaded(g_samplers) : s_default;
 }
 
-std::vector<Texture> res::loadedTextures()
+TreeView<Texture> const& res::loadedTextures()
 {
-	return g_bInit ? loaded(g_textures) : std::vector<Texture>();
+	static TreeView<Texture> const s_default{};
+	return g_bInit ? loaded(g_textures) : s_default;
 }
 
-std::vector<Material> res::loadedMaterials()
+TreeView<Material> const& res::loadedMaterials()
 {
-	return g_bInit ? loaded(g_materials) : std::vector<Material>();
+	static TreeView<Material> const s_default{};
+	return g_bInit ? loaded(g_materials) : s_default;
 }
 
-std::vector<Mesh> res::loadedMeshes()
+TreeView<Mesh> const& res::loadedMeshes()
 {
-	return g_bInit ? loaded(g_meshes) : std::vector<Mesh>();
+	static TreeView<Mesh> const s_default{};
+	return g_bInit ? loaded(g_meshes) : s_default;
 }
 
-std::vector<Font> res::loadedFonts()
+TreeView<Font> const& res::loadedFonts()
 {
-	return g_bInit ? loaded(g_fonts) : std::vector<Font>();
+	static TreeView<Font> const s_default{};
+	return g_bInit ? loaded(g_fonts) : s_default;
 }
 
-std::vector<Model> res::loadedModels()
+TreeView<Model> const& res::loadedModels()
 {
-	return g_bInit ? loaded(g_models) : std::vector<Model>();
+	static TreeView<Model> const s_default{};
+	return g_bInit ? loaded(g_models) : s_default;
 }
 #endif
 

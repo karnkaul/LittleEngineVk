@@ -160,7 +160,7 @@ Model::MeshData OBJParser::processShape(tinyobj::shape_t const& shape)
 
 std::size_t OBJParser::texIdx(std::string_view texName)
 {
-	auto id = fmt::format("{}-{}", m_modelID.generic_string(), texName);
+	auto const id = (m_modelID / texName).generic_string();
 	Hash const hash = id;
 	for (std::size_t idx = 0; idx < m_info.textures.size(); ++idx)
 	{
@@ -241,10 +241,10 @@ std::size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_vi
 
 std::string OBJParser::meshName(tinyobj::shape_t const& shape)
 {
-	std::string ret = fmt::format("{}-{}", m_modelID.generic_string(), shape.name);
+	auto ret = (m_modelID / shape.name).generic_string();
 	if (m_meshIDs.find(ret) != m_meshIDs.end())
 	{
-		ret = fmt::format("{}-{}", std::move(ret), m_info.meshData.size());
+		ret = fmt::format("{}_{}", std::move(ret), m_info.meshData.size());
 		LOG_W("[{}] [{}] Duplicate mesh name in [{}]!", Model::s_tName, shape.name, m_modelID.generic_string());
 	}
 	m_meshIDs.insert(ret);
@@ -308,7 +308,7 @@ std::vector<std::size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 			if (materialIdx >= 0)
 			{
 				auto const& fromMat = m_materials.at((std::size_t)materialIdx);
-				std::string const id = fmt::format("{}-{}", m_modelID.generic_string(), fromMat.name);
+				auto const id = (m_modelID / fromMat.name).generic_string();
 				uniqueIndices.insert(matIdx(fromMat, id));
 			}
 		}
@@ -329,10 +329,14 @@ Status Model::status() const
 	return res::status(*this);
 }
 
-Model::CreateInfo Model::parseOBJ(stdfs::path const& assetID)
+Model::CreateInfo Model::parseOBJ(stdfs::path const& resourceID)
 {
-	auto jsonID = (assetID / assetID.filename());
-	jsonID += ".json";
+	auto jsonID = resourceID;
+	if (jsonID.filename().string().find(".json") == std::string::npos)
+	{
+		jsonID /= resourceID.filename();
+		jsonID += ".json";
+	}
 	auto [jsonStr, bResult] = engine::reader().getString(jsonID);
 	if (!bResult)
 	{
@@ -349,8 +353,8 @@ Model::CreateInfo Model::parseOBJ(stdfs::path const& assetID)
 		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
 		return {};
 	}
-	auto const objPath = assetID / json.get("obj");
-	auto const mtlPath = assetID / json.get("mtl");
+	auto const objPath = resourceID / json.get("obj");
+	auto const mtlPath = resourceID / json.get("mtl");
 	if (!engine::reader().checkPresence(objPath) || !engine::reader().checkPresence(mtlPath))
 	{
 		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, engine::reader().medium(), objPath.generic_string(), mtlPath.generic_string());
@@ -364,7 +368,7 @@ Model::CreateInfo Model::parseOBJ(stdfs::path const& assetID)
 		objData.objBuf = std::move(objBuf);
 		objData.mtlBuf = std::move(mtlBuf);
 		objData.jsonID = std::move(jsonID);
-		objData.modelID = assetID;
+		objData.modelID = resourceID;
 		objData.samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/default";
 		objData.scale = json.contains("scale") ? json.get<f32>("scale") : 1.0f;
 		objData.bDropColour = json.get<bool>("dropColour");

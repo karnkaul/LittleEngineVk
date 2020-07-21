@@ -15,6 +15,7 @@
 #include <gfx/renderer_impl.hpp>
 #include <gfx/resource_descriptors.hpp>
 #include <editor/editor.hpp>
+#include <resources/resources_impl.hpp>
 #include <window/window_impl.hpp>
 
 namespace le::gfx
@@ -223,6 +224,10 @@ bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 			vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 			vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 			RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
+			if (bExtGUI)
+			{
+				ext_gui::renderDrawData(frame.commandBuffer);
+			}
 		}
 		else
 		{
@@ -405,8 +410,8 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 		}
 		ASSERT(out_scene.view.skybox.pPipeline, "Pipeline is null!");
 		auto pTransform = &Transform::s_identity;
-		auto pMesh = Resources::inst().get<Mesh>("meshes/cube");
-		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{pMesh}, pTransform, out_scene.view.skybox.pPipeline}}});
+		auto mesh = res::findMesh("meshes/cube").payload;
+		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{mesh}, pTransform, out_scene.view.skybox.pPipeline}}});
 		cubemap = out_scene.view.skybox.cubemap;
 		bSkybox = true;
 	}
@@ -417,52 +422,52 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 		for (auto& [meshes, pTransform, _] : batch.drawables)
 		{
 			ASSERT(!meshes.empty() && pTransform, "Mesh / Transform is null!");
-			for (auto pMesh : meshes)
+			for (auto mesh : meshes)
 			{
-				ASSERT(pMesh, "Mesh is null!");
+				auto const& info = res::info(mesh);
 				rd::PushConstants pc;
 				pc.objectID = objectID;
 				ssbos.models.ssbo.push_back(pTransform->model());
 				ssbos.normals.ssbo.push_back(pTransform->normalModel());
-				ssbos.materials.ssbo.push_back({pMesh->m_material.material.info(), pMesh->m_material.dropColour});
-				ssbos.tints.ssbo.push_back(pMesh->m_material.tint.toVec4());
+				ssbos.materials.ssbo.push_back({info.material.material.info(), info.material.dropColour});
+				ssbos.tints.ssbo.push_back(info.material.tint.toVec4());
 				ssbos.flags.ssbo.push_back(0);
 				if (bSkybox)
 				{
 					bSkybox = false;
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eSKYBOX;
 				}
-				if (pMesh->m_material.flags.isSet(res::Material::Flag::eLit))
+				if (info.material.flags.isSet(res::Material::Flag::eLit))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eLIT;
 				}
-				if (pMesh->m_material.flags.isSet(res::Material::Flag::eOpaque))
+				if (info.material.flags.isSet(res::Material::Flag::eOpaque))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eOPAQUE;
 				}
-				if (pMesh->m_material.flags.isSet(res::Material::Flag::eDropColour))
+				if (info.material.flags.isSet(res::Material::Flag::eDropColour))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eDROP_COLOUR;
 				}
-				if (pMesh->m_material.flags.isSet(res::Material::Flag::eUI))
+				if (info.material.flags.isSet(res::Material::Flag::eUI))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eUI;
 				}
-				if (pMesh->m_material.flags.isSet(res::Material::Flag::eTextured))
+				if (info.material.flags.isSet(res::Material::Flag::eTextured))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
-					if (pMesh->m_material.diffuse.status() == res::Status::eReady)
+					if (info.material.diffuse.status() == res::Status::eReady)
 					{
-						pc.diffuseID = diffuse.add(pMesh->m_material.diffuse);
+						pc.diffuseID = diffuse.add(info.material.diffuse);
 					}
 					else
 					{
 						ssbos.tints.ssbo.at(objectID) = mg;
 						pc.diffuseID = 0;
 					}
-					if (pMesh->m_material.specular.status() == res::Status::eReady)
+					if (info.material.specular.status() == res::Status::eReady)
 					{
-						pc.specularID = specular.add(pMesh->m_material.specular);
+						pc.specularID = specular.add(info.material.specular);
 					}
 				}
 				push.back().push_back(pc);
@@ -505,26 +510,28 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 		cmd.setViewportScissor(transformViewport(batch.viewport.adjust(m_pRenderer->m_sceneView)), transformScissor(batch.scissor));
 		for (auto& [meshes, pTransform, pPipe] : batch.drawables)
 		{
-			for (auto pMesh : meshes)
+			for (auto mesh : meshes)
 			{
-				if (pMesh->isReady() && pMesh->m_triCount > 0)
+				auto const& info = res::info(mesh);
+				auto pImpl = res::impl(mesh);
+				if (pImpl && mesh.status() == res::Status::eReady && info.triCount > 0)
 				{
-					tris += pMesh->m_triCount;
+					tris += info.triCount;
 					auto pPipeline = pPipe ? pPipe : m_pipes.pDefault;
 					ASSERT(pPipeline, "Pipeline is null!");
 					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_renderPass, m_samplerLayout);
 					ASSERT(bOk, "Pipeline update failure!");
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
 					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
-					cmd.bindVertexBuffers(0, pMesh->m_uImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
-					if (pMesh->m_uImpl->ibo.count > 0)
+					cmd.bindVertexBuffers(0, pImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
+					if (pImpl->ibo.count > 0)
 					{
-						cmd.bindIndexBuffer(pMesh->m_uImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
-						cmd.drawIndexed(pMesh->m_uImpl->ibo.count, 1, 0, 0, 0);
+						cmd.bindIndexBuffer(pImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
+						cmd.drawIndexed(pImpl->ibo.count, 1, 0, 0, 0);
 					}
 					else
 					{
-						cmd.draw(pMesh->m_uImpl->vbo.count, 1, 0, 0);
+						cmd.draw(pImpl->vbo.count, 1, 0, 0);
 					}
 					pipelines.insert(pPipeline->m_uImpl.get());
 				}

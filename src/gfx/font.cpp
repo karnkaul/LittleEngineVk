@@ -240,6 +240,11 @@ Asset::Status Font::update()
 	return m_status;
 }
 
+Text2D::~Text2D()
+{
+	// res::unload(m_mesh);
+}
+
 bool Text2D::setup(Info info)
 {
 	m_pFont = info.pFont;
@@ -253,18 +258,16 @@ bool Text2D::setup(Info info)
 		return false;
 	}
 	m_data = std::move(info.data);
-	Mesh::Info meshInfo;
+	res::Mesh::CreateInfo meshInfo;
 	stdfs::path meshID = info.id;
 	meshID += "_mesh";
 	meshInfo.material = m_pFont->m_material;
+	meshInfo.material.tint = info.data.colour;
 	meshInfo.geometry = m_pFont->generate(m_data);
-	meshInfo.type = Mesh::Type::eDynamic;
-	m_uMesh = std::make_unique<Mesh>(std::move(meshID), std::move(meshInfo));
-	if (m_uMesh->currentStatus() != Asset::Status::eError)
+	meshInfo.type = res::Mesh::Type::eDynamic;
+	m_mesh = res::load(meshID, std::move(meshInfo));
+	if (m_mesh.status() != res::Status::eError)
 	{
-		m_uMesh->m_material = m_pFont->m_material;
-		m_uMesh->m_material.tint = info.data.colour;
-		m_uMesh->setup();
 		return true;
 	}
 	return false;
@@ -272,17 +275,17 @@ bool Text2D::setup(Info info)
 
 void Text2D::updateText(Font::Text data)
 {
-	if (m_uMesh->isReady() && m_pFont && m_pFont->isReady())
+	if (m_mesh.status() == res::Status::eReady && m_pFont && m_pFont->isReady())
 	{
 		m_data = std::move(data);
-		m_uMesh->updateGeometry(m_pFont->generate(m_data));
+		m_mesh.updateGeometry(m_pFont->generate(m_data));
 	}
 	return;
 }
 
 void Text2D::updateText(std::string text)
 {
-	if (m_uMesh->isReady() && m_pFont && m_pFont->isReady())
+	if (m_mesh.status() == res::Status::eReady && m_pFont && m_pFont->isReady())
 	{
 		if (text != m_data.text)
 		{
@@ -293,19 +296,19 @@ void Text2D::updateText(std::string text)
 	return;
 }
 
-Mesh const* Text2D::mesh() const
+res::Mesh Text2D::mesh() const
 {
-	m_uMesh->update();
-	return isReady() ? m_uMesh.get() : nullptr;
+	return m_mesh.status() == res::Status::eReady ? m_mesh : res::Mesh();
 }
 
 bool Text2D::isReady() const
 {
-	return m_uMesh->isReady() && m_pFont && m_pFont->isReady();
+	return m_mesh.status() == res::Status::eReady && m_pFont && m_pFont->isReady();
 }
 
 bool Text2D::isBusy() const
 {
-	return m_uMesh->isBusy() || !m_pFont || m_pFont->isBusy();
+	auto const status = m_mesh.status();
+	return status == res::Status::eLoading || status == res::Status::eReloading || !m_pFont || m_pFont->isBusy();
 }
 } // namespace le::gfx

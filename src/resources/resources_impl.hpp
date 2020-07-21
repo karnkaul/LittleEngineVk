@@ -112,21 +112,45 @@ struct Material::Impl : ImplBase
 	void release();
 };
 
+struct Mesh::Impl : ImplBase, ILoadable
+{
+	struct Data
+	{
+		gfx::Buffer buffer;
+		std::future<void> copied;
+		u32 count = 0;
+		void* pMem = nullptr;
+	};
+
+	Data vbo;
+	Data ibo;
+
+	bool make(CreateInfo& out_createInfo, Info& out_info);
+	void release();
+
+	bool update() override;
+
+	void updateGeometry(Info& out_info, gfx::Geometry geometry);
+};
+
 Shader::Impl* impl(Shader shader);
 Sampler::Impl* impl(Sampler sampler);
 Texture::Impl* impl(Texture texture);
 Material::Impl* impl(Material material);
+Mesh::Impl* impl(Mesh mesh);
 
 Shader::Info* infoRW(Shader shader);
 Sampler::Info* infoRW(Sampler sampler);
 Texture::Info* infoRW(Texture texture);
 Material::Info* infoRW(Material material);
+Mesh::Info* infoRW(Mesh mesh);
 
 #if defined(LEVK_EDITOR)
 std::vector<Shader> loadedShaders();
 std::vector<Sampler> loadedSamplers();
 std::vector<Texture> loadedTextures();
 std::vector<Material> loadedMaterials();
+std::vector<Mesh> loadedMeshes();
 #endif
 
 bool isLoading(GUID guid);
@@ -155,6 +179,10 @@ std::vector<T> loaded()
 	else if constexpr (std::is_same_v<T, Material>)
 	{
 		return loadedMaterials();
+	}
+	else if constexpr (std::is_same_v<T, Mesh>)
+	{
+		return loadedMeshes();
 	}
 	else
 	{

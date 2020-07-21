@@ -62,12 +62,33 @@ TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::
 	ret.bytes = Span(pOut, size);
 	return ret;
 }
+
+gfx::Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsageFlagBits usage, bool bHostVisible)
+{
+	gfx::BufferInfo bufferInfo;
+	bufferInfo.size = size;
+	if (bHostVisible)
+	{
+		bufferInfo.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+	}
+	else
+	{
+		bufferInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	}
+	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
+	bufferInfo.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
+	bufferInfo.name = name;
+	return gfx::vram::createBuffer(bufferInfo);
+};
 } // namespace
 
 std::string const Shader::s_tName = utils::tName<Shader>();
 std::string const Sampler::s_tName = utils::tName<Sampler>();
 std::string const Texture::s_tName = utils::tName<Texture>();
 std::string const Material::s_tName = utils::tName<Material>();
+std::string const Mesh::s_tName = utils::tName<Mesh>();
 
 std::string_view Shader::Impl::s_spvExt = ".spv";
 std::string_view Shader::Impl::s_vertExt = ".vert";
@@ -93,6 +114,11 @@ Material::Info const& Material::info() const
 	return res::info(*this);
 }
 
+Mesh::Info const& Mesh::info() const
+{
+	return res::info(*this);
+}
+
 Status Shader::status() const
 {
 	return res::status(*this);
@@ -111,6 +137,29 @@ Status Texture::status() const
 Status Material::status() const
 {
 	return res::status(*this);
+}
+
+Status Mesh::status() const
+{
+	return res::status(*this);
+}
+
+void Mesh::updateGeometry(gfx::Geometry geometry)
+{
+	if (auto pImpl = res::impl(*this); auto pInfo = res::infoRW(*this))
+	{
+		pImpl->updateGeometry(*pInfo, std::move(geometry));
+	}
+}
+
+Material::Inst& Mesh::material()
+{
+	static Material::Inst s_default{};
+	if (auto pInfo = res::infoRW(*this))
+	{
+		return pInfo->material;
+	}
+	return s_default;
 }
 
 std::string Shader::Impl::extension(stdfs::path const& id)
@@ -563,4 +612,136 @@ bool Material::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 }
 
 void Material::Impl::release() {}
+
+bool Mesh::Impl::make(CreateInfo& out_createInfo, Info& out_info)
+{
+	out_info.material = out_createInfo.material;
+	if (out_info.material.material.status() != res::Status::eReady)
+	{
+		auto [material, bMaterial] = res::findMaterial("materials/default");
+		if (!bMaterial)
+		{
+			return false;
+		}
+		out_info.material.material = material;
+	}
+	out_info.material = out_createInfo.material;
+	out_info.type = out_createInfo.type;
+	updateGeometry(out_info, std::move(out_createInfo.geometry));
+	return true;
+}
+
+void Mesh::Impl::release()
+{
+	Mesh mesh;
+	mesh.guid = guid;
+	if (res::info(mesh).type == Type::eDynamic)
+	{
+		gfx::vram::unmapMemory(vbo.buffer);
+		gfx::vram::unmapMemory(ibo.buffer);
+	}
+	gfx::deferred::release(vbo.buffer);
+	gfx::deferred::release(ibo.buffer);
+	vbo = {};
+	ibo = {};
+}
+
+bool Mesh::Impl::update()
+{
+	switch (status)
+	{
+	default:
+	{
+		return true;
+	}
+	case Status::eLoading:
+	case Status::eReloading:
+	{
+		auto const vboState = utils::futureState(vbo.copied);
+		auto const iboState = utils::futureState(ibo.copied);
+		if (vboState == FutureState::eReady && (ibo.count == 0 || iboState == FutureState::eReady))
+		{
+			return true;
+		}
+		return false;
+	}
+	}
+}
+
+void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
+{
+	if (geometry.vertices.empty())
+	{
+		status = Status::eReady;
+		return;
+	}
+	auto const idStr = id.generic_string();
+	auto const vSize = (vk::DeviceSize)geometry.vertices.size() * sizeof(gfx::Vertex);
+	auto const iSize = (vk::DeviceSize)geometry.indices.size() * sizeof(u32);
+	auto const bHostVisible = out_info.type == Type::eDynamic;
+	if (vSize > vbo.buffer.writeSize)
+	{
+		if (vbo.buffer.writeSize > 0)
+		{
+			if (bHostVisible)
+			{
+				gfx::vram::unmapMemory(vbo.buffer);
+			}
+			gfx::deferred::release(vbo.buffer);
+			vbo = {};
+		}
+		std::string const name = idStr + "_VBO";
+		vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer, bHostVisible);
+		if (bHostVisible)
+		{
+			vbo.pMem = gfx::vram::mapMemory(vbo.buffer, vSize);
+		}
+	}
+	if (iSize > ibo.buffer.writeSize)
+	{
+		if (ibo.buffer.writeSize > 0)
+		{
+			if (bHostVisible)
+			{
+				gfx::vram::unmapMemory(ibo.buffer);
+			}
+			gfx::deferred::release(ibo.buffer);
+			ibo = {};
+		}
+		std::string const name = idStr + "_IBO";
+		ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer, bHostVisible);
+		if (bHostVisible)
+		{
+			ibo.pMem = gfx::vram::mapMemory(ibo.buffer, iSize);
+		}
+	}
+	switch (out_info.type)
+	{
+	case Type::eStatic:
+	{
+		vbo.copied = gfx::vram::stage(vbo.buffer, geometry.vertices.data(), vSize);
+		if (!geometry.indices.empty())
+		{
+			ibo.copied = gfx::vram::stage(ibo.buffer, geometry.indices.data(), iSize);
+		}
+		status = Status::eLoading;
+		break;
+	}
+	case Type::eDynamic:
+	{
+		std::memcpy(vbo.pMem, geometry.vertices.data(), vSize);
+		if (!geometry.indices.empty())
+		{
+			std::memcpy(ibo.pMem, geometry.indices.data(), iSize);
+		}
+		status = Status::eReady;
+		break;
+	}
+	default:
+		break;
+	}
+	vbo.count = (u32)geometry.vertices.size();
+	ibo.count = (u32)geometry.indices.size();
+	out_info.triCount = iSize > 0 ? (u64)ibo.count / 3 : (u64)vbo.count / 3;
+}
 } // namespace le::res

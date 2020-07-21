@@ -401,12 +401,7 @@ void AssetManifest::loadData()
 	m_status = Status::eExtractingData;
 	if (!m_toLoad.models.empty())
 	{
-		auto task = [this](AssetData<Model>& data) {
-			gfx::Model::LoadRequest mlr;
-			mlr.assetID = data.id;
-			mlr.pReader = m_pReader;
-			data.info = gfx::Model::parseOBJ(mlr);
-		};
+		auto task = [](AssetData<Model>& data) { data.info = gfx::Model::parseOBJ(data.id); };
 		addJobs(tasks::forEach<AssetData<Model>>(m_toLoad.models, task, "Manifest-0:Models"));
 	}
 }

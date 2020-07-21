@@ -8,6 +8,11 @@
 
 namespace le
 {
+UIComponent::~UIComponent()
+{
+	res::unload(mesh);
+}
+
 gfx::Text2D& UIComponent::setText(gfx::Text2D::Info info)
 {
 	uText = std::make_unique<gfx::Text2D>();
@@ -16,25 +21,25 @@ gfx::Text2D& UIComponent::setText(gfx::Text2D::Info info)
 	return *uText;
 }
 
-gfx::Mesh& UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
+res::Mesh UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
 {
 	gfx::Geometry geometry = gfx::createQuad(size, pivot);
-	if (!uMesh)
+	if (mesh.status() == res::Status::eIdle)
 	{
-		gfx::Mesh::Info info;
+		res::Mesh::CreateInfo info;
 		info.geometry = std::move(geometry);
-		info.type = gfx::Mesh::Type::eDynamic;
+		info.type = res::Mesh::Type::eDynamic;
 		info.material.flags.set(res::Material::Flag::eUI);
 		stdfs::path meshID = id.empty() ? "(ui)" : id;
 		meshID += "_quad";
-		uMesh = std::make_unique<gfx::Mesh>(std::move(meshID), std::move(info));
+		mesh = res::load(meshID, std::move(info));
 	}
 	else
 	{
-		uMesh->updateGeometry(std::move(geometry));
+		mesh.updateGeometry(std::move(geometry));
 	}
 	flags.set(Flag::eMesh);
-	return *uMesh;
+	return mesh;
 }
 
 void UIComponent::reset(Flags toReset)
@@ -46,19 +51,23 @@ void UIComponent::reset(Flags toReset)
 		}
 	};
 	resetPtr(Flag::eText, uText);
-	resetPtr(Flag::eMesh, uMesh);
+	if (toReset.isSet(Flag::eText))
+	{
+		res::unload(mesh);
+		mesh = {};
+	}
 }
 
-std::vector<gfx::Mesh const*> UIComponent::meshes() const
+std::vector<res::Mesh> UIComponent::meshes() const
 {
-	std::vector<gfx::Mesh const*> ret;
+	std::vector<res::Mesh> ret;
 	if (flags.isSet(Flag::eText) && uText && uText->isReady())
 	{
 		ret.push_back(uText->mesh());
 	}
-	if (flags.isSet(Flag::eMesh) && uMesh && uMesh->isReady())
+	if (flags.isSet(Flag::eMesh) && mesh.status() == res::Status::eReady)
 	{
-		ret.push_back(uMesh.get());
+		ret.push_back(mesh);
 	}
 	return ret;
 }
@@ -126,13 +135,13 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		}
 	}
 	{
-		auto view = registry.view<Transform, TAsset<gfx::Mesh>>();
+		auto view = registry.view<Transform, res::Mesh>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, cMesh] = query;
-			if (auto pMesh = cMesh->get(); pMesh && pMesh->isReady())
+			auto& [pTransform, pMesh] = query;
+			if (pMesh->status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({{pMesh}, pTransform, m_info.p3Dpipe});
+				batch3D.drawables.push_back({{*pMesh}, pTransform, m_info.p3Dpipe});
 			}
 		}
 	}

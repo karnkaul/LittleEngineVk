@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <core/hash.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <engine/gfx/mesh.hpp>
@@ -19,7 +20,7 @@ public:
 		stdfs::path samplerID;
 		stdfs::path filename;
 		bytearray bytes;
-		std::size_t hash = 0;
+		Hash hash;
 	};
 	struct MatData final
 	{
@@ -30,7 +31,7 @@ public:
 		Albedo albedo;
 		f32 shininess = 32.0f;
 		res::Material::Flags flags;
-		std::size_t hash = 0;
+		Hash hash;
 	};
 	struct MeshData final
 	{
@@ -38,7 +39,7 @@ public:
 		stdfs::path id;
 		std::vector<std::size_t> materialIndices;
 		f32 shininess = 32.0f;
-		std::size_t hash = 0;
+		Hash hash;
 	};
 
 	struct Info final
@@ -47,42 +48,34 @@ public:
 		std::vector<TexData> textures;
 		std::vector<MatData> materials;
 		std::vector<MeshData> meshData;
-		std::vector<Mesh const*> preloaded;
-		Mesh::Type type = Mesh::Type::eStatic;
+		std::vector<res::Mesh> preloaded;
+		res::Mesh::Type type = res::Mesh::Type::eStatic;
 		res::Texture::Space mode = res::Texture::Space::eSRGBNonLinear;
 		Colour tint = colours::white;
 		bool bDropColour = false;
-	};
-
-	struct LoadRequest final
-	{
-		stdfs::path assetID;
-		io::Reader const* pReader = nullptr;
 	};
 
 public:
 	static std::string const s_tName;
 
 public:
-	static std::size_t idHash(stdfs::path const& id);
-	static std::size_t strHash(std::string_view id);
-	static Info parseOBJ(LoadRequest const& request);
+	static Info parseOBJ(stdfs::path const& assetID);
 
 public:
 	Model(stdfs::path id, Info info);
 	~Model();
 
 protected:
-	std::vector<Mesh const*> m_meshes;
 	std::deque<res::Material::Inst> m_materials;
-	std::deque<Mesh> m_loadedMeshes;
-	std::unordered_map<std::size_t, res::Material> m_loadedMaterials;
-	std::unordered_map<std::size_t, res::Texture> m_textures;
+	std::vector<res::Mesh> m_meshes;
+	std::deque<res::Mesh> m_loadedMeshes;
+	std::unordered_map<Hash, res::Material> m_loadedMaterials;
+	std::unordered_map<Hash, res::Texture> m_textures;
 
 public:
-	std::vector<Mesh const*> meshes() const;
+	std::vector<res::Mesh> meshes() const;
 #if defined(LEVK_EDITOR)
-	std::deque<Mesh>& loadedMeshes();
+	std::deque<res::Mesh>& loadedMeshes();
 #endif
 
 public:

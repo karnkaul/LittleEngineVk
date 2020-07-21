@@ -104,15 +104,36 @@ struct Material final : Resource
 	Status status() const;
 };
 
+struct Mesh final : Resource
+{
+	enum class Type : s8;
+	struct Info;
+	struct CreateInfo;
+
+	struct Impl;
+
+	static std::string const s_tName;
+
+	Info const& info() const;
+	Status status() const;
+
+	void updateGeometry(gfx::Geometry geometry);
+	Material::Inst& material();
+};
+
+struct InfoBase
+{
+	stdfs::path id;
+};
+
 enum class Shader::Type : s8
 {
 	eVertex,
 	eFragment,
 	eCOUNT_
 };
-struct Shader::Info
+struct Shader::Info : InfoBase
 {
-	stdfs::path id;
 };
 struct Shader::CreateInfo
 {
@@ -133,9 +154,8 @@ enum class Sampler::Mode : s8
 	eClampBorder,
 	eCOUNT_
 };
-struct Sampler::Info
+struct Sampler::Info : InfoBase
 {
-	stdfs::path id;
 	Filter min = Filter::eLinear;
 	Filter mag = Filter::eLinear;
 	Filter mip = Filter::eLinear;
@@ -166,9 +186,8 @@ struct Texture::Raw
 	Span<u8> bytes;
 	glm::ivec2 size = {};
 };
-struct Texture::Info
+struct Texture::Info : InfoBase
 {
-	stdfs::path id;
 	glm::ivec2 size = {};
 	Space mode;
 	Type type;
@@ -193,9 +212,8 @@ struct Material::Inst
 	Colour dropColour = colours::black;
 	Flags flags;
 };
-struct Material::Info
+struct Material::Info : InfoBase
 {
-	stdfs::path id;
 	gfx::Albedo albedo;
 	f32 shininess = 0.0f;
 };
@@ -203,5 +221,24 @@ struct Material::CreateInfo
 {
 	gfx::Albedo albedo;
 	f32 shininess = 32.0f;
+};
+
+enum class Mesh::Type : s8
+{
+	eStatic,
+	eDynamic,
+	eCOUNT_
+};
+struct Mesh::Info : InfoBase
+{
+	Material::Inst material;
+	Type type;
+	u64 triCount = 0;
+};
+struct Mesh::CreateInfo
+{
+	gfx::Geometry geometry;
+	Material::Inst material;
+	Type type = Type::eStatic;
 };
 } // namespace le::res

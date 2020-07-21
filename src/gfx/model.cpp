@@ -13,6 +13,7 @@
 #include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
 #include <resources/resources_impl.hpp>
+#include <levk_impl.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_PROFILE_MODEL_LOADS)
@@ -36,7 +37,6 @@ public:
 		stdfs::path samplerID;
 		glm::vec3 origin = glm::vec3(0.0f);
 		f32 scale = 1.0f;
-		io::Reader const* pReader = nullptr;
 		bool bDropColour = false;
 	};
 
@@ -139,14 +139,14 @@ OBJParser::OBJParser(Data data)
 #endif
 		for (auto& texture : m_info.textures)
 		{
-			auto [bytes, bResult] = data.pReader->getBytes(texture.filename);
+			auto [bytes, bResult] = engine::reader().getBytes(texture.filename);
 			if (bResult)
 			{
 				texture.bytes = std::move(bytes);
 			}
 			else
 			{
-				LOG_W("[{}] [{}] Failed to load texture [{}] from [{}]", Model::s_tName, idStr, texture.filename.generic_string(), data.pReader->medium());
+				LOG_W("[{}] [{}] Failed to load texture [{}] from [{}]", Model::s_tName, idStr, texture.filename.generic_string(), engine::reader().medium());
 			}
 		}
 	}
@@ -156,7 +156,7 @@ Model::MeshData OBJParser::processShape(tinyobj::shape_t const& shape)
 {
 	Model::MeshData meshData;
 	auto name = meshName(shape);
-	meshData.hash = Model::strHash(name);
+	meshData.hash = name;
 	meshData.id = std::move(name);
 	meshData.geometry = vertices(shape);
 	meshData.materialIndices = materials(shape);
@@ -166,7 +166,7 @@ Model::MeshData OBJParser::processShape(tinyobj::shape_t const& shape)
 std::size_t OBJParser::texIdx(std::string_view texName)
 {
 	auto id = fmt::format("{}-{}", m_modelID.generic_string(), texName);
-	auto const hash = Model::strHash(id);
+	Hash const hash = id;
 	for (std::size_t idx = 0; idx < m_info.textures.size(); ++idx)
 	{
 		if (m_info.textures.at(idx).hash == hash)
@@ -185,7 +185,7 @@ std::size_t OBJParser::texIdx(std::string_view texName)
 
 std::size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_view id)
 {
-	auto const hash = Model::strHash(id);
+	Hash const hash = id;
 	for (std::size_t idx = 0; idx < m_info.materials.size(); ++idx)
 	{
 		if (m_info.materials.at(idx).hash == hash)
@@ -322,27 +322,11 @@ std::vector<std::size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 }
 } // namespace
 
-std::size_t Model::idHash(stdfs::path const& id)
+Model::Info Model::parseOBJ(stdfs::path const& assetID)
 {
-	return std::hash<std::string>()(id.generic_string());
-}
-
-std::size_t Model::strHash(std::string_view id)
-{
-	return std::hash<std::string_view>()(id);
-}
-
-Model::Info Model::parseOBJ(LoadRequest const& request)
-{
-	ASSERT(request.pReader, "Reader is null!");
-	if (!request.pReader)
-	{
-		LOG_E("[{}] Reader is null!", s_tName);
-		return {};
-	}
-	auto jsonID = (request.assetID / request.assetID.filename());
+	auto jsonID = (assetID / assetID.filename());
 	jsonID += ".json";
-	auto [jsonStr, bResult] = request.pReader->getString(jsonID);
+	auto [jsonStr, bResult] = engine::reader().getString(jsonID);
 	if (!bResult)
 	{
 		LOG_E("[{}] [{}] not found!", s_tName, jsonID.generic_string());
@@ -358,25 +342,24 @@ Model::Info Model::parseOBJ(LoadRequest const& request)
 		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
 		return {};
 	}
-	auto const objPath = request.assetID / json.get("obj");
-	auto const mtlPath = request.assetID / json.get("mtl");
-	if (!request.pReader->checkPresence(objPath) || !request.pReader->checkPresence(mtlPath))
+	auto const objPath = assetID / json.get("obj");
+	auto const mtlPath = assetID / json.get("mtl");
+	if (!engine::reader().checkPresence(objPath) || !engine::reader().checkPresence(mtlPath))
 	{
-		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, request.pReader->medium(), objPath.generic_string(), mtlPath.generic_string());
+		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, engine::reader().medium(), objPath.generic_string(), mtlPath.generic_string());
 		return {};
 	}
-	auto [objBuf, bObjResult] = request.pReader->getStr(objPath);
-	auto [mtlBuf, bMtlResult] = request.pReader->getStr(mtlPath);
+	auto [objBuf, bObjResult] = engine::reader().getStr(objPath);
+	auto [mtlBuf, bMtlResult] = engine::reader().getStr(mtlPath);
 	if (bObjResult && bMtlResult)
 	{
 		OBJParser::Data objData;
 		objData.objBuf = std::move(objBuf);
 		objData.mtlBuf = std::move(mtlBuf);
 		objData.jsonID = std::move(jsonID);
-		objData.modelID = request.assetID;
+		objData.modelID = assetID;
 		objData.samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/default";
 		objData.scale = json.contains("scale") ? json.get<f32>("scale") : 1.0f;
-		objData.pReader = request.pReader;
 		objData.bDropColour = json.get<bool>("dropColour");
 		objData.origin = getVec3(json, "origin");
 		OBJParser parser(std::move(objData));
@@ -437,7 +420,7 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 	}
 	for (auto& meshData : info.meshData)
 	{
-		Mesh::Info meshInfo;
+		res::Mesh::CreateInfo meshInfo;
 		if (!meshData.materialIndices.empty())
 		{
 			std::size_t idx = meshData.materialIndices.front();
@@ -446,10 +429,9 @@ Model::Model(stdfs::path id, Info info) : Asset(std::move(id))
 		}
 		meshInfo.geometry = std::move(meshData.geometry);
 		meshInfo.type = info.type;
-		Mesh newMesh(meshData.id, std::move(meshInfo));
-		newMesh.setup();
+		auto newMesh = res::load(meshData.id, std::move(meshInfo));
 		m_loadedMeshes.push_back(std::move(newMesh));
-		m_meshes.push_back(&m_loadedMeshes.back());
+		m_meshes.push_back(m_loadedMeshes.back());
 	}
 	m_status = Status::eLoading;
 }
@@ -464,15 +446,19 @@ Model::~Model()
 	{
 		res::unload(material);
 	}
+	for (auto const& mesh : m_loadedMeshes)
+	{
+		res::unload(mesh);
+	}
 }
 
-std::vector<Mesh const*> Model::meshes() const
+std::vector<res::Mesh> Model::meshes() const
 {
-	return m_status == Status::eReady ? m_meshes : std::vector<Mesh const*>();
+	return m_status == Status::eReady ? m_meshes : std::vector<res::Mesh>();
 }
 
 #if defined(LEVK_EDITOR)
-std::deque<Mesh>& Model::loadedMeshes()
+std::deque<res::Mesh>& Model::loadedMeshes()
 {
 	return m_loadedMeshes;
 }
@@ -485,10 +471,9 @@ Asset::Status Model::update()
 		m_status = Status::eMoved;
 		return m_status;
 	}
-	std::for_each(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto& mesh) { mesh.update(); });
 	if (m_status == Status::eLoading)
 	{
-		bool const bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return !mesh.isBusy(); });
+		bool const bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return mesh.status() == res::Status::eReady; });
 		bool const bTextures = std::all_of(m_textures.begin(), m_textures.end(), [](auto const& kvp) { return kvp.second.status() == res::Status::eReady; });
 		bool const bMaterials =
 			std::all_of(m_loadedMaterials.begin(), m_loadedMaterials.end(), [](auto const& kvp) { return kvp.second.status() == res::Status::eReady; });

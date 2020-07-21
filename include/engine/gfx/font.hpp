@@ -4,7 +4,6 @@
 #include <glm/glm.hpp>
 #include <core/gdata.hpp>
 #include <engine/assets/asset.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/resources/resource_types.hpp>
 
 namespace le::gfx
@@ -97,8 +96,11 @@ public:
 
 protected:
 	Font::Text m_data;
-	std::unique_ptr<Mesh> m_uMesh;
+	res::Mesh m_mesh;
 	Font* m_pFont = nullptr;
+
+public:
+	virtual ~Text2D();
 
 public:
 	bool setup(Info info);
@@ -106,7 +108,7 @@ public:
 	void updateText(Font::Text data);
 	void updateText(std::string text);
 
-	Mesh const* mesh() const;
+	res::Mesh mesh() const;
 	bool isReady() const;
 	bool isBusy() const;
 };

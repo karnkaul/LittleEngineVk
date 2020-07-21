@@ -124,9 +124,10 @@ private:
 	} m_data;
 	struct
 	{
-		gfx::Mesh* pTriangle0 = nullptr;
-		gfx::Mesh* pQuad = nullptr;
-		gfx::Mesh* pSphere = nullptr;
+		res::Material texturedLit;
+		res::Mesh triangle;
+		res::Mesh quad;
+		res::Mesh sphere;
 		Hash container2 = "textures/container2.png";
 		Hash container2_specular = "textures/container2_specular.png";
 		Hash awesomeface = "textures/awesomeface.png";
@@ -146,7 +147,11 @@ protected:
 
 bool DemoWorld::start()
 {
-	gfx::Mesh::Info meshInfo;
+	res::Material::CreateInfo texturedInfo;
+	texturedInfo.albedo.ambient = Colour(0x888888ff);
+	m_res.texturedLit = res::load("materials/textured", texturedInfo);
+
+	res::Mesh::CreateInfo meshInfo;
 	// clang-format off
 	meshInfo.geometry.vertices = {
 		{{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {0.5f, 0.0f}},
@@ -154,25 +159,20 @@ bool DemoWorld::start()
 		{{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {}, {0.0f, 1.0f}},
 	};
 	// clang-format on
-	m_res.pTriangle0 = Resources::inst().create<gfx::Mesh>("demo/triangle", meshInfo);
+	m_res.triangle = res::load("demo/triangle", meshInfo);
 	meshInfo.geometry = gfx::createQuad();
-	m_res.pQuad = Resources::inst().create<gfx::Mesh>("demo/quad", meshInfo);
+	meshInfo.material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
+	meshInfo.material.material = m_res.texturedLit;
+	meshInfo.material.flags.reset(res::Material::Flag::eOpaque);
+	m_res.quad = res::load("demo/quad", meshInfo);
 	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
-	m_res.pSphere = Resources::inst().create<gfx::Mesh>("demo/sphere", meshInfo);
+	meshInfo.material.tint.a = 0xcc;
+	meshInfo.material.flags.set(res::Material::Flag::eOpaque);
+	m_res.sphere = res::load("demo/sphere", meshInfo);
 
 	m_data.skyboxID = "skyboxes/sky_dusk";
 	m_data.model0id = "models/plant";
 	m_data.model1id = g_uReader->isPresent("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : m_data.model0id;
-	res::Material::CreateInfo texturedInfo;
-	texturedInfo.albedo.ambient = Colour(0x888888ff);
-	auto texturedLit = res::load("materials/textured", texturedInfo);
-
-	m_res.pQuad->m_material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
-	m_res.pQuad->m_material.material = texturedLit;
-	m_res.pSphere->m_material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
-	m_res.pSphere->m_material.material = texturedLit;
-	m_res.pSphere->m_material.tint.a = 0xcc;
-	m_res.pQuad->m_material.flags.reset(res::Material::Flag::eOpaque);
 
 	m_data.dirLight0.diffuse = Colour(0xffffffff);
 	m_data.dirLight0.direction = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
@@ -204,7 +204,7 @@ bool DemoWorld::start()
 	textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
 	m_registry.addComponent<UIComponent>(m_data.eui2)->setText(textInfo);
-	m_registry.addComponent<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).m_material.tint = colours::cyan;
+	m_registry.addComponent<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
 
 	if (!m_uSceneCam)
 	{
@@ -216,10 +216,10 @@ bool DemoWorld::start()
 	m_uSceneCam->m_orientation = gfx::g_qIdentity;
 
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
-	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid0, m_res.pQuad->m_id);
+	m_registry.addComponent<res::Mesh>(m_data.eid0, m_res.quad);
 
 	auto& t2 = m_registry.component<Transform>(m_data.eid1)->setPosition({0.0f, 0.0f, -2.0f});
-	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid1, m_res.pSphere->m_id);
+	m_registry.addComponent<res::Mesh>(m_data.eid1, m_res.sphere);
 
 	m_registry.component<Transform>(m_data.eid2)->setPosition({-1.0f, 1.0f, -2.0f}).setParent(&t2);
 	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid2, m_data.model0id);
@@ -290,10 +290,7 @@ void DemoWorld::tick(Time dt)
 			m_data.modelReloads.push_back(tasks::enqueue(
 				[this]() {
 					auto semaphore = Resources::inst().setBusy();
-					gfx::Model::LoadRequest mlr;
-					mlr.assetID = m_data.model0id;
-					mlr.pReader = g_uReader.get();
-					auto m0info = gfx::Model::parseOBJ(mlr);
+					auto m0info = gfx::Model::parseOBJ(m_data.model0id);
 					Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
 				},
 				"Model0-Reload"));
@@ -302,10 +299,7 @@ void DemoWorld::tick(Time dt)
 				m_data.modelReloads.push_back(tasks::enqueue(
 					[this]() {
 						auto semaphore = Resources::inst().setBusy();
-						gfx::Model::LoadRequest mlr;
-						mlr.assetID = m_data.model1id;
-						mlr.pReader = g_uReader.get();
-						auto m1info = gfx::Model::parseOBJ(mlr);
+						auto m1info = gfx::Model::parseOBJ(m_data.model1id);
 						Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
 					},
 					"Model1-Reload"));
@@ -355,14 +349,11 @@ SceneBuilder const& DemoWorld::sceneBuilder() const
 
 void DemoWorld::stop()
 {
-	auto unload = [](std::initializer_list<stdfs::path const*> ids) {
-		for (auto pID : ids)
-		{
-			Resources::inst().unload(*pID);
-		}
-	};
 	stdfs::path const matID = "materials/textured";
-	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id, &matID});
+	res::unload(m_res.quad);
+	res::unload(m_res.triangle);
+	res::unload(m_res.sphere);
+	res::unload(m_res.texturedLit);
 	m_data = {};
 	m_res = {};
 }
@@ -379,9 +370,9 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.pSphere->m_material.diffuse = res::findTexture(m_res.container2).payload;
-	m_res.pSphere->m_material.specular = res::findTexture(m_res.container2_specular).payload;
-	m_res.pQuad->m_material.diffuse = res::findTexture(m_res.awesomeface).payload;
+	m_res.sphere.material().diffuse = res::findTexture(m_res.container2).payload;
+	m_res.sphere.material().specular = res::findTexture(m_res.container2_specular).payload;
+	m_res.quad.material().diffuse = res::findTexture(m_res.awesomeface).payload;
 }
 } // namespace
 

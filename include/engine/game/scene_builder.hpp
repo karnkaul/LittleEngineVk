@@ -6,6 +6,7 @@
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/renderer.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le
 {
@@ -21,14 +22,16 @@ struct UIComponent final
 
 	stdfs::path id;
 	std::unique_ptr<gfx::Text2D> uText;
-	std::unique_ptr<gfx::Mesh> uMesh;
+	res::Mesh mesh;
 	Flags flags;
 
+	~UIComponent();
+
 	gfx::Text2D& setText(gfx::Text2D::Info info);
-	gfx::Mesh& setQuad(glm::vec2 const& size, glm::vec2 const& pivot = {});
+	res::Mesh setQuad(glm::vec2 const& size, glm::vec2 const& pivot = {});
 	void reset(Flags toReset);
 
-	std::vector<gfx::Mesh const*> meshes() const;
+	std::vector<res::Mesh> meshes() const;
 };
 
 class SceneBuilder

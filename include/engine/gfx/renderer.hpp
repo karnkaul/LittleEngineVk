@@ -15,8 +15,6 @@ class WindowImpl;
 
 namespace le::gfx
 {
-class Mesh;
-
 class Renderer final
 {
 public:
@@ -35,7 +33,7 @@ public:
 
 	struct Drawable final
 	{
-		std::vector<Mesh const*> meshes;
+		std::vector<res::Mesh> meshes;
 		Transform const* pTransform = nullptr;
 		Pipeline const* pPipeline = nullptr;
 	};

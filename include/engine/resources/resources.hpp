@@ -42,12 +42,20 @@ Status status(Material material);
 bool unload(Material material);
 bool unloadMaterial(Hash id);
 
+Mesh load(stdfs::path const& id, Mesh::CreateInfo createInfo);
+TResult<Mesh> findMesh(Hash id);
+Mesh::Info const& info(Mesh mesh);
+Status status(Mesh mesh);
+bool unload(Mesh mesh);
+bool unloadMesh(Hash id);
+
 bool unload(Hash id);
 
 template <typename T>
 T load(stdfs::path const& id, typename T::CreateInfo createInfo)
 {
-	if constexpr (std::is_same_v<T, Shader> || std::is_same_v<T, Sampler> || std::is_same_v<T, Texture>)
+	if constexpr (std::is_same_v<T,
+								 Shader> || std::is_same_v<T, Sampler> || std::is_same_v<T, Texture> || std::is_same_v<T, Material> || std::is_same_v<T, Mesh>)
 	{
 		return load(id, std::move(createInfo));
 	}
@@ -71,6 +79,14 @@ TResult<T> find(Hash id)
 	else if constexpr (std::is_same_v<T, Texture>)
 	{
 		return findTexture(id);
+	}
+	else if constexpr (std::is_same_v<T, Material>)
+	{
+		return findMaterial(id);
+	}
+	else if constexpr (std::is_same_v<T, Mesh>)
+	{
+		return findMesh(id);
 	}
 	else
 	{

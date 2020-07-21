@@ -47,7 +47,7 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 		auto lock = out_map.mutex.template lock<std::unique_lock>();
 		auto const guid = resource.guid;
 		out_map.ids[id] = guid;
-		if constexpr (std::is_base_of_v<ILoadable, TImpl>)
+		if (std::is_base_of_v<ILoadable, TImpl> && tResource.impl.status != Status::eReady)
 		{
 			tResource.impl.status = Status::eLoading;
 			out_map.resources.emplace(guid, std::move(tResource));
@@ -141,7 +141,9 @@ bool unload(Map<T, TImpl>& out_map, Hash id)
 		if (bResult)
 		{
 			LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->impl.id.generic_string());
+			lock.unlock();
 			tResource->impl.release();
+			lock.lock();
 		}
 		return out_map.resources.unload(guid);
 	}
@@ -156,8 +158,10 @@ bool unload(Map<T, TImpl>& out_map, GUID guid)
 	if (bResult)
 	{
 		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->impl.id.generic_string());
-		tResource->impl.release();
 		out_map.ids.erase(tResource->impl.id);
+		lock.unlock();
+		tResource->impl.release();
+		lock.lock();
 	}
 	return out_map.resources.unload(guid);
 }
@@ -177,7 +181,10 @@ void update(Map<T, TImpl>& out_map)
 				if (pImpl->bLoadedOnce)
 				{
 					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, pImpl->id.generic_string());
-					pImpl->onReload();
+					if constexpr (std::is_base_of_v<IReloadable, TImpl>)
+					{
+						pImpl->onReload();
+					}
 				}
 #endif
 				pImpl->bLoadedOnce = true;
@@ -243,7 +250,9 @@ void release(Map<T, TImpl>& out_map)
 	{
 		auto& [guid, tResource] = *iter;
 		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource.impl.id.generic_string());
+		lock.unlock();
 		tResource.impl.release();
+		lock.lock();
 		iter = out_map.resources.m_map.erase(iter);
 	}
 	out_map.resources.unloadAll();
@@ -265,11 +274,24 @@ template <typename T, typename TImpl>
 std::vector<T> loaded(Map<T, TImpl> const& map)
 {
 	std::vector<T> ret;
+	static GUID::type s_guid;
+	static std::vector<TResource<T, TImpl> const*> s_cache;
 	auto lock = map.mutex.template lock<std::shared_lock>();
-	ret.reserve(map.resources.m_map.size());
-	for (auto& [_, tResource] : map.resources.m_map)
+	if (s_cache.size() != map.resources.m_map.size() || g_nextGUID > s_guid)
 	{
-		ret.push_back(tResource.resource);
+		s_guid = g_nextGUID;
+		s_cache.clear();
+		s_cache.reserve(map.resources.m_map.size());
+		for (auto& [_, tResource] : map.resources.m_map)
+		{
+			s_cache.push_back(&tResource);
+		}
+		std::sort(s_cache.begin(), s_cache.end(), [](auto pLhs, auto pRhs) { return pLhs->impl.id < pRhs->impl.id; });
+	}
+	ret.reserve(s_cache.size());
+	for (auto const& pRes : s_cache)
+	{
+		ret.push_back(pRes->resource);
 	}
 	return ret;
 }
@@ -285,6 +307,7 @@ Map<Shader, Shader::Impl> g_shaders;
 Map<Sampler, Sampler::Impl> g_samplers;
 Map<Texture, Texture::Impl> g_textures;
 Map<Material, Material::Impl> g_materials;
+Map<Mesh, Mesh::Impl> g_meshes;
 
 bool g_bInit = false;
 Counter<s32> g_counter;
@@ -315,6 +338,11 @@ res::Material res::load(stdfs::path const& id, Material::CreateInfo createInfo)
 	return g_bInit ? make(g_materials, createInfo, id) : Material();
 }
 
+res::Mesh res::load(stdfs::path const& id, Mesh::CreateInfo createInfo)
+{
+	return g_bInit ? make(g_meshes, createInfo, id) : Mesh();
+}
+
 TResult<res::Shader> res::findShader(Hash id)
 {
 	return g_bInit ? find(g_shaders, id) : TResult<Shader>();
@@ -333,6 +361,11 @@ TResult<res::Texture> res::findTexture(Hash id)
 TResult<res::Material> res::findMaterial(Hash id)
 {
 	return g_bInit ? find(g_materials, id) : TResult<Material>();
+}
+
+TResult<res::Mesh> res::findMesh(Hash id)
+{
+	return g_bInit ? find(g_meshes, id) : TResult<Mesh>();
 }
 
 res::Shader::Info const& res::info(Shader shader)
@@ -359,6 +392,12 @@ res::Material::Info const& res::info(Material material)
 	return g_bInit ? findInfo(g_materials, material.guid) : s_default;
 }
 
+res::Mesh::Info const& res::info(Mesh mesh)
+{
+	static Mesh::Info const s_default{};
+	return g_bInit ? findInfo(g_meshes, mesh.guid) : s_default;
+}
+
 Status res::status(Shader shader)
 {
 	return g_bInit ? status(g_shaders, shader.guid) : Status::eIdle;
@@ -377,6 +416,11 @@ res::Status res::status(Texture texture)
 res::Status res::status(Material material)
 {
 	return g_bInit ? status(g_materials, material.guid) : Status::eIdle;
+}
+
+res::Status res::status(Mesh mesh)
+{
+	return g_bInit ? status(g_meshes, mesh.guid) : Status::eIdle;
 }
 
 bool res::unload(Shader shader)
@@ -399,6 +443,11 @@ bool res::unload(Material material)
 	return g_bInit ? unload(g_materials, material.guid) : false;
 }
 
+bool res::unload(Mesh mesh)
+{
+	return g_bInit ? unload(g_meshes, mesh.guid) : false;
+}
+
 bool res::unloadShader(Hash id)
 {
 	return g_bInit ? unload(g_shaders, id) : false;
@@ -417,6 +466,11 @@ bool res::unloadTexture(Hash id)
 bool res::unloadMaterial(Hash id)
 {
 	return g_bInit ? unload(g_materials, id) : false;
+}
+
+bool res::unloadMesh(Hash id)
+{
+	return g_bInit ? unload(g_meshes, id) : false;
 }
 
 res::Shader::Impl* res::impl(Shader shader)
@@ -439,6 +493,11 @@ res::Material::Impl* res::impl(Material material)
 	return g_bInit ? findImpl(g_materials, material.guid) : nullptr;
 }
 
+res::Mesh::Impl* res::impl(Mesh mesh)
+{
+	return g_bInit ? findImpl(g_meshes, mesh.guid) : nullptr;
+}
+
 Shader::Info* res::infoRW(Shader shader)
 {
 	return g_bInit ? findInfoRW(g_shaders, shader.guid) : nullptr;
@@ -457,6 +516,11 @@ Texture::Info* res::infoRW(Texture texture)
 Material::Info* res::infoRW(Material material)
 {
 	return g_bInit ? findInfoRW(g_materials, material.guid) : nullptr;
+}
+
+Mesh::Info* res::infoRW(Mesh mesh)
+{
+	return g_bInit ? findInfoRW(g_meshes, mesh.guid) : nullptr;
 }
 
 #if defined(LEVK_EDITOR)
@@ -478,6 +542,11 @@ std::vector<Texture> res::loadedTextures()
 std::vector<Material> res::loadedMaterials()
 {
 	return g_bInit ? loaded(g_materials) : std::vector<Material>();
+}
+
+std::vector<Mesh> res::loadedMeshes()
+{
+	return g_bInit ? loaded(g_meshes) : std::vector<Mesh>();
 }
 #endif
 
@@ -539,6 +608,11 @@ void res::init()
 		{
 			load("materials/default", Material::CreateInfo());
 		}
+		{
+			Mesh::CreateInfo info;
+			info.geometry = gfx::createCube();
+			load("meshes/cube", std::move(info));
+		}
 		LOG_I("[le::resources] initialised");
 	}
 }
@@ -548,6 +622,8 @@ void res::update()
 	update(g_shaders);
 	update(g_samplers);
 	update(g_textures);
+	update(g_materials);
+	update(g_meshes);
 }
 
 void res::waitIdle()
@@ -566,17 +642,21 @@ void res::waitIdle()
 	waitLoading(g_shaders);
 	waitLoading(g_samplers);
 	waitLoading(g_textures);
+	waitLoading(g_materials);
+	waitLoading(g_meshes);
 }
 
 void res::deinit()
 {
 	if (g_bInit)
 	{
-		g_bInit = false;
 		waitIdle();
 		release(g_shaders);
 		release(g_samplers);
 		release(g_textures);
+		release(g_materials);
+		release(g_meshes);
+		g_bInit = false;
 		LOG_I("[le::resources] deinitialised");
 	}
 }

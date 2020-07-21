@@ -327,29 +327,35 @@ void inspectResource(T resource, std::string_view selector, bool& out_bSelect, s
 	}
 }
 
-void inspectMaterial(gfx::Mesh& out_mesh, std::size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
+void inspectMaterial(res::Mesh mesh, std::size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
 {
+	auto pInfo = res::infoRW(mesh);
+	auto pImpl = res::impl(mesh);
+	if (!pInfo || !pImpl)
+	{
+		return;
+	}
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
 		inspectResource<res::Material>(
-			out_mesh.m_material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
-			[&out_mesh](res::Material mat) { out_mesh.m_material.material = mat; }, &dummy<res::Material>, pos, size, false);
+			pInfo->material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			[pInfo](res::Material mat) { pInfo->material.material = mat; }, &dummy<res::Material>, pos, size, false);
 		inspectResource<res::Texture>(
-			out_mesh.m_material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[&out_mesh](res::Texture tex) { out_mesh.m_material.diffuse.guid = tex.guid; },
+			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			[pInfo](res::Texture tex) { pInfo->material.diffuse.guid = tex.guid; },
 			[](res::Texture& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
-		bool bOut = out_mesh.m_material.flags[res::Material::Flag::eDropColour];
+		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
-		out_mesh.m_material.flags[res::Material::Flag::eDropColour] = bOut;
-		bOut = out_mesh.m_material.flags[res::Material::Flag::eOpaque];
+		pInfo->material.flags[res::Material::Flag::eDropColour] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eOpaque];
 		ImGui::Checkbox("Opaque", &bOut);
-		out_mesh.m_material.flags[res::Material::Flag::eOpaque] = bOut;
-		bOut = out_mesh.m_material.flags[res::Material::Flag::eTextured];
+		pInfo->material.flags[res::Material::Flag::eOpaque] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eTextured];
 		ImGui::Checkbox("Textured", &bOut);
-		out_mesh.m_material.flags[res::Material::Flag::eTextured] = bOut;
-		bOut = out_mesh.m_material.flags[res::Material::Flag::eLit];
+		pInfo->material.flags[res::Material::Flag::eTextured] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eLit];
 		ImGui::Checkbox("Lit", &bOut);
-		out_mesh.m_material.flags[res::Material::Flag::eLit] = bOut;
+		pInfo->material.flags[res::Material::Flag::eLit] = bOut;
 		ImGui::TreePop();
 	}
 }
@@ -390,15 +396,14 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 			}
 			ImGui::Separator();
 
-			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
-			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
-			if (pTMesh)
+			auto pMesh = registry.component<res::Mesh>(g_inspecting.entity);
+			if (pMesh)
 			{
 				if (ImGui::TreeNode("Mesh"))
 				{
-					inspectAsset<gfx::Mesh>(
-						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, pos, size);
+					inspectResource<res::Mesh>(
+						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
+						[pMesh](res::Mesh mesh) { pMesh->guid = mesh.guid; }, &dummy<res::Mesh>, pos, size);
 
 					if (pMesh)
 					{
@@ -416,7 +421,7 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 					inspectAsset<gfx::Model>(
 						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
 						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
-					static std::deque<gfx::Mesh> s_empty;
+					static std::deque<res::Mesh> s_empty;
 					auto& meshes = pModel ? pModel->loadedMeshes() : s_empty;
 					std::size_t idx = 0;
 					for (auto& mesh : meshes)

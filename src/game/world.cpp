@@ -3,9 +3,9 @@
 #include <engine/game/scene_builder.hpp>
 #include <engine/levk.hpp>
 #include <editor/editor.hpp>
-#include <assets/manifest.hpp>
-#include <levk_impl.hpp>
 #include <game/input_impl.hpp>
+#include <resources/manifest.hpp>
+#include <levk_impl.hpp>
 
 namespace le
 {
@@ -13,8 +13,8 @@ namespace
 {
 struct
 {
-	std::unique_ptr<AssetManifest> uManifest;
-	AssetList loadedAssets;
+	std::unique_ptr<res::Manifest> uManifest;
+	res::ResourceList loadedResources;
 	World* pNext = nullptr;
 } g_data;
 } // namespace
@@ -203,10 +203,10 @@ void World::tickImpl(Time dt)
 		auto const status = g_data.uManifest->update();
 		switch (status)
 		{
-		case AssetManifest::Status::eIdle:
+		case res::Manifest::Status::eIdle:
 		{
 			onManifestLoaded();
-			g_data.loadedAssets = std::move(g_data.uManifest->m_loaded);
+			g_data.loadedResources = std::move(g_data.uManifest->m_loaded);
 			g_data.uManifest.reset();
 			break;
 		}
@@ -243,7 +243,7 @@ bool World::start(ID id)
 		auto const manifestID = uWorld->manifestID();
 		if (engine::reader().isPresent(manifestID))
 		{
-			g_data.uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+			g_data.uManifest = std::make_unique<res::Manifest>(engine::reader(), manifestID);
 		}
 		if (uWorld->startImpl())
 		{
@@ -274,21 +274,21 @@ void World::startNext()
 		s_pActive = nullptr;
 	}
 	auto const manifestID = g_data.pNext->manifestID();
-	auto toUnload = g_data.loadedAssets;
+	auto toUnload = g_data.loadedResources;
 	if (!manifestID.empty() && engine::reader().isPresent(manifestID))
 	{
-		g_data.uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+		g_data.uManifest = std::make_unique<res::Manifest>(engine::reader(), manifestID);
 		auto const loadList = g_data.uManifest->parse();
-		auto const toLoad = loadList - g_data.loadedAssets;
-		toUnload = g_data.loadedAssets - loadList;
+		auto const toLoad = loadList - g_data.loadedResources;
+		toUnload = g_data.loadedResources - loadList;
 		g_data.uManifest->m_toLoad.intersect(toLoad);
 	}
 	if (bSkipUnload)
 	{
 		toUnload = {};
 	}
-	AssetManifest::unload(toUnload);
-	g_data.loadedAssets = g_data.loadedAssets - toUnload;
+	res::Manifest::unload(toUnload);
+	g_data.loadedResources = g_data.loadedResources - toUnload;
 	if (g_data.pNext->startImpl(previousID))
 	{
 		s_pActive = g_data.pNext;

@@ -152,7 +152,18 @@ void input::fire()
 #if defined(LEVK_EDITOR)
 	static bool s_bWasConsumingEditor = false;
 #endif
-	auto fireContexts = [](Contexts& contexts, [[maybe_unused]] bool& out_bWasConsuming) {
+	Snapshot snapshot;
+	snapshot.padStates = activeGamepads();
+	snapshot.keys = std::move(g_raw.keys);
+	snapshot.text = std::move(g_raw.text);
+	snapshot.held.reserve(g_raw.held.size());
+	snapshot.mouseScroll = g_raw.mouseScroll;
+	g_raw.mouseScroll = {};
+	for (auto c : g_raw.held)
+	{
+		snapshot.held.push_back(c);
+	}
+	auto fireContexts = [&snapshot](Contexts& contexts, [[maybe_unused]] bool& out_bWasConsuming) {
 		if (auto pWindow = engine::window(); !contexts.empty())
 		{
 			auto iter = std::remove_if(contexts.begin(), contexts.end(), [](auto const& context) { return !context.first.lock(); });
@@ -165,17 +176,6 @@ void input::fire()
 			if (pWindow->cursorMode() != CursorMode::eDisabled)
 			{
 				g_raw.virtualCursorPos = g_raw.actualCursorPos;
-			}
-			Snapshot snapshot;
-			snapshot.padStates = activeGamepads();
-			snapshot.keys = std::move(g_raw.keys);
-			snapshot.text = std::move(g_raw.text);
-			snapshot.held.reserve(g_raw.held.size());
-			snapshot.mouseScroll = g_raw.mouseScroll;
-			g_raw.mouseScroll = {};
-			for (auto c : g_raw.held)
-			{
-				snapshot.held.push_back(c);
 			}
 			std::size_t processed = 0;
 #if defined(LEVK_DEBUG)

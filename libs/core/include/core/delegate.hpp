@@ -2,24 +2,22 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <functional>
 
 namespace le
 {
 ///
-/// \brief Wrapper for thread-safe invocation of multiple registered callbacks
+/// \brief Wrapper for invocation of multiple registered callbacks
 ///
 template <typename... Args>
 class Delegate
 {
 public:
 	using Token = std::shared_ptr<int32_t>;
-	using Callback = std::function<void(Args... t)>;
+	using Callback = std::function<void(Args...)>;
 
 private:
 	using WToken = std::weak_ptr<int32_t>;
-	using Lock = std::scoped_lock<std::mutex>;
 
 private:
 	struct Wrapper
@@ -30,7 +28,6 @@ private:
 
 private:
 	std::vector<Wrapper> m_callbacks;
-	mutable std::mutex m_mutex;
 
 public:
 	///
@@ -67,7 +64,6 @@ public:
 template <typename... Args>
 typename Delegate<Args...>::Token Delegate<Args...>::subscribe(Callback callback)
 {
-	Lock lock(m_mutex);
 	Token token = std::make_shared<int32_t>(int32_t(m_callbacks.size()));
 	m_callbacks.push_back({std::move(callback), token});
 	return token;
@@ -77,7 +73,6 @@ template <typename... Args>
 uint32_t Delegate<Args...>::operator()(Args... t)
 {
 	cleanup();
-	Lock lock(m_mutex);
 	for (auto const& c : m_callbacks)
 	{
 		c.callback(t...);
@@ -88,7 +83,6 @@ uint32_t Delegate<Args...>::operator()(Args... t)
 template <typename... Args>
 uint32_t Delegate<Args...>::operator()(Args... t) const
 {
-	Lock lock(m_mutex);
 	uint32_t ret = 0;
 	for (auto const& c : m_callbacks)
 	{
@@ -105,14 +99,12 @@ template <typename... Args>
 bool Delegate<Args...>::isAlive()
 {
 	cleanup();
-	Lock lock(m_mutex);
 	return !m_callbacks.empty();
 }
 
 template <typename... Args>
 void Delegate<Args...>::clear()
 {
-	Lock lock(m_mutex);
 	m_callbacks.clear();
 	return;
 }
@@ -120,7 +112,6 @@ void Delegate<Args...>::clear()
 template <typename... Args>
 void Delegate<Args...>::cleanup()
 {
-	Lock lock(m_mutex);
 	auto iter = std::remove_if(m_callbacks.begin(), m_callbacks.end(), [](Wrapper& wrapper) -> bool { return wrapper.wToken.expired(); });
 	m_callbacks.erase(iter, m_callbacks.end());
 	return;

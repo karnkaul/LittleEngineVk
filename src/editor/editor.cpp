@@ -11,17 +11,14 @@
 #include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <gfx/ext_gui.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
-#include <engine/gfx/font.hpp>
-#include <engine/gfx/mesh.hpp>
-#include <engine/gfx/model.hpp>
-#include <engine/gfx/shader.hpp>
-#include <engine/gfx/texture.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
+#include <resources/resources_impl.hpp>
+#include <resources/model_impl.hpp>
 
 namespace le
 {
@@ -174,47 +171,43 @@ void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
 }
 
 template <typename T>
-void listAssets(std::string_view tabName)
+void listResources(std::string_view tabName)
 {
 	if (ImGui::BeginTabItem(tabName.data()))
 	{
-		auto assets = Resources::inst().loaded<T>();
-		static s32 selected = -1;
-		for (std::size_t i = 0; i < assets.size(); ++i)
+		static char szFilter[128];
+		std::string_view resourceFilter;
+		ImGui::SetNextItemWidth(200.0f);
+		ImGui::InputText("Filter", szFilter, arraySize(szFilter));
+		ImGui::Separator();
+		static ImGuiTreeNodeFlags const baseFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+		ImGuiTreeNodeFlags nodeFlags = baseFlags;
+		resourceFilter = szFilter;
+		auto resources = res::loaded<T>();
+		if (!resourceFilter.empty())
 		{
-			auto pAsset = assets.at(i);
-			if (ImGui::Selectable(pAsset->m_id.generic_string().data(), selected == (s32)i))
+			for (auto& kvp : resources.entries)
 			{
-				selected = (s32)i;
+				auto& [dir, entries] = kvp;
+				auto iter = std::remove_if(entries.begin(), entries.end(), [kvp, resourceFilter](auto const& entry) -> bool {
+					return (stdfs::path(kvp.first) / stdfs::path(entry.first)).generic_string().find(resourceFilter) == std::string::npos;
+				});
+				entries.erase(iter, entries.end());
+			}
+		}
+		for (auto const& [dir, entries] : resources.entries)
+		{
+			if (!entries.empty() && ImGui::TreeNode(dir.data()))
+			{
+				nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+				for (auto const& entry : entries)
+				{
+					ImGui::Selectable(entry.first.data());
+				}
+				ImGui::TreePop();
 			}
 		}
 		ImGui::EndTabItem();
-	}
-}
-
-void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
-{
-	static bool s_bAssets = false;
-	s_bAssets |= ImGui::Button("Resources");
-	if (s_bAssets)
-	{
-		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin("Loaded Assets", &s_bAssets, ImGuiWindowFlags_NoSavedSettings))
-		{
-			if (ImGui::BeginTabBar("Resources"))
-			{
-				listAssets<gfx::Model>("Models");
-				listAssets<gfx::Mesh>("Meshes");
-				listAssets<gfx::Font>("Fonts");
-				listAssets<gfx::Texture>("Textures");
-				listAssets<gfx::Material>("Materials");
-				listAssets<gfx::Sampler>("Samplers");
-				listAssets<gfx::Shader>("Shaders");
-				ImGui::EndTabBar();
-			}
-		}
-		ImGui::End();
 	}
 }
 
@@ -224,14 +217,41 @@ bool dummy(T&)
 	return true;
 }
 
+void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
+{
+	static bool s_bResources = false;
+	s_bResources |= ImGui::Button("Resources");
+	if (s_bResources)
+	{
+		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Loaded Resources", &s_bResources, ImGuiWindowFlags_NoSavedSettings))
+		{
+			if (ImGui::BeginTabBar("Resources"))
+			{
+				listResources<res::Model>("Models");
+				listResources<res::Mesh>("Meshes");
+				listResources<res::Font>("Fonts");
+				listResources<res::Texture>("Textures");
+				listResources<res::Sampler>("Samplers");
+				listResources<res::Material>("Materials");
+				listResources<res::Shader>("Shaders");
+				ImGui::EndTabBar();
+			}
+		}
+		ImGui::End();
+	}
+}
+
 template <typename T, typename F, typename F2>
-void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter, glm::vec2 const& pos,
-				  glm::vec2 const& size, bool bNone = true)
+void inspectResource(T resource, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter,
+					 glm::vec2 const& pos, glm::vec2 const& size, bool bNone = true)
 {
 	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
 											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-	ImGui::TreeNodeEx(pAsset ? pAsset->m_id.generic_string().data() : "[None]", flags);
+	auto const id = res::info(resource).id;
+	ImGui::TreeNodeEx(id.empty() ? "[None]" : id.generic_string().data(), flags);
 	if (ImGui::IsItemClicked() || out_bSelect)
 	{
 		out_bSelect = true;
@@ -243,21 +263,42 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
 		{
+			static char szFilter[128];
+			std::string_view resourceFilter;
+			ImGui::SetNextItemWidth(200.0f);
+			ImGui::InputText("Filter", szFilter, arraySize(szFilter));
+			ImGui::Separator();
 			if (bNone && ImGui::Selectable("[None]"))
 			{
-				onSelected(nullptr);
+				onSelected({});
 				out_bSelect = false;
 			}
-			auto assets = Resources::inst().loaded<T>();
-			for (auto pAsset : assets)
+			resourceFilter = szFilter;
+			auto resources = res::loaded<T>();
+			if (!resourceFilter.empty())
 			{
-				if (!filter || filter(*pAsset))
+				for (auto& kvp : resources.entries)
 				{
-					if (ImGui::Selectable(pAsset->m_id.generic_string().data()))
+					auto& [dir, entries] = kvp;
+					auto iter = std::remove_if(entries.begin(), entries.end(), [kvp, resourceFilter](auto const& entry) -> bool {
+						return (stdfs::path(kvp.first) / stdfs::path(entry.first)).generic_string().find(resourceFilter) == std::string::npos;
+					});
+					entries.erase(iter, entries.end());
+				}
+			}
+			for (auto const& [dir, entries] : resources.entries)
+			{
+				if (!entries.empty() && ImGui::TreeNode(dir.data()))
+				{
+					for (auto const& entry : entries)
 					{
-						onSelected(pAsset);
-						out_bSelect = false;
+						if (filter(entry.second) && ImGui::Selectable(entry.first.data()))
+						{
+							onSelected(entry.second);
+							out_bSelect = false;
+						}
 					}
+					ImGui::TreePop();
 				}
 			}
 		}
@@ -265,29 +306,35 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 	}
 }
 
-void inspectMaterial(gfx::Mesh& out_mesh, std::size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
+void inspectMaterial(res::Mesh mesh, std::size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
 {
+	auto pInfo = res::infoRW(mesh);
+	auto pImpl = res::impl(mesh);
+	if (!pInfo || !pImpl)
+	{
+		return;
+	}
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
-		inspectAsset<gfx::Material>(
-			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
-			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, size, false);
-		inspectAsset<gfx::Texture>(
-			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; }, [](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; },
-			pos, size);
-		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
+		inspectResource<res::Material>(
+			pInfo->material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			[pInfo](res::Material const& mat) { pInfo->material.material = mat; }, &dummy<res::Material const&>, pos, size, false);
+		inspectResource<res::Texture>(
+			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			[pInfo](res::Texture const& tex) { pInfo->material.diffuse.guid = tex.guid; },
+			[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
+		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eOpaque];
+		pInfo->material.flags[res::Material::Flag::eDropColour] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eOpaque];
 		ImGui::Checkbox("Opaque", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eOpaque] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eTextured];
+		pInfo->material.flags[res::Material::Flag::eOpaque] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eTextured];
 		ImGui::Checkbox("Textured", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eTextured] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eLit];
+		pInfo->material.flags[res::Material::Flag::eTextured] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eLit];
 		ImGui::Checkbox("Lit", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eLit] = bOut;
+		pInfo->material.flags[res::Material::Flag::eLit] = bOut;
 		ImGui::TreePop();
 	}
 }
@@ -328,15 +375,14 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 			}
 			ImGui::Separator();
 
-			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
-			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
-			if (pTMesh)
+			auto pMesh = registry.component<res::Mesh>(g_inspecting.entity);
+			if (pMesh)
 			{
 				if (ImGui::TreeNode("Mesh"))
 				{
-					inspectAsset<gfx::Mesh>(
-						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, pos, size);
+					inspectResource<res::Mesh>(
+						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
+						[pMesh](res::Mesh const& mesh) { pMesh->guid = mesh.guid; }, &dummy<res::Mesh const&>, pos, size);
 
 					if (pMesh)
 					{
@@ -345,17 +391,17 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 					ImGui::TreePop();
 				}
 			}
-			auto pTModel = registry.component<TAsset<gfx::Model>>(g_inspecting.entity);
-			auto pModel = pTModel ? pTModel->get() : nullptr;
-			if (pTModel)
+			auto pModel = registry.component<res::Model>(g_inspecting.entity);
+			auto pModelImpl = pModel ? res::impl(*pModel) : nullptr;
+			if (pModel)
 			{
 				if (ImGui::TreeNode("Model"))
 				{
-					inspectAsset<gfx::Model>(
-						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
-						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
-					static std::deque<gfx::Mesh> s_empty;
-					auto& meshes = pModel ? pModel->loadedMeshes() : s_empty;
+					inspectResource(
+						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model const& model) { pModel->guid = model.guid; },
+						&dummy<res::Model const&>, pos, size);
+					static std::deque<res::Mesh> s_empty;
+					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 					std::size_t idx = 0;
 					for (auto& mesh : meshes)
 					{

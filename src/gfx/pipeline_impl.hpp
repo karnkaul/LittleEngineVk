@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.hpp>
 #include <engine/window/common.hpp>
 #include <engine/gfx/pipeline.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le::gfx
 {
@@ -28,7 +29,7 @@ public:
 		vk::ColorComponentFlags colourWriteMask = CCFlag::eR | CCFlag::eG | CCFlag::eB | CCFlag::eA;
 		WindowID window;
 		f32 staticLineWidth = 1.0f;
-		class Shader* pShader = nullptr;
+		res::Shader shader;
 		Pipeline::Flags flags;
 	};
 
@@ -42,7 +43,8 @@ public:
 
 private:
 	Info m_info;
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+	std::shared_ptr<s32> m_reloadToken;
 	bool m_bShaderReloaded = false;
 #endif
 
@@ -56,10 +58,6 @@ public:
 	bool create(Info info);
 	bool update(vk::RenderPass renderPass, vk::DescriptorSetLayout samplerLayout);
 	void destroy();
-
-#if defined(LEVK_ASSET_HOT_RELOAD)
-	void pollShaders();
-#endif
 
 private:
 	bool create();

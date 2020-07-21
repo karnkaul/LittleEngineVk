@@ -33,7 +33,7 @@ Registry::Component::~Component() = default;
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
 {
 	m_regID = ++s_nextRegID.payload;
-	m_name = fmt::format("{}-{}", utils::tName(*this), m_regID);
+	m_name = fmt::format("{}:{}", utils::tName(*this), m_regID);
 	LOG_D("[{}] Constructed", m_name);
 }
 

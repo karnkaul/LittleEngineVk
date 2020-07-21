@@ -96,7 +96,7 @@ std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::f
 		std::size_t idx = 0;
 		for (typename C<T, Args...>::iterator iter = out_itemList.begin(); iter != out_itemList.end(); ++iter)
 		{
-			std::string name = prefix.empty() ? std::string() : fmt::format("{}-{}", prefix, idx++);
+			std::string name = prefix.empty() ? std::string() : fmt::format("{}:{}", prefix, idx++);
 			auto newTask = [&out_itemList, iter, task]() mutable { task(*iter); };
 			newTasks.push_back({std::move(newTask), std::move(name)});
 		}

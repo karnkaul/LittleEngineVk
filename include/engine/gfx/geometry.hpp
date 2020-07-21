@@ -2,6 +2,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <core/colour.hpp>
 #include <core/std_types.hpp>
 
 namespace le::gfx
@@ -27,6 +28,13 @@ struct Geometry final
 	void reserve(u32 vertCount, u32 indexCount);
 	u32 addVertex(Vertex const& vertex);
 	void addIndices(std::vector<u32> newIndices);
+};
+
+struct Albedo final
+{
+	Colour ambient = colours::white;
+	Colour diffuse = colours::white;
+	Colour specular = colours::white;
 };
 
 Geometry createQuad(glm::vec2 const& size = {1.0f, 1.0f}, glm::vec2 const& origin = {0.0f, 0.0f});

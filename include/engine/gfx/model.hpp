@@ -6,7 +6,6 @@
 #include <core/hash.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/gfx/geometry.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/resources/resource_types.hpp>
 
 namespace le::gfx

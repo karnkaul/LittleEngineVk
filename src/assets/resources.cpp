@@ -2,8 +2,6 @@
 #include <core/threads.hpp>
 #include <core/time.hpp>
 #include <engine/assets/resources.hpp>
-#include <engine/gfx/font.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/levk.hpp>
 #include <core/utils.hpp>
 #include <engine/resources/resources.hpp>
@@ -39,34 +37,6 @@ bool Resources::init(io::Reader const& data)
 	{
 		auto semaphore = setBusy();
 		m_bActive.store(true);
-		{
-			gfx::Mesh::Info info;
-			info.geometry = gfx::createCube();
-			create<gfx::Mesh>("meshes/cube", std::move(info));
-		}
-		{
-			gfx::Font::Info fontInfo;
-			auto [str, bResult] = data.getString("fonts/default.json");
-			ASSERT(bResult, "Default font not found!");
-			GData fontData;
-			if (fontData.read(std::move(str)))
-			{
-				fontInfo.deserialise(fontData);
-				auto [img, bImg] = data.getBytes(stdfs::path("fonts") / fontInfo.sheetID);
-				ASSERT(bImg, "Default font not found!");
-				fontInfo.image = std::move(img);
-				auto [material, bMaterial] = res::findMaterial(fontInfo.materialID);
-				if (bMaterial)
-				{
-					fontInfo.material.material = material;
-				}
-				create<gfx::Font>("fonts/default", std::move(fontInfo));
-			}
-			else
-			{
-				LOG_E("[{}] Failed to create default font!", s_tName);
-			}
-		}
 	}
 	LOG_I("[{}] initialised", s_tName);
 	return true;

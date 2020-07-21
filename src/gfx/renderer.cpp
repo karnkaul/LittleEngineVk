@@ -6,7 +6,6 @@
 #include <core/transform.hpp>
 #include <core/utils.hpp>
 #include <engine/assets/resources.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>

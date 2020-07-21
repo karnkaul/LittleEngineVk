@@ -3,6 +3,7 @@
 #include <glm/vec2.hpp>
 #include <core/colour.hpp>
 #include <core/flags.hpp>
+#include <core/gdata.hpp>
 #include <core/hash.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
@@ -119,6 +120,23 @@ struct Mesh final : Resource
 
 	void updateGeometry(gfx::Geometry geometry);
 	Material::Inst& material();
+};
+
+struct Font final : Resource
+{
+	struct Glyph;
+	struct Info;
+	struct CreateInfo;
+	struct Text;
+
+	struct Impl;
+
+	static std::string const s_tName;
+
+	Info const& info() const;
+	Status status() const;
+
+	gfx::Geometry generate(Text const& text) const;
 };
 
 struct InfoBase
@@ -240,5 +258,59 @@ struct Mesh::CreateInfo
 	gfx::Geometry geometry;
 	Material::Inst material;
 	Type type = Type::eStatic;
+};
+
+struct Font::Glyph
+{
+	u8 ch = '\0';
+	glm::ivec2 st = glm::ivec2(0);
+	glm::ivec2 uv = glm::ivec2(0);
+	glm::ivec2 cell = glm::ivec2(0);
+	glm::ivec2 offset = glm::ivec2(0);
+	s32 xAdv = 0;
+	s32 orgSizePt = 0;
+	bool bBlank = false;
+
+	void deserialise(u8 c, GData const& json);
+};
+struct Font::Info : InfoBase
+{
+	Material::Inst material;
+	Texture sheet;
+};
+struct Font::CreateInfo
+{
+	res::Material::Inst material;
+	stdfs::path sheetID;
+	stdfs::path samplerID;
+	stdfs::path materialID;
+	std::vector<Glyph> glyphs;
+	bytearray image;
+
+	bool deserialise(GData const& json);
+};
+struct Font::Text
+{
+	enum class HAlign : s8
+	{
+		Centre = 0,
+		Left,
+		Right
+	};
+
+	enum class VAlign : s8
+	{
+		Middle = 0,
+		Top,
+		Bottom
+	};
+
+	std::string text;
+	glm::vec3 pos = glm::vec3(0.0f);
+	f32 scale = 1.0f;
+	f32 nYPad = 0.2f;
+	HAlign halign = HAlign::Centre;
+	VAlign valign = VAlign::Middle;
+	Colour colour = colours::white;
 };
 } // namespace le::res

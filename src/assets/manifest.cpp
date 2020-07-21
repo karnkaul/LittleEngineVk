@@ -391,7 +391,7 @@ void AssetManifest::unload(const AssetList& list)
 	unload2(list.textures);
 	unload2(list.cubemaps);
 	unload2(list.materials);
-	unload(list.meshes);
+	unload2(list.meshes);
 	unload(list.models);
 	unload(list.fonts);
 }

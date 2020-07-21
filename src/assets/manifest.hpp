@@ -7,8 +7,6 @@
 #include <core/utils.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/resources.hpp>
-#include <engine/gfx/font.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
 #include <engine/resources/resources.hpp>
 
@@ -47,9 +45,9 @@ public:
 		std::vector<ResourceData<res::Texture>> textures;
 		std::vector<ResourceData<res::Texture>> cubemaps;
 		std::vector<ResourceData<res::Material>> materials;
-		std::vector<AssetData<gfx::Mesh>> meshes;
+		std::vector<ResourceData<res::Mesh>> meshes;
 		std::vector<AssetData<gfx::Model>> models;
-		std::vector<AssetData<gfx::Font>> fonts;
+		std::vector<ResourceData<res::Font>> fonts;
 
 		void intersect(AssetList ids);
 

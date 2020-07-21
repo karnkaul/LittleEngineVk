@@ -308,6 +308,7 @@ Map<Sampler, Sampler::Impl> g_samplers;
 Map<Texture, Texture::Impl> g_textures;
 Map<Material, Material::Impl> g_materials;
 Map<Mesh, Mesh::Impl> g_meshes;
+Map<Font, Font::Impl> g_fonts;
 
 bool g_bInit = false;
 Counter<s32> g_counter;
@@ -343,6 +344,11 @@ res::Mesh res::load(stdfs::path const& id, Mesh::CreateInfo createInfo)
 	return g_bInit ? make(g_meshes, createInfo, id) : Mesh();
 }
 
+res::Font res::load(stdfs::path const& id, Font::CreateInfo createInfo)
+{
+	return g_bInit ? make(g_fonts, createInfo, id) : Font();
+}
+
 TResult<res::Shader> res::findShader(Hash id)
 {
 	return g_bInit ? find(g_shaders, id) : TResult<Shader>();
@@ -366,6 +372,11 @@ TResult<res::Material> res::findMaterial(Hash id)
 TResult<res::Mesh> res::findMesh(Hash id)
 {
 	return g_bInit ? find(g_meshes, id) : TResult<Mesh>();
+}
+
+TResult<res::Font> res::findFont(Hash id)
+{
+	return g_bInit ? find(g_fonts, id) : TResult<Font>();
 }
 
 res::Shader::Info const& res::info(Shader shader)
@@ -398,6 +409,12 @@ res::Mesh::Info const& res::info(Mesh mesh)
 	return g_bInit ? findInfo(g_meshes, mesh.guid) : s_default;
 }
 
+res::Font::Info const& res::info(Font font)
+{
+	static Font::Info const s_default{};
+	return g_bInit ? findInfo(g_fonts, font.guid) : s_default;
+}
+
 Status res::status(Shader shader)
 {
 	return g_bInit ? status(g_shaders, shader.guid) : Status::eIdle;
@@ -421,6 +438,11 @@ res::Status res::status(Material material)
 res::Status res::status(Mesh mesh)
 {
 	return g_bInit ? status(g_meshes, mesh.guid) : Status::eIdle;
+}
+
+res::Status res::status(Font font)
+{
+	return g_bInit ? status(g_fonts, font.guid) : Status::eIdle;
 }
 
 bool res::unload(Shader shader)
@@ -448,6 +470,11 @@ bool res::unload(Mesh mesh)
 	return g_bInit ? unload(g_meshes, mesh.guid) : false;
 }
 
+bool res::unload(Font font)
+{
+	return g_bInit ? unload(g_fonts, font.guid) : false;
+}
+
 bool res::unloadShader(Hash id)
 {
 	return g_bInit ? unload(g_shaders, id) : false;
@@ -471,6 +498,11 @@ bool res::unloadMaterial(Hash id)
 bool res::unloadMesh(Hash id)
 {
 	return g_bInit ? unload(g_meshes, id) : false;
+}
+
+bool res::unloadFont(Hash id)
+{
+	return g_bInit ? unload(g_fonts, id) : false;
 }
 
 res::Shader::Impl* res::impl(Shader shader)
@@ -498,6 +530,11 @@ res::Mesh::Impl* res::impl(Mesh mesh)
 	return g_bInit ? findImpl(g_meshes, mesh.guid) : nullptr;
 }
 
+res::Font::Impl* res::impl(Font font)
+{
+	return g_bInit ? findImpl(g_fonts, font.guid) : nullptr;
+}
+
 Shader::Info* res::infoRW(Shader shader)
 {
 	return g_bInit ? findInfoRW(g_shaders, shader.guid) : nullptr;
@@ -521,6 +558,11 @@ Material::Info* res::infoRW(Material material)
 Mesh::Info* res::infoRW(Mesh mesh)
 {
 	return g_bInit ? findInfoRW(g_meshes, mesh.guid) : nullptr;
+}
+
+Font::Info* res::infoRW(Font font)
+{
+	return g_bInit ? findInfoRW(g_fonts, font.guid) : nullptr;
 }
 
 #if defined(LEVK_EDITOR)
@@ -548,18 +590,24 @@ std::vector<Mesh> res::loadedMeshes()
 {
 	return g_bInit ? loaded(g_meshes) : std::vector<Mesh>();
 }
+
+std::vector<Font> res::loadedFonts()
+{
+	return g_bInit ? loaded(g_fonts) : std::vector<Font>();
+}
 #endif
 
 bool res::unload(Hash id)
 {
-	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) || unloadMaterial(id) : false;
+	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) || unloadMaterial(id) || unloadMesh(id) || unloadFont(id) : false;
 }
 
 bool res::isLoading(GUID guid)
 {
 	if (g_bInit)
 	{
-		return isLoading(g_shaders, guid) || isLoading(g_samplers, guid) || isLoading(g_textures, guid) || isLoading(g_materials, guid);
+		return isLoading(g_shaders, guid) || isLoading(g_samplers, guid) || isLoading(g_textures, guid) || isLoading(g_materials, guid)
+			   || isLoading(g_meshes, guid) || isLoading(g_fonts, guid);
 	}
 	return false;
 }
@@ -613,6 +661,29 @@ void res::init()
 			info.geometry = gfx::createCube();
 			load("meshes/cube", std::move(info));
 		}
+		{
+			Font::CreateInfo fontInfo;
+			auto [str, bResult] = engine::reader().getString("fonts/default.json");
+			ASSERT(bResult, "Default font not found!");
+			GData fontData;
+			if (fontData.read(std::move(str)))
+			{
+				fontInfo.deserialise(fontData);
+				auto [img, bImg] = engine::reader().getBytes(stdfs::path("fonts") / fontInfo.sheetID);
+				ASSERT(bImg, "Default font not found!");
+				fontInfo.image = std::move(img);
+				auto [material, bMaterial] = res::findMaterial(fontInfo.materialID);
+				if (bMaterial)
+				{
+					fontInfo.material.material = material;
+				}
+				load("fonts/default", std::move(fontInfo));
+			}
+			else
+			{
+				LOG_E("[le::resources] Failed to create default font!");
+			}
+		}
 		LOG_I("[le::resources] initialised");
 	}
 }
@@ -624,6 +695,7 @@ void res::update()
 	update(g_textures);
 	update(g_materials);
 	update(g_meshes);
+	update(g_fonts);
 }
 
 void res::waitIdle()
@@ -644,6 +716,7 @@ void res::waitIdle()
 	waitLoading(g_textures);
 	waitLoading(g_materials);
 	waitLoading(g_meshes);
+	waitLoading(g_fonts);
 }
 
 void res::deinit()
@@ -656,6 +729,7 @@ void res::deinit()
 		release(g_textures);
 		release(g_materials);
 		release(g_meshes);
+		release(g_fonts);
 		g_bInit = false;
 		LOG_I("[le::resources] deinitialised");
 	}

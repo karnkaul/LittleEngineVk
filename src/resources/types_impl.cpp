@@ -82,6 +82,47 @@ gfx::Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsag
 	bufferInfo.name = name;
 	return gfx::vram::createBuffer(bufferInfo);
 };
+
+glm::vec2 textTLOffset(Font::Text::HAlign h, Font::Text::VAlign v)
+{
+	glm::vec2 textTLoffset = glm::vec2(0.0f);
+	switch (h)
+	{
+	case Font::Text::HAlign::Centre:
+	{
+		textTLoffset.x = -0.5f;
+		break;
+	}
+	case Font::Text::HAlign::Left:
+	default:
+		break;
+
+	case Font::Text::HAlign::Right:
+	{
+		textTLoffset.x = -1.0f;
+		break;
+	}
+	}
+	switch (v)
+	{
+	case Font::Text::VAlign::Middle:
+	{
+		textTLoffset.y = 0.5f;
+		break;
+	}
+	default:
+	case Font::Text::VAlign::Top:
+	{
+		break;
+	}
+	case Font::Text::VAlign::Bottom:
+	{
+		textTLoffset.y = 1.0f;
+		break;
+	}
+	}
+	return textTLoffset;
+}
 } // namespace
 
 std::string const Shader::s_tName = utils::tName<Shader>();
@@ -89,6 +130,7 @@ std::string const Sampler::s_tName = utils::tName<Sampler>();
 std::string const Texture::s_tName = utils::tName<Texture>();
 std::string const Material::s_tName = utils::tName<Material>();
 std::string const Mesh::s_tName = utils::tName<Mesh>();
+std::string const Font::s_tName = utils::tName<Font>();
 
 std::string_view Shader::Impl::s_spvExt = ".spv";
 std::string_view Shader::Impl::s_vertExt = ".vert";
@@ -119,6 +161,11 @@ Mesh::Info const& Mesh::info() const
 	return res::info(*this);
 }
 
+Font::Info const& Font::info() const
+{
+	return res::info(*this);
+}
+
 Status Shader::status() const
 {
 	return res::status(*this);
@@ -140,6 +187,11 @@ Status Material::status() const
 }
 
 Status Mesh::status() const
+{
+	return res::status(*this);
+}
+
+Status Font::status() const
 {
 	return res::status(*this);
 }
@@ -168,6 +220,57 @@ std::string Shader::Impl::extension(stdfs::path const& id)
 	if (auto idx = str.find_last_of('.'); idx != std::string::npos)
 	{
 		return str.substr(idx);
+	}
+	return {};
+}
+
+void Font::Glyph::deserialise(u8 c, GData const& json)
+{
+	ch = c;
+	st = {json.get<s32>("x"), json.get<s32>("y")};
+	cell = {json.get<s32>("width"), json.get<s32>("height")};
+	uv = cell;
+	offset = {json.get<s32>("originX"), json.get<s32>("originY")};
+	xAdv = json.contains("advance") ? json.get<s32>("advance") : cell.x;
+	orgSizePt = json.get<s32>("size");
+	bBlank = json.get<bool>("isBlank");
+}
+
+bool Font::CreateInfo::deserialise(GData const& json)
+{
+	sheetID = json.get("sheetID");
+	samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/font";
+	materialID = json.contains("material") ? json.get("material") : "materials/default";
+	auto glyphsData = json.get<GData>("glyphs");
+	for (auto& [key, value] : glyphsData.allFields())
+	{
+		if (!key.empty())
+		{
+			Glyph glyph;
+			GData data;
+			[[maybe_unused]] bool const bSuccess = data.read(std::move(value));
+			ASSERT(bSuccess, "Failed to extract glyph!");
+			glyph.deserialise((u8)key.at(0), data);
+			if (glyph.cell.x > 0 && glyph.cell.y > 0)
+			{
+				glyphs.push_back(std::move(glyph));
+			}
+			else
+			{
+				LOG_W("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key.at(0));
+			}
+		}
+	}
+	return true;
+}
+
+gfx::Geometry Font::generate(Text const& text) const
+{
+	Font font;
+	font.guid = guid;
+	if (auto pImpl = res::impl(font))
+	{
+		return pImpl->generate(text);
 	}
 	return {};
 }
@@ -743,5 +846,168 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 	vbo.count = (u32)geometry.vertices.size();
 	ibo.count = (u32)geometry.indices.size();
 	out_info.triCount = iSize > 0 ? (u64)ibo.count / 3 : (u64)vbo.count / 3;
+}
+
+bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
+{
+	res::Texture::CreateInfo sheetInfo;
+	stdfs::path texID = id;
+	texID += "_sheet";
+	if (out_createInfo.samplerID.empty())
+	{
+		out_createInfo.samplerID = "samplers/font";
+	}
+	sheetInfo.samplerID = out_createInfo.samplerID;
+	sheetInfo.bytes = {std::move(out_createInfo.image)};
+	sheet = res::load(texID, std::move(sheetInfo));
+	if (sheet.status() == res::Status::eError)
+	{
+		return false;
+	}
+	glm::ivec2 maxCell = glm::vec2(0);
+	s32 maxXAdv = 0;
+	for (auto const& glyph : out_createInfo.glyphs)
+	{
+		ASSERT(glyph.ch != '\0' && glyphs[(std::size_t)glyph.ch].ch == '\0', "Invalid/duplicate glyph!");
+		glyphs.at((std::size_t)glyph.ch) = glyph;
+		maxCell.x = std::max(maxCell.x, glyph.cell.x);
+		maxCell.y = std::max(maxCell.y, glyph.cell.y);
+		maxXAdv = std::max(maxXAdv, glyph.xAdv);
+		if (glyph.bBlank)
+		{
+			blankGlyph = glyph;
+		}
+	}
+	if (blankGlyph.xAdv == 0)
+	{
+		blankGlyph.cell = maxCell;
+		blankGlyph.xAdv = maxXAdv;
+	}
+	material = out_createInfo.material;
+	if (material.material.status() != res::Status::eReady)
+	{
+		auto [mat, bMat] = res::findMaterial("materials/default");
+		if (bMat)
+		{
+			material.material = mat;
+		}
+	}
+	ASSERT(material.material.status() == res::Status::eReady, "Material is not ready!");
+	material.diffuse = sheet;
+	material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eUI, res::Material::Flag::eDropColour});
+	material.flags.reset({res::Material::Flag::eOpaque, res::Material::Flag::eLit});
+	out_info.material = material;
+	out_info.sheet = sheet;
+	return true;
+}
+
+void Font::Impl::release()
+{
+	res::unload(sheet);
+	sheet = {};
+}
+
+bool Font::Impl::update()
+{
+	switch (status)
+	{
+	case Status::eLoading:
+	case Status::eReloading:
+	{
+		auto const status = sheet.status();
+		return status == Status::eReady || status == Status::eError;
+	}
+	default:
+	{
+		return true;
+	}
+	}
+}
+
+gfx::Geometry Font::Impl::generate(Text const& text) const
+{
+	Font font;
+	font.guid = guid;
+	if (text.text.empty() || font.status() != Status::eReady)
+	{
+		return {};
+	}
+	glm::ivec2 maxCell = glm::vec2(0);
+	for (auto c : text.text)
+	{
+		maxCell.x = std::max(maxCell.x, glyphs.at((std::size_t)c).cell.x);
+		maxCell.y = std::max(maxCell.y, glyphs.at((std::size_t)c).cell.y);
+	}
+	u32 lineCount = 1;
+	for (std::size_t idx = 0; idx < text.text.size(); ++idx)
+	{
+		if (text.text[idx] == '\n')
+		{
+			++lineCount;
+		}
+	}
+	f32 const lineHeight = ((f32)maxCell.y) * text.scale;
+	f32 const linePad = lineHeight * text.nYPad;
+	f32 const textHeight = (f32)lineCount * lineHeight;
+	glm::vec2 const realTopLeft = text.pos;
+	glm::vec2 textTL = realTopLeft;
+	std::size_t nextLineIdx = 0;
+	s32 yIdx = 0;
+	f32 xPos = 0.0f;
+	f32 lineWidth = 0.0f;
+	auto const textTLoffset = textTLOffset(text.halign, text.valign);
+	auto updateTextTL = [&]() {
+		lineWidth = 0.0f;
+		for (; nextLineIdx < text.text.size(); ++nextLineIdx)
+		{
+			auto const ch = text.text.at(nextLineIdx);
+			if (ch == '\n')
+			{
+				break;
+			}
+			else
+			{
+				lineWidth += (f32)glyphs.at((std::size_t)ch).xAdv;
+			}
+		}
+		lineWidth *= text.scale;
+		++nextLineIdx;
+		xPos = 0.0f;
+		textTL = realTopLeft + textTLoffset * glm::vec2(lineWidth, textHeight);
+		textTL.y -= (lineHeight + ((f32)yIdx * (lineHeight + linePad)));
+	};
+	updateTextTL();
+
+	gfx::Geometry ret;
+	u32 quadCount = (u32)text.text.length();
+	ret.reserve(4 * quadCount, 6 * quadCount);
+	auto const normal = glm::vec3(0.0f);
+	auto const colour = glm::vec3(1.0f);
+	auto const texSize = sheet.info().size;
+	for (auto const c : text.text)
+	{
+		if (c == '\n')
+		{
+			++yIdx;
+			updateTextTL();
+			continue;
+		}
+		auto const& search = glyphs.at((std::size_t)c);
+		auto const& glyph = search.ch == '\0' ? blankGlyph : search;
+		auto const offset = glm::vec3(xPos - (f32)glyph.offset.x * text.scale, (f32)glyph.offset.y * text.scale, 0.0f);
+		auto const tl = glm::vec3(textTL.x, textTL.y, text.pos.z) + offset;
+		auto const s = (f32)glyph.st.x / (f32)texSize.x;
+		auto const t = (f32)glyph.st.y / (f32)texSize.y;
+		auto const u = s + (f32)glyph.uv.x / (f32)texSize.x;
+		auto const v = t + (f32)glyph.uv.y / (f32)texSize.y;
+		glm::vec2 const cell = {(f32)glyph.cell.x * text.scale, (f32)glyph.cell.y * text.scale};
+		auto const v0 = ret.addVertex({tl, colour, normal, glm::vec2(s, t)});
+		auto const v1 = ret.addVertex({tl + glm::vec3(cell.x, 0.0f, 0.0f), colour, normal, glm::vec2(u, t)});
+		auto const v2 = ret.addVertex({tl + glm::vec3(cell.x, -cell.y, 0.0f), colour, normal, glm::vec2(u, v)});
+		auto const v3 = ret.addVertex({tl + glm::vec3(0.0f, -cell.y, 0.0f), colour, normal, glm::vec2(s, v)});
+		ret.addIndices({v0, v1, v2, v2, v3, v0});
+		xPos += ((f32)glyph.xAdv * text.scale);
+	}
+	return ret;
 }
 } // namespace le::res

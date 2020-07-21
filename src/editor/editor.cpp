@@ -16,8 +16,6 @@
 #include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
-#include <engine/gfx/font.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
@@ -224,8 +222,8 @@ void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 			if (ImGui::BeginTabBar("Resources"))
 			{
 				listAssets<gfx::Model>("Models");
-				listAssets<gfx::Mesh>("Meshes");
-				listAssets<gfx::Font>("Fonts");
+				listResources<res::Mesh>("Meshes");
+				listResources<res::Font>("Fonts");
 				listResources<res::Texture>("Textures");
 				listResources<res::Sampler>("Samplers");
 				listResources<res::Material>("Materials");

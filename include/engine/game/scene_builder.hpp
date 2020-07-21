@@ -1,8 +1,8 @@
 #pragma once
 #include <core/flags.hpp>
 #include <engine/ecs/registry.hpp>
+#include <engine/game/text2d.hpp>
 #include <engine/gfx/camera.hpp>
-#include <engine/gfx/font.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/renderer.hpp>
@@ -21,13 +21,13 @@ struct UIComponent final
 	using Flags = TFlags<Flag>;
 
 	stdfs::path id;
-	std::unique_ptr<gfx::Text2D> uText;
+	std::unique_ptr<Text2D> uText;
 	res::Mesh mesh;
 	Flags flags;
 
 	~UIComponent();
 
-	gfx::Text2D& setText(gfx::Text2D::Info info);
+	Text2D& setText(Text2D::Info info);
 	res::Mesh setQuad(glm::vec2 const& size, glm::vec2 const& pivot = {});
 	void reset(Flags toReset);
 

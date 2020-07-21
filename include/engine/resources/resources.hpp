@@ -49,13 +49,22 @@ Status status(Mesh mesh);
 bool unload(Mesh mesh);
 bool unloadMesh(Hash id);
 
+Font load(stdfs::path const& id, Font::CreateInfo createInfo);
+TResult<Font> findFont(Hash id);
+Font::Info const& info(Font font);
+Status status(Font font);
+bool unload(Font font);
+bool unloadFont(Hash id);
+
 bool unload(Hash id);
 
 template <typename T>
 T load(stdfs::path const& id, typename T::CreateInfo createInfo)
 {
-	if constexpr (std::is_same_v<T,
-								 Shader> || std::is_same_v<T, Sampler> || std::is_same_v<T, Texture> || std::is_same_v<T, Material> || std::is_same_v<T, Mesh>)
+	if constexpr (
+		std::is_same_v<
+			T,
+			Shader> || std::is_same_v<T, Sampler> || std::is_same_v<T, Texture> || std::is_same_v<T, Material> || std::is_same_v<T, Mesh> || std::is_same_v<T, Font>)
 	{
 		return load(id, std::move(createInfo));
 	}
@@ -87,6 +96,10 @@ TResult<T> find(Hash id)
 	else if constexpr (std::is_same_v<T, Mesh>)
 	{
 		return findMesh(id);
+	}
+	else if constexpr (std::is_same_v<T, Font>)
+	{
+		return findFont(id);
 	}
 	else
 	{

@@ -15,10 +15,8 @@
 #include <engine/game/input.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/game/world.hpp>
-#include <engine/gfx/font.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <engine/gfx/light.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/gfx/model.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/resources/resources.hpp>
@@ -54,7 +52,7 @@ protected:
 		m_inputContext.context.addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
 		m_data.mainText = m_registry.spawnEntity<UIComponent>("mainText");
 		m_data.elapsedText = m_registry.spawnEntity<UIComponent>("elapsedText");
-		gfx::Text2D::Info info;
+		Text2D::Info info;
 		info.data.colour = colours::white;
 		info.data.text = "Test World";
 		info.data.scale = 0.25f;
@@ -189,7 +187,7 @@ bool DemoWorld::start()
 	m_data.skybox = spawnEntity("skybox", false);
 	m_data.pointer = spawnEntity("pointer");
 
-	gfx::Text2D::Info textInfo;
+	Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
 	textInfo.data.scale = 0.25f;
 	textInfo.id = "fps";

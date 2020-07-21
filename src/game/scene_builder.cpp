@@ -13,9 +13,9 @@ UIComponent::~UIComponent()
 	res::unload(mesh);
 }
 
-gfx::Text2D& UIComponent::setText(gfx::Text2D::Info info)
+Text2D& UIComponent::setText(Text2D::Info info)
 {
-	uText = std::make_unique<gfx::Text2D>();
+	uText = std::make_unique<Text2D>();
 	uText->setup(std::move(info));
 	flags.set(Flag::eText);
 	return *uText;

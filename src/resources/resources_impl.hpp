@@ -133,17 +133,34 @@ struct Mesh::Impl : ImplBase, ILoadable
 	void updateGeometry(Info& out_info, gfx::Geometry geometry);
 };
 
+struct Font::Impl : ImplBase, ILoadable
+{
+	std::array<Glyph, maxVal<u8>()> glyphs;
+	res::Material::Inst material;
+	Glyph blankGlyph;
+	res::Texture sheet;
+
+	bool make(CreateInfo& out_createInfo, Info& out_info);
+	void release();
+
+	bool update() override;
+
+	gfx::Geometry generate(Text const& text) const;
+};
+
 Shader::Impl* impl(Shader shader);
 Sampler::Impl* impl(Sampler sampler);
 Texture::Impl* impl(Texture texture);
 Material::Impl* impl(Material material);
 Mesh::Impl* impl(Mesh mesh);
+Font::Impl* impl(Font font);
 
 Shader::Info* infoRW(Shader shader);
 Sampler::Info* infoRW(Sampler sampler);
 Texture::Info* infoRW(Texture texture);
 Material::Info* infoRW(Material material);
 Mesh::Info* infoRW(Mesh mesh);
+Font::Info* infoRW(Font font);
 
 #if defined(LEVK_EDITOR)
 std::vector<Shader> loadedShaders();
@@ -151,6 +168,7 @@ std::vector<Sampler> loadedSamplers();
 std::vector<Texture> loadedTextures();
 std::vector<Material> loadedMaterials();
 std::vector<Mesh> loadedMeshes();
+std::vector<Font> loadedFonts();
 #endif
 
 bool isLoading(GUID guid);
@@ -183,6 +201,10 @@ std::vector<T> loaded()
 	else if constexpr (std::is_same_v<T, Mesh>)
 	{
 		return loadedMeshes();
+	}
+	else if constexpr (std::is_same_v<T, Font>)
+	{
+		return loadedFonts();
 	}
 	else
 	{

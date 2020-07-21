@@ -4,7 +4,6 @@
 #include <core/assert.hpp>
 #include <core/flags.hpp>
 #include <core/utils.hpp>
-#include <engine/gfx/mesh.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/resources/resource_types.hpp>

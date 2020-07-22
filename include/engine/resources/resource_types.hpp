@@ -337,6 +337,7 @@ struct Font::Info : InfoBase
 {
 	Material::Inst material;
 	Texture sheet;
+	stdfs::path jsonID;
 };
 struct Font::CreateInfo
 {
@@ -344,6 +345,7 @@ struct Font::CreateInfo
 	stdfs::path sheetID;
 	stdfs::path samplerID;
 	stdfs::path materialID;
+	stdfs::path jsonID;
 	std::vector<Glyph> glyphs;
 	bytearray image;
 

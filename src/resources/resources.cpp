@@ -712,26 +712,13 @@ void res::init()
 			load("meshes/cube", std::move(info));
 		}
 		{
-			Font::CreateInfo fontInfo;
-			auto [str, bResult] = engine::reader().getString("fonts/default.json");
-			ASSERT(bResult, "Default font not found!");
-			GData fontData;
-			if (fontData.read(std::move(str)))
+			static stdfs::path const s_jsonID = "fonts/default.json";
+			Font::CreateInfo info;
+			info.jsonID = s_jsonID;
+			auto font = load("fonts/default", std::move(info));
+			if (font.status() == Status::eIdle)
 			{
-				fontInfo.deserialise(fontData);
-				auto [img, bImg] = engine::reader().getBytes(stdfs::path("fonts") / fontInfo.sheetID);
-				ASSERT(bImg, "Default font not found!");
-				fontInfo.image = std::move(img);
-				auto [material, bMaterial] = res::findMaterial(fontInfo.materialID);
-				if (bMaterial)
-				{
-					fontInfo.material.material = material;
-				}
-				load("fonts/default", std::move(fontInfo));
-			}
-			else
-			{
-				LOG_E("[le::resources] Failed to create default font!");
+				LOG_E("[le::resources] Failed to load default font [{}]!", s_jsonID.generic_string());
 			}
 		}
 		LOG_I("[le::resources] initialised");

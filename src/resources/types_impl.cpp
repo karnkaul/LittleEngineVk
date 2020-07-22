@@ -863,6 +863,31 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 
 bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 {
+	[[maybe_unused]] bool bAddMonitor = false;
+	if (out_createInfo.sheetID.empty() || out_createInfo.glyphs.empty())
+	{
+		out_info.jsonID = out_createInfo.jsonID;
+		auto [json, bResult] = engine::reader().getString(out_createInfo.jsonID);
+		GData data;
+		if (!bResult || !data.read(std::move(json)) || !out_createInfo.deserialise(data))
+		{
+			LOG_E("[{}] [{}] Invalid Font data", s_tName, id.generic_string());
+			return false;
+		}
+		auto [img, bImg] = engine::reader().getBytes("fonts" / out_createInfo.sheetID);
+		if (!bImg)
+		{
+			LOG_E("[{}] [{}] Failed to load font atlas!", s_tName, id.generic_string());
+			return false;
+		}
+		out_createInfo.image = std::move(img);
+		auto [material, bMaterial] = res::findMaterial(out_createInfo.materialID);
+		if (bMaterial)
+		{
+			out_createInfo.material.material = material;
+		}
+		bAddMonitor = true;
+	}
 	res::Texture::CreateInfo sheetInfo;
 	stdfs::path texID = id / "sheet";
 	if (out_createInfo.samplerID.empty())
@@ -876,25 +901,7 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	{
 		return false;
 	}
-	glm::ivec2 maxCell = glm::vec2(0);
-	s32 maxXAdv = 0;
-	for (auto const& glyph : out_createInfo.glyphs)
-	{
-		ASSERT(glyph.ch != '\0' && glyphs[(std::size_t)glyph.ch].ch == '\0', "Invalid/duplicate glyph!");
-		glyphs.at((std::size_t)glyph.ch) = glyph;
-		maxCell.x = std::max(maxCell.x, glyph.cell.x);
-		maxCell.y = std::max(maxCell.y, glyph.cell.y);
-		maxXAdv = std::max(maxXAdv, glyph.xAdv);
-		if (glyph.bBlank)
-		{
-			blankGlyph = glyph;
-		}
-	}
-	if (blankGlyph.xAdv == 0)
-	{
-		blankGlyph.cell = maxCell;
-		blankGlyph.xAdv = maxXAdv;
-	}
+	loadGlyphs(out_createInfo.glyphs, false);
 	material = out_createInfo.material;
 	if (material.material.status() != res::Status::eReady)
 	{
@@ -910,6 +917,14 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	material.flags.reset({res::Material::Flag::eOpaque, res::Material::Flag::eLit});
 	out_info.material = material;
 	out_info.sheet = sheet;
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
+	monitor = {};
+	if (bAddMonitor && pReader)
+	{
+		monitor.m_files.push_back({id, pReader->fullPath(out_info.jsonID), io::FileMonitor::Mode::eTextContents, [](auto) { return true; }});
+	}
+#endif
 	return true;
 }
 
@@ -933,6 +948,64 @@ bool Font::Impl::update()
 	{
 		return true;
 	}
+	}
+}
+
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+bool Font::Impl::checkReload()
+{
+	switch (status)
+	{
+	case Status::eReady:
+	case Status::eError:
+	{
+		if (monitor.update())
+		{
+			Font font;
+			font.guid = guid;
+			auto pInfo = res::infoRW(font);
+			if (pInfo)
+			{
+				auto [json, bResult] = engine::reader().getString(pInfo->jsonID);
+				GData data;
+				Font::CreateInfo createInfo;
+				if (bResult && data.read(std::move(json)) && createInfo.deserialise(data))
+				{
+					loadGlyphs(createInfo.glyphs, true);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	default:
+	{
+		return false;
+	}
+	}
+}
+#endif
+
+void Font::Impl::loadGlyphs(std::vector<Glyph> const& glyphData, [[maybe_unused]] bool bOverwrite)
+{
+	glm::ivec2 maxCell = glm::vec2(0);
+	s32 maxXAdv = 0;
+	for (auto const& glyph : glyphData)
+	{
+		ASSERT(glyph.ch != '\0' && (bOverwrite || glyphs[(std::size_t)glyph.ch].ch == '\0'), "Invalid/duplicate glyph!");
+		glyphs.at((std::size_t)glyph.ch) = glyph;
+		maxCell.x = std::max(maxCell.x, glyph.cell.x);
+		maxCell.y = std::max(maxCell.y, glyph.cell.y);
+		maxXAdv = std::max(maxXAdv, glyph.xAdv);
+		if (glyph.bBlank)
+		{
+			blankGlyph = glyph;
+		}
+	}
+	if (blankGlyph.xAdv == 0)
+	{
+		blankGlyph.cell = maxCell;
+		blankGlyph.xAdv = maxXAdv;
 	}
 }
 

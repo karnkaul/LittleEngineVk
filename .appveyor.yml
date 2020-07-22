@@ -66,3 +66,6 @@ for:
 
 matrix:
   fast_finish: true
+
+skip_branch_with_pr: true
+

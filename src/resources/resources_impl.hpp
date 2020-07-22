@@ -58,6 +58,7 @@ struct IReloadable
 {
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 	Delegate<> onReload;
+	Monitor monitor;
 
 	bool checkReload()
 	{
@@ -77,9 +78,6 @@ struct Shader::Impl : ImplBase, IReloadable
 
 	EnumArray<bytearray, Shader::Type> codeMap;
 	std::array<vk::ShaderModule, std::size_t(Shader::Type::eCOUNT_)> shaders;
-#if defined(LEVK_RESOURCES_HOT_RELOAD)
-	Monitor monitor;
-#endif
 
 	static std::string extension(stdfs::path const& id);
 
@@ -161,7 +159,7 @@ struct Mesh::Impl : ImplBase, ILoadable
 	void updateGeometry(Info& out_info, gfx::Geometry geometry);
 };
 
-struct Font::Impl : ImplBase, ILoadable
+struct Font::Impl : ImplBase, ILoadable, IReloadable
 {
 	std::array<Glyph, maxVal<u8>()> glyphs;
 	res::Material::Inst material;
@@ -172,7 +170,11 @@ struct Font::Impl : ImplBase, ILoadable
 	void release();
 
 	bool update();
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+	bool checkReload();
+#endif
 
+	void loadGlyphs(std::vector<Glyph> const& glyphData, bool bOverwrite);
 	gfx::Geometry generate(Text const& text) const;
 };
 

@@ -3,7 +3,8 @@
 #include <engine/game/scene_builder.hpp>
 #include <engine/levk.hpp>
 #include <editor/editor.hpp>
-#include <assets/manifest.hpp>
+#include <game/input_impl.hpp>
+#include <resources/manifest.hpp>
 #include <levk_impl.hpp>
 
 namespace le
@@ -12,8 +13,8 @@ namespace
 {
 struct
 {
-	std::unique_ptr<AssetManifest> uManifest;
-	AssetList loadedAssets;
+	std::unique_ptr<res::Manifest> uManifest;
+	res::ResourceList loadedResources;
 	World* pNext = nullptr;
 } g_data;
 } // namespace
@@ -26,7 +27,7 @@ World::ID World::s_lastID;
 World::World() = default;
 World::~World()
 {
-	LOG_I("[{}] World{} Destroyed", m_tName.empty() ? "UnknownWorld" : m_tName, m_id);
+	LOG_I("[{}] World{} Destroyed", m_name.empty() ? "UnknownWorld" : m_name, m_id);
 }
 
 World* World::getWorld(ID id)
@@ -101,7 +102,7 @@ World::ID World::id() const
 
 std::string_view World::name() const
 {
-	return m_tName;
+	return m_name;
 }
 
 bool World::switchWorld(ID newWorld)
@@ -160,7 +161,7 @@ bool World::startImpl(ID previous)
 	m_previousWorldID = previous;
 	m_inputContext = {};
 #if defined(LEVK_DEBUG)
-	m_inputContext.context.m_name = m_tName;
+	m_inputContext.context.m_name = m_name;
 #endif
 	auto const inputMap = inputMapID();
 	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
@@ -173,12 +174,12 @@ bool World::startImpl(ID previous)
 			{
 				if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
 				{
-					LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_tName, parsed, inputMap.generic_string());
+					LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_name, parsed, inputMap.generic_string());
 				}
 			}
 			else
 			{
-				LOG_W("[{}] Failed to read input mappings from [{}]!", m_tName, inputMap.generic_string());
+				LOG_W("[{}] Failed to read input mappings from [{}]!", m_name, inputMap.generic_string());
 			}
 		}
 	}
@@ -202,10 +203,10 @@ void World::tickImpl(Time dt)
 		auto const status = g_data.uManifest->update();
 		switch (status)
 		{
-		case AssetManifest::Status::eIdle:
+		case res::Manifest::Status::eIdle:
 		{
 			onManifestLoaded();
-			g_data.loadedAssets = std::move(g_data.uManifest->m_loaded);
+			g_data.loadedResources = std::move(g_data.uManifest->m_loaded);
 			g_data.uManifest.reset();
 			break;
 		}
@@ -235,14 +236,14 @@ void World::stopImpl()
 
 bool World::start(ID id)
 {
-	input::setActive(true);
+	input::g_bFire = true;
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
 		auto const& uWorld = search->second;
 		auto const manifestID = uWorld->manifestID();
 		if (engine::reader().isPresent(manifestID))
 		{
-			g_data.uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+			g_data.uManifest = std::make_unique<res::Manifest>(engine::reader(), manifestID);
 		}
 		if (uWorld->startImpl())
 		{
@@ -273,21 +274,21 @@ void World::startNext()
 		s_pActive = nullptr;
 	}
 	auto const manifestID = g_data.pNext->manifestID();
-	auto toUnload = g_data.loadedAssets;
+	auto toUnload = g_data.loadedResources;
 	if (!manifestID.empty() && engine::reader().isPresent(manifestID))
 	{
-		g_data.uManifest = std::make_unique<AssetManifest>(engine::reader(), manifestID);
+		g_data.uManifest = std::make_unique<res::Manifest>(engine::reader(), manifestID);
 		auto const loadList = g_data.uManifest->parse();
-		auto const toLoad = loadList - g_data.loadedAssets;
-		toUnload = g_data.loadedAssets - loadList;
+		auto const toLoad = loadList - g_data.loadedResources;
+		toUnload = g_data.loadedResources - loadList;
 		g_data.uManifest->m_toLoad.intersect(toLoad);
 	}
 	if (bSkipUnload)
 	{
 		toUnload = {};
 	}
-	AssetManifest::unload(toUnload);
-	g_data.loadedAssets = g_data.loadedAssets - toUnload;
+	res::Manifest::unload(toUnload);
+	g_data.loadedResources = g_data.loadedResources - toUnload;
 	if (g_data.pNext->startImpl(previousID))
 	{
 		s_pActive = g_data.pNext;
@@ -342,11 +343,12 @@ bool World::tick(Time dt, gfx::ScreenRect const& sceneRect)
 	return false;
 }
 
-bool World::submitScene(gfx::Renderer& out_renderer)
+bool World::submitScene(gfx::Renderer& out_renderer, gfx::Camera const& camera)
 {
 	if (s_pActive)
 	{
-		out_renderer.submit(s_pActive->buildScene(), s_pActive->m_worldRect);
+		auto const builder = s_pActive->sceneBuilder();
+		out_renderer.submit(builder.build(camera, s_pActive->m_registry), s_pActive->m_worldRect);
 		return true;
 	}
 	return false;

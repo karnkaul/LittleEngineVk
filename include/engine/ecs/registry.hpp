@@ -13,27 +13,35 @@
 #include <core/log_config.hpp>
 #include <core/std_types.hpp>
 #include <core/utils.hpp>
+#include <core/zero.hpp>
 
 namespace le
 {
-// Entity is a glorified, type-safe ID
+using ECSID = TZero<u64>;
+
+///
+/// \brief Entity is a glorified, type-safe combination of ID and registryID
+///
 struct Entity final
 {
-	using ID = u64;
-	ID id = 0;
+	ECSID id;
+	ECSID regID;
 };
+
+bool operator==(Entity lhs, Entity rhs);
+bool operator!=(Entity lhs, Entity rhs);
 
 struct EntityHasher final
 {
 	std::size_t operator()(Entity const& entity) const;
 };
 
-bool operator==(Entity lhs, Entity rhs);
-bool operator!=(Entity lhs, Entity rhs);
-
 class Registry
 {
 public:
+	///
+	/// \brief Enum describing when destroyed entities are removed from the db
+	///
 	enum class DestroyMode : s8
 	{
 		eDeferred,	// destroyEntity() sets eDestroyed
@@ -41,7 +49,9 @@ public:
 		eCOUNT_,
 	};
 
-	// Desired flags can be combined with a mask as per-Entity filters for view()
+	///
+	/// \brief Desired flags can be combined with a mask as per-Entity filters for `view()`
+	///
 	enum class Flag : s8
 	{
 		eDisabled,
@@ -51,9 +61,14 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
-	// Hash code of component type
+	///
+	/// \brief Hash code of component type
+	///
 	using Signature = std::size_t;
 
+	///
+	/// \brief Return type of `view()`
+	///
 	template <typename... T>
 	using View = std::unordered_map<Entity, std::tuple<T*...>, EntityHasher>;
 
@@ -75,29 +90,33 @@ private:
 	};
 
 public:
-	static std::string const s_tName;
+	std::string m_name;
 
 private:
 	// Shared cache of computed signs
 	static std::unordered_map<std::type_index, Signature> s_signs;
 	// Thread-safe static mutex
 	static Lockable<std::mutex> s_mutex;
+	static ECSID s_nextRegID;
 
 public:
-	// Adjusts io::Level on database changes (unset to disable)
+	///
+	/// \brief Adjusts `io::Level` on database changes (unset to disable)
+	///
 	std::optional<io::Level> m_logLevel = io::Level::eInfo;
 
 protected:
-	std::unordered_map<Entity::ID, Flags> m_entityFlags; // Every Entity has a Flags, even if not in m_db
-	std::unordered_map<Entity::ID, std::string> m_entityNames;
+	std::unordered_map<Entity, Flags, EntityHasher> m_entityFlags; // Every Entity has a Flags, even if not in m_db
+	std::unordered_map<Entity, std::string, EntityHasher> m_entityNames;
 	std::unordered_map<Signature, std::string> m_componentNames;
 	// Database of id => [Sign => [component]]
-	std::unordered_map<Entity::ID, std::unordered_map<Signature, std::unique_ptr<Component>>> m_db;
+	std::unordered_map<Entity, std::unordered_map<Signature, std::unique_ptr<Component>>, EntityHasher> m_db;
 	// Thread-safe member mutex
 	mutable Lockable<std::mutex> m_mutex;
 
 private:
-	Entity::ID m_nextID = 0;
+	ECSID m_nextID = 0;
+	ECSID m_regID = 0;
 	DestroyMode m_destroyMode;
 
 public:
@@ -105,50 +124,112 @@ public:
 	virtual ~Registry();
 
 public:
+	///
+	/// \brief Obtain signature of T
+	///
 	template <typename T>
 	static Signature signature();
 
+	///
+	/// \brief Obtain signatures of Ts
+	///
 	template <typename... Ts>
 	static std::array<Signature, sizeof...(Ts)> signatures();
 
 public:
+	///
+	/// \brief Make new Entity
+	///
 	template <typename... Ts>
 	Entity spawnEntity(std::string name);
 
+	///
+	/// \brief Toggle Enabled flag
+	///
 	bool setEnabled(Entity entity, bool bEnabled);
+	///
+	/// \brief Toggle Debug flag
+	///
 	bool setDebug(Entity entity, bool bDebug);
+	///
+	/// \brief Obtain whether Enabled flag is set
+	///
 	bool isEnabled(Entity entity) const;
+	///
+	/// \brief Obtain whether Destroyed flag is not set
+	///
 	bool isAlive(Entity entity) const;
+	///
+	/// \brief Obtain whether Debug flag is set
+	///
 	bool isDebugSet(Entity entity) const;
 
+	///
+	/// \brief Destroy Entity
+	///
 	bool destroyEntity(Entity const& entity);
+	///
+	/// \brief Destroy Entity and set to default handle
+	///
 	bool destroyEntity(Entity& out_entity);
 
+	///
+	/// \brief Add Component to Entity
+	///
 	template <typename T, typename... Args>
-	T* addComponent(Entity entity, Args... args);
+	T* addComponent(Entity entity, Args&&... args);
 
+	///
+	/// \brief Add Components to Entity
+	///
 	template <typename T1, typename T2, typename... Ts>
 	void addComponent(Entity entity);
 
+	///
+	/// \brief Obtain pointer to Component attached to Entity
+	///
 	template <typename T>
 	T const* component(Entity entity) const;
 
+	///
+	/// \brief Obtain pointer to Component attached to Entity
+	///
 	template <typename T>
 	T* component(Entity entity);
 
+	///
+	/// \brief Destroy Component if attached to Entity
+	///
 	template <typename... Ts>
 	bool destroyComponent(Entity entity);
 
+	///
+	/// \brief Obtain View of T1, Ts...
+	///
 	template <typename T1, typename... Ts>
 	View<T1 const, Ts const...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {}) const;
-
+	///
+	/// \brief Obtain View of T1, Ts...
+	///
 	template <typename T1, typename... Ts>
 	View<T1, Ts...> view(Flags mask = Flag::eDestroyed | Flag::eDisabled, Flags pattern = {});
 
+	///
+	/// \brief Destroy all entities with Destroy flag set
+	///
 	void flush();
+	///
+	/// \brief Destroy everything
+	///
 	void clear();
 
+	///
+	/// \brief Obtain total entities spawned
+	///
 	std::size_t entityCount() const;
+	///
+	/// \brief Obtain Entity name
+	///
 	std::string_view entityName(Entity entity) const;
 
 private:
@@ -160,11 +241,11 @@ private:
 
 	Entity spawnEntity_Impl(std::string name);
 
-	using EFMap = std::unordered_map<Entity::ID, Flags>;
-	EFMap::iterator destroyEntity_Impl(EFMap::iterator iter, Entity::ID id);
+	using EFMap = std::unordered_map<Entity, Flags, EntityHasher>;
+	EFMap::iterator destroyEntity_Impl(EFMap::iterator iter, Entity entity);
 
 	template <typename T, typename... Args>
-	Component* addComponent_Impl(Entity entity, Args... args);
+	Component* addComponent_Impl(Entity entity, Args&&... args);
 
 	template <typename T1, typename T2, typename... Ts>
 	void addComponent_Impl(Entity entity);
@@ -177,12 +258,12 @@ private:
 	template <typename T>
 	static T const* component_Impl(std::unordered_map<Signature, std::unique_ptr<Component>> const& compMap);
 
-	void destroyComponent_Impl(Component const* pComponent, Entity::ID id);
-	bool destroyComponent_Impl(Entity::ID id);
+	void destroyComponent_Impl(Component const* pComponent, Entity entity);
+	bool destroyComponent_Impl(Entity entity);
 
 	// const helper
 	template <typename Th, typename T>
-	static T* component_Impl(Th* pThis, Entity::ID id);
+	static T* component_Impl(Th* pThis, Entity entity);
 
 	// const helper
 	template <typename Th, typename T1, typename... Ts>
@@ -222,11 +303,11 @@ Entity Registry::spawnEntity(std::string name)
 }
 
 template <typename T, typename... Args>
-T* Registry::addComponent(Entity entity, Args... args)
+T* Registry::addComponent(Entity entity, Args&&... args)
 {
 	static_assert((std::is_constructible_v<T, Args> && ...), "Cannot construct Comp with given Args...");
 	auto lock = m_mutex.lock();
-	if (m_entityFlags.find(entity.id) != m_entityFlags.end())
+	if (m_entityFlags.find(entity) != m_entityFlags.end())
 	{
 		return &static_cast<Model<T>*>(addComponent_Impl<T>(entity, std::forward<Args>(args)...))->t;
 	}
@@ -237,7 +318,7 @@ template <typename T1, typename T2, typename... Ts>
 void Registry::addComponent(Entity entity)
 {
 	auto lock = m_mutex.lock();
-	if (m_entityFlags.find(entity.id) != m_entityFlags.end())
+	if (m_entityFlags.find(entity) != m_entityFlags.end())
 	{
 		addComponent_Impl<T1, T2, Ts...>(entity);
 	}
@@ -248,14 +329,14 @@ template <typename T>
 T const* Registry::component(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	return component_Impl<Registry const, T const>(this, entity.id);
+	return component_Impl<Registry const, T const>(this, entity);
 }
 
 template <typename T>
 T* Registry::component(Entity entity)
 {
 	auto lock = m_mutex.lock();
-	return component_Impl<Registry, T>(this, entity.id);
+	return component_Impl<Registry, T>(this, entity);
 }
 
 template <typename... Ts>
@@ -264,14 +345,14 @@ bool Registry::destroyComponent(Entity entity)
 	auto lock = m_mutex.lock();
 	if constexpr (sizeof...(Ts) > 0)
 	{
-		if (m_entityFlags.find(entity.id) != m_entityFlags.end())
+		if (m_entityFlags.find(entity) != m_entityFlags.end())
 		{
 			auto const signs = signatures<Ts...>();
 			for (auto sign : signs)
 			{
-				if (auto search = m_db[entity.id].find(sign); search != m_db[entity.id].end())
+				if (auto search = m_db[entity].find(sign); search != m_db[entity].end())
 				{
-					destroyComponent_Impl(search->second.get(), entity.id);
+					destroyComponent_Impl(search->second.get(), entity);
 				}
 			}
 			return true;
@@ -280,7 +361,7 @@ bool Registry::destroyComponent(Entity entity)
 	}
 	else
 	{
-		return destroyComponent_Impl(entity.id);
+		return destroyComponent_Impl(entity);
 	}
 }
 
@@ -312,7 +393,7 @@ Registry::Signature Registry::signature_Impl()
 }
 
 template <typename T, typename... Args>
-Registry::Component* Registry::addComponent_Impl(Entity entity, Args... args)
+Registry::Component* Registry::addComponent_Impl(Entity entity, Args&&... args)
 {
 	return addComponent_Impl(signature<T>(), std::make_unique<Model<T>>(std::forward<Args>(args)...), entity);
 }
@@ -345,9 +426,9 @@ T const* Registry::component_Impl(std::unordered_map<Signature, std::unique_ptr<
 }
 
 template <typename Th, typename T>
-T* Registry::component_Impl(Th* pThis, Entity::ID id)
+T* Registry::component_Impl(Th* pThis, Entity entity)
 {
-	if (auto search = pThis->m_db.find(id); search != pThis->m_db.end())
+	if (auto search = pThis->m_db.find(entity); search != pThis->m_db.end())
 	{
 		return component_Impl<T>(search->second);
 	}

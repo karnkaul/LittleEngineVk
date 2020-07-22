@@ -9,20 +9,15 @@
 #include <core/threads.hpp>
 #include <core/transform.hpp>
 #include <engine/levk.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/ecs/registry.hpp>
 #include <engine/game/freecam.hpp>
 #include <engine/game/input.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/game/world.hpp>
-#include <engine/gfx/font.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <engine/gfx/light.hpp>
-#include <engine/gfx/mesh.hpp>
-#include <engine/gfx/model.hpp>
 #include <engine/gfx/renderer.hpp>
-#include <engine/gfx/shader.hpp>
-#include <engine/gfx/texture.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 
 using namespace le;
@@ -43,21 +38,19 @@ private:
 		bool bLoaded = false;
 	} m_data;
 
-	gfx::Camera m_camera;
-
 protected:
 	bool start() override
 	{
 		m_inputContext.context.mapTrigger("load_prev", [this]() {
 			if (!loadWorld(m_previousWorldID))
 			{
-				LOG_E("[{}] Failed to load World{}", m_tName, m_previousWorldID);
+				LOG_E("[{}] Failed to load World{}", m_name, m_previousWorldID);
 			}
 		});
 		m_inputContext.context.addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
 		m_data.mainText = m_registry.spawnEntity<UIComponent>("mainText");
 		m_data.elapsedText = m_registry.spawnEntity<UIComponent>("elapsedText");
-		gfx::Text2D::Info info;
+		Text2D::Info info;
 		info.data.colour = colours::white;
 		info.data.text = "Test World";
 		info.data.scale = 0.25f;
@@ -68,7 +61,11 @@ protected:
 		info.id = "elapsed";
 		m_data.elapsed = {};
 		m_registry.component<UIComponent>(m_data.elapsedText)->setText(std::move(info));
-		m_camera.m_position = {0.0f, 1.0f, 2.0f};
+		if (!m_uSceneCam)
+		{
+			setSceneCamera();
+		}
+		m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
 		return true;
 	}
 
@@ -83,9 +80,10 @@ protected:
 		m_data = {};
 	}
 
-	gfx::Renderer::Scene buildScene() const override
+	SceneBuilder const& sceneBuilder() const override
 	{
-		return SceneBuilder(m_camera).build(m_registry);
+		static SceneBuilder s_builder;
+		return s_builder;
 	}
 
 	stdfs::path manifestID() const override
@@ -109,7 +107,6 @@ private:
 	{
 		stdfs::path model0id, model1id, skyboxID;
 		std::vector<std::shared_ptr<tasks::Handle>> modelReloads;
-		FreeCam freeCam;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
@@ -123,9 +120,10 @@ private:
 	} m_data;
 	struct
 	{
-		gfx::Mesh* pTriangle0 = nullptr;
-		gfx::Mesh* pQuad = nullptr;
-		gfx::Mesh* pSphere = nullptr;
+		res::Material texturedLit;
+		res::Mesh triangle;
+		res::Mesh quad;
+		res::Mesh sphere;
 		Hash container2 = "textures/container2.png";
 		Hash container2_specular = "textures/container2_specular.png";
 		Hash awesomeface = "textures/awesomeface.png";
@@ -135,7 +133,7 @@ private:
 protected:
 	bool start() override;
 	void tick(Time dt) override;
-	gfx::Renderer::Scene buildScene() const override;
+	SceneBuilder const& sceneBuilder() const override;
 	void stop() override;
 
 	stdfs::path manifestID() const override;
@@ -145,7 +143,11 @@ protected:
 
 bool DemoWorld::start()
 {
-	gfx::Mesh::Info meshInfo;
+	res::Material::CreateInfo texturedInfo;
+	texturedInfo.albedo.ambient = Colour(0x888888ff);
+	m_res.texturedLit = res::load("materials/textured", texturedInfo);
+
+	res::Mesh::CreateInfo meshInfo;
 	// clang-format off
 	meshInfo.geometry.vertices = {
 		{{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {0.5f, 0.0f}},
@@ -153,28 +155,20 @@ bool DemoWorld::start()
 		{{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {}, {0.0f, 1.0f}},
 	};
 	// clang-format on
-	m_res.pTriangle0 = Resources::inst().create<gfx::Mesh>("demo/triangle", meshInfo);
+	m_res.triangle = res::load("demo/triangle", meshInfo);
 	meshInfo.geometry = gfx::createQuad();
-	m_res.pQuad = Resources::inst().create<gfx::Mesh>("demo/quad", meshInfo);
+	meshInfo.material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
+	meshInfo.material.material = m_res.texturedLit;
+	meshInfo.material.flags.reset(res::Material::Flag::eOpaque);
+	m_res.quad = res::load("demo/quad", meshInfo);
 	meshInfo.geometry = gfx::createCubedSphere(1.0f, 8);
-	m_res.pSphere = Resources::inst().create<gfx::Mesh>("demo/sphere", meshInfo);
+	meshInfo.material.tint.a = 0xcc;
+	meshInfo.material.flags.set(res::Material::Flag::eOpaque);
+	m_res.sphere = res::load("demo/sphere", meshInfo);
 
 	m_data.skyboxID = "skyboxes/sky_dusk";
 	m_data.model0id = "models/plant";
 	m_data.model1id = g_uReader->isPresent("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : m_data.model0id;
-	gfx::Material::Info texturedInfo;
-	texturedInfo.albedo.ambient = Colour(0x888888ff);
-	auto pTexturedLit = Resources::inst().create<gfx::Material>("materials/textured", texturedInfo);
-
-	gfx::Texture::Info textureInfo;
-	textureInfo.pReader = g_uReader.get();
-	m_res.pQuad->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
-	m_res.pQuad->m_material.pMaterial = pTexturedLit;
-	m_res.pSphere->m_material.flags.set({gfx::Material::Flag::eTextured, gfx::Material::Flag::eLit, gfx::Material::Flag::eOpaque});
-	m_res.pSphere->m_material.pMaterial = pTexturedLit;
-	m_res.pSphere->m_material.tint.a = 0xcc;
-	m_res.pQuad->m_material.pSpecular = nullptr;
-	m_res.pQuad->m_material.flags.reset(gfx::Material::Flag::eOpaque);
 
 	m_data.dirLight0.diffuse = Colour(0xffffffff);
 	m_data.dirLight0.direction = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
@@ -191,7 +185,7 @@ bool DemoWorld::start()
 	m_data.skybox = spawnEntity("skybox", false);
 	m_data.pointer = spawnEntity("pointer");
 
-	gfx::Text2D::Info textInfo;
+	Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
 	textInfo.data.scale = 0.25f;
 	textInfo.id = "fps";
@@ -206,26 +200,28 @@ bool DemoWorld::start()
 	textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
 	m_registry.addComponent<UIComponent>(m_data.eui2)->setText(textInfo);
-	m_registry.addComponent<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).m_material.tint = colours::cyan;
+	m_registry.addComponent<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
 
-	m_registry.addComponent<TAsset<gfx::Texture>>(m_data.skybox)->id = m_data.skyboxID;
-
-	m_data.freeCam.init();
-	m_data.freeCam.m_position = {0.0f, 1.0f, 2.0f};
-	m_data.freeCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
+	if (!m_uSceneCam)
+	{
+		auto& sceneCam = setSceneCamera<FreeCam>();
+		sceneCam.init();
+		sceneCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
+	}
+	m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
+	m_uSceneCam->m_orientation = gfx::g_qIdentity;
 
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
-	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid0, m_res.pQuad->m_id);
+	m_registry.addComponent<res::Mesh>(m_data.eid0, m_res.quad);
 
 	auto& t2 = m_registry.component<Transform>(m_data.eid1)->setPosition({0.0f, 0.0f, -2.0f});
-	m_registry.addComponent<TAsset<gfx::Mesh>>(m_data.eid1, m_res.pSphere->m_id);
+	m_registry.addComponent<res::Mesh>(m_data.eid1, m_res.sphere);
 
 	m_registry.component<Transform>(m_data.eid2)->setPosition({-1.0f, 1.0f, -2.0f}).setParent(&t2);
-	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid2, m_data.model0id);
+	m_registry.addComponent<res::Model>(m_data.eid2);
 
 	m_registry.component<Transform>(m_data.eid3)->setPosition({0.0f, -1.0f, -3.0f});
-	// m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, m_data.model1id);
-	m_registry.addComponent<TAsset<gfx::Model>>(m_data.eid3, "");
+	m_registry.addComponent<res::Model>(m_data.eid3);
 
 	if (!m_pPipeline0wf)
 	{
@@ -239,7 +235,7 @@ bool DemoWorld::start()
 	m_inputContext.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
 	m_inputContext.context.mapTrigger("quit", [this]() { m_data.bQuit = true; });
 	m_inputContext.context.mapState("run", [](bool bActive) { LOGIF_I(bActive, "RUNNING!"); });
-	m_inputContext.context.mapState("pause_cam", [this](bool bActive) { m_data.freeCam.m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
+	m_inputContext.context.mapState("pause_cam", [this](bool bActive) { sceneCamera<FreeCam>().m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
 	m_inputContext.context.addState("pause_cam", input::Key::eLeftControl);
 	m_inputContext.context.addState("pause_cam", input::Key::eRightControl);
 
@@ -274,46 +270,40 @@ void DemoWorld::tick(Time dt)
 	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto const& handle) -> bool { return handle->hasCompleted(true); });
 	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
 
-	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
-	{
-		if (Resources::inst().get<gfx::Model>(m_data.model0id))
-		{
-			Resources::inst().unload<gfx::Model>(m_data.model0id);
-			if (Resources::inst().get<gfx::Model>(m_data.model1id))
-			{
-				Resources::inst().unload<gfx::Model>(m_data.model1id);
-			}
-		}
-		else
-		{
-			m_data.modelReloads.push_back(tasks::enqueue(
-				[this]() {
-					auto semaphore = Resources::inst().setBusy();
-					gfx::Model::LoadRequest mlr;
-					mlr.assetID = m_data.model0id;
-					mlr.pReader = g_uReader.get();
-					auto m0info = gfx::Model::parseOBJ(mlr);
-					Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
-				},
-				"Model0-Reload"));
-			if (m_data.model0id != m_data.model1id)
-			{
-				m_data.modelReloads.push_back(tasks::enqueue(
-					[this]() {
-						auto semaphore = Resources::inst().setBusy();
-						gfx::Model::LoadRequest mlr;
-						mlr.assetID = m_data.model1id;
-						mlr.pReader = g_uReader.get();
-						auto m1info = gfx::Model::parseOBJ(mlr);
-						Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
-					},
-					"Model1-Reload"));
-			}
-		}
-		m_data.bLoadUnloadModels = false;
-	}
+	// if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
+	// {
+	// 	if (Resources::inst().get<gfx::Model>(m_data.model0id))
+	// 	{
+	// 		Resources::inst().unload<gfx::Model>(m_data.model0id);
+	// 		if (Resources::inst().get<gfx::Model>(m_data.model1id))
+	// 		{
+	// 			Resources::inst().unload<gfx::Model>(m_data.model1id);
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		m_data.modelReloads.push_back(tasks::enqueue(
+	// 			[this]() {
+	// 				auto semaphore = Resources::inst().setBusy();
+	// 				auto m0info = gfx::Model::parseOBJ(m_data.model0id);
+	// 				Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
+	// 			},
+	// 			"Model0-Reload"));
+	// 		if (m_data.model0id != m_data.model1id)
+	// 		{
+	// 			m_data.modelReloads.push_back(tasks::enqueue(
+	// 				[this]() {
+	// 					auto semaphore = Resources::inst().setBusy();
+	// 					auto m1info = gfx::Model::parseOBJ(m_data.model1id);
+	// 					Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
+	// 				},
+	// 				"Model1-Reload"));
+	// 		}
+	// 	}
+	// 	m_data.bLoadUnloadModels = false;
+	// }
 
-	m_data.freeCam.tick(dt);
+	sceneCamera<FreeCam>().tick(dt);
 
 	m_registry.component<UIComponent>(m_data.eui0)->uText->updateText(fmt::format("{}FPS", m_fps));
 	m_registry.component<UIComponent>(m_data.eui1)->uText->updateText(fmt::format("{:.3}ms", dt.to_s() * 1000));
@@ -338,29 +328,27 @@ void DemoWorld::tick(Time dt)
 	}
 }
 
-gfx::Renderer::Scene DemoWorld::buildScene() const
+SceneBuilder const& DemoWorld::sceneBuilder() const
 {
+	static SceneBuilder s_sceneBuilder;
 	SceneBuilder::Info info;
-	info.pCamera = &m_data.freeCam;
 	info.dirLights = {m_data.dirLight0, m_data.dirLight1};
 	info.clearColour = Colour(0x030203ff);
 	info.p3Dpipe = m_data.bWireframe ? m_pPipeline0wf : nullptr;
 	info.skyboxCubemapID = "skyboxes/sky_dusk";
 	info.uiSpace = {1280.0f, 720.0f, 2.0f};
 	info.flags = SceneBuilder::Flag::eScissoredUI;
-	return SceneBuilder(std::move(info)).build(m_registry);
+	s_sceneBuilder = SceneBuilder(std::move(info));
+	return s_sceneBuilder;
 }
 
 void DemoWorld::stop()
 {
-	auto unload = [](std::initializer_list<stdfs::path const*> ids) {
-		for (auto pID : ids)
-		{
-			Resources::inst().unload(*pID);
-		}
-	};
 	stdfs::path const matID = "materials/textured";
-	unload({&m_res.pQuad->m_id, &m_res.pSphere->m_id, &m_res.pTriangle0->m_id, &matID});
+	res::unload(m_res.quad);
+	res::unload(m_res.triangle);
+	res::unload(m_res.sphere);
+	res::unload(m_res.texturedLit);
 	m_data = {};
 	m_res = {};
 }
@@ -377,9 +365,17 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.pSphere->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.container2);
-	m_res.pSphere->m_material.pSpecular = Resources::inst().get<gfx::Texture>(m_res.container2_specular);
-	m_res.pQuad->m_material.pDiffuse = Resources::inst().get<gfx::Texture>(m_res.awesomeface);
+	m_res.sphere.material().diffuse = res::findTexture(m_res.container2).payload;
+	m_res.sphere.material().specular = res::findTexture(m_res.container2_specular).payload;
+	m_res.quad.material().diffuse = res::findTexture(m_res.awesomeface).payload;
+	if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
+	{
+		pModel->guid = res::findModel(m_data.model1id).payload.guid;
+	}
+	if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
+	{
+		pModel->guid = res::findModel(m_data.model0id).payload.guid;
+	}
 }
 } // namespace
 
@@ -416,6 +412,7 @@ int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
 	g_uReader = std::make_unique<io::FileReader>();
+	// g_uReader = std::make_unique<io::ZIPReader>();
 
 	engine::Info info;
 	Window::Info info0;
@@ -424,6 +421,7 @@ int main(int argc, char** argv)
 	info.windowInfo = info0;
 	info.pReader = g_uReader.get();
 	info.dataPaths = engine.locateData({{{"data"}}, {{"demo/data"}}});
+	// info.dataPaths = engine.locateData({{{"data.zip"}}, {{"demo/data.zip"}}});
 	if (!engine.init(info))
 	{
 		return 1;

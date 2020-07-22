@@ -1,12 +1,12 @@
 #pragma once
 #include <core/flags.hpp>
 #include <engine/ecs/registry.hpp>
+#include <engine/game/text2d.hpp>
 #include <engine/gfx/camera.hpp>
-#include <engine/gfx/font.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/renderer.hpp>
-#include <engine/gfx/texture.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le
 {
@@ -21,15 +21,17 @@ struct UIComponent final
 	using Flags = TFlags<Flag>;
 
 	stdfs::path id;
-	std::unique_ptr<gfx::Text2D> uText;
-	std::unique_ptr<gfx::Mesh> uMesh;
+	std::unique_ptr<Text2D> uText;
+	res::Mesh mesh;
 	Flags flags;
 
-	gfx::Text2D& setText(gfx::Text2D::Info info);
-	gfx::Mesh& setQuad(glm::vec2 const& size, glm::vec2 const& pivot = {});
+	~UIComponent();
+
+	Text2D& setText(Text2D::Info info);
+	res::Mesh setQuad(glm::vec2 const& size, glm::vec2 const& pivot = {});
 	void reset(Flags toReset);
 
-	std::vector<gfx::Mesh const*> meshes() const;
+	std::vector<res::Mesh> meshes() const;
 };
 
 class SceneBuilder
@@ -58,7 +60,6 @@ public:
 		/// \brief UI Transformation Space (z is depth)
 		///
 		glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
-		gfx::Camera const* pCamera = nullptr;
 		gfx::Pipeline const* p3Dpipe = nullptr;
 		gfx::Pipeline const* pUIpipe = nullptr;
 		glm::vec2 clearDepth = {1.0f, 0.0f};
@@ -70,7 +71,7 @@ protected:
 	Info m_info;
 
 public:
-	SceneBuilder(gfx::Camera const& camera);
+	SceneBuilder();
 	SceneBuilder(Info info);
 
 public:
@@ -79,6 +80,6 @@ public:
 	static glm::vec3 uiProjection(glm::vec3 const& uiSpace);
 
 public:
-	virtual gfx::Renderer::Scene build(Registry const& registry) const;
+	virtual gfx::Renderer::Scene build(gfx::Camera const& camera, Registry const& registry) const;
 };
 } // namespace le

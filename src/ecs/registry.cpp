@@ -9,9 +9,9 @@ namespace le
 bool g_bDestroyed = false;
 
 std::string const s_tEName = utils::tName<Entity>();
-std::string const Registry::s_tName = utils::tName<Registry>();
 std::unordered_map<std::type_index, Registry::Signature> Registry::s_signs;
 Lockable<std::mutex> Registry::s_mutex;
+ECSID Registry::s_nextRegID;
 
 bool operator==(Entity lhs, Entity rhs)
 {
@@ -25,30 +25,32 @@ bool operator!=(Entity lhs, Entity rhs)
 
 std::size_t EntityHasher::operator()(Entity const& entity) const
 {
-	return std::hash<Entity::ID>()(entity.id);
+	return std::hash<ECSID>()(entity.id) ^ std::hash<ECSID>()(entity.regID);
 }
 
 Registry::Component::~Component() = default;
 
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
 {
-	LOG_D("[{}] Constructed", s_tName);
+	m_regID = ++s_nextRegID.payload;
+	m_name = fmt::format("{}:{}", utils::tName(*this), m_regID);
+	LOG_D("[{}] Constructed", m_name);
 }
 
 Registry::~Registry()
 {
 	if (!m_entityFlags.empty())
 	{
-		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] Entities destroyed", s_tName, m_entityFlags.size());
+		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] Entities destroyed", m_name, m_entityFlags.size());
 	}
-	LOG_D("[{}] Destroyed", s_tName);
+	LOG_D("[{}] Destroyed", m_name);
 	g_bDestroyed = true;
 }
 
 bool Registry::setEnabled(Entity entity, bool bEnabled)
 {
 	auto lock = m_mutex.lock();
-	if (auto search = m_entityFlags.find(entity.id); search != m_entityFlags.end())
+	if (auto search = m_entityFlags.find(entity); search != m_entityFlags.end())
 	{
 		search->second[Flag::eDisabled] = !bEnabled;
 		return true;
@@ -59,7 +61,7 @@ bool Registry::setEnabled(Entity entity, bool bEnabled)
 bool Registry::setDebug(Entity entity, bool bDebug)
 {
 	auto lock = m_mutex.lock();
-	if (auto search = m_entityFlags.find(entity.id); search != m_entityFlags.end())
+	if (auto search = m_entityFlags.find(entity); search != m_entityFlags.end())
 	{
 		search->second[Flag::eDebug] = !bDebug;
 		return true;
@@ -70,35 +72,35 @@ bool Registry::setDebug(Entity entity, bool bDebug)
 bool Registry::isEnabled(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	auto search = m_entityFlags.find(entity.id);
+	auto search = m_entityFlags.find(entity);
 	return search != m_entityFlags.end() && !search->second.isSet(Flag::eDisabled);
 }
 
 bool Registry::isAlive(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	auto search = m_entityFlags.find(entity.id);
+	auto search = m_entityFlags.find(entity);
 	return search != m_entityFlags.end() && !search->second.isSet(Flag::eDestroyed);
 }
 
 bool Registry::isDebugSet(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	auto search = m_entityFlags.find(entity.id);
+	auto search = m_entityFlags.find(entity);
 	return search != m_entityFlags.end() && search->second.isSet(Flag::eDebug);
 }
 
 bool Registry::destroyEntity(Entity const& entity)
 {
 	auto lock = m_mutex.lock();
-	if (auto search = m_entityFlags.find(entity.id); search != m_entityFlags.end())
+	if (auto search = m_entityFlags.find(entity); search != m_entityFlags.end())
 	{
 		switch (m_destroyMode)
 		{
 		case DestroyMode::eImmediate:
 		{
-			destroyComponent_Impl(entity.id);
-			destroyEntity_Impl(search, entity.id);
+			destroyComponent_Impl(entity);
+			destroyEntity_Impl(search, entity);
 			break;
 		}
 		default:
@@ -133,8 +135,8 @@ void Registry::flush()
 		auto const flags = iter->second;
 		if (flags.isSet(Flag::eDestroyed))
 		{
-			destroyComponent_Impl(entity.id);
-			iter = destroyEntity_Impl(iter, entity.id);
+			destroyComponent_Impl(entity);
+			iter = destroyEntity_Impl(iter, entity);
 		}
 		else
 		{
@@ -162,24 +164,25 @@ std::size_t Registry::entityCount() const
 std::string_view Registry::entityName(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	auto search = m_entityNames.find(entity.id);
+	auto search = m_entityNames.find(entity);
 	return search != m_entityNames.end() ? search->second : std::string_view();
 }
 
 Entity Registry::spawnEntity_Impl(std::string name)
 {
-	++m_nextID;
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] spawned", s_tName, s_tEName, m_nextID, name);
-	m_entityNames[m_nextID] = std::move(name);
-	m_entityFlags[m_nextID] = {};
-	return {m_nextID};
+	++m_nextID.payload;
+	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] spawned", m_name, s_tEName, m_nextID, name);
+	Entity ret{m_nextID, m_regID};
+	m_entityNames[ret] = std::move(name);
+	m_entityFlags[ret] = {};
+	return ret;
 }
 
-Registry::EFMap::iterator Registry::destroyEntity_Impl(EFMap::iterator iter, Entity::ID id)
+Registry::EFMap::iterator Registry::destroyEntity_Impl(EFMap::iterator iter, Entity entity)
 {
 	iter = m_entityFlags.erase(iter);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] destroyed", s_tName, s_tEName, id, m_entityNames[id]);
-	m_entityNames.erase(id);
+	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, entity.id, m_entityNames[entity]);
+	m_entityNames.erase(entity);
 	return iter;
 }
 
@@ -189,30 +192,31 @@ Registry::Component* Registry::addComponent_Impl(Signature sign, std::unique_ptr
 	{
 		m_componentNames[sign] = utils::tName(*uComp);
 	}
-	auto const id = entity.id;
 	uComp->sign = sign;
-	ASSERT(m_db[id].find(sign) == m_db[id].end(), "Duplicate Component!");
-	m_db[id][sign] = std::move(uComp);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", s_tName, m_componentNames[sign], s_tEName, id, m_entityNames[id]);
-	return m_db[id][sign].get();
+	ASSERT(m_db[entity].find(sign) == m_db[entity].end(), "Duplicate Component!");
+	m_db[entity][sign] = std::move(uComp);
+	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", m_name, m_componentNames[sign], s_tEName, entity.id,
+		  m_entityNames[entity]);
+	return m_db[entity][sign].get();
 }
 
-void Registry::destroyComponent_Impl(Component const* pComponent, Entity::ID id)
+void Registry::destroyComponent_Impl(Component const* pComponent, Entity entity)
 {
 	ASSERT(!g_bDestroyed, "Registry destroyed!");
 	auto const sign = pComponent->sign;
-	m_db[id].erase(sign);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", s_tName, m_componentNames[sign], s_tEName, id, m_entityNames[id]);
+	m_db[entity].erase(sign);
+	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", m_name, m_componentNames[sign], s_tEName, entity.id,
+		  m_entityNames[entity]);
 	return;
 }
 
-bool Registry::destroyComponent_Impl(Entity::ID id)
+bool Registry::destroyComponent_Impl(Entity entity)
 {
 	ASSERT(!g_bDestroyed, "Registry destroyed!");
-	if (auto search = m_db.find(id); search != m_db.end())
+	if (auto search = m_db.find(entity); search != m_db.end())
 	{
-		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] components detached from [{}:{}] [{}] and destroyed", s_tName, search->second.size(), s_tEName, id,
-			  m_entityNames[id]);
+		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] components detached from [{}:{}] [{}] and destroyed", m_name, search->second.size(), s_tEName, entity.id,
+			  m_entityNames[entity]);
 		m_db.erase(search);
 		return true;
 	}

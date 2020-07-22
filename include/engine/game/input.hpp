@@ -16,9 +16,13 @@ struct CtxWrapper final
 void registerContext(CtxWrapper const& context);
 [[nodiscard]] Token registerContext(Context const& context);
 
+#if defined(LEVK_EDITOR)
+void registerEditorContext(CtxWrapper const& context);
+[[nodiscard]] Token registerEditorContext(Context const& context);
+#endif
+
 glm::vec2 const& cursorPosition(bool bIgnoreDisabled = false);
 glm::vec2 screenToWorld(glm::vec2 const& screen);
 glm::vec2 worldToUI(glm::vec2 const& world);
 bool isInFocus();
-void setActive(bool bActive);
 } // namespace le::input

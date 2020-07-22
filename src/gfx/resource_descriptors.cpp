@@ -2,8 +2,8 @@
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
 #include <gfx/resource_descriptors.hpp>
-#include <engine/assets/resources.hpp>
-#include <engine/gfx/texture.hpp>
+#include <engine/resources/resources.hpp>
+#include <resources/resources_impl.hpp>
 
 namespace le::gfx
 {
@@ -55,12 +55,12 @@ View::View(Renderer::View const& view, u32 dirLightCount)
 {
 }
 
-Materials::Mat::Mat(Material const& material, Colour dropColour)
-	: ambient(material.m_albedo.ambient.toVec4()),
-	  diffuse(material.m_albedo.diffuse.toVec4()),
-	  specular(material.m_albedo.specular.toVec4()),
+Materials::Mat::Mat(res::Material::Info const& material, Colour dropColour)
+	: ambient(material.albedo.ambient.toVec4()),
+	  diffuse(material.albedo.diffuse.toVec4()),
+	  specular(material.albedo.specular.toVec4()),
 	  dropColour(dropColour.toVec4()),
-	  shininess(material.m_shininess)
+	  shininess(material.shininess)
 {
 }
 
@@ -137,17 +137,24 @@ void Writer::write(vk::DescriptorSet set, Buffer const& buffer) const
 	return;
 }
 
-void Writer::write(vk::DescriptorSet set, std::vector<TextureImpl const*> const& textures) const
+void Writer::write(vk::DescriptorSet set, std::vector<res::Texture> const& textures) const
 {
 	std::vector<vk::DescriptorImageInfo> imageInfos;
 	imageInfos.reserve(textures.size());
-	for (auto pTex : textures)
+	for (auto const& tex : textures)
 	{
-		vk::DescriptorImageInfo imageInfo;
-		imageInfo.imageView = pTex->imageView;
-		imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-		imageInfo.sampler = pTex->sampler;
-		imageInfos.push_back(imageInfo);
+		if (auto pImpl = res::impl(tex))
+		{
+			auto const& info = tex.info();
+			if (auto pSamplerImpl = res::impl(info.sampler))
+			{
+				vk::DescriptorImageInfo imageInfo;
+				imageInfo.imageView = pImpl->imageView;
+				imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+				imageInfo.sampler = pSamplerImpl->sampler;
+				imageInfos.push_back(imageInfo);
+			}
+		}
 	}
 	vk::WriteDescriptorSet descWrite;
 	descWrite.dstSet = set;
@@ -160,7 +167,7 @@ void Writer::write(vk::DescriptorSet set, std::vector<TextureImpl const*> const&
 	return;
 }
 
-void Descriptor<ImageSamplers>::writeArray(std::vector<TextureImpl const*> const& textures, vk::DescriptorSet set) const
+void Descriptor<ImageSamplers>::writeArray(std::vector<res::Texture> const& textures, vk::DescriptorSet set) const
 {
 	m_writer.write(set, textures);
 }
@@ -189,8 +196,11 @@ void Set::destroy()
 
 void Set::resetTextures(SamplerCounts const& counts)
 {
-	std::deque<Texture const*> const diffuse((std::size_t)counts.diffuse, Resources::inst().get<Texture>("textures/white"));
-	std::deque<Texture const*> const specular((std::size_t)counts.specular, Resources::inst().get<Texture>("textures/black"));
+	auto [white, bWhite] = res::findTexture("textures/white");
+	auto [black, bBlack] = res::findTexture("textures/black");
+	ASSERT(bBlack && bWhite, "Default textures missing!");
+	std::deque<res::Texture> const diffuse((std::size_t)counts.diffuse, white);
+	std::deque<res::Texture> const specular((std::size_t)counts.specular, black);
 	writeDiffuse(diffuse);
 	writeSpecular(specular);
 }
@@ -229,33 +239,25 @@ void Set::writeSSBOs(StorageBuffers const& ssbos)
 	return;
 }
 
-void Set::writeDiffuse(std::deque<Texture const*> const& diffuse)
+void Set::writeDiffuse(std::deque<res::Texture> const& diffuse)
 {
-	std::vector<TextureImpl const*> diffuseImpl;
-	diffuseImpl.reserve(diffuse.size());
-	for (auto pTex : diffuse)
-	{
-		diffuseImpl.push_back(pTex->m_uImpl.get());
-	}
-	m_diffuse.writeArray(diffuseImpl, m_samplerSet);
+	std::vector<res::Texture> arr;
+	std::copy(diffuse.begin(), diffuse.end(), std::back_inserter(arr));
+	m_diffuse.writeArray(arr, m_samplerSet);
 	return;
 }
 
-void Set::writeSpecular(std::deque<Texture const*> const& specular)
+void Set::writeSpecular(std::deque<res::Texture> const& specular)
 {
-	std::vector<TextureImpl const*> specularImpl;
-	specularImpl.reserve(specular.size());
-	for (auto pTex : specular)
-	{
-		specularImpl.push_back(pTex->m_uImpl.get());
-	}
-	m_specular.writeArray(specularImpl, m_samplerSet);
+	std::vector<res::Texture> arr;
+	std::copy(specular.begin(), specular.end(), std::back_inserter(arr));
+	m_specular.writeArray(arr, m_samplerSet);
 	return;
 }
 
-void Set::writeCubemap(Texture const& cubemap)
+void Set::writeCubemap(res::Texture cubemap)
 {
-	m_cubemap.writeArray({cubemap.m_uImpl.get()}, m_samplerSet);
+	m_cubemap.writeArray({cubemap}, m_samplerSet);
 	return;
 }
 } // namespace rd

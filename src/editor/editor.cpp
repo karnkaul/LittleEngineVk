@@ -11,21 +11,24 @@
 #include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <gfx/ext_gui.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
-#include <engine/gfx/font.hpp>
-#include <engine/gfx/mesh.hpp>
-#include <engine/gfx/model.hpp>
-#include <engine/gfx/shader.hpp>
-#include <engine/gfx/texture.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/window/input_types.hpp>
+#include <resources/resources_impl.hpp>
+#include <resources/model_impl.hpp>
 
 namespace le
 {
 using namespace input;
+
+using v2 = glm::vec2 const&;
+using iv2 = glm::ivec2 const&;
+using sv = std::string_view;
+template <typename T>
+using il = std::initializer_list<T>;
 
 struct Editor final
 {
@@ -76,9 +79,13 @@ struct
 } g_inspecting;
 World* g_pWorld = nullptr;
 
-#if defined(LEVK_USE_IMGUI)
+#pragma region log
 bool g_bAutoScroll = true;
-#endif
+
+ImVec4 fromColour(Colour colour)
+{
+	return ImVec4(colour.r.toF32(), colour.g.toF32(), colour.b.toF32(), colour.a.toF32());
+}
 
 Colour fromLevel(io::Level level)
 {
@@ -95,14 +102,7 @@ Colour fromLevel(io::Level level)
 	}
 }
 
-#if defined(LEVK_USE_IMGUI)
-ImVec4 fromColour(Colour colour)
-{
-	return ImVec4(colour.r.toF32(), colour.g.toF32(), colour.b.toF32(), colour.a.toF32());
-}
-#endif
-
-void guiLog(std::string_view text, io::Level level)
+void guiLog(sv text, io::Level level)
 {
 	LogEntry entry;
 	entry.text = std::string(text);
@@ -124,12 +124,9 @@ void clearLog()
 {
 	g_logEntries.clear();
 }
+#pragma endregion log
 
-bool isDifferent(glm::vec3 const& lhs, glm::vec3 const& rhs)
-{
-	return !maths::equals(lhs.x, rhs.x, 0.001f) || !maths::equals(lhs.y, rhs.y, 0.001f) || !maths::equals(lhs.z, rhs.z, 0.001f);
-}
-
+#pragma region scene
 void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
 {
 	static ImGuiTreeNodeFlags const baseFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -172,45 +169,103 @@ void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
 		}
 	}
 }
+#pragma endregion scene
+
+#pragma region inspector
+bool isDifferent(glm::vec3 const& lhs, glm::vec3 const& rhs)
+{
+	return !maths::equals(lhs.x, rhs.x, 0.001f) || !maths::equals(lhs.y, rhs.y, 0.001f) || !maths::equals(lhs.z, rhs.z, 0.001f);
+}
+
+template <typename... Args>
+bool dummy(Args...)
+{
+	return true;
+}
+
+template <typename T, typename F1, typename F2>
+void listLoaded(F1 filter, F2 onSelected, bool* out_pSelect = nullptr, bool bNone = false)
+{
+	constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	static_assert(std::is_base_of_v<res::Resource, T>, "T must derive from Resource");
+	static char szFilter[128];
+	ImGui::SetNextItemWidth(200.0f);
+	ImGui::InputText("Filter", szFilter, arraySize(szFilter));
+	ImGui::Separator();
+	sv resourceFilter = szFilter;
+	if (bNone)
+	{
+		ImGui::TreeNodeEx("[None]", flags);
+		if (ImGui::IsItemClicked())
+		{
+			onSelected({});
+			if (out_pSelect)
+			{
+				*out_pSelect = false;
+			}
+		}
+	}
+	auto resources = res::loaded<T>();
+	if (!resourceFilter.empty())
+	{
+		for (auto& kvp : resources.entries)
+		{
+			auto& [dir, entries] = kvp;
+			auto iter = std::remove_if(entries.begin(), entries.end(), [kvp, resourceFilter](auto const& entry) -> bool {
+				return (stdfs::path(kvp.first) / stdfs::path(entry.first)).generic_string().find(resourceFilter) == std::string::npos;
+			});
+			entries.erase(iter, entries.end());
+		}
+	}
+	for (auto const& [dir, entries] : resources.entries)
+	{
+		if (!entries.empty() && ImGui::TreeNode(dir.data()))
+		{
+			for (auto const& entry : entries)
+			{
+				if (filter(entry.second) && ImGui::Selectable(entry.first.data()))
+				{
+					onSelected(entry.second);
+					if (out_pSelect)
+					{
+						*out_pSelect = false;
+					}
+				}
+			}
+			ImGui::TreePop();
+		}
+	}
+}
 
 template <typename T>
-void listAssets(std::string_view tabName)
+void tabLoaded(sv tabName)
 {
 	if (ImGui::BeginTabItem(tabName.data()))
 	{
-		auto assets = Resources::inst().loaded<T>();
-		static s32 selected = -1;
-		for (std::size_t i = 0; i < assets.size(); ++i)
-		{
-			auto pAsset = assets.at(i);
-			if (ImGui::Selectable(pAsset->m_id.generic_string().data(), selected == (s32)i))
-			{
-				selected = (s32)i;
-			}
-		}
+		listLoaded<T>(&dummy<T>, &dummy<T>);
 		ImGui::EndTabItem();
 	}
 }
 
-void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
+void resourcesWindow(v2 pos, v2 size)
 {
-	static bool s_bAssets = false;
-	s_bAssets |= ImGui::Button("Resources");
-	if (s_bAssets)
+	static bool s_bResources = false;
+	s_bResources |= ImGui::Button("Resources");
+	if (s_bResources)
 	{
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin("Loaded Assets", &s_bAssets, ImGuiWindowFlags_NoSavedSettings))
+		if (ImGui::Begin("Loaded Resources", &s_bResources, ImGuiWindowFlags_NoSavedSettings))
 		{
 			if (ImGui::BeginTabBar("Resources"))
 			{
-				listAssets<gfx::Model>("Models");
-				listAssets<gfx::Mesh>("Meshes");
-				listAssets<gfx::Font>("Fonts");
-				listAssets<gfx::Texture>("Textures");
-				listAssets<gfx::Material>("Materials");
-				listAssets<gfx::Sampler>("Samplers");
-				listAssets<gfx::Shader>("Shaders");
+				tabLoaded<res::Model>("Models");
+				tabLoaded<res::Mesh>("Meshes");
+				tabLoaded<res::Font>("Fonts");
+				tabLoaded<res::Texture>("Textures");
+				tabLoaded<res::Sampler>("Samplers");
+				tabLoaded<res::Material>("Materials");
+				tabLoaded<res::Shader>("Shaders");
 				ImGui::EndTabBar();
 			}
 		}
@@ -218,20 +273,12 @@ void resourcesWindow(glm::vec2 const& pos, glm::vec2 const& size)
 	}
 }
 
-template <typename T>
-bool dummy(T&)
-{
-	return true;
-}
-
 template <typename T, typename F, typename F2>
-void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::initializer_list<bool*> unselect, F onSelected, F2 filter, glm::vec2 const& pos,
-				  glm::vec2 const& size, bool bNone = true)
+void inspectResource(T resource, sv selector, bool& out_bSelect, il<bool*> unselect, F onSelected, F2 filter, v2 pos, v2 size, bool bNone = true)
 {
-	static ImGuiTreeNodeFlags const flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth
-											| ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-
-	ImGui::TreeNodeEx(pAsset ? pAsset->m_id.generic_string().data() : "[None]", flags);
+	auto const id = res::info(resource).id;
+	constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	ImGui::TreeNodeEx(id.empty() ? "[None]" : id.generic_string().data(), flags);
 	if (ImGui::IsItemClicked() || out_bSelect)
 	{
 		out_bSelect = true;
@@ -243,56 +290,46 @@ void inspectAsset(T* pAsset, std::string_view selector, bool& out_bSelect, std::
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
 		{
-			if (bNone && ImGui::Selectable("[None]"))
-			{
-				onSelected(nullptr);
-				out_bSelect = false;
-			}
-			auto assets = Resources::inst().loaded<T>();
-			for (auto pAsset : assets)
-			{
-				if (!filter || filter(*pAsset))
-				{
-					if (ImGui::Selectable(pAsset->m_id.generic_string().data()))
-					{
-						onSelected(pAsset);
-						out_bSelect = false;
-					}
-				}
-			}
+			listLoaded<T>(filter, onSelected, &out_bSelect, bNone);
 		}
 		ImGui::End();
 	}
 }
 
-void inspectMaterial(gfx::Mesh& out_mesh, std::size_t idx, glm::vec2 const& pos, glm::vec2 const& size)
+void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 {
+	auto pInfo = res::infoRW(mesh);
+	auto pImpl = res::impl(mesh);
+	if (!pInfo || !pImpl)
+	{
+		return;
+	}
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
-		inspectAsset<gfx::Material>(
-			out_mesh.m_material.pMaterial, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
-			[&out_mesh](gfx::Material* pMat) { out_mesh.m_material.pMaterial = pMat; }, &dummy<gfx::Material>, pos, size, false);
-		inspectAsset<gfx::Texture>(
-			out_mesh.m_material.pDiffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[&out_mesh](gfx::Texture* pTex) { out_mesh.m_material.pDiffuse = pTex; }, [](gfx::Texture& tex) { return tex.m_type == gfx::Texture::Type::e2D; },
-			pos, size);
-		bool bOut = out_mesh.m_material.flags[gfx::Material::Flag::eDropColour];
+		inspectResource<res::Material>(
+			pInfo->material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			[pInfo](res::Material const& mat) { pInfo->material.material = mat; }, &dummy<res::Material>, pos, size, false);
+		inspectResource<res::Texture>(
+			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			[pInfo](res::Texture const& tex) { pInfo->material.diffuse.guid = tex.guid; },
+			[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
+		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eDropColour] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eOpaque];
+		pInfo->material.flags[res::Material::Flag::eDropColour] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eOpaque];
 		ImGui::Checkbox("Opaque", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eOpaque] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eTextured];
+		pInfo->material.flags[res::Material::Flag::eOpaque] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eTextured];
 		ImGui::Checkbox("Textured", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eTextured] = bOut;
-		bOut = out_mesh.m_material.flags[gfx::Material::Flag::eLit];
+		pInfo->material.flags[res::Material::Flag::eTextured] = bOut;
+		bOut = pInfo->material.flags[res::Material::Flag::eLit];
 		ImGui::Checkbox("Lit", &bOut);
-		out_mesh.m_material.flags[gfx::Material::Flag::eLit] = bOut;
+		pInfo->material.flags[res::Material::Flag::eLit] = bOut;
 		ImGui::TreePop();
 	}
 }
 
-void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
+void entityInspector(v2 pos, v2 size)
 {
 	if (g_pWorld && g_inspecting.entity != Entity() && g_inspecting.pTransform)
 	{
@@ -328,38 +365,34 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 			}
 			ImGui::Separator();
 
-			auto pTMesh = registry.component<TAsset<gfx::Mesh>>(g_inspecting.entity);
-			auto pMesh = pTMesh ? pTMesh->get() : nullptr;
-			if (pTMesh)
+			auto pMesh = registry.component<res::Mesh>(g_inspecting.entity);
+			if (pMesh)
 			{
 				if (ImGui::TreeNode("Mesh"))
 				{
-					inspectAsset<gfx::Mesh>(
-						pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pTMesh](gfx::Mesh const* pMesh) { pTMesh->id = pMesh ? pMesh->m_id : stdfs::path(); }, &dummy<gfx::Mesh>, pos, size);
+					inspectResource(
+						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
+						[pMesh](res::Mesh mesh) { pMesh->guid = mesh.guid; }, &dummy<res::Mesh>, pos, size);
 
-					if (pMesh)
-					{
-						inspectMaterial(*pMesh, 0, pos, size);
-					}
+					inspectMatInst(*pMesh, 0, pos, size);
 					ImGui::TreePop();
 				}
 			}
-			auto pTModel = registry.component<TAsset<gfx::Model>>(g_inspecting.entity);
-			auto pModel = pTModel ? pTModel->get() : nullptr;
-			if (pTModel)
+			auto pModel = registry.component<res::Model>(g_inspecting.entity);
+			auto pModelImpl = pModel ? res::impl(*pModel) : nullptr;
+			if (pModel)
 			{
 				if (ImGui::TreeNode("Model"))
 				{
-					inspectAsset<gfx::Model>(
-						pModel, "Loaded Models", g_inspecting.model.bSelectID, {},
-						[pTModel](gfx::Model const* pModel) { pTModel->id = pModel ? pModel->m_id : stdfs::path(); }, &dummy<gfx::Model>, pos, size);
-					static std::deque<gfx::Mesh> s_empty;
-					auto& meshes = pModel ? pModel->loadedMeshes() : s_empty;
+					inspectResource(
+						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { pModel->guid = model.guid; },
+						&dummy<res::Model>, pos, size);
+					static std::deque<res::Mesh> s_empty;
+					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 					std::size_t idx = 0;
 					for (auto& mesh : meshes)
 					{
-						inspectMaterial(mesh, idx++, pos, size);
+						inspectMatInst(mesh, idx++, pos, size);
 					}
 					ImGui::TreePop();
 				}
@@ -367,7 +400,9 @@ void entityInspector(glm::vec2 const& pos, glm::vec2 const& size)
 		}
 	}
 }
+#pragma endregion inspector
 
+#pragma region widgets
 void playButton()
 {
 	char const* szPlayPause = editor::g_bTickGame ? "Pause" : "Play";
@@ -382,7 +417,7 @@ void presentModeDropdown()
 {
 	if (auto pWindow = WindowImpl::windowImpl(g_data.window))
 	{
-		static std::array<std::string_view, 4> const s_presentModes = {"Off", "Triple Buffer", "Double Buffer", "Double Buffer (Relaxed)"};
+		static std::array<sv, 4> const s_presentModes = {"Off", "Triple Buffer", "Double Buffer", "Double Buffer (Relaxed)"};
 		auto presentMode = pWindow->presentMode();
 		if (ImGui::BeginCombo("Vsync", s_presentModes[(std::size_t)presentMode].data()))
 		{
@@ -461,7 +496,37 @@ void worldSelectDropdown()
 	}
 }
 
-void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+void logLevelDropdown()
+{
+	static io::Level s_selected = io::g_minLevel;
+	if (ImGui::BeginCombo("Log Level", io::g_logLevels.at((std::size_t)io::g_minLevel).data()))
+	{
+		for (std::size_t i = 0; i < (std::size_t)io::Level::eCOUNT_; ++i)
+		{
+			bool const bSelected = s_selected == (io::Level)i;
+			if (ImGui::Selectable(io::g_logLevels.at(i).data(), bSelected))
+			{
+				s_selected = (io::Level)i;
+			}
+			if (bSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+	if (s_selected != io::g_minLevel)
+	{
+		auto const oldLevel = io::g_logLevels.at((std::size_t)io::g_minLevel);
+		io::g_minLevel = io::Level::eDebug;
+		LOG_I("[{}] Min Log Level changed from [{}] to [{}]", s_tName, oldLevel, io::g_logLevels.at((std::size_t)s_selected));
+		io::g_minLevel = s_selected;
+	}
+}
+#pragma endregion widgets
+
+#pragma region layout
+void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -483,13 +548,13 @@ void drawLeftPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& 
 			ImGui::ShowDemoWindow(&s_bImGuiDemo);
 		}
 		ImGui::Separator();
-		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {300.0f, 200.0f});
+		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f});
 	}
 	ImGui::End();
 	return;
 }
 
-void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const& panelSize)
+void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -520,6 +585,8 @@ void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const&
 			if (ImGui::BeginTabItem("Options"))
 			{
 				presentModeDropdown();
+				ImGui::Separator();
+				logLevelDropdown();
 				worldSelectDropdown();
 				ImGui::EndTabItem();
 			}
@@ -530,7 +597,7 @@ void drawRightPanel([[maybe_unused]] glm::ivec2 const& fbSize, glm::ivec2 const&
 	return;
 }
 
-void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
+void drawLog(iv2 fbSize, s32 logHeight)
 {
 	static s32 const s_yPad = 3;
 	if (logHeight - s_yPad <= g_minDim.y)
@@ -541,7 +608,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 	static s32 s_logLevel = 0;
 	static char szFilter[64] = {0};
 	bool bClear = false;
-	std::string_view logFilter;
+	sv logFilter;
 
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2((f32)fbSize.x, (f32)(logHeight - s_yPad)), ImGuiCond_Always);
@@ -622,6 +689,7 @@ void drawLog(glm::ivec2 const& fbSize, s32 logHeight)
 	}
 	ImGui::End();
 }
+#pragma endregion layout
 } // namespace
 
 bool editor::init(WindowID editorWindow)
@@ -647,6 +715,7 @@ bool editor::init(WindowID editorWindow)
 		{
 			g_data.focusToken = pWindow->m_pWindow->registerFocus([](bool) { g_data.bAltPressed = false; });
 		}
+		g_editorCam.init(true);
 		return g_bInit = true;
 	}
 	return false;
@@ -660,12 +729,15 @@ void editor::deinit()
 		g_onLogChain = nullptr;
 		g_bInit = false;
 		g_data = {};
+		g_editorCam = {};
 	}
 	return;
 }
 
 void editor::tick([[maybe_unused]] Time dt)
 {
+	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
+	g_editorCam.tick(dt);
 	static auto const smol = glm::vec2(0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
 	if (g_data.enabled && pWindow && pWindow->isOpen())

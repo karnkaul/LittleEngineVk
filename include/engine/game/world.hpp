@@ -13,6 +13,7 @@
 #include <core/zero.hpp>
 #include <engine/ecs/registry.hpp>
 #include <engine/game/input.hpp>
+#include <engine/gfx/camera.hpp>
 #include <engine/gfx/renderer.hpp>
 
 namespace le
@@ -23,6 +24,8 @@ namespace engine
 {
 class Service;
 } // namespace engine
+
+class SceneBuilder;
 
 class World
 {
@@ -41,8 +44,9 @@ protected:
 
 protected:
 	Registry m_registry = Registry(Registry::DestroyMode::eDeferred);
-	std::string m_tName;
+	std::string m_name;
 	input::CtxWrapper m_inputContext;
+	std::unique_ptr<gfx::Camera> m_uSceneCam;
 	ID m_previousWorldID;
 
 #if defined(LEVK_EDITOR)
@@ -65,7 +69,7 @@ private:
 
 public:
 	template <typename T, typename... Args>
-	static ID addWorld(Args... args);
+	static ID addWorld(Args&&... args);
 
 	template <typename T1, typename T2, typename... Tn>
 	static void addWorld();
@@ -101,10 +105,19 @@ public:
 	Entity spawnEntity(std::string name, bool bAddTransform = true);
 	bool destroyEntity(Entity entity);
 
+	template <typename T = gfx::Camera, typename... Args>
+	T& setSceneCamera(Args&&... args);
+
+	template <typename T = gfx::Camera>
+	T& sceneCamera();
+
+	template <typename T = gfx::Camera>
+	T const* sceneCamPtr() const;
+
 protected:
 	virtual bool start() = 0;
 	virtual void tick(Time dt) = 0;
-	virtual gfx::Renderer::Scene buildScene() const = 0;
+	virtual SceneBuilder const& sceneBuilder() const = 0;
 	virtual void stop() = 0;
 
 protected:
@@ -128,14 +141,17 @@ private:
 	static bool stopActive();
 	static void destroyAll();
 	static bool tick(Time dt, gfx::ScreenRect const& sceneRect);
-	static bool submitScene(gfx::Renderer& out_renderer);
+	static bool submitScene(gfx::Renderer& out_renderer, gfx::Camera const& camera);
+
+	template <typename T, typename Th>
+	static T* sceneCamPtr(Th* pThis);
 
 private:
 	friend class engine::Service;
 };
 
 template <typename T, typename... Args>
-World::ID World::addWorld(Args... args)
+World::ID World::addWorld(Args&&... args)
 {
 	static_assert(std::is_base_of_v<World, T>, "T must derive from World!");
 	auto const type = std::type_index(typeid(T));
@@ -146,8 +162,11 @@ World::ID World::addWorld(Args... args)
 		auto uT = std::make_unique<T>(std::forward<Args>(args)...);
 		if (uT)
 		{
-			uT->m_tName = utils::tName<T>();
-			uT->m_id = ++s_lastID.handle;
+			if (uT->m_name.empty())
+			{
+				uT->m_name = utils::tName<T>();
+			}
+			uT->m_id = ++s_lastID.payload;
 			uT->m_type = type;
 			s_worldByType.emplace(type, uT.get());
 			s_worlds.emplace(s_lastID, std::move(uT));
@@ -175,5 +194,42 @@ bool World::removeWorld()
 {
 	auto search = s_worldByType.find(std::type_index(typeid(T)));
 	return search != s_worldByType.end() ? removeWorld(search->second->m_id) : false;
+}
+
+template <typename T, typename... Args>
+T& World::setSceneCamera(Args&&... args)
+{
+	m_uSceneCam = std::make_unique<T>(std::forward<Args>(args)...);
+	return *sceneCamPtr<T, World>(this);
+}
+
+template <typename T>
+T& World::sceneCamera()
+{
+	if (!m_uSceneCam)
+	{
+		return setSceneCamera<T>();
+	}
+	return *sceneCamPtr<T, World>(this);
+}
+
+template <typename T>
+T const* World::sceneCamPtr() const
+{
+	return sceneCamPtr<T const, World const>(this);
+}
+
+template <typename T, typename Th>
+T* World::sceneCamPtr(Th* pThis)
+{
+	static_assert(std::is_base_of_v<gfx::Camera, T>, "T must derive from Camera!");
+	if constexpr (std::is_same_v<T, gfx::Camera>)
+	{
+		return pThis->m_uSceneCam.get();
+	}
+	else
+	{
+		return dynamic_cast<T*>(pThis->m_uSceneCam.get());
+	}
 }
 } // namespace le

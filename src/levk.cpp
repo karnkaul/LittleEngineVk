@@ -4,7 +4,6 @@
 #include <core/time.hpp>
 #include <core/utils.hpp>
 #include <engine/levk.hpp>
-#include <engine/assets/resources.hpp>
 #include <engine/game/world.hpp>
 #include <game/input_impl.hpp>
 #include <gfx/deferred.hpp>
@@ -12,6 +11,7 @@
 #include <gfx/ext_gui.hpp>
 #include <gfx/renderer_impl.hpp>
 #include <gfx/vram.hpp>
+#include <resources/resources_impl.hpp>
 #include <window/window_impl.hpp>
 #include <editor/editor.hpp>
 #include <levk_impl.hpp>
@@ -40,9 +40,9 @@ Service::~Service()
 {
 	input::deinit();
 	World::stopActive();
-	Resources::inst().waitIdle();
+	res::waitIdle();
 	World::destroyAll();
-	Resources::inst().deinit();
+	res::deinit();
 	g_app = {};
 }
 
@@ -96,7 +96,8 @@ bool Service::init(Info const& info)
 				throw std::runtime_error("Failed to mount data path" + path.generic_string() + "!");
 			}
 		}
-		Resources::inst().init(*pReader);
+		g_app.pReader = pReader;
+		m_services.add<res::Service>();
 		if (info.windowInfo)
 		{
 			g_app.uWindow = std::make_unique<Window>();
@@ -106,10 +107,10 @@ bool Service::init(Info const& info)
 			}
 		}
 		input::init(*g_app.uWindow);
-		g_app.pReader = pReader;
 	}
 	catch (std::exception const& e)
 	{
+		g_app.pReader = nullptr;
 		LOG_E("[{}] Failed to initialise engine services: {}", tName, e.what());
 		return false;
 	}
@@ -139,14 +140,12 @@ bool Service::tick(Time dt) const
 	{
 		gfx::ScreenRect gameRect = {};
 #if defined(LEVK_EDITOR)
-		if (editor::g_bTickGame)
-		{
-			input::fire();
-		}
+		input::g_bEditorOnly = !editor::g_bTickGame;
+#endif
+		input::fire();
+#if defined(LEVK_EDITOR)
 		editor::tick(dt);
 		gameRect = editor::g_gameRect;
-#else
-		input::fire();
 #endif
 		if (!World::tick(dt, gameRect))
 		{
@@ -158,9 +157,17 @@ bool Service::tick(Time dt) const
 
 void Service::submitScene() const
 {
-	if (!isShuttingDown() && g_app.uWindow)
+	if (!isShuttingDown() && g_app.uWindow && World::s_pActive)
 	{
-		if (!World::submitScene(g_app.uWindow->renderer()))
+		gfx::Camera const* pCamera = World::s_pActive->sceneCamPtr();
+#if defined(LEVK_EDITOR)
+		if (!editor::g_bTickGame)
+		{
+			pCamera = &editor::g_editorCam;
+		}
+#endif
+		ASSERT(pCamera, "Camera is null!");
+		if (!World::submitScene(g_app.uWindow->renderer(), *pCamera))
 		{
 			LOG_E("[{}] Error submitting World scene!", tName);
 		}
@@ -210,7 +217,7 @@ glm::ivec2 engine::framebufferSize()
 
 void engine::update()
 {
-	Resources::inst().update();
+	res::update();
 	WindowImpl::update();
 	gfx::vram::update();
 	gfx::deferred::update();
@@ -235,16 +242,16 @@ io::Reader const& engine::reader()
 	return *g_app.pReader;
 }
 
-gfx::Texture::Space engine::colourSpace()
+res::Texture::Space engine::colourSpace()
 {
 	if (g_app.uWindow)
 	{
 		auto const pRenderer = WindowImpl::rendererImpl(g_app.uWindow->id());
 		if (pRenderer && pRenderer->colourSpace() == ColourSpace::eSRGBNonLinear)
 		{
-			return gfx::Texture::Space::eSRGBNonLinear;
+			return res::Texture::Space::eSRGBNonLinear;
 		}
 	}
-	return gfx::Texture::Space::eRGBLinear;
+	return res::Texture::Space::eRGBLinear;
 }
 } // namespace le

@@ -116,7 +116,7 @@ bool sysCall(std::string_view command);
 /// \brief Perform a system call
 ///
 template <typename Arg1, typename... Args>
-bool sysCall(std::string_view expr, Arg1 arg1, Args... args)
+bool sysCall(std::string_view expr, Arg1&& arg1, Args&&... args)
 {
 	auto const command = fmt::format(expr, std::forward<Arg1>(arg1), std::forward<Args>(args)...);
 	return sysCall(command);

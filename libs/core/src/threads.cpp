@@ -33,7 +33,7 @@ void threads::init()
 
 threads::Handle threads::newThread(std::function<void()> task)
 {
-	g_threads.emplace_back(++g_nextID.handle, std::thread(task));
+	g_threads.emplace_back(++g_nextID.payload, std::thread(task));
 	g_idMap[g_threads.back().second.get_id()] = g_nextID;
 	return Handle(g_nextID);
 }

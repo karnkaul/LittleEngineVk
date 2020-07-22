@@ -1,39 +1,41 @@
 #include <core/transform.hpp>
-#include <engine/assets/resources.hpp>
-#include <engine/gfx/model.hpp>
 #include <engine/game/scene_builder.hpp>
+#include <engine/resources/resources.hpp>
 #include <engine/levk.hpp>
 #include <levk_impl.hpp>
 
 namespace le
 {
-gfx::Text2D& UIComponent::setText(gfx::Text2D::Info info)
+UIComponent::~UIComponent()
 {
-	uText = std::make_unique<gfx::Text2D>();
+	res::unload(mesh);
+}
+
+Text2D& UIComponent::setText(Text2D::Info info)
+{
+	uText = std::make_unique<Text2D>();
 	uText->setup(std::move(info));
 	flags.set(Flag::eText);
 	return *uText;
 }
 
-gfx::Mesh& UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
+res::Mesh UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
 {
 	gfx::Geometry geometry = gfx::createQuad(size, pivot);
-	if (!uMesh)
+	if (mesh.status() == res::Status::eIdle)
 	{
-		gfx::Mesh::Info info;
+		res::Mesh::CreateInfo info;
 		info.geometry = std::move(geometry);
-		info.type = gfx::Mesh::Type::eDynamic;
-		info.material.flags.set(gfx::Material::Flag::eUI);
-		stdfs::path meshID = id.empty() ? "(ui)" : id;
-		meshID += "_quad";
-		uMesh = std::make_unique<gfx::Mesh>(std::move(meshID), std::move(info));
+		info.type = res::Mesh::Type::eDynamic;
+		info.material.flags.set(res::Material::Flag::eUI);
+		mesh = res::load((id.empty() ? "(ui)" : id) / "quad", std::move(info));
 	}
 	else
 	{
-		uMesh->updateGeometry(std::move(geometry));
+		mesh.updateGeometry(std::move(geometry));
 	}
 	flags.set(Flag::eMesh);
-	return *uMesh;
+	return mesh;
 }
 
 void UIComponent::reset(Flags toReset)
@@ -45,32 +47,30 @@ void UIComponent::reset(Flags toReset)
 		}
 	};
 	resetPtr(Flag::eText, uText);
-	resetPtr(Flag::eMesh, uMesh);
+	if (toReset.isSet(Flag::eText))
+	{
+		res::unload(mesh);
+		mesh = {};
+	}
 }
 
-std::vector<gfx::Mesh const*> UIComponent::meshes() const
+std::vector<res::Mesh> UIComponent::meshes() const
 {
-	std::vector<gfx::Mesh const*> ret;
+	std::vector<res::Mesh> ret;
 	if (flags.isSet(Flag::eText) && uText && uText->isReady())
 	{
 		ret.push_back(uText->mesh());
 	}
-	if (flags.isSet(Flag::eMesh) && uMesh && uMesh->isReady())
+	if (flags.isSet(Flag::eMesh) && mesh.status() == res::Status::eReady)
 	{
-		ret.push_back(uMesh.get());
+		ret.push_back(mesh);
 	}
 	return ret;
 }
 
-SceneBuilder::SceneBuilder(gfx::Camera const& camera)
-{
-	m_info.pCamera = &camera;
-}
+SceneBuilder::SceneBuilder() = default;
 
-SceneBuilder::SceneBuilder(Info info) : m_info(std::move(info))
-{
-	ASSERT(m_info.pCamera, "Camera cannot be null!");
-}
+SceneBuilder::SceneBuilder(Info info) : m_info(std::move(info)) {}
 
 f32 SceneBuilder::framebufferAspect()
 {
@@ -95,9 +95,8 @@ glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace)
 	return uiProjection(uiSpace, {ifbSize.x == 0 ? 1 : ifbSize.x, ifbSize.y == 0 ? 1 : ifbSize.y});
 }
 
-gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
+gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry const& registry) const
 {
-	ASSERT(m_info.pCamera, "Camera is null!");
 	auto const ifbSize = engine::framebufferSize();
 	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
 	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fbSize, m_info.uiSpace.z) : m_info.uiSpace;
@@ -105,40 +104,40 @@ gfx::Renderer::Scene SceneBuilder::build(Registry const& registry) const
 	gfx::Renderer::Scene scene;
 	scene.clear = {m_info.clearDepth, m_info.clearColour};
 	scene.dirLights = m_info.dirLights;
-	scene.view.pos_v = m_info.pCamera->m_position;
-	scene.view.mat_v = m_info.pCamera->view();
-	scene.view.mat_p = m_info.pCamera->perspective(fbSize.x / fbSize.y);
+	scene.view.pos_v = camera.m_position;
+	scene.view.mat_v = camera.view();
+	scene.view.mat_p = camera.perspective(fbSize.x / fbSize.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
-	scene.view.mat_ui = m_info.pCamera->ui(engine::g_uiSpace);
+	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
-		auto pCubemap = Resources::inst().get<gfx::Texture>(m_info.skyboxCubemapID);
-		if (pCubemap && pCubemap->isReady())
+		auto [cubemap, bCubemap] = res::findTexture(m_info.skyboxCubemapID);
+		if (bCubemap && cubemap.status() == res::Status::eReady)
 		{
-			scene.view.skybox.pCubemap = pCubemap;
+			scene.view.skybox.cubemap = cubemap;
 		}
 	}
 	gfx::Renderer::Batch batch3D;
 	gfx::Renderer::Batch batchUI;
 	{
-		auto view = registry.view<Transform, TAsset<gfx::Model>>();
+		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, cModel] = query;
-			if (auto pModel = cModel->get(); pModel && pModel->isReady())
+			auto& [pTransform, pModel] = query;
+			if (pModel->status() == res::Status::eReady)
 			{
 				batch3D.drawables.push_back({pModel->meshes(), pTransform, m_info.p3Dpipe});
 			}
 		}
 	}
 	{
-		auto view = registry.view<Transform, TAsset<gfx::Mesh>>();
+		auto view = registry.view<Transform, res::Mesh>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, cMesh] = query;
-			if (auto pMesh = cMesh->get(); pMesh && pMesh->isReady())
+			auto& [pTransform, pMesh] = query;
+			if (pMesh->status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({{pMesh}, pTransform, m_info.p3Dpipe});
+				batch3D.drawables.push_back({{*pMesh}, pTransform, m_info.p3Dpipe});
 			}
 		}
 	}

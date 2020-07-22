@@ -5,6 +5,7 @@
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/screen_rect.hpp>
+#include <engine/resources/resource_types.hpp>
 
 namespace le
 {
@@ -14,9 +15,6 @@ class WindowImpl;
 
 namespace le::gfx
 {
-class Mesh;
-class Texture;
-
 class Renderer final
 {
 public:
@@ -29,13 +27,13 @@ public:
 	struct Skybox final
 	{
 		ScreenRect viewport;
-		Texture const* pCubemap = nullptr;
+		res::Texture cubemap;
 		Pipeline const* pPipeline = nullptr;
 	};
 
 	struct Drawable final
 	{
-		std::vector<Mesh const*> meshes;
+		std::vector<res::Mesh> meshes;
 		Transform const* pTransform = nullptr;
 		Pipeline const* pPipeline = nullptr;
 	};

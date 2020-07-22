@@ -277,12 +277,22 @@ gfx::Geometry Font::generate(Text const& text) const
 
 bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 {
+#if defined(LEVK_SHADER_COMPILER)
+	constexpr bool bShaderCompiler = true;
+#else
+	constexpr bool bShaderCompiler = false;
+#endif
 	bool const bCodeMapPopulated = std::any_of(out_createInfo.codeMap.begin(), out_createInfo.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	[[maybe_unused]] bool const bCodeIDsPopulated =
 		std::any_of(out_createInfo.codeIDMap.begin(), out_createInfo.codeIDMap.end(), [&](auto const& entry) { return !entry.empty(); });
-	if (!bCodeMapPopulated)
+	if (bCodeMapPopulated)
+	{
+		codeMap = std::move(out_createInfo.codeMap);
+	}
+	else
 	{
 		ASSERT(bCodeIDsPopulated, "Invalid Shader ShaderData!");
+		[[maybe_unused]] auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 		for (std::size_t idx = 0; idx < out_createInfo.codeIDMap.size(); ++idx)
 		{
 			auto& codeID = out_createInfo.codeIDMap.at(idx);
@@ -290,33 +300,39 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 			bool bSpv = true;
 			if (ext == s_vertExt || ext == s_fragExt)
 			{
-#if defined(LEVK_SHADER_COMPILER)
-				if (loadGlsl(codeID, (Type)idx))
+				if (!bShaderCompiler || !pReader)
 				{
-#if defined(LEVK_RESOURCES_HOT_RELOAD)
-					monitor = {};
-					auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
-					ASSERT(pReader, "FileReader needed!");
-					auto onReloaded = [this, idx](Monitor::File const* pFile) -> bool {
-						if (!glslToSpirV(pFile->id, codeMap.at(idx)))
-						{
-							LOG_E("[{}] Failed to reload Shader!", s_tName);
-							return false;
-						}
-						return true;
-					};
-					monitor.m_files.push_back({codeID, pReader->fullPath(codeID), io::FileMonitor::Mode::eTextContents, onReloaded});
-#endif
+					codeID += s_spvExt;
 				}
 				else
 				{
-					LOG_E("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
-					return false;
-				}
-				bSpv = false;
-#else
-				id += s_spvExt;
+#if defined(LEVK_SHADER_COMPILER)
+					if (loadGlsl(codeID, (Type)idx))
+					{
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+						if (pReader)
+						{
+							monitor = {};
+							auto onReloaded = [this, idx](Monitor::File const* pFile) -> bool {
+								if (!glslToSpirV(pFile->id, codeMap.at(idx)))
+								{
+									LOG_E("[{}] Failed to reload Shader!", s_tName);
+									return false;
+								}
+								return true;
+							};
+							monitor.m_files.push_back({codeID, pReader->fullPath(codeID), io::FileMonitor::Mode::eTextContents, onReloaded});
+						}
 #endif
+					}
+					else
+					{
+						LOG_E("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
+						return false;
+					}
+					bSpv = false;
+#endif
+				}
 			}
 			if (bSpv)
 			{
@@ -327,12 +343,11 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 					LOG_E("[{}] [{}] Shader code missing: [{}]!", s_tName, id.generic_string(), codeID.generic_string());
 					return false;
 				}
-				out_createInfo.codeMap.at(idx) = std::move(shaderShaderData);
+				codeMap.at(idx) = std::move(shaderShaderData);
 			}
 		}
 	}
-	loadAllSpirV();
-	return true;
+	return loadAllSpirV();
 }
 
 void Shader::Impl::release()
@@ -355,9 +370,16 @@ bool Shader::Impl::checkReload()
 		{
 			auto const idStr = id.generic_string();
 			LOG_D("[{}] [{}] Reloading...", s_tName, idStr);
-			loadAllSpirV();
-			LOG_I("[{}] [{}] Reloaded", s_tName, idStr);
-			return true;
+			if (loadAllSpirV())
+			{
+				LOG_I("[{}] [{}] Reloaded", s_tName, idStr);
+				return true;
+			}
+			else
+			{
+				LOG_E("[{}] [{}] Failed to reload!", s_tName, idStr);
+				return false;
+			}
 		}
 		return false;
 	}
@@ -377,9 +399,7 @@ bool Shader::Impl::loadGlsl(stdfs::path const& id, Type type)
 		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
-	ASSERT(pReader, "Cannot compile shaders without io::FileReader!");
-	auto [glslCode, bResult] = pReader->getString(id);
+	auto [glslCode, bResult] = engine::reader().getString(id);
 	return bResult && glslToSpirV(id, codeMap.at((std::size_t)type));
 }
 
@@ -414,13 +434,15 @@ bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 }
 #endif
 
-void Shader::Impl::loadAllSpirV()
+bool Shader::Impl::loadAllSpirV()
 {
+	bool bFound = false;
 	for (std::size_t idx = 0; idx < codeMap.size(); ++idx)
 	{
 		auto const& code = codeMap.at(idx);
 		if (!code.empty())
 		{
+			bFound = true;
 			gfx::g_device.destroy(shaders.at(idx));
 			vk::ShaderModuleCreateInfo createInfo;
 			createInfo.codeSize = code.size();
@@ -428,6 +450,7 @@ void Shader::Impl::loadAllSpirV()
 			shaders.at(idx) = gfx::g_device.device.createShaderModule(createInfo);
 		}
 	}
+	return bFound;
 }
 
 vk::ShaderModule Shader::Impl::module(Shader::Type type) const
@@ -563,12 +586,11 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	viewInfo.type = type;
 	imageView = gfx::g_device.createImageView(viewInfo);
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
+	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 	monitor = {};
 	monitor.m_reloadDelay = 50ms;
-	if (bAddFileMonitor)
+	if (bAddFileMonitor && pReader)
 	{
-		auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
-		ASSERT(pReader, "io::FileReader required!");
 		std::size_t idx = 0;
 		for (auto const& id : out_createInfo.ids)
 		{

@@ -94,7 +94,7 @@ struct Shader::Impl : ImplBase, IReloadable
 	bool glslToSpirV(stdfs::path const& id, bytearray& out_bytes);
 	bool loadGlsl(stdfs::path const& id, Shader::Type type);
 #endif
-	void loadAllSpirV();
+	bool loadAllSpirV();
 
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 	bool checkReload();

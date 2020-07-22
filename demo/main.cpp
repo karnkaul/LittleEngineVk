@@ -412,6 +412,7 @@ int main(int argc, char** argv)
 {
 	engine::Service engine(argc, argv);
 	g_uReader = std::make_unique<io::FileReader>();
+	// g_uReader = std::make_unique<io::ZIPReader>();
 
 	engine::Info info;
 	Window::Info info0;
@@ -420,6 +421,7 @@ int main(int argc, char** argv)
 	info.windowInfo = info0;
 	info.pReader = g_uReader.get();
 	info.dataPaths = engine.locateData({{{"data"}}, {{"demo/data"}}});
+	// info.dataPaths = engine.locateData({{{"data.zip"}}, {{"demo/data.zip"}}});
 	if (!engine.init(info))
 	{
 		return 1;

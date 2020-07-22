@@ -14,18 +14,32 @@ namespace
 {
 struct PhysfsHandle final
 {
+	bool bInit = false;
+
 	PhysfsHandle();
 	~PhysfsHandle();
 };
 
 PhysfsHandle::PhysfsHandle()
 {
-	PHYSFS_init(os::argv0().data());
+	if (PHYSFS_init(os::argv0().data()) != 0)
+	{
+		bInit = true;
+		LOG_I("[le::io] PhysFS initialised");
+	}
+	else
+	{
+		LOG_E("Failed to initialise PhysFS!");
+	}
 }
 
 PhysfsHandle::~PhysfsHandle()
 {
-	PHYSFS_deinit();
+	if (bInit)
+	{
+		PHYSFS_deinit();
+		LOG_I("[le::io] PhysFS deinitialised");
+	}
 }
 
 std::unique_ptr<PhysfsHandle> g_uPhysfsHandle;
@@ -268,13 +282,11 @@ void impl::initPhysfs()
 	if (!g_uPhysfsHandle)
 	{
 		g_uPhysfsHandle = std::make_unique<PhysfsHandle>();
-		LOG_D("PhysFS initialised");
 	}
 }
 
 void impl::deinitPhysfs()
 {
-	LOG_D("PhysFS deinitialised");
 	g_uPhysfsHandle = nullptr;
 }
 

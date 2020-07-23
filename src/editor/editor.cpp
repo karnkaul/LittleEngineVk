@@ -79,6 +79,15 @@ struct
 } g_inspecting;
 World* g_pWorld = nullptr;
 
+std::pair<bool, bool> treeNode(std::string_view name, bool bSelected, bool bLeaf, ImGuiTreeNodeFlags otherFlags = 0)
+{
+	constexpr static ImGuiTreeNodeFlags branchFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+	constexpr static ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | otherFlags;
+	bool const bNodeOpen = ImGui::TreeNodeEx(name.data(), nodeFlags) && !bLeaf;
+	return {bNodeOpen, ImGui::IsItemClicked()};
+}
+
 #pragma region log
 bool g_bAutoScroll = true;
 
@@ -127,43 +136,26 @@ void clearLog()
 #pragma endregion log
 
 #pragma region scene
-void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
+void walkSceneTree(Transform& root, World::EMap const& emap, Registry& registry)
 {
-	static ImGuiTreeNodeFlags const baseFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+	constexpr static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
 	auto const children = root.children();
 	auto search = emap.find(&root);
 	if (search != emap.end())
 	{
-		ImGuiTreeNodeFlags nodeFlags = baseFlags;
-		auto entity = search->second;
-		if (g_inspecting.entity == entity)
+		auto [pTransform, entity] = *search;
+		auto [bOpen, bClicked] = treeNode(registry.entityName(entity), g_inspecting.entity == entity, pTransform->children().empty(), flags);
+		if (bClicked)
 		{
-			nodeFlags |= ImGuiTreeNodeFlags_Selected;
+			bool const bSelect = g_inspecting.entity != entity;
+			g_inspecting.entity = bSelect ? entity : Entity();
+			g_inspecting.pTransform = bSelect ? pTransform : nullptr;
 		}
-		auto pTransform = search->first;
-		bool const bLeaf = pTransform->children().empty();
-		if (bLeaf)
-		{
-			nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-		}
-		bool const bNodeOpen = ImGui::TreeNodeEx(registry.entityName(entity).data(), nodeFlags) && !bLeaf;
-		if (ImGui::IsItemClicked())
-		{
-			if (g_inspecting.entity == entity)
-			{
-				g_inspecting = {};
-			}
-			else
-			{
-				g_inspecting.entity = entity;
-				g_inspecting.pTransform = pTransform;
-			}
-		}
-		if (bNodeOpen)
+		if (bOpen)
 		{
 			for (auto pChild : pTransform->children())
 			{
-				walkGraph(*pChild, emap, registry);
+				walkSceneTree(*pChild, emap, registry);
 			}
 			ImGui::TreePop();
 		}
@@ -184,19 +176,49 @@ bool dummy(Args...)
 }
 
 template <typename T, typename F1, typename F2>
-void listLoaded(F1 filter, F2 onSelected, bool* out_pSelect = nullptr, bool bNone = false)
+void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view filter, F1 shouldList, F2 onSelected, bool* out_pSelect)
 {
-	constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	if (!filter.empty())
+	{
+		auto removeNode = [&filter](typename io::PathTree<T>::Node const* pNode) -> bool { return pNode->findPattern(filter, true) == nullptr; };
+		nodes.erase(std::remove_if(nodes.begin(), nodes.end(), removeNode), nodes.end());
+	}
+	for (auto pNode : nodes)
+	{
+		auto const str = pNode->directory.filename().generic_string();
+		auto [bOpen, _] = treeNode(str, false, false, ImGuiTreeNodeFlags_SpanAvailWidth);
+		if (bOpen)
+		{
+			for (auto const& [name, entry] : pNode->entries)
+			{
+				auto const t = std::get<T>(entry);
+				if (shouldList(t) && treeNode(std::get<std::string>(entry), false, true).second)
+				{
+					onSelected(t);
+					if (out_pSelect)
+					{
+						*out_pSelect = false;
+					}
+				}
+			}
+			listResourceTree<T, F1, F2>(pNode->childNodes(), filter, shouldList, onSelected, out_pSelect);
+			ImGui::TreePop();
+		}
+	}
+}
+
+template <typename T, typename F1, typename F2>
+void listResources(F1 shouldList, F2 onSelected, bool* out_pSelect = nullptr, bool bNone = false)
+{
 	static_assert(std::is_base_of_v<res::Resource, T>, "T must derive from Resource");
 	static char szFilter[128];
 	ImGui::SetNextItemWidth(200.0f);
 	ImGui::InputText("Filter", szFilter, arraySize(szFilter));
 	ImGui::Separator();
-	sv resourceFilter = szFilter;
 	if (bNone)
 	{
-		ImGui::TreeNodeEx("[None]", flags);
-		if (ImGui::IsItemClicked())
+		auto [_, bClicked] = treeNode("[None]", false, true, ImGuiTreeNodeFlags_SpanAvailWidth);
+		if (bClicked)
 		{
 			onSelected({});
 			if (out_pSelect)
@@ -205,36 +227,7 @@ void listLoaded(F1 filter, F2 onSelected, bool* out_pSelect = nullptr, bool bNon
 			}
 		}
 	}
-	auto resources = res::loaded<T>();
-	if (!resourceFilter.empty())
-	{
-		for (auto& kvp : resources.entries)
-		{
-			auto& [dir, entries] = kvp;
-			auto iter = std::remove_if(entries.begin(), entries.end(), [kvp, resourceFilter](auto const& entry) -> bool {
-				return (stdfs::path(kvp.first) / stdfs::path(entry.first)).generic_string().find(resourceFilter) == std::string::npos;
-			});
-			entries.erase(iter, entries.end());
-		}
-	}
-	for (auto const& [dir, entries] : resources.entries)
-	{
-		if (!entries.empty() && ImGui::TreeNode(dir.data()))
-		{
-			for (auto const& entry : entries)
-			{
-				if (filter(entry.second) && ImGui::Selectable(entry.first.data()))
-				{
-					onSelected(entry.second);
-					if (out_pSelect)
-					{
-						*out_pSelect = false;
-					}
-				}
-			}
-			ImGui::TreePop();
-		}
-	}
+	listResourceTree<T>(res::loaded<T>().rootNodes(), szFilter, shouldList, onSelected, out_pSelect);
 }
 
 template <typename T>
@@ -242,7 +235,7 @@ void tabLoaded(sv tabName)
 {
 	if (ImGui::BeginTabItem(tabName.data()))
 	{
-		listLoaded<T>(&dummy<T>, &dummy<T>);
+		listResources<T>(&dummy<T>, &dummy<T>);
 		ImGui::EndTabItem();
 	}
 }
@@ -290,7 +283,7 @@ void inspectResource(T resource, sv selector, bool& out_bSelect, il<bool*> unsel
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
 		{
-			listLoaded<T>(filter, onSelected, &out_bSelect, bNone);
+			listResources<T>(filter, onSelected, &out_bSelect, bNone);
 		}
 		ImGui::End();
 	}
@@ -577,7 +570,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 				{
 					for (auto pTransform : g_pWorld->m_root.children())
 					{
-						walkGraph(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
+						walkSceneTree(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
 					}
 				}
 				ImGui::EndTabItem();

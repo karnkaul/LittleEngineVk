@@ -28,6 +28,7 @@ struct Map
 };
 
 std::atomic<GUID::type> g_nextGUID;
+std::atomic<GUID::type> g_lastUnloadedGUID;
 
 template <typename T, typename TImpl>
 T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::path const& id)
@@ -141,6 +142,7 @@ bool unload(Map<T, TImpl>& out_map, Hash id)
 		auto [tResource, bResult] = out_map.resources.find(guid);
 		if (bResult)
 		{
+			g_lastUnloadedGUID = guid;
 			LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
 			lock.unlock();
 			tResource->uImpl->release();
@@ -158,6 +160,7 @@ bool unload(Map<T, TImpl>& out_map, GUID guid)
 	auto [tResource, bResult] = out_map.resources.find(guid);
 	if (bResult)
 	{
+		g_lastUnloadedGUID = guid;
 		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
 		out_map.ids.erase(tResource->uImpl->id);
 		lock.unlock();
@@ -250,6 +253,7 @@ void release(Map<T, TImpl>& out_map)
 	for (auto iter = out_map.resources.m_map.begin(); iter != out_map.resources.m_map.end();)
 	{
 		auto& [guid, tResource] = *iter;
+		g_lastUnloadedGUID = guid;
 		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource.uImpl->id.generic_string());
 		lock.unlock();
 		tResource.uImpl->release();
@@ -273,18 +277,19 @@ Status status(Map<T, TImpl>& map, GUID guid)
 
 #if defined(LEVK_EDITOR)
 template <typename T, typename TImpl>
-TreeView<T> const& loaded(Map<T, TImpl> const& map)
+io::PathTree<T> const& loaded(Map<T, TImpl> const& map)
 {
-	static TreeView<T> s_ret;
-	static GUID::type s_guid;
+	static io::PathTree<T> s_ret;
+	static GUID::type s_guid, s_unloaded;
 	auto lock = map.mutex.template lock<std::shared_lock>();
-	if (s_ret.entries.size() != map.resources.m_map.size() || g_nextGUID > s_guid)
+	if (g_nextGUID != s_guid || s_unloaded != g_lastUnloadedGUID)
 	{
 		s_guid = g_nextGUID;
-		s_ret.entries.clear();
-		for (auto& [_, tResource] : map.resources.m_map)
+		s_unloaded = g_lastUnloadedGUID;
+		s_ret = {};
+		for (auto const& [_, resource] : map.resources.m_map)
 		{
-			s_ret.add(tResource.uImpl->id, tResource.resource);
+			s_ret.emplace(resource.info.id, T{resource.resource});
 		}
 	}
 	return s_ret;
@@ -603,45 +608,45 @@ Model::Info* res::infoRW(Model model)
 }
 
 #if defined(LEVK_EDITOR)
-TreeView<Shader> const& res::loadedShaders()
+io::PathTree<Shader> const& res::loadedShaders()
 {
-	static TreeView<Shader> const s_default{};
+	static io::PathTree<Shader> const s_default{};
 	return g_bInit ? loaded(g_shaders) : s_default;
 }
 
-TreeView<Sampler> const& res::loadedSamplers()
+io::PathTree<Sampler> const& res::loadedSamplers()
 {
-	static TreeView<Sampler> const s_default{};
+	static io::PathTree<Sampler> const s_default{};
 	return g_bInit ? loaded(g_samplers) : s_default;
 }
 
-TreeView<Texture> const& res::loadedTextures()
+io::PathTree<Texture> const& res::loadedTextures()
 {
-	static TreeView<Texture> const s_default{};
+	static io::PathTree<Texture> const s_default{};
 	return g_bInit ? loaded(g_textures) : s_default;
 }
 
-TreeView<Material> const& res::loadedMaterials()
+io::PathTree<Material> const& res::loadedMaterials()
 {
-	static TreeView<Material> const s_default{};
+	static io::PathTree<Material> const s_default{};
 	return g_bInit ? loaded(g_materials) : s_default;
 }
 
-TreeView<Mesh> const& res::loadedMeshes()
+io::PathTree<Mesh> const& res::loadedMeshes()
 {
-	static TreeView<Mesh> const s_default{};
+	static io::PathTree<Mesh> const s_default{};
 	return g_bInit ? loaded(g_meshes) : s_default;
 }
 
-TreeView<Font> const& res::loadedFonts()
+io::PathTree<Font> const& res::loadedFonts()
 {
-	static TreeView<Font> const s_default{};
+	static io::PathTree<Font> const s_default{};
 	return g_bInit ? loaded(g_fonts) : s_default;
 }
 
-TreeView<Model> const& res::loadedModels()
+io::PathTree<Model> const& res::loadedModels()
 {
-	static TreeView<Model> const s_default{};
+	static io::PathTree<Model> const s_default{};
 	return g_bInit ? loaded(g_models) : s_default;
 }
 #endif

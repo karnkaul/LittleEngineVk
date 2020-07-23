@@ -3,31 +3,11 @@
 #include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <core/delegate.hpp>
+#include <core/path_tree.hpp>
 #include <resources/monitor.hpp>
 
 namespace le::res
 {
-#if defined(LEVK_EDITOR)
-template <typename T>
-struct TreeView final
-{
-	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource");
-
-	using Name = std::string;
-	using Dir = std::string;
-	using Entry = std::pair<Name, T>;
-
-	std::map<Dir, std::vector<Entry>> entries;
-
-	void add(stdfs::path const& id, T const& t)
-	{
-		Dir dir = id.parent_path().generic_string();
-		Name name = id.filename().generic_string();
-		entries[std::move(dir)].push_back({std::move(name), T{t}});
-	}
-};
-#endif
-
 template <typename T, typename TImpl>
 struct TResource final
 {
@@ -195,13 +175,13 @@ Font::Info* infoRW(Font font);
 Model::Info* infoRW(Model model);
 
 #if defined(LEVK_EDITOR)
-TreeView<Shader> const& loadedShaders();
-TreeView<Sampler> const& loadedSamplers();
-TreeView<Texture> const& loadedTextures();
-TreeView<Material> const& loadedMaterials();
-TreeView<Mesh> const& loadedMeshes();
-TreeView<Font> const& loadedFonts();
-TreeView<Model> const& loadedModels();
+io::PathTree<Shader> const& loadedShaders();
+io::PathTree<Sampler> const& loadedSamplers();
+io::PathTree<Texture> const& loadedTextures();
+io::PathTree<Material> const& loadedMaterials();
+io::PathTree<Mesh> const& loadedMeshes();
+io::PathTree<Font> const& loadedFonts();
+io::PathTree<Model> const& loadedModels();
 #endif
 
 bool isLoading(GUID guid);
@@ -213,7 +193,7 @@ void deinit();
 
 #if defined(LEVK_EDITOR)
 template <typename T>
-TreeView<T> const& loaded()
+io::PathTree<T> const& loaded()
 {
 	if constexpr (std::is_same_v<T, Shader>)
 	{

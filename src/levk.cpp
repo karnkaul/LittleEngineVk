@@ -215,6 +215,15 @@ glm::ivec2 engine::framebufferSize()
 	return g_app.uWindow ? g_app.uWindow->framebufferSize() : glm::ivec2(0);
 }
 
+glm::vec2 engine::gameRectSize()
+{
+#if defined(LEVK_EDITOR)
+	return editor::g_gameRect.size();
+#else
+	return {1.0f, 1.0f};
+#endif
+}
+
 void engine::update()
 {
 	res::update();

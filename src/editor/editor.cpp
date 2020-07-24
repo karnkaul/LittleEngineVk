@@ -2,6 +2,7 @@
 #include <mutex>
 #include <core/log_config.hpp>
 #include <core/log.hpp>
+#include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <editor/editor.hpp>
 #if defined(LEVK_EDITOR)
@@ -46,8 +47,8 @@ struct
 	WindowID window;
 	OnInput::Token inputToken;
 	OnFocus::Token focusToken;
-	bool enabled = false;
-	bool bAltPressed = false;
+	bool bEnabled = false;
+	bool bFocus = true;
 } g_data;
 
 struct LogEntry final
@@ -185,19 +186,23 @@ void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view fi
 	}
 	for (auto pNode : nodes)
 	{
-		auto const str = pNode->directory.filename().generic_string();
+		auto const str = pNode->directory.filename().generic_string() + "/";
 		auto [bOpen, _] = treeNode(str, false, false, ImGuiTreeNodeFlags_SpanAvailWidth);
 		if (bOpen)
 		{
 			for (auto const& [name, entry] : pNode->entries)
 			{
-				auto const t = std::get<T>(entry);
-				if (shouldList(t) && treeNode(std::get<std::string>(entry), false, true).second)
+				auto const& str = std::get<std::string>(entry);
+				if (filter.empty() || str.find(filter) != std::string::npos)
 				{
-					onSelected(t);
-					if (out_pSelect)
+					auto const t = std::get<T>(entry);
+					if (shouldList(t) && treeNode(str, false, true).second)
 					{
-						*out_pSelect = false;
+						onSelected(t);
+						if (out_pSelect)
+						{
+							*out_pSelect = false;
+						}
 					}
 				}
 			}
@@ -696,17 +701,13 @@ bool editor::init(WindowID editorWindow)
 			[](Key key, Action action, Mods::VALUE mods) {
 				if (key == Key::eE && action == Action::eRelease && mods & Mods::eCONTROL)
 				{
-					g_data.enabled = !g_data.enabled;
-				}
-				if ((key == Key::eLeftAlt || key == Key::eRightAlt) && (action == Action::ePress || action == Action::eRelease))
-				{
-					g_data.bAltPressed = action == Action::ePress;
+					g_data.bEnabled = !g_data.bEnabled;
 				}
 			},
 			editorWindow);
 		if (auto pWindow = WindowImpl::windowImpl(g_data.window))
 		{
-			g_data.focusToken = pWindow->m_pWindow->registerFocus([](bool) { g_data.bAltPressed = false; });
+			g_data.focusToken = pWindow->m_pWindow->registerFocus([](bool bFocus) { g_data.bFocus = bFocus; });
 		}
 		g_editorCam.init(true);
 		return g_bInit = true;
@@ -731,17 +732,36 @@ void editor::tick([[maybe_unused]] Time dt)
 {
 	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);
-	static auto const smol = glm::vec2(0.6f);
+	static gfx::ScreenRect s_gameRect = glm::vec4(0.2f, 0.0f, 0.8f, 0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
-	if (g_data.enabled && pWindow && pWindow->isOpen())
+	if (g_data.bEnabled && pWindow && pWindow->isOpen())
 	{
-		glm::vec2 centre = glm::vec2(0.5f * (f32)pWindow->windowSize().x, 0.0f);
+		auto const wSize = pWindow->windowSize();
+		auto const cursorPos = input::cursorPosition(true);
+		glm::vec2 const nCursorPos = {cursorPos.x / (f32)wSize.x, cursorPos.y / (f32)wSize.y};
 		auto const fbSize = pWindow->framebufferSize();
-		if (g_data.bAltPressed)
+		auto resize = [pWindow](f32& out_target, f32 source, input::CursorType c, glm::vec2 clamp = {0.0f, 1.0f}) {
+			if (maths::equals(out_target, source, 0.01f))
+			{
+				pWindow->setCursorType(c);
+				ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+				if (ImGui::GetIO().MouseDown[0])
+				{
+					out_target = std::clamp(source, clamp.x, clamp.y);
+				}
+				return true;
+			}
+			return false;
+		};
+		bool const bResizeLeft = resize(s_gameRect.left, nCursorPos.x, input::CursorType::eHResize, {0.10f, 0.45f});
+		bool const bResizeRight = resize(s_gameRect.right, nCursorPos.x, input::CursorType::eHResize, {0.55f, 0.90f});
+		bool const bResizeBottom = resize(s_gameRect.bottom, nCursorPos.y, input::CursorType::eVResize, {0.50f, 0.80f});
+		if (!bResizeLeft && !bResizeRight && !bResizeBottom)
 		{
-			centre = pWindow->cursorPos();
+			pWindow->setCursorType(input::CursorType::eDefault);
+			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 		}
-		g_gameRect = pWindow->m_pWindow->renderer().clampToView(centre, smol);
+		g_gameRect = s_gameRect;
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
 			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);

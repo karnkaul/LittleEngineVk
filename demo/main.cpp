@@ -65,6 +65,7 @@ protected:
 		{
 			setSceneCamera();
 		}
+		m_uSceneCam->reset();
 		m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
 		return true;
 	}
@@ -208,8 +209,8 @@ bool DemoWorld::start()
 		sceneCam.init();
 		sceneCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
 	}
+	m_uSceneCam->reset();
 	m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
-	m_uSceneCam->m_orientation = gfx::g_qIdentity;
 
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
 	m_registry.addComponent<res::Mesh>(m_data.eid0, m_res.quad);
@@ -270,38 +271,44 @@ void DemoWorld::tick(Time dt)
 	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto const& handle) -> bool { return handle->hasCompleted(true); });
 	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
 
-	// if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
-	// {
-	// 	if (Resources::inst().get<gfx::Model>(m_data.model0id))
-	// 	{
-	// 		Resources::inst().unload<gfx::Model>(m_data.model0id);
-	// 		if (Resources::inst().get<gfx::Model>(m_data.model1id))
-	// 		{
-	// 			Resources::inst().unload<gfx::Model>(m_data.model1id);
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		m_data.modelReloads.push_back(tasks::enqueue(
-	// 			[this]() {
-	// 				auto semaphore = Resources::inst().setBusy();
-	// 				auto m0info = gfx::Model::parseOBJ(m_data.model0id);
-	// 				Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
-	// 			},
-	// 			"Model0-Reload"));
-	// 		if (m_data.model0id != m_data.model1id)
-	// 		{
-	// 			m_data.modelReloads.push_back(tasks::enqueue(
-	// 				[this]() {
-	// 					auto semaphore = Resources::inst().setBusy();
-	// 					auto m1info = gfx::Model::parseOBJ(m_data.model1id);
-	// 					Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
-	// 				},
-	// 				"Model1-Reload"));
-	// 		}
-	// 	}
-	// 	m_data.bLoadUnloadModels = false;
-	// }
+	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
+	{
+		if (auto [model, bResult] = res::findModel(m_data.model0id); bResult)
+		{
+			res::unload(model);
+			if (auto [model1, bResult1] = res::findModel(m_data.model1id); bResult1)
+			{
+				res::unload(model1);
+			}
+		}
+		else
+		{
+			m_data.modelReloads.push_back(tasks::enqueue(
+				[this]() {
+					auto semaphore = res::acquire();
+					auto m0info = res::Model::parseOBJ(m_data.model0id);
+					if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
+					{
+						pModel->guid = res::load(m_data.model0id, std::move(m0info)).guid;
+					}
+				},
+				"Model0-Reload"));
+			if (m_data.model0id != m_data.model1id)
+			{
+				m_data.modelReloads.push_back(tasks::enqueue(
+					[this]() {
+						auto semaphore = res::acquire();
+						auto m1info = res::Model::parseOBJ(m_data.model1id);
+						if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
+						{
+							pModel->guid = res::load(m_data.model1id, std::move(m1info)).guid;
+						}
+					},
+					"Model1-Reload"));
+			}
+		}
+		m_data.bLoadUnloadModels = false;
+	}
 
 	sceneCamera<FreeCam>().tick(dt);
 

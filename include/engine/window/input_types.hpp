@@ -207,6 +207,13 @@ enum class Axis : s8
 	eMouseEnd
 };
 
+enum class CursorType : s8
+{
+	eDefault = 0,
+	eHResize,
+	eVResize,
+};
+
 enum class CursorMode : s8
 {
 	eDefault = 0,

@@ -163,7 +163,7 @@ void FreeCam::tick(Time dt)
 	// Look
 	if (m_state.flags.isSet(Flag::eEnabled) && m_state.flags.isSet(Flag::eLooking))
 	{
-		m_state.cursorPos.second = input::cursorPosition(true);
+		m_state.cursorPos.second = input::screenToWorld(input::cursorPosition(true));
 		if (!m_state.flags.isSet(Flag::eTracking))
 		{
 			m_state.cursorPos.first = m_state.cursorPos.second;
@@ -206,18 +206,11 @@ void FreeCam::tick(Time dt)
 	return;
 }
 
-void FreeCam::reset(bool bOrientation, bool bPosition)
+void FreeCam::reset()
 {
+	Camera::reset();
 	m_state.dSpeed = 0.0f;
-	if (bOrientation)
-	{
-		m_state.pitch = m_state.yaw = 0.0f;
-		m_orientation = gfx::g_qIdentity;
-	}
-	if (bPosition)
-	{
-		m_position = {};
-	}
+	m_state.pitch = m_state.yaw = 0.0f;
 	m_state.heldKeys.clear();
 	m_state.flags.reset({Flag::eTracking, Flag::eLooking});
 	return;

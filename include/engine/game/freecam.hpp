@@ -30,7 +30,7 @@ public:
 
 	struct Config final
 	{
-		KeyToggle lookToggle = {input::Key::eL, input::Mods::eCONTROL};
+		KeyToggle lookToggle = {input::Key::eL};
 		f32 defaultSpeed = 2.0f;
 		f32 minSpeed = 1.0f;
 		f32 maxSpeed = 1000.0f;
@@ -64,12 +64,14 @@ private:
 	glm::vec2 m_padLook = {};
 
 public:
+	void reset() override;
+
+public:
 #if defined(LEVK_EDITOR)
 	void init(bool bEditorContext = false);
 #else
 	void init();
 #endif
 	void tick(Time dt);
-	void reset(bool bOrientation, bool bPosition);
 };
 } // namespace le

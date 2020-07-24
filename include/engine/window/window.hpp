@@ -118,6 +118,7 @@ public:
 	std::vector<PresentMode> supportedPresentModes() const;
 	bool setPresentMode(PresentMode mode);
 
+	void setCursorType(input::CursorType type) const;
 	void setCursorMode(input::CursorMode mode) const;
 	input::CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;

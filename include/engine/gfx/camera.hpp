@@ -28,5 +28,8 @@ public:
 	glm::mat4 perspective(f32 aspect, f32 near = 0.1f, f32 far = 100.0f) const;
 	glm::mat4 ortho(f32 aspect, f32 zoom = 1.0f, f32 near = 0.1f, f32 far = 100.0f) const;
 	glm::mat4 ui(glm::vec3 const& uiSpace) const;
+
+public:
+	virtual void reset();
 };
 } // namespace le::gfx

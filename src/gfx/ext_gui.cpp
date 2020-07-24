@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <core/assert.hpp>
+#include <core/log.hpp>
 #include <core/colour.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/device.hpp>
@@ -122,8 +123,16 @@ bool ext_gui::init([[maybe_unused]] Info const& info)
 		ImGui::StyleColorsDark();
 		setStyle();
 #if defined(LEVK_USE_GLFW)
-		auto pWindow = reinterpret_cast<::GLFWwindow*>(WindowImpl::nativeHandle(info.window));
-		ImGui_ImplGlfw_InitForVulkan(pWindow, true);
+		auto pWindow = WindowImpl::nativeHandle(info.window).get<GLFWwindow*>();
+		if (!pWindow)
+		{
+			bRet = false;
+			LOG_E("Failed to get native window handle!");
+		}
+		else
+		{
+			ImGui_ImplGlfw_InitForVulkan(*pWindow, false);
+		}
 #else
 		LOG_E("NOT IMPLEMENTED");
 		bRet = false;

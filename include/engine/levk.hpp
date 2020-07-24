@@ -102,6 +102,10 @@ glm::ivec2 windowSize();
 ///
 glm::ivec2 framebufferSize();
 ///
+/// \brief Obtain the (normalised) gameRect size
+///
+glm::vec2 gameRectSize();
+///
 /// \brief Obtain the path to the running executable
 ///
 stdfs::path exePath();

@@ -1,85 +1,114 @@
 #pragma once
 #include <array>
 #include <cstddef>
-#include <cstring>
-#include <typeinfo>
-#include <core/assert.hpp>
+#include <optional>
+#include <type_traits>
 
 namespace le
 {
-template <std::size_t N = sizeof(s64)>
+template <std::size_t N = sizeof(void*)>
 class StaticAny final
 {
 private:
-	std::array<std::byte, N> m_bytes;
-	void (*m_destroy)(void const*);
-	std::size_t m_hash = 0;
+	template <typename T>
+	using is_different_t = std::enable_if_t<!std::is_same_v<T, StaticAny<N>>>;
+
+	struct Erased
+	{
+	};
+
+private:
+	alignas(std::max_align_t) std::array<std::byte, N> m_bytes;
+	Erased const* m_pErased = nullptr;
 
 public:
-	StaticAny() = default;
+	constexpr StaticAny() noexcept = default;
 
-	template <typename T>
+	template <typename T, typename = is_different_t<T>>
 	StaticAny(T const& t)
 	{
-		static_assert(sizeof(T) < N, "Buffer overflow!");
-		static_assert(std::is_constructible_v<T, T>, "T is not copy constructible");
 		construct<T>(t);
 	}
 
-	template <typename T>
+	template <typename T, typename = is_different_t<T>>
 	StaticAny& operator=(T const& t)
 	{
-		static_assert(sizeof(T) < N, "Buffer overflow!");
-		static_assert(std::is_constructible_v<T, T>, "T is not copy constructible");
-		clear();
 		construct<T>(t);
 		return *this;
 	}
 
-	StaticAny(StaticAny&& rhs) = default;
-	StaticAny& operator=(StaticAny&&) = default;
-	StaticAny(StaticAny const& rhs) = default;
-	StaticAny& operator=(StaticAny const&) = default;
-
 	template <typename T>
-	T get() const
+	bool contains() const noexcept
 	{
-		if (typeid(T).hash_code() == m_hash)
+		return erased<T>() == m_pErased;
+	}
+
+	template <typename T, typename = is_different_t<T>>
+	std::optional<T> get() const
+	{
+		if (contains<T>())
 		{
-			return *reinterpret_cast<T*>(const_cast<std::byte*>(m_bytes.data()));
+			return *reinterpret_cast<T const*>(m_bytes.data());
 		}
 		return {};
 	}
 
-	template <typename T>
-	T* getPtr() const
+	template <typename T, typename = is_different_t<T>>
+	T const* getPtr() const noexcept
 	{
-		if (typeid(T).hash_code() == m_hash)
+		if (contains<T>() || contains<T const>())
 		{
-			return reinterpret_cast<T*>(const_cast<std::byte*>(m_bytes.data()));
+			return reinterpret_cast<T const*>(m_bytes.data());
 		}
 		return nullptr;
 	}
 
-	void clear()
+	template <typename T, typename = is_different_t<T>>
+	T* getPtr() noexcept
 	{
-		if (m_destroy)
+		if (contains<T>())
 		{
-			m_destroy(m_bytes.data());
+			return reinterpret_cast<T*>(m_bytes.data());
 		}
-		m_hash = 0;
+		return nullptr;
+	}
+
+	void clear() noexcept
+	{
+		m_pErased = nullptr;
 	}
 
 private:
 	template <typename T>
 	void construct(T const& t)
 	{
-		T* pT = new (m_bytes.data()) T(t);
-		m_destroy = [](void const* p) {
-			auto pT = static_cast<T const*>(p);
-			pT->~T();
-		};
-		m_hash = typeid(T).hash_code();
+		if constexpr (std::is_same_v<T, std::nullptr_t>)
+		{
+			m_pErased = nullptr;
+		}
+		else
+		{
+			static_assert(sizeof(T) <= N, "Buffer overflow!");
+			static_assert(std::is_trivially_copy_constructible_v<T> && std::is_trivially_destructible_v<T>, "T must be trivially copiable and destructible!");
+			auto pErased = erased<T>();
+			if (m_pErased == pErased)
+			{
+				T* pT = reinterpret_cast<T*>(m_bytes.data());
+				*pT = t;
+			}
+			else
+			{
+				T* pT = new (m_bytes.data()) T{t};
+				m_pErased = pErased;
+			}
+		}
+	}
+
+	template <typename T>
+	static Erased const* erased()
+	{
+		static constexpr Erased s_erased;
+		return &s_erased;
 	}
 };
 } // namespace le

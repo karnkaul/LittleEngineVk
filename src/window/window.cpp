@@ -199,6 +199,14 @@ input::OnClosed::Token Window::registerClosed(input::OnClosed::Callback callback
 	return WindowImpl::s_input[m_id].onClosed.subscribe(callback);
 }
 
+void Window::setCursorType(input::CursorType type) const
+{
+	if (m_uImpl)
+	{
+		m_uImpl->setCursorType(type);
+	}
+}
+
 void Window::setCursorMode(input::CursorMode mode) const
 {
 	if (m_uImpl)

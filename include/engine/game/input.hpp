@@ -21,8 +21,12 @@ void registerEditorContext(CtxWrapper const& context);
 [[nodiscard]] Token registerEditorContext(Context const& context);
 #endif
 
-glm::vec2 const& cursorPosition(bool bIgnoreDisabled = false);
+glm::vec2 const& cursorPosition(bool bRaw = false);
 glm::vec2 screenToWorld(glm::vec2 const& screen);
 glm::vec2 worldToUI(glm::vec2 const& world);
 bool isInFocus();
+
+void setCursorMode(CursorMode mode);
+CursorMode cursorMode();
+
 } // namespace le::input

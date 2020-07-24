@@ -195,11 +195,17 @@ bool Gamepad::isPressed(Key button) const
 
 std::unordered_map<WindowID, WindowImpl::InputCallbacks> WindowImpl::s_input;
 
-WindowImpl* WindowImpl::find(void* pNativeHandle)
+WindowImpl* WindowImpl::find(StaticAny<> nativeHandle)
 {
-	auto f = [pNativeHandle](auto pWindow) -> bool { return pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->m_pWindow == pNativeHandle; };
+#if defined(LEVK_USE_GLFW)
+	auto f = [nativeHandle](auto pWindow) -> bool {
+		return pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->template cast<GLFWwindow>() == nativeHandle.get<GLFWwindow*>();
+	};
 	auto search = std::find_if(g_registeredWindows.begin(), g_registeredWindows.end(), f);
 	return search != g_registeredWindows.end() ? *search : nullptr;
+#else
+	return nullptr;
+#endif
 }
 
 bool WindowImpl::init()
@@ -297,11 +303,11 @@ std::unordered_set<s32> WindowImpl::allExisting()
 	return ret;
 }
 
-void* WindowImpl::nativeHandle(WindowID window)
+StaticAny<> WindowImpl::nativeHandle(WindowID window)
 {
 	if (auto pImpl = windowImpl(window); pImpl)
 	{
-		return pImpl->m_pWindow->m_uImpl->m_uNativeWindow->m_pWindow;
+		return pImpl->m_pWindow->m_uImpl->m_uNativeWindow->m_window;
 	}
 	return nullptr;
 }
@@ -425,7 +431,7 @@ bool WindowImpl::exists() const
 #if defined(LEVK_USE_GLFW)
 	if (g_bGLFWInit && m_uNativeWindow)
 	{
-		bRet = m_uNativeWindow->m_pWindow != nullptr;
+		bRet = m_uNativeWindow->cast<GLFWwindow>() != nullptr;
 	}
 #endif
 	return bRet;
@@ -511,6 +517,55 @@ glm::ivec2 WindowImpl::framebufferSize() const
 glm::ivec2 WindowImpl::windowSize() const
 {
 	return m_uNativeWindow ? m_uNativeWindow->windowSize() : glm::ivec2(0);
+}
+
+void WindowImpl::setCursorType([[maybe_unused]] CursorType type)
+{
+#if defined(LEVK_USE_GLFW)
+	if (g_bGLFWInit && m_uNativeWindow)
+	{
+		if (type != m_cursor.type)
+		{
+			if (m_cursor.type != CursorType::eDefault)
+			{
+				auto pCursor = m_cursor.data.get<GLFWcursor*>();
+				if (pCursor)
+				{
+					glfwDestroyCursor(*pCursor);
+				}
+			}
+			m_cursor.type = type;
+			auto pWindow = m_uNativeWindow->cast<GLFWwindow>();
+			switch (m_cursor.type)
+			{
+			case CursorType::eDefault:
+			{
+				glfwSetCursor(pWindow, nullptr);
+				m_cursor.data = nullptr;
+				break;
+			}
+			case CursorType::eHResize:
+			{
+				auto pCursor = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+				glfwSetCursor(pWindow, pCursor);
+				m_cursor.data = pCursor;
+				break;
+			}
+			case CursorType::eVResize:
+			{
+				auto pCursor = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+				glfwSetCursor(pWindow, pCursor);
+				m_cursor.data = pCursor;
+				break;
+			}
+			default:
+			{
+				break;
+			}
+			}
+		}
+	}
+#endif
 }
 
 void WindowImpl::setCursorMode([[maybe_unused]] CursorMode mode) const

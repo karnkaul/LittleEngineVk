@@ -69,8 +69,8 @@ struct TResult
 	bool bResult = false;
 
 	TResult() = default;
-	TResult(T&& payload) : payload(std::forward<T&&>(payload)), bResult(true) {}
-	TResult(T&& payload, bool bResult) : payload(std::forward<T&&>(payload)), bResult(bResult) {}
+	TResult(T&& payload) : payload(std::forward<T>(payload)), bResult(true) {}
+	TResult(T&& payload, bool bResult) : payload(std::forward<T>(payload)), bResult(bResult) {}
 };
 
 ///

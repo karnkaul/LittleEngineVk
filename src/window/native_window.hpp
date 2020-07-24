@@ -1,6 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <glm/vec2.hpp>
+#include <core/static_any.hpp>
 #include <engine/window/window.hpp>
 
 namespace le
@@ -8,7 +9,7 @@ namespace le
 class NativeWindow final
 {
 public:
-	void* m_pWindow = nullptr;
+	StaticAny<> m_window;
 
 public:
 	NativeWindow(Window::Info const& info);
@@ -24,7 +25,8 @@ public:
 	template <typename T>
 	T* cast() const
 	{
-		return reinterpret_cast<T*>(m_pWindow);
+		auto search = m_window.template get<T*>();
+		return search ? *search : nullptr;
 	}
 };
 } // namespace le

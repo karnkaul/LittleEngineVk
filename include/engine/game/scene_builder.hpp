@@ -75,8 +75,7 @@ public:
 	SceneBuilder(Info info);
 
 public:
-	static f32 framebufferAspect();
-	static glm::vec3 uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& framebuffer);
+	static glm::vec3 uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea);
 	static glm::vec3 uiProjection(glm::vec3 const& uiSpace);
 
 public:

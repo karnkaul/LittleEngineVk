@@ -1,8 +1,7 @@
 #pragma once
-#include <algorithm>
 #include <cstdint>
-#include <memory>
 #include <functional>
+#include <core/tokeniser.hpp>
 
 namespace le
 {
@@ -13,21 +12,11 @@ template <typename... Args>
 class Delegate
 {
 public:
-	using Token = std::shared_ptr<int32_t>;
+	using Token = UniqueToken<s32>;
 	using Callback = std::function<void(Args...)>;
 
 private:
-	using WToken = std::weak_ptr<int32_t>;
-
-private:
-	struct Wrapper
-	{
-		Callback callback;
-		WToken wToken;
-	};
-
-private:
-	std::vector<Wrapper> m_callbacks;
+	Tokeniser<Callback, s32, false> m_tokeniser;
 
 public:
 	///
@@ -39,12 +28,12 @@ public:
 	/// \brief Clean up dead callbacks and invoke the rest
 	/// \returns Count of registered callbacks
 	///
-	uint32_t operator()(Args... t);
+	std::size_t operator()(Args... args);
 	///
 	/// \brief Skip dead callbacks and invoke the rest; returns live count
 	/// \returns Count of registered callbacks
 	///
-	uint32_t operator()(Args... t) const;
+	std::size_t operator()(Args... args) const;
 	///
 	/// \brief Check if any registered callbacks exist
 	/// \returns `true` if any previously distributed Token is still alive
@@ -58,37 +47,35 @@ public:
 	///
 	/// \brief Remove unregistered callbacks
 	///
-	void cleanup();
+	void sweep();
 };
 
 template <typename... Args>
 typename Delegate<Args...>::Token Delegate<Args...>::subscribe(Callback callback)
 {
-	Token token = std::make_shared<int32_t>(int32_t(m_callbacks.size()));
-	m_callbacks.push_back({std::move(callback), token});
-	return token;
+	return m_tokeniser.add(std::move(callback));
 }
 
 template <typename... Args>
-uint32_t Delegate<Args...>::operator()(Args... t)
+std::size_t Delegate<Args...>::operator()(Args... args)
 {
-	cleanup();
-	for (auto const& c : m_callbacks)
+	sweep();
+	for (auto const& [callback, _] : m_tokeniser.entries)
 	{
-		c.callback(t...);
+		callback(std::forward<Args>(args)...);
 	}
-	return uint32_t(m_callbacks.size());
+	return m_tokeniser.size();
 }
 
 template <typename... Args>
-uint32_t Delegate<Args...>::operator()(Args... t) const
+std::size_t Delegate<Args...>::operator()(Args... args) const
 {
-	uint32_t ret = 0;
-	for (auto const& c : m_callbacks)
+	std::size_t ret = 0;
+	for (auto const& [callback, token] : m_tokeniser.entries)
 	{
-		if (c.wToken.lock())
+		if (token.lock())
 		{
-			c.callback(t...);
+			callback(args...);
 			++ret;
 		}
 	}
@@ -98,22 +85,21 @@ uint32_t Delegate<Args...>::operator()(Args... t) const
 template <typename... Args>
 bool Delegate<Args...>::isAlive()
 {
-	cleanup();
-	return !m_callbacks.empty();
+	sweep();
+	return !m_tokeniser.empty();
 }
 
 template <typename... Args>
 void Delegate<Args...>::clear()
 {
-	m_callbacks.clear();
+	m_tokeniser.clear();
 	return;
 }
 
 template <typename... Args>
-void Delegate<Args...>::cleanup()
+void Delegate<Args...>::sweep()
 {
-	auto iter = std::remove_if(m_callbacks.begin(), m_callbacks.end(), [](Wrapper& wrapper) -> bool { return wrapper.wToken.expired(); });
-	m_callbacks.erase(iter, m_callbacks.end());
+	m_tokeniser.sweep();
 	return;
 }
 } // namespace le

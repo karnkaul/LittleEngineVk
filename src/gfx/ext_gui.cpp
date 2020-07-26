@@ -131,7 +131,7 @@ bool ext_gui::init([[maybe_unused]] Info const& info)
 		}
 		else
 		{
-			ImGui_ImplGlfw_InitForVulkan(*pWindow, false);
+			ImGui_ImplGlfw_InitForVulkan(pWindow, false);
 		}
 #else
 		LOG_E("NOT IMPLEMENTED");

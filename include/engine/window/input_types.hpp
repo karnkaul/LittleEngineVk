@@ -210,8 +210,11 @@ enum class Axis : s8
 enum class CursorType : s8
 {
 	eDefault = 0,
-	eHResize,
-	eVResize,
+	eResizeEW,
+	eResizeNS,
+	eResizeNWSE,
+	eResizeNESW,
+	eCOUNT_
 };
 
 enum class CursorMode : s8

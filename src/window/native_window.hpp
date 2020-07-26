@@ -25,8 +25,7 @@ public:
 	template <typename T>
 	T* cast() const
 	{
-		auto search = m_window.template get<T*>();
-		return search ? *search : nullptr;
+		return m_window.template get<T*>();
 	}
 };
 } // namespace le

@@ -12,5 +12,5 @@ add_test(StaticAny test-any)
 
 # ECS (Registry)
 add_executable(test-ecs ecs_test.cpp)
-target_link_libraries(test-ecs PRIVATE levk-engine levk-interface)
+target_link_libraries(test-ecs PRIVATE levk-core levk-interface)
 add_test(ECS test-ecs)

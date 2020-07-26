@@ -1,6 +1,6 @@
 #pragma once
 #include <core/flags.hpp>
-#include <engine/ecs/registry.hpp>
+#include <core/ecs_registry.hpp>
 #include <engine/game/text2d.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>

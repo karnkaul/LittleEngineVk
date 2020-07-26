@@ -49,6 +49,8 @@ struct
 	OnFocus::Token focusToken;
 	bool bEnabled = false;
 	bool bFocus = true;
+	std::unordered_set<input::Key> pressed;
+	std::unordered_set<input::Key> held;
 } g_data;
 
 struct LogEntry final
@@ -687,6 +689,107 @@ void drawLog(iv2 fbSize, s32 logHeight)
 	}
 	ImGui::End();
 }
+
+void resize(WindowImpl* pWindow)
+{
+	enum class Handle : std::size_t
+	{
+		eNone,
+		eLeft,
+		eRight,
+		eBottom,
+		eLeftBottom,
+		eRightBottom
+	};
+	constexpr static f32 nDelta = 0.01f;
+	static glm::vec2 const s_minXY = {0.0f, 0.35f};
+	static glm::vec2 const s_maxXY = {1.0f, 1.0f};
+	static Handle s_resizing = Handle::eNone;
+	static gfx::ScreenRect s_gameRect = glm::vec4(0.2f, 0.0f, 0.8f, 0.6f);
+	static gfx::ScreenRect s_prevRect = s_gameRect;
+	auto const wSize = pWindow->windowSize();
+	auto const cursorPos = input::cursorPosition(true);
+	glm::vec2 const nCursorPos = {cursorPos.x / (f32)wSize.x, cursorPos.y / (f32)wSize.y};
+	bool const bClickPressed = g_data.pressed.find(Key::eMouseButton1) != g_data.pressed.end();
+	bool const bClickHeld = g_data.held.find(Key::eMouseButton1) != g_data.held.end();
+	input::CursorType toSet = input::CursorType::eDefault;
+	auto endResize = [&toSet]() {
+		s_resizing = Handle::eNone;
+		toSet = input::CursorType::eDefault;
+		ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+	};
+	auto checkResize = [bClickPressed, &toSet](f32 s0, f32 t0, f32 s1, f32 t1, input::CursorType c, Handle h) {
+		if (maths::equals(s0, t0, nDelta) && maths::equals(s1, t1, nDelta))
+		{
+			toSet = c;
+			if (bClickPressed)
+			{
+				s_prevRect = s_gameRect;
+				s_resizing = h;
+			}
+			ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+		}
+	};
+	auto doResize = [&toSet, &endResize](f32& out_t, f32 s, f32 min, f32 max, input::CursorType type) {
+		if (g_data.pressed.find(Key::eEscape) != g_data.pressed.end())
+		{
+			s_gameRect = s_prevRect;
+			endResize();
+		}
+		else
+		{
+			out_t = std::clamp(s, min + nDelta, max - nDelta);
+			toSet = type;
+		}
+	};
+	if (!bClickHeld)
+	{
+		endResize();
+	}
+	switch (s_resizing)
+	{
+	case Handle::eNone:
+	{
+		checkResize(nCursorPos.x, s_gameRect.left, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
+		checkResize(nCursorPos.x, s_gameRect.right, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
+		checkResize(nCursorPos.y, s_gameRect.bottom, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
+		checkResize(nCursorPos.x, s_gameRect.left, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNESW, Handle::eLeftBottom);
+		checkResize(nCursorPos.x, s_gameRect.right, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNWSE, Handle::eRightBottom);
+		break;
+	}
+	case Handle::eLeft:
+	{
+		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeEW);
+		break;
+	}
+	case Handle::eRight:
+	{
+		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeEW);
+		break;
+	}
+	case Handle::eBottom:
+	{
+		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNS);
+		break;
+	}
+	case Handle::eLeftBottom:
+	{
+		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeNESW);
+		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNESW);
+		break;
+	}
+	case Handle::eRightBottom:
+	{
+		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeNWSE);
+		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNWSE);
+		break;
+	}
+	default:
+		break;
+	}
+	pWindow->setCursorType(toSet);
+	editor::g_gameRect = s_gameRect;
+}
 #pragma endregion layout
 } // namespace
 
@@ -702,6 +805,18 @@ bool editor::init(WindowID editorWindow)
 				if (key == Key::eE && action == Action::eRelease && mods & Mods::eCONTROL)
 				{
 					g_data.bEnabled = !g_data.bEnabled;
+				}
+				switch (action)
+				{
+				case Action::ePress:
+					g_data.held.insert(key);
+					g_data.pressed.insert(key);
+					break;
+				case Action::eRelease:
+					g_data.held.erase(key);
+					break;
+				default:
+					break;
 				}
 			},
 			editorWindow);
@@ -732,36 +847,11 @@ void editor::tick([[maybe_unused]] Time dt)
 {
 	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);
-	static gfx::ScreenRect s_gameRect = glm::vec4(0.2f, 0.0f, 0.8f, 0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
 	if (g_data.bEnabled && pWindow && pWindow->isOpen())
 	{
-		auto const wSize = pWindow->windowSize();
-		auto const cursorPos = input::cursorPosition(true);
-		glm::vec2 const nCursorPos = {cursorPos.x / (f32)wSize.x, cursorPos.y / (f32)wSize.y};
 		auto const fbSize = pWindow->framebufferSize();
-		auto resize = [pWindow](f32& out_target, f32 source, input::CursorType c, glm::vec2 clamp = {0.0f, 1.0f}) {
-			if (maths::equals(out_target, source, 0.01f))
-			{
-				pWindow->setCursorType(c);
-				ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-				if (ImGui::GetIO().MouseDown[0])
-				{
-					out_target = std::clamp(source, clamp.x, clamp.y);
-				}
-				return true;
-			}
-			return false;
-		};
-		bool const bResizeLeft = resize(s_gameRect.left, nCursorPos.x, input::CursorType::eHResize, {0.10f, 0.45f});
-		bool const bResizeRight = resize(s_gameRect.right, nCursorPos.x, input::CursorType::eHResize, {0.55f, 0.90f});
-		bool const bResizeBottom = resize(s_gameRect.bottom, nCursorPos.y, input::CursorType::eVResize, {0.50f, 0.80f});
-		if (!bResizeLeft && !bResizeRight && !bResizeBottom)
-		{
-			pWindow->setCursorType(input::CursorType::eDefault);
-			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
-		}
-		g_gameRect = s_gameRect;
+		resize(pWindow);
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
 			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);
@@ -782,6 +872,7 @@ void editor::tick([[maybe_unused]] Time dt)
 	{
 		g_gameRect = {};
 	}
+	g_data.pressed.clear();
 }
 } // namespace le
 #endif

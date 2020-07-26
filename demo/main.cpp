@@ -9,7 +9,6 @@
 #include <core/threads.hpp>
 #include <core/transform.hpp>
 #include <engine/levk.hpp>
-#include <engine/ecs/registry.hpp>
 #include <engine/game/freecam.hpp>
 #include <engine/game/input.hpp>
 #include <engine/game/scene_builder.hpp>

@@ -1,17 +1,17 @@
 #pragma once
 #include <array>
 #include <cstddef>
-#include <optional>
+#include <exception>
 #include <type_traits>
 
 namespace le
 {
-template <std::size_t N = sizeof(void*)>
+template <std::size_t N = sizeof(void*), bool Throwing = false>
 class StaticAny final
 {
 private:
 	template <typename T>
-	using is_different_t = std::enable_if_t<!std::is_same_v<T, StaticAny<N>>>;
+	using is_different_t = std::enable_if_t<!std::is_same_v<T, StaticAny<N, true>> && !std::is_same_v<T, StaticAny<N, false>>>;
 
 	struct Erased
 	{
@@ -44,11 +44,15 @@ public:
 	}
 
 	template <typename T, typename = is_different_t<T>>
-	std::optional<T> get() const
+	T get() const
 	{
 		if (contains<T>())
 		{
 			return *reinterpret_cast<T const*>(m_bytes.data());
+		}
+		if constexpr (Throwing)
+		{
+			throw std::runtime_error("StaticAny: Type mismatch!");
 		}
 		return {};
 	}

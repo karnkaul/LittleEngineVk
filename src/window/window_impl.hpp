@@ -27,19 +27,21 @@ public:
 		input::OnWindowResize onWindowResize;
 		input::OnClosed onClosed;
 	};
+	struct Cursor
+	{
+		StaticAny<> data;
+		input::CursorType type;
+	};
 
 	static std::unordered_map<WindowID, InputCallbacks> s_input;
+	static EnumArray<Cursor, input::CursorType> s_cursors;
 
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
 	std::vector<PresentMode> m_presentModes;
+	Cursor m_cursor;
 	Window* m_pWindow;
-	struct
-	{
-		StaticAny<> data;
-		input::CursorType type;
-	} m_cursor;
 
 	static WindowImpl* find(StaticAny<> nativeHandle);
 

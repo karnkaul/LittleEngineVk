@@ -20,34 +20,27 @@ bool operator==(vec2 const& l, vec2 const& r)
 }
 
 template <typename T, std::size_t N>
-bool compare(StaticAny<N> const& lhs, StaticAny<N> const& rhs)
-{
-	auto l = lhs.template get<T>();
-	auto r = rhs.template get<T>();
-	return l && r ? *l == *r : true;
-}
-
-template <typename T, std::size_t N>
 bool copyTest(StaticAny<N> any)
 {
-	auto x = any.template get<f32>();
+	f32 x = any.template get<f32>();
 	T* pT = any.template getPtr<T>();
-	bool const b0 = std::is_same_v<T, f32> ? pT != nullptr : pT != nullptr && !x;
+	bool const b0 = std::is_same_v<T, f32> ? pT != nullptr : pT != nullptr && x == 0.0f;
 	auto any1 = any;
 	StaticAny<N> any2 = T{};
 	StaticAny<N> any3;
-	bool const b1 = compare<T>(any, any1) && !compare<T>(any, any2) && compare<T>(any, any3);
+	bool const b1 = any.template get<T>() == any1.template get<T>() && !(any.template get<T>() == any2.template get<T>());
+	bool const b2 = !(any.template get<T>() == any3.template get<T>());
 	// any = std::vector<s32>();
-	return b0 && b1;
+	return b0 && b1 && b2;
 }
 
 s32 main()
 {
 	char const* szHello = "hello";
 	StaticAny<maxSize> any = szHello;
-	if (auto szTest = any.get<char const*>(); szTest)
+	if (auto szTest = any.get<char const*>())
 	{
-		if (std::strcmp(*szTest, szHello) != 0 || !copyTest<char const*>(any))
+		if (std::strcmp(szTest, szHello) != 0 || !copyTest<char const*>(any))
 		{
 			return 1;
 		}

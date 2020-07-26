@@ -11,7 +11,7 @@
 #include <core/time.hpp>
 #include <core/transform.hpp>
 #include <core/zero.hpp>
-#include <engine/ecs/registry.hpp>
+#include <core/ecs_registry.hpp>
 #include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/renderer.hpp>

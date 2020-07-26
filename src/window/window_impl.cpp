@@ -127,6 +127,39 @@ void onFocus(GLFWwindow* pGLFWwindow, s32 entered)
 	}
 	return;
 }
+
+WindowImpl::Cursor const& getCursor(input::CursorType type)
+{
+	auto& cursor = WindowImpl::s_cursors.at((std::size_t)type);
+	if (type != input::CursorType::eDefault && !cursor.data.contains<GLFWcursor*>())
+	{
+		s32 gCursor = 0;
+		switch (type)
+		{
+		default:
+		case input::CursorType::eDefault:
+			break;
+		case input::CursorType::eResizeEW:
+			gCursor = GLFW_RESIZE_EW_CURSOR;
+			break;
+		case input::CursorType::eResizeNS:
+			gCursor = GLFW_RESIZE_NS_CURSOR;
+			break;
+		case input::CursorType::eResizeNWSE:
+			gCursor = GLFW_RESIZE_NWSE_CURSOR;
+			break;
+		case input::CursorType::eResizeNESW:
+			gCursor = GLFW_RESIZE_NESW_CURSOR;
+			break;
+		}
+		if (gCursor != 0)
+		{
+			cursor.data = glfwCreateStandardCursor(gCursor);
+		}
+	}
+	cursor.type = type;
+	return cursor;
+}
 #endif
 
 void registerCallbacks(NativeWindow const& window)
@@ -194,6 +227,7 @@ bool Gamepad::isPressed(Key button) const
 }
 
 std::unordered_map<WindowID, WindowImpl::InputCallbacks> WindowImpl::s_input;
+EnumArray<WindowImpl::Cursor, input::CursorType> WindowImpl::s_cursors;
 
 WindowImpl* WindowImpl::find(StaticAny<> nativeHandle)
 {
@@ -234,11 +268,20 @@ bool WindowImpl::init()
 void WindowImpl::deinit()
 {
 #if defined(LEVK_USE_GLFW)
+	for (auto& cursor : s_cursors)
+	{
+		auto pCursor = cursor.data.get<GLFWcursor*>();
+		if (pCursor)
+		{
+			glfwDestroyCursor(pCursor);
+		}
+	}
 	glfwTerminate();
 	LOG_D("[{}] GLFW terminated", Window::s_tName);
 	g_bGLFWInit = false;
 #endif
 	s_input.clear();
+	s_cursors = {};
 	return;
 }
 
@@ -526,43 +569,8 @@ void WindowImpl::setCursorType([[maybe_unused]] CursorType type)
 	{
 		if (type != m_cursor.type)
 		{
-			if (m_cursor.type != CursorType::eDefault)
-			{
-				auto pCursor = m_cursor.data.get<GLFWcursor*>();
-				if (pCursor)
-				{
-					glfwDestroyCursor(*pCursor);
-				}
-			}
-			m_cursor.type = type;
-			auto pWindow = m_uNativeWindow->cast<GLFWwindow>();
-			switch (m_cursor.type)
-			{
-			case CursorType::eDefault:
-			{
-				glfwSetCursor(pWindow, nullptr);
-				m_cursor.data = nullptr;
-				break;
-			}
-			case CursorType::eHResize:
-			{
-				auto pCursor = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
-				glfwSetCursor(pWindow, pCursor);
-				m_cursor.data = pCursor;
-				break;
-			}
-			case CursorType::eVResize:
-			{
-				auto pCursor = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
-				glfwSetCursor(pWindow, pCursor);
-				m_cursor.data = pCursor;
-				break;
-			}
-			default:
-			{
-				break;
-			}
-			}
+			m_cursor = getCursor(type);
+			glfwSetCursor(m_uNativeWindow->cast<GLFWwindow>(), m_cursor.data.get<GLFWcursor*>());
 		}
 	}
 #endif

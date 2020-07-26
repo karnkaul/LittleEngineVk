@@ -2,7 +2,7 @@
 #include <map>
 #include <core/log.hpp>
 #include <core/utils.hpp>
-#include <engine/ecs/registry.hpp>
+#include <core/ecs_registry.hpp>
 
 namespace le
 {

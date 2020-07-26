@@ -65,6 +65,7 @@ set(EXT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE INTERNAL "External depe
 # External
 add_subdirectory(external/physfs)
 add_subdirectory(external/fmt)
+target_compile_features(fmt PRIVATE cxx_std_17)
 add_subdirectory(external/glm)
 if(LEVK_USE_GLFW)
 	set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
@@ -106,9 +107,8 @@ if(LINUX_GCC OR LINUX_CLANG OR WIN64_GCC OR WIN64_CLANG)
 		-Werror=return-type
 		$<$<NOT:$<CONFIG:Debug>>:-Werror>
 		$<$<NOT:$<BOOL:${WIN64_CLANG}>>:-fexceptions>
-		$<$<BOOL:${WIN64_CLANG}>:/W4>
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
-		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WIN64_GCC}>,$<BOOL:${WIN64_CLANG}>>:-utf-8>
+		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WIN64_GCC}>>:-utf-8>
 		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WIN64_CLANG}>>:${CLANG_COMMON}>
 	)
 elseif(WIN64_MSBUILD)
@@ -121,13 +121,16 @@ elseif(WIN64_MSBUILD)
 		/MP
 	)
 endif()
+if(WIN64_CLANG AND MSVC)
+	list(APPEND COMPILE_OPTS /W4 -utf-8)
+endif()
 if(PLATFORM STREQUAL "Linux")
 	list(APPEND COMPILE_OPTS -fPIC)
 	set(LINK_OPTS
 		-no-pie         # Build as application
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
 	)
-elseif(PLATFORM STREQUAL "Win64" AND NOT WIN64_GCC)
+elseif(PLATFORM STREQUAL "Win64" AND NOT WIN64_GCC AND MSVC)
 	set(LINK_OPTS
 		/ENTRY:mainCRTStartup
 		$<$<CONFIG:Debug>:

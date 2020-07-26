@@ -19,8 +19,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	endif()
 	if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 		set(WIN64_CLANG 1)
-		# Ref: https://gitlab.kitware.com/cmake/cmake/issues/17808
-		set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-imsvc" CACHE STRING "" FORCE)
+		if(MSVC)
+			# Ref: https://gitlab.kitware.com/cmake/cmake/issues/17808
+			set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-imsvc" CACHE STRING "" FORCE)
+		endif()
 		set(MSVC_RUNTIME 1)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 		set(WIN64_VCXX 1)

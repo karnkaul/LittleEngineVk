@@ -123,7 +123,7 @@ bool ext_gui::init([[maybe_unused]] Info const& info)
 		ImGui::StyleColorsDark();
 		setStyle();
 #if defined(LEVK_USE_GLFW)
-		auto pWindow = WindowImpl::nativeHandle(info.window).get<GLFWwindow*>();
+		auto pWindow = WindowImpl::nativeHandle(info.window).val<GLFWwindow*>();
 		if (!pWindow)
 		{
 			bRet = false;

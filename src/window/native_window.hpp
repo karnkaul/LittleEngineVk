@@ -25,7 +25,7 @@ public:
 	template <typename T>
 	T* cast() const
 	{
-		return m_window.template get<T*>();
+		return m_window.template val<T*>();
 	}
 };
 } // namespace le

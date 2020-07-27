@@ -233,7 +233,7 @@ WindowImpl* WindowImpl::find(StaticAny<> nativeHandle)
 {
 #if defined(LEVK_USE_GLFW)
 	auto f = [nativeHandle](auto pWindow) -> bool {
-		return pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->template cast<GLFWwindow>() == nativeHandle.get<GLFWwindow*>();
+		return pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->template cast<GLFWwindow>() == nativeHandle.val<GLFWwindow*>();
 	};
 	auto search = std::find_if(g_registeredWindows.begin(), g_registeredWindows.end(), f);
 	return search != g_registeredWindows.end() ? *search : nullptr;
@@ -270,7 +270,7 @@ void WindowImpl::deinit()
 #if defined(LEVK_USE_GLFW)
 	for (auto& cursor : s_cursors)
 	{
-		auto pCursor = cursor.data.get<GLFWcursor*>();
+		auto pCursor = cursor.data.val<GLFWcursor*>();
 		if (pCursor)
 		{
 			glfwDestroyCursor(pCursor);
@@ -570,7 +570,7 @@ void WindowImpl::setCursorType([[maybe_unused]] CursorType type)
 		if (type != m_cursor.type)
 		{
 			m_cursor = getCursor(type);
-			glfwSetCursor(m_uNativeWindow->cast<GLFWwindow>(), m_cursor.data.get<GLFWcursor*>());
+			glfwSetCursor(m_uNativeWindow->cast<GLFWwindow>(), m_cursor.data.val<GLFWcursor*>());
 		}
 	}
 #endif

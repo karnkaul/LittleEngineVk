@@ -1,21 +1,24 @@
 #pragma once
 #include <array>
 #include <cstddef>
-#include <exception>
+#include <stdexcept>
 #include <type_traits>
 
 namespace le
 {
-template <std::size_t N = sizeof(void*), bool Throwing = false>
+template <std::size_t N = sizeof(void*)>
 class StaticAny final
 {
+public:
+	inline static bool s_bThrow = false;
+
 private:
 	template <typename T>
-	using is_different_t = std::enable_if_t<!std::is_same_v<T, StaticAny<N, true>> && !std::is_same_v<T, StaticAny<N, false>>>;
+	constexpr static bool is_different_v = !std::is_same_v<std::decay_t<T>, StaticAny<N>>;
+	template <typename T>
+	using is_different_t = std::enable_if_t<is_different_v<T>>;
 
-	struct Erased
-	{
-	};
+	struct Erased;
 
 private:
 	alignas(std::max_align_t) std::array<std::byte, N> m_bytes;
@@ -24,16 +27,41 @@ private:
 public:
 	constexpr StaticAny() noexcept = default;
 
-	template <typename T, typename = is_different_t<T>>
-	StaticAny(T const& t)
+	StaticAny(StaticAny&& rhs) : m_pErased(rhs.m_pErased)
 	{
-		construct<T>(t);
+		moveConstruct(std::move(rhs));
+	}
+
+	StaticAny(StaticAny const& rhs) : m_pErased(rhs.m_pErased)
+	{
+		copyConstruct(rhs);
+	}
+
+	StaticAny& operator=(StaticAny&& rhs)
+	{
+		return moveAssign(std::move(rhs));
+	}
+
+	StaticAny& operator=(StaticAny const& rhs)
+	{
+		return copyAssign(rhs);
+	}
+
+	~StaticAny()
+	{
+		clear();
 	}
 
 	template <typename T, typename = is_different_t<T>>
-	StaticAny& operator=(T const& t)
+	StaticAny(T&& t)
 	{
-		construct<T>(t);
+		construct<T>(std::forward<T>(t));
+	}
+
+	template <typename T, typename = is_different_t<T>>
+	StaticAny& operator=(T&& t)
+	{
+		construct<T>(std::forward<T>(t));
 		return *this;
 	}
 
@@ -43,14 +71,19 @@ public:
 		return erased<T>() == m_pErased;
 	}
 
+	bool empty() const
+	{
+		return m_pErased == nullptr;
+	}
+
 	template <typename T, typename = is_different_t<T>>
-	T get() const
+	T val() const
 	{
 		if (contains<T>())
 		{
 			return *reinterpret_cast<T const*>(m_bytes.data());
 		}
-		if constexpr (Throwing)
+		if (s_bThrow)
 		{
 			throw std::runtime_error("StaticAny: Type mismatch!");
 		}
@@ -58,7 +91,7 @@ public:
 	}
 
 	template <typename T, typename = is_different_t<T>>
-	T const* getPtr() const noexcept
+	T const* ptr() const noexcept
 	{
 		if (contains<T>() || contains<T const>())
 		{
@@ -68,7 +101,7 @@ public:
 	}
 
 	template <typename T, typename = is_different_t<T>>
-	T* getPtr() noexcept
+	T* ptr() noexcept
 	{
 		if (contains<T>())
 		{
@@ -77,42 +110,248 @@ public:
 		return nullptr;
 	}
 
+	template <typename T, typename = is_different_t<T>>
+	T const& ref() const
+	{
+		if (contains<T>())
+		{
+			return *reinterpret_cast<T const*>(m_bytes.data());
+		}
+		if (s_bThrow)
+		{
+			throw std::runtime_error("StaticAny: Type mismatch!");
+		}
+		static T const s_t{};
+		return s_t;
+	}
+
+	template <typename T, typename = is_different_t<T>>
+	T& ref()
+	{
+		if (contains<T>())
+		{
+			return *reinterpret_cast<T*>(m_bytes.data());
+		}
+		if (s_bThrow)
+		{
+			throw std::runtime_error("StaticAny: Type mismatch!");
+		}
+		static T s_t{};
+		return s_t;
+	}
+
 	void clear() noexcept
 	{
+		if (m_pErased)
+		{
+			m_pErased->destroy(m_bytes.data());
+		}
 		m_pErased = nullptr;
 	}
 
 private:
 	template <typename T>
-	void construct(T const& t)
+	void construct(T&& t)
 	{
 		if constexpr (std::is_same_v<T, std::nullptr_t>)
 		{
-			m_pErased = nullptr;
+			clear();
 		}
 		else
 		{
+			static_assert(is_different_v<T>, "Recursive storage forbidden!");
 			static_assert(sizeof(T) <= N, "Buffer overflow!");
-			static_assert(std::is_trivially_copy_constructible_v<T> && std::is_trivially_destructible_v<T>, "T must be trivially copiable and destructible!");
-			auto pErased = erased<T>();
-			if (m_pErased == pErased)
-			{
-				T* pT = reinterpret_cast<T*>(m_bytes.data());
-				*pT = t;
-			}
-			else
-			{
-				T* pT = new (m_bytes.data()) T{t};
-				m_pErased = pErased;
-			}
+			doConstruct<T>(std::forward<T>(t));
+		}
+	}
+
+	template <typename T, typename = std::enable_if_t<!std::is_lvalue_reference_v<T>>>
+	void doConstruct(T&& t)
+	{
+		auto pErased = erased<std::decay_t<T>>();
+		if (m_pErased && m_pErased == pErased)
+		{
+			m_pErased->moveAssign(std::addressof(t), m_bytes.data());
+		}
+		else
+		{
+			clear();
+			m_pErased = pErased;
+			m_pErased->moveConstruct(std::addressof(t), m_bytes.data());
 		}
 	}
 
 	template <typename T>
+	void doConstruct(T const& t)
+	{
+		static_assert(std::is_copy_assignable_v<std::decay_t<T>> && std::is_copy_constructible_v<std::decay_t<T>>, "Invalid type!");
+		auto pErased = erased<std::decay_t<T>>();
+		if (m_pErased && m_pErased == pErased)
+		{
+			m_pErased->copyAssign(std::addressof(t), m_bytes.data());
+		}
+		else
+		{
+			clear();
+			m_pErased = pErased;
+			m_pErased->copyConstruct(std::addressof(t), m_bytes.data());
+		}
+	}
+
+private:
+	template <typename T>
+	struct Tag
+	{
+	};
+	struct Erased
+	{
+		using Move = void (*)(void* pSrc, void* pDst);
+		using Copy = void (*)(void const* pSrc, void* pDst);
+		using Destroy = void (*)(void const* pData);
+
+		Move moveConstruct;
+		Move moveAssign;
+		Copy copyConstruct;
+		Copy copyAssign;
+		Destroy destroy;
+
+		template <typename T>
+		constexpr Erased(Tag<T>, typename std::enable_if_t<(std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T>)>* = nullptr) noexcept
+			: moveConstruct(&doMoveConstruct<T>),
+			  moveAssign(&doMoveAssign<T>),
+			  copyConstruct(&doCopyConstruct<T>),
+			  copyAssign(&doCopyAssign<T>),
+			  destroy(&doDestroy<T>)
+		{
+		}
+
+		template <typename T>
+		constexpr Erased(Tag<T>, typename std::enable_if_t<!(std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T>)>* = nullptr) noexcept
+			: moveConstruct(&doMoveConstruct<T>), moveAssign(&doMoveAssign<T>), copyConstruct(nullptr), copyAssign(nullptr), destroy(&doDestroy<T>)
+		{
+		}
+
+		template <typename T>
+		static void doMoveConstruct(void* pSrc, void* pDst)
+		{
+			new (pDst) T(std::move(*reinterpret_cast<T*>(pSrc)));
+		}
+
+		template <typename T>
+		static void doMoveAssign(void* pSrc, void* pDst)
+		{
+			T* tDst = reinterpret_cast<T*>(pDst);
+			*tDst = std::move(*reinterpret_cast<T*>(pSrc));
+		}
+
+		template <typename T>
+		static void doCopyConstruct(void const* pSrc, void* pDst)
+		{
+			new (pDst) T(*reinterpret_cast<T const*>(pSrc));
+		}
+
+		template <typename T>
+		static void doCopyAssign(void const* pSrc, void* pDst)
+		{
+			T* tDst = reinterpret_cast<T*>(pDst);
+			*tDst = *reinterpret_cast<T const*>(pSrc);
+		}
+
+		template <typename T>
+		static void doDestroy(void const* pPtr)
+		{
+			T const* tPtr = reinterpret_cast<T const*>(pPtr);
+			tPtr->~T();
+		}
+	};
+
+	template <typename T>
 	static Erased const* erased()
 	{
-		static constexpr Erased s_erased;
+		constexpr static Erased s_erased{Tag<T>()};
 		return &s_erased;
+	}
+
+	void moveConstruct(StaticAny&& rhs)
+	{
+		m_pErased->moveConstruct(&rhs, m_bytes.data());
+	}
+
+	void copyConstruct(StaticAny const& rhs)
+	{
+		if (m_pErased)
+		{
+			if (m_pErased->copyConstruct)
+			{
+				m_pErased->copyConstruct(&rhs, m_bytes.data());
+			}
+			else
+			{
+				fail();
+			}
+		}
+	}
+
+	StaticAny& moveAssign(StaticAny&& rhs)
+	{
+		if (&rhs != this)
+		{
+			if (m_pErased == rhs.m_pErased)
+			{
+				if (m_pErased)
+				{
+					m_pErased->moveAssign(&rhs, m_bytes.data());
+				}
+			}
+			else
+			{
+				clear();
+				m_pErased = rhs.m_pErased;
+				if (m_pErased)
+				{
+					m_pErased->moveConstruct(&rhs, m_bytes.data());
+				}
+			}
+		}
+		return *this;
+	}
+
+	StaticAny& copyAssign(StaticAny const& rhs)
+	{
+		if (rhs.m_pErased && (!rhs.m_pErased->copyAssign || !rhs.m_pErased->copyConstruct))
+		{
+			clear();
+			fail();
+		}
+		else if (&rhs != this)
+		{
+			if (m_pErased == rhs.m_pErased)
+			{
+				if (m_pErased)
+				{
+					m_pErased->copyAssign(&rhs, m_bytes.data());
+				}
+			}
+			else
+			{
+				clear();
+				m_pErased = rhs.m_pErased;
+				if (m_pErased)
+				{
+					m_pErased->copyConstruct(&rhs, m_bytes.data());
+				}
+			}
+		}
+		return *this;
+	}
+
+	void fail()
+	{
+		m_pErased = nullptr;
+		if (s_bThrow)
+		{
+			throw std::runtime_error("StaticAny: Attempt to copy uncopiable!");
+		}
 	}
 };
 } // namespace le

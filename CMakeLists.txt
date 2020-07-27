@@ -110,6 +110,7 @@ if(LINUX_GCC OR LINUX_CLANG OR WIN64_GCC OR WIN64_CLANG)
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WIN64_GCC}>>:-utf-8>
 		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WIN64_CLANG}>>:${CLANG_COMMON}>
+		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WIN64_GCC}>>:-Wno-unknown-pragmas>
 	)
 elseif(WIN64_MSBUILD)
 	set(COMPILE_OPTS

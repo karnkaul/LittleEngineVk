@@ -339,7 +339,8 @@ bool GData::read(std::string json)
 	return true;
 }
 
-std::string GData::getString(std::string const& key) const
+template <>
+std::string GData::get<std::string>(std::string const& key) const
 {
 	if (auto search = m_fields.find(key); search != m_fields.end())
 	{
@@ -349,7 +350,8 @@ std::string GData::getString(std::string const& key) const
 	return {};
 }
 
-std::vector<std::string> GData::getArray(std::string const& key) const
+template <>
+std::vector<std::string> GData::get<std::vector<std::string>>(std::string const& key) const
 {
 	std::vector<std::string> ret;
 	if (auto search = m_fields.find(key); search != m_fields.end())
@@ -407,10 +409,11 @@ std::vector<std::string> GData::getArray(std::string const& key) const
 	return ret;
 }
 
-std::vector<GData> GData::getDataArray(std::string const& key) const
+template <>
+std::vector<GData> GData::get<std::vector<GData>>(std::string const& key) const
 {
 	std::vector<GData> ret;
-	auto array = getArray(key);
+	auto array = get<std::vector<std::string>>(key);
 	for (auto& str : array)
 	{
 		GData data;
@@ -422,7 +425,8 @@ std::vector<GData> GData::getDataArray(std::string const& key) const
 	return ret;
 }
 
-GData GData::getData(std::string const& key) const
+template <>
+GData GData::get<GData>(std::string const& key) const
 {
 	GData ret;
 	if (auto search = m_fields.find(key); search != m_fields.end())
@@ -436,17 +440,20 @@ GData GData::getData(std::string const& key) const
 	return ret;
 }
 
-s32 GData::getS32(std::string const& key) const
+template <>
+s32 GData::get<s32>(std::string const& key) const
 {
 	return parseNumeric<s32>(key, m_fields, m_raw);
 }
 
-f64 GData::getF64(std::string const& key) const
+template <>
+f64 GData::get<f64>(std::string const& key) const
 {
 	return parseNumeric<f64>(key, m_fields, m_raw);
 }
 
-bool GData::getBool(std::string const& key) const
+template <>
+bool GData::get<bool>(std::string const& key) const
 {
 	bool bRet = false;
 	if (auto search = m_fields.find(key); search != m_fields.end())

@@ -31,35 +31,6 @@ public:
 	T get(std::string const& key) const;
 
 	///
-	/// \brief Obtain string value corresponding to `key`
-	///
-	std::string getString(std::string const& key) const;
-	///
-	/// \brief Obtain array value corresponding to `key` (must be enclosed in [])
-	///
-	std::vector<std::string> getArray(std::string const& key) const;
-	///
-	/// \brief Obtain array of GData per array value corresponding to `key`
-	///
-	std::vector<GData> getDataArray(std::string const& key) const;
-	///
-	/// \brief Obtain GData of value corresponding to `key` (must be enclosed in {})
-	///
-	GData getData(std::string const& key) const;
-	///
-	/// \brief Obtain `s32` value corresponding to `key`
-	///
-	s32 getS32(std::string const& key) const;
-	///
-	/// \brief Obtain `f64` value corresponding to `key`
-	///
-	f64 getF64(std::string const& key) const;
-	///
-	/// \brief Obtain `bool` value corresponding to `key`
-	///
-	bool getBool(std::string const& key) const;
-
-	///
 	/// \brief Obtain whether `key` was parsed and is present in map
 	///
 	bool contains(std::string const& key) const;
@@ -81,36 +52,52 @@ public:
 	std::string const& original() const;
 };
 
+///
+/// \brief Obtain string value corresponding to `key`
+///
+template <>
+std::string GData::get<std::string>(std::string const& key) const;
+///
+/// \brief Obtain array value corresponding to `key` (must be enclosed in [])
+///
+template <>
+std::vector<std::string> GData::get<std::vector<std::string>>(std::string const& key) const;
+///
+/// \brief Obtain array of GData per array value corresponding to `key`
+///
+template <>
+std::vector<GData> GData::get<std::vector<GData>>(std::string const& key) const;
+///
+/// \brief Obtain GData of value corresponding to `key` (must be enclosed in {})
+///
+template <>
+GData GData::get<GData>(std::string const& key) const;
+///
+/// \brief Obtain `s32` value corresponding to `key`
+///
+template <>
+s32 GData::get<s32>(std::string const& key) const;
+///
+/// \brief Obtain `f64` value corresponding to `key`
+///
+template <>
+f64 GData::get<f64>(std::string const& key) const;
+///
+/// \brief Obtain `bool` value corresponding to `key`
+///
+template <>
+bool GData::get<bool>(std::string const& key) const;
+
 template <typename T>
 T GData::get(std::string const& key) const
 {
-	if constexpr (std::is_same_v<T, std::string>)
+	if constexpr (std::is_integral_v<T>)
 	{
-		return static_cast<T>(getString(key));
-	}
-	else if constexpr (std::is_same_v<T, bool>)
-	{
-		return getBool(key);
-	}
-	else if constexpr (std::is_integral_v<T>)
-	{
-		return static_cast<T>(getS32(key));
+		return static_cast<T>(get<s32>(key));
 	}
 	else if constexpr (std::is_floating_point_v<T>)
 	{
-		return static_cast<T>(getF64(key));
-	}
-	else if constexpr (std::is_same_v<T, GData>)
-	{
-		return getData(key);
-	}
-	else if constexpr (std::is_same_v<T, std::vector<std::string>>)
-	{
-		return getArray(key);
-	}
-	else if constexpr (std::is_same_v<T, std::vector<GData>>)
-	{
-		return getDataArray(key);
+		return static_cast<T>(get<f64>(key));
 	}
 	else
 	{

@@ -6,10 +6,16 @@
 
 namespace le
 {
+///
+/// \brief Fixed-size type erased storage
+///
 template <std::size_t N = sizeof(void*)>
 class StaticAny final
 {
 public:
+	///
+	/// \brief Switch for throwing behaviour on type mismatches / attempts to copy uncopiable types
+	///
 	inline static bool s_bThrow = false;
 
 private:
@@ -52,12 +58,18 @@ public:
 		clear();
 	}
 
+	///
+	/// \brief Construct with object of type T
+	///
 	template <typename T, typename = is_different_t<T>>
 	StaticAny(T&& t)
 	{
 		construct<T>(std::forward<T>(t));
 	}
 
+	///
+	/// \brief Assign to object of type T
+	///
 	template <typename T, typename = is_different_t<T>>
 	StaticAny& operator=(T&& t)
 	{
@@ -65,17 +77,26 @@ public:
 		return *this;
 	}
 
+	///
+	/// \brief Check if held type (if any) matches T
+	///
 	template <typename T>
 	bool contains() const noexcept
 	{
 		return erased<T>() == m_pErased;
 	}
 
+	///
+	/// \brief Check if no type is held
+	///
 	bool empty() const
 	{
 		return m_pErased == nullptr;
 	}
 
+	///
+	/// \brief Obtain value (copy) of T
+	///
 	template <typename T, typename = is_different_t<T>>
 	T val() const
 	{
@@ -90,6 +111,9 @@ public:
 		return {};
 	}
 
+	///
+	/// \brief Obtain pointer to T
+	///
 	template <typename T, typename = is_different_t<T>>
 	T const* ptr() const noexcept
 	{
@@ -100,6 +124,9 @@ public:
 		return nullptr;
 	}
 
+	///
+	/// \brief Obtain pointer to T
+	///
 	template <typename T, typename = is_different_t<T>>
 	T* ptr() noexcept
 	{
@@ -110,6 +137,10 @@ public:
 		return nullptr;
 	}
 
+	///
+	/// \brief Obtain reference to T
+	/// Throws / returns static reference on type mismatch
+	///
 	template <typename T, typename = is_different_t<T>>
 	T const& ref() const
 	{
@@ -125,6 +156,10 @@ public:
 		return s_t;
 	}
 
+	///
+	/// \brief Obtain reference to T
+	/// Throws / returns static reference on type mismatch
+	///
 	template <typename T, typename = is_different_t<T>>
 	T& ref()
 	{
@@ -140,13 +175,18 @@ public:
 		return s_t;
 	}
 
-	void clear() noexcept
+	///
+	/// \brief Destroy held type (if any)
+	///
+	bool clear() noexcept
 	{
 		if (m_pErased)
 		{
 			m_pErased->destroy(m_bytes.data());
+			m_pErased = nullptr;
+			return true;
 		}
-		m_pErased = nullptr;
+		return false;
 	}
 
 private:

@@ -17,10 +17,16 @@ namespace stdfs = std::filesystem;
 
 namespace io
 {
+///
+/// \brief View for a tree of T... associated with a path each
+///
 template <typename... T>
 class PathTree final
 {
 public:
+	///
+	/// \brief filename and T...
+	///
 	using Entry = std::tuple<std::string, T...>;
 
 public:
@@ -30,18 +36,44 @@ public:
 private:
 	struct NodeBase
 	{
+	protected:
+		///
+		/// \brief Tree of child Nodes (inaccessible)
+		///
 		std::map<std::string, std::unique_ptr<Node>> children;
 
+	public:
+		///
+		/// \brief Obtain all Nodes connected to this Node
+		///
 		Nodes childNodes() const;
+		///
+		/// \brief Obtain the count of Nodes connected to this Node
+		///
 		std::size_t childCount() const;
+
+	private:
+		friend class PathTree<T...>;
 	};
 
 public:
+	///
+	/// \brief Node of the path tree (multi-root)
+	///
 	struct Node : NodeBase
 	{
+		///
+		/// \brief Containing directory
+		///
 		stdfs::path directory;
+		///
+		/// \brief Entry list (ordered alphabetically)
+		///
 		std::map<std::string, Entry> entries;
 
+		///
+		/// \brief Search for a string pattern in this Node and its subtree
+		///
 		Node const* findPattern(std::string_view search, bool bIncludeDirName) const;
 	};
 
@@ -49,11 +81,25 @@ private:
 	NodeBase m_root;
 
 public:
+	///
+	/// \brief Add a new Entry
+	///
+	/// \param id full path
+	///
 	void emplace(stdfs::path id, T&&... ts);
+	///
+	/// \brief Import flat list into tree
+	///
 	void import(std::vector<Entry> entries);
 
-	std::string print() const;
+	///
+	/// \brief Obtain depth-first string representation of tree
+	///
+	std::string print(u8 indent = 2) const;
 
+	///
+	/// \brief Obtain all root nodes
+	///
 	Nodes rootNodes() const
 	{
 		return m_root.childNodes();
@@ -62,7 +108,7 @@ public:
 private:
 	static std::deque<std::string> decompose(stdfs::path dirPath);
 	static stdfs::path concatenate(std::deque<std::string> parts);
-	void printChildren(NodeBase const& parent, std::stringstream& out_ss, u16 spaces = 0) const;
+	void printChildren(NodeBase const& parent, std::stringstream& out_ss, u8 indent, u8 spaces = 0) const;
 };
 
 template <typename... T>
@@ -150,10 +196,10 @@ void PathTree<T...>::import(std::vector<Entry> entries)
 }
 
 template <typename... T>
-std::string PathTree<T...>::print() const
+std::string PathTree<T...>::print(u8 indent) const
 {
 	std::stringstream ss;
-	printChildren(m_root, ss);
+	printChildren(m_root, ss, indent);
 	ss << "\n";
 	return ss.str();
 }
@@ -186,7 +232,7 @@ stdfs::path PathTree<T...>::concatenate(std::deque<std::string> parts)
 }
 
 template <typename... T>
-void PathTree<T...>::printChildren(NodeBase const& parent, std::stringstream& out_ss, u16 spaces) const
+void PathTree<T...>::printChildren(NodeBase const& parent, std::stringstream& out_ss, u8 indent, u8 spaces) const
 {
 	std::string sp(spaces, ' ');
 	for (auto const& [dir, uNode] : parent.children)

@@ -62,7 +62,7 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 	return false;
 }
 
-bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, InitInfo const& initInfo)
+bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, InitInfo const& initInfo)
 {
 	// Instance
 	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
@@ -88,7 +88,11 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 				LOG_E("[{}] Required extensions not present on physical device [{}]!", s_tDevice, extension);
 			}
 			ASSERT(missingExtensions.empty(), "Required extension not present!");
-			if (missingExtensions.empty())
+			if (!missingExtensions.empty())
+			{
+				throw std::runtime_error("Missing required Vulkan device extensions!");
+			}
+			else
 			{
 				AvailableDevice availableDevice;
 				availableDevice.properties = physicalDevice.getProperties();
@@ -272,36 +276,45 @@ bool initDevice2(vk::Instance vkInst, std::vector<char const*> const& layers, In
 	return true;
 }
 
+bool findLayer(std::vector<vk::LayerProperties> const& available, char const* szLayer, std::optional<io::Level> log)
+{
+	std::string_view const layerName(szLayer);
+	for (auto& layer : available)
+	{
+		if (std::string_view(layer.layerName) == layerName)
+		{
+			return true;
+		}
+	}
+	if (log)
+	{
+		LOG(*log, "[{}] Requested layer [{}] not available!", s_tInstance, szLayer);
+	}
+	return false;
+}
+
 void init(InitInfo const& initInfo)
 {
+	static char const* const szValidationLayer = "VK_LAYER_KHRONOS_validation";
+	auto const layers = vk::enumerateInstanceLayerProperties();
 	std::vector<char const*> requiredLayers;
 	std::set<char const*> requiredExtensionsSet = {initInfo.config.instanceExtensions.begin(), initInfo.config.instanceExtensions.end()};
 	g_instance.validationLog = initInfo.options.validationLog;
+	bool bValidationLayers = false;
 	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
 	{
-		requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		requiredLayers.push_back("VK_LAYER_KHRONOS_validation");
+		if (!findLayer(layers, szValidationLayer, io::Level::eWarning))
+		{
+			ASSERT(false, "Validation layers requested but not present!");
+		}
+		else
+		{
+			requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			requiredLayers.push_back(szValidationLayer);
+			bValidationLayers = true;
+		}
 	}
 	std::vector<char const*> const requiredExtensions = {requiredExtensionsSet.begin(), requiredExtensionsSet.end()};
-	auto const layers = vk::enumerateInstanceLayerProperties();
-	for (auto szRequiredLayer : requiredLayers)
-	{
-		bool bFound = false;
-		std::string_view const requiredLayer(szRequiredLayer);
-		for (auto const& layer : layers)
-		{
-			if (requiredLayer == std::string_view(layer.layerName))
-			{
-				bFound = true;
-				break;
-			}
-		}
-		if (!bFound)
-		{
-			LOG_E("[{}] Required layer [{}] not available!", s_tInstance, szRequiredLayer);
-			throw std::runtime_error("Failed to create Instance!");
-		}
-	}
 	vk::Instance vkInst;
 	{
 		vk::ApplicationInfo appInfo;
@@ -321,7 +334,7 @@ void init(InitInfo const& initInfo)
 	vk::DynamicLoader dl;
 	g_loader.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 	g_loader.init(vkInst);
-	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
+	if (bValidationLayers)
 	{
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 		using vksev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
@@ -339,7 +352,7 @@ void init(InitInfo const& initInfo)
 			throw std::runtime_error(e.what());
 		}
 	}
-	if (!initDevice2(vkInst, requiredLayers, initInfo))
+	if (!initDevice(vkInst, requiredLayers, initInfo))
 	{
 		throw std::runtime_error("Failed to initialise Device!");
 	}

@@ -125,13 +125,6 @@ glm::vec2 textTLOffset(Font::Text::HAlign h, Font::Text::VAlign v)
 }
 } // namespace
 
-std::string const Shader::s_tName = utils::tName<Shader>();
-std::string const Sampler::s_tName = utils::tName<Sampler>();
-std::string const Texture::s_tName = utils::tName<Texture>();
-std::string const Material::s_tName = utils::tName<Material>();
-std::string const Mesh::s_tName = utils::tName<Mesh>();
-std::string const Font::s_tName = utils::tName<Font>();
-
 std::string_view Shader::Impl::s_spvExt = ".spv";
 std::string_view Shader::Impl::s_vertExt = ".vert";
 std::string_view Shader::Impl::s_fragExt = ".frag";
@@ -202,6 +195,54 @@ void Mesh::updateGeometry(gfx::Geometry geometry)
 	{
 		pImpl->updateGeometry(*pInfo, std::move(geometry));
 	}
+}
+
+template <>
+TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const
+{
+	auto pThis = static_cast<Texture::LoadInfo const*>(this);
+	if (pThis->imageFilename.empty() && pThis->cubemapFilenames.empty())
+	{
+		LOG_E("[{}] Empty resource ID(s)!", Texture::s_tName);
+		return {};
+	}
+	Texture::CreateInfo ret;
+	ret.mode = engine::colourSpace();
+	ret.samplerID = pThis->samplerID;
+	if (!pThis->cubemapFilenames.empty())
+	{
+		if (pThis->cubemapFilenames.size() != 6)
+		{
+			LOG_E("[{}] Invalid cubemap filename count [{}]!", Texture::s_tName, pThis->cubemapFilenames.size());
+			return {};
+		}
+		ret.type = Texture::Type::eCube;
+		for (auto const& name : pThis->cubemapFilenames)
+		{
+			stdfs::path const id = pThis->directory / name;
+			if (engine::reader().checkPresence(id))
+			{
+				ret.ids.push_back(id);
+			}
+			else
+			{
+				LOG_E("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
+				return {};
+			}
+		}
+	}
+	else
+	{
+		ret.type = Texture::Type::e2D;
+		auto const id = pThis->directory / pThis->imageFilename;
+		if (!engine::reader().checkPresence(id))
+		{
+			LOG_E("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
+			return {};
+		}
+		ret.ids = {id};
+	}
+	return ret;
 }
 
 Material::Inst& Mesh::material()
@@ -504,8 +545,9 @@ void Sampler::Impl::release()
 bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 {
 	auto const idStr = id.generic_string();
-	auto [sampler, bSampler] = res::findSampler(out_createInfo.samplerID);
-	if (sampler.guid == res::GUID::s_null || sampler.status() != Status::eReady || out_info.sampler.status() != Status::eReady)
+	auto [sampler, bSampler] = res::find<Sampler>(out_createInfo.samplerID);
+	out_info.sampler = sampler;
+	if (!bSampler || sampler.status() != Status::eReady)
 	{
 		auto [dSampler, bResult] = res::find<Sampler>("samplers/default");
 		if (!bResult)
@@ -734,7 +776,7 @@ bool Mesh::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	out_info.material = out_createInfo.material;
 	if (out_info.material.material.status() != res::Status::eReady)
 	{
-		auto [material, bMaterial] = res::findMaterial("materials/default");
+		auto [material, bMaterial] = res::find<Material>("materials/default");
 		if (!bMaterial)
 		{
 			return false;
@@ -810,7 +852,7 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			vbo.pMem = gfx::vram::mapMemory(vbo.buffer, vSize);
+			vbo.pMem = gfx::vram::mapMemory(vbo.buffer);
 		}
 	}
 	if (iSize > ibo.buffer.writeSize)
@@ -828,7 +870,7 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			ibo.pMem = gfx::vram::mapMemory(ibo.buffer, iSize);
+			ibo.pMem = gfx::vram::mapMemory(ibo.buffer);
 		}
 	}
 	switch (out_info.type)
@@ -881,7 +923,7 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 			return false;
 		}
 		out_createInfo.image = std::move(img);
-		auto [material, bMaterial] = res::findMaterial(out_createInfo.materialID);
+		auto [material, bMaterial] = res::find<Material>(out_createInfo.materialID);
 		if (bMaterial)
 		{
 			out_createInfo.material.material = material;
@@ -890,7 +932,7 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	}
 	res::Texture::CreateInfo sheetInfo;
 	stdfs::path texID = id / "sheet";
-	if (out_createInfo.samplerID.empty())
+	if (out_createInfo.samplerID == Hash())
 	{
 		out_createInfo.samplerID = "samplers/font";
 	}
@@ -905,7 +947,7 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	material = out_createInfo.material;
 	if (material.material.status() != res::Status::eReady)
 	{
-		auto [mat, bMat] = res::findMaterial("materials/default");
+		auto [mat, bMat] = res::find<Material>("materials/default");
 		if (bMat)
 		{
 			material.material = mat;

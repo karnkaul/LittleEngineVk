@@ -57,7 +57,7 @@ Colour Colour::lerp(Colour min, Colour max, f32 alpha)
 	return min;
 }
 
-Colour& Colour::operator+=(Colour rhs)
+Colour& Colour::operator+=(Colour rhs) noexcept
 {
 	r += rhs.r;
 	g += rhs.g;
@@ -66,7 +66,7 @@ Colour& Colour::operator+=(Colour rhs)
 	return *this;
 }
 
-Colour& Colour::operator-=(Colour rhs)
+Colour& Colour::operator-=(Colour rhs) noexcept
 {
 	r -= rhs.r;
 	g -= rhs.g;
@@ -90,17 +90,17 @@ glm::vec4 Colour::toRGB() const
 	return glm::convertSRGBToLinear(toVec4());
 }
 
-Colour operator+(Colour lhs, Colour rhs)
+Colour operator+(Colour lhs, Colour rhs) noexcept
 {
 	return lhs += rhs;
 }
 
-Colour operator-(Colour lhs, Colour rhs)
+Colour operator-(Colour lhs, Colour rhs) noexcept
 {
 	return lhs -= rhs;
 }
 
-Colour& operator*=(f32 n, Colour& c)
+Colour& operator*=(f32 n, Colour& c) noexcept
 {
 	n = std::clamp(n, 0.0f, 1.0f);
 	c.r = n * c.r;
@@ -110,17 +110,17 @@ Colour& operator*=(f32 n, Colour& c)
 	return c;
 }
 
-Colour operator*(f32 n, Colour colour)
+Colour operator*(f32 n, Colour colour) noexcept
 {
 	return n *= colour;
 }
 
-bool operator==(Colour lhs, Colour rhs)
+bool operator==(Colour lhs, Colour rhs) noexcept
 {
 	return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b && lhs.a == rhs.a;
 }
 
-bool operator!=(Colour lhs, Colour rhs)
+bool operator!=(Colour lhs, Colour rhs) noexcept
 {
 	return !(lhs == rhs);
 }

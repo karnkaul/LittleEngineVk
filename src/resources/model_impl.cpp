@@ -317,8 +317,6 @@ std::vector<std::size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 }
 } // namespace
 
-std::string const Model::s_tName = utils::tName<Model>();
-
 Model::Info const& Model::info() const
 {
 	return res::info(*this);
@@ -329,35 +327,45 @@ Status Model::status() const
 	return res::status(*this);
 }
 
-Model::CreateInfo Model::parseOBJ(stdfs::path const& resourceID)
+template <>
+TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const
 {
-	auto jsonID = resourceID;
-	if (jsonID.filename().string().find(".json") == std::string::npos)
+	auto pThis = static_cast<Model::LoadInfo const*>(this);
+	auto const jsonDir = pThis->jsonDirectory.empty() ? pThis->idRoot : pThis->jsonDirectory;
+	if (jsonDir.empty())
 	{
-		jsonID /= resourceID.filename();
-		jsonID += ".json";
+		LOG_E("[{}] Empty resource ID!", Model::s_tName);
+		return {};
 	}
+	auto jsonFile = pThis->jsonFilename;
+	if (jsonFile.empty())
+	{
+		jsonFile = jsonDir.filename().generic_string();
+		jsonFile += ".json";
+	}
+	auto const jsonID = jsonDir / jsonFile;
 	auto [jsonStr, bResult] = engine::reader().getString(jsonID);
 	if (!bResult)
 	{
-		LOG_E("[{}] [{}] not found!", s_tName, jsonID.generic_string());
+		LOG_E("[{}] [{}] not found!", Model::s_tName, jsonID.generic_string());
 		return {};
 	}
 	GData json;
 	if (!json.read(std::move(jsonStr)))
 	{
-		LOG_E("[{}] Failed to read json: [{}]!", s_tName, jsonID.generic_string());
+		LOG_E("[{}] Failed to read json: [{}]!", Model::s_tName, jsonID.generic_string());
 	}
 	if (json.fieldCount() == 0 || !json.contains("mtl") || !json.contains("obj"))
 	{
-		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
+		LOG_E("[{}] No data in json: [{}]!", Model::s_tName, jsonID.generic_string());
 		return {};
 	}
-	auto const objPath = resourceID / json.get("obj");
-	auto const mtlPath = resourceID / json.get("mtl");
+	auto const objPath = jsonDir / json.get("obj");
+	auto const mtlPath = jsonDir / json.get("mtl");
 	if (!engine::reader().checkPresence(objPath) || !engine::reader().checkPresence(mtlPath))
 	{
-		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, engine::reader().medium(), objPath.generic_string(), mtlPath.generic_string());
+		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", Model::s_tName, engine::reader().medium(), objPath.generic_string(),
+			  mtlPath.generic_string());
 		return {};
 	}
 	auto [objBuf, bObjResult] = engine::reader().getStr(objPath);
@@ -368,7 +376,7 @@ Model::CreateInfo Model::parseOBJ(stdfs::path const& resourceID)
 		objData.objBuf = std::move(objBuf);
 		objData.mtlBuf = std::move(mtlBuf);
 		objData.jsonID = std::move(jsonID);
-		objData.modelID = resourceID;
+		objData.modelID = pThis->idRoot.empty() ? jsonDir : pThis->idRoot;
 		objData.samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/default";
 		objData.scale = json.contains("scale") ? json.get<f32>("scale") : 1.0f;
 		objData.bDropColour = json.get<bool>("dropColour");

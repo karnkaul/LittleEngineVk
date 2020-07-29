@@ -340,7 +340,7 @@ bool GData::read(std::string json)
 }
 
 template <>
-std::string GData::get<std::string>(std::string const& key) const
+std::string GData::get<std::string>(std::string const& key) const noexcept
 {
 	if (auto search = m_fields.find(key); search != m_fields.end())
 	{
@@ -351,7 +351,7 @@ std::string GData::get<std::string>(std::string const& key) const
 }
 
 template <>
-std::vector<std::string> GData::get<std::vector<std::string>>(std::string const& key) const
+std::vector<std::string> GData::get<std::vector<std::string>>(std::string const& key) const noexcept
 {
 	std::vector<std::string> ret;
 	if (auto search = m_fields.find(key); search != m_fields.end())
@@ -410,7 +410,7 @@ std::vector<std::string> GData::get<std::vector<std::string>>(std::string const&
 }
 
 template <>
-std::vector<GData> GData::get<std::vector<GData>>(std::string const& key) const
+std::vector<GData> GData::get<std::vector<GData>>(std::string const& key) const noexcept
 {
 	std::vector<GData> ret;
 	auto array = get<std::vector<std::string>>(key);
@@ -426,7 +426,7 @@ std::vector<GData> GData::get<std::vector<GData>>(std::string const& key) const
 }
 
 template <>
-GData GData::get<GData>(std::string const& key) const
+GData GData::get<GData>(std::string const& key) const noexcept
 {
 	GData ret;
 	if (auto search = m_fields.find(key); search != m_fields.end())
@@ -441,19 +441,19 @@ GData GData::get<GData>(std::string const& key) const
 }
 
 template <>
-s32 GData::get<s32>(std::string const& key) const
+s32 GData::get<s32>(std::string const& key) const noexcept
 {
 	return parseNumeric<s32>(key, m_fields, m_raw);
 }
 
 template <>
-f64 GData::get<f64>(std::string const& key) const
+f64 GData::get<f64>(std::string const& key) const noexcept
 {
 	return parseNumeric<f64>(key, m_fields, m_raw);
 }
 
 template <>
-bool GData::get<bool>(std::string const& key) const
+bool GData::get<bool>(std::string const& key) const noexcept
 {
 	bool bRet = false;
 	if (auto search = m_fields.find(key); search != m_fields.end())
@@ -468,18 +468,18 @@ bool GData::get<bool>(std::string const& key) const
 	return bRet;
 }
 
-bool GData::contains(std::string const& key) const
+bool GData::contains(std::string const& key) const noexcept
 {
 	return m_fields.find(key) != m_fields.end();
 }
 
-void GData::clear()
+void GData::clear() noexcept
 {
 	m_fields.clear();
 	m_raw.clear();
 }
 
-std::size_t GData::fieldCount() const
+std::size_t GData::fieldCount() const noexcept
 {
 	return m_fields.size();
 }
@@ -494,7 +494,7 @@ std::unordered_map<std::string, std::string> GData::allFields() const
 	return ret;
 }
 
-std::string const& GData::original() const
+std::string const& GData::original() const noexcept
 {
 	return m_raw;
 }

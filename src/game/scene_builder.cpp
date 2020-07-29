@@ -110,7 +110,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
-		auto [cubemap, bCubemap] = res::findTexture(m_info.skyboxCubemapID);
+		auto [cubemap, bCubemap] = res::find<res::Texture>(m_info.skyboxCubemapID);
 		if (bCubemap && cubemap.status() == res::Status::eReady)
 		{
 			scene.view.skybox.cubemap = cubemap;

@@ -20,5 +20,4 @@ res::Texture::Space colourSpace();
 Window* window();
 
 void update();
-void destroyWindow();
 } // namespace le::engine

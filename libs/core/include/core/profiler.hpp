@@ -16,15 +16,18 @@ struct Profiler final
 		Time dt;
 	};
 
-	static std::optional<std::unordered_map<Hash, Data>> s_record;
+	inline static std::optional<std::unordered_map<Hash, Data>> s_record;
 
 	Data data;
+	std::optional<io::Level> level;
 	Time start;
 	Time end;
-	std::optional<io::Level> level;
+	Time min;
 
-	explicit Profiler(std::string_view id, std::optional<io::Level> level = io::Level::eInfo);
+	explicit Profiler(std::string_view id, std::optional<io::Level> level = io::Level::eInfo, Time min = 0s);
 	~Profiler();
+
+	void stamp(std::string_view nextID = {});
 
 	static void clear();
 };

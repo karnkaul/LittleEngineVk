@@ -16,7 +16,7 @@ public:
 	using Callback = std::function<void(Args...)>;
 
 private:
-	Tokeniser<Callback, s32, false> m_tokeniser;
+	Tokeniser<Callback, s32> m_tokeniser;
 
 public:
 	///
@@ -53,7 +53,7 @@ public:
 template <typename... Args>
 typename Delegate<Args...>::Token Delegate<Args...>::subscribe(Callback callback)
 {
-	return m_tokeniser.add(std::move(callback));
+	return m_tokeniser.addUnique(std::move(callback));
 }
 
 template <typename... Args>

@@ -392,9 +392,9 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	rd::StorageBuffers ssbos;
 	TexSet diffuse, specular;
 	PCDeq push;
-	auto const [white, bWhite] = res::findTexture("textures/white");
-	auto const [black, bBlack] = res::findTexture("textures/black");
-	auto const [blank, bBlank] = res::findTexture("cubemaps/blank");
+	auto const [white, bWhite] = res::find<res::Texture>("textures/white");
+	auto const [black, bBlack] = res::find<res::Texture>("textures/black");
+	auto const [blank, bBlank] = res::find<res::Texture>("cubemaps/blank");
 	ASSERT(bWhite && bBlack && bBlank, "Default textures missing!");
 	diffuse.add(white);
 	specular.add(black);
@@ -408,7 +408,7 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 		}
 		ASSERT(out_scene.view.skybox.pPipeline, "Pipeline is null!");
 		auto pTransform = &Transform::s_identity;
-		auto mesh = res::findMesh("meshes/cube").payload;
+		auto mesh = res::find<res::Mesh>("meshes/cube").payload;
 		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{mesh}, pTransform, out_scene.view.skybox.pPipeline}}});
 		cubemap = out_scene.view.skybox.cubemap;
 		bSkybox = true;

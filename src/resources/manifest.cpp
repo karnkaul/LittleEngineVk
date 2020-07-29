@@ -5,6 +5,7 @@
 #include <core/log.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
+#include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
 #include <resources/manifest.hpp>
 #include <resources/resources_impl.hpp>
@@ -44,12 +45,12 @@ template <typename T>
 std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
 														   std::vector<GUID>& out_resources, Lockable<std::mutex>& mutex, std::string_view jobName)
 {
-	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource!");
+	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
 	tasks::List taskList;
 	if (!out_toLoad.empty())
 	{
 		auto task = [&out_loaded, &out_resources, &mutex](ResourceData<T>& data) {
-			auto resource = load<T>(data.id, std::move(data.createInfo));
+			auto resource = load(data.id, std::move(data.createInfo));
 			if (resource.guid > GUID::s_null)
 			{
 				auto lock = mutex.lock();
@@ -114,32 +115,26 @@ std::string ResourceList::print() const
 
 std::string const Manifest::s_tName = utils::tName<Manifest>();
 
-Manifest::Manifest(io::Reader const& reader, stdfs::path const& id) : m_pReader(&reader)
+bool Manifest::read(stdfs::path const& id)
 {
-	ASSERT(m_pReader, "io::Reader is null!");
-	auto [data, bResult] = m_pReader->getString(id);
+	auto [data, bResult] = engine::reader().getString(id);
 	if (bResult)
 	{
 		if (!m_manifest.read(std::move(data)))
 		{
-			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), m_pReader->medium());
+			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), engine::reader().medium());
 			m_manifest.clear();
+			return false;
 		}
+		m_status = Status::eReady;
+		return true;
 	}
 	else
 	{
 		ASSERT(false, "Manifest not found!");
-		LOG_E("[{}] Manifest [{}] not found on [{}]!", s_tName, id.generic_string(), m_pReader->medium());
+		LOG_E("[{}] Manifest [{}] not found on [{}]!", s_tName, id.generic_string(), engine::reader().medium());
 	}
-}
-
-Manifest::~Manifest()
-{
-	while (update(true) != Status::eIdle)
-	{
-		engine::update();
-		threads::sleep();
-	}
+	return false;
 }
 
 void Manifest::start()
@@ -152,6 +147,7 @@ void Manifest::start()
 	{
 		loadData();
 	}
+	m_status = Status::eExtractingData;
 }
 
 Manifest::Status Manifest::update(bool bTerminate)
@@ -227,7 +223,7 @@ ResourceList Manifest::parse()
 				{
 					auto const typeStr = resourceID.get("type");
 					auto const id = resourceID.get("id");
-					bool const bPresent = bOptional ? m_pReader->checkPresence(id) : m_pReader->isPresent(id);
+					bool const bPresent = bOptional ? engine::reader().checkPresence(id) : engine::reader().isPresent(id);
 					if (!id.empty() && !typeStr.empty() && bPresent)
 					{
 						Shader::Type type = Shader::Type::eFragment;
@@ -252,10 +248,10 @@ ResourceList Manifest::parse()
 	for (auto const& texture : textures)
 	{
 		auto const id = texture.get("id");
-		bool const bPresent = texture.get<bool>("optional") ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
+		bool const bPresent = texture.get<bool>("optional") ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
 		if (!id.empty() && bPresent)
 		{
-			if (findTexture(id).bResult)
+			if (find<Texture>(id).bResult)
 			{
 				all.textures.push_back(id);
 				m_loaded.textures.push_back(std::move(id));
@@ -265,7 +261,7 @@ ResourceList Manifest::parse()
 				ResourceData<Texture> data;
 				data.id = id;
 				data.createInfo.mode = engine::colourSpace();
-				data.createInfo.samplerID = m_manifest.get("sampler");
+				data.createInfo.samplerID = texture.get("sampler");
 				data.createInfo.ids = {id};
 				all.textures.push_back(id);
 				m_toLoad.textures.push_back(std::move(data));
@@ -282,7 +278,7 @@ ResourceList Manifest::parse()
 		bool bMissing = false;
 		if (!resourceID.empty())
 		{
-			if (findTexture(resourceID).bResult)
+			if (find<Texture>(resourceID).bResult)
 			{
 				all.cubemaps.push_back(resourceID);
 				m_loaded.cubemaps.push_back(std::move(resourceID));
@@ -293,10 +289,10 @@ ResourceList Manifest::parse()
 				data.id = resourceID;
 				data.createInfo.mode = engine::colourSpace();
 				data.createInfo.type = Texture::Type::eCube;
-				data.createInfo.samplerID = m_manifest.get("sampler");
+				data.createInfo.samplerID = cubemap.get("sampler");
 				for (auto const& id : resourceIDs)
 				{
-					bool const bPresent = bOptional ? m_pReader->isPresent(id) : m_pReader->checkPresence(id);
+					bool const bPresent = bOptional ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
 					if (bPresent)
 					{
 						data.createInfo.ids.push_back(id);
@@ -322,7 +318,7 @@ ResourceList Manifest::parse()
 		auto const modelID = model.get("id");
 		if (!modelID.empty())
 		{
-			if (findModel(modelID).bResult)
+			if (find<Model>(modelID).bResult)
 			{
 				all.models.push_back(modelID);
 				m_loaded.models.push_back(std::move(modelID));
@@ -334,7 +330,7 @@ ResourceList Manifest::parse()
 				data.id = modelID;
 				auto jsonID = data.id / data.id.filename();
 				jsonID += ".json";
-				bool const bPresent = bOptional ? m_pReader->isPresent(jsonID) : m_pReader->checkPresence(jsonID);
+				bool const bPresent = bOptional ? engine::reader().isPresent(jsonID) : engine::reader().checkPresence(jsonID);
 				if (bPresent)
 				{
 					all.models.push_back(data.id);
@@ -348,12 +344,36 @@ ResourceList Manifest::parse()
 	return all;
 }
 
+void Manifest::reset()
+{
+	m_loaded = {};
+	m_toLoad = {};
+	m_manifest.clear();
+	m_data.idCount = 0;
+	m_data.dataCount = 0;
+	m_running.clear();
+	m_loading.clear();
+	m_semaphore.reset();
+	m_status = Status::eIdle;
+	m_bParsed = false;
+}
+
+bool Manifest::isIdle() const
+{
+	return m_status == Status::eIdle;
+}
+
+bool Manifest::isReady() const
+{
+	return m_status == Status::eReady;
+}
+
 void Manifest::unload(const ResourceList& list)
 {
 	auto unload = [](std::vector<stdfs::path> const& ids) {
 		for (auto const& id : ids)
 		{
-			res::unload(id);
+			res::unload(Hash(id));
 		}
 	};
 	unload(list.shaders);
@@ -370,7 +390,16 @@ void Manifest::loadData()
 	m_status = Status::eExtractingData;
 	if (!m_toLoad.models.empty())
 	{
-		auto task = [](ResourceData<Model>& data) { data.createInfo = Model::parseOBJ(data.id); };
+		auto task = [](ResourceData<Model>& data) {
+			Model::LoadInfo loadInfo;
+			loadInfo.idRoot = data.id;
+			loadInfo.jsonDirectory = data.id;
+			auto [info, bInfo] = loadInfo.createInfo();
+			if (bInfo)
+			{
+				data.createInfo = std::move(info);
+			}
+		};
 		addJobs(tasks::forEach<ResourceData<Model>>(m_toLoad.models, task, "Manifest-0:Models"));
 	}
 }

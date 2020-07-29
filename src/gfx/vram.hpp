@@ -45,7 +45,7 @@ void update();
 
 Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
 bool write(Buffer const& buffer, void const* pData, vk::DeviceSize size = 0);
-[[nodiscard]] void* mapMemory(Buffer const& src, vk::DeviceSize size = 0);
+[[nodiscard]] void* mapMemory(Buffer const& src);
 void unmapMemory(Buffer const& buffer);
 [[nodiscard]] std::future<void> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
 [[nodiscard]] std::future<void> stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);

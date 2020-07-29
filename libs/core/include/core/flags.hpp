@@ -45,7 +45,7 @@ struct TFlags
 	///
 	/// \brief Check if a flag is set
 	///
-	bool isSet(Enum flag) const
+	bool isSet(Enum flag) const noexcept
 	{
 		ASSERT((std::size_t)flag < N, "Invalid flag!");
 		return bits.test((std::size_t)flag);
@@ -54,7 +54,7 @@ struct TFlags
 	///
 	/// \brief Set a flag
 	///
-	void set(Enum flag)
+	void set(Enum flag) noexcept
 	{
 		ASSERT((std::size_t)flag < N, "Invalid flag!");
 		bits.set((std::size_t)flag);
@@ -63,7 +63,7 @@ struct TFlags
 	///
 	/// \brief Reset a flag
 	///
-	void reset(Enum flag)
+	void reset(Enum flag) noexcept
 	{
 		ASSERT((std::size_t)flag < N, "Invalid flag!");
 		bits.reset((std::size_t)flag);
@@ -72,7 +72,7 @@ struct TFlags
 	///
 	/// \brief Set a number of flags
 	///
-	void set(std::initializer_list<Enum> flags)
+	void set(std::initializer_list<Enum> flags) noexcept
 	{
 		for (auto flag : flags)
 		{
@@ -83,7 +83,7 @@ struct TFlags
 	///
 	/// \brief Reset a number of flags
 	///
-	void reset(std::initializer_list<Enum> flags)
+	void reset(std::initializer_list<Enum> flags) noexcept
 	{
 		for (auto flag : flags)
 		{
@@ -94,7 +94,7 @@ struct TFlags
 	///
 	/// \brief Set all flags
 	///
-	void set()
+	void set() noexcept
 	{
 		bits.set();
 	}
@@ -102,7 +102,7 @@ struct TFlags
 	///
 	/// \brief Reset all flags
 	///
-	void reset()
+	void reset() noexcept
 	{
 		bits.reset();
 	}
@@ -110,7 +110,7 @@ struct TFlags
 	///
 	/// \brief Flip a flag
 	///
-	void flip(Enum flag)
+	void flip(Enum flag) noexcept
 	{
 		ASSERT((std::size_t)flag < N, "Invalid flag");
 		bits.flip((std::size_t)flag);
@@ -119,7 +119,7 @@ struct TFlags
 	//
 	/// \brief Flip all flags
 	///
-	void flip()
+	void flip() noexcept
 	{
 		bits.flip();
 	}
@@ -127,7 +127,7 @@ struct TFlags
 	///
 	/// \brief Obtain a reference to the flag
 	///
-	typename std::bitset<N>::reference operator[](Enum flag)
+	typename std::bitset<N>::reference operator[](Enum flag) noexcept
 	{
 		ASSERT((std::size_t)flag < N, "Invalid flag!");
 		return bits[(std::size_t)flag];
@@ -136,7 +136,7 @@ struct TFlags
 	///
 	/// \brief Check if all flags are set
 	///
-	bool allSet(std::initializer_list<Enum> flags) const
+	bool allSet(std::initializer_list<Enum> flags) const noexcept
 	{
 		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });
 	}
@@ -144,7 +144,7 @@ struct TFlags
 	///
 	/// \brief Check if any flag is set
 	///
-	bool anySet(std::initializer_list<Enum> flags) const
+	bool anySet(std::initializer_list<Enum> flags) const noexcept
 	{
 		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });
 	}
@@ -152,7 +152,7 @@ struct TFlags
 	///
 	/// \brief Check if no flags are set
 	///
-	bool noneSet(std::initializer_list<Enum> flags) const
+	bool noneSet(std::initializer_list<Enum> flags) const noexcept
 	{
 		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });
 	}
@@ -160,7 +160,7 @@ struct TFlags
 	///
 	/// \brief Perform bitwise `OR`
 	///
-	TFlags<Enum, N>& operator|=(TFlags<Enum, N> flags)
+	TFlags<Enum, N>& operator|=(TFlags<Enum, N> flags) noexcept
 	{
 		bits |= flags.bits;
 		return *this;
@@ -169,7 +169,7 @@ struct TFlags
 	///
 	/// \brief Perform bitwise `AND`
 	///
-	TFlags<Enum, N>& operator&=(TFlags<Enum, N> flags)
+	TFlags<Enum, N>& operator&=(TFlags<Enum, N> flags) noexcept
 	{
 		bits &= flags.bits;
 		return *this;
@@ -178,7 +178,7 @@ struct TFlags
 	///
 	/// \brief Perform bitwise `OR`
 	///
-	TFlags<Enum, N> operator|(TFlags<Enum, N> flags) const
+	TFlags<Enum, N> operator|(TFlags<Enum, N> flags) const noexcept
 	{
 		auto ret = *this;
 		ret |= flags;
@@ -188,7 +188,7 @@ struct TFlags
 	///
 	/// \brief Perform bitwise `AND`
 	///
-	TFlags<Enum, N> operator&(TFlags<Enum, N> flags) const
+	TFlags<Enum, N> operator&(TFlags<Enum, N> flags) const noexcept
 	{
 		auto ret = *this;
 		ret &= flags;

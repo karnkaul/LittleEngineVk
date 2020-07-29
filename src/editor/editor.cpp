@@ -217,7 +217,7 @@ void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view fi
 template <typename T, typename F1, typename F2>
 void listResources(F1 shouldList, F2 onSelected, bool* out_pSelect = nullptr, bool bNone = false)
 {
-	static_assert(std::is_base_of_v<res::Resource, T>, "T must derive from Resource");
+	static_assert(std::is_base_of_v<res::Resource<T>, T>, "T must derive from Resource");
 	static char szFilter[128];
 	ImGui::SetNextItemWidth(200.0f);
 	ImGui::InputText("Filter", szFilter, arraySize(szFilter));
@@ -311,7 +311,7 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 			[pInfo](res::Material const& mat) { pInfo->material.material = mat; }, &dummy<res::Material>, pos, size, false);
 		inspectResource<res::Texture>(
 			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[pInfo](res::Texture const& tex) { pInfo->material.diffuse.guid = tex.guid; },
+			[pInfo](res::Texture const& tex) { pInfo->material.diffuse = tex; },
 			[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
 		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
@@ -372,7 +372,7 @@ void entityInspector(v2 pos, v2 size)
 				{
 					inspectResource(
 						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pMesh](res::Mesh mesh) { pMesh->guid = mesh.guid; }, &dummy<res::Mesh>, pos, size);
+						[pMesh](res::Mesh mesh) { *pMesh = mesh; }, &dummy<res::Mesh>, pos, size);
 
 					inspectMatInst(*pMesh, 0, pos, size);
 					ImGui::TreePop();
@@ -385,8 +385,8 @@ void entityInspector(v2 pos, v2 size)
 				if (ImGui::TreeNode("Model"))
 				{
 					inspectResource(
-						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { pModel->guid = model.guid; },
-						&dummy<res::Model>, pos, size);
+						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { *pModel = model; }, &dummy<res::Model>, pos,
+						size);
 					static std::deque<res::Mesh> s_empty;
 					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 					std::size_t idx = 0;

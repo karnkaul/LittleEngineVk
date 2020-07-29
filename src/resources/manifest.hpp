@@ -2,7 +2,6 @@
 #include <atomic>
 #include <memory>
 #include <core/gdata.hpp>
-#include <core/reader.hpp>
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
 #include <core/utils.hpp>
@@ -24,6 +23,7 @@ public:
 	enum class Status : s8
 	{
 		eIdle,
+		eReady,
 		eExtractingData,
 		eLoadingResources,
 		eWaitingForResources,
@@ -69,17 +69,16 @@ protected:
 	Lockable<std::mutex> m_mutex;
 	res::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
-	io::Reader const* m_pReader = nullptr;
 	bool m_bParsed = false;
 
 public:
-	Manifest(io::Reader const& reader, stdfs::path const& id);
-	~Manifest();
-
-public:
+	bool read(stdfs::path const& id);
 	void start();
 	Status update(bool bTerminate = false);
 	ResourceList parse();
+	void reset();
+	bool isIdle() const;
+	bool isReady() const;
 
 	static void unload(ResourceList const& list);
 

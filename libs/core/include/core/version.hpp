@@ -29,22 +29,22 @@ public:
 	explicit constexpr Version(u32 major = 0, u32 minor = 0, u32 patch = 0, u32 tweak = 0) noexcept : mj(major), mn(minor), pa(patch), tw(tweak) {}
 
 public:
-	u32 major() const;
-	u32 minor() const;
-	u32 patch() const;
-	u32 tweak() const;
+	u32 major() const noexcept;
+	u32 minor() const noexcept;
+	u32 patch() const noexcept;
+	u32 tweak() const noexcept;
 	std::string toString(bool bFull) const;
 
 	///
 	/// \brief Upgrade version if less than rhs
 	///
-	bool upgrade(Version const& rhs);
+	bool upgrade(Version const& rhs) noexcept;
 
-	bool operator==(Version const& rhs);
-	bool operator!=(Version const& rhs);
-	bool operator<(Version const& rhs);
-	bool operator<=(Version const& rhs);
-	bool operator>(Version const& rhs);
-	bool operator>=(Version const& rhs);
+	bool operator==(Version const& rhs) noexcept;
+	bool operator!=(Version const& rhs) noexcept;
+	bool operator<(Version const& rhs) noexcept;
+	bool operator<=(Version const& rhs) noexcept;
+	bool operator>(Version const& rhs) noexcept;
+	bool operator>=(Version const& rhs) noexcept;
 };
 } // namespace le

@@ -141,11 +141,11 @@ bool Window::create(Info const& info)
 	return m_uImpl ? m_uImpl->create(info) : false;
 }
 
-void Window::close()
+void Window::setClosing()
 {
 	if (m_uImpl)
 	{
-		m_uImpl->close();
+		m_uImpl->setClosing();
 	}
 	return;
 }

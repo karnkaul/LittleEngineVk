@@ -63,7 +63,7 @@ public:
 	bool exists() const;
 	bool isClosing() const;
 	bool isFocused() const;
-	void close();
+	void setClosing();
 	void destroy();
 
 	void onFramebufferSize(glm::ivec2 const& size);

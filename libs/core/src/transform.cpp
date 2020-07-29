@@ -8,8 +8,6 @@ namespace le
 Transform const Transform::s_identity;
 
 Transform::Transform() = default;
-Transform::Transform(Transform&&) = default;
-Transform& Transform::operator=(Transform&&) = default;
 Transform::~Transform()
 {
 	if (m_pParent)

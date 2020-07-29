@@ -94,7 +94,7 @@ bool PipelineImpl::create()
 {
 	if ((m_info.shader.guid == res::GUID::s_null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty())
 	{
-		auto [shader, bResult] = res::findShader(m_info.shaderID);
+		auto [shader, bResult] = res::find<res::Shader>(m_info.shaderID);
 		if (bResult)
 		{
 			m_info.shader = shader;

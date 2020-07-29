@@ -274,7 +274,7 @@ bool vram::write(Buffer const& buffer, void const* pData, vk::DeviceSize size)
 		{
 			size = buffer.writeSize;
 		}
-		auto pMem = mapMemory(buffer, size);
+		auto pMem = mapMemory(buffer);
 		std::memcpy(pMem, pData, size);
 		unmapMemory(buffer);
 		return true;
@@ -282,17 +282,11 @@ bool vram::write(Buffer const& buffer, void const* pData, vk::DeviceSize size)
 	return false;
 }
 
-void* vram::mapMemory(Buffer const& buffer, vk::DeviceSize size)
+void* vram::mapMemory(Buffer const& buffer)
 {
 	void* pRet = nullptr;
 	if (buffer.writeSize > 0)
 	{
-		if (size == 0)
-		{
-			size = buffer.writeSize;
-		}
-
-		auto lock = g_mutex.lock();
 		vmaMapMemory(g_allocator, buffer.handle, &pRet);
 	}
 	return pRet;
@@ -302,7 +296,6 @@ void vram::unmapMemory(Buffer const& buffer)
 {
 	if (buffer.writeSize > 0)
 	{
-		auto lock = g_mutex.lock();
 		vmaUnmapMemory(g_allocator, buffer.handle);
 	}
 }

@@ -6,6 +6,7 @@
 #include <core/log.hpp>
 #include <core/map_store.hpp>
 #include <core/threads.hpp>
+#include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/vram.hpp>
 #include <resources/resources_impl.hpp>
@@ -245,6 +246,28 @@ void waitLoading(Map<T, TImpl>& out_map)
 	}
 }
 
+template <typename T>
+Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo)
+{
+	auto name = "load_async:" + id.generic_string();
+	auto handle = tasks::enqueue(
+		[id = id, loadInfo = std::move(loadInfo)]() {
+			auto world_s = World::setBusy();
+			auto res_s = res::acquire();
+			auto [info, bInfo] = loadInfo.createInfo();
+			if (bInfo)
+			{
+				load(id, std::move(info));
+			}
+			else
+			{
+				LOG_E("[{}] Failed to load [{}]", T::s_tName, id.generic_string());
+			}
+		},
+		std::move(name));
+	return {handle, id};
+}
+
 template <typename T, typename TImpl>
 void release(Map<T, TImpl>& out_map)
 {
@@ -317,7 +340,7 @@ Counter<s32> g_counter;
 
 res::Semaphore res::acquire()
 {
-	return Semaphore(g_counter);
+	return g_counter;
 }
 
 res::Shader res::load(stdfs::path const& id, Shader::CreateInfo createInfo)
@@ -325,9 +348,71 @@ res::Shader res::load(stdfs::path const& id, Shader::CreateInfo createInfo)
 	return g_bInit ? make(g_shaders, createInfo, id) : Shader();
 }
 
+template <>
+TResult<res::Shader> res::find<Shader>(Hash id)
+{
+	return g_bInit ? find(g_shaders, id) : TResult<Shader>();
+}
+
+template <>
+res::Shader::Info const& res::info<Shader>(Shader shader)
+{
+	static Shader::Info const s_default{};
+	return g_bInit ? findInfo(g_shaders, shader.guid) : s_default;
+}
+
+template <>
+bool res::unload<Shader>(Shader shader)
+{
+	return g_bInit ? unload(g_shaders, shader.guid) : false;
+}
+
+template <>
+Status res::status<Shader>(Shader shader)
+{
+	return g_bInit ? status(g_shaders, shader.guid) : Status::eIdle;
+}
+
+template <>
+bool res::unload<Shader>(Hash id)
+{
+	return g_bInit ? unload(g_shaders, id) : false;
+}
+
 res::Sampler res::load(stdfs::path const& id, Sampler::CreateInfo createInfo)
 {
 	return g_bInit ? make(g_samplers, createInfo, id) : Sampler();
+}
+
+template <>
+TResult<res::Sampler> res::find<Sampler>(Hash id)
+{
+	return g_bInit ? find(g_samplers, id) : TResult<Sampler>();
+}
+
+template <>
+res::Sampler::Info const& res::info<Sampler>(Sampler sampler)
+{
+	static Sampler::Info const s_default{};
+	return g_bInit ? findInfo(g_samplers, sampler.guid) : s_default;
+}
+
+template <>
+res::Status res::status<Sampler>(Sampler sampler)
+{
+	return g_bInit ? status(g_samplers, sampler.guid) : Status::eIdle;
+}
+
+template <>
+bool res::unload<Sampler>(Sampler sampler)
+{
+	return g_bInit ? unload(g_samplers, sampler.guid) : false;
+}
+
+template <>
+bool res::unload<Sampler>(Hash id)
+{
+	return g_bInit ? unload(g_samplers, id) : false;
 }
 
 res::Texture res::load(stdfs::path const& id, Texture::CreateInfo createInfo)
@@ -335,9 +420,76 @@ res::Texture res::load(stdfs::path const& id, Texture::CreateInfo createInfo)
 	return g_bInit ? make(g_textures, createInfo, id) : Texture();
 }
 
+res::Async<Texture> res::loadAsync(stdfs::path const& id, Texture::LoadInfo loadInfo)
+{
+	return g_bInit ? asyncLoad<res::Texture>(id, std::move(loadInfo)) : Async<res::Texture>();
+}
+
+template <>
+TResult<res::Texture> res::find<Texture>(Hash id)
+{
+	return g_bInit ? find(g_textures, id) : TResult<Texture>();
+}
+
+template <>
+res::Texture::Info const& res::info<Texture>(Texture texture)
+{
+	static Texture::Info const s_default{};
+	return g_bInit ? findInfo(g_textures, texture.guid) : s_default;
+}
+
+template <>
+res::Status res::status<Texture>(Texture texture)
+{
+	return g_bInit ? status(g_textures, texture.guid) : Status::eIdle;
+}
+
+template <>
+bool res::unload<Texture>(Texture texture)
+{
+	return g_bInit ? unload(g_textures, texture.guid) : false;
+}
+
+template <>
+bool res::unload<Texture>(Hash id)
+{
+	return g_bInit ? unload(g_textures, id) : false;
+}
+
 res::Material res::load(stdfs::path const& id, Material::CreateInfo createInfo)
 {
 	return g_bInit ? make(g_materials, createInfo, id) : Material();
+}
+
+template <>
+TResult<res::Material> res::find<Material>(Hash id)
+{
+	return g_bInit ? find(g_materials, id) : TResult<Material>();
+}
+
+template <>
+res::Material::Info const& res::info<Material>(Material material)
+{
+	static Material::Info const s_default{};
+	return g_bInit ? findInfo(g_materials, material.guid) : s_default;
+}
+
+template <>
+res::Status res::status<Material>(Material material)
+{
+	return g_bInit ? status(g_materials, material.guid) : Status::eIdle;
+}
+
+template <>
+bool res::unload<Material>(Material material)
+{
+	return g_bInit ? unload(g_materials, material.guid) : false;
+}
+
+template <>
+bool res::unload<Material>(Hash id)
+{
+	return g_bInit ? unload(g_materials, id) : false;
 }
 
 res::Mesh res::load(stdfs::path const& id, Mesh::CreateInfo createInfo)
@@ -345,163 +497,69 @@ res::Mesh res::load(stdfs::path const& id, Mesh::CreateInfo createInfo)
 	return g_bInit ? make(g_meshes, createInfo, id) : Mesh();
 }
 
-res::Font res::load(stdfs::path const& id, Font::CreateInfo createInfo)
-{
-	return g_bInit ? make(g_fonts, createInfo, id) : Font();
-}
-
-TResult<res::Shader> res::findShader(Hash id)
-{
-	return g_bInit ? find(g_shaders, id) : TResult<Shader>();
-}
-
-TResult<res::Sampler> res::findSampler(Hash id)
-{
-	return g_bInit ? find(g_samplers, id) : TResult<Sampler>();
-}
-
-TResult<res::Texture> res::findTexture(Hash id)
-{
-	return g_bInit ? find(g_textures, id) : TResult<Texture>();
-}
-
-TResult<res::Material> res::findMaterial(Hash id)
-{
-	return g_bInit ? find(g_materials, id) : TResult<Material>();
-}
-
-TResult<res::Mesh> res::findMesh(Hash id)
+template <>
+TResult<res::Mesh> res::find<Mesh>(Hash id)
 {
 	return g_bInit ? find(g_meshes, id) : TResult<Mesh>();
 }
 
-TResult<res::Font> res::findFont(Hash id)
-{
-	return g_bInit ? find(g_fonts, id) : TResult<Font>();
-}
-
-res::Shader::Info const& res::info(Shader shader)
-{
-	static Shader::Info const s_default{};
-	return g_bInit ? findInfo(g_shaders, shader.guid) : s_default;
-}
-
-res::Sampler::Info const& res::info(Sampler sampler)
-{
-	static Sampler::Info const s_default{};
-	return g_bInit ? findInfo(g_samplers, sampler.guid) : s_default;
-}
-
-res::Texture::Info const& res::info(Texture texture)
-{
-	static Texture::Info const s_default{};
-	return g_bInit ? findInfo(g_textures, texture.guid) : s_default;
-}
-
-res::Material::Info const& res::info(Material material)
-{
-	static Material::Info const s_default{};
-	return g_bInit ? findInfo(g_materials, material.guid) : s_default;
-}
-
-res::Mesh::Info const& res::info(Mesh mesh)
+template <>
+res::Mesh::Info const& res::info<Mesh>(Mesh mesh)
 {
 	static Mesh::Info const s_default{};
 	return g_bInit ? findInfo(g_meshes, mesh.guid) : s_default;
 }
 
-res::Font::Info const& res::info(Font font)
+template <>
+res::Status res::status<Mesh>(Mesh mesh)
+{
+	return g_bInit ? status(g_meshes, mesh.guid) : Status::eIdle;
+}
+
+template <>
+bool res::unload<Mesh>(Mesh mesh)
+{
+	return g_bInit ? unload(g_meshes, mesh.guid) : false;
+}
+
+template <>
+bool res::unload<Mesh>(Hash id)
+{
+	return g_bInit ? unload(g_meshes, id) : false;
+}
+
+res::Font res::load(stdfs::path const& id, Font::CreateInfo createInfo)
+{
+	return g_bInit ? make(g_fonts, createInfo, id) : Font();
+}
+
+template <>
+TResult<res::Font> res::find<Font>(Hash id)
+{
+	return g_bInit ? find(g_fonts, id) : TResult<Font>();
+}
+
+template <>
+res::Font::Info const& res::info<Font>(Font font)
 {
 	static Font::Info const s_default{};
 	return g_bInit ? findInfo(g_fonts, font.guid) : s_default;
 }
 
-Status res::status(Shader shader)
-{
-	return g_bInit ? status(g_shaders, shader.guid) : Status::eIdle;
-}
-
-res::Status res::status(Sampler sampler)
-{
-	return g_bInit ? status(g_samplers, sampler.guid) : Status::eIdle;
-}
-
-res::Status res::status(Texture texture)
-{
-	return g_bInit ? status(g_textures, texture.guid) : Status::eIdle;
-}
-
-res::Status res::status(Material material)
-{
-	return g_bInit ? status(g_materials, material.guid) : Status::eIdle;
-}
-
-res::Status res::status(Mesh mesh)
-{
-	return g_bInit ? status(g_meshes, mesh.guid) : Status::eIdle;
-}
-
-res::Status res::status(Font font)
+template <>
+res::Status res::status<Font>(Font font)
 {
 	return g_bInit ? status(g_fonts, font.guid) : Status::eIdle;
 }
 
-bool res::unload(Shader shader)
-{
-	return g_bInit ? unload(g_shaders, shader.guid) : false;
-}
-
-bool res::unload(Sampler sampler)
-{
-	return g_bInit ? unload(g_samplers, sampler.guid) : false;
-}
-
-bool res::unload(Texture texture)
-{
-	return g_bInit ? unload(g_textures, texture.guid) : false;
-}
-
-bool res::unload(Material material)
-{
-	return g_bInit ? unload(g_materials, material.guid) : false;
-}
-
-bool res::unload(Mesh mesh)
-{
-	return g_bInit ? unload(g_meshes, mesh.guid) : false;
-}
-
-bool res::unload(Font font)
+template <>
+bool res::unload<Font>(Font font)
 {
 	return g_bInit ? unload(g_fonts, font.guid) : false;
 }
 
-bool res::unloadShader(Hash id)
-{
-	return g_bInit ? unload(g_shaders, id) : false;
-}
-
-bool res::unloadSampler(Hash id)
-{
-	return g_bInit ? unload(g_samplers, id) : false;
-}
-
-bool res::unloadTexture(Hash id)
-{
-	return g_bInit ? unload(g_textures, id) : false;
-}
-
-bool res::unloadMaterial(Hash id)
-{
-	return g_bInit ? unload(g_materials, id) : false;
-}
-
-bool res::unloadMesh(Hash id)
-{
-	return g_bInit ? unload(g_meshes, id) : false;
-}
-
-bool res::unloadFont(Hash id)
+template <>
+bool res::unload<Font>(Hash id)
 {
 	return g_bInit ? unload(g_fonts, id) : false;
 }
@@ -511,28 +569,38 @@ res::Model res::load(stdfs::path const& id, Model::CreateInfo createInfo)
 	return g_bInit ? make(g_models, createInfo, id) : res::Model();
 }
 
-TResult<Model> res::findModel(Hash id)
+res::Async<res::Model> res::loadAsync(stdfs::path const& id, Model::LoadInfo loadInfo)
+{
+	return g_bInit ? asyncLoad<res::Model>(id, std::move(loadInfo)) : Async<res::Model>();
+}
+
+template <>
+TResult<Model> res::find<Model>(Hash id)
 {
 	return g_bInit ? find(g_models, id) : TResult<Model>();
 }
 
-Model::Info const& res::info(Model model)
+template <>
+Model::Info const& res::info<Model>(Model model)
 {
 	static Model::Info const s_default{};
 	return g_bInit ? findInfo(g_models, model.guid) : s_default;
 }
 
-Status res::status(Model model)
+template <>
+Status res::status<Model>(Model model)
 {
 	return g_bInit ? status(g_models, model.guid) : Status::eIdle;
 }
 
-bool res::unload(Model model)
+template <>
+bool res::unload<Model>(Model model)
 {
 	return g_bInit ? unload(g_models, model.guid) : false;
 }
 
-bool res::unloadModel(Hash id)
+template <>
+bool res::unload<Model>(Hash id)
 {
 	return g_bInit ? unload(g_models, id) : false;
 }
@@ -608,43 +676,50 @@ Model::Info* res::infoRW(Model model)
 }
 
 #if defined(LEVK_EDITOR)
-io::PathTree<Shader> const& res::loadedShaders()
+template <>
+io::PathTree<Shader> const& res::loaded<Shader>()
 {
 	static io::PathTree<Shader> const s_default{};
 	return g_bInit ? loaded(g_shaders) : s_default;
 }
 
-io::PathTree<Sampler> const& res::loadedSamplers()
+template <>
+io::PathTree<Sampler> const& res::loaded<Sampler>()
 {
 	static io::PathTree<Sampler> const s_default{};
 	return g_bInit ? loaded(g_samplers) : s_default;
 }
 
-io::PathTree<Texture> const& res::loadedTextures()
+template <>
+io::PathTree<Texture> const& res::loaded<Texture>()
 {
 	static io::PathTree<Texture> const s_default{};
 	return g_bInit ? loaded(g_textures) : s_default;
 }
 
-io::PathTree<Material> const& res::loadedMaterials()
+template <>
+io::PathTree<Material> const& res::loaded<Material>()
 {
 	static io::PathTree<Material> const s_default{};
 	return g_bInit ? loaded(g_materials) : s_default;
 }
 
-io::PathTree<Mesh> const& res::loadedMeshes()
+template <>
+io::PathTree<Mesh> const& res::loaded<Mesh>()
 {
 	static io::PathTree<Mesh> const s_default{};
 	return g_bInit ? loaded(g_meshes) : s_default;
 }
 
-io::PathTree<Font> const& res::loadedFonts()
+template <>
+io::PathTree<Font> const& res::loaded<Font>()
 {
 	static io::PathTree<Font> const s_default{};
 	return g_bInit ? loaded(g_fonts) : s_default;
 }
 
-io::PathTree<Model> const& res::loadedModels()
+template <>
+io::PathTree<Model> const& res::loaded<Model>()
 {
 	static io::PathTree<Model> const s_default{};
 	return g_bInit ? loaded(g_models) : s_default;
@@ -653,7 +728,8 @@ io::PathTree<Model> const& res::loadedModels()
 
 bool res::unload(Hash id)
 {
-	return g_bInit ? unloadShader(id) || unloadSampler(id) || unloadTexture(id) || unloadMaterial(id) || unloadMesh(id) || unloadFont(id) || unloadModel(id)
+	return g_bInit ? unload<Shader>(id) || unload<Sampler>(id) || unload<Texture>(id) || unload<Material>(id) || unload<Mesh>(id) || unload<Font>(id)
+						 || unload<Model>(id)
 				   : false;
 }
 
@@ -721,7 +797,8 @@ void res::init()
 			Font::CreateInfo info;
 			info.jsonID = s_jsonID;
 			auto font = load("fonts/default", std::move(info));
-			if (font.status() == Status::eIdle)
+			auto const status = font.status();
+			if (status == Status::eIdle || status == Status::eError)
 			{
 				LOG_E("[le::resources] Failed to load default font [{}]!", s_jsonID.generic_string());
 			}

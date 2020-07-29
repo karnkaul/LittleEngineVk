@@ -28,20 +28,20 @@ public:
 	[[nodiscard]] bool read(std::string json);
 
 	template <typename T = std::string>
-	T get(std::string const& key) const;
+	T get(std::string const& key) const noexcept;
 
 	///
 	/// \brief Obtain whether `key` was parsed and is present in map
 	///
-	bool contains(std::string const& key) const;
+	bool contains(std::string const& key) const noexcept;
 	///
 	/// \brief Reset (as if default constructed)
 	///
-	void clear();
+	void clear() noexcept;
 	///
 	/// \brief Obtain the count of fields parsed and saved
 	///
-	std::size_t fieldCount() const;
+	std::size_t fieldCount() const noexcept;
 	///
 	/// \brief Obtain all fields
 	///
@@ -49,47 +49,47 @@ public:
 	///
 	/// \brief Obtain original raw string
 	///
-	std::string const& original() const;
+	std::string const& original() const noexcept;
 };
 
 ///
 /// \brief Obtain string value corresponding to `key`
 ///
 template <>
-std::string GData::get<std::string>(std::string const& key) const;
+std::string GData::get<std::string>(std::string const& key) const noexcept;
 ///
 /// \brief Obtain array value corresponding to `key` (must be enclosed in [])
 ///
 template <>
-std::vector<std::string> GData::get<std::vector<std::string>>(std::string const& key) const;
+std::vector<std::string> GData::get<std::vector<std::string>>(std::string const& key) const noexcept;
 ///
 /// \brief Obtain array of GData per array value corresponding to `key`
 ///
 template <>
-std::vector<GData> GData::get<std::vector<GData>>(std::string const& key) const;
+std::vector<GData> GData::get<std::vector<GData>>(std::string const& key) const noexcept;
 ///
 /// \brief Obtain GData of value corresponding to `key` (must be enclosed in {})
 ///
 template <>
-GData GData::get<GData>(std::string const& key) const;
+GData GData::get<GData>(std::string const& key) const noexcept;
 ///
 /// \brief Obtain `s32` value corresponding to `key`
 ///
 template <>
-s32 GData::get<s32>(std::string const& key) const;
+s32 GData::get<s32>(std::string const& key) const noexcept;
 ///
 /// \brief Obtain `f64` value corresponding to `key`
 ///
 template <>
-f64 GData::get<f64>(std::string const& key) const;
+f64 GData::get<f64>(std::string const& key) const noexcept;
 ///
 /// \brief Obtain `bool` value corresponding to `key`
 ///
 template <>
-bool GData::get<bool>(std::string const& key) const;
+bool GData::get<bool>(std::string const& key) const noexcept;
 
 template <typename T>
-T GData::get(std::string const& key) const
+T GData::get(std::string const& key) const noexcept
 {
 	if constexpr (std::is_integral_v<T>)
 	{

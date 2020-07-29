@@ -19,7 +19,6 @@ class WindowImpl;
 
 namespace le::gfx
 {
-class Mesh;
 class Renderer;
 
 class RendererImpl final

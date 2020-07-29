@@ -15,6 +15,22 @@
 
 namespace le::engine
 {
+enum class Status : s8
+{
+	eIdle,
+	eInitialised,
+	eTicking,
+	eShuttingDown,
+	eShutdown
+};
+
+enum class ShutdownSequence : s8
+{
+	eCloseWindow_Shutdown,
+	eShutdown_CloseWindow
+};
+inline ShutdownSequence g_shutdownSequence = ShutdownSequence::eCloseWindow_Shutdown;
+
 struct DataSearch final
 {
 	std::vector<stdfs::path> patterns;
@@ -60,9 +76,13 @@ public:
 	///
 	bool start(World::ID world);
 	///
-	/// \brief Check whether any windows are active
+	/// \brief Check whether engine is currently running (or shutting down)
 	///
 	bool isRunning() const;
+	///
+	/// \brief Obtain current engine Status
+	///
+	Status status() const;
 
 	///
 	/// \brief Update all services and tick active world
@@ -83,6 +103,9 @@ public:
 	/// \brief Shutdown engine and close main window
 	///
 	static bool shutdown();
+
+private:
+	static void doShutdown();
 };
 
 ///

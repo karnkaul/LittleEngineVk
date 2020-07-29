@@ -106,7 +106,7 @@ private:
 	struct
 	{
 		stdfs::path model0id, model1id, skyboxID;
-		std::vector<std::shared_ptr<tasks::Handle>> modelReloads;
+		res::Async<res::Model> asyncModel0, asyncModel1;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
@@ -267,43 +267,43 @@ void DemoWorld::tick(Time dt)
 		m_data.temp.token.reset();
 	}
 
-	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto const& handle) -> bool { return handle->hasCompleted(true); });
-	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
-
-	if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
+	if (m_data.asyncModel0.loaded())
 	{
-		if (auto [model, bResult] = res::findModel(m_data.model0id); bResult)
+		if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
+		{
+			*pModel = m_data.asyncModel0.resource().payload;
+		}
+		m_data.asyncModel0 = {};
+	}
+	if (m_data.asyncModel1.loaded())
+	{
+		if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
+		{
+			*pModel = m_data.asyncModel1.resource().payload;
+		}
+		m_data.asyncModel1 = {};
+	}
+	if (m_data.bLoadUnloadModels && !m_data.asyncModel0.valid())
+	{
+		if (auto [model, bResult] = res::find<res::Model>(m_data.model0id); bResult)
 		{
 			res::unload(model);
-			if (auto [model1, bResult1] = res::findModel(m_data.model1id); bResult1)
+			if (auto [model1, bResult1] = res::find<res::Model>(m_data.model1id); bResult1)
 			{
 				res::unload(model1);
 			}
+			m_data.asyncModel0 = m_data.asyncModel1 = {};
 		}
 		else
 		{
-			m_data.modelReloads.push_back(tasks::enqueue(
-				[this]() {
-					auto semaphore = res::acquire();
-					auto m0info = res::Model::parseOBJ(m_data.model0id);
-					if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
-					{
-						pModel->guid = res::load(m_data.model0id, std::move(m0info)).guid;
-					}
-				},
-				"Model0-Reload"));
-			if (m_data.model0id != m_data.model1id)
+			res::Model::LoadInfo loadInfo;
+			loadInfo.idRoot = loadInfo.jsonDirectory = m_data.model0id;
+			m_data.asyncModel0 = res::loadAsync(m_data.model0id, std::move(loadInfo));
+			if (m_data.model1id != m_data.model0id)
 			{
-				m_data.modelReloads.push_back(tasks::enqueue(
-					[this]() {
-						auto semaphore = res::acquire();
-						auto m1info = res::Model::parseOBJ(m_data.model1id);
-						if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
-						{
-							pModel->guid = res::load(m_data.model1id, std::move(m1info)).guid;
-						}
-					},
-					"Model1-Reload"));
+				loadInfo = {};
+				loadInfo.idRoot = loadInfo.jsonDirectory = m_data.model1id;
+				m_data.asyncModel1 = res::loadAsync(m_data.model1id, std::move(loadInfo));
 			}
 		}
 		m_data.bLoadUnloadModels = false;
@@ -371,16 +371,16 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.sphere.material().diffuse = res::findTexture(m_res.container2).payload;
-	m_res.sphere.material().specular = res::findTexture(m_res.container2_specular).payload;
-	m_res.quad.material().diffuse = res::findTexture(m_res.awesomeface).payload;
+	m_res.sphere.material().diffuse = res::find<res::Texture>(m_res.container2).payload;
+	m_res.sphere.material().specular = res::find<res::Texture>(m_res.container2_specular).payload;
+	m_res.quad.material().diffuse = res::find<res::Texture>(m_res.awesomeface).payload;
 	if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
 	{
-		pModel->guid = res::findModel(m_data.model1id).payload.guid;
+		*pModel = res::find<res::Model>(m_data.model1id).payload;
 	}
 	if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
 	{
-		pModel->guid = res::findModel(m_data.model0id).payload.guid;
+		*pModel = res::find<res::Model>(m_data.model0id).payload;
 	}
 }
 } // namespace
@@ -440,6 +440,8 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	engine::g_shutdownSequence = engine::ShutdownSequence::eShutdown_CloseWindow;
+
 	FPS fps;
 	Time t = Time::elapsed();
 	while (engine.isRunning())
@@ -449,23 +451,21 @@ int main(int argc, char** argv)
 		t = newT;
 		pWorld->m_fps = fps.update();
 		// Tick
-		if (engine.tick(dt))
+		engine.tick(dt);
+		// Render
+#if defined(LEVK_DEBUG)
+		try
+#endif
 		{
-			// Render
-#if defined(LEVK_DEBUG)
-			try
-#endif
-			{
-				engine.submitScene();
-				engine.render();
-			}
-#if defined(LEVK_DEBUG)
-			catch (std::exception const& e)
-			{
-				LOG_E("EXCEPTION!\n\t{}", e.what());
-			}
-#endif
+			engine.submitScene();
+			engine.render();
 		}
+#if defined(LEVK_DEBUG)
+		catch (std::exception const& e)
+		{
+			LOG_E("EXCEPTION!\n\t{}", e.what());
+		}
+#endif
 	}
 	return 0;
 }

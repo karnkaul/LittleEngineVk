@@ -17,7 +17,7 @@ bool Text2D::setup(Info info)
 	m_font = info.font;
 	if (m_font.guid == res::GUID::s_null)
 	{
-		auto [font, bFont] = res::findFont("fonts/default");
+		auto [font, bFont] = res::find<res::Font>("fonts/default");
 		if (!bFont)
 		{
 			return false;

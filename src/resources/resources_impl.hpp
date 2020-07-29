@@ -11,7 +11,7 @@ namespace le::res
 template <typename T, typename TImpl>
 struct TResource final
 {
-	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource");
+	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource");
 
 	typename T::Info info;
 	T resource;
@@ -175,13 +175,23 @@ Font::Info* infoRW(Font font);
 Model::Info* infoRW(Model model);
 
 #if defined(LEVK_EDITOR)
-io::PathTree<Shader> const& loadedShaders();
-io::PathTree<Sampler> const& loadedSamplers();
-io::PathTree<Texture> const& loadedTextures();
-io::PathTree<Material> const& loadedMaterials();
-io::PathTree<Mesh> const& loadedMeshes();
-io::PathTree<Font> const& loadedFonts();
-io::PathTree<Model> const& loadedModels();
+template <typename T>
+io::PathTree<T> const& loaded();
+
+template <>
+io::PathTree<Shader> const& loaded<Shader>();
+template <>
+io::PathTree<Sampler> const& loaded<Sampler>();
+template <>
+io::PathTree<Texture> const& loaded<Texture>();
+template <>
+io::PathTree<Material> const& loaded<Material>();
+template <>
+io::PathTree<Mesh> const& loaded<Mesh>();
+template <>
+io::PathTree<Font> const& loaded<Font>();
+template <>
+io::PathTree<Model> const& loaded<Model>();
 #endif
 
 bool isLoading(GUID guid);
@@ -195,38 +205,7 @@ void deinit();
 template <typename T>
 io::PathTree<T> const& loaded()
 {
-	if constexpr (std::is_same_v<T, Shader>)
-	{
-		return loadedShaders();
-	}
-	else if constexpr (std::is_same_v<T, Sampler>)
-	{
-		return loadedSamplers();
-	}
-	else if constexpr (std::is_same_v<T, Texture>)
-	{
-		return loadedTextures();
-	}
-	else if constexpr (std::is_same_v<T, Material>)
-	{
-		return loadedMaterials();
-	}
-	else if constexpr (std::is_same_v<T, Mesh>)
-	{
-		return loadedMeshes();
-	}
-	else if constexpr (std::is_same_v<T, Font>)
-	{
-		return loadedFonts();
-	}
-	else if constexpr (std::is_same_v<T, Model>)
-	{
-		return loadedModels();
-	}
-	else
-	{
-		static_assert(alwaysFalse<T>, "Invalid Type!");
-	}
+	static_assert(alwaysFalse<T>, "Invalid Type!");
 }
 #endif
 

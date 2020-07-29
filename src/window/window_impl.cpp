@@ -390,7 +390,6 @@ WindowImpl::~WindowImpl()
 	}
 #endif
 	unregisterWindow(this);
-	close();
 	destroy();
 }
 
@@ -504,7 +503,7 @@ bool WindowImpl::isFocused() const
 	return bRet;
 }
 
-void WindowImpl::close()
+void WindowImpl::setClosing()
 {
 #if defined(LEVK_USE_GLFW)
 	if (g_bGLFWInit && m_uNativeWindow)

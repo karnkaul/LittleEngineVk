@@ -37,6 +37,15 @@ template <typename T>
 bool equals(T lhs, T rhs, T epsilon = std::numeric_limits<T>::epsilon());
 
 ///
+/// \brief Check whether `value` is within `min` and `max`
+///
+template <typename T>
+bool withinRange(T value, T min, T max, bool bInclusive = true)
+{
+	return bInclusive ? value >= min && value <= max : value > min && value < max;
+}
+
+///
 /// \brief Random Number Generator
 ///
 class Random

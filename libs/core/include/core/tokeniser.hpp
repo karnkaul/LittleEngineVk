@@ -27,7 +27,7 @@ protected:
 
 public:
 	SharedToken() = default;
-	SharedToken(RawToken<N>&& token) : m_token(std::move(token)) {}
+	explicit SharedToken(RawToken<N>&& token) noexcept : m_token(std::move(token)) {}
 };
 
 ///
@@ -38,43 +38,50 @@ class UniqueToken final : public SharedToken<N>
 {
 public:
 	UniqueToken() = default;
-	UniqueToken(RawToken<N>&& token) : SharedToken<N>(std::move(token)) {}
+	explicit UniqueToken(RawToken<N>&& token) noexcept : SharedToken<N>(std::move(token)) {}
 	UniqueToken(UniqueToken const&) = delete;
 	UniqueToken& operator=(UniqueToken const&) = delete;
-	UniqueToken(UniqueToken&&) = default;
-	UniqueToken& operator=(UniqueToken&&) = default;
+	UniqueToken(UniqueToken&&) noexcept = default;
+	UniqueToken& operator=(UniqueToken&&) noexcept = default;
 };
 
 ///
 /// \brief Wrapper for a container of T associated with RawToken<Tok_t>
 ///
-template <typename T, typename Tok_t = s32, bool Shared = false>
+template <typename T, typename Tok_t = s32>
 struct Tokeniser final
 {
-	///
-	/// \brief Token describes whether a T entry is valid
-	///
-	using Token = std::conditional_t<Shared, SharedToken<Tok_t>, UniqueToken<Tok_t>>;
-	using type = typename Token::type;
+	using type = Tok_t;
 
 	using Entry = std::pair<T, std::weak_ptr<type>>;
 	std::vector<Entry> entries;
 
 	///
 	/// \brief Add an entry
-	/// \returns Token that denotes entry's lifetime
+	/// \returns SharedToken that denotes entry's lifetime
 	///
-	[[nodiscard]] Token add(T&& t)
+	[[nodiscard]] SharedToken<type> addShared(T&& t)
 	{
 		auto token = std::make_shared<type>(0);
 		entries.push_back(std::make_pair(std::forward<T>(t), token));
-		return Token(std::move(token));
+		return SharedToken<type>(std::move(token));
+	}
+
+	///
+	/// \brief Add an entry
+	/// \returns UniqueToken that denotes entry's lifetime
+	///
+	[[nodiscard]] UniqueToken<type> addUnique(T&& t)
+	{
+		auto token = std::make_shared<type>(0);
+		entries.push_back(std::make_pair(std::forward<T>(t), token));
+		return UniqueToken<type>(std::move(token));
 	}
 
 	///
 	/// \brief Erase all invalid entries
 	///
-	std::size_t sweep()
+	std::size_t sweep() noexcept
 	{
 		auto const before = entries.size();
 		auto iter =
@@ -87,7 +94,7 @@ struct Tokeniser final
 	/// \brief Clear all entries
 	/// \returns Entry count before clearing
 	///
-	std::size_t clear()
+	std::size_t clear() noexcept
 	{
 		auto const ret = entries.size();
 		entries.clear();
@@ -96,7 +103,7 @@ struct Tokeniser final
 	///
 	/// \brief Obtain Entry count
 	///
-	std::size_t size() const
+	std::size_t size() const noexcept
 	{
 		return entries.size();
 	}
@@ -104,7 +111,7 @@ struct Tokeniser final
 	///
 	/// \brief Check if no entries are present
 	///
-	bool empty() const
+	bool empty() const noexcept
 	{
 		return entries.empty();
 	}

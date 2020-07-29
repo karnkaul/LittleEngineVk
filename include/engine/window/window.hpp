@@ -111,7 +111,7 @@ public:
 
 public:
 	bool create(Info const& info);
-	void close();
+	void setClosing();
 	void destroy();
 
 	PresentMode presentMode() const;

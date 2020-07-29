@@ -29,8 +29,6 @@ public:
 
 public:
 	Transform();
-	Transform(Transform&&);
-	Transform& operator=(Transform&&);
 	~Transform();
 
 public:

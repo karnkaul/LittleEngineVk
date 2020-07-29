@@ -96,7 +96,7 @@ std::vector<std::string_view> const& args();
 ///
 /// \brief Check if an expression was passed as a command line argument
 ///
-bool isDefined(std::string_view arg);
+bool isDefined(std::string_view arg) noexcept;
 
 ///
 /// \brief Check if a debugger is attached to the runtime

@@ -97,7 +97,7 @@ std::vector<std::string_view> const& os::args()
 	return g_args;
 }
 
-bool os::isDefined(std::string_view arg)
+bool os::isDefined(std::string_view arg) noexcept
 {
 	return std::find_if(g_args.begin(), g_args.end(), [arg](std::string_view s) { return s == arg; }) != g_args.end();
 }

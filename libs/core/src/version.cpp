@@ -24,22 +24,22 @@ Version::Version(std::string_view serialised)
 	tw = parse(tokens, 3);
 }
 
-u32 Version::major() const
+u32 Version::major() const noexcept
 {
 	return mj;
 }
 
-u32 Version::minor() const
+u32 Version::minor() const noexcept
 {
 	return mn;
 }
 
-u32 Version::patch() const
+u32 Version::patch() const noexcept
 {
 	return pa;
 }
 
-u32 Version::tweak() const
+u32 Version::tweak() const noexcept
 {
 	return tw;
 }
@@ -59,7 +59,7 @@ std::string Version::toString(bool bFull) const
 	return ret.str();
 }
 
-bool Version::upgrade(Version const& rhs)
+bool Version::upgrade(Version const& rhs) noexcept
 {
 	if (*this < rhs)
 	{
@@ -69,34 +69,34 @@ bool Version::upgrade(Version const& rhs)
 	return false;
 }
 
-bool Version::operator==(Version const& rhs)
+bool Version::operator==(Version const& rhs) noexcept
 {
 	return mj == rhs.mj && mn == rhs.mn && pa == rhs.pa && tw == rhs.tw;
 }
 
-bool Version::operator!=(Version const& rhs)
+bool Version::operator!=(Version const& rhs) noexcept
 {
 	return !(*this == rhs);
 }
 
-bool Version::operator<(Version const& rhs)
+bool Version::operator<(Version const& rhs) noexcept
 {
 	return (mj < rhs.mj) || (mj == rhs.mj && mn < rhs.mn) || (mj == rhs.mj && mn == rhs.mn && pa < rhs.pa)
 		   || (mj == rhs.mj && mn == rhs.mn && pa == rhs.pa && tw < rhs.tw);
 }
 
-bool Version::operator<=(Version const& rhs)
+bool Version::operator<=(Version const& rhs) noexcept
 {
 	return (*this == rhs) || (*this < rhs);
 }
 
-bool Version::operator>(Version const& rhs)
+bool Version::operator>(Version const& rhs) noexcept
 {
 	return (mj > rhs.mj) || (mj == rhs.mj && mn > rhs.mn) || (mj == rhs.mj && mn == rhs.mn && pa > rhs.pa)
 		   || (mj == rhs.mj && mn == rhs.mn && pa == rhs.pa && tw > rhs.tw);
 }
 
-bool Version::operator>=(Version const& rhs)
+bool Version::operator>=(Version const& rhs) noexcept
 {
 	return (*this == rhs) || (*this > rhs);
 }

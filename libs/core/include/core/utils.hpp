@@ -1,5 +1,6 @@
 #pragma once
 #include <cstring>
+#include <deque>
 #include <future>
 #include <initializer_list>
 #include <mutex>
@@ -80,6 +81,44 @@ struct Lockable final
 	L<M> lock()
 	{
 		return L<M>(mutex);
+	}
+};
+
+template <typename T>
+class AsyncQueue final
+{
+public:
+	std::condition_variable m_cv;
+	std::deque<T> m_queue;
+	mutable Lockable<std::mutex> m_mutex;
+
+public:
+	void push(T&& t)
+	{
+		auto lock = m_mutex.lock();
+		m_queue.push_back(std::forward<T>(t));
+	}
+
+	T pop()
+	{
+		auto lock = m_mutex.lock();
+		auto ret = std::move(m_queue.back());
+		m_queue.pop_back();
+		return ret;
+	}
+
+	std::deque<T> flush()
+	{
+		auto lock = m_mutex.lock();
+		auto ret = std::move(m_queue);
+		m_queue.clear();
+		return ret;
+	}
+
+	bool empty() const
+	{
+		auto lock = m_mutex.lock();
+		return m_queue.empty();
 	}
 };
 

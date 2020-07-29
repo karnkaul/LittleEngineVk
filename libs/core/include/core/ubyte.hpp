@@ -18,26 +18,26 @@ struct UByte
 	constexpr explicit UByte(f32 nValue) noexcept : rawValue((u8)(nValue * 0xff)) {}
 	explicit UByte(std::string_view hex);
 
-	u8 toU8() const;
+	u8 toU8() const noexcept;
 	///
 	/// \brief Obtain normalised value
 	/// \returns Value in [0.0f, 1.0f]
 	///
-	f32 toF32() const;
+	f32 toF32() const noexcept;
 
-	UByte operator+=(UByte rhs);
-	UByte operator-=(UByte rhs);
-	UByte operator*=(UByte rhs);
-	UByte operator/=(UByte rhs);
+	UByte operator+=(UByte rhs) noexcept;
+	UByte operator-=(UByte rhs) noexcept;
+	UByte operator*=(UByte rhs) noexcept;
+	UByte operator/=(UByte rhs) noexcept;
 };
 
-bool operator==(UByte lhs, UByte rhs);
-bool operator!=(UByte lhs, UByte rhs);
+bool operator==(UByte lhs, UByte rhs) noexcept;
+bool operator!=(UByte lhs, UByte rhs) noexcept;
 
-UByte operator+(UByte lhs, UByte rhs);
-UByte operator-(UByte lhs, UByte rhs);
-UByte operator*(UByte lhs, UByte rhs);
-UByte operator/(UByte lhs, UByte rhs);
+UByte operator+(UByte lhs, UByte rhs) noexcept;
+UByte operator-(UByte lhs, UByte rhs) noexcept;
+UByte operator*(UByte lhs, UByte rhs) noexcept;
+UByte operator/(UByte lhs, UByte rhs) noexcept;
 
-UByte operator*(f32 lhs, UByte rhs);
+UByte operator*(f32 lhs, UByte rhs) noexcept;
 } // namespace le

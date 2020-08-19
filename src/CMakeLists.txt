@@ -27,14 +27,15 @@ if(LEVK_USE_IMGUI)
 endif()
 
 # Library
-glob_sources(SOURCES "*.?pp")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 set(GENERATED_SOURCES
 	"${CMAKE_CURRENT_BINARY_DIR}/generated/version/build_version.hpp"
 )
 configure_file_src_to_bin(version/build_version.hpp.in generated/version/build_version.hpp)
+glob_sources(LEVK_INCLUDES "../include/*.?pp")
+glob_sources(LEVK_SOURCES "../src/*.?pp")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/.." FILES ${LEVK_INCLUDES} ${LEVK_SOURCES})
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${GENERATED_SOURCES})
-add_library(${PROJECT_NAME} ${LEVK_LIBRARY_TYPE} ${SOURCES} ${GENERATED_SOURCES})
+add_library(${PROJECT_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES} ${GENERATED_SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	INTERFACE SYSTEM
 		"${CMAKE_CURRENT_SOURCE_DIR}/../include"

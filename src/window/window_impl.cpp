@@ -128,7 +128,7 @@ void onFocus(GLFWwindow* pGLFWwindow, s32 entered)
 	return;
 }
 
-WindowImpl::Cursor const& getCursor(input::CursorType type)
+WindowImpl::Cursor const& cursor(input::CursorType type)
 {
 	auto& cursor = WindowImpl::s_cursors.at((std::size_t)type);
 	if (type != input::CursorType::eDefault && !cursor.data.contains<GLFWcursor*>())
@@ -568,7 +568,7 @@ void WindowImpl::setCursorType([[maybe_unused]] CursorType type)
 	{
 		if (type != m_cursor.type)
 		{
-			m_cursor = getCursor(type);
+			m_cursor = cursor(type);
 			glfwSetCursor(m_uNativeWindow->cast<GLFWwindow>(), m_cursor.data.val<GLFWcursor*>());
 		}
 	}

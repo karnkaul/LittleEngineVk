@@ -25,7 +25,7 @@ World::~World()
 	LOG_I("[{}] World{} Destroyed", m_name.empty() ? "UnknownWorld" : m_name, m_id);
 }
 
-World* World::getWorld(ID id)
+World* World::world(ID id)
 {
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
@@ -166,7 +166,7 @@ bool World::impl_start(ID previous)
 	auto const inputMap = inputMapID();
 	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
 	{
-		auto [str, bResult] = engine::reader().getString(inputMap);
+		auto [str, bResult] = engine::reader().string(inputMap);
 		if (bResult)
 		{
 			GData json;

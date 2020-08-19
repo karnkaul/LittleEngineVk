@@ -117,7 +117,7 @@ std::string const Manifest::s_tName = utils::tName<Manifest>();
 
 bool Manifest::read(stdfs::path const& id)
 {
-	auto [data, bResult] = engine::reader().getString(id);
+	auto [data, bResult] = engine::reader().string(id);
 	if (bResult)
 	{
 		if (!m_manifest.read(std::move(data)))

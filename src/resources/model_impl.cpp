@@ -134,7 +134,7 @@ OBJParser::OBJParser(Data data)
 #endif
 		for (auto& texture : m_info.textures)
 		{
-			auto [bytes, bResult] = engine::reader().getBytes(texture.filename);
+			auto [bytes, bResult] = engine::reader().bytes(texture.filename);
 			if (bResult)
 			{
 				texture.bytes = std::move(bytes);
@@ -344,7 +344,7 @@ TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const
 		jsonFile += ".json";
 	}
 	auto const jsonID = jsonDir / jsonFile;
-	auto [jsonStr, bResult] = engine::reader().getString(jsonID);
+	auto [jsonStr, bResult] = engine::reader().string(jsonID);
 	if (!bResult)
 	{
 		LOG_E("[{}] [{}] not found!", Model::s_tName, jsonID.generic_string());
@@ -368,8 +368,8 @@ TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const
 			  mtlPath.generic_string());
 		return {};
 	}
-	auto [objBuf, bObjResult] = engine::reader().getStr(objPath);
-	auto [mtlBuf, bMtlResult] = engine::reader().getStr(mtlPath);
+	auto [objBuf, bObjResult] = engine::reader().sstream(objPath);
+	auto [mtlBuf, bMtlResult] = engine::reader().sstream(mtlPath);
 	if (bObjResult && bMtlResult)
 	{
 		OBJParser::Data objData;

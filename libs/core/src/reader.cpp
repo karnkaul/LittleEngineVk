@@ -52,9 +52,9 @@ Reader::Reader(Reader const&) = default;
 Reader& Reader::operator=(Reader const&) = default;
 Reader::~Reader() = default;
 
-TResult<std::string> Reader::getString(stdfs::path const& id) const
+TResult<std::string> Reader::string(stdfs::path const& id) const
 {
-	auto [str, bResult] = getStr(id);
+	auto [str, bResult] = sstream(id);
 	return {str.str(), bResult};
 }
 
@@ -139,7 +139,7 @@ bool FileReader::mount(stdfs::path path)
 	return false;
 }
 
-TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
+TResult<bytearray> FileReader::bytes(stdfs::path const& id) const
 {
 	auto [path, bResult] = findPrefixed(id);
 	if (bResult)
@@ -157,7 +157,7 @@ TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
 	return {};
 }
 
-TResult<std::stringstream> FileReader::getStr(stdfs::path const& id) const
+TResult<std::stringstream> FileReader::sstream(stdfs::path const& id) const
 {
 	auto [path, bResult] = findPrefixed(id);
 	if (bResult)
@@ -241,7 +241,7 @@ TResult<stdfs::path> ZIPReader::findPrefixed(stdfs::path const& id) const
 	return {};
 }
 
-TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
+TResult<std::stringstream> ZIPReader::sstream(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -260,7 +260,7 @@ TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
 	return {};
 }
 
-TResult<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
+TResult<bytearray> ZIPReader::bytes(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -317,7 +317,7 @@ FileMonitor::Status FileMonitor::update()
 			m_lastWriteTime = lastWriteTime;
 			if (m_mode == Mode::eTextContents)
 			{
-				auto [text, bResult] = s_reader.getString(m_path);
+				auto [text, bResult] = s_reader.string(m_path);
 				if (bResult)
 				{
 					if (text == m_text)
@@ -333,7 +333,7 @@ FileMonitor::Status FileMonitor::update()
 			}
 			else if (m_mode == Mode::eBinaryContents)
 			{
-				auto [bytes, bResult] = s_reader.getBytes(m_path);
+				auto [bytes, bResult] = s_reader.bytes(m_path);
 				if (bResult)
 				{
 					if (bytes == m_bytes)

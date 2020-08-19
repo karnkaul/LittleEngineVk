@@ -377,7 +377,7 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 			}
 			if (bSpv)
 			{
-				auto [shaderShaderData, bResult] = engine::reader().getBytes(codeID);
+				auto [shaderShaderData, bResult] = engine::reader().bytes(codeID);
 				ASSERT(bResult, "Shader code missing!");
 				if (!bResult)
 				{
@@ -440,7 +440,7 @@ bool Shader::Impl::loadGlsl(stdfs::path const& id, Type type)
 		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	auto [glslCode, bResult] = engine::reader().getString(id);
+	auto [glslCode, bResult] = engine::reader().string(id);
 	return bResult && glslToSpirV(id, codeMap.at((std::size_t)type));
 }
 
@@ -453,7 +453,7 @@ bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 	}
 	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 	ASSERT(pReader, "Cannot compile shaders without io::FileReader!");
-	auto [glslCode, bResult] = pReader->getString(id);
+	auto [glslCode, bResult] = pReader->string(id);
 	if (bResult)
 	{
 		auto const src = pReader->fullPath(id);
@@ -463,7 +463,7 @@ bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 		{
 			return false;
 		}
-		auto [spvCode, bResult] = pReader->getBytes(dstID);
+		auto [spvCode, bResult] = pReader->bytes(dstID);
 		if (!bResult)
 		{
 			return false;
@@ -591,7 +591,7 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	{
 		for (auto const& resourceID : out_createInfo.ids)
 		{
-			auto [pixels, bPixels] = engine::reader().getBytes(resourceID);
+			auto [pixels, bPixels] = engine::reader().bytes(resourceID);
 			if (!bPixels)
 			{
 				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
@@ -909,14 +909,14 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	if (out_createInfo.sheetID.empty() || out_createInfo.glyphs.empty())
 	{
 		out_info.jsonID = out_createInfo.jsonID;
-		auto [json, bResult] = engine::reader().getString(out_createInfo.jsonID);
+		auto [json, bResult] = engine::reader().string(out_createInfo.jsonID);
 		GData data;
 		if (!bResult || !data.read(std::move(json)) || !out_createInfo.deserialise(data))
 		{
 			LOG_E("[{}] [{}] Invalid Font data", s_tName, id.generic_string());
 			return false;
 		}
-		auto [img, bImg] = engine::reader().getBytes("fonts" / out_createInfo.sheetID);
+		auto [img, bImg] = engine::reader().bytes("fonts" / out_createInfo.sheetID);
 		if (!bImg)
 		{
 			LOG_E("[{}] [{}] Failed to load font atlas!", s_tName, id.generic_string());
@@ -1008,7 +1008,7 @@ bool Font::Impl::checkReload()
 			auto pInfo = res::infoRW(font);
 			if (pInfo)
 			{
-				auto [json, bResult] = engine::reader().getString(pInfo->jsonID);
+				auto [json, bResult] = engine::reader().string(pInfo->jsonID);
 				GData data;
 				Font::CreateInfo createInfo;
 				if (bResult && data.read(std::move(json)) && createInfo.deserialise(data))

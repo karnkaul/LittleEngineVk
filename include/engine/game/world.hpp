@@ -78,12 +78,12 @@ public:
 	static void addWorld();
 
 	template <typename T>
-	static T* getWorld();
+	static T* world();
 
 	template <typename T>
 	static bool removeWorld();
 
-	static World* getWorld(ID id);
+	static World* world(ID id);
 	static bool removeWorld(ID id);
 
 	static bool loadWorld(ID id);
@@ -188,7 +188,7 @@ void World::addWorld()
 }
 
 template <typename T>
-T* World::getWorld()
+T* World::world()
 {
 	auto search = s_worldByType.find(std::type_index(typeid(T)));
 	return search != s_worldByType.end() ? dynamic_cast<T*>(search->second) : nullptr;

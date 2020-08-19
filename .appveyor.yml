@@ -1,71 +1,53 @@
-image:
-  - Visual Studio 2019
-  - Ubuntu2004
-
+environment:
+  matrix:
+    - job_name: Windows x64
+      appveyor_build_worker_image: Visual Studio 2019
+    - job_name: Linux x64
+      appveyor_build_worker_image: Ubuntu
 configuration:
   - Release
-
 install:
-- cmd: >-
-    if not exist VulkanSDK.exe curl -L --silent --show-error --output VulkanSDK.exe https://vulkan.lunarg.com/sdk/download/1.2.141.2/windows/VulkanSDK-1.2.141.2-Installer.exe?Human=true
-
-    if "%SKIP_WINDOWS%" equ "true" echo -- Skipping Windows -- && appveyor exit
-
-    VulkanSDK.exe /S
-
-    echo VULKAN_SDK: %VULKAN_SDK%
-
-- sh: >-
-    [ ! -f vulkan_sdk.tar.gz ] && echo "== Downloading Vulkan SDK" && wget https://vulkan.lunarg.com/sdk/download/1.2.141.2/linux/vulkansdk-linux-x86_64-1.2.141.2.tar.gz?Human=true -O vulkan_sdk.tar.gz
-
-    [ "$SKIP_LINUX" == "true" ] && echo "-- Skipping Linux --" && exit
-
-    sudo mkdir -p /vulkan_sdk && sudo tar -xf vulkan_sdk.tar.gz -C /vulkan_sdk && sudo chmod -R a+r /vulkan_sdk && echo VULKAN_SDK: $VULKAN_SDK
-
-    echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y xorg-dev x11-xserver-utils clang
-
+  - cmd: |
+      if not exist VulkanSDK.exe curl -L --silent --show-error --output VulkanSDK.exe https://vulkan.lunarg.com/sdk/download/1.2.141.2/windows/VulkanSDK-1.2.141.2-Installer.exe?Human=true
+      if "%SKIP_WINDOWS%" equ "true" echo -- Skipping Windows -- && appveyor exit
+      VulkanSDK.exe /S
+      echo VULKAN_SDK: %VULKAN_SDK%
+  - sh: |
+      [ ! -f vulkan_sdk.tar.gz ] && echo "== Downloading Vulkan SDK" && wget https://vulkan.lunarg.com/sdk/download/1.2.141.2/linux/vulkansdk-linux-x86_64-1.2.141.2.tar.gz?Human=true -O vulkan_sdk.tar.gz
+      [ "$SKIP_LINUX" == "true" ] && echo "-- Skipping Linux --" && exit
+      sudo mkdir -p /vulkan_sdk && sudo tar -xf vulkan_sdk.tar.gz -C /vulkan_sdk && sudo chmod -R a+r /vulkan_sdk && echo VULKAN_SDK: $VULKAN_SDK
+      echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y xorg-dev x11-xserver-utils clang
 before_build:
-- cmd: >-
-    set "PATH=%VULKAN_SDK%/source/Vulkan-Headers/include;%VULKAN_SDK%/lib;%VULKAN_SDK%/bin;%PATH%"
-
-    cmake -G "Visual Studio 16 2019" . -B out
-
-- sh: >-
-    cmake -G Ninja . -B out -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=$CONFIGURATION || exit 1
-
+  - cmd: |
+      set "PATH=%VULKAN_SDK%/source/Vulkan-Headers/include;%VULKAN_SDK%/lib;%VULKAN_SDK%/bin;%PATH%"
+      cmake -G "Visual Studio 16 2019" . -B out
+  - sh: cmake -G Ninja . -B out -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=$CONFIGURATION || exit 1
 for:
--
-  matrix:
-    only:
-      - image: Visual Studio 2019
-  environment:
-    VULKAN_SDK: C:/VulkanSDK/1.2.141.2
-    VK_LAYER_PATH: "$VULKAN_SDK/etc/vulkan/explicit_layer.d"
-  build:
-    project: out/LittleEngineVk.sln
-    parallel: true
-    verbosity: minimal
-  cache:
-  - VulkanSDK.exe
-
--
-  matrix:
-    only:
-      - image: Ubuntu2004
-  environment:
-    VULKAN_SDK: /vulkan_sdk/1.2.141.2/x86_64
-    VK_LAYER_PATH: "$VULKAN_SDK/etc/vulkan/explicit_layer.d"
-  build_script:
-  - sh: echo "== Building Linux $CONFIGURATION ==" && ninja -v -C out || exit 1
-  
-  test_script:
-  - sh: >-
-     cd out && ctest
-  cache:
-  - vulkan_sdk.tar.gz
-
+  - matrix:
+      only:
+        - job_name: Windows x64
+    environment:
+      VULKAN_SDK: C:/VulkanSDK/1.2.141.2
+      VK_LAYER_PATH: "$VULKAN_SDK/etc/vulkan/explicit_layer.d"
+    build:
+      project: out/LittleEngineVk.sln
+      parallel: true
+      verbosity: minimal
+    cache:
+      - VulkanSDK.exe
+  - matrix:
+      only:
+        - job_name: Linux x64
+    environment:
+      VULKAN_SDK: /vulkan_sdk/1.2.141.2/x86_64
+      VK_LAYER_PATH: "$VULKAN_SDK/etc/vulkan/explicit_layer.d"
+    build_script:
+      - sh: echo "== Building Linux $CONFIGURATION ==" && ninja -v -C out || exit 1
+    cache:
+      - vulkan_sdk.tar.gz
+test_script: |
+  cd out;
+  ctest || exit 1
 matrix:
   fast_finish: true
-
 skip_branch_with_pr: true
-

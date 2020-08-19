@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iterator>
 #include <glm/gtx/rotate_vector.hpp>
 #include <core/assert.hpp>
 #include <engine/gfx/geometry.hpp>

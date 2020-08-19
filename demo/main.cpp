@@ -433,7 +433,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	World::addWorld<DemoWorld, TestWorld>();
-	auto pWorld = World::getWorld<DemoWorld>();
+	auto pWorld = World::world<DemoWorld>();
 
 	if (!engine.start(0))
 	{

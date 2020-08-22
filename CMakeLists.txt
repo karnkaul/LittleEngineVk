@@ -164,6 +164,7 @@ target_link_options(levk-interface INTERFACE ${LINK_OPTS})
 
 # Libraries
 add_subdirectory(libs/core)
+add_subdirectory(libs/djson)
 add_subdirectory(src)
 
 # Demo

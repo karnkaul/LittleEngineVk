@@ -1,6 +1,5 @@
 #include <initializer_list>
 #include <core/assert.hpp>
-#include <core/gdata.hpp>
 #include <core/reader.hpp>
 #include <core/tasks.hpp>
 #include <core/log.hpp>
@@ -8,6 +7,7 @@
 #include <core/map_store.hpp>
 #include <core/threads.hpp>
 #include <core/transform.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/levk.hpp>
 #include <engine/game/freecam.hpp>
 #include <engine/game/input.hpp>
@@ -416,6 +416,7 @@ u32 FPS::update()
 
 int main(int argc, char** argv)
 {
+	dj::g_log_error = [](auto text) { LOG_E("{}", text); };
 	engine::Service engine(argc, argv);
 	g_uReader = std::make_unique<io::FileReader>();
 	// g_uReader = std::make_unique<io::ZIPReader>();

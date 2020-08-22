@@ -83,8 +83,8 @@ private:
 public:
 	///
 	/// \brief Add a new Entry
-	///
 	/// \param id full path
+	/// \param ts objects (as per template arguments)
 	///
 	void emplace(stdfs::path id, T&&... ts);
 	///

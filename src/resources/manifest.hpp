@@ -1,10 +1,10 @@
 #pragma once
 #include <atomic>
 #include <memory>
-#include <core/gdata.hpp>
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
 #include <core/utils.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/resources/resource_list.hpp>
 #include <engine/resources/resources.hpp>
 
@@ -62,7 +62,7 @@ public:
 	Info m_toLoad;
 
 protected:
-	GData m_manifest;
+	dj::object m_manifest;
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<res::GUID> m_loading;

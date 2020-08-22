@@ -169,7 +169,7 @@ bool World::impl_start(ID previous)
 		auto [str, bResult] = engine::reader().string(inputMap);
 		if (bResult)
 		{
-			GData json;
+			dj::object json;
 			if (json.read(std::move(str)))
 			{
 				if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)

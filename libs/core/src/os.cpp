@@ -4,7 +4,6 @@
 #include <thread>
 #include <core/assert.hpp>
 #include <core/log.hpp>
-#include <core/gdata.hpp>
 #include <core/os.hpp>
 #include <core/threads.hpp>
 #if defined(LEVK_OS_WINX)

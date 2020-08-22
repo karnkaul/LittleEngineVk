@@ -3,10 +3,10 @@
 #include <glm/vec2.hpp>
 #include <core/colour.hpp>
 #include <core/flags.hpp>
-#include <core/gdata.hpp>
 #include <core/hash.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/gfx/geometry.hpp>
 
 #if defined(LEVK_DEBUG)
@@ -334,7 +334,7 @@ struct Font::Glyph
 	s32 orgSizePt = 0;
 	bool bBlank = false;
 
-	void deserialise(u8 c, GData const& json);
+	void deserialise(u8 c, dj::object const& json);
 };
 struct Font::Info : InfoBase
 {
@@ -352,7 +352,7 @@ struct Font::CreateInfo
 	Hash samplerID;
 	Hash materialID;
 
-	bool deserialise(GData const& json);
+	bool deserialise(std::string const& jsonStr);
 };
 struct Font::Text
 {

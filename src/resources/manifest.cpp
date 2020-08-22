@@ -123,7 +123,7 @@ bool Manifest::read(stdfs::path const& id)
 		if (!m_manifest.read(std::move(data)))
 		{
 			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), engine::reader().medium());
-			m_manifest.clear();
+			m_manifest.fields.clear();
 			return false;
 		}
 		m_status = Status::eReady;
@@ -201,144 +201,147 @@ Manifest::Status Manifest::update(bool bTerminate)
 ResourceList Manifest::parse()
 {
 	ResourceList all;
-	auto const shaders = m_manifest.get<std::vector<GData>>("shaders");
-	for (auto const& shader : shaders)
+	if (auto pShaders = m_manifest.find<dj::array>("shaders"))
 	{
-		auto resourceID = shader.get("id");
-		if (!resourceID.empty())
-		{
-			if (find<Shader>(resourceID).bResult)
+		pShaders->for_each<dj::object>([&](auto const& shader) {
+			auto resourceID = shader.template value<dj::string>("id");
+			if (!resourceID.empty())
 			{
-				all.shaders.push_back(resourceID);
-				m_loaded.shaders.push_back(std::move(resourceID));
-			}
-			else
-			{
-				ResourceData<Shader> data;
-				data.id = std::move(resourceID);
-				bool const bOptional = shader.get<bool>("optional");
-				bool bFound = false;
-				auto const resourceIDs = shader.get<std::vector<GData>>("resource_ids");
-				for (auto const& resourceID : resourceIDs)
+				if (find<Shader>(resourceID).bResult)
 				{
-					auto const typeStr = resourceID.get("type");
-					auto const id = resourceID.get("id");
-					bool const bPresent = bOptional ? engine::reader().checkPresence(id) : engine::reader().isPresent(id);
-					if (!id.empty() && !typeStr.empty() && bPresent)
+					all.shaders.push_back(resourceID);
+					m_loaded.shaders.push_back(std::move(resourceID));
+				}
+				else
+				{
+					ResourceData<Shader> data;
+					data.id = std::move(resourceID);
+					bool const bOptional = shader.template value<dj::boolean>("optional");
+					bool bFound = false;
+					if (auto const pResourceIDs = shader.template find<dj::array>("resource_ids"))
 					{
-						Shader::Type type = Shader::Type::eFragment;
-						if (typeStr == "vertex")
+						pResourceIDs->template for_each<dj::object>([&](auto const& resourceID) {
+							auto const typeStr = resourceID.template value<dj::string>("type");
+							auto const id = resourceID.template value<dj::string>("id");
+							bool const bPresent = bOptional ? engine::reader().checkPresence(id) : engine::reader().isPresent(id);
+							if (!id.empty() && !typeStr.empty() && bPresent)
+							{
+								Shader::Type type = Shader::Type::eFragment;
+								if (typeStr == "vertex")
+								{
+									type = Shader::Type::eVertex;
+								}
+								data.createInfo.codeIDMap[(std::size_t)type] = id;
+								bFound = true;
+							}
+						});
+						if (bFound)
 						{
-							type = Shader::Type::eVertex;
+							all.shaders.push_back(data.id);
+							m_toLoad.shaders.push_back(std::move(data));
+							m_data.idCount.fetch_add(1);
 						}
-						data.createInfo.codeIDMap[(std::size_t)type] = id;
-						bFound = true;
 					}
 				}
-				if (bFound)
+			}
+		});
+	}
+	if (auto pTextures = m_manifest.find<dj::array>("textures"))
+	{
+		pTextures->for_each<dj::object>([&](auto const& texture) {
+			auto const id = texture.template value<dj::string>("id");
+			bool const bPresent = texture.template value<dj::boolean>("optional") ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
+			if (!id.empty() && bPresent)
+			{
+				if (find<Texture>(id).bResult)
 				{
-					all.shaders.push_back(data.id);
-					m_toLoad.shaders.push_back(std::move(data));
+					all.textures.push_back(id);
+					m_loaded.textures.push_back(std::move(id));
+				}
+				else
+				{
+					ResourceData<Texture> data;
+					data.id = id;
+					data.createInfo.mode = engine::colourSpace();
+					data.createInfo.samplerID = texture.template value<dj::string>("sampler");
+					data.createInfo.ids = {id};
+					all.textures.push_back(id);
+					m_toLoad.textures.push_back(std::move(data));
 					m_data.idCount.fetch_add(1);
 				}
 			}
-		}
+		});
 	}
-	auto const textures = m_manifest.get<std::vector<GData>>("textures");
-	for (auto const& texture : textures)
+	if (auto pCubemaps = m_manifest.find<dj::array>("cubemaps"))
 	{
-		auto const id = texture.get("id");
-		bool const bPresent = texture.get<bool>("optional") ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
-		if (!id.empty() && bPresent)
-		{
-			if (find<Texture>(id).bResult)
+		pCubemaps->for_each<dj::object>([&](auto const& cubemap) {
+			auto const resourceID = cubemap.template value<dj::string>("id");
+			bool const bOptional = cubemap.template value<dj::boolean>("optional");
+			bool bMissing = false;
+			auto const pResourceIDs = cubemap.template find<dj::array>("textures");
+			if (!resourceID.empty())
 			{
-				all.textures.push_back(id);
-				m_loaded.textures.push_back(std::move(id));
-			}
-			else
-			{
-				ResourceData<Texture> data;
-				data.id = id;
-				data.createInfo.mode = engine::colourSpace();
-				data.createInfo.samplerID = texture.get("sampler");
-				data.createInfo.ids = {id};
-				all.textures.push_back(id);
-				m_toLoad.textures.push_back(std::move(data));
-				m_data.idCount.fetch_add(1);
-			}
-		}
-	}
-	auto const cubemaps = m_manifest.get<std::vector<GData>>("cubemaps");
-	for (auto const& cubemap : cubemaps)
-	{
-		auto const resourceID = cubemap.get("id");
-		auto const resourceIDs = cubemap.get<std::vector<std::string>>("textures");
-		bool const bOptional = cubemap.get<bool>("optional");
-		bool bMissing = false;
-		if (!resourceID.empty())
-		{
-			if (find<Texture>(resourceID).bResult)
-			{
-				all.cubemaps.push_back(resourceID);
-				m_loaded.cubemaps.push_back(std::move(resourceID));
-			}
-			else
-			{
-				ResourceData<Texture> data;
-				data.id = resourceID;
-				data.createInfo.mode = engine::colourSpace();
-				data.createInfo.type = Texture::Type::eCube;
-				data.createInfo.samplerID = cubemap.get("sampler");
-				for (auto const& id : resourceIDs)
+				if (find<Texture>(resourceID).bResult)
 				{
-					bool const bPresent = bOptional ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
+					all.cubemaps.push_back(resourceID);
+					m_loaded.cubemaps.push_back(std::move(resourceID));
+				}
+				else if (pResourceIDs)
+				{
+					ResourceData<Texture> data;
+					data.id = resourceID;
+					data.createInfo.mode = engine::colourSpace();
+					data.createInfo.type = Texture::Type::eCube;
+					data.createInfo.samplerID = cubemap.template value<dj::string>("sampler");
+					pResourceIDs->template for_each_value<dj::string>([&](auto const& id) {
+						bool const bPresent = bOptional ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
+						if (bPresent)
+						{
+							data.createInfo.ids.push_back(id);
+						}
+						else
+						{
+							bMissing = true;
+						}
+					});
+					if (!bMissing)
+					{
+						all.cubemaps.push_back(data.id);
+						m_toLoad.cubemaps.push_back(std::move(data));
+						m_data.idCount.fetch_add(1);
+					}
+				}
+			}
+		});
+	}
+	if (auto pModels = m_manifest.find<dj::array>("models"))
+	{
+		pModels->for_each<dj::object>([&](auto const& model) {
+			auto const modelID = model.template value<dj::string>("id");
+			if (!modelID.empty())
+			{
+				if (find<Model>(modelID).bResult)
+				{
+					all.models.push_back(modelID);
+					m_loaded.models.push_back(std::move(modelID));
+				}
+				else
+				{
+					bool const bOptional = model.template value<dj::boolean>("optional");
+					ResourceData<Model> data;
+					data.id = modelID;
+					auto jsonID = data.id / data.id.filename();
+					jsonID += ".json";
+					bool const bPresent = bOptional ? engine::reader().isPresent(jsonID) : engine::reader().checkPresence(jsonID);
 					if (bPresent)
 					{
-						data.createInfo.ids.push_back(id);
-					}
-					else
-					{
-						bMissing = true;
-						break;
+						all.models.push_back(data.id);
+						m_toLoad.models.push_back(std::move(data));
+						m_data.idCount.fetch_add(1);
 					}
 				}
-				if (!bMissing)
-				{
-					all.cubemaps.push_back(data.id);
-					m_toLoad.cubemaps.push_back(std::move(data));
-					m_data.idCount.fetch_add(1);
-				}
 			}
-		}
-	}
-	auto const models = m_manifest.get<std::vector<GData>>("models");
-	for (auto const& model : models)
-	{
-		auto const modelID = model.get("id");
-		if (!modelID.empty())
-		{
-			if (find<Model>(modelID).bResult)
-			{
-				all.models.push_back(modelID);
-				m_loaded.models.push_back(std::move(modelID));
-			}
-			else
-			{
-				bool const bOptional = model.get<bool>("optional");
-				ResourceData<Model> data;
-				data.id = modelID;
-				auto jsonID = data.id / data.id.filename();
-				jsonID += ".json";
-				bool const bPresent = bOptional ? engine::reader().isPresent(jsonID) : engine::reader().checkPresence(jsonID);
-				if (bPresent)
-				{
-					all.models.push_back(data.id);
-					m_toLoad.models.push_back(std::move(data));
-					m_data.idCount.fetch_add(1);
-				}
-			}
-		}
+		});
 	}
 	m_bParsed = true;
 	return all;
@@ -348,7 +351,7 @@ void Manifest::reset()
 {
 	m_loaded = {};
 	m_toLoad = {};
-	m_manifest.clear();
+	m_manifest.fields.clear();
 	m_data.idCount = 0;
 	m_data.dataCount = 0;
 	m_running.clear();

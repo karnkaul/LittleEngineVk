@@ -27,7 +27,7 @@ stdfs::path g_exeLocation;
 stdfs::path g_exePath;
 stdfs::path g_workingDir;
 std::string g_exePathStr;
-std::vector<std::string_view> g_args;
+std::deque<os::ArgsParser::entry> g_args;
 } // namespace
 
 os::Service::Service(os::Args const& args)
@@ -46,21 +46,17 @@ void os::init(Args const& args)
 	g_workingDir = stdfs::absolute(stdfs::current_path());
 	if (args.argc > 0)
 	{
-		g_exeLocation = stdfs::absolute(args.argv[0]);
+		ArgsParser parser;
+		g_args = parser.parse(args.argc, args.argv);
+		auto& arg0 = g_args.front();
+		g_exeLocation = stdfs::absolute(arg0.k);
 		g_exePath = g_exeLocation.parent_path();
 		while (g_exePath.filename() == ".")
 		{
 			g_exePath = g_exePath.parent_path();
 		}
-		for (s32 i = 1; i < args.argc; ++i)
-		{
-			std::string_view arg(args.argv[i]);
-			while (!arg.empty() && arg.at(0) == '-')
-			{
-				arg = arg.substr(1);
-			}
-			g_args.push_back(arg);
-		}
+		g_exeLocation = g_exePath / g_exeLocation.filename();
+		g_args.pop_front();
 	}
 	return;
 }
@@ -91,14 +87,9 @@ stdfs::path os::dirPath(Dir dir)
 	}
 }
 
-std::vector<std::string_view> const& os::args()
+std::deque<os::ArgsParser::entry> const& os::args() noexcept
 {
 	return g_args;
-}
-
-bool os::isDefined(std::string_view arg) noexcept
-{
-	return std::find_if(g_args.begin(), g_args.end(), [arg](std::string_view s) { return s == arg; }) != g_args.end();
 }
 
 bool os::isDebuggerAttached()

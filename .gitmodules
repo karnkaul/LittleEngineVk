@@ -10,3 +10,6 @@
 [submodule "libs/djson"]
 	path = libs/djson
 	url = https://github.com/karnkaul/djson
+[submodule "libs/core/include/kt/args_parser"]
+	path = libs/core/include/kt/args_parser
+	url = https://github.com/karnkaul/args-parser

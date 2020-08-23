@@ -46,7 +46,7 @@ for:
     cache:
       - vulkan_sdk.tar.gz
 test_script: |
-  cd out;
+  cd out
   ctest || exit 1
 matrix:
   fast_finish: true

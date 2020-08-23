@@ -407,7 +407,7 @@ bool WindowImpl::create(Window::Info const& info)
 		{
 			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((std::size_t)colourSpace));
 		}
-		if (os::isDefined("immediate"))
+		if (os::isDefined("immediate", "i"))
 		{
 			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
 			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)PresentMode::eImmediate);

@@ -226,9 +226,6 @@ bool Gamepad::isPressed(Key button) const
 	return false;
 }
 
-std::unordered_map<WindowID, WindowImpl::InputCallbacks> WindowImpl::s_input;
-EnumArray<WindowImpl::Cursor, input::CursorType> WindowImpl::s_cursors;
-
 WindowImpl* WindowImpl::find(StaticAny<> nativeHandle)
 {
 #if defined(LEVK_USE_GLFW)

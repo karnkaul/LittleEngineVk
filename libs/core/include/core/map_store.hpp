@@ -27,11 +27,11 @@ public:
 	///
 	/// \brief Find object mapped to `id`
 	///
-	[[nodiscard]] TResult<Value const*> find(Key const& id) const noexcept;
+	[[nodiscard]] Value const* find(Key const& id) const noexcept;
 	///
 	/// \brief Find object mapped to `id`
 	///
-	[[nodiscard]] TResult<Value*> find(Key const& id) noexcept;
+	[[nodiscard]] Value* find(Key const& id) noexcept;
 	///
 	/// \brief Check whether `id` has been loaded
 	///
@@ -58,7 +58,7 @@ void TMapStore<M>::emplace(Key const& id, Args&&... args)
 }
 
 template <typename M>
-TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) const noexcept
+typename TMapStore<M>::Value const* TMapStore<M>::find(Key const& id) const noexcept
 {
 	if (auto search = m_map.find(id); search != m_map.end())
 	{
@@ -68,7 +68,7 @@ TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) c
 }
 
 template <typename M>
-TResult<typename TMapStore<M>::Value*> TMapStore<M>::find(Key const& id) noexcept
+typename TMapStore<M>::Value* TMapStore<M>::find(Key const& id) noexcept
 {
 	if (auto search = m_map.find(id); search != m_map.end())
 	{

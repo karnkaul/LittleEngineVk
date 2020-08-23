@@ -24,9 +24,6 @@ Window::Service::~Service()
 	WindowImpl::deinit();
 }
 
-std::array<std::string_view, (std::size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen",
-																							  "Dedicated Fullscreen"};
-
 std::string const Window::s_tName = utils::tName<Window>();
 
 Window::Window()

@@ -21,7 +21,7 @@ public:
 		eCOUNT_
 	};
 
-	static std::array<std::string_view, (std::size_t)Mode::eCOUNT_> const s_modeNames;
+	inline static EnumArray<Mode> const s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
 
 	struct Info final
 	{

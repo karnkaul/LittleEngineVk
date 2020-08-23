@@ -56,11 +56,11 @@ std::vector<stdfs::path> Service::locateData(std::vector<DataSearch> const& sear
 	for (auto const& pattern : searchPatterns)
 	{
 		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
-		auto [found, bResult] = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
-		LOGIF_W(!bResult, "[{}] Failed to locate data!", tName);
-		if (bResult)
+		auto search = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
+		LOGIF_W(!search, "[{}] Failed to locate data!", tName);
+		if (search)
 		{
-			ret.push_back(std::move(found));
+			ret.push_back(std::move(*search));
 		}
 	}
 	return ret;

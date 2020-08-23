@@ -33,8 +33,8 @@ public:
 		input::CursorType type;
 	};
 
-	static std::unordered_map<WindowID, InputCallbacks> s_input;
-	static EnumArray<Cursor, input::CursorType> s_cursors;
+	inline static std::unordered_map<WindowID, InputCallbacks> s_input;
+	inline static EnumArray<input::CursorType, Cursor> s_cursors;
 
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};

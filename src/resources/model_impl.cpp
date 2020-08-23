@@ -124,10 +124,9 @@ OBJParser::OBJParser(Data data)
 #endif
 		for (auto& texture : m_info.textures)
 		{
-			auto [bytes, bResult] = engine::reader().bytes(texture.filename);
-			if (bResult)
+			if (auto bytes = engine::reader().bytes(texture.filename))
 			{
-				texture.bytes = std::move(bytes);
+				texture.bytes = std::move(*bytes);
 			}
 			else
 			{
@@ -334,14 +333,14 @@ TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const
 		jsonFile += ".json";
 	}
 	auto const jsonID = jsonDir / jsonFile;
-	auto [jsonStr, bResult] = engine::reader().string(jsonID);
-	if (!bResult)
+	auto jsonStr = engine::reader().string(jsonID);
+	if (!jsonStr)
 	{
 		LOG_E("[{}] [{}] not found!", Model::s_tName, jsonID.generic_string());
 		return {};
 	}
 	dj::object json;
-	if (!json.read(jsonStr) || json.fields.empty())
+	if (!json.read(*jsonStr) || json.fields.empty())
 	{
 		LOG_E("[{}] Failed to read json: [{}]!", Model::s_tName, jsonID.generic_string());
 	}
@@ -360,15 +359,15 @@ TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const
 			  mtlPath.generic_string());
 		return {};
 	}
-	auto [objBuf, bObjResult] = engine::reader().sstream(objPath);
-	auto [mtlBuf, bMtlResult] = engine::reader().sstream(mtlPath);
-	if (bObjResult && bMtlResult)
+	auto objBuf = engine::reader().sstream(objPath);
+	auto mtlBuf = engine::reader().sstream(mtlPath);
+	if (objBuf && mtlBuf)
 	{
 		auto pSamplerID = json.find<dj::string>("sampler");
 		auto pScale = json.find<dj::floating>("scale");
 		OBJParser::Data objData;
-		objData.objBuf = std::move(objBuf);
-		objData.mtlBuf = std::move(mtlBuf);
+		objData.objBuf = std::move(*objBuf);
+		objData.mtlBuf = std::move(*mtlBuf);
 		objData.jsonID = std::move(jsonID);
 		objData.modelID = pThis->idRoot.empty() ? jsonDir : pThis->idRoot;
 		objData.samplerID = pSamplerID ? pSamplerID->value : "samplers/default";

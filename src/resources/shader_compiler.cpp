@@ -13,7 +13,7 @@ std::string const ShaderCompiler::s_tName = utils::tName<ShaderCompiler>();
 
 ShaderCompiler::ShaderCompiler()
 {
-	if (std::system("glslc --version") != 0)
+	if (!os::sysCall("{} --version", s_compiler))
 	{
 		LOG_E("[{}] Failed to go Online!", s_tName);
 	}
@@ -45,7 +45,7 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 		LOG_E("[{}] Destination file exists and overwrite flag not set: [{}]", s_tName, src.generic_string());
 		return false;
 	}
-	if (!os::sysCall("glslc {} -o {}", src.string(), dst.string()))
+	if (!os::sysCall("{} {} -o {}", s_compiler, src.string(), dst.string()))
 	{
 		LOG_E("[{}] Shader compilation failed: [{}]", s_tName, src.generic_string());
 		return false;

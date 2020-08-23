@@ -285,12 +285,12 @@ void DemoWorld::tick(Time dt)
 	}
 	if (m_data.bLoadUnloadModels && !m_data.asyncModel0.valid())
 	{
-		if (auto [model, bResult] = res::find<res::Model>(m_data.model0id); bResult)
+		if (auto model = res::find<res::Model>(m_data.model0id))
 		{
-			res::unload(model);
-			if (auto [model1, bResult1] = res::find<res::Model>(m_data.model1id); bResult1)
+			res::unload(*model);
+			if (auto model1 = res::find<res::Model>(m_data.model1id))
 			{
-				res::unload(model1);
+				res::unload(*model1);
 			}
 			m_data.asyncModel0 = m_data.asyncModel1 = {};
 		}

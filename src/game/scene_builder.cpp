@@ -110,10 +110,9 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
-		auto [cubemap, bCubemap] = res::find<res::Texture>(m_info.skyboxCubemapID);
-		if (bCubemap && cubemap.status() == res::Status::eReady)
+		if (auto cubemap = res::find<res::Texture>(m_info.skyboxCubemapID); cubemap->status() == res::Status::eReady)
 		{
-			scene.view.skybox.cubemap = cubemap;
+			scene.view.skybox.cubemap = *cubemap;
 		}
 	}
 	gfx::Renderer::Batch batch3D;
@@ -122,8 +121,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, pModel] = query;
-			if (pModel->status() == res::Status::eReady)
+			if (auto& [pTransform, pModel] = query; pModel->status() == res::Status::eReady)
 			{
 				batch3D.drawables.push_back({pModel->meshes(), pTransform, m_info.p3Dpipe});
 			}
@@ -133,8 +131,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<Transform, res::Mesh>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, pMesh] = query;
-			if (pMesh->status() == res::Status::eReady)
+			if (auto& [pTransform, pMesh] = query; pMesh->status() == res::Status::eReady)
 			{
 				batch3D.drawables.push_back({{*pMesh}, pTransform, m_info.p3Dpipe});
 			}

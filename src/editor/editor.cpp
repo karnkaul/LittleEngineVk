@@ -3,7 +3,7 @@
 #include <core/log_config.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
-#include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <editor/editor.hpp>
 #if defined(LEVK_EDITOR)
 #include <fmt/format.h>
@@ -40,7 +40,7 @@ namespace
 {
 bool g_bInit = false;
 io::OnLog g_onLogChain = nullptr;
-Lockable<std::mutex> g_logMutex;
+kt::lockable<std::mutex> g_logMutex;
 
 struct
 {

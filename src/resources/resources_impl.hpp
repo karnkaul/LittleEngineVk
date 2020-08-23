@@ -49,14 +49,14 @@ struct IReloadable
 
 struct Shader::Impl : ImplBase, IReloadable
 {
-	static constexpr std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
+	constexpr static std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
 																												vk::ShaderStageFlagBits::eFragment};
 
-	static std::string_view s_spvExt;
-	static std::string_view s_vertExt;
-	static std::string_view s_fragExt;
+	inline static std::string_view s_spvExt = ".spv";
+	inline static std::string_view s_vertExt = ".vert";
+	inline static std::string_view s_fragExt = ".frag";
 
-	EnumArray<bytearray, Shader::Type> codeMap;
+	EnumArray<Shader::Type, bytearray> codeMap;
 	std::array<vk::ShaderModule, std::size_t(Shader::Type::eCOUNT_)> shaders;
 
 	static std::string extension(stdfs::path const& id);

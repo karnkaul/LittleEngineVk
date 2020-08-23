@@ -3,7 +3,7 @@
 #include <memory>
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
-#include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <dumb_json/dumb_json.hpp>
 #include <engine/resources/resource_list.hpp>
 #include <engine/resources/resources.hpp>
@@ -66,7 +66,7 @@ protected:
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<res::GUID> m_loading;
-	Lockable<std::mutex> m_mutex;
+	kt::lockable<std::mutex> m_mutex;
 	res::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
 	bool m_bParsed = false;

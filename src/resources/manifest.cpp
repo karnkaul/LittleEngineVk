@@ -43,7 +43,7 @@ bool empty(std::vector<T> const&... out_vecs)
 
 template <typename T>
 std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
-														   std::vector<GUID>& out_resources, Lockable<std::mutex>& mutex, std::string_view jobName)
+														   std::vector<GUID>& out_resources, kt::lockable<std::mutex>& mutex, std::string_view jobName)
 {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
 	tasks::List taskList;
@@ -117,10 +117,9 @@ std::string const Manifest::s_tName = utils::tName<Manifest>();
 
 bool Manifest::read(stdfs::path const& id)
 {
-	auto [data, bResult] = engine::reader().string(id);
-	if (bResult)
+	if (auto data = engine::reader().string(id))
 	{
-		if (!m_manifest.read(std::move(data)))
+		if (!m_manifest.read(*data))
 		{
 			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), engine::reader().medium());
 			m_manifest.fields.clear();
@@ -397,10 +396,10 @@ void Manifest::loadData()
 			Model::LoadInfo loadInfo;
 			loadInfo.idRoot = data.id;
 			loadInfo.jsonDirectory = data.id;
-			auto [info, bInfo] = loadInfo.createInfo();
-			if (bInfo)
+			auto info = loadInfo.createInfo();
+			if (info)
 			{
-				data.createInfo = std::move(info);
+				data.createInfo = std::move(*info);
 			}
 		};
 		addJobs(tasks::forEach<ResourceData<Model>>(m_toLoad.models, task, "Manifest-0:Models"));

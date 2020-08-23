@@ -8,6 +8,7 @@
 #include <limits>
 #include <utility>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -38,7 +39,7 @@ using f32 = float;
 using f64 = double;
 using bytearray = std::vector<std::byte>;
 
-template <typename T, typename E, std::size_t N = (std::size_t)E::eCOUNT_>
+template <typename E, typename T = std::string_view, std::size_t N = (std::size_t)E::eCOUNT_>
 using EnumArray = std::array<T, N>;
 
 template <typename... Ts>
@@ -65,12 +66,53 @@ struct TResult
 {
 	using type = T;
 
-	T payload;
+	T payload = {};
 	bool bResult = false;
 
-	TResult() = default;
-	TResult(T&& payload) : payload(std::forward<T>(payload)), bResult(true) {}
-	TResult(T&& payload, bool bResult) : payload(std::forward<T>(payload)), bResult(bResult) {}
+	constexpr TResult() = default;
+	constexpr TResult(T&& payload) : payload(std::forward<T>(payload)), bResult(true) {}
+	constexpr TResult(T&& payload, bool bResult) : payload(std::forward<T>(payload)), bResult(bResult) {}
+
+	constexpr operator bool() const
+	{
+		return bResult;
+	}
+
+	constexpr T const& operator*() const
+	{
+		return payload;
+	}
+
+	constexpr T& operator*()
+	{
+		return payload;
+	}
+
+	constexpr T const* operator->() const
+	{
+		return &payload;
+	}
+
+	constexpr T* operator->()
+	{
+		return &payload;
+	}
+};
+
+template <>
+struct TResult<void>
+{
+	using type = void;
+
+	bool bResult = false;
+
+	constexpr TResult() noexcept = default;
+	constexpr TResult(bool bResult) noexcept : bResult(bResult) {}
+
+	constexpr operator bool() const
+	{
+		return bResult;
+	}
 };
 
 ///

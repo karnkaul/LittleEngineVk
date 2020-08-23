@@ -12,7 +12,7 @@
 #include <core/assert.hpp>
 #include <core/std_types.hpp>
 #include <core/threads.hpp>
-#include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <io_impl.hpp>
 
 namespace le
@@ -22,7 +22,7 @@ namespace
 class FileLogger final
 {
 public:
-	static constexpr std::size_t s_reserveCount = 1024 * 1024;
+	constexpr static std::size_t s_reserveCount = 1024 * 1024;
 
 public:
 	~FileLogger();
@@ -31,7 +31,7 @@ public:
 	std::string m_cache;
 	threads::Handle m_hThread;
 	std::atomic<bool> m_bLog;
-	Lockable<std::mutex> m_mutex;
+	kt::lockable<std::mutex> m_mutex;
 
 public:
 	void record(std::string line);
@@ -123,8 +123,8 @@ void FileLogger::dumpToFile(std::filesystem::path const& path)
 	return;
 }
 
-Lockable<std::mutex> g_logMutex;
-EnumArray<char, io::Level> g_prefixes = {'D', 'I', 'W', 'E'};
+kt::lockable<std::mutex> g_logMutex;
+EnumArray<io::Level, char> g_prefixes = {'D', 'I', 'W', 'E'};
 FileLogger g_fileLogger;
 } // namespace
 

@@ -211,8 +211,8 @@ struct Shader::Info : InfoBase
 };
 struct Shader::CreateInfo
 {
-	EnumArray<bytearray, Type> codeMap;
-	EnumArray<stdfs::path, Type> codeIDMap;
+	EnumArray<Type, bytearray> codeMap;
+	EnumArray<Type, stdfs::path> codeIDMap;
 };
 
 enum class Sampler::Filter : s8

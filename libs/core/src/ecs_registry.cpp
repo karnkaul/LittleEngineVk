@@ -9,9 +9,6 @@ namespace le
 bool g_bDestroyed = false;
 
 std::string const s_tEName = utils::tName<Entity>();
-std::unordered_map<std::type_index, Registry::Signature> Registry::s_signs;
-Lockable<std::mutex> Registry::s_mutex;
-ECSID Registry::s_nextRegID;
 
 bool operator==(Entity lhs, Entity rhs)
 {

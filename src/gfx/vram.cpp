@@ -7,7 +7,7 @@
 #include <core/assert.hpp>
 #include <core/log.hpp>
 #include <core/threads.hpp>
-#include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
 #include <gfx/renderer_impl.hpp>
@@ -55,7 +55,7 @@ std::unordered_map<std::thread::id, Stage> g_active;
 std::unordered_map<std::thread::id, vk::CommandPool> g_pools;
 std::deque<Submit> g_submitted;
 
-Lockable<std::mutex> g_mutex;
+kt::lockable<std::mutex> g_mutex;
 
 Buffer createStagingBuffer(vk::DeviceSize size)
 {

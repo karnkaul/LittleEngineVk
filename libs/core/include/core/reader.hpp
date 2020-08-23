@@ -173,7 +173,7 @@ public:
 	};
 
 protected:
-	static io::FileReader s_reader;
+	inline static io::FileReader s_reader;
 
 protected:
 	stdfs::file_time_type m_lastWriteTime = {};

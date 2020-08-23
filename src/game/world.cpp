@@ -166,11 +166,10 @@ bool World::impl_start(ID previous)
 	auto const inputMap = inputMapID();
 	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
 	{
-		auto [str, bResult] = engine::reader().string(inputMap);
-		if (bResult)
+		if (auto str = engine::reader().string(inputMap))
 		{
 			dj::object json;
-			if (json.read(std::move(str)))
+			if (json.read(*str))
 			{
 				if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
 				{

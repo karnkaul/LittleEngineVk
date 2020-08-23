@@ -25,7 +25,7 @@ struct Map
 	TMapStore<std::unordered_map<GUID, TResource<T, TImpl>>> resources;
 	std::unordered_map<Hash, GUID> ids;
 	std::unordered_map<GUID, TImpl*> loading;
-	mutable Lockable<std::shared_mutex> mutex;
+	mutable kt::lockable<std::shared_mutex> mutex;
 };
 
 std::atomic<GUID::type> g_nextGUID;
@@ -69,25 +69,12 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 }
 
 template <typename T, typename TImpl>
-TResult<T> find(Map<T, TImpl> const& map, GUID guid)
-{
-	auto lock = map.mutex.template lock<std::shared_lock>();
-	auto [pResource, bResult] = map.resources.find(guid);
-	if (bResult)
-	{
-		return T{pResource->resource};
-	}
-	return {};
-}
-
-template <typename T, typename TImpl>
 TResult<T> find(Map<T, TImpl> const& map, Hash id)
 {
 	auto lock = map.mutex.template lock<std::shared_lock>();
 	if (auto search = map.ids.find(id); search != map.ids.end())
 	{
-		auto [pResource, bResult] = map.resources.find(search->second);
-		if (bResult)
+		if (auto pResource = map.resources.find(search->second))
 		{
 			return T{pResource->resource};
 		}
@@ -99,8 +86,7 @@ template <typename T, typename TImpl>
 TImpl* findImpl(Map<T, TImpl>& map, GUID guid)
 {
 	auto lock = map.mutex.template lock<std::shared_lock>();
-	auto [pResource, bResult] = map.resources.find(guid);
-	if (bResult)
+	if (auto pResource = map.resources.find(guid))
 	{
 		return pResource->uImpl.get();
 	}
@@ -112,8 +98,7 @@ typename T::Info const& findInfo(Map<T, TImpl>& out_map, GUID guid)
 {
 	static typename T::Info const s_default{};
 	auto lock = out_map.mutex.template lock<std::shared_lock>();
-	auto [pResource, bResult] = out_map.resources.find(guid);
-	if (bResult)
+	if (auto pResource = out_map.resources.find(guid))
 	{
 		return pResource->info;
 	}
@@ -124,8 +109,7 @@ template <typename T, typename TImpl>
 typename T::Info* findInfoRW(Map<T, TImpl>& out_map, GUID guid)
 {
 	auto lock = out_map.mutex.template lock<std::shared_lock>();
-	auto [pResource, bResult] = out_map.resources.find(guid);
-	if (bResult)
+	if (auto pResource = out_map.resources.find(guid))
 	{
 		return &pResource->info;
 	}
@@ -140,8 +124,7 @@ bool unload(Map<T, TImpl>& out_map, Hash id)
 	{
 		auto const guid = search->second;
 		out_map.ids.erase(search);
-		auto [tResource, bResult] = out_map.resources.find(guid);
-		if (bResult)
+		if (auto tResource = out_map.resources.find(guid))
 		{
 			g_lastUnloadedGUID = guid;
 			LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
@@ -158,8 +141,7 @@ template <typename T, typename TImpl>
 bool unload(Map<T, TImpl>& out_map, GUID guid)
 {
 	auto lock = out_map.mutex.template lock<std::unique_lock>();
-	auto [tResource, bResult] = out_map.resources.find(guid);
-	if (bResult)
+	if (auto tResource = out_map.resources.find(guid))
 	{
 		g_lastUnloadedGUID = guid;
 		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
@@ -254,10 +236,9 @@ Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo)
 		[id = id, loadInfo = std::move(loadInfo)]() {
 			auto world_s = World::setBusy();
 			auto res_s = res::acquire();
-			auto [info, bInfo] = loadInfo.createInfo();
-			if (bInfo)
+			if (auto info = loadInfo.createInfo())
 			{
-				load(id, std::move(info));
+				load(id, std::move(*info));
 			}
 			else
 			{

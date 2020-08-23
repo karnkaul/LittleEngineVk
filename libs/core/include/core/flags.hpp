@@ -20,7 +20,7 @@ struct TFlags
 	static_assert(std::is_enum_v<Enum>, "Enum must be an enum!");
 
 	using Type = Enum;
-	static constexpr std::size_t size = N;
+	constexpr static std::size_t size = N;
 
 	std::bitset<N> bits;
 

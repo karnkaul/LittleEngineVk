@@ -37,7 +37,7 @@ public:
 	///
 	/// \brief Name of compiler command to invoke
 	///
-	static std::string_view s_compiler;
+	inline static std::string_view s_compiler = "glslc";
 
 private:
 	Status m_status;

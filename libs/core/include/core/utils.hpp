@@ -72,18 +72,6 @@ struct Span
 	}
 };
 
-template <typename M>
-struct Lockable final
-{
-	M mutex;
-
-	template <template <typename...> typename L = std::scoped_lock>
-	L<M> lock()
-	{
-		return L<M>(mutex);
-	}
-};
-
 namespace utils
 {
 template <typename T>

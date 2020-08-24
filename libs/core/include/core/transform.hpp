@@ -17,7 +17,7 @@ private:
 	glm::vec3 m_position = glm::vec3(0.0f);
 	glm::quat m_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 	glm::vec3 m_scale = glm::vec3(1.0f);
-	std::list<Transform*> m_children;
+	std::list<Ref<Transform>> m_children;
 	Transform* m_pParent = nullptr;
 	mutable bool m_bDirty = false;
 
@@ -95,6 +95,6 @@ public:
 	///
 	/// \brief Obtain children parented to this Transform
 	///
-	std::list<Transform*> const& children() const;
+	std::list<Ref<Transform>> const& children() const;
 };
 } // namespace le

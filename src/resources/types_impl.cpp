@@ -356,8 +356,8 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 						if (pReader)
 						{
 							monitor = {};
-							auto onReloaded = [this, idx](Monitor::File const* pFile) -> bool {
-								if (!glslToSpirV(pFile->id, codeMap.at(idx)))
+							auto onReloaded = [this, idx](Monitor::File const& file) -> bool {
+								if (!glslToSpirV(file.id, codeMap.at(idx)))
 								{
 									LOG_E("[{}] Failed to reload Shader!", s_tName);
 									return false;
@@ -637,13 +637,13 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 		for (auto const& id : out_createInfo.ids)
 		{
 			imgIDs.push_back(id);
-			auto onModified = [this, idx](Monitor::File const* pFile) -> bool {
+			auto onModified = [this, idx](Monitor::File const& file) -> bool {
 				Texture texture;
 				texture.guid = guid;
 				if (auto pInfo = res::infoRW(texture))
 				{
 					auto const idStr = pInfo->id.generic_string();
-					auto raw = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
+					auto raw = imgToRaw(file.monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
 					if (raw)
 					{
 						if (bStbiRaw)

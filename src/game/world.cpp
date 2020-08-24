@@ -83,14 +83,14 @@ bool World::worldLoadPending()
 }
 
 #if defined(LEVK_EDITOR)
-std::vector<World*> World::allWorlds()
+std::vector<Ref<World>> World::allWorlds()
 {
-	std::vector<World*> ret;
+	std::vector<Ref<World>> ret;
 	for (auto& [id, uWorld] : s_worlds)
 	{
-		ret.push_back(uWorld.get());
+		ret.push_back(*uWorld);
 	}
-	std::sort(ret.begin(), ret.end(), [](auto pLHS, auto pRHS) { return pLHS->m_id < pRHS->m_id; });
+	std::sort(ret.begin(), ret.end(), [](World const& lhs, World const& rhs) -> bool { return lhs.m_id < rhs.m_id; });
 	return ret;
 }
 #endif
@@ -159,9 +159,9 @@ Registry& World::registry()
 bool World::impl_start(ID previous)
 {
 	m_previousWorldID = previous;
-	m_inputContext = {};
+	m_inputContext = std::make_shared<input::Context>();
 #if defined(LEVK_DEBUG)
-	m_inputContext.context.m_name = m_name;
+	m_inputContext->m_name = m_name;
 #endif
 	auto const inputMap = inputMapID();
 	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
@@ -171,7 +171,7 @@ bool World::impl_start(ID previous)
 			dj::object json;
 			if (json.read(*str))
 			{
-				if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
+				if (auto const parsed = m_inputContext->deserialise(json); parsed > 0)
 				{
 					LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_name, parsed, inputMap.generic_string());
 				}
@@ -189,7 +189,7 @@ bool World::impl_start(ID previous)
 		return true;
 	}
 	m_previousWorldID = {};
-	m_inputContext.token.reset();
+	m_inputContext.reset();
 	return false;
 }
 
@@ -205,7 +205,7 @@ void World::impl_tick(gfx::ScreenRect const& worldRect, Time dt, bool bTickSelf)
 
 void World::impl_stop()
 {
-	m_inputContext.token.reset();
+	m_inputContext.reset();
 	g_manifest.reset();
 	stop();
 	m_registry.clear();

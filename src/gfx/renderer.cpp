@@ -499,7 +499,6 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 	vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 	RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
-	std::unordered_set<PipelineImpl*> pipelines;
 	std::size_t batchIdx = 0;
 	std::size_t drawableIdx = 0;
 	u64 tris = 0;
@@ -531,7 +530,6 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 					{
 						cmd.draw(pImpl->vbo.count, 1, 0, 0);
 					}
-					pipelines.insert(pPipeline->m_uImpl.get());
 				}
 				++drawableIdx;
 			}

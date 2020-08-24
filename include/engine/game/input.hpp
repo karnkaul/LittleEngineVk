@@ -5,20 +5,10 @@
 
 namespace le::input
 {
-using Token = std::shared_ptr<s8>;
-
-struct CtxWrapper final
-{
-	Context context;
-	mutable Token token;
-};
-
-void registerContext(CtxWrapper const& context);
-[[nodiscard]] Token registerContext(Context const& context);
+void registerContext(std::shared_ptr<Context> context);
 
 #if defined(LEVK_EDITOR)
-void registerEditorContext(CtxWrapper const& context);
-[[nodiscard]] Token registerEditorContext(Context const& context);
+void registerEditorContext(std::shared_ptr<Context> context);
 #endif
 
 glm::vec2 const& cursorPosition(bool bRaw = false);

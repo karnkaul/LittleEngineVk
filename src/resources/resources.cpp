@@ -24,7 +24,7 @@ struct Map
 {
 	TMapStore<std::unordered_map<GUID, TResource<T, TImpl>>> resources;
 	std::unordered_map<Hash, GUID> ids;
-	std::unordered_map<GUID, TImpl*> loading;
+	std::unordered_map<GUID, Ref<TImpl>> loading;
 	mutable kt::lockable<std::shared_mutex> mutex;
 };
 
@@ -55,7 +55,7 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 		if (std::is_base_of_v<ILoadable, TImpl> && pImpl->status != Status::eReady)
 		{
 			pImpl->status = Status::eLoading;
-			out_map.loading[guid] = pImpl;
+			out_map.loading.emplace(guid, *pImpl);
 			LOG_I("++ [{}] [{}] [{}] loading...", guid, T::s_tName, id.generic_string());
 		}
 		else
@@ -161,21 +161,22 @@ void update(Map<T, TImpl>& out_map)
 		auto lock = out_map.mutex.template lock<std::shared_lock>();
 		for (auto iter = out_map.loading.begin(); iter != out_map.loading.end();)
 		{
-			auto& [guid, pImpl] = *iter;
-			if (pImpl->update())
+			auto const guid = iter->first;
+			TImpl& impl = iter->second;
+			if (impl.update())
 			{
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-				if (pImpl->bLoadedOnce)
+				if (impl.bLoadedOnce)
 				{
-					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, pImpl->id.generic_string());
+					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, impl.id.generic_string());
 					if constexpr (std::is_base_of_v<IReloadable, TImpl>)
 					{
-						pImpl->onReload();
+						impl.onReload();
 					}
 				}
 #endif
-				pImpl->bLoadedOnce = true;
-				pImpl->status = Status::eReady;
+				impl.bLoadedOnce = true;
+				impl.status = Status::eReady;
 				iter = out_map.loading.erase(iter);
 			}
 			else
@@ -196,7 +197,7 @@ void update(Map<T, TImpl>& out_map)
 				{
 					LOG_D("++ [{}] [{}] [{}] reloading...", guid, T::s_tName, tResource.uImpl->id.generic_string());
 					tResource.uImpl->status = Status::eReloading;
-					out_map.loading[guid] = tResource.uImpl.get();
+					out_map.loading.emplace(guid, *tResource.uImpl);
 				}
 				else
 				{

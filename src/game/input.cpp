@@ -15,7 +15,7 @@ namespace le
 {
 namespace
 {
-using Contexts = std::deque<std::pair<std::weak_ptr<s8>, input::Context const*>>;
+using Contexts = std::deque<std::weak_ptr<input::Context const>>;
 Contexts g_contexts;
 #if defined(LEVK_EDITOR)
 Contexts g_editorContexts;
@@ -42,16 +42,9 @@ struct
 } g_raw;
 } // namespace
 
-void input::registerContext(CtxWrapper const& context)
+void input::registerContext(std::shared_ptr<Context> context)
 {
-	context.token = registerContext(context.context);
-}
-
-input::Token input::registerContext(Context const& context)
-{
-	Token token = std::make_shared<s8>(0);
-	g_contexts.emplace_front(token, &(context));
-	return token;
+	g_contexts.push_front(context);
 }
 
 glm::vec2 const& input::cursorPosition(bool bRaw)
@@ -127,16 +120,9 @@ void input::init(Window& out_mainWindow)
 }
 
 #if defined(LEVK_EDITOR)
-void input::registerEditorContext(CtxWrapper const& context)
+void input::registerEditorContext(std::shared_ptr<Context> context)
 {
-	context.token = registerEditorContext(context.context);
-}
-
-input::Token input::registerEditorContext(Context const& context)
-{
-	Token token = std::make_shared<s8>(0);
-	g_editorContexts.emplace_front(token, &(context));
-	return token;
+	g_editorContexts.push_front(context);
 }
 #endif
 
@@ -164,11 +150,14 @@ void input::fire()
 	auto fireContexts = [&snapshot](Contexts& contexts, [[maybe_unused]] bool& out_bWasConsuming) {
 		if (auto pWindow = engine::window(); !contexts.empty())
 		{
-			auto iter = std::remove_if(contexts.begin(), contexts.end(), [](auto const& context) { return !context.first.lock(); });
+			auto iter = std::remove_if(contexts.begin(), contexts.end(), [](auto const& ctx) { return !ctx.lock(); });
 			contexts.erase(iter, contexts.end());
-			for (auto& context : contexts)
+			for (auto& ctx : contexts)
 			{
-				context.second->m_bFired = false;
+				if (auto context = ctx.lock())
+				{
+					context->m_bFired = false;
+				}
 			}
 			g_raw.cursorPosRaw = pWindow->cursorPos();
 			if (pWindow->cursorMode() != CursorMode::eDisabled)
@@ -179,23 +168,23 @@ void input::fire()
 #if defined(LEVK_DEBUG)
 			bool bConsumed = false;
 #endif
-			for (auto const& [token, pMapping] : contexts)
+			for (auto& ctx : contexts)
 			{
-				ASSERT(token.lock(), "Invalid token!");
-				ASSERT(pMapping, "Null Context!");
+				ASSERT(ctx.lock(), "Invalid context!");
+				auto const& context = ctx.lock();
 #if defined(LEVK_DEBUG)
 
 #endif
-				if (token.lock() && pMapping->isConsumed(snapshot))
+				if (context->isConsumed(snapshot))
 				{
 #if defined(LEVK_DEBUG)
-					static Context const* pPrev = nullptr;
-					if (pPrev != pMapping)
+					static std::weak_ptr<Context const> prev;
+					if (auto prevCtx = prev.lock(); prevCtx != context)
 					{
 						static std::string_view const s_unknown = "Unknown";
-						std::string_view const name = pMapping->m_name.empty() ? s_unknown : pMapping->m_name;
+						std::string_view const name = context->m_name.empty() ? s_unknown : context->m_name;
 						LOG_I("[{}] [{}:{}] blocking [{}] remaining input contexts", utils::tName<Context>(), name, processed, contexts.size() - processed - 1);
-						pPrev = pMapping;
+						prev = ctx;
 					}
 					bConsumed = true;
 					if (!out_bWasConsuming)

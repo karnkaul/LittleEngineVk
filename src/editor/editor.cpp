@@ -156,9 +156,9 @@ void walkSceneTree(Transform& root, World::EMap const& emap, Registry& registry)
 		}
 		if (bOpen)
 		{
-			for (auto pChild : pTransform->children())
+			for (Transform& child : pTransform->children())
 			{
-				walkSceneTree(*pChild, emap, registry);
+				walkSceneTree(child, emap, registry);
 			}
 			ImGui::TreePop();
 		}
@@ -183,16 +183,16 @@ void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view fi
 {
 	if (!filter.empty())
 	{
-		auto removeNode = [&filter](typename io::PathTree<T>::Node const* pNode) -> bool { return pNode->findPattern(filter, true) == nullptr; };
+		auto removeNode = [&filter](typename io::PathTree<T>::Node const& node) -> bool { return node.findPattern(filter, true) == nullptr; };
 		nodes.erase(std::remove_if(nodes.begin(), nodes.end(), removeNode), nodes.end());
 	}
-	for (auto pNode : nodes)
+	for (typename io::PathTree<T>::Node const& node : nodes)
 	{
-		auto const str = pNode->directory.filename().generic_string() + "/";
+		auto const str = node.directory.filename().generic_string() + "/";
 		auto [bOpen, _] = treeNode(str, false, false, ImGuiTreeNodeFlags_SpanAvailWidth);
 		if (bOpen)
 		{
-			for (auto const& [name, entry] : pNode->entries)
+			for (auto const& [name, entry] : node.entries)
 			{
 				auto const& str = std::get<std::string>(entry);
 				if (filter.empty() || str.find(filter) != std::string::npos)
@@ -208,7 +208,7 @@ void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view fi
 					}
 				}
 			}
-			listResourceTree<T, F1, F2>(pNode->childNodes(), filter, shouldList, onSelected, out_pSelect);
+			listResourceTree<T, F1, F2>(node.childNodes(), filter, shouldList, onSelected, out_pSelect);
 			ImGui::TreePop();
 		}
 	}
@@ -274,7 +274,7 @@ void resourcesWindow(v2 pos, v2 size)
 }
 
 template <typename T, typename F, typename F2>
-void inspectResource(T resource, sv selector, bool& out_bSelect, il<bool*> unselect, F onSelected, F2 filter, v2 pos, v2 size, bool bNone = true)
+void inspectResource(T resource, sv selector, bool& out_bSelect, il<Ref<bool>> unselect, F onSelected, F2 filter, v2 pos, v2 size, bool bNone = true)
 {
 	auto const id = res::info(resource).id;
 	constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -282,9 +282,9 @@ void inspectResource(T resource, sv selector, bool& out_bSelect, il<bool*> unsel
 	if (ImGui::IsItemClicked() || out_bSelect)
 	{
 		out_bSelect = true;
-		for (auto pBool : unselect)
+		for (bool& b : unselect)
 		{
-			*pBool = false;
+			b = false;
 		}
 		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
@@ -307,10 +307,10 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
 	{
 		inspectResource<res::Material>(
-			pInfo->material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectID},
+			pInfo->material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {g_inspecting.mesh.bSelectDiffuse, g_inspecting.mesh.bSelectID},
 			[pInfo](res::Material const& mat) { pInfo->material.material = mat; }, &dummy<res::Material>, pos, size, false);
 		inspectResource<res::Texture>(
-			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
+			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {g_inspecting.mesh.bSelectID, g_inspecting.mesh.bSelectMat},
 			[pInfo](res::Texture const& tex) { pInfo->material.diffuse = tex; },
 			[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
 		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
@@ -371,7 +371,7 @@ void entityInspector(v2 pos, v2 size)
 				if (ImGui::TreeNode("Mesh"))
 				{
 					inspectResource(
-						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
+						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {g_inspecting.mesh.bSelectDiffuse, g_inspecting.mesh.bSelectMat},
 						[pMesh](res::Mesh mesh) { *pMesh = mesh; }, &dummy<res::Mesh>, pos, size);
 
 					inspectMatInst(*pMesh, 0, pos, size);
@@ -475,13 +475,14 @@ void worldSelectDropdown()
 		static std::size_t s_selected = 0;
 		for (std::size_t i = 0; i < worlds.size(); ++i)
 		{
+			World& world = worlds.at(i);
 			bool const bSelected = s_selected == i;
-			auto name = std::string(worlds.at(i)->name());
+			auto name = std::string(world.name());
 			utils::removeNamesapces(name);
 			if (ImGui::Selectable(name.data(), bSelected))
 			{
 				s_selected = i;
-				pNewWorld = worlds.at(i);
+				pNewWorld = &world;
 			}
 			if (bSelected)
 			{
@@ -575,9 +576,9 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 			{
 				if (g_pWorld)
 				{
-					for (auto pTransform : g_pWorld->m_root.children())
+					for (Transform& transform : g_pWorld->m_root.children())
 					{
-						walkSceneTree(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
+						walkSceneTree(transform, g_pWorld->m_transformToEntity, g_pWorld->registry());
 					}
 				}
 				ImGui::EndTabItem();

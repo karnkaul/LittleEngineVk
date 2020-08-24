@@ -31,7 +31,7 @@ public:
 
 public:
 	struct Node;
-	using Nodes = std::vector<Node const*>;
+	using Nodes = std::vector<Ref<Node const>>;
 
 private:
 	struct NodeBase
@@ -118,7 +118,7 @@ auto PathTree<T...>::NodeBase::childNodes() const -> Nodes
 	ret.reserve(children.size());
 	for (auto const& [_, uNode] : children)
 	{
-		ret.push_back(uNode.get());
+		ret.push_back(*uNode);
 	}
 	return ret;
 }

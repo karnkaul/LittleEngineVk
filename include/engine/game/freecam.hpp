@@ -58,7 +58,7 @@ public:
 	Config m_config;
 
 private:
-	input::CtxWrapper m_input;
+	std::shared_ptr<input::Context> m_input;
 	glm::vec2 m_dXZ = {};
 	glm::vec2 m_dY = {};
 	glm::vec2 m_padLook = {};

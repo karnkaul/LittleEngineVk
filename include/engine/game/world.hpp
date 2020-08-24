@@ -47,7 +47,7 @@ protected:
 protected:
 	Registry m_registry = Registry(Registry::DestroyMode::eDeferred);
 	std::string m_name;
-	input::CtxWrapper m_inputContext;
+	std::shared_ptr<input::Context> m_inputContext;
 	std::unique_ptr<gfx::Camera> m_uSceneCam;
 	ID m_previousWorldID;
 
@@ -65,7 +65,7 @@ private:
 
 private:
 	inline static std::unordered_map<ID, std::unique_ptr<World>> s_worlds;
-	inline static std::unordered_map<std::type_index, World*> s_worldByType;
+	inline static std::unordered_map<std::type_index, Ref<World>> s_worldByType;
 	inline static Counter<s32> s_busyCounter;
 	inline static World* s_pActive = nullptr;
 	inline static ID s_lastID;
@@ -94,7 +94,7 @@ public:
 	static bool worldLoadPending();
 
 #if defined(LEVK_EDITOR)
-	static std::vector<World*> allWorlds();
+	static std::vector<Ref<World>> allWorlds();
 #endif
 
 public:
@@ -173,7 +173,7 @@ World::ID World::addWorld(Args&&... args)
 			}
 			uT->m_id = ++s_lastID.payload;
 			uT->m_type = type;
-			s_worldByType.emplace(type, uT.get());
+			s_worldByType.emplace(type, *uT);
 			s_worlds.emplace(s_lastID, std::move(uT));
 		}
 	}
@@ -191,14 +191,14 @@ template <typename T>
 T* World::world()
 {
 	auto search = s_worldByType.find(std::type_index(typeid(T)));
-	return search != s_worldByType.end() ? dynamic_cast<T*>(search->second) : nullptr;
+	return search != s_worldByType.end() ? dynamic_cast<T*>(&(World&)search->second) : nullptr;
 }
 
 template <typename T>
 bool World::removeWorld()
 {
 	auto search = s_worldByType.find(std::type_index(typeid(T)));
-	return search != s_worldByType.end() ? removeWorld(search->second->m_id) : false;
+	return search != s_worldByType.end() ? removeWorld(((World&)search->second).m_id) : false;
 }
 
 template <typename T, typename... Args>

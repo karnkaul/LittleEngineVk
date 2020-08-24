@@ -12,16 +12,16 @@ Transform::~Transform()
 {
 	if (m_pParent)
 	{
-		m_pParent->m_children.remove(this);
+		m_pParent->m_children.remove(*this);
 	}
-	for (auto pChild : m_children)
+	for (Transform& child : m_children)
 	{
-		pChild->m_pParent = m_pParent;
+		child.m_pParent = m_pParent;
 		if (m_pParent)
 		{
-			m_pParent->m_children.push_back(pChild);
+			m_pParent->m_children.push_back(child);
 		}
-		pChild->m_bDirty = true;
+		child.m_bDirty = true;
 	}
 }
 
@@ -70,12 +70,12 @@ Transform& Transform::setParent(Transform* pParent)
 	{
 		if (m_pParent)
 		{
-			m_pParent->m_children.remove(this);
+			m_pParent->m_children.remove(*this);
 		}
 		m_pParent = pParent;
 		if (m_pParent)
 		{
-			m_pParent->m_children.push_back(this);
+			m_pParent->m_children.push_back(*this);
 		}
 		m_bDirty = true;
 	}
@@ -161,7 +161,7 @@ void Transform::updateMats() const
 	return;
 }
 
-std::list<Transform*> const& Transform::children() const
+std::list<Ref<Transform>> const& Transform::children() const
 {
 	return m_children;
 }

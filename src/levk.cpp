@@ -1,4 +1,6 @@
+#include <build_version.hpp>
 #include <core/log.hpp>
+#include <core/maths.hpp>
 #include <core/os.hpp>
 #include <core/tasks.hpp>
 #include <core/time.hpp>
@@ -24,6 +26,7 @@ namespace
 {
 std::string const tName = utils::tName<Service>();
 App g_app;
+Status g_status = Status::eIdle;
 } // namespace
 
 Service::Service(s32 argc, char const* const* const argv)
@@ -31,6 +34,7 @@ Service::Service(s32 argc, char const* const* const argv)
 	Time::resetElapsed();
 	m_services.add<os::Service>(os::Args{argc, argv});
 	m_services.add<io::Service>(std::string_view("debug.log"));
+	LOG_I("LittleEngineVk {}", g_engineVersion.toString(false));
 	m_services.add<tasks::Service>(4);
 }
 
@@ -39,9 +43,9 @@ Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
 	input::deinit();
-	World::stopActive();
+	World::impl_stopActive();
 	res::waitIdle();
-	World::destroyAll();
+	World::impl_destroyAll();
 	res::deinit();
 	g_app = {};
 }
@@ -54,11 +58,11 @@ std::vector<stdfs::path> Service::locateData(std::vector<DataSearch> const& sear
 	for (auto const& pattern : searchPatterns)
 	{
 		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
-		auto [found, bResult] = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
-		LOGIF_W(!bResult, "[{}] Failed to locate data!", tName);
-		if (bResult)
+		auto search = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
+		LOGIF_W(!search, "[{}] Failed to locate data!", tName);
+		if (search)
 		{
-			ret.push_back(std::move(found));
+			ret.push_back(std::move(*search));
 		}
 	}
 	return ret;
@@ -114,45 +118,89 @@ bool Service::init(Info const& info)
 		LOG_E("[{}] Failed to initialise engine services: {}", tName, e.what());
 		return false;
 	}
+	g_status = Status::eInitialised;
 	return true;
 }
 
 bool Service::start(World::ID world)
 {
-	return World::start(world);
+	if (g_status == Status::eInitialised && World::impl_startID(world))
+	{
+		g_status = Status::eTicking;
+		return true;
+	}
+	return false;
 }
 
 bool Service::isRunning() const
 {
-	return Window::anyExist();
+	return maths::withinRange(g_status, Status::eIdle, Status::eShutdown, false);
+}
+
+Status Service::status() const
+{
+	return g_status;
 }
 
 bool Service::tick(Time dt) const
 {
 	Window::pollEvents();
 	update();
-	bool const bShutdown = isShuttingDown();
-	if (bShutdown)
+	if (g_app.uWindow && g_app.uWindow->isClosing())
 	{
-		shutdown();
+		if (g_shutdownSequence == ShutdownSequence::eCloseWindow_Shutdown)
+		{
+			g_app.uWindow->destroy();
+		}
+		g_status = Status::eShuttingDown;
 	}
-	else
+	gfx::ScreenRect gameRect = {};
+	bool bFireInput = true;
+	bool bTickActive = true;
+	bool bTerminate = false;
+	bool bRet = true;
+	switch (g_status)
 	{
-		gfx::ScreenRect gameRect = {};
-#if defined(LEVK_EDITOR)
-		input::g_bEditorOnly = !editor::g_bTickGame;
-#endif
+	default:
+	{
+		break;
+	}
+	case Status::eShutdown:
+	{
+		bTickActive = false;
+		bFireInput = false;
+		bTerminate = true;
+		bRet = false;
+		break;
+	}
+	case Status::eShuttingDown:
+	{
+		bTickActive = false;
+		bFireInput = false;
+		bTerminate = true;
+		bRet = false;
+		if (!World::isBusy())
+		{
+			doShutdown();
+		}
+		break;
+	}
+	}
+	if (bFireInput)
+	{
 		input::fire();
 #if defined(LEVK_EDITOR)
 		editor::tick(dt);
+		input::g_bEditorOnly = !editor::g_bTickGame;
+		bTickActive &= editor::g_bTickGame;
 		gameRect = editor::g_gameRect;
 #endif
-		if (!World::tick(dt, gameRect))
-		{
-			LOG_E("[{}] Failed to tick World!", tName);
-		}
 	}
-	return !bShutdown;
+	if (!World::impl_tick(dt, gameRect, bTickActive, bTerminate))
+	{
+		LOGIF_E(g_status == Status::eTicking, "[{}] Failed to tick World!", tName);
+	}
+	return bRet;
 }
 
 void Service::submitScene() const
@@ -167,7 +215,7 @@ void Service::submitScene() const
 		}
 #endif
 		ASSERT(pCamera, "Camera is null!");
-		if (!World::submitScene(g_app.uWindow->renderer(), *pCamera))
+		if (!World::impl_submitScene(g_app.uWindow->renderer(), *pCamera))
 		{
 			LOG_E("[{}] Error submitting World scene!", tName);
 		}
@@ -184,20 +232,30 @@ void Service::render() const
 
 bool Service::shutdown()
 {
-	if (g_app.uWindow && g_app.uWindow->exists())
+	if (g_app.uWindow && g_app.uWindow->exists() && g_status == Status::eTicking)
 	{
-		World::destroyAll();
-		g_app.uWindow->close();
-		destroyWindow();
+		g_app.uWindow->setClosing();
+		if (g_shutdownSequence == ShutdownSequence::eCloseWindow_Shutdown)
+		{
+			g_app.uWindow->destroy();
+		}
+		g_status = Status::eShuttingDown;
 		return true;
 	}
 	return false;
+}
+
+void Service::doShutdown()
+{
+	World::impl_destroyAll();
+	g_app.uWindow->destroy();
+	g_status = Status::eShutdown;
 }
 } // namespace engine
 
 bool engine::isShuttingDown()
 {
-	return g_app.uWindow && g_app.uWindow->isClosing();
+	return (g_app.uWindow && g_app.uWindow->isClosing()) || g_status == Status::eShuttingDown;
 }
 
 Window* engine::mainWindow()
@@ -215,20 +273,21 @@ glm::ivec2 engine::framebufferSize()
 	return g_app.uWindow ? g_app.uWindow->framebufferSize() : glm::ivec2(0);
 }
 
+glm::vec2 engine::gameRectSize()
+{
+#if defined(LEVK_EDITOR)
+	return editor::g_gameRect.size();
+#else
+	return {1.0f, 1.0f};
+#endif
+}
+
 void engine::update()
 {
 	res::update();
 	WindowImpl::update();
 	gfx::vram::update();
 	gfx::deferred::update();
-}
-
-void engine::destroyWindow()
-{
-	if (g_app.uWindow)
-	{
-		g_app.uWindow->destroy();
-	}
 }
 
 Window* engine::window()

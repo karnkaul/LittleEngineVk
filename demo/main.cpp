@@ -1,6 +1,5 @@
-#include <initializer_list>
+#include <build_version.hpp>
 #include <core/assert.hpp>
-#include <core/gdata.hpp>
 #include <core/reader.hpp>
 #include <core/tasks.hpp>
 #include <core/log.hpp>
@@ -8,8 +7,8 @@
 #include <core/map_store.hpp>
 #include <core/threads.hpp>
 #include <core/transform.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/levk.hpp>
-#include <engine/ecs/registry.hpp>
 #include <engine/game/freecam.hpp>
 #include <engine/game/input.hpp>
 #include <engine/game/scene_builder.hpp>
@@ -65,6 +64,7 @@ protected:
 		{
 			setSceneCamera();
 		}
+		m_uSceneCam->reset();
 		m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
 		return true;
 	}
@@ -106,7 +106,7 @@ private:
 	struct
 	{
 		stdfs::path model0id, model1id, skyboxID;
-		std::vector<std::shared_ptr<tasks::Handle>> modelReloads;
+		res::Async<res::Model> asyncModel0, asyncModel1;
 		gfx::DirLight dirLight0, dirLight1;
 		Entity eid0, eid1, eid2, eid3;
 		Entity eui0, eui1, eui2;
@@ -208,8 +208,8 @@ bool DemoWorld::start()
 		sceneCam.init();
 		sceneCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
 	}
+	m_uSceneCam->reset();
 	m_uSceneCam->m_position = {0.0f, 1.0f, 2.0f};
-	m_uSceneCam->m_orientation = gfx::g_qIdentity;
 
 	m_registry.component<Transform>(m_data.eid0)->setPosition({1.0f, 1.0f, -2.0f});
 	m_registry.addComponent<res::Mesh>(m_data.eid0, m_res.quad);
@@ -267,41 +267,47 @@ void DemoWorld::tick(Time dt)
 		m_data.temp.token.reset();
 	}
 
-	auto iter = std::remove_if(m_data.modelReloads.begin(), m_data.modelReloads.end(), [](auto const& handle) -> bool { return handle->hasCompleted(true); });
-	m_data.modelReloads.erase(iter, m_data.modelReloads.end());
-
-	// if (m_data.bLoadUnloadModels && m_data.modelReloads.empty())
-	// {
-	// 	if (Resources::inst().get<gfx::Model>(m_data.model0id))
-	// 	{
-	// 		Resources::inst().unload<gfx::Model>(m_data.model0id);
-	// 		if (Resources::inst().get<gfx::Model>(m_data.model1id))
-	// 		{
-	// 			Resources::inst().unload<gfx::Model>(m_data.model1id);
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		m_data.modelReloads.push_back(tasks::enqueue(
-	// 			[this]() {
-	// 				auto semaphore = Resources::inst().setBusy();
-	// 				auto m0info = gfx::Model::parseOBJ(m_data.model0id);
-	// 				Resources::inst().create<gfx::Model>(m_data.model0id, std::move(m0info));
-	// 			},
-	// 			"Model0-Reload"));
-	// 		if (m_data.model0id != m_data.model1id)
-	// 		{
-	// 			m_data.modelReloads.push_back(tasks::enqueue(
-	// 				[this]() {
-	// 					auto semaphore = Resources::inst().setBusy();
-	// 					auto m1info = gfx::Model::parseOBJ(m_data.model1id);
-	// 					Resources::inst().create<gfx::Model>(m_data.model1id, std::move(m1info));
-	// 				},
-	// 				"Model1-Reload"));
-	// 		}
-	// 	}
-	// 	m_data.bLoadUnloadModels = false;
-	// }
+	if (m_data.asyncModel0.loaded())
+	{
+		if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
+		{
+			*pModel = m_data.asyncModel0.resource().payload;
+		}
+		m_data.asyncModel0 = {};
+	}
+	if (m_data.asyncModel1.loaded())
+	{
+		if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
+		{
+			*pModel = m_data.asyncModel1.resource().payload;
+		}
+		m_data.asyncModel1 = {};
+	}
+	if (m_data.bLoadUnloadModels && !m_data.asyncModel0.valid())
+	{
+		if (auto model = res::find<res::Model>(m_data.model0id))
+		{
+			res::unload(*model);
+			if (auto model1 = res::find<res::Model>(m_data.model1id))
+			{
+				res::unload(*model1);
+			}
+			m_data.asyncModel0 = m_data.asyncModel1 = {};
+		}
+		else
+		{
+			res::Model::LoadInfo loadInfo;
+			loadInfo.idRoot = loadInfo.jsonDirectory = m_data.model0id;
+			m_data.asyncModel0 = res::loadAsync(m_data.model0id, std::move(loadInfo));
+			if (m_data.model1id != m_data.model0id)
+			{
+				loadInfo = {};
+				loadInfo.idRoot = loadInfo.jsonDirectory = m_data.model1id;
+				m_data.asyncModel1 = res::loadAsync(m_data.model1id, std::move(loadInfo));
+			}
+		}
+		m_data.bLoadUnloadModels = false;
+	}
 
 	sceneCamera<FreeCam>().tick(dt);
 
@@ -365,16 +371,16 @@ stdfs::path DemoWorld::inputMapID() const
 
 void DemoWorld::onManifestLoaded()
 {
-	m_res.sphere.material().diffuse = res::findTexture(m_res.container2).payload;
-	m_res.sphere.material().specular = res::findTexture(m_res.container2_specular).payload;
-	m_res.quad.material().diffuse = res::findTexture(m_res.awesomeface).payload;
+	m_res.sphere.material().diffuse = res::find<res::Texture>(m_res.container2).payload;
+	m_res.sphere.material().specular = res::find<res::Texture>(m_res.container2_specular).payload;
+	m_res.quad.material().diffuse = res::find<res::Texture>(m_res.awesomeface).payload;
 	if (auto pModel = m_registry.component<res::Model>(m_data.eid3))
 	{
-		pModel->guid = res::findModel(m_data.model1id).payload.guid;
+		*pModel = res::find<res::Model>(m_data.model1id).payload;
 	}
 	if (auto pModel = m_registry.component<res::Model>(m_data.eid2))
 	{
-		pModel->guid = res::findModel(m_data.model0id).payload.guid;
+		*pModel = res::find<res::Model>(m_data.model0id).payload;
 	}
 }
 } // namespace
@@ -410,6 +416,7 @@ u32 FPS::update()
 
 int main(int argc, char** argv)
 {
+	dj::g_log_error = [](auto text) { LOG_E("{}", text); };
 	engine::Service engine(argc, argv);
 	g_uReader = std::make_unique<io::FileReader>();
 	// g_uReader = std::make_unique<io::ZIPReader>();
@@ -427,12 +434,14 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	World::addWorld<DemoWorld, TestWorld>();
-	auto pWorld = World::getWorld<DemoWorld>();
+	auto pWorld = World::world<DemoWorld>();
 
 	if (!engine.start(0))
 	{
 		return 1;
 	}
+
+	engine::g_shutdownSequence = engine::ShutdownSequence::eShutdown_CloseWindow;
 
 	FPS fps;
 	Time t = Time::elapsed();
@@ -443,23 +452,21 @@ int main(int argc, char** argv)
 		t = newT;
 		pWorld->m_fps = fps.update();
 		// Tick
-		if (engine.tick(dt))
+		engine.tick(dt);
+		// Render
+#if defined(LEVK_DEBUG)
+		try
+#endif
 		{
-			// Render
-#if defined(LEVK_DEBUG)
-			try
-#endif
-			{
-				engine.submitScene();
-				engine.render();
-			}
-#if defined(LEVK_DEBUG)
-			catch (std::exception const& e)
-			{
-				LOG_E("EXCEPTION!\n\t{}", e.what());
-			}
-#endif
+			engine.submitScene();
+			engine.render();
 		}
+#if defined(LEVK_DEBUG)
+		catch (std::exception const& e)
+		{
+			LOG_E("EXCEPTION!\n\t{}", e.what());
+		}
+#endif
 	}
 	return 0;
 }

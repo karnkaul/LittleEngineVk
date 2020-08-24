@@ -51,91 +51,99 @@ void Map::addRange(Hash id, Key min, Key max)
 	binding.ranges.emplace_back(std::move(range));
 }
 
-u16 Map::deserialise(GData const& json)
+u16 Map::deserialise(dj::object const& json)
 {
 	u16 ret = 0;
-	auto const bindingsData = json.get<std::vector<GData>>("bindings");
-	using bind = std::function<void(std::string const&, GData const&)>;
-	auto parse = [&bindingsData, &ret](bind addTrigger, bind addState, bind addRange) {
-		for (auto const& entry : bindingsData)
-		{
-			if (entry.contains("id"))
-			{
-				auto const id = entry.get("id");
-				auto const triggers = entry.get<std::vector<GData>>("triggers");
-				for (auto const& trigger : triggers)
-				{
-					addTrigger(id, trigger);
-					++ret;
-				}
-				auto const states = entry.get<std::vector<GData>>("states");
-				for (auto const& state : states)
-				{
-					addState(id, state);
-					++ret;
-				}
-				auto const ranges = entry.get<std::vector<GData>>("ranges");
-				for (auto const& range : ranges)
-				{
-					addRange(id, range);
-					++ret;
-				}
-			}
-		}
-	};
-	parse(
-		[this](Hash id, GData const& trigger) {
-			Key const key = parseKey(trigger.get("key"));
-			Action const action = parseAction(trigger.get("action"));
-			Mods::VALUE const mods = parseMods(trigger.get<std::vector<std::string>>("mods"));
-			ASSERT(key != Key::eUnknown, "Unknown Key!");
-			addTrigger(id, key, action, mods);
-		},
-		[this](Hash id, GData const& state) {
-			std::vector<std::string> keysStr;
-			if (state.contains("keys"))
-			{
-				keysStr = state.get<std::vector<std::string>>("keys");
-			}
-			else if (state.contains("key"))
-			{
-				keysStr = {state.get("key")};
-			}
-			std::vector<Key> keys;
-			keys.reserve(keysStr.size());
-			for (auto const& keyStr : keysStr)
-			{
-				auto const key = parseKey(keyStr);
-				ASSERT(key != Key::eUnknown, "Unknown Key!");
-				keys.push_back(key);
-			}
-			addState(id, std::move(keys));
-		},
-		[this](Hash id, GData const& range) {
-			Key const keyMin = parseKey(range.get("key_min"));
-			Key const keyMax = parseKey(range.get("key_max"));
-			Axis const axis = parseAxis(range.get("pad_axis"));
-			if (keyMin != Key::eUnknown && keyMax != Key::eUnknown)
-			{
-				addRange(id, keyMin, keyMax);
-			}
-			else if (axis != Axis::eUnknown)
-			{
-				bool const bReverse = range.get<bool>("reverse");
-				addRange(id, axis, bReverse);
-			}
-			else
-			{
-				ASSERT(false, "Unknown Key/Axis!");
-			}
-		});
-#if defined(LEVK_DEBUG)
-	std::string const tName = utils::tName<Map>();
-	for (auto const& [id, binding] : bindings)
+	auto const pBindings = json.find<dj::array>("bindings");
+	if (pBindings)
 	{
-		LOG_D("[{}] {} bound to {} triggers, {} states, {} ranges", tName, id, binding.triggers.size(), binding.states.size(), binding.ranges.size());
-	}
+		auto parse = [&](auto addTrigger, auto addState, auto addRange) {
+			pBindings->for_each<dj::object>([&](dj::object const& entry) {
+				if (auto pID = entry.find<dj::string>("id"))
+				{
+					auto const& id = pID->value;
+					if (auto pTriggers = entry.find<dj::array>("triggers"))
+					{
+						pTriggers->for_each<dj::object>([&](auto const& trigger) {
+							addTrigger(id, trigger);
+							++ret;
+						});
+					}
+					if (auto pStates = entry.find<dj::array>("states"))
+					{
+						pStates->for_each<dj::object>([&](auto const& state) {
+							addState(id, state);
+							++ret;
+						});
+					}
+					if (auto pRanges = entry.find<dj::array>("ranges"))
+					{
+						pRanges->for_each<dj::object>([&](auto const& range) {
+							addRange(id, range);
+							++ret;
+						});
+					}
+				}
+			});
+		};
+		parse(
+			[this](Hash id, dj::object const& trigger) {
+				Key const key = parseKey(trigger.value<dj::string>("key"));
+				Action const action = parseAction(trigger.value<dj::string>("action"));
+				Mods::VALUE mods = Mods::eNONE;
+				if (auto pMods = trigger.find<dj::array>("mods"))
+				{
+					std::vector<std::string> modsVec;
+					pMods->for_each_value<dj::string>([&modsVec](std::string const& mod) { modsVec.push_back(mod); });
+					mods = parseMods(modsVec);
+				}
+				ASSERT(key != Key::eUnknown, "Unknown Key!");
+				addTrigger(id, key, action, mods);
+			},
+			[this](Hash id, dj::object const& state) {
+				std::vector<Key> keys;
+				std::vector<std::string> keysStr;
+				if (auto pKeys = state.find<dj::array>("keys"))
+				{
+					pKeys->for_each_value<dj::string>([&](std::string const& str) {
+						auto const key = parseKey(str);
+						ASSERT(key != Key::eUnknown, "Unknown Key!");
+						keys.push_back(key);
+					});
+				}
+				else if (auto pKey = state.find<dj::string>("key"))
+				{
+					auto const key = parseKey(pKey->value);
+					ASSERT(key != Key::eUnknown, "Unknown Key!");
+					keys.push_back(key);
+				}
+				addState(id, std::move(keys));
+			},
+			[this](Hash id, dj::object const& range) {
+				Key const keyMin = parseKey(range.value<dj::string>("key_min"));
+				Key const keyMax = parseKey(range.value<dj::string>("key_max"));
+				Axis const axis = parseAxis(range.value<dj::string>("pad_axis"));
+				if (keyMin != Key::eUnknown && keyMax != Key::eUnknown)
+				{
+					addRange(id, keyMin, keyMax);
+				}
+				else if (axis != Axis::eUnknown)
+				{
+					addRange(id, axis, range.value<dj::boolean>("reverse"));
+				}
+				else
+				{
+					ASSERT(false, "Unknown Key/Axis!");
+				}
+			});
+#if defined(LEVK_DEBUG)
+		std::string const tName = utils::tName<Map>();
+		for (auto const& [id, binding] : bindings)
+		{
+			LOG_D("[{}] {} bound to {} triggers, {} states, {} ranges", tName, id, binding.triggers.size(), binding.states.size(), binding.ranges.size());
+		}
 #endif
+	}
 	return ret;
 }
 
@@ -214,18 +222,18 @@ void Context::setGamepadID(s32 id)
 	m_padID = id;
 }
 
-u16 Context::deserialise(GData const& json)
+u16 Context::deserialise(dj::object const& json)
 {
-	if (json.contains("mode"))
+	if (auto pMode = json.find<dj::string>("mode"))
 	{
-		if (auto search = g_modeMap.find(json.get("mode")); search != g_modeMap.end())
+		if (auto search = g_modeMap.find(pMode->value); search != g_modeMap.end())
 		{
 			m_mode = search->second;
 		}
 	}
-	if (json.contains("gamepad_id"))
+	if (auto pPadID = json.find<dj::integer>("gamepad_id"))
 	{
-		m_padID = json.get<s32>("gamepad_id");
+		m_padID = (s32)pPadID->value;
 	}
 	return m_map.deserialise(json);
 }

@@ -15,7 +15,7 @@ struct Hash final
 {
 	std::size_t hash = 0;
 
-	Hash() = default;
+	constexpr Hash() noexcept = default;
 
 	///
 	/// \brief Handled types: `char const*`, `std::string`, `std::filesystem::path`
@@ -31,11 +31,17 @@ struct Hash final
 	///
 	/// \brief Implicit conversion to `std::std::size_t`
 	///
-	operator std::size_t() const;
+	constexpr operator std::size_t() const noexcept
+	{
+		return hash;
+	}
 	///
 	/// \brief Comparison operator
 	///
-	bool operator==(Hash rhs) const;
+	constexpr bool operator==(Hash rhs) const noexcept
+	{
+		return hash == rhs.hash;
+	}
 };
 
 template <typename T>
@@ -61,17 +67,7 @@ Hash::Hash(char const (&t)[N])
 	hash = std::hash<std::string_view>{}(std::string_view(t));
 }
 
-inline Hash::operator std::size_t() const
-{
-	return hash;
-}
-
-inline bool Hash::operator==(Hash rhs) const
-{
-	return hash == rhs.hash;
-}
-
-inline bool operator!=(Hash lhs, Hash rhs)
+inline constexpr bool operator!=(Hash lhs, Hash rhs) noexcept
 {
 	return !(lhs == rhs);
 }
@@ -82,7 +78,7 @@ namespace std
 template <>
 struct hash<le::Hash>
 {
-	size_t operator()(le::Hash hash) const
+	size_t operator()(le::Hash hash) const noexcept
 	{
 		return hash;
 	}

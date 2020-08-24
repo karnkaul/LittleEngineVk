@@ -10,3 +10,6 @@ indent_size = 4
 indent_style = space
 indent_size = 2
 
+[*.{py,md,yml,sh}.in]
+indent_style = space
+indent_size = 2

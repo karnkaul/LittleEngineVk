@@ -3,23 +3,33 @@
 
 namespace le
 {
-std::optional<std::unordered_map<Hash, Profiler::Data>> Profiler::s_record;
-
-Profiler::Profiler(std::string_view id, std::optional<io::Level> level) : start(Time::elapsed()), level(level)
+Profiler::Profiler(std::string_view id, std::optional<io::Level> level, Time min) : level(level), start(Time::elapsed()), min(min)
 {
 	data.id = id;
 }
 
 Profiler::~Profiler()
 {
+	stamp();
+}
+
+void Profiler::stamp(std::string_view nextID)
+{
 	end = Time::elapsed();
 	data.dt = end - start;
-	LOGIF(level, *level, "[PROFILE] [{:.3f}ms] [{}]", data.dt.to_s() * 1000.0f, data.id);
-	if (s_record.has_value())
+	if (data.dt > min)
 	{
-		auto const id = Hash(data.id);
-		s_record.value()[id] = std::move(data);
+		if (s_record.has_value())
+		{
+			s_record.value()[data.id] = data;
+		}
+		LOGIF(level, *level, "[PROFILE] [{:.3f}ms] [{}]", data.dt.to_s() * 1000.0f, data.id);
 	}
+	if (!nextID.empty())
+	{
+		data.id = nextID;
+	}
+	start = Time::elapsed();
 }
 
 void Profiler::clear()

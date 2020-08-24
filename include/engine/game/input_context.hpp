@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <glm/vec2.hpp>
-#include <core/gdata.hpp>
 #include <core/hash.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/window/input_types.hpp>
 
 namespace le::input
@@ -62,7 +62,7 @@ struct Map final
 	void addRange(Hash id, Axis axis, bool bReverse = false);
 	void addRange(Hash id, Key min, Key max);
 
-	u16 deserialise(GData const& json);
+	u16 deserialise(dj::object const& json);
 	void clear();
 
 	u16 size() const;
@@ -114,7 +114,7 @@ public:
 	void setMode(Mode mode);
 	void setGamepadID(s32 id);
 
-	u16 deserialise(GData const& json);
+	u16 deserialise(dj::object const& json);
 	void import(Map map);
 
 public:

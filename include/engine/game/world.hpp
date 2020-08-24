@@ -5,13 +5,14 @@
 #include <typeindex>
 #include <unordered_map>
 #include <core/assert.hpp>
+#include <core/atomic_counter.hpp>
 #include <core/flags.hpp>
 #include <core/std_types.hpp>
 #include <core/utils.hpp>
 #include <core/time.hpp>
 #include <core/transform.hpp>
 #include <core/zero.hpp>
-#include <engine/ecs/registry.hpp>
+#include <core/ecs_registry.hpp>
 #include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/renderer.hpp>
@@ -31,6 +32,7 @@ class World
 {
 public:
 	using ID = TZero<s32, -1>;
+	using Semaphore = Counter<s32>::Semaphore;
 
 protected:
 	enum class Flag : s8
@@ -62,10 +64,11 @@ private:
 	std::type_index m_type = std::type_index(typeid(World));
 
 private:
-	static std::unordered_map<ID, std::unique_ptr<World>> s_worlds;
-	static std::unordered_map<std::type_index, World*> s_worldByType;
-	static World* s_pActive;
-	static ID s_lastID;
+	inline static std::unordered_map<ID, std::unique_ptr<World>> s_worlds;
+	inline static std::unordered_map<std::type_index, World*> s_worldByType;
+	inline static Counter<s32> s_busyCounter;
+	inline static World* s_pActive = nullptr;
+	inline static ID s_lastID;
 
 public:
 	template <typename T, typename... Args>
@@ -75,17 +78,18 @@ public:
 	static void addWorld();
 
 	template <typename T>
-	static T* getWorld();
+	static T* world();
 
 	template <typename T>
 	static bool removeWorld();
 
-	static World* getWorld(ID id);
+	static World* world(ID id);
 	static bool removeWorld(ID id);
 
 	static bool loadWorld(ID id);
 	static World* active();
 
+	static Semaphore setBusy();
 	static bool isBusy();
 	static bool worldLoadPending();
 
@@ -131,20 +135,21 @@ public:
 #endif
 
 private:
-	bool startImpl(ID previous = {});
-	void tickImpl(Time dt);
-	void stopImpl();
+	bool impl_start(ID previous = {});
+	void impl_tick(gfx::ScreenRect const& worldRect, Time dt, bool bTickSelf);
+	void impl_stop();
 
 private:
-	static bool start(ID id);
-	static void startNext();
-	static bool stopActive();
-	static void destroyAll();
-	static bool tick(Time dt, gfx::ScreenRect const& sceneRect);
-	static bool submitScene(gfx::Renderer& out_renderer, gfx::Camera const& camera);
+	static bool impl_start(World& out_world, ID prev);
+	static bool impl_startID(ID id);
+	static void impl_startNext();
+	static bool impl_stopActive();
+	static void impl_destroyAll();
+	static bool impl_tick(Time dt, gfx::ScreenRect const& sceneRect, bool bTickActive, bool bTerminate);
+	static bool impl_submitScene(gfx::Renderer& out_renderer, gfx::Camera const& camera);
 
 	template <typename T, typename Th>
-	static T* sceneCamPtr(Th* pThis);
+	static T* impl_sceneCamPtr(Th* pThis);
 
 private:
 	friend class engine::Service;
@@ -183,7 +188,7 @@ void World::addWorld()
 }
 
 template <typename T>
-T* World::getWorld()
+T* World::world()
 {
 	auto search = s_worldByType.find(std::type_index(typeid(T)));
 	return search != s_worldByType.end() ? dynamic_cast<T*>(search->second) : nullptr;
@@ -200,7 +205,7 @@ template <typename T, typename... Args>
 T& World::setSceneCamera(Args&&... args)
 {
 	m_uSceneCam = std::make_unique<T>(std::forward<Args>(args)...);
-	return *sceneCamPtr<T, World>(this);
+	return *impl_sceneCamPtr<T, World>(this);
 }
 
 template <typename T>
@@ -210,17 +215,17 @@ T& World::sceneCamera()
 	{
 		return setSceneCamera<T>();
 	}
-	return *sceneCamPtr<T, World>(this);
+	return *impl_sceneCamPtr<T, World>(this);
 }
 
 template <typename T>
 T const* World::sceneCamPtr() const
 {
-	return sceneCamPtr<T const, World const>(this);
+	return impl_sceneCamPtr<T const, World const>(this);
 }
 
 template <typename T, typename Th>
-T* World::sceneCamPtr(Th* pThis)
+T* World::impl_sceneCamPtr(Th* pThis)
 {
 	static_assert(std::is_base_of_v<gfx::Camera, T>, "T must derive from Camera!");
 	if constexpr (std::is_same_v<T, gfx::Camera>)

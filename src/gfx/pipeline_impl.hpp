@@ -6,6 +6,9 @@
 #include <engine/window/common.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/resources/resource_types.hpp>
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+#include <core/tokeniser.hpp>
+#endif
 
 namespace le::gfx
 {
@@ -44,7 +47,7 @@ public:
 private:
 	Info m_info;
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-	std::shared_ptr<s32> m_reloadToken;
+	UniqueToken<s32> m_reloadToken;
 	bool m_bShaderReloaded = false;
 #endif
 

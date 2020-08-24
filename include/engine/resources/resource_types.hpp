@@ -3,10 +3,10 @@
 #include <glm/vec2.hpp>
 #include <core/colour.hpp>
 #include <core/flags.hpp>
-#include <core/gdata.hpp>
 #include <core/hash.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/gfx/geometry.hpp>
 
 #if defined(LEVK_DEBUG)
@@ -43,12 +43,15 @@ enum class Status : s8
 /// 	CreateInfo	: setup data passed to resources::load
 /// 	Impl		: implementation detail (internal to engine)
 ///
+template <typename T>
 struct Resource
 {
 	///
 	/// \brief Unique ID per Resource; this is the only data member in all derived types
 	///
 	GUID guid;
+
+	inline static std::string const s_tName = utils::tName<T>();
 };
 
 ///
@@ -56,15 +59,13 @@ struct Resource
 ///
 /// GLSL to SPIR-V compilation is supported if LEVK_SHADER_COMPILER is defined
 ///
-struct Shader final : Resource
+struct Shader final : Resource<Shader>
 {
 	enum class Type : s8;
 	struct Info;
 	struct CreateInfo;
 
 	struct Impl;
-
-	static std::string const s_tName;
 
 	Info const& info() const;
 	Status status() const;
@@ -73,7 +74,7 @@ struct Shader final : Resource
 ///
 /// \brief Handle for Vulkan Image Sampler
 ///
-struct Sampler final : Resource
+struct Sampler final : Resource<Sampler>
 {
 	enum class Filter : s8;
 	enum class Mode : s8;
@@ -82,8 +83,6 @@ struct Sampler final : Resource
 
 	struct Impl;
 
-	static std::string const s_tName;
-
 	Info const& info() const;
 	Status status() const;
 };
@@ -91,17 +90,16 @@ struct Sampler final : Resource
 ///
 /// \brief Handle for Vulkan Image and ImageView
 ///
-struct Texture final : Resource
+struct Texture final : Resource<Texture>
 {
 	enum class Space : s8;
 	enum class Type : s8;
 	struct Raw;
 	struct Info;
 	struct CreateInfo;
+	struct LoadInfo;
 
 	struct Impl;
-
-	static std::string const s_tName;
 
 	Info const& info() const;
 	Status status() const;
@@ -110,7 +108,7 @@ struct Texture final : Resource
 ///
 /// \brief Handle for base material used in Mesh
 ///
-struct Material final : Resource
+struct Material final : Resource<Material>
 {
 	enum class Flag : s8
 	{
@@ -130,8 +128,6 @@ struct Material final : Resource
 
 	struct Impl;
 
-	static std::string const s_tName;
-
 	Info const& info() const;
 	Status status() const;
 };
@@ -139,15 +135,13 @@ struct Material final : Resource
 ///
 /// \brief Handle for drawable resource using Geometry
 ///
-struct Mesh final : Resource
+struct Mesh final : Resource<Mesh>
 {
 	enum class Type : s8;
 	struct Info;
 	struct CreateInfo;
 
 	struct Impl;
-
-	static std::string const s_tName;
 
 	Info const& info() const;
 	Status status() const;
@@ -159,7 +153,7 @@ struct Mesh final : Resource
 ///
 /// \brief Handle for bitmap font using texture atlas
 ///
-struct Font final : Resource
+struct Font final : Resource<Font>
 {
 	struct Glyph;
 	struct Info;
@@ -167,8 +161,6 @@ struct Font final : Resource
 	struct Text;
 
 	struct Impl;
-
-	static std::string const s_tName;
 
 	Info const& info() const;
 	Status status() const;
@@ -179,19 +171,16 @@ struct Font final : Resource
 ///
 /// \brief Handle for model described as a number of meshes, materials, and textures
 ///
-struct Model final : Resource
+struct Model final : Resource<Model>
 {
 	struct TexData;
 	struct MatData;
 	struct MeshData;
 	struct Info;
 	struct CreateInfo;
+	struct LoadInfo;
 
 	class Impl;
-
-	static std::string const s_tName;
-
-	static CreateInfo parseOBJ(stdfs::path const& resourceID);
 
 	Info const& info() const;
 	Status status() const;
@@ -202,6 +191,13 @@ struct Model final : Resource
 struct InfoBase
 {
 	stdfs::path id;
+};
+template <typename T>
+struct LoadBase
+{
+	using CreateInfo = typename T::CreateInfo;
+
+	TResult<CreateInfo> createInfo() const;
 };
 
 enum class Shader::Type : s8
@@ -215,8 +211,8 @@ struct Shader::Info : InfoBase
 };
 struct Shader::CreateInfo
 {
-	EnumArray<bytearray, Type> codeMap;
-	EnumArray<stdfs::path, Type> codeIDMap;
+	EnumArray<Type, bytearray> codeMap;
+	EnumArray<Type, stdfs::path> codeIDMap;
 };
 
 enum class Sampler::Filter : s8
@@ -276,9 +272,16 @@ struct Texture::CreateInfo
 	std::vector<stdfs::path> ids;
 	std::vector<bytearray> bytes;
 	std::vector<Raw> raws;
-	stdfs::path samplerID;
+	Hash samplerID;
 	Space mode = Space::eSRGBNonLinear;
 	Type type = Type::e2D;
+};
+struct Texture::LoadInfo : LoadBase<Texture>
+{
+	stdfs::path directory;
+	std::string imageFilename;
+	std::vector<std::string> cubemapFilenames;
+	Hash samplerID;
 };
 
 struct Material::Inst
@@ -331,7 +334,7 @@ struct Font::Glyph
 	s32 orgSizePt = 0;
 	bool bBlank = false;
 
-	void deserialise(u8 c, GData const& json);
+	void deserialise(u8 c, dj::object const& json);
 };
 struct Font::Info : InfoBase
 {
@@ -343,13 +346,13 @@ struct Font::CreateInfo
 {
 	res::Material::Inst material;
 	stdfs::path sheetID;
-	stdfs::path samplerID;
-	stdfs::path materialID;
 	stdfs::path jsonID;
 	std::vector<Glyph> glyphs;
 	bytearray image;
+	Hash samplerID;
+	Hash materialID;
 
-	bool deserialise(GData const& json);
+	bool deserialise(std::string const& jsonStr);
 };
 struct Font::Text
 {
@@ -379,9 +382,9 @@ struct Font::Text
 struct Model::TexData
 {
 	stdfs::path id;
-	stdfs::path samplerID;
 	stdfs::path filename;
 	bytearray bytes;
+	Hash samplerID;
 	Hash hash;
 };
 struct Model::MatData
@@ -422,4 +425,16 @@ struct Model::CreateInfo
 	Colour tint = colours::white;
 	bool bDropColour = false;
 };
+struct Model::LoadInfo : LoadBase<Model>
+{
+	stdfs::path idRoot;
+	stdfs::path jsonDirectory;
+	std::string jsonFilename;
+};
+
+template <>
+TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const;
+
+template <>
+TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const;
 } // namespace le::res

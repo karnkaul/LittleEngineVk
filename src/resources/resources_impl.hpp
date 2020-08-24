@@ -3,35 +3,15 @@
 #include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <core/delegate.hpp>
+#include <core/path_tree.hpp>
 #include <resources/monitor.hpp>
 
 namespace le::res
 {
-#if defined(LEVK_EDITOR)
-template <typename T>
-struct TreeView final
-{
-	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource");
-
-	using Name = std::string;
-	using Dir = std::string;
-	using Entry = std::pair<Name, T>;
-
-	std::map<Dir, std::vector<Entry>> entries;
-
-	void add(stdfs::path const& id, T const& t)
-	{
-		Dir dir = id.parent_path().generic_string();
-		Name name = id.filename().generic_string();
-		entries[std::move(dir)].push_back({std::move(name), T{t}});
-	}
-};
-#endif
-
 template <typename T, typename TImpl>
 struct TResource final
 {
-	static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource");
+	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource");
 
 	typename T::Info info;
 	T resource;
@@ -69,14 +49,14 @@ struct IReloadable
 
 struct Shader::Impl : ImplBase, IReloadable
 {
-	static constexpr std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
+	constexpr static std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
 																												vk::ShaderStageFlagBits::eFragment};
 
-	static std::string_view s_spvExt;
-	static std::string_view s_vertExt;
-	static std::string_view s_fragExt;
+	inline static std::string_view s_spvExt = ".spv";
+	inline static std::string_view s_vertExt = ".vert";
+	inline static std::string_view s_fragExt = ".frag";
 
-	EnumArray<bytearray, Shader::Type> codeMap;
+	EnumArray<Shader::Type, bytearray> codeMap;
 	std::array<vk::ShaderModule, std::size_t(Shader::Type::eCOUNT_)> shaders;
 
 	static std::string extension(stdfs::path const& id);
@@ -195,13 +175,23 @@ Font::Info* infoRW(Font font);
 Model::Info* infoRW(Model model);
 
 #if defined(LEVK_EDITOR)
-TreeView<Shader> const& loadedShaders();
-TreeView<Sampler> const& loadedSamplers();
-TreeView<Texture> const& loadedTextures();
-TreeView<Material> const& loadedMaterials();
-TreeView<Mesh> const& loadedMeshes();
-TreeView<Font> const& loadedFonts();
-TreeView<Model> const& loadedModels();
+template <typename T>
+io::PathTree<T> const& loaded();
+
+template <>
+io::PathTree<Shader> const& loaded<Shader>();
+template <>
+io::PathTree<Sampler> const& loaded<Sampler>();
+template <>
+io::PathTree<Texture> const& loaded<Texture>();
+template <>
+io::PathTree<Material> const& loaded<Material>();
+template <>
+io::PathTree<Mesh> const& loaded<Mesh>();
+template <>
+io::PathTree<Font> const& loaded<Font>();
+template <>
+io::PathTree<Model> const& loaded<Model>();
 #endif
 
 bool isLoading(GUID guid);
@@ -213,40 +203,9 @@ void deinit();
 
 #if defined(LEVK_EDITOR)
 template <typename T>
-TreeView<T> const& loaded()
+io::PathTree<T> const& loaded()
 {
-	if constexpr (std::is_same_v<T, Shader>)
-	{
-		return loadedShaders();
-	}
-	else if constexpr (std::is_same_v<T, Sampler>)
-	{
-		return loadedSamplers();
-	}
-	else if constexpr (std::is_same_v<T, Texture>)
-	{
-		return loadedTextures();
-	}
-	else if constexpr (std::is_same_v<T, Material>)
-	{
-		return loadedMaterials();
-	}
-	else if constexpr (std::is_same_v<T, Mesh>)
-	{
-		return loadedMeshes();
-	}
-	else if constexpr (std::is_same_v<T, Font>)
-	{
-		return loadedFonts();
-	}
-	else if constexpr (std::is_same_v<T, Model>)
-	{
-		return loadedModels();
-	}
-	else
-	{
-		static_assert(alwaysFalse<T>, "Invalid Type!");
-	}
+	static_assert(alwaysFalse<T>, "Invalid Type!");
 }
 #endif
 

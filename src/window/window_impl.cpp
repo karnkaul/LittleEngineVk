@@ -127,6 +127,39 @@ void onFocus(GLFWwindow* pGLFWwindow, s32 entered)
 	}
 	return;
 }
+
+WindowImpl::Cursor const& cursor(input::CursorType type)
+{
+	auto& cursor = WindowImpl::s_cursors.at((std::size_t)type);
+	if (type != input::CursorType::eDefault && !cursor.data.contains<GLFWcursor*>())
+	{
+		s32 gCursor = 0;
+		switch (type)
+		{
+		default:
+		case input::CursorType::eDefault:
+			break;
+		case input::CursorType::eResizeEW:
+			gCursor = GLFW_RESIZE_EW_CURSOR;
+			break;
+		case input::CursorType::eResizeNS:
+			gCursor = GLFW_RESIZE_NS_CURSOR;
+			break;
+		case input::CursorType::eResizeNWSE:
+			gCursor = GLFW_RESIZE_NWSE_CURSOR;
+			break;
+		case input::CursorType::eResizeNESW:
+			gCursor = GLFW_RESIZE_NESW_CURSOR;
+			break;
+		}
+		if (gCursor != 0)
+		{
+			cursor.data = glfwCreateStandardCursor(gCursor);
+		}
+	}
+	cursor.type = type;
+	return cursor;
+}
 #endif
 
 void registerCallbacks(NativeWindow const& window)
@@ -193,13 +226,17 @@ bool Gamepad::isPressed(Key button) const
 	return false;
 }
 
-std::unordered_map<WindowID, WindowImpl::InputCallbacks> WindowImpl::s_input;
-
-WindowImpl* WindowImpl::find(void* pNativeHandle)
+WindowImpl* WindowImpl::find(StaticAny<> nativeHandle)
 {
-	auto f = [pNativeHandle](auto pWindow) -> bool { return pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->m_pWindow == pNativeHandle; };
+#if defined(LEVK_USE_GLFW)
+	auto f = [nativeHandle](auto pWindow) -> bool {
+		return pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->template cast<GLFWwindow>() == nativeHandle.val<GLFWwindow*>();
+	};
 	auto search = std::find_if(g_registeredWindows.begin(), g_registeredWindows.end(), f);
 	return search != g_registeredWindows.end() ? *search : nullptr;
+#else
+	return nullptr;
+#endif
 }
 
 bool WindowImpl::init()
@@ -228,11 +265,20 @@ bool WindowImpl::init()
 void WindowImpl::deinit()
 {
 #if defined(LEVK_USE_GLFW)
+	for (auto& cursor : s_cursors)
+	{
+		auto pCursor = cursor.data.val<GLFWcursor*>();
+		if (pCursor)
+		{
+			glfwDestroyCursor(pCursor);
+		}
+	}
 	glfwTerminate();
 	LOG_D("[{}] GLFW terminated", Window::s_tName);
 	g_bGLFWInit = false;
 #endif
 	s_input.clear();
+	s_cursors = {};
 	return;
 }
 
@@ -297,11 +343,11 @@ std::unordered_set<s32> WindowImpl::allExisting()
 	return ret;
 }
 
-void* WindowImpl::nativeHandle(WindowID window)
+StaticAny<> WindowImpl::nativeHandle(WindowID window)
 {
 	if (auto pImpl = windowImpl(window); pImpl)
 	{
-		return pImpl->m_pWindow->m_uImpl->m_uNativeWindow->m_pWindow;
+		return pImpl->m_pWindow->m_uImpl->m_uNativeWindow->m_window;
 	}
 	return nullptr;
 }
@@ -341,7 +387,6 @@ WindowImpl::~WindowImpl()
 	}
 #endif
 	unregisterWindow(this);
-	close();
 	destroy();
 }
 
@@ -359,7 +404,7 @@ bool WindowImpl::create(Window::Info const& info)
 		{
 			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((std::size_t)colourSpace));
 		}
-		if (os::isDefined("immediate"))
+		if (os::isDefined("immediate", "i"))
 		{
 			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
 			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)PresentMode::eImmediate);
@@ -425,7 +470,7 @@ bool WindowImpl::exists() const
 #if defined(LEVK_USE_GLFW)
 	if (g_bGLFWInit && m_uNativeWindow)
 	{
-		bRet = m_uNativeWindow->m_pWindow != nullptr;
+		bRet = m_uNativeWindow->cast<GLFWwindow>() != nullptr;
 	}
 #endif
 	return bRet;
@@ -455,7 +500,7 @@ bool WindowImpl::isFocused() const
 	return bRet;
 }
 
-void WindowImpl::close()
+void WindowImpl::setClosing()
 {
 #if defined(LEVK_USE_GLFW)
 	if (g_bGLFWInit && m_uNativeWindow)
@@ -511,6 +556,20 @@ glm::ivec2 WindowImpl::framebufferSize() const
 glm::ivec2 WindowImpl::windowSize() const
 {
 	return m_uNativeWindow ? m_uNativeWindow->windowSize() : glm::ivec2(0);
+}
+
+void WindowImpl::setCursorType([[maybe_unused]] CursorType type)
+{
+#if defined(LEVK_USE_GLFW)
+	if (g_bGLFWInit && m_uNativeWindow)
+	{
+		if (type != m_cursor.type)
+		{
+			m_cursor = cursor(type);
+			glfwSetCursor(m_uNativeWindow->cast<GLFWwindow>(), m_cursor.data.val<GLFWcursor*>());
+		}
+	}
+#endif
 }
 
 void WindowImpl::setCursorMode([[maybe_unused]] CursorMode mode) const

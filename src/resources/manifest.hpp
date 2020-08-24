@@ -1,11 +1,10 @@
 #pragma once
 #include <atomic>
 #include <memory>
-#include <core/gdata.hpp>
-#include <core/reader.hpp>
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
-#include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/resources/resource_list.hpp>
 #include <engine/resources/resources.hpp>
 
@@ -24,6 +23,7 @@ public:
 	enum class Status : s8
 	{
 		eIdle,
+		eReady,
 		eExtractingData,
 		eLoadingResources,
 		eWaitingForResources,
@@ -62,24 +62,23 @@ public:
 	Info m_toLoad;
 
 protected:
-	GData m_manifest;
+	dj::object m_manifest;
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<res::GUID> m_loading;
-	Lockable<std::mutex> m_mutex;
+	kt::lockable<std::mutex> m_mutex;
 	res::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
-	io::Reader const* m_pReader = nullptr;
 	bool m_bParsed = false;
 
 public:
-	Manifest(io::Reader const& reader, stdfs::path const& id);
-	~Manifest();
-
-public:
+	bool read(stdfs::path const& id);
 	void start();
 	Status update(bool bTerminate = false);
 	ResourceList parse();
+	void reset();
+	bool isIdle() const;
+	bool isReady() const;
 
 	static void unload(ResourceList const& list);
 

@@ -72,18 +72,12 @@ SceneBuilder::SceneBuilder() = default;
 
 SceneBuilder::SceneBuilder(Info info) : m_info(std::move(info)) {}
 
-f32 SceneBuilder::framebufferAspect()
-{
-	auto const ifbSize = engine::framebufferSize();
-	return ifbSize.x == 0 || ifbSize.y == 0 ? 1.0f : (f32)ifbSize.x / (f32)ifbSize.y;
-}
-
-glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& framebuffer)
+glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea)
 {
 	f32 const uiX = uiSpace.x == 0.0f ? 1.0f : uiSpace.x;
 	f32 const uiY = uiSpace.y == 0.0f ? 1.0f : uiSpace.y;
 	f32 const uiAspect = uiX / uiY;
-	f32 const fbAspect = (f32)(framebuffer.x == 0 ? 1 : framebuffer.x) / (f32)(framebuffer.y == 0 ? 1 : framebuffer.y);
+	f32 const fbAspect = (f32)(renderArea.x == 0 ? 1 : renderArea.x) / (f32)(renderArea.y == 0 ? 1 : renderArea.y);
 	f32 const x = uiAspect > fbAspect ? uiX : uiX * (fbAspect / uiAspect);
 	f32 const y = fbAspect > uiAspect ? uiY : uiY * (uiAspect / fbAspect);
 	return {x, y, uiSpace.z};
@@ -92,29 +86,33 @@ glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const&
 glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace)
 {
 	auto const ifbSize = engine::framebufferSize();
-	return uiProjection(uiSpace, {ifbSize.x == 0 ? 1 : ifbSize.x, ifbSize.y == 0 ? 1 : ifbSize.y});
+	auto const gameRect = engine::gameRectSize();
+	glm::ivec2 const renderArea = {(s32)((f32)ifbSize.x * gameRect.x), (s32)((f32)ifbSize.y * gameRect.y)};
+	return uiProjection(uiSpace, renderArea);
 }
 
 gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry const& registry) const
 {
 	auto const ifbSize = engine::framebufferSize();
+	auto const gameRect = engine::gameRectSize();
 	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
-	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fbSize, m_info.uiSpace.z) : m_info.uiSpace;
-	engine::g_uiSpace = m_info.flags.isSet(Flag::eDynamicUI) ? glm::vec3(fbSize, m_info.uiSpace.z) : uiProjection(uiSpace, ifbSize);
+	glm::vec2 const fRenderArea = fbSize * gameRect;
+	glm::ivec2 const iRenderArea = {(s32)fRenderArea.x, (s32)fRenderArea.y};
+	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fRenderArea, m_info.uiSpace.z) : m_info.uiSpace;
+	engine::g_uiSpace = m_info.flags.isSet(Flag::eDynamicUI) ? glm::vec3(fRenderArea, m_info.uiSpace.z) : uiProjection(uiSpace, iRenderArea);
 	gfx::Renderer::Scene scene;
 	scene.clear = {m_info.clearDepth, m_info.clearColour};
 	scene.dirLights = m_info.dirLights;
 	scene.view.pos_v = camera.m_position;
 	scene.view.mat_v = camera.view();
-	scene.view.mat_p = camera.perspective(fbSize.x / fbSize.y);
+	scene.view.mat_p = camera.perspective(fRenderArea.x / fRenderArea.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
 	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	if (!m_info.skyboxCubemapID.empty())
 	{
-		auto [cubemap, bCubemap] = res::findTexture(m_info.skyboxCubemapID);
-		if (bCubemap && cubemap.status() == res::Status::eReady)
+		if (auto cubemap = res::find<res::Texture>(m_info.skyboxCubemapID); cubemap->status() == res::Status::eReady)
 		{
-			scene.view.skybox.cubemap = cubemap;
+			scene.view.skybox.cubemap = *cubemap;
 		}
 	}
 	gfx::Renderer::Batch batch3D;
@@ -123,8 +121,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, pModel] = query;
-			if (pModel->status() == res::Status::eReady)
+			if (auto& [pTransform, pModel] = query; pModel->status() == res::Status::eReady)
 			{
 				batch3D.drawables.push_back({pModel->meshes(), pTransform, m_info.p3Dpipe});
 			}
@@ -134,8 +131,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<Transform, res::Mesh>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pTransform, pMesh] = query;
-			if (pMesh->status() == res::Status::eReady)
+			if (auto& [pTransform, pMesh] = query; pMesh->status() == res::Status::eReady)
 			{
 				batch3D.drawables.push_back({{*pMesh}, pTransform, m_info.p3Dpipe});
 			}

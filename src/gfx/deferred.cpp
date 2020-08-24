@@ -1,4 +1,4 @@
-#include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/renderer_impl.hpp>
 #include <gfx/device.hpp>
@@ -24,7 +24,7 @@ struct Deferred
 };
 
 std::deque<Deferred> g_deferred;
-Lockable<std::mutex> g_mutex;
+kt::lockable<std::mutex> g_mutex;
 
 bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
 {

@@ -29,5 +29,5 @@ target_link_libraries(${PROJECT_NAME}
 		physfs-static
 		$<$<STREQUAL:${PLATFORM},Linux>:pthread>
 		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
+		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 )
-

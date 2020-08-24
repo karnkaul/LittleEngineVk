@@ -48,4 +48,11 @@ glm::mat4 Camera::ui(glm::vec3 const& uiSpace) const
 	f32 const h = uiSpace.y * 0.5f;
 	return glm::ortho(-w, w, -h, h, -uiSpace.z, uiSpace.z);
 }
+
+void Camera::reset()
+{
+	m_position = {};
+	m_orientation = g_qIdentity;
+	m_fov = 45.0f;
+}
 } // namespace le::gfx

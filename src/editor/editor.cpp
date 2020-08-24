@@ -2,7 +2,8 @@
 #include <mutex>
 #include <core/log_config.hpp>
 #include <core/log.hpp>
-#include <core/utils.hpp>
+#include <core/maths.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <editor/editor.hpp>
 #if defined(LEVK_EDITOR)
 #include <fmt/format.h>
@@ -39,15 +40,17 @@ namespace
 {
 bool g_bInit = false;
 io::OnLog g_onLogChain = nullptr;
-Lockable<std::mutex> g_logMutex;
+kt::lockable<std::mutex> g_logMutex;
 
 struct
 {
 	WindowID window;
 	OnInput::Token inputToken;
 	OnFocus::Token focusToken;
-	bool enabled = false;
-	bool bAltPressed = false;
+	bool bEnabled = false;
+	bool bFocus = true;
+	std::unordered_set<input::Key> pressed;
+	std::unordered_set<input::Key> held;
 } g_data;
 
 struct LogEntry final
@@ -78,6 +81,15 @@ struct
 	} model;
 } g_inspecting;
 World* g_pWorld = nullptr;
+
+std::pair<bool, bool> treeNode(std::string_view name, bool bSelected, bool bLeaf, ImGuiTreeNodeFlags otherFlags = 0)
+{
+	constexpr static ImGuiTreeNodeFlags branchFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+	constexpr static ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | otherFlags;
+	bool const bNodeOpen = ImGui::TreeNodeEx(name.data(), nodeFlags) && !bLeaf;
+	return {bNodeOpen, ImGui::IsItemClicked()};
+}
 
 #pragma region log
 bool g_bAutoScroll = true;
@@ -127,43 +139,26 @@ void clearLog()
 #pragma endregion log
 
 #pragma region scene
-void walkGraph(Transform& root, World::EMap const& emap, Registry& registry)
+void walkSceneTree(Transform& root, World::EMap const& emap, Registry& registry)
 {
-	static ImGuiTreeNodeFlags const baseFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+	constexpr static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
 	auto const children = root.children();
 	auto search = emap.find(&root);
 	if (search != emap.end())
 	{
-		ImGuiTreeNodeFlags nodeFlags = baseFlags;
-		auto entity = search->second;
-		if (g_inspecting.entity == entity)
+		auto [pTransform, entity] = *search;
+		auto [bOpen, bClicked] = treeNode(registry.entityName(entity), g_inspecting.entity == entity, pTransform->children().empty(), flags);
+		if (bClicked)
 		{
-			nodeFlags |= ImGuiTreeNodeFlags_Selected;
+			bool const bSelect = g_inspecting.entity != entity;
+			g_inspecting.entity = bSelect ? entity : Entity();
+			g_inspecting.pTransform = bSelect ? pTransform : nullptr;
 		}
-		auto pTransform = search->first;
-		bool const bLeaf = pTransform->children().empty();
-		if (bLeaf)
-		{
-			nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-		}
-		bool const bNodeOpen = ImGui::TreeNodeEx(registry.entityName(entity).data(), nodeFlags) && !bLeaf;
-		if (ImGui::IsItemClicked())
-		{
-			if (g_inspecting.entity == entity)
-			{
-				g_inspecting = {};
-			}
-			else
-			{
-				g_inspecting.entity = entity;
-				g_inspecting.pTransform = pTransform;
-			}
-		}
-		if (bNodeOpen)
+		if (bOpen)
 		{
 			for (auto pChild : pTransform->children())
 			{
-				walkGraph(*pChild, emap, registry);
+				walkSceneTree(*pChild, emap, registry);
 			}
 			ImGui::TreePop();
 		}
@@ -184,19 +179,53 @@ bool dummy(Args...)
 }
 
 template <typename T, typename F1, typename F2>
-void listLoaded(F1 filter, F2 onSelected, bool* out_pSelect = nullptr, bool bNone = false)
+void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view filter, F1 shouldList, F2 onSelected, bool* out_pSelect)
 {
-	constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-	static_assert(std::is_base_of_v<res::Resource, T>, "T must derive from Resource");
+	if (!filter.empty())
+	{
+		auto removeNode = [&filter](typename io::PathTree<T>::Node const* pNode) -> bool { return pNode->findPattern(filter, true) == nullptr; };
+		nodes.erase(std::remove_if(nodes.begin(), nodes.end(), removeNode), nodes.end());
+	}
+	for (auto pNode : nodes)
+	{
+		auto const str = pNode->directory.filename().generic_string() + "/";
+		auto [bOpen, _] = treeNode(str, false, false, ImGuiTreeNodeFlags_SpanAvailWidth);
+		if (bOpen)
+		{
+			for (auto const& [name, entry] : pNode->entries)
+			{
+				auto const& str = std::get<std::string>(entry);
+				if (filter.empty() || str.find(filter) != std::string::npos)
+				{
+					auto const t = std::get<T>(entry);
+					if (shouldList(t) && treeNode(str, false, true).second)
+					{
+						onSelected(t);
+						if (out_pSelect)
+						{
+							*out_pSelect = false;
+						}
+					}
+				}
+			}
+			listResourceTree<T, F1, F2>(pNode->childNodes(), filter, shouldList, onSelected, out_pSelect);
+			ImGui::TreePop();
+		}
+	}
+}
+
+template <typename T, typename F1, typename F2>
+void listResources(F1 shouldList, F2 onSelected, bool* out_pSelect = nullptr, bool bNone = false)
+{
+	static_assert(std::is_base_of_v<res::Resource<T>, T>, "T must derive from Resource");
 	static char szFilter[128];
 	ImGui::SetNextItemWidth(200.0f);
 	ImGui::InputText("Filter", szFilter, arraySize(szFilter));
 	ImGui::Separator();
-	sv resourceFilter = szFilter;
 	if (bNone)
 	{
-		ImGui::TreeNodeEx("[None]", flags);
-		if (ImGui::IsItemClicked())
+		auto [_, bClicked] = treeNode("[None]", false, true, ImGuiTreeNodeFlags_SpanAvailWidth);
+		if (bClicked)
 		{
 			onSelected({});
 			if (out_pSelect)
@@ -205,36 +234,7 @@ void listLoaded(F1 filter, F2 onSelected, bool* out_pSelect = nullptr, bool bNon
 			}
 		}
 	}
-	auto resources = res::loaded<T>();
-	if (!resourceFilter.empty())
-	{
-		for (auto& kvp : resources.entries)
-		{
-			auto& [dir, entries] = kvp;
-			auto iter = std::remove_if(entries.begin(), entries.end(), [kvp, resourceFilter](auto const& entry) -> bool {
-				return (stdfs::path(kvp.first) / stdfs::path(entry.first)).generic_string().find(resourceFilter) == std::string::npos;
-			});
-			entries.erase(iter, entries.end());
-		}
-	}
-	for (auto const& [dir, entries] : resources.entries)
-	{
-		if (!entries.empty() && ImGui::TreeNode(dir.data()))
-		{
-			for (auto const& entry : entries)
-			{
-				if (filter(entry.second) && ImGui::Selectable(entry.first.data()))
-				{
-					onSelected(entry.second);
-					if (out_pSelect)
-					{
-						*out_pSelect = false;
-					}
-				}
-			}
-			ImGui::TreePop();
-		}
-	}
+	listResourceTree<T>(res::loaded<T>().rootNodes(), szFilter, shouldList, onSelected, out_pSelect);
 }
 
 template <typename T>
@@ -242,7 +242,7 @@ void tabLoaded(sv tabName)
 {
 	if (ImGui::BeginTabItem(tabName.data()))
 	{
-		listLoaded<T>(&dummy<T>, &dummy<T>);
+		listResources<T>(&dummy<T>, &dummy<T>);
 		ImGui::EndTabItem();
 	}
 }
@@ -290,7 +290,7 @@ void inspectResource(T resource, sv selector, bool& out_bSelect, il<bool*> unsel
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
 		{
-			listLoaded<T>(filter, onSelected, &out_bSelect, bNone);
+			listResources<T>(filter, onSelected, &out_bSelect, bNone);
 		}
 		ImGui::End();
 	}
@@ -311,7 +311,7 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 			[pInfo](res::Material const& mat) { pInfo->material.material = mat; }, &dummy<res::Material>, pos, size, false);
 		inspectResource<res::Texture>(
 			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {&g_inspecting.mesh.bSelectID, &g_inspecting.mesh.bSelectMat},
-			[pInfo](res::Texture const& tex) { pInfo->material.diffuse.guid = tex.guid; },
+			[pInfo](res::Texture const& tex) { pInfo->material.diffuse = tex; },
 			[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
 		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
 		ImGui::Checkbox("Drop Colour", &bOut);
@@ -372,7 +372,7 @@ void entityInspector(v2 pos, v2 size)
 				{
 					inspectResource(
 						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {&g_inspecting.mesh.bSelectDiffuse, &g_inspecting.mesh.bSelectMat},
-						[pMesh](res::Mesh mesh) { pMesh->guid = mesh.guid; }, &dummy<res::Mesh>, pos, size);
+						[pMesh](res::Mesh mesh) { *pMesh = mesh; }, &dummy<res::Mesh>, pos, size);
 
 					inspectMatInst(*pMesh, 0, pos, size);
 					ImGui::TreePop();
@@ -385,8 +385,8 @@ void entityInspector(v2 pos, v2 size)
 				if (ImGui::TreeNode("Model"))
 				{
 					inspectResource(
-						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { pModel->guid = model.guid; },
-						&dummy<res::Model>, pos, size);
+						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { *pModel = model; }, &dummy<res::Model>, pos,
+						size);
 					static std::deque<res::Mesh> s_empty;
 					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 					std::size_t idx = 0;
@@ -577,7 +577,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 				{
 					for (auto pTransform : g_pWorld->m_root.children())
 					{
-						walkGraph(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
+						walkSceneTree(*pTransform, g_pWorld->m_transformToEntity, g_pWorld->registry());
 					}
 				}
 				ImGui::EndTabItem();
@@ -689,6 +689,107 @@ void drawLog(iv2 fbSize, s32 logHeight)
 	}
 	ImGui::End();
 }
+
+void resize(WindowImpl* pWindow)
+{
+	enum class Handle : std::size_t
+	{
+		eNone,
+		eLeft,
+		eRight,
+		eBottom,
+		eLeftBottom,
+		eRightBottom
+	};
+	constexpr static f32 nDelta = 0.01f;
+	static glm::vec2 const s_minXY = {0.0f, 0.35f};
+	static glm::vec2 const s_maxXY = {1.0f, 1.0f};
+	static Handle s_resizing = Handle::eNone;
+	static gfx::ScreenRect s_gameRect = glm::vec4(0.2f, 0.0f, 0.8f, 0.6f);
+	static gfx::ScreenRect s_prevRect = s_gameRect;
+	auto const wSize = pWindow->windowSize();
+	auto const cursorPos = input::cursorPosition(true);
+	glm::vec2 const nCursorPos = {cursorPos.x / (f32)wSize.x, cursorPos.y / (f32)wSize.y};
+	bool const bClickPressed = g_data.pressed.find(Key::eMouseButton1) != g_data.pressed.end();
+	bool const bClickHeld = g_data.held.find(Key::eMouseButton1) != g_data.held.end();
+	input::CursorType toSet = input::CursorType::eDefault;
+	auto endResize = [&toSet]() {
+		s_resizing = Handle::eNone;
+		toSet = input::CursorType::eDefault;
+		ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+	};
+	auto checkResize = [bClickPressed, &toSet](f32 s0, f32 t0, f32 s1, f32 t1, input::CursorType c, Handle h) {
+		if (maths::equals(s0, t0, nDelta) && maths::equals(s1, t1, nDelta))
+		{
+			toSet = c;
+			if (bClickPressed)
+			{
+				s_prevRect = s_gameRect;
+				s_resizing = h;
+			}
+			ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+		}
+	};
+	auto doResize = [&toSet, &endResize](f32& out_t, f32 s, f32 min, f32 max, input::CursorType type) {
+		if (g_data.pressed.find(Key::eEscape) != g_data.pressed.end())
+		{
+			s_gameRect = s_prevRect;
+			endResize();
+		}
+		else
+		{
+			out_t = std::clamp(s, min + nDelta, max - nDelta);
+			toSet = type;
+		}
+	};
+	if (!bClickHeld)
+	{
+		endResize();
+	}
+	switch (s_resizing)
+	{
+	case Handle::eNone:
+	{
+		checkResize(nCursorPos.x, s_gameRect.left, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
+		checkResize(nCursorPos.x, s_gameRect.right, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
+		checkResize(nCursorPos.y, s_gameRect.bottom, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
+		checkResize(nCursorPos.x, s_gameRect.left, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNESW, Handle::eLeftBottom);
+		checkResize(nCursorPos.x, s_gameRect.right, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNWSE, Handle::eRightBottom);
+		break;
+	}
+	case Handle::eLeft:
+	{
+		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeEW);
+		break;
+	}
+	case Handle::eRight:
+	{
+		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeEW);
+		break;
+	}
+	case Handle::eBottom:
+	{
+		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNS);
+		break;
+	}
+	case Handle::eLeftBottom:
+	{
+		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeNESW);
+		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNESW);
+		break;
+	}
+	case Handle::eRightBottom:
+	{
+		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeNWSE);
+		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNWSE);
+		break;
+	}
+	default:
+		break;
+	}
+	pWindow->setCursorType(toSet);
+	editor::g_gameRect = s_gameRect;
+}
 #pragma endregion layout
 } // namespace
 
@@ -703,17 +804,25 @@ bool editor::init(WindowID editorWindow)
 			[](Key key, Action action, Mods::VALUE mods) {
 				if (key == Key::eE && action == Action::eRelease && mods & Mods::eCONTROL)
 				{
-					g_data.enabled = !g_data.enabled;
+					g_data.bEnabled = !g_data.bEnabled;
 				}
-				if ((key == Key::eLeftAlt || key == Key::eRightAlt) && (action == Action::ePress || action == Action::eRelease))
+				switch (action)
 				{
-					g_data.bAltPressed = action == Action::ePress;
+				case Action::ePress:
+					g_data.held.insert(key);
+					g_data.pressed.insert(key);
+					break;
+				case Action::eRelease:
+					g_data.held.erase(key);
+					break;
+				default:
+					break;
 				}
 			},
 			editorWindow);
 		if (auto pWindow = WindowImpl::windowImpl(g_data.window))
 		{
-			g_data.focusToken = pWindow->m_pWindow->registerFocus([](bool) { g_data.bAltPressed = false; });
+			g_data.focusToken = pWindow->m_pWindow->registerFocus([](bool bFocus) { g_data.bFocus = bFocus; });
 		}
 		g_editorCam.init(true);
 		return g_bInit = true;
@@ -738,17 +847,11 @@ void editor::tick([[maybe_unused]] Time dt)
 {
 	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);
-	static auto const smol = glm::vec2(0.6f);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
-	if (g_data.enabled && pWindow && pWindow->isOpen())
+	if (g_data.bEnabled && pWindow && pWindow->isOpen())
 	{
-		glm::vec2 centre = glm::vec2(0.5f * (f32)pWindow->windowSize().x, 0.0f);
 		auto const fbSize = pWindow->framebufferSize();
-		if (g_data.bAltPressed)
-		{
-			centre = pWindow->cursorPos();
-		}
-		g_gameRect = pWindow->m_pWindow->renderer().clampToView(centre, smol);
+		resize(pWindow);
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
 			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);
@@ -769,6 +872,7 @@ void editor::tick([[maybe_unused]] Time dt)
 	{
 		g_gameRect = {};
 	}
+	g_data.pressed.clear();
 }
 } // namespace le
 #endif

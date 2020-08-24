@@ -76,7 +76,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 	{
 		throw std::runtime_error("Failed to create Window");
 	}
-	m_pWindow = pWindow;
+	m_window = pWindow;
 	glfwSetWindowPos(pWindow, cX, cY);
 #else
 	throw std::runtime_error("Unsupported configuration");

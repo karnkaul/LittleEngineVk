@@ -6,9 +6,9 @@
 #include <core/assert.hpp>
 #include <core/colour.hpp>
 #include <core/profiler.hpp>
-#include <core/gdata.hpp>
 #include <core/log.hpp>
 #include <core/utils.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
 #include <resources/resources_impl.hpp>
@@ -63,23 +63,13 @@ private:
 	std::vector<std::size_t> materials(tinyobj::shape_t const& shape);
 };
 
-glm::vec3 getVec3(GData const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f))
+glm::vec3 getVec3(dj::object const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f))
 {
-	auto const vec = json.get<std::vector<std::string>>(id);
-	glm::vec3 ret = def;
-	if (vec.size() > 0)
+	if (auto const pVec = json.find<dj::object>(id))
 	{
-		ret.x = utils::strings::toF32(vec.at(0), def.x);
+		return {(f32)pVec->value<dj::floating>("x"), (f32)pVec->value<dj::floating>("y"), (f32)pVec->value<dj::floating>("z")};
 	}
-	if (vec.size() > 1)
-	{
-		ret.y = utils::strings::toF32(vec.at(1), def.y);
-	}
-	if (vec.size() > 2)
-	{
-		ret.z = utils::strings::toF32(vec.at(2), def.z);
-	}
-	return ret;
+	return def;
 }
 
 OBJParser::OBJParser(Data data)
@@ -134,10 +124,9 @@ OBJParser::OBJParser(Data data)
 #endif
 		for (auto& texture : m_info.textures)
 		{
-			auto [bytes, bResult] = engine::reader().getBytes(texture.filename);
-			if (bResult)
+			if (auto bytes = engine::reader().bytes(texture.filename))
 			{
-				texture.bytes = std::move(bytes);
+				texture.bytes = std::move(*bytes);
 			}
 			else
 			{
@@ -317,8 +306,6 @@ std::vector<std::size_t> OBJParser::materials(tinyobj::shape_t const& shape)
 }
 } // namespace
 
-std::string const Model::s_tName = utils::tName<Model>();
-
 Model::Info const& Model::info() const
 {
 	return res::info(*this);
@@ -329,49 +316,63 @@ Status Model::status() const
 	return res::status(*this);
 }
 
-Model::CreateInfo Model::parseOBJ(stdfs::path const& resourceID)
+template <>
+TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const
 {
-	auto jsonID = resourceID;
-	if (jsonID.filename().string().find(".json") == std::string::npos)
+	auto pThis = static_cast<Model::LoadInfo const*>(this);
+	auto const jsonDir = pThis->jsonDirectory.empty() ? pThis->idRoot : pThis->jsonDirectory;
+	if (jsonDir.empty())
 	{
-		jsonID /= resourceID.filename();
-		jsonID += ".json";
-	}
-	auto [jsonStr, bResult] = engine::reader().getString(jsonID);
-	if (!bResult)
-	{
-		LOG_E("[{}] [{}] not found!", s_tName, jsonID.generic_string());
+		LOG_E("[{}] Empty resource ID!", Model::s_tName);
 		return {};
 	}
-	GData json;
-	if (!json.read(std::move(jsonStr)))
+	auto jsonFile = pThis->jsonFilename;
+	if (jsonFile.empty())
 	{
-		LOG_E("[{}] Failed to read json: [{}]!", s_tName, jsonID.generic_string());
+		jsonFile = jsonDir.filename().generic_string();
+		jsonFile += ".json";
 	}
-	if (json.fieldCount() == 0 || !json.contains("mtl") || !json.contains("obj"))
+	auto const jsonID = jsonDir / jsonFile;
+	auto jsonStr = engine::reader().string(jsonID);
+	if (!jsonStr)
 	{
-		LOG_E("[{}] No data in json: [{}]!", s_tName, jsonID.generic_string());
+		LOG_E("[{}] [{}] not found!", Model::s_tName, jsonID.generic_string());
 		return {};
 	}
-	auto const objPath = resourceID / json.get("obj");
-	auto const mtlPath = resourceID / json.get("mtl");
+	dj::object json;
+	if (!json.read(*jsonStr) || json.fields.empty())
+	{
+		LOG_E("[{}] Failed to read json: [{}]!", Model::s_tName, jsonID.generic_string());
+	}
+	auto const& obj = json.value<dj::string>("obj");
+	auto const& mtl = json.value<dj::string>("mtl");
+	if (mtl.empty() || obj.empty())
+	{
+		LOG_E("[{}] No data in json: [{}]!", Model::s_tName, jsonID.generic_string());
+		return {};
+	}
+	auto const objPath = jsonDir / obj;
+	auto const mtlPath = jsonDir / mtl;
 	if (!engine::reader().checkPresence(objPath) || !engine::reader().checkPresence(mtlPath))
 	{
-		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", s_tName, engine::reader().medium(), objPath.generic_string(), mtlPath.generic_string());
+		LOG_E("[{}] .OBJ / .MTL data not present in [{}]: [{}], [{}]!", Model::s_tName, engine::reader().medium(), objPath.generic_string(),
+			  mtlPath.generic_string());
 		return {};
 	}
-	auto [objBuf, bObjResult] = engine::reader().getStr(objPath);
-	auto [mtlBuf, bMtlResult] = engine::reader().getStr(mtlPath);
-	if (bObjResult && bMtlResult)
+	auto objBuf = engine::reader().sstream(objPath);
+	auto mtlBuf = engine::reader().sstream(mtlPath);
+	if (objBuf && mtlBuf)
 	{
+		auto pSamplerID = json.find<dj::string>("sampler");
+		auto pScale = json.find<dj::floating>("scale");
 		OBJParser::Data objData;
-		objData.objBuf = std::move(objBuf);
-		objData.mtlBuf = std::move(mtlBuf);
+		objData.objBuf = std::move(*objBuf);
+		objData.mtlBuf = std::move(*mtlBuf);
 		objData.jsonID = std::move(jsonID);
-		objData.modelID = resourceID;
-		objData.samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/default";
-		objData.scale = json.contains("scale") ? json.get<f32>("scale") : 1.0f;
-		objData.bDropColour = json.get<bool>("dropColour");
+		objData.modelID = pThis->idRoot.empty() ? jsonDir : pThis->idRoot;
+		objData.samplerID = pSamplerID ? pSamplerID->value : "samplers/default";
+		objData.scale = pScale ? (f32)pScale->value : 1.0f;
+		objData.bDropColour = json.value<dj::boolean>("dropColour");
 		objData.origin = getVec3(json, "origin");
 		OBJParser parser(std::move(objData));
 		return std::move(parser.m_info);

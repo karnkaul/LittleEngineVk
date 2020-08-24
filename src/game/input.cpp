@@ -36,8 +36,8 @@ struct
 	std::vector<input::Gamepad> gamepads;
 	std::vector<char> text;
 	std::unordered_set<input::Key> held;
-	glm::vec2 actualCursorPos = {};
-	glm::vec2 virtualCursorPos = {};
+	glm::vec2 cursorPosRaw = {};
+	glm::vec2 cursorPosWorld = {};
 	glm::vec2 mouseScroll = {};
 } g_raw;
 } // namespace
@@ -54,9 +54,9 @@ input::Token input::registerContext(Context const& context)
 	return token;
 }
 
-glm::vec2 const& input::cursorPosition(bool bIgnoreDisabled)
+glm::vec2 const& input::cursorPosition(bool bRaw)
 {
-	return bIgnoreDisabled ? g_raw.actualCursorPos : g_raw.virtualCursorPos;
+	return bRaw ? g_raw.cursorPosRaw : g_raw.cursorPosWorld;
 }
 
 glm::vec2 input::screenToWorld(glm::vec2 const& screen)
@@ -68,18 +68,6 @@ glm::vec2 input::screenToWorld(glm::vec2 const& screen)
 		auto const size = glm::vec2(iSize.x, iSize.y);
 		ret.x = ret.x - ((f32)size.x * 0.5f);
 		ret.y = ((f32)size.y * 0.5f) - ret.y;
-#if defined(LEVK_EDITOR)
-		auto const gameRect = editor::g_gameRect.size();
-		if (gameRect.x < 1.0f || gameRect.y < 1.0f)
-		{
-			auto const iFbSize = pWindow->framebufferSize();
-			glm::vec2 const fbSize = {(f32)iFbSize.x, (f32)iFbSize.y};
-			glm::vec2 const gameOrigin = editor::g_gameRect.midPoint();
-			glm::vec2 const delta = glm::vec2(0.5f) - gameOrigin;
-			ret += glm::vec2(delta.x * fbSize.x, -delta.y * fbSize.y);
-			ret /= gameRect;
-		}
-#endif
 	}
 	return ret;
 }
@@ -91,6 +79,16 @@ glm::vec2 input::worldToUI(const glm::vec2& world)
 	{
 		auto const iSize = pWindow->framebufferSize();
 		auto const size = glm::vec2(iSize.x, iSize.y);
+#if defined(LEVK_EDITOR)
+		auto const gameRect = editor::g_gameRect.size();
+		if (gameRect.x < 1.0f || gameRect.y < 1.0f)
+		{
+			glm::vec2 const gameOrigin = editor::g_gameRect.midPoint();
+			glm::vec2 const delta = glm::vec2(0.5f) - gameOrigin;
+			ret += glm::vec2(delta.x * size.x, -delta.y * size.y);
+			ret /= gameRect;
+		}
+#endif
 		glm::vec2 const coeff = {engine::g_uiSpace.x / size.x, engine::g_uiSpace.y / size.y};
 		ret *= coeff;
 	}
@@ -172,10 +170,10 @@ void input::fire()
 			{
 				context.second->m_bFired = false;
 			}
-			g_raw.actualCursorPos = screenToWorld(pWindow->cursorPos());
+			g_raw.cursorPosRaw = pWindow->cursorPos();
 			if (pWindow->cursorMode() != CursorMode::eDisabled)
 			{
-				g_raw.virtualCursorPos = g_raw.actualCursorPos;
+				g_raw.cursorPosWorld = screenToWorld(g_raw.cursorPosRaw);
 			}
 			std::size_t processed = 0;
 #if defined(LEVK_DEBUG)

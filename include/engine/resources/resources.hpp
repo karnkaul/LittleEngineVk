@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <type_traits>
 #include <core/atomic_counter.hpp>
+#include <core/tasks.hpp>
 #include <engine/resources/resource_types.hpp>
 
 namespace le
@@ -18,6 +19,40 @@ using Semaphore = Counter<s32>::Semaphore;
 ///
 Semaphore acquire();
 
+template <typename T>
+class Async final
+{
+private:
+	std::shared_ptr<tasks::Handle> m_task;
+	Hash m_id;
+
+public:
+	Async() = default;
+	Async(std::shared_ptr<tasks::Handle> task, Hash id) : m_task(std::move(task)), m_id(id) {}
+	Async(Async&&) = default;
+	Async& operator=(Async&&) = default;
+	Async(Async const&) = default;
+	Async& operator=(Async const&) = default;
+	~Async();
+
+	bool valid() const;
+	bool loaded() const;
+	TResult<T> resource() const;
+
+	bool reset();
+};
+
+template <typename T>
+TResult<T> find(Hash id);
+template <typename T>
+typename T::Info const& info(T resource);
+template <typename T>
+Status status(T resource);
+template <typename T>
+bool unload(T resource);
+template <typename T>
+bool unload(Hash id);
+
 ///
 /// \brief Load new Shader
 ///
@@ -25,23 +60,28 @@ Shader load(stdfs::path const& id, Shader::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Shader
 ///
-TResult<Shader> findShader(Hash id);
+template <>
+TResult<Shader> find<Shader>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Shader
 ///
-Shader::Info const& info(Shader shader);
+template <>
+Shader::Info const& info<Shader>(Shader shader);
 ///
 /// \brief Obtain Status for a loaded Shader
 ///
-Status status(Shader shader);
+template <>
+Status status<Shader>(Shader shader);
 ///
 /// \brief Unload a loaded Shader
 ///
-bool unload(Shader shader);
+template <>
+bool unload<Shader>(Shader shader);
 ///
 /// \brief Unload a loaded Shader
 ///
-bool unloadShader(Hash id);
+template <>
+bool unload<Shader>(Hash id);
 
 ///
 /// \brief Load new Sampler
@@ -50,48 +90,62 @@ Sampler load(stdfs::path const& id, Sampler::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Sampler
 ///
-TResult<Sampler> findSampler(Hash id);
+template <>
+TResult<Sampler> find<Sampler>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Sampler
 ///
-Sampler::Info const& info(Sampler sampler);
+template <>
+Sampler::Info const& info<Sampler>(Sampler sampler);
 ///
 /// \brief Obtain Status for a loaded Sampler
 ///
-Status status(Sampler sampler);
+template <>
+Status status<Sampler>(Sampler sampler);
 ///
 /// \brief Unload a loaded Sampler
 ///
-bool unload(Sampler sampler);
+template <>
+bool unload<Sampler>(Sampler sampler);
 ///
 /// \brief Unload a loaded Sampler
 ///
-bool unloadSampler(Hash id);
+template <>
+bool unload<Sampler>(Hash id);
 
 ///
 /// \brief Load new Texture
 ///
 Texture load(stdfs::path const& id, Texture::CreateInfo createInfo);
 ///
+/// \brief Load new Texture on a separate thread
+///
+Async<Texture> loadAsync(stdfs::path const& id, Texture::LoadInfo loadInfo);
+///
 /// \brief Find a loaded Texture
 ///
-TResult<Texture> findTexture(Hash id);
+template <>
+TResult<Texture> find<Texture>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Texture
 ///
-Texture::Info const& info(Texture texture);
+template <>
+Texture::Info const& info<Texture>(Texture texture);
 ///
 /// \brief Obtain Status for a loaded Texture
 ///
-Status status(Texture texture);
+template <>
+Status status<Texture>(Texture texture);
 ///
 /// \brief Unload a loaded Texture
 ///
-bool unload(Texture texture);
+template <>
+bool unload<Texture>(Texture texture);
 ///
 /// \brief Unload a loaded Texture
 ///
-bool unloadTexture(Hash id);
+template <>
+bool unload<Texture>(Hash id);
 
 ///
 /// \brief Load new Material
@@ -100,23 +154,28 @@ Material load(stdfs::path const& id, Material::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Material
 ///
-TResult<Material> findMaterial(Hash id);
+template <>
+TResult<Material> find<Material>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Material
 ///
-Material::Info const& info(Material material);
+template <>
+Material::Info const& info<Material>(Material material);
 ///
 /// \brief Obtain Status for a loaded Material
 ///
-Status status(Material material);
+template <>
+Status status<Material>(Material material);
 ///
 /// \brief Unload a loaded Material
 ///
-bool unload(Material material);
+template <>
+bool unload<Material>(Material material);
 ///
 /// \brief Unload a loaded Material
 ///
-bool unloadMaterial(Hash id);
+template <>
+bool unload<Material>(Hash id);
 
 ///
 /// \brief Load new Mesh
@@ -125,23 +184,28 @@ Mesh load(stdfs::path const& id, Mesh::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Mesh
 ///
-TResult<Mesh> findMesh(Hash id);
+template <>
+TResult<Mesh> find<Mesh>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Mesh
 ///
-Mesh::Info const& info(Mesh mesh);
+template <>
+Mesh::Info const& info<Mesh>(Mesh mesh);
 ///
 /// \brief Obtain Status for a loaded Mesh
 ///
-Status status(Mesh mesh);
+template <>
+Status status<Mesh>(Mesh mesh);
 ///
 /// \brief Unload a loaded Mesh
 ///
-bool unload(Mesh mesh);
+template <>
+bool unload<Mesh>(Mesh mesh);
 ///
 /// \brief Unload a loaded Mesh
 ///
-bool unloadMesh(Hash id);
+template <>
+bool unload<Mesh>(Hash id);
 
 ///
 /// \brief Load new Font
@@ -150,48 +214,62 @@ Font load(stdfs::path const& id, Font::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Font
 ///
-TResult<Font> findFont(Hash id);
+template <>
+TResult<Font> find<Font>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Font
 ///
-Font::Info const& info(Font font);
+template <>
+Font::Info const& info<Font>(Font font);
 ///
 /// \brief Obtain Status for a loaded Font
 ///
-Status status(Font font);
+template <>
+Status status<Font>(Font font);
 ///
 /// \brief Unload a loaded Font
 ///
-bool unload(Font font);
+template <>
+bool unload<Font>(Font font);
 ///
 /// \brief Unload a loaded Font
 ///
-bool unloadFont(Hash id);
+template <>
+bool unload<Font>(Hash id);
 
 ///
 /// \brief Load new Model
 ///
 Model load(stdfs::path const& id, Model::CreateInfo createInfo);
 ///
+/// \brief Load new Model on a separate thread
+///
+Async<Model> loadAsync(stdfs::path const& id, Model::LoadInfo loadInfo);
+///
 /// \brief Find a loaded Model
 ///
-TResult<Model> findModel(Hash id);
+template <>
+TResult<Model> find<Model>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Model
 ///
-Model::Info const& info(Model model);
+template <>
+Model::Info const& info<Model>(Model model);
 ///
 /// \brief Obtain Status for a loaded Model
 ///
-Status status(Model model);
+template <>
+Status status<Model>(Model model);
 ///
 /// \brief Unload a loaded Model
 ///
-bool unload(Model model);
+template <>
+bool unload<Model>(Model model);
 ///
 /// \brief Unload a loaded Model
 ///
-bool unloadModel(Hash id);
+template <>
+bool unload<Model>(Hash id);
 
 ///
 /// \brief Unload a loaded Resource
@@ -199,55 +277,50 @@ bool unloadModel(Hash id);
 bool unload(Hash id);
 
 template <typename T>
-T load(stdfs::path const& id, typename T::CreateInfo createInfo)
+TResult<T> find(Hash)
 {
-	if constexpr (
-		std::is_same_v<
-			T,
-			Shader> || std::is_same_v<T, Sampler> || std::is_same_v<T, Texture> || std::is_same_v<T, Material> || std::is_same_v<T, Mesh> || std::is_same_v<T, Font> || std::is_same_v<T, Model>)
+	static_assert(alwaysFalse<T>, "Invalid type!");
+}
+
+template <typename T>
+Async<T>::~Async()
+{
+	if (m_task)
 	{
-		return load(id, std::move(createInfo));
-	}
-	else
-	{
-		static_assert(alwaysFalse<T>, "Invalid type!");
+		m_task->wait();
 	}
 }
 
 template <typename T>
-TResult<T> find(Hash id)
+bool Async<T>::valid() const
 {
-	if constexpr (std::is_same_v<T, Shader>)
+	return m_id != Hash() && m_task && m_task->status() != tasks::Handle::Status::eDiscarded;
+}
+
+template <typename T>
+bool Async<T>::loaded() const
+{
+	return resource().bResult;
+}
+
+template <typename T>
+TResult<T> Async<T>::resource() const
+{
+	if (valid())
 	{
-		return findShader(id);
+		return res::find<T>(m_id);
 	}
-	else if constexpr (std::is_same_v<T, Sampler>)
+	return {};
+}
+
+template <typename T>
+bool Async<T>::reset()
+{
+	if (m_task)
 	{
-		return findSampler(id);
+		m_task.reset();
+		return true;
 	}
-	else if constexpr (std::is_same_v<T, Texture>)
-	{
-		return findTexture(id);
-	}
-	else if constexpr (std::is_same_v<T, Material>)
-	{
-		return findMaterial(id);
-	}
-	else if constexpr (std::is_same_v<T, Mesh>)
-	{
-		return findMesh(id);
-	}
-	else if constexpr (std::is_same_v<T, Font>)
-	{
-		return findFont(id);
-	}
-	else if constexpr (std::is_same_v<T, Model>)
-	{
-		return findModel(id);
-	}
-	else
-	{
-		static_assert(alwaysFalse<T>, "Invalid type!");
-	}
+	return false;
 }
 } // namespace le::res

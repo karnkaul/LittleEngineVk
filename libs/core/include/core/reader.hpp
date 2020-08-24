@@ -47,7 +47,7 @@ public:
 	/// \brief Obtain data as `std::string`
 	/// \returns Structured binding of data and a `bool` indicating success/failure
 	///
-	[[nodiscard]] TResult<std::string> getString(stdfs::path const& id) const;
+	[[nodiscard]] TResult<std::string> string(stdfs::path const& id) const;
 	///
 	/// \brief Obtain the IO medium (of the concrete class)
 	///
@@ -63,12 +63,12 @@ public:
 	/// \brief Obtain data as `bytearray` (`std::vector<std::byte>`)
 	/// \returns Structured binding of data and a `bool` indicating success/failure
 	///
-	[[nodiscard]] virtual TResult<bytearray> getBytes(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual TResult<bytearray> bytes(stdfs::path const& id) const = 0;
 	///
 	/// \brief Obtain data as `std::stringstream`
 	/// \returns Structured binding of data and a `bool` indicating success/failure
 	///
-	[[nodiscard]] virtual TResult<std::stringstream> getStr(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual TResult<std::stringstream> sstream(stdfs::path const& id) const = 0;
 
 protected:
 	virtual TResult<stdfs::path> findPrefixed(stdfs::path const& id) const = 0;
@@ -112,8 +112,8 @@ public:
 	/// \brief Mount filesystem directory
 	///
 	bool mount(stdfs::path path) override;
-	TResult<bytearray> getBytes(stdfs::path const& id) const override;
-	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
+	TResult<bytearray> bytes(stdfs::path const& id) const override;
+	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
 
 protected:
 	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
@@ -138,8 +138,8 @@ public:
 	/// \brief Mount `.zip` file
 	///
 	bool mount(stdfs::path path) override;
-	TResult<bytearray> getBytes(stdfs::path const& id) const override;
-	TResult<std::stringstream> getStr(stdfs::path const& id) const override;
+	TResult<bytearray> bytes(stdfs::path const& id) const override;
+	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
 
 protected:
 	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
@@ -173,7 +173,7 @@ public:
 	};
 
 protected:
-	static io::FileReader s_reader;
+	inline static io::FileReader s_reader;
 
 protected:
 	stdfs::file_time_type m_lastWriteTime = {};

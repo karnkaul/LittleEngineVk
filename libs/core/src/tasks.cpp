@@ -1,11 +1,11 @@
 #include <algorithm>
-#include <condition_variable>
 #include <deque>
-#include <mutex>
+#include <optional>
 #include <core/threads.hpp>
 #include <core/log.hpp>
 #include <core/tasks.hpp>
 #include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
 
 namespace le
 {
@@ -40,9 +40,7 @@ struct Task final
 class Queue final
 {
 private:
-	std::deque<Task> m_queue;
-	Lockable<std::mutex> m_mutex;
-	std::condition_variable m_cv;
+	kt::async_queue<Task> m_queue;
 	std::atomic<bool> m_bWork;
 	std::atomic<s64> m_nextID;
 
@@ -51,7 +49,7 @@ public:
 	~Queue();
 
 public:
-	Task popTask();
+	std::optional<Task> popTask();
 	std::shared_ptr<Handle> pushTask(std::function<void()> task, std::string name);
 	std::vector<std::shared_ptr<Handle>> pushTasks(List taskList);
 
@@ -80,45 +78,9 @@ Queue::~Queue()
 	deinit();
 }
 
-Task Queue::popTask()
+std::optional<Task> Queue::popTask()
 {
-	auto lock = m_mutex.lock<std::unique_lock>();
-	if (m_queue.empty())
-	{
-		m_cv.wait(lock, [this]() { return !m_bWork.load() || !m_queue.empty(); });
-	}
-	if (m_bWork.load())
-	{
-		if (!m_queue.empty())
-		{
-			auto task = std::move(m_queue.front());
-			m_queue.pop_front();
-			bool const bNotify = !m_queue.empty();
-			lock.unlock();
-			if (bNotify)
-			{
-				m_cv.notify_one();
-			}
-			if (task.handle)
-			{
-				switch (task.handle->status())
-				{
-				case Handle::Status::eWaiting:
-				{
-					return task;
-				}
-				case Handle::Status::eDiscarded:
-				{
-					LOG_I("[{}] task_{} [{}] discarded", g_tName, task.handle->id(), task.name);
-					break;
-				}
-				default:
-					break;
-				}
-			}
-		}
-	}
-	return {};
+	return m_queue.pop();
 }
 
 std::shared_ptr<Handle> Queue::pushTask(std::function<void()> task, std::string name)
@@ -132,11 +94,7 @@ std::shared_ptr<Handle> Queue::pushTask(std::function<void()> task, std::string 
 		newTask.task = std::move(task);
 		newTask.name = std::move(name);
 		ret = newTask.handle;
-		{
-			auto lock = m_mutex.lock();
-			m_queue.push_back(std::move(newTask));
-		}
-		m_cv.notify_one();
+		m_queue.push(std::move(newTask));
 	}
 	return ret;
 }
@@ -159,11 +117,7 @@ std::vector<std::shared_ptr<Handle>> Queue::pushTasks(List taskList)
 			ret.push_back(newTask.handle);
 			newTasks.push_back(std::move(newTask));
 		}
-		{
-			auto lock = m_mutex.lock();
-			std::move(newTasks.begin(), newTasks.end(), std::back_inserter(m_queue));
-		}
-		m_cv.notify_all();
+		m_queue.push(std::move(newTasks));
 	}
 	return ret;
 }
@@ -175,18 +129,15 @@ bool Queue::isActive() const
 
 void Queue::clear()
 {
-	auto lock = m_mutex.lock();
-	m_queue.clear();
+	m_queue.clear(m_bWork.load());
 }
 
 void Queue::waitIdle()
 {
-	bool bIdle = false;
-	do
+	while (!m_queue.empty())
 	{
-		auto lock = m_mutex.lock();
-		bIdle = m_queue.empty();
-	} while (!bIdle);
+		threads::sleep();
+	}
 }
 
 void Queue::init()
@@ -198,7 +149,6 @@ void Queue::deinit()
 {
 	m_bWork.store(false);
 	clear();
-	m_cv.notify_all();
 }
 } // namespace
 
@@ -219,26 +169,31 @@ void Worker::run()
 	{
 		m_bBusy.store(false);
 		auto task = g_queue.popTask();
-		if (task.handle && task.task)
+		if (task && task->handle && task->task)
 		{
-			auto const id = task.handle->id();
-			Handle::Status status = Handle::Status::eWaiting;
-			if (task.handle->m_status.compare_exchange_strong(status, Handle::Status::eExecuting))
+			auto const id = task->handle->id();
+			if (task->handle->status() == Handle::Status::eDiscarded)
 			{
-				task.handle->m_status.store(Handle::Status::eExecuting);
+				LOG_I("[{}] task_{} [{}] discarded", g_tName, task->handle->id(), task->name);
+				continue;
+			}
+			Handle::Status status = Handle::Status::eWaiting;
+			if (task->handle->m_status.compare_exchange_strong(status, Handle::Status::eExecuting))
+			{
+				task->handle->m_status.store(Handle::Status::eExecuting);
 				m_bBusy.store(true);
 				try
 				{
-					LOGIF_D(!task.name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task.name);
-					task.task();
-					LOGIF_D(!task.name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task.name);
-					task.handle->m_status.store(Handle::Status::eCompleted);
+					LOGIF_D(!task->name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task->name);
+					task->task();
+					LOGIF_D(!task->name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task->name);
+					task->handle->m_status.store(Handle::Status::eCompleted);
 				}
 				catch (std::exception const& e)
 				{
-					LOG_E("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task.name.empty() ? "Unnamed" : task.name, e.what());
-					task.handle->m_exception = e.what();
-					task.handle->m_status.store(Handle::Status::eError);
+					LOG_E("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task->name.empty() ? "Unnamed" : task->name, e.what());
+					task->handle->m_exception = e.what();
+					task->handle->m_status.store(Handle::Status::eError);
 				}
 			}
 		}

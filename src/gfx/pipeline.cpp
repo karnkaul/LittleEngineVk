@@ -94,10 +94,9 @@ bool PipelineImpl::create()
 {
 	if ((m_info.shader.guid == res::GUID::s_null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty())
 	{
-		auto [shader, bResult] = res::findShader(m_info.shaderID);
-		if (bResult)
+		if (auto shader = res::find<res::Shader>(m_info.shaderID))
 		{
-			m_info.shader = shader;
+			m_info.shader = *shader;
 		}
 	}
 	ASSERT(m_info.shader.status() == res::Status::eReady, "Shader is not ready!");

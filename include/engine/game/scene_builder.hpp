@@ -1,6 +1,6 @@
 #pragma once
 #include <core/flags.hpp>
-#include <engine/ecs/registry.hpp>
+#include <core/ecs_registry.hpp>
 #include <engine/game/text2d.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>
@@ -75,8 +75,7 @@ public:
 	SceneBuilder(Info info);
 
 public:
-	static f32 framebufferAspect();
-	static glm::vec3 uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& framebuffer);
+	static glm::vec3 uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea);
 	static glm::vec3 uiProjection(glm::vec3 const& uiSpace);
 
 public:

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstring>
+#include <deque>
 #include <future>
 #include <initializer_list>
 #include <mutex>
@@ -68,18 +69,6 @@ struct Span
 	{
 		ASSERT(idx < extent, "OOB access!");
 		return *(pData + idx);
-	}
-};
-
-template <typename M>
-struct Lockable final
-{
-	M mutex;
-
-	template <template <typename...> typename L = std::scoped_lock>
-	L<M> lock()
-	{
-		return L<M>(mutex);
 	}
 };
 

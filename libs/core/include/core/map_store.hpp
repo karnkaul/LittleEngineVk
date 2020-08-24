@@ -27,15 +27,15 @@ public:
 	///
 	/// \brief Find object mapped to `id`
 	///
-	[[nodiscard]] TResult<Value const*> find(Key const& id) const;
+	[[nodiscard]] Value const* find(Key const& id) const noexcept;
 	///
 	/// \brief Find object mapped to `id`
 	///
-	[[nodiscard]] TResult<Value*> find(Key const& id);
+	[[nodiscard]] Value* find(Key const& id) noexcept;
 	///
 	/// \brief Check whether `id` has been loaded
 	///
-	[[nodiscard]] bool isLoaded(Key const& id) const;
+	[[nodiscard]] bool isLoaded(Key const& id) const noexcept;
 	///
 	/// \brief Destroy object mapped to `id`
 	///
@@ -47,7 +47,7 @@ public:
 	///
 	/// \brief Obtain number of loaded objects
 	///
-	u64 count() const;
+	u64 count() const noexcept;
 };
 
 template <typename M>
@@ -58,7 +58,7 @@ void TMapStore<M>::emplace(Key const& id, Args&&... args)
 }
 
 template <typename M>
-TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) const
+typename TMapStore<M>::Value const* TMapStore<M>::find(Key const& id) const noexcept
 {
 	if (auto search = m_map.find(id); search != m_map.end())
 	{
@@ -68,7 +68,7 @@ TResult<typename TMapStore<M>::Value const*> TMapStore<M>::find(Key const& id) c
 }
 
 template <typename M>
-TResult<typename TMapStore<M>::Value*> TMapStore<M>::find(Key const& id)
+typename TMapStore<M>::Value* TMapStore<M>::find(Key const& id) noexcept
 {
 	if (auto search = m_map.find(id); search != m_map.end())
 	{
@@ -78,7 +78,7 @@ TResult<typename TMapStore<M>::Value*> TMapStore<M>::find(Key const& id)
 }
 
 template <typename M>
-bool TMapStore<M>::isLoaded(Key const& id) const
+bool TMapStore<M>::isLoaded(Key const& id) const noexcept
 {
 	return m_map.find(id) != m_map.end();
 }
@@ -102,7 +102,7 @@ void TMapStore<M>::unloadAll()
 }
 
 template <typename M>
-u64 TMapStore<M>::count() const
+u64 TMapStore<M>::count() const noexcept
 {
 	return (u64)m_map.size();
 }

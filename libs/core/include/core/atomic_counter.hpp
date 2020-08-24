@@ -14,30 +14,30 @@ struct Counter final
 
 	std::atomic<T> counter;
 
-	void increment();
-	void decrement();
+	void increment() noexcept;
+	void decrement() noexcept;
 
 	///
 	/// \brief Check if counter value is 0
 	/// \param bAllowNegative Return true even if counter is negative
 	///
-	bool isZero(bool bAllowNegative) const;
+	bool isZero(bool bAllowNegative) const noexcept;
 };
 
 template <typename T>
-void Counter<T>::increment()
+void Counter<T>::increment() noexcept
 {
 	++counter;
 }
 
 template <typename T>
-void Counter<T>::decrement()
+void Counter<T>::decrement() noexcept
 {
 	--counter;
 }
 
 template <typename T>
-bool Counter<T>::isZero(bool bAllowNegative) const
+bool Counter<T>::isZero(bool bAllowNegative) const noexcept
 {
 	return bAllowNegative ? counter.load() <= 0 : counter.load() == 0;
 }
@@ -50,17 +50,17 @@ struct Counter<T>::Semaphore final
 {
 	Counter<T>* pCounter = nullptr;
 
-	Semaphore() = default;
+	constexpr Semaphore() noexcept = default;
 
 	///
 	/// \brief Stores and increments passed counter
 	///
-	Semaphore(Counter<T>& counter) : pCounter(&counter)
+	Semaphore(Counter<T>& counter) noexcept : pCounter(&counter)
 	{
 		counter.increment();
 	}
-	Semaphore(Semaphore&&) = default;
-	Semaphore& operator=(Semaphore&&) = default;
+	Semaphore(Semaphore&&) noexcept = default;
+	Semaphore& operator=(Semaphore&&) noexcept = default;
 	Semaphore(Semaphore const&) = delete;
 	Semaphore& operator=(Semaphore const&) = delete;
 	///
@@ -77,7 +77,7 @@ struct Counter<T>::Semaphore final
 	///
 	/// \brief Resets stored counter
 	///
-	void reset()
+	void reset() noexcept
 	{
 		pCounter = nullptr;
 	}

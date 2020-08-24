@@ -1,9 +1,11 @@
 #pragma once
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 #include <fmt/format.h>
 #include <core/std_types.hpp>
+#include <kt/args_parser/args_parser.hpp>
 
 #if (defined(_WIN32) || defined(_WIN64))
 #define LEVK_OS_WINX
@@ -67,6 +69,8 @@ struct Args
 	char const* const* argv = nullptr;
 };
 
+using ArgsParser = kt::args_parser<>;
+
 ///
 /// \brief RAII wrapper for OS service
 /// Destructor joins all running threads
@@ -92,11 +96,24 @@ std::filesystem::path dirPath(Dir dir);
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///
-std::vector<std::string_view> const& args();
+std::deque<ArgsParser::entry> const& args() noexcept;
 ///
-/// \brief Check if an expression was passed as a command line argument
+/// \brief Check if a string or its variant was passed as a command line argument
+/// \returns `std::nullopt` if arg is not defined, else the value of the arg (empty if key-only arg)
 ///
-bool isDefined(std::string_view arg);
+template <typename Arg, typename... Args>
+std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept
+{
+	static_assert(std::is_convertible_v<Arg, std::string> && (... && std::is_convertible_v<Args, std::string>), "Invalid Types!");
+	auto const& allArgs = args();
+	auto matchAny = [&](ArgsParser::entry const& arg) { return (arg.k == key || (... || (arg.k == variants))); };
+	auto search = std::find_if(allArgs.begin(), allArgs.end(), matchAny);
+	if (search != allArgs.end())
+	{
+		return search->v;
+	}
+	return std::nullopt;
+}
 
 ///
 /// \brief Check if a debugger is attached to the runtime

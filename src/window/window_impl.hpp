@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <unordered_set>
+#include <core/static_any.hpp>
 #include <engine/window/window.hpp>
 #include <window/native_window.hpp>
 
@@ -26,16 +27,23 @@ public:
 		input::OnWindowResize onWindowResize;
 		input::OnClosed onClosed;
 	};
+	struct Cursor
+	{
+		StaticAny<> data;
+		input::CursorType type;
+	};
 
-	static std::unordered_map<WindowID, InputCallbacks> s_input;
+	inline static std::unordered_map<WindowID, InputCallbacks> s_input;
+	inline static EnumArray<input::CursorType, Cursor> s_cursors;
 
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
 	std::unique_ptr<NativeWindow> m_uNativeWindow;
 	std::vector<PresentMode> m_presentModes;
+	Cursor m_cursor;
 	Window* m_pWindow;
 
-	static WindowImpl* find(void* pNativeHandle);
+	static WindowImpl* find(StaticAny<> nativeHandle);
 
 	static bool init();
 	static void deinit();
@@ -44,7 +52,7 @@ public:
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::RendererImpl* rendererImpl(WindowID window);
 	static std::unordered_set<s32> allExisting();
-	static void* nativeHandle(WindowID window);
+	static StaticAny<> nativeHandle(WindowID window);
 	static WindowID editorWindow();
 
 	WindowImpl(Window* pWindow);
@@ -55,7 +63,7 @@ public:
 	bool exists() const;
 	bool isClosing() const;
 	bool isFocused() const;
-	void close();
+	void setClosing();
 	void destroy();
 
 	void onFramebufferSize(glm::ivec2 const& size);
@@ -66,6 +74,7 @@ public:
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
 
+	void setCursorType(input::CursorType type);
 	void setCursorMode(input::CursorMode mode) const;
 	input::CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;

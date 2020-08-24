@@ -125,17 +125,6 @@ glm::vec2 textTLOffset(Font::Text::HAlign h, Font::Text::VAlign v)
 }
 } // namespace
 
-std::string const Shader::s_tName = utils::tName<Shader>();
-std::string const Sampler::s_tName = utils::tName<Sampler>();
-std::string const Texture::s_tName = utils::tName<Texture>();
-std::string const Material::s_tName = utils::tName<Material>();
-std::string const Mesh::s_tName = utils::tName<Mesh>();
-std::string const Font::s_tName = utils::tName<Font>();
-
-std::string_view Shader::Impl::s_spvExt = ".spv";
-std::string_view Shader::Impl::s_vertExt = ".vert";
-std::string_view Shader::Impl::s_fragExt = ".frag";
-
 Shader::Info const& Shader::info() const
 {
 	return res::info(*this);
@@ -204,6 +193,54 @@ void Mesh::updateGeometry(gfx::Geometry geometry)
 	}
 }
 
+template <>
+TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const
+{
+	auto pThis = static_cast<Texture::LoadInfo const*>(this);
+	if (pThis->imageFilename.empty() && pThis->cubemapFilenames.empty())
+	{
+		LOG_E("[{}] Empty resource ID(s)!", Texture::s_tName);
+		return {};
+	}
+	Texture::CreateInfo ret;
+	ret.mode = engine::colourSpace();
+	ret.samplerID = pThis->samplerID;
+	if (!pThis->cubemapFilenames.empty())
+	{
+		if (pThis->cubemapFilenames.size() != 6)
+		{
+			LOG_E("[{}] Invalid cubemap filename count [{}]!", Texture::s_tName, pThis->cubemapFilenames.size());
+			return {};
+		}
+		ret.type = Texture::Type::eCube;
+		for (auto const& name : pThis->cubemapFilenames)
+		{
+			stdfs::path const id = pThis->directory / name;
+			if (engine::reader().checkPresence(id))
+			{
+				ret.ids.push_back(id);
+			}
+			else
+			{
+				LOG_E("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
+				return {};
+			}
+		}
+	}
+	else
+	{
+		ret.type = Texture::Type::e2D;
+		auto const id = pThis->directory / pThis->imageFilename;
+		if (!engine::reader().checkPresence(id))
+		{
+			LOG_E("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
+			return {};
+		}
+		ret.ids = {id};
+	}
+	return ret;
+}
+
 Material::Inst& Mesh::material()
 {
 	static Material::Inst s_default{};
@@ -224,40 +261,46 @@ std::string Shader::Impl::extension(stdfs::path const& id)
 	return {};
 }
 
-void Font::Glyph::deserialise(u8 c, GData const& json)
+void Font::Glyph::deserialise(u8 c, dj::object const& json)
 {
 	ch = c;
-	st = {json.get<s32>("x"), json.get<s32>("y")};
-	cell = {json.get<s32>("width"), json.get<s32>("height")};
+	st = {(s32)json.value<dj::integer>("x"), (s32)json.value<dj::integer>("y")};
+	cell = {(s32)json.value<dj::integer>("width"), (s32)json.value<dj::integer>("height")};
 	uv = cell;
-	offset = {json.get<s32>("originX"), json.get<s32>("originY")};
-	xAdv = json.contains("advance") ? json.get<s32>("advance") : cell.x;
-	orgSizePt = json.get<s32>("size");
-	bBlank = json.get<bool>("isBlank");
+	offset = {(s32)json.value<dj::integer>("originX"), (s32)json.value<dj::integer>("originY")};
+	auto pAdvance = json.find<dj::integer>("advance");
+	xAdv = pAdvance ? (s32)pAdvance->value : cell.x;
+	orgSizePt = (s32)json.value<dj::integer>("size");
+	bBlank = json.value<dj::boolean>("isBlank");
 }
 
-bool Font::CreateInfo::deserialise(GData const& json)
+bool Font::CreateInfo::deserialise(std::string const& jsonStr)
 {
-	sheetID = json.get("sheetID");
-	samplerID = json.contains("sampler") ? json.get("sampler") : "samplers/font";
-	materialID = json.contains("material") ? json.get("material") : "materials/default";
-	auto glyphsData = json.get<GData>("glyphs");
-	for (auto& [key, value] : glyphsData.allFields())
+	dj::object json;
+	if (json.read(jsonStr))
 	{
-		if (!key.empty())
+		sheetID = json.value<dj::string>("sheetID");
+		auto pSamplerID = json.find<dj::string>("sampler");
+		auto pMaterialID = json.find<dj::string>("material");
+		samplerID = pSamplerID ? pSamplerID->value : "samplers/font";
+		materialID = pMaterialID ? pMaterialID->value : "materials/default";
+		if (auto pGlyphsData = json.find<dj::object>("glyphs"))
 		{
-			Glyph glyph;
-			GData data;
-			[[maybe_unused]] bool const bSuccess = data.read(std::move(value));
-			ASSERT(bSuccess, "Failed to extract glyph!");
-			glyph.deserialise((u8)key.at(0), data);
-			if (glyph.cell.x > 0 && glyph.cell.y > 0)
+			for (auto& [key, value] : pGlyphsData->fields)
 			{
-				glyphs.push_back(std::move(glyph));
-			}
-			else
-			{
-				LOG_W("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key.at(0));
+				if (!key.empty() && value->type() == dj::data_type::object)
+				{
+					Glyph glyph;
+					glyph.deserialise((u8)key.at(0), *value->cast<dj::object>());
+					if (glyph.cell.x > 0 && glyph.cell.y > 0)
+					{
+						glyphs.push_back(std::move(glyph));
+					}
+					else
+					{
+						LOG_W("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key.at(0));
+					}
+				}
 			}
 		}
 	}
@@ -336,14 +379,14 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 			}
 			if (bSpv)
 			{
-				auto [shaderShaderData, bResult] = engine::reader().getBytes(codeID);
-				ASSERT(bResult, "Shader code missing!");
-				if (!bResult)
+				auto shaderData = engine::reader().bytes(codeID);
+				ASSERT(shaderData, "Shader code missing!");
+				if (!shaderData)
 				{
 					LOG_E("[{}] [{}] Shader code missing: [{}]!", s_tName, id.generic_string(), codeID.generic_string());
 					return false;
 				}
-				codeMap.at(idx) = std::move(shaderShaderData);
+				codeMap.at(idx) = std::move(*shaderData);
 			}
 		}
 	}
@@ -399,8 +442,7 @@ bool Shader::Impl::loadGlsl(stdfs::path const& id, Type type)
 		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	auto [glslCode, bResult] = engine::reader().getString(id);
-	return bResult && glslToSpirV(id, codeMap.at((std::size_t)type));
+	return engine::reader().isPresent(id) && glslToSpirV(id, codeMap.at((std::size_t)type));
 }
 
 bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
@@ -412,8 +454,7 @@ bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 	}
 	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 	ASSERT(pReader, "Cannot compile shaders without io::FileReader!");
-	auto [glslCode, bResult] = pReader->getString(id);
-	if (bResult)
+	if (pReader->isPresent(id))
 	{
 		auto const src = pReader->fullPath(id);
 		auto dstID = id;
@@ -422,12 +463,12 @@ bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes)
 		{
 			return false;
 		}
-		auto [spvCode, bResult] = pReader->getBytes(dstID);
-		if (!bResult)
+		auto spvCode = pReader->bytes(dstID);
+		if (!spvCode)
 		{
 			return false;
 		}
-		out_bytes = std::move(spvCode);
+		out_bytes = std::move(*spvCode);
 		return true;
 	}
 	return false;
@@ -504,16 +545,17 @@ void Sampler::Impl::release()
 bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 {
 	auto const idStr = id.generic_string();
-	auto [sampler, bSampler] = res::findSampler(out_createInfo.samplerID);
-	if (sampler.guid == res::GUID::s_null || sampler.status() != Status::eReady || out_info.sampler.status() != Status::eReady)
+	auto sampler = res::find<Sampler>(out_createInfo.samplerID);
+	out_info.sampler = *sampler;
+	if (!sampler || sampler->status() != Status::eReady)
 	{
-		auto [dSampler, bResult] = res::find<Sampler>("samplers/default");
-		if (!bResult)
+		auto dSampler = res::find<Sampler>("samplers/default");
+		if (!dSampler)
 		{
 			LOG_E("[{}] [{}] Failed to locate default sampler", Texture::s_tName, idStr);
 			return false;
 		}
-		out_info.sampler = dSampler;
+		out_info.sampler = *dSampler;
 	}
 	if (out_info.sampler.status() != Status::eReady)
 	{
@@ -535,13 +577,13 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	{
 		for (auto& bytes : out_createInfo.bytes)
 		{
-			auto [raw, bResult] = imgToRaw(std::move(bytes), Texture::s_tName, idStr, io::Level::eError);
-			if (!bResult)
+			auto raw = imgToRaw(std::move(bytes), Texture::s_tName, idStr, io::Level::eError);
+			if (!raw)
 			{
 				LOG_E("[{}] [{}] Failed to create texture!", Texture::s_tName, idStr);
 				return false;
 			}
-			raws.push_back(std::move(raw));
+			raws.push_back(std::move(*raw));
 		}
 		bStbiRaw = true;
 	}
@@ -549,19 +591,19 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	{
 		for (auto const& resourceID : out_createInfo.ids)
 		{
-			auto [pixels, bPixels] = engine::reader().getBytes(resourceID);
-			if (!bPixels)
+			auto pixels = engine::reader().bytes(resourceID);
+			if (!pixels)
 			{
 				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
 				return false;
 			}
-			auto [raw, bResult] = imgToRaw(std::move(pixels), Texture::s_tName, idStr, io::Level::eError);
-			if (!bResult)
+			auto raw = imgToRaw(std::move(*pixels), Texture::s_tName, idStr, io::Level::eError);
+			if (!raw)
 			{
 				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
 				return false;
 			}
-			raws.push_back(std::move(raw));
+			raws.push_back(std::move(*raw));
 		}
 		bStbiRaw = true;
 		bAddFileMonitor = true;
@@ -601,15 +643,15 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 				if (auto pInfo = res::infoRW(texture))
 				{
 					auto const idStr = pInfo->id.generic_string();
-					auto [raw, bResult] = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
-					if (bResult)
+					auto raw = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
+					if (raw)
 					{
 						if (bStbiRaw)
 						{
 							stbi_image_free((void*)(raws.at(idx).bytes.pData));
 						}
-						pInfo->size = raw.size;
-						raws.at(idx) = std::move(raw);
+						pInfo->size = raw->size;
+						raws.at(idx) = std::move(*raw);
 						return true;
 					}
 				}
@@ -734,12 +776,12 @@ bool Mesh::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	out_info.material = out_createInfo.material;
 	if (out_info.material.material.status() != res::Status::eReady)
 	{
-		auto [material, bMaterial] = res::findMaterial("materials/default");
-		if (!bMaterial)
+		auto material = res::find<Material>("materials/default");
+		if (!material)
 		{
 			return false;
 		}
-		out_info.material.material = material;
+		out_info.material.material = *material;
 	}
 	out_info.material = out_createInfo.material;
 	out_info.type = out_createInfo.type;
@@ -810,7 +852,7 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			vbo.pMem = gfx::vram::mapMemory(vbo.buffer, vSize);
+			vbo.pMem = gfx::vram::mapMemory(vbo.buffer);
 		}
 	}
 	if (iSize > ibo.buffer.writeSize)
@@ -828,7 +870,7 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			ibo.pMem = gfx::vram::mapMemory(ibo.buffer, iSize);
+			ibo.pMem = gfx::vram::mapMemory(ibo.buffer);
 		}
 	}
 	switch (out_info.type)
@@ -867,30 +909,28 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	if (out_createInfo.sheetID.empty() || out_createInfo.glyphs.empty())
 	{
 		out_info.jsonID = out_createInfo.jsonID;
-		auto [json, bResult] = engine::reader().getString(out_createInfo.jsonID);
-		GData data;
-		if (!bResult || !data.read(std::move(json)) || !out_createInfo.deserialise(data))
+		auto json = engine::reader().string(out_createInfo.jsonID);
+		if (!json || !out_createInfo.deserialise(*json))
 		{
 			LOG_E("[{}] [{}] Invalid Font data", s_tName, id.generic_string());
 			return false;
 		}
-		auto [img, bImg] = engine::reader().getBytes("fonts" / out_createInfo.sheetID);
-		if (!bImg)
+		auto img = engine::reader().bytes("fonts" / out_createInfo.sheetID);
+		if (!img)
 		{
 			LOG_E("[{}] [{}] Failed to load font atlas!", s_tName, id.generic_string());
 			return false;
 		}
-		out_createInfo.image = std::move(img);
-		auto [material, bMaterial] = res::findMaterial(out_createInfo.materialID);
-		if (bMaterial)
+		out_createInfo.image = std::move(*img);
+		if (auto material = res::find<Material>(out_createInfo.materialID))
 		{
-			out_createInfo.material.material = material;
+			out_createInfo.material.material = *material;
 		}
 		bAddMonitor = true;
 	}
 	res::Texture::CreateInfo sheetInfo;
 	stdfs::path texID = id / "sheet";
-	if (out_createInfo.samplerID.empty())
+	if (out_createInfo.samplerID == Hash())
 	{
 		out_createInfo.samplerID = "samplers/font";
 	}
@@ -905,10 +945,9 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	material = out_createInfo.material;
 	if (material.material.status() != res::Status::eReady)
 	{
-		auto [mat, bMat] = res::findMaterial("materials/default");
-		if (bMat)
+		if (auto mat = res::find<Material>("materials/default"))
 		{
-			material.material = mat;
+			material.material = *mat;
 		}
 	}
 	ASSERT(material.material.status() == res::Status::eReady, "Material is not ready!");
@@ -966,10 +1005,9 @@ bool Font::Impl::checkReload()
 			auto pInfo = res::infoRW(font);
 			if (pInfo)
 			{
-				auto [json, bResult] = engine::reader().getString(pInfo->jsonID);
-				GData data;
+				auto json = engine::reader().string(pInfo->jsonID);
 				Font::CreateInfo createInfo;
-				if (bResult && data.read(std::move(json)) && createInfo.deserialise(data))
+				if (json && createInfo.deserialise(*json))
 				{
 					loadGlyphs(createInfo.glyphs, true);
 					return true;

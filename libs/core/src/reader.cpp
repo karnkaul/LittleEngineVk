@@ -52,10 +52,10 @@ Reader::Reader(Reader const&) = default;
 Reader& Reader::operator=(Reader const&) = default;
 Reader::~Reader() = default;
 
-TResult<std::string> Reader::getString(stdfs::path const& id) const
+TResult<std::string> Reader::string(stdfs::path const& id) const
 {
-	auto [str, bResult] = getStr(id);
-	return {str.str(), bResult};
+	auto str = sstream(id);
+	return {str->str(), str};
 }
 
 bool Reader::isPresent(const stdfs::path& id) const
@@ -139,12 +139,11 @@ bool FileReader::mount(stdfs::path path)
 	return false;
 }
 
-TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
+TResult<bytearray> FileReader::bytes(stdfs::path const& id) const
 {
-	auto [path, bResult] = findPrefixed(id);
-	if (bResult)
+	if (auto path = findPrefixed(id))
 	{
-		std::ifstream file(std::move(path), std::ios::binary | std::ios::ate);
+		std::ifstream file(std::move(*path), std::ios::binary | std::ios::ate);
 		if (file.good())
 		{
 			auto pos = file.tellg();
@@ -157,12 +156,11 @@ TResult<bytearray> FileReader::getBytes(stdfs::path const& id) const
 	return {};
 }
 
-TResult<std::stringstream> FileReader::getStr(stdfs::path const& id) const
+TResult<std::stringstream> FileReader::sstream(stdfs::path const& id) const
 {
-	auto [path, bResult] = findPrefixed(id);
-	if (bResult)
+	if (auto path = findPrefixed(id))
 	{
-		std::ifstream file(std::move(path));
+		std::ifstream file(std::move(*path));
 		if (file.good())
 		{
 			std::stringstream buf;
@@ -203,8 +201,11 @@ std::vector<stdfs::path> FileReader::finalPaths(stdfs::path const& id) const
 
 stdfs::path FileReader::fullPath(stdfs::path const& id) const
 {
-	auto [path, bResult] = findPrefixed(id);
-	return bResult ? stdfs::absolute(path) : id;
+	if (auto path = findPrefixed(id))
+	{
+		return stdfs::absolute(*path);
+	}
+	return id;
 }
 
 ZIPReader::ZIPReader()
@@ -241,7 +242,7 @@ TResult<stdfs::path> ZIPReader::findPrefixed(stdfs::path const& id) const
 	return {};
 }
 
-TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
+TResult<std::stringstream> ZIPReader::sstream(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -260,7 +261,7 @@ TResult<std::stringstream> ZIPReader::getStr(stdfs::path const& id) const
 	return {};
 }
 
-TResult<bytearray> ZIPReader::getBytes(stdfs::path const& id) const
+TResult<bytearray> ZIPReader::bytes(stdfs::path const& id) const
 {
 	if (checkPresence(id))
 	{
@@ -290,8 +291,6 @@ void impl::deinitPhysfs()
 	g_uPhysfsHandle = nullptr;
 }
 
-FileReader FileMonitor::s_reader;
-
 FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode)
 {
 	update();
@@ -317,32 +316,30 @@ FileMonitor::Status FileMonitor::update()
 			m_lastWriteTime = lastWriteTime;
 			if (m_mode == Mode::eTextContents)
 			{
-				auto [text, bResult] = s_reader.getString(m_path);
-				if (bResult)
+				if (auto text = s_reader.string(m_path))
 				{
-					if (text == m_text)
+					if (*text == m_text)
 					{
 						bDirty = false;
 					}
 					else
 					{
-						m_text = std::move(text);
+						m_text = std::move(*text);
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}
 			}
 			else if (m_mode == Mode::eBinaryContents)
 			{
-				auto [bytes, bResult] = s_reader.getBytes(m_path);
-				if (bResult)
+				if (auto bytes = s_reader.bytes(m_path))
 				{
-					if (bytes == m_bytes)
+					if (*bytes == m_bytes)
 					{
 						bDirty = false;
 					}
 					else
 					{
-						m_bytes = std::move(bytes);
+						m_bytes = std::move(*bytes);
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}

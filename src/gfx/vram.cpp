@@ -7,7 +7,7 @@
 #include <core/assert.hpp>
 #include <core/log.hpp>
 #include <core/threads.hpp>
-#include <core/utils.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
 #include <gfx/renderer_impl.hpp>
@@ -55,7 +55,7 @@ std::unordered_map<std::thread::id, Stage> g_active;
 std::unordered_map<std::thread::id, vk::CommandPool> g_pools;
 std::deque<Submit> g_submitted;
 
-Lockable<std::mutex> g_mutex;
+kt::lockable<std::mutex> g_mutex;
 
 Buffer createStagingBuffer(vk::DeviceSize size)
 {
@@ -274,7 +274,7 @@ bool vram::write(Buffer const& buffer, void const* pData, vk::DeviceSize size)
 		{
 			size = buffer.writeSize;
 		}
-		auto pMem = mapMemory(buffer, size);
+		auto pMem = mapMemory(buffer);
 		std::memcpy(pMem, pData, size);
 		unmapMemory(buffer);
 		return true;
@@ -282,17 +282,11 @@ bool vram::write(Buffer const& buffer, void const* pData, vk::DeviceSize size)
 	return false;
 }
 
-void* vram::mapMemory(Buffer const& buffer, vk::DeviceSize size)
+void* vram::mapMemory(Buffer const& buffer)
 {
 	void* pRet = nullptr;
 	if (buffer.writeSize > 0)
 	{
-		if (size == 0)
-		{
-			size = buffer.writeSize;
-		}
-
-		auto lock = g_mutex.lock();
 		vmaMapMemory(g_allocator, buffer.handle, &pRet);
 	}
 	return pRet;
@@ -302,7 +296,6 @@ void vram::unmapMemory(Buffer const& buffer)
 {
 	if (buffer.writeSize > 0)
 	{
-		auto lock = g_mutex.lock();
 		vmaUnmapMemory(g_allocator, buffer.handle);
 	}
 }

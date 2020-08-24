@@ -17,12 +17,12 @@ bool Text2D::setup(Info info)
 	m_font = info.font;
 	if (m_font.guid == res::GUID::s_null)
 	{
-		auto [font, bFont] = res::findFont("fonts/default");
-		if (!bFont)
+		auto font = res::find<res::Font>("fonts/default");
+		if (!font)
 		{
 			return false;
 		}
-		m_font = font;
+		m_font = *font;
 	}
 	m_data = std::move(info.data);
 	auto fontInfo = res::info(m_font);

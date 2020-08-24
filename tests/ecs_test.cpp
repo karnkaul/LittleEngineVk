@@ -5,7 +5,7 @@
 #include <core/maths.hpp>
 #include <core/tasks.hpp>
 #include <core/utils.hpp>
-#include <engine/ecs/registry.hpp>
+#include <core/ecs_registry.hpp>
 
 using namespace le;
 

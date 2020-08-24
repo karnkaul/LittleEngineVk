@@ -24,9 +24,6 @@ Window::Service::~Service()
 	WindowImpl::deinit();
 }
 
-std::array<std::string_view, (std::size_t)Window::Mode::eCOUNT_> const Window::s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen",
-																							  "Dedicated Fullscreen"};
-
 std::string const Window::s_tName = utils::tName<Window>();
 
 Window::Window()
@@ -141,11 +138,11 @@ bool Window::create(Info const& info)
 	return m_uImpl ? m_uImpl->create(info) : false;
 }
 
-void Window::close()
+void Window::setClosing()
 {
 	if (m_uImpl)
 	{
-		m_uImpl->close();
+		m_uImpl->setClosing();
 	}
 	return;
 }
@@ -197,6 +194,14 @@ input::OnWindowResize::Token Window::registerResize(input::OnWindowResize::Callb
 input::OnClosed::Token Window::registerClosed(input::OnClosed::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onClosed.subscribe(callback);
+}
+
+void Window::setCursorType(input::CursorType type) const
+{
+	if (m_uImpl)
+	{
+		m_uImpl->setCursorType(type);
+	}
 }
 
 void Window::setCursorMode(input::CursorMode mode) const

@@ -12,8 +12,8 @@
 #include <core/flags.hpp>
 #include <core/log_config.hpp>
 #include <core/std_types.hpp>
-#include <core/utils.hpp>
 #include <core/zero.hpp>
+#include <kt/async_queue/async_queue.hpp>
 
 namespace le
 {
@@ -94,10 +94,10 @@ public:
 
 private:
 	// Shared cache of computed signs
-	static std::unordered_map<std::type_index, Signature> s_signs;
+	inline static std::unordered_map<std::type_index, Signature> s_signs;
 	// Thread-safe static mutex
-	static Lockable<std::mutex> s_mutex;
-	static ECSID s_nextRegID;
+	inline static kt::lockable<std::mutex> s_mutex;
+	inline static ECSID s_nextRegID;
 
 public:
 	///
@@ -112,7 +112,7 @@ protected:
 	// Database of id => [Sign => [component]]
 	std::unordered_map<Entity, std::unordered_map<Signature, std::unique_ptr<Component>>, EntityHasher> m_db;
 	// Thread-safe member mutex
-	mutable Lockable<std::mutex> m_mutex;
+	mutable kt::lockable<std::mutex> m_mutex;
 
 private:
 	ECSID m_nextID = 0;

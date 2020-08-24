@@ -13,7 +13,7 @@
 #endif
 
 #if defined(LEVK_ASSERTS)
-#define ASSERT(predicate, errorMessage) le::assertMsg(!!(predicate), errorMessage, __FILE__, __LINE__)
+#define ASSERT(predicate, errorMessage) ::le::assertMsg(!!(predicate), errorMessage, __FILE__, __LINE__)
 #else
 #define ASSERT(disabled, _disabled)
 #endif

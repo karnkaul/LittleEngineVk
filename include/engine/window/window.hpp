@@ -21,7 +21,7 @@ public:
 		eCOUNT_
 	};
 
-	static std::array<std::string_view, (std::size_t)Mode::eCOUNT_> const s_modeNames;
+	inline static EnumArray<Mode> const s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
 
 	struct Info final
 	{
@@ -111,13 +111,14 @@ public:
 
 public:
 	bool create(Info const& info);
-	void close();
+	void setClosing();
 	void destroy();
 
 	PresentMode presentMode() const;
 	std::vector<PresentMode> supportedPresentModes() const;
 	bool setPresentMode(PresentMode mode);
 
+	void setCursorType(input::CursorType type) const;
 	void setCursorMode(input::CursorMode mode) const;
 	input::CursorMode cursorMode() const;
 	glm::vec2 cursorPos() const;

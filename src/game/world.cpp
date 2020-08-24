@@ -2,7 +2,6 @@
 #include <engine/game/world.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/levk.hpp>
-#include <editor/editor.hpp>
 #include <game/input_impl.hpp>
 #include <resources/manifest.hpp>
 #include <levk_impl.hpp>
@@ -13,16 +12,12 @@ namespace
 {
 struct
 {
-	std::unique_ptr<res::Manifest> uManifest;
 	res::ResourceList loadedResources;
 	World* pNext = nullptr;
 } g_data;
-} // namespace
 
-std::unordered_map<World::ID, std::unique_ptr<World>> World::s_worlds;
-std::unordered_map<std::type_index, World*> World::s_worldByType;
-World* World::s_pActive = nullptr;
-World::ID World::s_lastID;
+res::Manifest g_manifest;
+} // namespace
 
 World::World() = default;
 World::~World()
@@ -30,7 +25,7 @@ World::~World()
 	LOG_I("[{}] World{} Destroyed", m_name.empty() ? "UnknownWorld" : m_name, m_id);
 }
 
-World* World::getWorld(ID id)
+World* World::world(ID id)
 {
 	if (auto search = s_worlds.find(id); search != s_worlds.end())
 	{
@@ -72,9 +67,14 @@ World* World::active()
 	return s_pActive;
 }
 
+World::Semaphore World::setBusy()
+{
+	return s_busyCounter;
+}
+
 bool World::isBusy()
 {
-	return g_data.uManifest.get() != nullptr;
+	return !g_manifest.isIdle() || !s_busyCounter.isZero(true);
 }
 
 bool World::worldLoadPending()
@@ -156,7 +156,7 @@ Registry& World::registry()
 }
 #endif
 
-bool World::startImpl(ID previous)
+bool World::impl_start(ID previous)
 {
 	m_previousWorldID = previous;
 	m_inputContext = {};
@@ -166,11 +166,10 @@ bool World::startImpl(ID previous)
 	auto const inputMap = inputMapID();
 	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
 	{
-		auto [str, bResult] = engine::reader().getString(inputMap);
-		if (bResult)
+		if (auto str = engine::reader().string(inputMap))
 		{
-			GData json;
-			if (json.read(std::move(str)))
+			dj::object json;
+			if (json.read(*str))
 			{
 				if (auto const parsed = m_inputContext.context.deserialise(json); parsed > 0)
 				{
@@ -194,20 +193,133 @@ bool World::startImpl(ID previous)
 	return false;
 }
 
-void World::tickImpl(Time dt)
+void World::impl_tick(gfx::ScreenRect const& worldRect, Time dt, bool bTickSelf)
 {
 	m_registry.flush();
-	bool bTick = true;
-	if (g_data.uManifest)
+	if (bTickSelf)
 	{
-		auto const status = g_data.uManifest->update();
+		m_worldRect = worldRect;
+		tick(dt);
+	}
+}
+
+void World::impl_stop()
+{
+	m_inputContext.token.reset();
+	g_manifest.reset();
+	stop();
+	m_registry.clear();
+	LOG_I("[{}] stopped", utils::tName(*this));
+}
+
+bool World::impl_start(World& out_world, ID prev)
+{
+	if (out_world.impl_start(prev))
+	{
+		s_pActive = &out_world;
+		if (g_manifest.isReady())
+		{
+			g_manifest.start();
+		}
+		return true;
+	}
+	out_world.impl_stop();
+	LOG_E("[{}] Failed to start World{}", utils::tName<World>(), out_world.id());
+	return false;
+}
+
+bool World::impl_startID(ID id)
+{
+	input::g_bFire = true;
+	if (auto search = s_worlds.find(id); search != s_worlds.end())
+	{
+		auto const& uWorld = search->second;
+		auto const manifestID = uWorld->manifestID();
+		if (!manifestID.empty() && engine::reader().isPresent(manifestID))
+		{
+			g_manifest.read(manifestID);
+		}
+		return impl_start(*uWorld, {});
+	}
+	LOG_E("[{}] Failed to find World{}!", utils::tName<World>(), id);
+	return false;
+}
+
+void World::impl_startNext()
+{
+	ID previousID;
+	bool bSkipUnload = false;
+	if (s_pActive)
+	{
+		previousID = s_pActive->m_id;
+		s_pActive->impl_stop();
+		bSkipUnload = s_pActive->m_flags.isSet(Flag::eSkipManifestUnload);
+		s_pActive = nullptr;
+	}
+	auto const manifestID = g_data.pNext->manifestID();
+	auto toUnload = g_data.loadedResources;
+	if (!manifestID.empty() && engine::reader().isPresent(manifestID))
+	{
+		g_manifest.read(manifestID);
+		auto const loadList = g_manifest.parse();
+		auto const toLoad = loadList - g_data.loadedResources;
+		toUnload = g_data.loadedResources - loadList;
+		g_manifest.m_toLoad.intersect(toLoad);
+	}
+	if (bSkipUnload)
+	{
+		toUnload = {};
+	}
+	res::Manifest::unload(toUnload);
+	g_data.loadedResources = g_data.loadedResources - toUnload;
+	impl_start(*g_data.pNext, previousID);
+	g_data.pNext = nullptr;
+}
+
+bool World::impl_stopActive()
+{
+	if (s_pActive)
+	{
+		s_pActive->impl_stop();
+		s_pActive = nullptr;
+		return true;
+	}
+	return false;
+}
+
+void World::impl_destroyAll()
+{
+	impl_stopActive();
+	g_data = {};
+	g_manifest.reset();
+	s_pActive = nullptr;
+	s_worlds.clear();
+	s_worldByType.clear();
+}
+
+bool World::impl_tick(Time dt, gfx::ScreenRect const& sceneRect, bool bTickActive, bool bTerminate)
+{
+	if (!engine::mainWindow())
+	{
+		return false;
+	}
+	if (g_data.pNext && g_manifest.isIdle())
+	{
+		impl_startNext();
+	}
+	if (!g_manifest.isIdle())
+	{
+		auto const status = g_manifest.update(bTerminate);
 		switch (status)
 		{
 		case res::Manifest::Status::eIdle:
 		{
-			onManifestLoaded();
-			g_data.loadedResources = std::move(g_data.uManifest->m_loaded);
-			g_data.uManifest.reset();
+			if (s_pActive)
+			{
+				s_pActive->onManifestLoaded();
+			}
+			g_data.loadedResources = std::move(g_manifest.m_loaded);
+			g_manifest.reset();
 			break;
 		}
 		default:
@@ -216,134 +328,15 @@ void World::tickImpl(Time dt)
 		}
 		}
 	}
-#if defined(LEVK_EDITOR)
-	bTick &= editor::g_bTickGame;
-#endif
-	if (bTick)
-	{
-		tick(dt);
-	}
-}
-
-void World::stopImpl()
-{
-	m_inputContext.token.reset();
-	g_data.uManifest.reset();
-	stop();
-	m_registry.clear();
-	LOG_I("[{}] stopped", utils::tName(*this));
-}
-
-bool World::start(ID id)
-{
-	input::g_bFire = true;
-	if (auto search = s_worlds.find(id); search != s_worlds.end())
-	{
-		auto const& uWorld = search->second;
-		auto const manifestID = uWorld->manifestID();
-		if (engine::reader().isPresent(manifestID))
-		{
-			g_data.uManifest = std::make_unique<res::Manifest>(engine::reader(), manifestID);
-		}
-		if (uWorld->startImpl())
-		{
-			if (g_data.uManifest)
-			{
-				g_data.uManifest->start();
-			}
-			s_pActive = uWorld.get();
-			return true;
-		}
-		uWorld->stopImpl();
-		LOG_E("[{}] Failed to start World{}!", utils::tName<World>(), id);
-		return false;
-	}
-	LOG_E("[{}] Failed to find World{}!", utils::tName<World>(), id);
-	return false;
-}
-
-void World::startNext()
-{
-	ID previousID;
-	bool bSkipUnload = false;
 	if (s_pActive)
 	{
-		previousID = s_pActive->m_id;
-		s_pActive->stopImpl();
-		bSkipUnload = s_pActive->m_flags.isSet(Flag::eSkipManifestUnload);
-		s_pActive = nullptr;
-	}
-	auto const manifestID = g_data.pNext->manifestID();
-	auto toUnload = g_data.loadedResources;
-	if (!manifestID.empty() && engine::reader().isPresent(manifestID))
-	{
-		g_data.uManifest = std::make_unique<res::Manifest>(engine::reader(), manifestID);
-		auto const loadList = g_data.uManifest->parse();
-		auto const toLoad = loadList - g_data.loadedResources;
-		toUnload = g_data.loadedResources - loadList;
-		g_data.uManifest->m_toLoad.intersect(toLoad);
-	}
-	if (bSkipUnload)
-	{
-		toUnload = {};
-	}
-	res::Manifest::unload(toUnload);
-	g_data.loadedResources = g_data.loadedResources - toUnload;
-	if (g_data.pNext->startImpl(previousID))
-	{
-		s_pActive = g_data.pNext;
-		if (g_data.uManifest)
-		{
-			g_data.uManifest->start();
-		}
-	}
-	else
-	{
-		LOG_E("[{}] Failed to start World{}", utils::tName<World>(), g_data.pNext->id());
-	}
-	g_data.pNext = nullptr;
-}
-
-bool World::stopActive()
-{
-	if (s_pActive)
-	{
-		s_pActive->stopImpl();
-		s_pActive = nullptr;
+		s_pActive->impl_tick(sceneRect, dt, bTickActive);
 		return true;
 	}
 	return false;
 }
 
-void World::destroyAll()
-{
-	stopActive();
-	g_data = {};
-	s_pActive = nullptr;
-	s_worlds.clear();
-	s_worldByType.clear();
-}
-
-bool World::tick(Time dt, gfx::ScreenRect const& sceneRect)
-{
-	if (!engine::mainWindow())
-	{
-		return false;
-	}
-	if (g_data.pNext && !g_data.uManifest)
-	{
-		startNext();
-	}
-	if (s_pActive)
-	{
-		s_pActive->m_worldRect = sceneRect;
-		s_pActive->tickImpl(dt);
-		return true;
-	}
-	return false;
-}
-
-bool World::submitScene(gfx::Renderer& out_renderer, gfx::Camera const& camera)
+bool World::impl_submitScene(gfx::Renderer& out_renderer, gfx::Camera const& camera)
 {
 	if (s_pActive)
 	{

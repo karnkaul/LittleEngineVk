@@ -196,11 +196,11 @@ void Set::destroy()
 
 void Set::resetTextures(SamplerCounts const& counts)
 {
-	auto [white, bWhite] = res::findTexture("textures/white");
-	auto [black, bBlack] = res::findTexture("textures/black");
-	ASSERT(bBlack && bWhite, "Default textures missing!");
-	std::deque<res::Texture> const diffuse((std::size_t)counts.diffuse, white);
-	std::deque<res::Texture> const specular((std::size_t)counts.specular, black);
+	auto white = res::find<res::Texture>("textures/white");
+	auto black = res::find<res::Texture>("textures/black");
+	ASSERT(black && white, "Default textures missing!");
+	std::deque<res::Texture> const diffuse((std::size_t)counts.diffuse, *white);
+	std::deque<res::Texture> const specular((std::size_t)counts.specular, *black);
 	writeDiffuse(diffuse);
 	writeSpecular(specular);
 }

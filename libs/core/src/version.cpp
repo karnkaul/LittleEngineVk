@@ -48,7 +48,7 @@ std::string Version::toString(bool bFull) const
 {
 	std::stringstream ret;
 	ret << mj << "." << mn;
-	if (pa > 0 || bFull)
+	if (tw > 0 || pa > 0 || bFull)
 	{
 		ret << "." << pa;
 	}

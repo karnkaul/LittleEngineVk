@@ -1,3 +1,4 @@
+#include <build_version.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/os.hpp>
@@ -33,6 +34,7 @@ Service::Service(s32 argc, char const* const* const argv)
 	Time::resetElapsed();
 	m_services.add<os::Service>(os::Args{argc, argv});
 	m_services.add<io::Service>(std::string_view("debug.log"));
+	LOG_I("LittleEngineVk {}", g_engineVersion.toString(false));
 	m_services.add<tasks::Service>(4);
 }
 

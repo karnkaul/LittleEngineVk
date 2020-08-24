@@ -1,4 +1,4 @@
-project(levk-engine)
+project(levk-engine VERSION ${LEVK_VERSION})
 
 set(LEVK_LIBRARY_TYPE STATIC CACHE STRING "levk library type (STATIC/SHARED)")
 
@@ -28,9 +28,9 @@ endif()
 
 # Library
 set(GENERATED_SOURCES
-	"${CMAKE_CURRENT_BINARY_DIR}/generated/version/build_version.hpp"
+	"${CMAKE_CURRENT_BINARY_DIR}/generated/build_version.hpp"
 )
-configure_file_src_to_bin(version/build_version.hpp.in generated/version/build_version.hpp)
+configure_file_src_to_bin(build_version.hpp.in generated/build_version.hpp)
 glob_sources(LEVK_INCLUDES "../include/*.?pp")
 glob_sources(LEVK_SOURCES "../src/*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/.." FILES ${LEVK_INCLUDES} ${LEVK_SOURCES})
@@ -39,10 +39,11 @@ add_library(${PROJECT_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	INTERFACE SYSTEM
 		"${CMAKE_CURRENT_SOURCE_DIR}/../include"
+		"${CMAKE_CURRENT_BINARY_DIR}/generated"
 	PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/../include"
-		"${CMAKE_CURRENT_SOURCE_DIR}"
 		"${CMAKE_CURRENT_BINARY_DIR}/generated"
+		"${CMAKE_CURRENT_SOURCE_DIR}"
 		"${Vulkan_INCLUDE_DIRS}"
 )
 target_link_libraries(${PROJECT_NAME}

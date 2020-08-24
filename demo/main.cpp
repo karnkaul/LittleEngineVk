@@ -1,4 +1,4 @@
-#include <initializer_list>
+#include <build_version.hpp>
 #include <core/assert.hpp>
 #include <core/reader.hpp>
 #include <core/tasks.hpp>

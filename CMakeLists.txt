@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
-set(LEVK_VERSION "0.0.0.1" CACHE STRING "Application Version" FORCE)
+set(LEVK_VERSION 0.0.1.0 CACHE STRING "Application Version" FORCE)
 project(LittleEngineVk VERSION ${LEVK_VERSION})
 
 if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
@@ -163,6 +163,7 @@ target_compile_options(levk-interface INTERFACE ${COMPILE_OPTS})
 target_link_options(levk-interface INTERFACE ${LINK_OPTS})
 
 # Libraries
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
 add_subdirectory(libs/core)
 add_subdirectory(libs/djson)
 add_subdirectory(src)

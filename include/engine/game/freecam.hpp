@@ -58,7 +58,8 @@ public:
 	Config m_config;
 
 private:
-	std::shared_ptr<input::Context> m_input;
+	input::Context m_input;
+	Token m_token;
 	glm::vec2 m_dXZ = {};
 	glm::vec2 m_dY = {};
 	glm::vec2 m_padLook = {};

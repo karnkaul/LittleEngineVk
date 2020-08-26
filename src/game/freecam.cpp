@@ -4,6 +4,7 @@
 #include <core/maths.hpp>
 #include <engine/levk.hpp>
 #include <engine/game/freecam.hpp>
+#include <game/input_impl.hpp>
 
 namespace le
 {
@@ -15,8 +16,8 @@ void FreeCam::init(bool bEditorContext)
 void FreeCam::init()
 #endif
 {
-	m_input = std::make_shared<input::Context>();
-	m_input->mapTrigger("look_toggle", [this]() {
+	m_input = {};
+	m_input.mapTrigger("look_toggle", [this]() {
 		if (m_state.flags.isSet(Flag::eEnabled) && m_state.flags.isSet(Flag::eKeyToggle_Look))
 		{
 			m_state.flags.flip(Flag::eKeyLook);
@@ -24,9 +25,9 @@ void FreeCam::init()
 			m_state.flags.reset(Flag::eTracking);
 		}
 	});
-	m_input->addTrigger("look_toggle", m_config.lookToggle.key, m_config.lookToggle.action, m_config.lookToggle.mods);
+	m_input.addTrigger("look_toggle", m_config.lookToggle.key, m_config.lookToggle.action, m_config.lookToggle.mods);
 
-	m_input->mapState("looking", [this](bool bActive) {
+	m_input.mapState("looking", [this](bool bActive) {
 		if (m_state.flags.isSet(Flag::eEnabled) && !m_state.flags.isSet(Flag::eKeyLook))
 		{
 			if (!bActive || !m_state.flags.isSet(Flag::eLooking))
@@ -36,83 +37,83 @@ void FreeCam::init()
 			m_state.flags[Flag::eLooking] = bActive;
 		}
 	});
-	m_input->addState("looking", Key::eMouseButton2);
+	m_input.addState("looking", Key::eMouseButton2);
 
-	m_input->mapRange("look_x", [this](f32 value) {
+	m_input.mapRange("look_x", [this](f32 value) {
 		if (m_state.flags.isSet(Flag::eEnabled))
 		{
 			m_padLook.x = value;
 		}
 	});
-	m_input->mapRange("look_y", [this](f32 value) {
+	m_input.mapRange("look_y", [this](f32 value) {
 		if (m_state.flags.isSet(Flag::eEnabled))
 		{
 			m_padLook.y = value;
 		}
 	});
-	m_input->addRange("look_x", Axis::eRightX);
-	m_input->addRange("look_y", Axis::eRightY);
+	m_input.addRange("look_x", Axis::eRightX);
+	m_input.addRange("look_y", Axis::eRightY);
 
-	m_input->mapTrigger("reset_speed", [this]() {
+	m_input.mapTrigger("reset_speed", [this]() {
 		if (m_state.flags.isSet(Flag::eEnabled))
 		{
 			m_state.speed = m_config.defaultSpeed;
 		}
 	});
-	m_input->addTrigger("reset_speed", Key::eMouseButton3);
+	m_input.addTrigger("reset_speed", Key::eMouseButton3);
 
-	m_input->mapRange("speed", [this](f32 value) {
+	m_input.mapRange("speed", [this](f32 value) {
 		if (m_state.flags.isSet(Flag::eEnabled) && !m_state.flags.isSet(Flag::eFixedSpeed))
 		{
 			m_state.dSpeed += (value * 0.1f);
 		}
 	});
-	m_input->addRange("speed", Axis::eMouseScrollY);
-	m_input->addRange("speed", Key::eGamepadButtonLeftBumper, Key::eGamepadButtonRightBumper);
+	m_input.addRange("speed", Axis::eMouseScrollY);
+	m_input.addRange("speed", Key::eGamepadButtonLeftBumper, Key::eGamepadButtonRightBumper);
 
-	m_input->mapRange("move_x", [this](f32 value) {
+	m_input.mapRange("move_x", [this](f32 value) {
 		if (m_state.flags.isSet(Flag::eEnabled) && value * value > m_config.padStickEpsilon)
 		{
 			m_dXZ.x = value;
 		}
 	});
-	m_input->mapRange("move_y", [this](f32 value) {
+	m_input.mapRange("move_y", [this](f32 value) {
 		if (m_state.flags.isSet(Flag::eEnabled) && value * value > m_config.padStickEpsilon)
 		{
 			m_dXZ.y = -value;
 		}
 	});
-	m_input->addRange("move_x", Axis::eLeftX);
-	m_input->addRange("move_x", Key::eLeft, Key::eRight);
-	m_input->addRange("move_x", Key::eA, Key::eD);
-	m_input->addRange("move_y", Axis::eLeftY, true);
-	m_input->addRange("move_y", Key::eDown, Key::eUp);
-	m_input->addRange("move_y", Key::eS, Key::eW);
+	m_input.addRange("move_x", Axis::eLeftX);
+	m_input.addRange("move_x", Key::eLeft, Key::eRight);
+	m_input.addRange("move_x", Key::eA, Key::eD);
+	m_input.addRange("move_y", Axis::eLeftY, true);
+	m_input.addRange("move_y", Key::eDown, Key::eUp);
+	m_input.addRange("move_y", Key::eS, Key::eW);
 
-	m_input->mapRange("elevation_up", [this](f32 value) {
+	m_input.mapRange("elevation_up", [this](f32 value) {
 		if (m_state.flags.isSet(Flag::eEnabled))
 		{
 			m_dY.x = value;
 		}
 	});
-	m_input->mapRange("elevation_down", [this](f32 value) {
+	m_input.mapRange("elevation_down", [this](f32 value) {
 		if (m_state.flags.isSet(Flag::eEnabled))
 		{
 			m_dY.y = value;
 		}
 	});
-	m_input->addRange("elevation_up", Axis::eLeftTrigger);
-	m_input->addRange("elevation_down", Axis::eRightTrigger);
+	m_input.addRange("elevation_up", Axis::eLeftTrigger);
+	m_input.addRange("elevation_down", Axis::eRightTrigger);
 
 #if defined(LEVK_EDITOR)
 	if (bEditorContext)
 	{
-		input::registerEditorContext(m_input);
+		m_token = input::registerEditorContext(&m_input);
 	}
 	else
 #endif
 	{
-		input::registerContext(m_input);
+		m_token = input::registerContext(&m_input);
 	}
 
 	m_state.speed = m_config.defaultSpeed;
@@ -132,7 +133,7 @@ void FreeCam::tick(Time dt)
 		pWindow->setCursorMode(m_state.flags.isSet(Flag::eLooking) ? CursorMode::eDisabled : CursorMode::eDefault);
 	}
 
-	if (!input::isInFocus() || !m_input->wasFired())
+	if (!input::isInFocus() || !m_input.wasFired())
 	{
 		m_state.flags.reset(Flag::eTracking);
 		return;

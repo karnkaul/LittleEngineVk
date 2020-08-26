@@ -47,7 +47,7 @@ public:
 private:
 	Info m_info;
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-	UniqueToken<s32> m_reloadToken;
+	Token m_reloadToken;
 	bool m_bShaderReloaded = false;
 #endif
 

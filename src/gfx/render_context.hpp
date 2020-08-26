@@ -40,7 +40,7 @@ public:
 		Outcome outcome;
 
 		TOutcome(Outcome outcome) : outcome(outcome){};
-		TOutcome(T&& payload) : payload(std::forward<T>(payload)), outcome(Outcome::eSuccess) {}
+		TOutcome(T&& payload) : payload(std::move(payload)), outcome(Outcome::eSuccess) {}
 	};
 
 private:

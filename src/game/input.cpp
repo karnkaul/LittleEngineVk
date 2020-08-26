@@ -15,7 +15,7 @@ namespace le
 {
 namespace
 {
-using Contexts = std::deque<std::weak_ptr<input::Context const>>;
+using Contexts = Tokeniser<input::Context const*>;
 Contexts g_contexts;
 #if defined(LEVK_EDITOR)
 Contexts g_editorContexts;
@@ -42,9 +42,9 @@ struct
 } g_raw;
 } // namespace
 
-void input::registerContext(std::shared_ptr<Context> context)
+Token input::registerContext(Context const* pContext)
 {
-	g_contexts.push_front(context);
+	return g_contexts.pushFront(pContext);
 }
 
 glm::vec2 const& input::cursorPosition(bool bRaw)
@@ -120,9 +120,10 @@ void input::init(Window& out_mainWindow)
 }
 
 #if defined(LEVK_EDITOR)
-void input::registerEditorContext(std::shared_ptr<Context> context)
+Token input::registerEditorContext(Context const* pContext)
 {
-	g_editorContexts.push_front(context);
+	ASSERT(pContext, "Context is null!");
+	return g_editorContexts.pushFront(pContext);
 }
 #endif
 
@@ -150,52 +151,37 @@ void input::fire()
 	auto fireContexts = [&snapshot](Contexts& contexts, [[maybe_unused]] bool& out_bWasConsuming) {
 		if (auto pWindow = engine::window(); !contexts.empty())
 		{
-			auto iter = std::remove_if(contexts.begin(), contexts.end(), [](auto const& ctx) { return !ctx.lock(); });
-			contexts.erase(iter, contexts.end());
-			for (auto& ctx : contexts)
-			{
-				if (auto context = ctx.lock())
-				{
-					context->m_bFired = false;
-				}
-			}
+			contexts.forEach([](auto pContext) { pContext->m_bFired = false; });
 			g_raw.cursorPosRaw = pWindow->cursorPos();
 			if (pWindow->cursorMode() != CursorMode::eDisabled)
 			{
 				g_raw.cursorPosWorld = screenToWorld(g_raw.cursorPosRaw);
 			}
 			std::size_t processed = 0;
-#if defined(LEVK_DEBUG)
 			bool bConsumed = false;
-#endif
-			for (auto& ctx : contexts)
-			{
-				ASSERT(ctx.lock(), "Invalid context!");
-				auto const& context = ctx.lock();
-#if defined(LEVK_DEBUG)
-
-#endif
-				if (context->isConsumed(snapshot))
+			contexts.forEach([&](auto pContext) {
+				if (!bConsumed && pContext->isConsumed(snapshot))
 				{
 #if defined(LEVK_DEBUG)
-					static std::weak_ptr<Context const> prev;
-					if (auto prevCtx = prev.lock(); prevCtx != context)
+					static Context const* pPrev = nullptr;
+					if (pPrev != pContext)
 					{
 						static std::string_view const s_unknown = "Unknown";
-						std::string_view const name = context->m_name.empty() ? s_unknown : context->m_name;
+						std::string_view const name = pContext->m_name.empty() ? s_unknown : pContext->m_name;
 						LOG_I("[{}] [{}:{}] blocking [{}] remaining input contexts", utils::tName<Context>(), name, processed, contexts.size() - processed - 1);
-						prev = ctx;
+						pPrev = pContext;
 					}
+#endif
 					bConsumed = true;
+#if defined(LEVK_DEBUG)
 					if (!out_bWasConsuming)
 					{
 						out_bWasConsuming = bConsumed;
 					}
 #endif
-					break;
+					++processed;
 				}
-				++processed;
-			}
+			});
 #if defined(LEVK_DEBUG)
 			if (out_bWasConsuming && !bConsumed)
 			{

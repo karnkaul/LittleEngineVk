@@ -40,13 +40,13 @@ private:
 protected:
 	bool start() override
 	{
-		m_inputContext->mapTrigger("load_prev", [this]() {
+		m_inputContext.mapTrigger("load_prev", [this]() {
 			if (!loadWorld(m_previousWorldID))
 			{
 				LOG_E("[{}] Failed to load World{}", m_name, m_previousWorldID);
 			}
 		});
-		m_inputContext->addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
+		m_inputContext.addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
 		m_data.mainText = m_registry.spawnEntity<UIComponent>("mainText");
 		m_data.elapsedText = m_registry.spawnEntity<UIComponent>("elapsedText");
 		Text2D::Info info;
@@ -112,7 +112,8 @@ private:
 		Entity eui0, eui1, eui2;
 		Entity skybox;
 		Entity pointer;
-		std::shared_ptr<input::Context> temp;
+		input::Context temp;
+		Token tempToken;
 		Time reloadTime;
 		bool bLoadUnloadModels = false;
 		bool bWireframe = false;
@@ -231,21 +232,21 @@ bool DemoWorld::start()
 		m_pPipeline0wf = engine::mainWindow()->renderer().createPipeline(std::move(pipelineInfo));
 	}
 
-	m_inputContext->mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
-	m_inputContext->mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
-	m_inputContext->mapTrigger("quit", [this]() { m_data.bQuit = true; });
-	m_inputContext->mapState("run", [](bool bActive) { LOGIF_I(bActive, "RUNNING!"); });
-	m_inputContext->mapState("pause_cam", [this](bool bActive) { sceneCamera<FreeCam>().m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
-	m_inputContext->addState("pause_cam", input::Key::eLeftControl);
-	m_inputContext->addState("pause_cam", input::Key::eRightControl);
+	m_inputContext.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
+	m_inputContext.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
+	m_inputContext.mapTrigger("quit", [this]() { m_data.bQuit = true; });
+	m_inputContext.mapState("run", [](bool bActive) { LOGIF_I(bActive, "RUNNING!"); });
+	m_inputContext.mapState("pause_cam", [this](bool bActive) { sceneCamera<FreeCam>().m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
+	m_inputContext.addState("pause_cam", input::Key::eLeftControl);
+	m_inputContext.addState("pause_cam", input::Key::eRightControl);
 
 #if defined(LEVK_DEBUG)
-	m_data.temp = std::make_shared<input::Context>();
-	m_data.temp->m_name = "Demo-Temp";
+	m_data.temp = {};
+	m_data.temp.m_name = "Demo-Temp";
 #endif
-	m_data.temp->setMode(input::Mode::eBlockAll);
-	m_data.temp->mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
-	m_data.temp->addTrigger("test2", input::Key::eK);
+	m_data.temp.setMode(input::Mode::eBlockAll);
+	m_data.temp.mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
+	m_data.temp.addTrigger("test2", input::Key::eK);
 	return true;
 }
 
@@ -262,12 +263,12 @@ void DemoWorld::tick(Time dt)
 	static bool s_bRegistered = false;
 	if (elapsed >= 5s && !s_bRegistered)
 	{
-		input::registerContext(m_data.temp);
+		m_data.tempToken = input::registerContext(&m_data.temp);
 		s_bRegistered = true;
 	}
-	if (elapsed >= 8s && m_data.temp)
+	if (elapsed >= 8s && m_data.tempToken.valid())
 	{
-		m_data.temp.reset();
+		m_data.tempToken = {};
 	}
 
 	if (m_data.asyncModel0.loaded())

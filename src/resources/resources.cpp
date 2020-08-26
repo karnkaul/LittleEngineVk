@@ -161,7 +161,7 @@ void update(Map<T, TImpl>& out_map)
 		auto lock = out_map.mutex.template lock<std::shared_lock>();
 		for (auto iter = out_map.loading.begin(); iter != out_map.loading.end();)
 		{
-			auto const guid = iter->first;
+			[[maybe_unused]] auto const guid = iter->first;
 			TImpl& impl = iter->second;
 			if (impl.update())
 			{

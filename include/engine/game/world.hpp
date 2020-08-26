@@ -47,7 +47,8 @@ protected:
 protected:
 	Registry m_registry = Registry(Registry::DestroyMode::eDeferred);
 	std::string m_name;
-	std::shared_ptr<input::Context> m_inputContext;
+	input::Context m_inputContext;
+	Token m_inputToken;
 	std::unique_ptr<gfx::Camera> m_uSceneCam;
 	ID m_previousWorldID;
 

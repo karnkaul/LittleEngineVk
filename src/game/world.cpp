@@ -159,9 +159,9 @@ Registry& World::registry()
 bool World::impl_start(ID previous)
 {
 	m_previousWorldID = previous;
-	m_inputContext = std::make_shared<input::Context>();
+	m_inputContext = {};
 #if defined(LEVK_DEBUG)
-	m_inputContext->m_name = m_name;
+	m_inputContext.m_name = m_name;
 #endif
 	auto const inputMap = inputMapID();
 	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
@@ -171,7 +171,7 @@ bool World::impl_start(ID previous)
 			dj::object json;
 			if (json.read(*str))
 			{
-				if (auto const parsed = m_inputContext->deserialise(json); parsed > 0)
+				if (auto const parsed = m_inputContext.deserialise(json); parsed > 0)
 				{
 					LOG_D("[{}] Parsed [{}] input mappings from [{}]", m_name, parsed, inputMap.generic_string());
 				}
@@ -182,14 +182,14 @@ bool World::impl_start(ID previous)
 			}
 		}
 	}
-	input::registerContext(m_inputContext);
+	m_inputToken = input::registerContext(&m_inputContext);
 	if (start())
 	{
 		LOG_I("[{}] started", utils::tName(*this));
 		return true;
 	}
 	m_previousWorldID = {};
-	m_inputContext.reset();
+	m_inputContext = {};
 	return false;
 }
 
@@ -205,7 +205,7 @@ void World::impl_tick(gfx::ScreenRect const& worldRect, Time dt, bool bTickSelf)
 
 void World::impl_stop()
 {
-	m_inputContext.reset();
+	m_inputContext = {};
 	g_manifest.reset();
 	stop();
 	m_registry.clear();

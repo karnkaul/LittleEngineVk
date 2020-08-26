@@ -17,7 +17,7 @@ void init(Window& out_mainWindow);
 void deinit();
 
 #if defined(LEVK_EDITOR)
-void registerEditorContext(std::shared_ptr<Context> context);
+[[nodiscard]] Token registerEditorContext(Context const* pContext);
 #endif
 
 void fire();

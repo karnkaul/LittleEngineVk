@@ -1,119 +1,187 @@
 #pragma once
 #include <algorithm>
-#include <memory>
-#include <utility>
-#include <vector>
+#include <deque>
 #include <core/std_types.hpp>
 
 namespace le
 {
 ///
-/// \brief Typedef for core token type
+/// \brief RAII Token (moveable) that will remove its corresponding entry on destruction
 ///
-template <typename N>
-using RawToken = std::shared_ptr<N>;
+struct Token;
 
-///
-/// \brief Copiable wrapper for RawToken
-///
-template <typename N>
-class SharedToken
+namespace detail
 {
-public:
-	using type = N;
-
-protected:
-	RawToken<N> m_token;
-
-public:
-	SharedToken() = default;
-	explicit SharedToken(RawToken<N>&& token) noexcept : m_token(std::move(token)) {}
+struct Base
+{
+	virtual void pop(u64 id) = 0;
 };
+} // namespace detail
 
 ///
-/// \brief Non-copiable wrapper for RawToken
+/// \brief Wrapper for a container of Ts associated with RAII tokens
 ///
-template <typename N>
-class UniqueToken final : public SharedToken<N>
+/// Important: Tokeniser instance must outlive all Token instances handed out by it
+///
+template <typename T, template <typename...> typename C = std::deque, typename... Args>
+class Tokeniser final : detail::Base
 {
 public:
-	UniqueToken() = default;
-	explicit UniqueToken(RawToken<N>&& token) noexcept : SharedToken<N>(std::move(token)) {}
-	UniqueToken(UniqueToken const&) = delete;
-	UniqueToken& operator=(UniqueToken const&) = delete;
-	UniqueToken(UniqueToken&&) noexcept = default;
-	UniqueToken& operator=(UniqueToken&&) noexcept = default;
-};
+	using Container = C<std::pair<T, u64>, Args...>;
 
-///
-/// \brief Wrapper for a container of T associated with RawToken<Tok_t>
-///
-template <typename T, typename Tok_t = s32>
-struct Tokeniser final
-{
-	using type = Tok_t;
+private:
+	Container m_entries;
+	u64 m_nextID = 1;
 
-	using Entry = std::pair<T, std::weak_ptr<type>>;
-	std::vector<Entry> entries;
-
+public:
 	///
-	/// \brief Add an entry
-	/// \returns SharedToken that denotes entry's lifetime
+	/// \brief Add a new entry
+	/// \returns Token (moveable) that will remove entry on destruction
 	///
-	[[nodiscard]] SharedToken<type> addShared(T&& t)
-	{
-		auto token = std::make_shared<type>(0);
-		entries.push_back(std::make_pair(std::forward<T>(t), token));
-		return SharedToken<type>(std::move(token));
-	}
-
+	Token pushBack(T t);
 	///
-	/// \brief Add an entry
-	/// \returns UniqueToken that denotes entry's lifetime
+	/// \brief Add a new entry
+	/// \returns Token (moveable) that will remove entry on destruction
 	///
-	[[nodiscard]] UniqueToken<type> addUnique(T&& t)
-	{
-		auto token = std::make_shared<type>(0);
-		entries.push_back(std::make_pair(std::forward<T>(t), token));
-		return UniqueToken<type>(std::move(token));
-	}
-
-	///
-	/// \brief Erase all invalid entries
-	///
-	std::size_t sweep() noexcept
-	{
-		auto const before = entries.size();
-		auto iter =
-			std::remove_if(std::begin(entries), std::end(entries), [](auto const& entry) -> bool { return !std::get<std::weak_ptr<type>>(entry).lock(); });
-		entries.erase(iter, entries.end());
-		return before - entries.size();
-	}
-
+	Token pushFront(T t);
 	///
 	/// \brief Clear all entries
-	/// \returns Entry count before clearing
 	///
-	std::size_t clear() noexcept
-	{
-		auto const ret = entries.size();
-		entries.clear();
-	}
-
+	std::size_t clear() noexcept;
 	///
 	/// \brief Obtain Entry count
 	///
-	std::size_t size() const noexcept
-	{
-		return entries.size();
-	}
-
+	std::size_t size() const noexcept;
 	///
 	/// \brief Check if no entries are present
 	///
-	bool empty() const noexcept
+	bool empty() const noexcept;
+	///
+	/// \brief Iterate over all present entries
+	///
+	template <typename F>
+	void forEach(F f);
+	///
+	/// \brief Iterate over all present entries
+	///
+	template <typename F>
+	void forEach(F f) const;
+
+private:
+	void pop(u64 id) override;
+
+private:
+	friend struct Token;
+};
+
+struct Token
+{
+private:
+	detail::Base* pParent;
+	u64 id;
+
+public:
+	constexpr Token(detail::Base* pParent = nullptr, u64 id = 0) noexcept : pParent(pParent), id(id) {}
+
+	constexpr Token(Token&& rhs) noexcept : pParent(rhs.pParent), id(rhs.id)
 	{
-		return entries.empty();
+		rhs.pParent = nullptr;
+		rhs.id = 0;
+	}
+
+	constexpr Token& operator=(Token&& rhs) noexcept
+	{
+		if (id > 0 && pParent)
+		{
+			pParent->pop(id);
+		}
+		pParent = rhs.pParent;
+		id = rhs.id;
+		rhs.pParent = nullptr;
+		rhs.id = 0;
+		return *this;
+	}
+
+	Token(Token const&) = delete;
+	Token& operator=(Token const&) = delete;
+
+	~Token()
+	{
+		if (pParent && id > 0)
+		{
+			pParent->pop(id);
+		}
+	}
+
+	bool valid() const
+	{
+		return id > 0 && pParent != nullptr;
 	}
 };
+
+template <typename T, template <typename...> typename C, typename... Args>
+Token Tokeniser<T, C, Args...>::pushBack(T t)
+{
+	Token ret(this, m_nextID);
+	m_entries.push_back(std::make_pair(std::move(t), m_nextID++));
+	return ret;
+}
+
+template <typename T, template <typename...> typename C, typename... Args>
+Token Tokeniser<T, C, Args...>::pushFront(T t)
+{
+	Token ret(this, m_nextID);
+	m_entries.push_front(std::make_pair(std::move(t), m_nextID++));
+	return ret;
+}
+
+template <typename T, template <typename...> typename C, typename... Args>
+std::size_t Tokeniser<T, C, Args...>::clear() noexcept
+{
+	auto const ret = m_entries.size();
+	m_entries.clear();
+	return ret;
+}
+
+template <typename T, template <typename...> typename C, typename... Args>
+std::size_t Tokeniser<T, C, Args...>::size() const noexcept
+{
+	return m_entries.size();
+}
+
+template <typename T, template <typename...> typename C, typename... Args>
+bool Tokeniser<T, C, Args...>::empty() const noexcept
+{
+	return m_entries.empty();
+}
+
+template <typename T, template <typename...> typename C, typename... Args>
+template <typename F>
+void Tokeniser<T, C, Args...>::forEach(F f)
+{
+	for (auto& [t, _] : m_entries)
+	{
+		f(t);
+	}
+}
+
+template <typename T, template <typename...> typename C, typename... Args>
+template <typename F>
+void Tokeniser<T, C, Args...>::forEach(F f) const
+{
+	for (auto& [t, _] : m_entries)
+	{
+		f(t);
+	}
+}
+
+template <typename T, template <typename...> typename C, typename... Args>
+void Tokeniser<T, C, Args...>::pop(u64 id)
+{
+	auto search = std::find_if(m_entries.begin(), m_entries.end(), [id](auto const& entry) -> bool { return entry.second == id; });
+	if (search != m_entries.end())
+	{
+		m_entries.erase(search);
+	}
+}
 } // namespace le

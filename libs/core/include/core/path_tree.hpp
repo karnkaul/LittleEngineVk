@@ -86,7 +86,7 @@ public:
 	/// \param id full path
 	/// \param ts objects (as per template arguments)
 	///
-	void emplace(stdfs::path id, T&&... ts);
+	void emplace(stdfs::path id, T... ts);
 	///
 	/// \brief Import flat list into tree
 	///
@@ -154,7 +154,7 @@ typename PathTree<T...>::Node const* PathTree<T...>::Node::findPattern(std::stri
 }
 
 template <typename... T>
-void PathTree<T...>::emplace(stdfs::path id, T&&... ts)
+void PathTree<T...>::emplace(stdfs::path id, T... ts)
 {
 	auto dirs = decompose(std::move(id));
 	if (!dirs.empty())
@@ -181,7 +181,7 @@ void PathTree<T...>::emplace(stdfs::path id, T&&... ts)
 		if (pNode && !entryName.empty())
 		{
 			ASSERT(pNode->entries.find(entryName) == pNode->entries.end(), "Duplicate entry!");
-			pNode->entries[entryName] = std::make_tuple(entryName, std::forward<T>(ts)...);
+			pNode->entries[entryName] = std::make_tuple(entryName, std::move(ts)...);
 		}
 	}
 }

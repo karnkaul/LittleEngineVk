@@ -97,8 +97,8 @@ struct TResult
 	bool bResult = false;
 
 	constexpr TResult() = default;
-	constexpr TResult(T&& payload) : payload(std::forward<T>(payload)), bResult(true) {}
-	constexpr TResult(T&& payload, bool bResult) : payload(std::forward<T>(payload)), bResult(bResult) {}
+	constexpr TResult(T&& payload) : payload(std::move(payload)), bResult(true) {}
+	constexpr TResult(T&& payload, bool bResult) : payload(std::move(payload)), bResult(bResult) {}
 
 	constexpr operator bool() const;
 	constexpr T const& operator*() const;

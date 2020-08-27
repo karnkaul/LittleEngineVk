@@ -37,10 +37,17 @@ struct DataSearch final
 	os::Dir dirType = os::Dir::eExecutable;
 };
 
+struct MemRange final
+{
+	std::size_t size = 2;
+	std::size_t count = 1;
+};
+
 struct Info final
 {
 	std::optional<Window::Info> windowInfo;
 	std::vector<stdfs::path> dataPaths;
+	std::vector<MemRange> vramReserve;
 	io::Reader* pReader = nullptr;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;

@@ -842,10 +842,6 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 	{
 		if (vbo.buffer.writeSize > 0)
 		{
-			if (bHostVisible)
-			{
-				gfx::vram::unmapMemory(vbo.buffer);
-			}
 			gfx::deferred::release(vbo.buffer);
 			vbo = {};
 		}
@@ -853,17 +849,14 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			vbo.pMem = gfx::vram::mapMemory(vbo.buffer);
+			[[maybe_unused]] bool const bResult = gfx::vram::mapMemory(vbo.buffer);
+			ASSERT(bResult, "Memory map failed");
 		}
 	}
 	if (iSize > ibo.buffer.writeSize)
 	{
 		if (ibo.buffer.writeSize > 0)
 		{
-			if (bHostVisible)
-			{
-				gfx::vram::unmapMemory(ibo.buffer);
-			}
 			gfx::deferred::release(ibo.buffer);
 			ibo = {};
 		}
@@ -871,7 +864,8 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			ibo.pMem = gfx::vram::mapMemory(ibo.buffer);
+			[[maybe_unused]] bool const bResult = gfx::vram::mapMemory(ibo.buffer);
+			ASSERT(bResult, "Memory map failed");
 		}
 	}
 	switch (out_info.type)
@@ -888,10 +882,10 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 	}
 	case Type::eDynamic:
 	{
-		std::memcpy(vbo.pMem, geo.vertices.data(), vSize);
+		std::memcpy(vbo.buffer.pMap, geo.vertices.data(), vSize);
 		if (!geo.indices.empty())
 		{
-			std::memcpy(ibo.pMem, geo.indices.data(), iSize);
+			std::memcpy(ibo.buffer.pMap, geo.indices.data(), iSize);
 		}
 		status = Status::eReady;
 		break;

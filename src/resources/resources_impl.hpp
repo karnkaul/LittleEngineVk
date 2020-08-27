@@ -126,7 +126,6 @@ struct Mesh::Impl : ImplBase, ILoadable
 		gfx::Buffer buffer;
 		std::future<void> copied;
 		u32 count = 0;
-		void* pMem = nullptr;
 	};
 
 	gfx::Geometry geo;

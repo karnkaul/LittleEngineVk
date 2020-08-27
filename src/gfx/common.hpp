@@ -17,6 +17,7 @@
 #include <core/log_config.hpp>
 #include <core/flags.hpp>
 #include <core/std_types.hpp>
+#include <engine/levk.hpp>
 #include <engine/window/common.hpp>
 #include <engine/gfx/pipeline.hpp>
 
@@ -78,8 +79,9 @@ struct InitInfo final
 
 	struct
 	{
-		std::vector<char const*> instanceExtensions;
 		CreateSurface createTempSurface;
+		std::vector<char const*> instanceExtensions;
+		std::vector<engine::MemRange> stagingReserve;
 	} config;
 
 	struct
@@ -146,6 +148,7 @@ struct Buffer final : VkResource
 {
 	vk::Buffer buffer;
 	vk::DeviceSize writeSize = {};
+	void* pMap = nullptr;
 };
 
 struct Image final : VkResource

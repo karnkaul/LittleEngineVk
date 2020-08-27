@@ -433,6 +433,9 @@ int main(int argc, char** argv)
 	info.pReader = g_uReader.get();
 	info.dataPaths = engine.locateData({{{"data"}}, {{"demo/data"}}});
 	// info.dataPaths = engine.locateData({{{"data.zip"}}, {{"demo/data.zip"}}});
+#if defined(LEVK_DEBUG)
+	// info.bLogVRAMallocations = true;
+#endif
 	if (!engine.init(info))
 	{
 		return 1;

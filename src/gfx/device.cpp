@@ -357,7 +357,7 @@ void init(InitInfo const& initInfo)
 		throw std::runtime_error("Failed to initialise Device!");
 	}
 
-	vram::init();
+	vram::init(initInfo.config.stagingReserve);
 	rd::init();
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }

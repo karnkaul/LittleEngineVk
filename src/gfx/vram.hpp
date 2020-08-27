@@ -3,6 +3,7 @@
 #include <utility>
 #include <core/log_config.hpp>
 #include <core/utils.hpp>
+#include <engine/levk.hpp>
 #include <engine/window/common.hpp>
 #include <gfx/common.hpp>
 
@@ -38,17 +39,17 @@ namespace vram
 {
 inline VmaAllocator g_allocator;
 
-void init();
+void init(Span<engine::MemRange> stagingReserve);
 void deinit();
 
 void update();
 
 Buffer createBuffer(BufferInfo const& info, bool bSilent = false);
-bool write(Buffer const& buffer, void const* pData, vk::DeviceSize size = 0);
-[[nodiscard]] void* mapMemory(Buffer const& src);
-void unmapMemory(Buffer const& buffer);
-[[nodiscard]] std::future<void> copy(Buffer const& src, Buffer const& dst, vk::DeviceSize size = 0);
-[[nodiscard]] std::future<void> stage(Buffer const& deviceBuffer, void const* pData, vk::DeviceSize size = 0);
+bool write(Buffer& out_dst, void const* pData, vk::DeviceSize size = 0);
+[[nodiscard]] bool mapMemory(Buffer& out_buffer);
+void unmapMemory(Buffer& out_buffer);
+[[nodiscard]] std::future<void> copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
+[[nodiscard]] std::future<void> stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);
 [[nodiscard]] std::future<void> copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutTransition layouts);

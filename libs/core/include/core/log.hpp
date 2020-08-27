@@ -32,11 +32,13 @@
 #endif
 
 #define LOG(level, text, ...) ::le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__)
-#define LOGIF(predicate, level, text, ...)                                \
-	if (predicate)                                                        \
-	{                                                                     \
-		::le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__); \
-	}
+#define LOGIF(predicate, level, text, ...)                                    \
+	do                                                                        \
+		if (predicate)                                                        \
+		{                                                                     \
+			::le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__); \
+		}                                                                     \
+	while (0)
 #define LOG_E(text, ...) LOG(::le::io::Level::eError, text, ##__VA_ARGS__)
 #define LOGIF_E(predicate, text, ...) LOGIF(predicate, ::le::io::Level::eError, text, ##__VA_ARGS__)
 #define LOG_W(text, ...) LOG(::le::io::Level::eWarning, text, ##__VA_ARGS__)

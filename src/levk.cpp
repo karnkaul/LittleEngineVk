@@ -87,6 +87,7 @@ bool Service::init(Info const& info)
 		}
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
 		initInfo.config.createTempSurface = [&](vk::Instance instance) -> vk::SurfaceKHR { return dummyWindow.createSurface(instance); };
+		initInfo.config.stagingReserve = info.vramReserve;
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
 		io::FileReader fileReader;

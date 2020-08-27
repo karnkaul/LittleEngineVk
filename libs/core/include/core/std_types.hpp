@@ -39,6 +39,8 @@ using f32 = float;
 using f64 = double;
 using bytearray = std::vector<std::byte>;
 
+using namespace std::string_view_literals;
+
 template <typename E, typename T = std::string_view, std::size_t N = (std::size_t)E::eCOUNT_>
 using EnumArray = std::array<T, N>;
 

@@ -11,7 +11,7 @@ namespace le
 {
 std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount)
 {
-	static std::array suffixes = {"B", "KiB", "MiB", "GiB"};
+	constexpr static std::array suffixes = {"B"sv, "KiB"sv, "MiB"sv, "GiB"sv};
 	f32 bytes = f32(byteCount);
 	std::size_t idx = 0;
 	while (bytes > 1024.0f && idx < 4)

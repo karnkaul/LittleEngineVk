@@ -24,6 +24,7 @@
 namespace le
 {
 using namespace input;
+using namespace std::literals;
 
 using v2 = glm::vec2 const&;
 using iv2 = glm::ivec2 const&;
@@ -417,7 +418,7 @@ void presentModeDropdown()
 {
 	if (auto pWindow = WindowImpl::windowImpl(g_data.window))
 	{
-		static std::array<sv, 4> const s_presentModes = {"Off", "Triple Buffer", "Double Buffer", "Double Buffer (Relaxed)"};
+		static std::array const s_presentModes = {"Off"sv, "Triple Buffer"sv, "Double Buffer"sv, "Double Buffer (Relaxed)"sv};
 		auto presentMode = pWindow->presentMode();
 		if (ImGui::BeginCombo("Vsync", s_presentModes[(std::size_t)presentMode].data()))
 		{

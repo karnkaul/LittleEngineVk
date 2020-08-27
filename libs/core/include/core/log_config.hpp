@@ -29,5 +29,5 @@ inline Level g_minLevel =
 using OnLog = void (*)(std::string_view, Level);
 inline OnLog g_onLog = nullptr;
 
-inline constexpr std::array<std::string_view, (std::size_t)Level::eCOUNT_> g_logLevels = {"Debug", "Info", "Warning", "Error"};
+inline constexpr std::array g_logLevels = {"Debug"sv, "Info"sv, "Warning"sv, "Error"sv};
 } // namespace le::io

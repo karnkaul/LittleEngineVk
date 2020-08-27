@@ -402,7 +402,7 @@ bool WindowImpl::create(Window::Info const& info)
 		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
 		for (auto colourSpace : info.options.colourSpaces)
 		{
-			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaceMap.at((std::size_t)colourSpace));
+			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaces.at((std::size_t)colourSpace));
 		}
 		if (os::isDefined("immediate", "i"))
 		{

@@ -42,7 +42,7 @@ using QFlags = TFlags<QFlag>;
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
 // clang-format off
-[[maybe_unused]] constexpr std::array g_colourSpaceMap = 
+[[maybe_unused]] constexpr std::array g_colourSpaces = 
 {
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm

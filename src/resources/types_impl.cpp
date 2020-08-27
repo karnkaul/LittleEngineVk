@@ -615,12 +615,12 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 		return false;
 	}
 	out_info.size = raws.back().size;
-	std::vector<Span<u8>> views;
+	spanRaws.clear();
 	for (auto const& raw : raws)
 	{
-		views.push_back(raw.bytes);
+		spanRaws.push_back(raw.bytes);
 	}
-	copied = load(active, colourSpace, out_info.size, views, idStr);
+	copied = load(active, colourSpace, out_info.size, spanRaws, idStr);
 	gfx::ImageViewInfo viewInfo;
 	viewInfo.image = active.image;
 	viewInfo.format = colourSpace;
@@ -723,12 +723,12 @@ bool Texture::Impl::checkReload()
 			Texture texture;
 			texture.guid = guid;
 			auto const& info = texture.info();
-			std::vector<Span<u8>> views;
+			spanRaws.clear();
 			for (auto const& raw : raws)
 			{
-				views.push_back(raw.bytes);
+				spanRaws.push_back(raw.bytes);
 			}
-			copied = load(standby, colourSpace, info.size, views, idStr);
+			copied = load(standby, colourSpace, info.size, spanRaws, idStr);
 			return true;
 		}
 		return false;
@@ -833,9 +833,10 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		status = Status::eReady;
 		return;
 	}
+	geo = std::move(geometry);
 	auto const idStr = id.generic_string();
-	auto const vSize = (vk::DeviceSize)geometry.vertices.size() * sizeof(gfx::Vertex);
-	auto const iSize = (vk::DeviceSize)geometry.indices.size() * sizeof(u32);
+	auto const vSize = (vk::DeviceSize)geo.vertices.size() * sizeof(gfx::Vertex);
+	auto const iSize = (vk::DeviceSize)geo.indices.size() * sizeof(u32);
 	auto const bHostVisible = out_info.type == Type::eDynamic;
 	if (vSize > vbo.buffer.writeSize)
 	{
@@ -877,20 +878,20 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 	{
 	case Type::eStatic:
 	{
-		vbo.copied = gfx::vram::stage(vbo.buffer, geometry.vertices.data(), vSize);
-		if (!geometry.indices.empty())
+		vbo.copied = gfx::vram::stage(vbo.buffer, geo.vertices.data(), vSize);
+		if (!geo.indices.empty())
 		{
-			ibo.copied = gfx::vram::stage(ibo.buffer, geometry.indices.data(), iSize);
+			ibo.copied = gfx::vram::stage(ibo.buffer, geo.indices.data(), iSize);
 		}
 		status = Status::eLoading;
 		break;
 	}
 	case Type::eDynamic:
 	{
-		std::memcpy(vbo.pMem, geometry.vertices.data(), vSize);
-		if (!geometry.indices.empty())
+		std::memcpy(vbo.pMem, geo.vertices.data(), vSize);
+		if (!geo.indices.empty())
 		{
-			std::memcpy(ibo.pMem, geometry.indices.data(), iSize);
+			std::memcpy(ibo.pMem, geo.indices.data(), iSize);
 		}
 		status = Status::eReady;
 		break;
@@ -898,8 +899,8 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 	default:
 		break;
 	}
-	vbo.count = (u32)geometry.vertices.size();
-	ibo.count = (u32)geometry.indices.size();
+	vbo.count = (u32)geo.vertices.size();
+	ibo.count = (u32)geo.indices.size();
 	out_info.triCount = iSize > 0 ? (u64)ibo.count / 3 : (u64)vbo.count / 3;
 }
 

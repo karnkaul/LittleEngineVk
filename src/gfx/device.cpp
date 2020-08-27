@@ -462,6 +462,18 @@ vk::Fence Device::createFence(bool bSignalled) const
 	return g_device.device.createFence(flags);
 }
 
+void Device::resetOrCreateFence(vk::Fence& out_fence, bool bSignalled) const
+{
+	if (out_fence == vk::Fence())
+	{
+		out_fence = createFence(bSignalled);
+	}
+	else
+	{
+		resetFence(out_fence);
+	}
+}
+
 void Device::waitFor(vk::Fence optional) const
 {
 	if (optional != vk::Fence())

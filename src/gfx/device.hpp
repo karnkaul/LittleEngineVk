@@ -47,6 +47,7 @@ struct Device final
 	void waitIdle() const;
 
 	vk::Fence createFence(bool bSignalled) const;
+	void resetOrCreateFence(vk::Fence& out_fence, bool bSignalled) const;
 	void waitFor(vk::Fence optional) const;
 	void waitAll(vk::ArrayProxy<vk::Fence const> validFences) const;
 	void resetFence(vk::Fence optional) const;

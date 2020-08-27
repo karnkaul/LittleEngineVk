@@ -158,7 +158,7 @@ void update(Map<T, TImpl>& out_map)
 {
 	if constexpr (std::is_base_of_v<ILoadable, TImpl>)
 	{
-		auto lock = out_map.mutex.template lock<std::shared_lock>();
+		auto lock = out_map.mutex.template lock<std::unique_lock>();
 		for (auto iter = out_map.loading.begin(); iter != out_map.loading.end();)
 		{
 			[[maybe_unused]] auto const guid = iter->first;

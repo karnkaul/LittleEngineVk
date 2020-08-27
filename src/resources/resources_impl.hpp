@@ -91,6 +91,7 @@ struct Texture::Impl : ImplBase, ILoadable, IReloadable
 {
 	gfx::Image active;
 	std::vector<Texture::Raw> raws;
+	std::vector<Span<u8>> spanRaws;
 	vk::ImageView imageView;
 	vk::ImageViewType type;
 	vk::Format colourSpace;
@@ -128,6 +129,7 @@ struct Mesh::Impl : ImplBase, ILoadable
 		void* pMem = nullptr;
 	};
 
+	gfx::Geometry geo;
 	Data vbo;
 	Data ibo;
 

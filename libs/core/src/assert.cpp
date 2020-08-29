@@ -14,26 +14,29 @@ namespace le
 {
 void assertMsg(bool predicate, std::string_view message, std::string_view fileName, u64 lineNumber)
 {
-	if (predicate)
+	if constexpr (levk_asserts)
 	{
-		return;
-	}
-	std::cerr << "Assertion failed: " << message << " | " << fileName << " (" << lineNumber << ")" << std::endl;
-	LOG_E("Assertion failed: {} | {} ({})", message, fileName, lineNumber);
-	if (os::isDebuggerAttached())
-	{
+		if (predicate)
+		{
+			return;
+		}
+		std::cerr << "Assertion failed: " << message << " | " << fileName << " (" << lineNumber << ")" << std::endl;
+		LOG_E("Assertion failed: {} | {} ({})", message, fileName, lineNumber);
+		if (os::isDebuggerAttached())
+		{
 #if defined(LEVK_OS_WINX)
-		OutputDebugStringA(message.data());
+			OutputDebugStringA(message.data());
 #endif
-		os::debugBreak();
-	}
-	else
-	{
+			os::debugBreak();
+		}
+		else
+		{
 #if defined(LEVK_DEBUG)
-		os::debugBreak();
+			os::debugBreak();
 #else
-		assert(false && message.data());
+			assert(false && message.data());
 #endif
+		}
 	}
 	return;
 }

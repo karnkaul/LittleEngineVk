@@ -6,6 +6,7 @@
 #include <core/log.hpp>
 #include <core/map_store.hpp>
 #include <core/threads.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/vram.hpp>
@@ -235,8 +236,9 @@ Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo)
 	auto name = "load_async:" + id.generic_string();
 	auto handle = tasks::enqueue(
 		[id = id, loadInfo = std::move(loadInfo)]() {
-			auto world_s = World::setBusy();
-			auto res_s = res::acquire();
+			// auto world_s = World::setBusy();
+			auto engine_s = engine::setBusy();
+			auto res_s = acquire();
 			if (auto info = loadInfo.createInfo())
 			{
 				load(id, std::move(*info));
@@ -322,7 +324,7 @@ Counter<s32> g_counter;
 
 res::Semaphore res::acquire()
 {
-	return g_counter;
+	return Semaphore(g_counter);
 }
 
 res::Shader res::load(stdfs::path const& id, Shader::CreateInfo createInfo)
@@ -802,7 +804,7 @@ void res::update()
 
 void res::waitIdle()
 {
-	constexpr Time timeout = 5s;
+	constexpr Time timeout = 2s;
 	Time elapsed;
 	Time const start = Time::elapsed();
 	while (!g_counter.isZero(true) && elapsed < timeout)
@@ -810,7 +812,7 @@ void res::waitIdle()
 		elapsed = Time::elapsed() - start;
 		threads::sleep();
 	}
-	bool bTimeout = elapsed > timeout;
+	bool bTimeout = elapsed >= timeout;
 	ASSERT(!bTimeout, "Timeout waiting for Resources! Expect a crash");
 	LOGIF_E(bTimeout, "[le::resources] Timeout waiting for Resources! Expect crashes/hangs!");
 	waitLoading(g_shaders);

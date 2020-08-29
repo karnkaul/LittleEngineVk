@@ -74,7 +74,7 @@ private:
 	friend struct Token;
 };
 
-struct Token
+struct Token : NoCopy
 {
 private:
 	detail::Base* pParent;
@@ -91,29 +91,29 @@ public:
 
 	constexpr Token& operator=(Token&& rhs) noexcept
 	{
-		if (id > 0 && pParent)
+		if (&rhs != this)
 		{
-			pParent->pop(id);
+			if (valid())
+			{
+				pParent->pop(id);
+			}
+			pParent = rhs.pParent;
+			id = rhs.id;
+			rhs.pParent = nullptr;
+			rhs.id = 0;
 		}
-		pParent = rhs.pParent;
-		id = rhs.id;
-		rhs.pParent = nullptr;
-		rhs.id = 0;
 		return *this;
 	}
 
-	Token(Token const&) = delete;
-	Token& operator=(Token const&) = delete;
-
 	~Token()
 	{
-		if (pParent && id > 0)
+		if (valid())
 		{
 			pParent->pop(id);
 		}
 	}
 
-	bool valid() const
+	constexpr bool valid() const
 	{
 		return id > 0 && pParent != nullptr;
 	}

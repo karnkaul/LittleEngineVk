@@ -13,11 +13,44 @@ namespace le
 {
 namespace
 {
-threads::Handle g_nextID = threads::Handle::s_null;
-std::list<std::pair<threads::Handle::type, std::thread>> g_threads;
-std::unordered_map<std::thread::id, threads::Handle> g_idMap;
+threads::ID g_nextID = threads::ID::null;
+std::list<std::pair<threads::ID::type, std::thread>> g_threads;
+std::unordered_map<std::thread::id, threads::ID> g_idMap;
 std::thread::id g_mainThreadID;
 } // namespace
+
+threads::Scoped& threads::Scoped::operator=(Scoped&& rhs)
+{
+	if (&rhs != this)
+	{
+		join();
+		id_ = std::move(rhs.id_);
+	}
+	return *this;
+}
+
+threads::Scoped::~Scoped()
+{
+	join();
+}
+
+bool threads::Scoped::valid() const noexcept
+{
+	return id_ != ID::null;
+}
+
+threads::ID threads::Scoped::id() const noexcept
+{
+	return id_;
+}
+
+void threads::Scoped::join()
+{
+	if (id_ != ID::null)
+	{
+		threads::join(id_);
+	}
+}
 
 void threads::init()
 {
@@ -31,14 +64,14 @@ void threads::init()
 	return;
 }
 
-threads::Handle threads::newThread(std::function<void()> task)
+threads::Scoped threads::newThread(std::function<void()> task)
 {
 	g_threads.emplace_back(++g_nextID.payload, std::thread(task));
 	g_idMap[g_threads.back().second.get_id()] = g_nextID;
-	return Handle(g_nextID);
+	return Scoped(g_nextID);
 }
 
-void threads::join(Handle& id)
+void threads::join(ID& id)
 {
 	auto search = std::find_if(g_threads.begin(), g_threads.end(), [id](auto const& t) -> bool { return t.first == id; });
 	if (search != g_threads.end())
@@ -51,7 +84,7 @@ void threads::join(Handle& id)
 		g_idMap.erase(thread.get_id());
 		g_threads.erase(search);
 	}
-	id = Handle();
+	id = {};
 	return;
 }
 
@@ -69,10 +102,10 @@ void threads::joinAll()
 	return;
 }
 
-threads::Handle threads::thisThreadID()
+threads::ID threads::thisThreadID()
 {
 	auto search = g_idMap.find(std::this_thread::get_id());
-	return search != g_idMap.end() ? search->second : Handle();
+	return search != g_idMap.end() ? search->second : ID();
 }
 
 bool threads::isMainThread()

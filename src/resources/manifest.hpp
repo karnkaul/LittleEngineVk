@@ -44,7 +44,7 @@ public:
 		void intersect(ResourceList ids);
 
 		ResourceList exportList() const;
-		bool isEmpty() const;
+		bool empty() const;
 	};
 
 public:
@@ -77,8 +77,8 @@ public:
 	Status update(bool bTerminate = false);
 	ResourceList parse();
 	void reset();
-	bool isIdle() const;
-	bool isReady() const;
+	bool idle() const;
+	bool ready() const;
 
 	static void unload(ResourceList const& list);
 

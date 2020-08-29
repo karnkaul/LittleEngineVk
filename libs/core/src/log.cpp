@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
-#include <thread>
 #include <core/log.hpp>
 #include <fmt/chrono.h>
 #if defined(LEVK_RUNTIME_MSVC)
@@ -19,113 +18,58 @@ namespace le
 {
 namespace
 {
-class FileLogger final
+struct FileLogger final
 {
-public:
-	constexpr static std::size_t s_reserveCount = 1024 * 1024;
+	FileLogger();
 
-public:
-	~FileLogger();
-
-public:
-	std::string m_cache;
-	threads::Handle m_hThread;
-	std::atomic<bool> m_bLog;
-	kt::lockable<std::mutex> m_mutex;
-
-public:
-	void record(std::string line);
-	void dumpToFile(std::filesystem::path const& path);
-	void startLogging(std::filesystem::path path, Time pollRate);
-	void stopLogging();
+	threads::Scoped thread;
 };
 
-FileLogger::~FileLogger()
-{
-	ASSERT(m_hThread == threads::Handle::s_null, "FileLogger thread running past main!");
-	if (m_hThread != threads::Handle::s_null)
-	{
-		stopLogging();
-	}
-}
+std::filesystem::path g_logFilePath;
+kt::async_queue<std::string> g_queue;
+void dumpToFile(std::filesystem::path const& path, std::string const& str);
 
-void FileLogger::startLogging(std::filesystem::path path, Time pollRate)
+FileLogger::FileLogger()
 {
-	m_cache.reserve(s_reserveCount);
-	m_bLog.store(true, std::memory_order_relaxed);
-	std::ifstream iFile(path);
+	std::ifstream iFile(g_logFilePath);
 	if (iFile.good())
 	{
 		iFile.close();
-		std::filesystem::path backup(path);
+		std::filesystem::path backup(g_logFilePath);
 		backup += ".bak";
-		std::filesystem::rename(path, backup);
+		std::filesystem::rename(g_logFilePath, backup);
 	}
-	std::ofstream oFile(path);
+	std::ofstream oFile(g_logFilePath);
 	if (!oFile.good())
 	{
 		return;
 	}
 	oFile.close();
-	m_hThread = threads::newThread([this, pollRate, path]() {
-		LOG_I("Logging to file: {}", std::filesystem::absolute(path).generic_string());
-		while (m_bLog.load(std::memory_order_relaxed))
+	g_queue.active(true);
+	thread = threads::newThread([]() {
+		LOG_I("Logging to file: {}", std::filesystem::absolute(g_logFilePath).generic_string());
+		while (auto str = g_queue.pop())
 		{
-			dumpToFile(path);
-			if (pollRate.to_ms() <= 0)
-			{
-				std::this_thread::yield();
-			}
-			else
-			{
-				threads::sleep(pollRate);
-			}
+			str->append("\n");
+			dumpToFile(g_logFilePath, *str);
 		}
-		LOG_I("File Logging terminated");
-		dumpToFile(path);
 	});
 	return;
 }
 
-void FileLogger::stopLogging()
+void dumpToFile(std::filesystem::path const& path, std::string const& str)
 {
-	m_bLog.store(false);
-	threads::join(m_hThread);
-	m_cache.clear();
-	return;
-}
-
-void FileLogger::record(std::string line)
-{
-	if (m_hThread != threads::Handle::s_null)
-	{
-		auto lock = m_mutex.lock();
-		m_cache += std::move(line);
-		m_cache += "\n";
-	}
-	return;
-}
-
-void FileLogger::dumpToFile(std::filesystem::path const& path)
-{
-	std::string temp;
-	{
-		auto lock = m_mutex.lock();
-		temp = std::move(m_cache);
-		m_cache.clear();
-		m_cache.reserve(s_reserveCount);
-	}
-	if (!temp.empty())
+	if (!path.empty() && !str.empty())
 	{
 		std::ofstream file(path, std::ios_base::app);
-		file.write(temp.data(), (std::streamsize)temp.length());
+		file.write(str.data(), (std::streamsize)str.length());
 	}
 	return;
 }
 
 kt::lockable<std::mutex> g_logMutex;
 EnumArray<io::Level, char> g_prefixes = {'D', 'I', 'W', 'E'};
-FileLogger g_fileLogger;
+std::optional<FileLogger> g_fileLogger;
 } // namespace
 
 void io::log(Level level, std::string text, [[maybe_unused]] std::string_view file, [[maybe_unused]] u64 line)
@@ -193,34 +137,34 @@ void io::log(Level level, std::string text, [[maybe_unused]] std::string_view fi
 	OutputDebugStringA(str.data());
 	OutputDebugStringA("\n");
 #endif
-	g_fileLogger.record(std::move(str));
+	if (g_fileLogger)
+	{
+		g_queue.push(std::move(str));
+	}
 }
 
-io::Service::Service(std::filesystem::path const& path, Time pollRate)
+io::Service::Service(std::optional<std::filesystem::path> logFilePath)
 {
-	logToFile(path, pollRate);
+	if (logFilePath && !logFilePath->empty())
+	{
+		g_logFilePath = std::move(*logFilePath);
+		g_fileLogger = FileLogger();
+	}
 }
 
 io::Service::~Service()
 {
 	impl::deinitPhysfs();
-	stopFileLogging();
-}
-
-void io::logToFile(std::filesystem::path path, Time pollRate)
-{
-	if (!g_fileLogger.m_bLog.load())
+	if (g_fileLogger)
 	{
-		g_fileLogger.startLogging(std::move(path), pollRate);
-	}
-	return;
-}
-
-void io::stopFileLogging()
-{
-	if (g_fileLogger.m_bLog.load())
-	{
-		g_fileLogger.stopLogging();
+		LOG_I("File Logging terminated");
+		g_queue.active(false);
+		g_fileLogger.reset();
+		auto residue = g_queue.clear();
+		for (auto& str : residue)
+		{
+			dumpToFile(g_logFilePath, (str + "\n"));
+		}
 	}
 }
 } // namespace le

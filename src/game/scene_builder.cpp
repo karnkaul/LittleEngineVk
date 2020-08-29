@@ -6,23 +6,53 @@
 
 namespace le
 {
-UIComponent::~UIComponent()
-{
-	res::unload(mesh);
-}
-
 Text2D& UIComponent::setText(Text2D::Info info)
 {
-	uText = std::make_unique<Text2D>();
-	uText->setup(std::move(info));
+	text.setup(std::move(info));
 	flags.set(Flag::eText);
-	return *uText;
+	return text;
+}
+
+Text2D& UIComponent::setText(res::Font::Text data)
+{
+	if (text.mesh().status() == res::Status::eIdle)
+	{
+		auto font = res::find<res::Font>("fonts/default");
+		if (font)
+		{
+			Text2D::Info info;
+			info.data = std::move(data);
+			info.font = *font;
+			info.id = (id.empty() ? "(ui)" : id) / "text";
+			setText(std::move(info));
+		}
+	}
+	else
+	{
+		text.updateText(std::move(data));
+	}
+	return text;
+}
+
+Text2D& UIComponent::setText(std::string text)
+{
+	if (this->text.mesh().status() == res::Status::eIdle)
+	{
+		res::Font::Text data;
+		data.text = std::move(text);
+		setText(std::move(data));
+	}
+	else
+	{
+		this->text.updateText(std::move(text));
+	}
+	return this->text;
 }
 
 res::Mesh UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
 {
 	gfx::Geometry geometry = gfx::createQuad(size, pivot);
-	if (mesh.status() == res::Status::eIdle)
+	if (mesh.resource.status() == res::Status::eIdle)
 	{
 		res::Mesh::CreateInfo info;
 		info.geometry = std::move(geometry);
@@ -32,7 +62,7 @@ res::Mesh UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
 	}
 	else
 	{
-		mesh.updateGeometry(std::move(geometry));
+		mesh.resource.updateGeometry(std::move(geometry));
 	}
 	flags.set(Flag::eMesh);
 	return mesh;
@@ -40,30 +70,26 @@ res::Mesh UIComponent::setQuad(glm::vec2 const& size, glm::vec2 const& pivot)
 
 void UIComponent::reset(Flags toReset)
 {
-	auto resetPtr = [&toReset](Flag flag, auto& m) {
-		if (toReset.isSet(flag))
-		{
-			m = nullptr;
-		}
-	};
-	resetPtr(Flag::eText, uText);
-	if (toReset.isSet(Flag::eText))
+	if (toReset.test(Flag::eMesh))
 	{
-		res::unload(mesh);
 		mesh = {};
+	}
+	if (toReset.test(Flag::eText))
+	{
+		text = {};
 	}
 }
 
 std::vector<res::Mesh> UIComponent::meshes() const
 {
 	std::vector<res::Mesh> ret;
-	if (flags.isSet(Flag::eText) && uText && uText->isReady())
+	if (flags.test(Flag::eText) && text.ready())
 	{
-		ret.push_back(uText->mesh());
+		ret.push_back(text.mesh());
 	}
-	if (flags.isSet(Flag::eMesh) && mesh.status() == res::Status::eReady)
+	if (flags.test(Flag::eMesh) && mesh.resource.status() == res::Status::eReady)
 	{
-		ret.push_back(mesh);
+		ret.push_back(mesh.resource);
 	}
 	return ret;
 }
@@ -71,6 +97,8 @@ std::vector<res::Mesh> UIComponent::meshes() const
 SceneBuilder::SceneBuilder() = default;
 
 SceneBuilder::SceneBuilder(Info info) : m_info(std::move(info)) {}
+
+SceneBuilder::~SceneBuilder() = default;
 
 glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea)
 {
@@ -99,11 +127,11 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	glm::vec2 const fRenderArea = fbSize * gameRect;
 	glm::ivec2 const iRenderArea = {(s32)fRenderArea.x, (s32)fRenderArea.y};
 	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fRenderArea, m_info.uiSpace.z) : m_info.uiSpace;
-	engine::g_uiSpace = m_info.flags.isSet(Flag::eDynamicUI) ? glm::vec3(fRenderArea, m_info.uiSpace.z) : uiProjection(uiSpace, iRenderArea);
+	engine::g_uiSpace = m_info.flags.test(Flag::eDynamicUI) ? glm::vec3(fRenderArea, m_info.uiSpace.z) : uiProjection(uiSpace, iRenderArea);
 	gfx::Renderer::Scene scene;
 	scene.clear = {m_info.clearDepth, m_info.clearColour};
 	scene.dirLights = m_info.dirLights;
-	scene.view.pos_v = camera.m_position;
+	scene.view.pos_v = camera.position;
 	scene.view.mat_v = camera.view();
 	scene.view.mat_p = camera.perspective(fRenderArea.x / fRenderArea.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
@@ -156,7 +184,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	}
 	if (!batchUI.drawables.empty())
 	{
-		if (!m_info.flags.isSet(Flag::eDynamicUI) && m_info.flags.isSet(Flag::eScissoredUI))
+		if (!m_info.flags.test(Flag::eDynamicUI) && m_info.flags.test(Flag::eScissoredUI))
 		{
 			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSpace.x / engine::g_uiSpace.x, uiSpace.y / engine::g_uiSpace.y});
 		}

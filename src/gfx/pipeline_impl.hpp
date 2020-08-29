@@ -7,7 +7,7 @@
 #include <engine/gfx/pipeline.hpp>
 #include <engine/resources/resource_types.hpp>
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-#include <core/tokeniser.hpp>
+#include <core/delegate.hpp>
 #endif
 
 namespace le::gfx
@@ -47,7 +47,7 @@ public:
 private:
 	Info m_info;
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-	Token m_reloadToken;
+	Delegate<>::Token m_reloadToken;
 	bool m_bShaderReloaded = false;
 #endif
 

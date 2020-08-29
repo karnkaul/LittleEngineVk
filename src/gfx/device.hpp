@@ -42,7 +42,7 @@ struct Device final
 	vk::Device device;
 
 	bool isValid(vk::SurfaceKHR surface) const;
-	UniqueQueues uniqueQueues(QFlags flags) const;
+	HandleQueues uniqueQueues(QFlags flags) const;
 
 	void waitIdle() const;
 

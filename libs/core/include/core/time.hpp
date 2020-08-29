@@ -21,13 +21,13 @@ struct Time
 	///
 	/// \brief Obtain time elapsed since clock was reset (since epoch if never reset)
 	///
-	static Time elapsed();
+	static Time elapsed() noexcept;
 	///
 	/// \brief Obtain time elapsed since epoch
 	///
-	static Time sinceEpoch();
-	static Time clamp(Time val, Time min, Time max);
-	static void resetElapsed();
+	static Time sinceEpoch() noexcept;
+	static Time clamp(Time val, Time min, Time max) noexcept;
+	static void resetElapsed() noexcept;
 
 	constexpr Time() noexcept : usecs(0) {}
 	template <typename T>
@@ -40,41 +40,41 @@ struct Time
 	///
 	/// \brief Scale time by `magnitude`
 	///
-	Time& scale(f32 magnitude);
+	Time& scale(f32 magnitude) noexcept;
 	///
 	/// \brief Obtained scaled time
 	///
-	Time scaled(f32 magnitude) const;
+	Time scaled(f32 magnitude) const noexcept;
 
-	Time& operator-();
-	Time& operator+=(Time const& rhs);
-	Time& operator-=(Time const& rhs);
-	Time& operator*=(Time const& rhs);
-	Time& operator/=(Time const& rhs);
+	Time& operator-() noexcept;
+	Time& operator+=(Time const& rhs) noexcept;
+	Time& operator-=(Time const& rhs) noexcept;
+	Time& operator*=(Time const& rhs) noexcept;
+	Time& operator/=(Time const& rhs) noexcept;
 
-	bool operator==(Time const& rhs);
-	bool operator!=(Time const& rhs);
-	bool operator<(Time const& rhs);
-	bool operator<=(Time const& rhs);
-	bool operator>(Time const& rhs);
-	bool operator>=(Time const& rhs);
+	bool operator==(Time const& rhs) noexcept;
+	bool operator!=(Time const& rhs) noexcept;
+	bool operator<(Time const& rhs) noexcept;
+	bool operator<=(Time const& rhs) noexcept;
+	bool operator>(Time const& rhs) noexcept;
+	bool operator>=(Time const& rhs) noexcept;
 
 	///
 	/// \brief Serialise to seconds
 	///
-	f32 to_s() const;
+	f32 to_s() const noexcept;
 	///
 	/// \brief Serialise to milliseconds
 	///
-	s32 to_ms() const;
+	s32 to_ms() const noexcept;
 	///
 	/// \brief Serialise to microseconds
 	///
-	s64 to_us() const;
+	s64 to_us() const noexcept;
 };
 
-Time operator+(Time const& lhs, Time const& rhs);
-Time operator-(Time const& lhs, Time const& rhs);
-Time operator*(Time const& lhs, Time const& rhs);
-Time operator/(Time const& lhs, Time const& rhs);
+Time operator+(Time const& lhs, Time const& rhs) noexcept;
+Time operator-(Time const& lhs, Time const& rhs) noexcept;
+Time operator*(Time const& lhs, Time const& rhs) noexcept;
+Time operator/(Time const& lhs, Time const& rhs) noexcept;
 } // namespace le

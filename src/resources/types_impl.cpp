@@ -320,11 +320,6 @@ gfx::Geometry Font::generate(Text const& text) const
 
 bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 {
-#if defined(LEVK_SHADER_COMPILER)
-	constexpr bool bShaderCompiler = true;
-#else
-	constexpr bool bShaderCompiler = false;
-#endif
 	bool const bCodeMapPopulated = std::any_of(out_createInfo.codeMap.begin(), out_createInfo.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	[[maybe_unused]] bool const bCodeIDsPopulated =
 		std::any_of(out_createInfo.codeIDMap.begin(), out_createInfo.codeIDMap.end(), [&](auto const& entry) { return !entry.empty(); });
@@ -343,7 +338,7 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 			bool bSpv = true;
 			if (ext == s_vertExt || ext == s_fragExt)
 			{
-				if (!bShaderCompiler || !pReader)
+				if (!levk_shaderCompiler || !pReader)
 				{
 					codeID += s_spvExt;
 				}
@@ -1044,9 +1039,7 @@ void Font::Impl::loadGlyphs(std::vector<Glyph> const& glyphData, [[maybe_unused]
 
 gfx::Geometry Font::Impl::generate(Text const& text) const
 {
-	Font font;
-	font.guid = guid;
-	if (text.text.empty() || font.status() != Status::eReady)
+	if (text.text.empty())
 	{
 		return {};
 	}

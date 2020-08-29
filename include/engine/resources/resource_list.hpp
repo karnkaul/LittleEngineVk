@@ -34,7 +34,11 @@ struct ResourceList final
 	///
 	/// \brief Check if any resourceIDs are present
 	///
-	bool isEmpty() const;
+	bool empty() const;
+	///
+	/// \brief Obtain a count of all resource IDs
+	///
+	std::size_t size() const;
 
 	///
 	/// \brief Obtain string output of entire list

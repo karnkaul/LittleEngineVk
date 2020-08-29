@@ -58,7 +58,7 @@ private:
 		vk::PresentModeKHR presentMode;
 
 		void refresh();
-		bool isReady() const;
+		bool ready() const;
 		vk::SurfaceFormatKHR bestColourFormat() const;
 		vk::Format bestDepthFormat() const;
 		vk::PresentModeKHR bestPresentMode() const;

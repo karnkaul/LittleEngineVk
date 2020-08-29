@@ -32,12 +32,11 @@ public:
 	/// \brief Check if any registered callbacks exist
 	/// \returns `true` if any previously distributed Token is still alive
 	///
-	/// Calls `cleanup()`
-	[[nodiscard]] bool isAlive() const;
+	[[nodiscard]] bool alive() const noexcept;
 	///
 	/// \brief Clear all registered callbacks
 	///
-	void clear();
+	void clear() noexcept;
 };
 
 template <typename... Args>
@@ -53,13 +52,13 @@ void Delegate<Args...>::operator()(Args... args) const
 }
 
 template <typename... Args>
-bool Delegate<Args...>::isAlive() const
+bool Delegate<Args...>::alive() const noexcept
 {
 	return !m_tokeniser.empty();
 }
 
 template <typename... Args>
-void Delegate<Args...>::clear()
+void Delegate<Args...>::clear() noexcept
 {
 	m_tokeniser.clear();
 	return;

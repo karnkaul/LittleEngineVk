@@ -13,7 +13,7 @@ Colour::Colour(glm::vec3 const& colour) noexcept : Colour(glm::vec4(colour, 1.0f
 
 Colour::Colour(glm::vec4 const& colour) noexcept : r(colour.r), g(colour.g), b(colour.b), a(colour.a) {}
 
-Colour::Colour(std::string_view hex)
+Colour::Colour(std::string_view hex) noexcept
 {
 	ASSERT(!hex.empty(), "Empty hex string!");
 	if (hex.at(0) == '#')
@@ -39,7 +39,7 @@ Colour::Colour(std::string_view hex)
 	r = mask & 0xff;
 }
 
-Colour Colour::lerp(Colour min, Colour max, f32 alpha)
+Colour Colour::lerp(Colour min, Colour max, f32 alpha) noexcept
 {
 	if (alpha > 1.0f / 0xff)
 	{
@@ -75,17 +75,17 @@ Colour& Colour::operator-=(Colour rhs) noexcept
 	return *this;
 }
 
-glm::vec4 Colour::toVec4() const
+glm::vec4 Colour::toVec4() const noexcept
 {
 	return {r.toF32(), g.toF32(), b.toF32(), a.toF32()};
 }
 
-glm::vec4 Colour::toSRGB() const
+glm::vec4 Colour::toSRGB() const noexcept
 {
 	return glm::convertLinearToSRGB(toVec4());
 }
 
-glm::vec4 Colour::toRGB() const
+glm::vec4 Colour::toRGB() const noexcept
 {
 	return glm::convertSRGBToLinear(toVec4());
 }

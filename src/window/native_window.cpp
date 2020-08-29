@@ -83,6 +83,19 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 #endif
 }
 
+NativeWindow& NativeWindow::operator=(NativeWindow&& rhs)
+{
+	if (&rhs != this)
+	{
+#if defined(LEVK_USE_GLFW)
+		glfwDestroyWindow(cast<GLFWwindow>());
+#endif
+		m_window = rhs.m_window;
+		rhs.m_window.clear();
+	}
+	return *this;
+}
+
 NativeWindow::~NativeWindow()
 {
 #if defined(LEVK_USE_GLFW)

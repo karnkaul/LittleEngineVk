@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <vector>
+#include <core/atomic_counter.hpp>
 #include <core/time.hpp>
 #include <core/reader.hpp>
 #include <core/std_types.hpp>
@@ -8,13 +9,22 @@
 #include <core/os.hpp>
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/window/window.hpp>
-#include <engine/game/world.hpp>
 #if defined(LEVK_DEBUG)
 #include <core/log_config.hpp>
 #endif
 
+#if defined(LEVK_EDITOR)
+constexpr bool levk_editor = true;
+#else
+constexpr bool levk_editor = false;
+#endif
+
 namespace le::engine
 {
+using Semaphore = Counter<s32>::Semaphore;
+
+struct Driver;
+
 enum class Status : s8
 {
 	eIdle,
@@ -81,11 +91,11 @@ public:
 	/// \brief Start running the desired world
 	/// \returns `false` if world does not exist / could not be started
 	///
-	bool start(World::ID world);
+	// bool start(World::ID world);
 	///
 	/// \brief Check whether engine is currently running (or shutting down)
 	///
-	bool isRunning() const;
+	bool running() const;
 	///
 	/// \brief Obtain current engine Status
 	///
@@ -95,12 +105,17 @@ public:
 	/// \brief Update all services and tick active world
 	/// \returns `false` if shutting down
 	///
-	bool tick(Time dt) const;
+	// bool tick(Time dt) const;
+	///
+	/// \brief Update all services and tick active world
+	/// \returns `false` if shutting down
+	///
+	bool update(Driver& out_driver) const;
 	///
 	/// \brief Submit scene from active world
 	/// \returns `false` if no world is active
 	///
-	void submitScene() const;
+	// void submitScene(gfx::Camera const& camera) const;
 	///
 	/// \brief Render all active windows
 	///
@@ -118,7 +133,7 @@ private:
 ///
 /// \brief Obtain whether the engine is shutting down
 ///
-bool isShuttingDown();
+bool shuttingDown();
 ///
 /// \brief Obtain the main window
 ///
@@ -139,4 +154,18 @@ glm::vec2 gameRectSize();
 /// \brief Obtain the path to the running executable
 ///
 stdfs::path exePath();
+///
+/// \brief Obtain the data reader
+///
+io::Reader const& reader();
+///
+/// \brief Obtain busy Semaphore
+///
+/// Prevents shutdown until all Semaphores are released
+///
+Semaphore setBusy();
+///
+/// \brief Check whether any Semaphore is active
+///
+bool busy();
 } // namespace le::engine

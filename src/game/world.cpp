@@ -6,7 +6,7 @@
 #include <resources/manifest.hpp>
 #include <levk_impl.hpp>
 
-namespace le
+namespace le::legacy
 {
 namespace
 {
@@ -48,7 +48,7 @@ bool World::removeWorld(ID id)
 
 bool World::loadWorld(ID id)
 {
-	if (isBusy())
+	if (busy())
 	{
 		LOG_W("[{}] Busy, ignoring request to load World{}", utils::tName<World>(), id);
 		return false;
@@ -72,14 +72,9 @@ World::Semaphore World::setBusy()
 	return s_busyCounter;
 }
 
-bool World::isBusy()
+bool World::busy()
 {
-	return !g_manifest.isIdle() || !s_busyCounter.isZero(true);
-}
-
-bool World::worldLoadPending()
-{
-	return g_data.pNext != nullptr;
+	return !g_manifest.idle() || !s_busyCounter.isZero(true);
 }
 
 #if defined(LEVK_EDITOR)
@@ -117,7 +112,7 @@ Entity World::spawnEntity(std::string name, bool bAddTransform)
 	{
 		[[maybe_unused]] auto pTransform = m_registry.addComponent<Transform>(ret);
 #if defined(LEVK_EDITOR)
-		pTransform->setParent(&m_root);
+		pTransform->parent(&m_root);
 		m_transformToEntity[pTransform] = ret;
 #endif
 	}
@@ -149,6 +144,11 @@ stdfs::path World::inputMapID() const
 
 void World::onManifestLoaded() {}
 
+gfx::Camera const& World::camera() const
+{
+	return m_defaultCam;
+}
+
 #if defined(LEVK_EDITOR)
 Registry& World::registry()
 {
@@ -164,9 +164,9 @@ bool World::impl_start(ID previous)
 	m_inputContext.m_name = m_name;
 #endif
 	auto const inputMap = inputMapID();
-	if (!inputMap.empty() && engine::reader().isPresent(inputMap))
+	if (!inputMap.empty() && ::le::engine::reader().isPresent(inputMap))
 	{
-		if (auto str = engine::reader().string(inputMap))
+		if (auto str = ::le::engine::reader().string(inputMap))
 		{
 			dj::object json;
 			if (json.read(*str))
@@ -217,7 +217,7 @@ bool World::impl_start(World& out_world, ID prev)
 	if (out_world.impl_start(prev))
 	{
 		s_pActive = &out_world;
-		if (g_manifest.isReady())
+		if (g_manifest.ready())
 		{
 			g_manifest.start();
 		}
@@ -235,7 +235,7 @@ bool World::impl_startID(ID id)
 	{
 		auto const& uWorld = search->second;
 		auto const manifestID = uWorld->manifestID();
-		if (!manifestID.empty() && engine::reader().isPresent(manifestID))
+		if (!manifestID.empty() && ::le::engine::reader().isPresent(manifestID))
 		{
 			g_manifest.read(manifestID);
 		}
@@ -248,27 +248,21 @@ bool World::impl_startID(ID id)
 void World::impl_startNext()
 {
 	ID previousID;
-	bool bSkipUnload = false;
 	if (s_pActive)
 	{
 		previousID = s_pActive->m_id;
 		s_pActive->impl_stop();
-		bSkipUnload = s_pActive->m_flags.isSet(Flag::eSkipManifestUnload);
 		s_pActive = nullptr;
 	}
 	auto const manifestID = g_data.pNext->manifestID();
 	auto toUnload = g_data.loadedResources;
-	if (!manifestID.empty() && engine::reader().isPresent(manifestID))
+	if (!manifestID.empty() && ::le::engine::reader().isPresent(manifestID))
 	{
 		g_manifest.read(manifestID);
 		auto const loadList = g_manifest.parse();
 		auto const toLoad = loadList - g_data.loadedResources;
 		toUnload = g_data.loadedResources - loadList;
 		g_manifest.m_toLoad.intersect(toLoad);
-	}
-	if (bSkipUnload)
-	{
-		toUnload = {};
 	}
 	res::Manifest::unload(toUnload);
 	g_data.loadedResources = g_data.loadedResources - toUnload;
@@ -299,15 +293,15 @@ void World::impl_destroyAll()
 
 bool World::impl_tick(Time dt, gfx::ScreenRect const& sceneRect, bool bTickActive, bool bTerminate)
 {
-	if (!engine::mainWindow())
+	if (!::le::engine::mainWindow())
 	{
 		return false;
 	}
-	if (g_data.pNext && g_manifest.isIdle())
+	if (g_data.pNext && g_manifest.idle())
 	{
 		impl_startNext();
 	}
-	if (!g_manifest.isIdle())
+	if (!g_manifest.idle())
 	{
 		auto const status = g_manifest.update(bTerminate);
 		switch (status)
@@ -346,4 +340,10 @@ bool World::impl_submitScene(gfx::Renderer& out_renderer, gfx::Camera const& cam
 	}
 	return false;
 }
-} // namespace le
+
+SceneBuilder const& World::sceneBuilder() const
+{
+	static SceneBuilder s_builder;
+	return s_builder;
+}
+} // namespace le::legacy

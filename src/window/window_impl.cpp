@@ -59,7 +59,7 @@ void onFramebufferResize(GLFWwindow* pGLFWwindow, s32 width, s32 height)
 
 void onKey(GLFWwindow* pGLFWwindow, s32 key, s32 /*scancode*/, s32 action, s32 mods)
 {
-	WindowImpl::s_input[WindowID::s_null].onInput(Key(key), Action(action), Mods::VALUE(mods));
+	WindowImpl::s_input[WindowID::null].onInput(Key(key), Action(action), Mods::VALUE(mods));
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow)
 	{
 		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key), Action(action), Mods::VALUE(mods));
@@ -69,7 +69,7 @@ void onKey(GLFWwindow* pGLFWwindow, s32 key, s32 /*scancode*/, s32 action, s32 m
 
 void onMouse(GLFWwindow* pGLFWwindow, f64 x, f64 y)
 {
-	WindowImpl::s_input[WindowID::s_null].onMouse(x, y);
+	WindowImpl::s_input[WindowID::null].onMouse(x, y);
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow)
 	{
 		WindowImpl::s_input[pWindow->m_pWindow->id()].onMouse(x, y);
@@ -79,7 +79,7 @@ void onMouse(GLFWwindow* pGLFWwindow, f64 x, f64 y)
 
 void onMouseButton(GLFWwindow* pGLFWwindow, s32 key, s32 action, s32 mods)
 {
-	WindowImpl::s_input[WindowID::s_null].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods::VALUE(mods));
+	WindowImpl::s_input[WindowID::null].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods::VALUE(mods));
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow)
 	{
 		WindowImpl::s_input[pWindow->m_pWindow->id()].onInput(Key(key + (s32)Key::eMouseButton1), Action(action), Mods::VALUE(mods));
@@ -89,7 +89,7 @@ void onMouseButton(GLFWwindow* pGLFWwindow, s32 key, s32 action, s32 mods)
 
 void onText(GLFWwindow* pGLFWwindow, u32 codepoint)
 {
-	WindowImpl::s_input[WindowID::s_null].onText(static_cast<char>(codepoint));
+	WindowImpl::s_input[WindowID::null].onText(static_cast<char>(codepoint));
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow)
 	{
 		WindowImpl::s_input[pWindow->m_pWindow->id()].onText(static_cast<char>(codepoint));
@@ -99,7 +99,7 @@ void onText(GLFWwindow* pGLFWwindow, u32 codepoint)
 
 void onScroll(GLFWwindow* pGLFWwindow, f64 dx, f64 dy)
 {
-	WindowImpl::s_input[WindowID::s_null].onScroll(dx, dy);
+	WindowImpl::s_input[WindowID::null].onScroll(dx, dy);
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow)
 	{
 		WindowImpl::s_input[pWindow->m_pWindow->id()].onScroll(dx, dy);
@@ -212,7 +212,7 @@ f32 Gamepad::axis(Axis axis) const
 	return 0.0f;
 }
 
-bool Gamepad::isPressed(Key button) const
+bool Gamepad::pressed(Key button) const
 {
 	[[maybe_unused]] std::size_t idx = (std::size_t)button - (std::size_t)Key::eGamepadButtonA;
 #if defined(LEVK_USE_GLFW)
@@ -229,9 +229,7 @@ bool Gamepad::isPressed(Key button) const
 WindowImpl* WindowImpl::find(StaticAny<> nativeHandle)
 {
 #if defined(LEVK_USE_GLFW)
-	auto f = [nativeHandle](auto pWindow) -> bool {
-		return pWindow->m_uNativeWindow && pWindow->m_uNativeWindow->template cast<GLFWwindow>() == nativeHandle.val<GLFWwindow*>();
-	};
+	auto f = [nativeHandle](auto pWindow) -> bool { return pWindow->m_nativeWindow.template cast<GLFWwindow>() == nativeHandle.val<GLFWwindow*>(); };
 	auto search = std::find_if(g_registeredWindows.begin(), g_registeredWindows.end(), f);
 	return search != g_registeredWindows.end() ? *search : nullptr;
 #else
@@ -285,7 +283,7 @@ void WindowImpl::deinit()
 void WindowImpl::update()
 {
 #if defined(LEVK_EDITOR)
-	if (g_pEditorWindow && g_pEditorWindow->isOpen())
+	if (g_pEditorWindow && g_pEditorWindow->open())
 	{
 		gfx::ext_gui::newFrame();
 	}
@@ -347,7 +345,7 @@ StaticAny<> WindowImpl::nativeHandle(WindowID window)
 {
 	if (auto pImpl = windowImpl(window); pImpl)
 	{
-		return pImpl->m_pWindow->m_uImpl->m_uNativeWindow->m_window;
+		return pImpl->m_pWindow->m_uImpl->m_nativeWindow.m_window;
 	}
 	return nullptr;
 }
@@ -390,13 +388,14 @@ WindowImpl::~WindowImpl()
 	destroy();
 }
 
-bool WindowImpl::create(Window::Info const& info)
+bool WindowImpl::create(Window* pWindow, Window::Info const& info)
 {
 	try
 	{
-		m_uNativeWindow = std::make_unique<NativeWindow>(info);
+		m_pWindow = pWindow;
+		m_nativeWindow = NativeWindow(info);
 		gfx::RendererImpl::Info rendererInfo;
-		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance instance) -> vk::SurfaceKHR { return m_uNativeWindow->createSurface(instance); };
+		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance vkInst) -> vk::SurfaceKHR { return m_nativeWindow.createSurface(vkInst); };
 		rendererInfo.contextInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
 		rendererInfo.contextInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
 		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
@@ -415,8 +414,8 @@ bool WindowImpl::create(Window::Info const& info)
 		}
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
-		registerCallbacks(*m_uNativeWindow);
-		m_uNativeWindow->show(info.options.bCentreCursor);
+		registerCallbacks(m_nativeWindow);
+		m_nativeWindow.show(info.options.bCentreCursor);
 		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo, &m_pWindow->m_renderer);
 		m_presentModes.clear();
 		m_presentModes.reserve(m_pWindow->m_renderer.m_uImpl->m_context.m_metadata.presentModes.size());
@@ -445,20 +444,20 @@ bool WindowImpl::create(Window::Info const& info)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
 		m_pWindow->m_renderer.m_uImpl.reset();
-		m_uNativeWindow.reset();
+		m_nativeWindow = {};
 		return false;
 	}
 	LOG_E("[{}:{}] Failed to create window!", Window::s_tName, m_pWindow->m_id);
 	return false;
 }
 
-bool WindowImpl::isOpen() const
+bool WindowImpl::open() const
 {
 	bool bRet = false;
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		bRet = !glfwWindowShouldClose(m_uNativeWindow->cast<GLFWwindow>());
+		bRet = !glfwWindowShouldClose(m_nativeWindow.cast<GLFWwindow>());
 	}
 #endif
 	return bRet;
@@ -468,33 +467,33 @@ bool WindowImpl::exists() const
 {
 	bool bRet = false;
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		bRet = m_uNativeWindow->cast<GLFWwindow>() != nullptr;
+		bRet = m_nativeWindow.cast<GLFWwindow>() != nullptr;
 	}
 #endif
 	return bRet;
 }
 
-bool WindowImpl::isClosing() const
+bool WindowImpl::closing() const
 {
 	bool bRet = false;
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		bRet = glfwWindowShouldClose(m_uNativeWindow->cast<GLFWwindow>());
+		bRet = glfwWindowShouldClose(m_nativeWindow.cast<GLFWwindow>());
 	}
 #endif
 	return bRet;
 }
 
-bool WindowImpl::isFocused() const
+bool WindowImpl::focused() const
 {
 	bool bRet = false;
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		bRet = glfwGetWindowAttrib(m_uNativeWindow->cast<GLFWwindow>(), GLFW_FOCUSED) != 0;
+		bRet = glfwGetWindowAttrib(m_nativeWindow.cast<GLFWwindow>(), GLFW_FOCUSED) != 0;
 	}
 #endif
 	return bRet;
@@ -503,9 +502,9 @@ bool WindowImpl::isFocused() const
 void WindowImpl::setClosing()
 {
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		glfwSetWindowShouldClose(m_uNativeWindow->cast<GLFWwindow>(), 1);
+		glfwSetWindowShouldClose(m_nativeWindow.cast<GLFWwindow>(), 1);
 	}
 #endif
 	return;
@@ -519,10 +518,10 @@ void WindowImpl::destroy()
 		return;
 	}
 #endif
-	if (m_uNativeWindow)
+	if (!m_nativeWindow.m_window.empty())
 	{
 		m_pWindow->m_renderer.m_uImpl.reset();
-		m_uNativeWindow.reset();
+		m_nativeWindow = {};
 		LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 	}
 	m_windowSize = m_framebufferSize = {};
@@ -550,23 +549,23 @@ bool WindowImpl::setPresentMode(PresentMode mode)
 
 glm::ivec2 WindowImpl::framebufferSize() const
 {
-	return m_uNativeWindow ? m_uNativeWindow->framebufferSize() : glm::ivec2(0);
+	return !m_nativeWindow.m_window.empty() ? m_nativeWindow.framebufferSize() : glm::ivec2(0);
 }
 
 glm::ivec2 WindowImpl::windowSize() const
 {
-	return m_uNativeWindow ? m_uNativeWindow->windowSize() : glm::ivec2(0);
+	return !m_nativeWindow.m_window.empty() ? m_nativeWindow.windowSize() : glm::ivec2(0);
 }
 
 void WindowImpl::setCursorType([[maybe_unused]] CursorType type)
 {
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
 		if (type != m_cursor.type)
 		{
 			m_cursor = cursor(type);
-			glfwSetCursor(m_uNativeWindow->cast<GLFWwindow>(), m_cursor.data.val<GLFWcursor*>());
+			glfwSetCursor(m_nativeWindow.cast<GLFWwindow>(), m_cursor.data.val<GLFWcursor*>());
 		}
 	}
 #endif
@@ -575,7 +574,7 @@ void WindowImpl::setCursorType([[maybe_unused]] CursorType type)
 void WindowImpl::setCursorMode([[maybe_unused]] CursorMode mode) const
 {
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
 		s32 val;
 		switch (mode)
@@ -593,10 +592,10 @@ void WindowImpl::setCursorMode([[maybe_unused]] CursorMode mode) const
 			break;
 
 		default:
-			val = glfwGetInputMode(m_uNativeWindow->cast<GLFWwindow>(), GLFW_CURSOR);
+			val = glfwGetInputMode(m_nativeWindow.cast<GLFWwindow>(), GLFW_CURSOR);
 			break;
 		}
-		glfwSetInputMode(m_uNativeWindow->cast<GLFWwindow>(), GLFW_CURSOR, val);
+		glfwSetInputMode(m_nativeWindow.cast<GLFWwindow>(), GLFW_CURSOR, val);
 	}
 #endif
 	return;
@@ -606,9 +605,9 @@ CursorMode WindowImpl::cursorMode() const
 {
 	CursorMode ret = CursorMode::eDefault;
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		s32 val = glfwGetInputMode(m_uNativeWindow->cast<GLFWwindow>(), GLFW_CURSOR);
+		s32 val = glfwGetInputMode(m_nativeWindow.cast<GLFWwindow>(), GLFW_CURSOR);
 		switch (val)
 		{
 		case GLFW_CURSOR_NORMAL:
@@ -632,10 +631,10 @@ glm::vec2 WindowImpl::cursorPos() const
 {
 	glm::vec2 ret = {};
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
 		f64 x, y;
-		glfwGetCursorPos(m_uNativeWindow->cast<GLFWwindow>(), &x, &y);
+		glfwGetCursorPos(m_nativeWindow.cast<GLFWwindow>(), &x, &y);
 		ret = {(f32)x, (f32)y};
 	}
 #endif
@@ -645,9 +644,9 @@ glm::vec2 WindowImpl::cursorPos() const
 void WindowImpl::setCursorPos([[maybe_unused]] glm::vec2 const& pos)
 {
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		glfwSetCursorPos(m_uNativeWindow->cast<GLFWwindow>(), pos.x, pos.y);
+		glfwSetCursorPos(m_nativeWindow.cast<GLFWwindow>(), pos.x, pos.y);
 	}
 #endif
 	return;
@@ -656,9 +655,9 @@ void WindowImpl::setCursorPos([[maybe_unused]] glm::vec2 const& pos)
 std::string WindowImpl::clipboard() const
 {
 #if defined(LEVK_USE_GLFW)
-	if (g_bGLFWInit && m_uNativeWindow)
+	if (g_bGLFWInit && !m_nativeWindow.m_window.empty())
 	{
-		return glfwGetClipboardString(m_uNativeWindow->cast<GLFWwindow>());
+		return glfwGetClipboardString(m_nativeWindow.cast<GLFWwindow>());
 	}
 #endif
 	return {};
@@ -668,7 +667,7 @@ bool WindowImpl::anyActive()
 {
 	for (auto pWindow : g_registeredWindows)
 	{
-		if (pWindow->isOpen())
+		if (pWindow->open())
 		{
 			return true;
 		}
@@ -710,7 +709,7 @@ void WindowImpl::renderAll()
 	bool bExtGUI = false;
 	for (auto pWindow : g_registeredWindows)
 	{
-		if (!pWindow->isClosing())
+		if (!pWindow->closing())
 		{
 #if defined(LEVK_EDITOR)
 			if (g_pEditorWindow)

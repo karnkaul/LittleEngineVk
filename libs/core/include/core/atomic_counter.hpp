@@ -48,10 +48,11 @@ bool Counter<T>::isZero(bool bAllowNegative) const noexcept
 template <typename T>
 struct Counter<T>::Semaphore final
 {
+private:
 	Counter<T>* pCounter = nullptr;
 
+public:
 	constexpr Semaphore() noexcept = default;
-
 	///
 	/// \brief Stores and increments passed counter
 	///
@@ -59,8 +60,29 @@ struct Counter<T>::Semaphore final
 	{
 		counter.increment();
 	}
-	Semaphore(Semaphore&&) noexcept = default;
-	Semaphore& operator=(Semaphore&&) noexcept = default;
+	///
+	/// \brief Moves rhs into self
+	///
+	Semaphore(Semaphore&& rhs) noexcept : pCounter(rhs.pCounter)
+	{
+		rhs.pCounter = nullptr;
+	}
+	///
+	/// \brief Decrements counter if tied to one, then moves rhs into self
+	///
+	Semaphore& operator=(Semaphore&& rhs)
+	{
+		if (&rhs != this)
+		{
+			if (rhs.pCounter != pCounter)
+			{
+				reset();
+			}
+			pCounter = rhs.pCounter;
+			rhs.pCounter = nullptr;
+		}
+		return *this;
+	}
 	Semaphore(Semaphore const&) = delete;
 	Semaphore& operator=(Semaphore const&) = delete;
 	///
@@ -68,10 +90,7 @@ struct Counter<T>::Semaphore final
 	///
 	~Semaphore()
 	{
-		if (pCounter)
-		{
-			pCounter->decrement();
-		}
+		reset();
 	}
 
 	///
@@ -79,6 +98,10 @@ struct Counter<T>::Semaphore final
 	///
 	void reset() noexcept
 	{
+		if (pCounter)
+		{
+			pCounter->decrement();
+		}
 		pCounter = nullptr;
 	}
 };

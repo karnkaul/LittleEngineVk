@@ -239,7 +239,7 @@ struct Gamepad
 	s32 id = 0;
 
 	f32 axis(Axis axis) const;
-	bool isPressed(Key button) const;
+	bool pressed(Key button) const;
 };
 
 namespace stdfs = std::filesystem;

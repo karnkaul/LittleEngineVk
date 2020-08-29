@@ -1,6 +1,8 @@
 #include <algorithm>
-#include <deque>
+#include <array>
+#include <atomic>
 #include <optional>
+#include <vector>
 #include <core/threads.hpp>
 #include <core/log.hpp>
 #include <core/tasks.hpp>
@@ -11,21 +13,11 @@ namespace le
 {
 namespace tasks
 {
-class Worker final
+struct Worker final
 {
-private:
-	threads::Handle m_thread;
-	std::atomic<bool> m_bBusy;
+	threads::Scoped thread;
 
-public:
-	Worker();
-	~Worker();
-
-public:
-	bool isBusy() const;
-
-private:
-	void run();
+	Worker(std::size_t idx);
 };
 
 namespace
@@ -53,7 +45,7 @@ public:
 	std::shared_ptr<Handle> pushTask(std::function<void()> task, std::string name);
 	std::vector<std::shared_ptr<Handle>> pushTasks(List taskList);
 
-	bool isActive() const;
+	bool active() const;
 
 	void clear();
 	void waitIdle();
@@ -64,7 +56,9 @@ public:
 
 std::string_view const g_tName = "le::tasks";
 Queue g_queue;
-std::vector<std::unique_ptr<Worker>> g_workers;
+std::vector<Worker> g_workers;
+constexpr std::size_t maxWorkers = 256;
+std::array<std::atomic<bool>, maxWorkers> g_busy;
 
 Queue::Queue()
 {
@@ -122,7 +116,7 @@ std::vector<std::shared_ptr<Handle>> Queue::pushTasks(List taskList)
 	return ret;
 }
 
-bool Queue::isActive() const
+bool Queue::active() const
 {
 	return m_bWork.load();
 }
@@ -152,73 +146,97 @@ void Queue::deinit()
 }
 } // namespace
 
-Worker::Worker()
+Worker::Worker(std::size_t idx)
 {
-	m_thread = threads::newThread([this]() { run(); });
-	m_bBusy.store(false);
-}
-
-Worker::~Worker()
-{
-	threads::join(m_thread);
-}
-
-void Worker::run()
-{
-	while (g_queue.isActive())
-	{
-		m_bBusy.store(false);
-		auto task = g_queue.popTask();
-		if (task && task->handle && task->task)
+	ASSERT(idx < g_busy.size(), "Invariant violated");
+	thread = threads::newThread([idx]() {
+		while (g_queue.active())
 		{
-			auto const id = task->handle->id();
-			if (task->handle->status() == Handle::Status::eDiscarded)
+			g_busy.at(idx) = false;
+			auto task = g_queue.popTask();
+			if (task && task->handle && task->task)
 			{
-				LOG_I("[{}] task_{} [{}] discarded", g_tName, task->handle->id(), task->name);
-				continue;
-			}
-			Handle::Status status = Handle::Status::eWaiting;
-			if (task->handle->m_status.compare_exchange_strong(status, Handle::Status::eExecuting))
-			{
-				task->handle->m_status.store(Handle::Status::eExecuting);
-				m_bBusy.store(true);
-				try
+				auto const id = task->handle->id();
+				if (task->handle->status() == Handle::Status::eDiscarded)
 				{
-					LOGIF_D(!task->name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task->name);
-					task->task();
-					LOGIF_D(!task->name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task->name);
-					task->handle->m_status.store(Handle::Status::eCompleted);
+					LOG_I("[{}] task_{} [{}] discarded", g_tName, task->handle->id(), task->name);
+					continue;
 				}
-				catch (std::exception const& e)
+				Handle::Status status = Handle::Status::eWaiting;
+				if (task->handle->m_status.compare_exchange_strong(status, Handle::Status::eExecuting))
 				{
-					LOG_E("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task->name.empty() ? "Unnamed" : task->name, e.what());
-					task->handle->m_exception = e.what();
-					task->handle->m_status.store(Handle::Status::eError);
+					g_busy.at(idx) = true;
+					task->handle->m_status.store(Handle::Status::eExecuting);
+					try
+					{
+						LOGIF_D(!task->name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task->name);
+						task->task();
+						LOGIF_D(!task->name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task->name);
+						task->handle->m_status.store(Handle::Status::eCompleted);
+					}
+					catch (std::exception const& e)
+					{
+						LOG_E("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task->name.empty() ? "Unnamed" : task->name, e.what());
+						task->handle->m_exception = e.what();
+						task->handle->m_status.store(Handle::Status::eError);
+					}
 				}
 			}
 		}
-	}
+	});
 }
 
-bool Worker::isBusy() const
-{
-	return m_bBusy.load();
-}
+// void work(std::size_t idx)
+// {
+// 	while (g_queue.active())
+// 	{
+// 		g_busy.at(idx) = false;
+// 		auto task = g_queue.popTask();
+// 		if (task && task->handle && task->task)
+// 		{
+// 			auto const id = task->handle->id();
+// 			if (task->handle->status() == Handle::Status::eDiscarded)
+// 			{
+// 				LOG_I("[{}] task_{} [{}] discarded", g_tName, task->handle->id(), task->name);
+// 				continue;
+// 			}
+// 			Handle::Status status = Handle::Status::eWaiting;
+// 			if (task->handle->m_status.compare_exchange_strong(status, Handle::Status::eExecuting))
+// 			{
+// 				g_busy.at(idx) = true;
+// 				task->handle->m_status.store(Handle::Status::eExecuting);
+// 				try
+// 				{
+// 					LOGIF_D(!task->name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task->name);
+// 					task->task();
+// 					LOGIF_D(!task->name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task->name);
+// 					task->handle->m_status.store(Handle::Status::eCompleted);
+// 				}
+// 				catch (std::exception const& e)
+// 				{
+// 					LOG_E("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task->name.empty() ? "Unnamed" : task->name, e.what());
+// 					task->handle->m_exception = e.what();
+// 					task->handle->m_status.store(Handle::Status::eError);
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 Handle::Handle(s64 id) : m_id(id), m_status(Status::eWaiting) {}
 
-Handle::Status Handle::status() const
+Handle::Status Handle::status() const noexcept
 {
 	return m_status.load();
 }
 
-bool Handle::hasCompleted(bool bIncludeDiscarded) const
+bool Handle::hasCompleted(bool bIncludeDiscarded) const noexcept
 {
 	auto const status = m_status.load();
 	return status == Status::eCompleted || status == Status::eError || (bIncludeDiscarded && status == Status::eDiscarded);
 }
 
-s64 Handle::id() const
+s64 Handle::id() const noexcept
 {
 	return m_id;
 }
@@ -231,7 +249,7 @@ void Handle::wait()
 	}
 }
 
-bool Handle::discard()
+bool Handle::discard() noexcept
 {
 	if (m_status.load() != Status::eExecuting)
 	{
@@ -241,12 +259,12 @@ bool Handle::discard()
 	return false;
 }
 
-bool Handle::didThrow() const
+bool Handle::didThrow() const noexcept
 {
 	return m_status.load() == Status::eError;
 }
 
-std::string_view Handle::exception() const
+std::string_view Handle::exception() const noexcept
 {
 	return m_exception;
 }
@@ -285,7 +303,7 @@ void tasks::waitIdle(bool bKillEnqueued)
 	{
 		g_queue.waitIdle();
 	}
-	while (std::any_of(g_workers.begin(), g_workers.end(), [](auto const& worker) -> bool { return worker->isBusy(); }))
+	while (std::any_of(g_busy.begin(), g_busy.end(), [](auto const& busy) -> bool { return busy; }))
 	{
 		threads::sleep();
 	}
@@ -296,10 +314,9 @@ bool tasks::init(u8 workerCount)
 	if (g_workers.empty() && workerCount > 0)
 	{
 		g_queue.init();
-		g_workers.reserve((std::size_t)workerCount);
 		for (u8 count = 0; count < workerCount; ++count)
 		{
-			g_workers.push_back(std::make_unique<Worker>());
+			g_workers.push_back(Worker((std::size_t)count));
 		}
 		return true;
 	}

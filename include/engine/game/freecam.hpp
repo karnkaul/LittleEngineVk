@@ -6,7 +6,7 @@
 
 namespace le
 {
-class FreeCam : public gfx::Camera
+class FreeCam
 {
 public:
 	enum class Flag : s8
@@ -54,18 +54,19 @@ public:
 	};
 
 public:
+	gfx::Camera m_camera;
 	State m_state;
 	Config m_config;
 
 private:
 	input::Context m_input;
-	Token m_token;
+	input::Token m_token;
 	glm::vec2 m_dXZ = {};
 	glm::vec2 m_dY = {};
 	glm::vec2 m_padLook = {};
 
 public:
-	void reset() override;
+	void reset();
 
 public:
 #if defined(LEVK_EDITOR)

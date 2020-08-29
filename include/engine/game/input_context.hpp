@@ -12,6 +12,8 @@
 
 namespace le::input
 {
+using Token = Token;
+
 struct Snapshot final
 {
 	std::vector<Gamepad> padStates;
@@ -66,7 +68,7 @@ struct Map final
 	void clear();
 
 	u16 size() const;
-	bool isEmpty() const;
+	bool empty() const;
 };
 
 class Context final
@@ -121,7 +123,7 @@ public:
 	bool wasFired() const;
 
 private:
-	bool isConsumed(Snapshot const& snapshot) const;
+	bool consumed(Snapshot const& snapshot) const;
 
 private:
 	friend void fire();

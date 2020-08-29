@@ -25,6 +25,12 @@
 #undef max
 #endif
 
+#if defined(LEVK_DEBUG)
+constexpr bool levk_debug = true;
+#else
+constexpr bool levk_debug = false;
+#endif
+
 namespace le
 {
 using u8 = std::uint8_t;
@@ -70,6 +76,18 @@ constexpr T maxVal()
 }
 
 ///
+/// \brief Convenience base type with deleted copy semantics
+///
+struct NoCopy
+{
+	constexpr NoCopy() = default;
+	constexpr NoCopy(NoCopy&&) = default;
+	constexpr NoCopy& operator=(NoCopy&&) = default;
+	NoCopy(NoCopy const&) = delete;
+	NoCopy& operator=(NoCopy const&) = delete;
+};
+
+///
 /// \brief Ultra-light reference wrapper
 ///
 template <typename T>
@@ -93,14 +111,16 @@ struct Ref
 template <typename T>
 struct TResult
 {
+	static_assert(std::is_default_constructible_v<T>, "T must be default constructible!");
+
 	using type = T;
 
-	T payload = {};
-	bool bResult = false;
+	T payload;
+	bool bResult;
 
-	constexpr TResult() = default;
-	constexpr TResult(T&& payload) : payload(std::move(payload)), bResult(true) {}
-	constexpr TResult(T&& payload, bool bResult) : payload(std::move(payload)), bResult(bResult) {}
+	constexpr TResult() : payload(T{}), bResult(false) {}
+	constexpr TResult(T&& payload, bool bResult = true) : payload(std::move(payload)), bResult(bResult) {}
+	constexpr TResult(T const& payload, bool bResult = true) : payload(payload), bResult(bResult) {}
 
 	constexpr operator bool() const;
 	constexpr T const& operator*() const;

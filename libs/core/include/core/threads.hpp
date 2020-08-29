@@ -10,9 +10,37 @@ namespace le
 namespace threads
 {
 ///
-/// \brief Handle for a running thread
+/// \brief ID of a running thread
 ///
-using Handle = TZero<u64>;
+using ID = TZero<u64>;
+
+///
+/// \brief RAII wrapper for a thread instance (joins in destructor)
+///
+struct Scoped final : NoCopy
+{
+private:
+	ID id_;
+
+public:
+	constexpr Scoped(ID id = ID::null) noexcept : id_(id) {}
+	constexpr Scoped(Scoped&&) noexcept = default;
+	Scoped& operator=(Scoped&&);
+	~Scoped();
+
+	///
+	/// \brief Obtain the ID of the thread of execution this handle points to
+	///
+	ID id() const noexcept;
+	///
+	/// \brief Check if pointing to instance of thread execution this handle points to
+	///
+	bool valid() const noexcept;
+	///
+	/// \brief Block calling thread until instance of thread execution handle points to joins
+	///
+	void join();
+};
 
 ///
 /// \brief Initialise threads
@@ -21,20 +49,20 @@ void init();
 ///
 /// \brief Create a new thread
 ///
-Handle newThread(std::function<void()> task);
+Scoped newThread(std::function<void()> task);
 ///
 /// \brief Join a thread
 ///
-void join(Handle& id);
+void join(ID& out_id);
 ///
 /// \brief Join all running threads
 ///
 void joinAll();
 
 ///
-/// \brief Obtain the handle for this thread
+/// \brief Obtain the ID for this thread
 ///
-Handle thisThreadID();
+ID thisThreadID();
 ///
 /// \brief Check whether this is the main thread (which called `init()`)
 ///

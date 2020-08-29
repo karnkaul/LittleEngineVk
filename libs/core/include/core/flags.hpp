@@ -45,7 +45,7 @@ struct TFlags
 	///
 	/// \brief Check if a flag is set
 	///
-	bool isSet(Enum flag) const noexcept
+	bool test(Enum flag) const noexcept
 	{
 		ASSERT((std::size_t)flag < N, "Invalid flag!");
 		return bits.test((std::size_t)flag);
@@ -138,7 +138,7 @@ struct TFlags
 	///
 	bool allSet(std::initializer_list<Enum> flags) const noexcept
 	{
-		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });
+		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return test(flag); });
 	}
 
 	///
@@ -146,7 +146,7 @@ struct TFlags
 	///
 	bool anySet(std::initializer_list<Enum> flags) const noexcept
 	{
-		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });
+		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return test(flag); });
 	}
 
 	///
@@ -154,7 +154,7 @@ struct TFlags
 	///
 	bool noneSet(std::initializer_list<Enum> flags) const noexcept
 	{
-		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return isSet(flag); });
+		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return test(flag); });
 	}
 
 	///

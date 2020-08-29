@@ -21,13 +21,13 @@ struct UIComponent final
 	using Flags = TFlags<Flag>;
 
 	stdfs::path id;
-	std::unique_ptr<Text2D> uText;
-	res::Mesh mesh;
+	Text2D text;
+	res::Scoped<res::Mesh> mesh;
 	Flags flags;
 
-	~UIComponent();
-
 	Text2D& setText(Text2D::Info info);
+	Text2D& setText(res::Font::Text data);
+	Text2D& setText(std::string text);
 	res::Mesh setQuad(glm::vec2 const& size, glm::vec2 const& pivot = {});
 	void reset(Flags toReset);
 
@@ -67,12 +67,13 @@ public:
 		Flags flags = Flag::eDynamicUI;
 	};
 
-protected:
+public:
 	Info m_info;
 
 public:
 	SceneBuilder();
 	SceneBuilder(Info info);
+	virtual ~SceneBuilder();
 
 public:
 	static glm::vec3 uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea);

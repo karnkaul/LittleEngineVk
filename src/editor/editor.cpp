@@ -1,4 +1,5 @@
 #include <deque>
+#include <list>
 #include <mutex>
 #include <core/log_config.hpp>
 #include <core/log.hpp>
@@ -12,7 +13,6 @@
 #include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <gfx/ext_gui.hpp>
-#include <engine/game/world.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
@@ -81,7 +81,6 @@ struct
 		bool bSelectID = false;
 	} model;
 } g_inspecting;
-World* g_pWorld = nullptr;
 
 std::pair<bool, bool> treeNode(std::string_view name, bool bSelected, bool bLeaf, ImGuiTreeNodeFlags otherFlags = 0)
 {
@@ -140,7 +139,7 @@ void clearLog()
 #pragma endregion log
 
 #pragma region scene
-void walkSceneTree(Transform& root, World::EMap const& emap, Registry& registry)
+void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
 {
 	constexpr static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
 	auto const children = root.children();
@@ -330,13 +329,12 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 	}
 }
 
-void entityInspector(v2 pos, v2 size)
+void entityInspector(v2 pos, v2 size, Registry& registry)
 {
-	if (g_pWorld && g_inspecting.entity != Entity() && g_inspecting.pTransform)
+	if (g_inspecting.entity != Entity() && g_inspecting.pTransform)
 	{
-		auto& registry = g_pWorld->registry();
 		ImGui::LabelText("", "%s", registry.entityName(g_inspecting.entity).data());
-		bool const bEnabled = registry.isEnabled(g_inspecting.entity);
+		bool const bEnabled = registry.enabled(g_inspecting.entity);
 		char const* szToggle = bEnabled ? "Disable" : "Enable";
 		if (ImGui::Button(szToggle))
 		{
@@ -357,12 +355,12 @@ void entityInspector(v2 pos, v2 size)
 			ImGui::DragFloat3("Pos", &posn.x, 0.1f);
 			if (isDifferent(posn, g_inspecting.pTransform->position()))
 			{
-				g_inspecting.pTransform->setPosition(posn);
+				g_inspecting.pTransform->position(posn);
 			}
 			ImGui::DragFloat3("Orn", &rot.x, 0.01f);
 			if (isDifferent(rot, rotOrg))
 			{
-				g_inspecting.pTransform->setOrientation(glm::quat(rot));
+				g_inspecting.pTransform->orient(glm::quat(rot));
 			}
 			ImGui::Separator();
 
@@ -388,7 +386,7 @@ void entityInspector(v2 pos, v2 size)
 					inspectResource(
 						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { *pModel = model; }, &dummy<res::Model>, pos,
 						size);
-					static std::deque<res::Mesh> s_empty;
+					static std::deque<res::Scoped<res::Mesh>> s_empty;
 					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 					std::size_t idx = 0;
 					for (auto& mesh : meshes)
@@ -461,40 +459,64 @@ void presentModeDropdown()
 	}
 }
 
-void worldSelectDropdown()
+// void worldSelectDropdown()
+// {
+// 	World* pNewWorld = nullptr;
+// 	auto worldName = std::string(g_pWorld ? g_pWorld->name() : "[None]");
+// 	utils::removeNamesapces(worldName);
+// 	if (g_pWorld && g_pWorld->busy())
+// 	{
+// 		ImGui::LabelText("", "%s (Busy)", worldName.data());
+// 	}
+// 	else if (ImGui::BeginCombo("Worlds", worldName.data()))
+// 	{
+// 		auto const worlds = World::allWorlds();
+// 		static std::size_t s_selected = 0;
+// 		for (std::size_t i = 0; i < worlds.size(); ++i)
+// 		{
+// 			World& world = worlds.at(i);
+// 			bool const bSelected = s_selected == i;
+// 			auto name = std::string(world.name());
+// 			utils::removeNamesapces(name);
+// 			if (ImGui::Selectable(name.data(), bSelected))
+// 			{
+// 				s_selected = i;
+// 				pNewWorld = &world;
+// 			}
+// 			if (bSelected)
+// 			{
+// 				ImGui::SetItemDefaultFocus();
+// 			}
+// 		}
+// 		ImGui::EndCombo();
+// 	}
+// 	if (pNewWorld && pNewWorld != g_pWorld)
+// 	{
+// 		World::loadWorld(pNewWorld->id());
+// 	}
+// }
+
+void perFrame(editor::PerFrame const& perFrame)
 {
-	World* pNewWorld = nullptr;
-	auto worldName = std::string(g_pWorld ? g_pWorld->name() : "[None]");
-	utils::removeNamesapces(worldName);
-	if (g_pWorld && g_pWorld->isBusy())
+	for (auto const& dropdown : perFrame.dropdowns)
 	{
-		ImGui::LabelText("", "%s (Busy)", worldName.data());
-	}
-	else if (ImGui::BeginCombo("Worlds", worldName.data()))
-	{
-		auto const worlds = World::allWorlds();
-		static std::size_t s_selected = 0;
-		for (std::size_t i = 0; i < worlds.size(); ++i)
+		auto const& title = !dropdown.title.empty() ? dropdown.title : "[None]";
+		std::string_view selectedStr;
+		if (ImGui::BeginCombo(title.data(), dropdown.preSelect.data()))
 		{
-			World& world = worlds.at(i);
-			bool const bSelected = s_selected == i;
-			auto name = std::string(world.name());
-			utils::removeNamesapces(name);
-			if (ImGui::Selectable(name.data(), bSelected))
+			for (auto const& entry : dropdown.entries)
 			{
-				s_selected = i;
-				pNewWorld = &world;
+				if (ImGui::Selectable(entry.data()))
+				{
+					selectedStr = entry;
+				}
 			}
-			if (bSelected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
+			ImGui::EndCombo();
 		}
-		ImGui::EndCombo();
-	}
-	if (pNewWorld && pNewWorld != g_pWorld)
-	{
-		World::loadWorld(pNewWorld->id());
+		if (!selectedStr.empty() && dropdown.onSelect)
+		{
+			dropdown.onSelect(selectedStr);
+		}
 	}
 }
 
@@ -528,7 +550,7 @@ void logLevelDropdown()
 #pragma endregion widgets
 
 #pragma region layout
-void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
+void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args const& args)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -550,13 +572,13 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 			ImGui::ShowDemoWindow(&s_bImGuiDemo);
 		}
 		ImGui::Separator();
-		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f});
+		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f}, args.pGame->registry);
 	}
 	ImGui::End();
 	return;
 }
 
-void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
+void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args const& args)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -575,12 +597,9 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 		{
 			if (ImGui::BeginTabItem("Scene"))
 			{
-				if (g_pWorld)
+				for (Transform& transform : args.pRoot->children())
 				{
-					for (Transform& transform : g_pWorld->m_root.children())
-					{
-						walkSceneTree(transform, g_pWorld->m_transformToEntity, g_pWorld->registry());
-					}
+					walkSceneTree(transform, *args.pMap, args.pGame->registry);
 				}
 				ImGui::EndTabItem();
 			}
@@ -589,7 +608,8 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize)
 				presentModeDropdown();
 				ImGui::Separator();
 				logLevelDropdown();
-				worldSelectDropdown();
+				// worldSelectDropdown();
+				perFrame(args.pGame->data);
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
@@ -607,19 +627,46 @@ void drawLog(iv2 fbSize, s32 logHeight)
 		return;
 	}
 
+	static Time elapsed = Time::elapsed();
+	Time frameTime = Time::elapsed() - elapsed;
+	elapsed = Time::elapsed();
+	constexpr static std::size_t maxFTs = 200;
+	static std::array<f32, maxFTs> ftArr;
+	static std::list<Time> fts;
+	fts.push_back(frameTime);
+	while (fts.size() > maxFTs)
+	{
+		fts.pop_front();
+	}
+	std::size_t idx = 0;
+	for (auto ft : fts)
+	{
+		ftArr.at(idx++) = ((f32)ft.to_us() * 0.001f);
+	}
+	for (; idx < ftArr.size(); ++idx)
+	{
+		ftArr.at(idx) = 0.0f;
+	}
+
 	static s32 s_logLevel = 0;
 	static char szFilter[64] = {0};
 	bool bClear = false;
 	sv logFilter;
 
-	ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
+	ImGuiWindowFlags flags =
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 	ImGui::SetNextWindowSize(ImVec2((f32)fbSize.x, (f32)(logHeight - s_yPad)), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2(0.0f, (f32)(fbSize.y - logHeight + s_yPad)), ImGuiCond_Always);
-	if (ImGui::Begin("Log", nullptr, flags))
+	if (ImGui::Begin("##Log", nullptr, flags))
 	{
+		// Frame time
+		{
+			auto str = fmt::format("{:.3}ms", frameTime.to_s() * 1000);
+			ImGui::PlotLines("Frame Time", ftArr.data(), (s32)ftArr.size(), 0, str.data());
+			ImGui::Separator();
+		}
 		// Widgets
 		{
-			ImGui::SameLine();
 			bClear = ImGui::Button("Clear");
 			ImGui::SameLine();
 			ImGui::Checkbox("Auto-scroll", &g_bAutoScroll);
@@ -845,12 +892,12 @@ void editor::deinit()
 	return;
 }
 
-void editor::tick([[maybe_unused]] Time dt)
+void editor::tick(Args const& args, Time dt)
 {
 	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
-	if (g_data.bEnabled && pWindow && pWindow->isOpen())
+	if (g_data.bEnabled && pWindow && pWindow->open())
 	{
 		auto const fbSize = pWindow->framebufferSize();
 		resize(pWindow);
@@ -859,15 +906,14 @@ void editor::tick([[maybe_unused]] Time dt)
 			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);
 			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.left * (f32)fbSize.x), fbSize.y - logHeight};
 			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.right * (f32)fbSize.x), fbSize.y - logHeight};
-			auto pActive = World::active();
-			if (!pActive || pActive != g_pWorld)
+			Registry& reg = args.pGame->registry;
+			if (!reg.alive(g_inspecting.entity))
 			{
 				g_inspecting = {};
 			}
-			g_pWorld = pActive;
 			drawLog(fbSize, logHeight);
-			drawLeftPanel(fbSize, leftPanelSize);
-			drawRightPanel(fbSize, rightPanelSize);
+			drawLeftPanel(fbSize, leftPanelSize, args);
+			drawRightPanel(fbSize, rightPanelSize, args);
 		}
 	}
 	else
@@ -875,6 +921,7 @@ void editor::tick([[maybe_unused]] Time dt)
 		g_gameRect = {};
 	}
 	g_data.pressed.clear();
+	gs::g_context.data = {};
 }
 } // namespace le
 #endif

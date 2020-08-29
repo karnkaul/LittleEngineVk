@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <optional>
 #include <glm/vec3.hpp>
 #include <core/reader.hpp>
 #include <engine/window/window.hpp>
@@ -9,13 +10,12 @@ namespace le::engine
 {
 struct App
 {
-	std::unique_ptr<Window> uWindow;
+	std::optional<Window> window;
 	io::Reader const* pReader = nullptr;
 };
 
 inline glm::vec3 g_uiSpace = {};
 
-io::Reader const& reader();
 res::Texture::Space colourSpace();
 Window* window();
 

@@ -31,7 +31,6 @@ Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
 {
 	m_regID = ++s_nextRegID.payload;
 	m_name = fmt::format("{}:{}", utils::tName(*this), m_regID);
-	LOG_D("[{}] Constructed", m_name);
 }
 
 Registry::~Registry()
@@ -40,7 +39,6 @@ Registry::~Registry()
 	{
 		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] Entities destroyed", m_name, m_entityFlags.size());
 	}
-	LOG_D("[{}] Destroyed", m_name);
 	g_bDestroyed = true;
 }
 
@@ -66,25 +64,25 @@ bool Registry::setDebug(Entity entity, bool bDebug)
 	return false;
 }
 
-bool Registry::isEnabled(Entity entity) const
+bool Registry::enabled(Entity entity) const
 {
 	auto lock = m_mutex.lock();
 	auto search = m_entityFlags.find(entity);
-	return search != m_entityFlags.end() && !search->second.isSet(Flag::eDisabled);
+	return search != m_entityFlags.end() && !search->second.test(Flag::eDisabled);
 }
 
-bool Registry::isAlive(Entity entity) const
+bool Registry::alive(Entity entity) const
 {
 	auto lock = m_mutex.lock();
 	auto search = m_entityFlags.find(entity);
-	return search != m_entityFlags.end() && !search->second.isSet(Flag::eDestroyed);
+	return search != m_entityFlags.end() && !search->second.test(Flag::eDestroyed);
 }
 
 bool Registry::isDebugSet(Entity entity) const
 {
 	auto lock = m_mutex.lock();
 	auto search = m_entityFlags.find(entity);
-	return search != m_entityFlags.end() && search->second.isSet(Flag::eDebug);
+	return search != m_entityFlags.end() && search->second.test(Flag::eDebug);
 }
 
 bool Registry::destroyEntity(Entity const& entity)
@@ -130,7 +128,7 @@ void Registry::flush()
 	{
 		Entity const entity = {iter->first};
 		auto const flags = iter->second;
-		if (flags.isSet(Flag::eDestroyed))
+		if (flags.test(Flag::eDestroyed))
 		{
 			destroyComponent_Impl(entity);
 			iter = destroyEntity_Impl(iter, entity);

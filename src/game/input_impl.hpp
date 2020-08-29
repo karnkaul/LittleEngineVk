@@ -17,7 +17,7 @@ void init(Window& out_mainWindow);
 void deinit();
 
 #if defined(LEVK_EDITOR)
-[[nodiscard]] Token registerEditorContext(Context const* pContext);
+[[nodiscard]] input::Token registerEditorContext(Context const* pContext);
 #endif
 
 void fire();

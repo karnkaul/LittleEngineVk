@@ -136,7 +136,7 @@ u16 Map::deserialise(dj::object const& json)
 					ASSERT(false, "Unknown Key/Axis!");
 				}
 			});
-#if defined(LEVK_DEBUG)
+#if defined(LEVK_LOG_DEBUG)
 		std::string const tName = utils::tName<Map>();
 		for (auto const& [id, binding] : bindings)
 		{
@@ -157,7 +157,7 @@ u16 Map::size() const
 	return (u16)bindings.size();
 }
 
-bool Map::isEmpty() const
+bool Map::empty() const
 {
 	return bindings.empty();
 }
@@ -248,7 +248,7 @@ bool Context::wasFired() const
 	return m_bFired;
 }
 
-bool Context::isConsumed(Snapshot const& snapshot) const
+bool Context::consumed(Snapshot const& snapshot) const
 {
 	m_bFired = true;
 	bool bConsumed = false;
@@ -268,7 +268,7 @@ bool Context::isConsumed(Snapshot const& snapshot) const
 					auto const tKey = std::get<Key>(trigger);
 					if (isGamepadButton(tKey))
 					{
-						if (auto search = m_padHeld.find(tKey); search == m_padHeld.end() && pGamepad && pGamepad->isPressed(tKey))
+						if (auto search = m_padHeld.find(tKey); search == m_padHeld.end() && pGamepad && pGamepad->pressed(tKey))
 						{
 							// All pressed gamepad keys will be added to m_padHeld before returning
 							callbacks.onTrigger();
@@ -299,7 +299,7 @@ bool Context::isConsumed(Snapshot const& snapshot) const
 					{
 						if (pGamepad && isGamepadButton(key))
 						{
-							bCombo &= pGamepad->isPressed(key);
+							bCombo &= pGamepad->pressed(key);
 						}
 						else
 						{
@@ -363,8 +363,8 @@ bool Context::isConsumed(Snapshot const& snapshot) const
 						bool bMax = false;
 						if (pGamepad)
 						{
-							bMin = isGamepadButton(pKey->first) && pGamepad->isPressed(pKey->first);
-							bMax = isGamepadButton(pKey->second) && pGamepad->isPressed(pKey->second);
+							bMin = isGamepadButton(pKey->first) && pGamepad->pressed(pKey->first);
+							bMax = isGamepadButton(pKey->second) && pGamepad->pressed(pKey->second);
 						}
 						bMin |= std::find(snapshot.held.begin(), snapshot.held.end(), pKey->first) != snapshot.held.end();
 						bMax |= std::find(snapshot.held.begin(), snapshot.held.end(), pKey->second) != snapshot.held.end();
@@ -388,7 +388,7 @@ bool Context::isConsumed(Snapshot const& snapshot) const
 		for (s32 i = (s32)Key::eGamepadButtonBegin; i < (s32)Key::eGamepadButtonEnd; ++i)
 		{
 			Key key = (Key)i;
-			if (pGamepad->isPressed(key))
+			if (pGamepad->pressed(key))
 			{
 				m_padHeld.insert(key);
 			}

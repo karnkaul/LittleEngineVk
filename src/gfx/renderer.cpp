@@ -445,23 +445,23 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 					bSkybox = false;
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eSKYBOX;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eLit))
+				if (info.material.flags.test(res::Material::Flag::eLit))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eLIT;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eOpaque))
+				if (info.material.flags.test(res::Material::Flag::eOpaque))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eOPAQUE;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eDropColour))
+				if (info.material.flags.test(res::Material::Flag::eDropColour))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eDROP_COLOUR;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eUI))
+				if (info.material.flags.test(res::Material::Flag::eUI))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eUI;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eTextured))
+				if (info.material.flags.test(res::Material::Flag::eTextured))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
 					if (info.material.diffuse.status() == res::Status::eReady)

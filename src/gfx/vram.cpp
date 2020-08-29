@@ -90,7 +90,7 @@ struct
 
 struct
 {
-	threads::Handle thread;
+	std::optional<threads::Scoped> thread;
 	kt::lockable<> mutex;
 } g_sync;
 
@@ -250,7 +250,7 @@ void deinit()
 	{
 		f();
 	}
-	threads::join(g_sync.thread);
+	g_sync.thread = {};
 	LOG_I("[{}] Transfer thread terminated", s_tName);
 	g_device.device.waitIdle();
 	g_device.destroy(g_resources.pool);
@@ -412,7 +412,7 @@ std::future<void> vram::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize 
 	auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 	ASSERT((uq.indices.size() == 1 || out_dst.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
-	bool const bQueueFlags = src.queueFlags.isSet(QFlag::eTransfer) && out_dst.queueFlags.isSet(QFlag::eTransfer);
+	bool const bQueueFlags = src.queueFlags.test(QFlag::eTransfer) && out_dst.queueFlags.test(QFlag::eTransfer);
 	bool const bSizes = out_dst.writeSize >= size;
 	ASSERT(bQueueFlags, "Invalid queue flags!");
 	ASSERT(bSizes, "Invalid buffer sizes!");
@@ -453,7 +453,7 @@ std::future<void> vram::stage(Buffer& out_deviceBuffer, void const* pData, vk::D
 	auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
 	ASSERT((uq.indices.size() == 1 || out_deviceBuffer.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
 #endif
-	bool const bQueueFlags = out_deviceBuffer.queueFlags.isSet(QFlag::eTransfer);
+	bool const bQueueFlags = out_deviceBuffer.queueFlags.test(QFlag::eTransfer);
 	ASSERT(bQueueFlags, "Invalid queue flags!");
 	if (!bQueueFlags)
 	{

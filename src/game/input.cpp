@@ -42,7 +42,7 @@ struct
 } g_raw;
 } // namespace
 
-Token input::registerContext(Context const* pContext)
+input::Token input::registerContext(Context const* pContext)
 {
 	return g_contexts.pushFront(pContext);
 }
@@ -88,11 +88,11 @@ glm::vec2 input::worldToUI(const glm::vec2& world)
 	return ret;
 }
 
-bool input::isInFocus()
+bool input::focused()
 {
 	if (auto pWindow = WindowImpl::windowImpl(g_mainWindow))
 	{
-		return pWindow->isFocused();
+		return pWindow->focused();
 	}
 	return false;
 }
@@ -120,7 +120,7 @@ void input::init(Window& out_mainWindow)
 }
 
 #if defined(LEVK_EDITOR)
-Token input::registerEditorContext(Context const* pContext)
+input::Token input::registerEditorContext(Context const* pContext)
 {
 	ASSERT(pContext, "Context is null!");
 	return g_editorContexts.pushFront(pContext);
@@ -160,7 +160,7 @@ void input::fire()
 			std::size_t processed = 0;
 			bool bConsumed = false;
 			contexts.forEach([&](auto pContext) {
-				if (!bConsumed && pContext->isConsumed(snapshot))
+				if (!bConsumed && pContext->consumed(snapshot))
 				{
 #if defined(LEVK_DEBUG)
 					static Context const* pPrev = nullptr;

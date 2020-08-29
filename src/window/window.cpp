@@ -8,7 +8,7 @@ namespace le
 {
 namespace
 {
-WindowID g_nextWindowID = WindowID::s_null;
+WindowID g_nextWindowID = WindowID::null;
 } // namespace
 
 Window::Service::Service()
@@ -103,9 +103,9 @@ WindowID Window::id() const
 	return m_id;
 }
 
-bool Window::isOpen() const
+bool Window::open() const
 {
-	return m_uImpl ? m_uImpl->isOpen() : false;
+	return m_uImpl ? m_uImpl->open() : false;
 }
 
 bool Window::exists() const
@@ -113,14 +113,14 @@ bool Window::exists() const
 	return m_uImpl ? m_uImpl->exists() : false;
 }
 
-bool Window::isClosing() const
+bool Window::closing() const
 {
-	return m_uImpl ? m_uImpl->isClosing() : false;
+	return m_uImpl ? m_uImpl->closing() : false;
 }
 
-bool Window::isFocused() const
+bool Window::focused() const
 {
-	return m_uImpl ? m_uImpl->isFocused() : false;
+	return m_uImpl ? m_uImpl->focused() : false;
 }
 
 glm::ivec2 Window::windowSize() const
@@ -135,7 +135,7 @@ glm::ivec2 Window::framebufferSize() const
 
 bool Window::create(Info const& info)
 {
-	return m_uImpl ? m_uImpl->create(info) : false;
+	return m_uImpl ? m_uImpl->create(this, info) : false;
 }
 
 void Window::setClosing()

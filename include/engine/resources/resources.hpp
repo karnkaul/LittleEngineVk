@@ -19,6 +19,33 @@ using Semaphore = Counter<s32>::Semaphore;
 ///
 Semaphore acquire();
 
+///
+/// \brief RAII handle to a resource (unloads in destructor)
+///
+template <typename T>
+struct Scoped final : NoCopy
+{
+	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
+	T resource;
+
+	constexpr Scoped(T t = T{}) noexcept : resource(t) {}
+	constexpr Scoped(Scoped&&) noexcept = default;
+	Scoped& operator=(Scoped&&);
+	~Scoped();
+
+	///
+	/// \brief Implicitly cast to T
+	///
+	constexpr operator T const &() const noexcept
+	{
+		return resource;
+	}
+	///
+	/// \brief Check if held resource is ready to use
+	///
+	bool ready() const;
+};
+
 template <typename T>
 class Async final
 {
@@ -280,6 +307,29 @@ template <typename T>
 TResult<T> find(Hash)
 {
 	static_assert(alwaysFalse<T>, "Invalid type!");
+}
+
+template <typename T>
+Scoped<T>& Scoped<T>::operator=(Scoped<T>&& rhs)
+{
+	if (&rhs != this)
+	{
+		unload(resource);
+		resource = std::move(rhs.resource);
+	}
+	return *this;
+}
+
+template <typename T>
+Scoped<T>::~Scoped()
+{
+	unload(resource);
+}
+
+template <typename T>
+bool Scoped<T>::ready() const
+{
+	return resource.guid != GUID::null && resource.status() == Status::eReady;
 }
 
 template <typename T>

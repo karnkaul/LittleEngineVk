@@ -55,7 +55,7 @@ public:
 private:
 	gfx::Renderer m_renderer;
 	std::unique_ptr<class WindowImpl> m_uImpl;
-	WindowID m_id = WindowID::s_null;
+	WindowID m_id = WindowID::null;
 
 public:
 	Window();
@@ -69,13 +69,13 @@ public:
 	static void pollEvents();
 	static void renderAll();
 
-	// Pass WindowID::s_null for global registration
+	// Pass WindowID::null for global registration
 	[[nodiscard]] static input::OnText::Token registerText(input::OnText::Callback callback, WindowID window);
-	// Pass WindowID::s_null for global registration
+	// Pass WindowID::null for global registration
 	[[nodiscard]] static input::OnInput::Token registerInput(input::OnInput::Callback callback, WindowID window);
-	// Pass WindowID::s_null for global registration
+	// Pass WindowID::null for global registration
 	[[nodiscard]] static input::OnMouse::Token registerMouse(input::OnMouse::Callback callback, WindowID window);
-	// Pass WindowID::s_null for global registration
+	// Pass WindowID::null for global registration
 	[[nodiscard]] static input::OnMouse::Token registerScroll(input::OnMouse::Callback callback, WindowID window);
 
 	static WindowID editorWindow();
@@ -85,10 +85,10 @@ public:
 	gfx::Renderer& renderer();
 
 	WindowID id() const;
-	bool isOpen() const;
+	bool open() const;
 	bool exists() const;
-	bool isClosing() const;
-	bool isFocused() const;
+	bool closing() const;
+	bool focused() const;
 
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;

@@ -36,7 +36,7 @@ std::vector<stdfs::path> exportTList(std::vector<T> const& src)
 }
 
 template <typename... T>
-bool empty(std::vector<T> const&... out_vecs)
+bool allEmpty(std::vector<T> const&... out_vecs)
 {
 	return (out_vecs.empty() && ...);
 }
@@ -51,7 +51,7 @@ std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceD
 	{
 		auto task = [&out_loaded, &out_resources, &mutex](ResourceData<T>& data) {
 			auto resource = load(data.id, std::move(data.createInfo));
-			if (resource.guid > GUID::s_null)
+			if (resource.guid > GUID::null)
 			{
 				auto lock = mutex.lock();
 				out_resources.push_back(resource.guid);
@@ -88,29 +88,9 @@ ResourceList Manifest::Info::exportList() const
 	return ret;
 }
 
-bool Manifest::Info::isEmpty() const
+bool Manifest::Info::empty() const
 {
-	return empty(shaders, textures, cubemaps, materials, meshes, models, fonts);
-}
-
-std::string ResourceList::print() const
-{
-	std::stringstream ret;
-	auto add = [&ret](std::vector<stdfs::path> const& vec, std::string_view title) {
-		ret << title << "\n";
-		for (auto const& id : vec)
-		{
-			ret << "\t" << id.generic_string() << "\n";
-		}
-	};
-	add(shaders, "Shaders");
-	add(textures, "Textures");
-	add(cubemaps, "Cubemaps");
-	add(materials, "Materials");
-	add(meshes, "Meshes");
-	add(models, "Models");
-	add(fonts, "Fonts");
-	return ret.str();
+	return allEmpty(shaders, textures, cubemaps, materials, meshes, models, fonts);
 }
 
 std::string const Manifest::s_tName = utils::tName<Manifest>();
@@ -142,7 +122,7 @@ void Manifest::start()
 	{
 		parse();
 	}
-	if (!m_toLoad.isEmpty())
+	if (!m_toLoad.empty())
 	{
 		loadData();
 	}
@@ -360,12 +340,12 @@ void Manifest::reset()
 	m_bParsed = false;
 }
 
-bool Manifest::isIdle() const
+bool Manifest::idle() const
 {
 	return m_status == Status::eIdle;
 }
 
-bool Manifest::isReady() const
+bool Manifest::ready() const
 {
 	return m_status == Status::eReady;
 }

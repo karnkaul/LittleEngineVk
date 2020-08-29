@@ -120,7 +120,7 @@ struct Queue final
 	u32 arrayIndex = 0;
 };
 
-struct UniqueQueues final
+struct HandleQueues final
 {
 	vk::SharingMode mode;
 	std::vector<u32> indices;

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <sstream>
 #include <engine/resources/resource_list.hpp>
 
 namespace le::res
@@ -32,6 +33,18 @@ std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vect
 	}
 	return ret;
 }
+
+template <typename... T>
+constexpr bool allEmpty(T const&... t)
+{
+	return (... && t.empty());
+}
+
+template <typename... T>
+constexpr std::size_t totalSize(T const&... t)
+{
+	return (... + t.size());
+}
 } // namespace
 
 ResourceList ResourceList::operator*(const ResourceList& rhs) const
@@ -60,4 +73,33 @@ ResourceList ResourceList::operator-(const ResourceList& rhs) const
 	return ret;
 }
 
+bool ResourceList::empty() const
+{
+	return allEmpty(shaders, textures, cubemaps, materials, meshes, models, fonts);
+}
+
+std::size_t ResourceList::size() const
+{
+	return totalSize(shaders, textures, cubemaps, materials, meshes, models, fonts);
+}
+
+std::string ResourceList::print() const
+{
+	std::stringstream ret;
+	auto add = [&ret](std::vector<stdfs::path> const& vec, std::string_view title) {
+		ret << title << "\n";
+		for (auto const& id : vec)
+		{
+			ret << "\t" << id.generic_string() << "\n";
+		}
+	};
+	add(shaders, "Shaders");
+	add(textures, "Textures");
+	add(cubemaps, "Cubemaps");
+	add(materials, "Materials");
+	add(meshes, "Meshes");
+	add(models, "Models");
+	add(fonts, "Fonts");
+	return ret.str();
+}
 } // namespace le::res

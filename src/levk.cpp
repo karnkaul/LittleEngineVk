@@ -10,7 +10,6 @@
 #include <engine/game/driver.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/game/state.hpp>
-#include <engine/game/world.hpp>
 #include <game/input_impl.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
@@ -64,10 +63,8 @@ Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
 	input::deinit();
-	// World::impl_stopActive();
 	res::waitIdle();
-	gs::clear();
-	// World::impl_destroyAll();
+	gs::reset();
 	res::deinit();
 	g_app = {};
 }
@@ -146,16 +143,6 @@ bool Service::init(Info const& info)
 	return true;
 }
 
-// bool Service::start(World::ID world)
-// {
-// 	if (g_status == Status::eInitialised && World::impl_startID(world))
-// 	{
-// 		g_status = Status::eTicking;
-// 		return true;
-// 	}
-// 	return false;
-// }
-
 bool Service::running() const
 {
 	return maths::withinRange(g_status, Status::eIdle, Status::eShuttingDown, true);
@@ -165,70 +152,6 @@ Status Service::status() const
 {
 	return g_status;
 }
-
-// bool Service::tick(Time dt) const
-// {
-// 	Window::pollEvents();
-// 	engine::update();
-// 	if (g_app.window && g_app.window->closing())
-// 	{
-// 		if (g_shutdownSequence == ShutdownSequence::eCloseWindow_Shutdown)
-// 		{
-// 			g_app.window->destroy();
-// 		}
-// 		g_status = Status::eShuttingDown;
-// 	}
-// 	gfx::ScreenRect gameRect = {};
-// 	bool bFireInput = true;
-// 	bool bTickActive = true;
-// 	bool bTerminate = false;
-// 	bool bRet = true;
-// 	switch (g_status)
-// 	{
-// 	default:
-// 	{
-// 		break;
-// 	}
-// 	case Status::eShutdown:
-// 	{
-// 		bTickActive = false;
-// 		bFireInput = false;
-// 		bTerminate = true;
-// 		bRet = false;
-// 		break;
-// 	}
-// 	case Status::eShuttingDown:
-// 	{
-// 		bTickActive = false;
-// 		bFireInput = false;
-// 		bTerminate = true;
-// 		bRet = false;
-// 		if (!World::busy())
-// 		{
-// 			doShutdown();
-// 		}
-// 		break;
-// 	}
-// 	}
-// 	if (bFireInput)
-// 	{
-// 		input::fire();
-// #if defined(LEVK_EDITOR)
-// 		auto& w = *World::active();
-// 		gs::Context ctx{{}, {}, gameRect, w.registry(), w.camera(), std::move(gs::g_context.data)};
-// 		editor::Args args{&ctx, &w.m_transformToEntity, &w.m_root};
-// 		editor::tick(args, dt);
-// 		input::g_bEditorOnly = !editor::g_bTickGame;
-// 		bTickActive &= editor::g_bTickGame;
-// 		gameRect = editor::g_gameRect;
-// #endif
-// 	}
-// 	if (!World::impl_tick(dt, gameRect, bTickActive, bTerminate))
-// 	{
-// 		LOGIF_E(g_status == Status::eTicking, "[{}] Failed to tick World!", tName);
-// 	}
-// 	return bRet;
-// }
 
 bool Service::update(Driver& out_driver) const
 {
@@ -284,24 +207,6 @@ bool Service::update(Driver& out_driver) const
 	return !bTerminating;
 }
 
-// void Service::submitScene(gfx::Camera const& camera) const
-// {
-// 	if (!shuttingDown() && g_app.window && World::s_pActive)
-// 	{
-// 		Ref<gfx::Camera const> cam = camera;
-// #if defined(LEVK_EDITOR)
-// 		if (!editor::g_bTickGame)
-// 		{
-// 			cam = editor::g_editorCam.m_camera;
-// 		}
-// #endif
-// 		if (!World::impl_submitScene(g_app.window->renderer(), cam))
-// 		{
-// 			LOG_E("[{}] Error submitting World scene!", tName);
-// 		}
-// 	}
-// }
-
 void Service::render() const
 {
 	if (!shuttingDown())
@@ -330,7 +235,7 @@ bool Service::shutdown()
 		{
 			g_app.window->destroy();
 		}
-		gs::clear();
+		gs::reset();
 		g_status = Status::eShuttingDown;
 		return true;
 	}
@@ -339,8 +244,7 @@ bool Service::shutdown()
 
 void Service::doShutdown()
 {
-	// World::impl_destroyAll();
-	gs::clear();
+	gs::reset();
 	g_app.window->destroy();
 	g_status = Status::eShutdown;
 }

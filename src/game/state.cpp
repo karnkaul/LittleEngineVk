@@ -22,6 +22,11 @@ struct
 } g_ctxImpl;
 } // namespace
 
+bool Prop::valid() const
+{
+	return pTransform != nullptr && entity.id != ECSID::null;
+}
+
 Transform const& Prop::transform() const
 {
 	ASSERT(pTransform, "Null Transform!");
@@ -130,7 +135,7 @@ void gs::destroy(Span<Prop> props)
 	}
 }
 
-void gs::clear()
+void gs::reset()
 {
 	Registry& reg = g_context.registry;
 	reg.clear();
@@ -153,9 +158,7 @@ gfx::Renderer::Scene gs::update(engine::Driver& out_driver, Time dt, bool bTick)
 		{
 		case res::Manifest::Status::eIdle:
 		{
-			ASSERT(engine::busy(), "WTF");
 			g_ctxImpl.engineSemaphore = {};
-			ASSERT(!engine::busy(), "WTF");
 			g_ctxImpl.manifest.reset();
 			if (bTick)
 			{

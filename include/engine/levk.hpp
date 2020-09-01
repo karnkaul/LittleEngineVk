@@ -88,11 +88,6 @@ public:
 	///
 	bool init(Info const& info = {});
 	///
-	/// \brief Start running the desired world
-	/// \returns `false` if world does not exist / could not be started
-	///
-	// bool start(World::ID world);
-	///
 	/// \brief Check whether engine is currently running (or shutting down)
 	///
 	bool running() const;
@@ -100,22 +95,11 @@ public:
 	/// \brief Obtain current engine Status
 	///
 	Status status() const;
-
 	///
-	/// \brief Update all services and tick active world
-	/// \returns `false` if shutting down
-	///
-	// bool tick(Time dt) const;
-	///
-	/// \brief Update all services and tick active world
+	/// \brief Update all services, tick Driver and submit scene
 	/// \returns `false` if shutting down
 	///
 	bool update(Driver& out_driver) const;
-	///
-	/// \brief Submit scene from active world
-	/// \returns `false` if no world is active
-	///
-	// void submitScene(gfx::Camera const& camera) const;
 	///
 	/// \brief Render all active windows
 	///

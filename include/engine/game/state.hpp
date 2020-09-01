@@ -14,6 +14,9 @@
 
 namespace le
 {
+///
+/// \brief Wrapper for Entity + Transform
+///
 struct Prop final
 {
 	Entity entity;
@@ -22,7 +25,18 @@ struct Prop final
 	constexpr Prop() : pTransform(nullptr) {}
 	constexpr Prop(Entity entity, Transform& transform) : entity(entity), pTransform(&transform) {}
 
+	///
+	/// \brief Check whether Prop points to a valid pair of Entity/Transform
+	///
+	bool valid() const;
+
+	///
+	/// \brief Obtain the transform (must be valid!)
+	///
 	Transform const& transform() const;
+	///
+	/// \brief Obtain the transform (must be valid!)
+	///
 	Transform& transform();
 
 	constexpr operator Entity const()
@@ -51,8 +65,14 @@ struct PerFrame
 
 namespace gs
 {
+///
+/// \brief Typedef for callback on manifest loaded
+///
 using ManifestLoaded = Delegate<>;
 
+///
+/// \brief RAII wrapper for Prop etc
+///
 template <typename T>
 struct Scoped final
 {
@@ -64,6 +84,9 @@ struct Scoped final
 	~Scoped();
 };
 
+///
+/// \brief Data structure describing game frame context
+///
 struct Context final
 {
 	Registry regTemp;
@@ -77,6 +100,9 @@ struct Context final
 #endif
 };
 
+///
+/// \brief Manifest load request
+///
 struct LoadReq final
 {
 	stdfs::path load;
@@ -84,16 +110,39 @@ struct LoadReq final
 	ManifestLoaded::Callback onLoaded;
 };
 
+///
+/// \brief Global context instance
+///
 inline Context g_context;
 
+///
+/// \brief Register input context
+///
 [[nodiscard]] input::Token registerInput(input::Context const* pContext);
 
+///
+/// \brief Load/unload a pair of manifests
+///
 [[nodiscard]] TResult<ManifestLoaded::Token> loadManifest(LoadReq const& loadReq);
+///
+/// \brief Load input map into input context and and register it
+///
 [[nodiscard]] input::Token loadInputMap(stdfs::path const& id, input::Context* out_pContext);
 
+///
+/// \brief Create a new Prop
+///
+/// Transform will be parented to scene root if LEVK_EDITOR is defined
+///
 Prop spawnProp(std::string name);
+///
+/// \brief Destroy one or more props
+///
 void destroy(Span<Prop> props);
-void clear();
+///
+/// \brief Reset game state
+///
+void reset();
 
 template <typename T>
 Scoped<T>& Scoped<T>::operator=(Scoped<T>&& rhs)

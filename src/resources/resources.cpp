@@ -236,7 +236,6 @@ Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo)
 	auto name = "load_async:" + id.generic_string();
 	auto handle = tasks::enqueue(
 		[id = id, loadInfo = std::move(loadInfo)]() {
-			// auto world_s = World::setBusy();
 			auto engine_s = engine::setBusy();
 			auto res_s = acquire();
 			if (auto info = loadInfo.createInfo())

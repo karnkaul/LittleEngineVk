@@ -6,34 +6,29 @@
 
 namespace le::gfx
 {
-Camera::Camera() = default;
-Camera::Camera(Camera&&) = default;
-Camera& Camera::operator=(Camera&&) = default;
-Camera::~Camera() = default;
-
 bool s_bTEST = false;
-glm::mat4 Camera::view() const
+glm::mat4 Camera::view() const noexcept
 {
 #if defined(LEVK_DEBUG)
 	if (s_bTEST)
 	{
-		glm::vec3 const nFront = glm::normalize(m_orientation * -g_nFront);
-		glm::vec3 const nUp = glm::normalize(m_orientation * g_nUp);
-		return glm::lookAt(m_position, m_position + nFront, nUp);
+		glm::vec3 const nFront = glm::normalize(orientation * -g_nFront);
+		glm::vec3 const nUp = glm::normalize(orientation * g_nUp);
+		return glm::lookAt(position, position + nFront, nUp);
 	}
 	else
 #endif
 	{
-		return glm::toMat4(glm::conjugate(m_orientation)) * glm::translate(glm::mat4(1.0f), -m_position);
+		return glm::toMat4(glm::conjugate(orientation)) * glm::translate(glm::mat4(1.0f), -position);
 	}
 }
 
-glm::mat4 Camera::perspective(f32 aspect, f32 near, f32 far) const
+glm::mat4 Camera::perspective(f32 aspect, f32 near, f32 far) const noexcept
 {
-	return glm::perspective(glm::radians(m_fov), aspect, near, far);
+	return glm::perspective(glm::radians(fov), aspect, near, far);
 }
 
-glm::mat4 Camera::ortho(f32 aspect, f32 zoom, f32 near, f32 far) const
+glm::mat4 Camera::ortho(f32 aspect, f32 zoom, f32 near, f32 far) const noexcept
 {
 	ASSERT(zoom > 0.0f, "Invalid zoom!");
 	f32 const ar = aspect;
@@ -42,17 +37,17 @@ glm::mat4 Camera::ortho(f32 aspect, f32 zoom, f32 near, f32 far) const
 	return glm::ortho(-w / zoom, w / zoom, -h / zoom, h / zoom, near, far);
 }
 
-glm::mat4 Camera::ui(glm::vec3 const& uiSpace) const
+glm::mat4 Camera::ui(glm::vec3 const& uiSpace) const noexcept
 {
 	f32 const w = uiSpace.x * 0.5f;
 	f32 const h = uiSpace.y * 0.5f;
 	return glm::ortho(-w, w, -h, h, -uiSpace.z, uiSpace.z);
 }
 
-void Camera::reset()
+void Camera::reset() noexcept
 {
-	m_position = {};
-	m_orientation = g_qIdentity;
-	m_fov = 45.0f;
+	position = {};
+	orientation = g_qIdentity;
+	fov = 45.0f;
 }
 } // namespace le::gfx

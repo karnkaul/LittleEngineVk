@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <vector>
+#include <core/atomic_counter.hpp>
 #include <core/time.hpp>
 #include <core/reader.hpp>
 #include <core/std_types.hpp>
@@ -8,13 +9,22 @@
 #include <core/os.hpp>
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/window/window.hpp>
-#include <engine/game/world.hpp>
 #if defined(LEVK_DEBUG)
 #include <core/log_config.hpp>
 #endif
 
+#if defined(LEVK_EDITOR)
+constexpr bool levk_editor = true;
+#else
+constexpr bool levk_editor = false;
+#endif
+
 namespace le::engine
 {
+using Semaphore = Counter<s32>::Semaphore;
+
+struct Driver;
+
 enum class Status : s8
 {
 	eIdle,
@@ -37,10 +47,17 @@ struct DataSearch final
 	os::Dir dirType = os::Dir::eExecutable;
 };
 
+struct MemRange final
+{
+	std::size_t size = 2;
+	std::size_t count = 1;
+};
+
 struct Info final
 {
 	std::optional<Window::Info> windowInfo;
 	std::vector<stdfs::path> dataPaths;
+	std::vector<MemRange> vramReserve;
 	io::Reader* pReader = nullptr;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
@@ -71,29 +88,18 @@ public:
 	///
 	bool init(Info const& info = {});
 	///
-	/// \brief Start running the desired world
-	/// \returns `false` if world does not exist / could not be started
-	///
-	bool start(World::ID world);
-	///
 	/// \brief Check whether engine is currently running (or shutting down)
 	///
-	bool isRunning() const;
+	bool running() const;
 	///
 	/// \brief Obtain current engine Status
 	///
 	Status status() const;
-
 	///
-	/// \brief Update all services and tick active world
+	/// \brief Update all services, tick Driver and submit scene
 	/// \returns `false` if shutting down
 	///
-	bool tick(Time dt) const;
-	///
-	/// \brief Submit scene from active world
-	/// \returns `false` if no world is active
-	///
-	void submitScene() const;
+	bool update(Driver& out_driver) const;
 	///
 	/// \brief Render all active windows
 	///
@@ -111,7 +117,7 @@ private:
 ///
 /// \brief Obtain whether the engine is shutting down
 ///
-bool isShuttingDown();
+bool shuttingDown();
 ///
 /// \brief Obtain the main window
 ///
@@ -132,4 +138,18 @@ glm::vec2 gameRectSize();
 /// \brief Obtain the path to the running executable
 ///
 stdfs::path exePath();
+///
+/// \brief Obtain the data reader
+///
+io::Reader const& reader();
+///
+/// \brief Obtain busy Semaphore
+///
+/// Prevents shutdown until all Semaphores are released
+///
+Semaphore setBusy();
+///
+/// \brief Check whether any Semaphore is active
+///
+bool busy();
 } // namespace le::engine

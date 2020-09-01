@@ -17,6 +17,7 @@
 #include <core/log_config.hpp>
 #include <core/flags.hpp>
 #include <core/std_types.hpp>
+#include <engine/levk.hpp>
 #include <engine/window/common.hpp>
 #include <engine/gfx/pipeline.hpp>
 
@@ -42,7 +43,7 @@ using QFlags = TFlags<QFlag>;
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
 // clang-format off
-[[maybe_unused]] constexpr std::array g_colourSpaceMap = 
+[[maybe_unused]] constexpr std::array g_colourSpaces = 
 {
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm
@@ -78,8 +79,9 @@ struct InitInfo final
 
 	struct
 	{
-		std::vector<char const*> instanceExtensions;
 		CreateSurface createTempSurface;
+		std::vector<char const*> instanceExtensions;
+		std::vector<engine::MemRange> stagingReserve;
 	} config;
 
 	struct
@@ -118,7 +120,7 @@ struct Queue final
 	u32 arrayIndex = 0;
 };
 
-struct UniqueQueues final
+struct HandleQueues final
 {
 	vk::SharingMode mode;
 	std::vector<u32> indices;
@@ -146,6 +148,7 @@ struct Buffer final : VkResource
 {
 	vk::Buffer buffer;
 	vk::DeviceSize writeSize = {};
+	void* pMap = nullptr;
 };
 
 struct Image final : VkResource

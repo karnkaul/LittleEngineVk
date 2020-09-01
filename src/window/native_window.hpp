@@ -12,7 +12,10 @@ public:
 	StaticAny<> m_window;
 
 public:
+	constexpr NativeWindow() noexcept = default;
 	NativeWindow(Window::Info const& info);
+	NativeWindow(NativeWindow&&) = default;
+	NativeWindow& operator=(NativeWindow&&);
 	~NativeWindow();
 
 public:

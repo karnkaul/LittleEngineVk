@@ -6,7 +6,7 @@
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 namespace le::res
 {
-Monitor::File::File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(File const*)> onModified)
+Monitor::File::File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(Ref<File const>)> onModified)
 	: monitor(fullPath, mode), onModified(onModified), id(id)
 {
 }
@@ -22,7 +22,7 @@ bool Monitor::update()
 		{
 			if (pModified->onModified)
 			{
-				if (!pModified->onModified(pModified))
+				if (!pModified->onModified(*pModified))
 				{
 					// failed to load file, abort reload
 					bSuccess = false;

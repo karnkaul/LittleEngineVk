@@ -9,9 +9,9 @@
 
 namespace le
 {
-std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount)
+std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount) noexcept
 {
-	static std::array suffixes = {"B", "KiB", "MiB", "GiB"};
+	constexpr static std::array suffixes = {"B"sv, "KiB"sv, "MiB"sv, "GiB"sv};
 	f32 bytes = f32(byteCount);
 	std::size_t idx = 0;
 	while (bytes > 1024.0f && idx < 4)
@@ -19,7 +19,7 @@ std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount)
 		++idx;
 		bytes /= 1024.0f;
 	}
-	return std::make_pair(bytes, suffixes[idx < 4 ? idx : 3]);
+	return {bytes, suffixes[idx < 4 ? idx : 3]};
 }
 
 std::string utils::demangle(std::string_view name)

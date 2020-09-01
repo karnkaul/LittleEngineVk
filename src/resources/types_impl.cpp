@@ -320,11 +320,6 @@ gfx::Geometry Font::generate(Text const& text) const
 
 bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 {
-#if defined(LEVK_SHADER_COMPILER)
-	constexpr bool bShaderCompiler = true;
-#else
-	constexpr bool bShaderCompiler = false;
-#endif
 	bool const bCodeMapPopulated = std::any_of(out_createInfo.codeMap.begin(), out_createInfo.codeMap.end(), [&](auto const& entry) { return !entry.empty(); });
 	[[maybe_unused]] bool const bCodeIDsPopulated =
 		std::any_of(out_createInfo.codeIDMap.begin(), out_createInfo.codeIDMap.end(), [&](auto const& entry) { return !entry.empty(); });
@@ -343,7 +338,7 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 			bool bSpv = true;
 			if (ext == s_vertExt || ext == s_fragExt)
 			{
-				if (!bShaderCompiler || !pReader)
+				if (!levk_shaderCompiler || !pReader)
 				{
 					codeID += s_spvExt;
 				}
@@ -356,8 +351,8 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&)
 						if (pReader)
 						{
 							monitor = {};
-							auto onReloaded = [this, idx](Monitor::File const* pFile) -> bool {
-								if (!glslToSpirV(pFile->id, codeMap.at(idx)))
+							auto onReloaded = [this, idx](Monitor::File const& file) -> bool {
+								if (!glslToSpirV(file.id, codeMap.at(idx)))
 								{
 									LOG_E("[{}] Failed to reload Shader!", s_tName);
 									return false;
@@ -615,12 +610,12 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 		return false;
 	}
 	out_info.size = raws.back().size;
-	std::vector<Span<u8>> views;
+	spanRaws.clear();
 	for (auto const& raw : raws)
 	{
-		views.push_back(raw.bytes);
+		spanRaws.push_back(raw.bytes);
 	}
-	copied = load(active, colourSpace, out_info.size, views, idStr);
+	copied = load(active, colourSpace, out_info.size, spanRaws, idStr);
 	gfx::ImageViewInfo viewInfo;
 	viewInfo.image = active.image;
 	viewInfo.format = colourSpace;
@@ -637,13 +632,13 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 		for (auto const& id : out_createInfo.ids)
 		{
 			imgIDs.push_back(id);
-			auto onModified = [this, idx](Monitor::File const* pFile) -> bool {
+			auto onModified = [this, idx](Monitor::File const& file) -> bool {
 				Texture texture;
 				texture.guid = guid;
 				if (auto pInfo = res::infoRW(texture))
 				{
 					auto const idStr = pInfo->id.generic_string();
-					auto raw = imgToRaw(pFile->monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
+					auto raw = imgToRaw(file.monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
 					if (raw)
 					{
 						if (bStbiRaw)
@@ -723,12 +718,12 @@ bool Texture::Impl::checkReload()
 			Texture texture;
 			texture.guid = guid;
 			auto const& info = texture.info();
-			std::vector<Span<u8>> views;
+			spanRaws.clear();
 			for (auto const& raw : raws)
 			{
-				views.push_back(raw.bytes);
+				spanRaws.push_back(raw.bytes);
 			}
-			copied = load(standby, colourSpace, info.size, views, idStr);
+			copied = load(standby, colourSpace, info.size, spanRaws, idStr);
 			return true;
 		}
 		return false;
@@ -833,18 +828,15 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		status = Status::eReady;
 		return;
 	}
+	geo = std::move(geometry);
 	auto const idStr = id.generic_string();
-	auto const vSize = (vk::DeviceSize)geometry.vertices.size() * sizeof(gfx::Vertex);
-	auto const iSize = (vk::DeviceSize)geometry.indices.size() * sizeof(u32);
+	auto const vSize = (vk::DeviceSize)geo.vertices.size() * sizeof(gfx::Vertex);
+	auto const iSize = (vk::DeviceSize)geo.indices.size() * sizeof(u32);
 	auto const bHostVisible = out_info.type == Type::eDynamic;
 	if (vSize > vbo.buffer.writeSize)
 	{
 		if (vbo.buffer.writeSize > 0)
 		{
-			if (bHostVisible)
-			{
-				gfx::vram::unmapMemory(vbo.buffer);
-			}
 			gfx::deferred::release(vbo.buffer);
 			vbo = {};
 		}
@@ -852,17 +844,14 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			vbo.pMem = gfx::vram::mapMemory(vbo.buffer);
+			[[maybe_unused]] bool const bResult = gfx::vram::mapMemory(vbo.buffer);
+			ASSERT(bResult, "Memory map failed");
 		}
 	}
 	if (iSize > ibo.buffer.writeSize)
 	{
 		if (ibo.buffer.writeSize > 0)
 		{
-			if (bHostVisible)
-			{
-				gfx::vram::unmapMemory(ibo.buffer);
-			}
 			gfx::deferred::release(ibo.buffer);
 			ibo = {};
 		}
@@ -870,27 +859,28 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 		ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer, bHostVisible);
 		if (bHostVisible)
 		{
-			ibo.pMem = gfx::vram::mapMemory(ibo.buffer);
+			[[maybe_unused]] bool const bResult = gfx::vram::mapMemory(ibo.buffer);
+			ASSERT(bResult, "Memory map failed");
 		}
 	}
 	switch (out_info.type)
 	{
 	case Type::eStatic:
 	{
-		vbo.copied = gfx::vram::stage(vbo.buffer, geometry.vertices.data(), vSize);
-		if (!geometry.indices.empty())
+		vbo.copied = gfx::vram::stage(vbo.buffer, geo.vertices.data(), vSize);
+		if (!geo.indices.empty())
 		{
-			ibo.copied = gfx::vram::stage(ibo.buffer, geometry.indices.data(), iSize);
+			ibo.copied = gfx::vram::stage(ibo.buffer, geo.indices.data(), iSize);
 		}
 		status = Status::eLoading;
 		break;
 	}
 	case Type::eDynamic:
 	{
-		std::memcpy(vbo.pMem, geometry.vertices.data(), vSize);
-		if (!geometry.indices.empty())
+		std::memcpy(vbo.buffer.pMap, geo.vertices.data(), vSize);
+		if (!geo.indices.empty())
 		{
-			std::memcpy(ibo.pMem, geometry.indices.data(), iSize);
+			std::memcpy(ibo.buffer.pMap, geo.indices.data(), iSize);
 		}
 		status = Status::eReady;
 		break;
@@ -898,8 +888,8 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry)
 	default:
 		break;
 	}
-	vbo.count = (u32)geometry.vertices.size();
-	ibo.count = (u32)geometry.indices.size();
+	vbo.count = (u32)geo.vertices.size();
+	ibo.count = (u32)geo.indices.size();
 	out_info.triCount = iSize > 0 ? (u64)ibo.count / 3 : (u64)vbo.count / 3;
 }
 
@@ -1049,9 +1039,7 @@ void Font::Impl::loadGlyphs(std::vector<Glyph> const& glyphData, [[maybe_unused]
 
 gfx::Geometry Font::Impl::generate(Text const& text) const
 {
-	Font font;
-	font.guid = guid;
-	if (text.text.empty() || font.status() != Status::eReady)
+	if (text.text.empty())
 	{
 		return {};
 	}

@@ -100,7 +100,7 @@ set(COMPILE_DEFS
 	$<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>
 	$<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>
 )
-set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused)
+set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused -Wno-unknown-pragmas)
 if(LINUX_GCC OR LINUX_CLANG OR WIN64_GCC OR WIN64_CLANG)
 	set(COMPILE_OPTS
 		-Wextra
@@ -115,9 +115,8 @@ if(LINUX_GCC OR LINUX_CLANG OR WIN64_GCC OR WIN64_CLANG)
 elseif(WIN64_MSBUILD)
 	set(COMPILE_OPTS
 		$<$<NOT:$<CONFIG:Debug>>:
-			/O2
 			/Oi
-			/Ot
+			/WX
 		>
 		/MP
 	)
@@ -131,24 +130,15 @@ if(PLATFORM STREQUAL "Linux")
 		-no-pie         # Build as application
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
 	)
-elseif(PLATFORM STREQUAL "Win64" AND NOT WIN64_GCC AND MSVC)
-	set(LINK_OPTS
-		/ENTRY:mainCRTStartup
-		$<$<CONFIG:Debug>:
-			/SUBSYSTEM:CONSOLE
-			/OPT:NOREF
-			/DEBUG:FULL
-		>
-		$<$<NOT:$<CONFIG:Debug>>:
-			/SUBSYSTEM:WINDOWS
-			/OPT:REF
-			/OPT:ICF
-			/INCREMENTAL:NO
-		>
-		$<$<CONFIG:RelWithDebinfo>:
-			/DEBUG:FULL
-		>
-	)
+elseif(PLATFORM STREQUAL "Win64" AND NOT WIN64_GCC)
+	if(MSVC)
+		set(LINK_OPTS
+			/ENTRY:mainCRTStartup                              # Link to main() and not WinMain()
+			/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>   # Spawn a console in Debug
+		)
+	else()
+		set(LINK_OPTS -Wl,/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>,/ENTRY:mainCRTStartup)
+	endif()
 endif()
 if(LINUX_CLANG AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
 	# Ignore Vulkan.hpp warnings

@@ -5,14 +5,18 @@
 #include <core/tasks.hpp>
 #include <core/time.hpp>
 #include <core/utils.hpp>
+#include <dumb_json/dumb_json.hpp>
 #include <engine/levk.hpp>
-#include <engine/game/world.hpp>
+#include <engine/game/driver.hpp>
+#include <engine/game/scene_builder.hpp>
+#include <engine/game/state.hpp>
 #include <game/input_impl.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/renderer_impl.hpp>
 #include <gfx/vram.hpp>
+#include <game/state_impl.hpp>
 #include <resources/resources_impl.hpp>
 #include <window/window_impl.hpp>
 #include <editor/editor.hpp>
@@ -24,13 +28,29 @@ namespace engine
 {
 namespace
 {
+struct Clock
+{
+	Time stamp;
+
+	Time dt() noexcept
+	{
+		Time now = Time::elapsed();
+		Time ret = stamp == Time() ? Time() : now - stamp;
+		stamp = now;
+		return ret;
+	}
+};
+
 std::string const tName = utils::tName<Service>();
 App g_app;
 Status g_status = Status::eIdle;
+Counter<s32> g_counter;
+Clock g_clock;
 } // namespace
 
 Service::Service(s32 argc, char const* const* const argv)
 {
+	dj::g_log_error = [](auto text) { LOG_E("{}", text); };
 	Time::resetElapsed();
 	m_services.add<os::Service>(os::Args{argc, argv});
 	m_services.add<io::Service>(std::string_view("debug.log"));
@@ -43,9 +63,8 @@ Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
 	input::deinit();
-	World::impl_stopActive();
 	res::waitIdle();
-	World::impl_destroyAll();
+	gs::reset();
 	res::deinit();
 	g_app = {};
 }
@@ -73,7 +92,7 @@ bool Service::init(Info const& info)
 	try
 	{
 		m_services.add<Window::Service>();
-		NativeWindow dummyWindow({});
+		NativeWindow dummyWindow(Window::Info{});
 		gfx::InitInfo initInfo;
 #if defined(LEVK_DEBUG)
 		gfx::g_VRAM_bLogAllocs = info.bLogVRAMallocations;
@@ -87,6 +106,7 @@ bool Service::init(Info const& info)
 		}
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
 		initInfo.config.createTempSurface = [&](vk::Instance instance) -> vk::SurfaceKHR { return dummyWindow.createSurface(instance); };
+		initInfo.config.stagingReserve = info.vramReserve;
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
 		io::FileReader fileReader;
@@ -104,13 +124,13 @@ bool Service::init(Info const& info)
 		m_services.add<res::Service>();
 		if (info.windowInfo)
 		{
-			g_app.uWindow = std::make_unique<Window>();
-			if (!g_app.uWindow->create(*info.windowInfo))
+			g_app.window = Window();
+			if (!g_app.window->create(*info.windowInfo))
 			{
 				throw std::runtime_error("Failed to create Window!");
 			}
 		}
-		input::init(*g_app.uWindow);
+		input::init(*g_app.window);
 	}
 	catch (std::exception const& e)
 	{
@@ -119,22 +139,13 @@ bool Service::init(Info const& info)
 		return false;
 	}
 	g_status = Status::eInitialised;
+	g_clock = {};
 	return true;
 }
 
-bool Service::start(World::ID world)
+bool Service::running() const
 {
-	if (g_status == Status::eInitialised && World::impl_startID(world))
-	{
-		g_status = Status::eTicking;
-		return true;
-	}
-	return false;
-}
-
-bool Service::isRunning() const
-{
-	return maths::withinRange(g_status, Status::eIdle, Status::eShutdown, false);
+	return maths::withinRange(g_status, Status::eIdle, Status::eShuttingDown, true);
 }
 
 Status Service::status() const
@@ -142,103 +153,89 @@ Status Service::status() const
 	return g_status;
 }
 
-bool Service::tick(Time dt) const
+bool Service::update(Driver& out_driver) const
 {
+	if (g_status == Status::eIdle)
+	{
+		return false;
+	}
+	if (g_status == Status::eInitialised)
+	{
+		g_status = Status::eTicking;
+	}
+	Time const dt = g_clock.dt();
 	Window::pollEvents();
-	update();
-	if (g_app.uWindow && g_app.uWindow->isClosing())
+	engine::update();
+	if (g_app.window && g_app.window->closing())
 	{
 		if (g_shutdownSequence == ShutdownSequence::eCloseWindow_Shutdown)
 		{
-			g_app.uWindow->destroy();
+			g_app.window->destroy();
 		}
 		g_status = Status::eShuttingDown;
 	}
 	gfx::ScreenRect gameRect = {};
-	bool bFireInput = true;
-	bool bTickActive = true;
-	bool bTerminate = false;
-	bool bRet = true;
-	switch (g_status)
+	bool bTerminating = g_status == Status::eShutdown || g_status == Status::eShuttingDown;
+	if (g_status == Status::eShuttingDown && g_counter.isZero(true))
 	{
-	default:
-	{
-		break;
+		doShutdown();
 	}
-	case Status::eShutdown:
-	{
-		bTickActive = false;
-		bFireInput = false;
-		bTerminate = true;
-		bRet = false;
-		break;
-	}
-	case Status::eShuttingDown:
-	{
-		bTickActive = false;
-		bFireInput = false;
-		bTerminate = true;
-		bRet = false;
-		if (!World::isBusy())
-		{
-			doShutdown();
-		}
-		break;
-	}
-	}
-	if (bFireInput)
+	bool bTick = g_status == Status::eTicking && !bTerminating;
+	if (!bTerminating)
 	{
 		input::fire();
 #if defined(LEVK_EDITOR)
-		editor::tick(dt);
+		editor::Args args{&gs::g_context, &gs::entityMap(), &gs::root()};
+		editor::tick(args, dt);
 		input::g_bEditorOnly = !editor::g_bTickGame;
-		bTickActive &= editor::g_bTickGame;
+		bTick &= editor::g_bTickGame;
 		gameRect = editor::g_gameRect;
 #endif
 	}
-	if (!World::impl_tick(dt, gameRect, bTickActive, bTerminate))
-	{
-		LOGIF_E(g_status == Status::eTicking, "[{}] Failed to tick World!", tName);
-	}
-	return bRet;
-}
-
-void Service::submitScene() const
-{
-	if (!isShuttingDown() && g_app.uWindow && World::s_pActive)
-	{
-		gfx::Camera const* pCamera = World::s_pActive->sceneCamPtr();
-#if defined(LEVK_EDITOR)
-		if (!editor::g_bTickGame)
-		{
-			pCamera = &editor::g_editorCam;
-		}
+#if defined(LEVK_DEBUG)
+	try
 #endif
-		ASSERT(pCamera, "Camera is null!");
-		if (!World::impl_submitScene(g_app.uWindow->renderer(), *pCamera))
-		{
-			LOG_E("[{}] Error submitting World scene!", tName);
-		}
+	{
+		g_app.window->renderer().submit(gs::update(out_driver, dt, bTick), gameRect);
 	}
+#if defined(LEVK_DEBUG)
+	catch (std::exception const& e)
+	{
+		LOG_E("EXCEPTION!\n\t{}", e.what());
+	}
+#endif
+	return !bTerminating;
 }
 
 void Service::render() const
 {
-	if (!isShuttingDown())
+	if (!shuttingDown())
 	{
-		Window::renderAll();
+#if defined(LEVK_DEBUG)
+		try
+#endif
+		{
+			Window::renderAll();
+		}
+#if defined(LEVK_DEBUG)
+		catch (std::exception const& e)
+		{
+			LOG_E("EXCEPTION!\n\t{}", e.what());
+		}
+#endif
 	}
 }
 
 bool Service::shutdown()
 {
-	if (g_app.uWindow && g_app.uWindow->exists() && g_status == Status::eTicking)
+	if (g_app.window && g_app.window->exists() && g_status == Status::eTicking)
 	{
-		g_app.uWindow->setClosing();
+		g_app.window->setClosing();
 		if (g_shutdownSequence == ShutdownSequence::eCloseWindow_Shutdown)
 		{
-			g_app.uWindow->destroy();
+			g_app.window->destroy();
 		}
+		gs::reset();
 		g_status = Status::eShuttingDown;
 		return true;
 	}
@@ -247,30 +244,30 @@ bool Service::shutdown()
 
 void Service::doShutdown()
 {
-	World::impl_destroyAll();
-	g_app.uWindow->destroy();
+	gs::reset();
+	g_app.window->destroy();
 	g_status = Status::eShutdown;
 }
 } // namespace engine
 
-bool engine::isShuttingDown()
+bool engine::shuttingDown()
 {
-	return (g_app.uWindow && g_app.uWindow->isClosing()) || g_status == Status::eShuttingDown;
+	return (g_app.window && g_app.window->closing()) || g_status == Status::eShuttingDown;
 }
 
 Window* engine::mainWindow()
 {
-	return g_app.uWindow.get();
+	return engine::window();
 }
 
 glm::ivec2 engine::windowSize()
 {
-	return g_app.uWindow ? g_app.uWindow->windowSize() : glm::ivec2(0);
+	return g_app.window ? g_app.window->windowSize() : glm::ivec2(0);
 }
 
 glm::ivec2 engine::framebufferSize()
 {
-	return g_app.uWindow ? g_app.uWindow->framebufferSize() : glm::ivec2(0);
+	return g_app.window ? g_app.window->framebufferSize() : glm::ivec2(0);
 }
 
 glm::vec2 engine::gameRectSize()
@@ -292,7 +289,7 @@ void engine::update()
 
 Window* engine::window()
 {
-	return g_app.uWindow.get();
+	return g_app.window ? &(g_app.window.value()) : nullptr;
 }
 
 io::Reader const& engine::reader()
@@ -303,14 +300,24 @@ io::Reader const& engine::reader()
 
 res::Texture::Space engine::colourSpace()
 {
-	if (g_app.uWindow)
+	if (g_app.window)
 	{
-		auto const pRenderer = WindowImpl::rendererImpl(g_app.uWindow->id());
+		auto const pRenderer = WindowImpl::rendererImpl(g_app.window->id());
 		if (pRenderer && pRenderer->colourSpace() == ColourSpace::eSRGBNonLinear)
 		{
 			return res::Texture::Space::eSRGBNonLinear;
 		}
 	}
 	return res::Texture::Space::eRGBLinear;
+}
+
+engine::Semaphore engine::setBusy()
+{
+	return Semaphore(g_counter);
+}
+
+bool engine::busy()
+{
+	return !g_counter.isZero(true);
 }
 } // namespace le

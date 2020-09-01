@@ -50,17 +50,17 @@ struct Span
 	Span<T>(Span<T> const&) noexcept = default;
 	Span<T>& operator=(Span<T> const&) noexcept = default;
 
-	std::size_t size() const
+	std::size_t size() const noexcept
 	{
 		return extent;
 	}
 
-	const_iterator begin() const
+	const_iterator begin() const noexcept
 	{
 		return pData;
 	}
 
-	const_iterator end() const
+	const_iterator end() const noexcept
 	{
 		return pData + extent;
 	}
@@ -75,7 +75,7 @@ struct Span
 namespace utils
 {
 template <typename T>
-FutureState futureState(std::future<T> const& future)
+FutureState futureState(std::future<T> const& future) noexcept
 {
 	if (future.valid())
 	{
@@ -96,7 +96,7 @@ FutureState futureState(std::future<T> const& future)
 }
 
 template <typename T>
-bool isReady(std::future<T> const& future)
+bool ready(std::future<T> const& future) noexcept
 {
 	using namespace std::chrono_literals;
 	return future.valid() && future.wait_for(0ms) == std::future_status::ready;
@@ -106,7 +106,7 @@ bool isReady(std::future<T> const& future)
 /// \brief Convert `byteCount` bytes into human-friendly format
 /// \returns pair of size in `f32` and the corresponding unit
 ///
-std::pair<f32, std::string_view> friendlySize(u64 byteCount);
+std::pair<f32, std::string_view> friendlySize(u64 byteCount) noexcept;
 
 ///
 /// \brief Demangle a compiler symbol name

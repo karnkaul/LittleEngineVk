@@ -19,7 +19,7 @@ class Singleton
 namespace detail
 {
 template <typename T>
-class Base
+class SingletonBase
 {
 public:
 	static T& instance()
@@ -35,7 +35,7 @@ public:
 } // namespace detail
 
 template <typename T>
-class Singleton<T, SingletonStorage::eStatic> : public detail::Base<T>
+class Singleton<T, SingletonStorage::eStatic> : public detail::SingletonBase<T>
 {
 public:
 	static T& inst()
@@ -46,7 +46,7 @@ public:
 };
 
 template <typename T>
-class Singleton<T, SingletonStorage::eHeap> : public detail::Base<T>
+class Singleton<T, SingletonStorage::eHeap> : public detail::SingletonBase<T>
 {
 protected:
 	static std::unique_ptr<T> s_uInst;

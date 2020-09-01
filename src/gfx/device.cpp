@@ -159,7 +159,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			auto const& queueFamily = queueFamilyProperties.at(idx);
 			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
 			{
-				if (!found.isSet(QFlag::eGraphics))
+				if (!found.test(QFlag::eGraphics))
 				{
 					QueueFamily& family = queueFamilies[(u32)idx];
 					family.index = (u32)idx;
@@ -171,7 +171,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			}
 			if (instance.physicalDevice.getSurfaceSupportKHR((u32)idx, surface))
 			{
-				if (!found.isSet(QFlag::ePresent))
+				if (!found.test(QFlag::ePresent))
 				{
 					QueueFamily& family = queueFamilies[(u32)idx];
 					family.index = (u32)idx;
@@ -182,7 +182,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			}
 			if (initInfo.options.bDedicatedTransfer && queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
 			{
-				if (found.isSet(QFlag::eGraphics) && idx != graphicsFamilyIdx && !found.isSet(QFlag::eTransfer))
+				if (found.test(QFlag::eGraphics) && idx != graphicsFamilyIdx && !found.test(QFlag::eTransfer))
 				{
 					QueueFamily& family = queueFamilies[(u32)idx];
 					family.index = (u32)idx;
@@ -192,7 +192,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 				}
 			}
 		}
-		if (!found.isSet(QFlag::eGraphics) || !found.isSet(QFlag::ePresent))
+		if (!found.test(QFlag::eGraphics) || !found.test(QFlag::ePresent))
 		{
 			throw std::runtime_error("Failed to obtain graphics/present queues from device!");
 		}
@@ -204,20 +204,19 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			queueCreateInfo.queueFamilyIndex = index;
 			queueCreateInfo.queueCount = 1;
 			queueCreateInfo.pQueuePriorities = &priority;
-			if (queueFamily.flags.isSet(QFlag::eGraphics))
+			if (queueFamily.flags.test(QFlag::eGraphics))
 			{
 				device.queues.graphics.familyIndex = index;
 			}
-			if (queueFamily.flags.isSet(QFlag::ePresent))
+			if (queueFamily.flags.test(QFlag::ePresent))
 			{
 				device.queues.present.familyIndex = index;
 			}
-			if (queueFamily.flags.isSet(QFlag::eTransfer))
+			if (queueFamily.flags.test(QFlag::eTransfer))
 			{
 				device.queues.transfer.familyIndex = index;
 			}
-			if (initInfo.options.bDedicatedTransfer && !found.isSet(QFlag::eTransfer) && queueFamily.flags.isSet(QFlag::eGraphics)
-				&& queueFamily.queueCount > 1)
+			if (initInfo.options.bDedicatedTransfer && !found.test(QFlag::eTransfer) && queueFamily.flags.test(QFlag::eGraphics) && queueFamily.queueCount > 1)
 			{
 				queueCreateInfo.queueCount = 2;
 				queueCreateInfo.pQueuePriorities = priorities;
@@ -226,7 +225,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			}
 			queueCreateInfos.push_back(std::move(queueCreateInfo));
 		}
-		if (!found.isSet(QFlag::eTransfer))
+		if (!found.test(QFlag::eTransfer))
 		{
 			device.queues.transfer = device.queues.graphics;
 		}
@@ -301,7 +300,7 @@ void init(InitInfo const& initInfo)
 	std::set<char const*> requiredExtensionsSet = {initInfo.config.instanceExtensions.begin(), initInfo.config.instanceExtensions.end()};
 	g_instance.validationLog = initInfo.options.validationLog;
 	bool bValidationLayers = false;
-	if (initInfo.options.flags.isSet(InitInfo::Flag::eValidation))
+	if (initInfo.options.flags.test(InitInfo::Flag::eValidation))
 	{
 		if (!findLayer(layers, szValidationLayer, io::Level::eWarning))
 		{
@@ -357,7 +356,7 @@ void init(InitInfo const& initInfo)
 		throw std::runtime_error("Failed to initialise Device!");
 	}
 
-	vram::init();
+	vram::init(initInfo.config.stagingReserve);
 	rd::init();
 	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
@@ -430,19 +429,19 @@ bool Device::isValid(vk::SurfaceKHR surface) const
 	return false;
 }
 
-UniqueQueues Device::uniqueQueues(QFlags flags) const
+HandleQueues Device::uniqueQueues(QFlags flags) const
 {
-	UniqueQueues ret;
+	HandleQueues ret;
 	ret.indices.reserve(3);
-	if (flags.isSet(QFlag::eGraphics))
+	if (flags.test(QFlag::eGraphics))
 	{
 		ret.indices.push_back(queues.graphics.familyIndex);
 	}
-	if (flags.isSet(QFlag::ePresent) && queues.graphics.familyIndex != queues.present.familyIndex)
+	if (flags.test(QFlag::ePresent) && queues.graphics.familyIndex != queues.present.familyIndex)
 	{
 		ret.indices.push_back(queues.present.familyIndex);
 	}
-	if (flags.isSet(QFlag::eTransfer) && queues.transfer.familyIndex != queues.graphics.familyIndex)
+	if (flags.test(QFlag::eTransfer) && queues.transfer.familyIndex != queues.graphics.familyIndex)
 	{
 		ret.indices.push_back(queues.transfer.familyIndex);
 	}
@@ -462,21 +461,36 @@ vk::Fence Device::createFence(bool bSignalled) const
 	return g_device.device.createFence(flags);
 }
 
+void Device::resetOrCreateFence(vk::Fence& out_fence, bool bSignalled) const
+{
+	if (out_fence == vk::Fence())
+	{
+		out_fence = createFence(bSignalled);
+	}
+	else
+	{
+		resetFence(out_fence);
+	}
+}
+
 void Device::waitFor(vk::Fence optional) const
 {
 	if (optional != vk::Fence())
 	{
-#if defined(LEVK_DEBUG)
-		constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
-		auto const result = g_device.device.waitForFences(optional, true, s_wait);
-		ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-		if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
+		if constexpr (levk_debug)
 		{
-			LOG_E("[{}] Fence wait failure!", s_tDevice);
+			constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+			auto const result = g_device.device.waitForFences(optional, true, s_wait);
+			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
+			{
+				LOG_E("[{}] Fence wait failure!", s_tDevice);
+			}
 		}
-#else
-		g_device.device.waitForFences(optional, true, maxVal<u64>());
-#endif
+		else
+		{
+			g_device.device.waitForFences(optional, true, maxVal<u64>());
+		}
 	}
 }
 
@@ -484,17 +498,20 @@ void Device::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const
 {
 	if (!validFences.empty())
 	{
-#if defined(LEVK_DEBUG)
-		constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
-		auto const result = g_device.device.waitForFences(std::move(validFences), true, s_wait);
-		ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-		if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
+		if constexpr (levk_debug)
 		{
-			LOG_E("[{}] Fence wait failure!", s_tDevice);
+			constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+			auto const result = g_device.device.waitForFences(std::move(validFences), true, s_wait);
+			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
+			{
+				LOG_E("[{}] Fence wait failure!", s_tDevice);
+			}
 		}
-#else
-		g_device.device.waitForFences(std::move(validFences), true, maxVal<u64>());
-#endif
+		else
+		{
+			g_device.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+		}
 	}
 }
 

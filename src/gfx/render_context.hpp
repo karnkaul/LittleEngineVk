@@ -40,7 +40,7 @@ public:
 		Outcome outcome;
 
 		TOutcome(Outcome outcome) : outcome(outcome){};
-		TOutcome(T&& payload) : payload(std::forward<T>(payload)), outcome(Outcome::eSuccess) {}
+		TOutcome(T&& payload) : payload(std::move(payload)), outcome(Outcome::eSuccess) {}
 	};
 
 private:
@@ -58,7 +58,7 @@ private:
 		vk::PresentModeKHR presentMode;
 
 		void refresh();
-		bool isReady() const;
+		bool ready() const;
 		vk::SurfaceFormatKHR bestColourFormat() const;
 		vk::Format bestDepthFormat() const;
 		vk::PresentModeKHR bestPresentMode() const;

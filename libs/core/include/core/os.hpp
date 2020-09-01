@@ -7,49 +7,97 @@
 #include <core/std_types.hpp>
 #include <kt/args_parser/args_parser.hpp>
 
+namespace le::os
+{
+enum class OS : s8
+{
+	eWindows,
+	eLinux,
+	eAndroid,
+	eUnknown
+};
+enum class Arch : s8
+{
+	eX64,
+	eARM64,
+	eUnknown
+};
+enum class StdLib : s8
+{
+	eMSVC,
+	eLibStdCXX,
+	eUnknown
+};
+enum class Compiler : s8
+{
+	eClang,
+	eGCC,
+	eVCXX,
+	eUnknown
+};
+} // namespace le::os
+
 #if (defined(_WIN32) || defined(_WIN64))
 #define LEVK_OS_WINX
+constexpr le::os::OS levk_OS = le::os::OS::eWindows;
 #if defined(__arm__)
 #define LEVK_ARCH_ARM64
+constexpr le::os::Arch levk_arch = le::os::Arch::eARM64;
 #elif !defined(_WIN64)
 #define LEVK_ARCH_X86
+constexpr le::os::Arch levk_arch = le::os::Arch::eX86;
 #else
 #define LEVK_ARCH_x64
+constexpr le::os::Arch levk_arch = le::os::Arch::eX64;
 #endif
 #elif defined(__linux__)
 #define LEVK_OS_LINUX
+constexpr le::os::OS levk_OS = le::os::OS::eLinux;
 #if defined(__ANDROID__)
+constexpr le::os::OS levk_OS = le::os::OS::eAndroid;
 #define LEVK_OS_ANDROID
 #endif
 #if defined(__arm__)
 #define LEVK_ARCH_ARM64
+constexpr le::os::Arch levk_arch = le::os::Arch::eARM64;
 #elif defined(__x86_64__)
 #define LEVK_ARCH_X64
+constexpr le::os::Arch levk_arch = le::os::Arch::eX64;
 #elif defined(__i386__)
 #define LEVK_ARCH_X86
+constexpr le::os::Arch levk_arch = le::os::Arch::eX86;
 #else
 #define LEVK_ARCH_UNSUPPORTED
+constexpr le::os::Arch levk_arch = le::os::Arch::eUnknown;
 #endif
 #else
 #define LEVK_OS_UNSUPPORTED
+constexpr le::os::OS levk_OS = le::os::OS::eUnknown;
 #endif
 
 #if defined(_MSC_VER)
 #define LEVK_RUNTIME_MSVC
+constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eMSVC;
 #elif (defined(__GNUG__) || defined(__clang__))
 #define LEVK_RUNTIME_LIBSTDCXX
+constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eLibStdCXX;
 #else
 #define LEVK_RUNTIME_UNKNOWN
+constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eUnknown;
 #endif
 
 #if defined(__clang__)
 #define LEVK_COMPILER_CLANG
+constexpr le::os::Compiler levk_compiler = le::os::Compiler::eClang;
 #elif defined(__GNUG__)
 #define LEVK_COMPILER_GCC
+constexpr le::os::Compiler levk_compiler = le::os::Compiler::eGCC;
 #elif defined(_MSC_VER)
 #define LEVK_COMPILER_VCXX
+constexpr le::os::Compiler levk_compiler = le::os::Compiler::eVCXX;
 #else
 #define LEVK_COMPILER_UNKNOWN
+constexpr le::os::Compiler levk_compiler = le::os::Compiler::eUnknown;
 #endif
 
 namespace le

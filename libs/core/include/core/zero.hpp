@@ -12,29 +12,32 @@ struct TZero final
 {
 	using type = T;
 
-	constexpr static T s_null = Zero;
+	constexpr static T null = Zero;
 
 	T payload;
 
-	constexpr TZero(T payload = s_null) noexcept : payload(payload) {}
+	constexpr TZero(T payload = null) noexcept : payload(payload) {}
 
-	TZero(TZero&& rhs) noexcept
+	constexpr TZero(TZero&& rhs) noexcept : payload(rhs.payload)
 	{
-		*this = std::move(rhs);
+		rhs.payload = Zero;
 	}
 
-	TZero& operator=(TZero&& rhs) noexcept
+	constexpr TZero& operator=(TZero&& rhs) noexcept
 	{
-		payload = std::forward<T>(rhs.payload);
-		rhs.payload = Zero;
+		if (&rhs != this)
+		{
+			payload = rhs.payload;
+			rhs.payload = Zero;
+		}
 		return *this;
 	}
 
-	TZero(TZero const&) noexcept = default;
-	TZero& operator=(TZero const&) noexcept = default;
+	constexpr TZero(TZero const&) noexcept = default;
+	constexpr TZero& operator=(TZero const&) noexcept = default;
 	~TZero() = default;
 
-	operator T() const noexcept
+	constexpr operator T() const noexcept
 	{
 		return payload;
 	}

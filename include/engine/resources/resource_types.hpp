@@ -4,6 +4,7 @@
 #include <core/colour.hpp>
 #include <core/flags.hpp>
 #include <core/hash.hpp>
+#include <core/tokeniser.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
 #include <dumb_json/dumb_json.hpp>
@@ -18,9 +19,16 @@
 #endif
 #endif
 
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
+constexpr bool levk_resourcesHotReload = true;
+#else
+constexpr bool levk_resourcesHotReload = false;
+#endif
+
 namespace le::res
 {
 using GUID = TZero<u64>;
+using Token = Token;
 
 ///
 /// \brief Resource status

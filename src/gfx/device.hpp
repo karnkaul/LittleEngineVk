@@ -42,11 +42,12 @@ struct Device final
 	vk::Device device;
 
 	bool isValid(vk::SurfaceKHR surface) const;
-	UniqueQueues uniqueQueues(QFlags flags) const;
+	HandleQueues uniqueQueues(QFlags flags) const;
 
 	void waitIdle() const;
 
 	vk::Fence createFence(bool bSignalled) const;
+	void resetOrCreateFence(vk::Fence& out_fence, bool bSignalled) const;
 	void waitFor(vk::Fence optional) const;
 	void waitAll(vk::ArrayProxy<vk::Fence const> validFences) const;
 	void resetFence(vk::Fence optional) const;

@@ -92,7 +92,7 @@ void PipelineImpl::destroy()
 
 bool PipelineImpl::create()
 {
-	if ((m_info.shader.guid == res::GUID::s_null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty())
+	if ((m_info.shader.guid == res::GUID::null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty())
 	{
 		if (auto shader = res::find<res::Shader>(m_info.shaderID))
 		{
@@ -143,7 +143,7 @@ bool PipelineImpl::create()
 	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
 	{
 		colorBlendAttachment.colorWriteMask = m_info.colourWriteMask;
-		colorBlendAttachment.blendEnable = m_info.flags.isSet(Pipeline::Flag::eBlend);
+		colorBlendAttachment.blendEnable = m_info.flags.test(Pipeline::Flag::eBlend);
 		colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
 		colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
 		colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
@@ -159,8 +159,8 @@ bool PipelineImpl::create()
 	}
 	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
 	{
-		depthStencilState.depthTestEnable = m_info.flags.isSet(Pipeline::Flag::eDepthTest);
-		depthStencilState.depthWriteEnable = m_info.flags.isSet(Pipeline::Flag::eDepthWrite);
+		depthStencilState.depthTestEnable = m_info.flags.test(Pipeline::Flag::eDepthTest);
+		depthStencilState.depthWriteEnable = m_info.flags.test(Pipeline::Flag::eDepthWrite);
 		depthStencilState.depthCompareOp = vk::CompareOp::eLess;
 	}
 	auto states = m_info.dynamicStates;

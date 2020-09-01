@@ -22,12 +22,12 @@ public:
 	/// \param max: Colour contributing to `alpha`
 	/// \param min: Colour contributing to `1.0f - alpha`
 	/// \returns interpolated Colour
-	static Colour lerp(Colour min, Colour max, f32 alpha);
+	static Colour lerp(Colour min, Colour max, f32 alpha) noexcept;
 
 	///
 	/// \brief Default constructor
 	///
-	constexpr Colour() = default;
+	constexpr Colour() noexcept = default;
 	///
 	/// \brief Construct from a 32-bit mask (RGBA)
 	///
@@ -56,7 +56,7 @@ public:
 	///
 	/// default: RGB => 0x0,  A => 0xff
 	///
-	explicit Colour(std::string_view hex);
+	explicit Colour(std::string_view hex) noexcept;
 
 	///
 	/// \brief Additive blend
@@ -71,15 +71,15 @@ public:
 	/// \brief Convert to GLSL format
 	/// \returns Each component normalised to `[0.0f, 1.0f]`
 	///
-	glm::vec4 toVec4() const;
+	glm::vec4 toVec4() const noexcept;
 	///
 	/// \brief Convert colour space to sRGB
 	///
-	glm::vec4 toSRGB() const;
+	glm::vec4 toSRGB() const noexcept;
 	///
 	/// \brief Convert colour space to RGB
 	///
-	glm::vec4 toRGB() const;
+	glm::vec4 toRGB() const noexcept;
 };
 
 ///

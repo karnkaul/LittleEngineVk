@@ -458,21 +458,7 @@ bool Model::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	return true;
 }
 
-void Model::Impl::release()
-{
-	for (auto const& [_, texture] : m_textures)
-	{
-		res::unload(texture);
-	}
-	for (auto const& [_, material] : m_loadedMaterials)
-	{
-		res::unload(material);
-	}
-	for (auto const& mesh : m_loadedMeshes)
-	{
-		res::unload(mesh);
-	}
-}
+void Model::Impl::release() {}
 
 bool Model::Impl::update()
 {
@@ -481,11 +467,9 @@ bool Model::Impl::update()
 	case Status::eLoading:
 	case Status::eReloading:
 	{
-		bool const bMeshes = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return mesh.status() == res::Status::eReady; });
-		bool const bTextures = std::all_of(m_textures.begin(), m_textures.end(), [](auto const& kvp) { return kvp.second.status() == res::Status::eReady; });
-		bool const bMaterials =
-			std::all_of(m_loadedMaterials.begin(), m_loadedMaterials.end(), [](auto const& kvp) { return kvp.second.status() == res::Status::eReady; });
-		return bMeshes && bTextures && bMaterials;
+		bool const b0 = std::all_of(m_loadedMeshes.begin(), m_loadedMeshes.end(), [](auto const& mesh) { return mesh.ready(); });
+		bool const b1 = b0 && std::all_of(m_textures.begin(), m_textures.end(), [](auto const& kvp) { return kvp.second.ready(); });
+		return b1 && std::all_of(m_loadedMaterials.begin(), m_loadedMaterials.end(), [](auto const& kvp) { return kvp.second.ready(); });
 	}
 	default:
 	{
@@ -502,7 +486,7 @@ std::vector<res::Mesh> Model::Impl::meshes() const
 }
 
 #if defined(LEVK_EDITOR)
-std::deque<res::Mesh>& Model::Impl::loadedMeshes()
+std::deque<res::Scoped<res::Mesh>>& Model::Impl::loadedMeshes()
 {
 	return m_loadedMeshes;
 }

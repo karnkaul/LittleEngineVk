@@ -45,6 +45,12 @@ u32 TexSet::total() const
 {
 	return (u32)textures.size();
 }
+
+template <typename... T>
+bool allReady(T... t)
+{
+	return (... && (t.status() == res::Status::eReady));
+}
 } // namespace
 
 Renderer::Renderer() = default;
@@ -216,7 +222,7 @@ bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 		g_device.destroy(frame.framebuffer);
 		frame.framebuffer = g_device.createFramebuffer(m_renderPass, target.attachments(), target.extent);
 		u64 tris = 0;
-		if (bEmpty)
+		if (push.empty())
 		{
 			static auto const c = colours::black;
 			vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
@@ -396,6 +402,10 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	auto const [black, bBlack] = res::find<res::Texture>("textures/black");
 	auto const [blank, bBlank] = res::find<res::Texture>("cubemaps/blank");
 	ASSERT(bWhite && bBlack && bBlank, "Default textures missing!");
+	if (!allReady(white, black, blank))
+	{
+		return {};
+	}
 	diffuse.add(white);
 	specular.add(black);
 	bool bSkybox = false;
@@ -435,23 +445,23 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 					bSkybox = false;
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eSKYBOX;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eLit))
+				if (info.material.flags.test(res::Material::Flag::eLit))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eLIT;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eOpaque))
+				if (info.material.flags.test(res::Material::Flag::eOpaque))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eOPAQUE;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eDropColour))
+				if (info.material.flags.test(res::Material::Flag::eDropColour))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eDROP_COLOUR;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eUI))
+				if (info.material.flags.test(res::Material::Flag::eUI))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eUI;
 				}
-				if (info.material.flags.isSet(res::Material::Flag::eTextured))
+				if (info.material.flags.test(res::Material::Flag::eTextured))
 				{
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
 					if (info.material.diffuse.status() == res::Status::eReady)
@@ -494,12 +504,12 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 
 u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target, bool bExtGUI) const
 {
+	ASSERT(!push.empty(), "No push constants!");
 	auto const& frame = frameSync();
 	auto const c = scene.clear.colour;
 	vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 	RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
-	std::unordered_set<PipelineImpl*> pipelines;
 	std::size_t batchIdx = 0;
 	std::size_t drawableIdx = 0;
 	u64 tris = 0;
@@ -531,7 +541,6 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 					{
 						cmd.draw(pImpl->vbo.count, 1, 0, 0);
 					}
-					pipelines.insert(pPipeline->m_uImpl.get());
 				}
 				++drawableIdx;
 			}

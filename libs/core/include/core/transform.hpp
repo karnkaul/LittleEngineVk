@@ -17,7 +17,7 @@ private:
 	glm::vec3 m_position = glm::vec3(0.0f);
 	glm::quat m_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 	glm::vec3 m_scale = glm::vec3(1.0f);
-	std::list<Transform*> m_children;
+	std::list<Ref<Transform>> m_children;
 	Transform* m_pParent = nullptr;
 	mutable bool m_bDirty = false;
 
@@ -32,69 +32,93 @@ public:
 	~Transform();
 
 public:
-	Transform& setPosition(glm::vec3 const& position);
-	Transform& setOrientation(glm::quat const& orientation);
-	Transform& setScale(f32 scale);
-	Transform& setScale(glm::vec3 const& scale);
+	///
+	/// \brief Set (local) position
+	///
+	Transform& position(glm::vec3 const& position) noexcept;
+	///
+	/// \brief Set (local) orientation
+	///
+	Transform& orient(glm::quat const& orientation) noexcept;
+	///
+	/// \brief Set (local) scale
+	///
+	Transform& scale(f32 scale) noexcept;
+	///
+	/// \brief Set (local) scale
+	///
+	Transform& scale(glm::vec3 const& scale) noexcept;
 	///
 	/// \brief Set `pParent` as the parent of this transform
 	///
 	/// Pass `nullptr` to unset
 	///
-	Transform& setParent(Transform* pParent);
+	Transform& parent(Transform* pParent);
+	///
+	/// \brief Reset to default state
+	///
+	void reset(bool bUnparent);
 
 	///
 	/// \brief Obtain parent (if any)
 	///
-	Transform const* parent() const;
+	Transform const* parent() const noexcept;
 	///
 	/// \brief Obtain parent (if any)
 	///
-	Transform* parent();
-
-	glm::vec3 const& position() const;
-	glm::quat const& orientation() const;
-	glm::vec3 const& scale() const;
+	Transform* parent() noexcept;
+	///
+	/// \brief Obtain local position
+	///
+	glm::vec3 const& position() const noexcept;
+	///
+	/// \brief Obtain local orientation
+	///
+	glm::quat const& orientation() const noexcept;
+	///
+	/// \brief Obtain local scale
+	///
+	glm::vec3 const& scale() const noexcept;
 	///
 	/// \brief Check if scale is uniform across all axes
 	///
-	bool isIsotropic() const;
+	bool isotropic() const noexcept;
 
 	///
 	/// \brief Obtain final position (after transformations from parent hierarchy)
 	///
-	glm::vec3 worldPosition() const;
+	glm::vec3 worldPosition() const noexcept;
 	///
 	/// \brief Obtain final orientation (after transformations from parent hierarchy)
 	///
-	glm::quat worldOrientation() const;
+	glm::quat worldOrientation() const noexcept;
 	///
 	/// \brief Obtain final scale (after transformations from parent hierarchy)
 	///
-	glm::vec3 worldScale() const;
+	glm::vec3 worldScale() const noexcept;
 
 	///
 	/// \brief Obtain transformation matrix (recompute if stale)
 	///
-	glm::mat4 model() const;
+	glm::mat4 model() const noexcept;
 	///
 	/// \brief Obtain normal matrix (recompute if stale)
 	///
-	glm::mat4 normalModel() const;
+	glm::mat4 normalModel() const noexcept;
 
 	///
 	/// \brief Check if world transform is up to date
 	///
-	/// Returns `false` if any `Transform` in the hierarcy is stale
+	/// Returns `true` if any `Transform` in the hierarcy is stale
 	///
-	bool isUpToDate() const;
+	bool stale() const noexcept;
 	///
 	/// \brief Recompute transformation matrices if stale
 	///
-	void updateMats() const;
+	void updateMats() const noexcept;
 	///
 	/// \brief Obtain children parented to this Transform
 	///
-	std::list<Transform*> const& children() const;
+	std::list<Ref<Transform>> const& children() const noexcept;
 };
 } // namespace le

@@ -154,11 +154,11 @@ public:
 	///
 	/// \brief Obtain whether Enabled flag is set
 	///
-	bool isEnabled(Entity entity) const;
+	bool enabled(Entity entity) const;
 	///
 	/// \brief Obtain whether Destroyed flag is not set
 	///
-	bool isAlive(Entity entity) const;
+	bool alive(Entity entity) const;
 	///
 	/// \brief Obtain whether Debug flag is set
 	///

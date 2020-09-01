@@ -45,12 +45,12 @@ public:
 	///
 	/// \brief Obtain the status of this task
 	///
-	Status status() const;
+	Status status() const noexcept;
 	///
 	/// \brief Check whether this task has been completed
 	///
-	bool hasCompleted(bool bIncludeDiscarded) const;
-	s64 id() const;
+	bool hasCompleted(bool bIncludeDiscarded) const noexcept;
+	s64 id() const noexcept;
 
 	///
 	/// \brief Wait until task is complete / discarded
@@ -59,19 +59,19 @@ public:
 	///
 	/// \brief Discard task if not already executing
 	///
-	bool discard();
+	bool discard() noexcept;
 
 	///
 	/// \brief Check whether task threw an exception
 	///
-	bool didThrow() const;
+	bool didThrow() const noexcept;
 	///
 	/// \brief Obtain exception.what() (if Status is eError)
 	///
-	std::string_view exception() const;
+	std::string_view exception() const noexcept;
 
 private:
-	friend class Worker;
+	friend struct Worker;
 };
 
 ///

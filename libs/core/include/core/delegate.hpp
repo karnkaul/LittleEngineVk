@@ -12,11 +12,11 @@ template <typename... Args>
 class Delegate
 {
 public:
-	using Token = UniqueToken<s32>;
 	using Callback = std::function<void(Args...)>;
+	using Token = Token;
 
 private:
-	Tokeniser<Callback, s32> m_tokeniser;
+	Tokeniser<Callback> m_tokeniser;
 
 public:
 	///
@@ -25,81 +25,42 @@ public:
 	///
 	[[nodiscard]] Token subscribe(Callback callback);
 	///
-	/// \brief Clean up dead callbacks and invoke the rest
-	/// \returns Count of registered callbacks
+	/// \brief Invoke registered callbacks; returns live count
 	///
-	std::size_t operator()(Args... args);
-	///
-	/// \brief Skip dead callbacks and invoke the rest; returns live count
-	/// \returns Count of registered callbacks
-	///
-	std::size_t operator()(Args... args) const;
+	void operator()(Args... args) const;
 	///
 	/// \brief Check if any registered callbacks exist
 	/// \returns `true` if any previously distributed Token is still alive
 	///
-	/// Calls `cleanup()`
-	[[nodiscard]] bool isAlive();
+	[[nodiscard]] bool alive() const noexcept;
 	///
 	/// \brief Clear all registered callbacks
 	///
-	void clear();
-	///
-	/// \brief Remove unregistered callbacks
-	///
-	void sweep();
+	void clear() noexcept;
 };
 
 template <typename... Args>
 typename Delegate<Args...>::Token Delegate<Args...>::subscribe(Callback callback)
 {
-	return m_tokeniser.addUnique(std::move(callback));
+	return m_tokeniser.pushBack(std::move(callback));
 }
 
 template <typename... Args>
-std::size_t Delegate<Args...>::operator()(Args... args)
+void Delegate<Args...>::operator()(Args... args) const
 {
-	sweep();
-	for (auto const& [callback, _] : m_tokeniser.entries)
-	{
-		callback(std::forward<Args>(args)...);
-	}
-	return m_tokeniser.size();
+	m_tokeniser.forEach([&args...](auto& callback) { callback(args...); });
 }
 
 template <typename... Args>
-std::size_t Delegate<Args...>::operator()(Args... args) const
+bool Delegate<Args...>::alive() const noexcept
 {
-	std::size_t ret = 0;
-	for (auto const& [callback, token] : m_tokeniser.entries)
-	{
-		if (token.lock())
-		{
-			callback(args...);
-			++ret;
-		}
-	}
-	return ret;
-}
-
-template <typename... Args>
-bool Delegate<Args...>::isAlive()
-{
-	sweep();
 	return !m_tokeniser.empty();
 }
 
 template <typename... Args>
-void Delegate<Args...>::clear()
+void Delegate<Args...>::clear() noexcept
 {
 	m_tokeniser.clear();
-	return;
-}
-
-template <typename... Args>
-void Delegate<Args...>::sweep()
-{
-	m_tokeniser.sweep();
 	return;
 }
 } // namespace le

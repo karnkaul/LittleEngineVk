@@ -32,17 +32,17 @@ std::string Time::toString(Time time)
 	return ret.str();
 }
 
-Time Time::elapsed()
+Time Time::elapsed() noexcept
 {
 	return Time(stdch::duration_cast<stdch::microseconds>(stdch::high_resolution_clock::now() - s_localEpoch).count());
 }
 
-Time Time::sinceEpoch()
+Time Time::sinceEpoch() noexcept
 {
 	return Time(stdch::duration_cast<stdch::microseconds>(stdch::high_resolution_clock::now().time_since_epoch()).count());
 }
 
-Time Time::clamp(Time val, Time min, Time max)
+Time Time::clamp(Time val, Time min, Time max) noexcept
 {
 	if (val.usecs < min.usecs)
 	{
@@ -55,115 +55,117 @@ Time Time::clamp(Time val, Time min, Time max)
 	return val;
 }
 
-void Time::resetElapsed()
+void Time::resetElapsed() noexcept
 {
 	s_localEpoch = stdch::high_resolution_clock::now();
 }
 
-Time& Time::scale(f32 magnitude)
+Time& Time::scale(f32 magnitude) noexcept
 {
 	auto fus = f32(usecs.count()) * magnitude;
 	usecs = stdch::microseconds(s64(fus));
 	return *this;
 }
 
-Time Time::scaled(f32 magnitude) const
+Time Time::scaled(f32 magnitude) const noexcept
 {
 	Time ret = *this;
 	return ret.scale(magnitude);
 }
 
-Time& Time::operator-()
+Time& Time::operator-() noexcept
 {
 	usecs = -usecs;
 	return *this;
 }
 
-Time& Time::operator+=(Time const& rhs)
+Time& Time::operator+=(Time const& rhs) noexcept
 {
 	usecs += rhs.usecs;
 	return *this;
 }
 
-Time& Time::operator-=(Time const& rhs)
+Time& Time::operator-=(Time const& rhs) noexcept
 {
 	usecs -= rhs.usecs;
 	return *this;
 }
 
-Time& Time::operator*=(Time const& rhs)
+Time& Time::operator*=(Time const& rhs) noexcept
 {
 	usecs *= rhs.usecs.count();
 	return *this;
 }
 
-Time& Time::operator/=(Time const& rhs)
+Time& Time::operator/=(Time const& rhs) noexcept
 {
 	usecs = (rhs.usecs == usecs.zero()) ? usecs.zero() : usecs /= rhs.usecs.count();
 	return *this;
 }
 
-bool Time::operator==(Time const& rhs)
+bool Time::operator==(Time const& rhs) noexcept
 {
 	return usecs == rhs.usecs;
 }
 
-bool Time::operator!=(Time const& rhs)
+bool Time::operator!=(Time const& rhs) noexcept
 {
 	return !(*this == rhs);
 }
 
-bool Time::operator<(Time const& rhs)
+bool Time::operator<(Time const& rhs) noexcept
 {
 	return usecs < rhs.usecs;
 }
 
-bool Time::operator<=(Time const& rhs)
+bool Time::operator<=(Time const& rhs) noexcept
 {
 	return usecs <= rhs.usecs;
 }
 
-bool Time::operator>(Time const& rhs)
+bool Time::operator>(Time const& rhs) noexcept
 {
 	return usecs > rhs.usecs;
 }
 
-bool Time::operator>=(Time const& rhs)
+bool Time::operator>=(Time const& rhs) noexcept
 {
 	return usecs >= rhs.usecs;
 }
 
-f32 Time::to_s() const
+f32 Time::to_s() const noexcept
 {
-	return f32(usecs.count()) / (1000.0f * 1000.0f);
+	auto const count = usecs.count();
+	return count == 0 ? 0.0f : f32(usecs.count()) / (1000.0f * 1000.0f);
 }
 
-s32 Time::to_ms() const
+s32 Time::to_ms() const noexcept
 {
-	return s32(usecs.count() / 1000);
+	auto const count = usecs.count();
+	return count == 0 ? 0 : s32(usecs.count() / 1000);
 }
 
-s64 Time::to_us() const
+s64 Time::to_us() const noexcept
 {
 	return usecs.count();
 }
 
-Time operator+(Time const& lhs, Time const& rhs)
+Time operator+(Time const& lhs, Time const& rhs) noexcept
 {
 	return Time(lhs) -= rhs;
 }
 
-Time operator-(Time const& lhs, Time const& rhs)
+Time operator-(Time const& lhs, Time const& rhs) noexcept
 {
 	return Time(lhs) -= rhs;
 }
 
-Time operator*(Time const& lhs, Time const& rhs)
+Time operator*(Time const& lhs, Time const& rhs) noexcept
 {
 	return Time(lhs) *= rhs;
 }
 
-Time operator/(Time const& lhs, Time const& rhs)
+Time operator/(Time const& lhs, Time const& rhs) noexcept
 {
 	return Time(lhs) /= rhs;
 }

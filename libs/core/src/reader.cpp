@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <physfs/physfs.h>
 #include <core/assert.hpp>
 #include <core/log.hpp>
@@ -42,7 +43,7 @@ PhysfsHandle::~PhysfsHandle()
 	}
 }
 
-std::unique_ptr<PhysfsHandle> g_uPhysfsHandle;
+std::optional<PhysfsHandle> g_physfsHandle;
 } // namespace
 
 Reader::Reader() noexcept = default;
@@ -280,15 +281,15 @@ TResult<bytearray> ZIPReader::bytes(stdfs::path const& id) const
 
 void impl::initPhysfs()
 {
-	if (!g_uPhysfsHandle)
+	if (!g_physfsHandle)
 	{
-		g_uPhysfsHandle = std::make_unique<PhysfsHandle>();
+		g_physfsHandle = PhysfsHandle();
 	}
 }
 
 void impl::deinitPhysfs()
 {
-	g_uPhysfsHandle = nullptr;
+	g_physfsHandle.reset();
 }
 
 FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode)

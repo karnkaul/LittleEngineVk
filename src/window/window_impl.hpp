@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include <unordered_set>
 #include <core/static_any.hpp>
 #include <engine/window/window.hpp>
@@ -38,7 +37,7 @@ public:
 
 	glm::ivec2 m_windowSize = {};
 	glm::ivec2 m_framebufferSize = {};
-	std::unique_ptr<NativeWindow> m_uNativeWindow;
+	NativeWindow m_nativeWindow;
 	std::vector<PresentMode> m_presentModes;
 	Cursor m_cursor;
 	Window* m_pWindow;
@@ -58,11 +57,11 @@ public:
 	WindowImpl(Window* pWindow);
 	~WindowImpl();
 
-	bool create(Window::Info const& info);
-	bool isOpen() const;
+	bool create(Window* pWindow, Window::Info const& info);
+	bool open() const;
 	bool exists() const;
-	bool isClosing() const;
-	bool isFocused() const;
+	bool closing() const;
+	bool focused() const;
 	void setClosing();
 	void destroy();
 

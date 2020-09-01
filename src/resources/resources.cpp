@@ -6,6 +6,7 @@
 #include <core/log.hpp>
 #include <core/map_store.hpp>
 #include <core/threads.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/vram.hpp>
@@ -24,7 +25,7 @@ struct Map
 {
 	TMapStore<std::unordered_map<GUID, TResource<T, TImpl>>> resources;
 	std::unordered_map<Hash, GUID> ids;
-	std::unordered_map<GUID, TImpl*> loading;
+	std::unordered_map<GUID, Ref<TImpl>> loading;
 	mutable kt::lockable<std::shared_mutex> mutex;
 };
 
@@ -55,7 +56,7 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 		if (std::is_base_of_v<ILoadable, TImpl> && pImpl->status != Status::eReady)
 		{
 			pImpl->status = Status::eLoading;
-			out_map.loading[guid] = pImpl;
+			out_map.loading.emplace(guid, *pImpl);
 			LOG_I("++ [{}] [{}] [{}] loading...", guid, T::s_tName, id.generic_string());
 		}
 		else
@@ -158,24 +159,25 @@ void update(Map<T, TImpl>& out_map)
 {
 	if constexpr (std::is_base_of_v<ILoadable, TImpl>)
 	{
-		auto lock = out_map.mutex.template lock<std::shared_lock>();
+		auto lock = out_map.mutex.template lock<std::unique_lock>();
 		for (auto iter = out_map.loading.begin(); iter != out_map.loading.end();)
 		{
-			auto& [guid, pImpl] = *iter;
-			if (pImpl->update())
+			[[maybe_unused]] auto const guid = iter->first;
+			TImpl& impl = iter->second;
+			if (impl.update())
 			{
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-				if (pImpl->bLoadedOnce)
+				if (impl.bLoadedOnce)
 				{
-					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, pImpl->id.generic_string());
+					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, impl.id.generic_string());
 					if constexpr (std::is_base_of_v<IReloadable, TImpl>)
 					{
-						pImpl->onReload();
+						impl.onReload();
 					}
 				}
 #endif
-				pImpl->bLoadedOnce = true;
-				pImpl->status = Status::eReady;
+				impl.bLoadedOnce = true;
+				impl.status = Status::eReady;
 				iter = out_map.loading.erase(iter);
 			}
 			else
@@ -196,7 +198,7 @@ void update(Map<T, TImpl>& out_map)
 				{
 					LOG_D("++ [{}] [{}] [{}] reloading...", guid, T::s_tName, tResource.uImpl->id.generic_string());
 					tResource.uImpl->status = Status::eReloading;
-					out_map.loading[guid] = tResource.uImpl.get();
+					out_map.loading.emplace(guid, *tResource.uImpl);
 				}
 				else
 				{
@@ -234,8 +236,8 @@ Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo)
 	auto name = "load_async:" + id.generic_string();
 	auto handle = tasks::enqueue(
 		[id = id, loadInfo = std::move(loadInfo)]() {
-			auto world_s = World::setBusy();
-			auto res_s = res::acquire();
+			auto engine_s = engine::setBusy();
+			auto res_s = acquire();
 			if (auto info = loadInfo.createInfo())
 			{
 				load(id, std::move(*info));
@@ -321,7 +323,7 @@ Counter<s32> g_counter;
 
 res::Semaphore res::acquire()
 {
-	return g_counter;
+	return Semaphore(g_counter);
 }
 
 res::Shader res::load(stdfs::path const& id, Shader::CreateInfo createInfo)
@@ -801,7 +803,7 @@ void res::update()
 
 void res::waitIdle()
 {
-	constexpr Time timeout = 5s;
+	constexpr Time timeout = 2s;
 	Time elapsed;
 	Time const start = Time::elapsed();
 	while (!g_counter.isZero(true) && elapsed < timeout)
@@ -809,7 +811,7 @@ void res::waitIdle()
 		elapsed = Time::elapsed() - start;
 		threads::sleep();
 	}
-	bool bTimeout = elapsed > timeout;
+	bool bTimeout = elapsed >= timeout;
 	ASSERT(!bTimeout, "Timeout waiting for Resources! Expect a crash");
 	LOGIF_E(bTimeout, "[le::resources] Timeout waiting for Resources! Expect crashes/hangs!");
 	waitLoading(g_shaders);

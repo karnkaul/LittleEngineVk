@@ -22,7 +22,7 @@ void RenderContext::Metadata::refresh()
 	presentModes = g_instance.physicalDevice.getSurfacePresentModesKHR(surface);
 }
 
-bool RenderContext::Metadata::isReady() const
+bool RenderContext::Metadata::ready() const
 {
 	return !colourFormats.empty() && !presentModes.empty();
 }
@@ -111,7 +111,7 @@ RenderContext::RenderContext(ContextInfo const& info) : m_window(info.config.win
 	ASSERT(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
 	m_metadata.info = info;
 	m_metadata.refresh();
-	if (!m_metadata.isReady())
+	if (!m_metadata.ready())
 	{
 		g_instance.destroy(m_metadata.surface);
 		throw std::runtime_error("Failed to create RenderContext!");
@@ -148,11 +148,11 @@ void RenderContext::onFramebufferResize()
 
 RenderContext::TOutcome<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn)
 {
-	if (m_flags.isSet(Flag::eRenderPaused))
+	if (m_flags.test(Flag::eRenderPaused))
 	{
 		return Outcome::ePaused;
 	}
-	if (m_flags.isSet(Flag::eOutOfDate))
+	if (m_flags.test(Flag::eOutOfDate))
 	{
 		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
 	}
@@ -171,11 +171,11 @@ RenderContext::TOutcome<RenderTarget> RenderContext::acquireNextImage(vk::Semaph
 
 RenderContext::Outcome RenderContext::present(vk::Semaphore wait)
 {
-	if (m_flags.isSet(Flag::eRenderPaused))
+	if (m_flags.test(Flag::eRenderPaused))
 	{
 		return Outcome::ePaused;
 	}
-	if (m_flags.isSet(Flag::eOutOfDate))
+	if (m_flags.test(Flag::eOutOfDate))
 	{
 		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
 	}
@@ -211,7 +211,7 @@ bool RenderContext::createSwapchain()
 {
 	auto prevSurface = m_metadata.surface;
 	m_metadata.refresh();
-	[[maybe_unused]] bool bReady = m_metadata.isReady();
+	[[maybe_unused]] bool bReady = m_metadata.ready();
 	ASSERT(bReady, "RenderContext not ready!");
 	// Swapchain
 	m_metadata.presentMode = m_metadata.bestPresentMode();
@@ -326,7 +326,7 @@ bool RenderContext::recreateSwapchain()
 		LOG_D("[{}] ... Swapchain recreated", m_name, m_window);
 		return true;
 	}
-	LOGIF_E(!m_flags.isSet(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name, m_window);
+	LOGIF_E(!m_flags.test(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name, m_window);
 	return false;
 }
 } // namespace le::gfx

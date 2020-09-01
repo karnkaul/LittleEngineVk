@@ -14,8 +14,10 @@
 
 #if defined(LEVK_ASSERTS)
 #define ASSERT(predicate, errorMessage) ::le::assertMsg(!!(predicate), errorMessage, __FILE__, __LINE__)
+constexpr bool levk_asserts = true;
 #else
 #define ASSERT(disabled, _disabled)
+constexpr bool levk_asserts = false;
 #endif
 
 namespace le

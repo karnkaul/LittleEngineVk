@@ -102,7 +102,7 @@ private:
 
 	PCDeq writeSets(Renderer::Scene& out_scene);
 	u64 doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target, bool bExtGUI) const;
-	RenderContext::Outcome submit();
+	bool submit();
 
 	friend class le::WindowImpl;
 };

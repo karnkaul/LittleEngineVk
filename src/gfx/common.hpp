@@ -80,8 +80,8 @@ struct InitInfo final
 	struct
 	{
 		CreateSurface createTempSurface;
-		std::vector<char const*> instanceExtensions;
-		std::vector<engine::MemRange> stagingReserve;
+		Span<char const*> instanceExtensions;
+		Span<engine::MemRange> stagingReserve;
 	} config;
 
 	struct

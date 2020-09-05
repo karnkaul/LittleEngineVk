@@ -17,14 +17,6 @@ struct RenderFrame final
 class RenderContext final
 {
 public:
-	enum class Outcome : s8
-	{
-		eSuccess = 0,
-		ePaused,
-		eSwapchainRecreated,
-		eCOUNT_
-	};
-
 	enum class Flag : s8
 	{
 		eRenderPaused,
@@ -32,16 +24,6 @@ public:
 		eCOUNT_
 	};
 	using Flags = TFlags<Flag>;
-
-	template <typename T>
-	struct TOutcome final
-	{
-		T payload = {};
-		Outcome outcome;
-
-		TOutcome(Outcome outcome) : outcome(outcome){};
-		TOutcome(T&& payload) : payload(std::move(payload)), outcome(Outcome::eSuccess) {}
-	};
 
 private:
 	struct Metadata final
@@ -98,8 +80,8 @@ public:
 public:
 	void onFramebufferResize();
 
-	TOutcome<RenderTarget> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn);
-	Outcome present(vk::Semaphore wait);
+	TResult<RenderTarget> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn);
+	bool present(vk::Semaphore wait);
 
 	vk::Format colourFormat() const;
 	vk::Format depthFormat() const;

@@ -297,16 +297,19 @@ void WindowImpl::update()
 	}
 }
 
-std::vector<char const*> WindowImpl::vulkanInstanceExtensions()
+Span<char const*> WindowImpl::vulkanInstanceExtensions()
 {
-	std::vector<char const*> ret;
+	static std::vector<char const*> ret;
 #if defined(LEVK_USE_GLFW)
-	u32 glfwExtCount;
-	char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
-	ret.reserve((std::size_t)glfwExtCount);
-	for (u32 i = 0; i < glfwExtCount; ++i)
+	if (ret.empty())
 	{
-		ret.push_back(glfwExtensions[i]);
+		u32 glfwExtCount;
+		char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+		ret.reserve((std::size_t)glfwExtCount);
+		for (u32 i = 0; i < glfwExtCount; ++i)
+		{
+			ret.push_back(glfwExtensions[i]);
+		}
 	}
 #endif
 	return ret;
@@ -399,19 +402,23 @@ bool WindowImpl::create(Window* pWindow, Window::Info const& info)
 		rendererInfo.contextInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
 		rendererInfo.contextInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
 		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
+		std::optional<vk::Format> forceColourSpace;
+		std::vector<vk::PresentModeKHR> forcePresentModes;
 		for (auto colourSpace : info.options.colourSpaces)
 		{
-			rendererInfo.contextInfo.options.formats.push_back(gfx::g_colourSpaces.at((std::size_t)colourSpace));
+			forceColourSpace = gfx::g_colourSpaces.at((std::size_t)colourSpace);
+			rendererInfo.contextInfo.options.formats = *forceColourSpace;
 		}
 		if (os::isDefined("immediate", "i"))
 		{
 			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
-			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)PresentMode::eImmediate);
+			forcePresentModes.push_back((vk::PresentModeKHR)PresentMode::eImmediate);
 		}
 		for (auto presentMode : info.options.presentModes)
 		{
-			rendererInfo.contextInfo.options.presentModes.push_back((vk::PresentModeKHR)presentMode);
+			forcePresentModes.push_back((vk::PresentModeKHR)presentMode);
 		}
+		rendererInfo.contextInfo.options.presentModes = forcePresentModes;
 		rendererInfo.frameCount = info.config.virtualFrameCount;
 		rendererInfo.windowID = m_pWindow->id();
 		registerCallbacks(m_nativeWindow);

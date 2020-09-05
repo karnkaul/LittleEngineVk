@@ -41,12 +41,6 @@ enum class ShutdownSequence : s8
 };
 inline ShutdownSequence g_shutdownSequence = ShutdownSequence::eCloseWindow_Shutdown;
 
-struct DataSearch final
-{
-	std::vector<stdfs::path> patterns;
-	os::Dir dirType = os::Dir::eExecutable;
-};
-
 struct MemRange final
 {
 	std::size_t size = 2;
@@ -58,8 +52,8 @@ struct Info final
 	io::FileReader fileReader;
 	io::ZIPReader zipReader;
 	std::optional<Window::Info> windowInfo;
-	std::vector<stdfs::path> dataPaths;
-	std::vector<MemRange> vramReserve;
+	Span<stdfs::path> dataPaths;
+	Span<MemRange> vramReserve;
 	Ref<io::Reader> reader = fileReader;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
@@ -110,11 +104,12 @@ private:
 };
 
 ///
-/// \brief Locate data files for engine and/or app by searching upwards from the executable/working directory path
-/// \param searchPatterns List of directory / ZIP name patterns and start directories (executable / working) to search for (can include
+/// \brief Locate files / directories on the filesysten by searching upwards from the executable/working directory path
+/// \param patterns List of directory / filename patterns to search for
+/// \param dirType Starting directory (executable / working)
 /// \returns Fully qualified paths for each found pattern
 ///
-std::vector<stdfs::path> locateData(std::vector<DataSearch> const& searchPatterns);
+std::vector<stdfs::path> locate(Span<stdfs::path> patterns, os::Dir dirType = os::Dir::eExecutable);
 
 ///
 /// \brief Obtain whether the engine is shutting down

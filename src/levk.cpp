@@ -54,7 +54,7 @@ Service::Service(os::Args args)
 	Time::resetElapsed();
 	m_services.add<os::Service>(args);
 	m_services.add<io::Service>(std::string_view("debug.log"));
-	LOG_I("LittleEngineVk {}", g_engineVersion.toString(false));
+	LOG_I("LittleEngineVk v{}  [{}/{}]", g_engineVersion.toString(false), levk_OS_name, levk_arch_name);
 	m_services.add<tasks::Service>(4);
 }
 
@@ -232,16 +232,14 @@ void Service::doShutdown()
 }
 } // namespace engine
 
-std::vector<stdfs::path> engine::locateData(std::vector<DataSearch> const& searchPatterns)
+std::vector<stdfs::path> engine::locate(Span<stdfs::path> patterns, os::Dir dirType)
 {
 	std::vector<stdfs::path> ret;
-	auto const exe = os::dirPath(os::Dir::eExecutable);
-	auto const pwd = os::dirPath(os::Dir::eWorking);
-	for (auto const& pattern : searchPatterns)
+	auto const start = os::dirPath(dirType);
+	for (auto const& pattern : patterns)
 	{
-		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
-		auto search = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
-		LOGIF_W(!search, "[{}] Failed to locate data!", tName);
+		auto search = io::FileReader::findUpwards(start, pattern);
+		LOGIF_W(!search, "[{}] Failed to locate [{}] from [{}]!", tName, pattern.generic_string(), start.generic_string());
 		if (search)
 		{
 			ret.push_back(std::move(*search));

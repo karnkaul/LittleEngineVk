@@ -416,7 +416,7 @@ void presentModeDropdown()
 {
 	if (auto pWindow = WindowImpl::windowImpl(g_data.window))
 	{
-		static std::array const s_presentModes = {"Off"sv, "Triple Buffer"sv, "Double Buffer"sv, "Double Buffer (Relaxed)"sv};
+		static std::array const s_presentModes = {"Off"sv, "Mailbox"sv, "FIFO"sv, "FIFO (Relaxed)"sv};
 		auto presentMode = pWindow->presentMode();
 		if (ImGui::BeginCombo("Vsync", s_presentModes[(std::size_t)presentMode].data()))
 		{

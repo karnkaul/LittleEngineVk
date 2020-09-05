@@ -212,22 +212,19 @@ bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 	auto& frame = frameSync();
 	g_device.waitFor(frame.drawing);
 	auto const push = bEmpty ? PCDeq() : writeSets(scene);
-	auto [target, result] = m_context.acquireNextImage(frame.renderReady, frame.drawing);
-	bool bRecreate = false;
+	auto target = m_context.acquireNextImage(frame.renderReady, frame.drawing);
 	bool bRendered = false;
-	switch (result)
-	{
-	case RenderContext::Outcome::eSuccess:
+	if (target)
 	{
 		g_device.destroy(frame.framebuffer);
-		frame.framebuffer = g_device.createFramebuffer(m_renderPass, target.attachments(), target.extent);
+		frame.framebuffer = g_device.createFramebuffer(m_renderPass, target->attachments(), target->extent);
 		u64 tris = 0;
 		if (push.empty())
 		{
 			static auto const c = colours::black;
 			vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 			vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
-			RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
+			RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target->extent, {colour, depth});
 			if (bExtGUI)
 			{
 				ext_gui::renderDrawData(frame.commandBuffer);
@@ -235,30 +232,14 @@ bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 		}
 		else
 		{
-			tris = doRenderPass(scene, push, target, bExtGUI);
+			tris = doRenderPass(scene, push, *target, bExtGUI);
 		}
-		result = submit();
-		bRecreate = result == RenderContext::Outcome::eSwapchainRecreated;
-		if (result == RenderContext::Outcome::eSuccess)
+		if (submit())
 		{
 			next();
 			m_pRenderer->m_stats.trisDrawn = tris;
 			bRendered = true;
 		}
-		break;
-	}
-	case RenderContext::Outcome::eSwapchainRecreated:
-	{
-		bRecreate = true;
-		break;
-	}
-	default:
-		break;
-	}
-	if (bRecreate)
-	{
-		destroy();
-		create(m_frameCount);
 	}
 	return bRendered;
 }
@@ -555,7 +536,7 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 	return tris;
 }
 
-RenderContext::Outcome RendererImpl::submit()
+bool RendererImpl::submit()
 {
 	auto& frame = frameSync();
 	vk::SubmitInfo submitInfo;

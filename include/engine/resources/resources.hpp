@@ -29,7 +29,10 @@ struct Scoped final : NoCopy
 	T resource;
 
 	constexpr Scoped(T t = T{}) noexcept : resource(t) {}
-	constexpr Scoped(Scoped&&) noexcept = default;
+	constexpr Scoped(Scoped&& rhs) noexcept : resource(rhs.resource)
+	{
+		rhs.resource = {};
+	}
 	Scoped& operator=(Scoped&&);
 	~Scoped();
 

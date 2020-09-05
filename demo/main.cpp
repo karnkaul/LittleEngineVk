@@ -6,12 +6,13 @@ int main(int argc, char** argv)
 	using namespace le;
 
 	engine::Service engine({argc, argv});
+	auto dataPaths = engine::locate({"data", "demo/data"});
 	engine::Info info;
 	Window::Info windowInfo;
 	windowInfo.config.size = {1280, 720};
 	windowInfo.config.title = "LittleEngineVk Demo";
 	info.windowInfo = std::move(windowInfo);
-	info.dataPaths = engine::locateData({{{"data"}}, {{"demo/data"}}});
+	info.dataPaths = dataPaths;
 	// info.dataPaths = engine.locateData({{{"data.zip"}}, {{"demo/data.zip"}}});
 #if defined(LEVK_DEBUG)
 	info.bLogVRAMallocations = true;

@@ -4,16 +4,14 @@
 int main(int argc, char** argv)
 {
 	using namespace le;
-	engine::Service engine(argc, argv);
 
-	io::FileReader reader;
+	engine::Service engine({argc, argv});
 	engine::Info info;
-	Window::Info info0;
-	info0.config.size = {1280, 720};
-	info0.config.title = "LittleEngineVk Demo";
-	info.windowInfo = info0;
-	info.pReader = &reader;
-	info.dataPaths = engine.locateData({{{"data"}}, {{"demo/data"}}});
+	Window::Info windowInfo;
+	windowInfo.config.size = {1280, 720};
+	windowInfo.config.title = "LittleEngineVk Demo";
+	info.windowInfo = std::move(windowInfo);
+	info.dataPaths = engine::locateData({{{"data"}}, {{"demo/data"}}});
 	// info.dataPaths = engine.locateData({{{"data.zip"}}, {{"demo/data.zip"}}});
 #if defined(LEVK_DEBUG)
 	info.bLogVRAMallocations = true;

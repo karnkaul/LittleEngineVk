@@ -48,11 +48,11 @@ Counter<s32> g_counter;
 Clock g_clock;
 } // namespace
 
-Service::Service(s32 argc, char const* const* const argv)
+Service::Service(os::Args args)
 {
 	dj::g_log_error = [](auto text) { LOG_E("{}", text); };
 	Time::resetElapsed();
-	m_services.add<os::Service>(os::Args{argc, argv});
+	m_services.add<os::Service>(args);
 	m_services.add<io::Service>(std::string_view("debug.log"));
 	LOG_I("LittleEngineVk {}", g_engineVersion.toString(false));
 	m_services.add<tasks::Service>(4);
@@ -67,24 +67,6 @@ Service::~Service()
 	gs::reset();
 	res::deinit();
 	g_app = {};
-}
-
-std::vector<stdfs::path> Service::locateData(std::vector<DataSearch> const& searchPatterns)
-{
-	std::vector<stdfs::path> ret;
-	auto const exe = os::dirPath(os::Dir::eExecutable);
-	auto const pwd = os::dirPath(os::Dir::eWorking);
-	for (auto const& pattern : searchPatterns)
-	{
-		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
-		auto search = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
-		LOGIF_W(!search, "[{}] Failed to locate data!", tName);
-		if (search)
-		{
-			ret.push_back(std::move(*search));
-		}
-	}
-	return ret;
 }
 
 bool Service::init(Info const& info)
@@ -110,17 +92,17 @@ bool Service::init(Info const& info)
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
 		io::FileReader fileReader;
-		io::Reader* pReader = info.pReader ? info.pReader : &fileReader;
+		io::Reader& reader = info.reader;
 		std::vector<stdfs::path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;
 		for (auto const& path : dataPaths)
 		{
-			if (!pReader->mount(path))
+			if (!reader.mount(path))
 			{
 				throw std::runtime_error("Failed to mount data path" + path.generic_string() + "!");
 			}
 		}
-		g_app.pReader = pReader;
+		g_app.pReader = &reader;
 		m_services.add<res::Service>();
 		if (info.windowInfo)
 		{
@@ -249,6 +231,24 @@ void Service::doShutdown()
 	g_status = Status::eShutdown;
 }
 } // namespace engine
+
+std::vector<stdfs::path> engine::locateData(std::vector<DataSearch> const& searchPatterns)
+{
+	std::vector<stdfs::path> ret;
+	auto const exe = os::dirPath(os::Dir::eExecutable);
+	auto const pwd = os::dirPath(os::Dir::eWorking);
+	for (auto const& pattern : searchPatterns)
+	{
+		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
+		auto search = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
+		LOGIF_W(!search, "[{}] Failed to locate data!", tName);
+		if (search)
+		{
+			ret.push_back(std::move(*search));
+		}
+	}
+	return ret;
+}
 
 bool engine::shuttingDown()
 {

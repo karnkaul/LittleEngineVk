@@ -55,10 +55,12 @@ struct MemRange final
 
 struct Info final
 {
+	io::FileReader fileReader;
+	io::ZIPReader zipReader;
 	std::optional<Window::Info> windowInfo;
 	std::vector<stdfs::path> dataPaths;
 	std::vector<MemRange> vramReserve;
-	io::Reader* pReader = nullptr;
+	Ref<io::Reader> reader = fileReader;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
 	io::Level vramLogLevel = io::Level::eDebug;
@@ -71,17 +73,11 @@ private:
 	Services m_services;
 
 public:
-	Service(s32 argc, char const* const* const argv);
+	Service(os::Args args = {});
 	Service(Service&&);
 	Service& operator=(Service&&);
 	~Service();
 
-	///
-	/// \brief Locate data files for engine and/or app by searching upwards from the executable/working directory path
-	/// \param searchPatterns List of directory / ZIP name patterns and start directories (executable / working) to search for (can include
-	/// \returns Fully qualified paths for each found pattern
-	///
-	std::vector<stdfs::path> locateData(std::vector<DataSearch> const& searchPatterns);
 	///
 	/// \brief Initialise engine and dependent services
 	/// \returns `false` if initialisation failed
@@ -97,7 +93,6 @@ public:
 	Status status() const;
 	///
 	/// \brief Update all services, tick Driver and submit scene
-	/// \returns `false` if shutting down
 	///
 	bool update(Driver& out_driver) const;
 	///
@@ -113,6 +108,13 @@ public:
 private:
 	static void doShutdown();
 };
+
+///
+/// \brief Locate data files for engine and/or app by searching upwards from the executable/working directory path
+/// \param searchPatterns List of directory / ZIP name patterns and start directories (executable / working) to search for (can include
+/// \returns Fully qualified paths for each found pattern
+///
+std::vector<stdfs::path> locateData(std::vector<DataSearch> const& searchPatterns);
 
 ///
 /// \brief Obtain whether the engine is shutting down

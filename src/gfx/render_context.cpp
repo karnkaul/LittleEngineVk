@@ -1,6 +1,9 @@
+#include "gfx/deferred.hpp"
+#include "vulkan/vulkan.hpp"
 #include <map>
 #include <core/log.hpp>
 #include <core/utils.hpp>
+#include <gfx/deferred.hpp>
 #include <gfx/render_context.hpp>
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
@@ -168,7 +171,7 @@ TResult<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady
 	auto& frame = m_swapchain.frame();
 	g_device.waitFor(frame.drawn);
 	frame.drawn = setOnDrawn;
-	return RenderTarget{frame.swapchain};
+	return frame.swapchain;
 }
 
 bool RenderContext::present(vk::Semaphore wait)
@@ -246,9 +249,11 @@ bool RenderContext::createSwapchain()
 		m_metadata.refresh();
 		createInfo.surface = m_metadata.surface;
 		createInfo.preTransform = m_metadata.capabilities.currentTransform;
+		createInfo.oldSwapchain = m_retiring;
 		auto const windowSize = m_metadata.info.config.getWindowSize();
 		m_swapchain.extent = createInfo.imageExtent = m_metadata.extent(windowSize);
 		m_swapchain.swapchain = g_device.device.createSwapchainKHR(createInfo);
+		m_retiring = vk::SwapchainKHR();
 	}
 	// Frames
 	{
@@ -302,20 +307,23 @@ bool RenderContext::createSwapchain()
 
 void RenderContext::destroySwapchain()
 {
-	g_device.waitIdle();
-	for (auto const& frame : m_swapchain.frames)
-	{
-		g_device.destroy(frame.swapchain.colour.view);
-	}
-	g_device.destroy(m_swapchain.depthImageView, m_swapchain.swapchain);
-	vram::release(m_swapchain.depthImage);
-	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name);
+	m_retiring = m_swapchain.swapchain;
+	deferred::release([swapchain = m_swapchain, name = m_name]() {
+		for (auto const& frame : swapchain.frames)
+		{
+			g_device.destroy(frame.swapchain.colour.view);
+		}
+		g_device.destroy(swapchain.depthImageView, swapchain.swapchain);
+		vram::release(swapchain.depthImage);
+		LOGIF_D(swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", name);
+	});
 	m_swapchain = {};
 }
 
 void RenderContext::cleanup()
 {
 	destroySwapchain();
+	g_device.waitIdle();
 	g_instance.destroy(m_metadata.surface);
 	m_metadata.surface = vk::SurfaceKHR();
 }

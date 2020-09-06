@@ -1,4 +1,5 @@
 #pragma once
+#include "vulkan/vulkan.hpp"
 #include <functional>
 #include <vector>
 #include <glm/glm.hpp>
@@ -67,6 +68,7 @@ public:
 
 public:
 	Swapchain m_swapchain;
+	vk::SwapchainKHR m_retiring;
 	Flags m_flags;
 	Metadata m_metadata;
 

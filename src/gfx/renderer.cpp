@@ -154,7 +154,7 @@ void RendererImpl::destroy()
 {
 	if (!m_frames.empty())
 	{
-		g_device.device.waitIdle();
+		g_device.waitIdle();
 		for (auto& frame : m_frames)
 		{
 			frame.set.destroy();

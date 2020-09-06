@@ -184,7 +184,7 @@ struct RenderTarget final
 	RenderImage depth;
 	vk::Extent2D extent;
 
-	inline std::vector<vk::ImageView> attachments() const
+	inline std::array<vk::ImageView, 2> attachments() const
 	{
 		return {colour.view, depth.view};
 	}

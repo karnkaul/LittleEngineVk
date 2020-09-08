@@ -201,17 +201,10 @@ inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorOutOfDateKHR, "OutOfDateSurface"},
 };
 
-struct MeshImpl final
+struct RenderPass final
 {
-	struct Data
-	{
-		Buffer buffer;
-		std::future<void> copied;
-		u32 count = 0;
-		void* pMem = nullptr;
-	};
-	
-	Data vbo;
-	Data ibo;
+	vk::RenderPass renderPass;
+	vk::Format colour;
+	vk::Format depth;
 };
 } // namespace le::gfx

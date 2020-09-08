@@ -1,3 +1,4 @@
+#include <array>
 #include <fmt/format.h>
 #include <core/log.hpp>
 #include <engine/resources/resources.hpp>
@@ -11,19 +12,6 @@
 
 namespace le::gfx
 {
-std::string const PipelineImpl::s_tName = utils::tName<Pipeline>();
-
-Pipeline::Pipeline() = default;
-Pipeline::Pipeline(Pipeline&&) = default;
-Pipeline& Pipeline::operator=(Pipeline&&) = default;
-Pipeline::~Pipeline() = default;
-
-std::string const& Pipeline::name() const
-{
-	static std::string const s_empty = "";
-	return m_uImpl ? m_uImpl->m_name : s_empty;
-}
-
 PipelineImpl::PipelineImpl() = default;
 PipelineImpl::PipelineImpl(PipelineImpl&&) = default;
 PipelineImpl& PipelineImpl::operator=(PipelineImpl&&) = default;
@@ -36,32 +24,27 @@ PipelineImpl::~PipelineImpl()
 bool PipelineImpl::create(Info info)
 {
 	m_info = std::move(info);
-	ASSERT(m_info.samplerLayout != vk::DescriptorSetLayout(), "Null descriptor set layout!");
 	if (m_info.shaderID.empty())
 	{
 		m_info.shaderID = "shaders/default";
 	}
-	m_name = fmt::format("{}:{}:?", m_info.window, m_info.name);
 	if (create())
 	{
-		m_name = fmt::format("{}:{}:{}", m_info.window, m_info.name, res::info(m_info.shader).id.generic_string());
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 		if (auto pImpl = res::impl(m_info.shader))
 		{
 			m_reloadToken = pImpl->onReload.subscribe([this]() { m_bShaderReloaded = true; });
 		}
 #endif
-		LOG_D("[{}] [{}] created", s_tName, m_name);
 		return true;
 	}
 	return false;
 }
 
-bool PipelineImpl::update(vk::RenderPass renderPass, vk::DescriptorSetLayout samplerLayout)
+bool PipelineImpl::update(RenderPass const& renderPass)
 {
-	bool bOutOfDate = renderPass != vk::RenderPass() && renderPass != m_info.renderPass;
-	bOutOfDate |= samplerLayout != vk::DescriptorSetLayout() && samplerLayout != m_info.samplerLayout;
-#if defined(LEVK_ASSET_HOT_RELOAD)
+	bool bOutOfDate = renderPass.renderPass != vk::RenderPass() && renderPass.renderPass != m_info.renderPass;
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
 	bOutOfDate |= m_bShaderReloaded;
 	m_bShaderReloaded = false;
 #endif
@@ -69,14 +52,8 @@ bool PipelineImpl::update(vk::RenderPass renderPass, vk::DescriptorSetLayout sam
 	{
 		// Add a frame of padding since this frame hasn't completed drawing yet
 		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); }, 1);
-		m_info.samplerLayout = samplerLayout;
-		m_info.renderPass = renderPass;
-		if (create())
-		{
-			LOG_D("[{}] [{}] recreated", s_tName, m_name);
-			return true;
-		}
-		return false;
+		m_info.renderPass = renderPass.renderPass;
+		return create();
 	}
 	return true;
 }
@@ -84,7 +61,6 @@ bool PipelineImpl::update(vk::RenderPass renderPass, vk::DescriptorSetLayout sam
 void PipelineImpl::destroy()
 {
 	deferred::release(m_pipeline, m_layout);
-	LOGIF_D(m_pipeline != vk::Pipeline(), "[{}] [{}] destroyed", s_tName, m_name);
 	m_pipeline = vk::Pipeline();
 	m_layout = vk::PipelineLayout();
 	return;
@@ -103,10 +79,10 @@ bool PipelineImpl::create()
 	auto pShaderImpl = res::impl(m_info.shader);
 	if (m_info.shader.status() != res::Status::eReady || !pShaderImpl)
 	{
-		LOG_E("[{}] [{}] Failed to create pipeline!", s_tName, m_name);
+		LOG_E("Failed to create pipeline!");
 		return false;
 	}
-	std::vector const setLayouts = {rd::g_bufferLayout, m_info.samplerLayout};
+	std::array const setLayouts = {rd::g_bufferLayout, rd::g_samplerLayout};
 	m_layout = g_device.createPipelineLayout(m_info.pushConstantRanges, setLayouts);
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
@@ -210,9 +186,61 @@ bool PipelineImpl::create()
 	}
 #endif
 	m_pipeline = pipeline;
-#if defined(LEVK_ASSET_HOT_RELOAD)
+#if defined(LEVK_RESOURCES_HOT_RELOAD)
 	m_bShaderReloaded = false;
 #endif
 	return true;
+}
+
+namespace
+{
+std::unordered_map<std::size_t, PipelineImpl> g_implMap;
+
+std::size_t pipeHash(Pipeline const& pipe, vk::Format colour, vk::Format depth)
+{
+	std::size_t hash = 0;
+	hash ^= pipe.shader.guid;
+	hash ^= (std::size_t)pipe.lineWidth;
+	hash ^= pipe.flags.bits.to_ulong();
+	hash ^= (std::size_t)pipe.cullMode;
+	hash ^= (std::size_t)pipe.polygonMode;
+	hash ^= std::hash<vk::Format>()(colour);
+	hash ^= std::hash<vk::Format>()(depth);
+	return hash;
+}
+} // namespace
+
+PipelineImpl& pipes::find(Pipeline const& pipe, RenderPass const& renderPass)
+{
+	auto const hash = pipeHash(pipe, renderPass.colour, renderPass.depth);
+	auto search = g_implMap.find(hash);
+	if (search != g_implMap.end())
+	{
+		search->second.update(renderPass);
+		return search->second;
+	}
+	auto& ret = g_implMap[hash];
+	PipelineImpl::Info implInfo;
+	implInfo.vertexBindings = rd::vbo::vertexBindings();
+	implInfo.vertexAttributes = rd::vbo::vertexAttributes();
+	implInfo.pushConstantRanges = rd::PushConstants::ranges();
+	implInfo.renderPass = renderPass.renderPass;
+	implInfo.polygonMode = (vk::PolygonMode)pipe.polygonMode;
+	implInfo.cullMode = (vk::CullModeFlagBits)pipe.cullMode;
+	implInfo.frontFace = (vk::FrontFace)pipe.frontFace;
+	implInfo.staticLineWidth = pipe.lineWidth;
+	implInfo.shader = pipe.shader;
+	implInfo.flags = pipe.flags;
+	ret.create(implInfo);
+	return ret;
+}
+
+void pipes::deinit()
+{
+	for (auto& [_, pipeline] : g_implMap)
+	{
+		pipeline.destroy();
+	}
+	g_implMap.clear();
 }
 } // namespace le::gfx

@@ -96,11 +96,6 @@ private:
 
 public:
 	Context(Mode mode = Mode::ePassthrough, s32 padID = 0);
-	Context(Context&&);
-	Context& operator=(Context&&);
-	Context(Context const&);
-	Context& operator=(Context const&);
-	~Context();
 
 public:
 	void mapTrigger(Hash id, OnTrigger callback);

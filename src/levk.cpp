@@ -14,6 +14,7 @@
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
+#include <gfx/pipeline_impl.hpp>
 #include <gfx/renderer_impl.hpp>
 #include <gfx/vram.hpp>
 #include <game/state_impl.hpp>
@@ -62,9 +63,16 @@ Service::Service(Service&&) = default;
 Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
+	// Order is critical!
+	// Disable all input
 	input::deinit();
+	// Wait for async loads
 	res::waitIdle();
+	// Reset game state
 	gs::reset();
+	// Release all pipelines and Shader semaphores
+	gfx::pipes::deinit();
+	// Release all resources
 	res::deinit();
 	g_app = {};
 }
@@ -104,13 +112,12 @@ bool Service::init(Info const& info)
 		}
 		g_app.pReader = &reader;
 		m_services.add<res::Service>();
-		if (info.windowInfo)
+		Window::Info windowInfo;
+		windowInfo.config.size = {1280, 720};
+		g_app.window = Window();
+		if (!g_app.window->create(info.windowInfo ? *info.windowInfo : windowInfo))
 		{
-			g_app.window = Window();
-			if (!g_app.window->create(*info.windowInfo))
-			{
-				throw std::runtime_error("Failed to create Window!");
-			}
+			throw std::runtime_error("Failed to create Window!");
 		}
 		input::init(*g_app.window);
 	}
@@ -217,8 +224,8 @@ bool Service::shutdown()
 		{
 			g_app.window->destroy();
 		}
-		gs::reset();
 		g_status = Status::eShuttingDown;
+		input::g_bFire = false;
 		return true;
 	}
 	return false;

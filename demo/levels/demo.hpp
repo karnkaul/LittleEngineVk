@@ -65,7 +65,6 @@ private:
 		le::Hash awesomeface = "textures/awesomeface.png";
 	} m_res;
 	le::SceneBuilder m_sceneBuilder;
-	le::gfx::Pipeline* m_pPipeline0wf = nullptr;
 
 public:
 	DemoLevel();

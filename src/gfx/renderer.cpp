@@ -60,15 +60,6 @@ Renderer::~Renderer() = default;
 
 std::string const Renderer::s_tName = utils::tName<Renderer>();
 
-Pipeline* Renderer::createPipeline(Pipeline::Info info)
-{
-	if (m_uImpl)
-	{
-		return m_uImpl->createPipeline(std::move(info));
-	}
-	return nullptr;
-}
-
 void Renderer::submit(Scene scene, ScreenRect const& sceneView)
 {
 	m_scene = std::move(scene);
@@ -98,23 +89,16 @@ RendererImpl::RendererImpl(Info const& info, Renderer* pOwner) : m_context(info.
 {
 	m_name = fmt::format("{}:{}", Renderer::s_tName, m_window);
 	create(info.frameCount);
-	Pipeline::Info pipelineInfo;
-	pipelineInfo.name = "default";
-	m_pipes.pDefault = createPipeline(std::move(pipelineInfo));
-	pipelineInfo.name = "skybox";
-	pipelineInfo.flags.reset(Pipeline::Flag::eDepthWrite);
-	m_pipes.pSkybox = createPipeline(std::move(pipelineInfo));
 }
 
 RendererImpl::~RendererImpl()
 {
-	m_pipelines.clear();
 	destroy();
 }
 
 void RendererImpl::create(u8 frameCount)
 {
-	if (m_renderPass == vk::RenderPass())
+	if (m_renderPass.renderPass == vk::RenderPass())
 	{
 		m_renderPass = rd::createSingleRenderPass(m_context.colourFormat(), m_context.depthFormat());
 	}
@@ -122,14 +106,13 @@ void RendererImpl::create(u8 frameCount)
 	{
 		m_frameCount = frameCount;
 		// Descriptors
-		auto setLayouts = rd::allocateSets(frameCount);
-		ASSERT(setLayouts.sets.size() == (std::size_t)frameCount, "Invalid descriptor sets!");
-		m_samplerLayout = setLayouts.samplerLayout;
+		auto sets = rd::allocateSets(frameCount);
+		ASSERT(sets.size() == (std::size_t)frameCount, "Invalid descriptor sets!");
 		m_frames.reserve((std::size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
 			RendererImpl::FrameSync frame;
-			frame.set = setLayouts.sets.at((std::size_t)idx);
+			frame.set = sets.at((std::size_t)idx);
 			frame.renderReady = g_device.device.createSemaphore({});
 			frame.presentReady = g_device.device.createSemaphore({});
 			frame.drawing = g_device.createFence(true);
@@ -161,9 +144,8 @@ void RendererImpl::destroy()
 			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady,
 							 frame.presentReady);
 		}
-		g_device.destroy(m_samplerLayout, m_renderPass);
-		m_samplerLayout = vk::DescriptorSetLayout();
-		m_renderPass = vk::RenderPass();
+		g_device.destroy(m_renderPass.renderPass);
+		m_renderPass = {};
 		m_frames.clear();
 		m_index = 0;
 		m_drawnFrames = 0;
@@ -174,32 +156,6 @@ void RendererImpl::destroy()
 }
 
 void RendererImpl::update() {}
-
-Pipeline* RendererImpl::createPipeline(Pipeline::Info info)
-{
-	PipelineImpl::Info implInfo;
-	implInfo.name = info.name;
-	implInfo.vertexBindings = rd::vbo::vertexBindings();
-	implInfo.vertexAttributes = rd::vbo::vertexAttributes();
-	implInfo.pushConstantRanges = rd::PushConstants::ranges();
-	implInfo.renderPass = m_renderPass;
-	implInfo.polygonMode = (vk::PolygonMode)info.polygonMode;
-	implInfo.cullMode = (vk::CullModeFlagBits)info.cullMode;
-	implInfo.frontFace = (vk::FrontFace)info.frontFace;
-	implInfo.samplerLayout = m_samplerLayout;
-	implInfo.window = m_window;
-	implInfo.staticLineWidth = info.lineWidth;
-	implInfo.shader = info.shader;
-	implInfo.flags = info.flags;
-	Pipeline pipeline;
-	pipeline.m_uImpl = std::make_unique<PipelineImpl>();
-	if (!pipeline.m_uImpl->create(std::move(implInfo)))
-	{
-		return nullptr;
-	}
-	m_pipelines.push_back(std::move(pipeline));
-	return &m_pipelines.back();
-}
 
 bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 {
@@ -217,14 +173,14 @@ bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 	if (target)
 	{
 		g_device.destroy(frame.framebuffer);
-		frame.framebuffer = g_device.createFramebuffer(m_renderPass, target->attachments(), target->extent);
+		frame.framebuffer = g_device.createFramebuffer(m_renderPass.renderPass, target->attachments(), target->extent);
 		u64 tris = 0;
 		if (push.empty())
 		{
 			static auto const c = colours::black;
 			vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 			vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
-			RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target->extent, {colour, depth});
+			RenderCmd cmd(frame.commandBuffer, m_renderPass.renderPass, frame.framebuffer, target->extent, {colour, depth});
 			if (bExtGUI)
 			{
 				ext_gui::renderDrawData(frame.commandBuffer);
@@ -310,7 +266,7 @@ ScreenRect RendererImpl::clampToView(glm::vec2 const& screenXY, glm::vec2 const&
 bool RendererImpl::initExtGUI() const
 {
 	ext_gui::Info guiInfo;
-	guiInfo.renderPass = m_renderPass;
+	guiInfo.renderPass = m_renderPass.renderPass;
 	guiInfo.imageCount = m_frameCount;
 	guiInfo.minImageCount = 2;
 	guiInfo.window = m_window;
@@ -393,14 +349,9 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	res::Texture cubemap = blank;
 	if (out_scene.view.skybox.cubemap.status() == res::Status::eReady)
 	{
-		if (!out_scene.view.skybox.pPipeline)
-		{
-			out_scene.view.skybox.pPipeline = m_pipes.pSkybox;
-		}
-		ASSERT(out_scene.view.skybox.pPipeline, "Pipeline is null!");
-		auto pTransform = &Transform::s_identity;
+		out_scene.view.skybox.pipeline.flags.reset(gfx::Pipeline::Flag::eDepthWrite);
 		auto mesh = res::find<res::Mesh>("meshes/cube").payload;
-		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{mesh}, pTransform, out_scene.view.skybox.pPipeline}}});
+		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{mesh}, Transform::s_identity, out_scene.view.skybox.pipeline}}});
 		cubemap = out_scene.view.skybox.cubemap;
 		bSkybox = true;
 	}
@@ -408,16 +359,17 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 	for (auto& batch : out_scene.batches)
 	{
 		push.push_back({});
-		for (auto& [meshes, pTransform, _] : batch.drawables)
+		for (auto& [meshes, t, _] : batch.drawables)
 		{
-			ASSERT(!meshes.empty() && pTransform, "Mesh / Transform is null!");
+			ASSERT(!meshes.empty(), "Mesh is null!");
+			Transform const& transform = t;
 			for (auto mesh : meshes)
 			{
 				auto const& info = res::info(mesh);
 				rd::PushConstants pc;
 				pc.objectID = objectID;
-				ssbos.models.ssbo.push_back(pTransform->model());
-				ssbos.normals.ssbo.push_back(pTransform->normalModel());
+				ssbos.models.ssbo.push_back(transform.model());
+				ssbos.normals.ssbo.push_back(transform.normalModel());
 				ssbos.materials.ssbo.push_back({info.material.material.info(), info.material.dropColour});
 				ssbos.tints.ssbo.push_back(info.material.tint.toVec4());
 				ssbos.flags.ssbo.push_back(0);
@@ -490,14 +442,14 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 	auto const c = scene.clear.colour;
 	vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
-	RenderCmd cmd(frame.commandBuffer, m_renderPass, frame.framebuffer, target.extent, {colour, depth});
+	RenderCmd cmd(frame.commandBuffer, m_renderPass.renderPass, frame.framebuffer, target.extent, {colour, depth});
 	std::size_t batchIdx = 0;
 	std::size_t drawableIdx = 0;
 	u64 tris = 0;
 	for (auto& batch : scene.batches)
 	{
 		cmd.setViewportScissor(transformViewport(batch.viewport.adjust(m_pRenderer->m_sceneView)), transformScissor(batch.scissor));
-		for (auto& [meshes, pTransform, pPipe] : batch.drawables)
+		for (auto& [meshes, pTransform, pipe] : batch.drawables)
 		{
 			for (auto mesh : meshes)
 			{
@@ -506,12 +458,9 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 				if (pImpl && mesh.status() == res::Status::eReady && info.triCount > 0)
 				{
 					tris += info.triCount;
-					auto pPipeline = pPipe ? pPipe : m_pipes.pDefault;
-					ASSERT(pPipeline, "Pipeline is null!");
-					[[maybe_unused]] bool bOk = pPipeline->m_uImpl->update(m_renderPass, m_samplerLayout);
-					ASSERT(bOk, "Pipeline update failure!");
+					auto const& impl = pipes::find(pipe, m_renderPass);
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
-					cmd.bindResources<rd::PushConstants>(*pPipeline->m_uImpl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
+					cmd.bindResources<rd::PushConstants>(impl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					cmd.bindVertexBuffers(0, pImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pImpl->ibo.count > 0)
 					{

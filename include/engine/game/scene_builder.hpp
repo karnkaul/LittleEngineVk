@@ -60,8 +60,8 @@ public:
 		/// \brief UI Transformation Space (z is depth)
 		///
 		glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
-		gfx::Pipeline const* p3Dpipe = nullptr;
-		gfx::Pipeline const* pUIpipe = nullptr;
+		gfx::Pipeline pipe3D;
+		gfx::Pipeline pipeUI;
 		glm::vec2 clearDepth = {1.0f, 0.0f};
 		Colour clearColour = colours::black;
 		Flags flags = Flag::eDynamicUI;

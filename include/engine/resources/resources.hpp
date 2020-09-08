@@ -57,7 +57,7 @@ private:
 	Hash m_id;
 
 public:
-	Async() = default;
+	constexpr Async() = default;
 	Async(std::shared_ptr<tasks::Handle> task, Hash id) : m_task(std::move(task)), m_id(id) {}
 	Async(Async&&) = default;
 	Async& operator=(Async&&) = default;

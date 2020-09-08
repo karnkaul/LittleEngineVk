@@ -151,7 +151,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		{
 			if (auto& [pTransform, pModel] = query; pModel->status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({pModel->meshes(), pTransform, m_info.p3Dpipe});
+				batch3D.drawables.push_back({pModel->meshes(), *pTransform, m_info.pipe3D});
 			}
 		}
 	}
@@ -161,7 +161,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		{
 			if (auto& [pTransform, pMesh] = query; pMesh->status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({{*pMesh}, pTransform, m_info.p3Dpipe});
+				batch3D.drawables.push_back({{*pMesh}, *pTransform, m_info.pipe3D});
 			}
 		}
 	}
@@ -174,7 +174,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 			if (!meshes.empty())
 			{
 				auto pTransform = registry.component<Transform>(entity);
-				batchUI.drawables.push_back({pUI->meshes(), pTransform ? pTransform : &Transform::s_identity, m_info.pUIpipe});
+				batchUI.drawables.push_back({pUI->meshes(), pTransform ? *pTransform : Transform::s_identity, m_info.pipeUI});
 			}
 		}
 	}

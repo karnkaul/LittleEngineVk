@@ -6,31 +6,27 @@
 
 namespace le::gfx
 {
-enum class PolygonMode : s8
+struct Pipeline final
 {
-	eFill,
-	eLine,
-	eCOUNT_
-};
-
-enum class CullMode : s8
-{
-	eNone,
-	eFront,
-	eBack,
-	eCOUNT_
-};
-
-enum class FrontFace : s8
-{
-	eCounterClockwise,
-	eClockwise,
-	eCOUNT_
-};
-
-class Pipeline final
-{
-public:
+	enum class Polygon : s8
+	{
+		eFill,
+		eLine,
+		eCOUNT_
+	};
+	enum class Cull : s8
+	{
+		eNone,
+		eFront,
+		eBack,
+		eCOUNT_
+	};
+	enum class FFace : s8
+	{
+		eCounterClockwise,
+		eClockwise,
+		eCOUNT_
+	};
 	enum class Flag
 	{
 		eBlend,
@@ -40,27 +36,11 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
-	struct Info final
-	{
-		std::string name;
-		res::Shader shader;
-		f32 lineWidth = 1.0f;
-		PolygonMode polygonMode = PolygonMode::eFill;
-		CullMode cullMode = CullMode::eNone;
-		FrontFace frontFace = FrontFace::eCounterClockwise;
-		Flags flags = Flag::eBlend | Flag::eDepthTest | Flag::eDepthWrite;
-	};
-
-public:
-	std::unique_ptr<class PipelineImpl> m_uImpl;
-
-public:
-	Pipeline();
-	Pipeline(Pipeline&&);
-	Pipeline& operator=(Pipeline&&);
-	~Pipeline();
-
-public:
-	std::string const& name() const;
+	res::Shader shader;
+	f32 lineWidth = 1.0f;
+	Polygon polygonMode = Polygon::eFill;
+	Cull cullMode = Cull::eNone;
+	FFace frontFace = FFace::eCounterClockwise;
+	Flags flags = Flag::eBlend | Flag::eDepthTest | Flag::eDepthWrite;
 };
 } // namespace le::gfx

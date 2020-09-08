@@ -85,14 +85,6 @@ DemoLevel::DemoLevel()
 	registry().component<Transform>(m_data.eid3)->position({0.0f, -1.0f, -3.0f});
 	registry().addComponent<res::Model>(m_data.eid3);
 
-	if (!m_pPipeline0wf)
-	{
-		gfx::Pipeline::Info pipelineInfo;
-		pipelineInfo.name = "wireframe";
-		pipelineInfo.polygonMode = gfx::PolygonMode::eLine;
-		m_pPipeline0wf = engine::mainWindow()->renderer().createPipeline(std::move(pipelineInfo));
-	}
-
 	m_input.context.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
 	m_input.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
 	m_input.context.mapTrigger("quit", [this]() { m_data.bQuit = true; });
@@ -198,7 +190,7 @@ void DemoLevel::tick(Time dt)
 		m_data.eid2.transform().orient(glm::rotate(m_data.eid2.transform().orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 	}
 
-	m_sceneBuilder.m_info.p3Dpipe = m_data.bWireframe ? m_pPipeline0wf : nullptr;
+	m_sceneBuilder.m_info.pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
 }
 
 SceneBuilder const& DemoLevel::builder() const

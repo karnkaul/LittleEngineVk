@@ -2,6 +2,7 @@
 #include <deque>
 #include <memory>
 #include <vector>
+#include <core/transform.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/screen_rect.hpp>
@@ -28,14 +29,14 @@ public:
 	{
 		ScreenRect viewport;
 		res::Texture cubemap;
-		Pipeline const* pPipeline = nullptr;
+		Pipeline pipeline;
 	};
 
 	struct Drawable final
 	{
 		std::vector<res::Mesh> meshes;
-		Transform const* pTransform = nullptr;
-		Pipeline const* pPipeline = nullptr;
+		Ref<Transform const> transform = Transform::s_identity;
+		Pipeline pipeline;
 	};
 
 	struct Batch final
@@ -86,8 +87,6 @@ public:
 	~Renderer();
 
 public:
-	Pipeline* createPipeline(Pipeline::Info info);
-
 	void submit(Scene scene, ScreenRect const& sceneView);
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;

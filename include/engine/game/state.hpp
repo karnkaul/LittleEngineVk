@@ -89,10 +89,10 @@ struct Scoped final
 ///
 struct Context final
 {
-	Registry regTemp;
+	Registry defaultRegistry;
 	std::string name;
 	gfx::ScreenRect gameRect;
-	Ref<Registry> registry = regTemp;
+	Ref<Registry> registry = defaultRegistry;
 	gfx::Camera camera;
 
 #if defined(LEVK_EDITOR)

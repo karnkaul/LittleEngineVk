@@ -13,7 +13,6 @@ int main(int argc, char** argv)
 	windowInfo.config.title = "LittleEngineVk Demo";
 	info.windowInfo = std::move(windowInfo);
 	info.dataPaths = dataPaths;
-	// info.dataPaths = engine.locateData({{{"data.zip"}}, {{"demo/data.zip"}}});
 #if defined(LEVK_DEBUG)
 	info.bLogVRAMallocations = true;
 #endif

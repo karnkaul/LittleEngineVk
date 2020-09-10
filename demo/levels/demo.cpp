@@ -49,7 +49,7 @@ DemoLevel::DemoLevel()
 	m_data.eui0 = gs::spawnProp("fps");
 	m_data.eui1 = registry().spawnEntity("dt");
 	m_data.eui2 = registry().spawnEntity("tris");
-	m_data.skybox = registry().spawnEntity("skybox");
+	m_data.sceneDesc = registry().spawnEntity<SceneDesc>("scene_desc");
 	m_data.pointer = gs::spawnProp("pointer");
 
 	Text2D::Info textInfo;
@@ -101,13 +101,12 @@ DemoLevel::DemoLevel()
 	m_data.temp.mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
 	m_data.temp.addTrigger("test2", input::Key::eK);
 
-	SceneBuilder::Info info;
-	info.dirLights = {m_data.dirLight0, m_data.dirLight1};
-	info.clearColour = Colour(0x030203ff);
-	info.skyboxCubemapID = "skyboxes/sky_dusk";
-	info.uiSpace = {1280.0f, 720.0f, 2.0f};
-	info.flags = SceneBuilder::Flag::eScissoredUI;
-	m_sceneBuilder = SceneBuilder(std::move(info));
+	auto pDesc = registry().component<SceneDesc>(m_data.sceneDesc);
+	pDesc->dirLights = {m_data.dirLight0, m_data.dirLight1};
+	pDesc->clearColour = Colour(0x030203ff);
+	pDesc->skyboxCubemapID = "skyboxes/sky_dusk";
+	pDesc->uiSpace = {1280.0f, 720.0f, 2.0f};
+	pDesc->flags = SceneDesc::Flag::eScissoredUI;
 }
 
 void DemoLevel::tick(Time dt)
@@ -190,7 +189,7 @@ void DemoLevel::tick(Time dt)
 		m_data.eid2.transform().orient(glm::rotate(m_data.eid2.transform().orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 	}
 
-	m_sceneBuilder.m_info.pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
+	registry().component<SceneDesc>(m_data.sceneDesc)->pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
 }
 
 SceneBuilder const& DemoLevel::builder() const

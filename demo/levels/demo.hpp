@@ -43,7 +43,7 @@ private:
 		le::gfx::DirLight dirLight0, dirLight1;
 		le::Prop eid0, eid1, eid2, eid3, eui0;
 		le::Entity eui1, eui2;
-		le::Entity skybox;
+		le::Entity sceneDesc;
 		le::Prop pointer;
 		le::input::Context temp;
 		le::FreeCam freeCam;

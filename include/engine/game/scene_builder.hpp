@@ -34,9 +34,8 @@ struct UIComponent final
 	std::vector<res::Mesh> meshes() const;
 };
 
-class SceneBuilder
+struct SceneDesc final
 {
-public:
 	enum class Flag : s8
 	{
 		///
@@ -51,28 +50,22 @@ public:
 	};
 	using Flags = TFlags<Flag>;
 
-public:
-	struct Info final
-	{
-		std::vector<gfx::DirLight> dirLights;
-		stdfs::path skyboxCubemapID;
-		///
-		/// \brief UI Transformation Space (z is depth)
-		///
-		glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
-		gfx::Pipeline pipe3D;
-		gfx::Pipeline pipeUI;
-		glm::vec2 clearDepth = {1.0f, 0.0f};
-		Colour clearColour = colours::black;
-		Flags flags = Flag::eDynamicUI;
-	};
+	std::vector<gfx::DirLight> dirLights;
+	stdfs::path skyboxCubemapID;
+	///
+	/// \brief UI Transformation Space (z is depth)
+	///
+	glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
+	gfx::Pipeline pipe3D;
+	gfx::Pipeline pipeUI;
+	glm::vec2 clearDepth = {1.0f, 0.0f};
+	Colour clearColour = colours::black;
+	Flags flags = Flag::eDynamicUI;
+};
 
+class SceneBuilder
+{
 public:
-	Info m_info;
-
-public:
-	SceneBuilder();
-	SceneBuilder(Info info);
 	virtual ~SceneBuilder();
 
 public:

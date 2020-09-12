@@ -9,6 +9,9 @@
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/resources/resources.hpp>
+#if defined(LEVK_EDITOR)
+#include <engine/game/editor_types.hpp>
+#endif
 
 namespace le
 {
@@ -43,168 +46,6 @@ struct Prop final
 	}
 };
 
-#if defined(LEVK_EDITOR)
-namespace editor
-{
-using sv = std::string_view;
-
-enum GUI
-{
-	eOpen,
-	eLeftClicked,
-	eRightClicked,
-	eCOUNT_
-};
-using GUIState = TFlags<GUI>;
-
-struct GUIStateful
-{
-	GUIState guiState;
-
-	GUIStateful();
-
-	void refresh();
-
-	bool test(GUI s) const
-	{
-		return guiState.test(s);
-	}
-
-	virtual operator bool() const
-	{
-		return test(GUI::eLeftClicked);
-	}
-};
-
-struct Button final : GUIStateful
-{
-	Button(sv id);
-};
-
-struct Combo final : GUIStateful
-{
-	s32 select = -1;
-	sv selected;
-
-	Combo(sv id, Span<sv> entries, sv preSelected);
-
-	operator bool() const override
-	{
-		return test(GUI::eOpen);
-	}
-};
-
-struct TreeNode final : GUIStateful
-{
-	TreeNode();
-	TreeNode(sv id);
-	TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen);
-	TreeNode(TreeNode&&);
-	TreeNode& operator=(TreeNode&&);
-	~TreeNode();
-
-	operator bool() const override
-	{
-		return test(GUI::eOpen);
-	}
-};
-
-template <typename T>
-struct TWidget
-{
-	static_assert(alwaysFalse<T>, "Invalid type");
-};
-
-template <typename T>
-struct TInspector
-{
-	TreeNode node;
-	Registry* pReg = nullptr;
-	Entity entity;
-	std::string id;
-	bool bNew = false;
-	bool bOpen = false;
-
-	TInspector() = default;
-	TInspector(Registry& out_registry, Entity entity, T const* pT, sv id = sv());
-	TInspector(TInspector<T>&&);
-	TInspector& operator=(TInspector<T>&&);
-	~TInspector();
-
-	operator bool() const;
-};
-
-template <>
-struct TWidget<bool>
-{
-	TWidget(sv id, bool& out_b);
-};
-
-template <>
-struct TWidget<f32>
-{
-	TWidget(sv id, f32& out_f);
-};
-
-template <>
-struct TWidget<s32>
-{
-	TWidget(sv id, s32& out_b);
-};
-
-template <>
-struct TWidget<std::string>
-{
-	TWidget(sv id, std::string& out_str, f32 width = 200.0f);
-};
-
-template <>
-struct TWidget<Colour>
-{
-	TWidget(sv id, Colour& out_colour);
-};
-
-template <>
-struct TWidget<glm::vec3>
-{
-	TWidget(sv id, glm::vec3& out_vec, bool bNormalised, f32 dv = 0.1f);
-};
-
-template <>
-struct TWidget<glm::quat>
-{
-	TWidget(sv id, glm::quat& out_quat, f32 dq = 0.01f);
-};
-
-template <>
-struct TWidget<Transform>
-{
-	TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, f32 dPos = 0.1f, f32 dOrn = 0.0f, f32 dScl = 0.1f);
-};
-
-template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
-struct TNWidget
-{
-	static_assert(std::is_enum_v<Enum>, "Enum must be an enum!");
-
-	TNWidget(std::array<sv, N> const& ids, TFlags<Enum, N>& flags)
-	{
-		for (std::size_t idx = 0; idx < N; ++idx)
-		{
-			bool bVal = flags.bits[idx];
-			TWidget<bool> w(ids.at(idx), bVal);
-			flags.bits[idx] = bVal;
-		}
-	}
-};
-
-struct PerFrame
-{
-	std::function<void()> customRightPanel;
-};
-} // namespace editor
-#endif
-
 namespace gs
 {
 ///
@@ -231,7 +72,7 @@ struct Scoped final
 ///
 struct Context final
 {
-	Registry defaultRegistry;
+	Registry defaultRegistry = Registry(Registry::DestroyMode::eImmediate);
 	std::string name;
 	gfx::ScreenRect gameRect;
 	Ref<Registry> registry = defaultRegistry;
@@ -240,6 +81,8 @@ struct Context final
 #if defined(LEVK_EDITOR)
 	editor::PerFrame editorData;
 #endif
+
+	void reset();
 };
 
 ///
@@ -333,6 +176,19 @@ std::string guiName(T const* pT)
 #if defined(LEVK_EDITOR)
 namespace editor
 {
+template <typename Flags>
+FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags)
+{
+	ASSERT(ids.size() <= size, "Overflow!");
+	std::size_t idx = 0;
+	for (auto id : ids)
+	{
+		bool bVal = flags.test((type)idx);
+		TWidget<bool> w(id, bVal);
+		flags[(type)idx++] = bVal;
+	}
+}
+
 template <typename T>
 TInspector<T>::TInspector(Registry& out_registry, Entity entity, T const* pT, sv id)
 	: pReg(&out_registry), entity(entity), id(id.empty() ? gs::guiName<T>() : id)

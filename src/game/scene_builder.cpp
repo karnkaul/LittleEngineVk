@@ -138,23 +138,23 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		if (!view.empty())
 		{
 			auto& [_, query] = *view.begin();
-			auto& [pDesc] = query;
-			scene.clear = {pDesc->clearDepth, pDesc->clearColour};
-			scene.dirLights = pDesc->dirLights;
-			if (!pDesc->skyboxCubemapID.empty())
+			auto const& desc = std::get<SceneDesc const&>(query);
+			scene.clear = {desc.clearDepth, desc.clearColour};
+			scene.dirLights = desc.dirLights;
+			if (!desc.skyboxCubemapID.empty())
 			{
-				auto skybox = res::find<res::Texture>(pDesc->skyboxCubemapID);
+				auto skybox = res::find<res::Texture>(desc.skyboxCubemapID);
 				if (skybox)
 				{
 					scene.view.skybox.cubemap = *skybox;
 				}
 			}
-			pipe3D = pDesc->pipe3D;
-			pipeUI = pDesc->pipeUI;
-			flags = pDesc->flags;
-			if (pDesc->uiSpace.x > 0.0f && pDesc->uiSpace.y > 0.0f)
+			pipe3D = desc.pipe3D;
+			pipeUI = desc.pipeUI;
+			flags = desc.flags;
+			if (desc.uiSpace.x > 0.0f && desc.uiSpace.y > 0.0f)
 			{
-				uiSpace = pDesc->uiSpace;
+				uiSpace = desc.uiSpace;
 			}
 		}
 	}
@@ -163,9 +163,9 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view)
 		{
-			if (auto& [pTransform, pModel] = query; pModel->status() == res::Status::eReady)
+			if (auto& [transform, model] = query; model.status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({pModel->meshes(), *pTransform, pipe3D});
+				batch3D.drawables.push_back({model.meshes(), transform, pipe3D});
 			}
 		}
 	}
@@ -173,9 +173,9 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<Transform, res::Mesh>();
 		for (auto& [entity, query] : view)
 		{
-			if (auto& [pTransform, pMesh] = query; pMesh->status() == res::Status::eReady)
+			if (auto& [transform, mesh] = query; mesh.status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({{*pMesh}, *pTransform, pipe3D});
+				batch3D.drawables.push_back({{mesh}, transform, pipe3D});
 			}
 		}
 	}
@@ -183,12 +183,12 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<UIComponent>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pUI] = query;
-			auto meshes = pUI->meshes();
+			auto& ui = std::get<UIComponent const&>(query);
+			auto meshes = ui.meshes();
 			if (!meshes.empty())
 			{
 				auto pTransform = registry.component<Transform>(entity);
-				batchUI.drawables.push_back({pUI->meshes(), pTransform ? *pTransform : Transform::s_identity, pipeUI});
+				batchUI.drawables.push_back({std::move(meshes), pTransform ? *pTransform : Transform::s_identity, pipeUI});
 			}
 		}
 	}

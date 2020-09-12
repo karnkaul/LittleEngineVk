@@ -71,8 +71,16 @@ struct
 {
 	Entity entity;
 	Transform* pTransform = nullptr;
-	stdfs::path resID;
 } g_inspecting;
+
+struct
+{
+	stdfs::path inspectID;
+	std::string filter;
+	bool bOpen = false;
+} g_resources;
+
+std::unordered_set<Entity, EntityHasher> g_spawned;
 
 void clicks(GUIState& out_state)
 {
@@ -140,8 +148,7 @@ void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
 		{
 			LOG_D("Selected: {}", registry.entityName(entity));
 			bool const bSelect = g_inspecting.entity != entity;
-			g_inspecting.entity = bSelect ? entity : Entity();
-			g_inspecting.pTransform = bSelect ? pTransform : nullptr;
+			g_inspecting = {bSelect ? entity : Entity(), bSelect ? pTransform : nullptr};
 		}
 		if (node.test(GUI::eOpen))
 		{
@@ -163,11 +170,12 @@ bool dummy(Args...)
 }
 
 template <typename T, typename F1, typename F2>
-void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view filter, F1 shouldList, F2 onSelected)
+void listResourceTree(typename io::PathTree<T>::Nodes nodes, F1 shouldList, F2 onSelected)
 {
+	std::string_view filter = g_resources.filter.data();
 	if (!filter.empty())
 	{
-		auto removeNode = [&filter](typename io::PathTree<T>::Node const& node) -> bool { return node.findPattern(filter, true) == nullptr; };
+		auto removeNode = [filter](typename io::PathTree<T>::Node const& node) -> bool { return node.findPattern(filter, true) == nullptr; };
 		nodes.erase(std::remove_if(nodes.begin(), nodes.end(), removeNode), nodes.end());
 	}
 	for (typename io::PathTree<T>::Node const& node : nodes)
@@ -184,10 +192,11 @@ void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view fi
 					if (shouldList(t) && TreeNode(str, false, true, true, false).test(GUI::eLeftClicked))
 					{
 						onSelected(t);
+						g_resources.inspectID.clear();
 					}
 				}
 			}
-			listResourceTree<T, F1, F2>(node.childNodes(), filter, shouldList, onSelected);
+			listResourceTree<T, F1, F2>(node.childNodes(), shouldList, onSelected);
 		}
 	}
 }
@@ -196,18 +205,18 @@ template <typename T, typename F1, typename F2>
 void listResources(F1 shouldList, F2 onSelected, bool bNone = false)
 {
 	static_assert(std::is_base_of_v<res::Resource<T>, T>, "T must derive from Resource");
-	std::string filter;
-	TWidget<std::string> f("Filter", filter, 200.0f);
-	ImGui::Separator();
+	TWidget<std::string> f("Filter", g_resources.filter, 256.0f, 256);
+	Styler s(Style::eSeparator);
 	if (bNone)
 	{
 		auto const node = TreeNode("[None]", false, true, true, false);
 		if (node.test(GUI::eLeftClicked))
 		{
 			onSelected({});
+			g_resources.inspectID.clear();
 		}
 	}
-	listResourceTree<T>(res::loaded<T>().rootNodes(), filter, shouldList, onSelected);
+	listResourceTree<T>(res::loaded<T>().rootNodes(), shouldList, onSelected);
 }
 
 template <typename T>
@@ -242,6 +251,7 @@ void resourcesWindow(v2 pos, v2 size)
 				ImGui::EndTabBar();
 			}
 		}
+		g_resources.bOpen |= s_bResources;
 		ImGui::End();
 	}
 }
@@ -251,11 +261,11 @@ void inspectResource(T resource, sv selector, sv prefix, F onSelected, F2 filter
 {
 	auto const id = res::info(resource).id;
 	auto const resID = prefix / id;
-	bool const bSelected = resID == g_inspecting.resID;
+	bool const bSelected = resID == g_resources.inspectID;
 	auto node = TreeNode(id.empty() ? "[None]" : id.generic_string().data(), bSelected, true, true, false);
 	if (node.test(GUI::eLeftClicked) || bSelected)
 	{
-		g_inspecting.resID = resID;
+		g_resources.inspectID = resID;
 		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		auto const label = fmt::format("{}###Resource Inspector", selector.empty() ? "[None]" : selector);
@@ -264,10 +274,11 @@ void inspectResource(T resource, sv selector, sv prefix, F onSelected, F2 filter
 		{
 			listResources<T>(filter, onSelected, bNone);
 		}
+		g_resources.bOpen |= bOpen;
 		ImGui::End();
 		if (!bOpen)
 		{
-			g_inspecting.resID.clear();
+			g_resources.inspectID.clear();
 		}
 	}
 }
@@ -276,7 +287,6 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 {
 	auto pInfo = res::infoRW(mesh);
 	auto pImpl = res::impl(mesh);
-	auto pMat = res::infoRW(mesh.material().material);
 	if (!pInfo || !pImpl)
 	{
 		return;
@@ -284,12 +294,9 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 	auto name = gs::guiName<res::Material>();
 	if (auto matInst = TreeNode(fmt::format("{} Instance {}", name, idx)))
 	{
-		if (auto mat = TreeNode(name))
-		{
-			inspectResource<res::Material>(
-				pInfo->material.material, name, fmt::format("M{} material", idx), [pInfo](res::Material const& mat) { pInfo->material.material = mat; },
-				&dummy<res::Material>, pos, size, false);
-		}
+		constexpr std::array ids = {"Textured"sv, "Lit"sv, "Opaque"sv, "Drop Colour"sv};
+		FlagsWidget<res::Material::Flags> material(ids, pInfo->material.flags);
+		TWidget<Colour> tint("Tint", pInfo->material.tint);
 		auto name = gs::guiName<res::Texture>();
 		if (auto diff = TreeNode(fmt::format("{}: Diffuse", name)))
 		{
@@ -303,15 +310,22 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 				pInfo->material.specular, name, fmt::format("M{} specular", idx), [pInfo](res::Texture const& tex) { pInfo->material.specular = tex; },
 				[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
 		}
-		constexpr std::array ids = {"Textured"sv, "Lit"sv, "Opaque"sv, "Drop Colour"sv, "UI"sv, "Skybox"sv};
-		TNWidget<res::Material::Flag> material(ids, pInfo->material.flags);
-		TWidget<Colour> tint("Tint", pInfo->material.tint);
-		if (pMat)
+		name = gs::guiName<res::Material>();
+		if (auto mat = TreeNode(name))
 		{
-			TWidget<Colour> ambient("Ka", pMat->albedo.ambient);
-			TWidget<Colour> diffuse("Kd", pMat->albedo.diffuse);
-			TWidget<Colour> specular("Ks", pMat->albedo.specular);
-			TWidget<f32> shininess("k", pMat->shininess);
+			inspectResource<res::Material>(
+				pInfo->material.material, name, fmt::format("M{} material", idx), [pInfo](res::Material const& mat) { pInfo->material.material = mat; },
+				&dummy<res::Material>, pos, size, false);
+			if (auto pMat = res::infoRW(mesh.material().material))
+			{
+				if (auto albedo = TreeNode("Albedo"))
+				{
+					TWidget<Colour> ambient("Ka", pMat->albedo.ambient);
+					TWidget<Colour> diffuse("Kd", pMat->albedo.diffuse);
+					TWidget<Colour> specular("Ks", pMat->albedo.specular);
+				}
+				TWidget<f32> shininess("k", pMat->shininess);
+			}
 		}
 	}
 }
@@ -322,17 +336,26 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 	{
 		ImGui::LabelText("", "%s", registry.entityName(g_inspecting.entity).data());
 		bool const bEnabled = registry.enabled(g_inspecting.entity);
-		char const* szToggle = bEnabled ? "Disable" : "Enable";
-		if (Button(szToggle))
+		if (Button(bEnabled ? "Disable" : "Enable"))
 		{
 			registry.setEnabled(g_inspecting.entity, !bEnabled);
 		}
-		ImGui::SameLine();
-		if (Button("Destroy"))
+		Styler s(Style::eSameLine);
+		if (auto search = g_spawned.find(g_inspecting.entity); search != g_spawned.end() && Button("Destroy"))
 		{
-			registry.destroyEntity(g_inspecting.entity);
+			if (auto pTransform = registry.component<Transform>(g_inspecting.entity))
+			{
+				Prop prop(g_inspecting.entity, *pTransform);
+				gs::destroy(prop);
+			}
+			else
+			{
+				registry.destroyEntity(g_inspecting.entity);
+			}
+			g_spawned.erase(g_inspecting.entity);
 			g_inspecting = {};
 		}
+		s = Styler(Style::eSeparator);
 		if (auto pDesc = registry.component<SceneDesc>(g_inspecting.entity))
 		{
 			if (auto desc = TreeNode("SceneDesc"))
@@ -382,7 +405,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 		if (g_inspecting.pTransform)
 		{
 			TWidget<Transform> t("Pos", "Orn", "Scl", *g_inspecting.pTransform);
-			ImGui::Separator();
+			Styler s(Style::eSeparator);
 
 			auto pMesh = registry.component<res::Mesh>(g_inspecting.entity);
 			auto name = gs::guiName<res::Mesh>();
@@ -501,7 +524,7 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 		{
 			ImGui::ShowDemoWindow(&s_bImGuiDemo);
 		}
-		ImGui::Separator();
+		Styler s(Style::eSeparator);
 		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f}, args.pGame->registry);
 	}
 	ImGui::End();
@@ -527,7 +550,24 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 		{
 			if (ImGui::BeginTabItem("Scene"))
 			{
-				Registry const& registry = args.pGame->registry;
+				Registry& registry = args.pGame->registry;
+				{
+					static std::string s_newName;
+					TWidget<std::string>("Name", s_newName, 50.0f);
+					std::string_view const newNameView = s_newName.data();
+					if (!newNameView.empty())
+					{
+						Styler s(Style::eSameLine);
+						if (Button("Spawn Prop"))
+						{
+							auto prop = gs::spawnProp(newNameView.data());
+							g_inspecting = {prop.entity, prop.pTransform};
+							g_spawned.insert(g_inspecting.entity);
+							s_newName.clear();
+						}
+					}
+				}
+				auto s = Styler(Style::eSeparator);
 				auto view = registry.view<SceneDesc>();
 				if (!view.empty())
 				{
@@ -536,11 +576,15 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 					if (node.test(GUI::eLeftClicked))
 					{
 						bool const bSelect = g_inspecting.entity != entity;
-						g_inspecting.entity = bSelect ? entity : Entity();
-						g_inspecting.pTransform = nullptr;
+						g_inspecting = {bSelect ? entity : Entity(), nullptr};
 					}
 				}
-				ImGui::Separator();
+				else if (Button("[Add SceneDesc]"))
+				{
+					g_inspecting = {registry.spawnEntity<SceneDesc>("scene_desc"), nullptr};
+					g_spawned.insert(g_inspecting.entity);
+				}
+				s = Styler(Style::eSeparator);
 				for (Transform& transform : args.pRoot->children())
 				{
 					walkSceneTree(transform, *args.pMap, args.pGame->registry);
@@ -550,7 +594,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 			if (ImGui::BeginTabItem("Options"))
 			{
 				presentModeDropdown();
-				ImGui::Separator();
+				Styler s(Style::eSeparator);
 				logLevelDropdown();
 				// worldSelectDropdown();
 				perFrame(args.pGame->editorData);
@@ -607,32 +651,32 @@ void drawLog(iv2 fbSize, s32 logHeight)
 		{
 			auto str = fmt::format("{:.3}ms", frameTime.to_s() * 1000);
 			ImGui::PlotLines("Frame Time", ftArr.data(), (s32)ftArr.size(), 0, str.data());
-			ImGui::Separator();
+			Styler s(Style::eSeparator);
 		}
 		// TWidgets
 		{
 			bClear = Button("Clear");
-			ImGui::SameLine();
+			Styler s(Style::eSameLine);
 			ImGui::Checkbox("Auto-scroll", &g_bAutoScroll);
 		}
 		{
-			ImGui::SameLine();
+			Styler s(Style::eSameLine);
 			ImGui::SetNextItemWidth(200.0f);
 			ImGui::InputText("Filter", szFilter, arraySize(szFilter));
 			logFilter = szFilter;
 		}
 		{
-			ImGui::SameLine();
+			Styler s(Style::eSameLine);
 			ImGui::RadioButton("All", &s_logLevel, 0);
-			ImGui::SameLine();
+			s = Styler(Style::eSameLine);
 			ImGui::RadioButton("Info", &s_logLevel, 1);
-			ImGui::SameLine();
+			s = Styler(Style::eSameLine);
 			ImGui::RadioButton("Warning", &s_logLevel, 2);
-			ImGui::SameLine();
+			s = Styler(Style::eSameLine);
 			ImGui::RadioButton("Error", &s_logLevel, 3);
 		}
 		{
-			ImGui::SameLine();
+			auto s = Styler(Style::eSameLine);
 			// Arrow buttons with Repeater
 			f32 const spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 			constexpr static s32 s_minCounter = 1, s_maxCounter = 20;
@@ -648,12 +692,12 @@ void drawLog(iv2 fbSize, s32 logHeight)
 				++logEntries;
 			}
 			ImGui::PopButtonRepeat();
-			ImGui::SameLine();
+			s = Styler(Style::eSameLine);
 			ImGui::Text("%d", logEntries * 100);
 			g_maxLogEntries = (std::size_t)logEntries * 100;
 		}
 		{
-			ImGui::Separator();
+			Styler s(Style::eSeparator);
 			ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 			if (bClear)
 			{
@@ -700,6 +744,10 @@ void resize(WindowImpl* pWindow)
 	static Handle s_resizing = Handle::eNone;
 	static gfx::ScreenRect s_gameRect = glm::vec4(0.2f, 0.0f, 0.8f, 0.6f);
 	static gfx::ScreenRect s_prevRect = s_gameRect;
+	if (g_resources.bOpen)
+	{
+		return;
+	}
 	auto const wSize = pWindow->windowSize();
 	auto const cursorPos = input::cursorPosition(true);
 	glm::vec2 const nCursorPos = {cursorPos.x / (f32)wSize.x, cursorPos.y / (f32)wSize.y};
@@ -785,6 +833,18 @@ void resize(WindowImpl* pWindow)
 }
 #pragma endregion layout
 } // namespace
+
+Styler::Styler(StyleFlags flags)
+{
+	if (flags.test(Style::eSameLine))
+	{
+		ImGui::SameLine();
+	}
+	if (flags.test(Style::eSeparator))
+	{
+		ImGui::Separator();
+	}
+}
 
 GUIStateful::GUIStateful()
 {
@@ -894,15 +954,41 @@ TWidget<Colour>::TWidget(sv id, Colour& out_colour)
 	out_colour = Colour(c);
 }
 
-TWidget<std::string>::TWidget(sv id, std::string& out_str, f32 width)
+TWidget<std::string>::TWidget(sv id, ZeroedBuf& out_buf, f32 width, std::size_t max)
 {
-	constexpr std::size_t size = 128;
-	ASSERT(out_str.size() < size, "overflow!");
-	std::array<char, size> buf;
-	std::memset(buf.data(), '\0', buf.size());
+	if (max <= (std::size_t)width)
+	{
+		max = (std::size_t)width;
+	}
+	out_buf.reserve(max);
+	if (out_buf.size() < max)
+	{
+		std::size_t const diff = max - out_buf.size();
+		std::string str(diff, '\0');
+		out_buf += str;
+	}
 	ImGui::SetNextItemWidth(width);
-	ImGui::InputText(id.empty() ? "[Unnamed]" : id.data(), buf.data(), buf.size());
-	out_str = buf.data();
+	ImGui::InputText(id.empty() ? "[Unnamed]" : id.data(), out_buf.data(), max);
+}
+
+TWidget<glm::vec2>::TWidget(sv id, glm::vec2& out_vec, bool bNormalised, f32 dv)
+{
+	if (bNormalised)
+	{
+		if (glm::length2(out_vec) <= 0.0f)
+		{
+			out_vec = gfx::g_nFront;
+		}
+		else
+		{
+			out_vec = glm::normalize(out_vec);
+		}
+	}
+	ImGui::DragFloat2(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
+	if (bNormalised)
+	{
+		out_vec = glm::normalize(out_vec);
+	}
 }
 
 TWidget<glm::vec3>::TWidget(sv id, glm::vec3& out_vec, bool bNormalised, f32 dv)
@@ -932,17 +1018,17 @@ TWidget<glm::quat>::TWidget(sv id, glm::quat& out_quat, f32 dq)
 	out_quat = glm::quat(rot);
 }
 
-TWidget<Transform>::TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, f32 dPos, f32 dOrn, f32 dScl)
+TWidget<Transform>::TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, glm::vec3 const& dPOS)
 {
 	auto posn = out_t.position();
 	auto scl = out_t.scale();
 	auto const& orn = out_t.orientation();
 	auto rot = glm::eulerAngles(orn);
-	ImGui::DragFloat3(idPos.data(), &posn.x, dPos);
+	ImGui::DragFloat3(idPos.data(), &posn.x, dPOS.x);
 	out_t.position(posn);
-	ImGui::DragFloat3(idOrn.data(), &rot.x, dOrn);
+	ImGui::DragFloat3(idOrn.data(), &rot.x, dPOS.y);
 	out_t.orient(glm::quat(rot));
-	ImGui::DragFloat3(idScl.data(), &scl.x, dScl);
+	ImGui::DragFloat3(idScl.data(), &scl.x, dPOS.z);
 	out_t.scale(scl);
 }
 } // namespace le::editor
@@ -1008,6 +1094,7 @@ void editor::tick(Args const& args, Time dt)
 	{
 		auto const fbSize = pWindow->framebufferSize();
 		resize(pWindow);
+		g_resources.bOpen = false;
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
 			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);

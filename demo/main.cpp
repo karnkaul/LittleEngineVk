@@ -14,7 +14,7 @@ int main(int argc, char** argv)
 	info.windowInfo = std::move(windowInfo);
 	info.dataPaths = dataPaths;
 #if defined(LEVK_DEBUG)
-	info.bLogVRAMallocations = true;
+	// info.bLogVRAMallocations = true;
 #endif
 	if (!engine.init(info))
 	{

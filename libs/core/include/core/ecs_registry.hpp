@@ -70,7 +70,7 @@ public:
 	/// \brief Return type of `view()`
 	///
 	template <typename... T>
-	using View = std::unordered_map<Entity, std::tuple<T*...>, EntityHasher>;
+	using View = std::unordered_map<Entity, std::tuple<T&...>, EntityHasher>;
 
 private:
 	// Concept
@@ -451,7 +451,7 @@ typename Registry::View<T1, Ts...> Registry::view(Th* pThis, Flags mask, Flags p
 				auto checkSigns = [&compMap](auto sign) -> bool { return compMap.find(sign) != compMap.end(); };
 				if (std::all_of(signs.begin(), signs.end(), checkSigns))
 				{
-					ret[Entity{id}] = (std::make_tuple(component_Impl<T1>(compMap), (component_Impl<Ts>(compMap))...));
+					ret.emplace(Entity{id}, (std::forward_as_tuple(*component_Impl<T1>(compMap), *component_Impl<Ts>(compMap)...)));
 				}
 			}
 		}

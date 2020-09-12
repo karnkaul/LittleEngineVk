@@ -13,6 +13,7 @@
 #include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <gfx/ext_gui.hpp>
+#include <engine/game/scene_builder.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
@@ -21,7 +22,7 @@
 #include <resources/resources_impl.hpp>
 #include <resources/model_impl.hpp>
 
-namespace le
+namespace le::editor
 {
 using namespace input;
 using namespace std::literals;
@@ -70,25 +71,13 @@ struct
 {
 	Entity entity;
 	Transform* pTransform = nullptr;
-	struct
-	{
-		bool bSelectID = false;
-		bool bSelectMat = false;
-		bool bSelectDiffuse = false;
-	} mesh;
-	struct
-	{
-		bool bSelectID = false;
-	} model;
+	stdfs::path resID;
 } g_inspecting;
 
-std::pair<bool, bool> treeNode(std::string_view name, bool bSelected, bool bLeaf, ImGuiTreeNodeFlags otherFlags = 0)
+void clicks(GUIState& out_state)
 {
-	constexpr static ImGuiTreeNodeFlags branchFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-	constexpr static ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | otherFlags;
-	bool const bNodeOpen = ImGui::TreeNodeEx(name.data(), nodeFlags) && !bLeaf;
-	return {bNodeOpen, ImGui::IsItemClicked()};
+	out_state[GUI::eLeftClicked] = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+	out_state[GUI::eRightClicked] = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 }
 
 #pragma region log
@@ -141,20 +130,20 @@ void clearLog()
 #pragma region scene
 void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
 {
-	constexpr static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
 	auto const children = root.children();
 	auto search = emap.find(&root);
 	if (search != emap.end())
 	{
 		auto [pTransform, entity] = *search;
-		auto [bOpen, bClicked] = treeNode(registry.entityName(entity), g_inspecting.entity == entity, pTransform->children().empty(), flags);
-		if (bClicked)
+		auto node = TreeNode(registry.entityName(entity), g_inspecting.entity == entity, pTransform->children().empty(), true, false);
+		if (node.test(GUI::eLeftClicked))
 		{
+			LOG_D("Selected: {}", registry.entityName(entity));
 			bool const bSelect = g_inspecting.entity != entity;
 			g_inspecting.entity = bSelect ? entity : Entity();
 			g_inspecting.pTransform = bSelect ? pTransform : nullptr;
 		}
-		if (bOpen)
+		if (node.test(GUI::eOpen))
 		{
 			for (Transform& child : pTransform->children())
 			{
@@ -167,11 +156,6 @@ void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
 #pragma endregion scene
 
 #pragma region inspector
-bool isDifferent(glm::vec3 const& lhs, glm::vec3 const& rhs)
-{
-	return !maths::equals(lhs.x, rhs.x, 0.001f) || !maths::equals(lhs.y, rhs.y, 0.001f) || !maths::equals(lhs.z, rhs.z, 0.001f);
-}
-
 template <typename... Args>
 bool dummy(Args...)
 {
@@ -179,7 +163,7 @@ bool dummy(Args...)
 }
 
 template <typename T, typename F1, typename F2>
-void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view filter, F1 shouldList, F2 onSelected, bool* out_pSelect)
+void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view filter, F1 shouldList, F2 onSelected)
 {
 	if (!filter.empty())
 	{
@@ -189,8 +173,7 @@ void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view fi
 	for (typename io::PathTree<T>::Node const& node : nodes)
 	{
 		auto const str = node.directory.filename().generic_string() + "/";
-		auto [bOpen, _] = treeNode(str, false, false, ImGuiTreeNodeFlags_SpanAvailWidth);
-		if (bOpen)
+		if (auto n = TreeNode(str, false, false, true, true))
 		{
 			for (auto const& [name, entry] : node.entries)
 			{
@@ -198,43 +181,33 @@ void listResourceTree(typename io::PathTree<T>::Nodes nodes, std::string_view fi
 				if (filter.empty() || str.find(filter) != std::string::npos)
 				{
 					auto const t = std::get<T>(entry);
-					if (shouldList(t) && treeNode(str, false, true).second)
+					if (shouldList(t) && TreeNode(str, false, true, true, false).test(GUI::eLeftClicked))
 					{
 						onSelected(t);
-						if (out_pSelect)
-						{
-							*out_pSelect = false;
-						}
 					}
 				}
 			}
-			listResourceTree<T, F1, F2>(node.childNodes(), filter, shouldList, onSelected, out_pSelect);
-			ImGui::TreePop();
+			listResourceTree<T, F1, F2>(node.childNodes(), filter, shouldList, onSelected);
 		}
 	}
 }
 
 template <typename T, typename F1, typename F2>
-void listResources(F1 shouldList, F2 onSelected, bool* out_pSelect = nullptr, bool bNone = false)
+void listResources(F1 shouldList, F2 onSelected, bool bNone = false)
 {
 	static_assert(std::is_base_of_v<res::Resource<T>, T>, "T must derive from Resource");
-	static char szFilter[128];
-	ImGui::SetNextItemWidth(200.0f);
-	ImGui::InputText("Filter", szFilter, arraySize(szFilter));
+	std::string filter;
+	TWidget<std::string> f("Filter", filter, 200.0f);
 	ImGui::Separator();
 	if (bNone)
 	{
-		auto [_, bClicked] = treeNode("[None]", false, true, ImGuiTreeNodeFlags_SpanAvailWidth);
-		if (bClicked)
+		auto const node = TreeNode("[None]", false, true, true, false);
+		if (node.test(GUI::eLeftClicked))
 		{
 			onSelected({});
-			if (out_pSelect)
-			{
-				*out_pSelect = false;
-			}
 		}
 	}
-	listResourceTree<T>(res::loaded<T>().rootNodes(), szFilter, shouldList, onSelected, out_pSelect);
+	listResourceTree<T>(res::loaded<T>().rootNodes(), filter, shouldList, onSelected);
 }
 
 template <typename T>
@@ -250,7 +223,7 @@ void tabLoaded(sv tabName)
 void resourcesWindow(v2 pos, v2 size)
 {
 	static bool s_bResources = false;
-	s_bResources |= ImGui::Button("Resources");
+	s_bResources |= Button("Resources");
 	if (s_bResources)
 	{
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
@@ -274,25 +247,28 @@ void resourcesWindow(v2 pos, v2 size)
 }
 
 template <typename T, typename F, typename F2>
-void inspectResource(T resource, sv selector, bool& out_bSelect, il<Ref<bool>> unselect, F onSelected, F2 filter, v2 pos, v2 size, bool bNone = true)
+void inspectResource(T resource, sv selector, sv prefix, F onSelected, F2 filter, v2 pos, v2 size, bool bNone = true)
 {
 	auto const id = res::info(resource).id;
-	constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-	ImGui::TreeNodeEx(id.empty() ? "[None]" : id.generic_string().data(), flags);
-	if (ImGui::IsItemClicked() || out_bSelect)
+	auto const resID = prefix / id;
+	bool const bSelected = resID == g_inspecting.resID;
+	auto node = TreeNode(id.empty() ? "[None]" : id.generic_string().data(), bSelected, true, true, false);
+	if (node.test(GUI::eLeftClicked) || bSelected)
 	{
-		out_bSelect = true;
-		for (bool& b : unselect)
-		{
-			b = false;
-		}
+		g_inspecting.resID = resID;
 		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin(selector.data(), &out_bSelect, ImGuiWindowFlags_NoSavedSettings))
+		auto const label = fmt::format("{}###Resource Inspector", selector.empty() ? "[None]" : selector);
+		bool bOpen = true;
+		if (ImGui::Begin(label.data(), &bOpen, ImGuiWindowFlags_NoSavedSettings))
 		{
-			listResources<T>(filter, onSelected, &out_bSelect, bNone);
+			listResources<T>(filter, onSelected, bNone);
 		}
 		ImGui::End();
+		if (!bOpen)
+		{
+			g_inspecting.resID.clear();
+		}
 	}
 }
 
@@ -300,100 +276,136 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 {
 	auto pInfo = res::infoRW(mesh);
 	auto pImpl = res::impl(mesh);
+	auto pMat = res::infoRW(mesh.material().material);
 	if (!pInfo || !pImpl)
 	{
 		return;
 	}
-	if (ImGui::TreeNode(fmt::format("Material{}", idx).data()))
+	auto name = gs::guiName<res::Material>();
+	if (auto matInst = TreeNode(fmt::format("{} Instance {}", name, idx)))
 	{
-		inspectResource<res::Material>(
-			pInfo->material.material, "Loaded Materials", g_inspecting.mesh.bSelectMat, {g_inspecting.mesh.bSelectDiffuse, g_inspecting.mesh.bSelectID},
-			[pInfo](res::Material const& mat) { pInfo->material.material = mat; }, &dummy<res::Material>, pos, size, false);
-		inspectResource<res::Texture>(
-			pInfo->material.diffuse, "Loaded Textures", g_inspecting.mesh.bSelectDiffuse, {g_inspecting.mesh.bSelectID, g_inspecting.mesh.bSelectMat},
-			[pInfo](res::Texture const& tex) { pInfo->material.diffuse = tex; },
-			[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
-		bool bOut = pInfo->material.flags[res::Material::Flag::eDropColour];
-		ImGui::Checkbox("Drop Colour", &bOut);
-		pInfo->material.flags[res::Material::Flag::eDropColour] = bOut;
-		bOut = pInfo->material.flags[res::Material::Flag::eOpaque];
-		ImGui::Checkbox("Opaque", &bOut);
-		pInfo->material.flags[res::Material::Flag::eOpaque] = bOut;
-		bOut = pInfo->material.flags[res::Material::Flag::eTextured];
-		ImGui::Checkbox("Textured", &bOut);
-		pInfo->material.flags[res::Material::Flag::eTextured] = bOut;
-		bOut = pInfo->material.flags[res::Material::Flag::eLit];
-		ImGui::Checkbox("Lit", &bOut);
-		pInfo->material.flags[res::Material::Flag::eLit] = bOut;
-		ImGui::TreePop();
+		if (auto mat = TreeNode(name))
+		{
+			inspectResource<res::Material>(
+				pInfo->material.material, name, fmt::format("M{} material", idx), [pInfo](res::Material const& mat) { pInfo->material.material = mat; },
+				&dummy<res::Material>, pos, size, false);
+		}
+		auto name = gs::guiName<res::Texture>();
+		if (auto diff = TreeNode(fmt::format("{}: Diffuse", name)))
+		{
+			inspectResource<res::Texture>(
+				pInfo->material.diffuse, name, fmt::format("M{} diffuse", idx), [pInfo](res::Texture const& tex) { pInfo->material.diffuse = tex; },
+				[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
+		}
+		if (auto spec = TreeNode(fmt::format("{}: Specular", name)))
+		{
+			inspectResource<res::Texture>(
+				pInfo->material.specular, name, fmt::format("M{} specular", idx), [pInfo](res::Texture const& tex) { pInfo->material.specular = tex; },
+				[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
+		}
+		constexpr std::array ids = {"Textured"sv, "Lit"sv, "Opaque"sv, "Drop Colour"sv, "UI"sv, "Skybox"sv};
+		TNWidget<res::Material::Flag> material(ids, pInfo->material.flags);
+		TWidget<Colour> tint("Tint", pInfo->material.tint);
+		if (pMat)
+		{
+			TWidget<Colour> ambient("Ka", pMat->albedo.ambient);
+			TWidget<Colour> diffuse("Kd", pMat->albedo.diffuse);
+			TWidget<Colour> specular("Ks", pMat->albedo.specular);
+			TWidget<f32> shininess("k", pMat->shininess);
+		}
 	}
 }
 
 void entityInspector(v2 pos, v2 size, Registry& registry)
 {
-	if (g_inspecting.entity != Entity() && g_inspecting.pTransform)
+	if (g_inspecting.entity != Entity())
 	{
 		ImGui::LabelText("", "%s", registry.entityName(g_inspecting.entity).data());
 		bool const bEnabled = registry.enabled(g_inspecting.entity);
 		char const* szToggle = bEnabled ? "Disable" : "Enable";
-		if (ImGui::Button(szToggle))
+		if (Button(szToggle))
 		{
 			registry.setEnabled(g_inspecting.entity, !bEnabled);
 		}
 		ImGui::SameLine();
-		if (ImGui::Button("Destroy"))
+		if (Button("Destroy"))
 		{
 			registry.destroyEntity(g_inspecting.entity);
 			g_inspecting = {};
 		}
-		else
+		if (auto pDesc = registry.component<SceneDesc>(g_inspecting.entity))
 		{
-			auto posn = g_inspecting.pTransform->position();
-			auto const& orn = g_inspecting.pTransform->orientation();
-			auto rot = glm::eulerAngles(orn);
-			auto const rotOrg = rot;
-			ImGui::DragFloat3("Pos", &posn.x, 0.1f);
-			if (isDifferent(posn, g_inspecting.pTransform->position()))
+			if (auto desc = TreeNode("SceneDesc"))
 			{
-				g_inspecting.pTransform->position(posn);
+				if (auto skybox = TreeNode("Skybox"))
+				{
+					res::Texture tex;
+					if (!pDesc->skyboxCubemapID.empty())
+					{
+						tex = *res::find<res::Texture>(pDesc->skyboxCubemapID);
+					}
+					inspectResource(
+						tex, "Skybox", "Skybox", [&pDesc](res::Texture tex) { pDesc->skyboxCubemapID = tex.info().id; },
+						[](res::Texture tex) { return res::info(tex).type == res::Texture::Type::eCube; }, pos, size);
+				}
+				if (auto lights = TreeNode("Lights"))
+				{
+					s16 idx = 0;
+					for (auto& dirLight : pDesc->dirLights)
+					{
+						if (auto node = TreeNode(fmt::format("dir_light_{}", idx++).data()))
+						{
+							if (node.test(GUI::eRightClicked))
+							{
+								std::swap(dirLight, pDesc->dirLights.back());
+								pDesc->dirLights.pop_back();
+								idx = -1;
+								break;
+							}
+							TWidget<glm::vec3> dir("dir", dirLight.direction, true);
+							TWidget<Colour> ambient("ambient", dirLight.ambient);
+							TWidget<Colour> diffuse("diffuse", dirLight.diffuse);
+							TWidget<Colour> specular("specular", dirLight.specular);
+						}
+					}
+					if (idx >= 0)
+					{
+						auto node = TreeNode("[Add]", false, true, false, true);
+						if (node.test(GUI::eLeftClicked))
+						{
+							pDesc->dirLights.push_back({});
+						}
+					}
+				}
 			}
-			ImGui::DragFloat3("Orn", &rot.x, 0.01f);
-			if (isDifferent(rot, rotOrg))
-			{
-				g_inspecting.pTransform->orient(glm::quat(rot));
-			}
+		}
+		if (g_inspecting.pTransform)
+		{
+			TWidget<Transform> t("Pos", "Orn", "Scl", *g_inspecting.pTransform);
 			ImGui::Separator();
 
 			auto pMesh = registry.component<res::Mesh>(g_inspecting.entity);
-			if (pMesh)
+			auto name = gs::guiName<res::Mesh>();
+			if (auto mesh = TInspector<res::Mesh>(registry, g_inspecting.entity, pMesh))
 			{
-				if (ImGui::TreeNode("Mesh"))
-				{
-					inspectResource(
-						*pMesh, "Loaded Meshes", g_inspecting.mesh.bSelectID, {g_inspecting.mesh.bSelectDiffuse, g_inspecting.mesh.bSelectMat},
-						[pMesh](res::Mesh mesh) { *pMesh = mesh; }, &dummy<res::Mesh>, pos, size);
+				inspectResource(
+					*pMesh, name, name, [pMesh](res::Mesh mesh) { *pMesh = mesh; }, &dummy<res::Mesh>, pos, size);
 
-					inspectMatInst(*pMesh, 0, pos, size);
-					ImGui::TreePop();
-				}
+				inspectMatInst(*pMesh, 0, pos, size);
 			}
 			auto pModel = registry.component<res::Model>(g_inspecting.entity);
 			auto pModelImpl = pModel ? res::impl(*pModel) : nullptr;
-			if (pModel)
+			name = gs::guiName<res::Model>();
+			if (auto model = TInspector<res::Model>(registry, g_inspecting.entity, pModel))
 			{
-				if (ImGui::TreeNode("Model"))
+				inspectResource(
+					*pModel, name, name, [pModel](res::Model model) { *pModel = model; }, &dummy<res::Model>, pos, size);
+				static std::deque<res::Scoped<res::Mesh>> s_empty;
+				auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
+				std::size_t idx = 0;
+				for (auto& mesh : meshes)
 				{
-					inspectResource(
-						*pModel, "Loaded Models", g_inspecting.model.bSelectID, {}, [pModel](res::Model model) { *pModel = model; }, &dummy<res::Model>, pos,
-						size);
-					static std::deque<res::Scoped<res::Mesh>> s_empty;
-					auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
-					std::size_t idx = 0;
-					for (auto& mesh : meshes)
-					{
-						inspectMatInst(mesh, idx++, pos, size);
-					}
-					ImGui::TreePop();
+					inspectMatInst(mesh, idx++, pos, size);
 				}
 			}
 		}
@@ -404,11 +416,11 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 #pragma region widgets
 void playButton()
 {
-	char const* szPlayPause = editor::g_bTickGame ? "Pause" : "Play";
-	if (ImGui::Button(szPlayPause))
+	char const* szPlayPause = g_bTickGame ? "Pause" : "Play";
+	if (Button(szPlayPause))
 	{
-		editor::g_bTickGame = !editor::g_bTickGame;
-		LOG_I("[{}] {}", s_tName, editor::g_bTickGame ? "Resumed" : "Paused");
+		g_bTickGame = !g_bTickGame;
+		LOG_I("[{}] {}", s_tName, g_bTickGame ? "Resumed" : "Paused");
 	}
 }
 
@@ -416,141 +428,59 @@ void presentModeDropdown()
 {
 	if (auto pWindow = WindowImpl::windowImpl(g_data.window))
 	{
-		static std::array const s_presentModes = {"Off"sv, "Mailbox"sv, "FIFO"sv, "FIFO (Relaxed)"sv};
+		static std::array const presentModeNames = {"Off"sv, "Mailbox"sv, "FIFO"sv, "FIFO (Relaxed)"sv};
 		auto presentMode = pWindow->presentMode();
-		if (ImGui::BeginCombo("Vsync", s_presentModes[(std::size_t)presentMode].data()))
+		auto const& presentModes = pWindow->m_presentModes;
+		std::vector<std::string_view> list;
+		list.reserve(presentModes.size());
+		for (auto mode : presentModes)
 		{
-			auto const& presentModes = pWindow->m_presentModes;
-			static std::size_t s_selected = 100;
-			std::size_t previous = s_selected;
-			for (std::size_t i = 0; i < presentModes.size() && i < s_presentModes.size(); ++i)
+			list.push_back(presentModeNames.at((std::size_t)mode));
+		}
+		if (auto vsync = Combo("Vsync", list, presentModeNames.at((std::size_t)presentMode)); vsync.select >= 0 && vsync.select < (s32)presentModes.size())
+		{
+			auto newMode = presentModes.at((std::size_t)vsync.select);
+			if (newMode != presentMode)
 			{
-				if (s_selected > s_presentModes.size() && presentMode == presentModes.at(i))
+				if (pWindow->setPresentMode(newMode))
 				{
-					s_selected = i;
-					previous = s_selected;
-				}
-				bool const bSelected = s_selected == i;
-				auto const iMode = presentModes.at(i);
-				if (ImGui::Selectable(s_presentModes[(std::size_t)iMode].data(), bSelected))
-				{
-					s_selected = i;
-				}
-				if (bSelected)
-				{
-					ImGui::SetItemDefaultFocus();
-				}
-			}
-			if (previous != s_selected)
-			{
-				auto const newPresentMode = presentModes.at(s_selected);
-				if (pWindow->setPresentMode(newPresentMode))
-				{
-					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, s_presentModes[(std::size_t)presentMode],
-						  s_presentModes[(std::size_t)newPresentMode]);
+					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, presentModeNames[(std::size_t)presentMode],
+						  presentModeNames[(std::size_t)newMode]);
 				}
 				else
 				{
 					LOG_E("[{}] Failed to switch present mode!", s_tName);
 				}
 			}
-			ImGui::EndCombo();
 		}
 	}
 }
 
-// void worldSelectDropdown()
-// {
-// 	World* pNewWorld = nullptr;
-// 	auto worldName = std::string(g_pWorld ? g_pWorld->name() : "[None]");
-// 	utils::removeNamesapces(worldName);
-// 	if (g_pWorld && g_pWorld->busy())
-// 	{
-// 		ImGui::LabelText("", "%s (Busy)", worldName.data());
-// 	}
-// 	else if (ImGui::BeginCombo("Worlds", worldName.data()))
-// 	{
-// 		auto const worlds = World::allWorlds();
-// 		static std::size_t s_selected = 0;
-// 		for (std::size_t i = 0; i < worlds.size(); ++i)
-// 		{
-// 			World& world = worlds.at(i);
-// 			bool const bSelected = s_selected == i;
-// 			auto name = std::string(world.name());
-// 			utils::removeNamesapces(name);
-// 			if (ImGui::Selectable(name.data(), bSelected))
-// 			{
-// 				s_selected = i;
-// 				pNewWorld = &world;
-// 			}
-// 			if (bSelected)
-// 			{
-// 				ImGui::SetItemDefaultFocus();
-// 			}
-// 		}
-// 		ImGui::EndCombo();
-// 	}
-// 	if (pNewWorld && pNewWorld != g_pWorld)
-// 	{
-// 		World::loadWorld(pNewWorld->id());
-// 	}
-// }
-
-void perFrame(editor::PerFrame const& perFrame)
+void perFrame(PerFrame const& perFrame)
 {
-	for (auto const& dropdown : perFrame.dropdowns)
+	if (!engine::busy() && perFrame.customRightPanel)
 	{
-		auto const& title = !dropdown.title.empty() ? dropdown.title : "[None]";
-		std::string_view selectedStr;
-		if (ImGui::BeginCombo(title.data(), dropdown.preSelect.data()))
-		{
-			for (auto const& entry : dropdown.entries)
-			{
-				if (ImGui::Selectable(entry.data()))
-				{
-					selectedStr = entry;
-				}
-			}
-			ImGui::EndCombo();
-		}
-		if (!selectedStr.empty() && dropdown.onSelect)
-		{
-			dropdown.onSelect(selectedStr);
-		}
+		perFrame.customRightPanel();
 	}
 }
 
 void logLevelDropdown()
 {
-	static io::Level s_selected = io::g_minLevel;
-	if (ImGui::BeginCombo("Log Level", io::g_logLevels.at((std::size_t)io::g_minLevel).data()))
+	if (auto level = Combo("Log Level", io::g_logLevels, io::g_logLevels.at((std::size_t)io::g_minLevel)); level.select >= 0)
 	{
-		for (std::size_t i = 0; i < (std::size_t)io::Level::eCOUNT_; ++i)
+		if (level.select != (s32)io::g_minLevel)
 		{
-			bool const bSelected = s_selected == (io::Level)i;
-			if (ImGui::Selectable(io::g_logLevels.at(i).data(), bSelected))
-			{
-				s_selected = (io::Level)i;
-			}
-			if (bSelected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
+			auto const oldLevel = io::g_logLevels.at((std::size_t)io::g_minLevel);
+			io::g_minLevel = io::Level::eDebug;
+			LOG_I("[{}] Min Log Level changed from [{}] to [{}]", s_tName, oldLevel, io::g_logLevels.at((std::size_t)level.select));
+			io::g_minLevel = (io::Level)level.select;
 		}
-		ImGui::EndCombo();
-	}
-	if (s_selected != io::g_minLevel)
-	{
-		auto const oldLevel = io::g_logLevels.at((std::size_t)io::g_minLevel);
-		io::g_minLevel = io::Level::eDebug;
-		LOG_I("[{}] Min Log Level changed from [{}] to [{}]", s_tName, oldLevel, io::g_logLevels.at((std::size_t)s_selected));
-		io::g_minLevel = s_selected;
 	}
 }
 #pragma endregion widgets
 
 #pragma region layout
-void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args const& args)
+void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -566,7 +496,7 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args cons
 	{
 		resourcesWindow({(f32)(panelSize.x + s_xPad), 200.0f}, {500.0f, 300.0f});
 		static bool s_bImGuiDemo = false;
-		s_bImGuiDemo |= ImGui::Button("ImGui Demo");
+		s_bImGuiDemo |= Button("ImGui Demo");
 		if (s_bImGuiDemo)
 		{
 			ImGui::ShowDemoWindow(&s_bImGuiDemo);
@@ -578,7 +508,7 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args cons
 	return;
 }
 
-void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args const& args)
+void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -597,6 +527,20 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args con
 		{
 			if (ImGui::BeginTabItem("Scene"))
 			{
+				Registry const& registry = args.pGame->registry;
+				auto view = registry.view<SceneDesc>();
+				if (!view.empty())
+				{
+					auto [entity, _] = *view.begin();
+					auto const node = TreeNode(registry.entityName(entity), g_inspecting.entity == entity, true, true, false);
+					if (node.test(GUI::eLeftClicked))
+					{
+						bool const bSelect = g_inspecting.entity != entity;
+						g_inspecting.entity = bSelect ? entity : Entity();
+						g_inspecting.pTransform = nullptr;
+					}
+				}
+				ImGui::Separator();
 				for (Transform& transform : args.pRoot->children())
 				{
 					walkSceneTree(transform, *args.pMap, args.pGame->registry);
@@ -609,7 +553,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, editor::Args con
 				ImGui::Separator();
 				logLevelDropdown();
 				// worldSelectDropdown();
-				perFrame(args.pGame->data);
+				perFrame(args.pGame->editorData);
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
@@ -665,9 +609,9 @@ void drawLog(iv2 fbSize, s32 logHeight)
 			ImGui::PlotLines("Frame Time", ftArr.data(), (s32)ftArr.size(), 0, str.data());
 			ImGui::Separator();
 		}
-		// Widgets
+		// TWidgets
 		{
-			bClear = ImGui::Button("Clear");
+			bClear = Button("Clear");
 			ImGui::SameLine();
 			ImGui::Checkbox("Auto-scroll", &g_bAutoScroll);
 		}
@@ -837,11 +781,174 @@ void resize(WindowImpl* pWindow)
 		break;
 	}
 	pWindow->setCursorType(toSet);
-	editor::g_gameRect = s_gameRect;
+	g_gameRect = s_gameRect;
 }
 #pragma endregion layout
 } // namespace
 
+GUIStateful::GUIStateful()
+{
+	clicks(guiState);
+}
+
+void GUIStateful::refresh()
+{
+	clicks(guiState);
+}
+
+Button::Button(sv id)
+{
+	refresh();
+	guiState[GUI::eLeftClicked] = ImGui::Button(id.empty() ? "[Unnamed]" : id.data());
+}
+
+Combo::Combo(sv id, Span<sv> entries, sv preSelected)
+{
+	if (!entries.empty())
+	{
+		guiState[GUI::eOpen] = ImGui::BeginCombo(id.empty() ? "[Unnamed]" : id.data(), preSelected.data());
+		refresh();
+		if (test(GUI::eOpen))
+		{
+			std::size_t i = 0;
+			for (auto entry : entries)
+			{
+				bool const bSelected = preSelected == entry;
+				if (ImGui::Selectable(entry.data(), bSelected))
+				{
+					select = (s32)i;
+					selected = entry;
+				}
+				if (bSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+				++i;
+			}
+			ImGui::EndCombo();
+		}
+	}
+}
+
+TreeNode::TreeNode() = default;
+
+TreeNode::TreeNode(sv id)
+{
+	guiState[GUI::eOpen] = ImGui::TreeNode(id.empty() ? "[Unnamed]" : id.data());
+	refresh();
+}
+
+TreeNode::TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen)
+{
+	constexpr static ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	ImGuiTreeNodeFlags const branchFlags = (bLeftClickOpen ? 0 : ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
+	ImGuiTreeNodeFlags const metaFlags = (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | (bFullWidth ? ImGuiTreeNodeFlags_SpanAvailWidth : 0);
+	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | metaFlags;
+	guiState[GUI::eOpen] = ImGui::TreeNodeEx(id.empty() ? "[Unnamed]" : id.data(), nodeFlags) && !bLeaf;
+	refresh();
+}
+
+TreeNode::TreeNode(TreeNode&& rhs)
+{
+	guiState = rhs.guiState;
+	rhs.guiState = {};
+}
+
+TreeNode& TreeNode::operator=(TreeNode&& rhs)
+{
+	if (&rhs != this)
+	{
+		guiState = rhs.guiState;
+		rhs.guiState = {};
+	}
+	return *this;
+}
+
+TreeNode::~TreeNode()
+{
+	if (test(GUI::eOpen))
+	{
+		ImGui::TreePop();
+	}
+}
+
+TWidget<bool>::TWidget(sv id, bool& out_b)
+{
+	ImGui::Checkbox(id.empty() ? "[Unnamed]" : id.data(), &out_b);
+}
+
+TWidget<s32>::TWidget(sv id, s32& out_s)
+{
+	ImGui::DragInt(id.empty() ? "[Unnamed]" : id.data(), &out_s);
+}
+
+TWidget<f32>::TWidget(sv id, f32& out_s)
+{
+	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_s);
+}
+
+TWidget<Colour>::TWidget(sv id, Colour& out_colour)
+{
+	auto c = out_colour.toVec4();
+	ImGui::ColorEdit3(id.empty() ? "[Unnamed]" : id.data(), &c.x);
+	out_colour = Colour(c);
+}
+
+TWidget<std::string>::TWidget(sv id, std::string& out_str, f32 width)
+{
+	constexpr std::size_t size = 128;
+	ASSERT(out_str.size() < size, "overflow!");
+	std::array<char, size> buf;
+	std::memset(buf.data(), '\0', buf.size());
+	ImGui::SetNextItemWidth(width);
+	ImGui::InputText(id.empty() ? "[Unnamed]" : id.data(), buf.data(), buf.size());
+	out_str = buf.data();
+}
+
+TWidget<glm::vec3>::TWidget(sv id, glm::vec3& out_vec, bool bNormalised, f32 dv)
+{
+	if (bNormalised)
+	{
+		if (glm::length2(out_vec) <= 0.0f)
+		{
+			out_vec = gfx::g_nFront;
+		}
+		else
+		{
+			out_vec = glm::normalize(out_vec);
+		}
+	}
+	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
+	if (bNormalised)
+	{
+		out_vec = glm::normalize(out_vec);
+	}
+}
+
+TWidget<glm::quat>::TWidget(sv id, glm::quat& out_quat, f32 dq)
+{
+	auto rot = glm::eulerAngles(out_quat);
+	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &rot.x, dq);
+	out_quat = glm::quat(rot);
+}
+
+TWidget<Transform>::TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, f32 dPos, f32 dOrn, f32 dScl)
+{
+	auto posn = out_t.position();
+	auto scl = out_t.scale();
+	auto const& orn = out_t.orientation();
+	auto rot = glm::eulerAngles(orn);
+	ImGui::DragFloat3(idPos.data(), &posn.x, dPos);
+	out_t.position(posn);
+	ImGui::DragFloat3(idOrn.data(), &rot.x, dOrn);
+	out_t.orient(glm::quat(rot));
+	ImGui::DragFloat3(idScl.data(), &scl.x, dScl);
+	out_t.scale(scl);
+}
+} // namespace le::editor
+
+namespace le
+{
 bool editor::init(WindowID editorWindow)
 {
 	if (!g_bInit && gfx::ext_gui::isInit())
@@ -921,7 +1028,7 @@ void editor::tick(Args const& args, Time dt)
 		g_gameRect = {};
 	}
 	g_data.pressed.clear();
-	gs::g_context.data = {};
+	gs::g_context.editorData = {};
 }
 } // namespace le
 #endif

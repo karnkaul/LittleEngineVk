@@ -152,26 +152,22 @@ void LevelDriver::unloadLoad()
 void LevelDriver::perFrame()
 {
 #if defined(LEVK_EDITOR)
-	editor::Dropdown levels;
-	if (!engine::busy())
-	{
-		levels.entries = {"Demo", "Test"};
-	}
-	levels.onSelect = [this](std::string_view str) {
-		if (m_active)
+	static constexpr std::array<std::string_view, 2> levelNames = {"Demo", "Test"};
+	gs::g_context.editorData.customRightPanel = [this]() {
+		if (auto combo = editor::Combo("Level", levelNames, m_active->m_name))
 		{
-			if (str == "Demo" && m_active->m_name != "Demo")
+			if (m_active && combo.selected != m_active->m_name)
 			{
-				g_switcher.schedule<DemoLevel>();
-			}
-			else if (str == "Test" && m_active->m_name != "Test")
-			{
-				g_switcher.schedule<TestLevel>();
+				if (combo.selected == levelNames.at(0))
+				{
+					g_switcher.schedule<DemoLevel>();
+				}
+				else if (combo.selected == levelNames.at(1))
+				{
+					g_switcher.schedule<TestLevel>();
+				}
 			}
 		}
 	};
-	levels.title = "Level";
-	levels.preSelect = m_active->m_name;
-	gs::g_context.data.dropdowns.push_back(std::move(levels));
 #endif
 }

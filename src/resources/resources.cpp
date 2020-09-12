@@ -774,6 +774,12 @@ void res::init()
 			Mesh::CreateInfo info;
 			info.geometry = gfx::createCube();
 			load("meshes/cube", std::move(info));
+			info = {};
+			info.geometry = gfx::createCone();
+			load("meshes/cone", std::move(info));
+			info = {};
+			info.geometry = gfx::createCubedSphere(1.0f, 16);
+			load("meshes/sphere", std::move(info));
 		}
 		{
 			static stdfs::path const s_jsonID = "fonts/default.json";

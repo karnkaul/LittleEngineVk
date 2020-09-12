@@ -45,6 +45,8 @@ TestLevel::TestLevel()
 	m_game.ship = gs::spawnProp("ship");
 	m_game.ship.transform().position({0.0f, 0.0f, -3.0f});
 	*registry().addComponent<res::Mesh>(m_game.ship.entity) = *res::find<res::Mesh>("meshes/cube");
+
+	registry().spawnEntity<SceneDesc>("scene_desc");
 }
 
 void TestLevel::tick(Time dt)

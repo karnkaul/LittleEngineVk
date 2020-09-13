@@ -38,6 +38,9 @@ struct GUIStateful
 	GUIState guiState;
 
 	GUIStateful();
+	GUIStateful(GUIStateful&&);
+	GUIStateful& operator=(GUIStateful&&);
+	virtual ~GUIStateful() = default;
 
 	void refresh();
 
@@ -75,9 +78,9 @@ struct TreeNode final : GUIStateful
 	TreeNode();
 	TreeNode(sv id);
 	TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen);
-	TreeNode(TreeNode&&);
-	TreeNode& operator=(TreeNode&&);
-	~TreeNode();
+	TreeNode(TreeNode&&) = default;
+	TreeNode& operator=(TreeNode&&) = default;
+	~TreeNode() override;
 
 	operator bool() const override
 	{

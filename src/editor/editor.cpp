@@ -156,7 +156,6 @@ void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
 			{
 				walkSceneTree(child, emap, registry);
 			}
-			ImGui::TreePop();
 		}
 	}
 }
@@ -596,7 +595,10 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 				presentModeDropdown();
 				Styler s(Style::eSeparator);
 				logLevelDropdown();
-				// worldSelectDropdown();
+				ImGui::EndTabItem();
+			}
+			if (args.pGame->editorData.customRightPanel && ImGui::BeginTabItem("Custom"))
+			{
 				perFrame(args.pGame->editorData);
 				ImGui::EndTabItem();
 			}
@@ -851,6 +853,21 @@ GUIStateful::GUIStateful()
 	clicks(guiState);
 }
 
+GUIStateful::GUIStateful(GUIStateful&& rhs) : guiState(rhs.guiState)
+{
+	rhs.guiState = {};
+}
+
+GUIStateful& GUIStateful::operator=(GUIStateful&& rhs)
+{
+	if (&rhs != this)
+	{
+		guiState = rhs.guiState;
+		rhs.guiState = {};
+	}
+	return *this;
+}
+
 void GUIStateful::refresh()
 {
 	clicks(guiState);
@@ -906,22 +923,6 @@ TreeNode::TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLef
 	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | metaFlags;
 	guiState[GUI::eOpen] = ImGui::TreeNodeEx(id.empty() ? "[Unnamed]" : id.data(), nodeFlags) && !bLeaf;
 	refresh();
-}
-
-TreeNode::TreeNode(TreeNode&& rhs)
-{
-	guiState = rhs.guiState;
-	rhs.guiState = {};
-}
-
-TreeNode& TreeNode::operator=(TreeNode&& rhs)
-{
-	if (&rhs != this)
-	{
-		guiState = rhs.guiState;
-		rhs.guiState = {};
-	}
-	return *this;
 }
 
 TreeNode::~TreeNode()

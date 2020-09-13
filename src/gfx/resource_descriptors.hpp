@@ -188,12 +188,6 @@ public:
 	void writeArray(std::vector<res::Texture> const& textures, vk::DescriptorSet set) const;
 };
 
-struct SamplerCounts final
-{
-	u32 diffuse = ImageSamplers::s_max;
-	u32 specular = ImageSamplers::s_max;
-};
-
 class Set final
 {
 public:
@@ -220,7 +214,7 @@ public:
 public:
 	void initSSBOs();
 	void destroy();
-	void resetTextures(SamplerCounts const& counts);
+	void resetTextures();
 
 public:
 	void writeView(View const& view);
@@ -230,19 +224,14 @@ public:
 	void writeCubemap(res::Texture cubemap);
 };
 
-struct SetLayouts final
-{
-	vk::DescriptorSetLayout samplerLayout;
-	std::vector<Set> sets;
-};
-
 inline vk::DescriptorSetLayout g_bufferLayout;
+inline vk::DescriptorSetLayout g_samplerLayout;
 
 void init();
 void deinit();
 
-SetLayouts allocateSets(u32 copies, SamplerCounts const& samplerCounts = {});
-vk::RenderPass createSingleRenderPass(vk::Format colourFormat, vk::Format depthFormat);
+std::vector<Set> allocateSets(u32 copies);
+RenderPass createSingleRenderPass(vk::Format colourFormat, vk::Format depthFormat);
 
 template <typename T>
 Descriptor<T>::Descriptor(vk::BufferUsageFlags flags)

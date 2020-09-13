@@ -30,9 +30,12 @@ std::string g_exePathStr;
 std::deque<os::ArgsParser::entry> g_args;
 } // namespace
 
-os::Service::Service(os::Args const& args)
+os::Service::Service(os::Args args)
 {
-	init(args);
+	if (g_exeLocation.empty() && args.argc > 0)
+	{
+		os::args(args);
+	}
 	threads::init();
 }
 
@@ -41,7 +44,7 @@ os::Service::~Service()
 	threads::joinAll();
 }
 
-void os::init(Args const& args)
+void os::args(Args args)
 {
 	g_workingDir = stdfs::absolute(stdfs::current_path());
 	if (args.argc > 0)
@@ -58,7 +61,6 @@ void os::init(Args const& args)
 		g_exeLocation = g_exePath / g_exeLocation.filename();
 		g_args.pop_front();
 	}
-	return;
 }
 
 std::string os::argv0()
@@ -80,7 +82,7 @@ stdfs::path os::dirPath(Dir dir)
 	case os::Dir::eExecutable:
 		if (g_exePath.empty())
 		{
-			LOG_E("[OS] Unknown executable path! Using working directory instead [{}]", g_workingDir.generic_string());
+			LOG_W("[OS] Unknown executable path! Using working directory instead [{}]", g_workingDir.generic_string());
 			g_exePath = dirPath(Dir::eWorking);
 		}
 		return g_exePath;

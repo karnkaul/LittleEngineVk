@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_set>
 #include <core/static_any.hpp>
+#include <core/utils.hpp>
 #include <engine/window/window.hpp>
 #include <window/native_window.hpp>
 
@@ -47,7 +48,7 @@ public:
 	static bool init();
 	static void deinit();
 	static void update();
-	static std::vector<char const*> vulkanInstanceExtensions();
+	static Span<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::RendererImpl* rendererImpl(WindowID window);
 	static std::unordered_set<s32> allExisting();

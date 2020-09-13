@@ -1,6 +1,9 @@
+#include "gfx/deferred.hpp"
+#include "vulkan/vulkan.hpp"
 #include <map>
 #include <core/log.hpp>
 #include <core/utils.hpp>
+#include <gfx/deferred.hpp>
 #include <gfx/render_context.hpp>
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
@@ -29,8 +32,8 @@ bool RenderContext::Metadata::ready() const
 
 vk::SurfaceFormatKHR RenderContext::Metadata::bestColourFormat() const
 {
-	static std::vector<vk::Format> const s_defaultFormats = {vk::Format::eB8G8R8A8Srgb};
-	static std::vector<vk::ColorSpaceKHR> const s_defaultColourSpaces = {vk::ColorSpaceKHR::eSrgbNonlinear};
+	static std::array const s_defaultFormats = {vk::Format::eB8G8R8A8Srgb};
+	static std::array const s_defaultColourSpaces = {vk::ColorSpaceKHR::eSrgbNonlinear};
 	auto const& desiredFormats = info.options.formats.empty() ? s_defaultFormats : info.options.formats;
 	auto const& desiredColourSpaces = info.options.colourSpaces.empty() ? s_defaultColourSpaces : info.options.colourSpaces;
 	std::map<u32, vk::SurfaceFormatKHR> ranked;
@@ -61,14 +64,14 @@ vk::SurfaceFormatKHR RenderContext::Metadata::bestColourFormat() const
 
 vk::Format RenderContext::Metadata::bestDepthFormat() const
 {
-	static PriorityList<vk::Format> const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
+	static std::array const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
 	auto format = g_instance.supportedFormat(desired, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 	return format ? *format : vk::Format::eD16Unorm;
 }
 
 vk::PresentModeKHR RenderContext::Metadata::bestPresentMode() const
 {
-	static std::vector<vk::PresentModeKHR> const s_defaultPresentModes = {vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
+	static std::array const s_defaultPresentModes = {vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
 	auto const& desiredPresentModes = info.options.presentModes.empty() ? s_defaultPresentModes : info.options.presentModes;
 	std::map<u32, vk::PresentModeKHR> ranked;
 	for (auto const& available : presentModes)
@@ -130,7 +133,7 @@ RenderContext::RenderContext(ContextInfo const& info) : m_window(info.config.win
 		text += e.what();
 		throw std::runtime_error(text.data());
 	}
-	LOG_I("[{}] constructed", m_name, m_window);
+	LOG_I("[{}] constructed", m_name);
 }
 
 RenderContext::~RenderContext()
@@ -146,38 +149,41 @@ void RenderContext::onFramebufferResize()
 	m_flags[Flag::eRenderPaused] = size.x == 0 || size.y == 0;
 }
 
-RenderContext::TOutcome<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn)
+TResult<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn)
 {
 	if (m_flags.test(Flag::eRenderPaused))
 	{
-		return Outcome::ePaused;
+		return {};
 	}
 	if (m_flags.test(Flag::eOutOfDate))
 	{
-		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
+		recreateSwapchain();
+		return {};
 	}
 	auto const acquire = g_device.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
-		LOG_D("[{}] Failed to acquire next image [{}]", m_name, m_window, g_vkResultStr[acquire.result]);
-		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
+		LOG_D("[{}] Failed to acquire next image [{}]", m_name, g_vkResultStr[acquire.result]);
+		recreateSwapchain();
+		return {};
 	}
 	m_swapchain.imageIndex = (u32)acquire.value;
 	auto& frame = m_swapchain.frame();
 	g_device.waitFor(frame.drawn);
 	frame.drawn = setOnDrawn;
-	return RenderTarget{frame.swapchain};
+	return frame.swapchain;
 }
 
-RenderContext::Outcome RenderContext::present(vk::Semaphore wait)
+bool RenderContext::present(vk::Semaphore wait)
 {
 	if (m_flags.test(Flag::eRenderPaused))
 	{
-		return Outcome::ePaused;
+		return false;
 	}
 	if (m_flags.test(Flag::eOutOfDate))
 	{
-		return recreateSwapchain() ? Outcome::eSwapchainRecreated : Outcome::ePaused;
+		recreateSwapchain();
+		return false;
 	}
 	// Present
 	vk::PresentInfoKHR presentInfo;
@@ -190,11 +196,11 @@ RenderContext::Outcome RenderContext::present(vk::Semaphore wait)
 	auto const result = g_device.queues.present.queue.presentKHR(&presentInfo);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 	{
-		LOG_D("[{}] Failed to present image [{}]", m_name, m_window, g_vkResultStr[result]);
+		LOG_D("[{}] Failed to present image [{}]", m_name, g_vkResultStr[result]);
 		recreateSwapchain();
-		return Outcome::eSwapchainRecreated;
+		return false;
 	}
-	return Outcome::eSuccess;
+	return true;
 }
 
 vk::Format RenderContext::colourFormat() const
@@ -218,7 +224,7 @@ bool RenderContext::createSwapchain()
 	auto const framebufferSize = m_metadata.info.config.getFramebufferSize();
 	if (framebufferSize.x == 0 || framebufferSize.y == 0)
 	{
-		LOG_I("[{}] Null framebuffer size detected (minimised surface?); pausing rendering", m_name, m_window);
+		LOG_I("[{}] Null framebuffer size detected (minimised surface?); pausing rendering", m_name);
 		m_flags.set(Flag::eRenderPaused);
 		return false;
 	}
@@ -243,9 +249,11 @@ bool RenderContext::createSwapchain()
 		m_metadata.refresh();
 		createInfo.surface = m_metadata.surface;
 		createInfo.preTransform = m_metadata.capabilities.currentTransform;
+		createInfo.oldSwapchain = m_retiring;
 		auto const windowSize = m_metadata.info.config.getWindowSize();
 		m_swapchain.extent = createInfo.imageExtent = m_metadata.extent(windowSize);
 		m_swapchain.swapchain = g_device.device.createSwapchainKHR(createInfo);
+		m_retiring = vk::SwapchainKHR();
 	}
 	// Frames
 	{
@@ -292,41 +300,44 @@ bool RenderContext::createSwapchain()
 	{
 		g_instance.destroy(prevSurface);
 	}
-	LOG_D("[{}] Swapchain created [{}x{}]", m_name, m_window, framebufferSize.x, framebufferSize.y);
+	LOG_D("[{}] Swapchain created [{}x{}]", m_name, framebufferSize.x, framebufferSize.y);
 	m_flags.reset({Flag::eOutOfDate, Flag::eRenderPaused});
 	return true;
 }
 
 void RenderContext::destroySwapchain()
 {
-	g_device.waitIdle();
-	for (auto const& frame : m_swapchain.frames)
-	{
-		g_device.destroy(frame.swapchain.colour.view);
-	}
-	g_device.destroy(m_swapchain.depthImageView, m_swapchain.swapchain);
-	vram::release(m_swapchain.depthImage);
-	LOGIF_D(m_swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", m_name, m_window);
+	m_retiring = m_swapchain.swapchain;
+	deferred::release([swapchain = m_swapchain, name = m_name]() {
+		for (auto const& frame : swapchain.frames)
+		{
+			g_device.destroy(frame.swapchain.colour.view);
+		}
+		g_device.destroy(swapchain.depthImageView, swapchain.swapchain);
+		vram::release(swapchain.depthImage);
+		LOGIF_D(swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", name);
+	});
 	m_swapchain = {};
 }
 
 void RenderContext::cleanup()
 {
 	destroySwapchain();
+	g_device.waitIdle();
 	g_instance.destroy(m_metadata.surface);
 	m_metadata.surface = vk::SurfaceKHR();
 }
 
 bool RenderContext::recreateSwapchain()
 {
-	LOG_D("[{}] Recreating Swapchain...", m_name, m_window);
+	LOG_D("[{}] Recreating Swapchain...", m_name);
 	destroySwapchain();
 	if (createSwapchain())
 	{
-		LOG_D("[{}] ... Swapchain recreated", m_name, m_window);
+		LOG_D("[{}] ... Swapchain recreated", m_name);
 		return true;
 	}
-	LOGIF_E(!m_flags.test(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name, m_window);
+	LOGIF_E(!m_flags.test(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name);
 	return false;
 }
 } // namespace le::gfx

@@ -94,10 +94,6 @@ std::vector<res::Mesh> UIComponent::meshes() const
 	return ret;
 }
 
-SceneBuilder::SceneBuilder() = default;
-
-SceneBuilder::SceneBuilder(Info info) : m_info(std::move(info)) {}
-
 SceneBuilder::~SceneBuilder() = default;
 
 glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea)
@@ -126,32 +122,50 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
 	glm::vec2 const fRenderArea = fbSize * gameRect;
 	glm::ivec2 const iRenderArea = {(s32)fRenderArea.x, (s32)fRenderArea.y};
-	auto const uiSpace = m_info.uiSpace.x == 0.0f || m_info.uiSpace.y == 0.0f ? glm::vec3(fRenderArea, m_info.uiSpace.z) : m_info.uiSpace;
-	engine::g_uiSpace = m_info.flags.test(Flag::eDynamicUI) ? glm::vec3(fRenderArea, m_info.uiSpace.z) : uiProjection(uiSpace, iRenderArea);
 	gfx::Renderer::Scene scene;
-	scene.clear = {m_info.clearDepth, m_info.clearColour};
-	scene.dirLights = m_info.dirLights;
 	scene.view.pos_v = camera.position;
 	scene.view.mat_v = camera.view();
 	scene.view.mat_p = camera.perspective(fRenderArea.x / fRenderArea.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
 	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
-	if (!m_info.skyboxCubemapID.empty())
-	{
-		if (auto cubemap = res::find<res::Texture>(m_info.skyboxCubemapID); cubemap->status() == res::Status::eReady)
-		{
-			scene.view.skybox.cubemap = *cubemap;
-		}
-	}
 	gfx::Renderer::Batch batch3D;
 	gfx::Renderer::Batch batchUI;
+	gfx::Pipeline pipe3D, pipeUI;
+	glm::vec3 uiSpace = glm::vec3(fRenderArea, 2.0f);
+	SceneDesc::Flags flags;
+	{
+		auto view = registry.view<SceneDesc>();
+		if (!view.empty())
+		{
+			auto& [_, query] = *view.begin();
+			auto const& desc = std::get<SceneDesc const&>(query);
+			scene.clear = {desc.clearDepth, desc.clearColour};
+			scene.dirLights = desc.dirLights;
+			if (!desc.skyboxCubemapID.empty())
+			{
+				auto skybox = res::find<res::Texture>(desc.skyboxCubemapID);
+				if (skybox)
+				{
+					scene.view.skybox.cubemap = *skybox;
+				}
+			}
+			pipe3D = desc.pipe3D;
+			pipeUI = desc.pipeUI;
+			flags = desc.flags;
+			if (desc.uiSpace.x > 0.0f && desc.uiSpace.y > 0.0f)
+			{
+				uiSpace = desc.uiSpace;
+			}
+		}
+	}
+	engine::g_uiSpace = flags.test(SceneDesc::Flag::eDynamicUI) ? glm::vec3(fRenderArea, uiSpace.z) : uiProjection(uiSpace, iRenderArea);
 	{
 		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view)
 		{
-			if (auto& [pTransform, pModel] = query; pModel->status() == res::Status::eReady)
+			if (auto& [transform, model] = query; model.status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({pModel->meshes(), pTransform, m_info.p3Dpipe});
+				batch3D.drawables.push_back({model.meshes(), transform, pipe3D});
 			}
 		}
 	}
@@ -159,9 +173,9 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<Transform, res::Mesh>();
 		for (auto& [entity, query] : view)
 		{
-			if (auto& [pTransform, pMesh] = query; pMesh->status() == res::Status::eReady)
+			if (auto& [transform, mesh] = query; mesh.status() == res::Status::eReady)
 			{
-				batch3D.drawables.push_back({{*pMesh}, pTransform, m_info.p3Dpipe});
+				batch3D.drawables.push_back({{mesh}, transform, pipe3D});
 			}
 		}
 	}
@@ -169,12 +183,12 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 		auto view = registry.view<UIComponent>();
 		for (auto& [entity, query] : view)
 		{
-			auto& [pUI] = query;
-			auto meshes = pUI->meshes();
+			auto& ui = std::get<UIComponent const&>(query);
+			auto meshes = ui.meshes();
 			if (!meshes.empty())
 			{
 				auto pTransform = registry.component<Transform>(entity);
-				batchUI.drawables.push_back({pUI->meshes(), pTransform ? pTransform : &Transform::s_identity, m_info.pUIpipe});
+				batchUI.drawables.push_back({std::move(meshes), pTransform ? *pTransform : Transform::s_identity, pipeUI});
 			}
 		}
 	}
@@ -184,7 +198,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	}
 	if (!batchUI.drawables.empty())
 	{
-		if (!m_info.flags.test(Flag::eDynamicUI) && m_info.flags.test(Flag::eScissoredUI))
+		if (!flags.test(SceneDesc::Flag::eDynamicUI) && flags.test(SceneDesc::Flag::eScissoredUI))
 		{
 			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSpace.x / engine::g_uiSpace.x, uiSpace.y / engine::g_uiSpace.y});
 		}

@@ -14,6 +14,7 @@
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
+#include <gfx/pipeline_impl.hpp>
 #include <gfx/renderer_impl.hpp>
 #include <gfx/vram.hpp>
 #include <game/state_impl.hpp>
@@ -48,13 +49,13 @@ Counter<s32> g_counter;
 Clock g_clock;
 } // namespace
 
-Service::Service(s32 argc, char const* const* const argv)
+Service::Service(os::Args args)
 {
 	dj::g_log_error = [](auto text) { LOG_E("{}", text); };
 	Time::resetElapsed();
-	m_services.add<os::Service>(os::Args{argc, argv});
+	m_services.add<os::Service>(args);
 	m_services.add<io::Service>(std::string_view("debug.log"));
-	LOG_I("LittleEngineVk {}", g_engineVersion.toString(false));
+	LOG_I("LittleEngineVk v{}  [{}/{}]", g_engineVersion.toString(false), levk_OS_name, levk_arch_name);
 	m_services.add<tasks::Service>(4);
 }
 
@@ -62,29 +63,18 @@ Service::Service(Service&&) = default;
 Service& Service::operator=(Service&&) = default;
 Service::~Service()
 {
+	// Order is critical!
+	// Disable all input
 	input::deinit();
+	// Wait for async loads
 	res::waitIdle();
+	// Reset game state
 	gs::reset();
+	// Release all pipelines and Shader semaphores
+	gfx::pipes::deinit();
+	// Release all resources
 	res::deinit();
 	g_app = {};
-}
-
-std::vector<stdfs::path> Service::locateData(std::vector<DataSearch> const& searchPatterns)
-{
-	std::vector<stdfs::path> ret;
-	auto const exe = os::dirPath(os::Dir::eExecutable);
-	auto const pwd = os::dirPath(os::Dir::eWorking);
-	for (auto const& pattern : searchPatterns)
-	{
-		auto const& path = pattern.dirType == os::Dir::eWorking ? pwd : exe;
-		auto search = io::FileReader::findUpwards(path, Span<stdfs::path>(pattern.patterns));
-		LOGIF_W(!search, "[{}] Failed to locate data!", tName);
-		if (search)
-		{
-			ret.push_back(std::move(*search));
-		}
-	}
-	return ret;
 }
 
 bool Service::init(Info const& info)
@@ -110,25 +100,24 @@ bool Service::init(Info const& info)
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
 		io::FileReader fileReader;
-		io::Reader* pReader = info.pReader ? info.pReader : &fileReader;
+		io::Reader& reader = info.reader;
 		std::vector<stdfs::path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;
 		for (auto const& path : dataPaths)
 		{
-			if (!pReader->mount(path))
+			if (!reader.mount(path))
 			{
 				throw std::runtime_error("Failed to mount data path" + path.generic_string() + "!");
 			}
 		}
-		g_app.pReader = pReader;
+		g_app.pReader = &reader;
 		m_services.add<res::Service>();
-		if (info.windowInfo)
+		Window::Info windowInfo;
+		windowInfo.config.size = {1280, 720};
+		g_app.window = Window();
+		if (!g_app.window->create(info.windowInfo ? *info.windowInfo : windowInfo))
 		{
-			g_app.window = Window();
-			if (!g_app.window->create(*info.windowInfo))
-			{
-				throw std::runtime_error("Failed to create Window!");
-			}
+			throw std::runtime_error("Failed to create Window!");
 		}
 		input::init(*g_app.window);
 	}
@@ -235,8 +224,8 @@ bool Service::shutdown()
 		{
 			g_app.window->destroy();
 		}
-		gs::reset();
 		g_status = Status::eShuttingDown;
+		input::g_bFire = false;
 		return true;
 	}
 	return false;
@@ -249,6 +238,22 @@ void Service::doShutdown()
 	g_status = Status::eShutdown;
 }
 } // namespace engine
+
+std::vector<stdfs::path> engine::locate(Span<stdfs::path> patterns, os::Dir dirType)
+{
+	std::vector<stdfs::path> ret;
+	auto const start = os::dirPath(dirType);
+	for (auto const& pattern : patterns)
+	{
+		auto search = io::FileReader::findUpwards(start, pattern);
+		LOGIF_W(!search, "[{}] Failed to locate [{}] from [{}]!", tName, pattern.generic_string(), start.generic_string());
+		if (search)
+		{
+			ret.push_back(std::move(*search));
+		}
+	}
+	return ret;
+}
 
 bool engine::shuttingDown()
 {

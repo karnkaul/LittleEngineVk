@@ -39,6 +39,18 @@ Transform& Prop::transform()
 	return *pTransform;
 }
 
+void gs::Context::reset()
+{
+	Registry& reg = registry;
+	reg.clear();
+	name.clear();
+	gameRect = {};
+	camera = {};
+#if defined(LEVK_EDITOR)
+	editorData = {};
+#endif
+}
+
 input::Token gs::registerInput(input::Context const* pContext)
 {
 	ASSERT(pContext, "Context is null!");
@@ -184,6 +196,8 @@ gfx::Renderer::Scene gs::update(engine::Driver& out_driver, Time dt, bool bTick)
 		camera = editor::g_editorCam.m_camera;
 	}
 #endif
+	Registry& reg = g_context.registry;
+	reg.flush();
 	return out_driver.builder().build(camera, g_context.registry);
 }
 

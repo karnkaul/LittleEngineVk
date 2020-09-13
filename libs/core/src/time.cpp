@@ -6,7 +6,7 @@ namespace le
 {
 namespace
 {
-static auto s_localEpoch = stdch::high_resolution_clock::now();
+static auto s_localEpoch = stdch::steady_clock::now();
 } // namespace
 
 std::string Time::toString(Time time)
@@ -34,12 +34,12 @@ std::string Time::toString(Time time)
 
 Time Time::elapsed() noexcept
 {
-	return Time(stdch::duration_cast<stdch::microseconds>(stdch::high_resolution_clock::now() - s_localEpoch).count());
+	return Time(stdch::steady_clock::now() - s_localEpoch);
 }
 
 Time Time::sinceEpoch() noexcept
 {
-	return Time(stdch::duration_cast<stdch::microseconds>(stdch::high_resolution_clock::now().time_since_epoch()).count());
+	return Time(stdch::steady_clock::time_point().time_since_epoch());
 }
 
 Time Time::clamp(Time val, Time min, Time max) noexcept
@@ -57,7 +57,7 @@ Time Time::clamp(Time val, Time min, Time max) noexcept
 
 void Time::resetElapsed() noexcept
 {
-	s_localEpoch = stdch::high_resolution_clock::now();
+	s_localEpoch = stdch::steady_clock::now();
 }
 
 Time& Time::scale(f32 magnitude) noexcept

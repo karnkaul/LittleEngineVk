@@ -1,4 +1,5 @@
 #pragma once
+#include <fmt/format.h>
 #include <core/delegate.hpp>
 #include <core/ecs_registry.hpp>
 #include <core/time.hpp>
@@ -7,9 +8,9 @@
 #include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/screen_rect.hpp>
-
+#include <engine/resources/resources.hpp>
 #if defined(LEVK_EDITOR)
-#include <unordered_set>
+#include <engine/game/editor_types.hpp>
 #endif
 
 namespace le
@@ -45,24 +46,6 @@ struct Prop final
 	}
 };
 
-#if defined(LEVK_EDITOR)
-namespace editor
-{
-struct Dropdown final
-{
-	std::string title;
-	std::string_view preSelect;
-	std::unordered_set<std::string_view> entries;
-	std::function<void(std::string_view)> onSelect;
-};
-
-struct PerFrame
-{
-	std::vector<editor::Dropdown> dropdowns;
-};
-} // namespace editor
-#endif
-
 namespace gs
 {
 ///
@@ -89,15 +72,17 @@ struct Scoped final
 ///
 struct Context final
 {
-	Registry regTemp;
+	Registry defaultRegistry = Registry(Registry::DestroyMode::eImmediate);
 	std::string name;
 	gfx::ScreenRect gameRect;
-	Ref<Registry> registry = regTemp;
+	Ref<Registry> registry = defaultRegistry;
 	gfx::Camera camera;
 
 #if defined(LEVK_EDITOR)
-	editor::PerFrame data;
+	editor::PerFrame editorData;
 #endif
+
+	void reset();
 };
 
 ///
@@ -114,6 +99,12 @@ struct LoadReq final
 /// \brief Global context instance
 ///
 inline Context g_context;
+
+///
+/// \brief Trim leading namespaces etc from typename
+///
+template <typename T>
+std::string guiName(T const* pT = nullptr);
 
 ///
 /// \brief Register input context
@@ -166,5 +157,100 @@ Scoped<T>::~Scoped()
 		destroy(*t);
 	}
 }
+
+template <typename T>
+std::string guiName(T const* pT)
+{
+	constexpr static std::string_view prefix = "::";
+	auto name = (pT ? utils::tName(*pT) : utils::tName<T>());
+	auto search = name.find(prefix);
+	while (search < name.size())
+	{
+		name = name.substr(search + prefix.size());
+		search = name.find(prefix);
+	}
+	return name;
+}
 } // namespace gs
+
+#if defined(LEVK_EDITOR)
+namespace editor
+{
+template <typename Flags>
+FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags)
+{
+	ASSERT(ids.size() <= size, "Overflow!");
+	std::size_t idx = 0;
+	for (auto id : ids)
+	{
+		bool bVal = flags.test((type)idx);
+		TWidget<bool> w(id, bVal);
+		flags[(type)idx++] = bVal;
+	}
+}
+
+template <typename T>
+TInspector<T>::TInspector(Registry& out_registry, Entity entity, T const* pT, sv id)
+	: pReg(&out_registry), entity(entity), id(id.empty() ? gs::guiName<T>() : id)
+{
+	bNew = pT == nullptr;
+	if (!bNew)
+	{
+		node = TreeNode(this->id);
+		if (node)
+		{
+			bOpen = true;
+			if (node.test(GUI::eRightClicked))
+			{
+				out_registry.destroyComponent<T>(entity);
+			}
+		}
+	}
+}
+
+template <typename T>
+TInspector<T>::TInspector(TInspector<T>&& rhs) : node(std::move(rhs.node)), pReg(rhs.pReg), id(std::move(id))
+{
+	bOpen = rhs.bOpen;
+	bNew = rhs.bNew;
+	rhs.bNew = rhs.bOpen = false;
+	rhs.pReg = nullptr;
+}
+
+template <typename T>
+TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs)
+{
+	if (&rhs != this)
+	{
+		node = std::move(rhs.node);
+		pReg = rhs.pReg;
+		bOpen = rhs.bOpen;
+		bNew = rhs.bNew;
+		id = std::move(rhs.id);
+		rhs.bNew = rhs.bOpen = false;
+		rhs.pReg = nullptr;
+	}
+	return *this;
+}
+
+template <typename T>
+TInspector<T>::~TInspector()
+{
+	if (bNew && pReg)
+	{
+		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked))
+		{
+			Registry& registry = *pReg;
+			registry.addComponent<T>(entity);
+		}
+	}
+}
+
+template <typename T>
+TInspector<T>::operator bool() const
+{
+	return bOpen;
+}
+} // namespace editor
+#endif
 } // namespace le

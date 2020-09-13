@@ -112,11 +112,6 @@ TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, Span<stdfs
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
 
-TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight)
-{
-	return findUpwards(leaf.parent_path(), Span<stdfs::path>(anyOf), maxHeight - 1);
-}
-
 FileReader::FileReader() noexcept
 {
 	m_medium = "Filesystem";

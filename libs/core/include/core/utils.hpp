@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstring>
 #include <deque>
 #include <future>
@@ -23,7 +24,7 @@ enum class FutureState : s8
 };
 
 ///
-/// \brief View-only class for an object / an array / `std::vector`
+/// \brief View-only class for an object / a contiguous range of objects
 ///
 template <typename T>
 struct Span
@@ -37,22 +38,30 @@ struct Span
 	constexpr Span() noexcept : pData(nullptr), extent(0) {}
 	constexpr explicit Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent) {}
 	constexpr Span(T const& data) noexcept : pData(&data), extent(1) {}
-
-	template <typename Container>
-	constexpr Span(Container const& container) noexcept : pData(container.empty() ? nullptr : &container.front()), extent(container.size())
+	constexpr Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size()) {}
+	template <std::size_t N>
+	constexpr Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N)
 	{
 	}
+	template <std::size_t N>
+	constexpr Span(T (&arr)[N]) noexcept : pData(N == 0 ? nullptr : &arr[0]), extent(N)
+	{
+	}
+	Span(std::vector<T> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size()) {}
 
-	constexpr explicit Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size()) {}
-
-	Span<T>(Span<T>&&) noexcept = default;
-	Span<T>& operator=(Span<T>&&) noexcept = default;
-	Span<T>(Span<T> const&) noexcept = default;
-	Span<T>& operator=(Span<T> const&) noexcept = default;
+	constexpr Span<T>(Span<T>&&) noexcept = default;
+	constexpr Span<T>& operator=(Span<T>&&) noexcept = default;
+	constexpr Span<T>(Span<T> const&) noexcept = default;
+	constexpr Span<T>& operator=(Span<T> const&) noexcept = default;
 
 	std::size_t size() const noexcept
 	{
 		return extent;
+	}
+
+	bool empty() const noexcept
+	{
+		return extent == 0;
 	}
 
 	const_iterator begin() const noexcept

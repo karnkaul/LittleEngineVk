@@ -90,13 +90,6 @@ public:
 	/// \param maxHeight maximum recursive depth
 	///
 	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight = 10);
-	///
-	/// \brief Obtain full path to directory containing any of `anyOf` `id`s.
-	/// \param leaf directory to start searching upwards from
-	/// \param anyOf list of `id`s to search for a match for
-	/// \param maxHeight maximum recursive depth
-	///
-	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, std::initializer_list<stdfs::path> anyOf, u8 maxHeight = 10);
 
 public:
 	FileReader() noexcept;

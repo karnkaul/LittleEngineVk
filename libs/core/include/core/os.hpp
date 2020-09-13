@@ -40,64 +40,82 @@ enum class Compiler : s8
 #if (defined(_WIN32) || defined(_WIN64))
 #define LEVK_OS_WINX
 constexpr le::os::OS levk_OS = le::os::OS::eWindows;
+constexpr std::string_view levk_OS_name = "Windows";
 #if defined(__arm__)
 #define LEVK_ARCH_ARM64
 constexpr le::os::Arch levk_arch = le::os::Arch::eARM64;
+constexpr std::string_view levk_arch_name = "ARM64";
 #elif !defined(_WIN64)
 #define LEVK_ARCH_X86
 constexpr le::os::Arch levk_arch = le::os::Arch::eX86;
+constexpr std::string_view levk_arch_name = "x86";
 #else
 #define LEVK_ARCH_x64
 constexpr le::os::Arch levk_arch = le::os::Arch::eX64;
+constexpr std::string_view levk_arch_name = "x64";
 #endif
 #elif defined(__linux__)
 #define LEVK_OS_LINUX
 constexpr le::os::OS levk_OS = le::os::OS::eLinux;
+constexpr std::string_view levk_OS_name = "Linux";
 #if defined(__ANDROID__)
 constexpr le::os::OS levk_OS = le::os::OS::eAndroid;
+constexpr std::string_view levk_OS_name = "Android";
 #define LEVK_OS_ANDROID
 #endif
 #if defined(__arm__)
 #define LEVK_ARCH_ARM64
 constexpr le::os::Arch levk_arch = le::os::Arch::eARM64;
+constexpr std::string_view levk_arch_name = "ARM64";
 #elif defined(__x86_64__)
 #define LEVK_ARCH_X64
 constexpr le::os::Arch levk_arch = le::os::Arch::eX64;
+constexpr std::string_view levk_arch_name = "x64";
 #elif defined(__i386__)
 #define LEVK_ARCH_X86
 constexpr le::os::Arch levk_arch = le::os::Arch::eX86;
+constexpr std::string_view levk_arch_name = "x86";
 #else
 #define LEVK_ARCH_UNSUPPORTED
 constexpr le::os::Arch levk_arch = le::os::Arch::eUnknown;
+constexpr std::string_view levk_arch_name = "Unknown";
 #endif
 #else
 #define LEVK_OS_UNSUPPORTED
 constexpr le::os::OS levk_OS = le::os::OS::eUnknown;
+constexpr std::string_view levk_OS_name = "Unknown";
 #endif
 
 #if defined(_MSC_VER)
 #define LEVK_RUNTIME_MSVC
 constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eMSVC;
+constexpr std::string_view levk_stdlib_name = "MSVC";
 #elif (defined(__GNUG__) || defined(__clang__))
 #define LEVK_RUNTIME_LIBSTDCXX
 constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eLibStdCXX;
+constexpr std::string_view levk_stdlib_name = "libstdc++";
 #else
 #define LEVK_RUNTIME_UNKNOWN
 constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eUnknown;
+constexpr std::string_view levk_stdlib_name = "Unknown";
 #endif
 
 #if defined(__clang__)
 #define LEVK_COMPILER_CLANG
 constexpr le::os::Compiler levk_compiler = le::os::Compiler::eClang;
+constexpr std::string_view levk_compiler_name = "Clang";
 #elif defined(__GNUG__)
 #define LEVK_COMPILER_GCC
 constexpr le::os::Compiler levk_compiler = le::os::Compiler::eGCC;
+constexpr std::string_view levk_compiler_name = "GCC";
 #elif defined(_MSC_VER)
 #define LEVK_COMPILER_VCXX
 constexpr le::os::Compiler levk_compiler = le::os::Compiler::eVCXX;
+constexpr std::string_view levk_compiler_name = "VC++";
 #else
 #define LEVK_COMPILER_UNKNOWN
 constexpr le::os::Compiler levk_compiler = le::os::Compiler::eUnknown;
+constexpr std::string_view levk_compiler_name = "Unknown";
 #endif
 
 namespace le
@@ -125,14 +143,14 @@ using ArgsParser = kt::args_parser<>;
 ///
 struct Service final
 {
-	Service(Args const& args);
+	Service(Args args);
 	~Service();
 };
 
 ///
 /// \brief Initialise OS service
 ///
-void init(Args const& args);
+void args(Args args);
 ///
 /// \brief Obtain `argv[0]`
 ///

@@ -252,7 +252,7 @@ void deinit()
 	}
 	g_sync.thread = {};
 	LOG_I("[{}] Transfer thread terminated", s_tName);
-	g_device.device.waitIdle();
+	g_device.waitIdle();
 	g_device.destroy(g_resources.pool);
 	std::vector<std::shared_ptr<tasks::Handle>> tasks;
 	for (auto& fence : g_resources.fences)

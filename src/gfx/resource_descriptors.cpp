@@ -194,13 +194,13 @@ void Set::destroy()
 	return;
 }
 
-void Set::resetTextures(SamplerCounts const& counts)
+void Set::resetTextures()
 {
 	auto white = res::find<res::Texture>("textures/white");
 	auto black = res::find<res::Texture>("textures/black");
 	ASSERT(black && white, "Default textures missing!");
-	std::deque<res::Texture> const diffuse((std::size_t)counts.diffuse, *white);
-	std::deque<res::Texture> const specular((std::size_t)counts.specular, *black);
+	std::deque<res::Texture> const diffuse((std::size_t)ImageSamplers::s_max, *white);
+	std::deque<res::Texture> const specular((std::size_t)ImageSamplers::s_max, *black);
 	writeDiffuse(diffuse);
 	writeSpecular(specular);
 }
@@ -273,6 +273,15 @@ void rd::init()
 		bufferLayoutInfo.pBindings = bufferBindings.data();
 		rd::g_bufferLayout = g_device.device.createDescriptorSetLayout(bufferLayoutInfo);
 	}
+	if (g_samplerLayout == vk::DescriptorSetLayout())
+	{
+		auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
+		diffuseBinding.descriptorCount = ImageSamplers::s_max;
+		auto specularBinding = ImageSamplers::s_specularLayoutBinding;
+		specularBinding.descriptorCount = ImageSamplers::s_max;
+		std::array const samplerBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
+		g_samplerLayout = g_device.createDescriptorSetLayout(samplerBindings);
+	}
 	return;
 }
 
@@ -283,19 +292,18 @@ void rd::deinit()
 		g_device.destroy(g_bufferLayout);
 		g_bufferLayout = vk::DescriptorSetLayout();
 	}
+	if (g_samplerLayout != vk::DescriptorSetLayout())
+	{
+		g_device.destroy(g_samplerLayout);
+		g_samplerLayout = vk::DescriptorSetLayout();
+	}
 	return;
 }
 
-rd::SetLayouts rd::allocateSets(u32 copies, SamplerCounts const& samplerCounts)
+std::vector<rd::Set> rd::allocateSets(u32 copies)
 {
-	SetLayouts ret;
-	auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
-	diffuseBinding.descriptorCount = samplerCounts.diffuse;
-	auto specularBinding = ImageSamplers::s_specularLayoutBinding;
-	specularBinding.descriptorCount = samplerCounts.specular;
-	std::array const samplerBindings = {diffuseBinding, specularBinding, ImageSamplers::s_cubemapLayoutBinding};
-	ret.samplerLayout = g_device.createDescriptorSetLayout(samplerBindings);
-	ret.sets.reserve((std::size_t)copies);
+	std::vector<Set> ret;
+	ret.reserve((std::size_t)copies);
 	for (u32 idx = 0; idx < copies; ++idx)
 	{
 		Set set;
@@ -315,17 +323,17 @@ rd::SetLayouts rd::allocateSets(u32 copies, SamplerCounts const& samplerCounts)
 		set.m_samplerPool = g_device.createDescriptorPool(samplerPoolSizes);
 		// Allocate sets
 		set.m_bufferSet = g_device.allocateDescriptorSets(set.m_bufferPool, g_bufferLayout).front();
-		set.m_samplerSet = g_device.allocateDescriptorSets(set.m_samplerPool, ret.samplerLayout).front();
+		set.m_samplerSet = g_device.allocateDescriptorSets(set.m_samplerPool, g_samplerLayout).front();
 		// Write handles
 		set.writeView({});
 		set.initSSBOs();
-		set.resetTextures(samplerCounts);
-		ret.sets.push_back(std::move(set));
+		set.resetTextures();
+		ret.push_back(std::move(set));
 	}
 	return ret;
 }
 
-vk::RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth)
+RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth)
 {
 	std::array<vk::AttachmentDescription, 2> attachments;
 	vk::AttachmentReference colourAttachment, depthAttachment;
@@ -363,6 +371,6 @@ vk::RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth)
 	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	return g_device.createRenderPass(attachments, subpass, dependency);
+	return {g_device.createRenderPass(attachments, subpass, dependency), colour, depth};
 }
 } // namespace le::gfx

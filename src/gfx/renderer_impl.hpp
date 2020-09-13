@@ -41,16 +41,9 @@ public:
 
 private:
 	RenderContext m_context;
-	std::deque<Pipeline> m_pipelines;
+	RenderPass m_renderPass;
 	std::vector<FrameSync> m_frames;
-	vk::DescriptorSetLayout m_samplerLayout;
-	vk::RenderPass m_renderPass;
 	Renderer* m_pRenderer;
-	struct
-	{
-		Pipeline* pDefault = nullptr;
-		Pipeline* pSkybox = nullptr;
-	} m_pipes;
 
 	struct
 	{
@@ -73,8 +66,6 @@ public:
 	void destroy();
 
 	void update();
-
-	Pipeline* createPipeline(Pipeline::Info info);
 	bool render(Renderer::Scene scene, bool bExtGUI);
 
 public:
@@ -102,7 +93,7 @@ private:
 
 	PCDeq writeSets(Renderer::Scene& out_scene);
 	u64 doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target, bool bExtGUI) const;
-	RenderContext::Outcome submit();
+	bool submit();
 
 	friend class le::WindowImpl;
 };

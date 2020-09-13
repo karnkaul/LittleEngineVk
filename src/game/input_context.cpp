@@ -136,13 +136,6 @@ u16 Map::deserialise(dj::object const& json)
 					ASSERT(false, "Unknown Key/Axis!");
 				}
 			});
-#if defined(LEVK_LOG_DEBUG)
-		std::string const tName = utils::tName<Map>();
-		for (auto const& [id, binding] : bindings)
-		{
-			LOG_D("[{}] {} bound to {} triggers, {} states, {} ranges", tName, id, binding.triggers.size(), binding.states.size(), binding.ranges.size());
-		}
-#endif
 	}
 	return ret;
 }
@@ -163,11 +156,6 @@ bool Map::empty() const
 }
 
 Context::Context(Mode mode, s32 padID) : m_mode(mode), m_padID(padID) {}
-Context::Context(Context&&) = default;
-Context& Context::operator=(Context&&) = default;
-Context::Context(Context const&) = default;
-Context& Context::operator=(Context const&) = default;
-Context::~Context() = default;
 
 void Context::mapTrigger(Hash id, OnTrigger callback)
 {

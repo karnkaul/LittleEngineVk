@@ -778,7 +778,6 @@ bool Mesh::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 		}
 		out_info.material.material = *material;
 	}
-	out_info.material = out_createInfo.material;
 	out_info.type = out_createInfo.type;
 	updateGeometry(out_info, std::move(out_createInfo.geometry));
 	return true;

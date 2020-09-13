@@ -1,4 +1,5 @@
 #include <deque>
+#include <fstream>
 #include <list>
 #include <mutex>
 #include <core/log_config.hpp>
@@ -399,6 +400,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 						}
 					}
 				}
+				TWidget<Colour> clearColour("Clear", pDesc->clearColour);
 			}
 		}
 		if (g_inspecting.pTransform)
@@ -501,6 +503,122 @@ void logLevelDropdown()
 }
 #pragma endregion widgets
 
+#pragma region sceneIO
+namespace sceneIO
+{
+std::string camelify(std::string_view str)
+{
+	std::string ret;
+	ret.reserve(str.size());
+	for (auto c : str)
+	{
+		if (std::isupper(c) && !ret.empty())
+		{
+			ret += '_';
+		}
+		ret += (char)std::tolower(c);
+	}
+	return ret;
+}
+
+void addMesh(dj::object& out_entry, res::Mesh mesh)
+{
+	out_entry.add<dj::string>("mesh_id", mesh.info().id.generic_string());
+}
+
+void addModel(dj::object& out_entry, res::Model model)
+{
+	out_entry.add<dj::string>("model_id", model.info().id.generic_string());
+}
+
+void addDesc(dj::object& out_entry, SceneDesc const& desc)
+{
+	dj::object d;
+	if (!desc.skyboxCubemapID.empty())
+	{
+		d.add<dj::string>("skybox_id", desc.skyboxCubemapID.generic_string());
+	}
+	d.add<dj::string>("clear_colour", desc.clearColour.toStr(true));
+	out_entry.add("scene_desc", std::move(d));
+}
+
+void walkSceneTree(dj::array& out_root, Transform& root, gs::EMap const& emap, Registry& reg, std::unordered_set<Entity, EntityHasher>& out_added)
+{
+	auto const children = root.children();
+	auto search = emap.find(&root);
+	if (search != emap.end())
+	{
+		auto [pTransform, entity] = *search;
+		out_added.insert(entity);
+		dj::object e;
+		e.add<dj::string>("name", reg.entityName(entity));
+		if (auto pMesh = reg.component<res::Mesh>(entity))
+		{
+			addMesh(e, *pMesh);
+		}
+		if (auto pModel = reg.component<res::Model>(entity))
+		{
+			addModel(e, *pModel);
+		}
+		auto const p = pTransform->position();
+		auto pos = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', p.x, p.y, p.z, '}');
+		auto const s = pTransform->scale();
+		auto scl = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', s.x, s.y, s.z, '}');
+		auto const o = pTransform->orientation();
+		auto orn = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {}, \"w\": {} {}", '{', o.x, o.y, o.z, o.w, '}');
+		dj::object tr;
+		tr.add<dj::object>("position", std::move(pos));
+		tr.add<dj::object>("orientation", std::move(orn));
+		tr.add<dj::object>("scale", std::move(scl));
+		auto const& children = pTransform->children();
+		if (!children.empty())
+		{
+			dj::array arr;
+			for (Transform& child : pTransform->children())
+			{
+				walkSceneTree(arr, child, emap, reg, out_added);
+			}
+			tr.add("children", std::move(arr));
+		}
+		e.add("transform", std::move(tr));
+		out_root.add(std::move(e));
+	}
+}
+
+void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity, EntityHasher> const& added)
+{
+	{
+		auto view = reg.view<SceneDesc>();
+		for (auto& [entity, query] : view)
+		{
+			if (added.find(entity) == added.end())
+			{
+				dj::object e;
+				auto const& [desc] = query;
+				e.add<dj::string>("name", reg.entityName(entity));
+				addDesc(e, desc);
+				out_arr.add(std::move(e));
+			}
+		}
+	}
+}
+
+dj::object serialise(Args const& args)
+{
+	dj::object scene;
+	dj::array entities;
+	std::unordered_set<Entity, EntityHasher> added;
+	for (auto& child : args.pRoot->children())
+	{
+		walkSceneTree(entities, child, *args.pMap, args.pGame->registry, added);
+	}
+	residue(entities, args.pGame->registry, added);
+	scene.add("entities", std::move(entities));
+	return scene;
+}
+} // namespace sceneIO
+#pragma endregion sceneIO
+
 #pragma region layout
 void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 {
@@ -524,6 +642,29 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 			ImGui::ShowDemoWindow(&s_bImGuiDemo);
 		}
 		Styler s(Style::eSeparator);
+		if (Button("test save"))
+		{
+			auto const filename = fmt::format("{}.scene", sceneIO::camelify(gs::g_context.name));
+			if (auto file = std::ofstream(filename))
+			{
+				auto const scene = sceneIO::serialise(args);
+				auto opts = dj::g_serial_opts;
+				opts.sort_keys = opts.pretty = true;
+				auto const str = scene.serialise(opts);
+				if (file.write(str.data(), (std::streamsize)str.size()))
+				{
+					LOG_I("[{}] Scene saved to [{}]", s_tName, filename);
+				}
+				else
+				{
+					LOG_E("[{}] Failed to save scene to [{}]!", s_tName, filename);
+				}
+			}
+			else
+			{
+				LOG_E("[{}] Failed to open [{}] to save scene!", s_tName, filename);
+			}
+		}
 		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f}, args.pGame->registry);
 	}
 	ImGui::End();

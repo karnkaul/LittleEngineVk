@@ -138,6 +138,7 @@ void LevelDriver::unloadLoad()
 	}
 	gs::g_context.reset();
 	m_active = g_switcher.make();
+	gs::g_context.name = m_active->m_name;
 	loadReq.load = m_active->m_manifest.id;
 	loadReq.onLoaded = [l = loadReq.load.generic_string(), this]() {
 		LOG_I("[{}] loaded!", l);

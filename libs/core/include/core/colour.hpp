@@ -80,6 +80,14 @@ public:
 	/// \brief Convert colour space to RGB
 	///
 	glm::vec4 toRGB() const noexcept;
+	///
+	/// \brief Convert to flat 32 bits
+	///
+	u32 toU32() const noexcept;
+	///
+	/// \brief Serialise as hex string
+	///
+	std::string toStr(bool bLeadingHash) const;
 };
 
 ///

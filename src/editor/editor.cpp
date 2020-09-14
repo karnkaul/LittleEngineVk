@@ -144,10 +144,9 @@ void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
 	if (search != emap.end())
 	{
 		auto [pTransform, entity] = *search;
-		auto node = TreeNode(registry.entityName(entity), g_inspecting.entity == entity, pTransform->children().empty(), true, false);
+		auto node = TreeNode(registry.name(entity), g_inspecting.entity == entity, pTransform->children().empty(), true, false);
 		if (node.test(GUI::eLeftClicked))
 		{
-			LOG_D("Selected: {}", registry.entityName(entity));
 			bool const bSelect = g_inspecting.entity != entity;
 			g_inspecting = {bSelect ? entity : Entity(), bSelect ? pTransform : nullptr};
 		}
@@ -334,29 +333,44 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 {
 	if (g_inspecting.entity != Entity())
 	{
-		ImGui::LabelText("", "%s", registry.entityName(g_inspecting.entity).data());
+		ImGui::LabelText("", "%s", registry.name(g_inspecting.entity).data());
+		if (auto pInfo = registry.find<Registry::Info>(g_inspecting.entity))
+		{
+			static std::string s_buf;
+			TWidget<std::string> name("##EntityNameEdit", s_buf, 150.0f);
+			sv const nn = s_buf.data();
+			if (nn.empty())
+			{
+				s_buf = pInfo->name;
+			}
+			if (Button("Edit"))
+			{
+				pInfo->name = s_buf.data();
+				s_buf.clear();
+			}
+		}
 		bool const bEnabled = registry.enabled(g_inspecting.entity);
 		if (Button(bEnabled ? "Disable" : "Enable"))
 		{
-			registry.setEnabled(g_inspecting.entity, !bEnabled);
+			registry.enable(g_inspecting.entity, !bEnabled);
 		}
 		Styler s(Style::eSameLine);
 		if (auto search = g_spawned.find(g_inspecting.entity); search != g_spawned.end() && Button("Destroy"))
 		{
-			if (auto pTransform = registry.component<Transform>(g_inspecting.entity))
+			if (auto pTransform = registry.find<Transform>(g_inspecting.entity))
 			{
 				Prop prop(g_inspecting.entity, *pTransform);
 				gs::destroy(prop);
 			}
 			else
 			{
-				registry.destroyEntity(g_inspecting.entity);
+				registry.destroy(g_inspecting.entity);
 			}
 			g_spawned.erase(g_inspecting.entity);
 			g_inspecting = {};
 		}
 		s = Styler(Style::eSeparator);
-		if (auto pDesc = registry.component<SceneDesc>(g_inspecting.entity))
+		if (auto pDesc = registry.find<SceneDesc>(g_inspecting.entity))
 		{
 			if (auto desc = TreeNode("SceneDesc"))
 			{
@@ -408,7 +422,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			TWidget<Transform> t("Pos", "Orn", "Scl", *g_inspecting.pTransform);
 			Styler s(Style::eSeparator);
 
-			auto pMesh = registry.component<res::Mesh>(g_inspecting.entity);
+			auto pMesh = registry.find<res::Mesh>(g_inspecting.entity);
 			auto name = gs::guiName<res::Mesh>();
 			if (auto mesh = TInspector<res::Mesh>(registry, g_inspecting.entity, pMesh))
 			{
@@ -417,7 +431,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 
 				inspectMatInst(*pMesh, 0, pos, size);
 			}
-			auto pModel = registry.component<res::Model>(g_inspecting.entity);
+			auto pModel = registry.find<res::Model>(g_inspecting.entity);
 			auto pModelImpl = pModel ? res::impl(*pModel) : nullptr;
 			name = gs::guiName<res::Model>();
 			if (auto model = TInspector<res::Model>(registry, g_inspecting.entity, pModel))
@@ -551,12 +565,12 @@ void walkSceneTree(dj::array& out_root, Transform& root, gs::EMap const& emap, R
 		auto [pTransform, entity] = *search;
 		out_added.insert(entity);
 		dj::object e;
-		e.add<dj::string>("name", reg.entityName(entity));
-		if (auto pMesh = reg.component<res::Mesh>(entity))
+		e.add<dj::string>("name", reg.name(entity));
+		if (auto pMesh = reg.find<res::Mesh>(entity))
 		{
 			addMesh(e, *pMesh);
 		}
-		if (auto pModel = reg.component<res::Model>(entity))
+		if (auto pModel = reg.find<res::Model>(entity))
 		{
 			addModel(e, *pModel);
 		}
@@ -595,7 +609,7 @@ void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity,
 			{
 				dj::object e;
 				auto const& [desc] = query;
-				e.add<dj::string>("name", reg.entityName(entity));
+				e.add<dj::string>("name", reg.name(entity));
 				addDesc(e, desc);
 				out_arr.add(std::move(e));
 			}
@@ -692,19 +706,19 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 			{
 				Registry& registry = args.pGame->registry;
 				{
-					static std::string s_newName;
-					TWidget<std::string>("Name", s_newName, 50.0f);
-					std::string_view const newNameView = s_newName.data();
-					if (!newNameView.empty())
+					static std::string s_buf;
+					TWidget<std::string>("Name", s_buf, 150.0f);
+					sv const nn = s_buf.data();
+					if (nn.empty())
 					{
-						Styler s(Style::eSameLine);
-						if (Button("Spawn Prop"))
-						{
-							auto prop = gs::spawnProp(newNameView.data());
-							g_inspecting = {prop.entity, prop.pTransform};
-							g_spawned.insert(g_inspecting.entity);
-							s_newName.clear();
-						}
+						s_buf = "[Unnamed]";
+					}
+					if (Button("Spawn Prop"))
+					{
+						auto prop = gs::spawnProp(nn.data());
+						g_inspecting = {prop.entity, prop.pTransform};
+						g_spawned.insert(g_inspecting.entity);
+						s_buf.clear();
 					}
 				}
 				auto s = Styler(Style::eSeparator);
@@ -712,7 +726,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 				if (!view.empty())
 				{
 					auto [entity, _] = *view.begin();
-					auto const node = TreeNode(registry.entityName(entity), g_inspecting.entity == entity, true, true, false);
+					auto const node = TreeNode(registry.name(entity), g_inspecting.entity == entity, true, true, false);
 					if (node.test(GUI::eLeftClicked))
 					{
 						bool const bSelect = g_inspecting.entity != entity;
@@ -721,7 +735,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 				}
 				else if (Button("[Add SceneDesc]"))
 				{
-					g_inspecting = {registry.spawnEntity<SceneDesc>("scene_desc"), nullptr};
+					g_inspecting = {registry.spawn<SceneDesc>("scene_desc").first, nullptr};
 					g_spawned.insert(g_inspecting.entity);
 				}
 				s = Styler(Style::eSeparator);
@@ -1243,7 +1257,7 @@ void editor::tick(Args const& args, Time dt)
 			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.left * (f32)fbSize.x), fbSize.y - logHeight};
 			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.right * (f32)fbSize.x), fbSize.y - logHeight};
 			Registry& reg = args.pGame->registry;
-			if (!reg.alive(g_inspecting.entity))
+			if (!reg.exists(g_inspecting.entity))
 			{
 				g_inspecting = {};
 			}

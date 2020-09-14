@@ -202,7 +202,7 @@ TInspector<T>::TInspector(Registry& out_registry, Entity entity, T const* pT, sv
 			bOpen = true;
 			if (node.test(GUI::eRightClicked))
 			{
-				out_registry.destroyComponent<T>(entity);
+				out_registry.detach<T>(entity);
 			}
 		}
 	}
@@ -241,7 +241,7 @@ TInspector<T>::~TInspector()
 		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked))
 		{
 			Registry& registry = *pReg;
-			registry.addComponent<T>(entity);
+			registry.attach<T>(entity);
 		}
 	}
 }

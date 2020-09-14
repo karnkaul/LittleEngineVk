@@ -123,14 +123,13 @@ input::Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContex
 Prop gs::spawnProp(std::string name)
 {
 	Registry& reg = g_context.registry;
-	auto entity = reg.spawnEntity<Transform>(std::move(name));
-	auto pTransform = reg.component<Transform>(entity);
-	ASSERT(pTransform, "Transform is null!");
+	auto entity = reg.spawn<Transform>(std::move(name));
+	auto& [transform] = entity.second;
 #if defined(LEVK_EDITOR)
-	pTransform->parent(&g_ctxImpl.root);
-	g_ctxImpl.entityMap[pTransform] = entity;
+	transform.parent(&g_ctxImpl.root);
+	g_ctxImpl.entityMap[&transform] = entity.first;
 #endif
-	return {entity, *pTransform};
+	return {entity.first, transform};
 }
 
 void gs::destroy(Span<Prop> props)
@@ -138,7 +137,7 @@ void gs::destroy(Span<Prop> props)
 	Registry& reg = g_context.registry;
 	for (auto& prop : props)
 	{
-		if (reg.destroyEntity(prop.entity))
+		if (reg.destroy(prop.entity))
 		{
 #if defined(LEVK_EDITOR)
 			g_ctxImpl.entityMap.erase(prop.pTransform);

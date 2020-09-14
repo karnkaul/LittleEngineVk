@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <list>
 #include <unordered_map>
 #include <vector>
@@ -45,7 +46,7 @@ struct Batch final
 };
 
 std::string const s_tName = utils::tName<VRAM>();
-std::array<u64, (std::size_t)ResourceType::eCOUNT_> g_allocations;
+std::array<std::atomic<u64>, (std::size_t)ResourceType::eCOUNT_> g_allocations;
 
 constexpr vk::DeviceSize operator""_MB(unsigned long long size)
 {
@@ -291,7 +292,10 @@ void vram::init(Span<engine::MemRange> stagingReserve)
 		allocatorInfo.device = g_device.device;
 		allocatorInfo.physicalDevice = g_instance.physicalDevice;
 		vmaCreateAllocator(&allocatorInfo, &g_allocator);
-		std::memset(g_allocations.data(), 0, g_allocations.size() * sizeof(u32));
+		for (auto& x : g_allocations)
+		{
+			x.store(0);
+		}
 		tfr::init(stagingReserve.extent == 0 ? g_stagingReserve : stagingReserve);
 	}
 	LOG_I("[{}] initialised", s_tName);
@@ -302,9 +306,9 @@ void vram::deinit()
 {
 	tfr::deinit();
 	bool bErr = false;
-	for (auto val : g_allocations)
+	for (auto& val : g_allocations)
 	{
-		ASSERT(val == 0, "Allocations pending release!");
+		ASSERT(val.load() == 0, "Allocations pending release!");
 		bErr = val != 0;
 	}
 	LOGIF_E(bErr, "vram::deinit() => Allocations pending release!");
@@ -350,7 +354,7 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
-	g_allocations.at((std::size_t)ResourceType::eBuffer) += ret.writeSize;
+	g_allocations.at((std::size_t)ResourceType::eBuffer).fetch_add(ret.writeSize);
 	if (g_VRAM_bLogAllocs)
 	{
 		if (!bSilent)
@@ -514,7 +518,7 @@ Image vram::createImage(ImageInfo const& info)
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	ret.allocatedSize = requirements.size;
 	ret.mode = queues.mode;
-	g_allocations.at((std::size_t)ResourceType::eImage) += ret.allocatedSize;
+	g_allocations.at((std::size_t)ResourceType::eImage).fetch_add(ret.allocatedSize);
 	if (g_VRAM_bLogAllocs)
 	{
 		auto [size, unit] = utils::friendlySize(ret.allocatedSize);
@@ -533,7 +537,7 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent)
 	if (buffer.buffer != vk::Buffer())
 	{
 		vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
-		g_allocations.at((std::size_t)ResourceType::eBuffer) -= buffer.writeSize;
+		g_allocations.at((std::size_t)ResourceType::eBuffer).fetch_sub(buffer.writeSize);
 		if (g_VRAM_bLogAllocs)
 		{
 			if (!bSilent)
@@ -637,7 +641,7 @@ void vram::release(Image image)
 	if (image.image != vk::Image())
 	{
 		vmaDestroyImage(g_allocator, image.image, image.handle);
-		g_allocations.at((std::size_t)ResourceType::eImage) -= image.allocatedSize;
+		g_allocations.at((std::size_t)ResourceType::eImage).fetch_sub(image.allocatedSize);
 		if (g_VRAM_bLogAllocs)
 		{
 			if (image.info.actualSize > 0)

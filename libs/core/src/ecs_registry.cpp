@@ -1,13 +1,10 @@
 #include <algorithm>
 #include <map>
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <core/ecs_registry.hpp>
 
 namespace le
 {
-bool g_bDestroyed = false;
-
 std::string const s_tEName = utils::tName<Entity>();
 
 bool operator==(Entity lhs, Entity rhs)
@@ -25,7 +22,7 @@ std::size_t EntityHasher::operator()(Entity const& entity) const
 	return std::hash<ECSID>()(entity.id) ^ std::hash<ECSID>()(entity.regID);
 }
 
-Registry::Component::~Component() = default;
+Registry::Concept::~Concept() = default;
 
 Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
 {
@@ -35,31 +32,24 @@ Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
 
 Registry::~Registry()
 {
-	if (!m_entityFlags.empty())
+	if (!m_db.empty())
 	{
-		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] Entities destroyed", m_name, m_entityFlags.size());
+		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] Entities destroyed", m_name, m_db.size());
 	}
-	g_bDestroyed = true;
 }
 
-bool Registry::setEnabled(Entity entity, bool bEnabled)
+Entity Registry::spawn(std::string name)
 {
 	auto lock = m_mutex.lock();
-	if (auto search = m_entityFlags.find(entity); search != m_entityFlags.end())
-	{
-		search->second[Flag::eDisabled] = !bEnabled;
-		return true;
-	}
-	return false;
+	return spawn_Impl(std::move(name));
 }
 
-bool Registry::setDebug(Entity entity, bool bDebug)
+bool Registry::enable(Entity entity, bool bEnabled)
 {
 	auto lock = m_mutex.lock();
-	if (auto search = m_entityFlags.find(entity); search != m_entityFlags.end())
+	if (auto pInfo = find_Impl<Registry, Info>(this, entity))
 	{
-		search->second[Flag::eDebug] = !bDebug;
-		return true;
+		pInfo->flags[Flag::eDisabled] = !bEnabled;
 	}
 	return false;
 }
@@ -67,41 +57,69 @@ bool Registry::setDebug(Entity entity, bool bDebug)
 bool Registry::enabled(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	auto search = m_entityFlags.find(entity);
-	return search != m_entityFlags.end() && !search->second.test(Flag::eDisabled);
+	if (auto pInfo = find_Impl<Registry const, Info const>(this, entity))
+	{
+		return !pInfo->flags.test(Flag::eDisabled);
+	}
+	return false;
 }
 
-bool Registry::alive(Entity entity) const
+bool Registry::exists(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	auto search = m_entityFlags.find(entity);
-	return search != m_entityFlags.end() && !search->second.test(Flag::eDestroyed);
+	return m_db.find(entity) != m_db.end();
 }
 
-bool Registry::isDebugSet(Entity entity) const
+std::string_view Registry::name(Entity entity) const
 {
-	auto lock = m_mutex.lock();
-	auto search = m_entityFlags.find(entity);
-	return search != m_entityFlags.end() && search->second.test(Flag::eDebug);
+	if (auto pInfo = find<Info>(entity))
+	{
+		return pInfo->name;
+	}
+	return {};
 }
 
-bool Registry::destroyEntity(Entity const& entity)
+Registry::Info* Registry::info(Entity entity)
+{
+	if (auto pInfo = find<Info>(entity))
+	{
+		return pInfo;
+	}
+	return nullptr;
+}
+
+Registry::Info const* Registry::info(Entity entity) const
+{
+	if (auto pInfo = find<Info>(entity))
+	{
+		return pInfo;
+	}
+	return nullptr;
+}
+
+bool Registry::destroy(Entity const& entity)
 {
 	auto lock = m_mutex.lock();
-	if (auto search = m_entityFlags.find(entity); search != m_entityFlags.end())
+	if (auto search = m_db.find(entity); search != m_db.end())
 	{
 		switch (m_destroyMode)
 		{
 		case DestroyMode::eImmediate:
 		{
-			destroyComponent_Impl(entity);
-			destroyEntity_Impl(search, entity);
+			destroy_Impl(search, entity);
 			break;
 		}
 		default:
 		case DestroyMode::eDeferred:
 		{
-			search->second.set(Flag::eDestroyed);
+			if (auto pInfo = find_Impl<Registry, Info>(this, entity))
+			{
+				pInfo->flags.set(Flag::eDestroyed);
+			}
+			else
+			{
+				ASSERT(false, "Invariant violated!");
+			}
 			break;
 		}
 		}
@@ -110,10 +128,10 @@ bool Registry::destroyEntity(Entity const& entity)
 	return false;
 }
 
-bool Registry::destroyEntity(Entity& out_entity)
+bool Registry::destroy(Entity& out_entity)
 {
 	Entity const& entity = out_entity;
-	if (destroyEntity(entity))
+	if (destroy(entity))
 	{
 		out_entity = {};
 		return true;
@@ -124,16 +142,20 @@ bool Registry::destroyEntity(Entity& out_entity)
 void Registry::flush()
 {
 	auto lock = m_mutex.lock();
-	for (auto iter = m_entityFlags.begin(); iter != m_entityFlags.end();)
+	for (auto iter = m_db.begin(); iter != m_db.end();)
 	{
+		bool bInc = true;
 		Entity const entity = {iter->first};
-		auto const flags = iter->second;
-		if (flags.test(Flag::eDestroyed))
+		auto& compMap = iter->second;
+		if (auto pInfo = find_Impl<Info>(compMap))
 		{
-			destroyComponent_Impl(entity);
-			iter = destroyEntity_Impl(iter, entity);
+			if (pInfo->flags.test(Flag::eDestroyed))
+			{
+				iter = destroy_Impl(iter, entity);
+				bInc = false;
+			}
 		}
-		else
+		if (bInc)
 		{
 			++iter;
 		}
@@ -145,76 +167,74 @@ void Registry::clear()
 {
 	auto lock = m_mutex.lock();
 	m_db.clear();
-	m_entityFlags.clear();
-	m_entityNames.clear();
-	m_componentNames.clear();
 }
 
-std::size_t Registry::entityCount() const
+std::size_t Registry::size() const
 {
 	auto lock = m_mutex.lock();
-	return m_entityFlags.size();
+	return m_db.size();
 }
 
-std::string_view Registry::entityName(Entity entity) const
+std::string_view Registry::name_Impl(Signature sign)
 {
-	auto lock = m_mutex.lock();
-	auto search = m_entityNames.find(entity);
-	return search != m_entityNames.end() ? search->second : std::string_view();
+	if (auto search = s_names.find(sign); search != s_names.end())
+	{
+		return search->second;
+	}
+	return {};
 }
 
-Entity Registry::spawnEntity_Impl(std::string name)
+Entity Registry::spawn_Impl(std::string name)
 {
 	++m_nextID.payload;
 	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] spawned", m_name, s_tEName, m_nextID, name);
 	Entity ret{m_nextID, m_regID};
-	m_entityNames[ret] = std::move(name);
-	m_entityFlags[ret] = {};
-	return ret;
-}
-
-Registry::EFMap::iterator Registry::destroyEntity_Impl(EFMap::iterator iter, Entity entity)
-{
-	iter = m_entityFlags.erase(iter);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, entity.id, m_entityNames[entity]);
-	m_entityNames.erase(entity);
-	return iter;
-}
-
-Registry::Component* Registry::addComponent_Impl(Signature sign, std::unique_ptr<Component>&& uComp, Entity entity)
-{
-	if (m_componentNames[sign].empty())
+	if (auto pInfo = attach_Impl<Info>(ret))
 	{
-		m_componentNames[sign] = utils::tName(*uComp);
+		pInfo->name = std::move(name);
+		return ret;
 	}
+	return {};
+}
+
+Registry::Concept* Registry::attach_Impl(Signature sign, std::unique_ptr<Concept>&& uComp, Entity entity)
+{
 	uComp->sign = sign;
-	ASSERT(m_db[entity].find(sign) == m_db[entity].end(), "Duplicate Component!");
-	m_db[entity][sign] = std::move(uComp);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", m_name, m_componentNames[sign], s_tEName, entity.id,
-		  m_entityNames[entity]);
-	return m_db[entity][sign].get();
-}
-
-void Registry::destroyComponent_Impl(Component const* pComponent, Entity entity)
-{
-	ASSERT(!g_bDestroyed, "Registry destroyed!");
-	auto const sign = pComponent->sign;
-	m_db[entity].erase(sign);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", m_name, m_componentNames[sign], s_tEName, entity.id,
-		  m_entityNames[entity]);
-	return;
-}
-
-bool Registry::destroyComponent_Impl(Entity entity)
-{
-	ASSERT(!g_bDestroyed, "Registry destroyed!");
-	if (auto search = m_db.find(entity); search != m_db.end())
+	auto& compMap = m_db[entity];
+	ASSERT(compMap.find(sign) == compMap.end(), "Duplicate component!");
+	if (m_logLevel)
 	{
-		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] components detached from [{}:{}] [{}] and destroyed", m_name, search->second.size(), s_tEName, entity.id,
-			  m_entityNames[entity]);
-		m_db.erase(search);
-		return true;
+		if (auto pInfo = find_Impl<Info>(compMap))
+		{
+			LOG(*m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", m_name, name_Impl(sign), s_tEName, entity.id, pInfo->name);
+		}
 	}
-	return false;
+	auto& comp = compMap[sign];
+	comp = std::move(uComp);
+	return comp.get();
+}
+
+Registry::ECMap::iterator Registry::destroy_Impl(ECMap::iterator iter, Entity entity)
+{
+	if (m_logLevel)
+	{
+		if (auto pInfo = find_Impl<Registry, Info>(this, entity))
+		{
+			LOG(*m_logLevel, "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, entity.id, pInfo->name);
+		}
+	}
+	return m_db.erase(iter);
+}
+
+Registry::CompMap::iterator Registry::detach_Impl(CompMap& out_map, CompMap::iterator iter, Entity entity, Signature sign)
+{
+	if (m_logLevel)
+	{
+		if (auto pInfo = find_Impl<Registry, Info>(this, entity))
+		{
+			LOG(*m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", m_name, name_Impl(sign), s_tEName, entity.id, pInfo->name);
+		}
+	}
+	return out_map.erase(iter);
 }
 } // namespace le

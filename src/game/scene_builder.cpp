@@ -187,7 +187,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 			auto meshes = ui.meshes();
 			if (!meshes.empty())
 			{
-				auto pTransform = registry.component<Transform>(entity);
+				auto pTransform = registry.find<Transform>(entity);
 				batchUI.drawables.push_back({std::move(meshes), pTransform ? *pTransform : Transform::s_identity, pipeUI});
 			}
 		}

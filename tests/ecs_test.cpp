@@ -44,55 +44,55 @@ int main()
 		{
 			tasks::enqueue(
 				[&entity, &registry, &idx]() {
-					entity = registry.spawnEntity("e" + std::to_string(idx++));
+					entity = registry.spawn("e" + std::to_string(idx++));
 					auto const toss = maths::randomRange(0, 1 << 7);
 					if (toss & 1 << 0)
 					{
-						if (!registry.component<A>(entity))
+						if (!registry.find<A>(entity))
 						{
-							registry.addComponent<A>(entity);
+							registry.attach<A>(entity);
 						}
 					}
 					if (toss & 1 << 1)
 					{
-						if (!registry.component<B>(entity))
+						if (!registry.find<B>(entity))
 						{
-							registry.addComponent<B>(entity);
+							registry.attach<B>(entity);
 						}
 					}
 					if (toss & 1 << 2)
 					{
-						if (!registry.component<C>(entity))
+						if (!registry.find<C>(entity))
 						{
-							registry.addComponent<C>(entity);
+							registry.attach<C>(entity);
 						}
 					}
 					if (toss & 1 << 3)
 					{
-						if (!registry.component<D>(entity))
+						if (!registry.find<D>(entity))
 						{
-							registry.addComponent<D>(entity);
+							registry.attach<D>(entity);
 						}
 					}
 					if (toss & 1 << 4)
 					{
-						if (!registry.component<D>(entity))
+						if (!registry.find<D>(entity))
 						{
-							registry.addComponent<D>(entity);
+							registry.attach<D>(entity);
 						}
 					}
 					if (toss & 1 << 5)
 					{
-						if (!registry.component<E>(entity))
+						if (!registry.find<E>(entity))
 						{
-							registry.addComponent<E>(entity);
+							registry.attach<E>(entity);
 						}
 					}
 					if (toss & 1 << 6)
 					{
-						if (!registry.component<F>(entity))
+						if (!registry.find<F>(entity))
 						{
-							registry.addComponent<F>(entity);
+							registry.attach<F>(entity);
 						}
 					}
 				},
@@ -109,7 +109,7 @@ int main()
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-						registry.destroyEntity(entities.at(idx));
+						registry.destroy(entities.at(idx));
 					},
 					{}));
 				handles.push_back(tasks::enqueue(
@@ -117,7 +117,7 @@ int main()
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-						registry.destroyComponent<A, B, D>(entities.at(idx));
+						registry.detach<A, B, D>(entities.at(idx));
 					},
 					{}));
 				handles.push_back(tasks::enqueue(
@@ -125,7 +125,7 @@ int main()
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-						registry.setEnabled(entities.at(idx), false);
+						registry.enable(entities.at(idx), false);
 					},
 					{}));
 			}

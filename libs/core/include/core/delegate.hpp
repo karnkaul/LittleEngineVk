@@ -13,17 +13,14 @@ class Delegate
 {
 public:
 	using Callback = std::function<void(Args...)>;
-	using Token = Token;
-
-private:
-	Tokeniser<Callback> m_tokeniser;
+	using Tk = Token;
 
 public:
 	///
 	/// \brief Register callback and obtain token
 	/// \returns Subscription token (discard to unregister)
 	///
-	[[nodiscard]] Token subscribe(Callback callback);
+	[[nodiscard]] Tk subscribe(Callback callback);
 	///
 	/// \brief Invoke registered callbacks; returns live count
 	///
@@ -37,10 +34,13 @@ public:
 	/// \brief Clear all registered callbacks
 	///
 	void clear() noexcept;
+
+private:
+	Tokeniser<Callback> m_tokeniser;
 };
 
 template <typename... Args>
-typename Delegate<Args...>::Token Delegate<Args...>::subscribe(Callback callback)
+typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback callback)
 {
 	return m_tokeniser.pushBack(std::move(callback));
 }

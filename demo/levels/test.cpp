@@ -28,21 +28,21 @@ TestLevel::TestLevel()
 	m_input.context.addRange("roll", input::Axis::eLeftX);
 
 	auto mainText = registry().spawn<UIComponent>("mainText");
-	m_data.mainText = mainText.first;
+	m_data.mainText = mainText.entity;
 	auto elapsedText = registry().spawn<UIComponent>("elapsedText");
-	m_data.elapsedText = elapsedText.first;
+	m_data.elapsedText = elapsedText.entity;
 	Text2D::Info info;
 	info.data.colour = colours::white;
 	info.data.text = "Test World";
 	info.data.scale = 0.25f;
 	info.id = "title";
-	auto& [title] = mainText.second;
+	auto& [title] = mainText.components;
 	title.setText(std::move(info));
 	info.data.text = "0";
 	info.data.pos = {0.0f, -100.0f, 0.0f};
 	info.id = "elapsed";
 	m_data.elapsed = {};
-	auto& [elapsed] = elapsedText.second;
+	auto& [elapsed] = elapsedText.components;
 	elapsed.setText(std::move(info));
 	camera().position = {0.0f, 1.0f, 2.0f};
 

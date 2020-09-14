@@ -36,13 +36,48 @@ struct EntityHasher final
 	std::size_t operator()(Entity const& entity) const;
 };
 
+///
+/// \brief List of `T...` components
+///
+template <typename... T>
+using Components = std::tuple<T...>;
+///
+/// \brief Return type of `spawn<T...>()`
+///
+template <typename... T>
+struct Spawned
+{
+	Entity entity;
+	Components<T&...> components;
+};
+///
+/// \brief Specialisation for zero components
+///
+template <>
+struct Spawned<>
+{
+	Entity entity;
+
+	constexpr operator Entity() const
+	{
+		return entity;
+	}
+};
+
 class Registry
 {
+private:
+	template <typename... T>
+	constexpr static bool isGreater(std::size_t const min)
+	{
+		return sizeof...(T) > min;
+	}
+
 public:
 	///
 	/// \brief Enum describing when destroyed entities are removed from the db
 	///
-	enum class DestroyMode : s8
+	enum class Mode : s8
 	{
 		eDeferred,	// destroyEntity() sets eDestroyed
 		eImmediate, // destroyEntity() erases Entity
@@ -62,22 +97,12 @@ public:
 	///
 	/// \brief Hash code of component type
 	///
-	using Signature = std::size_t;
-	///
-	/// \brief List of `T...` components
-	///
-	template <typename... T>
-	using Components = std::tuple<T...>;
+	using Sign = std::size_t;
 	///
 	/// \brief Return type of `view<T...>()`
 	///
 	template <typename... T>
 	using View = std::unordered_map<Entity, Components<T&...>, EntityHasher>;
-	///
-	/// \brief Return type of `spawn<T...>()`
-	///
-	template <typename... T>
-	using Spawned = std::pair<Entity, Components<T&...>>;
 
 	///
 	/// \brief Entity metadata
@@ -88,54 +113,8 @@ public:
 		Flags flags;
 	};
 
-private:
-	struct Concept
-	{
-		Signature sign = 0;
-		virtual ~Concept();
-	};
-
-	template <typename T>
-	struct Model final : Concept
-	{
-		T t;
-
-		template <typename... Args>
-		Model(Args&&... args);
-	};
-
 public:
-	std::string m_name;
-
-private:
-	// Shared cache of computed signs
-	inline static std::unordered_map<std::type_index, Signature> s_signs;
-	inline static std::unordered_map<Signature, std::string> s_names;
-	;
-	// Thread-safe static mutex
-	inline static kt::lockable<std::mutex> s_mutex;
-	inline static ECSID s_nextRegID;
-
-public:
-	///
-	/// \brief Adjusts `io::Level` on database changes (unset to disable)
-	///
-	std::optional<io::Level> m_logLevel = io::Level::eInfo;
-
-protected:
-	using CompMap = std::unordered_map<Signature, std::unique_ptr<Concept>>;
-	// Database of id => [Sign => [component]]
-	std::unordered_map<Entity, CompMap, EntityHasher> m_db;
-	// Thread-safe member mutex
-	mutable kt::lockable<std::mutex> m_mutex;
-
-private:
-	ECSID m_nextID = 0;
-	ECSID m_regID = 0;
-	DestroyMode m_destroyMode;
-
-public:
-	Registry(DestroyMode destroyMode = DestroyMode::eDeferred);
+	Registry(Mode destroyMode = Mode::eDeferred);
 	virtual ~Registry();
 
 public:
@@ -143,29 +122,33 @@ public:
 	/// \brief Obtain signature of `T`
 	///
 	template <typename T>
-	static Signature signature();
+	static Sign sign();
 
 	///
 	/// \brief Obtain signatures of `T...`
 	///
 	template <typename... T>
-	static std::array<Signature, sizeof...(T)> signatures();
+	static std::array<Sign, sizeof...(T)> signs();
 
 public:
 	///
-	/// \brief Make new Entity
+	/// \brief Make new Entity with `Ts...` attached
 	///
-	Entity spawn(std::string name);
+	template <typename... Ts>
+	Spawned<Ts...> spawn(std::string name);
 	///
 	/// \brief Make new Entity with `T(Args&&...)` attached
 	///
 	template <typename T, typename... Args>
 	Spawned<T> spawn(std::string name, Args&&... args);
 	///
-	/// \brief Make new Entity with `T0, Ts...` attached
+	/// \brief Destroy Entity
 	///
-	template <typename T0, typename... Ts>
-	Spawned<T0, Ts...> spawn(std::string name);
+	bool destroy(Entity const& entity);
+	///
+	/// \brief Destroy Entity and set to default handle
+	///
+	bool destroy(Entity& out_entity);
 
 	///
 	/// \brief Toggle Enabled flag
@@ -193,25 +176,15 @@ public:
 	Info const* info(Entity entity) const;
 
 	///
-	/// \brief Destroy Entity
-	///
-	bool destroy(Entity const& entity);
-	///
-	/// \brief Destroy Entity and set to default handle
-	///
-	bool destroy(Entity& out_entity);
-
-	///
 	/// \brief Add component `T` to Entity
 	///
 	template <typename T, typename... Args>
 	T* attach(Entity entity, Args&&... args);
 	///
-	/// \brief Add components `T0, T1, Ts...` to Entity
+	/// \brief Add components `T...` to Entity
 	///
-	template <typename T0, typename T1, typename... Ts>
-	Components<T0*, T1*, Ts*...> attach(Entity entity);
-
+	template <typename... T, typename = std::enable_if_t<isGreater<T...>(1), bool>>
+	Components<T*...> attach(Entity entity);
 	///
 	/// \brief Remove `T...` components if attached to Entity
 	///
@@ -255,42 +228,84 @@ public:
 	std::size_t size() const;
 
 private:
+	struct Concept
+	{
+		Sign sign = 0;
+		virtual ~Concept();
+	};
+
+	template <typename T>
+	struct Model final : Concept
+	{
+		T t;
+
+		template <typename... Args>
+		Model(Args&&... args);
+	};
+
+public:
+	///
+	/// \brief Name for logging etc
+	///
+	std::string m_name;
+	///
+	/// \brief Adjusts `io::Level` on database changes (unset to disable)
+	///
+	std::optional<io::Level> m_logLevel = io::Level::eInfo;
+
+private:
+	inline static std::unordered_map<std::type_index, Sign> s_signs;
+	inline static std::unordered_map<Sign, std::string> s_names;
+	inline static kt::lockable<std::mutex> s_mutex;
+	inline static ECSID s_nextRegID;
+
+protected:
+	using CompMap = std::unordered_map<Sign, std::unique_ptr<Concept>>;
+	// Database of id => [Sign => [component]]
+	std::unordered_map<Entity, CompMap, EntityHasher> m_db;
+	// Thread-safe member mutex
+	mutable kt::lockable<std::mutex> m_mutex;
+
+private:
+	ECSID m_nextID = 0;
+	ECSID m_regID = 0;
+	Mode m_destroyMode;
+
+private:
 	// _Impl functions are not thread safe; they rely on mutexes being locked
 	// const helpers help with DRY for const and non-const overloads
 
 	template <typename T>
-	static Signature signature_Impl();
+	static Sign signature_Impl();
 
 	template <typename T>
 	static std::string_view name_Impl();
 
-	static std::string_view name_Impl(Signature sign);
+	static std::string_view name_Impl(Sign sign);
 
 	Entity spawn_Impl(std::string name);
-
-	template <typename T, typename... Args>
-	T* attach_Impl(Entity entity, Args&&... args);
-
-	Concept* attach_Impl(Signature sign, std::unique_ptr<Concept>&& uT, Entity entity);
 
 	using ECMap = std::unordered_map<Entity, CompMap, EntityHasher>;
 	ECMap::iterator destroy_Impl(ECMap::iterator iter, Entity entity);
 
-	CompMap::iterator detach_Impl(CompMap& out_map, CompMap::iterator iter, Entity entity, Signature sign);
+	template <typename T, typename... Args>
+	T& attach_Impl(Entity entity, Args&&... args);
 
-	template <typename T>
-	static T* find_Impl(CompMap& compMap);
+	Concept* attach_Impl(Sign sign, std::unique_ptr<Concept>&& uT, Entity entity);
 
-	template <typename T>
-	static T const* find_Impl(CompMap const& compMap);
+	CompMap::iterator detach_Impl(CompMap& out_map, CompMap::iterator iter, Entity entity, Sign sign);
 
 	// const helper
-	template <typename Th, typename T>
+	template <typename T, typename Th, typename Cm>
+	static T* find_Impl(Th* pThis, Cm& out_compMap);
+
+	// const helper
+	template <typename T, typename Th>
 	static T* find_Impl(Th* pThis, Entity entity);
 
 	// const helper
 	template <typename Th, typename... T>
-	static View<T...> view(Th* pThis, Flags mask, Flags pattern);
+	static View<T...> view_Impl(Th* pThis, Flags mask, Flags pattern);
 };
 
 template <typename T>
@@ -301,36 +316,42 @@ Registry::Model<T>::Model(Args&&... args) : t(std::forward<Args>(args)...)
 }
 
 template <typename T>
-Registry::Signature Registry::signature()
+Registry::Sign Registry::sign()
 {
 	auto lock = s_mutex.lock();
 	return signature_Impl<T>();
 }
 
 template <typename... T>
-std::array<Registry::Signature, sizeof...(T)> Registry::signatures()
+std::array<Registry::Sign, sizeof...(T)> Registry::signs()
 {
 	auto lock = s_mutex.lock();
 	return {{signature_Impl<T>()...}};
 }
 
-template <typename T, typename... Args>
-Registry::Spawned<T> Registry::spawn(std::string name, Args&&... args)
+template <typename... Ts>
+Spawned<Ts...> Registry::spawn(std::string name)
 {
 	auto lock = m_mutex.lock();
 	auto entity = spawn_Impl(std::move(name));
-	auto pComp = attach_Impl<T>(entity, std::forward<Args>(args)...);
-	return {entity, *pComp};
+	if constexpr (sizeof...(Ts) > 0)
+	{
+		auto comps = Components<Ts&...>(attach_Impl<Ts>(entity)...);
+		return {entity, std::move(comps)};
+	}
+	else
+	{
+		return {entity};
+	}
 }
 
-template <typename T0, typename... Ts>
-Registry::Spawned<T0, Ts...> Registry::spawn(std::string name)
+template <typename T, typename... Args>
+Spawned<T> Registry::spawn(std::string name, Args&&... args)
 {
 	auto lock = m_mutex.lock();
 	auto entity = spawn_Impl(std::move(name));
-	auto pComp = attach_Impl<T0>(entity);
-	auto comps = Components<T0&, Ts&...>(*pComp, attach_Impl<Ts>(entity)...);
-	return std::make_pair(entity, std::move(comps));
+	auto& comp = attach_Impl<T>(entity, std::forward<Args>(args)...);
+	return {entity, comp};
 }
 
 template <typename T, typename... Args>
@@ -340,18 +361,18 @@ T* Registry::attach(Entity entity, Args&&... args)
 	auto lock = m_mutex.lock();
 	if (m_db.find(entity) != m_db.end())
 	{
-		return attach_Impl<T>(entity, std::forward<Args>(args)...);
+		return &attach_Impl<T>(entity, std::forward<Args>(args)...);
 	}
 	return nullptr;
 }
 
-template <typename T0, typename T1, typename... Ts>
-Registry::Components<T0*, T1*, Ts*...> Registry::attach(Entity entity)
+template <typename... T, typename>
+Components<T*...> Registry::attach(Entity entity)
 {
 	auto lock = m_mutex.lock();
 	if (m_db.find(entity) != m_db.end())
 	{
-		return Components<T0*, T1*, Ts*...>(attach_Impl<T0>(entity), attach_Impl<T1>(entity), attach_Impl<Ts>(entity)...);
+		return Components<T*...>(&attach_Impl<T>(entity)...);
 	}
 	return {};
 }
@@ -366,8 +387,7 @@ bool Registry::detach(Entity entity)
 		if (auto search = m_db.find(entity); search != m_db.end())
 		{
 			auto& comps = search->second;
-			auto const signs = signatures<T...>();
-			for (auto sign : signs)
+			for (auto sign : signs<T...>())
 			{
 				if (auto search = comps.find(sign); search != comps.end())
 				{
@@ -384,37 +404,37 @@ template <typename T>
 T const* Registry::find(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	return find_Impl<Registry const, T const>(this, entity);
+	return find_Impl<T const>(this, entity);
 }
 
 template <typename T>
 T* Registry::find(Entity entity)
 {
 	auto lock = m_mutex.lock();
-	return find_Impl<Registry, T>(this, entity);
+	return find_Impl<T>(this, entity);
 }
 
 template <typename... T>
 typename Registry::View<T const...> Registry::view(Flags mask, Flags pattern) const
 {
-	return view<Registry const, T const...>(this, mask, pattern);
+	return view_Impl<Registry const, T const...>(this, mask, pattern);
 }
 
 template <typename... T>
 typename Registry::View<T...> Registry::view(Flags mask, Flags pattern)
 {
-	return view<Registry, T...>(this, mask, pattern);
+	return view_Impl<Registry, T...>(this, mask, pattern);
 }
 
 template <typename T>
-Registry::Signature Registry::signature_Impl()
+Registry::Sign Registry::signature_Impl()
 {
 	auto const& t = typeid(std::decay_t<T>);
 	auto const index = std::type_index(t);
 	auto search = s_signs.find(index);
 	if (search == s_signs.end())
 	{
-		auto result = s_signs.emplace(index, (Signature)t.hash_code());
+		auto result = s_signs.emplace(index, (Sign)t.hash_code());
 		ASSERT(result.second, "Insertion failure");
 		search = result.first;
 	}
@@ -438,59 +458,49 @@ std::string_view Registry::name_Impl()
 }
 
 template <typename T, typename... Args>
-T* Registry::attach_Impl(Entity entity, Args&&... args)
+T& Registry::attach_Impl(Entity entity, Args&&... args)
 {
 	name_Impl<T>();
-	return &static_cast<Model<T>&>(*attach_Impl(signature<T>(), std::make_unique<Model<T>>(std::forward<Args>(args)...), entity)).t;
+	return static_cast<Model<T>&>(*attach_Impl(sign<T>(), std::make_unique<Model<T>>(std::forward<Args>(args)...), entity)).t;
 }
 
-template <typename T>
-T* Registry::find_Impl(CompMap& compMap)
+template <typename T, typename Th, typename Cm>
+T* Registry::find_Impl(Th*, Cm& out_compMap)
 {
-	if (auto search = compMap.find(signature<T>()); search != compMap.end())
+	if (auto search = out_compMap.find(sign<T>()); search != out_compMap.end())
 	{
 		return &static_cast<Model<T>&>(*search->second).t;
 	}
 	return nullptr;
 }
 
-template <typename T>
-T const* Registry::find_Impl(CompMap const& compMap)
-{
-	if (auto search = compMap.find(signature<T>()); search != compMap.end())
-	{
-		return &static_cast<Model<T>&>(*search->second).t;
-	}
-	return nullptr;
-}
-
-template <typename Th, typename T>
+template <typename T, typename Th>
 T* Registry::find_Impl(Th* pThis, Entity entity)
 {
 	if (auto search = pThis->m_db.find(entity); search != pThis->m_db.end())
 	{
-		return find_Impl<T>(search->second);
+		return find_Impl<T>(pThis, search->second);
 	}
 	return nullptr;
 }
 
 template <typename Th, typename... T>
-typename Registry::View<T...> Registry::view(Th* pThis, Flags mask, Flags pattern)
+typename Registry::View<T...> Registry::view_Impl(Th* pThis, Flags mask, Flags pattern)
 {
 	static_assert(sizeof...(T) > 0, "Must view at least one T");
 	View<T...> ret;
-	static auto const signs = signatures<T...>();
+	static auto const s = signs<T...>();
 	auto lock = pThis->m_mutex.lock();
 	for (auto& [entity, compMap] : pThis->m_db)
 	{
-		auto pInfo = find_Impl<Info const>(compMap);
+		auto pInfo = find_Impl<Info const>(pThis, compMap);
 		ASSERT(pInfo, "Invariant violated");
 		if ((pInfo->flags & mask) == (pattern & mask))
 		{
 			auto& c = compMap;
-			if (std::all_of(signs.begin(), signs.end(), [&c](auto sign) -> bool { return c.find(sign) != c.end(); }))
+			if (std::all_of(s.begin(), s.end(), [&c](auto sign) -> bool { return c.find(sign) != c.end(); }))
 			{
-				ret.emplace(Entity{entity}, Components<T&...>(*find_Impl<T>(c)...));
+				ret.emplace(Entity{entity}, Components<T&...>(*find_Impl<T>(pThis, c)...));
 			}
 		}
 	}

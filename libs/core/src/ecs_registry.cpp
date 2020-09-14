@@ -24,7 +24,7 @@ std::size_t EntityHasher::operator()(Entity const& entity) const
 
 Registry::Concept::~Concept() = default;
 
-Registry::Registry(DestroyMode destroyMode) : m_destroyMode(destroyMode)
+Registry::Registry(Mode destroyMode) : m_destroyMode(destroyMode)
 {
 	m_regID = ++s_nextRegID.payload;
 	m_name = fmt::format("{}:{}", utils::tName(*this), m_regID);
@@ -38,16 +38,52 @@ Registry::~Registry()
 	}
 }
 
-Entity Registry::spawn(std::string name)
+bool Registry::destroy(Entity const& entity)
 {
 	auto lock = m_mutex.lock();
-	return spawn_Impl(std::move(name));
+	if (auto search = m_db.find(entity); search != m_db.end())
+	{
+		switch (m_destroyMode)
+		{
+		case Mode::eImmediate:
+		{
+			destroy_Impl(search, entity);
+			break;
+		}
+		default:
+		case Mode::eDeferred:
+		{
+			if (auto pInfo = find_Impl<Info>(this, entity))
+			{
+				pInfo->flags.set(Flag::eDestroyed);
+			}
+			else
+			{
+				ASSERT(false, "Invariant violated!");
+			}
+			break;
+		}
+		}
+		return true;
+	}
+	return false;
+}
+
+bool Registry::destroy(Entity& out_entity)
+{
+	Entity const& entity = out_entity;
+	if (destroy(entity))
+	{
+		out_entity = {};
+		return true;
+	}
+	return false;
 }
 
 bool Registry::enable(Entity entity, bool bEnabled)
 {
 	auto lock = m_mutex.lock();
-	if (auto pInfo = find_Impl<Registry, Info>(this, entity))
+	if (auto pInfo = find_Impl<Info>(this, entity))
 	{
 		pInfo->flags[Flag::eDisabled] = !bEnabled;
 	}
@@ -57,7 +93,7 @@ bool Registry::enable(Entity entity, bool bEnabled)
 bool Registry::enabled(Entity entity) const
 {
 	auto lock = m_mutex.lock();
-	if (auto pInfo = find_Impl<Registry const, Info const>(this, entity))
+	if (auto pInfo = find_Impl<Info const>(this, entity))
 	{
 		return !pInfo->flags.test(Flag::eDisabled);
 	}
@@ -97,48 +133,6 @@ Registry::Info const* Registry::info(Entity entity) const
 	return nullptr;
 }
 
-bool Registry::destroy(Entity const& entity)
-{
-	auto lock = m_mutex.lock();
-	if (auto search = m_db.find(entity); search != m_db.end())
-	{
-		switch (m_destroyMode)
-		{
-		case DestroyMode::eImmediate:
-		{
-			destroy_Impl(search, entity);
-			break;
-		}
-		default:
-		case DestroyMode::eDeferred:
-		{
-			if (auto pInfo = find_Impl<Registry, Info>(this, entity))
-			{
-				pInfo->flags.set(Flag::eDestroyed);
-			}
-			else
-			{
-				ASSERT(false, "Invariant violated!");
-			}
-			break;
-		}
-		}
-		return true;
-	}
-	return false;
-}
-
-bool Registry::destroy(Entity& out_entity)
-{
-	Entity const& entity = out_entity;
-	if (destroy(entity))
-	{
-		out_entity = {};
-		return true;
-	}
-	return false;
-}
-
 void Registry::flush()
 {
 	auto lock = m_mutex.lock();
@@ -147,7 +141,7 @@ void Registry::flush()
 		bool bInc = true;
 		Entity const entity = {iter->first};
 		auto& compMap = iter->second;
-		if (auto pInfo = find_Impl<Info>(compMap))
+		if (auto pInfo = find_Impl<Info>(this, compMap))
 		{
 			if (pInfo->flags.test(Flag::eDestroyed))
 			{
@@ -175,7 +169,7 @@ std::size_t Registry::size() const
 	return m_db.size();
 }
 
-std::string_view Registry::name_Impl(Signature sign)
+std::string_view Registry::name_Impl(Sign sign)
 {
 	if (auto search = s_names.find(sign); search != s_names.end())
 	{
@@ -189,22 +183,19 @@ Entity Registry::spawn_Impl(std::string name)
 	++m_nextID.payload;
 	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] spawned", m_name, s_tEName, m_nextID, name);
 	Entity ret{m_nextID, m_regID};
-	if (auto pInfo = attach_Impl<Info>(ret))
-	{
-		pInfo->name = std::move(name);
-		return ret;
-	}
-	return {};
+	auto& info = attach_Impl<Info>(ret);
+	info.name = std::move(name);
+	return ret;
 }
 
-Registry::Concept* Registry::attach_Impl(Signature sign, std::unique_ptr<Concept>&& uComp, Entity entity)
+Registry::Concept* Registry::attach_Impl(Sign sign, std::unique_ptr<Concept>&& uComp, Entity entity)
 {
 	uComp->sign = sign;
 	auto& compMap = m_db[entity];
 	ASSERT(compMap.find(sign) == compMap.end(), "Duplicate component!");
 	if (m_logLevel)
 	{
-		if (auto pInfo = find_Impl<Info>(compMap))
+		if (auto pInfo = find_Impl<Info>(this, compMap))
 		{
 			LOG(*m_logLevel, "[{}] [{}] spawned and attached to [{}:{}] [{}]", m_name, name_Impl(sign), s_tEName, entity.id, pInfo->name);
 		}
@@ -218,7 +209,7 @@ Registry::ECMap::iterator Registry::destroy_Impl(ECMap::iterator iter, Entity en
 {
 	if (m_logLevel)
 	{
-		if (auto pInfo = find_Impl<Registry, Info>(this, entity))
+		if (auto pInfo = find_Impl<Info>(this, entity))
 		{
 			LOG(*m_logLevel, "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, entity.id, pInfo->name);
 		}
@@ -226,11 +217,11 @@ Registry::ECMap::iterator Registry::destroy_Impl(ECMap::iterator iter, Entity en
 	return m_db.erase(iter);
 }
 
-Registry::CompMap::iterator Registry::detach_Impl(CompMap& out_map, CompMap::iterator iter, Entity entity, Signature sign)
+Registry::CompMap::iterator Registry::detach_Impl(CompMap& out_map, CompMap::iterator iter, Entity entity, Sign sign)
 {
 	if (m_logLevel)
 	{
-		if (auto pInfo = find_Impl<Registry, Info>(this, entity))
+		if (auto pInfo = find_Impl<Info>(this, entity))
 		{
 			LOG(*m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", m_name, name_Impl(sign), s_tEName, entity.id, pInfo->name);
 		}

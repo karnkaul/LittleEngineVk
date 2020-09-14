@@ -58,13 +58,6 @@ public:
 	State m_state;
 	Config m_config;
 
-private:
-	input::Context m_input;
-	input::Token m_token;
-	glm::vec2 m_dXZ = {};
-	glm::vec2 m_dY = {};
-	glm::vec2 m_padLook = {};
-
 public:
 	void reset();
 
@@ -75,5 +68,12 @@ public:
 	void init();
 #endif
 	void tick(Time dt);
+
+private:
+	input::Context m_input;
+	Token m_token;
+	glm::vec2 m_dXZ = {};
+	glm::vec2 m_dY = {};
+	glm::vec2 m_padLook = {};
 };
 } // namespace le

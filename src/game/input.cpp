@@ -25,9 +25,9 @@ WindowID g_mainWindow;
 
 struct
 {
-	input::OnInput::Token input;
-	input::OnText::Token text;
-	input::OnMouse::Token scroll;
+	input::OnInput::Tk input;
+	input::OnText::Tk text;
+	input::OnMouse::Tk scroll;
 } g_tokens;
 
 struct
@@ -42,7 +42,7 @@ struct
 } g_raw;
 } // namespace
 
-input::Token input::registerContext(Context const* pContext)
+Token input::registerContext(Context const* pContext)
 {
 	return g_contexts.pushFront(pContext);
 }
@@ -120,7 +120,7 @@ void input::init(Window& out_mainWindow)
 }
 
 #if defined(LEVK_EDITOR)
-input::Token input::registerEditorContext(Context const* pContext)
+Token input::registerEditorContext(Context const* pContext)
 {
 	ASSERT(pContext, "Context is null!");
 	return g_editorContexts.pushFront(pContext);

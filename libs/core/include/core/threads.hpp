@@ -19,9 +19,6 @@ using ID = TZero<u64>;
 ///
 struct Scoped final : NoCopy
 {
-private:
-	ID id_;
-
 public:
 	constexpr Scoped(ID id = ID::null) noexcept : id_(id) {}
 	constexpr Scoped(Scoped&&) noexcept = default;
@@ -40,6 +37,9 @@ public:
 	/// \brief Block calling thread until instance of thread execution handle points to joins
 	///
 	void join();
+
+private:
+	ID id_;
 };
 
 ///

@@ -72,7 +72,7 @@ struct Scoped final
 ///
 struct Context final
 {
-	Registry defaultRegistry = Registry(Registry::DestroyMode::eImmediate);
+	Registry defaultRegistry = Registry(Registry::Mode::eImmediate);
 	std::string name;
 	gfx::ScreenRect gameRect;
 	Ref<Registry> registry = defaultRegistry;
@@ -109,16 +109,16 @@ std::string guiName(T const* pT = nullptr);
 ///
 /// \brief Register input context
 ///
-[[nodiscard]] input::Token registerInput(input::Context const* pContext);
+[[nodiscard]] Token registerInput(input::Context const* pContext);
 
 ///
 /// \brief Load/unload a pair of manifests
 ///
-[[nodiscard]] TResult<ManifestLoaded::Token> loadManifest(LoadReq const& loadReq);
+[[nodiscard]] TResult<Token> loadManifest(LoadReq const& loadReq);
 ///
 /// \brief Load input map into input context and and register it
 ///
-[[nodiscard]] input::Token loadInputMap(stdfs::path const& id, input::Context* out_pContext);
+[[nodiscard]] Token loadInputMap(stdfs::path const& id, input::Context* out_pContext);
 
 ///
 /// \brief Create a new Prop

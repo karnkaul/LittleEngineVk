@@ -28,7 +28,6 @@ constexpr bool levk_resourcesHotReload = false;
 namespace le::res
 {
 using GUID = TZero<u64>;
-using Token = Token;
 
 ///
 /// \brief Resource status

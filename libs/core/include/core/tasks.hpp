@@ -33,11 +33,6 @@ public:
 		eError
 	};
 
-private:
-	s64 const m_id;
-	std::atomic<Status> m_status;
-	std::string m_exception;
-
 public:
 	Handle(s64 id);
 
@@ -71,6 +66,10 @@ public:
 	std::string_view exception() const noexcept;
 
 private:
+	s64 const m_id;
+	std::atomic<Status> m_status;
+	std::string m_exception;
+
 	friend struct Worker;
 };
 

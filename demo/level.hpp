@@ -9,22 +9,6 @@ namespace stdfs = std::filesystem;
 
 class Level
 {
-protected:
-	std::string m_name;
-
-protected:
-	struct
-	{
-		stdfs::path id;
-		le::input::Context context;
-		le::input::Token token;
-	} m_input;
-	struct
-	{
-		stdfs::path id;
-		le::res::Token token;
-	} m_manifest;
-
 public:
 	Level();
 	virtual ~Level();
@@ -46,6 +30,22 @@ protected:
 
 private:
 	friend class LevelDriver;
+
+protected:
+	std::string m_name;
+
+protected:
+	struct
+	{
+		stdfs::path id;
+		le::input::Context context;
+		le::Token token;
+	} m_input;
+	struct
+	{
+		stdfs::path id;
+		le::Token token;
+	} m_manifest;
 };
 
 class LevelDriver final : public le::engine::Driver

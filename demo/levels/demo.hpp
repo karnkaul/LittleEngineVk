@@ -35,6 +35,14 @@ class DemoLevel : public Level
 public:
 	le::u32 m_fps;
 
+public:
+	DemoLevel();
+
+protected:
+	void tick(le::Time dt) override;
+	void onManifestLoaded() override;
+	le::SceneBuilder const& builder() const override;
+
 private:
 	struct
 	{
@@ -48,7 +56,7 @@ private:
 		le::input::Context temp;
 		le::FreeCam freeCam;
 		FPS fps;
-		le::input::Token tempToken;
+		le::Token tempToken;
 		le::Time reloadTime;
 		bool bLoadUnloadModels = false;
 		bool bWireframe = false;
@@ -65,12 +73,4 @@ private:
 		le::Hash awesomeface = "textures/awesomeface.png";
 	} m_res;
 	le::SceneBuilder m_sceneBuilder;
-
-public:
-	DemoLevel();
-
-protected:
-	void tick(le::Time dt) override;
-	void onManifestLoaded() override;
-	le::SceneBuilder const& builder() const override;
 };

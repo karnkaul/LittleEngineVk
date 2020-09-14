@@ -40,7 +40,7 @@ public:
 private:
 	Info m_info;
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-	Delegate<>::Token m_reloadToken;
+	Delegate<>::Tk m_reloadToken;
 	bool m_bShaderReloaded = false;
 #endif
 

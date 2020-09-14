@@ -75,11 +75,6 @@ public:
 public:
 	Stats m_stats;
 
-private:
-	std::unique_ptr<class RendererImpl> m_uImpl;
-	Scene m_scene;
-	ScreenRect m_sceneView;
-
 public:
 	Renderer();
 	Renderer(Renderer&&);
@@ -98,5 +93,10 @@ private:
 private:
 	friend class le::WindowImpl;
 	friend class RendererImpl;
+
+private:
+	std::unique_ptr<class RendererImpl> m_uImpl;
+	Scene m_scene;
+	ScreenRect m_sceneView;
 };
 } // namespace le::gfx

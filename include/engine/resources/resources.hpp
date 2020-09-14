@@ -52,10 +52,6 @@ struct Scoped final : NoCopy
 template <typename T>
 class Async final
 {
-private:
-	std::shared_ptr<tasks::Handle> m_task;
-	Hash m_id;
-
 public:
 	constexpr Async() = default;
 	Async(std::shared_ptr<tasks::Handle> task, Hash id) : m_task(std::move(task)), m_id(id) {}
@@ -70,6 +66,10 @@ public:
 	TResult<T> resource() const;
 
 	bool reset();
+
+private:
+	std::shared_ptr<tasks::Handle> m_task;
+	Hash m_id;
 };
 
 template <typename T>

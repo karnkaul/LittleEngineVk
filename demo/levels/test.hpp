@@ -8,6 +8,12 @@ class TestLevel final : public Level
 public:
 	using Deg = le::f32;
 
+public:
+	TestLevel();
+
+public:
+	void tick(le::Time dt) override;
+
 private:
 	struct
 	{
@@ -24,10 +30,4 @@ private:
 		glm::quat orientTarget = le::gfx::g_qIdentity;
 		bool bControl = true;
 	} m_game;
-
-public:
-	TestLevel();
-
-public:
-	void tick(le::Time dt) override;
 };

@@ -42,9 +42,6 @@ public:
 	inline static std::string_view s_compiler = "glslc";
 
 private:
-	Status m_status;
-
-private:
 	ShaderCompiler();
 
 public:
@@ -68,6 +65,9 @@ private:
 
 private:
 	friend class Singleton<ShaderCompiler>;
+
+private:
+	Status m_status;
 };
 #endif
 } // namespace le::res

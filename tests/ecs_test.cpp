@@ -35,7 +35,7 @@ int main()
 {
 	{
 		tasks::Service service(4);
-		Registry registry(Registry::DestroyMode::eImmediate);
+		Registry registry(Registry::Mode::eImmediate);
 		registry.m_logLevel.reset();
 		constexpr s32 entityCount = 10000;
 		std::array<Entity, entityCount> entities;

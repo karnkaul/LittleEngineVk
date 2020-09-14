@@ -50,10 +50,6 @@ bool withinRange(T value, T min, T max, bool bInclusive = true)
 ///
 class Random
 {
-protected:
-	std::random_device m_device;
-	std::mt19937 m_engine;
-
 public:
 	///
 	/// \brief Recreate and seed the engine with `value`
@@ -74,6 +70,10 @@ public:
 	///
 	template <typename T>
 	T inRange(T min, T max);
+
+protected:
+	std::random_device m_device;
+	std::mt19937 m_engine;
 };
 
 template <typename T, template <typename> typename Dist, typename... Args>

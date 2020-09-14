@@ -7,11 +7,6 @@ macro(get_git_commit_hash OUTPUT_VAR)
 	)
 endmacro()
 
-macro(glob_sources OUTPUT_VAR PATTERN)
-	set(${OUTPUT_VAR} "")
-	file(GLOB_RECURSE ${OUTPUT_VAR} CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${PATTERN}")
-endmacro()
-
 function(update_git_submodules REQUIRED)
 	message(STATUS "Updating git submodules...")
 	execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
@@ -36,16 +31,6 @@ function(unzip_archive ARCHIVE_NAME SUBDIR)
 		${CMAKE_COMMAND} -E tar -xf "${ARCHIVE_NAME}"
 		WORKING_DIRECTORY "${SUBDIR}"
 	)
-endfunction()
-
-function(configure_file_src_to_bin SRC DEST)
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${SRC}")
-		set(OUTFILE "${CMAKE_CURRENT_BINARY_DIR}/${DEST}")
-		configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${SRC}" "${OUTFILE}")
-		source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES "${OUTFILE}")
-	else()
-		message(WARNING "Required file not present to configure: ${SRC}")
-	endif()
 endfunction()
 
 function(set_output_directory TARGET_NAME DIRECTORY_PATH)

@@ -29,10 +29,6 @@ class Tokeniser final : detail::Base
 public:
 	using Container = C<std::pair<T, u64>, Args...>;
 
-private:
-	Container m_entries;
-	u64 m_nextID = 1;
-
 public:
 	///
 	/// \brief Add a new entry
@@ -68,6 +64,10 @@ public:
 	void forEach(F f) const;
 
 private:
+	Container m_entries;
+	u64 m_nextID = 1;
+
+private:
 	void pop(u64 id) override;
 
 private:
@@ -76,10 +76,6 @@ private:
 
 struct Token : NoCopy
 {
-private:
-	detail::Base* pParent;
-	u64 id;
-
 public:
 	constexpr Token(detail::Base* pParent = nullptr, u64 id = 0) noexcept : pParent(pParent), id(id) {}
 
@@ -117,6 +113,10 @@ public:
 	{
 		return id > 0 && pParent != nullptr;
 	}
+
+private:
+	detail::Base* pParent;
+	u64 id;
 };
 
 template <typename T, template <typename...> typename C, typename... Args>

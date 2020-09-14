@@ -48,8 +48,8 @@ kt::lockable<std::mutex> g_logMutex;
 struct
 {
 	WindowID window;
-	OnInput::Token inputToken;
-	OnFocus::Token focusToken;
+	OnInput::Tk inputToken;
+	OnFocus::Tk focusToken;
 	bool bEnabled = false;
 	bool bFocus = true;
 	std::unordered_set<input::Key> pressed;
@@ -735,7 +735,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 				}
 				else if (Button("[Add SceneDesc]"))
 				{
-					g_inspecting = {registry.spawn<SceneDesc>("scene_desc").first, nullptr};
+					g_inspecting = {registry.spawn<SceneDesc>("scene_desc").entity, nullptr};
 					g_spawned.insert(g_inspecting.entity);
 				}
 				s = Styler(Style::eSeparator);

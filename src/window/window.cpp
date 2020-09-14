@@ -63,22 +63,22 @@ void Window::renderAll()
 	return;
 }
 
-input::OnText::Token Window::registerText(input::OnText::Callback callback, WindowID window)
+input::OnText::Tk Window::registerText(input::OnText::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onText.subscribe(callback);
 }
 
-input::OnInput::Token Window::registerInput(input::OnInput::Callback callback, WindowID window)
+input::OnInput::Tk Window::registerInput(input::OnInput::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onInput.subscribe(callback);
 }
 
-input::OnMouse::Token Window::registerMouse(input::OnMouse::Callback callback, WindowID window)
+input::OnMouse::Tk Window::registerMouse(input::OnMouse::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onMouse.subscribe(callback);
 }
 
-input::OnMouse::Token Window::registerScroll(input::OnMouse::Callback callback, WindowID window)
+input::OnMouse::Tk Window::registerScroll(input::OnMouse::Callback callback, WindowID window)
 {
 	return WindowImpl::s_input[window].onScroll.subscribe(callback);
 }
@@ -156,42 +156,42 @@ void Window::destroy()
 	return;
 }
 
-input::OnText::Token Window::registerText(input::OnText::Callback callback)
+input::OnText::Tk Window::registerText(input::OnText::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onText.subscribe(callback);
 }
 
-input::OnInput::Token Window::registerInput(input::OnInput::Callback callback)
+input::OnInput::Tk Window::registerInput(input::OnInput::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onInput.subscribe(callback);
 }
 
-input::OnMouse::Token Window::registerMouse(input::OnMouse::Callback callback)
+input::OnMouse::Tk Window::registerMouse(input::OnMouse::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onMouse.subscribe(callback);
 }
 
-input::OnMouse::Token Window::registerScroll(input::OnMouse::Callback callback)
+input::OnMouse::Tk Window::registerScroll(input::OnMouse::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onScroll.subscribe(callback);
 }
 
-input::OnFiledrop::Token Window::registerFiledrop(input::OnFiledrop::Callback callback)
+input::OnFiledrop::Tk Window::registerFiledrop(input::OnFiledrop::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onFiledrop.subscribe(callback);
 }
 
-input::OnFocus::Token Window::registerFocus(input::OnFocus::Callback callback)
+input::OnFocus::Tk Window::registerFocus(input::OnFocus::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onFocus.subscribe(callback);
 }
 
-input::OnWindowResize::Token Window::registerResize(input::OnWindowResize::Callback callback)
+input::OnWindowResize::Tk Window::registerResize(input::OnWindowResize::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onWindowResize.subscribe(callback);
 }
 
-input::OnClosed::Token Window::registerClosed(input::OnClosed::Callback callback)
+input::OnClosed::Tk Window::registerClosed(input::OnClosed::Callback callback)
 {
 	return WindowImpl::s_input[m_id].onClosed.subscribe(callback);
 }

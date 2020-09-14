@@ -12,8 +12,6 @@ struct Counter final
 {
 	struct Semaphore;
 
-	std::atomic<T> counter;
-
 	void increment() noexcept;
 	void decrement() noexcept;
 
@@ -22,6 +20,8 @@ struct Counter final
 	/// \param bAllowNegative Return true even if counter is negative
 	///
 	bool isZero(bool bAllowNegative) const noexcept;
+
+	std::atomic<T> counter;
 };
 
 template <typename T>
@@ -48,9 +48,6 @@ bool Counter<T>::isZero(bool bAllowNegative) const noexcept
 template <typename T>
 struct Counter<T>::Semaphore final
 {
-private:
-	Counter<T>* pCounter = nullptr;
-
 public:
 	constexpr Semaphore() noexcept = default;
 	///
@@ -104,5 +101,8 @@ public:
 		}
 		pCounter = nullptr;
 	}
+
+private:
+	Counter<T>* pCounter = nullptr;
 };
 } // namespace le

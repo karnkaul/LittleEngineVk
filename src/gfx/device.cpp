@@ -123,7 +123,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			throw std::runtime_error("Failed to select a physical device!");
 		}
 		auto const properties = instance.physicalDevice.getProperties();
-		deviceName = properties.deviceName;
+		deviceName = std::string(properties.deviceName);
 		instance.deviceLimits = properties.limits;
 		instance.lineWidthMin = properties.limits.lineWidthRange[0];
 		instance.lineWidthMax = properties.limits.lineWidthRange[1];

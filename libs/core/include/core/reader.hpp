@@ -15,9 +15,6 @@ namespace io
 ///
 class Reader
 {
-protected:
-	std::string m_medium;
-
 public:
 	Reader() noexcept;
 	Reader(Reader&&) noexcept;
@@ -71,6 +68,9 @@ public:
 	[[nodiscard]] virtual TResult<std::stringstream> sstream(stdfs::path const& id) const = 0;
 
 protected:
+	std::string m_medium;
+
+protected:
 	virtual TResult<stdfs::path> findPrefixed(stdfs::path const& id) const = 0;
 };
 
@@ -79,9 +79,6 @@ protected:
 ///
 class FileReader final : public Reader
 {
-private:
-	std::vector<stdfs::path> m_dirs;
-
 public:
 	///
 	/// \brief Obtain full path to directory containing any of `anyOf` `id`s.
@@ -108,7 +105,10 @@ public:
 	TResult<bytearray> bytes(stdfs::path const& id) const override;
 	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
 
-protected:
+private:
+	std::vector<stdfs::path> m_dirs;
+
+private:
 	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
 
 private:
@@ -120,9 +120,6 @@ private:
 ///
 class ZIPReader final : public Reader
 {
-private:
-	std::vector<stdfs::path> m_zips;
-
 public:
 	ZIPReader();
 
@@ -134,7 +131,10 @@ public:
 	TResult<bytearray> bytes(stdfs::path const& id) const override;
 	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
 
-protected:
+private:
+	std::vector<stdfs::path> m_zips;
+
+private:
 	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
 };
 
@@ -164,18 +164,6 @@ public:
 		eModified,
 		eCOUNT_
 	};
-
-protected:
-	inline static io::FileReader s_reader;
-
-protected:
-	stdfs::file_time_type m_lastWriteTime = {};
-	stdfs::file_time_type m_lastModifiedTime = {};
-	stdfs::path m_path;
-	std::string m_text;
-	bytearray m_bytes;
-	Mode m_mode;
-	Status m_status = Status::eNotFound;
 
 public:
 	///
@@ -221,6 +209,18 @@ public:
 	/// \brief Obtain the last scanned contents of the file being monitored
 	/// Note: only valid for `eBinaryContents` mode
 	bytearray const& bytes() const;
+
+protected:
+	inline static io::FileReader s_reader;
+
+protected:
+	stdfs::file_time_type m_lastWriteTime = {};
+	stdfs::file_time_type m_lastModifiedTime = {};
+	stdfs::path m_path;
+	std::string m_text;
+	bytearray m_bytes;
+	Mode m_mode;
+	Status m_status = Status::eNotFound;
 };
 } // namespace io
 } // namespace le

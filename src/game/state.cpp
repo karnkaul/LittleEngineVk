@@ -51,13 +51,13 @@ void gs::Context::reset()
 #endif
 }
 
-input::Token gs::registerInput(input::Context const* pContext)
+Token gs::registerInput(input::Context const* pContext)
 {
 	ASSERT(pContext, "Context is null!");
 	return input::registerContext(pContext);
 }
 
-TResult<gs::ManifestLoaded::Token> gs::loadManifest(LoadReq const& loadReq)
+TResult<Token> gs::loadManifest(LoadReq const& loadReq)
 {
 	if (!g_ctxImpl.manifest.idle())
 	{
@@ -65,7 +65,7 @@ TResult<gs::ManifestLoaded::Token> gs::loadManifest(LoadReq const& loadReq)
 		return {};
 	}
 	res::ResourceList unload;
-	TResult<ManifestLoaded::Token> ret;
+	TResult<Token> ret;
 	if (!loadReq.unload.empty() && engine::reader().checkPresence(loadReq.unload))
 	{
 		res::Manifest temp;
@@ -97,7 +97,7 @@ TResult<gs::ManifestLoaded::Token> gs::loadManifest(LoadReq const& loadReq)
 	return ret;
 }
 
-input::Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContext)
+Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContext)
 {
 	if (!id.empty() && engine::reader().isPresent(id))
 	{
@@ -123,13 +123,13 @@ input::Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContex
 Prop gs::spawnProp(std::string name)
 {
 	Registry& reg = g_context.registry;
-	auto entity = reg.spawn<Transform>(std::move(name));
-	auto& [transform] = entity.second;
+	auto prop = reg.spawn<Transform>(std::move(name));
+	auto& [transform] = prop.components;
 #if defined(LEVK_EDITOR)
 	transform.parent(&g_ctxImpl.root);
-	g_ctxImpl.entityMap[&transform] = entity.first;
+	g_ctxImpl.entityMap[&transform] = prop.entity;
 #endif
-	return {entity.first, transform};
+	return {prop.entity, transform};
 }
 
 void gs::destroy(Span<Prop> props)

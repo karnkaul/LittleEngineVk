@@ -15,12 +15,6 @@ namespace le
 ///
 struct Version
 {
-private:
-	u32 mj;
-	u32 mn;
-	u32 pa;
-	u32 tw;
-
 public:
 	///
 	/// \brief Parse string into version
@@ -46,5 +40,11 @@ public:
 	bool operator<=(Version const& rhs) noexcept;
 	bool operator>(Version const& rhs) noexcept;
 	bool operator>=(Version const& rhs) noexcept;
+
+private:
+	u32 mj;
+	u32 mn;
+	u32 pa;
+	u32 tw;
 };
 } // namespace le

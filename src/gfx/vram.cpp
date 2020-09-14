@@ -75,7 +75,7 @@ struct
 	{
 		commands.push_back(stage.command);
 		buffers.push_back(stage.buffer);
-		if (auto search = std::find(fences.begin(), fences.end(), fence) == fences.end())
+		if (std::find(fences.begin(), fences.end(), fence) == fences.end())
 		{
 			g_device.resetFence(fence);
 			fences.push_back(fence);

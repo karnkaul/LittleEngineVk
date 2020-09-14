@@ -24,14 +24,8 @@ private:
 	template <typename T>
 	using is_different_t = std::enable_if_t<is_different_v<T>>;
 
-	struct Erased;
-
-private:
-	alignas(std::max_align_t) std::array<std::byte, N> m_bytes;
-	Erased const* m_pErased = nullptr;
-
 public:
-	constexpr StaticAny() noexcept = default;
+	StaticAny() noexcept = default;
 
 	StaticAny(StaticAny&& rhs) : m_pErased(rhs.m_pErased)
 	{
@@ -188,6 +182,13 @@ public:
 		}
 		return false;
 	}
+
+private:
+	struct Erased;
+
+private:
+	alignas(std::max_align_t) std::array<std::byte, N> m_bytes;
+	Erased const* m_pErased = nullptr;
 
 private:
 	template <typename T>

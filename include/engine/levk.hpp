@@ -63,9 +63,6 @@ struct Info final
 
 class Service final
 {
-private:
-	Services m_services;
-
 public:
 	Service(os::Args args = {});
 	Service(Service&&);
@@ -101,6 +98,9 @@ public:
 
 private:
 	static void doShutdown();
+
+private:
+	Services m_services;
 };
 
 ///

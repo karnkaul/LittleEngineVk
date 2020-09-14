@@ -50,7 +50,7 @@ DemoLevel::DemoLevel()
 	m_data.eui1 = registry().spawn("dt");
 	m_data.eui2 = registry().spawn("tris");
 	auto sceneDesc = registry().spawn<SceneDesc>("scene_desc");
-	m_data.sceneDesc = sceneDesc.first;
+	m_data.sceneDesc = sceneDesc.entity;
 	m_data.pointer = gs::spawnProp("pointer");
 
 	Text2D::Info textInfo;
@@ -102,7 +102,7 @@ DemoLevel::DemoLevel()
 	m_data.temp.mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
 	m_data.temp.addTrigger("test2", input::Key::eK);
 
-	auto& [desc] = sceneDesc.second;
+	auto& [desc] = sceneDesc.components;
 	desc.dirLights = {m_data.dirLight0, m_data.dirLight1};
 	desc.clearColour = Colour(0x030203ff);
 	desc.skyboxCubemapID = "skyboxes/sky_dusk";

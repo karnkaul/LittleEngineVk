@@ -23,8 +23,8 @@ struct Prop final
 	Entity entity;
 	Transform* pTransform;
 
-	constexpr Prop() : pTransform(nullptr) {}
-	constexpr Prop(Entity entity, Transform& transform) : entity(entity), pTransform(&transform) {}
+	constexpr Prop();
+	constexpr Prop(Entity entity, Transform& transform);
 
 	///
 	/// \brief Check whether Prop points to a valid pair of Entity/Transform
@@ -40,10 +40,7 @@ struct Prop final
 	///
 	Transform& transform();
 
-	constexpr operator Entity const()
-	{
-		return entity;
-	}
+	constexpr operator Entity const();
 };
 
 namespace gs
@@ -57,14 +54,14 @@ using ManifestLoaded = Delegate<>;
 /// \brief RAII wrapper for Prop etc
 ///
 template <typename T>
-struct Scoped final
+struct TScoped final
 {
 	std::optional<T> t;
 
-	constexpr Scoped() = default;
-	constexpr Scoped(Scoped<T>&&) = default;
-	Scoped& operator=(Scoped<T>&&);
-	~Scoped();
+	constexpr TScoped() = default;
+	constexpr TScoped(TScoped<T>&&) = default;
+	TScoped& operator=(TScoped<T>&&);
+	~TScoped();
 };
 
 ///
@@ -136,7 +133,7 @@ void destroy(Span<Prop> props);
 void reset();
 
 template <typename T>
-Scoped<T>& Scoped<T>::operator=(Scoped<T>&& rhs)
+TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs)
 {
 	if (&rhs != this)
 	{
@@ -150,7 +147,7 @@ Scoped<T>& Scoped<T>::operator=(Scoped<T>&& rhs)
 }
 
 template <typename T>
-Scoped<T>::~Scoped()
+TScoped<T>::~TScoped()
 {
 	if (t)
 	{
@@ -172,6 +169,13 @@ std::string guiName(T const* pT)
 	return name;
 }
 } // namespace gs
+
+inline constexpr Prop::Prop() : pTransform(nullptr) {}
+inline constexpr Prop::Prop(Entity entity, Transform& transform) : entity(entity), pTransform(&transform) {}
+inline constexpr Prop::operator Entity const()
+{
+	return entity;
+}
 
 #if defined(LEVK_EDITOR)
 namespace editor

@@ -429,23 +429,22 @@ bool Device::isValid(vk::SurfaceKHR surface) const
 	return false;
 }
 
-HandleQueues Device::uniqueQueues(QFlags flags) const
+std::vector<u32> Device::queueIndices(QFlags flags) const
 {
-	HandleQueues ret;
-	ret.indices.reserve(3);
+	std::vector<u32> ret;
+	ret.reserve(3);
 	if (flags.test(QFlag::eGraphics))
 	{
-		ret.indices.push_back(queues.graphics.familyIndex);
+		ret.push_back(queues.graphics.familyIndex);
 	}
 	if (flags.test(QFlag::ePresent) && queues.graphics.familyIndex != queues.present.familyIndex)
 	{
-		ret.indices.push_back(queues.present.familyIndex);
+		ret.push_back(queues.present.familyIndex);
 	}
 	if (flags.test(QFlag::eTransfer) && queues.transfer.familyIndex != queues.graphics.familyIndex)
 	{
-		ret.indices.push_back(queues.transfer.familyIndex);
+		ret.push_back(queues.transfer.familyIndex);
 	}
-	ret.mode = ret.indices.size() > 1 ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
 	return ret;
 }
 

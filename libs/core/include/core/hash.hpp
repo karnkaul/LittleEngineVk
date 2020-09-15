@@ -31,18 +31,27 @@ struct Hash final
 	///
 	/// \brief Implicit conversion to `std::std::size_t`
 	///
-	constexpr operator std::size_t() const noexcept
-	{
-		return hash;
-	}
+	constexpr operator std::size_t() const noexcept;
 	///
 	/// \brief Comparison operator
 	///
-	constexpr bool operator==(Hash rhs) const noexcept
-	{
-		return hash == rhs.hash;
-	}
+	constexpr bool operator==(Hash rhs) const noexcept;
 };
+
+///
+/// \brief Comparison operator
+///
+constexpr bool Hash::operator==(Hash rhs) const noexcept
+{
+	return hash == rhs.hash;
+}
+///
+/// \brief Comparison operator
+///
+inline constexpr bool operator!=(Hash lhs, Hash rhs) noexcept
+{
+	return !(lhs == rhs);
+}
 
 template <typename T>
 Hash::Hash(T const& t)
@@ -66,10 +75,9 @@ Hash::Hash(char const (&t)[N])
 {
 	hash = std::hash<std::string_view>{}(std::string_view(t));
 }
-
-inline constexpr bool operator!=(Hash lhs, Hash rhs) noexcept
+constexpr inline Hash::operator std::size_t() const noexcept
 {
-	return !(lhs == rhs);
+	return hash;
 }
 } // namespace le
 

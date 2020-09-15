@@ -1,8 +1,6 @@
 #pragma once
 #include <algorithm>
 #include <bitset>
-#include <initializer_list>
-#include <string>
 #include <type_traits>
 #include <core/assert.hpp>
 #include <core/std_types.hpp>
@@ -24,198 +22,256 @@ struct TFlags
 
 	std::bitset<N> bits;
 
-	constexpr TFlags() noexcept = default;
+	constexpr static TFlags<Enum, N> inverse() noexcept;
 
+	constexpr TFlags() noexcept = default;
 	///
 	/// \brief Construct with a single flag set
 	///
-	constexpr /*implicit*/ TFlags(Enum flag) noexcept
-	{
-		set(flag);
-	}
+	constexpr /*implicit*/ TFlags(Enum flag) noexcept;
 
 	///
-	/// \brief Construct with a number of flags set
+	/// \brief Check if passed flags are set
 	///
-	constexpr TFlags(std::initializer_list<Enum> flags) noexcept
-	{
-		set(flags);
-	}
-
+	constexpr bool test(TFlags<Enum, N> flags) const noexcept;
 	///
-	/// \brief Check if a flag is set
+	/// \brief Obtain count of set flags
 	///
-	bool test(Enum flag) const noexcept
-	{
-		ASSERT((std::size_t)flag < N, "Invalid flag!");
-		return bits.test((std::size_t)flag);
-	}
-
+	constexpr std::size_t test() const noexcept;
 	///
-	/// \brief Set a flag
+	/// \brief Set passed flags
 	///
-	void set(Enum flag) noexcept
-	{
-		ASSERT((std::size_t)flag < N, "Invalid flag!");
-		bits.set((std::size_t)flag);
-	}
-
+	constexpr TFlags<Enum, N>& set(TFlags<Enum, N> flags) noexcept;
 	///
-	/// \brief Reset a flag
+	/// \brief Reset passed flags
 	///
-	void reset(Enum flag) noexcept
-	{
-		ASSERT((std::size_t)flag < N, "Invalid flag!");
-		bits.reset((std::size_t)flag);
-	}
-
+	constexpr TFlags<Enum, N>& reset(TFlags<Enum, N> flags) noexcept;
 	///
-	/// \brief Set a number of flags
+	/// \brief Flip passed flags
 	///
-	void set(std::initializer_list<Enum> flags) noexcept
-	{
-		for (auto flag : flags)
-		{
-			set(flag);
-		}
-	}
-
-	///
-	/// \brief Reset a number of flags
-	///
-	void reset(std::initializer_list<Enum> flags) noexcept
-	{
-		for (auto flag : flags)
-		{
-			reset(flag);
-		}
-	}
-
+	constexpr TFlags<Enum, N>& flip(TFlags<Enum, N> flags) noexcept;
 	///
 	/// \brief Set all flags
 	///
-	void set() noexcept
-	{
-		bits.set();
-	}
-
+	constexpr TFlags<Enum, N>& set() noexcept;
 	///
 	/// \brief Reset all flags
 	///
-	void reset() noexcept
-	{
-		bits.reset();
-	}
-
-	///
-	/// \brief Flip a flag
-	///
-	void flip(Enum flag) noexcept
-	{
-		ASSERT((std::size_t)flag < N, "Invalid flag");
-		bits.flip((std::size_t)flag);
-	}
-
+	constexpr TFlags<Enum, N>& reset() noexcept;
 	//
 	/// \brief Flip all flags
 	///
-	void flip() noexcept
-	{
-		bits.flip();
-	}
+	constexpr TFlags<Enum, N>& flip() noexcept;
+	///
+	/// \brief Check if all passed flags are set
+	///
+	constexpr bool all(TFlags<Enum, N> flags = inverse()) const noexcept;
+	///
+	/// \brief Check if any passed flags are set
+	///
+	constexpr bool any(TFlags<Enum, N> flags = inverse()) const noexcept;
+	///
+	/// \brief Check if no passed flags are set
+	///
+	constexpr bool none(TFlags<Enum, N> flags = inverse()) const noexcept;
 
 	///
 	/// \brief Obtain a reference to the flag
 	///
-	typename std::bitset<N>::reference operator[](Enum flag) noexcept
-	{
-		ASSERT((std::size_t)flag < N, "Invalid flag!");
-		return bits[(std::size_t)flag];
-	}
-
+	constexpr typename std::bitset<N>::reference operator[](Enum flag) noexcept;
 	///
-	/// \brief Check if all flags are set
+	/// \brief Perform bitwise `OR` / add flags
 	///
-	bool allSet(std::initializer_list<Enum> flags) const noexcept
-	{
-		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return test(flag); });
-	}
-
+	constexpr TFlags<Enum, N>& operator|=(TFlags<Enum, N> flags) noexcept;
 	///
-	/// \brief Check if any flag is set
+	/// \brief Perform bitwise `AND` / multiply flags
 	///
-	bool anySet(std::initializer_list<Enum> flags) const noexcept
-	{
-		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return test(flag); });
-	}
-
+	constexpr TFlags<Enum, N>& operator&=(TFlags<Enum, N> flags) noexcept;
 	///
-	/// \brief Check if no flags are set
+	/// \brief Perform bitwise `XOR` / exclusively add flags (add mod 2)
 	///
-	bool noneSet(std::initializer_list<Enum> flags) const noexcept
-	{
-		return std::all_of(flags.begin(), flags.end(), [&](Enum flag) { return test(flag); });
-	}
-
+	constexpr TFlags<Enum, N>& operator^=(TFlags<Enum, N> flags) noexcept;
 	///
-	/// \brief Perform bitwise `OR`
+	/// \brief Perform bitwise `OR` / add flags
 	///
-	TFlags<Enum, N>& operator|=(TFlags<Enum, N> flags) noexcept
-	{
-		bits |= flags.bits;
-		return *this;
-	}
-
+	constexpr TFlags<Enum, N> operator|(TFlags<Enum, N> flags) const noexcept;
 	///
-	/// \brief Perform bitwise `AND`
+	/// \brief Perform bitwise `AND` / multiply flags
 	///
-	TFlags<Enum, N>& operator&=(TFlags<Enum, N> flags) noexcept
-	{
-		bits &= flags.bits;
-		return *this;
-	}
-
+	constexpr TFlags<Enum, N> operator&(TFlags<Enum, N> flags) const noexcept;
 	///
-	/// \brief Perform bitwise `OR`
+	/// \brief Perform bitwise `XOR` / exclusively add flags (add mod 2)
 	///
-	TFlags<Enum, N> operator|(TFlags<Enum, N> flags) const noexcept
-	{
-		auto ret = *this;
-		ret |= flags;
-		return ret;
-	}
-
-	///
-	/// \brief Perform bitwise `AND`
-	///
-	TFlags<Enum, N> operator&(TFlags<Enum, N> flags) const noexcept
-	{
-		auto ret = *this;
-		ret &= flags;
-		return ret;
-	}
+	constexpr TFlags<Enum, N> operator^(TFlags<Enum, N> flags) const noexcept;
 };
 
+///
+/// \brief Add two flags
+///
 template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
-TFlags<Enum, N> operator|(Enum flag1, Enum flag2)
+constexpr TFlags<Enum, N> operator|(Enum flag1, Enum flag2) noexcept;
+///
+/// \brief Multiply two flags
+///
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
+constexpr TFlags<Enum, N> operator&(Enum flag1, Enum flag2) noexcept;
+///
+/// \brief Exclusively add two flags
+///
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
+constexpr TFlags<Enum, N> operator^(Enum flag1, Enum flag2) noexcept;
+///
+/// \brief Test if flags are equal
+///
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
+constexpr bool operator==(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs) noexcept;
+///
+/// \brief Test if flags are not equal
+///
+template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
+constexpr bool operator!=(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs) noexcept;
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N> TFlags<Enum, N>::inverse() noexcept
+{
+	return TFlags<Enum, N>().flip();
+}
+
+template <typename Enum, std::size_t N>
+constexpr /*implicit*/ TFlags<Enum, N>::TFlags(Enum flag) noexcept
+{
+	bits.set((std::size_t)flag);
+}
+
+template <typename Enum, std::size_t N>
+constexpr bool TFlags<Enum, N>::test(TFlags<Enum, N> flags) const noexcept
+{
+	return (bits & flags.bits) == flags.bits;
+}
+
+template <typename Enum, std::size_t N>
+constexpr std::size_t TFlags<Enum, N>::test() const noexcept
+{
+	return bits.count();
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N>& TFlags<Enum, N>::set(TFlags<Enum, N> flags) noexcept
+{
+	bits |= flags.bits;
+	return *this;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N>& TFlags<Enum, N>::reset(TFlags<Enum, N> flags) noexcept
+{
+	bits &= flags.bits.flip();
+	return *this;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N>& TFlags<Enum, N>::flip(TFlags<Enum, N> flags) noexcept
+{
+	bits ^= flags.bits;
+	return *this;
+}
+
+template <typename Enum, std::size_t N>
+constexpr bool TFlags<Enum, N>::all(TFlags<Enum, N> flags) const noexcept
+{
+	return (flags.bits & bits) == bits;
+}
+
+template <typename Enum, std::size_t N>
+constexpr bool TFlags<Enum, N>::any(TFlags<Enum, N> flags) const noexcept
+{
+	return (flags.bits & bits).any();
+}
+
+template <typename Enum, std::size_t N>
+constexpr bool TFlags<Enum, N>::none(TFlags<Enum, N> flags) const noexcept
+{
+	return (flags.bits & bits).none();
+}
+
+template <typename Enum, std::size_t N>
+constexpr typename std::bitset<N>::reference TFlags<Enum, N>::operator[](Enum flag) noexcept
+{
+	ASSERT((std::size_t)flag < N, "Invalid flag!");
+	return bits[(std::size_t)flag];
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N>& TFlags<Enum, N>::operator|=(TFlags<Enum, N> flags) noexcept
+{
+	bits |= flags.bits;
+	return *this;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N>& TFlags<Enum, N>::operator&=(TFlags<Enum, N> flags) noexcept
+{
+	bits &= flags.bits;
+	return *this;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N>& TFlags<Enum, N>::operator^=(TFlags<Enum, N> flags) noexcept
+{
+	bits ^= flags.bits;
+	return *this;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N> TFlags<Enum, N>::operator|(TFlags<Enum, N> flags) const noexcept
+{
+	auto ret = *this;
+	ret |= flags;
+	return ret;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N> TFlags<Enum, N>::operator&(TFlags<Enum, N> flags) const noexcept
+{
+	auto ret = *this;
+	ret &= flags;
+	return ret;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N> TFlags<Enum, N>::operator^(TFlags<Enum, N> flags) const noexcept
+{
+	auto ret = *this;
+	ret ^= flags;
+	return ret;
+}
+
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N> operator|(Enum flag1, Enum flag2) noexcept
 {
 	return TFlags<Enum, N>(flag1) | TFlags<Enum, N>(flag2);
 }
 
-template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
-TFlags<Enum, N> operator&(Enum flag1, Enum flag2)
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N> operator&(Enum flag1, Enum flag2) noexcept
 {
 	return TFlags<Enum, N>(flag1) & TFlags<Enum, N>(flag2);
 }
 
-template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
-bool operator==(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
+template <typename Enum, std::size_t N>
+constexpr TFlags<Enum, N> operator^(Enum flag1, Enum flag2) noexcept
+{
+	return TFlags<Enum, N>(flag1) ^ TFlags<Enum, N>(flag2);
+}
+
+template <typename Enum, std::size_t N>
+constexpr bool operator==(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs) noexcept
 {
 	return lhs.bits == rhs.bits;
 }
 
-template <typename Enum, std::size_t N = (std::size_t)Enum::eCOUNT_>
-bool operator!=(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs)
+template <typename Enum, std::size_t N>
+constexpr bool operator!=(TFlags<Enum, N> lhs, TFlags<Enum, N> rhs) noexcept
 {
 	return !(lhs == rhs);
 }

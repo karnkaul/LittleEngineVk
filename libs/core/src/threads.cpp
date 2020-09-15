@@ -19,7 +19,7 @@ std::unordered_map<std::thread::id, threads::ID> g_idMap;
 std::thread::id g_mainThreadID;
 } // namespace
 
-threads::Scoped& threads::Scoped::operator=(Scoped&& rhs)
+threads::TScoped& threads::TScoped::operator=(TScoped&& rhs)
 {
 	if (&rhs != this)
 	{
@@ -29,22 +29,22 @@ threads::Scoped& threads::Scoped::operator=(Scoped&& rhs)
 	return *this;
 }
 
-threads::Scoped::~Scoped()
+threads::TScoped::~TScoped()
 {
 	join();
 }
 
-bool threads::Scoped::valid() const noexcept
+bool threads::TScoped::valid() const noexcept
 {
 	return id_ != ID::null;
 }
 
-threads::ID threads::Scoped::id() const noexcept
+threads::ID threads::TScoped::id() const noexcept
 {
 	return id_;
 }
 
-void threads::Scoped::join()
+void threads::TScoped::join()
 {
 	if (id_ != ID::null)
 	{
@@ -64,11 +64,11 @@ void threads::init()
 	return;
 }
 
-threads::Scoped threads::newThread(std::function<void()> task)
+threads::TScoped threads::newThread(std::function<void()> task)
 {
 	g_threads.emplace_back(++g_nextID.payload, std::thread(task));
 	g_idMap[g_threads.back().second.get_id()] = g_nextID;
-	return Scoped(g_nextID);
+	return TScoped(g_nextID);
 }
 
 void threads::join(ID& id)

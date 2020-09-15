@@ -36,34 +36,6 @@ struct EntityHasher final
 	std::size_t operator()(Entity const& entity) const;
 };
 
-///
-/// \brief List of `T...` components
-///
-template <typename... T>
-using Components = std::tuple<T...>;
-///
-/// \brief Return type of `spawn<T...>()`
-///
-template <typename... T>
-struct Spawned
-{
-	Entity entity;
-	Components<T&...> components;
-};
-///
-/// \brief Specialisation for zero components
-///
-template <>
-struct Spawned<>
-{
-	Entity entity;
-
-	constexpr operator Entity() const
-	{
-		return entity;
-	}
-};
-
 class Registry
 {
 private:
@@ -101,6 +73,20 @@ public:
 	///
 	/// \brief Return type of `view<T...>()`
 	///
+	///
+	/// \brief List of `T...` components
+	///
+	template <typename... T>
+	using Components = std::tuple<T...>;
+	///
+	/// \brief Return type of `spawn<T...>()`
+	///
+	template <typename... T>
+	struct Spawned
+	{
+		Entity entity;
+		Components<T&...> components;
+	};
 	template <typename... T>
 	using View = std::unordered_map<Entity, Components<T&...>, EntityHasher>;
 
@@ -308,6 +294,20 @@ private:
 	static View<T...> view_Impl(Th* pThis, Flags mask, Flags pattern);
 };
 
+///
+/// \brief Specialisation for zero components
+///
+template <>
+struct Registry::Spawned<>
+{
+	Entity entity;
+
+	constexpr operator Entity() const
+	{
+		return entity;
+	}
+};
+
 template <typename T>
 template <typename... Args>
 Registry::Model<T>::Model(Args&&... args) : t(std::forward<Args>(args)...)
@@ -330,7 +330,7 @@ std::array<Registry::Sign, sizeof...(T)> Registry::signs()
 }
 
 template <typename... Ts>
-Spawned<Ts...> Registry::spawn(std::string name)
+Registry::Spawned<Ts...> Registry::spawn(std::string name)
 {
 	auto lock = m_mutex.lock();
 	auto entity = spawn_Impl(std::move(name));
@@ -346,7 +346,7 @@ Spawned<Ts...> Registry::spawn(std::string name)
 }
 
 template <typename T, typename... Args>
-Spawned<T> Registry::spawn(std::string name, Args&&... args)
+Registry::Spawned<T> Registry::spawn(std::string name, Args&&... args)
 {
 	auto lock = m_mutex.lock();
 	auto entity = spawn_Impl(std::move(name));
@@ -367,7 +367,7 @@ T* Registry::attach(Entity entity, Args&&... args)
 }
 
 template <typename... T, typename>
-Components<T*...> Registry::attach(Entity entity)
+Registry::Components<T*...> Registry::attach(Entity entity)
 {
 	auto lock = m_mutex.lock();
 	if (m_db.find(entity) != m_db.end())

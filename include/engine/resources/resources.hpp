@@ -12,7 +12,7 @@ namespace stdfs = std::filesystem;
 
 namespace le::res
 {
-using Semaphore = Counter<s32>::Semaphore;
+using Semaphore = TCounter<s32>::Semaphore;
 
 ///
 /// \brief Acquire a semaphore to block deinit/unload until (all have been) released
@@ -23,18 +23,18 @@ Semaphore acquire();
 /// \brief RAII handle to a resource (unloads in destructor)
 ///
 template <typename T>
-struct Scoped final : NoCopy
+struct TScoped final : NoCopy
 {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
 	T resource;
 
-	constexpr Scoped(T t = T{}) noexcept : resource(t) {}
-	constexpr Scoped(Scoped&& rhs) noexcept : resource(rhs.resource)
+	constexpr TScoped(T t = T{}) noexcept : resource(t) {}
+	constexpr TScoped(TScoped&& rhs) noexcept : resource(rhs.resource)
 	{
 		rhs.resource = {};
 	}
-	Scoped& operator=(Scoped&&);
-	~Scoped();
+	TScoped& operator=(TScoped&&);
+	~TScoped();
 
 	///
 	/// \brief Implicitly cast to T
@@ -313,7 +313,7 @@ TResult<T> find(Hash)
 }
 
 template <typename T>
-Scoped<T>& Scoped<T>::operator=(Scoped<T>&& rhs)
+TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs)
 {
 	if (&rhs != this)
 	{
@@ -324,13 +324,13 @@ Scoped<T>& Scoped<T>::operator=(Scoped<T>&& rhs)
 }
 
 template <typename T>
-Scoped<T>::~Scoped()
+TScoped<T>::~TScoped()
 {
 	unload(resource);
 }
 
 template <typename T>
-bool Scoped<T>::ready() const
+bool TScoped<T>::ready() const
 {
 	return resource.guid != GUID::null && resource.status() == Status::eReady;
 }

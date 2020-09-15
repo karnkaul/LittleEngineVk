@@ -86,35 +86,13 @@ std::vector<std::shared_ptr<Handle>> enqueue(List taskList);
 /// \brief Enqueue a task per item in a container
 ///
 template <typename T, template <typename, typename...> typename C, typename... Args>
-std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::function<void(T&)> task, std::string_view prefix)
-{
-	if (task)
-	{
-		List newTasks;
-		newTasks.reserve(out_itemList.size());
-		std::size_t idx = 0;
-		for (typename C<T, Args...>::iterator iter = out_itemList.begin(); iter != out_itemList.end(); ++iter)
-		{
-			std::string name = prefix.empty() ? std::string() : fmt::format("{}:{}", prefix, idx++);
-			auto newTask = [&out_itemList, iter, task]() mutable { task(*iter); };
-			newTasks.push_back({std::move(newTask), std::move(name)});
-		}
-		return enqueue(std::move(newTasks));
-	}
-	return {};
-}
+std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::function<void(T&)> task, std::string_view prefix);
 
 ///
 /// \brief Wait for all tasks to complete
 ///
 template <template <typename, typename...> typename C, typename... Args>
-void wait(C<std::shared_ptr<Handle>, Args...>& out_handles)
-{
-	for (auto& handle : out_handles)
-	{
-		handle->wait();
-	}
-}
+void wait(C<std::shared_ptr<Handle>, Args...>& out_handles);
 
 ///
 /// \brief Wait until no tasks are executing / enqueued
@@ -138,4 +116,32 @@ bool init(u8 workerCount);
 /// \brief Manually deinitialise tasks module
 ///
 void deinit();
+
+template <typename T, template <typename, typename...> typename C, typename... Args>
+std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::function<void(T&)> task, std::string_view prefix)
+{
+	if (task)
+	{
+		List newTasks;
+		newTasks.reserve(out_itemList.size());
+		std::size_t idx = 0;
+		for (typename C<T, Args...>::iterator iter = out_itemList.begin(); iter != out_itemList.end(); ++iter)
+		{
+			std::string name = prefix.empty() ? std::string() : fmt::format("{}:{}", prefix, idx++);
+			auto newTask = [&out_itemList, iter, task]() mutable { task(*iter); };
+			newTasks.push_back({std::move(newTask), std::move(name)});
+		}
+		return enqueue(std::move(newTasks));
+	}
+	return {};
+}
+
+template <template <typename, typename...> typename C, typename... Args>
+void wait(C<std::shared_ptr<Handle>, Args...>& out_handles)
+{
+	for (auto& handle : out_handles)
+	{
+		handle->wait();
+	}
+}
 } // namespace le::tasks

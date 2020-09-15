@@ -15,7 +15,7 @@ namespace tasks
 {
 struct Worker final
 {
-	threads::Scoped thread;
+	threads::TScoped thread;
 
 	Worker(std::size_t idx);
 };

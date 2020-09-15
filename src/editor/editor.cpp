@@ -438,7 +438,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			{
 				inspectResource(
 					*pModel, name, name, [pModel](res::Model model) { *pModel = model; }, &dummy<res::Model>, pos, size);
-				static std::deque<res::Scoped<res::Mesh>> s_empty;
+				static std::deque<res::TScoped<res::Mesh>> s_empty;
 				auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 				std::size_t idx = 0;
 				for (auto& mesh : meshes)
@@ -836,15 +836,15 @@ void drawLog(iv2 fbSize, s32 logHeight)
 			auto s = Styler(Style::eSameLine);
 			// Arrow buttons with Repeater
 			f32 const spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-			constexpr static s32 s_minCounter = 1, s_maxCounter = 20;
+			constexpr static s32 s_minTCounter = 1, s_maxTCounter = 20;
 			s32 logEntries = (s32)g_maxLogEntries / 100;
 			ImGui::PushButtonRepeat(true);
-			if (ImGui::ArrowButton("##left", ImGuiDir_Left) && logEntries > s_minCounter)
+			if (ImGui::ArrowButton("##left", ImGuiDir_Left) && logEntries > s_minTCounter)
 			{
 				--logEntries;
 			}
 			ImGui::SameLine(0.0f, spacing);
-			if (ImGui::ArrowButton("##right", ImGuiDir_Right) && logEntries < s_maxCounter)
+			if (ImGui::ArrowButton("##right", ImGuiDir_Right) && logEntries < s_maxTCounter)
 			{
 				++logEntries;
 			}
@@ -948,38 +948,38 @@ void resize(WindowImpl* pWindow)
 	{
 	case Handle::eNone:
 	{
-		checkResize(nCursorPos.x, s_gameRect.left, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
-		checkResize(nCursorPos.x, s_gameRect.right, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
-		checkResize(nCursorPos.y, s_gameRect.bottom, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
-		checkResize(nCursorPos.x, s_gameRect.left, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNESW, Handle::eLeftBottom);
-		checkResize(nCursorPos.x, s_gameRect.right, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNWSE, Handle::eRightBottom);
+		checkResize(nCursorPos.x, s_gameRect.lt.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
+		checkResize(nCursorPos.x, s_gameRect.rb.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
+		checkResize(nCursorPos.y, s_gameRect.rb.y, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
+		checkResize(nCursorPos.x, s_gameRect.lt.x, nCursorPos.y, s_gameRect.rb.y, input::CursorType::eResizeNESW, Handle::eLeftBottom);
+		checkResize(nCursorPos.x, s_gameRect.rb.x, nCursorPos.y, s_gameRect.rb.y, input::CursorType::eResizeNWSE, Handle::eRightBottom);
 		break;
 	}
 	case Handle::eLeft:
 	{
-		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeEW);
+		doResize(s_gameRect.lt.x, nCursorPos.x, s_minXY.x, s_gameRect.rb.x, input::CursorType::eResizeEW);
 		break;
 	}
 	case Handle::eRight:
 	{
-		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeEW);
+		doResize(s_gameRect.rb.x, nCursorPos.x, s_gameRect.lt.x, s_maxXY.x, input::CursorType::eResizeEW);
 		break;
 	}
 	case Handle::eBottom:
 	{
-		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNS);
+		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNS);
 		break;
 	}
 	case Handle::eLeftBottom:
 	{
-		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeNESW);
-		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNESW);
+		doResize(s_gameRect.lt.x, nCursorPos.x, s_minXY.x, s_gameRect.rb.x, input::CursorType::eResizeNESW);
+		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNESW);
 		break;
 	}
 	case Handle::eRightBottom:
 	{
-		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeNWSE);
-		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNWSE);
+		doResize(s_gameRect.rb.x, nCursorPos.x, s_gameRect.lt.x, s_maxXY.x, input::CursorType::eResizeNWSE);
+		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNWSE);
 		break;
 	}
 	default:
@@ -1253,9 +1253,9 @@ void editor::tick(Args const& args, Time dt)
 		g_resources.bOpen = false;
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
-			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);
-			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.left * (f32)fbSize.x), fbSize.y - logHeight};
-			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.right * (f32)fbSize.x), fbSize.y - logHeight};
+			auto const logHeight = fbSize.y - (s32)(g_gameRect.rb.y * (f32)fbSize.y);
+			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.lt.x * (f32)fbSize.x), fbSize.y - logHeight};
+			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.rb.x * (f32)fbSize.x), fbSize.y - logHeight};
 			Registry& reg = args.pGame->registry;
 			if (!reg.exists(g_inspecting.entity))
 			{

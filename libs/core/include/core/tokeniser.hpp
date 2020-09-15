@@ -77,42 +77,15 @@ private:
 struct Token : NoCopy
 {
 public:
-	constexpr Token(detail::Base* pParent = nullptr, u64 id = 0) noexcept : pParent(pParent), id(id) {}
+	constexpr Token(detail::Base* pParent = nullptr, u64 id = 0) noexcept;
+	constexpr Token(Token&& rhs) noexcept;
+	constexpr Token& operator=(Token&& rhs) noexcept;
+	~Token();
 
-	constexpr Token(Token&& rhs) noexcept : pParent(rhs.pParent), id(rhs.id)
-	{
-		rhs.pParent = nullptr;
-		rhs.id = 0;
-	}
-
-	constexpr Token& operator=(Token&& rhs) noexcept
-	{
-		if (&rhs != this)
-		{
-			if (valid())
-			{
-				pParent->pop(id);
-			}
-			pParent = rhs.pParent;
-			id = rhs.id;
-			rhs.pParent = nullptr;
-			rhs.id = 0;
-		}
-		return *this;
-	}
-
-	~Token()
-	{
-		if (valid())
-		{
-			pParent->pop(id);
-		}
-	}
-
-	constexpr bool valid() const
-	{
-		return id > 0 && pParent != nullptr;
-	}
+	///
+	/// \brief Check if this instance is valid
+	///
+	constexpr bool valid() const;
 
 private:
 	detail::Base* pParent;
@@ -183,5 +156,42 @@ void Tokeniser<T, C, Args...>::pop(u64 id)
 	{
 		m_entries.erase(search);
 	}
+}
+
+inline constexpr Token::Token(detail::Base* pParent, u64 id) noexcept : pParent(pParent), id(id) {}
+
+inline constexpr Token::Token(Token&& rhs) noexcept : pParent(rhs.pParent), id(rhs.id)
+{
+	rhs.pParent = nullptr;
+	rhs.id = 0;
+}
+
+inline constexpr Token& Token::operator=(Token&& rhs) noexcept
+{
+	if (&rhs != this)
+	{
+		if (valid())
+		{
+			pParent->pop(id);
+		}
+		pParent = rhs.pParent;
+		id = rhs.id;
+		rhs.pParent = nullptr;
+		rhs.id = 0;
+	}
+	return *this;
+}
+
+inline Token::~Token()
+{
+	if (valid())
+	{
+		pParent->pop(id);
+	}
+}
+
+inline constexpr bool Token::valid() const
+{
+	return id > 0 && pParent != nullptr;
 }
 } // namespace le

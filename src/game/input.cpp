@@ -76,7 +76,7 @@ glm::vec2 input::worldToUI(const glm::vec2& world)
 		auto const gameRect = editor::g_gameRect.size();
 		if (gameRect.x < 1.0f || gameRect.y < 1.0f)
 		{
-			glm::vec2 const gameOrigin = editor::g_gameRect.midPoint();
+			glm::vec2 const gameOrigin = editor::g_gameRect.centre();
 			glm::vec2 const delta = glm::vec2(0.5f) - gameOrigin;
 			ret += glm::vec2(delta.x * size.x, -delta.y * size.y);
 			ret /= gameRect;

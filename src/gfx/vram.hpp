@@ -17,11 +17,22 @@ constexpr bool g_VRAM_bLogAllocs = false;
 
 inline io::Level g_VRAM_logLevel = io::Level::eDebug;
 
+struct QShare final
+{
+	vk::SharingMode desired;
+
+	// TODO: Use exclusive queues
+	constexpr QShare(vk::SharingMode desired = vk::SharingMode::eConcurrent) : desired(desired) {}
+
+	vk::SharingMode operator()(QFlags queues) const;
+};
+
 struct ImageInfo final
 {
 	vk::ImageCreateInfo createInfo;
+	QShare share;
 	std::string name;
-	QFlags queueFlags = QFlags({QFlag::eGraphics, QFlag::eTransfer});
+	QFlags queueFlags = QFlag::eGraphics | QFlag::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
@@ -31,7 +42,8 @@ struct BufferInfo final
 	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
 	vk::MemoryPropertyFlags properties;
-	QFlags queueFlags = QFlags({QFlag::eGraphics, QFlag::eTransfer});
+	QShare share;
+	QFlags queueFlags = QFlag::eGraphics | QFlag::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 

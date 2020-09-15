@@ -22,7 +22,7 @@ struct FileLogger final
 {
 	FileLogger();
 
-	threads::Scoped thread;
+	threads::TScoped thread;
 };
 
 std::filesystem::path g_logFilePath;

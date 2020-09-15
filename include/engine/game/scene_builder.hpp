@@ -22,7 +22,7 @@ struct UIComponent final
 
 	stdfs::path id;
 	Text2D text;
-	res::Scoped<res::Mesh> mesh;
+	res::TScoped<res::Mesh> mesh;
 	Flags flags;
 
 	Text2D& setText(Text2D::Info info);

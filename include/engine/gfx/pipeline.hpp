@@ -23,7 +23,7 @@ struct Pipeline final
 	};
 	enum class FFace : s8
 	{
-		eCounterClockwise,
+		eTCounterClockwise,
 		eClockwise,
 		eCOUNT_
 	};
@@ -40,7 +40,7 @@ struct Pipeline final
 	f32 lineWidth = 1.0f;
 	Polygon polygonMode = Polygon::eFill;
 	Cull cullMode = Cull::eNone;
-	FFace frontFace = FFace::eCounterClockwise;
+	FFace frontFace = FFace::eTCounterClockwise;
 	Flags flags = Flag::eBlend | Flag::eDepthTest | Flag::eDepthWrite;
 };
 } // namespace le::gfx

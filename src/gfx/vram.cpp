@@ -91,7 +91,7 @@ struct
 
 struct
 {
-	std::optional<threads::Scoped> thread;
+	std::optional<threads::TScoped> thread;
 	kt::lockable<> mutex;
 } g_sync;
 
@@ -283,6 +283,12 @@ void deinit()
 } // namespace tfr
 } // namespace
 
+vk::SharingMode QShare::operator()(QFlags queues) const
+{
+	auto const indices = g_device.queueIndices(queues);
+	return indices.size() == 1 ? vk::SharingMode::eExclusive : desired;
+}
+
 void vram::init(Span<engine::MemRange> stagingReserve)
 {
 	if (g_allocator == VmaAllocator())
@@ -336,10 +342,10 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	vk::BufferCreateInfo bufferInfo;
 	ret.writeSize = bufferInfo.size = info.size;
 	bufferInfo.usage = info.usage;
-	auto const queues = g_device.uniqueQueues(info.queueFlags);
-	bufferInfo.sharingMode = queues.mode;
-	bufferInfo.queueFamilyIndexCount = (u32)queues.indices.size();
-	bufferInfo.pQueueFamilyIndices = queues.indices.data();
+	auto const indices = g_device.queueIndices(info.queueFlags);
+	bufferInfo.sharingMode = info.share(info.queueFlags);
+	bufferInfo.queueFamilyIndexCount = (u32)indices.size();
+	bufferInfo.pQueueFamilyIndices = indices.data();
 	VmaAllocationCreateInfo createInfo = {};
 	createInfo.usage = info.vmaUsage;
 	auto const vkBufferInfo = static_cast<VkBufferCreateInfo>(bufferInfo);
@@ -350,7 +356,7 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	}
 	ret.buffer = vkBuffer;
 	ret.queueFlags = info.queueFlags;
-	ret.mode = queues.mode;
+	ret.mode = bufferInfo.sharingMode;
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
@@ -412,15 +418,13 @@ std::future<void> vram::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize 
 	{
 		size = src.writeSize;
 	}
-#if defined(LEVK_DEBUG)
-	auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT((uq.indices.size() == 1 || out_dst.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
-#endif
-	bool const bQueueFlags = src.queueFlags.test(QFlag::eTransfer) && out_dst.queueFlags.test(QFlag::eTransfer);
+	[[maybe_unused]] auto const& sq = src.queueFlags;
+	[[maybe_unused]] auto const& dq = out_dst.queueFlags;
+	[[maybe_unused]] bool const bReady = sq.test(QFlag::eTransfer) && dq.test(QFlag::eTransfer);
+	ASSERT(bReady, "Transfer flag not set!");
 	bool const bSizes = out_dst.writeSize >= size;
-	ASSERT(bQueueFlags, "Invalid queue flags!");
 	ASSERT(bSizes, "Invalid buffer sizes!");
-	if (!bQueueFlags)
+	if (!bReady)
 	{
 		LOG_E("[{}] Source/destination buffers missing QFlag::eTransfer!", s_tName);
 		return {};
@@ -429,6 +433,12 @@ std::future<void> vram::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize 
 	{
 		LOG_E("[{}] Source buffer is larger than destination buffer!", s_tName);
 		return {};
+	}
+	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
+	if (indices.size() > 1)
+	{
+		ASSERT(sq.test() <= 1 || src.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ASSERT(dq.test() <= 1 || out_dst.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 	}
 	auto promise = std::make_shared<Batch::Promise::element_type>();
 	auto ret = promise->get_future();
@@ -453,10 +463,8 @@ std::future<void> vram::stage(Buffer& out_deviceBuffer, void const* pData, vk::D
 	{
 		size = out_deviceBuffer.writeSize;
 	}
-#if defined(LEVK_DEBUG)
-	auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT((uq.indices.size() == 1 || out_deviceBuffer.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
-#endif
+	auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
+	ASSERT(indices.size() == 1 || out_deviceBuffer.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	bool const bQueueFlags = out_deviceBuffer.queueFlags.test(QFlag::eTransfer);
 	ASSERT(bQueueFlags, "Invalid queue flags!");
 	if (!bQueueFlags)
@@ -497,10 +505,10 @@ Image vram::createImage(ImageInfo const& info)
 	ret.name = info.name;
 #endif
 	vk::ImageCreateInfo imageInfo = info.createInfo;
-	auto const queues = g_device.uniqueQueues(info.queueFlags);
-	imageInfo.sharingMode = queues.mode;
-	imageInfo.queueFamilyIndexCount = (u32)queues.indices.size();
-	imageInfo.pQueueFamilyIndices = queues.indices.data();
+	auto const indices = g_device.queueIndices(info.queueFlags);
+	imageInfo.sharingMode = info.share(info.queueFlags);
+	imageInfo.queueFamilyIndexCount = (u32)indices.size();
+	imageInfo.pQueueFamilyIndices = indices.data();
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = info.vmaUsage;
 	auto const vkImageInfo = static_cast<VkImageCreateInfo>(imageInfo);
@@ -517,7 +525,7 @@ Image vram::createImage(ImageInfo const& info)
 	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	ret.allocatedSize = requirements.size;
-	ret.mode = queues.mode;
+	ret.mode = imageInfo.sharingMode;
 	g_allocations.at((std::size_t)ResourceType::eImage).fetch_add(ret.allocatedSize);
 	if (g_VRAM_bLogAllocs)
 	{
@@ -568,8 +576,8 @@ std::future<void> vram::copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutT
 		imgSize += layerSize;
 	}
 	ASSERT(layerSize > 0 && imgSize > 0, "Invalid image data!");
-	[[maybe_unused]] auto const uq = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT((uq.indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent), "Exclusive queues!");
+	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
+	ASSERT(indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	auto promise = std::make_shared<Batch::Promise::element_type>();
 	auto ret = promise->get_future();
 	auto f = [promise, pixelsArr, &dst, layouts, imgSize, layerSize]() mutable {

@@ -24,7 +24,7 @@ DemoLevel::DemoLevel()
 	// clang-format on
 	m_res.triangle = res::load("demo/triangle", meshInfo);
 	meshInfo.geometry = gfx::createQuad();
-	meshInfo.material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
+	meshInfo.material.flags.set(res::Material::Flag::eTextured | res::Material::Flag::eLit | res::Material::Flag::eOpaque);
 	meshInfo.material.material = m_res.texturedLit;
 	meshInfo.material.flags.reset(res::Material::Flag::eOpaque);
 	m_res.quad = res::load("demo/quad", meshInfo);

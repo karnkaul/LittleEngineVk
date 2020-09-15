@@ -318,7 +318,7 @@ Map<Font, Font::Impl> g_fonts;
 Map<Model, Model::Impl> g_models;
 
 bool g_bInit = false;
-Counter<s32> g_counter;
+TCounter<s32> g_counter;
 } // namespace
 
 res::Semaphore res::acquire()

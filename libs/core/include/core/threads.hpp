@@ -17,13 +17,13 @@ using ID = TZero<u64>;
 ///
 /// \brief RAII wrapper for a thread instance (joins in destructor)
 ///
-struct Scoped final : NoCopy
+struct TScoped final : NoCopy
 {
 public:
-	constexpr Scoped(ID id = ID::null) noexcept : id_(id) {}
-	constexpr Scoped(Scoped&&) noexcept = default;
-	Scoped& operator=(Scoped&&);
-	~Scoped();
+	constexpr TScoped(ID id = ID::null) noexcept : id_(id) {}
+	constexpr TScoped(TScoped&&) noexcept = default;
+	TScoped& operator=(TScoped&&);
+	~TScoped();
 
 	///
 	/// \brief Obtain the ID of the thread of execution this handle points to
@@ -49,7 +49,7 @@ void init();
 ///
 /// \brief Create a new thread
 ///
-Scoped newThread(std::function<void()> task);
+TScoped newThread(std::function<void()> task);
 ///
 /// \brief Join a thread
 ///

@@ -32,6 +32,6 @@ public:
 protected:
 	res::Font::Text m_data;
 	res::Font m_font;
-	res::Scoped<res::Mesh> m_mesh;
+	res::TScoped<res::Mesh> m_mesh;
 };
 } // namespace le

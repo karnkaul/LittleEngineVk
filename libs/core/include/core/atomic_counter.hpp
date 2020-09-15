@@ -8,7 +8,7 @@ namespace le
 /// \brief Simple counter that increments/decrements atomically
 ///
 template <typename T = s64>
-struct Counter final
+struct TCounter final
 {
 	struct Semaphore;
 
@@ -24,85 +24,100 @@ struct Counter final
 	std::atomic<T> counter;
 };
 
-template <typename T>
-void Counter<T>::increment() noexcept
-{
-	++counter;
-}
-
-template <typename T>
-void Counter<T>::decrement() noexcept
-{
-	--counter;
-}
-
-template <typename T>
-bool Counter<T>::isZero(bool bAllowNegative) const noexcept
-{
-	return bAllowNegative ? counter.load() <= 0 : counter.load() == 0;
-}
-
 ///
-/// \brief Simple counting semaphore that uses Counter<T>
+/// \brief Simple counting semaphore that uses TCounter<T>
 ///
 template <typename T>
-struct Counter<T>::Semaphore final
+struct TCounter<T>::Semaphore final
 {
 public:
 	constexpr Semaphore() noexcept = default;
 	///
 	/// \brief Stores and increments passed counter
 	///
-	Semaphore(Counter<T>& counter) noexcept : pCounter(&counter)
-	{
-		counter.increment();
-	}
+	Semaphore(TCounter<T>& counter) noexcept;
 	///
 	/// \brief Moves rhs into self
 	///
-	Semaphore(Semaphore&& rhs) noexcept : pCounter(rhs.pCounter)
-	{
-		rhs.pCounter = nullptr;
-	}
+	Semaphore(Semaphore&& rhs) noexcept;
 	///
 	/// \brief Decrements counter if tied to one, then moves rhs into self
 	///
-	Semaphore& operator=(Semaphore&& rhs)
-	{
-		if (&rhs != this)
-		{
-			if (rhs.pCounter != pCounter)
-			{
-				reset();
-			}
-			pCounter = rhs.pCounter;
-			rhs.pCounter = nullptr;
-		}
-		return *this;
-	}
+	Semaphore& operator=(Semaphore&& rhs) noexcept;
 	Semaphore(Semaphore const&) = delete;
 	Semaphore& operator=(Semaphore const&) = delete;
 	///
 	/// \brief Decrements stored counter (if any)
 	///
-	~Semaphore()
-	{
-		reset();
-	}
+	~Semaphore();
 
 	///
 	/// \brief Resets stored counter
 	///
-	void reset() noexcept
-	{
-		if (pCounter)
-		{
-			pCounter->decrement();
-		}
-		pCounter = nullptr;
-	}
+	void reset() noexcept;
 
 private:
-	Counter<T>* pCounter = nullptr;
+	TCounter<T>* pTCounter = nullptr;
 };
+
+template <typename T>
+void TCounter<T>::increment() noexcept
+{
+	++counter;
+}
+
+template <typename T>
+void TCounter<T>::decrement() noexcept
+{
+	--counter;
+}
+
+template <typename T>
+bool TCounter<T>::isZero(bool bAllowNegative) const noexcept
+{
+	return bAllowNegative ? counter.load() <= 0 : counter.load() == 0;
+}
+
+template <typename T>
+TCounter<T>::Semaphore::Semaphore(TCounter<T>& counter) noexcept : pTCounter(&counter)
+{
+	counter.increment();
+}
+
+template <typename T>
+TCounter<T>::Semaphore::Semaphore(Semaphore&& rhs) noexcept : pTCounter(rhs.pTCounter)
+{
+	rhs.pTCounter = nullptr;
+}
+
+template <typename T>
+typename TCounter<T>::Semaphore& TCounter<T>::Semaphore::operator=(Semaphore&& rhs) noexcept
+{
+	if (&rhs != this)
+	{
+		if (rhs.pTCounter != pTCounter)
+		{
+			reset();
+		}
+		pTCounter = rhs.pTCounter;
+		rhs.pTCounter = nullptr;
+	}
+	return *this;
+}
+
+template <typename T>
+TCounter<T>::Semaphore::~Semaphore()
+{
+	reset();
+}
+
+template <typename T>
+void TCounter<T>::Semaphore::reset() noexcept
+{
+	if (pTCounter)
+	{
+		pTCounter->decrement();
+	}
+	pTCounter = nullptr;
+}
 } // namespace le

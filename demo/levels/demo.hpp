@@ -64,10 +64,10 @@ private:
 	} m_data;
 	struct
 	{
-		le::res::Scoped<le::res::Material> texturedLit;
-		le::res::Scoped<le::res::Mesh> triangle;
-		le::res::Scoped<le::res::Mesh> quad;
-		le::res::Scoped<le::res::Mesh> sphere;
+		le::res::TScoped<le::res::Material> texturedLit;
+		le::res::TScoped<le::res::Mesh> triangle;
+		le::res::TScoped<le::res::Mesh> quad;
+		le::res::TScoped<le::res::Mesh> sphere;
 		le::Hash container2 = "textures/container2.png";
 		le::Hash container2_specular = "textures/container2_specular.png";
 		le::Hash awesomeface = "textures/awesomeface.png";

@@ -21,7 +21,7 @@ constexpr bool levk_editor = false;
 
 namespace le::engine
 {
-using Semaphore = Counter<s32>::Semaphore;
+using Semaphore = TCounter<s32>::Semaphore;
 
 struct Driver;
 

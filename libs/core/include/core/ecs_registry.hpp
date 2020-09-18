@@ -88,7 +88,7 @@ public:
 		Components<T&...> components;
 	};
 	template <typename... T>
-	using View = std::unordered_map<Entity, Components<T&...>, EntityHasher>;
+	using View = std::vector<std::pair<Entity, Components<T&...>>>;
 
 	///
 	/// \brief Entity metadata
@@ -169,7 +169,7 @@ public:
 	///
 	/// \brief Add components `T...` to Entity
 	///
-	template <typename... T, typename = std::enable_if_t<isGreater<T...>(1), bool>>
+	template <typename... T, typename = std::enable_if_t<isGreater<T...>(1)>>
 	Components<T*...> attach(Entity entity);
 	///
 	/// \brief Remove `T...` components if attached to Entity
@@ -500,7 +500,7 @@ typename Registry::View<T...> Registry::view_Impl(Th* pThis, Flags mask, Flags p
 			auto& c = compMap;
 			if (std::all_of(s.begin(), s.end(), [&c](auto sign) -> bool { return c.find(sign) != c.end(); }))
 			{
-				ret.emplace(Entity{entity}, Components<T&...>(*find_Impl<T>(pThis, c)...));
+				ret.emplace_back(entity, Components<T&...>(*find_Impl<T>(pThis, c)...));
 			}
 		}
 	}

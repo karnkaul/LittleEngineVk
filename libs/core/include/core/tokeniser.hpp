@@ -1,7 +1,9 @@
 #pragma once
 #include <algorithm>
 #include <deque>
+#include <core/counter.hpp>
 #include <core/std_types.hpp>
+#include <core/zero.hpp>
 
 namespace le
 {
@@ -14,32 +16,31 @@ namespace detail
 {
 struct Base
 {
-	virtual void pop(u64 id) = 0;
+	using ID = TZero<u64>;
+	using id_type = ID::type;
+	static constexpr id_type null = ID::null;
+
+	static constexpr ID increment(ID& out_id, bool bPost);
+
+	virtual void pop(ID id) = 0;
 };
 } // namespace detail
 
 ///
 /// \brief Wrapper for a container of Ts associated with RAII tokens
 ///
-/// Important: Tokeniser instance must outlive all Token instances handed out by it
+/// Important: generator instance must outlive all Token instances handed out by it
 ///
 template <typename T, template <typename...> typename C = std::deque, typename... Args>
-class Tokeniser final : detail::Base
+class TTokenGen final : detail::Base
 {
 public:
-	using Container = C<std::pair<T, u64>, Args...>;
-
-public:
 	///
 	/// \brief Add a new entry
 	/// \returns Token (moveable) that will remove entry on destruction
 	///
-	Token pushBack(T t);
-	///
-	/// \brief Add a new entry
-	/// \returns Token (moveable) that will remove entry on destruction
-	///
-	Token pushFront(T t);
+	template <bool Front = false>
+	Token push(T t);
 	///
 	/// \brief Clear all entries
 	///
@@ -64,11 +65,17 @@ public:
 	void forEach(F f) const;
 
 private:
-	Container m_entries;
-	u64 m_nextID = 1;
+	using ID = detail::Base::ID;
+	using Container = C<std::pair<T, ID>, Args...>;
+	using id_type = detail::Base::id_type;
+	static constexpr id_type null = detail::Base::null;
 
 private:
-	void pop(u64 id) override;
+	Container m_entries;
+	ID m_nextID = 1;
+
+private:
+	void pop(ID id) override;
 
 private:
 	friend struct Token;
@@ -76,8 +83,13 @@ private:
 
 struct Token : NoCopy
 {
+private:
+	using ID = detail::Base::ID;
+	using id_type = detail::Base::id_type;
+	static constexpr id_type null = detail::Base::null;
+
 public:
-	constexpr Token(detail::Base* pParent = nullptr, u64 id = 0) noexcept;
+	constexpr Token(detail::Base* pParent = nullptr, ID id = null) noexcept;
 	constexpr Token(Token&& rhs) noexcept;
 	constexpr Token& operator=(Token&& rhs) noexcept;
 	~Token();
@@ -89,27 +101,32 @@ public:
 
 private:
 	detail::Base* pParent;
-	u64 id;
+	ID id;
 };
 
+inline constexpr detail::Base::ID detail::Base::increment(ID& out_id, bool bPost)
+{
+	return bPost ? out_id.payload++ : ++out_id.payload;
+}
+
 template <typename T, template <typename...> typename C, typename... Args>
-Token Tokeniser<T, C, Args...>::pushBack(T t)
+template <bool Front>
+Token TTokenGen<T, C, Args...>::push(T t)
 {
 	Token ret(this, m_nextID);
-	m_entries.push_back(std::make_pair(std::move(t), m_nextID++));
+	if constexpr (Front)
+	{
+		m_entries.push_front(std::make_pair(std::move(t), detail::Base::increment(m_nextID, true)));
+	}
+	else
+	{
+		m_entries.push_back(std::make_pair(std::move(t), detail::Base::increment(m_nextID, true)));
+	}
 	return ret;
 }
 
 template <typename T, template <typename...> typename C, typename... Args>
-Token Tokeniser<T, C, Args...>::pushFront(T t)
-{
-	Token ret(this, m_nextID);
-	m_entries.push_front(std::make_pair(std::move(t), m_nextID++));
-	return ret;
-}
-
-template <typename T, template <typename...> typename C, typename... Args>
-std::size_t Tokeniser<T, C, Args...>::clear() noexcept
+std::size_t TTokenGen<T, C, Args...>::clear() noexcept
 {
 	auto const ret = m_entries.size();
 	m_entries.clear();
@@ -117,20 +134,20 @@ std::size_t Tokeniser<T, C, Args...>::clear() noexcept
 }
 
 template <typename T, template <typename...> typename C, typename... Args>
-std::size_t Tokeniser<T, C, Args...>::size() const noexcept
+std::size_t TTokenGen<T, C, Args...>::size() const noexcept
 {
 	return m_entries.size();
 }
 
 template <typename T, template <typename...> typename C, typename... Args>
-bool Tokeniser<T, C, Args...>::empty() const noexcept
+bool TTokenGen<T, C, Args...>::empty() const noexcept
 {
 	return m_entries.empty();
 }
 
 template <typename T, template <typename...> typename C, typename... Args>
 template <typename F>
-void Tokeniser<T, C, Args...>::forEach(F f)
+void TTokenGen<T, C, Args...>::forEach(F f)
 {
 	for (auto& [t, _] : m_entries)
 	{
@@ -140,7 +157,7 @@ void Tokeniser<T, C, Args...>::forEach(F f)
 
 template <typename T, template <typename...> typename C, typename... Args>
 template <typename F>
-void Tokeniser<T, C, Args...>::forEach(F f) const
+void TTokenGen<T, C, Args...>::forEach(F f) const
 {
 	for (auto& [t, _] : m_entries)
 	{
@@ -149,7 +166,7 @@ void Tokeniser<T, C, Args...>::forEach(F f) const
 }
 
 template <typename T, template <typename...> typename C, typename... Args>
-void Tokeniser<T, C, Args...>::pop(u64 id)
+void TTokenGen<T, C, Args...>::pop(ID id)
 {
 	auto search = std::find_if(m_entries.begin(), m_entries.end(), [id](auto const& entry) -> bool { return entry.second == id; });
 	if (search != m_entries.end())
@@ -158,12 +175,12 @@ void Tokeniser<T, C, Args...>::pop(u64 id)
 	}
 }
 
-inline constexpr Token::Token(detail::Base* pParent, u64 id) noexcept : pParent(pParent), id(id) {}
+inline constexpr Token::Token(detail::Base* pParent, ID id) noexcept : pParent(pParent), id(id) {}
 
 inline constexpr Token::Token(Token&& rhs) noexcept : pParent(rhs.pParent), id(rhs.id)
 {
 	rhs.pParent = nullptr;
-	rhs.id = 0;
+	rhs.id = null;
 }
 
 inline constexpr Token& Token::operator=(Token&& rhs) noexcept
@@ -177,7 +194,7 @@ inline constexpr Token& Token::operator=(Token&& rhs) noexcept
 		pParent = rhs.pParent;
 		id = rhs.id;
 		rhs.pParent = nullptr;
-		rhs.id = 0;
+		rhs.id = null;
 	}
 	return *this;
 }

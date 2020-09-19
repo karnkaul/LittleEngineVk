@@ -12,9 +12,9 @@ struct TRect final
 	using type = T;
 	using type_float = std::conditional<std::is_floating_point_v<T>, T, f32>;
 
-	constexpr static T min = T{Min};
-	constexpr static T max = T{Max};
-	constexpr static T half = (min + max) / 2;
+	static constexpr T min = T{Min};
+	static constexpr T max = T{Max};
+	static constexpr T half = (min + max) / 2;
 
 	glm::tvec2<T> lt = {min, min};
 	glm::tvec2<T> rb = {max, max};

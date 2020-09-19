@@ -9,6 +9,7 @@
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
+#include <core/counter.hpp>
 #include <core/flags.hpp>
 #include <core/log_config.hpp>
 #include <core/utils.hpp>
@@ -40,7 +41,7 @@ class Registry
 {
 private:
 	template <typename... T>
-	constexpr static bool isGreater(std::size_t const min);
+	static constexpr bool isGreater(std::size_t const min);
 
 public:
 	///
@@ -230,7 +231,7 @@ private:
 	inline static std::unordered_map<std::type_index, Sign> s_signs;
 	inline static std::unordered_map<Sign, std::string> s_names;
 	inline static kt::lockable<std::mutex> s_mutex;
-	inline static ECSID s_nextRegID;
+	inline static TCounter<ECSID::type> s_nextRegID = ECSID::null;
 
 protected:
 	// Thread-safe member mutex
@@ -238,8 +239,8 @@ protected:
 
 private:
 	CMap m_db;
-	ECSID m_nextID = 0;
-	ECSID m_regID = 0;
+	TCounter<ECSID::type> m_nextID = ECSID::null;
+	ECSID m_regID = ECSID::null;
 
 private:
 	template <typename T>

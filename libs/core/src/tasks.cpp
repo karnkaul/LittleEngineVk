@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <array>
-#include <atomic>
 #include <optional>
 #include <vector>
+#include <core/counter.hpp>
 #include <core/threads.hpp>
 #include <core/log.hpp>
 #include <core/tasks.hpp>
@@ -34,7 +34,7 @@ class Queue final
 private:
 	kt::async_queue<Task> m_queue;
 	std::atomic<bool> m_bWork;
-	std::atomic<s64> m_nextID;
+	TCounter<s64> m_nextID;
 
 public:
 	Queue();
@@ -63,7 +63,6 @@ std::array<std::atomic<bool>, maxWorkers> g_busy;
 Queue::Queue()
 {
 	m_bWork.store(true);
-	m_nextID.store(0);
 }
 
 Queue::~Queue()

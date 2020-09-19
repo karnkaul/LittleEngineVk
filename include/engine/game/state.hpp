@@ -188,7 +188,7 @@ TScoped<T>::~TScoped()
 template <typename T>
 std::string guiName(T const* pT)
 {
-	constexpr static std::string_view prefix = "::";
+	static constexpr std::string_view prefix = "::";
 	auto name = (pT ? utils::tName(*pT) : utils::tName<T>());
 	auto search = name.find(prefix);
 	while (search < name.size())

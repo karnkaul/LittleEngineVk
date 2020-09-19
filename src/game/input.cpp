@@ -15,7 +15,7 @@ namespace le
 {
 namespace
 {
-using Contexts = Tokeniser<input::Context const*>;
+using Contexts = TTokenGen<input::Context const*>;
 Contexts g_contexts;
 #if defined(LEVK_EDITOR)
 Contexts g_editorContexts;
@@ -44,7 +44,7 @@ struct
 
 Token input::registerContext(Context const* pContext)
 {
-	return g_contexts.pushFront(pContext);
+	return g_contexts.push<true>(pContext);
 }
 
 glm::vec2 const& input::cursorPosition(bool bRaw)
@@ -123,7 +123,7 @@ void input::init(Window& out_mainWindow)
 Token input::registerEditorContext(Context const* pContext)
 {
 	ASSERT(pContext, "Context is null!");
-	return g_editorContexts.pushFront(pContext);
+	return g_editorContexts.push<true>(pContext);
 }
 #endif
 

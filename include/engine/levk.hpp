@@ -1,7 +1,7 @@
 #pragma once
 #include <optional>
 #include <vector>
-#include <core/atomic_counter.hpp>
+#include <core/counter.hpp>
 #include <core/time.hpp>
 #include <core/reader.hpp>
 #include <core/std_types.hpp>

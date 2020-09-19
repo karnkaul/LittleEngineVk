@@ -12,7 +12,7 @@ struct TZero final
 {
 	using type = T;
 
-	constexpr static T null = Zero;
+	static constexpr T null = Zero;
 
 	T payload;
 

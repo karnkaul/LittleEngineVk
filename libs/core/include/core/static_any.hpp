@@ -20,7 +20,7 @@ public:
 
 private:
 	template <typename T>
-	constexpr static bool is_different_v = !std::is_same_v<std::decay_t<T>, StaticAny<N>>;
+	static constexpr bool is_different_v = !std::is_same_v<std::decay_t<T>, StaticAny<N>>;
 	template <typename T>
 	using is_different_t = std::enable_if_t<is_different_v<T>>;
 
@@ -352,7 +352,7 @@ template <std::size_t N>
 template <typename T>
 typename StaticAny<N>::Erased const* StaticAny<N>::erased()
 {
-	constexpr static Erased s_erased{Tag<T>()};
+	static constexpr Erased s_erased{Tag<T>()};
 	return &s_erased;
 }
 

@@ -1,5 +1,7 @@
 #include <engine/levk.hpp>
 #include <level.hpp>
+
+#include <core/counter.hpp>
 #include <core/tree.hpp>
 
 int main(int argc, char** argv)

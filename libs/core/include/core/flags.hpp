@@ -18,11 +18,11 @@ struct TFlags
 	static_assert(std::is_enum_v<Enum>, "Enum must be an enum!");
 
 	using type = Enum;
-	constexpr static std::size_t size = N;
+	static constexpr std::size_t size = N;
 
 	std::bitset<N> bits;
 
-	constexpr static TFlags<Enum, N> inverse() noexcept;
+	static constexpr TFlags<Enum, N> inverse() noexcept;
 
 	constexpr TFlags() noexcept = default;
 	///

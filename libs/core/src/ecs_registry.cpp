@@ -26,7 +26,7 @@ Registry::Concept::~Concept() = default;
 
 Registry::Registry()
 {
-	m_regID = ++s_nextRegID.payload;
+	m_regID = ++s_nextRegID;
 	m_name = fmt::format("{}:{}", utils::tName(*this), m_regID);
 }
 
@@ -54,7 +54,7 @@ bool Registry::destroy(Entity entity)
 			bRet = true;
 		}
 	}
-	LOGIF(bRet && m_logLevel && !name.empty(), *m_logLevel, "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, m_nextID, name);
+	LOGIF(bRet && m_logLevel && !name.empty(), *m_logLevel, "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, entity.id, name);
 	return bRet;
 }
 
@@ -154,9 +154,9 @@ std::string_view Registry::name_Impl(Sign sign)
 
 Entity Registry::spawn_Impl(std::string name)
 {
-	++m_nextID.payload;
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] spawned", m_name, s_tEName, m_nextID, name);
-	Entity ret{m_nextID, m_regID};
+	auto const id = ++m_nextID;
+	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] spawned", m_name, s_tEName, id, name);
+	Entity ret{id, m_regID};
 	auto& info = attach_Impl<Info>(ret, m_db[sign_Impl<Info>()]);
 	info.name = std::move(name);
 	return ret;

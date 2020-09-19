@@ -36,13 +36,13 @@ public:
 	void clear() noexcept;
 
 private:
-	Tokeniser<Callback> m_tokeniser;
+	TTokenGen<Callback, std::vector> m_tokeniser;
 };
 
 template <typename... Args>
 typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback callback)
 {
-	return m_tokeniser.pushBack(std::move(callback));
+	return m_tokeniser.push(std::move(callback));
 }
 
 template <typename... Args>

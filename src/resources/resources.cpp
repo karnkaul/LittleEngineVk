@@ -731,8 +731,8 @@ void res::init()
 	if (!g_bInit)
 	{
 		g_bInit = true;
-		constexpr static std::array<u8, 4> white1pxBytes = {0xff, 0xff, 0xff, 0xff};
-		constexpr static std::array<u8, 4> black1pxBytes = {0x0, 0x0, 0x0, 0x0};
+		static constexpr std::array<u8, 4> white1pxBytes = {0xff, 0xff, 0xff, 0xff};
+		static constexpr std::array<u8, 4> black1pxBytes = {0x0, 0x0, 0x0, 0x0};
 		auto semaphore = acquire();
 		{
 			Shader::CreateInfo info;

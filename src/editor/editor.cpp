@@ -775,7 +775,7 @@ void drawLog(iv2 fbSize, s32 logHeight)
 	static Time elapsed = Time::elapsed();
 	Time frameTime = Time::elapsed() - elapsed;
 	elapsed = Time::elapsed();
-	constexpr static std::size_t maxFTs = 200;
+	static constexpr std::size_t maxFTs = 200;
 	static std::array<f32, maxFTs> ftArr;
 	static std::list<Time> fts;
 	fts.push_back(frameTime);
@@ -836,7 +836,7 @@ void drawLog(iv2 fbSize, s32 logHeight)
 			auto s = Styler(Style::eSameLine);
 			// Arrow buttons with Repeater
 			f32 const spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-			constexpr static s32 s_minTCounter = 1, s_maxTCounter = 20;
+			static constexpr s32 s_minTCounter = 1, s_maxTCounter = 20;
 			s32 logEntries = (s32)g_maxLogEntries / 100;
 			ImGui::PushButtonRepeat(true);
 			if (ImGui::ArrowButton("##left", ImGuiDir_Left) && logEntries > s_minTCounter)
@@ -895,7 +895,7 @@ void resize(WindowImpl* pWindow)
 		eLeftBottom,
 		eRightBottom
 	};
-	constexpr static f32 nDelta = 0.01f;
+	static constexpr f32 nDelta = 0.01f;
 	static glm::vec2 const s_minXY = {0.0f, 0.35f};
 	static glm::vec2 const s_maxXY = {1.0f, 1.0f};
 	static Handle s_resizing = Handle::eNone;
@@ -1072,7 +1072,7 @@ TreeNode::TreeNode(sv id)
 
 TreeNode::TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen)
 {
-	constexpr static ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	static constexpr ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	ImGuiTreeNodeFlags const branchFlags = (bLeftClickOpen ? 0 : ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
 	ImGuiTreeNodeFlags const metaFlags = (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | (bFullWidth ? ImGuiTreeNodeFlags_SpanAvailWidth : 0);
 	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | metaFlags;

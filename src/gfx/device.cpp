@@ -478,7 +478,7 @@ void Device::waitFor(vk::Fence optional) const
 	{
 		if constexpr (levk_debug)
 		{
-			constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = g_device.device.waitForFences(optional, true, s_wait);
 			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
@@ -499,7 +499,7 @@ void Device::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const
 	{
 		if constexpr (levk_debug)
 		{
-			constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = g_device.device.waitForFences(std::move(validFences), true, s_wait);
 			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)

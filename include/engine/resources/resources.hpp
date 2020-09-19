@@ -1,7 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <type_traits>
-#include <core/atomic_counter.hpp>
+#include <core/counter.hpp>
 #include <core/tasks.hpp>
 #include <engine/resources/resource_types.hpp>
 

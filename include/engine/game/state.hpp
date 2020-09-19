@@ -23,13 +23,13 @@ struct Prop final
 	Entity entity;
 	Transform* pTransform;
 
-	constexpr Prop();
-	constexpr Prop(Entity entity, Transform& transform);
+	constexpr Prop() noexcept;
+	constexpr Prop(Entity entity, Transform& transform) noexcept;
 
 	///
 	/// \brief Check whether Prop points to a valid pair of Entity/Transform
 	///
-	bool valid() const;
+	bool valid() const noexcept;
 
 	///
 	/// \brief Obtain the transform (must be valid!)
@@ -40,7 +40,30 @@ struct Prop final
 	///
 	Transform& transform();
 
-	constexpr operator Entity const();
+	constexpr operator Entity() const noexcept;
+};
+
+///
+/// \brief Return type wrapper for `spawnProp<T...>()`
+///
+template <typename... T>
+struct TProp
+{
+	using type = TProp;
+	using Components = Registry::Components<T&...>;
+
+	Prop prop;
+	Components components;
+
+	constexpr operator Prop() const noexcept;
+};
+template <typename... T>
+using TProp_t = typename TProp<T...>::type;
+
+template <>
+struct TProp<>
+{
+	using type = Prop;
 };
 
 namespace gs
@@ -69,7 +92,7 @@ struct TScoped final
 ///
 struct Context final
 {
-	Registry defaultRegistry = Registry(Registry::Mode::eImmediate);
+	Registry defaultRegistry;
 	std::string name;
 	gfx::ScreenRect gameRect;
 	Ref<Registry> registry = defaultRegistry;
@@ -122,7 +145,14 @@ std::string guiName(T const* pT = nullptr);
 ///
 /// Transform will be parented to scene root if LEVK_EDITOR is defined
 ///
-Prop spawnProp(std::string name);
+template <typename T, typename... Args>
+TProp<T> spawnProp(std::string name, Args&&... args);
+///
+/// \brief Create a new Prop
+///
+/// Transform will be parented to scene root if LEVK_EDITOR is defined
+template <typename... T>
+TProp_t<T...> spawnProp(std::string name);
 ///
 /// \brief Destroy one or more props
 ///
@@ -168,13 +198,61 @@ std::string guiName(T const* pT)
 	}
 	return name;
 }
+
+#if defined(LEVK_EDITOR)
+namespace detail
+{
+void setup(Prop& out_prop);
+} // namespace detail
+#endif
+
+template <typename T, typename... Args>
+TProp<T> spawnProp(std::string name, Args&&... args)
+{
+	Registry& reg = g_context.registry;
+	auto ec = reg.template spawn<T, Args...>(std::move(name), std::forward<Args>(args)...);
+	auto pT = reg.template attach<Transform>(ec);
+	ASSERT(pT, "Invariant violated!");
+	Prop prop{ec, *pT};
+#if defined(LEVK_EDITOR)
+	detail::setup(prop);
+#endif
+	return {prop, std::move(ec.components)};
+}
+
+template <typename... T>
+TProp_t<T...> spawnProp(std::string name)
+{
+	Registry& reg = g_context.registry;
+	auto ec = reg.template spawn<T...>(std::move(name));
+	auto pT = reg.template attach<Transform>(ec);
+	ASSERT(pT, "Invariant violated!");
+	Prop prop{ec, *pT};
+#if defined(LEVK_EDITOR)
+	detail::setup(prop);
+#endif
+	if constexpr (sizeof...(T) > 0)
+	{
+		return {prop, std::move(ec.components)};
+	}
+	else
+	{
+		return prop;
+	}
+}
 } // namespace gs
 
-inline constexpr Prop::Prop() : pTransform(nullptr) {}
-inline constexpr Prop::Prop(Entity entity, Transform& transform) : entity(entity), pTransform(&transform) {}
-inline constexpr Prop::operator Entity const()
+inline constexpr Prop::Prop() noexcept : pTransform(nullptr) {}
+inline constexpr Prop::Prop(Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {}
+inline constexpr Prop::operator Entity() const noexcept
 {
 	return entity;
+}
+
+template <typename... T>
+constexpr TProp<T...>::operator Prop() const noexcept
+{
+	return prop;
 }
 
 #if defined(LEVK_EDITOR)

@@ -37,7 +37,7 @@ std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vect
 template <typename... T>
 constexpr bool allEmpty(T const&... t)
 {
-	return (... && t.empty());
+	return (t.empty() && ...);
 }
 
 template <typename... T>

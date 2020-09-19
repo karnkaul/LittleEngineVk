@@ -1,9 +1,17 @@
 #include <engine/levk.hpp>
 #include <level.hpp>
+#include <core/tree.hpp>
 
 int main(int argc, char** argv)
 {
 	using namespace le;
+
+	// TTree<s32> tree;
+	// auto& n0 = tree.push(tree.root, 0);
+	// auto& n1 = tree.push(n0, -1);
+	// n1.push(5);
+	// tree.push(tree.root, 2);
+	// tree.pop(n0);
 
 	engine::Service engine({argc, argv});
 	auto dataPaths = engine::locate({"data", "demo/data"});

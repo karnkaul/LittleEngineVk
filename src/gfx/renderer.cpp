@@ -49,7 +49,7 @@ u32 TexSet::total() const
 template <typename... T>
 bool allReady(T... t)
 {
-	return (... && (t.status() == res::Status::eReady));
+	return ((t.status() == res::Status::eReady) && ...);
 }
 } // namespace
 

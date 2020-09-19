@@ -22,7 +22,7 @@ struct
 } g_ctxImpl;
 } // namespace
 
-bool Prop::valid() const
+bool Prop::valid() const noexcept
 {
 	return pTransform != nullptr && entity.id != ECSID::null;
 }
@@ -120,18 +120,6 @@ Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContext)
 	return registerInput(out_pContext);
 }
 
-Prop gs::spawnProp(std::string name)
-{
-	Registry& reg = g_context.registry;
-	auto prop = reg.spawn<Transform>(std::move(name));
-	auto& [transform] = prop.components;
-#if defined(LEVK_EDITOR)
-	transform.parent(&g_ctxImpl.root);
-	g_ctxImpl.entityMap[&transform] = prop.entity;
-#endif
-	return {prop.entity, transform};
-}
-
 void gs::destroy(Span<Prop> props)
 {
 	Registry& reg = g_context.registry;
@@ -195,8 +183,6 @@ gfx::Renderer::Scene gs::update(engine::Driver& out_driver, Time dt, bool bTick)
 		camera = editor::g_editorCam.m_camera;
 	}
 #endif
-	Registry& reg = g_context.registry;
-	reg.flush();
 	return out_driver.builder().build(camera, g_context.registry);
 }
 
@@ -209,6 +195,13 @@ gs::EMap& gs::entityMap()
 Transform& gs::root()
 {
 	return g_ctxImpl.root;
+}
+
+void gs::detail::setup(Prop& out_prop)
+{
+	auto& transform = out_prop.transform();
+	transform.parent(&g_ctxImpl.root);
+	g_ctxImpl.entityMap[&transform] = out_prop.entity;
 }
 #endif
 } // namespace le

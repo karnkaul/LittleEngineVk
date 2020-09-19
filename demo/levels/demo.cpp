@@ -46,7 +46,10 @@ DemoLevel::DemoLevel()
 	m_data.eid1 = gs::spawnProp("sphere");
 	m_data.eid2 = gs::spawnProp("model0");
 	m_data.eid3 = gs::spawnProp("model1");
-	m_data.eui0 = gs::spawnProp("fps");
+	auto [eui0, ui0c] = gs::spawnProp<UIComponent>("fps");
+	m_data.eui0 = eui0;
+	auto& [tui0] = ui0c;
+
 	m_data.eui1 = registry().spawn("dt");
 	m_data.eui2 = registry().spawn("tris");
 	auto sceneDesc = registry().spawn<SceneDesc>("scene_desc");
@@ -57,7 +60,7 @@ DemoLevel::DemoLevel()
 	textInfo.data.colour = colours::white;
 	textInfo.data.scale = 0.25f;
 	textInfo.id = "fps";
-	registry().attach<UIComponent>(m_data.eui0)->setText(textInfo);
+	tui0.setText(textInfo);
 	textInfo.data.scale = 0.15f;
 	textInfo.data.colour = colours::cyan;
 	textInfo.data.pos.y -= 100.0f;
@@ -65,7 +68,7 @@ DemoLevel::DemoLevel()
 	registry().attach<UIComponent>(m_data.eui1)->setText(textInfo);
 	textInfo.data.colour = colours::yellow;
 	textInfo.data.pos.y -= 100.0f;
-	textInfo.data.pos.x = 620.0f;
+	// textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
 	registry().attach<UIComponent>(m_data.eui2)->setText(textInfo);
 	registry().attach<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
@@ -108,6 +111,11 @@ DemoLevel::DemoLevel()
 	desc.skyboxCubemapID = "skyboxes/sky_dusk";
 	desc.uiSpace = {1280.0f, 720.0f, 2.0f};
 	desc.flags = SceneDesc::Flag::eScissoredUI;
+
+	// for (auto i = 0; i < 1000; ++i)
+	// {
+	// 	gs::spawnProp(fmt::format("test_{}", i));
+	// }
 }
 
 void DemoLevel::tick(Time dt)
@@ -179,7 +187,7 @@ void DemoLevel::tick(Time dt)
 	m_fps = m_data.fps.update();
 	registry().find<UIComponent>(m_data.eui0)->setText(fmt::format("{}FPS", m_fps));
 	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.to_s() * 1000));
-	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} triangles", engine::mainWindow()->renderer().m_stats.trisDrawn));
+	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} entities", registry().size()));
 	[[maybe_unused]] auto& quadT = registry().find<Transform>(m_data.pointer)->position({input::worldToUI(input::cursorPosition()), 1.0f});
 	// quadT.orientglm::rotate(quadT.orient), glm::radians(dt.to_s() * 50), gfx::g_nFront));
 

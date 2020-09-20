@@ -45,10 +45,32 @@ void gs::Context::reset()
 	reg.clear();
 	name.clear();
 	gameRect = {};
-	camera = {};
 #if defined(LEVK_EDITOR)
 	editorData = {};
 #endif
+}
+
+gs::SceneDesc& gs::sceneDesc()
+{
+	Registry& reg = g_context.registry;
+	auto view = reg.view<SceneDesc>();
+	if (view.empty())
+	{
+		auto [_, desc] = reg.spawn<SceneDesc>("scene_desc");
+		auto& [desc_] = desc;
+		return desc_;
+	}
+	else
+	{
+		auto [_, desc] = view.front();
+		auto& [desc_] = desc;
+		return desc_;
+	}
+}
+
+gfx::Camera& gs::mainCamera()
+{
+	return sceneDesc().camera;
 }
 
 Token gs::registerInput(input::Context const* pContext)
@@ -61,7 +83,7 @@ TResult<Token> gs::loadManifest(LoadReq const& loadReq)
 {
 	if (!g_ctxImpl.manifest.idle())
 	{
-		LOG_W("[le::GameState] Manifest load already in progress!");
+		LOG_W("[GameState] Manifest load already in progress!");
 		return {};
 	}
 	res::ResourceList unload;
@@ -78,7 +100,7 @@ TResult<Token> gs::loadManifest(LoadReq const& loadReq)
 		auto const loadList = g_ctxImpl.manifest.parse();
 		if (!loadList.empty())
 		{
-			LOG_I("[le::GameState] Loading manifest [{}] [{} resources]", loadReq.load.generic_string(), loadList.size());
+			LOG_I("[GameState] Loading manifest [{}] [{} resources]", loadReq.load.generic_string(), loadList.size());
 			unload = unload - loadList;
 			ret = g_ctxImpl.onManifestLoaded.subscribe(loadReq.onLoaded);
 			g_ctxImpl.manifest.start();
@@ -91,7 +113,7 @@ TResult<Token> gs::loadManifest(LoadReq const& loadReq)
 	}
 	if (!unload.empty())
 	{
-		LOG_I("[le::GameState] Unloading manifest [{}] [{} resources]", loadReq.unload.generic_string(), unload.size());
+		LOG_I("[GameState] Unloading manifest [{}] [{} resources]", loadReq.unload.generic_string(), unload.size());
 		res::Manifest::unload(unload);
 	}
 	return ret;
@@ -108,12 +130,12 @@ Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContext)
 			{
 				if (auto const parsed = out_pContext->deserialise(json); parsed > 0)
 				{
-					LOG_D("[le::GameState] Parsed [{}] input mappings from [{}]", parsed, id.generic_string());
+					LOG_D("[GameState] Parsed [{}] input mappings from [{}]", parsed, id.generic_string());
 				}
 			}
 			else
 			{
-				LOG_W("[le::GameState] Failed to read input mappings from [{}]!", id.generic_string());
+				LOG_W("[GameState] Failed to read input mappings from [{}]!", id.generic_string());
 			}
 		}
 	}
@@ -138,7 +160,6 @@ void gs::reset()
 {
 	Registry& reg = g_context.registry;
 	reg.clear();
-	g_context.camera = {};
 	g_context.gameRect = {};
 	g_ctxImpl.manifest.reset();
 	g_ctxImpl.onManifestLoaded.clear();
@@ -176,7 +197,7 @@ gfx::Renderer::Scene gs::update(engine::Driver& out_driver, Time dt, bool bTick)
 	{
 		out_driver.tick(dt);
 	}
-	Ref<gfx::Camera> camera = g_context.camera;
+	Ref<gfx::Camera> camera = mainCamera();
 #if defined(LEVK_EDITOR)
 	if (!editor::g_bTickGame)
 	{

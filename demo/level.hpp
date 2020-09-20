@@ -23,10 +23,6 @@ protected:
 protected:
 	le::Registry const& registry() const;
 	le::Registry& registry();
-	le::gfx::Camera const& camera() const;
-	le::gfx::Camera& camera();
-	le::gfx::ScreenRect const& gameRect() const;
-	le::gfx::ScreenRect& gameRect();
 
 private:
 	friend class LevelDriver;

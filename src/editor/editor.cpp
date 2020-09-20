@@ -290,13 +290,13 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 	{
 		return;
 	}
-	auto name = gs::guiName<res::Material>();
+	auto name = utils::tName<res::Material>();
 	if (auto matInst = TreeNode(fmt::format("{} Instance {}", name, idx)))
 	{
 		constexpr std::array ids = {"Textured"sv, "Lit"sv, "Opaque"sv, "Drop Colour"sv};
 		FlagsWidget<res::Material::Flags> material(ids, pInfo->material.flags);
 		TWidget<Colour> tint("Tint", pInfo->material.tint);
-		auto name = gs::guiName<res::Texture>();
+		auto name = utils::tName<res::Texture>();
 		if (auto diff = TreeNode(fmt::format("{}: Diffuse", name)))
 		{
 			inspectResource<res::Texture>(
@@ -309,7 +309,7 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 				pInfo->material.specular, name, fmt::format("M{} specular", idx), [pInfo](res::Texture const& tex) { pInfo->material.specular = tex; },
 				[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
 		}
-		name = gs::guiName<res::Material>();
+		name = utils::tName<res::Material>();
 		if (auto mat = TreeNode(name))
 		{
 			inspectResource<res::Material>(
@@ -370,9 +370,9 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			g_inspecting = {};
 		}
 		s = Styler(Style::eSeparator);
-		if (auto pDesc = registry.find<SceneDesc>(g_inspecting.entity))
+		if (auto pDesc = registry.find<gs::SceneDesc>(g_inspecting.entity))
 		{
-			if (auto desc = TreeNode("SceneDesc"))
+			if (auto desc = TreeNode("gs::SceneDesc"))
 			{
 				if (auto skybox = TreeNode("Skybox"))
 				{
@@ -414,6 +414,12 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 						}
 					}
 				}
+				if (auto camera = TreeNode("Camera"))
+				{
+					gfx::Camera& cam = pDesc->camera;
+					TWidget<glm::vec3> pos("pos", cam.position, false);
+					TWidget<glm::quat> orn("orn", cam.orientation);
+				}
 				TWidget<Colour> clearColour("Clear", pDesc->clearColour);
 			}
 		}
@@ -423,7 +429,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			Styler s(Style::eSeparator);
 
 			auto pMesh = registry.find<res::Mesh>(g_inspecting.entity);
-			auto name = gs::guiName<res::Mesh>();
+			auto name = utils::tName<res::Mesh>();
 			if (auto mesh = TInspector<res::Mesh>(registry, g_inspecting.entity, pMesh))
 			{
 				inspectResource(
@@ -433,7 +439,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			}
 			auto pModel = registry.find<res::Model>(g_inspecting.entity);
 			auto pModelImpl = pModel ? res::impl(*pModel) : nullptr;
-			name = gs::guiName<res::Model>();
+			name = utils::tName<res::Model>();
 			if (auto model = TInspector<res::Model>(registry, g_inspecting.entity, pModel))
 			{
 				inspectResource(
@@ -545,7 +551,7 @@ void addModel(dj::object& out_entry, res::Model model)
 	out_entry.add<dj::string>("model_id", model.info().id.generic_string());
 }
 
-void addDesc(dj::object& out_entry, SceneDesc const& desc)
+void addDesc(dj::object& out_entry, gs::SceneDesc const& desc)
 {
 	dj::object d;
 	if (!desc.skyboxCubemapID.empty())
@@ -602,7 +608,7 @@ void walkSceneTree(dj::array& out_root, Transform& root, gs::EMap const& emap, R
 void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity, EntityHasher> const& added)
 {
 	{
-		auto view = reg.view<SceneDesc>();
+		auto view = reg.view<gs::SceneDesc>();
 		for (auto& [entity, query] : view)
 		{
 			if (added.find(entity) == added.end())
@@ -722,7 +728,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 					}
 				}
 				auto s = Styler(Style::eSeparator);
-				auto view = registry.view<SceneDesc>();
+				auto view = registry.view<gs::SceneDesc>();
 				if (!view.empty())
 				{
 					auto [entity, _] = *view.begin();
@@ -732,11 +738,6 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 						bool const bSelect = g_inspecting.entity != entity;
 						g_inspecting = {bSelect ? entity : Entity(), nullptr};
 					}
-				}
-				else if (Button("[Add SceneDesc]"))
-				{
-					g_inspecting = {registry.spawn<SceneDesc>("scene_desc").entity, nullptr};
-					g_spawned.insert(g_inspecting.entity);
 				}
 				s = Styler(Style::eSeparator);
 				for (Transform& transform : args.pRoot->children())
@@ -1170,7 +1171,7 @@ TWidget<glm::vec3>::TWidget(sv id, glm::vec3& out_vec, bool bNormalised, f32 dv)
 TWidget<glm::quat>::TWidget(sv id, glm::quat& out_quat, f32 dq)
 {
 	auto rot = glm::eulerAngles(out_quat);
-	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &rot.x, dq);
+	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &rot.x, dq);
 	out_quat = glm::quat(rot);
 }
 

@@ -68,7 +68,7 @@ bool Reader::checkPresence(stdfs::path const& id) const
 {
 	if (!isPresent(id))
 	{
-		LOG_E("[{}] [{}] not found in {}!", utils::tName(*this), id.generic_string(), m_medium);
+		LOG_E("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
 		return false;
 	}
 	return true;

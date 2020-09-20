@@ -32,7 +32,7 @@ vk::DebugUtilsMessengerEXT g_debugMessenger;
 VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
 													VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*)
 {
-	static std::string_view const name = "vk::validation";
+	static constexpr std::string_view name = "vk::validation";
 	switch (messageSeverity)
 	{
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:

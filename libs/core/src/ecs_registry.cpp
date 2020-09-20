@@ -27,7 +27,7 @@ Registry::Concept::~Concept() = default;
 Registry::Registry()
 {
 	m_regID = ++s_nextRegID;
-	m_name = fmt::format("{}:{}", utils::tName(*this), m_regID);
+	m_name = fmt::format("{}:{}", utils::tName(this), m_regID);
 }
 
 Registry::~Registry()

@@ -65,7 +65,7 @@ template <typename... Args>
 Services::Model<S>::Model(Args&&... args) : s(std::forward<Args>(args)...)
 {
 #if defined(LEVK_DEBUG)
-	targetType = utils::tName(s);
+	targetType = utils::tName(&s);
 #endif
 }
 

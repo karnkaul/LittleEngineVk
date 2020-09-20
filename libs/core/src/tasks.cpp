@@ -54,7 +54,7 @@ public:
 	void deinit();
 };
 
-std::string_view const g_tName = "le::tasks";
+constexpr std::string_view g_tName = "tasks";
 Queue g_queue;
 std::vector<Worker> g_workers;
 constexpr std::size_t maxWorkers = 256;

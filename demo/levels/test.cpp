@@ -44,7 +44,7 @@ TestLevel::TestLevel()
 	m_data.elapsed = {};
 	auto& [elapsed] = elapsedText.components;
 	elapsed.setText(std::move(info));
-	camera().position = {0.0f, 1.0f, 2.0f};
+	gs::mainCamera().position = {0.0f, 1.0f, 2.0f};
 
 	m_game.ship = gs::spawnProp("ship");
 	m_game.ship.transform().position({0.0f, 0.0f, -3.0f});

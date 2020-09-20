@@ -4,7 +4,7 @@
 #include <core/colour.hpp>
 #include <core/flags.hpp>
 #include <core/hash.hpp>
-#include <core/tokeniser.hpp>
+#include <core/token_gen.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
 #include <dumb_json/dumb_json.hpp>

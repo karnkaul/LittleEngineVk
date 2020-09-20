@@ -7,6 +7,8 @@
 #include <core/utils.hpp>
 #include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
+#include <engine/gfx/light.hpp>
+#include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/resources/resources.hpp>
 #if defined(LEVK_EDITOR)
@@ -87,6 +89,37 @@ struct TScoped final
 	~TScoped();
 };
 
+struct SceneDesc final
+{
+	enum class Flag : s8
+	{
+		///
+		/// \brief UI follows screen size and aspect ratio
+		///
+		eDynamicUI,
+		///
+		/// \brief UI clipped to match its aspect ratio
+		///
+		eScissoredUI,
+		eCOUNT_
+	};
+	using Flags = TFlags<Flag>;
+
+	gfx::Camera defaultCam;
+	Ref<gfx::Camera> camera = defaultCam;
+	std::vector<gfx::DirLight> dirLights;
+	stdfs::path skyboxCubemapID;
+	///
+	/// \brief UI Transformation Space (z is depth)
+	///
+	glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
+	gfx::Pipeline pipe3D;
+	gfx::Pipeline pipeUI;
+	glm::vec2 clearDepth = {1.0f, 0.0f};
+	Colour clearColour = colours::black;
+	Flags flags = Flag::eDynamicUI;
+};
+
 ///
 /// \brief Data structure describing game frame context
 ///
@@ -96,7 +129,6 @@ struct Context final
 	std::string name;
 	gfx::ScreenRect gameRect;
 	Ref<Registry> registry = defaultRegistry;
-	gfx::Camera camera;
 
 #if defined(LEVK_EDITOR)
 	editor::PerFrame editorData;
@@ -121,10 +153,18 @@ struct LoadReq final
 inline Context g_context;
 
 ///
-/// \brief Trim leading namespaces etc from typename
+/// \brief Obtain (a reference to) the scene descriptor
 ///
-template <typename T>
-std::string guiName(T const* pT = nullptr);
+/// A SceneDesc will be added to the Registry if none exist
+///
+SceneDesc& sceneDesc();
+
+///
+/// \brief Obtain (a reference to) the main scene camera
+///
+/// A SceneDesc will be added to the Registry if none exist
+///
+gfx::Camera& mainCamera();
 
 ///
 /// \brief Register input context
@@ -183,20 +223,6 @@ TScoped<T>::~TScoped()
 	{
 		destroy(*t);
 	}
-}
-
-template <typename T>
-std::string guiName(T const* pT)
-{
-	static constexpr std::string_view prefix = "::";
-	auto name = (pT ? utils::tName(*pT) : utils::tName<T>());
-	auto search = name.find(prefix);
-	while (search < name.size())
-	{
-		name = name.substr(search + prefix.size());
-		search = name.find(prefix);
-	}
-	return name;
 }
 
 #if defined(LEVK_EDITOR)
@@ -273,7 +299,7 @@ FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags)
 
 template <typename T>
 TInspector<T>::TInspector(Registry& out_registry, Entity entity, T const* pT, sv id)
-	: pReg(&out_registry), entity(entity), id(id.empty() ? gs::guiName<T>() : id)
+	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id)
 {
 	bNew = pT == nullptr;
 	if (!bNew)

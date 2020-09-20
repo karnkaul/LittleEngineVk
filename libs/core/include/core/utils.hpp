@@ -75,30 +75,28 @@ std::pair<f32, std::string_view> friendlySize(u64 byteCount) noexcept;
 ///
 /// \brief Demangle a compiler symbol name
 ///
-std::string demangle(std::string_view name);
+std::string demangle(std::string_view name, bool bMinimal);
 
 ///
-/// \brief Obtain demangled type name of an object
+/// \brief Obtain demangled type name of an object or a type
 ///
-template <typename T>
-std::string tName(T const& t)
+template <typename T, bool Minimal = true>
+std::string tName(T const* pT = nullptr)
 {
-	return demangle(typeid(t).name());
+	if constexpr (Minimal)
+	{
+		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), true);
+	}
+	else
+	{
+		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), false);
+	}
 }
 
 ///
 /// \brief Remove namespace prefixes from a type string
 ///
 void removeNamesapces(std::string& out_name);
-
-///
-/// \brief Obtain demangled type name of a type
-///
-template <typename T>
-std::string tName()
-{
-	return demangle(typeid(T).name());
-}
 
 namespace strings
 {

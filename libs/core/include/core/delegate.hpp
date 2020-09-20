@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
-#include <core/tokeniser.hpp>
+#include <core/token_gen.hpp>
 
 namespace le
 {
@@ -36,31 +36,31 @@ public:
 	void clear() noexcept;
 
 private:
-	TTokenGen<Callback, std::vector> m_tokeniser;
+	TTokenGen<Callback, std::vector> m_tokens;
 };
 
 template <typename... Args>
 typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback callback)
 {
-	return m_tokeniser.push(std::move(callback));
+	return m_tokens.push(std::move(callback));
 }
 
 template <typename... Args>
 void Delegate<Args...>::operator()(Args... args) const
 {
-	m_tokeniser.forEach([&args...](auto& callback) { callback(args...); });
+	m_tokens.forEach([&args...](auto& callback) { callback(args...); });
 }
 
 template <typename... Args>
 bool Delegate<Args...>::alive() const noexcept
 {
-	return !m_tokeniser.empty();
+	return !m_tokens.empty();
 }
 
 template <typename... Args>
 void Delegate<Args...>::clear() noexcept
 {
-	m_tokeniser.clear();
+	m_tokens.clear();
 	return;
 }
 } // namespace le

@@ -166,7 +166,7 @@ void input::fire()
 					static Context const* pPrev = nullptr;
 					if (pPrev != pContext)
 					{
-						static std::string_view const s_unknown = "Unknown";
+						static constexpr std::string_view s_unknown = "Unknown";
 						std::string_view const name = pContext->m_name.empty() ? s_unknown : pContext->m_name;
 						LOG_I("[{}] [{}:{}] blocking [{}] remaining input contexts", utils::tName<Context>(), name, processed, contexts.size() - processed - 1);
 						pPrev = pContext;

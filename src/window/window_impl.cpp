@@ -162,7 +162,7 @@ WindowImpl::Cursor const& cursor(input::CursorType type)
 }
 #endif
 
-void registerCallbacks(NativeWindow const& window)
+void registerCallbacks([[maybe_unused]] NativeWindow const& window)
 {
 #if defined(LEVK_USE_GLFW)
 	if (auto pWindow = window.cast<GLFWwindow>())
@@ -226,7 +226,7 @@ bool Gamepad::pressed(Key button) const
 	return false;
 }
 
-WindowImpl* WindowImpl::find(StaticAny<> nativeHandle)
+WindowImpl* WindowImpl::find([[maybe_unused]] StaticAny<> nativeHandle)
 {
 #if defined(LEVK_USE_GLFW)
 	auto f = [nativeHandle](auto pWindow) -> bool { return pWindow->m_nativeWindow.template cast<GLFWwindow>() == nativeHandle.val<GLFWwindow*>(); };

@@ -12,8 +12,6 @@
 
 namespace le::input
 {
-using Token = Token;
-
 struct Snapshot final
 {
 	std::vector<Gamepad> padStates;
@@ -73,26 +71,10 @@ struct Map final
 
 class Context final
 {
-private:
-	struct Callback final
-	{
-		OnTrigger onTrigger;
-		OnState onState;
-		OnRange onRange;
-	};
-
 #if defined(LEVK_DEBUG)
 public:
 	std::string m_name;
 #endif
-
-private:
-	Map m_map;
-	mutable std::unordered_set<Key> m_padHeld;
-	std::unordered_map<Hash, Callback> m_callbacks;
-	Mode m_mode;
-	s32 m_padID;
-	mutable bool m_bFired = false;
 
 public:
 	Context(Mode mode = Mode::ePassthrough, s32 padID = 0);
@@ -122,5 +104,21 @@ private:
 
 private:
 	friend void fire();
+
+private:
+	struct Callback final
+	{
+		OnTrigger onTrigger;
+		OnState onState;
+		OnRange onRange;
+	};
+
+private:
+	Map m_map;
+	mutable std::unordered_set<Key> m_padHeld;
+	std::unordered_map<Hash, Callback> m_callbacks;
+	Mode m_mode;
+	s32 m_padID;
+	mutable bool m_bFired = false;
 };
 } // namespace le::input

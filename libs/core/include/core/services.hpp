@@ -15,25 +15,6 @@ namespace le
 ///
 class Services final
 {
-private:
-	struct Concept
-	{
-#if defined(LEVK_DEBUG)
-		std::string targetType;
-#endif
-		virtual ~Concept() {}
-	};
-	template <typename S>
-	struct Model : public Concept
-	{
-		S s;
-
-		template <typename... Args>
-		Model(Args&&... args);
-	};
-
-	std::vector<std::unique_ptr<Concept>> m_services;
-
 public:
 	Services();
 	Services(Services&&);
@@ -58,6 +39,25 @@ public:
 	///
 	template <typename T>
 	T const* locate() const;
+
+private:
+	struct Concept
+	{
+#if defined(LEVK_DEBUG)
+		std::string targetType;
+#endif
+		virtual ~Concept() {}
+	};
+	template <typename S>
+	struct Model : public Concept
+	{
+		S s;
+
+		template <typename... Args>
+		Model(Args&&... args);
+	};
+
+	std::vector<std::unique_ptr<Concept>> m_services;
 };
 
 template <typename S>
@@ -65,7 +65,7 @@ template <typename... Args>
 Services::Model<S>::Model(Args&&... args) : s(std::forward<Args>(args)...)
 {
 #if defined(LEVK_DEBUG)
-	targetType = utils::tName(s);
+	targetType = utils::tName(&s);
 #endif
 }
 

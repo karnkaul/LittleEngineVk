@@ -48,9 +48,6 @@ public:
 template <typename T>
 class Singleton<T, SingletonStorage::eHeap> : public detail::SingletonBase<T>
 {
-protected:
-	static std::unique_ptr<T> s_uInst;
-
 public:
 	static T& inst()
 	{
@@ -77,6 +74,9 @@ public:
 		}
 		return false;
 	}
+
+protected:
+	static std::unique_ptr<T> s_uInst;
 };
 
 template <typename T>

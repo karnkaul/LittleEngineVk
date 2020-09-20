@@ -1,7 +1,7 @@
 #pragma once
 #include <optional>
 #include <vector>
-#include <core/atomic_counter.hpp>
+#include <core/counter.hpp>
 #include <core/time.hpp>
 #include <core/reader.hpp>
 #include <core/std_types.hpp>
@@ -21,7 +21,7 @@ constexpr bool levk_editor = false;
 
 namespace le::engine
 {
-using Semaphore = Counter<s32>::Semaphore;
+using Semaphore = TCounter<s32>::Semaphore;
 
 struct Driver;
 
@@ -63,9 +63,6 @@ struct Info final
 
 class Service final
 {
-private:
-	Services m_services;
-
 public:
 	Service(os::Args args = {});
 	Service(Service&&);
@@ -101,6 +98,9 @@ public:
 
 private:
 	static void doShutdown();
+
+private:
+	Services m_services;
 };
 
 ///

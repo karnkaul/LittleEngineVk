@@ -97,13 +97,15 @@ struct Ref
 
 	T* pPtr;
 
-	constexpr Ref(T& t) noexcept : pPtr(&t) {}
+	constexpr Ref(T& t) noexcept;
 
-	constexpr operator T&() const
-	{
-		return *pPtr;
-	}
+	constexpr operator T&() const noexcept;
 };
+
+template <typename T>
+constexpr bool operator==(Ref<T> lhs, Ref<T> rhs) noexcept;
+template <typename T>
+constexpr bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept;
 
 ///
 /// \brief Structured Binding of a payload and a `bool` (indicating the result of an operation)
@@ -118,15 +120,15 @@ struct TResult
 	T payload;
 	bool bResult;
 
-	constexpr TResult() : payload(T{}), bResult(false) {}
-	constexpr TResult(T&& payload, bool bResult = true) : payload(std::move(payload)), bResult(bResult) {}
-	constexpr TResult(T const& payload, bool bResult = true) : payload(payload), bResult(bResult) {}
+	constexpr TResult() noexcept;
+	constexpr TResult(T&& payload, bool bResult = true) noexcept;
+	constexpr TResult(T const& payload, bool bResult = true) noexcept;
 
-	constexpr operator bool() const;
-	constexpr T const& operator*() const;
-	constexpr T& operator*();
-	constexpr T const* operator->() const;
-	constexpr T* operator->();
+	constexpr operator bool() const noexcept;
+	constexpr T const& operator*() const noexcept;
+	constexpr T& operator*() noexcept;
+	constexpr T const* operator->() const noexcept;
+	constexpr T* operator->() noexcept;
 };
 
 template <>
@@ -134,57 +136,84 @@ struct TResult<void>
 {
 	using type = void;
 
-	bool bResult = false;
+	bool bResult;
 
-	constexpr TResult() noexcept = default;
-	constexpr TResult(bool bResult) noexcept : bResult(bResult) {}
+	constexpr TResult(bool bResult = false) noexcept;
 
-	constexpr operator bool() const;
+	constexpr operator bool() const noexcept;
 };
 
 template <typename T>
-constexpr TResult<T>::operator bool() const
+constexpr Ref<T>::Ref(T& t) noexcept : pPtr(&t)
+{
+}
+
+template <typename T>
+constexpr Ref<T>::operator T&() const noexcept
+{
+	return *pPtr;
+}
+
+template <typename T>
+constexpr TResult<T>::TResult() noexcept : payload(T{}), bResult(false)
+{
+}
+
+template <typename T>
+constexpr TResult<T>::TResult(T&& payload, bool bResult) noexcept : payload(std::move(payload)), bResult(bResult)
+{
+}
+
+template <typename T>
+constexpr TResult<T>::TResult(T const& payload, bool bResult) noexcept : payload(payload), bResult(bResult)
+{
+}
+
+template <typename T>
+constexpr TResult<T>::operator bool() const noexcept
 {
 	return bResult;
 }
 
 template <typename T>
-constexpr T const& TResult<T>::operator*() const
+constexpr T const& TResult<T>::operator*() const noexcept
 {
 	return payload;
 }
 
 template <typename T>
-constexpr T& TResult<T>::operator*()
+constexpr T& TResult<T>::operator*() noexcept
 {
 	return payload;
 }
 
 template <typename T>
-constexpr T const* TResult<T>::operator->() const
+constexpr T const* TResult<T>::operator->() const noexcept
 {
 	return &payload;
 }
 
 template <typename T>
-constexpr T* TResult<T>::operator->()
+constexpr T* TResult<T>::operator->() noexcept
 {
 	return &payload;
 }
 
-inline constexpr TResult<void>::operator bool() const
+inline constexpr TResult<void>::TResult(bool bResult) noexcept : bResult(bResult) {}
+
+inline constexpr TResult<void>::operator bool() const noexcept
 {
 	return bResult;
 }
 
 template <typename T>
-constexpr inline bool operator==(Ref<T> lhs, Ref<T> rhs)
+constexpr inline bool operator==(Ref<T> lhs, Ref<T> rhs) noexcept
 {
 	return lhs.pPtr == rhs.pPtr;
 }
 
 template <typename T>
-constexpr inline bool operator!=(Ref<T> lhs, Ref<T> rhs)
+constexpr inline bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept
 {
 	return lhs.pPtr != rhs.pPtr;
 }

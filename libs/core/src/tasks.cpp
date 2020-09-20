@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <array>
-#include <atomic>
 #include <optional>
 #include <vector>
+#include <core/counter.hpp>
 #include <core/threads.hpp>
 #include <core/log.hpp>
 #include <core/tasks.hpp>
@@ -15,7 +15,7 @@ namespace tasks
 {
 struct Worker final
 {
-	threads::Scoped thread;
+	threads::TScoped thread;
 
 	Worker(std::size_t idx);
 };
@@ -34,7 +34,7 @@ class Queue final
 private:
 	kt::async_queue<Task> m_queue;
 	std::atomic<bool> m_bWork;
-	std::atomic<s64> m_nextID;
+	TCounter<s64> m_nextID;
 
 public:
 	Queue();
@@ -54,7 +54,7 @@ public:
 	void deinit();
 };
 
-std::string_view const g_tName = "le::tasks";
+constexpr std::string_view g_tName = "tasks";
 Queue g_queue;
 std::vector<Worker> g_workers;
 constexpr std::size_t maxWorkers = 256;
@@ -63,7 +63,6 @@ std::array<std::atomic<bool>, maxWorkers> g_busy;
 Queue::Queue()
 {
 	m_bWork.store(true);
-	m_nextID.store(0);
 }
 
 Queue::~Queue()

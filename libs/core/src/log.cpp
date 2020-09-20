@@ -22,7 +22,7 @@ struct FileLogger final
 {
 	FileLogger();
 
-	threads::Scoped thread;
+	threads::TScoped thread;
 };
 
 std::filesystem::path g_logFilePath;
@@ -96,7 +96,7 @@ void io::log(Level level, std::string text, [[maybe_unused]] std::string_view fi
 	lock.unlock();
 	if constexpr (g_log_bSourceLocation)
 	{
-		static std::string_view const parentStr = "../";
+		static constexpr std::string_view parentStr = "../";
 		auto const fileName = std::filesystem::path(file).generic_string();
 		std::string_view fileStr(fileName);
 		for (auto search = fileStr.find(parentStr); search == 0; search = fileStr.find(parentStr))

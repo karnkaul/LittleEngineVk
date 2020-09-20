@@ -120,12 +120,6 @@ struct Queue final
 	u32 arrayIndex = 0;
 };
 
-struct HandleQueues final
-{
-	vk::SharingMode mode;
-	std::vector<u32> indices;
-};
-
 struct AllocInfo final
 {
 	vk::DeviceMemory memory;

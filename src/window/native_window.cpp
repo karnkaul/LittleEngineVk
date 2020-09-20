@@ -136,7 +136,7 @@ vk::SurfaceKHR NativeWindow::createSurface([[maybe_unused]] vk::Instance instanc
 	return ret;
 }
 
-void NativeWindow::show(bool bCentreCursor) const
+void NativeWindow::show([[maybe_unused]] bool bCentreCursor) const
 {
 #if defined(LEVK_USE_GLFW)
 	auto pWindow = cast<GLFWwindow>();

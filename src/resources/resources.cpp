@@ -318,7 +318,7 @@ Map<Font, Font::Impl> g_fonts;
 Map<Model, Model::Impl> g_models;
 
 bool g_bInit = false;
-Counter<s32> g_counter;
+TCounter<s32> g_counter;
 } // namespace
 
 res::Semaphore res::acquire()
@@ -731,8 +731,8 @@ void res::init()
 	if (!g_bInit)
 	{
 		g_bInit = true;
-		constexpr static std::array<u8, 4> white1pxBytes = {0xff, 0xff, 0xff, 0xff};
-		constexpr static std::array<u8, 4> black1pxBytes = {0x0, 0x0, 0x0, 0x0};
+		static constexpr std::array<u8, 4> white1pxBytes = {0xff, 0xff, 0xff, 0xff};
+		static constexpr std::array<u8, 4> black1pxBytes = {0x0, 0x0, 0x0, 0x0};
 		auto semaphore = acquire();
 		{
 			Shader::CreateInfo info;
@@ -789,10 +789,10 @@ void res::init()
 			auto const status = font.status();
 			if (status == Status::eIdle || status == Status::eError)
 			{
-				LOG_E("[le::resources] Failed to load default font [{}]!", s_jsonID.generic_string());
+				LOG_E("[resources] Failed to load default font [{}]!", s_jsonID.generic_string());
 			}
 		}
-		LOG_I("[le::resources] initialised");
+		LOG_I("[resources] initialised");
 	}
 }
 
@@ -819,7 +819,7 @@ void res::waitIdle()
 	}
 	bool bTimeout = elapsed >= timeout;
 	ASSERT(!bTimeout, "Timeout waiting for Resources! Expect a crash");
-	LOGIF_E(bTimeout, "[le::resources] Timeout waiting for Resources! Expect crashes/hangs!");
+	LOGIF_E(bTimeout, "[resources] Timeout waiting for Resources! Expect crashes/hangs!");
 	waitLoading(g_shaders);
 	waitLoading(g_samplers);
 	waitLoading(g_textures);
@@ -842,7 +842,7 @@ void res::deinit()
 		release(g_fonts);
 		release(g_models);
 		g_bInit = false;
-		LOG_I("[le::resources] deinitialised");
+		LOG_I("[resources] deinitialised");
 	}
 }
 

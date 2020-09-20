@@ -11,7 +11,7 @@ namespace le
 {
 std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount) noexcept
 {
-	constexpr static std::array suffixes = {"B"sv, "KiB"sv, "MiB"sv, "GiB"sv};
+	static constexpr std::array suffixes = {"B"sv, "KiB"sv, "MiB"sv, "GiB"sv};
 	f32 bytes = f32(byteCount);
 	std::size_t idx = 0;
 	while (bytes > 1024.0f && idx < 4)
@@ -22,7 +22,7 @@ std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount) noexcept
 	return {bytes, suffixes[idx < 4 ? idx : 3]};
 }
 
-std::string utils::demangle(std::string_view name)
+std::string utils::demangle(std::string_view name, bool bMinimal)
 {
 	std::string ret(name);
 #if defined(__GNUG__)
@@ -34,8 +34,8 @@ std::string utils::demangle(std::string_view name)
 	}
 	std::free(szRes);
 #else
-	static std::string_view const CLASS = "class ";
-	static std::string_view const STRUCT = "struct ";
+	static constexpr std::string_view CLASS = "class ";
+	static constexpr std::string_view STRUCT = "struct ";
 	auto idx = ret.find(CLASS);
 	if (idx == 0)
 	{
@@ -47,6 +47,17 @@ std::string utils::demangle(std::string_view name)
 		ret = ret.substr(STRUCT.size());
 	}
 #endif
+	if (bMinimal)
+	{
+		static constexpr std::string_view prefix = "::";
+		auto search = ret.find(prefix);
+		while (search < ret.size())
+		{
+			ret = ret.substr(search + prefix.size());
+			search = ret.find(prefix);
+		}
+		return ret;
+	}
 	return ret;
 }
 

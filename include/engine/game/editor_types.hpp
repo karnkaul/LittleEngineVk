@@ -98,7 +98,7 @@ template <typename Flags>
 struct FlagsWidget
 {
 	using type = typename Flags::type;
-	constexpr static std::size_t size = Flags::size;
+	static constexpr std::size_t size = Flags::size;
 
 	FlagsWidget(Span<sv> ids, Flags& out_flags);
 };

@@ -24,7 +24,7 @@ DemoLevel::DemoLevel()
 	// clang-format on
 	m_res.triangle = res::load("demo/triangle", meshInfo);
 	meshInfo.geometry = gfx::createQuad();
-	meshInfo.material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eLit, res::Material::Flag::eOpaque});
+	meshInfo.material.flags.set(res::Material::Flag::eTextured | res::Material::Flag::eLit | res::Material::Flag::eOpaque);
 	meshInfo.material.material = m_res.texturedLit;
 	meshInfo.material.flags.reset(res::Material::Flag::eOpaque);
 	m_res.quad = res::load("demo/quad", meshInfo);
@@ -46,44 +46,46 @@ DemoLevel::DemoLevel()
 	m_data.eid1 = gs::spawnProp("sphere");
 	m_data.eid2 = gs::spawnProp("model0");
 	m_data.eid3 = gs::spawnProp("model1");
-	m_data.eui0 = gs::spawnProp("fps");
-	m_data.eui1 = registry().spawnEntity("dt");
-	m_data.eui2 = registry().spawnEntity("tris");
-	m_data.sceneDesc = registry().spawnEntity<SceneDesc>("scene_desc");
+	auto [eui0, ui0c] = gs::spawnProp<UIComponent>("fps");
+	m_data.eui0 = eui0;
+	auto& [tui0] = ui0c;
+
+	m_data.eui1 = registry().spawn("dt");
+	m_data.eui2 = registry().spawn("tris");
 	m_data.pointer = gs::spawnProp("pointer");
 
 	Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
 	textInfo.data.scale = 0.25f;
 	textInfo.id = "fps";
-	registry().addComponent<UIComponent>(m_data.eui0)->setText(textInfo);
+	tui0.setText(textInfo);
 	textInfo.data.scale = 0.15f;
 	textInfo.data.colour = colours::cyan;
 	textInfo.data.pos.y -= 100.0f;
 	textInfo.id = "ft";
-	registry().addComponent<UIComponent>(m_data.eui1)->setText(textInfo);
+	registry().attach<UIComponent>(m_data.eui1)->setText(textInfo);
 	textInfo.data.colour = colours::yellow;
 	textInfo.data.pos.y -= 100.0f;
-	textInfo.data.pos.x = 620.0f;
+	// textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
-	registry().addComponent<UIComponent>(m_data.eui2)->setText(textInfo);
-	registry().addComponent<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
+	registry().attach<UIComponent>(m_data.eui2)->setText(textInfo);
+	registry().attach<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
 
 	m_data.freeCam.init();
 	m_data.freeCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
 	m_data.freeCam.m_camera.position = {0.0f, 1.0f, 2.0f};
 
-	registry().component<Transform>(m_data.eid0)->position({1.0f, 1.0f, -2.0f});
-	registry().addComponent<res::Mesh>(m_data.eid0, m_res.quad);
+	m_data.eid0.transform().position({1.0f, 1.0f, -2.0f});
+	registry().attach<res::Mesh>(m_data.eid0, m_res.quad);
 
-	auto& t2 = registry().component<Transform>(m_data.eid1)->position({0.0f, 0.0f, -2.0f});
-	registry().addComponent<res::Mesh>(m_data.eid1, m_res.sphere);
+	m_data.eid1.transform().position({0.0f, 0.0f, -2.0f});
+	registry().attach<res::Mesh>(m_data.eid1, m_res.sphere);
 
-	registry().component<Transform>(m_data.eid2)->position({-1.0f, 1.0f, -2.0f}).parent(&t2);
-	registry().addComponent<res::Model>(m_data.eid2);
+	m_data.eid2.transform().position({-1.0f, 1.0f, -2.0f}).parent(&m_data.eid1.transform());
+	registry().attach<res::Model>(m_data.eid2);
 
-	registry().component<Transform>(m_data.eid3)->position({0.0f, -1.0f, -3.0f});
-	registry().addComponent<res::Model>(m_data.eid3);
+	m_data.eid3.transform().position({0.0f, -1.0f, -3.0f});
+	registry().attach<res::Model, Time>(m_data.eid3); // Test attaching multiple components
 
 	m_input.context.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
 	m_input.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
@@ -101,12 +103,18 @@ DemoLevel::DemoLevel()
 	m_data.temp.mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
 	m_data.temp.addTrigger("test2", input::Key::eK);
 
-	auto pDesc = registry().component<SceneDesc>(m_data.sceneDesc);
-	pDesc->dirLights = {m_data.dirLight0, m_data.dirLight1};
-	pDesc->clearColour = Colour(0x030203ff);
-	pDesc->skyboxCubemapID = "skyboxes/sky_dusk";
-	pDesc->uiSpace = {1280.0f, 720.0f, 2.0f};
-	pDesc->flags = SceneDesc::Flag::eScissoredUI;
+	auto& desc = gs::sceneDesc();
+	desc.camera = m_data.freeCam.m_camera;
+	desc.dirLights = {m_data.dirLight0, m_data.dirLight1};
+	desc.clearColour = Colour(0x030203ff);
+	desc.skyboxCubemapID = "skyboxes/sky_dusk";
+	desc.uiSpace = {1280.0f, 720.0f, 2.0f};
+	desc.flags = gs::SceneDesc::Flag::eScissoredUI;
+
+	// for (auto i = 0; i < 1000; ++i)
+	// {
+	// 	gs::spawnProp(fmt::format("test_{}", i));
+	// }
 }
 
 void DemoLevel::tick(Time dt)
@@ -132,7 +140,7 @@ void DemoLevel::tick(Time dt)
 
 	if (m_data.asyncModel0.loaded())
 	{
-		if (auto pModel = registry().component<res::Model>(m_data.eid2))
+		if (auto pModel = registry().find<res::Model>(m_data.eid2))
 		{
 			*pModel = m_data.asyncModel0.resource().payload;
 		}
@@ -140,7 +148,7 @@ void DemoLevel::tick(Time dt)
 	}
 	if (m_data.asyncModel1.loaded())
 	{
-		if (auto pModel = registry().component<res::Model>(m_data.eid3))
+		if (auto pModel = registry().find<res::Model>(m_data.eid3))
 		{
 			*pModel = m_data.asyncModel1.resource().payload;
 		}
@@ -173,13 +181,12 @@ void DemoLevel::tick(Time dt)
 	}
 
 	m_data.freeCam.tick(dt);
-	camera() = m_data.freeCam.m_camera;
 
 	m_fps = m_data.fps.update();
-	registry().component<UIComponent>(m_data.eui0)->setText(fmt::format("{}FPS", m_fps));
-	registry().component<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.to_s() * 1000));
-	registry().component<UIComponent>(m_data.eui2)->setText(fmt::format("{} triangles", engine::mainWindow()->renderer().m_stats.trisDrawn));
-	[[maybe_unused]] auto& quadT = registry().component<Transform>(m_data.pointer)->position({input::worldToUI(input::cursorPosition()), 1.0f});
+	registry().find<UIComponent>(m_data.eui0)->setText(fmt::format("{}FPS", m_fps));
+	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.to_s() * 1000));
+	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} entities", registry().size()));
+	[[maybe_unused]] auto& quadT = registry().find<Transform>(m_data.pointer)->position({input::worldToUI(input::cursorPosition()), 1.0f});
 	// quadT.orientglm::rotate(quadT.orient), glm::radians(dt.to_s() * 50), gfx::g_nFront));
 
 	{
@@ -189,7 +196,7 @@ void DemoLevel::tick(Time dt)
 		m_data.eid2.transform().orient(glm::rotate(m_data.eid2.transform().orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 	}
 
-	registry().component<SceneDesc>(m_data.sceneDesc)->pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
+	gs::sceneDesc().pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
 }
 
 SceneBuilder const& DemoLevel::builder() const
@@ -202,11 +209,11 @@ void DemoLevel::onManifestLoaded()
 	m_res.sphere.resource.material().diffuse = res::find<res::Texture>(m_res.container2).payload;
 	m_res.sphere.resource.material().specular = res::find<res::Texture>(m_res.container2_specular).payload;
 	m_res.quad.resource.material().diffuse = res::find<res::Texture>(m_res.awesomeface).payload;
-	if (auto pModel = registry().component<res::Model>(m_data.eid3))
+	if (auto pModel = registry().find<res::Model>(m_data.eid3))
 	{
 		*pModel = res::find<res::Model>(m_data.model1id).payload;
 	}
-	if (auto pModel = registry().component<res::Model>(m_data.eid2))
+	if (auto pModel = registry().find<res::Model>(m_data.eid2))
 	{
 		*pModel = res::find<res::Model>(m_data.model0id).payload;
 	}

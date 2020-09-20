@@ -132,13 +132,13 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	gfx::Renderer::Batch batchUI;
 	gfx::Pipeline pipe3D, pipeUI;
 	glm::vec3 uiSpace = glm::vec3(fRenderArea, 2.0f);
-	SceneDesc::Flags flags;
+	gs::SceneDesc::Flags flags;
 	{
-		auto view = registry.view<SceneDesc>();
+		auto view = registry.view<gs::SceneDesc>();
 		if (!view.empty())
 		{
 			auto& [_, query] = *view.begin();
-			auto const& desc = std::get<SceneDesc const&>(query);
+			auto const& desc = std::get<gs::SceneDesc const&>(query);
 			scene.clear = {desc.clearDepth, desc.clearColour};
 			scene.dirLights = desc.dirLights;
 			if (!desc.skyboxCubemapID.empty())
@@ -158,7 +158,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 			}
 		}
 	}
-	engine::g_uiSpace = flags.test(SceneDesc::Flag::eDynamicUI) ? glm::vec3(fRenderArea, uiSpace.z) : uiProjection(uiSpace, iRenderArea);
+	engine::g_uiSpace = flags.test(gs::SceneDesc::Flag::eDynamicUI) ? glm::vec3(fRenderArea, uiSpace.z) : uiProjection(uiSpace, iRenderArea);
 	{
 		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view)
@@ -187,7 +187,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 			auto meshes = ui.meshes();
 			if (!meshes.empty())
 			{
-				auto pTransform = registry.component<Transform>(entity);
+				auto pTransform = registry.find<Transform>(entity);
 				batchUI.drawables.push_back({std::move(meshes), pTransform ? *pTransform : Transform::s_identity, pipeUI});
 			}
 		}
@@ -198,7 +198,7 @@ gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry con
 	}
 	if (!batchUI.drawables.empty())
 	{
-		if (!flags.test(SceneDesc::Flag::eDynamicUI) && flags.test(SceneDesc::Flag::eScissoredUI))
+		if (!flags.test(gs::SceneDesc::Flag::eDynamicUI) && flags.test(gs::SceneDesc::Flag::eScissoredUI))
 		{
 			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSpace.x / engine::g_uiSpace.x, uiSpace.y / engine::g_uiSpace.y});
 		}

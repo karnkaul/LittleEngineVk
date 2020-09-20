@@ -1,7 +1,7 @@
 project(levk-core)
 
 # Library
-glob_sources(SOURCES "*.?pp")
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 # -fPIC for fmt
@@ -27,7 +27,17 @@ target_link_libraries(${PROJECT_NAME}
 	PRIVATE
 		levk-interface
 		physfs-static
-		$<$<STREQUAL:${PLATFORM},Linux>:pthread>
-		$<$<STREQUAL:${PLATFORM},Linux>:stdc++fs>
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 )
+
+# PCH
+if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
+	set(PRECOMPILE
+		<deque>
+		<filesystem>
+		<string>
+		<unordered_map>
+		<vector>
+	)
+	target_precompile_headers(${PROJECT_NAME} PRIVATE ${PRECOMPILE})
+endif()

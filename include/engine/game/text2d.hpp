@@ -13,11 +13,6 @@ public:
 		res::Font font;
 	};
 
-protected:
-	res::Font::Text m_data;
-	res::Font m_font;
-	res::Scoped<res::Mesh> m_mesh;
-
 public:
 	Text2D() = default;
 	Text2D(Text2D&&) = default;
@@ -33,5 +28,10 @@ public:
 	res::Mesh mesh() const;
 	bool ready() const;
 	bool busy() const;
+
+protected:
+	res::Font::Text m_data;
+	res::Font m_font;
+	res::TScoped<res::Mesh> m_mesh;
 };
 } // namespace le

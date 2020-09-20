@@ -26,8 +26,7 @@ bool Monitor::update()
 				{
 					// failed to load file, abort reload
 					bSuccess = false;
-					++m_reloadFails;
-					if (m_reloadFails >= m_reloadTries)
+					if (++m_reloadFails >= m_reloadTries)
 					{
 						LOG_E("[{}] Failed to reload file data! (Re-save to retry)", idStr);
 						break;

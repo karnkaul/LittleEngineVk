@@ -71,14 +71,16 @@ gfx::Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsag
 	{
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		bufferInfo.queueFlags = gfx::QFlag::eGraphics;
+		bufferInfo.share = vk::SharingMode::eExclusive;
 	}
 	else
 	{
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+		bufferInfo.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
 	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
-	bufferInfo.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
 	bufferInfo.name = name;
 	return gfx::vram::createBuffer(bufferInfo);
 };
@@ -941,8 +943,8 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info)
 	}
 	ASSERT(material.material.status() == res::Status::eReady, "Material is not ready!");
 	material.diffuse = sheet;
-	material.flags.set({res::Material::Flag::eTextured, res::Material::Flag::eUI, res::Material::Flag::eDropColour});
-	material.flags.reset({res::Material::Flag::eOpaque, res::Material::Flag::eLit});
+	material.flags.set(res::Material::Flag::eTextured | res::Material::Flag::eUI | res::Material::Flag::eDropColour);
+	material.flags.reset(res::Material::Flag::eOpaque | res::Material::Flag::eLit);
 	out_info.material = material;
 	out_info.sheet = sheet;
 #if defined(LEVK_RESOURCES_HOT_RELOAD)

@@ -1,4 +1,5 @@
 #include <deque>
+#include <fstream>
 #include <list>
 #include <mutex>
 #include <core/log_config.hpp>
@@ -47,8 +48,8 @@ kt::lockable<std::mutex> g_logMutex;
 struct
 {
 	WindowID window;
-	OnInput::Token inputToken;
-	OnFocus::Token focusToken;
+	OnInput::Tk inputToken;
+	OnFocus::Tk focusToken;
 	bool bEnabled = false;
 	bool bFocus = true;
 	std::unordered_set<input::Key> pressed;
@@ -143,10 +144,9 @@ void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
 	if (search != emap.end())
 	{
 		auto [pTransform, entity] = *search;
-		auto node = TreeNode(registry.entityName(entity), g_inspecting.entity == entity, pTransform->children().empty(), true, false);
+		auto node = TreeNode(registry.name(entity), g_inspecting.entity == entity, pTransform->children().empty(), true, false);
 		if (node.test(GUI::eLeftClicked))
 		{
-			LOG_D("Selected: {}", registry.entityName(entity));
 			bool const bSelect = g_inspecting.entity != entity;
 			g_inspecting = {bSelect ? entity : Entity(), bSelect ? pTransform : nullptr};
 		}
@@ -290,13 +290,13 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 	{
 		return;
 	}
-	auto name = gs::guiName<res::Material>();
+	auto name = utils::tName<res::Material>();
 	if (auto matInst = TreeNode(fmt::format("{} Instance {}", name, idx)))
 	{
 		constexpr std::array ids = {"Textured"sv, "Lit"sv, "Opaque"sv, "Drop Colour"sv};
 		FlagsWidget<res::Material::Flags> material(ids, pInfo->material.flags);
 		TWidget<Colour> tint("Tint", pInfo->material.tint);
-		auto name = gs::guiName<res::Texture>();
+		auto name = utils::tName<res::Texture>();
 		if (auto diff = TreeNode(fmt::format("{}: Diffuse", name)))
 		{
 			inspectResource<res::Texture>(
@@ -309,7 +309,7 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 				pInfo->material.specular, name, fmt::format("M{} specular", idx), [pInfo](res::Texture const& tex) { pInfo->material.specular = tex; },
 				[](res::Texture const& tex) { return res::info(tex).type == res::Texture::Type::e2D; }, pos, size);
 		}
-		name = gs::guiName<res::Material>();
+		name = utils::tName<res::Material>();
 		if (auto mat = TreeNode(name))
 		{
 			inspectResource<res::Material>(
@@ -333,31 +333,46 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 {
 	if (g_inspecting.entity != Entity())
 	{
-		ImGui::LabelText("", "%s", registry.entityName(g_inspecting.entity).data());
+		ImGui::LabelText("", "%s", registry.name(g_inspecting.entity).data());
+		if (auto pInfo = registry.find<Registry::Info>(g_inspecting.entity))
+		{
+			static std::string s_buf;
+			TWidget<std::string> name("##EntityNameEdit", s_buf, 150.0f);
+			sv const nn = s_buf.data();
+			if (nn.empty())
+			{
+				s_buf = pInfo->name;
+			}
+			if (Button("Edit"))
+			{
+				pInfo->name = s_buf.data();
+				s_buf.clear();
+			}
+		}
 		bool const bEnabled = registry.enabled(g_inspecting.entity);
 		if (Button(bEnabled ? "Disable" : "Enable"))
 		{
-			registry.setEnabled(g_inspecting.entity, !bEnabled);
+			registry.enable(g_inspecting.entity, !bEnabled);
 		}
 		Styler s(Style::eSameLine);
 		if (auto search = g_spawned.find(g_inspecting.entity); search != g_spawned.end() && Button("Destroy"))
 		{
-			if (auto pTransform = registry.component<Transform>(g_inspecting.entity))
+			if (auto pTransform = registry.find<Transform>(g_inspecting.entity))
 			{
 				Prop prop(g_inspecting.entity, *pTransform);
 				gs::destroy(prop);
 			}
 			else
 			{
-				registry.destroyEntity(g_inspecting.entity);
+				registry.destroy(g_inspecting.entity);
 			}
 			g_spawned.erase(g_inspecting.entity);
 			g_inspecting = {};
 		}
 		s = Styler(Style::eSeparator);
-		if (auto pDesc = registry.component<SceneDesc>(g_inspecting.entity))
+		if (auto pDesc = registry.find<gs::SceneDesc>(g_inspecting.entity))
 		{
-			if (auto desc = TreeNode("SceneDesc"))
+			if (auto desc = TreeNode("gs::SceneDesc"))
 			{
 				if (auto skybox = TreeNode("Skybox"))
 				{
@@ -399,6 +414,13 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 						}
 					}
 				}
+				if (auto camera = TreeNode("Camera"))
+				{
+					gfx::Camera& cam = pDesc->camera;
+					TWidget<glm::vec3> pos("pos", cam.position, false);
+					TWidget<glm::quat> orn("orn", cam.orientation);
+				}
+				TWidget<Colour> clearColour("Clear", pDesc->clearColour);
 			}
 		}
 		if (g_inspecting.pTransform)
@@ -406,8 +428,8 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			TWidget<Transform> t("Pos", "Orn", "Scl", *g_inspecting.pTransform);
 			Styler s(Style::eSeparator);
 
-			auto pMesh = registry.component<res::Mesh>(g_inspecting.entity);
-			auto name = gs::guiName<res::Mesh>();
+			auto pMesh = registry.find<res::Mesh>(g_inspecting.entity);
+			auto name = utils::tName<res::Mesh>();
 			if (auto mesh = TInspector<res::Mesh>(registry, g_inspecting.entity, pMesh))
 			{
 				inspectResource(
@@ -415,14 +437,14 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 
 				inspectMatInst(*pMesh, 0, pos, size);
 			}
-			auto pModel = registry.component<res::Model>(g_inspecting.entity);
+			auto pModel = registry.find<res::Model>(g_inspecting.entity);
 			auto pModelImpl = pModel ? res::impl(*pModel) : nullptr;
-			name = gs::guiName<res::Model>();
+			name = utils::tName<res::Model>();
 			if (auto model = TInspector<res::Model>(registry, g_inspecting.entity, pModel))
 			{
 				inspectResource(
 					*pModel, name, name, [pModel](res::Model model) { *pModel = model; }, &dummy<res::Model>, pos, size);
-				static std::deque<res::Scoped<res::Mesh>> s_empty;
+				static std::deque<res::TScoped<res::Mesh>> s_empty;
 				auto& meshes = pModelImpl ? pModelImpl->loadedMeshes() : s_empty;
 				std::size_t idx = 0;
 				for (auto& mesh : meshes)
@@ -501,6 +523,122 @@ void logLevelDropdown()
 }
 #pragma endregion widgets
 
+#pragma region sceneIO
+namespace sceneIO
+{
+std::string camelify(std::string_view str)
+{
+	std::string ret;
+	ret.reserve(str.size());
+	for (auto c : str)
+	{
+		if (std::isupper(c) && !ret.empty())
+		{
+			ret += '_';
+		}
+		ret += (char)std::tolower(c);
+	}
+	return ret;
+}
+
+void addMesh(dj::object& out_entry, res::Mesh mesh)
+{
+	out_entry.add<dj::string>("mesh_id", mesh.info().id.generic_string());
+}
+
+void addModel(dj::object& out_entry, res::Model model)
+{
+	out_entry.add<dj::string>("model_id", model.info().id.generic_string());
+}
+
+void addDesc(dj::object& out_entry, gs::SceneDesc const& desc)
+{
+	dj::object d;
+	if (!desc.skyboxCubemapID.empty())
+	{
+		d.add<dj::string>("skybox_id", desc.skyboxCubemapID.generic_string());
+	}
+	d.add<dj::string>("clear_colour", desc.clearColour.toStr(true));
+	out_entry.add("scene_desc", std::move(d));
+}
+
+void walkSceneTree(dj::array& out_root, Transform& root, gs::EMap const& emap, Registry& reg, std::unordered_set<Entity, EntityHasher>& out_added)
+{
+	auto const children = root.children();
+	auto search = emap.find(&root);
+	if (search != emap.end())
+	{
+		auto [pTransform, entity] = *search;
+		out_added.insert(entity);
+		dj::object e;
+		e.add<dj::string>("name", reg.name(entity));
+		if (auto pMesh = reg.find<res::Mesh>(entity))
+		{
+			addMesh(e, *pMesh);
+		}
+		if (auto pModel = reg.find<res::Model>(entity))
+		{
+			addModel(e, *pModel);
+		}
+		auto const p = pTransform->position();
+		auto pos = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', p.x, p.y, p.z, '}');
+		auto const s = pTransform->scale();
+		auto scl = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', s.x, s.y, s.z, '}');
+		auto const o = pTransform->orientation();
+		auto orn = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {}, \"w\": {} {}", '{', o.x, o.y, o.z, o.w, '}');
+		dj::object tr;
+		tr.add<dj::object>("position", std::move(pos));
+		tr.add<dj::object>("orientation", std::move(orn));
+		tr.add<dj::object>("scale", std::move(scl));
+		auto const& children = pTransform->children();
+		if (!children.empty())
+		{
+			dj::array arr;
+			for (Transform& child : pTransform->children())
+			{
+				walkSceneTree(arr, child, emap, reg, out_added);
+			}
+			tr.add("children", std::move(arr));
+		}
+		e.add("transform", std::move(tr));
+		out_root.add(std::move(e));
+	}
+}
+
+void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity, EntityHasher> const& added)
+{
+	{
+		auto view = reg.view<gs::SceneDesc>();
+		for (auto& [entity, query] : view)
+		{
+			if (added.find(entity) == added.end())
+			{
+				dj::object e;
+				auto const& [desc] = query;
+				e.add<dj::string>("name", reg.name(entity));
+				addDesc(e, desc);
+				out_arr.add(std::move(e));
+			}
+		}
+	}
+}
+
+dj::object serialise(Args const& args)
+{
+	dj::object scene;
+	dj::array entities;
+	std::unordered_set<Entity, EntityHasher> added;
+	for (auto& child : args.pRoot->children())
+	{
+		walkSceneTree(entities, child, *args.pMap, args.pGame->registry, added);
+	}
+	residue(entities, args.pGame->registry, added);
+	scene.add("entities", std::move(entities));
+	return scene;
+}
+} // namespace sceneIO
+#pragma endregion sceneIO
+
 #pragma region layout
 void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 {
@@ -524,6 +662,29 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 			ImGui::ShowDemoWindow(&s_bImGuiDemo);
 		}
 		Styler s(Style::eSeparator);
+		if (Button("test save"))
+		{
+			auto const filename = fmt::format("{}.scene", sceneIO::camelify(gs::g_context.name));
+			if (auto file = std::ofstream(filename))
+			{
+				auto const scene = sceneIO::serialise(args);
+				auto opts = dj::g_serial_opts;
+				opts.sort_keys = opts.pretty = true;
+				auto const str = scene.serialise(opts);
+				if (file.write(str.data(), (std::streamsize)str.size()))
+				{
+					LOG_I("[{}] Scene saved to [{}]", s_tName, filename);
+				}
+				else
+				{
+					LOG_E("[{}] Failed to save scene to [{}]!", s_tName, filename);
+				}
+			}
+			else
+			{
+				LOG_E("[{}] Failed to open [{}] to save scene!", s_tName, filename);
+			}
+		}
 		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f}, args.pGame->registry);
 	}
 	ImGui::End();
@@ -551,37 +712,32 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 			{
 				Registry& registry = args.pGame->registry;
 				{
-					static std::string s_newName;
-					TWidget<std::string>("Name", s_newName, 50.0f);
-					std::string_view const newNameView = s_newName.data();
-					if (!newNameView.empty())
+					static std::string s_buf;
+					TWidget<std::string>("Name", s_buf, 150.0f);
+					sv const nn = s_buf.data();
+					if (nn.empty())
 					{
-						Styler s(Style::eSameLine);
-						if (Button("Spawn Prop"))
-						{
-							auto prop = gs::spawnProp(newNameView.data());
-							g_inspecting = {prop.entity, prop.pTransform};
-							g_spawned.insert(g_inspecting.entity);
-							s_newName.clear();
-						}
+						s_buf = "[Unnamed]";
+					}
+					if (Button("Spawn Prop"))
+					{
+						auto prop = gs::spawnProp(nn.data());
+						g_inspecting = {prop.entity, prop.pTransform};
+						g_spawned.insert(g_inspecting.entity);
+						s_buf.clear();
 					}
 				}
 				auto s = Styler(Style::eSeparator);
-				auto view = registry.view<SceneDesc>();
+				auto view = registry.view<gs::SceneDesc>();
 				if (!view.empty())
 				{
 					auto [entity, _] = *view.begin();
-					auto const node = TreeNode(registry.entityName(entity), g_inspecting.entity == entity, true, true, false);
+					auto const node = TreeNode(registry.name(entity), g_inspecting.entity == entity, true, true, false);
 					if (node.test(GUI::eLeftClicked))
 					{
 						bool const bSelect = g_inspecting.entity != entity;
 						g_inspecting = {bSelect ? entity : Entity(), nullptr};
 					}
-				}
-				else if (Button("[Add SceneDesc]"))
-				{
-					g_inspecting = {registry.spawnEntity<SceneDesc>("scene_desc"), nullptr};
-					g_spawned.insert(g_inspecting.entity);
 				}
 				s = Styler(Style::eSeparator);
 				for (Transform& transform : args.pRoot->children())
@@ -620,7 +776,7 @@ void drawLog(iv2 fbSize, s32 logHeight)
 	static Time elapsed = Time::elapsed();
 	Time frameTime = Time::elapsed() - elapsed;
 	elapsed = Time::elapsed();
-	constexpr static std::size_t maxFTs = 200;
+	static constexpr std::size_t maxFTs = 200;
 	static std::array<f32, maxFTs> ftArr;
 	static std::list<Time> fts;
 	fts.push_back(frameTime);
@@ -681,15 +837,15 @@ void drawLog(iv2 fbSize, s32 logHeight)
 			auto s = Styler(Style::eSameLine);
 			// Arrow buttons with Repeater
 			f32 const spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-			constexpr static s32 s_minCounter = 1, s_maxCounter = 20;
+			static constexpr s32 s_minTCounter = 1, s_maxTCounter = 20;
 			s32 logEntries = (s32)g_maxLogEntries / 100;
 			ImGui::PushButtonRepeat(true);
-			if (ImGui::ArrowButton("##left", ImGuiDir_Left) && logEntries > s_minCounter)
+			if (ImGui::ArrowButton("##left", ImGuiDir_Left) && logEntries > s_minTCounter)
 			{
 				--logEntries;
 			}
 			ImGui::SameLine(0.0f, spacing);
-			if (ImGui::ArrowButton("##right", ImGuiDir_Right) && logEntries < s_maxCounter)
+			if (ImGui::ArrowButton("##right", ImGuiDir_Right) && logEntries < s_maxTCounter)
 			{
 				++logEntries;
 			}
@@ -740,7 +896,7 @@ void resize(WindowImpl* pWindow)
 		eLeftBottom,
 		eRightBottom
 	};
-	constexpr static f32 nDelta = 0.01f;
+	static constexpr f32 nDelta = 0.01f;
 	static glm::vec2 const s_minXY = {0.0f, 0.35f};
 	static glm::vec2 const s_maxXY = {1.0f, 1.0f};
 	static Handle s_resizing = Handle::eNone;
@@ -793,38 +949,38 @@ void resize(WindowImpl* pWindow)
 	{
 	case Handle::eNone:
 	{
-		checkResize(nCursorPos.x, s_gameRect.left, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
-		checkResize(nCursorPos.x, s_gameRect.right, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
-		checkResize(nCursorPos.y, s_gameRect.bottom, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
-		checkResize(nCursorPos.x, s_gameRect.left, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNESW, Handle::eLeftBottom);
-		checkResize(nCursorPos.x, s_gameRect.right, nCursorPos.y, s_gameRect.bottom, input::CursorType::eResizeNWSE, Handle::eRightBottom);
+		checkResize(nCursorPos.x, s_gameRect.lt.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
+		checkResize(nCursorPos.x, s_gameRect.rb.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
+		checkResize(nCursorPos.y, s_gameRect.rb.y, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
+		checkResize(nCursorPos.x, s_gameRect.lt.x, nCursorPos.y, s_gameRect.rb.y, input::CursorType::eResizeNESW, Handle::eLeftBottom);
+		checkResize(nCursorPos.x, s_gameRect.rb.x, nCursorPos.y, s_gameRect.rb.y, input::CursorType::eResizeNWSE, Handle::eRightBottom);
 		break;
 	}
 	case Handle::eLeft:
 	{
-		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeEW);
+		doResize(s_gameRect.lt.x, nCursorPos.x, s_minXY.x, s_gameRect.rb.x, input::CursorType::eResizeEW);
 		break;
 	}
 	case Handle::eRight:
 	{
-		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeEW);
+		doResize(s_gameRect.rb.x, nCursorPos.x, s_gameRect.lt.x, s_maxXY.x, input::CursorType::eResizeEW);
 		break;
 	}
 	case Handle::eBottom:
 	{
-		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNS);
+		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNS);
 		break;
 	}
 	case Handle::eLeftBottom:
 	{
-		doResize(s_gameRect.left, nCursorPos.x, s_minXY.x, s_gameRect.right, input::CursorType::eResizeNESW);
-		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNESW);
+		doResize(s_gameRect.lt.x, nCursorPos.x, s_minXY.x, s_gameRect.rb.x, input::CursorType::eResizeNESW);
+		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNESW);
 		break;
 	}
 	case Handle::eRightBottom:
 	{
-		doResize(s_gameRect.right, nCursorPos.x, s_gameRect.left, s_maxXY.x, input::CursorType::eResizeNWSE);
-		doResize(s_gameRect.bottom, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNWSE);
+		doResize(s_gameRect.rb.x, nCursorPos.x, s_gameRect.lt.x, s_maxXY.x, input::CursorType::eResizeNWSE);
+		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNWSE);
 		break;
 	}
 	default:
@@ -917,7 +1073,7 @@ TreeNode::TreeNode(sv id)
 
 TreeNode::TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen)
 {
-	constexpr static ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	static constexpr ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	ImGuiTreeNodeFlags const branchFlags = (bLeftClickOpen ? 0 : ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
 	ImGuiTreeNodeFlags const metaFlags = (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | (bFullWidth ? ImGuiTreeNodeFlags_SpanAvailWidth : 0);
 	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | metaFlags;
@@ -1015,7 +1171,7 @@ TWidget<glm::vec3>::TWidget(sv id, glm::vec3& out_vec, bool bNormalised, f32 dv)
 TWidget<glm::quat>::TWidget(sv id, glm::quat& out_quat, f32 dq)
 {
 	auto rot = glm::eulerAngles(out_quat);
-	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &rot.x, dq);
+	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &rot.x, dq);
 	out_quat = glm::quat(rot);
 }
 
@@ -1098,11 +1254,11 @@ void editor::tick(Args const& args, Time dt)
 		g_resources.bOpen = false;
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0)
 		{
-			auto const logHeight = fbSize.y - (s32)(g_gameRect.bottom * (f32)fbSize.y);
-			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.left * (f32)fbSize.x), fbSize.y - logHeight};
-			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.right * (f32)fbSize.x), fbSize.y - logHeight};
+			auto const logHeight = fbSize.y - (s32)(g_gameRect.rb.y * (f32)fbSize.y);
+			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.lt.x * (f32)fbSize.x), fbSize.y - logHeight};
+			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.rb.x * (f32)fbSize.x), fbSize.y - logHeight};
 			Registry& reg = args.pGame->registry;
-			if (!reg.alive(g_inspecting.entity))
+			if (!reg.exists(g_inspecting.entity))
 			{
 				g_inspecting = {};
 			}

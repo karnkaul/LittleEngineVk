@@ -239,10 +239,10 @@ bool RenderContext::createSwapchain()
 		createInfo.imageColorSpace = m_metadata.colourFormat.colorSpace;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto const queues = g_device.uniqueQueues(QFlag::eGraphics | QFlag::eTransfer);
-		createInfo.imageSharingMode = queues.mode;
-		createInfo.pQueueFamilyIndices = queues.indices.data();
-		createInfo.queueFamilyIndexCount = (u32)queues.indices.size();
+		auto const indices = g_device.queueIndices(QFlag::eGraphics);
+		createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+		createInfo.pQueueFamilyIndices = indices.data();
+		createInfo.queueFamilyIndexCount = (u32)indices.size();
 		createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 		createInfo.presentMode = m_metadata.presentMode;
 		createInfo.clipped = vk::Bool32(true);
@@ -301,7 +301,7 @@ bool RenderContext::createSwapchain()
 		g_instance.destroy(prevSurface);
 	}
 	LOG_D("[{}] Swapchain created [{}x{}]", m_name, framebufferSize.x, framebufferSize.y);
-	m_flags.reset({Flag::eOutOfDate, Flag::eRenderPaused});
+	m_flags.reset(Flag::eOutOfDate | Flag::eRenderPaused);
 	return true;
 }
 

@@ -49,7 +49,7 @@ u32 TexSet::total() const
 template <typename... T>
 bool allReady(T... t)
 {
-	return (... && (t.status() == res::Status::eReady));
+	return ((t.status() == res::Status::eReady) && ...);
 }
 } // namespace
 
@@ -204,13 +204,13 @@ vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 
 {
 	vk::Viewport viewport;
 	auto const& extent = m_context.m_swapchain.extent;
-	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
+	glm::vec2 const size = nRect.size();
 	viewport.minDepth = depth.x;
 	viewport.maxDepth = depth.y;
 	viewport.width = size.x * (f32)extent.width;
 	viewport.height = -(size.y * (f32)extent.height); // flip viewport about X axis
-	viewport.x = nRect.left * (f32)extent.width;
-	viewport.y = nRect.top * (f32)extent.height - (f32)viewport.height;
+	viewport.x = nRect.lt.x * (f32)extent.width;
+	viewport.y = nRect.lt.y * (f32)extent.height - (f32)viewport.height;
 	return viewport;
 }
 
@@ -218,9 +218,9 @@ vk::Rect2D RendererImpl::transformScissor(ScreenRect const& nRect) const
 {
 	vk::Rect2D scissor;
 	auto const& extent = m_context.m_swapchain.extent;
-	glm::vec2 const size = {nRect.right - nRect.left, nRect.bottom - nRect.top};
-	scissor.offset.x = (s32)(nRect.left * (f32)extent.width);
-	scissor.offset.y = (s32)(nRect.top * (f32)extent.height);
+	glm::vec2 const size = nRect.size();
+	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.width);
+	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.height);
 	scissor.extent.width = (u32)(size.x * (f32)extent.width);
 	scissor.extent.height = (u32)(size.y * (f32)extent.height);
 	return scissor;

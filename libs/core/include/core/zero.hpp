@@ -12,36 +12,47 @@ struct TZero final
 {
 	using type = T;
 
-	constexpr static T null = Zero;
+	static constexpr T null = Zero;
 
 	T payload;
 
-	constexpr TZero(T payload = null) noexcept : payload(payload) {}
-
-	constexpr TZero(TZero&& rhs) noexcept : payload(rhs.payload)
-	{
-		rhs.payload = Zero;
-	}
-
-	constexpr TZero& operator=(TZero&& rhs) noexcept
-	{
-		if (&rhs != this)
-		{
-			payload = rhs.payload;
-			rhs.payload = Zero;
-		}
-		return *this;
-	}
-
+	constexpr TZero(T payload = null) noexcept;
+	constexpr TZero(TZero&& rhs) noexcept;
+	constexpr TZero& operator=(TZero&& rhs) noexcept;
 	constexpr TZero(TZero const&) noexcept = default;
 	constexpr TZero& operator=(TZero const&) noexcept = default;
 	~TZero() = default;
 
-	constexpr operator T() const noexcept
-	{
-		return payload;
-	}
+	constexpr operator T() const noexcept;
 };
+
+template <typename T, T Zero>
+constexpr TZero<T, Zero>::TZero(T payload) noexcept : payload(payload)
+{
+}
+
+template <typename T, T Zero>
+constexpr TZero<T, Zero>::TZero(TZero<T, Zero>&& rhs) noexcept : payload(rhs.payload)
+{
+	rhs.payload = Zero;
+}
+
+template <typename T, T Zero>
+constexpr TZero<T, Zero>& TZero<T, Zero>::operator=(TZero&& rhs) noexcept
+{
+	if (&rhs != this)
+	{
+		payload = rhs.payload;
+		rhs.payload = Zero;
+	}
+	return *this;
+}
+
+template <typename T, T Zero>
+constexpr TZero<T, Zero>::operator T() const noexcept
+{
+	return payload;
+}
 } // namespace le
 
 namespace std

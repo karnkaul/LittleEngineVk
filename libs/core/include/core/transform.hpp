@@ -11,16 +11,6 @@ namespace le
 ///
 class Transform final
 {
-private:
-	mutable glm::mat4 m_mat = glm::mat4(1.0f);
-	mutable glm::mat4 m_normalMat = glm::mat4(1.0f);
-	glm::vec3 m_position = glm::vec3(0.0f);
-	glm::quat m_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-	glm::vec3 m_scale = glm::vec3(1.0f);
-	std::list<Ref<Transform>> m_children;
-	Transform* m_pParent = nullptr;
-	mutable bool m_bDirty = false;
-
 public:
 	///
 	/// \brief Identity transform (default constructed)
@@ -120,5 +110,15 @@ public:
 	/// \brief Obtain children parented to this Transform
 	///
 	std::list<Ref<Transform>> const& children() const noexcept;
+
+private:
+	mutable glm::mat4 m_mat = glm::mat4(1.0f);
+	mutable glm::mat4 m_normalMat = glm::mat4(1.0f);
+	glm::vec3 m_position = glm::vec3(0.0f);
+	glm::quat m_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+	glm::vec3 m_scale = glm::vec3(1.0f);
+	std::list<Ref<Transform>> m_children;
+	Transform* m_pParent = nullptr;
+	mutable bool m_bDirty = false;
 };
 } // namespace le

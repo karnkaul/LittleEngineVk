@@ -68,26 +68,6 @@ Registry& Level::registry()
 	return gs::g_context.registry;
 }
 
-gfx::Camera const& Level::camera() const
-{
-	return gs::g_context.camera;
-}
-
-gfx::Camera& Level::camera()
-{
-	return gs::g_context.camera;
-}
-
-gfx::ScreenRect const& Level::gameRect() const
-{
-	return gs::g_context.gameRect;
-}
-
-gfx::ScreenRect& Level::gameRect()
-{
-	return gs::g_context.gameRect;
-}
-
 void LevelDriver::tick(Time dt)
 {
 	if (!m_bTicked)
@@ -125,7 +105,6 @@ void LevelDriver::cleanup()
 	m_active.reset();
 	Registry& reg = gs::g_context.registry;
 	reg.clear();
-	gs::g_context.camera = {};
 	gs::g_context.gameRect = {};
 }
 
@@ -138,6 +117,7 @@ void LevelDriver::unloadLoad()
 	}
 	gs::g_context.reset();
 	m_active = g_switcher.make();
+	gs::g_context.name = m_active->m_name;
 	loadReq.load = m_active->m_manifest.id;
 	loadReq.onLoaded = [l = loadReq.load.generic_string(), this]() {
 		LOG_I("[{}] loaded!", l);

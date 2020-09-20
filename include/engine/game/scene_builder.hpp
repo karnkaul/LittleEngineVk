@@ -2,9 +2,7 @@
 #include <core/flags.hpp>
 #include <core/ecs_registry.hpp>
 #include <engine/game/text2d.hpp>
-#include <engine/gfx/camera.hpp>
-#include <engine/gfx/light.hpp>
-#include <engine/gfx/pipeline.hpp>
+#include <engine/game/state.hpp>
 #include <engine/gfx/renderer.hpp>
 #include <engine/resources/resource_types.hpp>
 
@@ -22,7 +20,7 @@ struct UIComponent final
 
 	stdfs::path id;
 	Text2D text;
-	res::Scoped<res::Mesh> mesh;
+	res::TScoped<res::Mesh> mesh;
 	Flags flags;
 
 	Text2D& setText(Text2D::Info info);
@@ -32,35 +30,6 @@ struct UIComponent final
 	void reset(Flags toReset);
 
 	std::vector<res::Mesh> meshes() const;
-};
-
-struct SceneDesc final
-{
-	enum class Flag : s8
-	{
-		///
-		/// \brief UI follows screen size and aspect ratio
-		///
-		eDynamicUI,
-		///
-		/// \brief UI clipped to match its aspect ratio
-		///
-		eScissoredUI,
-		eCOUNT_
-	};
-	using Flags = TFlags<Flag>;
-
-	std::vector<gfx::DirLight> dirLights;
-	stdfs::path skyboxCubemapID;
-	///
-	/// \brief UI Transformation Space (z is depth)
-	///
-	glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
-	gfx::Pipeline pipe3D;
-	gfx::Pipeline pipeUI;
-	glm::vec2 clearDepth = {1.0f, 0.0f};
-	Colour clearColour = colours::black;
-	Flags flags = Flag::eDynamicUI;
 };
 
 class SceneBuilder

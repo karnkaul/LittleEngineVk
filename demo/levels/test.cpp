@@ -27,35 +27,41 @@ TestLevel::TestLevel()
 	m_input.context.addRange("roll", input::Key::eLeft, input::Key::eRight);
 	m_input.context.addRange("roll", input::Axis::eLeftX);
 
-	m_data.mainText = registry().spawnEntity<UIComponent>("mainText");
-	m_data.elapsedText = registry().spawnEntity<UIComponent>("elapsedText");
+	auto mainText = registry().spawn<UIComponent>("mainText");
+	m_data.mainText = mainText.entity;
+	auto elapsedText = registry().spawn<UIComponent>("elapsedText");
+	m_data.elapsedText = elapsedText.entity;
 	Text2D::Info info;
 	info.data.colour = colours::white;
 	info.data.text = "Test World";
 	info.data.scale = 0.25f;
 	info.id = "title";
-	registry().component<UIComponent>(m_data.mainText)->setText(std::move(info));
+	auto& [title] = mainText.components;
+	title.setText(std::move(info));
 	info.data.text = "0";
 	info.data.pos = {0.0f, -100.0f, 0.0f};
 	info.id = "elapsed";
 	m_data.elapsed = {};
-	registry().component<UIComponent>(m_data.elapsedText)->setText(std::move(info));
-	camera().position = {0.0f, 1.0f, 2.0f};
+	auto& [elapsed] = elapsedText.components;
+	elapsed.setText(std::move(info));
+	gs::mainCamera().position = {0.0f, 1.0f, 2.0f};
 
 	m_game.ship = gs::spawnProp("ship");
 	m_game.ship.transform().position({0.0f, 0.0f, -3.0f});
-	*registry().addComponent<res::Mesh>(m_game.ship.entity) = *res::find<res::Mesh>("meshes/cube");
+	*registry().attach<res::Mesh>(m_game.ship.entity) = *res::find<res::Mesh>("meshes/cube");
 }
 
 void TestLevel::tick(Time dt)
 {
 	m_data.elapsed += dt;
-	registry().component<UIComponent>(m_data.elapsedText)->setText(fmt::format("{:.1f}", m_data.elapsed.to_s()));
+	registry().find<UIComponent>(m_data.elapsedText)->setText(fmt::format("{:.1f}", m_data.elapsed.to_s()));
 
-	auto pTransform = registry().component<Transform>(m_game.ship);
-	glm::quat const orientTarget = glm::rotate(gfx::g_qIdentity, glm::radians(m_game.roll * m_game.maxRoll), gfx::g_nFront);
-	m_game.orientTarget = glm::slerp(m_game.orientTarget, orientTarget, dt.to_s() * 10);
-	pTransform->orient(m_game.orientTarget);
+	if (auto pTransform = registry().find<Transform>(m_game.ship))
+	{
+		glm::quat const orientTarget = glm::rotate(gfx::g_qIdentity, glm::radians(m_game.roll * m_game.maxRoll), gfx::g_nFront);
+		m_game.orientTarget = glm::slerp(m_game.orientTarget, orientTarget, dt.to_s() * 10);
+		pTransform->orient(m_game.orientTarget);
+	}
 
 	m_game.roll = maths::lerp(m_game.roll, 0.0f, dt.to_s() * 10);
 }

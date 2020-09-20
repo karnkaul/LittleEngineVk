@@ -35,81 +35,36 @@ struct Span
 	T const* pData;
 	std::size_t extent;
 
-	constexpr Span() noexcept : pData(nullptr), extent(0) {}
-	constexpr explicit Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent) {}
-	constexpr Span(T const& data) noexcept : pData(&data), extent(1) {}
-	constexpr Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size()) {}
+	constexpr Span() noexcept;
+	constexpr explicit Span(T const* pData, std::size_t extent) noexcept;
+	constexpr Span(T const& data) noexcept;
+	constexpr Span(std::initializer_list<T> const& list) noexcept;
 	template <std::size_t N>
-	constexpr Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N)
-	{
-	}
+	constexpr Span(std::array<T, N> const& arr) noexcept;
 	template <std::size_t N>
-	constexpr Span(T (&arr)[N]) noexcept : pData(N == 0 ? nullptr : &arr[0]), extent(N)
-	{
-	}
-	Span(std::vector<T> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size()) {}
+	constexpr Span(T (&arr)[N]) noexcept;
+	constexpr Span(std::vector<T> const& vec) noexcept;
 
 	constexpr Span<T>(Span<T>&&) noexcept = default;
 	constexpr Span<T>& operator=(Span<T>&&) noexcept = default;
 	constexpr Span<T>(Span<T> const&) noexcept = default;
 	constexpr Span<T>& operator=(Span<T> const&) noexcept = default;
 
-	std::size_t size() const noexcept
-	{
-		return extent;
-	}
+	constexpr std::size_t size() const noexcept;
+	constexpr bool empty() const noexcept;
+	constexpr const_iterator begin() const noexcept;
+	constexpr const_iterator end() const noexcept;
 
-	bool empty() const noexcept
-	{
-		return extent == 0;
-	}
-
-	const_iterator begin() const noexcept
-	{
-		return pData;
-	}
-
-	const_iterator end() const noexcept
-	{
-		return pData + extent;
-	}
-
-	T const& at(std::size_t idx) const
-	{
-		ASSERT(idx < extent, "OOB access!");
-		return *(pData + idx);
-	}
+	T const& at(std::size_t idx) const;
 };
 
 namespace utils
 {
 template <typename T>
-FutureState futureState(std::future<T> const& future) noexcept
-{
-	if (future.valid())
-	{
-		using namespace std::chrono_literals;
-		auto const status = future.wait_for(0ms);
-		switch (status)
-		{
-		default:
-		case std::future_status::deferred:
-			return FutureState::eDeferred;
-		case std::future_status::ready:
-			return FutureState::eReady;
-		case std::future_status::timeout:
-			return FutureState::eTimeout;
-		}
-	}
-	return FutureState::eInvalid;
-}
+FutureState futureState(std::future<T> const& future) noexcept;
 
 template <typename T>
-bool ready(std::future<T> const& future) noexcept
-{
-	using namespace std::chrono_literals;
-	return future.valid() && future.wait_for(0ms) == std::future_status::ready;
-}
+bool ready(std::future<T> const& future) noexcept;
 
 ///
 /// \brief Convert `byteCount` bytes into human-friendly format
@@ -120,30 +75,28 @@ std::pair<f32, std::string_view> friendlySize(u64 byteCount) noexcept;
 ///
 /// \brief Demangle a compiler symbol name
 ///
-std::string demangle(std::string_view name);
+std::string demangle(std::string_view name, bool bMinimal);
 
 ///
-/// \brief Obtain demangled type name of an object
+/// \brief Obtain demangled type name of an object or a type
 ///
-template <typename T>
-std::string tName(T const& t)
+template <typename T, bool Minimal = true>
+std::string tName(T const* pT = nullptr)
 {
-	return demangle(typeid(t).name());
+	if constexpr (Minimal)
+	{
+		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), true);
+	}
+	else
+	{
+		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), false);
+	}
 }
 
 ///
 /// \brief Remove namespace prefixes from a type string
 ///
 void removeNamesapces(std::string& out_name);
-
-///
-/// \brief Obtain demangled type name of a type
-///
-template <typename T>
-std::string tName()
-{
-	return demangle(typeid(T).name());
-}
 
 namespace strings
 {
@@ -194,4 +147,100 @@ void substituteChars(std::string& out_input, std::initializer_list<std::pair<cha
 bool isCharEnclosedIn(std::string_view str, std::size_t idx, std::pair<char, char> wrapper);
 } // namespace strings
 } // namespace utils
+
+template <typename T>
+constexpr Span<T>::Span() noexcept : pData(nullptr), extent(0)
+{
+}
+
+template <typename T>
+constexpr Span<T>::Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent)
+{
+}
+
+template <typename T>
+constexpr Span<T>::Span(T const& data) noexcept : pData(&data), extent(1)
+{
+}
+
+template <typename T>
+constexpr Span<T>::Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size())
+{
+}
+
+template <typename T>
+template <std::size_t N>
+constexpr Span<T>::Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N)
+{
+}
+
+template <typename T>
+template <std::size_t N>
+constexpr Span<T>::Span(T (&arr)[N]) noexcept : pData(N == 0 ? nullptr : &arr[0]), extent(N)
+{
+}
+
+template <typename T>
+constexpr Span<T>::Span(std::vector<T> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size())
+{
+}
+
+template <typename T>
+constexpr std::size_t Span<T>::size() const noexcept
+{
+	return extent;
+}
+
+template <typename T>
+constexpr bool Span<T>::empty() const noexcept
+{
+	return extent == 0;
+}
+
+template <typename T>
+constexpr typename Span<T>::const_iterator Span<T>::begin() const noexcept
+{
+	return pData;
+}
+
+template <typename T>
+constexpr typename Span<T>::const_iterator Span<T>::end() const noexcept
+{
+	return pData + extent;
+}
+
+template <typename T>
+T const& Span<T>::at(std::size_t idx) const
+{
+	ASSERT(idx < extent, "OOB access!");
+	return *(pData + idx);
+}
+
+template <typename T>
+FutureState utils::futureState(std::future<T> const& future) noexcept
+{
+	if (future.valid())
+	{
+		using namespace std::chrono_literals;
+		auto const status = future.wait_for(0ms);
+		switch (status)
+		{
+		default:
+		case std::future_status::deferred:
+			return FutureState::eDeferred;
+		case std::future_status::ready:
+			return FutureState::eReady;
+		case std::future_status::timeout:
+			return FutureState::eTimeout;
+		}
+	}
+	return FutureState::eInvalid;
+}
+
+template <typename T>
+bool utils::ready(std::future<T> const& future) noexcept
+{
+	using namespace std::chrono_literals;
+	return future.valid() && future.wait_for(0ms) == std::future_status::ready;
+}
 } // namespace le

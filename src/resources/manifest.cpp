@@ -46,7 +46,6 @@ std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceD
 														   std::vector<GUID>& out_resources, kt::lockable<std::mutex>& mutex, std::string_view jobName)
 {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
-	tasks::List taskList;
 	if (!out_toLoad.empty())
 	{
 		auto task = [&out_loaded, &out_resources, &mutex](ResourceData<T>& data) {

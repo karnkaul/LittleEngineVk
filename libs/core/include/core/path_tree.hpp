@@ -77,9 +77,6 @@ public:
 		Node const* findPattern(std::string_view search, bool bIncludeDirName) const;
 	};
 
-private:
-	NodeBase m_root;
-
 public:
 	///
 	/// \brief Add a new Entry
@@ -104,6 +101,9 @@ public:
 	{
 		return m_root.childNodes();
 	}
+
+private:
+	NodeBase m_root;
 
 private:
 	static std::deque<std::string> decompose(stdfs::path dirPath);

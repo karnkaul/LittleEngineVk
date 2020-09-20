@@ -168,18 +168,7 @@ std::deque<ArgsParser::entry> const& args() noexcept;
 /// \returns `std::nullopt` if arg is not defined, else the value of the arg (empty if key-only arg)
 ///
 template <typename Arg, typename... Args>
-std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept
-{
-	static_assert(std::is_convertible_v<Arg, std::string> && (... && std::is_convertible_v<Args, std::string>), "Invalid Types!");
-	auto const& allArgs = args();
-	auto matchAny = [&](ArgsParser::entry const& arg) { return (arg.k == key || (... || (arg.k == variants))); };
-	auto search = std::find_if(allArgs.begin(), allArgs.end(), matchAny);
-	if (search != allArgs.end())
-	{
-		return search->v;
-	}
-	return std::nullopt;
-}
+std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept;
 
 ///
 /// \brief Check if a debugger is attached to the runtime
@@ -203,6 +192,20 @@ bool sysCall(std::string_view expr, Arg1&& arg1, Args&&... args)
 {
 	auto const command = fmt::format(expr, std::forward<Arg1>(arg1), std::forward<Args>(args)...);
 	return sysCall(command);
+}
+
+template <typename Arg, typename... Args>
+std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept
+{
+	static_assert(std::is_convertible_v<Arg, std::string> && (std::is_convertible_v<Args, std::string> && ...), "Invalid Types!");
+	auto const& allArgs = args();
+	auto matchAny = [&](ArgsParser::entry const& arg) { return (arg.k == key || ((arg.k == variants) || ...)); };
+	auto search = std::find_if(allArgs.begin(), allArgs.end(), matchAny);
+	if (search != allArgs.end())
+	{
+		return search->v;
+	}
+	return std::nullopt;
 }
 } // namespace os
 } // namespace le

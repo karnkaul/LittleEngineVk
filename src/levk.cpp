@@ -45,7 +45,7 @@ struct Clock
 std::string const tName = utils::tName<Service>();
 App g_app;
 Status g_status = Status::eIdle;
-Counter<s32> g_counter;
+TCounter<s32> g_counter;
 Clock g_clock;
 } // namespace
 

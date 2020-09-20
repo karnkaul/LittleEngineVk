@@ -32,7 +32,7 @@ vk::DebugUtilsMessengerEXT g_debugMessenger;
 VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
 													VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*)
 {
-	static std::string_view const name = "vk::validation";
+	static constexpr std::string_view name = "vk::validation";
 	switch (messageSeverity)
 	{
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
@@ -123,7 +123,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			throw std::runtime_error("Failed to select a physical device!");
 		}
 		auto const properties = instance.physicalDevice.getProperties();
-		deviceName = properties.deviceName;
+		deviceName = std::string(properties.deviceName);
 		instance.deviceLimits = properties.limits;
 		instance.lineWidthMin = properties.limits.lineWidthRange[0];
 		instance.lineWidthMax = properties.limits.lineWidthRange[1];
@@ -429,23 +429,22 @@ bool Device::isValid(vk::SurfaceKHR surface) const
 	return false;
 }
 
-HandleQueues Device::uniqueQueues(QFlags flags) const
+std::vector<u32> Device::queueIndices(QFlags flags) const
 {
-	HandleQueues ret;
-	ret.indices.reserve(3);
+	std::vector<u32> ret;
+	ret.reserve(3);
 	if (flags.test(QFlag::eGraphics))
 	{
-		ret.indices.push_back(queues.graphics.familyIndex);
+		ret.push_back(queues.graphics.familyIndex);
 	}
 	if (flags.test(QFlag::ePresent) && queues.graphics.familyIndex != queues.present.familyIndex)
 	{
-		ret.indices.push_back(queues.present.familyIndex);
+		ret.push_back(queues.present.familyIndex);
 	}
 	if (flags.test(QFlag::eTransfer) && queues.transfer.familyIndex != queues.graphics.familyIndex)
 	{
-		ret.indices.push_back(queues.transfer.familyIndex);
+		ret.push_back(queues.transfer.familyIndex);
 	}
-	ret.mode = ret.indices.size() > 1 ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
 	return ret;
 }
 
@@ -479,7 +478,7 @@ void Device::waitFor(vk::Fence optional) const
 	{
 		if constexpr (levk_debug)
 		{
-			constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = g_device.device.waitForFences(optional, true, s_wait);
 			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)
@@ -500,7 +499,7 @@ void Device::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const
 	{
 		if constexpr (levk_debug)
 		{
-			constexpr static u64 s_wait = 1000ULL * 1000 * 5000;
+			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = g_device.device.waitForFences(std::move(validFences), true, s_wait);
 			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost)

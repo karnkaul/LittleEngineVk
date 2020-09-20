@@ -10,7 +10,7 @@ namespace le
 struct Fixed final
 {
 public:
-	constexpr static u32 s_scaleFactor = 10000;
+	static constexpr u32 s_scaleFactor = 10000;
 
 private:
 	s32 value;

@@ -90,6 +90,37 @@ glm::vec4 Colour::toRGB() const noexcept
 	return glm::convertSRGBToLinear(toVec4());
 }
 
+u32 Colour::toU32() const noexcept
+{
+	u32 raw = r.toU8();
+	raw <<= 8;
+	raw |= g.toU8();
+	raw <<= 8;
+	raw |= b.toU8();
+	raw <<= 8;
+	raw |= a.toU8();
+	return raw;
+}
+
+std::string Colour::toStr(bool bLeadingHash) const
+{
+	std::stringstream str;
+	str << std::hex << toU32();
+	auto temp = str.str();
+	std::string ret;
+	ret.reserve(8);
+	if (bLeadingHash)
+	{
+		ret += '#';
+	}
+	for (s16 lead = (s16)(8U - temp.size()); lead > 0; --lead)
+	{
+		ret += '0';
+	}
+	ret += std::move(temp);
+	return ret;
+}
+
 Colour operator+(Colour lhs, Colour rhs) noexcept
 {
 	return lhs += rhs;

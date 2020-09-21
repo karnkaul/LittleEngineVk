@@ -42,17 +42,17 @@ DemoLevel::DemoLevel()
 	m_data.dirLight1.diffuse = Colour(0xffffffff);
 	m_data.dirLight1.direction = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
 
-	m_data.eid0 = gs::spawnProp("quad");
-	m_data.eid1 = gs::spawnProp("sphere");
-	m_data.eid2 = gs::spawnProp("model0");
-	m_data.eid3 = gs::spawnProp("model1");
-	auto [eui0, ui0c] = gs::spawnProp<UIComponent>("fps");
+	m_data.eid0 = gs::g_game.spawnProp("quad");
+	m_data.eid1 = gs::g_game.spawnProp("sphere");
+	m_data.eid2 = gs::g_game.spawnProp("model0");
+	m_data.eid3 = gs::g_game.spawnProp("model1");
+	auto [eui0, ui0c] = gs::g_game.spawnProp<UIComponent>("fps");
 	m_data.eui0 = eui0;
 	auto& [tui0] = ui0c;
 
 	m_data.eui1 = registry().spawn("dt");
 	m_data.eui2 = registry().spawn("tris");
-	m_data.pointer = gs::spawnProp("pointer");
+	m_data.pointer = gs::g_game.spawnProp("pointer");
 
 	Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
@@ -103,18 +103,18 @@ DemoLevel::DemoLevel()
 	m_data.temp.mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
 	m_data.temp.addTrigger("test2", input::Key::eK);
 
-	auto& desc = gs::sceneDesc();
+	auto& desc = gs::g_game.desc();
 	desc.camera = m_data.freeCam.m_camera;
 	desc.dirLights = {m_data.dirLight0, m_data.dirLight1};
 	desc.clearColour = Colour(0x030203ff);
 	desc.skyboxCubemapID = "skyboxes/sky_dusk";
 	desc.uiSpace = {1280.0f, 720.0f, 2.0f};
-	desc.flags = gs::SceneDesc::Flag::eScissoredUI;
+	desc.flags = GameScene::Desc::Flag::eScissoredUI;
 
-	// for (auto i = 0; i < 1000; ++i)
-	// {
-	// 	gs::spawnProp(fmt::format("test_{}", i));
-	// }
+	for (auto i = 0; i < 1000; ++i)
+	{
+		gs::g_game.spawnProp(fmt::format("test_{}", i), &m_data.eid3.transform());
+	}
 }
 
 void DemoLevel::tick(Time dt)
@@ -196,7 +196,7 @@ void DemoLevel::tick(Time dt)
 		m_data.eid2.transform().orient(glm::rotate(m_data.eid2.transform().orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 	}
 
-	gs::sceneDesc().pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
+	gs::g_game.desc().pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
 }
 
 SceneBuilder const& DemoLevel::builder() const

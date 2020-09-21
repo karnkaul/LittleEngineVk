@@ -60,12 +60,12 @@ void Level::onManifestLoaded() {}
 
 Registry const& Level::registry() const
 {
-	return gs::g_context.registry;
+	return gs::g_game.m_registry;
 }
 
 Registry& Level::registry()
 {
-	return gs::g_context.registry;
+	return gs::g_game.m_registry;
 }
 
 void LevelDriver::tick(Time dt)
@@ -77,8 +77,7 @@ void LevelDriver::tick(Time dt)
 	}
 	if (g_switcher.hasValue())
 	{
-		Registry& reg = gs::g_context.registry;
-		reg.clear();
+		gs::g_game.reset();
 		unloadLoad();
 		return;
 	}
@@ -103,9 +102,7 @@ void LevelDriver::cleanup()
 	m_bTicked = false;
 	g_switcher.clear();
 	m_active.reset();
-	Registry& reg = gs::g_context.registry;
-	reg.clear();
-	gs::g_context.gameRect = {};
+	gs::reset();
 }
 
 void LevelDriver::unloadLoad()
@@ -115,9 +112,9 @@ void LevelDriver::unloadLoad()
 	{
 		loadReq.unload = m_active->m_manifest.id;
 	}
-	gs::g_context.reset();
+	gs::g_game.reset();
 	m_active = g_switcher.make();
-	gs::g_context.name = m_active->m_name;
+	gs::g_game.m_name = m_active->m_name;
 	loadReq.load = m_active->m_manifest.id;
 	loadReq.onLoaded = [l = loadReq.load.generic_string(), this]() {
 		LOG_I("[{}] loaded!", l);
@@ -134,7 +131,7 @@ void LevelDriver::perFrame()
 {
 #if defined(LEVK_EDITOR)
 	static constexpr std::array<std::string_view, 2> levelNames = {"Demo", "Test"};
-	gs::g_context.editorData.customRightPanel = [this]() {
+	gs::g_game.m_editorData.customRightPanel = [this]() {
 		if (auto combo = editor::Combo("Level", levelNames, m_active->m_name))
 		{
 			if (m_active && combo.selected != m_active->m_name)

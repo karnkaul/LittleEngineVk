@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/ecs_registry.hpp>
 #include <core/flags.hpp>
@@ -182,5 +183,81 @@ struct PerFrame
 {
 	std::function<void()> customRightPanel;
 };
+
+template <typename Flags>
+FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags)
+{
+	ASSERT(ids.size() <= size, "Overflow!");
+	std::size_t idx = 0;
+	for (auto id : ids)
+	{
+		bool bVal = flags.test((type)idx);
+		TWidget<bool> w(id, bVal);
+		flags[(type)idx++] = bVal;
+	}
+}
+
+template <typename T>
+TInspector<T>::TInspector(Registry& out_registry, Entity entity, T const* pT, sv id)
+	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id)
+{
+	bNew = pT == nullptr;
+	if (!bNew)
+	{
+		node = TreeNode(this->id);
+		if (node)
+		{
+			bOpen = true;
+			if (node.test(GUI::eRightClicked))
+			{
+				out_registry.detach<T>(entity);
+			}
+		}
+	}
+}
+
+template <typename T>
+TInspector<T>::TInspector(TInspector<T>&& rhs) : node(std::move(rhs.node)), pReg(rhs.pReg), id(std::move(id))
+{
+	bOpen = rhs.bOpen;
+	bNew = rhs.bNew;
+	rhs.bNew = rhs.bOpen = false;
+	rhs.pReg = nullptr;
+}
+
+template <typename T>
+TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs)
+{
+	if (&rhs != this)
+	{
+		node = std::move(rhs.node);
+		pReg = rhs.pReg;
+		bOpen = rhs.bOpen;
+		bNew = rhs.bNew;
+		id = std::move(rhs.id);
+		rhs.bNew = rhs.bOpen = false;
+		rhs.pReg = nullptr;
+	}
+	return *this;
+}
+
+template <typename T>
+TInspector<T>::~TInspector()
+{
+	if (bNew && pReg)
+	{
+		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked))
+		{
+			Registry& registry = *pReg;
+			registry.attach<T>(entity);
+		}
+	}
+}
+
+template <typename T>
+TInspector<T>::operator bool() const
+{
+	return bOpen;
+}
 } // namespace le::editor
 #endif

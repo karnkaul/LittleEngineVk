@@ -15,15 +15,8 @@ inline bool g_bTickGame = true;
 inline gfx::ScreenRect g_gameRect = {};
 inline FreeCam g_editorCam;
 
-struct Args final
-{
-	gs::Context* pGame = nullptr;
-	gs::EMap* pMap = nullptr;
-	Transform* pRoot = nullptr;
-};
-
 bool init(WindowID editorWindow);
 void deinit();
-void tick(Args const& args, Time dt);
+void tick(GameScene& out_scene, Time dt);
 } // namespace le::editor
 #endif

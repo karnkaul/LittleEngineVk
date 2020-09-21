@@ -15,63 +15,8 @@ struct
 	std::optional<engine::Semaphore> engineSemaphore;
 	res::Manifest manifest;
 	gs::ManifestLoaded onManifestLoaded;
-#if defined(LEVK_EDITOR)
-	Transform root;
-	gs::EMap entityMap;
-#endif
 } g_ctxImpl;
 } // namespace
-
-bool Prop::valid() const noexcept
-{
-	return pTransform != nullptr && entity.id != ECSID::null;
-}
-
-Transform const& Prop::transform() const
-{
-	ASSERT(pTransform, "Null Transform!");
-	return *pTransform;
-}
-
-Transform& Prop::transform()
-{
-	ASSERT(pTransform, "Null Transform!");
-	return *pTransform;
-}
-
-void gs::Context::reset()
-{
-	Registry& reg = registry;
-	reg.clear();
-	name.clear();
-	gameRect = {};
-#if defined(LEVK_EDITOR)
-	editorData = {};
-#endif
-}
-
-gs::SceneDesc& gs::sceneDesc()
-{
-	Registry& reg = g_context.registry;
-	auto view = reg.view<SceneDesc>();
-	if (view.empty())
-	{
-		auto [_, desc] = reg.spawn<SceneDesc>("scene_desc");
-		auto& [desc_] = desc;
-		return desc_;
-	}
-	else
-	{
-		auto [_, desc] = view.front();
-		auto& [desc_] = desc;
-		return desc_;
-	}
-}
-
-gfx::Camera& gs::mainCamera()
-{
-	return sceneDesc().camera;
-}
 
 Token gs::registerInput(input::Context const* pContext)
 {
@@ -142,31 +87,11 @@ Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContext)
 	return registerInput(out_pContext);
 }
 
-void gs::destroy(Span<Prop> props)
-{
-	Registry& reg = g_context.registry;
-	for (auto& prop : props)
-	{
-		if (reg.destroy(prop.entity))
-		{
-#if defined(LEVK_EDITOR)
-			g_ctxImpl.entityMap.erase(prop.pTransform);
-#endif
-		}
-	}
-}
-
 void gs::reset()
 {
-	Registry& reg = g_context.registry;
-	reg.clear();
-	g_context.gameRect = {};
+	g_game.reset();
 	g_ctxImpl.manifest.reset();
 	g_ctxImpl.onManifestLoaded.clear();
-#if defined(LEVK_EDITOR)
-	g_ctxImpl.entityMap.clear();
-	g_ctxImpl.root.reset(true);
-#endif
 }
 
 gfx::Renderer::Scene gs::update(engine::Driver& out_driver, Time dt, bool bTick)
@@ -197,32 +122,13 @@ gfx::Renderer::Scene gs::update(engine::Driver& out_driver, Time dt, bool bTick)
 	{
 		out_driver.tick(dt);
 	}
-	Ref<gfx::Camera> camera = mainCamera();
+	Ref<gfx::Camera> camera = g_game.mainCamera();
 #if defined(LEVK_EDITOR)
 	if (!editor::g_bTickGame)
 	{
 		camera = editor::g_editorCam.m_camera;
 	}
 #endif
-	return out_driver.builder().build(camera, g_context.registry);
+	return out_driver.builder().build(camera, g_game.m_registry);
 }
-
-#if defined(LEVK_EDITOR)
-gs::EMap& gs::entityMap()
-{
-	return g_ctxImpl.entityMap;
-}
-
-Transform& gs::root()
-{
-	return g_ctxImpl.root;
-}
-
-void gs::detail::setup(Prop& out_prop)
-{
-	auto& transform = out_prop.transform();
-	transform.parent(&g_ctxImpl.root);
-	g_ctxImpl.entityMap[&transform] = out_prop.entity;
-}
-#endif
 } // namespace le

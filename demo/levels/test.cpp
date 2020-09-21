@@ -44,9 +44,9 @@ TestLevel::TestLevel()
 	m_data.elapsed = {};
 	auto& [elapsed] = elapsedText.components;
 	elapsed.setText(std::move(info));
-	gs::mainCamera().position = {0.0f, 1.0f, 2.0f};
+	gs::g_game.mainCamera().position = {0.0f, 1.0f, 2.0f};
 
-	m_game.ship = gs::spawnProp("ship");
+	m_game.ship = gs::g_game.spawnProp("ship");
 	m_game.ship.transform().position({0.0f, 0.0f, -3.0f});
 	*registry().attach<res::Mesh>(m_game.ship.entity) = *res::find<res::Mesh>("meshes/cube");
 }

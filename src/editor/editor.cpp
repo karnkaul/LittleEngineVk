@@ -137,7 +137,7 @@ void clearLog()
 #pragma endregion log
 
 #pragma region scene
-void walkSceneTree(Transform& root, gs::EMap const& emap, Registry& registry)
+void walkSceneTree(Transform& root, GameScene::EntityMap const& emap, Registry& registry)
 {
 	auto const children = root.children();
 	auto search = emap.find(&root);
@@ -329,8 +329,9 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size)
 	}
 }
 
-void entityInspector(v2 pos, v2 size, Registry& registry)
+void entityInspector(v2 pos, v2 size, GameScene& out_scene)
 {
+	Registry& registry = out_scene.m_registry;
 	if (g_inspecting.entity != Entity())
 	{
 		ImGui::LabelText("", "%s", registry.name(g_inspecting.entity).data());
@@ -360,7 +361,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			if (auto pTransform = registry.find<Transform>(g_inspecting.entity))
 			{
 				Prop prop(g_inspecting.entity, *pTransform);
-				gs::destroy(prop);
+				out_scene.destroy(prop);
 			}
 			else
 			{
@@ -370,7 +371,7 @@ void entityInspector(v2 pos, v2 size, Registry& registry)
 			g_inspecting = {};
 		}
 		s = Styler(Style::eSeparator);
-		if (auto pDesc = registry.find<gs::SceneDesc>(g_inspecting.entity))
+		if (auto pDesc = registry.find<GameScene::Desc>(g_inspecting.entity))
 		{
 			if (auto desc = TreeNode("gs::SceneDesc"))
 			{
@@ -551,7 +552,7 @@ void addModel(dj::object& out_entry, res::Model model)
 	out_entry.add<dj::string>("model_id", model.info().id.generic_string());
 }
 
-void addDesc(dj::object& out_entry, gs::SceneDesc const& desc)
+void addDesc(dj::object& out_entry, GameScene::Desc const& desc)
 {
 	dj::object d;
 	if (!desc.skyboxCubemapID.empty())
@@ -562,7 +563,7 @@ void addDesc(dj::object& out_entry, gs::SceneDesc const& desc)
 	out_entry.add("scene_desc", std::move(d));
 }
 
-void walkSceneTree(dj::array& out_root, Transform& root, gs::EMap const& emap, Registry& reg, std::unordered_set<Entity, EntityHasher>& out_added)
+void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap const& emap, Registry& reg, std::unordered_set<Entity, EntityHasher>& out_added)
 {
 	auto const children = root.children();
 	auto search = emap.find(&root);
@@ -608,7 +609,7 @@ void walkSceneTree(dj::array& out_root, Transform& root, gs::EMap const& emap, R
 void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity, EntityHasher> const& added)
 {
 	{
-		auto view = reg.view<gs::SceneDesc>();
+		auto view = reg.view<GameScene::Desc>();
 		for (auto& [entity, query] : view)
 		{
 			if (added.find(entity) == added.end())
@@ -623,24 +624,24 @@ void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity,
 	}
 }
 
-dj::object serialise(Args const& args)
+dj::object serialise(GameScene const& scene)
 {
-	dj::object scene;
+	dj::object ret;
 	dj::array entities;
 	std::unordered_set<Entity, EntityHasher> added;
-	for (auto& child : args.pRoot->children())
+	for (auto& child : scene.m_sceneRoot.children())
 	{
-		walkSceneTree(entities, child, *args.pMap, args.pGame->registry, added);
+		walkSceneTree(entities, child, scene.m_entityMap, scene.m_registry, added);
 	}
-	residue(entities, args.pGame->registry, added);
-	scene.add("entities", std::move(entities));
-	return scene;
+	residue(entities, scene.m_registry, added);
+	ret.add("entities", std::move(entities));
+	return ret;
 }
 } // namespace sceneIO
 #pragma endregion sceneIO
 
 #pragma region layout
-void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
+void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_scene)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -664,10 +665,10 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 		Styler s(Style::eSeparator);
 		if (Button("test save"))
 		{
-			auto const filename = fmt::format("{}.scene", sceneIO::camelify(gs::g_context.name));
+			auto const filename = fmt::format("{}.scene", sceneIO::camelify(gs::g_game.m_name));
 			if (auto file = std::ofstream(filename))
 			{
-				auto const scene = sceneIO::serialise(args);
+				auto const scene = sceneIO::serialise(out_scene);
 				auto opts = dj::g_serial_opts;
 				opts.sort_keys = opts.pretty = true;
 				auto const str = scene.serialise(opts);
@@ -685,13 +686,13 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
 				LOG_E("[{}] Failed to open [{}] to save scene!", s_tName, filename);
 			}
 		}
-		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f}, args.pGame->registry);
+		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f}, out_scene);
 	}
 	ImGui::End();
 	return;
 }
 
-void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args)
+void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_scene)
 {
 	if (panelSize.x < g_minDim.x || panelSize.y < g_minDim.y)
 	{
@@ -710,7 +711,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 		{
 			if (ImGui::BeginTabItem("Scene"))
 			{
-				Registry& registry = args.pGame->registry;
+				Registry& registry = out_scene.m_registry;
 				{
 					static std::string s_buf;
 					TWidget<std::string>("Name", s_buf, 150.0f);
@@ -721,14 +722,14 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 					}
 					if (Button("Spawn Prop"))
 					{
-						auto prop = gs::spawnProp(nn.data());
+						auto prop = out_scene.spawnProp(nn.data());
 						g_inspecting = {prop.entity, prop.pTransform};
 						g_spawned.insert(g_inspecting.entity);
 						s_buf.clear();
 					}
 				}
 				auto s = Styler(Style::eSeparator);
-				auto view = registry.view<gs::SceneDesc>();
+				auto view = registry.view<GameScene::Desc>();
 				if (!view.empty())
 				{
 					auto [entity, _] = *view.begin();
@@ -740,9 +741,9 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 					}
 				}
 				s = Styler(Style::eSeparator);
-				for (Transform& transform : args.pRoot->children())
+				for (Transform& transform : out_scene.m_sceneRoot.children())
 				{
-					walkSceneTree(transform, *args.pMap, args.pGame->registry);
+					walkSceneTree(transform, out_scene.m_entityMap, out_scene.m_registry);
 				}
 				ImGui::EndTabItem();
 			}
@@ -753,9 +754,9 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, Args const& args
 				logLevelDropdown();
 				ImGui::EndTabItem();
 			}
-			if (args.pGame->editorData.customRightPanel && ImGui::BeginTabItem("Custom"))
+			if (out_scene.m_editorData.customRightPanel && ImGui::BeginTabItem("Custom"))
 			{
-				perFrame(args.pGame->editorData);
+				perFrame(out_scene.m_editorData);
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
@@ -1242,7 +1243,7 @@ void editor::deinit()
 	return;
 }
 
-void editor::tick(Args const& args, Time dt)
+void editor::tick(GameScene& out_scene, Time dt)
 {
 	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);
@@ -1257,14 +1258,14 @@ void editor::tick(Args const& args, Time dt)
 			auto const logHeight = fbSize.y - (s32)(g_gameRect.rb.y * (f32)fbSize.y);
 			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.lt.x * (f32)fbSize.x), fbSize.y - logHeight};
 			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.rb.x * (f32)fbSize.x), fbSize.y - logHeight};
-			Registry& reg = args.pGame->registry;
+			Registry& reg = out_scene.m_registry;
 			if (!reg.exists(g_inspecting.entity))
 			{
 				g_inspecting = {};
 			}
 			drawLog(fbSize, logHeight);
-			drawLeftPanel(fbSize, leftPanelSize, args);
-			drawRightPanel(fbSize, rightPanelSize, args);
+			drawLeftPanel(fbSize, leftPanelSize, out_scene);
+			drawRightPanel(fbSize, rightPanelSize, out_scene);
 		}
 	}
 	else
@@ -1272,7 +1273,7 @@ void editor::tick(Args const& args, Time dt)
 		g_gameRect = {};
 	}
 	g_data.pressed.clear();
-	gs::g_context.editorData = {};
+	out_scene.m_editorData = {};
 }
 } // namespace le
 #endif

@@ -174,8 +174,7 @@ bool Service::update(Driver& out_driver) const
 	{
 		input::fire();
 #if defined(LEVK_EDITOR)
-		editor::Args args{&gs::g_context, &gs::entityMap(), &gs::root()};
-		editor::tick(args, dt);
+		editor::tick(gs::g_game, dt);
 		input::g_bEditorOnly = !editor::g_bTickGame;
 		bTick &= editor::g_bTickGame;
 		gameRect = editor::g_gameRect;

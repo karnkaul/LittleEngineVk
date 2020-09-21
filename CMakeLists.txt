@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
+set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
+
 set(LEVK_VERSION 0.0.1.0 CACHE STRING "Application Version" FORCE)
 project(levk-engine VERSION ${LEVK_VERSION})
 

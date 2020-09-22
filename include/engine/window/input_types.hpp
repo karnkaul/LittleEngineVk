@@ -4,6 +4,7 @@
 #include <vector>
 #include <core/std_types.hpp>
 #include <core/delegate.hpp>
+#include <core/span.hpp>
 #include <core/utils.hpp>
 
 namespace le::input

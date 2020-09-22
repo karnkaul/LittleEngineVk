@@ -23,41 +23,6 @@ enum class FutureState : s8
 	eCOUNT_
 };
 
-///
-/// \brief View-only class for an object / a contiguous range of objects
-///
-template <typename T>
-struct Span
-{
-	using value_type = T;
-	using const_iterator = T const*;
-
-	T const* pData;
-	std::size_t extent;
-
-	constexpr Span() noexcept;
-	constexpr explicit Span(T const* pData, std::size_t extent) noexcept;
-	constexpr Span(T const& data) noexcept;
-	constexpr Span(std::initializer_list<T> const& list) noexcept;
-	template <std::size_t N>
-	constexpr Span(std::array<T, N> const& arr) noexcept;
-	template <std::size_t N>
-	constexpr Span(T (&arr)[N]) noexcept;
-	constexpr Span(std::vector<T> const& vec) noexcept;
-
-	constexpr Span<T>(Span<T>&&) noexcept = default;
-	constexpr Span<T>& operator=(Span<T>&&) noexcept = default;
-	constexpr Span<T>(Span<T> const&) noexcept = default;
-	constexpr Span<T>& operator=(Span<T> const&) noexcept = default;
-
-	constexpr std::size_t size() const noexcept;
-	constexpr bool empty() const noexcept;
-	constexpr const_iterator begin() const noexcept;
-	constexpr const_iterator end() const noexcept;
-
-	T const& at(std::size_t idx) const;
-};
-
 namespace utils
 {
 template <typename T>
@@ -147,74 +112,6 @@ void substituteChars(std::string& out_input, std::initializer_list<std::pair<cha
 bool isCharEnclosedIn(std::string_view str, std::size_t idx, std::pair<char, char> wrapper);
 } // namespace strings
 } // namespace utils
-
-template <typename T>
-constexpr Span<T>::Span() noexcept : pData(nullptr), extent(0)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(T const& data) noexcept : pData(&data), extent(1)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size())
-{
-}
-
-template <typename T>
-template <std::size_t N>
-constexpr Span<T>::Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N)
-{
-}
-
-template <typename T>
-template <std::size_t N>
-constexpr Span<T>::Span(T (&arr)[N]) noexcept : pData(N == 0 ? nullptr : &arr[0]), extent(N)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(std::vector<T> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size())
-{
-}
-
-template <typename T>
-constexpr std::size_t Span<T>::size() const noexcept
-{
-	return extent;
-}
-
-template <typename T>
-constexpr bool Span<T>::empty() const noexcept
-{
-	return extent == 0;
-}
-
-template <typename T>
-constexpr typename Span<T>::const_iterator Span<T>::begin() const noexcept
-{
-	return pData;
-}
-
-template <typename T>
-constexpr typename Span<T>::const_iterator Span<T>::end() const noexcept
-{
-	return pData + extent;
-}
-
-template <typename T>
-T const& Span<T>::at(std::size_t idx) const
-{
-	ASSERT(idx < extent, "OOB access!");
-	return *(pData + idx);
-}
 
 template <typename T>
 FutureState utils::futureState(std::future<T> const& future) noexcept

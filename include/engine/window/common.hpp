@@ -1,6 +1,6 @@
 #pragma once
 #include <array>
-#include <core/std_types.hpp>
+#include <core/span.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
 

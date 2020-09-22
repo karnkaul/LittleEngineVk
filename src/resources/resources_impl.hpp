@@ -3,6 +3,7 @@
 #include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <core/delegate.hpp>
+#include <core/maths.hpp>
 #include <core/path_tree.hpp>
 #include <resources/monitor.hpp>
 
@@ -142,7 +143,7 @@ struct Mesh::Impl : ImplBase, ILoadable
 
 struct Font::Impl : ImplBase, ILoadable, IReloadable
 {
-	std::array<Glyph, maxVal<u8>()> glyphs;
+	std::array<Glyph, maths::max<u8>()> glyphs;
 	res::Material::Inst material;
 	Glyph blankGlyph;
 	res::Texture sheet;

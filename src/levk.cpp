@@ -134,7 +134,7 @@ bool Service::init(Info const& info)
 
 bool Service::running() const
 {
-	return maths::withinRange(g_status, Status::eIdle, Status::eShuttingDown, true);
+	return maths::inRange(g_status, Status::eIdle, Status::eShuttingDown, true);
 }
 
 Status Service::status() const

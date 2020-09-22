@@ -7,6 +7,7 @@
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 #include <functional>
 #include <unordered_set>
+#include <core/ref.hpp>
 #include <core/time.hpp>
 #include <core/reader.hpp>
 

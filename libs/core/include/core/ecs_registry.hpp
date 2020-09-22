@@ -12,6 +12,7 @@
 #include <core/counter.hpp>
 #include <core/flags.hpp>
 #include <core/log_config.hpp>
+#include <core/span.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
 #include <kt/async_queue/async_queue.hpp>

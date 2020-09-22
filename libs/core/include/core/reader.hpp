@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <sstream>
 #include <string_view>
+#include <core/result.hpp>
+#include <core/span.hpp>
 #include <core/utils.hpp>
 
 namespace le

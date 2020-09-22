@@ -3,6 +3,7 @@
 #include <set>
 #include <core/assert.hpp>
 #include <core/log.hpp>
+#include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <window/window_impl.hpp>
 #include <gfx/deferred.hpp>
@@ -488,7 +489,7 @@ void Device::waitFor(vk::Fence optional) const
 		}
 		else
 		{
-			g_device.device.waitForFences(optional, true, maxVal<u64>());
+			g_device.device.waitForFences(optional, true, maths::max<u64>());
 		}
 	}
 }
@@ -509,7 +510,7 @@ void Device::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const
 		}
 		else
 		{
-			g_device.device.waitForFences(std::move(validFences), true, maxVal<u64>());
+			g_device.device.waitForFences(std::move(validFences), true, maths::max<u64>());
 		}
 	}
 }

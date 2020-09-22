@@ -1,6 +1,7 @@
 #include "gfx/deferred.hpp"
 #include "vulkan/vulkan.hpp"
 #include <map>
+#include <core/maths.hpp>
 #include <core/log.hpp>
 #include <core/utils.hpp>
 #include <gfx/deferred.hpp>
@@ -92,7 +93,7 @@ vk::PresentModeKHR RenderContext::Metadata::bestPresentMode() const
 
 vk::Extent2D RenderContext::Metadata::extent(glm::ivec2 const& windowSize) const
 {
-	if (capabilities.currentExtent.width != maxVal<u32>())
+	if (capabilities.currentExtent.width != maths::max<u32>())
 	{
 		return capabilities.currentExtent;
 	}
@@ -160,7 +161,7 @@ TResult<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady
 		recreateSwapchain();
 		return {};
 	}
-	auto const acquire = g_device.device.acquireNextImageKHR(m_swapchain.swapchain, maxVal<u64>(), setDrawReady, {});
+	auto const acquire = g_device.device.acquireNextImageKHR(m_swapchain.swapchain, maths::max<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR)
 	{
 		LOG_D("[{}] Failed to acquire next image [{}]", m_name, g_vkResultStr[acquire.result]);

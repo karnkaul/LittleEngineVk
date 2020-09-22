@@ -4,6 +4,8 @@
 #include <core/colour.hpp>
 #include <core/flags.hpp>
 #include <core/hash.hpp>
+#include <core/result.hpp>
+#include <core/span.hpp>
 #include <core/token_gen.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>

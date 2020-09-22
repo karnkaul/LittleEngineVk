@@ -22,7 +22,7 @@ using namespace input;
 
 namespace
 {
-std::unordered_set<WindowImpl*> g_registeredWindows;
+std::unordered_set<Ref<WindowImpl>> g_registeredWindows;
 #if defined(LEVK_EDITOR)
 WindowImpl* g_pEditorWindow = nullptr;
 #endif
@@ -180,16 +180,16 @@ void registerCallbacks([[maybe_unused]] NativeWindow const& window)
 #endif
 }
 
-void registerWindow(WindowImpl* pWindow)
+void registerWindow(WindowImpl& window)
 {
-	g_registeredWindows.insert(pWindow);
+	g_registeredWindows.insert(Ref<WindowImpl>(window));
 	LOG_D("[{}] registered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
 	return;
 }
 
-void unregisterWindow(WindowImpl* pWindow)
+void unregisterWindow(WindowImpl& window)
 {
-	if (auto search = g_registeredWindows.find(pWindow); search != g_registeredWindows.end())
+	if (auto search = g_registeredWindows.find(Ref<WindowImpl>(window)); search != g_registeredWindows.end())
 	{
 		g_registeredWindows.erase(search);
 		LOG_D("[{}] deregistered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
@@ -229,9 +229,9 @@ bool Gamepad::pressed(Key button) const
 WindowImpl* WindowImpl::find([[maybe_unused]] StaticAny<> nativeHandle)
 {
 #if defined(LEVK_USE_GLFW)
-	auto f = [nativeHandle](auto pWindow) -> bool { return pWindow->m_nativeWindow.template cast<GLFWwindow>() == nativeHandle.val<GLFWwindow*>(); };
+	auto f = [nativeHandle](WindowImpl& impl) -> bool { return impl.m_nativeWindow.template cast<GLFWwindow>() == nativeHandle.val<GLFWwindow*>(); };
 	auto search = std::find_if(g_registeredWindows.begin(), g_registeredWindows.end(), f);
-	return search != g_registeredWindows.end() ? *search : nullptr;
+	return search != g_registeredWindows.end() ? &static_cast<WindowImpl&>(*search) : nullptr;
 #else
 	return nullptr;
 #endif
@@ -288,9 +288,9 @@ void WindowImpl::update()
 		gfx::ext_gui::newFrame();
 	}
 #endif
-	for (auto pWindow : g_registeredWindows)
+	for (WindowImpl& window : g_registeredWindows)
 	{
-		if (auto pRenderer = pWindow->m_pWindow->m_renderer.m_uImpl.get())
+		if (auto pRenderer = window.m_pWindow->m_renderer.m_uImpl.get())
 		{
 			pRenderer->update();
 		}
@@ -317,9 +317,9 @@ Span<char const*> WindowImpl::vulkanInstanceExtensions()
 
 WindowImpl* WindowImpl::windowImpl(WindowID window)
 {
-	auto f = [window](auto pImpl) -> bool { return pImpl->m_pWindow->m_id == window; };
+	auto f = [window](WindowImpl& impl) -> bool { return impl.m_pWindow->m_id == window; };
 	auto search = std::find_if(g_registeredWindows.begin(), g_registeredWindows.end(), f);
-	return search != g_registeredWindows.end() ? *search : nullptr;
+	return search != g_registeredWindows.end() ? &static_cast<WindowImpl&>(*search) : nullptr;
 }
 
 gfx::RendererImpl* WindowImpl::rendererImpl(WindowID window)
@@ -334,11 +334,11 @@ gfx::RendererImpl* WindowImpl::rendererImpl(WindowID window)
 std::unordered_set<s32> WindowImpl::allExisting()
 {
 	std::unordered_set<s32> ret;
-	for (auto pImpl : g_registeredWindows)
+	for (WindowImpl& impl : g_registeredWindows)
 	{
-		if (pImpl->exists())
+		if (impl.exists())
 		{
-			ret.insert(pImpl->m_pWindow->m_id);
+			ret.insert(impl.m_pWindow->m_id);
 		}
 	}
 	return ret;
@@ -358,11 +358,11 @@ WindowID WindowImpl::editorWindow()
 #if defined(LEVK_EDITOR)
 	if (gfx::ext_gui::isInit())
 	{
-		for (auto pWindow : g_registeredWindows)
+		for (WindowImpl& window : g_registeredWindows)
 		{
-			if (pWindow == g_pEditorWindow)
+			if (&window == g_pEditorWindow)
 			{
-				return pWindow->m_pWindow->m_id;
+				return window.m_pWindow->m_id;
 			}
 		}
 	}
@@ -372,7 +372,7 @@ WindowID WindowImpl::editorWindow()
 
 WindowImpl::WindowImpl(Window* pWindow) : m_pWindow(pWindow)
 {
-	registerWindow(this);
+	registerWindow(*this);
 }
 
 WindowImpl::~WindowImpl()
@@ -387,7 +387,7 @@ WindowImpl::~WindowImpl()
 		g_pEditorWindow = nullptr;
 	}
 #endif
-	unregisterWindow(this);
+	unregisterWindow(*this);
 	destroy();
 }
 
@@ -672,9 +672,9 @@ std::string WindowImpl::clipboard() const
 
 bool WindowImpl::anyActive()
 {
-	for (auto pWindow : g_registeredWindows)
+	for (WindowImpl& window : g_registeredWindows)
 	{
-		if (pWindow->open())
+		if (window.open())
 		{
 			return true;
 		}
@@ -684,9 +684,9 @@ bool WindowImpl::anyActive()
 
 bool WindowImpl::anyExist()
 {
-	for (auto pWindow : g_registeredWindows)
+	for (WindowImpl& window : g_registeredWindows)
 	{
-		if (pWindow->exists())
+		if (window.exists())
 		{
 			return true;
 		}
@@ -714,17 +714,17 @@ void WindowImpl::renderAll()
 	}
 #endif
 	bool bExtGUI = false;
-	for (auto pWindow : g_registeredWindows)
+	for (WindowImpl& window : g_registeredWindows)
 	{
-		if (!pWindow->closing())
+		if (!window.closing())
 		{
 #if defined(LEVK_EDITOR)
 			if (g_pEditorWindow)
 			{
-				bExtGUI = g_pEditorWindow == pWindow;
+				bExtGUI = g_pEditorWindow == &window;
 			}
 #endif
-			pWindow->m_pWindow->m_renderer.render(bExtGUI);
+			window.m_pWindow->m_renderer.render(bExtGUI);
 		}
 	}
 	return;

@@ -58,10 +58,11 @@ void GameScene::destroy(Span<Prop> props)
 	Registry& reg = m_registry;
 	for (auto& prop : props)
 	{
-		if (reg.destroy(prop.entity))
+		if (prop.pTransform)
 		{
-			m_entityMap.erase(prop.pTransform);
+			m_entityMap.erase(*prop.pTransform);
 		}
+		reg.destroy(prop.entity);
 	}
 }
 
@@ -69,6 +70,6 @@ void GameScene::boltOnRoot(Prop prop)
 {
 	auto& transform = prop.transform();
 	transform.parent(&m_sceneRoot);
-	m_entityMap[&transform] = prop.entity;
+	m_entityMap[transform] = prop.entity;
 }
 } // namespace le

@@ -218,3 +218,15 @@ constexpr inline bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept
 	return lhs.pPtr != rhs.pPtr;
 }
 } // namespace le
+
+namespace std
+{
+template <typename T>
+struct hash<le::Ref<T>>
+{
+	size_t operator()(le::Ref<T> const& lhs) const
+	{
+		return std::hash<T const*>()(lhs.pPtr);
+	}
+};
+} // namespace std

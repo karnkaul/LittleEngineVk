@@ -98,7 +98,7 @@ public:
 		Flags flags = Flag::eDynamicUI;
 	};
 
-	using EntityMap = std::unordered_map<Transform*, Entity>;
+	using EntityMap = std::unordered_map<Ref<Transform>, Entity>;
 
 #if defined(LEVK_EDITOR)
 	static constexpr bool s_bParentToRoot = true;
@@ -118,6 +118,11 @@ public:
 	editor::PerFrame m_editorData;
 #endif
 
+private:
+	template <typename... T>
+	static constexpr bool isNotEqual(std::size_t target) noexcept;
+
+public:
 	///
 	/// \brief Obtain (a reference to) the scene descriptor
 	///
@@ -142,7 +147,7 @@ public:
 	/// \brief Create a new Prop
 	///
 	/// Transform will be parented to scene root if LEVK_EDITOR is defined
-	template <typename... T>
+	template <typename... T, typename = std::enable_if_t<isNotEqual<T...>(1)>>
 	TProp_t<T...> spawnProp(std::string name, Transform* pParent = nullptr);
 	///
 	/// \brief Reparent to another Transform / unparent if parented
@@ -188,6 +193,12 @@ constexpr TProp<T...>::operator Prop() const noexcept
 	return prop;
 }
 
+template <typename... T>
+constexpr bool GameScene::isNotEqual(std::size_t target) noexcept
+{
+	return sizeof...(T) != target;
+}
+
 template <typename T, typename... Args>
 TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... args)
 {
@@ -207,7 +218,7 @@ TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... 
 	return {prop, std::move(ec.components)};
 }
 
-template <typename... T>
+template <typename... T, typename>
 TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent)
 {
 	Registry& reg = m_registry;

@@ -136,31 +136,6 @@ void clearLog()
 }
 #pragma endregion log
 
-#pragma region scene
-void walkSceneTree(Transform& root, GameScene::EntityMap const& emap, Registry& registry)
-{
-	auto const children = root.children();
-	auto search = emap.find(&root);
-	if (search != emap.end())
-	{
-		auto [pTransform, entity] = *search;
-		auto node = TreeNode(registry.name(entity), g_inspecting.entity == entity, pTransform->children().empty(), true, false);
-		if (node.test(GUI::eLeftClicked))
-		{
-			bool const bSelect = g_inspecting.entity != entity;
-			g_inspecting = {bSelect ? entity : Entity(), bSelect ? pTransform : nullptr};
-		}
-		if (node.test(GUI::eOpen))
-		{
-			for (Transform& child : pTransform->children())
-			{
-				walkSceneTree(child, emap, registry);
-			}
-		}
-	}
-}
-#pragma endregion scene
-
 #pragma region inspector
 template <typename... Args>
 bool dummy(Args...)
@@ -566,10 +541,10 @@ void addDesc(dj::object& out_entry, GameScene::Desc const& desc)
 void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap const& emap, Registry& reg, std::unordered_set<Entity, EntityHasher>& out_added)
 {
 	auto const children = root.children();
-	auto search = emap.find(&root);
+	auto search = emap.find(root);
 	if (search != emap.end())
 	{
-		auto [pTransform, entity] = *search;
+		auto [transform, entity] = *search;
 		out_added.insert(entity);
 		dj::object e;
 		e.add<dj::string>("name", reg.name(entity));
@@ -581,21 +556,22 @@ void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap co
 		{
 			addModel(e, *pModel);
 		}
-		auto const p = pTransform->position();
+		Transform& t = transform;
+		auto const p = t.position();
 		auto pos = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', p.x, p.y, p.z, '}');
-		auto const s = pTransform->scale();
+		auto const s = t.scale();
 		auto scl = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', s.x, s.y, s.z, '}');
-		auto const o = pTransform->orientation();
+		auto const o = t.orientation();
 		auto orn = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {}, \"w\": {} {}", '{', o.x, o.y, o.z, o.w, '}');
 		dj::object tr;
 		tr.add<dj::object>("position", std::move(pos));
 		tr.add<dj::object>("orientation", std::move(orn));
 		tr.add<dj::object>("scale", std::move(scl));
-		auto const& children = pTransform->children();
+		auto const& children = t.children();
 		if (!children.empty())
 		{
 			dj::array arr;
-			for (Transform& child : pTransform->children())
+			for (Transform& child : children)
 			{
 				walkSceneTree(arr, child, emap, reg, out_added);
 			}
@@ -741,10 +717,22 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_s
 					}
 				}
 				s = Styler(Style::eSeparator);
-				for (Transform& transform : out_scene.m_sceneRoot.children())
-				{
-					walkSceneTree(transform, out_scene.m_entityMap, out_scene.m_registry);
-				}
+				Transform::walk(out_scene.m_sceneRoot, [&](Transform& t) -> bool {
+					auto search = out_scene.m_entityMap.find(t);
+					if (search != out_scene.m_entityMap.end())
+					{
+						auto [transform, entity] = *search;
+						Transform& t = transform;
+						auto node = TreeNode(registry.name(entity), g_inspecting.entity == entity, t.children().empty(), true, false);
+						if (node.test(GUI::eLeftClicked))
+						{
+							bool const bSelect = g_inspecting.entity != entity;
+							g_inspecting = {bSelect ? entity : Entity(), bSelect ? &t : nullptr};
+						}
+						return (node.test(GUI::eOpen));
+					}
+					return false;
+				});
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Options"))

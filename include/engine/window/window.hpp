@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <engine/window/input_types.hpp>
 #include <engine/window/common.hpp>
-#include <engine/gfx/renderer.hpp>
+#include <engine/gfx/render_driver.hpp>
 
 namespace le
 {
@@ -76,8 +76,8 @@ public:
 	static WindowID editorWindow();
 
 public:
-	gfx::Renderer const& renderer() const;
-	gfx::Renderer& renderer();
+	gfx::render::Driver const& driver() const;
+	gfx::render::Driver& driver();
 
 	WindowID id() const;
 	bool open() const;
@@ -124,7 +124,7 @@ private:
 	friend class WindowImpl;
 
 private:
-	gfx::Renderer m_renderer;
+	gfx::render::Driver m_driver;
 	std::unique_ptr<class WindowImpl> m_uImpl;
 	WindowID m_id = WindowID::null;
 };

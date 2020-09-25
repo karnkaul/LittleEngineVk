@@ -1,5 +1,6 @@
 #pragma once
 #include <core/ecs_registry.hpp>
+#include <core/traits.hpp>
 #include <core/transform.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>
@@ -118,10 +119,6 @@ public:
 	editor::PerFrame m_editorData;
 #endif
 
-private:
-	template <typename... T>
-	static constexpr bool isNotEqual(std::size_t target) noexcept;
-
 public:
 	///
 	/// \brief Obtain (a reference to) the scene descriptor
@@ -147,7 +144,7 @@ public:
 	/// \brief Create a new Prop
 	///
 	/// Transform will be parented to scene root if LEVK_EDITOR is defined
-	template <typename... T, typename = std::enable_if_t<isNotEqual<T...>(1)>>
+	template <typename... T, typename = require<!size_eq_v<1, T...>>>
 	TProp_t<T...> spawnProp(std::string name, Transform* pParent = nullptr);
 	///
 	/// \brief Reparent to another Transform / unparent if parented
@@ -191,12 +188,6 @@ template <typename... T>
 constexpr TProp<T...>::operator Prop() const noexcept
 {
 	return prop;
-}
-
-template <typename... T>
-constexpr bool GameScene::isNotEqual(std::size_t target) noexcept
-{
-	return sizeof...(T) != target;
 }
 
 template <typename T, typename... Args>

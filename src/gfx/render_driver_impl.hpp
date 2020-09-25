@@ -6,7 +6,7 @@
 #include <engine/window/common.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
-#include <engine/gfx/renderer.hpp>
+#include <engine/gfx/render_driver.hpp>
 #include <gfx/render_context.hpp>
 #include <gfx/pipeline_impl.hpp>
 #include <gfx/resource_descriptors.hpp>
@@ -17,11 +17,28 @@ class Transform;
 class WindowImpl;
 } // namespace le
 
-namespace le::gfx
+namespace le::gfx::render
 {
-class Renderer;
+struct FrameSync final
+{
+	rd::Set set;
+	vk::Semaphore renderReady;
+	vk::Semaphore presentReady;
+	vk::Fence drawing;
+	vk::Framebuffer framebuffer;
+	vk::CommandBuffer commandBuffer;
+	vk::CommandPool commandPool;
+};
 
-class RendererImpl final
+struct TexCounts
+{
+	u32 diffuse = 0;
+	u32 specular = 0;
+};
+
+using PCDeq = std::deque<std::deque<rd::PushConstants>>;
+
+class Driver::Impl
 {
 public:
 	struct Info final
@@ -31,11 +48,6 @@ public:
 		u8 frameCount = 3;
 	};
 
-private:
-	struct FrameSync;
-
-	using PCDeq = std::deque<std::deque<rd::PushConstants>>;
-
 public:
 	std::string m_name;
 
@@ -43,13 +55,8 @@ private:
 	RenderContext m_context;
 	RenderPass m_renderPass;
 	std::vector<FrameSync> m_frames;
-	Renderer* m_pRenderer;
-
-	struct
-	{
-		u32 diffuse = 0;
-		u32 specular = 0;
-	} m_texCount;
+	Driver* m_pDriver;
+	TexCounts m_texCount;
 
 	u64 m_drawnFrames = 0;
 
@@ -58,20 +65,17 @@ private:
 	u8 m_frameCount = 0;
 
 public:
-	RendererImpl(Info const& info, Renderer* pOwner);
-	~RendererImpl();
+	Impl(Info const& info, Driver* pOwner);
+	~Impl();
 
 public:
 	void create(u8 frameCount = 2);
 	void destroy();
 
 	void update();
-	bool render(Renderer::Scene scene, bool bExtGUI);
+	bool render(Driver::Scene scene, bool bExtGUI);
 
 public:
-	vk::Viewport transformViewport(ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f}) const;
-	vk::Rect2D transformScissor(ScreenRect const& nRect = {}) const;
-
 	u64 framesDrawn() const;
 	u8 virtualFrameCount() const;
 
@@ -91,21 +95,24 @@ private:
 	FrameSync const& frameSync() const;
 	void next();
 
-	PCDeq writeSets(Renderer::Scene& out_scene);
-	u64 doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target, bool bExtGUI) const;
-	bool submit();
-
 	friend class le::WindowImpl;
 };
 
-struct RendererImpl::FrameSync final
+struct PassInfo final
 {
-	rd::Set set;
-	vk::Semaphore renderReady;
-	vk::Semaphore presentReady;
-	vk::Fence drawing;
-	vk::Framebuffer framebuffer;
-	vk::CommandBuffer commandBuffer;
-	vk::CommandPool commandPool;
+	Ref<RenderContext const> context;
+	Ref<FrameSync const> frame;
+	Ref<Driver::Scene const> scene;
+	Ref<PCDeq const> push;
+	Ref<RenderTarget const> target;
+	RenderPass pass;
+	ScreenRect view;
+	bool bExtGUI = false;
 };
-} // namespace le::gfx
+
+PCDeq write(FrameSync& out_frame, Driver::Scene& out_scene, TexCounts& out_texCount);
+u64 pass(PassInfo const& info);
+bool submit(RenderContext& out_context, FrameSync const& frame);
+vk::Viewport viewport(vk::Extent2D extent, ScreenRect const& nRect = {}, glm::vec2 const& depth = {0.0f, 1.0f});
+vk::Rect2D scissor(vk::Extent2D extent, ScreenRect const& nRect = {});
+} // namespace le::gfx::render

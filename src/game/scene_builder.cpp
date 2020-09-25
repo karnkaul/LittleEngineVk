@@ -115,21 +115,21 @@ glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace)
 	return uiProjection(uiSpace, renderArea);
 }
 
-gfx::Renderer::Scene SceneBuilder::build(gfx::Camera const& camera, Registry const& registry) const
+gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, Registry const& registry) const
 {
 	auto const ifbSize = engine::framebufferSize();
 	auto const gameRect = engine::gameRectSize();
 	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
 	glm::vec2 const fRenderArea = fbSize * gameRect;
 	glm::ivec2 const iRenderArea = {(s32)fRenderArea.x, (s32)fRenderArea.y};
-	gfx::Renderer::Scene scene;
+	gfx::render::Driver::Scene scene;
 	scene.view.pos_v = camera.position;
 	scene.view.mat_v = camera.view();
 	scene.view.mat_p = camera.perspective(fRenderArea.x / fRenderArea.y);
 	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
 	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
-	gfx::Renderer::Batch batch3D;
-	gfx::Renderer::Batch batchUI;
+	gfx::render::Driver::Batch batch3D;
+	gfx::render::Driver::Batch batchUI;
 	gfx::Pipeline pipe3D, pipeUI;
 	glm::vec3 uiSpace = glm::vec3(fRenderArea, 2.0f);
 	GameScene::Desc::Flags flags;

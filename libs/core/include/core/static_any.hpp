@@ -2,7 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
-#include <type_traits>
+#include <core/traits.hpp>
 
 namespace le
 {
@@ -22,7 +22,7 @@ private:
 	template <typename T>
 	static constexpr bool is_different_v = !std::is_same_v<std::decay_t<T>, StaticAny<N>>;
 	template <typename T>
-	using is_different_t = std::enable_if_t<is_different_v<T>>;
+	using is_different = require<is_different_v<T>>;
 
 public:
 	StaticAny() noexcept = default;
@@ -36,12 +36,12 @@ public:
 	///
 	/// \brief Construct with object of type T
 	///
-	template <typename T, typename = is_different_t<T>>
+	template <typename T, typename = is_different<T>>
 	StaticAny(T&& t);
 	///
 	/// \brief Assign to object of type T
 	///
-	template <typename T, typename = is_different_t<T>>
+	template <typename T, typename = is_different<T>>
 	StaticAny& operator=(T&& t);
 	///
 	/// \brief Check if held type (if any) matches T
@@ -55,27 +55,29 @@ public:
 	///
 	/// \brief Obtain value (copy) of T
 	///
-	template <typename T, typename = is_different_t<T>>
+	template <typename T, typename = is_different<T>>
 	T val() const;
 	///
 	/// \brief Obtain pointer to T
 	///
-	template <typename T, typename = is_different_t<T>>
+	template <typename T, typename = is_different<T>>
 	T const* ptr() const noexcept;
 	///
 	/// \brief Obtain pointer to T
 	///
-	template <typename T, typename = is_different_t<T>>
-	T* ptr() noexcept; ///
+	template <typename T, typename = is_different<T>>
+	T* ptr() noexcept;
+	///
 	/// \brief Obtain reference to T
 	/// Throws / returns static reference on type mismatch
 	///
-	template <typename T, typename = is_different_t<T>>
-	T const& ref() const; ///
+	template <typename T, typename = is_different<T>>
+	T const& ref() const;
+	///
 	/// \brief Obtain reference to T
 	/// Throws / returns static reference on type mismatch
 	///
-	template <typename T, typename = is_different_t<T>>
+	template <typename T, typename = is_different<T>>
 	T& ref();
 
 	///

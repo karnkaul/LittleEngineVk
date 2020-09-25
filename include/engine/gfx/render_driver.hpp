@@ -14,9 +14,9 @@ class Transform;
 class WindowImpl;
 } // namespace le
 
-namespace le::gfx
+namespace le::gfx::render
 {
-class Renderer final
+class Driver final
 {
 public:
 	struct ClearValues final
@@ -76,10 +76,10 @@ public:
 	Stats m_stats;
 
 public:
-	Renderer();
-	Renderer(Renderer&&);
-	Renderer& operator=(Renderer&&);
-	~Renderer();
+	Driver();
+	Driver(Driver&&);
+	Driver& operator=(Driver&&);
+	~Driver();
 
 public:
 	void submit(Scene scene, ScreenRect const& sceneView);
@@ -91,12 +91,13 @@ private:
 	void render(bool bEditor);
 
 private:
+	class Impl;
 	friend class le::WindowImpl;
-	friend class RendererImpl;
+	friend class Impl;
 
 private:
-	std::unique_ptr<class RendererImpl> m_uImpl;
+	std::unique_ptr<class Impl> m_uImpl;
 	Scene m_scene;
 	ScreenRect m_sceneView;
 };
-} // namespace le::gfx
+} // namespace le::gfx::render

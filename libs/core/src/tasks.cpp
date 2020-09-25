@@ -185,43 +185,6 @@ Worker::Worker(std::size_t idx)
 	});
 }
 
-// void work(std::size_t idx)
-// {
-// 	while (g_queue.active())
-// 	{
-// 		g_busy.at(idx) = false;
-// 		auto task = g_queue.popTask();
-// 		if (task && task->handle && task->task)
-// 		{
-// 			auto const id = task->handle->id();
-// 			if (task->handle->status() == Handle::Status::eDiscarded)
-// 			{
-// 				LOG_I("[{}] task_{} [{}] discarded", g_tName, task->handle->id(), task->name);
-// 				continue;
-// 			}
-// 			Handle::Status status = Handle::Status::eWaiting;
-// 			if (task->handle->m_status.compare_exchange_strong(status, Handle::Status::eExecuting))
-// 			{
-// 				g_busy.at(idx) = true;
-// 				task->handle->m_status.store(Handle::Status::eExecuting);
-// 				try
-// 				{
-// 					LOGIF_D(!task->name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task->name);
-// 					task->task();
-// 					LOGIF_D(!task->name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task->name);
-// 					task->handle->m_status.store(Handle::Status::eCompleted);
-// 				}
-// 				catch (std::exception const& e)
-// 				{
-// 					LOG_E("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task->name.empty() ? "Unnamed" : task->name, e.what());
-// 					task->handle->m_exception = e.what();
-// 					task->handle->m_status.store(Handle::Status::eError);
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
 Handle::Handle(s64 id) : m_id(id), m_status(Status::eWaiting) {}
 
 Handle::Status Handle::status() const noexcept

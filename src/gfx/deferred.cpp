@@ -1,6 +1,6 @@
 #include <kt/async_queue/async_queue.hpp>
 #include <gfx/deferred.hpp>
-#include <gfx/renderer_impl.hpp>
+#include <gfx/render_driver_impl.hpp>
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
 #include <window/window_impl.hpp>
@@ -31,23 +31,23 @@ bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
 	for (auto& [window, entry] : out_deferred.drawingMap)
 	{
 		bool const bWindowLost = active.find(window) == active.end();
-		auto const pRenderer = WindowImpl::rendererImpl(window);
-		if (!pRenderer || bWindowLost)
+		auto const pDriver = WindowImpl::driverImpl(window);
+		if (!pDriver || bWindowLost)
 		{
 			--entry.remaining;
 		}
 		bool const bDrawn = entry.remaining <= 0;
-		if (!bDrawn && !bWindowLost && pRenderer)
+		if (!bDrawn && !bWindowLost && pDriver)
 		{
-			if (pRenderer->framesDrawn() < entry.lastFrame)
+			if (pDriver->framesDrawn() < entry.lastFrame)
 			{
 				// Renderer may have reset frame count, no need to track this window any more
 				entry.remaining = 0;
 			}
 			else
 			{
-				s16 diff = (s16)(pRenderer->framesDrawn() - entry.lastFrame);
-				entry.remaining = (s16)pRenderer->virtualFrameCount() + (s16)entry.pad - diff;
+				s16 diff = (s16)(pDriver->framesDrawn() - entry.lastFrame);
+				entry.remaining = (s16)pDriver->virtualFrameCount() + (s16)entry.pad - diff;
 			}
 		}
 		if (entry.remaining > 0)
@@ -85,10 +85,10 @@ void deferred::release(std::function<void()> func, u8 extraFrames)
 	auto const active = WindowImpl::allExisting();
 	for (auto const& window : active)
 	{
-		auto const pRenderer = WindowImpl::rendererImpl(window);
-		if (pRenderer)
+		auto const pDriver = WindowImpl::driverImpl(window);
+		if (pDriver)
 		{
-			deferred.drawingMap[window] = {pRenderer->framesDrawn(), (s16)pRenderer->virtualFrameCount(), extraFrames};
+			deferred.drawingMap[window] = {pDriver->framesDrawn(), (s16)pDriver->virtualFrameCount(), extraFrames};
 		}
 	}
 	g_deferred.push_back(std::move(deferred));

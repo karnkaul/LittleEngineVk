@@ -88,14 +88,14 @@ WindowID Window::editorWindow()
 	return WindowImpl::editorWindow();
 }
 
-gfx::Renderer const& Window::renderer() const
+gfx::render::Driver const& Window::driver() const
 {
-	return m_renderer;
+	return m_driver;
 }
 
-gfx::Renderer& Window::renderer()
+gfx::render::Driver& Window::driver()
 {
-	return m_renderer;
+	return m_driver;
 }
 
 WindowID Window::id() const

@@ -3,7 +3,7 @@
 #include <core/ecs_registry.hpp>
 #include <engine/game/text2d.hpp>
 #include <engine/game/state.hpp>
-#include <engine/gfx/renderer.hpp>
+#include <engine/gfx/render_driver.hpp>
 #include <engine/resources/resource_types.hpp>
 
 namespace le
@@ -42,6 +42,6 @@ public:
 	static glm::vec3 uiProjection(glm::vec3 const& uiSpace);
 
 public:
-	virtual gfx::Renderer::Scene build(gfx::Camera const& camera, Registry const& registry) const;
+	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, Registry const& registry) const;
 };
 } // namespace le

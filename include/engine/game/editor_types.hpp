@@ -56,6 +56,11 @@ struct GUIStateful
 	}
 };
 
+struct Text final
+{
+	Text(sv text);
+};
+
 struct Button final : GUIStateful
 {
 	Button(sv id);
@@ -177,6 +182,12 @@ template <>
 struct TWidget<Transform>
 {
 	TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
+};
+
+template <>
+struct TWidget<std::pair<s64, s64>>
+{
+	TWidget(sv id, s64& out_t, s64 min, s64 max, s64 dt);
 };
 
 struct PerFrame

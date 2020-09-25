@@ -10,13 +10,13 @@
 #include <gfx/ext_gui.hpp>
 #include <gfx/pipeline_impl.hpp>
 #include <gfx/render_cmd.hpp>
-#include <gfx/renderer_impl.hpp>
+#include <gfx/render_driver_impl.hpp>
 #include <gfx/resource_descriptors.hpp>
 #include <editor/editor.hpp>
 #include <resources/resources_impl.hpp>
 #include <window/window_impl.hpp>
 
-namespace le::gfx
+namespace le::gfx::render
 {
 namespace
 {
@@ -53,21 +53,21 @@ bool allReady(T... t)
 }
 } // namespace
 
-Renderer::Renderer() = default;
-Renderer::Renderer(Renderer&&) = default;
-Renderer& Renderer::operator=(Renderer&&) = default;
-Renderer::~Renderer() = default;
+Driver::Driver() = default;
+Driver::Driver(Driver&&) = default;
+Driver& Driver::operator=(Driver&&) = default;
+Driver::~Driver() = default;
 
-std::string const Renderer::s_tName = utils::tName<Renderer>();
+std::string const Driver::s_tName = utils::tName<Driver>();
 
-void Renderer::submit(Scene scene, ScreenRect const& sceneView)
+void Driver::submit(Scene scene, ScreenRect const& sceneView)
 {
 	m_scene = std::move(scene);
 	m_sceneView = sceneView;
 	return;
 }
 
-void Renderer::render(bool bEditor)
+void Driver::render(bool bEditor)
 {
 	if (m_uImpl)
 	{
@@ -75,28 +75,28 @@ void Renderer::render(bool bEditor)
 	}
 }
 
-glm::vec2 Renderer::screenToN(glm::vec2 const& screenXY) const
+glm::vec2 Driver::screenToN(glm::vec2 const& screenXY) const
 {
 	return m_uImpl ? m_uImpl->screenToN(screenXY) : screenXY;
 }
 
-ScreenRect Renderer::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
+ScreenRect Driver::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
 {
 	return m_uImpl ? m_uImpl->clampToView(screenXY, nViewport, padding) : ScreenRect::sizeCentre(nViewport);
 }
 
-RendererImpl::RendererImpl(Info const& info, Renderer* pOwner) : m_context(info.contextInfo), m_pRenderer(pOwner), m_window(info.windowID)
+Driver::Impl::Impl(Info const& info, Driver* pOwner) : m_context(info.contextInfo), m_pDriver(pOwner), m_window(info.windowID)
 {
-	m_name = fmt::format("{}:{}", Renderer::s_tName, m_window);
+	m_name = fmt::format("{}:{}", Driver::s_tName, m_window);
 	create(info.frameCount);
 }
 
-RendererImpl::~RendererImpl()
+Driver::Impl::~Impl()
 {
 	destroy();
 }
 
-void RendererImpl::create(u8 frameCount)
+void Driver::Impl::create(u8 frameCount)
 {
 	if (m_renderPass.renderPass == vk::RenderPass())
 	{
@@ -111,7 +111,7 @@ void RendererImpl::create(u8 frameCount)
 		m_frames.reserve((std::size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx)
 		{
-			RendererImpl::FrameSync frame;
+			FrameSync frame;
 			frame.set = sets.at((std::size_t)idx);
 			frame.renderReady = g_device.device.createSemaphore({});
 			frame.presentReady = g_device.device.createSemaphore({});
@@ -133,7 +133,7 @@ void RendererImpl::create(u8 frameCount)
 	return;
 }
 
-void RendererImpl::destroy()
+void Driver::Impl::destroy()
 {
 	if (!m_frames.empty())
 	{
@@ -155,9 +155,9 @@ void RendererImpl::destroy()
 	return;
 }
 
-void RendererImpl::update() {}
+void Driver::Impl::update() {}
 
-bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
+bool Driver::Impl::render(Driver::Scene scene, bool bExtGUI)
 {
 	bool const bEmpty =
 		(scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }));
@@ -167,7 +167,7 @@ bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 	}
 	auto& frame = frameSync();
 	g_device.waitFor(frame.drawing);
-	auto const push = bEmpty ? PCDeq() : writeSets(scene);
+	auto const push = bEmpty ? PCDeq() : render::write(frameSync(), scene, m_texCount);
 	auto target = m_context.acquireNextImage(frame.renderReady, frame.drawing);
 	bool bRendered = false;
 	if (target)
@@ -188,55 +188,30 @@ bool RendererImpl::render(Renderer::Scene scene, bool bExtGUI)
 		}
 		else
 		{
-			tris = doRenderPass(scene, push, *target, bExtGUI);
+			PassInfo info{m_context, frameSync(), scene, push, *target, m_renderPass, m_pDriver->m_sceneView, bExtGUI};
+			tris = render::pass(info);
 		}
-		if (submit())
+		if (render::submit(m_context, frameSync()))
 		{
 			next();
-			m_pRenderer->m_stats.trisDrawn = tris;
+			m_pDriver->m_stats.trisDrawn = tris;
 			bRendered = true;
 		}
 	}
 	return bRendered;
 }
 
-vk::Viewport RendererImpl::transformViewport(ScreenRect const& nRect, glm::vec2 const& depth) const
-{
-	vk::Viewport viewport;
-	auto const& extent = m_context.m_swapchain.extent;
-	glm::vec2 const size = nRect.size();
-	viewport.minDepth = depth.x;
-	viewport.maxDepth = depth.y;
-	viewport.width = size.x * (f32)extent.width;
-	viewport.height = -(size.y * (f32)extent.height); // flip viewport about X axis
-	viewport.x = nRect.lt.x * (f32)extent.width;
-	viewport.y = nRect.lt.y * (f32)extent.height - (f32)viewport.height;
-	return viewport;
-}
-
-vk::Rect2D RendererImpl::transformScissor(ScreenRect const& nRect) const
-{
-	vk::Rect2D scissor;
-	auto const& extent = m_context.m_swapchain.extent;
-	glm::vec2 const size = nRect.size();
-	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.width);
-	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.height);
-	scissor.extent.width = (u32)(size.x * (f32)extent.width);
-	scissor.extent.height = (u32)(size.y * (f32)extent.height);
-	return scissor;
-}
-
-u64 RendererImpl::framesDrawn() const
+u64 Driver::Impl::framesDrawn() const
 {
 	return m_drawnFrames;
 }
 
-u8 RendererImpl::virtualFrameCount() const
+u8 Driver::Impl::virtualFrameCount() const
 {
 	return m_frameCount;
 }
 
-glm::vec2 RendererImpl::screenToN(glm::vec2 const& screenXY) const
+glm::vec2 Driver::Impl::screenToN(glm::vec2 const& screenXY) const
 {
 	auto pWindow = WindowImpl::windowImpl(m_window);
 	if (pWindow)
@@ -247,7 +222,7 @@ glm::vec2 RendererImpl::screenToN(glm::vec2 const& screenXY) const
 	return {};
 }
 
-ScreenRect RendererImpl::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
+ScreenRect Driver::Impl::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
 {
 	auto pWindow = WindowImpl::windowImpl(m_window);
 	if (pWindow)
@@ -263,7 +238,7 @@ ScreenRect RendererImpl::clampToView(glm::vec2 const& screenXY, glm::vec2 const&
 	return ScreenRect::sizeCentre(nViewport);
 }
 
-bool RendererImpl::initExtGUI() const
+bool Driver::Impl::initExtGUI() const
 {
 	ext_gui::Info guiInfo;
 	guiInfo.renderPass = m_renderPass.renderPass;
@@ -273,7 +248,7 @@ bool RendererImpl::initExtGUI() const
 	return ext_gui::init(guiInfo);
 }
 
-ColourSpace RendererImpl::colourSpace() const
+ColourSpace Driver::Impl::colourSpace() const
 {
 	if (m_context.colourFormat() == vk::Format::eB8G8R8A8Srgb)
 	{
@@ -282,17 +257,17 @@ ColourSpace RendererImpl::colourSpace() const
 	return ColourSpace::eRGBLinear;
 }
 
-vk::PresentModeKHR RendererImpl::presentMode() const
+vk::PresentModeKHR Driver::Impl::presentMode() const
 {
 	return m_context.m_metadata.presentMode;
 }
 
-std::vector<vk::PresentModeKHR> const& RendererImpl::presentModes() const
+std::vector<vk::PresentModeKHR> const& Driver::Impl::presentModes() const
 {
 	return m_context.m_metadata.presentModes;
 }
 
-bool RendererImpl::setPresentMode(vk::PresentModeKHR mode)
+bool Driver::Impl::setPresentMode(vk::PresentModeKHR mode)
 {
 	auto const& modes = presentModes();
 	if (auto search = std::find(modes.begin(), modes.end(), mode); search != modes.end())
@@ -303,34 +278,60 @@ bool RendererImpl::setPresentMode(vk::PresentModeKHR mode)
 	return false;
 }
 
-void RendererImpl::onFramebufferResize()
+void Driver::Impl::onFramebufferResize()
 {
 	m_context.onFramebufferResize();
 	return;
 }
 
-RendererImpl::FrameSync& RendererImpl::frameSync()
+FrameSync& Driver::Impl::frameSync()
 {
 	ASSERT(m_index < m_frames.size(), "Invalid index!");
 	return m_frames.at(m_index);
 }
 
-RendererImpl::FrameSync const& RendererImpl::frameSync() const
+FrameSync const& Driver::Impl::frameSync() const
 {
 	ASSERT(m_index < m_frames.size(), "Invalid index!");
 	return m_frames.at(m_index);
 }
 
-void RendererImpl::next()
+void Driver::Impl::next()
 {
 	m_index = (m_index + 1) % m_frames.size();
 	++m_drawnFrames;
 	return;
 }
+} // namespace le::gfx::render
 
-RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
+namespace le::gfx
 {
-	auto& frame = frameSync();
+vk::Viewport render::viewport(vk::Extent2D extent, ScreenRect const& nRect, glm::vec2 const& depth)
+{
+	vk::Viewport viewport;
+	glm::vec2 const size = nRect.size();
+	viewport.minDepth = depth.x;
+	viewport.maxDepth = depth.y;
+	viewport.width = size.x * (f32)extent.width;
+	viewport.height = -(size.y * (f32)extent.height); // flip viewport about X axis
+	viewport.x = nRect.lt.x * (f32)extent.width;
+	viewport.y = nRect.lt.y * (f32)extent.height - (f32)viewport.height;
+	return viewport;
+}
+
+vk::Rect2D render::scissor(vk::Extent2D extent, ScreenRect const& nRect)
+{
+	vk::Rect2D scissor;
+	glm::vec2 const size = nRect.size();
+	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.width);
+	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.height);
+	scissor.extent.width = (u32)(size.x * (f32)extent.width);
+	scissor.extent.height = (u32)(size.y * (f32)extent.height);
+	return scissor;
+}
+
+render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexCounts& out_texCount)
+{
 	auto const mg = colours::magenta.toVec4();
 	rd::StorageBuffers ssbos;
 	TexSet diffuse, specular;
@@ -416,49 +417,54 @@ RendererImpl::PCDeq RendererImpl::writeSets(Renderer::Scene& out_scene)
 			}
 		}
 	}
-	for (u32 idx = diffuse.total(); idx < m_texCount.diffuse; ++idx)
+	for (u32 idx = diffuse.total(); idx < out_texCount.diffuse; ++idx)
 	{
 		diffuse.textures.push_back(white);
 	}
-	for (u32 idx = specular.total(); idx < m_texCount.specular; ++idx)
+	for (u32 idx = specular.total(); idx < out_texCount.specular; ++idx)
 	{
 		specular.textures.push_back(black);
 	}
-	m_texCount = {diffuse.total(), specular.total()};
+	out_texCount = {diffuse.total(), specular.total()};
 	rd::View view(out_scene.view, (u32)out_scene.dirLights.size());
 	std::copy(out_scene.dirLights.begin(), out_scene.dirLights.end(), std::back_inserter(ssbos.dirLights.ssbo));
-	frame.set.writeCubemap(cubemap);
-	frame.set.writeDiffuse(diffuse.textures);
-	frame.set.writeSpecular(specular.textures);
-	frame.set.writeSSBOs(ssbos);
-	frame.set.writeView(view);
+	out_frame.set.writeCubemap(cubemap);
+	out_frame.set.writeDiffuse(diffuse.textures);
+	out_frame.set.writeSpecular(specular.textures);
+	out_frame.set.writeSSBOs(ssbos);
+	out_frame.set.writeView(view);
 	return push;
 }
 
-u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, RenderTarget const& target, bool bExtGUI) const
+u64 render::pass(PassInfo const& info)
 {
+	RenderContext const& context = info.context;
+	PCDeq const& push = info.push;
+	Driver::Scene const& scene = info.scene;
+	FrameSync const& frame = info.frame;
+	RenderTarget const& target = info.target;
 	ASSERT(!push.empty(), "No push constants!");
-	auto const& frame = frameSync();
 	auto const c = scene.clear.colour;
 	vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
-	RenderCmd cmd(frame.commandBuffer, m_renderPass.renderPass, frame.framebuffer, target.extent, {colour, depth});
+	RenderCmd cmd(frame.commandBuffer, info.pass.renderPass, frame.framebuffer, target.extent, {colour, depth});
 	std::size_t batchIdx = 0;
 	std::size_t drawableIdx = 0;
 	u64 tris = 0;
 	for (auto& batch : scene.batches)
 	{
-		cmd.setViewportScissor(transformViewport(batch.viewport.adjust(m_pRenderer->m_sceneView)), transformScissor(batch.scissor));
+		auto const extent = context.m_swapchain.extent;
+		cmd.setViewportScissor(viewport(extent, batch.viewport.adjust(info.view)), scissor(extent, batch.scissor));
 		for (auto& [meshes, pTransform, pipe] : batch.drawables)
 		{
 			for (auto mesh : meshes)
 			{
-				auto const& info = res::info(mesh);
+				auto const& meshInfo = res::info(mesh);
 				auto pImpl = res::impl(mesh);
-				if (pImpl && mesh.status() == res::Status::eReady && info.triCount > 0)
+				if (pImpl && mesh.status() == res::Status::eReady && meshInfo.triCount > 0)
 				{
-					tris += info.triCount;
-					auto const& impl = pipes::find(pipe, m_renderPass);
+					tris += meshInfo.triCount;
+					auto const& impl = pipes::find(pipe, info.pass);
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
 					cmd.bindResources<rd::PushConstants>(impl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					cmd.bindVertexBuffers(0, pImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
@@ -478,16 +484,15 @@ u64 RendererImpl::doRenderPass(Renderer::Scene const& scene, PCDeq const& push, 
 		drawableIdx = 0;
 		++batchIdx;
 	}
-	if (bExtGUI)
+	if (info.bExtGUI)
 	{
 		ext_gui::renderDrawData(frame.commandBuffer);
 	}
 	return tris;
 }
 
-bool RendererImpl::submit()
+bool render::submit(RenderContext& out_context, FrameSync const& frame)
 {
-	auto& frame = frameSync();
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags const waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	submitInfo.waitSemaphoreCount = 1;
@@ -499,6 +504,10 @@ bool RendererImpl::submit()
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_device.device.resetFences(frame.drawing);
 	g_device.queues.graphics.queue.submit(submitInfo, frame.drawing);
-	return m_context.present(frame.presentReady);
+	if (out_context.present(frame.presentReady))
+	{
+		return true;
+	}
+	return false;
 }
 } // namespace le::gfx

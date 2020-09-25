@@ -6,7 +6,7 @@
 #include <gfx/common.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
-#include <gfx/renderer_impl.hpp>
+#include <gfx/render_driver_impl.hpp>
 #if defined(LEVK_USE_GLFW)
 #if defined(LEVK_RUNTIME_MSVC)
 #include <Windows.h>
@@ -290,9 +290,9 @@ void WindowImpl::update()
 #endif
 	for (WindowImpl& window : g_registeredWindows)
 	{
-		if (auto pRenderer = window.m_pWindow->m_renderer.m_uImpl.get())
+		if (auto pDriver = window.m_pWindow->m_driver.m_uImpl.get())
 		{
-			pRenderer->update();
+			pDriver->update();
 		}
 	}
 }
@@ -322,11 +322,11 @@ WindowImpl* WindowImpl::windowImpl(WindowID window)
 	return search != g_registeredWindows.end() ? &static_cast<WindowImpl&>(*search) : nullptr;
 }
 
-gfx::RendererImpl* WindowImpl::rendererImpl(WindowID window)
+gfx::render::Driver::Impl* WindowImpl::driverImpl(WindowID window)
 {
 	if (auto pImpl = windowImpl(window); pImpl)
 	{
-		return pImpl->m_pWindow->m_renderer.m_uImpl.get();
+		return pImpl->m_pWindow->m_driver.m_uImpl.get();
 	}
 	return nullptr;
 }
@@ -397,17 +397,17 @@ bool WindowImpl::create(Window* pWindow, Window::Info const& info)
 	{
 		m_pWindow = pWindow;
 		m_nativeWindow = NativeWindow(info);
-		gfx::RendererImpl::Info rendererInfo;
-		rendererInfo.contextInfo.config.getNewSurface = [this](vk::Instance vkInst) -> vk::SurfaceKHR { return m_nativeWindow.createSurface(vkInst); };
-		rendererInfo.contextInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
-		rendererInfo.contextInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
-		rendererInfo.contextInfo.config.window = m_pWindow->m_id;
+		gfx::render::Driver::Impl::Info driverInfo;
+		driverInfo.contextInfo.config.getNewSurface = [this](vk::Instance vkInst) -> vk::SurfaceKHR { return m_nativeWindow.createSurface(vkInst); };
+		driverInfo.contextInfo.config.getFramebufferSize = [this]() -> glm::ivec2 { return framebufferSize(); };
+		driverInfo.contextInfo.config.getWindowSize = [this]() -> glm::ivec2 { return windowSize(); };
+		driverInfo.contextInfo.config.window = m_pWindow->m_id;
 		std::optional<vk::Format> forceColourSpace;
 		std::vector<vk::PresentModeKHR> forcePresentModes;
 		for (auto colourSpace : info.options.colourSpaces)
 		{
 			forceColourSpace = gfx::g_colourSpaces.at((std::size_t)colourSpace);
-			rendererInfo.contextInfo.options.formats = *forceColourSpace;
+			driverInfo.contextInfo.options.formats = *forceColourSpace;
 		}
 		if (os::isDefined("immediate", "i"))
 		{
@@ -418,22 +418,22 @@ bool WindowImpl::create(Window* pWindow, Window::Info const& info)
 		{
 			forcePresentModes.push_back((vk::PresentModeKHR)presentMode);
 		}
-		rendererInfo.contextInfo.options.presentModes = forcePresentModes;
-		rendererInfo.frameCount = info.config.virtualFrameCount;
-		rendererInfo.windowID = m_pWindow->id();
+		driverInfo.contextInfo.options.presentModes = forcePresentModes;
+		driverInfo.frameCount = info.config.virtualFrameCount;
+		driverInfo.windowID = m_pWindow->id();
 		registerCallbacks(m_nativeWindow);
 		m_nativeWindow.show(info.options.bCentreCursor);
-		m_pWindow->m_renderer.m_uImpl = std::make_unique<gfx::RendererImpl>(rendererInfo, &m_pWindow->m_renderer);
+		m_pWindow->m_driver.m_uImpl = std::make_unique<gfx::render::Driver::Impl>(driverInfo, &m_pWindow->m_driver);
 		m_presentModes.clear();
-		m_presentModes.reserve(m_pWindow->m_renderer.m_uImpl->m_context.m_metadata.presentModes.size());
-		for (auto mode : m_pWindow->m_renderer.m_uImpl->m_context.m_metadata.presentModes)
+		m_presentModes.reserve(m_pWindow->m_driver.m_uImpl->m_context.m_metadata.presentModes.size());
+		for (auto mode : m_pWindow->m_driver.m_uImpl->m_context.m_metadata.presentModes)
 		{
 			m_presentModes.push_back((PresentMode)mode);
 		}
 #if defined(LEVK_EDITOR)
 		if (!g_pEditorWindow && !gfx::ext_gui::isInit())
 		{
-			if (!m_pWindow->m_renderer.m_uImpl->initExtGUI())
+			if (!m_pWindow->m_driver.m_uImpl->initExtGUI())
 			{
 				LOG_E("[{}] Failed to initialise Editor!", Window::s_tName);
 			}
@@ -450,7 +450,7 @@ bool WindowImpl::create(Window* pWindow, Window::Info const& info)
 	catch (std::exception const& e)
 	{
 		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
-		m_pWindow->m_renderer.m_uImpl.reset();
+		m_pWindow->m_driver.m_uImpl.reset();
 		m_nativeWindow = {};
 		return false;
 	}
@@ -527,7 +527,7 @@ void WindowImpl::destroy()
 #endif
 	if (!m_nativeWindow.m_window.empty())
 	{
-		m_pWindow->m_renderer.m_uImpl.reset();
+		m_pWindow->m_driver.m_uImpl.reset();
 		m_nativeWindow = {};
 		LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 	}
@@ -537,21 +537,21 @@ void WindowImpl::destroy()
 
 void WindowImpl::onFramebufferSize(glm::ivec2 const& /*size*/)
 {
-	if (m_pWindow->m_renderer.m_uImpl)
+	if (m_pWindow->m_driver.m_uImpl)
 	{
-		m_pWindow->m_renderer.m_uImpl->onFramebufferResize();
+		m_pWindow->m_driver.m_uImpl->onFramebufferResize();
 	}
 	return;
 }
 
 PresentMode WindowImpl::presentMode() const
 {
-	return m_pWindow->m_renderer.m_uImpl ? (PresentMode)m_pWindow->m_renderer.m_uImpl->presentMode() : PresentMode::eFifo;
+	return m_pWindow->m_driver.m_uImpl ? (PresentMode)m_pWindow->m_driver.m_uImpl->presentMode() : PresentMode::eFifo;
 }
 
 bool WindowImpl::setPresentMode(PresentMode mode)
 {
-	return m_pWindow->m_renderer.m_uImpl ? m_pWindow->m_renderer.m_uImpl->setPresentMode((vk::PresentModeKHR)mode) : false;
+	return m_pWindow->m_driver.m_uImpl ? m_pWindow->m_driver.m_uImpl->setPresentMode((vk::PresentModeKHR)mode) : false;
 }
 
 glm::ivec2 WindowImpl::framebufferSize() const
@@ -724,7 +724,7 @@ void WindowImpl::renderAll()
 				bExtGUI = g_pEditorWindow == &window;
 			}
 #endif
-			window.m_pWindow->m_renderer.render(bExtGUI);
+			window.m_pWindow->m_driver.render(bExtGUI);
 		}
 	}
 	return;

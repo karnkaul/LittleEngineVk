@@ -5,7 +5,7 @@
 #include <core/flags.hpp>
 #include <core/utils.hpp>
 #include <engine/gfx/light.hpp>
-#include <engine/gfx/renderer.hpp>
+#include <engine/gfx/render_driver.hpp>
 #include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <gfx/deferred.hpp>
@@ -39,7 +39,7 @@ struct View final
 	alignas(4) u32 dirLightCount;
 
 	View();
-	View(Renderer::View const& view, u32 dirLightCount);
+	View(render::Driver::View const& view, u32 dirLightCount);
 };
 
 // SSBO

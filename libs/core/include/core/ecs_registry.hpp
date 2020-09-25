@@ -13,6 +13,7 @@
 #include <core/flags.hpp>
 #include <core/log_config.hpp>
 #include <core/span.hpp>
+#include <core/traits.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
 #include <kt/async_queue/async_queue.hpp>
@@ -40,10 +41,6 @@ struct EntityHasher final
 
 class Registry
 {
-private:
-	template <typename... T>
-	static constexpr bool isGreater(std::size_t const min);
-
 public:
 	///
 	/// \brief Desired flags can be combined with a mask as per-Entity filters for `view()`
@@ -118,10 +115,10 @@ public:
 	template <typename T, typename... Args>
 	Spawned_t<T> spawn(std::string name, Args&&... args);
 	///
-	/// \brief Make new Entity with `Ts...` attached
+	/// \brief Make new Entity with `T...` attached
 	///
-	template <typename... Ts>
-	Spawned_t<Ts...> spawn(std::string name);
+	template <typename... T>
+	Spawned_t<T...> spawn(std::string name);
 	///
 	/// \brief Destroy Entity
 	///
@@ -159,7 +156,7 @@ public:
 	///
 	/// \brief Add `T...` to Entity
 	///
-	template <typename... T, typename = std::enable_if_t<isGreater<T...>(1)>>
+	template <typename... T, typename = require<!size_eq_v<1, T...>>>
 	Components<T*...> attach(Entity entity);
 	///
 	/// \brief Remove `T...` if attached to Entity
@@ -280,12 +277,6 @@ private:
 };
 
 template <typename... T>
-constexpr bool Registry::isGreater(std::size_t const min)
-{
-	return sizeof...(T) > min;
-}
-
-template <typename... T>
 constexpr Registry::Spawned<T...>::operator Entity() const noexcept
 {
 	return entity;
@@ -330,14 +321,14 @@ typename Registry::Spawned_t<T> Registry::spawn(std::string name, Args&&... args
 	return {entity, comp};
 }
 
-template <typename... Ts>
-typename Registry::Spawned_t<Ts...> Registry::spawn(std::string name)
+template <typename... T>
+typename Registry::Spawned_t<T...> Registry::spawn(std::string name)
 {
 	auto lock = m_mutex.lock();
 	auto entity = spawn_Impl(std::move(name));
-	if constexpr (sizeof...(Ts) > 0)
+	if constexpr (sizeof...(T) > 0)
 	{
-		auto comps = Components<Ts&...>(attach_Impl<Ts>(entity, m_db[sign_Impl<Ts>()])...);
+		auto comps = Components<T&...>(attach_Impl<T>(entity, m_db[sign_Impl<T>()])...);
 		return {entity, std::move(comps)};
 	}
 	else
@@ -362,7 +353,7 @@ T* Registry::attach(Entity entity, Args&&... args)
 template <typename... T, typename>
 typename Registry::Components<T*...> Registry::attach(Entity entity)
 {
-	static_assert(sizeof...(T) > 0, "Must pass at least one T");
+	static_assert(!size_eq_v<0, T...>, "Must pass at least one T");
 	static_assert((std::is_default_constructible_v<T> && ...), "Cannot default construct T...");
 	auto lock = m_mutex.lock();
 	if (find_Impl<Info>(this, m_db[sign_Impl<Info>()], entity))

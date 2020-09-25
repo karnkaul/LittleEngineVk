@@ -15,7 +15,7 @@
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/pipeline_impl.hpp>
-#include <gfx/renderer_impl.hpp>
+#include <gfx/render_driver_impl.hpp>
 #include <gfx/vram.hpp>
 #include <game/state_impl.hpp>
 #include <resources/resources_impl.hpp>
@@ -175,8 +175,9 @@ bool Service::update(Driver& out_driver) const
 		input::fire();
 #if defined(LEVK_EDITOR)
 		editor::tick(gs::g_game, dt);
-		input::g_bEditorOnly = !editor::g_bTickGame;
-		bTick &= editor::g_bTickGame;
+		bool const bEditorOnly = !editor::g_bTickGame && !editor::g_bStepGame.get();
+		input::g_bEditorOnly = bEditorOnly;
+		bTick &= !bEditorOnly;
 		gameRect = editor::g_gameRect;
 #endif
 	}
@@ -184,7 +185,7 @@ bool Service::update(Driver& out_driver) const
 	try
 #endif
 	{
-		g_app.window->renderer().submit(gs::update(out_driver, dt, bTick), gameRect);
+		g_app.window->driver().submit(gs::update(out_driver, dt, bTick), gameRect);
 	}
 #if defined(LEVK_DEBUG)
 	catch (std::exception const& e)
@@ -306,8 +307,8 @@ res::Texture::Space engine::colourSpace()
 {
 	if (g_app.window)
 	{
-		auto const pRenderer = WindowImpl::rendererImpl(g_app.window->id());
-		if (pRenderer && pRenderer->colourSpace() == ColourSpace::eSRGBNonLinear)
+		auto const pDriver = WindowImpl::driverImpl(g_app.window->id());
+		if (pDriver && pDriver->colourSpace() == ColourSpace::eSRGBNonLinear)
 		{
 			return res::Texture::Space::eSRGBNonLinear;
 		}

@@ -2,17 +2,12 @@
 #include <unordered_set>
 #include <core/static_any.hpp>
 #include <core/utils.hpp>
+#include <engine/gfx/render_driver.hpp>
 #include <engine/window/window.hpp>
 #include <window/native_window.hpp>
 
 namespace le
 {
-namespace gfx
-{
-class Renderer;
-class RendererImpl;
-} // namespace gfx
-
 class WindowImpl final
 {
 public:
@@ -50,7 +45,7 @@ public:
 	static void update();
 	static Span<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
-	static gfx::RendererImpl* rendererImpl(WindowID window);
+	static gfx::render::Driver::Impl* driverImpl(WindowID window);
 	static std::unordered_set<s32> allExisting();
 	static StaticAny<> nativeHandle(WindowID window);
 	static WindowID editorWindow();

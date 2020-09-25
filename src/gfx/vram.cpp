@@ -12,7 +12,7 @@
 #include <kt/async_queue/async_queue.hpp>
 #include <gfx/device.hpp>
 #include <gfx/vram.hpp>
-#include <gfx/renderer_impl.hpp>
+#include <gfx/render_driver_impl.hpp>
 
 namespace le::gfx
 {

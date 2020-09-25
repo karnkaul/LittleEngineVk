@@ -50,7 +50,7 @@ std::vector<vk::VertexInputAttributeDescription> vbo::vertexAttributes()
 
 View::View() = default;
 
-View::View(Renderer::View const& view, u32 dirLightCount)
+View::View(render::Driver::View const& view, u32 dirLightCount)
 	: mat_vp(view.mat_vp), mat_v(view.mat_v), mat_p(view.mat_p), mat_ui(view.mat_ui), pos_v(view.pos_v), dirLightCount(dirLightCount)
 {
 }

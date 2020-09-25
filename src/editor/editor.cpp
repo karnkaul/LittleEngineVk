@@ -18,7 +18,7 @@
 #include <engine/resources/resources.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
-#include <engine/gfx/renderer.hpp>
+#include <engine/gfx/render_driver.hpp>
 #include <engine/window/input_types.hpp>
 #include <resources/resources_impl.hpp>
 #include <resources/model_impl.hpp>
@@ -437,12 +437,26 @@ void entityInspector(v2 pos, v2 size, GameScene& out_scene)
 void playButton()
 {
 	char const* szPlayPause = g_bTickGame ? "Pause" : "Play";
-	if (Button(szPlayPause))
+	if (!g_bStepGame.t && Button(szPlayPause))
 	{
 		g_bTickGame = !g_bTickGame;
 		LOG_I("[{}] {}", s_tName, g_bTickGame ? "Resumed" : "Paused");
 	}
-}
+	if (!g_bTickGame)
+	{
+		Styler s(Style::eSameLine);
+		static s64 step = 1;
+		TWidget<std::pair<s64, s64>> st(fmt::format("{}", step), step, 1, 240, 1);
+		if (!g_bStepGame.t)
+		{
+			ImGui::SameLine(0.0f, 3.0f);
+			if (Button("Step"))
+			{
+				g_bStepGame = TTrigger<bool>(true, (s16)step);
+			}
+		}
+	}
+} // namespace
 
 void presentModeDropdown()
 {
@@ -742,7 +756,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_s
 				logLevelDropdown();
 				ImGui::EndTabItem();
 			}
-			if (out_scene.m_editorData.customRightPanel && ImGui::BeginTabItem("Custom"))
+			if (!g_bStepGame.t && out_scene.m_editorData.customRightPanel && ImGui::BeginTabItem("Custom"))
 			{
 				perFrame(out_scene.m_editorData);
 				ImGui::EndTabItem();
@@ -823,24 +837,10 @@ void drawLog(iv2 fbSize, s32 logHeight)
 			ImGui::RadioButton("Error", &s_logLevel, 3);
 		}
 		{
-			auto s = Styler(Style::eSameLine);
-			// Arrow buttons with Repeater
-			f32 const spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-			static constexpr s32 s_minTCounter = 1, s_maxTCounter = 20;
-			s32 logEntries = (s32)g_maxLogEntries / 100;
-			ImGui::PushButtonRepeat(true);
-			if (ImGui::ArrowButton("##left", ImGuiDir_Left) && logEntries > s_minTCounter)
-			{
-				--logEntries;
-			}
-			ImGui::SameLine(0.0f, spacing);
-			if (ImGui::ArrowButton("##right", ImGuiDir_Right) && logEntries < s_maxTCounter)
-			{
-				++logEntries;
-			}
-			ImGui::PopButtonRepeat();
-			s = Styler(Style::eSameLine);
-			ImGui::Text("%d", logEntries * 100);
+			Styler s(Style::eSameLine);
+			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20;
+			s64 logEntries = (s64)g_maxLogEntries / 100;
+			TWidget<std::pair<s64, s64>> st(fmt::format("{}", logEntries * 100), logEntries, s_minTCounter, s_maxTCounter, 1);
 			g_maxLogEntries = (std::size_t)logEntries * 100;
 		}
 		{
@@ -1018,6 +1018,11 @@ void GUIStateful::refresh()
 	clicks(guiState);
 }
 
+Text::Text(sv text)
+{
+	ImGui::Text("%s", text.data());
+}
+
 Button::Button(sv id)
 {
 	refresh();
@@ -1176,6 +1181,23 @@ TWidget<Transform>::TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, glm:
 	out_t.orient(glm::quat(rot));
 	ImGui::DragFloat3(idScl.data(), &scl.x, dPOS.z);
 	out_t.scale(scl);
+}
+
+TWidget<std::pair<s64, s64>>::TWidget(sv id, s64& out_t, s64 min, s64 max, s64 dt)
+{
+	ImGui::PushButtonRepeat(true);
+	if (ImGui::ArrowButton("##left", ImGuiDir_Left) && out_t > min)
+	{
+		out_t -= dt;
+	}
+	ImGui::SameLine(0.0f, 3.0f);
+	if (ImGui::ArrowButton("##right", ImGuiDir_Right) && out_t < max)
+	{
+		out_t += dt;
+	}
+	ImGui::PopButtonRepeat();
+	ImGui::SameLine(0.0f, 5.0f);
+	ImGui::Text("%s", id.data());
 }
 } // namespace le::editor
 

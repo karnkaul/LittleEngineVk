@@ -27,7 +27,7 @@ struct Base
 } // namespace detail
 
 ///
-/// \brief Wrapper for a container of Ts associated with RAII tokens
+/// \brief Wrapper for a container of T associated with RAII tokens
 ///
 /// Important: generator instance must outlive all Token instances handed out by it
 ///

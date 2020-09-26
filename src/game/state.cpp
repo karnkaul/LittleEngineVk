@@ -2,6 +2,7 @@
 #include <core/log.hpp>
 #include <engine/game/driver.hpp>
 #include <engine/game/state.hpp>
+#include <engine/game/stopwatch.hpp>
 #include <resources/manifest.hpp>
 #include <game/state_impl.hpp>
 #include <editor/editor.hpp>
@@ -121,6 +122,7 @@ gfx::render::Driver::Scene gs::update(engine::Driver& out_driver, Time dt, bool 
 	if (bTick)
 	{
 		out_driver.tick(dt);
+		g_stopwatch.tick(dt);
 	}
 	Ref<gfx::Camera> camera = g_game.mainCamera();
 #if defined(LEVK_EDITOR)

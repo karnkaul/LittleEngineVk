@@ -9,6 +9,12 @@ namespace le
 template <bool... B>
 constexpr bool require_v = (B && ...);
 
+///
+/// \brief True if any B... are true
+///
+template <bool... B>
+constexpr bool either_v = (B || ...);
+
 template <typename T, bool... B>
 using require_t = std::enable_if_t<require_v<B...>, T>;
 template <bool... B>

@@ -50,11 +50,14 @@ std::string utils::demangle(std::string_view name, bool bMinimal)
 	if (bMinimal)
 	{
 		static constexpr std::string_view prefix = "::";
-		auto search = ret.find(prefix);
-		while (search < ret.size())
+		static constexpr std::string_view skip = "<";
+		auto ps = ret.find(prefix);
+		auto ss = ret.find(skip);
+		while (ps < ret.size() && ss > ps)
 		{
-			ret = ret.substr(search + prefix.size());
-			search = ret.find(prefix);
+			ret = ret.substr(ps + prefix.size());
+			ps = ret.find(prefix);
+			ss = ret.find(skip);
 		}
 		return ret;
 	}

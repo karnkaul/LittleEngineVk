@@ -7,6 +7,7 @@
 #include <core/map_store.hpp>
 #include <core/threads.hpp>
 #include <kt/async_queue/async_queue.hpp>
+#include <engine/game/stopwatch.hpp>
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/vram.hpp>
@@ -236,6 +237,7 @@ Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo)
 	auto name = "load_async:" + id.generic_string();
 	auto handle = tasks::enqueue(
 		[id = id, loadInfo = std::move(loadInfo)]() {
+			auto timer = g_stopwatch.lap(id.generic_string());
 			auto engine_s = engine::setBusy();
 			auto res_s = acquire();
 			if (auto info = loadInfo.createInfo())

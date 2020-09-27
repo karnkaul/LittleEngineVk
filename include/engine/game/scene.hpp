@@ -1,7 +1,8 @@
 #pragma once
-#include <core/ecs_registry.hpp>
+#include <core/ecs/types.hpp>
 #include <core/traits.hpp>
 #include <core/transform.hpp>
+#include <core/ecs/registry.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
@@ -18,11 +19,11 @@ namespace le
 ///
 struct Prop final
 {
-	Entity entity;
+	ecs::Entity entity;
 	Transform* pTransform;
 
 	constexpr Prop() noexcept;
-	constexpr Prop(Entity entity, Transform& transform) noexcept;
+	constexpr Prop(ecs::Entity entity, Transform& transform) noexcept;
 
 	///
 	/// \brief Check whether Prop points to a valid pair of Entity/Transform
@@ -38,7 +39,7 @@ struct Prop final
 	///
 	Transform& transform();
 
-	constexpr operator Entity() const noexcept;
+	constexpr operator ecs::Entity() const noexcept;
 };
 
 ///
@@ -48,7 +49,7 @@ template <typename... T>
 struct TProp
 {
 	using type = TProp;
-	using Components = Registry::Components<T&...>;
+	using Components = ecs::Components<T&...>;
 
 	Prop prop;
 	Components components;
@@ -99,7 +100,7 @@ public:
 		Flags flags = Flag::eDynamicUI;
 	};
 
-	using EntityMap = std::unordered_map<Ref<Transform>, Entity>;
+	using EntityMap = std::unordered_map<Ref<Transform>, ecs::Entity>;
 
 #if defined(LEVK_EDITOR)
 	static constexpr bool s_bParentToRoot = true;
@@ -108,12 +109,12 @@ public:
 #endif
 
 	EntityMap m_entityMap;
-	Registry m_defaultRegistry;
+	ecs::Registry m_defaultRegistry;
 	Transform m_sceneRoot;
 
 	std::string m_name;
 	gfx::ScreenRect m_gameRect;
-	Ref<Registry> m_registry = m_defaultRegistry;
+	Ref<ecs::Registry> m_registry = m_defaultRegistry;
 
 #if defined(LEVK_EDITOR)
 	editor::PerFrame m_editorData;
@@ -163,14 +164,14 @@ private:
 };
 
 inline constexpr Prop::Prop() noexcept : pTransform(nullptr) {}
-inline constexpr Prop::Prop(Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {}
-inline constexpr Prop::operator Entity() const noexcept
+inline constexpr Prop::Prop(ecs::Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {}
+inline constexpr Prop::operator ecs::Entity() const noexcept
 {
 	return entity;
 }
 inline constexpr bool Prop::valid() const noexcept
 {
-	return pTransform != nullptr && entity.id != ECSID::null;
+	return pTransform != nullptr && entity.id != ecs::ID::null;
 }
 inline Transform const& Prop::transform() const
 {
@@ -193,7 +194,7 @@ constexpr TProp<T...>::operator Prop() const noexcept
 template <typename T, typename... Args>
 TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... args)
 {
-	Registry& reg = m_registry;
+	ecs::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T, Args...>(std::move(name), std::forward<Args>(args)...);
 	auto pT = reg.template attach<Transform>(ec);
 	ASSERT(pT, "Invariant violated!");
@@ -212,7 +213,7 @@ TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... 
 template <typename... T, typename>
 TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent)
 {
-	Registry& reg = m_registry;
+	ecs::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T...>(std::move(name));
 	auto pT = reg.template attach<Transform>(ec);
 	ASSERT(pT, "Invariant violated!");

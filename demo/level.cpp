@@ -7,6 +7,7 @@
 #include <levels/test.hpp>
 
 using namespace le;
+using namespace ecs;
 
 namespace
 {

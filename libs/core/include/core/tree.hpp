@@ -49,6 +49,7 @@ public:
 	std::list<Ref<T>> const& children() const noexcept;
 	///
 	/// \brief Depth-first walk
+	/// \param root root node whose children to traverse
 	/// \param pred predicate taking `T`, if `false` returned, the sub-tree will be skipped
 	///
 	template <typename U, typename Pred>

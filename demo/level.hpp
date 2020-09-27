@@ -21,8 +21,8 @@ protected:
 	virtual void onManifestLoaded();
 
 protected:
-	le::Registry const& registry() const;
-	le::Registry& registry();
+	le::ecs::Registry const& registry() const;
+	le::ecs::Registry& registry();
 
 private:
 	friend class LevelDriver;

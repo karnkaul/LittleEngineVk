@@ -6,6 +6,8 @@
 
 namespace le
 {
+using namespace ecs;
+
 Text2D& UIComponent::setText(Text2D::Info info)
 {
 	text.setup(std::move(info));
@@ -138,7 +140,7 @@ gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, Regist
 		if (!view.empty())
 		{
 			auto& [_, query] = *view.begin();
-			auto [desc] = query;
+			auto const [desc] = query;
 			scene.clear = {desc.clearDepth, desc.clearColour};
 			scene.dirLights = desc.dirLights;
 			if (!desc.skyboxCubemapID.empty())
@@ -183,7 +185,7 @@ gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, Regist
 		auto view = registry.view<UIComponent>();
 		for (auto& [entity, query] : view)
 		{
-			auto& ui = std::get<UIComponent const&>(query);
+			auto const [ui] = query;
 			auto meshes = ui.meshes();
 			if (!meshes.empty())
 			{

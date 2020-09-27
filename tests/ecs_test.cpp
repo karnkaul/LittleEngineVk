@@ -1,13 +1,18 @@
 #include <array>
 #include <string>
+#include <unordered_set>
 #include <core/profiler.hpp>
 #include <core/threads.hpp>
 #include <core/maths.hpp>
 #include <core/tasks.hpp>
 #include <core/utils.hpp>
-#include <core/ecs_registry.hpp>
+// #include <core/ecs_registry.hpp>
+#include <core/ecs/registry.hpp>
+#include <kt/async_queue/async_queue.hpp>
+#include <core/assert.hpp>
 
 using namespace le;
+using namespace le::ecs;
 
 namespace
 {
@@ -29,6 +34,18 @@ struct E
 struct F
 {
 };
+
+std::unordered_set<Entity> g_spawned;
+kt::lockable<> g_mutex;
+
+bool verify(Entity entity)
+{
+	auto lock = g_mutex.lock();
+	bool const bRet = g_spawned.find(entity) == g_spawned.end();
+	ASSERT(bRet, "DUPLICATE");
+	g_spawned.insert(entity);
+	return bRet;
+}
 } // namespace
 
 int main()
@@ -40,11 +57,13 @@ int main()
 		constexpr s32 entityCount = 10000;
 		std::array<Entity, entityCount> entities;
 		s32 idx = 0;
+		bool bPass = true;
 		for (auto& entity : entities)
 		{
 			tasks::enqueue(
-				[&entity, &registry, &idx]() {
+				[&entity, &registry, &idx, &bPass]() {
 					entity = registry.spawn("e" + std::to_string(idx++));
+					bPass &= verify(entity);
 					auto const toss = maths::randomRange(0, 1 << 7);
 					if (toss & 1 << 0)
 					{
@@ -99,6 +118,10 @@ int main()
 				{});
 		}
 		tasks::waitIdle(false);
+		if (!bPass)
+		{
+			return 1;
+		}
 		registry.m_logLevel = io::Level::eInfo;
 		std::vector<std::shared_ptr<tasks::Handle>> handles;
 		{
@@ -134,12 +157,12 @@ int main()
 			constexpr s32 viewIters = 10;
 			for (s32 i = 0; i < viewIters; ++i)
 			{
-				auto viewA = registry.view<A>();
-				auto viewB = registry.view<B>();
-				auto viewC = registry.view<C>();
-				auto viewAB = registry.view<A, B>();
-				auto viewABC = registry.view<A, B, C>();
-				auto viewCEF = registry.view<C, E, F>();
+				[[maybe_unused]] auto viewA = registry.view<A>();
+				[[maybe_unused]] auto viewB = registry.view<B>();
+				[[maybe_unused]] auto viewC = registry.view<C>();
+				[[maybe_unused]] auto viewAB = registry.view<A, B>();
+				[[maybe_unused]] auto viewABC = registry.view<A, B, C>();
+				[[maybe_unused]] auto viewCEF = registry.view<C, E, F>();
 			}
 		}
 		handles.at(maths::randomRange((std::size_t)0, handles.size() - 1))->discard();

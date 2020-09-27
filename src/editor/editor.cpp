@@ -27,6 +27,7 @@ namespace le::editor
 {
 using namespace input;
 using namespace std::literals;
+using namespace ecs;
 
 using v2 = glm::vec2 const&;
 using iv2 = glm::ivec2 const&;
@@ -81,7 +82,7 @@ struct
 	bool bOpen = false;
 } g_resources;
 
-std::unordered_set<Entity, EntityHasher> g_spawned;
+std::unordered_set<Entity> g_spawned;
 
 void clicks(GUIState& out_state)
 {
@@ -310,7 +311,7 @@ void entityInspector(v2 pos, v2 size, GameScene& out_scene)
 	if (g_inspecting.entity != Entity())
 	{
 		ImGui::LabelText("", "%s", registry.name(g_inspecting.entity).data());
-		if (auto pInfo = registry.find<Registry::Info>(g_inspecting.entity))
+		if (auto pInfo = registry.info(g_inspecting.entity))
 		{
 			static std::string s_buf;
 			TWidget<std::string> name("##EntityNameEdit", s_buf, 150.0f);
@@ -552,7 +553,7 @@ void addDesc(dj::object& out_entry, GameScene::Desc const& desc)
 	out_entry.add("scene_desc", std::move(d));
 }
 
-void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap const& emap, Registry& reg, std::unordered_set<Entity, EntityHasher>& out_added)
+void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap const& emap, Registry& reg, std::unordered_set<Entity>& out_added)
 {
 	auto const children = root.children();
 	auto search = emap.find(root);
@@ -596,7 +597,7 @@ void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap co
 	}
 }
 
-void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity, EntityHasher> const& added)
+void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity> const& added)
 {
 	{
 		auto view = reg.view<GameScene::Desc>();
@@ -618,7 +619,7 @@ dj::object serialise(GameScene const& scene)
 {
 	dj::object ret;
 	dj::array entities;
-	std::unordered_set<Entity, EntityHasher> added;
+	std::unordered_set<Entity> added;
 	for (auto& child : scene.m_sceneRoot.children())
 	{
 		walkSceneTree(entities, child, scene.m_entityMap, scene.m_registry, added);

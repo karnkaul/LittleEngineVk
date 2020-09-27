@@ -77,7 +77,7 @@ struct TCounter<T, false> final
 /// \brief Simple counting semaphore that uses TCounter<T>
 ///
 template <typename T>
-struct TCounter<T>::Semaphore final
+struct TCounter<T, true>::Semaphore final
 {
 public:
 	constexpr Semaphore() noexcept = default;
@@ -205,7 +205,7 @@ TCounter<T, true>::Semaphore::Semaphore(Semaphore&& rhs) noexcept : pTCounter(rh
 }
 
 template <typename T>
-typename TCounter<T, true>::Semaphore& TCounter<T>::Semaphore::operator=(Semaphore&& rhs) noexcept
+typename TCounter<T, true>::Semaphore& TCounter<T, true>::Semaphore::operator=(Semaphore&& rhs) noexcept
 {
 	if (&rhs != this)
 	{

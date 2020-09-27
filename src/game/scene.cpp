@@ -2,6 +2,8 @@
 
 namespace le
 {
+using namespace ecs;
+
 void GameScene::reset()
 {
 	Registry& reg = m_registry;
@@ -17,18 +19,9 @@ GameScene::Desc& GameScene::desc()
 {
 	Registry& reg = m_registry;
 	auto view = reg.view<Desc>();
-	if (view.empty())
-	{
-		auto [_, desc] = reg.spawn<Desc>("scene_desc");
-		auto& [desc_] = desc;
-		return desc_;
-	}
-	else
-	{
-		auto [_, desc] = view.front();
-		auto& [desc_] = desc;
-		return desc_;
-	}
+	auto [_, desc] = view.empty() ? reg.spawn<Desc>("scene_desc") : *view.begin();
+	auto& [desc_] = desc;
+	return desc_;
 }
 
 gfx::Camera& GameScene::mainCamera()

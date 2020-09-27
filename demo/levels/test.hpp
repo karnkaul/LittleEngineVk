@@ -17,8 +17,8 @@ public:
 private:
 	struct
 	{
-		le::Entity mainText;
-		le::Entity elapsedText;
+		le::ecs::Entity mainText;
+		le::ecs::Entity elapsedText;
 		le::Time elapsed;
 	} m_data;
 

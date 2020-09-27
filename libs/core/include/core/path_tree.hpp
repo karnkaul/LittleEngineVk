@@ -9,6 +9,7 @@
 #include <tuple>
 #include <vector>
 #include <core/assert.hpp>
+#include <core/ref.hpp>
 #include <core/std_types.hpp>
 
 namespace le

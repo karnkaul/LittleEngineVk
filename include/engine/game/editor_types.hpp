@@ -2,7 +2,7 @@
 #include <string>
 #include <fmt/format.h>
 #include <core/colour.hpp>
-#include <core/ecs_registry.hpp>
+#include <core/ecs/registry.hpp>
 #include <core/flags.hpp>
 #include <core/transform.hpp>
 #include <core/utils.hpp>
@@ -113,14 +113,14 @@ template <typename T>
 struct TInspector
 {
 	TreeNode node;
-	Registry* pReg = nullptr;
-	Entity entity;
+	ecs::Registry* pReg = nullptr;
+	ecs::Entity entity;
 	std::string id;
 	bool bNew = false;
 	bool bOpen = false;
 
 	TInspector() = default;
-	TInspector(Registry& out_registry, Entity entity, T const* pT, sv id = sv());
+	TInspector(ecs::Registry& out_registry, ecs::Entity entity, T const* pT, sv id = sv());
 	TInspector(TInspector<T>&&);
 	TInspector& operator=(TInspector<T>&&);
 	~TInspector();
@@ -209,7 +209,7 @@ FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags)
 }
 
 template <typename T>
-TInspector<T>::TInspector(Registry& out_registry, Entity entity, T const* pT, sv id)
+TInspector<T>::TInspector(ecs::Registry& out_registry, ecs::Entity entity, T const* pT, sv id)
 	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id)
 {
 	bNew = pT == nullptr;
@@ -259,7 +259,7 @@ TInspector<T>::~TInspector()
 	{
 		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked))
 		{
-			Registry& registry = *pReg;
+			ecs::Registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}
 	}

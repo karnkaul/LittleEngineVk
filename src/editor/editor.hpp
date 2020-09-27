@@ -1,7 +1,6 @@
 #pragma once
 #if defined(LEVK_EDITOR)
 #include <glm/glm.hpp>
-#include <core/ecs_registry.hpp>
 #include <core/time.hpp>
 #include <core/trigger.hpp>
 #include <engine/gfx/screen_rect.hpp>

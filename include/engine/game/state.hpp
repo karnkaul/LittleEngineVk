@@ -5,9 +5,6 @@
 #include <engine/game/input.hpp>
 #include <engine/game/scene.hpp>
 #include <engine/resources/resources.hpp>
-#if defined(LEVK_EDITOR)
-#include <engine/game/editor_types.hpp>
-#endif
 
 namespace le
 {

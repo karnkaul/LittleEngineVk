@@ -1,6 +1,6 @@
 #pragma once
 #include <core/flags.hpp>
-#include <core/ecs_registry.hpp>
+#include <core/ecs/registry.hpp>
 #include <engine/game/text2d.hpp>
 #include <engine/game/state.hpp>
 #include <engine/gfx/render_driver.hpp>
@@ -42,6 +42,6 @@ public:
 	static glm::vec3 uiProjection(glm::vec3 const& uiSpace);
 
 public:
-	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, Registry const& registry) const;
+	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, ecs::Registry const& registry) const;
 };
 } // namespace le

@@ -1,4 +1,3 @@
-#include <fmt/format.h>
 #include <core/ecs/registry.hpp>
 
 namespace le::ecs

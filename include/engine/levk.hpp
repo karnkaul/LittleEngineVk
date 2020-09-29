@@ -49,12 +49,10 @@ struct MemRange final
 
 struct Info final
 {
-	io::FileReader fileReader;
-	io::ZIPReader zipReader;
 	std::optional<Window::Info> windowInfo;
+	io::Reader* pCustomReader = nullptr;
 	Span<stdfs::path> dataPaths;
 	Span<MemRange> vramReserve;
-	Ref<io::Reader> reader = fileReader;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
 	io::Level vramLogLevel = io::Level::eDebug;
@@ -73,7 +71,7 @@ public:
 	/// \brief Initialise engine and dependent services
 	/// \returns `false` if initialisation failed
 	///
-	bool init(Info const& info = {});
+	bool init(Info info = {});
 	///
 	/// \brief Check whether engine is currently running (or shutting down)
 	///

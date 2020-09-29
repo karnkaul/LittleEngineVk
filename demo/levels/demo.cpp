@@ -104,7 +104,7 @@ DemoLevel::DemoLevel()
 	m_data.temp.addTrigger("test2", input::Key::eK);
 
 	auto& desc = gs::g_game.desc();
-	desc.camera = m_data.freeCam.m_camera;
+	desc.pCustomCam = &m_data.freeCam.m_camera;
 	desc.dirLights = {m_data.dirLight0, m_data.dirLight1};
 	desc.clearColour = Colour(0x030203ff);
 	desc.skyboxCubemapID = "skyboxes/sky_dusk";

@@ -86,7 +86,7 @@ public:
 		using Flags = TFlags<Flag>;
 
 		gfx::Camera defaultCam;
-		Ref<gfx::Camera> camera = defaultCam;
+		gfx::Camera* pCustomCam = nullptr;
 		std::vector<gfx::DirLight> dirLights;
 		stdfs::path skyboxCubemapID;
 		///
@@ -98,6 +98,9 @@ public:
 		glm::vec2 clearDepth = {1.0f, 0.0f};
 		Colour clearColour = colours::black;
 		Flags flags = Flag::eDynamicUI;
+
+		gfx::Camera const& camera() const;
+		gfx::Camera& camera();
 	};
 
 	using EntityMap = std::unordered_map<Ref<Transform>, ecs::Entity>;
@@ -109,12 +112,11 @@ public:
 #endif
 
 	EntityMap m_entityMap;
-	ecs::Registry m_defaultRegistry;
 	Transform m_sceneRoot;
 
 	std::string m_name;
 	gfx::ScreenRect m_gameRect;
-	Ref<ecs::Registry> m_registry = m_defaultRegistry;
+	ecs::Registry m_registry;
 
 #if defined(LEVK_EDITOR)
 	editor::PerFrame m_editorData;

@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 #if defined(LEVK_DEBUG)
 	// info.bLogVRAMallocations = true;
 #endif
-	if (!engine.init(info))
+	if (!engine.init(std::move(info)))
 	{
 		return 1;
 	}

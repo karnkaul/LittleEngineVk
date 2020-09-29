@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
 
+set(TARGET_NAME levk-engine)
 set(LEVK_VERSION 0.0.1.0 CACHE STRING "Application Version" FORCE)
-project(levk-engine VERSION ${LEVK_VERSION})
+project(LittleEngineVk VERSION ${LEVK_VERSION})
 
 if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 	message(FATAL_ERROR "Unsupported architecture, must be 64-bit")
@@ -135,8 +136,8 @@ file(GLOB_RECURSE LEVK_INCLUDES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/i
 file(GLOB_RECURSE LEVK_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${LEVK_INCLUDES} ${LEVK_SOURCES})
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${LEVK_GENERATED})
-add_library(${PROJECT_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES} ${LEVK_GENERATED})
-target_include_directories(${PROJECT_NAME} PRIVATE 
+add_library(${TARGET_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES} ${LEVK_GENERATED})
+target_include_directories(${TARGET_NAME} PRIVATE 
 	INTERFACE SYSTEM
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_BINARY_DIR}/src/generated"
@@ -146,7 +147,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/src"
 		"${Vulkan_INCLUDE_DIRS}"
 )
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${TARGET_NAME}
 	PUBLIC
 		levk-core
 		djson
@@ -164,7 +165,7 @@ if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 	set(PRECOMPILE
 		
 	)
-	target_precompile_headers(${PROJECT_NAME} 
+	target_precompile_headers(${TARGET_NAME} 
 		PUBLIC
 			<deque>
 			<filesystem>

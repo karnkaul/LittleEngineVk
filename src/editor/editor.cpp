@@ -393,7 +393,7 @@ void entityInspector(v2 pos, v2 size, GameScene& out_scene)
 				}
 				if (auto camera = TreeNode("Camera"))
 				{
-					gfx::Camera& cam = pDesc->camera;
+					gfx::Camera& cam = pDesc->camera();
 					TWidget<glm::vec3> pos("pos", cam.position, false);
 					TWidget<glm::quat> orn("orn", cam.orientation);
 				}
@@ -553,7 +553,7 @@ void addDesc(dj::object& out_entry, GameScene::Desc const& desc)
 	out_entry.add("scene_desc", std::move(d));
 }
 
-void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap const& emap, Registry& reg, std::unordered_set<Entity>& out_added)
+void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap const& emap, Registry const& reg, std::unordered_set<Entity>& out_added)
 {
 	auto const children = root.children();
 	auto search = emap.find(root);

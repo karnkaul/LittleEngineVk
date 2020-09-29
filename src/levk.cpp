@@ -77,10 +77,11 @@ Service::~Service()
 	g_app = {};
 }
 
-bool Service::init(Info const& info)
+bool Service::init(Info info)
 {
 	try
 	{
+		g_app = {};
 		m_services.add<Window::Service>();
 		NativeWindow dummyWindow(Window::Info{});
 		gfx::InitInfo initInfo;
@@ -99,8 +100,7 @@ bool Service::init(Info const& info)
 		initInfo.config.stagingReserve = info.vramReserve;
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
-		io::FileReader fileReader;
-		io::Reader& reader = info.reader;
+		io::Reader& reader = info.pCustomReader ? *info.pCustomReader : g_app.fileReader;
 		std::vector<stdfs::path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;
 		for (auto const& path : dataPaths)

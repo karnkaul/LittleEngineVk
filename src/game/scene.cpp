@@ -4,6 +4,16 @@ namespace le
 {
 using namespace ecs;
 
+gfx::Camera const& GameScene::Desc::camera() const
+{
+	return pCustomCam ? *pCustomCam : defaultCam;
+}
+
+gfx::Camera& GameScene::Desc::camera()
+{
+	return pCustomCam ? *pCustomCam : defaultCam;
+}
+
 void GameScene::reset()
 {
 	Registry& reg = m_registry;
@@ -26,7 +36,7 @@ GameScene::Desc& GameScene::desc()
 
 gfx::Camera& GameScene::mainCamera()
 {
-	return desc().camera;
+	return desc().camera();
 }
 
 bool GameScene::reparent(Prop prop, Transform* pParent)

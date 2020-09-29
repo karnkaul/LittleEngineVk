@@ -11,6 +11,7 @@ namespace le::engine
 struct App
 {
 	std::optional<Window> window;
+	io::FileReader fileReader;
 	io::Reader const* pReader = nullptr;
 };
 

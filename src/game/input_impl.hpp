@@ -1,13 +1,11 @@
 #pragma once
 #include <engine/game/input.hpp>
 
-namespace le
-{
+namespace le {
 class Window;
 }
 
-namespace le::input
-{
+namespace le::input {
 inline bool g_bFire = true;
 #if defined(LEVK_EDITOR)
 inline bool g_bEditorOnly = false;

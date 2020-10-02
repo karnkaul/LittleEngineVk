@@ -1,18 +1,16 @@
 #pragma once
-#include <vulkan/vulkan.hpp>
 #include <core/assert.hpp>
 #include <gfx/pipeline_impl.hpp>
+#include <vulkan/vulkan.hpp>
 
-namespace le::gfx
-{
-class RenderCmd final
-{
-private:
+namespace le::gfx {
+class RenderCmd final {
+  private:
 	vk::CommandBuffer m_commandBuffer;
 	mutable vk::Pipeline m_prevPipeline;
 	bool m_bRecording = false;
 
-public:
+  public:
 	RenderCmd(vk::CommandBuffer commandBuffer);
 	RenderCmd(vk::CommandBuffer commandBuffer, vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent,
 			  vk::ArrayProxy<vk::ClearValue const> clearValues, vk::SubpassContents subpassContents = vk::SubpassContents::eInline);
@@ -20,7 +18,7 @@ public:
 	RenderCmd& operator=(RenderCmd&&);
 	~RenderCmd();
 
-public:
+  public:
 	void begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, vk::ArrayProxy<vk::ClearValue const> clearValues,
 			   vk::SubpassContents subpassContents = vk::SubpassContents::eInline);
 
@@ -28,12 +26,10 @@ public:
 
 	template <typename T>
 	void bindResources(PipelineImpl const& pipeline, vk::ArrayProxy<vk::DescriptorSet const> sets, vk::ShaderStageFlags stages, u32 offset,
-					   vk::ArrayProxy<T const> pushConstants) const
-	{
+					   vk::ArrayProxy<T const> pushConstants) const {
 		ASSERT(m_commandBuffer != vk::CommandBuffer(), "Null command buffer!");
 		ASSERT(m_bRecording, "Command buffer not recording!");
-		if (pipeline.m_pipeline != m_prevPipeline)
-		{
+		if (pipeline.m_pipeline != m_prevPipeline) {
 			m_commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.m_pipeline);
 			m_prevPipeline = pipeline.m_pipeline;
 		}

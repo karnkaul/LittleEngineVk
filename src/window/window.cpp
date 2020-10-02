@@ -4,30 +4,24 @@
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
 
-namespace le
-{
-namespace
-{
+namespace le {
+namespace {
 WindowID g_nextWindowID = WindowID::null;
 } // namespace
 
-Window::Service::Service()
-{
-	if (!WindowImpl::init())
-	{
+Window::Service::Service() {
+	if (!WindowImpl::init()) {
 		throw std::runtime_error("Failed to initialise Window Service!");
 	}
 }
 
-Window::Service::~Service()
-{
+Window::Service::~Service() {
 	WindowImpl::deinit();
 }
 
 std::string const Window::s_tName = utils::tName<Window>();
 
-Window::Window()
-{
+Window::Window() {
 	m_id = ++g_nextWindowID.payload;
 	m_uImpl = std::make_unique<WindowImpl>(this);
 	LOG_I("[{}:{}] constructed", s_tName, m_id);
@@ -35,205 +29,164 @@ Window::Window()
 
 Window::Window(Window&&) = default;
 Window& Window::operator=(Window&&) = default;
-Window::~Window()
-{
+Window::~Window() {
 	m_uImpl.reset();
 	LOG_I("[{}:{}] destroyed", s_tName, m_id);
 }
 
-bool Window::anyActive()
-{
+bool Window::anyActive() {
 	return WindowImpl::anyActive();
 }
 
-bool Window::anyExist()
-{
+bool Window::anyExist() {
 	return WindowImpl::anyExist();
 }
 
-void Window::pollEvents()
-{
+void Window::pollEvents() {
 	WindowImpl::pollEvents();
 	return;
 }
 
-void Window::renderAll()
-{
+void Window::renderAll() {
 	WindowImpl::renderAll();
 	return;
 }
 
-input::OnText::Tk Window::registerText(input::OnText::Callback callback, WindowID window)
-{
+input::OnText::Tk Window::registerText(input::OnText::Callback callback, WindowID window) {
 	return WindowImpl::s_input[window].onText.subscribe(callback);
 }
 
-input::OnInput::Tk Window::registerInput(input::OnInput::Callback callback, WindowID window)
-{
+input::OnInput::Tk Window::registerInput(input::OnInput::Callback callback, WindowID window) {
 	return WindowImpl::s_input[window].onInput.subscribe(callback);
 }
 
-input::OnMouse::Tk Window::registerMouse(input::OnMouse::Callback callback, WindowID window)
-{
+input::OnMouse::Tk Window::registerMouse(input::OnMouse::Callback callback, WindowID window) {
 	return WindowImpl::s_input[window].onMouse.subscribe(callback);
 }
 
-input::OnMouse::Tk Window::registerScroll(input::OnMouse::Callback callback, WindowID window)
-{
+input::OnMouse::Tk Window::registerScroll(input::OnMouse::Callback callback, WindowID window) {
 	return WindowImpl::s_input[window].onScroll.subscribe(callback);
 }
 
-WindowID Window::editorWindow()
-{
+WindowID Window::editorWindow() {
 	return WindowImpl::editorWindow();
 }
 
-gfx::render::Driver const& Window::driver() const
-{
+gfx::render::Driver const& Window::driver() const {
 	return m_driver;
 }
 
-gfx::render::Driver& Window::driver()
-{
+gfx::render::Driver& Window::driver() {
 	return m_driver;
 }
 
-WindowID Window::id() const
-{
+WindowID Window::id() const {
 	return m_id;
 }
 
-bool Window::open() const
-{
+bool Window::open() const {
 	return m_uImpl ? m_uImpl->open() : false;
 }
 
-bool Window::exists() const
-{
+bool Window::exists() const {
 	return m_uImpl ? m_uImpl->exists() : false;
 }
 
-bool Window::closing() const
-{
+bool Window::closing() const {
 	return m_uImpl ? m_uImpl->closing() : false;
 }
 
-bool Window::focused() const
-{
+bool Window::focused() const {
 	return m_uImpl ? m_uImpl->focused() : false;
 }
 
-glm::ivec2 Window::windowSize() const
-{
+glm::ivec2 Window::windowSize() const {
 	return m_uImpl ? m_uImpl->windowSize() : glm::ivec2(0);
 }
 
-glm::ivec2 Window::framebufferSize() const
-{
+glm::ivec2 Window::framebufferSize() const {
 	return m_uImpl ? m_uImpl->framebufferSize() : glm::ivec2(0);
 }
 
-bool Window::create(Info const& info)
-{
+bool Window::create(Info const& info) {
 	return m_uImpl ? m_uImpl->create(this, info) : false;
 }
 
-void Window::setClosing()
-{
-	if (m_uImpl)
-	{
+void Window::setClosing() {
+	if (m_uImpl) {
 		m_uImpl->setClosing();
 	}
 	return;
 }
 
-void Window::destroy()
-{
-	if (m_uImpl)
-	{
+void Window::destroy() {
+	if (m_uImpl) {
 		m_uImpl->destroy();
 	}
 	return;
 }
 
-input::OnText::Tk Window::registerText(input::OnText::Callback callback)
-{
+input::OnText::Tk Window::registerText(input::OnText::Callback callback) {
 	return WindowImpl::s_input[m_id].onText.subscribe(callback);
 }
 
-input::OnInput::Tk Window::registerInput(input::OnInput::Callback callback)
-{
+input::OnInput::Tk Window::registerInput(input::OnInput::Callback callback) {
 	return WindowImpl::s_input[m_id].onInput.subscribe(callback);
 }
 
-input::OnMouse::Tk Window::registerMouse(input::OnMouse::Callback callback)
-{
+input::OnMouse::Tk Window::registerMouse(input::OnMouse::Callback callback) {
 	return WindowImpl::s_input[m_id].onMouse.subscribe(callback);
 }
 
-input::OnMouse::Tk Window::registerScroll(input::OnMouse::Callback callback)
-{
+input::OnMouse::Tk Window::registerScroll(input::OnMouse::Callback callback) {
 	return WindowImpl::s_input[m_id].onScroll.subscribe(callback);
 }
 
-input::OnFiledrop::Tk Window::registerFiledrop(input::OnFiledrop::Callback callback)
-{
+input::OnFiledrop::Tk Window::registerFiledrop(input::OnFiledrop::Callback callback) {
 	return WindowImpl::s_input[m_id].onFiledrop.subscribe(callback);
 }
 
-input::OnFocus::Tk Window::registerFocus(input::OnFocus::Callback callback)
-{
+input::OnFocus::Tk Window::registerFocus(input::OnFocus::Callback callback) {
 	return WindowImpl::s_input[m_id].onFocus.subscribe(callback);
 }
 
-input::OnWindowResize::Tk Window::registerResize(input::OnWindowResize::Callback callback)
-{
+input::OnWindowResize::Tk Window::registerResize(input::OnWindowResize::Callback callback) {
 	return WindowImpl::s_input[m_id].onWindowResize.subscribe(callback);
 }
 
-input::OnClosed::Tk Window::registerClosed(input::OnClosed::Callback callback)
-{
+input::OnClosed::Tk Window::registerClosed(input::OnClosed::Callback callback) {
 	return WindowImpl::s_input[m_id].onClosed.subscribe(callback);
 }
 
-void Window::setCursorType(input::CursorType type) const
-{
-	if (m_uImpl)
-	{
+void Window::setCursorType(input::CursorType type) const {
+	if (m_uImpl) {
 		m_uImpl->setCursorType(type);
 	}
 }
 
-void Window::setCursorMode(input::CursorMode mode) const
-{
-	if (m_uImpl)
-	{
+void Window::setCursorMode(input::CursorMode mode) const {
+	if (m_uImpl) {
 		m_uImpl->setCursorMode(mode);
 	}
 	return;
 }
 
-input::CursorMode Window::cursorMode() const
-{
+input::CursorMode Window::cursorMode() const {
 	return m_uImpl ? m_uImpl->cursorMode() : input::CursorMode::eDefault;
 }
 
-glm::vec2 Window::cursorPos() const
-{
+glm::vec2 Window::cursorPos() const {
 	return m_uImpl ? m_uImpl->cursorPos() : glm::vec2(0.0f);
 }
 
-void Window::setCursorPos(glm::vec2 const& pos) const
-{
-	if (m_uImpl)
-	{
+void Window::setCursorPos(glm::vec2 const& pos) const {
+	if (m_uImpl) {
 		m_uImpl->setCursorPos(pos);
 	}
 	return;
 }
 
-std::string Window::clipboard() const
-{
+std::string Window::clipboard() const {
 	return m_uImpl ? m_uImpl->clipboard() : std::string();
 }
 } // namespace le

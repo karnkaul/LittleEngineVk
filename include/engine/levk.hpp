@@ -2,11 +2,11 @@
 #include <optional>
 #include <vector>
 #include <core/counter.hpp>
-#include <core/time.hpp>
-#include <core/reader.hpp>
-#include <core/std_types.hpp>
-#include <core/services.hpp>
 #include <core/os.hpp>
+#include <core/reader.hpp>
+#include <core/services.hpp>
+#include <core/std_types.hpp>
+#include <core/time.hpp>
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/window/window.hpp>
 #if defined(LEVK_DEBUG)
@@ -19,36 +19,22 @@ constexpr bool levk_editor = true;
 constexpr bool levk_editor = false;
 #endif
 
-namespace le::engine
-{
+namespace le::engine {
 using Semaphore = TCounter<s32>::Semaphore;
 
 struct Driver;
 
-enum class Status : s8
-{
-	eIdle,
-	eInitialised,
-	eTicking,
-	eShuttingDown,
-	eShutdown
-};
+enum class Status : s8 { eIdle, eInitialised, eTicking, eShuttingDown, eShutdown };
 
-enum class ShutdownSequence : s8
-{
-	eCloseWindow_Shutdown,
-	eShutdown_CloseWindow
-};
+enum class ShutdownSequence : s8 { eCloseWindow_Shutdown, eShutdown_CloseWindow };
 inline ShutdownSequence g_shutdownSequence = ShutdownSequence::eCloseWindow_Shutdown;
 
-struct MemRange final
-{
+struct MemRange final {
 	std::size_t size = 2;
 	std::size_t count = 1;
 };
 
-struct Info final
-{
+struct Info final {
 	std::optional<Window::Info> windowInfo;
 	io::Reader* pCustomReader = nullptr;
 	Span<stdfs::path> dataPaths;
@@ -59,9 +45,8 @@ struct Info final
 #endif
 };
 
-class Service final
-{
-public:
+class Service final {
+  public:
 	Service(os::Args args = {});
 	Service(Service&&);
 	Service& operator=(Service&&);
@@ -94,10 +79,10 @@ public:
 	///
 	static bool shutdown();
 
-private:
+  private:
 	static void doShutdown();
 
-private:
+  private:
 	Services m_services;
 };
 

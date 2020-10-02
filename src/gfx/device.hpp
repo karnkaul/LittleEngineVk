@@ -6,13 +6,11 @@
 #include <vector>
 #include <core/log_config.hpp>
 #include <core/std_types.hpp>
-#include <core/flags.hpp>
 #include <gfx/common.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 
-namespace le::gfx
-{
-struct Instance final
-{
+namespace le::gfx {
+struct Instance final {
 	vk::Instance instance;
 	vk::PhysicalDevice physicalDevice;
 	vk::PhysicalDeviceLimits deviceLimits;
@@ -30,10 +28,8 @@ struct Instance final
 	void destroy(vkType object) const;
 };
 
-struct Device final
-{
-	struct
-	{
+struct Device final {
+	struct {
 		Queue graphics;
 		Queue present;
 		Queue transfer;
@@ -80,58 +76,39 @@ struct Device final
 inline Instance g_instance;
 inline Device g_device;
 
-struct Service final
-{
+struct Service final {
 	Service(InitInfo const& info);
 	~Service();
 };
 
 template <typename vkType>
-void Instance::destroy(vkType object) const
-{
-	if (object != vkType() && instance != vk::Instance())
-	{
+void Instance::destroy(vkType object) const {
+	if (object != vkType() && instance != vk::Instance()) {
 		instance.destroy(object);
 	}
 }
 
 template <typename vkType>
-void Device::destroy(vkType object) const
-{
-	if (device != vk::Device())
-	{
-		if constexpr (std::is_same_v<vkType, vk::DescriptorSetLayout>)
-		{
-			if (object != vk::DescriptorSetLayout())
-			{
+void Device::destroy(vkType object) const {
+	if (device != vk::Device()) {
+		if constexpr (std::is_same_v<vkType, vk::DescriptorSetLayout>) {
+			if (object != vk::DescriptorSetLayout()) {
 				device.destroyDescriptorSetLayout(object);
 			}
-		}
-		else if constexpr (std::is_same_v<vkType, vk::DescriptorPool>)
-		{
-			if (object != vk::DescriptorPool())
-			{
+		} else if constexpr (std::is_same_v<vkType, vk::DescriptorPool>) {
+			if (object != vk::DescriptorPool()) {
 				device.destroyDescriptorPool(object);
 			}
-		}
-		else if constexpr (std::is_same_v<vkType, vk::ImageView>)
-		{
-			if (object != vk::ImageView())
-			{
+		} else if constexpr (std::is_same_v<vkType, vk::ImageView>) {
+			if (object != vk::ImageView()) {
 				device.destroyImageView(object);
 			}
-		}
-		else if constexpr (std::is_same_v<vkType, vk::Sampler>)
-		{
-			if (object != vk::Sampler())
-			{
+		} else if constexpr (std::is_same_v<vkType, vk::Sampler>) {
+			if (object != vk::Sampler()) {
 				device.destroySampler(object);
 			}
-		}
-		else
-		{
-			if (object != vkType())
-			{
+		} else {
+			if (object != vkType()) {
 				device.destroy(object);
 			}
 		}
@@ -140,8 +117,7 @@ void Device::destroy(vkType object) const
 }
 
 template <typename vkType, typename... vkTypes>
-void Device::destroy(vkType object, vkTypes... objects) const
-{
+void Device::destroy(vkType object, vkTypes... objects) const {
 	destroy(object);
 	destroy(objects...);
 }

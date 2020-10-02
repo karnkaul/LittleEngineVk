@@ -1,17 +1,15 @@
 #pragma once
 #include <memory>
-#include <engine/resources/resource_types.hpp>
-#include <gfx/common.hpp>
 #include <core/delegate.hpp>
 #include <core/maths.hpp>
 #include <core/path_tree.hpp>
+#include <engine/resources/resource_types.hpp>
+#include <gfx/common.hpp>
 #include <resources/monitor.hpp>
 
-namespace le::res
-{
+namespace le::res {
 template <typename T, typename TImpl>
-struct TResource final
-{
+struct TResource final {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource");
 
 	typename T::Info info;
@@ -19,37 +17,31 @@ struct TResource final
 	std::unique_ptr<TImpl> uImpl;
 };
 
-struct ImplBase
-{
+struct ImplBase {
 	stdfs::path id;
 	GUID guid;
 	Status status = Status::eIdle;
 	bool bLoadedOnce = false;
 };
 
-struct ILoadable
-{
-	bool update()
-	{
+struct ILoadable {
+	bool update() {
 		return true;
 	}
 };
 
-struct IReloadable
-{
+struct IReloadable {
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 	Delegate<> onReload;
 	Monitor monitor;
 
-	bool checkReload()
-	{
+	bool checkReload() {
 		return true;
 	}
 #endif
 };
 
-struct Shader::Impl : ImplBase, IReloadable
-{
+struct Shader::Impl : ImplBase, IReloadable {
 	static constexpr std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
 																												vk::ShaderStageFlagBits::eFragment};
 
@@ -80,16 +72,14 @@ struct Shader::Impl : ImplBase, IReloadable
 #endif
 };
 
-struct Sampler::Impl : ImplBase
-{
+struct Sampler::Impl : ImplBase {
 	vk::Sampler sampler;
 
 	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 };
 
-struct Texture::Impl : ImplBase, ILoadable, IReloadable
-{
+struct Texture::Impl : ImplBase, ILoadable, IReloadable {
 	gfx::Image active;
 	std::vector<Texture::Raw> raws;
 	std::vector<Span<u8>> spanRaws;
@@ -114,16 +104,13 @@ struct Texture::Impl : ImplBase, ILoadable, IReloadable
 #endif
 };
 
-struct Material::Impl : ImplBase
-{
+struct Material::Impl : ImplBase {
 	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
 };
 
-struct Mesh::Impl : ImplBase, ILoadable
-{
-	struct Data
-	{
+struct Mesh::Impl : ImplBase, ILoadable {
+	struct Data {
 		gfx::Buffer buffer;
 		std::future<void> copied;
 		u32 count = 0;
@@ -141,8 +128,7 @@ struct Mesh::Impl : ImplBase, ILoadable
 	void updateGeometry(Info& out_info, gfx::Geometry geometry);
 };
 
-struct Font::Impl : ImplBase, ILoadable, IReloadable
-{
+struct Font::Impl : ImplBase, ILoadable, IReloadable {
 	std::array<Glyph, maths::max<u8>()> glyphs;
 	res::Material::Inst material;
 	Glyph blankGlyph;
@@ -205,14 +191,12 @@ void deinit();
 
 #if defined(LEVK_EDITOR)
 template <typename T>
-io::PathTree<T> const& loaded()
-{
+io::PathTree<T> const& loaded() {
 	static_assert(alwaysFalse<T>, "Invalid Type!");
 }
 #endif
 
-struct Service final
-{
+struct Service final {
 	Service();
 	~Service();
 };

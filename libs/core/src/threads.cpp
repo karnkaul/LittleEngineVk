@@ -1,5 +1,5 @@
-#include <utility>
 #include <list>
+#include <utility>
 #include <core/assert.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
@@ -9,76 +9,61 @@
 #include <X11/extensions/Xrandr.h>
 #endif
 
-namespace le
-{
-namespace
-{
+namespace le {
+namespace {
 threads::ID g_nextID = threads::ID::null;
 std::list<std::pair<threads::ID::type, std::thread>> g_threads;
 std::unordered_map<std::thread::id, threads::ID> g_idMap;
 std::thread::id g_mainThreadID;
 } // namespace
 
-threads::TScoped& threads::TScoped::operator=(TScoped&& rhs)
-{
-	if (&rhs != this)
-	{
+threads::TScoped& threads::TScoped::operator=(TScoped&& rhs) {
+	if (&rhs != this) {
 		join();
 		id_ = std::move(rhs.id_);
 	}
 	return *this;
 }
 
-threads::TScoped::~TScoped()
-{
+threads::TScoped::~TScoped() {
 	join();
 }
 
-bool threads::TScoped::valid() const noexcept
-{
+bool threads::TScoped::valid() const noexcept {
 	return id_ != ID::null;
 }
 
-threads::ID threads::TScoped::id() const noexcept
-{
+threads::ID threads::TScoped::id() const noexcept {
 	return id_;
 }
 
-void threads::TScoped::join()
-{
-	if (id_ != ID::null)
-	{
+void threads::TScoped::join() {
+	if (id_ != ID::null) {
 		threads::join(id_);
 	}
 }
 
-void threads::init()
-{
+void threads::init() {
 	g_mainThreadID = std::this_thread::get_id();
 #if defined(LEVK_OS_LINUX)
-	if (XInitThreads() == 0)
-	{
+	if (XInitThreads() == 0) {
 		LOG_E("[OS] ERROR calling XInitThreads()! UB follows.");
 	}
 #endif
 	return;
 }
 
-threads::TScoped threads::newThread(std::function<void()> task)
-{
+threads::TScoped threads::newThread(std::function<void()> task) {
 	g_threads.emplace_back(++g_nextID.payload, std::thread(task));
 	g_idMap[g_threads.back().second.get_id()] = g_nextID;
 	return TScoped(g_nextID);
 }
 
-void threads::join(ID& id)
-{
+void threads::join(ID& id) {
 	auto search = std::find_if(g_threads.begin(), g_threads.end(), [id](auto const& t) -> bool { return t.first == id; });
-	if (search != g_threads.end())
-	{
+	if (search != g_threads.end()) {
 		auto& thread = search->second;
-		if (thread.joinable())
-		{
+		if (thread.joinable()) {
 			thread.join();
 		}
 		g_idMap.erase(thread.get_id());
@@ -88,12 +73,9 @@ void threads::join(ID& id)
 	return;
 }
 
-void threads::joinAll()
-{
-	for (auto& [id, thread] : g_threads)
-	{
-		if (thread.joinable())
-		{
+void threads::joinAll() {
+	for (auto& [id, thread] : g_threads) {
+		if (thread.joinable()) {
 			thread.join();
 		}
 	}
@@ -102,35 +84,27 @@ void threads::joinAll()
 	return;
 }
 
-threads::ID threads::thisThreadID()
-{
+threads::ID threads::thisThreadID() {
 	auto search = g_idMap.find(std::this_thread::get_id());
 	return search != g_idMap.end() ? search->second : ID();
 }
 
-bool threads::isMainThread()
-{
+bool threads::isMainThread() {
 	return std::this_thread::get_id() == g_mainThreadID;
 }
 
-u32 threads::maxHardwareThreads()
-{
+u32 threads::maxHardwareThreads() {
 	return std::thread::hardware_concurrency();
 }
 
-u32 threads::runningCount()
-{
+u32 threads::runningCount() {
 	return (u32)g_threads.size();
 }
 
-void threads::sleep(Time duration)
-{
-	if (duration <= Time(0))
-	{
+void threads::sleep(Time duration) {
+	if (duration <= Time(0)) {
 		std::this_thread::yield();
-	}
-	else
-	{
+	} else {
 		std::this_thread::sleep_for(std::chrono::microseconds(duration.to_us()));
 	}
 }

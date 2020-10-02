@@ -10,22 +10,19 @@ using namespace le;
 u32 g_inst = 0;
 u32 g_destroyed = 0;
 
-struct vec2 final
-{
+struct vec2 final {
 	f32 x = 0;
 	f32 y = 0;
 };
 
 constexpr auto maxSize = std::max(sizeof(vec2), sizeof(char*));
 
-bool operator==(vec2 const& l, vec2 const& r)
-{
+bool operator==(vec2 const& l, vec2 const& r) {
 	return maths::equals(l.x, r.x) && maths::equals(l.y, r.y);
 }
 
 template <typename T, std::size_t N>
-bool copyTest(StaticAny<N> any)
-{
+bool copyTest(StaticAny<N> any) {
 	f32 x = any.template val<f32>();
 	T* pT = any.template ptr<T>();
 	bool const b0 = std::is_same_v<T, f32> ? pT != nullptr : pT != nullptr && x == 0.0f;
@@ -40,38 +37,29 @@ bool copyTest(StaticAny<N> any)
 }
 
 template <typename T, std::size_t N>
-bool compare(std::vector<T> const& lhs, StaticAny<N> const& any)
-{
-	if (any.template contains<std::vector<T>>())
-	{
+bool compare(std::vector<T> const& lhs, StaticAny<N> const& any) {
+	if (any.template contains<std::vector<T>>()) {
 		auto const& rhs = any.template ref<std::vector<T>>();
-		if (lhs.size() == rhs.size())
-		{
+		if (lhs.size() == rhs.size()) {
 			return std::equal(lhs.begin(), lhs.end(), rhs.begin());
 		}
 	}
 	return false;
 }
 
-#define FAILIF(x)     \
-	do                \
-	{                 \
-		if (x)        \
-		{             \
-			return 1; \
-		}             \
+#define FAILIF(x)                                                                                                                                              \
+	do {                                                                                                                                                       \
+		if (x) {                                                                                                                                               \
+			return 1;                                                                                                                                          \
+		}                                                                                                                                                      \
 	} while (0)
 
-s32 main()
-{
+s32 main() {
 	char const* szHello = "hello";
 	StaticAny<maxSize> any = szHello;
-	if (auto szTest = any.val<char const*>())
-	{
+	if (auto szTest = any.val<char const*>()) {
 		FAILIF(std::strcmp(szTest, szHello) != 0 || !copyTest<char const*>(any));
-	}
-	else
-	{
+	} else {
 		return 1;
 	}
 	any = 4;

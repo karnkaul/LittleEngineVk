@@ -7,17 +7,14 @@
 #include <core/utils.hpp>
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
+#include <levk_impl.hpp>
 #include <resources/manifest.hpp>
 #include <resources/resources_impl.hpp>
-#include <levk_impl.hpp>
 
-namespace le::res
-{
-namespace
-{
+namespace le::res {
+namespace {
 template <typename T>
-void intersectTlist(std::vector<T>& out_data, std::vector<stdfs::path> const& src)
-{
+void intersectTlist(std::vector<T>& out_data, std::vector<stdfs::path> const& src) {
 	auto iter = std::remove_if(out_data.begin(), out_data.end(), [&src](auto const& data) {
 		return std::find_if(src.begin(), src.end(), [&data](auto const& id) { return data.id == id; }) == src.end();
 	});
@@ -25,33 +22,27 @@ void intersectTlist(std::vector<T>& out_data, std::vector<stdfs::path> const& sr
 }
 
 template <typename T>
-std::vector<stdfs::path> exportTList(std::vector<T> const& src)
-{
+std::vector<stdfs::path> exportTList(std::vector<T> const& src) {
 	std::vector<stdfs::path> ret;
-	for (auto const& data : src)
-	{
+	for (auto const& data : src) {
 		ret.push_back(data.id);
 	}
 	return ret;
 }
 
 template <typename... T>
-bool allEmpty(std::vector<T> const&... out_vecs)
-{
+bool allEmpty(std::vector<T> const&... out_vecs) {
 	return (out_vecs.empty() && ...);
 }
 
 template <typename T>
 std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
-														   std::vector<GUID>& out_resources, kt::lockable<std::mutex>& mutex, std::string_view jobName)
-{
+														   std::vector<GUID>& out_resources, kt::lockable<std::mutex>& mutex, std::string_view jobName) {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
-	if (!out_toLoad.empty())
-	{
+	if (!out_toLoad.empty()) {
 		auto task = [&out_loaded, &out_resources, &mutex](ResourceData<T>& data) {
 			auto resource = load(data.id, std::move(data.createInfo));
-			if (resource.guid > GUID::null)
-			{
+			if (resource.guid > GUID::null) {
 				auto lock = mutex.lock();
 				out_resources.push_back(resource.guid);
 				out_loaded.push_back(std::move(data.id));
@@ -63,8 +54,7 @@ std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceD
 }
 } // namespace
 
-void Manifest::Info::intersect(ResourceList ids)
-{
+void Manifest::Info::intersect(ResourceList ids) {
 	intersectTlist(shaders, ids.shaders);
 	intersectTlist(textures, ids.textures);
 	intersectTlist(cubemaps, ids.cubemaps);
@@ -74,8 +64,7 @@ void Manifest::Info::intersect(ResourceList ids)
 	intersectTlist(fonts, ids.fonts);
 }
 
-ResourceList Manifest::Info::exportList() const
-{
+ResourceList Manifest::Info::exportList() const {
 	ResourceList ret;
 	ret.shaders = exportTList(shaders);
 	ret.textures = exportTList(textures);
@@ -87,86 +76,65 @@ ResourceList Manifest::Info::exportList() const
 	return ret;
 }
 
-bool Manifest::Info::empty() const
-{
+bool Manifest::Info::empty() const {
 	return allEmpty(shaders, textures, cubemaps, materials, meshes, models, fonts);
 }
 
 std::string const Manifest::s_tName = utils::tName<Manifest>();
 
-bool Manifest::read(stdfs::path const& id)
-{
-	if (auto data = engine::reader().string(id))
-	{
-		if (!m_manifest.read(*data))
-		{
+bool Manifest::read(stdfs::path const& id) {
+	if (auto data = engine::reader().string(id)) {
+		if (!m_manifest.read(*data)) {
 			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), engine::reader().medium());
 			m_manifest.fields.clear();
 			return false;
 		}
 		m_status = Status::eReady;
 		return true;
-	}
-	else
-	{
+	} else {
 		ASSERT(false, "Manifest not found!");
 		LOG_E("[{}] Manifest [{}] not found on [{}]!", s_tName, id.generic_string(), engine::reader().medium());
 	}
 	return false;
 }
 
-void Manifest::start()
-{
-	if (!m_bParsed)
-	{
+void Manifest::start() {
+	if (!m_bParsed) {
 		parse();
 	}
-	if (!m_toLoad.empty())
-	{
+	if (!m_toLoad.empty()) {
 		loadData();
 	}
 	m_status = Status::eExtractingData;
 }
 
-Manifest::Status Manifest::update(bool bTerminate)
-{
-	switch (m_status)
-	{
-	default:
-	{
-		if (bTerminate)
-		{
+Manifest::Status Manifest::update(bool bTerminate) {
+	switch (m_status) {
+	default: {
+		if (bTerminate) {
 			m_status = Status::eIdle;
 			m_loaded = {};
 		}
 		break;
 	}
-	case Status::eExtractingData:
-	{
-		if (eraseDone(bTerminate))
-		{
-			if (bTerminate)
-			{
+	case Status::eExtractingData: {
+		if (eraseDone(bTerminate)) {
+			if (bTerminate) {
 				m_status = Status::eIdle;
 				m_loaded = {};
-			}
-			else
-			{
+			} else {
 				loadResources();
 			}
 		}
 		break;
 	}
-	case Status::eLoadingResources:
-	{
-		if (eraseDone(bTerminate))
-		{
+	case Status::eLoadingResources: {
+		if (eraseDone(bTerminate)) {
 			m_toLoad = {};
 			m_loading.clear();
 			m_semaphore.reset();
 			m_status = Status::eIdle;
-			if (bTerminate)
-			{
+			if (bTerminate) {
 				m_loaded = {};
 			}
 		}
@@ -176,45 +144,35 @@ Manifest::Status Manifest::update(bool bTerminate)
 	return bTerminating ? Status::eTerminating : m_status;
 }
 
-ResourceList Manifest::parse()
-{
+ResourceList Manifest::parse() {
 	ResourceList all;
-	if (auto pShaders = m_manifest.find<dj::array>("shaders"))
-	{
+	if (auto pShaders = m_manifest.find<dj::array>("shaders")) {
 		pShaders->for_each<dj::object>([&](auto const& shader) {
 			auto resourceID = shader.template value<dj::string>("id");
-			if (!resourceID.empty())
-			{
-				if (find<Shader>(resourceID).bResult)
-				{
+			if (!resourceID.empty()) {
+				if (find<Shader>(resourceID).bResult) {
 					all.shaders.push_back(resourceID);
 					m_loaded.shaders.push_back(std::move(resourceID));
-				}
-				else
-				{
+				} else {
 					ResourceData<Shader> data;
 					data.id = std::move(resourceID);
 					bool const bOptional = shader.template value<dj::boolean>("optional");
 					bool bFound = false;
-					if (auto const pResourceIDs = shader.template find<dj::array>("resource_ids"))
-					{
+					if (auto const pResourceIDs = shader.template find<dj::array>("resource_ids")) {
 						pResourceIDs->template for_each<dj::object>([&](auto const& resourceID) {
 							auto const typeStr = resourceID.template value<dj::string>("type");
 							auto const id = resourceID.template value<dj::string>("id");
 							bool const bPresent = bOptional ? engine::reader().checkPresence(id) : engine::reader().isPresent(id);
-							if (!id.empty() && !typeStr.empty() && bPresent)
-							{
+							if (!id.empty() && !typeStr.empty() && bPresent) {
 								Shader::Type type = Shader::Type::eFragment;
-								if (typeStr == "vertex")
-								{
+								if (typeStr == "vertex") {
 									type = Shader::Type::eVertex;
 								}
 								data.createInfo.codeIDMap[(std::size_t)type] = id;
 								bFound = true;
 							}
 						});
-						if (bFound)
-						{
+						if (bFound) {
 							all.shaders.push_back(data.id);
 							m_toLoad.shaders.push_back(std::move(data));
 							m_data.idCount.fetch_add(1);
@@ -224,20 +182,15 @@ ResourceList Manifest::parse()
 			}
 		});
 	}
-	if (auto pTextures = m_manifest.find<dj::array>("textures"))
-	{
+	if (auto pTextures = m_manifest.find<dj::array>("textures")) {
 		pTextures->for_each<dj::object>([&](auto const& texture) {
 			auto const id = texture.template value<dj::string>("id");
 			bool const bPresent = texture.template value<dj::boolean>("optional") ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
-			if (!id.empty() && bPresent)
-			{
-				if (find<Texture>(id).bResult)
-				{
+			if (!id.empty() && bPresent) {
+				if (find<Texture>(id).bResult) {
 					all.textures.push_back(id);
 					m_loaded.textures.push_back(std::move(id));
-				}
-				else
-				{
+				} else {
 					ResourceData<Texture> data;
 					data.id = id;
 					data.createInfo.mode = engine::colourSpace();
@@ -250,22 +203,17 @@ ResourceList Manifest::parse()
 			}
 		});
 	}
-	if (auto pCubemaps = m_manifest.find<dj::array>("cubemaps"))
-	{
+	if (auto pCubemaps = m_manifest.find<dj::array>("cubemaps")) {
 		pCubemaps->for_each<dj::object>([&](auto const& cubemap) {
 			auto const resourceID = cubemap.template value<dj::string>("id");
 			bool const bOptional = cubemap.template value<dj::boolean>("optional");
 			bool bMissing = false;
 			auto const pResourceIDs = cubemap.template find<dj::array>("textures");
-			if (!resourceID.empty())
-			{
-				if (find<Texture>(resourceID).bResult)
-				{
+			if (!resourceID.empty()) {
+				if (find<Texture>(resourceID).bResult) {
 					all.cubemaps.push_back(resourceID);
 					m_loaded.cubemaps.push_back(std::move(resourceID));
-				}
-				else if (pResourceIDs)
-				{
+				} else if (pResourceIDs) {
 					ResourceData<Texture> data;
 					data.id = resourceID;
 					data.createInfo.mode = engine::colourSpace();
@@ -273,17 +221,13 @@ ResourceList Manifest::parse()
 					data.createInfo.samplerID = cubemap.template value<dj::string>("sampler");
 					pResourceIDs->template for_each_value<dj::string>([&](auto const& id) {
 						bool const bPresent = bOptional ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
-						if (bPresent)
-						{
+						if (bPresent) {
 							data.createInfo.ids.push_back(id);
-						}
-						else
-						{
+						} else {
 							bMissing = true;
 						}
 					});
-					if (!bMissing)
-					{
+					if (!bMissing) {
 						all.cubemaps.push_back(data.id);
 						m_toLoad.cubemaps.push_back(std::move(data));
 						m_data.idCount.fetch_add(1);
@@ -292,27 +236,21 @@ ResourceList Manifest::parse()
 			}
 		});
 	}
-	if (auto pModels = m_manifest.find<dj::array>("models"))
-	{
+	if (auto pModels = m_manifest.find<dj::array>("models")) {
 		pModels->for_each<dj::object>([&](auto const& model) {
 			auto const modelID = model.template value<dj::string>("id");
-			if (!modelID.empty())
-			{
-				if (find<Model>(modelID).bResult)
-				{
+			if (!modelID.empty()) {
+				if (find<Model>(modelID).bResult) {
 					all.models.push_back(modelID);
 					m_loaded.models.push_back(std::move(modelID));
-				}
-				else
-				{
+				} else {
 					bool const bOptional = model.template value<dj::boolean>("optional");
 					ResourceData<Model> data;
 					data.id = modelID;
 					auto jsonID = data.id / data.id.filename();
 					jsonID += ".json";
 					bool const bPresent = bOptional ? engine::reader().isPresent(jsonID) : engine::reader().checkPresence(jsonID);
-					if (bPresent)
-					{
+					if (bPresent) {
 						all.models.push_back(data.id);
 						m_toLoad.models.push_back(std::move(data));
 						m_data.idCount.fetch_add(1);
@@ -325,8 +263,7 @@ ResourceList Manifest::parse()
 	return all;
 }
 
-void Manifest::reset()
-{
+void Manifest::reset() {
 	m_loaded = {};
 	m_toLoad = {};
 	m_manifest.fields.clear();
@@ -339,21 +276,17 @@ void Manifest::reset()
 	m_bParsed = false;
 }
 
-bool Manifest::idle() const
-{
+bool Manifest::idle() const {
 	return m_status == Status::eIdle;
 }
 
-bool Manifest::ready() const
-{
+bool Manifest::ready() const {
 	return m_status == Status::eReady;
 }
 
-void Manifest::unload(const ResourceList& list)
-{
+void Manifest::unload(const ResourceList& list) {
 	auto unload = [](std::vector<stdfs::path> const& ids) {
-		for (auto const& id : ids)
-		{
+		for (auto const& id : ids) {
 			res::unload(Hash(id));
 		}
 	};
@@ -366,18 +299,15 @@ void Manifest::unload(const ResourceList& list)
 	unload(list.fonts);
 }
 
-void Manifest::loadData()
-{
+void Manifest::loadData() {
 	m_status = Status::eExtractingData;
-	if (!m_toLoad.models.empty())
-	{
+	if (!m_toLoad.models.empty()) {
 		auto task = [](ResourceData<Model>& data) {
 			Model::LoadInfo loadInfo;
 			loadInfo.idRoot = data.id;
 			loadInfo.jsonDirectory = data.id;
 			auto info = loadInfo.createInfo();
-			if (info)
-			{
+			if (info) {
 				data.createInfo = std::move(*info);
 			}
 		};
@@ -385,8 +315,7 @@ void Manifest::loadData()
 	}
 }
 
-void Manifest::loadResources()
-{
+void Manifest::loadResources() {
 	m_status = Status::eLoadingResources;
 	m_semaphore = acquire();
 	addJobs(loadTResources(m_toLoad.shaders, m_loaded.shaders, m_loading, m_mutex, "Manifest-1:Shaders"));
@@ -395,31 +324,26 @@ void Manifest::loadResources()
 	addJobs(loadTResources(m_toLoad.models, m_loaded.models, m_loading, m_mutex, "Manifest-1:Models"));
 }
 
-bool Manifest::eraseDone(bool bWaitingJobs)
-{
+bool Manifest::eraseDone(bool bWaitingJobs) {
 	auto lock = m_mutex.lock();
-	if (!m_running.empty())
-	{
+	if (!m_running.empty()) {
 		auto iter = std::remove_if(m_running.begin(), m_running.end(), [bWaitingJobs](auto const& sJob) -> bool {
 			bool bRet = sJob->hasCompleted(true);
-			if (bWaitingJobs)
-			{
+			if (bWaitingJobs) {
 				bRet |= sJob->discard();
 			}
 			return bRet;
 		});
 		m_running.erase(iter, m_running.end());
 	}
-	if (!m_loading.empty())
-	{
+	if (!m_loading.empty()) {
 		auto iter = std::remove_if(m_loading.begin(), m_loading.end(), [](GUID guid) { return !isLoading(guid); });
 		m_loading.erase(iter, m_loading.end());
 	}
 	return m_running.empty() && m_loading.empty() && m_loading.empty();
 }
 
-void Manifest::addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles)
-{
+void Manifest::addJobs(std::vector<std::shared_ptr<tasks::Handle>> handles) {
 	std::move(handles.begin(), handles.end(), std::back_inserter(m_running));
 }
 } // namespace le::res

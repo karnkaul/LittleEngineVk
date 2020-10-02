@@ -1,34 +1,25 @@
 #pragma once
-#include "vulkan/vulkan.hpp"
 #include <functional>
 #include <vector>
-#include <glm/glm.hpp>
-#include <core/flags.hpp>
 #include <engine/window/common.hpp>
 #include <gfx/common.hpp>
+#include <glm/glm.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
+#include <vulkan/vulkan.hpp>
 
-namespace le::gfx
-{
-struct RenderFrame final
-{
+namespace le::gfx {
+struct RenderFrame final {
 	RenderTarget swapchain;
 	vk::Fence drawn;
 };
 
-class RenderContext final
-{
-public:
-	enum class Flag : s8
-	{
-		eRenderPaused,
-		eOutOfDate,
-		eCOUNT_
-	};
-	using Flags = TFlags<Flag>;
+class RenderContext final {
+  public:
+	enum class Flag : s8 { eRenderPaused, eOutOfDate, eCOUNT_ };
+	using Flags = kt::enum_flags<Flag>;
 
-private:
-	struct Metadata final
-	{
+  private:
+	struct Metadata final {
 		ContextInfo info;
 		vk::SurfaceKHR surface;
 
@@ -48,8 +39,7 @@ private:
 		vk::Extent2D extent(glm::ivec2 const& windowSize) const;
 	};
 
-	struct Swapchain final
-	{
+	struct Swapchain final {
 		Image depthImage;
 		vk::ImageView depthImageView;
 		vk::SwapchainKHR swapchain;
@@ -62,24 +52,24 @@ private:
 		RenderFrame& frame();
 	};
 
-public:
+  public:
 	static std::string const s_tName;
 	std::string m_name;
 
-public:
+  public:
 	Swapchain m_swapchain;
 	vk::SwapchainKHR m_retiring;
 	Flags m_flags;
 	Metadata m_metadata;
 
-private:
+  private:
 	WindowID m_window;
 
-public:
+  public:
 	RenderContext(ContextInfo const& info);
 	~RenderContext();
 
-public:
+  public:
 	void onFramebufferResize();
 
 	TResult<RenderTarget> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn);
@@ -90,7 +80,7 @@ public:
 
 	bool recreateSwapchain();
 
-private:
+  private:
 	bool createSwapchain();
 	void destroySwapchain();
 	void cleanup();

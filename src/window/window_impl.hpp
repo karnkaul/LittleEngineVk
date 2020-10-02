@@ -6,13 +6,10 @@
 #include <engine/window/window.hpp>
 #include <window/native_window.hpp>
 
-namespace le
-{
-class WindowImpl final
-{
-public:
-	struct InputCallbacks
-	{
+namespace le {
+class WindowImpl final {
+  public:
+	struct InputCallbacks {
 		input::OnText onText;
 		input::OnInput onInput;
 		input::OnMouse onMouse;
@@ -22,8 +19,7 @@ public:
 		input::OnWindowResize onWindowResize;
 		input::OnClosed onClosed;
 	};
-	struct Cursor
-	{
+	struct Cursor {
 		StaticAny<> data;
 		input::CursorType type;
 	};

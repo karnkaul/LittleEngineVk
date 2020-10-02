@@ -1,27 +1,24 @@
 #pragma once
 #include <vector>
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <core/colour.hpp>
 #include <core/std_types.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
-namespace le::gfx
-{
+namespace le::gfx {
 constexpr glm::vec3 g_nUp = {0.0f, 1.0f, 0.0f};
 constexpr glm::vec3 g_nRight = {1.0f, 0.0f, 0.0f};
 constexpr glm::vec3 g_nFront = {0.0f, 0.0f, 1.0f};
 constexpr glm::quat g_qIdentity = {1.0f, 0.0f, 0.0f, 0.0f};
 
-struct Vertex final
-{
+struct Vertex final {
 	glm::vec3 position = {};
 	glm::vec3 colour = glm::vec3(1.0f);
 	glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec2 texCoord = {};
 };
 
-struct Geometry final
-{
+struct Geometry final {
 	std::vector<Vertex> vertices;
 	std::vector<u32> indices;
 
@@ -30,8 +27,7 @@ struct Geometry final
 	void addIndices(std::vector<u32> newIndices);
 };
 
-struct Albedo final
-{
+struct Albedo final {
 	Colour ambient = colours::white;
 	Colour diffuse = colours::white;
 	Colour specular = colours::white;

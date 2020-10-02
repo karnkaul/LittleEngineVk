@@ -1,8 +1,7 @@
 #pragma once
 #include <type_traits>
 
-namespace le
-{
+namespace le {
 ///
 /// \brief True if all B... are true
 ///

@@ -1,24 +1,22 @@
 #pragma once
+#include <core/ecs/registry.hpp>
 #include <core/ecs/types.hpp>
 #include <core/traits.hpp>
 #include <core/transform.hpp>
-#include <core/ecs/registry.hpp>
+#include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/screen_rect.hpp>
-#include <engine/game/input.hpp>
 #if defined(LEVK_EDITOR)
 #include <engine/game/editor_types.hpp>
 #endif
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Wrapper for Entity + Transform
 ///
-struct Prop final
-{
+struct Prop final {
 	ecs::Entity entity;
 	Transform* pTransform;
 
@@ -46,8 +44,7 @@ struct Prop final
 /// \brief Return type wrapper for `spawnProp<T...>()`
 ///
 template <typename... T>
-struct TProp
-{
+struct TProp {
 	using type = TProp;
 	using Components = ecs::Components<T&...>;
 
@@ -58,21 +55,17 @@ struct TProp
 };
 
 template <>
-struct TProp<>
-{
+struct TProp<> {
 	using type = Prop;
 };
 
 template <typename... T>
 using TProp_t = typename TProp<T...>::type;
 
-class GameScene final
-{
-public:
-	struct Desc final
-	{
-		enum class Flag : s8
-		{
+class GameScene final {
+  public:
+	struct Desc final {
+		enum class Flag : s8 {
 			///
 			/// \brief UI follows screen size and aspect ratio
 			///
@@ -83,7 +76,7 @@ public:
 			eScissoredUI,
 			eCOUNT_
 		};
-		using Flags = TFlags<Flag>;
+		using Flags = kt::enum_flags<Flag>;
 
 		gfx::Camera defaultCam;
 		gfx::Camera* pCustomCam = nullptr;
@@ -122,7 +115,7 @@ public:
 	editor::PerFrame m_editorData;
 #endif
 
-public:
+  public:
 	///
 	/// \brief Obtain (a reference to) the scene descriptor
 	///
@@ -161,79 +154,67 @@ public:
 
 	void reset();
 
-private:
+  private:
 	void boltOnRoot(Prop prop);
 };
 
-inline constexpr Prop::Prop() noexcept : pTransform(nullptr) {}
-inline constexpr Prop::Prop(ecs::Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {}
-inline constexpr Prop::operator ecs::Entity() const noexcept
-{
+inline constexpr Prop::Prop() noexcept : pTransform(nullptr) {
+}
+inline constexpr Prop::Prop(ecs::Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {
+}
+inline constexpr Prop::operator ecs::Entity() const noexcept {
 	return entity;
 }
-inline constexpr bool Prop::valid() const noexcept
-{
+inline constexpr bool Prop::valid() const noexcept {
 	return pTransform != nullptr && entity.id != ecs::ID::null;
 }
-inline Transform const& Prop::transform() const
-{
+inline Transform const& Prop::transform() const {
 	ASSERT(pTransform, "Null Transform!");
 	return *pTransform;
 }
 
-inline Transform& Prop::transform()
-{
+inline Transform& Prop::transform() {
 	ASSERT(pTransform, "Null Transform!");
 	return *pTransform;
 }
 
 template <typename... T>
-constexpr TProp<T...>::operator Prop() const noexcept
-{
+constexpr TProp<T...>::operator Prop() const noexcept {
 	return prop;
 }
 
 template <typename T, typename... Args>
-TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... args)
-{
+TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... args) {
 	ecs::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T, Args...>(std::move(name), std::forward<Args>(args)...);
 	auto pT = reg.template attach<Transform>(ec);
 	ASSERT(pT, "Invariant violated!");
 	Prop prop{ec, *pT};
-	if constexpr (s_bParentToRoot)
-	{
+	if constexpr (s_bParentToRoot) {
 		boltOnRoot(prop);
 	}
-	if (pParent)
-	{
+	if (pParent) {
 		pT->parent(pParent);
 	}
 	return {prop, std::move(ec.components)};
 }
 
 template <typename... T, typename>
-TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent)
-{
+TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent) {
 	ecs::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T...>(std::move(name));
 	auto pT = reg.template attach<Transform>(ec);
 	ASSERT(pT, "Invariant violated!");
 	Prop prop{ec, *pT};
-	if constexpr (s_bParentToRoot)
-	{
+	if constexpr (s_bParentToRoot) {
 		boltOnRoot(prop);
 	}
-	if (pParent)
-	{
+	if (pParent) {
 		pT->parent(pParent);
 	}
-	if constexpr (sizeof...(T) > 0)
-	{
+	if constexpr (sizeof...(T) > 0) {
 		return {prop, std::move(ec.components)};
-	}
-	else
-	{
+	} else {
 		return prop;
 	}
 }

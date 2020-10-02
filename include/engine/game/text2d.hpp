@@ -1,25 +1,22 @@
 #pragma once
 #include <engine/resources/resources.hpp>
 
-namespace le
-{
-class Text2D
-{
-public:
-	struct Info
-	{
+namespace le {
+class Text2D {
+  public:
+	struct Info {
 		stdfs::path id;
 		res::Font::Text data;
 		res::Font font;
 	};
 
-public:
+  public:
 	Text2D() = default;
 	Text2D(Text2D&&) = default;
 	Text2D& operator=(Text2D&&) = default;
 	virtual ~Text2D() = default;
 
-public:
+  public:
 	bool setup(Info info);
 
 	void updateText(res::Font::Text data);
@@ -29,7 +26,7 @@ public:
 	bool ready() const;
 	bool busy() const;
 
-protected:
+  protected:
 	res::Font::Text m_data;
 	res::Font m_font;
 	res::TScoped<res::Mesh> m_mesh;

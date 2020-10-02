@@ -1,16 +1,14 @@
 #pragma once
-#include <glm/glm.hpp>
 #include <core/std_types.hpp>
 #include <core/ubyte.hpp>
+#include <glm/glm.hpp>
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Compressed wrapper struct for Colour
 ///
-struct Colour
-{
-public:
+struct Colour {
+  public:
 	UByte r;
 	UByte g;
 	UByte b;
@@ -33,8 +31,7 @@ public:
 	///
 	/// eg: 0xffff00ff for opaque yellow
 	///
-	constexpr explicit Colour(u32 mask) noexcept
-	{
+	constexpr explicit Colour(u32 mask) noexcept {
 		a = mask & 0xff;
 		mask >>= 8;
 		b = mask & 0xff;
@@ -113,8 +110,7 @@ Colour operator*(f32 n, Colour colour) noexcept;
 bool operator==(Colour lhs, Colour rhs) noexcept;
 bool operator!=(Colour lhs, Colour rhs) noexcept;
 
-namespace colours
-{
+namespace colours {
 constexpr Colour black(0x000000ff);
 constexpr Colour white(0xffffffff);
 constexpr Colour red(0xff0000ff);

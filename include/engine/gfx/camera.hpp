@@ -2,16 +2,13 @@
 #include <core/time.hpp>
 #include <engine/gfx/geometry.hpp>
 
-namespace le
-{
+namespace le {
 class Window;
 }
 
-namespace le::gfx
-{
+namespace le::gfx {
 // Camera faces -Z
-struct Camera final
-{
+struct Camera final {
 	glm::vec3 position = {};
 	glm::quat orientation = g_qIdentity;
 	f32 fov = 45.0f;

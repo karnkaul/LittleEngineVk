@@ -1,16 +1,15 @@
 #pragma once
 #if defined(LEVK_EDITOR)
-#include <glm/glm.hpp>
 #include <core/time.hpp>
 #include <core/trigger.hpp>
-#include <engine/gfx/screen_rect.hpp>
-#include <engine/window/common.hpp>
 #include <engine/game/freecam.hpp>
 #include <engine/game/state.hpp>
+#include <engine/gfx/screen_rect.hpp>
+#include <engine/window/common.hpp>
 #include <game/state_impl.hpp>
+#include <glm/glm.hpp>
 
-namespace le::editor
-{
+namespace le::editor {
 inline bool g_bTickGame = true;
 inline TTrigger<bool> g_bStepGame = false;
 inline gfx::ScreenRect g_gameRect = {};

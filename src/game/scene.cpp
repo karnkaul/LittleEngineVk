@@ -1,21 +1,17 @@
 #include <engine/game/scene.hpp>
 
-namespace le
-{
+namespace le {
 using namespace ecs;
 
-gfx::Camera const& GameScene::Desc::camera() const
-{
+gfx::Camera const& GameScene::Desc::camera() const {
 	return pCustomCam ? *pCustomCam : defaultCam;
 }
 
-gfx::Camera& GameScene::Desc::camera()
-{
+gfx::Camera& GameScene::Desc::camera() {
 	return pCustomCam ? *pCustomCam : defaultCam;
 }
 
-void GameScene::reset()
-{
+void GameScene::reset() {
 	Registry& reg = m_registry;
 	reg.clear();
 	m_name.clear();
@@ -25,8 +21,7 @@ void GameScene::reset()
 #endif
 }
 
-GameScene::Desc& GameScene::desc()
-{
+GameScene::Desc& GameScene::desc() {
 	Registry& reg = m_registry;
 	auto view = reg.view<Desc>();
 	auto [_, desc] = view.empty() ? reg.spawn<Desc>("scene_desc") : *view.begin();
@@ -34,19 +29,14 @@ GameScene::Desc& GameScene::desc()
 	return desc_;
 }
 
-gfx::Camera& GameScene::mainCamera()
-{
+gfx::Camera& GameScene::mainCamera() {
 	return desc().camera();
 }
 
-bool GameScene::reparent(Prop prop, Transform* pParent)
-{
-	if (prop.valid())
-	{
-		if constexpr (s_bParentToRoot)
-		{
-			if (!pParent)
-			{
+bool GameScene::reparent(Prop prop, Transform* pParent) {
+	if (prop.valid()) {
+		if constexpr (s_bParentToRoot) {
+			if (!pParent) {
 				pParent = &m_sceneRoot;
 			}
 		}
@@ -56,21 +46,17 @@ bool GameScene::reparent(Prop prop, Transform* pParent)
 	return false;
 }
 
-void GameScene::destroy(Span<Prop> props)
-{
+void GameScene::destroy(Span<Prop> props) {
 	Registry& reg = m_registry;
-	for (auto& prop : props)
-	{
-		if (prop.pTransform)
-		{
+	for (auto& prop : props) {
+		if (prop.pTransform) {
 			m_entityMap.erase(*prop.pTransform);
 		}
 		reg.destroy(prop.entity);
 	}
 }
 
-void GameScene::boltOnRoot(Prop prop)
-{
+void GameScene::boltOnRoot(Prop prop) {
 	auto& transform = prop.transform();
 	transform.parent(&m_sceneRoot);
 	m_entityMap[transform] = prop.entity;

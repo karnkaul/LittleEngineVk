@@ -1,26 +1,23 @@
 #pragma once
 #include <deque>
 #include <vector>
-#include <glm/glm.hpp>
 #include <core/delegate.hpp>
-#include <engine/window/common.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/gfx/render_driver.hpp>
-#include <gfx/render_context.hpp>
+#include <engine/window/common.hpp>
 #include <gfx/pipeline_impl.hpp>
+#include <gfx/render_context.hpp>
 #include <gfx/resource_descriptors.hpp>
+#include <glm/glm.hpp>
 
-namespace le
-{
+namespace le {
 class Transform;
 class WindowImpl;
 } // namespace le
 
-namespace le::gfx::render
-{
-struct FrameSync final
-{
+namespace le::gfx::render {
+struct FrameSync final {
 	rd::Set set;
 	vk::Semaphore renderReady;
 	vk::Semaphore presentReady;
@@ -30,28 +27,25 @@ struct FrameSync final
 	vk::CommandPool commandPool;
 };
 
-struct TexCounts
-{
+struct TexCounts {
 	u32 diffuse = 0;
 	u32 specular = 0;
 };
 
 using PCDeq = std::deque<std::deque<rd::PushConstants>>;
 
-class Driver::Impl
-{
-public:
-	struct Info final
-	{
+class Driver::Impl {
+  public:
+	struct Info final {
 		ContextInfo contextInfo;
 		WindowID windowID;
 		u8 frameCount = 3;
 	};
 
-public:
+  public:
 	std::string m_name;
 
-private:
+  private:
 	RenderContext m_context;
 	RenderPass m_renderPass;
 	std::vector<FrameSync> m_frames;
@@ -64,18 +58,18 @@ private:
 	WindowID m_window;
 	u8 m_frameCount = 0;
 
-public:
+  public:
 	Impl(Info const& info, Driver* pOwner);
 	~Impl();
 
-public:
+  public:
 	void create(u8 frameCount = 2);
 	void destroy();
 
 	void update();
 	bool render(Driver::Scene scene, bool bExtGUI);
 
-public:
+  public:
 	u64 framesDrawn() const;
 	u8 virtualFrameCount() const;
 
@@ -89,7 +83,7 @@ public:
 	std::vector<vk::PresentModeKHR> const& presentModes() const;
 	bool setPresentMode(vk::PresentModeKHR mode);
 
-private:
+  private:
 	void onFramebufferResize();
 	FrameSync& frameSync();
 	FrameSync const& frameSync() const;
@@ -98,8 +92,7 @@ private:
 	friend class le::WindowImpl;
 };
 
-struct PassInfo final
-{
+struct PassInfo final {
 	Ref<RenderContext const> context;
 	Ref<FrameSync const> frame;
 	Ref<Driver::Scene const> scene;

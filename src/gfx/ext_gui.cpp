@@ -1,32 +1,29 @@
 #include <stdexcept>
 #include <core/assert.hpp>
-#include <core/log.hpp>
 #include <core/colour.hpp>
-#include <gfx/ext_gui.hpp>
+#include <core/log.hpp>
 #include <gfx/device.hpp>
+#include <gfx/ext_gui.hpp>
 #include <gfx/render_driver_impl.hpp>
 #include <window/window_impl.hpp>
 #if defined(LEVK_USE_IMGUI)
-#include <glm/gtc/color_space.hpp>
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
+#include <glm/gtc/color_space.hpp>
 #if defined(LEVK_USE_GLFW)
 #include <imgui_impl_glfw.h>
 #endif
 #endif
 
-namespace le::gfx
-{
-namespace
-{
+namespace le::gfx {
+namespace {
 bool g_bInit = false;
 bool g_bNewFrame = false;
 
 #if defined(LEVK_USE_IMGUI)
 vk::DescriptorPool g_pool;
 
-vk::DescriptorPool createPool()
-{
+vk::DescriptorPool createPool() {
 	ASSERT(g_pool == vk::DescriptorPool(), "Duplicate pool!");
 	vk::DescriptorPoolSize pool_sizes[] = {{vk::DescriptorType::eSampler, 1000},
 										   {vk::DescriptorType::eCombinedImageSampler, 1000},
@@ -48,14 +45,12 @@ vk::DescriptorPool createPool()
 	return g_pool;
 }
 
-void toSRGB(ImVec4& imColour)
-{
+void toSRGB(ImVec4& imColour) {
 	glm::vec3 colour = glm::convertSRGBToLinear(glm::vec3{imColour.x, imColour.y, imColour.z});
 	imColour = {colour.x, colour.y, colour.z, imColour.w};
 }
 
-void setStyle()
-{
+void setStyle() {
 	ImVec4* pColours = ImGui::GetStyle().Colors;
 
 	toSRGB(pColours[ImGuiCol_Text]);
@@ -110,11 +105,9 @@ void setStyle()
 #endif
 } // namespace
 
-bool ext_gui::init([[maybe_unused]] Info const& info)
-{
+bool ext_gui::init([[maybe_unused]] Info const& info) {
 	bool bRet = false;
-	if (!isInit())
-	{
+	if (!isInit()) {
 		ASSERT(info.window.payload != WindowID::null, "Invalid WindowID!");
 #if defined(LEVK_USE_IMGUI)
 		bRet = true;
@@ -124,21 +117,17 @@ bool ext_gui::init([[maybe_unused]] Info const& info)
 		setStyle();
 #if defined(LEVK_USE_GLFW)
 		auto pWindow = WindowImpl::nativeHandle(info.window).val<GLFWwindow*>();
-		if (!pWindow)
-		{
+		if (!pWindow) {
 			bRet = false;
 			LOG_E("Failed to get native window handle!");
-		}
-		else
-		{
+		} else {
 			ImGui_ImplGlfw_InitForVulkan(pWindow, true);
 		}
 #else
 		LOG_E("NOT IMPLEMENTED");
 		bRet = false;
 #endif
-		if (bRet)
-		{
+		if (bRet) {
 			ImGui_ImplVulkan_InitInfo initInfo = {};
 			initInfo.Instance = g_instance.instance;
 			initInfo.Device = g_device.device;
@@ -150,8 +139,7 @@ bool ext_gui::init([[maybe_unused]] Info const& info)
 			initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 			initInfo.DescriptorPool = createPool();
 			bRet &= ImGui_ImplVulkan_Init(&initInfo, info.renderPass);
-			if (bRet)
-			{
+			if (bRet) {
 				vk::CommandPoolCreateInfo poolInfo;
 				poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 				poolInfo.queueFamilyIndex = g_device.queues.graphics.familyIndex;
@@ -181,10 +169,8 @@ bool ext_gui::init([[maybe_unused]] Info const& info)
 	return bRet;
 }
 
-void ext_gui::deinit()
-{
-	if (isInit())
-	{
+void ext_gui::deinit() {
+	if (isInit()) {
 #if defined(LEVK_USE_IMGUI)
 		ImGui_ImplVulkan_Shutdown();
 		ImGui::DestroyContext();
@@ -197,10 +183,8 @@ void ext_gui::deinit()
 	return;
 }
 
-void ext_gui::newFrame()
-{
-	if (isInit() && !g_bNewFrame)
-	{
+void ext_gui::newFrame() {
+	if (isInit() && !g_bNewFrame) {
 #if defined(LEVK_USE_IMGUI)
 		ImGui_ImplVulkan_NewFrame();
 #if defined(LEVK_USE_GLFW)
@@ -216,13 +200,10 @@ void ext_gui::newFrame()
 	return;
 }
 
-void ext_gui::renderDrawData([[maybe_unused]] vk::CommandBuffer commandBuffer)
-{
-	if (isInit())
-	{
+void ext_gui::renderDrawData([[maybe_unused]] vk::CommandBuffer commandBuffer) {
+	if (isInit()) {
 #if defined(LEVK_USE_IMGUI)
-		if (auto pData = ImGui::GetDrawData())
-		{
+		if (auto pData = ImGui::GetDrawData()) {
 			ImGui_ImplVulkan_RenderDrawData(pData, commandBuffer);
 		}
 #endif
@@ -230,10 +211,8 @@ void ext_gui::renderDrawData([[maybe_unused]] vk::CommandBuffer commandBuffer)
 	return;
 }
 
-void ext_gui::render()
-{
-	if (isInit() && g_bNewFrame)
-	{
+void ext_gui::render() {
+	if (isInit() && g_bNewFrame) {
 #if defined(LEVK_USE_IMGUI)
 		ImGui::Render();
 #endif
@@ -242,8 +221,7 @@ void ext_gui::render()
 	return;
 }
 
-bool ext_gui::isInit()
-{
+bool ext_gui::isInit() {
 	return g_bInit;
 }
 } // namespace le::gfx

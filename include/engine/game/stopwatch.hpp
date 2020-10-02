@@ -10,13 +10,11 @@
 #include <core/traits.hpp>
 #include <core/utils.hpp>
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Compile-time tag for Stopwatch
 ///
-enum class SWTag
-{
+enum class SWTag {
 	///
 	/// \brief Tag for using a mutex lock (undefined)
 	///
@@ -32,14 +30,12 @@ enum class SWTag
 /// \param Tag One of mutex_t or no_mutex_t
 ///
 template <SWTag Tag = SWTag::eMutex>
-class Stopwatch
-{
-public:
+class Stopwatch {
+  public:
 	static constexpr bool hasMutex = Tag == SWTag::eMutex;
 
-public:
-	enum class Log
-	{
+  public:
+	enum class Log {
 		///
 		/// \brief Don't log anything
 		///
@@ -56,13 +52,11 @@ public:
 	///
 	/// \brief One timestamp
 	///
-	struct Stamp final
-	{
+	struct Stamp final {
 		///
 		/// \brief Real time
 		///
-		struct
-		{
+		struct {
 			Time begin;
 			Time end;
 		} points;
@@ -82,8 +76,7 @@ public:
 	///
 	/// \brief Collection of Stamps with an associated label
 	///
-	struct Info final
-	{
+	struct Info final {
 		std::string label;
 		std::vector<Stamp> stamps;
 		Time updated;
@@ -91,8 +84,7 @@ public:
 	///
 	/// \brief RAII wrapper that stops on destruction
 	///
-	struct Scoped final
-	{
+	struct Scoped final {
 		Ref<Stopwatch<Tag>> parent;
 		Hash id;
 		Log log;
@@ -103,10 +95,10 @@ public:
 		~Scoped();
 	};
 
-public:
+  public:
 	std::string m_name;
 
-public:
+  public:
 	///
 	/// \brief Start a timestamp
 	///
@@ -137,7 +129,7 @@ public:
 	///
 	void tick(Time dt);
 
-protected:
+  protected:
 	std::unordered_map<Hash, Info> m_infos;
 	utils::Lockable<hasMutex> m_mutex;
 };
@@ -148,35 +140,28 @@ protected:
 inline Stopwatch<> g_stopwatch;
 
 template <SWTag Tag>
-constexpr Stopwatch<Tag>::Stamp::operator Time() const noexcept
-{
+constexpr Stopwatch<Tag>::Stamp::operator Time() const noexcept {
 	return dt;
 }
 
 template <SWTag Tag>
-constexpr Time Stopwatch<Tag>::Stamp::real() const noexcept
-{
+constexpr Time Stopwatch<Tag>::Stamp::real() const noexcept {
 	return points.end - points.begin;
 }
 
 template <SWTag Tag>
-Stopwatch<Tag>::Scoped::Scoped(Ref<Stopwatch<Tag>> parent, Hash id, Log log) : parent(parent), id(id), log(log)
-{
+Stopwatch<Tag>::Scoped::Scoped(Ref<Stopwatch<Tag>> parent, Hash id, Log log) : parent(parent), id(id), log(log) {
 }
 
 template <SWTag Tag>
-Stopwatch<Tag>::Scoped::Scoped(Scoped&& rhs) noexcept : parent(rhs.parent), id(rhs.id), log(rhs.log)
-{
+Stopwatch<Tag>::Scoped::Scoped(Scoped&& rhs) noexcept : parent(rhs.parent), id(rhs.id), log(rhs.log) {
 	rhs.id = {};
 }
 
 template <SWTag Tag>
-typename Stopwatch<Tag>::Scoped& Stopwatch<Tag>::Scoped::operator=(Scoped&& rhs)
-{
-	if (&rhs != this)
-	{
-		if (id != Hash())
-		{
+typename Stopwatch<Tag>::Scoped& Stopwatch<Tag>::Scoped::operator=(Scoped&& rhs) {
+	if (&rhs != this) {
+		if (id != Hash()) {
 			Stopwatch& p = parent;
 			p.stop(id, log);
 		}
@@ -189,18 +174,15 @@ typename Stopwatch<Tag>::Scoped& Stopwatch<Tag>::Scoped::operator=(Scoped&& rhs)
 }
 
 template <SWTag Tag>
-Stopwatch<Tag>::Scoped::~Scoped()
-{
-	if (id != Hash())
-	{
+Stopwatch<Tag>::Scoped::~Scoped() {
+	if (id != Hash()) {
 		Stopwatch& s = parent;
 		s.stop(id, log);
 	}
 }
 
 template <SWTag Tag>
-typename Stopwatch<Tag>::Info const& Stopwatch<Tag>::start(std::string label, Hash customHash)
-{
+typename Stopwatch<Tag>::Info const& Stopwatch<Tag>::start(std::string label, Hash customHash) {
 	auto const id = customHash == Hash() ? label : customHash;
 	auto lock = m_mutex.lock();
 	auto& info = m_infos[id];
@@ -212,20 +194,15 @@ typename Stopwatch<Tag>::Info const& Stopwatch<Tag>::start(std::string label, Ha
 }
 
 template <SWTag Tag>
-typename Stopwatch<Tag>::Stamp const* Stopwatch<Tag>::stop(Hash hash, Log log)
-{
+typename Stopwatch<Tag>::Stamp const* Stopwatch<Tag>::stop(Hash hash, Log log) {
 	auto lock = m_mutex.lock();
-	if (auto search = m_infos.find(hash); search != m_infos.end())
-	{
+	if (auto search = m_infos.find(hash); search != m_infos.end()) {
 		auto& info = search->second;
-		if (!info.stamps.empty())
-		{
+		if (!info.stamps.empty()) {
 			auto& stamp = info.stamps.back();
 			info.updated = stamp.points.end = Time::elapsed();
-			if (log > Log::eNone)
-			{
-				if (m_name.empty())
-				{
+			if (log > Log::eNone) {
+				if (m_name.empty()) {
 					m_name = "Stopwatch";
 				}
 				Time const dt = log == Log::eGameDT ? stamp.dt : stamp.real();
@@ -238,19 +215,16 @@ typename Stopwatch<Tag>::Stamp const* Stopwatch<Tag>::stop(Hash hash, Log log)
 }
 
 template <SWTag Tag>
-typename Stopwatch<Tag>::Scoped Stopwatch<Tag>::lap(std::string label, Hash customHash, Log log)
-{
+typename Stopwatch<Tag>::Scoped Stopwatch<Tag>::lap(std::string label, Hash customHash, Log log) {
 	auto const id = customHash == Hash() ? label : customHash;
 	start(std::move(label), id);
 	return Scoped(*this, id, log);
 }
 
 template <SWTag Tag>
-bool Stopwatch<Tag>::erase(Hash hash)
-{
+bool Stopwatch<Tag>::erase(Hash hash) {
 	auto lock = m_mutex.lock();
-	if (auto search = m_infos.find(hash); search != m_infos.end())
-	{
+	if (auto search = m_infos.find(hash); search != m_infos.end()) {
 		m_infos.erase(search);
 		return true;
 	}
@@ -258,41 +232,33 @@ bool Stopwatch<Tag>::erase(Hash hash)
 }
 
 template <SWTag Tag>
-typename Stopwatch<Tag>::Info const* Stopwatch<Tag>::find(Hash hash) const
-{
+typename Stopwatch<Tag>::Info const* Stopwatch<Tag>::find(Hash hash) const {
 	auto lock = m_mutex.lock();
-	if (auto search = m_infos.find(hash); search != m_infos.end())
-	{
+	if (auto search = m_infos.find(hash); search != m_infos.end()) {
 		return &search->second;
 	}
 	return nullptr;
 }
 
 template <SWTag Tag>
-std::vector<Ref<typename Stopwatch<Tag>::Info const>> Stopwatch<Tag>::laps(bool bSort) const
-{
+std::vector<Ref<typename Stopwatch<Tag>::Info const>> Stopwatch<Tag>::laps(bool bSort) const {
 	std::vector<Ref<Info const>> ret;
 	auto lock = m_mutex.lock();
 	ret.reserve(m_infos.size());
-	for (auto const& [_, info] : m_infos)
-	{
+	for (auto const& [_, info] : m_infos) {
 		ret.push_back(info);
 	}
-	if (bSort)
-	{
+	if (bSort) {
 		std::sort(ret.begin(), ret.end(), [](Info const& lhs, Info const& rhs) -> bool { return lhs.label < rhs.label; });
 	}
 	return ret;
 }
 
 template <SWTag Tag>
-void Stopwatch<Tag>::tick(Time dt)
-{
+void Stopwatch<Tag>::tick(Time dt) {
 	auto lock = m_mutex.lock();
-	for (auto& [_, info] : m_infos)
-	{
-		if (!info.stamps.empty())
-		{
+	for (auto& [_, info] : m_infos) {
+		if (!info.stamps.empty()) {
 			Stamp& stamp = info.stamps.back();
 			stamp.points.end = Time::elapsed();
 			stamp.dt += dt;

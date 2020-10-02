@@ -6,40 +6,29 @@
 #include <initializer_list>
 #include <mutex>
 #include <string>
-#include <vector>
-#include <typeinfo>
 #include <type_traits>
+#include <typeinfo>
+#include <vector>
 #include <core/assert.hpp>
 #include <core/std_types.hpp>
 #include <kt/async_queue/async_queue.hpp>
 
-namespace le
-{
-enum class FutureState : s8
-{
-	eInvalid,
-	eDeferred,
-	eReady,
-	eTimeout,
-	eCOUNT_
-};
+namespace le {
+enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout, eCOUNT_ };
 
-namespace utils
-{
+namespace utils {
 ///
 /// \brief Wrapper for kt::lockable
 ///
 template <bool UseMutex, typename M = std::mutex>
-struct Lockable final
-{
+struct Lockable final {
 	using type = M;
 	static constexpr bool hasMutex = UseMutex;
 
 	mutable kt::lockable<M> mutex;
 
 	template <template <typename...> typename L = std::scoped_lock, typename... Args>
-	decltype(mutex.template lock<L, Args...>()) lock() const
-	{
+	decltype(mutex.template lock<L, Args...>()) lock() const {
 		return mutex.template lock<L, Args...>();
 	}
 };
@@ -48,22 +37,20 @@ struct Lockable final
 /// \brief Specialisation for Dummy lock
 ///
 template <typename M>
-struct Lockable<false, M>
-{
+struct Lockable<false, M> {
 	using type = void;
 	static constexpr bool hasMutex = false;
 
-	struct Dummy final
-	{
+	struct Dummy final {
 		///
 		/// \brief Custom destructor to suppress unused variable warnings
 		///
-		~Dummy() {}
+		~Dummy() {
+		}
 	};
 
 	template <template <typename...> typename = std::scoped_lock, typename...>
-	Dummy lock() const
-	{
+	Dummy lock() const {
 		return {};
 	}
 };
@@ -89,14 +76,10 @@ std::string demangle(std::string_view name, bool bMinimal);
 /// \brief Obtain demangled type name of an object or a type
 ///
 template <typename T, bool Minimal = true>
-std::string tName(T const* pT = nullptr)
-{
-	if constexpr (Minimal)
-	{
+std::string tName(T const* pT = nullptr) {
+	if constexpr (Minimal) {
 		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), true);
-	}
-	else
-	{
+	} else {
 		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), false);
 	}
 }
@@ -106,8 +89,7 @@ std::string tName(T const* pT = nullptr)
 ///
 void removeNamesapces(std::string& out_name);
 
-namespace strings
-{
+namespace strings {
 // ASCII only
 void toLower(std::string& outString);
 void toUpper(std::string& outString);
@@ -157,14 +139,11 @@ bool isCharEnclosedIn(std::string_view str, std::size_t idx, std::pair<char, cha
 } // namespace utils
 
 template <typename T>
-FutureState utils::futureState(std::future<T> const& future) noexcept
-{
-	if (future.valid())
-	{
+FutureState utils::futureState(std::future<T> const& future) noexcept {
+	if (future.valid()) {
 		using namespace std::chrono_literals;
 		auto const status = future.wait_for(0ms);
-		switch (status)
-		{
+		switch (status) {
 		default:
 		case std::future_status::deferred:
 			return FutureState::eDeferred;
@@ -178,8 +157,7 @@ FutureState utils::futureState(std::future<T> const& future) noexcept
 }
 
 template <typename T>
-bool utils::ready(std::future<T> const& future) noexcept
-{
+bool utils::ready(std::future<T> const& future) noexcept {
 	using namespace std::chrono_literals;
 	return future.valid() && future.wait_for(0ms) == std::future_status::ready;
 }

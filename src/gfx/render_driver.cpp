@@ -1,10 +1,10 @@
 #include <algorithm>
 #include <unordered_set>
-#include <glm/gtc/matrix_transform.hpp>
 #include <core/assert.hpp>
 #include <core/log.hpp>
 #include <core/transform.hpp>
 #include <core/utils.hpp>
+#include <editor/editor.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
@@ -12,16 +12,13 @@
 #include <gfx/render_cmd.hpp>
 #include <gfx/render_driver_impl.hpp>
 #include <gfx/resource_descriptors.hpp>
-#include <editor/editor.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <resources/resources_impl.hpp>
 #include <window/window_impl.hpp>
 
-namespace le::gfx::render
-{
-namespace
-{
-struct TexSet final
-{
+namespace le::gfx::render {
+namespace {
+struct TexSet final {
 	std::unordered_map<res::GUID, u32> idxMap;
 	std::deque<res::Texture> textures;
 
@@ -29,10 +26,8 @@ struct TexSet final
 	u32 total() const;
 };
 
-u32 TexSet::add(res::Texture tex)
-{
-	if (auto search = idxMap.find(tex.guid); search != idxMap.end())
-	{
+u32 TexSet::add(res::Texture tex) {
+	if (auto search = idxMap.find(tex.guid); search != idxMap.end()) {
 		return search->second;
 	}
 	u32 const idx = (u32)textures.size();
@@ -41,14 +36,12 @@ u32 TexSet::add(res::Texture tex)
 	return idx;
 }
 
-u32 TexSet::total() const
-{
+u32 TexSet::total() const {
 	return (u32)textures.size();
 }
 
 template <typename... T>
-bool allReady(T... t)
-{
+bool allReady(T... t) {
 	return ((t.status() == res::Status::eReady) && ...);
 }
 } // namespace
@@ -60,57 +53,46 @@ Driver::~Driver() = default;
 
 std::string const Driver::s_tName = utils::tName<Driver>();
 
-void Driver::submit(Scene scene, ScreenRect const& sceneView)
-{
+void Driver::submit(Scene scene, ScreenRect const& sceneView) {
 	m_scene = std::move(scene);
 	m_sceneView = sceneView;
 	return;
 }
 
-void Driver::render(bool bEditor)
-{
-	if (m_uImpl)
-	{
+void Driver::render(bool bEditor) {
+	if (m_uImpl) {
 		m_uImpl->render(std::move(m_scene), bEditor);
 	}
 }
 
-glm::vec2 Driver::screenToN(glm::vec2 const& screenXY) const
-{
+glm::vec2 Driver::screenToN(glm::vec2 const& screenXY) const {
 	return m_uImpl ? m_uImpl->screenToN(screenXY) : screenXY;
 }
 
-ScreenRect Driver::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
-{
+ScreenRect Driver::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const {
 	return m_uImpl ? m_uImpl->clampToView(screenXY, nViewport, padding) : ScreenRect::sizeCentre(nViewport);
 }
 
-Driver::Impl::Impl(Info const& info, Driver* pOwner) : m_context(info.contextInfo), m_pDriver(pOwner), m_window(info.windowID)
-{
+Driver::Impl::Impl(Info const& info, Driver* pOwner) : m_context(info.contextInfo), m_pDriver(pOwner), m_window(info.windowID) {
 	m_name = fmt::format("{}:{}", Driver::s_tName, m_window);
 	create(info.frameCount);
 }
 
-Driver::Impl::~Impl()
-{
+Driver::Impl::~Impl() {
 	destroy();
 }
 
-void Driver::Impl::create(u8 frameCount)
-{
-	if (m_renderPass.renderPass == vk::RenderPass())
-	{
+void Driver::Impl::create(u8 frameCount) {
+	if (m_renderPass.renderPass == vk::RenderPass()) {
 		m_renderPass = rd::createSingleRenderPass(m_context.colourFormat(), m_context.depthFormat());
 	}
-	if (m_frames.empty() && frameCount > 0)
-	{
+	if (m_frames.empty() && frameCount > 0) {
 		m_frameCount = frameCount;
 		// Descriptors
 		auto sets = rd::allocateSets(frameCount);
 		ASSERT(sets.size() == (std::size_t)frameCount, "Invalid descriptor sets!");
 		m_frames.reserve((std::size_t)frameCount);
-		for (u8 idx = 0; idx < frameCount; ++idx)
-		{
+		for (u8 idx = 0; idx < frameCount; ++idx) {
 			FrameSync frame;
 			frame.set = sets.at((std::size_t)idx);
 			frame.renderReady = g_device.device.createSemaphore({});
@@ -133,13 +115,10 @@ void Driver::Impl::create(u8 frameCount)
 	return;
 }
 
-void Driver::Impl::destroy()
-{
-	if (!m_frames.empty())
-	{
+void Driver::Impl::destroy() {
+	if (!m_frames.empty()) {
 		g_device.waitIdle();
-		for (auto& frame : m_frames)
-		{
+		for (auto& frame : m_frames) {
 			frame.set.destroy();
 			g_device.destroy(frame.set.m_bufferPool, frame.set.m_samplerPool, frame.commandPool, frame.framebuffer, frame.drawing, frame.renderReady,
 							 frame.presentReady);
@@ -155,14 +134,13 @@ void Driver::Impl::destroy()
 	return;
 }
 
-void Driver::Impl::update() {}
+void Driver::Impl::update() {
+}
 
-bool Driver::Impl::render(Driver::Scene scene, bool bExtGUI)
-{
+bool Driver::Impl::render(Driver::Scene scene, bool bExtGUI) {
 	bool const bEmpty =
 		(scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }));
-	if (bExtGUI)
-	{
+	if (bExtGUI) {
 		ext_gui::render();
 	}
 	auto& frame = frameSync();
@@ -170,29 +148,23 @@ bool Driver::Impl::render(Driver::Scene scene, bool bExtGUI)
 	auto const push = bEmpty ? PCDeq() : render::write(frameSync(), scene, m_texCount);
 	auto target = m_context.acquireNextImage(frame.renderReady, frame.drawing);
 	bool bRendered = false;
-	if (target)
-	{
+	if (target) {
 		g_device.destroy(frame.framebuffer);
 		frame.framebuffer = g_device.createFramebuffer(m_renderPass.renderPass, target->attachments(), target->extent);
 		u64 tris = 0;
-		if (push.empty())
-		{
+		if (push.empty()) {
 			static auto const c = colours::black;
 			vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 			vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
 			RenderCmd cmd(frame.commandBuffer, m_renderPass.renderPass, frame.framebuffer, target->extent, {colour, depth});
-			if (bExtGUI)
-			{
+			if (bExtGUI) {
 				ext_gui::renderDrawData(frame.commandBuffer);
 			}
-		}
-		else
-		{
+		} else {
 			PassInfo info{m_context, frameSync(), scene, push, *target, m_renderPass, m_pDriver->m_sceneView, bExtGUI};
 			tris = render::pass(info);
 		}
-		if (render::submit(m_context, frameSync()))
-		{
+		if (render::submit(m_context, frameSync())) {
 			next();
 			m_pDriver->m_stats.trisDrawn = tris;
 			bRendered = true;
@@ -201,32 +173,26 @@ bool Driver::Impl::render(Driver::Scene scene, bool bExtGUI)
 	return bRendered;
 }
 
-u64 Driver::Impl::framesDrawn() const
-{
+u64 Driver::Impl::framesDrawn() const {
 	return m_drawnFrames;
 }
 
-u8 Driver::Impl::virtualFrameCount() const
-{
+u8 Driver::Impl::virtualFrameCount() const {
 	return m_frameCount;
 }
 
-glm::vec2 Driver::Impl::screenToN(glm::vec2 const& screenXY) const
-{
+glm::vec2 Driver::Impl::screenToN(glm::vec2 const& screenXY) const {
 	auto pWindow = WindowImpl::windowImpl(m_window);
-	if (pWindow)
-	{
+	if (pWindow) {
 		auto const size = pWindow->windowSize();
 		return {screenXY.x / (f32)size.x, screenXY.y / (f32)size.y};
 	}
 	return {};
 }
 
-ScreenRect Driver::Impl::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const
-{
+ScreenRect Driver::Impl::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const {
 	auto pWindow = WindowImpl::windowImpl(m_window);
-	if (pWindow)
-	{
+	if (pWindow) {
 		auto const size = pWindow->windowSize();
 		auto const half = nViewport * 0.5f;
 		f32 const x = std::clamp(screenXY.x, 0.0f + padding.x, (f32)size.x - padding.x);
@@ -238,8 +204,7 @@ ScreenRect Driver::Impl::clampToView(glm::vec2 const& screenXY, glm::vec2 const&
 	return ScreenRect::sizeCentre(nViewport);
 }
 
-bool Driver::Impl::initExtGUI() const
-{
+bool Driver::Impl::initExtGUI() const {
 	ext_gui::Info guiInfo;
 	guiInfo.renderPass = m_renderPass.renderPass;
 	guiInfo.imageCount = m_frameCount;
@@ -248,66 +213,54 @@ bool Driver::Impl::initExtGUI() const
 	return ext_gui::init(guiInfo);
 }
 
-ColourSpace Driver::Impl::colourSpace() const
-{
-	if (m_context.colourFormat() == vk::Format::eB8G8R8A8Srgb)
-	{
+ColourSpace Driver::Impl::colourSpace() const {
+	if (m_context.colourFormat() == vk::Format::eB8G8R8A8Srgb) {
 		return ColourSpace::eSRGBNonLinear;
 	}
 	return ColourSpace::eRGBLinear;
 }
 
-vk::PresentModeKHR Driver::Impl::presentMode() const
-{
+vk::PresentModeKHR Driver::Impl::presentMode() const {
 	return m_context.m_metadata.presentMode;
 }
 
-std::vector<vk::PresentModeKHR> const& Driver::Impl::presentModes() const
-{
+std::vector<vk::PresentModeKHR> const& Driver::Impl::presentModes() const {
 	return m_context.m_metadata.presentModes;
 }
 
-bool Driver::Impl::setPresentMode(vk::PresentModeKHR mode)
-{
+bool Driver::Impl::setPresentMode(vk::PresentModeKHR mode) {
 	auto const& modes = presentModes();
-	if (auto search = std::find(modes.begin(), modes.end(), mode); search != modes.end())
-	{
+	if (auto search = std::find(modes.begin(), modes.end(), mode); search != modes.end()) {
 		m_context.m_metadata.info.options.presentModes = {mode};
 		return m_context.recreateSwapchain();
 	}
 	return false;
 }
 
-void Driver::Impl::onFramebufferResize()
-{
+void Driver::Impl::onFramebufferResize() {
 	m_context.onFramebufferResize();
 	return;
 }
 
-FrameSync& Driver::Impl::frameSync()
-{
+FrameSync& Driver::Impl::frameSync() {
 	ASSERT(m_index < m_frames.size(), "Invalid index!");
 	return m_frames.at(m_index);
 }
 
-FrameSync const& Driver::Impl::frameSync() const
-{
+FrameSync const& Driver::Impl::frameSync() const {
 	ASSERT(m_index < m_frames.size(), "Invalid index!");
 	return m_frames.at(m_index);
 }
 
-void Driver::Impl::next()
-{
+void Driver::Impl::next() {
 	m_index = (m_index + 1) % m_frames.size();
 	++m_drawnFrames;
 	return;
 }
 } // namespace le::gfx::render
 
-namespace le::gfx
-{
-vk::Viewport render::viewport(vk::Extent2D extent, ScreenRect const& nRect, glm::vec2 const& depth)
-{
+namespace le::gfx {
+vk::Viewport render::viewport(vk::Extent2D extent, ScreenRect const& nRect, glm::vec2 const& depth) {
 	vk::Viewport viewport;
 	glm::vec2 const size = nRect.size();
 	viewport.minDepth = depth.x;
@@ -319,8 +272,7 @@ vk::Viewport render::viewport(vk::Extent2D extent, ScreenRect const& nRect, glm:
 	return viewport;
 }
 
-vk::Rect2D render::scissor(vk::Extent2D extent, ScreenRect const& nRect)
-{
+vk::Rect2D render::scissor(vk::Extent2D extent, ScreenRect const& nRect) {
 	vk::Rect2D scissor;
 	glm::vec2 const size = nRect.size();
 	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.width);
@@ -330,8 +282,7 @@ vk::Rect2D render::scissor(vk::Extent2D extent, ScreenRect const& nRect)
 	return scissor;
 }
 
-render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexCounts& out_texCount)
-{
+render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexCounts& out_texCount) {
 	auto const mg = colours::magenta.toVec4();
 	rd::StorageBuffers ssbos;
 	TexSet diffuse, specular;
@@ -340,16 +291,14 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 	auto const [black, bBlack] = res::find<res::Texture>("textures/black");
 	auto const [blank, bBlank] = res::find<res::Texture>("cubemaps/blank");
 	ASSERT(bWhite && bBlack && bBlank, "Default textures missing!");
-	if (!allReady(white, black, blank))
-	{
+	if (!allReady(white, black, blank)) {
 		return {};
 	}
 	diffuse.add(white);
 	specular.add(black);
 	bool bSkybox = false;
 	res::Texture cubemap = blank;
-	if (out_scene.view.skybox.cubemap.status() == res::Status::eReady)
-	{
+	if (out_scene.view.skybox.cubemap.status() == res::Status::eReady) {
 		out_scene.view.skybox.pipeline.flags.reset(gfx::Pipeline::Flag::eDepthWrite);
 		auto mesh = res::find<res::Mesh>("meshes/cube").payload;
 		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{mesh}, Transform::s_identity, out_scene.view.skybox.pipeline}}});
@@ -357,15 +306,12 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 		bSkybox = true;
 	}
 	u32 objectID = 0;
-	for (auto& batch : out_scene.batches)
-	{
+	for (auto& batch : out_scene.batches) {
 		push.push_back({});
-		for (auto& [meshes, t, _] : batch.drawables)
-		{
+		for (auto& [meshes, t, _] : batch.drawables) {
 			ASSERT(!meshes.empty(), "Mesh is null!");
 			Transform const& transform = t;
-			for (auto mesh : meshes)
-			{
+			for (auto mesh : meshes) {
 				auto const& info = res::info(mesh);
 				rd::PushConstants pc;
 				pc.objectID = objectID;
@@ -374,41 +320,31 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 				ssbos.materials.ssbo.push_back({info.material.material.info(), info.material.dropColour});
 				ssbos.tints.ssbo.push_back(info.material.tint.toVec4());
 				ssbos.flags.ssbo.push_back(0);
-				if (bSkybox)
-				{
+				if (bSkybox) {
 					bSkybox = false;
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eSKYBOX;
 				}
-				if (info.material.flags.test(res::Material::Flag::eLit))
-				{
+				if (info.material.flags.test(res::Material::Flag::eLit)) {
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eLIT;
 				}
-				if (info.material.flags.test(res::Material::Flag::eOpaque))
-				{
+				if (info.material.flags.test(res::Material::Flag::eOpaque)) {
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eOPAQUE;
 				}
-				if (info.material.flags.test(res::Material::Flag::eDropColour))
-				{
+				if (info.material.flags.test(res::Material::Flag::eDropColour)) {
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eDROP_COLOUR;
 				}
-				if (info.material.flags.test(res::Material::Flag::eUI))
-				{
+				if (info.material.flags.test(res::Material::Flag::eUI)) {
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eUI;
 				}
-				if (info.material.flags.test(res::Material::Flag::eTextured))
-				{
+				if (info.material.flags.test(res::Material::Flag::eTextured)) {
 					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
-					if (info.material.diffuse.status() == res::Status::eReady)
-					{
+					if (info.material.diffuse.status() == res::Status::eReady) {
 						pc.diffuseID = diffuse.add(info.material.diffuse);
-					}
-					else
-					{
+					} else {
 						ssbos.tints.ssbo.at(objectID) = mg;
 						pc.diffuseID = 0;
 					}
-					if (info.material.specular.status() == res::Status::eReady)
-					{
+					if (info.material.specular.status() == res::Status::eReady) {
 						pc.specularID = specular.add(info.material.specular);
 					}
 				}
@@ -417,12 +353,10 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 			}
 		}
 	}
-	for (u32 idx = diffuse.total(); idx < out_texCount.diffuse; ++idx)
-	{
+	for (u32 idx = diffuse.total(); idx < out_texCount.diffuse; ++idx) {
 		diffuse.textures.push_back(white);
 	}
-	for (u32 idx = specular.total(); idx < out_texCount.specular; ++idx)
-	{
+	for (u32 idx = specular.total(); idx < out_texCount.specular; ++idx) {
 		specular.textures.push_back(black);
 	}
 	out_texCount = {diffuse.total(), specular.total()};
@@ -436,8 +370,7 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 	return push;
 }
 
-u64 render::pass(PassInfo const& info)
-{
+u64 render::pass(PassInfo const& info) {
 	RenderContext const& context = info.context;
 	PCDeq const& push = info.push;
 	Driver::Scene const& scene = info.scene;
@@ -451,30 +384,23 @@ u64 render::pass(PassInfo const& info)
 	std::size_t batchIdx = 0;
 	std::size_t drawableIdx = 0;
 	u64 tris = 0;
-	for (auto& batch : scene.batches)
-	{
+	for (auto& batch : scene.batches) {
 		auto const extent = context.m_swapchain.extent;
 		cmd.setViewportScissor(viewport(extent, batch.viewport.adjust(info.view)), scissor(extent, batch.scissor));
-		for (auto& [meshes, pTransform, pipe] : batch.drawables)
-		{
-			for (auto mesh : meshes)
-			{
+		for (auto& [meshes, pTransform, pipe] : batch.drawables) {
+			for (auto mesh : meshes) {
 				auto const& meshInfo = res::info(mesh);
 				auto pImpl = res::impl(mesh);
-				if (pImpl && mesh.status() == res::Status::eReady && meshInfo.triCount > 0)
-				{
+				if (pImpl && mesh.status() == res::Status::eReady && meshInfo.triCount > 0) {
 					tris += meshInfo.triCount;
 					auto const& impl = pipes::find(pipe, info.pass);
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
 					cmd.bindResources<rd::PushConstants>(impl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
 					cmd.bindVertexBuffers(0, pImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
-					if (pImpl->ibo.count > 0)
-					{
+					if (pImpl->ibo.count > 0) {
 						cmd.bindIndexBuffer(pImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);
 						cmd.drawIndexed(pImpl->ibo.count, 1, 0, 0, 0);
-					}
-					else
-					{
+					} else {
 						cmd.draw(pImpl->vbo.count, 1, 0, 0);
 					}
 				}
@@ -484,15 +410,13 @@ u64 render::pass(PassInfo const& info)
 		drawableIdx = 0;
 		++batchIdx;
 	}
-	if (info.bExtGUI)
-	{
+	if (info.bExtGUI) {
 		ext_gui::renderDrawData(frame.commandBuffer);
 	}
 	return tris;
 }
 
-bool render::submit(RenderContext& out_context, FrameSync const& frame)
-{
+bool render::submit(RenderContext& out_context, FrameSync const& frame) {
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags const waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	submitInfo.waitSemaphoreCount = 1;
@@ -504,8 +428,7 @@ bool render::submit(RenderContext& out_context, FrameSync const& frame)
 	submitInfo.pSignalSemaphores = &frame.presentReady;
 	g_device.device.resetFences(frame.drawing);
 	g_device.queues.graphics.queue.submit(submitInfo, frame.drawing);
-	if (out_context.present(frame.presentReady))
-	{
+	if (out_context.present(frame.presentReady)) {
 		return true;
 	}
 	return false;

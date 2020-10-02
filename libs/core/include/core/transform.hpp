@@ -1,23 +1,21 @@
 #pragma once
-#include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include <core/tree.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Class for user-friendly and cached 4x4 matrix transformation with support for parenting
 ///
-class Transform final : public Tree<Transform>
-{
-public:
+class Transform final : public Tree<Transform> {
+  public:
 	///
 	/// \brief Identity transform (default constructed)
 	///
 	static Transform const s_identity;
 
-public:
+  public:
 	///
 	/// \brief Set (local) position
 	///
@@ -89,7 +87,7 @@ public:
 	///
 	void updateMats() const noexcept;
 
-private:
+  private:
 	mutable glm::mat4 m_mat = glm::mat4(1.0f);
 	mutable glm::mat4 m_normalMat = glm::mat4(1.0f);
 	glm::vec3 m_position = glm::vec3(0.0f);
@@ -99,38 +97,32 @@ private:
 
 inline Transform const Transform::s_identity;
 
-inline Transform& Transform::position(glm::vec3 const& position) noexcept
-{
+inline Transform& Transform::position(glm::vec3 const& position) noexcept {
 	m_position = position;
 	m_bDirty = true;
 	return *this;
 }
 
-inline Transform& Transform::orient(glm::quat const& orientation) noexcept
-{
+inline Transform& Transform::orient(glm::quat const& orientation) noexcept {
 	m_orientation = orientation;
 	m_bDirty = true;
 	return *this;
 }
 
-inline Transform& Transform::scale(f32 scale) noexcept
-{
+inline Transform& Transform::scale(f32 scale) noexcept {
 	m_scale = {scale, scale, scale};
 	m_bDirty = true;
 	return *this;
 }
 
-inline Transform& Transform::scale(glm::vec3 const& scale) noexcept
-{
+inline Transform& Transform::scale(glm::vec3 const& scale) noexcept {
 	m_scale = scale;
 	m_bDirty = true;
 	return *this;
 }
 
-inline void Transform::reset(bool bUnparent)
-{
-	if (bUnparent)
-	{
+inline void Transform::reset(bool bUnparent) {
+	if (bUnparent) {
 		purge();
 	}
 	m_position = {};
@@ -139,52 +131,42 @@ inline void Transform::reset(bool bUnparent)
 	updateMats();
 }
 
-inline glm::vec3 const& Transform::position() const noexcept
-{
+inline glm::vec3 const& Transform::position() const noexcept {
 	return m_position;
 }
 
-inline glm::quat const& Transform::orientation() const noexcept
-{
+inline glm::quat const& Transform::orientation() const noexcept {
 	return m_orientation;
 }
 
-inline glm::vec3 const& Transform::scale() const noexcept
-{
+inline glm::vec3 const& Transform::scale() const noexcept {
 	return m_scale;
 }
 
-inline bool Transform::isotropic() const noexcept
-{
+inline bool Transform::isotropic() const noexcept {
 	return m_scale.x == m_scale.y && m_scale.y == m_scale.z && (!m_pParent || m_pParent->isotropic());
 }
 
-inline glm::vec3 Transform::worldPosition() const noexcept
-{
+inline glm::vec3 Transform::worldPosition() const noexcept {
 	return glm::vec3(model()[3]);
 }
 
-inline glm::mat4 Transform::model() const noexcept
-{
+inline glm::mat4 Transform::model() const noexcept {
 	updateMats();
 	return m_pParent ? m_pParent->model() * m_mat : m_mat;
 }
 
-inline glm::mat4 Transform::normalModel() const noexcept
-{
+inline glm::mat4 Transform::normalModel() const noexcept {
 	updateMats();
 	return m_normalMat;
 }
 
-inline bool Transform::stale() const noexcept
-{
+inline bool Transform::stale() const noexcept {
 	return m_bDirty || (m_pParent ? m_pParent->stale() : false);
 }
 
-inline void Transform::updateMats() const noexcept
-{
-	if (m_bDirty)
-	{
+inline void Transform::updateMats() const noexcept {
+	if (m_bDirty) {
 		static constexpr auto base = glm::mat4(1.0f);
 		auto const t = glm::translate(base, m_position);
 		auto const r = glm::toMat4(m_orientation);

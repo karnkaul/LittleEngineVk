@@ -2,32 +2,24 @@
 #include <sstream>
 #include <engine/resources/resource_list.hpp>
 
-namespace le::res
-{
-namespace
-{
-std::vector<stdfs::path> intersect(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs)
-{
+namespace le::res {
+namespace {
+std::vector<stdfs::path> intersect(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs) {
 	std::vector<stdfs::path> ret;
-	for (auto const& id : lhs)
-	{
+	for (auto const& id : lhs) {
 		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](stdfs::path const& rhs) -> bool { return id == rhs; });
-		if (search != rhs.end())
-		{
+		if (search != rhs.end()) {
 			ret.push_back(id);
 		}
 	}
 	return ret;
 }
 
-std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs)
-{
+std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs) {
 	std::vector<stdfs::path> ret;
-	for (auto const& id : lhs)
-	{
+	for (auto const& id : lhs) {
 		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](stdfs::path const& rhs) -> bool { return id == rhs; });
-		if (search == rhs.end())
-		{
+		if (search == rhs.end()) {
 			ret.push_back(id);
 		}
 	}
@@ -35,20 +27,17 @@ std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vect
 }
 
 template <typename... T>
-constexpr bool allEmpty(T const&... t)
-{
+constexpr bool allEmpty(T const&... t) {
 	return (t.empty() && ...);
 }
 
 template <typename... T>
-constexpr std::size_t totalSize(T const&... t)
-{
+constexpr std::size_t totalSize(T const&... t) {
 	return (... + t.size());
 }
 } // namespace
 
-ResourceList ResourceList::operator*(const ResourceList& rhs) const
-{
+ResourceList ResourceList::operator*(const ResourceList& rhs) const {
 	ResourceList ret;
 	ret.shaders = intersect(shaders, rhs.shaders);
 	ret.textures = intersect(textures, rhs.textures);
@@ -60,8 +49,7 @@ ResourceList ResourceList::operator*(const ResourceList& rhs) const
 	return ret;
 }
 
-ResourceList ResourceList::operator-(const ResourceList& rhs) const
-{
+ResourceList ResourceList::operator-(const ResourceList& rhs) const {
 	ResourceList ret;
 	ret.shaders = subtract(shaders, rhs.shaders);
 	ret.textures = subtract(textures, rhs.textures);
@@ -73,23 +61,19 @@ ResourceList ResourceList::operator-(const ResourceList& rhs) const
 	return ret;
 }
 
-bool ResourceList::empty() const
-{
+bool ResourceList::empty() const {
 	return allEmpty(shaders, textures, cubemaps, materials, meshes, models, fonts);
 }
 
-std::size_t ResourceList::size() const
-{
+std::size_t ResourceList::size() const {
 	return totalSize(shaders, textures, cubemaps, materials, meshes, models, fonts);
 }
 
-std::string ResourceList::print() const
-{
+std::string ResourceList::print() const {
 	std::stringstream ret;
 	auto add = [&ret](std::vector<stdfs::path> const& vec, std::string_view title) {
 		ret << title << "\n";
-		for (auto const& id : vec)
-		{
+		for (auto const& id : vec) {
 			ret << "\t" << id.generic_string() << "\n";
 		}
 	};

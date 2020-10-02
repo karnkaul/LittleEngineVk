@@ -1,25 +1,21 @@
 #include <core/maths.hpp>
 #include <engine/resources/resources.hpp>
-#include <levels/test.hpp>
 #include <level.hpp>
+#include <levels/test.hpp>
 
 using namespace le;
 
-TestLevel::TestLevel()
-{
+TestLevel::TestLevel() {
 	m_name = "Test";
 	m_manifest.id = "test.manifest";
 
 	m_input.context.mapTrigger("load_prev", [this]() {
 		// if (!loadWorld(m_previousWorldID))
-		{
-			LOG_W("[{}] Not implemented", m_name);
-		}
+		{ LOG_W("[{}] Not implemented", m_name); }
 	});
 	m_input.context.addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
 	m_input.context.mapRange("roll", [this](f32 value) {
-		if (m_game.bControl)
-		{
+		if (m_game.bControl) {
 			m_game.roll = std::clamp(-value, -1.0f, 1.0f);
 		}
 	});
@@ -51,13 +47,11 @@ TestLevel::TestLevel()
 	*registry().attach<res::Mesh>(m_game.ship.entity) = *res::find<res::Mesh>("meshes/cube");
 }
 
-void TestLevel::tick(Time dt)
-{
+void TestLevel::tick(Time dt) {
 	m_data.elapsed += dt;
 	registry().find<UIComponent>(m_data.elapsedText)->setText(fmt::format("{:.1f}", m_data.elapsed.to_s()));
 
-	if (auto pTransform = registry().find<Transform>(m_game.ship))
-	{
+	if (auto pTransform = registry().find<Transform>(m_game.ship)) {
 		glm::quat const orientTarget = glm::rotate(gfx::g_qIdentity, glm::radians(m_game.roll * m_game.maxRoll), gfx::g_nFront);
 		m_game.orientTarget = glm::slerp(m_game.orientTarget, orientTarget, dt.to_s() * 10);
 		pTransform->orient(m_game.orientTarget);

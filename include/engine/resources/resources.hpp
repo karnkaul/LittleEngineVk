@@ -5,13 +5,11 @@
 #include <core/tasks.hpp>
 #include <engine/resources/resource_types.hpp>
 
-namespace le
-{
+namespace le {
 namespace stdfs = std::filesystem;
 }
 
-namespace le::res
-{
+namespace le::res {
 using Semaphore = TCounter<s32>::Semaphore;
 
 ///
@@ -23,14 +21,13 @@ Semaphore acquire();
 /// \brief RAII handle to a resource (unloads in destructor)
 ///
 template <typename T>
-struct TScoped final : NoCopy
-{
+struct TScoped final : NoCopy {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
 	T resource;
 
-	constexpr TScoped(T t = T{}) noexcept : resource(t) {}
-	constexpr TScoped(TScoped&& rhs) noexcept : resource(rhs.resource)
-	{
+	constexpr TScoped(T t = T{}) noexcept : resource(t) {
+	}
+	constexpr TScoped(TScoped&& rhs) noexcept : resource(rhs.resource) {
 		rhs.resource = {};
 	}
 	TScoped& operator=(TScoped&&);
@@ -39,8 +36,7 @@ struct TScoped final : NoCopy
 	///
 	/// \brief Implicitly cast to T
 	///
-	constexpr operator T const &() const noexcept
-	{
+	constexpr operator T const &() const noexcept {
 		return resource;
 	}
 	///
@@ -50,11 +46,11 @@ struct TScoped final : NoCopy
 };
 
 template <typename T>
-class Async final
-{
-public:
+class Async final {
+  public:
 	constexpr Async() = default;
-	Async(std::shared_ptr<tasks::Handle> task, Hash id) : m_task(std::move(task)), m_id(id) {}
+	Async(std::shared_ptr<tasks::Handle> task, Hash id) : m_task(std::move(task)), m_id(id) {
+	}
 	Async(Async&&) = default;
 	Async& operator=(Async&&) = default;
 	Async(Async const&) = default;
@@ -67,7 +63,7 @@ public:
 
 	bool reset();
 
-private:
+  private:
 	std::shared_ptr<tasks::Handle> m_task;
 	Hash m_id;
 };
@@ -307,16 +303,13 @@ bool unload<Model>(Hash id);
 bool unload(Hash id);
 
 template <typename T>
-TResult<T> find(Hash)
-{
+TResult<T> find(Hash) {
 	static_assert(alwaysFalse<T>, "Invalid type!");
 }
 
 template <typename T>
-TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs)
-{
-	if (&rhs != this)
-	{
+TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs) {
+	if (&rhs != this) {
 		unload(resource);
 		resource = std::move(rhs.resource);
 	}
@@ -324,53 +317,43 @@ TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs)
 }
 
 template <typename T>
-TScoped<T>::~TScoped()
-{
+TScoped<T>::~TScoped() {
 	unload(resource);
 }
 
 template <typename T>
-bool TScoped<T>::ready() const
-{
+bool TScoped<T>::ready() const {
 	return resource.guid != GUID::null && resource.status() == Status::eReady;
 }
 
 template <typename T>
-Async<T>::~Async()
-{
-	if (m_task)
-	{
+Async<T>::~Async() {
+	if (m_task) {
 		m_task->wait();
 	}
 }
 
 template <typename T>
-bool Async<T>::valid() const
-{
+bool Async<T>::valid() const {
 	return m_id != Hash() && m_task && m_task->status() != tasks::Handle::Status::eDiscarded;
 }
 
 template <typename T>
-bool Async<T>::loaded() const
-{
+bool Async<T>::loaded() const {
 	return resource().bResult;
 }
 
 template <typename T>
-TResult<T> Async<T>::resource() const
-{
-	if (valid())
-	{
+TResult<T> Async<T>::resource() const {
+	if (valid()) {
 		return res::find<T>(m_id);
 	}
 	return {};
 }
 
 template <typename T>
-bool Async<T>::reset()
-{
-	if (m_task)
-	{
+bool Async<T>::reset() {
+	if (m_task) {
 		m_task.reset();
 		return true;
 	}

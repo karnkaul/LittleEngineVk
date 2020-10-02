@@ -10,27 +10,20 @@
 #include <Windows.h>
 #endif
 
-namespace le
-{
-void assertMsg(bool predicate, std::string_view message, std::string_view fileName, u64 lineNumber)
-{
-	if constexpr (levk_asserts)
-	{
-		if (predicate)
-		{
+namespace le {
+void assertMsg(bool predicate, std::string_view message, std::string_view fileName, u64 lineNumber) {
+	if constexpr (levk_asserts) {
+		if (predicate) {
 			return;
 		}
 		std::cerr << "Assertion failed: " << message << " | " << fileName << " (" << lineNumber << ")" << std::endl;
 		LOG_E("Assertion failed: {} | {} ({})", message, fileName, lineNumber);
-		if (os::isDebuggerAttached())
-		{
+		if (os::isDebuggerAttached()) {
 #if defined(LEVK_OS_WINX)
 			OutputDebugStringA(message.data());
 #endif
 			os::debugBreak();
-		}
-		else
-		{
+		} else {
 #if defined(LEVK_DEBUG)
 			os::debugBreak();
 #else

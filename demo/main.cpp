@@ -1,8 +1,7 @@
 #include <engine/levk.hpp>
 #include <level.hpp>
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
 	using namespace le;
 
 	engine::Service engine({argc, argv});
@@ -16,13 +15,11 @@ int main(int argc, char** argv)
 #if defined(LEVK_DEBUG)
 	// info.bLogVRAMallocations = true;
 #endif
-	if (!engine.init(std::move(info)))
-	{
+	if (!engine.init(std::move(info))) {
 		return 1;
 	}
 	engine::g_shutdownSequence = engine::ShutdownSequence::eShutdown_CloseWindow;
-	while (engine.running())
-	{
+	while (engine.running()) {
 		engine.update(g_driver);
 		engine.render();
 	}

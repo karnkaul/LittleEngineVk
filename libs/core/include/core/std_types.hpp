@@ -3,12 +3,12 @@
 #define __STDC_FORMAT_MACROS
 #endif
 #include <array>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
-#include <utility>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #if defined(near)
@@ -30,8 +30,7 @@ constexpr bool levk_debug = true;
 constexpr bool levk_debug = false;
 #endif
 
-namespace le
-{
+namespace le {
 using u8 = std::uint8_t;
 using s8 = std::int8_t;
 using u16 = std::uint16_t;
@@ -59,16 +58,14 @@ constexpr bool alwaysTrue = true;
 /// \brief Obtain the number of elements in a stack array
 ///
 template <typename T, std::size_t N>
-constexpr std::size_t arraySize(T (&)[N])
-{
+constexpr std::size_t arraySize(T (&)[N]) {
 	return N;
 }
 
 ///
 /// \brief Convenience base type with deleted copy semantics
 ///
-struct NoCopy
-{
+struct NoCopy {
 	constexpr NoCopy() = default;
 	constexpr NoCopy(NoCopy&&) = default;
 	constexpr NoCopy& operator=(NoCopy&&) = default;

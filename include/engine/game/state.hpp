@@ -6,10 +6,8 @@
 #include <engine/game/scene.hpp>
 #include <engine/resources/resources.hpp>
 
-namespace le
-{
-namespace gs
-{
+namespace le {
+namespace gs {
 ///
 /// \brief Typedef for callback on manifest loaded
 ///
@@ -18,8 +16,7 @@ using ManifestLoaded = Delegate<>;
 ///
 /// \brief Manifest load request
 ///
-struct LoadReq final
-{
+struct LoadReq final {
 	stdfs::path load;
 	stdfs::path unload;
 	ManifestLoaded::Callback onLoaded;

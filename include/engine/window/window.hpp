@@ -2,31 +2,20 @@
 #include <array>
 #include <memory>
 #include <string>
-#include <glm/glm.hpp>
-#include <engine/window/input_types.hpp>
-#include <engine/window/common.hpp>
 #include <engine/gfx/render_driver.hpp>
+#include <engine/window/common.hpp>
+#include <engine/window/input_types.hpp>
+#include <glm/glm.hpp>
 
-namespace le
-{
-class Window final
-{
-public:
-	enum class Mode
-	{
-		eDecoratedWindow = 0,
-		eBorderlessWindow,
-		eBorderlessFullscreen,
-		eDedicatedFullscreen,
-		eCOUNT_
-	};
+namespace le {
+class Window final {
+  public:
+	enum class Mode { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };
 
 	inline static EnumArray<Mode> const s_modeNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
 
-	struct Info final
-	{
-		struct
-		{
+	struct Info final {
+		struct {
 			std::string title;
 			glm::ivec2 size = {32, 32};
 			glm::ivec2 centreOffset = {};
@@ -34,8 +23,7 @@ public:
 			u8 virtualFrameCount = 3;
 		} config;
 
-		struct
-		{
+		struct {
 			PriorityList<ColourSpace> colourSpaces;
 			PriorityList<PresentMode> presentModes;
 			u8 screenID = 0;
@@ -43,22 +31,21 @@ public:
 		} options;
 	};
 
-	struct Service final
-	{
+	struct Service final {
 		Service();
 		~Service();
 	};
 
-public:
+  public:
 	static const std::string s_tName;
 
-public:
+  public:
 	Window();
 	Window(Window&&);
 	Window& operator=(Window&&);
 	~Window();
 
-public:
+  public:
 	static bool anyActive();
 	static bool anyExist();
 	static void pollEvents();
@@ -75,7 +62,7 @@ public:
 
 	static WindowID editorWindow();
 
-public:
+  public:
 	gfx::render::Driver const& driver() const;
 	gfx::render::Driver& driver();
 
@@ -88,7 +75,7 @@ public:
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
 
-public:
+  public:
 	[[nodiscard]] input::OnText::Tk registerText(input::OnText::Callback callback);
 	// Callback parameters: (Key key, Action action, Mods mods)
 	[[nodiscard]] input::OnInput::Tk registerInput(input::OnInput::Callback callback);
@@ -104,7 +91,7 @@ public:
 	[[nodiscard]] input::OnWindowResize::Tk registerResize(input::OnWindowResize::Callback callback);
 	[[nodiscard]] input::OnClosed::Tk registerClosed(input::OnClosed::Callback callback);
 
-public:
+  public:
 	bool create(Info const& info);
 	void setClosing();
 	void destroy();
@@ -120,10 +107,10 @@ public:
 	void setCursorPos(glm::vec2 const& pos) const;
 	std::string clipboard() const;
 
-private:
+  private:
 	friend class WindowImpl;
 
-private:
+  private:
 	gfx::render::Driver m_driver;
 	std::unique_ptr<class WindowImpl> m_uImpl;
 	WindowID m_id = WindowID::null;

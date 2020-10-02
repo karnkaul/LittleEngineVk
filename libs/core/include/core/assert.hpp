@@ -20,8 +20,7 @@ constexpr bool levk_asserts = true;
 constexpr bool levk_asserts = false;
 #endif
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Trigger a break (if debugger present) / assert if predicate is false
 ///

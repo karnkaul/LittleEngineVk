@@ -7,34 +7,11 @@
 #include <core/std_types.hpp>
 #include <kt/args_parser/args_parser.hpp>
 
-namespace le::os
-{
-enum class OS : s8
-{
-	eWindows,
-	eLinux,
-	eAndroid,
-	eUnknown
-};
-enum class Arch : s8
-{
-	eX64,
-	eARM64,
-	eUnknown
-};
-enum class StdLib : s8
-{
-	eMSVC,
-	eLibStdCXX,
-	eUnknown
-};
-enum class Compiler : s8
-{
-	eClang,
-	eGCC,
-	eVCXX,
-	eUnknown
-};
+namespace le::os {
+enum class OS : s8 { eWindows, eLinux, eAndroid, eUnknown };
+enum class Arch : s8 { eX64, eARM64, eUnknown };
+enum class StdLib : s8 { eMSVC, eLibStdCXX, eUnknown };
+enum class Compiler : s8 { eClang, eGCC, eVCXX, eUnknown };
 } // namespace le::os
 
 #if (defined(_WIN32) || defined(_WIN64))
@@ -118,19 +95,11 @@ constexpr le::os::Compiler levk_compiler = le::os::Compiler::eUnknown;
 constexpr std::string_view levk_compiler_name = "Unknown";
 #endif
 
-namespace le
-{
-namespace os
-{
-enum class Dir : s8
-{
-	eWorking,
-	eExecutable,
-	eCOUNT_
-};
+namespace le {
+namespace os {
+enum class Dir : s8 { eWorking, eExecutable, eCOUNT_ };
 
-struct Args
-{
+struct Args {
 	s32 argc = 0;
 	char const* const* argv = nullptr;
 };
@@ -141,8 +110,7 @@ using ArgsParser = kt::args_parser<>;
 /// \brief RAII wrapper for OS service
 /// Destructor joins all running threads
 ///
-struct Service final
-{
+struct Service final {
 	Service(Args args);
 	~Service();
 };
@@ -188,21 +156,18 @@ bool sysCall(std::string_view command);
 /// \brief Perform a system call
 ///
 template <typename Arg1, typename... Args>
-bool sysCall(std::string_view expr, Arg1&& arg1, Args&&... args)
-{
+bool sysCall(std::string_view expr, Arg1&& arg1, Args&&... args) {
 	auto const command = fmt::format(expr, std::forward<Arg1>(arg1), std::forward<Args>(args)...);
 	return sysCall(command);
 }
 
 template <typename Arg, typename... Args>
-std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept
-{
+std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept {
 	static_assert(std::is_convertible_v<Arg, std::string> && (std::is_convertible_v<Args, std::string> && ...), "Invalid Types!");
 	auto const& allArgs = args();
 	auto matchAny = [&](ArgsParser::entry const& arg) { return (arg.k == key || ((arg.k == variants) || ...)); };
 	auto search = std::find_if(allArgs.begin(), allArgs.end(), matchAny);
-	if (search != allArgs.end())
-	{
+	if (search != allArgs.end()) {
 		return search->v;
 	}
 	return std::nullopt;

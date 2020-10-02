@@ -4,27 +4,25 @@
 #include <stdexcept>
 #include <core/traits.hpp>
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Fixed-size type erased storage
 ///
 template <std::size_t N = sizeof(void*)>
-class StaticAny final
-{
-public:
+class StaticAny final {
+  public:
 	///
 	/// \brief Switch for throwing behaviour on type mismatches / attempts to copy uncopiable types
 	///
 	inline static bool s_bThrow = false;
 
-private:
+  private:
 	template <typename T>
 	static constexpr bool is_different_v = !std::is_same_v<std::decay_t<T>, StaticAny<N>>;
 	template <typename T>
 	using is_different = require<is_different_v<T>>;
 
-public:
+  public:
 	StaticAny() noexcept = default;
 
 	StaticAny(StaticAny&& rhs);
@@ -85,14 +83,14 @@ public:
 	///
 	bool clear() noexcept;
 
-private:
+  private:
 	struct Erased;
 
-private:
+  private:
 	alignas(std::max_align_t) std::array<std::byte, N> m_bytes;
 	Erased const* m_pErased = nullptr;
 
-private:
+  private:
 	template <typename T>
 	void construct(T&& t);
 
@@ -102,13 +100,10 @@ private:
 	template <typename T>
 	void doConstruct(T const& t);
 
-private:
+  private:
 	template <typename T>
-	struct Tag
-	{
-	};
-	struct Erased
-	{
+	struct Tag {};
+	struct Erased {
 		using Move = void (*)(void* pSrc, void* pDst);
 		using Copy = void (*)(void const* pSrc, void* pDst);
 		using Destroy = void (*)(void const* pData);
@@ -121,18 +116,13 @@ private:
 
 		template <typename T>
 		constexpr Erased(Tag<T>, typename std::enable_if_t<(std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T>)>* = nullptr) noexcept
-			: moveConstruct(&doMoveConstruct<T>),
-			  moveAssign(&doMoveAssign<T>),
-			  copyConstruct(&doCopyConstruct<T>),
-			  copyAssign(&doCopyAssign<T>),
-			  destroy(&doDestroy<T>)
-		{
+			: moveConstruct(&doMoveConstruct<T>), moveAssign(&doMoveAssign<T>), copyConstruct(&doCopyConstruct<T>), copyAssign(&doCopyAssign<T>),
+			  destroy(&doDestroy<T>) {
 		}
 
 		template <typename T>
 		constexpr Erased(Tag<T>, typename std::enable_if_t<!(std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T>)>* = nullptr) noexcept
-			: moveConstruct(&doMoveConstruct<T>), moveAssign(&doMoveAssign<T>), copyConstruct(nullptr), copyAssign(nullptr), destroy(&doDestroy<T>)
-		{
+			: moveConstruct(&doMoveConstruct<T>), moveAssign(&doMoveAssign<T>), copyConstruct(nullptr), copyAssign(nullptr), destroy(&doDestroy<T>) {
 		}
 
 		template <typename T>
@@ -161,73 +151,61 @@ private:
 };
 
 template <std::size_t N>
-StaticAny<N>::StaticAny(StaticAny&& rhs) : m_pErased(rhs.m_pErased)
-{
+StaticAny<N>::StaticAny(StaticAny&& rhs) : m_pErased(rhs.m_pErased) {
 	moveConstruct(std::move(rhs));
 }
 
 template <std::size_t N>
-StaticAny<N>::StaticAny(StaticAny const& rhs) : m_pErased(rhs.m_pErased)
-{
+StaticAny<N>::StaticAny(StaticAny const& rhs) : m_pErased(rhs.m_pErased) {
 	copyConstruct(rhs);
 }
 
 template <std::size_t N>
-StaticAny<N>& StaticAny<N>::operator=(StaticAny&& rhs)
-{
+StaticAny<N>& StaticAny<N>::operator=(StaticAny&& rhs) {
 	return moveAssign(std::move(rhs));
 }
 
 template <std::size_t N>
-StaticAny<N>& StaticAny<N>::operator=(StaticAny const& rhs)
-{
+StaticAny<N>& StaticAny<N>::operator=(StaticAny const& rhs) {
 	return copyAssign(rhs);
 }
 
 template <std::size_t N>
-StaticAny<N>::~StaticAny()
-{
+StaticAny<N>::~StaticAny() {
 	clear();
 }
 
 template <std::size_t N>
 template <typename T, typename>
-StaticAny<N>::StaticAny(T&& t)
-{
+StaticAny<N>::StaticAny(T&& t) {
 	construct<T>(std::forward<T>(t));
 }
 
 template <std::size_t N>
 template <typename T, typename>
-StaticAny<N>& StaticAny<N>::operator=(T&& t)
-{
+StaticAny<N>& StaticAny<N>::operator=(T&& t) {
 	construct<T>(std::forward<T>(t));
 	return *this;
 }
 
 template <std::size_t N>
 template <typename T>
-bool StaticAny<N>::contains() const noexcept
-{
+bool StaticAny<N>::contains() const noexcept {
 	return erased<T>() == m_pErased;
 }
 
 template <std::size_t N>
-bool StaticAny<N>::empty() const
-{
+bool StaticAny<N>::empty() const {
 	return m_pErased == nullptr;
 }
 
 template <std::size_t N>
 template <typename T, typename>
-T StaticAny<N>::val() const
-{
-	if (contains<T>())
-	{
+T StaticAny<N>::val() const {
+	if (contains<T>()) {
 		return *reinterpret_cast<T const*>(m_bytes.data());
 	}
-	if (s_bThrow)
-	{
+	if (s_bThrow) {
 		throw std::runtime_error("StaticAny: Type mismatch!");
 	}
 	return {};
@@ -235,10 +213,8 @@ T StaticAny<N>::val() const
 
 template <std::size_t N>
 template <typename T, typename>
-T const* StaticAny<N>::ptr() const noexcept
-{
-	if (contains<T>() || contains<T const>())
-	{
+T const* StaticAny<N>::ptr() const noexcept {
+	if (contains<T>() || contains<T const>()) {
 		return reinterpret_cast<T const*>(m_bytes.data());
 	}
 	return nullptr;
@@ -246,10 +222,8 @@ T const* StaticAny<N>::ptr() const noexcept
 
 template <std::size_t N>
 template <typename T, typename>
-T* StaticAny<N>::ptr() noexcept
-{
-	if (contains<T>())
-	{
+T* StaticAny<N>::ptr() noexcept {
+	if (contains<T>()) {
 		return reinterpret_cast<T*>(m_bytes.data());
 	}
 	return nullptr;
@@ -257,14 +231,11 @@ T* StaticAny<N>::ptr() noexcept
 
 template <std::size_t N>
 template <typename T, typename>
-T const& StaticAny<N>::ref() const
-{
-	if (contains<T>())
-	{
+T const& StaticAny<N>::ref() const {
+	if (contains<T>()) {
 		return *reinterpret_cast<T const*>(m_bytes.data());
 	}
-	if (s_bThrow)
-	{
+	if (s_bThrow) {
 		throw std::runtime_error("StaticAny: Type mismatch!");
 	}
 	static T const s_t{};
@@ -273,14 +244,11 @@ T const& StaticAny<N>::ref() const
 
 template <std::size_t N>
 template <typename T, typename>
-T& StaticAny<N>::ref()
-{
-	if (contains<T>())
-	{
+T& StaticAny<N>::ref() {
+	if (contains<T>()) {
 		return *reinterpret_cast<T*>(m_bytes.data());
 	}
-	if (s_bThrow)
-	{
+	if (s_bThrow) {
 		throw std::runtime_error("StaticAny: Type mismatch!");
 	}
 	static T s_t{};
@@ -288,10 +256,8 @@ T& StaticAny<N>::ref()
 }
 
 template <std::size_t N>
-bool StaticAny<N>::clear() noexcept
-{
-	if (m_pErased)
-	{
+bool StaticAny<N>::clear() noexcept {
+	if (m_pErased) {
 		m_pErased->destroy(m_bytes.data());
 		m_pErased = nullptr;
 		return true;
@@ -301,14 +267,10 @@ bool StaticAny<N>::clear() noexcept
 
 template <std::size_t N>
 template <typename T>
-void StaticAny<N>::construct(T&& t)
-{
-	if constexpr (std::is_same_v<T, std::nullptr_t>)
-	{
+void StaticAny<N>::construct(T&& t) {
+	if constexpr (std::is_same_v<T, std::nullptr_t>) {
 		clear();
-	}
-	else
-	{
+	} else {
 		static_assert(is_different_v<T>, "Recursive storage forbidden!");
 		static_assert(sizeof(T) <= N, "Buffer overflow!");
 		doConstruct<T>(std::forward<T>(t));
@@ -317,15 +279,11 @@ void StaticAny<N>::construct(T&& t)
 
 template <std::size_t N>
 template <typename T, typename>
-void StaticAny<N>::doConstruct(T&& t)
-{
+void StaticAny<N>::doConstruct(T&& t) {
 	auto pErased = erased<std::decay_t<T>>();
-	if (m_pErased && m_pErased == pErased)
-	{
+	if (m_pErased && m_pErased == pErased) {
 		m_pErased->moveAssign(std::addressof(t), m_bytes.data());
-	}
-	else
-	{
+	} else {
 		clear();
 		m_pErased = pErased;
 		m_pErased->moveConstruct(std::addressof(t), m_bytes.data());
@@ -334,16 +292,12 @@ void StaticAny<N>::doConstruct(T&& t)
 
 template <std::size_t N>
 template <typename T>
-void StaticAny<N>::doConstruct(T const& t)
-{
+void StaticAny<N>::doConstruct(T const& t) {
 	static_assert(std::is_copy_assignable_v<std::decay_t<T>> && std::is_copy_constructible_v<std::decay_t<T>>, "Invalid type!");
 	auto pErased = erased<std::decay_t<T>>();
-	if (m_pErased && m_pErased == pErased)
-	{
+	if (m_pErased && m_pErased == pErased) {
 		m_pErased->copyAssign(std::addressof(t), m_bytes.data());
-	}
-	else
-	{
+	} else {
 		clear();
 		m_pErased = pErased;
 		m_pErased->copyConstruct(std::addressof(t), m_bytes.data());
@@ -352,52 +306,38 @@ void StaticAny<N>::doConstruct(T const& t)
 
 template <std::size_t N>
 template <typename T>
-typename StaticAny<N>::Erased const* StaticAny<N>::erased()
-{
+typename StaticAny<N>::Erased const* StaticAny<N>::erased() {
 	static constexpr Erased s_erased{Tag<T>()};
 	return &s_erased;
 }
 
 template <std::size_t N>
-void StaticAny<N>::moveConstruct(StaticAny&& rhs)
-{
+void StaticAny<N>::moveConstruct(StaticAny&& rhs) {
 	m_pErased->moveConstruct(&rhs, m_bytes.data());
 }
 
 template <std::size_t N>
-void StaticAny<N>::copyConstruct(StaticAny const& rhs)
-{
-	if (m_pErased)
-	{
-		if (m_pErased->copyConstruct)
-		{
+void StaticAny<N>::copyConstruct(StaticAny const& rhs) {
+	if (m_pErased) {
+		if (m_pErased->copyConstruct) {
 			m_pErased->copyConstruct(&rhs, m_bytes.data());
-		}
-		else
-		{
+		} else {
 			fail();
 		}
 	}
 }
 
 template <std::size_t N>
-StaticAny<N>& StaticAny<N>::moveAssign(StaticAny&& rhs)
-{
-	if (&rhs != this)
-	{
-		if (m_pErased == rhs.m_pErased)
-		{
-			if (m_pErased)
-			{
+StaticAny<N>& StaticAny<N>::moveAssign(StaticAny&& rhs) {
+	if (&rhs != this) {
+		if (m_pErased == rhs.m_pErased) {
+			if (m_pErased) {
 				m_pErased->moveAssign(&rhs, m_bytes.data());
 			}
-		}
-		else
-		{
+		} else {
 			clear();
 			m_pErased = rhs.m_pErased;
-			if (m_pErased)
-			{
+			if (m_pErased) {
 				m_pErased->moveConstruct(&rhs, m_bytes.data());
 			}
 		}
@@ -406,28 +346,19 @@ StaticAny<N>& StaticAny<N>::moveAssign(StaticAny&& rhs)
 }
 
 template <std::size_t N>
-StaticAny<N>& StaticAny<N>::copyAssign(StaticAny const& rhs)
-{
-	if (rhs.m_pErased && (!rhs.m_pErased->copyAssign || !rhs.m_pErased->copyConstruct))
-	{
+StaticAny<N>& StaticAny<N>::copyAssign(StaticAny const& rhs) {
+	if (rhs.m_pErased && (!rhs.m_pErased->copyAssign || !rhs.m_pErased->copyConstruct)) {
 		clear();
 		fail();
-	}
-	else if (&rhs != this)
-	{
-		if (m_pErased == rhs.m_pErased)
-		{
-			if (m_pErased)
-			{
+	} else if (&rhs != this) {
+		if (m_pErased == rhs.m_pErased) {
+			if (m_pErased) {
 				m_pErased->copyAssign(&rhs, m_bytes.data());
 			}
-		}
-		else
-		{
+		} else {
 			clear();
 			m_pErased = rhs.m_pErased;
-			if (m_pErased)
-			{
+			if (m_pErased) {
 				m_pErased->copyConstruct(&rhs, m_bytes.data());
 			}
 		}
@@ -436,49 +367,42 @@ StaticAny<N>& StaticAny<N>::copyAssign(StaticAny const& rhs)
 }
 
 template <std::size_t N>
-void StaticAny<N>::fail()
-{
+void StaticAny<N>::fail() {
 	m_pErased = nullptr;
-	if (s_bThrow)
-	{
+	if (s_bThrow) {
 		throw std::runtime_error("StaticAny: Attempt to copy uncopiable!");
 	}
 }
 
 template <std::size_t N>
 template <typename T>
-void StaticAny<N>::Erased::doMoveConstruct(void* pSrc, void* pDst)
-{
+void StaticAny<N>::Erased::doMoveConstruct(void* pSrc, void* pDst) {
 	new (pDst) T(std::move(*reinterpret_cast<T*>(pSrc)));
 }
 
 template <std::size_t N>
 template <typename T>
-void StaticAny<N>::Erased::doMoveAssign(void* pSrc, void* pDst)
-{
+void StaticAny<N>::Erased::doMoveAssign(void* pSrc, void* pDst) {
 	T* tDst = reinterpret_cast<T*>(pDst);
 	*tDst = std::move(*reinterpret_cast<T*>(pSrc));
 }
 
 template <std::size_t N>
 template <typename T>
-void StaticAny<N>::Erased::doCopyConstruct(void const* pSrc, void* pDst)
-{
+void StaticAny<N>::Erased::doCopyConstruct(void const* pSrc, void* pDst) {
 	new (pDst) T(*reinterpret_cast<T const*>(pSrc));
 }
 
 template <std::size_t N>
 template <typename T>
-void StaticAny<N>::Erased::doCopyAssign(void const* pSrc, void* pDst)
-{
+void StaticAny<N>::Erased::doCopyAssign(void const* pSrc, void* pDst) {
 	T* tDst = reinterpret_cast<T*>(pDst);
 	*tDst = *reinterpret_cast<T const*>(pSrc);
 }
 
 template <std::size_t N>
 template <typename T>
-void StaticAny<N>::Erased::doDestroy(void const* pPtr)
-{
+void StaticAny<N>::Erased::doDestroy(void const* pPtr) {
 	T const* tPtr = reinterpret_cast<T const*>(pPtr);
 	tPtr->~T();
 }

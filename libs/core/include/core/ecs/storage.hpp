@@ -3,10 +3,8 @@
 #include <core/assert.hpp>
 #include <core/ecs/types.hpp>
 
-namespace le::ecs::internal
-{
-struct Concept
-{
+namespace le::ecs::detail {
+struct Concept {
 	Sign sign = 0;
 
 	virtual ~Concept() = default;
@@ -18,8 +16,7 @@ struct Concept
 };
 
 template <typename T>
-struct Storage final : Concept
-{
+struct Storage final : Concept {
 	static_assert(std::is_move_constructible_v<T>, "T must be move constructible!");
 
 	std::unordered_map<Entity, T> map;
@@ -38,10 +35,8 @@ struct Storage final : Concept
 
 template <typename T>
 template <typename... Args>
-T& Storage<T>::attach(Entity entity, Args&&... args)
-{
-	if (auto search = map.find(entity); search != map.end())
-	{
+T& Storage<T>::attach(Entity entity, Args&&... args) {
+	if (auto search = map.find(entity); search != map.end()) {
 		ASSERT(false, "Duplicate!");
 		T& ret = search->second;
 		ret = T{std::forward<Args>(args)...};
@@ -53,10 +48,8 @@ T& Storage<T>::attach(Entity entity, Args&&... args)
 }
 
 template <typename T>
-bool Storage<T>::detach(Entity entity)
-{
-	if (auto search = map.find(entity); search != map.end())
-	{
+bool Storage<T>::detach(Entity entity) {
+	if (auto search = map.find(entity); search != map.end()) {
 		map.erase(search);
 		return true;
 	}
@@ -64,54 +57,45 @@ bool Storage<T>::detach(Entity entity)
 }
 
 template <typename T>
-T* Storage<T>::find(Entity entity)
-{
-	if (auto search = map.find(entity); search != map.end())
-	{
+T* Storage<T>::find(Entity entity) {
+	if (auto search = map.find(entity); search != map.end()) {
 		return std::addressof(search->second);
 	}
 	return nullptr;
 }
 
 template <typename T>
-T const* Storage<T>::find(Entity entity) const
-{
-	if (auto search = map.find(entity); search != map.end())
-	{
+T const* Storage<T>::find(Entity entity) const {
+	if (auto search = map.find(entity); search != map.end()) {
 		return std::addressof(search->second);
 	}
 	return nullptr;
 }
 
 template <typename T>
-std::size_t Storage<T>::clear()
-{
+std::size_t Storage<T>::clear() {
 	auto const ret = map.size();
 	map.clear();
 	return ret;
 }
 
 template <typename T>
-std::vector<Entity> Storage<T>::entities() const noexcept
-{
+std::vector<Entity> Storage<T>::entities() const noexcept {
 	std::vector<Entity> ret;
 	ret.reserve(map.size());
-	for (auto const& [e, _] : map)
-	{
+	for (auto const& [e, _] : map) {
 		ret.push_back(e);
 	}
 	return ret;
 }
 
 template <typename T>
-bool Storage<T>::exists(Entity entity) const noexcept
-{
+bool Storage<T>::exists(Entity entity) const noexcept {
 	return map.find(entity) != map.end();
 }
 
 template <typename T>
-std::size_t Storage<T>::size() const noexcept
-{
+std::size_t Storage<T>::size() const noexcept {
 	return map.size();
 }
-} // namespace le::ecs::internal
+} // namespace le::ecs::detail

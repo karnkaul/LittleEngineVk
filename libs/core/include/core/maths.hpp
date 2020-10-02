@@ -6,8 +6,7 @@
 #include <type_traits>
 #include <core/std_types.hpp>
 
-namespace le::maths
-{
+namespace le::maths {
 ///
 /// \brief Obtain the max value for `T`
 ///
@@ -53,9 +52,8 @@ T randomRange(T min, T max) noexcept;
 ///
 /// \brief Random Number Generator
 ///
-class Random
-{
-public:
+class Random {
+  public:
 	///
 	/// \brief Recreate and seed the engine with `value`
 	///
@@ -73,87 +71,71 @@ public:
 	template <typename T>
 	T range(T min, T max) noexcept;
 
-protected:
+  protected:
 	std::random_device m_device;
 	std::mt19937 m_engine;
 };
 
 template <typename T>
-constexpr T max() noexcept
-{
+constexpr T max() noexcept {
 	static_assert(std::is_arithmetic_v<T>, "T must be arithemtic!");
 	return std::numeric_limits<T>::max();
 }
 
 template <typename T>
-constexpr T epsilon() noexcept
-{
+constexpr T epsilon() noexcept {
 	static_assert(std::is_arithmetic_v<T>, "T must be arithemtic!");
 	return std::numeric_limits<T>::epsilon();
 }
 
 template <typename T>
-constexpr T abs(T const& val) noexcept
-{
+constexpr T abs(T const& val) noexcept {
 	return val < 0 ? -val : val;
 }
 
 template <typename T>
-constexpr bool equals(T const& lhs, T const& rhs, T const& epsilon) noexcept
-{
+constexpr bool equals(T const& lhs, T const& rhs, T const& epsilon) noexcept {
 	return std::abs(lhs - rhs) < epsilon;
 }
 
 template <typename T>
-constexpr T lerp(T const& min, T const& max, f32 alpha) noexcept
-{
+constexpr T lerp(T const& min, T const& max, f32 alpha) noexcept {
 	return min == max ? max : alpha * max + (1.0f - alpha) * min;
 }
 
 template <typename T>
-constexpr bool inRange(T const& value, T const& min, T const& max, bool bInclusive) noexcept
-{
+constexpr bool inRange(T const& value, T const& min, T const& max, bool bInclusive) noexcept {
 	return bInclusive ? value >= min && value <= max : value > min && value < max;
 }
 
 template <typename T>
-T randomRange(T min, T max) noexcept
-{
+T randomRange(T min, T max) noexcept {
 	static Random s_random;
 	static bool s_bSeeded = false;
-	if (!s_bSeeded)
-	{
+	if (!s_bSeeded) {
 		s_random.seed();
 		s_bSeeded = true;
 	}
 	return s_random.template range<T>(min, max);
 }
 
-inline void Random::seed(std::optional<u32> value) noexcept
-{
+inline void Random::seed(std::optional<u32> value) noexcept {
 	m_engine = std::mt19937(value ? *value : m_device());
 }
 
 template <typename T, template <typename> typename Dist, typename... Args>
-T Random::range(Args&&... args) noexcept
-{
+T Random::range(Args&&... args) noexcept {
 	Dist<T> dist(std::forward<Args>(args)...);
 	return dist(m_engine);
 }
 
 template <typename T>
-T Random::range(T min, T max) noexcept
-{
-	if constexpr (std::is_integral_v<T>)
-	{
+T Random::range(T min, T max) noexcept {
+	if constexpr (std::is_integral_v<T>) {
 		return range<T, std::uniform_int_distribution>(min, max);
-	}
-	else if constexpr (std::is_floating_point_v<T>)
-	{
+	} else if constexpr (std::is_floating_point_v<T>) {
 		return range<T, std::uniform_real_distribution>(min, max);
-	}
-	else
-	{
+	} else {
 		static_assert(alwaysFalse<T>, "Invalid type!");
 	}
 }

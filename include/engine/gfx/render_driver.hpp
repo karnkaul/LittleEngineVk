@@ -8,46 +8,38 @@
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/resources/resource_types.hpp>
 
-namespace le
-{
+namespace le {
 class Transform;
 class WindowImpl;
 } // namespace le
 
-namespace le::gfx::render
-{
-class Driver final
-{
-public:
-	struct ClearValues final
-	{
+namespace le::gfx::render {
+class Driver final {
+  public:
+	struct ClearValues final {
 		glm::vec2 depthStencil = {1.0f, 0.0f};
 		Colour colour = colours::black;
 	};
 
-	struct Skybox final
-	{
+	struct Skybox final {
 		ScreenRect viewport;
 		res::Texture cubemap;
 		Pipeline pipeline;
 	};
 
-	struct Drawable final
-	{
+	struct Drawable final {
 		std::vector<res::Mesh> meshes;
 		Ref<Transform const> transform = Transform::s_identity;
 		Pipeline pipeline;
 	};
 
-	struct Batch final
-	{
+	struct Batch final {
 		ScreenRect viewport;
 		ScreenRect scissor;
 		std::deque<Drawable> drawables;
 	};
 
-	struct View final
-	{
+	struct View final {
 		glm::mat4 mat_vp = {};
 		glm::mat4 mat_v = {};
 		glm::mat4 mat_p = {};
@@ -56,46 +48,44 @@ public:
 		Skybox skybox;
 	};
 
-	struct Scene final
-	{
+	struct Scene final {
 		View view;
 		ClearValues clear;
 		std::deque<Batch> batches;
 		std::vector<DirLight> dirLights;
 	};
 
-	struct Stats final
-	{
+	struct Stats final {
 		u64 trisDrawn = 0;
 	};
 
-public:
+  public:
 	static std::string const s_tName;
 
-public:
+  public:
 	Stats m_stats;
 
-public:
+  public:
 	Driver();
 	Driver(Driver&&);
 	Driver& operator=(Driver&&);
 	~Driver();
 
-public:
+  public:
 	void submit(Scene scene, ScreenRect const& sceneView);
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
 	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
 
-private:
+  private:
 	void render(bool bEditor);
 
-private:
+  private:
 	class Impl;
 	friend class le::WindowImpl;
 	friend class Impl;
 
-private:
+  private:
 	std::unique_ptr<class Impl> m_uImpl;
 	Scene m_scene;
 	ScreenRect m_sceneView;

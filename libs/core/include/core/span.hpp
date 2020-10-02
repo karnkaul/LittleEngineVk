@@ -3,14 +3,12 @@
 #include <vector>
 #include <core/assert.hpp>
 
-namespace le
-{
+namespace le {
 ///
 /// \brief View-only class for an object / a contiguous range of objects
 ///
 template <typename T>
-struct Span
-{
+struct Span {
 	using value_type = T;
 	using const_iterator = T const*;
 
@@ -37,76 +35,63 @@ struct Span
 };
 
 template <typename T>
-constexpr Span<T>::Span() noexcept : pData(nullptr), extent(0)
-{
+constexpr Span<T>::Span() noexcept : pData(nullptr), extent(0) {
 }
 
 template <typename T>
-constexpr Span<T>::Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent)
-{
+constexpr Span<T>::Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent) {
 }
 
 template <typename T>
-constexpr Span<T>::Span(T const& data) noexcept : pData(&data), extent(1)
-{
+constexpr Span<T>::Span(T const& data) noexcept : pData(&data), extent(1) {
 }
 
 template <typename T>
-constexpr Span<T>::Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size())
-{
+constexpr Span<T>::Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size()) {
 }
 
 template <typename T>
 template <std::size_t N>
-constexpr Span<T>::Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N)
-{
+constexpr Span<T>::Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N) {
 }
 
 template <typename T>
 template <std::size_t N>
-constexpr Span<T>::Span(T const (&arr)[N]) noexcept : pData(N == 0 ? nullptr : &arr[0]), extent(N)
-{
+constexpr Span<T>::Span(T const (&arr)[N]) noexcept : pData(N == 0 ? nullptr : &arr[0]), extent(N) {
 }
 
 template <typename T>
-constexpr Span<T>::Span(std::vector<T> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size())
-{
+constexpr Span<T>::Span(std::vector<T> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size()) {
 }
 
 template <typename T>
-constexpr std::size_t Span<T>::size() const noexcept
-{
+constexpr std::size_t Span<T>::size() const noexcept {
 	return extent;
 }
 
 template <typename T>
-constexpr bool Span<T>::empty() const noexcept
-{
+constexpr bool Span<T>::empty() const noexcept {
 	return extent == 0;
 }
 
 template <typename T>
-constexpr typename Span<T>::const_iterator Span<T>::begin() const noexcept
-{
+constexpr typename Span<T>::const_iterator Span<T>::begin() const noexcept {
 	return pData;
 }
 
 template <typename T>
-constexpr typename Span<T>::const_iterator Span<T>::end() const noexcept
-{
+constexpr typename Span<T>::const_iterator Span<T>::end() const noexcept {
 	return pData + extent;
 }
 
 template <typename T>
-T const& Span<T>::at(std::size_t idx) const
-{
+T const& Span<T>::at(std::size_t idx) const {
 	ASSERT(idx < extent, "OOB access!");
 	return *(pData + idx);
 }
 
 template <typename T>
-T const& Span<T>::operator[](std::size_t idx) const
-{
+T const& Span<T>::operator[](std::size_t idx) const {
 	ASSERT(idx < extent, "OOB access!");
 	return *(pData + idx);
 }

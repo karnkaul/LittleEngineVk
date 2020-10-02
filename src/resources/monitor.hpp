@@ -7,15 +7,13 @@
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 #include <functional>
 #include <unordered_set>
+#include <core/reader.hpp>
 #include <core/ref.hpp>
 #include <core/time.hpp>
-#include <core/reader.hpp>
 
-namespace le::res
-{
-class Monitor final
-{
-public:
+namespace le::res {
+class Monitor final {
+  public:
 	// encapsulates file-level reload logic
 	struct File;
 
@@ -24,23 +22,22 @@ public:
 	// time to wait before triggering reload
 	Time m_reloadDelay = 10ms;
 
-private:
+  private:
 	std::unordered_set<File const*> m_modified;
 	Time m_reloadStart;
 	Time m_reloadWait;
 	u8 m_reloadTries = 3;
 	u8 m_reloadFails = 0;
 
-public:
+  public:
 	stdfs::path m_id;
 
-public:
+  public:
 	// Returns true on reloaded
 	bool update();
 };
 
-struct Monitor::File final
-{
+struct Monitor::File final {
 	io::FileMonitor monitor;
 	// file-level callback, invoked when modified, aborts reload on receiving false
 	std::function<bool(Ref<File const>)> onModified;

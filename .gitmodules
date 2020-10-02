@@ -16,3 +16,6 @@
 [submodule "libs/core/include/kt/async_queue"]
 	path = libs/core/include/kt/async_queue
 	url = https://github.com/karnkaul/async-queue
+[submodule "libs/core/include/kt/enum_flags"]
+	path = libs/core/include/kt/enum_flags
+	url = https://github.com/karnkaul/enum-flags.git

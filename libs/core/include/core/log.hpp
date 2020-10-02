@@ -3,8 +3,8 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <fmt/format.h>
 #include <core/assert.hpp>
 #include <core/log_config.hpp>
@@ -30,12 +30,11 @@ constexpr bool levk_logCatchFmtExceptions = false;
 #endif
 
 #define LOG(level, text, ...) ::le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__)
-#define LOGIF(predicate, level, text, ...)                                    \
-	do                                                                        \
-		if (predicate)                                                        \
-		{                                                                     \
-			::le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__); \
-		}                                                                     \
+#define LOGIF(predicate, level, text, ...)                                                                                                                     \
+	do                                                                                                                                                         \
+		if (predicate) {                                                                                                                                       \
+			::le::io::fmtLog(level, text, __FILE__, __LINE__, ##__VA_ARGS__);                                                                                  \
+		}                                                                                                                                                      \
 	while (0)
 #define LOG_E(text, ...) LOG(::le::io::Level::eError, text, ##__VA_ARGS__)
 #define LOGIF_E(predicate, text, ...) LOGIF(predicate, ::le::io::Level::eError, text, ##__VA_ARGS__)
@@ -52,18 +51,15 @@ constexpr bool levk_logCatchFmtExceptions = false;
 #define LOGIF_D(predicate, text, ...)
 #endif
 
-namespace le
-{
+namespace le {
 namespace stdfs = std::filesystem;
 }
 
-namespace le::io
-{
+namespace le::io {
 ///
 /// \brief RAII wrapper for file logging
 ///
-struct Service final
-{
+struct Service final {
 	Service(std::optional<stdfs::path> logFilePath);
 	~Service();
 };
@@ -77,23 +73,15 @@ void log(Level level, std::string text, std::string_view file, u64 line);
 /// \brief Print to `stdout`
 ///
 template <typename... Args>
-void fmtLog(Level level, std::string_view text, std::string_view file, u64 line, Args&&... args)
-{
-	if ((u8)level >= (u8)g_minLevel)
-	{
-		if constexpr (levk_logCatchFmtExceptions)
-		{
-			try
-			{
+void fmtLog(Level level, std::string_view text, std::string_view file, u64 line, Args&&... args) {
+	if ((u8)level >= (u8)g_minLevel) {
+		if constexpr (levk_logCatchFmtExceptions) {
+			try {
 				log(level, fmt::format(text, std::forward<Args>(args)...), file, line);
-			}
-			catch (std::exception const& e)
-			{
+			} catch (std::exception const& e) {
 				ASSERT(false, e.what());
 			}
-		}
-		else
-		{
+		} else {
 			log(level, fmt::format(text, std::forward<Args>(args)...), file, line);
 		}
 	}

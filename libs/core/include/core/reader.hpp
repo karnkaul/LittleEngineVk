@@ -6,18 +6,15 @@
 #include <core/span.hpp>
 #include <core/utils.hpp>
 
-namespace le
-{
+namespace le {
 namespace stdfs = std::filesystem;
 
-namespace io
-{
+namespace io {
 ///
 /// \brief Abstract base class for reading data from various IO
 ///
-class Reader
-{
-public:
+class Reader {
+  public:
 	Reader() noexcept;
 	Reader(Reader&&) noexcept;
 	Reader& operator=(Reader&&) noexcept;
@@ -25,7 +22,7 @@ public:
 	Reader& operator=(Reader const&);
 	virtual ~Reader();
 
-public:
+  public:
 	///
 	/// \brief Check if an `id` is present to load
 	///
@@ -52,7 +49,7 @@ public:
 	///
 	std::string_view medium() const;
 
-public:
+  public:
 	///
 	/// \brief Mount a path on the IO medium
 	/// Mounted paths are prefixed to `id`s being searched
@@ -69,19 +66,18 @@ public:
 	///
 	[[nodiscard]] virtual TResult<std::stringstream> sstream(stdfs::path const& id) const = 0;
 
-protected:
+  protected:
 	std::string m_medium;
 
-protected:
+  protected:
 	virtual TResult<stdfs::path> findPrefixed(stdfs::path const& id) const = 0;
 };
 
 ///
 /// \brief Concrete class for filesystem IO
 ///
-class FileReader final : public Reader
-{
-public:
+class FileReader final : public Reader {
+  public:
 	///
 	/// \brief Obtain full path to directory containing any of `anyOf` `id`s.
 	/// \param leaf directory to start searching upwards from
@@ -90,16 +86,16 @@ public:
 	///
 	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight = 10);
 
-public:
+  public:
 	FileReader() noexcept;
 
-public:
+  public:
 	///
 	/// \brief Obtain fully qualified path (if `id` is found)
 	///
 	stdfs::path fullPath(stdfs::path const& id) const;
 
-public:
+  public:
 	///
 	/// \brief Mount filesystem directory
 	///
@@ -107,25 +103,24 @@ public:
 	TResult<bytearray> bytes(stdfs::path const& id) const override;
 	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
 
-private:
+  private:
 	std::vector<stdfs::path> m_dirs;
 
-private:
+  private:
 	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
 
-private:
+  private:
 	std::vector<stdfs::path> finalPaths(stdfs::path const& id) const;
 };
 
 ///
 /// \brief Concrete class for `.zip` IO
 ///
-class ZIPReader final : public Reader
-{
-public:
+class ZIPReader final : public Reader {
+  public:
 	ZIPReader();
 
-public:
+  public:
 	///
 	/// \brief Mount `.zip` file
 	///
@@ -133,41 +128,29 @@ public:
 	TResult<bytearray> bytes(stdfs::path const& id) const override;
 	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
 
-private:
+  private:
 	std::vector<stdfs::path> m_zips;
 
-private:
+  private:
 	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
 };
 
 ///
 /// \brief Utility for monitoring filesystem files
 ///
-class FileMonitor
-{
-public:
+class FileMonitor {
+  public:
 	///
 	/// \brief Monitoring mode
 	///
-	enum class Mode : s8
-	{
-		eTimestamp,
-		eTextContents,
-		eBinaryContents
-	};
+	enum class Mode : s8 { eTimestamp, eTextContents, eBinaryContents };
 
 	///
 	/// \brief Monitor status
 	///
-	enum class Status : s8
-	{
-		eUpToDate,
-		eNotFound,
-		eModified,
-		eCOUNT_
-	};
+	enum class Status : s8 { eUpToDate, eNotFound, eModified, eCOUNT_ };
 
-public:
+  public:
 	///
 	/// \brief Constructor
 	/// \param path: fully qualified file path to monitor
@@ -178,13 +161,13 @@ public:
 	FileMonitor& operator=(FileMonitor&&);
 	virtual ~FileMonitor();
 
-public:
+  public:
 	///
 	/// \brief Obtain current status of file being monitored
 	///
 	virtual Status update();
 
-public:
+  public:
 	///
 	/// \brief Obtain previous status of file being monitored
 	///
@@ -212,10 +195,10 @@ public:
 	/// Note: only valid for `eBinaryContents` mode
 	bytearray const& bytes() const;
 
-protected:
+  protected:
 	inline static io::FileReader s_reader;
 
-protected:
+  protected:
 	stdfs::file_time_type m_lastWriteTime = {};
 	stdfs::file_time_type m_lastModifiedTime = {};
 	stdfs::path m_path;

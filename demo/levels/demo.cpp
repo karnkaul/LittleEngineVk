@@ -1,11 +1,39 @@
 #include <core/log.hpp>
+#include <core/maths.hpp>
+#include <core/threads.hpp>
 #include <engine/levk.hpp>
 #include <levels/demo.hpp>
 
 using namespace le;
 
-DemoLevel::DemoLevel()
-{
+namespace {
+struct SpringArm {
+	glm::vec3 position = {};
+	glm::vec3 velocity = {};
+	Time fixed = 5ms;
+	f32 k = 0.5f;
+	f32 damp = 0.07f;
+
+	glm::vec3 const& tick(glm::vec3 const& target, Time dt) {
+		static constexpr u32 max = 64;
+		ft += dt;
+		for (u32 iter = 0; iter < max && ft > fixed; ++iter) {
+			ft -= fixed;
+			auto const disp = target - position;
+			velocity = (1.0f - damp) * velocity + k * disp;
+			position += (fixed.to_s() * velocity);
+		}
+		return position;
+	}
+
+  private:
+	Time ft;
+};
+
+SpringArm g_test;
+} // namespace
+
+DemoLevel::DemoLevel() {
 	m_name = "Demo";
 	m_manifest.id = "demo.manifest";
 	m_input.id = "demo.input";
@@ -111,16 +139,15 @@ DemoLevel::DemoLevel()
 	desc.uiSpace = {1280.0f, 720.0f, 2.0f};
 	desc.flags = GameScene::Desc::Flag::eScissoredUI;
 
-	for (auto i = 0; i < 1000; ++i)
-	{
+	for (auto i = 0; i < 1000; ++i) {
 		gs::g_game.spawnProp(fmt::format("test_{}", i), &m_data.eid3.transform());
 	}
+
+	g_test.position = {};
 }
 
-void DemoLevel::tick(Time dt)
-{
-	if (m_data.bQuit)
-	{
+void DemoLevel::tick(Time dt) {
+	if (m_data.bQuit) {
 		engine::Service::shutdown();
 		return;
 	}
@@ -128,50 +155,38 @@ void DemoLevel::tick(Time dt)
 	static Time elapsed;
 	elapsed += dt;
 	static bool s_bRegistered = false;
-	if (elapsed >= 5s && !s_bRegistered)
-	{
+	if (elapsed >= 5s && !s_bRegistered) {
 		m_data.tempToken = input::registerContext(&m_data.temp);
 		s_bRegistered = true;
 	}
-	if (elapsed >= 8s && m_data.tempToken.valid())
-	{
+	if (elapsed >= 8s && m_data.tempToken.valid()) {
 		m_data.tempToken = {};
 	}
 
-	if (m_data.asyncModel0.loaded())
-	{
-		if (auto pModel = registry().find<res::Model>(m_data.eid2))
-		{
+	if (m_data.asyncModel0.loaded()) {
+		if (auto pModel = registry().find<res::Model>(m_data.eid2)) {
 			*pModel = m_data.asyncModel0.resource().payload;
 		}
 		m_data.asyncModel0 = {};
 	}
-	if (m_data.asyncModel1.loaded())
-	{
-		if (auto pModel = registry().find<res::Model>(m_data.eid3))
-		{
+	if (m_data.asyncModel1.loaded()) {
+		if (auto pModel = registry().find<res::Model>(m_data.eid3)) {
 			*pModel = m_data.asyncModel1.resource().payload;
 		}
 		m_data.asyncModel1 = {};
 	}
-	if (m_data.bLoadUnloadModels && !m_data.asyncModel0.valid())
-	{
-		if (auto model = res::find<res::Model>(m_data.model0id))
-		{
+	if (m_data.bLoadUnloadModels && !m_data.asyncModel0.valid()) {
+		if (auto model = res::find<res::Model>(m_data.model0id)) {
 			res::unload(*model);
-			if (auto model1 = res::find<res::Model>(m_data.model1id))
-			{
+			if (auto model1 = res::find<res::Model>(m_data.model1id)) {
 				res::unload(*model1);
 			}
 			m_data.asyncModel0 = m_data.asyncModel1 = {};
-		}
-		else
-		{
+		} else {
 			res::Model::LoadInfo loadInfo;
 			loadInfo.idRoot = loadInfo.jsonDirectory = m_data.model0id;
 			m_data.asyncModel0 = res::loadAsync(m_data.model0id, std::move(loadInfo));
-			if (m_data.model1id != m_data.model0id)
-			{
+			if (m_data.model1id != m_data.model0id) {
 				loadInfo = {};
 				loadInfo.idRoot = loadInfo.jsonDirectory = m_data.model1id;
 				m_data.asyncModel1 = res::loadAsync(m_data.model1id, std::move(loadInfo));
@@ -186,7 +201,17 @@ void DemoLevel::tick(Time dt)
 	registry().find<UIComponent>(m_data.eui0)->setText(fmt::format("{}FPS", m_fps));
 	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.to_s() * 1000));
 	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} entities", registry().size()));
-	[[maybe_unused]] auto& quadT = registry().find<Transform>(m_data.pointer)->position({input::worldToUI(input::cursorPosition()), 1.0f});
+	if (auto pQuadT = registry().find<Transform>(m_data.pointer)) {
+		// static f32 s_lerp = 0.9f;
+		auto const target = glm::vec3(input::worldToUI(input::cursorPosition()), 1.0f);
+		// pQuadT->position(maths::lerp(pQuadT->position(), target, dt.to_s() * 10 * s_lerp));
+		pQuadT->position(g_test.tick(target, dt));
+
+		static bool s_bBlock = false;
+		if (s_bBlock) {
+			threads::sleep(20ms);
+		}
+	}
 	// quadT.orientglm::rotate(quadT.orient), glm::radians(dt.to_s() * 50), gfx::g_nFront));
 
 	{
@@ -199,22 +224,18 @@ void DemoLevel::tick(Time dt)
 	gs::g_game.desc().pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;
 }
 
-SceneBuilder const& DemoLevel::builder() const
-{
+SceneBuilder const& DemoLevel::builder() const {
 	return m_sceneBuilder;
 }
 
-void DemoLevel::onManifestLoaded()
-{
+void DemoLevel::onManifestLoaded() {
 	m_res.sphere.resource.material().diffuse = res::find<res::Texture>(m_res.container2).payload;
 	m_res.sphere.resource.material().specular = res::find<res::Texture>(m_res.container2_specular).payload;
 	m_res.quad.resource.material().diffuse = res::find<res::Texture>(m_res.awesomeface).payload;
-	if (auto pModel = registry().find<res::Model>(m_data.eid3))
-	{
+	if (auto pModel = registry().find<res::Model>(m_data.eid3)) {
 		*pModel = res::find<res::Model>(m_data.model1id).payload;
 	}
-	if (auto pModel = registry().find<res::Model>(m_data.eid2))
-	{
+	if (auto pModel = registry().find<res::Model>(m_data.eid2)) {
 		*pModel = res::find<res::Model>(m_data.model0id).payload;
 	}
 }

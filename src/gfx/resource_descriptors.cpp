@@ -1,16 +1,13 @@
 #include <core/log.hpp>
-#include <gfx/device.hpp>
-#include <gfx/vram.hpp>
-#include <gfx/resource_descriptors.hpp>
 #include <engine/resources/resources.hpp>
+#include <gfx/device.hpp>
+#include <gfx/resource_descriptors.hpp>
+#include <gfx/vram.hpp>
 #include <resources/resources_impl.hpp>
 
-namespace le::gfx
-{
-namespace rd
-{
-std::vector<vk::VertexInputBindingDescription> vbo::vertexBindings()
-{
+namespace le::gfx {
+namespace rd {
+std::vector<vk::VertexInputBindingDescription> vbo::vertexBindings() {
 	vk::VertexInputBindingDescription ret;
 	ret.binding = vertexBinding;
 	ret.stride = sizeof(Vertex);
@@ -18,8 +15,7 @@ std::vector<vk::VertexInputBindingDescription> vbo::vertexBindings()
 	return {ret};
 }
 
-std::vector<vk::VertexInputAttributeDescription> vbo::vertexAttributes()
-{
+std::vector<vk::VertexInputAttributeDescription> vbo::vertexAttributes() {
 	std::vector<vk::VertexInputAttributeDescription> ret;
 	vk::VertexInputAttributeDescription pos;
 	pos.binding = vertexBinding;
@@ -51,22 +47,16 @@ std::vector<vk::VertexInputAttributeDescription> vbo::vertexAttributes()
 View::View() = default;
 
 View::View(render::Driver::View const& view, u32 dirLightCount)
-	: mat_vp(view.mat_vp), mat_v(view.mat_v), mat_p(view.mat_p), mat_ui(view.mat_ui), pos_v(view.pos_v), dirLightCount(dirLightCount)
-{
+	: mat_vp(view.mat_vp), mat_v(view.mat_v), mat_p(view.mat_p), mat_ui(view.mat_ui), pos_v(view.pos_v), dirLightCount(dirLightCount) {
 }
 
 Materials::Mat::Mat(res::Material::Info const& material, Colour dropColour)
-	: ambient(material.albedo.ambient.toVec4()),
-	  diffuse(material.albedo.diffuse.toVec4()),
-	  specular(material.albedo.specular.toVec4()),
-	  dropColour(dropColour.toVec4()),
-	  shininess(material.shininess)
-{
+	: ambient(material.albedo.ambient.toVec4()), diffuse(material.albedo.diffuse.toVec4()), specular(material.albedo.specular.toVec4()),
+	  dropColour(dropColour.toVec4()), shininess(material.shininess) {
 }
 
 DirLights::Light::Light(DirLight const& dirLight)
-	: ambient(dirLight.ambient.toVec4()), diffuse(dirLight.diffuse.toVec4()), specular(dirLight.specular.toVec4()), direction(dirLight.direction)
-{
+	: ambient(dirLight.ambient.toVec4()), diffuse(dirLight.diffuse.toVec4()), specular(dirLight.specular.toVec4()), direction(dirLight.direction) {
 }
 
 u32 ImageSamplers::s_max = 1024;
@@ -101,27 +91,23 @@ vk::DescriptorSetLayoutBinding ImageSamplers::s_specularLayoutBinding =
 vk::DescriptorSetLayoutBinding const ImageSamplers::s_cubemapLayoutBinding =
 	vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vkFlags::fragShader);
 
-u32 ImageSamplers::total()
-{
+u32 ImageSamplers::total() {
 	return s_diffuseLayoutBinding.descriptorCount + s_specularLayoutBinding.descriptorCount + s_cubemapLayoutBinding.descriptorCount;
 }
 
-void ImageSamplers::clampDiffSpecCount(u32 hardwareMax)
-{
+void ImageSamplers::clampDiffSpecCount(u32 hardwareMax) {
 	s_max = std::min(s_max, (hardwareMax - 1) / 2); // (total - cubemap) / (diffuse + specular)
 	s_diffuseLayoutBinding.descriptorCount = s_specularLayoutBinding.descriptorCount = s_max;
 }
 
-std::vector<vk::PushConstantRange> PushConstants::ranges()
-{
+std::vector<vk::PushConstantRange> PushConstants::ranges() {
 	vk::PushConstantRange pcRange;
 	pcRange.size = sizeof(PushConstants);
 	pcRange.stageFlags = vkFlags::vertFragShader;
 	return {pcRange};
 }
 
-void Writer::write(vk::DescriptorSet set, Buffer const& buffer) const
-{
+void Writer::write(vk::DescriptorSet set, Buffer const& buffer) const {
 	vk::DescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = buffer.buffer;
 	bufferInfo.offset = 0;
@@ -137,17 +123,13 @@ void Writer::write(vk::DescriptorSet set, Buffer const& buffer) const
 	return;
 }
 
-void Writer::write(vk::DescriptorSet set, std::vector<res::Texture> const& textures) const
-{
+void Writer::write(vk::DescriptorSet set, std::vector<res::Texture> const& textures) const {
 	std::vector<vk::DescriptorImageInfo> imageInfos;
 	imageInfos.reserve(textures.size());
-	for (auto const& tex : textures)
-	{
-		if (auto pImpl = res::impl(tex))
-		{
+	for (auto const& tex : textures) {
+		if (auto pImpl = res::impl(tex)) {
 			auto const& info = tex.info();
-			if (auto pSamplerImpl = res::impl(info.sampler))
-			{
+			if (auto pSamplerImpl = res::impl(info.sampler)) {
 				vk::DescriptorImageInfo imageInfo;
 				imageInfo.imageView = pImpl->imageView;
 				imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
@@ -167,13 +149,11 @@ void Writer::write(vk::DescriptorSet set, std::vector<res::Texture> const& textu
 	return;
 }
 
-void Descriptor<ImageSamplers>::writeArray(std::vector<res::Texture> const& textures, vk::DescriptorSet set) const
-{
+void Descriptor<ImageSamplers>::writeArray(std::vector<res::Texture> const& textures, vk::DescriptorSet set) const {
 	m_writer.write(set, textures);
 }
 
-Set::Set() : m_view(vk::BufferUsageFlagBits::eUniformBuffer)
-{
+Set::Set() : m_view(vk::BufferUsageFlagBits::eUniformBuffer) {
 	m_diffuse.m_writer.binding = ImageSamplers::s_diffuseLayoutBinding.binding;
 	m_diffuse.m_writer.type = ImageSamplers::s_diffuseLayoutBinding.descriptorType;
 	m_specular.m_writer.binding = ImageSamplers::s_specularLayoutBinding.binding;
@@ -182,8 +162,7 @@ Set::Set() : m_view(vk::BufferUsageFlagBits::eUniformBuffer)
 	m_cubemap.m_writer.type = ImageSamplers::s_cubemapLayoutBinding.descriptorType;
 }
 
-void Set::destroy()
-{
+void Set::destroy() {
 	m_view.release();
 	m_models.release();
 	m_normals.release();
@@ -194,8 +173,7 @@ void Set::destroy()
 	return;
 }
 
-void Set::resetTextures()
-{
+void Set::resetTextures() {
 	auto white = res::find<res::Texture>("textures/white");
 	auto black = res::find<res::Texture>("textures/black");
 	ASSERT(black && white, "Default textures missing!");
@@ -205,14 +183,12 @@ void Set::resetTextures()
 	writeSpecular(specular);
 }
 
-void Set::writeView(View const& view)
-{
+void Set::writeView(View const& view) {
 	m_view.writeValue(view, m_bufferSet);
 	return;
 }
 
-void Set::initSSBOs()
-{
+void Set::initSSBOs() {
 	StorageBuffers ssbos;
 	ssbos.models.ssbo.push_back({});
 	ssbos.normals.ssbo.push_back({});
@@ -223,8 +199,7 @@ void Set::initSSBOs()
 	writeSSBOs(ssbos);
 }
 
-void Set::writeSSBOs(StorageBuffers const& ssbos)
-{
+void Set::writeSSBOs(StorageBuffers const& ssbos) {
 	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty() && !ssbos.flags.ssbo.empty(),
 		   "Empty SSBOs!");
 	m_models.writeArray(ssbos.models.ssbo, m_bufferSet);
@@ -232,40 +207,34 @@ void Set::writeSSBOs(StorageBuffers const& ssbos)
 	m_materials.writeArray(ssbos.materials.ssbo, m_bufferSet);
 	m_tints.writeArray(ssbos.tints.ssbo, m_bufferSet);
 	m_flags.writeArray(ssbos.flags.ssbo, m_bufferSet);
-	if (!ssbos.dirLights.ssbo.empty())
-	{
+	if (!ssbos.dirLights.ssbo.empty()) {
 		m_dirLights.writeArray(ssbos.dirLights.ssbo, m_bufferSet);
 	}
 	return;
 }
 
-void Set::writeDiffuse(std::deque<res::Texture> const& diffuse)
-{
+void Set::writeDiffuse(std::deque<res::Texture> const& diffuse) {
 	std::vector<res::Texture> arr;
 	std::copy(diffuse.begin(), diffuse.end(), std::back_inserter(arr));
 	m_diffuse.writeArray(arr, m_samplerSet);
 	return;
 }
 
-void Set::writeSpecular(std::deque<res::Texture> const& specular)
-{
+void Set::writeSpecular(std::deque<res::Texture> const& specular) {
 	std::vector<res::Texture> arr;
 	std::copy(specular.begin(), specular.end(), std::back_inserter(arr));
 	m_specular.writeArray(arr, m_samplerSet);
 	return;
 }
 
-void Set::writeCubemap(res::Texture cubemap)
-{
+void Set::writeCubemap(res::Texture cubemap) {
 	m_cubemap.writeArray({cubemap}, m_samplerSet);
 	return;
 }
 } // namespace rd
 
-void rd::init()
-{
-	if (g_bufferLayout == vk::DescriptorSetLayout())
-	{
+void rd::init() {
+	if (g_bufferLayout == vk::DescriptorSetLayout()) {
 		std::array const bufferBindings = {View::s_setLayoutBinding,  Models::s_setLayoutBinding, Normals::s_setLayoutBinding,	Materials::s_setLayoutBinding,
 										   Tints::s_setLayoutBinding, Flags::s_setLayoutBinding,  DirLights::s_setLayoutBinding};
 		vk::DescriptorSetLayoutCreateInfo bufferLayoutInfo;
@@ -273,8 +242,7 @@ void rd::init()
 		bufferLayoutInfo.pBindings = bufferBindings.data();
 		rd::g_bufferLayout = g_device.device.createDescriptorSetLayout(bufferLayoutInfo);
 	}
-	if (g_samplerLayout == vk::DescriptorSetLayout())
-	{
+	if (g_samplerLayout == vk::DescriptorSetLayout()) {
 		auto diffuseBinding = ImageSamplers::s_diffuseLayoutBinding;
 		diffuseBinding.descriptorCount = ImageSamplers::s_max;
 		auto specularBinding = ImageSamplers::s_specularLayoutBinding;
@@ -285,27 +253,22 @@ void rd::init()
 	return;
 }
 
-void rd::deinit()
-{
-	if (g_bufferLayout != vk::DescriptorSetLayout())
-	{
+void rd::deinit() {
+	if (g_bufferLayout != vk::DescriptorSetLayout()) {
 		g_device.destroy(g_bufferLayout);
 		g_bufferLayout = vk::DescriptorSetLayout();
 	}
-	if (g_samplerLayout != vk::DescriptorSetLayout())
-	{
+	if (g_samplerLayout != vk::DescriptorSetLayout()) {
 		g_device.destroy(g_samplerLayout);
 		g_samplerLayout = vk::DescriptorSetLayout();
 	}
 	return;
 }
 
-std::vector<rd::Set> rd::allocateSets(u32 copies)
-{
+std::vector<rd::Set> rd::allocateSets(u32 copies) {
 	std::vector<Set> ret;
 	ret.reserve((std::size_t)copies);
-	for (u32 idx = 0; idx < copies; ++idx)
-	{
+	for (u32 idx = 0; idx < copies; ++idx) {
 		Set set;
 		// Pool of descriptors
 		vk::DescriptorPoolSize uboPoolSize;
@@ -333,8 +296,7 @@ std::vector<rd::Set> rd::allocateSets(u32 copies)
 	return ret;
 }
 
-RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth)
-{
+RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth) {
 	std::array<vk::AttachmentDescription, 2> attachments;
 	vk::AttachmentReference colourAttachment, depthAttachment;
 	{

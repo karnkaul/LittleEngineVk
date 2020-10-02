@@ -1,8 +1,6 @@
 #pragma once
 #include <vector>
-#include <glm/vec2.hpp>
 #include <core/colour.hpp>
-#include <core/flags.hpp>
 #include <core/hash.hpp>
 #include <core/result.hpp>
 #include <core/span.hpp>
@@ -11,6 +9,8 @@
 #include <core/zero.hpp>
 #include <dumb_json/dumb_json.hpp>
 #include <engine/gfx/geometry.hpp>
+#include <glm/vec2.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_RESOURCES_HOT_RELOAD)
@@ -27,15 +27,13 @@ constexpr bool levk_resourcesHotReload = true;
 constexpr bool levk_resourcesHotReload = false;
 #endif
 
-namespace le::res
-{
+namespace le::res {
 using GUID = TZero<u64>;
 
 ///
 /// \brief Resource status
 ///
-enum class Status : s8
-{
+enum class Status : s8 {
 	eIdle,
 	eReady,		// ready to use
 	eLoading,	// transferring resources
@@ -53,8 +51,7 @@ enum class Status : s8
 /// 	Impl		: implementation detail (internal to engine)
 ///
 template <typename T>
-struct Resource
-{
+struct Resource {
 	///
 	/// \brief Unique ID per Resource; this is the only data member in all derived types
 	///
@@ -68,8 +65,7 @@ struct Resource
 ///
 /// GLSL to SPIR-V compilation is supported if LEVK_SHADER_COMPILER is defined
 ///
-struct Shader final : Resource<Shader>
-{
+struct Shader final : Resource<Shader> {
 	enum class Type : s8;
 	struct Info;
 	struct CreateInfo;
@@ -83,8 +79,7 @@ struct Shader final : Resource<Shader>
 ///
 /// \brief Handle for Vulkan Image Sampler
 ///
-struct Sampler final : Resource<Sampler>
-{
+struct Sampler final : Resource<Sampler> {
 	enum class Filter : s8;
 	enum class Mode : s8;
 	struct Info;
@@ -99,8 +94,7 @@ struct Sampler final : Resource<Sampler>
 ///
 /// \brief Handle for Vulkan Image and ImageView
 ///
-struct Texture final : Resource<Texture>
-{
+struct Texture final : Resource<Texture> {
 	enum class Space : s8;
 	enum class Type : s8;
 	struct Raw;
@@ -117,19 +111,9 @@ struct Texture final : Resource<Texture>
 ///
 /// \brief Handle for base material used in Mesh
 ///
-struct Material final : Resource<Material>
-{
-	enum class Flag : s8
-	{
-		eTextured,
-		eLit,
-		eOpaque,
-		eDropColour,
-		eUI,
-		eSkybox,
-		eCOUNT_
-	};
-	using Flags = TFlags<Flag>;
+struct Material final : Resource<Material> {
+	enum class Flag : s8 { eTextured, eLit, eOpaque, eDropColour, eUI, eSkybox, eCOUNT_ };
+	using Flags = kt::enum_flags<Flag>;
 
 	struct Inst;
 	struct Info;
@@ -144,8 +128,7 @@ struct Material final : Resource<Material>
 ///
 /// \brief Handle for drawable resource using Geometry
 ///
-struct Mesh final : Resource<Mesh>
-{
+struct Mesh final : Resource<Mesh> {
 	enum class Type : s8;
 	struct Info;
 	struct CreateInfo;
@@ -162,8 +145,7 @@ struct Mesh final : Resource<Mesh>
 ///
 /// \brief Handle for bitmap font using texture atlas
 ///
-struct Font final : Resource<Font>
-{
+struct Font final : Resource<Font> {
 	struct Glyph;
 	struct Info;
 	struct CreateInfo;
@@ -180,8 +162,7 @@ struct Font final : Resource<Font>
 ///
 /// \brief Handle for model described as a number of meshes, materials, and textures
 ///
-struct Model final : Resource<Model>
-{
+struct Model final : Resource<Model> {
 	struct TexData;
 	struct MatData;
 	struct MeshData;
@@ -197,87 +178,51 @@ struct Model final : Resource<Model>
 	std::vector<Mesh> meshes() const;
 };
 
-struct InfoBase
-{
+struct InfoBase {
 	stdfs::path id;
 };
 template <typename T>
-struct LoadBase
-{
+struct LoadBase {
 	using CreateInfo = typename T::CreateInfo;
 
 	TResult<CreateInfo> createInfo() const;
 };
 
-enum class Shader::Type : s8
-{
-	eVertex,
-	eFragment,
-	eCOUNT_
-};
-struct Shader::Info : InfoBase
-{
-};
-struct Shader::CreateInfo
-{
+enum class Shader::Type : s8 { eVertex, eFragment, eCOUNT_ };
+struct Shader::Info : InfoBase {};
+struct Shader::CreateInfo {
 	EnumArray<Type, bytearray> codeMap;
 	EnumArray<Type, stdfs::path> codeIDMap;
 };
 
-enum class Sampler::Filter : s8
-{
-	eLinear,
-	eNearest,
-	eCOUNT_
-};
-enum class Sampler::Mode : s8
-{
-	eRepeat,
-	eClampEdge,
-	eClampBorder,
-	eCOUNT_
-};
-struct Sampler::Info : InfoBase
-{
+enum class Sampler::Filter : s8 { eLinear, eNearest, eCOUNT_ };
+enum class Sampler::Mode : s8 { eRepeat, eClampEdge, eClampBorder, eCOUNT_ };
+struct Sampler::Info : InfoBase {
 	Filter min = Filter::eLinear;
 	Filter mag = Filter::eLinear;
 	Filter mip = Filter::eLinear;
 	Mode mode = Mode::eRepeat;
 };
-struct Sampler::CreateInfo
-{
+struct Sampler::CreateInfo {
 	Filter min = Filter::eLinear;
 	Filter mag = Filter::eLinear;
 	Filter mip = Filter::eLinear;
 	Mode mode = Mode::eRepeat;
 };
 
-enum class Texture::Space : s8
-{
-	eSRGBNonLinear,
-	eRGBLinear,
-	eCOUNT_
-};
-enum class Texture::Type : s8
-{
-	e2D,
-	eCube,
-	eCOUNT_
-};
-struct Texture::Raw
-{
+enum class Texture::Space : s8 { eSRGBNonLinear, eRGBLinear, eCOUNT_ };
+enum class Texture::Type : s8 { e2D, eCube, eCOUNT_ };
+struct Texture::Raw {
 	Span<u8> bytes;
 	glm::ivec2 size = {};
 };
-struct Texture::Info : InfoBase
-{
+struct Texture::Info : InfoBase {
 	glm::ivec2 size = {};
 	Space mode;
 	Type type;
 	Sampler sampler;
 };
-struct Texture::CreateInfo
-{
+struct Texture::CreateInfo {
 	std::vector<stdfs::path> ids;
 	std::vector<bytearray> bytes;
 	std::vector<Raw> raws;
@@ -285,16 +230,14 @@ struct Texture::CreateInfo
 	Space mode = Space::eSRGBNonLinear;
 	Type type = Type::e2D;
 };
-struct Texture::LoadInfo : LoadBase<Texture>
-{
+struct Texture::LoadInfo : LoadBase<Texture> {
 	stdfs::path directory;
 	std::string imageFilename;
 	std::vector<std::string> cubemapFilenames;
 	Hash samplerID;
 };
 
-struct Material::Inst
-{
+struct Material::Inst {
 	Material material;
 	res::Texture diffuse;
 	res::Texture specular;
@@ -302,38 +245,28 @@ struct Material::Inst
 	Colour dropColour = colours::black;
 	Flags flags;
 };
-struct Material::Info : InfoBase
-{
+struct Material::Info : InfoBase {
 	gfx::Albedo albedo;
 	f32 shininess = 0.0f;
 };
-struct Material::CreateInfo
-{
+struct Material::CreateInfo {
 	gfx::Albedo albedo;
 	f32 shininess = 32.0f;
 };
 
-enum class Mesh::Type : s8
-{
-	eStatic,
-	eDynamic,
-	eCOUNT_
-};
-struct Mesh::Info : InfoBase
-{
+enum class Mesh::Type : s8 { eStatic, eDynamic, eCOUNT_ };
+struct Mesh::Info : InfoBase {
 	Material::Inst material;
 	Type type;
 	u64 triCount = 0;
 };
-struct Mesh::CreateInfo
-{
+struct Mesh::CreateInfo {
 	gfx::Geometry geometry;
 	Material::Inst material;
 	Type type = Type::eStatic;
 };
 
-struct Font::Glyph
-{
+struct Font::Glyph {
 	u8 ch = '\0';
 	glm::ivec2 st = glm::ivec2(0);
 	glm::ivec2 uv = glm::ivec2(0);
@@ -345,14 +278,12 @@ struct Font::Glyph
 
 	void deserialise(u8 c, dj::object const& json);
 };
-struct Font::Info : InfoBase
-{
+struct Font::Info : InfoBase {
 	Material::Inst material;
 	Texture sheet;
 	stdfs::path jsonID;
 };
-struct Font::CreateInfo
-{
+struct Font::CreateInfo {
 	res::Material::Inst material;
 	stdfs::path sheetID;
 	stdfs::path jsonID;
@@ -363,21 +294,10 @@ struct Font::CreateInfo
 
 	bool deserialise(std::string const& jsonStr);
 };
-struct Font::Text
-{
-	enum class HAlign : s8
-	{
-		Centre = 0,
-		Left,
-		Right
-	};
+struct Font::Text {
+	enum class HAlign : s8 { Centre = 0, Left, Right };
 
-	enum class VAlign : s8
-	{
-		Middle = 0,
-		Top,
-		Bottom
-	};
+	enum class VAlign : s8 { Middle = 0, Top, Bottom };
 
 	std::string text;
 	glm::vec3 pos = glm::vec3(0.0f);
@@ -388,16 +308,14 @@ struct Font::Text
 	Colour colour = colours::white;
 };
 
-struct Model::TexData
-{
+struct Model::TexData {
 	stdfs::path id;
 	stdfs::path filename;
 	bytearray bytes;
 	Hash samplerID;
 	Hash hash;
 };
-struct Model::MatData
-{
+struct Model::MatData {
 	stdfs::path id;
 	std::vector<std::size_t> diffuseIndices;
 	std::vector<std::size_t> specularIndices;
@@ -407,23 +325,20 @@ struct Model::MatData
 	res::Material::Flags flags;
 	Hash hash;
 };
-struct Model::MeshData
-{
+struct Model::MeshData {
 	gfx::Geometry geometry;
 	stdfs::path id;
 	std::vector<std::size_t> materialIndices;
 	f32 shininess = 32.0f;
 	Hash hash;
 };
-struct Model::Info : InfoBase
-{
+struct Model::Info : InfoBase {
 	glm::vec3 origin;
 	res::Mesh::Type type;
 	res::Texture::Space mode;
 	Colour tint;
 };
-struct Model::CreateInfo
-{
+struct Model::CreateInfo {
 	glm::vec3 origin = glm::vec3(0.0f);
 	std::vector<TexData> textures;
 	std::vector<MatData> materials;
@@ -434,8 +349,7 @@ struct Model::CreateInfo
 	Colour tint = colours::white;
 	bool bDropColour = false;
 };
-struct Model::LoadInfo : LoadBase<Model>
-{
+struct Model::LoadInfo : LoadBase<Model> {
 	stdfs::path idRoot;
 	stdfs::path jsonDirectory;
 	std::string jsonFilename;

@@ -1,35 +1,22 @@
 #pragma once
 #include <unordered_set>
-#include <core/flags.hpp>
 #include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 
-namespace le
-{
-class FreeCam
-{
-public:
-	enum class Flag : s8
-	{
-		eEnabled,
-		eKeyToggle_Look,
-		eFixedSpeed,
-		eTracking,
-		eLooking,
-		eKeyLook,
-		eCOUNT_
-	};
-	using Flags = TFlags<Flag>;
+namespace le {
+class FreeCam {
+  public:
+	enum class Flag : s8 { eEnabled, eKeyToggle_Look, eFixedSpeed, eTracking, eLooking, eKeyLook, eCOUNT_ };
+	using Flags = kt::enum_flags<Flag>;
 
-	struct KeyToggle final
-	{
+	struct KeyToggle final {
 		input::Key key;
 		input::Mods::VALUE mods = input::Mods::eNONE;
 		input::Action action = input::Action::eRelease;
 	};
 
-	struct Config final
-	{
+	struct Config final {
 		KeyToggle lookToggle = {input::Key::eL};
 		f32 defaultSpeed = 2.0f;
 		f32 minSpeed = 1.0f;
@@ -40,8 +27,7 @@ public:
 		f32 padLookSens = 50.0f;
 		f32 padStickEpsilon = 0.05f;
 	};
-	struct State final
-	{
+	struct State final {
 		std::unordered_set<input::Key> heldKeys;
 		std::pair<glm::vec2, glm::vec2> cursorPos = {{0.0f, 0.0f}, {0.0f, 0.0f}};
 
@@ -53,15 +39,15 @@ public:
 		Flags flags;
 	};
 
-public:
+  public:
 	gfx::Camera m_camera;
 	State m_state;
 	Config m_config;
 
-public:
+  public:
 	void reset();
 
-public:
+  public:
 #if defined(LEVK_EDITOR)
 	void init(bool bEditorContext = false);
 #else
@@ -69,7 +55,7 @@ public:
 #endif
 	void tick(Time dt);
 
-private:
+  private:
 	input::Context m_input;
 	Token m_token;
 	glm::vec2 m_dXZ = {};

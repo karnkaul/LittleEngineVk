@@ -5,21 +5,17 @@
 #include <GLFW/glfw3.h>
 #endif
 
-namespace le
-{
-NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
-{
+namespace le {
+NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info) {
 #if defined(LEVK_USE_GLFW)
 	s32 screenCount;
 	GLFWmonitor** ppScreens = glfwGetMonitors(&screenCount);
-	if (screenCount < 1)
-	{
+	if (screenCount < 1) {
 		LOG_E("[{}] Failed to detect screens!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
 	GLFWvidmode const* mode = glfwGetVideoMode(ppScreens[0]);
-	if (!mode)
-	{
+	if (!mode) {
 		LOG_E("[{}] Failed to detect video mode!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
@@ -28,23 +24,18 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 	s32 height = info.config.size.y;
 	s32 width = info.config.size.x;
 	bool bDecorated = true;
-	switch (info.config.mode)
-	{
+	switch (info.config.mode) {
 	default:
-	case Window::Mode::eDecoratedWindow:
-	{
-		if (mode->width < width || mode->height < height)
-		{
+	case Window::Mode::eDecoratedWindow: {
+		if (mode->width < width || mode->height < height) {
 			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		pTarget = nullptr;
 		break;
 	}
-	case Window::Mode::eBorderlessWindow:
-	{
-		if (mode->width < width || mode->height < height)
-		{
+	case Window::Mode::eBorderlessWindow: {
+		if (mode->width < width || mode->height < height) {
 			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
@@ -52,8 +43,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 		pTarget = nullptr;
 		break;
 	}
-	case Window::Mode::eBorderlessFullscreen:
-	{
+	case Window::Mode::eBorderlessFullscreen: {
 		height = (u16)mode->height;
 		width = (u16)mode->width;
 		break;
@@ -72,8 +62,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, false);
 	auto pWindow = glfwCreateWindow(width, height, info.config.title.data(), pTarget, nullptr);
-	if (!pWindow)
-	{
+	if (!pWindow) {
 		throw std::runtime_error("Failed to create Window");
 	}
 	m_window = pWindow;
@@ -83,10 +72,8 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info)
 #endif
 }
 
-NativeWindow& NativeWindow::operator=(NativeWindow&& rhs)
-{
-	if (&rhs != this)
-	{
+NativeWindow& NativeWindow::operator=(NativeWindow&& rhs) {
+	if (&rhs != this) {
 #if defined(LEVK_USE_GLFW)
 		glfwDestroyWindow(cast<GLFWwindow>());
 #endif
@@ -96,15 +83,13 @@ NativeWindow& NativeWindow::operator=(NativeWindow&& rhs)
 	return *this;
 }
 
-NativeWindow::~NativeWindow()
-{
+NativeWindow::~NativeWindow() {
 #if defined(LEVK_USE_GLFW)
 	glfwDestroyWindow(cast<GLFWwindow>());
 #endif
 }
 
-glm::ivec2 NativeWindow::windowSize() const
-{
+glm::ivec2 NativeWindow::windowSize() const {
 	glm::ivec2 ret = {};
 #if defined(LEVK_USE_GLFW)
 	glfwGetWindowSize(cast<GLFWwindow>(), &ret.x, &ret.y);
@@ -112,8 +97,7 @@ glm::ivec2 NativeWindow::windowSize() const
 	return ret;
 }
 
-glm::ivec2 NativeWindow::framebufferSize() const
-{
+glm::ivec2 NativeWindow::framebufferSize() const {
 	glm::ivec2 ret = {};
 #if defined(LEVK_USE_GLFW)
 	glfwGetFramebufferSize(cast<GLFWwindow>(), &ret.x, &ret.y);
@@ -121,27 +105,23 @@ glm::ivec2 NativeWindow::framebufferSize() const
 	return ret;
 }
 
-vk::SurfaceKHR NativeWindow::createSurface([[maybe_unused]] vk::Instance instance) const
-{
+vk::SurfaceKHR NativeWindow::createSurface([[maybe_unused]] vk::Instance instance) const {
 	vk::SurfaceKHR ret;
 #if defined(LEVK_USE_GLFW)
 	VkSurfaceKHR surface;
 	auto result = glfwCreateWindowSurface(instance, cast<GLFWwindow>(), nullptr, &surface);
 	ASSERT(result == VK_SUCCESS, "Surface creation failed!");
-	if (result == VK_SUCCESS)
-	{
+	if (result == VK_SUCCESS) {
 		ret = surface;
 	}
 #endif
 	return ret;
 }
 
-void NativeWindow::show([[maybe_unused]] bool bCentreCursor) const
-{
+void NativeWindow::show([[maybe_unused]] bool bCentreCursor) const {
 #if defined(LEVK_USE_GLFW)
 	auto pWindow = cast<GLFWwindow>();
-	if (bCentreCursor)
-	{
+	if (bCentreCursor) {
 		auto const size = windowSize();
 		glfwSetCursorPos(pWindow, size.x / 2, size.y / 2);
 	}

@@ -3,17 +3,14 @@
 #include <string>
 #include <vector>
 
-namespace le
-{
+namespace le {
 namespace stdfs = std::filesystem;
 
-namespace res
-{
+namespace res {
 ///
 /// \brief List of resource IDs
 ///
-struct ResourceList final
-{
+struct ResourceList final {
 	std::vector<stdfs::path> shaders;
 	std::vector<stdfs::path> textures;
 	std::vector<stdfs::path> cubemaps;

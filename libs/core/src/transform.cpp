@@ -1,10 +1,8 @@
-#include <glm/gtx/matrix_decompose.hpp>
 #include <core/transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 
-namespace le
-{
-glm::quat Transform::worldOrientation() const noexcept
-{
+namespace le {
+glm::quat Transform::worldOrientation() const noexcept {
 	glm::vec3 pos;
 	glm::quat orn;
 	glm::vec3 scl;
@@ -14,8 +12,7 @@ glm::quat Transform::worldOrientation() const noexcept
 	return glm::conjugate(orn);
 }
 
-glm::vec3 Transform::worldScale() const noexcept
-{
+glm::vec3 Transform::worldScale() const noexcept {
 	glm::vec3 pos;
 	glm::quat orn;
 	glm::vec3 scl;

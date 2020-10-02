@@ -3,39 +3,25 @@
 #include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/ecs/registry.hpp>
-#include <core/flags.hpp>
 #include <core/transform.hpp>
 #include <core/utils.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 
 #if defined(LEVK_EDITOR)
-namespace le::editor
-{
+namespace le::editor {
 using sv = std::string_view;
 
-enum GUI
-{
-	eOpen,
-	eLeftClicked,
-	eRightClicked,
-	eCOUNT_
-};
-using GUIState = TFlags<GUI>;
+enum GUI { eOpen, eLeftClicked, eRightClicked, eCOUNT_ };
+using GUIState = kt::enum_flags<GUI>;
 
-enum class Style
-{
-	eSameLine,
-	eSeparator,
-	eCOUNT_
-};
-using StyleFlags = TFlags<Style>;
+enum class Style { eSameLine, eSeparator, eCOUNT_ };
+using StyleFlags = kt::enum_flags<Style>;
 
-struct Styler final
-{
+struct Styler final {
 	Styler(StyleFlags flags);
 };
 
-struct GUIStateful
-{
+struct GUIStateful {
 	GUIState guiState;
 
 	GUIStateful();
@@ -45,42 +31,35 @@ struct GUIStateful
 
 	void refresh();
 
-	bool test(GUI s) const
-	{
+	bool test(GUI s) const {
 		return guiState.test(s);
 	}
 
-	virtual operator bool() const
-	{
+	virtual operator bool() const {
 		return test(GUI::eLeftClicked);
 	}
 };
 
-struct Text final
-{
+struct Text final {
 	Text(sv text);
 };
 
-struct Button final : GUIStateful
-{
+struct Button final : GUIStateful {
 	Button(sv id);
 };
 
-struct Combo final : GUIStateful
-{
+struct Combo final : GUIStateful {
 	s32 select = -1;
 	sv selected;
 
 	Combo(sv id, Span<sv> entries, sv preSelected);
 
-	operator bool() const override
-	{
+	operator bool() const override {
 		return test(GUI::eOpen);
 	}
 };
 
-struct TreeNode final : GUIStateful
-{
+struct TreeNode final : GUIStateful {
 	TreeNode();
 	TreeNode(sv id);
 	TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen);
@@ -88,21 +67,18 @@ struct TreeNode final : GUIStateful
 	TreeNode& operator=(TreeNode&&) = default;
 	~TreeNode() override;
 
-	operator bool() const override
-	{
+	operator bool() const override {
 		return test(GUI::eOpen);
 	}
 };
 
 template <typename T>
-struct TWidget
-{
+struct TWidget {
 	static_assert(alwaysFalse<T>, "Invalid type");
 };
 
 template <typename Flags>
-struct FlagsWidget
-{
+struct FlagsWidget {
 	using type = typename Flags::type;
 	static constexpr std::size_t size = Flags::size;
 
@@ -110,8 +86,7 @@ struct FlagsWidget
 };
 
 template <typename T>
-struct TInspector
-{
+struct TInspector {
 	TreeNode node;
 	ecs::Registry* pReg = nullptr;
 	ecs::Entity entity;
@@ -129,79 +104,66 @@ struct TInspector
 };
 
 template <>
-struct TWidget<bool>
-{
+struct TWidget<bool> {
 	TWidget(sv id, bool& out_b);
 };
 
 template <>
-struct TWidget<f32>
-{
+struct TWidget<f32> {
 	TWidget(sv id, f32& out_f);
 };
 
 template <>
-struct TWidget<s32>
-{
+struct TWidget<s32> {
 	TWidget(sv id, s32& out_b);
 };
 
 template <>
-struct TWidget<std::string>
-{
+struct TWidget<std::string> {
 	using ZeroedBuf = std::string;
 
 	TWidget(sv id, ZeroedBuf& out_buf, f32 width = 100.0f, std::size_t max = 0);
 };
 
 template <>
-struct TWidget<Colour>
-{
+struct TWidget<Colour> {
 	TWidget(sv id, Colour& out_colour);
 };
 
 template <>
-struct TWidget<glm::vec2>
-{
+struct TWidget<glm::vec2> {
 	TWidget(sv id, glm::vec2& out_vec, bool bNormalised, f32 dv = 0.1f);
 };
 
 template <>
-struct TWidget<glm::vec3>
-{
+struct TWidget<glm::vec3> {
 	TWidget(sv id, glm::vec3& out_vec, bool bNormalised, f32 dv = 0.1f);
 };
 
 template <>
-struct TWidget<glm::quat>
-{
+struct TWidget<glm::quat> {
 	TWidget(sv id, glm::quat& out_quat, f32 dq = 0.01f);
 };
 
 template <>
-struct TWidget<Transform>
-{
+struct TWidget<Transform> {
 	TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
 };
 
 template <>
-struct TWidget<std::pair<s64, s64>>
-{
+struct TWidget<std::pair<s64, s64>> {
 	TWidget(sv id, s64& out_t, s64 min, s64 max, s64 dt);
 };
 
-struct PerFrame
-{
+struct PerFrame {
 	std::function<void()> customRightPanel;
 };
 
 template <typename Flags>
-FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags)
-{
+FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags) {
 	ASSERT(ids.size() <= size, "Overflow!");
 	std::size_t idx = 0;
-	for (auto id : ids)
-	{
+	for (auto id : ids) {
 		bool bVal = flags.test((type)idx);
 		TWidget<bool> w(id, bVal);
 		flags[(type)idx++] = bVal;
@@ -210,17 +172,13 @@ FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags)
 
 template <typename T>
 TInspector<T>::TInspector(ecs::Registry& out_registry, ecs::Entity entity, T const* pT, sv id)
-	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id)
-{
+	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id) {
 	bNew = pT == nullptr;
-	if (!bNew)
-	{
+	if (!bNew) {
 		node = TreeNode(this->id);
-		if (node)
-		{
+		if (node) {
 			bOpen = true;
-			if (node.test(GUI::eRightClicked))
-			{
+			if (node.test(GUI::eRightClicked)) {
 				out_registry.detach<T>(entity);
 			}
 		}
@@ -228,8 +186,7 @@ TInspector<T>::TInspector(ecs::Registry& out_registry, ecs::Entity entity, T con
 }
 
 template <typename T>
-TInspector<T>::TInspector(TInspector<T>&& rhs) : node(std::move(rhs.node)), pReg(rhs.pReg), id(std::move(id))
-{
+TInspector<T>::TInspector(TInspector<T>&& rhs) : node(std::move(rhs.node)), pReg(rhs.pReg), id(std::move(id)) {
 	bOpen = rhs.bOpen;
 	bNew = rhs.bNew;
 	rhs.bNew = rhs.bOpen = false;
@@ -237,10 +194,8 @@ TInspector<T>::TInspector(TInspector<T>&& rhs) : node(std::move(rhs.node)), pReg
 }
 
 template <typename T>
-TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs)
-{
-	if (&rhs != this)
-	{
+TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {
+	if (&rhs != this) {
 		node = std::move(rhs.node);
 		pReg = rhs.pReg;
 		bOpen = rhs.bOpen;
@@ -253,12 +208,9 @@ TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs)
 }
 
 template <typename T>
-TInspector<T>::~TInspector()
-{
-	if (bNew && pReg)
-	{
-		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked))
-		{
+TInspector<T>::~TInspector() {
+	if (bNew && pReg) {
+		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked)) {
 			ecs::Registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}
@@ -266,8 +218,7 @@ TInspector<T>::~TInspector()
 }
 
 template <typename T>
-TInspector<T>::operator bool() const
-{
+TInspector<T>::operator bool() const {
 	return bOpen;
 }
 } // namespace le::editor

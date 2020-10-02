@@ -1,24 +1,22 @@
 #pragma once
-#include <vulkan/vulkan.hpp>
-#include <glm/vec2.hpp>
 #include <core/static_any.hpp>
 #include <engine/window/window.hpp>
+#include <glm/vec2.hpp>
+#include <vulkan/vulkan.hpp>
 
-namespace le
-{
-class NativeWindow final
-{
-public:
+namespace le {
+class NativeWindow final {
+  public:
 	StaticAny<> m_window;
 
-public:
+  public:
 	NativeWindow() noexcept = default;
 	NativeWindow(Window::Info const& info);
 	NativeWindow(NativeWindow&&) = default;
 	NativeWindow& operator=(NativeWindow&&);
 	~NativeWindow();
 
-public:
+  public:
 	glm::ivec2 windowSize() const;
 	glm::ivec2 framebufferSize() const;
 
@@ -26,8 +24,7 @@ public:
 	void show(bool bCentreCursor) const;
 
 	template <typename T>
-	T* cast() const
-	{
+	T* cast() const {
 		return m_window.template val<T*>();
 	}
 };

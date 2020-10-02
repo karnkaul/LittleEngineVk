@@ -2,22 +2,19 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-#include <core/std_types.hpp>
 #include <core/delegate.hpp>
 #include <core/span.hpp>
+#include <core/std_types.hpp>
 #include <core/utils.hpp>
 
-namespace le::input
-{
-enum class Action : s8
-{
+namespace le::input {
+enum class Action : s8 {
 	eRelease = 0,
 	ePress = 1,
 	eRepeat = 2,
 };
 
-enum class Key
-{
+enum class Key {
 	eUnknown = -1,
 	eSpace = 32,
 	eApostrophe = 39,
@@ -178,22 +175,11 @@ enum class Key
 	eGamepadButtonTriangle = eGamepadButtonY,
 };
 
-struct Mods
-{
-	enum VALUE
-	{
-		eNONE = 0,
-		eSHIFT = 0x0001,
-		eCONTROL = 0x0002,
-		eALT = 0x0004,
-		eSUPER = 0x0008,
-		eCAPS_LOCK = 0x0010,
-		eNUM_LOCK = 0x0020
-	};
+struct Mods {
+	enum VALUE { eNONE = 0, eSHIFT = 0x0001, eCONTROL = 0x0002, eALT = 0x0004, eSUPER = 0x0008, eCAPS_LOCK = 0x0010, eNUM_LOCK = 0x0020 };
 };
 
-enum class Axis : s8
-{
+enum class Axis : s8 {
 	eUnknown,
 	eLeftX = 0,
 	eLeftY,
@@ -208,33 +194,22 @@ enum class Axis : s8
 	eMouseEnd
 };
 
-enum class CursorType : s8
-{
-	eDefault = 0,
-	eResizeEW,
-	eResizeNS,
-	eResizeNWSE,
-	eResizeNESW,
-	eCOUNT_
-};
+enum class CursorType : s8 { eDefault = 0, eResizeEW, eResizeNS, eResizeNWSE, eResizeNESW, eCOUNT_ };
 
-enum class CursorMode : s8
-{
+enum class CursorMode : s8 {
 	eDefault = 0,
 	eHidden,
 	eDisabled,
 };
 
-struct Joystick
-{
+struct Joystick {
 	std::string name;
 	std::vector<f32> axes;
 	std::vector<u8> buttons;
 	s32 id = 0;
 };
 
-struct Gamepad
-{
+struct Gamepad {
 	Joystick joyState;
 	std::string name;
 	s32 id = 0;

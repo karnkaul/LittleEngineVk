@@ -1,19 +1,17 @@
 #pragma once
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
-#include <unordered_map>
-#include <unordered_set>
-#include <glm/vec2.hpp>
 #include <core/hash.hpp>
 #include <dumb_json/dumb_json.hpp>
 #include <engine/window/input_types.hpp>
+#include <glm/vec2.hpp>
 
-namespace le::input
-{
-struct Snapshot final
-{
+namespace le::input {
+struct Snapshot final {
 	std::vector<Gamepad> padStates;
 	std::vector<std::tuple<Key, Action, Mods::VALUE>> keys;
 	std::vector<Key> held;
@@ -29,30 +27,21 @@ using OnTrigger = std::function<void()>;
 using OnState = std::function<void(bool)>;
 using OnRange = std::function<void(f32)>;
 
-enum class Mode : s8
-{
-	ePassthrough,
-	eBlockAll,
-	eBlockOnCallback,
-	eCOUNT_
-};
+enum class Mode : s8 { ePassthrough, eBlockAll, eBlockOnCallback, eCOUNT_ };
 
-struct Binding final
-{
+struct Binding final {
 	std::vector<Trigger> triggers;
 	std::vector<State> states;
 	std::vector<Range> ranges;
 };
 
-struct Callback final
-{
+struct Callback final {
 	OnTrigger onTrigger;
 	OnState onState;
 	OnRange onRange;
 };
 
-struct Map final
-{
+struct Map final {
 	std::unordered_map<Hash, Binding> bindings;
 
 	void addTrigger(Hash id, Key key, Action action = Action::eRelease, Mods::VALUE mods = Mods::eNONE);
@@ -69,17 +58,16 @@ struct Map final
 	bool empty() const;
 };
 
-class Context final
-{
+class Context final {
 #if defined(LEVK_DEBUG)
-public:
+  public:
 	std::string m_name;
 #endif
 
-public:
+  public:
 	Context(Mode mode = Mode::ePassthrough, s32 padID = 0);
 
-public:
+  public:
 	void mapTrigger(Hash id, OnTrigger callback);
 	void mapState(Hash id, OnState callback);
 	void mapRange(Hash id, OnRange callback);
@@ -96,24 +84,23 @@ public:
 	u16 deserialise(dj::object const& json);
 	void import(Map map);
 
-public:
+  public:
 	bool wasFired() const;
 
-private:
+  private:
 	bool consumed(Snapshot const& snapshot) const;
 
-private:
+  private:
 	friend void fire();
 
-private:
-	struct Callback final
-	{
+  private:
+	struct Callback final {
 		OnTrigger onTrigger;
 		OnState onState;
 		OnRange onRange;
 	};
 
-private:
+  private:
 	Map m_map;
 	mutable std::unordered_set<Key> m_padHeld;
 	std::unordered_map<Hash, Callback> m_callbacks;

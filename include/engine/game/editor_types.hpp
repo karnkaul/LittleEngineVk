@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/ecs/registry.hpp>
+#include <core/span.hpp>
 #include <core/transform.hpp>
 #include <core/utils.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
@@ -110,12 +111,12 @@ struct TWidget<bool> {
 
 template <>
 struct TWidget<f32> {
-	TWidget(sv id, f32& out_f);
+	TWidget(sv id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f);
 };
 
 template <>
 struct TWidget<s32> {
-	TWidget(sv id, s32& out_b);
+	TWidget(sv id, s32& out_s, f32 w = 0.0f);
 };
 
 template <>
@@ -156,7 +157,8 @@ struct TWidget<std::pair<s64, s64>> {
 };
 
 struct PerFrame {
-	std::function<void()> customRightPanel;
+	std::vector<std::function<void()>> customRightPanel;
+	std::vector<std::function<void(ecs::Entity, Transform*)>> inspect;
 };
 
 template <typename Flags>

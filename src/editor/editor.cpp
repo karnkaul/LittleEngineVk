@@ -13,6 +13,7 @@
 #include <core/maths.hpp>
 #include <core/utils.hpp>
 #include <engine/game/scene_builder.hpp>
+#include <engine/game/spring_arm.hpp>
 #include <engine/gfx/render_driver.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/window/input_types.hpp>
@@ -359,6 +360,21 @@ void entityInspector(v2 pos, v2 size, GameScene& out_scene) {
 					inspectMatInst(mesh, idx++, pos, size);
 				}
 			}
+			if (auto pSpring = registry.find<SpringArm>(g_inspecting.entity)) {
+				if (auto i = TInspector<SpringArm>(gs::g_game.m_registry, g_inspecting.entity, pSpring, "Spring")) {
+					static constexpr f32 w = 50.0f;
+					TWidget<f32> k("k", pSpring->k, 0.01f, w);
+					Styler s(Style::eSameLine);
+					TWidget<f32> b("b", pSpring->b, 0.001f, w);
+					TWidget<glm::vec3> o("offset", pSpring->offset, false);
+				}
+			}
+		}
+		if (!out_scene.m_editorData.inspect.empty()) {
+			Styler s(Style::eSeparator);
+			for (auto& f : out_scene.m_editorData.inspect) {
+				f(g_inspecting.entity, g_inspecting.pTransform);
+			}
 		}
 	}
 }
@@ -405,12 +421,6 @@ void presentModeDropdown() {
 				}
 			}
 		}
-	}
-}
-
-void perFrame(PerFrame const& perFrame) {
-	if (!engine::busy() && perFrame.customRightPanel) {
-		perFrame.customRightPanel();
 	}
 }
 
@@ -627,8 +637,12 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_s
 				logLevelDropdown();
 				ImGui::EndTabItem();
 			}
-			if (!g_bStepGame.t && out_scene.m_editorData.customRightPanel && ImGui::BeginTabItem("Custom")) {
-				perFrame(out_scene.m_editorData);
+			if (ImGui::BeginTabItem("Custom")) {
+				if (!g_bStepGame.t && !engine::busy()) {
+					for (auto& f : out_scene.m_editorData.customRightPanel) {
+						f();
+					}
+				}
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
@@ -903,12 +917,18 @@ TWidget<bool>::TWidget(sv id, bool& out_b) {
 	ImGui::Checkbox(id.empty() ? "[Unnamed]" : id.data(), &out_b);
 }
 
-TWidget<s32>::TWidget(sv id, s32& out_s) {
+TWidget<s32>::TWidget(sv id, s32& out_s, f32 w) {
+	if (w > 0.0f) {
+		ImGui::SetNextItemWidth(w);
+	}
 	ImGui::DragInt(id.empty() ? "[Unnamed]" : id.data(), &out_s);
 }
 
-TWidget<f32>::TWidget(sv id, f32& out_s) {
-	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_s);
+TWidget<f32>::TWidget(sv id, f32& out_f, f32 df, f32 w) {
+	if (w > 0.0f) {
+		ImGui::SetNextItemWidth(w);
+	}
+	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_f, df);
 }
 
 TWidget<Colour>::TWidget(sv id, Colour& out_colour) {

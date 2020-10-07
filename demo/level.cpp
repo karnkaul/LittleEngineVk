@@ -112,7 +112,7 @@ void LevelDriver::unloadLoad() {
 void LevelDriver::perFrame() {
 #if defined(LEVK_EDITOR)
 	static constexpr std::array<std::string_view, 2> levelNames = {"Demo", "Test"};
-	gs::g_game.m_editorData.customRightPanel = [this]() {
+	gs::g_game.m_editorData.customRightPanel.push_back([this]() {
 		if (auto combo = editor::Combo("Level", levelNames, m_active->m_name)) {
 			if (m_active && combo.selected != m_active->m_name) {
 				if (combo.selected == levelNames.at(0)) {
@@ -122,6 +122,6 @@ void LevelDriver::perFrame() {
 				}
 			}
 		}
-	};
+	});
 #endif
 }

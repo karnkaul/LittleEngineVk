@@ -1,37 +1,11 @@
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/threads.hpp>
+#include <engine/game/spring_arm.hpp>
 #include <engine/levk.hpp>
 #include <levels/demo.hpp>
 
 using namespace le;
-
-namespace {
-struct SpringArm {
-	glm::vec3 position = {};
-	glm::vec3 velocity = {};
-	Time fixed = 5ms;
-	f32 k = 0.5f;
-	f32 damp = 0.07f;
-
-	glm::vec3 const& tick(glm::vec3 const& target, Time dt) {
-		static constexpr u32 max = 64;
-		ft += dt;
-		for (u32 iter = 0; iter < max && ft > fixed; ++iter) {
-			ft -= fixed;
-			auto const disp = target - position;
-			velocity = (1.0f - damp) * velocity + k * disp;
-			position += (fixed.to_s() * velocity);
-		}
-		return position;
-	}
-
-  private:
-	Time ft;
-};
-
-SpringArm g_test;
-} // namespace
 
 DemoLevel::DemoLevel() {
 	m_name = "Demo";
@@ -98,6 +72,7 @@ DemoLevel::DemoLevel() {
 	textInfo.id = "tris";
 	registry().attach<UIComponent>(m_data.eui2)->setText(textInfo);
 	registry().attach<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
+	registry().attach<SpringArm>(m_data.pointer);
 
 	m_data.freeCam.init();
 	m_data.freeCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
@@ -142,8 +117,6 @@ DemoLevel::DemoLevel() {
 	for (auto i = 0; i < 1000; ++i) {
 		gs::g_game.spawnProp(fmt::format("test_{}", i), &m_data.eid3.transform());
 	}
-
-	g_test.position = {};
 }
 
 void DemoLevel::tick(Time dt) {
@@ -202,10 +175,10 @@ void DemoLevel::tick(Time dt) {
 	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.to_s() * 1000));
 	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} entities", registry().size()));
 	if (auto pQuadT = registry().find<Transform>(m_data.pointer)) {
-		// static f32 s_lerp = 0.9f;
-		auto const target = glm::vec3(input::worldToUI(input::cursorPosition()), 1.0f);
-		// pQuadT->position(maths::lerp(pQuadT->position(), target, dt.to_s() * 10 * s_lerp));
-		pQuadT->position(g_test.tick(target, dt));
+		if (auto pSpring = registry().find<SpringArm>(m_data.pointer)) {
+			auto const target = glm::vec3(input::worldToUI(input::cursorPosition()), 1.0f);
+			pQuadT->position(pSpring->tick(dt, target));
+		}
 
 		static bool s_bBlock = false;
 		if (s_bBlock) {

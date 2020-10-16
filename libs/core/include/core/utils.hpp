@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <vector>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/std_types.hpp>
 #include <kt/async_queue/async_queue.hpp>
 

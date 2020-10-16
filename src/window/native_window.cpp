@@ -1,4 +1,4 @@
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <window/native_window.hpp>
 #if defined(LEVK_USE_GLFW)
@@ -11,12 +11,12 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info) {
 	s32 screenCount;
 	GLFWmonitor** ppScreens = glfwGetMonitors(&screenCount);
 	if (screenCount < 1) {
-		LOG_E("[{}] Failed to detect screens!", Window::s_tName);
+		logE("[{}] Failed to detect screens!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
 	GLFWvidmode const* mode = glfwGetVideoMode(ppScreens[0]);
 	if (!mode) {
-		LOG_E("[{}] Failed to detect video mode!", Window::s_tName);
+		logE("[{}] Failed to detect video mode!", Window::s_tName);
 		throw std::runtime_error("Failed to create Window");
 	}
 	std::size_t screenIdx = info.options.screenID < screenCount ? (std::size_t)info.options.screenID : 0;
@@ -28,7 +28,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info) {
 	default:
 	case Window::Mode::eDecoratedWindow: {
 		if (mode->width < width || mode->height < height) {
-			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
+			logE("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		pTarget = nullptr;
@@ -36,7 +36,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info) {
 	}
 	case Window::Mode::eBorderlessWindow: {
 		if (mode->width < width || mode->height < height) {
-			LOG_E("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
+			logE("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", Window::s_tName, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		bDecorated = false;
@@ -54,7 +54,7 @@ NativeWindow::NativeWindow([[maybe_unused]] Window::Info const& info) {
 	s32 cY = (mode->height - height) / 2;
 	cX += info.config.centreOffset.x;
 	cY -= info.config.centreOffset.y;
-	ASSERT(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
+	ENSURE(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
 	glfwWindowHint(GLFW_DECORATED, bDecorated ? 1 : 0);
 	glfwWindowHint(GLFW_RED_BITS, mode->redBits);
 	glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
@@ -110,7 +110,7 @@ vk::SurfaceKHR NativeWindow::createSurface([[maybe_unused]] vk::Instance instanc
 #if defined(LEVK_USE_GLFW)
 	VkSurfaceKHR surface;
 	auto result = glfwCreateWindowSurface(instance, cast<GLFWwindow>(), nullptr, &surface);
-	ASSERT(result == VK_SUCCESS, "Surface creation failed!");
+	ENSURE(result == VK_SUCCESS, "Surface creation failed!");
 	if (result == VK_SUCCESS) {
 		ret = surface;
 	}

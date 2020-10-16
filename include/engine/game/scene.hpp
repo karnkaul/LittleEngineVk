@@ -82,10 +82,7 @@ class GameScene final {
 		gfx::Camera* pCustomCam = nullptr;
 		std::vector<gfx::DirLight> dirLights;
 		stdfs::path skyboxCubemapID;
-		///
-		/// \brief UI Transformation Space (z is depth)
-		///
-		glm::vec3 uiSpace = {0.0f, 0.0f, 2.0f};
+		f32 orthoDepth = 2.0f;
 		gfx::Pipeline pipe3D;
 		gfx::Pipeline pipeUI;
 		glm::vec2 clearDepth = {1.0f, 0.0f};
@@ -108,7 +105,6 @@ class GameScene final {
 	Transform m_sceneRoot;
 
 	std::string m_name;
-	gfx::ScreenRect m_gameRect;
 	ecs::Registry m_registry;
 
 #if defined(LEVK_EDITOR)
@@ -169,12 +165,12 @@ inline constexpr bool Prop::valid() const noexcept {
 	return pTransform != nullptr && entity.id != ecs::ID::null;
 }
 inline Transform const& Prop::transform() const {
-	ASSERT(pTransform, "Null Transform!");
+	ENSURE(pTransform, "Null Transform!");
 	return *pTransform;
 }
 
 inline Transform& Prop::transform() {
-	ASSERT(pTransform, "Null Transform!");
+	ENSURE(pTransform, "Null Transform!");
 	return *pTransform;
 }
 
@@ -188,7 +184,7 @@ TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... 
 	ecs::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T, Args...>(std::move(name), std::forward<Args>(args)...);
 	auto pT = reg.template attach<Transform>(ec);
-	ASSERT(pT, "Invariant violated!");
+	ENSURE(pT, "Invariant violated!");
 	Prop prop{ec, *pT};
 	if constexpr (s_bParentToRoot) {
 		boltOnRoot(prop);
@@ -204,7 +200,7 @@ TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent) {
 	ecs::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T...>(std::move(name));
 	auto pT = reg.template attach<Transform>(ec);
-	ASSERT(pT, "Invariant violated!");
+	ENSURE(pT, "Invariant violated!");
 	Prop prop{ec, *pT};
 	if constexpr (s_bParentToRoot) {
 		boltOnRoot(prop);

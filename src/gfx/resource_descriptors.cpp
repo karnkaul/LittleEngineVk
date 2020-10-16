@@ -176,7 +176,7 @@ void Set::destroy() {
 void Set::resetTextures() {
 	auto white = res::find<res::Texture>("textures/white");
 	auto black = res::find<res::Texture>("textures/black");
-	ASSERT(black && white, "Default textures missing!");
+	ENSURE(black && white, "Default textures missing!");
 	std::deque<res::Texture> const diffuse((std::size_t)ImageSamplers::s_max, *white);
 	std::deque<res::Texture> const specular((std::size_t)ImageSamplers::s_max, *black);
 	writeDiffuse(diffuse);
@@ -200,7 +200,7 @@ void Set::initSSBOs() {
 }
 
 void Set::writeSSBOs(StorageBuffers const& ssbos) {
-	ASSERT(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty() && !ssbos.flags.ssbo.empty(),
+	ENSURE(!ssbos.models.ssbo.empty() && !ssbos.normals.ssbo.empty() && !ssbos.materials.ssbo.empty() && !ssbos.tints.ssbo.empty() && !ssbos.flags.ssbo.empty(),
 		   "Empty SSBOs!");
 	m_models.writeArray(ssbos.models.ssbo, m_bufferSet);
 	m_normals.writeArray(ssbos.normals.ssbo, m_bufferSet);
@@ -300,25 +300,25 @@ RenderPass rd::createSingleRenderPass(vk::Format colour, vk::Format depth) {
 	std::array<vk::AttachmentDescription, 2> attachments;
 	vk::AttachmentReference colourAttachment, depthAttachment;
 	{
-		attachments.at(0).format = colour;
-		attachments.at(0).samples = vk::SampleCountFlagBits::e1;
-		attachments.at(0).loadOp = vk::AttachmentLoadOp::eClear;
-		attachments.at(0).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		attachments.at(0).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		attachments.at(0).initialLayout = vk::ImageLayout::eUndefined;
-		attachments.at(0).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		attachments[0].format = colour;
+		attachments[0].samples = vk::SampleCountFlagBits::e1;
+		attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
+		attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments[0].initialLayout = vk::ImageLayout::eUndefined;
+		attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
 		colourAttachment.attachment = 0;
 		colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
 	}
 	{
-		attachments.at(1).format = depth;
-		attachments.at(1).samples = vk::SampleCountFlagBits::e1;
-		attachments.at(1).loadOp = vk::AttachmentLoadOp::eClear;
-		attachments.at(1).storeOp = vk::AttachmentStoreOp::eDontCare;
-		attachments.at(1).stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		attachments.at(1).stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		attachments.at(1).initialLayout = vk::ImageLayout::eUndefined;
-		attachments.at(1).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		attachments[1].format = depth;
+		attachments[1].samples = vk::SampleCountFlagBits::e1;
+		attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
+		attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
+		attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments[1].initialLayout = vk::ImageLayout::eUndefined;
+		attachments[1].finalLayout = vk::ImageLayout::ePresentSrcKHR;
 		depthAttachment.attachment = 1;
 		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	}

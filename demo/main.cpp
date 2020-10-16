@@ -5,7 +5,8 @@ int main(int argc, char** argv) {
 	using namespace le;
 
 	engine::Service engine({argc, argv});
-	auto dataPaths = engine::locate({"data", "demo/data"});
+	std::array<stdfs::path, 2> const pathSearch = {"data", "demo/data"};
+	auto dataPaths = engine::locate(pathSearch);
 	engine::Info info;
 	Window::Info windowInfo;
 	windowInfo.config.size = {1280, 720};

@@ -3,8 +3,8 @@
 #include <list>
 #include <mutex>
 #include <core/log.hpp>
-#include <core/log_config.hpp>
 #include <core/maths.hpp>
+#include <dumb_log/log.hpp>
 #include <editor/editor.hpp>
 #include <kt/async_queue/async_queue.hpp>
 #if defined(LEVK_EDITOR)
@@ -15,6 +15,7 @@
 #include <engine/game/scene_builder.hpp>
 #include <engine/game/spring_arm.hpp>
 #include <engine/gfx/render_driver.hpp>
+#include <engine/gfx/viewport.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/window/input_types.hpp>
 #include <engine/window/window.hpp>
@@ -40,8 +41,8 @@ static std::string const s_tName = utils::tName<Editor>();
 
 namespace {
 bool g_bInit = false;
-io::OnLog g_onLogChain = nullptr;
 kt::lockable<std::mutex> g_logMutex;
+dl::config::on_log::token g_token;
 
 struct {
 	WindowID window;
@@ -56,7 +57,7 @@ struct {
 struct LogEntry final {
 	std::string text;
 	ImVec4 imColour;
-	io::Level level;
+	dl::level level;
 };
 
 std::size_t g_maxLogEntries = 500;
@@ -89,20 +90,20 @@ ImVec4 fromColour(Colour colour) {
 	return ImVec4(colour.r.toF32(), colour.g.toF32(), colour.b.toF32(), colour.a.toF32());
 }
 
-Colour fromLevel(io::Level level) {
+Colour fromLevel(dl::level level) {
 	switch (level) {
-	case io::Level::eError:
+	case dl::level::error:
 		return colours::red;
-	case io::Level::eWarning:
+	case dl::level::warning:
 		return colours::yellow;
-	case io::Level::eDebug:
+	case dl::level::debug:
 		return Colour(0x888888ff);
 	default:
 		return colours::white;
 	}
 }
 
-void guiLog(sv text, io::Level level) {
+void guiLog(sv text, dl::level level) {
 	LogEntry entry;
 	entry.text = std::string(text);
 	entry.level = level;
@@ -111,9 +112,6 @@ void guiLog(sv text, io::Level level) {
 	g_logEntries.push_back(std::move(entry));
 	while (g_logEntries.size() > g_maxLogEntries) {
 		g_logEntries.pop_front();
-	}
-	if (g_onLogChain) {
-		g_onLogChain(text, level);
 	}
 }
 
@@ -178,7 +176,7 @@ void tabLoaded(sv tabName) {
 
 void resourcesWindow(v2 pos, v2 size) {
 	static bool s_bResources = false;
-	s_bResources |= Button("Resources");
+	s_bResources |= static_cast<bool>(Button("Resources"));
 	if (s_bResources) {
 		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_FirstUseEver);
@@ -385,7 +383,7 @@ void playButton() {
 	char const* szPlayPause = g_bTickGame ? "Pause" : "Play";
 	if (!g_bStepGame.t && Button(szPlayPause)) {
 		g_bTickGame = !g_bTickGame;
-		LOG_I("[{}] {}", s_tName, g_bTickGame ? "Resumed" : "Paused");
+		logI("[{}] {}", s_tName, g_bTickGame ? "Resumed" : "Paused");
 	}
 	if (!g_bTickGame) {
 		Styler s(Style::eSameLine);
@@ -408,16 +406,16 @@ void presentModeDropdown() {
 		std::vector<std::string_view> list;
 		list.reserve(presentModes.size());
 		for (auto mode : presentModes) {
-			list.push_back(presentModeNames.at((std::size_t)mode));
+			list.push_back(presentModeNames[(std::size_t)mode]);
 		}
-		if (auto vsync = Combo("Vsync", list, presentModeNames.at((std::size_t)presentMode)); vsync.select >= 0 && vsync.select < (s32)presentModes.size()) {
-			auto newMode = presentModes.at((std::size_t)vsync.select);
+		if (auto vsync = Combo("Vsync", list, presentModeNames[(std::size_t)presentMode]); vsync.select >= 0 && vsync.select < (s32)presentModes.size()) {
+			auto newMode = presentModes[(std::size_t)vsync.select];
 			if (newMode != presentMode) {
 				if (pWindow->setPresentMode(newMode)) {
-					LOG_I("[{}] Switched present mode from [{}] to [{}]", s_tName, presentModeNames[(std::size_t)presentMode],
-						  presentModeNames[(std::size_t)newMode]);
+					logI("[{}] Switched present mode from [{}] to [{}]", s_tName, presentModeNames[(std::size_t)presentMode],
+						 presentModeNames[(std::size_t)newMode]);
 				} else {
-					LOG_E("[{}] Failed to switch present mode!", s_tName);
+					logE("[{}] Failed to switch present mode!", s_tName);
 				}
 			}
 		}
@@ -425,12 +423,12 @@ void presentModeDropdown() {
 }
 
 void logLevelDropdown() {
-	if (auto level = Combo("Log Level", io::g_logLevels, io::g_logLevels.at((std::size_t)io::g_minLevel)); level.select >= 0) {
-		if (level.select != (s32)io::g_minLevel) {
-			auto const oldLevel = io::g_logLevels.at((std::size_t)io::g_minLevel);
-			io::g_minLevel = io::Level::eDebug;
-			LOG_I("[{}] Min Log Level changed from [{}] to [{}]", s_tName, oldLevel, io::g_logLevels.at((std::size_t)level.select));
-			io::g_minLevel = (io::Level)level.select;
+	if (auto level = Combo("Log Level", dl::config::g_log_levels, dl::config::g_log_levels[(std::size_t)dl::config::g_min_level]); level.select >= 0) {
+		if (level.select != (s32)dl::config::g_min_level) {
+			auto const oldLevel = dl::config::g_log_levels[(std::size_t)dl::config::g_min_level];
+			dl::config::g_min_level = dl::level::debug;
+			logI("[{}] Min Log Level changed from [{}] to [{}]", s_tName, oldLevel, dl::config::g_log_levels[(std::size_t)level.select]);
+			dl::config::g_min_level = (dl::level)level.select;
 		}
 	}
 }
@@ -548,7 +546,7 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_sc
 	if (ImGui::Begin("Inspector", nullptr, flags)) {
 		resourcesWindow({(f32)(panelSize.x + s_xPad), 200.0f}, {500.0f, 300.0f});
 		static bool s_bImGuiDemo = false;
-		s_bImGuiDemo |= Button("ImGui Demo");
+		s_bImGuiDemo |= static_cast<bool>(Button("ImGui Demo"));
 		if (s_bImGuiDemo) {
 			ImGui::ShowDemoWindow(&s_bImGuiDemo);
 		}
@@ -561,12 +559,12 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_sc
 				opts.sort_keys = opts.pretty = true;
 				auto const str = scene.serialise(opts);
 				if (file.write(str.data(), (std::streamsize)str.size())) {
-					LOG_I("[{}] Scene saved to [{}]", s_tName, filename);
+					logI("[{}] Scene saved to [{}]", s_tName, filename);
 				} else {
-					LOG_E("[{}] Failed to save scene to [{}]!", s_tName, filename);
+					logE("[{}] Failed to save scene to [{}]!", s_tName, filename);
 				}
 			} else {
-				LOG_E("[{}] Failed to open [{}] to save scene!", s_tName, filename);
+				logE("[{}] Failed to open [{}] to save scene!", s_tName, filename);
 			}
 		}
 		entityInspector({(f32)(panelSize.x + s_xPad * 4), 200.0f}, {400.0f, 300.0f}, out_scene);
@@ -670,10 +668,10 @@ void drawLog(iv2 fbSize, s32 logHeight) {
 	}
 	std::size_t idx = 0;
 	for (auto ft : fts) {
-		ftArr.at(idx++) = ((f32)ft.to_us() * 0.001f);
+		ftArr[idx++] = ((f32)ft.to_us() * 0.001f);
 	}
 	for (; idx < ftArr.size(); ++idx) {
-		ftArr.at(idx) = 0.0f;
+		ftArr[idx] = 0.0f;
 	}
 
 	static s32 s_logLevel = 0;
@@ -694,7 +692,7 @@ void drawLog(iv2 fbSize, s32 logHeight) {
 		}
 		// TWidgets
 		{
-			bClear = Button("Clear");
+			bClear = static_cast<bool>(Button("Clear"));
 			Styler s(Style::eSameLine);
 			ImGui::Checkbox("Auto-scroll", &g_bAutoScroll);
 		}
@@ -747,18 +745,17 @@ void drawLog(iv2 fbSize, s32 logHeight) {
 	ImGui::End();
 }
 
-void resize(WindowImpl* pWindow) {
+void resize(WindowImpl& out_w, gfx::Viewport& out_vp) {
 	enum class Handle : std::size_t { eNone, eLeft, eRight, eBottom, eLeftBottom, eRightBottom };
 	static constexpr f32 nDelta = 0.01f;
-	static glm::vec2 const s_minXY = {0.0f, 0.35f};
-	static glm::vec2 const s_maxXY = {1.0f, 1.0f};
+	static constexpr glm::vec2 scaleLimit = {0.33f, 0.98f};
+	static constexpr f32 xPad = 1.0f - scaleLimit.y - 0.015f;
 	static Handle s_resizing = Handle::eNone;
-	static gfx::ScreenRect s_gameRect = glm::vec4(0.2f, 0.0f, 0.8f, 0.6f);
-	static gfx::ScreenRect s_prevRect = s_gameRect;
+	static gfx::Viewport s_prevVP = out_vp;
 	if (g_resources.bOpen) {
 		return;
 	}
-	auto const wSize = pWindow->windowSize();
+	auto const wSize = out_w.windowSize();
 	auto const cursorPos = input::cursorPosition(true);
 	glm::vec2 const nCursorPos = {cursorPos.x / (f32)wSize.x, cursorPos.y / (f32)wSize.y};
 	bool const bClickPressed = g_data.pressed.find(Key::eMouseButton1) != g_data.pressed.end();
@@ -769,64 +766,67 @@ void resize(WindowImpl* pWindow) {
 		toSet = input::CursorType::eDefault;
 		ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 	};
-	auto checkResize = [bClickPressed, &toSet](f32 s0, f32 t0, f32 s1, f32 t1, input::CursorType c, Handle h) {
+	auto checkResize = [bClickPressed, &toSet, &out_vp](f32 s0, f32 t0, f32 s1, f32 t1, input::CursorType c, Handle h) {
 		if (maths::equals(s0, t0, nDelta) && maths::equals(s1, t1, nDelta)) {
 			toSet = c;
 			if (bClickPressed) {
-				s_prevRect = s_gameRect;
+				s_prevVP = out_vp;
 				s_resizing = h;
 			}
 			ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 		}
 	};
-	auto doResize = [&toSet, &endResize](f32& out_t, f32 s, f32 min, f32 max, input::CursorType type) {
-		if (g_data.pressed.find(Key::eEscape) != g_data.pressed.end()) {
-			s_gameRect = s_prevRect;
-			endResize();
-		} else {
-			out_t = std::clamp(s, min + nDelta, max - nDelta);
-			toSet = type;
-		}
-	};
 	if (!bClickHeld) {
 		endResize();
 	}
-	switch (s_resizing) {
-	case Handle::eNone: {
-		checkResize(nCursorPos.x, s_gameRect.lt.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
-		checkResize(nCursorPos.x, s_gameRect.rb.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
-		checkResize(nCursorPos.y, s_gameRect.rb.y, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
-		checkResize(nCursorPos.x, s_gameRect.lt.x, nCursorPos.y, s_gameRect.rb.y, input::CursorType::eResizeNESW, Handle::eLeftBottom);
-		checkResize(nCursorPos.x, s_gameRect.rb.x, nCursorPos.y, s_gameRect.rb.y, input::CursorType::eResizeNWSE, Handle::eRightBottom);
-		break;
+	if (g_data.pressed.find(Key::eEscape) != g_data.pressed.end()) {
+		out_vp = s_prevVP;
+		endResize();
+	} else {
+		auto clampTL = [](f32 tl, f32 s) -> f32 { return std::clamp(tl, xPad, 1.0f - s - xPad); };
+		switch (s_resizing) {
+		case Handle::eNone: {
+			auto const rect = out_vp.rect();
+			checkResize(nCursorPos.x, rect.lt.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eLeft);
+			checkResize(nCursorPos.x, rect.rb.x, 0.0f, 0.0f, input::CursorType::eResizeEW, Handle::eRight);
+			checkResize(nCursorPos.y, rect.rb.y, 0.0f, 0.0f, input::CursorType::eResizeNS, Handle::eBottom);
+			checkResize(nCursorPos.x, rect.lt.x, nCursorPos.y, rect.rb.y, input::CursorType::eResizeNESW, Handle::eLeftBottom);
+			checkResize(nCursorPos.x, rect.rb.x, nCursorPos.y, rect.rb.y, input::CursorType::eResizeNWSE, Handle::eRightBottom);
+			break;
+		}
+		case Handle::eLeft: {
+			toSet = input::CursorType::eResizeEW;
+			out_vp.topLeft.x = clampTL(nCursorPos.x, out_vp.scale);
+			break;
+		}
+		case Handle::eRight: {
+			toSet = input::CursorType::eResizeEW;
+			out_vp.topLeft.x = clampTL(nCursorPos.x - out_vp.scale, out_vp.scale);
+			break;
+		}
+		case Handle::eBottom: {
+			toSet = input::CursorType::eResizeNS;
+			auto const centre = out_vp.topLeft.x + out_vp.scale * 0.5f;
+			f32 const s = out_vp.clampScale(nCursorPos.y, scaleLimit);
+			out_vp.topLeft.x = clampTL(centre - s * 0.5f, s);
+			break;
+		}
+		case Handle::eLeftBottom: {
+			toSet = input::CursorType::eResizeNESW;
+			out_vp.topLeft.x = clampTL(nCursorPos.x, out_vp.clampScale(nCursorPos.y, scaleLimit));
+			break;
+		}
+		case Handle::eRightBottom: {
+			toSet = input::CursorType::eResizeNWSE;
+			f32 const s = out_vp.clampScale(nCursorPos.y, scaleLimit);
+			out_vp.topLeft.x = clampTL(nCursorPos.x - s, s);
+			break;
+		}
+		default:
+			break;
+		}
 	}
-	case Handle::eLeft: {
-		doResize(s_gameRect.lt.x, nCursorPos.x, s_minXY.x, s_gameRect.rb.x, input::CursorType::eResizeEW);
-		break;
-	}
-	case Handle::eRight: {
-		doResize(s_gameRect.rb.x, nCursorPos.x, s_gameRect.lt.x, s_maxXY.x, input::CursorType::eResizeEW);
-		break;
-	}
-	case Handle::eBottom: {
-		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNS);
-		break;
-	}
-	case Handle::eLeftBottom: {
-		doResize(s_gameRect.lt.x, nCursorPos.x, s_minXY.x, s_gameRect.rb.x, input::CursorType::eResizeNESW);
-		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNESW);
-		break;
-	}
-	case Handle::eRightBottom: {
-		doResize(s_gameRect.rb.x, nCursorPos.x, s_gameRect.lt.x, s_maxXY.x, input::CursorType::eResizeNWSE);
-		doResize(s_gameRect.rb.y, nCursorPos.y, s_minXY.y, s_maxXY.y, input::CursorType::eResizeNWSE);
-		break;
-	}
-	default:
-		break;
-	}
-	pWindow->setCursorType(toSet);
-	g_gameRect = s_gameRect;
+	out_w.setCursorType(toSet);
 }
 #pragma endregion layout
 } // namespace
@@ -844,14 +844,12 @@ GUIStateful::GUIStateful() {
 	clicks(guiState);
 }
 
-GUIStateful::GUIStateful(GUIStateful&& rhs) : guiState(rhs.guiState) {
-	rhs.guiState = {};
+GUIStateful::GUIStateful(GUIStateful&& rhs) : guiState(std::exchange(rhs.guiState, GUIState{})) {
 }
 
 GUIStateful& GUIStateful::operator=(GUIStateful&& rhs) {
 	if (&rhs != this) {
-		guiState = rhs.guiState;
-		rhs.guiState = {};
+		guiState = std::exchange(rhs.guiState, GUIState{});
 	}
 	return *this;
 }
@@ -1016,8 +1014,7 @@ TWidget<std::pair<s64, s64>>::TWidget(sv id, s64& out_t, s64 min, s64 max, s64 d
 namespace le {
 bool editor::init(WindowID editorWindow) {
 	if (!g_bInit && gfx::ext_gui::isInit()) {
-		g_onLogChain = io::g_onLog;
-		io::g_onLog = &guiLog;
+		g_token = dl::config::g_on_log.add(&guiLog);
 		g_data.window = editorWindow;
 		g_data.inputToken = Window::registerInput(
 			[](Key key, Action action, Mods::VALUE mods) {
@@ -1046,10 +1043,13 @@ bool editor::init(WindowID editorWindow) {
 	return false;
 }
 
+bool editor::enabled() {
+	return g_data.bEnabled;
+}
+
 void editor::deinit() {
 	if (g_bInit) {
-		io::g_onLog = g_onLogChain;
-		g_onLogChain = nullptr;
+		g_token = {};
 		g_bInit = false;
 		g_data = {};
 		g_editorCam = {};
@@ -1057,18 +1057,20 @@ void editor::deinit() {
 	return;
 }
 
-void editor::tick(GameScene& out_scene, Time dt) {
+std::optional<gfx::Viewport> editor::tick(GameScene& out_scene, Time dt) {
+	static gfx::Viewport s_comboView = {{0.2f, 0.0f}, 0.6f};
 	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
 	if (g_data.bEnabled && pWindow && pWindow->open()) {
 		auto const fbSize = pWindow->framebufferSize();
-		resize(pWindow);
+		resize(*pWindow, s_comboView);
+		auto const rect = s_comboView.rect();
 		g_resources.bOpen = false;
 		if (gfx::ext_gui::isInit() && fbSize.x > 0 && fbSize.y > 0) {
-			auto const logHeight = fbSize.y - (s32)(g_gameRect.rb.y * (f32)fbSize.y);
-			glm::ivec2 const leftPanelSize = {(s32)(g_gameRect.lt.x * (f32)fbSize.x), fbSize.y - logHeight};
-			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(g_gameRect.rb.x * (f32)fbSize.x), fbSize.y - logHeight};
+			auto const logHeight = fbSize.y - (s32)(rect.rb.y * (f32)fbSize.y);
+			glm::ivec2 const leftPanelSize = {(s32)(rect.lt.x * (f32)fbSize.x), fbSize.y - logHeight};
+			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(rect.rb.x * (f32)fbSize.x), fbSize.y - logHeight};
 			Registry& reg = out_scene.m_registry;
 			if (!reg.exists(g_inspecting.entity)) {
 				g_inspecting = {};
@@ -1077,11 +1079,13 @@ void editor::tick(GameScene& out_scene, Time dt) {
 			drawLeftPanel(fbSize, leftPanelSize, out_scene);
 			drawRightPanel(fbSize, rightPanelSize, out_scene);
 		}
-	} else {
-		g_gameRect = {};
 	}
 	g_data.pressed.clear();
 	out_scene.m_editorData = {};
+	if (g_data.bEnabled) {
+		return s_comboView;
+	}
+	return std::nullopt;
 }
 } // namespace le
 #endif

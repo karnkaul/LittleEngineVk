@@ -1,12 +1,3 @@
-[submodule "external/glm"]
-	path = external/glm
-	url = https://github.com/g-truc/glm
-[submodule "external/fmt"]
-	path = external/fmt
-	url = https://github.com/fmtlib/fmt
-[submodule "external/glfw"]
-	path = external/glfw
-	url = https://github.com/glfw/glfw
 [submodule "libs/djson"]
 	path = libs/djson
 	url = https://github.com/karnkaul/djson
@@ -19,3 +10,15 @@
 [submodule "libs/core/include/kt/enum_flags"]
 	path = libs/core/include/kt/enum_flags
 	url = https://github.com/karnkaul/enum-flags.git
+[submodule "libs/core/include/kt/result"]
+	path = libs/core/include/kt/result
+	url = https://github.com/karnkaul/kt-result
+[submodule "libs/dlog"]
+	path = libs/dlog
+	url = https://github.com/karnkaul/dlog
+[submodule "ext/glm"]
+	path = ext/glm
+	url = https://github.com/g-truc/glm
+[submodule "ext/glfw"]
+	path = ext/glfw
+	url = https://github.com/glfw/glfw

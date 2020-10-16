@@ -100,11 +100,13 @@ void LevelDriver::unloadLoad() {
 	gs::g_game.m_name = m_active->m_name;
 	loadReq.load = m_active->m_manifest.id;
 	loadReq.onLoaded = [l = loadReq.load.generic_string(), this]() {
-		LOG_I("[{}] loaded!", l);
+		logI("[{}] loaded!", l);
 		m_active->onManifestLoaded();
 	};
 	if (auto token = gs::loadManifest(loadReq)) {
-		m_active->m_manifest.token = std::move(*token);
+		m_active->m_manifest.token = token.move();
+	} else {
+		logW("[{}] Failed to load! {}", loadReq.load.generic_string(), token.error());
 	}
 	m_active->m_input.token = gs::loadInputMap(m_active->m_input.id, &m_active->m_input.context);
 }
@@ -115,9 +117,9 @@ void LevelDriver::perFrame() {
 	gs::g_game.m_editorData.customRightPanel.push_back([this]() {
 		if (auto combo = editor::Combo("Level", levelNames, m_active->m_name)) {
 			if (m_active && combo.selected != m_active->m_name) {
-				if (combo.selected == levelNames.at(0)) {
+				if (combo.selected == levelNames[0]) {
 					g_switcher.schedule<DemoLevel>();
-				} else if (combo.selected == levelNames.at(1)) {
+				} else if (combo.selected == levelNames[1]) {
 					g_switcher.schedule<TestLevel>();
 				}
 			}

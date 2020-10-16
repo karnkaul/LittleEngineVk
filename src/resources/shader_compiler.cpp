@@ -1,4 +1,4 @@
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/utils.hpp>
 #include <engine/resources/shader_compiler.hpp>
@@ -12,10 +12,10 @@ std::string const ShaderCompiler::s_tName = utils::tName<ShaderCompiler>();
 
 ShaderCompiler::ShaderCompiler() {
 	if (!os::sysCall("{} --version", s_compiler)) {
-		LOG_E("[{}] Failed to go Online!", s_tName);
+		logE("[{}] Failed to go Online!", s_tName);
 	} else {
 		m_status = Status::eOnline;
-		LOG_I("[{}] Online", s_tName);
+		logI("[{}] Online", s_tName);
 	}
 }
 
@@ -28,18 +28,18 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 		return false;
 	}
 	if (!stdfs::is_regular_file(src)) {
-		LOG_E("[{}] Failed to find source file: [{}]", s_tName, src.generic_string());
+		logE("[{}] Failed to find source file: [{}]", s_tName, src.generic_string());
 		return false;
 	}
 	if (stdfs::is_regular_file(dst) && !bOverwrite) {
-		LOG_E("[{}] Destination file exists and overwrite flag not set: [{}]", s_tName, src.generic_string());
+		logE("[{}] Destination file exists and overwrite flag not set: [{}]", s_tName, src.generic_string());
 		return false;
 	}
 	if (!os::sysCall("{} {} -o {}", s_compiler, src.string(), dst.string())) {
-		LOG_E("[{}] Shader compilation failed: [{}]", s_tName, src.generic_string());
+		logE("[{}] Shader compilation failed: [{}]", s_tName, src.generic_string());
 		return false;
 	}
-	LOG_I("[{}] [{}] => [{}] compiled successfully", s_tName, src.filename().generic_string(), dst.filename().generic_string());
+	logI("[{}] [{}] => [{}] compiled successfully", s_tName, src.filename().generic_string(), dst.filename().generic_string());
 	return true;
 }
 
@@ -51,7 +51,7 @@ bool ShaderCompiler::compile(stdfs::path const& src, bool bOverwrite) {
 
 bool ShaderCompiler::statusCheck() const {
 	if (m_status != Status::eOnline) {
-		LOG_E("[{}] Not Online!", s_tName);
+		logE("[{}] Not Online!", s_tName);
 		return false;
 	}
 	return true;

@@ -8,7 +8,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/ref.hpp>
 #include <core/std_types.hpp>
 
@@ -88,7 +88,7 @@ class PathTree final {
 	///
 	/// \brief Obtain depth-first string representation of tree
 	///
-	std::string print(u8 indent = 2) const;
+	std::string print(u8 indent = 0) const;
 
 	///
 	/// \brief Obtain all root nodes
@@ -103,7 +103,7 @@ class PathTree final {
   private:
 	static std::deque<std::string> decompose(stdfs::path dirPath);
 	static stdfs::path concatenate(std::deque<std::string> parts);
-	void printChildren(NodeBase const& parent, std::stringstream& out_ss, u8 indent, u8 spaces = 0) const;
+	void printChildren(NodeBase const& parent, std::stringstream& out_ss, u8 spaces = 0) const;
 };
 
 template <typename... T>
@@ -161,7 +161,7 @@ void PathTree<T...>::emplace(stdfs::path id, T... ts) {
 			pParent = pNode;
 		}
 		if (pNode && !entryName.empty()) {
-			ASSERT(pNode->entries.find(entryName) == pNode->entries.end(), "Duplicate entry!");
+			ENSURE(pNode->entries.find(entryName) == pNode->entries.end(), "Duplicate entry!");
 			pNode->entries[entryName] = std::make_tuple(entryName, std::move(ts)...);
 		}
 	}
@@ -205,7 +205,7 @@ stdfs::path PathTree<T...>::concatenate(std::deque<std::string> parts) {
 }
 
 template <typename... T>
-void PathTree<T...>::printChildren(NodeBase const& parent, std::stringstream& out_ss, u8 indent, u8 spaces) const {
+void PathTree<T...>::printChildren(NodeBase const& parent, std::stringstream& out_ss, u8 spaces) const {
 	std::string sp(spaces, ' ');
 	for (auto const& [dir, uNode] : parent.children) {
 		out_ss << "\n"

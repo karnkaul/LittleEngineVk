@@ -1,10 +1,9 @@
 #include <algorithm>
 #include <unordered_set>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/transform.hpp>
 #include <core/utils.hpp>
-#include <editor/editor.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
@@ -69,8 +68,14 @@ glm::vec2 Driver::screenToN(glm::vec2 const& screenXY) const {
 	return m_uImpl ? m_uImpl->screenToN(screenXY) : screenXY;
 }
 
-ScreenRect Driver::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const {
-	return m_uImpl ? m_uImpl->clampToView(screenXY, nViewport, padding) : ScreenRect::sizeCentre(nViewport);
+ScreenRect Driver::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nRect, glm::vec2 const& padding) const {
+	return m_uImpl ? m_uImpl->clampToView(screenXY, nRect, padding) : ScreenRect::sizeCentre(nRect);
+}
+
+void Driver::fill(View& out_view, Viewport const& viewport, Camera const& camera, f32 orthoDepth) const {
+	if (m_uImpl) {
+		m_uImpl->fill(out_view, viewport, camera, orthoDepth);
+	}
 }
 
 Driver::Impl::Impl(Info const& info, Driver* pOwner) : m_context(info.contextInfo), m_pDriver(pOwner), m_window(info.windowID) {
@@ -90,11 +95,11 @@ void Driver::Impl::create(u8 frameCount) {
 		m_frameCount = frameCount;
 		// Descriptors
 		auto sets = rd::allocateSets(frameCount);
-		ASSERT(sets.size() == (std::size_t)frameCount, "Invalid descriptor sets!");
+		ENSURE(sets.size() == (std::size_t)frameCount, "Invalid descriptor sets!");
 		m_frames.reserve((std::size_t)frameCount);
 		for (u8 idx = 0; idx < frameCount; ++idx) {
 			FrameSync frame;
-			frame.set = sets.at((std::size_t)idx);
+			frame.set = sets[(std::size_t)idx];
 			frame.renderReady = g_device.device.createSemaphore({});
 			frame.presentReady = g_device.device.createSemaphore({});
 			frame.drawing = g_device.createFence(true);
@@ -110,7 +115,7 @@ void Driver::Impl::create(u8 frameCount) {
 			frame.commandBuffer = g_device.device.allocateCommandBuffers(allocInfo).front();
 			m_frames.push_back(std::move(frame));
 		}
-		LOG_D("[{}] created", m_name);
+		logD("[{}] created", m_name);
 	}
 	return;
 }
@@ -129,7 +134,7 @@ void Driver::Impl::destroy() {
 		m_index = 0;
 		m_drawnFrames = 0;
 		m_texCount = {0, 0};
-		LOG_D("[{}] destroyed", m_name);
+		logD("[{}] destroyed", m_name);
 	}
 	return;
 }
@@ -190,18 +195,18 @@ glm::vec2 Driver::Impl::screenToN(glm::vec2 const& screenXY) const {
 	return {};
 }
 
-ScreenRect Driver::Impl::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding) const {
+ScreenRect Driver::Impl::clampToView(glm::vec2 const& screenXY, glm::vec2 const& nRect, glm::vec2 const& padding) const {
 	auto pWindow = WindowImpl::windowImpl(m_window);
 	if (pWindow) {
 		auto const size = pWindow->windowSize();
-		auto const half = nViewport * 0.5f;
+		auto const half = nRect * 0.5f;
 		f32 const x = std::clamp(screenXY.x, 0.0f + padding.x, (f32)size.x - padding.x);
 		f32 const y = std::clamp(screenXY.y, 0.0f + padding.y, (f32)size.y - padding.y);
 		f32 const nX = std::clamp(x / (f32)size.x, 0.0f + half.x, 1.0f - half.x);
 		f32 const nY = std::clamp(y / (f32)size.y, 0.0f + half.y, 1.0f - half.y);
-		return ScreenRect::sizeCentre(nViewport, {nX, nY});
+		return ScreenRect::sizeCentre(nRect, {nX, nY});
 	}
-	return ScreenRect::sizeCentre(nViewport);
+	return ScreenRect::sizeCentre(nRect);
 }
 
 bool Driver::Impl::initExtGUI() const {
@@ -237,19 +242,30 @@ bool Driver::Impl::setPresentMode(vk::PresentModeKHR mode) {
 	return false;
 }
 
+void Driver::Impl::fill(Driver::View& out_view, Viewport const& viewport, Camera const& camera, f32 orthoDepth) {
+	auto const ifbsize = m_context.framebufferSize();
+	glm::vec2 const fbSize = {ifbsize.x <= 0 ? 1.0f : (f32)ifbsize.x, ifbsize.y <= 0 ? 1.0f : (f32)ifbsize.y};
+	auto const fRenderArea = fbSize * viewport.size();
+	out_view.pos_v = camera.position;
+	out_view.mat_v = camera.view();
+	out_view.mat_p = camera.perspective(fRenderArea.x / (fRenderArea.y <= 0.0f ? 1.0f : fRenderArea.y));
+	out_view.mat_vp = out_view.mat_p * out_view.mat_v;
+	out_view.mat_ui = camera.ui({fbSize, orthoDepth});
+}
+
 void Driver::Impl::onFramebufferResize() {
 	m_context.onFramebufferResize();
 	return;
 }
 
 FrameSync& Driver::Impl::frameSync() {
-	ASSERT(m_index < m_frames.size(), "Invalid index!");
-	return m_frames.at(m_index);
+	ENSURE(m_index < m_frames.size(), "Invalid index!");
+	return m_frames[m_index];
 }
 
 FrameSync const& Driver::Impl::frameSync() const {
-	ASSERT(m_index < m_frames.size(), "Invalid index!");
-	return m_frames.at(m_index);
+	ENSURE(m_index < m_frames.size(), "Invalid index!");
+	return m_frames[m_index];
 }
 
 void Driver::Impl::next() {
@@ -261,15 +277,15 @@ void Driver::Impl::next() {
 
 namespace le::gfx {
 vk::Viewport render::viewport(vk::Extent2D extent, ScreenRect const& nRect, glm::vec2 const& depth) {
-	vk::Viewport viewport;
+	vk::Viewport ret;
 	glm::vec2 const size = nRect.size();
-	viewport.minDepth = depth.x;
-	viewport.maxDepth = depth.y;
-	viewport.width = size.x * (f32)extent.width;
-	viewport.height = -(size.y * (f32)extent.height); // flip viewport about X axis
-	viewport.x = nRect.lt.x * (f32)extent.width;
-	viewport.y = nRect.lt.y * (f32)extent.height - (f32)viewport.height;
-	return viewport;
+	ret.minDepth = depth.x;
+	ret.maxDepth = depth.y;
+	ret.width = size.x * (f32)extent.width;
+	ret.height = -(size.y * (f32)extent.height); // flip viewport about X axis
+	ret.x = nRect.lt.x * (f32)extent.width;
+	ret.y = nRect.lt.y * (f32)extent.height - (f32)ret.height;
+	return ret;
 }
 
 vk::Rect2D render::scissor(vk::Extent2D extent, ScreenRect const& nRect) {
@@ -287,21 +303,22 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 	rd::StorageBuffers ssbos;
 	TexSet diffuse, specular;
 	PCDeq push;
-	auto const [white, bWhite] = res::find<res::Texture>("textures/white");
-	auto const [black, bBlack] = res::find<res::Texture>("textures/black");
-	auto const [blank, bBlank] = res::find<res::Texture>("cubemaps/blank");
-	ASSERT(bWhite && bBlack && bBlank, "Default textures missing!");
-	if (!allReady(white, black, blank)) {
+	auto const white = res::find<res::Texture>("textures/white");
+	auto const black = res::find<res::Texture>("textures/black");
+	auto const blank = res::find<res::Texture>("cubemaps/blank");
+	ENSURE(white && black && blank, "Default textures missing!");
+	if (!allReady(*white, *black, *blank)) {
 		return {};
 	}
-	diffuse.add(white);
-	specular.add(black);
+	diffuse.add(*white);
+	specular.add(*black);
 	bool bSkybox = false;
-	res::Texture cubemap = blank;
+	res::Texture cubemap = *blank;
 	if (out_scene.view.skybox.cubemap.status() == res::Status::eReady) {
 		out_scene.view.skybox.pipeline.flags.reset(gfx::Pipeline::Flag::eDepthWrite);
-		auto mesh = res::find<res::Mesh>("meshes/cube").payload;
-		out_scene.batches.push_front({out_scene.view.skybox.viewport, {}, {{{mesh}, Transform::s_identity, out_scene.view.skybox.pipeline}}});
+		auto mesh = res::find<res::Mesh>("meshes/cube");
+		ENSURE(mesh, "Cube mesh not found!");
+		out_scene.batches.push_front({{}, {}, {{{*mesh}, Transform::s_identity, out_scene.view.skybox.pipeline}}});
 		cubemap = out_scene.view.skybox.cubemap;
 		bSkybox = true;
 	}
@@ -309,7 +326,7 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 	for (auto& batch : out_scene.batches) {
 		push.push_back({});
 		for (auto& [meshes, t, _] : batch.drawables) {
-			ASSERT(!meshes.empty(), "Mesh is null!");
+			ENSURE(!meshes.empty(), "Mesh is null!");
 			Transform const& transform = t;
 			for (auto mesh : meshes) {
 				auto const& info = res::info(mesh);
@@ -322,26 +339,26 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 				ssbos.flags.ssbo.push_back(0);
 				if (bSkybox) {
 					bSkybox = false;
-					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eSKYBOX;
+					ssbos.flags.ssbo[objectID] |= rd::Flags::eSKYBOX;
 				}
 				if (info.material.flags.test(res::Material::Flag::eLit)) {
-					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eLIT;
+					ssbos.flags.ssbo[objectID] |= rd::Flags::eLIT;
 				}
 				if (info.material.flags.test(res::Material::Flag::eOpaque)) {
-					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eOPAQUE;
+					ssbos.flags.ssbo[objectID] |= rd::Flags::eOPAQUE;
 				}
 				if (info.material.flags.test(res::Material::Flag::eDropColour)) {
-					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eDROP_COLOUR;
+					ssbos.flags.ssbo[objectID] |= rd::Flags::eDROP_COLOUR;
 				}
 				if (info.material.flags.test(res::Material::Flag::eUI)) {
-					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eUI;
+					ssbos.flags.ssbo[objectID] |= rd::Flags::eUI;
 				}
 				if (info.material.flags.test(res::Material::Flag::eTextured)) {
-					ssbos.flags.ssbo.at(objectID) |= rd::Flags::eTEXTURED;
+					ssbos.flags.ssbo[objectID] |= rd::Flags::eTEXTURED;
 					if (info.material.diffuse.status() == res::Status::eReady) {
 						pc.diffuseID = diffuse.add(info.material.diffuse);
 					} else {
-						ssbos.tints.ssbo.at(objectID) = mg;
+						ssbos.tints.ssbo[objectID] = mg;
 						pc.diffuseID = 0;
 					}
 					if (info.material.specular.status() == res::Status::eReady) {
@@ -354,10 +371,10 @@ render::PCDeq render::write(FrameSync& out_frame, Driver::Scene& out_scene, TexC
 		}
 	}
 	for (u32 idx = diffuse.total(); idx < out_texCount.diffuse; ++idx) {
-		diffuse.textures.push_back(white);
+		diffuse.textures.push_back(*white);
 	}
 	for (u32 idx = specular.total(); idx < out_texCount.specular; ++idx) {
-		specular.textures.push_back(black);
+		specular.textures.push_back(*black);
 	}
 	out_texCount = {diffuse.total(), specular.total()};
 	rd::View view(out_scene.view, (u32)out_scene.dirLights.size());
@@ -376,7 +393,7 @@ u64 render::pass(PassInfo const& info) {
 	Driver::Scene const& scene = info.scene;
 	FrameSync const& frame = info.frame;
 	RenderTarget const& target = info.target;
-	ASSERT(!push.empty(), "No push constants!");
+	ENSURE(!push.empty(), "No push constants!");
 	auto const c = scene.clear.colour;
 	vk::ClearColorValue const colour = std::array{c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
 	vk::ClearDepthStencilValue const depth = {scene.clear.depthStencil.x, (u32)scene.clear.depthStencil.y};
@@ -385,8 +402,9 @@ u64 render::pass(PassInfo const& info) {
 	std::size_t drawableIdx = 0;
 	u64 tris = 0;
 	for (auto& batch : scene.batches) {
-		auto const extent = context.m_swapchain.extent;
-		cmd.setViewportScissor(viewport(extent, batch.viewport.adjust(info.view)), scissor(extent, batch.scissor));
+		auto const vp = batch.bIgnoreGameView ? batch.viewport : batch.viewport.adjust(info.view);
+		auto const sc = batch.bIgnoreGameView ? batch.scissor : batch.scissor.adjust(info.view);
+		cmd.setViewportScissor(viewport(context.m_swapchain.extent, vp), scissor(context.m_swapchain.extent, sc));
 		for (auto& [meshes, pTransform, pipe] : batch.drawables) {
 			for (auto mesh : meshes) {
 				auto const& meshInfo = res::info(mesh);
@@ -395,7 +413,7 @@ u64 render::pass(PassInfo const& info) {
 					tris += meshInfo.triCount;
 					auto const& impl = pipes::find(pipe, info.pass);
 					std::vector const sets = {frame.set.m_bufferSet, frame.set.m_samplerSet};
-					cmd.bindResources<rd::PushConstants>(impl, sets, vkFlags::vertFragShader, 0, push.at(batchIdx).at(drawableIdx));
+					cmd.bindResources<rd::PushConstants>(impl, sets, vkFlags::vertFragShader, 0, push[batchIdx][drawableIdx]);
 					cmd.bindVertexBuffers(0, pImpl->vbo.buffer.buffer, (vk::DeviceSize)0);
 					if (pImpl->ibo.count > 0) {
 						cmd.bindIndexBuffer(pImpl->ibo.buffer.buffer, 0, vk::IndexType::eUint32);

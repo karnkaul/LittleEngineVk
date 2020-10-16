@@ -10,13 +10,13 @@
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/window/window.hpp>
 #if defined(LEVK_DEBUG)
-#include <core/log_config.hpp>
+#include <dumb_log/log.hpp>
 #endif
 
 #if defined(LEVK_EDITOR)
-constexpr bool levk_editor = true;
+inline constexpr bool levk_editor = true;
 #else
-constexpr bool levk_editor = false;
+inline constexpr bool levk_editor = false;
 #endif
 
 namespace le::engine {
@@ -36,12 +36,12 @@ struct MemRange final {
 
 struct Info final {
 	std::optional<Window::Info> windowInfo;
-	io::Reader* pCustomReader = nullptr;
+	std::optional<Ref<io::Reader>> customReader;
 	Span<stdfs::path> dataPaths;
 	Span<MemRange> vramReserve;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
-	io::Level vramLogLevel = io::Level::eDebug;
+	dl::level vramLogLevel = dl::level::debug;
 #endif
 };
 
@@ -111,9 +111,9 @@ glm::ivec2 windowSize();
 ///
 glm::ivec2 framebufferSize();
 ///
-/// \brief Obtain the (normalised) gameRect size
+/// \brief Obtain the (normalised) viewport
 ///
-glm::vec2 gameRectSize();
+gfx::Viewport viewport();
 ///
 /// \brief Obtain the path to the running executable
 ///

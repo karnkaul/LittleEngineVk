@@ -81,7 +81,7 @@ u16 Map::deserialise(dj::object const& json) {
 					pMods->for_each_value<dj::string>([&modsVec](std::string const& mod) { modsVec.push_back(mod); });
 					mods = parseMods(modsVec);
 				}
-				ASSERT(key != Key::eUnknown, "Unknown Key!");
+				ENSURE(key != Key::eUnknown, "Unknown Key!");
 				addTrigger(id, key, action, mods);
 			},
 			[this](Hash id, dj::object const& state) {
@@ -90,12 +90,12 @@ u16 Map::deserialise(dj::object const& json) {
 				if (auto pKeys = state.find<dj::array>("keys")) {
 					pKeys->for_each_value<dj::string>([&](std::string const& str) {
 						auto const key = parseKey(str);
-						ASSERT(key != Key::eUnknown, "Unknown Key!");
+						ENSURE(key != Key::eUnknown, "Unknown Key!");
 						keys.push_back(key);
 					});
 				} else if (auto pKey = state.find<dj::string>("key")) {
 					auto const key = parseKey(pKey->value);
-					ASSERT(key != Key::eUnknown, "Unknown Key!");
+					ENSURE(key != Key::eUnknown, "Unknown Key!");
 					keys.push_back(key);
 				}
 				addState(id, std::move(keys));
@@ -109,7 +109,7 @@ u16 Map::deserialise(dj::object const& json) {
 				} else if (axis != Axis::eUnknown) {
 					addRange(id, axis, range.value<dj::boolean>("reverse"));
 				} else {
-					ASSERT(false, "Unknown Key/Axis!");
+					ENSURE(false, "Unknown Key/Axis!");
 				}
 			});
 	}
@@ -285,7 +285,7 @@ bool Context::consumed(Snapshot const& snapshot) const {
 						f32 const rhs = bMax ? 1.0f : 0.0f;
 						value += lhs + rhs;
 					} else {
-						ASSERT(false, "Invariant violated!");
+						ENSURE(false, "Invariant violated!");
 					}
 				}
 				callbacks.onRange(std::clamp(value, -1.0f, 1.0f));

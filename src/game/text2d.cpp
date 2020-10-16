@@ -43,7 +43,7 @@ void Text2D::updateText(std::string text) {
 	if (m_mesh.ready() && m_font.status() == res::Status::eReady) {
 		if (text != m_data.text) {
 			m_data.text = std::move(text);
-			updateText(m_data);
+			updateText(std::move(m_data));
 		}
 	}
 	return;
@@ -51,6 +51,10 @@ void Text2D::updateText(std::string text) {
 
 res::Mesh Text2D::mesh() const {
 	return m_mesh.ready() ? m_mesh.resource : res::Mesh();
+}
+
+res::Font Text2D::font() const {
+	return m_font.status() == res::Status::eReady ? m_font : res::Font();
 }
 
 bool Text2D::ready() const {

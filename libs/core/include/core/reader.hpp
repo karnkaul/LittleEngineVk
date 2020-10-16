@@ -2,9 +2,9 @@
 #include <filesystem>
 #include <sstream>
 #include <string_view>
-#include <core/result.hpp>
 #include <core/span.hpp>
 #include <core/utils.hpp>
+#include <kt/result/result.hpp>
 
 namespace le {
 namespace stdfs = std::filesystem;
@@ -14,6 +14,10 @@ namespace io {
 /// \brief Abstract base class for reading data from various IO
 ///
 class Reader {
+  public:
+	template <typename T>
+	using Result = kt::result_void<T>;
+
   public:
 	Reader() noexcept;
 	Reader(Reader&&) noexcept;
@@ -41,9 +45,8 @@ class Reader {
 	[[nodiscard]] bool checkPresences(std::initializer_list<stdfs::path> ids) const;
 	///
 	/// \brief Obtain data as `std::string`
-	/// \returns Structured binding of data and a `bool` indicating success/failure
 	///
-	[[nodiscard]] TResult<std::string> string(stdfs::path const& id) const;
+	[[nodiscard]] Result<std::string> string(stdfs::path const& id) const;
 	///
 	/// \brief Obtain the IO medium (of the concrete class)
 	///
@@ -57,20 +60,18 @@ class Reader {
 	[[nodiscard]] virtual bool mount(stdfs::path path) = 0;
 	///
 	/// \brief Obtain data as `bytearray` (`std::vector<std::byte>`)
-	/// \returns Structured binding of data and a `bool` indicating success/failure
 	///
-	[[nodiscard]] virtual TResult<bytearray> bytes(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual Result<bytearray> bytes(stdfs::path const& id) const = 0;
 	///
 	/// \brief Obtain data as `std::stringstream`
-	/// \returns Structured binding of data and a `bool` indicating success/failure
 	///
-	[[nodiscard]] virtual TResult<std::stringstream> sstream(stdfs::path const& id) const = 0;
+	[[nodiscard]] virtual Result<std::stringstream> sstream(stdfs::path const& id) const = 0;
 
   protected:
 	std::string m_medium;
 
   protected:
-	virtual TResult<stdfs::path> findPrefixed(stdfs::path const& id) const = 0;
+	virtual Result<stdfs::path> findPrefixed(stdfs::path const& id) const = 0;
 };
 
 ///
@@ -84,7 +85,7 @@ class FileReader final : public Reader {
 	/// \param anyOf list of `id`s to search for a match for
 	/// \param maxHeight maximum recursive depth
 	///
-	static TResult<stdfs::path> findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight = 10);
+	static Result<stdfs::path> findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight = 10);
 
   public:
 	FileReader() noexcept;
@@ -100,14 +101,14 @@ class FileReader final : public Reader {
 	/// \brief Mount filesystem directory
 	///
 	bool mount(stdfs::path path) override;
-	TResult<bytearray> bytes(stdfs::path const& id) const override;
-	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
+	Result<bytearray> bytes(stdfs::path const& id) const override;
+	Result<std::stringstream> sstream(stdfs::path const& id) const override;
 
   private:
 	std::vector<stdfs::path> m_dirs;
 
   private:
-	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
+	Result<stdfs::path> findPrefixed(stdfs::path const& id) const override;
 
   private:
 	std::vector<stdfs::path> finalPaths(stdfs::path const& id) const;
@@ -125,14 +126,14 @@ class ZIPReader final : public Reader {
 	/// \brief Mount `.zip` file
 	///
 	bool mount(stdfs::path path) override;
-	TResult<bytearray> bytes(stdfs::path const& id) const override;
-	TResult<std::stringstream> sstream(stdfs::path const& id) const override;
+	Result<bytearray> bytes(stdfs::path const& id) const override;
+	Result<std::stringstream> sstream(stdfs::path const& id) const override;
 
   private:
 	std::vector<stdfs::path> m_zips;
 
   private:
-	TResult<stdfs::path> findPrefixed(stdfs::path const& id) const override;
+	Result<stdfs::path> findPrefixed(stdfs::path const& id) const override;
 };
 
 ///

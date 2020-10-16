@@ -1,6 +1,6 @@
 #include <stdexcept>
-#include <core/assert.hpp>
 #include <core/colour.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
@@ -24,7 +24,7 @@ bool g_bNewFrame = false;
 vk::DescriptorPool g_pool;
 
 vk::DescriptorPool createPool() {
-	ASSERT(g_pool == vk::DescriptorPool(), "Duplicate pool!");
+	ENSURE(g_pool == vk::DescriptorPool(), "Duplicate pool!");
 	vk::DescriptorPoolSize pool_sizes[] = {{vk::DescriptorType::eSampler, 1000},
 										   {vk::DescriptorType::eCombinedImageSampler, 1000},
 										   {vk::DescriptorType::eSampledImage, 1000},
@@ -108,7 +108,7 @@ void setStyle() {
 bool ext_gui::init([[maybe_unused]] Info const& info) {
 	bool bRet = false;
 	if (!isInit()) {
-		ASSERT(info.window.payload != WindowID::null, "Invalid WindowID!");
+		ENSURE(info.window.payload != WindowID::null, "Invalid WindowID!");
 #if defined(LEVK_USE_IMGUI)
 		bRet = true;
 		IMGUI_CHECKVERSION();
@@ -119,12 +119,12 @@ bool ext_gui::init([[maybe_unused]] Info const& info) {
 		auto pWindow = WindowImpl::nativeHandle(info.window).val<GLFWwindow*>();
 		if (!pWindow) {
 			bRet = false;
-			LOG_E("Failed to get native window handle!");
+			logE("Failed to get native window handle!");
 		} else {
 			ImGui_ImplGlfw_InitForVulkan(pWindow, true);
 		}
 #else
-		LOG_E("NOT IMPLEMENTED");
+		logE("NOT IMPLEMENTED");
 		bRet = false;
 #endif
 		if (bRet) {
@@ -190,7 +190,7 @@ void ext_gui::newFrame() {
 #if defined(LEVK_USE_GLFW)
 		ImGui_ImplGlfw_NewFrame();
 #else
-		LOG_E("NOT IMPLEMENTED");
+		logE("NOT IMPLEMENTED");
 		return;
 #endif
 		ImGui::NewFrame();

@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -24,7 +24,7 @@ glm::mat4 Camera::perspective(f32 aspect, f32 near, f32 far) const noexcept {
 }
 
 glm::mat4 Camera::ortho(f32 aspect, f32 zoom, f32 near, f32 far) const noexcept {
-	ASSERT(zoom > 0.0f, "Invalid zoom!");
+	ENSURE(zoom > 0.0f, "Invalid zoom!");
 	f32 const ar = aspect;
 	f32 const w = ar > 1.0f ? 1.0f : 1.0f * ar;
 	f32 const h = ar > 1.0f ? 1.0f / ar : 1.0f;

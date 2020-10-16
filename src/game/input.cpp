@@ -1,13 +1,14 @@
 #include <deque>
 #include <unordered_set>
 #include <utility>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <editor/editor.hpp>
 #include <engine/game/input.hpp>
 #include <engine/game/input_context.hpp>
 #include <engine/window/window.hpp>
 #include <game/input_impl.hpp>
+#include <gfx/render_driver_impl.hpp>
 #include <levk_impl.hpp>
 #include <window/window_impl.hpp>
 
@@ -47,34 +48,21 @@ glm::vec2 const& input::cursorPosition(bool bRaw) {
 }
 
 glm::vec2 input::screenToWorld(glm::vec2 const& screen) {
-	glm::vec2 ret = screen;
 	if (auto pWindow = WindowImpl::windowImpl(g_mainWindow)) {
 		auto const iSize = pWindow->windowSize();
 		auto const size = glm::vec2(iSize.x, iSize.y);
-		ret.x = ret.x - ((f32)size.x * 0.5f);
-		ret.y = ((f32)size.y * 0.5f) - ret.y;
+		return {screen.x - ((f32)size.x * 0.5f), ((f32)size.y * 0.5f) - screen.y};
 	}
-	return ret;
+	return screen;
 }
 
-glm::vec2 input::worldToUI(const glm::vec2& world) {
-	glm::vec2 ret = world;
-	if (auto pWindow = WindowImpl::windowImpl(g_mainWindow)) {
-		auto const iSize = pWindow->framebufferSize();
-		auto const size = glm::vec2(iSize.x, iSize.y);
-#if defined(LEVK_EDITOR)
-		auto const gameRect = editor::g_gameRect.size();
-		if (gameRect.x < 1.0f || gameRect.y < 1.0f) {
-			glm::vec2 const gameOrigin = editor::g_gameRect.centre();
-			glm::vec2 const delta = glm::vec2(0.5f) - gameOrigin;
-			ret += glm::vec2(delta.x * size.x, -delta.y * size.y);
-			ret /= gameRect;
-		}
-#endif
-		glm::vec2 const coeff = {engine::g_uiSpace.x / size.x, engine::g_uiSpace.y / size.y};
-		ret *= coeff;
+glm::vec2 input::worldToGameView(const glm::vec2& world) {
+	using namespace engine;
+	if (viewport().scale < 1.0f) {
+		glm::vec2 const delta = glm::vec2(0.5f) - viewport().centre();
+		return (world + glm::vec2(delta.x * f32(framebufferSize().x), -delta.y * f32(framebufferSize().y))) / viewport().size();
 	}
-	return ret;
+	return world;
 }
 
 bool input::focused() {
@@ -104,7 +92,7 @@ void input::init(Window& out_mainWindow) {
 
 #if defined(LEVK_EDITOR)
 Token input::registerEditorContext(Context const* pContext) {
-	ASSERT(pContext, "Context is null!");
+	ENSURE(pContext, "Context is null!");
 	return g_editorContexts.push<true>(pContext);
 }
 #endif
@@ -143,7 +131,7 @@ void input::fire() {
 					if (pPrev != pContext) {
 						static constexpr std::string_view s_unknown = "Unknown";
 						std::string_view const name = pContext->m_name.empty() ? s_unknown : pContext->m_name;
-						LOG_I("[{}] [{}:{}] blocking [{}] remaining input contexts", utils::tName<Context>(), name, processed, contexts.size() - processed - 1);
+						logI("[{}] [{}:{}] blocking [{}] remaining input contexts", utils::tName<Context>(), name, processed, contexts.size() - processed - 1);
 						pPrev = pContext;
 					}
 #endif
@@ -158,7 +146,7 @@ void input::fire() {
 			});
 #if defined(LEVK_DEBUG)
 			if (out_bWasConsuming && !bConsumed) {
-				LOG_I("[{}] blocking context(s) expired", utils::tName<Context>());
+				logI("[{}] blocking context(s) expired", utils::tName<Context>());
 				out_bWasConsuming = false;
 			}
 #endif

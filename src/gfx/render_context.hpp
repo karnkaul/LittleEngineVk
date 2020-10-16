@@ -5,6 +5,7 @@
 #include <gfx/common.hpp>
 #include <glm/glm.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
+#include <kt/result/result.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::gfx {
@@ -17,6 +18,8 @@ class RenderContext final {
   public:
 	enum class Flag : s8 { eRenderPaused, eOutOfDate, eCOUNT_ };
 	using Flags = kt::enum_flags<Flag>;
+	template <typename T>
+	using Result = kt::result_void<T>;
 
   private:
 	struct Metadata final {
@@ -72,11 +75,12 @@ class RenderContext final {
   public:
 	void onFramebufferResize();
 
-	TResult<RenderTarget> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn);
+	Result<RenderTarget> acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn);
 	bool present(vk::Semaphore wait);
 
 	vk::Format colourFormat() const;
 	vk::Format depthFormat() const;
+	glm::vec2 framebufferSize() const;
 
 	bool recreateSwapchain();
 

@@ -42,8 +42,7 @@ struct IReloadable {
 };
 
 struct Shader::Impl : ImplBase, IReloadable {
-	static constexpr std::array<vk::ShaderStageFlagBits, std::size_t(Shader::Type::eCOUNT_)> s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex,
-																												vk::ShaderStageFlagBits::eFragment};
+	static constexpr std::array s_typeToFlagBit = {vk::ShaderStageFlagBits::eVertex, vk::ShaderStageFlagBits::eFragment};
 
 	inline static std::string_view s_spvExt = ".spv";
 	inline static std::string_view s_vertExt = ".vert";
@@ -143,7 +142,9 @@ struct Font::Impl : ImplBase, ILoadable, IReloadable {
 #endif
 
 	void loadGlyphs(std::vector<Glyph> const& glyphData, bool bOverwrite);
-	gfx::Geometry generate(Text const& text) const;
+	gfx::Geometry generate(Text const& text, std::optional<Font::Layout> layout) const;
+	glm::ivec2 glyphBounds(std::string_view text) const;
+	Font::Layout layout(std::string_view text, Font::Size size, f32 nPadY) const;
 };
 
 Shader::Impl* impl(Shader shader);

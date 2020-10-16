@@ -24,6 +24,16 @@ struct TZero final {
 	constexpr operator T() const noexcept;
 };
 
+template <typename T, T Zero = 0>
+constexpr bool operator==(TZero<T, Zero> lhs, TZero<T, Zero> rhs) {
+	return lhs.payload == rhs.payload;
+}
+
+template <typename T, T Zero = 0>
+constexpr bool operator!=(TZero<T, Zero> lhs, TZero<T, Zero> rhs) {
+	return lhs.payload != rhs.payload;
+}
+
 template <typename T, T Zero>
 constexpr TZero<T, Zero>::TZero(T payload) noexcept : payload(payload) {
 }

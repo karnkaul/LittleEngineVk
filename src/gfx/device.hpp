@@ -4,10 +4,11 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <core/log_config.hpp>
 #include <core/std_types.hpp>
+#include <dumb_log/log.hpp>
 #include <gfx/common.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
+#include <kt/result/result.hpp>
 
 namespace le::gfx {
 struct Instance final {
@@ -17,12 +18,12 @@ struct Instance final {
 
 	f32 lineWidthMin = 1.0f;
 	f32 lineWidthMax = 1.0f;
-	io::Level validationLog = io::Level::eWarning;
+	dl::level validationLog = dl::level::warning;
 
 	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
 	f32 lineWidth(f32 desired) const;
 
-	TResult<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+	kt::result_void<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 	template <typename vkType>
 	void destroy(vkType object) const;

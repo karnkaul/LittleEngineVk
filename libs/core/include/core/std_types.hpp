@@ -25,9 +25,9 @@
 #endif
 
 #if defined(LEVK_DEBUG)
-constexpr bool levk_debug = true;
+inline constexpr bool levk_debug = true;
 #else
-constexpr bool levk_debug = false;
+inline constexpr bool levk_debug = false;
 #endif
 
 namespace le {

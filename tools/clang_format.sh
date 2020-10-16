@@ -4,7 +4,7 @@
 # Requirements:
 #  - clang-format
 
-exclude=*external/*
+exclude=*ext/*
 build=*out/*
 pattern0="*.hpp"
 pattern1="*.cpp"

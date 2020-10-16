@@ -1,4 +1,5 @@
 #include <build_version.hpp>
+#include <core/io.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/os.hpp>
@@ -45,12 +46,12 @@ Clock g_clock;
 } // namespace
 
 Service::Service(os::Args args) {
-	dj::g_log_error = [](auto text) { LOG_E("{}", text); };
+	dj::g_log_error = [](auto text) { logE("{}", text); };
 	Time::resetElapsed();
 	m_services.add<os::Service>(args);
 	m_services.add<io::Service>(std::string_view("debug.log"));
-	LOG_I("LittleEngineVk v{}  [{}/{}]", g_engineVersion.toString(false), levk_OS_name, levk_arch_name);
-	m_services.add<tasks::Service>(4);
+	logI("LittleEngineVk v{}  [{}/{}]", g_engineVersion.toString(false), levk_OS_name, levk_arch_name);
+	m_services.add<tasks::Service>((u8)4);
 }
 
 Service::Service(Service&&) = default;
@@ -82,7 +83,7 @@ bool Service::init(Info info) {
 		initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
 #endif
 		if (os::isDefined("validation")) {
-			LOG_I("Validation layers requested, enabling...");
+			logI("Validation layers requested, enabling...");
 			initInfo.options.flags.set(gfx::InitInfo::Flag::eValidation);
 		}
 		initInfo.config.instanceExtensions = WindowImpl::vulkanInstanceExtensions();
@@ -90,7 +91,7 @@ bool Service::init(Info info) {
 		initInfo.config.stagingReserve = info.vramReserve;
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
-		io::Reader& reader = info.pCustomReader ? *info.pCustomReader : g_app.fileReader;
+		io::Reader& reader = info.customReader.value_or(g_app.fileReader);
 		std::vector<stdfs::path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;
 		for (auto const& path : dataPaths) {
@@ -98,7 +99,7 @@ bool Service::init(Info info) {
 				throw std::runtime_error("Failed to mount data path" + path.generic_string() + "!");
 			}
 		}
-		g_app.pReader = &reader;
+		g_app.reader = reader;
 		m_services.add<res::Service>();
 		Window::Info windowInfo;
 		windowInfo.config.size = {1280, 720};
@@ -106,10 +107,15 @@ bool Service::init(Info info) {
 		if (!g_app.window->create(info.windowInfo ? *info.windowInfo : windowInfo)) {
 			throw std::runtime_error("Failed to create Window!");
 		}
+		if (auto controllerDB = reader.string("game_controller_db.txt")) {
+			if (WindowImpl::importControllerDB(*controllerDB)) {
+				logI("[{}] Imported game controller database", tName);
+			}
+		}
 		input::init(*g_app.window);
 	} catch (std::exception const& e) {
-		g_app.pReader = nullptr;
-		LOG_E("[{}] Failed to initialise engine services: {}", tName, e.what());
+		g_app.reader = g_app.fileReader;
+		logE("[{}] Failed to initialise engine services: {}", tName, e.what());
 		return false;
 	}
 	g_status = Status::eInitialised;
@@ -141,7 +147,6 @@ bool Service::update(Driver& out_driver) const {
 		}
 		g_status = Status::eShuttingDown;
 	}
-	gfx::ScreenRect gameRect = {};
 	bool bTerminating = g_status == Status::eShutdown || g_status == Status::eShuttingDown;
 	if (g_status == Status::eShuttingDown && g_counter.isZero(true)) {
 		doShutdown();
@@ -149,23 +154,25 @@ bool Service::update(Driver& out_driver) const {
 	bool bTick = g_status == Status::eTicking && !bTerminating;
 	if (!bTerminating) {
 		input::fire();
+		g_app.viewport = {};
 #if defined(LEVK_EDITOR)
-		editor::tick(gs::g_game, dt);
+		if (auto viewport = editor::tick(gs::g_game, dt)) {
+			g_app.viewport = *viewport;
+		}
 		bool const bEditorOnly = !editor::g_bTickGame && !editor::g_bStepGame.get();
 		input::g_bEditorOnly = bEditorOnly;
 		bTick &= !bEditorOnly;
-		gameRect = editor::g_gameRect;
 #endif
 	}
 #if defined(LEVK_DEBUG)
 	try
 #endif
 	{
-		g_app.window->driver().submit(gs::update(out_driver, dt, bTick), gameRect);
+		g_app.window->driver().submit(gs::update(out_driver, dt, bTick), g_app.viewport.rect());
 	}
 #if defined(LEVK_DEBUG)
 	catch (std::exception const& e) {
-		LOG_E("EXCEPTION!\n\t{}", e.what());
+		logE("EXCEPTION!\n\t{}", e.what());
 	}
 #endif
 	return !bTerminating;
@@ -181,7 +188,7 @@ void Service::render() const {
 		}
 #if defined(LEVK_DEBUG)
 		catch (std::exception const& e) {
-			LOG_E("EXCEPTION!\n\t{}", e.what());
+			logE("EXCEPTION!\n\t{}", e.what());
 		}
 #endif
 	}
@@ -212,7 +219,7 @@ std::vector<stdfs::path> engine::locate(Span<stdfs::path> patterns, os::Dir dirT
 	auto const start = os::dirPath(dirType);
 	for (auto const& pattern : patterns) {
 		auto search = io::FileReader::findUpwards(start, pattern);
-		LOGIF_W(!search, "[{}] Failed to locate [{}] from [{}]!", tName, pattern.generic_string(), start.generic_string());
+		logW_if(!search, "[{}] Failed to locate [{}] from [{}]!", tName, pattern.generic_string(), start.generic_string());
 		if (search) {
 			ret.push_back(std::move(*search));
 		}
@@ -236,12 +243,8 @@ glm::ivec2 engine::framebufferSize() {
 	return g_app.window ? g_app.window->framebufferSize() : glm::ivec2(0);
 }
 
-glm::vec2 engine::gameRectSize() {
-#if defined(LEVK_EDITOR)
-	return editor::g_gameRect.size();
-#else
-	return {1.0f, 1.0f};
-#endif
+gfx::Viewport engine::viewport() {
+	return g_app.viewport;
 }
 
 void engine::update() {
@@ -256,8 +259,7 @@ Window* engine::window() {
 }
 
 io::Reader const& engine::reader() {
-	ASSERT(g_app.pReader, "io::Reader is null!");
-	return *g_app.pReader;
+	return g_app.reader;
 }
 
 res::Texture::Space engine::colourSpace() {

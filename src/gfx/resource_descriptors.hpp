@@ -1,7 +1,7 @@
 #pragma once
 #include <deque>
 #include <vector>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/utils.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/render_driver.hpp>
@@ -17,7 +17,7 @@
 namespace le::gfx {
 namespace rd {
 namespace vbo {
-constexpr u32 vertexBinding = 0;
+inline constexpr u32 vertexBinding = 0;
 
 std::vector<vk::VertexInputBindingDescription> vertexBindings();
 std::vector<vk::VertexInputAttributeDescription> vertexAttributes();
@@ -237,7 +237,7 @@ bool Descriptor<T>::writeValue(T const& data, vk::DescriptorSet set) {
 template <typename T>
 template <typename U>
 bool Descriptor<T>::writeArray(std::vector<U> const& arr, vk::DescriptorSet set) {
-	ASSERT(arr.size() > 0, "Empty buffer!");
+	ENSURE(arr.size() > 0, "Empty buffer!");
 	vk::DeviceSize const size = (vk::DeviceSize)sizeof(U) * (vk::DeviceSize)arr.size();
 	create(size);
 	if (!vram::write(m_buffer, arr.data(), size)) {

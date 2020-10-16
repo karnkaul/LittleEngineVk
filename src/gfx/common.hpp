@@ -10,10 +10,10 @@
 #include <unordered_map>
 #include <vector>
 #include <vk_mem_alloc.h>
-#include <core/assert.hpp>
 #include <core/colour.hpp>
-#include <core/log_config.hpp>
+#include <core/ensure.hpp>
 #include <core/std_types.hpp>
+#include <dumb_log/log.hpp>
 #include <engine/gfx/pipeline.hpp>
 #include <engine/levk.hpp>
 #include <engine/window/common.hpp>
@@ -36,7 +36,7 @@ using QFlags = kt::enum_flags<QFlag>;
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
 // clang-format off
-[[maybe_unused]] constexpr std::array g_colourSpaces = 
+[[maybe_unused]] inline constexpr std::array g_colourSpaces = 
 {
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm
@@ -81,7 +81,7 @@ struct InitInfo final
 	{
 		PickDevice pickDevice;
 		Flags flags;
-		io::Level validationLog = io::Level::eWarning;
+		dl::level validationLog = dl::level::warning;
 		bool bDedicatedTransfer = true;
 	} options;
 };

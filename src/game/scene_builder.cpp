@@ -2,7 +2,6 @@
 #include <engine/game/scene_builder.hpp>
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
-#include <levk_impl.hpp>
 
 namespace le {
 using namespace ecs;
@@ -77,39 +76,12 @@ std::vector<res::Mesh> UIComponent::meshes() const {
 
 SceneBuilder::~SceneBuilder() = default;
 
-glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea) {
-	f32 const uiX = uiSpace.x == 0.0f ? 1.0f : uiSpace.x;
-	f32 const uiY = uiSpace.y == 0.0f ? 1.0f : uiSpace.y;
-	f32 const uiAspect = uiX / uiY;
-	f32 const fbAspect = (f32)(renderArea.x == 0 ? 1 : renderArea.x) / (f32)(renderArea.y == 0 ? 1 : renderArea.y);
-	f32 const x = uiAspect > fbAspect ? uiX : uiX * (fbAspect / uiAspect);
-	f32 const y = fbAspect > uiAspect ? uiY : uiY * (uiAspect / fbAspect);
-	return {x, y, uiSpace.z};
-}
-
-glm::vec3 SceneBuilder::uiProjection(glm::vec3 const& uiSpace) {
-	auto const ifbSize = engine::framebufferSize();
-	auto const gameRect = engine::gameRectSize();
-	glm::ivec2 const renderArea = {(s32)((f32)ifbSize.x * gameRect.x), (s32)((f32)ifbSize.y * gameRect.y)};
-	return uiProjection(uiSpace, renderArea);
-}
-
 gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, Registry const& registry) const {
-	auto const ifbSize = engine::framebufferSize();
-	auto const gameRect = engine::gameRectSize();
-	glm::vec2 const fbSize = {ifbSize.x == 0 ? 1.0f : (f32)ifbSize.x, ifbSize.y == 0 ? 1.0f : (f32)ifbSize.y};
-	glm::vec2 const fRenderArea = fbSize * gameRect;
-	glm::ivec2 const iRenderArea = {(s32)fRenderArea.x, (s32)fRenderArea.y};
 	gfx::render::Driver::Scene scene;
-	scene.view.pos_v = camera.position;
-	scene.view.mat_v = camera.view();
-	scene.view.mat_p = camera.perspective(fRenderArea.x / fRenderArea.y);
-	scene.view.mat_vp = scene.view.mat_p * scene.view.mat_v;
-	scene.view.mat_ui = camera.ui(engine::g_uiSpace);
 	gfx::render::Driver::Batch batch3D;
-	gfx::render::Driver::Batch batchUI;
+	std::vector<gfx::render::Driver::Batch> batchUI;
 	gfx::Pipeline pipe3D, pipeUI;
-	glm::vec3 uiSpace = glm::vec3(fRenderArea, 2.0f);
+	std::optional<f32> orthoDepth;
 	GameScene::Desc::Flags flags;
 	{
 		auto view = registry.view<GameScene::Desc>();
@@ -127,12 +99,12 @@ gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, Regist
 			pipe3D = desc.pipe3D;
 			pipeUI = desc.pipeUI;
 			flags = desc.flags;
-			if (desc.uiSpace.x > 0.0f && desc.uiSpace.y > 0.0f) {
-				uiSpace = desc.uiSpace;
-			}
+			orthoDepth = desc.orthoDepth;
 		}
 	}
-	engine::g_uiSpace = flags.test(GameScene::Desc::Flag::eDynamicUI) ? glm::vec3(fRenderArea, uiSpace.z) : uiProjection(uiSpace, iRenderArea);
+	if (auto pWindow = engine::mainWindow()) {
+		pWindow->driver().fill(scene.view, engine::viewport(), camera, orthoDepth.value_or(2.0f));
+	}
 	{
 		auto view = registry.view<Transform, res::Model>();
 		for (auto& [entity, query] : view) {
@@ -156,18 +128,19 @@ gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, Regist
 			auto meshes = ui.meshes();
 			if (!meshes.empty()) {
 				auto pTransform = registry.find<Transform>(entity);
-				batchUI.drawables.push_back({std::move(meshes), pTransform ? *pTransform : Transform::s_identity, pipeUI});
+				batchUI.push_back({});
+				auto& batch = batchUI.back();
+				batch.scissor = ui.scissor;
+				batch.bIgnoreGameView = ui.bIgnoreGameView;
+				batch.drawables.push_back({std::move(meshes), pTransform ? *pTransform : Transform::s_identity, pipeUI});
 			}
 		}
 	}
 	if (!batch3D.drawables.empty()) {
 		scene.batches.push_back(std::move(batch3D));
 	}
-	if (!batchUI.drawables.empty()) {
-		if (!flags.test(GameScene::Desc::Flag::eDynamicUI) && flags.test(GameScene::Desc::Flag::eScissoredUI)) {
-			batchUI.scissor = gfx::ScreenRect::sizeCentre({uiSpace.x / engine::g_uiSpace.x, uiSpace.y / engine::g_uiSpace.y});
-		}
-		scene.batches.push_back(std::move(batchUI));
+	if (!batchUI.empty()) {
+		std::move(batchUI.begin(), batchUI.end(), std::back_inserter(scene.batches));
 	}
 	return scene;
 }

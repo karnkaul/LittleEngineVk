@@ -23,7 +23,7 @@ include(cmake/utils.cmake)
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
 option(LEVK_BUILD_DEMO "Build demo" ON)
-if(CMAKE_BUILD_TYPE STREQUAL Debug)
+if("$CMAKE_BUILD_TYPE" STREQUAL "Debug")
 	option(LEVK_EDITOR "Enable Editor" ON)
 else()
 	option(LEVK_EDITOR "Enable Editor" OFF)
@@ -76,36 +76,35 @@ if(CI_BUILD)
 endif()
 
 # External
-add_subdirectory(external/physfs)
-add_subdirectory(external/fmt)
-target_compile_features(fmt PRIVATE cxx_std_17)
-add_subdirectory(external/glm)
+add_subdirectory(ext/physfs)
+add_subdirectory(ext/glm)
 if(LEVK_USE_GLFW)
 	set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
-	add_subdirectory(external/glfw)
+	add_subdirectory(ext/glfw)
 	if(WIN64_CLANG AND LEVK_USE_GLFW)
 		target_compile_options(glfw PRIVATE -Wno-everything)
 	endif()
 endif()
-add_subdirectory(external/vma)
-add_subdirectory(external/stb)
-add_subdirectory(external/tinyobjloader)
+add_subdirectory(ext/vma)
+add_subdirectory(ext/stb)
+add_subdirectory(ext/tinyobjloader)
 if(LEVK_USE_IMGUI)
-	add_subdirectory(external/imgui)
+	add_subdirectory(ext/imgui)
 endif()
 
 # Libraries
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
+add_subdirectory(libs/dlog)
 add_subdirectory(libs/core)
 add_subdirectory(libs/djson)
 
 # Engine
 set(LEVK_LIBRARY_TYPE STATIC CACHE STRING "levk library type (STATIC/SHARED)")
 
-if(PLATFORM STREQUAL "Win64" AND NOT LEVK_LIBRARY_TYPE STREQUAL STATIC)
+if(PLATFORM STREQUAL Win64 AND NOT LEVK_LIBRARY_TYPE STREQUAL STATIC)
 	message(FATAL_ERROR "`LEVK_LIBRARY_TYPE` must be `STATIC` on Windows; DLLs are not supported!")
 endif()
 if(NOT LEVK_LIBRARY_TYPE STREQUAL STATIC AND LEVK_USE_PCH)
@@ -141,15 +140,18 @@ file(GLOB_RECURSE LEVK_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/sr
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${LEVK_INCLUDES} ${LEVK_SOURCES})
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${LEVK_GENERATED})
 add_library(${TARGET_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES} ${LEVK_GENERATED})
-target_include_directories(${TARGET_NAME} PRIVATE 
-	INTERFACE SYSTEM
+target_include_directories(${TARGET_NAME} SYSTEM
+	INTERFACE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_BINARY_DIR}/src/generated"
+	PRIVATE
+		"${Vulkan_INCLUDE_DIRS}"
+)
+target_include_directories(${TARGET_NAME}
 	PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_BINARY_DIR}/src/generated"
 		"${CMAKE_CURRENT_SOURCE_DIR}/src"
-		"${Vulkan_INCLUDE_DIRS}"
 )
 target_link_libraries(${TARGET_NAME}
 	PUBLIC

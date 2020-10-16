@@ -5,6 +5,7 @@
 #include <engine/game/input.hpp>
 #include <engine/game/scene.hpp>
 #include <engine/resources/resources.hpp>
+#include <kt/result/result.hpp>
 
 namespace le {
 namespace gs {
@@ -12,6 +13,11 @@ namespace gs {
 /// \brief Typedef for callback on manifest loaded
 ///
 using ManifestLoaded = Delegate<>;
+///
+/// \brief Typedef for returned results
+///
+template <typename T>
+using Result = kt::result_sv<T>;
 
 ///
 /// \brief Manifest load request
@@ -35,7 +41,7 @@ inline GameScene g_game;
 ///
 /// \brief Load/unload a pair of manifests
 ///
-[[nodiscard]] TResult<Token> loadManifest(LoadReq const& loadReq);
+[[nodiscard]] Result<Token> loadManifest(LoadReq const& loadReq);
 ///
 /// \brief Load input map into input context and and register it
 ///

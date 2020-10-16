@@ -15,7 +15,7 @@ void RenderContext::Metadata::refresh() {
 		surface = info.config.getNewSurface(g_instance.instance);
 	}
 	[[maybe_unused]] bool bValid = g_device.isValid(surface);
-	ASSERT(bValid, "Invalid surface!");
+	ENSURE(bValid, "Invalid surface!");
 	capabilities = g_instance.physicalDevice.getSurfaceCapabilitiesKHR(surface);
 	colourFormats = g_instance.physicalDevice.getSurfaceFormatsKHR(surface);
 	presentModes = g_instance.physicalDevice.getSurfacePresentModesKHR(surface);
@@ -54,7 +54,7 @@ vk::SurfaceFormatKHR RenderContext::Metadata::bestColourFormat() const {
 vk::Format RenderContext::Metadata::bestDepthFormat() const {
 	static std::array const desired = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
 	auto format = g_instance.supportedFormat(desired, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
-	return format ? *format : vk::Format::eD16Unorm;
+	return format.value_or(vk::Format::eD16Unorm);
 }
 
 vk::PresentModeKHR RenderContext::Metadata::bestPresentMode() const {
@@ -84,12 +84,12 @@ vk::Extent2D RenderContext::Metadata::extent(glm::ivec2 const& windowSize) const
 }
 
 RenderFrame& RenderContext::Swapchain::frame() {
-	return frames.at(imageIndex);
+	return frames[imageIndex];
 }
 
 RenderContext::RenderContext(ContextInfo const& info) : m_window(info.config.window) {
 	m_name = fmt::format("{}:{}", s_tName, m_window);
-	ASSERT(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
+	ENSURE(info.config.getNewSurface && info.config.getFramebufferSize && info.config.getWindowSize, "Required callbacks are null!");
 	m_metadata.info = info;
 	m_metadata.refresh();
 	if (!m_metadata.ready()) {
@@ -107,12 +107,12 @@ RenderContext::RenderContext(ContextInfo const& info) : m_window(info.config.win
 		text += e.what();
 		throw std::runtime_error(text.data());
 	}
-	LOG_I("[{}] constructed", m_name);
+	logI("[{}] constructed", m_name);
 }
 
 RenderContext::~RenderContext() {
 	cleanup();
-	LOG_I("[{}:{}] destroyed", s_tName, m_window);
+	logI("[{}:{}] destroyed", s_tName, m_window);
 }
 
 void RenderContext::onFramebufferResize() {
@@ -121,7 +121,7 @@ void RenderContext::onFramebufferResize() {
 	m_flags[Flag::eRenderPaused] = size.x == 0 || size.y == 0;
 }
 
-TResult<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn) {
+RenderContext::Result<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady, vk::Fence setOnDrawn) {
 	if (m_flags.test(Flag::eRenderPaused)) {
 		return {};
 	}
@@ -131,7 +131,7 @@ TResult<RenderTarget> RenderContext::acquireNextImage(vk::Semaphore setDrawReady
 	}
 	auto const acquire = g_device.device.acquireNextImageKHR(m_swapchain.swapchain, maths::max<u64>(), setDrawReady, {});
 	if (acquire.result != vk::Result::eSuccess && acquire.result != vk::Result::eSuboptimalKHR) {
-		LOG_D("[{}] Failed to acquire next image [{}]", m_name, g_vkResultStr[acquire.result]);
+		logD("[{}] Failed to acquire next image [{}]", m_name, g_vkResultStr[acquire.result]);
 		recreateSwapchain();
 		return {};
 	}
@@ -160,7 +160,7 @@ bool RenderContext::present(vk::Semaphore wait) {
 	presentInfo.pImageIndices = &index;
 	auto const result = g_device.queues.present.queue.presentKHR(&presentInfo);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-		LOG_D("[{}] Failed to present image [{}]", m_name, g_vkResultStr[result]);
+		logD("[{}] Failed to present image [{}]", m_name, g_vkResultStr[result]);
 		recreateSwapchain();
 		return false;
 	}
@@ -175,16 +175,20 @@ vk::Format RenderContext::depthFormat() const {
 	return m_metadata.depthFormat;
 }
 
+glm::vec2 RenderContext::framebufferSize() const {
+	return {m_swapchain.extent.width, m_swapchain.extent.height};
+}
+
 bool RenderContext::createSwapchain() {
 	auto prevSurface = m_metadata.surface;
 	m_metadata.refresh();
 	[[maybe_unused]] bool bReady = m_metadata.ready();
-	ASSERT(bReady, "RenderContext not ready!");
+	ENSURE(bReady, "RenderContext not ready!");
 	// Swapchain
 	m_metadata.presentMode = m_metadata.bestPresentMode();
 	auto const framebufferSize = m_metadata.info.config.getFramebufferSize();
 	if (framebufferSize.x == 0 || framebufferSize.y == 0) {
-		LOG_I("[{}] Null framebuffer size detected (minimised surface?); pausing rendering", m_name);
+		logI("[{}] Null framebuffer size detected (minimised surface?); pausing rendering", m_name);
 		m_flags.set(Flag::eRenderPaused);
 		return false;
 	}
@@ -211,6 +215,9 @@ bool RenderContext::createSwapchain() {
 		createInfo.oldSwapchain = m_retiring;
 		auto const windowSize = m_metadata.info.config.getWindowSize();
 		m_swapchain.extent = createInfo.imageExtent = m_metadata.extent(windowSize);
+		if (framebufferSize != m_metadata.info.config.getFramebufferSize()) {
+			return false;
+		}
 		m_swapchain.swapchain = g_device.device.createSwapchainKHR(createInfo);
 		m_retiring = vk::SwapchainKHR();
 	}
@@ -256,7 +263,7 @@ bool RenderContext::createSwapchain() {
 	if (prevSurface != m_metadata.surface) {
 		g_instance.destroy(prevSurface);
 	}
-	LOG_D("[{}] Swapchain created [{}x{}]", m_name, framebufferSize.x, framebufferSize.y);
+	logD("[{}] Swapchain created [{}x{}]", m_name, framebufferSize.x, framebufferSize.y);
 	m_flags.reset(Flag::eOutOfDate | Flag::eRenderPaused);
 	return true;
 }
@@ -269,7 +276,7 @@ void RenderContext::destroySwapchain() {
 		}
 		g_device.destroy(swapchain.depthImageView, swapchain.swapchain);
 		vram::release(swapchain.depthImage);
-		LOGIF_D(swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", name);
+		logD_if(swapchain.swapchain != vk::SwapchainKHR(), "[{}] Swapchain destroyed", name);
 	});
 	m_swapchain = {};
 }
@@ -282,13 +289,13 @@ void RenderContext::cleanup() {
 }
 
 bool RenderContext::recreateSwapchain() {
-	LOG_D("[{}] Recreating Swapchain...", m_name);
+	logD("[{}] Recreating Swapchain...", m_name);
 	destroySwapchain();
 	if (createSwapchain()) {
-		LOG_D("[{}] ... Swapchain recreated", m_name);
+		logD("[{}] ... Swapchain recreated", m_name);
 		return true;
 	}
-	LOGIF_E(!m_flags.test(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name);
+	logE_if(!m_flags.test(Flag::eRenderPaused), "[{}] Failed to recreate swapchain!", m_name);
 	return false;
 }
 } // namespace le::gfx

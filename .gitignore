@@ -22,3 +22,5 @@ CMakeSettings.json
 debug.log*
 # Dear ImGui config (local)
 imgui.ini
+# 
+CMakeUserPresets.json

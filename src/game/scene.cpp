@@ -15,7 +15,6 @@ void GameScene::reset() {
 	Registry& reg = m_registry;
 	reg.clear();
 	m_name.clear();
-	m_gameRect = {};
 #if defined(LEVK_EDITOR)
 	m_editorData = {};
 #endif

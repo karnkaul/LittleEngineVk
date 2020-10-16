@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <vector>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 
 namespace le {
 ///
@@ -18,7 +18,6 @@ struct Span {
 	constexpr Span() noexcept;
 	constexpr explicit Span(T const* pData, std::size_t extent) noexcept;
 	constexpr Span(T const& data) noexcept;
-	constexpr Span(std::initializer_list<T> const& list) noexcept;
 	template <std::size_t N>
 	constexpr Span(std::array<T, N> const& arr) noexcept;
 	template <std::size_t N>
@@ -44,10 +43,6 @@ constexpr Span<T>::Span(T const* pData, std::size_t extent) noexcept : pData(pDa
 
 template <typename T>
 constexpr Span<T>::Span(T const& data) noexcept : pData(&data), extent(1) {
-}
-
-template <typename T>
-constexpr Span<T>::Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size()) {
 }
 
 template <typename T>
@@ -86,13 +81,13 @@ constexpr typename Span<T>::const_iterator Span<T>::end() const noexcept {
 
 template <typename T>
 T const& Span<T>::at(std::size_t idx) const {
-	ASSERT(idx < extent, "OOB access!");
+	ENSURE(idx < extent, "OOB access!");
 	return *(pData + idx);
 }
 
 template <typename T>
 T const& Span<T>::operator[](std::size_t idx) const {
-	ASSERT(idx < extent, "OOB access!");
+	ENSURE(idx < extent, "OOB access!");
 	return *(pData + idx);
 }
 } // namespace le

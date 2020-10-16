@@ -7,7 +7,7 @@ namespace le::input {
 
 glm::vec2 const& cursorPosition(bool bRaw = false);
 glm::vec2 screenToWorld(glm::vec2 const& screen);
-glm::vec2 worldToUI(glm::vec2 const& world);
+glm::vec2 worldToGameView(glm::vec2 const& world);
 bool focused();
 
 void setCursorMode(CursorMode mode);

@@ -58,10 +58,10 @@ DemoLevel::DemoLevel() {
 
 	Text2D::Info textInfo;
 	textInfo.data.colour = colours::white;
-	textInfo.data.scale = 0.25f;
+	textInfo.data.size = 0.25f;
 	textInfo.id = "fps";
 	tui0.setText(textInfo);
-	textInfo.data.scale = 0.15f;
+	textInfo.data.size = 0.15f;
 	textInfo.data.colour = colours::cyan;
 	textInfo.data.pos.y -= 100.0f;
 	textInfo.id = "ft";
@@ -70,8 +70,13 @@ DemoLevel::DemoLevel() {
 	textInfo.data.pos.y -= 100.0f;
 	// textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
-	registry().attach<UIComponent>(m_data.eui2)->setText(textInfo);
-	registry().attach<UIComponent>(m_data.pointer)->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
+	if (auto pUI = registry().attach<UIComponent>(m_data.eui2)) {
+		pUI->setText(textInfo);
+		pUI->scissor.rb.x = 0.5f;
+	}
+	auto pUI = registry().attach<UIComponent>(m_data.pointer);
+	pUI->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
+	pUI->bIgnoreGameView = true;
 	registry().attach<SpringArm>(m_data.pointer);
 
 	m_data.freeCam.init();
@@ -93,7 +98,7 @@ DemoLevel::DemoLevel() {
 	m_input.context.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
 	m_input.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
 	m_input.context.mapTrigger("quit", [this]() { m_data.bQuit = true; });
-	m_input.context.mapState("run", [](bool bActive) { LOGIF_I(bActive, "RUNNING!"); });
+	m_input.context.mapState("run", [](bool bActive) { logI_if(bActive, "RUNNING!"); });
 	m_input.context.mapState("pause_cam", [this](bool bActive) { m_data.freeCam.m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
 	m_input.context.addState("pause_cam", input::Key::eLeftControl);
 	m_input.context.addState("pause_cam", input::Key::eRightControl);
@@ -103,7 +108,7 @@ DemoLevel::DemoLevel() {
 	m_data.temp.m_name = "Demo-Temp";
 #endif
 	m_data.temp.setMode(input::Mode::eBlockAll);
-	m_data.temp.mapTrigger("test2", []() { LOG_I("Test2 triggered!"); });
+	m_data.temp.mapTrigger("test2", []() { logI("Test2 triggered!"); });
 	m_data.temp.addTrigger("test2", input::Key::eK);
 
 	auto& desc = gs::g_game.desc();
@@ -111,8 +116,7 @@ DemoLevel::DemoLevel() {
 	desc.dirLights = {m_data.dirLight0, m_data.dirLight1};
 	desc.clearColour = Colour(0x030203ff);
 	desc.skyboxCubemapID = "skyboxes/sky_dusk";
-	desc.uiSpace = {1280.0f, 720.0f, 2.0f};
-	desc.flags = GameScene::Desc::Flag::eScissoredUI;
+	desc.flags = GameScene::Desc::Flag::eScissoredUI | GameScene::Desc::Flag::eDynamicUI;
 
 	for (auto i = 0; i < 1000; ++i) {
 		gs::g_game.spawnProp(fmt::format("test_{}", i), &m_data.eid3.transform());
@@ -128,23 +132,23 @@ void DemoLevel::tick(Time dt) {
 	static Time elapsed;
 	elapsed += dt;
 	static bool s_bRegistered = false;
-	if (elapsed >= 5s && !s_bRegistered) {
+	if (elapsed.duration >= 5s && !s_bRegistered) {
 		m_data.tempToken = input::registerContext(&m_data.temp);
 		s_bRegistered = true;
 	}
-	if (elapsed >= 8s && m_data.tempToken.valid()) {
+	if (elapsed.duration >= 8s && m_data.tempToken.valid()) {
 		m_data.tempToken = {};
 	}
 
 	if (m_data.asyncModel0.loaded()) {
 		if (auto pModel = registry().find<res::Model>(m_data.eid2)) {
-			*pModel = m_data.asyncModel0.resource().payload;
+			*pModel = *m_data.asyncModel0.resource();
 		}
 		m_data.asyncModel0 = {};
 	}
 	if (m_data.asyncModel1.loaded()) {
 		if (auto pModel = registry().find<res::Model>(m_data.eid3)) {
-			*pModel = m_data.asyncModel1.resource().payload;
+			*pModel = *m_data.asyncModel1.resource();
 		}
 		m_data.asyncModel1 = {};
 	}
@@ -171,15 +175,25 @@ void DemoLevel::tick(Time dt) {
 	m_data.freeCam.tick(dt);
 
 	m_fps = m_data.fps.update();
-	registry().find<UIComponent>(m_data.eui0)->setText(fmt::format("{}FPS", m_fps));
+	res::Font::Text fps;
+	fps.text = fmt::format("{}FPS", m_fps);
+	fps.size = 0.25f * (f32)engine::framebufferSize().x / 1280.0f;
+	if (auto pFps = registry().find<UIComponent>(m_data.eui0)) {
+		fps.size = u32(50.0f * f32(engine::framebufferSize().y) / 720.0f);
+		fps.text += "\nHi\nthird";
+		pFps->setText(std::move(fps));
+	}
 	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.to_s() * 1000));
 	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} entities", registry().size()));
 	if (auto pQuadT = registry().find<Transform>(m_data.pointer)) {
 		if (auto pSpring = registry().find<SpringArm>(m_data.pointer)) {
-			auto const target = glm::vec3(input::worldToUI(input::cursorPosition()), 1.0f);
+			auto const target = glm::vec3(/*input::worldToGameView*/ (input::cursorPosition()), 1.0f);
 			pQuadT->position(pSpring->tick(dt, target));
 		}
-
+		if (auto pUI = registry().find<UIComponent>(m_data.pointer)) {
+			pUI->scissor = engine::viewport().rect();
+			pQuadT->scale(engine::viewport().scale);
+		}
 		static bool s_bBlock = false;
 		if (s_bBlock) {
 			threads::sleep(20ms);
@@ -202,13 +216,13 @@ SceneBuilder const& DemoLevel::builder() const {
 }
 
 void DemoLevel::onManifestLoaded() {
-	m_res.sphere.resource.material().diffuse = res::find<res::Texture>(m_res.container2).payload;
-	m_res.sphere.resource.material().specular = res::find<res::Texture>(m_res.container2_specular).payload;
-	m_res.quad.resource.material().diffuse = res::find<res::Texture>(m_res.awesomeface).payload;
+	m_res.sphere.resource.material().diffuse = *res::find<res::Texture>(m_res.container2);
+	m_res.sphere.resource.material().specular = *res::find<res::Texture>(m_res.container2_specular);
+	m_res.quad.resource.material().diffuse = *res::find<res::Texture>(m_res.awesomeface);
 	if (auto pModel = registry().find<res::Model>(m_data.eid3)) {
-		*pModel = res::find<res::Model>(m_data.model1id).payload;
+		*pModel = *res::find<res::Model>(m_data.model1id);
 	}
 	if (auto pModel = registry().find<res::Model>(m_data.eid2)) {
-		*pModel = res::find<res::Model>(m_data.model0id).payload;
+		*pModel = *res::find<res::Model>(m_data.model0id);
 	}
 }

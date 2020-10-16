@@ -109,7 +109,7 @@ using namespace le::ecs;
 template <>
 struct hash<Entity> {
 	size_t operator()(Entity const& entity) const {
-		return std::hash<ID::type>()(entity.id) ^ std::hash<ID::type>()(entity.regID);
+		return std::hash<ID::type>()(entity.id) ^ (std::hash<ID::type>()(entity.regID) << 1);
 	}
 };
 } // namespace std

@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <sstream>
 #include <fmt/format.h>
-#include <core/assert.hpp>
 #include <core/colour.hpp>
+#include <core/ensure.hpp>
 #include <core/maths.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
@@ -15,8 +15,8 @@ Colour::Colour(glm::vec4 const& colour) noexcept : r(colour.r), g(colour.g), b(c
 }
 
 Colour::Colour(std::string_view hex) noexcept {
-	ASSERT(!hex.empty(), "Empty hex string!");
-	if (hex.at(0) == '#') {
+	ENSURE(!hex.empty(), "Empty hex string!");
+	if (hex[0] == '#') {
 		hex = hex.substr(1);
 	}
 	std::string hexStr(hex);

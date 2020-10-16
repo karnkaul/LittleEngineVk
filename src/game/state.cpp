@@ -1,4 +1,4 @@
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <editor/editor.hpp>
 #include <engine/game/driver.hpp>
@@ -17,17 +17,16 @@ struct {
 } // namespace
 
 Token gs::registerInput(input::Context const* pContext) {
-	ASSERT(pContext, "Context is null!");
+	ENSURE(pContext, "Context is null!");
 	return input::registerContext(pContext);
 }
 
-TResult<Token> gs::loadManifest(LoadReq const& loadReq) {
+gs::Result<Token> gs::loadManifest(LoadReq const& loadReq) {
 	if (!g_ctxImpl.manifest.idle()) {
-		LOG_W("[GameState] Manifest load already in progress!");
-		return {};
+		return gs::Result<Token>("[GameState] Manifest load already in progress!");
 	}
 	res::ResourceList unload;
-	TResult<Token> ret;
+	Result<Token> ret;
 	if (!loadReq.unload.empty() && engine::reader().checkPresence(loadReq.unload)) {
 		res::Manifest temp;
 		temp.read(loadReq.unload);
@@ -37,7 +36,7 @@ TResult<Token> gs::loadManifest(LoadReq const& loadReq) {
 		g_ctxImpl.manifest.read(loadReq.load);
 		auto const loadList = g_ctxImpl.manifest.parse();
 		if (!loadList.empty()) {
-			LOG_I("[GameState] Loading manifest [{}] [{} resources]", loadReq.load.generic_string(), loadList.size());
+			logI("[GameState] Loading manifest [{}] [{} resources]", loadReq.load.generic_string(), loadList.size());
 			unload = unload - loadList;
 			ret = g_ctxImpl.onManifestLoaded.subscribe(loadReq.onLoaded);
 			g_ctxImpl.manifest.start();
@@ -47,7 +46,7 @@ TResult<Token> gs::loadManifest(LoadReq const& loadReq) {
 		}
 	}
 	if (!unload.empty()) {
-		LOG_I("[GameState] Unloading manifest [{}] [{} resources]", loadReq.unload.generic_string(), unload.size());
+		logI("[GameState] Unloading manifest [{}] [{} resources]", loadReq.unload.generic_string(), unload.size());
 		res::Manifest::unload(unload);
 	}
 	return ret;
@@ -59,10 +58,10 @@ Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContext) {
 			dj::object json;
 			if (json.read(*str)) {
 				if (auto const parsed = out_pContext->deserialise(json); parsed > 0) {
-					LOG_D("[GameState] Parsed [{}] input mappings from [{}]", parsed, id.generic_string());
+					logD("[GameState] Parsed [{}] input mappings from [{}]", parsed, id.generic_string());
 				}
 			} else {
-				LOG_W("[GameState] Failed to read input mappings from [{}]!", id.generic_string());
+				logW("[GameState] Failed to read input mappings from [{}]!", id.generic_string());
 			}
 		}
 	}

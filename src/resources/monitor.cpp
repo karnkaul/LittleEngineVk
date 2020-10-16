@@ -20,12 +20,12 @@ bool Monitor::update() {
 					// failed to load file, abort reload
 					bSuccess = false;
 					if (++m_reloadFails >= m_reloadTries) {
-						LOG_E("[{}] Failed to reload file data! (Re-save to retry)", idStr);
+						logE("[{}] Failed to reload file data! (Re-save to retry)", idStr);
 						break;
 					} else {
 						m_reloadStart = Time::elapsed();
 						m_reloadWait.scale(m_reloadFails * 2.0f);
-						LOG_I("[{}] Retrying reload in [{}ms]!", idStr, m_reloadWait.to_ms());
+						logI("[{}] Retrying reload in [{}ms]!", idStr, m_reloadWait.to_ms());
 						break;
 					}
 				}
@@ -48,7 +48,7 @@ bool Monitor::update() {
 			break;
 		case io::FileMonitor::Status::eNotFound: {
 			// file may still be being written out; try increasing reload delay!
-			LOG_E("[{}] Resource not ready / lost!", idStr);
+			logE("[{}] Resource not ready / lost!", idStr);
 			break;
 		}
 		case io::FileMonitor::Status::eModified: {

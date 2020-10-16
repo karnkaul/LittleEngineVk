@@ -24,14 +24,14 @@ std::string const Window::s_tName = utils::tName<Window>();
 Window::Window() {
 	m_id = ++g_nextWindowID.payload;
 	m_uImpl = std::make_unique<WindowImpl>(this);
-	LOG_I("[{}:{}] constructed", s_tName, m_id);
+	logI("[{}:{}] constructed", s_tName, m_id);
 }
 
 Window::Window(Window&&) = default;
 Window& Window::operator=(Window&&) = default;
 Window::~Window() {
 	m_uImpl.reset();
-	LOG_I("[{}:{}] destroyed", s_tName, m_id);
+	logI("[{}:{}] destroyed", s_tName, m_id);
 }
 
 bool Window::anyActive() {

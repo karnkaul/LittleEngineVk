@@ -76,5 +76,7 @@ class WindowImpl final {
 	static bool anyExist();
 	static void pollEvents();
 	static void renderAll();
+
+	static bool importControllerDB(std::string_view db);
 };
 } // namespace le

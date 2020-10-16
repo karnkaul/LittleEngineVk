@@ -1,5 +1,5 @@
 #include <array>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/utils.hpp>
 #include <editor/editor.hpp>
@@ -29,7 +29,7 @@ WindowImpl* g_pEditorWindow = nullptr;
 bool g_bGLFWInit = false;
 
 void onGLFWError(s32 code, char const* desc) {
-	LOG_E("[{}] GLFW Error! [{}]: {}", Window::s_tName, code, desc);
+	logE("[{}] GLFW Error! [{}]: {}", Window::s_tName, code, desc);
 	return;
 }
 
@@ -37,7 +37,7 @@ void onWindowResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow) {
 		pWindow->m_windowSize = {width, height};
 		WindowImpl::s_input[pWindow->m_pWindow->id()].onWindowResize(width, height);
-		LOG_D("[{}:{}] Window resized: [{}x{}]", Window::s_tName, pWindow->m_pWindow->id(), width, height);
+		logD("[{}:{}] Window resized: [{}x{}]", Window::s_tName, pWindow->m_pWindow->id(), width, height);
 	}
 	return;
 }
@@ -45,7 +45,7 @@ void onWindowResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
 void onFramebufferResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow) {
 		pWindow->onFramebufferSize({width, height});
-		LOG_D("[{}:{}] Framebuffer resized: [{}x{}]", Window::s_tName, pWindow->m_pWindow->id(), width, height);
+		logD("[{}:{}] Framebuffer resized: [{}x{}]", Window::s_tName, pWindow->m_pWindow->id(), width, height);
 	}
 	return;
 }
@@ -107,7 +107,7 @@ void onFocus(GLFWwindow* pGLFWwindow, s32 entered) {
 }
 
 WindowImpl::Cursor const& cursor(input::CursorType type) {
-	auto& cursor = WindowImpl::s_cursors.at((std::size_t)type);
+	auto& cursor = WindowImpl::s_cursors[(std::size_t)type];
 	if (type != input::CursorType::eDefault && !cursor.data.contains<GLFWcursor*>()) {
 		s32 gCursor = 0;
 		switch (type) {
@@ -154,14 +154,14 @@ void registerCallbacks([[maybe_unused]] NativeWindow const& window) {
 
 void registerWindow(WindowImpl& window) {
 	g_registeredWindows.insert(Ref<WindowImpl>(window));
-	LOG_D("[{}] registered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
+	logD("[{}] registered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
 	return;
 }
 
 void unregisterWindow(WindowImpl& window) {
 	if (auto search = g_registeredWindows.find(Ref<WindowImpl>(window)); search != g_registeredWindows.end()) {
 		g_registeredWindows.erase(search);
-		LOG_D("[{}] deregistered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
+		logD("[{}] deregistered. Active: [{}]", Window::s_tName, g_registeredWindows.size());
 	}
 	return;
 }
@@ -173,7 +173,7 @@ f32 Gamepad::axis(Axis axis) const {
 	s32 max = 0;
 	glfwGetJoystickAxes(id, &max);
 	if (idx < (std::size_t)max && idx < joyState.axes.size()) {
-		return joyState.axes.at(idx);
+		return joyState.axes[idx];
 	}
 #endif
 	return 0.0f;
@@ -185,7 +185,7 @@ bool Gamepad::pressed(Key button) const {
 	s32 max = 0;
 	glfwGetJoystickButtons(id, &max);
 	if (idx < (std::size_t)max && idx < joyState.buttons.size()) {
-		return joyState.buttons.at(idx);
+		return joyState.buttons[idx];
 	}
 #endif
 	return false;
@@ -205,13 +205,13 @@ bool WindowImpl::init() {
 #if defined(LEVK_USE_GLFW)
 	glfwSetErrorCallback(&onGLFWError);
 	if (glfwInit() != GLFW_TRUE) {
-		LOG_E("[{}] Could not initialise GLFW!", Window::s_tName);
+		logE("[{}] Could not initialise GLFW!", Window::s_tName);
 		return false;
 	} else if (glfwVulkanSupported() != GLFW_TRUE) {
-		LOG_E("[{}] Vulkan not supported!", Window::s_tName);
+		logE("[{}] Vulkan not supported!", Window::s_tName);
 		return false;
 	} else {
-		LOG_D("[{}] GLFW initialised successfully", Window::s_tName);
+		logD("[{}] GLFW initialised successfully", Window::s_tName);
 	}
 	g_bGLFWInit = true;
 #endif
@@ -227,7 +227,7 @@ void WindowImpl::deinit() {
 		}
 	}
 	glfwTerminate();
-	LOG_D("[{}] GLFW terminated", Window::s_tName);
+	logD("[{}] GLFW terminated", Window::s_tName);
 	g_bGLFWInit = false;
 #endif
 	s_input.clear();
@@ -336,11 +336,11 @@ bool WindowImpl::create(Window* pWindow, Window::Info const& info) {
 		std::optional<vk::Format> forceColourSpace;
 		std::vector<vk::PresentModeKHR> forcePresentModes;
 		for (auto colourSpace : info.options.colourSpaces) {
-			forceColourSpace = gfx::g_colourSpaces.at((std::size_t)colourSpace);
+			forceColourSpace = gfx::g_colourSpaces[(std::size_t)colourSpace];
 			driverInfo.contextInfo.options.formats = *forceColourSpace;
 		}
 		if (os::isDefined("immediate", "i")) {
-			LOG_I("[{}] Immediate mode requested...", Window::s_tName);
+			logI("[{}] Immediate mode requested...", Window::s_tName);
 			forcePresentModes.push_back((vk::PresentModeKHR)PresentMode::eImmediate);
 		}
 		for (auto presentMode : info.options.presentModes) {
@@ -360,23 +360,21 @@ bool WindowImpl::create(Window* pWindow, Window::Info const& info) {
 #if defined(LEVK_EDITOR)
 		if (!g_pEditorWindow && !gfx::ext_gui::isInit()) {
 			if (!m_pWindow->m_driver.m_uImpl->initExtGUI()) {
-				LOG_E("[{}] Failed to initialise Editor!", Window::s_tName);
+				logE("[{}] Failed to initialise Editor!", Window::s_tName);
 			} else {
 				g_pEditorWindow = this;
 				editor::init(m_pWindow->m_id);
 			}
 		}
 #endif
-		LOG_D("[{}:{}] created", Window::s_tName, m_pWindow->m_id);
+		logD("[{}:{}] created", Window::s_tName, m_pWindow->m_id);
 		return true;
 	} catch (std::exception const& e) {
-		LOG_E("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
+		logE("[{}:{}] Failed to create window!\n\t{}", Window::s_tName, m_pWindow->m_id, e.what());
 		m_pWindow->m_driver.m_uImpl.reset();
 		m_nativeWindow = {};
 		return false;
 	}
-	LOG_E("[{}:{}] Failed to create window!", Window::s_tName, m_pWindow->m_id);
-	return false;
 }
 
 bool WindowImpl::open() const {
@@ -437,7 +435,7 @@ void WindowImpl::destroy() {
 	if (!m_nativeWindow.m_window.empty()) {
 		m_pWindow->m_driver.m_uImpl.reset();
 		m_nativeWindow = {};
-		LOG_D("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
+		logD("[{}:{}] closed", Window::s_tName, m_pWindow->m_id);
 	}
 	m_windowSize = m_framebufferSize = {};
 	return;
@@ -585,7 +583,7 @@ void WindowImpl::pollEvents() {
 }
 
 void WindowImpl::renderAll() {
-#if defined(LEVK_GLFW)
+#if defined(LEVK_USE_GLFW)
 	if (!g_bGLFWInit) {
 		return;
 	}
@@ -602,5 +600,16 @@ void WindowImpl::renderAll() {
 		}
 	}
 	return;
+}
+
+bool WindowImpl::importControllerDB([[maybe_unused]] std::string_view db) {
+	bool bRet = false;
+#if defined(LEVK_USE_GLFW)
+	if (g_bGLFWInit) {
+		glfwUpdateGamepadMappings(db.data());
+	}
+	bRet = true;
+#endif
+	return bRet;
 }
 } // namespace le

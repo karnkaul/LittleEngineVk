@@ -44,10 +44,10 @@ class Driver::Impl {
 
   public:
 	std::string m_name;
-
-  private:
 	RenderContext m_context;
 	RenderPass m_renderPass;
+
+  private:
 	std::vector<FrameSync> m_frames;
 	Driver* m_pDriver;
 	TexCounts m_texCount;
@@ -74,7 +74,7 @@ class Driver::Impl {
 	u8 virtualFrameCount() const;
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
-	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
+	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nRect, glm::vec2 const& padding = {}) const;
 	bool initExtGUI() const;
 
 	ColourSpace colourSpace() const;
@@ -82,6 +82,8 @@ class Driver::Impl {
 	vk::PresentModeKHR presentMode() const;
 	std::vector<vk::PresentModeKHR> const& presentModes() const;
 	bool setPresentMode(vk::PresentModeKHR mode);
+
+	void fill(Driver::View& out_view, Viewport const& viewport, Camera const& camera, f32 orthoDepth);
 
   private:
 	void onFramebufferResize();

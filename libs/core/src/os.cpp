@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <thread>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
 #include <core/threads.hpp>
@@ -69,7 +69,7 @@ stdfs::path os::dirPath(Dir dir) {
 		return g_workingDir;
 	case os::Dir::eExecutable:
 		if (g_exePath.empty()) {
-			LOG_W("[OS] Unknown executable path! Using working directory instead [{}]", g_workingDir.generic_string());
+			logW("[OS] Unknown executable path! Using working directory instead [{}]", g_workingDir.generic_string());
 			g_exePath = dirPath(Dir::eWorking);
 		}
 		return g_exePath;

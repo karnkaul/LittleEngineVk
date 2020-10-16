@@ -1,8 +1,8 @@
 #include <array>
 #include <string>
 #include <unordered_set>
-#include <core/assert.hpp>
 #include <core/ecs/registry.hpp>
+#include <core/ensure.hpp>
 #include <core/maths.hpp>
 #include <core/tasks.hpp>
 #include <core/threads.hpp>
@@ -26,7 +26,7 @@ kt::lockable<> g_mutex;
 bool verify(Entity entity) {
 	auto lock = g_mutex.lock();
 	bool const bRet = g_spawned.find(entity) == g_spawned.end();
-	ASSERT(bRet, "DUPLICATE");
+	ENSURE(bRet, "DUPLICATE");
 	g_spawned.insert(entity);
 	return bRet;
 }
@@ -89,7 +89,7 @@ int main() {
 		if (!bPass) {
 			return 1;
 		}
-		registry.m_logLevel = io::Level::eInfo;
+		registry.m_logLevel = dl::level::info;
 		std::vector<std::shared_ptr<tasks::Handle>> handles;
 		{
 			for (s32 i = 0; i < entityCount / 10; ++i) {
@@ -98,7 +98,7 @@ int main() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-						registry.destroy(entities.at(idx));
+						registry.destroy(entities[idx]);
 					},
 					{}));
 				handles.push_back(tasks::enqueue(
@@ -106,7 +106,7 @@ int main() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-						registry.detach<A, B, D>(entities.at(idx));
+						registry.detach<A, B, D>(entities[idx]);
 					},
 					{}));
 				handles.push_back(tasks::enqueue(
@@ -114,7 +114,7 @@ int main() {
 						Time wait = Time(maths::randomRange(0, 3000));
 						threads::sleep(wait);
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-						registry.enable(entities.at(idx), false);
+						registry.enable(entities[idx], false);
 					},
 					{}));
 			}
@@ -130,7 +130,7 @@ int main() {
 				[[maybe_unused]] auto viewCEF = registry.view<C, E, F>();
 			}
 		}
-		handles.at(maths::randomRange((std::size_t)0, handles.size() - 1))->discard();
+		handles[maths::randomRange((std::size_t)0, handles.size() - 1)]->discard();
 		tasks::wait(handles);
 		// To test:
 		// - flags: disabled, destroyed, debug

@@ -1,7 +1,7 @@
 #pragma once
 #include <unordered_map>
-#include <core/assert.hpp>
 #include <core/ecs/types.hpp>
+#include <core/ensure.hpp>
 
 namespace le::ecs::detail {
 struct Concept {
@@ -37,13 +37,13 @@ template <typename T>
 template <typename... Args>
 T& Storage<T>::attach(Entity entity, Args&&... args) {
 	if (auto search = map.find(entity); search != map.end()) {
-		ASSERT(false, "Duplicate!");
+		ENSURE(false, "Duplicate!");
 		T& ret = search->second;
 		ret = T{std::forward<Args>(args)...};
 		return ret;
 	}
 	auto [ret, bResult] = map.emplace(entity, T{std::forward<Args>(args)...});
-	ASSERT(bResult, "Insertion failure!");
+	ENSURE(bResult, "Insertion failure!");
 	return ret->second;
 }
 

@@ -30,17 +30,13 @@ struct Hash final {
 	/// \brief Implicit conversion to `std::std::size_t`
 	///
 	constexpr operator std::size_t() const noexcept;
-	///
-	/// \brief Comparison operator
-	///
-	constexpr bool operator==(Hash rhs) const noexcept;
 };
 
 ///
 /// \brief Comparison operator
 ///
-constexpr bool Hash::operator==(Hash rhs) const noexcept {
-	return hash == rhs.hash;
+inline constexpr bool operator==(Hash lhs, Hash rhs) noexcept {
+	return lhs.hash == rhs.hash;
 }
 ///
 /// \brief Comparison operator

@@ -1,8 +1,8 @@
 #pragma once
 #include <future>
 #include <utility>
-#include <core/log_config.hpp>
 #include <core/utils.hpp>
+#include <dumb_log/log.hpp>
 #include <engine/levk.hpp>
 #include <engine/window/common.hpp>
 #include <gfx/common.hpp>
@@ -11,10 +11,10 @@ namespace le::gfx {
 #if defined(LEVK_DEBUG)
 inline bool g_VRAM_bLogAllocs = false;
 #else
-constexpr bool g_VRAM_bLogAllocs = false;
+inline constexpr bool g_VRAM_bLogAllocs = false;
 #endif
 
-inline io::Level g_VRAM_logLevel = io::Level::eDebug;
+inline dl::level g_VRAM_logLevel = dl::level::debug;
 
 struct QShare final {
 	vk::SharingMode desired;

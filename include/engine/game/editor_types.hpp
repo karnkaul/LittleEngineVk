@@ -36,7 +36,7 @@ struct GUIStateful {
 		return guiState.test(s);
 	}
 
-	virtual operator bool() const {
+	explicit virtual operator bool() const {
 		return test(GUI::eLeftClicked);
 	}
 };
@@ -55,7 +55,7 @@ struct Combo final : GUIStateful {
 
 	Combo(sv id, Span<sv> entries, sv preSelected);
 
-	operator bool() const override {
+	explicit operator bool() const override {
 		return test(GUI::eOpen);
 	}
 };
@@ -68,7 +68,7 @@ struct TreeNode final : GUIStateful {
 	TreeNode& operator=(TreeNode&&) = default;
 	~TreeNode() override;
 
-	operator bool() const override {
+	explicit operator bool() const override {
 		return test(GUI::eOpen);
 	}
 };
@@ -101,7 +101,7 @@ struct TInspector {
 	TInspector& operator=(TInspector<T>&&);
 	~TInspector();
 
-	operator bool() const;
+	explicit operator bool() const;
 };
 
 template <>
@@ -163,7 +163,7 @@ struct PerFrame {
 
 template <typename Flags>
 FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags) {
-	ASSERT(ids.size() <= size, "Overflow!");
+	ENSURE(ids.size() <= size, "Overflow!");
 	std::size_t idx = 0;
 	for (auto id : ids) {
 		bool bVal = flags.test((type)idx);
@@ -188,23 +188,19 @@ TInspector<T>::TInspector(ecs::Registry& out_registry, ecs::Entity entity, T con
 }
 
 template <typename T>
-TInspector<T>::TInspector(TInspector<T>&& rhs) : node(std::move(rhs.node)), pReg(rhs.pReg), id(std::move(id)) {
-	bOpen = rhs.bOpen;
-	bNew = rhs.bNew;
-	rhs.bNew = rhs.bOpen = false;
-	rhs.pReg = nullptr;
+TInspector<T>::TInspector(TInspector<T>&& rhs)
+	: node(std::move(rhs.node)), pReg(std::exchange(rhs.pReg, nullptr)), id(std::move(id)), bNew(std::exchange(rhs.bNew, false)),
+	  bOpen(std::exchange(rhs.bOpen, false)) {
 }
 
 template <typename T>
 TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {
 	if (&rhs != this) {
 		node = std::move(rhs.node);
-		pReg = rhs.pReg;
-		bOpen = rhs.bOpen;
-		bNew = rhs.bNew;
 		id = std::move(rhs.id);
-		rhs.bNew = rhs.bOpen = false;
-		rhs.pReg = nullptr;
+		pReg = std::exchange(rhs.pReg, nullptr);
+		bNew = std::exchange(rhs.bNew, false);
+		bOpen = std::exchange(rhs.bOpen, false);
 	}
 	return *this;
 }

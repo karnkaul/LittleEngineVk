@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <sstream>
 #include <utility>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
@@ -85,15 +85,15 @@ std::string const Manifest::s_tName = utils::tName<Manifest>();
 bool Manifest::read(stdfs::path const& id) {
 	if (auto data = engine::reader().string(id)) {
 		if (!m_manifest.read(*data)) {
-			LOG_E("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), engine::reader().medium());
+			logE("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), engine::reader().medium());
 			m_manifest.fields.clear();
 			return false;
 		}
 		m_status = Status::eReady;
 		return true;
 	} else {
-		ASSERT(false, "Manifest not found!");
-		LOG_E("[{}] Manifest [{}] not found on [{}]!", s_tName, id.generic_string(), engine::reader().medium());
+		ENSURE(false, "Manifest not found!");
+		logE("[{}] Manifest [{}] not found on [{}]!", s_tName, id.generic_string(), engine::reader().medium());
 	}
 	return false;
 }
@@ -150,7 +150,7 @@ ResourceList Manifest::parse() {
 		pShaders->for_each<dj::object>([&](auto const& shader) {
 			auto resourceID = shader.template value<dj::string>("id");
 			if (!resourceID.empty()) {
-				if (find<Shader>(resourceID).bResult) {
+				if (find<Shader>(resourceID)) {
 					all.shaders.push_back(resourceID);
 					m_loaded.shaders.push_back(std::move(resourceID));
 				} else {
@@ -187,7 +187,7 @@ ResourceList Manifest::parse() {
 			auto const id = texture.template value<dj::string>("id");
 			bool const bPresent = texture.template value<dj::boolean>("optional") ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
 			if (!id.empty() && bPresent) {
-				if (find<Texture>(id).bResult) {
+				if (find<Texture>(id)) {
 					all.textures.push_back(id);
 					m_loaded.textures.push_back(std::move(id));
 				} else {
@@ -210,7 +210,7 @@ ResourceList Manifest::parse() {
 			bool bMissing = false;
 			auto const pResourceIDs = cubemap.template find<dj::array>("textures");
 			if (!resourceID.empty()) {
-				if (find<Texture>(resourceID).bResult) {
+				if (find<Texture>(resourceID)) {
 					all.cubemaps.push_back(resourceID);
 					m_loaded.cubemaps.push_back(std::move(resourceID));
 				} else if (pResourceIDs) {
@@ -240,7 +240,7 @@ ResourceList Manifest::parse() {
 		pModels->for_each<dj::object>([&](auto const& model) {
 			auto const modelID = model.template value<dj::string>("id");
 			if (!modelID.empty()) {
-				if (find<Model>(modelID).bResult) {
+				if (find<Model>(modelID)) {
 					all.models.push_back(modelID);
 					m_loaded.models.push_back(std::move(modelID));
 				} else {

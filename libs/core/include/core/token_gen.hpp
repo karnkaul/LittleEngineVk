@@ -169,10 +169,8 @@ inline constexpr Token& Token::operator=(Token&& rhs) noexcept {
 		if (valid()) {
 			pParent->pop(id);
 		}
-		pParent = rhs.pParent;
-		id = rhs.id;
-		rhs.pParent = nullptr;
-		rhs.id = null;
+		pParent = std::exchange(rhs.pParent, nullptr);
+		id = std::exchange(rhs.id, null);
 	}
 	return *this;
 }

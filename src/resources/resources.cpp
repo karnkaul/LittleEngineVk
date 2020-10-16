@@ -37,7 +37,7 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 	typename T::Info info;
 	uImpl->id = info.id = id;
 	uImpl->guid = guid;
-	LOGIF_W(id.empty(), "[{}] Empty resource ID!", T::s_tName);
+	logW_if(id.empty(), "[{}] Empty resource ID!", T::s_tName);
 	if (!id.empty() && uImpl->make(out_createInfo, info)) {
 		T resource;
 		resource.guid = guid;
@@ -52,10 +52,10 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 		if (std::is_base_of_v<ILoadable, TImpl> && pImpl->status != Status::eReady) {
 			pImpl->status = Status::eLoading;
 			out_map.loading.emplace(guid, *pImpl);
-			LOG_I("++ [{}] [{}] [{}] loading...", guid, T::s_tName, id.generic_string());
+			logI("++ [{}] [{}] [{}] loading...", guid, T::s_tName, id.generic_string());
 		} else {
 			pImpl->status = Status::eReady;
-			LOG_I("== [{}] [{}] [{}] loaded", guid, T::s_tName, id.generic_string());
+			logI("== [{}] [{}] [{}] loaded", guid, T::s_tName, id.generic_string());
 		}
 		return resource;
 	}
@@ -63,7 +63,7 @@ T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::pa
 }
 
 template <typename T, typename TImpl>
-TResult<T> find(Map<T, TImpl> const& map, Hash id) {
+res::Result<T> find(Map<T, TImpl> const& map, Hash id) {
 	auto lock = map.mutex.template lock<std::shared_lock>();
 	if (auto search = map.ids.find(id); search != map.ids.end()) {
 		if (auto pResource = map.resources.find(search->second)) {
@@ -109,7 +109,7 @@ bool unload(Map<T, TImpl>& out_map, Hash id) {
 		out_map.ids.erase(search);
 		if (auto tResource = out_map.resources.find(guid)) {
 			g_lastUnloadedGUID = guid;
-			LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
+			logI("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
 			lock.unlock();
 			tResource->uImpl->release();
 			lock.lock();
@@ -124,7 +124,7 @@ bool unload(Map<T, TImpl>& out_map, GUID guid) {
 	auto lock = out_map.mutex.template lock<std::unique_lock>();
 	if (auto tResource = out_map.resources.find(guid)) {
 		g_lastUnloadedGUID = guid;
-		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
+		logI("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource->uImpl->id.generic_string());
 		out_map.ids.erase(tResource->uImpl->id);
 		lock.unlock();
 		tResource->uImpl->release();
@@ -143,7 +143,7 @@ void update(Map<T, TImpl>& out_map) {
 			if (impl.update()) {
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 				if (impl.bLoadedOnce) {
-					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, impl.id.generic_string());
+					logD("== [{}] [{}] [{}] reloaded", guid, T::s_tName, impl.id.generic_string());
 					if constexpr (std::is_base_of_v<IReloadable, TImpl>) {
 						impl.onReload();
 					}
@@ -163,11 +163,11 @@ void update(Map<T, TImpl>& out_map) {
 		for (auto& [guid, tResource] : out_map.resources.m_map) {
 			if (tResource.uImpl->checkReload()) {
 				if constexpr (std::is_base_of_v<ILoadable, TImpl>) {
-					LOG_D("++ [{}] [{}] [{}] reloading...", guid, T::s_tName, tResource.uImpl->id.generic_string());
+					logD("++ [{}] [{}] [{}] reloading...", guid, T::s_tName, tResource.uImpl->id.generic_string());
 					tResource.uImpl->status = Status::eReloading;
 					out_map.loading.emplace(guid, *tResource.uImpl);
 				} else {
-					LOG_D("== [{}] [{}] [{}] reloaded", guid, T::s_tName, tResource.uImpl->id.generic_string());
+					logD("== [{}] [{}] [{}] reloaded", guid, T::s_tName, tResource.uImpl->id.generic_string());
 					tResource.uImpl->onReload();
 				}
 			}
@@ -203,7 +203,7 @@ Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo) {
 			if (auto info = loadInfo.createInfo()) {
 				load(id, std::move(*info));
 			} else {
-				LOG_E("[{}] Failed to load [{}]", T::s_tName, id.generic_string());
+				logE("[{}] Failed to load [{}]", T::s_tName, id.generic_string());
 			}
 		},
 		std::move(name));
@@ -217,7 +217,7 @@ void release(Map<T, TImpl>& out_map) {
 	for (auto iter = out_map.resources.m_map.begin(); iter != out_map.resources.m_map.end();) {
 		auto& [guid, tResource] = *iter;
 		g_lastUnloadedGUID = guid;
-		LOG_I("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource.uImpl->id.generic_string());
+		logI("-- [{}] [{}] [{}] unloaded", guid, T::s_tName, tResource.uImpl->id.generic_string());
 		lock.unlock();
 		tResource.uImpl->release();
 		lock.lock();
@@ -281,8 +281,8 @@ res::Shader res::load(stdfs::path const& id, Shader::CreateInfo createInfo) {
 }
 
 template <>
-TResult<res::Shader> res::find<Shader>(Hash id) {
-	return g_bInit ? find(g_shaders, id) : TResult<Shader>();
+res::Result<res::Shader> res::find<Shader>(Hash id) {
+	return g_bInit ? find(g_shaders, id) : res::Result<Shader>();
 }
 
 template <>
@@ -311,8 +311,8 @@ res::Sampler res::load(stdfs::path const& id, Sampler::CreateInfo createInfo) {
 }
 
 template <>
-TResult<res::Sampler> res::find<Sampler>(Hash id) {
-	return g_bInit ? find(g_samplers, id) : TResult<Sampler>();
+res::Result<res::Sampler> res::find<Sampler>(Hash id) {
+	return g_bInit ? find(g_samplers, id) : res::Result<Sampler>();
 }
 
 template <>
@@ -345,8 +345,8 @@ res::Async<Texture> res::loadAsync(stdfs::path const& id, Texture::LoadInfo load
 }
 
 template <>
-TResult<res::Texture> res::find<Texture>(Hash id) {
-	return g_bInit ? find(g_textures, id) : TResult<Texture>();
+res::Result<res::Texture> res::find<Texture>(Hash id) {
+	return g_bInit ? find(g_textures, id) : res::Result<Texture>();
 }
 
 template <>
@@ -375,8 +375,8 @@ res::Material res::load(stdfs::path const& id, Material::CreateInfo createInfo) 
 }
 
 template <>
-TResult<res::Material> res::find<Material>(Hash id) {
-	return g_bInit ? find(g_materials, id) : TResult<Material>();
+res::Result<res::Material> res::find<Material>(Hash id) {
+	return g_bInit ? find(g_materials, id) : res::Result<Material>();
 }
 
 template <>
@@ -405,8 +405,8 @@ res::Mesh res::load(stdfs::path const& id, Mesh::CreateInfo createInfo) {
 }
 
 template <>
-TResult<res::Mesh> res::find<Mesh>(Hash id) {
-	return g_bInit ? find(g_meshes, id) : TResult<Mesh>();
+res::Result<res::Mesh> res::find<Mesh>(Hash id) {
+	return g_bInit ? find(g_meshes, id) : res::Result<Mesh>();
 }
 
 template <>
@@ -435,8 +435,8 @@ res::Font res::load(stdfs::path const& id, Font::CreateInfo createInfo) {
 }
 
 template <>
-TResult<res::Font> res::find<Font>(Hash id) {
-	return g_bInit ? find(g_fonts, id) : TResult<Font>();
+res::Result<res::Font> res::find<Font>(Hash id) {
+	return g_bInit ? find(g_fonts, id) : res::Result<Font>();
 }
 
 template <>
@@ -469,8 +469,8 @@ res::Async<res::Model> res::loadAsync(stdfs::path const& id, Model::LoadInfo loa
 }
 
 template <>
-TResult<Model> res::find<Model>(Hash id) {
-	return g_bInit ? find(g_models, id) : TResult<Model>();
+res::Result<Model> res::find<Model>(Hash id) {
+	return g_bInit ? find(g_models, id) : res::Result<Model>();
 }
 
 template <>
@@ -617,9 +617,9 @@ void res::init() {
 		{
 			Shader::CreateInfo info;
 			static std::array const shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
-			ASSERT(engine::reader().checkPresences(shaderIDs), "Uber Shader not found!");
-			info.codeIDMap.at((std::size_t)Shader::Type::eVertex) = shaderIDs.at(0);
-			info.codeIDMap.at((std::size_t)Shader::Type::eFragment) = shaderIDs.at(1);
+			ENSURE(engine::reader().checkPresences(shaderIDs), "Uber Shader not found!");
+			info.codeIDMap[(std::size_t)Shader::Type::eVertex] = shaderIDs[0];
+			info.codeIDMap[(std::size_t)Shader::Type::eFragment] = shaderIDs[1];
 			load("shaders/default", std::move(info));
 		}
 		{
@@ -666,10 +666,10 @@ void res::init() {
 			auto font = load("fonts/default", std::move(info));
 			auto const status = font.status();
 			if (status == Status::eIdle || status == Status::eError) {
-				LOG_E("[resources] Failed to load default font [{}]!", s_jsonID.generic_string());
+				logE("[resources] Failed to load default font [{}]!", s_jsonID.generic_string());
 			}
 		}
-		LOG_I("[resources] initialised");
+		logI("[resources] initialised");
 	}
 }
 
@@ -692,8 +692,8 @@ void res::waitIdle() {
 		threads::sleep();
 	}
 	bool bTimeout = elapsed >= timeout;
-	ASSERT(!bTimeout, "Timeout waiting for Resources! Expect a crash");
-	LOGIF_E(bTimeout, "[resources] Timeout waiting for Resources! Expect crashes/hangs!");
+	ENSURE(!bTimeout, "Timeout waiting for Resources! Expect a crash");
+	logE_if(bTimeout, "[resources] Timeout waiting for Resources! Expect crashes/hangs!");
 	waitLoading(g_shaders);
 	waitLoading(g_samplers);
 	waitLoading(g_textures);
@@ -714,7 +714,7 @@ void res::deinit() {
 		release(g_fonts);
 		release(g_models);
 		g_bInit = false;
-		LOG_I("[resources] deinitialised");
+		logI("[resources] deinitialised");
 	}
 }
 

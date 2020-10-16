@@ -11,7 +11,7 @@
 #endif
 #endif
 
-constexpr bool levk_shaderCompiler = levk_debug;
+inline constexpr bool levk_shaderCompiler = levk_debug;
 
 namespace le {
 namespace stdfs = std::filesystem;

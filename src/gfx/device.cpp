@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <memory>
 #include <set>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/utils.hpp>
@@ -32,23 +32,23 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 	static constexpr std::string_view name = "vk::validation";
 	switch (messageSeverity) {
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-		LOG_E("[{}] {}", name, VK_LOG_MSG);
-		ASSERT(false, VK_LOG_MSG);
+		logE("[{}] {}", name, VK_LOG_MSG);
+		ENSURE(false, VK_LOG_MSG);
 		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)io::Level::eWarning) {
-			LOG_W("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_instance.validationLog <= (u8)dl::level::warning) {
+			logW("[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)io::Level::eInfo) {
-			LOG_I("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_instance.validationLog <= (u8)dl::level::info) {
+			logI("[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		if ((u8)g_instance.validationLog <= (u8)io::Level::eDebug) {
-			LOG_D("[{}] {}", name, VK_LOG_MSG);
+		if ((u8)g_instance.validationLog <= (u8)dl::level::debug) {
+			logD("[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	}
@@ -70,12 +70,12 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			std::set<std::string_view> missingExtensions(deviceExtensions.begin(), deviceExtensions.end());
 			auto const extensions = physicalDevice.enumerateDeviceExtensionProperties();
 			for (std::size_t idx = 0; idx < extensions.size() && !missingExtensions.empty(); ++idx) {
-				missingExtensions.erase(std::string_view(extensions.at(idx).extensionName));
+				missingExtensions.erase(std::string_view(extensions[idx].extensionName));
 			}
 			for (auto extension : missingExtensions) {
-				LOG_E("[{}] Required extensions not present on physical device [{}]!", s_tDevice, extension);
+				logE("[{}] Required extensions not present on physical device [{}]!", s_tDevice, extension);
 			}
-			ASSERT(missingExtensions.empty(), "Required extension not present!");
+			ENSURE(missingExtensions.empty(), "Required extension not present!");
 			if (!missingExtensions.empty()) {
 				throw std::runtime_error("Missing required Vulkan device extensions!");
 			} else {
@@ -130,7 +130,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 		QFlags found;
 		std::size_t graphicsFamilyIdx = 0;
 		for (std::size_t idx = 0; idx < queueFamilyProperties.size() && !found.bits.all(); ++idx) {
-			auto const& queueFamily = queueFamilyProperties.at(idx);
+			auto const& queueFamily = queueFamilyProperties[idx];
 			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
 				if (!found.test(QFlag::eGraphics)) {
 					QueueFamily& family = queueFamilies[(u32)idx];
@@ -227,11 +227,11 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 	}
 	g_instance = instance;
 	g_device = device;
-	LOG_I("[{}] constructed. Using GPU: [{}]", s_tDevice, deviceName);
+	logI("[{}] constructed. Using GPU: [{}]", s_tDevice, deviceName);
 	return true;
 }
 
-bool findLayer(std::vector<vk::LayerProperties> const& available, char const* szLayer, std::optional<io::Level> log) {
+bool findLayer(std::vector<vk::LayerProperties> const& available, char const* szLayer, std::optional<dl::level> log) {
 	std::string_view const layerName(szLayer);
 	for (auto& layer : available) {
 		if (std::string_view(layer.layerName) == layerName) {
@@ -239,7 +239,7 @@ bool findLayer(std::vector<vk::LayerProperties> const& available, char const* sz
 		}
 	}
 	if (log) {
-		LOG(*log, "[{}] Requested layer [{}] not available!", s_tInstance, szLayer);
+		dl::log(*log, "[{}] Requested layer [{}] not available!", s_tInstance, szLayer);
 	}
 	return false;
 }
@@ -252,8 +252,8 @@ void init(InitInfo const& initInfo) {
 	g_instance.validationLog = initInfo.options.validationLog;
 	bool bValidationLayers = false;
 	if (initInfo.options.flags.test(InitInfo::Flag::eValidation)) {
-		if (!findLayer(layers, szValidationLayer, io::Level::eWarning)) {
-			ASSERT(false, "Validation layers requested but not present!");
+		if (!findLayer(layers, szValidationLayer, dl::level::warning)) {
+			ENSURE(false, "Validation layers requested but not present!");
 		} else {
 			requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 			requiredLayers.push_back(szValidationLayer);
@@ -300,7 +300,7 @@ void init(InitInfo const& initInfo) {
 
 	vram::init(initInfo.config.stagingReserve);
 	rd::init();
-	LOG_I("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
+	logI("[{}] and [{}] successfully initialised", s_tInstance, s_tDevice);
 }
 
 void deinit() {
@@ -318,7 +318,7 @@ void deinit() {
 	}
 	g_instance = {};
 	g_device = {};
-	LOG_I("[{}] and [{}] deinitialised", s_tInstance, s_tDevice);
+	logI("[{}] and [{}] deinitialised", s_tInstance, s_tDevice);
 	return;
 }
 } // namespace
@@ -337,7 +337,7 @@ f32 Instance::lineWidth(f32 desired) const {
 	return std::clamp(desired, lineWidthMin, lineWidthMax);
 }
 
-TResult<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+kt::result_void<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
 	for (auto format : desired) {
 		vk::FormatProperties props = physicalDevice.getFormatProperties(format);
 		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
@@ -394,9 +394,9 @@ void Device::waitFor(vk::Fence optional) const {
 		if constexpr (levk_debug) {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = g_device.device.waitForFences(optional, true, s_wait);
-			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) {
-				LOG_E("[{}] Fence wait failure!", s_tDevice);
+				logE("[{}] Fence wait failure!", s_tDevice);
 			}
 		} else {
 			g_device.device.waitForFences(optional, true, maths::max<u64>());
@@ -409,9 +409,9 @@ void Device::waitAll(vk::ArrayProxy<const vk::Fence> validFences) const {
 		if constexpr (levk_debug) {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = g_device.device.waitForFences(std::move(validFences), true, s_wait);
-			ASSERT(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) {
-				LOG_E("[{}] Fence wait failure!", s_tDevice);
+				logE("[{}] Fence wait failure!", s_tDevice);
 			}
 		} else {
 			g_device.device.waitForFences(std::move(validFences), true, maths::max<u64>());

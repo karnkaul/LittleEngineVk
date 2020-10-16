@@ -59,7 +59,7 @@ Queue::Queue() {
 }
 
 Queue::~Queue() {
-	ASSERT(m_queue.empty(), "Task Queue running past main!");
+	ENSURE(m_queue.empty(), "Task Queue running past main!");
 	deinit();
 }
 
@@ -72,7 +72,7 @@ std::shared_ptr<Handle> Queue::pushTask(std::function<void()> task, std::string 
 	if (m_bWork.load()) {
 		Task newTask;
 		newTask.handle = std::make_shared<Handle>(++m_nextID);
-		LOGIF_D(!name.empty(), "[{}] task_{} [{}] enqueued", g_tName, newTask.handle->id(), name);
+		logD_if(!name.empty(), "[{}] task_{} [{}] enqueued", g_tName, newTask.handle->id(), name);
 		newTask.task = std::move(task);
 		newTask.name = std::move(name);
 		ret = newTask.handle;
@@ -91,7 +91,7 @@ std::vector<std::shared_ptr<Handle>> Queue::pushTasks(List taskList) {
 			Task newTask;
 			newTask.handle = std::make_shared<Handle>(++m_nextID);
 			newTask.task = std::move(task.first);
-			LOGIF_D(!task.second.empty(), "[{}] task_{} [{}] enqueued", g_tName, newTask.handle->id(), task.second);
+			logD_if(!task.second.empty(), "[{}] task_{} [{}] enqueued", g_tName, newTask.handle->id(), task.second);
 			newTask.name = std::move(task.second);
 			ret.push_back(newTask.handle);
 			newTasks.push_back(std::move(newTask));
@@ -126,28 +126,28 @@ void Queue::deinit() {
 } // namespace
 
 Worker::Worker(std::size_t idx) {
-	ASSERT(idx < g_busy.size(), "Invariant violated");
+	ENSURE(idx < g_busy.size(), "Invariant violated");
 	thread = threads::newThread([idx]() {
 		while (g_queue.active()) {
-			g_busy.at(idx) = false;
+			g_busy[idx] = false;
 			auto task = g_queue.popTask();
 			if (task && task->handle && task->task) {
 				auto const id = task->handle->id();
 				if (task->handle->status() == Handle::Status::eDiscarded) {
-					LOG_I("[{}] task_{} [{}] discarded", g_tName, task->handle->id(), task->name);
+					logI("[{}] task_{} [{}] discarded", g_tName, task->handle->id(), task->name);
 					continue;
 				}
 				Handle::Status status = Handle::Status::eWaiting;
 				if (task->handle->m_status.compare_exchange_strong(status, Handle::Status::eExecuting)) {
-					g_busy.at(idx) = true;
+					g_busy[idx] = true;
 					task->handle->m_status.store(Handle::Status::eExecuting);
 					try {
-						LOGIF_D(!task->name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task->name);
+						logD_if(!task->name.empty(), "[{}] starting task_{} [{}]...", g_tName, id, task->name);
 						task->task();
-						LOGIF_D(!task->name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task->name);
+						logD_if(!task->name.empty(), "[{}] task_{} [{}] completed", g_tName, id, task->name);
 						task->handle->m_status.store(Handle::Status::eCompleted);
 					} catch (std::exception const& e) {
-						LOG_E("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task->name.empty() ? "Unnamed" : task->name, e.what());
+						logE("[{}] task_{} [{}] threw an exception: {}", g_tName, id, task->name.empty() ? "Unnamed" : task->name, e.what());
 						task->handle->m_exception = e.what();
 						task->handle->m_status.store(Handle::Status::eError);
 					}
@@ -197,7 +197,7 @@ std::string_view Handle::exception() const noexcept {
 
 Service::Service(u8 workerCount) {
 	if (!init(workerCount)) {
-		LOG_E("[{}] Failed to initialise task workers!", g_tName);
+		logE("[{}] Failed to initialise task workers!", g_tName);
 	}
 }
 

@@ -120,7 +120,7 @@ T randomRange(T min, T max) noexcept {
 }
 
 inline void Random::seed(std::optional<u32> value) noexcept {
-	m_engine = std::mt19937(value ? *value : m_device());
+	m_engine = std::mt19937(value.value_or(m_device()));
 }
 
 template <typename T, template <typename> typename Dist, typename... Args>

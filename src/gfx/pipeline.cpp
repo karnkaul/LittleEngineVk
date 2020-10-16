@@ -63,10 +63,10 @@ bool PipelineImpl::create() {
 			m_info.shader = *shader;
 		}
 	}
-	ASSERT(m_info.shader.status() == res::Status::eReady, "Shader is not ready!");
+	ENSURE(m_info.shader.status() == res::Status::eReady, "Shader is not ready!");
 	auto pShaderImpl = res::impl(m_info.shader);
 	if (m_info.shader.status() != res::Status::eReady || !pShaderImpl) {
-		LOG_E("Failed to create pipeline!");
+		logE("Failed to create pipeline!");
 		return false;
 	}
 	std::array const setLayouts = {rd::g_bufferLayout, rd::g_samplerLayout};
@@ -138,7 +138,7 @@ bool PipelineImpl::create() {
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	{
 		auto modules = pShaderImpl->modules();
-		ASSERT(!modules.empty(), "No shader modules!");
+		ENSURE(!modules.empty(), "No shader modules!");
 		shaderCreateInfo.reserve(modules.size());
 		for (auto const& [type, module] : modules) {
 			vk::PipelineShaderStageCreateInfo createInfo;

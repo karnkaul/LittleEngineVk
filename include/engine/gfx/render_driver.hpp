@@ -3,9 +3,10 @@
 #include <memory>
 #include <vector>
 #include <core/transform.hpp>
+#include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/pipeline.hpp>
-#include <engine/gfx/screen_rect.hpp>
+#include <engine/gfx/viewport.hpp>
 #include <engine/resources/resource_types.hpp>
 
 namespace le {
@@ -22,7 +23,6 @@ class Driver final {
 	};
 
 	struct Skybox final {
-		ScreenRect viewport;
 		res::Texture cubemap;
 		Pipeline pipeline;
 	};
@@ -37,6 +37,7 @@ class Driver final {
 		ScreenRect viewport;
 		ScreenRect scissor;
 		std::deque<Drawable> drawables;
+		bool bIgnoreGameView = false;
 	};
 
 	struct View final {
@@ -75,7 +76,8 @@ class Driver final {
 	void submit(Scene scene, ScreenRect const& sceneView);
 
 	glm::vec2 screenToN(glm::vec2 const& screenXY) const;
-	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nViewport, glm::vec2 const& padding = {}) const;
+	ScreenRect clampToView(glm::vec2 const& screenXY, glm::vec2 const& nRect, glm::vec2 const& padding = {}) const;
+	void fill(View& out_view, Viewport const& viewport, Camera const& camera, f32 orthoDepth = 2.0f) const;
 
   private:
 	void render(bool bEditor);

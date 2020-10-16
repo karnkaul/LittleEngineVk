@@ -154,8 +154,8 @@ Stopwatch<Tag>::Scoped::Scoped(Ref<Stopwatch<Tag>> parent, Hash id, Log log) : p
 }
 
 template <SWTag Tag>
-Stopwatch<Tag>::Scoped::Scoped(Scoped&& rhs) noexcept : parent(rhs.parent), id(rhs.id), log(rhs.log) {
-	rhs.id = {};
+Stopwatch<Tag>::Scoped::Scoped(Scoped&& rhs) noexcept
+	: parent(rhs.parent), id(std::exchange(rhs.id, Hash())), log(std::exchange(rhs.log, Stopwatch<Tag>::Log::eNone)) {
 }
 
 template <SWTag Tag>
@@ -166,9 +166,8 @@ typename Stopwatch<Tag>::Scoped& Stopwatch<Tag>::Scoped::operator=(Scoped&& rhs)
 			p.stop(id, log);
 		}
 		parent = rhs.parent;
-		id = rhs.id;
-		log = rhs.log;
-		rhs.id = {};
+		id = std::exchange(rhs.id, Hash());
+		log = std::exchange(rhs.log, Stopwatch<Tag>::Log::eNone);
 	}
 	return *this;
 }
@@ -206,7 +205,7 @@ typename Stopwatch<Tag>::Stamp const* Stopwatch<Tag>::stop(Hash hash, Log log) {
 					m_name = "Stopwatch";
 				}
 				Time const dt = log == Log::eGameDT ? stamp.dt : stamp.real();
-				LOG_I("[{}] [{}] : [{:.2f}ms]", m_name, info.label, dt.to_s() * 1000);
+				logI("[{}] [{}] : [{:.2f}ms]", m_name, info.label, dt.to_s() * 1000);
 			}
 			return &stamp;
 		}

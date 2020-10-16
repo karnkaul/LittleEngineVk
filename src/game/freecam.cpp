@@ -1,4 +1,4 @@
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <engine/game/freecam.hpp>

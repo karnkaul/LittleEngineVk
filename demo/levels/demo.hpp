@@ -16,7 +16,7 @@ struct FPS final {
 		}
 		updated = le::Time::elapsed();
 		++frames;
-		if (elapsed >= 1s) {
+		if (elapsed.duration >= 1s) {
 			fps = frames;
 			frames = 0;
 			elapsed = {};

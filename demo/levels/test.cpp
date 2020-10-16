@@ -12,7 +12,7 @@ TestLevel::TestLevel() {
 
 	m_input.context.mapTrigger("load_prev", [this]() {
 		// if (!loadWorld(m_previousWorldID))
-		{ LOG_W("[{}] Not implemented", m_name); }
+		{ logW("[{}] Not implemented", m_name); }
 	});
 	m_input.context.addTrigger("load_prev", input::Key::eP, input::Action::eRelease, input::Mods::eCONTROL);
 	m_input.context.mapRange("roll", [this](f32 value) {
@@ -36,7 +36,7 @@ TestLevel::TestLevel() {
 	Text2D::Info info;
 	info.data.colour = colours::white;
 	info.data.text = "Test World";
-	info.data.scale = 0.25f;
+	info.data.size = 0.25f;
 	info.id = "title";
 	auto& [title] = mainText.components;
 	title.setText(std::move(info));

@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <iterator>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 
@@ -87,7 +87,7 @@ gfx::Geometry gfx::createCube(f32 side /* = 1.0f */) {
 }
 
 gfx::Geometry gfx::createCircle(f32 diameter, u16 points) {
-	ASSERT(points < 1000, "Max points is 1000");
+	ENSURE(points < 1000, "Max points is 1000");
 	f32 const r = diameter * 0.5f;
 	Geometry ret;
 	f32 const arc = 360.0f / points;
@@ -108,7 +108,7 @@ gfx::Geometry gfx::createCircle(f32 diameter, u16 points) {
 }
 
 gfx::Geometry gfx::createCone(f32 diam, f32 height, u16 points) {
-	ASSERT(points < 1000, "Max points is 1000");
+	ENSURE(points < 1000, "Max points is 1000");
 	f32 const r = diam * 0.5f;
 	Geometry verts;
 	f32 const angle = 360.0f / points;
@@ -163,7 +163,7 @@ void addSide(std::vector<std::pair<glm::vec3, glm::vec2>>& out_points, gfx::Geom
 } // namespace
 
 gfx::Geometry gfx::createCubedSphere(f32 diam, u8 quadsPerSide) {
-	ASSERT(quadsPerSide < 30, "Max quads per side is 30");
+	ENSURE(quadsPerSide < 30, "Max quads per side is 30");
 	Geometry ret;
 	u32 qCount = (u32)(quadsPerSide * quadsPerSide);
 	ret.reserve(qCount * 4 * 6, qCount * 6 * 6);

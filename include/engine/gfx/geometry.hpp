@@ -6,10 +6,10 @@
 #include <glm/gtc/quaternion.hpp>
 
 namespace le::gfx {
-constexpr glm::vec3 g_nUp = {0.0f, 1.0f, 0.0f};
-constexpr glm::vec3 g_nRight = {1.0f, 0.0f, 0.0f};
-constexpr glm::vec3 g_nFront = {0.0f, 0.0f, 1.0f};
-constexpr glm::quat g_qIdentity = {1.0f, 0.0f, 0.0f, 0.0f};
+inline constexpr glm::vec3 g_nUp = {0.0f, 1.0f, 0.0f};
+inline constexpr glm::vec3 g_nRight = {1.0f, 0.0f, 0.0f};
+inline constexpr glm::vec3 g_nFront = {0.0f, 0.0f, 1.0f};
+inline constexpr glm::quat g_qIdentity = {1.0f, 0.0f, 0.0f, 0.0f};
 
 struct Vertex final {
 	glm::vec3 position = {};

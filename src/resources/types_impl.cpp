@@ -42,13 +42,13 @@ std::future<void> load(gfx::Image& out_image, vk::Format texMode, glm::ivec2 con
 	return gfx::vram::copy(bytes, out_image, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 }
 
-TResult<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id, io::Level errLevel) {
+Result<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::string_view id, dl::level errLevel) {
 	Texture::Raw ret;
 	s32 ch;
 	auto pIn = reinterpret_cast<stbi_uc const*>(imgBytes.data());
 	auto pOut = stbi_load_from_memory(pIn, (s32)imgBytes.size(), &ret.size.x, &ret.size.y, &ch, 4);
 	if (!pOut) {
-		LOG(errLevel, "[{}] [{}] Failed to load image data!", tName, id);
+		dl::log(errLevel, "[{}] [{}] Failed to load image data!", tName, id);
 		return {};
 	}
 	std::size_t const size = (std::size_t)(ret.size.x * ret.size.y * 4);
@@ -163,10 +163,10 @@ void Mesh::updateGeometry(gfx::Geometry geometry) {
 }
 
 template <>
-TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
+kt::result_void<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
 	auto pThis = static_cast<Texture::LoadInfo const*>(this);
 	if (pThis->imageFilename.empty() && pThis->cubemapFilenames.empty()) {
-		LOG_E("[{}] Empty resource ID(s)!", Texture::s_tName);
+		logE("[{}] Empty resource ID(s)!", Texture::s_tName);
 		return {};
 	}
 	Texture::CreateInfo ret;
@@ -174,7 +174,7 @@ TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
 	ret.samplerID = pThis->samplerID;
 	if (!pThis->cubemapFilenames.empty()) {
 		if (pThis->cubemapFilenames.size() != 6) {
-			LOG_E("[{}] Invalid cubemap filename count [{}]!", Texture::s_tName, pThis->cubemapFilenames.size());
+			logE("[{}] Invalid cubemap filename count [{}]!", Texture::s_tName, pThis->cubemapFilenames.size());
 			return {};
 		}
 		ret.type = Texture::Type::eCube;
@@ -183,7 +183,7 @@ TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
 			if (engine::reader().checkPresence(id)) {
 				ret.ids.push_back(id);
 			} else {
-				LOG_E("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
+				logE("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
 				return {};
 			}
 		}
@@ -191,7 +191,7 @@ TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
 		ret.type = Texture::Type::e2D;
 		auto const id = pThis->directory / pThis->imageFilename;
 		if (!engine::reader().checkPresence(id)) {
-			LOG_E("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
+			logE("[{}] Resource ID [{}] not found in [{}]!", Texture::s_tName, id.generic_string(), engine::reader().medium());
 			return {};
 		}
 		ret.ids = {id};
@@ -239,11 +239,11 @@ bool Font::CreateInfo::deserialise(std::string const& jsonStr) {
 			for (auto& [key, value] : pGlyphsData->fields) {
 				if (!key.empty() && value->type() == dj::data_type::object) {
 					Glyph glyph;
-					glyph.deserialise((u8)key.at(0), *value->cast<dj::object>());
+					glyph.deserialise((u8)key[0], *value->cast<dj::object>());
 					if (glyph.cell.x > 0 && glyph.cell.y > 0) {
 						glyphs.push_back(std::move(glyph));
 					} else {
-						LOG_W("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key.at(0));
+						logW("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key[0]);
 					}
 				}
 			}
@@ -252,11 +252,23 @@ bool Font::CreateInfo::deserialise(std::string const& jsonStr) {
 	return true;
 }
 
-gfx::Geometry Font::generate(Text const& text) const {
-	Font font;
-	font.guid = guid;
-	if (auto pImpl = res::impl(font)) {
-		return pImpl->generate(text);
+gfx::Geometry Font::generate(Text const& text, std::optional<Layout> layout) const {
+	if (auto pImpl = res::impl(*this)) {
+		return pImpl->generate(text, layout);
+	}
+	return {};
+}
+
+glm::ivec2 Font::glyphBounds(std::string_view text) const {
+	if (auto pImpl = res::impl(*this)) {
+		return pImpl->glyphBounds(text);
+	}
+	return {};
+}
+
+Font::Layout Font::layout(std::string_view text, Size size, f32 nPadY) const {
+	if (auto pImpl = res::impl(*this)) {
+		return pImpl->layout(text, size, nPadY);
 	}
 	return {};
 }
@@ -268,10 +280,10 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&) {
 	if (bCodeMapPopulated) {
 		codeMap = std::move(out_createInfo.codeMap);
 	} else {
-		ASSERT(bCodeIDsPopulated, "Invalid Shader ShaderData!");
+		ENSURE(bCodeIDsPopulated, "Invalid Shader ShaderData!");
 		[[maybe_unused]] auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 		for (std::size_t idx = 0; idx < out_createInfo.codeIDMap.size(); ++idx) {
-			auto& codeID = out_createInfo.codeIDMap.at(idx);
+			auto& codeID = out_createInfo.codeIDMap[idx];
 			auto const ext = extension(codeID);
 			bool bSpv = true;
 			if (ext == s_vertExt || ext == s_fragExt) {
@@ -284,8 +296,8 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&) {
 						if (pReader) {
 							monitor = {};
 							auto onReloaded = [this, idx](Monitor::File const& file) -> bool {
-								if (!glslToSpirV(file.id, codeMap.at(idx))) {
-									LOG_E("[{}] Failed to reload Shader!", s_tName);
+								if (!glslToSpirV(file.id, codeMap[idx])) {
+									logE("[{}] Failed to reload Shader!", s_tName);
 									return false;
 								}
 								return true;
@@ -294,7 +306,7 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&) {
 						}
 #endif
 					} else {
-						LOG_E("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
+						logE("[{}] Failed to compile GLSL code to SPIR-V!", s_tName);
 						return false;
 					}
 					bSpv = false;
@@ -303,12 +315,12 @@ bool Shader::Impl::make(CreateInfo& out_createInfo, Info&) {
 			}
 			if (bSpv) {
 				auto shaderData = engine::reader().bytes(codeID);
-				ASSERT(shaderData, "Shader code missing!");
+				ENSURE(shaderData, "Shader code missing!");
 				if (!shaderData) {
-					LOG_E("[{}] [{}] Shader code missing: [{}]!", s_tName, id.generic_string(), codeID.generic_string());
+					logE("[{}] [{}] Shader code missing: [{}]!", s_tName, id.generic_string(), codeID.generic_string());
 					return false;
 				}
-				codeMap.at(idx) = std::move(*shaderData);
+				codeMap[idx] = std::move(*shaderData);
 			}
 		}
 	}
@@ -328,12 +340,12 @@ bool Shader::Impl::checkReload() {
 	case Status::eReady: {
 		if (monitor.update()) {
 			auto const idStr = id.generic_string();
-			LOG_D("[{}] [{}] Reloading...", s_tName, idStr);
+			logD("[{}] [{}] Reloading...", s_tName, idStr);
 			if (loadAllSpirV()) {
-				LOG_I("[{}] [{}] Reloaded", s_tName, idStr);
+				logI("[{}] [{}] Reloaded", s_tName, idStr);
 				return true;
 			} else {
-				LOG_E("[{}] [{}] Failed to reload!", s_tName, idStr);
+				logE("[{}] [{}] Failed to reload!", s_tName, idStr);
 				return false;
 			}
 		}
@@ -349,19 +361,19 @@ bool Shader::Impl::checkReload() {
 #if defined(LEVK_SHADER_COMPILER)
 bool Shader::Impl::loadGlsl(stdfs::path const& id, Type type) {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline) {
-		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
+		logE("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	return engine::reader().isPresent(id) && glslToSpirV(id, codeMap.at((std::size_t)type));
+	return engine::reader().isPresent(id) && glslToSpirV(id, codeMap[(std::size_t)type]);
 }
 
 bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes) {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline) {
-		LOG_E("[{}] ShaderCompiler is Offline!", s_tName);
+		logE("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
 	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
-	ASSERT(pReader, "Cannot compile shaders without io::FileReader!");
+	ENSURE(pReader, "Cannot compile shaders without io::FileReader!");
 	if (pReader->isPresent(id)) {
 		auto const src = pReader->fullPath(id);
 		auto dstID = id;
@@ -383,28 +395,28 @@ bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes) {
 bool Shader::Impl::loadAllSpirV() {
 	bool bFound = false;
 	for (std::size_t idx = 0; idx < codeMap.size(); ++idx) {
-		auto const& code = codeMap.at(idx);
+		auto const& code = codeMap[idx];
 		if (!code.empty()) {
 			bFound = true;
-			gfx::g_device.destroy(shaders.at(idx));
+			gfx::g_device.destroy(shaders[idx]);
 			vk::ShaderModuleCreateInfo createInfo;
 			createInfo.codeSize = code.size();
 			createInfo.pCode = reinterpret_cast<u32 const*>(code.data());
-			shaders.at(idx) = gfx::g_device.device.createShaderModule(createInfo);
+			shaders[idx] = gfx::g_device.device.createShaderModule(createInfo);
 		}
 	}
 	return bFound;
 }
 
 vk::ShaderModule Shader::Impl::module(Shader::Type type) const {
-	ASSERT(shaders.at((std::size_t)type) != vk::ShaderModule(), "Module not present in Shader!");
-	return shaders.at((std::size_t)type);
+	ENSURE(shaders[(std::size_t)type] != vk::ShaderModule(), "Module not present in Shader!");
+	return shaders[(std::size_t)type];
 }
 
 std::map<Shader::Type, vk::ShaderModule> Shader::Impl::modules() const {
 	std::map<Shader::Type, vk::ShaderModule> ret;
 	for (std::size_t idx = 0; idx < (std::size_t)Shader::Type::eCOUNT_; ++idx) {
-		auto const& module = shaders.at(idx);
+		auto const& module = shaders[idx];
 		if (module != vk::ShaderModule()) {
 			ret[(Shader::Type)idx] = module;
 		}
@@ -414,14 +426,14 @@ std::map<Shader::Type, vk::ShaderModule> Shader::Impl::modules() const {
 
 bool Sampler::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 	vk::SamplerCreateInfo samplerInfo;
-	samplerInfo.magFilter = g_filters.at((std::size_t)out_createInfo.min);
-	samplerInfo.minFilter = g_filters.at((std::size_t)out_createInfo.mag);
-	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes.at((std::size_t)out_createInfo.mode);
+	samplerInfo.magFilter = g_filters[(std::size_t)out_createInfo.min];
+	samplerInfo.minFilter = g_filters[(std::size_t)out_createInfo.mag];
+	samplerInfo.addressModeU = samplerInfo.addressModeV = samplerInfo.addressModeW = g_samplerModes[(std::size_t)out_createInfo.mode];
 	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	samplerInfo.unnormalizedCoordinates = false;
 	samplerInfo.compareEnable = false;
 	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	samplerInfo.mipmapMode = g_mipModes.at((std::size_t)out_createInfo.mip);
+	samplerInfo.mipmapMode = g_mipModes[(std::size_t)out_createInfo.mip];
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
@@ -441,21 +453,22 @@ void Sampler::Impl::release() {
 bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 	auto const idStr = id.generic_string();
 	auto sampler = res::find<Sampler>(out_createInfo.samplerID);
-	out_info.sampler = *sampler;
-	if (!sampler || sampler->status() != Status::eReady) {
+	if (sampler && sampler->status() == Status::eReady) {
+		out_info.sampler = *sampler;
+	} else {
 		auto dSampler = res::find<Sampler>("samplers/default");
 		if (!dSampler) {
-			LOG_E("[{}] [{}] Failed to locate default sampler", Texture::s_tName, idStr);
+			logE("[{}] [{}] Failed to locate default sampler", Texture::s_tName, idStr);
 			return false;
 		}
 		out_info.sampler = *dSampler;
 	}
 	if (out_info.sampler.status() != Status::eReady) {
-		LOG_E("[{}] [{}] Sampler not ready!", Texture::s_tName, idStr);
+		logE("[{}] [{}] Sampler not ready!", Texture::s_tName, idStr);
 		return false;
 	}
-	type = g_texTypes.at((std::size_t)out_createInfo.type);
-	colourSpace = g_texModes.at((std::size_t)out_createInfo.mode);
+	type = g_texTypes[(std::size_t)out_createInfo.type];
+	colourSpace = g_texModes[(std::size_t)out_createInfo.mode];
 	[[maybe_unused]] bool bAddFileMonitor = false;
 	if (!out_createInfo.raws.empty()) {
 		bStbiRaw = false;
@@ -464,9 +477,9 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 		}
 	} else if (!out_createInfo.bytes.empty()) {
 		for (auto& bytes : out_createInfo.bytes) {
-			auto raw = imgToRaw(std::move(bytes), Texture::s_tName, idStr, io::Level::eError);
+			auto raw = imgToRaw(std::move(bytes), Texture::s_tName, idStr, dl::level::error);
 			if (!raw) {
-				LOG_E("[{}] [{}] Failed to create texture!", Texture::s_tName, idStr);
+				logE("[{}] [{}] Failed to create texture!", Texture::s_tName, idStr);
 				return false;
 			}
 			raws.push_back(std::move(*raw));
@@ -476,12 +489,12 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 		for (auto const& resourceID : out_createInfo.ids) {
 			auto pixels = engine::reader().bytes(resourceID);
 			if (!pixels) {
-				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
+				logE("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
 				return false;
 			}
-			auto raw = imgToRaw(std::move(*pixels), Texture::s_tName, idStr, io::Level::eError);
+			auto raw = imgToRaw(std::move(*pixels), Texture::s_tName, idStr, dl::level::error);
 			if (!raw) {
-				LOG_E("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
+				logE("[{}] [{}] Failed to create texture from [{}]!", Texture::s_tName, idStr, resourceID.generic_string());
 				return false;
 			}
 			raws.push_back(std::move(*raw));
@@ -489,8 +502,8 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 		bStbiRaw = true;
 		bAddFileMonitor = true;
 	} else {
-		ASSERT(false, "Invalid Info!");
-		LOG_E("[{}] [{}] Invalid Texture Info!", Texture::s_tName, idStr);
+		ENSURE(false, "Invalid Info!");
+		logE("[{}] [{}] Invalid Texture Info!", Texture::s_tName, idStr);
 		return false;
 	}
 	out_info.size = raws.back().size;
@@ -518,13 +531,13 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 				texture.guid = guid;
 				if (auto pInfo = res::infoRW(texture)) {
 					auto const idStr = pInfo->id.generic_string();
-					auto raw = imgToRaw(file.monitor.bytes(), Texture::s_tName, idStr, io::Level::eWarning);
+					auto raw = imgToRaw(file.monitor.bytes(), Texture::s_tName, idStr, dl::level::warning);
 					if (raw) {
 						if (bStbiRaw) {
-							stbi_image_free((void*)(raws.at(idx).bytes.pData));
+							stbi_image_free((void*)(raws[idx].bytes.pData));
 						}
 						pInfo->size = raw->size;
-						raws.at(idx) = std::move(*raw);
+						raws[idx] = std::move(*raw);
 						return true;
 					}
 				}
@@ -551,7 +564,7 @@ bool Texture::Impl::update() {
 		if (utils::futureState(copied) == FutureState::eReady) {
 			auto const idStr = id.generic_string();
 			auto const szLoadStr = status == Status::eReloading ? "reloaded" : "loaded";
-			LOG_I("[{}] [{}] {}", Texture::s_tName, idStr, szLoadStr);
+			logI("[{}] [{}] {}", Texture::s_tName, idStr, szLoadStr);
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 			if (status == Status::eReloading) {
 				gfx::deferred::release(active, imageView);
@@ -690,7 +703,7 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry) {
 		vbo.buffer = createXBO(name, vSize, vk::BufferUsageFlagBits::eVertexBuffer, bHostVisible);
 		if (bHostVisible) {
 			[[maybe_unused]] bool const bResult = gfx::vram::mapMemory(vbo.buffer);
-			ASSERT(bResult, "Memory map failed");
+			ENSURE(bResult, "Memory map failed");
 		}
 	}
 	if (iSize > ibo.buffer.writeSize) {
@@ -702,7 +715,7 @@ void Mesh::Impl::updateGeometry(Info& out_info, gfx::Geometry geometry) {
 		ibo.buffer = createXBO(name, iSize, vk::BufferUsageFlagBits::eIndexBuffer, bHostVisible);
 		if (bHostVisible) {
 			[[maybe_unused]] bool const bResult = gfx::vram::mapMemory(ibo.buffer);
-			ASSERT(bResult, "Memory map failed");
+			ENSURE(bResult, "Memory map failed");
 		}
 	}
 	switch (out_info.type) {
@@ -736,12 +749,12 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 		out_info.jsonID = out_createInfo.jsonID;
 		auto json = engine::reader().string(out_createInfo.jsonID);
 		if (!json || !out_createInfo.deserialise(*json)) {
-			LOG_E("[{}] [{}] Invalid Font data", s_tName, id.generic_string());
+			logE("[{}] [{}] Invalid Font data", s_tName, id.generic_string());
 			return false;
 		}
 		auto img = engine::reader().bytes("fonts" / out_createInfo.sheetID);
 		if (!img) {
-			LOG_E("[{}] [{}] Failed to load font atlas!", s_tName, id.generic_string());
+			logE("[{}] [{}] Failed to load font atlas!", s_tName, id.generic_string());
 			return false;
 		}
 		out_createInfo.image = std::move(*img);
@@ -768,12 +781,17 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 			material.material = *mat;
 		}
 	}
-	ASSERT(material.material.status() == res::Status::eReady, "Material is not ready!");
+	ENSURE(material.material.status() == res::Status::eReady, "Material is not ready!");
 	material.diffuse = sheet;
 	material.flags.set(res::Material::Flag::eTextured | res::Material::Flag::eUI | res::Material::Flag::eDropColour);
 	material.flags.reset(res::Material::Flag::eOpaque | res::Material::Flag::eLit);
 	out_info.material = material;
 	out_info.sheet = sheet;
+	out_info.maxBounds = {};
+	for (auto const& glyph : glyphs) {
+		out_info.maxBounds.x = std::max(out_info.maxBounds.x, glyph.cell.x);
+		out_info.maxBounds.y = std::max(out_info.maxBounds.y, glyph.cell.y);
+	}
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 	monitor = {};
@@ -833,8 +851,8 @@ void Font::Impl::loadGlyphs(std::vector<Glyph> const& glyphData, [[maybe_unused]
 	glm::ivec2 maxCell = glm::vec2(0);
 	s32 maxXAdv = 0;
 	for (auto const& glyph : glyphData) {
-		ASSERT(glyph.ch != '\0' && (bOverwrite || glyphs[(std::size_t)glyph.ch].ch == '\0'), "Invalid/duplicate glyph!");
-		glyphs.at((std::size_t)glyph.ch) = glyph;
+		ENSURE(glyph.ch != '\0' && (bOverwrite || glyphs[(std::size_t)glyph.ch].ch == '\0'), "Invalid/duplicate glyph!");
+		glyphs[(std::size_t)glyph.ch] = glyph;
 		maxCell.x = std::max(maxCell.x, glyph.cell.x);
 		maxCell.y = std::max(maxCell.y, glyph.cell.y);
 		maxXAdv = std::max(maxXAdv, glyph.xAdv);
@@ -848,24 +866,13 @@ void Font::Impl::loadGlyphs(std::vector<Glyph> const& glyphData, [[maybe_unused]
 	}
 }
 
-gfx::Geometry Font::Impl::generate(Text const& text) const {
+gfx::Geometry Font::Impl::generate(Text const& text, std::optional<Font::Layout> layout) const {
 	if (text.text.empty()) {
 		return {};
 	}
-	glm::ivec2 maxCell = glm::vec2(0);
-	for (auto c : text.text) {
-		maxCell.x = std::max(maxCell.x, glyphs.at((std::size_t)c).cell.x);
-		maxCell.y = std::max(maxCell.y, glyphs.at((std::size_t)c).cell.y);
+	if (!layout) {
+		layout = this->layout(text.text, text.size, text.nYPad);
 	}
-	u32 lineCount = 1;
-	for (std::size_t idx = 0; idx < text.text.size(); ++idx) {
-		if (text.text[idx] == '\n') {
-			++lineCount;
-		}
-	}
-	f32 const lineHeight = ((f32)maxCell.y) * text.scale;
-	f32 const linePad = lineHeight * text.nYPad;
-	f32 const textHeight = (f32)lineCount * lineHeight;
 	glm::vec2 const realTopLeft = text.pos;
 	glm::vec2 textTL = realTopLeft;
 	std::size_t nextLineIdx = 0;
@@ -875,19 +882,24 @@ gfx::Geometry Font::Impl::generate(Text const& text) const {
 	auto const textTLoffset = textTLOffset(text.halign, text.valign);
 	auto updateTextTL = [&]() {
 		lineWidth = 0.0f;
+		f32 maxOffsetY = 0.0f;
 		for (; nextLineIdx < text.text.size(); ++nextLineIdx) {
-			auto const ch = text.text.at(nextLineIdx);
+			auto const ch = text.text[nextLineIdx];
 			if (ch == '\n') {
 				break;
 			} else {
-				lineWidth += (f32)glyphs.at((std::size_t)ch).xAdv;
+				Glyph const& glyph = glyphs[(std::size_t)ch];
+				lineWidth += (f32)glyph.xAdv;
+				maxOffsetY = std::max(maxOffsetY, (f32)glyph.offset.y);
 			}
 		}
-		lineWidth *= text.scale;
+		maxOffsetY *= layout->scale;
+		f32 const offsetY = layout->lineHeight - maxOffsetY;
+		lineWidth *= layout->scale;
 		++nextLineIdx;
 		xPos = 0.0f;
-		textTL = realTopLeft + textTLoffset * glm::vec2(lineWidth, textHeight);
-		textTL.y -= (lineHeight + ((f32)yIdx * (lineHeight + linePad)));
+		textTL = realTopLeft + textTLoffset * glm::vec2(lineWidth, layout->textHeight + offsetY);
+		textTL.y -= (layout->lineHeight + ((f32)yIdx * (layout->lineHeight + layout->linePad)));
 	};
 	updateTextTL();
 
@@ -903,22 +915,57 @@ gfx::Geometry Font::Impl::generate(Text const& text) const {
 			updateTextTL();
 			continue;
 		}
-		auto const& search = glyphs.at((std::size_t)c);
+		auto const& search = glyphs[(std::size_t)c];
 		auto const& glyph = search.ch == '\0' ? blankGlyph : search;
-		auto const offset = glm::vec3(xPos - (f32)glyph.offset.x * text.scale, (f32)glyph.offset.y * text.scale, 0.0f);
+		auto const offset = glm::vec3(xPos - (f32)glyph.offset.x * layout->scale, (f32)glyph.offset.y * layout->scale, 0.0f);
 		auto const tl = glm::vec3(textTL.x, textTL.y, text.pos.z) + offset;
 		auto const s = (f32)glyph.st.x / (f32)texSize.x;
 		auto const t = (f32)glyph.st.y / (f32)texSize.y;
 		auto const u = s + (f32)glyph.uv.x / (f32)texSize.x;
 		auto const v = t + (f32)glyph.uv.y / (f32)texSize.y;
-		glm::vec2 const cell = {(f32)glyph.cell.x * text.scale, (f32)glyph.cell.y * text.scale};
+		glm::vec2 const cell = {(f32)glyph.cell.x * layout->scale, (f32)glyph.cell.y * layout->scale};
 		auto const v0 = ret.addVertex({tl, colour, normal, glm::vec2(s, t)});
 		auto const v1 = ret.addVertex({tl + glm::vec3(cell.x, 0.0f, 0.0f), colour, normal, glm::vec2(u, t)});
 		auto const v2 = ret.addVertex({tl + glm::vec3(cell.x, -cell.y, 0.0f), colour, normal, glm::vec2(u, v)});
 		auto const v3 = ret.addVertex({tl + glm::vec3(0.0f, -cell.y, 0.0f), colour, normal, glm::vec2(s, v)});
 		ret.addIndices({v0, v1, v2, v2, v3, v0});
-		xPos += ((f32)glyph.xAdv * text.scale);
+		xPos += ((f32)glyph.xAdv * layout->scale);
 	}
+	return ret;
+}
+
+glm::ivec2 Font::Impl::glyphBounds(std::string_view text) const {
+	glm::ivec2 ret = {};
+	if (text.empty()) {
+		Font font;
+		font.guid = guid;
+		ret = res::info(font).maxBounds;
+	} else {
+		for (char c : text) {
+			ret.x = std::max(ret.x, glyphs[(std::size_t)c].cell.x);
+			ret.y = std::max(ret.y, glyphs[(std::size_t)c].cell.y);
+		}
+	}
+	return ret;
+}
+
+Font::Layout Font::Impl::layout(std::string_view text, Font::Size size, f32 nPadY) const {
+	Font::Layout ret;
+	ret.maxBounds = glyphBounds(text);
+	ret.lineCount = 1;
+	for (std::size_t idx = 0; idx < text.size(); ++idx) {
+		if (text[idx] == '\n') {
+			++ret.lineCount;
+		}
+	}
+	if (auto pPx = std::get_if<u32>(&size)) {
+		ret.scale = (f32)(*pPx) / (f32)ret.maxBounds.y;
+	} else {
+		ret.scale = std::get<f32>(size);
+	}
+	ret.lineHeight = (f32)ret.maxBounds.y * ret.scale;
+	ret.linePad = nPadY * ret.lineHeight;
+	ret.textHeight = (f32)ret.lineHeight * ((f32)ret.lineCount + nPadY * f32(ret.lineCount - 1));
 	return ret;
 }
 } // namespace le::res

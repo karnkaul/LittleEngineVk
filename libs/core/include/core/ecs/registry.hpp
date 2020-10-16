@@ -32,9 +32,9 @@ class Registry final {
 	///
 	std::string m_name;
 	///
-	/// \brief Adjusts `io::Level` for logging on database changes (unset to disable)
+	/// \brief Adjusts `dl::level` for logging on database changes (unset to disable)
 	///
-	std::optional<io::Level> m_logLevel = io::Level::eInfo;
+	std::optional<dl::level> m_logLevel = dl::level::info;
 
   public:
 	Registry();
@@ -274,7 +274,7 @@ inline bool Registry::destroy(Entity entity) {
 	for (auto& [_, uConcept] : m_db) {
 		bRet |= uConcept->detach(entity);
 	}
-	LOGIF(bRet && m_logLevel && !name.empty(), *m_logLevel, "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, entity.id, name);
+	log_if(bRet && m_logLevel && !name.empty(), m_logLevel.value_or(dl::level::debug), "[{}] [{}:{}] [{}] destroyed", m_name, s_tEName, entity.id, name);
 	return bRet;
 }
 
@@ -417,7 +417,7 @@ inline void Registry::clear() {
 	auto const s = size();
 	auto lock = m_mutex.lock();
 	if (!m_db.empty()) {
-		LOGIF(m_logLevel, *m_logLevel, "[{}] [{}] Entities and [{}] Component tables destroyed", m_name, s, m_db.size());
+		log_if(m_logLevel, m_logLevel.value_or(dl::level::debug), "[{}] [{}] Entities and [{}] Component tables destroyed", m_name, s, m_db.size());
 		m_db.clear();
 	}
 }
@@ -437,7 +437,7 @@ Sign Registry::sign_Impl() {
 	auto search = s_signs.find(index);
 	if (search == s_signs.end()) {
 		auto result = s_signs.emplace(index, (Sign)t.hash_code());
-		ASSERT(result.second, "Insertion failure");
+		ENSURE(result.second, "Insertion failure");
 		search = result.first;
 	}
 	return search->second;
@@ -451,7 +451,7 @@ std::string_view Registry::name_Impl() {
 	auto search = s_names.find(s);
 	if (search == s_names.end()) {
 		auto result = s_names.emplace(s, detail::demangle(typeid(T).name()));
-		ASSERT(result.second, "Insertion failure");
+		ENSURE(result.second, "Insertion failure");
 		search = result.first;
 	}
 	return search->second;
@@ -503,16 +503,16 @@ inline Entity Registry::spawn_Impl(std::string name) {
 	Entity ret{id, m_regID};
 	auto& info = attach_Impl<Info>(ret, {});
 	info.name = std::move(name);
-	LOGIF(m_logLevel, *m_logLevel, "[{}] [{}:{}] [{}] spawned", m_name, s_tEName, id, info.name);
+	log_if(m_logLevel, m_logLevel.value_or(dl::level::debug), "[{}] [{}:{}] [{}] spawned", m_name, s_tEName, id, info.name);
 	return ret;
 }
 
 template <typename T, typename... Args>
 T& Registry::attach_Impl(Entity entity, std::string_view name, Args&&... args) {
 	auto& storage = get_Impl<T>();
-	ASSERT(!storage.find(entity), "Duplicate component!");
+	ENSURE(!storage.find(entity), "Duplicate component!");
 	if (m_logLevel && !name.empty()) {
-		LOG(*m_logLevel, "[{}] [{}] attached to [{}:{}] [{}]", m_name, name_Impl<T>(), s_tEName, entity.id, name);
+		dl::log(*m_logLevel, "[{}] [{}] attached to [{}:{}] [{}]", m_name, name_Impl<T>(), s_tEName, entity.id, name);
 	}
 	return storage.attach(entity, std::forward<Args>(args)...);
 }
@@ -522,7 +522,7 @@ bool Registry::detach_Impl(Entity entity, std::string_view name) {
 	auto& storage = get_Impl<T>();
 	if (storage.exists(entity)) {
 		if (m_logLevel && !name.empty()) {
-			LOG(*m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", m_name, name_Impl<T>(), s_tEName, entity.id, name);
+			dl::log(*m_logLevel, "[{}] [{}] detached from [{}:{}] [{}] and destroyed", m_name, name_Impl<T>(), s_tEName, entity.id, name);
 		}
 		return storage.detach(entity);
 	}
@@ -554,9 +554,9 @@ View_t<T...> Registry::view_Impl(Th pThis, Flags mask, Flags pattern) {
 			auto& storage = static_cast<detail::Storage<std::decay_t<T>...>&>(*search->second);
 			for (auto& [e, t] : storage.map) {
 				auto pStorage = pThis->template cast_Impl<Info>();
-				ASSERT(pStorage, "Invariant violated!");
+				ENSURE(pStorage, "Invariant violated!");
 				auto pInfo = pStorage->find(e);
-				ASSERT(pInfo, "Invariant violated");
+				ENSURE(pInfo, "Invariant violated");
 				auto const flags = pInfo->flags;
 				if ((flags & mask) == (pattern & mask)) {
 					ret.push_back({e, Components<T&...>(t)});
@@ -569,11 +569,11 @@ View_t<T...> Registry::view_Impl(Th pThis, Flags mask, Flags pattern) {
 		if (pMin) {
 			for (auto& e : pMin->entities()) {
 				auto pStorage = pThis->template cast_Impl<Info>();
-				ASSERT(pStorage, "Invariant violated!");
+				ENSURE(pStorage, "Invariant violated!");
 				auto pInfo = pStorage->find(e);
-				ASSERT(pInfo, "Invariant violated");
+				ENSURE(pInfo, "Invariant violated");
 				auto const flags = pInfo->flags;
-				auto check = [e, flags, mask, pThis](Sign s) -> bool { return pThis->exists_Impl(s, e); };
+				auto check = [e, pThis](Sign s) -> bool { return pThis->exists_Impl(s, e); };
 				if ((flags & mask) == (pattern & mask) && std::all_of(s.begin(), s.end(), check)) {
 					ret.push_back({e, Components<T&...>(*pThis->template cast_Impl<T>()->find(e)...)});
 				}

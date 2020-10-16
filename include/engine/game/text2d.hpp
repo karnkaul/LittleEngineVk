@@ -23,6 +23,7 @@ class Text2D {
 	void updateText(std::string text);
 
 	res::Mesh mesh() const;
+	res::Font font() const;
 	bool ready() const;
 	bool busy() const;
 

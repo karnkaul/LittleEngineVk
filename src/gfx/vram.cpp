@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <fmt/format.h>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/tasks.hpp>
 #include <core/threads.hpp>
@@ -42,8 +42,8 @@ constexpr vk::DeviceSize operator""_MB(unsigned long long size) {
 }
 
 [[maybe_unused]] std::string logCount() {
-	auto [bufferSize, bufferUnit] = utils::friendlySize(g_allocations.at((std::size_t)ResourceType::eBuffer));
-	auto const [imageSize, imageUnit] = utils::friendlySize(g_allocations.at((std::size_t)ResourceType::eImage));
+	auto [bufferSize, bufferUnit] = utils::friendlySize(g_allocations[(std::size_t)ResourceType::eBuffer]);
+	auto const [imageSize, imageUnit] = utils::friendlySize(g_allocations[(std::size_t)ResourceType::eImage]);
 	return fmt::format("Buffers: [{:.2f}{}]; Images: [{:.2f}{}]", bufferSize, bufferUnit, imageSize, imageUnit);
 }
 
@@ -163,7 +163,7 @@ void init(Span<engine::MemRange> stagingReserve) {
 				}
 			}
 		}
-		LOG_I("[{}] Transfer thread initialised", s_tName);
+		logI("[{}] Transfer thread initialised", s_tName);
 		while (auto f = g_queue.pop()) {
 			(*f)();
 		}
@@ -208,7 +208,7 @@ void deinit() {
 		f();
 	}
 	g_sync.thread = {};
-	LOG_I("[{}] Transfer thread terminated", s_tName);
+	logI("[{}] Transfer thread terminated", s_tName);
 	g_device.waitIdle();
 	g_device.destroy(g_resources.pool);
 	std::vector<std::shared_ptr<tasks::Handle>> tasks;
@@ -251,7 +251,7 @@ void vram::init(Span<engine::MemRange> stagingReserve) {
 		}
 		tfr::init(stagingReserve.extent == 0 ? g_stagingReserve : stagingReserve);
 	}
-	LOG_I("[{}] initialised", s_tName);
+	logI("[{}] initialised", s_tName);
 	return;
 }
 
@@ -259,14 +259,14 @@ void vram::deinit() {
 	tfr::deinit();
 	bool bErr = false;
 	for (auto& val : g_allocations) {
-		ASSERT(val.load() == 0, "Allocations pending release!");
+		ENSURE(val.load() == 0, "Allocations pending release!");
 		bErr = val != 0;
 	}
-	LOGIF_E(bErr, "vram::deinit() => Allocations pending release!");
+	logE_if(bErr, "vram::deinit() => Allocations pending release!");
 	if (g_allocator != VmaAllocator()) {
 		vmaDestroyAllocator(g_allocator);
 		g_allocator = VmaAllocator();
-		LOG_I("[{}] deinitialised", s_tName);
+		logI("[{}] deinitialised", s_tName);
 	}
 	return;
 }
@@ -278,7 +278,7 @@ void vram::update() {
 Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent) {
 	Buffer ret;
 #if defined(LEVK_VKRESOURCE_NAMES)
-	ASSERT(!info.name.empty(), "Unnamed buffer!");
+	ENSURE(!info.name.empty(), "Unnamed buffer!");
 	ret.name = info.name;
 #endif
 	vk::BufferCreateInfo bufferInfo;
@@ -301,14 +301,14 @@ Buffer vram::createBuffer(BufferInfo const& info, [[maybe_unused]] bool bSilent)
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(g_allocator, ret.handle, &allocationInfo);
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
-	g_allocations.at((std::size_t)ResourceType::eBuffer).fetch_add(ret.writeSize);
+	g_allocations[(std::size_t)ResourceType::eBuffer].fetch_add(ret.writeSize);
 	if (g_VRAM_bLogAllocs) {
 		if (!bSilent) {
 			auto [size, unit] = utils::friendlySize(ret.writeSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-			LOG(g_VRAM_logLevel, "== [{}] Buffer [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
+			dl::log(g_VRAM_logLevel, "== [{}] Buffer [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
 #else
-			LOG(g_VRAM_logLevel, "== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+			dl::log(g_VRAM_logLevel, "== [{}] Buffer allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 		}
 	}
@@ -350,21 +350,21 @@ std::future<void> vram::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize 
 	[[maybe_unused]] auto const& sq = src.queueFlags;
 	[[maybe_unused]] auto const& dq = out_dst.queueFlags;
 	[[maybe_unused]] bool const bReady = sq.test(QFlag::eTransfer) && dq.test(QFlag::eTransfer);
-	ASSERT(bReady, "Transfer flag not set!");
+	ENSURE(bReady, "Transfer flag not set!");
 	bool const bSizes = out_dst.writeSize >= size;
-	ASSERT(bSizes, "Invalid buffer sizes!");
+	ENSURE(bSizes, "Invalid buffer sizes!");
 	if (!bReady) {
-		LOG_E("[{}] Source/destination buffers missing QFlag::eTransfer!", s_tName);
+		logE("[{}] Source/destination buffers missing QFlag::eTransfer!", s_tName);
 		return {};
 	}
 	if (!bSizes) {
-		LOG_E("[{}] Source buffer is larger than destination buffer!", s_tName);
+		logE("[{}] Source buffer is larger than destination buffer!", s_tName);
 		return {};
 	}
 	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
 	if (indices.size() > 1) {
-		ASSERT(sq.test() <= 1 || src.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
-		ASSERT(dq.test() <= 1 || out_dst.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(sq.test() <= 1 || src.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(dq.test() <= 1 || out_dst.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 	}
 	auto promise = std::make_shared<Batch::Promise::element_type>();
 	auto ret = promise->get_future();
@@ -388,11 +388,11 @@ std::future<void> vram::stage(Buffer& out_deviceBuffer, void const* pData, vk::D
 		size = out_deviceBuffer.writeSize;
 	}
 	auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT(indices.size() == 1 || out_deviceBuffer.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE(indices.size() == 1 || out_deviceBuffer.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	bool const bQueueFlags = out_deviceBuffer.queueFlags.test(QFlag::eTransfer);
-	ASSERT(bQueueFlags, "Invalid queue flags!");
+	ENSURE(bQueueFlags, "Invalid queue flags!");
 	if (!bQueueFlags) {
-		LOG_E("[{}] Invalid queue flags on source buffer!", s_tName);
+		logE("[{}] Invalid queue flags on source buffer!", s_tName);
 		return {};
 	}
 	auto promise = std::make_shared<Batch::Promise::element_type>();
@@ -409,7 +409,7 @@ std::future<void> vram::stage(Buffer& out_deviceBuffer, void const* pData, vk::D
 			stage.command.end();
 			tfr::addStage(std::move(stage), std::move(promise));
 		} else {
-			LOG_E("[{}] Error staging data!", s_tName);
+			logE("[{}] Error staging data!", s_tName);
 			promise->set_value();
 		}
 	};
@@ -420,7 +420,7 @@ std::future<void> vram::stage(Buffer& out_deviceBuffer, void const* pData, vk::D
 Image vram::createImage(ImageInfo const& info) {
 	Image ret;
 #if defined(LEVK_VKRESOURCE_NAMES)
-	ASSERT(!info.name.empty(), "Unnamed buffer!");
+	ENSURE(!info.name.empty(), "Unnamed buffer!");
 	ret.name = info.name;
 #endif
 	vk::ImageCreateInfo imageInfo = info.createInfo;
@@ -444,13 +444,13 @@ Image vram::createImage(ImageInfo const& info) {
 	ret.info = {allocationInfo.deviceMemory, allocationInfo.offset, allocationInfo.size};
 	ret.allocatedSize = requirements.size;
 	ret.mode = imageInfo.sharingMode;
-	g_allocations.at((std::size_t)ResourceType::eImage).fetch_add(ret.allocatedSize);
+	g_allocations[(std::size_t)ResourceType::eImage].fetch_add(ret.allocatedSize);
 	if (g_VRAM_bLogAllocs) {
 		auto [size, unit] = utils::friendlySize(ret.allocatedSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-		LOG(g_VRAM_logLevel, "== [{}] Image [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
+		dl::log(g_VRAM_logLevel, "== [{}] Image [{}] allocated: [{:.2f}{}] | {}", s_tName, ret.name, size, unit, logCount());
 #else
-		LOG(g_VRAM_logLevel, "== [{}] Image allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+		dl::log(g_VRAM_logLevel, "== [{}] Image allocated: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 	}
 	return ret;
@@ -460,15 +460,15 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent) {
 	unmapMemory(buffer);
 	if (buffer.buffer != vk::Buffer()) {
 		vmaDestroyBuffer(g_allocator, buffer.buffer, buffer.handle);
-		g_allocations.at((std::size_t)ResourceType::eBuffer).fetch_sub(buffer.writeSize);
+		g_allocations[(std::size_t)ResourceType::eBuffer].fetch_sub(buffer.writeSize);
 		if (g_VRAM_bLogAllocs) {
 			if (!bSilent) {
 				if (buffer.info.actualSize) {
 					auto [size, unit] = utils::friendlySize(buffer.writeSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-					LOG(g_VRAM_logLevel, "-- [{}] Buffer [{}] released: [{:.2f}{}] | {}", s_tName, buffer.name, size, unit, logCount());
+					dl::log(g_VRAM_logLevel, "-- [{}] Buffer [{}] released: [{:.2f}{}] | {}", s_tName, buffer.name, size, unit, logCount());
 #else
-					LOG(g_VRAM_logLevel, "-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+					dl::log(g_VRAM_logLevel, "-- [{}] Buffer released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 				}
 			}
@@ -481,19 +481,19 @@ std::future<void> vram::copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutT
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : pixelsArr) {
-		ASSERT(layerSize == 0 || layerSize == pixels.extent, "Invalid image data!");
+		ENSURE(layerSize == 0 || layerSize == pixels.extent, "Invalid image data!");
 		layerSize = pixels.extent;
 		imgSize += layerSize;
 	}
-	ASSERT(layerSize > 0 && imgSize > 0, "Invalid image data!");
+	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
-	ASSERT(indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE(indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	auto promise = std::make_shared<Batch::Promise::element_type>();
 	auto ret = promise->get_future();
 	auto f = [promise, pixelsArr, &dst, layouts, imgSize, layerSize]() mutable {
 		auto stage = tfr::newStage(imgSize);
 		[[maybe_unused]] bool const bResult = mapMemory(stage.buffer);
-		ASSERT(bResult, "Memory map failed");
+		ENSURE(bResult, "Memory map failed");
 		u32 layerIdx = 0;
 		u32 const layerCount = (u32)pixelsArr.extent;
 		std::vector<vk::BufferImageCopy> copyRegions;
@@ -556,14 +556,14 @@ std::future<void> vram::copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutT
 void vram::release(Image image) {
 	if (image.image != vk::Image()) {
 		vmaDestroyImage(g_allocator, image.image, image.handle);
-		g_allocations.at((std::size_t)ResourceType::eImage).fetch_sub(image.allocatedSize);
+		g_allocations[(std::size_t)ResourceType::eImage].fetch_sub(image.allocatedSize);
 		if (g_VRAM_bLogAllocs) {
 			if (image.info.actualSize > 0) {
 				auto [size, unit] = utils::friendlySize(image.allocatedSize);
 #if defined(LEVK_VKRESOURCE_NAMES)
-				LOG(g_VRAM_logLevel, "-- [{}] Image [{}] released: [{:.2f}{}] | {}", s_tName, image.name, size, unit, logCount());
+				dl::log(g_VRAM_logLevel, "-- [{}] Image [{}] released: [{:.2f}{}] | {}", s_tName, image.name, size, unit, logCount());
 #else
-				LOG(g_VRAM_logLevel, "-- [{}] Image released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
+				dl::log(g_VRAM_logLevel, "-- [{}] Image released: [{:.2f}{}] | {}", s_tName, size, unit, logCount());
 #endif
 			}
 		}

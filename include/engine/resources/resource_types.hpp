@@ -1,8 +1,8 @@
 #pragma once
+#include <variant>
 #include <vector>
 #include <core/colour.hpp>
 #include <core/hash.hpp>
-#include <core/result.hpp>
 #include <core/span.hpp>
 #include <core/token_gen.hpp>
 #include <core/utils.hpp>
@@ -11,6 +11,7 @@
 #include <engine/gfx/geometry.hpp>
 #include <glm/vec2.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
+#include <kt/result/result.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_RESOURCES_HOT_RELOAD)
@@ -21,13 +22,14 @@
 #endif
 #endif
 
+namespace le {
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-constexpr bool levk_resourcesHotReload = true;
+inline constexpr bool levk_resourcesHotReload = true;
 #else
-constexpr bool levk_resourcesHotReload = false;
+inline constexpr bool levk_resourcesHotReload = false;
 #endif
 
-namespace le::res {
+namespace res {
 using GUID = TZero<u64>;
 
 ///
@@ -150,13 +152,25 @@ struct Font final : Resource<Font> {
 	struct Info;
 	struct CreateInfo;
 	struct Text;
+	using Size = std::variant<u32, f32>;
+
+	struct Layout {
+		glm::ivec2 maxBounds = {};
+		u32 lineCount = 0;
+		f32 lineHeight = 0.0f;
+		f32 textHeight = 0.0f;
+		f32 scale = 1.0f;
+		f32 linePad = 0.2f;
+	};
 
 	struct Impl;
 
 	Info const& info() const;
 	Status status() const;
 
-	gfx::Geometry generate(Text const& text) const;
+	gfx::Geometry generate(Text const& text, std::optional<Layout> layout = std::nullopt) const;
+	glm::ivec2 glyphBounds(std::string_view text = {}) const;
+	Layout layout(std::string_view text, Size size = 1.0f, f32 nPadY = 0.1f) const;
 };
 
 ///
@@ -181,11 +195,12 @@ struct Model final : Resource<Model> {
 struct InfoBase {
 	stdfs::path id;
 };
+
 template <typename T>
 struct LoadBase {
 	using CreateInfo = typename T::CreateInfo;
 
-	TResult<CreateInfo> createInfo() const;
+	kt::result_void<CreateInfo> createInfo() const;
 };
 
 enum class Shader::Type : s8 { eVertex, eFragment, eCOUNT_ };
@@ -282,6 +297,7 @@ struct Font::Info : InfoBase {
 	Material::Inst material;
 	Texture sheet;
 	stdfs::path jsonID;
+	glm::ivec2 maxBounds = {};
 };
 struct Font::CreateInfo {
 	res::Material::Inst material;
@@ -296,12 +312,11 @@ struct Font::CreateInfo {
 };
 struct Font::Text {
 	enum class HAlign : s8 { Centre = 0, Left, Right };
-
 	enum class VAlign : s8 { Middle = 0, Top, Bottom };
 
 	std::string text;
 	glm::vec3 pos = glm::vec3(0.0f);
-	f32 scale = 1.0f;
+	Font::Size size = 1.0f;
 	f32 nYPad = 0.2f;
 	HAlign halign = HAlign::Centre;
 	VAlign valign = VAlign::Middle;
@@ -356,8 +371,9 @@ struct Model::LoadInfo : LoadBase<Model> {
 };
 
 template <>
-TResult<Texture::CreateInfo> LoadBase<Texture>::createInfo() const;
+kt::result_void<Texture::CreateInfo> LoadBase<Texture>::createInfo() const;
 
 template <>
-TResult<Model::CreateInfo> LoadBase<Model>::createInfo() const;
-} // namespace le::res
+kt::result_void<Model::CreateInfo> LoadBase<Model>::createInfo() const;
+} // namespace res
+} // namespace le

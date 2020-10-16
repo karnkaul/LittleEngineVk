@@ -1,6 +1,6 @@
 #pragma once
 #include <list>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/ref.hpp>
 
 namespace le {
@@ -82,7 +82,7 @@ constexpr Tree<T>::Tree() noexcept {
 }
 
 template <typename T>
-Tree<T>::Tree(Tree<T>&& rhs) noexcept : m_pParent(rhs.m_pParent), m_children(std::move(rhs.m_children)) {
+Tree<T>::Tree(Tree<T>&& rhs) noexcept : m_children(std::move(rhs.m_children)), m_pParent(rhs.m_pParent) {
 	pilfer(std::move(cast<T&&>(rhs)));
 }
 
@@ -104,7 +104,7 @@ Tree<T>::~Tree() {
 
 template <typename T>
 bool Tree<T>::parent(T* pParent) noexcept {
-	ASSERT(pParent != this, "Setting parent to self!");
+	ENSURE(pParent != this, "Setting parent to self!");
 	if (pParent != this && m_pParent != pParent) {
 		if (m_pParent) {
 			m_pParent->m_children.remove(cast<T&>(*this));

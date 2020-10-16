@@ -111,14 +111,14 @@ bool operator==(Colour lhs, Colour rhs) noexcept;
 bool operator!=(Colour lhs, Colour rhs) noexcept;
 
 namespace colours {
-constexpr Colour black(0x000000ff);
-constexpr Colour white(0xffffffff);
-constexpr Colour red(0xff0000ff);
-constexpr Colour green(0x00ff00ff);
-constexpr Colour blue(0x0000ffff);
-constexpr Colour yellow(0xffff00ff);
-constexpr Colour magenta(0xff00ffff);
-constexpr Colour cyan(0x00ffffff);
-constexpr Colour transparent(0x0);
+inline constexpr Colour black(0x000000ff);
+inline constexpr Colour white(0xffffffff);
+inline constexpr Colour red(0xff0000ff);
+inline constexpr Colour green(0x00ff00ff);
+inline constexpr Colour blue(0x0000ffff);
+inline constexpr Colour yellow(0xffff00ff);
+inline constexpr Colour magenta(0xff00ffff);
+inline constexpr Colour cyan(0x00ffffff);
+inline constexpr Colour transparent(0x0);
 } // namespace colours
 } // namespace le

@@ -1,0 +1,94 @@
+{
+	"version": 1,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 19,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "levk-db",
+			"displayName": "Debug",
+			"description": "Debug build using Ninja/clang",
+			"generator": "Ninja",
+			"binaryDir": "out/db",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": {
+					"type": "STRING",
+					"value": "clang"
+				},
+				"CMAKE_CXX_COMPILER": {
+					"type": "STRING",
+					"value": "clang++"
+				},
+				"CMAKE_BUILD_TYPE": {
+					"type": "STRING",
+					"value": "Debug"
+				},
+				"LEVK_EDITOR": {
+					"type": "BOOL",
+					"value": "ON"
+				}
+			}
+		},
+		{
+			"name": "levk-edrw",
+			"displayName": "RelW Editor",
+			"description": "RelW build with Editor using Ninja/clang",
+			"generator": "Ninja",
+			"binaryDir": "out/edrw",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": {
+					"type": "STRING",
+					"value": "clang"
+				},
+				"CMAKE_CXX_COMPILER": {
+					"type": "STRING",
+					"value": "clang++"
+				},
+				"CMAKE_BUILD_TYPE": {
+					"type": "STRING",
+					"value": "RelWithDebInfo"
+				},
+				"LEVK_EDITOR": {
+					"type": "BOOL",
+					"value": "ON"
+				}
+			}
+		},
+		{
+			"name": "levk-rw",
+			"displayName": "RelW",
+			"description": "RelW build using Ninja/clang",
+			"generator": "Ninja",
+			"binaryDir": "out/rw",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": {
+					"type": "STRING",
+					"value": "clang"
+				},
+				"CMAKE_CXX_COMPILER": {
+					"type": "STRING",
+					"value": "clang++"
+				},
+				"CMAKE_BUILD_TYPE": {
+					"type": "STRING",
+					"value": "RelWithDebInfo"
+				}
+			}
+		},
+		{
+			"name": "levk-rl",
+			"displayName": "Release ",
+			"description": "Release build using Make",
+			"generator": "Unix Makefiles",
+			"binaryDir": "out/rl",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": {
+					"type": "STRING",
+					"value": "Release"
+				}
+			}
+		}
+	]
+}

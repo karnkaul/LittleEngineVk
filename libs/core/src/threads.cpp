@@ -1,6 +1,6 @@
 #include <list>
 #include <utility>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
 #include <core/threads.hpp>
@@ -47,7 +47,7 @@ void threads::init() {
 	g_mainThreadID = std::this_thread::get_id();
 #if defined(LEVK_OS_LINUX)
 	if (XInitThreads() == 0) {
-		LOG_E("[OS] ERROR calling XInitThreads()! UB follows.");
+		logE("[OS] ERROR calling XInitThreads()! UB follows.");
 	}
 #endif
 	return;
@@ -102,7 +102,7 @@ u32 threads::runningCount() {
 }
 
 void threads::sleep(Time duration) {
-	if (duration <= Time(0)) {
+	if (duration <= Time()) {
 		std::this_thread::yield();
 	} else {
 		std::this_thread::sleep_for(std::chrono::microseconds(duration.to_us()));

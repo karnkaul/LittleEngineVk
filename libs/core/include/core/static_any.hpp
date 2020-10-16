@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <core/os.hpp>
 #include <core/traits.hpp>
 
 namespace le {
@@ -203,7 +204,14 @@ template <std::size_t N>
 template <typename T, typename>
 T StaticAny<N>::val() const {
 	if (contains<T>()) {
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 		return *reinterpret_cast<T const*>(m_bytes.data());
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic pop
+#endif
 	}
 	if (s_bThrow) {
 		throw std::runtime_error("StaticAny: Type mismatch!");
@@ -215,7 +223,14 @@ template <std::size_t N>
 template <typename T, typename>
 T const* StaticAny<N>::ptr() const noexcept {
 	if (contains<T>() || contains<T const>()) {
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 		return reinterpret_cast<T const*>(m_bytes.data());
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic pop
+#endif
 	}
 	return nullptr;
 }
@@ -224,7 +239,14 @@ template <std::size_t N>
 template <typename T, typename>
 T* StaticAny<N>::ptr() noexcept {
 	if (contains<T>()) {
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 		return reinterpret_cast<T*>(m_bytes.data());
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic pop
+#endif
 	}
 	return nullptr;
 }
@@ -233,7 +255,14 @@ template <std::size_t N>
 template <typename T, typename>
 T const& StaticAny<N>::ref() const {
 	if (contains<T>()) {
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 		return *reinterpret_cast<T const*>(m_bytes.data());
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic pop
+#endif
 	}
 	if (s_bThrow) {
 		throw std::runtime_error("StaticAny: Type mismatch!");
@@ -246,7 +275,14 @@ template <std::size_t N>
 template <typename T, typename>
 T& StaticAny<N>::ref() {
 	if (contains<T>()) {
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 		return *reinterpret_cast<T*>(m_bytes.data());
+#if defined(LEVK_COMPILER_GCC)
+#pragma GCC diagnostic pop
+#endif
 	}
 	if (s_bThrow) {
 		throw std::runtime_error("StaticAny: Type mismatch!");

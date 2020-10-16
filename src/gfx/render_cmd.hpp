@@ -1,5 +1,5 @@
 #pragma once
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <gfx/pipeline_impl.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -27,8 +27,8 @@ class RenderCmd final {
 	template <typename T>
 	void bindResources(PipelineImpl const& pipeline, vk::ArrayProxy<vk::DescriptorSet const> sets, vk::ShaderStageFlags stages, u32 offset,
 					   vk::ArrayProxy<T const> pushConstants) const {
-		ASSERT(m_commandBuffer != vk::CommandBuffer(), "Null command buffer!");
-		ASSERT(m_bRecording, "Command buffer not recording!");
+		ENSURE(m_commandBuffer != vk::CommandBuffer(), "Null command buffer!");
+		ENSURE(m_bRecording, "Command buffer not recording!");
 		if (pipeline.m_pipeline != m_prevPipeline) {
 			m_commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.m_pipeline);
 			m_prevPipeline = pipeline.m_pipeline;

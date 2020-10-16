@@ -4,17 +4,12 @@ project(levk-core)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
-# -fPIC for fmt
-set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
-if(MSVC_RUNTIME AND NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-	target_compile_definitions(fmt PUBLIC FMT_EXCEPTIONS=0)
-endif()
+
 # glm defines
 target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SILENT_WARNINGS GLM_ENABLE_EXPERIMENTAL GLM_EXT_INCLUDED)
 
 target_include_directories(${PROJECT_NAME}
-	SYSTEM PUBLIC
-		"${EXT_DIR}/fmt/include"
+
 	PUBLIC
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 	PRIVATE
@@ -22,8 +17,8 @@ target_include_directories(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
-		fmt
 		glm
+		dlog
 	PRIVATE
 		levk-interface
 		physfs-static

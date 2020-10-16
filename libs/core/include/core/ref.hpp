@@ -31,12 +31,12 @@ constexpr Ref<T>::operator T&() const noexcept {
 }
 
 template <typename T>
-constexpr inline bool operator==(Ref<T> lhs, Ref<T> rhs) noexcept {
+constexpr bool operator==(Ref<T> lhs, Ref<T> rhs) noexcept {
 	return lhs.pPtr == rhs.pPtr;
 }
 
 template <typename T>
-constexpr inline bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept {
+constexpr bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept {
 	return lhs.pPtr != rhs.pPtr;
 }
 } // namespace le

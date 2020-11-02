@@ -8,21 +8,20 @@
 #undef patch
 #endif
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Struct representing a semantic version
 ///
-struct Version
-{
-public:
+struct Version {
+  public:
 	///
 	/// \brief Parse string into version
 	///
 	Version(std::string_view serialised);
-	explicit constexpr Version(u32 major = 0, u32 minor = 0, u32 patch = 0, u32 tweak = 0) noexcept : mj(major), mn(minor), pa(patch), tw(tweak) {}
+	explicit constexpr Version(u32 major = 0, u32 minor = 0, u32 patch = 0, u32 tweak = 0) noexcept : mj(major), mn(minor), pa(patch), tw(tweak) {
+	}
 
-public:
+  public:
 	u32 major() const noexcept;
 	u32 minor() const noexcept;
 	u32 patch() const noexcept;
@@ -41,7 +40,7 @@ public:
 	bool operator>(Version const& rhs) noexcept;
 	bool operator>=(Version const& rhs) noexcept;
 
-private:
+  private:
 	u32 mj;
 	u32 mn;
 	u32 pa;

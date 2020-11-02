@@ -1,133 +1,183 @@
 #pragma once
-#include <algorithm>
-#include <memory>
-#include <type_traits>
-#include <vector>
-#include <core/assert.hpp>
-#include <core/std_types.hpp>
+#include <list>
+#include <core/ensure.hpp>
+#include <core/ref.hpp>
 
-namespace le
-{
+namespace le {
 ///
-/// \brief Default type representing a concrete Node, derives from TNodeBase
+/// \brief CRTP base class for a self-contained N-tree
 ///
 template <typename T>
-struct TNode;
-
-///
-/// \brief Wrapper type for entire, multi-root tree
-///
-template <typename T, template <typename> typename Node = TNode>
-struct TTree;
-
-///
-/// \brief Default type representing a root node; TNode derives from this
-///
-template <typename T, template <typename> typename Node>
-struct TNodeBase
-{
-	using type = Node<T>;
-	using value_type = T;
+class Tree {
+  public:
+	///
+	/// \brief Default constructor
+	///
+	constexpr Tree() noexcept;
+	///
+	/// \brief Move constructor: pilfers rhs and reparents its children
+	///
+	Tree(Tree<T>&&) noexcept;
+	///
+	/// \brief Move assignment operator: unparents self, pilfers rhs and reparents its children
+	///
+	Tree& operator=(Tree<T>&&) noexcept;
+	Tree(Tree<T> const&) = delete;
+	Tree& operator=(Tree<T> const&) = delete;
+	///
+	/// \brief Destructor: unparents self and reparents children
+	///
+	~Tree();
 
 	///
-	/// \brief Container of this children of this node
+	/// \brief Reparent to pParent (pass `nullptr` to unparent)
 	///
-	std::vector<std::unique_ptr<Node<T>>> children;
+	bool parent(T* pParent) noexcept;
+	///
+	/// \brief Obtain pointer to parent (if exists)
+	///
+	T* parent() noexcept;
+	///
+	/// \brief Obtain pointer to parent (if exists)
+	///
+	T const* parent() const noexcept;
+	///
+	/// \brief Obtain (const reference to) list of all children
+	///
+	std::list<Ref<T>> const& children() const noexcept;
+	///
+	/// \brief Depth-first walk
+	/// \param root root node whose children to traverse
+	/// \param pred predicate taking `T`, if `false` returned, the sub-tree will be skipped
+	///
+	template <typename U, typename Pred>
+	static void walk(U&& root, Pred pred);
 
+  protected:
 	///
-	/// \brief Constructor
+	/// \brief List of child trees
 	///
-	template <typename... Args>
-	Node<T>& push(Args&&... args);
+	std::list<Ref<T>> m_children;
+	///
+	/// \brief Pointer to parent
+	///
+	T* m_pParent = nullptr;
+	///
+	/// \brief Set to true on parent changes (otherwise unused in base class)
+	///
+	mutable bool m_bDirty = false;
+
+  protected:
+	void pilfer(T&& rhs);
+	void purge();
+
+  private:
+	template <typename U, typename Th>
+	static constexpr U& cast(Th& th) noexcept;
 };
 
 template <typename T>
-struct TNode : TNodeBase<T, TNode>
-{
-	///
-	/// \brief typedef exported for TTree
-	///
-	using base_type = TNodeBase<T, TNode>;
-	static constexpr bool noexcept_v = std::is_trivially_constructible_v<T>;
-
-	///
-	/// \brief Reference to parent TNodeBase
-	///
-	Ref<base_type> parent_;
-	///
-	/// \brief Stored payload
-	///
-	T payload;
-
-	///
-	/// \brief Constructor
-	///
-	template <typename... Args>
-	constexpr TNode(base_type& parent, Args&&... args) noexcept(noexcept(noexcept_v));
-
-	///
-	/// \brief API function for TTree
-	///
-	constexpr base_type& parent();
-};
-
-template <typename T, template <typename> typename Node>
-struct TTree
-{
-	using type = Node<T>;
-	using value_type = T;
-	using base_type = typename type::base_type;
-
-	///
-	/// \brief Root node of the tree (use TNodeBase by default)
-	///
-	base_type root;
-
-	///
-	/// \brief Add a new child node to the parent
-	///
-	template <typename... Args>
-	static type& push(base_type& parent, Args&&...);
-
-	///
-	/// \brief Remove a node (and all its leaves) from its parent
-	///
-	void pop(type& node);
-};
-
-template <typename T, template <typename> typename Node>
-template <typename... Args>
-Node<T>& TNodeBase<T, Node>::push(Args&&... args)
-{
-	children.push_back(std::make_unique<Node<T>>(*this, std::forward<Args>(args)...));
-	return *children.back();
+constexpr Tree<T>::Tree() noexcept {
+	static_assert(std::is_base_of_v<Tree<T>, T>, "T must derive from Tree<T>");
 }
 
 template <typename T>
-template <typename... Args>
-constexpr TNode<T>::TNode(base_type& parent, Args&&... args) noexcept(noexcept(noexcept_v)) : parent_(parent), payload(std::forward<Args>(args)...)
-{
+Tree<T>::Tree(Tree<T>&& rhs) noexcept : m_children(std::move(rhs.m_children)), m_pParent(rhs.m_pParent) {
+	pilfer(std::move(cast<T&&>(rhs)));
 }
 
 template <typename T>
-constexpr typename TNode<T>::base_type& TNode<T>::parent()
-{
-	return parent_;
+Tree<T>& Tree<T>::operator=(Tree<T>&& rhs) noexcept {
+	if (&rhs != this) {
+		purge();
+		m_pParent = rhs.m_pParent;
+		m_children = std::move(rhs.m_children);
+		pilfer(std::move(cast<T&&>(rhs)));
+	}
+	return *this;
 }
 
-template <typename T, template <typename> typename Node>
-template <typename... Args>
-typename TTree<T, Node>::type& TTree<T, Node>::push(base_type& parent, Args&&... args)
-{
-	return parent.push(std::forward<Args>(args)...);
+template <typename T>
+Tree<T>::~Tree() {
+	purge();
 }
 
-template <typename T, template <typename> typename Node>
-void TTree<T, Node>::pop(type& node)
-{
-	base_type& p = node.parent();
-	auto search = std::remove_if(p.children.begin(), p.children.end(), [&node](auto const& c) { return c.get() == &node; });
-	ASSERT(search != p.children.end(), "Invariant violated");
-	p.children.erase(search, p.children.end());
+template <typename T>
+bool Tree<T>::parent(T* pParent) noexcept {
+	ENSURE(pParent != this, "Setting parent to self!");
+	if (pParent != this && m_pParent != pParent) {
+		if (m_pParent) {
+			m_pParent->m_children.remove(cast<T&>(*this));
+		}
+		m_pParent = pParent;
+		if (m_pParent) {
+			m_pParent->m_children.push_back(cast<T&>(*this));
+		}
+		m_bDirty = true;
+		return true;
+	}
+	return false;
+}
+
+template <typename T>
+T* Tree<T>::parent() noexcept {
+	return m_pParent;
+}
+
+template <typename T>
+T const* Tree<T>::parent() const noexcept {
+	return m_pParent;
+}
+
+template <typename T>
+std::list<Ref<T>> const& Tree<T>::children() const noexcept {
+	return m_children;
+}
+
+template <typename T>
+template <typename U, typename Pred>
+void Tree<T>::walk(U&& root, Pred pred) {
+	static_assert(std::is_base_of_v<Tree<T>, std::decay_t<T>>, "Invalid type!");
+	for (T& child : root.m_children) {
+		if (pred(child)) {
+			walk(child, pred);
+		}
+	}
+}
+
+template <typename T>
+template <typename U, typename Th>
+constexpr U& Tree<T>::cast(Th& th) noexcept {
+	return static_cast<U&>(th);
+}
+
+template <typename T>
+void Tree<T>::pilfer(T&& rhs) {
+	T& t = cast<T&>(*this);
+	rhs.m_pParent = nullptr;
+	if (m_pParent) {
+		m_pParent->m_children.remove(rhs);
+		m_pParent->m_children.push_back(t);
+	}
+	for (T& child : m_children) {
+		child.m_pParent = std::addressof(t);
+		child.m_bDirty = true;
+	}
+}
+
+template <typename T>
+void Tree<T>::purge() {
+	if (m_pParent) {
+		m_pParent->m_children.remove(cast<T&>(*this));
+	}
+	for (T& child : m_children) {
+		child.m_pParent = m_pParent;
+		child.m_bDirty = true;
+		if (m_pParent) {
+			m_pParent->m_children.push_back(child);
+		}
+	}
+	m_children.clear();
+	m_pParent = nullptr;
 }
 } // namespace le

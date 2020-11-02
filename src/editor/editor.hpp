@@ -1,29 +1,22 @@
 #pragma once
 #if defined(LEVK_EDITOR)
-#include <glm/glm.hpp>
-#include <core/ecs_registry.hpp>
 #include <core/time.hpp>
-#include <engine/gfx/screen_rect.hpp>
-#include <engine/window/common.hpp>
+#include <core/trigger.hpp>
 #include <engine/game/freecam.hpp>
 #include <engine/game/state.hpp>
+#include <engine/gfx/viewport.hpp>
+#include <engine/window/common.hpp>
 #include <game/state_impl.hpp>
+#include <glm/glm.hpp>
 
-namespace le::editor
-{
+namespace le::editor {
 inline bool g_bTickGame = true;
-inline gfx::ScreenRect g_gameRect = {};
+inline TTrigger<bool> g_bStepGame = false;
 inline FreeCam g_editorCam;
 
-struct Args final
-{
-	gs::Context* pGame = nullptr;
-	gs::EMap* pMap = nullptr;
-	Transform* pRoot = nullptr;
-};
-
 bool init(WindowID editorWindow);
+bool enabled();
 void deinit();
-void tick(Args const& args, Time dt);
+std::optional<gfx::Viewport> tick(GameScene& out_scene, Time dt);
 } // namespace le::editor
 #endif

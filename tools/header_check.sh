@@ -4,16 +4,16 @@
 # Requirements:
 #  - clang-format
 
-exclude=*external/*
-build=*out/*
+paths="include libs src"
 pattern="*.h*"
 
 this_dir=$(pwd)
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./os.sh
 cd "$this_dir"
-
-files=$(find . -not -path "$exclude" -not -path "$build" \( -name $pattern \))
+for path in ${paths}; do
+  files="$files $(find -wholename "./$path/$pattern")"
+done
 count=$(echo -e "$files" | wc -l)
 let count=$count-1
 echo -e "== Checking $count headers for:\n\t[#pragma once]\n"

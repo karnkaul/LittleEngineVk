@@ -2,11 +2,9 @@
 #include <engine/resources/resources.hpp>
 #include <resources/resources_impl.hpp>
 
-namespace le::res
-{
-class Model::Impl : public ImplBase, ILoadable
-{
-public:
+namespace le::res {
+class Model::Impl : public ImplBase, ILoadable {
+  public:
 	std::deque<res::Material::Inst> m_materials;
 	std::vector<res::Mesh> m_meshes;
 	std::deque<res::TScoped<res::Mesh>> m_loadedMeshes;

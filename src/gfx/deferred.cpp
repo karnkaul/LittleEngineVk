@@ -1,18 +1,14 @@
-#include <kt/async_queue/async_queue.hpp>
 #include <gfx/deferred.hpp>
-#include <gfx/renderer_impl.hpp>
 #include <gfx/device.hpp>
+#include <gfx/render_driver_impl.hpp>
 #include <gfx/vram.hpp>
+#include <kt/async_queue/async_queue.hpp>
 #include <window/window_impl.hpp>
 
-namespace le::gfx
-{
-namespace
-{
-struct Deferred
-{
-	struct Entry
-	{
+namespace le::gfx {
+namespace {
+struct Deferred {
+	struct Entry {
 		u64 lastFrame = 0;
 		s16 remaining = 0;
 		u8 pad = 0;
@@ -26,32 +22,24 @@ struct Deferred
 std::deque<Deferred> g_deferred;
 kt::lockable<std::mutex> g_mutex;
 
-bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
-{
-	for (auto& [window, entry] : out_deferred.drawingMap)
-	{
+bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active) {
+	for (auto& [window, entry] : out_deferred.drawingMap) {
 		bool const bWindowLost = active.find(window) == active.end();
-		auto const pRenderer = WindowImpl::rendererImpl(window);
-		if (!pRenderer || bWindowLost)
-		{
+		auto const pDriver = WindowImpl::driverImpl(window);
+		if (!pDriver || bWindowLost) {
 			--entry.remaining;
 		}
 		bool const bDrawn = entry.remaining <= 0;
-		if (!bDrawn && !bWindowLost && pRenderer)
-		{
-			if (pRenderer->framesDrawn() < entry.lastFrame)
-			{
+		if (!bDrawn && !bWindowLost && pDriver) {
+			if (pDriver->framesDrawn() < entry.lastFrame) {
 				// Renderer may have reset frame count, no need to track this window any more
 				entry.remaining = 0;
-			}
-			else
-			{
-				s16 diff = (s16)(pRenderer->framesDrawn() - entry.lastFrame);
-				entry.remaining = (s16)pRenderer->virtualFrameCount() + (s16)entry.pad - diff;
+			} else {
+				s16 diff = (s16)(pDriver->framesDrawn() - entry.lastFrame);
+				entry.remaining = (s16)pDriver->virtualFrameCount() + (s16)entry.pad - diff;
 			}
 		}
-		if (entry.remaining > 0)
-		{
+		if (entry.remaining > 0) {
 			return false;
 		}
 	}
@@ -59,48 +47,40 @@ bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active)
 }
 } // namespace
 
-void deferred::release(Buffer buffer)
-{
+void deferred::release(Buffer buffer) {
 	release([buffer = std::move(buffer)]() { vram::release(std::move(buffer)); });
 }
 
-void deferred::release(Image image, vk::ImageView imageView)
-{
+void deferred::release(Image image, vk::ImageView imageView) {
 	release([image = std::move(image), imageView] {
 		vram::release(std::move(image));
 		g_device.destroy(imageView);
 	});
 }
 
-void deferred::release(vk::Pipeline pipeline, vk::PipelineLayout layout)
-{
+void deferred::release(vk::Pipeline pipeline, vk::PipelineLayout layout) {
 	release([pipeline, layout]() { g_device.destroy(pipeline, layout); });
 }
 
-void deferred::release(std::function<void()> func, u8 extraFrames)
-{
+void deferred::release(std::function<void()> func, u8 extraFrames) {
 	Deferred deferred;
 	deferred.func = std::move(func);
 	auto lock = g_mutex.lock();
 	auto const active = WindowImpl::allExisting();
-	for (auto const& window : active)
-	{
-		auto const pRenderer = WindowImpl::rendererImpl(window);
-		if (pRenderer)
-		{
-			deferred.drawingMap[window] = {pRenderer->framesDrawn(), (s16)pRenderer->virtualFrameCount(), extraFrames};
+	for (auto const& window : active) {
+		auto const pDriver = WindowImpl::driverImpl(window);
+		if (pDriver) {
+			deferred.drawingMap[window] = {pDriver->framesDrawn(), (s16)pDriver->virtualFrameCount(), extraFrames};
 		}
 	}
 	g_deferred.push_back(std::move(deferred));
 }
 
-void deferred::update()
-{
+void deferred::update() {
 	auto lock = g_mutex.lock();
 	auto const active = WindowImpl::allExisting();
 	auto iter = std::remove_if(g_deferred.begin(), g_deferred.end(), [&](auto& deferred) {
-		if (isStale(deferred, active))
-		{
+		if (isStale(deferred, active)) {
 			deferred.func();
 			return true;
 		}
@@ -109,15 +89,12 @@ void deferred::update()
 	g_deferred.erase(iter, g_deferred.end());
 }
 
-void deferred::deinit()
-{
+void deferred::deinit() {
 	flush();
 }
 
-void deferred::flush()
-{
-	for (auto& deferred : g_deferred)
-	{
+void deferred::flush() {
+	for (auto& deferred : g_deferred) {
 		deferred.func();
 	}
 	g_deferred = {};

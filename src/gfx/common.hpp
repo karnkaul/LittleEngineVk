@@ -9,17 +9,17 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
-#include <glm/glm.hpp>
-#include <core/assert.hpp>
 #include <core/colour.hpp>
-#include <core/log_config.hpp>
-#include <core/flags.hpp>
+#include <core/ensure.hpp>
 #include <core/std_types.hpp>
+#include <dumb_log/log.hpp>
+#include <engine/gfx/pipeline.hpp>
 #include <engine/levk.hpp>
 #include <engine/window/common.hpp>
-#include <engine/gfx/pipeline.hpp>
+#include <glm/glm.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
+#include <vulkan/vulkan.hpp>
 
 #if defined(LEVK_DEBUG)
 #if !defined(LEVK_VKRESOURCE_NAMES)
@@ -29,21 +29,14 @@
 
 namespace stdfs = std::filesystem;
 
-namespace le::gfx
-{
-enum class QFlag
-{
-	eGraphics,
-	ePresent,
-	eTransfer,
-	eCOUNT_
-};
-using QFlags = TFlags<QFlag>;
+namespace le::gfx {
+enum class QFlag { eGraphics, ePresent, eTransfer, eCOUNT_ };
+using QFlags = kt::enum_flags<QFlag>;
 
 using CreateSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 
 // clang-format off
-[[maybe_unused]] constexpr std::array g_colourSpaces = 
+[[maybe_unused]] inline constexpr std::array g_colourSpaces = 
 {
 	vk::Format::eB8G8R8A8Srgb,
 	vk::Format::eB8G8R8A8Unorm
@@ -74,7 +67,7 @@ struct InitInfo final
 		eCOUNT_
 	};
 
-	using Flags = TFlags<Flag>;
+	using Flags = kt::enum_flags<Flag>;
 	using PickDevice = std::function<vk::PhysicalDevice(std::vector<AvailableDevice> const&)>;
 
 	struct
@@ -88,7 +81,7 @@ struct InitInfo final
 	{
 		PickDevice pickDevice;
 		Flags flags;
-		io::Level validationLog = io::Level::eWarning;
+		dl::level validationLog = dl::level::warning;
 		bool bDedicatedTransfer = true;
 	} options;
 };

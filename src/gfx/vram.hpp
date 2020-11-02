@@ -1,34 +1,32 @@
 #pragma once
 #include <future>
 #include <utility>
-#include <core/log_config.hpp>
 #include <core/utils.hpp>
+#include <dumb_log/log.hpp>
 #include <engine/levk.hpp>
 #include <engine/window/common.hpp>
 #include <gfx/common.hpp>
 
-namespace le::gfx
-{
+namespace le::gfx {
 #if defined(LEVK_DEBUG)
 inline bool g_VRAM_bLogAllocs = false;
 #else
-constexpr bool g_VRAM_bLogAllocs = false;
+inline constexpr bool g_VRAM_bLogAllocs = false;
 #endif
 
-inline io::Level g_VRAM_logLevel = io::Level::eDebug;
+inline dl::level g_VRAM_logLevel = dl::level::debug;
 
-struct QShare final
-{
+struct QShare final {
 	vk::SharingMode desired;
 
 	// TODO: Use exclusive queues
-	constexpr QShare(vk::SharingMode desired = vk::SharingMode::eConcurrent) : desired(desired) {}
+	constexpr QShare(vk::SharingMode desired = vk::SharingMode::eConcurrent) : desired(desired) {
+	}
 
 	vk::SharingMode operator()(QFlags queues) const;
 };
 
-struct ImageInfo final
-{
+struct ImageInfo final {
 	vk::ImageCreateInfo createInfo;
 	QShare share;
 	std::string name;
@@ -36,8 +34,7 @@ struct ImageInfo final
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
-struct BufferInfo final
-{
+struct BufferInfo final {
 	std::string name;
 	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
@@ -47,8 +44,7 @@ struct BufferInfo final
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
-namespace vram
-{
+namespace vram {
 inline VmaAllocator g_allocator;
 
 void init(Span<engine::MemRange> stagingReserve);
@@ -70,8 +66,7 @@ void release(Buffer buffer, bool bSilent = false);
 void release(Image image);
 
 template <typename T1, typename... Tn>
-void release(T1 t1, Tn... tn)
-{
+void release(T1 t1, Tn... tn) {
 	static_assert(std::is_same_v<T1, Image> || std::is_same_v<T1, Buffer>, "Invalid Type!");
 	release(t1);
 	release(tn...);

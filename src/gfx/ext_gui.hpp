@@ -1,12 +1,10 @@
 #pragma once
-#include <vulkan/vulkan.hpp>
 #include <core/std_types.hpp>
 #include <engine/window/common.hpp>
+#include <vulkan/vulkan.hpp>
 
-namespace le::gfx::ext_gui
-{
-struct Info final
-{
+namespace le::gfx::ext_gui {
+struct Info final {
 	vk::RenderPass renderPass;
 	WindowID window;
 	u8 imageCount = 3;

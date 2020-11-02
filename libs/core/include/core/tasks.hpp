@@ -3,13 +3,12 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include <fmt/format.h>
 #include <core/std_types.hpp>
 
-namespace le::tasks
-{
+namespace le::tasks {
 ///
 /// \brief typedef of a list of tasks
 ///
@@ -18,25 +17,17 @@ using List = std::vector<std::pair<std::function<void()>, std::string>>;
 ///
 /// \brief Handle to a submitted task
 ///
-class Handle final
-{
-public:
+class Handle final {
+  public:
 	///
 	/// \brief Status of task
 	///
-	enum class Status : s8
-	{
-		eWaiting,
-		eExecuting,
-		eCompleted,
-		eDiscarded,
-		eError
-	};
+	enum class Status : s8 { eWaiting, eExecuting, eCompleted, eDiscarded, eError };
 
-public:
+  public:
 	Handle(s64 id);
 
-public:
+  public:
 	///
 	/// \brief Obtain the status of this task
 	///
@@ -65,7 +56,7 @@ public:
 	///
 	std::string_view exception() const noexcept;
 
-private:
+  private:
 	s64 const m_id;
 	std::atomic<Status> m_status;
 	std::string m_exception;
@@ -102,8 +93,7 @@ void waitIdle(bool bKillEnqueued);
 ///
 /// \brief RAII Service to initialise/deinitialise tasks module
 ///
-struct Service final
-{
+struct Service final {
 	Service(u8 workerCount = 2);
 	~Service();
 };
@@ -118,17 +108,14 @@ bool init(u8 workerCount);
 void deinit();
 
 template <typename T, template <typename, typename...> typename C, typename... Args>
-std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::function<void(T&)> task, std::string_view prefix)
-{
-	if (task)
-	{
+std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::function<void(T&)> task, std::string_view prefix) {
+	if (task) {
 		List newTasks;
 		newTasks.reserve(out_itemList.size());
 		std::size_t idx = 0;
-		for (typename C<T, Args...>::iterator iter = out_itemList.begin(); iter != out_itemList.end(); ++iter)
-		{
+		for (typename C<T, Args...>::iterator iter = out_itemList.begin(); iter != out_itemList.end(); ++iter) {
 			std::string name = prefix.empty() ? std::string() : fmt::format("{}:{}", prefix, idx++);
-			auto newTask = [&out_itemList, iter, task]() mutable { task(*iter); };
+			auto newTask = [iter, task]() mutable { task(*iter); };
 			newTasks.push_back({std::move(newTask), std::move(name)});
 		}
 		return enqueue(std::move(newTasks));
@@ -137,10 +124,8 @@ std::vector<std::shared_ptr<Handle>> forEach(C<T, Args...>& out_itemList, std::f
 }
 
 template <template <typename, typename...> typename C, typename... Args>
-void wait(C<std::shared_ptr<Handle>, Args...>& out_handles)
-{
-	for (auto& handle : out_handles)
-	{
+void wait(C<std::shared_ptr<Handle>, Args...>& out_handles) {
+	for (auto& handle : out_handles) {
 		handle->wait();
 	}
 }

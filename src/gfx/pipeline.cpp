@@ -1,38 +1,32 @@
 #include <array>
 #include <fmt/format.h>
 #include <core/log.hpp>
-#include <engine/resources/resources.hpp>
 #include <engine/gfx/pipeline.hpp>
+#include <engine/resources/resources.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
-#include <gfx/render_context.hpp>
 #include <gfx/pipeline_impl.hpp>
+#include <gfx/render_context.hpp>
 #include <gfx/resource_descriptors.hpp>
 #include <resources/resources_impl.hpp>
 
-namespace le::gfx
-{
+namespace le::gfx {
 PipelineImpl::PipelineImpl() = default;
 PipelineImpl::PipelineImpl(PipelineImpl&&) = default;
 PipelineImpl& PipelineImpl::operator=(PipelineImpl&&) = default;
 
-PipelineImpl::~PipelineImpl()
-{
+PipelineImpl::~PipelineImpl() {
 	destroy();
 }
 
-bool PipelineImpl::create(Info info)
-{
+bool PipelineImpl::create(Info info) {
 	m_info = std::move(info);
-	if (m_info.shaderID.empty())
-	{
+	if (m_info.shaderID.empty()) {
 		m_info.shaderID = "shaders/default";
 	}
-	if (create())
-	{
+	if (create()) {
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
-		if (auto pImpl = res::impl(m_info.shader))
-		{
+		if (auto pImpl = res::impl(m_info.shader)) {
 			m_reloadToken = pImpl->onReload.subscribe([this]() { m_bShaderReloaded = true; });
 		}
 #endif
@@ -41,15 +35,13 @@ bool PipelineImpl::create(Info info)
 	return false;
 }
 
-bool PipelineImpl::update(RenderPass const& renderPass)
-{
+bool PipelineImpl::update(RenderPass const& renderPass) {
 	bool bOutOfDate = renderPass.renderPass != vk::RenderPass() && renderPass.renderPass != m_info.renderPass;
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 	bOutOfDate |= m_bShaderReloaded;
 	m_bShaderReloaded = false;
 #endif
-	if (bOutOfDate)
-	{
+	if (bOutOfDate) {
 		// Add a frame of padding since this frame hasn't completed drawing yet
 		deferred::release([pipeline = m_pipeline, layout = m_layout]() { g_device.destroy(pipeline, layout); }, 1);
 		m_info.renderPass = renderPass.renderPass;
@@ -58,28 +50,23 @@ bool PipelineImpl::update(RenderPass const& renderPass)
 	return true;
 }
 
-void PipelineImpl::destroy()
-{
+void PipelineImpl::destroy() {
 	deferred::release(m_pipeline, m_layout);
 	m_pipeline = vk::Pipeline();
 	m_layout = vk::PipelineLayout();
 	return;
 }
 
-bool PipelineImpl::create()
-{
-	if ((m_info.shader.guid == res::GUID::null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty())
-	{
-		if (auto shader = res::find<res::Shader>(m_info.shaderID))
-		{
+bool PipelineImpl::create() {
+	if ((m_info.shader.guid == res::GUID::null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty()) {
+		if (auto shader = res::find<res::Shader>(m_info.shaderID)) {
 			m_info.shader = *shader;
 		}
 	}
-	ASSERT(m_info.shader.status() == res::Status::eReady, "Shader is not ready!");
+	ENSURE(m_info.shader.status() == res::Status::eReady, "Shader is not ready!");
 	auto pShaderImpl = res::impl(m_info.shader);
-	if (m_info.shader.status() != res::Status::eReady || !pShaderImpl)
-	{
-		LOG_E("Failed to create pipeline!");
+	if (m_info.shader.status() != res::Status::eReady || !pShaderImpl) {
+		logE("Failed to create pipeline!");
 		return false;
 	}
 	std::array const setLayouts = {rd::g_bufferLayout, rd::g_samplerLayout};
@@ -151,10 +138,9 @@ bool PipelineImpl::create()
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	{
 		auto modules = pShaderImpl->modules();
-		ASSERT(!modules.empty(), "No shader modules!");
+		ENSURE(!modules.empty(), "No shader modules!");
 		shaderCreateInfo.reserve(modules.size());
-		for (auto const& [type, module] : modules)
-		{
+		for (auto const& [type, module] : modules) {
 			vk::PipelineShaderStageCreateInfo createInfo;
 			createInfo.stage = res::Shader::Impl::s_typeToFlagBit[(std::size_t)type];
 			createInfo.module = module;
@@ -180,8 +166,7 @@ bool PipelineImpl::create()
 	auto pipeline = g_device.device.createGraphicsPipeline({}, createInfo);
 #else
 	auto [result, pipeline] = g_device.device.createGraphicsPipeline({}, createInfo);
-	if (result != vk::Result::eSuccess)
-	{
+	if (result != vk::Result::eSuccess) {
 		return false;
 	}
 #endif
@@ -192,12 +177,10 @@ bool PipelineImpl::create()
 	return true;
 }
 
-namespace
-{
+namespace {
 std::unordered_map<std::size_t, PipelineImpl> g_implMap;
 
-std::size_t pipeHash(Pipeline const& pipe, vk::Format colour, vk::Format depth)
-{
+std::size_t pipeHash(Pipeline const& pipe, vk::Format colour, vk::Format depth) {
 	std::size_t hash = 0;
 	hash ^= pipe.shader.guid;
 	hash ^= (std::size_t)pipe.lineWidth;
@@ -210,12 +193,10 @@ std::size_t pipeHash(Pipeline const& pipe, vk::Format colour, vk::Format depth)
 }
 } // namespace
 
-PipelineImpl& pipes::find(Pipeline const& pipe, RenderPass const& renderPass)
-{
+PipelineImpl& pipes::find(Pipeline const& pipe, RenderPass const& renderPass) {
 	auto const hash = pipeHash(pipe, renderPass.colour, renderPass.depth);
 	auto search = g_implMap.find(hash);
-	if (search != g_implMap.end())
-	{
+	if (search != g_implMap.end()) {
 		search->second.update(renderPass);
 		return search->second;
 	}
@@ -235,10 +216,8 @@ PipelineImpl& pipes::find(Pipeline const& pipe, RenderPass const& renderPass)
 	return ret;
 }
 
-void pipes::deinit()
-{
-	for (auto& [_, pipeline] : g_implMap)
-	{
+void pipes::deinit() {
+	for (auto& [_, pipeline] : g_implMap) {
 		pipeline.destroy();
 	}
 	g_implMap.clear();

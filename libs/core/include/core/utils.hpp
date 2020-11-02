@@ -6,60 +6,55 @@
 #include <initializer_list>
 #include <mutex>
 #include <string>
-#include <vector>
-#include <typeinfo>
 #include <type_traits>
-#include <core/assert.hpp>
+#include <typeinfo>
+#include <vector>
+#include <core/ensure.hpp>
 #include <core/std_types.hpp>
+#include <kt/async_queue/async_queue.hpp>
 
-namespace le
-{
-enum class FutureState : s8
-{
-	eInvalid,
-	eDeferred,
-	eReady,
-	eTimeout,
-	eCOUNT_
+namespace le {
+enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout, eCOUNT_ };
+
+namespace utils {
+///
+/// \brief Wrapper for kt::lockable
+///
+template <bool UseMutex, typename M = std::mutex>
+struct Lockable final {
+	using type = M;
+	static constexpr bool hasMutex = UseMutex;
+
+	mutable kt::lockable<M> mutex;
+
+	template <template <typename...> typename L = std::scoped_lock, typename... Args>
+	decltype(mutex.template lock<L, Args...>()) lock() const {
+		return mutex.template lock<L, Args...>();
+	}
 };
 
 ///
-/// \brief View-only class for an object / a contiguous range of objects
+/// \brief Specialisation for Dummy lock
 ///
-template <typename T>
-struct Span
-{
-	using value_type = T;
-	using const_iterator = T const*;
+template <typename M>
+struct Lockable<false, M> {
+	using type = void;
+	static constexpr bool hasMutex = false;
 
-	T const* pData;
-	std::size_t extent;
+	struct Dummy final {
+		///
+		/// \brief Custom destructor to suppress unused variable warnings
+		///
+		~Dummy() {
+		}
+	};
 
-	constexpr Span() noexcept;
-	constexpr explicit Span(T const* pData, std::size_t extent) noexcept;
-	constexpr Span(T const& data) noexcept;
-	constexpr Span(std::initializer_list<T> const& list) noexcept;
-	template <std::size_t N>
-	constexpr Span(std::array<T, N> const& arr) noexcept;
-	template <std::size_t N>
-	constexpr Span(T (&arr)[N]) noexcept;
-	constexpr Span(std::vector<T> const& vec) noexcept;
-
-	constexpr Span<T>(Span<T>&&) noexcept = default;
-	constexpr Span<T>& operator=(Span<T>&&) noexcept = default;
-	constexpr Span<T>(Span<T> const&) noexcept = default;
-	constexpr Span<T>& operator=(Span<T> const&) noexcept = default;
-
-	constexpr std::size_t size() const noexcept;
-	constexpr bool empty() const noexcept;
-	constexpr const_iterator begin() const noexcept;
-	constexpr const_iterator end() const noexcept;
-
-	T const& at(std::size_t idx) const;
+	template <template <typename...> typename = std::scoped_lock, typename...>
+	Dummy lock() const {
+		return {};
+	}
 };
 
-namespace utils
-{
 template <typename T>
 FutureState futureState(std::future<T> const& future) noexcept;
 
@@ -81,14 +76,10 @@ std::string demangle(std::string_view name, bool bMinimal);
 /// \brief Obtain demangled type name of an object or a type
 ///
 template <typename T, bool Minimal = true>
-std::string tName(T const* pT = nullptr)
-{
-	if constexpr (Minimal)
-	{
+std::string tName(T const* pT = nullptr) {
+	if constexpr (Minimal) {
 		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), true);
-	}
-	else
-	{
+	} else {
 		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), false);
 	}
 }
@@ -98,8 +89,7 @@ std::string tName(T const* pT = nullptr)
 ///
 void removeNamesapces(std::string& out_name);
 
-namespace strings
-{
+namespace strings {
 // ASCII only
 void toLower(std::string& outString);
 void toUpper(std::string& outString);
@@ -149,82 +139,11 @@ bool isCharEnclosedIn(std::string_view str, std::size_t idx, std::pair<char, cha
 } // namespace utils
 
 template <typename T>
-constexpr Span<T>::Span() noexcept : pData(nullptr), extent(0)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(T const* pData, std::size_t extent) noexcept : pData(pData), extent(extent)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(T const& data) noexcept : pData(&data), extent(1)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(std::initializer_list<T> const& list) noexcept : pData(list.begin()), extent(list.size())
-{
-}
-
-template <typename T>
-template <std::size_t N>
-constexpr Span<T>::Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N)
-{
-}
-
-template <typename T>
-template <std::size_t N>
-constexpr Span<T>::Span(T (&arr)[N]) noexcept : pData(N == 0 ? nullptr : &arr[0]), extent(N)
-{
-}
-
-template <typename T>
-constexpr Span<T>::Span(std::vector<T> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size())
-{
-}
-
-template <typename T>
-constexpr std::size_t Span<T>::size() const noexcept
-{
-	return extent;
-}
-
-template <typename T>
-constexpr bool Span<T>::empty() const noexcept
-{
-	return extent == 0;
-}
-
-template <typename T>
-constexpr typename Span<T>::const_iterator Span<T>::begin() const noexcept
-{
-	return pData;
-}
-
-template <typename T>
-constexpr typename Span<T>::const_iterator Span<T>::end() const noexcept
-{
-	return pData + extent;
-}
-
-template <typename T>
-T const& Span<T>::at(std::size_t idx) const
-{
-	ASSERT(idx < extent, "OOB access!");
-	return *(pData + idx);
-}
-
-template <typename T>
-FutureState utils::futureState(std::future<T> const& future) noexcept
-{
-	if (future.valid())
-	{
+FutureState utils::futureState(std::future<T> const& future) noexcept {
+	if (future.valid()) {
 		using namespace std::chrono_literals;
 		auto const status = future.wait_for(0ms);
-		switch (status)
-		{
+		switch (status) {
 		default:
 		case std::future_status::deferred:
 			return FutureState::eDeferred;
@@ -238,8 +157,7 @@ FutureState utils::futureState(std::future<T> const& future) noexcept
 }
 
 template <typename T>
-bool utils::ready(std::future<T> const& future) noexcept
-{
+bool utils::ready(std::future<T> const& future) noexcept {
 	using namespace std::chrono_literals;
 	return future.valid() && future.wait_for(0ms) == std::future_status::ready;
 }

@@ -1,20 +1,19 @@
 #pragma once
 #include <memory>
 #include <optional>
-#include <glm/vec3.hpp>
 #include <core/reader.hpp>
-#include <engine/window/window.hpp>
+#include <core/ref.hpp>
 #include <engine/resources/resource_types.hpp>
+#include <engine/window/window.hpp>
+#include <glm/vec3.hpp>
 
-namespace le::engine
-{
-struct App
-{
+namespace le::engine {
+struct App {
 	std::optional<Window> window;
-	io::Reader const* pReader = nullptr;
+	gfx::Viewport viewport;
+	io::FileReader fileReader;
+	Ref<io::Reader const> reader = fileReader;
 };
-
-inline glm::vec3 g_uiSpace = {};
 
 res::Texture::Space colourSpace();
 Window* window();

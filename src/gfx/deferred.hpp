@@ -2,8 +2,7 @@
 #include <functional>
 #include <gfx/common.hpp>
 
-namespace le::gfx::deferred
-{
+namespace le::gfx::deferred {
 void release(Buffer buffer);
 void release(Image image, vk::ImageView imageView = {});
 void release(vk::Pipeline pipeline, vk::PipelineLayout layout);

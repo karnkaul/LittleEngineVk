@@ -5,10 +5,8 @@
 #include <core/time.hpp>
 #include <core/zero.hpp>
 
-namespace le
-{
-namespace threads
-{
+namespace le {
+namespace threads {
 ///
 /// \brief ID of a running thread
 ///
@@ -17,10 +15,10 @@ using ID = TZero<u64>;
 ///
 /// \brief RAII wrapper for a thread instance (joins in destructor)
 ///
-struct TScoped final : NoCopy
-{
-public:
-	constexpr TScoped(ID id = ID::null) noexcept : id_(id) {}
+struct TScoped final : NoCopy {
+  public:
+	constexpr TScoped(ID id = ID::null) noexcept : id_(id) {
+	}
 	constexpr TScoped(TScoped&&) noexcept = default;
 	TScoped& operator=(TScoped&&);
 	~TScoped();
@@ -38,7 +36,7 @@ public:
 	///
 	void join();
 
-private:
+  private:
 	ID id_;
 };
 
@@ -85,10 +83,8 @@ void sleep(Time duration = {});
 /// \brief Yield this thread until `f` returns `true`
 ///
 template <typename F>
-void sleepUntil(F f)
-{
-	while (!f())
-	{
+void sleepUntil(F f) {
+	while (!f()) {
 		sleep();
 	}
 }

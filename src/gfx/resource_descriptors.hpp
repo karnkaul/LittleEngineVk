@@ -1,34 +1,30 @@
 #pragma once
 #include <deque>
 #include <vector>
-#include <core/assert.hpp>
-#include <core/flags.hpp>
+#include <core/ensure.hpp>
 #include <core/utils.hpp>
 #include <engine/gfx/light.hpp>
-#include <engine/gfx/renderer.hpp>
+#include <engine/gfx/render_driver.hpp>
 #include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/vram.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 #if defined(LEVK_VKRESOURCE_NAMES)
 #include <core/utils.hpp>
 #endif
 
-namespace le::gfx
-{
-namespace rd
-{
-namespace vbo
-{
-constexpr u32 vertexBinding = 0;
+namespace le::gfx {
+namespace rd {
+namespace vbo {
+inline constexpr u32 vertexBinding = 0;
 
 std::vector<vk::VertexInputBindingDescription> vertexBindings();
 std::vector<vk::VertexInputAttributeDescription> vertexAttributes();
 } // namespace vbo
 
 // UBO
-struct View final
-{
+struct View final {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
 	alignas(16) glm::mat4 mat_vp;
@@ -39,29 +35,25 @@ struct View final
 	alignas(4) u32 dirLightCount;
 
 	View();
-	View(Renderer::View const& view, u32 dirLightCount);
+	View(render::Driver::View const& view, u32 dirLightCount);
 };
 
 // SSBO
-struct Models final
-{
+struct Models final {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 	std::vector<glm::mat4> ssbo;
 };
 
 // SSBO
-struct Normals final
-{
+struct Normals final {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 	std::vector<glm::mat4> ssbo;
 };
 
 // SSBO
-struct Materials final
-{
+struct Materials final {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
-	struct Mat final
-	{
+	struct Mat final {
 		alignas(16) glm::vec4 ambient;
 		alignas(16) glm::vec4 diffuse;
 		alignas(16) glm::vec4 specular;
@@ -74,18 +66,15 @@ struct Materials final
 };
 
 // SSBO
-struct Tints final
-{
+struct Tints final {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 	std::vector<glm::vec4> ssbo;
 };
 
 // SSBO
-struct Flags final
-{
+struct Flags final {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
-	enum : u32
-	{
+	enum : u32 {
 		eTEXTURED = 1 << 0,
 		eLIT = 1 << 1,
 		eOPAQUE = 1 << 2,
@@ -97,12 +86,10 @@ struct Flags final
 };
 
 // SSBO
-struct DirLights final
-{
+struct DirLights final {
 	static vk::DescriptorSetLayoutBinding const s_setLayoutBinding;
 
-	struct Light
-	{
+	struct Light {
 		alignas(16) glm::vec3 ambient;
 		alignas(16) glm::vec3 diffuse;
 		alignas(16) glm::vec3 specular;
@@ -115,8 +102,7 @@ struct DirLights final
 	std::vector<Light> ssbo;
 };
 
-struct ImageSamplers final
-{
+struct ImageSamplers final {
 	static u32 s_max;
 
 	static vk::DescriptorSetLayoutBinding s_diffuseLayoutBinding;
@@ -127,8 +113,7 @@ struct ImageSamplers final
 	static void clampDiffSpecCount(u32 hardwareMax);
 };
 
-struct StorageBuffers final
-{
+struct StorageBuffers final {
 	Models models;
 	Normals normals;
 	Materials materials;
@@ -137,8 +122,7 @@ struct StorageBuffers final
 	DirLights dirLights;
 };
 
-struct PushConstants final
-{
+struct PushConstants final {
 	u32 objectID = 0;
 	u32 diffuseID = 0;
 	u32 specularID = 0;
@@ -146,8 +130,7 @@ struct PushConstants final
 	static std::vector<vk::PushConstantRange> ranges();
 };
 
-struct Writer final
-{
+struct Writer final {
 	vk::DescriptorType type;
 	u32 binding = 0;
 
@@ -156,9 +139,8 @@ struct Writer final
 };
 
 template <typename T>
-class Descriptor final
-{
-public:
+class Descriptor final {
+  public:
 	Buffer m_buffer;
 	Writer m_writer;
 #if defined(LEVK_VKRESOURCE_NAMES)
@@ -166,37 +148,35 @@ public:
 #endif
 	vk::BufferUsageFlags m_usage;
 
-public:
+  public:
 	Descriptor(vk::BufferUsageFlags flags = vk::BufferUsageFlagBits::eStorageBuffer);
 
-public:
+  public:
 	bool writeValue(T const& data, vk::DescriptorSet set);
 	template <typename U>
 	bool writeArray(std::vector<U> const& arr, vk::DescriptorSet set);
 	void release();
 
-private:
+  private:
 	void create(vk::DeviceSize size);
 };
 
 template <>
-class Descriptor<ImageSamplers>
-{
-public:
+class Descriptor<ImageSamplers> {
+  public:
 	Writer m_writer;
 
 	void writeArray(std::vector<res::Texture> const& textures, vk::DescriptorSet set) const;
 };
 
-class Set final
-{
-public:
+class Set final {
+  public:
 	vk::DescriptorPool m_bufferPool;
 	vk::DescriptorPool m_samplerPool;
 	vk::DescriptorSet m_bufferSet;
 	vk::DescriptorSet m_samplerSet;
 
-private:
+  private:
 	Descriptor<View> m_view;
 	Descriptor<Models> m_models;
 	Descriptor<Normals> m_normals;
@@ -208,15 +188,15 @@ private:
 	Descriptor<ImageSamplers> m_specular;
 	Descriptor<ImageSamplers> m_cubemap;
 
-public:
+  public:
 	Set();
 
-public:
+  public:
 	void initSSBOs();
 	void destroy();
 	void resetTextures();
 
-public:
+  public:
 	void writeView(View const& view);
 	void writeSSBOs(StorageBuffers const& ssbos);
 	void writeDiffuse(std::deque<res::Texture> const& diffuse);
@@ -239,18 +219,15 @@ Descriptor<T>::Descriptor(vk::BufferUsageFlags flags)
 #if defined(LEVK_VKRESOURCE_NAMES)
 	  m_bufferName(utils::tName<T>()),
 #endif
-	  m_usage(flags)
-{
+	  m_usage(flags) {
 	m_writer.binding = T::s_setLayoutBinding.binding;
 	m_writer.type = T::s_setLayoutBinding.descriptorType;
 }
 
 template <typename T>
-bool Descriptor<T>::writeValue(T const& data, vk::DescriptorSet set)
-{
+bool Descriptor<T>::writeValue(T const& data, vk::DescriptorSet set) {
 	create((vk::DeviceSize)sizeof(T));
-	if (!vram::write(m_buffer, &data))
-	{
+	if (!vram::write(m_buffer, &data)) {
 		return false;
 	}
 	m_writer.write(set, m_buffer);
@@ -259,13 +236,11 @@ bool Descriptor<T>::writeValue(T const& data, vk::DescriptorSet set)
 
 template <typename T>
 template <typename U>
-bool Descriptor<T>::writeArray(std::vector<U> const& arr, vk::DescriptorSet set)
-{
-	ASSERT(arr.size() > 0, "Empty buffer!");
+bool Descriptor<T>::writeArray(std::vector<U> const& arr, vk::DescriptorSet set) {
+	ENSURE(arr.size() > 0, "Empty buffer!");
 	vk::DeviceSize const size = (vk::DeviceSize)sizeof(U) * (vk::DeviceSize)arr.size();
 	create(size);
-	if (!vram::write(m_buffer, arr.data(), size))
-	{
+	if (!vram::write(m_buffer, arr.data(), size)) {
 		return false;
 	}
 	m_writer.write(set, m_buffer);
@@ -273,18 +248,15 @@ bool Descriptor<T>::writeArray(std::vector<U> const& arr, vk::DescriptorSet set)
 }
 
 template <typename T>
-void Descriptor<T>::release()
-{
+void Descriptor<T>::release() {
 	deferred::release(m_buffer);
 	m_buffer = Buffer();
 	return;
 }
 
 template <typename T>
-void Descriptor<T>::create(vk::DeviceSize size)
-{
-	if (m_buffer.writeSize < size)
-	{
+void Descriptor<T>::create(vk::DeviceSize size) {
+	if (m_buffer.writeSize < size) {
 		deferred::release(m_buffer);
 		BufferInfo info;
 		info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;

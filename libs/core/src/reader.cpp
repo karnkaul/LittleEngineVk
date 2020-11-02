@@ -2,44 +2,35 @@
 #include <fstream>
 #include <optional>
 #include <physfs/physfs.h>
-#include <core/assert.hpp>
+#include <core/ensure.hpp>
 #include <core/log.hpp>
-#include <core/reader.hpp>
 #include <core/os.hpp>
+#include <core/reader.hpp>
 #include <core/utils.hpp>
 #include <io_impl.hpp>
 
-namespace le::io
-{
-namespace
-{
-struct PhysfsHandle final
-{
+namespace le::io {
+namespace {
+struct PhysfsHandle final {
 	bool bInit = false;
 
 	PhysfsHandle();
 	~PhysfsHandle();
 };
 
-PhysfsHandle::PhysfsHandle()
-{
-	if (PHYSFS_init(os::argv0().data()) != 0)
-	{
+PhysfsHandle::PhysfsHandle() {
+	if (PHYSFS_init(os::argv0().data()) != 0) {
 		bInit = true;
-		LOG_I("[le::io] PhysFS initialised");
-	}
-	else
-	{
-		LOG_E("Failed to initialise PhysFS!");
+		logI("[le::io] PhysFS initialised");
+	} else {
+		logE("Failed to initialise PhysFS!");
 	}
 }
 
-PhysfsHandle::~PhysfsHandle()
-{
-	if (bInit)
-	{
+PhysfsHandle::~PhysfsHandle() {
+	if (bInit) {
 		PHYSFS_deinit();
-		LOG_I("[le::io] PhysFS deinitialised");
+		logI("[le::io] PhysFS deinitialised");
 	}
 }
 
@@ -53,95 +44,78 @@ Reader::Reader(Reader const&) = default;
 Reader& Reader::operator=(Reader const&) = default;
 Reader::~Reader() = default;
 
-TResult<std::string> Reader::string(stdfs::path const& id) const
-{
-	auto str = sstream(id);
-	return {str->str(), str};
+Reader::Result<std::string> Reader::string(stdfs::path const& id) const {
+	if (auto str = sstream(id)) {
+		return str->str();
+	}
+	return {};
 }
 
-bool Reader::isPresent(const stdfs::path& id) const
-{
-	return findPrefixed(id).bResult;
+bool Reader::isPresent(const stdfs::path& id) const {
+	return findPrefixed(id).has_result();
 }
 
-bool Reader::checkPresence(stdfs::path const& id) const
-{
-	if (!isPresent(id))
-	{
-		LOG_E("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
+bool Reader::checkPresence(stdfs::path const& id) const {
+	if (!isPresent(id)) {
+		logE("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
 		return false;
 	}
 	return true;
 }
 
-bool Reader::checkPresences(Span<stdfs::path> ids) const
-{
+bool Reader::checkPresences(Span<stdfs::path> ids) const {
 	bool bRet = true;
-	for (auto const& id : ids)
-	{
+	for (auto const& id : ids) {
 		bRet &= checkPresence(id);
 	}
 	return bRet;
 }
 
-bool Reader::checkPresences(std::initializer_list<stdfs::path> ids) const
-{
+bool Reader::checkPresences(std::initializer_list<stdfs::path> ids) const {
 	return checkPresences(Span<stdfs::path>(ids));
 }
 
-std::string_view Reader::medium() const
-{
+std::string_view Reader::medium() const {
 	return m_medium;
 }
 
-TResult<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight)
-{
-	for (auto const& name : anyOf)
-	{
-		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name))
-		{
+Reader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight) {
+	for (auto const& name : anyOf) {
+		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name)) {
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
 			return ret / name;
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
-	if (bEnd)
-	{
+	if (bEnd) {
 		return {};
 	}
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
 
-FileReader::FileReader() noexcept
-{
+FileReader::FileReader() noexcept {
 	m_medium = "Filesystem";
 }
 
-bool FileReader::mount(stdfs::path path)
-{
+bool FileReader::mount(stdfs::path path) {
 	auto const pathStr = path.generic_string();
-	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end())
-	{
-		if (!stdfs::is_directory(path))
-		{
-			LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<FileReader>(), pathStr);
+	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end()) {
+		if (!stdfs::is_directory(path)) {
+			logE("[{}] [{}] not found on Filesystem!", utils::tName<FileReader>(), pathStr);
 			return false;
 		}
-		LOG_D("[{}] [{}] directory mounted", utils::tName<FileReader>(), pathStr);
+		logD("[{}] [{}] directory mounted", utils::tName<FileReader>(), pathStr);
 		m_dirs.push_back(std::move(path));
 		return true;
 	}
-	LOG_W("[{}] [{}] directory already mounted", utils::tName<FileReader>(), pathStr);
+	logW("[{}] [{}] directory already mounted", utils::tName<FileReader>(), pathStr);
 	return false;
 }
 
-TResult<bytearray> FileReader::bytes(stdfs::path const& id) const
-{
-	if (auto path = findPrefixed(id))
-	{
-		std::ifstream file(std::move(*path), std::ios::binary | std::ios::ate);
-		if (file.good())
-		{
+Reader::Result<bytearray> FileReader::bytes(stdfs::path const& id) const {
+	if (auto path = findPrefixed(id)) {
+		std::ifstream file(*path, std::ios::binary | std::ios::ate);
+		if (file.good()) {
 			auto pos = file.tellg();
 			auto buf = bytearray((std::size_t)pos);
 			file.seekg(0, std::ios::beg);
@@ -152,13 +126,10 @@ TResult<bytearray> FileReader::bytes(stdfs::path const& id) const
 	return {};
 }
 
-TResult<std::stringstream> FileReader::sstream(stdfs::path const& id) const
-{
-	if (auto path = findPrefixed(id))
-	{
-		std::ifstream file(std::move(*path));
-		if (file.good())
-		{
+Reader::Result<std::stringstream> FileReader::sstream(stdfs::path const& id) const {
+	if (auto path = findPrefixed(id)) {
+		std::ifstream file(*path);
+		if (file.good()) {
 			std::stringstream buf;
 			buf << file.rdbuf();
 			return buf;
@@ -167,84 +138,67 @@ TResult<std::stringstream> FileReader::sstream(stdfs::path const& id) const
 	return {};
 }
 
-TResult<stdfs::path> FileReader::findPrefixed(stdfs::path const& id) const
-{
+Reader::Result<stdfs::path> FileReader::findPrefixed(stdfs::path const& id) const {
 	auto const paths = finalPaths(id);
-	for (auto const& path : paths)
-	{
-		if (stdfs::is_regular_file(path))
-		{
+	for (auto const& path : paths) {
+		if (stdfs::is_regular_file(path)) {
 			return stdfs::path(path);
 		}
 	}
 	return {};
 }
 
-std::vector<stdfs::path> FileReader::finalPaths(stdfs::path const& id) const
-{
-	if (id.has_root_directory())
-	{
+std::vector<stdfs::path> FileReader::finalPaths(stdfs::path const& id) const {
+	if (id.has_root_directory()) {
 		return {id};
 	}
 	std::vector<stdfs::path> ret;
 	ret.reserve(m_dirs.size());
-	for (auto const& prefix : m_dirs)
-	{
+	for (auto const& prefix : m_dirs) {
 		ret.push_back(prefix / id);
 	}
 	return ret;
 }
 
-stdfs::path FileReader::fullPath(stdfs::path const& id) const
-{
-	if (auto path = findPrefixed(id))
-	{
+stdfs::path FileReader::fullPath(stdfs::path const& id) const {
+	if (auto path = findPrefixed(id)) {
 		return stdfs::absolute(*path);
 	}
 	return id;
 }
 
-ZIPReader::ZIPReader()
-{
+ZIPReader::ZIPReader() {
 	m_medium = "ZIP";
 }
 
-bool ZIPReader::mount(stdfs::path path)
-{
+bool ZIPReader::mount(stdfs::path path) {
 	impl::initPhysfs();
 	auto pathStr = path.generic_string();
-	if (std::find(m_zips.begin(), m_zips.end(), path) == m_zips.end())
-	{
-		if (!stdfs::is_regular_file(path))
-		{
-			LOG_E("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
+	if (std::find(m_zips.begin(), m_zips.end(), path) == m_zips.end()) {
+		if (!stdfs::is_regular_file(path)) {
+			logE("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
 			return false;
 		}
 		PHYSFS_mount(path.string().data(), nullptr, 0);
-		LOG_D("[{}] [{}] archive mounted", utils::tName<ZIPReader>(), pathStr);
+		logD("[{}] [{}] archive mounted", utils::tName<ZIPReader>(), pathStr);
 		m_zips.push_back(std::move(path));
 		return true;
 	}
-	LOG_W("[{}] [{}] archive already mounted", utils::tName<FileReader>(), pathStr);
+	logW("[{}] [{}] archive already mounted", utils::tName<FileReader>(), pathStr);
 	return false;
 }
 
-TResult<stdfs::path> ZIPReader::findPrefixed(stdfs::path const& id) const
-{
-	if (PHYSFS_exists(id.generic_string().data()) != 0)
-	{
+Reader::Result<stdfs::path> ZIPReader::findPrefixed(stdfs::path const& id) const {
+	if (PHYSFS_exists(id.generic_string().data()) != 0) {
 		return stdfs::path(id);
 	}
 	return {};
 }
 
-TResult<std::stringstream> ZIPReader::sstream(stdfs::path const& id) const
-{
-	if (checkPresence(id))
-	{
+Reader::Result<std::stringstream> ZIPReader::sstream(stdfs::path const& id) const {
+	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
-		if (pFile)
-		{
+		if (pFile) {
 			std::stringstream buf;
 			auto length = PHYSFS_fileLength(pFile);
 			std::string charBuf((std::size_t)length, 0);
@@ -257,13 +211,10 @@ TResult<std::stringstream> ZIPReader::sstream(stdfs::path const& id) const
 	return {};
 }
 
-TResult<bytearray> ZIPReader::bytes(stdfs::path const& id) const
-{
-	if (checkPresence(id))
-	{
+Reader::Result<bytearray> ZIPReader::bytes(stdfs::path const& id) const {
+	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
-		if (pFile)
-		{
+		if (pFile) {
 			auto length = PHYSFS_fileLength(pFile);
 			auto buf = bytearray((std::size_t)length);
 			PHYSFS_readBytes(pFile, buf.data(), (PHYSFS_uint64)length);
@@ -274,122 +225,90 @@ TResult<bytearray> ZIPReader::bytes(stdfs::path const& id) const
 	return {};
 }
 
-void impl::initPhysfs()
-{
-	if (!g_physfsHandle)
-	{
+void impl::initPhysfs() {
+	if (!g_physfsHandle) {
 		g_physfsHandle = PhysfsHandle();
 	}
 }
 
-void impl::deinitPhysfs()
-{
+void impl::deinitPhysfs() {
 	g_physfsHandle.reset();
 }
 
-FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode)
-{
-	update();
+FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode) {
 }
 
 FileMonitor::FileMonitor(FileMonitor&&) = default;
 FileMonitor& FileMonitor::operator=(FileMonitor&&) = default;
 FileMonitor::~FileMonitor() = default;
 
-FileMonitor::Status FileMonitor::update()
-{
+FileMonitor::Status FileMonitor::update() {
 	std::error_code errCode;
-	if (stdfs::is_regular_file(m_path, errCode))
-	{
+	if (stdfs::is_regular_file(m_path, errCode)) {
 		auto const lastWriteTime = stdfs::last_write_time(m_path, errCode);
-		if (errCode)
-		{
+		if (errCode) {
 			return m_status;
 		}
-		if (lastWriteTime != m_lastWriteTime || m_status == Status::eNotFound)
-		{
+		if (lastWriteTime != m_lastWriteTime || m_status == Status::eNotFound) {
 			bool bDirty = m_lastWriteTime != stdfs::file_time_type();
 			m_lastWriteTime = lastWriteTime;
-			if (m_mode == Mode::eTextContents)
-			{
-				if (auto text = s_reader.string(m_path))
-				{
-					if (*text == m_text)
-					{
+			if (m_mode == Mode::eTextContents) {
+				if (auto text = s_reader.string(m_path)) {
+					if (*text == m_text) {
 						bDirty = false;
-					}
-					else
-					{
-						m_text = std::move(*text);
+					} else {
+						m_text = text.move();
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}
-			}
-			else if (m_mode == Mode::eBinaryContents)
-			{
-				if (auto bytes = s_reader.bytes(m_path))
-				{
-					if (*bytes == m_bytes)
-					{
+			} else if (m_mode == Mode::eBinaryContents) {
+				if (auto bytes = s_reader.bytes(m_path)) {
+					if (*bytes == m_bytes) {
 						bDirty = false;
-					}
-					else
-					{
-						m_bytes = std::move(*bytes);
+					} else {
+						m_bytes = bytes.move();
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}
 			}
 			m_status = bDirty ? Status::eModified : Status::eUpToDate;
-		}
-		else
-		{
+		} else {
 			m_status = Status::eUpToDate;
 		}
-	}
-	else
-	{
+	} else {
 		m_status = Status::eNotFound;
 	}
 	return m_status;
 }
 
-FileMonitor::Status FileMonitor::lastStatus() const
-{
+FileMonitor::Status FileMonitor::lastStatus() const {
 	return m_status;
 }
 
-stdfs::file_time_type FileMonitor::lastWriteTime() const
-{
+stdfs::file_time_type FileMonitor::lastWriteTime() const {
 	return m_lastWriteTime;
 }
 
-stdfs::file_time_type FileMonitor::lastModifiedTime() const
-{
+stdfs::file_time_type FileMonitor::lastModifiedTime() const {
 	return m_lastModifiedTime;
 }
 
-stdfs::path const& FileMonitor::path() const
-{
+stdfs::path const& FileMonitor::path() const {
 	return m_path;
 }
 
-std::string_view FileMonitor::text() const
-{
-	ASSERT(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
-	if (m_mode != Mode::eTextContents)
-	{
-		LOG_E("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
+std::string_view FileMonitor::text() const {
+	ENSURE(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
+	if (m_mode != Mode::eTextContents) {
+		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
 	}
 	return m_text;
 }
 
-bytearray const& FileMonitor::bytes() const
-{
-	ASSERT(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
-	if (m_mode != Mode::eBinaryContents)
-	{
-		LOG_E("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
+bytearray const& FileMonitor::bytes() const {
+	ENSURE(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
+	if (m_mode != Mode::eBinaryContents) {
+		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
 	}
 	return m_bytes;
 }

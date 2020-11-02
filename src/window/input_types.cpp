@@ -4,10 +4,8 @@
 #endif
 #include <engine/window/input_types.hpp>
 
-namespace le
-{
-namespace
-{
+namespace le {
+namespace {
 using namespace input;
 
 std::unordered_map<std::string_view, Key> const g_keyMap = {
@@ -150,70 +148,56 @@ std::unordered_map<std::string_view, Axis> const g_axisMap = {
 };
 
 template <typename T>
-T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str, T fail)
-{
-	if (auto search = map.find(str); search != map.end() && !str.empty())
-	{
+T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str, T fail) {
+	if (auto search = map.find(str); search != map.end() && !str.empty()) {
 		return search->second;
 	}
 	return fail;
 }
 } // namespace
 
-bool input::isMouseButton(Key key)
-{
+bool input::isMouseButton(Key key) {
 	return (s32)key >= (s32)Key::eMouseButtonBegin && (s32)key < (s32)Key::eMouseButtonEnd;
 }
 
-bool input::isGamepadButton(Key key)
-{
+bool input::isGamepadButton(Key key) {
 	auto ret = (s32)key >= (s32)Key::eGamepadButtonBegin && (s32)key < (s32)Key::eGamepadButtonEnd;
 	return ret;
 }
 
-bool input::isMouseAxis(Axis axis)
-{
+bool input::isMouseAxis(Axis axis) {
 	return (s32)axis >= (s32)Axis::eMouseBegin && (s32)axis < (s32)Axis::eMouseEnd;
 }
 
-Key input::parseKey(std::string_view str)
-{
+Key input::parseKey(std::string_view str) {
 	return parse(g_keyMap, str, Key::eUnknown);
 }
 
-Action input::parseAction(std::string_view str)
-{
-	if (str == "press")
-	{
+Action input::parseAction(std::string_view str) {
+	if (str == "press") {
 		return Action::ePress;
 	}
 	return Action::eRelease;
 }
 
-Mods::VALUE input::parseMods(Span<std::string> vec)
-{
+Mods::VALUE input::parseMods(Span<std::string> vec) {
 	s32 ret = 0;
-	for (auto const& str : vec)
-	{
+	for (auto const& str : vec) {
 		ret |= (s32)parse(g_modsMap, str, Mods::eNONE);
 	}
 	return static_cast<Mods::VALUE>(ret);
 }
 
-Axis input::parseAxis(std::string_view str)
-{
+Axis input::parseAxis(std::string_view str) {
 	return parse(g_axisMap, str, Axis::eUnknown);
 }
 
-std::vector<Gamepad> input::activeGamepads()
-{
+std::vector<Gamepad> input::activeGamepads() {
 	std::vector<Gamepad> ret;
 #if defined(LEVK_USE_GLFW)
-	for (s32 id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id)
-	{
+	for (s32 id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id) {
 		GLFWgamepadstate state;
-		if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
-		{
+		if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state)) {
 			Gamepad padi;
 			padi.name = glfwGetGamepadName(id);
 			padi.id = id;
@@ -228,29 +212,24 @@ std::vector<Gamepad> input::activeGamepads()
 	return ret;
 }
 
-Joystick input::joyState([[maybe_unused]] s32 id)
-{
+Joystick input::joyState([[maybe_unused]] s32 id) {
 	Joystick ret;
 #if defined(LEVK_USE_GLFW)
-	if (glfwJoystickPresent(id))
-	{
+	if (glfwJoystickPresent(id)) {
 		ret.id = id;
 		s32 count;
 		auto const axes = glfwGetJoystickAxes(id, &count);
 		ret.axes.reserve((std::size_t)count);
-		for (s32 idx = 0; idx < count; ++idx)
-		{
+		for (s32 idx = 0; idx < count; ++idx) {
 			ret.axes.push_back(axes[idx]);
 		}
 		auto const buttons = glfwGetJoystickButtons(id, &count);
 		ret.buttons.reserve((std::size_t)count);
-		for (s32 idx = 0; idx < count; ++idx)
-		{
+		for (s32 idx = 0; idx < count; ++idx) {
 			ret.buttons.push_back(buttons[idx]);
 		}
 		auto const szName = glfwGetJoystickName(id);
-		if (szName)
-		{
+		if (szName) {
 			ret.name = szName;
 		}
 	}
@@ -258,13 +237,11 @@ Joystick input::joyState([[maybe_unused]] s32 id)
 	return ret;
 }
 
-Gamepad input::gamepadState([[maybe_unused]] s32 id)
-{
+Gamepad input::gamepadState([[maybe_unused]] s32 id) {
 	Gamepad ret;
 #if defined(LEVK_USE_GLFW)
 	GLFWgamepadstate state;
-	if (glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state))
-	{
+	if (glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state)) {
 		ret.name = glfwGetGamepadName(id);
 		ret.id = id;
 		ret.joyState.buttons = std::vector<u8>(15, 0);
@@ -276,8 +253,7 @@ Gamepad input::gamepadState([[maybe_unused]] s32 id)
 	return ret;
 }
 
-f32 input::triggerToAxis([[maybe_unused]] f32 triggerValue)
-{
+f32 input::triggerToAxis([[maybe_unused]] f32 triggerValue) {
 	f32 ret = triggerValue;
 #if defined(LEVK_USE_GLFW)
 	ret = (triggerValue + 1.0f) * 0.5f;
@@ -285,8 +261,7 @@ f32 input::triggerToAxis([[maybe_unused]] f32 triggerValue)
 	return ret;
 }
 
-std::size_t input::joystickAxesCount([[maybe_unused]] s32 id)
-{
+std::size_t input::joystickAxesCount([[maybe_unused]] s32 id) {
 	std::size_t ret = 0;
 #if defined(LEVK_USE_GLFW)
 	s32 max;
@@ -296,8 +271,7 @@ std::size_t input::joystickAxesCount([[maybe_unused]] s32 id)
 	return ret;
 }
 
-std::size_t input::joysticKButtonsCount([[maybe_unused]] s32 id)
-{
+std::size_t input::joysticKButtonsCount([[maybe_unused]] s32 id) {
 	std::size_t ret = 0;
 #if defined(LEVK_USE_GLFW)
 	s32 max;
@@ -307,8 +281,7 @@ std::size_t input::joysticKButtonsCount([[maybe_unused]] s32 id)
 	return ret;
 }
 
-std::string_view input::toString([[maybe_unused]] s32 key)
-{
+std::string_view input::toString([[maybe_unused]] s32 key) {
 	static const std::string_view blank = "";
 	std::string_view ret = blank;
 #if defined(LEVK_USE_GLFW)

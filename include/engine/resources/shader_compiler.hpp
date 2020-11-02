@@ -11,46 +11,42 @@
 #endif
 #endif
 
-constexpr bool levk_shaderCompiler = levk_debug;
+inline constexpr bool levk_shaderCompiler = levk_debug;
 
-namespace le
-{
+namespace le {
 namespace stdfs = std::filesystem;
 }
 
-namespace le::res
-{
+namespace le::res {
 #if defined(LEVK_SHADER_COMPILER)
 ///
 /// \brief Singleton class for compiling GLSL shaders to SPIR-V
 ///
-class ShaderCompiler final : public Singleton<ShaderCompiler>
-{
-public:
-	enum class Status
-	{
+class ShaderCompiler final : public Singleton<ShaderCompiler> {
+  public:
+	enum class Status {
 		eOffline, // Unable to compile (s_compiler not present?)
 		eOnline,  // Ready to compile
 		eCOUNT_
 	};
 
-public:
+  public:
 	static std::string const s_tName;
 	///
 	/// \brief Name of compiler command to invoke
 	///
 	inline static std::string_view s_compiler = "glslc";
 
-private:
+  private:
 	ShaderCompiler();
 
-public:
+  public:
 	///
 	/// \brief Obtain Status
 	///
 	Status status() const;
 
-public:
+  public:
 	///
 	/// \brief Compile `src` to `dst`
 	///
@@ -60,13 +56,13 @@ public:
 	///
 	bool compile(stdfs::path const& src, bool bOverwrite);
 
-private:
+  private:
 	bool statusCheck() const;
 
-private:
+  private:
 	friend class Singleton<ShaderCompiler>;
 
-private:
+  private:
 	Status m_status;
 };
 #endif

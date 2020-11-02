@@ -2,68 +2,51 @@
 #include <optional>
 #include <vector>
 #include <core/counter.hpp>
-#include <core/time.hpp>
-#include <core/reader.hpp>
-#include <core/std_types.hpp>
-#include <core/services.hpp>
 #include <core/os.hpp>
+#include <core/reader.hpp>
+#include <core/services.hpp>
+#include <core/std_types.hpp>
+#include <core/time.hpp>
 #include <engine/gfx/screen_rect.hpp>
 #include <engine/window/window.hpp>
 #if defined(LEVK_DEBUG)
-#include <core/log_config.hpp>
+#include <dumb_log/log.hpp>
 #endif
 
 #if defined(LEVK_EDITOR)
-constexpr bool levk_editor = true;
+inline constexpr bool levk_editor = true;
 #else
-constexpr bool levk_editor = false;
+inline constexpr bool levk_editor = false;
 #endif
 
-namespace le::engine
-{
+namespace le::engine {
 using Semaphore = TCounter<s32>::Semaphore;
 
 struct Driver;
 
-enum class Status : s8
-{
-	eIdle,
-	eInitialised,
-	eTicking,
-	eShuttingDown,
-	eShutdown
-};
+enum class Status : s8 { eIdle, eInitialised, eTicking, eShuttingDown, eShutdown };
 
-enum class ShutdownSequence : s8
-{
-	eCloseWindow_Shutdown,
-	eShutdown_CloseWindow
-};
+enum class ShutdownSequence : s8 { eCloseWindow_Shutdown, eShutdown_CloseWindow };
 inline ShutdownSequence g_shutdownSequence = ShutdownSequence::eCloseWindow_Shutdown;
 
-struct MemRange final
-{
+struct MemRange final {
 	std::size_t size = 2;
 	std::size_t count = 1;
 };
 
-struct Info final
-{
-	io::FileReader fileReader;
-	io::ZIPReader zipReader;
+struct Info final {
 	std::optional<Window::Info> windowInfo;
+	std::optional<Ref<io::Reader>> customReader;
 	Span<stdfs::path> dataPaths;
 	Span<MemRange> vramReserve;
-	Ref<io::Reader> reader = fileReader;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
-	io::Level vramLogLevel = io::Level::eDebug;
+	dl::level vramLogLevel = dl::level::debug;
 #endif
 };
 
-class Service final
-{
-public:
+class Service final {
+  public:
 	Service(os::Args args = {});
 	Service(Service&&);
 	Service& operator=(Service&&);
@@ -73,7 +56,7 @@ public:
 	/// \brief Initialise engine and dependent services
 	/// \returns `false` if initialisation failed
 	///
-	bool init(Info const& info = {});
+	bool init(Info info = {});
 	///
 	/// \brief Check whether engine is currently running (or shutting down)
 	///
@@ -96,10 +79,10 @@ public:
 	///
 	static bool shutdown();
 
-private:
+  private:
 	static void doShutdown();
 
-private:
+  private:
 	Services m_services;
 };
 
@@ -128,9 +111,9 @@ glm::ivec2 windowSize();
 ///
 glm::ivec2 framebufferSize();
 ///
-/// \brief Obtain the (normalised) gameRect size
+/// \brief Obtain the (normalised) viewport
 ///
-glm::vec2 gameRectSize();
+gfx::Viewport viewport();
 ///
 /// \brief Obtain the path to the running executable
 ///

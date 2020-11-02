@@ -3,25 +3,21 @@
 #include <memory>
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
-#include <kt/async_queue/async_queue.hpp>
 #include <dumb_json/dumb_json.hpp>
 #include <engine/resources/resource_list.hpp>
 #include <engine/resources/resources.hpp>
+#include <kt/async_queue/async_queue.hpp>
 
-namespace le::res
-{
+namespace le::res {
 template <typename T>
-struct ResourceData final
-{
+struct ResourceData final {
 	typename T::CreateInfo createInfo;
 	stdfs::path id;
 };
 
-class Manifest
-{
-public:
-	enum class Status : s8
-	{
+class Manifest {
+  public:
+	enum class Status : s8 {
 		eIdle,
 		eReady,
 		eExtractingData,
@@ -31,8 +27,7 @@ public:
 		eError,
 	};
 
-	struct Info final
-	{
+	struct Info final {
 		std::vector<ResourceData<res::Shader>> shaders;
 		std::vector<ResourceData<res::Texture>> textures;
 		std::vector<ResourceData<res::Texture>> cubemaps;
@@ -47,21 +42,20 @@ public:
 		bool empty() const;
 	};
 
-public:
+  public:
 	static std::string const s_tName;
 
-protected:
-	struct Data final
-	{
+  protected:
+	struct Data final {
 		std::atomic<std::size_t> idCount = 0;
 		std::atomic<std::size_t> dataCount = 0;
 	};
 
-public:
+  public:
 	ResourceList m_loaded;
 	Info m_toLoad;
 
-protected:
+  protected:
 	dj::object m_manifest;
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
@@ -71,7 +65,7 @@ protected:
 	Status m_status = Status::eIdle;
 	bool m_bParsed = false;
 
-public:
+  public:
 	bool read(stdfs::path const& id);
 	void start();
 	Status update(bool bTerminate = false);
@@ -82,7 +76,7 @@ public:
 
 	static void unload(ResourceList const& list);
 
-protected:
+  protected:
 	void loadData();
 	void loadResources();
 	bool eraseDone(bool bWaitingJobs);

@@ -2,61 +2,57 @@
 #include <filesystem>
 #include <memory>
 #include <string>
-#include <engine/game/input_context.hpp>
 #include <engine/game/driver.hpp>
+#include <engine/game/input_context.hpp>
 
 namespace stdfs = std::filesystem;
 
-class Level
-{
-public:
+class Level {
+  public:
 	Level();
 	virtual ~Level();
 
-protected:
+  protected:
 	virtual void tick(le::Time dt) = 0;
 
-protected:
+  protected:
 	virtual le::SceneBuilder const& builder() const;
 	virtual void onManifestLoaded();
 
-protected:
-	le::Registry const& registry() const;
-	le::Registry& registry();
+  protected:
+	le::ecs::Registry const& registry() const;
+	le::ecs::Registry& registry();
 
-private:
+  private:
 	friend class LevelDriver;
 
-protected:
+  protected:
 	std::string m_name;
 
-protected:
-	struct
-	{
+  protected:
+	struct {
 		stdfs::path id;
 		le::input::Context context;
 		le::Token token;
 	} m_input;
-	struct
-	{
+	struct {
 		stdfs::path id;
 		le::Token token;
 	} m_manifest;
 };
 
-class LevelDriver final : public le::engine::Driver
-{
-private:
+class LevelDriver final : public le::engine::Driver {
+  private:
 	std::unique_ptr<Level> m_active;
 	bool m_bTicked = false;
 
-public:
+  public:
 	void tick(le::Time dt) override;
 	le::SceneBuilder const& builder() const override;
 
 	void cleanup();
 
-private:
+  private:
 	void unloadLoad();
 	void perFrame();
 };

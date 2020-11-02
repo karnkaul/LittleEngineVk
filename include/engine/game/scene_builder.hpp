@@ -1,27 +1,23 @@
 #pragma once
-#include <core/flags.hpp>
-#include <core/ecs_registry.hpp>
-#include <engine/game/text2d.hpp>
+#include <core/ecs/registry.hpp>
 #include <engine/game/state.hpp>
-#include <engine/gfx/renderer.hpp>
+#include <engine/game/text2d.hpp>
+#include <engine/gfx/render_driver.hpp>
+#include <engine/gfx/viewport.hpp>
 #include <engine/resources/resource_types.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 
-namespace le
-{
-struct UIComponent final
-{
-	enum class Flag
-	{
-		eText,
-		eMesh,
-		eCOUNT_
-	};
-	using Flags = TFlags<Flag>;
+namespace le {
+struct UIComponent final {
+	enum class Flag { eText, eMesh, eCOUNT_ };
+	using Flags = kt::enum_flags<Flag>;
 
 	stdfs::path id;
 	Text2D text;
 	res::TScoped<res::Mesh> mesh;
+	gfx::ScreenRect scissor;
 	Flags flags;
+	bool bIgnoreGameView = false;
 
 	Text2D& setText(Text2D::Info info);
 	Text2D& setText(res::Font::Text data);
@@ -32,16 +28,11 @@ struct UIComponent final
 	std::vector<res::Mesh> meshes() const;
 };
 
-class SceneBuilder
-{
-public:
+class SceneBuilder {
+  public:
 	virtual ~SceneBuilder();
 
-public:
-	static glm::vec3 uiProjection(glm::vec3 const& uiSpace, glm::ivec2 const& renderArea);
-	static glm::vec3 uiProjection(glm::vec3 const& uiSpace);
-
-public:
-	virtual gfx::Renderer::Scene build(gfx::Camera const& camera, Registry const& registry) const;
+  public:
+	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, ecs::Registry const& registry) const;
 };
 } // namespace le

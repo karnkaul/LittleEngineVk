@@ -5,14 +5,14 @@
 #include <core/tasks.hpp>
 #include <engine/resources/resource_types.hpp>
 
-namespace le
-{
+namespace le {
 namespace stdfs = std::filesystem;
 }
 
-namespace le::res
-{
+namespace le::res {
 using Semaphore = TCounter<s32>::Semaphore;
+template <typename T>
+using Result = kt::result_void<T>;
 
 ///
 /// \brief Acquire a semaphore to block deinit/unload until (all have been) released
@@ -23,24 +23,20 @@ Semaphore acquire();
 /// \brief RAII handle to a resource (unloads in destructor)
 ///
 template <typename T>
-struct TScoped final : NoCopy
-{
+struct TScoped final : NoCopy {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
 	T resource;
 
-	constexpr TScoped(T t = T{}) noexcept : resource(t) {}
-	constexpr TScoped(TScoped&& rhs) noexcept : resource(rhs.resource)
-	{
-		rhs.resource = {};
+	constexpr TScoped(T t = T{}) noexcept : resource(t) {
 	}
+	constexpr TScoped(TScoped&&) noexcept;
 	TScoped& operator=(TScoped&&);
 	~TScoped();
 
 	///
 	/// \brief Implicitly cast to T
 	///
-	constexpr operator T const &() const noexcept
-	{
+	constexpr operator T const &() const noexcept {
 		return resource;
 	}
 	///
@@ -50,11 +46,11 @@ struct TScoped final : NoCopy
 };
 
 template <typename T>
-class Async final
-{
-public:
+class Async final {
+  public:
 	constexpr Async() = default;
-	Async(std::shared_ptr<tasks::Handle> task, Hash id) : m_task(std::move(task)), m_id(id) {}
+	Async(std::shared_ptr<tasks::Handle> task, Hash id) : m_task(std::move(task)), m_id(id) {
+	}
 	Async(Async&&) = default;
 	Async& operator=(Async&&) = default;
 	Async(Async const&) = default;
@@ -63,17 +59,17 @@ public:
 
 	bool valid() const;
 	bool loaded() const;
-	TResult<T> resource() const;
+	Result<T> resource() const;
 
 	bool reset();
 
-private:
+  private:
 	std::shared_ptr<tasks::Handle> m_task;
 	Hash m_id;
 };
 
 template <typename T>
-TResult<T> find(Hash id);
+Result<T> find(Hash id);
 template <typename T>
 typename T::Info const& info(T resource);
 template <typename T>
@@ -91,7 +87,7 @@ Shader load(stdfs::path const& id, Shader::CreateInfo createInfo);
 /// \brief Find a loaded Shader
 ///
 template <>
-TResult<Shader> find<Shader>(Hash id);
+Result<Shader> find<Shader>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Shader
 ///
@@ -121,7 +117,7 @@ Sampler load(stdfs::path const& id, Sampler::CreateInfo createInfo);
 /// \brief Find a loaded Sampler
 ///
 template <>
-TResult<Sampler> find<Sampler>(Hash id);
+Result<Sampler> find<Sampler>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Sampler
 ///
@@ -155,7 +151,7 @@ Async<Texture> loadAsync(stdfs::path const& id, Texture::LoadInfo loadInfo);
 /// \brief Find a loaded Texture
 ///
 template <>
-TResult<Texture> find<Texture>(Hash id);
+Result<Texture> find<Texture>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Texture
 ///
@@ -185,7 +181,7 @@ Material load(stdfs::path const& id, Material::CreateInfo createInfo);
 /// \brief Find a loaded Material
 ///
 template <>
-TResult<Material> find<Material>(Hash id);
+Result<Material> find<Material>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Material
 ///
@@ -215,7 +211,7 @@ Mesh load(stdfs::path const& id, Mesh::CreateInfo createInfo);
 /// \brief Find a loaded Mesh
 ///
 template <>
-TResult<Mesh> find<Mesh>(Hash id);
+Result<Mesh> find<Mesh>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Mesh
 ///
@@ -245,7 +241,7 @@ Font load(stdfs::path const& id, Font::CreateInfo createInfo);
 /// \brief Find a loaded Font
 ///
 template <>
-TResult<Font> find<Font>(Hash id);
+Result<Font> find<Font>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Font
 ///
@@ -279,7 +275,7 @@ Async<Model> loadAsync(stdfs::path const& id, Model::LoadInfo loadInfo);
 /// \brief Find a loaded Model
 ///
 template <>
-TResult<Model> find<Model>(Hash id);
+Result<Model> find<Model>(Hash id);
 ///
 /// \brief Obtain Info for a loaded Model
 ///
@@ -307,16 +303,17 @@ bool unload<Model>(Hash id);
 bool unload(Hash id);
 
 template <typename T>
-TResult<T> find(Hash)
-{
+Result<T> find(Hash) {
 	static_assert(alwaysFalse<T>, "Invalid type!");
 }
 
 template <typename T>
-TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs)
-{
-	if (&rhs != this)
-	{
+constexpr TScoped<T>::TScoped(TScoped<T>&& rhs) noexcept : resource(std::move(rhs.resource)) {
+}
+
+template <typename T>
+TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs) {
+	if (&rhs != this) {
 		unload(resource);
 		resource = std::move(rhs.resource);
 	}
@@ -324,53 +321,43 @@ TScoped<T>& TScoped<T>::operator=(TScoped<T>&& rhs)
 }
 
 template <typename T>
-TScoped<T>::~TScoped()
-{
+TScoped<T>::~TScoped() {
 	unload(resource);
 }
 
 template <typename T>
-bool TScoped<T>::ready() const
-{
+bool TScoped<T>::ready() const {
 	return resource.guid != GUID::null && resource.status() == Status::eReady;
 }
 
 template <typename T>
-Async<T>::~Async()
-{
-	if (m_task)
-	{
+Async<T>::~Async() {
+	if (m_task) {
 		m_task->wait();
 	}
 }
 
 template <typename T>
-bool Async<T>::valid() const
-{
+bool Async<T>::valid() const {
 	return m_id != Hash() && m_task && m_task->status() != tasks::Handle::Status::eDiscarded;
 }
 
 template <typename T>
-bool Async<T>::loaded() const
-{
-	return resource().bResult;
+bool Async<T>::loaded() const {
+	return resource().has_result();
 }
 
 template <typename T>
-TResult<T> Async<T>::resource() const
-{
-	if (valid())
-	{
+Result<T> Async<T>::resource() const {
+	if (valid()) {
 		return res::find<T>(m_id);
 	}
 	return {};
 }
 
 template <typename T>
-bool Async<T>::reset()
-{
-	if (m_task)
-	{
+bool Async<T>::reset() {
+	if (m_task) {
 		m_task.reset();
 		return true;
 	}

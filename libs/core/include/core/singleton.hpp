@@ -2,80 +2,62 @@
 #include <memory>
 #include <core/std_types.hpp>
 
-namespace le
-{
-enum class SingletonStorage : s8
-{
-	eStatic,
-	eHeap
-};
+namespace le {
+enum class SingletonStorage : s8 { eStatic, eHeap };
 
 template <typename T, SingletonStorage Storage = SingletonStorage::eStatic>
-class Singleton
-{
+class Singleton {
 	static_assert(alwaysFalse<T>, "Invalid Storage!");
 };
 
-namespace detail
-{
+namespace detail {
 template <typename T>
-class SingletonBase
-{
-public:
-	static T& instance()
-	{
+class SingletonBase {
+  public:
+	static T& instance() {
 		return T::inst();
 	}
 
-	static T& self()
-	{
+	static T& self() {
 		return T::inst();
 	}
 };
 } // namespace detail
 
 template <typename T>
-class Singleton<T, SingletonStorage::eStatic> : public detail::SingletonBase<T>
-{
-public:
-	static T& inst()
-	{
+class Singleton<T, SingletonStorage::eStatic> : public detail::SingletonBase<T> {
+  public:
+	static T& inst() {
 		static T s_inst;
 		return s_inst;
 	}
 };
 
 template <typename T>
-class Singleton<T, SingletonStorage::eHeap> : public detail::SingletonBase<T>
-{
-public:
-	static T& inst()
-	{
-		if (!s_uInst)
-		{
+class Singleton<T, SingletonStorage::eHeap> : public detail::SingletonBase<T> {
+  public:
+	static T& inst() {
+		if (!s_uInst) {
 			s_uInst = std::make_unique<T>();
 		}
 		return *s_uInst;
 	}
 
 	template <typename... Args>
-	T& construct(Args&&... args)
-	{
+	T& construct(Args&&... args) {
 		s_uInst = std::make_unique<T>(std::forward<Args>(args)...);
 		return *s_uInst;
 	}
 
-	bool destroy()
-	{
-		if (s_uInst)
-		{
+	bool destroy() {
+		if (s_uInst) {
 			s_uInst.reset();
 			return true;
 		}
 		return false;
 	}
 
-protected:
+  protected:
 	static std::unique_ptr<T> s_uInst;
 };
 

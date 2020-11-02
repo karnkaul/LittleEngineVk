@@ -1,10 +1,9 @@
 #pragma once
 #include <chrono>
-#include <core/std_types.hpp>
 #include <core/fixed.hpp>
+#include <core/std_types.hpp>
 
-namespace le
-{
+namespace le {
 namespace stdch = std::chrono;
 using namespace std::chrono_literals;
 
@@ -17,11 +16,10 @@ using Time = TimeSpan<stdch::microseconds>;
 /// \brief Wrapper for a time span
 ///
 template <typename Duration, typename Clock>
-struct TimeSpan
-{
+struct TimeSpan {
 	inline static auto s_localEpoch = Clock::now();
 
-	stdch::microseconds usecs;
+	Duration duration;
 
 	///
 	/// \brief Obtain time elapsed since clock was reset (since epoch if never reset)
@@ -37,8 +35,7 @@ struct TimeSpan
 	constexpr TimeSpan() noexcept;
 	template <typename Rep, typename Period>
 	constexpr TimeSpan(stdch::duration<Rep, Period> duration) noexcept;
-	explicit constexpr TimeSpan(s64 usecs) noexcept : usecs(usecs) {}
-	explicit constexpr TimeSpan(stdch::microseconds usecs) noexcept : usecs(usecs) {}
+	explicit constexpr TimeSpan(s64 usecs) noexcept;
 
 	///
 	/// \brief Scale time by `magnitude`
@@ -55,12 +52,7 @@ struct TimeSpan
 	constexpr TimeSpan& operator*=(TimeSpan rhs) noexcept;
 	constexpr TimeSpan& operator/=(TimeSpan rhs) noexcept;
 
-	constexpr bool operator==(TimeSpan rhs) noexcept;
-	constexpr bool operator!=(TimeSpan rhs) noexcept;
-	constexpr bool operator<(TimeSpan rhs) noexcept;
-	constexpr bool operator<=(TimeSpan rhs) noexcept;
-	constexpr bool operator>(TimeSpan rhs) noexcept;
-	constexpr bool operator>=(TimeSpan rhs) noexcept;
+	constexpr operator Duration() const noexcept;
 
 	///
 	/// \brief Serialise to seconds
@@ -77,184 +69,178 @@ struct TimeSpan
 };
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator+(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept;
+constexpr bool operator==(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator-(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept;
+constexpr bool operator!=(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator*(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept;
+constexpr bool operator<(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator/(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept;
+constexpr bool operator<=(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
+template <typename Duration, typename Clock>
+constexpr bool operator>(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
+template <typename Duration, typename Clock>
+constexpr bool operator>=(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock>::TimeSpan() noexcept : usecs(0)
-{
+constexpr TimeSpan<Duration, Clock> operator+(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
+template <typename Duration, typename Clock>
+constexpr TimeSpan<Duration, Clock> operator-(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
+template <typename Duration, typename Clock>
+constexpr TimeSpan<Duration, Clock> operator*(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
+template <typename Duration, typename Clock>
+constexpr TimeSpan<Duration, Clock> operator/(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept;
+
+template <typename Duration, typename Clock>
+constexpr TimeSpan<Duration, Clock>::TimeSpan() noexcept : duration(0) {
 }
 
 template <typename Duration, typename Clock>
 template <typename Rep, typename Period>
-constexpr TimeSpan<Duration, Clock>::TimeSpan(stdch::duration<Rep, Period> duration) noexcept : usecs(stdch::duration_cast<Duration>(duration))
-{
+constexpr TimeSpan<Duration, Clock>::TimeSpan(stdch::duration<Rep, Period> duration) noexcept : duration(stdch::duration_cast<Duration>(duration)) {
 }
 
 template <typename Duration, typename Clock>
-TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::elapsed() noexcept
-{
+constexpr TimeSpan<Duration, Clock>::TimeSpan(s64 usecs) noexcept : duration(stdch::microseconds(usecs)) {
+}
+
+template <typename Duration, typename Clock>
+TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::elapsed() noexcept {
 	return TimeSpan<Duration, Clock>(stdch::steady_clock::now() - s_localEpoch);
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::sinceEpoch() noexcept
-{
+constexpr TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::sinceEpoch() noexcept {
 	return TimeSpan(stdch::steady_clock::time_point().time_since_epoch());
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::clamp(TimeSpan val, TimeSpan min, TimeSpan max) noexcept
-{
-	if (val.usecs < min.usecs)
-	{
+constexpr TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::clamp(TimeSpan val, TimeSpan min, TimeSpan max) noexcept {
+	if (val.duration < min.duration) {
 		return min;
 	}
-	if (val.usecs > max.usecs)
-	{
+	if (val.duration > max.duration) {
 		return max;
 	}
 	return val;
 }
 
 template <typename Duration, typename Clock>
-void TimeSpan<Duration, Clock>::resetElapsed() noexcept
-{
+void TimeSpan<Duration, Clock>::resetElapsed() noexcept {
 	s_localEpoch = stdch::steady_clock::now();
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::scale(f32 magnitude) noexcept
-{
-	auto fus = f32(usecs.count()) * magnitude;
-	usecs = stdch::microseconds(s64(fus));
+constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::scale(f32 magnitude) noexcept {
+	auto fus = f32(duration.count()) * magnitude;
+	duration = stdch::microseconds(s64(fus));
 	return *this;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::scaled(f32 magnitude) const noexcept
-{
-	TimeSpan ret = *this;
+constexpr TimeSpan<Duration, Clock> TimeSpan<Duration, Clock>::scaled(f32 magnitude) const noexcept {
+	auto ret = *this;
 	return ret.scale(magnitude);
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator-() noexcept
-{
-	usecs = -usecs;
+constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator-() noexcept {
+	duration = -duration;
 	return *this;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator+=(TimeSpan rhs) noexcept
-{
-	usecs += rhs.usecs;
+constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator+=(TimeSpan rhs) noexcept {
+	duration += rhs.duration;
 	return *this;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator-=(TimeSpan rhs) noexcept
-{
-	usecs -= rhs.usecs;
+constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator-=(TimeSpan rhs) noexcept {
+	duration -= rhs.duration;
 	return *this;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator*=(TimeSpan rhs) noexcept
-{
-	usecs *= rhs.usecs.count();
+constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator*=(TimeSpan rhs) noexcept {
+	duration *= rhs.duration.count();
 	return *this;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator/=(TimeSpan rhs) noexcept
-{
-	usecs = (rhs.usecs == usecs.zero()) ? usecs.zero() : usecs /= rhs.usecs.count();
+constexpr TimeSpan<Duration, Clock>& TimeSpan<Duration, Clock>::operator/=(TimeSpan rhs) noexcept {
+	duration = (rhs.duration == duration.zero()) ? duration.zero() : duration /= rhs.duration.count();
 	return *this;
 }
 
 template <typename Duration, typename Clock>
-constexpr bool TimeSpan<Duration, Clock>::operator==(TimeSpan rhs) noexcept
-{
-	return usecs == rhs.usecs;
+constexpr TimeSpan<Duration, Clock>::operator Duration() const noexcept {
+	return duration;
 }
 
 template <typename Duration, typename Clock>
-constexpr bool TimeSpan<Duration, Clock>::operator!=(TimeSpan rhs) noexcept
-{
-	return !(*this == rhs);
+constexpr bool operator==(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
+	return lhs.duration == rhs.duration;
 }
 
 template <typename Duration, typename Clock>
-constexpr bool TimeSpan<Duration, Clock>::operator<(TimeSpan rhs) noexcept
-{
-	return usecs < rhs.usecs;
+constexpr bool operator!=(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
+	return !(lhs == rhs);
 }
 
 template <typename Duration, typename Clock>
-constexpr bool TimeSpan<Duration, Clock>::operator<=(TimeSpan rhs) noexcept
-{
-	return usecs <= rhs.usecs;
+constexpr bool operator<(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
+	return lhs.duration < rhs.duration;
 }
 
 template <typename Duration, typename Clock>
-constexpr bool TimeSpan<Duration, Clock>::operator>(TimeSpan rhs) noexcept
-{
-	return usecs > rhs.usecs;
+constexpr bool operator<=(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
+	return lhs.duration <= rhs.duration;
 }
 
 template <typename Duration, typename Clock>
-constexpr bool TimeSpan<Duration, Clock>::operator>=(TimeSpan rhs) noexcept
-{
-	return usecs >= rhs.usecs;
+constexpr bool operator>(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
+	return lhs.duration > rhs.duration;
 }
 
 template <typename Duration, typename Clock>
-constexpr f32 TimeSpan<Duration, Clock>::to_s() const noexcept
-{
-	auto const count = usecs.count();
-	return count == 0 ? 0.0f : f32(usecs.count()) / (1000.0f * 1000.0f);
+constexpr bool operator>=(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
+	return lhs.duration >= rhs.duration;
 }
 
 template <typename Duration, typename Clock>
-constexpr s32 TimeSpan<Duration, Clock>::to_ms() const noexcept
-{
-	auto const count = usecs.count();
-	return count == 0 ? 0 : s32(usecs.count() / 1000);
+constexpr f32 TimeSpan<Duration, Clock>::to_s() const noexcept {
+	auto const count = duration.count();
+	return count == 0 ? 0.0f : f32(duration.count()) / (1000.0f * 1000.0f);
 }
 
 template <typename Duration, typename Clock>
-constexpr s64 TimeSpan<Duration, Clock>::to_us() const noexcept
-{
-	return usecs.count();
+constexpr s32 TimeSpan<Duration, Clock>::to_ms() const noexcept {
+	auto const count = duration.count();
+	return count == 0 ? 0 : s32(duration.count() / 1000);
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator+(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept
-{
+constexpr s64 TimeSpan<Duration, Clock>::to_us() const noexcept {
+	return duration.count();
+}
+
+template <typename Duration, typename Clock>
+constexpr TimeSpan<Duration, Clock> operator+(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
 	return TimeSpan(lhs) -= rhs;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator-(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept
-{
+constexpr TimeSpan<Duration, Clock> operator-(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
 	return TimeSpan(lhs) -= rhs;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator*(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept
-{
+constexpr TimeSpan<Duration, Clock> operator*(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
 	return TimeSpan(lhs) *= rhs;
 }
 
 template <typename Duration, typename Clock>
-constexpr TimeSpan<Duration, Clock> operator/(TimeSpan<Duration, Clock> const& lhs, TimeSpan<Duration, Clock> const& rhs) noexcept
-{
+constexpr TimeSpan<Duration, Clock> operator/(TimeSpan<Duration, Clock> lhs, TimeSpan<Duration, Clock> rhs) noexcept {
 	return TimeSpan(lhs) /= rhs;
 }
 } // namespace le

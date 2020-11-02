@@ -1,22 +1,12 @@
 #include <engine/levk.hpp>
 #include <level.hpp>
 
-#include <core/counter.hpp>
-#include <core/tree.hpp>
-
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
 	using namespace le;
 
-	// TTree<s32> tree;
-	// auto& n0 = tree.push(tree.root, 0);
-	// auto& n1 = tree.push(n0, -1);
-	// n1.push(5);
-	// tree.push(tree.root, 2);
-	// tree.pop(n0);
-
 	engine::Service engine({argc, argv});
-	auto dataPaths = engine::locate({"data", "demo/data"});
+	std::array<stdfs::path, 2> const pathSearch = {"data", "demo/data"};
+	auto dataPaths = engine::locate(pathSearch);
 	engine::Info info;
 	Window::Info windowInfo;
 	windowInfo.config.size = {1280, 720};
@@ -26,13 +16,11 @@ int main(int argc, char** argv)
 #if defined(LEVK_DEBUG)
 	// info.bLogVRAMallocations = true;
 #endif
-	if (!engine.init(info))
-	{
+	if (!engine.init(std::move(info))) {
 		return 1;
 	}
 	engine::g_shutdownSequence = engine::ShutdownSequence::eShutdown_CloseWindow;
-	while (engine.running())
-	{
+	while (engine.running()) {
 		engine.update(g_driver);
 		engine.render();
 	}

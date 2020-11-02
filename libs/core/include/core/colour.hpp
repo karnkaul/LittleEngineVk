@@ -1,16 +1,14 @@
 #pragma once
-#include <glm/glm.hpp>
 #include <core/std_types.hpp>
 #include <core/ubyte.hpp>
+#include <glm/glm.hpp>
 
-namespace le
-{
+namespace le {
 ///
 /// \brief Compressed wrapper struct for Colour
 ///
-struct Colour
-{
-public:
+struct Colour {
+  public:
 	UByte r;
 	UByte g;
 	UByte b;
@@ -33,8 +31,7 @@ public:
 	///
 	/// eg: 0xffff00ff for opaque yellow
 	///
-	constexpr explicit Colour(u32 mask) noexcept
-	{
+	constexpr explicit Colour(u32 mask) noexcept {
 		a = mask & 0xff;
 		mask >>= 8;
 		b = mask & 0xff;
@@ -113,16 +110,15 @@ Colour operator*(f32 n, Colour colour) noexcept;
 bool operator==(Colour lhs, Colour rhs) noexcept;
 bool operator!=(Colour lhs, Colour rhs) noexcept;
 
-namespace colours
-{
-constexpr Colour black(0x000000ff);
-constexpr Colour white(0xffffffff);
-constexpr Colour red(0xff0000ff);
-constexpr Colour green(0x00ff00ff);
-constexpr Colour blue(0x0000ffff);
-constexpr Colour yellow(0xffff00ff);
-constexpr Colour magenta(0xff00ffff);
-constexpr Colour cyan(0x00ffffff);
-constexpr Colour transparent(0x0);
+namespace colours {
+inline constexpr Colour black(0x000000ff);
+inline constexpr Colour white(0xffffffff);
+inline constexpr Colour red(0xff0000ff);
+inline constexpr Colour green(0x00ff00ff);
+inline constexpr Colour blue(0x0000ffff);
+inline constexpr Colour yellow(0xffff00ff);
+inline constexpr Colour magenta(0xff00ffff);
+inline constexpr Colour cyan(0x00ffffff);
+inline constexpr Colour transparent(0x0);
 } // namespace colours
 } // namespace le

@@ -60,7 +60,7 @@ Registry& Level::registry() {
 	return gs::g_game.m_registry;
 }
 
-void LevelDriver::tick(Time dt) {
+void LevelDriver::tick(Time_s dt) {
 	if (!m_bTicked) {
 		m_bTicked = true;
 		g_switcher.schedule<DemoLevel>();

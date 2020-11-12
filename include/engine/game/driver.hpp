@@ -11,7 +11,7 @@ struct Driver {
 	/// \brief Frame update
 	/// \param dt delta time since previous call
 	///
-	virtual void tick(Time dt) = 0;
+	virtual void tick(Time_s dt) = 0;
 	///
 	/// \brief Frame build
 	/// \returns SceneBuilder (to build scene from game state registry)

@@ -107,7 +107,7 @@ void FreeCam::init()
 	return;
 }
 
-void FreeCam::tick(Time dt) {
+void FreeCam::tick(Time_s dt) {
 	if (!m_state.flags.test(Flag::eEnabled)) {
 		return;
 	}
@@ -121,7 +121,7 @@ void FreeCam::tick(Time dt) {
 		return;
 	}
 
-	f32 const dt_s = dt.to_s();
+	f32 const dt_s = dt.count();
 	// Speed
 	if (!m_state.flags.test(Flag::eFixedSpeed)) {
 		if (m_state.dSpeed * m_state.dSpeed > 0.0f) {

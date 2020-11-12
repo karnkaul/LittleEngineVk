@@ -17,6 +17,6 @@ inline FreeCam g_editorCam;
 bool init(WindowID editorWindow);
 bool enabled();
 void deinit();
-std::optional<gfx::Viewport> tick(GameScene& out_scene, Time dt);
+std::optional<gfx::Viewport> tick(GameScene& out_scene, Time_s dt);
 } // namespace le::editor
 #endif

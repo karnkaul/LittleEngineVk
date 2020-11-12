@@ -35,7 +35,7 @@ class Delegate {
 	void clear() noexcept;
 
   private:
-	TTokenGen<Callback, TGSpec_vector<>> m_tokens;
+	TTokenGen<Callback, TGSpec_vector> m_tokens;
 };
 
 template <typename... Args>

@@ -53,7 +53,7 @@ class FreeCam {
 #else
 	void init();
 #endif
-	void tick(Time dt);
+	void tick(Time_s dt);
 
   private:
 	input::Context m_input;

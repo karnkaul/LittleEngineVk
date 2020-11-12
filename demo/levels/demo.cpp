@@ -93,7 +93,7 @@ DemoLevel::DemoLevel() {
 	registry().attach<res::Model>(m_data.eid2);
 
 	m_data.eid3.transform().position({0.0f, -1.0f, -3.0f});
-	registry().attach<res::Model, Time>(m_data.eid3); // Test attaching multiple components
+	registry().attach<res::Model, Time_s>(m_data.eid3); // Test attaching multiple components
 
 	m_input.context.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
 	m_input.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
@@ -123,20 +123,20 @@ DemoLevel::DemoLevel() {
 	}
 }
 
-void DemoLevel::tick(Time dt) {
+void DemoLevel::tick(Time_s dt) {
 	if (m_data.bQuit) {
 		engine::Service::shutdown();
 		return;
 	}
 
-	static Time elapsed;
+	static Time_s elapsed;
 	elapsed += dt;
 	static bool s_bRegistered = false;
-	if (elapsed.duration >= 5s && !s_bRegistered) {
+	if (elapsed >= 5s && !s_bRegistered) {
 		m_data.tempToken = input::registerContext(&m_data.temp);
 		s_bRegistered = true;
 	}
-	if (elapsed.duration >= 8s && m_data.tempToken.valid()) {
+	if (elapsed >= 8s && m_data.tempToken.valid()) {
 		m_data.tempToken = {};
 	}
 
@@ -183,7 +183,7 @@ void DemoLevel::tick(Time dt) {
 		fps.text += "\nHi\nthird";
 		pFps->setText(std::move(fps));
 	}
-	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.to_s() * 1000));
+	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.count() * 1000));
 	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} entities", registry().size()));
 	if (auto pQuadT = registry().find<Transform>(m_data.pointer)) {
 		if (auto pSpring = registry().find<SpringArm>(m_data.pointer)) {
@@ -203,9 +203,9 @@ void DemoLevel::tick(Time dt) {
 
 	{
 		// Update matrices
-		m_data.eid1.transform().orient(glm::rotate(m_data.eid1.transform().orientation(), glm::radians(dt.to_s() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
-		m_data.eid0.transform().orient(glm::rotate(m_data.eid0.transform().orientation(), glm::radians(dt.to_s() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
-		m_data.eid2.transform().orient(glm::rotate(m_data.eid2.transform().orientation(), glm::radians(dt.to_s() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
+		m_data.eid1.transform().orient(glm::rotate(m_data.eid1.transform().orientation(), glm::radians(dt.count() * 10), glm::vec3(0.0f, 1.0f, 0.0f)));
+		m_data.eid0.transform().orient(glm::rotate(m_data.eid0.transform().orientation(), glm::radians(dt.count() * 12), glm::vec3(1.0f, 1.0f, 1.0f)));
+		m_data.eid2.transform().orient(glm::rotate(m_data.eid2.transform().orientation(), glm::radians(dt.count() * 18), glm::vec3(0.3f, 1.0f, 1.0f)));
 	}
 
 	gs::g_game.desc().pipe3D.polygonMode = m_data.bWireframe ? gfx::Pipeline::Polygon::eLine : gfx::Pipeline::Polygon::eFill;

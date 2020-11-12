@@ -3,20 +3,20 @@
 #include <level.hpp>
 
 struct FPS final {
-	le::Time updated;
-	le::Time elapsed;
+	le::time::Point updated;
+	le::Time_ms elapsed;
 	le::u32 fps = 0;
 	le::u32 frames = 0;
 	bool bSet = false;
 
 	le::u32 update() {
 		using namespace std::chrono_literals;
-		if (updated > le::Time()) {
-			elapsed += (le::Time::elapsed() - updated);
+		if (updated > le::time::Point()) {
+			elapsed += le::time::diff<le::Time_ms>(updated);
 		}
-		updated = le::Time::elapsed();
+		updated = le::time::now();
 		++frames;
-		if (elapsed.duration >= 1s) {
+		if (elapsed >= 1s) {
 			fps = frames;
 			frames = 0;
 			elapsed = {};
@@ -34,7 +34,7 @@ class DemoLevel : public Level {
 	DemoLevel();
 
   protected:
-	void tick(le::Time dt) override;
+	void tick(le::Time_s dt) override;
 	void onManifestLoaded() override;
 	le::SceneBuilder const& builder() const override;
 
@@ -50,7 +50,7 @@ class DemoLevel : public Level {
 		le::FreeCam freeCam;
 		FPS fps;
 		le::Token tempToken;
-		le::Time reloadTime;
+		le::Time_s reloadTime;
 		bool bLoadUnloadModels = false;
 		bool bWireframe = false;
 		bool bQuit = false;

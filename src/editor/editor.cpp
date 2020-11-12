@@ -656,19 +656,19 @@ void drawLog(iv2 fbSize, s32 logHeight) {
 		return;
 	}
 
-	static Time elapsed = Time::elapsed();
-	Time frameTime = Time::elapsed() - elapsed;
-	elapsed = Time::elapsed();
+	static auto elapsed = time::now();
+	auto const frameTime = time::diff<Time_us>(elapsed);
+	elapsed = time::now();
 	static constexpr std::size_t maxFTs = 200;
 	static std::array<f32, maxFTs> ftArr;
-	static std::list<Time> fts;
+	static std::list<Time_us> fts;
 	fts.push_back(frameTime);
 	while (fts.size() > maxFTs) {
 		fts.pop_front();
 	}
 	std::size_t idx = 0;
 	for (auto ft : fts) {
-		ftArr[idx++] = ((f32)ft.to_us() * 0.001f);
+		ftArr[idx++] = ((f32)ft.count() * 0.001f);
 	}
 	for (; idx < ftArr.size(); ++idx) {
 		ftArr[idx] = 0.0f;
@@ -686,7 +686,7 @@ void drawLog(iv2 fbSize, s32 logHeight) {
 	if (ImGui::Begin("##Log", nullptr, flags)) {
 		// Frame time
 		{
-			auto str = fmt::format("{:.3}ms", frameTime.to_s() * 1000);
+			auto str = fmt::format("{:.3}ms", f32(frameTime.count()) / 1000.0f);
 			ImGui::PlotLines("Frame Time", ftArr.data(), (s32)ftArr.size(), 0, str.data());
 			Styler s(Style::eSeparator);
 		}
@@ -1057,7 +1057,7 @@ void editor::deinit() {
 	return;
 }
 
-std::optional<gfx::Viewport> editor::tick(GameScene& out_scene, Time dt) {
+std::optional<gfx::Viewport> editor::tick(GameScene& out_scene, Time_s dt) {
 	static gfx::Viewport s_comboView = {{0.2f, 0.0f}, 0.6f};
 	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);

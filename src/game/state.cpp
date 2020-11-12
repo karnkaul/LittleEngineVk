@@ -74,7 +74,7 @@ void gs::reset() {
 	g_ctxImpl.onManifestLoaded.clear();
 }
 
-gfx::render::Driver::Scene gs::update(engine::Driver& out_driver, Time dt, bool bTick) {
+gfx::render::Driver::Scene gs::update(engine::Driver& out_driver, Time_s dt, bool bTick) {
 	if (!g_ctxImpl.manifest.idle()) {
 		auto const status = g_ctxImpl.manifest.update(!bTick);
 		switch (status) {

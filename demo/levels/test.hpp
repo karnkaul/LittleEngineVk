@@ -11,13 +11,13 @@ class TestLevel final : public Level {
 	TestLevel();
 
   public:
-	void tick(le::Time dt) override;
+	void tick(le::Time_s dt) override;
 
   private:
 	struct {
 		le::ecs::Entity mainText;
 		le::ecs::Entity elapsedText;
-		le::Time elapsed;
+		le::Time_s elapsed;
 	} m_data;
 
 	struct {

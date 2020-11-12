@@ -11,7 +11,7 @@ Monitor::File::File(stdfs::path const& id, stdfs::path const& fullPath, io::File
 
 bool Monitor::update() {
 	auto const idStr = m_id.generic_string();
-	if (m_reloadFails < m_reloadTries && m_reloadStart > Time() && Time::elapsed() - m_reloadStart > m_reloadWait) {
+	if (m_reloadFails < m_reloadTries && m_reloadStart > time::Point() && time::now() - m_reloadStart > m_reloadWait) {
 		// reload all modified files
 		bool bSuccess = true;
 		for (auto pModified : m_modified) {
@@ -23,9 +23,10 @@ bool Monitor::update() {
 						logE("[{}] Failed to reload file data! (Re-save to retry)", idStr);
 						break;
 					} else {
-						m_reloadStart = Time::elapsed();
-						m_reloadWait.scale(m_reloadFails * 2.0f);
-						logI("[{}] Retrying reload in [{}ms]!", idStr, m_reloadWait.to_ms());
+						m_reloadStart = time::now();
+						m_reloadWait = Time_s(m_reloadWait.count() * m_reloadFails * 2.0f);
+						auto const wait = time::cast<Time_ms>(m_reloadWait);
+						logI("[{}] Retrying reload in [{}ms]!", idStr, wait.count());
 						break;
 					}
 				}
@@ -33,7 +34,8 @@ bool Monitor::update() {
 		}
 		if (bSuccess) {
 			m_modified.clear();
-			m_reloadStart = m_reloadWait = {};
+			m_reloadStart = {};
+			m_reloadWait = {};
 			m_reloadFails = 0;
 			// all files loaded successfully, trigger resource re-upload
 			return true;
@@ -54,8 +56,8 @@ bool Monitor::update() {
 		case io::FileMonitor::Status::eModified: {
 			// add to tracking and reset reload timer
 			m_modified.insert(&file);
-			m_reloadStart = Time::elapsed();
-			if (m_reloadWait == Time()) {
+			m_reloadStart = time::now();
+			if (m_reloadWait == Time_s()) {
 				m_reloadWait = m_reloadDelay;
 			}
 			if (m_reloadFails >= m_reloadTries) {

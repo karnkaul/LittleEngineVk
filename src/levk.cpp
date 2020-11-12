@@ -28,11 +28,11 @@ namespace le {
 namespace engine {
 namespace {
 struct Clock {
-	Time stamp;
+	time::Point stamp;
 
-	Time dt() noexcept {
-		Time now = Time::elapsed();
-		Time ret = stamp == Time() ? Time() : now - stamp;
+	Time_s dt() noexcept {
+		auto const now = time::now();
+		Time_s ret = stamp == time::Point() ? Time_s() : now - stamp;
 		stamp = now;
 		return ret;
 	}
@@ -47,7 +47,6 @@ Clock g_clock;
 
 Service::Service(os::Args args) {
 	dj::g_log_error = [](auto text) { logE("{}", text); };
-	Time::resetElapsed();
 	m_services.add<os::Service>(args);
 	m_services.add<io::Service>(std::string_view("debug.log"));
 	logI("LittleEngineVk v{}  [{}/{}]", g_engineVersion.toString(false), levk_OS_name, levk_arch_name);
@@ -138,7 +137,7 @@ bool Service::update(Driver& out_driver) const {
 	if (g_status == Status::eInitialised) {
 		g_status = Status::eTicking;
 	}
-	Time const dt = g_clock.dt();
+	Time_s const dt = g_clock.dt();
 	Window::pollEvents();
 	engine::update();
 	if (g_app.window && g_app.window->closing()) {

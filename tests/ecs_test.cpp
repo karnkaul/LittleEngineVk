@@ -92,27 +92,25 @@ int main() {
 		registry.m_logLevel = dl::level::info;
 		std::vector<std::shared_ptr<tasks::Handle>> handles;
 		{
+			auto wait = []() -> Time_ms { return time::cast<Time_ms>(Time_us(maths::randomRange(0, 3000))); };
 			for (s32 i = 0; i < entityCount / 10; ++i) {
 				handles.push_back(tasks::enqueue(
-					[&registry, &entities]() {
-						Time wait = Time(maths::randomRange(0, 3000));
-						threads::sleep(wait);
+					[&registry, &entities, wait]() {
+						threads::sleep(wait());
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.destroy(entities[idx]);
 					},
 					{}));
 				handles.push_back(tasks::enqueue(
-					[&registry, &entities]() {
-						Time wait = Time(maths::randomRange(0, 3000));
-						threads::sleep(wait);
+					[&registry, &entities, wait]() {
+						threads::sleep(wait());
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.detach<A, B, D>(entities[idx]);
 					},
 					{}));
 				handles.push_back(tasks::enqueue(
-					[&registry, &entities]() {
-						Time wait = Time(maths::randomRange(0, 3000));
-						threads::sleep(wait);
+					[&registry, &entities, wait]() {
+						threads::sleep(wait());
 						std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 						registry.enable(entities[idx], false);
 					},

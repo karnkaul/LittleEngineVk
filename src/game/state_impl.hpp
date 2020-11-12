@@ -3,5 +3,5 @@
 #include <engine/levk.hpp>
 
 namespace le::gs {
-gfx::render::Driver::Scene update(engine::Driver& out_driver, Time dt, bool bTick);
+gfx::render::Driver::Scene update(engine::Driver& out_driver, Time_s dt, bool bTick);
 } // namespace le::gs

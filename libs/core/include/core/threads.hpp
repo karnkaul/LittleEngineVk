@@ -77,7 +77,7 @@ u32 runningCount();
 ///
 /// \brief Sleep this thread
 /// \param duration pass zero to yield
-void sleep(Time duration = {});
+void sleep(Time_ms duration = {});
 
 ///
 /// \brief Yield this thread until `f` returns `true`

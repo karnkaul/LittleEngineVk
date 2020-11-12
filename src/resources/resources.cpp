@@ -684,11 +684,11 @@ void res::update() {
 }
 
 void res::waitIdle() {
-	constexpr Time timeout = 2s;
-	Time elapsed;
-	Time const start = Time::elapsed();
+	constexpr Time_s timeout = 2s;
+	Time_s elapsed = {};
+	auto const start = time::now();
 	while (!g_counter.isZero(true) && elapsed < timeout) {
-		elapsed = Time::elapsed() - start;
+		elapsed = time::now() - start;
 		threads::sleep();
 	}
 	bool bTimeout = elapsed >= timeout;

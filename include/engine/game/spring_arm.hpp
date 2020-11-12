@@ -10,14 +10,14 @@ struct SpringArm {
 	glm::vec3 offset = {};
 	glm::vec3 position = {};
 	Transform const* pTarget = nullptr;
-	Time fixed = 2ms;
+	Time_s fixed = 2ms;
 	f32 k = 0.5f;
 	f32 b = 0.05f;
 	struct {
 		glm::vec3 velocity = {};
-		Time ft;
+		Time_s ft;
 	} data;
 
-	glm::vec3 const& tick(Time dt, std::optional<glm::vec3> target = std::nullopt) noexcept;
+	glm::vec3 const& tick(Time_s dt, std::optional<glm::vec3> target = std::nullopt) noexcept;
 };
 } // namespace le

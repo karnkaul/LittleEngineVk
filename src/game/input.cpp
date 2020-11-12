@@ -14,7 +14,7 @@
 
 namespace le {
 namespace {
-using Contexts = TTokenGen<input::Context const*, TGSpec_deque<>>;
+using Contexts = TTokenGen<input::Context const*, TGSpec_deque>;
 Contexts g_contexts;
 #if defined(LEVK_EDITOR)
 Contexts g_editorContexts;

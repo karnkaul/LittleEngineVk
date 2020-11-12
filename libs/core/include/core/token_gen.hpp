@@ -86,26 +86,23 @@ struct TGSpec {};
 ///
 /// \brief TGSpec for std::vector<std::pair<Token::ID, T>, Args...>
 ///
-template <typename... Args>
 struct TGSpec_vector : TGSpec {
 	template <typename T>
-	using storage = TGStorage<TGS_Tag_Seq, T, std::vector, Args...>;
+	using storage = TGStorage<TGS_Tag_Seq, T, std::vector>;
 };
 ///
 /// \brief TGSpec for std::deque<std::pair<Token::ID, T>, Args...>
 ///
-template <typename... Args>
 struct TGSpec_deque : TGSpec {
 	template <typename T>
-	using storage = TGStorage<TGS_Tag_Seq, T, std::deque, Args...>;
+	using storage = TGStorage<TGS_Tag_Seq, T, std::deque>;
 };
 ///
 /// \brief TGSpec for std::unordered_map<Token::ID, T, Args...>
 ///
-template <typename... Args>
 struct TGSpec_umap : TGSpec {
 	template <typename T>
-	using storage = TGStorage<TGS_Tag_Ass, T, std::unordered_map, Args...>;
+	using storage = TGStorage<TGS_Tag_Ass, T, std::unordered_map>;
 };
 
 namespace detail {
@@ -124,7 +121,7 @@ struct TokenGenBase {
 ///
 /// Important: generator instance must outlive all Token instances handed out by it
 ///
-template <typename T, typename Spec = TGSpec_vector<>>
+template <typename T, typename Spec = TGSpec_vector>
 class TTokenGen final : detail::TokenGenBase {
 	static_assert(std::is_base_of_v<TGSpec, Spec>, "Invalid Spec");
 
@@ -350,11 +347,11 @@ bool TTokenGen<T, TGS>::empty() const noexcept {
 }
 template <typename T, typename TGS>
 T const* TTokenGen<T, TGS>::find(Token const& token) const {
-	return detail::tgsFind<tag, T const>(m_entries, static_cast<Token::id_type>(token.id));
+	return detail::tgsFind<tag, T const>(m_entries, token.id);
 }
 template <typename T, typename TGS>
 T* TTokenGen<T, TGS>::find(Token const& token) {
-	return detail::tgsFind<tag, T>(m_entries, static_cast<Token::id_type>(token.id));
+	return detail::tgsFind<tag, T>(m_entries, token.id);
 }
 template <typename T, typename TGS>
 void TTokenGen<T, TGS>::pop(Token::id_type id) {

@@ -101,11 +101,11 @@ u32 threads::runningCount() {
 	return (u32)g_threads.size();
 }
 
-void threads::sleep(Time duration) {
-	if (duration <= Time()) {
+void threads::sleep(Time_ms duration) {
+	if (duration.count() <= 0) {
 		std::this_thread::yield();
 	} else {
-		std::this_thread::sleep_for(std::chrono::microseconds(duration.to_us()));
+		std::this_thread::sleep_for(duration);
 	}
 }
 } // namespace le

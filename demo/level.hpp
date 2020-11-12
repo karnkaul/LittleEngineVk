@@ -13,7 +13,7 @@ class Level {
 	virtual ~Level();
 
   protected:
-	virtual void tick(le::Time dt) = 0;
+	virtual void tick(le::Time_s dt) = 0;
 
   protected:
 	virtual le::SceneBuilder const& builder() const;
@@ -47,7 +47,7 @@ class LevelDriver final : public le::engine::Driver {
 	bool m_bTicked = false;
 
   public:
-	void tick(le::Time dt) override;
+	void tick(le::Time_s dt) override;
 	le::SceneBuilder const& builder() const override;
 
 	void cleanup();

@@ -57,21 +57,21 @@ class Stopwatch {
 		/// \brief Real time
 		///
 		struct {
-			Time begin;
-			Time end;
+			time::Point begin;
+			time::Point end;
 		} points;
 		///
 		/// \brief Game time
 		///
-		Time dt;
+		Time_s dt;
 		///
 		/// \brief Obtain game dt
 		///
-		constexpr operator Time() const noexcept;
+		constexpr operator Time_s() const noexcept;
 		///
 		/// \brief Obtain real dt
 		///
-		constexpr Time real() const noexcept;
+		constexpr Time_s real() const noexcept;
 	};
 	///
 	/// \brief Collection of Stamps with an associated label
@@ -79,7 +79,7 @@ class Stopwatch {
 	struct Info final {
 		std::string label;
 		std::vector<Stamp> stamps;
-		Time updated;
+		time::Point updated;
 	};
 	///
 	/// \brief RAII wrapper that stops on destruction
@@ -127,7 +127,7 @@ class Stopwatch {
 	///
 	/// \brief Update game timestamps
 	///
-	void tick(Time dt);
+	void tick(Time_s dt);
 
   protected:
 	std::unordered_map<Hash, Info> m_infos;
@@ -140,12 +140,12 @@ class Stopwatch {
 inline Stopwatch<> g_stopwatch;
 
 template <SWTag Tag>
-constexpr Stopwatch<Tag>::Stamp::operator Time() const noexcept {
+constexpr Stopwatch<Tag>::Stamp::operator Time_s() const noexcept {
 	return dt;
 }
 
 template <SWTag Tag>
-constexpr Time Stopwatch<Tag>::Stamp::real() const noexcept {
+constexpr Time_s Stopwatch<Tag>::Stamp::real() const noexcept {
 	return points.end - points.begin;
 }
 
@@ -187,7 +187,7 @@ typename Stopwatch<Tag>::Info const& Stopwatch<Tag>::start(std::string label, Ha
 	auto& info = m_infos[id];
 	Stamp stamp;
 	info.label = std::move(label);
-	info.updated = stamp.points.begin = Time::elapsed();
+	info.updated = stamp.points.begin = time::now();
 	info.stamps.push_back(stamp);
 	return info;
 }
@@ -199,13 +199,13 @@ typename Stopwatch<Tag>::Stamp const* Stopwatch<Tag>::stop(Hash hash, Log log) {
 		auto& info = search->second;
 		if (!info.stamps.empty()) {
 			auto& stamp = info.stamps.back();
-			info.updated = stamp.points.end = Time::elapsed();
+			info.updated = stamp.points.end = time::now();
 			if (log > Log::eNone) {
 				if (m_name.empty()) {
 					m_name = "Stopwatch";
 				}
-				Time const dt = log == Log::eGameDT ? stamp.dt : stamp.real();
-				logI("[{}] [{}] : [{:.2f}ms]", m_name, info.label, dt.to_s() * 1000);
+				Time_s const dt = log == Log::eGameDT ? stamp.dt : stamp.real();
+				logI("[{}] [{}] : [{:.2f}ms]", m_name, info.label, dt.count() * 1000);
 			}
 			return &stamp;
 		}
@@ -254,12 +254,12 @@ std::vector<Ref<typename Stopwatch<Tag>::Info const>> Stopwatch<Tag>::laps(bool 
 }
 
 template <SWTag Tag>
-void Stopwatch<Tag>::tick(Time dt) {
+void Stopwatch<Tag>::tick(Time_s dt) {
 	auto lock = m_mutex.lock();
 	for (auto& [_, info] : m_infos) {
 		if (!info.stamps.empty()) {
 			Stamp& stamp = info.stamps.back();
-			stamp.points.end = Time::elapsed();
+			stamp.points.end = time::now();
 			stamp.dt += dt;
 		}
 	}

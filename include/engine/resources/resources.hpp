@@ -327,7 +327,7 @@ TScoped<T>::~TScoped() {
 
 template <typename T>
 bool TScoped<T>::ready() const {
-	return resource.guid != GUID::null && resource.status() == Status::eReady;
+	return resource.guid.payload != GUID::null && resource.status() == Status::eReady;
 }
 
 template <typename T>

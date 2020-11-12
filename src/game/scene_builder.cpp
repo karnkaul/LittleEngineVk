@@ -4,8 +4,6 @@
 #include <engine/resources/resources.hpp>
 
 namespace le {
-using namespace ecs;
-
 Text2D& UIComponent::setText(Text2D::Info info) {
 	text.setup(std::move(info));
 	flags.set(Flag::eText);
@@ -76,7 +74,7 @@ std::vector<res::Mesh> UIComponent::meshes() const {
 
 SceneBuilder::~SceneBuilder() = default;
 
-gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, Registry const& registry) const {
+gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, ecs::Registry const& registry) const {
 	gfx::render::Driver::Scene scene;
 	gfx::render::Driver::Batch batch3D;
 	std::vector<gfx::render::Driver::Batch> batchUI;

@@ -3,7 +3,7 @@
 
 namespace le {
 template <typename... Args>
-void logD(std::string_view fmt, Args&&... args);
+void logD([[maybe_unused]] std::string_view fmt, [[maybe_unused]] Args&&... args);
 template <typename... Args>
 void logI(std::string_view fmt, Args&&... args);
 template <typename... Args>
@@ -13,7 +13,7 @@ void logE(std::string_view fmt, Args&&... args);
 template <typename Pred, typename... Args>
 void log_if(Pred pred, dl::level level, std::string_view fmt, Args&&... args);
 template <typename Pred, typename... Args>
-void logD_if(Pred pred, std::string_view fmt, Args&&... args);
+void logD_if([[maybe_unused]] Pred pred, [[maybe_unused]] std::string_view fmt, [[maybe_unused]] Args&&... args);
 template <typename Pred, typename... Args>
 void logI_if(Pred pred, std::string_view fmt, Args&&... args);
 template <typename Pred, typename... Args>

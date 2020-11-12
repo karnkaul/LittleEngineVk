@@ -162,7 +162,7 @@ inline constexpr Prop::operator ecs::Entity() const noexcept {
 	return entity;
 }
 inline constexpr bool Prop::valid() const noexcept {
-	return pTransform != nullptr && entity.id != ecs::ID::null;
+	return pTransform != nullptr && entity.id.payload != ecs::ID::null;
 }
 inline Transform const& Prop::transform() const {
 	ENSURE(pTransform, "Null Transform!");

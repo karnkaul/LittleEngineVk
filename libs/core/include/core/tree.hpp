@@ -10,6 +10,9 @@ namespace le {
 template <typename T>
 class Tree {
   public:
+	using type = T;
+	using container_type = std::list<Ref<type>>;
+
 	///
 	/// \brief Default constructor
 	///
@@ -45,6 +48,7 @@ class Tree {
 	/// \brief Obtain (const reference to) list of all children
 	///
 	std::list<Ref<T>> const& children() const noexcept;
+
 	///
 	/// \brief Depth-first walk
 	/// \param root root node whose children to traverse
@@ -57,7 +61,7 @@ class Tree {
 	///
 	/// \brief List of child trees
 	///
-	std::list<Ref<T>> m_children;
+	container_type m_children;
 	///
 	/// \brief Pointer to parent
 	///
@@ -73,35 +77,33 @@ class Tree {
 
   private:
 	template <typename U, typename Th>
-	static constexpr U& cast(Th& th) noexcept;
+	static constexpr U cast(Th& th) noexcept;
 };
+
+// impl
 
 template <typename T>
 constexpr Tree<T>::Tree() noexcept {
 	static_assert(std::is_base_of_v<Tree<T>, T>, "T must derive from Tree<T>");
 }
-
 template <typename T>
-Tree<T>::Tree(Tree<T>&& rhs) noexcept : m_children(std::move(rhs.m_children)), m_pParent(rhs.m_pParent) {
-	pilfer(std::move(cast<T&&>(rhs)));
+Tree<T>::Tree(Tree<T>&& rhs) noexcept : m_children(std::move(rhs.m_children)), m_pParent(std::exchange(rhs.m_pParent, nullptr)) {
+	pilfer(cast<T&&>(rhs));
 }
-
 template <typename T>
 Tree<T>& Tree<T>::operator=(Tree<T>&& rhs) noexcept {
 	if (&rhs != this) {
 		purge();
-		m_pParent = rhs.m_pParent;
+		m_pParent = std::exchange(rhs.m_pParent, nullptr);
 		m_children = std::move(rhs.m_children);
-		pilfer(std::move(cast<T&&>(rhs)));
+		pilfer(cast<T&&>(rhs));
 	}
 	return *this;
 }
-
 template <typename T>
 Tree<T>::~Tree() {
 	purge();
 }
-
 template <typename T>
 bool Tree<T>::parent(T* pParent) noexcept {
 	ENSURE(pParent != this, "Setting parent to self!");
@@ -118,43 +120,36 @@ bool Tree<T>::parent(T* pParent) noexcept {
 	}
 	return false;
 }
-
 template <typename T>
 T* Tree<T>::parent() noexcept {
 	return m_pParent;
 }
-
 template <typename T>
 T const* Tree<T>::parent() const noexcept {
 	return m_pParent;
 }
-
 template <typename T>
 std::list<Ref<T>> const& Tree<T>::children() const noexcept {
 	return m_children;
 }
-
 template <typename T>
 template <typename U, typename Pred>
 void Tree<T>::walk(U&& root, Pred pred) {
-	static_assert(std::is_base_of_v<Tree<T>, std::decay_t<T>>, "Invalid type!");
+	static_assert(std::is_base_of_v<Tree<T>, std::decay_t<U>>, "Invalid type!");
 	for (T& child : root.m_children) {
 		if (pred(child)) {
 			walk(child, pred);
 		}
 	}
 }
-
 template <typename T>
 template <typename U, typename Th>
-constexpr U& Tree<T>::cast(Th& th) noexcept {
-	return static_cast<U&>(th);
+constexpr U Tree<T>::cast(Th& th) noexcept {
+	return static_cast<U>(th);
 }
-
 template <typename T>
 void Tree<T>::pilfer(T&& rhs) {
 	T& t = cast<T&>(*this);
-	rhs.m_pParent = nullptr;
 	if (m_pParent) {
 		m_pParent->m_children.remove(rhs);
 		m_pParent->m_children.push_back(t);
@@ -164,7 +159,6 @@ void Tree<T>::pilfer(T&& rhs) {
 		child.m_bDirty = true;
 	}
 }
-
 template <typename T>
 void Tree<T>::purge() {
 	if (m_pParent) {

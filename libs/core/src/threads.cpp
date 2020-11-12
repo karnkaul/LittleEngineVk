@@ -30,7 +30,7 @@ threads::TScoped::~TScoped() {
 }
 
 bool threads::TScoped::valid() const noexcept {
-	return id_ != ID::null;
+	return id_.payload != ID::null;
 }
 
 threads::ID threads::TScoped::id() const noexcept {
@@ -38,7 +38,7 @@ threads::ID threads::TScoped::id() const noexcept {
 }
 
 void threads::TScoped::join() {
-	if (id_ != ID::null) {
+	if (id_.payload != ID::null) {
 		threads::join(id_);
 	}
 }
@@ -60,7 +60,7 @@ threads::TScoped threads::newThread(std::function<void()> task) {
 }
 
 void threads::join(ID& id) {
-	auto search = std::find_if(g_threads.begin(), g_threads.end(), [id](auto const& t) -> bool { return t.first == id; });
+	auto search = std::find_if(g_threads.begin(), g_threads.end(), [id](auto const& t) -> bool { return t.first == id.payload; });
 	if (search != g_threads.end()) {
 		auto& thread = search->second;
 		if (thread.joinable()) {

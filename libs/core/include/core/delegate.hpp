@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <vector>
 #include <core/token_gen.hpp>
 
 namespace le {
@@ -34,7 +35,7 @@ class Delegate {
 	void clear() noexcept;
 
   private:
-	TTokenGen<Callback, std::vector> m_tokens;
+	TTokenGen<Callback, TGSpec_vector<>> m_tokens;
 };
 
 template <typename... Args>
@@ -44,7 +45,9 @@ typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback callback) {
 
 template <typename... Args>
 void Delegate<Args...>::operator()(Args... args) const {
-	m_tokens.forEach([&args...](auto& callback) { callback(args...); });
+	for (auto const& callback : m_tokens) {
+		callback(args...);
+	};
 }
 
 template <typename... Args>

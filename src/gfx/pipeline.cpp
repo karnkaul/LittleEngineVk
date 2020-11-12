@@ -58,7 +58,7 @@ void PipelineImpl::destroy() {
 }
 
 bool PipelineImpl::create() {
-	if ((m_info.shader.guid == res::GUID::null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty()) {
+	if ((m_info.shader.guid.payload == res::GUID::null || m_info.shader.status() != res::Status::eReady) && !m_info.shaderID.empty()) {
 		if (auto shader = res::find<res::Shader>(m_info.shaderID)) {
 			m_info.shader = *shader;
 		}

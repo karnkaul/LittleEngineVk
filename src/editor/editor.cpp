@@ -481,15 +481,15 @@ void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap co
 		}
 		Transform& t = transform;
 		auto const p = t.position();
-		auto pos = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', p.x, p.y, p.z, '}');
+		auto const pos = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', p.x, p.y, p.z, '}');
 		auto const s = t.scale();
-		auto scl = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', s.x, s.y, s.z, '}');
+		auto const scl = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', s.x, s.y, s.z, '}');
 		auto const o = t.orientation();
-		auto orn = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {}, \"w\": {} {}", '{', o.x, o.y, o.z, o.w, '}');
+		auto const orn = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {}, \"w\": {} {}", '{', o.x, o.y, o.z, o.w, '}');
 		dj::object tr;
-		tr.add<dj::object>("position", std::move(pos));
-		tr.add<dj::object>("orientation", std::move(orn));
-		tr.add<dj::object>("scale", std::move(scl));
+		tr.add<dj::object>("position", pos);
+		tr.add<dj::object>("orientation", orn);
+		tr.add<dj::object>("scale", scl);
 		auto const& children = t.children();
 		if (!children.empty()) {
 			dj::array arr;

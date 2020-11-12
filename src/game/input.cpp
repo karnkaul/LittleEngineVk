@@ -14,7 +14,7 @@
 
 namespace le {
 namespace {
-using Contexts = TTokenGen<input::Context const*>;
+using Contexts = TTokenGen<input::Context const*, TGSpec_deque<>>;
 Contexts g_contexts;
 #if defined(LEVK_EDITOR)
 Contexts g_editorContexts;
@@ -117,14 +117,16 @@ void input::fire() {
 	}
 	auto fireContexts = [&snapshot](Contexts& contexts, [[maybe_unused]] bool& out_bWasConsuming) {
 		if (auto pWindow = engine::window(); !contexts.empty()) {
-			contexts.forEach([](auto pContext) { pContext->m_bFired = false; });
+			for (auto pContext : contexts) {
+				pContext->m_bFired = false;
+			};
 			g_raw.cursorPosRaw = pWindow->cursorPos();
 			if (pWindow->cursorMode() != CursorMode::eDisabled) {
 				g_raw.cursorPosWorld = screenToWorld(g_raw.cursorPosRaw);
 			}
 			std::size_t processed = 0;
 			bool bConsumed = false;
-			contexts.forEach([&](auto pContext) {
+			for (auto pContext : contexts) {
 				if (!bConsumed && pContext->consumed(snapshot)) {
 #if defined(LEVK_DEBUG)
 					static Context const* pPrev = nullptr;
@@ -143,7 +145,7 @@ void input::fire() {
 #endif
 					++processed;
 				}
-			});
+			};
 #if defined(LEVK_DEBUG)
 			if (out_bWasConsuming && !bConsumed) {
 				logI("[{}] blocking context(s) expired", utils::tName<Context>());

@@ -2,6 +2,7 @@
 **/.vscode/*
 **/compile_commands.json
 **/.clangd
+**/.cache
 Testing/*
 build/*
 out/*

@@ -25,7 +25,7 @@ class NativeWindow final {
 
 	template <typename T>
 	T* cast() const {
-		return m_window.template val<T*>();
+		return m_window.template get<T*>();
 	}
 };
 } // namespace le

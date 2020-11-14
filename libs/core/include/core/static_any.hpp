@@ -52,32 +52,17 @@ class StaticAny final {
 	///
 	bool empty() const;
 	///
-	/// \brief Obtain value (copy) of T
+	/// \brief Obtain reference to T
+	/// Throws / returns static reference on type mismatch
 	///
 	template <typename T, typename = is_different<T>>
-	T val() const;
-	///
-	/// \brief Obtain pointer to T
-	///
-	template <typename T, typename = is_different<T>>
-	T const* ptr() const noexcept;
-	///
-	/// \brief Obtain pointer to T
-	///
-	template <typename T, typename = is_different<T>>
-	T* ptr() noexcept;
+	T const& get() const;
 	///
 	/// \brief Obtain reference to T
 	/// Throws / returns static reference on type mismatch
 	///
 	template <typename T, typename = is_different<T>>
-	T const& ref() const;
-	///
-	/// \brief Obtain reference to T
-	/// Throws / returns static reference on type mismatch
-	///
-	template <typename T, typename = is_different<T>>
-	T& ref();
+	T& get();
 
 	///
 	/// \brief Destroy held type (if any)
@@ -202,64 +187,13 @@ bool StaticAny<N>::empty() const {
 
 template <std::size_t N>
 template <typename T, typename>
-T StaticAny<N>::val() const {
+T const& StaticAny<N>::get() const {
 	if (contains<T>()) {
 #if defined(LEVK_COMPILER_GCC)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-		return *reinterpret_cast<T const*>(m_bytes.data());
-#if defined(LEVK_COMPILER_GCC)
-#pragma GCC diagnostic pop
-#endif
-	}
-	if (s_bThrow) {
-		throw std::runtime_error("StaticAny: Type mismatch!");
-	}
-	return {};
-}
-
-template <std::size_t N>
-template <typename T, typename>
-T const* StaticAny<N>::ptr() const noexcept {
-	if (contains<T>() || contains<T const>()) {
-#if defined(LEVK_COMPILER_GCC)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-		return reinterpret_cast<T const*>(m_bytes.data());
-#if defined(LEVK_COMPILER_GCC)
-#pragma GCC diagnostic pop
-#endif
-	}
-	return nullptr;
-}
-
-template <std::size_t N>
-template <typename T, typename>
-T* StaticAny<N>::ptr() noexcept {
-	if (contains<T>()) {
-#if defined(LEVK_COMPILER_GCC)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-		return reinterpret_cast<T*>(m_bytes.data());
-#if defined(LEVK_COMPILER_GCC)
-#pragma GCC diagnostic pop
-#endif
-	}
-	return nullptr;
-}
-
-template <std::size_t N>
-template <typename T, typename>
-T const& StaticAny<N>::ref() const {
-	if (contains<T>()) {
-#if defined(LEVK_COMPILER_GCC)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-		return *reinterpret_cast<T const*>(m_bytes.data());
+		return *std::launder(reinterpret_cast<T const*>(m_bytes.data()));
 #if defined(LEVK_COMPILER_GCC)
 #pragma GCC diagnostic pop
 #endif
@@ -273,13 +207,13 @@ T const& StaticAny<N>::ref() const {
 
 template <std::size_t N>
 template <typename T, typename>
-T& StaticAny<N>::ref() {
+T& StaticAny<N>::get() {
 	if (contains<T>()) {
 #if defined(LEVK_COMPILER_GCC)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-		return *reinterpret_cast<T*>(m_bytes.data());
+		return *std::launder(reinterpret_cast<T*>(m_bytes.data()));
 #if defined(LEVK_COMPILER_GCC)
 #pragma GCC diagnostic pop
 #endif

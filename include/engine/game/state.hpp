@@ -23,8 +23,8 @@ using Result = kt::result_sv<T>;
 /// \brief Manifest load request
 ///
 struct LoadReq final {
-	stdfs::path load;
-	stdfs::path unload;
+	io::Path load;
+	io::Path unload;
 	ManifestLoaded::Callback onLoaded;
 };
 
@@ -45,7 +45,7 @@ inline GameScene g_game;
 ///
 /// \brief Load input map into input context and and register it
 ///
-[[nodiscard]] Token loadInputMap(stdfs::path const& id, input::Context* out_pContext);
+[[nodiscard]] Token loadInputMap(io::Path const& id, input::Context* out_pContext);
 
 void reset();
 } // namespace gs

@@ -4,27 +4,27 @@
 # Requirements:
 #  - clang-format
 
-exclude=*ext/*
-build=*out/*
-pattern0="*.hpp"
-pattern1="*.cpp"
-run=false
-[ "$1" == "-r" ] && run=true
+EXCLUDE0=*/ext/*
+BUILD=*out/*
+PATTERN0="*.hpp"
+PATTERN1="*.cpp"
+RUN=FALSE
+[ "$1" == "-r" ] && RUN=TRUE
 
-this_dir=$(pwd)
+THISDIR=$(pwd)
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./os.sh
-cd "$this_dir"
+cd "$THISDIR"
 
-files=$(find . -not -path "$exclude" -not -path "$build" \( -name $pattern0 -o -name $pattern1 \))
-count=$(echo -e "$files" | wc -l)
-echo -e "\nfiles:\n\n$files\n"
+FILES=$(find . -not -path "$EXCLUDE0" -not -path "$BUILD" \( -name $PATTERN0 -o -name $PATTERN1 \))
+COUNT=$(echo -e "$FILES" | wc -l)
+echo -e "\nFiles:\n\n$FILES\n"
 
-if [ "$run" == "true" ]; then
-	clang-format$ext -i $files
-	echo "== Ran clang-format on $count source files"
+if [ "$RUN" == "TRUE" ]; then
+	$CLANG_FORMAT -i $FILES
+	echo "== Ran clang-format on $COUNT source files"
 else
-	echo "-- Pass '-r' to run clang-format on $count source files"
+	echo "-- Pass '-r' to run clang-format on $COUNT source files"
 fi
 
 exit

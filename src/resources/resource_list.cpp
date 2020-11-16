@@ -4,10 +4,10 @@
 
 namespace le::res {
 namespace {
-std::vector<stdfs::path> intersect(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs) {
-	std::vector<stdfs::path> ret;
+std::vector<io::Path> intersect(std::vector<io::Path> const& lhs, std::vector<io::Path> const& rhs) {
+	std::vector<io::Path> ret;
 	for (auto const& id : lhs) {
-		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](stdfs::path const& rhs) -> bool { return id == rhs; });
+		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](io::Path const& rhs) -> bool { return id == rhs; });
 		if (search != rhs.end()) {
 			ret.push_back(id);
 		}
@@ -15,10 +15,10 @@ std::vector<stdfs::path> intersect(std::vector<stdfs::path> const& lhs, std::vec
 	return ret;
 }
 
-std::vector<stdfs::path> subtract(std::vector<stdfs::path> const& lhs, std::vector<stdfs::path> const& rhs) {
-	std::vector<stdfs::path> ret;
+std::vector<io::Path> subtract(std::vector<io::Path> const& lhs, std::vector<io::Path> const& rhs) {
+	std::vector<io::Path> ret;
 	for (auto const& id : lhs) {
-		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](stdfs::path const& rhs) -> bool { return id == rhs; });
+		auto const search = std::find_if(rhs.begin(), rhs.end(), [&id](io::Path const& rhs) -> bool { return id == rhs; });
 		if (search == rhs.end()) {
 			ret.push_back(id);
 		}
@@ -71,7 +71,7 @@ std::size_t ResourceList::size() const {
 
 std::string ResourceList::print() const {
 	std::stringstream ret;
-	auto add = [&ret](std::vector<stdfs::path> const& vec, std::string_view title) {
+	auto add = [&ret](std::vector<io::Path> const& vec, std::string_view title) {
 		ret << title << "\n";
 		for (auto const& id : vec) {
 			ret << "\t" << id.generic_string() << "\n";

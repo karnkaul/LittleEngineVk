@@ -1,5 +1,5 @@
 #pragma once
-#include <filesystem>
+#include <core/io/path.hpp>
 #include <core/singleton.hpp>
 
 #if defined(LEVK_DEBUG)
@@ -12,10 +12,6 @@
 #endif
 
 inline constexpr bool levk_shaderCompiler = levk_debug;
-
-namespace le {
-namespace stdfs = std::filesystem;
-}
 
 namespace le::res {
 #if defined(LEVK_SHADER_COMPILER)
@@ -50,11 +46,11 @@ class ShaderCompiler final : public Singleton<ShaderCompiler> {
 	///
 	/// \brief Compile `src` to `dst`
 	///
-	bool compile(stdfs::path const& src, stdfs::path const& dst, bool bOverwrite);
+	bool compile(io::Path const& src, io::Path const& dst, bool bOverwrite);
 	///
 	/// \brief Compile `src` to `src`.spv
 	///
-	bool compile(stdfs::path const& src, bool bOverwrite);
+	bool compile(io::Path const& src, bool bOverwrite);
 
   private:
 	bool statusCheck() const;

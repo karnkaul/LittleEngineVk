@@ -14,7 +14,7 @@
 namespace le::res {
 namespace {
 template <typename T>
-void intersectTlist(std::vector<T>& out_data, std::vector<stdfs::path> const& src) {
+void intersectTlist(std::vector<T>& out_data, std::vector<io::Path> const& src) {
 	auto iter = std::remove_if(out_data.begin(), out_data.end(), [&src](auto const& data) {
 		return std::find_if(src.begin(), src.end(), [&data](auto const& id) { return data.id == id; }) == src.end();
 	});
@@ -22,8 +22,8 @@ void intersectTlist(std::vector<T>& out_data, std::vector<stdfs::path> const& sr
 }
 
 template <typename T>
-std::vector<stdfs::path> exportTList(std::vector<T> const& src) {
-	std::vector<stdfs::path> ret;
+std::vector<io::Path> exportTList(std::vector<T> const& src) {
+	std::vector<io::Path> ret;
 	for (auto const& data : src) {
 		ret.push_back(data.id);
 	}
@@ -36,7 +36,7 @@ bool allEmpty(std::vector<T> const&... out_vecs) {
 }
 
 template <typename T>
-std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<stdfs::path>& out_loaded,
+std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<io::Path>& out_loaded,
 														   std::vector<GUID>& out_resources, kt::lockable<std::mutex>& mutex, std::string_view jobName) {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
 	if (!out_toLoad.empty()) {
@@ -82,7 +82,7 @@ bool Manifest::Info::empty() const {
 
 std::string const Manifest::s_tName = utils::tName<Manifest>();
 
-bool Manifest::read(stdfs::path const& id) {
+bool Manifest::read(io::Path const& id) {
 	if (auto data = engine::reader().string(id)) {
 		if (!m_manifest.read(*data)) {
 			logE("[{}] Failed to read manifest [{}] from [{}]", s_tName, id.generic_string(), engine::reader().medium());
@@ -285,7 +285,7 @@ bool Manifest::ready() const {
 }
 
 void Manifest::unload(const ResourceList& list) {
-	auto unload = [](std::vector<stdfs::path> const& ids) {
+	auto unload = [](std::vector<io::Path> const& ids) {
 		for (auto const& id : ids) {
 			res::unload(Hash(id));
 		}

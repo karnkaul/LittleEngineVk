@@ -1,6 +1,6 @@
 #pragma once
 #include <unordered_map>
-#include <core/ecs/types.hpp>
+#include <core/ec/types.hpp>
 #include <core/ensure.hpp>
 
 namespace le::ecs::detail {

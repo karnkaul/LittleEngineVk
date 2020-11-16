@@ -1,12 +1,12 @@
 #pragma once
+#include <core/erased_ref.hpp>
 #include <core/std_types.hpp>
-#include <engine/window/common.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::gfx::ext_gui {
 struct Info final {
 	vk::RenderPass renderPass;
-	WindowID window;
+	ErasedRef glfwWindow;
 	u8 imageCount = 3;
 	u8 minImageCount = 2;
 };

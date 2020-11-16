@@ -23,15 +23,15 @@ ShaderCompiler::Status ShaderCompiler::status() const {
 	return m_status;
 }
 
-bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, bool bOverwrite) {
+bool ShaderCompiler::compile(io::Path const& src, io::Path const& dst, bool bOverwrite) {
 	if (!statusCheck()) {
 		return false;
 	}
-	if (!stdfs::is_regular_file(src)) {
+	if (!io::is_regular_file(src)) {
 		logE("[{}] Failed to find source file: [{}]", s_tName, src.generic_string());
 		return false;
 	}
-	if (stdfs::is_regular_file(dst) && !bOverwrite) {
+	if (io::is_regular_file(dst) && !bOverwrite) {
 		logE("[{}] Destination file exists and overwrite flag not set: [{}]", s_tName, src.generic_string());
 		return false;
 	}
@@ -43,7 +43,7 @@ bool ShaderCompiler::compile(stdfs::path const& src, stdfs::path const& dst, boo
 	return true;
 }
 
-bool ShaderCompiler::compile(stdfs::path const& src, bool bOverwrite) {
+bool ShaderCompiler::compile(io::Path const& src, bool bOverwrite) {
 	auto dst = src;
 	dst += Shader::Impl::s_spvExt;
 	return compile(src, dst, bOverwrite);

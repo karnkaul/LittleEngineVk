@@ -193,7 +193,7 @@ struct Model final : Resource<Model> {
 };
 
 struct InfoBase {
-	stdfs::path id;
+	io::Path id;
 };
 
 template <typename T>
@@ -207,7 +207,7 @@ enum class Shader::Type : s8 { eVertex, eFragment, eCOUNT_ };
 struct Shader::Info : InfoBase {};
 struct Shader::CreateInfo {
 	EnumArray<Type, bytearray> codeMap;
-	EnumArray<Type, stdfs::path> codeIDMap;
+	EnumArray<Type, io::Path> codeIDMap;
 };
 
 enum class Sampler::Filter : s8 { eLinear, eNearest, eCOUNT_ };
@@ -238,7 +238,7 @@ struct Texture::Info : InfoBase {
 	Sampler sampler;
 };
 struct Texture::CreateInfo {
-	std::vector<stdfs::path> ids;
+	std::vector<io::Path> ids;
 	std::vector<bytearray> bytes;
 	std::vector<Raw> raws;
 	Hash samplerID;
@@ -246,7 +246,7 @@ struct Texture::CreateInfo {
 	Type type = Type::e2D;
 };
 struct Texture::LoadInfo : LoadBase<Texture> {
-	stdfs::path directory;
+	io::Path directory;
 	std::string imageFilename;
 	std::vector<std::string> cubemapFilenames;
 	Hash samplerID;
@@ -296,13 +296,13 @@ struct Font::Glyph {
 struct Font::Info : InfoBase {
 	Material::Inst material;
 	Texture sheet;
-	stdfs::path jsonID;
+	io::Path jsonID;
 	glm::ivec2 maxBounds = {};
 };
 struct Font::CreateInfo {
 	res::Material::Inst material;
-	stdfs::path sheetID;
-	stdfs::path jsonID;
+	io::Path sheetID;
+	io::Path jsonID;
 	std::vector<Glyph> glyphs;
 	bytearray image;
 	Hash samplerID;
@@ -324,14 +324,14 @@ struct Font::Text {
 };
 
 struct Model::TexData {
-	stdfs::path id;
-	stdfs::path filename;
+	io::Path id;
+	io::Path filename;
 	bytearray bytes;
 	Hash samplerID;
 	Hash hash;
 };
 struct Model::MatData {
-	stdfs::path id;
+	io::Path id;
 	std::vector<std::size_t> diffuseIndices;
 	std::vector<std::size_t> specularIndices;
 	std::vector<std::size_t> bumpIndices;
@@ -342,7 +342,7 @@ struct Model::MatData {
 };
 struct Model::MeshData {
 	gfx::Geometry geometry;
-	stdfs::path id;
+	io::Path id;
 	std::vector<std::size_t> materialIndices;
 	f32 shininess = 32.0f;
 	Hash hash;
@@ -365,8 +365,8 @@ struct Model::CreateInfo {
 	bool bDropColour = false;
 };
 struct Model::LoadInfo : LoadBase<Model> {
-	stdfs::path idRoot;
-	stdfs::path jsonDirectory;
+	io::Path idRoot;
+	io::Path jsonDirectory;
 	std::string jsonFilename;
 };
 

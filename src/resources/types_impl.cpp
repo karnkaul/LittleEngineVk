@@ -72,7 +72,7 @@ gfx::Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsag
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
 	bufferInfo.name = name;
 	return gfx::vram::createBuffer(bufferInfo);
-};
+}
 
 glm::vec2 textTLOffset(Font::Text::HAlign h, Font::Text::VAlign v) {
 	glm::vec2 textTLoffset = glm::vec2(0.0f);
@@ -179,7 +179,7 @@ kt::result_void<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
 		}
 		ret.type = Texture::Type::eCube;
 		for (auto const& name : pThis->cubemapFilenames) {
-			stdfs::path const id = pThis->directory / name;
+			io::Path const id = pThis->directory / name;
 			if (engine::reader().checkPresence(id)) {
 				ret.ids.push_back(id);
 			} else {
@@ -207,7 +207,7 @@ Material::Inst& Mesh::material() {
 	return s_default;
 }
 
-std::string Shader::Impl::extension(stdfs::path const& id) {
+std::string Shader::Impl::extension(io::Path const& id) {
 	auto const str = id.generic_string();
 	if (auto idx = str.find_last_of('.'); idx != std::string::npos) {
 		return str.substr(idx);
@@ -359,7 +359,7 @@ bool Shader::Impl::checkReload() {
 #endif
 
 #if defined(LEVK_SHADER_COMPILER)
-bool Shader::Impl::loadGlsl(stdfs::path const& id, Type type) {
+bool Shader::Impl::loadGlsl(io::Path const& id, Type type) {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline) {
 		logE("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
@@ -367,7 +367,7 @@ bool Shader::Impl::loadGlsl(stdfs::path const& id, Type type) {
 	return engine::reader().isPresent(id) && glslToSpirV(id, codeMap[(std::size_t)type]);
 }
 
-bool Shader::Impl::glslToSpirV(stdfs::path const& id, bytearray& out_bytes) {
+bool Shader::Impl::glslToSpirV(io::Path const& id, bytearray& out_bytes) {
 	if (ShaderCompiler::instance().status() != ShaderCompiler::Status::eOnline) {
 		logE("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
@@ -764,7 +764,7 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 		bAddMonitor = true;
 	}
 	res::Texture::CreateInfo sheetInfo;
-	stdfs::path texID = id / "sheet";
+	io::Path texID = id / "sheet";
 	if (out_createInfo.samplerID == Hash()) {
 		out_createInfo.samplerID = "samplers/font";
 	}

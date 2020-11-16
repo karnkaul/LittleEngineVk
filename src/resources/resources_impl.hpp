@@ -1,8 +1,8 @@
 #pragma once
 #include <memory>
 #include <core/delegate.hpp>
+#include <core/io/path_tree.hpp>
 #include <core/maths.hpp>
-#include <core/path_tree.hpp>
 #include <engine/resources/resource_types.hpp>
 #include <gfx/common.hpp>
 #include <resources/monitor.hpp>
@@ -18,7 +18,7 @@ struct TResource final {
 };
 
 struct ImplBase {
-	stdfs::path id;
+	io::Path id;
 	GUID guid;
 	Status status = Status::eIdle;
 	bool bLoadedOnce = false;
@@ -51,7 +51,7 @@ struct Shader::Impl : ImplBase, IReloadable {
 	EnumArray<Shader::Type, bytearray> codeMap;
 	std::array<vk::ShaderModule, std::size_t(Shader::Type::eCOUNT_)> shaders;
 
-	static std::string extension(stdfs::path const& id);
+	static std::string extension(io::Path const& id);
 
 	bool make(CreateInfo& out_createInfo, Info& out_info);
 	void release();
@@ -61,8 +61,8 @@ struct Shader::Impl : ImplBase, IReloadable {
 	std::map<Shader::Type, vk::ShaderModule> modules() const;
 
 #if defined(LEVK_SHADER_COMPILER)
-	bool glslToSpirV(stdfs::path const& id, bytearray& out_bytes);
-	bool loadGlsl(stdfs::path const& id, Shader::Type type);
+	bool glslToSpirV(io::Path const& id, bytearray& out_bytes);
+	bool loadGlsl(io::Path const& id, Shader::Type type);
 #endif
 	bool loadAllSpirV();
 
@@ -91,7 +91,7 @@ struct Texture::Impl : ImplBase, ILoadable, IReloadable {
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 	Monitor monitor;
 	gfx::Image standby;
-	std::vector<stdfs::path> imgIDs;
+	std::vector<io::Path> imgIDs;
 #endif
 
 	bool make(CreateInfo& out_createInfo, Info& out_info);
@@ -193,7 +193,7 @@ void deinit();
 #if defined(LEVK_EDITOR)
 template <typename T>
 io::PathTree<T> const& loaded() {
-	static_assert(alwaysFalse<T>, "Invalid Type!");
+	static_assert(false_v<T>, "Invalid Type!");
 }
 #endif
 

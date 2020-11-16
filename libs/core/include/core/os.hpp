@@ -1,9 +1,9 @@
 #pragma once
-#include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
 #include <fmt/format.h>
+#include <core/io/path.hpp>
 #include <core/std_types.hpp>
 #include <kt/args_parser/args_parser.hpp>
 
@@ -76,6 +76,7 @@ inline constexpr std::string_view levk_stdlib_name = "libstdc++";
 inline constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eUnknown;
 inline constexpr std::string_view levk_stdlib_name = "Unknown";
 #endif
+inline constexpr bool levk_desktopOS = levk_OS == le::os::OS::eWindows || levk_OS == le::os::OS::eLinux;
 
 #if defined(__clang__)
 #define LEVK_COMPILER_CLANG
@@ -126,7 +127,7 @@ std::string argv0();
 ///
 /// \brief Obtain working/executable directory
 ///
-std::filesystem::path dirPath(Dir dir);
+io::Path dirPath(Dir dir);
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///

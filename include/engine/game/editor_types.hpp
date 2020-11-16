@@ -2,7 +2,7 @@
 #include <string>
 #include <fmt/format.h>
 #include <core/colour.hpp>
-#include <core/ecs/registry.hpp>
+#include <core/ec_registry.hpp>
 #include <core/span.hpp>
 #include <core/transform.hpp>
 #include <core/utils.hpp>
@@ -75,7 +75,7 @@ struct TreeNode final : GUIStateful {
 
 template <typename T>
 struct TWidget {
-	static_assert(alwaysFalse<T>, "Invalid type");
+	static_assert(false_v<T>, "Invalid type");
 };
 
 template <typename Flags>

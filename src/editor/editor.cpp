@@ -71,7 +71,7 @@ struct {
 } g_inspecting;
 
 struct {
-	stdfs::path inspectID;
+	io::Path inspectID;
 	std::string filter;
 	bool bOpen = false;
 } g_resources;

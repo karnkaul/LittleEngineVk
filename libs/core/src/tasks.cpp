@@ -117,6 +117,7 @@ void Queue::waitIdle() {
 
 void Queue::init() {
 	m_bWork.store(true);
+	clear();
 }
 
 void Queue::deinit() {

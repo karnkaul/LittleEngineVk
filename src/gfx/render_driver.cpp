@@ -214,7 +214,7 @@ bool Driver::Impl::initExtGUI() const {
 	guiInfo.renderPass = m_renderPass.renderPass;
 	guiInfo.imageCount = m_frameCount;
 	guiInfo.minImageCount = 2;
-	guiInfo.window = m_window;
+	guiInfo.glfwWindow = WindowImpl::nativeHandle(m_window);
 	return ext_gui::init(guiInfo);
 }
 

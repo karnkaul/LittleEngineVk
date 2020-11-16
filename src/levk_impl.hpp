@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <optional>
-#include <core/reader.hpp>
+#include <core/io/reader.hpp>
 #include <core/ref.hpp>
 #include <engine/resources/resource_types.hpp>
 #include <engine/window/window.hpp>

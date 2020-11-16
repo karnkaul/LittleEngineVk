@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_set>
 #include <core/static_any.hpp>
+#include <core/erased_ref.hpp>
 #include <core/utils.hpp>
 #include <engine/gfx/render_driver.hpp>
 #include <engine/window/window.hpp>
@@ -43,7 +44,7 @@ class WindowImpl final {
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::render::Driver::Impl* driverImpl(WindowID window);
 	static std::unordered_set<s32> allExisting();
-	static StaticAny<> nativeHandle(WindowID window);
+	static ErasedRef nativeHandle(WindowID window);
 	static WindowID editorWindow();
 
 	WindowImpl(Window* pWindow);

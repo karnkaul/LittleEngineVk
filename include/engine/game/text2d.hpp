@@ -5,7 +5,7 @@ namespace le {
 class Text2D {
   public:
 	struct Info {
-		stdfs::path id;
+		io::Path id;
 		res::Font::Text data;
 		res::Font font;
 	};

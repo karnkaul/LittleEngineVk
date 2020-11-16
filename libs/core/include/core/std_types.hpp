@@ -49,10 +49,10 @@ template <typename E, typename T = std::string_view, std::size_t N = (std::size_
 using EnumArray = std::array<T, N>;
 
 template <typename...>
-constexpr bool alwaysFalse = false;
+constexpr bool false_v = false;
 
 template <typename...>
-constexpr bool alwaysTrue = true;
+constexpr bool true_v = true;
 
 ///
 /// \brief Obtain the number of elements in a stack array

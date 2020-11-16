@@ -1,8 +1,8 @@
 #pragma once
-#include <filesystem>
 #include <string>
 #include <vector>
 #include <core/delegate.hpp>
+#include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <core/utils.hpp>
@@ -218,13 +218,11 @@ struct Gamepad {
 	bool pressed(Key button) const;
 };
 
-namespace stdfs = std::filesystem;
-
 using OnText = Delegate<char>;
 using OnInput = Delegate<Key, Action, Mods::VALUE>;
 using OnMouse = Delegate<f64, f64>;
 using OnFocus = Delegate<bool>;
-using OnFiledrop = Delegate<stdfs::path const&>;
+using OnFiledrop = Delegate<io::Path const&>;
 using OnWindowResize = Delegate<s32, s32>;
 using OnClosed = Delegate<>;
 

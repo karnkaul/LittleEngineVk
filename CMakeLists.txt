@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)	# Don't let OPTION erase above non-cache variables
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
 
@@ -16,6 +17,7 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
 
 # Includes
+include(FetchContent)
 include(cmake/platform.cmake)
 include(cmake/utils.cmake)
 
@@ -84,7 +86,7 @@ if(LEVK_USE_GLFW)
 	set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
 	add_subdirectory(ext/glfw)
-	if(WIN64_CLANG AND LEVK_USE_GLFW)
+	if(WIN64_CLANG)
 		target_compile_options(glfw PRIVATE -Wno-everything)
 	endif()
 endif()
@@ -94,12 +96,6 @@ add_subdirectory(ext/tinyobjloader)
 if(LEVK_USE_IMGUI)
 	add_subdirectory(ext/imgui)
 endif()
-
-# Libraries
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
-add_subdirectory(libs/dlog)
-add_subdirectory(libs/core)
-add_subdirectory(libs/djson)
 
 # Engine
 set(LEVK_LIBRARY_TYPE STATIC CACHE STRING "levk library type (STATIC/SHARED)")
@@ -116,12 +112,36 @@ endif()
 find_package(Vulkan)
 if(NOT Vulkan_FOUND)
 	message(FATAL_ERROR 
-"Vulkan not installed! LittleEngineVk requires Vulkan ICD loader, headers, and validation layers!
+"Vulkan SDK not found! LittleEngineVk requires Vulkan ICD loader, headers, and validation layers, and SPIR-V cross!
 Note: for custom SDK locations, define `VULKAN_SDK` and source `vk-setup-env.sh` into this shell (and runtime environment).
 Make sure to delete CMakeCache.txt before re-configuring!"
 	)
 else()
-	message(STATUS "== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}")
+	set(SPIRV_CROSS_CLI OFF)
+	set(SPIRV_CROSS_ENABLE_CPP OFF)
+	set(SPIRV_CROSS_ENABLE_C_API OFF)
+	set(SPIRV_CROSS_ENABLE_GLSL ON)
+	set(SPIRV_CROSS_ENABLE_HLSL OFF)
+	set(SPIRV_CROSS_ENABLE_MSL OFF)
+	set(SPIRV_CROSS_ENABLE_REFLECT OFF)
+	set(SPIRV_CROSS_ENABLE_TESTS OFF)
+	set(SPIRV_CROSS_ENABLE_UTIL OFF)
+	set(SPIRV_CROSS_SHARED OFF)
+	set(SPIRV_CROSS_STATIC ON)
+	set(SPIRV-Cross_SOURCE "${Vulkan_INCLUDE_DIRS}/../../source/SPIRV-Cross")
+	if(EXISTS "${SPIRV-Cross_SOURCE}/CMakeLists.txt")
+		add_subdirectory("${SPIRV-Cross_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/ext/SPIRV-Cross")
+	else()
+		FetchContent_Declare(
+			spirv-cross
+			GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
+			GIT_TAG 2020-09-17
+		)
+		message(STATUS "== Fetching SPIR-V Cross")
+		FetchContent_MakeAvailable(spirv-cross)
+		set(SPIRV-Cross_SOURCE "${spirv-cross_SOURCE_DIR}")
+	endif()
+	message(STATUS "== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}\n\tSPIR-V Cross : ${SPIRV-Cross_SOURCE}")
 endif()
 
 # VMA
@@ -131,6 +151,14 @@ target_include_directories(vma PRIVATE ${Vulkan_INCLUDE_DIRS})
 if(LEVK_USE_IMGUI)
 	target_include_directories(imgui PRIVATE ${Vulkan_INCLUDE_DIRS})
 endif()
+
+# Libraries
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
+add_subdirectory(libs/dlog)
+add_subdirectory(libs/djson)
+add_subdirectory(libs/core)
+add_subdirectory(libs/window)
+add_subdirectory(libs/graphics)
 
 # Library
 set(LEVK_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
@@ -155,7 +183,8 @@ target_include_directories(${TARGET_NAME}
 )
 target_link_libraries(${TARGET_NAME}
 	PUBLIC
-		levk-core
+		levk-graphics
+		levk-window
 		djson
 	PRIVATE
 		levk-interface
@@ -168,9 +197,6 @@ target_link_libraries(${TARGET_NAME}
 		tinyobjloader
 )
 if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
-	set(PRECOMPILE
-		
-	)
 	target_precompile_headers(${TARGET_NAME} 
 		PUBLIC
 			<deque>

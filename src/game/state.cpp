@@ -52,7 +52,7 @@ gs::Result<Token> gs::loadManifest(LoadReq const& loadReq) {
 	return ret;
 }
 
-Token gs::loadInputMap(stdfs::path const& id, input::Context* out_pContext) {
+Token gs::loadInputMap(io::Path const& id, input::Context* out_pContext) {
 	if (!id.empty() && engine::reader().isPresent(id)) {
 		if (auto str = engine::reader().string(id)) {
 			dj::object json;

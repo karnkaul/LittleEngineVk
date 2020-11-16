@@ -3,8 +3,6 @@
 #include <core/log.hpp>
 #include <core/utils.hpp>
 #include <editor/editor.hpp>
-#include <gfx/common.hpp>
-#include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/render_driver_impl.hpp>
 #if defined(LEVK_USE_GLFW)
@@ -93,7 +91,7 @@ void onScroll(GLFWwindow* pGLFWwindow, f64 dx, f64 dy) {
 void onFiledrop(GLFWwindow* pGLFWwindow, s32 count, char const** szPaths) {
 	if (auto pWindow = WindowImpl::find(pGLFWwindow); pWindow) {
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) {
-			stdfs::path path(szPaths[idx]);
+			io::Path path(szPaths[idx]);
 		}
 	}
 	return;
@@ -286,11 +284,11 @@ std::unordered_set<s32> WindowImpl::allExisting() {
 	return ret;
 }
 
-StaticAny<> WindowImpl::nativeHandle(WindowID window) {
+ErasedRef WindowImpl::nativeHandle(WindowID window) {
 	if (auto pImpl = windowImpl(window); pImpl) {
-		return pImpl->m_pWindow->m_uImpl->m_nativeWindow.m_window;
+		return pImpl->m_pWindow->m_uImpl->m_nativeWindow.m_window.get<GLFWwindow*>();
 	}
-	return nullptr;
+	return {};
 }
 
 WindowID WindowImpl::editorWindow() {

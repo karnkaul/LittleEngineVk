@@ -135,6 +135,7 @@ std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path dst, io
 utils::SetBindings utils::extractBindings(Shader const& shader) {
 	SetBindings ret;
 	Sets sets;
+	std::vector<u32> gaps;
 	for (std::size_t idx = 0; idx < shader.m_spirV.size(); ++idx) {
 		auto spirV = shader.m_spirV[idx];
 		if (!spirV.empty()) {
@@ -143,6 +144,18 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 			auto const type = Shader::typeToFlag[idx];
 			extractBindings({compiler, resources}, sets, type);
 			extractPush({compiler, resources}, ret.push, type);
+		}
+		if (!sets.empty()) {
+			u32 set = 0;
+			for (auto& [s, _] : sets) {
+				if (s == set) {
+					++set;
+					continue;
+				}
+				while (s > set) {
+					gaps.push_back(set++);
+				}
+			}
 		}
 	}
 	for (auto const& [s, bmap] : sets) {
@@ -155,6 +168,13 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 			bindInfo.name = std::move(db.name);
 			ret.sets[s].push_back(bindInfo);
 		}
+	}
+	for (auto set : gaps) {
+		BindingInfo binding;
+		binding.binding.descriptorCount = 0;
+		binding.name = fmt::format("[Unassigned_{}]", set);
+		binding.bUnassigned = true;
+		ret.sets[set].push_back(binding);
 	}
 	return ret;
 }

@@ -5,26 +5,6 @@
 
 namespace le::graphics {
 namespace {
-constexpr DescType toType(vk::DescriptorType type) noexcept {
-	switch (type) {
-	case vk::DescriptorType::eSampler:
-	case vk::DescriptorType::eSampledImage:
-	case vk::DescriptorType::eCombinedImageSampler:
-		return DescType::eSingle;
-	default:
-		return DescType::eBuffered;
-	}
-}
-
-constexpr DescType finalType(Span<BindingInfo> bindingInfos) noexcept {
-	for (auto const& binding : bindingInfos) {
-		if (toType(binding.binding.descriptorType) == DescType::eBuffered) {
-			return DescType::eBuffered;
-		}
-	}
-	return DescType::eSingle;
-}
-
 vk::BufferUsageFlags toFlags(vk::DescriptorType type) noexcept {
 	switch (type) {
 	case vk::DescriptorType::eStorageBuffer:
@@ -92,6 +72,17 @@ vk::DescriptorSet DescriptorSet::get() const {
 	return m_storage.setBuffer.get().set;
 }
 
+std::vector<CView<Buffer>> DescriptorSet::buffers(u32 binding) const {
+	auto& set = m_storage.setBuffer.get();
+	std::vector<CView<Buffer>> ret;
+	if (auto it = set.bindings.find(binding); it != set.bindings.end()) {
+		for (auto const buf : it->second.buffers) {
+			ret.push_back(buf);
+		}
+	}
+	return ret;
+}
+
 bool DescriptorSet::writeBuffers(u32 binding, void* pData, std::size_t size, std::size_t count, vk::DescriptorType type) {
 	auto& set = m_storage.setBuffer.get();
 	auto& bind = set.bindings[binding];
@@ -137,7 +128,31 @@ bool DescriptorSet::writeBuffers(u32 binding, void* pData, std::size_t size, std
 	return true;
 }
 
-bool DescriptorSet::writeCIS(u32 binding, std::vector<CIS> cis) {
+void DescriptorSet::updateBuffers(u32 binding, Span<CView<Buffer>> buffers, std::size_t size, vk::DescriptorType type) {
+	auto& set = m_storage.setBuffer.get();
+	auto& bind = set.bindings[binding];
+	ENSURE(bind.type == type, "Mismatched descriptor type");
+	ENSURE(bind.count == (u32)buffers.size(), "Mismatched descriptor count");
+	std::vector<vk::DescriptorBufferInfo> bufferInfos;
+	for (auto const& buf : buffers) {
+		vk::DescriptorBufferInfo bufferInfo;
+		bufferInfo.buffer = buf->buffer;
+		bufferInfo.offset = 0;
+		bufferInfo.range = size;
+		bufferInfos.push_back(bufferInfo);
+	}
+	vk::WriteDescriptorSet descWrite;
+	descWrite.dstSet = set.set;
+	descWrite.dstBinding = binding;
+	descWrite.dstArrayElement = 0;
+	descWrite.descriptorType = type;
+	descWrite.descriptorCount = (u32)bufferInfos.size();
+	descWrite.pBufferInfo = bufferInfos.data();
+	Device& d = m_device;
+	d.m_device.updateDescriptorSets(descWrite, {});
+}
+
+bool DescriptorSet::updateCIS(u32 binding, std::vector<CIS> cis) {
 	auto& set = m_storage.setBuffer.get();
 	ENSURE(set.bindings.find(binding) != set.bindings.end(), "Nonexistent binding");
 	auto& bind = set.bindings[binding];
@@ -178,13 +193,13 @@ bool DescriptorSet::writeCIS(u32 binding, std::vector<CIS> cis) {
 	return true;
 }
 
-bool DescriptorSet::writeTextures(u32 binding, Span<Texture> textures) {
+bool DescriptorSet::updateTextures(u32 binding, Span<Texture> textures) {
 	std::vector<CIS> cis;
 	cis.reserve(textures.size());
 	for (auto const& texture : textures) {
 		cis.push_back({texture.data().imageView, texture.data().sampler});
 	}
-	return writeCIS(binding, std::move(cis));
+	return updateCIS(binding, std::move(cis));
 }
 
 void DescriptorSet::destroy() {
@@ -214,8 +229,7 @@ View<Buffer> DescriptorSet::resize(View<Buffer> old, std::size_t size, vk::Descr
 
 SetFactory::SetFactory(VRAM& vram, CreateInfo const& info) : m_vram(vram), m_device(vram.m_device) {
 	m_storage.layout = info.layout;
-	DescType const type = finalType(info.bindInfos);
-	m_storage.rotateCount = type == DescType::eBuffered ? info.rotateCount : 1;
+	m_storage.rotateCount = info.rotateCount;
 	m_storage.setNumber = info.setNumber;
 	for (auto const& bindInfo : info.bindInfos) {
 		m_storage.bindInfos.push_back(bindInfo);
@@ -229,7 +243,7 @@ DescriptorSet& SetFactory::front() {
 }
 
 DescriptorSet& SetFactory::at(std::size_t idx) {
-	ENSURE(idx < m_storage.descriptorSets.size(), "Invariant violated");
+	populate(idx + 1);
 	return m_storage.descriptorSets[idx];
 }
 

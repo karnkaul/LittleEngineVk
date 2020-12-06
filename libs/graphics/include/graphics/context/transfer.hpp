@@ -24,7 +24,7 @@ class Transfer final {
 		vk::DeviceSize size = 2;
 		std::size_t count = 1;
 	};
-	static constexpr std::array<MemRange, 3> defaultReserve = {{{256_MB, 1}, {64_MB, 2}, {8_MB, 4}}};
+	static constexpr std::array<MemRange, 1> defaultReserve = {{{8_MB, 4}}};
 
 	struct CreateInfo;
 

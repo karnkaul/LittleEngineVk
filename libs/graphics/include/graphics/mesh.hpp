@@ -20,6 +20,8 @@ class Mesh {
 	Mesh& operator=(Mesh&&);
 	virtual ~Mesh();
 
+	template <typename T = glm::vec3>
+	bool construct(Span<T> vertices, Span<u32> indices);
 	template <VertType V>
 	bool construct(Geom<V> const& geom);
 	void destroy();
@@ -54,19 +56,24 @@ class Mesh {
 
 // impl
 
-template <VertType V>
-bool Mesh::construct(Geom<V> const& geom) {
+template <typename T>
+bool Mesh::construct(Span<T> vertices, Span<u32> indices) {
 	destroy();
-	if (!geom.vertices.empty()) {
-		m_vbo = construct(m_name + "_vbo", vk::BufferUsageFlagBits::eVertexBuffer, (void*)geom.vertices.data(), geom.vertices.size() * sizeof(Vert<V>));
-		if (!geom.indices.empty()) {
-			m_ibo = construct(m_name + "_ibo", vk::BufferUsageFlagBits::eIndexBuffer, (void*)geom.indices.data(), geom.indices.size() * sizeof(u32));
+	if (!vertices.empty()) {
+		m_vbo = construct(m_name + "_vbo", vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));
+		if (!indices.empty()) {
+			m_ibo = construct(m_name + "_ibo", vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32));
 		}
-		m_vbo.data.count = (u32)geom.vertices.size();
-		m_ibo.data.count = (u32)geom.indices.size();
+		m_vbo.data.count = (u32)vertices.size();
+		m_ibo.data.count = (u32)indices.size();
 		return true;
 	}
 	return false;
+}
+
+template <VertType V>
+bool Mesh::construct(Geom<V> const& geom) {
+	return construct<Vert<V>>(geom.vertices, geom.indices);
 }
 
 inline Mesh::Data Mesh::vbo() const noexcept {

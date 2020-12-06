@@ -10,11 +10,10 @@ class Device;
 class VRAM;
 class Texture;
 
-enum class DescType { eBuffered, eSingle };
-
 struct BindingInfo {
 	vk::DescriptorSetLayoutBinding binding;
 	std::string name;
+	bool bUnassigned = false;
 };
 
 class DescriptorSet {
@@ -34,14 +33,16 @@ class DescriptorSet {
 	void index(std::size_t index);
 	void next();
 	vk::DescriptorSet get() const;
+	std::vector<CView<Buffer>> buffers(u32 binding) const;
 
 	template <typename T>
 	bool writeBuffer(u32 binding, T const& data, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	template <typename T, typename Cont = Span<T>>
 	bool writeBuffers(u32 binding, Cont&& data, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool writeBuffers(u32 binding, void* pData, std::size_t size, std::size_t count, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
-	bool writeCIS(u32 binding, std::vector<CIS> cis);
-	bool writeTextures(u32 binding, Span<Texture> textures);
+	void updateBuffers(u32 binding, Span<CView<Buffer>> buffers, std::size_t size, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
+	bool updateCIS(u32 binding, std::vector<CIS> cis);
+	bool updateTextures(u32 binding, Span<Texture> textures);
 
 	u32 setNumber() const noexcept;
 

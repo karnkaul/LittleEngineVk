@@ -6,7 +6,7 @@
 namespace le::graphics {
 class Texture {
   public:
-	enum class Type { e2D, e3D };
+	enum class Type { e2D, eCube };
 	struct Data {
 		View<Image> image;
 		vk::ImageView imageView;
@@ -60,6 +60,5 @@ struct Texture::CreateInfo {
 	std::variant<Compressed, Raw> data;
 	vk::Sampler sampler;
 	vk::Format format = vk::Format::eR8G8B8A8Srgb;
-	Type type = Type::e2D;
 };
 } // namespace le::graphics

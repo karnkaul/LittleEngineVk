@@ -57,22 +57,23 @@ bool Texture::construct(CreateInfo const& info) {
 		return false;
 	}
 	m_storage.data.sampler = info.sampler;
-	m_storage.data.type = info.type;
 	if (pComp) {
 		for (auto const& bytes : pComp->bytes) {
 			m_storage.raw.imgs.push_back(utils::decompress(bytes));
 			m_storage.raw.bytes.push_back(m_storage.raw.imgs.back().bytes);
 		}
 		m_storage.data.size = {m_storage.raw.imgs.back().width, m_storage.raw.imgs.back().height};
+		m_storage.data.type = pComp->bytes.size() > 1 ? Type::eCube : Type::e2D;
 	} else {
 		m_storage.data.size = pRaw->size;
 		m_storage.raw.bytes.push_back(pRaw->bytes.back());
+		m_storage.data.type = Type::e2D;
 	}
 	m_storage.transfer = load(m_vram, m_storage.data.image, info.format, m_storage.data.size, m_storage.raw.bytes, m_name);
 	m_storage.data.format = info.format;
 	VRAM& v = m_vram;
 	Device& d = v.m_device;
-	vk::ImageViewType const type = m_storage.data.type == Type::e3D ? vk::ImageViewType::e3D : vk::ImageViewType::e2D;
+	vk::ImageViewType const type = m_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
 	m_storage.data.imageView = d.createImageView(m_storage.data.image->image, m_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
 	return true;
 }

@@ -47,24 +47,13 @@ class Pipeline final {
 	bool reconstruct(CreateInfo::Dynamic const& newState = {});
 	vk::PipelineLayout layout() const;
 	vk::DescriptorSetLayout setLayout(u32 set) const;
-	SetFactory& setFactory(u32 set);
-	void swapSets();
-
-	template <typename T>
-	bool writeBuffer(SetIndex set, u32 binding, T const& data, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
-	template <typename T, typename Cont = Span<T>>
-	bool writeBuffers(SetIndex set, u32 binding, Cont&& data, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
-	bool writeTextures(SetIndex set, u32 binding, Span<Texture> textures);
-
-	void bindSets(CommandBuffer& cmd, Span<DescriptorSet*> descriptorSets) const;
-	void bindSet(CommandBuffer& cmd, SetIndex set);
+	SetFactory makeSetFactory(u32 set, std::size_t rotateCount = 0) const;
 
 	Hash id() const noexcept;
 
   private:
 	bool construct(bool bFixed);
 	void destroy(bool bFixed);
-	DescriptorSet& descriptorSet(SetIndex bindSet);
 
 	struct Storage {
 		struct {
@@ -73,8 +62,8 @@ class Pipeline final {
 		struct {
 			vk::PipelineLayout layout;
 			std::vector<vk::DescriptorSetLayout> setLayouts;
+			std::vector<std::vector<BindingInfo>> bindingInfos;
 		} fixed;
-		std::vector<SetFactory> setFactories;
 		Hash id;
 	};
 	struct Metadata {
@@ -92,14 +81,6 @@ class Pipeline final {
 
 // impl
 
-template <typename T>
-bool Pipeline::writeBuffer(SetIndex set, u32 binding, T const& data, vk::DescriptorType type) {
-	return descriptorSet(set).writeBuffer(binding, data, type);
-}
-template <typename T, typename Cont>
-bool Pipeline::writeBuffers(SetIndex set, u32 binding, Cont&& data, vk::DescriptorType type) {
-	return descriptorSet(set).writeBuffers(binding, std::forward<Cont>(data), type);
-}
 inline Hash Pipeline::id() const noexcept {
 	return m_storage.id;
 }

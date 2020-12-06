@@ -74,35 +74,14 @@ vk::DescriptorSetLayout Pipeline::setLayout(u32 set) const {
 	return m_storage.fixed.setLayouts[(std::size_t)set];
 }
 
-SetFactory& Pipeline::setFactory(u32 set) {
-	ENSURE(set < (u32)m_storage.setFactories.size(), "Set does not exist on pipeline!");
-	return m_storage.setFactories[(std::size_t)set];
-}
-
-void Pipeline::swapSets() {
-	for (auto& descSet : m_storage.setFactories) {
-		descSet.swap();
+SetFactory Pipeline::makeSetFactory(u32 set, std::size_t rotateCount) const {
+	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
+	auto& f = m_storage.fixed;
+	if (rotateCount == 0) {
+		rotateCount = m_metadata.createInfo.rotateCount;
 	}
-}
-
-bool Pipeline::writeTextures(SetIndex set, u32 binding, Span<Texture> textures) {
-	return descriptorSet(set).writeTextures(binding, textures);
-}
-
-void Pipeline::bindSets(CommandBuffer& cmd, Span<DescriptorSet*> descriptorSets) const {
-	ENSURE(cmd.rendering(), "Invalid command buffer state");
-	u32 firstSet = maths::max<u32>();
-	std::vector<vk::DescriptorSet> setsArr;
-	setsArr.reserve(descriptorSets.size());
-	for (auto const& set : descriptorSets) {
-		firstSet = std::min(firstSet, set->setNumber());
-		setsArr.push_back(set->get());
-	}
-	cmd.bindSets(m_storage.fixed.layout, setsArr, firstSet);
-}
-
-void Pipeline::bindSet(CommandBuffer& cmd, SetIndex set) {
-	bindSets(cmd, &descriptorSet(set));
+	SetFactory::CreateInfo const factoryInfo{f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
+	return SetFactory(m_vram, factoryInfo);
 }
 
 bool Pipeline::construct(bool bFixed) {
@@ -114,22 +93,22 @@ bool Pipeline::construct(bool bFixed) {
 	}
 	Device& d = m_device;
 	if (bFixed) {
-		m_storage.fixed = {};
-		auto const setBindings = utils::extractBindings(c.dynamicState.shader);
-		for (auto const& [set, binds] : setBindings.sets) {
+		auto& f = m_storage.fixed;
+		f = {};
+		auto setBindings = utils::extractBindings(c.dynamicState.shader);
+		for (auto& [set, binds] : setBindings.sets) {
 			vk::DescriptorSetLayoutCreateInfo createInfo;
 			std::vector<vk::DescriptorSetLayoutBinding> bindings;
-			for (auto const& setBinding : binds) {
+			for (auto& setBinding : binds) {
 				bindings.push_back(setBinding.binding);
 			}
 			createInfo.bindingCount = (u32)bindings.size();
 			createInfo.pBindings = bindings.data();
 			auto const descLayout = d.m_device.createDescriptorSetLayout(createInfo);
-			m_storage.fixed.setLayouts.push_back(descLayout);
-			SetFactory::CreateInfo const descriptorInfo{descLayout, binds, m_metadata.createInfo.rotateCount, set};
-			m_storage.setFactories.emplace_back(m_vram, descriptorInfo);
+			f.setLayouts.push_back(descLayout);
+			f.bindingInfos.push_back(std::move(binds));
 		}
-		m_storage.fixed.layout = d.createPipelineLayout(setBindings.push, m_storage.fixed.setLayouts);
+		f.layout = d.createPipelineLayout(setBindings.push, f.setLayouts);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
@@ -235,11 +214,5 @@ void Pipeline::destroy(bool bFixed) {
 		});
 		m_storage.fixed = {};
 	}
-}
-
-DescriptorSet& Pipeline::descriptorSet(SetIndex set) {
-	SetFactory& factory = setFactory(set.set);
-	factory.populate(set.index + 1);
-	return factory.at(set.index);
 }
 } // namespace le::graphics

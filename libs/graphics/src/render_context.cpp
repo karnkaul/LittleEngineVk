@@ -3,6 +3,7 @@
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/utils.hpp>
+#include <graphics/common.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render_context.hpp>
 
@@ -27,10 +28,9 @@ RenderContext::Render::~Render() {
 }
 
 void RenderContext::Render::destroy() {
-	if (!default_v(m_frame.primary.m_cmd)) {
-		RenderContext& rc = m_context;
-		if (!rc.endFrame()) {
-			logD("[{}] RenderContext failed to end frame", g_name);
+	if (!Device::default_v(m_frame.primary.m_cb)) {
+		if (!m_context.get().endFrame()) {
+			g_log.log(lvl::warning, 1, "[{}] RenderContext failed to end frame", g_name);
 		}
 	}
 }
@@ -65,31 +65,14 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	binding.inputRate = vk::VertexInputRate::eVertex;
 	ret.bindings.push_back(binding);
 	u32 location = 0;
-	static std::vector<std::size_t> const single = {0};
-	for (auto const& offset : (info.offsets.empty() ? single : info.offsets)) {
+	for (auto const& [format, offset] : info.attributes) {
 		vk::VertexInputAttributeDescription attribute;
 		attribute.binding = info.binding;
-		attribute.format = vk::Format::eR32G32B32Sfloat;
+		attribute.format = format;
 		attribute.offset = (u32)offset;
 		attribute.location = location++;
 		ret.attributes.push_back(attribute);
 	}
-	return ret;
-}
-
-vk::SamplerCreateInfo RenderContext::samplerInfo(MinMag minMag, vk::SamplerMipmapMode mip) {
-	vk::SamplerCreateInfo ret;
-	ret.magFilter = minMag.first;
-	ret.minFilter = minMag.second;
-	ret.addressModeU = ret.addressModeV = ret.addressModeW = vk::SamplerAddressMode::eRepeat;
-	ret.borderColor = vk::BorderColor::eIntOpaqueBlack;
-	ret.unnormalizedCoordinates = false;
-	ret.compareEnable = false;
-	ret.compareOp = vk::CompareOp::eAlways;
-	ret.mipmapMode = mip;
-	ret.mipLodBias = 0.0f;
-	ret.minLod = 0.0f;
-	ret.maxLod = 0.0f;
 	return ret;
 }
 
@@ -120,43 +103,43 @@ RenderContext::~RenderContext() {
 }
 
 bool RenderContext::waitForFrame() {
+	if (!m_vram.get().m_transfer.polling()) {
+		m_vram.get().m_transfer.update();
+	}
 	if (m_storage.status == Status::eReady) {
 		return true;
 	}
 	if (m_storage.status != Status::eWaiting) {
-		logW("[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
-	Device& d = m_device;
 	auto& sync = m_sync.get();
-	d.waitFor(sync.drawing);
-	d.decrementDeferred();
+	m_device.get().waitFor(sync.sync.drawing);
+	m_device.get().decrementDeferred();
 	m_storage.status = Status::eReady;
 	return true;
 }
 
 std::optional<RenderContext::Frame> RenderContext::beginFrame(CommandBuffer::PassInfo const& info) {
 	if (m_storage.status != Status::eReady) {
-		logW("[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
-	Device& d = m_device;
-	Swapchain& s = m_swapchain;
-	if (s.flags().any(Swapchain::Flag::ePaused | Swapchain::Flag::eOutOfDate)) {
+	if (m_swapchain.get().flags().any(Swapchain::Flag::ePaused | Swapchain::Flag::eOutOfDate)) {
 		return std::nullopt;
 	}
 	FrameSync& sync = m_sync.get();
-	auto target = s.acquireNextImage(sync.drawReady);
+	auto target = m_swapchain.get().acquireNextImage(sync.sync);
 	if (!target) {
 		return std::nullopt;
 	}
 	m_storage.status = Status::eDrawing;
-	d.destroy(sync.framebuffer);
-	sync.framebuffer = d.createFramebuffer(s.renderPass(), target->attachments(), target->extent);
-	if (!sync.primary.commandBuffer.begin(s.renderPass(), sync.framebuffer, target->extent, info)) {
+	m_device.get().destroy(sync.framebuffer);
+	sync.framebuffer = m_device.get().createFramebuffer(m_swapchain.get().renderPass(), target->attachments(), target->extent);
+	if (!sync.primary.commandBuffer.begin(m_swapchain.get().renderPass(), sync.framebuffer, target->extent, info)) {
 		ENSURE(false, "Failed to begin recording command buffer");
-		d.destroy(sync.framebuffer, sync.drawReady);
-		sync.drawReady = d.createSemaphore(); // sync.drawReady will be signalled by acquireNextImage and cannot be reused
+		m_device.get().destroy(sync.framebuffer, sync.sync.drawReady);
+		sync.sync.drawReady = m_device.get().createSemaphore(); // sync.drawReady will be signalled by acquireNextImage and cannot be reused
 		return std::nullopt;
 	}
 	return Frame{*target, sync.primary.commandBuffer};
@@ -173,26 +156,24 @@ std::optional<RenderContext::Render> RenderContext::render(Colour clear, vk::Cle
 
 bool RenderContext::endFrame() {
 	if (m_storage.status != Status::eDrawing) {
-		logW("[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
-	Device& d = m_device;
-	Swapchain& s = m_swapchain;
 	FrameSync& sync = m_sync.get();
 	sync.primary.commandBuffer.end();
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags const waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &sync.drawReady;
+	submitInfo.pWaitSemaphores = &sync.sync.drawReady;
 	submitInfo.pWaitDstStageMask = &waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &sync.primary.commandBuffer.m_cmd;
+	submitInfo.pCommandBuffers = &sync.primary.commandBuffer.m_cb;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &sync.presentReady;
-	d.m_device.resetFences(sync.drawing);
-	d.m_queues.submit(QType::eGraphics, submitInfo, sync.drawing);
+	submitInfo.pSignalSemaphores = &sync.sync.presentReady;
+	m_device.get().device().resetFences(sync.sync.drawing);
+	m_device.get().queues().submit(QType::eGraphics, submitInfo, sync.sync.drawing, false);
 	m_storage.status = Status::eWaiting;
-	auto present = s.present(sync.presentReady, sync.drawing);
+	auto present = m_swapchain.get().present(sync.sync);
 	if (!present) {
 		return false;
 	}
@@ -200,14 +181,10 @@ bool RenderContext::endFrame() {
 	return true;
 }
 
-bool RenderContext::reconstructd(glm::ivec2 framebufferSize) {
-	if (!Swapchain::valid(framebufferSize)) {
-		return false;
-	}
-	Swapchain& swapchain = m_swapchain;
-	auto const flags = swapchain.flags();
-	if (flags.any(Swapchain::Flag::eOutOfDate | Swapchain::Flag::eSuboptimal | Swapchain::Flag::ePaused)) {
-		if (swapchain.reconstruct(framebufferSize)) {
+bool RenderContext::reconstructed(glm::ivec2 framebufferSize) {
+	auto const flags = m_swapchain.get().flags();
+	if (flags.any(Swapchain::Flag::eOutOfDate | Swapchain::Flag::ePaused)) {
+		if (m_swapchain.get().reconstruct(framebufferSize)) {
 			m_storage.status = Status::eWaiting;
 			return true;
 		}
@@ -216,14 +193,13 @@ bool RenderContext::reconstructd(glm::ivec2 framebufferSize) {
 }
 
 View<Pipeline> RenderContext::makePipeline(std::string_view id, Pipeline::CreateInfo createInfo) {
-	Swapchain& s = m_swapchain;
-	createInfo.dynamicState.renderPass = s.renderPass();
+	createInfo.dynamicState.renderPass = m_swapchain.get().renderPass();
 	Pipeline p0(m_vram, std::move(createInfo), id);
 	auto [iter, bResult] = m_storage.pipes.emplace(id, std::move(p0));
 	if (!bResult || iter == m_storage.pipes.end()) {
 		throw std::runtime_error("Map insertion failure");
 	}
-	logD("[{}] Pipeline [{}] constructed", g_name, id);
+	g_log.log(lvl::info, 1, "[{}] Pipeline [{}] constructed", g_name, id);
 	return iter->second;
 }
 
@@ -246,50 +222,51 @@ View<Pipeline> RenderContext::pipeline(Hash id) {
 	return {};
 }
 
-vk::Sampler RenderContext::makeSampler(vk::SamplerCreateInfo const& info) {
-	Device& d = m_device;
-	vk::Sampler ret = d.m_device.createSampler(info);
-	m_storage.samplers.push_back(ret);
-	return ret;
+glm::mat4 RenderContext::preRotate() const noexcept {
+	glm::mat4 ret(1.0f);
+	f32 rad = 0.0f;
+	auto const transform = m_swapchain.get().display().transform;
+	if (transform == vk::SurfaceTransformFlagBitsKHR::eIdentity) {
+		return ret;
+	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate90) {
+		rad = glm::radians(90.0f);
+	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate180) {
+		rad = glm::radians(180.0f);
+	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate180) {
+		rad = glm::radians(270.0f);
+	}
+	return glm::rotate(ret, rad, g_nFront);
 }
 
-vk::Viewport RenderContext::viewport(vk::Extent2D extent, glm::vec2 const& depth, ScreenRect const& nRect) const noexcept {
-	if (extent.width == 0 || extent.height == 0) {
-		Swapchain& s = m_swapchain;
-		extent = s.m_storage.extent;
+vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 const& depth, ScreenRect const& nRect) const noexcept {
+	if (!Swapchain::valid(extent)) {
+		extent = this->extent();
 	}
 	vk::Viewport ret;
 	glm::vec2 const size = nRect.size();
 	ret.minDepth = depth.x;
 	ret.maxDepth = depth.y;
-	ret.width = size.x * (f32)extent.width;
-	ret.height = -(size.y * (f32)extent.height); // flip viewport about X axis
-	ret.x = nRect.lt.x * (f32)extent.width;
-	ret.y = nRect.lt.y * (f32)extent.height - (f32)ret.height;
+	ret.width = size.x * (f32)extent.x;
+	ret.height = -(size.y * (f32)extent.y); // flip viewport about X axis
+	ret.x = nRect.lt.x * (f32)extent.x;
+	ret.y = nRect.lt.y * (f32)extent.y - ret.height;
 	return ret;
 }
 
-vk::Rect2D RenderContext::scissor(vk::Extent2D extent, ScreenRect const& nRect) const noexcept {
-	if (extent.width == 0 || extent.height == 0) {
-		Swapchain& s = m_swapchain;
-		extent = s.m_storage.extent;
+vk::Rect2D RenderContext::scissor(glm::ivec2 extent, ScreenRect const& nRect) const noexcept {
+	if (!Swapchain::valid(extent)) {
+		extent = this->extent();
 	}
 	vk::Rect2D scissor;
 	glm::vec2 const size = nRect.size();
-	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.width);
-	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.height);
-	scissor.extent.width = (u32)(size.x * (f32)extent.width);
-	scissor.extent.height = (u32)(size.y * (f32)extent.height);
+	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.x);
+	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.y);
+	scissor.extent.width = (u32)(size.x * (f32)extent.x);
+	scissor.extent.height = (u32)(size.y * (f32)extent.y);
 	return scissor;
 }
 
 void RenderContext::destroy() {
-	Device& d = m_device;
-	d.defer([s = m_storage.samplers, &d]() mutable {
-		for (auto sm : s) {
-			d.destroy(sm);
-		}
-	});
 	m_storage.pipes.clear();
 }
 } // namespace le::graphics

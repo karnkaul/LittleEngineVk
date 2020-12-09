@@ -3,6 +3,7 @@
 #include <vector>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
+#include <graphics/context/render_types.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
@@ -14,10 +15,9 @@ struct FrameSync {
 		vk::CommandPool pool;
 		vk::CommandBuffer buffer;
 	};
-	vk::Semaphore drawReady;
-	vk::Semaphore presentReady;
-	vk::Fence drawing;
+
 	vk::Framebuffer framebuffer;
+	RenderSync sync;
 	Command primary;
 	std::vector<Command> secondary;
 	std::optional<u32> index;

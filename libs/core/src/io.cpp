@@ -26,7 +26,7 @@ FileLogger::FileLogger() {
 		iFile.close();
 		Path backup(g_logFilePath.generic_string());
 		backup += ".bak";
-		stdfs::rename(stdfs::path(g_logFilePath.generic_string()), stdfs::path(backup.generic_string()));
+		std::rename(g_logFilePath.generic_string().data(), backup.generic_string().data());
 	}
 	std::ofstream oFile(g_logFilePath.generic_string());
 	if (!oFile.good()) {
@@ -67,12 +67,28 @@ Service::Service(std::optional<Path> logFilePath) {
 		g_logFilePath = std::move(*logFilePath);
 		g_fileLogger = FileLogger();
 		g_token = dl::config::g_on_log.add(&fileLog);
+		m_bActive = true;
 	}
 }
 
+Service::Service(Service&& rhs) : m_bActive(std::exchange(rhs.m_bActive, false)) {
+}
+
+Service& Service::operator=(Service&& rhs) {
+	if (&rhs != this) {
+		destroy();
+		m_bActive = std::exchange(rhs.m_bActive, false);
+	}
+	return *this;
+}
+
 Service::~Service() {
+	destroy();
+}
+
+void Service::destroy() {
 	impl::deinitPhysfs();
-	if (g_fileLogger) {
+	if (g_fileLogger && m_bActive) {
 		logI("File Logging terminated");
 		g_token = {};
 		g_queue.active(false);

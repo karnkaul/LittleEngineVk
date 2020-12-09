@@ -8,11 +8,13 @@
 #include <core/threads.hpp>
 #include <core/time.hpp>
 #include <core/view.hpp>
-#include <graphics/types.hpp>
+#include <graphics/resources.hpp>
 #include <kt/async_queue/async_queue.hpp>
 
 namespace le::graphics {
-class Memory;
+constexpr vk::DeviceSize operator""_MB(unsigned long long size) {
+	return size << 20;
+}
 
 class Transfer final {
   public:
@@ -29,7 +31,7 @@ class Transfer final {
 	struct CreateInfo;
 
 	struct Stage final {
-		View<Buffer> buffer;
+		Buffer buffer;
 		vk::CommandBuffer command;
 	};
 
@@ -46,25 +48,26 @@ class Transfer final {
 
 	static Promise makePromise() noexcept;
 
-	bool polling() const noexcept {
-		return m_sync.bPoll.load();
-	}
 	std::size_t update();
 
 	Stage newStage(vk::DeviceSize bufferSize);
 	void addStage(Stage&& stage, Promise&& promise);
 
+	bool polling() const noexcept {
+		return m_sync.bPoll.load();
+	}
+
   private:
-	void scavenge(Stage const& stage, vk::Fence fence);
+	void scavenge(Stage&& stage, vk::Fence fence);
 	vk::Fence nextFence();
-	View<Buffer> nextBuffer(vk::DeviceSize size);
+	Buffer nextBuffer(vk::DeviceSize size);
 	vk::CommandBuffer nextCommand();
 
 	struct {
 		vk::CommandPool pool;
 		std::vector<vk::CommandBuffer> commands;
 		std::vector<vk::Fence> fences;
-		std::list<View<Buffer>> buffers;
+		std::list<Buffer> buffers;
 	} m_data;
 	struct {
 		std::optional<threads::TScoped> stagingThread;

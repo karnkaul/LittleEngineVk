@@ -4,6 +4,8 @@
 # Requirements:
 #  - clang-format
 
+CLANG_FORMAT=clang-format$ext
+
 EXCLUDE0=*/ext/*
 BUILD=*out/*
 PATTERN0="*.hpp"

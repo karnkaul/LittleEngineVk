@@ -11,19 +11,17 @@ target_include_directories(${PROJECT_NAME}
 	PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-target_include_directories(${PROJECT_NAME} SYSTEM
-	PRIVATE
-		"${Vulkan_INCLUDE_DIRS}"
-)
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		levk-core
 	PRIVATE
 		levk-interface
-		${Vulkan_LIBRARIES}
-		$<$<STREQUAL:${PLATFORM},Linux>:X11>
+		vulkan-hpp
+		$<$<STREQUAL:${PLATFORM},Android>:levk-android-glue>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 )
+
+target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:${PLATFORM},Linux>:-fPIC>)
 
 # PCH
 if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")

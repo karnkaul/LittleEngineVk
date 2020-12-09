@@ -4,7 +4,21 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <core/ensure.hpp>
+#include <graphics/common.hpp>
+#include <graphics/context/device.hpp>
 #include <graphics/context/instance.hpp>
+
+[[maybe_unused]] static vk::DispatchLoaderDynamic g_dispatcher;
+
+#if defined(VULKAN_HPP_DISPATCH_LOADER_DYNAMIC) && VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
+// Use default dispatcher
+#define VK_DISPATCHER VULKAN_HPP_DEFAULT_DISPATCHER
+// Allocate storage for default dispatcher
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
+#else
+// Use custom dispatcher
+#define VK_DISPATCHER g_dispatcher
+#endif
 
 namespace le::graphics {
 // global for Device to temporarily disable (to suppress spam on Windows)
@@ -18,23 +32,23 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 	static constexpr std::string_view name = "vk::validation";
 	switch (messageSeverity) {
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-		logE("[{}] {}", name, VK_LOG_MSG);
+		g_log.log(lvl::error, 0, "[{}] {}", name, VK_LOG_MSG);
 		ENSURE(false, VK_LOG_MSG);
 		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
 		if (g_validationLevel <= dl::level::warning) {
-			logW("[{}] {}", name, VK_LOG_MSG);
+			g_log.log(lvl::warning, 1, "[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
 		if (g_validationLevel <= dl::level::info) {
-			logI("[{}] {}", name, VK_LOG_MSG);
+			g_log.log(lvl::info, 1, "[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
 		if (g_validationLevel <= dl::level::debug) {
-			logD("[{}] {}", name, VK_LOG_MSG);
+			g_log.log(lvl::debug, 2, "[{}] {}", name, VK_LOG_MSG);
 		}
 		break;
 	}
@@ -73,11 +87,14 @@ Instance& Instance::operator=(Instance&& rhs) {
 
 Instance::Instance(CreateInfo const& info) {
 	static constexpr char const* szValidationLayer = "VK_LAYER_KHRONOS_validation";
+	vk::DynamicLoader dl;
+	VK_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 	auto const layerProps = vk::enumerateInstanceLayerProperties();
 	m_metadata.layers.clear();
 	std::unordered_set<std::string_view> requiredExtensionsSet = {info.extensions.begin(), info.extensions.end()};
 	bool bValidation = false;
-	if (info.bValidation) {
+	// TODO: Fix Pixel drawing nothing on Android
+	if (info.bValidation /*&& levk_OS != os::OS::eAndroid*/) {
 		if (!findLayer(layerProps, szValidationLayer, dl::level::warning)) {
 			ENSURE(false, "Validation layers requested but not present!");
 		} else {
@@ -102,10 +119,8 @@ Instance::Instance(CreateInfo const& info) {
 	createInfo.ppEnabledLayerNames = m_metadata.layers.data();
 	createInfo.enabledLayerCount = (u32)m_metadata.layers.size();
 	m_instance = vk::createInstance(createInfo, nullptr);
-	vk::DynamicLoader dl;
-	m_loader = vk::DispatchLoaderDynamic();
-	m_loader.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
-	m_loader.init(m_instance);
+	VK_DISPATCHER.init(m_instance);
+	m_loader = VK_DISPATCHER;
 	if (bValidation) {
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 		using vksev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
@@ -113,9 +128,10 @@ Instance::Instance(CreateInfo const& info) {
 		using vktype = vk::DebugUtilsMessageTypeFlagBitsEXT;
 		createInfo.messageType = vktype::eGeneral | vktype::ePerformance | vktype::eValidation;
 		createInfo.pfnUserCallback = &validationCallback;
+		ENSURE(m_loader.vkCreateDebugUtilsMessengerEXT, "Function pointer is null");
 		m_messenger = m_instance.createDebugUtilsMessengerEXT(createInfo, nullptr, m_loader);
 	}
-	logD("[{}] Vulkan instance constructed", g_name);
+	g_log.log(lvl::info, 1, "[{}] Vulkan instance constructed", g_name);
 	g_validationLevel = info.validationLog;
 }
 
@@ -123,13 +139,35 @@ Instance::~Instance() {
 	destroy();
 }
 
+std::vector<PhysicalDevice> Instance::availableDevices(Span<std::string_view> required) const {
+	std::vector<PhysicalDevice> ret;
+	std::vector<vk::PhysicalDevice> const devices = m_instance.enumeratePhysicalDevices();
+	ret.reserve(devices.size());
+	for (auto const& device : devices) {
+		std::unordered_set<std::string_view> missing(required.begin(), required.end());
+		std::vector<vk::ExtensionProperties> const supported = device.enumerateDeviceExtensionProperties();
+		for (std::size_t idx = 0; idx < supported.size() && !missing.empty(); ++idx) {
+			missing.erase(std::string_view(supported[idx].extensionName));
+		}
+		if (missing.empty()) {
+			PhysicalDevice available;
+			available.properties = device.getProperties();
+			available.queueFamilies = device.getQueueFamilyProperties();
+			available.features = device.getFeatures();
+			available.device = device;
+			ret.push_back(std::move(available));
+		}
+	}
+	return ret;
+}
+
 void Instance::destroy() {
-	if (!default_v(m_instance)) {
-		if (!default_v(m_messenger)) {
+	if (!Device::default_v(m_instance)) {
+		if (!Device::default_v(m_messenger)) {
 			m_instance.destroy(m_messenger, nullptr, m_loader);
 			m_messenger = vk::DebugUtilsMessengerEXT();
 		}
-		logD("[{}] Vulkan instance destroyed", g_name);
+		g_log.log(lvl::info, 1, "[{}] Vulkan instance destroyed", g_name);
 		m_instance.destroy();
 		m_instance = vk::Instance();
 	}

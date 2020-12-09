@@ -1,4 +1,5 @@
 #pragma once
+#include <core/ref.hpp>
 
 namespace le {
 ///
@@ -21,6 +22,8 @@ class View {
 
 	constexpr View() = default;
 	constexpr View(type& t) noexcept : m_pT(&t) {
+	}
+	constexpr View(Ref<type> t) noexcept : m_pT(&t.get()) {
 	}
 	constexpr type const& operator*() const {
 		return *m_pT;
@@ -57,6 +60,8 @@ class ConstView {
 
 	constexpr ConstView() = default;
 	constexpr ConstView(type const& t) noexcept : m_pT(&t) {
+	}
+	constexpr ConstView(Ref<type const> t) noexcept : m_pT(&t.get()) {
 	}
 	constexpr ConstView(View<type> const& view) noexcept : m_pT(view.m_pT) {
 	}

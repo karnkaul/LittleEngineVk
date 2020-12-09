@@ -8,7 +8,5 @@ layout(location = 1) in vec2 uv;
 layout(location = 0) out vec4 outColour;
 
 void main() {
-	// outColour = fragColour;
-
-	outColour = texture(diffuse, uv);
+	outColour = fragColour * texture(diffuse, uv);
 }

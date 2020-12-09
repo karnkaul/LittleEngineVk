@@ -4,13 +4,22 @@
 #include <core/ref.hpp>
 #include <core/view.hpp>
 #include <graphics/descriptor_set.hpp>
-#include <graphics/types.hpp>
-#include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
 class Device;
 class Shader;
 class CommandBuffer;
+class VRAM;
+
+struct VertexInputInfo {
+	std::vector<vk::VertexInputBindingDescription> bindings;
+	std::vector<vk::VertexInputAttributeDescription> attributes;
+};
+
+template <typename T>
+struct VertexInfoFactory {
+	struct VertexInputInfo operator()(u32 binding) const;
+};
 
 class Pipeline final {
   public:

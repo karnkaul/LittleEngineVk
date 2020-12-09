@@ -8,7 +8,58 @@
 #include <core/utils.hpp>
 #include <io_impl.hpp>
 
+#if defined(LEVK_OS_ANDROID)
+#include <android_native_app_glue.h>
+#endif
+
 namespace le::io {
+#if defined(LEVK_OS_ANDROID)
+constexpr android_app* unpack(ErasedRef app) {
+	return app.contains<android_app*>() ? app.get<android_app*>() : nullptr;
+}
+
+struct AndroidAsset {
+	AAsset* pAsset = nullptr;
+	android_app* pApp = nullptr;
+
+	AndroidAsset() = default;
+	AndroidAsset(android_app* pApp, Path const& path) : pApp(pApp) {
+		if (pApp && pApp->activity) {
+			pAsset = AAssetManager_open(pApp->activity->assetManager, path.generic_string().data(), AASSET_MODE_BUFFER);
+		}
+	}
+
+	~AndroidAsset() {
+		if (pAsset && pApp && pApp->activity) {
+			AAsset_close(pAsset);
+		}
+	}
+
+	constexpr explicit operator bool() const noexcept {
+		return pAsset != nullptr;
+	}
+
+	bytearray bytes() const {
+		bytearray ret;
+		if (pAsset) {
+			ret.resize((std::size_t)AAsset_getLength(pAsset));
+			AAsset_read(pAsset, ret.data(), ret.size());
+		}
+		return ret;
+	}
+
+	std::stringstream sstream() const {
+		std::stringstream ret;
+		if (pAsset) {
+			std::string charBuf((std::size_t)AAsset_getLength(pAsset), 0);
+			AAsset_read(pAsset, charBuf.data(), charBuf.size());
+			ret << charBuf;
+		}
+		return ret;
+	}
+};
+#endif
+
 namespace {
 struct PhysfsHandle final {
 	bool bInit = false;
@@ -74,7 +125,7 @@ std::string_view Reader::medium() const {
 	return m_medium;
 }
 
-Reader::Result<io::Path> FileReader::findUpwards(io::Path const& leaf, Span<io::Path> anyOf, u8 maxHeight) {
+Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path> anyOf, [[maybe_unused]] u8 maxHeight) {
 	for (auto const& name : anyOf) {
 		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
@@ -92,7 +143,10 @@ FileReader::FileReader() noexcept {
 	m_medium = "Filesystem";
 }
 
-bool FileReader::mount(io::Path path) {
+bool FileReader::mount([[maybe_unused]] io::Path path) {
+#if defined(LEVK_OS_ANDROID)
+	return false;
+#else
 	auto const pathStr = path.generic_string();
 	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end()) {
 		if (!io::is_directory(path)) {
@@ -105,6 +159,7 @@ bool FileReader::mount(io::Path path) {
 	}
 	logW("[{}] [{}] directory already mounted", utils::tName<FileReader>(), pathStr);
 	return false;
+#endif
 }
 
 Reader::Result<bytearray> FileReader::bytes(io::Path const& id) const {
@@ -169,9 +224,16 @@ ZIPReader::ZIPReader() {
 bool ZIPReader::mount(io::Path path) {
 	impl::initPhysfs();
 	auto pathStr = path.generic_string();
+	FileReader file;
 	if (std::find(m_zips.begin(), m_zips.end(), path) == m_zips.end()) {
-		if (!io::is_regular_file(path)) {
+		auto const bytes = file.bytes(path);
+		if (!bytes) {
 			logE("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
+			return false;
+		}
+		int const result = PHYSFS_mountMemory(bytes->data(), bytes->size(), nullptr, path.string().data(), nullptr, 0);
+		if (result == 0) {
+			logE("[{}] [{}] failed to decompress archive!", utils::tName<ZIPReader>(), pathStr);
 			return false;
 		}
 		PHYSFS_mount(path.string().data(), nullptr, 0);
@@ -218,6 +280,46 @@ Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
 		PHYSFS_close(pFile);
 	}
 	return {};
+}
+
+AAssetReader::AAssetReader(ErasedRef const& pAndroidApp) : m_androidApp(pAndroidApp) {
+#if defined(LEVK_OS_ANDROID)
+	ENSURE(unpack(m_androidApp), "Invalid android_app pointer");
+#endif
+}
+
+Reader::Result<bytearray> AAssetReader::bytes([[maybe_unused]] io::Path const& id) const {
+#if defined(LEVK_OS_ANDROID)
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
+		return asset.bytes();
+	}
+	return {};
+#else
+	return {};
+#endif
+}
+
+Reader::Result<std::stringstream> AAssetReader::sstream([[maybe_unused]] io::Path const& id) const {
+#if defined(LEVK_OS_ANDROID)
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
+		return asset.sstream();
+	}
+	return {};
+#else
+	return {};
+#endif
+}
+
+Reader::Result<io::Path> AAssetReader::findPrefixed([[maybe_unused]] io::Path const& id) const {
+#if defined(LEVK_OS_ANDROID)
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
+		return Path(id);
+	} else {
+		return {};
+	}
+#else
+	return {};
+#endif
 }
 
 void impl::initPhysfs() {

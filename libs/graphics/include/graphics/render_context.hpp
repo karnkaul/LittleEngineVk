@@ -14,7 +14,7 @@ namespace le::graphics {
 struct QuickVertexInput;
 struct VertexInputCreateInfo;
 
-enum class PFlag { eDepthTest, eDepthWrite, eCOUNT_ };
+enum class PFlag { eDepthTest, eDepthWrite, eAlphaBlend, eCOUNT_ };
 using PFlags = kt::enum_flags<PFlag>;
 
 class RenderContext : NoCopy {
@@ -48,13 +48,10 @@ class RenderContext : NoCopy {
 		Ref<RenderContext> m_context;
 	};
 
-	using MinMag = std::pair<vk::Filter, vk::Filter>;
-
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(Shader const& shader, PFlags flags = PFlag::eDepthTest | PFlag::eDepthWrite);
-	static vk::SamplerCreateInfo samplerInfo(MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
 
 	RenderContext(Swapchain& swapchain, u32 rotateCount = 2, u32 secondaryCmdCount = 0);
 	RenderContext(RenderContext&&);
@@ -69,24 +66,27 @@ class RenderContext : NoCopy {
 
 	Status status() const noexcept;
 	std::size_t index() const noexcept;
-	bool reconstructd(glm::ivec2 framebufferSize);
+	glm::ivec2 extent() const noexcept;
+	bool reconstructed(glm::ivec2 framebufferSize);
 
 	View<Pipeline> makePipeline(std::string_view id, Pipeline::CreateInfo createInfo);
 	View<Pipeline> pipeline(Hash id);
 	bool destroyPipeline(Hash id);
 	bool hasPipeline(Hash id) const noexcept;
 
-	vk::Sampler makeSampler(vk::SamplerCreateInfo const& info);
+	vk::Format colourFormat() const noexcept;
 
-	vk::Viewport viewport(vk::Extent2D extent = {0, 0}, glm::vec2 const& depth = {0.0f, 1.0f}, ScreenRect const& nRect = {}) const noexcept;
-	vk::Rect2D scissor(vk::Extent2D extent = {0, 0}, ScreenRect const& nRect = {}) const noexcept;
+	f32 aspectRatio() const noexcept;
+	glm::mat4 preRotate() const noexcept;
+	vk::Viewport viewport(glm::ivec2 extent = {0, 0}, glm::vec2 const& depth = {0.0f, 1.0f}, ScreenRect const& nRect = {}) const noexcept;
+	vk::Rect2D scissor(glm::ivec2 extent = {0, 0}, ScreenRect const& nRect = {}) const noexcept;
 
   private:
 	void destroy();
 
 	struct Storage {
 		std::unordered_map<Hash, Pipeline> pipes;
-		std::vector<vk::Sampler> samplers;
+		std::optional<RenderTarget> target;
 		Status status = {};
 	};
 
@@ -114,9 +114,14 @@ struct VertexInputCreateInfo {
 };
 
 struct QuickVertexInput {
+	struct Attribute {
+		vk::Format format = vk::Format::eR32G32B32Sfloat;
+		std::size_t offset = 0;
+	};
+
 	u32 binding = 0;
 	std::size_t size = 0;
-	std::vector<std::size_t> offsets;
+	std::vector<Attribute> attributes;
 };
 
 // impl
@@ -133,7 +138,23 @@ Pipeline::CreateInfo RenderContext::pipeInfo(Shader const& shader, PFlags flags)
 	if (flags.test(PFlag::eDepthWrite)) {
 		ret.fixedState.depthStencilState.depthWriteEnable = true;
 	}
+	if (flags.test(PFlag::eAlphaBlend)) {
+		using CCF = vk::ColorComponentFlagBits;
+		ret.fixedState.colorBlendAttachment.colorWriteMask = CCF::eR | CCF::eG | CCF::eB | CCF::eA;
+		ret.fixedState.colorBlendAttachment.blendEnable = true;
+		ret.fixedState.colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		ret.fixedState.colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		ret.fixedState.colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
+		ret.fixedState.colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+		ret.fixedState.colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+		ret.fixedState.colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
+	}
 	return ret;
+}
+
+inline f32 RenderContext::aspectRatio() const noexcept {
+	glm::ivec2 const ext = extent();
+	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
 }
 
 inline std::size_t RenderContext::index() const noexcept {
@@ -141,5 +162,12 @@ inline std::size_t RenderContext::index() const noexcept {
 }
 inline RenderContext::Status RenderContext::status() const noexcept {
 	return m_storage.status;
+}
+inline glm::ivec2 RenderContext::extent() const noexcept {
+	vk::Extent2D const ext = m_swapchain.get().display().extent;
+	return glm::ivec2(ext.width, ext.height);
+}
+inline vk::Format RenderContext::colourFormat() const noexcept {
+	return m_swapchain.get().colourFormat();
 }
 } // namespace le::graphics

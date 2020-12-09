@@ -1,27 +1,25 @@
 #pragma once
-#include <memory>
-#include <optional>
 #include <core/traits.hpp>
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/instance.hpp>
-#include <graphics/context/queues.hpp>
+#include <graphics/context/queue_multiplex.hpp>
 
 namespace le::graphics {
 class Device final {
   public:
-	static constexpr std::array requiredExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
+	template <typename T>
+	using vAP = vk::ArrayProxy<T const> const&;
+
+	enum class QSelect { eOptimal, eSingleFamily, eSingleQueue };
+	inline static constexpr std::array<std::string_view, 2> requiredExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
 
 	struct CreateInfo;
 
 	Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& info);
 	~Device();
 
-	std::vector<AvailableDevice> availableDevices() const;
-
 	void waitIdle();
 	bool valid(vk::SurfaceKHR surface) const;
-
-	void waitIdle() const;
 
 	vk::Semaphore createSemaphore() const;
 	vk::Fence createFence(bool bSignalled) const;
@@ -55,28 +53,49 @@ class Device final {
 
 	void decrementDeferred();
 
+	template <typename T>
+	static constexpr bool default_v(T const& t) noexcept {
+		return t == T();
+	}
+
+	PhysicalDevice const& physicalDevice() const noexcept {
+		return m_physicalDevice;
+	}
+	QueueMultiplex& queues() noexcept {
+		return m_queues;
+	}
+	QueueMultiplex const& queues() const noexcept {
+		return m_queues;
+	}
+	vk::Device device() const noexcept {
+		return m_device;
+	}
+	vk::SurfaceKHR surface() const noexcept {
+		return m_metadata.surface;
+	}
+
 	Ref<Instance> m_instance;
+
+  private:
+	PhysicalDevice m_physicalDevice;
 	vk::Device m_device;
-	vk::PhysicalDevice m_physicalDevice;
 	DeferQueue m_deferred;
-	Queues m_queues;
+	QueueMultiplex m_queues;
 
 	struct {
-		AvailableDevice picked;
+		std::vector<char const*> extensions;
 		vk::SurfaceKHR surface;
-		std::vector<AvailableDevice> available;
+		std::vector<PhysicalDevice> available;
 		vk::PhysicalDeviceLimits limits;
 		std::pair<f32, f32> lineWidth;
 	} m_metadata;
-
-  private:
-	std::vector<std::unique_ptr<Queues>> m_queueStorage;
 };
 
 struct Device::CreateInfo {
-	std::function<AvailableDevice(Span<AvailableDevice>)> pickDevice;
-	bool bDedicatedTransfer = true;
-	bool bPrintAvailable = false;
+	Span<std::string_view> extensions = requiredExtensions;
+	DevicePicker* pPicker = nullptr;
+	std::optional<std::size_t> pickOverride;
+	QSelect qselect = QSelect::eOptimal;
 };
 
 // impl
@@ -109,12 +128,11 @@ void Device::destroy(T& out_t, Ts&... out_ts) {
 	if constexpr (std::is_same_v<T, vk::Instance> || std::is_same_v<T, vk::Device>) {
 		out_t.destroy();
 	} else {
-		Instance& inst = m_instance;
-		if (!default_v(m_device) && !default_v(inst.m_instance) && !default_v(out_t)) {
+		if (!default_v(m_device) && !default_v(m_instance.get().m_instance) && !default_v(out_t)) {
 			if constexpr (std::is_same_v<T, vk::SurfaceKHR>) {
-				inst.m_instance.destroySurfaceKHR(out_t);
+				m_instance.get().m_instance.destroySurfaceKHR(out_t);
 			} else if constexpr (std::is_same_v<T, vk::DebugUtilsMessengerEXT>) {
-				inst.m_instance.destroy(out_t, nullptr, inst.m_loader);
+				m_instance.get().m_instance.destroy(out_t, nullptr);
 			} else if constexpr (std::is_same_v<T, vk::DescriptorSetLayout>) {
 				m_device.destroyDescriptorSetLayout(out_t);
 			} else if constexpr (std::is_same_v<T, vk::DescriptorPool>) {

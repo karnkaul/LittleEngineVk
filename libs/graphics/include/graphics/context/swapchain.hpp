@@ -3,34 +3,22 @@
 #include <core/ref.hpp>
 #include <core/span.hpp>
 #include <glm/vec2.hpp>
-#include <graphics/types.hpp>
+#include <graphics/context/render_types.hpp>
+#include <graphics/qflags.hpp>
+#include <graphics/resources.hpp>
 
 namespace le::graphics {
 class VRAM;
 class Device;
-struct PresentHandle;
 
 class Swapchain {
   public:
 	enum class Flag : s8 { ePaused, eOutOfDate, eSuboptimal, eCOUNT_ };
 	using Flags = kt::enum_flags<Flag>;
 
-	struct Frame {
-		RenderTarget target;
-		vk::Fence drawn;
-	};
-	struct Storage {
-		Image depthImage;
-		vk::ImageView depthImageView;
-		vk::SwapchainKHR swapchain;
-		std::vector<Frame> frames;
-
-		vk::Extent2D extent;
-		u32 imageIndex = 0;
-		u8 imageCount = 0;
-		Flags flags;
-
-		Frame& frame();
+	struct Display {
+		vk::Extent2D extent = {};
+		vk::SurfaceTransformFlagBitsKHR transform = {};
 	};
 	struct CreateInfo {
 		static constexpr auto defaultColourSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
@@ -45,49 +33,106 @@ class Swapchain {
 			Span<vk::PresentModeKHR> presentModes = defaultPresentMode;
 			u32 imageCount = 2;
 		} desired;
+
+		struct {
+			LayoutPair colour = {vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
+			LayoutPair depth = {vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal};
+		} transitions;
+	};
+
+	static constexpr std::string_view presentModeName(vk::PresentModeKHR mode) noexcept;
+	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept;
+
+	Swapchain(VRAM& vram);
+	Swapchain(VRAM& vram, CreateInfo const& info, glm::ivec2 framebufferSize = {});
+	Swapchain(Swapchain&&);
+	Swapchain& operator=(Swapchain&&);
+	~Swapchain();
+
+	std::optional<RenderTarget> acquireNextImage(RenderSync const& sync);
+	bool present(RenderSync const& sync);
+	bool reconstruct(glm::ivec2 framebufferSize = {}, Span<vk::PresentModeKHR> desiredModes = {});
+
+	bool suboptimal() const noexcept;
+	bool paused() const noexcept;
+
+	Display display() const noexcept {
+		return m_storage.current;
+	}
+	Flags flags() const noexcept {
+		return m_storage.flags;
+	}
+	vk::RenderPass renderPass() const noexcept {
+		return m_metadata.renderPass;
+	}
+	vk::Format colourFormat() const noexcept {
+		return m_metadata.formats.colour;
+	}
+
+	Ref<VRAM> m_vram;
+	Ref<Device> m_device;
+
+  private:
+	struct Frame {
+		RenderTarget target;
+		vk::Fence drawn;
+	};
+	struct Storage {
+		std::optional<Image> depthImage;
+		vk::ImageView depthImageView;
+		vk::SwapchainKHR swapchain;
+		std::vector<Frame> frames;
+		std::optional<vk::ResultValue<u32>> acquired;
+
+		Display current;
+		u8 imageCount = 0;
+		Flags flags;
+
+		Frame& frame();
 	};
 	struct Metadata {
 		CreateInfo info;
 		vk::RenderPass renderPass;
 		vk::SurfaceKHR surface;
+		vk::SwapchainKHR retired;
 		vk::PresentModeKHR presentMode;
+		std::optional<Display> original;
 		std::vector<vk::PresentModeKHR> availableModes;
 		struct {
 			vk::Format colour;
 			vk::Format depth;
 		} formats;
 	};
-	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept;
-
-	Swapchain(VRAM& vram);
-	Swapchain(VRAM& vram, glm::ivec2 framebufferSize, CreateInfo const& info);
-	Swapchain(Swapchain&&);
-	Swapchain& operator=(Swapchain&&);
-	~Swapchain();
-
-	std::optional<RenderTarget> acquireNextImage(vk::Semaphore setDrawReady);
-	bool present(vk::Semaphore drawWait, vk::Fence onDrawn);
-	bool reconstruct(glm::ivec2 framebufferSize, Span<vk::PresentModeKHR> desiredModes = {});
-
-	Flags flags() const noexcept;
-	bool suboptimal() const noexcept;
-	bool paused() const noexcept;
-	vk::RenderPass renderPass() const noexcept;
 
 	Storage m_storage;
 	Metadata m_metadata;
-	Ref<VRAM> m_vram;
-	Ref<Device> m_device;
 
   private:
 	bool construct(glm::ivec2 framebufferSize);
 	void makeRenderPass();
-	void destroy(bool bMeta);
+	void destroy(Storage& out_storage, bool bMeta);
+	void setFlags(vk::Result result);
+	void orientCheck();
 };
 
 // impl
 
-constexpr bool Swapchain::valid(glm::ivec2 framebufferSize) noexcept {
+inline constexpr std::string_view Swapchain::presentModeName(vk::PresentModeKHR mode) noexcept {
+	switch (mode) {
+	case vk::PresentModeKHR::eFifo:
+		return "FIFO";
+	case vk::PresentModeKHR::eFifoRelaxed:
+		return "FIFO Relaxed";
+	case vk::PresentModeKHR::eImmediate:
+		return "Immediate";
+	case vk::PresentModeKHR::eMailbox:
+		return "Mailbox";
+	default:
+		return "Other";
+	}
+}
+
+inline constexpr bool Swapchain::valid(glm::ivec2 framebufferSize) noexcept {
 	return framebufferSize.x > 0 && framebufferSize.y > 0;
 }
 } // namespace le::graphics

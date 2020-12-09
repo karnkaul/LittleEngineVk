@@ -1,6 +1,7 @@
 #pragma once
 #include <sstream>
 #include <string_view>
+#include <core/erased_ref.hpp>
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/utils.hpp>
@@ -50,7 +51,9 @@ class Reader {
 	/// \brief Mount a path on the IO medium
 	/// Mounted paths are prefixed to `id`s being searched
 	///
-	[[nodiscard]] virtual bool mount(io::Path path) = 0;
+	[[nodiscard]] virtual bool mount([[maybe_unused]] io::Path path) {
+		return false;
+	}
 	///
 	/// \brief Obtain data as `bytearray` (`std::vector<std::byte>`)
 	///
@@ -124,6 +127,24 @@ class ZIPReader final : public Reader {
 
   private:
 	std::vector<io::Path> m_zips;
+
+  private:
+	Result<io::Path> findPrefixed(io::Path const& id) const override;
+};
+
+///
+/// \brief Concrete class for Android AAsset IO
+///
+class AAssetReader final : public Reader {
+  public:
+	AAssetReader(ErasedRef const& pAndroidApp);
+
+  public:
+	Result<bytearray> bytes(io::Path const& id) const override;
+	Result<std::stringstream> sstream(io::Path const& id) const override;
+
+  private:
+	ErasedRef m_androidApp;
 
   private:
 	Result<io::Path> findPrefixed(io::Path const& id) const override;

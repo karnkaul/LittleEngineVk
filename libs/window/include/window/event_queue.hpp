@@ -11,11 +11,14 @@ struct Event {
 		eResize,
 		eSuspend,
 		eClose,
-
+		// Desktop only
 		eInput,
 		eText,
 		eCursor,
-		eScroll
+		eScroll,
+		// Android only
+		eInit,
+		eTerm,
 	};
 	using Focus = bool;
 	using Suspend = bool;

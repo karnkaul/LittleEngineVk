@@ -3,6 +3,7 @@
 layout(set = 0, binding = 0) uniform VP {
 	mat4 mat_p;
 	mat4 mat_v;
+	mat4 mat_ui;
 };
 
 layout(location = 0) in vec3 vertPos;

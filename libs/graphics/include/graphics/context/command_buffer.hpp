@@ -1,18 +1,28 @@
 #pragma once
 #include <vector>
 #include <core/ensure.hpp>
+#include <core/ref.hpp>
 #include <core/view.hpp>
-#include <graphics/types.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
+#include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
 class Device;
 class Pipeline;
 class DescriptorSet;
+class Buffer;
+class Image;
 
 class CommandBuffer {
   public:
+	template <typename T>
+	using vAP = vk::ArrayProxy<T const> const&;
 	using vBP = vk::PipelineBindPoint;
+	template <typename T>
+	using Duet = std::pair<T, T>;
+	using Layouts = Duet<vk::ImageLayout>;
+	using Access = Duet<vk::AccessFlags>;
+	using Stages = Duet<vk::PipelineStageFlags>;
 
 	struct PassInfo {
 		std::vector<vk::ClearValue> clearValues;
@@ -36,17 +46,21 @@ class CommandBuffer {
 	void push(vk::PipelineLayout layout, vk::ShaderStageFlags stages, u32 offset, vAP<T> pushConstants) const;
 	void bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const;
 	void bindIBO(vk::Buffer buffer, vk::DeviceSize offset = vk::DeviceSize(0), vk::IndexType indexType = vk::IndexType::eUint32) const;
-	void bindVBO(CView<Buffer> vbo, CView<Buffer> ibo) const;
+	void bindVBO(Buffer const& vbo, Buffer const* pIbo = nullptr) const;
 	void drawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, s32 vertexOffset = 0, u32 firstInstance = 0) const;
 	void draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0) const;
 
+	void transitionImage(Image const& image, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
+	void transitionImage(vk::Image image, u32 layerCount, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
+
+	void endRenderPass();
 	void end();
 
 	bool valid() const noexcept;
 	bool recording() const noexcept;
 	bool rendering() const noexcept;
 
-	vk::CommandBuffer m_cmd;
+	vk::CommandBuffer m_cb;
 	vk::CommandPool m_pool;
 
   private:
@@ -60,10 +74,10 @@ class CommandBuffer {
 template <typename T>
 void CommandBuffer::push(vk::PipelineLayout layout, vk::ShaderStageFlags stages, u32 offset, vAP<T> pushConstants) const {
 	ENSURE(rendering(), "Command buffer not recording!");
-	m_cmd.pushConstants<T>(layout, stages, offset, pushConstants);
+	m_cb.pushConstants<T>(layout, stages, offset, pushConstants);
 }
 inline bool CommandBuffer::valid() const noexcept {
-	return !default_v(m_cmd);
+	return m_cb != vk::CommandBuffer();
 }
 inline bool CommandBuffer::recording() const noexcept {
 	return valid() && m_flags.test(Flag::eRecording);

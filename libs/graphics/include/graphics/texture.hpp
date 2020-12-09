@@ -4,18 +4,46 @@
 #include <graphics/context/vram.hpp>
 
 namespace le::graphics {
+class Sampler {
+  public:
+	using MinMag = std::pair<vk::Filter, vk::Filter>;
+	static vk::SamplerCreateInfo info(MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
+
+	Sampler(Device& device, vk::SamplerCreateInfo const& info);
+	Sampler(Device& device, MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
+	Sampler(Sampler&&);
+	Sampler& operator=(Sampler&&);
+	virtual ~Sampler();
+
+	vk::Sampler sampler() const noexcept {
+		return m_sampler;
+	}
+
+  private:
+	void destroy();
+
+	vk::Sampler m_sampler;
+	Ref<Device> m_device;
+};
+
 class Texture {
   public:
 	enum class Type { e2D, eCube };
 	struct Data {
-		View<Image> image;
 		vk::ImageView imageView;
 		vk::Sampler sampler;
 		vk::Format format;
 		glm::ivec2 size = {};
 		Type type;
 	};
-	struct Compressed;
+	struct RawImage {
+		Span<std::byte> bytes;
+		int width = 0;
+		int height = 0;
+	};
+
+	struct Img;
+	struct Cubemap;
 	struct Raw;
 	struct CreateInfo;
 
@@ -29,35 +57,39 @@ class Texture {
 	bool valid() const;
 	bool busy() const;
 	bool ready() const;
-	void wait();
+	void wait() const;
 
 	Data const& data() const noexcept;
+	Image const& image() const;
 
 	std::string m_name;
+	Ref<VRAM> m_vram;
 
   protected:
 	struct Storage {
 		Data data;
+		std::optional<Image> image;
 		struct {
-			std::vector<Span<u8>> bytes;
+			std::vector<Span<std::byte>> bytes;
 			std::vector<RawImage> imgs;
 		} raw;
 		VRAM::Future transfer;
 	};
 	Storage m_storage;
-
-  private:
-	Ref<VRAM> m_vram;
 };
-struct Texture::Compressed {
-	std::vector<bytearray> bytes;
+
+struct Texture::Img {
+	bytearray bytes;
+};
+struct Texture::Cubemap {
+	std::array<bytearray, 6> bytes;
 };
 struct Texture::Raw {
-	std::vector<u8> bytes;
+	bytearray bytes;
 	glm::ivec2 size = {};
 };
 struct Texture::CreateInfo {
-	std::variant<Compressed, Raw> data;
+	std::variant<Img, Cubemap, Raw> data;
 	vk::Sampler sampler;
 	vk::Format format = vk::Format::eR8G8B8A8Srgb;
 };

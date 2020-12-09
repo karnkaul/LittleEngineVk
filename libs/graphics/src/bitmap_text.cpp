@@ -41,7 +41,7 @@ Geometry BitmapText::generate(Span<Glyph> glyphs, glm::ivec2 texSize, std::optio
 		return {};
 	}
 	if (!layout) {
-		layout = this->layout(glyphs, text, nYPad);
+		layout = this->layout(glyphs, text, size, nYPad);
 	}
 	glm::vec2 const realTopLeft = pos;
 	glm::vec2 textTL = realTopLeft;

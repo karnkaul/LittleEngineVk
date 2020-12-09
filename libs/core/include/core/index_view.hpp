@@ -30,7 +30,7 @@ namespace detail {
 template <typename T, bool B>
 using consted_t = std::conditional_t<B, T const, T>;
 template <typename T, bool B>
-using consted_iter_t = std::conditional_t<B, typename T::const_iter_type, typename T::iter_type>; 
+using consted_iter_t = std::conditional_t<B, typename T::const_iter_type, typename T::iter_type>;
 } // namespace detail
 
 template <typename Cont, typename I, typename Policy>

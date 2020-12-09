@@ -8,10 +8,6 @@ set(TARGET_NAME levk-engine)
 set(LEVK_VERSION 0.0.1.0 CACHE STRING "Application Version" FORCE)
 project(LittleEngineVk VERSION ${LEVK_VERSION})
 
-if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
-	message(FATAL_ERROR "Unsupported architecture, must be 64-bit")
-endif()
-
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 	message(FATAL_ERROR "In-source builds are not supported; choose a subdirectory like `out/*` or `build/*` for CMake output")
 endif()
@@ -21,28 +17,53 @@ include(FetchContent)
 include(cmake/platform.cmake)
 include(cmake/utils.cmake)
 
+if(NOT PLATFORM STREQUAL Android AND NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+	message(WARNING "Unsupported architecture, must be 64-bit")
+endif()
+
 # Options
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
-option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
-option(LEVK_BUILD_DEMO "Build demo" ON)
-if("$CMAKE_BUILD_TYPE" STREQUAL "Debug")
-	option(LEVK_EDITOR "Enable Editor" ON)
+if(${PLATFORM} STREQUAL Android)
+	option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" ON)
+	set(LEVK_EDITOR OFF CACHE BOOL "" FORCE)
+	set(LEVK_USE_GLFW OFF CACHE BOOL "" FORCE)
+	set(LEVK_USE_IMGUI OFF CACHE BOOL "" FORCE)
 else()
-	option(LEVK_EDITOR "Enable Editor" OFF)
+	option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
+	option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" OFF)
+	if("$CMAKE_BUILD_TYPE" STREQUAL "Debug")
+		option(LEVK_EDITOR "Enable Editor" ON)
+	else()
+		option(LEVK_EDITOR "Enable Editor" OFF)
+	endif()
 endif()
 if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
 	set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
 endif()
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
 	option(LEVK_BUILD_TESTS "Build Tests" ON)
+	option(LEVK_BUILD_DEMO "Build demo" ON)
 else()
 	option(LEVK_BUILD_TESTS "Build Tests" OFF)
+	option(LEVK_BUILD_DEMO "Build demo" OFF)
+endif()
+
+if(PLATFORM STREQUAL Android)
+	if(LEVK_EDITOR OR LEVK_USE_GLFW OR LEVK_USE_IMGUI)
+		message(FATAL_ERROR "Cannot build Android with LEVK_EDITOR or LEVK_USE_GLFW or LEVK_USE_IMGUI!")
+	endif()
+	if(NOT LEVK_VULKAN_DYNAMIC)
+		message(FATAL_ERROR "Cannot build Android without LEVK_VULKAN_DYNAMIC!")
+	endif()
 endif()
 if(LEVK_EDITOR)
-	if(NOT LEVK_USE_GLFW)
-		message(FATAL_ERROR "Cannot build Editor without GLFW and ImGui!")
-	endif()
 	set(LEVK_USE_IMGUI ON CACHE BOOL "" FORCE)
+	if(NOT LEVK_USE_GLFW OR NOT LEVK_USE_IMGUI)
+		message(FATAL_ERROR "Cannot build Editor without LEVK_USE_GLFW and LEVK_USE_IMGUI!")
+	endif()
+endif()
+if(LEVK_USE_IMGUI AND LEVK_VULKAN_DYNAMIC)
+	message(FATAL_ERROR "Cannot have both LEVK_USE_IMGUI and LEVK_VULKAN_DYNAMIC set!")
 endif()
 
 # Git operations
@@ -62,7 +83,6 @@ endif()
 
 # Constants
 set(LEVK_GIT_COMMIT_HASH ${GIT_COMMIT_HASH} CACHE STRING "git commit hash" FORCE)
-set(EXT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE INTERNAL "External dependencies root" FORCE)
 
 # Interface
 include(cmake/interface.cmake)
@@ -77,6 +97,9 @@ if(CI_BUILD)
 	message(STATUS "== CI Build ==")
 endif()
 
+# Vulkan
+add_subdirectory(ext/vulkan_hpp)
+
 # External
 add_subdirectory(ext/physfs)
 add_subdirectory(ext/glm)
@@ -86,7 +109,7 @@ if(LEVK_USE_GLFW)
 	set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
 	add_subdirectory(ext/glfw)
-	if(WIN64_CLANG)
+	if(WINDOWS_CLANG)
 		target_compile_options(glfw PRIVATE -Wno-everything)
 	endif()
 endif()
@@ -108,50 +131,6 @@ if(NOT LEVK_LIBRARY_TYPE STREQUAL STATIC AND LEVK_USE_PCH)
 	set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
 endif()
 
-# Vulkan
-find_package(Vulkan)
-if(NOT Vulkan_FOUND)
-	message(FATAL_ERROR 
-"Vulkan SDK not found! LittleEngineVk requires Vulkan ICD loader, headers, and validation layers, and SPIR-V cross!
-Note: for custom SDK locations, define `VULKAN_SDK` and source `vk-setup-env.sh` into this shell (and runtime environment).
-Make sure to delete CMakeCache.txt before re-configuring!"
-	)
-else()
-	set(SPIRV_CROSS_CLI OFF)
-	set(SPIRV_CROSS_ENABLE_CPP OFF)
-	set(SPIRV_CROSS_ENABLE_C_API OFF)
-	set(SPIRV_CROSS_ENABLE_GLSL ON)
-	set(SPIRV_CROSS_ENABLE_HLSL OFF)
-	set(SPIRV_CROSS_ENABLE_MSL OFF)
-	set(SPIRV_CROSS_ENABLE_REFLECT OFF)
-	set(SPIRV_CROSS_ENABLE_TESTS OFF)
-	set(SPIRV_CROSS_ENABLE_UTIL OFF)
-	set(SPIRV_CROSS_SHARED OFF)
-	set(SPIRV_CROSS_STATIC ON)
-	set(SPIRV-Cross_SOURCE "${Vulkan_INCLUDE_DIRS}/../../source/SPIRV-Cross")
-	if(EXISTS "${SPIRV-Cross_SOURCE}/CMakeLists.txt")
-		add_subdirectory("${SPIRV-Cross_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/ext/SPIRV-Cross")
-	else()
-		FetchContent_Declare(
-			spirv-cross
-			GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
-			GIT_TAG 2020-09-17
-		)
-		message(STATUS "== Fetching SPIR-V Cross")
-		FetchContent_MakeAvailable(spirv-cross)
-		set(SPIRV-Cross_SOURCE "${spirv-cross_SOURCE_DIR}")
-	endif()
-	message(STATUS "== Vulkan ==\n\tHeaders : ${Vulkan_INCLUDE_DIRS}\n\tLibraries : ${Vulkan_LIBRARIES}\n\tSPIR-V Cross : ${SPIRV-Cross_SOURCE}")
-endif()
-
-# VMA
-target_link_libraries(vma PRIVATE ${Vulkan_LIBRARIES})
-target_include_directories(vma PRIVATE ${Vulkan_INCLUDE_DIRS})
-
-if(LEVK_USE_IMGUI)
-	target_include_directories(imgui PRIVATE ${Vulkan_INCLUDE_DIRS})
-endif()
-
 # Libraries
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
 add_subdirectory(libs/dlog)
@@ -160,7 +139,7 @@ add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
 
-# Library
+# Engine
 set(LEVK_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/build_version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
 file(GLOB_RECURSE LEVK_INCLUDES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.?pp")
@@ -172,8 +151,6 @@ target_include_directories(${TARGET_NAME} SYSTEM
 	INTERFACE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_BINARY_DIR}/src/generated"
-	PRIVATE
-		"${Vulkan_INCLUDE_DIRS}"
 )
 target_include_directories(${TARGET_NAME}
 	PRIVATE
@@ -188,7 +165,6 @@ target_link_libraries(${TARGET_NAME}
 		djson
 	PRIVATE
 		levk-interface
-		${Vulkan_LIBRARIES}
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 		$<$<BOOL:${LEVK_USE_IMGUI}>:imgui>
@@ -200,11 +176,11 @@ if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 	target_precompile_headers(${TARGET_NAME} 
 		PUBLIC
 			<deque>
-			<filesystem>
 			<string>
 			<unordered_map>
 			<vector>
 		PRIVATE
+			<vulkan/vulkan.hpp>
 			<vk_mem_alloc.h>
 			<stb/stb_image.h>
 			<tinyobjloader/tiny_obj_loader.h>

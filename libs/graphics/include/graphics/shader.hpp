@@ -1,5 +1,7 @@
 #pragma once
-#include <graphics/types.hpp>
+#include <core/ref.hpp>
+#include <core/std_types.hpp>
+#include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
 class Device;

@@ -2,7 +2,7 @@
 #include <memory>
 #include <core/log.hpp>
 #include <core/span.hpp>
-#include <graphics/types.hpp>
+#include <graphics/context/physical_device.hpp>
 
 namespace le::graphics {
 class Instance final {
@@ -15,8 +15,15 @@ class Instance final {
 	Instance& operator=(Instance&&);
 	~Instance();
 
-	std::vector<AvailableDevice> availableDevices() const;
+	std::vector<PhysicalDevice> availableDevices(Span<std::string_view> requiredExtensions) const;
+	vk::Instance instance() const noexcept {
+		return m_instance;
+	}
+	vk::DispatchLoaderDynamic loader() const {
+		return m_loader;
+	}
 
+  private:
 	struct {
 		std::vector<char const*> extensions;
 		std::vector<char const*> layers;
@@ -26,8 +33,9 @@ class Instance final {
 	vk::DispatchLoaderDynamic m_loader;
 	vk::DebugUtilsMessengerEXT m_messenger;
 
-  private:
 	void destroy();
+
+	friend class Device;
 };
 
 struct Instance::CreateInfo {

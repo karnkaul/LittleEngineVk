@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <sstream>
 #include <core/io/path.hpp>
+#include <core/os.hpp>
 
 namespace le::io {
 namespace stdfs = std::filesystem;
@@ -125,17 +126,18 @@ Path& Path::concat(Path const& rhs) {
 		m_units.pop_back();
 	}
 	std::string ext;
-	if (rhs.m_units.back()[0] == '.') {
-		ext = std::move(rhs.m_units.back());
+	auto units = rhs.m_units;
+	if (units.back()[0] == '.') {
+		ext = std::move(units.back());
 	}
-	auto squash = rhs.m_units.front();
+	auto squash = units.front();
 	while (!squash.empty() && squash[0] == '/') {
 		squash = squash.substr(1);
 	}
 	m_units.back() += std::move(squash);
-	std::size_t const end = ext.empty() ? rhs.m_units.size() : rhs.m_units.size() - 1;
+	std::size_t const end = ext.empty() ? units.size() : units.size() - 1;
 	for (std::size_t idx = 1; idx < end; ++idx) {
-		std::string const& unit = rhs.m_units[idx];
+		std::string const& unit = units[idx];
 		if (unit[0] == '.') {
 			m_units.back() += unit;
 		} else {
@@ -179,19 +181,35 @@ std::string Path::to_string(char separator) const {
 }
 
 Path absolute(Path const& path) {
+#if defined(LEVK_OS_ANDROID)
+	return path;
+#else
 	return Path(stdfs::absolute(path.generic_string()).generic_string());
+#endif
 }
 
 Path current_path() {
+#if defined(LEVK_OS_ANDROID)
+	return Path();
+#else
 	return Path(stdfs::current_path().generic_string());
+#endif
 }
 
 bool is_regular_file(Path const& path) {
+#if defined(LEVK_OS_ANDROID)
+	return !path.empty();
+#else
 	return stdfs::is_regular_file(path.generic_string());
+#endif
 }
 
 bool is_directory(Path const& path) {
+#if defined(LEVK_OS_ANDROID)
+	return !path.empty();
+#else
 	return stdfs::is_directory(path.generic_string());
+#endif
 }
 
 bool operator==(Path const& lhs, Path const& rhs) {

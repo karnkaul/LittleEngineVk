@@ -3,9 +3,14 @@
 #include <window/instance.hpp>
 
 namespace le::window {
-class DesktopInstance final : public Instance<DesktopInstance> {
+enum class Style { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };
+constexpr static EnumArray<Style> const styleNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
+
+class DesktopInstance final : public IInstance {
   public:
-	DesktopInstance() : Instance(false) {
+	struct CreateInfo;
+
+	DesktopInstance() : IInstance(false) {
 	}
 	explicit DesktopInstance(CreateInfo const& info);
 	DesktopInstance(DesktopInstance&&) = default;
@@ -13,6 +18,14 @@ class DesktopInstance final : public Instance<DesktopInstance> {
 	~DesktopInstance();
 
 	// ISurface
+	Span<std::string_view> vkInstanceExtensions() const override;
+	bool vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const override;
+	ErasedRef nativePtr() const noexcept override;
+
+	// IInstance
+	EventQueue pollEvents() override;
+
+	// Desktop
 	glm::ivec2 windowSize() const noexcept;
 	glm::ivec2 framebufferSize() const noexcept;
 	CursorType cursorType() const noexcept;
@@ -24,16 +37,8 @@ class DesktopInstance final : public Instance<DesktopInstance> {
 	void cursorPosition(glm::vec2 position);
 
 	void show();
-	ErasedRef nativePtr() const noexcept;
-
-	Span<std::string_view> vkInstanceExtensions() const;
-	bool vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const;
-
-	// Instance
-	EventQueue pollEvents();
 	void close();
 
-	// Desktop
 	bool importControllerDB(std::string_view db) const;
 	std::vector<Gamepad> activeGamepads() const;
 	Joystick joyState(s32 id) const;
@@ -42,6 +47,22 @@ class DesktopInstance final : public Instance<DesktopInstance> {
 	std::size_t joystickAxesCount(s32 id) const;
 	std::size_t joysticKButtonsCount(s32 id) const;
 	std::string_view toString(s32 key) const;
+};
+
+struct DesktopInstance::CreateInfo {
+	struct {
+		std::string title;
+		glm::ivec2 size = {32, 32};
+		glm::ivec2 centreOffset = {};
+	} config;
+
+	struct {
+		LibLogger::Verbosity verbosity = LibLogger::Verbosity::eLibUser;
+		Style style = Style::eDecoratedWindow;
+		u8 screenID = 0;
+		bool bCentreCursor = true;
+		bool bAutoShow = false;
+	} options;
 };
 } // namespace le::window
 #endif

@@ -1,5 +1,6 @@
 #pragma once
 #include <stdexcept>
+#include <type_traits>
 #include <typeinfo>
 
 namespace le {
@@ -9,7 +10,7 @@ struct ErasedRef final {
 
 	constexpr ErasedRef() = default;
 
-	template <typename T>
+	template <typename T, typename = std::enable_if_t<!std::is_same_v<T, ErasedRef>>>
 	constexpr ErasedRef(T& out_t, tag<T> = tag<T>()) noexcept;
 
 	template <typename T>
@@ -25,7 +26,7 @@ struct ErasedRef final {
 
 // impl
 
-template <typename T>
+template <typename T, typename>
 constexpr ErasedRef::ErasedRef(T& out_t, tag<T>) noexcept : pPtr(&out_t), hash(typeid(T).hash_code()) {
 }
 template <typename T>

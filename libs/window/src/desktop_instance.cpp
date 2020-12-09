@@ -24,7 +24,11 @@ struct {
 	bool bInit = false;
 } g_state;
 
-constexpr std::string_view s_name = "Window";
+LibLogger* g_log = nullptr;
+
+constexpr std::string_view g_name = "Window";
+
+using lvl = dl::level;
 
 Cursor const& cursor(CursorType type) {
 	auto& cursor = g_state.cursors.loaded[(std::size_t)type];
@@ -65,16 +69,17 @@ glm::tvec2<T> getGlfwValue(F func) {
 	return glm::tvec2<T>((T)0, (T)0);
 }
 
-bool init() {
-	glfwSetErrorCallback([](s32 code, char const* szDesc) { logE("[{}] GLFW Error! [{}]: {}", s_name, code, szDesc); });
+bool init(LibLogger& logger) {
+	g_log = &logger;
+	glfwSetErrorCallback([](s32 code, char const* szDesc) { g_log->log(lvl::error, 1, "[{}] GLFW Error! [{}]: {}", g_name, code, szDesc); });
 	if (glfwInit() != GLFW_TRUE) {
-		logE("[{}] Could not initialise GLFW!", s_name);
+		g_log->log(lvl::error, 2, "[{}] Could not initialise GLFW!", g_name);
 		return false;
 	} else if (glfwVulkanSupported() != GLFW_TRUE) {
-		logE("[{}] Vulkan not supported!", s_name);
+		g_log->log(lvl::error, 2, "[{}] Vulkan not supported!", g_name);
 		return false;
 	} else {
-		logD("[{}] GLFW initialised successfully", s_name);
+		g_log->log(lvl::info, 1, "[{}] GLFW initialised successfully", g_name);
 	}
 	return g_state.bInit = true;
 }
@@ -87,7 +92,7 @@ void deinit() {
 	}
 	glfwTerminate();
 	g_state = {};
-	logD("[{}] GLFW terminated", s_name);
+	g_log->log(lvl::info, 1, "[{}] GLFW terminated", g_name);
 }
 } // namespace
 
@@ -107,7 +112,7 @@ void onFocus(GLFWwindow* pGLFWwindow, s32 entered) {
 		event.type = Event::Type::eFocus;
 		event.payload.bSet = entered != 0;
 		g_state.events.m_events.push_back(event);
-		logD("[{}] Window focus {}", s_name, (entered != 0) ? "gained" : "lost");
+		g_log->log(lvl::info, 1, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
 	}
 }
 
@@ -117,7 +122,7 @@ void onWindowResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), false};
 		g_state.events.m_events.push_back(event);
-		logD("[{}] Window resized: [{}x{}]", s_name, width, height);
+		g_log->log(lvl::info, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
 	}
 }
 
@@ -127,7 +132,7 @@ void onFramebufferResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), true};
 		g_state.events.m_events.push_back(event);
-		logD("[{}] Framebuffer resized: [{}x{}]", s_name, width, height);
+		g_log->log(lvl::info, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
 	}
 }
 
@@ -137,7 +142,7 @@ void onIconify(GLFWwindow* pWindow, int iconified) {
 		event.type = Event::Type::eSuspend;
 		event.payload.bSet = iconified != 0;
 		g_state.events.m_events.push_back(event);
-		logD("[{}] Window {}", s_name, iconified != 0 ? "suspended" : "resumed");
+		g_log->log(lvl::info, 1, "[{}] Window {}", g_name, iconified != 0 ? "suspended" : "resumed");
 	}
 }
 
@@ -146,7 +151,7 @@ void onClose(GLFWwindow* pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eClose;
 		g_state.events.m_events.push_back(event);
-		logD("[{}] Window closed", s_name);
+		g_log->log(lvl::info, 1, "[{}] Window closed", g_name);
 	}
 }
 
@@ -212,22 +217,23 @@ void onScroll(GLFWwindow* pGLFWwindow, f64 dx, f64 dy) {
 }
 } // namespace
 
-DesktopInstance::DesktopInstance(CreateInfo const& info) : Instance(true) {
+DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	if (g_state.bInit || g_state.pWindow) {
 		throw std::runtime_error("Duplicate GLFW instance");
 	}
-	if (!init()) {
+	if (!init(m_log)) {
 		throw std::runtime_error("Fatal errorin creating Window Instance");
 	}
+	m_log.minVerbosity = info.options.verbosity;
 	s32 screenCount;
 	GLFWmonitor* const* ppScreens = glfwGetMonitors(&screenCount);
 	if (screenCount < 1) {
-		logE("[{}] Failed to detect screens!", s_name);
+		m_log.log(lvl::error, 2, "[{}] Failed to detect screens!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
 	GLFWvidmode const* mode = glfwGetVideoMode(ppScreens[0]);
 	if (!mode) {
-		logE("[{}] Failed to detect video mode!", s_name);
+		m_log.log(lvl::error, 2, "[{}] Failed to detect video mode!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
 	std::size_t const screenIdx = info.options.screenID < screenCount ? (std::size_t)info.options.screenID : 0;
@@ -239,7 +245,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : Instance(true) {
 	default:
 	case Style::eDecoratedWindow: {
 		if (mode->width < width || mode->height < height) {
-			logE("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", s_name, width, height, mode->width, mode->height);
+			m_log.log(lvl::error, 2, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		pTarget = nullptr;
@@ -247,7 +253,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : Instance(true) {
 	}
 	case Style::eBorderlessWindow: {
 		if (mode->width < width || mode->height < height) {
-			logE("[{}] Window size [{}x{}] too large for default screen! [{}x{}]", s_name, width, height, mode->width, mode->height);
+			m_log.log(lvl::error, 2, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		bDecorated = false;
@@ -294,6 +300,44 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : Instance(true) {
 
 DesktopInstance::~DesktopInstance() {
 	deinit();
+}
+
+Span<std::string_view> DesktopInstance::vkInstanceExtensions() const {
+	static std::vector<std::string_view> ret;
+	if (ret.empty()) {
+		u32 glfwExtCount;
+		char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+		ret.reserve((std::size_t)glfwExtCount);
+		for (u32 i = 0; i < glfwExtCount; ++i) {
+			ret.push_back(glfwExtensions[i]);
+		}
+	}
+	return ret;
+}
+
+bool DesktopInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const {
+	if (g_state.bInit && g_state.pWindow && vkInstance.contains<vk::Instance>() && out_vkSurface.contains<vk::SurfaceKHR>()) {
+		auto& out_surface = out_vkSurface.get<vk::SurfaceKHR>();
+		auto const& instance = vkInstance.get<vk::Instance>();
+		VkSurfaceKHR surface;
+		auto result = glfwCreateWindowSurface(instance, g_state.pWindow, nullptr, &surface);
+		if (result == VK_SUCCESS) {
+			out_surface = surface;
+			return true;
+		}
+	}
+	return false;
+}
+
+ErasedRef DesktopInstance::nativePtr() const noexcept {
+	return g_state.bInit && g_state.pWindow ? g_state.pWindow : ErasedRef();
+}
+
+EventQueue DesktopInstance::pollEvents() {
+	if (g_state.bInit && g_state.pWindow) {
+		glfwPollEvents();
+	}
+	return std::move(g_state.events);
 }
 
 glm::ivec2 DesktopInstance::windowSize() const noexcept {
@@ -370,44 +414,6 @@ void DesktopInstance::show() {
 	if (g_state.bInit && g_state.pWindow) {
 		glfwShowWindow(g_state.pWindow);
 	}
-}
-
-ErasedRef DesktopInstance::nativePtr() const noexcept {
-	return g_state.bInit && g_state.pWindow ? g_state.pWindow : ErasedRef();
-}
-
-Span<std::string_view> DesktopInstance::vkInstanceExtensions() const {
-	static std::vector<std::string_view> ret;
-	if (ret.empty()) {
-		u32 glfwExtCount;
-		char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
-		ret.reserve((std::size_t)glfwExtCount);
-		for (u32 i = 0; i < glfwExtCount; ++i) {
-			ret.push_back(glfwExtensions[i]);
-		}
-	}
-	return ret;
-}
-
-bool DesktopInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const {
-	if (g_state.bInit && g_state.pWindow && vkInstance.contains<vk::Instance>() && out_vkSurface.contains<vk::SurfaceKHR>()) {
-		auto& out_surface = out_vkSurface.get<vk::SurfaceKHR>();
-		auto const& instance = vkInstance.get<vk::Instance>();
-		VkSurfaceKHR surface;
-		auto result = glfwCreateWindowSurface(instance, g_state.pWindow, nullptr, &surface);
-		if (result == VK_SUCCESS) {
-			out_surface = surface;
-			return true;
-		}
-	}
-	return false;
-}
-
-EventQueue DesktopInstance::pollEvents() {
-	if (g_state.bInit && g_state.pWindow) {
-		glfwPollEvents();
-	}
-	return std::move(g_state.events);
 }
 
 void DesktopInstance::close() {

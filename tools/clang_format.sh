@@ -7,6 +7,7 @@
 CLANG_FORMAT=clang-format$ext
 
 EXCLUDE0=*/ext/*
+EXCLUDE1=*/.cxx/*
 BUILD=*out/*
 PATTERN0="*.hpp"
 PATTERN1="*.cpp"
@@ -18,7 +19,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./os.sh
 cd "$THISDIR"
 
-FILES=$(find . -not -path "$EXCLUDE0" -not -path "$BUILD" \( -name $PATTERN0 -o -name $PATTERN1 \))
+FILES=$(find . -not -path "$EXCLUDE0" -not -path "$BUILD" -not -path "$EXCLUDE1" \( -name $PATTERN0 -o -name $PATTERN1 \))
 COUNT=$(echo -e "$FILES" | wc -l)
 echo -e "\nFiles:\n\n$FILES\n"
 

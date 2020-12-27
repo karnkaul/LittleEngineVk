@@ -44,7 +44,7 @@ void release(Texture::RawImage rawImage);
 
 using CubeImageIDs = std::array<std::string_view, 6>;
 constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};
-std::array<bytearray, 6> loadCubemap(io::Reader& reader, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageIDs const& ids = cubeImageIDs);
+std::array<bytearray, 6> loadCubemap(io::Reader const& reader, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageIDs const& ids = cubeImageIDs);
 
 std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface);
 } // namespace utils

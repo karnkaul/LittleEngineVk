@@ -430,29 +430,15 @@ class Eng {
 
 class App {
   public:
-	App(Eng& eng, [[maybe_unused]] ErasedRef androidApp) : m_eng(eng) {
-#if !defined(LEVK_DESKTOP)
-		io::AAssetReader reader(androidApp);
-		std::optional<io::Path> testV = "shaders/test.vert-d.spv";
-		std::optional<io::Path> uiV = "shaders/ui.vert-d.spv";
-		std::optional<io::Path> uiF = "shaders/ui.frag-d.spv";
-		std::optional<io::Path> testF = "shaders/test.frag-d.spv";
-		std::optional<io::Path> testFTex = "shaders/test_tex.frag-d.spv";
-		std::optional<io::Path> skyV = "shaders/skybox.vert-d.spv";
-		std::optional<io::Path> skyF = "shaders/skybox.frag-d.spv";
-#else
-		io::FileReader reader;
-		io::Path const prefix = os::dirPath(os::Dir::eWorking) / "data";
-		reader.mount(prefix);
-		reader.mount(os::dirPath(os::Dir::eWorking) / "demo/data");
-		auto testV = graphics::utils::compileGlsl("shaders/test.vert", {}, prefix);
-		auto uiV = graphics::utils::compileGlsl("shaders/ui.vert", {}, prefix);
-		auto uiF = graphics::utils::compileGlsl("shaders/ui.frag", {}, prefix);
-		auto testF = graphics::utils::compileGlsl("shaders/test.frag", {}, prefix);
-		auto testFTex = graphics::utils::compileGlsl("shaders/test_tex.frag", {}, prefix);
-		auto skyV = graphics::utils::compileGlsl("shaders/skybox.vert", {}, prefix);
-		auto skyF = graphics::utils::compileGlsl("shaders/skybox.frag", {}, prefix);
-#endif
+	App(Eng& eng, io::Reader const& reader, [[maybe_unused]] ErasedRef androidApp) : m_eng(eng) {
+		io::Path testV = "shaders/test.vert-d.spv";
+		io::Path uiV = "shaders/ui.vert-d.spv";
+		io::Path uiF = "shaders/ui.frag-d.spv";
+		io::Path testF = "shaders/test.frag-d.spv";
+		io::Path testFTex = "shaders/test_tex.frag-d.spv";
+		io::Path skyV = "shaders/skybox.vert-d.spv";
+		io::Path skyF = "shaders/skybox.frag-d.spv";
+
 		auto tex0 = reader.bytes("textures/container2.png");
 		auto const cubemap = graphics::utils::loadCubemap(reader, "skyboxes/sky_dusk");
 		graphics::Geometry gcube = graphics::makeCube(0.5f);
@@ -484,10 +470,10 @@ class App {
 		m_data.mesh["skycube"]->construct(Span(skyCubeV), skyCubeI);
 
 		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", m_data.samp["samp"]->sampler(), eng.m_context.textureFormat());
-		graphics::Shader test(eng.m_boot.device, {*reader.bytes(*testV), *reader.bytes(*testF)});
-		graphics::Shader testTex(eng.m_boot.device, {*reader.bytes(*testV), *reader.bytes(*testFTex)});
-		graphics::Shader skybox(eng.m_boot.device, {*reader.bytes(*skyV), *reader.bytes(*skyF)});
-		graphics::Shader ui(eng.m_boot.device, {*reader.bytes(*uiV), *reader.bytes(*uiF)});
+		graphics::Shader test(eng.m_boot.device, {*reader.bytes(testV), *reader.bytes(testF)});
+		graphics::Shader testTex(eng.m_boot.device, {*reader.bytes(testV), *reader.bytes(testFTex)});
+		graphics::Shader skybox(eng.m_boot.device, {*reader.bytes(skyV), *reader.bytes(skyF)});
+		graphics::Shader ui(eng.m_boot.device, {*reader.bytes(uiV), *reader.bytes(uiF)});
 		auto pipe = eng.m_context.makePipeline("test", eng.m_context.pipeInfo(test));
 		auto pipeTex = eng.m_context.makePipeline("test_tex", eng.m_context.pipeInfo(testTex, graphics::PFlags::inverse()));
 		auto pipeUI = eng.m_context.makePipeline("ui", eng.m_context.pipeInfo(ui, graphics::PFlags::inverse()));
@@ -603,7 +589,7 @@ class App {
 	Ref<Eng> m_eng;
 };
 
-bool run(CreateInfo const& info) {
+bool run(CreateInfo const& info, io::Reader const& reader) {
 	os::args({info.args.argc, info.args.argv});
 	if (os::halt(g_cmdArgs)) {
 		return 0;
@@ -639,7 +625,7 @@ bool run(CreateInfo const& info) {
 			if (flags.test(Flag::eInit)) {
 				app.reset();
 				eng.emplace(winst, bootInfo, winst.framebufferSize());
-				app.emplace(*eng, info.androidApp);
+				app.emplace(*eng, reader, info.androidApp);
 			}
 			if (flags.test(Flag::eTerm)) {
 				app.reset();

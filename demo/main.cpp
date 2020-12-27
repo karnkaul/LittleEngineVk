@@ -2,12 +2,25 @@
 #include <level.hpp>
 
 #include <demo.hpp>
+#include <graphics/utils/utils.hpp>
 
 int main(int argc, char** argv) {
 	{
+		using namespace le;
+		io::FileReader reader;
+		io::Path const prefix = os::dirPath(os::Dir::eWorking) / "data";
+		reader.mount(prefix);
+		reader.mount(os::dirPath(os::Dir::eWorking) / "demo/data");
+		auto testV = graphics::utils::compileGlsl("shaders/test.vert", {}, prefix);
+		auto uiV = graphics::utils::compileGlsl("shaders/ui.vert", {}, prefix);
+		auto uiF = graphics::utils::compileGlsl("shaders/ui.frag", {}, prefix);
+		auto testF = graphics::utils::compileGlsl("shaders/test.frag", {}, prefix);
+		auto testFTex = graphics::utils::compileGlsl("shaders/test_tex.frag", {}, prefix);
+		auto skyV = graphics::utils::compileGlsl("shaders/skybox.vert", {}, prefix);
+		auto skyF = graphics::utils::compileGlsl("shaders/skybox.frag", {}, prefix);
 		le::demo::CreateInfo info;
 		info.args = {argc, argv};
-		if (!le::demo::run(info)) {
+		if (!le::demo::run(info, reader)) {
 			return 1;
 		}
 	}

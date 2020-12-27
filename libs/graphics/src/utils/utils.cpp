@@ -216,7 +216,7 @@ void utils::release(Texture::RawImage rawImage) {
 	}
 }
 
-std::array<bytearray, 6> utils::loadCubemap(io::Reader& reader, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
+std::array<bytearray, 6> utils::loadCubemap(io::Reader const& reader, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
 	std::array<bytearray, 6> ret;
 	std::size_t idx = 0;
 	for (std::string_view id : ids) {

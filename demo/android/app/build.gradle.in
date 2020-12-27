@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.2"
+
+    defaultConfig {
+        applicationId "com.levk.demo"
+        minSdkVersion 28
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                arguments "ANDROID_STL=c++_shared"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            version "@CMAKE_VERSION@"
+            path file('src/main/cpp/CMakeLists.txt')
+        }
+    }
+    splits {
+        abi {
+            enable true
+            reset()
+            include @ANDROID_ABI@
+            universalApk true
+        }
+    }
+    sourceSets {
+        main {
+            assets {
+                srcDirs = @ANDROID_DATA@
+            }
+        }
+        debug {
+            jniLibs {
+                srcDir @ANDROID_VALIDATION@
+            }
+        }
+    }
+}
+
+dependencies {
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.core:core-ktx:1.3.2'
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'com.google.android.material:material:1.2.1'
+}

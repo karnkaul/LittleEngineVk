@@ -1,4 +1,4 @@
-#if defined(LEVK_USE_GLFW)
+#if defined(LEVK_DESKTOP)
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -296,6 +296,9 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	if (info.options.bAutoShow) {
 		show();
 	}
+	Event event;
+	event.type = Event::Type::eInit;
+	g_state.events.m_events.push_back(event);
 }
 
 DesktopInstance::~DesktopInstance() {
@@ -410,7 +413,7 @@ void DesktopInstance::cursorPosition(glm::vec2 position) {
 	}
 }
 
-void DesktopInstance::show() {
+void DesktopInstance::show() const {
 	if (g_state.bInit && g_state.pWindow) {
 		glfwShowWindow(g_state.pWindow);
 	}

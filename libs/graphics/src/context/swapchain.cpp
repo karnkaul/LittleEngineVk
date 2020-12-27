@@ -22,7 +22,7 @@ struct SwapchainCreateInfo {
 		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
 		std::vector<vk::SurfaceFormatKHR> colourFormats = pd.getSurfaceFormatsKHR(surface);
 		availableModes = pd.getSurfacePresentModesKHR(surface);
-		std::map<u32, vk::SurfaceFormatKHR> ranked;
+		std::map<u32, std::vector<vk::SurfaceFormatKHR>> ranked;
 		for (auto const& available : colourFormats) {
 			u32 spaceRank = 0;
 			for (auto desired : info.desired.colourSpaces) {
@@ -38,9 +38,9 @@ struct SwapchainCreateInfo {
 				}
 				++formatRank;
 			}
-			ranked.emplace(spaceRank + formatRank, available);
+			ranked[spaceRank + formatRank].push_back(available);
 		}
-		colourFormat = ranked.begin()->second;
+		colourFormat = ranked.begin()->second.front();
 		for (auto format : info.desired.depthFormats) {
 			vk::FormatProperties const props = pd.getFormatProperties(format);
 			static constexpr auto features = vk::FormatFeatureFlagBits::eDepthStencilAttachment;
@@ -241,7 +241,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		}
 		m_storage.current = info.current;
 		m_storage.swapchain = m_device.get().device().createSwapchainKHR(createInfo);
-		m_metadata.formats.colour = info.colourFormat.format;
+		m_metadata.formats.colour = info.colourFormat;
 		m_metadata.formats.depth = info.depthFormat;
 		if (!m_metadata.original) {
 			m_metadata.original = info.current;
@@ -254,13 +254,11 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		Image::CreateInfo depthImageInfo;
 		depthImageInfo.createInfo.format = info.depthFormat;
 		depthImageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-#if defined(LEVK_ANDROID)
-		depthImageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;
-#endif
 		depthImageInfo.createInfo.extent = vk::Extent3D(m_storage.current.extent, 1);
 		depthImageInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
 		depthImageInfo.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-#if defined(LEVK_ANDROID)
+#if !defined(LEVK_DESKTOP)
+		depthImageInfo.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
 		depthImageInfo.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
 #endif
 		depthImageInfo.createInfo.samples = vk::SampleCountFlagBits::e1;
@@ -295,7 +293,7 @@ void Swapchain::makeRenderPass() {
 	std::array<vk::AttachmentDescription, 2> attachments;
 	vk::AttachmentReference colourAttachment, depthAttachment;
 	{
-		attachments[0].format = m_metadata.formats.colour;
+		attachments[0].format = m_metadata.formats.colour.format;
 		attachments[0].samples = vk::SampleCountFlagBits::e1;
 		attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
 		attachments[0].storeOp = vk::AttachmentStoreOp::eStore;

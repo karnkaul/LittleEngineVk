@@ -1,4 +1,4 @@
-#if defined(__ANDROID__)
+#if defined(LEVK_ANDROID)
 #include <android/window.h>
 #include <android_native_app_glue.h>
 #include <core/log.hpp>
@@ -83,6 +83,12 @@ s32 handleInput(android_app* pApp, AInputEvent* event) {
 					cursor.id = AMotionEvent_getPointerId(event, index);
 					ev.type = Event::Type::eCursor;
 					ev.payload.cursor = cursor;
+					g_state.events.m_events.push_back(ev);
+					Event::Input input;
+					input.key = Key::eMouseButton1;
+					input.action = Action::ePress;
+					ev.type = Event::Type::eInput;
+					ev.payload.input = input;
 					g_state.events.m_events.push_back(ev);
 					consumed = true;
 					break;

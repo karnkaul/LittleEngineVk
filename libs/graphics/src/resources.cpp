@@ -201,6 +201,7 @@ Image::Image(Memory& memory, CreateInfo const& info) : Resource(memory) {
 	imageInfo.pQueueFamilyIndices = indices.data();
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = info.vmaUsage;
+	allocInfo.preferredFlags = static_cast<VkMemoryPropertyFlags>(info.preferred);
 	auto const vkImageInfo = static_cast<VkImageCreateInfo>(imageInfo);
 	VkImage vkImage;
 	if (vmaCreateImage(memory.m_allocator, &vkImageInfo, &allocInfo, &vkImage, &m_data.handle, nullptr) != VK_SUCCESS) {

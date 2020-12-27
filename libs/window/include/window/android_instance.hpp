@@ -1,12 +1,10 @@
 #pragma once
-#if defined(__ANDROID__)
+#if defined(LEVK_ANDROID)
 #include <window/instance.hpp>
 
 namespace le::window {
 class AndroidInstance final : public IInstance {
   public:
-	struct CreateInfo;
-
 	AndroidInstance() : IInstance(false) {
 	}
 	explicit AndroidInstance(CreateInfo const& info);
@@ -21,15 +19,6 @@ class AndroidInstance final : public IInstance {
 
 	// Instance
 	EventQueue pollEvents() override;
-};
-
-struct AndroidInstance::CreateInfo {
-	struct {
-		ErasedRef androidApp;
-	} config;
-	struct {
-		LibLogger::Verbosity verbosity = LibLogger::Verbosity::eEndUser;
-	} options;
 };
 } // namespace le::window
 #endif

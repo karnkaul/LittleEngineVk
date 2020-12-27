@@ -3,9 +3,9 @@
 #include <window/desktop_instance.hpp>
 
 namespace le::window {
-#if defined(LEVK_USE_GLFW)
+#if defined(LEVK_DESKTOP)
 using Instance = DesktopInstance;
-#elif defined(__ANDROID__)
+#elif defined(LEVK_ANDROID)
 using Instance = AndroidInstance;
 #else
 static_assert(false, "Unsupported platform");

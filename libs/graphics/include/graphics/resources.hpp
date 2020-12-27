@@ -182,6 +182,7 @@ struct ResourceCreateInfo {
 	QShare share;
 	QFlags queueFlags = QType::eGraphics | QType::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	vk::MemoryPropertyFlags preferred;
 };
 
 struct Buffer::CreateInfo : ResourceCreateInfo {

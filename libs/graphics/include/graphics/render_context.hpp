@@ -74,7 +74,8 @@ class RenderContext : NoCopy {
 	bool destroyPipeline(Hash id);
 	bool hasPipeline(Hash id) const noexcept;
 
-	vk::Format colourFormat() const noexcept;
+	vk::SurfaceFormatKHR swapchainFormat() const noexcept;
+	vk::Format textureFormat() const noexcept;
 
 	f32 aspectRatio() const noexcept;
 	glm::mat4 preRotate() const noexcept;
@@ -167,7 +168,10 @@ inline glm::ivec2 RenderContext::extent() const noexcept {
 	vk::Extent2D const ext = m_swapchain.get().display().extent;
 	return glm::ivec2(ext.width, ext.height);
 }
-inline vk::Format RenderContext::colourFormat() const noexcept {
+inline vk::SurfaceFormatKHR RenderContext::swapchainFormat() const noexcept {
 	return m_swapchain.get().colourFormat();
+}
+inline vk::Format RenderContext::textureFormat() const noexcept {
+	return swapchainFormat().colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
 }
 } // namespace le::graphics

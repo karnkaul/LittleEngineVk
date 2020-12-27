@@ -21,14 +21,15 @@ class Swapchain {
 		vk::SurfaceTransformFlagBitsKHR transform = {};
 	};
 	struct CreateInfo {
+		using vF = vk::Format;
 		static constexpr auto defaultColourSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
-		static constexpr auto defaultColourFormat = vk::Format::eB8G8R8A8Srgb;
+		static constexpr std::array defaultColourFormats = {vF::eB8G8R8A8Srgb, vF::eR8G8B8A8Srgb};
 		static constexpr std::array defaultDepthFormats = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
 		static constexpr auto defaultPresentMode = vk::PresentModeKHR::eFifo;
 
 		struct {
 			Span<vk::ColorSpaceKHR> colourSpaces = defaultColourSpace;
-			Span<vk::Format> colourFormats = defaultColourFormat;
+			Span<vk::Format> colourFormats = defaultColourFormats;
 			Span<vk::Format> depthFormats = defaultDepthFormats;
 			Span<vk::PresentModeKHR> presentModes = defaultPresentMode;
 			u32 imageCount = 2;
@@ -65,7 +66,7 @@ class Swapchain {
 	vk::RenderPass renderPass() const noexcept {
 		return m_metadata.renderPass;
 	}
-	vk::Format colourFormat() const noexcept {
+	vk::SurfaceFormatKHR colourFormat() const noexcept {
 		return m_metadata.formats.colour;
 	}
 
@@ -99,7 +100,7 @@ class Swapchain {
 		std::optional<Display> original;
 		std::vector<vk::PresentModeKHR> availableModes;
 		struct {
-			vk::Format colour;
+			vk::SurfaceFormatKHR colour;
 			vk::Format depth;
 		} formats;
 	};

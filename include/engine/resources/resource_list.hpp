@@ -1,23 +1,21 @@
 #pragma once
-#include <filesystem>
 #include <string>
 #include <vector>
+#include <core/io/path.hpp>
 
 namespace le {
-namespace stdfs = std::filesystem;
-
 namespace res {
 ///
 /// \brief List of resource IDs
 ///
 struct ResourceList final {
-	std::vector<stdfs::path> shaders;
-	std::vector<stdfs::path> textures;
-	std::vector<stdfs::path> cubemaps;
-	std::vector<stdfs::path> materials;
-	std::vector<stdfs::path> meshes;
-	std::vector<stdfs::path> models;
-	std::vector<stdfs::path> fonts;
+	std::vector<io::Path> shaders;
+	std::vector<io::Path> textures;
+	std::vector<io::Path> cubemaps;
+	std::vector<io::Path> materials;
+	std::vector<io::Path> meshes;
+	std::vector<io::Path> models;
+	std::vector<io::Path> fonts;
 
 	///
 	/// \brief Intersect with `rhs`

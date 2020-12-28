@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <fstream>
 #include <core/io.hpp>
 #include <core/log.hpp>
@@ -6,6 +7,8 @@
 #include <kt/async_queue/async_queue.hpp>
 
 namespace le::io {
+namespace stdfs = std::filesystem;
+
 namespace {
 struct FileLogger final {
 	FileLogger();
@@ -13,25 +16,25 @@ struct FileLogger final {
 	threads::TScoped thread;
 };
 
-std::filesystem::path g_logFilePath;
+Path g_logFilePath;
 kt::async_queue<std::string> g_queue;
-void dumpToFile(std::filesystem::path const& path, std::string const& str);
+void dumpToFile(Path const& path, std::string const& str);
 
 FileLogger::FileLogger() {
-	std::ifstream iFile(g_logFilePath);
+	std::ifstream iFile(g_logFilePath.generic_string());
 	if (iFile.good()) {
 		iFile.close();
-		std::filesystem::path backup(g_logFilePath);
+		Path backup(g_logFilePath.generic_string());
 		backup += ".bak";
-		std::filesystem::rename(g_logFilePath, backup);
+		std::rename(g_logFilePath.generic_string().data(), backup.generic_string().data());
 	}
-	std::ofstream oFile(g_logFilePath);
+	std::ofstream oFile(g_logFilePath.generic_string());
 	if (!oFile.good()) {
 		return;
 	}
 	oFile.close();
 	g_queue.active(true);
-	logI("Logging to file: {}", std::filesystem::absolute(g_logFilePath).generic_string());
+	logI("Logging to file: {}", absolute(g_logFilePath).generic_string());
 	thread = threads::newThread([]() {
 		while (auto str = g_queue.pop()) {
 			*str += "\n";
@@ -41,9 +44,9 @@ FileLogger::FileLogger() {
 	return;
 }
 
-void dumpToFile(std::filesystem::path const& path, std::string const& str) {
+void dumpToFile(Path const& path, std::string const& str) {
 	if (!path.empty() && !str.empty()) {
-		std::ofstream file(path, std::ios_base::app);
+		std::ofstream file(path.generic_string(), std::ios_base::app);
 		file.write(str.data(), (std::streamsize)str.length());
 	}
 	return;
@@ -59,17 +62,33 @@ void fileLog(std::string_view text, dl::level) {
 }
 } // namespace
 
-Service::Service(std::optional<std::filesystem::path> logFilePath) {
+Service::Service(std::optional<Path> logFilePath) {
 	if (logFilePath && !logFilePath->empty()) {
 		g_logFilePath = std::move(*logFilePath);
 		g_fileLogger = FileLogger();
 		g_token = dl::config::g_on_log.add(&fileLog);
+		m_bActive = true;
 	}
 }
 
+Service::Service(Service&& rhs) : m_bActive(std::exchange(rhs.m_bActive, false)) {
+}
+
+Service& Service::operator=(Service&& rhs) {
+	if (&rhs != this) {
+		destroy();
+		m_bActive = std::exchange(rhs.m_bActive, false);
+	}
+	return *this;
+}
+
 Service::~Service() {
+	destroy();
+}
+
+void Service::destroy() {
 	impl::deinitPhysfs();
-	if (g_fileLogger) {
+	if (g_fileLogger && m_bActive) {
 		logI("File Logging terminated");
 		g_token = {};
 		g_queue.active(false);

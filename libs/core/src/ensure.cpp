@@ -13,7 +13,7 @@
 void le::ensureImpl(std::string_view message, src_loc const& sl) {
 	auto const msg = fmt::format("Ensure failed: {}\n\t{}:{} [{}]", message, sl.file_name(), sl.line(), sl.function_name());
 	std::cerr << msg << std::endl;
-#if defined(LEVK_OS_WINX)
+#if defined(LEVK_OS_WINDOWS)
 	OutputDebugStringA(msg.data());
 #endif
 	os::debugBreak();

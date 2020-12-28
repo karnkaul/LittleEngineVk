@@ -1,7 +1,6 @@
 #pragma once
 #include <array>
 #include <deque>
-#include <filesystem>
 #include <functional>
 #include <future>
 #include <map>
@@ -26,8 +25,6 @@
 #define LEVK_VKRESOURCE_NAMES
 #endif
 #endif
-
-namespace stdfs = std::filesystem;
 
 namespace le::gfx {
 enum class QFlag { eGraphics, ePresent, eTransfer, eCOUNT_ };

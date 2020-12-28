@@ -2,8 +2,8 @@
 #include <optional>
 #include <vector>
 #include <core/counter.hpp>
+#include <core/io/reader.hpp>
 #include <core/os.hpp>
-#include <core/reader.hpp>
 #include <core/services.hpp>
 #include <core/std_types.hpp>
 #include <core/time.hpp>
@@ -37,7 +37,7 @@ struct MemRange final {
 struct Info final {
 	std::optional<Window::Info> windowInfo;
 	std::optional<Ref<io::Reader>> customReader;
-	Span<stdfs::path> dataPaths;
+	Span<io::Path> dataPaths;
 	Span<MemRange> vramReserve;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
@@ -92,7 +92,7 @@ class Service final {
 /// \param dirType Starting directory (executable / working)
 /// \returns Fully qualified paths for each found pattern
 ///
-std::vector<stdfs::path> locate(Span<stdfs::path> patterns, os::Dir dirType = os::Dir::eExecutable);
+std::vector<io::Path> locate(Span<io::Path> patterns, os::Dir dirType = os::Dir::eExecutable);
 
 ///
 /// \brief Obtain whether the engine is shutting down
@@ -117,7 +117,7 @@ gfx::Viewport viewport();
 ///
 /// \brief Obtain the path to the running executable
 ///
-stdfs::path exePath();
+io::Path exePath();
 ///
 /// \brief Obtain the data reader
 ///

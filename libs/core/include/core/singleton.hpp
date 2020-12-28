@@ -7,7 +7,7 @@ enum class SingletonStorage : s8 { eStatic, eHeap };
 
 template <typename T, SingletonStorage Storage = SingletonStorage::eStatic>
 class Singleton {
-	static_assert(alwaysFalse<T>, "Invalid Storage!");
+	static_assert(false_v<T>, "Invalid Storage!");
 };
 
 namespace detail {

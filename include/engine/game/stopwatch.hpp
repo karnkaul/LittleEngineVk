@@ -162,8 +162,7 @@ template <SWTag Tag>
 typename Stopwatch<Tag>::Scoped& Stopwatch<Tag>::Scoped::operator=(Scoped&& rhs) {
 	if (&rhs != this) {
 		if (id != Hash()) {
-			Stopwatch& p = parent;
-			p.stop(id, log);
+			parent.get().stop(id, log);
 		}
 		parent = rhs.parent;
 		id = std::exchange(rhs.id, Hash());
@@ -175,8 +174,7 @@ typename Stopwatch<Tag>::Scoped& Stopwatch<Tag>::Scoped::operator=(Scoped&& rhs)
 template <SWTag Tag>
 Stopwatch<Tag>::Scoped::~Scoped() {
 	if (id != Hash()) {
-		Stopwatch& s = parent;
-		s.stop(id, log);
+		parent.get().stop(id, log);
 	}
 }
 

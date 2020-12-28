@@ -12,7 +12,7 @@ namespace le::res {
 template <typename T>
 struct ResourceData final {
 	typename T::CreateInfo createInfo;
-	stdfs::path id;
+	io::Path id;
 };
 
 class Manifest {
@@ -66,7 +66,7 @@ class Manifest {
 	bool m_bParsed = false;
 
   public:
-	bool read(stdfs::path const& id);
+	bool read(io::Path const& id);
 	void start();
 	Status update(bool bTerminate = false);
 	ResourceList parse();

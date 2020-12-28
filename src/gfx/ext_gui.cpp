@@ -5,7 +5,6 @@
 #include <gfx/device.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/render_driver_impl.hpp>
-#include <window/window_impl.hpp>
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
@@ -108,7 +107,6 @@ void setStyle() {
 bool ext_gui::init([[maybe_unused]] Info const& info) {
 	bool bRet = false;
 	if (!isInit()) {
-		ENSURE(info.window.payload != WindowID::null, "Invalid WindowID!");
 #if defined(LEVK_USE_IMGUI)
 		bRet = true;
 		IMGUI_CHECKVERSION();
@@ -116,12 +114,12 @@ bool ext_gui::init([[maybe_unused]] Info const& info) {
 		ImGui::StyleColorsDark();
 		setStyle();
 #if defined(LEVK_USE_GLFW)
-		auto pWindow = WindowImpl::nativeHandle(info.window).get<GLFWwindow*>();
-		if (!pWindow) {
+		ENSURE(info.glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
+		if (auto pWindow = info.glfwWindow.get<GLFWwindow*>()) {
+			ImGui_ImplGlfw_InitForVulkan(pWindow, true);
+		} else {
 			bRet = false;
 			logE("Failed to get native window handle!");
-		} else {
-			ImGui_ImplGlfw_InitForVulkan(pWindow, true);
 		}
 #else
 		logE("NOT IMPLEMENTED");

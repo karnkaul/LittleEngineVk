@@ -136,7 +136,7 @@ T Random::range(T min, T max) noexcept {
 	} else if constexpr (std::is_floating_point_v<T>) {
 		return range<T, std::uniform_real_distribution>(min, max);
 	} else {
-		static_assert(alwaysFalse<T>, "Invalid type!");
+		static_assert(false_v<T>, "Invalid type!");
 	}
 }
 } // namespace le::maths

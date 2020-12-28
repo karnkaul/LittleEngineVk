@@ -4,10 +4,6 @@
 #include <core/log.hpp>
 #include <core/os.hpp>
 #include <core/threads.hpp>
-#if defined(LEVK_OS_LINUX)
-#include <X11/Xlib.h>
-#include <X11/extensions/Xrandr.h>
-#endif
 
 namespace le {
 namespace {
@@ -45,12 +41,6 @@ void threads::TScoped::join() {
 
 void threads::init() {
 	g_mainThreadID = std::this_thread::get_id();
-#if defined(LEVK_OS_LINUX)
-	if (XInitThreads() == 0) {
-		logE("[OS] ERROR calling XInitThreads()! UB follows.");
-	}
-#endif
-	return;
 }
 
 threads::TScoped threads::newThread(std::function<void()> task) {

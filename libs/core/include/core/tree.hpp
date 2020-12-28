@@ -87,7 +87,8 @@ constexpr Tree<T>::Tree() noexcept {
 	static_assert(std::is_base_of_v<Tree<T>, T>, "T must derive from Tree<T>");
 }
 template <typename T>
-Tree<T>::Tree(Tree<T>&& rhs) noexcept : m_children(std::move(rhs.m_children)), m_pParent(std::exchange(rhs.m_pParent, nullptr)) {
+Tree<T>::Tree(Tree<T>&& rhs) noexcept
+	: m_children(std::move(rhs.m_children)), m_pParent(std::exchange(rhs.m_pParent, nullptr)), m_bDirty(std::exchange(rhs.m_bDirty, false)) {
 	pilfer(cast<T&&>(rhs));
 }
 template <typename T>
@@ -96,6 +97,7 @@ Tree<T>& Tree<T>::operator=(Tree<T>&& rhs) noexcept {
 		purge();
 		m_pParent = std::exchange(rhs.m_pParent, nullptr);
 		m_children = std::move(rhs.m_children);
+		m_bDirty = std::exchange(rhs.m_bDirty, false);
 		pilfer(cast<T&&>(rhs));
 	}
 	return *this;

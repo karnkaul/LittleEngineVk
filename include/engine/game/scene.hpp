@@ -1,6 +1,6 @@
 #pragma once
-#include <core/ecs/registry.hpp>
-#include <core/ecs/types.hpp>
+#include <core/ec/types.hpp>
+#include <core/ec_registry.hpp>
 #include <core/traits.hpp>
 #include <core/transform.hpp>
 #include <engine/game/input.hpp>
@@ -81,7 +81,7 @@ class GameScene final {
 		gfx::Camera defaultCam;
 		gfx::Camera* pCustomCam = nullptr;
 		std::vector<gfx::DirLight> dirLights;
-		stdfs::path skyboxCubemapID;
+		io::Path skyboxCubemapID;
 		f32 orthoDepth = 2.0f;
 		gfx::Pipeline pipe3D;
 		gfx::Pipeline pipeUI;

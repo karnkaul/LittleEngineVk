@@ -57,7 +57,8 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 
 bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, InitInfo const& initInfo) {
 	// Instance
-	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
+	std::vector<char const*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME, "VK_EXT_descriptor_indexing",
+												 "VK_KHR_maintenance3"};
 	std::string deviceName = "UNKNOWN";
 	Instance instance;
 	vk::SurfaceKHR surface;
@@ -103,7 +104,7 @@ bool initDevice(vk::Instance vkInst, std::vector<char const*> const& layers, Ini
 			throw std::runtime_error("Failed to select a physical device!");
 		}
 		auto const properties = instance.physicalDevice.getProperties();
-		deviceName = std::string(properties.deviceName);
+		deviceName = std::string(properties.deviceName.data());
 		instance.deviceLimits = properties.limits;
 		instance.lineWidthMin = properties.limits.lineWidthRange[0];
 		instance.lineWidthMax = properties.limits.lineWidthRange[1];
@@ -249,6 +250,7 @@ void init(InitInfo const& initInfo) {
 	auto const layers = vk::enumerateInstanceLayerProperties();
 	std::vector<char const*> requiredLayers;
 	std::set<char const*> requiredExtensionsSet = {initInfo.config.instanceExtensions.begin(), initInfo.config.instanceExtensions.end()};
+	requiredExtensionsSet.insert("VK_KHR_get_physical_device_properties2");
 	g_instance.validationLog = initInfo.options.validationLog;
 	bool bValidationLayers = false;
 	if (initInfo.options.flags.test(InitInfo::Flag::eValidation)) {

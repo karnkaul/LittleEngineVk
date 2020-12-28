@@ -3,7 +3,7 @@
 using namespace le;
 
 s32 main() {
-	stdfs::path const path = "some/long/path";
+	io::Path const path = "some/long/path";
 	std::string const str = path.generic_string();
 	std::string_view const strView = str;
 	Hash hPath = path;

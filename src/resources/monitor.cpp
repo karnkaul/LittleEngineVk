@@ -5,8 +5,8 @@
 
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 namespace le::res {
-Monitor::File::File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(Ref<File const>)> onModified)
-	: monitor(fullPath, mode), onModified(onModified), id(id) {
+Monitor::File::File(io::Path const& id, io::Path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(Ref<File const>)> onModified)
+	: monitor(fullPath.generic_string(), mode), onModified(onModified), id(id) {
 }
 
 bool Monitor::update() {

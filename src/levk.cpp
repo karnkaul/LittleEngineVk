@@ -91,7 +91,7 @@ bool Service::init(Info info) {
 		m_services.add<gfx::Service>(std::move(initInfo));
 		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
 		io::Reader& reader = info.customReader.value_or(g_app.fileReader);
-		std::vector<stdfs::path> const defaultPaths = {dirPath / "data"};
+		std::vector<io::Path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;
 		for (auto const& path : dataPaths) {
 			if (!reader.mount(path)) {
@@ -213,8 +213,8 @@ void Service::doShutdown() {
 }
 } // namespace engine
 
-std::vector<stdfs::path> engine::locate(Span<stdfs::path> patterns, os::Dir dirType) {
-	std::vector<stdfs::path> ret;
+std::vector<io::Path> engine::locate(Span<io::Path> patterns, os::Dir dirType) {
+	std::vector<io::Path> ret;
 	auto const start = os::dirPath(dirType);
 	for (auto const& pattern : patterns) {
 		auto search = io::FileReader::findUpwards(start, pattern);

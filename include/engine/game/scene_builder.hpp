@@ -1,5 +1,5 @@
 #pragma once
-#include <core/ecs/registry.hpp>
+#include <core/ec_registry.hpp>
 #include <engine/game/state.hpp>
 #include <engine/game/text2d.hpp>
 #include <engine/gfx/render_driver.hpp>
@@ -12,7 +12,7 @@ struct UIComponent final {
 	enum class Flag { eText, eMesh, eCOUNT_ };
 	using Flags = kt::enum_flags<Flag>;
 
-	stdfs::path id;
+	io::Path id;
 	Text2D text;
 	res::TScoped<res::Mesh> mesh;
 	gfx::ScreenRect scissor;

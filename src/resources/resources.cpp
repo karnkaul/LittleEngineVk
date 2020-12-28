@@ -31,7 +31,7 @@ std::atomic<GUID::type> g_nextGUID;
 std::atomic<GUID::type> g_lastUnloadedGUID;
 
 template <typename T, typename TImpl>
-T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, stdfs::path const& id) {
+T make(Map<T, TImpl>& out_map, typename T::CreateInfo& out_createInfo, io::Path const& id) {
 	GUID guid = ++g_nextGUID;
 	std::unique_ptr<TImpl> uImpl = std::make_unique<TImpl>();
 	typename T::Info info;
@@ -193,7 +193,7 @@ void waitLoading(Map<T, TImpl>& out_map) {
 }
 
 template <typename T>
-Async<T> asyncLoad(stdfs::path const& id, typename T::LoadInfo loadInfo) {
+Async<T> asyncLoad(io::Path const& id, typename T::LoadInfo loadInfo) {
 	auto name = "load_async:" + id.generic_string();
 	auto handle = tasks::enqueue(
 		[id = id, loadInfo = std::move(loadInfo)]() {
@@ -276,7 +276,7 @@ res::Semaphore res::acquire() {
 	return Semaphore(g_counter);
 }
 
-res::Shader res::load(stdfs::path const& id, Shader::CreateInfo createInfo) {
+res::Shader res::load(io::Path const& id, Shader::CreateInfo createInfo) {
 	return g_bInit ? make(g_shaders, createInfo, id) : Shader();
 }
 
@@ -306,7 +306,7 @@ bool res::unload<Shader>(Hash id) {
 	return g_bInit ? unload(g_shaders, id) : false;
 }
 
-res::Sampler res::load(stdfs::path const& id, Sampler::CreateInfo createInfo) {
+res::Sampler res::load(io::Path const& id, Sampler::CreateInfo createInfo) {
 	return g_bInit ? make(g_samplers, createInfo, id) : Sampler();
 }
 
@@ -336,11 +336,11 @@ bool res::unload<Sampler>(Hash id) {
 	return g_bInit ? unload(g_samplers, id) : false;
 }
 
-res::Texture res::load(stdfs::path const& id, Texture::CreateInfo createInfo) {
+res::Texture res::load(io::Path const& id, Texture::CreateInfo createInfo) {
 	return g_bInit ? make(g_textures, createInfo, id) : Texture();
 }
 
-res::Async<Texture> res::loadAsync(stdfs::path const& id, Texture::LoadInfo loadInfo) {
+res::Async<Texture> res::loadAsync(io::Path const& id, Texture::LoadInfo loadInfo) {
 	return g_bInit ? asyncLoad<res::Texture>(id, std::move(loadInfo)) : Async<res::Texture>();
 }
 
@@ -370,7 +370,7 @@ bool res::unload<Texture>(Hash id) {
 	return g_bInit ? unload(g_textures, id) : false;
 }
 
-res::Material res::load(stdfs::path const& id, Material::CreateInfo createInfo) {
+res::Material res::load(io::Path const& id, Material::CreateInfo createInfo) {
 	return g_bInit ? make(g_materials, createInfo, id) : Material();
 }
 
@@ -400,7 +400,7 @@ bool res::unload<Material>(Hash id) {
 	return g_bInit ? unload(g_materials, id) : false;
 }
 
-res::Mesh res::load(stdfs::path const& id, Mesh::CreateInfo createInfo) {
+res::Mesh res::load(io::Path const& id, Mesh::CreateInfo createInfo) {
 	return g_bInit ? make(g_meshes, createInfo, id) : Mesh();
 }
 
@@ -430,7 +430,7 @@ bool res::unload<Mesh>(Hash id) {
 	return g_bInit ? unload(g_meshes, id) : false;
 }
 
-res::Font res::load(stdfs::path const& id, Font::CreateInfo createInfo) {
+res::Font res::load(io::Path const& id, Font::CreateInfo createInfo) {
 	return g_bInit ? make(g_fonts, createInfo, id) : Font();
 }
 
@@ -460,11 +460,11 @@ bool res::unload<Font>(Hash id) {
 	return g_bInit ? unload(g_fonts, id) : false;
 }
 
-res::Model res::load(stdfs::path const& id, Model::CreateInfo createInfo) {
+res::Model res::load(io::Path const& id, Model::CreateInfo createInfo) {
 	return g_bInit ? make(g_models, createInfo, id) : res::Model();
 }
 
-res::Async<res::Model> res::loadAsync(stdfs::path const& id, Model::LoadInfo loadInfo) {
+res::Async<res::Model> res::loadAsync(io::Path const& id, Model::LoadInfo loadInfo) {
 	return g_bInit ? asyncLoad<res::Model>(id, std::move(loadInfo)) : Async<res::Model>();
 }
 
@@ -616,7 +616,7 @@ void res::init() {
 		auto semaphore = acquire();
 		{
 			Shader::CreateInfo info;
-			static std::array const shaderIDs = {stdfs::path("shaders/uber.vert"), stdfs::path("shaders/uber.frag")};
+			static std::array const shaderIDs = {io::Path("shaders/uber.vert"), io::Path("shaders/uber.frag")};
 			ENSURE(engine::reader().checkPresences(shaderIDs), "Uber Shader not found!");
 			info.codeIDMap[(std::size_t)Shader::Type::eVertex] = shaderIDs[0];
 			info.codeIDMap[(std::size_t)Shader::Type::eFragment] = shaderIDs[1];
@@ -660,7 +660,7 @@ void res::init() {
 			load("meshes/sphere", std::move(info));
 		}
 		{
-			static stdfs::path const s_jsonID = "fonts/default.json";
+			static io::Path const s_jsonID = "fonts/default.json";
 			Font::CreateInfo info;
 			info.jsonID = s_jsonID;
 			auto font = load("fonts/default", std::move(info));

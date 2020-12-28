@@ -1,13 +1,8 @@
 #pragma once
-#include <filesystem>
 #include <type_traits>
 #include <core/counter.hpp>
 #include <core/tasks.hpp>
 #include <engine/resources/resource_types.hpp>
-
-namespace le {
-namespace stdfs = std::filesystem;
-}
 
 namespace le::res {
 using Semaphore = TCounter<s32>::Semaphore;
@@ -82,7 +77,7 @@ bool unload(Hash id);
 ///
 /// \brief Load new Shader
 ///
-Shader load(stdfs::path const& id, Shader::CreateInfo createInfo);
+Shader load(io::Path const& id, Shader::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Shader
 ///
@@ -112,7 +107,7 @@ bool unload<Shader>(Hash id);
 ///
 /// \brief Load new Sampler
 ///
-Sampler load(stdfs::path const& id, Sampler::CreateInfo createInfo);
+Sampler load(io::Path const& id, Sampler::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Sampler
 ///
@@ -142,11 +137,11 @@ bool unload<Sampler>(Hash id);
 ///
 /// \brief Load new Texture
 ///
-Texture load(stdfs::path const& id, Texture::CreateInfo createInfo);
+Texture load(io::Path const& id, Texture::CreateInfo createInfo);
 ///
 /// \brief Load new Texture on a separate thread
 ///
-Async<Texture> loadAsync(stdfs::path const& id, Texture::LoadInfo loadInfo);
+Async<Texture> loadAsync(io::Path const& id, Texture::LoadInfo loadInfo);
 ///
 /// \brief Find a loaded Texture
 ///
@@ -176,7 +171,7 @@ bool unload<Texture>(Hash id);
 ///
 /// \brief Load new Material
 ///
-Material load(stdfs::path const& id, Material::CreateInfo createInfo);
+Material load(io::Path const& id, Material::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Material
 ///
@@ -206,7 +201,7 @@ bool unload<Material>(Hash id);
 ///
 /// \brief Load new Mesh
 ///
-Mesh load(stdfs::path const& id, Mesh::CreateInfo createInfo);
+Mesh load(io::Path const& id, Mesh::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Mesh
 ///
@@ -236,7 +231,7 @@ bool unload<Mesh>(Hash id);
 ///
 /// \brief Load new Font
 ///
-Font load(stdfs::path const& id, Font::CreateInfo createInfo);
+Font load(io::Path const& id, Font::CreateInfo createInfo);
 ///
 /// \brief Find a loaded Font
 ///
@@ -266,11 +261,11 @@ bool unload<Font>(Hash id);
 ///
 /// \brief Load new Model
 ///
-Model load(stdfs::path const& id, Model::CreateInfo createInfo);
+Model load(io::Path const& id, Model::CreateInfo createInfo);
 ///
 /// \brief Load new Model on a separate thread
 ///
-Async<Model> loadAsync(stdfs::path const& id, Model::LoadInfo loadInfo);
+Async<Model> loadAsync(io::Path const& id, Model::LoadInfo loadInfo);
 ///
 /// \brief Find a loaded Model
 ///
@@ -304,7 +299,7 @@ bool unload(Hash id);
 
 template <typename T>
 Result<T> find(Hash) {
-	static_assert(alwaysFalse<T>, "Invalid type!");
+	static_assert(false_v<T>, "Invalid type!");
 }
 
 template <typename T>

@@ -1,13 +1,14 @@
 #pragma once
 #include <string>
-#include <core/reader.hpp>
+#include <core/io/reader.hpp>
 #include <core/zero.hpp>
 #include <engine/resources/resource_types.hpp>
 
 #if defined(LEVK_RESOURCES_HOT_RELOAD)
 #include <functional>
 #include <unordered_set>
-#include <core/reader.hpp>
+#include <core/io/file_monitor.hpp>
+#include <core/io/reader.hpp>
 #include <core/ref.hpp>
 #include <core/time.hpp>
 
@@ -30,7 +31,7 @@ class Monitor final {
 	u8 m_reloadFails = 0;
 
   public:
-	stdfs::path m_id;
+	io::Path m_id;
 
   public:
 	// Returns true on reloaded
@@ -42,9 +43,9 @@ struct Monitor::File final {
 	// file-level callback, invoked when modified, aborts reload on receiving false
 	std::function<bool(Ref<File const>)> onModified;
 	// Resource ID
-	stdfs::path id;
+	io::Path id;
 
-	File(stdfs::path const& id, stdfs::path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(Ref<File const>)> onModified);
+	File(io::Path const& id, io::Path const& fullPath, io::FileMonitor::Mode mode, std::function<bool(Ref<File const>)> onModified);
 };
 } // namespace le::res
 #endif

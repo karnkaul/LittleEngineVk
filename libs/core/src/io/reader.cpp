@@ -1,15 +1,65 @@
-#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <physfs/physfs.h>
 #include <core/ensure.hpp>
+#include <core/io/reader.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
-#include <core/reader.hpp>
 #include <core/utils.hpp>
 #include <io_impl.hpp>
 
+#if defined(LEVK_OS_ANDROID)
+#include <android_native_app_glue.h>
+#endif
+
 namespace le::io {
+#if defined(LEVK_OS_ANDROID)
+constexpr android_app* unpack(ErasedRef app) {
+	return app.contains<android_app*>() ? app.get<android_app*>() : nullptr;
+}
+
+struct AndroidAsset {
+	AAsset* pAsset = nullptr;
+	android_app* pApp = nullptr;
+
+	AndroidAsset() = default;
+	AndroidAsset(android_app* pApp, Path const& path) : pApp(pApp) {
+		if (pApp && pApp->activity) {
+			pAsset = AAssetManager_open(pApp->activity->assetManager, path.generic_string().data(), AASSET_MODE_BUFFER);
+		}
+	}
+
+	~AndroidAsset() {
+		if (pAsset && pApp && pApp->activity) {
+			AAsset_close(pAsset);
+		}
+	}
+
+	constexpr explicit operator bool() const noexcept {
+		return pAsset != nullptr;
+	}
+
+	bytearray bytes() const {
+		bytearray ret;
+		if (pAsset) {
+			ret.resize((std::size_t)AAsset_getLength(pAsset));
+			AAsset_read(pAsset, ret.data(), ret.size());
+		}
+		return ret;
+	}
+
+	std::stringstream sstream() const {
+		std::stringstream ret;
+		if (pAsset) {
+			std::string charBuf((std::size_t)AAsset_getLength(pAsset), 0);
+			AAsset_read(pAsset, charBuf.data(), charBuf.size());
+			ret << charBuf;
+		}
+		return ret;
+	}
+};
+#endif
+
 namespace {
 struct PhysfsHandle final {
 	bool bInit = false;
@@ -44,18 +94,18 @@ Reader::Reader(Reader const&) = default;
 Reader& Reader::operator=(Reader const&) = default;
 Reader::~Reader() = default;
 
-Reader::Result<std::string> Reader::string(stdfs::path const& id) const {
+Reader::Result<std::string> Reader::string(io::Path const& id) const {
 	if (auto str = sstream(id)) {
 		return str->str();
 	}
 	return {};
 }
 
-bool Reader::isPresent(const stdfs::path& id) const {
+bool Reader::isPresent(const io::Path& id) const {
 	return findPrefixed(id).has_result();
 }
 
-bool Reader::checkPresence(stdfs::path const& id) const {
+bool Reader::checkPresence(io::Path const& id) const {
 	if (!isPresent(id)) {
 		logE("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
 		return false;
@@ -63,7 +113,7 @@ bool Reader::checkPresence(stdfs::path const& id) const {
 	return true;
 }
 
-bool Reader::checkPresences(Span<stdfs::path> ids) const {
+bool Reader::checkPresences(Span<io::Path> ids) const {
 	bool bRet = true;
 	for (auto const& id : ids) {
 		bRet &= checkPresence(id);
@@ -71,17 +121,13 @@ bool Reader::checkPresences(Span<stdfs::path> ids) const {
 	return bRet;
 }
 
-bool Reader::checkPresences(std::initializer_list<stdfs::path> ids) const {
-	return checkPresences(Span<stdfs::path>(ids));
-}
-
 std::string_view Reader::medium() const {
 	return m_medium;
 }
 
-Reader::Result<stdfs::path> FileReader::findUpwards(stdfs::path const& leaf, Span<stdfs::path> anyOf, u8 maxHeight) {
+Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path> anyOf, [[maybe_unused]] u8 maxHeight) {
 	for (auto const& name : anyOf) {
-		if (stdfs::is_directory(leaf / name) || stdfs::is_regular_file(leaf / name)) {
+		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
 			return ret / name;
 		}
@@ -97,10 +143,13 @@ FileReader::FileReader() noexcept {
 	m_medium = "Filesystem";
 }
 
-bool FileReader::mount(stdfs::path path) {
+bool FileReader::mount([[maybe_unused]] io::Path path) {
+#if defined(LEVK_OS_ANDROID)
+	return false;
+#else
 	auto const pathStr = path.generic_string();
 	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end()) {
-		if (!stdfs::is_directory(path)) {
+		if (!io::is_directory(path)) {
 			logE("[{}] [{}] not found on Filesystem!", utils::tName<FileReader>(), pathStr);
 			return false;
 		}
@@ -110,11 +159,12 @@ bool FileReader::mount(stdfs::path path) {
 	}
 	logW("[{}] [{}] directory already mounted", utils::tName<FileReader>(), pathStr);
 	return false;
+#endif
 }
 
-Reader::Result<bytearray> FileReader::bytes(stdfs::path const& id) const {
+Reader::Result<bytearray> FileReader::bytes(io::Path const& id) const {
 	if (auto path = findPrefixed(id)) {
-		std::ifstream file(*path, std::ios::binary | std::ios::ate);
+		std::ifstream file(path->generic_string(), std::ios::binary | std::ios::ate);
 		if (file.good()) {
 			auto pos = file.tellg();
 			auto buf = bytearray((std::size_t)pos);
@@ -126,9 +176,9 @@ Reader::Result<bytearray> FileReader::bytes(stdfs::path const& id) const {
 	return {};
 }
 
-Reader::Result<std::stringstream> FileReader::sstream(stdfs::path const& id) const {
+Reader::Result<std::stringstream> FileReader::sstream(io::Path const& id) const {
 	if (auto path = findPrefixed(id)) {
-		std::ifstream file(*path);
+		std::ifstream file(path->generic_string());
 		if (file.good()) {
 			std::stringstream buf;
 			buf << file.rdbuf();
@@ -138,21 +188,21 @@ Reader::Result<std::stringstream> FileReader::sstream(stdfs::path const& id) con
 	return {};
 }
 
-Reader::Result<stdfs::path> FileReader::findPrefixed(stdfs::path const& id) const {
+Reader::Result<io::Path> FileReader::findPrefixed(io::Path const& id) const {
 	auto const paths = finalPaths(id);
 	for (auto const& path : paths) {
-		if (stdfs::is_regular_file(path)) {
-			return stdfs::path(path);
+		if (io::is_regular_file(path)) {
+			return io::Path(path);
 		}
 	}
 	return {};
 }
 
-std::vector<stdfs::path> FileReader::finalPaths(stdfs::path const& id) const {
+std::vector<io::Path> FileReader::finalPaths(io::Path const& id) const {
 	if (id.has_root_directory()) {
 		return {id};
 	}
-	std::vector<stdfs::path> ret;
+	std::vector<io::Path> ret;
 	ret.reserve(m_dirs.size());
 	for (auto const& prefix : m_dirs) {
 		ret.push_back(prefix / id);
@@ -160,9 +210,9 @@ std::vector<stdfs::path> FileReader::finalPaths(stdfs::path const& id) const {
 	return ret;
 }
 
-stdfs::path FileReader::fullPath(stdfs::path const& id) const {
+io::Path FileReader::fullPath(io::Path const& id) const {
 	if (auto path = findPrefixed(id)) {
-		return stdfs::absolute(*path);
+		return io::absolute(*path);
 	}
 	return id;
 }
@@ -171,12 +221,19 @@ ZIPReader::ZIPReader() {
 	m_medium = "ZIP";
 }
 
-bool ZIPReader::mount(stdfs::path path) {
+bool ZIPReader::mount(io::Path path) {
 	impl::initPhysfs();
 	auto pathStr = path.generic_string();
+	FileReader file;
 	if (std::find(m_zips.begin(), m_zips.end(), path) == m_zips.end()) {
-		if (!stdfs::is_regular_file(path)) {
+		auto const bytes = file.bytes(path);
+		if (!bytes) {
 			logE("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
+			return false;
+		}
+		int const result = PHYSFS_mountMemory(bytes->data(), bytes->size(), nullptr, path.string().data(), nullptr, 0);
+		if (result == 0) {
+			logE("[{}] [{}] failed to decompress archive!", utils::tName<ZIPReader>(), pathStr);
 			return false;
 		}
 		PHYSFS_mount(path.string().data(), nullptr, 0);
@@ -188,14 +245,14 @@ bool ZIPReader::mount(stdfs::path path) {
 	return false;
 }
 
-Reader::Result<stdfs::path> ZIPReader::findPrefixed(stdfs::path const& id) const {
+Reader::Result<io::Path> ZIPReader::findPrefixed(io::Path const& id) const {
 	if (PHYSFS_exists(id.generic_string().data()) != 0) {
-		return stdfs::path(id);
+		return io::Path(id);
 	}
 	return {};
 }
 
-Reader::Result<std::stringstream> ZIPReader::sstream(stdfs::path const& id) const {
+Reader::Result<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
 	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile) {
@@ -211,7 +268,7 @@ Reader::Result<std::stringstream> ZIPReader::sstream(stdfs::path const& id) cons
 	return {};
 }
 
-Reader::Result<bytearray> ZIPReader::bytes(stdfs::path const& id) const {
+Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
 	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile) {
@@ -225,6 +282,46 @@ Reader::Result<bytearray> ZIPReader::bytes(stdfs::path const& id) const {
 	return {};
 }
 
+AAssetReader::AAssetReader(ErasedRef const& pAndroidApp) : m_androidApp(pAndroidApp) {
+#if defined(LEVK_OS_ANDROID)
+	ENSURE(unpack(m_androidApp), "Invalid android_app pointer");
+#endif
+}
+
+Reader::Result<bytearray> AAssetReader::bytes([[maybe_unused]] io::Path const& id) const {
+#if defined(LEVK_OS_ANDROID)
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
+		return asset.bytes();
+	}
+	return {};
+#else
+	return {};
+#endif
+}
+
+Reader::Result<std::stringstream> AAssetReader::sstream([[maybe_unused]] io::Path const& id) const {
+#if defined(LEVK_OS_ANDROID)
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
+		return asset.sstream();
+	}
+	return {};
+#else
+	return {};
+#endif
+}
+
+Reader::Result<io::Path> AAssetReader::findPrefixed([[maybe_unused]] io::Path const& id) const {
+#if defined(LEVK_OS_ANDROID)
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
+		return Path(id);
+	} else {
+		return {};
+	}
+#else
+	return {};
+#endif
+}
+
 void impl::initPhysfs() {
 	if (!g_physfsHandle) {
 		g_physfsHandle = PhysfsHandle();
@@ -233,83 +330,5 @@ void impl::initPhysfs() {
 
 void impl::deinitPhysfs() {
 	g_physfsHandle.reset();
-}
-
-FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode) {
-}
-
-FileMonitor::FileMonitor(FileMonitor&&) = default;
-FileMonitor& FileMonitor::operator=(FileMonitor&&) = default;
-FileMonitor::~FileMonitor() = default;
-
-FileMonitor::Status FileMonitor::update() {
-	std::error_code errCode;
-	if (stdfs::is_regular_file(m_path, errCode)) {
-		auto const lastWriteTime = stdfs::last_write_time(m_path, errCode);
-		if (errCode) {
-			return m_status;
-		}
-		if (lastWriteTime != m_lastWriteTime || m_status == Status::eNotFound) {
-			bool bDirty = m_lastWriteTime != stdfs::file_time_type();
-			m_lastWriteTime = lastWriteTime;
-			if (m_mode == Mode::eTextContents) {
-				if (auto text = s_reader.string(m_path)) {
-					if (*text == m_text) {
-						bDirty = false;
-					} else {
-						m_text = text.move();
-						m_lastModifiedTime = m_lastWriteTime;
-					}
-				}
-			} else if (m_mode == Mode::eBinaryContents) {
-				if (auto bytes = s_reader.bytes(m_path)) {
-					if (*bytes == m_bytes) {
-						bDirty = false;
-					} else {
-						m_bytes = bytes.move();
-						m_lastModifiedTime = m_lastWriteTime;
-					}
-				}
-			}
-			m_status = bDirty ? Status::eModified : Status::eUpToDate;
-		} else {
-			m_status = Status::eUpToDate;
-		}
-	} else {
-		m_status = Status::eNotFound;
-	}
-	return m_status;
-}
-
-FileMonitor::Status FileMonitor::lastStatus() const {
-	return m_status;
-}
-
-stdfs::file_time_type FileMonitor::lastWriteTime() const {
-	return m_lastWriteTime;
-}
-
-stdfs::file_time_type FileMonitor::lastModifiedTime() const {
-	return m_lastModifiedTime;
-}
-
-stdfs::path const& FileMonitor::path() const {
-	return m_path;
-}
-
-std::string_view FileMonitor::text() const {
-	ENSURE(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
-	if (m_mode != Mode::eTextContents) {
-		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
-	}
-	return m_text;
-}
-
-bytearray const& FileMonitor::bytes() const {
-	ENSURE(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
-	if (m_mode != Mode::eBinaryContents) {
-		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
-	}
-	return m_bytes;
 }
 } // namespace le::io

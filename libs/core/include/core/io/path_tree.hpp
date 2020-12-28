@@ -1,7 +1,6 @@
 #pragma once
 #include <algorithm>
 #include <deque>
-#include <filesystem>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -9,13 +8,11 @@
 #include <tuple>
 #include <vector>
 #include <core/ensure.hpp>
+#include <core/io/path.hpp>
 #include <core/ref.hpp>
 #include <core/std_types.hpp>
 
-namespace le {
-namespace stdfs = std::filesystem;
-
-namespace io {
+namespace le::io {
 ///
 /// \brief View for a tree of T... associated with a path each
 ///
@@ -61,7 +58,7 @@ class PathTree final {
 		///
 		/// \brief Containing directory
 		///
-		stdfs::path directory;
+		Path directory;
 		///
 		/// \brief Entry list (ordered alphabetically)
 		///
@@ -79,7 +76,7 @@ class PathTree final {
 	/// \param id full path
 	/// \param ts objects (as per template arguments)
 	///
-	void emplace(stdfs::path id, T... ts);
+	void emplace(Path id, T... ts);
 	///
 	/// \brief Import flat list into tree
 	///
@@ -101,8 +98,8 @@ class PathTree final {
 	NodeBase m_root;
 
   private:
-	static std::deque<std::string> decompose(stdfs::path dirPath);
-	static stdfs::path concatenate(std::deque<std::string> parts);
+	static std::deque<std::string> decompose(Path dirPath);
+	static Path concatenate(std::deque<std::string> parts);
 	void printChildren(NodeBase const& parent, std::stringstream& out_ss, u8 spaces = 0) const;
 };
 
@@ -140,7 +137,7 @@ typename PathTree<T...>::Node const* PathTree<T...>::Node::findPattern(std::stri
 }
 
 template <typename... T>
-void PathTree<T...>::emplace(stdfs::path id, T... ts) {
+void PathTree<T...>::emplace(Path id, T... ts) {
 	auto dirs = decompose(std::move(id));
 	if (!dirs.empty()) {
 		auto const entryName = dirs.back();
@@ -170,7 +167,7 @@ void PathTree<T...>::emplace(stdfs::path id, T... ts) {
 template <typename... T>
 void PathTree<T...>::import(std::vector<Entry> entries) {
 	for (auto& entry : entries) {
-		emplace(std::get<stdfs::path>(entry), std::forward<T>(std::get<T>(entry))...);
+		emplace(std::get<Path>(entry), std::forward<T>(std::get<T>(entry))...);
 	}
 }
 
@@ -183,7 +180,7 @@ std::string PathTree<T...>::print(u8 indent) const {
 }
 
 template <typename... T>
-std::deque<std::string> PathTree<T...>::decompose(stdfs::path dirPath) {
+std::deque<std::string> PathTree<T...>::decompose(Path dirPath) {
 	std::deque<std::string> ret;
 	if (!dirPath.empty()) {
 		ret.push_front(dirPath.filename().generic_string());
@@ -196,8 +193,8 @@ std::deque<std::string> PathTree<T...>::decompose(stdfs::path dirPath) {
 }
 
 template <typename... T>
-stdfs::path PathTree<T...>::concatenate(std::deque<std::string> parts) {
-	stdfs::path ret;
+Path PathTree<T...>::concatenate(std::deque<std::string> parts) {
+	Path ret;
 	for (auto& part : parts) {
 		ret /= std::move(part);
 	}
@@ -218,5 +215,4 @@ void PathTree<T...>::printChildren(NodeBase const& parent, std::stringstream& ou
 		printChildren(*uNode, out_ss, spaces + 2);
 	}
 }
-} // namespace io
-} // namespace le
+} // namespace le::io

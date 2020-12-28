@@ -25,6 +25,10 @@ class Transform final : public Tree<Transform> {
 	///
 	Transform& orient(glm::quat const& orientation) noexcept;
 	///
+	/// \brief Rotate (local) orientation
+	///
+	Transform& rotate(f32 radians, glm::vec3 const& axis) noexcept;
+	///
 	/// \brief Set (local) scale
 	///
 	Transform& scale(f32 scale) noexcept;
@@ -108,7 +112,11 @@ inline Transform& Transform::orient(glm::quat const& orientation) noexcept {
 	m_bDirty = true;
 	return *this;
 }
-
+inline Transform& Transform::rotate(f32 radians, glm::vec3 const& axis) noexcept {
+	m_orientation = glm::rotate(m_orientation, radians, axis);
+	m_bDirty = true;
+	return *this;
+}
 inline Transform& Transform::scale(f32 scale) noexcept {
 	m_scale = {scale, scale, scale};
 	m_bDirty = true;

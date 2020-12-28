@@ -24,9 +24,9 @@ class OBJParser final {
 	struct Data final {
 		std::stringstream objBuf;
 		std::stringstream mtlBuf;
-		stdfs::path jsonID;
-		stdfs::path modelID;
-		stdfs::path samplerID;
+		io::Path jsonID;
+		io::Path modelID;
+		io::Path samplerID;
 		glm::vec3 origin = glm::vec3(0.0f);
 		f32 scale = 1.0f;
 		bool bDropColour = false;
@@ -38,9 +38,9 @@ class OBJParser final {
   private:
 	tinyobj::attrib_t m_attrib;
 	tinyobj::MaterialStreamReader m_matStrReader;
-	stdfs::path m_modelID;
-	stdfs::path m_jsonID;
-	stdfs::path m_samplerID;
+	io::Path m_modelID;
+	io::Path m_jsonID;
+	io::Path m_samplerID;
 	std::unordered_set<std::string> m_meshIDs;
 	std::vector<tinyobj::shape_t> m_shapes;
 	std::vector<tinyobj::material_t> m_materials;

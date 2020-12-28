@@ -1,11 +1,9 @@
 #pragma once
-#include <filesystem>
 #include <memory>
 #include <string>
+#include <core/io/path.hpp>
 #include <engine/game/driver.hpp>
 #include <engine/game/input_context.hpp>
-
-namespace stdfs = std::filesystem;
 
 class Level {
   public:
@@ -31,12 +29,12 @@ class Level {
 
   protected:
 	struct {
-		stdfs::path id;
+		le::io::Path id;
 		le::input::Context context;
 		le::Token token;
 	} m_input;
 	struct {
-		stdfs::path id;
+		le::io::Path id;
 		le::Token token;
 	} m_manifest;
 };

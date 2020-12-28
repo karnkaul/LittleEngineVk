@@ -3,8 +3,8 @@
 #include <level.hpp>
 
 struct FPS final {
-	le::time::Point updated;
-	le::Time_ms elapsed;
+	le::time::Point updated = {};
+	le::Time_ms elapsed = {};
 	le::u32 fps = 0;
 	le::u32 frames = 0;
 	bool bSet = false;
@@ -40,7 +40,7 @@ class DemoLevel : public Level {
 
   private:
 	struct {
-		stdfs::path model0id, model1id, skyboxID;
+		le::io::Path model0id, model1id, skyboxID;
 		le::res::Async<le::res::Model> asyncModel0, asyncModel1;
 		le::gfx::DirLight dirLight0, dirLight1;
 		le::Prop eid0, eid1, eid2, eid3, eui0;

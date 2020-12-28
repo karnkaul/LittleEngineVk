@@ -83,7 +83,7 @@ class Window final {
 	[[nodiscard]] input::OnMouse::Tk registerMouse(input::OnMouse::Callback callback);
 	// Callback parameters: (f32 dx, f32 dy)
 	[[nodiscard]] input::OnMouse::Tk registerScroll(input::OnMouse::Callback callback);
-	// Callback parameters: (std::filesystem::path filepath)
+	// Callback parameters: (io::Path filepath)
 	[[nodiscard]] input::OnFiledrop::Tk registerFiledrop(input::OnFiledrop::Callback callback);
 	// Callback parameters: (bool bInFocus)
 	[[nodiscard]] input::OnFocus::Tk registerFocus(input::OnFocus::Callback callback);

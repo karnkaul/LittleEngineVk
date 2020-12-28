@@ -1,7 +1,7 @@
 #include <array>
 #include <string>
 #include <unordered_set>
-#include <core/ecs/registry.hpp>
+#include <core/ec_registry.hpp>
 #include <core/ensure.hpp>
 #include <core/maths.hpp>
 #include <core/tasks.hpp>

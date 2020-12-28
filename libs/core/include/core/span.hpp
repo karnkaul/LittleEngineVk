@@ -25,6 +25,7 @@ struct Span {
 	constexpr Span(std::vector<T> const& vec) noexcept;
 
 	constexpr std::size_t size() const noexcept;
+	constexpr T const* data() const noexcept;
 	constexpr bool empty() const noexcept;
 	constexpr const_iterator begin() const noexcept;
 	constexpr const_iterator end() const noexcept;
@@ -67,6 +68,11 @@ constexpr std::size_t Span<T>::size() const noexcept {
 template <typename T>
 constexpr bool Span<T>::empty() const noexcept {
 	return extent == 0;
+}
+
+template <typename T>
+constexpr T const* Span<T>::data() const noexcept {
+	return pData;
 }
 
 template <typename T>

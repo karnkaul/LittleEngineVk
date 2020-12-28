@@ -226,7 +226,8 @@ install(TARGETS ${PHYSFS_INSTALL_TARGETS}
         ARCHIVE DESTINATION lib${LIB_SUFFIX})
 install(FILES src/physfs.h DESTINATION include)
 
-find_package(Doxygen)
+# Disable Doxygen: breaks Appveyor
+#find_package(Doxygen)
 if(DOXYGEN_FOUND)
     set(PHYSFS_OUTPUT_DOXYFILE "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile")
     configure_file(

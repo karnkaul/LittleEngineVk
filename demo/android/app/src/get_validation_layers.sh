@@ -33,7 +33,7 @@ done
 if [ $all_present == false ]; then
   if [ ! -f lib/$archive_name ]; then
     echo -e "\n - Downloading Android validation layers...\n\n"
-    wget $url -P lib || exit 1
+    curl -L $url > lib/$archive_name || exit 1
   fi
   echo -e "\n - Decompressing archive...\n"
   tar -xvf lib/$archive_name -C lib || exit 1

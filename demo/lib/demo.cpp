@@ -180,7 +180,7 @@ struct Material {
 };
 
 struct TexturedMaterial : Material {
-	CView<graphics::Texture> diffuse;
+	graphics::Texture const* diffuse = {};
 	u32 binding = 0;
 
 	void write(graphics::DescriptorSet& ds) override {
@@ -288,11 +288,11 @@ struct VP {
 };
 
 struct Skybox {
-	CView<graphics::Mesh> mesh;
-	CView<graphics::Texture> cubemap;
+	graphics::Mesh const* mesh = {};
+	graphics::Texture const* cubemap = {};
 
 	bool ready() const {
-		return mesh && cubemap && cubemap->ready();
+		return mesh && mesh->ready() && cubemap && cubemap->ready();
 	}
 	void update(graphics::DescriptorSet& set, graphics::Buffer const& vp) const {
 		if (ready()) {
@@ -313,8 +313,8 @@ struct Skybox {
 struct Prop2 {
 	graphics::ShaderBuffer<glm::mat4, false> m;
 	Transform transform;
-	View<graphics::Mesh> mesh;
-	View<Material> material;
+	graphics::Mesh* mesh = {};
+	Material* material = {};
 };
 
 struct Scene {
@@ -430,14 +430,14 @@ class Eng {
 
 class App {
   public:
-	App(Eng& eng, io::Reader const& reader, [[maybe_unused]] ErasedRef androidApp) : m_eng(eng) {
-		io::Path testV = "shaders/test.vert-d.spv";
-		io::Path uiV = "shaders/ui.vert-d.spv";
-		io::Path uiF = "shaders/ui.frag-d.spv";
-		io::Path testF = "shaders/test.frag-d.spv";
-		io::Path testFTex = "shaders/test_tex.frag-d.spv";
-		io::Path skyV = "shaders/skybox.vert-d.spv";
-		io::Path skyF = "shaders/skybox.frag-d.spv";
+	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
+		io::Path testV = graphics::utils::spirVpath("shaders/test.vert");
+		io::Path uiV = graphics::utils::spirVpath("shaders/ui.vert");
+		io::Path uiF = graphics::utils::spirVpath("shaders/ui.frag");
+		io::Path testF = graphics::utils::spirVpath("shaders/test.frag");
+		io::Path testFTex = graphics::utils::spirVpath("shaders/test_tex.frag");
+		io::Path skyV = graphics::utils::spirVpath("shaders/skybox.vert");
+		io::Path skyF = graphics::utils::spirVpath("shaders/skybox.frag");
 
 		auto tex0 = reader.bytes("textures/container2.png");
 		auto const cubemap = graphics::utils::loadCubemap(reader, "skyboxes/sky_dusk");
@@ -474,9 +474,12 @@ class App {
 		graphics::Shader testTex(eng.m_boot.device, {*reader.bytes(testV), *reader.bytes(testFTex)});
 		graphics::Shader skybox(eng.m_boot.device, {*reader.bytes(skyV), *reader.bytes(skyF)});
 		graphics::Shader ui(eng.m_boot.device, {*reader.bytes(uiV), *reader.bytes(uiF)});
-		auto pipe = eng.m_context.makePipeline("test", eng.m_context.pipeInfo(test));
-		auto pipeTex = eng.m_context.makePipeline("test_tex", eng.m_context.pipeInfo(testTex, graphics::PFlags::inverse()));
-		auto pipeUI = eng.m_context.makePipeline("ui", eng.m_context.pipeInfo(ui, graphics::PFlags::inverse()));
+		m_data.pipe["test"] = eng.m_context.makePipeline("test", test, eng.m_context.pipeInfo());
+		auto& pipe = *m_data.pipe["test"];
+		m_data.pipe["test_tex"] = eng.m_context.makePipeline("test_tex", testTex, eng.m_context.pipeInfo(graphics::PFlags::inverse()));
+		auto& pipeTex = *m_data.pipe["test_tex"];
+		m_data.pipe["ui"] = eng.m_context.makePipeline("ui", ui, eng.m_context.pipeInfo(graphics::PFlags::inverse()));
+		auto& pipeUI = *m_data.pipe["ui"];
 		m_data.text.create(eng.m_boot.vram, "text");
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
@@ -485,31 +488,27 @@ class App {
 
 		std::array const setNums = {0U, 1U, 2U};
 		m_data.sl.make("main", setNums, pipeTex);
-		auto pipeSkyInfo = eng.m_context.pipeInfo(skybox);
+		auto pipeSkyInfo = eng.m_context.pipeInfo();
 		pipeSkyInfo.fixedState.depthStencilState.depthWriteEnable = false;
 		pipeSkyInfo.fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
-		auto pipeSky = eng.m_context.makePipeline("skybox", pipeSkyInfo);
-		m_data.sl.make("skybox", 0, pipeSky);
+		m_data.pipe["sky"] = eng.m_context.makePipeline("skybox", skybox, pipeSkyInfo);
+		m_data.sl.make("skybox", 0, *m_data.pipe["sky"]);
 		m_data.cam = {0.0f, 2.0f, 4.0f};
 
-		m_data.mat_tex.diffuse = *m_data.tex["tex/c"];
-		m_data.mat_font.diffuse = *m_data.font.atlas;
+		m_data.mat_tex.diffuse = &*m_data.tex["tex/c"];
+		m_data.mat_font.diffuse = &*m_data.font.atlas;
 		m_data.scene.vp = graphics::TBuf<VP, false>(eng.m_boot.vram, "vp", {});
-		m_data.scene.skybox.mesh = *m_data.mesh["skycube"];
-		m_data.scene.skybox.cubemap = *m_data.tex["cube/sky"];
+		m_data.scene.skybox.mesh = &*m_data.mesh["skycube"];
+		m_data.scene.skybox.cubemap = &*m_data.tex["cube/sky"];
 		auto mbuf = [&eng](std::string_view name) { return graphics::TBuf<glm::mat4, false>(eng.m_boot.vram, name, {}); };
-		m_data.scene.props[*pipeTex].push_back(Prop2{mbuf("prop_tex"), {}, *m_data.mesh["m0"], m_data.mat_tex});
-		Prop2 p1{mbuf("prop_1"), {}, *m_data.mesh["m0"], m_data.mat_def};
+		m_data.scene.props[pipeTex].push_back(Prop2{mbuf("prop_tex"), {}, &*m_data.mesh["m0"], &m_data.mat_tex});
+		Prop2 p1{mbuf("prop_1"), {}, &*m_data.mesh["m0"], &m_data.mat_def};
 		p1.transform.position({-5.0f, -1.0f, -2.0f});
-		m_data.scene.props[*pipe].push_back(std::move(p1));
-		Prop2 p2{mbuf("prop_2"), {}, *m_data.mesh["m1"], m_data.mat_def};
+		m_data.scene.props[pipe].push_back(std::move(p1));
+		Prop2 p2{mbuf("prop_2"), {}, &*m_data.mesh["m1"], &m_data.mat_def};
 		p2.transform.position({1.0f, -2.0f, -3.0f});
-		m_data.scene.props[*pipe].push_back(std::move(p2));
-		m_data.scene.ui[*pipeUI].push_back(Prop2{mbuf("prop_ui"), {}, *m_data.text.mesh, m_data.mat_font});
-
-		m_data.pipe["test_tex"] = pipeTex;
-		m_data.pipe["test"] = pipe;
-		m_data.pipe["sky"] = pipeSky;
+		m_data.scene.props[pipe].push_back(std::move(p2));
+		m_data.scene.ui[pipeUI].push_back(Prop2{mbuf("prop_ui"), {}, &*m_data.text.mesh, &m_data.mat_font});
 
 		eng.m_win.get().show();
 	}
@@ -528,8 +527,8 @@ class App {
 			m_data.cam += moveDir * dt.count() * 0.75f;
 			m_data.scene.vp->get().mat_v = glm::lookAt(m_data.cam, {}, graphics::g_nUp);
 		}
-		auto pipeTex = *m_data.pipe["test_tex"];
-		auto pipe = *m_data.pipe["test"];
+		auto& pipeTex = m_data.pipe["test_tex"];
+		auto& pipe = m_data.pipe["test"];
 		m_data.scene.props[*pipeTex].front().transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
 		m_data.scene.props[*pipe].front().transform.rotate(glm::radians(360.0f) * dt.count(), graphics::g_nUp);
 	}
@@ -555,8 +554,8 @@ class App {
 			if (auto r = m_eng.get().m_context.render(Colour(0x040404ff))) {
 				auto& cb = r->primary();
 				cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
-				auto pipe = m_data.pipe["test_tex"];
-				auto pipeSky = m_data.pipe["sky"];
+				auto& pipe = m_data.pipe["test_tex"];
+				auto& pipeSky = m_data.pipe["sky"];
 				m_data.scene.draw(cb, {smain[0], smain[1], smain[2], ssky[0]}, {*pipe, *pipeSky});
 				m_data.sl.swap();
 			}
@@ -571,7 +570,7 @@ class App {
 		Map<graphics::Sampler> samp;
 		Map<graphics::Texture> tex;
 		Map<graphics::Mesh> mesh;
-		Map<View<graphics::Pipeline>> pipe;
+		Map<graphics::Pipeline> pipe;
 
 		TexturedMaterial mat_tex;
 		TexturedMaterial mat_font;
@@ -625,7 +624,7 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 			if (flags.test(Flag::eInit)) {
 				app.reset();
 				eng.emplace(winst, bootInfo, winst.framebufferSize());
-				app.emplace(*eng, reader, info.androidApp);
+				app.emplace(*eng, reader);
 			}
 			if (flags.test(Flag::eTerm)) {
 				app.reset();

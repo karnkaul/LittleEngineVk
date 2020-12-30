@@ -98,10 +98,6 @@ RenderContext& RenderContext::operator=(RenderContext&& rhs) {
 	return *this;
 }
 
-RenderContext::~RenderContext() {
-	destroy();
-}
-
 bool RenderContext::waitForFrame() {
 	if (!m_vram.get().m_transfer.polling()) {
 		m_vram.get().m_transfer.update();
@@ -192,34 +188,9 @@ bool RenderContext::reconstructed(glm::ivec2 framebufferSize) {
 	return false;
 }
 
-View<Pipeline> RenderContext::makePipeline(std::string_view id, Pipeline::CreateInfo createInfo) {
-	createInfo.dynamicState.renderPass = m_swapchain.get().renderPass();
-	Pipeline p0(m_vram, std::move(createInfo), id);
-	auto [iter, bResult] = m_storage.pipes.emplace(id, std::move(p0));
-	if (!bResult || iter == m_storage.pipes.end()) {
-		throw std::runtime_error("Map insertion failure");
-	}
-	g_log.log(lvl::info, 1, "[{}] Pipeline [{}] constructed", g_name, id);
-	return iter->second;
-}
-
-bool RenderContext::destroyPipeline(Hash id) {
-	if (auto search = m_storage.pipes.find(id); search != m_storage.pipes.end()) {
-		m_storage.pipes.erase(id);
-		return true;
-	}
-	return false;
-}
-
-bool RenderContext::hasPipeline(Hash id) const noexcept {
-	return m_storage.pipes.find(id) != m_storage.pipes.end();
-}
-
-View<Pipeline> RenderContext::pipeline(Hash id) {
-	if (auto search = m_storage.pipes.find(id); search != m_storage.pipes.end()) {
-		return search->second;
-	}
-	return {};
+Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo) {
+	createInfo.renderPass = m_swapchain.get().renderPass();
+	return Pipeline(m_vram, shader, std::move(createInfo), id);
 }
 
 glm::mat4 RenderContext::preRotate() const noexcept {
@@ -264,9 +235,5 @@ vk::Rect2D RenderContext::scissor(glm::ivec2 extent, ScreenRect const& nRect) co
 	scissor.extent.width = (u32)(size.x * (f32)extent.x);
 	scissor.extent.height = (u32)(size.y * (f32)extent.y);
 	return scissor;
-}
-
-void RenderContext::destroy() {
-	m_storage.pipes.clear();
 }
 } // namespace le::graphics

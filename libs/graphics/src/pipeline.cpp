@@ -29,10 +29,10 @@ bool valid(Shader::ModuleMap const& shaders) noexcept {
 }
 } // namespace
 
-Pipeline::Pipeline(VRAM& vram, CreateInfo info, Hash id) : m_vram(vram), m_device(vram.m_device) {
+Pipeline::Pipeline(VRAM& vram, Shader const& shader, CreateInfo info, Hash id) : m_vram(vram), m_device(vram.m_device) {
 	m_metadata.createInfo = std::move(info);
 	m_storage.id = id;
-	construct(true);
+	construct(shader, true);
 }
 
 Pipeline::Pipeline(Pipeline&& rhs)
@@ -56,13 +56,9 @@ Pipeline::~Pipeline() {
 	destroy(true);
 }
 
-bool Pipeline::reconstruct(CreateInfo::Dynamic const& newState) {
+bool Pipeline::reconstruct(Shader const& shader) {
 	destroy(false);
-	if (newState.shader) {
-		m_metadata.createInfo.dynamicState.shader = newState.shader;
-	}
-	setIfSet(m_metadata.createInfo.dynamicState.renderPass, newState.renderPass);
-	return construct(false);
+	return construct(shader, false);
 }
 
 vk::PipelineLayout Pipeline::layout() const {
@@ -84,17 +80,17 @@ SetFactory Pipeline::makeSetFactory(u32 set, std::size_t rotateCount) const {
 	return SetFactory(m_device, factoryInfo);
 }
 
-bool Pipeline::construct(bool bFixed) {
+bool Pipeline::construct(Shader const& shader, bool bFixed) {
 	auto& c = m_metadata.createInfo;
-	ENSURE(!Device::default_v(c.dynamicState.renderPass), "Invalid render pass");
-	ENSURE(c.dynamicState.shader && valid(c.dynamicState.shader->m_modules), "Invalid shader m_modules");
-	if (!c.dynamicState.shader || !valid(c.dynamicState.shader->m_modules) || Device::default_v(c.dynamicState.renderPass)) {
+	ENSURE(!Device::default_v(c.renderPass), "Invalid render pass");
+	ENSURE(valid(shader.m_modules), "Invalid shader m_modules");
+	if (!valid(shader.m_modules) || Device::default_v(c.renderPass)) {
 		return false;
 	}
 	if (bFixed) {
 		auto& f = m_storage.fixed;
 		f = {};
-		auto setBindings = utils::extractBindings(c.dynamicState.shader);
+		auto setBindings = utils::extractBindings(shader);
 		for (auto& [set, binds] : setBindings.sets) {
 			vk::DescriptorSetLayoutCreateInfo createInfo;
 			std::vector<vk::DescriptorSetLayoutBinding> bindings;
@@ -158,9 +154,9 @@ bool Pipeline::construct(bool bFixed) {
 	}
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	{
-		shaderCreateInfo.reserve(c.dynamicState.shader->m_modules.size());
-		for (std::size_t idx = 0; idx < c.dynamicState.shader->m_modules.size(); ++idx) {
-			vk::ShaderModule const& module = c.dynamicState.shader->m_modules[idx];
+		shaderCreateInfo.reserve(shader.m_modules.size());
+		for (std::size_t idx = 0; idx < shader.m_modules.size(); ++idx) {
+			vk::ShaderModule const& module = shader.m_modules[idx];
 			if (!Device::default_v(module)) {
 				vk::PipelineShaderStageCreateInfo createInfo;
 				createInfo.stage = Shader::typeToFlag[idx];
@@ -183,7 +179,7 @@ bool Pipeline::construct(bool bFixed) {
 	createInfo.pColorBlendState = &colorBlendState;
 	createInfo.pDynamicState = &dynamicState;
 	createInfo.layout = m_storage.fixed.layout;
-	createInfo.renderPass = c.dynamicState.renderPass;
+	createInfo.renderPass = c.renderPass;
 	createInfo.subpass = c.subpass;
 
 	auto pipeline = m_device.get().device().createGraphicsPipeline({}, createInfo);

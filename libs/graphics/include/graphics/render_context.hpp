@@ -51,12 +51,11 @@ class RenderContext : NoCopy {
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
-	static Pipeline::CreateInfo pipeInfo(Shader const& shader, PFlags flags = PFlag::eDepthTest | PFlag::eDepthWrite);
+	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlag::eDepthTest | PFlag::eDepthWrite);
 
 	RenderContext(Swapchain& swapchain, u32 rotateCount = 2, u32 secondaryCmdCount = 0);
 	RenderContext(RenderContext&&);
 	RenderContext& operator=(RenderContext&&);
-	~RenderContext();
 
 	bool waitForFrame();
 	std::optional<Frame> beginFrame(CommandBuffer::PassInfo const& info);
@@ -69,10 +68,7 @@ class RenderContext : NoCopy {
 	glm::ivec2 extent() const noexcept;
 	bool reconstructed(glm::ivec2 framebufferSize);
 
-	View<Pipeline> makePipeline(std::string_view id, Pipeline::CreateInfo createInfo);
-	View<Pipeline> pipeline(Hash id);
-	bool destroyPipeline(Hash id);
-	bool hasPipeline(Hash id) const noexcept;
+	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo);
 
 	vk::SurfaceFormatKHR swapchainFormat() const noexcept;
 	vk::Format textureFormat() const noexcept;
@@ -83,10 +79,7 @@ class RenderContext : NoCopy {
 	vk::Rect2D scissor(glm::ivec2 extent = {0, 0}, ScreenRect const& nRect = {}) const noexcept;
 
   private:
-	void destroy();
-
 	struct Storage {
-		std::unordered_map<Hash, Pipeline> pipes;
 		std::optional<RenderTarget> target;
 		Status status = {};
 	};
@@ -128,9 +121,8 @@ struct QuickVertexInput {
 // impl
 
 template <typename V>
-Pipeline::CreateInfo RenderContext::pipeInfo(Shader const& shader, PFlags flags) {
+Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags) {
 	Pipeline::CreateInfo ret;
-	ret.dynamicState.shader = shader;
 	ret.fixedState.vertexInput = VertexInfoFactory<V>()(0);
 	if (flags.test(PFlag::eDepthTest)) {
 		ret.fixedState.depthStencilState.depthTestEnable = true;

@@ -33,13 +33,9 @@ class Pipeline final {
 			vk::PipelineDepthStencilStateCreateInfo depthStencilState;
 			std::unordered_set<vk::DynamicState> dynamicStates;
 		};
-		struct Dynamic {
-			CView<Shader> shader;
-			vk::RenderPass renderPass;
-		};
 
 		Fixed fixedState;
-		Dynamic dynamicState;
+		vk::RenderPass renderPass;
 		u32 subpass = 0;
 		u32 rotateCount = 2;
 	};
@@ -48,12 +44,12 @@ class Pipeline final {
 		std::size_t index = 0;
 	};
 
-	Pipeline(VRAM& vram, CreateInfo createInfo, Hash id);
+	Pipeline(VRAM& vram, Shader const& shader, CreateInfo createInfo, Hash id);
 	Pipeline(Pipeline&&);
 	Pipeline& operator=(Pipeline&&);
 	~Pipeline();
 
-	bool reconstruct(CreateInfo::Dynamic const& newState = {});
+	bool reconstruct(Shader const& shader);
 	vk::PipelineLayout layout() const;
 	vk::DescriptorSetLayout setLayout(u32 set) const;
 	SetFactory makeSetFactory(u32 set, std::size_t rotateCount = 0) const;
@@ -61,7 +57,7 @@ class Pipeline final {
 	Hash id() const noexcept;
 
   private:
-	bool construct(bool bFixed);
+	bool construct(Shader const& shader, bool bFixed);
 	void destroy(bool bFixed);
 
 	struct Storage {

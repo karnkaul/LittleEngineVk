@@ -121,12 +121,14 @@ Shader::ResourcesMap utils::shaderResources(Shader const& shader) {
 	return ret;
 }
 
-std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path dst, io::Path const& prefix, bool bDebug) {
-	auto d = dst;
-	if (d.empty()) {
-		d = src;
-		d += bDebug ? "-d.spv" : ".spv";
-	}
+io::Path utils::spirVpath(io::Path const& src, bool bDebug) {
+	io::Path ret = src;
+	ret += bDebug ? "-d.spv" : ".spv";
+	return ret;
+}
+
+std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& dst, io::Path const& prefix, bool bDebug) {
+	auto const d = dst.empty() ? spirVpath(src, bDebug) : dst;
 	auto const flags = bDebug ? "-g" : std::string_view();
 	auto const result = Spv::inst().compile(io::absolute(prefix / src), io::absolute(prefix / d), flags);
 	if (!result.empty()) {

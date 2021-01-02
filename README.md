@@ -9,20 +9,21 @@ An attempt to write a simple 3D game engine with a (mostly hard-coded) Vulkan re
 ### Features
 
 - Multi-platform windowing
-  - Multi-window support (Windows, Linux: via GLFW)
+  - Windows, Linux: via GLFW
+  - Android (alpha)
   - Windowing event / input callback registration
   - Keyboard, mouse, and gamepad support
 - 3D renderer
   - Vulkan backend (internal)
   - Validation layer support (on by default in `Debug`)
   - Async buffer and image transfers
-  - Phong shading (uber shader)
+  - Phong shading (WIP)
 - Multi-threaded task system
   - Async queue (condition variable, no spinlock)
   - Configurable worker count
 - Entity Component module
   - Hashed ID entities
-  - Templated type-erased component storage (no polymorphism support)
+  - Type-erased component storage (no polymorphism support)
   - Thread-safe registry
 - Multi-threaded resourcing
   - Thread-safe resource management
@@ -30,7 +31,7 @@ An attempt to write a simple 3D game engine with a (mostly hard-coded) Vulkan re
   - Hot reloading of textures and shaders
 - JSON de/serialisation
 - Free-look camera
-- Editor overlay (via Dear ImGui)
+- Editor overlay (via Dear ImGui; desktop platforms only)
 - API Documentation (via Doxygen)
 
 ### Usage

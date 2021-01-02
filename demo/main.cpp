@@ -4,7 +4,12 @@
 #include <demo.hpp>
 #include <graphics/utils/utils.hpp>
 
+#include <fstream>
+#include <dumb_json/djson.hpp>
+#include <dumb_json/error_handler.hpp>
+
 int main(int argc, char** argv) {
+	le::os::args({argc, argv});
 	{
 		using namespace le;
 		io::FileReader reader;

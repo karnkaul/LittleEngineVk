@@ -6,7 +6,7 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/utils.hpp>
-#include <dumb_json/dumb_json.hpp>
+#include <dumb_json/djson.hpp>
 #include <engine/game/stopwatch.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/device.hpp>
@@ -60,9 +60,9 @@ class OBJParser final {
 	std::vector<std::size_t> materials(tinyobj::shape_t const& shape);
 };
 
-glm::vec3 getVec3(dj::object const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f)) {
-	if (auto const pVec = json.find<dj::object>(id)) {
-		return {(f32)pVec->value<dj::floating>("x"), (f32)pVec->value<dj::floating>("y"), (f32)pVec->value<dj::floating>("z")};
+glm::vec3 getVec3(dj::node_t const& json, std::string const& id, glm::vec3 const& def = glm::vec3(0.0f)) {
+	if (auto const pVec = json.find(id)) {
+		return {pVec->safe_get("x").as<f32>(), pVec->safe_get("y").as<f32>(), pVec->safe_get("z").as<f32>()};
 	}
 	return def;
 }
@@ -286,12 +286,12 @@ kt::result_void<Model::CreateInfo> LoadBase<Model>::createInfo() const {
 		logE("[{}] [{}] not found!", Model::s_tName, jsonID.generic_string());
 		return {};
 	}
-	dj::object json;
-	if (!json.read(*jsonStr) || json.fields.empty()) {
+	auto json = dj::node_t::make(*jsonStr);
+	if (!json || json->is_object()) {
 		logE("[{}] Failed to read json: [{}]!", Model::s_tName, jsonID.generic_string());
 	}
-	auto const& obj = json.value<dj::string>("obj");
-	auto const& mtl = json.value<dj::string>("mtl");
+	auto const obj = json->safe_get("obj").as<std::string>();
+	auto const mtl = json->safe_get("mtl").as<std::string>();
 	if (mtl.empty() || obj.empty()) {
 		logE("[{}] No data in json: [{}]!", Model::s_tName, jsonID.generic_string());
 		return {};
@@ -306,17 +306,17 @@ kt::result_void<Model::CreateInfo> LoadBase<Model>::createInfo() const {
 	auto objBuf = engine::reader().sstream(objPath);
 	auto mtlBuf = engine::reader().sstream(mtlPath);
 	if (objBuf && mtlBuf) {
-		auto pSamplerID = json.find<dj::string>("sampler");
-		auto pScale = json.find<dj::floating>("scale");
+		auto pSamplerID = json->find("sampler");
+		auto pScale = json->find("scale");
 		OBJParser::Data objData;
 		objData.objBuf = objBuf.move();
 		objData.mtlBuf = mtlBuf.move();
 		objData.jsonID = std::move(jsonID);
 		objData.modelID = pThis->idRoot.empty() ? jsonDir : pThis->idRoot;
-		objData.samplerID = pSamplerID ? pSamplerID->value : "samplers/default";
-		objData.scale = pScale ? (f32)pScale->value : 1.0f;
-		objData.bDropColour = json.value<dj::boolean>("dropColour");
-		objData.origin = getVec3(json, "origin");
+		objData.samplerID = pSamplerID ? pSamplerID->as<std::string>() : "samplers/default";
+		objData.scale = pScale ? pScale->as<f32>() : 1.0f;
+		objData.bDropColour = json->safe_get("dropColour").as<bool>();
+		objData.origin = getVec3(*json, "origin");
 		OBJParser parser(std::move(objData));
 		return std::move(parser.m_info);
 	}

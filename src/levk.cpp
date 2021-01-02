@@ -6,7 +6,6 @@
 #include <core/tasks.hpp>
 #include <core/time.hpp>
 #include <core/utils.hpp>
-#include <dumb_json/dumb_json.hpp>
 #include <editor/editor.hpp>
 #include <engine/game/driver.hpp>
 #include <engine/game/scene_builder.hpp>
@@ -46,7 +45,7 @@ Clock g_clock;
 } // namespace
 
 Service::Service(os::Args args) {
-	dj::g_log_error = [](auto text) { logE("{}", text); };
+	// dj::g_log_error = [](auto text) { logE("{}", text); };
 	m_services.add<os::Service>(args);
 	m_services.add<io::Service>(std::string_view("debug.log"));
 	logI("LittleEngineVk v{}  [{}/{}]", g_engineVersion.toString(false), levk_OS_name, levk_arch_name);

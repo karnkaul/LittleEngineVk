@@ -1,4 +1,4 @@
-project(vulkan-hpp)
+project(levk-vulkan-hpp)
 
 # Vulkan
 if(NOT LEVK_VULKAN_DYNAMIC)

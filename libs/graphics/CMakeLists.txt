@@ -20,7 +20,7 @@ target_link_libraries(${PROJECT_NAME}
 		levk-core
 		spirv-cross-glsl
 		vma
-		vulkan-hpp
+		levk-vulkan-hpp
 	PRIVATE
 		levk-interface
 		stb-image

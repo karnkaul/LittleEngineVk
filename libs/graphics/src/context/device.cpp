@@ -247,6 +247,22 @@ vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vAP<vk::Ima
 	return m_device.createFramebuffer(createInfo);
 }
 
+bool Device::setDebugUtilsName(vk::DebugUtilsObjectNameInfoEXT const& info) const {
+	if (!default_v(m_instance.get().m_messenger)) {
+		m_device.setDebugUtilsObjectNameEXT(info, m_instance.get().loader());
+		return true;
+	}
+	return false;
+}
+
+bool Device::setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view name) const {
+	vk::DebugUtilsObjectNameInfoEXT info;
+	info.objectHandle = handle;
+	info.objectType = type;
+	info.pObjectName = name.data();
+	return setDebugUtilsName(info);
+}
+
 void Device::defer(Deferred::Callback callback, u64 defer) {
 	m_deferred.defer({std::move(callback), defer});
 }

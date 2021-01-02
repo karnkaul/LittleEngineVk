@@ -86,6 +86,9 @@ Buffer::Buffer(Memory& memory, CreateInfo const& info) : Resource(memory) {
 		throw std::runtime_error("Allocation error");
 	}
 	m_storage.buffer = vk::Buffer(vkBuffer);
+#if defined(LEVK_VKRESOURCE_NAMES)
+	memory.m_device.get().setDebugUtilsName((u64)vkBuffer, m_storage.buffer.objectType, m_data.name);
+#endif
 	m_data.queueFlags = info.queueFlags;
 	m_data.mode = bufferInfo.sharingMode;
 	m_storage.usage = info.usage;
@@ -209,6 +212,9 @@ Image::Image(Memory& memory, CreateInfo const& info) : Resource(memory) {
 	}
 	m_storage.extent = info.createInfo.extent;
 	m_storage.image = vk::Image(vkImage);
+#if defined(LEVK_VKRESOURCE_NAMES)
+	memory.m_device.get().setDebugUtilsName((u64)vkImage, m_storage.image.objectType, m_data.name);
+#endif
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
 	m_data.queueFlags = info.queueFlags;
 	VmaAllocationInfo allocationInfo;

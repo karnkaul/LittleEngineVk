@@ -1,7 +1,7 @@
 #include <iostream>
 #include <core/transform.hpp>
 #include <demo.hpp>
-#include <dumb_json/dumb_json.hpp>
+#include <dumb_json/djson.hpp>
 #include <graphics/bitmap_text.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/bootstrap.hpp>
@@ -199,34 +199,39 @@ struct Font {
 	io::Path materialID;
 	std::optional<graphics::Texture> atlas;
 	std::array<graphics::Glyph, maths::max<u8>()> glyphs;
+	s32 orgSizePt = 0;
 
-	graphics::Glyph deserialise(u8 c, dj::object const& json) {
+	graphics::Glyph deserialise(u8 c, dj::node_t const& json) {
 		graphics::Glyph ret;
 		ret.ch = c;
-		ret.st = {(s32)json.value<dj::integer>("x"), (s32)json.value<dj::integer>("y")};
-		ret.uv = ret.cell = {(s32)json.value<dj::integer>("width"), (s32)json.value<dj::integer>("height")};
-		ret.offset = {(s32)json.value<dj::integer>("originX"), (s32)json.value<dj::integer>("originY")};
-		auto const pAdvance = json.find<dj::integer>("advance");
-		ret.xAdv = pAdvance ? (s32)pAdvance->value : ret.cell.x;
-		ret.orgSizePt = (s32)json.value<dj::integer>("size");
-		ret.bBlank = json.value<dj::boolean>("isBlank");
+		ret.st = {json.get("x").as<s32>(), json.get("y").as<s32>()};
+		ret.uv = ret.cell = {json.get("width").as<s32>(), json.get("height").as<s32>()};
+		ret.offset = {json.get("originX").as<s32>(), json.get("originY").as<s32>()};
+		auto const pAdvance = json.find("advance");
+		ret.xAdv = pAdvance ? pAdvance->as<s32>() : ret.cell.x;
+		if (auto pBlank = json.find("isBlank")) {
+			ret.bBlank = pBlank->as<bool>();
+		}
 		return ret;
 	}
 
-	void deserialise(dj::object const& json) {
-		if (auto pAtlas = json.find<dj::string>("sheetID")) {
-			atlasID = pAtlas->value;
+	void deserialise(dj::node_t const& json) {
+		if (auto pAtlas = json.find("sheetID")) {
+			atlasID = pAtlas->as<std::string>();
 		}
-		if (auto pSampler = json.find<dj::string>("samplerID")) {
-			samplerID = pSampler->value;
+		if (auto pSampler = json.find("samplerID")) {
+			samplerID = pSampler->as<std::string>();
 		}
-		if (auto pMaterial = json.find<dj::string>("materialID")) {
-			materialID = pMaterial->value;
+		if (auto pMaterial = json.find("materialID")) {
+			materialID = pMaterial->as<std::string>();
 		}
-		if (auto pGlyphsData = json.find<dj::object>("glyphs")) {
-			for (auto& [key, value] : pGlyphsData->fields) {
-				if (!key.empty() && value->type() == dj::data_type::object) {
-					graphics::Glyph const glyph = deserialise((u8)key[0], *value->cast<dj::object>());
+		if (auto pSize = json.find("size")) {
+			orgSizePt = pSize->as<s32>();
+		}
+		if (auto pGlyphsData = json.find("glyphs")) {
+			for (auto& [key, value] : pGlyphsData->as<dj::map_nodes_t>()) {
+				if (!key.empty()) {
+					graphics::Glyph const glyph = deserialise((u8)key[0], *value);
 					if (glyph.cell.x > 0 && glyph.cell.y > 0) {
 						glyphs[(std::size_t)glyph.ch] = glyph;
 					} else {
@@ -242,11 +247,11 @@ struct Font {
 		if (!jsonText) {
 			return false;
 		}
-		dj::object json;
-		if (!json.read(*jsonText)) {
+		auto json = dj::node_t::make(*jsonText);
+		if (!json) {
 			return false;
 		}
-		deserialise(json);
+		deserialise(*json);
 		auto bytes = reader.bytes(path.parent_path() / atlasID);
 		if (!bytes) {
 			return false;

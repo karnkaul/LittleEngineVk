@@ -7,7 +7,7 @@
 #include <core/token_gen.hpp>
 #include <core/utils.hpp>
 #include <core/zero.hpp>
-#include <dumb_json/dumb_json.hpp>
+#include <dumb_json/djson.hpp>
 #include <engine/gfx/geometry.hpp>
 #include <glm/vec2.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
@@ -291,7 +291,7 @@ struct Font::Glyph {
 	s32 orgSizePt = 0;
 	bool bBlank = false;
 
-	void deserialise(u8 c, dj::object const& json);
+	void deserialise(u8 c, dj::node_t const& json);
 };
 struct Font::Info : InfoBase {
 	Material::Inst material;

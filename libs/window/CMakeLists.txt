@@ -16,7 +16,7 @@ target_link_libraries(${PROJECT_NAME}
 		levk-core
 	PRIVATE
 		levk-interface
-		vulkan-hpp
+		levk-vulkan-hpp
 		$<$<STREQUAL:${PLATFORM},Android>:levk-android-glue>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 )

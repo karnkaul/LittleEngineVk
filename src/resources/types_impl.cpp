@@ -215,41 +215,45 @@ std::string Shader::Impl::extension(io::Path const& id) {
 	return {};
 }
 
-void Font::Glyph::deserialise(u8 c, dj::object const& json) {
+void Font::Glyph::deserialise(u8 c, dj::node_t const& json) {
 	ch = c;
-	st = {(s32)json.value<dj::integer>("x"), (s32)json.value<dj::integer>("y")};
-	cell = {(s32)json.value<dj::integer>("width"), (s32)json.value<dj::integer>("height")};
-	uv = cell;
-	offset = {(s32)json.value<dj::integer>("originX"), (s32)json.value<dj::integer>("originY")};
-	auto pAdvance = json.find<dj::integer>("advance");
-	xAdv = pAdvance ? (s32)pAdvance->value : cell.x;
-	orgSizePt = (s32)json.value<dj::integer>("size");
-	bBlank = json.value<dj::boolean>("isBlank");
+	st = {json.get("x").as<s32>(), json.get("y").as<s32>()};
+	uv = cell = {json.get("width").as<s32>(), json.get("height").as<s32>()};
+	offset = {json.get("originX").as<s32>(), json.get("originY").as<s32>()};
+	auto const pAdvance = json.find("advance");
+	xAdv = pAdvance ? pAdvance->as<s32>() : cell.x;
+	if (auto pBlank = json.find("isBlank")) {
+		bBlank = pBlank->as<bool>();
+	}
 }
 
 bool Font::CreateInfo::deserialise(std::string const& jsonStr) {
-	dj::object json;
-	if (json.read(jsonStr)) {
-		sheetID = json.value<dj::string>("sheetID");
-		auto pSamplerID = json.find<dj::string>("sampler");
-		auto pMaterialID = json.find<dj::string>("material");
-		samplerID = pSamplerID ? pSamplerID->value : "samplers/font";
-		materialID = pMaterialID ? pMaterialID->value : "materials/default";
-		if (auto pGlyphsData = json.find<dj::object>("glyphs")) {
-			for (auto& [key, value] : pGlyphsData->fields) {
-				if (!key.empty() && value->type() == dj::data_type::object) {
+	if (auto json = dj::node_t::make(jsonStr)) {
+		if (auto pAtlas = json->find("sheetID")) {
+			sheetID = pAtlas->as<std::string>();
+		}
+		if (auto pSampler = json->find("samplerID")) {
+			samplerID = pSampler->as<std::string>();
+		}
+		if (auto pMaterial = json->find("materialID")) {
+			materialID = pMaterial->as<std::string>();
+		}
+		if (auto pGlyphsData = json->find("glyphs")) {
+			for (auto& [key, value] : pGlyphsData->as<dj::map_nodes_t>()) {
+				if (!key.empty()) {
 					Glyph glyph;
-					glyph.deserialise((u8)key[0], *value->cast<dj::object>());
+					glyph.deserialise((u8)key[0], *value);
 					if (glyph.cell.x > 0 && glyph.cell.y > 0) {
-						glyphs.push_back(std::move(glyph));
+						glyphs.push_back(glyph);
 					} else {
-						logW("[{}] Could not deserialise Glyph '{}'!", Font::s_tName, key[0]);
+						logW("Could not deserialise Glyph '{}'!", key[0]);
 					}
 				}
 			}
 		}
+		return true;
 	}
-	return true;
+	return false;
 }
 
 gfx::Geometry Font::generate(Text const& text, std::optional<Layout> layout) const {

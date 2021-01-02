@@ -448,51 +448,65 @@ std::string camelify(std::string_view str) {
 	return ret;
 }
 
-void addMesh(dj::object& out_entry, res::Mesh mesh) {
-	out_entry.add<dj::string>("mesh_id", mesh.info().id.generic_string());
+void addMesh(dj::node_t& out_entry, res::Mesh mesh) {
+	out_entry.add("mesh_id", mesh.info().id.generic_string());
 }
 
-void addModel(dj::object& out_entry, res::Model model) {
-	out_entry.add<dj::string>("model_id", model.info().id.generic_string());
+void addModel(dj::node_t& out_entry, res::Model model) {
+	out_entry.add("model_id", model.info().id.generic_string());
 }
 
-void addDesc(dj::object& out_entry, GameScene::Desc const& desc) {
-	dj::object d;
+void addDesc(dj::node_t& out_entry, GameScene::Desc const& desc) {
+	dj::node_t d;
 	if (!desc.skyboxCubemapID.empty()) {
-		d.add<dj::string>("skybox_id", desc.skyboxCubemapID.generic_string());
+		d.add("skybox_id", desc.skyboxCubemapID.generic_string());
 	}
-	d.add<dj::string>("clear_colour", desc.clearColour.toStr(true));
+	d.add("clear_colour", desc.clearColour.toStr(true));
 	out_entry.add("scene_desc", std::move(d));
 }
 
-void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap const& emap, Registry const& reg, std::unordered_set<Entity>& out_added) {
+void addVec3(dj::node_t& out_node, glm::vec3 const& v) {
+	out_node.add("x", std::to_string(v.x));
+	out_node.add("y", std::to_string(v.y));
+	out_node.add("z", std::to_string(v.z));
+}
+
+void addQuat(dj::node_t& out_node, glm::quat const& q) {
+	out_node.add("x", std::to_string(q.x));
+	out_node.add("y", std::to_string(q.y));
+	out_node.add("z", std::to_string(q.z));
+	out_node.add("w", std::to_string(q.w));
+}
+
+void addTransform(dj::node_t& out_node, Transform const& t) {
+	dj::node_t pos, orn, scl;
+	addVec3(pos, t.position());
+	addVec3(scl, t.scale());
+	addQuat(orn, t.orientation());
+	out_node.add("position", std::move(pos));
+	out_node.add("scale", std::move(scl));
+	out_node.add("orientation", std::move(orn));
+}
+
+void walkSceneTree(dj::node_t& out_root, Transform& root, GameScene::EntityMap const& emap, Registry const& reg, std::unordered_set<Entity>& out_added) {
 	auto const children = root.children();
 	auto search = emap.find(root);
 	if (search != emap.end()) {
 		auto [transform, entity] = *search;
 		out_added.insert(entity);
-		dj::object e;
-		e.add<dj::string>("name", reg.name(entity));
+		dj::node_t e;
+		e.add("name", std::string(reg.name(entity)));
 		if (auto pMesh = reg.find<res::Mesh>(entity)) {
 			addMesh(e, *pMesh);
 		}
 		if (auto pModel = reg.find<res::Model>(entity)) {
 			addModel(e, *pModel);
 		}
-		Transform& t = transform;
-		auto const p = t.position();
-		auto const pos = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', p.x, p.y, p.z, '}');
-		auto const s = t.scale();
-		auto const scl = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {} {}", '{', s.x, s.y, s.z, '}');
-		auto const o = t.orientation();
-		auto const orn = fmt::format("{} \"x\": {}, \"y\": {}, \"z\": {}, \"w\": {} {}", '{', o.x, o.y, o.z, o.w, '}');
-		dj::object tr;
-		tr.add<dj::object>("position", pos);
-		tr.add<dj::object>("orientation", orn);
-		tr.add<dj::object>("scale", scl);
-		auto const& children = t.children();
+		dj::node_t tr;
+		addTransform(tr, transform);
+		auto const& children = transform.get().children();
 		if (!children.empty()) {
-			dj::array arr;
+			dj::node_t arr;
 			for (Transform& child : children) {
 				walkSceneTree(arr, child, emap, reg, out_added);
 			}
@@ -503,14 +517,14 @@ void walkSceneTree(dj::array& out_root, Transform& root, GameScene::EntityMap co
 	}
 }
 
-void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity> const& added) {
+void residue(dj::node_t& out_arr, Registry const& reg, std::unordered_set<Entity> const& added) {
 	{
 		auto view = reg.view<GameScene::Desc>();
 		for (auto& [entity, query] : view) {
 			if (added.find(entity) == added.end()) {
-				dj::object e;
+				dj::node_t e;
 				auto const& [desc] = query;
-				e.add<dj::string>("name", reg.name(entity));
+				e.add("name", std::string(reg.name(entity)));
 				addDesc(e, desc);
 				out_arr.add(std::move(e));
 			}
@@ -518,9 +532,9 @@ void residue(dj::array& out_arr, Registry const& reg, std::unordered_set<Entity>
 	}
 }
 
-dj::object serialise(GameScene const& scene) {
-	dj::object ret;
-	dj::array entities;
+dj::node_t serialise(GameScene const& scene) {
+	dj::node_t ret;
+	dj::node_t entities;
 	std::unordered_set<Entity> added;
 	for (auto& child : scene.m_sceneRoot.children()) {
 		walkSceneTree(entities, child, scene.m_entityMap, scene.m_registry, added);
@@ -555,9 +569,9 @@ void drawLeftPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_sc
 			auto const filename = fmt::format("{}.scene", sceneIO::camelify(gs::g_game.m_name));
 			if (auto file = std::ofstream(filename)) {
 				auto const scene = sceneIO::serialise(out_scene);
-				auto opts = dj::g_serial_opts;
+				dj::serial_opts_t opts;
 				opts.sort_keys = opts.pretty = true;
-				auto const str = scene.serialise(opts);
+				auto const str = scene.to_string(opts);
 				if (file.write(str.data(), (std::streamsize)str.size())) {
 					logI("[{}] Scene saved to [{}]", s_tName, filename);
 				} else {

@@ -165,7 +165,6 @@ target_link_libraries(${TARGET_NAME}
 		djson
 	PRIVATE
 		levk-interface
-		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 		$<$<BOOL:${LEVK_USE_IMGUI}>:imgui>
 		vma

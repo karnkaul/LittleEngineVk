@@ -3,7 +3,7 @@
 #include <memory>
 #include <core/std_types.hpp>
 #include <core/tasks.hpp>
-#include <dumb_json/dumb_json.hpp>
+#include <dumb_json/djson.hpp>
 #include <engine/resources/resource_list.hpp>
 #include <engine/resources/resources.hpp>
 #include <kt/async_queue/async_queue.hpp>
@@ -56,7 +56,7 @@ class Manifest {
 	Info m_toLoad;
 
   protected:
-	dj::object m_manifest;
+	dj::node_t m_manifest;
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<res::GUID> m_loading;

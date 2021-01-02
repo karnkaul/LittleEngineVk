@@ -45,6 +45,9 @@ class Device final {
 
 	vk::Framebuffer createFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers = 1) const;
 
+	bool setDebugUtilsName(vk::DebugUtilsObjectNameInfoEXT const& info) const;
+	bool setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view name) const;
+
 	template <typename T, typename... Args>
 	T construct(Args&&... args);
 	template <typename T, typename... Ts>

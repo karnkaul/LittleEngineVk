@@ -119,7 +119,7 @@ DemoLevel::DemoLevel() {
 	desc.flags = GameScene::Desc::Flag::eScissoredUI | GameScene::Desc::Flag::eDynamicUI;
 
 	for (auto i = 0; i < 1000; ++i) {
-		gs::g_game.spawnProp(fmt::format("test_{}", i), &m_data.eid3.transform());
+		// gs::g_game.spawnProp(fmt::format("test_{}", i), &m_data.eid3.transform());
 	}
 }
 

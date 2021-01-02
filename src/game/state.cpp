@@ -1,5 +1,6 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
+#include <dumb_json/djson.hpp>
 #include <editor/editor.hpp>
 #include <engine/game/driver.hpp>
 #include <engine/game/state.hpp>
@@ -55,9 +56,8 @@ gs::Result<Token> gs::loadManifest(LoadReq const& loadReq) {
 Token gs::loadInputMap(io::Path const& id, input::Context* out_pContext) {
 	if (!id.empty() && engine::reader().isPresent(id)) {
 		if (auto str = engine::reader().string(id)) {
-			dj::object json;
-			if (json.read(*str)) {
-				if (auto const parsed = out_pContext->deserialise(json); parsed > 0) {
+			if (auto json = dj::node_t::make(*str)) {
+				if (auto const parsed = out_pContext->deserialise(*json); parsed > 0) {
 					logD("[GameState] Parsed [{}] input mappings from [{}]", parsed, id.generic_string());
 				}
 			} else {

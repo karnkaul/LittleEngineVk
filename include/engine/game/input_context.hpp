@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 #include <core/hash.hpp>
-#include <dumb_json/dumb_json.hpp>
+#include <dumb_json/djson.hpp>
 #include <engine/window/input_types.hpp>
 #include <glm/vec2.hpp>
 
@@ -51,7 +51,7 @@ struct Map final {
 	void addRange(Hash id, Axis axis, bool bReverse = false);
 	void addRange(Hash id, Key min, Key max);
 
-	u16 deserialise(dj::object const& json);
+	u16 deserialise(dj::node_t const& json);
 	void clear();
 
 	u16 size() const;
@@ -81,7 +81,7 @@ class Context final {
 	void setMode(Mode mode);
 	void setGamepadID(s32 id);
 
-	u16 deserialise(dj::object const& json);
+	u16 deserialise(dj::node_t const& json);
 	void import(Map map);
 
   public:

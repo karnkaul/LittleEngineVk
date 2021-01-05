@@ -61,6 +61,7 @@ set(COMPILE_FTRS cxx_std_17)
 set(LINK_LIBS $<$<STREQUAL:${PLATFORM},Linux>:pthread stdc++fs dl>)
 
 add_library(levk-interface INTERFACE)
+add_library(levk::interface ALIAS levk-interface)
 target_compile_features(levk-interface INTERFACE ${COMPILE_FTRS})
 target_compile_definitions(levk-interface INTERFACE ${COMPILE_DEFS})
 target_compile_options(levk-interface INTERFACE ${COMPILE_OPTS})

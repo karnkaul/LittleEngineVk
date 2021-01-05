@@ -147,6 +147,7 @@ file(GLOB_RECURSE LEVK_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/sr
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${LEVK_INCLUDES} ${LEVK_SOURCES})
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${LEVK_GENERATED})
 add_library(${TARGET_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES} ${LEVK_GENERATED})
+add_library(levk::engine ALIAS ${TARGET_NAME})
 target_include_directories(${TARGET_NAME} SYSTEM
 	INTERFACE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -160,11 +161,11 @@ target_include_directories(${TARGET_NAME}
 )
 target_link_libraries(${TARGET_NAME}
 	PUBLIC
-		levk-graphics
-		levk-window
-		djson
+		levk::graphics
+		levk::window
+		djson::djson
 	PRIVATE
-		levk-interface
+		levk::interface
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 		$<$<BOOL:${LEVK_USE_IMGUI}>:imgui>
 		vma

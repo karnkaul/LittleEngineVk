@@ -4,6 +4,7 @@ project(levk-window)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
+add_library(levk::window ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
 	PUBLIC
@@ -13,11 +14,11 @@ target_include_directories(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
-		levk-core
+		levk::core
 	PRIVATE
-		levk-interface
-		levk-vulkan-hpp
-		$<$<STREQUAL:${PLATFORM},Android>:levk-android-glue>
+		levk::interface
+		levk::vulkan-hpp
+		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 )
 

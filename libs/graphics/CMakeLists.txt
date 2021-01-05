@@ -4,7 +4,7 @@ project(levk-graphics)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.?pp")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
-
+add_library(levk::graphics ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
 	PUBLIC
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -17,12 +17,12 @@ target_include_directories(${PROJECT_NAME} SYSTEM
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
-		levk-core
+		levk::core
 		spirv-cross-glsl
 		vma
-		levk-vulkan-hpp
+		levk::vulkan-hpp
 	PRIVATE
-		levk-interface
+		levk::interface
 		stb-image
 		tinyobjloader
 		$<$<STREQUAL:${PLATFORM},Linux>:X11>

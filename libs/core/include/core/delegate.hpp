@@ -19,7 +19,7 @@ class Delegate {
 	/// \brief Register callback and obtain token
 	/// \returns Subscription token (discard to unregister)
 	///
-	[[nodiscard]] Tk subscribe(Callback callback);
+	[[nodiscard]] Tk subscribe(Callback const& callback);
 	///
 	/// \brief Invoke registered callbacks; returns live count
 	///
@@ -39,8 +39,8 @@ class Delegate {
 };
 
 template <typename... Args>
-typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback callback) {
-	return m_tokens.push(std::move(callback));
+typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback const& callback) {
+	return m_tokens.push(callback);
 }
 
 template <typename... Args>

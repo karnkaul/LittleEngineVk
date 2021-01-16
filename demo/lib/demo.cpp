@@ -14,6 +14,8 @@
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
+#include <engine/assets/asset_store.hpp>
+
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
 using Flags = kt::enum_flags<Flag>;
@@ -434,6 +436,9 @@ class Eng {
 };
 
 class App {
+  private:
+	Token m_tk;
+
   public:
 	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
 		io::Path testV = graphics::utils::spirVpath("shaders/test.vert");
@@ -444,37 +449,55 @@ class App {
 		io::Path skyV = graphics::utils::spirVpath("shaders/skybox.vert");
 		io::Path skyF = graphics::utils::spirVpath("shaders/skybox.frag");
 
-		auto tex0 = reader.bytes("textures/container2.png");
-		auto const cubemap = graphics::utils::loadCubemap(reader, "skyboxes/sky_dusk");
+		m_store.resources().reader(reader);
+		AssetLoadInfo<graphics::Shader> ali{eng.m_boot.device, {}};
+		ali.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/test.vert";
+		ali.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/test.frag";
+		[[maybe_unused]] auto sh = m_store.load<graphics::Shader>("shaders/test", ali);
+		[[maybe_unused]] auto str = m_store.add<std::string>("strings/test", "Hi");
+		ENSURE(m_store.contains<std::string>("strings/test"), "fubar");
+		m_tk = sh->onModified.get().subscribe([]() { logI("success!"); });
+		m_store.find<std::string_view>("foo");
+		{
+			auto const& store = m_store;
+			store.find<graphics::Shader>("shaders/test");
+			ENSURE(store.find<std::string>("strings/test"), "fubar");
+		}
+		ENSURE(m_store.unload<std::string>("strings/test"), "fubar");
+		m_store.get<graphics::Shader>("shaders/test");
+		auto sampler =
+			m_store.add("samplers/default", graphics::Sampler{eng.m_boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+		AssetLoadInfo<graphics::Texture> ali2{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};
+		ali2.name = "cubemaps/sky_dusk";
+		ali2.prefix = "skyboxes/sky_dusk";
+		ali2.ext = ".jpg";
+		ali2.imageIDs = {"right", "left", "up", "down", "front", "back"};
+		auto skyboxTex = m_store.load<graphics::Texture>(ali2.name, ali2);
+		m_data.tex.push_back(ali2.name);
+		ali2.name = "textures/container2";
+		ali2.prefix.clear();
+		ali2.ext.clear();
+		ali2.imageIDs = {"textures/container2.png"};
+		auto containerTex = m_store.load<graphics::Texture>(ali2.name, ali2);
+		m_data.tex.push_back(ali2.name);
+		ali2.name = "textures/red";
+		ali2.imageIDs.clear();
+		ali2.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
+		ali2.raw.size = {1, 1};
+		[[maybe_unused]] auto redTex = m_store.load<graphics::Texture>(ali2.name, ali2);
+		m_data.tex.push_back(ali2.name);
+
 		graphics::Geometry gcube = graphics::makeCube(0.5f);
 		auto const skyCubeI = gcube.indices;
 		auto const skyCubeV = gcube.positions();
 		m_data.mesh["m0"].emplace("cube", eng.m_boot.vram, graphics::Mesh::Type::eStatic);
 		m_data.mesh["m1"].emplace("cone", eng.m_boot.vram, graphics::Mesh::Type::eStatic);
 		m_data.mesh["skycube"].emplace("sky_cube", eng.m_boot.vram, graphics::Mesh::Type::eStatic);
-		m_data.samp["samp"].emplace(eng.m_boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear}));
-		m_data.tex["tex/c"].emplace("container", eng.m_boot.vram);
-		m_data.tex["tex/r"].emplace("red", eng.m_boot.vram);
-		m_data.tex["cube/sky"].emplace("sky_dusk", eng.m_boot.vram);
-		graphics::Texture::CreateInfo texInfo;
-		graphics::Texture::Raw raw;
-		raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
-		raw.size = {1, 1};
-		graphics::Texture::Img comp = {std::move(*tex0)};
-		graphics::Texture::Cubemap cm = {std::move(cubemap)};
-		texInfo.data = std::move(comp);
-		texInfo.format = m_eng.get().m_context.textureFormat();
-		texInfo.sampler = m_data.samp["samp"]->sampler();
-		m_data.tex["tex/c"]->construct(texInfo);
-		texInfo.data = raw;
-		m_data.tex["tex/r"]->construct(texInfo);
-		texInfo.data = std::move(cm);
-		m_data.tex["cube/sky"]->construct(texInfo);
 		m_data.mesh["m0"]->construct(gcube);
 		m_data.mesh["m1"]->construct(graphics::makeCone());
 		m_data.mesh["skycube"]->construct(Span(skyCubeV), skyCubeI);
 
-		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", m_data.samp["samp"]->sampler(), eng.m_context.textureFormat());
+		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler.t.get().sampler(), eng.m_context.textureFormat());
 		graphics::Shader test(eng.m_boot.device, {*reader.bytes(testV), *reader.bytes(testF)});
 		graphics::Shader testTex(eng.m_boot.device, {*reader.bytes(testV), *reader.bytes(testFTex)});
 		graphics::Shader skybox(eng.m_boot.device, {*reader.bytes(skyV), *reader.bytes(skyF)});
@@ -500,11 +523,11 @@ class App {
 		m_data.sl.make("skybox", 0, *m_data.pipe["sky"]);
 		m_data.cam = {0.0f, 2.0f, 4.0f};
 
-		m_data.mat_tex.diffuse = &*m_data.tex["tex/c"];
+		m_data.mat_tex.diffuse = &containerTex->t.get();
 		m_data.mat_font.diffuse = &*m_data.font.atlas;
 		m_data.scene.vp = graphics::TBuf<VP, false>(eng.m_boot.vram, "vp", {});
 		m_data.scene.skybox.mesh = &*m_data.mesh["skycube"];
-		m_data.scene.skybox.cubemap = &*m_data.tex["cube/sky"];
+		m_data.scene.skybox.cubemap = &skyboxTex->t.get();
 		auto mbuf = [&eng](std::string_view name) { return graphics::TBuf<glm::mat4, false>(eng.m_boot.vram, name, {}); };
 		m_data.scene.props[pipeTex].push_back(Prop2{mbuf("prop_tex"), {}, &*m_data.mesh["m0"], &m_data.mat_tex});
 		Prop2 p1{mbuf("prop_1"), {}, &*m_data.mesh["m0"], &m_data.mat_def};
@@ -539,8 +562,8 @@ class App {
 	}
 
 	void render() {
-		for (auto& [_, tex] : m_data.tex) {
-			if (!tex->ready()) {
+		for (auto& tex : m_data.tex) {
+			if (auto pTex = m_store.find<graphics::Texture>(tex); pTex && !pTex->t.get().ready()) {
 				return;
 			}
 		}
@@ -572,10 +595,10 @@ class App {
 	using Map = std::unordered_map<Hash, std::optional<T>>;
 
 	struct Data {
-		Map<graphics::Sampler> samp;
-		Map<graphics::Texture> tex;
 		Map<graphics::Mesh> mesh;
 		Map<graphics::Pipeline> pipe;
+
+		std::vector<Hash> tex;
 
 		TexturedMaterial mat_tex;
 		TexturedMaterial mat_font;
@@ -590,6 +613,9 @@ class App {
 	};
 
 	Data m_data;
+
+  public:
+	AssetStore m_store;
 	Ref<Eng> m_eng;
 };
 
@@ -643,6 +669,12 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 			}
 			if (eng && eng->m_context.reconstructed(winst.framebufferSize())) {
 				continue;
+			}
+
+			if (flags.test(Flag::eDebug0)) {
+				app->m_store.update();
+				logD("Debug0");
+				flags.reset(Flag::eDebug0);
 			}
 
 			if (app) {

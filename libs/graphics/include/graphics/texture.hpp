@@ -89,7 +89,9 @@ struct Texture::Raw {
 	glm::ivec2 size = {};
 };
 struct Texture::CreateInfo {
-	std::variant<Img, Cubemap, Raw> data;
+	using Data = std::variant<Img, Cubemap, Raw>;
+
+	Data data;
 	vk::Sampler sampler;
 	vk::Format format = vk::Format::eR8G8B8A8Srgb;
 };

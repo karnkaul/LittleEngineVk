@@ -100,8 +100,10 @@ Path& Path::append(Path const& rhs) {
 	if (!copy.empty()) {
 		m_units.reserve(m_units.size() + copy.size());
 		for (auto& item : copy) {
-			while (item[0] == '/' || item[0] == '\\') {
-				item = item.substr(1);
+			if (!m_units.empty()) {
+				while (item[0] == '/' || item[0] == '\\') {
+					item = item.substr(1);
+				}
 			}
 			m_units.push_back(std::move(item));
 		}

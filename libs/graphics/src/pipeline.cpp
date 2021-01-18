@@ -32,7 +32,7 @@ bool valid(Shader::ModuleMap const& shaders) noexcept {
 Pipeline::Pipeline(VRAM& vram, Shader const& shader, CreateInfo info, Hash id) : m_vram(vram), m_device(vram.m_device) {
 	m_metadata.createInfo = std::move(info);
 	m_storage.id = id;
-	construct(shader, true);
+	construct(shader, m_storage.dynamic.pipeline, true);
 }
 
 Pipeline::Pipeline(Pipeline&& rhs)
@@ -57,8 +57,13 @@ Pipeline::~Pipeline() {
 }
 
 bool Pipeline::reconstruct(Shader const& shader) {
-	destroy(false);
-	return construct(shader, false);
+	vk::Pipeline pipe;
+	if (construct(shader, pipe, false)) {
+		destroy(false);
+		m_storage.dynamic.pipeline = pipe;
+		return true;
+	}
+	return false;
 }
 
 vk::PipelineLayout Pipeline::layout() const {
@@ -80,7 +85,7 @@ SetFactory Pipeline::makeSetFactory(u32 set, std::size_t rotateCount) const {
 	return SetFactory(m_device, factoryInfo);
 }
 
-bool Pipeline::construct(Shader const& shader, bool bFixed) {
+bool Pipeline::construct(Shader const& shader, vk::Pipeline& out_pipe, bool bFixed) {
 	auto& c = m_metadata.createInfo;
 	ENSURE(!Device::default_v(c.renderPass), "Invalid render pass");
 	ENSURE(valid(shader.m_modules), "Invalid shader m_modules");
@@ -181,9 +186,8 @@ bool Pipeline::construct(Shader const& shader, bool bFixed) {
 	createInfo.layout = m_storage.fixed.layout;
 	createInfo.renderPass = c.renderPass;
 	createInfo.subpass = c.subpass;
-
-	auto pipeline = m_device.get().device().createGraphicsPipeline({}, createInfo);
-	m_storage.dynamic.pipeline = pipeline;
+	auto result = m_device.get().device().createGraphicsPipeline({}, createInfo);
+	out_pipe = result;
 	return true;
 }
 

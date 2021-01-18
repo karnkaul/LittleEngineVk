@@ -94,50 +94,13 @@ Texture::~Texture() {
 }
 
 bool Texture::construct(CreateInfo const& info) {
-	destroy();
-	if (Device::default_v(info.sampler)) {
-		return false;
+	Storage storage;
+	if (construct(info, storage)) {
+		destroy();
+		m_storage = std::move(storage);
+		return true;
 	}
-	Img const* pImg = std::get_if<Img>(&info.data);
-	Cubemap const* pCube = std::get_if<Cubemap>(&info.data);
-	Raw const* pRaw = std::get_if<Raw>(&info.data);
-	if ((!pRaw || pRaw->bytes.empty()) && (!pImg || pImg->bytes.empty()) && !pCube) {
-		return false;
-	}
-	if (pCube) {
-		if (std::any_of(pCube->bytes.begin(), pCube->bytes.end(), [](bytearray const& b) { return b.empty(); })) {
-			return false;
-		}
-	}
-	m_storage.data.sampler = info.sampler;
-	if (pCube || pImg) {
-		if (pCube) {
-			for (auto const& bytes : pCube->bytes) {
-				m_storage.raw.imgs.push_back(utils::decompress(bytes));
-				m_storage.raw.bytes.push_back(m_storage.raw.imgs.back().bytes);
-				m_storage.data.type = Type::eCube;
-			}
-		} else {
-			m_storage.raw.imgs.push_back(utils::decompress(pImg->bytes));
-			m_storage.raw.bytes.push_back(m_storage.raw.imgs.back().bytes);
-			m_storage.data.type = Type::e2D;
-		}
-		m_storage.data.size = {m_storage.raw.imgs.back().width, m_storage.raw.imgs.back().height};
-	} else {
-		if (std::size_t(pRaw->size.x * pRaw->size.y) * 4 /*channels*/ != pRaw->bytes.size()) {
-			ENSURE(false, "Invalid Raw image size/dimensions");
-			return false;
-		}
-		m_storage.data.size = pRaw->size;
-		m_storage.raw.bytes.push_back(pRaw->bytes.back());
-		m_storage.data.type = Type::e2D;
-	}
-	m_storage.image = load(m_vram, m_storage.transfer, info.format, m_storage.data.size, m_storage.raw.bytes, m_name);
-	m_storage.data.format = info.format;
-	Device& d = m_vram.get().m_device;
-	vk::ImageViewType const type = m_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
-	m_storage.data.imageView = d.createImageView(m_storage.image->image(), m_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
-	return true;
+	return false;
 }
 
 void Texture::destroy() {
@@ -175,5 +138,51 @@ Texture::Data const& Texture::data() const noexcept {
 Image const& Texture::image() const {
 	ENSURE(m_storage.image.has_value(), "Invalid image");
 	return *m_storage.image;
+}
+
+bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
+	if (Device::default_v(info.sampler)) {
+		return false;
+	}
+	Img const* pImg = std::get_if<Img>(&info.data);
+	Cubemap const* pCube = std::get_if<Cubemap>(&info.data);
+	Raw const* pRaw = std::get_if<Raw>(&info.data);
+	if ((!pRaw || pRaw->bytes.empty()) && (!pImg || pImg->bytes.empty()) && !pCube) {
+		return false;
+	}
+	if (pCube) {
+		if (std::any_of(pCube->bytes.begin(), pCube->bytes.end(), [](bytearray const& b) { return b.empty(); })) {
+			return false;
+		}
+	}
+	out_storage.data.sampler = info.sampler;
+	if (pCube || pImg) {
+		if (pCube) {
+			for (auto const& bytes : pCube->bytes) {
+				out_storage.raw.imgs.push_back(utils::decompress(bytes));
+				out_storage.raw.bytes.push_back(out_storage.raw.imgs.back().bytes);
+				out_storage.data.type = Type::eCube;
+			}
+		} else {
+			out_storage.raw.imgs.push_back(utils::decompress(pImg->bytes));
+			out_storage.raw.bytes.push_back(out_storage.raw.imgs.back().bytes);
+			out_storage.data.type = Type::e2D;
+		}
+		out_storage.data.size = {out_storage.raw.imgs.back().width, out_storage.raw.imgs.back().height};
+	} else {
+		if (std::size_t(pRaw->size.x * pRaw->size.y) * 4 /*channels*/ != pRaw->bytes.size()) {
+			ENSURE(false, "Invalid Raw image size/dimensions");
+			return false;
+		}
+		out_storage.data.size = pRaw->size;
+		out_storage.raw.bytes.push_back(pRaw->bytes.back());
+		out_storage.data.type = Type::e2D;
+	}
+	out_storage.image = load(m_vram, out_storage.transfer, info.format, out_storage.data.size, out_storage.raw.bytes, m_name);
+	out_storage.data.format = info.format;
+	Device& d = m_vram.get().m_device;
+	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
+	out_storage.data.imageView = d.createImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
+	return true;
 }
 } // namespace le::graphics

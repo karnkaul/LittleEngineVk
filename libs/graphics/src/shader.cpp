@@ -6,8 +6,8 @@ namespace le::graphics {
 Shader::Shader(Device& device) : m_device(device) {
 }
 
-Shader::Shader(Device& device, SpirVMap spirV) : m_device(device) {
-	reconstruct(std::move(spirV));
+Shader::Shader(Device& device, SpirVMap const& spirV) : m_device(device) {
+	construct(spirV, m_spirV, m_modules);
 }
 
 Shader::Shader(Shader&& rhs) : m_modules(std::move(rhs.m_modules)), m_spirV(std::move(rhs.m_spirV)), m_device(rhs.m_device) {
@@ -33,27 +33,38 @@ Shader::~Shader() {
 	destroy();
 }
 
-bool Shader::reconstruct(SpirVMap spirV) {
-	destroy();
+bool Shader::reconstruct(SpirVMap const& spirV) {
+	CodeMap code;
+	ModuleMap map;
+	if (construct(spirV, code, map)) {
+		destroy();
+		m_spirV = std::move(code);
+		m_modules = std::move(map);
+		return true;
+	}
+	return false;
+}
+
+bool Shader::construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_map) {
 	if (std::all_of(spirV.begin(), spirV.end(), [](auto const& v) -> bool { return v.empty(); })) {
 		return false;
 	}
 	for (std::size_t idx = 0; idx < spirV.size(); ++idx) {
 		ENSURE(spirV[idx].size() % 4 == 0, "Invalid SPIR-V");
-		m_spirV[idx].clear();
-		m_spirV[idx].resize(spirV[idx].size() / 4);
-		std::memcpy(m_spirV[idx].data(), spirV[idx].data(), spirV[idx].size());
+		out_code[idx].clear();
+		out_code[idx].resize(spirV[idx].size() / 4);
+		std::memcpy(out_code[idx].data(), spirV[idx].data(), spirV[idx].size());
 	}
 	std::size_t idx = 0;
-	for (auto const& code : m_spirV) {
+	for (auto const& code : out_code) {
 		if (!code.empty()) {
 			vk::ShaderModuleCreateInfo createInfo;
 			createInfo.codeSize = code.size() * sizeof(decltype(code[0]));
 			createInfo.pCode = code.data();
-			m_modules[idx++] = m_device.get().device().createShaderModule(createInfo);
+			out_map[idx++] = m_device.get().device().createShaderModule(createInfo);
 		}
 	}
-	return valid();
+	return true;
 }
 
 vk::ShaderStageFlags Shader::stages() const noexcept {
@@ -75,10 +86,11 @@ bool Shader::empty() const noexcept {
 }
 
 void Shader::destroy() {
-	for (auto module : m_modules) {
+	for (auto& module : m_modules) {
 		if (!Device::default_v(module)) {
 			m_device.get().device().destroyShaderModule(module);
 		}
+		module = vk::ShaderModule();
 	}
 }
 } // namespace le::graphics

@@ -21,12 +21,12 @@ class Shader {
 	using ResourcesMap = ArrayMap<Resources>;
 
 	Shader(Device& device);
-	Shader(Device& device, SpirVMap bytes);
+	Shader(Device& device, SpirVMap const& bytes);
 	Shader(Shader&&);
 	Shader& operator=(Shader&&);
 	~Shader();
 
-	bool reconstruct(SpirVMap spirV);
+	bool reconstruct(SpirVMap const& spirV);
 
 	vk::ShaderStageFlags stages() const noexcept;
 	bool valid() const noexcept;
@@ -36,6 +36,7 @@ class Shader {
 	CodeMap m_spirV;
 
   protected:
+	bool construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_map);
 	void destroy();
 
 	Ref<Device> m_device;

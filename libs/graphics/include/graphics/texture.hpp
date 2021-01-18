@@ -75,6 +75,9 @@ class Texture {
 		} raw;
 		VRAM::Future transfer;
 	};
+
+	bool construct(CreateInfo const& info, Storage& out_storage);
+
 	Storage m_storage;
 };
 

@@ -57,7 +57,7 @@ class Pipeline final {
 	Hash id() const noexcept;
 
   private:
-	bool construct(Shader const& shader, bool bFixed);
+	bool construct(Shader const& shader, vk::Pipeline& out_pipe, bool bFixed);
 	void destroy(bool bFixed);
 
 	struct Storage {

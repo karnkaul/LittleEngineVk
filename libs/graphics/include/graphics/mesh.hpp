@@ -58,8 +58,8 @@ class Mesh {
 
 template <typename T>
 bool Mesh::construct(Span<T> vertices, Span<u32> indices) {
-	destroy();
 	if (!vertices.empty()) {
+		destroy();
 		m_vbo = construct(m_name + "/vbo", vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));
 		if (!indices.empty()) {
 			m_ibo = construct(m_name + "/ibo", vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32));

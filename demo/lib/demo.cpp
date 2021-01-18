@@ -441,22 +441,22 @@ class App {
 
   public:
 	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
-		io::Path testV = graphics::utils::spirVpath("shaders/test.vert");
-		io::Path uiV = graphics::utils::spirVpath("shaders/ui.vert");
-		io::Path uiF = graphics::utils::spirVpath("shaders/ui.frag");
-		io::Path testF = graphics::utils::spirVpath("shaders/test.frag");
-		io::Path testFTex = graphics::utils::spirVpath("shaders/test_tex.frag");
-		io::Path skyV = graphics::utils::spirVpath("shaders/skybox.vert");
-		io::Path skyF = graphics::utils::spirVpath("shaders/skybox.frag");
-
 		m_store.resources().reader(reader);
-		AssetLoadInfo<graphics::Shader> ali{eng.m_boot.device, {}};
-		ali.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/test.vert";
-		ali.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/test.frag";
-		[[maybe_unused]] auto sh = m_store.load<graphics::Shader>("shaders/test", ali);
+		AssetLoadData<graphics::Shader> shaderLD{eng.m_boot.device, {}};
+		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/test.vert";
+		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/test.frag";
+		[[maybe_unused]] auto shader_test = m_store.load<graphics::Shader>("shaders/test", std::move(shaderLD));
+		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/test.vert";
+		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/test_tex.frag";
+		[[maybe_unused]] auto shader_testTex = m_store.load<graphics::Shader>("shaders/test_tex", std::move(shaderLD));
+		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/skybox.vert";
+		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/skybox.frag";
+		[[maybe_unused]] auto shader_skybox = m_store.load<graphics::Shader>("shaders/skybox", std::move(shaderLD));
+		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/ui.vert";
+		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/ui.frag";
+		[[maybe_unused]] auto shader_ui = m_store.load<graphics::Shader>("shaders/ui", std::move(shaderLD));
 		[[maybe_unused]] auto str = m_store.add<std::string>("strings/test", "Hi");
 		ENSURE(m_store.contains<std::string>("strings/test"), "fubar");
-		m_tk = sh->onModified.get().subscribe([]() { logI("success!"); });
 		m_store.find<std::string_view>("foo");
 		{
 			auto const& store = m_store;
@@ -467,25 +467,42 @@ class App {
 		m_store.get<graphics::Shader>("shaders/test");
 		auto sampler =
 			m_store.add("samplers/default", graphics::Sampler{eng.m_boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
-		AssetLoadInfo<graphics::Texture> ali2{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};
-		ali2.name = "cubemaps/sky_dusk";
-		ali2.prefix = "skyboxes/sky_dusk";
-		ali2.ext = ".jpg";
-		ali2.imageIDs = {"right", "left", "up", "down", "front", "back"};
-		auto skyboxTex = m_store.load<graphics::Texture>(ali2.name, ali2);
-		m_data.tex.push_back(ali2.name);
-		ali2.name = "textures/container2";
-		ali2.prefix.clear();
-		ali2.ext.clear();
-		ali2.imageIDs = {"textures/container2.png"};
-		auto containerTex = m_store.load<graphics::Texture>(ali2.name, ali2);
-		m_data.tex.push_back(ali2.name);
-		ali2.name = "textures/red";
-		ali2.imageIDs.clear();
-		ali2.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
-		ali2.raw.size = {1, 1};
-		[[maybe_unused]] auto redTex = m_store.load<graphics::Texture>(ali2.name, ali2);
-		m_data.tex.push_back(ali2.name);
+		AssetLoadData<graphics::Texture> textureLD{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};
+		textureLD.name = "cubemaps/sky_dusk";
+		textureLD.prefix = "skyboxes/sky_dusk";
+		textureLD.ext = ".jpg";
+		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
+		auto skyboxTex = m_store.load<graphics::Texture>(textureLD.name, textureLD);
+		m_data.tex.push_back(textureLD.name);
+		textureLD.name = "textures/container2";
+		textureLD.prefix.clear();
+		textureLD.ext.clear();
+		textureLD.imageIDs = {"textures/container2.png"};
+		auto containerTex = m_store.load<graphics::Texture>(textureLD.name, textureLD);
+		m_data.tex.push_back(textureLD.name);
+		textureLD.name = "textures/red";
+		textureLD.imageIDs.clear();
+		textureLD.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
+		textureLD.raw.size = {1, 1};
+		[[maybe_unused]] auto redTex = m_store.load<graphics::Texture>(textureLD.name, textureLD);
+		m_data.tex.push_back(textureLD.name);
+		AssetLoadData<graphics::Pipeline> pipelineLD{eng.m_context, {}, {}, {}, {}, {}};
+		pipelineLD.name = "pipelines/test";
+		pipelineLD.shaderID = "shaders/test";
+		auto pipe_test = m_store.load<graphics::Pipeline>("pipelines/test", std::move(pipelineLD));
+		pipelineLD.name = "pipelines/test_tex";
+		pipelineLD.shaderID = "shaders/test_tex";
+		pipelineLD.flags = graphics::PFlags::inverse();
+		auto pipe_testTex = m_store.load<graphics::Pipeline>("pipelines/test_tex", std::move(pipelineLD));
+		pipelineLD.name = "pipelines/ui";
+		pipelineLD.shaderID = "shaders/ui";
+		auto pipe_ui = m_store.load<graphics::Pipeline>("pipelines/ui", std::move(pipelineLD));
+		pipelineLD.name = "pipelines/skybox";
+		pipelineLD.shaderID = "shaders/skybox";
+		pipelineLD.info = eng.m_context.pipeInfo();
+		pipelineLD.info->fixedState.depthStencilState.depthWriteEnable = false;
+		pipelineLD.info->fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
+		auto pipe_sky = m_store.load<graphics::Pipeline>("pipelines/skybox", std::move(pipelineLD));
 
 		graphics::Geometry gcube = graphics::makeCube(0.5f);
 		auto const skyCubeI = gcube.indices;
@@ -497,17 +514,7 @@ class App {
 		m_data.mesh["m1"]->construct(graphics::makeCone());
 		m_data.mesh["skycube"]->construct(Span(skyCubeV), skyCubeI);
 
-		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler.t.get().sampler(), eng.m_context.textureFormat());
-		graphics::Shader test(eng.m_boot.device, {*reader.bytes(testV), *reader.bytes(testF)});
-		graphics::Shader testTex(eng.m_boot.device, {*reader.bytes(testV), *reader.bytes(testFTex)});
-		graphics::Shader skybox(eng.m_boot.device, {*reader.bytes(skyV), *reader.bytes(skyF)});
-		graphics::Shader ui(eng.m_boot.device, {*reader.bytes(uiV), *reader.bytes(uiF)});
-		m_data.pipe["test"] = eng.m_context.makePipeline("test", test, eng.m_context.pipeInfo());
-		auto& pipe = *m_data.pipe["test"];
-		m_data.pipe["test_tex"] = eng.m_context.makePipeline("test_tex", testTex, eng.m_context.pipeInfo(graphics::PFlags::inverse()));
-		auto& pipeTex = *m_data.pipe["test_tex"];
-		m_data.pipe["ui"] = eng.m_context.makePipeline("ui", ui, eng.m_context.pipeInfo(graphics::PFlags::inverse()));
-		auto& pipeUI = *m_data.pipe["ui"];
+		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler.get().sampler(), eng.m_context.textureFormat());
 		m_data.text.create(eng.m_boot.vram, "text");
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
@@ -515,28 +522,24 @@ class App {
 		m_data.text.set(m_data.font, "Hi!");
 
 		std::array const setNums = {0U, 1U, 2U};
-		m_data.sl.make("main", setNums, pipeTex);
-		auto pipeSkyInfo = eng.m_context.pipeInfo();
-		pipeSkyInfo.fixedState.depthStencilState.depthWriteEnable = false;
-		pipeSkyInfo.fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
-		m_data.pipe["sky"] = eng.m_context.makePipeline("skybox", skybox, pipeSkyInfo);
-		m_data.sl.make("skybox", 0, *m_data.pipe["sky"]);
+		m_data.sl.make("main", setNums, pipe_testTex->get());
+		m_data.sl.make("skybox", 0, pipe_sky->get());
 		m_data.cam = {0.0f, 2.0f, 4.0f};
 
-		m_data.mat_tex.diffuse = &containerTex->t.get();
+		m_data.mat_tex.diffuse = &containerTex->get();
 		m_data.mat_font.diffuse = &*m_data.font.atlas;
 		m_data.scene.vp = graphics::TBuf<VP, false>(eng.m_boot.vram, "vp", {});
 		m_data.scene.skybox.mesh = &*m_data.mesh["skycube"];
-		m_data.scene.skybox.cubemap = &skyboxTex->t.get();
+		m_data.scene.skybox.cubemap = &skyboxTex->get();
 		auto mbuf = [&eng](std::string_view name) { return graphics::TBuf<glm::mat4, false>(eng.m_boot.vram, name, {}); };
-		m_data.scene.props[pipeTex].push_back(Prop2{mbuf("prop_tex"), {}, &*m_data.mesh["m0"], &m_data.mat_tex});
+		m_data.scene.props[pipe_testTex->get()].push_back(Prop2{mbuf("prop_tex"), {}, &*m_data.mesh["m0"], &m_data.mat_tex});
 		Prop2 p1{mbuf("prop_1"), {}, &*m_data.mesh["m0"], &m_data.mat_def};
 		p1.transform.position({-5.0f, -1.0f, -2.0f});
-		m_data.scene.props[pipe].push_back(std::move(p1));
+		m_data.scene.props[pipe_test->get()].push_back(std::move(p1));
 		Prop2 p2{mbuf("prop_2"), {}, &*m_data.mesh["m1"], &m_data.mat_def};
 		p2.transform.position({1.0f, -2.0f, -3.0f});
-		m_data.scene.props[pipe].push_back(std::move(p2));
-		m_data.scene.ui[pipeUI].push_back(Prop2{mbuf("prop_ui"), {}, &*m_data.text.mesh, &m_data.mat_font});
+		m_data.scene.props[pipe_test->get()].push_back(std::move(p2));
+		m_data.scene.ui[pipe_ui->get()].push_back(Prop2{mbuf("prop_ui"), {}, &*m_data.text.mesh, &m_data.mat_font});
 
 		eng.m_win.get().show();
 	}
@@ -555,15 +558,15 @@ class App {
 			m_data.cam += moveDir * dt.count() * 0.75f;
 			m_data.scene.vp->get().mat_v = glm::lookAt(m_data.cam, {}, graphics::g_nUp);
 		}
-		auto& pipeTex = m_data.pipe["test_tex"];
-		auto& pipe = m_data.pipe["test"];
+		auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
+		auto pipe = m_store.get<graphics::Pipeline>("pipelines/test");
 		m_data.scene.props[*pipeTex].front().transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
 		m_data.scene.props[*pipe].front().transform.rotate(glm::radians(360.0f) * dt.count(), graphics::g_nUp);
 	}
 
 	void render() {
 		for (auto& tex : m_data.tex) {
-			if (auto pTex = m_store.find<graphics::Texture>(tex); pTex && !pTex->t.get().ready()) {
+			if (auto pTex = m_store.find<graphics::Texture>(tex); pTex && !pTex->get().ready()) {
 				return;
 			}
 		}
@@ -582,9 +585,9 @@ class App {
 			if (auto r = m_eng.get().m_context.render(Colour(0x040404ff))) {
 				auto& cb = r->primary();
 				cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
-				auto& pipe = m_data.pipe["test_tex"];
-				auto& pipeSky = m_data.pipe["sky"];
-				m_data.scene.draw(cb, {smain[0], smain[1], smain[2], ssky[0]}, {*pipe, *pipeSky});
+				auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
+				auto pipeSky = m_store.get<graphics::Pipeline>("pipelines/skybox");
+				m_data.scene.draw(cb, {smain[0], smain[1], smain[2], ssky[0]}, {*pipeTex, *pipeSky});
 				m_data.sl.swap();
 			}
 		}
@@ -596,7 +599,6 @@ class App {
 
 	struct Data {
 		Map<graphics::Mesh> mesh;
-		Map<graphics::Pipeline> pipe;
 
 		std::vector<Hash> tex;
 

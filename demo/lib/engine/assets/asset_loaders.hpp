@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <engine/assets/asset_loader.hpp>
+#include <graphics/render_context.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 
@@ -19,6 +20,22 @@ struct AssetLoader<graphics::Shader> {
 	bool reload(graphics::Shader& out_shader, AssetLoadInfo<graphics::Shader> const& info) const;
 
 	std::optional<Data> data(AssetLoadInfo<graphics::Shader> const& info) const;
+};
+
+template <>
+struct AssetLoadData<graphics::Pipeline> {
+	Ref<graphics::RenderContext> context;
+	std::optional<graphics::Pipeline::CreateInfo> info;
+	graphics::PFlags flags;
+	std::string name;
+	Hash shaderID;
+	mutable AssetLoadInfo<graphics::Shader>::OnModified::Tk onShaderReload;
+};
+
+template <>
+struct AssetLoader<graphics::Pipeline> {
+	std::optional<graphics::Pipeline> load(AssetLoadInfo<graphics::Pipeline> const& info) const;
+	bool reload(graphics::Pipeline& out_shader, AssetLoadInfo<graphics::Pipeline> const& info) const;
 };
 
 template <>

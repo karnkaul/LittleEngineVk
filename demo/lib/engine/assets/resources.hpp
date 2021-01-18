@@ -45,10 +45,11 @@ class Resources {
 	io::FileReader& fileReader();
 
 	Resource const* find(Hash id) const noexcept;
-	Resource const* load(io::Path path, Resource::Type type, bool bMonitor = false);
+	Resource const* load(io::Path path, Resource::Type type, bool bMonitor = false, bool bForceReload = false);
 	bool loaded(Hash id) const noexcept;
 
 	void update();
+	void clear();
 
   protected:
 	std::unordered_map<Hash, Resource> m_loaded;

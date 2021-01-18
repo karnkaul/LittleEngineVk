@@ -81,9 +81,13 @@ Resource const* Resources::find(Hash id) const noexcept {
 	return nullptr;
 }
 
-Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonitor) {
+Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonitor, bool bForceReload) {
 	if (auto pRes = find(path)) {
-		return pRes;
+		if (bForceReload) {
+			m_loaded.erase(path);
+		} else {
+			return pRes;
+		}
 	}
 	Resource resource;
 	if (resource.load(reader(), path, type, bMonitor && levk_resourceMonitor)) {
@@ -104,5 +108,9 @@ void Resources::update() {
 			resource.m_monitor->update();
 		}
 	}
+}
+
+void Resources::clear() {
+	m_loaded.clear();
 }
 } // namespace le

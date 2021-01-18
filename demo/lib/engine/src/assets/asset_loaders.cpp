@@ -57,13 +57,29 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 				path = *spv;
 			}
 		}
-		auto pRes = info.resource(path, Resource::Type::eBinary, false);
+		auto pRes = info.resource(path, Resource::Type::eBinary, false, true);
 		if (!pRes) {
 			return std::nullopt;
 		}
 		spirV[(std::size_t)type] = {pRes->bytes().begin(), pRes->bytes().end()};
 	}
 	return spirV;
+}
+
+std::optional<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoadInfo<graphics::Pipeline> const& info) const {
+	if (auto shader = info.m_store.get().find<graphics::Shader>(info.m_data.shaderID)) {
+		info.m_data.onShaderReload = shader->onModified([&info]() { info.forceDirty(true); });
+		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context.get().pipeInfo(info.m_data.flags);
+		return info.m_data.context.get().makePipeline(info.m_data.name, shader->get(), pipeInfo);
+	}
+	return std::nullopt;
+}
+
+bool AssetLoader<graphics::Pipeline>::reload(graphics::Pipeline& out_pipe, AssetLoadInfo<graphics::Pipeline> const& info) const {
+	if (auto shader = info.m_store.get().find<graphics::Shader>(info.m_data.shaderID)) {
+		return out_pipe.reconstruct(shader->get());
+	}
+	return false;
 }
 
 std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
@@ -74,7 +90,7 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
 		createInfo.data = std::move(*d);
-		createInfo.sampler = sampler->t.get().sampler();
+		createInfo.sampler = sampler->get().sampler();
 		graphics::Texture ret(info.m_data.name, info.m_data.vram);
 		if (ret.construct(createInfo)) {
 			return ret;
@@ -91,7 +107,7 @@ bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, Asse
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
 		createInfo.data = std::move(*d);
-		createInfo.sampler = sampler->t.get().sampler();
+		createInfo.sampler = sampler->get().sampler();
 		return out_texture.construct(createInfo);
 	}
 	return false;

@@ -84,12 +84,14 @@ class Asset {
 	using type = T;
 	using OnModified = AssetStore::OnModified;
 
-	Asset(type& t, OnModified& onMod);
+	Asset(type& t, OnModified& onMod, Hash id);
 
 	type& get() const;
 	type& operator*();
 	type& operator->();
 	OnModified::Tk onModified(OnModified::Callback const& callback);
+
+	Hash m_id;
 
   private:
 	Ref<T> m_t;
@@ -102,12 +104,14 @@ class Asset<T const> {
 	using type = T;
 	using OnModified = AssetStore::OnModified;
 
-	Asset(type const& t, OnModified& onMod);
+	Asset(type const& t, OnModified& onMod, Hash id);
 
 	type const& get() const;
 	type const& operator*();
 	type const& operator->();
 	OnModified::Tk onModified(OnModified::Callback const& callback);
+
+	Hash m_id;
 
   private:
 	Ref<T const> m_t;
@@ -153,7 +157,7 @@ constexpr bool mapContains(M&& map, K&& key) noexcept {
 
 template <typename T, typename U>
 constexpr Asset<T> makeAsset(U&& wrap, AssetStore::OnModified& onModified) noexcept {
-	return {*wrap.t, onModified};
+	return {*wrap.t, onModified, wrap.id};
 }
 
 template <typename T>
@@ -357,10 +361,10 @@ inline Resources& AssetStore::resources() {
 }
 
 template <typename T>
-Asset<T>::Asset(type& t, OnModified& onMod) : m_t(t), m_onModified(onMod) {
+Asset<T>::Asset(type& t, OnModified& onMod, Hash id) : m_id(id), m_t(t), m_onModified(onMod) {
 }
 template <typename T>
-Asset<T const>::Asset(type const& t, OnModified& onMod) : m_t(t), m_onModified(onMod) {
+Asset<T const>::Asset(type const& t, OnModified& onMod, Hash id) : m_id(id), m_t(t), m_onModified(onMod) {
 }
 template <typename T>
 typename Asset<T>::type& Asset<T>::get() const {

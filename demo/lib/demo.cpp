@@ -507,12 +507,15 @@ class App {
 		graphics::Geometry gcube = graphics::makeCube(0.5f);
 		auto const skyCubeI = gcube.indices;
 		auto const skyCubeV = gcube.positions();
-		m_data.mesh["m0"].emplace("cube", eng.m_boot.vram, graphics::Mesh::Type::eStatic);
-		m_data.mesh["m1"].emplace("cone", eng.m_boot.vram, graphics::Mesh::Type::eStatic);
-		m_data.mesh["skycube"].emplace("sky_cube", eng.m_boot.vram, graphics::Mesh::Type::eStatic);
-		m_data.mesh["m0"]->construct(gcube);
-		m_data.mesh["m1"]->construct(graphics::makeCone());
-		m_data.mesh["skycube"]->construct(Span(skyCubeV), skyCubeI);
+		auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.m_boot.vram));
+		cube.get().construct(gcube);
+		m_data.mesh.push_back(cube.m_id);
+		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.m_boot.vram));
+		cone.get().construct(graphics::makeCone());
+		m_data.mesh.push_back(cone.m_id);
+		auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.m_boot.vram));
+		skycube.get().construct(Span(skyCubeV), skyCubeI);
+		m_data.mesh.push_back(skycube.m_id);
 
 		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler.get().sampler(), eng.m_context.textureFormat());
 		m_data.text.create(eng.m_boot.vram, "text");
@@ -529,14 +532,14 @@ class App {
 		m_data.mat_tex.diffuse = &containerTex->get();
 		m_data.mat_font.diffuse = &*m_data.font.atlas;
 		m_data.scene.vp = graphics::TBuf<VP, false>(eng.m_boot.vram, "vp", {});
-		m_data.scene.skybox.mesh = &*m_data.mesh["skycube"];
+		m_data.scene.skybox.mesh = &skycube.get();
 		m_data.scene.skybox.cubemap = &skyboxTex->get();
 		auto mbuf = [&eng](std::string_view name) { return graphics::TBuf<glm::mat4, false>(eng.m_boot.vram, name, {}); };
-		m_data.scene.props[pipe_testTex->get()].push_back(Prop2{mbuf("prop_tex"), {}, &*m_data.mesh["m0"], &m_data.mat_tex});
-		Prop2 p1{mbuf("prop_1"), {}, &*m_data.mesh["m0"], &m_data.mat_def};
+		m_data.scene.props[pipe_testTex->get()].push_back(Prop2{mbuf("prop_tex"), {}, &cube.get(), &m_data.mat_tex});
+		Prop2 p1{mbuf("prop_1"), {}, &cube.get(), &m_data.mat_def};
 		p1.transform.position({-5.0f, -1.0f, -2.0f});
 		m_data.scene.props[pipe_test->get()].push_back(std::move(p1));
-		Prop2 p2{mbuf("prop_2"), {}, &*m_data.mesh["m1"], &m_data.mat_def};
+		Prop2 p2{mbuf("prop_2"), {}, &cone.get(), &m_data.mat_def};
 		p2.transform.position({1.0f, -2.0f, -3.0f});
 		m_data.scene.props[pipe_test->get()].push_back(std::move(p2));
 		m_data.scene.ui[pipe_ui->get()].push_back(Prop2{mbuf("prop_ui"), {}, &*m_data.text.mesh, &m_data.mat_font});
@@ -570,8 +573,8 @@ class App {
 				return;
 			}
 		}
-		for (auto& [_, mesh] : m_data.mesh) {
-			if (!mesh->ready()) {
+		for (auto& mesh : m_data.mesh) {
+			if (auto pMesh = m_store.find<graphics::Mesh>(mesh); pMesh && !pMesh->get().ready()) {
 				return;
 			}
 		}
@@ -594,13 +597,9 @@ class App {
 	}
 
   private:
-	template <typename T>
-	using Map = std::unordered_map<Hash, std::optional<T>>;
-
 	struct Data {
-		Map<graphics::Mesh> mesh;
-
 		std::vector<Hash> tex;
+		std::vector<Hash> mesh;
 
 		TexturedMaterial mat_tex;
 		TexturedMaterial mat_font;

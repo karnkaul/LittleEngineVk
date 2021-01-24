@@ -15,6 +15,7 @@
 #include <window/bootstrap.hpp>
 
 #include <engine/assets/asset_store.hpp>
+#include <engine/tasks/task_scheduler.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -441,32 +442,40 @@ class App {
 
   public:
 	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
+		auto loadShader = [this, &eng](std::string_view id, io::Path v, io::Path f) {
+			AssetLoadData<graphics::Shader> shaderLD{eng.m_boot.device, {}};
+			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
+			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
+			m_store.load<graphics::Shader>(id, std::move(shaderLD));
+		};
 		m_store.resources().reader(reader);
-		AssetLoadData<graphics::Shader> shaderLD{eng.m_boot.device, {}};
-		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/test.vert";
-		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/test.frag";
-		[[maybe_unused]] auto shader_test = m_store.load<graphics::Shader>("shaders/test", std::move(shaderLD));
-		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/test.vert";
-		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/test_tex.frag";
-		[[maybe_unused]] auto shader_testTex = m_store.load<graphics::Shader>("shaders/test_tex", std::move(shaderLD));
-		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/skybox.vert";
-		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/skybox.frag";
-		[[maybe_unused]] auto shader_skybox = m_store.load<graphics::Shader>("shaders/skybox", std::move(shaderLD));
-		shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = "shaders/ui.vert";
-		shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = "shaders/ui.frag";
-		[[maybe_unused]] auto shader_ui = m_store.load<graphics::Shader>("shaders/ui", std::move(shaderLD));
-		[[maybe_unused]] auto str = m_store.add<std::string>("strings/test", "Hi");
-		ENSURE(m_store.contains<std::string>("strings/test"), "fubar");
-		m_store.find<std::string_view>("foo");
+		TaskScheduler::StageID load_shaders;
 		{
-			auto const& store = m_store;
-			store.find<graphics::Shader>("shaders/test");
-			ENSURE(store.find<std::string>("strings/test"), "fubar");
+			TaskScheduler::Stage shaders;
+			shaders.name = "load_shaders";
+			shaders.tasks.push_back([&]() { loadShader("shaders/test", "shaders/test.vert", "shaders/test.frag"); });
+			shaders.tasks.push_back([&]() { loadShader("shaders/test_tex", "shaders/test.vert", "shaders/test_tex.frag"); });
+			shaders.tasks.push_back([&]() { loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"); });
+			shaders.tasks.push_back([&]() { loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"); });
+			load_shaders = m_tasks.stage(std::move(shaders));
 		}
-		ENSURE(m_store.unload<std::string>("strings/test"), "fubar");
-		m_store.get<graphics::Shader>("shaders/test");
+		m_tasks.wait(load_shaders);
 		auto sampler =
 			m_store.add("samplers/default", graphics::Sampler{eng.m_boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+
+		graphics::Geometry gcube = graphics::makeCube(0.5f);
+		auto const skyCubeI = gcube.indices;
+		auto const skyCubeV = gcube.positions();
+		auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.m_boot.vram));
+		cube->construct(gcube);
+		m_data.mesh.push_back(cube.m_id);
+		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.m_boot.vram));
+		cone->construct(graphics::makeCone());
+		m_data.mesh.push_back(cone.m_id);
+		auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.m_boot.vram));
+		skycube->construct(Span(skyCubeV), skyCubeI);
+		m_data.mesh.push_back(skycube.m_id);
+
 		AssetLoadData<graphics::Texture> textureLD{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};
 		textureLD.name = "cubemaps/sky_dusk";
 		textureLD.prefix = "skyboxes/sky_dusk";
@@ -504,20 +513,7 @@ class App {
 		pipelineLD.info->fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 		auto pipe_sky = m_store.load<graphics::Pipeline>("pipelines/skybox", std::move(pipelineLD));
 
-		graphics::Geometry gcube = graphics::makeCube(0.5f);
-		auto const skyCubeI = gcube.indices;
-		auto const skyCubeV = gcube.positions();
-		auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.m_boot.vram));
-		cube.get().construct(gcube);
-		m_data.mesh.push_back(cube.m_id);
-		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.m_boot.vram));
-		cone.get().construct(graphics::makeCone());
-		m_data.mesh.push_back(cone.m_id);
-		auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.m_boot.vram));
-		skycube.get().construct(Span(skyCubeV), skyCubeI);
-		m_data.mesh.push_back(skycube.m_id);
-
-		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler.get().sampler(), eng.m_context.textureFormat());
+		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler->sampler(), eng.m_context.textureFormat());
 		m_data.text.create(eng.m_boot.vram, "text");
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
@@ -614,6 +610,8 @@ class App {
 	};
 
 	Data m_data;
+	TaskScheduler m_tasks;
+	std::future<void> m_ready;
 
   public:
 	AssetStore m_store;

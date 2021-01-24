@@ -87,34 +87,14 @@ class Asset {
 	Asset(type& t, OnModified& onMod, Hash id);
 
 	type& get() const;
-	type& operator*();
-	type& operator->();
+	type& operator*() const;
+	type* operator->() const;
 	OnModified::Tk onModified(OnModified::Callback const& callback);
 
 	Hash m_id;
 
   private:
 	Ref<T> m_t;
-	Ref<OnModified> m_onModified;
-};
-
-template <typename T>
-class Asset<T const> {
-  public:
-	using type = T;
-	using OnModified = AssetStore::OnModified;
-
-	Asset(type const& t, OnModified& onMod, Hash id);
-
-	type const& get() const;
-	type const& operator*();
-	type const& operator->();
-	OnModified::Tk onModified(OnModified::Callback const& callback);
-
-	Hash m_id;
-
-  private:
-	Ref<T const> m_t;
 	Ref<OnModified> m_onModified;
 };
 
@@ -276,7 +256,7 @@ template <typename T, typename Data>
 std::optional<Asset<T>> AssetStore::load(io::Path const& id, Data&& data) {
 	// AssetLoader may invoke find() etc which would need shared locks, so
 	// cannot use unique_lock for the entire function call here
-	auto lock = m_mrsw.lock<std::shared_lock>();
+	auto lock = m_mrsw.lock<std::unique_lock>();
 	auto& map = m_assets.get<T>();
 	lock.unlock();
 	// AssetMap optimally unique_locks mutex (performs load outside lock)
@@ -364,38 +344,19 @@ template <typename T>
 Asset<T>::Asset(type& t, OnModified& onMod, Hash id) : m_id(id), m_t(t), m_onModified(onMod) {
 }
 template <typename T>
-Asset<T const>::Asset(type const& t, OnModified& onMod, Hash id) : m_id(id), m_t(t), m_onModified(onMod) {
-}
-template <typename T>
 typename Asset<T>::type& Asset<T>::get() const {
 	return m_t;
 }
 template <typename T>
-typename Asset<T>::type& Asset<T>::operator*() {
+typename Asset<T>::type& Asset<T>::operator*() const {
 	return get();
 }
 template <typename T>
-typename Asset<T>::type& Asset<T>::operator->() {
+typename Asset<T>::type* Asset<T>::operator->() const {
 	return &get();
 }
 template <typename T>
 typename Asset<T>::OnModified::Tk Asset<T>::onModified(OnModified::Callback const& callback) {
-	return m_onModified.get().subscribe(callback);
-}
-template <typename T>
-typename Asset<T const>::type const& Asset<T const>::get() const {
-	return m_t;
-}
-template <typename T>
-typename Asset<T const>::type const& Asset<T const>::operator*() {
-	return get();
-}
-template <typename T>
-typename Asset<T const>::type const& Asset<T const>::operator->() {
-	return &get();
-}
-template <typename T>
-typename Asset<T const>::OnModified::Tk Asset<T const>::onModified(OnModified::Callback const& callback) {
 	return m_onModified.get().subscribe(callback);
 }
 } // namespace le

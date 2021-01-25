@@ -6,7 +6,7 @@
 #include <core/maths.hpp>
 #include <dumb_log/log.hpp>
 #include <editor/editor.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 #if defined(LEVK_EDITOR)
 #include <fmt/format.h>
 #include <imgui.h>

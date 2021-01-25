@@ -12,7 +12,7 @@
 #include <core/ensure.hpp>
 #include <core/ref.hpp>
 #include <core/std_types.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 
 namespace le {
 enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout, eCOUNT_ };

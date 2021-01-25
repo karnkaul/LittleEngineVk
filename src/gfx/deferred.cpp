@@ -2,7 +2,7 @@
 #include <gfx/device.hpp>
 #include <gfx/render_driver_impl.hpp>
 #include <gfx/vram.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 #include <window/window_impl.hpp>
 
 namespace le::gfx {

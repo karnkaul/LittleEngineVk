@@ -2,7 +2,7 @@
 #include <functional>
 #include <vector>
 #include <core/std_types.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 
 namespace le::graphics {
 struct Deferred {

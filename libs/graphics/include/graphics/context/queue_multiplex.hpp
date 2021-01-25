@@ -2,7 +2,7 @@
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <graphics/qflags.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {

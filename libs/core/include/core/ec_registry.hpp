@@ -6,7 +6,7 @@
 #include <core/counter.hpp>
 #include <core/ec/storage.hpp>
 #include <core/log.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 
 namespace le::ecs {

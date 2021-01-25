@@ -135,6 +135,7 @@ endif()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
 add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)
+add_subdirectory(libs/dtasks)
 add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
@@ -193,10 +194,7 @@ if(LEVK_BUILD_DEMO)
 endif()
 
 # Tests
-enable_testing()
-
 if(LEVK_BUILD_TESTS)
-	include(CTest)
 	enable_testing()
 	add_subdirectory(tests)
 endif()

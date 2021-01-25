@@ -6,7 +6,7 @@
 #include <dumb_json/djson.hpp>
 #include <engine/resources/resource_list.hpp>
 #include <engine/resources/resources.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 
 namespace le::res {
 template <typename T>

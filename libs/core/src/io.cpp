@@ -7,8 +7,6 @@
 #include <kt/async_queue/async_queue.hpp>
 
 namespace le::io {
-namespace stdfs = std::filesystem;
-
 namespace {
 struct FileLogger final {
 	FileLogger();

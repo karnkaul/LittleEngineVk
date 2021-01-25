@@ -7,7 +7,7 @@
 #include <core/log.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/config.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 
 namespace le {
 namespace detail {

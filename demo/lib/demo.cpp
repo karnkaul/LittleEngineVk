@@ -14,8 +14,9 @@
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
+#include <dtasks/error_handler.hpp>
+#include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <engine/tasks/task_scheduler.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -436,12 +437,23 @@ class Eng {
 	graphics::RenderContext m_context;
 };
 
+using namespace dts;
+
+struct TaskErr : error_handler_t {
+	void operator()(std::runtime_error const& err, u64) const override {
+		ENSURE(false, err.what());
+	}
+};
+TaskErr g_taskErr;
+
+using namespace std::chrono;
+
 class App {
-  private:
 	Token m_tk;
 
   public:
 	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
+		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this, &eng](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> shaderLD{eng.m_boot.device, {}};
 			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
@@ -458,13 +470,12 @@ class App {
 			m_store.load<graphics::Pipeline>(id, std::move(pipelineLD));
 		};
 		m_store.resources().reader(reader);
-		TaskScheduler::StageID load_shaders, load_pipes;
+		task_scheduler::stage_id load_shaders, load_pipes;
 		PCI pci_skybox = eng.m_context.pipeInfo();
 		pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
 		pci_skybox.fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 		{
-			TaskScheduler::Stage shaders;
-			shaders.name = "load_shaders";
+			task_scheduler::stage_t shaders;
 			shaders.tasks.push_back([&]() { loadShader("shaders/test", "shaders/test.vert", "shaders/test.frag"); });
 			shaders.tasks.push_back([&]() { loadShader("shaders/test_tex", "shaders/test.vert", "shaders/test_tex.frag"); });
 			shaders.tasks.push_back([&]() { loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"); });
@@ -472,8 +483,7 @@ class App {
 			load_shaders = m_tasks.stage(std::move(shaders));
 		}
 		{
-			TaskScheduler::Stage pipes;
-			pipes.name = "load_pipelines";
+			task_scheduler::stage_t pipes;
 			pipes.tasks.push_back([&]() { loadPipe("pipelines/test", "shaders/test"); });
 			pipes.tasks.push_back([&]() { loadPipe("pipelines/test_tex", "shaders/test_tex", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([&]() { loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()); });
@@ -619,7 +629,7 @@ class App {
 	};
 
 	Data m_data;
-	TaskScheduler m_tasks;
+	task_scheduler m_tasks;
 	std::future<void> m_ready;
 
   public:

@@ -10,7 +10,7 @@
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
 #include <gfx/vram.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 #include <levk_impl.hpp>
 #include <resources/model_impl.hpp>
 #include <resources/resources_impl.hpp>

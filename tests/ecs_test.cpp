@@ -7,7 +7,7 @@
 #include <core/tasks.hpp>
 #include <core/threads.hpp>
 #include <core/utils.hpp>
-#include <kt/async_queue/async_queue.hpp>
+#include <kt/async_queue/lockable.hpp>
 
 using namespace le;
 using namespace le::ecs;

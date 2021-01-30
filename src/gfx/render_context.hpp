@@ -19,7 +19,7 @@ class RenderContext final {
 	enum class Flag : s8 { eRenderPaused, eOutOfDate, eCOUNT_ };
 	using Flags = kt::enum_flags<Flag>;
 	template <typename T>
-	using Result = kt::result_void<T>;
+	using Result = kt::result_t<T>;
 
   private:
 	struct Metadata final {

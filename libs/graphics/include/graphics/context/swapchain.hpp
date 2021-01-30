@@ -6,6 +6,7 @@
 #include <graphics/context/render_types.hpp>
 #include <graphics/qflags.hpp>
 #include <graphics/resources.hpp>
+#include <kt/result/result.hpp>
 
 namespace le::graphics {
 class VRAM;
@@ -50,7 +51,7 @@ class Swapchain {
 	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
-	std::optional<RenderTarget> acquireNextImage(RenderSync const& sync);
+	kt::result_t<RenderTarget> acquireNextImage(RenderSync const& sync);
 	bool present(RenderSync const& sync);
 	bool reconstruct(glm::ivec2 framebufferSize = {}, Span<vk::PresentModeKHR> desiredModes = {});
 

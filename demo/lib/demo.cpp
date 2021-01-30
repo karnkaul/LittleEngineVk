@@ -453,6 +453,7 @@ class App {
 
   public:
 	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
+
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this, &eng](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> shaderLD{eng.m_boot.device, {}};

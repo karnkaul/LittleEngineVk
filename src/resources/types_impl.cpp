@@ -163,7 +163,7 @@ void Mesh::updateGeometry(gfx::Geometry geometry) {
 }
 
 template <>
-kt::result_void<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
+kt::result_t<Texture::CreateInfo> LoadBase<Texture>::createInfo() const {
 	auto pThis = static_cast<Texture::LoadInfo const*>(this);
 	if (pThis->imageFilename.empty() && pThis->cubemapFilenames.empty()) {
 		logE("[{}] Empty resource ID(s)!", Texture::s_tName);

@@ -122,10 +122,10 @@ Swapchain::~Swapchain() {
 	destroy(m_storage, true);
 }
 
-std::optional<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) {
+kt::result_t<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) {
 	orientCheck();
 	if (m_storage.flags.any(Flag::ePaused | Flag::eOutOfDate)) {
-		return std::nullopt;
+		return {};
 	}
 	if (m_storage.acquired) {
 		g_log.log(lvl::warning, 1, "[{}] Attempt to acquire image without presenting previously acquired one", g_name);
@@ -137,13 +137,13 @@ std::optional<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) 
 	} catch (vk::OutOfDateKHRError const& e) {
 		m_storage.flags.set(Flag::eOutOfDate);
 		g_log.log(lvl::warning, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name, e.what());
-		return std::nullopt;
+		return {};
 	}
 	if (!m_storage.acquired || (m_storage.acquired->result != vk::Result::eSuccess && m_storage.acquired->result != vk::Result::eSuboptimalKHR)) {
 		g_log.log(lvl::warning, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name,
 				  m_storage.acquired ? g_vkResultStr[m_storage.acquired->result] : "Unknown Error");
 		m_storage.acquired.reset();
-		return std::nullopt;
+		return {};
 	}
 	auto& frame = m_storage.frame();
 	m_device.get().waitFor(frame.drawn);

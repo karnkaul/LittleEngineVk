@@ -35,7 +35,7 @@ inline std::string_view g_compiler = "glslc";
 
 Shader::ResourcesMap shaderResources(Shader const& shader);
 io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
-std::optional<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
+kt::result_t<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
 SetBindings extractBindings(Shader const& shader);
 
 bytearray convert(std::initializer_list<u8> bytes);

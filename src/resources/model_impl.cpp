@@ -268,7 +268,7 @@ Status Model::status() const {
 }
 
 template <>
-kt::result_void<Model::CreateInfo> LoadBase<Model>::createInfo() const {
+kt::result_t<Model::CreateInfo> LoadBase<Model>::createInfo() const {
 	auto pThis = static_cast<Model::LoadInfo const*>(this);
 	auto const jsonDir = pThis->jsonDirectory.empty() ? pThis->idRoot : pThis->jsonDirectory;
 	if (jsonDir.empty()) {

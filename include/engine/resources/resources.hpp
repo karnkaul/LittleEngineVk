@@ -7,7 +7,7 @@
 namespace le::res {
 using Semaphore = TCounter<s32>::Semaphore;
 template <typename T>
-using Result = kt::result_void<T>;
+using Result = kt::result_t<T>;
 
 ///
 /// \brief Acquire a semaphore to block deinit/unload until (all have been) released

@@ -22,3 +22,6 @@
 [submodule "libs/dtasks"]
 	path = libs/dtasks
 	url = https://github.com/karnkaul/dtasks
+[submodule "libs/core/include/kt/ktest"]
+	path = libs/core/include/kt/ktest
+	url = https://github.com/karnkaul/kt-test

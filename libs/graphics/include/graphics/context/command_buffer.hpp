@@ -4,6 +4,7 @@
 #include <core/ref.hpp>
 #include <core/view.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
@@ -25,7 +26,7 @@ class CommandBuffer {
 	using Stages = Duet<vk::PipelineStageFlags>;
 
 	struct PassInfo {
-		std::vector<vk::ClearValue> clearValues;
+		kt::fixed_vector<vk::ClearValue, 2> clearValues;
 		vk::SubpassContents subpassContents = vk::SubpassContents::eInline;
 		vk::CommandBufferUsageFlags usage = {};
 	};

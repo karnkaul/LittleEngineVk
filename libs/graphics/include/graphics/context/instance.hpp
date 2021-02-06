@@ -3,6 +3,7 @@
 #include <core/log.hpp>
 #include <core/span.hpp>
 #include <graphics/context/physical_device.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le::graphics {
 class Instance final {
@@ -15,7 +16,7 @@ class Instance final {
 	Instance& operator=(Instance&&);
 	~Instance();
 
-	std::vector<PhysicalDevice> availableDevices(Span<std::string_view> requiredExtensions) const;
+	kt::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view> requiredExtensions) const;
 	vk::Instance instance() const noexcept {
 		return m_instance;
 	}

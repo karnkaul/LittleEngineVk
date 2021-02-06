@@ -3,6 +3,7 @@
 #include <core/std_types.hpp>
 #include <graphics/qflags.hpp>
 #include <kt/async_queue/lockable.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
@@ -40,7 +41,7 @@ class QueueMultiplex final {
 		return queue(type).arrayIndex;
 	}
 
-	std::vector<u32> familyIndices(QFlags flags) const;
+	kt::fixed_vector<u32, 3> familyIndices(QFlags flags) const;
 
 	void submit(QType type, vk::ArrayProxy<vk::SubmitInfo const> const& infos, vk::Fence signal, bool bLock);
 	vk::Result present(vk::PresentInfoKHR const& info, bool bLock);

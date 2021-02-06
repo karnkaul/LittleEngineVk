@@ -202,8 +202,8 @@ enum class CursorMode : s8 { eDefault = 0, eHidden, eDisabled };
 
 struct Joystick {
 	std::string name;
-	std::vector<f32> axes;
-	std::vector<u8> buttons;
+	std::array<f32, 6> axes{};
+	std::array<u8, 15> buttons{};
 	s32 id = 0;
 };
 

@@ -6,6 +6,7 @@
 #include <graphics/context/render_types.hpp>
 #include <graphics/qflags.hpp>
 #include <graphics/resources.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 #include <kt/result/result.hpp>
 
 namespace le::graphics {
@@ -83,7 +84,7 @@ class Swapchain {
 		std::optional<Image> depthImage;
 		vk::ImageView depthImageView;
 		vk::SwapchainKHR swapchain;
-		std::vector<Frame> frames;
+		kt::fixed_vector<Frame, 4> frames;
 		std::optional<vk::ResultValue<u32>> acquired;
 
 		Display current;

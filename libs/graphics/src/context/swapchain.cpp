@@ -250,7 +250,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 	}
 	{
 		auto images = m_device.get().device().getSwapchainImagesKHR(m_storage.swapchain);
-		m_storage.frames.reserve(images.size());
+		ENSURE(images.size() < m_storage.frames.capacity(), "Too many swapchain images");
 		Image::CreateInfo depthImageInfo;
 		depthImageInfo.createInfo.format = info.depthFormat;
 		depthImageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;

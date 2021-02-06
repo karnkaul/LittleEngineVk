@@ -2,6 +2,7 @@
 #include <array>
 #include <vector>
 #include <core/ensure.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le {
 ///
@@ -20,6 +21,8 @@ struct Span {
 	constexpr Span(T const& data) noexcept;
 	template <std::size_t N>
 	constexpr Span(std::array<T, N> const& arr) noexcept;
+	template <std::size_t N>
+	constexpr Span(kt::fixed_vector<T, N> const& vec) noexcept;
 	template <std::size_t N>
 	constexpr Span(T const (&arr)[N]) noexcept;
 	constexpr Span(std::vector<T> const& vec) noexcept;
@@ -49,6 +52,11 @@ constexpr Span<T>::Span(T const& data) noexcept : pData(&data), extent(1) {
 template <typename T>
 template <std::size_t N>
 constexpr Span<T>::Span(std::array<T, N> const& arr) noexcept : pData(N == 0 ? nullptr : &arr.front()), extent(N) {
+}
+
+template <typename T>
+template <std::size_t N>
+constexpr Span<T>::Span(kt::fixed_vector<T, N> const& vec) noexcept : pData(vec.empty() ? nullptr : &vec.front()), extent(vec.size()) {
 }
 
 template <typename T>

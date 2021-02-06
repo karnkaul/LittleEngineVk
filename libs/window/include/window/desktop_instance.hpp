@@ -35,7 +35,7 @@ class DesktopInstance final : public IInstance {
 	void close();
 
 	bool importControllerDB(std::string_view db) const;
-	std::vector<Gamepad> activeGamepads() const;
+	kt::fixed_vector<Gamepad, 8> activeGamepads() const;
 	Joystick joyState(s32 id) const;
 	Gamepad gamepadState(s32 id) const;
 	f32 triggerToAxis(f32 triggerValue) const;

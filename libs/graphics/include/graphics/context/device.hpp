@@ -88,7 +88,7 @@ class Device final {
 	struct {
 		std::vector<char const*> extensions;
 		vk::SurfaceKHR surface;
-		std::vector<PhysicalDevice> available;
+		kt::fixed_vector<PhysicalDevice, 8> available;
 		vk::PhysicalDeviceLimits limits;
 		std::pair<f32, f32> lineWidth;
 	} m_metadata;

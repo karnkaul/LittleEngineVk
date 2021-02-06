@@ -436,16 +436,14 @@ bool DesktopInstance::importControllerDB(std::string_view db) const {
 	return false;
 }
 
-std::vector<Gamepad> DesktopInstance::activeGamepads() const {
-	std::vector<Gamepad> ret;
+kt::fixed_vector<Gamepad, 8> DesktopInstance::activeGamepads() const {
+	kt::fixed_vector<Gamepad, 8> ret;
 	for (s32 id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id) {
 		GLFWgamepadstate state;
 		if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state)) {
 			Gamepad padi;
 			padi.name = glfwGetGamepadName(id);
 			padi.id = id;
-			padi.buttons = std::vector<u8>(15, 0);
-			padi.axes = std::vector<f32>(6, 0);
 			std::memcpy(padi.buttons.data(), state.buttons, padi.buttons.size());
 			std::memcpy(padi.axes.data(), state.axes, padi.axes.size() * sizeof(f32));
 			ret.push_back(std::move(padi));
@@ -460,14 +458,14 @@ Joystick DesktopInstance::joyState(s32 id) const {
 		ret.id = id;
 		s32 count;
 		auto const axes = glfwGetJoystickAxes(id, &count);
-		ret.axes.reserve((std::size_t)count);
-		for (s32 idx = 0; idx < count; ++idx) {
-			ret.axes.push_back(axes[idx]);
+		ENSURE((std::size_t)count < ret.axes.size(), "Too many axes");
+		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) {
+			ret.axes[idx] = axes[idx];
 		}
 		auto const buttons = glfwGetJoystickButtons(id, &count);
-		ret.buttons.reserve((std::size_t)count);
-		for (s32 idx = 0; idx < count; ++idx) {
-			ret.buttons.push_back(buttons[idx]);
+		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
+		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) {
+			ret.buttons[idx] = buttons[idx];
 		}
 		auto const szName = glfwGetJoystickName(id);
 		if (szName) {
@@ -483,8 +481,6 @@ Gamepad DesktopInstance::gamepadState(s32 id) const {
 	if (glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state)) {
 		ret.name = glfwGetGamepadName(id);
 		ret.id = id;
-		ret.buttons = std::vector<u8>(15, 0);
-		ret.axes = std::vector<f32>(6, 0);
 		std::memcpy(ret.buttons.data(), state.buttons, ret.buttons.size());
 		std::memcpy(ret.axes.data(), state.axes, ret.axes.size() * sizeof(f32));
 	}

@@ -138,10 +138,9 @@ Instance::~Instance() {
 	destroy();
 }
 
-std::vector<PhysicalDevice> Instance::availableDevices(Span<std::string_view> required) const {
-	std::vector<PhysicalDevice> ret;
+kt::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(Span<std::string_view> required) const {
+	kt::fixed_vector<PhysicalDevice, 8> ret;
 	std::vector<vk::PhysicalDevice> const devices = m_instance.enumeratePhysicalDevices();
-	ret.reserve(devices.size());
 	for (auto const& device : devices) {
 		std::unordered_set<std::string_view> missing(required.begin(), required.end());
 		std::vector<vk::ExtensionProperties> const supported = device.enumerateDeviceExtensionProperties();
@@ -155,6 +154,9 @@ std::vector<PhysicalDevice> Instance::availableDevices(Span<std::string_view> re
 			available.features = device.getFeatures();
 			available.device = device;
 			ret.push_back(std::move(available));
+			if (ret.size() == ret.capacity()) {
+				break;
+			}
 		}
 	}
 	return ret;

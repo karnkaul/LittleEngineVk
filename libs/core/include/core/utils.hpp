@@ -13,6 +13,7 @@
 #include <core/ref.hpp>
 #include <core/std_types.hpp>
 #include <kt/async_queue/lockable.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le {
 enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout, eCOUNT_ };
@@ -139,6 +140,11 @@ std::vector<std::string> tokenise(std::string_view s, char delimiter, std::initi
 /// \brief Tokenise a string in place via `delimiter`, skipping over any delimiters within `escape` characters
 ///
 std::vector<std::string_view> tokeniseInPlace(char* szOutBuf, char delimiter, std::initializer_list<std::pair<char, char>> escape);
+///
+/// \brief Tokenise a string in place via `delimiter`
+///
+template <std::size_t N>
+kt::fixed_vector<std::string_view, N> tokenise(std::string_view text, char delim);
 
 ///
 /// \brief Substitute an input set of chars with a given replacement
@@ -194,6 +200,22 @@ FutureState utils::futureState(std::future<T> const& future) noexcept {
 		}
 	}
 	return FutureState::eInvalid;
+}
+
+template <std::size_t N>
+kt::fixed_vector<std::string_view, N> utils::strings::tokenise(std::string_view text, char delim) {
+	kt::fixed_vector<std::string_view, N> ret;
+	while (!text.empty() && ret.size() < ret.capacity()) {
+		std::size_t const idx = text.find_first_of(delim);
+		if (idx < text.size()) {
+			ret.push_back(text.substr(0, idx));
+			text = idx + 1 < text.size() ? text.substr(idx + 1) : std::string_view();
+		} else {
+			ret.push_back(text);
+			text = {};
+		}
+	}
+	return ret;
 }
 
 template <typename T>

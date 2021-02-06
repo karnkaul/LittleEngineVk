@@ -36,7 +36,7 @@ Device::Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& inf
 	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warning);
 	std::unordered_set<std::string_view> const extSet = {info.extensions.begin(), info.extensions.end()};
 	std::vector<std::string_view> const extArr = {extSet.begin(), extSet.end()};
-	std::vector<PhysicalDevice> const devices = instance.availableDevices(extArr);
+	kt::fixed_vector<PhysicalDevice, 8> const devices = instance.availableDevices(extArr);
 	if (devices.empty()) {
 		g_log.log(lvl::error, 0, "[{}] No compatible Vulkan physical device detected!", g_name);
 		throw std::runtime_error("No physical devices");

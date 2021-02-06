@@ -4,6 +4,7 @@
 #include <graphics/render_context.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le {
 template <>
@@ -41,7 +42,7 @@ struct AssetLoader<graphics::Pipeline> {
 template <>
 struct AssetLoadData<graphics::Texture> {
 	Ref<graphics::VRAM> vram;
-	std::vector<io::Path> imageIDs;
+	kt::fixed_vector<io::Path, 6> imageIDs;
 	graphics::Texture::Raw raw;
 	io::Path prefix;
 	std::string ext;

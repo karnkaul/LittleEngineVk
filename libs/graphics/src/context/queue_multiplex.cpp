@@ -146,9 +146,8 @@ void QueueMultiplex::setup(vk::Device device) {
 			  m_familyCount);
 }
 
-std::vector<u32> QueueMultiplex::familyIndices(QFlags flags) const {
-	std::vector<u32> ret;
-	ret.reserve(3);
+kt::fixed_vector<u32, 3> QueueMultiplex::familyIndices(QFlags flags) const {
+	kt::fixed_vector<u32, 3> ret;
 	if (flags.test(QType::eGraphics)) {
 		ret.push_back(queue(QType::eGraphics).familyIndex);
 	}

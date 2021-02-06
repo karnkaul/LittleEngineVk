@@ -2,6 +2,7 @@
 #include <variant>
 #include <glm/vec2.hpp>
 #include <graphics/context/vram.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le::graphics {
 class Sampler {
@@ -70,8 +71,8 @@ class Texture {
 		Data data;
 		std::optional<Image> image;
 		struct {
-			std::vector<Span<std::byte>> bytes;
-			std::vector<RawImage> imgs;
+			kt::fixed_vector<Span<std::byte>, 6> bytes;
+			kt::fixed_vector<RawImage, 6> imgs;
 		} raw;
 		VRAM::Future transfer;
 	};

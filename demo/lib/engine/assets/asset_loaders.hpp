@@ -30,7 +30,6 @@ struct AssetLoadData<graphics::Pipeline> {
 	graphics::PFlags flags;
 	std::string name;
 	Hash shaderID;
-	mutable AssetLoadInfo<graphics::Shader>::OnModified::Tk onShaderReload;
 };
 
 template <>

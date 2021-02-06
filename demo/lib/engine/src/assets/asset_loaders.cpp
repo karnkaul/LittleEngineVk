@@ -68,7 +68,7 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 
 std::optional<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoadInfo<graphics::Pipeline> const& info) const {
 	if (auto shader = info.m_store.get().find<graphics::Shader>(info.m_data.shaderID)) {
-		info.m_data.onShaderReload = shader->onModified([&info]() { info.forceDirty(true); });
+		info.reloadDepend(*shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context.get().pipeInfo(info.m_data.flags);
 		return info.m_data.context.get().makePipeline(info.m_data.name, shader->get(), pipeInfo);
 	}

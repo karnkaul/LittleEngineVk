@@ -463,7 +463,7 @@ class App {
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
 		auto loadPipe = [this, &eng](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
-			AssetLoadData<graphics::Pipeline> pipelineLD{eng.m_context, {}, {}, {}, {}, {}};
+			AssetLoadData<graphics::Pipeline> pipelineLD{eng.m_context, {}, {}, {}, {}};
 			pipelineLD.name = id;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;

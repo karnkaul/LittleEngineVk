@@ -58,21 +58,26 @@ class AssetStore : public NoCopy {
 	bool unload(Hash id);
 	template <typename T>
 	bool reload(Hash id);
+	template <typename T>
+	bool forceDirty(Hash id) const;
 
 	void update();
 	void clear();
 
 	template <template <typename...> typename L = std::scoped_lock>
-	L<std::mutex> lock() const;
+	L<std::mutex> reloadLock() const;
 
 	Resources& resources();
 
   private:
+	template <typename T>
+	bool reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const;
+
 	detail::TAssets m_assets;
 	Resources m_resources;
 	mutable std::unordered_map<Hash, OnModified> m_onModified;
 	mutable kt::lockable<std::shared_mutex> m_mrsw;
-	mutable kt::lockable<std::mutex> m_mutex;
+	mutable kt::lockable<std::mutex> m_reloadMutex;
 
 	template <typename T>
 	friend class detail::TAssetMap;
@@ -118,12 +123,13 @@ template <typename T>
 class TAssetMap : public AssetMap {
   public:
 	template <typename U>
-	Asset<T> add(AssetStore const& store, io::Path const& id, U&& u);
+	Asset<T> add(AssetStore::OnModified& onMod, io::Path const& id, U&& u);
 	template <typename Data>
-	std::optional<Asset<T>> load(AssetStore const& store, Resources& res, io::Path const& id, Data&& data);
-	bool reloadAsset(AssetStore const& store, TAsset<T>& out_t) const;
+	static std::optional<TAsset<T>> load(AssetStore const& store, AssetStore::OnModified& onMod, Resources& res, std::string id, Data&& data);
+	Asset<T> insert(TAsset<T>&& asset, AssetStore::OnModified& onMod);
 	bool reload(AssetStore const& store, Hash id);
 	bool unload(Hash id);
+	bool forceDirty(Hash id) const;
 	u64 update(AssetStore const& store) override;
 
 	using Storage = std::unordered_map<Hash, TAsset<T>>;
@@ -142,60 +148,54 @@ constexpr Asset<T> makeAsset(U&& wrap, AssetStore::OnModified& onModified) noexc
 
 template <typename T>
 template <typename U>
-Asset<T> TAssetMap<T>::add(AssetStore const& store, io::Path const& id, U&& u) {
+Asset<T> TAssetMap<T>::add(AssetStore::OnModified& onMod, io::Path const& id, U&& u) {
 	auto idStr = id.generic_string();
-	TAsset<T>& asset = m_storage[idStr];
+	auto const [it, bNew] = m_storage.insert({idStr, TAsset<T>{}});
+	if (!bNew) {
+		conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", idStr);
+	}
+	TAsset<T>& asset = it->second;
 	asset.t.emplace(std::forward<U>(u));
 	asset.loadInfo.reset();
 	conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", idStr);
-	if (asset.id.empty()) {
-		asset.id = std::move(idStr);
-	}
-	return makeAsset<T>(asset, store.m_onModified[id]);
+	asset.id = std::move(idStr);
+	return makeAsset<T>(asset, onMod);
 }
 template <typename T>
 template <typename Data>
-std::optional<Asset<T>> TAssetMap<T>::load(AssetStore const& store, Resources& res, io::Path const& id, Data&& data) {
-	auto idStr = id.generic_string();
+std::optional<TAsset<T>> TAssetMap<T>::load(AssetStore const& store, AssetStore::OnModified& onMod, Resources& res, std::string id, Data&& data) {
 	AssetLoader<T> loader;
-	// Store calls this without any locks, so obtain unique lock while (potentially) modifying m_storage
-	auto lock = store.m_mrsw.lock<std::unique_lock>();
-	TAsset<T>& asset = m_storage[idStr];
-	AssetStore::OnModified& onModified = store.m_onModified[idStr];
-	// Unique lock not needed anymore, and loader.load() may invoke store.find() etc which would need shared locks
-	lock.unlock();
-	asset.loadInfo = AssetLoadInfo<T>(store, res, onModified, std::forward<Data>(data), id);
+	TAsset<T> asset;
+	asset.loadInfo = AssetLoadInfo<T>(store, res, onMod, std::forward<Data>(data), id);
 	asset.t = loader.load(*asset.loadInfo);
 	if (asset.t) {
-		conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", idStr);
-		if (asset.id.empty()) {
-			asset.id = std::move(idStr);
-		}
-		return makeAsset<T>(asset, onModified);
+		conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", id);
+		asset.id = std::move(id);
+		return asset;
 	}
-	conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to load [{}]!", idStr);
+	conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to load [{}]!", id);
 	return std::nullopt;
 }
 template <typename T>
-bool TAssetMap<T>::reloadAsset(AssetStore const& store, TAsset<T>& out_asset) const {
-	auto lock = store.m_mutex.lock<std::unique_lock>();
-	out_asset.loadInfo->forceDirty(false);
-	AssetLoader<T> loader;
-	if (loader.reload(*out_asset.t, *out_asset.loadInfo)) {
-		AssetStore::OnModified& onModified = store.m_onModified[out_asset.id];
-		lock.unlock();
-		conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", out_asset.id);
-		onModified();
-		return true;
-	} else {
-		conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to reload [{}]!", out_asset.id);
+Asset<T> TAssetMap<T>::insert(TAsset<T>&& asset, AssetStore::OnModified& onMod) {
+	Hash const id = asset.id;
+	auto const [it, bNew] = m_storage.insert({id, std::move(asset)});
+	if (!bNew) {
+		conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", asset.id);
 	}
-	return false;
+	conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", asset.id);
+	return makeAsset<T>(it->second, onMod);
 }
 template <typename T>
 bool TAssetMap<T>::reload(AssetStore const& store, Hash id) {
 	if (auto it = m_storage.find(id); it != m_storage.end()) {
-		return reloadAsset(store, it->second);
+		auto& asset = it->second;
+		if (store.reloadAsset<T>(*asset.t, *asset.loadInfo)) {
+			conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
+			return true;
+		} else {
+			conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to reload [{}]!", asset.id);
+		}
 	}
 	return false;
 }
@@ -209,12 +209,24 @@ bool TAssetMap<T>::unload(Hash id) {
 	return false;
 }
 template <typename T>
+bool TAssetMap<T>::forceDirty(Hash id) const {
+	if (auto it = m_storage.find(id); it != m_storage.end() && it->second.loadInfo) {
+		it->second.loadInfo->forceDirty(true);
+		return true;
+	}
+	return false;
+}
+template <typename T>
 u64 TAssetMap<T>::update(AssetStore const& store) {
 	u64 ret = 0;
 	for (auto& [_, asset] : m_storage) {
 		if (asset.t && asset.loadInfo && asset.loadInfo->modified()) {
-			reloadAsset(store, asset);
-			++ret;
+			if (store.reloadAsset<T>(*asset.t, *asset.loadInfo)) {
+				conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
+				++ret;
+			} else {
+				conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to reload [{}]!", asset.id);
+			}
 		}
 	}
 	return ret;
@@ -225,7 +237,7 @@ TAssetMap<Value>& TAssets::get() {
 	auto search = storeMap.find(hash<Value>());
 	if (search == storeMap.end()) {
 		auto [it, bRes] = storeMap.emplace(hash<Value>(), std::make_unique<TAssetMap<Value>>());
-		ENSURE(bRes, "unordred_map insertion error");
+		ENSURE(bRes, "Map insertion failure");
 		search = it;
 	}
 	return static_cast<TAssetMap<Value>&>(*search->second);
@@ -250,17 +262,20 @@ std::size_t TAssets::hash() const {
 template <typename T>
 Asset<T> AssetStore::add(io::Path const& id, T&& t) {
 	auto lock = m_mrsw.lock<std::unique_lock>();
-	return m_assets.get<T>().add(*this, id, std::forward<T>(t));
+	return m_assets.get<T>().add(m_onModified[id], id, std::forward<T>(t));
 }
 template <typename T, typename Data>
 std::optional<Asset<T>> AssetStore::load(io::Path const& id, Data&& data) {
-	// AssetLoader may invoke find() etc which would need shared locks, so
-	// cannot use unique_lock for the entire function call here
+	auto idStr = id.generic_string();
 	auto lock = m_mrsw.lock<std::unique_lock>();
-	auto& map = m_assets.get<T>();
+	auto& onMod = m_onModified[idStr];
+	// AssetLoader may invoke find() etc which would need shared locks
 	lock.unlock();
-	// AssetMap optimally unique_locks mutex (performs load outside lock)
-	return map.load(*this, m_resources, id, std::forward<Data>(data));
+	if (auto asset = detail::TAssetMap<T>::load(*this, onMod, m_resources, std::move(idStr), std::forward<Data>(data))) {
+		lock.lock();
+		return m_assets.get<T>().insert(std::move(*asset), onMod);
+	}
+	return std::nullopt;
 }
 template <typename T>
 std::optional<Asset<T>> AssetStore::find(Hash id) {
@@ -325,6 +340,14 @@ bool AssetStore::reload(Hash id) {
 	return false;
 }
 template <typename T>
+bool AssetStore::forceDirty(Hash id) const {
+	auto lock = m_mrsw.lock<std::shared_lock>();
+	if (m_assets.contains<T>()) {
+		return m_assets.get<T>().forceDirty(id);
+	}
+	return false;
+}
+template <typename T>
 bool AssetStore::unload(Hash id) {
 	auto lock = m_mrsw.lock<std::unique_lock>();
 	if (m_assets.contains<T>()) {
@@ -333,11 +356,22 @@ bool AssetStore::unload(Hash id) {
 	return false;
 }
 template <template <typename...> typename L>
-L<std::mutex> AssetStore::lock() const {
-	return m_mutex.lock<L>();
+L<std::mutex> AssetStore::reloadLock() const {
+	return m_reloadMutex.lock<L>();
 }
 inline Resources& AssetStore::resources() {
 	return m_resources;
+}
+template <typename T>
+bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
+	auto lock = reloadLock();
+	info.forceDirty(false);
+	AssetLoader<T> loader;
+	if (loader.reload(out_asset, info)) {
+		m_onModified[info.m_id]();
+		return true;
+	}
+	return false;
 }
 
 template <typename T>
@@ -358,5 +392,11 @@ typename Asset<T>::type* Asset<T>::operator->() const {
 template <typename T>
 typename Asset<T>::OnModified::Tk Asset<T>::onModified(OnModified::Callback const& callback) {
 	return m_onModified.get().subscribe(callback);
+}
+
+template <typename T>
+template <typename U>
+void AssetLoadInfo<T>::reloadDepend(Asset<U>& out_asset) const {
+	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s.get().forceDirty<T>(id); }));
 }
 } // namespace le

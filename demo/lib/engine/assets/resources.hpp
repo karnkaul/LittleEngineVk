@@ -1,10 +1,12 @@
 #pragma once
+#include <shared_mutex>
 #include <unordered_map>
 #include <variant>
 #include <core/hash.hpp>
 #include <core/io/file_monitor.hpp>
 #include <core/io/reader.hpp>
 #include <core/os.hpp>
+#include <kt/async_queue/lockable.hpp>
 
 constexpr bool levk_resourceMonitor = levk_debug && levk_desktopOS;
 
@@ -53,6 +55,7 @@ class Resources {
 
   protected:
 	std::unordered_map<Hash, Resource> m_loaded;
+	mutable kt::lockable<std::shared_mutex> m_mutex;
 	io::FileReader m_fileReader;
 	io::Reader const* m_pReader = nullptr;
 };

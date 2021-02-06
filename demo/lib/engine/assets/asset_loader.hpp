@@ -5,6 +5,8 @@
 
 namespace le {
 class AssetStore;
+template <typename T>
+class Asset;
 
 ///
 /// \brief Customisation point
@@ -27,6 +29,9 @@ class AssetLoadInfo {
 	bool modified() const;
 	void forceDirty(bool bDirty) const noexcept;
 
+	template <typename U>
+	void reloadDepend(Asset<U>& out_asset) const; // impl in asset_store.hpp; must include to instantiate!
+
   public:
 	AssetLoadData<T> m_data;
 	Ref<AssetStore const> m_store;
@@ -36,6 +41,7 @@ class AssetLoadInfo {
   private:
 	Ref<Resources> m_resources;
 	mutable std::unordered_map<Hash, Ref<Resource const>> m_monitors;
+	mutable std::vector<OnModified::Tk> m_tokens;
 	mutable bool m_bDirty = false;
 };
 

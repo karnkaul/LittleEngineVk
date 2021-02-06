@@ -75,6 +75,7 @@ io::FileReader& Resources::fileReader() {
 }
 
 Resource const* Resources::find(Hash id) const noexcept {
+	auto lock = m_mutex.lock<std::shared_lock>();
 	if (auto it = m_loaded.find(id); it != m_loaded.end()) {
 		return &it->second;
 	}
@@ -82,27 +83,29 @@ Resource const* Resources::find(Hash id) const noexcept {
 }
 
 Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonitor, bool bForceReload) {
-	if (auto pRes = find(path)) {
-		if (bForceReload) {
-			m_loaded.erase(path);
-		} else {
+	if (!bForceReload) {
+		if (auto pRes = find(path)) {
 			return pRes;
 		}
 	}
+	auto lock = m_mutex.lock<std::unique_lock>();
+	m_loaded.erase(path);
 	Resource resource;
 	if (resource.load(reader(), path, type, bMonitor && levk_resourceMonitor)) {
-		auto [it, res] = m_loaded.emplace(std::move(path), std::move(resource));
-		ENSURE(res, "Map insertion failure");
+		auto [it, bRes] = m_loaded.emplace(std::move(path), std::move(resource));
+		ENSURE(bRes, "Map insertion failure");
 		return &it->second;
 	}
 	return nullptr;
 }
 
 bool Resources::loaded(Hash id) const noexcept {
+	auto lock = m_mutex.lock<std::shared_lock>();
 	return m_loaded.find(id) != m_loaded.end();
 }
 
 void Resources::update() {
+	auto lock = m_mutex.lock<std::shared_lock>();
 	for (auto& [_, resource] : m_loaded) {
 		if (resource.m_monitor) {
 			resource.m_monitor->update();
@@ -111,6 +114,7 @@ void Resources::update() {
 }
 
 void Resources::clear() {
+	auto lock = m_mutex.lock<std::unique_lock>();
 	m_loaded.clear();
 }
 } // namespace le

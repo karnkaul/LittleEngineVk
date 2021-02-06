@@ -25,3 +25,6 @@
 [submodule "libs/core/include/kt/ktest"]
 	path = libs/core/include/kt/ktest
 	url = https://github.com/karnkaul/kt-test
+[submodule "libs/core/include/kt/fixed_vector"]
+	path = libs/core/include/kt/fixed_vector
+	url = https://github.com/karnkaul/fixed_vector.git

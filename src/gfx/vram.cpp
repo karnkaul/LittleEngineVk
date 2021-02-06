@@ -7,7 +7,6 @@
 #include <fmt/format.h>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
-#include <core/tasks.hpp>
 #include <core/threads.hpp>
 #include <gfx/device.hpp>
 #include <gfx/render_driver_impl.hpp>
@@ -211,25 +210,23 @@ void deinit() {
 	logI("[{}] Transfer thread terminated", s_tName);
 	g_device.waitIdle();
 	g_device.destroy(g_resources.pool);
-	std::vector<std::shared_ptr<tasks::Handle>> tasks;
 	for (auto& fence : g_resources.fences) {
 		g_device.destroy(fence);
 	}
 	for (auto& [stage, _] : g_batches.active.entries) {
-		tasks.push_back(tasks::enqueue([buffer = stage.buffer]() { vram::release(buffer); }, ""));
+		vram::release(stage.buffer);
 	}
 	for (auto& buffer : g_resources.buffers) {
-		tasks.push_back(tasks::enqueue([buffer]() { vram::release(buffer); }, ""));
+		vram::release(buffer);
 	}
 	for (auto& batch : g_batches.submitted) {
 		for (auto& [stage, _] : batch.entries) {
-			tasks.push_back(tasks::enqueue([buffer = stage.buffer]() { vram::release(buffer); }, ""));
+			vram::release(stage.buffer);
 		}
 		g_device.destroy(batch.done);
 	}
 	g_resources = {};
 	g_batches = {};
-	tasks::wait(tasks);
 }
 } // namespace tfr
 } // namespace

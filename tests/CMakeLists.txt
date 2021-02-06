@@ -14,3 +14,8 @@ add_test(StaticAny test-any)
 add_executable(test-ecs ecs_test.cpp)
 target_link_libraries(test-ecs PRIVATE levk::core dtasks::dtasks levk::interface)
 add_test(ECS test-ecs)
+
+# fixed_vector
+add_executable(test-fv fixed_vector_test.cpp)
+target_link_libraries(test-fv PRIVATE levk::core levk::interface)
+add_test(fixed_vector test-fv)

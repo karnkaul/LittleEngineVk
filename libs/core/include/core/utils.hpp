@@ -27,7 +27,7 @@ struct Lockable final {
 	using type = M;
 	static constexpr bool hasMutex = UseMutex;
 
-	mutable kt::lockable<M> mutex;
+	mutable kt::lockable_t<M> mutex;
 
 	template <template <typename...> typename L = std::scoped_lock, typename... Args>
 	decltype(mutex.template lock<L, Args...>()) lock() const {

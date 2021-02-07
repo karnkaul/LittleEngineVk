@@ -37,7 +37,7 @@ bool allEmpty(std::vector<T> const&... out_vecs) {
 
 template <typename T>
 std::vector<std::shared_ptr<tasks::Handle>> loadTResources(std::vector<ResourceData<T>>& out_toLoad, std::vector<io::Path>& out_loaded,
-														   std::vector<GUID>& out_resources, kt::lockable<std::mutex>& mutex, std::string_view jobName) {
+														   std::vector<GUID>& out_resources, kt::lockable_t<std::mutex>& mutex, std::string_view jobName) {
 	static_assert(std::is_base_of_v<Resource<T>, T>, "T must derive from Resource!");
 	if (!out_toLoad.empty()) {
 		auto task = [&out_loaded, &out_resources, &mutex](ResourceData<T>& data) {

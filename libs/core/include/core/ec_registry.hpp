@@ -202,12 +202,12 @@ class Registry final {
 	inline static constexpr std::string_view s_tEName = "Entity";
 	inline static std::unordered_map<std::type_index, Sign> s_signs;
 	inline static std::unordered_map<Sign, std::string> s_names;
-	inline static kt::lockable<std::mutex> s_mutex;
+	inline static kt::lockable_t<std::mutex> s_mutex;
 	inline static TCounter<ID::type> s_nextRegID = ID::null;
 
   protected:
 	// Thread-safe member mutex
-	mutable kt::lockable<std::mutex> m_mutex;
+	mutable kt::lockable_t<std::mutex> m_mutex;
 
   private:
 	CMap m_db;

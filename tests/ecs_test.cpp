@@ -21,7 +21,7 @@ struct E {};
 struct F {};
 
 std::unordered_set<Entity> g_spawned;
-kt::lockable<> g_mutex;
+kt::lockable_t<> g_mutex;
 
 bool verify(Entity entity) {
 	auto lock = g_mutex.lock();

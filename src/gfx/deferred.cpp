@@ -20,7 +20,7 @@ struct Deferred {
 };
 
 std::deque<Deferred> g_deferred;
-kt::lockable<std::mutex> g_mutex;
+kt::lockable_t<std::mutex> g_mutex;
 
 bool isStale(Deferred& out_deferred, std::unordered_set<s32> const& active) {
 	for (auto& [window, entry] : out_deferred.drawingMap) {

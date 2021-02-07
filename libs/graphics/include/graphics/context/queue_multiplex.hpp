@@ -72,7 +72,7 @@ class QueueMultiplex final {
 	}
 
   private:
-	kt::lockable<>& mutex(QType type) {
+	kt::lockable_t<>& mutex(QType type) {
 		return *m_queues[(std::size_t)type].second;
 	}
 
@@ -88,10 +88,10 @@ class QueueMultiplex final {
 
 	void assign(Queue g, Queue p, Queue t);
 
-	EnumArray<QType, std::pair<Queue, kt::lockable<>*>> m_queues;
+	EnumArray<QType, std::pair<Queue, kt::lockable_t<>*>> m_queues;
 	struct {
-		kt::lockable<> gp;
-		kt::lockable<> t;
+		kt::lockable_t<> gp;
+		kt::lockable_t<> t;
 	} m_mutexes;
 	u32 m_familyCount = 0;
 	u32 m_queueCount = 0;

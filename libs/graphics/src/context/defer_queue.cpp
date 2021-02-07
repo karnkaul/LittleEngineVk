@@ -33,20 +33,20 @@ void clearImpl(std::vector<Deferred>& out_v) {
 } // namespace
 
 std::size_t DeferQueue::decrement() {
-	auto lock = m_mutex.lock();
-	auto const done = decrementImpl(m_deferred);
+	auto lock = m_deferred.lock();
+	auto const done = decrementImpl(lock.get());
 	invokeImpl(done);
-	clearImpl(m_deferred);
-	return m_deferred.size();
+	clearImpl(lock.get());
+	return lock.get().size();
 }
 
 void DeferQueue::flush() {
-	auto lock = m_mutex.lock();
-	for (auto const& [callback, _] : m_deferred) {
+	auto lock = m_deferred.lock();
+	for (auto const& [callback, _] : lock.get()) {
 		if (callback) {
 			callback();
 		}
 	}
-	m_deferred.clear();
+	lock.get().clear();
 }
 } // namespace le::graphics

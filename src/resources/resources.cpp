@@ -24,7 +24,7 @@ struct Map {
 	TMapStore<std::unordered_map<GUID, TResource<T, TImpl>>> resources;
 	std::unordered_map<Hash, GUID> ids;
 	std::unordered_map<GUID, Ref<TImpl>> loading;
-	mutable kt::lockable<std::shared_mutex> mutex;
+	mutable kt::lockable_t<std::shared_mutex> mutex;
 };
 
 std::atomic<GUID::type> g_nextGUID;

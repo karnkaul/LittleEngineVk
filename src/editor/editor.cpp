@@ -41,7 +41,7 @@ static std::string const s_tName = utils::tName<Editor>();
 
 namespace {
 bool g_bInit = false;
-kt::lockable<std::mutex> g_logMutex;
+kt::lockable_t<std::mutex> g_logMutex;
 dl::config::on_log::token g_token;
 
 struct {

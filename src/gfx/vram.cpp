@@ -72,7 +72,7 @@ struct {
 
 struct {
 	std::optional<threads::TScoped> thread;
-	kt::lockable<> mutex;
+	kt::lockable_t<> mutex;
 } g_sync;
 
 kt::async_queue<std::function<void()>> g_queue;

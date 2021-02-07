@@ -75,8 +75,8 @@ io::FileReader& Resources::fileReader() {
 }
 
 Resource const* Resources::find(Hash id) const noexcept {
-	auto lock = m_mutex.lock<std::shared_lock>();
-	if (auto it = m_loaded.find(id); it != m_loaded.end()) {
+	auto lock = m_loaded.lock<std::shared_lock>();
+	if (auto it = lock.get().find(id); it != lock.get().end()) {
 		return &it->second;
 	}
 	return nullptr;
@@ -88,11 +88,11 @@ Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonito
 			return pRes;
 		}
 	}
-	auto lock = m_mutex.lock<std::unique_lock>();
-	m_loaded.erase(path);
+	auto lock = m_loaded.lock<std::unique_lock>();
+	lock.get().erase(path);
 	Resource resource;
 	if (resource.load(reader(), path, type, bMonitor && levk_resourceMonitor)) {
-		auto [it, bRes] = m_loaded.emplace(std::move(path), std::move(resource));
+		auto [it, bRes] = lock.get().emplace(std::move(path), std::move(resource));
 		ENSURE(bRes, "Map insertion failure");
 		return &it->second;
 	}
@@ -100,13 +100,13 @@ Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonito
 }
 
 bool Resources::loaded(Hash id) const noexcept {
-	auto lock = m_mutex.lock<std::shared_lock>();
-	return m_loaded.find(id) != m_loaded.end();
+	auto lock = m_loaded.lock<std::shared_lock>();
+	return lock.get().find(id) != lock.get().end();
 }
 
 void Resources::update() {
-	auto lock = m_mutex.lock<std::shared_lock>();
-	for (auto& [_, resource] : m_loaded) {
+	auto lock = m_loaded.lock<std::shared_lock>();
+	for (auto& [_, resource] : lock.get()) {
 		if (resource.m_monitor) {
 			resource.m_monitor->update();
 		}
@@ -114,7 +114,7 @@ void Resources::update() {
 }
 
 void Resources::clear() {
-	auto lock = m_mutex.lock<std::unique_lock>();
-	m_loaded.clear();
+	auto lock = m_loaded.lock<std::unique_lock>();
+	lock.get().clear();
 }
 } // namespace le

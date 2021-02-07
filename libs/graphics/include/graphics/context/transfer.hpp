@@ -72,7 +72,7 @@ class Transfer final {
 	struct {
 		std::optional<threads::TScoped> stagingThread;
 		std::optional<threads::TScoped> pollThread;
-		kt::lockable<> mutex;
+		kt::lockable_t<> mutex;
 		std::atomic<bool> bPoll;
 	} m_sync;
 	struct {

@@ -2,7 +2,7 @@
 #include <functional>
 #include <vector>
 #include <core/std_types.hpp>
-#include <kt/async_queue/lockable.hpp>
+#include <kt/async_queue/locker.hpp>
 
 namespace le::graphics {
 struct Deferred {
@@ -21,18 +21,17 @@ class DeferQueue {
 	void flush();
 
   protected:
-	std::vector<Deferred> m_deferred;
-	kt::lockable<> m_mutex;
+	kt::locker_t<std::mutex, std::vector<Deferred>> m_deferred;
 };
 
 // impl
 
 inline void DeferQueue::defer(Deferred deferred) {
-	auto lock = m_mutex.lock();
-	m_deferred.push_back(std::move(deferred));
+	auto lock = m_deferred.lock();
+	lock.get().push_back(std::move(deferred));
 }
 inline void DeferQueue::defer(Deferred::Callback const& callback, u64 defer) {
-	auto lock = m_mutex.lock();
-	m_deferred.push_back({callback, defer});
+	auto lock = m_deferred.lock();
+	lock.get().push_back({callback, defer});
 }
 } // namespace le::graphics

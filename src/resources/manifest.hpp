@@ -60,7 +60,7 @@ class Manifest {
 	Data m_data;
 	std::vector<std::shared_ptr<tasks::Handle>> m_running;
 	std::vector<res::GUID> m_loading;
-	kt::lockable<std::mutex> m_mutex;
+	kt::lockable_t<std::mutex> m_mutex;
 	res::Semaphore m_semaphore;
 	Status m_status = Status::eIdle;
 	bool m_bParsed = false;

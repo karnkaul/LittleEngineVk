@@ -76,8 +76,8 @@ class AssetStore : public NoCopy {
 	detail::TAssets m_assets;
 	Resources m_resources;
 	mutable std::unordered_map<Hash, OnModified> m_onModified;
-	mutable kt::lockable<std::shared_mutex> m_mrsw;
-	mutable kt::lockable<std::mutex> m_reloadMutex;
+	mutable kt::lockable_t<std::shared_mutex> m_mrsw;
+	mutable kt::lockable_t<std::mutex> m_reloadMutex;
 
 	template <typename T>
 	friend class detail::TAssetMap;

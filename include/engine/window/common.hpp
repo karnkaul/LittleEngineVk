@@ -9,7 +9,7 @@ using WindowID = TZero<s32, -1>;
 
 // Most desired in front
 template <typename T>
-using PriorityList = Span<T>;
+using PriorityList = View<T>;
 
 enum class ColourSpace : s8 {
 	eSRGBNonLinear,

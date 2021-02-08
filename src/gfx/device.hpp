@@ -51,7 +51,7 @@ struct Device final {
 	void resetAll(vk::ArrayProxy<vk::Fence const> validFences) const;
 
 	bool isSignalled(vk::Fence fence) const;
-	bool allSignalled(Span<vk::Fence const> fences) const;
+	bool allSignalled(View<vk::Fence const> fences) const;
 
 	vk::ImageView createImageView(ImageViewInfo const& info);
 

@@ -633,15 +633,15 @@ void res::init() {
 		{
 			Texture::CreateInfo info;
 			info.type = Texture::Type::e2D;
-			info.raws = {{Span<u8>(white1pxBytes), {1, 1}}};
+			info.raws = {{View<u8>(white1pxBytes), {1, 1}}};
 			load("textures/white", info);
-			info.raws.back().bytes = Span<u8>(black1pxBytes);
+			info.raws.back().bytes = View<u8>(black1pxBytes);
 			load("textures/black", info);
 		}
 		{
 			Texture::CreateInfo info;
 			Texture::Raw b1px;
-			b1px.bytes = Span<u8>(black1pxBytes);
+			b1px.bytes = View<u8>(black1pxBytes);
 			b1px.size = {1, 1};
 			info.raws = {b1px, b1px, b1px, b1px, b1px, b1px};
 			info.type = Texture::Type::eCube;

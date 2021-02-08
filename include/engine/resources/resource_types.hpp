@@ -228,7 +228,7 @@ struct Sampler::CreateInfo {
 enum class Texture::Space : s8 { eSRGBNonLinear, eRGBLinear, eCOUNT_ };
 enum class Texture::Type : s8 { e2D, eCube, eCOUNT_ };
 struct Texture::Raw {
-	Span<u8> bytes;
+	View<u8> bytes;
 	glm::ivec2 size = {};
 };
 struct Texture::Info : InfoBase {

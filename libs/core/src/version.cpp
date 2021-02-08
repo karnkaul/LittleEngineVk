@@ -7,7 +7,7 @@
 
 namespace le {
 namespace {
-u32 parse(Span<std::string_view> const& vec, std::size_t idx) {
+u32 parse(View<std::string_view> const& vec, std::size_t idx) {
 	return (vec.size() > idx) ? u32(utils::strings::toS32(vec[idx], 0)) : 0;
 }
 } // namespace

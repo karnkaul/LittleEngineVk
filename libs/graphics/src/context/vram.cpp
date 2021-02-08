@@ -109,12 +109,12 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return {std::move(ret)};
 }
 
-VRAM::Future VRAM::copy(Span<Span<std::byte>> pixelsArr, Image& out_dst, LayoutPair layouts) {
+VRAM::Future VRAM::copy(View<View<std::byte>> pixelsArr, Image& out_dst, LayoutPair layouts) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : pixelsArr) {
-		ENSURE(layerSize == 0 || layerSize == pixels.extent, "Invalid image data!");
-		layerSize = pixels.extent;
+		ENSURE(layerSize == 0 || layerSize == pixels.size(), "Invalid image data!");
+		layerSize = pixels.size();
 		imgSize += layerSize;
 	}
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");

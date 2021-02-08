@@ -66,7 +66,7 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 struct GPULister : os::ICmdArg {
 	inline static constexpr std::array names = {"gpu-list"sv, "list-gpus"sv};
 
-	Span<std::string_view> keyVariants() const override {
+	View<std::string_view> keyVariants() const override {
 		return names;
 	}
 
@@ -94,7 +94,7 @@ struct GPUPicker : os::ICmdArg {
 
 	inline static std::optional<std::size_t> s_picked;
 
-	Span<std::string_view> keyVariants() const override {
+	View<std::string_view> keyVariants() const override {
 		return names;
 	}
 
@@ -117,7 +117,7 @@ void listCmdArgs();
 struct HelpCmd : os::ICmdArg {
 	inline static constexpr std::array names = {"h"sv, "help"sv};
 
-	Span<std::string_view> keyVariants() const override {
+	View<std::string_view> keyVariants() const override {
 		return names;
 	}
 
@@ -134,7 +134,7 @@ struct HelpCmd : os::ICmdArg {
 struct Sets {
 	std::unordered_map<u32, graphics::SetFactory> sets;
 
-	void make(Span<u32> setNumbers, graphics::Pipeline const& pipe) {
+	void make(View<u32> setNumbers, graphics::Pipeline const& pipe) {
 		for (u32 num : setNumbers) {
 			sets.emplace(num, pipe.makeSetFactory(num));
 		}
@@ -158,7 +158,7 @@ struct Sets {
 struct SetLayouts {
 	std::unordered_map<Hash, Sets> sets;
 
-	void make(Hash layout, Span<u32> setNumbers, graphics::Pipeline const& pipe) {
+	void make(Hash layout, View<u32> setNumbers, graphics::Pipeline const& pipe) {
 		sets[layout].make(setNumbers, pipe);
 	}
 
@@ -507,7 +507,7 @@ class App {
 		cone->construct(graphics::makeCone());
 		m_data.mesh.push_back(cone.m_id);
 		auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.m_boot.vram));
-		skycube->construct(Span(skyCubeV), skyCubeI);
+		skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
 		m_data.mesh.push_back(skycube.m_id);
 
 		AssetLoadData<graphics::Texture> textureLD{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};

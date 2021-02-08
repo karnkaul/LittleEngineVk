@@ -75,7 +75,7 @@ class Selector {
 	u32 m_queueCount = 0;
 };
 
-QueueMultiplex::QCI createInfo(QueueMultiplex::Family& out_family, Span<f32> prio) {
+QueueMultiplex::QCI createInfo(QueueMultiplex::Family& out_family, View<f32> prio) {
 	QueueMultiplex::QCI ret;
 	ret.first.queueFamilyIndex = out_family.familyIndex;
 	ret.first.queueCount = (u32)prio.size();
@@ -180,18 +180,18 @@ void QueueMultiplex::submit(QType type, vAP<vk::SubmitInfo> infos, vk::Fence sig
 	}
 }
 
-QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, Span<f32> prio) {
+QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, View<f32> prio) {
 	return {createInfo(gpt, prio)};
 }
 
-QueueMultiplex::QCIArr<2> QueueMultiplex::makeFrom2(Family& a, Family& b, Span<f32> pa, Span<f32> pb) {
+QueueMultiplex::QCIArr<2> QueueMultiplex::makeFrom2(Family& a, Family& b, View<f32> pa, View<f32> pb) {
 	std::array<QueueMultiplex::QCI, 2> ret;
 	ret[0] = createInfo(a, pa);
 	ret[1] = createInfo(b, pb);
 	return ret;
 }
 
-QueueMultiplex::QCIArr<3> QueueMultiplex::makeFrom3(Family& g, Family& p, Family& t, Span<f32> pg, Span<f32> pp, Span<f32> pt) {
+QueueMultiplex::QCIArr<3> QueueMultiplex::makeFrom3(Family& g, Family& p, Family& t, View<f32> pg, View<f32> pp, View<f32> pt) {
 	std::array<QueueMultiplex::QCI, 3> ret;
 	ret[0] = createInfo(g, pg);
 	ret[1] = createInfo(p, pp);
@@ -199,7 +199,7 @@ QueueMultiplex::QCIArr<3> QueueMultiplex::makeFrom3(Family& g, Family& p, Family
 	return ret;
 }
 
-void QueueMultiplex::makeQueues(qcivec& out_vec, Span<QCI> qcis, Assign const& a) {
+void QueueMultiplex::makeQueues(qcivec& out_vec, View<QCI> qcis, Assign const& a) {
 	for (auto const& [info, _] : qcis) {
 		out_vec.push_back(info);
 	}

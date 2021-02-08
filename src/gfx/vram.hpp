@@ -47,7 +47,7 @@ struct BufferInfo final {
 namespace vram {
 inline VmaAllocator g_allocator;
 
-void init(Span<engine::MemRange> stagingReserve);
+void init(View<engine::MemRange> stagingReserve);
 void deinit();
 
 void update();
@@ -60,7 +60,7 @@ void unmapMemory(Buffer& out_buffer);
 [[nodiscard]] std::future<void> stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 
 Image createImage(ImageInfo const& info);
-[[nodiscard]] std::future<void> copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutTransition layouts);
+[[nodiscard]] std::future<void> copy(View<View<u8>> pixelsArr, Image const& dst, LayoutTransition layouts);
 
 void release(Buffer buffer, bool bSilent = false);
 void release(Image image);

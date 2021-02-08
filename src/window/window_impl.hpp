@@ -40,7 +40,7 @@ class WindowImpl final {
 	static bool init();
 	static void deinit();
 	static void update();
-	static Span<char const*> vulkanInstanceExtensions();
+	static View<char const*> vulkanInstanceExtensions();
 	static WindowImpl* windowImpl(WindowID window);
 	static gfx::render::Driver::Impl* driverImpl(WindowID window);
 	static std::unordered_set<s32> allExisting();

@@ -440,7 +440,7 @@ bool Device::isSignalled(vk::Fence fence) const {
 	return true;
 }
 
-bool Device::allSignalled(Span<vk::Fence const> fences) const {
+bool Device::allSignalled(View<vk::Fence const> fences) const {
 	return std::all_of(fences.begin(), fences.end(), [this](auto fence) { return isSignalled(fence); });
 }
 

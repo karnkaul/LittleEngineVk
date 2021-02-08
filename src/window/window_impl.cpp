@@ -246,7 +246,7 @@ void WindowImpl::update() {
 	}
 }
 
-Span<char const*> WindowImpl::vulkanInstanceExtensions() {
+View<char const*> WindowImpl::vulkanInstanceExtensions() {
 	static std::vector<char const*> ret;
 #if defined(LEVK_USE_GLFW)
 	if (ret.empty()) {

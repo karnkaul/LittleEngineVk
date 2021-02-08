@@ -7,7 +7,6 @@
 #include <core/span.hpp>
 #include <core/threads.hpp>
 #include <core/time.hpp>
-#include <core/view.hpp>
 #include <graphics/resources.hpp>
 #include <kt/async_queue/async_queue.hpp>
 
@@ -86,7 +85,7 @@ class Transfer final {
 };
 
 struct Transfer::CreateInfo {
-	Span<MemRange> reserve = defaultReserve;
+	View<MemRange> reserve = defaultReserve;
 	std::optional<Time_ms> autoPollRate = 3ms;
 };
 

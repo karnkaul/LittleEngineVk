@@ -145,7 +145,7 @@ void addStage(Batch::Stage&& stage, Batch::Promise&& promise) {
 	g_batches.active.entries.emplace_back(std::move(stage), std::move(promise));
 }
 
-void init(Span<engine::MemRange> stagingReserve) {
+void init(View<engine::MemRange> stagingReserve) {
 	if (g_resources.pool == vk::CommandPool()) {
 		vk::CommandPoolCreateInfo poolInfo;
 		poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
@@ -236,7 +236,7 @@ vk::SharingMode QShare::operator()(QFlags queues) const {
 	return indices.size() == 1 ? vk::SharingMode::eExclusive : desired;
 }
 
-void vram::init(Span<engine::MemRange> stagingReserve) {
+void vram::init(View<engine::MemRange> stagingReserve) {
 	if (g_allocator == VmaAllocator()) {
 		VmaAllocatorCreateInfo allocatorInfo = {};
 		allocatorInfo.instance = g_instance.instance;
@@ -246,7 +246,7 @@ void vram::init(Span<engine::MemRange> stagingReserve) {
 		for (auto& x : g_allocations) {
 			x.store(0);
 		}
-		tfr::init(stagingReserve.extent == 0 ? g_stagingReserve : stagingReserve);
+		tfr::init(stagingReserve.size() == 0 ? g_stagingReserve : stagingReserve);
 	}
 	logI("[{}] initialised", s_tName);
 	return;
@@ -474,12 +474,12 @@ void vram::release(Buffer buffer, [[maybe_unused]] bool bSilent) {
 	return;
 }
 
-std::future<void> vram::copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutTransition layouts) {
+std::future<void> vram::copy(View<View<u8>> pixelsArr, Image const& dst, LayoutTransition layouts) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : pixelsArr) {
-		ENSURE(layerSize == 0 || layerSize == pixels.extent, "Invalid image data!");
-		layerSize = pixels.extent;
+		ENSURE(layerSize == 0 || layerSize == pixels.size(), "Invalid image data!");
+		layerSize = pixels.size();
 		imgSize += layerSize;
 	}
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
@@ -492,12 +492,12 @@ std::future<void> vram::copy(Span<Span<u8>> pixelsArr, Image const& dst, LayoutT
 		[[maybe_unused]] bool const bResult = mapMemory(stage.buffer);
 		ENSURE(bResult, "Memory map failed");
 		u32 layerIdx = 0;
-		u32 const layerCount = (u32)pixelsArr.extent;
+		u32 const layerCount = (u32)pixelsArr.size();
 		std::vector<vk::BufferImageCopy> copyRegions;
 		for (auto pixels : pixelsArr) {
 			auto const offset = layerIdx * layerSize;
 			void* pStart = (u8*)stage.buffer.pMap + offset;
-			std::memcpy(pStart, pixels.pData, pixels.extent);
+			std::memcpy(pStart, pixels.data(), pixels.size());
 			vk::BufferImageCopy copyRegion;
 			copyRegion.bufferOffset = offset;
 			copyRegion.bufferRowLength = 0;

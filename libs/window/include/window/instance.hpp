@@ -54,6 +54,6 @@ struct IInstance::CreateInfo {
 
 Key parseKey(std::string_view str) noexcept;
 Action parseAction(std::string_view str) noexcept;
-Mods parseMods(Span<std::string> vec) noexcept;
+Mods parseMods(View<std::string> vec) noexcept;
 Axis parseAxis(std::string_view str) noexcept;
 } // namespace le::window

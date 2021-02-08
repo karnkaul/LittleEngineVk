@@ -127,7 +127,7 @@ struct ICmdArg {
 	///
 	/// \brief Must return the possible keys to match against
 	///
-	virtual Span<std::string_view> keyVariants() const = 0;
+	virtual View<std::string_view> keyVariants() const = 0;
 	///
 	/// \brief Must return true to stop processing
 	///
@@ -176,7 +176,7 @@ std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcep
 ///
 /// \brief Check if any passed ICmdArg requests to halt
 ///
-bool halt(Span<Ref<ICmdArg>> cmdArgs);
+bool halt(View<Ref<ICmdArg>> cmdArgs);
 
 ///
 /// \brief Check if a debugger is attached to the runtime

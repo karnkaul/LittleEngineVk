@@ -30,10 +30,10 @@ class Swapchain {
 		static constexpr auto defaultPresentMode = vk::PresentModeKHR::eFifo;
 
 		struct {
-			Span<vk::ColorSpaceKHR> colourSpaces = defaultColourSpace;
-			Span<vk::Format> colourFormats = defaultColourFormats;
-			Span<vk::Format> depthFormats = defaultDepthFormats;
-			Span<vk::PresentModeKHR> presentModes = defaultPresentMode;
+			View<vk::ColorSpaceKHR> colourSpaces = defaultColourSpace;
+			View<vk::Format> colourFormats = defaultColourFormats;
+			View<vk::Format> depthFormats = defaultDepthFormats;
+			View<vk::PresentModeKHR> presentModes = defaultPresentMode;
 			u32 imageCount = 2;
 		} desired;
 
@@ -54,7 +54,7 @@ class Swapchain {
 
 	kt::result_t<RenderTarget> acquireNextImage(RenderSync const& sync);
 	bool present(RenderSync const& sync);
-	bool reconstruct(glm::ivec2 framebufferSize = {}, Span<vk::PresentModeKHR> desiredModes = {});
+	bool reconstruct(glm::ivec2 framebufferSize = {}, View<vk::PresentModeKHR> desiredModes = {});
 
 	bool suboptimal() const noexcept;
 	bool paused() const noexcept;

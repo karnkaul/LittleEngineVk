@@ -77,7 +77,7 @@ vk::DescriptorSet DescriptorSet::get() const {
 	return m_storage.setBuffer.get().set;
 }
 
-void DescriptorSet::updateBuffers(u32 binding, Span<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type) {
+void DescriptorSet::updateBuffers(u32 binding, View<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type) {
 	auto [set, bind] = setBind(binding, type, (u32)buffers.size());
 	if (stale(buffers, bind.buffers, [](Buffer const& lhs, Buffer const& rhs) { return lhs.buffer() == rhs.buffer(); })) {
 		bind.buffers = {buffers.begin(), buffers.end()};
@@ -111,7 +111,7 @@ bool DescriptorSet::updateCIS(u32 binding, std::vector<CIS> cis) {
 	return true;
 }
 
-bool DescriptorSet::updateTextures(u32 binding, Span<Texture> textures) {
+bool DescriptorSet::updateTextures(u32 binding, View<Texture> textures) {
 	std::vector<CIS> cis;
 	cis.reserve(textures.size());
 	for (auto const& texture : textures) {
@@ -166,13 +166,13 @@ DescriptorSet& SetFactory::at(std::size_t idx) {
 	return m_storage.descriptorSets[idx];
 }
 
-RWSpan<DescriptorSet> SetFactory::populate(std::size_t count) {
+Span<DescriptorSet> SetFactory::populate(std::size_t count) {
 	m_storage.descriptorSets.reserve(count);
 	while (m_storage.descriptorSets.size() < count) {
 		DescriptorSet::CreateInfo info{m_storage.layout, m_storage.bindInfos, m_storage.rotateCount, m_storage.setNumber};
 		m_storage.descriptorSets.emplace_back(m_device, info);
 	}
-	return RWSpan(m_storage.descriptorSets.data(), count);
+	return Span(m_storage.descriptorSets.data(), count);
 }
 
 void SetFactory::swap() {

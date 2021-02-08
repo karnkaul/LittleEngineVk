@@ -42,7 +42,7 @@ struct Geom {
 
 	void reserve(u32 vertCount, u32 indexCount);
 	u32 addVertex(Vert<V> const& vertex);
-	void addIndices(Span<u32> newIndices);
+	void addIndices(View<u32> newIndices);
 
 	std::vector<glm::vec3> positions() const;
 };
@@ -75,7 +75,7 @@ u32 Geom<V>::addVertex(Vert<V> const& vertex) {
 }
 
 template <VertType V>
-void Geom<V>::addIndices(Span<u32> newIndices) {
+void Geom<V>::addIndices(View<u32> newIndices) {
 	std::copy(newIndices.begin(), newIndices.end(), std::back_inserter(indices));
 }
 

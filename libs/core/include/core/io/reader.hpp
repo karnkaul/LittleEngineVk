@@ -36,7 +36,7 @@ class Reader {
 	///
 	/// \brief Check if `id`s are present to load, and log errors if not
 	///
-	[[nodiscard]] bool checkPresences(Span<io::Path> ids) const;
+	[[nodiscard]] bool checkPresences(View<io::Path> ids) const;
 	///
 	/// \brief Obtain data as `std::string`
 	///
@@ -81,7 +81,7 @@ class FileReader final : public Reader {
 	/// \param anyOf list of `id`s to search for a match for
 	/// \param maxHeight maximum recursive depth
 	///
-	static Result<io::Path> findUpwards(io::Path const& leaf, Span<io::Path> anyOf, u8 maxHeight = 10);
+	static Result<io::Path> findUpwards(io::Path const& leaf, View<io::Path> anyOf, u8 maxHeight = 10);
 
   public:
 	FileReader() noexcept;

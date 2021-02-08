@@ -78,13 +78,13 @@ class QueueMultiplex final {
 
 	template <std::size_t N>
 	using QCIArr = std::array<QCI, N>;
-	QCIArr<1> makeFrom1(Family& gpt, Span<f32> prio);
-	QCIArr<2> makeFrom2(Family& a, Family& b, Span<f32> pa, Span<f32> pb);
-	QCIArr<3> makeFrom3(Family& g, Family& p, Family& t, Span<f32> pg, Span<f32> pp, Span<f32> pt);
+	QCIArr<1> makeFrom1(Family& gpt, View<f32> prio);
+	QCIArr<2> makeFrom2(Family& a, Family& b, View<f32> pa, View<f32> pb);
+	QCIArr<3> makeFrom3(Family& g, Family& p, Family& t, View<f32> pg, View<f32> pp, View<f32> pt);
 
 	using qcivec = std::vector<vk::DeviceQueueCreateInfo>;
 	using Assign = std::array<std::pair<std::size_t, std::size_t>, 3>;
-	void makeQueues(qcivec& out_vec, Span<QCI> qcis, Assign const& a);
+	void makeQueues(qcivec& out_vec, View<QCI> qcis, Assign const& a);
 
 	void assign(Queue g, Queue p, Queue t);
 

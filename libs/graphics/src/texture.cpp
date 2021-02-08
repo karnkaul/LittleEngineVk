@@ -5,13 +5,13 @@
 namespace le::graphics {
 namespace {
 using sv = std::string_view;
-Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, Span<Span<std::byte>> bytes, [[maybe_unused]] sv name) {
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<View<std::byte>> bytes, [[maybe_unused]] sv name) {
 	Image::CreateInfo imageInfo;
 	imageInfo.queueFlags = QType::eTransfer | QType::eGraphics;
 	imageInfo.createInfo.format = format;
 	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-	if (bytes.extent > 1) {
+	if (bytes.size() > 1) {
 		imageInfo.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 	}
 	imageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -20,7 +20,7 @@ Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 s
 	imageInfo.createInfo.imageType = vk::ImageType::e2D;
 	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.createInfo.mipLevels = 1;
-	imageInfo.createInfo.arrayLayers = (u32)bytes.extent;
+	imageInfo.createInfo.arrayLayers = (u32)bytes.size();
 #if defined(LEVK_VKRESOURCE_NAMES)
 	imageInfo.name = std::string(name);
 #endif

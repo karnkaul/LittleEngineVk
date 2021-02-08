@@ -146,7 +146,7 @@ class GameScene final {
 	///
 	/// \brief Destroy one or more props
 	///
-	void destroy(Span<Prop> props);
+	void destroy(View<Prop> props);
 
 	void reset();
 

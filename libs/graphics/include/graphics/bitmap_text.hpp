@@ -40,8 +40,8 @@ struct BitmapText {
 	VAlign valign = VAlign::Middle;
 	Colour colour = colours::white;
 
-	Geometry generate(Span<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;
-	glm::ivec2 glyphBounds(Span<Glyph> glyphs, std::string_view text = {}) const noexcept;
-	Layout layout(Span<Glyph> glyphs, std::string_view text, Size size = 1.0f, f32 nPadY = 0.1f) const noexcept;
+	Geometry generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;
+	glm::ivec2 glyphBounds(View<Glyph> glyphs, std::string_view text = {}) const noexcept;
+	Layout layout(View<Glyph> glyphs, std::string_view text, Size size = 1.0f, f32 nPadY = 0.1f) const noexcept;
 };
 } // namespace le::graphics

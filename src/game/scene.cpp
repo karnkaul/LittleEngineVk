@@ -45,7 +45,7 @@ bool GameScene::reparent(Prop prop, Transform* pParent) {
 	return false;
 }
 
-void GameScene::destroy(Span<Prop> props) {
+void GameScene::destroy(View<Prop> props) {
 	Registry& reg = m_registry;
 	for (auto& prop : props) {
 		if (prop.pTransform) {

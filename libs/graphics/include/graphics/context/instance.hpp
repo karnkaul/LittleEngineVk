@@ -16,7 +16,7 @@ class Instance final {
 	Instance& operator=(Instance&&);
 	~Instance();
 
-	kt::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view> requiredExtensions) const;
+	kt::fixed_vector<PhysicalDevice, 8> availableDevices(View<std::string_view> requiredExtensions) const;
 	vk::Instance instance() const noexcept {
 		return m_instance;
 	}
@@ -40,7 +40,7 @@ class Instance final {
 };
 
 struct Instance::CreateInfo {
-	Span<std::string_view> extensions;
+	View<std::string_view> extensions;
 	dl::level validationLog = dl::level::info;
 	bool bValidation = false;
 };

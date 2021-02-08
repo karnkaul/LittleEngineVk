@@ -89,7 +89,7 @@ std::deque<os::ArgsParser::entry> const& os::args() noexcept {
 	return g_args;
 }
 
-bool os::halt(Span<Ref<ICmdArg>> cmdArgs) {
+bool os::halt(View<Ref<ICmdArg>> cmdArgs) {
 	for (auto const& entry : g_args) {
 		for (ICmdArg& cmdArg : cmdArgs) {
 			auto const matches = cmdArg.keyVariants();

@@ -39,7 +39,7 @@ kt::result_t<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}
 SetBindings extractBindings(Shader const& shader);
 
 bytearray convert(std::initializer_list<u8> bytes);
-bytearray convert(Span<u8> bytes);
+bytearray convert(View<u8> bytes);
 Texture::RawImage decompress(bytearray compressed, u8 channels = 4);
 void release(Texture::RawImage rawImage);
 

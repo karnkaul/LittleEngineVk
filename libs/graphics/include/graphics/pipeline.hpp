@@ -2,7 +2,6 @@
 #include <unordered_set>
 #include <core/hash.hpp>
 #include <core/ref.hpp>
-#include <core/view.hpp>
 #include <graphics/descriptor_set.hpp>
 
 namespace le::graphics {

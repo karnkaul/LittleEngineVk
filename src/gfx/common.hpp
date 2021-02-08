@@ -70,8 +70,8 @@ struct InitInfo final
 	struct
 	{
 		CreateSurface createTempSurface;
-		Span<char const*> instanceExtensions;
-		Span<engine::MemRange> stagingReserve;
+		View<char const*> instanceExtensions;
+		View<engine::MemRange> stagingReserve;
 	} config;
 
 	struct

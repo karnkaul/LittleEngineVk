@@ -38,7 +38,7 @@ class Texture {
 		Type type;
 	};
 	struct RawImage {
-		Span<std::byte> bytes;
+		View<std::byte> bytes;
 		int width = 0;
 		int height = 0;
 	};
@@ -71,7 +71,7 @@ class Texture {
 		Data data;
 		std::optional<Image> image;
 		struct {
-			kt::fixed_vector<Span<std::byte>, 6> bytes;
+			kt::fixed_vector<View<std::byte>, 6> bytes;
 			kt::fixed_vector<RawImage, 6> imgs;
 		} raw;
 		VRAM::Future transfer;

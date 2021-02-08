@@ -19,7 +19,7 @@ class Resource {
 		return m_path;
 	}
 	std::string_view string() const noexcept;
-	Span<std::byte> bytes() const noexcept;
+	View<std::byte> bytes() const noexcept;
 	Type type() const noexcept;
 
 	bool monitoring() const noexcept;

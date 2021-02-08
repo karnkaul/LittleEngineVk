@@ -1,5 +1,4 @@
 #pragma once
-#include <core/view.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/geometry.hpp>
 
@@ -20,7 +19,7 @@ class Mesh {
 	virtual ~Mesh();
 
 	template <typename T = glm::vec3>
-	bool construct(Span<T> vertices, Span<u32> indices);
+	bool construct(View<T> vertices, View<u32> indices);
 	template <VertType V>
 	bool construct(Geom<V> const& geom);
 	void destroy();
@@ -57,7 +56,7 @@ class Mesh {
 // impl
 
 template <typename T>
-bool Mesh::construct(Span<T> vertices, Span<u32> indices) {
+bool Mesh::construct(View<T> vertices, View<u32> indices) {
 	if (!vertices.empty()) {
 		destroy();
 		m_vbo = construct(m_name + "/vbo", vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));

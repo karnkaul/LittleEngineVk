@@ -232,7 +232,7 @@ bool isMouseAxis(Axis axis);
 
 Key parseKey(std::string_view str);
 Action parseAction(std::string_view str);
-Mods::VALUE parseMods(Span<std::string> vec);
+Mods::VALUE parseMods(View<std::string> vec);
 Axis parseAxis(std::string_view str);
 
 std::vector<Gamepad> activeGamepads();

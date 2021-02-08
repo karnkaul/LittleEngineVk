@@ -305,7 +305,7 @@ DesktopInstance::~DesktopInstance() {
 	deinit();
 }
 
-Span<std::string_view> DesktopInstance::vkInstanceExtensions() const {
+View<std::string_view> DesktopInstance::vkInstanceExtensions() const {
 	static std::vector<std::string_view> ret;
 	if (ret.empty()) {
 		u32 glfwExtCount;

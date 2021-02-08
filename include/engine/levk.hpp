@@ -37,8 +37,8 @@ struct MemRange final {
 struct Info final {
 	std::optional<Window::Info> windowInfo;
 	std::optional<Ref<io::Reader>> customReader;
-	Span<io::Path> dataPaths;
-	Span<MemRange> vramReserve;
+	View<io::Path> dataPaths;
+	View<MemRange> vramReserve;
 #if defined(LEVK_DEBUG)
 	bool bLogVRAMallocations = false;
 	dl::level vramLogLevel = dl::level::debug;
@@ -92,7 +92,7 @@ class Service final {
 /// \param dirType Starting directory (executable / working)
 /// \returns Fully qualified paths for each found pattern
 ///
-std::vector<io::Path> locate(Span<io::Path> patterns, os::Dir dirType = os::Dir::eExecutable);
+std::vector<io::Path> locate(View<io::Path> patterns, os::Dir dirType = os::Dir::eExecutable);
 
 ///
 /// \brief Obtain whether the engine is shutting down

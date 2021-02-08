@@ -113,7 +113,7 @@ bool Reader::checkPresence(io::Path const& id) const {
 	return true;
 }
 
-bool Reader::checkPresences(Span<io::Path> ids) const {
+bool Reader::checkPresences(View<io::Path> ids) const {
 	bool bRet = true;
 	for (auto const& id : ids) {
 		bRet &= checkPresence(id);
@@ -125,7 +125,7 @@ std::string_view Reader::medium() const {
 	return m_medium;
 }
 
-Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path> anyOf, [[maybe_unused]] u8 maxHeight) {
+Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] View<io::Path> anyOf, [[maybe_unused]] u8 maxHeight) {
 	for (auto const& name : anyOf) {
 		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;

@@ -17,14 +17,14 @@ std::array const g_samplerModes = {vk::SamplerAddressMode::eRepeat, vk::SamplerA
 std::array const g_texModes = {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Snorm};
 std::array const g_texTypes = {vk::ImageViewType::e2D, vk::ImageViewType::eCube};
 
-std::future<void> load(gfx::Image& out_image, vk::Format texMode, glm::ivec2 const& size, Span<Span<u8>> bytes, [[maybe_unused]] std::string_view name) {
+std::future<void> load(gfx::Image& out_image, vk::Format texMode, glm::ivec2 const& size, View<View<u8>> bytes, [[maybe_unused]] std::string_view name) {
 	if (out_image.image == vk::Image() || out_image.extent.width != (u32)size.x || out_image.extent.height != (u32)size.y) {
 		gfx::ImageInfo imageInfo;
 		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
 		imageInfo.createInfo.format = texMode;
 		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 		imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-		if (bytes.extent > 1) {
+		if (bytes.size() > 1) {
 			imageInfo.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 		}
 		imageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -33,7 +33,7 @@ std::future<void> load(gfx::Image& out_image, vk::Format texMode, glm::ivec2 con
 		imageInfo.createInfo.imageType = vk::ImageType::e2D;
 		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 		imageInfo.createInfo.mipLevels = 1;
-		imageInfo.createInfo.arrayLayers = (u32)bytes.extent;
+		imageInfo.createInfo.arrayLayers = (u32)bytes.size();
 #if defined(LEVK_VKRESOURCE_NAMES)
 		imageInfo.name = std::string(name);
 #endif
@@ -52,7 +52,7 @@ Result<Texture::Raw> imgToRaw(bytearray imgBytes, std::string_view tName, std::s
 		return {};
 	}
 	std::size_t const size = (std::size_t)(ret.size.x * ret.size.y * 4);
-	ret.bytes = Span(pOut, size);
+	ret.bytes = View<u8>(pOut, size);
 	return ret;
 }
 
@@ -538,7 +538,7 @@ bool Texture::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 					auto raw = imgToRaw(file.monitor.bytes(), Texture::s_tName, idStr, dl::level::warning);
 					if (raw) {
 						if (bStbiRaw) {
-							stbi_image_free((void*)(raws[idx].bytes.pData));
+							stbi_image_free((void*)(raws[idx].bytes.data()));
 						}
 						pInfo->size = raw->size;
 						raws[idx] = std::move(*raw);
@@ -620,8 +620,8 @@ bool Texture::Impl::checkReload() {
 
 void Texture::Impl::release() {
 	for (auto& raw : raws) {
-		if (bStbiRaw && raw.bytes.pData) {
-			stbi_image_free((void*)(raw.bytes.pData));
+		if (bStbiRaw && raw.bytes.data()) {
+			stbi_image_free((void*)(raw.bytes.data()));
 		}
 	}
 	gfx::deferred::release(active, imageView);

@@ -81,7 +81,7 @@ struct Sampler::Impl : ImplBase {
 struct Texture::Impl : ImplBase, ILoadable, IReloadable {
 	gfx::Image active;
 	std::vector<Texture::Raw> raws;
-	std::vector<Span<u8>> spanRaws;
+	std::vector<View<u8>> spanRaws;
 	vk::ImageView imageView;
 	vk::ImageViewType type;
 	vk::Format colourSpace;

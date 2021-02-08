@@ -180,7 +180,7 @@ Action input::parseAction(std::string_view str) {
 	return Action::eRelease;
 }
 
-Mods::VALUE input::parseMods(Span<std::string> vec) {
+Mods::VALUE input::parseMods(View<std::string> vec) {
 	s32 ret = 0;
 	for (auto const& str : vec) {
 		ret |= (s32)parse(g_modsMap, str, Mods::eNONE);

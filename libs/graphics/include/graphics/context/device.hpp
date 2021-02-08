@@ -29,7 +29,7 @@ class Device final {
 	void resetFence(vk::Fence optional) const;
 	void resetAll(vAP<vk::Fence> validFences) const;
 
-	bool signalled(Span<vk::Fence> fences) const;
+	bool signalled(View<vk::Fence> fences) const;
 
 	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
 								  vk::ImageViewType type = vk::ImageViewType::e2D) const;
@@ -95,7 +95,7 @@ class Device final {
 };
 
 struct Device::CreateInfo {
-	Span<std::string_view> extensions = requiredExtensions;
+	View<std::string_view> extensions = requiredExtensions;
 	DevicePicker* pPicker = nullptr;
 	std::optional<std::size_t> pickOverride;
 	QSelect qselect = QSelect::eOptimal;

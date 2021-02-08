@@ -187,7 +187,7 @@ bool Swapchain::present(RenderSync const& sync) {
 	return true;
 }
 
-bool Swapchain::reconstruct(glm::ivec2 framebufferSize, Span<vk::PresentModeKHR> desiredModes) {
+bool Swapchain::reconstruct(glm::ivec2 framebufferSize, View<vk::PresentModeKHR> desiredModes) {
 	if (!desiredModes.empty()) {
 		m_metadata.info.desired.presentModes = desiredModes;
 	}

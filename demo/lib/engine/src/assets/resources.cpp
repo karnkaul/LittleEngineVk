@@ -11,7 +11,7 @@ std::string_view Resource::string() const noexcept {
 	}
 }
 
-Span<std::byte> Resource::bytes() const noexcept {
+View<std::byte> Resource::bytes() const noexcept {
 	if (m_monitor) {
 		return m_monitor->bytes();
 	} else if (auto pBytes = std::get_if<bytearray>(&m_data)) {

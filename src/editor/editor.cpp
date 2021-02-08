@@ -881,7 +881,7 @@ Button::Button(sv id) {
 	guiState[GUI::eLeftClicked] = ImGui::Button(id.empty() ? "[Unnamed]" : id.data());
 }
 
-Combo::Combo(sv id, Span<sv> entries, sv preSelected) {
+Combo::Combo(sv id, View<sv> entries, sv preSelected) {
 	if (!entries.empty()) {
 		guiState[GUI::eOpen] = ImGui::BeginCombo(id.empty() ? "[Unnamed]" : id.data(), preSelected.data());
 		refresh();

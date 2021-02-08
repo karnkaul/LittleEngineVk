@@ -163,7 +163,7 @@ Action parseAction(std::string_view str) noexcept {
 	return Action::eRelease;
 }
 
-Mods parseMods(Span<std::string> vec) noexcept {
+Mods parseMods(View<std::string> vec) noexcept {
 	Mods ret;
 	std::memset(&ret, 0, sizeof(ret));
 	for (auto const& str : vec) {

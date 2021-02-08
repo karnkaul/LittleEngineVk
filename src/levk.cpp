@@ -212,7 +212,7 @@ void Service::doShutdown() {
 }
 } // namespace engine
 
-std::vector<io::Path> engine::locate(Span<io::Path> patterns, os::Dir dirType) {
+std::vector<io::Path> engine::locate(View<io::Path> patterns, os::Dir dirType) {
 	std::vector<io::Path> ret;
 	auto const start = os::dirPath(dirType);
 	for (auto const& pattern : patterns) {

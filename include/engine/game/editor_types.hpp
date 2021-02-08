@@ -53,7 +53,7 @@ struct Combo final : GUIStateful {
 	s32 select = -1;
 	sv selected;
 
-	Combo(sv id, Span<sv> entries, sv preSelected);
+	Combo(sv id, View<sv> entries, sv preSelected);
 
 	explicit operator bool() const override {
 		return test(GUI::eOpen);
@@ -83,7 +83,7 @@ struct FlagsWidget {
 	using type = typename Flags::type;
 	static constexpr std::size_t size = Flags::size;
 
-	FlagsWidget(Span<sv> ids, Flags& out_flags);
+	FlagsWidget(View<sv> ids, Flags& out_flags);
 };
 
 template <typename T>
@@ -162,7 +162,7 @@ struct PerFrame {
 };
 
 template <typename Flags>
-FlagsWidget<Flags>::FlagsWidget(Span<sv> ids, Flags& flags) {
+FlagsWidget<Flags>::FlagsWidget(View<sv> ids, Flags& flags) {
 	ENSURE(ids.size() <= size, "Overflow!");
 	std::size_t idx = 0;
 	for (auto id : ids) {

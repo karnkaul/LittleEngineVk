@@ -36,7 +36,7 @@ constexpr glm::vec2 textTLOffset(BitmapText::HAlign h, BitmapText::VAlign v) noe
 }
 } // namespace
 
-Geometry BitmapText::generate(Span<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
+Geometry BitmapText::generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
 	if (text.empty()) {
 		return {};
 	}
@@ -107,7 +107,7 @@ Geometry BitmapText::generate(Span<Glyph> glyphs, glm::ivec2 texSize, std::optio
 	return ret;
 }
 
-glm::ivec2 BitmapText::glyphBounds(Span<Glyph> glyphs, std::string_view text) const noexcept {
+glm::ivec2 BitmapText::glyphBounds(View<Glyph> glyphs, std::string_view text) const noexcept {
 	glm::ivec2 ret = {};
 	for (char c : text) {
 		std::size_t const idx = (std::size_t)c;
@@ -119,7 +119,7 @@ glm::ivec2 BitmapText::glyphBounds(Span<Glyph> glyphs, std::string_view text) co
 	return ret;
 }
 
-BitmapText::Layout BitmapText::layout(Span<Glyph> glyphs, std::string_view text, Size size, f32 nPadY) const noexcept {
+BitmapText::Layout BitmapText::layout(View<Glyph> glyphs, std::string_view text, Size size, f32 nPadY) const noexcept {
 	Layout ret;
 	ret.maxBounds = glyphBounds(glyphs, text);
 	ret.lineCount = 1;

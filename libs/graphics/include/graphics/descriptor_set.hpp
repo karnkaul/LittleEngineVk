@@ -2,9 +2,7 @@
 #include <unordered_map>
 #include <core/ref.hpp>
 #include <core/span.hpp>
-#include <core/view.hpp>
 #include <graphics/utils/ring_buffer.hpp>
-#include <graphics/utils/rw_span.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
@@ -37,9 +35,9 @@ class DescriptorSet {
 	void next();
 	vk::DescriptorSet get() const;
 
-	void updateBuffers(u32 binding, Span<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
+	void updateBuffers(u32 binding, View<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool updateCIS(u32 binding, std::vector<CIS> cis);
-	bool updateTextures(u32 binding, Span<Texture> textures);
+	bool updateTextures(u32 binding, View<Texture> textures);
 
 	u32 setNumber() const noexcept;
 
@@ -47,7 +45,7 @@ class DescriptorSet {
 
   private:
 	template <typename T>
-	void update(u32 binding, vk::DescriptorType type, Span<T> writes);
+	void update(u32 binding, vk::DescriptorType type, View<T> writes);
 	void update(vk::WriteDescriptorSet set);
 	void destroy();
 
@@ -76,7 +74,7 @@ class DescriptorSet {
 
 struct DescriptorSet::CreateInfo {
 	vk::DescriptorSetLayout layout;
-	Span<BindingInfo> bindingInfos;
+	View<BindingInfo> bindingInfos;
 	std::size_t rotateCount = 1;
 	u32 setNumber = 0;
 };
@@ -89,7 +87,7 @@ class SetFactory {
 
 	DescriptorSet& front();
 	DescriptorSet& at(std::size_t idx);
-	RWSpan<DescriptorSet> populate(std::size_t count);
+	Span<DescriptorSet> populate(std::size_t count);
 	void swap();
 
   private:
@@ -117,7 +115,7 @@ inline u32 DescriptorSet::setNumber() const noexcept {
 }
 
 template <typename T>
-void DescriptorSet::update(u32 binding, vk::DescriptorType type, Span<T> writes) {
+void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes) {
 	vk::WriteDescriptorSet write;
 	write.dstSet = get();
 	write.dstBinding = binding;

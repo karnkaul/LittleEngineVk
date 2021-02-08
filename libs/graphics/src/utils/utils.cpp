@@ -187,10 +187,10 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 }
 
 bytearray utils::convert(std::initializer_list<u8> bytes) {
-	return bytes.size() == 0 ? bytearray() : convert(Span<u8>(&(*bytes.begin()), bytes.size()));
+	return bytes.size() == 0 ? bytearray() : convert(View<u8>(&(*bytes.begin()), bytes.size()));
 }
 
-bytearray utils::convert(Span<u8> bytes) {
+bytearray utils::convert(View<u8> bytes) {
 	bytearray ret;
 	for (u8 byte : bytes) {
 		ret.push_back(static_cast<std::byte>(byte));
@@ -208,7 +208,7 @@ Texture::RawImage utils::decompress(bytearray imgBytes, u8 channels) {
 		return {};
 	}
 	std::size_t const size = (std::size_t)(ret.width * ret.height * channels);
-	ret.bytes = Span<std::byte>(reinterpret_cast<std::byte*>(pOut), size);
+	ret.bytes = View<std::byte>(reinterpret_cast<std::byte*>(pOut), size);
 	return ret;
 }
 

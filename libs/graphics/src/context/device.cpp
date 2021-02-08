@@ -173,7 +173,7 @@ void Device::resetAll(vAP<vk::Fence> validFences) const {
 	}
 }
 
-bool Device::signalled(Span<vk::Fence> fences) const {
+bool Device::signalled(View<vk::Fence> fences) const {
 	auto const s = [this](vk::Fence const& fence) -> bool { return default_v(fence) || m_device.getFenceStatus(fence) == vk::Result::eSuccess; };
 	return std::all_of(fences.begin(), fences.end(), s);
 }

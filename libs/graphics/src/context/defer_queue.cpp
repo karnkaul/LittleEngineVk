@@ -18,7 +18,7 @@ std::vector<Ref<Deferred::Callback>> decrementImpl(std::vector<Deferred>& out_v)
 	return ret;
 }
 
-void invokeImpl(Span<Ref<Deferred::Callback>> callbacks) {
+void invokeImpl(View<Ref<Deferred::Callback>> callbacks) {
 	for (Deferred::Callback const& callback : callbacks) {
 		if (callback) {
 			callback();

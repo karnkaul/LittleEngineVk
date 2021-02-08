@@ -183,7 +183,6 @@ Asset<T> TAssetMap<T>::insert(TAsset<T>&& asset, AssetStore::OnModified& onMod) 
 	if (!bNew) {
 		conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", asset.id);
 	}
-	conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", asset.id);
 	return makeAsset<T>(it->second, onMod);
 }
 template <typename T>

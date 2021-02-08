@@ -3,15 +3,9 @@
 #include <core/colour.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <graphics/basis.hpp>
 
 namespace le::graphics {
-inline constexpr glm::vec3 g_nUp = {0.0f, 1.0f, 0.0f};
-inline constexpr glm::vec3 g_nRight = {1.0f, 0.0f, 0.0f};
-inline constexpr glm::vec3 g_nFront = {0.0f, 0.0f, 1.0f};
-inline constexpr glm::quat g_qIdentity = {1.0f, 0.0f, 0.0f, 0.0f};
-
 enum class VertType { ePosCol, ePosColUV, ePosColNormUV };
 
 template <VertType V>

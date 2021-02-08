@@ -3,6 +3,7 @@
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/utils.hpp>
+#include <glm/gtx/transform.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render_context.hpp>
@@ -206,7 +207,7 @@ glm::mat4 RenderContext::preRotate() const noexcept {
 	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate180) {
 		rad = glm::radians(270.0f);
 	}
-	return glm::rotate(ret, rad, g_nFront);
+	return glm::rotate(ret, rad, front);
 }
 
 vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 const& depth, ScreenRect const& nRect) const noexcept {

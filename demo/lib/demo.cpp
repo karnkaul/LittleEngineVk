@@ -17,6 +17,7 @@
 #include <dtasks/error_handler.hpp>
 #include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <engine/camera.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -543,7 +544,7 @@ class App {
 		std::array const setNums = {0U, 1U, 2U};
 		m_data.sl.make("main", setNums, pipe_testTex->get());
 		m_data.sl.make("skybox", 0, pipe_sky->get());
-		m_data.cam = {0.0f, 2.0f, 4.0f};
+		m_data.cam.position = {0.0f, 2.0f, 4.0f};
 
 		m_data.mat_tex.diffuse = &containerTex->get();
 		m_data.mat_font.diffuse = &*m_data.font.atlas;
@@ -564,23 +565,20 @@ class App {
 	}
 
 	void tick(Time_s dt) {
-		auto const fb = m_eng.get().m_context.extent();
-		m_data.scene.vp->get().mat_p = glm::perspective(glm::radians(45.0f), (f32)fb.x / std::max((f32)fb.y, 1.0f), 0.1f, 100.0f);
-		{
-			f32 const w = (f32)fb.x * 0.5f;
-			f32 const h = (f32)fb.y * 0.5f;
-			m_data.scene.vp->get().mat_ui = glm::ortho(-w, w, -h, h, -1.0f, 1.0f);
-		}
 		// camera
 		{
-			glm::vec3 const moveDir = glm::normalize(glm::cross(m_data.cam, graphics::g_nUp));
-			m_data.cam += moveDir * dt.count() * 0.75f;
-			m_data.scene.vp->get().mat_v = glm::lookAt(m_data.cam, {}, graphics::g_nUp);
+			auto const fb = m_eng.get().m_context.extent();
+			glm::vec3 const moveDir = glm::normalize(glm::cross(m_data.cam.position, graphics::up));
+			m_data.cam.position += moveDir * dt.count() * 0.75f;
+			m_data.cam.look(-m_data.cam.position);
+			m_data.scene.vp->get().mat_v = m_data.cam.view();
+			m_data.scene.vp->get().mat_p = m_data.cam.perspective(fb);
+			m_data.scene.vp->get().mat_ui = m_data.cam.ortho(fb);
 		}
 		auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
 		auto pipe = m_store.get<graphics::Pipeline>("pipelines/test");
 		m_data.scene.props[*pipeTex].front().transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_data.scene.props[*pipe].front().transform.rotate(glm::radians(360.0f) * dt.count(), graphics::g_nUp);
+		m_data.scene.props[*pipe].front().transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 	}
 
 	void render() {
@@ -623,7 +621,7 @@ class App {
 
 		Font font;
 		Text text;
-		glm::vec3 cam;
+		Camera cam;
 
 		SetLayouts sl;
 		Scene scene;

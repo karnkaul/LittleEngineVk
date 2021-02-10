@@ -65,6 +65,7 @@ class RenderContext : NoCopy {
 
 	Status status() const noexcept;
 	std::size_t index() const noexcept;
+	std::size_t rotateCount() const noexcept;
 	glm::ivec2 extent() const noexcept;
 	bool reconstructed(glm::ivec2 framebufferSize);
 
@@ -152,6 +153,9 @@ inline f32 RenderContext::aspectRatio() const noexcept {
 
 inline std::size_t RenderContext::index() const noexcept {
 	return m_sync.index;
+}
+inline std::size_t RenderContext::rotateCount() const noexcept {
+	return m_sync.size();
 }
 inline RenderContext::Status RenderContext::status() const noexcept {
 	return m_storage.status;

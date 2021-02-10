@@ -10,6 +10,7 @@ class Device;
 class Texture;
 class Buffer;
 class Image;
+class Pipeline;
 
 struct BindingInfo {
 	vk::DescriptorSetLayoutBinding binding;
@@ -75,18 +76,17 @@ class DescriptorSet {
 struct DescriptorSet::CreateInfo {
 	vk::DescriptorSetLayout layout;
 	View<BindingInfo> bindingInfos;
-	std::size_t rotateCount = 1;
+	std::size_t rotateCount = 2;
 	u32 setNumber = 0;
 };
 
-class SetFactory {
+// Manages N DescriptorSet instances (drawables)
+class SetPool {
   public:
-	struct CreateInfo;
-
-	SetFactory(Device& device, CreateInfo const& info);
+	SetPool(Device& device, DescriptorSet::CreateInfo const& info);
 
 	DescriptorSet& front();
-	DescriptorSet& at(std::size_t idx);
+	DescriptorSet& index(std::size_t idx);
 	Span<DescriptorSet> populate(std::size_t count);
 	void swap();
 
@@ -101,11 +101,21 @@ class SetFactory {
 	Ref<Device> m_device;
 };
 
-struct SetFactory::CreateInfo {
-	vk::DescriptorSetLayout layout;
-	std::vector<BindingInfo> bindInfos;
-	std::size_t rotateCount = 2;
-	u32 setNumber = 0;
+// Manages multiple inputs for a shader via set numbers
+class ShaderInput {
+  public:
+	ShaderInput() = default;
+	ShaderInput(Pipeline const& pipe, std::size_t rotateCount);
+
+	SetPool& set(u32 set);
+	SetPool const& set(u32 set) const;
+	void swap();
+
+	SetPool& operator[](u32 set);
+	SetPool const& operator[](u32 set) const;
+
+  private:
+	std::unordered_map<u32, SetPool> m_setPools;
 };
 
 // impl

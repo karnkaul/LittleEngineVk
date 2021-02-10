@@ -51,7 +51,8 @@ class Pipeline final {
 	bool reconstruct(Shader const& shader);
 	vk::PipelineLayout layout() const;
 	vk::DescriptorSetLayout setLayout(u32 set) const;
-	SetFactory makeSetFactory(u32 set, std::size_t rotateCount = 0) const;
+	SetPool makeSetPool(u32 set, std::size_t rotateCount = 0) const;
+	std::unordered_map<u32, SetPool> makeSetPools(std::size_t rotateCount = 0) const;
 
 	Hash id() const noexcept;
 

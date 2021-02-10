@@ -131,52 +131,6 @@ struct HelpCmd : os::ICmdArg {
 	}
 };
 
-struct Sets {
-	std::unordered_map<u32, graphics::SetFactory> sets;
-
-	void make(View<u32> setNumbers, graphics::Pipeline const& pipe) {
-		for (u32 num : setNumbers) {
-			sets.emplace(num, pipe.makeSetFactory(num));
-		}
-	}
-
-	graphics::SetFactory& operator[](u32 set) {
-		if (auto it = sets.find(set); it != sets.end()) {
-			return it->second;
-		}
-		ENSURE(false, "Nonexistent set");
-		throw std::runtime_error("Nonexistent set");
-	}
-
-	void swap() {
-		for (auto& [_, set] : sets) {
-			set.swap();
-		}
-	}
-};
-
-struct SetLayouts {
-	std::unordered_map<Hash, Sets> sets;
-
-	void make(Hash layout, View<u32> setNumbers, graphics::Pipeline const& pipe) {
-		sets[layout].make(setNumbers, pipe);
-	}
-
-	Sets& operator[](Hash hash) {
-		if (auto it = sets.find(hash); it != sets.end()) {
-			return it->second;
-		}
-		ENSURE(false, "Nonexistent layout");
-		throw std::runtime_error("Nonexistent layout");
-	}
-
-	void swap() {
-		for (auto& [_, s] : sets) {
-			s.swap();
-		}
-	}
-};
-
 struct Material {
 	virtual void write(graphics::DescriptorSet&) {
 	}
@@ -330,10 +284,10 @@ struct Prop2 {
 struct Scene {
 	using PropMap = std::unordered_map<Ref<graphics::Pipeline>, std::vector<Prop2>>;
 	struct SetRefs {
-		graphics::SetFactory& vp;
-		graphics::SetFactory& m;
-		graphics::SetFactory& mat;
-		graphics::SetFactory& sky;
+		graphics::DescriptorSet& vp;
+		graphics::SetPool& m;
+		graphics::SetPool& mat;
+		graphics::DescriptorSet& sky;
 	};
 	struct PipeRefs {
 		graphics::Pipeline& main;
@@ -347,39 +301,39 @@ struct Scene {
 
 	void update(SetRefs sets) {
 		vp->write();
-		vp->update(sets.vp.front(), 0);
-		vp->update(sets.sky.front(), 0);
+		vp->update(sets.vp, 0);
+		vp->update(sets.sky, 0);
 		vp->swap();
-		sets.sky.front().updateTextures(1, *skybox.cubemap);
-		update(ui, sets, update(props, sets, 0));
+		sets.sky.updateTextures(1, *skybox.cubemap);
+		update(ui, sets, update(props, sets));
 	}
 
 	void draw(graphics::CommandBuffer& out_cb, SetRefs sets, PipeRefs pipes) {
-		skybox.draw(out_cb, pipes.sky, sets.sky.front());
-		out_cb.bindSets(pipes.main.layout(), sets.vp.front().get(), sets.vp.front().setNumber());
-		draw(ui, out_cb, sets, draw(props, out_cb, sets, 0));
+		skybox.draw(out_cb, pipes.sky, sets.sky);
+		out_cb.bindSets(pipes.main.layout(), sets.vp.get(), sets.vp.setNumber());
+		draw(ui, out_cb, sets, draw(props, out_cb, sets));
 	}
 
-	static std::size_t update(PropMap& out_map, SetRefs sets, std::size_t idx) {
+	static std::size_t update(PropMap& out_map, SetRefs sets, std::size_t idx = 0) {
 		for (auto& [p, props] : out_map) {
 			for (auto& prop : props) {
 				prop.m.set(prop.transform.model());
-				prop.m.update(sets.m.at(idx), 0);
+				prop.m.update(sets.m.index(idx), 0);
 				prop.m.swap();
-				prop.material->write(sets.mat.at(idx));
+				prop.material->write(sets.mat.index(idx));
 				++idx;
 			}
 		}
 		return idx;
 	}
 
-	static std::size_t draw(PropMap const& map, graphics::CommandBuffer& out_cb, SetRefs sets, std::size_t idx) {
+	static std::size_t draw(PropMap const& map, graphics::CommandBuffer& out_cb, SetRefs sets, std::size_t idx = 0) {
 		for (auto const& [p, props] : map) {
 			graphics::Pipeline& pi = p;
 			out_cb.bindPipe(pi);
 			for (auto const& prop : props) {
-				out_cb.bindSets(pi.layout(), sets.m.at(idx).get(), sets.m.at(idx).setNumber());
-				prop.material->bind(out_cb, pi, sets.mat.at(idx));
+				out_cb.bindSets(pi.layout(), sets.m.index(idx).get(), sets.m.index(idx).setNumber());
+				prop.material->bind(out_cb, pi, sets.mat.index(idx));
 				out_cb.bindVBO(prop.mesh->vbo().buffer, &prop.mesh->ibo().buffer.get());
 				if (prop.mesh->hasIndices()) {
 					out_cb.drawIndexed(prop.mesh->ibo().count);
@@ -541,9 +495,8 @@ class App {
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
 		m_data.text.set(m_data.font, "Hi!");
 
-		std::array const setNums = {0U, 1U, 2U};
-		m_data.sl.make("main", setNums, pipe_testTex->get());
-		m_data.sl.make("skybox", 0, pipe_sky->get());
+		m_data.main = graphics::ShaderInput(pipe_testTex->get(), m_eng.get().m_context.rotateCount());
+		m_data.sky = graphics::ShaderInput(pipe_sky->get(), m_eng.get().m_context.rotateCount());
 		m_data.cam.position = {0.0f, 2.0f, 4.0f};
 
 		m_data.mat_tex.diffuse = &containerTex->get();
@@ -594,9 +547,7 @@ class App {
 		}
 		if (m_eng.get().m_context.waitForFrame()) {
 			// write / update
-			auto& smain = m_data.sl["main"];
-			auto& ssky = m_data.sl["skybox"];
-			m_data.scene.update({smain[0], smain[1], smain[2], ssky[0]});
+			m_data.scene.update({m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()});
 
 			// draw
 			if (auto r = m_eng.get().m_context.render(Colour(0x040404ff))) {
@@ -604,8 +555,9 @@ class App {
 				cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
 				auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
 				auto pipeSky = m_store.get<graphics::Pipeline>("pipelines/skybox");
-				m_data.scene.draw(cb, {smain[0], smain[1], smain[2], ssky[0]}, {*pipeTex, *pipeSky});
-				m_data.sl.swap();
+				m_data.scene.draw(cb, {m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()}, {*pipeTex, *pipeSky});
+				m_data.main.swap();
+				m_data.sky.swap();
 			}
 		}
 	}
@@ -623,7 +575,8 @@ class App {
 		Text text;
 		Camera cam;
 
-		SetLayouts sl;
+		graphics::ShaderInput main;
+		graphics::ShaderInput sky;
 		Scene scene;
 	};
 

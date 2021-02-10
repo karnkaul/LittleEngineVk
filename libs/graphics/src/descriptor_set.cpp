@@ -1,6 +1,7 @@
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/descriptor_set.hpp>
+#include <graphics/pipeline.hpp>
 #include <graphics/resources.hpp>
 #include <graphics/texture.hpp>
 
@@ -146,27 +147,27 @@ std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u
 	return {set, binding};
 }
 
-SetFactory::SetFactory(Device& device, CreateInfo const& info) : m_device(device) {
+SetPool::SetPool(Device& device, DescriptorSet::CreateInfo const& info) : m_device(device) {
 	m_storage.layout = info.layout;
 	m_storage.rotateCount = info.rotateCount;
 	m_storage.setNumber = info.setNumber;
-	for (auto const& bindInfo : info.bindInfos) {
+	for (auto const& bindInfo : info.bindingInfos) {
 		m_storage.bindInfos.push_back(bindInfo);
 	}
 	populate(1);
 }
 
-DescriptorSet& SetFactory::front() {
+DescriptorSet& SetPool::front() {
 	populate(1);
 	return m_storage.descriptorSets.front();
 }
 
-DescriptorSet& SetFactory::at(std::size_t idx) {
+DescriptorSet& SetPool::index(std::size_t idx) {
 	populate(idx + 1);
 	return m_storage.descriptorSets[idx];
 }
 
-Span<DescriptorSet> SetFactory::populate(std::size_t count) {
+Span<DescriptorSet> SetPool::populate(std::size_t count) {
 	m_storage.descriptorSets.reserve(count);
 	while (m_storage.descriptorSets.size() < count) {
 		DescriptorSet::CreateInfo info{m_storage.layout, m_storage.bindInfos, m_storage.rotateCount, m_storage.setNumber};
@@ -175,9 +176,43 @@ Span<DescriptorSet> SetFactory::populate(std::size_t count) {
 	return Span(m_storage.descriptorSets.data(), count);
 }
 
-void SetFactory::swap() {
+void SetPool::swap() {
 	for (auto& descriptorSet : m_storage.descriptorSets) {
 		descriptorSet.next();
 	}
+}
+
+ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) {
+	m_setPools = pipe.makeSetPools(rotateCount);
+}
+
+SetPool& ShaderInput::set(u32 set) {
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
+		return it->second;
+	}
+	ENSURE(false, "Nonexistent set");
+	throw std::runtime_error("Nonexistent set");
+}
+
+SetPool const& ShaderInput::set(u32 set) const {
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
+		return it->second;
+	}
+	ENSURE(false, "Nonexistent set");
+	throw std::runtime_error("Nonexistent set");
+}
+
+void ShaderInput::swap() {
+	for (auto& [_, set] : m_setPools) {
+		set.swap();
+	}
+}
+
+SetPool& ShaderInput::operator[](u32 set) {
+	return this->set(set);
+}
+
+SetPool const& ShaderInput::operator[](u32 set) const {
+	return this->set(set);
 }
 } // namespace le::graphics

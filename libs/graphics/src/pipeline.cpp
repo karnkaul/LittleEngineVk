@@ -75,14 +75,27 @@ vk::DescriptorSetLayout Pipeline::setLayout(u32 set) const {
 	return m_storage.fixed.setLayouts[(std::size_t)set];
 }
 
-SetFactory Pipeline::makeSetFactory(u32 set, std::size_t rotateCount) const {
+SetPool Pipeline::makeSetPool(u32 set, std::size_t rotateCount) const {
 	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
 	auto& f = m_storage.fixed;
 	if (rotateCount == 0) {
 		rotateCount = m_metadata.createInfo.rotateCount;
 	}
-	SetFactory::CreateInfo const factoryInfo{f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
-	return SetFactory(m_device, factoryInfo);
+	DescriptorSet::CreateInfo const info{f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
+	return SetPool(m_device, info);
+}
+
+std::unordered_map<u32, SetPool> Pipeline::makeSetPools(std::size_t rotateCount) const {
+	std::unordered_map<u32, SetPool> ret;
+	auto const& f = m_storage.fixed;
+	if (rotateCount == 0) {
+		rotateCount = m_metadata.createInfo.rotateCount;
+	}
+	for (u32 set = 0; set < (u32)m_storage.fixed.setLayouts.size(); ++set) {
+		DescriptorSet::CreateInfo const info{f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
+		ret.emplace(set, SetPool(m_device, info));
+	}
+	return ret;
 }
 
 bool Pipeline::construct(Shader const& shader, vk::Pipeline& out_pipe, bool bFixed) {

@@ -41,7 +41,7 @@ class ShaderBuffer {
 	type const& get() const;
 	type& get();
 	void write(std::optional<T> t = std::nullopt);
-	void update(DescriptorSet& out_set, u32 binding);
+	void update(DescriptorSet& out_set, u32 binding) const;
 	void swap();
 
   private:
@@ -112,9 +112,9 @@ void ShaderBuffer<T, IsArray>::write(std::optional<T> t) {
 	}
 }
 template <typename T, bool IsArray>
-void ShaderBuffer<T, IsArray>::update(DescriptorSet& out_set, u32 binding) {
+void ShaderBuffer<T, IsArray>::update(DescriptorSet& out_set, u32 binding) const {
 	if constexpr (IsArray) {
-		resize(m_storage.t.size());
+		ENSURE(!m_storage.t.empty() && m_storage.t.size() == m_storage.buffers.size(), "Empty buffer!");
 		std::vector<Ref<Buffer const>> vec;
 		vec.reserve(m_storage.t.size());
 		for (std::size_t idx = 0; idx < m_storage.t.size(); ++idx) {
@@ -123,7 +123,7 @@ void ShaderBuffer<T, IsArray>::update(DescriptorSet& out_set, u32 binding) {
 		}
 		out_set.updateBuffers(binding, vec, bufSize);
 	} else {
-		resize(1);
+		ENSURE(!m_storage.buffers.empty(), "Empty buffer!");
 		out_set.updateBuffers(binding, Ref<Buffer const>(m_storage.buffers.front().get()), bufSize);
 	}
 }

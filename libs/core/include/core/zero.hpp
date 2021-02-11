@@ -54,12 +54,3 @@ constexpr TZero<T, Zero>::operator T() const noexcept {
 	return payload;
 }
 } // namespace le
-
-namespace std {
-template <typename T, T Zero>
-struct hash<le::TZero<T, Zero>> {
-	size_t operator()(le::TZero<T, Zero> zero) const noexcept {
-		return std::hash<T>()(zero.payload);
-	}
-};
-} // namespace std

@@ -2,7 +2,6 @@
 #include <deque>
 #include <vector>
 #include <core/ensure.hpp>
-#include <core/utils.hpp>
 #include <engine/gfx/light.hpp>
 #include <engine/gfx/render_driver.hpp>
 #include <engine/resources/resource_types.hpp>
@@ -11,7 +10,6 @@
 #include <gfx/vram.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #if defined(LEVK_VKRESOURCE_NAMES)
-#include <core/utils.hpp>
 #endif
 
 namespace le::gfx {

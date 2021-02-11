@@ -5,7 +5,7 @@
 #include <core/hash.hpp>
 #include <core/span.hpp>
 #include <core/token_gen.hpp>
-#include <core/utils.hpp>
+#include <core/utils/string.hpp>
 #include <core/zero.hpp>
 #include <dumb_json/djson.hpp>
 #include <engine/gfx/geometry.hpp>

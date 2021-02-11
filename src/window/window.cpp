@@ -1,6 +1,5 @@
 #include <memory>
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <engine/window/window.hpp>
 #include <window/window_impl.hpp>
 

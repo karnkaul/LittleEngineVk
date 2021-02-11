@@ -3,7 +3,6 @@
 #include <vector>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <core/utils.hpp>
 
 namespace le::window {
 enum class Action : s8 { eRelease, ePress, eRepeat };

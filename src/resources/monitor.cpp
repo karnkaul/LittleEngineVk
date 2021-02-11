@@ -1,6 +1,5 @@
 #include <fmt/format.h>
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <resources/monitor.hpp>
 
 #if defined(LEVK_RESOURCES_HOT_RELOAD)

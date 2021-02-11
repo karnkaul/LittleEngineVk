@@ -14,6 +14,8 @@
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
+#include <core/utils/std_hash.hpp>
+#include <core/utils/string.hpp>
 #include <dtasks/error_handler.hpp>
 #include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
@@ -99,7 +101,7 @@ struct GPUPicker : os::ICmdArg {
 	}
 
 	bool halt(std::string_view params) override {
-		s32 idx = utils::strings::toS32(params, -1);
+		s32 idx = utils::to<s32>(params, -1);
 		if (idx >= 0) {
 			s_picked = (std::size_t)idx;
 			logD("Using custom GPU index: {}", idx);
@@ -148,7 +150,21 @@ struct TexturedMaterial : Material {
 	}
 	void bind(graphics::CommandBuffer& cb, graphics::Pipeline const& pi, graphics::DescriptorSet const& ds) const override {
 		ENSURE(diffuse, "Null texture view");
-		cb.bindSets(pi.layout(), ds.get(), ds.setNumber());
+		cb.bindSet(pi.layout(), ds);
+	}
+};
+
+struct SkyboxMaterial : Material {
+	graphics::Texture const* cubemap = {};
+	u32 binding = 1;
+
+	void write(graphics::DescriptorSet& ds) override {
+		ENSURE(cubemap, "Null pipeline/texture view");
+		ds.updateTextures(binding, *cubemap);
+	}
+	void bind(graphics::CommandBuffer& cb, graphics::Pipeline const& pi, graphics::DescriptorSet const& ds) const override {
+		ENSURE(cubemap, "Null texture view");
+		cb.bindSet(pi.layout(), ds);
 	}
 };
 
@@ -299,11 +315,9 @@ struct Scene {
 	PropMap props;
 	PropMap ui;
 
-	void update(SetRefs sets) {
-		vp->write();
-		vp->update(sets.vp, 0);
-		vp->update(sets.sky, 0);
-		vp->swap();
+	void update(Camera const& cam, glm::ivec2 fb, SetRefs sets) {
+		VP const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
+		vp->set(v).update(sets.vp, 0).update(sets.sky, 0).next();
 		sets.sky.updateTextures(1, *skybox.cubemap);
 		update(ui, sets, update(props, sets));
 	}
@@ -317,9 +331,7 @@ struct Scene {
 	static std::size_t update(PropMap& out_map, SetRefs sets, std::size_t idx = 0) {
 		for (auto& [p, props] : out_map) {
 			for (auto& prop : props) {
-				prop.m.set(prop.transform.model());
-				prop.m.update(sets.m.index(idx), 0);
-				prop.m.swap();
+				prop.m.set(prop.transform.model()).update(sets.m.index(idx), 0).next();
 				prop.material->write(sets.mat.index(idx));
 				++idx;
 			}
@@ -520,13 +532,9 @@ class App {
 	void tick(Time_s dt) {
 		// camera
 		{
-			auto const fb = m_eng.get().m_context.extent();
 			glm::vec3 const moveDir = glm::normalize(glm::cross(m_data.cam.position, graphics::up));
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
-			m_data.scene.vp->get().mat_v = m_data.cam.view();
-			m_data.scene.vp->get().mat_p = m_data.cam.perspective(fb);
-			m_data.scene.vp->get().mat_ui = m_data.cam.ortho(fb);
 		}
 		auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
 		auto pipe = m_store.get<graphics::Pipeline>("pipelines/test");
@@ -547,7 +555,7 @@ class App {
 		}
 		if (m_eng.get().m_context.waitForFrame()) {
 			// write / update
-			m_data.scene.update({m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()});
+			m_data.scene.update(m_data.cam, m_eng.get().m_context.extent(), {m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()});
 
 			// draw
 			if (auto r = m_eng.get().m_context.render(Colour(0x040404ff))) {

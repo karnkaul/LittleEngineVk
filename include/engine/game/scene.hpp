@@ -3,6 +3,7 @@
 #include <core/ec_registry.hpp>
 #include <core/traits.hpp>
 #include <core/transform.hpp>
+#include <core/utils/std_hash.hpp>
 #include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>

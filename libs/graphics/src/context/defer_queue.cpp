@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <core/ref.hpp>
 #include <core/span.hpp>
+#include <core/utils/algo.hpp>
 #include <graphics/context/defer_queue.hpp>
 
 namespace le::graphics {
@@ -27,8 +28,7 @@ void invokeImpl(View<Ref<Deferred::Callback>> callbacks) {
 }
 
 void clearImpl(std::vector<Deferred>& out_v) {
-	auto iter = std::remove_if(out_v.begin(), out_v.end(), [](Deferred const& d) -> bool { return d.defer == 0; });
-	out_v.erase(iter, out_v.end());
+	utils::erase_if(out_v, [](Deferred const& d) -> bool { return d.defer == 0; });
 }
 } // namespace
 

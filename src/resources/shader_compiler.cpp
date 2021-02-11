@@ -1,6 +1,5 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <engine/resources/shader_compiler.hpp>
 #include <resources/resources_impl.hpp>
 

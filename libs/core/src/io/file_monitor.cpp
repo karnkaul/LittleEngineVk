@@ -1,5 +1,6 @@
 #include <core/io/file_monitor.hpp>
 #include <core/log.hpp>
+#include <core/utils/string.hpp>
 
 namespace le::io {
 

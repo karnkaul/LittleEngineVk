@@ -1,3 +1,4 @@
+#include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/transfer.hpp>
@@ -100,7 +101,7 @@ std::size_t Transfer::update() {
 		return false;
 	};
 	auto lock = m_sync.mutex.lock();
-	m_batches.submitted.erase(std::remove_if(m_batches.submitted.begin(), m_batches.submitted.end(), removeDone), m_batches.submitted.end());
+	utils::erase_if(m_batches.submitted, removeDone);
 	if (!m_batches.active.entries.empty()) {
 		std::vector<vk::CommandBuffer> commands;
 		commands.reserve(m_batches.active.entries.size());

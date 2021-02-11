@@ -5,7 +5,6 @@
 #include <core/ec_registry.hpp>
 #include <core/span.hpp>
 #include <core/transform.hpp>
-#include <core/utils.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 
 #if defined(LEVK_EDITOR)

@@ -6,6 +6,7 @@
 #include <core/log.hpp>
 #include <core/map_store.hpp>
 #include <core/threads.hpp>
+#include <core/utils/std_hash.hpp>
 #include <engine/game/stopwatch.hpp>
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>

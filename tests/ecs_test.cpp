@@ -5,7 +5,6 @@
 #include <core/ensure.hpp>
 #include <core/maths.hpp>
 #include <core/threads.hpp>
-#include <core/utils.hpp>
 #include <dtasks/task_scheduler.hpp>
 #include <kt/async_queue/lockable.hpp>
 

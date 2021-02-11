@@ -8,7 +8,7 @@
 #include <core/ref.hpp>
 #include <core/time.hpp>
 #include <core/traits.hpp>
-#include <core/utils.hpp>
+#include <core/utils/lockable.hpp>
 
 namespace le {
 ///

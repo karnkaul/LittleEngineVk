@@ -1,5 +1,6 @@
 #include <stb/stb_image.h>
 #include <core/log.hpp>
+#include <core/utils/future.hpp>
 #include <engine/resources/resources.hpp>
 #include <engine/resources/shader_compiler.hpp>
 #include <gfx/common.hpp>

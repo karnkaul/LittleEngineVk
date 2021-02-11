@@ -1,7 +1,6 @@
 #include <array>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <editor/editor.hpp>
 #include <gfx/ext_gui.hpp>
 #include <gfx/render_driver_impl.hpp>

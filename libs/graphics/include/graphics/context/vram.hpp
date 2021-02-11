@@ -1,6 +1,6 @@
 #pragma once
 #include <core/traits.hpp>
-#include <core/utils.hpp>
+#include <core/utils/future.hpp>
 #include <graphics/context/transfer.hpp>
 
 namespace le::graphics {

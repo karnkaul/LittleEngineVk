@@ -5,7 +5,6 @@
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <core/utils.hpp>
 
 namespace le::input {
 enum class Action : s8 {

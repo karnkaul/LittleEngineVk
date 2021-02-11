@@ -42,6 +42,7 @@ class CommandBuffer {
 	void bindPipe(Pipeline const& pipeline) const;
 	void bind(vk::Pipeline pipeline, vBP bindPoint = vBP::eGraphics) const;
 	void bindSets(vk::PipelineLayout layout, vAP<vk::DescriptorSet> sets, u32 firstSet = 0, vAP<u32> offsets = {}, vBP bindPoint = vBP::eGraphics) const;
+	void bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const;
 	template <typename T>
 	void push(vk::PipelineLayout layout, vk::ShaderStageFlags stages, u32 offset, vAP<T> pushConstants) const;
 	void bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const;

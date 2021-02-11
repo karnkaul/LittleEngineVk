@@ -1,5 +1,4 @@
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <engine/game/input_context.hpp>
 #include <engine/window/window.hpp>
 

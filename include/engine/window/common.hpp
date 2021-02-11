@@ -1,7 +1,6 @@
 #pragma once
 #include <array>
 #include <core/span.hpp>
-#include <core/utils.hpp>
 #include <core/zero.hpp>
 
 namespace le {

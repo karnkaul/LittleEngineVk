@@ -6,7 +6,6 @@
 #include <core/log.hpp>
 #include <core/tasks.hpp>
 #include <core/threads.hpp>
-#include <core/utils.hpp>
 #include <kt/async_queue/async_queue.hpp>
 
 namespace le {

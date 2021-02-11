@@ -1,7 +1,6 @@
 #include <map>
 #include <core/log.hpp>
 #include <core/maths.hpp>
-#include <core/utils.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/render_context.hpp>

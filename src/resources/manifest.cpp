@@ -4,7 +4,6 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/threads.hpp>
-#include <core/utils.hpp>
 #include <engine/levk.hpp>
 #include <engine/resources/resources.hpp>
 #include <levk_impl.hpp>

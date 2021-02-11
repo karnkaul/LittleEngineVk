@@ -5,7 +5,6 @@
 #include <core/colour.hpp>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
-#include <core/utils.hpp>
 #include <dumb_json/djson.hpp>
 #include <engine/game/stopwatch.hpp>
 #include <engine/resources/resources.hpp>

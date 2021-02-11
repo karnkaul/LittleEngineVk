@@ -5,7 +5,7 @@
 #include <core/io/reader.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
-#include <core/utils.hpp>
+#include <core/utils/string.hpp>
 #include <io_impl.hpp>
 
 #if defined(LEVK_OS_ANDROID)

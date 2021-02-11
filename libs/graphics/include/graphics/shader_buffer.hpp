@@ -36,13 +36,13 @@ class ShaderBuffer {
 
 	ShaderBuffer(VRAM& vram, std::string_view name, ShaderBufInfo const& info);
 
-	void set(type const& t);
-	void set(type&& t);
 	type const& get() const;
 	type& get();
-	void write(std::optional<T> t = std::nullopt);
-	void update(DescriptorSet& out_set, u32 binding) const;
-	void swap();
+
+	ShaderBuffer& set(type t);
+	ShaderBuffer& write(std::optional<T> t = std::nullopt);
+	ShaderBuffer& update(DescriptorSet& out_set, u32 binding);
+	ShaderBuffer& next();
 
   private:
 	void resize(std::size_t size);
@@ -78,16 +78,6 @@ ShaderBuffer<T, IsArray>::ShaderBuffer(VRAM& vram, std::string_view name, Shader
 	m_storage.rotateCount = info.rotateCount;
 }
 template <typename T, bool IsArray>
-void ShaderBuffer<T, IsArray>::set(type const& t) {
-	m_storage.t = t;
-	write();
-}
-template <typename T, bool IsArray>
-void ShaderBuffer<T, IsArray>::set(type&& t) {
-	m_storage.t = std::move(t);
-	write();
-}
-template <typename T, bool IsArray>
 typename ShaderBuffer<T, IsArray>::type const& ShaderBuffer<T, IsArray>::get() const {
 	return m_storage.t;
 }
@@ -96,7 +86,13 @@ typename ShaderBuffer<T, IsArray>::type& ShaderBuffer<T, IsArray>::get() {
 	return m_storage.t;
 }
 template <typename T, bool IsArray>
-void ShaderBuffer<T, IsArray>::write(std::optional<T> t) {
+ShaderBuffer<T, IsArray>& ShaderBuffer<T, IsArray>::set(type t) {
+	m_storage.t = std::move(t);
+	write();
+	return *this;
+}
+template <typename T, bool IsArray>
+ShaderBuffer<T, IsArray>& ShaderBuffer<T, IsArray>::write(std::optional<T> t) {
 	if (t) {
 		m_storage.t = std::move(*t);
 	}
@@ -110,9 +106,10 @@ void ShaderBuffer<T, IsArray>::write(std::optional<T> t) {
 		resize(1);
 		m_storage.buffers.front().get().write(&m_storage.t, bufSize);
 	}
+	return *this;
 }
 template <typename T, bool IsArray>
-void ShaderBuffer<T, IsArray>::update(DescriptorSet& out_set, u32 binding) const {
+ShaderBuffer<T, IsArray>& ShaderBuffer<T, IsArray>::update(DescriptorSet& out_set, u32 binding) {
 	if constexpr (IsArray) {
 		ENSURE(!m_storage.t.empty() && m_storage.t.size() == m_storage.buffers.size(), "Empty buffer!");
 		std::vector<Ref<Buffer const>> vec;
@@ -126,12 +123,14 @@ void ShaderBuffer<T, IsArray>::update(DescriptorSet& out_set, u32 binding) const
 		ENSURE(!m_storage.buffers.empty(), "Empty buffer!");
 		out_set.updateBuffers(binding, Ref<Buffer const>(m_storage.buffers.front().get()), bufSize);
 	}
+	return *this;
 }
 template <typename T, bool IsArray>
-void ShaderBuffer<T, IsArray>::swap() {
+ShaderBuffer<T, IsArray>& ShaderBuffer<T, IsArray>::next() {
 	for (auto& rb : m_storage.buffers) {
 		rb.next();
 	}
+	return *this;
 }
 template <typename T, bool IsArray>
 void ShaderBuffer<T, IsArray>::resize(std::size_t size) {

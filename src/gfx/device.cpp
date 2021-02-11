@@ -4,7 +4,6 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
-#include <core/utils.hpp>
 #include <gfx/deferred.hpp>
 #include <gfx/device.hpp>
 #include <gfx/resource_descriptors.hpp>

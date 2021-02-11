@@ -1,4 +1,3 @@
-#include <core/utils.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/mesh.hpp>
 

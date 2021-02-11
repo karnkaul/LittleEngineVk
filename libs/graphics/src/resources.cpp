@@ -1,4 +1,4 @@
-#include <core/utils.hpp>
+#include <core/utils/string.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/resources.hpp>

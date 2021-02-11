@@ -11,7 +11,6 @@
 #include <fmt/format.h>
 #include <imgui.h>
 #include <core/maths.hpp>
-#include <core/utils.hpp>
 #include <engine/game/scene_builder.hpp>
 #include <engine/game/spring_arm.hpp>
 #include <engine/gfx/render_driver.hpp>

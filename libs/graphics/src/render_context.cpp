@@ -2,7 +2,6 @@
 #include <stdexcept>
 #include <core/log.hpp>
 #include <core/maths.hpp>
-#include <core/utils.hpp>
 #include <glm/gtx/transform.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/vram.hpp>

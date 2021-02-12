@@ -291,7 +291,7 @@ struct Skybox {
 };
 
 struct Prop2 {
-	graphics::ShaderBuffer<glm::mat4, false> m;
+	graphics::ShaderBuffer m;
 	Transform transform;
 	graphics::Mesh* mesh = {};
 	Material* material = {};
@@ -310,14 +310,14 @@ struct Scene {
 		graphics::Pipeline& sky;
 	};
 
-	std::optional<graphics::ShaderBuffer<VP, false>> vp;
+	std::optional<graphics::ShaderBuffer> vp;
 	Skybox skybox;
 	PropMap props;
 	PropMap ui;
 
 	void update(Camera const& cam, glm::ivec2 fb, SetRefs sets) {
 		VP const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
-		vp->set(v).update(sets.vp, 0).update(sets.sky, 0).next();
+		vp->write<false>(v).update(sets.vp, 0).update(sets.sky, 0).next();
 		sets.sky.updateTextures(1, *skybox.cubemap);
 		update(ui, sets, update(props, sets));
 	}
@@ -331,7 +331,7 @@ struct Scene {
 	static std::size_t update(PropMap& out_map, SetRefs sets, std::size_t idx = 0) {
 		for (auto& [p, props] : out_map) {
 			for (auto& prop : props) {
-				prop.m.set(prop.transform.model()).update(sets.m.index(idx), 0).next();
+				prop.m.write<false>(prop.transform.model()).update(sets.m.index(idx), 0).next();
 				prop.material->write(sets.mat.index(idx));
 				++idx;
 			}
@@ -422,15 +422,15 @@ class App {
 	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
 
 		dts::g_error_handler = &g_taskErr;
-		auto loadShader = [this, &eng](std::string_view id, io::Path v, io::Path f) {
-			AssetLoadData<graphics::Shader> shaderLD{eng.m_boot.device, {}};
+		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
+			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().m_boot.device, {}};
 			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
 			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
 			m_store.load<graphics::Shader>(id, std::move(shaderLD));
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
-		auto loadPipe = [this, &eng](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
-			AssetLoadData<graphics::Pipeline> pipelineLD{eng.m_context, {}, {}, {}, {}};
+		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
+			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().m_context, {}, {}, {}, {}};
 			pipelineLD.name = id;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
@@ -438,85 +438,107 @@ class App {
 			m_store.load<graphics::Pipeline>(id, std::move(pipelineLD));
 		};
 		m_store.resources().reader(reader);
-		task_scheduler::stage_id load_shaders, load_pipes;
-		PCI pci_skybox = eng.m_context.pipeInfo();
-		pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
-		pci_skybox.fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
-		{
-			task_scheduler::stage_t shaders;
-			shaders.tasks.push_back([&]() { loadShader("shaders/test", "shaders/test.vert", "shaders/test.frag"); });
-			shaders.tasks.push_back([&]() { loadShader("shaders/test_tex", "shaders/test.vert", "shaders/test_tex.frag"); });
-			shaders.tasks.push_back([&]() { loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"); });
-			shaders.tasks.push_back([&]() { loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"); });
-			load_shaders = m_tasks.stage(std::move(shaders));
-		}
-		{
-			task_scheduler::stage_t pipes;
-			pipes.tasks.push_back([&]() { loadPipe("pipelines/test", "shaders/test"); });
-			pipes.tasks.push_back([&]() { loadPipe("pipelines/test_tex", "shaders/test_tex", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([&]() { loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([&]() { loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox); });
-			pipes.deps.push_back(load_shaders);
-			load_pipes = m_tasks.stage(std::move(pipes));
-		}
-		m_tasks.wait(load_pipes);
-		auto sampler =
-			m_store.add("samplers/default", graphics::Sampler{eng.m_boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
-
-		graphics::Geometry gcube = graphics::makeCube(0.5f);
-		auto const skyCubeI = gcube.indices;
-		auto const skyCubeV = gcube.positions();
-		auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.m_boot.vram));
-		cube->construct(gcube);
-		m_data.mesh.push_back(cube.m_id);
-		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.m_boot.vram));
-		cone->construct(graphics::makeCone());
-		m_data.mesh.push_back(cone.m_id);
-		auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.m_boot.vram));
-		skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
-		m_data.mesh.push_back(skycube.m_id);
-
-		AssetLoadData<graphics::Texture> textureLD{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};
-		textureLD.name = "cubemaps/sky_dusk";
-		textureLD.prefix = "skyboxes/sky_dusk";
-		textureLD.ext = ".jpg";
-		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
-		auto skyboxTex = m_store.load<graphics::Texture>(textureLD.name, textureLD);
-		m_data.tex.push_back(textureLD.name);
-		textureLD.name = "textures/container2";
-		textureLD.prefix.clear();
-		textureLD.ext.clear();
-		textureLD.imageIDs = {"textures/container2.png"};
-		auto containerTex = m_store.load<graphics::Texture>(textureLD.name, textureLD);
-		m_data.tex.push_back(textureLD.name);
-		textureLD.name = "textures/red";
-		textureLD.imageIDs.clear();
-		textureLD.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
-		textureLD.raw.size = {1, 1};
-		[[maybe_unused]] auto redTex = m_store.load<graphics::Texture>(textureLD.name, textureLD);
-		m_data.tex.push_back(textureLD.name);
-		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/test");
-		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
-		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
-		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
-
+		m_store.add("samplers/default", graphics::Sampler{eng.m_boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+		auto sampler = m_store.get<graphics::Sampler>("samplers/default");
 		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler->sampler(), eng.m_context.textureFormat());
 		m_data.text.create(eng.m_boot.vram, "text");
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
 		m_data.text.set(m_data.font, "Hi!");
+		{
+			graphics::Geometry gcube = graphics::makeCube(0.5f);
+			auto const skyCubeI = gcube.indices;
+			auto const skyCubeV = gcube.positions();
+			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.m_boot.vram));
+			cube->construct(gcube);
+			m_data.mesh.push_back(cube.m_id);
+			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.m_boot.vram));
+			cone->construct(graphics::makeCone());
+			m_data.mesh.push_back(cone.m_id);
+			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.m_boot.vram));
+			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
+			m_data.mesh.push_back(skycube.m_id);
+		}
+
+		task_scheduler::stage_id load_shaders;
+		PCI pci_skybox = eng.m_context.pipeInfo();
+		pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
+		pci_skybox.fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
+		{
+			task_scheduler::stage_t shaders;
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test", "shaders/test.vert", "shaders/test.frag"); });
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test_tex", "shaders/test.vert", "shaders/test_tex.frag"); });
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"); });
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"); });
+			load_shaders = m_tasks.stage(std::move(shaders));
+		}
+		{
+			task_scheduler::stage_t pipes;
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test", "shaders/test"); });
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test_tex", "shaders/test_tex", graphics::PFlags::inverse()); });
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()); });
+			pipes.tasks.push_back([loadPipe, pci_skybox]() { loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox); });
+			pipes.deps.push_back(load_shaders);
+			m_data.load_pipes = m_tasks.stage(std::move(pipes));
+		}
+
+		task_scheduler::stage_t texload;
+		AssetLoadData<graphics::Texture> textureLD{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};
+		textureLD.name = "cubemaps/sky_dusk";
+		textureLD.prefix = "skyboxes/sky_dusk";
+		textureLD.ext = ".jpg";
+		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
+		texload.tasks.push_back([this, textureLD]() {
+			m_store.load<graphics::Texture>(textureLD.name, textureLD);
+			m_data.tex.push_back(textureLD.name);
+		});
+		textureLD.name = "textures/container2";
+		textureLD.prefix.clear();
+		textureLD.ext.clear();
+		textureLD.imageIDs = {"textures/container2.png"};
+		texload.tasks.push_back([this, textureLD]() {
+			m_store.load<graphics::Texture>(textureLD.name, textureLD);
+			m_data.tex.push_back(textureLD.name);
+		});
+		textureLD.name = "textures/red";
+		textureLD.imageIDs.clear();
+		textureLD.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
+		textureLD.raw.size = {1, 1};
+		texload.tasks.push_back([this, textureLD]() {
+			m_store.load<graphics::Texture>(textureLD.name, textureLD);
+			m_data.tex.push_back(textureLD.name);
+		});
+		m_data.load_tex = m_tasks.stage(std::move(texload));
+
+		/*m_tasks.wait(m_data.load_pipes);
+		m_tasks.wait(m_data.load_tex);
+		init();*/
+
+		eng.m_win.get().show();
+	}
+
+	void init0() {
+		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
+		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 
 		m_data.main = graphics::ShaderInput(pipe_testTex->get(), m_eng.get().m_context.rotateCount());
 		m_data.sky = graphics::ShaderInput(pipe_sky->get(), m_eng.get().m_context.rotateCount());
-		m_data.cam.position = {0.0f, 2.0f, 4.0f};
+	}
 
-		m_data.mat_tex.diffuse = &containerTex->get();
+	void init1() {
+		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/test");
+		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
+		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
+		m_data.cam.position = {0.0f, 2.0f, 4.0f};
+		m_data.mat_tex.diffuse = &m_store.get<graphics::Texture>("textures/container2").get();
 		m_data.mat_font.diffuse = &*m_data.font.atlas;
-		m_data.scene.vp = graphics::TBuf<VP, false>(eng.m_boot.vram, "vp", {});
-		m_data.scene.skybox.mesh = &skycube.get();
-		m_data.scene.skybox.cubemap = &skyboxTex->get();
-		auto mbuf = [&eng](std::string_view name) { return graphics::TBuf<glm::mat4, false>(eng.m_boot.vram, name, {}); };
+		m_data.scene.vp = graphics::ShaderBuffer(m_eng.get().m_boot.vram, "vp", {});
+		m_data.scene.skybox.mesh = &m_store.get<graphics::Mesh>("skycube").get();
+		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
+		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
+		m_data.scene.skybox.cubemap = &m_store.get<graphics::Texture>("cubemaps/sky_dusk").get();
+		auto mbuf = [this](std::string_view name) { return graphics::ShaderBuffer(m_eng.get().m_boot.vram, name, {}); };
 		m_data.scene.props[pipe_testTex->get()].push_back(Prop2{mbuf("prop_tex"), {}, &cube.get(), &m_data.mat_tex});
 		Prop2 p1{mbuf("prop_1"), {}, &cube.get(), &m_data.mat_def};
 		p1.transform.position({-5.0f, -1.0f, -2.0f});
@@ -525,11 +547,25 @@ class App {
 		p2.transform.position({1.0f, -2.0f, -3.0f});
 		m_data.scene.props[pipe_test->get()].push_back(std::move(p2));
 		m_data.scene.ui[pipe_ui->get()].push_back(Prop2{mbuf("prop_ui"), {}, &*m_data.text.mesh, &m_data.mat_font});
-
-		eng.m_win.get().show();
 	}
 
 	void tick(Time_s dt) {
+		if (m_data.main.empty()) {
+			if (m_tasks.stage_done(m_data.load_pipes)) {
+				init0();
+				m_data.load_pipes = {};
+			} else {
+				return;
+			}
+		}
+		if (m_data.load_tex.id > 0) {
+			if (m_tasks.stage_done(m_data.load_tex)) {
+				init1();
+				m_data.load_tex = {};
+			} else {
+				return;
+			}
+		}
 		// camera
 		{
 			glm::vec3 const moveDir = glm::normalize(glm::cross(m_data.cam.position, graphics::up));
@@ -543,7 +579,7 @@ class App {
 	}
 
 	void render() {
-		for (auto& tex : m_data.tex) {
+		/*for (auto& tex : m_data.tex) {
 			if (auto pTex = m_store.find<graphics::Texture>(tex); pTex && !pTex->get().ready()) {
 				return;
 			}
@@ -552,20 +588,28 @@ class App {
 			if (auto pMesh = m_store.find<graphics::Mesh>(mesh); pMesh && !pMesh->get().ready()) {
 				return;
 			}
+		}*/
+		if (m_data.main.empty()) {
+			return;
 		}
 		if (m_eng.get().m_context.waitForFrame()) {
 			// write / update
-			m_data.scene.update(m_data.cam, m_eng.get().m_context.extent(), {m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()});
+			if (m_data.load_tex.id == 0) {
+				m_data.scene.update(m_data.cam, m_eng.get().m_context.extent(),
+									{m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()});
+			}
 
 			// draw
 			if (auto r = m_eng.get().m_context.render(Colour(0x040404ff))) {
-				auto& cb = r->primary();
-				cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
-				auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
-				auto pipeSky = m_store.get<graphics::Pipeline>("pipelines/skybox");
-				m_data.scene.draw(cb, {m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()}, {*pipeTex, *pipeSky});
-				m_data.main.swap();
-				m_data.sky.swap();
+				if (m_data.load_tex.id == 0) {
+					auto& cb = r->primary();
+					cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
+					auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
+					auto pipeSky = m_store.get<graphics::Pipeline>("pipelines/skybox");
+					m_data.scene.draw(cb, {m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()}, {*pipeTex, *pipeSky});
+					m_data.main.swap();
+					m_data.sky.swap();
+				}
 			}
 		}
 	}
@@ -586,6 +630,8 @@ class App {
 		graphics::ShaderInput main;
 		graphics::ShaderInput sky;
 		Scene scene;
+
+		task_scheduler::stage_id load_pipes, load_tex;
 	};
 
 	Data m_data;

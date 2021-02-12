@@ -18,7 +18,7 @@ class VRAM final : public Memory {
 
 	[[nodiscard]] Future copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
-	[[nodiscard]] Future copy(View<View<std::byte>> pixelsArr, Image& put_dst, LayoutPair layouts);
+	[[nodiscard]] Future copy(View<View<std::byte>> pixelsArr, Image& out_dst, LayoutPair layouts);
 
 	template <typename Cont = std::initializer_list<Ref<Future const>>>
 	void wait(Cont&& futures) const;

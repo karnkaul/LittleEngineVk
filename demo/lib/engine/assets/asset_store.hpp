@@ -73,10 +73,9 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	bool reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const;
 
-	detail::TAssets m_assets;
 	Resources m_resources;
-	mutable std::unordered_map<Hash, OnModified> m_onModified;
-	mutable kt::lockable_t<std::shared_mutex> m_mrsw;
+	kt::locker_t<std::shared_mutex, detail::TAssets> m_assets;
+	mutable kt::locker_t<std::mutex, std::unordered_map<Hash, OnModified>> m_onModified;
 	mutable kt::lockable_t<std::mutex> m_reloadMutex;
 
 	template <typename T>
@@ -260,51 +259,49 @@ std::size_t TAssets::hash() const {
 
 template <typename T>
 Asset<T> AssetStore::add(io::Path const& id, T&& t) {
-	auto lock = m_mrsw.lock<std::unique_lock>();
-	return m_assets.get<T>().add(m_onModified[id], id, std::forward<T>(t));
+	auto lock = m_assets.lock<std::unique_lock>();
+	return lock.get().get<T>().add(m_onModified.lock().get()[id], id, std::forward<T>(t));
 }
 template <typename T, typename Data>
 std::optional<Asset<T>> AssetStore::load(io::Path const& id, Data&& data) {
 	auto idStr = id.generic_string();
-	auto lock = m_mrsw.lock<std::unique_lock>();
-	auto& onMod = m_onModified[idStr];
+	auto& onMod = m_onModified.lock().get()[idStr];
 	// AssetLoader may invoke find() etc which would need shared locks
-	lock.unlock();
 	if (auto asset = detail::TAssetMap<T>::load(*this, onMod, m_resources, std::move(idStr), std::forward<Data>(data))) {
-		lock.lock();
-		return m_assets.get<T>().insert(std::move(*asset), onMod);
+		auto lock = m_assets.lock<std::unique_lock>();
+		return lock.get().get<T>().insert(std::move(*asset), onMod);
 	}
 	return std::nullopt;
 }
 template <typename T>
 std::optional<Asset<T>> AssetStore::find(Hash id) {
-	auto lock = m_mrsw.lock<std::shared_lock>();
-	if (m_assets.contains<T>()) {
-		auto& store = m_assets.get<T>().m_storage;
+	auto lock = m_assets.lock<std::shared_lock>();
+	if (lock.get().contains<T>()) {
+		auto& store = lock.get().get<T>().m_storage;
 		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T>(it->second, m_onModified[id]);
+			return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]);
 		}
 	}
 	return std::nullopt;
 }
 template <typename T>
 std::optional<Asset<T const>> AssetStore::find(Hash id) const {
-	auto lock = m_mrsw.lock<std::shared_lock>();
-	if (m_assets.contains<T>()) {
-		auto& store = m_assets.get<T>().m_storage;
+	auto lock = m_assets.lock<std::shared_lock>();
+	if (lock.get().contains<T>()) {
+		auto& store = lock.get().get<T>().m_storage;
 		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T const>(it->second, m_onModified[id]);
+			return detail::makeAsset<T const>(it->second, m_onModified.lock().get()[id]);
 		}
 	}
 	return std::nullopt;
 }
 template <typename T>
 Asset<T> AssetStore::get(Hash id) {
-	auto lock = m_mrsw.lock<std::shared_lock>();
-	if (m_assets.contains<T>()) {
-		auto& store = m_assets.get<T>().m_storage;
+	auto lock = m_assets.lock<std::shared_lock>();
+	if (lock.get().contains<T>()) {
+		auto& store = lock.get().get<T>().m_storage;
 		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T>(it->second, m_onModified[id]);
+			return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]);
 		}
 	}
 	ENSURE(false, "Asset not found!");
@@ -312,11 +309,11 @@ Asset<T> AssetStore::get(Hash id) {
 }
 template <typename T>
 Asset<T const> AssetStore::get(Hash id) const {
-	auto lock = m_mrsw.lock<std::shared_lock>();
-	if (m_assets.contains<T>()) {
-		auto& store = m_assets.get<T>().m_storage;
+	auto lock = m_assets.lock<std::shared_lock>();
+	if (lock.get().contains<T>()) {
+		auto& store = lock.get().get<T>().m_storage;
 		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T>(it->second, m_onModified[id]);
+			return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]);
 		}
 	}
 	ENSURE(false, "Asset not found!");
@@ -324,33 +321,33 @@ Asset<T const> AssetStore::get(Hash id) const {
 }
 template <typename T>
 bool AssetStore::contains(Hash id) const noexcept {
-	auto lock = m_mrsw.lock<std::shared_lock>();
-	if (m_assets.contains<T>()) {
-		return detail::mapContains(m_assets.get<T>().m_storage, id);
+	auto lock = m_assets.lock<std::shared_lock>();
+	if (lock.get().contains<T>()) {
+		return detail::mapContains(lock.get().get<T>().m_storage, id);
 	}
 	return false;
 }
 template <typename T>
 bool AssetStore::reload(Hash id) {
-	auto lock = m_mrsw.lock<std::shared_lock>();
-	if (m_assets.contains<T>()) {
-		return m_assets.get<T>().reload(id);
+	auto lock = m_assets.lock<std::shared_lock>();
+	if (lock.get().contains<T>()) {
+		return lock.get().get<T>().reload(id);
 	}
 	return false;
 }
 template <typename T>
 bool AssetStore::forceDirty(Hash id) const {
-	auto lock = m_mrsw.lock<std::shared_lock>();
-	if (m_assets.contains<T>()) {
-		return m_assets.get<T>().forceDirty(id);
+	auto lock = m_assets.lock<std::shared_lock>();
+	if (lock.get().contains<T>()) {
+		return lock.get().get<T>().forceDirty(id);
 	}
 	return false;
 }
 template <typename T>
 bool AssetStore::unload(Hash id) {
-	auto lock = m_mrsw.lock<std::unique_lock>();
-	if (m_assets.contains<T>()) {
-		return m_assets.get<T>().unload(id);
+	auto lock = m_assets.lock<std::unique_lock>();
+	if (lock.get().contains<T>()) {
+		return lock.get().get<T>().unload(id);
 	}
 	return false;
 }
@@ -367,7 +364,7 @@ bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
 	info.forceDirty(false);
 	AssetLoader<T> loader;
 	if (loader.reload(out_asset, info)) {
-		m_onModified[info.m_id]();
+		m_onModified.lock().get()[info.m_id]();
 		return true;
 	}
 	return false;

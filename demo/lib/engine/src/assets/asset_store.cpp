@@ -10,11 +10,11 @@ void AssetStore::update() {
 	bool bIdle = false;
 	u64 total = 0;
 	u32 pass = 0;
-	auto lock = m_mrsw.lock<std::shared_lock>();
+	auto lock = m_assets.lock<std::shared_lock>();
 	for (; pass < maxPasses && (pass == 0 || !bIdle); ++pass) {
 		m_resources.update();
 		u64 reloaded = 0;
-		for (auto& [_, store] : m_assets.storeMap) {
+		for (auto& [_, store] : lock.get().storeMap) {
 			reloaded += store->update(*this);
 		}
 		bIdle = reloaded == 0;
@@ -31,11 +31,10 @@ void AssetStore::update() {
 }
 
 void AssetStore::clear() {
-	auto lock = m_mrsw.lock<std::unique_lock>();
 	// Reset infos and assets before delegates (may contain OnModified tokens)
-	m_assets.storeMap.clear();
+	m_assets.lock().get().storeMap.clear();
 	// Clear delegates
-	m_onModified.clear();
+	m_onModified.lock().get().clear();
 	m_resources.clear();
 }
 } // namespace le

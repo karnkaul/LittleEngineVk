@@ -208,6 +208,10 @@ void ShaderInput::swap() {
 	}
 }
 
+bool ShaderInput::empty() const noexcept {
+	return m_setPools.empty();
+}
+
 SetPool& ShaderInput::operator[](u32 set) {
 	return this->set(set);
 }

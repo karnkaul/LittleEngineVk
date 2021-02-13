@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <core/ensure.hpp>
+#include <core/hash.hpp>
 #include <core/ref.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
@@ -39,7 +40,7 @@ class CommandBuffer {
 	bool begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, PassInfo const& info);
 	void setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const;
 
-	void bindPipe(Pipeline const& pipeline) const;
+	void bindPipe(Pipeline const& pipeline, Hash variant = Hash()) const;
 	void bind(vk::Pipeline pipeline, vBP bindPoint = vBP::eGraphics) const;
 	void bindSets(vk::PipelineLayout layout, vAP<vk::DescriptorSet> sets, u32 firstSet = 0, vAP<u32> offsets = {}, vBP bindPoint = vBP::eGraphics) const;
 	void bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const;

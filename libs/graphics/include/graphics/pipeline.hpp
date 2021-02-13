@@ -2,7 +2,9 @@
 #include <unordered_set>
 #include <core/hash.hpp>
 #include <core/ref.hpp>
+#include <core/utils/std_hash.hpp>
 #include <graphics/descriptor_set.hpp>
+#include <kt/result/result.hpp>
 
 namespace le::graphics {
 class Device;
@@ -24,7 +26,6 @@ class Pipeline final {
   public:
 	struct CreateInfo {
 		struct Fixed {
-			vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics;
 			VertexInputInfo vertexInput;
 			vk::PipelineRasterizationStateCreateInfo rasterizerState;
 			vk::PipelineMultisampleStateCreateInfo multisamplerState;
@@ -35,6 +36,7 @@ class Pipeline final {
 
 		Fixed fixedState;
 		vk::RenderPass renderPass;
+		vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics;
 		u32 subpass = 0;
 		u32 rotateCount = 2;
 	};
@@ -48,21 +50,31 @@ class Pipeline final {
 	Pipeline& operator=(Pipeline&&);
 	~Pipeline();
 
+	kt::result_t<vk::Pipeline, void> constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed);
+	kt::result_t<vk::Pipeline, void> variant(Hash id) const;
+
 	bool reconstruct(Shader const& shader);
+	vk::PipelineBindPoint bindPoint() const;
 	vk::PipelineLayout layout() const;
 	vk::DescriptorSetLayout setLayout(u32 set) const;
+	ShaderInput& shaderInput();
+	ShaderInput const& shaderInput() const;
+
 	SetPool makeSetPool(u32 set, std::size_t rotateCount = 0) const;
 	std::unordered_map<u32, SetPool> makeSetPools(std::size_t rotateCount = 0) const;
 
 	Hash id() const noexcept;
 
   private:
-	bool construct(Shader const& shader, vk::Pipeline& out_pipe, bool bFixed);
-	void destroy(bool bFixed);
+	bool construct(Shader const& shader, CreateInfo& out_info, vk::Pipeline& out_pipe, bool bFixed);
+	void destroy();
+	void destroy(vk::Pipeline pipeline);
 
 	struct Storage {
+		ShaderInput input;
 		struct {
-			vk::Pipeline pipeline;
+			vk::Pipeline main;
+			std::unordered_map<Hash, vk::Pipeline> variants;
 		} dynamic;
 		struct {
 			vk::PipelineLayout layout;
@@ -72,7 +84,8 @@ class Pipeline final {
 		Hash id;
 	};
 	struct Metadata {
-		CreateInfo createInfo;
+		CreateInfo main;
+		std::unordered_map<Hash, CreateInfo::Fixed> variants;
 	};
 
 	Storage m_storage;
@@ -81,7 +94,6 @@ class Pipeline final {
 	Ref<Device> m_device;
 
 	friend struct Hasher;
-	friend class CommandBuffer;
 };
 
 // impl

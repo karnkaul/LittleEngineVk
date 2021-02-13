@@ -59,9 +59,11 @@ void CommandBuffer::setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor
 	m_cb.setScissor(0, scissor);
 }
 
-void CommandBuffer::bindPipe(Pipeline const& pipeline) const {
+void CommandBuffer::bindPipe(Pipeline const& pipeline, Hash variant) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
-	m_cb.bindPipeline(pipeline.m_metadata.createInfo.fixedState.bindPoint, pipeline.m_storage.dynamic.pipeline);
+	auto pipe = pipeline.variant(variant);
+	ENSURE(pipe.has_result(), "Invalid variant id");
+	m_cb.bindPipeline(pipeline.bindPoint(), pipe.result());
 }
 
 void CommandBuffer::bind(vk::Pipeline pipeline, vBP bindPoint) const {

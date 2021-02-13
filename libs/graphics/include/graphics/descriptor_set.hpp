@@ -111,6 +111,7 @@ class ShaderInput {
 	SetPool const& set(u32 set) const;
 	void swap();
 	bool empty() const noexcept;
+	bool contains(u32 set) const noexcept;
 
 	SetPool& operator[](u32 set);
 	SetPool const& operator[](u32 set) const;

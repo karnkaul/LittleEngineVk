@@ -293,18 +293,18 @@ struct Skybox {
 struct Prop2 {
 	graphics::ShaderBuffer m;
 	Transform transform;
-	graphics::Mesh* mesh = {};
+	graphics::Mesh const* mesh = {};
 	Material* material = {};
+};
+
+struct DrawList {
+	std::vector<Ref<Prop2>> drawables;
+	graphics::Pipeline* pipe = {};
 };
 
 struct Scene {
 	using PropMap = std::unordered_map<Ref<graphics::Pipeline>, std::vector<Prop2>>;
-	struct SetRefs {
-		graphics::DescriptorSet& vp;
-		graphics::SetPool& m;
-		graphics::SetPool& mat;
-		graphics::DescriptorSet& sky;
-	};
+
 	struct PipeRefs {
 		graphics::Pipeline& main;
 		graphics::Pipeline& sky;
@@ -314,38 +314,63 @@ struct Scene {
 	Skybox skybox;
 	PropMap props;
 	PropMap ui;
+	std::vector<DrawList> lists;
 
-	void update(Camera const& cam, glm::ivec2 fb, SetRefs sets) {
+	void update(Camera const& cam, glm::ivec2 fb, PipeRefs pipes) {
+		auto& sky = pipes.sky.shaderInput();
 		VP const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
-		vp->write<false>(v).update(sets.vp, 0).update(sets.sky, 0).next();
-		sets.sky.updateTextures(1, *skybox.cubemap);
-		update(ui, sets, update(props, sets));
-	}
-
-	void draw(graphics::CommandBuffer& out_cb, SetRefs sets, PipeRefs pipes) {
-		skybox.draw(out_cb, pipes.sky, sets.sky);
-		out_cb.bindSets(pipes.main.layout(), sets.vp.get(), sets.vp.setNumber());
-		draw(ui, out_cb, sets, draw(props, out_cb, sets));
-	}
-
-	static std::size_t update(PropMap& out_map, SetRefs sets, std::size_t idx = 0) {
-		for (auto& [p, props] : out_map) {
-			for (auto& prop : props) {
-				prop.m.write<false>(prop.transform.model()).update(sets.m.index(idx), 0).next();
-				prop.material->write(sets.mat.index(idx));
+		vp->write<false>(v).update(sky.set(0).front(), 0);
+		sky.set(0).front().updateTextures(1, *skybox.cubemap);
+		lists.clear();
+		for (auto& [pi, prs] : props) {
+			DrawList list;
+			list.pipe = &pi.get();
+			for (auto& pr : prs) {
+				list.drawables.push_back(pr);
+			}
+			lists.push_back(std::move(list));
+		}
+		for (auto& [pi, prs] : ui) {
+			DrawList list;
+			list.pipe = &pi.get();
+			for (auto& pr : prs) {
+				list.drawables.push_back(pr);
+			}
+			lists.push_back(std::move(list));
+		}
+		for (auto& list : lists) {
+			std::size_t idx = 0;
+			auto& input = list.pipe->shaderInput();
+			vp->update(input.set(0).front(), 0);
+			for (Prop2& prop : list.drawables) {
+				prop.m.write<false>(prop.transform.model()).update(input.set(1).index(idx), 0).next();
+				if (input.contains(2)) {
+					prop.material->write(input.set(2).index(idx));
+				}
 				++idx;
 			}
 		}
-		return idx;
+		vp->next();
 	}
 
-	static std::size_t draw(PropMap const& map, graphics::CommandBuffer& out_cb, SetRefs sets, std::size_t idx = 0) {
-		for (auto const& [p, props] : map) {
-			graphics::Pipeline& pi = p;
+	void draw(graphics::CommandBuffer& out_cb, PipeRefs pipes) {
+		auto& sky = pipes.sky.shaderInput();
+		skybox.draw(out_cb, pipes.sky, sky.set(0).front());
+		sky.swap();
+
+		std::unordered_set<Ref<graphics::Pipeline>> ps;
+		for (auto const& list : lists) {
+			graphics::Pipeline& pi = *list.pipe;
+			ps.insert(pi);
 			out_cb.bindPipe(pi);
-			for (auto const& prop : props) {
-				out_cb.bindSets(pi.layout(), sets.m.index(idx).get(), sets.m.index(idx).setNumber());
-				prop.material->bind(out_cb, pi, sets.mat.index(idx));
+			auto& input = pi.shaderInput();
+			out_cb.bindSet(pi.layout(), input.set(0).front());
+			std::size_t idx = 0;
+			for (Prop2 const& prop : list.drawables) {
+				out_cb.bindSet(pi.layout(), input.set(1).index(idx));
+				if (input.contains(2)) {
+					prop.material->bind(out_cb, pi, input.set(2).index(idx));
+				}
 				out_cb.bindVBO(prop.mesh->vbo().buffer, &prop.mesh->ibo().buffer.get());
 				if (prop.mesh->hasIndices()) {
 					out_cb.drawIndexed(prop.mesh->ibo().count);
@@ -355,7 +380,9 @@ struct Scene {
 				++idx;
 			}
 		}
-		return idx;
+		for (graphics::Pipeline& pipe : ps) {
+			pipe.shaderInput().swap();
+		}
 	}
 };
 
@@ -475,7 +502,7 @@ class App {
 		}
 		{
 			task_scheduler::stage_t pipes;
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test", "shaders/test"); });
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test", "shaders/test", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test_tex", "shaders/test_tex", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe, pci_skybox]() { loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox); });
@@ -518,14 +545,6 @@ class App {
 		eng.m_win.get().show();
 	}
 
-	void init0() {
-		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
-		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
-
-		m_data.main = graphics::ShaderInput(pipe_testTex->get(), m_eng.get().m_context.rotateCount());
-		m_data.sky = graphics::ShaderInput(pipe_sky->get(), m_eng.get().m_context.rotateCount());
-	}
-
 	void init1() {
 		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/test");
 		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
@@ -550,9 +569,8 @@ class App {
 	}
 
 	void tick(Time_s dt) {
-		if (m_data.main.empty()) {
+		if (m_data.load_pipes.id > 0) {
 			if (m_tasks.stage_done(m_data.load_pipes)) {
-				init0();
 				m_data.load_pipes = {};
 			} else {
 				return;
@@ -588,15 +606,16 @@ class App {
 			if (auto pMesh = m_store.find<graphics::Mesh>(mesh); pMesh && !pMesh->get().ready()) {
 				return;
 			}
-		}*/
-		if (m_data.main.empty()) {
-			return;
-		}
+		// }*/
+		// if (m_data.load_pipes.id > 0) {
+		// 	return;
+		// }
 		if (m_eng.get().m_context.waitForFrame()) {
 			// write / update
+			auto pipeTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
+			auto pipeSky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 			if (m_data.load_tex.id == 0) {
-				m_data.scene.update(m_data.cam, m_eng.get().m_context.extent(),
-									{m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()});
+				m_data.scene.update(m_data.cam, m_eng.get().m_context.extent(), {**pipeTex, **pipeSky});
 			}
 
 			// draw
@@ -604,11 +623,7 @@ class App {
 				if (m_data.load_tex.id == 0) {
 					auto& cb = r->primary();
 					cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
-					auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
-					auto pipeSky = m_store.get<graphics::Pipeline>("pipelines/skybox");
-					m_data.scene.draw(cb, {m_data.main[0].front(), m_data.main[1], m_data.main[2], m_data.sky[0].front()}, {*pipeTex, *pipeSky});
-					m_data.main.swap();
-					m_data.sky.swap();
+					m_data.scene.draw(cb, {**pipeTex, **pipeSky});
 				}
 			}
 		}
@@ -627,8 +642,6 @@ class App {
 		Text text;
 		Camera cam;
 
-		graphics::ShaderInput main;
-		graphics::ShaderInput sky;
 		Scene scene;
 
 		task_scheduler::stage_id load_pipes, load_tex;

@@ -98,7 +98,7 @@ Reader::Result<std::string> Reader::string(io::Path const& id) const {
 	if (auto str = sstream(id)) {
 		return str->str();
 	}
-	return {};
+	return kt::null_result;
 }
 
 bool Reader::isPresent(const io::Path& id) const {
@@ -134,7 +134,7 @@ Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
 	if (bEnd) {
-		return {};
+		return kt::null_result;
 	}
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
@@ -173,7 +173,7 @@ Reader::Result<bytearray> FileReader::bytes(io::Path const& id) const {
 			return buf;
 		}
 	}
-	return {};
+	return kt::null_result;
 }
 
 Reader::Result<std::stringstream> FileReader::sstream(io::Path const& id) const {
@@ -185,7 +185,7 @@ Reader::Result<std::stringstream> FileReader::sstream(io::Path const& id) const 
 			return buf;
 		}
 	}
-	return {};
+	return kt::null_result;
 }
 
 Reader::Result<io::Path> FileReader::findPrefixed(io::Path const& id) const {
@@ -195,7 +195,7 @@ Reader::Result<io::Path> FileReader::findPrefixed(io::Path const& id) const {
 			return io::Path(path);
 		}
 	}
-	return {};
+	return kt::null_result;
 }
 
 std::vector<io::Path> FileReader::finalPaths(io::Path const& id) const {
@@ -249,7 +249,7 @@ Reader::Result<io::Path> ZIPReader::findPrefixed(io::Path const& id) const {
 	if (PHYSFS_exists(id.generic_string().data()) != 0) {
 		return io::Path(id);
 	}
-	return {};
+	return kt::null_result;
 }
 
 Reader::Result<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
@@ -265,7 +265,7 @@ Reader::Result<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
 		}
 		PHYSFS_close(pFile);
 	}
-	return {};
+	return kt::null_result;
 }
 
 Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
@@ -279,7 +279,7 @@ Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
 		}
 		PHYSFS_close(pFile);
 	}
-	return {};
+	return kt::null_result;
 }
 
 AAssetReader::AAssetReader(ErasedRef const& pAndroidApp) : m_androidApp(pAndroidApp) {
@@ -293,9 +293,9 @@ Reader::Result<bytearray> AAssetReader::bytes([[maybe_unused]] io::Path const& i
 	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
 		return asset.bytes();
 	}
-	return {};
+	return kt::null_result;
 #else
-	return {};
+	return kt::null_result;
 #endif
 }
 
@@ -304,9 +304,9 @@ Reader::Result<std::stringstream> AAssetReader::sstream([[maybe_unused]] io::Pat
 	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
 		return asset.sstream();
 	}
-	return {};
+	return kt::null_result;
 #else
-	return {};
+	return kt::null_result;
 #endif
 }
 
@@ -315,10 +315,10 @@ Reader::Result<io::Path> AAssetReader::findPrefixed([[maybe_unused]] io::Path co
 	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
 		return Path(id);
 	} else {
-		return {};
+		return kt::null_result;
 	}
 #else
-	return {};
+	return kt::null_result;
 #endif
 }
 

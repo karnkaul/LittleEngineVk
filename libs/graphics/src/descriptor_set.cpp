@@ -212,6 +212,10 @@ bool ShaderInput::empty() const noexcept {
 	return m_setPools.empty();
 }
 
+bool ShaderInput::contains(u32 set) const noexcept {
+	return m_setPools.find(set) != m_setPools.end();
+}
+
 SetPool& ShaderInput::operator[](u32 set) {
 	return this->set(set);
 }

@@ -103,19 +103,7 @@ bool Texture::construct(CreateInfo const& info) {
 	return false;
 }
 
-void Texture::destroy() {
-	wait();
-	Device& d = m_vram.get().m_device;
-	d.defer([&d, data = m_storage.data, r = m_storage.raw]() mutable {
-		d.destroy(data.imageView);
-		for (auto const& img : r.imgs) {
-			utils::release(img);
-		}
-	});
-	m_storage = {};
-}
-
-bool Texture::valid() const {
+bool Texture::valid() const noexcept {
 	return m_storage.image.has_value();
 }
 
@@ -184,5 +172,17 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
 	out_storage.data.imageView = d.createImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
 	return true;
+}
+
+void Texture::destroy() {
+	wait();
+	Device& d = m_vram.get().m_device;
+	d.defer([&d, data = m_storage.data, r = m_storage.raw]() mutable {
+		d.destroy(data.imageView);
+		for (auto const& img : r.imgs) {
+			utils::release(img);
+		}
+	});
+	m_storage = {};
 }
 } // namespace le::graphics

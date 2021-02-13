@@ -14,12 +14,14 @@
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
+#include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
 #include <core/utils/string.hpp>
 #include <dtasks/error_handler.hpp>
 #include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/camera.hpp>
+#include <engine/render/interface.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -133,41 +135,6 @@ struct HelpCmd : os::ICmdArg {
 	}
 };
 
-struct Material {
-	virtual void write(graphics::DescriptorSet&) {
-	}
-	virtual void bind(graphics::CommandBuffer&, graphics::Pipeline const&, graphics::DescriptorSet const&) const {
-	}
-};
-
-struct TexturedMaterial : Material {
-	graphics::Texture const* diffuse = {};
-	u32 binding = 0;
-
-	void write(graphics::DescriptorSet& ds) override {
-		ENSURE(diffuse, "Null pipeline/texture view");
-		ds.updateTextures(binding, *diffuse);
-	}
-	void bind(graphics::CommandBuffer& cb, graphics::Pipeline const& pi, graphics::DescriptorSet const& ds) const override {
-		ENSURE(diffuse, "Null texture view");
-		cb.bindSet(pi.layout(), ds);
-	}
-};
-
-struct SkyboxMaterial : Material {
-	graphics::Texture const* cubemap = {};
-	u32 binding = 1;
-
-	void write(graphics::DescriptorSet& ds) override {
-		ENSURE(cubemap, "Null pipeline/texture view");
-		ds.updateTextures(binding, *cubemap);
-	}
-	void bind(graphics::CommandBuffer& cb, graphics::Pipeline const& pi, graphics::DescriptorSet const& ds) const override {
-		ENSURE(cubemap, "Null texture view");
-		cb.bindSet(pi.layout(), ds);
-	}
-};
-
 struct Font {
 	io::Path atlasID;
 	io::Path samplerID;
@@ -246,7 +213,7 @@ struct Font {
 struct Text {
 	graphics::BitmapText text;
 	std::optional<graphics::Mesh> mesh;
-	glm::mat4 model = glm::mat4(1.0f);
+	inline static glm::mat4 const model = glm::mat4(1.0f);
 
 	void create(graphics::VRAM& vram, io::Path const& id) {
 		mesh = graphics::Mesh((id / "mesh").generic_string(), vram);
@@ -261,124 +228,156 @@ struct Text {
 	}
 };
 
+struct MatBlank : IMaterial {
+	graphics::Pipeline* pPipe{};
+
+	void write(std::size_t) override {
+	}
+	void bind(graphics::CommandBuffer const&, std::size_t) const override {
+	}
+};
+
+struct MatTextured : MatBlank {
+	graphics::Texture const* diffuse = {};
+	u32 binding = 0;
+
+	void write(std::size_t idx) override {
+		ENSURE(diffuse, "Null pipeline/texture view");
+		pPipe->shaderInput().update(*diffuse, 2, 0, idx);
+	}
+	void bind(graphics::CommandBuffer const& cb, std::size_t idx) const override {
+		cb.bindSet(pPipe->layout(), pPipe->shaderInput().set(2).index(idx));
+	}
+};
+
+struct MatSkybox : MatBlank {
+	graphics::Texture const* cubemap = {};
+	u32 binding = 1;
+
+	void write(std::size_t) override {
+		ENSURE(cubemap, "Null pipeline/texture view");
+		pPipe->shaderInput().update(*cubemap, 0, binding, 0);
+	}
+};
+
 struct VP {
 	glm::mat4 mat_p;
 	glm::mat4 mat_v;
 	glm::mat4 mat_ui;
 };
 
-struct Skybox {
-	graphics::Mesh const* mesh = {};
-	graphics::Texture const* cubemap = {};
+struct Prop {
+	Transform transform;
+	Ref<graphics::Mesh const> mesh;
+	Ref<MatBlank> material;
 
-	bool ready() const {
-		return mesh && mesh->ready() && cubemap && cubemap->ready();
-	}
-	void update(graphics::DescriptorSet& set, graphics::Buffer const& vp) const {
-		if (ready()) {
-			set.updateBuffers(0, Ref<graphics::Buffer const>(vp), sizeof(VP));
-			set.updateTextures(1, *cubemap);
-		}
-	}
-	void draw(graphics::CommandBuffer& cb, graphics::Pipeline const& pi, graphics::DescriptorSet const& set) {
-		if (ready()) {
-			cb.bindPipe(pi);
-			cb.bindSets(pi.layout(), set.get(), set.setNumber());
-			cb.bindVBO(mesh->vbo().buffer, &mesh->ibo().buffer.get());
-			cb.drawIndexed(mesh->ibo().count);
-		}
+	Prop(graphics::Mesh const& mesh, MatBlank& material) : mesh(mesh), material(material) {
 	}
 };
 
-struct Prop2 {
-	graphics::ShaderBuffer m;
-	Transform transform;
-	graphics::Mesh const* mesh = {};
-	Material* material = {};
+struct Drawable : Prop, IDrawable {
+	graphics::ShaderBuffer local;
+
+	Drawable(std::string_view name, graphics::VRAM& vram, graphics::Mesh const& mesh, MatBlank& mat)
+		: Prop(mesh, mat), local(graphics::ShaderBuffer(vram, name, {})) {
+	}
+
+	void update(std::size_t idx) override {
+		auto& input = material.get().pPipe->shaderInput();
+		if (input.contains(1)) {
+			local.write(transform.model());
+			input.update(local, 1, 0, idx);
+			local.swap();
+		}
+		material.get().write(idx);
+	}
+
+	void draw(graphics::CommandBuffer const& cb, std::size_t idx) const override {
+		graphics::Pipeline const& pi = *material.get().pPipe;
+		auto& input = pi.shaderInput();
+		if (input.contains(1)) {
+			cb.bindSet(pi.layout(), input.set(1).index(idx));
+		}
+		material.get().bind(cb, idx);
+		mesh.get().draw(cb);
+	}
 };
 
 struct DrawList {
-	std::vector<Ref<Prop2>> drawables;
-	graphics::Pipeline* pipe = {};
-};
+	Ref<graphics::Pipeline> pipe;
+	std::vector<Ref<Drawable>> drawables;
 
-struct Scene {
-	using PropMap = std::unordered_map<Ref<graphics::Pipeline>, std::vector<Prop2>>;
-
-	struct PipeRefs {
-		graphics::Pipeline& main;
-		graphics::Pipeline& sky;
-	};
-
-	std::optional<graphics::ShaderBuffer> vp;
-	Skybox skybox;
-	PropMap props;
-	PropMap ui;
-	std::vector<DrawList> lists;
-
-	void update(Camera const& cam, glm::ivec2 fb, PipeRefs pipes) {
-		auto& sky = pipes.sky.shaderInput();
-		VP const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
-		vp->write<false>(v).update(sky.set(0).front(), 0);
-		sky.set(0).front().updateTextures(1, *skybox.cubemap);
-		lists.clear();
-		for (auto& [pi, prs] : props) {
-			DrawList list;
-			list.pipe = &pi.get();
-			for (auto& pr : prs) {
-				list.drawables.push_back(pr);
-			}
-			lists.push_back(std::move(list));
+	template <typename C>
+	static std::vector<DrawList> to(C&& props) {
+		std::unordered_map<Ref<graphics::Pipeline>, std::vector<Ref<Drawable>>> map;
+		for (Drawable& prop : props) {
+			map[*prop.material.get().pPipe].push_back(prop);
 		}
-		for (auto& [pi, prs] : ui) {
-			DrawList list;
-			list.pipe = &pi.get();
-			for (auto& pr : prs) {
-				list.drawables.push_back(pr);
-			}
-			lists.push_back(std::move(list));
+		std::vector<DrawList> ret;
+		for (auto const& [pipe, props] : map) {
+			DrawList list{pipe.get(), {}};
+			list.drawables = std::move(props);
+			ret.push_back(std::move(list));
 		}
-		for (auto& list : lists) {
-			std::size_t idx = 0;
-			auto& input = list.pipe->shaderInput();
-			vp->update(input.set(0).front(), 0);
-			for (Prop2& prop : list.drawables) {
-				prop.m.write<false>(prop.transform.model()).update(input.set(1).index(idx), 0).next();
-				if (input.contains(2)) {
-					prop.material->write(input.set(2).index(idx));
-				}
-				++idx;
-			}
-		}
-		vp->next();
+		return ret;
 	}
 
-	void draw(graphics::CommandBuffer& out_cb, PipeRefs pipes) {
-		auto& sky = pipes.sky.shaderInput();
-		skybox.draw(out_cb, pipes.sky, sky.set(0).front());
-		sky.swap();
+	void update() {
+		for (std::size_t idx = 0; idx < drawables.size(); ++idx) {
+			drawables[idx].get().update(idx);
+		}
+	}
 
+	void draw(graphics::CommandBuffer const& cb) const {
+		for (std::size_t idx = 0; idx < drawables.size(); ++idx) {
+			drawables[idx].get().draw(cb, idx);
+		}
+	}
+};
+
+template <typename M>
+static std::vector<DrawList> toLists(M&& props) {
+	std::vector<Ref<Drawable>> p;
+	for (auto& [_, prop] : props) {
+		p.push_back(*prop);
+	}
+	return DrawList::to(p);
+}
+
+struct Scene : IScene {
+	std::optional<graphics::ShaderBuffer> vp;
+	std::optional<Drawable> skybox;
+	std::unordered_map<Hash, std::optional<Drawable>> props;
+	std::unordered_map<Hash, std::optional<Drawable>> ui;
+
+	std::vector<DrawList> lists;
+
+	void update(Camera const& cam, glm::ivec2 fb) override {
+		VP const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
+		vp->write<false>(v);
+		lists.clear();
+		if (skybox) {
+			DrawList list{*skybox->material.get().pPipe, {}};
+			list.drawables.push_back(*skybox);
+			lists.push_back(std::move(list));
+		}
+		utils::move_append(toLists(props), lists);
+		utils::move_append(toLists(ui), lists);
+		for (auto& list : lists) {
+			list.pipe.get().shaderInput().update(*vp, 0, 0, 0);
+			list.update();
+		}
+		vp->swap();
+	}
+
+	void draw(graphics::CommandBuffer const& cb) const override {
 		std::unordered_set<Ref<graphics::Pipeline>> ps;
 		for (auto const& list : lists) {
-			graphics::Pipeline& pi = *list.pipe;
+			graphics::Pipeline& pi = list.pipe;
 			ps.insert(pi);
-			out_cb.bindPipe(pi);
-			auto& input = pi.shaderInput();
-			out_cb.bindSet(pi.layout(), input.set(0).front());
-			std::size_t idx = 0;
-			for (Prop2 const& prop : list.drawables) {
-				out_cb.bindSet(pi.layout(), input.set(1).index(idx));
-				if (input.contains(2)) {
-					prop.material->bind(out_cb, pi, input.set(2).index(idx));
-				}
-				out_cb.bindVBO(prop.mesh->vbo().buffer, &prop.mesh->ibo().buffer.get());
-				if (prop.mesh->hasIndices()) {
-					out_cb.drawIndexed(prop.mesh->ibo().count);
-				} else {
-					out_cb.draw(prop.mesh->vbo().count);
-				}
-				++idx;
-			}
+			cb.bindPipe(pi);
+			cb.bindSet(pi.layout(), pi.shaderInput().set(0).front());
+			list.draw(cb);
 		}
 		for (graphics::Pipeline& pipe : ps) {
 			pipe.shaderInput().swap();
@@ -442,7 +441,7 @@ TaskErr g_taskErr;
 
 using namespace std::chrono;
 
-class App {
+class App : public IRenderer {
 	Token m_tk;
 
   public:
@@ -537,11 +536,6 @@ class App {
 			m_data.tex.push_back(textureLD.name);
 		});
 		m_data.load_tex = m_tasks.stage(std::move(texload));
-
-		/*m_tasks.wait(m_data.load_pipes);
-		m_tasks.wait(m_data.load_tex);
-		init();*/
-
 		eng.m_win.get().show();
 	}
 
@@ -549,23 +543,30 @@ class App {
 		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/test");
 		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
 		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
+		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 		m_data.cam.position = {0.0f, 2.0f, 4.0f};
-		m_data.mat_tex.diffuse = &m_store.get<graphics::Texture>("textures/container2").get();
-		m_data.mat_font.diffuse = &*m_data.font.atlas;
 		m_data.scene.vp = graphics::ShaderBuffer(m_eng.get().m_boot.vram, "vp", {});
-		m_data.scene.skybox.mesh = &m_store.get<graphics::Mesh>("skycube").get();
+		auto skycube = m_store.get<graphics::Mesh>("skycube");
 		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
 		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
-		m_data.scene.skybox.cubemap = &m_store.get<graphics::Texture>("cubemaps/sky_dusk").get();
-		auto mbuf = [this](std::string_view name) { return graphics::ShaderBuffer(m_eng.get().m_boot.vram, name, {}); };
-		m_data.scene.props[pipe_testTex->get()].push_back(Prop2{mbuf("prop_tex"), {}, &cube.get(), &m_data.mat_tex});
-		Prop2 p1{mbuf("prop_1"), {}, &cube.get(), &m_data.mat_def};
+		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
+		m_data.mat_sky.cubemap = &skymap.get();
+		m_data.mat_sky.pPipe = &pipe_sky->get();
+		m_data.mat_tex.diffuse = &m_store.get<graphics::Texture>("textures/container2").get();
+		m_data.mat_tex.pPipe = &pipe_testTex->get();
+		m_data.mat_font.diffuse = &*m_data.font.atlas;
+		m_data.mat_font.pPipe = &pipe_ui->get();
+		m_data.mat_def.pPipe = &pipe_test->get();
+		auto& vram = m_eng.get().m_boot.vram;
+		m_data.scene.props.emplace("cube_tex", Drawable("cube_tex", vram, cube.get(), m_data.mat_tex));
+		Drawable p1("prop_1", vram, cube.get(), m_data.mat_def);
 		p1.transform.position({-5.0f, -1.0f, -2.0f});
-		m_data.scene.props[pipe_test->get()].push_back(std::move(p1));
-		Prop2 p2{mbuf("prop_2"), {}, &cone.get(), &m_data.mat_def};
+		m_data.scene.props.emplace("prop_1", std::move(p1));
+		Drawable p2("prop_2", vram, cone.get(), m_data.mat_def);
 		p2.transform.position({1.0f, -2.0f, -3.0f});
-		m_data.scene.props[pipe_test->get()].push_back(std::move(p2));
-		m_data.scene.ui[pipe_ui->get()].push_back(Prop2{mbuf("prop_ui"), {}, &*m_data.text.mesh, &m_data.mat_font});
+		m_data.scene.props.emplace("prop_2", std::move(p2));
+		m_data.scene.ui.emplace("hi", Drawable("hi", vram, *m_data.text.mesh, m_data.mat_font));
+		m_data.scene.skybox = Drawable("sky(unused)", vram, skycube.get(), m_data.mat_sky);
 	}
 
 	void tick(Time_s dt) {
@@ -590,32 +591,15 @@ class App {
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
 		}
-		auto pipeTex = m_store.get<graphics::Pipeline>("pipelines/test_tex");
-		auto pipe = m_store.get<graphics::Pipeline>("pipelines/test");
-		m_data.scene.props[*pipeTex].front().transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_data.scene.props[*pipe].front().transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		m_data.scene.props["cube_tex"]->transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_data.scene.props["prop_2"]->transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 	}
 
-	void render() {
-		/*for (auto& tex : m_data.tex) {
-			if (auto pTex = m_store.find<graphics::Texture>(tex); pTex && !pTex->get().ready()) {
-				return;
-			}
-		}
-		for (auto& mesh : m_data.mesh) {
-			if (auto pMesh = m_store.find<graphics::Mesh>(mesh); pMesh && !pMesh->get().ready()) {
-				return;
-			}
-		// }*/
-		// if (m_data.load_pipes.id > 0) {
-		// 	return;
-		// }
+	void render() override {
 		if (m_eng.get().m_context.waitForFrame()) {
 			// write / update
-			auto pipeTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
-			auto pipeSky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 			if (m_data.load_tex.id == 0) {
-				m_data.scene.update(m_data.cam, m_eng.get().m_context.extent(), {**pipeTex, **pipeSky});
+				m_data.scene.update(m_data.cam, m_eng.get().m_context.extent());
 			}
 
 			// draw
@@ -623,7 +607,7 @@ class App {
 				if (m_data.load_tex.id == 0) {
 					auto& cb = r->primary();
 					cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
-					m_data.scene.draw(cb, {**pipeTex, **pipeSky});
+					m_data.scene.draw(cb);
 				}
 			}
 		}
@@ -634,9 +618,10 @@ class App {
 		std::vector<Hash> tex;
 		std::vector<Hash> mesh;
 
-		TexturedMaterial mat_tex;
-		TexturedMaterial mat_font;
-		Material mat_def;
+		MatTextured mat_tex;
+		MatTextured mat_font;
+		MatSkybox mat_sky;
+		MatBlank mat_def;
 
 		Font font;
 		Text text;

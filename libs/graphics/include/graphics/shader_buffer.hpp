@@ -17,8 +17,10 @@ class ShaderBuffer {
 
 	template <bool IsArray = false, typename T>
 	ShaderBuffer& write(T t);
-	ShaderBuffer& update(DescriptorSet& out_set, u32 binding);
-	ShaderBuffer& next();
+	ShaderBuffer const& update(DescriptorSet& out_set, u32 binding) const;
+	ShaderBuffer& swap();
+
+	vk::DescriptorType type() const noexcept;
 
   private:
 	void resize(std::size_t size, std::size_t count);
@@ -26,6 +28,7 @@ class ShaderBuffer {
 	struct Storage {
 		std::vector<RingBuffer<Buffer>> buffers;
 		std::string name;
+		vk::DescriptorType type;
 		vk::BufferUsageFlagBits usage = {};
 		u32 rotateCount = 0;
 		std::size_t elemSize = 0;
@@ -49,6 +52,10 @@ constexpr vk::BufferUsageFlagBits ShaderBuffer::usage(vk::DescriptorType type) n
 	default:
 		return vk::BufferUsageFlagBits::eUniformBuffer;
 	}
+}
+
+inline vk::DescriptorType ShaderBuffer::type() const noexcept {
+	return m_storage.type;
 }
 
 namespace detail {

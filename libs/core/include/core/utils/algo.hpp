@@ -18,4 +18,20 @@ typename std::vector<T, Alloc>::size_type erase_if(std::vector<T, Alloc>& out_ve
 	out_vec.erase(it, out_vec.end());
 	return static_cast<typename std::vector<T, Alloc>::size_type>(r);
 }
+
+template <typename In, template <typename...> typename Out, typename... Args>
+constexpr void move_append(In&& in, Out<Args...>& out) {
+	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) {
+		out.reserve(out.size() + in.size());
+	}
+	std::move(std::begin(in), std::end(in), std::back_inserter(out));
+}
+
+template <typename In, template <typename...> typename Out, typename... Args>
+constexpr void copy_append(In&& in, Out<Args...>& out) {
+	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) {
+		out.reserve(out.size() + in.size());
+	}
+	std::copy(std::begin(in), std::end(in), std::back_inserter(out));
+}
 } // namespace le::utils

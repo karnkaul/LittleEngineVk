@@ -46,6 +46,10 @@ BufferedFrameSync::~BufferedFrameSync() {
 	destroy();
 }
 
+void BufferedFrameSync::swap() {
+	next();
+}
+
 void BufferedFrameSync::refreshSync() {
 	if (!ts.empty()) {
 		Device& d = m_device;

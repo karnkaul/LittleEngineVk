@@ -74,6 +74,7 @@ class Pipeline final {
 		ShaderInput input;
 		struct {
 			vk::Pipeline main;
+			vk::PipelineCache cache;
 			std::unordered_map<Hash, vk::Pipeline> variants;
 		} dynamic;
 		struct {

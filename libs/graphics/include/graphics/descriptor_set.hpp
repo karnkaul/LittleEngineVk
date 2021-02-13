@@ -11,6 +11,7 @@ class Texture;
 class Buffer;
 class Image;
 class Pipeline;
+class ShaderBuffer;
 
 struct BindingInfo {
 	vk::DescriptorSetLayoutBinding binding;
@@ -33,7 +34,7 @@ class DescriptorSet {
 	~DescriptorSet();
 
 	void index(std::size_t index);
-	void next();
+	void swap();
 	vk::DescriptorSet get() const;
 
 	void updateBuffers(u32 binding, View<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
@@ -41,6 +42,7 @@ class DescriptorSet {
 	bool updateTextures(u32 binding, View<Texture> textures);
 
 	u32 setNumber() const noexcept;
+	BindingInfo const* binding(u32 bind) const;
 
 	Ref<Device> m_device;
 
@@ -87,6 +89,8 @@ class SetPool {
 
 	DescriptorSet& front();
 	DescriptorSet& index(std::size_t idx);
+	DescriptorSet const& front() const;
+	DescriptorSet const& index(std::size_t idx) const;
 	Span<DescriptorSet> populate(std::size_t count);
 	void swap();
 
@@ -112,6 +116,9 @@ class ShaderInput {
 	void swap();
 	bool empty() const noexcept;
 	bool contains(u32 set) const noexcept;
+
+	bool update(View<Texture> textures, u32 set, u32 bind, std::size_t idx = 0);
+	bool update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx = 0);
 
 	SetPool& operator[](u32 set);
 	SetPool const& operator[](u32 set) const;

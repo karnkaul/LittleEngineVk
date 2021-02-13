@@ -54,8 +54,8 @@ class Texture {
 	virtual ~Texture();
 
 	bool construct(CreateInfo const& info);
-	void destroy();
-	bool valid() const;
+
+	bool valid() const noexcept;
 	bool busy() const;
 	bool ready() const;
 	void wait() const;
@@ -66,7 +66,7 @@ class Texture {
 	std::string m_name;
 	Ref<VRAM> m_vram;
 
-  protected:
+  private:
 	struct Storage {
 		Data data;
 		std::optional<Image> image;
@@ -78,6 +78,7 @@ class Texture {
 	};
 
 	bool construct(CreateInfo const& info, Storage& out_storage);
+	void destroy();
 
 	Storage m_storage;
 };

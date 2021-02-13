@@ -4,6 +4,7 @@
 
 namespace le::graphics {
 class Device;
+class CommandBuffer;
 
 class Mesh {
   public:
@@ -22,8 +23,9 @@ class Mesh {
 	bool construct(View<T> vertices, View<u32> indices);
 	template <VertType V>
 	bool construct(Geom<V> const& geom);
-	void destroy();
-	bool valid() const;
+	bool draw(CommandBuffer const& cb) const;
+
+	bool valid() const noexcept;
 	bool busy() const;
 	bool ready() const;
 	void wait() const;
@@ -32,12 +34,12 @@ class Mesh {
 	Data ibo() const noexcept;
 	Type type() const noexcept;
 
-	constexpr bool hasIndices() const noexcept;
+	bool hasIndices() const noexcept;
 
 	std::string m_name;
 	Ref<VRAM> m_vram;
 
-  protected:
+  private:
 	struct Storage {
 		std::optional<Buffer> buffer;
 		u32 count = 0;
@@ -45,11 +47,11 @@ class Mesh {
 	};
 
 	Storage construct(std::string_view name, vk::BufferUsageFlags usage, void* pData, std::size_t size) const;
+	void destroy();
 
 	Storage m_vbo;
 	Storage m_ibo;
 
-  private:
 	Type m_type;
 };
 
@@ -84,7 +86,7 @@ inline Mesh::Data Mesh::ibo() const noexcept {
 inline Mesh::Type Mesh::type() const noexcept {
 	return m_type;
 }
-inline constexpr bool Mesh::hasIndices() const noexcept {
+inline bool Mesh::hasIndices() const noexcept {
 	return m_ibo.count > 0 && m_ibo.buffer && m_ibo.buffer->buffer() != vk::Buffer();
 }
 } // namespace le::graphics

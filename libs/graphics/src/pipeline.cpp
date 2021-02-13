@@ -155,6 +155,9 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	if (!valid(shader.m_modules) || Device::default_v(c.renderPass)) {
 		return false;
 	}
+	if (Device::default_v(m_storage.dynamic.cache)) {
+		m_storage.dynamic.cache = m_device.get().device().createPipelineCache({});
+	}
 	if (bFixed) {
 		auto& f = m_storage.fixed;
 		f = {};
@@ -250,7 +253,7 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	createInfo.layout = m_storage.fixed.layout;
 	createInfo.renderPass = c.renderPass;
 	createInfo.subpass = c.subpass;
-	auto result = m_device.get().device().createGraphicsPipeline({}, createInfo);
+	auto result = m_device.get().device().createGraphicsPipeline(m_storage.dynamic.cache, createInfo);
 	out_pipe = result;
 	return true;
 }
@@ -261,14 +264,14 @@ void Pipeline::destroy() {
 	for (auto const& [_, pipe] : m_storage.dynamic.variants) {
 		destroy(pipe);
 	}
-	m_storage.dynamic = {};
-	d.defer([&d, f = m_storage.fixed]() mutable {
+	d.defer([&d, f = m_storage.fixed, c = m_storage.dynamic.cache]() mutable {
 		d.destroy(f.layout);
+		d.destroy(c);
 		for (auto dsl : f.setLayouts) {
 			d.destroy(dsl);
 		}
 	});
-	m_storage.fixed = {};
+	m_storage = {};
 }
 
 void Pipeline::destroy(vk::Pipeline pipeline) {

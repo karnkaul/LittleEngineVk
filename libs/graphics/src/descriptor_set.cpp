@@ -3,6 +3,7 @@
 #include <graphics/descriptor_set.hpp>
 #include <graphics/pipeline.hpp>
 #include <graphics/resources.hpp>
+#include <graphics/shader_buffer.hpp>
 #include <graphics/texture.hpp>
 
 namespace le::graphics {
@@ -70,7 +71,7 @@ void DescriptorSet::index(std::size_t index) {
 	}
 }
 
-void DescriptorSet::next() {
+void DescriptorSet::swap() {
 	m_storage.setBuffer.next();
 }
 
@@ -121,6 +122,13 @@ bool DescriptorSet::updateTextures(u32 binding, View<Texture> textures) {
 	return updateCIS(binding, std::move(cis));
 }
 
+BindingInfo const* DescriptorSet::binding(u32 bind) const {
+	if (auto it = m_storage.bindingInfos.find(bind); it != m_storage.bindingInfos.end()) {
+		return &it->second;
+	}
+	return nullptr;
+}
+
 void DescriptorSet::update(vk::WriteDescriptorSet write) {
 	m_device.get().device().updateDescriptorSets(write, {});
 }
@@ -167,6 +175,16 @@ DescriptorSet& SetPool::index(std::size_t idx) {
 	return m_storage.descriptorSets[idx];
 }
 
+DescriptorSet const& SetPool::front() const {
+	ENSURE(!m_storage.descriptorSets.empty(), "Nonexistent set index!");
+	return m_storage.descriptorSets.front();
+}
+
+DescriptorSet const& SetPool::index(std::size_t idx) const {
+	ENSURE(m_storage.descriptorSets.size() > idx, "Nonexistent set index!");
+	return m_storage.descriptorSets[idx];
+}
+
 Span<DescriptorSet> SetPool::populate(std::size_t count) {
 	m_storage.descriptorSets.reserve(count);
 	while (m_storage.descriptorSets.size() < count) {
@@ -178,7 +196,7 @@ Span<DescriptorSet> SetPool::populate(std::size_t count) {
 
 void SetPool::swap() {
 	for (auto& descriptorSet : m_storage.descriptorSets) {
-		descriptorSet.next();
+		descriptorSet.swap();
 	}
 }
 
@@ -214,6 +232,40 @@ bool ShaderInput::empty() const noexcept {
 
 bool ShaderInput::contains(u32 set) const noexcept {
 	return m_setPools.find(set) != m_setPools.end();
+}
+
+bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t idx) {
+	if constexpr (levk_debug) {
+		if (contains(set)) {
+			DescriptorSet& ds = this->set(set).index(idx);
+			if (auto pInfo = ds.binding(bind); pInfo && pInfo->binding.descriptorType == vk::DescriptorType::eCombinedImageSampler) {
+				ds.updateTextures(bind, textures);
+				return true;
+			}
+		}
+		ENSURE(false, "DescriptorSet update failure");
+		return false;
+	} else {
+		this->set(set).index(idx).updateTextures(bind, textures);
+		return true;
+	}
+}
+
+bool ShaderInput::update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx) {
+	if constexpr (levk_debug) {
+		if (contains(set)) {
+			DescriptorSet& ds = this->set(set).index(idx);
+			if (auto pInfo = ds.binding(bind); pInfo && pInfo->binding.descriptorType == buffer.type()) {
+				buffer.update(ds, bind);
+				return true;
+			}
+		}
+		ENSURE(false, "DescriptorSet update failure");
+		return false;
+	} else {
+		buffer.update(this->set(set).index(idx), bind);
+		return true;
+	}
 }
 
 SetPool& ShaderInput::operator[](u32 set) {

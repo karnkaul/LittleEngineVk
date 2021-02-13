@@ -1,3 +1,4 @@
+#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/mesh.hpp>
 
@@ -35,13 +36,21 @@ Mesh::Storage Mesh::construct(std::string_view name, vk::BufferUsageFlags usage,
 	return ret;
 }
 
-void Mesh::destroy() {
-	wait();
-	m_vbo = {};
-	m_ibo = {};
+bool Mesh::draw(CommandBuffer const& cb) const {
+	if (valid()) {
+		if (hasIndices()) {
+			cb.bindVBO(*m_vbo.buffer, &*m_ibo.buffer);
+			cb.drawIndexed(m_ibo.count);
+		} else {
+			cb.bindVBO(*m_vbo.buffer);
+			cb.draw(m_vbo.count);
+		}
+		return true;
+	}
+	return false;
 }
 
-bool Mesh::valid() const {
+bool Mesh::valid() const noexcept {
 	return m_vbo.buffer.has_value();
 }
 
@@ -60,5 +69,11 @@ void Mesh::wait() const {
 	if (m_type == Type::eDynamic) {
 		m_vram.get().wait({m_vbo.transfer, m_ibo.transfer});
 	}
+}
+
+void Mesh::destroy() {
+	wait();
+	m_vbo = {};
+	m_ibo = {};
 }
 } // namespace le::graphics

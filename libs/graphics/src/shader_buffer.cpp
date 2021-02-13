@@ -4,11 +4,12 @@
 namespace le::graphics {
 ShaderBuffer::ShaderBuffer(VRAM& vram, std::string_view name, CreateInfo const& info) : m_vram(vram) {
 	m_storage.name = std::string(name);
+	m_storage.type = info.type;
 	m_storage.usage = usage(info.type);
 	m_storage.rotateCount = info.rotateCount;
 }
 
-ShaderBuffer& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) {
+ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) const {
 	ENSURE(!m_storage.buffers.empty() && m_storage.elemSize > 0, "Empty buffer!");
 	if (m_storage.buffers.size() > 1) {
 		std::vector<Ref<Buffer const>> vec;
@@ -24,7 +25,7 @@ ShaderBuffer& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) {
 	return *this;
 }
 
-ShaderBuffer& ShaderBuffer::next() {
+ShaderBuffer& ShaderBuffer::swap() {
 	for (auto& rb : m_storage.buffers) {
 		rb.next();
 	}

@@ -33,6 +33,7 @@ class BufferedFrameSync : public RingBuffer<FrameSync> {
 	template <typename T>
 	T& sync(RingBuffer<T>& out_source) const;
 
+	void swap();
 	void refreshSync();
 
   private:

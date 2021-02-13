@@ -173,7 +173,7 @@ bool RenderContext::endFrame() {
 	if (!present) {
 		return false;
 	}
-	m_sync.next();
+	m_sync.swap();
 	return true;
 }
 

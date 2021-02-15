@@ -21,7 +21,7 @@
 #include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/camera.hpp>
-#include <engine/render/interface.hpp>
+#include <engine/render/draw.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -228,163 +228,6 @@ struct Text {
 	}
 };
 
-struct MatBlank : IMaterial {
-	graphics::Pipeline* pPipe{};
-
-	void write(std::size_t) override {
-	}
-	void bind(graphics::CommandBuffer const&, std::size_t) const override {
-	}
-};
-
-struct MatTextured : MatBlank {
-	graphics::Texture const* diffuse = {};
-	u32 binding = 0;
-
-	void write(std::size_t idx) override {
-		ENSURE(diffuse, "Null pipeline/texture view");
-		pPipe->shaderInput().update(*diffuse, 2, 0, idx);
-	}
-	void bind(graphics::CommandBuffer const& cb, std::size_t idx) const override {
-		cb.bindSet(pPipe->layout(), pPipe->shaderInput().set(2).index(idx));
-	}
-};
-
-struct MatSkybox : MatBlank {
-	graphics::Texture const* cubemap = {};
-	u32 binding = 1;
-
-	void write(std::size_t) override {
-		ENSURE(cubemap, "Null pipeline/texture view");
-		pPipe->shaderInput().update(*cubemap, 0, binding, 0);
-	}
-};
-
-struct VP {
-	glm::mat4 mat_p;
-	glm::mat4 mat_v;
-	glm::mat4 mat_ui;
-};
-
-struct Prop {
-	Transform transform;
-	Ref<graphics::Mesh const> mesh;
-	Ref<MatBlank> material;
-
-	Prop(graphics::Mesh const& mesh, MatBlank& material) : mesh(mesh), material(material) {
-	}
-};
-
-struct Drawable : Prop, IDrawable {
-	graphics::ShaderBuffer local;
-
-	Drawable(std::string_view name, graphics::VRAM& vram, graphics::Mesh const& mesh, MatBlank& mat)
-		: Prop(mesh, mat), local(graphics::ShaderBuffer(vram, name, {})) {
-	}
-
-	void update(std::size_t idx) override {
-		auto& input = material.get().pPipe->shaderInput();
-		if (input.contains(1)) {
-			local.write(transform.model());
-			input.update(local, 1, 0, idx);
-			local.swap();
-		}
-		material.get().write(idx);
-	}
-
-	void draw(graphics::CommandBuffer const& cb, std::size_t idx) const override {
-		graphics::Pipeline const& pi = *material.get().pPipe;
-		auto& input = pi.shaderInput();
-		if (input.contains(1)) {
-			cb.bindSet(pi.layout(), input.set(1).index(idx));
-		}
-		material.get().bind(cb, idx);
-		mesh.get().draw(cb);
-	}
-};
-
-struct DrawList {
-	Ref<graphics::Pipeline> pipe;
-	std::vector<Ref<Drawable>> drawables;
-
-	template <typename C>
-	static std::vector<DrawList> to(C&& props) {
-		std::unordered_map<Ref<graphics::Pipeline>, std::vector<Ref<Drawable>>> map;
-		for (Drawable& prop : props) {
-			map[*prop.material.get().pPipe].push_back(prop);
-		}
-		std::vector<DrawList> ret;
-		for (auto const& [pipe, props] : map) {
-			DrawList list{pipe.get(), {}};
-			list.drawables = std::move(props);
-			ret.push_back(std::move(list));
-		}
-		return ret;
-	}
-
-	void update() {
-		for (std::size_t idx = 0; idx < drawables.size(); ++idx) {
-			drawables[idx].get().update(idx);
-		}
-	}
-
-	void draw(graphics::CommandBuffer const& cb) const {
-		for (std::size_t idx = 0; idx < drawables.size(); ++idx) {
-			drawables[idx].get().draw(cb, idx);
-		}
-	}
-};
-
-template <typename M>
-static std::vector<DrawList> toLists(M&& props) {
-	std::vector<Ref<Drawable>> p;
-	for (auto& [_, prop] : props) {
-		p.push_back(*prop);
-	}
-	return DrawList::to(p);
-}
-
-struct Scene : IScene {
-	std::optional<graphics::ShaderBuffer> vp;
-	std::optional<Drawable> skybox;
-	std::unordered_map<Hash, std::optional<Drawable>> props;
-	std::unordered_map<Hash, std::optional<Drawable>> ui;
-
-	std::vector<DrawList> lists;
-
-	void update(Camera const& cam, glm::ivec2 fb) override {
-		VP const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
-		vp->write<false>(v);
-		lists.clear();
-		if (skybox) {
-			DrawList list{*skybox->material.get().pPipe, {}};
-			list.drawables.push_back(*skybox);
-			lists.push_back(std::move(list));
-		}
-		utils::move_append(toLists(props), lists);
-		utils::move_append(toLists(ui), lists);
-		for (auto& list : lists) {
-			list.pipe.get().shaderInput().update(*vp, 0, 0, 0);
-			list.update();
-		}
-		vp->swap();
-	}
-
-	void draw(graphics::CommandBuffer const& cb) const override {
-		std::unordered_set<Ref<graphics::Pipeline>> ps;
-		for (auto const& list : lists) {
-			graphics::Pipeline& pi = list.pipe;
-			ps.insert(pi);
-			cb.bindPipe(pi);
-			cb.bindSet(pi.layout(), pi.shaderInput().set(0).front());
-			list.draw(cb);
-		}
-		for (graphics::Pipeline& pipe : ps) {
-			pipe.shaderInput().swap();
-		}
-	}
-};
-
 GPULister g_gpuLister;
 GPUPicker g_gpuPicker;
 HelpCmd g_help;
@@ -441,12 +284,9 @@ TaskErr g_taskErr;
 
 using namespace std::chrono;
 
-class App : public IRenderer {
-	Token m_tk;
-
+class App {
   public:
-	App(Eng& eng, io::Reader const& reader) : m_eng(eng) {
-
+	App(Eng& eng, io::Reader const& reader) : m_drawer(eng.m_boot.vram), m_eng(eng) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().m_boot.device, {}};
@@ -545,28 +385,26 @@ class App : public IRenderer {
 		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
 		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 		m_data.cam.position = {0.0f, 2.0f, 4.0f};
-		m_data.scene.vp = graphics::ShaderBuffer(m_eng.get().m_boot.vram, "vp", {});
 		auto skycube = m_store.get<graphics::Mesh>("skycube");
 		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
 		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
-		m_data.mat_sky.cubemap = &skymap.get();
+		m_data.mat_sky.cubemap.tex = &skymap.get();
 		m_data.mat_sky.pPipe = &pipe_sky->get();
-		m_data.mat_tex.diffuse = &m_store.get<graphics::Texture>("textures/container2").get();
+		m_data.mat_tex.diffuse.tex = &m_store.get<graphics::Texture>("textures/container2").get();
 		m_data.mat_tex.pPipe = &pipe_testTex->get();
-		m_data.mat_font.diffuse = &*m_data.font.atlas;
+		m_data.mat_font.diffuse.tex = &*m_data.font.atlas;
 		m_data.mat_font.pPipe = &pipe_ui->get();
 		m_data.mat_def.pPipe = &pipe_test->get();
-		auto& vram = m_eng.get().m_boot.vram;
-		m_data.scene.props.emplace("cube_tex", Drawable("cube_tex", vram, cube.get(), m_data.mat_tex));
-		Drawable p1("prop_1", vram, cube.get(), m_data.mat_def);
+		m_drawer.add("cube_tex", cube.get(), m_data.mat_tex);
+		Prop2 p1(cube.get(), m_data.mat_def);
 		p1.transform.position({-5.0f, -1.0f, -2.0f});
-		m_data.scene.props.emplace("prop_1", std::move(p1));
-		Drawable p2("prop_2", vram, cone.get(), m_data.mat_def);
+		m_drawer.add("prop_1", std::move(p1));
+		Prop2 p2(cone.get(), m_data.mat_def);
 		p2.transform.position({1.0f, -2.0f, -3.0f});
-		m_data.scene.props.emplace("prop_2", std::move(p2));
-		m_data.scene.ui.emplace("hi", Drawable("hi", vram, *m_data.text.mesh, m_data.mat_font));
-		m_data.scene.skybox = Drawable("sky(unused)", vram, skycube.get(), m_data.mat_sky);
+		m_drawer.add("prop_2", std::move(p2));
+		m_drawer.add("hi", *m_data.text.mesh, m_data.mat_font);
+		m_drawer.add("sky", skycube.get(), m_data.mat_sky);
 	}
 
 	void tick(Time_s dt) {
@@ -591,15 +429,15 @@ class App : public IRenderer {
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
 		}
-		m_data.scene.props["cube_tex"]->transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_data.scene.props["prop_2"]->transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		m_drawer["cube_tex"].transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_drawer["prop_2"].transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 	}
 
-	void render() override {
+	void render() {
 		if (m_eng.get().m_context.waitForFrame()) {
 			// write / update
 			if (m_data.load_tex.id == 0) {
-				m_data.scene.update(m_data.cam, m_eng.get().m_context.extent());
+				m_drawer.update(m_data.cam, m_eng.get().m_context.extent());
 			}
 
 			// draw
@@ -607,7 +445,7 @@ class App : public IRenderer {
 				if (m_data.load_tex.id == 0) {
 					auto& cb = r->primary();
 					cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
-					m_data.scene.draw(cb);
+					m_drawer.draw(cb);
 				}
 			}
 		}
@@ -619,7 +457,7 @@ class App : public IRenderer {
 		std::vector<Hash> mesh;
 
 		MatTextured mat_tex;
-		MatTextured mat_font;
+		MatUI mat_font;
 		MatSkybox mat_sky;
 		MatBlank mat_def;
 
@@ -627,12 +465,11 @@ class App : public IRenderer {
 		Text text;
 		Camera cam;
 
-		Scene scene;
-
 		task_scheduler::stage_id load_pipes, load_tex;
 	};
 
 	Data m_data;
+	Drawer m_drawer;
 	task_scheduler m_tasks;
 	std::future<void> m_ready;
 

@@ -39,7 +39,7 @@ class Transfer final {
 
 		std::vector<Entry> entries;
 		vk::Fence done;
-		u8 framePad = 0;
+		u8 framePad = 1;
 	};
 
 	Transfer(Memory& memory, CreateInfo const& info);

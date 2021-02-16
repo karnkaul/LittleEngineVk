@@ -1,7 +1,7 @@
 #include <engine/game/scene.hpp>
 
 namespace le {
-using namespace ec;
+using namespace decf;
 
 gfx::Camera const& GameScene::Desc::camera() const {
 	return pCustomCam ? *pCustomCam : defaultCam;
@@ -12,7 +12,7 @@ gfx::Camera& GameScene::Desc::camera() {
 }
 
 void GameScene::reset() {
-	Registry& reg = m_registry;
+	registry_t& reg = m_registry;
 	reg.clear();
 	m_name.clear();
 #if defined(LEVK_EDITOR)
@@ -21,7 +21,7 @@ void GameScene::reset() {
 }
 
 GameScene::Desc& GameScene::desc() {
-	Registry& reg = m_registry;
+	registry_t& reg = m_registry;
 	auto view = reg.view<Desc>();
 	auto [_, desc] = view.empty() ? reg.spawn<Desc>("scene_desc") : *view.begin();
 	auto& [desc_] = desc;
@@ -46,7 +46,7 @@ bool GameScene::reparent(Prop prop, Transform* pParent) {
 }
 
 void GameScene::destroy(View<Prop> props) {
-	Registry& reg = m_registry;
+	registry_t& reg = m_registry;
 	for (auto& prop : props) {
 		if (prop.pTransform) {
 			m_entityMap.erase(*prop.pTransform);

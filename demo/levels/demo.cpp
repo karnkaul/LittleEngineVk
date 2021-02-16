@@ -93,7 +93,7 @@ DemoLevel::DemoLevel() {
 	registry().attach<res::Model>(m_data.eid2);
 
 	m_data.eid3.transform().position({0.0f, -1.0f, -3.0f});
-	registry().attach<res::Model, Time_s>(m_data.eid3); // Test attaching multiple components
+	registry().attach<res::Model>(m_data.eid3); // Test attaching multiple components
 
 	m_input.context.mapTrigger("wireframe", [this]() { m_data.bWireframe = !m_data.bWireframe; });
 	m_input.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });

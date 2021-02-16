@@ -230,8 +230,7 @@ template <typename Value>
 TAssetMap<Value>& TAssets::get() {
 	auto search = storeMap.find(hash<Value>());
 	if (search == storeMap.end()) {
-		auto [it, bRes] = storeMap.emplace(hash<Value>(), std::make_unique<TAssetMap<Value>>());
-		ENSURE(bRes, "Map insertion failure");
+		auto [it, _] = storeMap.emplace(hash<Value>(), std::make_unique<TAssetMap<Value>>());
 		search = it;
 	}
 	return static_cast<TAssetMap<Value>&>(*search->second);

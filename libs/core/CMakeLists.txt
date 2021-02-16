@@ -27,6 +27,7 @@ target_link_libraries(${PROJECT_NAME}
 		glm
 		dlog::dlog
 		dtasks::dtasks
+		decf::decf
 	PRIVATE
 		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
 		levk::interface

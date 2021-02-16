@@ -15,8 +15,8 @@ class TestLevel final : public Level {
 
   private:
 	struct {
-		le::ec::Entity mainText;
-		le::ec::Entity elapsedText;
+		decf::entity_t mainText;
+		decf::entity_t elapsedText;
 		le::Time_s elapsed;
 	} m_data;
 

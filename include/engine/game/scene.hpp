@@ -1,9 +1,8 @@
 #pragma once
-#include <core/ec/types.hpp>
-#include <core/ec_registry.hpp>
 #include <core/traits.hpp>
 #include <core/transform.hpp>
 #include <core/utils/std_hash.hpp>
+#include <dumb_ecf/registry.hpp>
 #include <engine/game/input.hpp>
 #include <engine/gfx/camera.hpp>
 #include <engine/gfx/light.hpp>
@@ -18,11 +17,11 @@ namespace le {
 /// \brief Wrapper for Entity + Transform
 ///
 struct Prop final {
-	ec::Entity entity;
+	decf::entity_t entity;
 	Transform* pTransform;
 
 	constexpr Prop() noexcept;
-	constexpr Prop(ec::Entity entity, Transform& transform) noexcept;
+	constexpr Prop(decf::entity_t entity, Transform& transform) noexcept;
 
 	///
 	/// \brief Check whether Prop points to a valid pair of Entity/Transform
@@ -38,7 +37,7 @@ struct Prop final {
 	///
 	Transform& transform();
 
-	constexpr operator ec::Entity() const noexcept;
+	constexpr operator decf::entity_t() const noexcept;
 };
 
 ///
@@ -47,10 +46,9 @@ struct Prop final {
 template <typename... T>
 struct TProp {
 	using type = TProp;
-	using Components = ec::Components<T&...>;
 
 	Prop prop;
-	Components components;
+	std::tuple<T&...> components;
 
 	constexpr operator Prop() const noexcept;
 };
@@ -94,7 +92,7 @@ class GameScene final {
 		gfx::Camera& camera();
 	};
 
-	using EntityMap = std::unordered_map<Ref<Transform>, ec::Entity>;
+	using EntityMap = std::unordered_map<Ref<Transform>, decf::entity_t>;
 
 #if defined(LEVK_EDITOR)
 	static constexpr bool s_bParentToRoot = true;
@@ -106,7 +104,7 @@ class GameScene final {
 	Transform m_sceneRoot;
 
 	std::string m_name;
-	ec::Registry m_registry;
+	decf::registry_t m_registry;
 
 #if defined(LEVK_EDITOR)
 	editor::PerFrame m_editorData;
@@ -116,13 +114,13 @@ class GameScene final {
 	///
 	/// \brief Obtain (a reference to) the scene descriptor
 	///
-	/// A Desc will be added to the Registry if none exist
+	/// A Desc will be added to the registry_t if none exist
 	///
 	Desc& desc();
 	///
 	/// \brief Obtain (a reference to) the main scene camera
 	///
-	/// A Desc will be added to the Registry if none exist
+	/// A Desc will be added to the registry_t if none exist
 	///
 	gfx::Camera& mainCamera();
 
@@ -157,13 +155,13 @@ class GameScene final {
 
 inline constexpr Prop::Prop() noexcept : pTransform(nullptr) {
 }
-inline constexpr Prop::Prop(ec::Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {
+inline constexpr Prop::Prop(decf::entity_t entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {
 }
-inline constexpr Prop::operator ec::Entity() const noexcept {
+inline constexpr Prop::operator decf::entity_t() const noexcept {
 	return entity;
 }
 inline constexpr bool Prop::valid() const noexcept {
-	return pTransform != nullptr && entity.id.payload != ec::ID::null;
+	return pTransform != nullptr && entity.id() != decf::null_id;
 }
 inline Transform const& Prop::transform() const {
 	ENSURE(pTransform, "Null Transform!");
@@ -182,7 +180,7 @@ constexpr TProp<T...>::operator Prop() const noexcept {
 
 template <typename T, typename... Args>
 TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... args) {
-	ec::Registry& reg = m_registry;
+	auto& reg = m_registry;
 	auto ec = reg.template spawn<T, Args...>(std::move(name), std::forward<Args>(args)...);
 	auto pT = reg.template attach<Transform>(ec);
 	ENSURE(pT, "Invariant violated!");
@@ -198,7 +196,7 @@ TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... 
 
 template <typename... T, typename>
 TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent) {
-	ec::Registry& reg = m_registry;
+	auto& reg = m_registry;
 	auto ec = reg.template spawn<T...>(std::move(name));
 	auto pT = reg.template attach<Transform>(ec);
 	ENSURE(pT, "Invariant violated!");

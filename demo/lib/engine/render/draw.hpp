@@ -1,9 +1,9 @@
 #pragma once
 #include <vector>
-#include <core/ec_registry.hpp>
 #include <core/hash.hpp>
 #include <core/transform.hpp>
 #include <core/utils/std_hash.hpp>
+#include <dumb_ecf/registry.hpp>
 #include <engine/render/material.hpp>
 #include <glm/mat4x4.hpp>
 #include <graphics/shader_buffer.hpp>
@@ -20,7 +20,7 @@ struct ViewMats {
 };
 
 struct Prop2 {
-	ec::Entity entity;
+	decf::entity_t entity;
 	Transform transform;
 	Ref<graphics::Mesh const> mesh;
 	Ref<MatBlank> material;
@@ -30,17 +30,17 @@ struct Prop2 {
 
 class Drawer {
   public:
-	Drawer(graphics::VRAM& vram, ec::Registry& registry);
+	Drawer(graphics::VRAM& vram, decf::registry_t& registry);
 
 	void update(Camera const& cam, glm::ivec2 fb);
 	void draw(graphics::CommandBuffer const& cb) const;
 
 	Prop2& spawn(std::string_view name, Ref<graphics::Mesh const> mesh, Ref<MatBlank> material);
 	Prop2& spawn(std::string_view name, Prop2&& prop);
-	Prop2* attach(ec::Entity entity);
+	Prop2* attach(decf::entity_t entity);
 
-	Prop2& operator[](ec::Entity entity);
-	Prop2 const& operator[](ec::Entity entiy) const;
+	Prop2& operator[](decf::entity_t entity);
+	Prop2 const& operator[](decf::entity_t entiy) const;
 
   private:
 	struct Drawable : IDrawable {
@@ -63,7 +63,7 @@ class Drawer {
 	graphics::ShaderBuffer m_view;
 	std::vector<List> m_lists;
 	Ref<graphics::VRAM> m_vram;
-	Ref<ec::Registry> m_registry;
+	Ref<decf::registry_t> m_registry;
 };
 
 struct Drawer::List {

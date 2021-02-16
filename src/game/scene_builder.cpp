@@ -74,7 +74,7 @@ std::vector<res::Mesh> UIComponent::meshes() const {
 
 SceneBuilder::~SceneBuilder() = default;
 
-gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, ec::Registry const& registry) const {
+gfx::render::Driver::Scene SceneBuilder::build(gfx::Camera const& camera, decf::registry_t const& registry) const {
 	gfx::render::Driver::Scene scene;
 	gfx::render::Driver::Batch batch3D;
 	std::vector<gfx::render::Driver::Batch> batchUI;

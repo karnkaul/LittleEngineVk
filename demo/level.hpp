@@ -18,8 +18,8 @@ class Level {
 	virtual void onManifestLoaded();
 
   protected:
-	le::ec::Registry const& registry() const;
-	le::ec::Registry& registry();
+	decf::registry_t const& registry() const;
+	decf::registry_t& registry();
 
   private:
 	friend class LevelDriver;

@@ -27,7 +27,7 @@
 namespace le::editor {
 using namespace input;
 using namespace std::literals;
-using namespace ec;
+using namespace decf;
 
 using v2 = glm::vec2 const&;
 using iv2 = glm::ivec2 const&;
@@ -65,7 +65,7 @@ std::deque<LogEntry> g_logEntries;
 glm::ivec2 const g_minDim = glm::ivec2(100, 100);
 
 struct {
-	Entity entity;
+	decf::entity_t entity;
 	Transform* pTransform = nullptr;
 } g_inspecting;
 
@@ -75,7 +75,7 @@ struct {
 	bool bOpen = false;
 } g_resources;
 
-std::unordered_set<Entity> g_spawned;
+std::unordered_set<entity_t> g_spawned;
 
 void clicks(GUIState& out_state) {
 	out_state[GUI::eLeftClicked] = ImGui::IsItemClicked(ImGuiMouseButton_Left);
@@ -259,12 +259,12 @@ void inspectMatInst(res::Mesh mesh, std::size_t idx, v2 pos, v2 size) {
 }
 
 void entityInspector(v2 pos, v2 size, GameScene& out_scene) {
-	Registry& registry = out_scene.m_registry;
-	if (g_inspecting.entity != Entity()) {
+	registry_t& registry = out_scene.m_registry;
+	if (g_inspecting.entity != entity_t()) {
 		ImGui::LabelText("", "%s", registry.name(g_inspecting.entity).data());
 		if (auto pInfo = registry.info(g_inspecting.entity)) {
 			static std::string s_buf;
-			TWidget<std::string> name("##EntityNameEdit", s_buf, 150.0f);
+			TWidget<std::string> name("##entity_tNameEdit", s_buf, 150.0f);
 			sv const nn = s_buf.data();
 			if (nn.empty()) {
 				s_buf = pInfo->name;
@@ -487,7 +487,7 @@ void addTransform(dj::node_t& out_node, Transform const& t) {
 	out_node.add("orientation", std::move(orn));
 }
 
-void walkSceneTree(dj::node_t& out_root, Transform& root, GameScene::EntityMap const& emap, Registry const& reg, std::unordered_set<Entity>& out_added) {
+void walkSceneTree(dj::node_t& out_root, Transform& root, GameScene::EntityMap const& emap, registry_t const& reg, std::unordered_set<entity_t>& out_added) {
 	auto const children = root.children();
 	auto search = emap.find(root);
 	if (search != emap.end()) {
@@ -516,7 +516,7 @@ void walkSceneTree(dj::node_t& out_root, Transform& root, GameScene::EntityMap c
 	}
 }
 
-void residue(dj::node_t& out_arr, Registry const& reg, std::unordered_set<Entity> const& added) {
+void residue(dj::node_t& out_arr, registry_t const& reg, std::unordered_set<entity_t> const& added) {
 	{
 		auto view = reg.view<GameScene::Desc>();
 		for (auto& [entity, query] : view) {
@@ -534,7 +534,7 @@ void residue(dj::node_t& out_arr, Registry const& reg, std::unordered_set<Entity
 dj::node_t serialise(GameScene const& scene) {
 	dj::node_t ret;
 	dj::node_t entities;
-	std::unordered_set<Entity> added;
+	std::unordered_set<entity_t> added;
 	for (auto& child : scene.m_sceneRoot.children()) {
 		walkSceneTree(entities, child, scene.m_entityMap, scene.m_registry, added);
 	}
@@ -600,7 +600,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_s
 		playButton();
 		if (ImGui::BeginTabBar("Right")) {
 			if (ImGui::BeginTabItem("Scene")) {
-				Registry& registry = out_scene.m_registry;
+				registry_t& registry = out_scene.m_registry;
 				{
 					static std::string s_buf;
 					TWidget<std::string>("Name", s_buf, 150.0f);
@@ -622,7 +622,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_s
 					auto const node = TreeNode(registry.name(entity), g_inspecting.entity == entity, true, true, false);
 					if (node.test(GUI::eLeftClicked)) {
 						bool const bSelect = g_inspecting.entity != entity;
-						g_inspecting = {bSelect ? entity : Entity(), nullptr};
+						g_inspecting = {bSelect ? entity : entity_t(), nullptr};
 					}
 				}
 				s = Styler(Style::eSeparator);
@@ -634,7 +634,7 @@ void drawRightPanel([[maybe_unused]] iv2 fbSize, iv2 panelSize, GameScene& out_s
 						auto node = TreeNode(registry.name(entity), g_inspecting.entity == entity, t.children().empty(), true, false);
 						if (node.test(GUI::eLeftClicked)) {
 							bool const bSelect = g_inspecting.entity != entity;
-							g_inspecting = {bSelect ? entity : Entity(), bSelect ? &t : nullptr};
+							g_inspecting = {bSelect ? entity : entity_t(), bSelect ? &t : nullptr};
 						}
 						return (node.test(GUI::eOpen));
 					}
@@ -1084,8 +1084,8 @@ std::optional<gfx::Viewport> editor::tick(GameScene& out_scene, Time_s dt) {
 			auto const logHeight = fbSize.y - (s32)(rect.rb.y * (f32)fbSize.y);
 			glm::ivec2 const leftPanelSize = {(s32)(rect.lt.x * (f32)fbSize.x), fbSize.y - logHeight};
 			glm::ivec2 const rightPanelSize = {fbSize.x - (s32)(rect.rb.x * (f32)fbSize.x), fbSize.y - logHeight};
-			Registry& reg = out_scene.m_registry;
-			if (!reg.exists(g_inspecting.entity)) {
+			registry_t& reg = out_scene.m_registry;
+			if (!reg.contains(g_inspecting.entity)) {
 				g_inspecting = {};
 			}
 			drawLog(fbSize, logHeight);

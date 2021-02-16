@@ -431,8 +431,8 @@ class App {
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
 		}
-		m_registry.find<Prop2>(m_data.entities["cube_tex"])->transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_registry.find<Prop2>(m_data.entities["prop_2"])->transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		m_registry.get<Prop2>(m_data.entities["cube_tex"]).transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_registry.get<Prop2>(m_data.entities["prop_2"]).transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 	}
 
 	void render() {
@@ -457,7 +457,7 @@ class App {
 	struct Data {
 		std::vector<Hash> tex;
 		std::vector<Hash> mesh;
-		std::unordered_map<Hash, ec::Entity> entities;
+		std::unordered_map<Hash, decf::entity_t> entities;
 
 		MatTextured mat_tex;
 		MatUI mat_font;
@@ -472,7 +472,7 @@ class App {
 	};
 
 	Data m_data;
-	ec::Registry m_registry;
+	decf::registry_t m_registry;
 	Drawer m_drawer;
 	task_scheduler m_tasks;
 	std::future<void> m_ready;

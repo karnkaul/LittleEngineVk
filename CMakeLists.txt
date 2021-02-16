@@ -136,6 +136,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_S
 add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)
 add_subdirectory(libs/dtasks)
+add_subdirectory(libs/decf)
 add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)

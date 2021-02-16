@@ -32,7 +32,7 @@ void Drawer::Drawable::draw(graphics::CommandBuffer const& cb, std::size_t idx) 
 	prop.get().mesh.get().draw(cb);
 }
 
-Drawer::Drawer(graphics::VRAM& vram, ec::Registry& registry) : m_view(vram, "vp", {}), m_vram(vram), m_registry(registry) {
+Drawer::Drawer(graphics::VRAM& vram, decf::registry_t& registry) : m_view(vram, "vp", {}), m_vram(vram), m_registry(registry) {
 }
 
 void Drawer::update(Camera const& cam, glm::ivec2 fb) {
@@ -60,7 +60,7 @@ void Drawer::draw(graphics::CommandBuffer const& cb) const {
 	}
 }
 
-Prop2& Drawer::operator[](ec::Entity entity) {
+Prop2& Drawer::operator[](decf::entity_t entity) {
 	if (auto pD = m_registry.get().find<Drawable>(entity)) {
 		return pD->prop;
 	}
@@ -68,7 +68,7 @@ Prop2& Drawer::operator[](ec::Entity entity) {
 	throw std::runtime_error("Invalid id");
 }
 
-Prop2 const& Drawer::operator[](ec::Entity entity) const {
+Prop2 const& Drawer::operator[](decf::entity_t entity) const {
 	if (auto pD = m_registry.get().find<Drawable>(entity)) {
 		return pD->prop;
 	}
@@ -90,8 +90,8 @@ Prop2& Drawer::spawn(std::string_view name, Prop2&& prop) {
 	return spawnImpl(name, p);
 }
 
-Prop2* Drawer::attach(ec::Entity entity) {
-	if (m_registry.get().exists(entity)) {
+Prop2* Drawer::attach(decf::entity_t entity) {
+	if (m_registry.get().contains(entity)) {
 		auto pD = m_registry.get().find<Drawable>(entity);
 		auto pP = m_registry.get().find<Prop2>(entity);
 		if (!pD && !pP) {

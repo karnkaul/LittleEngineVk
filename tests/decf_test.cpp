@@ -1,16 +1,16 @@
 #include <array>
 #include <string>
 #include <unordered_set>
-#include <core/ec_registry.hpp>
 #include <core/ensure.hpp>
 #include <core/maths.hpp>
 #include <core/threads.hpp>
 #include <core/utils/algo.hpp>
 #include <dtasks/task_scheduler.hpp>
+#include <dumb_ecf/registry.hpp>
 #include <kt/async_queue/lockable.hpp>
 
 using namespace le;
-using namespace le::ec;
+using namespace decf;
 
 namespace {
 struct A {};
@@ -20,10 +20,10 @@ struct D {};
 struct E {};
 struct F {};
 
-std::unordered_set<Entity> g_spawned;
+std::unordered_set<entity_t> g_spawned;
 kt::lockable_t<> g_mutex;
 
-bool verify(Entity entity) {
+bool verify(entity_t entity) {
 	auto lock = g_mutex.lock();
 	bool const bRet = !utils::contains(g_spawned, entity);
 	ENSURE(bRet, "DUPLICATE");
@@ -35,10 +35,9 @@ bool verify(Entity entity) {
 int main() {
 	{
 		dts::task_queue tq;
-		Registry registry;
-		registry.m_logLevel.reset();
+		registry_t registry;
 		constexpr s32 entityCount = 10000;
-		std::array<Entity, entityCount> entities;
+		std::array<entity_t, entityCount> entities;
 		s32 idx = 0;
 		bool bPass = true;
 		for (auto& entity : entities) {
@@ -68,7 +67,8 @@ int main() {
 				}
 				if (toss & 1 << 4) {
 					if (!registry.find<D>(entity) && !registry.find<C>(entity)) {
-						registry.attach<D, C>(entity);
+						registry.attach<D>(entity);
+						registry.attach<D>(entity);
 					}
 				}
 				if (toss & 1 << 5) {
@@ -87,7 +87,6 @@ int main() {
 		if (!bPass) {
 			return 1;
 		}
-		registry.m_logLevel = dl::level::info;
 		std::vector<dts::task_id> handles;
 		{
 			auto wait = []() -> Time_ms { return time::cast<Time_ms>(Time_us(maths::randomRange(0, 3000))); };
@@ -100,7 +99,9 @@ int main() {
 				handles.push_back(tq.enqueue([&registry, &entities, wait]() {
 					threads::sleep(wait());
 					std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-					registry.detach<A, B, D>(entities[idx]);
+					registry.detach<A>(entities[idx]);
+					registry.detach<B>(entities[idx]);
+					registry.detach<D>(entities[idx]);
 				}));
 				handles.push_back(tq.enqueue([&registry, &entities, wait]() {
 					threads::sleep(wait());

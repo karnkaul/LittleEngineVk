@@ -1,5 +1,5 @@
 #pragma once
-#include <core/ec_registry.hpp>
+#include <dumb_ecf/registry.hpp>
 #include <engine/game/state.hpp>
 #include <engine/game/text2d.hpp>
 #include <engine/gfx/render_driver.hpp>
@@ -33,6 +33,6 @@ class SceneBuilder {
 	virtual ~SceneBuilder();
 
   public:
-	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, ec::Registry const& registry) const;
+	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, decf::registry_t const& registry) const;
 };
 } // namespace le

@@ -2,9 +2,10 @@
 #include <string>
 #include <fmt/format.h>
 #include <core/colour.hpp>
-#include <core/ec_registry.hpp>
 #include <core/span.hpp>
 #include <core/transform.hpp>
+#include <core/utils/string.hpp>
+#include <dumb_ecf/registry.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 
 #if defined(LEVK_EDITOR)
@@ -88,14 +89,14 @@ struct FlagsWidget {
 template <typename T>
 struct TInspector {
 	TreeNode node;
-	ec::Registry* pReg = nullptr;
-	ec::Entity entity;
+	decf::registry_t* pReg = nullptr;
+	decf::entity_t entity;
 	std::string id;
 	bool bNew = false;
 	bool bOpen = false;
 
 	TInspector() = default;
-	TInspector(ec::Registry& out_registry, ec::Entity entity, T const* pT, sv id = sv());
+	TInspector(decf::registry_t& out_registry, decf::entity_t entity, T const* pT, sv id = sv());
 	TInspector(TInspector<T>&&);
 	TInspector& operator=(TInspector<T>&&);
 	~TInspector();
@@ -157,7 +158,7 @@ struct TWidget<std::pair<s64, s64>> {
 
 struct PerFrame {
 	std::vector<std::function<void()>> customRightPanel;
-	std::vector<std::function<void(ec::Entity, Transform*)>> inspect;
+	std::vector<std::function<void(decf::entity_t, Transform*)>> inspect;
 };
 
 template <typename Flags>
@@ -172,7 +173,7 @@ FlagsWidget<Flags>::FlagsWidget(View<sv> ids, Flags& flags) {
 }
 
 template <typename T>
-TInspector<T>::TInspector(ec::Registry& out_registry, ec::Entity entity, T const* pT, sv id)
+TInspector<T>::TInspector(decf::registry_t& out_registry, decf::entity_t entity, T const* pT, sv id)
 	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id) {
 	bNew = pT == nullptr;
 	if (!bNew) {
@@ -208,7 +209,7 @@ template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
 		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked)) {
-			ec::Registry& registry = *pReg;
+			decf::registry_t& registry = *pReg;
 			registry.attach<T>(entity);
 		}
 	}

@@ -7,7 +7,7 @@
 #include <levels/test.hpp>
 
 using namespace le;
-using namespace ec;
+using namespace decf;
 
 namespace {
 struct Switcher final {
@@ -52,11 +52,11 @@ SceneBuilder const& Level::builder() const {
 void Level::onManifestLoaded() {
 }
 
-Registry const& Level::registry() const {
+registry_t const& Level::registry() const {
 	return gs::g_game.m_registry;
 }
 
-Registry& Level::registry() {
+registry_t& Level::registry() {
 	return gs::g_game.m_registry;
 }
 

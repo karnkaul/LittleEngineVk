@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <iterator>
 #include <vector>
 
 namespace le::utils {
@@ -20,7 +21,7 @@ typename std::vector<T, Alloc>::size_type erase_if(std::vector<T, Alloc>& out_ve
 }
 
 template <typename In, template <typename...> typename Out, typename... Args>
-constexpr void move_append(In&& in, Out<Args...>& out) {
+constexpr void move_append(In const& in, Out<Args...>& out) {
 	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) {
 		out.reserve(out.size() + in.size());
 	}
@@ -28,7 +29,7 @@ constexpr void move_append(In&& in, Out<Args...>& out) {
 }
 
 template <typename In, template <typename...> typename Out, typename... Args>
-constexpr void copy_append(In&& in, Out<Args...>& out) {
+constexpr void copy_append(In const& in, Out<Args...>& out) {
 	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) {
 		out.reserve(out.size() + in.size());
 	}
@@ -36,7 +37,7 @@ constexpr void copy_append(In&& in, Out<Args...>& out) {
 }
 
 template <typename C, typename K>
-constexpr bool contains(C&& cont, K&& key) noexcept {
+constexpr bool contains(C const& cont, K const& key) noexcept {
 	return cont.find(key) != cont.end();
 }
 } // namespace le::utils

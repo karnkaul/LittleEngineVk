@@ -11,11 +11,11 @@ target_link_libraries(test-any PRIVATE levk::core levk::interface)
 add_test(StaticAny test-any)
 
 # ECS (Registry)
-add_executable(test-ec ec_test.cpp)
-target_link_libraries(test-ec PRIVATE levk::core dtasks::dtasks levk::interface)
-add_test(ECS test-ec)
+add_executable(test-decf decf_test.cpp)
+target_link_libraries(test-decf PRIVATE levk::core dtasks::dtasks decf::decf levk::interface)
+add_test(decf::registry_t test-decf)
 
 # fixed_vector
 add_executable(test-fv fixed_vector_test.cpp)
 target_link_libraries(test-fv PRIVATE levk::core levk::interface)
-add_test(fixed_vector test-fv)
+add_test(kt::fixed_vector_t test-fv)

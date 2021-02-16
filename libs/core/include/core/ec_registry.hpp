@@ -9,7 +9,7 @@
 #include <kt/async_queue/lockable.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 
-namespace le::ecs {
+namespace le::ec {
 class Registry final {
   public:
 	///
@@ -58,12 +58,12 @@ class Registry final {
 	/// \brief Make new Entity with `T(Args&&...)` attached
 	///
 	template <typename T, typename... Args>
-	Spawned_t<T> spawn(std::string name, Args&&... args);
+	Spawn<T> spawn(std::string name, Args&&... args);
 	///
 	/// \brief Make new Entity with `T...` attached
 	///
 	template <typename... T>
-	Spawned_t<T...> spawn(std::string name);
+	Spawn<T...> spawn(std::string name);
 	///
 	/// \brief Destroy Entity
 	///
@@ -134,22 +134,22 @@ class Registry final {
 	/// \brief Obtain View of `T`
 	///
 	template <typename T>
-	View_t<T const> view(Flags mask = Flag::eDisabled, Flags pattern = {}) const;
+	SpawnList<T const> view(Flags mask = Flag::eDisabled, Flags pattern = {}) const;
 	///
 	/// \brief Obtain View of `T`
 	///
 	template <typename T>
-	View_t<T> view(Flags mask = Flag::eDisabled, Flags pattern = {});
+	SpawnList<T> view(Flags mask = Flag::eDisabled, Flags pattern = {});
 	///
 	/// \brief Obtain View of `T...`
 	///
 	template <typename... T, typename = detail::require<!(sizeof...(T) == 1)>>
-	View_t<T const...> view(Flags mask = Flag::eDisabled, Flags pattern = {}) const;
+	SpawnList<T const...> view(Flags mask = Flag::eDisabled, Flags pattern = {}) const;
 	///
 	/// \brief Obtain View of `T...`
 	///
 	template <typename... T, typename = detail::require<!(sizeof...(T) == 1)>>
-	View_t<T...> view(Flags mask = Flag::eDisabled, Flags pattern = {});
+	SpawnList<T...> view(Flags mask = Flag::eDisabled, Flags pattern = {});
 
 	///
 	/// \brief Destroy everything
@@ -193,7 +193,7 @@ class Registry final {
 	bool exists_Impl(Entity entity) const;
 
 	template <typename... T, typename Th>
-	static View_t<T...> view_Impl(Th pThis, Flags mask, Flags pattern);
+	static SpawnList<T...> view_Impl(Th pThis, Flags mask, Flags pattern);
 
   private:
 	using CMap = std::unordered_map<Sign, std::unique_ptr<detail::Concept>>;
@@ -214,11 +214,6 @@ class Registry final {
 	TCounter<ID::type> m_nextID = ID::null;
 	ID m_regID = ID::null;
 };
-
-template <typename... T>
-constexpr Spawned<T...>::operator Entity() const noexcept {
-	return entity;
-}
 
 inline Registry::Registry() {
 	m_regID = ++s_nextRegID;
@@ -244,7 +239,7 @@ std::array<Sign, sizeof...(T)> Registry::signs() {
 }
 
 template <typename T, typename... Args>
-Spawned_t<T> Registry::spawn(std::string name, Args&&... args) {
+Spawn<T> Registry::spawn(std::string name, Args&&... args) {
 	auto lock = m_mutex.lock();
 	auto entity = spawn_Impl(name);
 	auto& comp = attach_Impl<T>(entity, name, std::forward<Args>(args)...);
@@ -252,14 +247,14 @@ Spawned_t<T> Registry::spawn(std::string name, Args&&... args) {
 }
 
 template <typename... T>
-Spawned_t<T...> Registry::spawn(std::string name) {
+Spawn<T...> Registry::spawn(std::string name) {
 	auto lock = m_mutex.lock();
 	auto entity = spawn_Impl(name);
 	if constexpr (sizeof...(T) > 0) {
 		auto comps = Components<T&...>(attach_Impl<T>(entity, name)...);
 		return {entity, std::move(comps)};
 	} else {
-		return entity;
+		return {entity};
 	}
 }
 
@@ -388,26 +383,26 @@ Components<T*...> Registry::find(Entity entity) {
 }
 
 template <typename T>
-View_t<T const> Registry::view(Flags mask, Flags pattern) const {
+SpawnList<T const> Registry::view(Flags mask, Flags pattern) const {
 	auto lock = m_mutex.lock();
 	return view_Impl<T const>(this, mask, pattern);
 }
 
 template <typename T>
-View_t<T> Registry::view(Flags mask, Flags pattern) {
+SpawnList<T> Registry::view(Flags mask, Flags pattern) {
 	auto lock = m_mutex.lock();
 	return view_Impl<T>(this, mask, pattern);
 }
 
 template <typename... T, typename>
-View_t<T const...> Registry::view(Flags mask, Flags pattern) const {
+SpawnList<T const...> Registry::view(Flags mask, Flags pattern) const {
 	static_assert(!(sizeof...(T) == 0), "Must pass at least one T!");
 	auto lock = m_mutex.lock();
 	return view_Impl<T const...>(this, mask, pattern);
 }
 
 template <typename... T, typename>
-View_t<T...> Registry::view(Flags mask, Flags pattern) {
+SpawnList<T...> Registry::view(Flags mask, Flags pattern) {
 	static_assert(!(sizeof...(T) == 0), "Must pass at least one T!");
 	auto lock = m_mutex.lock();
 	return view_Impl<T...>(this, mask, pattern);
@@ -546,8 +541,8 @@ bool Registry::exists_Impl(Entity entity) const {
 }
 
 template <typename... T, typename Th>
-View_t<T...> Registry::view_Impl(Th pThis, Flags mask, Flags pattern) {
-	View_t<T...> ret;
+SpawnList<T...> Registry::view_Impl(Th pThis, Flags mask, Flags pattern) {
+	SpawnList<T...> ret;
 	if constexpr (sizeof...(T) == 1) {
 		static auto const s = sign<T...>();
 		if (auto search = pThis->m_db.find(s); search != pThis->m_db.end()) {
@@ -582,4 +577,4 @@ View_t<T...> Registry::view_Impl(Th pThis, Flags mask, Flags pattern) {
 	}
 	return ret;
 }
-} // namespace le::ecs
+} // namespace le::ec

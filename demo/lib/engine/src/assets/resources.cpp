@@ -1,3 +1,4 @@
+#include <core/utils/algo.hpp>
 #include <engine/assets/resources.hpp>
 
 namespace le {
@@ -101,7 +102,7 @@ Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonito
 
 bool Resources::loaded(Hash id) const noexcept {
 	auto lock = m_loaded.lock<std::shared_lock>();
-	return lock.get().find(id) != lock.get().end();
+	return utils::contains(lock.get(), id);
 }
 
 void Resources::update() {

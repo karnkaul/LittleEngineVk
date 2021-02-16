@@ -1,7 +1,7 @@
 #include <engine/game/scene.hpp>
 
 namespace le {
-using namespace ecs;
+using namespace ec;
 
 gfx::Camera const& GameScene::Desc::camera() const {
 	return pCustomCam ? *pCustomCam : defaultCam;

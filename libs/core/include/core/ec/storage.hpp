@@ -3,7 +3,7 @@
 #include <core/ec/types.hpp>
 #include <core/ensure.hpp>
 
-namespace le::ecs::detail {
+namespace le::ec::detail {
 struct Concept {
 	Sign sign = 0;
 
@@ -98,4 +98,4 @@ template <typename T>
 std::size_t Storage<T>::size() const noexcept {
 	return map.size();
 }
-} // namespace le::ecs::detail
+} // namespace le::ec::detail

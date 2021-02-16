@@ -5,11 +5,12 @@
 #include <core/ensure.hpp>
 #include <core/maths.hpp>
 #include <core/threads.hpp>
+#include <core/utils/algo.hpp>
 #include <dtasks/task_scheduler.hpp>
 #include <kt/async_queue/lockable.hpp>
 
 using namespace le;
-using namespace le::ecs;
+using namespace le::ec;
 
 namespace {
 struct A {};
@@ -24,7 +25,7 @@ kt::lockable_t<> g_mutex;
 
 bool verify(Entity entity) {
 	auto lock = g_mutex.lock();
-	bool const bRet = g_spawned.find(entity) == g_spawned.end();
+	bool const bRet = !utils::contains(g_spawned, entity);
 	ENSURE(bRet, "DUPLICATE");
 	g_spawned.insert(entity);
 	return bRet;

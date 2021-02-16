@@ -88,14 +88,14 @@ struct FlagsWidget {
 template <typename T>
 struct TInspector {
 	TreeNode node;
-	ecs::Registry* pReg = nullptr;
-	ecs::Entity entity;
+	ec::Registry* pReg = nullptr;
+	ec::Entity entity;
 	std::string id;
 	bool bNew = false;
 	bool bOpen = false;
 
 	TInspector() = default;
-	TInspector(ecs::Registry& out_registry, ecs::Entity entity, T const* pT, sv id = sv());
+	TInspector(ec::Registry& out_registry, ec::Entity entity, T const* pT, sv id = sv());
 	TInspector(TInspector<T>&&);
 	TInspector& operator=(TInspector<T>&&);
 	~TInspector();
@@ -157,7 +157,7 @@ struct TWidget<std::pair<s64, s64>> {
 
 struct PerFrame {
 	std::vector<std::function<void()>> customRightPanel;
-	std::vector<std::function<void(ecs::Entity, Transform*)>> inspect;
+	std::vector<std::function<void(ec::Entity, Transform*)>> inspect;
 };
 
 template <typename Flags>
@@ -172,7 +172,7 @@ FlagsWidget<Flags>::FlagsWidget(View<sv> ids, Flags& flags) {
 }
 
 template <typename T>
-TInspector<T>::TInspector(ecs::Registry& out_registry, ecs::Entity entity, T const* pT, sv id)
+TInspector<T>::TInspector(ec::Registry& out_registry, ec::Entity entity, T const* pT, sv id)
 	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id) {
 	bNew = pT == nullptr;
 	if (!bNew) {
@@ -208,7 +208,7 @@ template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
 		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked)) {
-			ecs::Registry& registry = *pReg;
+			ec::Registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}
 	}

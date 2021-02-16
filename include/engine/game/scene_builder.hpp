@@ -33,6 +33,6 @@ class SceneBuilder {
 	virtual ~SceneBuilder();
 
   public:
-	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, ecs::Registry const& registry) const;
+	virtual gfx::render::Driver::Scene build(gfx::Camera const& camera, ec::Registry const& registry) const;
 };
 } // namespace le

@@ -34,4 +34,9 @@ constexpr void copy_append(In&& in, Out<Args...>& out) {
 	}
 	std::copy(std::begin(in), std::end(in), std::back_inserter(out));
 }
+
+template <typename C, typename K>
+constexpr bool contains(C&& cont, K&& key) noexcept {
+	return cont.find(key) != cont.end();
+}
 } // namespace le::utils

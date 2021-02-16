@@ -5,6 +5,7 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <core/log.hpp>
+#include <core/utils/algo.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/config.hpp>
 #include <kt/async_queue/lockable.hpp>
@@ -135,11 +136,6 @@ class TAssetMap : public AssetMap {
 	Storage m_storage;
 };
 
-template <typename M, typename K>
-constexpr bool mapContains(M&& map, K&& key) noexcept {
-	return map.find(key) != map.end();
-}
-
 template <typename T, typename U>
 constexpr Asset<T> makeAsset(U&& wrap, AssetStore::OnModified& onModified) noexcept {
 	return {*wrap.t, onModified, wrap.id};
@@ -249,7 +245,7 @@ TAssetMap<Value> const& TAssets::get() const {
 }
 template <typename Value>
 bool TAssets::contains() const noexcept {
-	return detail::mapContains(storeMap, hash<Value>());
+	return utils::contains(storeMap, hash<Value>());
 }
 template <typename Value>
 std::size_t TAssets::hash() const {
@@ -323,7 +319,7 @@ template <typename T>
 bool AssetStore::contains(Hash id) const noexcept {
 	auto lock = m_assets.lock<std::shared_lock>();
 	if (lock.get().contains<T>()) {
-		return detail::mapContains(lock.get().get<T>().m_storage, id);
+		return utils::contains(lock.get().get<T>().m_storage, id);
 	}
 	return false;
 }

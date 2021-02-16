@@ -1,3 +1,4 @@
+#include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/descriptor_set.hpp>
@@ -148,7 +149,7 @@ void DescriptorSet::destroy() {
 
 std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u32 bind, vk::DescriptorType type, u32 count) {
 	auto& set = m_storage.setBuffer.get();
-	ENSURE(set.bindings.find(bind) != set.bindings.end(), "Nonexistent binding");
+	ENSURE(utils::contains(set.bindings, bind), "Nonexistent binding");
 	auto& binding = set.bindings[bind];
 	ENSURE(binding.type == type, "Mismatched descriptor type");
 	ENSURE(binding.count == count, "Mismatched descriptor size");
@@ -231,7 +232,7 @@ bool ShaderInput::empty() const noexcept {
 }
 
 bool ShaderInput::contains(u32 set) const noexcept {
-	return m_setPools.find(set) != m_setPools.end();
+	return utils::contains(m_setPools, set);
 }
 
 bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t idx) {

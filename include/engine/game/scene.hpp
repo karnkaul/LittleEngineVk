@@ -18,11 +18,11 @@ namespace le {
 /// \brief Wrapper for Entity + Transform
 ///
 struct Prop final {
-	ecs::Entity entity;
+	ec::Entity entity;
 	Transform* pTransform;
 
 	constexpr Prop() noexcept;
-	constexpr Prop(ecs::Entity entity, Transform& transform) noexcept;
+	constexpr Prop(ec::Entity entity, Transform& transform) noexcept;
 
 	///
 	/// \brief Check whether Prop points to a valid pair of Entity/Transform
@@ -38,7 +38,7 @@ struct Prop final {
 	///
 	Transform& transform();
 
-	constexpr operator ecs::Entity() const noexcept;
+	constexpr operator ec::Entity() const noexcept;
 };
 
 ///
@@ -47,7 +47,7 @@ struct Prop final {
 template <typename... T>
 struct TProp {
 	using type = TProp;
-	using Components = ecs::Components<T&...>;
+	using Components = ec::Components<T&...>;
 
 	Prop prop;
 	Components components;
@@ -94,7 +94,7 @@ class GameScene final {
 		gfx::Camera& camera();
 	};
 
-	using EntityMap = std::unordered_map<Ref<Transform>, ecs::Entity>;
+	using EntityMap = std::unordered_map<Ref<Transform>, ec::Entity>;
 
 #if defined(LEVK_EDITOR)
 	static constexpr bool s_bParentToRoot = true;
@@ -106,7 +106,7 @@ class GameScene final {
 	Transform m_sceneRoot;
 
 	std::string m_name;
-	ecs::Registry m_registry;
+	ec::Registry m_registry;
 
 #if defined(LEVK_EDITOR)
 	editor::PerFrame m_editorData;
@@ -157,13 +157,13 @@ class GameScene final {
 
 inline constexpr Prop::Prop() noexcept : pTransform(nullptr) {
 }
-inline constexpr Prop::Prop(ecs::Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {
+inline constexpr Prop::Prop(ec::Entity entity, Transform& transform) noexcept : entity(entity), pTransform(&transform) {
 }
-inline constexpr Prop::operator ecs::Entity() const noexcept {
+inline constexpr Prop::operator ec::Entity() const noexcept {
 	return entity;
 }
 inline constexpr bool Prop::valid() const noexcept {
-	return pTransform != nullptr && entity.id.payload != ecs::ID::null;
+	return pTransform != nullptr && entity.id.payload != ec::ID::null;
 }
 inline Transform const& Prop::transform() const {
 	ENSURE(pTransform, "Null Transform!");
@@ -182,7 +182,7 @@ constexpr TProp<T...>::operator Prop() const noexcept {
 
 template <typename T, typename... Args>
 TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... args) {
-	ecs::Registry& reg = m_registry;
+	ec::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T, Args...>(std::move(name), std::forward<Args>(args)...);
 	auto pT = reg.template attach<Transform>(ec);
 	ENSURE(pT, "Invariant violated!");
@@ -198,7 +198,7 @@ TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... 
 
 template <typename... T, typename>
 TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent) {
-	ecs::Registry& reg = m_registry;
+	ec::Registry& reg = m_registry;
 	auto ec = reg.template spawn<T...>(std::move(name));
 	auto pT = reg.template attach<Transform>(ec);
 	ENSURE(pT, "Invariant violated!");

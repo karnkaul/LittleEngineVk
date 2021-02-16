@@ -1,51 +1,44 @@
 #include <engine/camera.hpp>
 #include <engine/render/draw.hpp>
 #include <graphics/context/command_buffer.hpp>
-#include <graphics/pipeline.hpp>
 #include <graphics/mesh.hpp>
+#include <graphics/pipeline.hpp>
 
 namespace le {
-Drawer::Drawable::Drawable(std::string_view name, graphics::VRAM& vram, graphics::Mesh const& mesh, MatBlank& mat)
-	: local(graphics::ShaderBuffer(vram, name, {})), prop(mesh, mat) {
+Drawer::Drawable::Drawable(std::string_view name, graphics::VRAM& vram, Prop2& prop) : local(graphics::ShaderBuffer(vram, name, {})), prop(prop) {
 }
 
-Drawer::Drawable::Drawable(std::string_view name, graphics::VRAM& vram, Prop2&& prop) : local(graphics::ShaderBuffer(vram, name, {})), prop(std::move(prop)) {
-}
-
-void Drawer::Drawable::reassign(graphics::Mesh const& mesh, MatBlank& mat) {
-	prop = Prop2(mesh, mat);
-}
-
-void Drawer::Drawable::reassign(Prop2&& prop) {
-	this->prop = std::move(prop);
+void Drawer::Drawable::reassign(Prop2& prop) {
+	this->prop = prop;
 }
 
 void Drawer::Drawable::update(std::size_t idx) {
-	auto& input = prop.material.get().pPipe->shaderInput();
+	auto& input = prop.get().material.get().pPipe->shaderInput();
 	if (input.contains(1)) {
-		local.write(prop.transform.model());
+		local.write(prop.get().transform.model());
 		input.update(local, 1, 0, idx);
 		local.swap();
 	}
-	prop.material.get().write(idx);
+	prop.get().material.get().write(idx);
 }
 
 void Drawer::Drawable::draw(graphics::CommandBuffer const& cb, std::size_t idx) const {
-	graphics::Pipeline const& pi = *prop.material.get().pPipe;
+	graphics::Pipeline const& pi = *prop.get().material.get().pPipe;
 	auto& input = pi.shaderInput();
 	if (input.contains(1)) {
 		cb.bindSet(pi.layout(), input.set(1).index(idx));
 	}
-	prop.material.get().bind(cb, idx);
-	prop.mesh.get().draw(cb);
+	prop.get().material.get().bind(cb, idx);
+	prop.get().mesh.get().draw(cb);
 }
-Drawer::Drawer(graphics::VRAM& vram) : m_view(vram, "vp", {}), m_vram(vram) {
+
+Drawer::Drawer(graphics::VRAM& vram, ec::Registry& registry) : m_view(vram, "vp", {}), m_vram(vram), m_registry(registry) {
 }
 
 void Drawer::update(Camera const& cam, glm::ivec2 fb) {
 	ViewMats const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
 	m_view.write<false>(v);
-	m_lists = toLists(m_drawables);
+	m_lists = toLists();
 	for (auto& list : m_lists) {
 		list.material.get().pPipe->shaderInput().update(m_view, 0, 0, 0);
 		list.update();
@@ -67,55 +60,73 @@ void Drawer::draw(graphics::CommandBuffer const& cb) const {
 	}
 }
 
-bool Drawer::remove(Hash id) noexcept {
-	if (auto it = m_drawables.find(id); it != m_drawables.end()) {
-		m_drawables.erase(it);
-		return true;
-	}
-	return false;
-}
-
-bool Drawer::contains(Hash id) const noexcept {
-	return m_drawables.find(id) != m_drawables.end();
-}
-
-void Drawer::clear() noexcept {
-	m_drawables.clear();
-}
-
-Prop2& Drawer::operator[](Hash id) {
-	if (auto it = m_drawables.find(id); it != m_drawables.end()) {
-		return it->second.prop;
+Prop2& Drawer::operator[](ec::Entity entity) {
+	if (auto pD = m_registry.get().find<Drawable>(entity)) {
+		return pD->prop;
 	}
 	ENSURE(false, "Invalid id");
 	throw std::runtime_error("Invalid id");
 }
 
-Prop2 const& Drawer::operator[](Hash id) const {
-	if (auto it = m_drawables.find(id); it != m_drawables.end()) {
-		return it->second.prop;
+Prop2 const& Drawer::operator[](ec::Entity entity) const {
+	if (auto pD = m_registry.get().find<Drawable>(entity)) {
+		return pD->prop;
 	}
 	ENSURE(false, "Invalid id");
 	throw std::runtime_error("Invalid id");
 }
 
-Prop2& Drawer::add(std::string_view id, Ref<graphics::Mesh const> mesh, Ref<MatBlank> material) {
-	return addImpl(id, mesh, material);
+Prop2& Drawer::spawn(std::string_view name, Ref<graphics::Mesh const> mesh, Ref<MatBlank> material) {
+	auto [e, c] = m_registry.get().spawn<Prop2>(std::string(name), mesh, material);
+	auto& [prop] = c;
+	prop.entity = e;
+	return spawnImpl(name, prop);
 }
 
-Prop2& Drawer::add(std::string_view id, Prop2&& prop) {
-	return addImpl(id, std::move(prop));
+Prop2& Drawer::spawn(std::string_view name, Prop2&& prop) {
+	auto [e, c] = m_registry.get().spawn<Prop2>(std::string(name), std::move(prop));
+	auto& [p] = c;
+	p.entity = e;
+	return spawnImpl(name, p);
 }
 
-Prop2& Drawer::insert(std::string_view id, Drawable&& d) {
-	auto [it, _] = m_drawables.emplace(id, std::move(d));
-	return it->second.prop;
-}
-
-Drawer::Drawable* Drawer::find(Hash id) noexcept {
-	if (auto it = m_drawables.find(id); it != m_drawables.end()) {
-		return &it->second;
+Prop2* Drawer::attach(ec::Entity entity) {
+	if (m_registry.get().exists(entity)) {
+		auto pD = m_registry.get().find<Drawable>(entity);
+		auto pP = m_registry.get().find<Prop2>(entity);
+		if (!pD && !pP) {
+			return nullptr;
+		} else if (pD && !pP) {
+			ENSURE(false, "Prop destroyed / dangling Drawable");
+			pD->prop = *pP;
+			return pP;
+		} else if (pP && !pD) {
+			auto name = m_registry.get().name(entity);
+			Drawable dr(std::string(name), m_vram, *pP);
+			pD = m_registry.get().attach<Drawable>(entity, std::move(dr));
+			ENSURE(pD, "Invariant violated");
+			pD->prop.get().entity = entity;
+		}
+		ENSURE(pD, "Invariant violated");
+		return &pD->prop.get();
 	}
 	return nullptr;
+}
+
+std::vector<Drawer::List> Drawer::toLists() const {
+	auto drawables = m_registry.get().view<Prop2, Drawable>();
+	std::vector<Ref<Drawable>> v;
+	v.reserve(drawables.size());
+	for (auto& [_, d] : drawables) {
+		auto& [_2, dr] = d;
+		v.push_back(dr);
+	}
+	return List::to(v);
+}
+
+Prop2& Drawer::spawnImpl(std::string_view name, Prop2& out_prop) {
+	auto pD = m_registry.get().attach<Drawable>(out_prop.entity, std::string(name), m_vram, out_prop);
+	ENSURE(pD, "Invariant violated");
+	return pD->prop;
 }
 } // namespace le

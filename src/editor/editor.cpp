@@ -27,7 +27,7 @@
 namespace le::editor {
 using namespace input;
 using namespace std::literals;
-using namespace ecs;
+using namespace ec;
 
 using v2 = glm::vec2 const&;
 using iv2 = glm::ivec2 const&;

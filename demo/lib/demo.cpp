@@ -286,7 +286,7 @@ using namespace std::chrono;
 
 class App {
   public:
-	App(Eng& eng, io::Reader const& reader) : m_drawer(eng.m_boot.vram), m_eng(eng) {
+	App(Eng& eng, io::Reader const& reader) : m_drawer(eng.m_boot.vram, m_registry), m_eng(eng) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().m_boot.device, {}};
@@ -396,15 +396,17 @@ class App {
 		m_data.mat_font.diffuse.tex = &*m_data.font.atlas;
 		m_data.mat_font.pPipe = &pipe_ui->get();
 		m_data.mat_def.pPipe = &pipe_test->get();
-		m_drawer.add("cube_tex", cube.get(), m_data.mat_tex);
+		auto& cube_tex = m_drawer.spawn("cube_tex", cube.get(), m_data.mat_tex);
+		m_data.entities[m_registry.name(cube_tex.entity)] = cube_tex.entity;
 		Prop2 p1(cube.get(), m_data.mat_def);
 		p1.transform.position({-5.0f, -1.0f, -2.0f});
-		m_drawer.add("prop_1", std::move(p1));
+		m_drawer.spawn("prop_1", std::move(p1));
 		Prop2 p2(cone.get(), m_data.mat_def);
 		p2.transform.position({1.0f, -2.0f, -3.0f});
-		m_drawer.add("prop_2", std::move(p2));
-		m_drawer.add("hi", *m_data.text.mesh, m_data.mat_font);
-		m_drawer.add("sky", skycube.get(), m_data.mat_sky);
+		auto& prop2 = m_drawer.spawn("prop_2", std::move(p2));
+		m_data.entities[m_registry.name(prop2.entity)] = prop2.entity;
+		m_drawer.spawn("hi", *m_data.text.mesh, m_data.mat_font);
+		m_drawer.spawn("sky", skycube.get(), m_data.mat_sky);
 	}
 
 	void tick(Time_s dt) {
@@ -429,8 +431,8 @@ class App {
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
 		}
-		m_drawer["cube_tex"].transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_drawer["prop_2"].transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		m_registry.find<Prop2>(m_data.entities["cube_tex"])->transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_registry.find<Prop2>(m_data.entities["prop_2"])->transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 	}
 
 	void render() {
@@ -455,6 +457,7 @@ class App {
 	struct Data {
 		std::vector<Hash> tex;
 		std::vector<Hash> mesh;
+		std::unordered_map<Hash, ec::Entity> entities;
 
 		MatTextured mat_tex;
 		MatUI mat_font;
@@ -469,6 +472,7 @@ class App {
 	};
 
 	Data m_data;
+	ec::Registry m_registry;
 	Drawer m_drawer;
 	task_scheduler m_tasks;
 	std::future<void> m_ready;

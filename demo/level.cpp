@@ -7,7 +7,7 @@
 #include <levels/test.hpp>
 
 using namespace le;
-using namespace ecs;
+using namespace ec;
 
 namespace {
 struct Switcher final {

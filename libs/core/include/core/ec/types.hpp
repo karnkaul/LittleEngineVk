@@ -6,7 +6,7 @@
 #include <cxxabi.h>
 #endif
 
-namespace le::ecs {
+namespace le::ec {
 using ID = TZero<u64>;
 
 ///
@@ -27,29 +27,28 @@ using Components = std::tuple<T...>;
 /// \brief Return type wrapper for `Registry::spawn<T...>()`
 ///
 template <typename... T>
-struct Spawned final {
-	using type = Spawned<T...>;
-
+struct Spawn final {
 	Entity entity;
 	Components<T&...> components;
 
 	constexpr operator Entity() const noexcept;
 };
+
 ///
-/// \brief Specialisation for zero components
+/// \brief Return type wrapper for `Registry::spawn<T...>()`
 ///
 template <>
-struct Spawned<> {
-	using type = Entity;
+struct Spawn<> {
+	Entity entity;
+
+	constexpr operator Entity() const noexcept;
 };
-template <typename... T>
-using Spawned_t = typename Spawned<T...>::type;
 
 ///
 /// \brief Return type wrapper for Registry::view()
 ///
 template <typename... T>
-using View_t = std::vector<Spawned_t<T...>>;
+using SpawnList = std::vector<Spawn<T...>>;
 
 ///
 /// \brief Hash signature of component types
@@ -101,10 +100,19 @@ inline constexpr bool operator==(Entity lhs, Entity rhs) noexcept {
 inline constexpr bool operator!=(Entity lhs, Entity rhs) noexcept {
 	return !(lhs == rhs);
 }
-} // namespace le::ecs
+
+template <typename... T>
+constexpr Spawn<T...>::operator Entity() const noexcept {
+	return entity;
+}
+
+constexpr Spawn<>::operator Entity() const noexcept {
+	return entity;
+}
+} // namespace le::ec
 
 namespace std {
-using namespace le::ecs;
+using namespace le::ec;
 
 template <>
 struct hash<Entity> {

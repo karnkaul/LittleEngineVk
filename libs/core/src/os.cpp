@@ -8,9 +8,8 @@
 #if defined(LEVK_OS_WINDOWS)
 #include <Windows.h>
 #elif defined(LEVK_OS_LINUX) || defined(LEVK_OS_ANDROID)
-#include <cstring>
+#include <fstream>
 #include <iostream>
-#include <fcntl.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -102,31 +101,34 @@ bool os::halt(View<Ref<ICmdArg>> cmdArgs) {
 	return false;
 }
 
-bool os::isDebuggerAttached() {
+bool os::debugging() {
 	bool ret = false;
 #if defined(LEVK_OS_WINDOWS)
 	ret = IsDebuggerPresent() != 0;
-#elif defined(LEVK_OS_LINUX) || defined(LEVK_OS_ANDROID)
-	char buf[4096];
-	auto const status_fd = ::open("/proc/self/status", O_RDONLY);
-	if (status_fd == -1) {
-		return false;
-	}
-	auto const num_read = ::read(status_fd, buf, sizeof(buf) - 1);
-	if (num_read <= 0) {
-		return false;
-	}
-	buf[(std::size_t)num_read] = '\0';
-	constexpr char tracerPidString[] = "TracerPid:";
-	auto const tracer_pid_ptr = ::strstr(buf, tracerPidString);
-	if (!tracer_pid_ptr) {
-		return false;
-	}
-	for (char const* pChar = tracer_pid_ptr + sizeof(tracerPidString) - 1; pChar <= buf + num_read && *pChar != '\n'; ++pChar) {
-		if (::isspace(*pChar)) {
-			continue;
-		} else {
-			ret = ::isdigit(*pChar) != 0 && *pChar != '0';
+#elif defined(LEVK_RUNTIME_LIBSTDCXX)
+	// search /proc/self/status for "TracerPid: <pid>..."
+	// return true if found and <pid> > 0
+	static constexpr std::string_view tracerPid = "TracerPid:";
+	std::array<char, 4096> buf;
+	if (auto f = std::ifstream("/proc/self/status", std::ios::in)) {
+		f.read(buf.data(), buf.size());
+		std::string_view str(buf.data());
+		if (std::size_t const tracer = str.find(tracerPid); tracer < str.size()) {
+			std::size_t begin = tracer + tracerPid.size();
+			while (begin < str.size() && std::isspace(static_cast<unsigned char>(str[begin]))) {
+				++begin;
+			}
+			std::size_t end = begin;
+			while (end < str.size() && !std::isspace(static_cast<unsigned char>(str[end]))) {
+				++end;
+			}
+			if (str = str.substr(begin, end - begin); !str.empty()) {
+				if (str.size() == 1) {
+					ret = str[0] != '0';
+				} else {
+					ret = std::all_of(str.begin(), str.end(), [](char const c) { return std::isdigit(static_cast<unsigned char>(c)); });
+				}
+			}
 		}
 	}
 #endif

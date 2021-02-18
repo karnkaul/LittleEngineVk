@@ -181,7 +181,7 @@ bool halt(View<Ref<ICmdArg>> cmdArgs);
 ///
 /// \brief Check if a debugger is attached to the runtime
 ///
-bool isDebuggerAttached();
+bool debugging();
 ///
 /// \brief Raise  a breakpoint signal
 ///

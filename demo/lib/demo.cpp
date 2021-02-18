@@ -211,12 +211,14 @@ struct Font {
 };
 
 struct Text {
+	using Type = graphics::Mesh::Type;
+
 	graphics::BitmapText text;
 	std::optional<graphics::Mesh> mesh;
-	inline static glm::mat4 const model = glm::mat4(1.0f);
+	static constexpr glm::mat4 const model = glm::mat4(1.0f);
 
-	void create(graphics::VRAM& vram, io::Path const& id) {
-		mesh = graphics::Mesh((id / "mesh").generic_string(), vram);
+	void create(graphics::VRAM& vram, io::Path const& id, Type type = Type::eDynamic) {
+		mesh = graphics::Mesh((id / "mesh").generic_string(), vram, type);
 	}
 
 	bool set(Font const& font, std::string_view str) {
@@ -485,7 +487,7 @@ class App {
 bool run(CreateInfo const& info, io::Reader const& reader) {
 	os::args({info.args.argc, info.args.argv});
 	if (os::halt(g_cmdArgs)) {
-		return 0;
+		return true;
 	}
 	try {
 		window::Instance::CreateInfo winInfo;

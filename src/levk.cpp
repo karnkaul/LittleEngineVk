@@ -87,7 +87,7 @@ bool Service::init(Info info) {
 		initInfo.config.createTempSurface = [&](vk::Instance instance) -> vk::SurfaceKHR { return dummyWindow.createSurface(instance); };
 		initInfo.config.stagingReserve = info.vramReserve;
 		m_services.add<gfx::Service>(std::move(initInfo));
-		auto const dirPath = os::dirPath(os::isDebuggerAttached() ? os::Dir::eWorking : os::Dir::eExecutable);
+		auto const dirPath = os::dirPath(os::debugging() ? os::Dir::eWorking : os::Dir::eExecutable);
 		io::Reader& reader = info.customReader.value_or(g_app.fileReader);
 		std::vector<io::Path> const defaultPaths = {dirPath / "data"};
 		auto const& dataPaths = info.dataPaths.empty() ? defaultPaths : info.dataPaths;

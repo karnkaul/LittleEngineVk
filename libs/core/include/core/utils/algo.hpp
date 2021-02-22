@@ -6,7 +6,7 @@
 namespace le::utils {
 template <typename T, typename Alloc, typename U>
 typename std::vector<T, Alloc>::size_type erase(std::vector<T, Alloc>& out_vec, U const& u) {
-	auto it = std::remove(out_vec.begin(), out_vec.end(), u);
+	auto const it = std::remove(out_vec.begin(), out_vec.end(), u);
 	auto const r = std::distance(it, out_vec.end());
 	out_vec.erase(it, out_vec.end());
 	return static_cast<typename std::vector<T, Alloc>::size_type>(r);
@@ -14,10 +14,20 @@ typename std::vector<T, Alloc>::size_type erase(std::vector<T, Alloc>& out_vec, 
 
 template <typename T, typename Alloc, typename Pred>
 typename std::vector<T, Alloc>::size_type erase_if(std::vector<T, Alloc>& out_vec, Pred pred) {
-	auto it = std::remove_if(out_vec.begin(), out_vec.end(), pred);
+	auto const it = std::remove_if(out_vec.begin(), out_vec.end(), pred);
 	auto const r = std::distance(it, out_vec.end());
 	out_vec.erase(it, out_vec.end());
 	return static_cast<typename std::vector<T, Alloc>::size_type>(r);
+}
+
+template <typename C, typename T>
+constexpr auto find(C const& c, T const& t) noexcept {
+	return std::find(std::begin(c), std::end(c), t);
+}
+
+template <typename C, typename F>
+constexpr auto find_if(C const& c, F&& f) noexcept {
+	return std::find_if(std::begin(c), std::end(c), std::forward<F>(f));
 }
 
 template <typename In, template <typename...> typename Out, typename... Args>

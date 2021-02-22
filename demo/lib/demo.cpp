@@ -21,6 +21,7 @@
 #include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/camera.hpp>
+#include <engine/input/input.hpp>
 #include <engine/render/draw.hpp>
 
 namespace le::demo {
@@ -32,16 +33,6 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 		switch (e->type) {
 		case window::Event::Type::eClose: {
 			out_flags.set(Flag::eClosed);
-			break;
-		}
-		case window::Event::Type::eInput: {
-			auto const& input = e->payload.input;
-			if (input.key == window::Key::eW && input.action == window::Action::eRelease && input.mods[window::Mod::eControl]) {
-				out_flags.set(Flag::eClosed);
-			}
-			if (input.key == window::Key::eD && input.action == window::Action::eRelease && input.mods[window::Mod::eControl]) {
-				out_flags.flip(Flag::eDebug0);
-			}
 			break;
 		}
 		case window::Event::Type::eSuspend: {
@@ -256,23 +247,73 @@ void listCmdArgs() {
 	std::cout << str.str();
 }
 
-class Eng {
+class Engine {
   public:
-	static vk::SurfaceKHR makeSurface(window::IInstance const& winst, vk::Instance vkinst) {
-		vk::SurfaceKHR ret;
-		winst.vkCreateSurface(vkinst, ret);
+	Engine(window::IInstance& inst) : m_win(inst), m_pDesktop(dynamic_cast<window::DesktopInstance*>(&inst)) {
+	}
+
+	Input::Out poll(bool consume) noexcept {
+		auto ret = m_input.update(m_win.get().pollEvents(), consume, m_pDesktop);
+		// TODO: pass state to editor etc
+		for (Input::IContext& context : m_contexts) {
+			if (context.block(ret.state)) {
+				break;
+			}
+		}
 		return ret;
 	}
 
-	Eng(window::IInstance& winst, graphics::Bootstrap::CreateInfo const& boot, glm::ivec2 fb)
-		: m_win(winst), m_boot(
-							boot, [&winst](vk::Instance vi) { return makeSurface(winst, vi); }, fb),
-		  m_context(m_boot.swapchain) {
+	void pushContext(Input::IContext& context) {
+		context.m_inputToken = m_contexts.push<true>(context);
+	}
+
+	bool boot(graphics::Bootstrap::CreateInfo const& boot) {
+		if (!m_boot && !m_gfx) {
+			auto surface = [this](vk::Instance inst) { return makeSurface(inst); };
+			m_boot.emplace(boot, surface, m_win.get().framebufferSize());
+			m_gfx.emplace(m_boot->swapchain);
+			return true;
+		}
+		return false;
+	}
+
+	bool unboot() noexcept {
+		if (m_boot && m_gfx) {
+			m_gfx.reset();
+			m_boot.reset();
+			return true;
+		}
+		return false;
+	}
+
+	bool booted() const noexcept {
+		return m_boot.has_value() && m_gfx.has_value();
+	}
+
+	graphics::Bootstrap& boot() {
+		ENSURE(m_boot.has_value(), "Not booted");
+		return *m_boot;
+	}
+
+	graphics::RenderContext& context() {
+		ENSURE(m_gfx.has_value(), "Not booted");
+		return *m_gfx;
 	}
 
 	Ref<window::IInstance> m_win;
-	graphics::Bootstrap m_boot;
-	graphics::RenderContext m_context;
+
+  private:
+	vk::SurfaceKHR makeSurface(vk::Instance vkinst) {
+		vk::SurfaceKHR ret;
+		m_win.get().vkCreateSurface(vkinst, ret);
+		return ret;
+	}
+
+	std::optional<graphics::Bootstrap> m_boot;
+	std::optional<graphics::RenderContext> m_gfx;
+	Input m_input;
+	TTokenGen<Ref<Input::IContext>, TGSpec_deque> m_contexts;
+	window::DesktopInstance* m_pDesktop = {};
 };
 
 using namespace dts;
@@ -286,19 +327,19 @@ TaskErr g_taskErr;
 
 using namespace std::chrono;
 
-class App {
+class App : public Input::IContext {
   public:
-	App(Eng& eng, io::Reader const& reader) : m_drawer(eng.m_boot.vram, m_registry), m_eng(eng) {
+	App(Engine& eng, io::Reader const& reader) : m_drawer(eng.boot().vram, m_registry), m_eng(eng) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
-			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().m_boot.device, {}};
+			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().boot().device, {}};
 			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
 			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
 			m_store.load<graphics::Shader>(id, std::move(shaderLD));
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
 		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
-			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().m_context, {}, {}, {}, {}};
+			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().context(), {}, {}, {}, {}};
 			pipelineLD.name = id;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
@@ -306,10 +347,10 @@ class App {
 			m_store.load<graphics::Pipeline>(id, std::move(pipelineLD));
 		};
 		m_store.resources().reader(reader);
-		m_store.add("samplers/default", graphics::Sampler{eng.m_boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+		m_store.add("samplers/default", graphics::Sampler{eng.boot().device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 		auto sampler = m_store.get<graphics::Sampler>("samplers/default");
-		m_data.font.create(eng.m_boot.vram, reader, "fonts/default", "fonts/default.json", sampler->sampler(), eng.m_context.textureFormat());
-		m_data.text.create(eng.m_boot.vram, "text");
+		m_data.font.create(eng.boot().vram, reader, "fonts/default", "fonts/default.json", sampler->sampler(), eng.context().textureFormat());
+		m_data.text.create(eng.boot().vram, "text");
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
@@ -318,21 +359,21 @@ class App {
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
 			auto const skyCubeV = gcube.positions();
-			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.m_boot.vram));
+			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.boot().vram));
 			cube->construct(gcube);
 			m_data.mesh.push_back(cube.m_id);
-			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.m_boot.vram));
+			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.boot().vram));
 			cone->construct(graphics::makeCone());
 			m_data.mesh.push_back(cone.m_id);
-			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.m_boot.vram));
+			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.boot().vram));
 			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
 			m_data.mesh.push_back(skycube.m_id);
 		}
 
 		task_scheduler::stage_id load_shaders;
-		PCI pci_skybox = eng.m_context.pipeInfo();
+		PCI pci_skybox = eng.context().pipeInfo();
 		pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
-		pci_skybox.fixedState.vertexInput = eng.m_context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
+		pci_skybox.fixedState.vertexInput = eng.context().vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 		{
 			task_scheduler::stage_t shaders;
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test", "shaders/test.vert", "shaders/test.frag"); });
@@ -352,7 +393,7 @@ class App {
 		}
 
 		task_scheduler::stage_t texload;
-		AssetLoadData<graphics::Texture> textureLD{eng.m_boot.vram, {}, {}, {}, {}, {}, "samplers/default"};
+		AssetLoadData<graphics::Texture> textureLD{eng.boot().vram, {}, {}, {}, {}, {}, "samplers/default"};
 		textureLD.name = "cubemaps/sky_dusk";
 		textureLD.prefix = "skyboxes/sky_dusk";
 		textureLD.ext = ".jpg";
@@ -378,7 +419,13 @@ class App {
 			m_data.tex.push_back(textureLD.name);
 		});
 		m_data.load_tex = m_tasks.stage(std::move(texload));
+
+		// m_input = m_eng.get().push(this);
 		eng.m_win.get().show();
+	}
+
+	bool block(Input::State const&) override {
+		return false;
 	}
 
 	void init1() {
@@ -438,17 +485,17 @@ class App {
 	}
 
 	void render() {
-		if (m_eng.get().m_context.waitForFrame()) {
+		if (m_eng.get().context().waitForFrame()) {
 			// write / update
 			if (m_data.load_tex.id == 0) {
-				m_drawer.update(m_data.cam, m_eng.get().m_context.extent());
+				m_drawer.update(m_data.cam, m_eng.get().context().extent());
 			}
 
 			// draw
-			if (auto r = m_eng.get().m_context.render(Colour(0x040404ff))) {
+			if (auto r = m_eng.get().context().render(Colour(0x040404ff))) {
 				if (m_data.load_tex.id == 0) {
 					auto& cb = r->primary();
-					cb.setViewportScissor(m_eng.get().m_context.viewport(), m_eng.get().m_context.scissor());
+					cb.setViewportScissor(m_eng.get().context().viewport(), m_eng.get().context().scissor());
 					m_drawer.draw(cb);
 				}
 			}
@@ -481,7 +528,29 @@ class App {
 
   public:
 	AssetStore m_store;
-	Ref<Eng> m_eng;
+	Ref<Engine> m_eng;
+};
+
+struct FlagsInput : Input::IContext {
+	Flags& flags;
+
+	FlagsInput(Flags& flags) : flags(flags) {
+	}
+
+	bool block(Input::State const& state) override {
+		bool ret = false;
+		if (state.any({window::Key::eLeftControl, window::Key::eRightControl})) {
+			if (state.pressed(window::Key::eW)) {
+				flags.set(Flag::eClosed);
+				ret = true;
+			}
+			if (state.released(window::Key::eD)) {
+				flags.set(Flag::eDebug0);
+				ret = true;
+			}
+		}
+		return ret;
+	}
 };
 
 bool run(CreateInfo const& info, io::Reader const& reader) {
@@ -502,16 +571,21 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 		bootInfo.instance.bValidation = levk_debug;
 		bootInfo.instance.validationLog = dl::level::info;
 		bootInfo.logVerbosity = LibLogger::Verbosity::eLibrary;
-		std::optional<Eng> eng;
 		std::optional<App> app;
 		bootInfo.device.pickOverride = GPUPicker::s_picked;
+		Engine engine(winst);
 		Flags flags;
+		FlagsInput flagsInput(flags);
+		engine.pushContext(flagsInput);
 		time::Point t = time::now();
 		while (true) {
 			Time_s dt = time::now() - t;
 			t = time::now();
-			poll(flags, winst.pollEvents());
+			auto [_, queue] = engine.poll(true);
+			poll(flags, std::move(queue));
 			if (flags.test(Flag::eClosed)) {
+				app.reset();
+				engine.unboot();
 				break;
 			}
 			if (flags.test(Flag::ePaused)) {
@@ -519,12 +593,12 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 			}
 			if (flags.test(Flag::eInit)) {
 				app.reset();
-				eng.emplace(winst, bootInfo, winst.framebufferSize());
-				app.emplace(*eng, reader);
+				engine.boot(bootInfo);
+				app.emplace(engine, reader);
 			}
 			if (flags.test(Flag::eTerm)) {
 				app.reset();
-				eng.reset();
+				engine.unboot();
 			}
 			if (flags.test(Flag::eResized)) {
 				/*if (!context.recreated(winst.framebufferSize())) {
@@ -532,7 +606,7 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 				}*/
 				flags.reset(Flag::eResized);
 			}
-			if (eng && eng->m_context.reconstructed(winst.framebufferSize())) {
+			if (engine.booted() && engine.context().reconstructed(winst.framebufferSize())) {
 				continue;
 			}
 

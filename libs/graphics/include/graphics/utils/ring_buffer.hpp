@@ -14,6 +14,7 @@ struct RingBuffer {
 	T const& get() const;
 	void next() noexcept;
 	std::size_t size() const noexcept;
+	bool empty() const noexcept;
 
 	std::vector<T> ts;
 	std::size_t total = 0;
@@ -37,12 +38,17 @@ typename RingBuffer<T>::type const& RingBuffer<T>::get() const {
 }
 template <typename T>
 void RingBuffer<T>::next() noexcept {
-	ENSURE(!ts.empty(), "Empty buffer");
-	index = (index + 1) % size();
-	++total;
+	if (!ts.empty()) {
+		index = (index + 1) % size();
+		++total;
+	}
 }
 template <typename T>
 std::size_t RingBuffer<T>::size() const noexcept {
 	return ts.size();
+}
+template <typename T>
+bool RingBuffer<T>::empty() const noexcept {
+	return ts.empty();
 }
 } // namespace le

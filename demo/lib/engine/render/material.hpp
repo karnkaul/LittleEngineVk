@@ -28,7 +28,7 @@ struct MatBlank : IMaterial {
 struct MatTextured : MatBlank {
 	struct {
 		graphics::Texture const* tex = {};
-		SetBind sb = {2, 0};
+		SetBind sb = {3, 0};
 	} diffuse;
 
 	void write(std::size_t idx) override;
@@ -42,7 +42,7 @@ struct MatUI : MatTextured {
 struct MatSkybox : MatBlank {
 	struct {
 		graphics::Texture const* tex = {};
-		SetBind sb = {0, 1};
+		SetBind sb = {0, 2};
 	} cubemap;
 
 	MatSkybox() noexcept;

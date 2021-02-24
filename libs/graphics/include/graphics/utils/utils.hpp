@@ -9,6 +9,7 @@
 #include <graphics/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
+#include <kt/fixed_vector/fixed_vector.hpp>
 #include <spirv_cross.hpp>
 
 inline constexpr bool levk_shaderCompiler = levk_desktopOS;
@@ -27,7 +28,7 @@ struct VertexInfoFactory<Vertex> {
 namespace utils {
 using set_t = u32;
 struct SetBindings {
-	std::map<set_t, std::vector<BindingInfo>> sets;
+	std::map<set_t, kt::fixed_vector<BindingInfo, 16>> sets;
 	std::vector<vk::PushConstantRange> push;
 };
 

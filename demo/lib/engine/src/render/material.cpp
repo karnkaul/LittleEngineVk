@@ -10,7 +10,7 @@ void MatTextured::write(std::size_t idx) {
 }
 
 void MatTextured::bind(graphics::CommandBuffer const& cb, std::size_t idx) const {
-	cb.bindSet(pPipe->layout(), pPipe->shaderInput().set(2).index(idx));
+	cb.bindSet(pPipe->layout(), pPipe->shaderInput().set(diffuse.sb.set).index(idx));
 }
 
 void MatSkybox::write(std::size_t idx) {

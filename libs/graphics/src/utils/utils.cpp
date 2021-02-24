@@ -1,6 +1,7 @@
 #include <stb/stb_image.h>
 #include <core/log.hpp>
 #include <core/singleton.hpp>
+#include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
 #include <graphics/pipeline.hpp>
 #include <graphics/render_context.hpp>
@@ -42,11 +43,13 @@ struct DescBinding {
 	u32 count = 0;
 	vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
 	vk::ShaderStageFlags stages;
+	bool bDummy = false;
 };
 
 namespace spvc = spirv_cross;
 using binding_t = u32;
-using Sets = std::map<utils::set_t, std::map<binding_t, DescBinding>>;
+using bind_map = std::map<binding_t, DescBinding>;
+using Sets = std::map<utils::set_t, bind_map>;
 using Push = std::vector<vk::PushConstantRange>;
 using Extractee = std::pair<spvc::Compiler const&, spvc::ShaderResources const&>;
 using ExtractData = std::pair<vk::DescriptorType, vk::ShaderStageFlagBits>;
@@ -61,7 +64,7 @@ struct Extractor {
 		for (auto const& item : list) {
 			u32 const set = c.get_decoration(item.id, spv::Decoration::DecorationDescriptorSet);
 			u32 const binding = c.get_decoration(item.id, spv::Decoration::DecorationBinding);
-			DescBinding& db = m[set][binding];
+			auto& db = m[set][binding];
 			db.type = type;
 			db.stages |= stage;
 			auto const& type = c.get_type(item.type_id);
@@ -142,7 +145,6 @@ kt::result_t<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& d
 utils::SetBindings utils::extractBindings(Shader const& shader) {
 	SetBindings ret;
 	Sets sets;
-	std::vector<u32> gaps;
 	for (std::size_t idx = 0; idx < shader.m_spirV.size(); ++idx) {
 		auto spirV = shader.m_spirV[idx];
 		if (!spirV.empty()) {
@@ -152,36 +154,39 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 			extractBindings({compiler, resources}, sets, type);
 			extractPush({compiler, resources}, ret.push, type);
 		}
-		if (!sets.empty()) {
-			u32 set = 0;
-			for (auto& [s, _] : sets) {
-				if (s == set) {
-					++set;
-					continue;
-				}
-				while (s > set) {
-					gaps.push_back(set++);
+	}
+	for (u32 set = 0; set < (u32)sets.size(); ++set) {
+		if (auto it = sets.find(set); it != sets.end()) {
+			auto& bm = it->second;
+			for (u32 binding = 0; binding < bm.size(); ++binding) {
+				if (!le::utils::contains(bm, binding)) {
+					DescBinding dummy;
+					dummy.bDummy = true;
+					bm[binding] = dummy; // inactive binding: no descriptors needed
 				}
 			}
+		} else {
+			sets[set] = bind_map(); // inactive set: has no bindings
 		}
 	}
 	for (auto const& [s, bmap] : sets) {
+		auto& binds = ret.sets[s]; // register all set numbers whether active or not
 		for (auto const& [b, db] : bmap) {
 			BindingInfo bindInfo;
 			bindInfo.binding.binding = b;
-			bindInfo.binding.stageFlags = db.stages;
-			bindInfo.binding.descriptorCount = db.count;
-			bindInfo.binding.descriptorType = db.type;
-			bindInfo.name = std::move(db.name);
-			ret.sets[s].push_back(bindInfo);
+			if (!db.bDummy) {
+				bindInfo.binding.stageFlags = db.stages;
+				bindInfo.binding.descriptorCount = db.count;
+				bindInfo.binding.descriptorType = db.type;
+				bindInfo.name = std::move(db.name);
+			} else {
+				bindInfo.binding.descriptorCount = 0;
+				bindInfo.name = fmt::format("[Unassigned_{}_{}]", s, b);
+				bindInfo.bUnassigned = true;
+			}
+			ENSURE(binds.size() < binds.capacity(), "Max descriptor sets exceeded");
+			binds.push_back(bindInfo);
 		}
-	}
-	for (auto set : gaps) {
-		BindingInfo binding;
-		binding.binding.descriptorCount = 0;
-		binding.name = fmt::format("[Unassigned_{}]", set);
-		binding.bUnassigned = true;
-		ret.sets[set].push_back(binding);
 	}
 	return ret;
 }

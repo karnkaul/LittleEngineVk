@@ -14,9 +14,9 @@ void Drawer::Drawable::reassign(Prop2& prop) {
 
 void Drawer::Drawable::update(std::size_t idx) {
 	auto& input = prop.get().material.get().pPipe->shaderInput();
-	if (input.contains(1)) {
+	if (input.contains(ModelMats::sb.set)) {
 		local.write(prop.get().transform.model());
-		input.update(local, 1, 0, idx);
+		input.update(local, ModelMats::sb.set, ModelMats::sb.bind, idx);
 		local.swap();
 	}
 	prop.get().material.get().write(idx);
@@ -25,8 +25,8 @@ void Drawer::Drawable::update(std::size_t idx) {
 void Drawer::Drawable::draw(graphics::CommandBuffer const& cb, std::size_t idx) const {
 	graphics::Pipeline const& pi = *prop.get().material.get().pPipe;
 	auto& input = pi.shaderInput();
-	if (input.contains(1)) {
-		cb.bindSet(pi.layout(), input.set(1).index(idx));
+	if (input.contains(ModelMats::sb.set)) {
+		cb.bindSet(pi.layout(), input.set(ModelMats::sb.set).index(idx));
 	}
 	prop.get().material.get().bind(cb, idx);
 	prop.get().mesh.get().draw(cb);
@@ -36,11 +36,11 @@ Drawer::Drawer(graphics::VRAM& vram, decf::registry_t& registry) : m_view(vram, 
 }
 
 void Drawer::update(Camera const& cam, glm::ivec2 fb) {
-	ViewMats const v{cam.perspective(fb), cam.view(), cam.ortho(fb)};
+	ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb)};
 	m_view.write<false>(v);
 	m_lists = toLists();
 	for (auto& list : m_lists) {
-		list.material.get().pPipe->shaderInput().update(m_view, 0, 0, 0);
+		list.material.get().pPipe->shaderInput().update(m_view, ViewMats::sb.set, ViewMats::sb.bind, 0);
 		list.update();
 	}
 	m_view.swap();
@@ -52,7 +52,7 @@ void Drawer::draw(graphics::CommandBuffer const& cb) const {
 		graphics::Pipeline& pi = *list.material.get().pPipe;
 		ps.insert(pi);
 		cb.bindPipe(pi);
-		cb.bindSet(pi.layout(), pi.shaderInput().set(0).front());
+		cb.bindSet(pi.layout(), pi.shaderInput().set(ViewMats::sb.set).front());
 		list.draw(cb);
 	}
 	for (graphics::Pipeline& pipe : ps) {

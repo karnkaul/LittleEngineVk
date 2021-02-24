@@ -166,7 +166,9 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 			vk::DescriptorSetLayoutCreateInfo createInfo;
 			std::vector<vk::DescriptorSetLayoutBinding> bindings;
 			for (auto& setBinding : binds) {
-				bindings.push_back(setBinding.binding);
+				if (!setBinding.bUnassigned) {
+					bindings.push_back(setBinding.binding);
+				}
 			}
 			createInfo.bindingCount = (u32)bindings.size();
 			createInfo.pBindings = bindings.data();

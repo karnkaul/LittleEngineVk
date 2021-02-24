@@ -80,7 +80,7 @@ class Pipeline final {
 		struct {
 			vk::PipelineLayout layout;
 			std::vector<vk::DescriptorSetLayout> setLayouts;
-			std::vector<std::vector<BindingInfo>> bindingInfos;
+			std::vector<kt::fixed_vector<BindingInfo, 16>> bindingInfos;
 		} fixed;
 		Hash id;
 	};

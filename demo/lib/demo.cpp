@@ -458,21 +458,25 @@ class App : public Input::IContext {
 		m_drawer.spawn("sky", skycube.get(), m_data.mat_sky);
 	}
 
-	void tick(Time_s dt) {
-		if (m_data.load_pipes.id > 0) {
-			if (m_tasks.stage_done(m_data.load_pipes)) {
-				m_data.load_pipes = {};
-			} else {
-				return;
+	bool ready(std::initializer_list<Ref<dts::task_scheduler::stage_id>> sts) const {
+		for (dts::task_scheduler::stage_id& st : sts) {
+			if (st.id > 0) {
+				if (m_tasks.stage_done(st)) {
+					st = {};
+				} else {
+					return false;
+				}
 			}
 		}
-		if (m_data.load_tex.id > 0) {
-			if (m_tasks.stage_done(m_data.load_tex)) {
-				init1();
-				m_data.load_tex = {};
-			} else {
-				return;
-			}
+		return true;
+	}
+
+	void tick(Time_s dt) {
+		if (!ready({m_data.load_pipes, m_data.load_tex})) {
+			return;
+		}
+		if (m_registry.empty()) {
+			init1();
 		}
 		// camera
 		{

@@ -14,9 +14,17 @@ class Mesh;
 }
 
 struct ViewMats {
-	glm::mat4 mat_p;
+	inline static constexpr SetBind sb = {0, 0};
+
 	glm::mat4 mat_v;
+	glm::mat4 mat_p;
 	glm::mat4 mat_ui;
+};
+
+struct ModelMats {
+	inline static constexpr SetBind sb = {2, 0};
+
+	glm::mat4 mat_m;
 };
 
 struct Prop2 {

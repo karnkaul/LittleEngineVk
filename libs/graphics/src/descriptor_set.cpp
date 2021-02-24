@@ -29,24 +29,33 @@ DescriptorSet::DescriptorSet(Device& device, CreateInfo const& info) : m_device(
 	m_storage.rotateCount = (u32)info.rotateCount;
 	m_storage.layout = info.layout;
 	m_storage.setNumber = info.setNumber;
+	bool bActive = false;
 	for (auto const& bindingInfo : info.bindingInfos) {
 		m_storage.bindingInfos[bindingInfo.binding.binding] = bindingInfo;
+		bActive |= !bindingInfo.bUnassigned;
 	}
-	std::vector<vk::DescriptorPoolSize> poolSizes;
-	poolSizes.reserve(m_storage.bindingInfos.size());
-	for (u32 buf = 0; buf < m_storage.rotateCount; ++buf) {
-		Set set;
-		for (auto const& [b, bindingInfo] : m_storage.bindingInfos) {
-			u32 const totalSize = bindingInfo.binding.descriptorCount * m_storage.rotateCount;
-			poolSizes.push_back({bindingInfo.binding.descriptorType, totalSize});
-			set.bindings[b].type = bindingInfo.binding.descriptorType;
-			set.bindings[b].count = bindingInfo.binding.descriptorCount;
-			set.bindings[b].name = bindingInfo.name;
-			g_log.log(lvl::info, 1, "[{}] DescriptorSet [{}] binding [{}] [{}] constructed", g_name, info.setNumber, b, bindingInfo.name);
+	if (bActive) {
+		std::vector<vk::DescriptorPoolSize> poolSizes;
+		poolSizes.reserve(m_storage.bindingInfos.size());
+		for (u32 buf = 0; buf < m_storage.rotateCount; ++buf) {
+			Set set;
+			for (auto const& [b, bindingInfo] : m_storage.bindingInfos) {
+				if (!bindingInfo.bUnassigned) {
+					u32 const totalSize = bindingInfo.binding.descriptorCount * m_storage.rotateCount;
+					poolSizes.push_back({bindingInfo.binding.descriptorType, totalSize});
+					set.bindings[b].type = bindingInfo.binding.descriptorType;
+					set.bindings[b].count = bindingInfo.binding.descriptorCount;
+					set.bindings[b].name = bindingInfo.name;
+					g_log.log(lvl::debug, 2, "[{}] Binding [{}] [{}] for DescriptorSet [{}] registered", g_name, b, bindingInfo.name, info.setNumber);
+				}
+			}
+			set.pool = m_device.get().createDescriptorPool(poolSizes, 1);
+			set.set = m_device.get().allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
+			m_storage.setBuffer.push(std::move(set));
 		}
-		set.pool = m_device.get().createDescriptorPool(poolSizes, 1);
-		set.set = m_device.get().allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
-		m_storage.setBuffer.push(std::move(set));
+		g_log.log(lvl::debug, 2, "[{}] DescriptorSet [{}] constructed", g_name, info.setNumber);
+	} else {
+		g_log.log(lvl::info, 0, "[{}] DescriptorSet [{}] inactive", g_name, info.setNumber);
 	}
 }
 

@@ -67,9 +67,14 @@ struct Colour {
 
 	///
 	/// \brief Convert to GLSL format
-	/// \returns Each component normalised to `[0.0f, 1.0f]`
+	/// \returns RGBA normalised to [0.0f, 1.0f]
 	///
 	glm::vec4 toVec4() const noexcept;
+	///
+	/// \brief Convert to GLSL format
+	/// \returns RGB normalised to [0.0f, 1.0f]
+	///
+	glm::vec3 toVec3() const noexcept;
 	///
 	/// \brief Convert colour space to sRGB
 	///

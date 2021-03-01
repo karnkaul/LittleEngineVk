@@ -5,7 +5,8 @@
 #include <graphics/pipeline.hpp>
 
 namespace le {
-Drawer::Drawable::Drawable(std::string_view name, graphics::VRAM& vram, Prop2& prop) : local(graphics::ShaderBuffer(vram, name, {})), prop(prop) {
+Drawer::Drawable::Drawable(std::string_view name, graphics::VRAM& vram, Prop2& prop)
+	: mat_m(vram, std::string(name) + "/mat_m", {}), locals(vram, std::string(name) + "/locals", {}), prop(prop) {
 }
 
 void Drawer::Drawable::reassign(Prop2& prop) {
@@ -14,10 +15,14 @@ void Drawer::Drawable::reassign(Prop2& prop) {
 
 void Drawer::Drawable::update(std::size_t idx) {
 	auto& input = prop.get().material.get().pPipe->shaderInput();
-	if (input.contains(ModelMats::sb.set)) {
-		local.write(prop.get().transform.model());
-		input.update(local, ModelMats::sb.set, ModelMats::sb.bind, idx);
-		local.swap();
+	if (input.contains(ModelMats::sb.set, ModelMats::sb.bind)) {
+		mat_m.write(prop.get().transform.model());
+		input.update(mat_m, ModelMats::sb.set, ModelMats::sb.bind, idx);
+		mat_m.swap();
+	}
+	if (input.contains(ObjectAlbedo::sb.set, ObjectAlbedo::sb.bind)) {
+		locals.write(prop.get().material.get().albedo);
+		input.update(locals, ObjectAlbedo::sb.set, ObjectAlbedo::sb.bind);
 	}
 	prop.get().material.get().write(idx);
 }
@@ -28,31 +33,46 @@ void Drawer::Drawable::draw(graphics::CommandBuffer const& cb, std::size_t idx) 
 	if (input.contains(ModelMats::sb.set)) {
 		cb.bindSet(pi.layout(), input.set(ModelMats::sb.set).index(idx));
 	}
+	/*if (input.contains(ObjectAlbedo::sb.set)) {
+		cb.bindSet(pi.layout(), input.set(ObjectAlbedo::sb.bind).index(idx));
+	}*/
 	prop.get().material.get().bind(cb, idx);
 	prop.get().mesh.get().draw(cb);
 }
 
-Drawer::Drawer(graphics::VRAM& vram, decf::registry_t& registry) : m_view(vram, "vp", {}), m_vram(vram), m_registry(registry) {
+Drawer::Drawer(graphics::VRAM& vram, decf::registry_t& registry)
+	: m_viewMats(vram, "view_mats", {}), m_dirLights(vram, "dir_lights", {}), m_vram(vram), m_registry(registry) {
 }
 
-void Drawer::update(Camera const& cam, glm::ivec2 fb) {
-	ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb)};
-	m_view.write<false>(v);
+void Drawer::update(DrawView const& view) {
+	ENSURE(view.pCamera, "Camera is null");
+	Camera const& cam = *view.pCamera;
+	glm::vec2 const fb = view.framebuffer;
+	ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), cam.position};
+	m_viewMats.write<false>(v);
+	if (!view.dirLights.empty()) {
+		m_dirLights.write(view.dirLights.front());
+	}
 	m_lists = toLists();
 	for (auto& list : m_lists) {
-		list.material.get().pPipe->shaderInput().update(m_view, ViewMats::sb.set, ViewMats::sb.bind, 0);
+		auto& si = list.material.get().pPipe->shaderInput();
+		si.update(m_viewMats, ViewMats::sb.set, ViewMats::sb.bind, 0);
+		if (!view.dirLights.empty() && si.contains(DirLights::sb.set, DirLights::sb.bind)) {
+			si.update(m_dirLights, DirLights::sb.set, DirLights::sb.bind, 0);
+		}
 		list.update();
 	}
-	m_view.swap();
+	m_viewMats.swap();
 }
 
 void Drawer::draw(graphics::CommandBuffer const& cb) const {
 	std::unordered_set<Ref<graphics::Pipeline>> ps;
 	for (auto const& list : m_lists) {
 		graphics::Pipeline& pi = *list.material.get().pPipe;
+		graphics::ShaderInput& si = pi.shaderInput();
 		ps.insert(pi);
 		cb.bindPipe(pi);
-		cb.bindSet(pi.layout(), pi.shaderInput().set(ViewMats::sb.set).front());
+		cb.bindSet(pi.layout(), si.set(ViewMats::sb.set).front());
 		list.draw(cb);
 	}
 	for (graphics::Pipeline& pipe : ps) {

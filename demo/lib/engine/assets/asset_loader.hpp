@@ -63,7 +63,7 @@ template <typename T>
 Resource const* AssetLoadInfo<T>::resource(io::Path const& path, Resource::Type type, bool bMonitor, bool bForceReload) const {
 	if (auto pRes = m_resources.get().load(path, type, bMonitor, bForceReload)) {
 		auto const pathStr = path.generic_string();
-		if (bMonitor && utils::contains(m_monitors, pathStr)) {
+		if (bMonitor && !utils::contains(m_monitors, pathStr)) {
 			m_monitors.emplace(pathStr, *pRes);
 		}
 		return pRes;

@@ -442,6 +442,7 @@ class App : public Input::IContext {
 		m_data.mat_sky.pPipe = &pipe_sky->get();
 		m_data.mat_tex.diffuse.tex = &m_store.get<graphics::Texture>("textures/container2").get();
 		m_data.mat_tex.pPipe = &pipe_testTex->get();
+		m_data.mat_tex.albedo.diffuse = colours::magenta.toVec3();
 		m_data.mat_font.diffuse.tex = &*m_data.font.atlas;
 		m_data.mat_font.pPipe = &pipe_ui->get();
 		m_data.mat_def.pPipe = &pipe_test->get();
@@ -492,7 +493,7 @@ class App : public Input::IContext {
 		if (m_eng.get().context().waitForFrame()) {
 			// write / update
 			if (m_data.load_tex.id == 0) {
-				m_drawer.update(m_data.cam, m_eng.get().context().extent());
+				m_drawer.update({{}, m_eng.get().context().extent(), &m_data.cam});
 			}
 
 			// draw

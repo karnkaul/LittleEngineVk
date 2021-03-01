@@ -42,7 +42,9 @@ class DescriptorSet {
 	bool updateTextures(u32 binding, View<Texture> textures);
 
 	u32 setNumber() const noexcept;
-	BindingInfo const* binding(u32 bind) const;
+	BindingInfo const* binding(u32 bind) const noexcept;
+	bool contains(u32 bind) const noexcept;
+	bool unassigned() const noexcept;
 
 	Ref<Device> m_device;
 
@@ -94,6 +96,9 @@ class SetPool {
 	Span<DescriptorSet> populate(std::size_t count);
 	void swap();
 
+	bool contains(u32 bind) const noexcept;
+	bool unassigned() const noexcept;
+
   private:
 	struct Storage {
 		vk::DescriptorSetLayout layout;
@@ -116,6 +121,7 @@ class ShaderInput {
 	void swap();
 	bool empty() const noexcept;
 	bool contains(u32 set) const noexcept;
+	bool contains(u32 set, u32 bind) const noexcept;
 
 	bool update(View<Texture> textures, u32 set, u32 bind, std::size_t idx = 0);
 	bool update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx = 0);

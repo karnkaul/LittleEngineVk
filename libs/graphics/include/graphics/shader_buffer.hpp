@@ -13,7 +13,7 @@ class ShaderBuffer {
 
 	static constexpr vk::BufferUsageFlagBits usage(vk::DescriptorType type) noexcept;
 
-	ShaderBuffer(VRAM& vram, std::string_view name, CreateInfo const& info);
+	ShaderBuffer(VRAM& vram, std::string name, CreateInfo const& info);
 
 	template <bool IsArray = false, typename T>
 	ShaderBuffer& write(T t);

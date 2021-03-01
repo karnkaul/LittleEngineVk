@@ -2,8 +2,8 @@
 #include <graphics/shader_buffer.hpp>
 
 namespace le::graphics {
-ShaderBuffer::ShaderBuffer(VRAM& vram, std::string_view name, CreateInfo const& info) : m_vram(vram) {
-	m_storage.name = std::string(name);
+ShaderBuffer::ShaderBuffer(VRAM& vram, std::string name, CreateInfo const& info) : m_vram(vram) {
+	m_storage.name = std::move(name);
 	m_storage.type = info.type;
 	m_storage.usage = usage(info.type);
 	m_storage.rotateCount = info.rotateCount;

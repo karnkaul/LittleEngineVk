@@ -132,11 +132,23 @@ bool DescriptorSet::updateTextures(u32 binding, View<Texture> textures) {
 	return updateCIS(binding, std::move(cis));
 }
 
-BindingInfo const* DescriptorSet::binding(u32 bind) const {
+BindingInfo const* DescriptorSet::binding(u32 bind) const noexcept {
 	if (auto it = m_storage.bindingInfos.find(bind); it != m_storage.bindingInfos.end()) {
 		return &it->second;
 	}
 	return nullptr;
+}
+
+bool DescriptorSet::contains(u32 bind) const noexcept {
+	if (auto b = binding(bind)) {
+		return b && !b->bUnassigned;
+	}
+	return false;
+}
+
+bool DescriptorSet::unassigned() const noexcept {
+	auto const& bi = m_storage.bindingInfos;
+	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](auto const& kvp) { return kvp.second.bUnassigned; });
 }
 
 void DescriptorSet::update(vk::WriteDescriptorSet write) {
@@ -210,6 +222,25 @@ void SetPool::swap() {
 	}
 }
 
+bool SetPool::contains(u32 bind) const noexcept {
+	if (!m_storage.descriptorSets.empty()) {
+		return m_storage.descriptorSets.front().contains(bind);
+	}
+	if (bind < (u32)m_storage.bindInfos.size()) {
+		auto const& bi = m_storage.bindInfos[(std::size_t)bind];
+		return bi.binding.binding == bind && !bi.bUnassigned;
+	}
+	return false;
+}
+
+bool SetPool::unassigned() const noexcept {
+	if (!m_storage.descriptorSets.empty()) {
+		return m_storage.descriptorSets.front().unassigned();
+	}
+	auto const& bi = m_storage.bindInfos;
+	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](BindingInfo const& b) { return b.bUnassigned; });
+}
+
 ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) {
 	m_setPools = pipe.makeSetPools(rotateCount);
 }
@@ -241,7 +272,17 @@ bool ShaderInput::empty() const noexcept {
 }
 
 bool ShaderInput::contains(u32 set) const noexcept {
-	return utils::contains(m_setPools, set);
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
+		return !it->second.unassigned();
+	}
+	return false;
+}
+
+bool ShaderInput::contains(u32 set, u32 bind) const noexcept {
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
+		return it->second.contains(bind);
+	}
+	return false;
 }
 
 bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t idx) {

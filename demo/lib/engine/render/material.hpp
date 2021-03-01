@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <engine/render/interface.hpp>
 
 namespace le {
@@ -12,12 +13,8 @@ struct Layer {
 	s32 order = 0;
 };
 
-struct SetBind {
-	u32 set = 0;
-	u32 bind = 0;
-};
-
 struct MatBlank : IMaterial {
+	Albedo albedo = albedos::lit;
 	graphics::Pipeline* pPipe{};
 	Layer layer;
 
@@ -28,7 +25,7 @@ struct MatBlank : IMaterial {
 struct MatTextured : MatBlank {
 	struct {
 		graphics::Texture const* tex = {};
-		SetBind sb = {3, 0};
+		SetBind sb = {2, 1};
 	} diffuse;
 
 	void write(std::size_t idx) override;

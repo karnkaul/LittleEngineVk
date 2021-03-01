@@ -13,18 +13,42 @@ namespace graphics {
 class Mesh;
 }
 
+struct DirLight {
+	alignas(16) Albedo albedo;
+	alignas(16) glm::vec3 direction;
+};
+
 struct ViewMats {
 	inline static constexpr SetBind sb = {0, 0};
 
-	glm::mat4 mat_v;
-	glm::mat4 mat_p;
-	glm::mat4 mat_ui;
+	alignas(16) glm::mat4 mat_v;
+	alignas(16) glm::mat4 mat_p;
+	alignas(16) glm::mat4 mat_ui;
+	alignas(16) glm::vec3 pos_v;
+};
+
+struct DirLights {
+	inline static constexpr SetBind sb = {0, 1};
+
+	alignas(16) DirLight lights;
 };
 
 struct ModelMats {
-	inline static constexpr SetBind sb = {2, 0};
+	inline static constexpr SetBind sb = {1, 0};
 
-	glm::mat4 mat_m;
+	alignas(16) glm::mat4 mat_m;
+};
+
+struct ObjectAlbedo {
+	inline static constexpr SetBind sb = {1, 1};
+
+	alignas(16) Albedo albedo;
+};
+
+struct DrawView {
+	kt::fixed_vector<DirLight, 4> dirLights;
+	glm::vec2 framebuffer = {};
+	Camera const* pCamera = {};
 };
 
 struct Prop2 {
@@ -40,7 +64,7 @@ class Drawer {
   public:
 	Drawer(graphics::VRAM& vram, decf::registry_t& registry);
 
-	void update(Camera const& cam, glm::ivec2 fb);
+	void update(DrawView const& view);
 	void draw(graphics::CommandBuffer const& cb) const;
 
 	Prop2& spawn(std::string_view name, Ref<graphics::Mesh const> mesh, Ref<MatBlank> material);
@@ -52,7 +76,8 @@ class Drawer {
 
   private:
 	struct Drawable : IDrawable {
-		graphics::ShaderBuffer local;
+		graphics::ShaderBuffer mat_m;
+		graphics::ShaderBuffer locals;
 		Ref<Prop2> prop;
 
 		Drawable(std::string_view name, graphics::VRAM& vram, Prop2& prop);
@@ -68,7 +93,8 @@ class Drawer {
 	std::vector<Drawer::List> toLists() const;
 	Prop2& spawnImpl(std::string_view name, Prop2& out_prop);
 
-	graphics::ShaderBuffer m_view;
+	graphics::ShaderBuffer m_viewMats;
+	graphics::ShaderBuffer m_dirLights;
 	std::vector<List> m_lists;
 	Ref<graphics::VRAM> m_vram;
 	Ref<decf::registry_t> m_registry;

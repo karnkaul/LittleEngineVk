@@ -46,6 +46,9 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 					graphics::utils::compileGlsl(pFR->fullPath(id), {}, {}, false);
 				}
 				if (!spv) {
+					if constexpr (levk_debug) {
+						ENSURE(false, "Failed to compile GLSL");
+					}
 					// Fallback to previously compiled shader
 					spv = graphics::utils::spirVpath(path);
 				} else {

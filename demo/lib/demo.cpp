@@ -22,7 +22,7 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/camera.hpp>
 #include <engine/input/input.hpp>
-#include <engine/render/draw.hpp>
+#include <engine/render/drawer.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -327,9 +327,114 @@ TaskErr g_taskErr;
 
 using namespace std::chrono;
 
+struct ViewMats {
+	alignas(16) glm::mat4 mat_v;
+	alignas(16) glm::mat4 mat_p;
+	alignas(16) glm::mat4 mat_ui;
+	alignas(16) glm::vec3 pos_v;
+};
+
+struct Albedo {
+	alignas(16) glm::vec3 ambient;
+	alignas(16) glm::vec3 diffuse;
+	alignas(16) glm::vec3 specular;
+};
+
+struct DirLight {
+	alignas(16) Albedo albedo;
+	alignas(16) glm::vec3 direction;
+};
+
+struct Drawable {
+	Transform tr;
+	Albedo al{};
+	std::optional<graphics::ShaderBuffer> mat_m;
+	std::optional<graphics::ShaderBuffer> material;
+	graphics::Mesh const* pMesh = {};
+	graphics::Texture const* pDiffuse = {};
+};
+
+class DrawScene {
+  public:
+	struct {
+		DrawLayer sky;
+		DrawLayer test;
+		DrawLayer test_tex;
+		DrawLayer ui;
+	} m_layers;
+	struct {
+		std::optional<graphics::ShaderBuffer> mats;
+		std::optional<graphics::ShaderBuffer> lights;
+	} m_view;
+
+	void write(Camera const& cam, glm::vec2 fb, kt::fixed_vector<DirLight, 4> const& lights) {
+		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), cam.position};
+		m_view.mats->write<false>(v);
+		if (!lights.empty()) {
+			m_view.lights->write(lights.front());
+		}
+	}
+
+	void update(DrawList<Drawable> const& list) const {
+		auto& si = list.layer.pipeline->shaderInput();
+		si.update(*m_view.mats, 0, 0, 0);
+		if (list.layer.order >= 0 && si.contains(0, 1)) {
+			si.update(*m_view.lights, 0, 1, 0);
+		}
+		bool const sb10 = si.contains(1, 0);
+		bool const sb11 = si.contains(1, 1);
+		bool const sb20 = si.contains(2, 0);
+		for (std::size_t idx = 0; idx < list.ts.size(); ++idx) {
+			Drawable& d = list.ts[idx];
+			if (sb10) {
+				d.mat_m->write(d.tr.model());
+				si.update(*d.mat_m, 1, 0, idx);
+				d.mat_m->swap();
+			}
+			if (sb11) {
+				d.material->write(d.al);
+				si.update(*d.material, 1, 1, idx);
+				d.material->swap();
+			}
+			if (d.pDiffuse) {
+				if (list.layer.order < 0) {
+					si.update(*d.pDiffuse, 0, 1, idx);
+				} else {
+					if (sb20) {
+						si.update(*d.pDiffuse, 2, 0, idx);
+					}
+				}
+			}
+		}
+	}
+
+	void swap() {
+		m_view.mats->swap();
+		m_view.lights->swap();
+	}
+
+	void draw(graphics::CommandBuffer const& cb, DrawList<Drawable> const& list) const {
+		graphics::Pipeline const& pi = *list.layer.pipeline;
+		auto& input = pi.shaderInput();
+		bool const s1 = input.contains(1);
+		bool const s2 = input.contains(2);
+		cb.bindSet(pi.layout(), input.set(0).front());
+		for (std::size_t idx = 0; idx < list.ts.size(); ++idx) {
+			Drawable& d = list.ts[idx];
+			if (s1) {
+				cb.bindSet(pi.layout(), input.set(1).index(idx));
+			}
+			if (s2) {
+				cb.bindSet(pi.layout(), input.set(2).index(idx));
+			}
+			d.pMesh->draw(cb);
+		}
+	}
+};
+
 class App : public Input::IContext {
   public:
-	App(Engine& eng, io::Reader const& reader) : m_drawer(eng.boot().vram, m_registry), m_eng(eng) {
+	App(Engine& eng, io::Reader const& reader) : m_eng(eng) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().boot().device, {}};
@@ -438,25 +543,47 @@ class App : public Input::IContext {
 		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
 		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
-		m_data.mat_sky.cubemap.tex = &skymap.get();
-		m_data.mat_sky.pPipe = &pipe_sky->get();
-		m_data.mat_tex.diffuse.tex = &m_store.get<graphics::Texture>("textures/container2").get();
-		m_data.mat_tex.pPipe = &pipe_testTex->get();
-		m_data.mat_tex.albedo.diffuse = colours::magenta.toVec3();
-		m_data.mat_font.diffuse.tex = &*m_data.font.atlas;
-		m_data.mat_font.pPipe = &pipe_ui->get();
-		m_data.mat_def.pPipe = &pipe_test->get();
-		auto& cube_tex = m_drawer.spawn("cube_tex", cube.get(), m_data.mat_tex);
-		m_data.entities[m_registry.name(cube_tex.entity)] = cube_tex.entity;
-		Prop2 p1(cube.get(), m_data.mat_def);
-		p1.transform.position({-5.0f, -1.0f, -2.0f});
-		m_drawer.spawn("prop_1", std::move(p1));
-		Prop2 p2(cone.get(), m_data.mat_def);
-		p2.transform.position({1.0f, -2.0f, -3.0f});
-		auto& prop2 = m_drawer.spawn("prop_2", std::move(p2));
-		m_data.entities[m_registry.name(prop2.entity)] = prop2.entity;
-		m_drawer.spawn("hi", *m_data.text.mesh, m_data.mat_font);
-		m_drawer.spawn("sky", skycube.get(), m_data.mat_sky);
+
+		m_scene.m_layers.sky = DrawLayer{&pipe_sky->get(), -10};
+		m_scene.m_layers.test = DrawLayer{&pipe_test->get(), 0};
+		m_scene.m_layers.test_tex = DrawLayer{&pipe_testTex->get(), 0};
+		m_scene.m_layers.ui = DrawLayer{&pipe_ui->get(), 10};
+		m_scene.m_view.mats = graphics::ShaderBuffer(m_eng.get().boot().vram, "view_mats", {});
+		m_scene.m_view.lights = graphics::ShaderBuffer(m_eng.get().boot().vram, "lights", {});
+		auto spawn = [this](std::string name, graphics::Mesh const& mesh, DrawLayer const& layer, bool mat = false) {
+			auto [e, c] = m_registry.spawn<Drawable>(name);
+			auto& [d] = c;
+			d.pMesh = &mesh;
+			d.mat_m = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/mat_m", {});
+			if (mat) {
+				d.material = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/material", {});
+			}
+			m_registry.attach<DrawLayer>(e, layer);
+			return std::pair<decf::entity_t, Drawable&>(e, d);
+		};
+		{
+			auto [_, d] = spawn("skybox", *skycube, m_scene.m_layers.sky);
+			d.pDiffuse = &skymap.get();
+		}
+		{
+			auto [e, d] = spawn("prop_0", *cube, m_scene.m_layers.test_tex, true);
+			d.pDiffuse = &m_store.get<graphics::Texture>("textures/container2").get();
+			d.al.diffuse = colours::cyan.toVec3();
+			m_data.entities["cube_tex"] = e;
+		}
+		{
+			auto [e, d] = spawn("prop_1", *cube, m_scene.m_layers.test);
+			d.tr.position({-5.0f, -1.0f, -2.0f});
+			m_data.entities["prop_1"] = e;
+		}
+		{
+			auto [_, d] = spawn("prop_2", *cone, m_scene.m_layers.test);
+			d.tr.position({1.0f, -2.0f, -3.0f});
+		}
+		{
+			auto [e, d] = spawn("ui_1", *m_data.text.mesh, m_scene.m_layers.ui);
+			d.pDiffuse = &*m_data.font.atlas;
+		}
 	}
 
 	bool ready(std::initializer_list<Ref<dts::task_scheduler::stage_id>> sts) const {
@@ -485,15 +612,15 @@ class App : public Input::IContext {
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
 		}
-		m_registry.get<Prop2>(m_data.entities["cube_tex"]).transform.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_registry.get<Prop2>(m_data.entities["prop_2"]).transform.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		m_registry.get<Drawable>(m_data.entities["cube_tex"]).tr.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_registry.get<Drawable>(m_data.entities["prop_1"]).tr.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 	}
 
 	void render() {
 		if (m_eng.get().context().waitForFrame()) {
 			// write / update
 			if (m_data.load_tex.id == 0) {
-				m_drawer.update({{}, m_eng.get().context().extent(), &m_data.cam});
+				m_scene.write(m_data.cam, m_eng.get().context().extent(), {});
 			}
 
 			// draw
@@ -501,7 +628,7 @@ class App : public Input::IContext {
 				if (m_data.load_tex.id == 0) {
 					auto& cb = r->primary();
 					cb.setViewportScissor(m_eng.get().context().viewport(), m_eng.get().context().scissor());
-					m_drawer.draw(cb);
+					batchDraw<Drawable>(m_scene, m_registry, cb);
 				}
 			}
 		}
@@ -513,11 +640,6 @@ class App : public Input::IContext {
 		std::vector<Hash> mesh;
 		std::unordered_map<Hash, decf::entity_t> entities;
 
-		MatTextured mat_tex;
-		MatUI mat_font;
-		MatSkybox mat_sky;
-		MatBlank mat_def;
-
 		Font font;
 		Text text;
 		Camera cam;
@@ -526,8 +648,8 @@ class App : public Input::IContext {
 	};
 
 	Data m_data;
+	DrawScene m_scene;
 	decf::registry_t m_registry;
-	Drawer m_drawer;
 	task_scheduler m_tasks;
 	std::future<void> m_ready;
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <core/span.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/resources.hpp>
@@ -13,13 +14,18 @@ class ShaderBuffer {
 
 	static constexpr vk::BufferUsageFlagBits usage(vk::DescriptorType type) noexcept;
 
+	ShaderBuffer() = default;
 	ShaderBuffer(VRAM& vram, std::string name, CreateInfo const& info);
 
-	template <bool IsArray = false, typename T>
-	ShaderBuffer& write(T t);
+	template <typename T>
+	ShaderBuffer& write(T const& t, std::size_t offset = 0);
+	template <typename T>
+	ShaderBuffer& writeArray(T const& t);
+	ShaderBuffer& write(void const* data, std::size_t size, std::size_t offset);
 	ShaderBuffer const& update(DescriptorSet& out_set, u32 binding) const;
 	ShaderBuffer& swap();
 
+	bool valid() const noexcept;
 	vk::DescriptorType type() const noexcept;
 
   private:
@@ -35,7 +41,7 @@ class ShaderBuffer {
 	};
 
 	Storage m_storage;
-	Ref<VRAM> m_vram;
+	VRAM* m_vram = {};
 };
 
 struct ShaderBuffer::CreateInfo {
@@ -54,40 +60,27 @@ constexpr vk::BufferUsageFlagBits ShaderBuffer::usage(vk::DescriptorType type) n
 	}
 }
 
+inline bool ShaderBuffer::valid() const noexcept {
+	return m_vram != nullptr;
+}
 inline vk::DescriptorType ShaderBuffer::type() const noexcept {
 	return m_storage.type;
 }
 
-namespace detail {
-template <typename T, bool IsArray>
-struct ShaderBufTraits;
+template <typename T>
+ShaderBuffer& ShaderBuffer::write(T const& t, std::size_t offset) {
+	resize(sizeof(T), 1);
+	m_storage.buffers.front().get().write(&t, sizeof(T), (vk::DeviceSize)offset);
+	return *this;
+}
 
 template <typename T>
-struct ShaderBufTraits<T, true> {
-	using type = T;
+ShaderBuffer& ShaderBuffer::writeArray(T const& t) {
 	using value_type = typename T::value_type;
-};
-template <typename T>
-struct ShaderBufTraits<T, false> {
-	using type = T;
-	using value_type = T;
-};
-} // namespace detail
-
-template <bool IsArray, typename T>
-ShaderBuffer& ShaderBuffer::write(T t) {
-	using traits = detail::ShaderBufTraits<T, IsArray>;
-	using value_type = typename traits::value_type;
-	static_assert(std::is_trivial_v<value_type>, "value_type must be trivial");
-	if constexpr (IsArray) {
-		resize(sizeof(value_type), t.size());
-		std::size_t idx = 0;
-		for (auto const& x : t) {
-			m_storage.buffers[idx++].get().write(&x, sizeof(value_type));
-		}
-	} else {
-		resize(sizeof(value_type), 1);
-		m_storage.buffers.front().get().write(&t, sizeof(value_type));
+	resize(sizeof(value_type), t.size());
+	std::size_t idx = 0;
+	for (auto const& x : t) {
+		m_storage.buffers[idx++].get().write(&x, sizeof(value_type));
 	}
 	return *this;
 }

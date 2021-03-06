@@ -1,12 +1,12 @@
 #version 450 core
 
-layout(set = 0, binding = 0) uniform VP {
+layout(std140, set = 0, binding = 0) uniform VP {
 	mat4 mat_v;
 	mat4 mat_p;
 	mat4 mat_ui;
 };
 
-layout(set = 1, binding = 0) uniform M {
+layout(std140, set = 1, binding = 0) uniform M {
 	mat4 mat_m;
 };
 
@@ -23,7 +23,7 @@ out gl_PerVertex {
 };
 
 void main() {
-	gl_Position = mat_p * mat_v * mat_m * vec4(vertPos, 1.0);
 	fragColour = vec4(vertColour, 1.0);
 	uv = texCoord;
+	gl_Position = mat_p * mat_v * mat_m * vec4(vertPos, 1.0);
 }

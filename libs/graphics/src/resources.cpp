@@ -169,7 +169,7 @@ bool Buffer::unmap() {
 	return false;
 }
 
-bool Buffer::write(void const* pData, vk::DeviceSize size) {
+bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset) {
 	if (m_storage.type != Buffer::Type::eCpuToGpu) {
 #if defined(LEVK_VKRESOURCE_NAMES)
 		g_log.log(lvl::error, 1, "[{}] Attempt to write to GPU-only Buffer [{}]!", g_name, m_data.name);
@@ -180,10 +180,10 @@ bool Buffer::write(void const* pData, vk::DeviceSize size) {
 	}
 	if (!Device::default_v(m_data.alloc.memory) && !Device::default_v(m_storage.buffer)) {
 		if (size == 0) {
-			size = m_storage.writeSize;
+			size = m_storage.writeSize - offset;
 		}
 		if (auto pMap = map()) {
-			void* pStart = (void*)((char*)pMap + 0);
+			void* pStart = (void*)((char*)pMap + offset);
 			std::memcpy(pStart, pData, (std::size_t)size);
 			return true;
 		}

@@ -121,7 +121,7 @@ class Buffer : public Resource {
 
 	void const* map();
 	bool unmap();
-	bool write(void const* pData, vk::DeviceSize size = 0);
+	bool write(void const* pData, vk::DeviceSize size = 0, vk::DeviceSize offset = 0);
 
   private:
 	void destroy();

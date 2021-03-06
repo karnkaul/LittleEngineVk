@@ -331,86 +331,110 @@ struct ViewMats {
 	alignas(16) glm::mat4 mat_v;
 	alignas(16) glm::mat4 mat_p;
 	alignas(16) glm::mat4 mat_ui;
-	alignas(16) glm::vec3 pos_v;
+	alignas(16) glm::vec4 pos_v;
 };
 
 struct Albedo {
-	alignas(16) glm::vec3 ambient;
-	alignas(16) glm::vec3 diffuse;
-	alignas(16) glm::vec3 specular;
+	alignas(16) glm::vec4 colour;
+	alignas(16) glm::vec4 amdispsh;
+};
+
+struct Material {
+	enum Flag { eDrop = 1 << 0 };
+
+	alignas(16) Albedo albedo;
+	alignas(4) u32 flags;
+
+	static Material build(Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
+		Material ret;
+		ret.albedo.colour = colour.toVec4();
+		ret.albedo.amdispsh = amdispsh;
+		ret.flags = 0;
+		return ret;
+	}
 };
 
 struct DirLight {
 	alignas(16) Albedo albedo;
-	alignas(16) glm::vec3 direction;
+	alignas(16) glm::vec4 direction;
+};
+
+struct DirLights {
+	alignas(16) std::array<DirLight, 4> lights;
+	alignas(16) u32 count = 0;
 };
 
 struct Drawable {
 	Transform tr;
-	Albedo al{};
-	std::optional<graphics::ShaderBuffer> mat_m;
-	std::optional<graphics::ShaderBuffer> material;
-	graphics::Mesh const* pMesh = {};
-	graphics::Texture const* pDiffuse = {};
+	Material mat = Material::build();
+	graphics::ShaderBuffer mat_m;
+	graphics::ShaderBuffer material;
+	graphics::Mesh const* mesh = {};
+	graphics::Texture const* diffuse = {};
+	graphics::Texture const* specular = {};
 };
 
 class DrawScene {
   public:
 	struct {
-		DrawLayer sky;
-		DrawLayer test;
-		DrawLayer test_tex;
-		DrawLayer ui;
-	} m_layers;
-	struct {
-		std::optional<graphics::ShaderBuffer> mats;
-		std::optional<graphics::ShaderBuffer> lights;
+		graphics::ShaderBuffer mats;
+		graphics::ShaderBuffer lights;
 	} m_view;
+	struct {
+		graphics::Texture const* white = {};
+		graphics::Texture const* black = {};
+	} m_defaults;
 
-	void write(Camera const& cam, glm::vec2 fb, kt::fixed_vector<DirLight, 4> const& lights) {
-		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), cam.position};
-		m_view.mats->write<false>(v);
+	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights) {
+		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
+		m_view.mats.write(v);
 		if (!lights.empty()) {
-			m_view.lights->write(lights.front());
+			DirLights dl;
+			for (std::size_t idx = 0; idx < lights.size() && idx < dl.lights.size(); ++idx) {
+				dl.lights[idx] = lights[idx];
+			}
+			dl.count = (u32)lights.size();
+			m_view.lights.write(dl);
 		}
 	}
 
 	void update(DrawList<Drawable> const& list) const {
 		auto& si = list.layer.pipeline->shaderInput();
-		si.update(*m_view.mats, 0, 0, 0);
+		si.update(m_view.mats, 0, 0, 0);
 		if (list.layer.order >= 0 && si.contains(0, 1)) {
-			si.update(*m_view.lights, 0, 1, 0);
+			si.update(m_view.lights, 0, 1, 0);
 		}
 		bool const sb10 = si.contains(1, 0);
 		bool const sb11 = si.contains(1, 1);
 		bool const sb20 = si.contains(2, 0);
+		bool const sb21 = si.contains(2, 1);
 		for (std::size_t idx = 0; idx < list.ts.size(); ++idx) {
 			Drawable& d = list.ts[idx];
 			if (sb10) {
-				d.mat_m->write(d.tr.model());
-				si.update(*d.mat_m, 1, 0, idx);
-				d.mat_m->swap();
+				d.mat_m.write(d.tr.model());
+				si.update(d.mat_m, 1, 0, idx);
+				d.mat_m.swap();
 			}
 			if (sb11) {
-				d.material->write(d.al);
-				si.update(*d.material, 1, 1, idx);
-				d.material->swap();
+				d.material.write(d.mat);
+				si.update(d.material, 1, 1, idx);
+				d.material.swap();
 			}
-			if (d.pDiffuse) {
-				if (list.layer.order < 0) {
-					si.update(*d.pDiffuse, 0, 1, idx);
-				} else {
-					if (sb20) {
-						si.update(*d.pDiffuse, 2, 0, idx);
-					}
-				}
+			if (list.layer.order < 0 && d.diffuse) {
+				si.update(*d.diffuse, 0, 1, idx);
+			}
+			if (sb20) {
+				si.update(d.diffuse ? *d.diffuse : *m_defaults.white, 2, 0, idx);
+			}
+			if (sb21) {
+				si.update(d.specular ? *d.specular : *m_defaults.black, 2, 1, idx);
 			}
 		}
 	}
 
 	void swap() {
-		m_view.mats->swap();
-		m_view.lights->swap();
+		m_view.mats.swap();
+		m_view.lights.swap();
 	}
 
 	void draw(graphics::CommandBuffer const& cb, DrawList<Drawable> const& list) const {
@@ -427,7 +451,7 @@ class DrawScene {
 			if (s2) {
 				cb.bindSet(pi.layout(), input.set(2).index(idx));
 			}
-			d.pMesh->draw(cb);
+			d.mesh->draw(cb);
 		}
 	}
 };
@@ -483,6 +507,7 @@ class App : public Input::IContext {
 			task_scheduler::stage_t shaders;
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test", "shaders/test.vert", "shaders/test.frag"); });
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test_tex", "shaders/test.vert", "shaders/test_tex.frag"); });
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test_lit", "shaders/test_lit.vert", "shaders/test_lit.frag"); });
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"); });
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"); });
 			load_shaders = m_tasks.stage(std::move(shaders));
@@ -491,6 +516,7 @@ class App : public Input::IContext {
 			task_scheduler::stage_t pipes;
 			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test", "shaders/test", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test_tex", "shaders/test_tex", graphics::PFlags::inverse()); });
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test_lit", "shaders/test_lit", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe, pci_skybox]() { loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox); });
 			pipes.deps.push_back(load_shaders);
@@ -507,10 +533,18 @@ class App : public Input::IContext {
 			m_store.load<graphics::Texture>(textureLD.name, textureLD);
 			m_data.tex.push_back(textureLD.name);
 		});
-		textureLD.name = "textures/container2";
+		textureLD.name = "textures/container2/diffuse";
 		textureLD.prefix.clear();
 		textureLD.ext.clear();
 		textureLD.imageIDs = {"textures/container2.png"};
+		texload.tasks.push_back([this, textureLD]() {
+			m_store.load<graphics::Texture>(textureLD.name, textureLD);
+			m_data.tex.push_back(textureLD.name);
+		});
+		textureLD.name = "textures/container2/specular";
+		textureLD.prefix.clear();
+		textureLD.ext.clear();
+		textureLD.imageIDs = {"textures/container2_specular.png"};
 		texload.tasks.push_back([this, textureLD]() {
 			m_store.load<graphics::Texture>(textureLD.name, textureLD);
 			m_data.tex.push_back(textureLD.name);
@@ -523,66 +557,103 @@ class App : public Input::IContext {
 			m_store.load<graphics::Texture>(textureLD.name, textureLD);
 			m_data.tex.push_back(textureLD.name);
 		});
+		textureLD.name = "textures/black";
+		textureLD.imageIDs.clear();
+		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0});
+		textureLD.raw.size = {1, 1};
+		texload.tasks.push_back([this, textureLD]() {
+			m_store.load<graphics::Texture>(textureLD.name, textureLD);
+			m_data.tex.push_back(textureLD.name);
+		});
+		textureLD.name = "textures/white";
+		textureLD.imageIDs.clear();
+		textureLD.raw.bytes = graphics::utils::convert({0xff, 0xff, 0xff, 0xff});
+		textureLD.raw.size = {1, 1};
+		texload.tasks.push_back([this, textureLD]() {
+			m_store.load<graphics::Texture>(textureLD.name, textureLD);
+			m_data.tex.push_back(textureLD.name);
+		});
 		m_data.load_tex = m_tasks.stage(std::move(texload));
 
-		// m_input = m_eng.get().push(this);
+		m_eng.get().pushContext(*this);
 		eng.m_win.get().show();
 	}
 
-	bool block(Input::State const&) override {
+	bool block(Input::State const& state) override {
+		if (state.focus == Input::Focus::eGained) {
+			m_store.update();
+		}
 		return false;
 	}
 
 	void init1() {
 		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/test");
 		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
+		auto pipe_testLit = m_store.find<graphics::Pipeline>("pipelines/test_lit");
 		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
 		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
-		m_data.cam.position = {0.0f, 2.0f, 4.0f};
 		auto skycube = m_store.get<graphics::Mesh>("skycube");
 		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
 		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
+		m_data.scene.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
+		m_data.scene.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
 
-		m_scene.m_layers.sky = DrawLayer{&pipe_sky->get(), -10};
-		m_scene.m_layers.test = DrawLayer{&pipe_test->get(), 0};
-		m_scene.m_layers.test_tex = DrawLayer{&pipe_testTex->get(), 0};
-		m_scene.m_layers.ui = DrawLayer{&pipe_ui->get(), 10};
-		m_scene.m_view.mats = graphics::ShaderBuffer(m_eng.get().boot().vram, "view_mats", {});
-		m_scene.m_view.lights = graphics::ShaderBuffer(m_eng.get().boot().vram, "lights", {});
+		m_data.cam.position = {0.0f, 2.0f, 4.0f};
+		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
+		m_data.layers["test"] = DrawLayer{&pipe_test->get(), 0};
+		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
+		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
+		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
+		m_data.scene.m_view.mats = graphics::ShaderBuffer(m_eng.get().boot().vram, "view_mats", {});
+		{
+			graphics::ShaderBuffer::CreateInfo info;
+			info.type = vk::DescriptorType::eStorageBuffer;
+			m_data.scene.m_view.lights = graphics::ShaderBuffer(m_eng.get().boot().vram, "lights", {});
+		}
+		DirLight l0, l1;
+		l0.direction = {graphics::front, 0.0f};
+		l1.direction = {-graphics::up, 0.0f};
+		l0.albedo.colour = colours::magenta.toVec4();
+		l0.albedo.amdispsh = {0.2f, 1.0f, 0.8f, 0.0f};
+		l1.albedo.colour = colours::yellow.toVec4();
+		l1.albedo.amdispsh = l0.albedo.amdispsh;
+		m_data.dirLights = {l0, l1};
 		auto spawn = [this](std::string name, graphics::Mesh const& mesh, DrawLayer const& layer, bool mat = false) {
-			auto [e, c] = m_registry.spawn<Drawable>(name);
+			auto [e, c] = m_data.registry.spawn<Drawable>(name);
 			auto& [d] = c;
-			d.pMesh = &mesh;
+			d.mesh = &mesh;
 			d.mat_m = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/mat_m", {});
 			if (mat) {
 				d.material = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/material", {});
 			}
-			m_registry.attach<DrawLayer>(e, layer);
+			m_data.registry.attach<DrawLayer>(e, layer);
 			return std::pair<decf::entity_t, Drawable&>(e, d);
 		};
 		{
-			auto [_, d] = spawn("skybox", *skycube, m_scene.m_layers.sky);
-			d.pDiffuse = &skymap.get();
+			auto [_, d] = spawn("skybox", *skycube, m_data.layers["sky"]);
+			d.diffuse = &skymap.get();
 		}
 		{
-			auto [e, d] = spawn("prop_0", *cube, m_scene.m_layers.test_tex, true);
-			d.pDiffuse = &m_store.get<graphics::Texture>("textures/container2").get();
-			d.al.diffuse = colours::cyan.toVec3();
+			auto [e, d] = spawn("prop_0", *cube, m_data.layers["test_lit"], true);
+			d.diffuse = &m_store.get<graphics::Texture>("textures/container2/diffuse").get();
+			d.specular = &m_store.get<graphics::Texture>("textures/container2/specular").get();
+			// d.mat.albedo.diffuse = colours::cyan.toVec3();
+			d.mat.flags |= Material::eDrop;
 			m_data.entities["cube_tex"] = e;
 		}
 		{
-			auto [e, d] = spawn("prop_1", *cube, m_scene.m_layers.test);
+			auto [e, d] = spawn("prop_1", *cube, m_data.layers["test"]);
 			d.tr.position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = e;
 		}
 		{
-			auto [_, d] = spawn("prop_2", *cone, m_scene.m_layers.test);
+			auto [_, d] = spawn("prop_2", *cone, m_data.layers["test"]);
 			d.tr.position({1.0f, -2.0f, -3.0f});
 		}
 		{
-			auto [e, d] = spawn("ui_1", *m_data.text.mesh, m_scene.m_layers.ui);
-			d.pDiffuse = &*m_data.font.atlas;
+			auto [e, d] = spawn("ui_1", *m_data.text.mesh, m_data.layers["ui"]);
+			d.diffuse = &*m_data.font.atlas;
 		}
 	}
 
@@ -603,7 +674,7 @@ class App : public Input::IContext {
 		if (!ready({m_data.load_pipes, m_data.load_tex})) {
 			return;
 		}
-		if (m_registry.empty()) {
+		if (m_data.registry.empty()) {
 			init1();
 		}
 		// camera
@@ -612,15 +683,15 @@ class App : public Input::IContext {
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
 		}
-		m_registry.get<Drawable>(m_data.entities["cube_tex"]).tr.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_registry.get<Drawable>(m_data.entities["prop_1"]).tr.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		m_data.registry.get<Drawable>(m_data.entities["cube_tex"]).tr.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_data.registry.get<Drawable>(m_data.entities["prop_1"]).tr.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 	}
 
 	void render() {
 		if (m_eng.get().context().waitForFrame()) {
 			// write / update
 			if (m_data.load_tex.id == 0) {
-				m_scene.write(m_data.cam, m_eng.get().context().extent(), {});
+				m_data.scene.write(m_data.cam, m_eng.get().context().extent(), m_data.dirLights);
 			}
 
 			// draw
@@ -628,7 +699,7 @@ class App : public Input::IContext {
 				if (m_data.load_tex.id == 0) {
 					auto& cb = r->primary();
 					cb.setViewportScissor(m_eng.get().context().viewport(), m_eng.get().context().scissor());
-					batchDraw<Drawable>(m_scene, m_registry, cb);
+					batchDraw<Drawable>(m_data.scene, m_data.registry, cb);
 				}
 			}
 		}
@@ -639,17 +710,19 @@ class App : public Input::IContext {
 		std::vector<Hash> tex;
 		std::vector<Hash> mesh;
 		std::unordered_map<Hash, decf::entity_t> entities;
+		std::unordered_map<Hash, DrawLayer> layers;
+		DrawScene scene;
 
 		Font font;
 		Text text;
 		Camera cam;
+		std::vector<DirLight> dirLights;
 
 		task_scheduler::stage_id load_pipes, load_tex;
+		decf::registry_t registry;
 	};
 
 	Data m_data;
-	DrawScene m_scene;
-	decf::registry_t m_registry;
 	task_scheduler m_tasks;
 	std::future<void> m_ready;
 
@@ -735,12 +808,6 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 			}
 			if (engine.booted() && engine.context().reconstructed(winst.framebufferSize())) {
 				continue;
-			}
-
-			if (flags.test(Flag::eDebug0)) {
-				app->m_store.update();
-				logD("Debug0");
-				flags.reset(Flag::eDebug0);
 			}
 
 			if (app) {

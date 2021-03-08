@@ -12,7 +12,7 @@ bool isGlsl(io::Path const& path) {
 
 std::optional<graphics::Shader> AssetLoader<graphics::Shader>::load(AssetLoadInfo<graphics::Shader> const& info) const {
 	auto const& paths = info.m_data.shaderPaths;
-	if (!paths.empty() && std::all_of(paths.begin(), paths.end(), [&info](auto const& kvp) { return info.reader().isPresent(kvp.second); })) {
+	if (!paths.empty() && std::all_of(paths.begin(), paths.end(), [&info](auto const& kvp) { return info.reader().present(kvp.second); })) {
 		if (auto d = data(info)) {
 			return graphics::Shader(info.m_data.device, std::move(*d));
 		}
@@ -140,5 +140,22 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 		return cubemap;
 	}
 	return std::nullopt;
+}
+
+std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
+	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
+		Model model;
+		if (model.construct(info.m_data.vram, *mci, info.m_data.sampler, info.m_data.texFormat)) {
+			return model;
+		}
+	}
+	return std::nullopt;
+}
+
+bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& info) const {
+	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
+		return out_model.construct(info.m_data.vram, mci.move(), info.m_data.sampler, info.m_data.texFormat).has_result();
+	}
+	return false;
 }
 } // namespace le

@@ -8,13 +8,16 @@ add_library(levk::demo-lib ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC
 	"${CMAKE_CURRENT_SOURCE_DIR}"
 )
-target_link_libraries(${PROJECT_NAME} PUBLIC
-	levk::graphics
-	levk::window
-	levk::core
-	djson::djson
-	$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
-	levk::interface
+target_link_libraries(${PROJECT_NAME}
+	PUBLIC
+		levk::graphics
+		levk::window
+		levk::core
+		djson::djson
+		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
+		levk::interface
+	PRIVATE
+		tinyobjloader
 )
 if(LEVK_USE_PCH)
 	target_precompile_headers(${PROJECT_NAME} REUSE_FROM levk-core)

@@ -1,6 +1,6 @@
 # This file uses centimeters as units for non-parametric coordinates.
 
-mtllib plant.mtl
+mtllib eb_house_plant_01.mtl
 g default
 v 3.837250 0.000000 -1.246798
 v 3.264160 0.000000 -2.371551

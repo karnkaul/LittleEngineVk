@@ -369,7 +369,7 @@ bool Shader::Impl::loadGlsl(io::Path const& id, Type type) {
 		logE("[{}] ShaderCompiler is Offline!", s_tName);
 		return false;
 	}
-	return engine::reader().isPresent(id) && glslToSpirV(id, codeMap[(std::size_t)type]);
+	return engine::reader().present(id) && glslToSpirV(id, codeMap[(std::size_t)type]);
 }
 
 bool Shader::Impl::glslToSpirV(io::Path const& id, bytearray& out_bytes) {
@@ -379,7 +379,7 @@ bool Shader::Impl::glslToSpirV(io::Path const& id, bytearray& out_bytes) {
 	}
 	auto pReader = dynamic_cast<io::FileReader const*>(&engine::reader());
 	ENSURE(pReader, "Cannot compile shaders without io::FileReader!");
-	if (pReader->isPresent(id)) {
+	if (pReader->present(id)) {
 		auto const src = pReader->fullPath(id);
 		auto dstID = id;
 		dstID += s_spvExt;

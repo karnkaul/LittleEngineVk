@@ -63,6 +63,9 @@ class Pipeline final {
 	SetPool makeSetPool(u32 set, std::size_t rotateCount = 0) const;
 	std::unordered_map<u32, SetPool> makeSetPools(std::size_t rotateCount = 0) const;
 
+	void bindSet(CommandBuffer const& cb, u32 set, std::size_t idx) const;
+	void bindSet(CommandBuffer const& cb, std::initializer_list<u32> sets, std::size_t idx) const;
+
 	Hash id() const noexcept;
 
   private:

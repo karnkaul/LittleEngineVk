@@ -148,6 +148,18 @@ std::unordered_map<u32, SetPool> Pipeline::makeSetPools(std::size_t rotateCount)
 	return ret;
 }
 
+void Pipeline::bindSet(CommandBuffer const& cb, u32 set, std::size_t idx) const {
+	if (m_storage.input.contains(set)) {
+		cb.bindSet(m_storage.fixed.layout, m_storage.input.set(set).index(idx));
+	}
+}
+
+void Pipeline::bindSet(CommandBuffer const& cb, std::initializer_list<u32> sets, std::size_t idx) const {
+	for (u32 const set : sets) {
+		bindSet(cb, set, idx);
+	}
+}
+
 bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipeline& out_pipe, bool bFixed) {
 	auto& c = out_info;
 	ENSURE(!Device::default_v(c.renderPass), "Invalid render pass");

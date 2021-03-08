@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <engine/assets/asset_loader.hpp>
+#include <engine/render/model.hpp>
 #include <graphics/render_context.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
@@ -25,11 +26,14 @@ struct AssetLoader<graphics::Shader> {
 
 template <>
 struct AssetLoadData<graphics::Pipeline> {
-	Ref<graphics::RenderContext> context;
 	std::optional<graphics::Pipeline::CreateInfo> info;
 	graphics::PFlags flags;
 	std::string name;
+	Ref<graphics::RenderContext> context;
 	Hash shaderID;
+
+	AssetLoadData(graphics::RenderContext& context) : context(context) {
+	}
 };
 
 template <>
@@ -40,13 +44,16 @@ struct AssetLoader<graphics::Pipeline> {
 
 template <>
 struct AssetLoadData<graphics::Texture> {
-	Ref<graphics::VRAM> vram;
 	kt::fixed_vector<io::Path, 6> imageIDs;
 	graphics::Texture::Raw raw;
 	io::Path prefix;
 	std::string ext;
 	std::string name;
+	Ref<graphics::VRAM> vram;
 	Hash samplerID;
+
+	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
+	}
 };
 
 template <>
@@ -57,5 +64,23 @@ struct AssetLoader<graphics::Texture> {
 	bool reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const;
 
 	std::optional<Data> data(AssetLoadInfo<graphics::Texture> const& info) const;
+};
+
+template <>
+struct AssetLoadData<Model> {
+	std::string modelID;
+	io::Path jsonID;
+	vk::Format texFormat = graphics::Texture::srgbFormat;
+	Ref<graphics::VRAM> vram;
+	Ref<graphics::Sampler const> sampler;
+
+	AssetLoadData(graphics::VRAM& vram, graphics::Sampler const& sampler) : vram(vram), sampler(sampler) {
+	}
+};
+
+template <>
+struct AssetLoader<Model> {
+	std::optional<Model> load(AssetLoadInfo<Model> const& info) const;
+	bool reload(Model& out_texture, AssetLoadInfo<Model> const& info) const;
 };
 } // namespace le

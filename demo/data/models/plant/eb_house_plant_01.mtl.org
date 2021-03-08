@@ -1,0 +1,15 @@
+newmtl Base_Mesh_sculpt_2:MeshSG
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl blinn1SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd eb_house_plant_01_c.tga
+bump eb_house_plant_01_n.tga -bm 1
+Ni 1.00
+Ks 0.50 0.50 0.50

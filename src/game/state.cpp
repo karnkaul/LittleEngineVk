@@ -54,7 +54,7 @@ gs::Result<Token> gs::loadManifest(LoadReq const& loadReq) {
 }
 
 Token gs::loadInputMap(io::Path const& id, input::Context* out_pContext) {
-	if (!id.empty() && engine::reader().isPresent(id)) {
+	if (!id.empty() && engine::reader().present(id)) {
 		if (auto str = engine::reader().string(id)) {
 			if (auto json = dj::node_t::make(*str)) {
 				if (auto const parsed = out_pContext->deserialise(*json); parsed > 0) {

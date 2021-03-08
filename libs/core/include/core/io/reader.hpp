@@ -27,7 +27,7 @@ class Reader {
 	///
 	/// \brief Check if an `id` is present to load
 	///
-	[[nodiscard]] bool isPresent(io::Path const& id) const;
+	[[nodiscard]] bool present(io::Path const& id) const;
 	///
 	/// \brief Check if an `id` is present to load, and log an error if not
 	///

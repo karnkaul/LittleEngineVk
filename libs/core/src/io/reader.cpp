@@ -101,12 +101,12 @@ Reader::Result<std::string> Reader::string(io::Path const& id) const {
 	return kt::null_result;
 }
 
-bool Reader::isPresent(const io::Path& id) const {
+bool Reader::present(const io::Path& id) const {
 	return findPrefixed(id).has_result();
 }
 
 bool Reader::checkPresence(io::Path const& id) const {
-	if (!isPresent(id)) {
+	if (!present(id)) {
 		logE("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
 		return false;
 	}

@@ -163,7 +163,7 @@ ResourceList Manifest::parse() {
 						for (auto const& resourceID : pResourceIDs->as<dj::array_nodes_t>()) {
 							auto const typeStr = resourceID->safe_get("type").as<std::string>();
 							auto const id = resourceID->safe_get("id").as<std::string>();
-							bool const bPresent = bOptional ? engine::reader().checkPresence(id) : engine::reader().isPresent(id);
+							bool const bPresent = bOptional ? engine::reader().checkPresence(id) : engine::reader().present(id);
 							if (!id.empty() && !typeStr.empty() && bPresent) {
 								Shader::Type type = Shader::Type::eFragment;
 								if (typeStr == "vertex") {
@@ -186,7 +186,7 @@ ResourceList Manifest::parse() {
 	if (auto pTextures = m_manifest.find("textures")) {
 		for (auto const& texture : pTextures->as<dj::array_nodes_t>()) {
 			auto const id = texture->safe_get("id").as<std::string>();
-			bool const bPresent = texture->safe_get("optional").as<bool>() ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
+			bool const bPresent = texture->safe_get("optional").as<bool>() ? engine::reader().present(id) : engine::reader().checkPresence(id);
 			if (!id.empty() && bPresent) {
 				if (find<Texture>(id)) {
 					all.textures.push_back(id);
@@ -221,7 +221,7 @@ ResourceList Manifest::parse() {
 					data.createInfo.type = Texture::Type::eCube;
 					data.createInfo.samplerID = cubemap->safe_get("sampler").as<std::string>();
 					for (auto const& id : pResourceIDs->as<dj::array_fields_t<std::string>>()) {
-						bool const bPresent = bOptional ? engine::reader().isPresent(id) : engine::reader().checkPresence(id);
+						bool const bPresent = bOptional ? engine::reader().present(id) : engine::reader().checkPresence(id);
 						if (bPresent) {
 							data.createInfo.ids.push_back(id);
 						} else {
@@ -250,7 +250,7 @@ ResourceList Manifest::parse() {
 					data.id = modelID;
 					auto jsonID = data.id / data.id.filename();
 					jsonID += ".json";
-					bool const bPresent = bOptional ? engine::reader().isPresent(jsonID) : engine::reader().checkPresence(jsonID);
+					bool const bPresent = bOptional ? engine::reader().present(jsonID) : engine::reader().checkPresence(jsonID);
 					if (bPresent) {
 						all.models.push_back(data.id);
 						m_toLoad.models.push_back(std::move(data));

@@ -48,6 +48,8 @@ class Texture {
 	struct Raw;
 	struct CreateInfo;
 
+	inline static constexpr auto srgbFormat = vk::Format::eR8G8B8A8Srgb;
+
 	Texture(std::string name, VRAM& vram);
 	Texture(Texture&&);
 	Texture& operator=(Texture&&);
@@ -98,6 +100,6 @@ struct Texture::CreateInfo {
 
 	Data data;
 	vk::Sampler sampler;
-	vk::Format format = vk::Format::eR8G8B8A8Srgb;
+	vk::Format format = Texture::srgbFormat;
 };
 } // namespace le::graphics

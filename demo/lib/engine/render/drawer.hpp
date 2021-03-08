@@ -16,7 +16,7 @@ struct DrawList {
 	std::vector<Ref<T>> ts;
 };
 
-template <typename T, typename D>
+template <typename D, typename T = typename std::decay_t<D>::type>
 void batchDraw(D&& dispatch, decf::registry_t& out_reg, graphics::CommandBuffer const& cb);
 
 template <typename T>
@@ -32,7 +32,7 @@ struct LayerHasher {
 	}
 };
 
-template <typename T, typename D>
+template <typename D, typename T>
 void batchDraw(D&& dispatch, decf::registry_t& out_reg, graphics::CommandBuffer const& cb) {
 	auto lists = drawLists<T>(out_reg);
 	for (auto& list : lists) {

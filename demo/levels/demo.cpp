@@ -37,7 +37,7 @@ DemoLevel::DemoLevel() {
 
 	m_data.skyboxID = "skyboxes/sky_dusk";
 	m_data.model0id = "models/plant";
-	m_data.model1id = engine::reader().isPresent("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : m_data.model0id;
+	m_data.model1id = engine::reader().present("models/test/nanosuit/nanosuit.json") ? "models/test/nanosuit" : m_data.model0id;
 
 	m_data.dirLight0.diffuse = Colour(0xffffffff);
 	m_data.dirLight0.direction = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));

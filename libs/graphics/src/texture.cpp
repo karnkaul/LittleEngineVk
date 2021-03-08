@@ -163,7 +163,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 			return false;
 		}
 		out_storage.data.size = pRaw->size;
-		out_storage.raw.bytes.push_back(pRaw->bytes.back());
+		out_storage.raw.bytes.push_back(pRaw->bytes);
 		out_storage.data.type = Type::e2D;
 	}
 	out_storage.image = load(m_vram, out_storage.transfer, info.format, out_storage.data.size, out_storage.raw.bytes, m_name);

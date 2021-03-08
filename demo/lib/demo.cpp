@@ -23,6 +23,7 @@
 #include <engine/camera.hpp>
 #include <engine/input/input.hpp>
 #include <engine/render/drawer.hpp>
+#include <engine/render/model.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -335,21 +336,40 @@ struct ViewMats {
 };
 
 struct Albedo {
-	alignas(16) glm::vec4 colour;
-	alignas(16) glm::vec4 amdispsh;
+	alignas(16) glm::vec4 ambient;
+	alignas(16) glm::vec4 diffuse;
+	alignas(16) glm::vec4 specular;
+
+	static Albedo make(Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
+		Albedo ret;
+		glm::vec3 const c = colour.toVec3();
+		f32 const a = colour.a.toF32();
+		ret.ambient = {c * amdispsh.r, a};
+		ret.diffuse = {c * amdispsh.g, a};
+		ret.specular = {c * amdispsh.b, amdispsh.a};
+		return ret;
+	}
 };
 
-struct Material {
+struct ShadeMat {
 	enum Flag { eDrop = 1 << 0 };
 
 	alignas(16) Albedo albedo;
-	alignas(4) u32 flags;
+	alignas(16) glm::vec4 tint;
 
-	static Material build(Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
-		Material ret;
-		ret.albedo.colour = colour.toVec4();
-		ret.albedo.amdispsh = amdispsh;
-		ret.flags = 0;
+	static ShadeMat make(Colour tint = colours::white, Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
+		ShadeMat ret;
+		ret.albedo = Albedo::make(colour, amdispsh);
+		ret.tint = tint.toVec4();
+		return ret;
+	}
+
+	static ShadeMat make(Material const& mtl) noexcept {
+		ShadeMat ret;
+		ret.albedo.ambient = mtl.Ka.toVec4();
+		ret.albedo.diffuse = mtl.Kd.toVec4();
+		ret.albedo.specular = mtl.Ks.toVec4();
+		ret.tint = {mtl.Tf.toVec3(), mtl.d};
 		return ret;
 	}
 };
@@ -364,18 +384,21 @@ struct DirLights {
 	alignas(16) u32 count = 0;
 };
 
-struct Drawable {
-	Transform tr;
-	Material mat = Material::build();
-	graphics::ShaderBuffer mat_m;
-	graphics::ShaderBuffer material;
-	graphics::Mesh const* mesh = {};
-	graphics::Texture const* diffuse = {};
-	graphics::Texture const* specular = {};
+struct DrawObj {
+	graphics::ShaderBuffer matBuf;
+	Primitive primitive;
 };
 
-class DrawScene {
+struct Drawable {
+	Transform tr;
+	graphics::ShaderBuffer mat_m;
+	std::vector<DrawObj> objs;
+};
+
+class Drawer {
   public:
+	using type = Drawable;
+
 	struct {
 		graphics::ShaderBuffer mats;
 		graphics::ShaderBuffer lights;
@@ -384,6 +407,19 @@ class DrawScene {
 		graphics::Texture const* white = {};
 		graphics::Texture const* black = {};
 	} m_defaults;
+
+	struct SetBind {
+		u32 set;
+		u32 bind;
+		bool valid;
+
+		SetBind(graphics::ShaderInput const& si, u32 s, u32 b) : set(s), bind(b), valid(si.contains(s, b)) {
+		}
+
+		explicit operator bool() const noexcept {
+			return valid;
+		}
+	};
 
 	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
@@ -398,36 +434,46 @@ class DrawScene {
 		}
 	}
 
-	void update(DrawList<Drawable> const& list) const {
+	void update(DrawList<type> const& list) const {
 		auto& si = list.layer.pipeline->shaderInput();
 		si.update(m_view.mats, 0, 0, 0);
 		if (list.layer.order >= 0 && si.contains(0, 1)) {
 			si.update(m_view.lights, 0, 1, 0);
 		}
-		bool const sb10 = si.contains(1, 0);
-		bool const sb11 = si.contains(1, 1);
-		bool const sb20 = si.contains(2, 0);
-		bool const sb21 = si.contains(2, 1);
-		for (std::size_t idx = 0; idx < list.ts.size(); ++idx) {
-			Drawable& d = list.ts[idx];
+		auto const sb10 = SetBind(si, 1, 0);
+		auto const sb20 = SetBind(si, 2, 0);
+		auto const sb21 = SetBind(si, 2, 1);
+		auto const sb22 = SetBind(si, 2, 2);
+		auto const sb30 = SetBind(si, 3, 0);
+		std::size_t idx = 0;
+		for (type& d : list.ts) {
 			if (sb10) {
 				d.mat_m.write(d.tr.model());
-				si.update(d.mat_m, 1, 0, idx);
+				si.update(d.mat_m, sb10.set, sb10.bind, idx);
 				d.mat_m.swap();
 			}
-			if (sb11) {
-				d.material.write(d.mat);
-				si.update(d.material, 1, 1, idx);
-				d.material.swap();
-			}
-			if (list.layer.order < 0 && d.diffuse) {
-				si.update(*d.diffuse, 0, 1, idx);
-			}
-			if (sb20) {
-				si.update(d.diffuse ? *d.diffuse : *m_defaults.white, 2, 0, idx);
-			}
-			if (sb21) {
-				si.update(d.specular ? *d.specular : *m_defaults.black, 2, 1, idx);
+			for (DrawObj& obj : d.objs) {
+				Material const& mat = obj.primitive.material;
+				if (list.layer.order < 0) {
+					ENSURE(mat.map_Kd, "Null cubemap");
+					si.update(*mat.map_Kd, 0, 1, idx);
+				}
+				if (sb20) {
+					si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, idx);
+				}
+				if (sb21) {
+					si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, idx);
+				}
+				if (sb22) {
+					si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, idx);
+				}
+				if (sb30) {
+					ShadeMat const mat = ShadeMat::make(obj.primitive.material);
+					obj.matBuf.write(mat);
+					si.update(obj.matBuf, sb30.set, sb30.bind, idx);
+					obj.matBuf.swap();
+				}
+				++idx;
 			}
 		}
 	}
@@ -437,21 +483,18 @@ class DrawScene {
 		m_view.lights.swap();
 	}
 
-	void draw(graphics::CommandBuffer const& cb, DrawList<Drawable> const& list) const {
-		graphics::Pipeline const& pi = *list.layer.pipeline;
-		auto& input = pi.shaderInput();
-		bool const s1 = input.contains(1);
-		bool const s2 = input.contains(2);
-		cb.bindSet(pi.layout(), input.set(0).front());
-		for (std::size_t idx = 0; idx < list.ts.size(); ++idx) {
-			Drawable& d = list.ts[idx];
-			if (s1) {
-				cb.bindSet(pi.layout(), input.set(1).index(idx));
+	void draw(graphics::CommandBuffer const& cb, DrawList<type> const& list) const {
+		graphics::Pipeline const& pipe = *list.layer.pipeline;
+		pipe.bindSet(cb, 0, 0);
+		std::size_t idx = 0;
+		for (Drawable const& d : list.ts) {
+			pipe.bindSet(cb, 1, idx);
+			for (DrawObj const& obj : d.objs) {
+				pipe.bindSet(cb, {2, 3}, idx);
+				ENSURE(obj.primitive.mesh, "Null mesh");
+				obj.primitive.mesh->draw(cb);
+				++idx;
 			}
-			if (s2) {
-				cb.bindSet(pi.layout(), input.set(2).index(idx));
-			}
-			d.mesh->draw(cb);
 		}
 	}
 };
@@ -468,7 +511,7 @@ class App : public Input::IContext {
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
 		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
-			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().context(), {}, {}, {}, {}};
+			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().context()};
 			pipelineLD.name = id;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
@@ -478,6 +521,26 @@ class App : public Input::IContext {
 		m_store.resources().reader(reader);
 		m_store.add("samplers/default", graphics::Sampler{eng.boot().device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 		auto sampler = m_store.get<graphics::Sampler>("samplers/default");
+		{
+			task_scheduler::stage_t models;
+			AssetLoadData<Model> ald(m_eng.get().boot().vram, *sampler);
+			ald.modelID = "models/plant";
+			ald.jsonID = "models/plant/plant.json";
+			ald.texFormat = m_eng.get().context().textureFormat();
+			models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
+
+			ald.jsonID = "models/teapot/teapot.json";
+			ald.modelID = "models/teapot";
+			models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
+
+			ald.jsonID = "models/test/nanosuit/nanosuit.json";
+			if (m_store.resources().reader().present(ald.jsonID)) {
+				ald.modelID = "models/nanosuit";
+				models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
+			}
+			m_data.load_models = m_tasks.stage(std::move(models));
+		}
+
 		m_data.font.create(eng.boot().vram, reader, "fonts/default", "fonts/default.json", sampler->sampler(), eng.context().textureFormat());
 		m_data.text.create(eng.boot().vram, "text");
 		m_data.text.text.size = 80U;
@@ -524,7 +587,8 @@ class App : public Input::IContext {
 		}
 
 		task_scheduler::stage_t texload;
-		AssetLoadData<graphics::Texture> textureLD{eng.boot().vram, {}, {}, {}, {}, {}, "samplers/default"};
+		AssetLoadData<graphics::Texture> textureLD{eng.boot().vram};
+		textureLD.samplerID = "samplers/default";
 		textureLD.name = "cubemaps/sky_dusk";
 		textureLD.prefix = "skyboxes/sky_dusk";
 		textureLD.ext = ".jpg";
@@ -558,23 +622,24 @@ class App : public Input::IContext {
 			m_data.tex.push_back(textureLD.name);
 		});
 		textureLD.name = "textures/black";
-		textureLD.imageIDs.clear();
-		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0});
-		textureLD.raw.size = {1, 1};
+		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0xff});
 		texload.tasks.push_back([this, textureLD]() {
 			m_store.load<graphics::Texture>(textureLD.name, textureLD);
 			m_data.tex.push_back(textureLD.name);
 		});
 		textureLD.name = "textures/white";
-		textureLD.imageIDs.clear();
 		textureLD.raw.bytes = graphics::utils::convert({0xff, 0xff, 0xff, 0xff});
-		textureLD.raw.size = {1, 1};
+		texload.tasks.push_back([this, textureLD]() {
+			m_store.load<graphics::Texture>(textureLD.name, textureLD);
+			m_data.tex.push_back(textureLD.name);
+		});
+		textureLD.name = "textures/blank";
+		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0});
 		texload.tasks.push_back([this, textureLD]() {
 			m_store.load<graphics::Texture>(textureLD.name, textureLD);
 			m_data.tex.push_back(textureLD.name);
 		});
 		m_data.load_tex = m_tasks.stage(std::move(texload));
-
 		m_eng.get().pushContext(*this);
 		eng.m_win.get().show();
 	}
@@ -586,6 +651,21 @@ class App : public Input::IContext {
 		return false;
 	}
 
+	decf::spawn_t<Drawable, DrawLayer> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
+		auto ret = m_data.registry.spawn<Drawable, DrawLayer>(name);
+		auto& [e, c] = ret;
+		auto& [d, l] = c;
+		l = layer;
+		d.mat_m = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/mat_m", {});
+		for (auto prim : primitives) {
+			DrawObj obj;
+			obj.primitive = prim;
+			obj.matBuf = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/material", {});
+			d.objs.push_back(std::move(obj));
+		}
+		return ret;
+	};
+
 	void init1() {
 		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/test");
 		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
@@ -596,8 +676,8 @@ class App : public Input::IContext {
 		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
 		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
-		m_data.scene.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
-		m_data.scene.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
+		m_data.drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
+		m_data.drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
 
 		m_data.cam.position = {0.0f, 2.0f, 4.0f};
 		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
@@ -605,55 +685,74 @@ class App : public Input::IContext {
 		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
 		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
 		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
-		m_data.scene.m_view.mats = graphics::ShaderBuffer(m_eng.get().boot().vram, "view_mats", {});
+		m_data.drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().boot().vram, "view_mats", {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
 			info.type = vk::DescriptorType::eStorageBuffer;
-			m_data.scene.m_view.lights = graphics::ShaderBuffer(m_eng.get().boot().vram, "lights", {});
+			m_data.drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().boot().vram, "lights", {});
 		}
 		DirLight l0, l1;
-		l0.direction = {graphics::front, 0.0f};
+		l0.direction = {-graphics::front, 0.0f};
 		l1.direction = {-graphics::up, 0.0f};
-		l0.albedo.colour = colours::magenta.toVec4();
-		l0.albedo.amdispsh = {0.2f, 1.0f, 0.8f, 0.0f};
-		l1.albedo.colour = colours::yellow.toVec4();
-		l1.albedo.amdispsh = l0.albedo.amdispsh;
+		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
+		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
-		auto spawn = [this](std::string name, graphics::Mesh const& mesh, DrawLayer const& layer, bool mat = false) {
-			auto [e, c] = m_data.registry.spawn<Drawable>(name);
-			auto& [d] = c;
-			d.mesh = &mesh;
-			d.mat_m = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/mat_m", {});
-			if (mat) {
-				d.material = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/material", {});
-			}
-			m_data.registry.attach<DrawLayer>(e, layer);
-			return std::pair<decf::entity_t, Drawable&>(e, d);
-		};
 		{
-			auto [_, d] = spawn("skybox", *skycube, m_data.layers["sky"]);
-			d.diffuse = &skymap.get();
+			Primitive prim;
+			prim.material.map_Kd = &*skymap;
+			prim.mesh = &*skycube;
+			spawn("skybox", prim, m_data.layers["sky"]);
 		}
 		{
-			auto [e, d] = spawn("prop_0", *cube, m_data.layers["test_lit"], true);
-			d.diffuse = &m_store.get<graphics::Texture>("textures/container2/diffuse").get();
-			d.specular = &m_store.get<graphics::Texture>("textures/container2/specular").get();
+			Primitive prim;
+			prim.mesh = &*cube;
+			prim.material.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
+			prim.material.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			d.mat.flags |= Material::eDrop;
-			m_data.entities["cube_tex"] = e;
+			m_data.entities["cube_tex"] = spawn("prop_0", prim, m_data.layers["test_lit"]);
 		}
 		{
-			auto [e, d] = spawn("prop_1", *cube, m_data.layers["test"]);
-			d.tr.position({-5.0f, -1.0f, -2.0f});
-			m_data.entities["prop_1"] = e;
+			Primitive prim;
+			prim.mesh = &*cube;
+			auto ent = spawn("prop_1", prim, m_data.layers["test"]);
+			ent.get<Drawable>().tr.position({-5.0f, -1.0f, -2.0f});
+			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto [_, d] = spawn("prop_2", *cone, m_data.layers["test"]);
-			d.tr.position({1.0f, -2.0f, -3.0f});
+			Primitive prim;
+			prim.mesh = &*cone;
+			auto ent = spawn("prop_2", prim, m_data.layers["test_tex"]);
+			ent.get<Drawable>().tr.position({1.0f, -2.0f, -3.0f});
 		}
 		{
-			auto [e, d] = spawn("ui_1", *m_data.text.mesh, m_data.layers["ui"]);
-			d.diffuse = &*m_data.font.atlas;
+			Primitive prim;
+			prim.material.map_Kd = &*m_data.font.atlas;
+			prim.material.map_d = &*m_data.font.atlas;
+			prim.mesh = &*m_data.text.mesh;
+			spawn("ui_1", prim, m_data.layers["ui"]);
+		}
+		{
+			if (auto model = m_store.find<Model>("models/plant")) {
+				auto ent0 = spawn("model_0_0", model->get().primitives(), m_data.layers["test_lit"]);
+				ent0.get<Drawable>().tr.position({-2.0f, -1.0f, 2.0f});
+				m_data.entities["model_0_0"] = ent0;
+
+				auto ent1 = spawn("model_0_1", model->get().primitives(), m_data.layers["test_lit"]);
+				ent1.get<Drawable>().tr.position({-2.0f, -1.0f, 5.0f});
+				m_data.entities["model_0_1"] = ent1;
+			}
+			if (auto model = m_store.find<Model>("models/teapot")) {
+				Primitive prim = model->get().primitives().front();
+				prim.material.Tf = Colour(0xfc2320ff);
+				auto ent0 = spawn("model_1_0", prim, m_data.layers["test_lit"]);
+				ent0.get<Drawable>().tr.position({2.0f, -1.0f, 2.0f});
+				m_data.entities["model_1_0"] = ent0;
+			}
+			if (auto model = m_store.find<Model>("models/nanosuit")) {
+				auto ent = spawn("model_1", model->get().primitives(), m_data.layers["test_lit"]);
+				ent.get<Drawable>().tr.position({-1.0f, -2.0f, -3.0f});
+				m_data.entities["model_1"] = ent;
+			}
 		}
 	}
 
@@ -671,7 +770,7 @@ class App : public Input::IContext {
 	}
 
 	void tick(Time_s dt) {
-		if (!ready({m_data.load_pipes, m_data.load_tex})) {
+		if (!ready({m_data.load_pipes, m_data.load_tex, m_data.load_models})) {
 			return;
 		}
 		if (m_data.registry.empty()) {
@@ -685,21 +784,29 @@ class App : public Input::IContext {
 		}
 		m_data.registry.get<Drawable>(m_data.entities["cube_tex"]).tr.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
 		m_data.registry.get<Drawable>(m_data.entities["prop_1"]).tr.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		if (auto d = m_data.registry.find<Drawable>(m_data.entities["model_0_0"])) {
+			d->tr.rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
+		}
+		if (auto d = m_data.registry.find<Drawable>(m_data.entities["model_1_0"])) {
+			static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+			s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
+			d->tr.rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+		}
 	}
 
 	void render() {
 		if (m_eng.get().context().waitForFrame()) {
 			// write / update
-			if (m_data.load_tex.id == 0) {
-				m_data.scene.write(m_data.cam, m_eng.get().context().extent(), m_data.dirLights);
+			if (!m_data.registry.empty()) {
+				m_data.drawer.write(m_data.cam, m_eng.get().context().extent(), m_data.dirLights);
 			}
 
 			// draw
 			if (auto r = m_eng.get().context().render(Colour(0x040404ff))) {
-				if (m_data.load_tex.id == 0) {
+				if (!m_data.registry.empty()) {
 					auto& cb = r->primary();
 					cb.setViewportScissor(m_eng.get().context().viewport(), m_eng.get().context().scissor());
-					batchDraw<Drawable>(m_data.scene, m_data.registry, cb);
+					batchDraw(m_data.drawer, m_data.registry, cb);
 				}
 			}
 		}
@@ -711,14 +818,14 @@ class App : public Input::IContext {
 		std::vector<Hash> mesh;
 		std::unordered_map<Hash, decf::entity_t> entities;
 		std::unordered_map<Hash, DrawLayer> layers;
-		DrawScene scene;
+		Drawer drawer;
 
 		Font font;
 		Text text;
 		Camera cam;
 		std::vector<DirLight> dirLights;
 
-		task_scheduler::stage_id load_pipes, load_tex;
+		task_scheduler::stage_id load_pipes, load_tex, load_models;
 		decf::registry_t registry;
 	};
 

@@ -78,6 +78,7 @@ class DescriptorSet {
 };
 
 struct DescriptorSet::CreateInfo {
+	std::string_view name;
 	vk::DescriptorSetLayout layout;
 	View<BindingInfo> bindingInfos;
 	std::size_t rotateCount = 2;
@@ -101,6 +102,7 @@ class SetPool {
 
   private:
 	struct Storage {
+		std::string_view name;
 		vk::DescriptorSetLayout layout;
 		std::vector<BindingInfo> bindInfos;
 		std::vector<DescriptorSet> descriptorSets;

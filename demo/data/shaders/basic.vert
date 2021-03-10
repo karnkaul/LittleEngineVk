@@ -3,7 +3,6 @@
 layout(std140, set = 0, binding = 0) uniform VP {
 	mat4 mat_v;
 	mat4 mat_p;
-	mat4 mat_ui;
 };
 
 layout(std140, set = 1, binding = 0) uniform M {

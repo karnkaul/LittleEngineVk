@@ -46,16 +46,12 @@ DescriptorSet::DescriptorSet(Device& device, CreateInfo const& info) : m_device(
 					set.bindings[b].type = bindingInfo.binding.descriptorType;
 					set.bindings[b].count = bindingInfo.binding.descriptorCount;
 					set.bindings[b].name = bindingInfo.name;
-					g_log.log(lvl::debug, 2, "[{}] Binding [{}] [{}] for DescriptorSet [{}] registered", g_name, b, bindingInfo.name, info.setNumber);
 				}
 			}
 			set.pool = m_device.get().createDescriptorPool(poolSizes, 1);
 			set.set = m_device.get().allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
 			m_storage.setBuffer.push(std::move(set));
 		}
-		g_log.log(lvl::debug, 2, "[{}] DescriptorSet [{}] constructed", g_name, info.setNumber);
-	} else {
-		g_log.log(lvl::info, 0, "[{}] DescriptorSet [{}] inactive", g_name, info.setNumber);
 	}
 }
 
@@ -157,12 +153,9 @@ void DescriptorSet::update(vk::WriteDescriptorSet write) {
 
 void DescriptorSet::destroy() {
 	Device& d = m_device;
-	d.defer([b = m_storage.setBuffer, sn = m_storage.setNumber, &d]() mutable {
+	d.defer([b = m_storage.setBuffer, &d]() mutable {
 		for (Set& set : b.ts) {
 			d.destroy(set.pool);
-			if (!b.ts.empty()) {
-				g_log.log(lvl::info, 1, "[{}] DescriptorSet [{}] destroyed", g_name, sn);
-			}
 		}
 	});
 	m_storage = {};
@@ -181,10 +174,18 @@ SetPool::SetPool(Device& device, DescriptorSet::CreateInfo const& info) : m_devi
 	m_storage.layout = info.layout;
 	m_storage.rotateCount = info.rotateCount;
 	m_storage.setNumber = info.setNumber;
-	for (auto const& bindInfo : info.bindingInfos) {
-		m_storage.bindInfos.push_back(bindInfo);
+	bool bActive = false;
+	for (auto const& bi : info.bindingInfos) {
+		m_storage.bindInfos.push_back(bi);
+		bActive |= !bi.bUnassigned;
+		if (!bi.bUnassigned) {
+			u32 const b = bi.binding.binding;
+			g_log.log(lvl::debug, 2, "[{}] Binding [{}/{}] [{}] for [{}] registered", g_name, info.setNumber, b, bi.name, info.name);
+		}
 	}
 	populate(1);
+	std::string_view const suffix = bActive ? "constructed" : "inactive";
+	g_log.log(lvl::debug, 2, "[{}] SetPool [{}/{}] {}", g_name, info.name, info.setNumber, suffix);
 }
 
 DescriptorSet& SetPool::front() {
@@ -210,7 +211,7 @@ DescriptorSet const& SetPool::index(std::size_t idx) const {
 Span<DescriptorSet> SetPool::populate(std::size_t count) {
 	m_storage.descriptorSets.reserve(count);
 	while (m_storage.descriptorSets.size() < count) {
-		DescriptorSet::CreateInfo info{m_storage.layout, m_storage.bindInfos, m_storage.rotateCount, m_storage.setNumber};
+		DescriptorSet::CreateInfo info{m_storage.name, m_storage.layout, m_storage.bindInfos, m_storage.rotateCount, m_storage.setNumber};
 		m_storage.descriptorSets.emplace_back(m_device, info);
 	}
 	return Span(m_storage.descriptorSets.data(), count);

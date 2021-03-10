@@ -90,6 +90,7 @@ bool Pipeline::reconstruct(Shader const& shader) {
 	}
 	destroy(m_storage.dynamic.main);
 	m_storage.dynamic.main = pipe;
+	m_metadata.name = shader.m_name;
 	m_metadata.main = std::move(info);
 	for (auto& [id, f] : m_metadata.variants) {
 		vk::Pipeline pipe;
@@ -131,7 +132,7 @@ SetPool Pipeline::makeSetPool(u32 set, std::size_t rotateCount) const {
 	if (rotateCount == 0) {
 		rotateCount = m_metadata.main.rotateCount;
 	}
-	DescriptorSet::CreateInfo const info{f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
+	DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
 	return SetPool(m_device, info);
 }
 
@@ -142,7 +143,7 @@ std::unordered_map<u32, SetPool> Pipeline::makeSetPools(std::size_t rotateCount)
 		rotateCount = m_metadata.main.rotateCount;
 	}
 	for (u32 set = 0; set < (u32)m_storage.fixed.setLayouts.size(); ++set) {
-		DescriptorSet::CreateInfo const info{f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
+		DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
 		ret.emplace(set, SetPool(m_device, info));
 	}
 	return ret;
@@ -167,6 +168,7 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	if (!valid(shader.m_modules) || Device::default_v(c.renderPass)) {
 		return false;
 	}
+	m_metadata.name = shader.m_name;
 	if (Device::default_v(m_storage.dynamic.cache)) {
 		m_storage.dynamic.cache = m_device.get().device().createPipelineCache({});
 	}

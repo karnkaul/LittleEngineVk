@@ -20,8 +20,8 @@ class Shader {
 	using ModuleMap = ArrayMap<vk::ShaderModule>;
 	using ResourcesMap = ArrayMap<Resources>;
 
-	Shader(Device& device);
-	Shader(Device& device, SpirVMap const& bytes);
+	Shader(Device& device, std::string name);
+	Shader(Device& device, std::string name, SpirVMap const& bytes);
 	Shader(Shader&&);
 	Shader& operator=(Shader&&);
 	~Shader();
@@ -32,6 +32,7 @@ class Shader {
 	bool valid() const noexcept;
 	bool empty() const noexcept;
 
+	std::string m_name;
 	ModuleMap m_modules;
 	CodeMap m_spirV;
 

@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <dumb_json/djson.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <engine/config.hpp>
 #include <graphics/utils/utils.hpp>
 
 namespace le {
@@ -14,7 +16,7 @@ std::optional<graphics::Shader> AssetLoader<graphics::Shader>::load(AssetLoadInf
 	auto const& paths = info.m_data.shaderPaths;
 	if (!paths.empty() && std::all_of(paths.begin(), paths.end(), [&info](auto const& kvp) { return info.reader().present(kvp.second); })) {
 		if (auto d = data(info)) {
-			return graphics::Shader(info.m_data.device, std::move(*d));
+			return graphics::Shader(info.m_data.device, info.m_data.name, std::move(*d));
 		}
 	}
 	return std::nullopt;
@@ -142,10 +144,99 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 	return std::nullopt;
 }
 
+namespace {
+struct FontInfo {
+	io::Path atlasID;
+	kt::fixed_vector<graphics::Glyph, maths::max<u8>()> glyphs;
+	s32 orgSizePt = 0;
+};
+
+graphics::Glyph deserialise(u8 c, dj::node_t const& json) {
+	graphics::Glyph ret;
+	ret.ch = c;
+	ret.st = {json.get("x").as<s32>(), json.get("y").as<s32>()};
+	ret.uv = ret.cell = {json.get("width").as<s32>(), json.get("height").as<s32>()};
+	ret.offset = {json.get("originX").as<s32>(), json.get("originY").as<s32>()};
+	auto const pAdvance = json.find("advance");
+	ret.xAdv = pAdvance ? pAdvance->as<s32>() : ret.cell.x;
+	if (auto pBlank = json.find("isBlank")) {
+		ret.blank = pBlank->as<bool>();
+	}
+	return ret;
+}
+
+FontInfo deserialise(dj::node_t const& json) {
+	FontInfo ret;
+	if (auto pAtlas = json.find("sheetID")) {
+		ret.atlasID = pAtlas->as<std::string>();
+	}
+	if (auto pSize = json.find("size")) {
+		ret.orgSizePt = pSize->as<s32>();
+	}
+	if (auto pGlyphsData = json.find("glyphs")) {
+		for (auto& [key, value] : pGlyphsData->as<dj::map_nodes_t>()) {
+			if (!key.empty()) {
+				if (ret.glyphs.size() == ret.glyphs.capacity()) {
+					break;
+				}
+				graphics::Glyph const glyph = deserialise((u8)key[0], *value);
+				if (glyph.cell.x > 0 && glyph.cell.y > 0) {
+					ret.glyphs.push_back(glyph);
+				} else {
+					conf::g_log.log(dl::level::warning, 1, "[{}] [BitmapFont] Could not deserialise Glyph '{}'!", conf::g_name, key[0]);
+				}
+			}
+		}
+	}
+	return ret;
+}
+} // namespace
+
+std::optional<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFont> const& info) const {
+	BitmapFont font;
+	if (load(font, info)) {
+		return font;
+	}
+	return std::nullopt;
+}
+
+bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
+	return load(out_font, info);
+}
+
+bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
+	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	if (!sampler) {
+		return false;
+	}
+	if (auto text = info.resource(info.m_data.jsonID, Resource::Type::eText, true)) {
+		if (auto json = dj::node_t::make(text->string())) {
+			FontInfo const fi = deserialise(*json);
+			auto const atlas = info.resource(info.m_data.jsonID.parent_path() / fi.atlasID, Resource::Type::eBinary, true);
+			if (!atlas) {
+				return false;
+			}
+			BitmapFont::CreateInfo bci;
+			bci.format = info.m_data.texFormat;
+			bci.name = info.m_data.name;
+			bci.glyphs = fi.glyphs;
+			bci.atlas = atlas->bytes();
+			if (out_font.create(info.m_data.vram, sampler->get(), bci)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
+	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	if (!sampler) {
+		return std::nullopt;
+	}
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
 		Model model;
-		if (model.construct(info.m_data.vram, *mci, info.m_data.sampler, info.m_data.texFormat)) {
+		if (model.construct(info.m_data.vram, *mci, sampler->get(), info.m_data.texFormat)) {
 			return model;
 		}
 	}
@@ -153,8 +244,12 @@ std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) 
 }
 
 bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& info) const {
+	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	if (!sampler) {
+		return false;
+	}
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
-		return out_model.construct(info.m_data.vram, mci.move(), info.m_data.sampler, info.m_data.texFormat).has_result();
+		return out_model.construct(info.m_data.vram, mci.move(), sampler->get(), info.m_data.texFormat).has_result();
 	}
 	return false;
 }

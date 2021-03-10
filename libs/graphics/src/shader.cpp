@@ -3,14 +3,14 @@
 #include <graphics/shader.hpp>
 
 namespace le::graphics {
-Shader::Shader(Device& device) : m_device(device) {
+Shader::Shader(Device& device, std::string name) : m_name(std::move(name)), m_device(device) {
 }
 
-Shader::Shader(Device& device, SpirVMap const& spirV) : m_device(device) {
+Shader::Shader(Device& device, std::string name, SpirVMap const& spirV) : m_name(std::move(name)), m_device(device) {
 	construct(spirV, m_spirV, m_modules);
 }
 
-Shader::Shader(Shader&& rhs) : m_modules(std::move(rhs.m_modules)), m_spirV(std::move(rhs.m_spirV)), m_device(rhs.m_device) {
+Shader::Shader(Shader&& rhs) : m_name(std::move(rhs.m_name)), m_modules(std::move(rhs.m_modules)), m_spirV(std::move(rhs.m_spirV)), m_device(rhs.m_device) {
 	for (auto& m : rhs.m_modules) {
 		m = vk::ShaderModule();
 	}
@@ -19,6 +19,7 @@ Shader::Shader(Shader&& rhs) : m_modules(std::move(rhs.m_modules)), m_spirV(std:
 Shader& Shader::operator=(Shader&& rhs) {
 	if (&rhs != this) {
 		destroy();
+		m_name = std::move(rhs.m_name);
 		m_modules = std::move(rhs.m_modules);
 		m_spirV = std::move(rhs.m_spirV);
 		m_device = rhs.m_device;

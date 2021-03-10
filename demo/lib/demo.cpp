@@ -127,81 +127,6 @@ struct HelpCmd : os::ICmdArg {
 	}
 };
 
-struct Font {
-	io::Path atlasID;
-	io::Path samplerID;
-	io::Path materialID;
-	std::optional<graphics::Texture> atlas;
-	std::array<graphics::Glyph, maths::max<u8>()> glyphs;
-	s32 orgSizePt = 0;
-
-	graphics::Glyph deserialise(u8 c, dj::node_t const& json) {
-		graphics::Glyph ret;
-		ret.ch = c;
-		ret.st = {json.get("x").as<s32>(), json.get("y").as<s32>()};
-		ret.uv = ret.cell = {json.get("width").as<s32>(), json.get("height").as<s32>()};
-		ret.offset = {json.get("originX").as<s32>(), json.get("originY").as<s32>()};
-		auto const pAdvance = json.find("advance");
-		ret.xAdv = pAdvance ? pAdvance->as<s32>() : ret.cell.x;
-		if (auto pBlank = json.find("isBlank")) {
-			ret.bBlank = pBlank->as<bool>();
-		}
-		return ret;
-	}
-
-	void deserialise(dj::node_t const& json) {
-		if (auto pAtlas = json.find("sheetID")) {
-			atlasID = pAtlas->as<std::string>();
-		}
-		if (auto pSampler = json.find("samplerID")) {
-			samplerID = pSampler->as<std::string>();
-		}
-		if (auto pMaterial = json.find("materialID")) {
-			materialID = pMaterial->as<std::string>();
-		}
-		if (auto pSize = json.find("size")) {
-			orgSizePt = pSize->as<s32>();
-		}
-		if (auto pGlyphsData = json.find("glyphs")) {
-			for (auto& [key, value] : pGlyphsData->as<dj::map_nodes_t>()) {
-				if (!key.empty()) {
-					graphics::Glyph const glyph = deserialise((u8)key[0], *value);
-					if (glyph.cell.x > 0 && glyph.cell.y > 0) {
-						glyphs[(std::size_t)glyph.ch] = glyph;
-					} else {
-						logW("Could not deserialise Glyph '{}'!", key[0]);
-					}
-				}
-			}
-		}
-	}
-
-	bool create(graphics::VRAM& vram, io::Reader const& reader, io::Path const& id, io::Path const& path, vk::Sampler sampler, vk::Format format) {
-		auto jsonText = reader.string(path);
-		if (!jsonText) {
-			return false;
-		}
-		auto json = dj::node_t::make(*jsonText);
-		if (!json) {
-			return false;
-		}
-		deserialise(*json);
-		auto bytes = reader.bytes(path.parent_path() / atlasID);
-		if (!bytes) {
-			return false;
-		}
-		atlas = graphics::Texture((id / "atlas").generic_string(), vram);
-		graphics::Texture::CreateInfo info;
-		info.sampler = sampler;
-		info.data = graphics::Texture::Img{std::move(*bytes)};
-		info.format = format;
-		if (!atlas->construct(info)) {
-			return false;
-		}
-		return true;
-	}
-};
-
 struct Text {
 	using Type = graphics::Mesh::Type;
 
@@ -213,10 +138,10 @@ struct Text {
 		mesh = graphics::Mesh((id / "mesh").generic_string(), vram, type);
 	}
 
-	bool set(Font const& font, std::string_view str) {
+	bool set(BitmapFont const& font, std::string_view str) {
 		text.text = str;
 		if (mesh) {
-			return mesh->construct(text.generate(font.glyphs, font.atlas->data().size));
+			return mesh->construct(text.generate(font.glyphs(), font.atlas().data().size));
 		}
 		return false;
 	}
@@ -504,7 +429,8 @@ class App : public Input::IContext {
 	App(Engine& eng, io::Reader const& reader) : m_eng(eng) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
-			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().boot().device, {}};
+			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().boot().device};
+			shaderLD.name = id;
 			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
 			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
 			m_store.load<graphics::Shader>(id, std::move(shaderLD));
@@ -520,12 +446,12 @@ class App : public Input::IContext {
 		};
 		m_store.resources().reader(reader);
 		m_store.add("samplers/default", graphics::Sampler{eng.boot().device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
-		auto sampler = m_store.get<graphics::Sampler>("samplers/default");
 		{
 			task_scheduler::stage_t models;
-			AssetLoadData<Model> ald(m_eng.get().boot().vram, *sampler);
+			AssetLoadData<Model> ald(m_eng.get().boot().vram);
 			ald.modelID = "models/plant";
 			ald.jsonID = "models/plant/plant.json";
+			ald.samplerID = "samplers/default";
 			ald.texFormat = m_eng.get().context().textureFormat();
 			models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
 
@@ -541,12 +467,17 @@ class App : public Input::IContext {
 			m_data.load_models = m_tasks.stage(std::move(models));
 		}
 
-		m_data.font.create(eng.boot().vram, reader, "fonts/default", "fonts/default.json", sampler->sampler(), eng.context().textureFormat());
+		AssetLoadData<BitmapFont> fld(m_eng.get().boot().vram);
+		fld.jsonID = "fonts/default/default.json";
+		fld.texFormat = m_eng.get().context().textureFormat();
+		fld.name = "fonts/default";
+		fld.samplerID = "samplers/default";
+		auto font = m_store.load<BitmapFont>(fld.name, fld);
 		m_data.text.create(eng.boot().vram, "text");
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
-		m_data.text.set(m_data.font, "Hi!");
+		m_data.text.set(font->get(), "Hi!");
 		{
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
@@ -568,18 +499,18 @@ class App : public Input::IContext {
 		pci_skybox.fixedState.vertexInput = eng.context().vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 		{
 			task_scheduler::stage_t shaders;
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test", "shaders/test.vert", "shaders/test.frag"); });
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test_tex", "shaders/test.vert", "shaders/test_tex.frag"); });
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/test_lit", "shaders/test_lit.vert", "shaders/test_lit.frag"); });
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"); });
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/tex", "shaders/basic.vert", "shaders/tex.frag"); });
+			shaders.tasks.push_back([loadShader]() { loadShader("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"); });
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"); });
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"); });
 			load_shaders = m_tasks.stage(std::move(shaders));
 		}
 		{
 			task_scheduler::stage_t pipes;
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test", "shaders/test", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test_tex", "shaders/test_tex", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/test_lit", "shaders/test_lit", graphics::PFlags::inverse()); });
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/basic", "shaders/basic", graphics::PFlags::inverse()); });
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/tex", "shaders/tex", graphics::PFlags::inverse()); });
+			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/lit", "shaders/lit", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()); });
 			pipes.tasks.push_back([loadPipe, pci_skybox]() { loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox); });
 			pipes.deps.push_back(load_shaders);
@@ -667,15 +598,16 @@ class App : public Input::IContext {
 	};
 
 	void init1() {
-		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/test");
-		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/test_tex");
-		auto pipe_testLit = m_store.find<graphics::Pipeline>("pipelines/test_lit");
+		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/basic");
+		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/tex");
+		auto pipe_testLit = m_store.find<graphics::Pipeline>("pipelines/lit");
 		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
 		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 		auto skycube = m_store.get<graphics::Mesh>("skycube");
 		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
 		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
+		auto font = m_store.get<BitmapFont>("fonts/default");
 		m_data.drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
 		m_data.drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
 
@@ -726,8 +658,8 @@ class App : public Input::IContext {
 		}
 		{
 			Primitive prim;
-			prim.material.map_Kd = &*m_data.font.atlas;
-			prim.material.map_d = &*m_data.font.atlas;
+			prim.material.map_Kd = &font->atlas();
+			prim.material.map_d = &font->atlas();
 			prim.mesh = &*m_data.text.mesh;
 			spawn("ui_1", prim, m_data.layers["ui"]);
 		}
@@ -820,7 +752,6 @@ class App : public Input::IContext {
 		std::unordered_map<Hash, DrawLayer> layers;
 		Drawer drawer;
 
-		Font font;
 		Text text;
 		Camera cam;
 		std::vector<DirLight> dirLights;

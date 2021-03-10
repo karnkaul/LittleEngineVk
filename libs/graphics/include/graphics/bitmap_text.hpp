@@ -14,7 +14,7 @@ struct Glyph {
 	glm::ivec2 cell = glm::ivec2(0);
 	glm::ivec2 offset = glm::ivec2(0);
 	s32 xAdv = 0;
-	bool bBlank = false;
+	bool blank = false;
 };
 
 struct BitmapText {

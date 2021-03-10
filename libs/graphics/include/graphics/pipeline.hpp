@@ -88,6 +88,7 @@ class Pipeline final {
 		Hash id;
 	};
 	struct Metadata {
+		std::string_view name;
 		CreateInfo main;
 		std::unordered_map<Hash, CreateInfo::Fixed> variants;
 	};

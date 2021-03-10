@@ -13,8 +13,6 @@ int main(int argc, char** argv) {
 	{
 		using namespace le;
 		io::FileReader reader;
-		io::Path const prefix = os::dirPath(os::Dir::eWorking) / "data";
-		reader.mount(prefix);
 		reader.mount(os::dirPath(os::Dir::eWorking) / "demo/data");
 		le::demo::CreateInfo info;
 		info.args = {argc, argv};

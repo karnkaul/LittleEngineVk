@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <engine/assets/asset_loader.hpp>
+#include <engine/render/bitmap_font.hpp>
 #include <engine/render/model.hpp>
 #include <graphics/render_context.hpp>
 #include <graphics/shader.hpp>
@@ -10,8 +11,12 @@
 namespace le {
 template <>
 struct AssetLoadData<graphics::Shader> {
-	Ref<graphics::Device> device;
+	std::string name;
 	std::unordered_map<graphics::Shader::Type, io::Path> shaderPaths;
+	Ref<graphics::Device> device;
+
+	AssetLoadData(graphics::Device& device) : device(device) {
+	}
 };
 
 template <>
@@ -67,20 +72,40 @@ struct AssetLoader<graphics::Texture> {
 };
 
 template <>
+struct AssetLoadData<BitmapFont> {
+	std::string name;
+	io::Path jsonID;
+	vk::Format texFormat = graphics::Texture::srgbFormat;
+	Ref<graphics::VRAM> vram;
+	Hash samplerID;
+
+	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
+	}
+};
+
+template <>
+struct AssetLoader<BitmapFont> {
+	std::optional<BitmapFont> load(AssetLoadInfo<BitmapFont> const& info) const;
+	bool reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const;
+
+	bool load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const;
+};
+
+template <>
 struct AssetLoadData<Model> {
 	std::string modelID;
 	io::Path jsonID;
 	vk::Format texFormat = graphics::Texture::srgbFormat;
 	Ref<graphics::VRAM> vram;
-	Ref<graphics::Sampler const> sampler;
+	Hash samplerID;
 
-	AssetLoadData(graphics::VRAM& vram, graphics::Sampler const& sampler) : vram(vram), sampler(sampler) {
+	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
 	}
 };
 
 template <>
 struct AssetLoader<Model> {
 	std::optional<Model> load(AssetLoadInfo<Model> const& info) const;
-	bool reload(Model& out_texture, AssetLoadInfo<Model> const& info) const;
+	bool reload(Model& out_model, AssetLoadInfo<Model> const& info) const;
 };
 } // namespace le

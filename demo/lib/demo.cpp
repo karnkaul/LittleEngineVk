@@ -24,6 +24,7 @@
 #include <engine/input/input.hpp>
 #include <engine/render/drawer.hpp>
 #include <engine/render/model.hpp>
+#include <levk_imgui/levk_imgui.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -198,6 +199,12 @@ class Engine {
 			auto surface = [this](vk::Instance inst) { return makeSurface(inst); };
 			m_boot.emplace(boot, surface, m_win.get().framebufferSize());
 			m_gfx.emplace(m_boot->swapchain);
+			if (m_pDesktop) {
+				DearImGui::CreateInfo dici(m_boot->swapchain.renderPass());
+				m_imgui.emplace(m_boot->device, *m_pDesktop, dici);
+			} else {
+				m_imgui.emplace(m_boot->device);
+			}
 			return true;
 		}
 		return false;
@@ -205,6 +212,7 @@ class Engine {
 
 	bool unboot() noexcept {
 		if (m_boot && m_gfx) {
+			m_imgui.reset();
 			m_gfx.reset();
 			m_boot.reset();
 			return true;
@@ -226,6 +234,11 @@ class Engine {
 		return *m_gfx;
 	}
 
+	DearImGui& imgui() {
+		ENSURE(m_imgui.has_value(), "Not booted");
+		return *m_imgui;
+	}
+
 	Ref<window::IInstance> m_win;
 
   private:
@@ -237,6 +250,7 @@ class Engine {
 
 	std::optional<graphics::Bootstrap> m_boot;
 	std::optional<graphics::RenderContext> m_gfx;
+	std::optional<DearImGui> m_imgui;
 	Input m_input;
 	TTokenGen<Ref<Input::IContext>, TGSpec_deque> m_contexts;
 	window::DesktopInstance* m_pDesktop = {};
@@ -332,6 +346,7 @@ class Drawer {
 		graphics::Texture const* white = {};
 		graphics::Texture const* black = {};
 	} m_defaults;
+	DearImGui const* m_imgui = {};
 
 	struct SetBind {
 		u32 set;

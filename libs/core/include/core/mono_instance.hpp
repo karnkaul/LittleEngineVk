@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -15,6 +16,8 @@ class TMonoInstance {
 	TMonoInstance(TMonoInstance&&) noexcept;
 	TMonoInstance& operator=(TMonoInstance&&) noexcept;
 	~TMonoInstance();
+
+	static T* inst() noexcept;
 
   protected:
 	inline static T* s_pInstance = nullptr;
@@ -52,5 +55,9 @@ TMonoInstance<T>::~TMonoInstance() {
 	if (m_bActive) {
 		s_pInstance = nullptr;
 	}
+}
+template <typename T>
+T* TMonoInstance<T>::inst() noexcept {
+	return s_pInstance;
 }
 } // namespace le

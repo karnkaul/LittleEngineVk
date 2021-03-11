@@ -141,6 +141,7 @@ add_subdirectory(libs/decf)
 add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
+add_subdirectory(libs/levk_imgui)
 
 # Engine
 set(LEVK_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")

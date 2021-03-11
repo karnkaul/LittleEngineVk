@@ -26,5 +26,5 @@ target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:${PLATFORM},Linux>:-
 
 # PCH
 if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
-	target_precompile_headers(${PROJECT_NAME} REUSE_FROM levk::graphics)
+	target_precompile_headers(${PROJECT_NAME} REUSE_FROM levk-graphics)
 endif()

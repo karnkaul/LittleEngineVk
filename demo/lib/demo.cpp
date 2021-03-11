@@ -201,6 +201,7 @@ class Engine {
 			m_gfx.emplace(m_boot->swapchain);
 			if (m_pDesktop) {
 				DearImGui::CreateInfo dici(m_boot->swapchain.renderPass());
+				dici.texFormat = m_gfx->textureFormat();
 				m_imgui.emplace(m_boot->device, *m_pDesktop, dici);
 			} else {
 				m_imgui.emplace(m_boot->device);

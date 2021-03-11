@@ -4,7 +4,7 @@
 #include <core/mono_instance.hpp>
 #include <core/ref.hpp>
 #include <core/std_types.hpp>
-#include <vulkan/vulkan.hpp>
+#include <graphics/texture.hpp>
 
 #if !defined(LEVK_USE_IMGUI)
 constexpr bool levk_imgui = true;
@@ -51,6 +51,7 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 
 struct DearImGui::CreateInfo {
 	vk::RenderPass renderPass;
+	vk::Format texFormat = graphics::Texture::srgbFormat;
 	u32 descriptorCount = 1000;
 	u8 imageCount = 3;
 	u8 minImageCount = 2;

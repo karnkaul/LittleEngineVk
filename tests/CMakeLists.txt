@@ -8,7 +8,7 @@ add_test(Hash test-hash)
 # StaticAny
 add_executable(test-any any_test.cpp)
 target_link_libraries(test-any PRIVATE levk::core levk::interface)
-add_test(StaticAny test-any)
+add_test(kt::fixed_any test-any)
 
 # ECS (Registry)
 add_executable(test-decf decf_test.cpp)

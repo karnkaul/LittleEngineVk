@@ -1,13 +1,13 @@
 #pragma once
-#include <core/static_any.hpp>
 #include <engine/window/window.hpp>
 #include <glm/vec2.hpp>
+#include <kt/fixed_any/fixed_any.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le {
 class NativeWindow final {
   public:
-	StaticAny<> m_window;
+	kt::fixed_any_t<> m_window;
 
   public:
 	NativeWindow() noexcept = default;
@@ -25,7 +25,7 @@ class NativeWindow final {
 
 	template <typename T>
 	T* cast() const {
-		return m_window.template get<T*>();
+		return m_window.template value_or<T*>(nullptr);
 	}
 };
 } // namespace le

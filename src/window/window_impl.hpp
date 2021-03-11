@@ -1,10 +1,10 @@
 #pragma once
 #include <unordered_set>
 #include <core/erased_ref.hpp>
-#include <core/static_any.hpp>
 #include <core/utils/std_hash.hpp>
 #include <engine/gfx/render_driver.hpp>
 #include <engine/window/window.hpp>
+#include <kt/fixed_any/fixed_any.hpp>
 #include <window/native_window.hpp>
 
 namespace le {
@@ -21,7 +21,7 @@ class WindowImpl final {
 		input::OnClosed onClosed;
 	};
 	struct Cursor {
-		StaticAny<> data;
+		kt::fixed_any_t<> data;
 		input::CursorType type;
 	};
 
@@ -35,7 +35,7 @@ class WindowImpl final {
 	Cursor m_cursor;
 	Window* m_pWindow;
 
-	static WindowImpl* find(StaticAny<> nativeHandle);
+	static WindowImpl* find(kt::fixed_any_t<> nativeHandle);
 
 	static bool init();
 	static void deinit();

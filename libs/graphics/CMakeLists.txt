@@ -25,7 +25,6 @@ target_link_libraries(${PROJECT_NAME}
 		levk::interface
 		stb-image
 		tinyobjloader
-		$<$<STREQUAL:${PLATFORM},Linux>:X11>
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:${PLATFORM},Linux>:-fPIC>)

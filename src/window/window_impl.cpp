@@ -188,9 +188,11 @@ bool Gamepad::pressed(Key button) const {
 	return false;
 }
 
-WindowImpl* WindowImpl::find([[maybe_unused]] StaticAny<> nativeHandle) {
+WindowImpl* WindowImpl::find([[maybe_unused]] kt::fixed_any_t<> nativeHandle) {
 #if defined(LEVK_USE_GLFW)
-	auto f = [nativeHandle](WindowImpl& impl) -> bool { return impl.m_nativeWindow.template cast<GLFWwindow>() == nativeHandle.get<GLFWwindow*>(); };
+	auto f = [nativeHandle](WindowImpl& impl) -> bool {
+		return impl.m_nativeWindow.template cast<GLFWwindow>() == nativeHandle.value_or<GLFWwindow*>(nullptr);
+	};
 	auto search = std::find_if(g_registeredWindows.begin(), g_registeredWindows.end(), f);
 	return search != g_registeredWindows.end() ? &static_cast<WindowImpl&>(*search) : nullptr;
 #else
@@ -218,9 +220,8 @@ bool WindowImpl::init() {
 void WindowImpl::deinit() {
 #if defined(LEVK_USE_GLFW)
 	for (auto& cursor : s_cursors) {
-		auto pCursor = cursor.data.get<GLFWcursor*>();
-		if (pCursor) {
-			glfwDestroyCursor(pCursor);
+		if (cursor.data.contains<GLFWcursor*>()) {
+			glfwDestroyCursor(cursor.data.get<GLFWcursor*>());
 		}
 	}
 	glfwTerminate();
@@ -466,7 +467,7 @@ void WindowImpl::setCursorType([[maybe_unused]] CursorType type) {
 	if (g_bGLFWInit && !m_nativeWindow.m_window.empty()) {
 		if (type != m_cursor.type) {
 			m_cursor = cursor(type);
-			glfwSetCursor(m_nativeWindow.cast<GLFWwindow>(), m_cursor.data.get<GLFWcursor*>());
+			glfwSetCursor(m_nativeWindow.cast<GLFWwindow>(), m_cursor.data.value_or<GLFWcursor*>(nullptr));
 		}
 	}
 #endif

@@ -110,7 +110,9 @@ DearImGui::DearImGui(Device& device, [[maybe_unused]] DesktopInstance const& win
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	setStyle();
+	if (info.texFormat == Texture::srgbFormat) {
+		setStyle();
+	}
 	auto const glfwWindow = window.nativePtr();
 	ENSURE(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
 	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);

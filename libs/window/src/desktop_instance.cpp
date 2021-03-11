@@ -3,14 +3,14 @@
 #include <GLFW/glfw3.h>
 
 #include <core/log.hpp>
-#include <core/static_any.hpp>
+#include <kt/fixed_any/fixed_any.hpp>
 #include <vulkan/vulkan.hpp>
 #include <window/desktop_instance.hpp>
 
 namespace le::window {
 namespace {
 struct Cursor {
-	StaticAny<> data;
+	kt::fixed_any_t<> data;
 	CursorType type;
 };
 
@@ -86,8 +86,8 @@ bool init(LibLogger& logger) {
 
 void deinit() {
 	for (Cursor& cursor : g_state.cursors.loaded) {
-		if (auto pCursor = cursor.data.get<GLFWcursor*>()) {
-			glfwDestroyCursor(pCursor);
+		if (cursor.data.contains<GLFWcursor*>()) {
+			glfwDestroyCursor(cursor.data.get<GLFWcursor*>());
 		}
 	}
 	glfwTerminate();
@@ -380,7 +380,7 @@ void DesktopInstance::cursorType(CursorType type) {
 	if (g_state.bInit && g_state.pWindow) {
 		if (type != g_state.cursors.active.type) {
 			g_state.cursors.active = cursor(type);
-			glfwSetCursor(g_state.pWindow, g_state.cursors.active.data.get<GLFWcursor*>());
+			glfwSetCursor(g_state.pWindow, g_state.cursors.active.data.value_or<GLFWcursor*>(nullptr));
 		}
 	}
 }

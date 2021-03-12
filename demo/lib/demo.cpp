@@ -347,7 +347,6 @@ class Drawer {
 		graphics::Texture const* white = {};
 		graphics::Texture const* black = {};
 	} m_defaults;
-	DearImGui const* m_imgui = {};
 
 	struct SetBind {
 		u32 set;
@@ -589,6 +588,7 @@ class App : public Input::IContext {
 		m_data.load_tex = m_tasks.stage(std::move(texload));
 		m_eng.get().pushContext(*this);
 		eng.m_win.get().show();
+		eng.imgui().m_showDemo = true;
 	}
 
 	bool block(Input::State const& state) override {
@@ -718,14 +718,15 @@ class App : public Input::IContext {
 	}
 
 	void tick(Time_s dt) {
+		m_eng.get().imgui().beginFrame();
 		if (!ready({m_data.load_pipes, m_data.load_tex, m_data.load_models})) {
 			return;
 		}
 		if (m_data.registry.empty()) {
 			init1();
 		}
-		// camera
 		{
+			// camera
 			glm::vec3 const moveDir = glm::normalize(glm::cross(m_data.cam.position, graphics::up));
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
@@ -743,19 +744,22 @@ class App : public Input::IContext {
 	}
 
 	void render() {
-		if (m_eng.get().context().waitForFrame()) {
+		Engine& eng = m_eng;
+		if (eng.context().waitForFrame()) {
 			// write / update
 			if (!m_data.registry.empty()) {
-				m_data.drawer.write(m_data.cam, m_eng.get().context().extent(), m_data.dirLights);
+				m_data.drawer.write(m_data.cam, eng.context().extent(), m_data.dirLights);
 			}
 
 			// draw
-			if (auto r = m_eng.get().context().render(Colour(0x040404ff))) {
+			if (auto r = eng.context().render(Colour(0x040404ff))) {
+				eng.imgui().render();
+				auto& cb = r->primary();
 				if (!m_data.registry.empty()) {
-					auto& cb = r->primary();
-					cb.setViewportScissor(m_eng.get().context().viewport(), m_eng.get().context().scissor());
+					cb.setViewportScissor(eng.context().viewport(), eng.context().scissor());
 					batchDraw(m_data.drawer, m_data.registry, cb);
 				}
+				eng.imgui().endFrame(cb);
 			}
 		}
 	}

@@ -11,6 +11,7 @@
 #include <core/log.hpp>
 #include <glm/common.hpp>
 #include <glm/gtc/color_space.hpp>
+#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <window/desktop_instance.hpp>
 #endif
@@ -160,9 +161,12 @@ DearImGui::DearImGui(Device& device, [[maybe_unused]] DesktopInstance const& win
 DearImGui::~DearImGui() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive) {
-		ImGui_ImplVulkan_Shutdown();
-		ImGui::DestroyContext();
-		m_device.get().destroy(m_pool);
+		Device& d = m_device;
+		d.defer([&d, p = m_pool]() mutable {
+			ImGui_ImplVulkan_Shutdown();
+			ImGui::DestroyContext();
+			d.destroy(p);
+		});
 		logD("[DearImGui] destroyed");
 	}
 #endif
@@ -174,6 +178,9 @@ bool DearImGui::beginFrame() {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		if (m_showDemo) {
+			ImGui::ShowDemoWindow(&m_showDemo);
+		}
 		return true;
 	}
 #endif
@@ -182,7 +189,7 @@ bool DearImGui::beginFrame() {
 
 bool DearImGui::render() {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive && next(State::eRender, State::eRender)) {
+	if (m_bActive && next(State::eBegin, State::eRender)) {
 		ImGui::Render();
 		return true;
 	}
@@ -190,23 +197,13 @@ bool DearImGui::render() {
 	return false;
 }
 
-bool DearImGui::endFrame([[maybe_unused]] vk::CommandBuffer commandBuffer) {
+bool DearImGui::endFrame([[maybe_unused]] graphics::CommandBuffer const& cb) {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive && next(State::eRender, State::eEnd)) {
 		if (auto const pData = ImGui::GetDrawData()) {
-			ImGui_ImplVulkan_RenderDrawData(pData, commandBuffer);
+			ImGui_ImplVulkan_RenderDrawData(pData, cb.m_cb);
 			return true;
 		}
-	}
-#endif
-	return false;
-}
-
-bool DearImGui::demo([[maybe_unused]] bool* show) const {
-#if defined(LEVK_USE_IMGUI)
-	if (m_bActive && m_state == State::eBegin) {
-		ImGui::ShowDemoWindow(show);
-		return true;
 	}
 #endif
 	return false;

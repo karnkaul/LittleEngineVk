@@ -6,16 +6,24 @@
 #include <core/std_types.hpp>
 #include <graphics/texture.hpp>
 
-#if !defined(LEVK_USE_IMGUI)
+#if defined(LEVK_USE_IMGUI)
 constexpr bool levk_imgui = true;
+#define IMGUI(statemt)                                                                                                                                         \
+	do {                                                                                                                                                       \
+		if (auto in = DearImGui::inst(); in && in->ready()) {                                                                                                  \
+			statemt;                                                                                                                                           \
+		}                                                                                                                                                      \
+	} while (0);
 #else
 constexpr bool levk_imgui = false;
+#define IMGUI(x)
 #endif
 
 namespace le {
 namespace graphics {
 class Device;
-}
+class CommandBuffer;
+} // namespace graphics
 namespace window {
 class DesktopInstance;
 }
@@ -35,11 +43,12 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 
 	bool beginFrame();
 	bool render();
-	bool endFrame(vk::CommandBuffer commandBuffer);
-
-	bool demo(bool* show = nullptr) const;
+	bool endFrame(graphics::CommandBuffer const& cb);
 
 	State state() const noexcept;
+	bool ready() const noexcept;
+
+	bool m_showDemo = false;
 
   private:
 	bool next(State from, State to);
@@ -64,5 +73,8 @@ struct DearImGui::CreateInfo {
 
 inline DearImGui::State DearImGui::state() const noexcept {
 	return m_state;
+}
+inline bool DearImGui::ready() const noexcept {
+	return m_state == State::eBegin;
 }
 } // namespace le

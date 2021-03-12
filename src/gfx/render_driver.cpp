@@ -144,11 +144,12 @@ void Driver::Impl::update() {
 bool Driver::Impl::render(Driver::Scene scene, bool bExtGUI) {
 	bool const bEmpty =
 		(scene.batches.empty() || std::all_of(scene.batches.begin(), scene.batches.end(), [](auto const& batch) -> bool { return batch.drawables.empty(); }));
+
+	auto& frame = frameSync();
+	g_device.waitFor(frame.drawing);
 	if (bExtGUI) {
 		ext_gui::render();
 	}
-	auto& frame = frameSync();
-	g_device.waitFor(frame.drawing);
 	auto const push = bEmpty ? PCDeq() : render::write(frameSync(), scene, m_texCount);
 	auto target = m_context.acquireNextImage(frame.renderReady, frame.drawing);
 	bool bRendered = false;

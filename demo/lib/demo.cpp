@@ -181,10 +181,7 @@ class Engine {
 
 	Input::Out poll(bool consume) noexcept {
 		auto ret = m_input.update(m_win.get().pollEvents(), consume, m_pDesktop);
-		if constexpr (levk_imgui) {
-			auto& desktop = static_cast<window::DesktopInstance&>(m_win.get());
-			m_editor.update(desktop, ret.state);
-		}
+		m_inputState = ret.state;
 		for (Input::IContext& context : m_contexts) {
 			if (context.block(ret.state)) {
 				break;
@@ -195,6 +192,16 @@ class Engine {
 
 	void pushContext(Input::IContext& context) {
 		context.m_inputToken = m_contexts.push<true>(context);
+	}
+
+	void tick([[maybe_unused]] Time_s dt) {
+		if constexpr (levk_imgui) {
+			if (m_imgui) {
+				m_imgui->beginFrame();
+			}
+			auto& win = static_cast<window::DesktopInstance&>(m_win.get());
+			m_editor.update(win, m_inputState);
+		}
 	}
 
 	bool boot(graphics::Bootstrap::CreateInfo const& boot) {
@@ -266,6 +273,7 @@ class Engine {
 	std::optional<DearImGui> m_imgui;
 	Editor m_editor;
 	Input m_input;
+	Input::State m_inputState;
 	TTokenGen<Ref<Input::IContext>, TGSpec_deque> m_contexts;
 	window::DesktopInstance* m_pDesktop = {};
 };
@@ -734,7 +742,8 @@ class App : public Input::IContext {
 	}
 
 	void tick(Time_s dt) {
-		m_eng.get().imgui().beginFrame();
+		m_eng.get().tick(dt);
+		// m_eng.get().imgui().beginFrame();
 		if (!ready({m_data.load_pipes, m_data.load_tex, m_data.load_models})) {
 			return;
 		}

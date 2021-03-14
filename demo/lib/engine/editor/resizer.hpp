@@ -7,7 +7,8 @@ namespace window {
 class DesktopInstance;
 }
 
-class ViewportResizer {
+namespace edi {
+class Resizer {
   public:
 	enum class Handle { eNone, eLeft, eRight, eBottom, eLeftBottom, eRightBottom };
 
@@ -32,4 +33,5 @@ class ViewportResizer {
 	Viewport m_prev;
 	Handle m_handle = {};
 };
+} // namespace edi
 } // namespace le

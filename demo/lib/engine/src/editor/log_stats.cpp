@@ -1,0 +1,171 @@
+#include <engine/editor/log_stats.hpp>
+#include <engine/editor/types.hpp>
+
+#if defined(LEVK_USE_IMGUI)
+#include <core/array_map.hpp>
+#include <core/colour.hpp>
+#include <kt/async_queue/locker.hpp>
+#include <levk_imgui/levk_imgui.hpp>
+#endif
+
+namespace le::edi {
+#if defined(LEVK_USE_IMGUI)
+namespace {
+struct LogText {
+	std::string text;
+	ImVec4 colour;
+	dl::level level;
+};
+
+using lvl = dl::level;
+
+constexpr ArrayMap<4, lvl, Colour> lvlColour = {
+	{lvl::error, Colour(0xff1111ff)}, {lvl::warning, Colour(0xdddd22ff)}, {lvl::info, Colour(0xccccccff)}, {lvl::debug, Colour(0x666666ff)}};
+
+kt::locker_t<std::mutex, std::deque<LogText>> g_logs;
+
+ImVec4 imvec4(Colour c) noexcept {
+	return {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
+}
+
+void onLog(std::string_view text, dl::level level) {
+	std::string str(text);
+	ImVec4 const colour = imvec4(mapped<Colour>(lvlColour, level));
+	auto lock = g_logs.lock();
+	lock.get().push_front({std::move(str), colour, level});
+	while (lock.get().size() > LogStats::s_maxLines) {
+		lock.get().pop_back();
+	}
+}
+
+struct FrameTime {
+	View<f32> samples;
+	f32 average{};
+};
+
+void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
+	static f32 const s_yPad = 3.0f;
+	if (logHeight - s_yPad <= 50.0f) {
+		return;
+	}
+
+	static std::array<char, 64> filter = {0};
+	bool bClear = false;
+	std::string_view logFilter;
+	static constexpr ImGuiWindowFlags flags =
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+	ImGui::SetNextWindowSize(ImVec2(fbSize.x, logHeight - s_yPad), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(0.0f, fbSize.y - logHeight + s_yPad), ImGuiCond_Always);
+	if (ImGui::Begin("##Log", nullptr, flags)) {
+		// Frame time
+		{
+			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20;
+			static constexpr s64 scale = 25;
+			s64 ftCount = (s64)LogStats::s_frameTimeCount / scale;
+			TWidget<std::pair<s64, s64>> st(fmt::format("{}", ftCount * scale), ftCount, s_minTCounter, s_maxTCounter, 1);
+			LogStats::s_frameTimeCount = (std::size_t)ftCount * scale;
+			auto const str = fmt::format("{:.4}ms (avg of {})", ft.average, ft.samples.size());
+			auto const title = fmt::format("Frame Time [{:.3}ms]", ft.samples.empty() ? 0.0f : ft.samples.back());
+			Styler s(Style::eSameLine);
+			ImGui::PlotLines(title.data(), ft.samples.data(), (s32)ft.samples.size(), 0, str.data());
+			s = Styler(Style::eSeparator);
+		}
+		// TWidgets
+		{
+			ImGui::Text("Log");
+			Styler s(Style::eSameLine);
+			bClear = static_cast<bool>(Button("Clear"));
+			s = Styler(Style::eSameLine);
+			ImGui::Checkbox("Auto-scroll", &LogStats::s_autoScroll);
+		}
+		{
+			Styler s(Style::eSameLine);
+			ImGui::SetNextItemWidth(200.0f);
+			ImGui::InputText("Filter", filter.data(), filter.size());
+			logFilter = filter.data();
+		}
+		{
+			s32 logLevel = (s32)LogStats::s_logLevel;
+			Styler s(Style::eSameLine);
+			ImGui::RadioButton("All", &logLevel, 0);
+			s = Styler(Style::eSameLine);
+			ImGui::RadioButton("Info", &logLevel, 1);
+			s = Styler(Style::eSameLine);
+			ImGui::RadioButton("Warning", &logLevel, 2);
+			s = Styler(Style::eSameLine);
+			ImGui::RadioButton("Error", &logLevel, 3);
+			LogStats::s_logLevel = (lvl)logLevel;
+		}
+		{
+			Styler s(Style::eSameLine);
+			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20;
+			static constexpr s64 scale = 100;
+			s64 lineCount = (s64)LogStats::s_lineCount / scale;
+			TWidget<std::pair<s64, s64>> st(fmt::format("{}", lineCount * scale), lineCount, s_minTCounter, s_maxTCounter, 1);
+			LogStats::s_lineCount = (std::size_t)lineCount * scale;
+		}
+		{
+			Styler s(Style::eSeparator);
+			ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+			std::vector<Ref<LogText const>> filtered;
+			filtered.reserve(LogStats::s_lineCount);
+			auto lock = g_logs.lock();
+			if (bClear) {
+				lock.get().clear();
+			}
+			for (auto const& entry : lock.get()) {
+				if (entry.level >= LogStats::s_logLevel && (logFilter.empty() || entry.text.find(logFilter) != std::string::npos)) {
+					filtered.push_back(entry);
+					if (filtered.size() == LogStats::s_lineCount) {
+						break;
+					}
+				}
+			}
+			for (auto it = filtered.rbegin(); it != filtered.rend(); ++it) {
+				LogText const& entry = *it;
+				ImGui::TextColored(entry.colour, "%s", entry.text.data());
+			}
+			ImGui::PopStyleVar();
+			if (LogStats::s_autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+				ImGui::SetScrollHereY(1.0f);
+			}
+			ImGui::EndChild();
+		}
+	}
+	ImGui::End();
+}
+
+} // namespace
+#endif
+
+LogStats::LogStats() {
+#if defined(LEVK_USE_IMGUI)
+	m_token = dl::config::g_on_log.add(&onLog);
+#endif
+}
+
+void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f32 height) {
+#if defined(LEVK_USE_IMGUI)
+	if (m_elapsed == time::Point()) {
+		m_elapsed = time::now();
+	} else {
+		m_frameTime.fts.push_back(time::diffExchg(m_elapsed));
+	}
+	while (m_frameTime.fts.size() > s_frameTimeCount) {
+		m_frameTime.fts.pop_front();
+	}
+	if (auto imgui = DearImGui::inst(); imgui && imgui->ready()) {
+		m_frameTime.samples.clear();
+		m_frameTime.samples.reserve(s_frameTimeCount);
+		stdch::duration<f32, std::milli> avg;
+		for (Time_s const ft : m_frameTime.fts) {
+			avg += ft;
+			m_frameTime.samples.push_back(time::cast<decltype(avg)>(ft).count());
+		}
+		avg /= (f32)m_frameTime.fts.size();
+		drawLog(fbSize, height, {m_frameTime.samples, avg.count()});
+	}
+#endif
+}
+} // namespace le::edi

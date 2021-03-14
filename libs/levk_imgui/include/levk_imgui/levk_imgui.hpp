@@ -7,13 +7,16 @@
 #include <graphics/texture.hpp>
 
 #if defined(LEVK_USE_IMGUI)
-constexpr bool levk_imgui = true;
+#include <imgui.h>
+
 #define IMGUI(statemt)                                                                                                                                         \
 	do {                                                                                                                                                       \
 		if (auto in = DearImGui::inst(); in && in->ready()) {                                                                                                  \
 			statemt;                                                                                                                                           \
 		}                                                                                                                                                      \
 	} while (0)
+
+constexpr bool levk_imgui = true;
 #else
 constexpr bool levk_imgui = false;
 #define IMGUI(x)

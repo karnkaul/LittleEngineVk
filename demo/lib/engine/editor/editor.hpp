@@ -2,7 +2,8 @@
 #include <core/ref.hpp>
 #include <core/time.hpp>
 #include <dumb_ecf/registry.hpp>
-#include <engine/editor/viewport_resizer.hpp>
+#include <engine/editor/log_stats.hpp>
+#include <engine/editor/resizer.hpp>
 #include <engine/input/input.hpp>
 #include <engine/render/viewport.hpp>
 #include <levk_imgui/levk_imgui.hpp>
@@ -32,7 +33,8 @@ class Editor {
 
   private:
 	struct {
-		ViewportResizer resizer;
+		edi::Resizer resizer;
+		edi::LogStats logStats;
 		Viewport gameView = s_comboView;
 	} m_storage;
 };

@@ -34,8 +34,13 @@ constexpr Ret cast(Dur&& dur) noexcept;
 ///
 /// \brief Obtain the difference between two time Point instances as a Duration
 ///
-template <typename Ret = Duration<s64, std::milli>>
+template <typename Ret = Duration<f32, std::ratio<1>>>
 constexpr Ret diff(Point const& from, Point const& to = now()) noexcept;
+///
+/// \brief Obtain the time difference and set out_from = to
+///
+template <typename Ret = Duration<f32, std::ratio<1>>>
+constexpr Ret diffExchg(Point& out_from, Point const& to = now()) noexcept;
 } // namespace time
 
 ///
@@ -62,5 +67,11 @@ constexpr Ret time::cast(Dur&& dur) noexcept {
 template <typename Ret>
 constexpr Ret time::diff(Point const& from, Point const& to) noexcept {
 	return stdch::duration_cast<Ret>(to - from);
+}
+template <typename Ret>
+constexpr Ret time::diffExchg(Point& from, Point const& to) noexcept {
+	auto const ret = diff(from, to);
+	from = to;
+	return ret;
 }
 } // namespace le

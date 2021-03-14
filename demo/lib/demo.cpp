@@ -21,10 +21,10 @@
 #include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/camera.hpp>
+#include <engine/editor/editor.hpp>
 #include <engine/input/input.hpp>
 #include <engine/render/drawer.hpp>
 #include <engine/render/model.hpp>
-#include <levk_imgui/levk_imgui.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -181,7 +181,10 @@ class Engine {
 
 	Input::Out poll(bool consume) noexcept {
 		auto ret = m_input.update(m_win.get().pollEvents(), consume, m_pDesktop);
-		// TODO: pass state to editor etc
+		if constexpr (levk_imgui) {
+			auto& desktop = static_cast<window::DesktopInstance&>(m_win.get());
+			m_editor.update(desktop, ret.state);
+		}
 		for (Input::IContext& context : m_contexts) {
 			if (context.block(ret.state)) {
 				break;
@@ -240,6 +243,15 @@ class Engine {
 		return *m_imgui;
 	}
 
+	Editor& editor() noexcept {
+		return m_editor;
+	}
+
+	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 fb = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept {
+		Viewport const adjusted = view * m_editor.view();
+		return m_gfx->viewport(fb, depth, adjusted.rect(), adjusted.topLeft.offset);
+	}
+
 	Ref<window::IInstance> m_win;
 
   private:
@@ -252,6 +264,7 @@ class Engine {
 	std::optional<graphics::Bootstrap> m_boot;
 	std::optional<graphics::RenderContext> m_gfx;
 	std::optional<DearImGui> m_imgui;
+	Editor m_editor;
 	Input m_input;
 	TTokenGen<Ref<Input::IContext>, TGSpec_deque> m_contexts;
 	window::DesktopInstance* m_pDesktop = {};
@@ -595,6 +608,9 @@ class App : public Input::IContext {
 		if (state.focus == Input::Focus::eGained) {
 			m_store.update();
 		}
+		if (state.released(window::Key::eE)) {
+			m_eng.get().editor().m_engaged = !m_eng.get().editor().m_engaged;
+		}
 		return false;
 	}
 
@@ -756,7 +772,7 @@ class App : public Input::IContext {
 				eng.imgui().render();
 				auto& cb = r->primary();
 				if (!m_data.registry.empty()) {
-					cb.setViewportScissor(eng.context().viewport(), eng.context().scissor());
+					cb.setViewportScissor(eng.viewport(), eng.context().scissor());
 					batchDraw(m_data.drawer, m_data.registry, cb);
 				}
 				eng.imgui().endFrame(cb);

@@ -97,7 +97,7 @@ T to(std::string_view input, T fallback) noexcept {
 template <std::size_t N>
 kt::fixed_vector<std::string_view, N> tokenise(std::string_view text, char delim) {
 	kt::fixed_vector<std::string_view, N> ret;
-	while (!text.empty() && ret.size() < ret.capacity()) {
+	while (!text.empty() && ret.has_space()) {
 		std::size_t const idx = text.find_first_of(delim);
 		if (idx < text.size()) {
 			ret.push_back(text.substr(0, idx));

@@ -13,7 +13,7 @@ constexpr bool levk_imgui = true;
 		if (auto in = DearImGui::inst(); in && in->ready()) {                                                                                                  \
 			statemt;                                                                                                                                           \
 		}                                                                                                                                                      \
-	} while (0);
+	} while (0)
 #else
 constexpr bool levk_imgui = false;
 #define IMGUI(x)

@@ -184,7 +184,7 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 				bindInfo.name = fmt::format("[Unassigned_{}_{}]", s, b);
 				bindInfo.bUnassigned = true;
 			}
-			ENSURE(binds.size() < binds.capacity(), "Max descriptor sets exceeded");
+			ENSURE(binds.has_space(), "Max descriptor sets exceeded");
 			binds.push_back(bindInfo);
 		}
 	}

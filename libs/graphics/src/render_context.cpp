@@ -209,7 +209,7 @@ glm::mat4 RenderContext::preRotate() const noexcept {
 	return glm::rotate(ret, rad, front);
 }
 
-vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 const& depth, ScreenRect const& nRect) const noexcept {
+vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 depth, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
 	if (!Swapchain::valid(extent)) {
 		extent = this->extent();
 	}
@@ -219,8 +219,9 @@ vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 const& depth, 
 	ret.maxDepth = depth.y;
 	ret.width = size.x * (f32)extent.x;
 	ret.height = -(size.y * (f32)extent.y); // flip viewport about X axis
-	ret.x = nRect.lt.x * (f32)extent.x;
-	ret.y = nRect.lt.y * (f32)extent.y - ret.height;
+	ret.x = nRect.lt.x * (f32)extent.x + offset.x;
+	ret.y = nRect.lt.y * (f32)extent.y + offset.y;
+	ret.y -= ret.height;
 	return ret;
 }
 

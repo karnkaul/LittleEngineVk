@@ -16,7 +16,7 @@ void copy(std::unordered_set<window::Key> const& in, kt::fixed_vector<Input::Key
 				break;
 			}
 		}
-		if (!found && out_keys.size() < out_keys.capacity()) {
+		if (!found && out_keys.has_space()) {
 			out_keys.push_back({key, action});
 		}
 	}
@@ -87,7 +87,7 @@ bool Input::extract(Event const& event, State& out_state) noexcept {
 		Event::Cursor const& cursor = event.payload.cursor;
 		if (cursor.id == 0) {
 			m_persistent.cursor = cursor;
-		} else if (m_transient.others.size() < m_transient.others.capacity()) {
+		} else if (m_transient.others.has_space()) {
 			m_transient.others.push_back(cursor);
 		}
 		return true;
@@ -97,7 +97,7 @@ bool Input::extract(Event const& event, State& out_state) noexcept {
 		return true;
 	}
 	case Event::Type::eText: {
-		if (m_transient.text.size() < m_transient.text.capacity()) {
+		if (m_transient.text.has_space()) {
 			m_transient.text.push_back(event.payload.text.c);
 		}
 		return true;

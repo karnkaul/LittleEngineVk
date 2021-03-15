@@ -16,7 +16,11 @@ enum class Style { eSameLine, eSeparator, eCOUNT_ };
 using StyleFlags = kt::enum_flags<Style>;
 
 struct Styler final {
+	StyleFlags flags;
+
 	Styler(StyleFlags flags);
+
+	void operator()(std::optional<StyleFlags> flags = std::nullopt);
 };
 
 struct GUIStateful {
@@ -42,6 +46,24 @@ struct Text final {
 	Text(std::string_view text);
 };
 
+struct Radio {
+	s32 select = -1;
+	std::string_view selected;
+
+	Radio(View<std::string_view> options, s32 preSelect = -1, bool sameLine = true);
+};
+
+struct Menu {
+	struct Item {
+		std::string_view id;
+		std::function<void()> callback;
+		std::vector<Menu> menus;
+	};
+
+	std::string_view id;
+	std::vector<Item> items;
+};
+
 struct Button final : GUIStateful {
 	Button(std::string_view id);
 };
@@ -50,7 +72,7 @@ struct Combo final : GUIStateful {
 	s32 select = -1;
 	std::string_view selected;
 
-	Combo(std::string_view id, View<std::string_view> entries, std::string_view preSelected);
+	Combo(std::string_view id, View<std::string_view> entries, std::string_view preSelect);
 
 	explicit operator bool() const override {
 		return test(GUI::eOpen);

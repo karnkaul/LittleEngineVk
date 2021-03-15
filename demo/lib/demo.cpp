@@ -609,7 +609,6 @@ class App : public Input::IContext {
 		m_data.load_tex = m_tasks.stage(std::move(texload));
 		m_eng.get().pushContext(*this);
 		eng.m_win.get().show();
-		eng.imgui().m_showDemo = true;
 	}
 
 	bool block(Input::State const& state) override {
@@ -617,7 +616,7 @@ class App : public Input::IContext {
 			m_store.update();
 		}
 		if (state.released(window::Key::eE)) {
-			m_eng.get().editor().m_engaged = !m_eng.get().editor().m_engaged;
+			Editor::s_engaged = !Editor::s_engaged;
 		}
 		return false;
 	}

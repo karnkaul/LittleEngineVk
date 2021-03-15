@@ -56,26 +56,25 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 	ImGui::SetNextWindowSize(ImVec2(fbSize.x, logHeight - s_yPad), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2(0.0f, fbSize.y - logHeight + s_yPad), ImGuiCond_Always);
-	if (ImGui::Begin("##Log", nullptr, flags)) {
+	if (ImGui::Begin("##LogStats", nullptr, flags)) {
 		// Frame time
 		{
-			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20;
-			static constexpr s64 scale = 25;
+			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20, scale = 25;
 			s64 ftCount = (s64)LogStats::s_frameTimeCount / scale;
-			TWidget<std::pair<s64, s64>> st(fmt::format("{}", ftCount * scale), ftCount, s_minTCounter, s_maxTCounter, 1);
+			TWidget<std::pair<s64, s64>> st(fmt::format("ft count: {}", ftCount * scale), ftCount, s_minTCounter, s_maxTCounter, 1);
 			LogStats::s_frameTimeCount = (std::size_t)ftCount * scale;
-			auto const str = fmt::format("{:.4}ms (avg of {})", ft.average, ft.samples.size());
+			auto const overlay = fmt::format("{:.4}ms (avg of {})", ft.average, ft.samples.size());
 			auto const title = fmt::format("Frame Time [{:.3}ms]", ft.samples.empty() ? 0.0f : ft.samples.back());
 			Styler s(Style::eSameLine);
-			ImGui::PlotLines(title.data(), ft.samples.data(), (s32)ft.samples.size(), 0, str.data());
-			s = Styler(Style::eSeparator);
+			ImGui::PlotLines(title.data(), ft.samples.data(), (s32)ft.samples.size(), 0, overlay.data());
+			s(Style::eSeparator);
 		}
 		// TWidgets
 		{
-			ImGui::Text("Log");
+			Text title("Log");
 			Styler s(Style::eSameLine);
 			bClear = static_cast<bool>(Button("Clear"));
-			s = Styler(Style::eSameLine);
+			s();
 			ImGui::Checkbox("Auto-scroll", &LogStats::s_autoScroll);
 		}
 		{
@@ -85,23 +84,15 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			logFilter = filter.data();
 		}
 		{
+			static constexpr std::array levels = {"All"sv, "Info"sv, "Warning"sv, "Error"sv};
 			s32 logLevel = (s32)LogStats::s_logLevel;
-			Styler s(Style::eSameLine);
-			ImGui::RadioButton("All", &logLevel, 0);
-			s = Styler(Style::eSameLine);
-			ImGui::RadioButton("Info", &logLevel, 1);
-			s = Styler(Style::eSameLine);
-			ImGui::RadioButton("Warning", &logLevel, 2);
-			s = Styler(Style::eSameLine);
-			ImGui::RadioButton("Error", &logLevel, 3);
-			LogStats::s_logLevel = (lvl)logLevel;
+			LogStats::s_logLevel = (lvl)Radio(levels, logLevel).select;
 		}
 		{
 			Styler s(Style::eSameLine);
-			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20;
-			static constexpr s64 scale = 100;
+			static constexpr s64 s_minTCounter = 1, s_maxTCounter = 20, scale = 100;
 			s64 lineCount = (s64)LogStats::s_lineCount / scale;
-			TWidget<std::pair<s64, s64>> st(fmt::format("{}", lineCount * scale), lineCount, s_minTCounter, s_maxTCounter, 1);
+			TWidget<std::pair<s64, s64>> st(fmt::format("line count: {}", lineCount * scale), lineCount, s_minTCounter, s_maxTCounter, 1);
 			LogStats::s_lineCount = (std::size_t)lineCount * scale;
 		}
 		{
@@ -127,7 +118,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 				ImGui::TextColored(entry.colour, "%s", entry.text.data());
 			}
 			ImGui::PopStyleVar();
-			if (LogStats::s_autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+			if (LogStats::s_autoScroll && ImGui::GetScrollY() <= ImGui::GetScrollMaxY()) {
 				ImGui::SetScrollHereY(1.0f);
 			}
 			ImGui::EndChild();

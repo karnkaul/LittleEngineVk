@@ -4,6 +4,7 @@
 #include <dumb_ecf/registry.hpp>
 #include <engine/editor/log_stats.hpp>
 #include <engine/editor/resizer.hpp>
+#include <engine/editor/types.hpp>
 #include <engine/input/input.hpp>
 #include <engine/render/viewport.hpp>
 #include <levk_imgui/levk_imgui.hpp>
@@ -22,19 +23,21 @@ class Editor {
 	using DesktopInstance = window::DesktopInstance;
 	using Bootstrap = graphics::Bootstrap;
 
-	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 25.0f}, 0.6f};
+	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
+	inline static bool s_engaged = false;
+
+	Editor();
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
 	void update(DesktopInstance& win, Input::State const& state);
 
-	bool m_engaged = false;
-
   private:
 	struct {
 		edi::Resizer resizer;
 		edi::LogStats logStats;
+		std::vector<edi::Menu> main;
 		Viewport gameView = s_comboView;
 	} m_storage;
 };

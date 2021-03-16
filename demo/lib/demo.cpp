@@ -740,9 +740,18 @@ class App : public Input::IContext {
 		return true;
 	}
 
-	void tick(Time_s dt) {
+	void tick(Flags& out_flags, Time_s dt) {
 		m_eng.get().tick(dt);
-		// m_eng.get().imgui().beginFrame();
+		if constexpr (levk_editor) {
+			edi::Menu::Item quit;
+			quit.id = "Quit";
+			quit.callback = [&out_flags]() { out_flags.set(Flag::eClosed); };
+			edi::Menu menu;
+			menu.id = "File";
+			menu.items = {quit};
+			Editor::s_menus.push_back(std::move(menu));
+		}
+
 		if (!ready({m_data.load_pipes, m_data.load_tex, m_data.load_models})) {
 			return;
 		}
@@ -894,7 +903,7 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 
 			if (app) {
 				// threads::sleep(5ms);
-				app->tick(dt);
+				app->tick(flags, dt);
 				app->render();
 			}
 			flags.reset(Flag::eRecreated | Flag::eInit | Flag::eTerm);

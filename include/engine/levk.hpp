@@ -14,9 +14,9 @@
 #endif
 
 #if defined(LEVK_EDITOR)
-inline constexpr bool levk_editor = true;
+inline constexpr bool levk_editor_old = true;
 #else
-inline constexpr bool levk_editor = false;
+inline constexpr bool levk_editor_old = false;
 #endif
 
 namespace le::engine {

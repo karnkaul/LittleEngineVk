@@ -8,6 +8,12 @@
 #include <dumb_ecf/registry.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 
+#if defined(LEVK_EDITOR)
+constexpr bool levk_editor = true;
+#else
+constexpr bool levk_editor = false;
+#endif
+
 namespace le::edi {
 enum GUI { eOpen, eLeftClicked, eRightClicked, eCOUNT_ };
 using GUIState = kt::enum_flags<GUI>;
@@ -55,13 +61,16 @@ struct Radio {
 
 struct Menu {
 	struct Item {
-		std::string_view id;
+		std::string id;
 		std::function<void()> callback;
 		std::vector<Menu> menus;
+		bool separator = false;
 	};
 
-	std::string_view id;
+	std::string id;
 	std::vector<Item> items;
+
+	void walk() const;
 };
 
 struct Button final : GUIStateful {
@@ -83,9 +92,21 @@ struct TreeNode final : GUIStateful {
 	TreeNode();
 	TreeNode(std::string_view id);
 	TreeNode(std::string_view id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen);
-	TreeNode(TreeNode&&) = default;
-	TreeNode& operator=(TreeNode&&) = default;
 	~TreeNode() override;
+
+	explicit operator bool() const override {
+		return test(GUI::eOpen);
+	}
+};
+
+struct Pane : GUIStateful {
+	inline static std::size_t s_open = 0;
+
+	Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool child, s32 flags = 0);
+	~Pane() override;
+
+	bool child = false;
+	bool open = true;
 
 	explicit operator bool() const override {
 		return test(GUI::eOpen);
@@ -107,7 +128,7 @@ struct FlagsWidget {
 
 template <typename T>
 struct TInspector {
-	TreeNode node;
+	std::optional<TreeNode> node;
 	decf::registry_t* pReg = nullptr;
 	decf::entity_t entity;
 	std::string id;
@@ -196,10 +217,10 @@ TInspector<T>::TInspector(decf::registry_t& out_registry, decf::entity_t entity,
 	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id) {
 	bNew = pT == nullptr;
 	if (!bNew) {
-		node = TreeNode(this->id);
-		if (node) {
+		node.emplace(this->id);
+		if (*node) {
 			bOpen = true;
-			if (node.test(GUI::eRightClicked)) {
+			if (node->test(GUI::eRightClicked)) {
 				out_registry.detach<T>(entity);
 			}
 		}

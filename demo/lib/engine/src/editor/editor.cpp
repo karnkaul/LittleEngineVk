@@ -68,6 +68,27 @@ Radio::Radio(View<sv> options, s32 preSelect, bool sameLine) : select(preSelect)
 	}
 }
 
+void Menu::walk() const {
+	if (ImGui::BeginMenu(id.data())) {
+		std::size_t idx = 0;
+		for (auto const& item : items) {
+			if (ImGui::MenuItem(item.id.data())) {
+				if (item.callback) {
+					item.callback();
+				}
+			}
+			for (auto const& m : item.menus) {
+				m.walk();
+			}
+			if (idx + 1 < items.size() && item.separator) {
+				Styler s{Style::eSeparator};
+			}
+			++idx;
+		}
+		ImGui::EndMenu();
+	}
+}
+
 Button::Button(sv id) {
 	refresh();
 	guiState[GUI::eLeftClicked] = ImGui::Button(id.empty() ? "[Unnamed]" : id.data());
@@ -114,6 +135,30 @@ TreeNode::TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLef
 TreeNode::~TreeNode() {
 	if (test(GUI::eOpen)) {
 		ImGui::TreePop();
+	}
+}
+
+Pane::Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool child, s32 flags) : child(child) {
+	if (child) {
+		guiState[GUI::eOpen] = ImGui::BeginChild(id.data(), {size.x, size.y}, false, flags);
+	} else {
+		ImGui::SetNextWindowSize({size.x, size.y}, ImGuiCond_Always);
+		ImGui::SetNextWindowPos({pos.x, pos.y}, ImGuiCond_Always);
+		guiState[GUI::eOpen] = ImGui::Begin(id.data(), &open, flags);
+		if (guiState[GUI::eOpen]) {
+			++s_open;
+		}
+	}
+}
+
+Pane::~Pane() {
+	if (child) {
+		ImGui::EndChild();
+	} else {
+		ImGui::End();
+		if (guiState[GUI::eOpen]) {
+			--s_open;
+		}
 	}
 }
 
@@ -218,52 +263,6 @@ TWidget<std::pair<s64, s64>>::TWidget(sv id, s64& out_t, s64 min, s64 max, s64 d
 } // namespace edi
 #endif
 
-namespace {
-#if defined(LEVK_USE_IMGUI)
-void showDemo() {
-	if (auto imgui = DearImGui::inst()) {
-		imgui->m_showDemo = true;
-	}
-}
-
-void walkMenu(edi::Menu const& menu) {
-	if (ImGui::BeginMenu(menu.id.data())) {
-		for (auto const& item : menu.items) {
-			if (ImGui::MenuItem(item.id.data())) {
-				if (item.callback) {
-					item.callback();
-				}
-			}
-			for (auto const& m : item.menus) {
-				walkMenu(m);
-			}
-		}
-		ImGui::EndMenu();
-	}
-}
-#endif
-
-void mainMenu([[maybe_unused]] View<edi::Menu> main) {
-#if defined(LEVK_USE_IMGUI)
-	if (ImGui::BeginMainMenuBar()) {
-		for (auto const& menu : main) {
-			walkMenu(menu);
-		}
-		ImGui::EndMainMenuBar();
-	}
-#endif
-}
-} // namespace
-
-Editor::Editor() {
-#if defined(LEVK_USE_IMGUI)
-	edi::Menu::Item exit{"Close Editor", []() { Editor::s_engaged = false; }, {}};
-	edi::Menu::Item demo{"Show ImGui Demo", []() { showDemo(); }, {}};
-	edi::Menu file{"File", {demo, exit}};
-	m_storage.main.push_back(std::move(file));
-#endif
-}
-
 bool Editor::active() const noexcept {
 	if constexpr (levk_imgui) {
 		return DearImGui::inst() != nullptr;
@@ -278,8 +277,11 @@ Viewport const& Editor::view() const noexcept {
 
 void Editor::update(DesktopInstance& win, Input::State const& state) {
 	if (active() && s_engaged) {
-		m_storage.resizer(win, m_storage.gameView, state);
-		mainMenu(m_storage.main);
+		if (edi::Pane::s_open == 0) {
+			m_storage.resizer(win, m_storage.gameView, state);
+		}
+		m_storage.menu(s_menus);
+		s_menus.clear();
 		glm::vec2 const fbSize = {f32(win.framebufferSize().x), f32(win.framebufferSize().y)};
 		auto const logHeight = fbSize.y - m_storage.gameView.rect().rb.y * fbSize.y - m_storage.gameView.topLeft.offset.y;
 		m_storage.logStats(fbSize, logHeight);

@@ -75,6 +75,9 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			Styler s(Style::eSameLine);
 			bClear = static_cast<bool>(Button("Clear"));
 			s();
+			if (ImGui::GetIO().MouseWheel > 0.0f) {
+				LogStats::s_autoScroll = false;
+			}
 			ImGui::Checkbox("Auto-scroll", &LogStats::s_autoScroll);
 		}
 		{
@@ -97,7 +100,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 		}
 		{
 			Styler s(Style::eSeparator);
-			ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+			Pane pane("scrolling", {}, {}, true, ImGuiWindowFlags_HorizontalScrollbar);
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 			std::vector<Ref<LogText const>> filtered;
 			filtered.reserve(LogStats::s_lineCount);
@@ -121,7 +124,6 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			if (LogStats::s_autoScroll && ImGui::GetScrollY() <= ImGui::GetScrollMaxY()) {
 				ImGui::SetScrollHereY(1.0f);
 			}
-			ImGui::EndChild();
 		}
 	}
 	ImGui::End();
@@ -149,7 +151,7 @@ void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f3
 	if (auto imgui = DearImGui::inst(); imgui && imgui->ready()) {
 		m_frameTime.samples.clear();
 		m_frameTime.samples.reserve(s_frameTimeCount);
-		stdch::duration<f32, std::milli> avg;
+		stdch::duration<f32, std::milli> avg{};
 		for (Time_s const ft : m_frameTime.fts) {
 			avg += ft;
 			m_frameTime.samples.push_back(time::cast<decltype(avg)>(ft).count());

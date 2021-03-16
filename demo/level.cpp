@@ -73,7 +73,7 @@ void LevelDriver::tick(Time_s dt) {
 	if (m_active) {
 		m_active->tick(dt);
 	}
-	if (levk_editor) {
+	if (levk_editor_old) {
 		perFrame();
 	}
 	return;

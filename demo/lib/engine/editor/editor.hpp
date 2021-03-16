@@ -3,6 +3,7 @@
 #include <core/time.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <engine/editor/log_stats.hpp>
+#include <engine/editor/main_menu.hpp>
 #include <engine/editor/resizer.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/input/input.hpp>
@@ -13,20 +14,14 @@ namespace le {
 namespace window {
 class DesktopInstance;
 }
-namespace graphics {
-struct Bootstrap;
-}
-class DearImGui;
 
 class Editor {
   public:
 	using DesktopInstance = window::DesktopInstance;
-	using Bootstrap = graphics::Bootstrap;
 
 	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
 	inline static bool s_engaged = false;
-
-	Editor();
+	inline static std::vector<edi::Menu> s_menus;
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
@@ -37,7 +32,7 @@ class Editor {
 	struct {
 		edi::Resizer resizer;
 		edi::LogStats logStats;
-		std::vector<edi::Menu> main;
+		edi::MainMenu menu;
 		Viewport gameView = s_comboView;
 	} m_storage;
 };

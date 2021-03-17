@@ -12,9 +12,9 @@ namespace kt {
 /// \brief Fixed-size type erased storage
 ///
 template <std::size_t N = sizeof(void*)>
-class fixed_any_t final {
+class fixed_any final {
 	template <typename T>
-	static constexpr bool is_different_v = !std::is_same_v<std::decay_t<T>, fixed_any_t<N>>;
+	static constexpr bool is_different_v = !std::is_same_v<std::decay_t<T>, fixed_any<N>>;
 	template <typename T>
 	using enable_if_different = std::enable_if_t<is_different_v<T>>;
 
@@ -25,24 +25,24 @@ class fixed_any_t final {
 	static constexpr bool throw_exception = false;
 #endif
 
-	constexpr fixed_any_t() noexcept = default;
+	constexpr fixed_any() noexcept = default;
 
-	constexpr fixed_any_t(fixed_any_t&& rhs) noexcept;
-	constexpr fixed_any_t(fixed_any_t const& rhs);
-	constexpr fixed_any_t& operator=(fixed_any_t&& rhs) noexcept;
-	constexpr fixed_any_t& operator=(fixed_any_t const& rhs);
-	~fixed_any_t();
+	constexpr fixed_any(fixed_any&& rhs) noexcept;
+	constexpr fixed_any(fixed_any const& rhs);
+	constexpr fixed_any& operator=(fixed_any&& rhs) noexcept;
+	constexpr fixed_any& operator=(fixed_any const& rhs);
+	~fixed_any();
 
 	///
 	/// \brief Construct with object of type T
 	///
 	template <typename T, typename = enable_if_different<T>>
-	constexpr fixed_any_t(T&& t);
+	constexpr fixed_any(T&& t);
 	///
 	/// \brief Assign to object of type T
 	///
 	template <typename T, typename = enable_if_different<T>>
-	constexpr fixed_any_t& operator=(T&& t);
+	constexpr fixed_any& operator=(T&& t);
 	///
 	/// \brief Check if held type (if any) matches T
 	///
@@ -94,17 +94,17 @@ class fixed_any_t final {
 };
 
 template <std::size_t N>
-constexpr fixed_any_t<N>::fixed_any_t(fixed_any_t&& rhs) noexcept : m_erased(rhs.m_erased) {
+constexpr fixed_any<N>::fixed_any(fixed_any&& rhs) noexcept : m_erased(rhs.m_erased) {
 	m_erased->move_construct(&rhs.m_bytes, &m_bytes);
 }
 
 template <std::size_t N>
-constexpr fixed_any_t<N>::fixed_any_t(fixed_any_t const& rhs) : m_erased(rhs.m_erased) {
+constexpr fixed_any<N>::fixed_any(fixed_any const& rhs) : m_erased(rhs.m_erased) {
 	m_erased->copy_construct(&rhs.m_bytes, &m_bytes);
 }
 
 template <std::size_t N>
-constexpr fixed_any_t<N>& fixed_any_t<N>::operator=(fixed_any_t&& rhs) noexcept {
+constexpr fixed_any<N>& fixed_any<N>::operator=(fixed_any&& rhs) noexcept {
 	if (&rhs != this) {
 		if (m_erased == rhs.m_erased) {
 			if (m_erased) {
@@ -122,7 +122,7 @@ constexpr fixed_any_t<N>& fixed_any_t<N>::operator=(fixed_any_t&& rhs) noexcept 
 }
 
 template <std::size_t N>
-constexpr fixed_any_t<N>& fixed_any_t<N>::operator=(fixed_any_t const& rhs) {
+constexpr fixed_any<N>& fixed_any<N>::operator=(fixed_any const& rhs) {
 	if (&rhs != this) {
 		if (m_erased == rhs.m_erased) {
 			if (m_erased) {
@@ -140,37 +140,37 @@ constexpr fixed_any_t<N>& fixed_any_t<N>::operator=(fixed_any_t const& rhs) {
 }
 
 template <std::size_t N>
-fixed_any_t<N>::~fixed_any_t() {
+fixed_any<N>::~fixed_any() {
 	clear();
 }
 
 template <std::size_t N>
 template <typename T, typename>
-constexpr fixed_any_t<N>::fixed_any_t(T&& t) {
+constexpr fixed_any<N>::fixed_any(T&& t) {
 	construct<T>(std::forward<T>(t));
 }
 
 template <std::size_t N>
 template <typename T, typename>
-constexpr fixed_any_t<N>& fixed_any_t<N>::operator=(T&& t) {
+constexpr fixed_any<N>& fixed_any<N>::operator=(T&& t) {
 	construct<T>(std::forward<T>(t));
 	return *this;
 }
 
 template <std::size_t N>
 template <typename T>
-constexpr bool fixed_any_t<N>::contains() const noexcept {
+constexpr bool fixed_any<N>::contains() const noexcept {
 	return &erased<T>() == m_erased;
 }
 
 template <std::size_t N>
-constexpr bool fixed_any_t<N>::empty() const noexcept {
+constexpr bool fixed_any<N>::empty() const noexcept {
 	return m_erased == nullptr;
 }
 
 template <std::size_t N>
 template <typename T>
-constexpr T const& fixed_any_t<N>::get() const {
+constexpr T const& fixed_any<N>::get() const {
 	if (contains<T>()) {
 		return *std::launder(reinterpret_cast<T const*>(&m_bytes));
 	}
@@ -184,7 +184,7 @@ constexpr T const& fixed_any_t<N>::get() const {
 
 template <std::size_t N>
 template <typename T>
-constexpr T& fixed_any_t<N>::get() {
+constexpr T& fixed_any<N>::get() {
 	if (contains<T>()) {
 		return *std::launder(reinterpret_cast<T*>(&m_bytes));
 	}
@@ -198,7 +198,7 @@ constexpr T& fixed_any_t<N>::get() {
 
 template <std::size_t N>
 template <typename T>
-constexpr T fixed_any_t<N>::value_or(T const& fallback) const {
+constexpr T fixed_any<N>::value_or(T const& fallback) const {
 	if (contains<T>()) {
 		return *std::launder(reinterpret_cast<T const*>(&m_bytes));
 	}
@@ -206,7 +206,7 @@ constexpr T fixed_any_t<N>::value_or(T const& fallback) const {
 }
 
 template <std::size_t N>
-constexpr bool fixed_any_t<N>::clear() noexcept {
+constexpr bool fixed_any<N>::clear() noexcept {
 	if (m_erased) {
 		m_erased->destroy(&m_bytes);
 		m_erased = nullptr;
@@ -217,7 +217,7 @@ constexpr bool fixed_any_t<N>::clear() noexcept {
 
 template <std::size_t N>
 template <typename T>
-constexpr void fixed_any_t<N>::construct(T&& t) {
+constexpr void fixed_any<N>::construct(T&& t) {
 	if constexpr (std::is_same_v<T, std::nullptr_t>) {
 		clear();
 	} else {
@@ -230,7 +230,7 @@ constexpr void fixed_any_t<N>::construct(T&& t) {
 
 template <std::size_t N>
 template <typename T, typename>
-constexpr void fixed_any_t<N>::emplace(T&& t) {
+constexpr void fixed_any<N>::emplace(T&& t) {
 	auto const& e = erased<std::decay_t<T>>();
 	if (m_erased && m_erased == &e) {
 		m_erased->move_assign(std::addressof(t), &m_bytes);
@@ -243,7 +243,7 @@ constexpr void fixed_any_t<N>::emplace(T&& t) {
 
 template <std::size_t N>
 template <typename T>
-constexpr void fixed_any_t<N>::emplace(T const& t) {
+constexpr void fixed_any<N>::emplace(T const& t) {
 	auto const& e = erased<std::decay_t<T>>();
 	if (m_erased && m_erased == &e) {
 		m_erased->copy_assign(std::addressof(t), &m_bytes);
@@ -256,7 +256,7 @@ constexpr void fixed_any_t<N>::emplace(T const& t) {
 
 template <std::size_t N>
 template <typename T>
-detail::erased_semantics_t const& fixed_any_t<N>::erased() noexcept {
+detail::erased_semantics_t const& fixed_any<N>::erased() noexcept {
 	static constexpr detail::erased_semantics_t const s_erased{detail::erased_semantics_t::tag_t<T>()};
 	return s_erased;
 }

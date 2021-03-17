@@ -8,6 +8,7 @@
 #include <core/utils/string.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
+#include <kt/n_tree/n_tree.hpp>
 
 #if defined(LEVK_EDITOR)
 constexpr bool levk_editor = true;
@@ -22,16 +23,16 @@ using GUIState = kt::enum_flags<GUI>;
 enum class Style { eSameLine, eSeparator, eCOUNT_ };
 using StyleFlags = kt::enum_flags<Style>;
 
-struct MenuTree {
-	struct Item {
+struct MenuList {
+	struct Menu {
 		std::string id;
 		std::function<void()> callback;
-		std::vector<MenuTree> menus;
 		bool separator = false;
 	};
 
-	std::string id;
-	std::vector<Item> items;
+	using Tree = kt::n_tree<Menu>;
+
+	std::vector<Tree> trees;
 };
 
 struct Styler final {
@@ -111,10 +112,10 @@ struct MenuBar : GUIStateful {
 		Item(std::string_view id, bool separator = false);
 	};
 
-	static bool walk(MenuTree const& tree);
+	static void walk(MenuList::Tree const& tree);
 
 	MenuBar();
-	MenuBar(View<MenuTree> menus);
+	MenuBar(MenuList const& list);
 	~MenuBar();
 };
 

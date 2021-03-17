@@ -188,7 +188,7 @@ bool Gamepad::pressed(Key button) const {
 	return false;
 }
 
-WindowImpl* WindowImpl::find([[maybe_unused]] kt::fixed_any_t<> nativeHandle) {
+WindowImpl* WindowImpl::find([[maybe_unused]] kt::fixed_any<> nativeHandle) {
 #if defined(LEVK_USE_GLFW)
 	auto f = [nativeHandle](WindowImpl& impl) -> bool {
 		return impl.m_nativeWindow.template cast<GLFWwindow>() == nativeHandle.value_or<GLFWwindow*>(nullptr);

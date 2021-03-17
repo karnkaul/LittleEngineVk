@@ -742,10 +742,10 @@ class App : public Input::IContext {
 
 	void tick(Flags& out_flags, Time_s dt) {
 		if constexpr (levk_editor) {
-			edi::MenuTree::Item quit;
-			quit.id = "Quit";
-			quit.callback = [&out_flags]() { out_flags.set(Flag::eClosed); };
-			Editor::s_menus.push_back({"File", {quit}});
+			edi::MenuList::Tree file;
+			file.m_t.id = "File";
+			file.push_front({"Quit", [&out_flags]() { out_flags.set(Flag::eClosed); }});
+			Editor::s_menus.trees.push_back(std::move(file));
 		}
 		m_eng.get().tick(dt);
 

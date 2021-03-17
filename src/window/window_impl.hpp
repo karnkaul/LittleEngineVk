@@ -21,7 +21,7 @@ class WindowImpl final {
 		input::OnClosed onClosed;
 	};
 	struct Cursor {
-		kt::fixed_any_t<> data;
+		kt::fixed_any<> data;
 		input::CursorType type;
 	};
 
@@ -35,7 +35,7 @@ class WindowImpl final {
 	Cursor m_cursor;
 	Window* m_pWindow;
 
-	static WindowImpl* find(kt::fixed_any_t<> nativeHandle);
+	static WindowImpl* find(kt::fixed_any<> nativeHandle);
 
 	static bool init();
 	static void deinit();

@@ -7,7 +7,7 @@
 namespace le {
 class NativeWindow final {
   public:
-	kt::fixed_any_t<> m_window;
+	kt::fixed_any<> m_window;
 
   public:
 	NativeWindow() noexcept = default;

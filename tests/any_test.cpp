@@ -18,7 +18,7 @@ bool operator==(vec2 const& l, vec2 const& r) {
 }
 
 template <typename T, std::size_t N>
-bool compare(std::vector<T> const& lhs, kt::fixed_any_t<N> const& any) {
+bool compare(std::vector<T> const& lhs, kt::fixed_any<N> const& any) {
 	if (any.template contains<std::vector<T>>()) {
 		auto const& rhs = any.template get<std::vector<T>>();
 		if (lhs.size() == rhs.size()) {
@@ -30,7 +30,7 @@ bool compare(std::vector<T> const& lhs, kt::fixed_any_t<N> const& any) {
 
 void t0(kt::executor_t const& ex) {
 	char const* szHello = "hello";
-	kt::fixed_any_t<> any = szHello;
+	kt::fixed_any<> any = szHello;
 	auto szTest = any.get<char const*>();
 	ex.assert_neq(szTest, nullptr);
 	ex.expect_eq(std::strcmp(szTest, szHello), 0);
@@ -40,7 +40,7 @@ void t0(kt::executor_t const& ex) {
 	ex.assert_eq(any1.contains<char const*>(), true);
 	ex.expect_eq(std::strcmp(any1.get<char const*>(), szHello), 0);
 	std::vector<vec2> foos(2, vec2());
-	kt::fixed_any_t<64> any0;
+	kt::fixed_any<64> any0;
 	any0 = foos;
 	ex.expect_eq(compare(foos, any0), true);
 	any0.clear();

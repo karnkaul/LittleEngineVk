@@ -10,7 +10,7 @@
 namespace le::window {
 namespace {
 struct Cursor {
-	kt::fixed_any_t<> data;
+	kt::fixed_any<> data;
 	CursorType type;
 };
 

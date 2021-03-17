@@ -132,29 +132,26 @@ MenuBar::Item::Item(sv id, bool separator) {
 	}
 }
 
-bool MenuBar::walk(MenuTree const& tree) {
-	if (auto mb = Menu(tree.id)) {
-		for (auto const& item : tree.items) {
-			if (auto it = MenuBar::Item(item.id, item.separator); it && item.callback) {
-				item.callback();
-			}
-			for (auto const& m : item.menus) {
-				walk(m);
-			}
+void MenuBar::walk(MenuList::Tree const& tree) {
+	if (!tree.has_children()) {
+		if (auto it = MenuBar::Item(tree.m_t.id, tree.m_t.separator); it && tree.m_t.callback) {
+			tree.m_t.callback();
 		}
-		return true;
+	} else if (auto mb = Menu(tree.m_t.id)) {
+		for (MenuList::Tree const& item : tree.children()) {
+			walk(item);
+		}
 	}
-	return false;
 }
 
 MenuBar::MenuBar() {
 	guiState[GUI::eOpen] = ImGui::BeginMenuBar();
 }
 
-MenuBar::MenuBar(View<MenuTree> menus) {
+MenuBar::MenuBar(MenuList const& list) {
 	guiState.reset();
 	if (ImGui::BeginMenuBar()) {
-		for (MenuTree const& tree : menus) {
+		for (MenuList::Tree const& tree : list.trees) {
 			walk(tree);
 		}
 		ImGui::EndMenuBar();
@@ -310,7 +307,7 @@ void Editor::update(DesktopInstance& win, Input::State const& state) {
 			m_storage.resizer(win, m_storage.gameView, state);
 		}
 		m_storage.menu(s_menus);
-		s_menus.clear();
+		s_menus.trees.clear();
 		glm::vec2 const fbSize = {f32(win.framebufferSize().x), f32(win.framebufferSize().y)};
 		auto const logHeight = fbSize.y - m_storage.gameView.rect().rb.y * fbSize.y - m_storage.gameView.topLeft.offset.y;
 		m_storage.logStats(fbSize, logHeight);

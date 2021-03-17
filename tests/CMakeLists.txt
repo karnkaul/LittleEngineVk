@@ -18,4 +18,4 @@ add_test(decf::registry_t test-decf)
 # fixed_vector
 add_executable(test-fv fixed_vector_test.cpp)
 target_link_libraries(test-fv PRIVATE levk::core levk::interface)
-add_test(kt::fixed_vector_t test-fv)
+add_test(kt::fixed_vector test-fv)

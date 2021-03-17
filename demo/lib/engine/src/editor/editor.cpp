@@ -68,27 +68,6 @@ Radio::Radio(View<sv> options, s32 preSelect, bool sameLine) : select(preSelect)
 	}
 }
 
-void Menu::walk() const {
-	if (ImGui::BeginMenu(id.data())) {
-		std::size_t idx = 0;
-		for (auto const& item : items) {
-			if (ImGui::MenuItem(item.id.data())) {
-				if (item.callback) {
-					item.callback();
-				}
-			}
-			for (auto const& m : item.menus) {
-				m.walk();
-			}
-			if (idx + 1 < items.size() && item.separator) {
-				Styler s{Style::eSeparator};
-			}
-			++idx;
-		}
-		ImGui::EndMenu();
-	}
-}
-
 Button::Button(sv id) {
 	refresh();
 	guiState[GUI::eLeftClicked] = ImGui::Button(id.empty() ? "[Unnamed]" : id.data());
@@ -116,8 +95,6 @@ Combo::Combo(sv id, View<sv> entries, sv preSelect) {
 	}
 }
 
-TreeNode::TreeNode() = default;
-
 TreeNode::TreeNode(sv id) {
 	guiState[GUI::eOpen] = ImGui::TreeNode(id.empty() ? "[Unnamed]" : id.data());
 	refresh();
@@ -135,6 +112,58 @@ TreeNode::TreeNode(sv id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLef
 TreeNode::~TreeNode() {
 	if (test(GUI::eOpen)) {
 		ImGui::TreePop();
+	}
+}
+
+MenuBar::Menu::Menu(sv id) {
+	guiState[GUI::eOpen] = ImGui::BeginMenu(id.data());
+}
+
+MenuBar::Menu::~Menu() {
+	if (guiState[GUI::eOpen]) {
+		ImGui::EndMenu();
+	}
+}
+
+MenuBar::Item::Item(sv id, bool separator) {
+	guiState[GUI::eLeftClicked] = ImGui::MenuItem(id.data());
+	if (separator) {
+		Styler s{Style::eSeparator};
+	}
+}
+
+bool MenuBar::walk(MenuTree const& tree) {
+	if (auto mb = Menu(tree.id)) {
+		for (auto const& item : tree.items) {
+			if (auto it = MenuBar::Item(item.id, item.separator); it && item.callback) {
+				item.callback();
+			}
+			for (auto const& m : item.menus) {
+				walk(m);
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+MenuBar::MenuBar() {
+	guiState[GUI::eOpen] = ImGui::BeginMenuBar();
+}
+
+MenuBar::MenuBar(View<MenuTree> menus) {
+	guiState.reset();
+	if (ImGui::BeginMenuBar()) {
+		for (MenuTree const& tree : menus) {
+			walk(tree);
+		}
+		ImGui::EndMenuBar();
+	}
+}
+
+MenuBar::~MenuBar() {
+	if (guiState[GUI::eOpen]) {
+		ImGui::EndMenuBar();
 	}
 }
 

@@ -21,7 +21,7 @@ class Editor {
 
 	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
 	inline static bool s_engaged = false;
-	inline static std::vector<edi::Menu> s_menus;
+	inline static std::vector<edi::MenuTree> s_menus;
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;

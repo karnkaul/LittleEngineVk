@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <string>
 #include <fmt/format.h>
 #include <core/colour.hpp>
@@ -20,6 +21,18 @@ using GUIState = kt::enum_flags<GUI>;
 
 enum class Style { eSameLine, eSeparator, eCOUNT_ };
 using StyleFlags = kt::enum_flags<Style>;
+
+struct MenuTree {
+	struct Item {
+		std::string id;
+		std::function<void()> callback;
+		std::vector<MenuTree> menus;
+		bool separator = false;
+	};
+
+	std::string id;
+	std::vector<Item> items;
+};
 
 struct Styler final {
 	StyleFlags flags;
@@ -59,20 +72,6 @@ struct Radio {
 	Radio(View<std::string_view> options, s32 preSelect = -1, bool sameLine = true);
 };
 
-struct Menu {
-	struct Item {
-		std::string id;
-		std::function<void()> callback;
-		std::vector<Menu> menus;
-		bool separator = false;
-	};
-
-	std::string id;
-	std::vector<Item> items;
-
-	void walk() const;
-};
-
 struct Button final : GUIStateful {
 	Button(std::string_view id);
 };
@@ -89,7 +88,6 @@ struct Combo final : GUIStateful {
 };
 
 struct TreeNode final : GUIStateful {
-	TreeNode();
 	TreeNode(std::string_view id);
 	TreeNode(std::string_view id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen);
 	~TreeNode() override;
@@ -97,6 +95,27 @@ struct TreeNode final : GUIStateful {
 	explicit operator bool() const override {
 		return test(GUI::eOpen);
 	}
+};
+
+struct MenuBar : GUIStateful {
+	struct Menu : GUIStateful {
+		Menu(std::string_view id);
+		~Menu() override;
+
+		explicit operator bool() const override {
+			return test(GUI::eOpen);
+		}
+	};
+
+	struct Item : GUIStateful {
+		Item(std::string_view id, bool separator = false);
+	};
+
+	static bool walk(MenuTree const& tree);
+
+	MenuBar();
+	MenuBar(View<MenuTree> menus);
+	~MenuBar();
 };
 
 struct Pane : GUIStateful {

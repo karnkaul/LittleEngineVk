@@ -741,16 +741,13 @@ class App : public Input::IContext {
 	}
 
 	void tick(Flags& out_flags, Time_s dt) {
-		m_eng.get().tick(dt);
 		if constexpr (levk_editor) {
-			edi::Menu::Item quit;
+			edi::MenuTree::Item quit;
 			quit.id = "Quit";
 			quit.callback = [&out_flags]() { out_flags.set(Flag::eClosed); };
-			edi::Menu menu;
-			menu.id = "File";
-			menu.items = {quit};
-			Editor::s_menus.push_back(std::move(menu));
+			Editor::s_menus.push_back({"File", {quit}});
 		}
+		m_eng.get().tick(dt);
 
 		if (!ready({m_data.load_pipes, m_data.load_tex, m_data.load_models})) {
 			return;

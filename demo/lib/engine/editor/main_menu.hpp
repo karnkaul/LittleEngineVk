@@ -6,9 +6,9 @@ class MainMenu {
   public:
 	MainMenu();
 
-	void operator()(Span<Menu> extras) const;
+	void operator()(Span<MenuTree> extras) const;
 
   private:
-	std::vector<Menu> m_main;
+	std::vector<MenuTree> m_main;
 };
 } // namespace le::edi

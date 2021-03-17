@@ -89,7 +89,7 @@ class fixed_any_t final {
 	template <typename T>
 	static detail::erased_semantics_t const& erased() noexcept;
 
-	alignas(std::max_align_t) std::aligned_storage_t<N, alignof(std::max_align_t)> m_bytes;
+	std::aligned_storage_t<N, alignof(std::max_align_t)> m_bytes;
 	detail::erased_semantics_t const* m_erased = nullptr;
 };
 
@@ -223,6 +223,7 @@ constexpr void fixed_any_t<N>::construct(T&& t) {
 	} else {
 		static_assert(is_different_v<T>, "fixed_any_t: Recursive storage is forbidden");
 		static_assert(sizeof(T) <= N, "fixed_any_t: T is too large (compared to N)");
+		static_assert(alignof(T) <= alignof(std::max_align_t), "fixed_any_t: alignof(T) is too large");
 		emplace(std::forward<T>(t));
 	}
 }

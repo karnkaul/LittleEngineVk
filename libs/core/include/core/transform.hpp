@@ -1,5 +1,5 @@
 #pragma once
-#include <core/tree.hpp>
+#include <core/crtp_tree.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
@@ -8,7 +8,7 @@ namespace le {
 ///
 /// \brief Class for user-friendly and cached 4x4 matrix transformation with support for parenting
 ///
-class Transform final : public Tree<Transform> {
+class Transform final : public CRTPTree<Transform> {
   public:
 	///
 	/// \brief Identity transform (default constructed)

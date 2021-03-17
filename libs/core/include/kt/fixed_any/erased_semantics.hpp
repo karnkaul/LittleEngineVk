@@ -72,25 +72,25 @@ inline void erased_semantics_t::destroy(void const* src) const noexcept {
 }
 template <typename T>
 void erased_semantics_t::move_c(void* src, void* dst) noexcept {
-	new (dst) T(std::move(*reinterpret_cast<T*>(src)));
+	new (dst) T(std::move(*std::launder(reinterpret_cast<T*>(src))));
 }
 template <typename T>
 void erased_semantics_t::move_a(void* src, void* dst) noexcept {
-	T* t = reinterpret_cast<T*>(dst);
-	*t = std::move(*reinterpret_cast<T*>(src));
+	T* t = std::launder(reinterpret_cast<T*>(dst));
+	*t = std::move(*std::launder(reinterpret_cast<T*>(src)));
 }
 template <typename T>
 void erased_semantics_t::copy_c(void const* src, void* dst) {
-	new (dst) T(*reinterpret_cast<T const*>(src));
+	new (dst) T(*std::launder(reinterpret_cast<T const*>(src)));
 }
 template <typename T>
 void erased_semantics_t::copy_a(void const* src, void* dst) {
-	T* t = reinterpret_cast<T*>(dst);
-	*t = *reinterpret_cast<T const*>(src);
+	T* t = std::launder(reinterpret_cast<T*>(dst));
+	*t = *std::launder(reinterpret_cast<T const*>(src));
 }
 template <typename T>
 void erased_semantics_t::destroy_(void const* src) noexcept {
-	T const* t = reinterpret_cast<T const*>(src);
+	T const* t = std::launder(reinterpret_cast<T const*>(src));
 	t->~T();
 }
 } // namespace kt::detail

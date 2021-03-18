@@ -26,6 +26,8 @@
 #include <engine/render/drawer.hpp>
 #include <engine/render/model.hpp>
 
+#include <engine/scene_node.hpp>
+
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
 using Flags = kt::enum_flags<Flag>;
@@ -351,9 +353,12 @@ struct DrawObj {
 };
 
 struct Drawable {
-	Transform tr;
+	SceneNode node;
 	graphics::ShaderBuffer mat_m;
 	std::vector<DrawObj> objs;
+
+	Drawable(SceneNode::Root& root) : node(root) {
+	}
 };
 
 class Drawer {
@@ -409,7 +414,7 @@ class Drawer {
 		std::size_t idx = 0;
 		for (type& d : list.ts) {
 			if (sb10) {
-				d.mat_m.write(d.tr.model());
+				d.mat_m.write(d.node.model());
 				si.update(d.mat_m, sb10.set, sb10.bind, idx);
 				d.mat_m.swap();
 			}
@@ -621,13 +626,13 @@ class App : public Input::IContext {
 		return false;
 	}
 
-	decf::spawn_t<Drawable, DrawLayer> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
-		auto ret = m_data.registry.spawn<Drawable, DrawLayer>(name);
-		auto& [e, c] = ret;
-		auto& [d, l] = c;
-		l = layer;
+	decf::spawn_t<Drawable> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
+		auto ret = m_data.registry.spawn<Drawable>(name, m_data.root);
+		m_data.registry.attach<DrawLayer>(ret, layer);
+		auto& d = ret.get<Drawable>();
+		d.node.entity(ret);
 		d.mat_m = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/mat_m", {});
-		for (auto prim : primitives) {
+		for (auto const& prim : primitives) {
 			DrawObj obj;
 			obj.primitive = prim;
 			obj.matBuf = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/material", {});
@@ -686,14 +691,14 @@ class App : public Input::IContext {
 			Primitive prim;
 			prim.mesh = &*cube;
 			auto ent = spawn("prop_1", prim, m_data.layers["test"]);
-			ent.get<Drawable>().tr.position({-5.0f, -1.0f, -2.0f});
+			ent.get<Drawable>().node.position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
 			Primitive prim;
 			prim.mesh = &*cone;
 			auto ent = spawn("prop_2", prim, m_data.layers["test_tex"]);
-			ent.get<Drawable>().tr.position({1.0f, -2.0f, -3.0f});
+			ent.get<Drawable>().node.position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			Primitive prim;
@@ -705,23 +710,25 @@ class App : public Input::IContext {
 		{
 			if (auto model = m_store.find<Model>("models/plant")) {
 				auto ent0 = spawn("model_0_0", model->get().primitives(), m_data.layers["test_lit"]);
-				ent0.get<Drawable>().tr.position({-2.0f, -1.0f, 2.0f});
+				ent0.get<Drawable>().node.position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
 				auto ent1 = spawn("model_0_1", model->get().primitives(), m_data.layers["test_lit"]);
-				ent1.get<Drawable>().tr.position({-2.0f, -1.0f, 5.0f});
+				ent1.get<Drawable>().node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
+				ENSURE(&ent1.get<Drawable>().node.root() == &m_data.root, "fubar");
+				ent1.get<Drawable>().node.parent(m_data.registry.get<Drawable>(m_data.entities["model_0_0"]).node);
 			}
 			if (auto model = m_store.find<Model>("models/teapot")) {
 				Primitive prim = model->get().primitives().front();
 				prim.material.Tf = Colour(0xfc2320ff);
 				auto ent0 = spawn("model_1_0", prim, m_data.layers["test_lit"]);
-				ent0.get<Drawable>().tr.position({2.0f, -1.0f, 2.0f});
+				ent0.get<Drawable>().node.position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (auto model = m_store.find<Model>("models/nanosuit")) {
 				auto ent = spawn("model_1", model->get().primitives(), m_data.layers["test_lit"]);
-				ent.get<Drawable>().tr.position({-1.0f, -2.0f, -3.0f});
+				ent.get<Drawable>().node.position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
@@ -761,15 +768,15 @@ class App : public Input::IContext {
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
 			m_data.cam.look(-m_data.cam.position);
 		}
-		m_data.registry.get<Drawable>(m_data.entities["cube_tex"]).tr.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_data.registry.get<Drawable>(m_data.entities["prop_1"]).tr.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		m_data.registry.get<Drawable>(m_data.entities["cube_tex"]).node.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_data.registry.get<Drawable>(m_data.entities["prop_1"]).node.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 		if (auto d = m_data.registry.find<Drawable>(m_data.entities["model_0_0"])) {
-			d->tr.rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
+			d->node.rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
 		}
 		if (auto d = m_data.registry.find<Drawable>(m_data.entities["model_1_0"])) {
 			static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 			s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-			d->tr.rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+			d->node.rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
 		}
 	}
 
@@ -807,6 +814,7 @@ class App : public Input::IContext {
 		std::vector<DirLight> dirLights;
 
 		task_scheduler::stage_id load_pipes, load_tex, load_models;
+		SceneNode::Root root;
 		decf::registry_t registry;
 	};
 
@@ -846,6 +854,7 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 	if (os::halt(g_cmdArgs)) {
 		return true;
 	}
+
 	try {
 		window::Instance::CreateInfo winInfo;
 		winInfo.config.androidApp = info.androidApp;

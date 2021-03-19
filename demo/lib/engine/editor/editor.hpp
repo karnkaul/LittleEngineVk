@@ -4,10 +4,12 @@
 #include <dumb_ecf/registry.hpp>
 #include <engine/editor/log_stats.hpp>
 #include <engine/editor/main_menu.hpp>
+#include <engine/editor/panel.hpp>
 #include <engine/editor/resizer.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/input/input.hpp>
 #include <engine/render/viewport.hpp>
+#include <engine/scene_node.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le {
@@ -15,13 +17,38 @@ namespace window {
 class DesktopInstance;
 }
 
+namespace edi {
+struct In {
+	edi::MenuList menu;
+	SceneNode::Root* root = {};
+	decf::registry_t* registry = {};
+};
+struct Out {
+	struct {
+		SceneNode* node = {};
+		decf::entity_t entity;
+	} inspecting;
+};
+} // namespace edi
+
 class Editor {
   public:
 	using DesktopInstance = window::DesktopInstance;
 
+	struct Panel {
+		edi::Palette panel;
+		std::string_view id;
+	};
+
 	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
 	inline static bool s_engaged = false;
-	inline static edi::MenuList s_menus;
+	inline static Panel s_left = {{}, "Left"};
+	inline static Panel s_right = {{}, "Right"};
+
+	inline static edi::In s_in;
+	inline static edi::Out s_out;
+
+	Editor();
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
@@ -34,6 +61,7 @@ class Editor {
 		edi::LogStats logStats;
 		edi::MainMenu menu;
 		Viewport gameView = s_comboView;
+		edi::In cached;
 	} m_storage;
 };
 } // namespace le

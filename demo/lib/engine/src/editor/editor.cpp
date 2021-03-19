@@ -1,4 +1,6 @@
 #include <core/maths.hpp>
+#include <engine/editor/controls/inspector.hpp>
+#include <engine/editor/controls/scene_tree.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/editor/types.hpp>
 #include <graphics/context/bootstrap.hpp>
@@ -164,6 +166,26 @@ MenuBar::~MenuBar() {
 	}
 }
 
+TabBar::TabBar(std::string_view id, s32 flags) {
+	guiState[GUI::eOpen] = ImGui::BeginTabBar(id.data(), flags);
+}
+
+TabBar::~TabBar() {
+	if (guiState[GUI::eOpen]) {
+		ImGui::EndTabBar();
+	}
+}
+
+TabBar::Item::Item(std::string_view id, s32 flags) {
+	guiState[GUI::eOpen] = ImGui::BeginTabItem(id.data(), nullptr, flags);
+}
+
+TabBar::Item::~Item() {
+	if (guiState[GUI::eOpen]) {
+		ImGui::EndTabItem();
+	}
+}
+
 Pane::Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool child, s32 flags) : child(child) {
 	if (child) {
 		guiState[GUI::eOpen] = ImGui::BeginChild(id.data(), {size.x, size.y}, false, flags);
@@ -260,7 +282,7 @@ TWidget<glm::quat>::TWidget(sv id, glm::quat& out_quat, f32 dq) {
 	out_quat = glm::quat(rot);
 }
 
-TWidget<Transform>::TWidget(sv idPos, sv idOrn, sv idScl, Transform& out_t, glm::vec3 const& dPOS) {
+TWidget<SceneNode>::TWidget(sv idPos, sv idOrn, sv idScl, SceneNode& out_t, glm::vec3 const& dPOS) {
 	auto posn = out_t.position();
 	auto scl = out_t.scale();
 	auto const& orn = out_t.orientation();
@@ -289,6 +311,11 @@ TWidget<std::pair<s64, s64>>::TWidget(sv id, s64& out_t, s64 min, s64 max, s64 d
 } // namespace edi
 #endif
 
+Editor::Editor() {
+	s_left.panel.attach<edi::SceneTree>("Scene");
+	s_right.panel.attach<edi::Inspector>("Inspector");
+}
+
 bool Editor::active() const noexcept {
 	if constexpr (levk_imgui) {
 		return DearImGui::inst() != nullptr;
@@ -302,15 +329,28 @@ Viewport const& Editor::view() const noexcept {
 }
 
 void Editor::update(DesktopInstance& win, Input::State const& state) {
+	if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) {
+		s_out = {};
+	}
+	if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) {
+		s_out.inspecting = {};
+	}
 	if (active() && s_engaged) {
 		if (edi::Pane::s_open == 0) {
 			m_storage.resizer(win, m_storage.gameView, state);
 		}
-		m_storage.menu(s_menus);
-		s_menus.trees.clear();
+		m_storage.menu(s_in.menu);
 		glm::vec2 const fbSize = {f32(win.framebufferSize().x), f32(win.framebufferSize().y)};
-		auto const logHeight = fbSize.y - m_storage.gameView.rect().rb.y * fbSize.y - m_storage.gameView.topLeft.offset.y;
+		auto const rect = m_storage.gameView.rect();
+		f32 const offsetY = m_storage.gameView.topLeft.offset.y;
+		f32 const logHeight = fbSize.y - rect.rb.y * fbSize.y - offsetY;
+		glm::vec2 const leftPanelSize = {rect.lt.x * fbSize.x, fbSize.y - logHeight - offsetY};
+		glm::vec2 const rightPanelSize = {fbSize.x - rect.rb.x * fbSize.x, fbSize.y - logHeight - offsetY};
 		m_storage.logStats(fbSize, logHeight);
+		s_left.panel.update(s_left.id, leftPanelSize, {0.0f, offsetY});
+		s_right.panel.update(s_right.id, rightPanelSize, {fbSize.x - rightPanelSize.x, offsetY});
+		m_storage.cached = std::move(s_in);
+		s_in = {};
 	}
 }
 } // namespace le

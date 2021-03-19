@@ -21,6 +21,7 @@
 #include <dtasks/task_scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/camera.hpp>
+#include <engine/editor/controls/inspector.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/input.hpp>
 #include <engine/render/drawer.hpp>
@@ -752,7 +753,9 @@ class App : public Input::IContext {
 			edi::MenuList::Tree file;
 			file.m_t.id = "File";
 			file.push_front({"Quit", [&out_flags]() { out_flags.set(Flag::eClosed); }});
-			Editor::s_menus.trees.push_back(std::move(file));
+			Editor::s_in.menu.trees.push_back(std::move(file));
+			Editor::s_in.registry = &m_data.registry;
+			Editor::s_in.root = &m_data.root;
 		}
 		m_eng.get().tick(dt);
 

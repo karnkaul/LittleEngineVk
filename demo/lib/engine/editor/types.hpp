@@ -7,6 +7,7 @@
 #include <core/transform.hpp>
 #include <core/utils/string.hpp>
 #include <dumb_ecf/registry.hpp>
+#include <engine/scene_node.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #include <kt/n_tree/n_tree.hpp>
 
@@ -119,6 +120,24 @@ struct MenuBar : GUIStateful {
 	~MenuBar();
 };
 
+struct TabBar : GUIStateful {
+	struct Item : GUIStateful {
+		explicit Item(std::string_view id, s32 flags = 0);
+		~Item() override;
+
+		explicit operator bool() const override {
+			return test(GUI::eOpen);
+		}
+	};
+
+	TabBar(std::string_view id, s32 flags = 0);
+	~TabBar() override;
+
+	explicit operator bool() const override {
+		return test(GUI::eOpen);
+	}
+};
+
 struct Pane : GUIStateful {
 	inline static std::size_t s_open = 0;
 
@@ -144,6 +163,19 @@ struct FlagsWidget {
 	static constexpr std::size_t size = Flags::size;
 
 	FlagsWidget(View<std::string_view> ids, Flags& out_flags);
+};
+
+template <typename T>
+struct TWidgetWrap {
+	T out;
+	bool changed = false;
+
+	template <typename... Args>
+	bool operator()(T const& t, Args&&... args) {
+		out = t;
+		auto tw = TWidget<T>(std::forward<Args>(args)...);
+		return t != out;
+	}
 };
 
 template <typename T>
@@ -207,8 +239,8 @@ struct TWidget<glm::quat> {
 };
 
 template <>
-struct TWidget<Transform> {
-	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, Transform& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
+struct TWidget<SceneNode> {
+	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, SceneNode& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
 };
 
 template <>

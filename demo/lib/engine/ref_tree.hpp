@@ -30,7 +30,7 @@ class RefTreeRoot {
 	static void walk(U&& root, Pred pred);
 
   private:
-	bool addChild(type& child);
+	void addChild(type& child);
 	bool removeChild(type& child) noexcept;
 
 	container_t m_children;
@@ -77,14 +77,13 @@ bool RefTreeRoot<T>::isRoot() const noexcept {
 }
 
 template <typename T>
-bool RefTreeRoot<T>::addChild(type& child) {
-	for (auto const& ch : m_children) {
-		if (&child == &ch.get()) {
-			return false;
+void RefTreeRoot<T>::addChild(type& child) {
+	if constexpr (levk_debug) {
+		for (auto const& ch : m_children) {
+			ENSURE(&child != &ch.get(), "Duplicate child!");
 		}
 	}
 	m_children.push_front(child);
-	return true;
 }
 
 template <typename T>

@@ -35,15 +35,15 @@ class Editor {
   public:
 	using DesktopInstance = window::DesktopInstance;
 
-	struct Panel {
+	struct Rail {
 		edi::Palette panel;
 		std::string_view id;
 	};
 
 	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
 	inline static bool s_engaged = false;
-	inline static Panel s_left = {{}, "Left"};
-	inline static Panel s_right = {{}, "Right"};
+	inline static Rail s_left = {{}, "Left"};
+	inline static Rail s_right = {{}, "Right"};
 
 	inline static edi::In s_in;
 	inline static edi::Out s_out;

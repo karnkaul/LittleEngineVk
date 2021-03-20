@@ -1,5 +1,6 @@
 #include <core/utils/algo.hpp>
 #include <engine/input/input.hpp>
+#include <engine/render/viewport.hpp>
 #include <window/desktop_instance.hpp>
 
 namespace le {
@@ -45,7 +46,7 @@ C& operator-=(C& self, C const& rhs) {
 }
 } // namespace
 
-Input::Out Input::update(EventQueue queue, bool consume, window::DesktopInstance const* pDI) noexcept {
+Input::Out Input::update(EventQueue queue, Viewport const& view, bool consume, DesktopInstance const* pDI) noexcept {
 	Out ret;
 	auto& [s, q] = ret;
 	m_transient.pressed -= m_transient.released;
@@ -59,13 +60,20 @@ Input::Out Input::update(EventQueue queue, bool consume, window::DesktopInstance
 	copy(m_transient.pressed, s.keys, Action::ePressed);
 	copy(m_persistent.held, s.keys, Action::eHeld);
 	copy(m_transient.released, s.keys, Action::eReleased);
-	s.cursor.position = m_persistent.cursor;
+	s.cursor.screenPos = s.cursor.position = m_persistent.cursor;
 	s.others = m_transient.others;
 	s.text = m_transient.text;
 	s.suspended = m_persistent.suspended;
 	if (pDI) {
 		m_transient.gamepads = pDI->activeGamepads();
 		s.gamepads = m_transient.gamepads;
+		auto const ifb = pDI->framebufferSize();
+		auto const iwin = pDI->windowSize();
+		glm::vec2 const win(f32(iwin.x), f32(iwin.y));
+		if (view.scale < 1.0f) {
+			s.cursor.position = (s.cursor.screenPos - win * view.topLeft.n - view.topLeft.offset) / view.scale;
+		}
+		s.cursor.position *= (glm::vec2(f32(ifb.x), f32(ifb.y)) / win);
 	}
 	return ret;
 }

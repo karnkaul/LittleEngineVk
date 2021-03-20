@@ -12,6 +12,8 @@ struct SceneTransform {
 	glm::vec3 scale = glm::vec3(1.0f);
 
 	static SceneTransform const identity;
+
+	glm::mat4 matrix() const noexcept;
 };
 
 class SceneNode : public RefTreeNode<SceneNode> {
@@ -111,6 +113,14 @@ inline SceneTransform const SceneTransform::identity = {};
 
 // impl
 
+inline glm::mat4 SceneTransform::matrix() const noexcept {
+	static constexpr auto base = glm::mat4(1.0f);
+	auto const t = glm::translate(base, position);
+	auto const r = glm::toMat4(orientation);
+	auto const s = glm::scale(base, scale);
+	return t * r * s;
+}
+
 inline SceneNode::SceneNode(Root& parent, decf::entity_t entity, SceneTransform const& transform)
 	: RefTreeNode(parent), m_transform(transform), m_entity(entity) {
 }
@@ -188,11 +198,7 @@ inline bool SceneNode::stale() const noexcept {
 
 inline void SceneNode::refresh() const noexcept {
 	if (m_dirty) {
-		static constexpr auto base = glm::mat4(1.0f);
-		auto const t = glm::translate(base, m_transform.position);
-		auto const r = glm::toMat4(m_transform.orientation);
-		auto const s = glm::scale(base, m_transform.scale);
-		m_mat = t * r * s;
+		m_mat = m_transform.matrix();
 		m_normalMat = isotropic() ? m_mat : glm::mat4(glm::inverse(glm::transpose(glm::mat3(m_mat))));
 		m_dirty = false;
 	}

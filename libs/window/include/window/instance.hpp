@@ -16,6 +16,10 @@ class IInstance : public TMonoInstance<IInstance>, public ISurface {
 	IInstance& operator=(IInstance&&) = default;
 	virtual ~IInstance() = default;
 
+	bool isDesktop() const noexcept {
+		return m_desktop;
+	}
+
 	virtual EventQueue pollEvents() = 0;
 
 	virtual void show() const {
@@ -26,6 +30,7 @@ class IInstance : public TMonoInstance<IInstance>, public ISurface {
 
   protected:
 	LibLogger m_log;
+	bool m_desktop = false;
 };
 
 enum class Style { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };

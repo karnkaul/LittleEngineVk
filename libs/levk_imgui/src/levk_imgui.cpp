@@ -101,11 +101,11 @@ void setStyle() {
 } // namespace
 #endif
 
-DearImGui::DearImGui(Device& device) : TMonoInstance(false), m_device(device) {
+DearImGui::DearImGui() : TMonoInstance(false) {
 }
 
 DearImGui::DearImGui(Device& device, [[maybe_unused]] DesktopInstance const& window, [[maybe_unused]] CreateInfo const& info)
-	: TMonoInstance(true), m_device(device) {
+	: TMonoInstance(true), m_device(&device) {
 #if defined(LEVK_USE_IMGUI)
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -159,8 +159,8 @@ DearImGui::DearImGui(Device& device, [[maybe_unused]] DesktopInstance const& win
 
 DearImGui::~DearImGui() {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive) {
-		Device& d = m_device;
+	if (m_bActive && m_device) {
+		Device& d = *m_device;
 		d.defer([&d, p = m_pool]() mutable {
 			ImGui_ImplVulkan_Shutdown();
 			ImGui::DestroyContext();

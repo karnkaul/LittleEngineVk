@@ -47,6 +47,9 @@ TMonoInstance<T>& TMonoInstance<T>::operator=(TMonoInstance&& rhs) noexcept {
 			s_pInstance = nullptr;
 		}
 		m_bActive = std::exchange(rhs.m_bActive, false);
+		if (m_bActive) {
+			s_pInstance = static_cast<T*>(this);
+		}
 	}
 	return *this;
 }

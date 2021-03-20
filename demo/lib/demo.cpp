@@ -179,11 +179,37 @@ void listCmdArgs() {
 
 class Engine {
   public:
-	Engine(window::IInstance& inst) : m_win(inst), m_pDesktop(dynamic_cast<window::DesktopInstance*>(&inst)) {
+	struct GFX {
+		using Winst = window::IInstance;
+		using Boot = graphics::Bootstrap;
+		using Context = graphics::RenderContext;
+
+		GFX(Winst const& winst, Boot::CreateInfo const& bci) : boot(bci, makeSurface(winst), winst.framebufferSize()), context(boot.swapchain) {
+			if (winst.isDesktop()) {
+				DearImGui::CreateInfo dici(boot.swapchain.renderPass());
+				dici.texFormat = context.textureFormat();
+				imgui = DearImGui(boot.device, static_cast<window::DesktopInstance const&>(winst), dici);
+			}
+		}
+
+		static Boot::MakeSurface makeSurface(Winst const& winst) {
+			return [&winst](vk::Instance vkinst) {
+				vk::SurfaceKHR ret;
+				winst.vkCreateSurface(vkinst, ret);
+				return ret;
+			};
+		}
+
+		Boot boot;
+		Context context;
+		DearImGui imgui;
+	};
+
+	Engine(window::IInstance& inst) : m_win(inst), m_pDesktop(inst.isDesktop() ? static_cast<window::DesktopInstance*>(&inst) : nullptr) {
 	}
 
 	Input::Out poll(bool consume) noexcept {
-		auto ret = m_input.update(m_win.get().pollEvents(), consume, m_pDesktop);
+		auto ret = m_input.update(m_win.get().pollEvents(), m_editor.view(), consume, m_pDesktop);
 		m_inputState = ret.state;
 		for (Input::IContext& context : m_contexts) {
 			if (context.block(ret.state)) {
@@ -199,67 +225,52 @@ class Engine {
 
 	void tick([[maybe_unused]] Time_s dt) {
 		if constexpr (levk_imgui) {
-			if (m_imgui) {
-				m_imgui->beginFrame();
+			if (m_gfx) {
+				m_gfx->imgui.beginFrame();
+				m_editor.update(*m_pDesktop, m_inputState);
 			}
-			auto& win = static_cast<window::DesktopInstance&>(m_win.get());
-			m_editor.update(win, m_inputState);
 		}
 	}
 
 	bool boot(graphics::Bootstrap::CreateInfo const& boot) {
-		if (!m_boot && !m_gfx) {
-			auto surface = [this](vk::Instance inst) { return makeSurface(inst); };
-			m_boot.emplace(boot, surface, m_win.get().framebufferSize());
-			m_gfx.emplace(m_boot->swapchain);
-			if (m_pDesktop) {
-				DearImGui::CreateInfo dici(m_boot->swapchain.renderPass());
-				dici.texFormat = m_gfx->textureFormat();
-				m_imgui.emplace(m_boot->device, *m_pDesktop, dici);
-			} else {
-				m_imgui.emplace(m_boot->device);
-			}
+		if (!m_gfx) {
+			m_gfx.emplace(m_win, boot);
 			return true;
 		}
 		return false;
 	}
 
 	bool unboot() noexcept {
-		if (m_boot && m_gfx) {
-			m_imgui.reset();
+		if (m_gfx) {
 			m_gfx.reset();
-			m_boot.reset();
 			return true;
 		}
 		return false;
 	}
 
 	bool booted() const noexcept {
-		return m_boot.has_value() && m_gfx.has_value();
+		return m_gfx.has_value();
 	}
 
-	graphics::Bootstrap& boot() {
-		ENSURE(m_boot.has_value(), "Not booted");
-		return *m_boot;
-	}
-
-	graphics::RenderContext& context() {
+	GFX& gfx() {
 		ENSURE(m_gfx.has_value(), "Not booted");
 		return *m_gfx;
-	}
-
-	DearImGui& imgui() {
-		ENSURE(m_imgui.has_value(), "Not booted");
-		return *m_imgui;
 	}
 
 	Editor& editor() noexcept {
 		return m_editor;
 	}
 
-	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 fb = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept {
+	Input::State const& inputState() const noexcept {
+		return m_inputState;
+	}
+
+	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept {
+		if (!m_gfx) {
+			return {};
+		}
 		Viewport const adjusted = view * m_editor.view();
-		return m_gfx->viewport(fb, depth, adjusted.rect(), adjusted.topLeft.offset);
+		return m_gfx->context.viewport(m_win.get().framebufferSize(), depth, adjusted.rect(), adjusted.topLeft.offset);
 	}
 
 	Ref<window::IInstance> m_win;
@@ -271,9 +282,7 @@ class Engine {
 		return ret;
 	}
 
-	std::optional<graphics::Bootstrap> m_boot;
-	std::optional<graphics::RenderContext> m_gfx;
-	std::optional<DearImGui> m_imgui;
+	std::optional<GFX> m_gfx;
 	Editor m_editor;
 	Input m_input;
 	Input::State m_inputState;
@@ -471,7 +480,7 @@ class App : public Input::IContext {
 	App(Engine& eng, io::Reader const& reader) : m_eng(eng) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
-			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().boot().device};
+			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().gfx().boot.device};
 			shaderLD.name = id;
 			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
 			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
@@ -479,7 +488,7 @@ class App : public Input::IContext {
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
 		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
-			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().context()};
+			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().gfx().context};
 			pipelineLD.name = id;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
@@ -487,14 +496,14 @@ class App : public Input::IContext {
 			m_store.load<graphics::Pipeline>(id, std::move(pipelineLD));
 		};
 		m_store.resources().reader(reader);
-		m_store.add("samplers/default", graphics::Sampler{eng.boot().device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+		m_store.add("samplers/default", graphics::Sampler{eng.gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 		{
 			task_scheduler::stage_t models;
-			AssetLoadData<Model> ald(m_eng.get().boot().vram);
+			AssetLoadData<Model> ald(m_eng.get().gfx().boot.vram);
 			ald.modelID = "models/plant";
 			ald.jsonID = "models/plant/plant.json";
 			ald.samplerID = "samplers/default";
-			ald.texFormat = m_eng.get().context().textureFormat();
+			ald.texFormat = m_eng.get().gfx().context.textureFormat();
 			models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
 
 			ald.jsonID = "models/teapot/teapot.json";
@@ -509,13 +518,13 @@ class App : public Input::IContext {
 			m_data.load_models = m_tasks.stage(std::move(models));
 		}
 
-		AssetLoadData<BitmapFont> fld(m_eng.get().boot().vram);
+		AssetLoadData<BitmapFont> fld(m_eng.get().gfx().boot.vram);
 		fld.jsonID = "fonts/default/default.json";
-		fld.texFormat = m_eng.get().context().textureFormat();
+		fld.texFormat = m_eng.get().gfx().context.textureFormat();
 		fld.name = "fonts/default";
 		fld.samplerID = "samplers/default";
 		auto font = m_store.load<BitmapFont>(fld.name, fld);
-		m_data.text.create(eng.boot().vram, "text");
+		m_data.text.create(eng.gfx().boot.vram, "text");
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
@@ -524,21 +533,21 @@ class App : public Input::IContext {
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
 			auto const skyCubeV = gcube.positions();
-			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.boot().vram));
+			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.gfx().boot.vram));
 			cube->construct(gcube);
 			m_data.mesh.push_back(cube.m_id);
-			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.boot().vram));
+			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.gfx().boot.vram));
 			cone->construct(graphics::makeCone());
 			m_data.mesh.push_back(cone.m_id);
-			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.boot().vram));
+			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.gfx().boot.vram));
 			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
 			m_data.mesh.push_back(skycube.m_id);
 		}
 
 		task_scheduler::stage_id load_shaders;
-		PCI pci_skybox = eng.context().pipeInfo();
+		PCI pci_skybox = eng.gfx().context.pipeInfo();
 		pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
-		pci_skybox.fixedState.vertexInput = eng.context().vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
+		pci_skybox.fixedState.vertexInput = eng.gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 		{
 			task_scheduler::stage_t shaders;
 			shaders.tasks.push_back([loadShader]() { loadShader("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"); });
@@ -560,7 +569,7 @@ class App : public Input::IContext {
 		}
 
 		task_scheduler::stage_t texload;
-		AssetLoadData<graphics::Texture> textureLD{eng.boot().vram};
+		AssetLoadData<graphics::Texture> textureLD{eng.gfx().boot.vram};
 		textureLD.samplerID = "samplers/default";
 		textureLD.name = "cubemaps/sky_dusk";
 		textureLD.prefix = "skyboxes/sky_dusk";
@@ -632,11 +641,11 @@ class App : public Input::IContext {
 		m_data.registry.attach<DrawLayer>(ret, layer);
 		auto& d = ret.get<Drawable>();
 		d.node.entity(ret);
-		d.mat_m = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/mat_m", {});
+		d.mat_m = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, name + "/mat_m", {});
 		for (auto const& prim : primitives) {
 			DrawObj obj;
 			obj.primitive = prim;
-			obj.matBuf = graphics::ShaderBuffer(m_eng.get().boot().vram, name + "/material", {});
+			obj.matBuf = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, name + "/material", {});
 			d.objs.push_back(std::move(obj));
 		}
 		return ret;
@@ -662,11 +671,11 @@ class App : public Input::IContext {
 		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
 		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
 		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
-		m_data.drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().boot().vram, "view_mats", {});
+		m_data.drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, "view_mats", {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
 			info.type = vk::DescriptorType::eStorageBuffer;
-			m_data.drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().boot().vram, "lights", {});
+			m_data.drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, "lights", {});
 		}
 		DirLight l0, l1;
 		l0.direction = {-graphics::front, 0.0f};
@@ -785,21 +794,21 @@ class App : public Input::IContext {
 
 	void render() {
 		Engine& eng = m_eng;
-		if (eng.context().waitForFrame()) {
+		if (eng.gfx().context.waitForFrame()) {
 			// write / update
 			if (!m_data.registry.empty()) {
-				m_data.drawer.write(m_data.cam, eng.context().extent(), m_data.dirLights);
+				m_data.drawer.write(m_data.cam, eng.gfx().context.extent(), m_data.dirLights);
 			}
 
 			// draw
-			if (auto r = eng.context().render(Colour(0x040404ff))) {
-				eng.imgui().render();
+			if (auto r = eng.gfx().context.render(Colour(0x040404ff))) {
+				eng.gfx().imgui.render();
 				auto& cb = r->primary();
 				if (!m_data.registry.empty()) {
-					cb.setViewportScissor(eng.viewport(), eng.context().scissor());
+					cb.setViewportScissor(eng.viewport(), eng.gfx().context.scissor());
 					batchDraw(m_data.drawer, m_data.registry, cb);
 				}
-				eng.imgui().endFrame(cb);
+				eng.gfx().imgui.endFrame(cb);
 			}
 		}
 	}
@@ -822,11 +831,11 @@ class App : public Input::IContext {
 	};
 
 	Data m_data;
-	task_scheduler m_tasks;
 	std::future<void> m_ready;
 
   public:
 	AssetStore m_store;
+	task_scheduler m_tasks;
 	Ref<Engine> m_eng;
 };
 
@@ -906,7 +915,7 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 				}*/
 				flags.reset(Flag::eResized);
 			}
-			if (engine.booted() && engine.context().reconstructed(winst.framebufferSize())) {
+			if (engine.booted() && engine.gfx().context.reconstructed(winst.framebufferSize())) {
 				continue;
 			}
 

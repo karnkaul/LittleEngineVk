@@ -38,7 +38,7 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 	using DesktopInstance = window::DesktopInstance;
 	struct CreateInfo;
 
-	DearImGui(graphics::Device& device);
+	DearImGui();
 	DearImGui(graphics::Device& device, DesktopInstance const& window, CreateInfo const& info);
 	DearImGui(DearImGui&&) = default;
 	DearImGui& operator=(DearImGui&&) = default;
@@ -56,7 +56,7 @@ class DearImGui final : public TMonoInstance<DearImGui> {
   private:
 	bool next(State from, State to);
 
-	Ref<graphics::Device> m_device;
+	graphics::Device* m_device = {};
 	vk::DescriptorPool m_pool;
 	State m_state = State::eEnd;
 };

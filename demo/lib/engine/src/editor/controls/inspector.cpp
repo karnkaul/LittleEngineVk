@@ -6,12 +6,9 @@ namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct Transform : Gadget {
-	bool show(SceneNode const&, decf::registry_t const&) const override {
-		return true;
-	}
-
-	void operator()(SceneNode& node, decf::registry_t&) override {
+	bool operator()(SceneNode& node, decf::registry_t&) override {
 		auto tr = TWidget<SceneNode>("Pos", "Orn", "Scl", node);
+		return true;
 	}
 };
 } // namespace
@@ -34,11 +31,8 @@ void Inspector::update() {
 			attach<Transform>(trID);
 		}
 		for (auto& [id, gadget] : s_gadgets) {
-			if (gadget->show(node, registry)) {
-				if (auto tn = TreeNode(id)) {
-					(*gadget)(node, registry);
-					s();
-				}
+			if ((*gadget)(node, registry)) {
+				s();
 			}
 		}
 	}

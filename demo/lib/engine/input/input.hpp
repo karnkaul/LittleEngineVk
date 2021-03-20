@@ -13,6 +13,7 @@ namespace window {
 class IInstance;
 class DesktopInstance;
 } // namespace window
+struct Viewport;
 
 class Input {
   public:
@@ -22,9 +23,11 @@ class Input {
 	enum class Focus { eUnchanged, eGained, eLost };
 	using Gamepad = window::Gamepad;
 	using EventQueue = window::EventQueue;
+	using DesktopInstance = window::DesktopInstance;
 
 	struct Cursor {
 		glm::vec2 position = {};
+		glm::vec2 screenPos = {};
 		glm::vec2 scroll = {};
 	};
 
@@ -42,7 +45,7 @@ class Input {
 
 	class IContext;
 
-	Out update(EventQueue queue, bool consume = true, window::DesktopInstance const* pDI = {}) noexcept;
+	Out update(EventQueue queue, Viewport const& view, bool consume = true, DesktopInstance const* pDI = {}) noexcept;
 
   private:
 	using KeySet = std::unordered_set<window::Key>;

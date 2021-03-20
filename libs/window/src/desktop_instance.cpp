@@ -224,6 +224,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	if (!init(m_log)) {
 		throw std::runtime_error("Fatal errorin creating Window Instance");
 	}
+	m_desktop = true;
 	m_log.minVerbosity = info.options.verbosity;
 	s32 screenCount;
 	GLFWmonitor* const* ppScreens = glfwGetMonitors(&screenCount);

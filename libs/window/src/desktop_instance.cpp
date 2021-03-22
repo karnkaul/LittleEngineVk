@@ -97,7 +97,7 @@ void deinit() {
 } // namespace
 
 namespace {
-void fillMods(Mods& out_mods, s32 mods) {
+void fillMods(Mods& out_mods, int mods) {
 	out_mods[Mod::eShift] = mods & GLFW_MOD_SHIFT;
 	out_mods[Mod::eControl] = mods & GLFW_MOD_CONTROL;
 	out_mods[Mod::eAlt] = mods & GLFW_MOD_ALT;
@@ -106,7 +106,7 @@ void fillMods(Mods& out_mods, s32 mods) {
 	out_mods[Mod::eNumLock] = mods & GLFW_MOD_NUM_LOCK;
 }
 
-void onFocus(GLFWwindow* pGLFWwindow, s32 entered) {
+void onFocus(GLFWwindow* pGLFWwindow, int entered) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eFocus;
@@ -116,7 +116,7 @@ void onFocus(GLFWwindow* pGLFWwindow, s32 entered) {
 	}
 }
 
-void onWindowResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
+void onWindowResize(GLFWwindow* pGLFWwindow, int width, int height) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eResize;
@@ -126,7 +126,7 @@ void onWindowResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
 	}
 }
 
-void onFramebufferResize(GLFWwindow* pGLFWwindow, s32 width, s32 height) {
+void onFramebufferResize(GLFWwindow* pGLFWwindow, int width, int height) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eResize;
@@ -155,7 +155,7 @@ void onClose(GLFWwindow* pGLFWwindow) {
 	}
 }
 
-void onKey(GLFWwindow* pGLFWwindow, s32 key, s32 /*scancode*/, s32 action, s32 mods) {
+void onKey(GLFWwindow* pGLFWwindow, int key, int /*scancode*/, int action, int mods) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		Event::Input input;
@@ -181,11 +181,11 @@ void onMouse(GLFWwindow* pGLFWwindow, f64 x, f64 y) {
 	}
 }
 
-void onMouseButton(GLFWwindow* pGLFWwindow, s32 key, s32 action, s32 mods) {
+void onMouseButton(GLFWwindow* pGLFWwindow, int key, int action, int mods) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		Event::Input input;
-		input.key = Key(key + (s32)Key::eMouseButton1);
+		input.key = Key(key + (int)Key::eMouseButton1);
 		input.action = (Action)action;
 		fillMods(input.mods, mods);
 		event.type = Event::Type::eInput;
@@ -226,7 +226,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	}
 	m_desktop = true;
 	m_log.minVerbosity = info.options.verbosity;
-	s32 screenCount;
+	int screenCount;
 	GLFWmonitor* const* ppScreens = glfwGetMonitors(&screenCount);
 	if (screenCount < 1) {
 		m_log.log(lvl::error, 2, "[{}] Failed to detect screens!", g_name);
@@ -239,8 +239,8 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	}
 	std::size_t const screenIdx = info.options.screenID < screenCount ? (std::size_t)info.options.screenID : 0;
 	GLFWmonitor* pTarget = ppScreens[screenIdx];
-	s32 height = info.config.size.y;
-	s32 width = info.config.size.x;
+	int height = info.config.size.y;
+	int width = info.config.size.x;
 	bool bDecorated = true;
 	switch (info.options.style) {
 	default:
@@ -268,8 +268,8 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	}
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	s32 cX = (mode->width - width) / 2;
-	s32 cY = (mode->height - height) / 2;
+	int cX = (mode->width - width) / 2;
+	int cY = (mode->height - height) / 2;
 	cX += info.config.centreOffset.x;
 	cY -= info.config.centreOffset.y;
 	ENSURE(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
@@ -284,7 +284,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 		throw std::runtime_error("Failed to create Window");
 	}
 	glfwSetWindowPos(g_state.pWindow, cX, cY);
-	glfwSetCursorEnterCallback(g_state.pWindow, &onFocus);
+	glfwSetWindowFocusCallback(g_state.pWindow, &onFocus);
 	glfwSetWindowSizeCallback(g_state.pWindow, &onWindowResize);
 	glfwSetFramebufferSizeCallback(g_state.pWindow, &onFramebufferResize);
 	glfwSetWindowCloseCallback(g_state.pWindow, &onClose);
@@ -358,7 +358,7 @@ CursorType DesktopInstance::cursorType() const noexcept {
 
 CursorMode DesktopInstance::cursorMode() const noexcept {
 	if (g_state.bInit && g_state.pWindow) {
-		s32 val = glfwGetInputMode(g_state.pWindow, GLFW_CURSOR);
+		int val = glfwGetInputMode(g_state.pWindow, GLFW_CURSOR);
 		switch (val) {
 		case GLFW_CURSOR_NORMAL:
 			return CursorMode::eDefault;
@@ -388,7 +388,7 @@ void DesktopInstance::cursorType(CursorType type) {
 
 void DesktopInstance::cursorMode(CursorMode mode) {
 	if (g_state.bInit && g_state.pWindow) {
-		s32 val;
+		int val;
 		switch (mode) {
 		case CursorMode::eDefault:
 			val = GLFW_CURSOR_NORMAL;
@@ -439,12 +439,12 @@ bool DesktopInstance::importControllerDB(std::string_view db) const {
 
 kt::fixed_vector<Gamepad, 8> DesktopInstance::activeGamepads() const {
 	kt::fixed_vector<Gamepad, 8> ret;
-	for (s32 id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id) {
+	for (int id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id) {
 		GLFWgamepadstate state;
 		if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state)) {
 			Gamepad padi;
 			padi.name = glfwGetGamepadName(id);
-			padi.id = id;
+			padi.id = (s32)id;
 			std::memcpy(padi.buttons.data(), state.buttons, padi.buttons.size());
 			std::memcpy(padi.axes.data(), state.axes, padi.axes.size() * sizeof(f32));
 			ret.push_back(std::move(padi));
@@ -455,20 +455,20 @@ kt::fixed_vector<Gamepad, 8> DesktopInstance::activeGamepads() const {
 
 Joystick DesktopInstance::joyState(s32 id) const {
 	Joystick ret;
-	if (glfwJoystickPresent(id)) {
+	if (glfwJoystickPresent((int)id)) {
 		ret.id = id;
-		s32 count;
-		auto const axes = glfwGetJoystickAxes(id, &count);
+		int count;
+		auto const axes = glfwGetJoystickAxes((int)id, &count);
 		ENSURE((std::size_t)count < ret.axes.size(), "Too many axes");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) {
 			ret.axes[idx] = axes[idx];
 		}
-		auto const buttons = glfwGetJoystickButtons(id, &count);
+		auto const buttons = glfwGetJoystickButtons((int)id, &count);
 		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) {
 			ret.buttons[idx] = buttons[idx];
 		}
-		auto const szName = glfwGetJoystickName(id);
+		auto const szName = glfwGetJoystickName((int)id);
 		if (szName) {
 			ret.name = szName;
 		}
@@ -479,7 +479,7 @@ Joystick DesktopInstance::joyState(s32 id) const {
 Gamepad DesktopInstance::gamepadState(s32 id) const {
 	Gamepad ret;
 	GLFWgamepadstate state;
-	if (glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state)) {
+	if (glfwJoystickIsGamepad((int)id) && glfwGetGamepadState((int)id, &state)) {
 		ret.name = glfwGetGamepadName(id);
 		ret.id = id;
 		std::memcpy(ret.buttons.data(), state.buttons, ret.buttons.size());
@@ -493,19 +493,19 @@ f32 DesktopInstance::triggerToAxis(f32 triggerValue) const {
 }
 
 std::size_t DesktopInstance::joystickAxesCount(s32 id) const {
-	s32 max;
-	glfwGetJoystickAxes(id, &max);
+	int max;
+	glfwGetJoystickAxes((int)id, &max);
 	return std::size_t(max);
 }
 
 std::size_t DesktopInstance::joysticKButtonsCount(s32 id) const {
-	s32 max;
-	glfwGetJoystickButtons(id, &max);
+	int max;
+	glfwGetJoystickButtons((int)id, &max);
 	return std::size_t(max);
 }
 
 std::string_view DesktopInstance::toString(s32 key) const {
-	return glfwGetKeyName(key, 0);
+	return glfwGetKeyName((int)key, 0);
 }
 } // namespace le::window
 #endif

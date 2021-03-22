@@ -22,8 +22,7 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/camera.hpp>
 #include <engine/editor/controls/inspector.hpp>
-#include <engine/editor/editor.hpp>
-#include <engine/input/input.hpp>
+#include <engine/engine.hpp>
 #include <engine/render/drawer.hpp>
 #include <engine/render/model.hpp>
 
@@ -176,119 +175,6 @@ void listCmdArgs() {
 	}
 	std::cout << str.str();
 }
-
-class Engine {
-  public:
-	struct GFX {
-		using Winst = window::IInstance;
-		using Boot = graphics::Bootstrap;
-		using Context = graphics::RenderContext;
-
-		GFX(Winst const& winst, Boot::CreateInfo const& bci) : boot(bci, makeSurface(winst), winst.framebufferSize()), context(boot.swapchain) {
-			if (winst.isDesktop()) {
-				DearImGui::CreateInfo dici(boot.swapchain.renderPass());
-				dici.texFormat = context.textureFormat();
-				imgui = DearImGui(boot.device, static_cast<window::DesktopInstance const&>(winst), dici);
-			}
-		}
-
-		static Boot::MakeSurface makeSurface(Winst const& winst) {
-			return [&winst](vk::Instance vkinst) {
-				vk::SurfaceKHR ret;
-				winst.vkCreateSurface(vkinst, ret);
-				return ret;
-			};
-		}
-
-		Boot boot;
-		Context context;
-		DearImGui imgui;
-	};
-
-	Engine(window::IInstance& inst) : m_win(inst), m_pDesktop(inst.isDesktop() ? static_cast<window::DesktopInstance*>(&inst) : nullptr) {
-	}
-
-	Input::Out poll(bool consume) noexcept {
-		auto ret = m_input.update(m_win.get().pollEvents(), m_editor.view(), consume, m_pDesktop);
-		m_inputState = ret.state;
-		for (Input::IContext& context : m_contexts) {
-			if (context.block(ret.state)) {
-				break;
-			}
-		}
-		return ret;
-	}
-
-	void pushContext(Input::IContext& context) {
-		context.m_inputToken = m_contexts.push<true>(context);
-	}
-
-	void tick([[maybe_unused]] Time_s dt) {
-		if constexpr (levk_imgui) {
-			if (m_gfx) {
-				m_gfx->imgui.beginFrame();
-				m_editor.update(*m_pDesktop, m_inputState);
-			}
-		}
-	}
-
-	bool boot(graphics::Bootstrap::CreateInfo const& boot) {
-		if (!m_gfx) {
-			m_gfx.emplace(m_win, boot);
-			return true;
-		}
-		return false;
-	}
-
-	bool unboot() noexcept {
-		if (m_gfx) {
-			m_gfx.reset();
-			return true;
-		}
-		return false;
-	}
-
-	bool booted() const noexcept {
-		return m_gfx.has_value();
-	}
-
-	GFX& gfx() {
-		ENSURE(m_gfx.has_value(), "Not booted");
-		return *m_gfx;
-	}
-
-	Editor& editor() noexcept {
-		return m_editor;
-	}
-
-	Input::State const& inputState() const noexcept {
-		return m_inputState;
-	}
-
-	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept {
-		if (!m_gfx) {
-			return {};
-		}
-		Viewport const adjusted = view * m_editor.view();
-		return m_gfx->context.viewport(m_win.get().framebufferSize(), depth, adjusted.rect(), adjusted.topLeft.offset);
-	}
-
-	Ref<window::IInstance> m_win;
-
-  private:
-	vk::SurfaceKHR makeSurface(vk::Instance vkinst) {
-		vk::SurfaceKHR ret;
-		m_win.get().vkCreateSurface(vkinst, ret);
-		return ret;
-	}
-
-	std::optional<GFX> m_gfx;
-	Editor m_editor;
-	Input m_input;
-	Input::State m_inputState;
-	TTokenGen<Ref<Input::IContext>, TGSpec_deque> m_contexts;
-	window::DesktopInstance* m_pDesktop = {};
-};
 
 using namespace dts;
 
@@ -475,7 +361,7 @@ class Drawer {
 	}
 };
 
-class App : public Input::IContext {
+class App : public Input::IReceiver {
   public:
 	App(Engine& eng, io::Reader const& reader) : m_eng(eng) {
 		dts::g_error_handler = &g_taskErr;
@@ -765,8 +651,8 @@ class App : public Input::IContext {
 			Editor::s_in.menu.trees.push_back(std::move(file));
 			Editor::s_in.registry = &m_data.registry;
 			Editor::s_in.root = &m_data.root;
+			m_eng.get().updateEditor();
 		}
-		m_eng.get().tick(dt);
 
 		if (!ready({m_data.load_pipes, m_data.load_tex, m_data.load_models})) {
 			return;
@@ -839,7 +725,7 @@ class App : public Input::IContext {
 	Ref<Engine> m_eng;
 };
 
-struct FlagsInput : Input::IContext {
+struct FlagsInput : Input::IReceiver {
 	Flags& flags;
 
 	FlagsInput(Flags& flags) : flags(flags) {

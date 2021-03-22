@@ -43,7 +43,7 @@ class Input {
 	struct State;
 	struct Out;
 
-	class IContext;
+	class IReceiver;
 
 	Out update(EventQueue queue, Viewport const& view, bool consume = true, DesktopInstance const* pDI = {}) noexcept;
 
@@ -92,7 +92,7 @@ struct Input::Out {
 	window::EventQueue residue;
 };
 
-class Input::IContext : public IBase {
+class Input::IReceiver : public IBase {
   public:
 	virtual bool block(State const& state) = 0;
 

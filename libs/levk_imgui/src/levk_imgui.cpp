@@ -104,9 +104,10 @@ void setStyle() {
 DearImGui::DearImGui() : TMonoInstance(false) {
 }
 
-DearImGui::DearImGui(Device& device, [[maybe_unused]] DesktopInstance const& window, [[maybe_unused]] CreateInfo const& info)
-	: TMonoInstance(true), m_device(&device) {
+DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopInstance const& window, [[maybe_unused]] CreateInfo const& info)
+	: TMonoInstance(true) {
 #if defined(LEVK_USE_IMGUI)
+	m_device = &device;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();

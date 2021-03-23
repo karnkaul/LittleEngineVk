@@ -32,7 +32,7 @@ class Engine {
 	Engine(Window& winInst);
 
 	Input::Out poll(bool consume) noexcept;
-	void pushContext(Input::IReceiver& context);
+	void pushReceiver(Input::IReceiver& context);
 	void updateEditor();
 
 	bool boot(Boot::CreateInfo const& boot);

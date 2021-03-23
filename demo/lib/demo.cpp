@@ -19,13 +19,12 @@
 #include <core/utils/string.hpp>
 #include <dtasks/error_handler.hpp>
 #include <dtasks/task_scheduler.hpp>
-#include <engine/assets/asset_store.hpp>
+#include <engine/assets/asset_list.hpp>
 #include <engine/camera.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
 #include <engine/render/drawer.hpp>
 #include <engine/render/model.hpp>
-
 #include <engine/scene_node.hpp>
 
 namespace le::demo {
@@ -370,7 +369,7 @@ class App : public Input::IReceiver {
 			shaderLD.name = id;
 			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
 			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
-			m_store.load<graphics::Shader>(id, std::move(shaderLD));
+			return shaderLD;
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
 		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
@@ -379,29 +378,29 @@ class App : public Input::IReceiver {
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
 			pipelineLD.flags = flags;
-			m_store.load<graphics::Pipeline>(id, std::move(pipelineLD));
+			return pipelineLD;
 		};
 		m_store.resources().reader(reader);
 		m_store.add("samplers/default", graphics::Sampler{eng.gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 		{
-			task_scheduler::stage_t models;
+			AssetList<Model> models;
 			AssetLoadData<Model> ald(m_eng.get().gfx().boot.vram);
 			ald.modelID = "models/plant";
 			ald.jsonID = "models/plant/plant.json";
 			ald.samplerID = "samplers/default";
 			ald.texFormat = m_eng.get().gfx().context.textureFormat();
-			models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
+			models.add("models/plant", std::move(ald));
 
 			ald.jsonID = "models/teapot/teapot.json";
 			ald.modelID = "models/teapot";
-			models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
+			models.add("models/teapot", std::move(ald));
 
 			ald.jsonID = "models/test/nanosuit/nanosuit.json";
 			if (m_store.resources().reader().present(ald.jsonID)) {
 				ald.modelID = "models/nanosuit";
-				models.tasks.push_back([ald, this]() { m_store.load<Model>(ald.modelID, ald); });
+				models.add("models/nanosuit", std::move(ald));
 			}
-			m_data.load_models = m_tasks.stage(std::move(models));
+			m_data.loader.stage(m_store, models, m_tasks);
 		}
 
 		AssetLoadData<BitmapFont> fld(m_eng.get().gfx().boot.vram);
@@ -409,106 +408,74 @@ class App : public Input::IReceiver {
 		fld.texFormat = m_eng.get().gfx().context.textureFormat();
 		fld.name = "fonts/default";
 		fld.samplerID = "samplers/default";
-		auto font = m_store.load<BitmapFont>(fld.name, fld);
-		m_data.text.create(eng.gfx().boot.vram, "text");
-		m_data.text.text.size = 80U;
-		m_data.text.text.colour = colours::yellow;
-		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
-		m_data.text.set(font->get(), "Hi!");
+		m_data.loader.stage(m_store, AssetList<BitmapFont>{{{"fonts/default", std::move(fld)}}}, m_tasks);
 		{
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
 			auto const skyCubeV = gcube.positions();
 			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.gfx().boot.vram));
 			cube->construct(gcube);
-			m_data.mesh.push_back(cube.m_id);
 			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.gfx().boot.vram));
 			cone->construct(graphics::makeCone());
-			m_data.mesh.push_back(cone.m_id);
 			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.gfx().boot.vram));
 			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
-			m_data.mesh.push_back(skycube.m_id);
 		}
 
-		task_scheduler::stage_id load_shaders;
-		PCI pci_skybox = eng.gfx().context.pipeInfo();
-		pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
-		pci_skybox.fixedState.vertexInput = eng.gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 		{
-			task_scheduler::stage_t shaders;
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"); });
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/tex", "shaders/basic.vert", "shaders/tex.frag"); });
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"); });
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"); });
-			shaders.tasks.push_back([loadShader]() { loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"); });
-			load_shaders = m_tasks.stage(std::move(shaders));
-		}
-		{
-			task_scheduler::stage_t pipes;
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/basic", "shaders/basic", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/tex", "shaders/tex", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/lit", "shaders/lit", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([loadPipe]() { loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()); });
-			pipes.tasks.push_back([loadPipe, pci_skybox]() { loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox); });
-			pipes.deps.push_back(load_shaders);
-			m_data.load_pipes = m_tasks.stage(std::move(pipes));
+			AssetList<graphics::Shader> shaders;
+			shaders.add("shaders/basic", loadShader("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"));
+			shaders.add("shaders/tex", loadShader("shaders/tex", "shaders/basic.vert", "shaders/tex.frag"));
+			shaders.add("shaders/lit", loadShader("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"));
+			shaders.add("shaders/ui", loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"));
+			shaders.add("shaders/skybox", loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"));
+			auto load_shaders = m_data.loader.stage(m_store, shaders, m_tasks);
+
+			AssetList<graphics::Pipeline> pipes;
+			static PCI pci_skybox = eng.gfx().context.pipeInfo();
+			pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
+			pci_skybox.fixedState.vertexInput = eng.gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
+			pipes.add("pipelines/basic", loadPipe("pipelines/basic", "shaders/basic", graphics::PFlags::inverse()));
+			pipes.add("pipelines/tex", loadPipe("pipelines/tex", "shaders/tex", graphics::PFlags::inverse()));
+			pipes.add("pipelines/lit", loadPipe("pipelines/lit", "shaders/lit", graphics::PFlags::inverse()));
+			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()));
+			pipes.add("pipelines/skybox", loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox));
+			m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
 		}
 
-		task_scheduler::stage_t texload;
+		AssetList<graphics::Texture> texList;
 		AssetLoadData<graphics::Texture> textureLD{eng.gfx().boot.vram};
 		textureLD.samplerID = "samplers/default";
 		textureLD.name = "cubemaps/sky_dusk";
 		textureLD.prefix = "skyboxes/sky_dusk";
 		textureLD.ext = ".jpg";
 		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
-		texload.tasks.push_back([this, textureLD]() {
-			m_store.load<graphics::Texture>(textureLD.name, textureLD);
-			m_data.tex.push_back(textureLD.name);
-		});
+		texList.add("cubemaps/sky_dusk", std::move(textureLD));
 		textureLD.name = "textures/container2/diffuse";
 		textureLD.prefix.clear();
 		textureLD.ext.clear();
 		textureLD.imageIDs = {"textures/container2.png"};
-		texload.tasks.push_back([this, textureLD]() {
-			m_store.load<graphics::Texture>(textureLD.name, textureLD);
-			m_data.tex.push_back(textureLD.name);
-		});
+		texList.add("textures/container2/diffuse", std::move(textureLD));
 		textureLD.name = "textures/container2/specular";
 		textureLD.prefix.clear();
 		textureLD.ext.clear();
 		textureLD.imageIDs = {"textures/container2_specular.png"};
-		texload.tasks.push_back([this, textureLD]() {
-			m_store.load<graphics::Texture>(textureLD.name, textureLD);
-			m_data.tex.push_back(textureLD.name);
-		});
+		texList.add("textures/container2/specular", std::move(textureLD));
 		textureLD.name = "textures/red";
 		textureLD.imageIDs.clear();
 		textureLD.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
 		textureLD.raw.size = {1, 1};
-		texload.tasks.push_back([this, textureLD]() {
-			m_store.load<graphics::Texture>(textureLD.name, textureLD);
-			m_data.tex.push_back(textureLD.name);
-		});
+		texList.add("textures/red", std::move(textureLD));
 		textureLD.name = "textures/black";
 		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0xff});
-		texload.tasks.push_back([this, textureLD]() {
-			m_store.load<graphics::Texture>(textureLD.name, textureLD);
-			m_data.tex.push_back(textureLD.name);
-		});
+		texList.add("textures/black", std::move(textureLD));
 		textureLD.name = "textures/white";
 		textureLD.raw.bytes = graphics::utils::convert({0xff, 0xff, 0xff, 0xff});
-		texload.tasks.push_back([this, textureLD]() {
-			m_store.load<graphics::Texture>(textureLD.name, textureLD);
-			m_data.tex.push_back(textureLD.name);
-		});
+		texList.add("textures/white", std::move(textureLD));
 		textureLD.name = "textures/blank";
 		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0});
-		texload.tasks.push_back([this, textureLD]() {
-			m_store.load<graphics::Texture>(textureLD.name, textureLD);
-			m_data.tex.push_back(textureLD.name);
-		});
-		m_data.load_tex = m_tasks.stage(std::move(texload));
-		m_eng.get().pushContext(*this);
+		texList.add("textures/blank", std::move(textureLD));
+		m_data.loader.stage(m_store, texList, m_tasks);
+		m_eng.get().pushReceiver(*this);
 		eng.m_win.get().show();
 	}
 
@@ -550,6 +517,12 @@ class App : public Input::IReceiver {
 		auto font = m_store.get<BitmapFont>("fonts/default");
 		m_data.drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
 		m_data.drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
+
+		m_data.text.create(m_eng.get().gfx().boot.vram, "text");
+		m_data.text.text.size = 80U;
+		m_data.text.text.colour = colours::yellow;
+		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
+		m_data.text.set(font.get(), "Hi!");
 
 		m_data.cam.position = {0.0f, 2.0f, 4.0f};
 		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
@@ -630,19 +603,6 @@ class App : public Input::IReceiver {
 		}
 	}
 
-	bool ready(std::initializer_list<Ref<dts::task_scheduler::stage_id>> sts) const {
-		for (dts::task_scheduler::stage_id& st : sts) {
-			if (st.id > 0) {
-				if (m_tasks.stage_done(st)) {
-					st = {};
-				} else {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
 	void tick(Flags& out_flags, Time_s dt) {
 		if constexpr (levk_editor) {
 			edi::MenuList::Tree file;
@@ -654,7 +614,7 @@ class App : public Input::IReceiver {
 			m_eng.get().updateEditor();
 		}
 
-		if (!ready({m_data.load_pipes, m_data.load_tex, m_data.load_models})) {
+		if (!m_data.loader.ready(&m_tasks)) {
 			return;
 		}
 		if (m_data.registry.empty()) {
@@ -701,8 +661,6 @@ class App : public Input::IReceiver {
 
   private:
 	struct Data {
-		std::vector<Hash> tex;
-		std::vector<Hash> mesh;
 		std::unordered_map<Hash, decf::entity_t> entities;
 		std::unordered_map<Hash, DrawLayer> layers;
 		Drawer drawer;
@@ -711,9 +669,9 @@ class App : public Input::IReceiver {
 		Camera cam;
 		std::vector<DirLight> dirLights;
 
-		task_scheduler::stage_id load_pipes, load_tex, load_models;
 		SceneNode::Root root;
 		decf::registry_t registry;
+		AssetListLoader loader;
 	};
 
 	Data m_data;
@@ -771,7 +729,7 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 		Engine engine(winst);
 		Flags flags;
 		FlagsInput flagsInput(flags);
-		engine.pushContext(flagsInput);
+		engine.pushReceiver(flagsInput);
 		time::Point t = time::now();
 		while (true) {
 			Time_s dt = time::now() - t;

@@ -56,8 +56,10 @@ class DearImGui final : public TMonoInstance<DearImGui> {
   private:
 	bool next(State from, State to);
 
+#if defined(LEVK_USE_IMGUI)
 	graphics::Device* m_device = {};
 	vk::DescriptorPool m_pool;
+#endif
 	State m_state = State::eEnd;
 };
 

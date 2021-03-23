@@ -32,7 +32,7 @@ Input::Out Engine::poll(bool consume) noexcept {
 	return ret;
 }
 
-void Engine::pushContext(Input::IReceiver& context) {
+void Engine::pushReceiver(Input::IReceiver& context) {
 	context.m_inputToken = m_receivers.push<true>(context);
 }
 

@@ -17,8 +17,8 @@
 #include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
 #include <core/utils/string.hpp>
-#include <dtasks/error_handler.hpp>
-#include <dtasks/task_scheduler.hpp>
+#include <dumb_tasks/error_handler.hpp>
+#include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/camera.hpp>
 #include <engine/editor/controls/inspector.hpp>
@@ -679,7 +679,7 @@ class App : public Input::IReceiver {
 
   public:
 	AssetStore m_store;
-	task_scheduler m_tasks;
+	scheduler m_tasks;
 	Ref<Engine> m_eng;
 };
 

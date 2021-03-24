@@ -9,6 +9,7 @@
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <kt/args_parser/args_parser.hpp>
+#include <kt/result/result.hpp>
 
 namespace le::os {
 enum class OS : s8 { eWindows, eLinux, eAndroid, eUnknown };
@@ -163,6 +164,13 @@ io::Path dirPath(Dir dir);
 /// \brief Obtain internal/external storage path
 ///
 io::Path androidStorage(ErasedRef const& androidApp, bool bExternal);
+///
+/// \brief Obtain full path to directory containing pattern, traced from the executable path
+/// \param pattern sub-path to match against
+/// \param start Dir to start search from
+/// \param maxHeight maximum recursive depth
+///
+kt::result_t<io::Path, std::string> findData(io::Path pattern = "data", Dir start = Dir::eExecutable, u8 maxHeight = 10);
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///

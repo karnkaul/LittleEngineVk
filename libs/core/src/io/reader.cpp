@@ -126,6 +126,9 @@ std::string_view Reader::medium() const {
 }
 
 Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] View<io::Path> anyOf, [[maybe_unused]] u8 maxHeight) {
+#if defined(LEVK_OS_ANDROID)
+	return kt::null_result;
+#else
 	for (auto const& name : anyOf) {
 		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
@@ -137,6 +140,7 @@ Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const
 		return kt::null_result;
 	}
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
+#endif
 }
 
 FileReader::FileReader() noexcept {

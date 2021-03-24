@@ -2,9 +2,11 @@
 #include <cstdlib>
 #include <thread>
 #include <core/ensure.hpp>
+#include <core/io/reader.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
 #include <core/threads.hpp>
+
 #if defined(LEVK_OS_WINDOWS)
 #include <Windows.h>
 #elif defined(LEVK_OS_LINUX) || defined(LEVK_OS_ANDROID)
@@ -82,6 +84,15 @@ io::Path os::androidStorage([[maybe_unused]] ErasedRef const& androidApp, [[mayb
 	}
 #endif
 	return io::Path();
+}
+
+kt::result_t<io::Path, std::string> os::findData(io::Path pattern, Dir start, u8 maxHeight) {
+	auto const root = os::dirPath(start);
+	auto data = io::FileReader::findUpwards(root, pattern, maxHeight);
+	if (!data) {
+		return fmt::format("[OS] {} not found (searched {} levels up from {})", pattern.generic_string(), maxHeight, root.generic_string());
+	}
+	return data.move();
 }
 
 std::deque<os::ArgsParser::entry> const& os::args() noexcept {

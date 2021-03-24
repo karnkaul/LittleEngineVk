@@ -75,9 +75,9 @@ class Reader {
 class FileReader final : public Reader {
   public:
 	///
-	/// \brief Obtain full path to directory containing any of `anyOf` `id`s.
+	/// \brief Obtain full path to directory containing any of anyOf sub-paths.
 	/// \param leaf directory to start searching upwards from
-	/// \param anyOf list of `id`s to search for a match for
+	/// \param anyOf list of sub-paths to match against
 	/// \param maxHeight maximum recursive depth
 	///
 	static Result<io::Path> findUpwards(io::Path const& leaf, View<io::Path> anyOf, u8 maxHeight = 10);

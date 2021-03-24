@@ -1,7 +1,7 @@
 #pragma once
 #include <core/io/path.hpp>
 #include <core/utils/std_hash.hpp>
-#include <dtasks/task_scheduler.hpp>
+#include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
 
 namespace le {
@@ -9,7 +9,7 @@ template <typename T>
 class AssetList {
   public:
 	using DataMap = std::unordered_map<io::Path, AssetLoadData<T>>;
-	using Load = std::vector<dts::task_scheduler::task_t>;
+	using Load = std::vector<dts::scheduler::task_t>;
 
 	template <typename... U>
 	AssetLoadData<T>& add(io::Path const& id, U&&... u);
@@ -28,8 +28,8 @@ AssetList<T> operator+(AssetList<T> const& lhs, AssetList<T> const& rhs);
 
 class AssetListLoader {
   public:
-	using Scheduler = dts::task_scheduler;
-	using StageID = dts::task_scheduler::stage_id;
+	using Scheduler = dts::scheduler;
+	using StageID = dts::scheduler::stage_id;
 
 	template <typename T>
 	StageID stage(AssetStore& store, AssetList<T> const& list, Scheduler& scheduler, View<StageID> deps = {});
@@ -93,7 +93,7 @@ std::size_t AssetList<T>::append(AssetList<T>& out, AssetList<T> const& exclude)
 
 template <typename T>
 AssetListLoader::StageID AssetListLoader::stage(AssetStore& store, AssetList<T> const& list, Scheduler& scheduler, View<StageID> deps) {
-	dts::task_scheduler::stage_t st;
+	dts::scheduler::stage_t st;
 	st.tasks = list.callbacks(store);
 	if (!st.tasks.empty()) {
 		st.deps = {deps.begin(), deps.end()};
@@ -114,7 +114,7 @@ void AssetListLoader::load(AssetStore& store, AssetList<T> const& list) {
 inline bool AssetListLoader::ready(Scheduler const* scheduler) const noexcept {
 	if (!m_staged.empty()) {
 		ENSURE(scheduler, "Scheduler required to check staged tasks");
-		return std::all_of(m_staged.begin(), m_staged.end(), [scheduler](auto id) { return scheduler->stage_done(id); });
+		return scheduler->stages_done(m_staged);
 	}
 	return true;
 }

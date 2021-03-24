@@ -4,16 +4,17 @@
 #include <demo.hpp>
 #include <graphics/utils/utils.hpp>
 
-#include <fstream>
-#include <dumb_json/djson.hpp>
-#include <dumb_json/error_handler.hpp>
-
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
 	le::os::args({argc, argv});
 	{
 		using namespace le;
+		auto data = os::findData("demo/data");
+		if (!data) {
+			logE("FATAL: {}!", data.error());
+			return 1;
+		}
 		io::FileReader reader;
-		reader.mount(os::dirPath(os::Dir::eWorking) / "demo/data");
+		reader.mount(data.move());
 		le::demo::CreateInfo info;
 		info.args = {argc, argv};
 		if (!le::demo::run(info, reader)) {
@@ -21,6 +22,7 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	/*
 	using namespace le;
 
 	engine::Service engine({argc, argv});
@@ -44,5 +46,6 @@ int main(int argc, char** argv) {
 		engine.render();
 	}
 	g_driver.cleanup();
+	*/
 	return 0;
 }

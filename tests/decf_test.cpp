@@ -5,8 +5,8 @@
 #include <core/maths.hpp>
 #include <core/threads.hpp>
 #include <core/utils/algo.hpp>
-#include <dtasks/task_scheduler.hpp>
 #include <dumb_ecf/registry.hpp>
+#include <dumb_tasks/scheduler.hpp>
 #include <kt/async_queue/locker.hpp>
 
 using namespace le;

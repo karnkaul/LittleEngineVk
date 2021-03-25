@@ -200,7 +200,7 @@ template <typename T>
 struct LoadBase {
 	using CreateInfo = typename T::CreateInfo;
 
-	kt::result_t<CreateInfo> createInfo() const;
+	kt::result<CreateInfo> createInfo() const;
 };
 
 enum class Shader::Type : s8 { eVertex, eFragment, eCOUNT_ };
@@ -371,9 +371,9 @@ struct Model::LoadInfo : LoadBase<Model> {
 };
 
 template <>
-kt::result_t<Texture::CreateInfo> LoadBase<Texture>::createInfo() const;
+kt::result<Texture::CreateInfo> LoadBase<Texture>::createInfo() const;
 
 template <>
-kt::result_t<Model::CreateInfo> LoadBase<Model>::createInfo() const;
+kt::result<Model::CreateInfo> LoadBase<Model>::createInfo() const;
 } // namespace res
 } // namespace le

@@ -26,7 +26,7 @@ class Model {
 	using Texture = graphics::Texture;
 	using Mesh = graphics::Mesh;
 	template <typename T>
-	using Result = kt::result_t<T, std::string>;
+	using Result = kt::result<T, std::string>;
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
 

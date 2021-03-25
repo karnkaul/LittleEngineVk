@@ -63,7 +63,7 @@ void CommandBuffer::bindPipe(Pipeline const& pipeline, Hash variant) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	auto pipe = pipeline.variant(variant);
 	ENSURE(pipe.has_result(), "Invalid variant id");
-	m_cb.bindPipeline(pipeline.bindPoint(), pipe.result());
+	m_cb.bindPipeline(pipeline.bindPoint(), pipe.get_result());
 }
 
 void CommandBuffer::bind(vk::Pipeline pipeline, vBP bindPoint) const {

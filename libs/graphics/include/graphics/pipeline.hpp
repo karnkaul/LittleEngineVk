@@ -50,8 +50,8 @@ class Pipeline final {
 	Pipeline& operator=(Pipeline&&);
 	~Pipeline();
 
-	kt::result_t<vk::Pipeline, void> constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed);
-	kt::result_t<vk::Pipeline, void> variant(Hash id) const;
+	kt::result<vk::Pipeline, void> constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed);
+	kt::result<vk::Pipeline, void> variant(Hash id) const;
 
 	bool reconstruct(Shader const& shader);
 	vk::PipelineBindPoint bindPoint() const;

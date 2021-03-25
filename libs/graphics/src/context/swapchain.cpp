@@ -122,7 +122,7 @@ Swapchain::~Swapchain() {
 	destroy(m_storage, true);
 }
 
-kt::result_t<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) {
+kt::result<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) {
 	orientCheck();
 	if (m_storage.flags.any(Flag::ePaused | Flag::eOutOfDate)) {
 		return kt::null_result;

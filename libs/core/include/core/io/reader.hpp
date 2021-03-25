@@ -13,7 +13,7 @@ namespace le::io {
 class Reader {
   public:
 	template <typename T>
-	using Result = kt::result_t<T>;
+	using Result = kt::result<T>;
 
   public:
 	Reader() noexcept;

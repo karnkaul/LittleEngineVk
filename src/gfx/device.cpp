@@ -338,7 +338,7 @@ f32 Instance::lineWidth(f32 desired) const {
 	return std::clamp(desired, lineWidthMin, lineWidthMax);
 }
 
-kt::result_t<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+kt::result<vk::Format> Instance::supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
 	for (auto format : desired) {
 		vk::FormatProperties props = physicalDevice.getFormatProperties(format);
 		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {

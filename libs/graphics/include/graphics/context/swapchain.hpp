@@ -52,7 +52,7 @@ class Swapchain {
 	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
-	kt::result_t<RenderTarget> acquireNextImage(RenderSync const& sync);
+	kt::result<RenderTarget> acquireNextImage(RenderSync const& sync);
 	bool present(RenderSync const& sync);
 	bool reconstruct(glm::ivec2 framebufferSize = {}, View<vk::PresentModeKHR> desiredModes = {});
 

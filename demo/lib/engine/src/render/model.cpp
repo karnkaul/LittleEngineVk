@@ -31,7 +31,7 @@ constexpr glm::vec3 vec3(View<f32> arr, int idx) noexcept {
 }
 
 template <typename T>
-kt::result_t<std::size_t> find(T const& arr, Hash hash) noexcept {
+kt::result<std::size_t> find(T const& arr, Hash hash) noexcept {
 	for (std::size_t idx = 0; idx < arr.size(); ++idx) {
 		if (arr[idx].hash == hash) {
 			return idx;

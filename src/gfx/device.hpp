@@ -23,7 +23,7 @@ struct Instance final {
 	u32 findMemoryType(u32 typeFilter, vk::MemoryPropertyFlags properties) const;
 	f32 lineWidth(f32 desired) const;
 
-	kt::result_t<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+	kt::result<vk::Format> supportedFormat(PriorityList<vk::Format> const& desired, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 	template <typename vkType>
 	void destroy(vkType object) const;

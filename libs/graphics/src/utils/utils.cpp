@@ -130,7 +130,7 @@ io::Path utils::spirVpath(io::Path const& src, bool bDebug) {
 	return ret;
 }
 
-kt::result_t<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& dst, io::Path const& prefix, bool bDebug) {
+kt::result<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& dst, io::Path const& prefix, bool bDebug) {
 	auto const d = dst.empty() ? spirVpath(src, bDebug) : dst;
 	auto const flags = bDebug ? "-g" : std::string_view();
 	auto const result = Spv::inst().compile(io::absolute(prefix / src), io::absolute(prefix / d), flags);

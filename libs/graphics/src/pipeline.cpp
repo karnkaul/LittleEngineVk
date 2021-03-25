@@ -57,7 +57,7 @@ Pipeline::~Pipeline() {
 	destroy();
 }
 
-kt::result_t<vk::Pipeline, void> Pipeline::constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed) {
+kt::result<vk::Pipeline, void> Pipeline::constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed) {
 	if (id == Hash()) {
 		return kt::null_result;
 	}
@@ -72,7 +72,7 @@ kt::result_t<vk::Pipeline, void> Pipeline::constructVariant(Hash id, Shader cons
 	return pipe;
 }
 
-kt::result_t<vk::Pipeline, void> Pipeline::variant(Hash id) const {
+kt::result<vk::Pipeline, void> Pipeline::variant(Hash id) const {
 	if (id == Hash()) {
 		return m_storage.dynamic.main;
 	}

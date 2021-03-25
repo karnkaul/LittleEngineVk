@@ -170,7 +170,7 @@ io::Path androidStorage(ErasedRef const& androidApp, bool bExternal);
 /// \param start Dir to start search from
 /// \param maxHeight maximum recursive depth
 ///
-kt::result_t<io::Path, std::string> findData(io::Path pattern = "data", Dir start = Dir::eExecutable, u8 maxHeight = 10);
+kt::result<io::Path, std::string> findData(io::Path pattern = "data", Dir start = Dir::eExecutable, u8 maxHeight = 10);
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///

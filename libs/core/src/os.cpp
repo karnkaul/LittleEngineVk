@@ -86,7 +86,7 @@ io::Path os::androidStorage([[maybe_unused]] ErasedRef const& androidApp, [[mayb
 	return io::Path();
 }
 
-kt::result_t<io::Path, std::string> os::findData(io::Path pattern, Dir start, u8 maxHeight) {
+kt::result<io::Path, std::string> os::findData(io::Path pattern, Dir start, u8 maxHeight) {
 	auto const root = os::dirPath(start);
 	auto data = io::FileReader::findUpwards(root, pattern, maxHeight);
 	if (!data) {

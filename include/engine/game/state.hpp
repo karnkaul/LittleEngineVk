@@ -17,7 +17,7 @@ using ManifestLoaded = Delegate<>;
 /// \brief Typedef for returned results
 ///
 template <typename T>
-using Result = kt::result_t<T, std::string_view>;
+using Result = kt::result<T, std::string_view>;
 
 ///
 /// \brief Manifest load request

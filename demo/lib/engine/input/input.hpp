@@ -33,11 +33,7 @@ class Input {
 
 	struct Key {
 		window::Key key;
-		Mask actions;
-
-		constexpr friend bool operator==(Key l, Key r) noexcept {
-			return l.key == r.key && l.actions == r.actions;
-		}
+		window::Mods mods;
 	};
 
 	struct State;
@@ -48,8 +44,18 @@ class Input {
 	Out update(EventQueue queue, Viewport const& view, bool consume = true, DesktopInstance const* pDI = {}) noexcept;
 
   private:
-	using KeySet = std::unordered_set<window::Key>;
+	struct KeyMask : Key {
+		Mask actions;
+	};
 
+	struct KeySet {
+		std::array<KeyMask, 8> keys{};
+
+		bool insert(window::Key k, window::Mods const& mods);
+		bool erase(window::Key k) noexcept;
+	};
+
+	static void copy(KeySet const& in, kt::fixed_vector<KeyMask, 16>& out_keys, Input::Action action);
 	bool extract(window::Event const& event, State& out_state) noexcept;
 
 	struct {
@@ -71,7 +77,7 @@ struct Input::State {
 	template <typename T>
 	using List = std::initializer_list<T>;
 
-	kt::fixed_vector<Key, 16> keys;
+	kt::fixed_vector<KeyMask, 16> keys;
 	Cursor cursor;
 	View<Gamepad> gamepads;
 	View<window::Event::Cursor> others;
@@ -80,6 +86,7 @@ struct Input::State {
 	bool suspended = false;
 
 	Mask action(window::Key key) const noexcept;
+	window::Mods mods(window::Key key) const noexcept;
 	bool pressed(window::Key key) const noexcept;
 	bool held(window::Key key) const noexcept;
 	bool released(window::Key key) const noexcept;
@@ -101,9 +108,19 @@ class Input::IReceiver : public IBase {
 
 // impl
 
+inline window::Mods Input::State::mods(window::Key key) const noexcept {
+	window::Mods ret{};
+	for (KeyMask const& k : keys) {
+		if (k.key == key) {
+			ret = k.mods;
+			break;
+		}
+	}
+	return ret;
+}
 inline Input::Mask Input::State::action(window::Key key) const noexcept {
-	Mask ret;
-	for (Key const& k : keys) {
+	Mask ret{};
+	for (KeyMask const& k : keys) {
 		if (k.key == key) {
 			ret = k.actions;
 			break;

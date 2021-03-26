@@ -488,10 +488,6 @@ Gamepad DesktopInstance::gamepadState(s32 id) const {
 	return ret;
 }
 
-f32 DesktopInstance::triggerToAxis(f32 triggerValue) const {
-	return (triggerValue + 1.0f) * 0.5f;
-}
-
 std::size_t DesktopInstance::joystickAxesCount(s32 id) const {
 	int max;
 	glfwGetJoystickAxes((int)id, &max);
@@ -504,7 +500,7 @@ std::size_t DesktopInstance::joysticKButtonsCount(s32 id) const {
 	return std::size_t(max);
 }
 
-std::string_view DesktopInstance::toString(s32 key) const {
+std::string_view DesktopInstance::toString(s32 key) {
 	return glfwGetKeyName((int)key, 0);
 }
 } // namespace le::window

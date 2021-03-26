@@ -29,7 +29,7 @@ struct ImageInfo final {
 	vk::ImageCreateInfo createInfo;
 	QShare share;
 	std::string name;
-	QFlags queueFlags = QFlag::eGraphics | QFlag::eTransfer;
+	QFlags queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 
@@ -39,7 +39,7 @@ struct BufferInfo final {
 	vk::BufferUsageFlags usage;
 	vk::MemoryPropertyFlags properties;
 	QShare share;
-	QFlags queueFlags = QFlag::eGraphics | QFlag::eTransfer;
+	QFlags queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 };
 

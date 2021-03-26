@@ -105,9 +105,9 @@ std::vector<vk::DeviceQueueCreateInfo> QueueMultiplex::select(std::vector<Family
 	std::vector<vk::DeviceQueueCreateInfo> ret;
 	Selector sl(std::move(families));
 	// Reserve one queue for graphics/present
-	auto fpg = sl.reserve({QType::eGraphics | QType::ePresent});
+	auto fpg = sl.reserve({QFlags(QType::eGraphics) | QType::ePresent});
 	// Reserve another for transfer
-	auto ft = sl.reserve({QType::eTransfer, QType::eTransfer | QType::ePresent, QType::eTransfer | QType::eGraphics});
+	auto ft = sl.reserve({QType::eTransfer, QFlags(QType::eTransfer) | QType::ePresent, QFlags(QType::eTransfer) | QType::eGraphics});
 	// Can't function without graphics/present
 	if (!fpg) {
 		return ret;

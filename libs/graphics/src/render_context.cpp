@@ -121,7 +121,7 @@ std::optional<RenderContext::Frame> RenderContext::beginFrame(CommandBuffer::Pas
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
-	if (m_swapchain.get().flags().any(Swapchain::Flag::ePaused | Swapchain::Flag::eOutOfDate)) {
+	if (m_swapchain.get().flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) {
 		return std::nullopt;
 	}
 	FrameSync& sync = m_sync.get();
@@ -179,7 +179,7 @@ bool RenderContext::endFrame() {
 
 bool RenderContext::reconstructed(glm::ivec2 framebufferSize) {
 	auto const flags = m_swapchain.get().flags();
-	if (flags.any(Swapchain::Flag::eOutOfDate | Swapchain::Flag::ePaused)) {
+	if (flags.any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
 		if (m_swapchain.get().reconstruct(framebufferSize)) {
 			m_storage.status = Status::eWaiting;
 			return true;

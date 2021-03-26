@@ -26,7 +26,7 @@ DemoLevel::DemoLevel() {
 	// clang-format on
 	m_res.triangle = res::load("demo/triangle", meshInfo);
 	meshInfo.geometry = gfx::createQuad();
-	meshInfo.material.flags.set(res::Material::Flag::eTextured | res::Material::Flag::eLit | res::Material::Flag::eOpaque);
+	meshInfo.material.flags.set(res::Material::Flags(res::Material::Flag::eTextured) | res::Material::Flag::eLit | res::Material::Flag::eOpaque);
 	meshInfo.material.material = m_res.texturedLit;
 	meshInfo.material.flags.reset(res::Material::Flag::eOpaque);
 	m_res.quad = res::load("demo/quad", meshInfo);
@@ -116,7 +116,7 @@ DemoLevel::DemoLevel() {
 	desc.dirLights = {m_data.dirLight0, m_data.dirLight1};
 	desc.clearColour = Colour(0x030203ff);
 	desc.skyboxCubemapID = "skyboxes/sky_dusk";
-	desc.flags = GameScene::Desc::Flag::eScissoredUI | GameScene::Desc::Flag::eDynamicUI;
+	desc.flags = GameScene::Desc::Flags(GameScene::Desc::Flag::eScissoredUI) | GameScene::Desc::Flag::eDynamicUI;
 
 	for (auto i = 0; i < 1000; ++i) {
 		// gs::g_game.spawnProp(fmt::format("test_{}", i), &m_data.eid3.transform());

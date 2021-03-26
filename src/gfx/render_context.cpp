@@ -263,7 +263,7 @@ bool RenderContext::createSwapchain() {
 		g_instance.destroy(prevSurface);
 	}
 	logD("[{}] Swapchain created [{}x{}]", m_name, framebufferSize.x, framebufferSize.y);
-	m_flags.reset(Flag::eOutOfDate | Flag::eRenderPaused);
+	m_flags.reset(Flags(Flag::eOutOfDate) | Flag::eRenderPaused);
 	return true;
 }
 

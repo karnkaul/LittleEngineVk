@@ -21,7 +21,7 @@ std::array const g_texTypes = {vk::ImageViewType::e2D, vk::ImageViewType::eCube}
 std::future<void> load(gfx::Image& out_image, vk::Format texMode, glm::ivec2 const& size, View<View<u8>> bytes, [[maybe_unused]] std::string_view name) {
 	if (out_image.image == vk::Image() || out_image.extent.width != (u32)size.x || out_image.extent.height != (u32)size.y) {
 		gfx::ImageInfo imageInfo;
-		imageInfo.queueFlags = gfx::QFlag::eTransfer | gfx::QFlag::eGraphics;
+		imageInfo.queueFlags = gfx::QFlags(gfx::QFlag::eTransfer) | gfx::QFlag::eGraphics;
 		imageInfo.createInfo.format = texMode;
 		imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 		imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
@@ -68,7 +68,7 @@ gfx::Buffer createXBO(std::string_view name, vk::DeviceSize size, vk::BufferUsag
 	} else {
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		bufferInfo.queueFlags = gfx::QFlag::eGraphics | gfx::QFlag::eTransfer;
+		bufferInfo.queueFlags = gfx::QFlags(gfx::QFlag::eGraphics) | gfx::QFlag::eTransfer;
 	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
 	bufferInfo.name = name;
@@ -788,8 +788,8 @@ bool Font::Impl::make(CreateInfo& out_createInfo, Info& out_info) {
 	}
 	ENSURE(material.material.status() == res::Status::eReady, "Material is not ready!");
 	material.diffuse = sheet;
-	material.flags.set(res::Material::Flag::eTextured | res::Material::Flag::eUI | res::Material::Flag::eDropColour);
-	material.flags.reset(res::Material::Flag::eOpaque | res::Material::Flag::eLit);
+	material.flags.set(res::Material::Flags(res::Material::Flag::eTextured) | res::Material::Flag::eUI | res::Material::Flag::eDropColour);
+	material.flags.reset(res::Material::Flags(res::Material::Flag::eOpaque) | res::Material::Flag::eLit);
 	out_info.material = material;
 	out_info.sheet = sheet;
 	out_info.maxBounds = {};

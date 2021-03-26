@@ -152,7 +152,7 @@ std::size_t OBJParser::matIdx(tinyobj::material_t const& fromMat, std::string_vi
 	Model::MatData mat;
 	mat.id = id;
 	mat.hash = hash;
-	mat.flags.set(res::Material::Flag::eLit | res::Material::Flag::eTextured | res::Material::Flag::eOpaque);
+	mat.flags.set(res::Material::Flags(res::Material::Flag::eLit) | res::Material::Flag::eTextured | res::Material::Flag::eOpaque);
 	switch (fromMat.illum) {
 	default:
 		break;

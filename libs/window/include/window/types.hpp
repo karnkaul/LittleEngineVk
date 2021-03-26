@@ -179,6 +179,25 @@ struct Mods {
 	constexpr bool operator[](Mod mod) const noexcept {
 		return flags[(std::size_t)mod];
 	}
+
+	Mods add(Mods const& rhs) const noexcept {
+		Mods ret = *this;
+		for (std::size_t i = 0; i < (std::size_t)Mod::eCOUNT_; ++i) {
+			if (rhs.flags[i]) {
+				ret.flags[i] = true;
+			}
+		}
+		return ret;
+	}
+
+	friend constexpr bool operator==(Mods const& l, Mods const& r) noexcept {
+		for (std::size_t i = 0; i < (std::size_t)Mod::eCOUNT_; ++i) {
+			if (l.flags[i] != r.flags[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
 };
 
 enum class Axis : s8 {

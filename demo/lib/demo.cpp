@@ -705,12 +705,13 @@ struct FlagsInput : Input::IReceiver {
 	}
 };
 
+enum class Foo { eOne = 1 << 0, eTwo = 1 << 1, eThree = 1 << 2 };
+
 bool run(CreateInfo const& info, io::Reader const& reader) {
 	os::args({info.args.argc, info.args.argv});
 	if (os::halt(g_cmdArgs)) {
 		return true;
 	}
-
 	try {
 		window::Instance::CreateInfo winInfo;
 		winInfo.config.androidApp = info.androidApp;
@@ -768,7 +769,7 @@ bool run(CreateInfo const& info, io::Reader const& reader) {
 				app->tick(flags, dt);
 				app->render();
 			}
-			flags.reset(Flag::eRecreated | Flag::eInit | Flag::eTerm);
+			flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
 		}
 	} catch (std::exception const& e) {
 		logE("exception: {}", e.what());

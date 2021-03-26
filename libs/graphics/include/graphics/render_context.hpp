@@ -51,7 +51,7 @@ class RenderContext : NoCopy {
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
-	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlag::eDepthTest | PFlag::eDepthWrite);
+	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
 
 	RenderContext(Swapchain& swapchain, u32 rotateCount = 2, u32 secondaryCmdCount = 0);
 	RenderContext(RenderContext&&);

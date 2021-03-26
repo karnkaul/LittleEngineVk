@@ -7,29 +7,13 @@ namespace le {
 using namespace window;
 
 namespace {
-void copy(std::unordered_set<window::Key> const& in, kt::fixed_vector<Input::Key, 16>& out_keys, Input::Action action) {
-	for (window::Key const key : in) {
-		bool found = false;
-		for (Input::Key& k : out_keys) {
-			if (k.key == key) {
-				found = true;
-				k.actions.set(action);
-				break;
-			}
-		}
-		if (!found && out_keys.has_space()) {
-			out_keys.push_back({key, action});
-		}
-	}
-}
-
 template <bool Erase, typename C>
 C& op_equals(C& self, C const& rhs) {
-	for (auto const& key : rhs) {
+	for (auto const& key : rhs.keys) {
 		if constexpr (Erase) {
-			self.erase(key);
+			self.erase(key.key);
 		} else {
-			self.insert(key);
+			self.insert(key.key, key.mods);
 		}
 	}
 	return self;
@@ -78,15 +62,58 @@ Input::Out Input::update(EventQueue queue, Viewport const& view, bool consume, D
 	return ret;
 }
 
+bool Input::KeySet::insert(window::Key k, window::Mods const& mods) {
+	for (auto& key : keys) {
+		if (key.key == k) {
+			key.mods.add(mods);
+			return true;
+		}
+	}
+	for (auto& key : keys) {
+		if (key.key == window::Key::eUnknown) {
+			key = {{k, mods}, {}};
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Input::KeySet::erase(window::Key k) noexcept {
+	for (auto& key : keys) {
+		if (key.key == k) {
+			key = {};
+			return true;
+		}
+	}
+	return false;
+}
+
+void Input::copy(KeySet const& in, kt::fixed_vector<KeyMask, 16>& out_keys, Input::Action action) {
+	for (KeyMask const key : in.keys) {
+		bool found = false;
+		for (auto& k : out_keys) {
+			if (k.key == key.key) {
+				found = true;
+				k.actions.set(action);
+				k.mods = key.mods;
+				break;
+			}
+		}
+		if (!found && out_keys.has_space()) {
+			out_keys.push_back(key);
+		}
+	}
+}
+
 bool Input::extract(Event const& event, State& out_state) noexcept {
 	switch (event.type) {
 	case Event::Type::eInput: {
 		window::Event::Input const& input = event.payload.input;
 		if (input.action == window::Action::ePress) {
-			m_transient.pressed.insert(input.key);
+			m_transient.pressed.insert(input.key, input.mods);
 			m_persistent.held.erase(input.key);
 		} else if (input.action == window::Action::eRelease) {
-			m_transient.released.insert(input.key);
+			m_transient.released.insert(input.key, input.mods);
 			m_persistent.held.erase(input.key);
 		}
 		return true;

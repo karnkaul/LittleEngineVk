@@ -7,7 +7,7 @@ namespace {
 using sv = std::string_view;
 Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<View<std::byte>> bytes, [[maybe_unused]] sv name) {
 	Image::CreateInfo imageInfo;
-	imageInfo.queueFlags = QType::eTransfer | QType::eGraphics;
+	imageInfo.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
 	imageInfo.createInfo.format = format;
 	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;

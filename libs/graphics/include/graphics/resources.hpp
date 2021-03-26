@@ -180,7 +180,7 @@ class Image : public Resource {
 struct ResourceCreateInfo {
 	std::string name;
 	QShare share;
-	QFlags queueFlags = QType::eGraphics | QType::eTransfer;
+	QFlags queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	vk::MemoryPropertyFlags preferred;
 };

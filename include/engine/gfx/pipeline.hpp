@@ -17,6 +17,6 @@ struct Pipeline final {
 	Polygon polygonMode = Polygon::eFill;
 	Cull cullMode = Cull::eNone;
 	FFace frontFace = FFace::eCounterClockwise;
-	Flags flags = Flag::eBlend | Flag::eDepthTest | Flag::eDepthWrite;
+	Flags flags = Flags(Flag::eBlend) | Flag::eDepthTest | Flag::eDepthWrite;
 };
 } // namespace le::gfx

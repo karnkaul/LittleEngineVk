@@ -124,7 +124,7 @@ Swapchain::~Swapchain() {
 
 kt::result<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) {
 	orientCheck();
-	if (m_storage.flags.any(Flag::ePaused | Flag::eOutOfDate)) {
+	if (m_storage.flags.any(Flags(Flag::ePaused) | Flag::eOutOfDate)) {
 		return kt::null_result;
 	}
 	if (m_storage.acquired) {
@@ -151,7 +151,7 @@ kt::result<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) {
 }
 
 bool Swapchain::present(RenderSync const& sync) {
-	if (m_storage.flags.any(Flag::ePaused | Flag::eOutOfDate)) {
+	if (m_storage.flags.any(Flags(Flag::ePaused) | Flag::eOutOfDate)) {
 		return false;
 	}
 	if (!m_storage.acquired) {
@@ -224,7 +224,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		createInfo.imageColorSpace = info.colourFormat.colorSpace;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		auto const indices = m_device.get().queues().familyIndices(QType::eGraphics | QType::ePresent);
+		auto const indices = m_device.get().queues().familyIndices(QFlags(QType::eGraphics) | QType::ePresent);
 		createInfo.imageSharingMode = indices.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
 		createInfo.pQueueFamilyIndices = indices.data();
 		createInfo.queueFamilyIndexCount = (u32)indices.size();

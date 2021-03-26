@@ -251,7 +251,7 @@ std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& d
 			family.flags.set(QType::eTransfer);
 		}
 		if ((props.queueFlags & vkqf::eGraphics) == vkqf::eGraphics) {
-			family.flags.set(QType::eGraphics | QType::eTransfer);
+			family.flags.set(QFlags(QType::eGraphics) | QType::eTransfer);
 		}
 		if (bSurfaceSupport) {
 			family.flags.set(QType::ePresent);

@@ -185,7 +185,7 @@ void FreeCam::reset() {
 	m_state.dSpeed = 0.0f;
 	m_state.pitch = m_state.yaw = 0.0f;
 	m_state.heldKeys.clear();
-	m_state.flags.reset(Flag::eTracking | Flag::eLooking);
+	m_state.flags.reset(Flags(Flag::eTracking) | Flag::eLooking);
 	return;
 }
 } // namespace le

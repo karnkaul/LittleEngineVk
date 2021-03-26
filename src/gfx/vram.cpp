@@ -90,7 +90,7 @@ Buffer createStagingBuffer(vk::DeviceSize size) {
 	info.size = ceilPOT(size);
 	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-	info.queueFlags = QFlag::eGraphics | QFlag::eTransfer;
+	info.queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 #if defined(LEVK_VKRESOURCE_NAMES)
 	static u64 s_nextBufferID = 0;
@@ -358,7 +358,7 @@ std::future<void> vram::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize 
 		logE("[{}] Source buffer is larger than destination buffer!", s_tName);
 		return {};
 	}
-	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
+	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlags(QFlag::eGraphics) | QFlag::eTransfer);
 	if (indices.size() > 1) {
 		ENSURE(sq.test() <= 1 || src.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 		ENSURE(dq.test() <= 1 || out_dst.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
@@ -384,7 +384,7 @@ std::future<void> vram::stage(Buffer& out_deviceBuffer, void const* pData, vk::D
 	if (size == 0) {
 		size = out_deviceBuffer.writeSize;
 	}
-	auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
+	auto const indices = g_device.queueIndices(QFlags(QFlag::eGraphics) | QFlag::eTransfer);
 	ENSURE(indices.size() == 1 || out_deviceBuffer.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	bool const bQueueFlags = out_deviceBuffer.queueFlags.test(QFlag::eTransfer);
 	ENSURE(bQueueFlags, "Invalid queue flags!");
@@ -483,7 +483,7 @@ std::future<void> vram::copy(View<View<u8>> pixelsArr, Image const& dst, LayoutT
 		imgSize += layerSize;
 	}
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
-	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlag::eGraphics | QFlag::eTransfer);
+	[[maybe_unused]] auto const indices = g_device.queueIndices(QFlags(QFlag::eGraphics) | QFlag::eTransfer);
 	ENSURE(indices.size() == 1 || dst.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	auto promise = std::make_shared<Batch::Promise::element_type>();
 	auto ret = promise->get_future();

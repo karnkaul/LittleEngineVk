@@ -86,6 +86,6 @@ inline bool CommandBuffer::recording() const noexcept {
 }
 
 inline bool CommandBuffer::rendering() const noexcept {
-	return valid() && m_flags.all(Flag::eRecording | Flag::eRendering);
+	return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering);
 }
 } // namespace le::graphics

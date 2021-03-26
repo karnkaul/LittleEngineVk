@@ -18,7 +18,7 @@ Buffer createStagingBuffer(Memory& memory, vk::DeviceSize size) {
 	info.size = ceilPOT(size);
 	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-	info.queueFlags = QType::eGraphics | QType::eTransfer;
+	info.queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 #if defined(LEVK_VKRESOURCE_NAMES)
 	static u64 s_nextBufferID = 0;

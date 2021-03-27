@@ -168,7 +168,7 @@ enum class Key {
 	eGamepadButtonTriangle = eGamepadButtonY,
 };
 
-enum class Mod : s8 { eShift = 1 << 0, eControl = 1 << 1, eAlt = 1 << 2, eSuper = 1 << 3, eCapsLock = 1 << 4, eNumLock = 1 << 5 };
+enum class Mod : s8 { eNone = 0, eShift = 1 << 0, eControl = 1 << 1, eAlt = 1 << 2, eSuper = 1 << 3, eCapsLock = 1 << 4, eNumLock = 1 << 5 };
 using Mods = kt::uint_flags<>;
 
 enum class Axis : s8 {
@@ -201,29 +201,27 @@ struct Gamepad : Joystick {
 	bool pressed(Key button) const;
 };
 
-// using OnText = Delegate<char>;
-// using OnInput = Delegate<Key, Action, Mods::VALUE>;
-// using OnMouse = Delegate<f64, f64>;
-// using OnFocus = Delegate<bool>;
-// using OnFiledrop = Delegate<io::Path const&>;
-// using OnWindowResize = Delegate<s32, s32>;
-// using OnClosed = Delegate<>;
-
 constexpr bool isMouseButton(Key key) noexcept;
 constexpr bool isGamepadButton(Key key) noexcept;
 constexpr bool isMouseAxis(Axis axis) noexcept;
+constexpr f32 triggerToAxis(f32 triggerValue) noexcept;
+std::string_view toString(s32 key);
 } // namespace le::window
 
 // impl
 
-inline constexpr bool le::window::isMouseButton(Key key) noexcept {
+constexpr bool le::window::isMouseButton(Key key) noexcept {
 	return key >= Key::eMouseButtonBegin && key < Key::eMouseButtonEnd;
 }
 
-inline constexpr bool le::window::isGamepadButton(Key key) noexcept {
+constexpr bool le::window::isGamepadButton(Key key) noexcept {
 	return key >= Key::eGamepadButtonBegin && key < Key::eGamepadButtonEnd;
 }
 
-inline constexpr bool le::window::isMouseAxis(Axis axis) noexcept {
+constexpr bool le::window::isMouseAxis(Axis axis) noexcept {
 	return axis >= Axis::eMouseBegin && axis < Axis::eMouseEnd;
+}
+
+constexpr le::f32 le::window::triggerToAxis(f32 triggerValue) noexcept {
+	return (triggerValue + 1.0f) * 0.5f;
 }

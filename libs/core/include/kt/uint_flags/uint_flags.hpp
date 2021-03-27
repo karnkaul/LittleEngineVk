@@ -26,6 +26,10 @@ struct uint_flags {
 	template <typename... T>
 	static constexpr uint_flags combine(T... t) noexcept;
 	///
+	/// \brief Build an instance by filling count lowest significant bits
+	///
+	static constexpr uint_flags fill(std::uint8_t count) noexcept;
+	///
 	/// \brief Add all inputs to this instance
 	///
 	template <typename T, typename... Ts>
@@ -87,6 +91,14 @@ template <typename... T>
 constexpr uint_flags<Ty> uint_flags<Ty>::combine(T... t) noexcept {
 	uint_flags ret{};
 	ret.add(t...);
+	return ret;
+}
+template <typename Ty>
+constexpr uint_flags<Ty> uint_flags<Ty>::fill(std::uint8_t count) noexcept {
+	uint_flags ret{};
+	for (std::uint8_t i = 0; i < count; ++i) {
+		ret.update(1 << i);
+	}
 	return ret;
 }
 template <typename Ty>

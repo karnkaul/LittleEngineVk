@@ -510,11 +510,5 @@ std::size_t DesktopInstance::joysticKButtonsCount(s32 id) const {
 	glfwGetJoystickButtons((int)id, &max);
 	return std::size_t(max);
 }
-
-std::string_view DesktopInstance::toString(s32 key) {
-	static constexpr std::string_view unknown = "(Unknown)";
-	char const* szName = glfwGetKeyName((int)key, 0);
-	return szName ? std::string_view(szName) : unknown;
-}
 } // namespace le::window
 #endif

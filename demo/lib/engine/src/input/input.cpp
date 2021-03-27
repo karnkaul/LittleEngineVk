@@ -4,8 +4,6 @@
 #include <window/desktop_instance.hpp>
 
 namespace le {
-using namespace window;
-
 namespace {
 template <bool Erase, typename C>
 C& op_equals(C& self, C const& rhs) {
@@ -62,8 +60,8 @@ Input::Out Input::update(EventQueue queue, Viewport const& view, bool consume, D
 	return ret;
 }
 
-bool Input::KeySet::insert(window::Key k, window::Mods const& mods) {
-	if (k != window::Key::eUnknown) {
+bool Input::KeySet::insert(Key k, Mods const& mods) {
+	if (k != Key::eUnknown) {
 		for (auto& key : keys) {
 			if (key.key == k) {
 				key.mods.update(mods);
@@ -71,7 +69,7 @@ bool Input::KeySet::insert(window::Key k, window::Mods const& mods) {
 			}
 		}
 		for (auto& key : keys) {
-			if (key.key == window::Key::eUnknown) {
+			if (key.key == Key::eUnknown) {
 				key = {k, mods};
 				return true;
 			}
@@ -80,7 +78,7 @@ bool Input::KeySet::insert(window::Key k, window::Mods const& mods) {
 	return false;
 }
 
-bool Input::KeySet::erase(window::Key k) noexcept {
+bool Input::KeySet::erase(Key k) noexcept {
 	for (auto& key : keys) {
 		if (key.key == k) {
 			key = {};
@@ -91,22 +89,22 @@ bool Input::KeySet::erase(window::Key k) noexcept {
 }
 
 void Input::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Input::Action action) {
-	for (Key const& key : in.keys) {
-		if (key.key == window::Key::eUnknown) {
+	for (KeyMods const& key : in.keys) {
+		if (key.key == Key::eUnknown) {
 			continue;
 		}
 		bool found = false;
 		for (auto& k : out_keys) {
 			if (k.key == key.key) {
 				found = true;
-				k.actions.update(action);
+				k.t.update(action);
 				k.mods = key.mods;
 				break;
 			}
 		}
 		if (!found && out_keys.has_space()) {
 			KeyAct k{key, {}};
-			k.actions.update(action);
+			k.t.update(action);
 			out_keys.push_back(k);
 		}
 	}
@@ -115,8 +113,8 @@ void Input::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Input
 bool Input::extract(Event const& event, State& out_state) noexcept {
 	switch (event.type) {
 	case Event::Type::eInput: {
-		window::Event::Input const& input = event.payload.input;
-		if (input.key != window::Key::eUnknown) {
+		Event::Input const& input = event.payload.input;
+		if (input.key != Key::eUnknown) {
 			if (input.action == window::Action::ePress) {
 				m_transient.pressed.insert(input.key, input.mods);
 				m_persistent.held.erase(input.key);

@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include <unordered_set>
+#include <core/maths.hpp>
 #include <core/ref.hpp>
 #include <core/token_gen.hpp>
 #include <engine/ibase.hpp>
@@ -18,15 +19,19 @@ struct Viewport;
 class Input {
   public:
 	enum class Action { ePressed = 1 << 0, eHeld = 1 << 1, eReleased = 1 << 2 };
-	using ActMask = kt::uint_flags<>;
+	using ActionMask = kt::uint_flags<>;
+	static constexpr ActionMask allActions = ActionMask::fill(maths::enumEnd(Action::eReleased));
 
 	enum class Focus { eUnchanged, eGained, eLost };
 	using Gamepad = window::Gamepad;
+	using Event = window::Event;
 	using EventQueue = window::EventQueue;
 	using DesktopInstance = window::DesktopInstance;
-	using Mods = window::Mods;
 
-	static constexpr ActMask every = ActMask::combine(Action::ePressed, Action::eHeld, Action::eReleased);
+	using Key = window::Key;
+	using Axis = window::Axis;
+	using Mod = window::Mod;
+	using Mods = window::Mods;
 
 	struct Cursor {
 		glm::vec2 position = {};
@@ -34,14 +39,16 @@ class Input {
 		glm::vec2 scroll = {};
 	};
 
-	struct Key {
-		window::Key key = window::Key::eUnknown;
-		window::Mods mods{};
+	struct KeyMods {
+		Key key = Key::eUnknown;
+		Mods mods{};
 	};
 
-	struct KeyAct : Key {
-		ActMask actions;
+	template <typename T>
+	struct KeyCombo : KeyMods {
+		T t{};
 	};
+	using KeyAct = KeyCombo<ActionMask>;
 
 	struct State;
 	struct Out;
@@ -52,18 +59,18 @@ class Input {
 
   private:
 	struct KeySet {
-		std::array<Key, 8> keys{};
+		std::array<KeyMods, 8> keys{};
 
-		bool insert(window::Key k, window::Mods const& mods);
-		bool erase(window::Key k) noexcept;
+		bool insert(Key k, Mods const& mods);
+		bool erase(Key k) noexcept;
 	};
 
 	static void copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Input::Action action);
-	bool extract(window::Event const& event, State& out_state) noexcept;
+	bool extract(Event const& event, State& out_state) noexcept;
 
 	struct {
-		kt::fixed_vector<window::Gamepad, 8> gamepads;
-		kt::fixed_vector<window::Event::Cursor, 8> others;
+		kt::fixed_vector<Gamepad, 8> gamepads;
+		kt::fixed_vector<Event::Cursor, 8> others;
 		kt::fixed_vector<char, 4> text;
 		KeySet pressed;
 		KeySet released;
@@ -76,6 +83,9 @@ class Input {
 	} m_persistent;
 };
 
+template <>
+struct Input::KeyCombo<void> : KeyMods {};
+
 struct Input::State {
 	template <typename T>
 	using List = std::initializer_list<T>;
@@ -85,28 +95,28 @@ struct Input::State {
 	kt::fixed_vector<KeyAct, 16> keys;
 	Cursor cursor;
 	View<Gamepad> gamepads;
-	View<window::Event::Cursor> others;
+	View<Event::Cursor> others;
 	View<char> text;
 	Focus focus = Focus::eUnchanged;
 	bool suspended = false;
 
-	KeyAct const& keyMask(window::Key key) const noexcept;
-	window::Mods mods(window::Key key) const noexcept;
-	ActMask actions(window::Key key) const noexcept;
+	KeyAct const& keyMask(Key key) const noexcept;
+	Mods mods(Key key) const noexcept;
+	ActionMask actions(Key key) const noexcept;
 
-	Res<Key> acted(window::Key) const noexcept;
-	Res<Key> acted(window::Key key, Action action) const noexcept;
-	Res<Key> pressed(window::Key key) const noexcept;
-	Res<Key> held(window::Key key) const noexcept;
-	Res<Key> released(window::Key key) const noexcept;
+	Res<KeyMods> acted(Key) const noexcept;
+	Res<KeyMods> acted(Key key, Action action) const noexcept;
+	Res<KeyMods> pressed(Key key) const noexcept;
+	Res<KeyMods> held(Key key) const noexcept;
+	Res<KeyMods> released(Key key) const noexcept;
 
-	bool any(List<window::Key> keys, ActMask mask = every) const noexcept;
-	bool all(List<window::Key> keys, ActMask mask = every) const noexcept;
+	bool any(List<Key> keys, ActionMask mask = allActions) const noexcept;
+	bool all(List<Key> keys, ActionMask mask = allActions) const noexcept;
 };
 
 struct Input::Out {
 	State state;
-	window::EventQueue residue;
+	EventQueue residue;
 };
 
 class Input::IReceiver : public IBase {
@@ -118,7 +128,7 @@ class Input::IReceiver : public IBase {
 
 // impl
 
-inline Input::KeyAct const& Input::State::keyMask(window::Key key) const noexcept {
+inline Input::KeyAct const& Input::State::keyMask(Key key) const noexcept {
 	static constexpr KeyAct blank{};
 	if (key == blank.key) {
 		return blank;
@@ -130,8 +140,8 @@ inline Input::KeyAct const& Input::State::keyMask(window::Key key) const noexcep
 	}
 	return blank;
 }
-inline window::Mods Input::State::mods(window::Key key) const noexcept {
-	window::Mods ret{};
+inline Input::Mods Input::State::mods(Key key) const noexcept {
+	Mods ret{};
 	for (KeyAct const& k : keys) {
 		if (k.key == key) {
 			ret = k.mods;
@@ -140,49 +150,49 @@ inline window::Mods Input::State::mods(window::Key key) const noexcept {
 	}
 	return ret;
 }
-inline Input::ActMask Input::State::actions(window::Key key) const noexcept {
-	ActMask ret{};
+inline Input::ActionMask Input::State::actions(Key key) const noexcept {
+	ActionMask ret{};
 	for (KeyAct const& k : keys) {
 		if (k.key == key) {
-			ret = k.actions;
+			ret = k.t;
 			break;
 		}
 	}
 	return ret;
 }
-inline Input::State::Res<Input::Key> Input::State::acted(window::Key key) const noexcept {
+inline Input::State::Res<Input::KeyMods> Input::State::acted(Key key) const noexcept {
 	KeyAct const k = keyMask(key);
-	if (k.key != window::Key::eUnknown) {
+	if (k.key != Key::eUnknown) {
 		return k;
 	}
 	return kt::null_result;
 }
-inline Input::State::Res<Input::Key> Input::State::acted(window::Key key, Action action) const noexcept {
+inline Input::State::Res<Input::KeyMods> Input::State::acted(Key key, Action action) const noexcept {
 	KeyAct const k = keyMask(key);
-	if (k.key != window::Key::eUnknown && k.actions[action]) {
+	if (k.key != Key::eUnknown && k.t[action]) {
 		return k;
 	}
 	return kt::null_result;
 }
-inline Input::State::Res<Input::Key> Input::State::pressed(window::Key key) const noexcept {
+inline Input::State::Res<Input::KeyMods> Input::State::pressed(Key key) const noexcept {
 	return acted(key, Action::ePressed);
 }
-inline Input::State::Res<Input::Key> Input::State::held(window::Key key) const noexcept {
+inline Input::State::Res<Input::KeyMods> Input::State::held(Key key) const noexcept {
 	return acted(key, Action::eHeld);
 }
-inline Input::State::Res<Input::Key> Input::State::released(window::Key key) const noexcept {
+inline Input::State::Res<Input::KeyMods> Input::State::released(Key key) const noexcept {
 	return acted(key, Action::eReleased);
 }
-inline bool Input::State::any(List<window::Key> keys, ActMask mask) const noexcept {
-	for (window::Key const k : keys) {
+inline bool Input::State::any(List<Key> keys, ActionMask mask) const noexcept {
+	for (Key const k : keys) {
 		if (actions(k).any(mask)) {
 			return true;
 		}
 	}
 	return false;
 }
-inline bool Input::State::all(List<window::Key> keys, ActMask mask) const noexcept {
-	for (window::Key const k : keys) {
+inline bool Input::State::all(List<Key> keys, ActionMask mask) const noexcept {
+	for (Key const k : keys) {
 		if (!actions(k).any(mask)) {
 			return false;
 		}

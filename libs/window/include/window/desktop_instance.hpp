@@ -40,15 +40,6 @@ class DesktopInstance final : public IInstance {
 	Gamepad gamepadState(s32 id) const;
 	std::size_t joystickAxesCount(s32 id) const;
 	std::size_t joysticKButtonsCount(s32 id) const;
-
-	static constexpr f32 triggerToAxis(f32 triggerValue) noexcept;
-	static std::string_view toString(s32 key);
 };
-
-// impl
-
-inline constexpr f32 DesktopInstance::triggerToAxis(f32 triggerValue) noexcept {
-	return (triggerValue + 1.0f) * 0.5f;
-}
 } // namespace le::window
 #endif

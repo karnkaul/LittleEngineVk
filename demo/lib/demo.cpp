@@ -27,7 +27,7 @@
 #include <engine/render/model.hpp>
 #include <engine/scene_node.hpp>
 
-#include <kt/uint_flags/uint_flags.hpp>
+#include <engine/input/control.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -485,7 +485,7 @@ class App : public Input::IReceiver {
 		if (state.focus == Input::Focus::eGained) {
 			m_store.update();
 		}
-		if (auto key = state.pressed(window::Key::eE); key && key->mods[window::Mod::eControl]) {
+		if (m_controls.editor(state)) {
 			Editor::s_engaged = !Editor::s_engaged;
 		}
 		return false;
@@ -683,6 +683,10 @@ class App : public Input::IReceiver {
 	AssetStore m_store;
 	scheduler m_tasks;
 	Ref<Engine> m_eng;
+
+	struct {
+		Control::Trigger editor = Control::Trigger(Input::Key::eE, Input::Action::ePressed, Input::Mod::eControl);
+	} m_controls;
 };
 
 struct FlagsInput : Input::IReceiver {
@@ -693,11 +697,11 @@ struct FlagsInput : Input::IReceiver {
 
 	bool block(Input::State const& state) override {
 		bool ret = false;
-		if (auto key = state.released(window::Key::eW); key && key->mods[window::Mod::eControl]) {
+		if (auto key = state.released(Input::Key::eW); key && key->mods[Input::Mod::eControl]) {
 			flags.set(Flag::eClosed);
 			ret = true;
 		}
-		if (auto key = state.pressed(window::Key::eD); key && key->mods[window::Mod::eControl]) {
+		if (auto key = state.pressed(Input::Key::eD); key && key->mods[Input::Mod::eControl]) {
 			flags.set(Flag::eDebug0);
 			ret = true;
 		}

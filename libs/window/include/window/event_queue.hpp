@@ -29,6 +29,7 @@ struct Event {
 		Key key;
 		Action action;
 		Mods mods;
+		s32 scancode;
 	};
 	struct Text final {
 		char c;

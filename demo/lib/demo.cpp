@@ -27,6 +27,8 @@
 #include <engine/render/model.hpp>
 #include <engine/scene_node.hpp>
 
+#include <kt/uint_flags/uint_flags.hpp>
+
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
 using Flags = kt::enum_flags<Flag>;
@@ -483,7 +485,7 @@ class App : public Input::IReceiver {
 		if (state.focus == Input::Focus::eGained) {
 			m_store.update();
 		}
-		if (state.released(window::Key::eE)) {
+		if (auto key = state.pressed(window::Key::eE); key && key->mods[window::Mod::eControl]) {
 			Editor::s_engaged = !Editor::s_engaged;
 		}
 		return false;
@@ -691,15 +693,13 @@ struct FlagsInput : Input::IReceiver {
 
 	bool block(Input::State const& state) override {
 		bool ret = false;
-		if (state.any({window::Key::eLeftControl, window::Key::eRightControl})) {
-			if (state.pressed(window::Key::eW)) {
-				flags.set(Flag::eClosed);
-				ret = true;
-			}
-			if (state.released(window::Key::eD)) {
-				flags.set(Flag::eDebug0);
-				ret = true;
-			}
+		if (auto key = state.released(window::Key::eW); key && key->mods[window::Mod::eControl]) {
+			flags.set(Flag::eClosed);
+			ret = true;
+		}
+		if (auto key = state.pressed(window::Key::eD); key && key->mods[window::Mod::eControl]) {
+			flags.set(Flag::eDebug0);
+			ret = true;
 		}
 		return ret;
 	}

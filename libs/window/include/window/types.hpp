@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <core/span.hpp>
-#include <core/std_types.hpp>
+#include <kt/uint_flags/uint_flags.hpp>
 
 namespace le::window {
 enum class Action : s8 { eRelease, ePress, eRepeat };
@@ -168,37 +168,8 @@ enum class Key {
 	eGamepadButtonTriangle = eGamepadButtonY,
 };
 
-enum class Mod : s8 { eShift, eControl, eAlt, eSuper, eCapsLock, eNumLock, eCOUNT_ };
-struct Mods {
-	EnumArray<Mod, bool> flags;
-
-	constexpr bool& operator[](Mod mod) noexcept {
-		return flags[(std::size_t)mod];
-	}
-
-	constexpr bool operator[](Mod mod) const noexcept {
-		return flags[(std::size_t)mod];
-	}
-
-	Mods add(Mods const& rhs) const noexcept {
-		Mods ret = *this;
-		for (std::size_t i = 0; i < (std::size_t)Mod::eCOUNT_; ++i) {
-			if (rhs.flags[i]) {
-				ret.flags[i] = true;
-			}
-		}
-		return ret;
-	}
-
-	friend constexpr bool operator==(Mods const& l, Mods const& r) noexcept {
-		for (std::size_t i = 0; i < (std::size_t)Mod::eCOUNT_; ++i) {
-			if (l.flags[i] != r.flags[i]) {
-				return false;
-			}
-		}
-		return true;
-	}
-};
+enum class Mod : s8 { eShift = 1 << 0, eControl = 1 << 1, eAlt = 1 << 2, eSuper = 1 << 3, eCapsLock = 1 << 4, eNumLock = 1 << 5 };
+using Mods = kt::uint_flags<>;
 
 enum class Axis : s8 {
 	eUnknown,

@@ -2,6 +2,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <core/array_map.hpp>
 #include <core/log.hpp>
 #include <kt/fixed_any/fixed_any.hpp>
 #include <vulkan/vulkan.hpp>
@@ -97,13 +98,21 @@ void deinit() {
 } // namespace
 
 namespace {
+constexpr ArrayMap<6, Mod, s32> modMap = {{Mod::eShift, GLFW_MOD_SHIFT}, {Mod::eControl, GLFW_MOD_CONTROL},	   {Mod::eAlt, GLFW_MOD_ALT},
+										  {Mod::eSuper, GLFW_MOD_SUPER}, {Mod::eCapsLock, GLFW_MOD_CAPS_LOCK}, {Mod::eNumLock, GLFW_MOD_NUM_LOCK}};
+
+void fillMod(Mods& out_mods, int mods, int mod) {
+	if (mods & mod) {
+		out_mods.update(mapped<Mod>(modMap, mod));
+	}
+}
 void fillMods(Mods& out_mods, int mods) {
-	out_mods[Mod::eShift] = mods & GLFW_MOD_SHIFT;
-	out_mods[Mod::eControl] = mods & GLFW_MOD_CONTROL;
-	out_mods[Mod::eAlt] = mods & GLFW_MOD_ALT;
-	out_mods[Mod::eSuper] = mods & GLFW_MOD_SUPER;
-	out_mods[Mod::eCapsLock] = mods & GLFW_MOD_CAPS_LOCK;
-	out_mods[Mod::eNumLock] = mods & GLFW_MOD_NUM_LOCK;
+	fillMod(out_mods, mods, GLFW_MOD_SHIFT);
+	fillMod(out_mods, mods, GLFW_MOD_CONTROL);
+	fillMod(out_mods, mods, GLFW_MOD_ALT);
+	fillMod(out_mods, mods, GLFW_MOD_SUPER);
+	fillMod(out_mods, mods, GLFW_MOD_CAPS_LOCK);
+	fillMod(out_mods, mods, GLFW_MOD_NUM_LOCK);
 }
 
 void onFocus(GLFWwindow* pGLFWwindow, int entered) {
@@ -155,13 +164,14 @@ void onClose(GLFWwindow* pGLFWwindow) {
 	}
 }
 
-void onKey(GLFWwindow* pGLFWwindow, int key, int /*scancode*/, int action, int mods) {
+void onKey(GLFWwindow* pGLFWwindow, int key, int scancode, int action, int mods) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		Event::Input input;
 		input.key = (Key)key;
 		input.action = (Action)action;
 		fillMods(input.mods, mods);
+		input.scancode = scancode;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;
 		g_state.events.m_events.push_back(event);
@@ -188,6 +198,7 @@ void onMouseButton(GLFWwindow* pGLFWwindow, int key, int action, int mods) {
 		input.key = Key(key + (int)Key::eMouseButton1);
 		input.action = (Action)action;
 		fillMods(input.mods, mods);
+		input.scancode = 0;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;
 		g_state.events.m_events.push_back(event);
@@ -501,7 +512,9 @@ std::size_t DesktopInstance::joysticKButtonsCount(s32 id) const {
 }
 
 std::string_view DesktopInstance::toString(s32 key) {
-	return glfwGetKeyName((int)key, 0);
+	static constexpr std::string_view unknown = "(Unknown)";
+	char const* szName = glfwGetKeyName((int)key, 0);
+	return szName ? std::string_view(szName) : unknown;
 }
 } // namespace le::window
 #endif

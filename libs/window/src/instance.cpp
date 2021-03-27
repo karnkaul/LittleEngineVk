@@ -168,7 +168,7 @@ Mods parseMods(View<std::string> vec) noexcept {
 	std::memset(&ret, 0, sizeof(ret));
 	for (auto const& str : vec) {
 		if (auto search = g_modsMap.find(str); search != g_modsMap.end()) {
-			ret[search->second] = true;
+			ret.update(search->second);
 		}
 	}
 	return ret;

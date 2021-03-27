@@ -63,16 +63,18 @@ Input::Out Input::update(EventQueue queue, Viewport const& view, bool consume, D
 }
 
 bool Input::KeySet::insert(window::Key k, window::Mods const& mods) {
-	for (auto& key : keys) {
-		if (key.key == k) {
-			key.mods.add(mods);
-			return true;
+	if (k != window::Key::eUnknown) {
+		for (auto& key : keys) {
+			if (key.key == k) {
+				key.mods.update(mods);
+				return true;
+			}
 		}
-	}
-	for (auto& key : keys) {
-		if (key.key == window::Key::eUnknown) {
-			key = {{k, mods}, {}};
-			return true;
+		for (auto& key : keys) {
+			if (key.key == window::Key::eUnknown) {
+				key = {k, mods};
+				return true;
+			}
 		}
 	}
 	return false;
@@ -88,19 +90,24 @@ bool Input::KeySet::erase(window::Key k) noexcept {
 	return false;
 }
 
-void Input::copy(KeySet const& in, kt::fixed_vector<KeyMask, 16>& out_keys, Input::Action action) {
-	for (KeyMask const key : in.keys) {
+void Input::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Input::Action action) {
+	for (Key const& key : in.keys) {
+		if (key.key == window::Key::eUnknown) {
+			continue;
+		}
 		bool found = false;
 		for (auto& k : out_keys) {
 			if (k.key == key.key) {
 				found = true;
-				k.actions.set(action);
+				k.actions.update(action);
 				k.mods = key.mods;
 				break;
 			}
 		}
 		if (!found && out_keys.has_space()) {
-			out_keys.push_back(key);
+			KeyAct k{key, {}};
+			k.actions.update(action);
+			out_keys.push_back(k);
 		}
 	}
 }
@@ -109,14 +116,17 @@ bool Input::extract(Event const& event, State& out_state) noexcept {
 	switch (event.type) {
 	case Event::Type::eInput: {
 		window::Event::Input const& input = event.payload.input;
-		if (input.action == window::Action::ePress) {
-			m_transient.pressed.insert(input.key, input.mods);
-			m_persistent.held.erase(input.key);
-		} else if (input.action == window::Action::eRelease) {
-			m_transient.released.insert(input.key, input.mods);
-			m_persistent.held.erase(input.key);
+		if (input.key != window::Key::eUnknown) {
+			if (input.action == window::Action::ePress) {
+				m_transient.pressed.insert(input.key, input.mods);
+				m_persistent.held.erase(input.key);
+			} else if (input.action == window::Action::eRelease) {
+				m_transient.released.insert(input.key, input.mods);
+				m_persistent.held.erase(input.key);
+			}
+			return true;
 		}
-		return true;
+		return false;
 	}
 	case Event::Type::eCursor: {
 		Event::Cursor const& cursor = event.payload.cursor;

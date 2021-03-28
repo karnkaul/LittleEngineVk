@@ -69,4 +69,8 @@ vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexc
 	Viewport const vp = view * m_editor.view();
 	return m_gfx->context.viewport(m_win.get().framebufferSize(), depth, vp.rect(), vp.topLeft.offset);
 }
+
+Engine::Desktop* Engine::desktop() const noexcept {
+	return m_win.get().isDesktop() ? &static_cast<Desktop&>(m_win.get()) : nullptr;
+}
 } // namespace le

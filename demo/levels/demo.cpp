@@ -80,7 +80,7 @@ DemoLevel::DemoLevel() {
 	registry().attach<SpringArm>(m_data.pointer);
 
 	m_data.freeCam.init();
-	m_data.freeCam.m_state.flags.set(FreeCam::Flag::eKeyToggle_Look);
+	m_data.freeCam.m_state.flags.set(FreeCam_OLD::Flag::eKeyToggle_Look);
 	m_data.freeCam.m_camera.position = {0.0f, 1.0f, 2.0f};
 
 	m_data.eid0.transform().position({1.0f, 1.0f, -2.0f});
@@ -99,7 +99,7 @@ DemoLevel::DemoLevel() {
 	m_input.context.mapTrigger("reload_models", [this]() { m_data.bLoadUnloadModels = true; });
 	m_input.context.mapTrigger("quit", [this]() { m_data.bQuit = true; });
 	m_input.context.mapState("run", [](bool bActive) { logI_if(bActive, "RUNNING!"); });
-	m_input.context.mapState("pause_cam", [this](bool bActive) { m_data.freeCam.m_state.flags[FreeCam::Flag::eEnabled] = !bActive; });
+	m_input.context.mapState("pause_cam", [this](bool bActive) { m_data.freeCam.m_state.flags[FreeCam_OLD::Flag::eEnabled] = !bActive; });
 	m_input.context.addState("pause_cam", input::Key::eLeftControl);
 	m_input.context.addState("pause_cam", input::Key::eRightControl);
 

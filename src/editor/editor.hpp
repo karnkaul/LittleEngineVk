@@ -12,7 +12,7 @@
 namespace le::editor {
 inline bool g_bTickGame = true;
 inline TTrigger<bool> g_bStepGame = false;
-inline FreeCam g_editorCam;
+inline FreeCam_OLD g_editorCam;
 
 bool init(WindowID editorWindow);
 bool enabled();

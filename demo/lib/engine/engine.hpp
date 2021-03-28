@@ -33,6 +33,9 @@ class Engine {
 
 	Input::Out poll(bool consume) noexcept;
 	void pushReceiver(Input::IReceiver& context);
+
+	bool editorActive() const noexcept;
+	bool editorEngaged() const noexcept;
 	void updateEditor();
 
 	bool boot(Boot::CreateInfo const& boot);
@@ -42,6 +45,7 @@ class Engine {
 	GFX& gfx();
 	GFX const& gfx() const;
 	Input::State const& inputState() const noexcept;
+	Desktop* desktop() const noexcept;
 
 	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	Ref<Window> m_win;
@@ -59,6 +63,12 @@ class Engine {
 
 // impl
 
+inline bool Engine::editorActive() const noexcept {
+	return m_editor.active();
+}
+inline bool Engine::editorEngaged() const noexcept {
+	return m_editor.active() && Editor::s_engaged;
+}
 inline bool Engine::booted() const noexcept {
 	return m_gfx.has_value();
 }

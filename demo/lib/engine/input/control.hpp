@@ -1,23 +1,33 @@
+#pragma once
 #include <variant>
 #include <engine/input/input.hpp>
 
 namespace le {
 class Control {
   public:
-	template <typename T>
-	using Combo = Input::KeyCombo<T>;
 	using Action = Input::Action;
 	using Mod = Input::Mod;
 	using Mods = Input::Mods;
 	using Axis = Input::Axis;
 
-	static constexpr std::size_t maxOptions = 8;
+	struct AxisRange {
+		std::size_t padID = 0;
+		Axis axis = {};
+		bool invert = false;
+	};
+	struct KeyRange {
+		Input::KeyMods lo;
+		Input::KeyMods hi;
+	};
 
+	static constexpr std::size_t maxOptions = 8;
+	using KeyAction = Input::KeyCombo<Action>;
+	using VRange = std::variant<KeyRange, AxisRange>;
 	template <typename T>
 	using Options = kt::fixed_vector<T, maxOptions>;
 
 	struct Trigger {
-		Options<Combo<Action>> combos;
+		Options<KeyAction> combos;
 
 		Trigger() = default;
 		Trigger(Input::Key key, Action action = Action::ePressed, Mod mod = {}) noexcept;
@@ -25,28 +35,12 @@ class Control {
 		bool operator()(Input::State const& state) const noexcept;
 	};
 
-	struct State {
-		Options<Input::KeyMods> matches;
-
-		bool operator()(Input::State const& state) const noexcept;
-	};
-
 	struct Range {
-		struct Ax {
-			std::size_t padID = 0;
-			Axis axis{};
-			bool reverse{};
-		};
-		struct Ky {
-			Input::KeyMods lo{};
-			Input::KeyMods hi{};
-		};
-
-		Options<std::variant<Ax, Ky>> matches;
+		Options<VRange> matches;
 
 		Range() = default;
-		Range(Ax axis) noexcept;
-		Range(Ky key) noexcept;
+		Range(AxisRange axis) noexcept;
+		Range(KeyRange key) noexcept;
 
 		f32 operator()(Input::State const& state) const noexcept;
 	};

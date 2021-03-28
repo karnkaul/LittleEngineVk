@@ -5,7 +5,7 @@
 #include <kt/enum_flags/enum_flags.hpp>
 
 namespace le {
-class FreeCam {
+class FreeCam_OLD {
   public:
 	enum class Flag : s8 { eEnabled, eKeyToggle_Look, eFixedSpeed, eTracking, eLooking, eKeyLook, eCOUNT_ };
 	using Flags = kt::enum_flags<Flag>;

@@ -47,7 +47,7 @@ class DemoLevel : public Level {
 		decf::entity_t eui1, eui2;
 		le::Prop pointer;
 		le::input::Context temp;
-		le::FreeCam freeCam;
+		le::FreeCam_OLD freeCam;
 		FPS fps;
 		le::Token tempToken;
 		le::Time_s reloadTime;

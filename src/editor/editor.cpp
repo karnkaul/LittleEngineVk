@@ -1072,7 +1072,7 @@ void editor::deinit() {
 
 std::optional<gfx::Viewport> editor::tick(GameScene& out_scene, Time_s dt) {
 	static gfx::Viewport s_comboView = {{0.2f, 0.0f}, 0.6f};
-	g_editorCam.m_state.flags[FreeCam::Flag::eEnabled] = !g_bTickGame;
+	g_editorCam.m_state.flags[FreeCam_OLD::Flag::eEnabled] = !g_bTickGame;
 	g_editorCam.tick(dt);
 	auto pWindow = WindowImpl::windowImpl(g_data.window);
 	if (g_data.bEnabled && pWindow && pWindow->open()) {

@@ -42,6 +42,11 @@ class Input {
 	struct KeyMods {
 		Key key = Key::eUnknown;
 		Mods mods{};
+
+		constexpr KeyMods() = default;
+		constexpr KeyMods(Key k) noexcept;
+		constexpr KeyMods(Key k, Mod mod) noexcept;
+		constexpr KeyMods(Key k, Mods m) noexcept;
 	};
 
 	template <typename T>
@@ -128,6 +133,13 @@ class Input::IReceiver : public IBase {
 
 // impl
 
+constexpr Input::KeyMods::KeyMods(Key k) noexcept : key(k) {
+}
+constexpr Input::KeyMods::KeyMods(Key k, Mod mod) noexcept : key(k) {
+	mods.add(mod);
+}
+constexpr Input::KeyMods::KeyMods(Key k, Mods m) noexcept : key(k), mods(m) {
+}
 inline Input::KeyAct const& Input::State::keyMask(Key key) const noexcept {
 	static constexpr KeyAct blank{};
 	if (key == blank.key) {

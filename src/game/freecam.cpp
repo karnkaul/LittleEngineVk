@@ -10,9 +10,9 @@ namespace le {
 using namespace input;
 
 #if defined(LEVK_EDITOR)
-void FreeCam::init(bool bEditorContext)
+void FreeCam_OLD::init(bool bEditorContext)
 #else
-void FreeCam::init()
+void FreeCam_OLD::init()
 #endif
 {
 	m_input = {};
@@ -107,7 +107,7 @@ void FreeCam::init()
 	return;
 }
 
-void FreeCam::tick(Time_s dt) {
+void FreeCam_OLD::tick(Time_s dt) {
 	if (!m_state.flags.test(Flag::eEnabled)) {
 		return;
 	}
@@ -180,7 +180,7 @@ void FreeCam::tick(Time_s dt) {
 	return;
 }
 
-void FreeCam::reset() {
+void FreeCam_OLD::reset() {
 	m_camera.reset();
 	m_state.dSpeed = 0.0f;
 	m_state.pitch = m_state.yaw = 0.0f;

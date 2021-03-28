@@ -5,7 +5,7 @@
 
 namespace le {
 // Camera faces -Z
-struct Camera final {
+struct Camera {
 	struct ZPlane {
 		f32 near;
 		f32 far;

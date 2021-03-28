@@ -27,6 +27,7 @@
 #include <engine/render/model.hpp>
 #include <engine/scene_node.hpp>
 
+#include <engine/cameras/freecam.hpp>
 #include <engine/input/control.hpp>
 
 namespace le::demo {
@@ -622,7 +623,9 @@ class App : public Input::IReceiver {
 		if (m_data.registry.empty()) {
 			init1();
 		}
-		{
+		if (m_eng.get().editorEngaged()) {
+			m_data.cam.tick(m_eng.get().inputState(), dt, m_eng.get().desktop());
+		} else {
 			// camera
 			glm::vec3 const moveDir = glm::normalize(glm::cross(m_data.cam.position, graphics::up));
 			m_data.cam.position += moveDir * dt.count() * 0.75f;
@@ -668,7 +671,7 @@ class App : public Input::IReceiver {
 		Drawer drawer;
 
 		Text text;
-		Camera cam;
+		FreeCam cam;
 		std::vector<DirLight> dirLights;
 
 		SceneNode::Root root;
@@ -685,7 +688,7 @@ class App : public Input::IReceiver {
 	Ref<Engine> m_eng;
 
 	struct {
-		Control::Trigger editor = Control::Trigger(Input::Key::eE, Input::Action::ePressed, Input::Mod::eControl);
+		Control::Trigger editor = {Input::Key::eE, Input::Action::ePressed, Input::Mod::eControl};
 	} m_controls;
 };
 

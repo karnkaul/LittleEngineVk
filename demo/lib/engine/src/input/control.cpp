@@ -3,11 +3,11 @@
 
 namespace le {
 Control::Trigger::Trigger(Input::Key key, Action action, Mod mod) noexcept {
-	Combo<Action> combo;
-	combo.key = key;
-	combo.t = action;
-	combo.mods.add(mod);
-	combos.push_back(combo);
+	KeyAction ka;
+	ka.key = key;
+	ka.t = action;
+	ka.mods.add(mod);
+	combos.push_back(ka);
 }
 
 bool Control::Trigger::operator()(Input::State const& state) const noexcept {
@@ -40,29 +40,18 @@ bool Control::Trigger::operator()(Input::State const& state) const noexcept {
 	return false;
 }
 
-bool Control::State::operator()(Input::State const& state) const noexcept {
-	for (auto const& match : matches) {
-		if (match.key != Input::Key::eUnknown) {
-			if (auto key = state.acted(match.key)) {
-				return key->mods.all(match.mods);
-			}
-		}
-	}
-	return false;
-}
-
-Control::Range::Range(Ax axis) noexcept {
+Control::Range::Range(AxisRange axis) noexcept {
 	matches.push_back(axis);
 }
 
-Control::Range::Range(Ky key) noexcept {
+Control::Range::Range(KeyRange key) noexcept {
 	matches.push_back(key);
 }
 
 f32 Control::Range::operator()(Input::State const& state) const noexcept {
 	f32 ret = 0.0f;
 	for (auto const& match : matches) {
-		if (auto const& ax = std::get_if<Ax>(&match); ax && ax->padID < state.gamepads.size()) {
+		if (auto const& ax = std::get_if<AxisRange>(&match); ax && ax->padID < state.gamepads.size()) {
 			Input::Gamepad const& pad = state.gamepads[ax->padID];
 			switch (ax->axis) {
 			case Axis::eLeftTrigger:
@@ -75,8 +64,8 @@ f32 Control::Range::operator()(Input::State const& state) const noexcept {
 				break;
 			}
 			}
-			return ax->reverse ? -ret : ret;
-		} else if (auto const& ky = std::get_if<Ky>(&match)) {
+			return ax->invert ? -ret : ret;
+		} else if (auto const& ky = std::get_if<KeyRange>(&match)) {
 			auto const lo = state.held(ky->lo.key);
 			auto const hi = state.held(ky->hi.key);
 			if (lo || hi) {

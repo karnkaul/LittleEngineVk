@@ -65,18 +65,21 @@ DemoLevel::DemoLevel() {
 	textInfo.data.colour = colours::cyan;
 	textInfo.data.pos.y -= 100.0f;
 	textInfo.id = "ft";
-	registry().attach<UIComponent>(m_data.eui1)->setText(textInfo);
+	registry().attach<UIComponent>(m_data.eui1).setText(textInfo);
 	textInfo.data.colour = colours::yellow;
 	textInfo.data.pos.y -= 100.0f;
 	// textInfo.data.pos.x = 620.0f;
 	textInfo.id = "tris";
-	if (auto pUI = registry().attach<UIComponent>(m_data.eui2)) {
-		pUI->setText(textInfo);
-		pUI->scissor.rb.x = 0.5f;
+	{
+		auto& ui = registry().attach<UIComponent>(m_data.eui2);
+		ui.setText(textInfo);
+		ui.scissor.rb.x = 0.5f;
 	}
-	auto pUI = registry().attach<UIComponent>(m_data.pointer);
-	pUI->setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
-	pUI->bIgnoreGameView = true;
+	{
+		auto& ui = registry().attach<UIComponent>(m_data.pointer);
+		ui.setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
+		ui.bIgnoreGameView = true;
+	}
 	registry().attach<SpringArm>(m_data.pointer);
 
 	m_data.freeCam.init();

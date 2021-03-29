@@ -1,12 +1,13 @@
 #include <core/utils/algo.hpp>
+#include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/editor/editor.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
-struct Transform : Gadget {
-	bool operator()(SceneNode& node, decf::registry_t&) override {
+struct Transform {
+	bool operator()(SceneNode& node, decf::registry_t&) const {
 		auto tr = TWidget<SceneNode>("Pos", "Orn", "Scl", node);
 		return true;
 	}
@@ -16,9 +17,9 @@ struct Transform : Gadget {
 
 void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
-	if (Editor::s_out.inspecting.node && Editor::s_in.registry) {
+	if (Editor::s_in.registry && Editor::s_out.inspecting.entity != decf::entity_t()) {
 		auto entity = Editor::s_out.inspecting.entity;
-		auto& node = *Editor::s_out.inspecting.node;
+		auto node = Editor::s_out.inspecting.node;
 		auto& registry = *Editor::s_in.registry;
 		Text(registry.name(entity));
 		TWidgetWrap<bool> enb;
@@ -27,11 +28,12 @@ void Inspector::update() {
 		}
 		Styler s{Style::eSeparator};
 		static std::string const trID("Transform");
-		if (!utils::contains(s_gadgets, trID)) {
-			attach<Transform>(trID);
+		if (node) {
+			Transform tr;
+			tr(*node, registry);
 		}
 		for (auto& [id, gadget] : s_gadgets) {
-			if ((*gadget)(node, registry)) {
+			if ((*gadget)(entity, registry)) {
 				s();
 			}
 		}

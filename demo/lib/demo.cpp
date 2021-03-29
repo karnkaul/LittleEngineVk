@@ -251,11 +251,11 @@ struct DrawObj {
 };
 
 struct Drawable {
-	SceneNode node;
 	graphics::ShaderBuffer mat_m;
 	std::vector<DrawObj> objs;
+	Ref<SceneNode> node;
 
-	Drawable(SceneNode::Root& root) : node(root) {
+	Drawable(SceneNode& node) : node(node) {
 	}
 };
 
@@ -312,7 +312,7 @@ class Drawer {
 		std::size_t idx = 0;
 		for (type& d : list.ts) {
 			if (sb10) {
-				d.mat_m.write(d.node.model());
+				d.mat_m.write(d.node.get().model());
 				si.update(d.mat_m, sb10.set, sb10.bind, idx);
 				d.mat_m.swap();
 			}
@@ -480,6 +480,17 @@ class App : public Input::IReceiver {
 		m_data.loader.stage(m_store, texList, m_tasks);
 		m_eng.get().pushReceiver(*this);
 		eng.m_win.get().show();
+
+		struct GFreeCam : edi::Gadget {
+			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
+				if (auto freecam = reg.find<FreeCam>(entity)) {
+					edi::TWidget<f32>("Speed", freecam->m_params.xz_speed);
+					return true;
+				}
+				return false;
+			}
+		};
+		edi::Inspector::attach<GFreeCam>("FreeCam");
 	}
 
 	bool block(Input::State const& state) override {
@@ -492,17 +503,18 @@ class App : public Input::IReceiver {
 		return false;
 	}
 
-	decf::spawn_t<Drawable> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
-		auto ret = m_data.registry.spawn<Drawable>(name, m_data.root);
+	decf::spawn_t<SceneNode> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
+		auto ret = m_data.registry.spawn<SceneNode>(name, m_data.root);
+		auto& node = ret.get<SceneNode>();
 		m_data.registry.attach<DrawLayer>(ret, layer);
-		auto& d = ret.get<Drawable>();
-		d.node.entity(ret);
-		d.mat_m = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, name + "/mat_m", {});
+		auto& dr = m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>());
+		node.entity(ret);
+		dr.mat_m = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, name + "/mat_m", {});
 		for (auto const& prim : primitives) {
 			DrawObj obj;
 			obj.primitive = prim;
 			obj.matBuf = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, name + "/material", {});
-			d.objs.push_back(std::move(obj));
+			dr.objs.push_back(std::move(obj));
 		}
 		return ret;
 	};
@@ -527,7 +539,11 @@ class App : public Input::IReceiver {
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
 		m_data.text.set(font.get(), "Hi!");
 
-		m_data.cam.position = {0.0f, 2.0f, 4.0f};
+		auto freecam = m_data.registry.spawn<FreeCam>("freecam");
+		m_data.camera = freecam;
+		auto& cam = freecam.get<FreeCam>();
+
+		cam.position = {0.0f, 2.0f, 4.0f};
 		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
 		m_data.layers["test"] = DrawLayer{&pipe_test->get(), 0};
 		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
@@ -563,14 +579,14 @@ class App : public Input::IReceiver {
 			Primitive prim;
 			prim.mesh = &*cube;
 			auto ent = spawn("prop_1", prim, m_data.layers["test"]);
-			ent.get<Drawable>().node.position({-5.0f, -1.0f, -2.0f});
+			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
 			Primitive prim;
 			prim.mesh = &*cone;
 			auto ent = spawn("prop_2", prim, m_data.layers["test_tex"]);
-			ent.get<Drawable>().node.position({1.0f, -2.0f, -3.0f});
+			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			Primitive prim;
@@ -582,25 +598,25 @@ class App : public Input::IReceiver {
 		{
 			if (auto model = m_store.find<Model>("models/plant")) {
 				auto ent0 = spawn("model_0_0", model->get().primitives(), m_data.layers["test_lit"]);
-				ent0.get<Drawable>().node.position({-2.0f, -1.0f, 2.0f});
+				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
 				auto ent1 = spawn("model_0_1", model->get().primitives(), m_data.layers["test_lit"]);
-				ent1.get<Drawable>().node.position({-2.0f, -1.0f, 5.0f});
+				auto& node = ent1.get<SceneNode>();
+				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
-				ENSURE(&ent1.get<Drawable>().node.root() == &m_data.root, "fubar");
-				ent1.get<Drawable>().node.parent(m_data.registry.get<Drawable>(m_data.entities["model_0_0"]).node);
+				node.parent(m_data.registry.get<SceneNode>(m_data.entities["model_0_0"]));
 			}
 			if (auto model = m_store.find<Model>("models/teapot")) {
 				Primitive prim = model->get().primitives().front();
 				prim.material.Tf = Colour(0xfc2320ff);
 				auto ent0 = spawn("model_1_0", prim, m_data.layers["test_lit"]);
-				ent0.get<Drawable>().node.position({2.0f, -1.0f, 2.0f});
+				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (auto model = m_store.find<Model>("models/nanosuit")) {
 				auto ent = spawn("model_1", model->get().primitives(), m_data.layers["test_lit"]);
-				ent.get<Drawable>().node.position({-1.0f, -2.0f, -3.0f});
+				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
@@ -614,6 +630,7 @@ class App : public Input::IReceiver {
 			Editor::s_in.menu.trees.push_back(std::move(file));
 			Editor::s_in.registry = &m_data.registry;
 			Editor::s_in.root = &m_data.root;
+			Editor::s_in.customEntities.push_back(m_data.camera);
 			m_eng.get().updateEditor();
 		}
 
@@ -623,23 +640,24 @@ class App : public Input::IReceiver {
 		if (m_data.registry.empty()) {
 			init1();
 		}
+		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		if (m_eng.get().editorEngaged()) {
-			m_data.cam.tick(m_eng.get().inputState(), dt, m_eng.get().desktop());
+			cam.tick(m_eng.get().inputState(), dt, m_eng.get().desktop());
 		} else {
 			// camera
-			glm::vec3 const moveDir = glm::normalize(glm::cross(m_data.cam.position, graphics::up));
-			m_data.cam.position += moveDir * dt.count() * 0.75f;
-			m_data.cam.look(-m_data.cam.position);
+			glm::vec3 const moveDir = glm::normalize(glm::cross(cam.position, graphics::up));
+			cam.position += moveDir * dt.count() * 0.75f;
+			cam.look(-cam.position);
 		}
-		m_data.registry.get<Drawable>(m_data.entities["cube_tex"]).node.rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
-		m_data.registry.get<Drawable>(m_data.entities["prop_1"]).node.rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-		if (auto d = m_data.registry.find<Drawable>(m_data.entities["model_0_0"])) {
-			d->node.rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
+		m_data.registry.get<SceneNode>(m_data.entities["cube_tex"]).rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
+		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) {
+			node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
 		}
-		if (auto d = m_data.registry.find<Drawable>(m_data.entities["model_1_0"])) {
+		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_1_0"])) {
 			static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 			s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-			d->node.rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+			node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
 		}
 	}
 
@@ -648,7 +666,8 @@ class App : public Input::IReceiver {
 		if (eng.gfx().context.waitForFrame()) {
 			// write / update
 			if (!m_data.registry.empty()) {
-				m_data.drawer.write(m_data.cam, eng.gfx().context.extent(), m_data.dirLights);
+				auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
+				m_data.drawer.write(cam, eng.gfx().context.extent(), m_data.dirLights);
 			}
 
 			// draw
@@ -671,11 +690,11 @@ class App : public Input::IReceiver {
 		Drawer drawer;
 
 		Text text;
-		FreeCam cam;
 		std::vector<DirLight> dirLights;
 
 		SceneNode::Root root;
 		decf::registry_t registry;
+		decf::entity_t camera;
 		AssetListLoader loader;
 	};
 

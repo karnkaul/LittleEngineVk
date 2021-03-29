@@ -182,14 +182,13 @@ template <typename T, typename... Args>
 TProp_t<T> GameScene::spawnProp(std::string name, Transform* pParent, Args&&... args) {
 	auto& reg = m_registry;
 	auto ec = reg.template spawn<T, Args...>(std::move(name), std::forward<Args>(args)...);
-	auto pT = reg.template attach<Transform>(ec);
-	ENSURE(pT, "Invariant violated!");
-	Prop prop{ec, *pT};
+	auto& t = reg.template attach<Transform>(ec);
+	Prop prop{ec, t};
 	if constexpr (s_bParentToRoot) {
 		boltOnRoot(prop);
 	}
 	if (pParent) {
-		pT->parent(pParent);
+		t.parent(pParent);
 	}
 	return {prop, std::move(ec.components)};
 }
@@ -198,14 +197,13 @@ template <typename... T, typename>
 TProp_t<T...> GameScene::spawnProp(std::string name, Transform* pParent) {
 	auto& reg = m_registry;
 	auto ec = reg.template spawn<T...>(std::move(name));
-	auto pT = reg.template attach<Transform>(ec);
-	ENSURE(pT, "Invariant violated!");
-	Prop prop{ec, *pT};
+	auto& t = reg.template attach<Transform>(ec);
+	Prop prop{ec, t};
 	if constexpr (s_bParentToRoot) {
 		boltOnRoot(prop);
 	}
 	if (pParent) {
-		pT->parent(pParent);
+		t.parent(pParent);
 	}
 	if constexpr (sizeof...(T) > 0) {
 		return {prop, std::move(ec.components)};

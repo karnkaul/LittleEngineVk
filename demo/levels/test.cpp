@@ -50,14 +50,13 @@ TestLevel::TestLevel() {
 
 	m_game.ship = gs::g_game.spawnProp("ship");
 	m_game.ship.transform().position({0.0f, 0.0f, -3.0f});
-	*registry().attach<res::Mesh>(m_game.ship.entity) = *res::find<res::Mesh>("meshes/cube");
-	if (auto pSpring = registry().attach<SpringArm>(m_game.ship.entity)) {
-		pSpring->pTarget = m_game.ship.pTransform;
-		pSpring->position = gs::g_game.mainCamera().position;
-		pSpring->k = 0.5f;
-		pSpring->b = 0.05f;
-		pSpring->offset = pSpring->position - m_game.ship.transform().position();
-	}
+	registry().attach<res::Mesh>(m_game.ship.entity) = *res::find<res::Mesh>("meshes/cube");
+	auto& spring = registry().attach<SpringArm>(m_game.ship.entity);
+	spring.pTarget = m_game.ship.pTransform;
+	spring.position = gs::g_game.mainCamera().position;
+	spring.k = 0.5f;
+	spring.b = 0.05f;
+	spring.offset = spring.position - m_game.ship.transform().position();
 }
 
 void TestLevel::tick(Time_s dt) {

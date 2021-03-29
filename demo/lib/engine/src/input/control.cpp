@@ -51,16 +51,28 @@ Control::Range::Range(KeyRange key) noexcept {
 f32 Control::Range::operator()(Input::State const& state) const noexcept {
 	f32 ret = 0.0f;
 	for (auto const& match : matches) {
-		if (auto const& ax = std::get_if<AxisRange>(&match); ax && ax->padID < state.gamepads.size()) {
-			Input::Gamepad const& pad = state.gamepads[ax->padID];
+		if (auto const& ax = std::get_if<AxisRange>(&match)) {
+			Input::Gamepad const* pad = ax->padID < state.gamepads.size() ? &state.gamepads[ax->padID] : nullptr;
 			switch (ax->axis) {
+			case Axis::eMouseScrollX: {
+				ret += state.cursor.scroll.x;
+				break;
+			}
+			case Axis::eMouseScrollY: {
+				ret += state.cursor.scroll.y;
+				break;
+			}
 			case Axis::eLeftTrigger:
 			case Axis::eRightTrigger: {
-				ret += window::triggerToAxis(pad.axis(ax->axis));
+				if (pad) {
+					ret += window::triggerToAxis(pad->axis(ax->axis));
+				}
 				break;
 			}
 			default: {
-				ret += pad.axis(ax->axis);
+				if (pad) {
+					ret += pad->axis(ax->axis);
+				}
 				break;
 			}
 			}

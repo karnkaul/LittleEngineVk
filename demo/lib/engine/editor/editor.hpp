@@ -20,6 +20,7 @@ class DesktopInstance;
 namespace edi {
 struct In {
 	edi::MenuList menu;
+	std::vector<decf::entity_t> customEntities;
 	SceneNode::Root* root = {};
 	decf::registry_t* registry = {};
 };

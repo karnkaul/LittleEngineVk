@@ -167,7 +167,7 @@ void onClose(GLFWwindow* pGLFWwindow) {
 void onKey(GLFWwindow* pGLFWwindow, int key, int scancode, int action, int mods) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
-		Event::Input input;
+		Event::Input input{};
 		input.key = (Key)key;
 		input.action = (Action)action;
 		fillMods(input.mods, mods);
@@ -181,7 +181,7 @@ void onKey(GLFWwindow* pGLFWwindow, int key, int scancode, int action, int mods)
 void onMouse(GLFWwindow* pGLFWwindow, f64 x, f64 y) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
-		Event::Cursor cursor;
+		Event::Cursor cursor{};
 		cursor.x = x;
 		cursor.y = y;
 		cursor.id = 0;
@@ -194,7 +194,7 @@ void onMouse(GLFWwindow* pGLFWwindow, f64 x, f64 y) {
 void onMouseButton(GLFWwindow* pGLFWwindow, int key, int action, int mods) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
-		Event::Input input;
+		Event::Input input{};
 		input.key = Key(key + (int)Key::eMouseButton1);
 		input.action = (Action)action;
 		fillMods(input.mods, mods);
@@ -217,7 +217,7 @@ void onText(GLFWwindow* pGLFWwindow, u32 codepoint) {
 void onScroll(GLFWwindow* pGLFWwindow, f64 dx, f64 dy) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
-		Event::Cursor cursor;
+		Event::Cursor cursor{};
 		cursor.x = dx;
 		cursor.y = dy;
 		cursor.id = 0;

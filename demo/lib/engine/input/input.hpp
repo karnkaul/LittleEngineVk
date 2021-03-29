@@ -3,7 +3,7 @@
 #include <unordered_set>
 #include <core/maths.hpp>
 #include <core/ref.hpp>
-#include <core/token_gen.hpp>
+#include <core/tagged_store.hpp>
 #include <engine/ibase.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <kt/result/result.hpp>
@@ -15,6 +15,8 @@ class IInstance;
 class DesktopInstance;
 } // namespace window
 struct Viewport;
+
+using InputTag = Tag<>;
 
 class Input {
   public:
@@ -128,7 +130,7 @@ class Input::IReceiver : public IBase {
   public:
 	virtual bool block(State const& state) = 0;
 
-	Token m_inputToken;
+	InputTag m_inputTag;
 };
 
 // impl

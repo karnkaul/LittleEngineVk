@@ -1,6 +1,7 @@
 #pragma once
 #include <engine/editor/editor.hpp>
 #include <engine/input/input.hpp>
+#include <engine/tagged_deque.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render_context.hpp>
 #include <levk_imgui/levk_imgui.hpp>
@@ -51,7 +52,9 @@ class Engine {
 	Ref<Window> m_win;
 
   private:
-	using Receivers = TTokenGen<Ref<Input::IReceiver>, TGSpec_deque>;
+	using Receiver = Ref<Input::IReceiver>;
+	using TagDeque = TaggedDeque<Receiver, InputTag::type>;
+	using Receivers = TaggedStore<Receiver, InputTag, TagDeque>;
 
 	std::optional<GFX> m_gfx;
 	Editor m_editor;

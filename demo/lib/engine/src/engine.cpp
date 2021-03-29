@@ -24,8 +24,8 @@ Engine::Engine(Window& winInst) : m_win(winInst), m_pDesktop(winInst.isDesktop()
 Input::Out Engine::poll(bool consume) noexcept {
 	auto ret = m_input.update(m_win.get().pollEvents(), m_editor.view(), consume, m_pDesktop);
 	m_inputState = ret.state;
-	for (Input::IReceiver& context : m_receivers) {
-		if (context.block(ret.state)) {
+	for (auto& [_, context] : m_receivers) {
+		if (context.get().block(ret.state)) {
 			break;
 		}
 	}
@@ -33,7 +33,7 @@ Input::Out Engine::poll(bool consume) noexcept {
 }
 
 void Engine::pushReceiver(Input::IReceiver& context) {
-	context.m_inputToken = m_receivers.push<true>(context);
+	context.m_inputTag = m_receivers.emplace_back(context);
 }
 
 void Engine::updateEditor() {

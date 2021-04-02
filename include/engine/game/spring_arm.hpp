@@ -6,7 +6,7 @@
 
 namespace le {
 
-struct SpringArm {
+struct SpringArm_OLD {
 	glm::vec3 offset = {};
 	glm::vec3 position = {};
 	Transform const* pTarget = nullptr;

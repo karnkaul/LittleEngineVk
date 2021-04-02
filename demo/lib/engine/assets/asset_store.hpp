@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <core/log.hpp>
 #include <core/utils/algo.hpp>
-#include <engine/assets/asset_loaders.hpp>
+#include <engine/assets/asset_loader.hpp>
 #include <engine/config.hpp>
 #include <kt/async_queue/lockable.hpp>
 
@@ -19,20 +19,21 @@ class TAssetMap;
 
 struct TAssets final {
 	template <typename Value>
-	TAssetMap<Value>& get();
-	template <typename Value>
-	TAssetMap<Value> const& get() const;
+	TAssetMap<Value>& get() const;
 	template <typename Value>
 	bool contains() const noexcept;
 	template <typename Value>
 	std::size_t hash() const;
 
-	std::unordered_map<std::size_t, AssetMapPtr> storeMap;
+	mutable std::unordered_map<std::size_t, AssetMapPtr> storeMap;
 };
 } // namespace detail
 
 template <typename T>
 class Asset;
+
+template <typename T>
+using OptAsset = std::optional<Asset<T>>;
 
 class AssetStore : public NoCopy {
   public:
@@ -44,15 +45,11 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	Asset<T> add(io::Path const& id, T&& t);
 	template <typename T, typename Data = AssetLoadData<T>>
-	std::optional<Asset<T>> load(io::Path const& id, Data&& data);
+	OptAsset<T> load(io::Path const& id, Data&& data);
 	template <typename T>
-	std::optional<Asset<T>> find(Hash id);
+	OptAsset<T> find(Hash id) const;
 	template <typename T>
-	std::optional<Asset<T const>> find(Hash id) const;
-	template <typename T>
-	Asset<T> get(Hash id);
-	template <typename T>
-	Asset<T const> get(Hash id) const;
+	Asset<T> get(Hash id) const;
 	template <typename T>
 	bool contains(Hash id) const noexcept;
 	template <typename T>
@@ -75,9 +72,9 @@ class AssetStore : public NoCopy {
 	bool reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const;
 
 	Resources m_resources;
-	kt::locker_t<std::shared_mutex, detail::TAssets> m_assets;
-	mutable kt::locker_t<std::mutex, std::unordered_map<Hash, OnModified>> m_onModified;
-	mutable kt::lockable_t<std::mutex> m_reloadMutex;
+	kt::locker_t<detail::TAssets, std::shared_mutex> m_assets;
+	mutable kt::locker_t<std::unordered_map<Hash, OnModified>> m_onModified;
+	mutable kt::lockable_t<> m_reloadMutex;
 
 	template <typename T>
 	friend class detail::TAssetMap;
@@ -89,14 +86,14 @@ class Asset {
 	using type = T;
 	using OnModified = AssetStore::OnModified;
 
-	Asset(type& t, OnModified& onMod, Hash id);
+	Asset(type& t, OnModified& onMod, std::string_view id);
 
 	type& get() const;
 	type& operator*() const;
 	type* operator->() const;
 	OnModified::Tk onModified(OnModified::Callback const& callback);
 
-	Hash m_id;
+	std::string_view m_id;
 
   private:
 	Ref<T> m_t;
@@ -227,20 +224,13 @@ u64 TAssetMap<T>::update(AssetStore const& store) {
 }
 
 template <typename Value>
-TAssetMap<Value>& TAssets::get() {
+TAssetMap<Value>& TAssets::get() const {
 	auto search = storeMap.find(hash<Value>());
 	if (search == storeMap.end()) {
 		auto [it, _] = storeMap.emplace(hash<Value>(), std::make_unique<TAssetMap<Value>>());
 		search = it;
 	}
 	return static_cast<TAssetMap<Value>&>(*search->second);
-}
-template <typename Value>
-TAssetMap<Value> const& TAssets::get() const {
-	if (auto search = storeMap.find(hash<Value>()); search != storeMap.end()) {
-		return static_cast<TAssetMap<Value> const&>(*search->second);
-	}
-	throw std::runtime_error("Requested map does not exist");
 }
 template <typename Value>
 bool TAssets::contains() const noexcept {
@@ -258,7 +248,7 @@ Asset<T> AssetStore::add(io::Path const& id, T&& t) {
 	return lock.get().get<T>().add(m_onModified.lock().get()[id], id, std::forward<T>(t));
 }
 template <typename T, typename Data>
-std::optional<Asset<T>> AssetStore::load(io::Path const& id, Data&& data) {
+OptAsset<T> AssetStore::load(io::Path const& id, Data&& data) {
 	auto idStr = id.generic_string();
 	auto& onMod = m_onModified.lock().get()[idStr];
 	// AssetLoader may invoke find() etc which would need shared locks
@@ -269,7 +259,7 @@ std::optional<Asset<T>> AssetStore::load(io::Path const& id, Data&& data) {
 	return std::nullopt;
 }
 template <typename T>
-std::optional<Asset<T>> AssetStore::find(Hash id) {
+OptAsset<T> AssetStore::find(Hash id) const {
 	auto lock = m_assets.lock<std::shared_lock>();
 	if (lock.get().contains<T>()) {
 		auto& store = lock.get().get<T>().m_storage;
@@ -280,30 +270,7 @@ std::optional<Asset<T>> AssetStore::find(Hash id) {
 	return std::nullopt;
 }
 template <typename T>
-std::optional<Asset<T const>> AssetStore::find(Hash id) const {
-	auto lock = m_assets.lock<std::shared_lock>();
-	if (lock.get().contains<T>()) {
-		auto& store = lock.get().get<T>().m_storage;
-		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T const>(it->second, m_onModified.lock().get()[id]);
-		}
-	}
-	return std::nullopt;
-}
-template <typename T>
-Asset<T> AssetStore::get(Hash id) {
-	auto lock = m_assets.lock<std::shared_lock>();
-	if (lock.get().contains<T>()) {
-		auto& store = lock.get().get<T>().m_storage;
-		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]);
-		}
-	}
-	ENSURE(false, "Asset not found!");
-	throw std::runtime_error("Asset not present");
-}
-template <typename T>
-Asset<T const> AssetStore::get(Hash id) const {
+Asset<T> AssetStore::get(Hash id) const {
 	auto lock = m_assets.lock<std::shared_lock>();
 	if (lock.get().contains<T>()) {
 		auto& store = lock.get().get<T>().m_storage;
@@ -366,7 +333,7 @@ bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
 }
 
 template <typename T>
-Asset<T>::Asset(type& t, OnModified& onMod, Hash id) : m_id(id), m_t(t), m_onModified(onMod) {
+Asset<T>::Asset(type& t, OnModified& onMod, std::string_view id) : m_id(id), m_t(t), m_onModified(onMod) {
 }
 template <typename T>
 typename Asset<T>::type& Asset<T>::get() const {

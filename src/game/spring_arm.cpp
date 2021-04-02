@@ -1,7 +1,7 @@
 #include <engine/game/spring_arm.hpp>
 
 namespace le {
-glm::vec3 const& SpringArm::tick(Time_s dt, std::optional<glm::vec3> target) noexcept {
+glm::vec3 const& SpringArm_OLD::tick(Time_s dt, std::optional<glm::vec3> target) noexcept {
 	static constexpr u32 max = 64;
 	if (pTarget || target) {
 		if (!target) {

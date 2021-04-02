@@ -21,7 +21,7 @@ class DeferQueue {
 	void flush();
 
   protected:
-	kt::locker_t<std::mutex, std::vector<Deferred>> m_deferred;
+	kt::locker_t<std::vector<Deferred>> m_deferred;
 };
 
 // impl

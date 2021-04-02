@@ -23,6 +23,7 @@ struct Camera {
 	static ZPlane safe(ZPlane in, ZPlane fallback) noexcept;
 
 	Camera& look(glm::vec3 const& target, glm::vec3 const& up = graphics::up) noexcept;
+	Camera& face(glm::vec3 const& direction, glm::vec3 const& up = graphics::up) noexcept;
 	glm::mat4 view() const noexcept;
 	glm::mat4 perspective(f32 aspect, ZPlane nf = default3Dz) const noexcept;
 	glm::mat4 perspective(glm::ivec2 size, ZPlane nf = default3Dz) const noexcept;
@@ -39,7 +40,10 @@ inline Camera::ZPlane Camera::safe(ZPlane in, ZPlane fallback) noexcept {
 	return in.far - in.near <= 0.0f ? fallback : in;
 }
 inline Camera& Camera::look(glm::vec3 const& target, glm::vec3 const& up) noexcept {
-	orientation = glm::quatLookAt(glm::normalize(target), up);
+	return face(target - position, up);
+}
+inline Camera& Camera::face(glm::vec3 const& direction, glm::vec3 const& up) noexcept {
+	orientation = glm::quatLookAt(glm::normalize(direction), up);
 	return *this;
 }
 inline glm::mat4 Camera::view() const noexcept {

@@ -80,7 +80,7 @@ DemoLevel::DemoLevel() {
 		ui.setQuad({50.0f, 30.0f}, {25.0f, 15.0f}).material().tint = colours::cyan;
 		ui.bIgnoreGameView = true;
 	}
-	registry().attach<SpringArm>(m_data.pointer);
+	registry().attach<SpringArm_OLD>(m_data.pointer);
 
 	m_data.freeCam.init();
 	m_data.freeCam.m_state.flags.set(FreeCam_OLD::Flag::eKeyToggle_Look);
@@ -189,7 +189,7 @@ void DemoLevel::tick(Time_s dt) {
 	registry().find<UIComponent>(m_data.eui1)->setText(fmt::format("{:.3}ms", dt.count() * 1000));
 	registry().find<UIComponent>(m_data.eui2)->setText(fmt::format("{} entities", registry().size()));
 	if (auto pQuadT = registry().find<Transform>(m_data.pointer)) {
-		if (auto pSpring = registry().find<SpringArm>(m_data.pointer)) {
+		if (auto pSpring = registry().find<SpringArm_OLD>(m_data.pointer)) {
 			auto const target = glm::vec3(/*input::worldToGameView*/ (input::cursorPosition()), 1.0f);
 			pQuadT->position(pSpring->tick(dt, target));
 		}

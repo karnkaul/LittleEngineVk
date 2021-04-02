@@ -54,7 +54,7 @@ class Resources {
 	void clear();
 
   protected:
-	kt::locker_t<std::shared_mutex, std::unordered_map<Hash, Resource>> m_loaded;
+	kt::locker_t<std::unordered_map<Hash, Resource>, std::shared_mutex> m_loaded;
 	io::FileReader m_fileReader;
 	io::Reader const* m_pReader = nullptr;
 };

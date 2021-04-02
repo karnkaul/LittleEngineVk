@@ -20,6 +20,7 @@
 #include <dumb_tasks/error_handler.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
+#include <engine/assets/asset_loaders.hpp>
 #include <engine/camera.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
@@ -150,6 +151,16 @@ struct Text {
 		}
 		return false;
 	}
+
+	Primitive primitive(BitmapFont const& font) const {
+		Primitive ret;
+		if (mesh) {
+			ret.material.map_Kd = &font.atlas();
+			ret.material.map_d = &font.atlas();
+			ret.mesh = &*mesh;
+		}
+		return ret;
+	}
 };
 
 GPULister g_gpuLister;
@@ -245,17 +256,114 @@ struct DirLights {
 	alignas(16) u32 count = 0;
 };
 
+struct SpringArm {
+	glm::vec3 offset = {};
+	glm::vec3 position = {};
+	Time_s fixed = 2ms;
+	f32 k = 0.5f;
+	f32 b = 0.05f;
+	struct {
+		glm::vec3 velocity = {};
+		Time_s ft;
+	} data;
+
+	glm::vec3 const& tick(Time_s dt, glm::vec3 const& target) noexcept {
+		static constexpr u32 max = 64;
+		if (dt.count() > fixed.count() * f32(max)) {
+			position = target + offset;
+		} else {
+			data.ft += dt;
+			for (u32 iter = 0; data.ft.count() > 0.0f; ++iter) {
+				if (iter == max) {
+					position = target + offset;
+					break;
+				}
+				Time_s const diff = data.ft > fixed ? fixed : data.ft;
+				data.ft -= diff;
+				auto const disp = target + offset - position;
+				data.velocity = (1.0f - b) * data.velocity + k * disp;
+				position += (diff.count() * data.velocity);
+			}
+		}
+		return position;
+	}
+};
+
+struct PlayerController {
+	glm::quat target = graphics::identity;
+	f32 roll = 0.0f;
+	f32 maxRoll = glm::radians(45.0f);
+	f32 speed = 0.0f;
+	f32 maxSpeed = 10.0f;
+	bool active = true;
+
+	void tick(Input::State const& state, SceneNode& node, Time_s dt) noexcept {
+		Control::Range r(Control::KeyRange{Input::Key::eA, Input::Key::eD});
+		roll = r(state);
+		if (maths::abs(roll) < 0.25f) {
+			roll = 0.0f;
+		} else if (maths::abs(roll) > 0.9f) {
+			roll = roll < 0.0f ? -1.0f : 1.0f;
+		}
+		r = Control::KeyRange{Input::Key::eS, Input::Key::eW};
+		f32 dspeed = r(state);
+		if (maths::abs(dspeed) < 0.25f) {
+			dspeed = 0.0f;
+		} else if (maths::abs(dspeed) > 0.9f) {
+			dspeed = dspeed < 0.0f ? -1.0f : 1.0f;
+		}
+		speed = std::clamp(speed + dspeed * 0.03f, -maxSpeed, maxSpeed);
+		glm::quat const orient = glm::rotate(graphics::identity, -roll * maxRoll, graphics::front);
+		target = glm::slerp(target, orient, dt.count() * 10);
+		node.orient(target);
+		glm::vec3 const dpos = roll * graphics::right + speed * (node.orientation() * -graphics::front);
+		node.position(node.position() + 10.0f * dpos * dt.count());
+	}
+};
+
 struct DrawObj {
-	graphics::ShaderBuffer matBuf;
+	graphics::ShaderBuffer material;
 	Primitive primitive;
 };
 
 struct Drawable {
+	using Mesh = graphics::Mesh;
+
 	graphics::ShaderBuffer mat_m;
 	std::vector<DrawObj> objs;
 	Ref<SceneNode> node;
+	std::string_view name;
 
-	Drawable(SceneNode& node) : node(node) {
+	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, View<Primitive> primitives) : node(node), name(name) {
+		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
+		set(vram, primitives);
+	}
+
+	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, Mesh const& mesh, Material const& mat) : node(node), name(name) {
+		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
+		Primitive prim;
+		prim.mesh = &mesh;
+		prim.material = mat;
+		set(vram, prim);
+	}
+
+	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, Model const& model) : node(node), name(name) {
+		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
+		set(vram, model.primitives());
+	}
+
+	void set(graphics::VRAM& vram, View<Primitive> primitives) {
+		objs.reserve(std::max(objs.size(), primitives.size()));
+		for (std::size_t i = 0; i < primitives.size(); ++i) {
+			if (i < objs.size()) {
+				objs[i].primitive = primitives[i];
+			} else {
+				DrawObj obj;
+				obj.primitive = primitives[i];
+				obj.material = graphics::ShaderBuffer(vram, std::string(name) + "/material", {});
+				objs.push_back(std::move(obj));
+			}
+		}
 	}
 };
 
@@ -333,9 +441,9 @@ class Drawer {
 				}
 				if (sb30) {
 					ShadeMat const mat = ShadeMat::make(obj.primitive.material);
-					obj.matBuf.write(mat);
-					si.update(obj.matBuf, sb30.set, sb30.bind, idx);
-					obj.matBuf.swap();
+					obj.material.write(mat);
+					si.update(obj.material, sb30.set, sb30.bind, idx);
+					obj.material.swap();
 				}
 				++idx;
 			}
@@ -484,13 +592,37 @@ class App : public Input::IReceiver {
 		struct GFreeCam : edi::Gadget {
 			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
 				if (auto freecam = reg.find<FreeCam>(entity)) {
+					edi::Text title("FreeCam");
 					edi::TWidget<f32>("Speed", freecam->m_params.xz_speed);
 					return true;
 				}
 				return false;
 			}
 		};
+		struct GPlayerController : edi::Gadget {
+			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
+				if (auto pc = reg.find<PlayerController>(entity)) {
+					edi::Text title("PlayerController");
+					edi::TWidget<bool>("Active", pc->active);
+					return true;
+				}
+				return false;
+			}
+		};
+		struct GSpringArm : edi::Gadget {
+			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
+				if (auto sa = reg.find<SpringArm>(entity)) {
+					edi::Text title("SpringArm");
+					edi::TWidget<f32>("k", sa->k, 0.01f);
+					edi::TWidget<f32>("b", sa->b, 0.001f);
+					return true;
+				}
+				return false;
+			}
+		};
 		edi::Inspector::attach<GFreeCam>("FreeCam");
+		edi::Inspector::attach<GPlayerController>("PlayerController");
+		edi::Inspector::attach<GSpringArm>("SpringArm");
 	}
 
 	bool block(Input::State const& state) override {
@@ -503,19 +635,28 @@ class App : public Input::IReceiver {
 		return false;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer) {
 		auto ret = m_data.registry.spawn<SceneNode>(name, m_data.root);
-		auto& node = ret.get<SceneNode>();
+		ret.get<SceneNode>().entity(ret);
 		m_data.registry.attach<DrawLayer>(ret, layer);
-		auto& dr = m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>());
-		node.entity(ret);
-		dr.mat_m = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, name + "/mat_m", {});
-		for (auto const& prim : primitives) {
-			DrawObj obj;
-			obj.primitive = prim;
-			obj.matBuf = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, name + "/material", {});
-			dr.objs.push_back(std::move(obj));
-		}
+		return ret;
+	}
+
+	decf::spawn_t<SceneNode> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
+		auto ret = spawn(std::move(name), layer);
+		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, primitives);
+		return ret;
+	};
+
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, graphics::Mesh const& mesh, Material const& mat = {}) {
+		auto ret = spawn(std::move(name), layer);
+		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, mesh, mat);
+		return ret;
+	};
+
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, Model const& model) {
+		auto ret = spawn(std::move(name), layer);
+		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, model);
 		return ret;
 	};
 
@@ -539,11 +680,15 @@ class App : public Input::IReceiver {
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
 		m_data.text.set(font.get(), "Hi!");
 
-		auto freecam = m_data.registry.spawn<FreeCam>("freecam");
+		auto freecam = m_data.registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
 		auto& cam = freecam.get<FreeCam>();
+		cam.position = {0.0f, 0.5f, 4.0f};
+		cam.look({});
+		auto& spring = freecam.get<SpringArm>();
+		spring.position = cam.position;
+		spring.offset = spring.position;
 
-		cam.position = {0.0f, 2.0f, 4.0f};
 		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
 		m_data.layers["test"] = DrawLayer{&pipe_test->get(), 0};
 		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
@@ -562,46 +707,35 @@ class App : public Input::IReceiver {
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
 		{
-			Primitive prim;
-			prim.material.map_Kd = &*skymap;
-			prim.mesh = &*skycube;
-			spawn("skybox", prim, m_data.layers["sky"]);
+			Material mat;
+			mat.map_Kd = &*skymap;
+			spawn("skybox", m_data.layers["sky"], *skycube, mat);
 		}
 		{
-			Primitive prim;
-			prim.mesh = &*cube;
-			prim.material.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
-			prim.material.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
+			Material mat;
+			mat.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
+			mat.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			m_data.entities["cube_tex"] = spawn("prop_0", prim, m_data.layers["test_lit"]);
+			m_data.player = spawn("player", m_data.layers["test_lit"], *cube, mat);
+			m_data.registry.attach<PlayerController>(m_data.player);
 		}
 		{
-			Primitive prim;
-			prim.mesh = &*cube;
-			auto ent = spawn("prop_1", prim, m_data.layers["test"]);
+			auto ent = spawn("prop_1", m_data.layers["test"], *cube);
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			Primitive prim;
-			prim.mesh = &*cone;
-			auto ent = spawn("prop_2", prim, m_data.layers["test_tex"]);
+			auto ent = spawn("prop_2", m_data.layers["test_tex"], *cone);
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{
-			Primitive prim;
-			prim.material.map_Kd = &font->atlas();
-			prim.material.map_d = &font->atlas();
-			prim.mesh = &*m_data.text.mesh;
-			spawn("ui_1", prim, m_data.layers["ui"]);
-		}
+		{ spawn("ui_1", m_data.text.primitive(*font), m_data.layers["ui"]); }
 		{
 			if (auto model = m_store.find<Model>("models/plant")) {
-				auto ent0 = spawn("model_0_0", model->get().primitives(), m_data.layers["test_lit"]);
+				auto ent0 = spawn("model_0_0", m_data.layers["test_lit"], **model);
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", model->get().primitives(), m_data.layers["test_lit"]);
+				auto ent1 = spawn("model_0_1", m_data.layers["test_lit"], **model);
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
@@ -615,7 +749,7 @@ class App : public Input::IReceiver {
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (auto model = m_store.find<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", model->get().primitives(), m_data.layers["test_lit"]);
+				auto ent = spawn("model_1", m_data.layers["test_lit"], **model);
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
@@ -641,15 +775,16 @@ class App : public Input::IReceiver {
 			init1();
 		}
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
-		if (m_eng.get().editorEngaged()) {
-			cam.tick(m_eng.get().inputState(), dt, m_eng.get().desktop());
+		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
+		if (pc.active) {
+			auto& node = m_data.registry.get<SceneNode>(m_data.player);
+			m_data.registry.get<PlayerController>(m_data.player).tick(m_eng.get().inputState(), node, dt);
+			glm::vec3 const& forward = node.orientation() * -graphics::front;
+			cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
+			cam.face(forward);
 		} else {
-			// camera
-			glm::vec3 const moveDir = glm::normalize(glm::cross(cam.position, graphics::up));
-			cam.position += moveDir * dt.count() * 0.75f;
-			cam.look(-cam.position);
+			cam.tick(m_eng.get().inputState(), dt, m_eng.get().desktop());
 		}
-		m_data.registry.get<SceneNode>(m_data.entities["cube_tex"]).rotate(glm::radians(-180.0f) * dt.count(), glm::normalize(glm::vec3(1.0f)));
 		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) {
 			node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
@@ -695,6 +830,7 @@ class App : public Input::IReceiver {
 		SceneNode::Root root;
 		decf::registry_t registry;
 		decf::entity_t camera;
+		decf::entity_t player;
 		AssetListLoader loader;
 	};
 
@@ -730,8 +866,6 @@ struct FlagsInput : Input::IReceiver {
 		return ret;
 	}
 };
-
-enum class Foo { eOne = 1 << 0, eTwo = 1 << 1, eThree = 1 << 2 };
 
 bool run(CreateInfo const& info, io::Reader const& reader) {
 	os::args({info.args.argc, info.args.argv});

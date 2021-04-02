@@ -34,7 +34,7 @@ bool verify(entity_t entity) {
 
 int main() {
 	dts::task_queue tq;
-	kt::locker_t<std::mutex, registry_t> registry;
+	kt::locker_t<registry_t> registry;
 	constexpr s32 entityCount = 10000;
 	std::array<entity_t, entityCount> entities;
 	s32 idx = 0;

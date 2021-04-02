@@ -357,8 +357,8 @@ void entityInspector(v2 pos, v2 size, GameScene& out_scene) {
 					inspectMatInst(mesh, idx++, pos, size);
 				}
 			}
-			if (auto pSpring = registry.find<SpringArm>(g_inspecting.entity)) {
-				if (auto i = TInspector<SpringArm>(gs::g_game.m_registry, g_inspecting.entity, pSpring, "Spring")) {
+			if (auto pSpring = registry.find<SpringArm_OLD>(g_inspecting.entity)) {
+				if (auto i = TInspector<SpringArm_OLD>(gs::g_game.m_registry, g_inspecting.entity, pSpring, "Spring")) {
 					static constexpr f32 w = 50.0f;
 					TWidget<f32> k("k", pSpring->k, 0.01f, w);
 					Styler s(Style::eSameLine);

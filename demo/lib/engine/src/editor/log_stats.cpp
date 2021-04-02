@@ -22,7 +22,7 @@ using lvl = dl::level;
 constexpr ArrayMap<4, lvl, Colour> lvlColour = {
 	{lvl::error, Colour(0xff1111ff)}, {lvl::warning, Colour(0xdddd22ff)}, {lvl::info, Colour(0xccccccff)}, {lvl::debug, Colour(0x666666ff)}};
 
-kt::locker_t<std::mutex, std::deque<LogText>> g_logs;
+kt::locker_t<std::deque<LogText>> g_logs;
 
 ImVec4 imvec4(Colour c) noexcept {
 	return {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};

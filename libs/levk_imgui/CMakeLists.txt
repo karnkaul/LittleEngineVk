@@ -19,7 +19,7 @@ target_link_libraries(${PROJECT_NAME}
 		levk::window
 	PRIVATE
 		levk::interface
-		glfw
+		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:${PLATFORM},Linux>:-fPIC>)

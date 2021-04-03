@@ -1,6 +1,7 @@
 #include <core/maths.hpp>
 #include <engine/cameras/freecam.hpp>
 #include <window/desktop_instance.hpp>
+#include <window/instance.hpp>
 
 namespace le {
 void FreeCam::tick(Input::State const& state, Time_s dt, Desktop* desktop) {
@@ -20,9 +21,11 @@ void FreeCam::tick(Input::State const& state, Time_s dt, Desktop* desktop) {
 		m_look = !m_look;
 	}
 	bool const look = m_controls.look(state) || m_look;
+#if defined(LEVK_DESKTOP)
 	if (desktop) {
 		desktop->cursorMode(look ? window::CursorMode::eDisabled : window::CursorMode::eDefault);
 	}
+#endif
 	if (look) {
 		if (!m_cursor.prev) {
 			m_cursor.prev = state.cursor.position;

@@ -1,13 +1,15 @@
 #include <engine/engine.hpp>
+#include <window/android_instance.hpp>
 #include <window/desktop_instance.hpp>
 
 namespace le {
-Engine::GFX::GFX(Window const& winst, Boot::CreateInfo const& bci) : boot(bci, makeSurface(winst), winst.framebufferSize()), context(boot.swapchain) {
-	if (winst.isDesktop()) {
-		DearImGui::CreateInfo dici(boot.swapchain.renderPass());
-		dici.texFormat = context.textureFormat();
-		imgui = DearImGui(boot.device, static_cast<window::DesktopInstance const&>(winst), dici);
-	}
+Engine::GFX::GFX([[maybe_unused]] Window const& winst, Boot::CreateInfo const& bci)
+	: boot(bci, makeSurface(winst), winst.framebufferSize()), context(boot.swapchain) {
+#if defined(LEVK_DESKTOP)
+	DearImGui::CreateInfo dici(boot.swapchain.renderPass());
+	dici.texFormat = context.textureFormat();
+	imgui = DearImGui(boot.device, static_cast<window::DesktopInstance const&>(winst), dici);
+#endif
 }
 
 Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
@@ -18,7 +20,10 @@ Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	};
 }
 
-Engine::Engine(Window& winInst) : m_win(winInst), m_pDesktop(winInst.isDesktop() ? static_cast<window::DesktopInstance*>(&winInst) : nullptr) {
+Engine::Engine(Window& winInst) : m_win(winInst) {
+#if defined(LEVK_DESKTOP)
+	m_pDesktop = static_cast<Desktop*>(&winInst);
+#endif
 }
 
 Input::Out Engine::poll(bool consume) noexcept {
@@ -71,6 +76,10 @@ vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexc
 }
 
 Engine::Desktop* Engine::desktop() const noexcept {
+#if defined(LEVK_DESKTOP)
 	return m_win.get().isDesktop() ? &static_cast<Desktop&>(m_win.get()) : nullptr;
+#else
+	return nullptr;
+#endif
 }
 } // namespace le

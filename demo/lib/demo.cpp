@@ -867,14 +867,13 @@ struct FlagsInput : Input::IReceiver {
 	}
 };
 
-bool run(CreateInfo const& info, io::Reader const& reader) {
-	os::args({info.args.argc, info.args.argv});
+bool run(io::Reader const& reader, ErasedRef androidApp) {
 	if (os::halt(g_cmdArgs)) {
 		return true;
 	}
 	try {
 		window::Instance::CreateInfo winInfo;
-		winInfo.config.androidApp = info.androidApp;
+		winInfo.config.androidApp = androidApp;
 		winInfo.config.title = "levk demo";
 		winInfo.config.size = {1280, 720};
 		winInfo.options.bCentreCursor = true;

@@ -3,6 +3,23 @@
 #include <core/utils/string.hpp>
 
 namespace le::io {
+namespace {
+bool rf([[maybe_unused]] stdfs::path const& path, [[maybe_unused]] std::error_code& err_code) {
+#if defined(__ANDROID__)
+	return false;
+#else
+	return stdfs::is_regular_file(path, err_code);
+#endif
+}
+
+stdfs::file_time_type lwt([[maybe_unused]] stdfs::path const& path, [[maybe_unused]] std::error_code& err_code) {
+#if defined(__ANDROID__)
+	return {};
+#else
+	return stdfs::last_write_time(path, err_code);
+#endif
+}
+} // namespace
 
 FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode) {
 }
@@ -13,8 +30,8 @@ FileMonitor::~FileMonitor() = default;
 
 FileMonitor::Status FileMonitor::update() {
 	std::error_code errCode;
-	if (stdfs::is_regular_file(m_path, errCode)) {
-		auto const lastWriteTime = stdfs::last_write_time(m_path, errCode);
+	if (rf(m_path, errCode)) {
+		auto const lastWriteTime = lwt(m_path, errCode);
 		if (errCode) {
 			return m_status;
 		}

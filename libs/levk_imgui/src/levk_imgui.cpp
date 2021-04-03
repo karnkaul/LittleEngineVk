@@ -3,7 +3,9 @@
 
 #if defined(LEVK_USE_IMGUI)
 #include <GLFW/glfw3.h>
+#if defined(LEVK_USE_GLFW)
 #include <imgui_impl_glfw.h>
+#endif
 #include <imgui_impl_vulkan.h>
 #include <core/colour.hpp>
 #include <core/ensure.hpp>
@@ -106,7 +108,7 @@ DearImGui::DearImGui() : TMonoInstance(false) {
 
 DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopInstance const& window, [[maybe_unused]] CreateInfo const& info)
 	: TMonoInstance(true) {
-#if defined(LEVK_USE_IMGUI)
+#if defined(LEVK_USE_IMGUI) && defined(LEVK_USE_GLFW)
 	m_device = &device;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -176,7 +178,9 @@ bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive && next(State::eEnd, State::eBegin)) {
 		ImGui_ImplVulkan_NewFrame();
+#if defined(LEVK_USE_GLFW)
 		ImGui_ImplGlfw_NewFrame();
+#endif
 		ImGui::NewFrame();
 		if (m_showDemo) {
 			ImGui::ShowDemoWindow(&m_showDemo);

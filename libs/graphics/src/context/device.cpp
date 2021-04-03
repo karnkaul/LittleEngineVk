@@ -247,11 +247,13 @@ vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vAP<vk::Ima
 	return m_device.createFramebuffer(createInfo);
 }
 
-bool Device::setDebugUtilsName(vk::DebugUtilsObjectNameInfoEXT const& info) const {
+bool Device::setDebugUtilsName([[maybe_unused]] vk::DebugUtilsObjectNameInfoEXT const& info) const {
+#if !defined(__ANDROID__)
 	if (!default_v(m_instance.get().m_messenger)) {
 		m_device.setDebugUtilsObjectNameEXT(info, m_instance.get().loader());
 		return true;
 	}
+#endif
 	return false;
 }
 

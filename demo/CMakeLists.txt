@@ -25,7 +25,7 @@ if(LEVK_USE_PCH)
 endif()
 
 # Android
-set(ANDROID_DATA "[\"../../../data\", \"../../data\"]")
+set(ANDROID_DATA "\"../../data\"")
 set(ANDROID_ABI "\"arm64-v8a\", \"armeabi-v7a\"")
 set(ANDROID_VALIDATION "\"src/lib\"")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/android/app/build.gradle.in" "${CMAKE_CURRENT_SOURCE_DIR}/android/app/build.gradle")

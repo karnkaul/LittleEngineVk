@@ -392,7 +392,8 @@ Viewport const& Editor::view() const noexcept {
 	return active() && s_engaged ? m_storage.gameView : s_default;
 }
 
-void Editor::update(DesktopInstance& win, Input::State const& state) {
+void Editor::update([[maybe_unused]] DesktopInstance& win, [[maybe_unused]] Input::State const& state) {
+#if defined(LEVK_DESKTOP)
 	if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) {
 		s_out = {};
 	}
@@ -416,5 +417,6 @@ void Editor::update(DesktopInstance& win, Input::State const& state) {
 		m_storage.cached = std::move(s_in);
 		s_in = {};
 	}
+#endif
 }
 } // namespace le

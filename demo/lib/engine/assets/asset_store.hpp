@@ -355,6 +355,6 @@ typename Asset<T>::OnModified::Tk Asset<T>::onModified(OnModified::Callback cons
 template <typename T>
 template <typename U>
 void AssetLoadInfo<T>::reloadDepend(Asset<U>& out_asset) const {
-	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s.get().forceDirty<T>(id); }));
+	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s.get().template forceDirty<T>(id); }));
 }
 } // namespace le

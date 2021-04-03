@@ -47,10 +47,16 @@ f32 clampLeft(f32 left, f32 scale, f32 fbx, f32 offset) noexcept {
 }
 } // namespace
 
-Resizer::ViewData::ViewData(window::DesktopInstance const& win, Viewport const& view) {
+Resizer::ViewData::ViewData([[maybe_unused]] window::DesktopInstance const& win, Viewport const& view) {
+#if defined(LEVK_DESKTOP)
 	wSize = {f32(win.windowSize().x), f32(win.windowSize().y)};
 	fbSize = {f32(win.framebufferSize().x), f32(win.framebufferSize().y)};
 	ratio = {wSize.x / fbSize.x, wSize.y / fbSize.y};
+#else
+	wSize = {};
+	fbSize = {};
+	ratio = {1.0f, 1.0f};
+#endif
 	offset = view.topLeft.offset * ratio;
 }
 
@@ -104,7 +110,9 @@ bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input
 			break;
 		}
 	}
+#if defined(LEVK_DESKTOP)
 	out_w.cursorType(toSet);
+#endif
 	return m_handle > Handle::eNone;
 }
 

@@ -8,9 +8,7 @@
 void android_main(android_app* pApp) {
 	using namespace le;
 	io::AAssetReader reader(pApp);
-	demo::CreateInfo info;
-	info.androidApp = pApp;
-	if (!demo::run(info, reader)) {
+	if (!demo::run(reader, pApp)) {
 		return;
 	}
 }

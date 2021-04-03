@@ -2,7 +2,6 @@
 #include <android/window.h>
 #include <android_native_app_glue.h>
 #include <core/log.hpp>
-#include <core/static_any.hpp>
 #include <vulkan/vulkan.hpp>
 #include <window/android_instance.hpp>
 

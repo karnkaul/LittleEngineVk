@@ -7,9 +7,41 @@
 #include <dumb_json/djson.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
-#include <glm/gtx/hash.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
+
+#if !defined(__ANDROID__)
+#include <glm/gtx/hash.hpp>
+#endif
+
+#if defined(__ANDROID__)
+namespace std {
+namespace {
+struct fhasher {
+	std::size_t i = 0;
+
+	std::size_t operator()(float f) noexcept {
+		return std::hash<float>{}(f) << i++;
+	}
+};
+} // namespace
+
+template <>
+struct hash<glm::vec2> {
+	size_t operator()(glm::vec2 const& v) const noexcept {
+		fhasher f;
+		return f(v.x) ^ f(v.y);
+	}
+};
+template <>
+struct hash<glm::vec3> {
+	size_t operator()(glm::vec3 const& v) const noexcept {
+		fhasher f;
+		return f(v.x) ^ f(v.y) ^ f(v.z);
+	}
+};
+} // namespace std
+#endif
 
 namespace le {
 namespace {

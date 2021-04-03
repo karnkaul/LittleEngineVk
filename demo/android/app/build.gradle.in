@@ -37,7 +37,7 @@ android {
     sourceSets {
         main {
             assets {
-                srcDirs = @ANDROID_DATA@
+                srcDir @ANDROID_DATA@
             }
         }
         debug {

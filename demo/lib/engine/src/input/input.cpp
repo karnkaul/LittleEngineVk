@@ -46,6 +46,7 @@ Input::Out Input::update(EventQueue queue, Viewport const& view, bool consume, D
 	s.others = m_transient.others;
 	s.text = m_transient.text;
 	s.suspended = m_persistent.suspended;
+#if defined(LEVK_DESKTOP)
 	if (pDI) {
 		m_transient.gamepads = pDI->activeGamepads();
 		s.gamepads = m_transient.gamepads;
@@ -57,6 +58,7 @@ Input::Out Input::update(EventQueue queue, Viewport const& view, bool consume, D
 		}
 		s.cursor.position *= (glm::vec2(f32(ifb.x), f32(ifb.y)) / win);
 	}
+#endif
 	return ret;
 }
 

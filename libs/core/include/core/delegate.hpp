@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
-#include <core/token_gen.hpp>
+#include <core/tagged_store.hpp>
 
 namespace le {
 ///
@@ -12,7 +12,7 @@ template <typename... Args>
 class Delegate {
   public:
 	using Callback = std::function<void(Args...)>;
-	using Tk = Token;
+	using Tk = Tag<>;
 
   public:
 	///
@@ -35,17 +35,17 @@ class Delegate {
 	void clear() noexcept;
 
   private:
-	TTokenGen<Callback, TGSpec_vector> m_tokens;
+	TaggedStore<Callback> m_tokens;
 };
 
 template <typename... Args>
 typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback const& callback) {
-	return m_tokens.push(callback);
+	return m_tokens.emplace_back(callback);
 }
 
 template <typename... Args>
 void Delegate<Args...>::operator()(Args... args) const {
-	for (auto const& callback : m_tokens) {
+	for (auto const& [_, callback] : m_tokens) {
 		callback(args...);
 	};
 }

@@ -1,19 +1,4 @@
 #include <iostream>
-#include <core/transform.hpp>
-#include <demo.hpp>
-#include <dumb_json/djson.hpp>
-#include <graphics/bitmap_text.hpp>
-#include <graphics/common.hpp>
-#include <graphics/context/bootstrap.hpp>
-#include <graphics/geometry.hpp>
-#include <graphics/mesh.hpp>
-#include <graphics/render_context.hpp>
-#include <graphics/shader.hpp>
-#include <graphics/shader_buffer.hpp>
-#include <graphics/texture.hpp>
-#include <graphics/utils/utils.hpp>
-#include <window/bootstrap.hpp>
-
 #include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
 #include <core/utils/string.hpp>
@@ -22,14 +7,17 @@
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/camera.hpp>
+#include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
+#include <engine/input/control.hpp>
 #include <engine/render/drawer.hpp>
 #include <engine/render/model.hpp>
 #include <engine/scene_node.hpp>
-
-#include <engine/cameras/freecam.hpp>
-#include <engine/input/control.hpp>
+#include <graphics/common.hpp>
+#include <graphics/shader_buffer.hpp>
+#include <graphics/utils/utils.hpp>
+#include <window/bootstrap.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };

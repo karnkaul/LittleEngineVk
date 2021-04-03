@@ -165,14 +165,14 @@ target_include_directories(${TARGET_NAME}
 )
 target_link_libraries(${TARGET_NAME}
 	PUBLIC
+		levk::imgui
 		levk::graphics
 		levk::window
+		levk::core
 		djson::djson
-	PRIVATE
+		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
 		levk::interface
-		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
-		$<$<BOOL:${LEVK_USE_IMGUI}>:imgui>
-		vma
+	PRIVATE
 		stb-image
 		tinyobjloader
 )

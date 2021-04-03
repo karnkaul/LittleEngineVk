@@ -10,15 +10,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
-		levk::imgui
-		levk::graphics
-		levk::window
-		levk::core
-		djson::djson
-		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
-		levk::interface
-	PRIVATE
-		tinyobjloader
+		levk::engine
 )
 if(LEVK_USE_PCH)
 	target_precompile_headers(${PROJECT_NAME} REUSE_FROM levk-core)

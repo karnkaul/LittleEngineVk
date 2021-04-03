@@ -4,7 +4,6 @@
 #include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/span.hpp>
-#include <core/transform.hpp>
 #include <core/utils/string.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <engine/scene_node.hpp>
@@ -246,11 +245,6 @@ struct TWidget<SceneNode> {
 template <>
 struct TWidget<std::pair<s64, s64>> {
 	TWidget(std::string_view id, s64& out_t, s64 min, s64 max, s64 dt);
-};
-
-struct PerFrame {
-	std::vector<std::function<void()>> customRightPanel;
-	std::vector<std::function<void(decf::entity_t, Transform*)>> inspect;
 };
 
 template <typename Flags>

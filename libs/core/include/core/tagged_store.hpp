@@ -111,9 +111,7 @@ class TaggedStore final : detail::TaggedStoreBase<Tg> {
 	using container_t = typename storage_t::container_t;
 
 	using iterator = typename container_t::iterator;
-	using reverse_iterator = typename container_t::reverse_iterator;
 	using const_iterator = typename container_t::const_iterator;
-	using const_reverse_iterator = typename container_t::const_reverse_iterator;
 
 	///
 	/// \brief Add a new entry
@@ -154,10 +152,6 @@ class TaggedStore final : detail::TaggedStoreBase<Tg> {
 	const_iterator cend();
 	const_iterator begin() const;
 	const_iterator end() const;
-	reverse_iterator rbegin();
-	reverse_iterator rend();
-	const_reverse_iterator rbegin() const;
-	const_reverse_iterator rend() const;
 
   private:
 	using id_t = typename tag_t::type;
@@ -252,24 +246,6 @@ template <typename T, typename Tg, typename St>
 typename TaggedStore<T, Tg, St>::const_iterator TaggedStore<T, Tg, St>::end() const {
 	return m_storage.storage.end();
 }
-template <typename T, typename Tg, typename St>
-typename TaggedStore<T, Tg, St>::reverse_iterator TaggedStore<T, Tg, St>::rbegin() {
-	return m_storage.storage.rbegin();
-}
-template <typename T, typename Tg, typename St>
-typename TaggedStore<T, Tg, St>::reverse_iterator TaggedStore<T, Tg, St>::rend() {
-	return m_storage.storage.rend();
-}
-
-template <typename T, typename Tg, typename St>
-typename TaggedStore<T, Tg, St>::const_reverse_iterator TaggedStore<T, Tg, St>::rbegin() const {
-	return m_storage.storage.rbegin();
-}
-template <typename T, typename Tg, typename St>
-typename TaggedStore<T, Tg, St>::const_reverse_iterator TaggedStore<T, Tg, St>::rend() const {
-	return m_storage.storage.rend();
-}
-
 template <typename T, typename Tg, typename St>
 template <typename... U>
 Tg TaggedStore<T, Tg, St>::emplace_back(U&&... u) {

@@ -6,12 +6,6 @@ add_subdirectory(lib)
 # Executable
 set(SOURCES
 	main.cpp
-	level.hpp
-	level.cpp
-	levels/demo.hpp
-	levels/demo.cpp
-	levels/test.hpp
-	levels/test.cpp
 )
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX src FILES ${SOURCES})
 add_executable(${PROJECT_NAME} ${SOURCES})

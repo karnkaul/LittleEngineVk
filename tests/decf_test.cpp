@@ -3,11 +3,12 @@
 #include <unordered_set>
 #include <core/ensure.hpp>
 #include <core/maths.hpp>
-#include <core/threads.hpp>
+#include <core/time.hpp>
 #include <core/utils/algo.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <kt/async_queue/locker.hpp>
+#include <kt/kthread/kthread.hpp>
 
 using namespace le;
 using namespace decf;
@@ -92,12 +93,12 @@ int main() {
 		auto wait = []() -> Time_ms { return time::cast<Time_ms>(Time_us(maths::randomRange(0, 3000))); };
 		for (s32 i = 0; i < entityCount / 10; ++i) {
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
-				threads::sleep(wait());
+				kt::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 				registry.lock().get().destroy(entities[idx]);
 			}));
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
-				threads::sleep(wait());
+				kt::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 				auto r = registry.lock();
 				r.get().detach<A>(entities[idx]);
@@ -105,7 +106,7 @@ int main() {
 				r.get().detach<D>(entities[idx]);
 			}));
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
-				threads::sleep(wait());
+				kt::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
 				registry.lock().get().enable(entities[idx], false);
 			}));

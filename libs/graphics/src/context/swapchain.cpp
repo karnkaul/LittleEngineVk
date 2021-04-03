@@ -299,8 +299,6 @@ void Swapchain::makeRenderPass() {
 		attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
 		attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 		attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		// attachments[0].initialLayout = vk::ImageLayout::eUndefined;
-		// attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
 		attachments[0].initialLayout = m_metadata.info.transitions.colour.first;
 		attachments[0].finalLayout = m_metadata.info.transitions.colour.second;
 		colourAttachment.attachment = 0;
@@ -313,8 +311,6 @@ void Swapchain::makeRenderPass() {
 		attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
 		attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eClear;
 		attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		// attachments[1].initialLayout = vk::ImageLayout::eUndefined;
-		// attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 		attachments[1].initialLayout = m_metadata.info.transitions.depth.first;
 		attachments[1].finalLayout = m_metadata.info.transitions.depth.second;
 		depthAttachment.attachment = 1;
@@ -325,21 +321,7 @@ void Swapchain::makeRenderPass() {
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colourAttachment;
 	subpass.pDepthStencilAttachment = &depthAttachment;
-	vk::SubpassDependency dependency;
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests;
-	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests;
-	using AF = vk::AccessFlagBits;
-	// dependency.dstAccessMask = AF::eColorAttachmentRead | AF::eColorAttachmentWrite | AF::eDepthStencilAttachmentRead | AF::eDepthStencilAttachmentWrite;
-	// dependency.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
-	// dependency.dstAccessMask = vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite;
-	// dependency.srcStageMask = vk::PipelineStageFlagBits::eAllGraphics;
-	// dependency.dstStageMask = vk::PipelineStageFlagBits::eAllGraphics;
-
-	// dependency.srcAccessMask = AF::eColorAttachmentWrite;
-	dependency.dstAccessMask = AF::eColorAttachmentWrite | AF::eDepthStencilAttachmentWrite;
-	m_metadata.renderPass = m_device.get().createRenderPass(attachments, subpass, dependency);
+	m_metadata.renderPass = m_device.get().createRenderPass(attachments, subpass, {});
 }
 
 void Swapchain::destroy(Storage& out_storage, bool bMeta) {

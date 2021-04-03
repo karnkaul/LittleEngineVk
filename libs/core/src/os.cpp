@@ -5,7 +5,6 @@
 #include <core/io/reader.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
-#include <core/threads.hpp>
 
 #if defined(LEVK_OS_WINDOWS)
 #include <Windows.h>
@@ -28,15 +27,6 @@ io::Path g_workingDir;
 std::string g_exePathStr;
 std::deque<os::ArgsParser::entry> g_args;
 } // namespace
-
-os::Service::Service(os::Args const& args) {
-	os::args(args);
-	threads::init();
-}
-
-os::Service::~Service() {
-	threads::joinAll();
-}
 
 void os::args(Args const& args) {
 	g_workingDir = io::absolute(io::current_path());

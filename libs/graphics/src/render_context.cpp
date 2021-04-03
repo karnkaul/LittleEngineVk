@@ -158,7 +158,7 @@ bool RenderContext::endFrame() {
 	FrameSync& sync = m_sync.get();
 	sync.primary.commandBuffer.end();
 	vk::SubmitInfo submitInfo;
-	vk::PipelineStageFlags const waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	vk::PipelineStageFlags const waitStages = vk::PipelineStageFlagBits::eTopOfPipe;
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &sync.sync.drawReady;
 	submitInfo.pWaitDstStageMask = &waitStages;

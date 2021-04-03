@@ -2,16 +2,16 @@
 #include <fstream>
 #include <core/io.hpp>
 #include <core/log.hpp>
-#include <core/threads.hpp>
 #include <io_impl.hpp>
 #include <kt/async_queue/async_queue.hpp>
+#include <kt/kthread/kthread.hpp>
 
 namespace le::io {
 namespace {
 struct FileLogger final {
 	FileLogger();
 
-	threads::TScoped thread;
+	kt::kthread thread;
 };
 
 Path g_logFilePath;
@@ -33,7 +33,7 @@ FileLogger::FileLogger() {
 	oFile.close();
 	g_queue.active(true);
 	logI("Logging to file: {}", absolute(g_logFilePath).generic_string());
-	thread = threads::newThread([]() {
+	thread = kt::kthread([]() {
 		while (auto str = g_queue.pop()) {
 			*str += "\n";
 			dumpToFile(g_logFilePath, *str);

@@ -28,7 +28,7 @@ C& operator-=(C& self, C const& rhs) {
 }
 } // namespace
 
-Input::Out Input::update(EventQueue queue, Viewport const& view, bool consume, DesktopInstance const* pDI) noexcept {
+Input::Out Input::update(EventQueue queue, [[maybe_unused]] Viewport const& view, bool consume, [[maybe_unused]] DesktopInstance const* pDI) noexcept {
 	Out ret;
 	auto& [s, q] = ret;
 	m_transient.pressed -= m_transient.released;

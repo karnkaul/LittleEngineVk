@@ -11,28 +11,28 @@ An attempt to write a simple 3D game engine with a (mostly hard-coded) Vulkan re
 - Multi-platform windowing
   - Windows, Linux: via GLFW
   - Android (alpha)
-  - Windowing event / input callback registration
   - Keyboard, mouse, and gamepad support
-- 3D renderer
-  - Vulkan backend (internal)
+- Bootstrapped Vulkan context
+  - Customizable device selection
+  - Dedicated transfer queue, async transfers
+  - Shader reflection via SPIR-V Cross
+  - Automatic descriptor Set management
   - Validation layer support (on by default in `Debug`)
-  - Async buffer and image transfers
-  - Phong shading (WIP)
-- Multi-threaded task system
-  - Async queue (condition variable, no spinlock)
-  - Configurable worker count
-- Entity Component module
-  - Hashed ID entities
-  - Type-erased component storage (no polymorphism support)
-  - Thread-safe registry
-- Multi-threaded resourcing
-  - Thread-safe resource management
-  - Async resource loading
-  - Hot reloading of textures and shaders
+- Asset Store
+  - Store any `T` associated with a lightweight `io::Path` ID
+  - Customizable asset loaders
+  - Asset hot reload support
+- Multi-threaded task scheduler
+- Entity-Component framework
 - JSON de/serialisation
-- Free-look camera
-- Editor overlay (via Dear ImGui; desktop platforms only)
-- API Documentation (via Doxygen)
+- Customizable Editor (powered by Dear ImGui)
+
+### Limitations
+
+- No dynamic library support on Windows
+- Single window instance
+- Single draw command buffer
+- Hard-coded single render pass (for time being)
 
 ### Usage
 

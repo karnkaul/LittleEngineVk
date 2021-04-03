@@ -5,10 +5,10 @@
 #include <vector>
 #include <core/ref.hpp>
 #include <core/span.hpp>
-#include <core/threads.hpp>
 #include <core/time.hpp>
 #include <graphics/resources.hpp>
 #include <kt/async_queue/async_queue.hpp>
+#include <kt/kthread/kthread.hpp>
 
 namespace le::graphics {
 constexpr vk::DeviceSize operator""_MB(unsigned long long size) {
@@ -69,8 +69,8 @@ class Transfer final {
 		std::list<Buffer> buffers;
 	} m_data;
 	struct {
-		std::optional<threads::TScoped> stagingThread;
-		std::optional<threads::TScoped> pollThread;
+		std::optional<kt::kthread> stagingThread;
+		std::optional<kt::kthread> pollThread;
 		kt::lockable_t<> mutex;
 		std::atomic<bool> bPoll;
 	} m_sync;

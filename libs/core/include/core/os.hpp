@@ -140,15 +140,6 @@ struct ICmdArg {
 };
 
 ///
-/// \brief RAII wrapper for OS service
-/// Destructor joins all running threads
-///
-struct Service final {
-	Service(Args const& args);
-	~Service();
-};
-
-///
 /// \brief Initialise OS service
 ///
 void args(Args const& args);

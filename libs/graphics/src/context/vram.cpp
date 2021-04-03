@@ -195,7 +195,7 @@ VRAM::Future VRAM::copy(View<View<std::byte>> pixelsArr, Image& out_dst, LayoutP
 
 void VRAM::waitIdle() {
 	while (m_transfer.update() > 0) {
-		threads::sleep();
+		kt::kthread::yield();
 	}
 }
 } // namespace le::graphics

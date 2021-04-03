@@ -34,7 +34,7 @@ Transfer::Transfer(Memory& memory, CreateInfo const& info) : m_memory(memory) {
 	poolInfo.queueFamilyIndex = memory.m_device.get().queues().familyIndex(QType::eTransfer);
 	m_data.pool = memory.m_device.get().device().createCommandPool(poolInfo);
 	m_queue.active(true);
-	m_sync.stagingThread = threads::newThread([this, r = info.reserve]() {
+	m_sync.stagingThread = kt::kthread([this, r = info.reserve]() {
 		{
 			auto lock = m_sync.mutex.lock();
 			for (auto const& range : r) {
@@ -51,11 +51,11 @@ Transfer::Transfer(Memory& memory, CreateInfo const& info) : m_memory(memory) {
 	});
 	if (info.autoPollRate && *info.autoPollRate > 0ms) {
 		m_sync.bPoll.store(true);
-		m_sync.pollThread = threads::newThread([this, rate = *info.autoPollRate]() {
+		m_sync.pollThread = kt::kthread([this, rate = *info.autoPollRate]() {
 			g_log.log(lvl::info, 1, "[{}] Transfer poll thread started", g_name);
 			while (m_sync.bPoll.load()) {
 				update();
-				threads::sleep(rate);
+				kt::kthread::sleep_for(rate);
 			}
 			g_log.log(lvl::info, 1, "[{}] Transfer poll thread completed", g_name);
 		});

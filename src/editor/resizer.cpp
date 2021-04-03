@@ -19,10 +19,9 @@ constexpr ArrayMap<6, Resizer::Handle, CursorType> handleCursor = {{Hd::eNone, C
 	return Resizer::Handle::eNone;
 }
 
-bool inZone(f32 s0, f32 t0, f32 s1, f32 t1) {
+bool inZone(f32 a, f32 b) {
 	static constexpr f32 nDelta = 10.0f;
-	if (maths::equals(s0, t0, nDelta) && maths::equals(s1, t1, nDelta)) {
-		IMGUI(ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange);
+	if (maths::equals(a, b, nDelta)) {
 		return true;
 	}
 	return false;
@@ -62,7 +61,7 @@ Resizer::ViewData::ViewData([[maybe_unused]] window::DesktopInstance const& win,
 
 bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input::State const& state) {
 	ViewData const data(out_w, out_vp);
-	glm::vec2 const nCursor = {state.cursor.position.x / data.wSize.x, state.cursor.position.y / data.wSize.y};
+	glm::vec2 const nCursor = {state.cursor.screenPos.x / data.wSize.x, state.cursor.screenPos.y / data.wSize.y};
 	CursorType toSet = CursorType::eDefault;
 	if (m_handle != Handle::eNone && !state.held(Key::eMouseButton1)) {
 		m_handle = endResize();
@@ -118,19 +117,23 @@ bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input
 
 CursorType Resizer::check(ViewData const& data, Viewport& out_vp, Input::State const& state) {
 	auto const rect = out_vp.rect();
-	auto const cursor = state.cursor.position;
+	auto const cursor = state.cursor.screenPos;
 	bool const click = state.pressed(Key::eMouseButton1).has_result();
 	CursorType ret = CursorType::eDefault;
-	check(out_vp, ret, cursor.x, rect.lt.x * data.wSize.x + data.offset.x, 0.0f, 0.0f, Handle::eLeft, click);
-	check(out_vp, ret, cursor.x, rect.rb.x * data.wSize.x + data.offset.x, 0.0f, 0.0f, Handle::eRight, click);
-	check(out_vp, ret, cursor.y, rect.rb.y * data.wSize.y + data.offset.y, 0.0f, 0.0f, Handle::eBottom, click);
-	check(out_vp, ret, cursor.x, rect.lt.x * data.wSize.x + data.offset.x, cursor.y, rect.rb.y * data.wSize.y + data.offset.y, Handle::eLeftBottom, click);
-	check(out_vp, ret, cursor.x, rect.rb.x * data.wSize.x + data.offset.x, cursor.y, rect.rb.y * data.wSize.y + data.offset.y, Handle::eRightBottom, click);
+	auto const left = rect.lt.x * data.wSize.x + data.offset.x;
+	auto const right = rect.rb.x * data.wSize.x + data.offset.x;
+	auto const bottom = rect.rb.y * data.wSize.y + data.offset.y;
+	check(out_vp, ret, inZone(cursor.x, left) && cursor.y < bottom, Handle::eLeft, click);
+	check(out_vp, ret, inZone(cursor.x, right) && cursor.y < bottom, Handle::eRight, click);
+	check(out_vp, ret, inZone(cursor.y, bottom), Handle::eBottom, click);
+	check(out_vp, ret, inZone(cursor.x, left) && inZone(cursor.y, bottom), Handle::eLeftBottom, click);
+	check(out_vp, ret, inZone(cursor.x, right) && inZone(cursor.y, bottom), Handle::eRightBottom, click);
 	return ret;
 }
 
-void Resizer::check(Viewport& out_vp, CursorType& out_c, f32 s0, f32 t0, f32 s1, f32 t1, Handle h, bool click) {
-	if (inZone(s0, t0, s1, t1)) {
+void Resizer::check(Viewport& out_vp, CursorType& out_c, bool active, Handle h, bool click) {
+	if (active) {
+		IMGUI(ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange);
 		out_c = mapped(handleCursor, h, CursorType::eDefault);
 		if (click) {
 			m_prev = out_vp;

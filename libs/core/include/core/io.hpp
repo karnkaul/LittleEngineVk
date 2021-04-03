@@ -1,5 +1,4 @@
 #pragma once
-#include <optional>
 #include <core/io/path.hpp>
 
 namespace le::io {
@@ -9,9 +8,9 @@ namespace le::io {
 class Service final {
   public:
 	Service() = default;
-	Service(std::optional<Path> logFilePath);
-	Service(Service&&);
-	Service& operator=(Service&&);
+	Service(Path logFilePath);
+	Service(Service&&) noexcept;
+	Service& operator=(Service&&) noexcept;
 	~Service();
 
   private:

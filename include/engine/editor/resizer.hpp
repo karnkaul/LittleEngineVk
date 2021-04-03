@@ -28,7 +28,7 @@ class Resizer {
 	};
 
 	window::CursorType check(ViewData const& data, Viewport& out_vp, Input::State const& state);
-	void check(Viewport& out_vp, window::CursorType& out_c, f32 s0, f32 t0, f32 s1, f32 t1, Handle h, bool click);
+	void check(Viewport& out_vp, window::CursorType& out_c, bool active, Handle h, bool click);
 
 	Viewport m_prev;
 	Handle m_handle = {};

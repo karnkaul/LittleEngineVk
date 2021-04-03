@@ -17,6 +17,11 @@ using Clock = stdch::steady_clock;
 ///
 using Point = Clock::time_point;
 ///
+/// \brief Typedef for a time point on the system clock
+///
+using SysTime = stdch::system_clock::time_point;
+
+///
 /// \brief Typedef for a duration of time
 ///
 template <typename Rep, typename Period>
@@ -26,6 +31,16 @@ using Duration = stdch::duration<Rep, Period>;
 /// \brief Obtain the current time Point
 ///
 Point now() noexcept;
+///
+/// \brief Obtain the current system time
+///
+SysTime sysTime() noexcept;
+
+///
+/// \brief Serialise point as formatted string
+///
+std::string format(SysTime const& tm = sysTime(), std::string_view fmt = "{:%Y-%m-%d}");
+
 ///
 /// \brief Cast a Duration to another
 ///
@@ -59,6 +74,9 @@ using Time_us = time::Duration<s64, std::micro>;
 // impl
 inline time::Point time::now() noexcept {
 	return Clock::now();
+}
+inline time::SysTime time::sysTime() noexcept {
+	return stdch::system_clock::now();
 }
 template <typename Ret, typename Dur>
 constexpr Ret time::cast(Dur&& dur) noexcept {

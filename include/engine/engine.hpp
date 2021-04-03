@@ -1,4 +1,6 @@
 #pragma once
+#include <core/io.hpp>
+#include <core/version.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/input.hpp>
 #include <engine/tagged_deque.hpp>
@@ -30,7 +32,11 @@ class Engine {
 		static Boot::MakeSurface makeSurface(Window const& winst);
 	};
 
-	Engine(Window& winInst);
+	struct CreateInfo;
+
+	static Version version() noexcept;
+
+	Engine(Window& winInst, CreateInfo const& info);
 
 	Input::Out poll(bool consume) noexcept;
 	void pushReceiver(Input::IReceiver& context);
@@ -41,14 +47,15 @@ class Engine {
 
 	bool boot(Boot::CreateInfo const& boot);
 	bool unboot() noexcept;
-
 	bool booted() const noexcept;
+
 	GFX& gfx();
 	GFX const& gfx() const;
 	Input::State const& inputState() const noexcept;
 	Desktop* desktop() const noexcept;
 
 	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
+
 	Ref<Window> m_win;
 
   private:
@@ -56,12 +63,18 @@ class Engine {
 	using TagDeque = TaggedDeque<Receiver, InputTag::type>;
 	using Receivers = TaggedStore<Receiver, InputTag, TagDeque>;
 
+	io::Service m_io;
 	std::optional<GFX> m_gfx;
 	Editor m_editor;
 	Input m_input;
 	Receivers m_receivers;
 	Input::State m_inputState;
 	Desktop* m_pDesktop = {};
+};
+
+struct Engine::CreateInfo {
+	std::optional<io::Path> logFile = "log.txt";
+	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
 };
 
 // impl

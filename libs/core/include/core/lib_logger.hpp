@@ -8,7 +8,9 @@ struct LibLogger {
 	///
 	enum class Verbosity { eEndUser, eLibUser, eLibrary };
 
-	Verbosity minVerbosity = Verbosity::eLibrary;
+	static constexpr Verbosity libVerbosity = levk_pre_release ? Verbosity::eLibrary : Verbosity::eEndUser;
+
+	Verbosity minVerbosity = Verbosity::eLibUser;
 
 	template <typename... Args>
 	void log(dl::level level, Verbosity verbosity, std::string_view fmt, Args&&... args) {

@@ -9,6 +9,7 @@ set(COMPILE_DEFS
 	$<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>
 	$<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>
 	$<$<STREQUAL:${PLATFORM},Android>:LEVK_ANDROID>
+	$<$<BOOL:${LEVK_PRE_RELEASE}>:LEVK_PRE_RELEASE>
 )
 set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused -Wno-unknown-pragmas)
 if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)

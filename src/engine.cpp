@@ -1,3 +1,5 @@
+#include <build_version.hpp>
+#include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <window/android_instance.hpp>
 #include <window/desktop_instance.hpp>
@@ -20,10 +22,16 @@ Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	};
 }
 
-Engine::Engine(Window& winInst) : m_win(winInst) {
+Version Engine::version() noexcept {
+	return g_engineVersion;
+}
+
+Engine::Engine(Window& winInst, CreateInfo const& info) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {
 #if defined(LEVK_DESKTOP)
 	m_pDesktop = static_cast<Desktop*>(&winInst);
 #endif
+	conf::g_log.minVerbosity = info.verbosity;
+	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 
 Input::Out Engine::poll(bool consume) noexcept {

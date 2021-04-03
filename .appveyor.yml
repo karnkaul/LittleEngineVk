@@ -1,7 +1,7 @@
-version: "0.0.1.0-{build}"
+version: "0.0.9.0-{build}"
 environment:
   global:
-    LEVK_VERSION: "0.0.1.0"
+    LEVK_VERSION: "0.0.9.0"
   matrix:
     - job_name: Windows x64
       appveyor_build_worker_image: Visual Studio 2019

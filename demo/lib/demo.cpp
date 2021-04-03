@@ -865,16 +865,14 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 		winInfo.config.title = "levk demo";
 		winInfo.config.size = {1280, 720};
 		winInfo.options.bCentreCursor = true;
-		winInfo.options.verbosity = LibLogger::Verbosity::eLibrary;
 		window::Instance winst(winInfo);
 		graphics::Bootstrap::CreateInfo bootInfo;
 		bootInfo.instance.extensions = winst.vkInstanceExtensions();
 		bootInfo.instance.bValidation = levk_debug;
 		bootInfo.instance.validationLog = dl::level::info;
-		bootInfo.logVerbosity = LibLogger::Verbosity::eLibrary;
 		std::optional<App> app;
 		bootInfo.device.pickOverride = GPUPicker::s_picked;
-		Engine engine(winst);
+		Engine engine(winst, {});
 		Flags flags;
 		FlagsInput flagsInput(flags);
 		engine.pushReceiver(flagsInput);

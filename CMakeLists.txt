@@ -5,7 +5,7 @@ set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
 
 set(TARGET_NAME levk-engine)
-set(LEVK_VERSION 0.0.1.0 CACHE STRING "Application Version" FORCE)
+set(LEVK_VERSION 0.0.9.0 CACHE STRING "Application Version" FORCE)
 project(LittleEngineVk VERSION ${LEVK_VERSION})
 
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
@@ -19,6 +19,12 @@ include(cmake/utils.cmake)
 
 if(NOT PLATFORM STREQUAL Android AND NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 	message(WARNING "Unsupported architecture, must be 64-bit")
+endif()
+
+if(${LEVK_VERSION} VERSION_LESS 1.0)
+	set(LEVK_PRE_RELEASE ON)
+else()
+	set(LEVK_PRE_RELEASE OFF)
 endif()
 
 # Options

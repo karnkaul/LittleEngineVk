@@ -30,6 +30,12 @@ inline constexpr bool levk_debug = true;
 inline constexpr bool levk_debug = false;
 #endif
 
+#if defined(LEVK_PRE_RELEASE)
+inline constexpr bool levk_pre_release = true;
+#else
+inline constexpr bool levk_pre_release = false;
+#endif
+
 namespace le {
 using u8 = std::uint8_t;
 using s8 = std::int8_t;

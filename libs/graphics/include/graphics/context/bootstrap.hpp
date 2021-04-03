@@ -24,6 +24,6 @@ struct Bootstrap::CreateInfo {
 	Device::CreateInfo device;
 	Transfer::CreateInfo transfer;
 	Swapchain::CreateInfo swapchain;
-	LibLogger::Verbosity logVerbosity = LibLogger::Verbosity::eLibUser;
+	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
 };
 } // namespace le::graphics

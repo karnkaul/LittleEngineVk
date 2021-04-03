@@ -53,26 +53,28 @@ void dumpToFile(Path const& path, std::string const& str) {
 std::optional<FileLogger> g_fileLogger;
 dl::config::on_log::token g_token;
 
-void fileLog(std::string_view text, dl::level) {
+[[maybe_unused]] void fileLog(std::string_view text, dl::level) {
 	if (g_fileLogger) {
 		g_queue.push(std::string(text));
 	}
 }
 } // namespace
 
-Service::Service(std::optional<Path> logFilePath) {
-	if (logFilePath && !logFilePath->empty()) {
-		g_logFilePath = std::move(*logFilePath);
-		g_fileLogger = FileLogger();
+Service::Service([[maybe_unused]] Path logFilePath) {
+#if !defined(__ANDROID__)
+	if (!logFilePath.empty()) {
 		g_token = dl::config::g_on_log.add(&fileLog);
+		g_logFilePath = std::move(logFilePath);
+		g_fileLogger = FileLogger();
 		m_bActive = true;
 	}
+#endif
 }
 
-Service::Service(Service&& rhs) : m_bActive(std::exchange(rhs.m_bActive, false)) {
+Service::Service(Service&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {
 }
 
-Service& Service::operator=(Service&& rhs) {
+Service& Service::operator=(Service&& rhs) noexcept {
 	if (&rhs != this) {
 		destroy();
 		m_bActive = std::exchange(rhs.m_bActive, false);

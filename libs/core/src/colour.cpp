@@ -71,6 +71,10 @@ glm::vec4 Colour::toVec4() const noexcept {
 	return {r.toF32(), g.toF32(), b.toF32(), a.toF32()};
 }
 
+glm::vec3 Colour::toVec3() const noexcept {
+	return {r.toF32(), g.toF32(), b.toF32()};
+}
+
 glm::vec4 Colour::toSRGB() const noexcept {
 	return glm::convertLinearToSRGB(toVec4());
 }

@@ -1,8 +1,6 @@
 {
-	"id": "models/plant",
-	"obj": "plant.obj",
-	"mtl": "plant.mtl",
+	"obj": "eb_house_plant_01.obj",
+	"mtl": "eb_house_plant_01.mtl",
 	"scale": 0.05,
-	"sampler": "samplers/default",
-	"dropColour": true
+	"sampler": "samplers/default"
 }

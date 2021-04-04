@@ -30,6 +30,12 @@ inline constexpr bool levk_debug = true;
 inline constexpr bool levk_debug = false;
 #endif
 
+#if defined(LEVK_PRE_RELEASE)
+inline constexpr bool levk_pre_release = true;
+#else
+inline constexpr bool levk_pre_release = false;
+#endif
+
 namespace le {
 using u8 = std::uint8_t;
 using s8 = std::int8_t;
@@ -49,10 +55,10 @@ template <typename E, typename T = std::string_view, std::size_t N = (std::size_
 using EnumArray = std::array<T, N>;
 
 template <typename...>
-constexpr bool alwaysFalse = false;
+constexpr bool false_v = false;
 
 template <typename...>
-constexpr bool alwaysTrue = true;
+constexpr bool true_v = true;
 
 ///
 /// \brief Obtain the number of elements in a stack array

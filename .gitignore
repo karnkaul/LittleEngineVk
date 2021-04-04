@@ -2,6 +2,7 @@
 **/.vscode/*
 **/compile_commands.json
 **/.clangd
+**/.cache
 Testing/*
 build/*
 out/*
@@ -20,6 +21,7 @@ docs/*
 CMakeSettings.json
 # Log files (local)
 debug.log*
+log.txt*
 # Dear ImGui config (local)
 imgui.ini
 # 

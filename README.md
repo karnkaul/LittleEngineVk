@@ -4,38 +4,41 @@ An attempt to write a simple 3D game engine with a (mostly hard-coded) Vulkan re
 
 [Documentation](https://karnkaul.github.io/levk-docs) is located here (WIP).
 
-[![Build status](https://ci.appveyor.com/api/projects/status/km8h75k4a1695umo/branch/main?svg=true)](https://ci.appveyor.com/project/karnkaul/littleenginevk/branch/main)
+[![Build status](https://ci.appveyor.com/api/projects/status/pulw8g0clgeu58pm?svg=true)](https://ci.appveyor.com/project/karnkaul/littleenginevk)
+
+![Screenshot](demo/data/images/demo_screenshot_0.png)
 
 ### Features
 
 - Multi-platform windowing
-  - Multi-window support (Windows, Linux: via GLFW)
-  - Windowing event / input callback registration
+  - Windows, Linux: via GLFW
+  - Android (alpha)
   - Keyboard, mouse, and gamepad support
-- 3D renderer
-  - Vulkan backend (internal)
+- Bootstrapped Vulkan context
+  - Customizable device selection
+  - Dedicated transfer queue, async transfers
+  - Shader reflection via SPIR-V Cross
+  - Automatic descriptor Set management
   - Validation layer support (on by default in `Debug`)
-  - Async buffer and image transfers
-  - Phong shading (uber shader)
-- Multi-threaded task system
-  - Async queue (condition variable, no spinlock)
-  - Configurable worker count
-- Entity Component module
-  - Hashed ID entities
-  - Templated type-erased component storage (no polymorphism support)
-  - Thread-safe registry
-- Multi-threaded resourcing
-  - Thread-safe resource management
-  - Async resource loading
-  - Hot reloading of textures and shaders
+- Asset Store
+  - Store any `T` associated with a lightweight `io::Path` ID
+  - Customizable asset loaders
+  - Asset hot reload support
+- Multi-threaded task scheduler
+- Entity-Component framework
 - JSON de/serialisation
-- Free-look camera
-- Editor overlay (via Dear ImGui)
-- API Documentation (via Doxygen)
+- Customizable Editor (powered by Dear ImGui)
+
+### Limitations
+
+- No dynamic library support on Windows
+- Single window instance
+- Single draw command buffer
+- Hard-coded single render pass (for time being)
 
 ### Usage
 
-- Clone this repo (manually initialising git submodules is not required, it will be done by CMake script)
+- Clone this repo (manually initialising git submodules is not required, it will be done by the CMake script)
 - Use CMake and a generator of your choice
 
 ```

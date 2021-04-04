@@ -1,11 +1,9 @@
 #pragma once
-#include <filesystem>
 #include <memory>
 #include <tuple>
 #include <vector>
 #if defined(LEVK_DEBUG)
-#include <string>
-#include <core/utils.hpp>
+#include <core/utils/string.hpp>
 #endif
 
 namespace le {

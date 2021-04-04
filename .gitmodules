@@ -4,12 +4,6 @@
 [submodule "libs/core/include/kt/args_parser"]
 	path = libs/core/include/kt/args_parser
 	url = https://github.com/karnkaul/args-parser
-[submodule "libs/core/include/kt/async_queue"]
-	path = libs/core/include/kt/async_queue
-	url = https://github.com/karnkaul/async-queue
-[submodule "libs/core/include/kt/enum_flags"]
-	path = libs/core/include/kt/enum_flags
-	url = https://github.com/karnkaul/enum-flags.git
 [submodule "libs/core/include/kt/result"]
 	path = libs/core/include/kt/result
 	url = https://github.com/karnkaul/kt-result
@@ -22,3 +16,15 @@
 [submodule "ext/glfw"]
 	path = ext/glfw
 	url = https://github.com/glfw/glfw
+[submodule "libs/dtasks"]
+	path = libs/dtasks
+	url = https://github.com/karnkaul/dtasks
+[submodule "libs/core/include/kt/ktest"]
+	path = libs/core/include/kt/ktest
+	url = https://github.com/karnkaul/kt-test
+[submodule "libs/core/include/kt/fixed_vector"]
+	path = libs/core/include/kt/fixed_vector
+	url = https://github.com/karnkaul/fixed_vector.git
+[submodule "libs/decf"]
+	path = libs/decf
+	url = https://github.com/karnkaul/decf

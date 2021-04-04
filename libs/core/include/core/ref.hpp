@@ -1,5 +1,4 @@
 #pragma once
-#include <functional>
 
 namespace le {
 ///
@@ -14,6 +13,7 @@ struct Ref {
 	constexpr Ref(T& t) noexcept;
 
 	constexpr operator T&() const noexcept;
+	constexpr T& get() const noexcept;
 };
 
 template <typename T>
@@ -31,21 +31,17 @@ constexpr Ref<T>::operator T&() const noexcept {
 }
 
 template <typename T>
+constexpr T& Ref<T>::get() const noexcept {
+	return *pPtr;
+}
+
+template <typename T>
 constexpr bool operator==(Ref<T> lhs, Ref<T> rhs) noexcept {
-	return lhs.pPtr == rhs.pPtr;
+	return &lhs.get() == &rhs.get();
 }
 
 template <typename T>
 constexpr bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept {
-	return lhs.pPtr != rhs.pPtr;
+	return &lhs.get() != &rhs.get();
 }
 } // namespace le
-
-namespace std {
-template <typename T>
-struct hash<le::Ref<T>> {
-	size_t operator()(le::Ref<T> const& lhs) const {
-		return std::hash<T const*>()(lhs.pPtr);
-	}
-};
-} // namespace std

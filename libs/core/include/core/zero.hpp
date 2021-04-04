@@ -22,17 +22,14 @@ struct TZero final {
 	~TZero() = default;
 
 	constexpr operator T() const noexcept;
+
+	constexpr friend bool operator==(TZero<T, Zero> const& lhs, TZero<T, Zero> const& rhs) {
+		return lhs.payload == rhs.payload;
+	}
+	constexpr friend bool operator!=(TZero<T, Zero> const& lhs, TZero<T, Zero> const& rhs) {
+		return lhs.payload != rhs.payload;
+	}
 };
-
-template <typename T, T Zero = 0>
-constexpr bool operator==(TZero<T, Zero> lhs, TZero<T, Zero> rhs) {
-	return lhs.payload == rhs.payload;
-}
-
-template <typename T, T Zero = 0>
-constexpr bool operator!=(TZero<T, Zero> lhs, TZero<T, Zero> rhs) {
-	return lhs.payload != rhs.payload;
-}
 
 template <typename T, T Zero>
 constexpr TZero<T, Zero>::TZero(T payload) noexcept : payload(payload) {
@@ -57,12 +54,3 @@ constexpr TZero<T, Zero>::operator T() const noexcept {
 	return payload;
 }
 } // namespace le
-
-namespace std {
-template <typename T, T Zero>
-struct hash<le::TZero<T, Zero>> {
-	size_t operator()(le::TZero<T, Zero> zero) const noexcept {
-		return std::hash<T>()(zero.payload);
-	}
-};
-} // namespace std

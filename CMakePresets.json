@@ -81,12 +81,16 @@
 			"name": "levk-rl",
 			"displayName": "Release ",
 			"description": "Release build using Make",
-			"generator": "Unix Makefiles",
+			"generator": "Ninja",
 			"binaryDir": "out/rl",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": {
 					"type": "STRING",
 					"value": "Release"
+				},
+				"LEVK_VULKAN_DYNAMIC": {
+					"type": "BOOL",
+					"value": "ON"
 				}
 			}
 		}

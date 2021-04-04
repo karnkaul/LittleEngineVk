@@ -1,15 +1,21 @@
 #pragma once
-#include <filesystem>
-#include <optional>
+#include <core/io/path.hpp>
 
 namespace le::io {
-namespace stdfs = std::filesystem;
-
 ///
 /// \brief RAII wrapper for file logging
 ///
-struct Service final {
-	Service(std::optional<stdfs::path> logFilePath);
+class Service final {
+  public:
+	Service() = default;
+	Service(Path logFilePath);
+	Service(Service&&) noexcept;
+	Service& operator=(Service&&) noexcept;
 	~Service();
+
+  private:
+	void destroy();
+
+	bool m_bActive = false;
 };
 } // namespace le::io

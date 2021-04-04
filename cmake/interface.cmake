@@ -5,28 +5,30 @@ set(COMPILE_DEFS
 	$<$<CONFIG:Debug>:LEVK_DEBUG>
 	$<$<BOOL:${MSVC_RUNTIME}>:WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS>
 	# LEVK Flags
-	$<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW>
+	$<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW LEVK_DESKTOP>
 	$<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>
 	$<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>
+	$<$<STREQUAL:${PLATFORM},Android>:LEVK_ANDROID>
+	$<$<BOOL:${LEVK_PRE_RELEASE}>:LEVK_PRE_RELEASE>
 )
 set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused -Wno-unknown-pragmas)
-if(LINUX_GCC OR LINUX_CLANG OR WIN64_GCC OR WIN64_CLANG)
+if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
 	set(COMPILE_OPTS
 		-Wextra
 		-Werror=return-type
 		$<$<NOT:$<CONFIG:Debug>>:-Werror>
-		$<$<NOT:$<BOOL:${WIN64_CLANG}>>:-fexceptions>
+		$<$<NOT:$<BOOL:${WINDOWS_CLANG}>>:-fexceptions>
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
-		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WIN64_GCC}>>:-utf-8 -Wno-unknown-pragmas>
-		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WIN64_CLANG}>>:${CLANG_COMMON}>
+		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8 -Wno-unknown-pragmas>
+		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:${CLANG_COMMON}>
 	)
-elseif(WIN64_MSBUILD)
+elseif(WINDOWS_MSBUILD)
 	set(COMPILE_OPTS
 		$<$<NOT:$<CONFIG:Debug>>:/Oi /WX>
 		/MP
 	)
 endif()
-if(WIN64_CLANG AND MSVC)
+if(WINDOWS_CLANG AND MSVC)
 	list(APPEND COMPILE_OPTS /W4 -utf-8)
 endif()
 if(PLATFORM STREQUAL "Linux")
@@ -35,7 +37,7 @@ if(PLATFORM STREQUAL "Linux")
 		-no-pie         # Build as application
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
 	)
-elseif(PLATFORM STREQUAL "Win64" AND NOT WIN64_GCC)
+elseif(PLATFORM STREQUAL "Win64" AND NOT WINDOWS_GCC)
 	if(MSVC)
 		set(LINK_OPTS
 			/ENTRY:mainCRTStartup                              # Link to main() and not WinMain()
@@ -45,7 +47,7 @@ elseif(PLATFORM STREQUAL "Win64" AND NOT WIN64_GCC)
 		set(LINK_OPTS -Wl,/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>,/ENTRY:mainCRTStartup)
 	endif()
 endif()
-if(LINUX_CLANG AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
+if(LINUX_CLANG AND NOT PLATFORM STREQUAL Android AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
 	# Ignore Vulkan.hpp warnings
 	message(STATUS "clang++ ${CMAKE_CXX_COMPILER_VERSION} detected; adding -Wno-deprecated-copy for vulkan.hpp")
 	list(APPEND COMPILE_OPTS -Wno-deprecated-copy)
@@ -60,6 +62,7 @@ set(COMPILE_FTRS cxx_std_17)
 set(LINK_LIBS $<$<STREQUAL:${PLATFORM},Linux>:pthread stdc++fs dl>)
 
 add_library(levk-interface INTERFACE)
+add_library(levk::interface ALIAS levk-interface)
 target_compile_features(levk-interface INTERFACE ${COMPILE_FTRS})
 target_compile_definitions(levk-interface INTERFACE ${COMPILE_DEFS})
 target_compile_options(levk-interface INTERFACE ${COMPILE_OPTS})

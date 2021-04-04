@@ -1,12 +1,10 @@
 #pragma once
-#include <filesystem>
 #include <functional>
 #include <type_traits>
+#include <core/io/path.hpp>
 #include <core/std_types.hpp>
 
 namespace le {
-namespace stdfs = std::filesystem;
-
 ///
 /// \brief Wrapper struct for storing the hash (via `std::hash`) for common types
 ///
@@ -16,7 +14,7 @@ struct Hash final {
 	constexpr Hash() noexcept = default;
 
 	///
-	/// \brief Handled types: `char const*`, `std::string`, `std::filesystem::path`
+	/// \brief Handled types: `char const*`, `std::string`, io::Path
 	///
 	template <typename T>
 	Hash(T const& t);
@@ -49,7 +47,7 @@ template <typename T>
 Hash::Hash(T const& t) {
 	if constexpr (std::is_same_v<T, char*> || std::is_same_v<T, char const*> || std::is_same_v<T, std::string>) {
 		hash = std::hash<std::string_view>{}(std::string_view(t));
-	} else if constexpr (std::is_same_v<T, stdfs::path>) {
+	} else if constexpr (std::is_same_v<T, io::Path>) {
 		hash = std::hash<std::string>{}(t.generic_string());
 	} else {
 		hash = std::hash<T>{}(t);

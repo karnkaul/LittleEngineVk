@@ -50,6 +50,17 @@ template <typename T>
 T randomRange(T min, T max) noexcept;
 
 ///
+/// \brief Obtain the index of the least significant set bit (0xff if none) of num
+///
+template <typename T>
+constexpr std::uint8_t lsbIndex(T num) noexcept;
+///
+/// \brief Obtain the index of the least significant set bit (0xff if none) of lastEnum plus one
+///
+template <typename T>
+constexpr std::uint8_t enumEnd(T lastEnum) noexcept;
+
+///
 /// \brief Random Number Generator
 ///
 class Random {
@@ -119,6 +130,26 @@ T randomRange(T min, T max) noexcept {
 	return s_random.template range<T>(min, max);
 }
 
+template <typename T>
+constexpr std::uint8_t lsbIndex(T bit) noexcept {
+	static_assert(std::is_integral_v<T>, "T must be integral");
+	constexpr std::size_t unity = 1;
+	std::size_t const b = static_cast<std::size_t>(bit);
+	for (std::size_t i = 0; i <= std::numeric_limits<T>::digits; ++i) {
+		std::size_t const flag = unity << i;
+		if ((b & flag) == flag) {
+			return static_cast<std::uint8_t>(i);
+		}
+	}
+	return std::numeric_limits<std::uint8_t>::max();
+}
+
+template <typename T>
+constexpr std::uint8_t enumEnd(T lastEnum) noexcept {
+	static_assert(std::is_enum_v<T>, "T must be enum");
+	return (lsbIndex(static_cast<u32>(lastEnum))) + 1;
+}
+
 inline void Random::seed(std::optional<u32> value) noexcept {
 	m_engine = std::mt19937(value.value_or(m_device()));
 }
@@ -136,7 +167,7 @@ T Random::range(T min, T max) noexcept {
 	} else if constexpr (std::is_floating_point_v<T>) {
 		return range<T, std::uniform_real_distribution>(min, max);
 	} else {
-		static_assert(alwaysFalse<T>, "Invalid type!");
+		static_assert(false_v<T>, "Invalid type!");
 	}
 }
 } // namespace le::maths

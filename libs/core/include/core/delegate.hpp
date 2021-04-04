@@ -1,7 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <functional>
-#include <core/token_gen.hpp>
+#include <vector>
+#include <core/tagged_store.hpp>
 
 namespace le {
 ///
@@ -11,14 +12,14 @@ template <typename... Args>
 class Delegate {
   public:
 	using Callback = std::function<void(Args...)>;
-	using Tk = Token;
+	using Tk = Tag<>;
 
   public:
 	///
 	/// \brief Register callback and obtain token
 	/// \returns Subscription token (discard to unregister)
 	///
-	[[nodiscard]] Tk subscribe(Callback callback);
+	[[nodiscard]] Tk subscribe(Callback const& callback);
 	///
 	/// \brief Invoke registered callbacks; returns live count
 	///
@@ -34,17 +35,19 @@ class Delegate {
 	void clear() noexcept;
 
   private:
-	TTokenGen<Callback, std::vector> m_tokens;
+	TaggedStore<Callback> m_tokens;
 };
 
 template <typename... Args>
-typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback callback) {
-	return m_tokens.push(std::move(callback));
+typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback const& callback) {
+	return m_tokens.emplace_back(callback);
 }
 
 template <typename... Args>
 void Delegate<Args...>::operator()(Args... args) const {
-	m_tokens.forEach([&args...](auto& callback) { callback(args...); });
+	for (auto const& [_, callback] : m_tokens) {
+		callback(args...);
+	};
 }
 
 template <typename... Args>

@@ -1,7 +1,7 @@
-version: "0.0.1.0-{build}"
+version: "0.0.9.0-{build}"
 environment:
   global:
-    LEVK_VERSION: "0.0.1.0"
+    LEVK_VERSION: "0.0.9.0"
   matrix:
     - job_name: Windows x64
       appveyor_build_worker_image: Visual Studio 2019
@@ -10,48 +10,29 @@ environment:
 configuration:
   - Release
 install:
-  - cmd: |
-      if not exist VulkanSDK.exe curl -L --silent --show-error --output VulkanSDK.exe https://vulkan.lunarg.com/sdk/download/1.2.141.2/windows/VulkanSDK-1.2.141.2-Installer.exe?Human=true
-      if "%SKIP_WINDOWS%" equ "true" echo -- Skipping Windows -- && appveyor exit
-      VulkanSDK.exe /S
-      echo VULKAN_SDK: %VULKAN_SDK%
   - sh: |
-      [ ! -f vulkan_sdk.tar.gz ] && echo "== Downloading Vulkan SDK ==" && wget https://vulkan.lunarg.com/sdk/download/1.2.141.2/linux/vulkansdk-linux-x86_64-1.2.141.2.tar.gz?Human=true -O vulkan_sdk.tar.gz
       [ "$SKIP_LINUX" == "true" ] && echo "-- Skipping Linux --" && exit
-      sudo mkdir -p /vulkan_sdk && sudo tar -xf vulkan_sdk.tar.gz -C /vulkan_sdk && sudo chmod -R a+r /vulkan_sdk && echo VULKAN_SDK: $VULKAN_SDK
-      echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y xorg-dev
+      echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y xorg-dev ninja-build
       sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-9 30
       sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-9 30
       sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-9 30
       sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-9 30
 before_build:
-  - cmd: |
-      set "PATH=%VULKAN_SDK%/source/Vulkan-Headers/include;%VULKAN_SDK%/lib;%VULKAN_SDK%/bin;%PATH%"
-      cmake -G "Visual Studio 16 2019" . -B out
-  - sh: cmake . -B out -DCMAKE_BUILD_TYPE=$CONFIGURATION || exit 1
+  - cmd: cmake -G "Visual Studio 16 2019" . -B out -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1
+  - sh: cmake -G Ninja . -B out -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
 for:
   - matrix:
       only:
         - job_name: Windows x64
-    environment:
-      VULKAN_SDK: C:/VulkanSDK/1.2.141.2
-      VK_LAYER_PATH: "$VULKAN_SDK/etc/vulkan/explicit_layer.d"
     build:
       project: out/LittleEngineVk.sln
       parallel: true
       verbosity: minimal
-    cache:
-      - VulkanSDK.exe
   - matrix:
       only:
         - job_name: Linux x64
-    environment:
-      VULKAN_SDK: /vulkan_sdk/1.2.141.2/x86_64
-      VK_LAYER_PATH: "$VULKAN_SDK/etc/vulkan/explicit_layer.d"
     build_script:
       - sh: echo "== Building Linux $CONFIGURATION $LEVK_VERSION ==" && cmake --build out -v || exit 1
-    cache:
-      - vulkan_sdk.tar.gz
 test_script: |
   cd out
   ctest || exit 1

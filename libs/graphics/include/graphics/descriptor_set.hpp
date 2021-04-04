@@ -1,0 +1,161 @@
+#pragma once
+#include <unordered_map>
+#include <core/ref.hpp>
+#include <core/span.hpp>
+#include <graphics/utils/ring_buffer.hpp>
+#include <vulkan/vulkan.hpp>
+
+namespace le::graphics {
+class Device;
+class Texture;
+class Buffer;
+class Image;
+class Pipeline;
+class ShaderBuffer;
+
+struct BindingInfo {
+	vk::DescriptorSetLayoutBinding binding;
+	std::string name;
+	bool bUnassigned = false;
+};
+
+class DescriptorSet {
+  public:
+	// Combined Image Sampler
+	struct CIS {
+		vk::ImageView image;
+		vk::Sampler sampler;
+	};
+	struct CreateInfo;
+
+	DescriptorSet(Device& device, CreateInfo const& info);
+	DescriptorSet(DescriptorSet&&) noexcept;
+	DescriptorSet& operator=(DescriptorSet&&) noexcept;
+	~DescriptorSet();
+
+	void index(std::size_t index);
+	void swap();
+	vk::DescriptorSet get() const;
+
+	void updateBuffers(u32 binding, View<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
+	bool updateCIS(u32 binding, std::vector<CIS> cis);
+	bool updateTextures(u32 binding, View<Texture> textures);
+
+	u32 setNumber() const noexcept;
+	BindingInfo const* binding(u32 bind) const noexcept;
+	bool contains(u32 bind) const noexcept;
+	bool unassigned() const noexcept;
+
+	Ref<Device> m_device;
+
+  private:
+	template <typename T>
+	void update(u32 binding, vk::DescriptorType type, View<T> writes);
+	void update(vk::WriteDescriptorSet set);
+	void destroy();
+
+	struct Binding {
+		std::string name;
+		vk::DescriptorType type;
+		std::vector<Ref<Buffer const>> buffers;
+		std::vector<CIS> cis;
+		u32 count = 1;
+	};
+	struct Set {
+		vk::DescriptorSet set;
+		vk::DescriptorPool pool;
+		std::unordered_map<u32, Binding> bindings;
+	};
+	struct Storage {
+		vk::DescriptorSetLayout layout;
+		RingBuffer<Set> setBuffer;
+		std::unordered_map<u32, BindingInfo> bindingInfos;
+		u32 rotateCount = 1;
+		u32 setNumber = 0;
+	} m_storage;
+
+	std::pair<Set&, Binding&> setBind(u32 bind, vk::DescriptorType type, u32 count);
+};
+
+struct DescriptorSet::CreateInfo {
+	std::string_view name;
+	vk::DescriptorSetLayout layout;
+	View<BindingInfo> bindingInfos;
+	std::size_t rotateCount = 2;
+	u32 setNumber = 0;
+};
+
+// Manages N DescriptorSet instances (drawables)
+class SetPool {
+  public:
+	SetPool(Device& device, DescriptorSet::CreateInfo const& info);
+
+	DescriptorSet& front();
+	DescriptorSet& index(std::size_t idx);
+	DescriptorSet const& front() const;
+	DescriptorSet const& index(std::size_t idx) const;
+	Span<DescriptorSet> populate(std::size_t count);
+	void swap();
+
+	bool contains(u32 bind) const noexcept;
+	bool unassigned() const noexcept;
+
+  private:
+	struct Storage {
+		std::string_view name;
+		vk::DescriptorSetLayout layout;
+		std::vector<BindingInfo> bindInfos;
+		std::vector<DescriptorSet> descriptorSets;
+		std::size_t rotateCount = 0;
+		u32 setNumber = 0;
+	} m_storage;
+	Ref<Device> m_device;
+};
+
+// Manages multiple inputs for a shader via set numbers
+class ShaderInput {
+  public:
+	ShaderInput() = default;
+	ShaderInput(Pipeline const& pipe, std::size_t rotateCount);
+
+	SetPool& set(u32 set);
+	SetPool const& set(u32 set) const;
+	void swap();
+	bool empty() const noexcept;
+	bool contains(u32 set) const noexcept;
+	bool contains(u32 set, u32 bind) const noexcept;
+
+	bool update(View<Texture> textures, u32 set, u32 bind, std::size_t idx = 0);
+	bool update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx = 0);
+
+	SetPool& operator[](u32 set);
+	SetPool const& operator[](u32 set) const;
+
+  private:
+	std::unordered_map<u32, SetPool> m_setPools;
+};
+
+// impl
+
+inline u32 DescriptorSet::setNumber() const noexcept {
+	return m_storage.setNumber;
+}
+
+template <typename T>
+void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes) {
+	vk::WriteDescriptorSet write;
+	write.dstSet = get();
+	write.dstBinding = binding;
+	write.dstArrayElement = 0;
+	write.descriptorType = type;
+	write.descriptorCount = (u32)writes.size();
+	if constexpr (std::is_same_v<T, vk::DescriptorImageInfo>) {
+		write.pImageInfo = writes.data();
+	} else if constexpr (std::is_same_v<T, vk::DescriptorBufferInfo>) {
+		write.pBufferInfo = writes.data();
+	} else {
+		static_assert(false_v<T>, "Invalid type");
+	}
+	update(write);
+}
+} // namespace le::graphics

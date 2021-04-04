@@ -1,21 +1,25 @@
 #pragma once
-#include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
 #include <fmt/format.h>
+#include <core/erased_ref.hpp>
+#include <core/io/path.hpp>
+#include <core/ref.hpp>
+#include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <kt/args_parser/args_parser.hpp>
+#include <kt/result/result.hpp>
 
 namespace le::os {
 enum class OS : s8 { eWindows, eLinux, eAndroid, eUnknown };
-enum class Arch : s8 { eX64, eARM64, eUnknown };
+enum class Arch : s8 { eX64, eARM64, eX86, eUnknown };
 enum class StdLib : s8 { eMSVC, eLibStdCXX, eUnknown };
 enum class Compiler : s8 { eClang, eGCC, eVCXX, eUnknown };
 } // namespace le::os
 
 #if (defined(_WIN32) || defined(_WIN64))
-#define LEVK_OS_WINX
+#define LEVK_OS_WINDOWS
 inline constexpr le::os::OS levk_OS = le::os::OS::eWindows;
 inline constexpr std::string_view levk_OS_name = "Windows";
 #if defined(__arm__)
@@ -32,13 +36,14 @@ inline constexpr le::os::Arch levk_arch = le::os::Arch::eX64;
 inline constexpr std::string_view levk_arch_name = "x64";
 #endif
 #elif defined(__linux__)
+#if defined(__ANDROID__)
+#define LEVK_OS_ANDROID
+inline constexpr le::os::OS levk_OS = le::os::OS::eAndroid;
+inline constexpr std::string_view levk_OS_name = "Android";
+#else
 #define LEVK_OS_LINUX
 inline constexpr le::os::OS levk_OS = le::os::OS::eLinux;
 inline constexpr std::string_view levk_OS_name = "Linux";
-#if defined(__ANDROID__)
-inline constexpr le::os::OS levk_OS = le::os::OS::eAndroid;
-inline constexpr std::string_view levk_OS_name = "Android";
-#define LEVK_OS_ANDROID
 #endif
 #if defined(__arm__)
 #define LEVK_ARCH_ARM64
@@ -76,6 +81,7 @@ inline constexpr std::string_view levk_stdlib_name = "libstdc++";
 inline constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eUnknown;
 inline constexpr std::string_view levk_stdlib_name = "Unknown";
 #endif
+inline constexpr bool levk_desktopOS = levk_OS == le::os::OS::eWindows || levk_OS == le::os::OS::eLinux;
 
 #if defined(__clang__)
 #define LEVK_COMPILER_CLANG
@@ -107,18 +113,36 @@ struct Args {
 using ArgsParser = kt::args_parser<>;
 
 ///
-/// \brief RAII wrapper for OS service
-/// Destructor joins all running threads
+/// \brief Interface representing a command line argument
 ///
-struct Service final {
-	Service(Args args);
-	~Service();
+struct ICmdArg {
+	///
+	/// \brief Data structure describing a command's usage
+	///
+	struct Usage {
+		std::string_view params;
+		std::string_view summary;
+	};
+
+	virtual ~ICmdArg() = default;
+	///
+	/// \brief Must return the possible keys to match against
+	///
+	virtual View<std::string_view> keyVariants() const = 0;
+	///
+	/// \brief Must return true to stop processing
+	///
+	virtual bool halt(std::string_view value) = 0;
+	///
+	/// \brief Must return valid Usage
+	///
+	virtual Usage usage() const = 0;
 };
 
 ///
 /// \brief Initialise OS service
 ///
-void args(Args args);
+void args(Args const& args);
 ///
 /// \brief Obtain `argv[0]`
 ///
@@ -126,7 +150,18 @@ std::string argv0();
 ///
 /// \brief Obtain working/executable directory
 ///
-std::filesystem::path dirPath(Dir dir);
+io::Path dirPath(Dir dir);
+///
+/// \brief Obtain internal/external storage path
+///
+io::Path androidStorage(ErasedRef const& androidApp, bool bExternal);
+///
+/// \brief Obtain full path to directory containing pattern, traced from the executable path
+/// \param pattern sub-path to match against
+/// \param start Dir to start search from
+/// \param maxHeight maximum recursive depth
+///
+kt::result<io::Path, std::string> findData(io::Path pattern = "data", Dir start = Dir::eExecutable, u8 maxHeight = 10);
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///
@@ -137,11 +172,15 @@ std::deque<ArgsParser::entry> const& args() noexcept;
 ///
 template <typename Arg, typename... Args>
 std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept;
+///
+/// \brief Check if any passed ICmdArg requests to halt
+///
+bool halt(View<Ref<ICmdArg>> cmdArgs);
 
 ///
 /// \brief Check if a debugger is attached to the runtime
 ///
-bool isDebuggerAttached();
+bool debugging();
 ///
 /// \brief Raise  a breakpoint signal
 ///

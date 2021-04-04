@@ -227,18 +227,20 @@ TabBar::Item::~Item() {
 #endif
 }
 
-Pane::Pane(MU std::string_view id, MU glm::vec2 size, MU glm::vec2 pos, MU bool child, MU s32 flags) : child(child) {
+Pane::Pane(MU std::string_view id, MU glm::vec2 size, MU glm::vec2 pos, MU bool* open, MU bool blockResize, MU s32 flags) : child(false) {
 #if defined(LEVK_USE_IMGUI)
-	if (child) {
-		guiState[GUI::eOpen] = ImGui::BeginChild(id.data(), {size.x, size.y}, false, flags);
-	} else {
-		ImGui::SetNextWindowSize({size.x, size.y}, ImGuiCond_Always);
-		ImGui::SetNextWindowPos({pos.x, pos.y}, ImGuiCond_Always);
-		guiState[GUI::eOpen] = ImGui::Begin(id.data(), &open, flags);
-		if (guiState[GUI::eOpen]) {
-			++s_open;
-		}
+	ImGui::SetNextWindowSize({size.x, size.y}, ImGuiCond_Once);
+	ImGui::SetNextWindowPos({pos.x, pos.y}, ImGuiCond_Once);
+	guiState[GUI::eOpen] = ImGui::Begin(id.data(), open, flags);
+	if (guiState[GUI::eOpen] && blockResize) {
+		s_blockResize = true;
 	}
+#endif
+}
+
+Pane::Pane(MU std::string_view id, MU glm::vec2 size, MU bool border, MU s32 flags) : child(true) {
+#if defined(LEVK_USE_IMGUI)
+	guiState[GUI::eOpen] = ImGui::BeginChild(id.data(), {size.x, size.y}, border, flags);
 #endif
 }
 
@@ -248,9 +250,6 @@ Pane::~Pane() {
 		ImGui::EndChild();
 	} else {
 		ImGui::End();
-		if (guiState[GUI::eOpen]) {
-			--s_open;
-		}
 	}
 #endif
 }
@@ -401,9 +400,10 @@ void Editor::update([[maybe_unused]] DesktopInstance& win, [[maybe_unused]] Inpu
 		s_out.inspecting = {};
 	}
 	if (active() && s_engaged) {
-		if (edi::Pane::s_open == 0) {
+		if (!edi::Pane::s_blockResize) {
 			m_storage.resizer(win, m_storage.gameView, state);
 		}
+		edi::Pane::s_blockResize = false;
 		m_storage.menu(s_in.menu);
 		glm::vec2 const fbSize = {f32(win.framebufferSize().x), f32(win.framebufferSize().y)};
 		auto const rect = m_storage.gameView.rect();

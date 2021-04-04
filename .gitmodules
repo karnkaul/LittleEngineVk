@@ -28,3 +28,6 @@
 [submodule "libs/decf"]
 	path = libs/decf
 	url = https://github.com/karnkaul/decf
+[submodule "docs/doxygen_dark_theme"]
+	path = docs/doxygen_dark_theme
+	url = https://github.com/MaJerle/doxygen-dark-theme

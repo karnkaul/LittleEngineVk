@@ -7,7 +7,7 @@ Mesh::Mesh(std::string name, VRAM& vram, Type type) : m_name(std::move(name)), m
 }
 Mesh::Mesh(Mesh&& rhs)
 	: m_name(std::move(rhs.m_name)), m_vram(rhs.m_vram), m_vbo(std::exchange(rhs.m_vbo, Storage())), m_ibo(std::exchange(rhs.m_ibo, Storage())),
-	  m_type(rhs.m_type) {
+	  m_triCount(rhs.m_triCount), m_type(rhs.m_type) {
 }
 Mesh& Mesh::operator=(Mesh&& rhs) {
 	if (&rhs != this) {
@@ -15,6 +15,7 @@ Mesh& Mesh::operator=(Mesh&& rhs) {
 		m_name = std::move(rhs.m_name);
 		m_vbo = std::exchange(rhs.m_vbo, Storage());
 		m_ibo = std::exchange(rhs.m_ibo, Storage());
+		m_triCount = std::exchange(rhs.m_triCount, 0);
 		m_type = rhs.m_type;
 	}
 	return *this;
@@ -45,6 +46,7 @@ bool Mesh::draw(CommandBuffer const& cb) const {
 			cb.bindVBO(*m_vbo.buffer);
 			cb.draw(m_vbo.count);
 		}
+		s_trisDrawn.fetch_add(m_triCount);
 		return true;
 	}
 	return false;

@@ -1,6 +1,8 @@
 #include <build_version.hpp>
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
+#include <graphics/context/command_buffer.hpp>
+#include <graphics/mesh.hpp>
 #include <window/android_instance.hpp>
 #include <window/desktop_instance.hpp>
 
@@ -49,7 +51,8 @@ void Engine::pushReceiver(Input::IReceiver& context) {
 	context.m_inputTag = m_receivers.emplace_back(context);
 }
 
-void Engine::updateEditor() {
+void Engine::update() {
+	updateStats();
 	if constexpr (levk_imgui) {
 		if (m_gfx) {
 			m_gfx->imgui.beginFrame();
@@ -89,5 +92,27 @@ Engine::Desktop* Engine::desktop() const noexcept {
 #else
 	return nullptr;
 #endif
+}
+
+void Engine::updateStats() {
+	++m_stats.frame.count;
+	++s_stats.frame.count;
+	if (m_stats.frame.stamp == time::Point()) {
+		m_stats.frame.stamp = time::now();
+	} else {
+		s_stats.frame.ft = time::diffExchg(m_stats.frame.stamp);
+		m_stats.frame.elapsed += s_stats.frame.ft;
+		s_stats.upTime += s_stats.frame.ft;
+	}
+	if (m_stats.frame.elapsed >= 1s) {
+		s_stats.frame.rate = std::exchange(m_stats.frame.count, 0);
+		m_stats.frame.elapsed -= 1s;
+	}
+	s_stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Type::eBuffer);
+	s_stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Type::eImage);
+	s_stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
+	s_stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
+	graphics::CommandBuffer::s_drawCalls.store(0);
+	graphics::Mesh::s_trisDrawn.store(0);
 }
 } // namespace le

@@ -31,7 +31,9 @@ if [ ! -f ./$doxyfile ]; then
 fi
 
 if [ "$clean" == "true" ]; then
-  rm -rf *.html *.css *.js *.png *.jpg
+  cd html
+  rm -rf *.html *.css *.js *.png *.jpg *.svg
+  cd ..
   echo "-- Cleaned ./$docs --"
 fi
 
@@ -41,6 +43,7 @@ if [ "$nobuild" == "false" ]; then
 fi
 
 if [ "$push" == "true" ]; then
+  cd html
   git checkout $branch
   git fetch
   git add .
@@ -53,7 +56,7 @@ if [ "$push" == "true" ]; then
     git commit -m "[Automated] Update docs"
     log_msg="Created a commit and pushed"
   fi
-  git $push
+  git $push $remote $branch
   echo "== $log_msg ./$docs to $remote/$branch =="
 fi
 

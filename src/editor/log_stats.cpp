@@ -4,6 +4,7 @@
 #if defined(LEVK_USE_IMGUI)
 #include <core/array_map.hpp>
 #include <core/colour.hpp>
+#include <engine/engine.hpp>
 #include <kt/async_queue/locker.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 #endif
@@ -41,6 +42,7 @@ void onLog(std::string_view text, dl::level level) {
 struct FrameTime {
 	View<f32> samples;
 	f32 average{};
+	u32 rate{};
 };
 
 void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
@@ -63,8 +65,9 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			s64 ftCount = (s64)LogStats::s_frameTimeCount / scale;
 			TWidget<std::pair<s64, s64>> st(fmt::format("ft count: {}", ftCount * scale), ftCount, s_minTCounter, s_maxTCounter, 1);
 			LogStats::s_frameTimeCount = (std::size_t)ftCount * scale;
+			f32 const ftime = ft.samples.empty() ? 0.0f : ft.samples.back();
 			auto const overlay = fmt::format("{:.4}ms (avg of {})", ft.average, ft.samples.size());
-			auto const title = fmt::format("Frame Time [{:.3}ms]", ft.samples.empty() ? 0.0f : ft.samples.back());
+			auto const title = fmt::format("[{:.3}ms] [{}] FPS", ftime, ft.rate);
 			Styler s(Style::eSameLine);
 			ImGui::PlotLines(title.data(), ft.samples.data(), (s32)ft.samples.size(), 0, overlay.data());
 			s(Style::eSeparator);
@@ -100,7 +103,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 		}
 		{
 			Styler s(Style::eSeparator);
-			Pane pane("scrolling", {}, {}, true, ImGuiWindowFlags_HorizontalScrollbar);
+			Pane pane("scrolling", {}, false, ImGuiWindowFlags_HorizontalScrollbar);
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 			std::vector<Ref<LogText const>> filtered;
 			filtered.reserve(LogStats::s_lineCount);
@@ -140,10 +143,9 @@ LogStats::LogStats() {
 
 void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f32 height) {
 #if defined(LEVK_USE_IMGUI)
-	if (m_elapsed == time::Point()) {
-		m_elapsed = time::now();
-	} else {
-		m_frameTime.fts.push_back(time::diffExchg(m_elapsed));
+	auto const& stats = Engine::stats().frame;
+	if (stats.ft != Time_s()) {
+		m_frameTime.fts.push_back(stats.ft);
 	}
 	while (m_frameTime.fts.size() > s_frameTimeCount) {
 		m_frameTime.fts.pop_front();
@@ -157,7 +159,8 @@ void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f3
 			m_frameTime.samples.push_back(time::cast<decltype(avg)>(ft).count());
 		}
 		avg /= (f32)m_frameTime.fts.size();
-		drawLog(fbSize, height, {m_frameTime.samples, avg.count()});
+		u32 const rate = stats.rate == 0 ? (u32)stats.count : stats.rate;
+		drawLog(fbSize, height, {m_frameTime.samples, avg.count(), rate});
 	}
 #endif
 }

@@ -29,7 +29,7 @@ bool window::Gamepad::pressed(Key button) const {
 	return false;
 }
 
-std::string_view window::toString(s32 key) {
+std::string_view window::toString([[maybe_unused]] s32 key) {
 	static constexpr std::string_view unknown = "(Unknown)";
 #if defined(LEVK_USE_GLFW)
 	char const* szName = glfwGetKeyName((int)key, 0);

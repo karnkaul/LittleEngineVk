@@ -138,13 +138,13 @@ struct TabBar : GUIStateful {
 };
 
 struct Pane : GUIStateful {
-	inline static std::size_t s_open = 0;
+	inline static bool s_blockResize = false;
 
-	Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool child, s32 flags = 0);
+	Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool* open, bool blockResize = true, s32 flags = 0);
+	Pane(std::string_view id, glm::vec2 size = {}, bool border = false, s32 flags = 0);
 	~Pane() override;
 
 	bool child = false;
-	bool open = true;
 
 	explicit operator bool() const override {
 		return test(GUI::eOpen);

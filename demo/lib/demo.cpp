@@ -753,7 +753,7 @@ class App : public Input::IReceiver {
 			Editor::s_in.registry = &m_data.registry;
 			Editor::s_in.root = &m_data.root;
 			Editor::s_in.customEntities.push_back(m_data.camera);
-			m_eng.get().updateEditor();
+			m_eng.get().update();
 		}
 
 		if (!m_data.loader.ready(&m_tasks)) {

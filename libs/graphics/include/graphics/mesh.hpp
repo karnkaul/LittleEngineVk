@@ -14,6 +14,8 @@ class Mesh {
 		u32 count = 0;
 	};
 
+	inline static auto s_trisDrawn = std::atomic<u32>(0);
+
 	Mesh(std::string name, VRAM& vram, Type type = Type::eStatic);
 	Mesh(Mesh&&);
 	Mesh& operator=(Mesh&&);
@@ -51,6 +53,7 @@ class Mesh {
 
 	Storage m_vbo;
 	Storage m_ibo;
+	u32 m_triCount = 0;
 
 	Type m_type;
 };
@@ -67,6 +70,7 @@ bool Mesh::construct(View<T> vertices, View<u32> indices) {
 		}
 		m_vbo.count = (u32)vertices.size();
 		m_ibo.count = (u32)indices.size();
+		m_triCount = indices.empty() ? u32(vertices.size() / 3) : u32(indices.size() / 3);
 		return true;
 	}
 	return false;

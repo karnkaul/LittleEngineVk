@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <vector>
 #include <core/ensure.hpp>
 #include <core/hash.hpp>
@@ -30,6 +31,8 @@ class CommandBuffer {
 		vk::SubpassContents subpassContents = vk::SubpassContents::eInline;
 		vk::CommandBufferUsageFlags usage = {};
 	};
+
+	inline static auto s_drawCalls = std::atomic<u32>(0);
 
 	static std::vector<CommandBuffer> make(Device& device, vk::CommandPool pool, u32 count, bool bSecondary);
 

@@ -32,9 +32,30 @@ class Engine {
 		static Boot::MakeSurface makeSurface(Window const& winst);
 	};
 
+	struct Stats {
+		struct Frame {
+			Time_s ft;
+			u32 rate;
+			u64 count;
+		};
+		struct Gfx {
+			struct {
+				u64 buffers;
+				u64 images;
+			} bytes;
+			u32 drawCalls;
+			u32 triCount;
+		};
+
+		Frame frame;
+		Gfx gfx;
+		Time_s upTime;
+	};
+
 	struct CreateInfo;
 
 	static Version version() noexcept;
+	static Stats const& stats() noexcept;
 
 	Engine(Window& winInst, CreateInfo const& info);
 
@@ -43,7 +64,8 @@ class Engine {
 
 	bool editorActive() const noexcept;
 	bool editorEngaged() const noexcept;
-	void updateEditor();
+
+	void update();
 
 	bool boot(Boot::CreateInfo const& boot);
 	bool unboot() noexcept;
@@ -59,14 +81,25 @@ class Engine {
 	Ref<Window> m_win;
 
   private:
+	void updateStats();
+
 	using Receiver = Ref<Input::IReceiver>;
 	using TagDeque = TaggedDeque<Receiver, InputTag::type>;
 	using Receivers = TaggedStore<Receiver, InputTag, TagDeque>;
+
+	inline static Stats s_stats = {};
 
 	io::Service m_io;
 	std::optional<GFX> m_gfx;
 	Editor m_editor;
 	Input m_input;
+	struct {
+		struct {
+			time::Point stamp{};
+			Time_s elapsed{};
+			u32 count;
+		} frame;
+	} m_stats;
 	Receivers m_receivers;
 	Input::State m_inputState;
 	Desktop* m_pDesktop = {};
@@ -78,6 +111,10 @@ struct Engine::CreateInfo {
 };
 
 // impl
+
+inline Engine::Stats const& Engine::stats() noexcept {
+	return s_stats;
+}
 
 inline bool Engine::editorActive() const noexcept {
 	return m_editor.active();

@@ -56,7 +56,7 @@ u64 Memory::bytes(Resource::Type type) const {
 }
 
 std::string Memory::countsText() const {
-	auto [bsize, bunit] = utils::friendlySize(bytes(Resource::Type::eBuffer));
+	auto const [bsize, bunit] = utils::friendlySize(bytes(Resource::Type::eBuffer));
 	auto const [isize, iunit] = utils::friendlySize(bytes(Resource::Type::eImage));
 	return fmt::format("Buffers: [{:.2f}{}]; Images: [{:.2f}{}]", bsize, bunit, isize, iunit);
 }

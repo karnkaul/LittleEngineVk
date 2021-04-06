@@ -82,7 +82,7 @@ vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexc
 	if (!m_gfx) {
 		return {};
 	}
-	Viewport const vp = view * m_editor.view();
+	Viewport const vp = m_editor.view() * view;
 	return m_gfx->context.viewport(m_win.get().framebufferSize(), depth, vp.rect(), vp.topLeft.offset);
 }
 

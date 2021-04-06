@@ -77,31 +77,31 @@ bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input
 			break;
 		}
 		case Handle::eLeft: {
-			out_vp.topLeft.n.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
 			toSet = mapped<CursorType>(handleCursor, m_handle);
 			break;
 		}
 		case Handle::eRight: {
-			out_vp.topLeft.n.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
 			toSet = mapped<CursorType>(handleCursor, m_handle);
 			break;
 		}
 		case Handle::eBottom: {
-			auto const centre = out_vp.topLeft.n.x + out_vp.scale * 0.5f;
+			auto const centre = out_vp.topLeft.norm.x + out_vp.scale * 0.5f;
 			out_vp.scale = clampScale(nCursor.y, data.fbSize, 2.0f * out_vp.topLeft.offset);
-			out_vp.topLeft.n.x = clampLeft(centre - out_vp.scale * 0.5f, out_vp.scale, data.fbSize.x, xOffset);
+			out_vp.topLeft.norm.x = clampLeft(centre - out_vp.scale * 0.5f, out_vp.scale, data.fbSize.x, xOffset);
 			toSet = mapped<CursorType>(handleCursor, m_handle);
 			break;
 		}
 		case Handle::eLeftBottom: {
 			out_vp.scale = clampScale(nCursor.y, data.fbSize, 2.0f * out_vp.topLeft.offset);
-			out_vp.topLeft.n.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
 			toSet = mapped<CursorType>(handleCursor, m_handle);
 			break;
 		}
 		case Handle::eRightBottom: {
 			out_vp.scale = clampScale(nCursor.y, data.fbSize, 2.0f * out_vp.topLeft.offset);
-			out_vp.topLeft.n.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
 			toSet = mapped<CursorType>(handleCursor, m_handle);
 			break;
 		}

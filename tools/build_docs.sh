@@ -4,6 +4,7 @@
 
 doxyfile=Doxyfile
 docs=docs
+doxy_out=html
 remote=origin
 branch=gh-pages
 
@@ -31,10 +32,10 @@ if [ ! -f ./$doxyfile ]; then
 fi
 
 if [ "$clean" == "true" ]; then
-  cd html
+  cd $doxy_out
   rm -rf *.html *.css *.js *.png *.jpg *.svg
   cd ..
-  echo "-- Cleaned ./$docs --"
+  echo "-- Cleaned ./$docs/$doxy_out --"
 fi
 
 if [ "$nobuild" == "false" ]; then
@@ -43,7 +44,11 @@ if [ "$nobuild" == "false" ]; then
 fi
 
 if [ "$push" == "true" ]; then
-  cd html
+  cd $doxy_out
+  if [ ! -d .git ]; then
+    echo "git repo not found! clone levk-docs into $docs/$doxy_out and then run script"
+    exit 1
+  fi
   git checkout $branch
   git fetch
   git add .

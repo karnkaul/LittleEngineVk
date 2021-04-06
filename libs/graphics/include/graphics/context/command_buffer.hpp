@@ -52,8 +52,8 @@ class CommandBuffer {
 	void bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const;
 	void bindIBO(vk::Buffer buffer, vk::DeviceSize offset = vk::DeviceSize(0), vk::IndexType indexType = vk::IndexType::eUint32) const;
 	void bindVBO(Buffer const& vbo, Buffer const* pIbo = nullptr) const;
-	void drawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, s32 vertexOffset = 0, u32 firstInstance = 0) const;
-	void draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0) const;
+	void drawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstInstance = 0, s32 vertexOffset = 0, u32 firstIndex = 0) const;
+	void draw(u32 vertexCount, u32 instanceCount = 1, u32 firstInstance = 0, u32 firstVertex = 0) const;
 
 	void transitionImage(Image const& image, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
 	void transitionImage(vk::Image image, u32 layerCount, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;

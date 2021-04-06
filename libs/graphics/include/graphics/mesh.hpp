@@ -25,7 +25,7 @@ class Mesh {
 	bool construct(View<T> vertices, View<u32> indices);
 	template <VertType V>
 	bool construct(Geom<V> const& geom);
-	bool draw(CommandBuffer const& cb) const;
+	bool draw(CommandBuffer const& cb, u32 instances = 1, u32 first = 0) const;
 
 	bool valid() const noexcept;
 	bool busy() const;

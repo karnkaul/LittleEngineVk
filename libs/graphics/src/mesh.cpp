@@ -37,14 +37,14 @@ Mesh::Storage Mesh::construct(std::string_view name, vk::BufferUsageFlags usage,
 	return ret;
 }
 
-bool Mesh::draw(CommandBuffer const& cb) const {
+bool Mesh::draw(CommandBuffer const& cb, u32 instances, u32 first) const {
 	if (valid()) {
+		Buffer const* ibo = m_ibo.buffer.has_value() ? &*m_ibo.buffer : nullptr;
+		cb.bindVBO(*m_vbo.buffer, ibo);
 		if (hasIndices()) {
-			cb.bindVBO(*m_vbo.buffer, &*m_ibo.buffer);
-			cb.drawIndexed(m_ibo.count);
+			cb.drawIndexed(m_ibo.count, instances, first);
 		} else {
-			cb.bindVBO(*m_vbo.buffer);
-			cb.draw(m_vbo.count);
+			cb.draw(m_vbo.count, instances, first);
 		}
 		s_trisDrawn.fetch_add(m_triCount);
 		return true;

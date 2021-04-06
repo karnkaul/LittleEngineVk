@@ -98,13 +98,13 @@ void CommandBuffer::bindVBO(Buffer const& vbo, Buffer const* pIbo) const {
 	}
 }
 
-void CommandBuffer::drawIndexed(u32 indexCount, u32 instanceCount, u32 firstIndex, s32 vertexOffset, u32 firstInstance) const {
+void CommandBuffer::drawIndexed(u32 indexCount, u32 instanceCount, u32 firstInstance, s32 vertexOffset, u32 firstIndex) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	m_cb.drawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 	s_drawCalls.fetch_add(1);
 }
 
-void CommandBuffer::draw(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) const {
+void CommandBuffer::draw(u32 vertexCount, u32 instanceCount, u32 firstInstance, u32 firstVertex) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	m_cb.draw(vertexCount, instanceCount, firstVertex, firstInstance);
 	s_drawCalls.fetch_add(1);

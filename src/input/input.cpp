@@ -54,7 +54,7 @@ Input::Out Input::update(EventQueue queue, [[maybe_unused]] Viewport const& view
 		auto const iwin = pDI->windowSize();
 		glm::vec2 const win(f32(iwin.x), f32(iwin.y));
 		if (view.scale < 1.0f) {
-			s.cursor.position = (s.cursor.screenPos - win * view.topLeft.n - view.topLeft.offset) / view.scale;
+			s.cursor.position = (s.cursor.screenPos - win * view.topLeft.norm - view.topLeft.offset) / view.scale;
 		}
 		s.cursor.position *= (glm::vec2(f32(ifb.x), f32(ifb.y)) / win);
 	}

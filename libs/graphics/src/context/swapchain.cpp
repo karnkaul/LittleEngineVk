@@ -268,14 +268,14 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		depthImageInfo.createInfo.arrayLayers = 1;
 		depthImageInfo.queueFlags = QType::eGraphics;
 		m_storage.depthImage = Image(m_vram, depthImageInfo);
-		m_storage.depthImageView = m_device.get().createImageView(m_storage.depthImage->image(), info.depthFormat, vk::ImageAspectFlagBits::eDepth);
+		m_storage.depthImageView = m_device.get().makeImageView(m_storage.depthImage->image(), info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		auto const format = info.colourFormat.format;
 		auto const aspectFlags = vk::ImageAspectFlagBits::eColor;
 		for (auto const& image : images) {
 			Frame frame;
 			frame.target.colour.image = image;
 			frame.target.depth.image = m_storage.depthImage->image();
-			frame.target.colour.view = m_device.get().createImageView(image, format, aspectFlags);
+			frame.target.colour.view = m_device.get().makeImageView(image, format, aspectFlags);
 			frame.target.depth.view = m_storage.depthImageView;
 			frame.target.extent = m_storage.current.extent;
 			ENSURE(frame.target.extent.width > 0 && frame.target.extent.height > 0, "Invariant violated");
@@ -320,7 +320,7 @@ void Swapchain::makeRenderPass() {
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colourAttachment;
 	subpass.pDepthStencilAttachment = &depthAttachment;
-	m_metadata.renderPass = m_device.get().createRenderPass(attachments, subpass, {});
+	m_metadata.renderPass = m_device.get().makeRenderPass(attachments, subpass, {});
 }
 
 void Swapchain::destroy(Storage& out_storage, bool bMeta) {

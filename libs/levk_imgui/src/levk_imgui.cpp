@@ -7,6 +7,7 @@
 #include <imgui_impl_glfw.h>
 #endif
 #include <imgui_impl_vulkan.h>
+#include <core/array_map.hpp>
 #include <core/colour.hpp>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
@@ -23,7 +24,10 @@ using namespace window;
 
 #if defined(LEVK_USE_IMGUI)
 namespace {
-vk::DescriptorPool createPool(Device& device, u32 count) {
+using DIS = DearImGui::State;
+constexpr ArrayMap<3, DIS, std::string_view> stateStr = {{DIS::eBegin, "eBegin"}, {DIS::eEnd, "eEnd"}, {DIS::eRender, "eRender"}};
+
+vk::DescriptorPool makePool(Device& device, u32 count) {
 	vk::DescriptorPoolSize pool_sizes[] = {{vk::DescriptorType::eSampler, count},
 										   {vk::DescriptorType::eCombinedImageSampler, count},
 										   {vk::DescriptorType::eSampledImage, count},
@@ -121,7 +125,7 @@ DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopIn
 	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = device.queues().queue(QType::eGraphics);
-	m_pool = createPool(device, info.descriptorCount);
+	m_pool = makePool(device, info.descriptorCount);
 	initInfo.Instance = device.m_instance.get().instance();
 	initInfo.Device = device.device();
 	initInfo.PhysicalDevice = device.physicalDevice().device;
@@ -151,7 +155,7 @@ DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopIn
 	vk::SubmitInfo endInfo;
 	endInfo.commandBufferCount = 1;
 	endInfo.pCommandBuffers = &commandBuffer;
-	auto done = device.createFence(false);
+	auto done = device.makeFence(false);
 	queue.queue.submit(endInfo, done);
 	device.waitFor(done);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
@@ -176,7 +180,15 @@ DearImGui::~DearImGui() {
 
 bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive && next(State::eEnd, State::eBegin)) {
+	if (m_bActive) {
+		if (m_state != State::eEnd) {
+			static constexpr std::string_view beginStr = mapped<std::string_view>(stateStr, State::eBegin);
+			logW("[DearImGui] Forcing [State::{}] from [State::{}]", beginStr, mapped<std::string_view>(stateStr, m_state));
+			if (m_state == State::eBegin) {
+				ImGui::Render();
+			}
+		}
+		next(m_state, State::eBegin);
 		ImGui_ImplVulkan_NewFrame();
 #if defined(LEVK_USE_GLFW)
 		ImGui_ImplGlfw_NewFrame();
@@ -191,7 +203,7 @@ bool DearImGui::beginFrame() {
 	return false;
 }
 
-bool DearImGui::render() {
+bool DearImGui::endFrame() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive && next(State::eBegin, State::eRender)) {
 		ImGui::Render();
@@ -201,7 +213,7 @@ bool DearImGui::render() {
 	return false;
 }
 
-bool DearImGui::endFrame([[maybe_unused]] graphics::CommandBuffer const& cb) {
+bool DearImGui::renderDrawData([[maybe_unused]] graphics::CommandBuffer const& cb) {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive && next(State::eRender, State::eEnd)) {
 		if (auto const pData = ImGui::GetDrawData()) {

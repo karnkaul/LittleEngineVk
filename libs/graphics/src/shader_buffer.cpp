@@ -45,7 +45,7 @@ void ShaderBuffer::resize(std::size_t size, std::size_t count) {
 		for (std::size_t i = m_storage.buffers.size(); i < count; ++i) {
 			RingBuffer<Buffer> buffer;
 			for (u32 j = 0; j < m_storage.rotateCount; ++j) {
-				buffer.ts.push_back(m_vram->createBO(m_storage.elemSize, m_storage.usage, true));
+				buffer.ts.push_back(m_vram->makeBuffer(m_storage.elemSize, m_storage.usage, true));
 			}
 			m_storage.buffers.push_back(std::move(buffer));
 		}

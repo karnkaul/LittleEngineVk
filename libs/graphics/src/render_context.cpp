@@ -8,33 +8,6 @@
 #include <graphics/render_context.hpp>
 
 namespace le::graphics {
-RenderContext::Render::Render(RenderContext& context, Frame&& frame) : m_frame(std::move(frame)), m_context(context) {
-}
-
-RenderContext::Render::Render(Render&& rhs) : m_frame(std::exchange(rhs.m_frame, Frame())), m_context(rhs.m_context) {
-}
-
-RenderContext::Render& RenderContext::Render::operator=(Render&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_frame = std::exchange(rhs.m_frame, Frame());
-		m_context = rhs.m_context;
-	}
-	return *this;
-}
-
-RenderContext::Render::~Render() {
-	destroy();
-}
-
-void RenderContext::Render::destroy() {
-	if (!Device::default_v(m_frame.primary.m_cb)) {
-		if (!m_context.get().endFrame()) {
-			g_log.log(lvl::warning, 1, "[{}] RenderContext failed to end frame", g_name);
-		}
-	}
-}
-
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;
@@ -131,23 +104,15 @@ std::optional<RenderContext::Frame> RenderContext::beginFrame(CommandBuffer::Pas
 	}
 	m_storage.status = Status::eDrawing;
 	m_device.get().destroy(sync.framebuffer);
-	sync.framebuffer = m_device.get().createFramebuffer(m_swapchain.get().renderPass(), target->attachments(), target->extent);
+	sync.framebuffer = m_device.get().makeFramebuffer(m_swapchain.get().renderPass(), target->attachments(), target->extent);
 	if (!sync.primary.commandBuffer.begin(m_swapchain.get().renderPass(), sync.framebuffer, target->extent, info)) {
 		ENSURE(false, "Failed to begin recording command buffer");
+		m_storage.status = Status::eReady;
 		m_device.get().destroy(sync.framebuffer, sync.sync.drawReady);
-		sync.sync.drawReady = m_device.get().createSemaphore(); // sync.drawReady will be signalled by acquireNextImage and cannot be reused
+		sync.sync.drawReady = m_device.get().makeSemaphore(); // sync.drawReady will be signalled by acquireNextImage and cannot be reused
 		return std::nullopt;
 	}
 	return Frame{*target, sync.primary.commandBuffer};
-}
-
-std::optional<RenderContext::Render> RenderContext::render(Colour clear, vk::ClearDepthStencilValue depth) {
-	vk::ClearColorValue const c = std::array{clear.r.toF32(), clear.g.toF32(), clear.b.toF32(), clear.a.toF32()};
-	CommandBuffer::PassInfo const pass{{c, depth}};
-	if (auto frame = beginFrame(pass)) {
-		return Render(*this, std::move(*frame));
-	}
-	return std::nullopt;
 }
 
 bool RenderContext::endFrame() {

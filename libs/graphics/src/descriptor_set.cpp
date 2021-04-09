@@ -61,7 +61,7 @@ DescriptorSet::DescriptorSet(Device& device, CreateInfo const& info) : m_device(
 					set.bindings[b].name = bindingInfo.name;
 				}
 			}
-			set.pool = m_device.get().createDescriptorPool(poolSizes, 1);
+			set.pool = m_device.get().makeDescriptorPool(poolSizes, 1);
 			set.set = m_device.get().allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
 			m_storage.setBuffer.push(std::move(set));
 		}

@@ -13,7 +13,7 @@ constexpr vk::DeviceSize ceilPOT(vk::DeviceSize size) noexcept {
 	return ret;
 }
 
-Buffer createStagingBuffer(Memory& memory, vk::DeviceSize size) {
+Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
 	Buffer::CreateInfo info;
 	info.size = ceilPOT(size);
 	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
@@ -35,7 +35,7 @@ Transfer::Transfer(Memory& memory, CreateInfo const& info) : m_memory(memory) {
 			auto lock = m_sync.mutex.lock();
 			for (auto const& range : r) {
 				for (auto i = range.count; i > 0; --i) {
-					m_data.buffers.push_back(createStagingBuffer(m_memory, range.size));
+					m_data.buffers.push_back(makeStagingBuffer(m_memory, range.size));
 				}
 			}
 		}
@@ -133,7 +133,7 @@ Buffer Transfer::nextBuffer(vk::DeviceSize size) {
 			return ret;
 		}
 	}
-	return createStagingBuffer(m_memory, size);
+	return makeStagingBuffer(m_memory, size);
 }
 
 vk::CommandBuffer Transfer::nextCommand() {
@@ -164,6 +164,6 @@ vk::Fence Transfer::nextFence() {
 		m_data.fences.pop_back();
 		return ret;
 	}
-	return m_memory.get().m_device.get().createFence(false);
+	return m_memory.get().m_device.get().makeFence(false);
 }
 } // namespace le::graphics

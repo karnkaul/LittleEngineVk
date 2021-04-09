@@ -53,6 +53,7 @@ class Engine {
 	};
 
 	struct CreateInfo;
+	struct DrawFrame;
 
 	static Version version() noexcept;
 	static Stats const& stats() noexcept;
@@ -65,7 +66,11 @@ class Engine {
 	bool editorActive() const noexcept;
 	bool editorEngaged() const noexcept;
 
-	void update();
+	bool beginFrame(bool waitDrawReady);
+	bool drawReady();
+	std::optional<Context::Frame> beginDraw(Colour clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	std::optional<DrawFrame> drawFrame(Colour clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	bool endDraw(Context::Frame const& frame);
 
 	bool boot(Boot::CreateInfo const& boot);
 	bool unboot() noexcept;
@@ -108,6 +113,16 @@ class Engine {
 struct Engine::CreateInfo {
 	std::optional<io::Path> logFile = "log.txt";
 	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
+};
+
+struct Engine::DrawFrame {
+	Context::Frame frame;
+	Ref<Engine> engine;
+
+	DrawFrame(Engine& engine, Context::Frame&& frame) noexcept;
+	DrawFrame(DrawFrame&&) noexcept;
+	DrawFrame& operator=(DrawFrame&&) noexcept;
+	~DrawFrame();
 };
 
 // impl

@@ -166,7 +166,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 	out_storage.data.format = info.format;
 	Device& d = m_vram.get().m_device;
 	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
-	out_storage.data.imageView = d.createImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
+	out_storage.data.imageView = d.makeImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
 	return true;
 }
 

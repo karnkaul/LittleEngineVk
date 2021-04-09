@@ -114,18 +114,18 @@ void Device::waitIdle() {
 	m_deferred.flush();
 }
 
-vk::Semaphore Device::createSemaphore() const {
+vk::Semaphore Device::makeSemaphore() const {
 	return m_device.createSemaphore({});
 }
 
-vk::Fence Device::createFence(bool bSignalled) const {
+vk::Fence Device::makeFence(bool bSignalled) const {
 	vk::FenceCreateFlags flags = bSignalled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags();
 	return m_device.createFence(flags);
 }
 
-void Device::resetOrCreateFence(vk::Fence& out_fence, bool bSignalled) const {
+void Device::resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const {
 	if (default_v(out_fence)) {
-		out_fence = createFence(bSignalled);
+		out_fence = makeFence(bSignalled);
 	} else {
 		resetFence(out_fence);
 	}
@@ -178,7 +178,7 @@ bool Device::signalled(View<vk::Fence> fences) const {
 	return std::all_of(fences.begin(), fences.end(), s);
 }
 
-vk::ImageView Device::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
+vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
 	createInfo.viewType = type;
@@ -192,7 +192,11 @@ vk::ImageView Device::createImageView(vk::Image image, vk::Format format, vk::Im
 	return m_device.createImageView(createInfo);
 }
 
-vk::PipelineLayout Device::createPipelineLayout(vAP<vk::PushConstantRange> pushConstants, vAP<vk::DescriptorSetLayout> setLayouts) const {
+vk::PipelineCache Device::makePipelineCache() const {
+	return m_device.createPipelineCache({});
+}
+
+vk::PipelineLayout Device::makePipelineLayout(vAP<vk::PushConstantRange> pushConstants, vAP<vk::DescriptorSetLayout> setLayouts) const {
 	vk::PipelineLayoutCreateInfo createInfo;
 	createInfo.setLayoutCount = setLayouts.size();
 	createInfo.pSetLayouts = setLayouts.data();
@@ -201,14 +205,14 @@ vk::PipelineLayout Device::createPipelineLayout(vAP<vk::PushConstantRange> pushC
 	return m_device.createPipelineLayout(createInfo);
 }
 
-vk::DescriptorSetLayout Device::createDescriptorSetLayout(vAP<vk::DescriptorSetLayoutBinding> bindings) const {
+vk::DescriptorSetLayout Device::makeDescriptorSetLayout(vAP<vk::DescriptorSetLayoutBinding> bindings) const {
 	vk::DescriptorSetLayoutCreateInfo createInfo;
 	createInfo.bindingCount = bindings.size();
 	createInfo.pBindings = bindings.data();
 	return m_device.createDescriptorSetLayout(createInfo);
 }
 
-vk::DescriptorPool Device::createDescriptorPool(vAP<vk::DescriptorPoolSize> poolSizes, u32 maxSets) const {
+vk::DescriptorPool Device::makeDescriptorPool(vAP<vk::DescriptorPoolSize> poolSizes, u32 maxSets) const {
 	vk::DescriptorPoolCreateInfo createInfo;
 	createInfo.poolSizeCount = poolSizes.size();
 	createInfo.pPoolSizes = poolSizes.data();
@@ -224,8 +228,8 @@ std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool
 	return m_device.allocateDescriptorSets(allocInfo);
 }
 
-vk::RenderPass Device::createRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
-										vAP<vk::SubpassDependency> dependencies) const {
+vk::RenderPass Device::makeRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
+									  vAP<vk::SubpassDependency> dependencies) const {
 	vk::RenderPassCreateInfo createInfo;
 	createInfo.attachmentCount = attachments.size();
 	createInfo.pAttachments = attachments.data();
@@ -236,7 +240,7 @@ vk::RenderPass Device::createRenderPass(vAP<vk::AttachmentDescription> attachmen
 	return m_device.createRenderPass(createInfo);
 }
 
-vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers) const {
+vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers) const {
 	vk::FramebufferCreateInfo createInfo;
 	createInfo.attachmentCount = attachments.size();
 	createInfo.pAttachments = attachments.data();

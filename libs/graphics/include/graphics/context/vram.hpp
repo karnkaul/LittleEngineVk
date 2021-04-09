@@ -14,9 +14,9 @@ class VRAM final : public Memory {
 	VRAM(Device& device, Transfer::CreateInfo const& transferInfo = {});
 	~VRAM();
 
-	Buffer createBO(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible);
+	Buffer makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible);
 	template <typename T>
-	Buffer createBO(T const& t, vk::BufferUsageFlags usage);
+	Buffer makeBO(T const& t, vk::BufferUsageFlags usage);
 
 	[[nodiscard]] Future copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
@@ -41,8 +41,8 @@ class VRAM final : public Memory {
 // impl
 
 template <typename T>
-Buffer VRAM::createBO(T const& t, vk::BufferUsageFlags usage) {
-	Buffer ret = createBO(sizeof(T), usage, true);
+Buffer VRAM::makeBO(T const& t, vk::BufferUsageFlags usage) {
+	Buffer ret = makeBuffer(sizeof(T), usage, true);
 	ret.writeT(t);
 	return ret;
 }

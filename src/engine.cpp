@@ -24,6 +24,29 @@ Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	};
 }
 
+Engine::DrawFrame::DrawFrame(Engine& engine, Context::Frame&& frame) noexcept : frame(std::move(frame)), engine(engine) {
+}
+
+Engine::DrawFrame::DrawFrame(DrawFrame&& rhs) noexcept : frame(std::exchange(rhs.frame, Context::Frame())), engine(rhs.engine) {
+}
+
+Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
+	if (&rhs != this) {
+		if (frame.primary.valid()) {
+			engine.get().endDraw(frame);
+		}
+		frame = std::exchange(rhs.frame, Context::Frame());
+		engine = rhs.engine;
+	}
+	return *this;
+}
+
+Engine::DrawFrame::~DrawFrame() {
+	if (frame.primary.valid()) {
+		engine.get().endDraw(frame);
+	}
+}
+
 Version Engine::version() noexcept {
 	return g_engineVersion;
 }
@@ -51,15 +74,62 @@ void Engine::pushReceiver(Input::IReceiver& context) {
 	context.m_inputTag = m_receivers.emplace_back(context);
 }
 
-void Engine::update() {
+bool Engine::beginFrame(bool waitDrawReady) {
 	updateStats();
-	if constexpr (levk_imgui) {
-		if (m_gfx) {
-			m_gfx->imgui.beginFrame();
+	if (m_gfx) {
+		if constexpr (levk_imgui) {
+			[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
+			ENSURE(b, "Failed to begin DearImGui frame");
 		}
-		ENSURE(m_pDesktop, "Invariant violated");
-		m_editor.update(*m_pDesktop, m_inputState);
+		if (m_gfx->context.reconstructed(m_win.get().framebufferSize())) {
+			return false;
+		}
+		if (waitDrawReady) {
+			return drawReady();
+		}
+		return true;
 	}
+	return false;
+}
+
+bool Engine::drawReady() {
+	if (m_gfx) {
+		return m_gfx->context.waitForFrame();
+	}
+	return false;
+}
+
+std::optional<Engine::Context::Frame> Engine::beginDraw(Colour clear, vk::ClearDepthStencilValue depth) {
+	if (m_gfx) {
+		if constexpr (levk_imgui) {
+			if (m_gfx->imgui.state() == DearImGui::State::eBegin) {
+				ENSURE(m_pDesktop, "Invariant violated");
+				m_editor.update(*m_pDesktop, m_inputState);
+			}
+		}
+		vk::ClearColorValue const c = std::array{clear.r.toF32(), clear.g.toF32(), clear.b.toF32(), clear.a.toF32()};
+		graphics::CommandBuffer::PassInfo const pass{{c, depth}};
+		return m_gfx->context.beginFrame(pass);
+	}
+	return std::nullopt;
+}
+
+std::optional<Engine::DrawFrame> Engine::drawFrame(Colour clear, vk::ClearDepthStencilValue depth) {
+	if (auto frame = beginDraw(clear, depth)) {
+		return DrawFrame(*this, std::move(*frame));
+	}
+	return std::nullopt;
+}
+
+bool Engine::endDraw(Context::Frame const& frame) {
+	if (m_gfx) {
+		if constexpr (levk_imgui) {
+			m_gfx->imgui.endFrame();
+			m_gfx->imgui.renderDrawData(frame.primary);
+		}
+		return m_gfx->context.endFrame();
+	}
+	return false;
 }
 
 bool Engine::boot(Boot::CreateInfo const& boot) {

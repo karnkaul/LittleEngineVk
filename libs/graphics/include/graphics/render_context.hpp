@@ -24,29 +24,6 @@ class RenderContext : NoCopy {
 		RenderTarget target;
 		CommandBuffer primary;
 	};
-	class Render {
-	  public:
-		Render(RenderContext& context, Frame&& frame);
-		Render(Render&&);
-		Render& operator=(Render&&);
-		~Render();
-
-		RenderTarget const& target() const {
-			return m_frame.target;
-		}
-		CommandBuffer& primary() {
-			return m_frame.primary;
-		}
-
-		Frame m_frame;
-
-	  private:
-		void destroy();
-
-		vk::Semaphore m_presentReady;
-		vk::Fence m_drawing;
-		Ref<RenderContext> m_context;
-	};
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
@@ -60,8 +37,6 @@ class RenderContext : NoCopy {
 	bool waitForFrame();
 	std::optional<Frame> beginFrame(CommandBuffer::PassInfo const& info);
 	bool endFrame();
-
-	std::optional<Render> render(Colour clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
 
 	Status status() const noexcept;
 	std::size_t index() const noexcept;

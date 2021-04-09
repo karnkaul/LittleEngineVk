@@ -7,9 +7,9 @@ BufferedFrameSync::BufferedFrameSync(Device& device, std::size_t size, u32 secon
 	std::size_t idx = 0;
 	ts.resize(size);
 	for (auto& s : ts) {
-		s.sync.drawReady = device.createSemaphore();
-		s.sync.presentReady = device.createSemaphore();
-		s.sync.drawing = device.createFence(true);
+		s.sync.drawReady = device.makeSemaphore();
+		s.sync.presentReady = device.makeSemaphore();
+		s.sync.drawing = device.makeFence(true);
 		s.secondary.resize((std::size_t)secondaryCount);
 		for (std::size_t i = 0; i < (std::size_t)secondaryCount + 1; ++i) {
 			vk::CommandPoolCreateInfo commandPoolCreateInfo;
@@ -59,9 +59,9 @@ void BufferedFrameSync::refreshSync() {
 			}
 		});
 		for (auto& s : ts) {
-			s.sync.drawReady = d.createSemaphore();
-			s.sync.presentReady = d.createSemaphore();
-			s.sync.drawing = d.createFence(true);
+			s.sync.drawReady = d.makeSemaphore();
+			s.sync.presentReady = d.makeSemaphore();
+			s.sync.drawing = d.makeFence(true);
 		}
 		g_log.log(lvl::info, 1, "[{}] BufferedFrameSync refreshed", g_name);
 	}

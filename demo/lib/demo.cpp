@@ -398,7 +398,7 @@ class Drawer {
 		std::size_t idx = 0;
 		for (type& d : list.ts) {
 			if (sb10) {
-				graphics::Buffer const buf = m_vram->createBO(d.node.get().model(), vk::BufferUsageFlagBits::eUniformBuffer);
+				graphics::Buffer const buf = m_vram->makeBO(d.node.get().model(), vk::BufferUsageFlagBits::eUniformBuffer);
 				si.update(buf, sb10.set, sb10.bind, idx);
 			}
 			for (Primitive& prim : d.prims) {
@@ -417,7 +417,7 @@ class Drawer {
 					si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, idx);
 				}
 				if (sb30) {
-					graphics::Buffer const buf = m_vram->createBO(ShadeMat::make(mat), vk::BufferUsageFlagBits::eUniformBuffer);
+					graphics::Buffer const buf = m_vram->makeBO(ShadeMat::make(mat), vk::BufferUsageFlagBits::eUniformBuffer);
 					si.update(buf, sb30.set, sb30.bind, idx);
 				}
 				++idx;
@@ -732,7 +732,6 @@ class App : public Input::IReceiver {
 			Editor::s_in.registry = &m_data.registry;
 			Editor::s_in.root = &m_data.root;
 			Editor::s_in.customEntities.push_back(m_data.camera);
-			m_eng.get().update();
 		}
 
 		if (!m_data.loader.ready(&m_tasks)) {
@@ -765,23 +764,19 @@ class App : public Input::IReceiver {
 
 	void render() {
 		Engine& eng = m_eng;
-		if (eng.gfx().context.waitForFrame()) {
-			// write / update
-			if (!m_data.registry.empty()) {
-				auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
-				m_data.drawer.write(cam, eng.gfx().context.extent(), m_data.dirLights);
-			}
+		// write / update
+		if (!m_data.registry.empty()) {
+			auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
+			m_data.drawer.write(cam, eng.gfx().context.extent(), m_data.dirLights);
+		}
 
-			// draw
-			if (auto r = eng.gfx().context.render(Colour(0x040404ff))) {
-				eng.gfx().imgui.render();
-				auto& cb = r->primary();
-				if (!m_data.registry.empty()) {
-					m_data.drawer.m_vram = &m_eng.get().gfx().boot.vram;
-					cb.setViewportScissor(eng.viewport(), eng.gfx().context.scissor());
-					batchDraw(m_data.drawer, m_data.registry, cb);
-				}
-				eng.gfx().imgui.endFrame(cb);
+		// draw
+		if (auto frame = eng.drawFrame(Colour(0x040404ff))) {
+			auto& cb = frame->frame.primary;
+			if (!m_data.registry.empty()) {
+				m_data.drawer.m_vram = &m_eng.get().gfx().boot.vram;
+				cb.setViewportScissor(eng.viewport(), eng.gfx().context.scissor());
+				batchDraw(m_data.drawer, m_data.registry, cb);
 			}
 		}
 	}
@@ -879,22 +874,17 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 				app.reset();
 				engine.unboot();
 			}
-			if (flags.test(Flag::eResized)) {
-				/*if (!context.recreated(winst.framebufferSize())) {
-					ENSURE(false, "Swapchain failure");
-				}*/
-				flags.reset(Flag::eResized);
-			}
-			if (engine.booted() && engine.gfx().context.reconstructed(winst.framebufferSize())) {
-				continue;
-			}
 
-			if (app) {
-				// threads::sleep(5ms);
-				app->tick(flags, dt);
-				app->render();
+			if (engine.beginFrame(false)) {
+				if (app) {
+					// threads::sleep(5ms);
+					app->tick(flags, dt);
+					if (engine.drawReady()) {
+						app->render();
+					}
+				}
+				flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
 			}
-			flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
 		}
 	} catch (std::exception const& e) {
 		logE("exception: {}", e.what());

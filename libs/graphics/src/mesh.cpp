@@ -25,7 +25,7 @@ Mesh::~Mesh() {
 
 Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
-	ret.buffer = m_vram.get().createBO(size, usage, m_type == Type::eDynamic);
+	ret.buffer = m_vram.get().makeBuffer(size, usage, m_type == Type::eDynamic);
 	ENSURE(ret.buffer, "Invalid buffer");
 	if (m_type == Type::eStatic) {
 		ret.transfer = m_vram.get().stage(*ret.buffer, pData, size);

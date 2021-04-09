@@ -45,8 +45,8 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 	~DearImGui();
 
 	bool beginFrame();
-	bool render();
-	bool endFrame(graphics::CommandBuffer const& cb);
+	bool endFrame();
+	bool renderDrawData(graphics::CommandBuffer const& cb);
 
 	State state() const noexcept;
 	bool ready() const noexcept;

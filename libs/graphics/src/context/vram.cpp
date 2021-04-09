@@ -15,7 +15,7 @@ VRAM::~VRAM() {
 	g_log.log(lvl::info, 1, "[{}] VRAM destroyed", g_name);
 }
 
-Buffer VRAM::createBO(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible) {
+Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible) {
 	Buffer::CreateInfo bufferInfo;
 	bufferInfo.size = size;
 	if (bHostVisible) {

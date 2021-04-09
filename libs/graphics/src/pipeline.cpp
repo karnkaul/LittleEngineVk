@@ -170,27 +170,24 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	}
 	m_metadata.name = shader.m_name;
 	if (Device::default_v(m_storage.dynamic.cache)) {
-		m_storage.dynamic.cache = m_device.get().device().createPipelineCache({});
+		m_storage.dynamic.cache = m_device.get().makePipelineCache();
 	}
 	if (bFixed) {
 		auto& f = m_storage.fixed;
 		f = {};
 		auto setBindings = utils::extractBindings(shader);
 		for (auto& [set, binds] : setBindings.sets) {
-			vk::DescriptorSetLayoutCreateInfo createInfo;
 			std::vector<vk::DescriptorSetLayoutBinding> bindings;
 			for (auto& setBinding : binds) {
 				if (!setBinding.bUnassigned) {
 					bindings.push_back(setBinding.binding);
 				}
 			}
-			createInfo.bindingCount = (u32)bindings.size();
-			createInfo.pBindings = bindings.data();
-			auto const descLayout = m_device.get().device().createDescriptorSetLayout(createInfo);
+			auto const descLayout = m_device.get().makeDescriptorSetLayout(bindings);
 			f.setLayouts.push_back(descLayout);
 			f.bindingInfos.push_back(std::move(binds));
 		}
-		f.layout = m_device.get().createPipelineLayout(setBindings.push, f.setLayouts);
+		f.layout = m_device.get().makePipelineLayout(setBindings.push, f.setLayouts);
 		m_storage.input = ShaderInput(*this, m_metadata.main.rotateCount);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;

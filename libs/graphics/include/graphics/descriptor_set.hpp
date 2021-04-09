@@ -180,7 +180,7 @@ template <typename C>
 void DescriptorSet::update(u32 binding, C const& buffers, vk::DescriptorType type) {
 	Bufs bufs;
 	for (Buffer const& buf : buffers) {
-		bufs.buffers.push_back({buf.buffer(), buf.writeSize(), buf.writeCount()});
+		bufs.buffers.push_back({buf.buffer(), (std::size_t)buf.writeSize(), buf.writeCount()});
 	}
 	bufs.type = type;
 	updateBufs(binding, std::move(bufs));

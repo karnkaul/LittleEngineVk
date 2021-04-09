@@ -53,7 +53,6 @@ struct AssetLoadData<graphics::Texture> {
 	graphics::Texture::Raw raw;
 	io::Path prefix;
 	std::string ext;
-	std::string name;
 	Ref<graphics::VRAM> vram;
 	Hash samplerID;
 
@@ -73,7 +72,6 @@ struct AssetLoader<graphics::Texture> {
 
 template <>
 struct AssetLoadData<BitmapFont> {
-	std::string name;
 	io::Path jsonID;
 	vk::Format texFormat = graphics::Texture::srgbFormat;
 	Ref<graphics::VRAM> vram;

@@ -130,8 +130,8 @@ struct Text {
 	std::optional<graphics::Mesh> mesh;
 	static constexpr glm::mat4 const model = glm::mat4(1.0f);
 
-	void create(graphics::VRAM& vram, io::Path const& id, Type type = Type::eDynamic) {
-		mesh = graphics::Mesh((id / "mesh").generic_string(), vram, type);
+	void create(graphics::VRAM& vram, Type type = Type::eDynamic) {
+		mesh = graphics::Mesh(vram, type);
 	}
 
 	bool set(BitmapFont const& font, std::string_view str) {
@@ -311,47 +311,34 @@ struct PlayerController {
 	}
 };
 
-struct DrawObj {
-	graphics::ShaderBuffer material;
-	Primitive primitive;
-};
-
 struct Drawable {
 	using Mesh = graphics::Mesh;
 
-	graphics::ShaderBuffer mat_m;
-	std::vector<DrawObj> objs;
+	std::vector<Primitive> prims;
 	Ref<SceneNode> node;
-	std::string_view name;
 
-	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, View<Primitive> primitives) : node(node), name(name) {
-		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
-		set(vram, primitives);
+	Drawable(SceneNode& node, View<Primitive> primitives) : node(node) {
+		set(primitives);
 	}
 
-	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, Mesh const& mesh, Material const& mat) : node(node), name(name) {
-		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
+	Drawable(SceneNode& node, Mesh const& mesh, Material const& mat) : node(node) {
 		Primitive prim;
 		prim.mesh = &mesh;
 		prim.material = mat;
-		set(vram, prim);
+		set(prim);
 	}
 
-	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, Model const& model) : node(node), name(name) {
-		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
-		set(vram, model.primitives());
+	Drawable(SceneNode& node, Model const& model) : node(node) {
+		set(model.primitives());
 	}
 
-	void set(graphics::VRAM& vram, View<Primitive> primitives) {
-		objs.reserve(std::max(objs.size(), primitives.size()));
+	void set(View<Primitive> primitives) {
+		prims.reserve(std::max(prims.size(), primitives.size()));
 		for (std::size_t i = 0; i < primitives.size(); ++i) {
-			if (i < objs.size()) {
-				objs[i].primitive = primitives[i];
+			if (i < prims.size()) {
+				prims[i] = primitives[i];
 			} else {
-				DrawObj obj;
-				obj.primitive = primitives[i];
-				obj.material = graphics::ShaderBuffer(vram, std::string(name) + "/material", {});
-				objs.push_back(std::move(obj));
+				prims.push_back(primitives[i]);
 			}
 		}
 	}
@@ -411,15 +398,11 @@ class Drawer {
 		std::size_t idx = 0;
 		for (type& d : list.ts) {
 			if (sb10) {
-				// d.mat_m.write(d.node.get().model());
-				graphics::Buffer b = m_vram->createBO("tmp", sizeof(glm::mat4), vk::BufferUsageFlagBits::eUniformBuffer, true);
-				glm::mat4 const m = d.node.get().model();
-				b.write(&m);
-				si.update(b, sb10.set, sb10.bind, idx);
-				// d.mat_m.swap();
+				graphics::Buffer const buf = m_vram->createBO(d.node.get().model(), vk::BufferUsageFlagBits::eUniformBuffer);
+				si.update(buf, sb10.set, sb10.bind, idx);
 			}
-			for (DrawObj& obj : d.objs) {
-				Material const& mat = obj.primitive.material;
+			for (Primitive& prim : d.prims) {
+				Material const& mat = prim.material;
 				if (list.layer.order < 0) {
 					ENSURE(mat.map_Kd, "Null cubemap");
 					si.update(*mat.map_Kd, 0, 1, idx);
@@ -434,10 +417,8 @@ class Drawer {
 					si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, idx);
 				}
 				if (sb30) {
-					ShadeMat const mat = ShadeMat::make(obj.primitive.material);
-					obj.material.write(mat);
-					si.update(obj.material, sb30.set, sb30.bind, idx);
-					obj.material.swap();
+					graphics::Buffer const buf = m_vram->createBO(ShadeMat::make(mat), vk::BufferUsageFlagBits::eUniformBuffer);
+					si.update(buf, sb30.set, sb30.bind, idx);
 				}
 				++idx;
 			}
@@ -455,10 +436,10 @@ class Drawer {
 		std::size_t idx = 0;
 		for (Drawable const& d : list.ts) {
 			pipe.bindSet(cb, 1, idx);
-			for (DrawObj const& obj : d.objs) {
+			for (Primitive const& prim : d.prims) {
 				pipe.bindSet(cb, {2, 3}, idx);
-				ENSURE(obj.primitive.mesh, "Null mesh");
-				obj.primitive.mesh->draw(cb);
+				ENSURE(prim.mesh, "Null mesh");
+				prim.mesh->draw(cb);
 				++idx;
 			}
 		}
@@ -511,18 +492,17 @@ class App : public Input::IReceiver {
 		AssetLoadData<BitmapFont> fld(m_eng.get().gfx().boot.vram);
 		fld.jsonID = "fonts/default/default.json";
 		fld.texFormat = m_eng.get().gfx().context.textureFormat();
-		fld.name = "fonts/default";
 		fld.samplerID = "samplers/default";
 		m_data.loader.stage(m_store, AssetList<BitmapFont>{{{"fonts/default", std::move(fld)}}}, m_tasks);
 		{
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
 			auto const skyCubeV = gcube.positions();
-			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.gfx().boot.vram));
+			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh(eng.gfx().boot.vram));
 			cube->construct(gcube);
-			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.gfx().boot.vram));
+			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(eng.gfx().boot.vram));
 			cone->construct(graphics::makeCone());
-			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.gfx().boot.vram));
+			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh(eng.gfx().boot.vram));
 			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
 		}
 
@@ -550,33 +530,26 @@ class App : public Input::IReceiver {
 		AssetList<graphics::Texture> texList;
 		AssetLoadData<graphics::Texture> textureLD{eng.gfx().boot.vram};
 		textureLD.samplerID = "samplers/default";
-		textureLD.name = "cubemaps/sky_dusk";
 		textureLD.prefix = "skyboxes/sky_dusk";
 		textureLD.ext = ".jpg";
 		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
 		texList.add("cubemaps/sky_dusk", std::move(textureLD));
-		textureLD.name = "textures/container2/diffuse";
 		textureLD.prefix.clear();
 		textureLD.ext.clear();
 		textureLD.imageIDs = {"textures/container2.png"};
 		texList.add("textures/container2/diffuse", std::move(textureLD));
-		textureLD.name = "textures/container2/specular";
 		textureLD.prefix.clear();
 		textureLD.ext.clear();
 		textureLD.imageIDs = {"textures/container2_specular.png"};
 		texList.add("textures/container2/specular", std::move(textureLD));
-		textureLD.name = "textures/red";
 		textureLD.imageIDs.clear();
 		textureLD.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
 		textureLD.raw.size = {1, 1};
 		texList.add("textures/red", std::move(textureLD));
-		textureLD.name = "textures/black";
 		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0xff});
 		texList.add("textures/black", std::move(textureLD));
-		textureLD.name = "textures/white";
 		textureLD.raw.bytes = graphics::utils::convert({0xff, 0xff, 0xff, 0xff});
 		texList.add("textures/white", std::move(textureLD));
-		textureLD.name = "textures/blank";
 		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0});
 		texList.add("textures/blank", std::move(textureLD));
 		m_data.loader.stage(m_store, texList, m_tasks);
@@ -638,19 +611,19 @@ class App : public Input::IReceiver {
 
 	decf::spawn_t<SceneNode> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
 		auto ret = spawn(std::move(name), layer);
-		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, primitives);
+		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), primitives);
 		return ret;
 	};
 
 	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, graphics::Mesh const& mesh, Material const& mat = {}) {
 		auto ret = spawn(std::move(name), layer);
-		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, mesh, mat);
+		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), mesh, mat);
 		return ret;
 	};
 
 	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, Model const& model) {
 		auto ret = spawn(std::move(name), layer);
-		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, model);
+		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), model);
 		return ret;
 	};
 
@@ -668,7 +641,7 @@ class App : public Input::IReceiver {
 		m_data.drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
 		m_data.drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
 
-		m_data.text.create(m_eng.get().gfx().boot.vram, "text");
+		m_data.text.create(m_eng.get().gfx().boot.vram);
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
@@ -688,11 +661,11 @@ class App : public Input::IReceiver {
 		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
 		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
 		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
-		m_data.drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, "view_mats", {});
+		m_data.drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
 			info.type = vk::DescriptorType::eStorageBuffer;
-			m_data.drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, "lights", {});
+			m_data.drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, {});
 		}
 		DirLight l0, l1;
 		l0.direction = {-graphics::front, 0.0f};

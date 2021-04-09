@@ -344,7 +344,7 @@ Model::Result<View<Primitive>> Model::construct(VRAM& vram, CreateInfo const& in
 			tci.format = texFormat;
 			tci.sampler = sampler.sampler();
 			tci.data = graphics::Texture::Img{{tex.bytes.begin(), tex.bytes.end()}};
-			graphics::Texture texture((info.id / tex.id).generic_string(), vram);
+			graphics::Texture texture(vram);
 			if (!texture.construct(tci)) {
 				return std::string("Failed to construct texture");
 			}
@@ -359,7 +359,7 @@ Model::Result<View<Primitive>> Model::construct(VRAM& vram, CreateInfo const& in
 		materials.emplace(mat.hash, material);
 	}
 	for (auto const& m : info.meshes) {
-		graphics::Mesh mesh((info.id / m.id).generic_string(), vram);
+		graphics::Mesh mesh(vram);
 		mesh.construct(m.geometry);
 		auto [it, _] = storage.meshes.emplace((info.id / m.id).generic_string(), std::move(mesh));
 		Primitive prim;

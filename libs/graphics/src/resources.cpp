@@ -51,25 +51,7 @@ Memory::~Memory() {
 	g_log.log(lvl::info, 1, "[{}] Memory destroyed", g_name);
 }
 
-u64 Memory::bytes(Resource::Type type) const {
-	return m_allocations[(std::size_t)type].load();
-}
-
-std::string Memory::countsText() const {
-	auto const [bsize, bunit] = utils::friendlySize(bytes(Resource::Type::eBuffer));
-	auto const [isize, iunit] = utils::friendlySize(bytes(Resource::Type::eImage));
-	return fmt::format("Buffers: [{:.2f}{}]; Images: [{:.2f}{}]", bsize, bunit, isize, iunit);
-}
-
-void Memory::logCounts(dl::level level) const {
-	g_log.log(level, 1, "{}", countsText());
-}
-
 Buffer::Buffer(Memory& memory, CreateInfo const& info) : Resource(memory) {
-#if defined(LEVK_VKRESOURCE_NAMES)
-	ENSURE(!info.name.empty(), "Unnamed buffer!");
-	m_data.name = info.name;
-#endif
 	Device& device = memory.m_device;
 	vk::BufferCreateInfo bufferInfo;
 	m_storage.writeSize = bufferInfo.size = info.size;
@@ -86,9 +68,6 @@ Buffer::Buffer(Memory& memory, CreateInfo const& info) : Resource(memory) {
 		throw std::runtime_error("Allocation error");
 	}
 	m_storage.buffer = vk::Buffer(vkBuffer);
-#if defined(LEVK_VKRESOURCE_NAMES)
-	memory.m_device.get().setDebugUtilsName((u64)vkBuffer, m_storage.buffer.objectType, m_data.name);
-#endif
 	m_data.queueFlags = info.queueFlags;
 	m_data.mode = bufferInfo.sharingMode;
 	m_storage.usage = info.usage;
@@ -97,14 +76,6 @@ Buffer::Buffer(Memory& memory, CreateInfo const& info) : Resource(memory) {
 	vmaGetAllocationInfo(memory.m_allocator, m_data.handle, &allocationInfo);
 	m_data.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};
 	memory.m_allocations[(std::size_t)type].fetch_add(m_storage.writeSize);
-	if (memory.m_bLogAllocs) {
-		auto const [size, unit] = utils::friendlySize(m_storage.writeSize);
-#if defined(LEVK_VKRESOURCE_NAMES)
-		g_log.log(memory.m_logLevel, 1, "== [{}] Buffer [{}] constructed: [{:.2f}{}] | {}", g_name, m_data.name, size, unit, memory.countsText());
-#else
-		g_log.log(memory.m_logLevel, 1, "== [{}] Buffer constructed: [{:.2f}{}] | {}", g_name, size, unit, memory.countsText());
-#endif
-	}
 }
 
 Buffer::Buffer(Buffer&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) {
@@ -132,14 +103,6 @@ void Buffer::destroy() {
 	}
 	if (!Device::default_v(m_storage.buffer)) {
 		m.m_allocations[(std::size_t)type].fetch_sub(m_storage.writeSize);
-		if (m.m_bLogAllocs && m_data.alloc.actualSize > 0) {
-			auto const [size, unit] = utils::friendlySize(m_storage.writeSize);
-#if defined(LEVK_VKRESOURCE_NAMES)
-			g_log.log(m.m_logLevel, 1, "== [{}] Buffer [{}] destroyed: [{:.2f}{}] | {}", g_name, m_data.name, size, unit, m.countsText());
-#else
-			g_log.log(m.m_logLevel, 1, "== [{}] Buffer destroyed: [{:.2f}{}] | {}", g_name, size, unit, m.countsText());
-#endif
-		}
 		auto del = [a = m.m_allocator, b = m_storage.buffer, h = m_data.handle]() { vmaDestroyBuffer(a, static_cast<VkBuffer>(b), h); };
 		m.m_device.get().defer(del);
 	}
@@ -147,11 +110,7 @@ void Buffer::destroy() {
 
 void const* Buffer::map() {
 	if (m_storage.type != Buffer::Type::eCpuToGpu) {
-#if defined(LEVK_VKRESOURCE_NAMES)
-		g_log.log(lvl::error, 1, "[{}] Attempt to map GPU-only Buffer [{}]!", g_name, m_data.name);
-#else
 		g_log.log(lvl::error, 1, "[{}] Attempt to map GPU-only Buffer!", g_name);
-#endif
 		return nullptr;
 	}
 	if (!m_storage.pMap && m_storage.writeSize > 0) {
@@ -171,11 +130,7 @@ bool Buffer::unmap() {
 
 bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset) {
 	if (m_storage.type != Buffer::Type::eCpuToGpu) {
-#if defined(LEVK_VKRESOURCE_NAMES)
-		g_log.log(lvl::error, 1, "[{}] Attempt to write to GPU-only Buffer [{}]!", g_name, m_data.name);
-#else
 		g_log.log(lvl::error, 1, "[{}] Attempt to write to GPU-only Buffer!", g_name);
-#endif
 		return false;
 	}
 	if (!Device::default_v(m_data.alloc.memory) && !Device::default_v(m_storage.buffer)) {
@@ -194,10 +149,6 @@ bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset
 
 Image::Image(Memory& memory, CreateInfo const& info) : Resource(memory) {
 	Device& d = memory.m_device;
-#if defined(LEVK_VKRESOURCE_NAMES)
-	ENSURE(!info.name.empty(), "Unnamed buffer!");
-	m_data.name = info.name;
-#endif
 	vk::ImageCreateInfo imageInfo = info.createInfo;
 	auto const indices = d.queues().familyIndices(info.queueFlags);
 	imageInfo.sharingMode = info.share(d, info.queueFlags);
@@ -213,9 +164,6 @@ Image::Image(Memory& memory, CreateInfo const& info) : Resource(memory) {
 	}
 	m_storage.extent = info.createInfo.extent;
 	m_storage.image = vk::Image(vkImage);
-#if defined(LEVK_VKRESOURCE_NAMES)
-	memory.m_device.get().setDebugUtilsName((u64)vkImage, m_storage.image.objectType, m_data.name);
-#endif
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
 	m_data.queueFlags = info.queueFlags;
 	VmaAllocationInfo allocationInfo;
@@ -224,14 +172,6 @@ Image::Image(Memory& memory, CreateInfo const& info) : Resource(memory) {
 	m_storage.allocatedSize = requirements.size;
 	m_data.mode = imageInfo.sharingMode;
 	memory.m_allocations[(std::size_t)type].fetch_add(m_storage.allocatedSize);
-	if (memory.m_bLogAllocs) {
-		auto const [size, unit] = utils::friendlySize(m_storage.allocatedSize);
-#if defined(LEVK_VKRESOURCE_NAMES)
-		g_log.log(memory.m_logLevel, 1, "== [{}] Image [{}] constructed: [{:.2f}{}] | {}", g_name, m_data.name, size, unit, memory.countsText());
-#else
-		g_log.log(memory.m_logLevel, 1, "== [{}] Image constructed: [{:.2f}{}] | {}", g_name, size, unit, memory.countsText());
-#endif
-	}
 }
 
 Image::Image(Image&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) {
@@ -256,14 +196,6 @@ void Image::destroy() {
 	if (!Device::default_v(m_storage.image)) {
 		Memory& m = m_memory;
 		m.m_allocations[(std::size_t)type].fetch_sub(m_storage.allocatedSize);
-		if (m.m_bLogAllocs && m_data.alloc.actualSize > 0) {
-			auto const [size, unit] = utils::friendlySize(m_storage.allocatedSize);
-#if defined(LEVK_VKRESOURCE_NAMES)
-			g_log.log(m.m_logLevel, 1, "== [{}] Image [{}] destroyed: [{:.2f}{}] | {}", g_name, m_data.name, size, unit, m.countsText());
-#else
-			g_log.log(m.m_logLevel, 1, "== [{}] Image destroyed: [{:.2f}{}] | {}", g_name, size, unit, m.countsText());
-#endif
-		}
 		auto del = [a = m.m_allocator, i = m_storage.image, h = m_data.handle]() { vmaDestroyImage(a, static_cast<VkImage>(i), h); };
 		m.m_device.get().defer(del);
 	}

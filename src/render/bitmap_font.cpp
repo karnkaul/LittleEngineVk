@@ -8,7 +8,7 @@ bool BitmapFont::create(VRAM& vram, Sampler const& sampler, CreateInfo const& in
 	for (Glyph const& glyph : info.glyphs) {
 		storage.glyphs[(std::size_t)glyph.ch] = glyph;
 	}
-	storage.atlas.emplace(graphics::Texture(info.name + "/atlas", vram));
+	storage.atlas.emplace(graphics::Texture(vram));
 	graphics::Texture::CreateInfo tci;
 	tci.sampler = sampler.sampler();
 	tci.data = graphics::Texture::Img{{info.atlas.begin(), info.atlas.end()}};

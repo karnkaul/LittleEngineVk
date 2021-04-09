@@ -7,12 +7,6 @@
 #include <graphics/qflags.hpp>
 #include <vulkan/vulkan.hpp>
 
-#if defined(LEVK_DEBUG)
-#if !defined(LEVK_VKRESOURCE_NAMES)
-#define LEVK_VKRESOURCE_NAMES
-#endif
-#endif
-
 namespace le::graphics {
 class Device;
 
@@ -40,9 +34,6 @@ class Resource {
 	enum class Type { eBuffer, eImage, eCOUNT_ };
 
 	struct Data {
-#if defined(LEVK_VKRESOURCE_NAMES)
-		std::string name;
-#endif
 		Alloc alloc;
 		VmaAllocation handle;
 		QFlags queueFlags;
@@ -74,13 +65,10 @@ class Memory {
 	Memory(Device& device);
 	~Memory();
 
-	dl::level m_logLevel = dl::level::debug;
-	bool m_bLogAllocs = false;
-	Ref<Device> m_device;
+	u64 bytes(Resource::Type type) const noexcept;
 
-	u64 bytes(Resource::Type type) const;
-	std::string countsText() const;
-	void logCounts(dl::level level) const;
+	dl::level m_logLevel = dl::level::debug;
+	Ref<Device> m_device;
 
   protected:
 	VmaAllocator m_allocator;
@@ -125,6 +113,8 @@ class Buffer : public Resource {
 	void const* map();
 	bool unmap();
 	bool write(void const* pData, vk::DeviceSize size = 0, vk::DeviceSize offset = 0);
+	template <typename T>
+	bool writeT(T const& t, vk::DeviceSize offset = 0);
 
   private:
 	void destroy();
@@ -182,7 +172,6 @@ class Image : public Resource {
 };
 
 struct ResourceCreateInfo {
-	std::string name;
 	QShare share;
 	QFlags queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -198,4 +187,16 @@ struct Buffer::CreateInfo : ResourceCreateInfo {
 struct Image::CreateInfo final : ResourceCreateInfo {
 	vk::ImageCreateInfo createInfo;
 };
+
+// impl
+
+inline u64 Memory::bytes(Resource::Type type) const noexcept {
+	return m_allocations[(std::size_t)type].load();
+}
+
+template <typename T>
+bool Buffer::writeT(T const& t, vk::DeviceSize offset) {
+	ENSURE(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
+	return write(&t, sizeof(T), offset);
+}
 } // namespace le::graphics

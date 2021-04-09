@@ -16,7 +16,7 @@ class Mesh {
 
 	inline static auto s_trisDrawn = std::atomic<u32>(0);
 
-	Mesh(std::string name, VRAM& vram, Type type = Type::eStatic);
+	Mesh(VRAM& vram, Type type = Type::eStatic);
 	Mesh(Mesh&&);
 	Mesh& operator=(Mesh&&);
 	virtual ~Mesh();
@@ -38,7 +38,6 @@ class Mesh {
 
 	bool hasIndices() const noexcept;
 
-	std::string m_name;
 	Ref<VRAM> m_vram;
 
   private:
@@ -48,7 +47,7 @@ class Mesh {
 		VRAM::Future transfer;
 	};
 
-	Storage construct(std::string_view name, vk::BufferUsageFlags usage, void* pData, std::size_t size) const;
+	Storage construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const;
 	void destroy();
 
 	Storage m_vbo;
@@ -64,9 +63,9 @@ template <typename T>
 bool Mesh::construct(View<T> vertices, View<u32> indices) {
 	if (!vertices.empty()) {
 		destroy();
-		m_vbo = construct(m_name + "/vbo", vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));
+		m_vbo = construct(vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));
 		if (!indices.empty()) {
-			m_ibo = construct(m_name + "/ibo", vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32));
+			m_ibo = construct(vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32));
 		}
 		m_vbo.count = (u32)vertices.size();
 		m_ibo.count = (u32)indices.size();

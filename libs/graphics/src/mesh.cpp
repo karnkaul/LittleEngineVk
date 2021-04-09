@@ -3,16 +3,15 @@
 #include <graphics/mesh.hpp>
 
 namespace le::graphics {
-Mesh::Mesh(std::string name, VRAM& vram, Type type) : m_name(std::move(name)), m_vram(vram), m_type(type) {
+Mesh::Mesh(VRAM& vram, Type type) : m_vram(vram), m_type(type) {
 }
 Mesh::Mesh(Mesh&& rhs)
-	: m_name(std::move(rhs.m_name)), m_vram(rhs.m_vram), m_vbo(std::exchange(rhs.m_vbo, Storage())), m_ibo(std::exchange(rhs.m_ibo, Storage())),
-	  m_triCount(rhs.m_triCount), m_type(rhs.m_type) {
+	: m_vram(rhs.m_vram), m_vbo(std::exchange(rhs.m_vbo, Storage())), m_ibo(std::exchange(rhs.m_ibo, Storage())), m_triCount(rhs.m_triCount),
+	  m_type(rhs.m_type) {
 }
 Mesh& Mesh::operator=(Mesh&& rhs) {
 	if (&rhs != this) {
 		destroy();
-		m_name = std::move(rhs.m_name);
 		m_vbo = std::exchange(rhs.m_vbo, Storage());
 		m_ibo = std::exchange(rhs.m_ibo, Storage());
 		m_triCount = std::exchange(rhs.m_triCount, 0);
@@ -24,9 +23,9 @@ Mesh::~Mesh() {
 	destroy();
 }
 
-Mesh::Storage Mesh::construct(std::string_view name, vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
+Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
-	ret.buffer = m_vram.get().createBO(name, size, usage, m_type == Type::eDynamic);
+	ret.buffer = m_vram.get().createBO(size, usage, m_type == Type::eDynamic);
 	ENSURE(ret.buffer, "Invalid buffer");
 	if (m_type == Type::eStatic) {
 		ret.transfer = m_vram.get().stage(*ret.buffer, pData, size);

@@ -50,7 +50,7 @@ class Texture {
 
 	inline static constexpr auto srgbFormat = vk::Format::eR8G8B8A8Srgb;
 
-	Texture(std::string name, VRAM& vram);
+	Texture(VRAM& vram);
 	Texture(Texture&&);
 	Texture& operator=(Texture&&);
 	virtual ~Texture();
@@ -65,7 +65,6 @@ class Texture {
 	Data const& data() const noexcept;
 	Image const& image() const;
 
-	std::string m_name;
 	Ref<VRAM> m_vram;
 
   private:

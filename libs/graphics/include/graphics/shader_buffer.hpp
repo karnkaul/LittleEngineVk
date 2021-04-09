@@ -15,7 +15,7 @@ class ShaderBuffer {
 	static constexpr vk::BufferUsageFlagBits usage(vk::DescriptorType type) noexcept;
 
 	ShaderBuffer() = default;
-	ShaderBuffer(VRAM& vram, std::string name, CreateInfo const& info);
+	ShaderBuffer(VRAM& vram, CreateInfo const& info);
 
 	template <typename T>
 	ShaderBuffer& write(T const& t, std::size_t offset = 0);
@@ -33,7 +33,6 @@ class ShaderBuffer {
 
 	struct Storage {
 		std::vector<RingBuffer<Buffer>> buffers;
-		std::string name;
 		vk::DescriptorType type;
 		vk::BufferUsageFlagBits usage = {};
 		u32 rotateCount = 0;

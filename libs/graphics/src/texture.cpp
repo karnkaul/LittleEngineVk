@@ -5,7 +5,7 @@
 namespace le::graphics {
 namespace {
 using sv = std::string_view;
-Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<View<std::byte>> bytes, [[maybe_unused]] sv name) {
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<View<std::byte>> bytes) {
 	Image::CreateInfo imageInfo;
 	imageInfo.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
 	imageInfo.createInfo.format = format;
@@ -21,9 +21,6 @@ Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 s
 	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.createInfo.mipLevels = 1;
 	imageInfo.createInfo.arrayLayers = (u32)bytes.size();
-#if defined(LEVK_VKRESOURCE_NAMES)
-	imageInfo.name = std::string(name);
-#endif
 	Image ret(vram, imageInfo);
 	out_future = vram.copy(bytes, ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 	return ret;
@@ -76,14 +73,13 @@ void Sampler::destroy() {
 	}
 }
 
-Texture::Texture(std::string name, VRAM& vram) : m_name(std::move(name)), m_vram(vram) {
+Texture::Texture(VRAM& vram) : m_vram(vram) {
 }
-Texture::Texture(Texture&& rhs) : m_name(std::move(rhs.m_name)), m_vram(rhs.m_vram), m_storage(std::exchange(rhs.m_storage, Storage())) {
+Texture::Texture(Texture&& rhs) : m_vram(rhs.m_vram), m_storage(std::exchange(rhs.m_storage, Storage())) {
 }
 Texture& Texture::operator=(Texture&& rhs) {
 	if (&rhs != this) {
 		destroy();
-		m_name = std::move(rhs.m_name);
 		m_storage = std::exchange(rhs.m_storage, Storage());
 		m_vram = rhs.m_vram;
 	}
@@ -166,7 +162,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 		out_storage.raw.bytes.push_back(pRaw->bytes);
 		out_storage.data.type = Type::e2D;
 	}
-	out_storage.image = load(m_vram, out_storage.transfer, info.format, out_storage.data.size, out_storage.raw.bytes, m_name);
+	out_storage.image = load(m_vram, out_storage.transfer, info.format, out_storage.data.size, out_storage.raw.bytes);
 	out_storage.data.format = info.format;
 	Device& d = m_vram.get().m_device;
 	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;

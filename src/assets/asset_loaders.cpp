@@ -96,7 +96,7 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 		graphics::Texture::CreateInfo createInfo;
 		createInfo.data = std::move(*d);
 		createInfo.sampler = sampler->get().sampler();
-		graphics::Texture ret(info.m_data.name, info.m_data.vram);
+		graphics::Texture ret(info.m_data.vram);
 		if (ret.construct(createInfo)) {
 			return ret;
 		}
@@ -218,7 +218,6 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 			}
 			BitmapFont::CreateInfo bci;
 			bci.format = info.m_data.texFormat;
-			bci.name = info.m_data.name;
 			bci.glyphs = fi.glyphs;
 			bci.atlas = atlas->bytes();
 			if (out_font.create(info.m_data.vram, sampler->get(), bci)) {

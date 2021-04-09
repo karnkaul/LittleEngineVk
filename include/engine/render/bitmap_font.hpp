@@ -34,7 +34,6 @@ class BitmapFont {
 };
 
 struct BitmapFont::CreateInfo {
-	std::string name;
 	View<Glyph> glyphs;
 	View<std::byte> atlas;
 	vk::Format format = Texture::srgbFormat;

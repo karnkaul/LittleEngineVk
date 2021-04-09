@@ -15,7 +15,7 @@ VRAM::~VRAM() {
 	g_log.log(lvl::info, 1, "[{}] VRAM destroyed", g_name);
 }
 
-Buffer VRAM::createBO(std::string_view name, vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible) {
+Buffer VRAM::createBO(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible) {
 	Buffer::CreateInfo bufferInfo;
 	bufferInfo.size = size;
 	if (bHostVisible) {
@@ -29,7 +29,6 @@ Buffer VRAM::createBO(std::string_view name, vk::DeviceSize size, vk::BufferUsag
 		bufferInfo.queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
 	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
-	bufferInfo.name = name;
 	return Buffer(*this, bufferInfo);
 }
 

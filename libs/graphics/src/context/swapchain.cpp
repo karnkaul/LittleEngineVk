@@ -267,7 +267,6 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		depthImageInfo.createInfo.mipLevels = 1;
 		depthImageInfo.createInfo.arrayLayers = 1;
 		depthImageInfo.queueFlags = QType::eGraphics;
-		depthImageInfo.name = "swapchain_depth";
 		m_storage.depthImage = Image(m_vram, depthImageInfo);
 		m_storage.depthImageView = m_device.get().createImageView(m_storage.depthImage->image(), info.depthFormat, vk::ImageAspectFlagBits::eDepth);
 		auto const format = info.colourFormat.format;

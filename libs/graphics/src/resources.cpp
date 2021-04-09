@@ -185,6 +185,7 @@ bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset
 		if (auto pMap = map()) {
 			void* pStart = (void*)((char*)pMap + offset);
 			std::memcpy(pStart, pData, (std::size_t)size);
+			++m_storage.writeCount;
 			return true;
 		}
 	}

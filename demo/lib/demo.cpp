@@ -19,6 +19,8 @@
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
+// #include <engine/gui/node.hpp>
+
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
 using Flags = kt::enum_flags<Flag>;
@@ -358,6 +360,7 @@ struct Drawable {
 class Drawer {
   public:
 	using type = Drawable;
+	graphics::VRAM* m_vram = {};
 
 	struct {
 		graphics::ShaderBuffer mats;
@@ -408,9 +411,12 @@ class Drawer {
 		std::size_t idx = 0;
 		for (type& d : list.ts) {
 			if (sb10) {
-				d.mat_m.write(d.node.get().model());
-				si.update(d.mat_m, sb10.set, sb10.bind, idx);
-				d.mat_m.swap();
+				// d.mat_m.write(d.node.get().model());
+				graphics::Buffer b = m_vram->createBO("tmp", sizeof(glm::mat4), vk::BufferUsageFlagBits::eUniformBuffer, true);
+				glm::mat4 const m = d.node.get().model();
+				b.write(&m);
+				si.update(b, sb10.set, sb10.bind, idx);
+				// d.mat_m.swap();
 			}
 			for (DrawObj& obj : d.objs) {
 				Material const& mat = obj.primitive.material;
@@ -798,6 +804,7 @@ class App : public Input::IReceiver {
 				eng.gfx().imgui.render();
 				auto& cb = r->primary();
 				if (!m_data.registry.empty()) {
+					m_data.drawer.m_vram = &m_eng.get().gfx().boot.vram;
 					cb.setViewportScissor(eng.viewport(), eng.gfx().context.scissor());
 					batchDraw(m_data.drawer, m_data.registry, cb);
 				}

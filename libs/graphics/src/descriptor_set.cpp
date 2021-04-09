@@ -9,15 +9,28 @@
 
 namespace le::graphics {
 namespace {
-template <typename T, typename U, typename F>
-bool stale(T&& lhs, U&& rhs, F same) {
-	if (lhs.size() != rhs.size()) {
+bool stale(DescriptorSet::Imgs const& lhs, DescriptorSet::Imgs const& rhs) noexcept {
+	if (lhs.images.size() != rhs.images.size()) {
 		return true;
 	}
-	for (std::size_t idx = 0; idx < lhs.size(); ++idx) {
-		auto const& l = lhs[idx];
-		auto const& r = rhs[idx];
-		if (!same(l, r)) {
+	for (std::size_t idx = 0; idx < lhs.images.size(); ++idx) {
+		auto const& l = lhs.images[idx];
+		auto const& r = rhs.images[idx];
+		if (l.image != r.image || l.sampler != r.sampler) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool stale(DescriptorSet::Bufs const& lhs, DescriptorSet::Bufs const& rhs) noexcept {
+	if (lhs.buffers.size() != rhs.buffers.size() || lhs.type != rhs.type) {
+		return true;
+	}
+	for (std::size_t idx = 0; idx < lhs.buffers.size(); ++idx) {
+		auto const& l = lhs.buffers[idx];
+		auto const& r = rhs.buffers[idx];
+		if (l.size != r.size || l.writes != r.writes || l.buffer != r.buffer) {
 			return true;
 		}
 	}
@@ -85,28 +98,28 @@ vk::DescriptorSet DescriptorSet::get() const {
 	return m_storage.setBuffer.get().set;
 }
 
-void DescriptorSet::updateBuffers(u32 binding, View<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type) {
-	auto [set, bind] = setBind(binding, type, (u32)buffers.size());
-	if (stale(buffers, bind.buffers, [](Buffer const& lhs, Buffer const& rhs) { return lhs.buffer() == rhs.buffer(); })) {
-		bind.buffers = {buffers.begin(), buffers.end()};
+void DescriptorSet::updateBufs(u32 binding, Bufs bufs) {
+	auto [set, bind] = setBind(binding, bufs.type, (u32)bufs.buffers.size());
+	if (stale(bufs, bind.buffers)) {
 		std::vector<vk::DescriptorBufferInfo> bufferInfos;
-		for (auto const& buf : buffers) {
+		for (auto const& buf : bufs.buffers) {
 			vk::DescriptorBufferInfo bufferInfo;
-			bufferInfo.buffer = buf.get().buffer();
+			bufferInfo.buffer = buf.buffer;
 			bufferInfo.offset = 0;
-			bufferInfo.range = size;
+			bufferInfo.range = buf.size;
 			bufferInfos.push_back(bufferInfo);
 		}
+		bind.buffers = std::move(bufs);
 		update<vk::DescriptorBufferInfo>(binding, bind.type, bufferInfos);
 	}
 }
 
-bool DescriptorSet::updateCIS(u32 binding, std::vector<CIS> cis) {
-	auto [set, bind] = setBind(binding, vk::DescriptorType::eCombinedImageSampler, (u32)cis.size());
-	if (stale(cis, bind.cis, [](CIS const& lhs, CIS const& rhs) { return lhs.image == rhs.image && lhs.sampler == rhs.sampler; })) {
+bool DescriptorSet::updateImgs(u32 binding, Imgs imgs) {
+	auto [set, bind] = setBind(binding, vk::DescriptorType::eCombinedImageSampler, (u32)imgs.images.size());
+	if (stale(imgs, bind.images)) {
 		std::vector<vk::DescriptorImageInfo> imageInfos;
-		imageInfos.reserve(cis.size());
-		for (auto const& tex : cis) {
+		imageInfos.reserve(imgs.images.size());
+		for (auto const& tex : imgs.images) {
 			vk::DescriptorImageInfo imageInfo;
 			imageInfo.imageView = tex.image;
 			imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
@@ -114,18 +127,9 @@ bool DescriptorSet::updateCIS(u32 binding, std::vector<CIS> cis) {
 			imageInfos.push_back(imageInfo);
 		}
 		update<vk::DescriptorImageInfo>(binding, bind.type, imageInfos);
-		bind.cis = std::move(cis);
+		bind.images = std::move(imgs);
 	}
 	return true;
-}
-
-bool DescriptorSet::updateTextures(u32 binding, View<Texture> textures) {
-	std::vector<CIS> cis;
-	cis.reserve(textures.size());
-	for (auto const& texture : textures) {
-		cis.push_back({texture.data().imageView, texture.data().sampler});
-	}
-	return updateCIS(binding, std::move(cis));
 }
 
 BindingInfo const* DescriptorSet::binding(u32 bind) const noexcept {
@@ -291,16 +295,30 @@ bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t 
 		if (contains(set)) {
 			DescriptorSet& ds = this->set(set).index(idx);
 			if (auto pInfo = ds.binding(bind); pInfo && pInfo->binding.descriptorType == vk::DescriptorType::eCombinedImageSampler) {
-				ds.updateTextures(bind, textures);
+				ds.update(bind, textures);
 				return true;
 			}
 		}
 		ENSURE(false, "DescriptorSet update failure");
 		return false;
 	} else {
-		this->set(set).index(idx).updateTextures(bind, textures);
+		this->set(set).index(idx).update(bind, textures);
 		return true;
 	}
+}
+
+bool ShaderInput::update(View<Buffer> buffers, u32 set, u32 bind, std::size_t idx, vk::DescriptorType type) {
+	if constexpr (levk_debug) {
+		if (!contains(set)) {
+			ENSURE(false, "DescriptorSet update failure");
+			return false;
+		}
+	}
+	if (buffers.empty()) {
+		return false;
+	}
+	this->set(set).index(idx).update(bind, buffers, type);
+	return true;
 }
 
 bool ShaderInput::update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx) {

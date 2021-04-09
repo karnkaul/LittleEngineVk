@@ -103,19 +103,22 @@ class Buffer : public Resource {
 	Buffer& operator=(Buffer&&);
 	~Buffer() override;
 
-	vk::Buffer buffer() const {
+	vk::Buffer buffer() const noexcept {
 		return m_storage.buffer;
 	}
-	vk::DeviceSize writeSize() const {
+	vk::DeviceSize writeSize() const noexcept {
 		return m_storage.writeSize;
 	}
-	vk::BufferUsageFlags usage() const {
+	std::size_t writeCount() const noexcept {
+		return m_storage.writeCount;
+	}
+	vk::BufferUsageFlags usage() const noexcept {
 		return m_storage.usage;
 	}
-	Type bufferType() const {
+	Type bufferType() const noexcept {
 		return m_storage.type;
 	}
-	void const* mapped() const {
+	void const* mapped() const noexcept {
 		return m_storage.pMap;
 	}
 
@@ -130,6 +133,7 @@ class Buffer : public Resource {
 	struct Storage {
 		vk::Buffer buffer;
 		vk::DeviceSize writeSize = {};
+		std::size_t writeCount = 0;
 		vk::BufferUsageFlags usage;
 		Type type;
 		void* pMap = nullptr;

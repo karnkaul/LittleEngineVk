@@ -23,10 +23,9 @@ ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) co
 		for (RingBuffer<Buffer> const& rb : m_storage.buffers) {
 			vec.push_back(rb.get());
 		}
-		out_set.updateBuffers(binding, vec, m_storage.elemSize, m_storage.type);
+		out_set.update(binding, vec, m_storage.type);
 	} else {
-		Ref<Buffer const> buffer(m_storage.buffers.front().get());
-		out_set.updateBuffers(binding, buffer, m_storage.elemSize, m_storage.type);
+		out_set.update(binding, m_storage.buffers.front().get(), m_storage.type);
 	}
 	return *this;
 }

@@ -190,14 +190,14 @@ vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 depth, ScreenR
 	return ret;
 }
 
-vk::Rect2D RenderContext::scissor(glm::ivec2 extent, ScreenRect const& nRect) const noexcept {
+vk::Rect2D RenderContext::scissor(glm::ivec2 extent, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
 	if (!Swapchain::valid(extent)) {
 		extent = this->extent();
 	}
 	vk::Rect2D scissor;
 	glm::vec2 const size = nRect.size();
-	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.x);
-	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.y);
+	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.x + offset.x);
+	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.y + offset.y);
 	scissor.extent.width = (u32)(size.x * (f32)extent.x);
 	scissor.extent.height = (u32)(size.y * (f32)extent.y);
 	return scissor;

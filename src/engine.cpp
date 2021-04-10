@@ -148,12 +148,24 @@ bool Engine::unboot() noexcept {
 	return false;
 }
 
+glm::ivec2 Engine::framebufferSize() const noexcept {
+	return m_gfx ? m_gfx->context.extent() : m_win.get().framebufferSize();
+}
+
 vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexcept {
 	if (!m_gfx) {
 		return {};
 	}
 	Viewport const vp = m_editor.view() * view;
-	return m_gfx->context.viewport(m_win.get().framebufferSize(), depth, vp.rect(), vp.topLeft.offset);
+	return m_gfx->context.viewport(m_gfx->context.extent(), depth, vp.rect(), vp.topLeft.offset);
+}
+
+vk::Rect2D Engine::scissor(Viewport const& view) const noexcept {
+	if (!m_gfx) {
+		return {};
+	}
+	Viewport const vp = m_editor.view() * view;
+	return m_gfx->context.scissor(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset);
 }
 
 Engine::Desktop* Engine::desktop() const noexcept {

@@ -52,7 +52,7 @@ class RenderContext : NoCopy {
 	f32 aspectRatio() const noexcept;
 	glm::mat4 preRotate() const noexcept;
 	vk::Viewport viewport(glm::ivec2 extent = {0, 0}, glm::vec2 depth = {0.0f, 1.0f}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
-	vk::Rect2D scissor(glm::ivec2 extent = {0, 0}, ScreenRect const& nRect = {}) const noexcept;
+	vk::Rect2D scissor(glm::ivec2 extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
 
   private:
 	struct Storage {

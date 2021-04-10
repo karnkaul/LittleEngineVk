@@ -347,7 +347,8 @@ struct Drawable {
 class Drawer {
   public:
 	using type = Drawable;
-	graphics::VRAM* m_vram = {};
+
+	Ref<graphics::VRAM> m_vram;
 
 	struct {
 		graphics::ShaderBuffer mats;
@@ -370,6 +371,9 @@ class Drawer {
 			return valid;
 		}
 	};
+
+	Drawer(graphics::VRAM& vram) noexcept : m_vram(vram) {
+	}
 
 	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
@@ -398,7 +402,7 @@ class Drawer {
 		std::size_t idx = 0;
 		for (type& d : list.ts) {
 			if (sb10) {
-				graphics::Buffer const buf = m_vram->makeBO(d.node.get().model(), vk::BufferUsageFlagBits::eUniformBuffer);
+				graphics::Buffer const buf = m_vram.get().makeBO(d.node.get().model(), vk::BufferUsageFlagBits::eUniformBuffer);
 				si.update(buf, sb10.set, sb10.bind, idx);
 			}
 			for (Primitive& prim : d.prims) {
@@ -417,7 +421,7 @@ class Drawer {
 					si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, idx);
 				}
 				if (sb30) {
-					graphics::Buffer const buf = m_vram->makeBO(ShadeMat::make(mat), vk::BufferUsageFlagBits::eUniformBuffer);
+					graphics::Buffer const buf = m_vram.get().makeBO(ShadeMat::make(mat), vk::BufferUsageFlagBits::eUniformBuffer);
 					si.update(buf, sb30.set, sb30.bind, idx);
 				}
 				++idx;
@@ -448,7 +452,7 @@ class Drawer {
 
 class App : public Input::IReceiver {
   public:
-	App(Engine& eng, io::Reader const& reader) : m_eng(eng) {
+	App(Engine& eng, io::Reader const& reader) : m_eng(eng), m_drawer(eng.gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().gfx().boot.device};
@@ -638,8 +642,8 @@ class App : public Input::IReceiver {
 		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_store.get<BitmapFont>("fonts/default");
-		m_data.drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
-		m_data.drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
+		m_drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
+		m_drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
 
 		m_data.text.create(m_eng.get().gfx().boot.vram);
 		m_data.text.text.size = 80U;
@@ -661,11 +665,11 @@ class App : public Input::IReceiver {
 		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
 		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
 		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
-		m_data.drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, {});
+		m_drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
 			info.type = vk::DescriptorType::eStorageBuffer;
-			m_data.drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, {});
+			m_drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, {});
 		}
 		DirLight l0, l1;
 		l0.direction = {-graphics::front, 0.0f};
@@ -765,19 +769,13 @@ class App : public Input::IReceiver {
 	void render() {
 		Engine& eng = m_eng;
 		// write / update
-		if (!m_data.registry.empty()) {
-			auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
-			m_data.drawer.write(cam, eng.gfx().context.extent(), m_data.dirLights);
+		if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
+			m_drawer.write(*cam, eng.framebufferSize(), m_data.dirLights);
 		}
-
 		// draw
 		if (auto frame = eng.drawFrame(Colour(0x040404ff))) {
-			auto& cb = frame->frame.primary;
-			if (!m_data.registry.empty()) {
-				m_data.drawer.m_vram = &m_eng.get().gfx().boot.vram;
-				cb.setViewportScissor(eng.viewport(), eng.gfx().context.scissor());
-				batchDraw(m_data.drawer, m_data.registry, cb);
-			}
+			frame->cmd().setViewportScissor(eng.viewport(), eng.scissor());
+			frame->batch(m_drawer, m_data.registry);
 		}
 	}
 
@@ -785,7 +783,6 @@ class App : public Input::IReceiver {
 	struct Data {
 		std::unordered_map<Hash, decf::entity_t> entities;
 		std::unordered_map<Hash, DrawLayer> layers;
-		Drawer drawer;
 
 		Text text;
 		std::vector<DirLight> dirLights;
@@ -804,6 +801,7 @@ class App : public Input::IReceiver {
 	AssetStore m_store;
 	scheduler m_tasks;
 	Ref<Engine> m_eng;
+	Drawer m_drawer;
 
 	struct {
 		Control::Trigger editor = {Input::Key::eE, Input::Action::ePressed, Input::Mod::eControl};
@@ -877,7 +875,7 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 
 			if (engine.beginFrame(false)) {
 				if (app) {
-					// threads::sleep(5ms);
+					// kt::kthread::sleep_for(5ms);
 					app->tick(flags, dt);
 					if (engine.drawReady()) {
 						app->render();

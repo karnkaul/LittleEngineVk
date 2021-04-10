@@ -3,6 +3,7 @@
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/input.hpp>
+#include <engine/render/drawer.hpp>
 #include <engine/tagged_deque.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render_context.hpp>
@@ -81,7 +82,9 @@ class Engine {
 	Input::State const& inputState() const noexcept;
 	Desktop* desktop() const noexcept;
 
+	glm::ivec2 framebufferSize() const noexcept;
 	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
+	vk::Rect2D scissor(Viewport const& view = {}) const noexcept;
 
 	Ref<Window> m_win;
 
@@ -123,14 +126,26 @@ struct Engine::DrawFrame {
 	DrawFrame(DrawFrame&&) noexcept;
 	DrawFrame& operator=(DrawFrame&&) noexcept;
 	~DrawFrame();
+
+	graphics::CommandBuffer& cmd() noexcept;
+
+	template <typename D, typename T = typename std::decay_t<D>::type>
+	void batch(D&& dispatch, decf::registry_t& out_reg);
 };
 
 // impl
 
+inline graphics::CommandBuffer& Engine::DrawFrame::cmd() noexcept {
+	return frame.primary;
+}
+template <typename D, typename T>
+void Engine::DrawFrame::batch(D&& dispatch, decf::registry_t& out_reg) {
+	batchDraw<D, T>(std::forward<D>(dispatch), out_reg, frame.primary);
+}
+
 inline Engine::Stats const& Engine::stats() noexcept {
 	return s_stats;
 }
-
 inline bool Engine::editorActive() const noexcept {
 	return m_editor.active();
 }

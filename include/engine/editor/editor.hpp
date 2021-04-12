@@ -7,9 +7,9 @@
 #include <engine/editor/panel.hpp>
 #include <engine/editor/resizer.hpp>
 #include <engine/editor/types.hpp>
-#include <engine/input/input.hpp>
+#include <engine/input/state.hpp>
 #include <engine/render/viewport.hpp>
-#include <engine/scene_node.hpp>
+#include <engine/scene/scene_node.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le {
@@ -54,7 +54,7 @@ class Editor {
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
-	void update(DesktopInstance& win, Input::State const& state);
+	void update(DesktopInstance& win, input::State const& state);
 
   private:
 	struct {

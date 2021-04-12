@@ -6,7 +6,7 @@
 #include <core/span.hpp>
 #include <core/utils/string.hpp>
 #include <dumb_ecf/registry.hpp>
-#include <engine/scene_node.hpp>
+#include <engine/scene/scene_node.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #include <kt/n_tree/n_tree.hpp>
 

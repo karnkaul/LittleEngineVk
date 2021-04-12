@@ -50,4 +50,16 @@ template <typename C, typename K>
 constexpr bool contains(C const& cont, K const& key) noexcept {
 	return cont.find(key) != cont.end();
 }
+
+template <typename T, typename In>
+constexpr void overwrite(std::vector<T>& out, In const& in) {
+	out.reserve(out.size() + in.size());
+	for (std::size_t i = 0; i < in.size(); ++i) {
+		if (i < out.size()) {
+			out[i] = T{in[i]};
+		} else {
+			out.push_back(T{in[i]});
+		}
+	}
+}
 } // namespace le::utils

@@ -1,7 +1,7 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
-#include <engine/render/primitive.hpp>
+#include <engine/scene/primitive.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
 #include <kt/result/result.hpp>

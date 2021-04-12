@@ -59,7 +59,7 @@ Resizer::ViewData::ViewData([[maybe_unused]] window::DesktopInstance const& win,
 	offset = view.topLeft.offset * ratio;
 }
 
-bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input::State const& state) {
+bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, input::State const& state) {
 	ViewData const data(out_w, out_vp);
 	glm::vec2 const nCursor = {state.cursor.screenPos.x / data.wSize.x, state.cursor.screenPos.y / data.wSize.y};
 	CursorType toSet = CursorType::eDefault;
@@ -115,7 +115,7 @@ bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input
 	return m_handle > Handle::eNone;
 }
 
-CursorType Resizer::check(ViewData const& data, Viewport& out_vp, Input::State const& state) {
+CursorType Resizer::check(ViewData const& data, Viewport& out_vp, input::State const& state) {
 	auto const rect = out_vp.rect();
 	auto const cursor = state.cursor.screenPos;
 	bool const click = state.pressed(Key::eMouseButton1).has_result();

@@ -12,7 +12,7 @@ class FreeCam : public Camera {
   public:
 	using Desktop = window::DesktopInstance;
 
-	void tick(Input::State const& state, Time_s dt, Desktop* desktop = nullptr);
+	void tick(input::State const& state, Time_s dt, Desktop* desktop = nullptr);
 
 	struct {
 		f32 xz_speed = 1.0f;
@@ -21,12 +21,12 @@ class FreeCam : public Camera {
 	} m_params;
 
 	struct {
-		Control::Range mov_x = Control::KeyRange{Input::Key::eA, Input::Key::eD};
-		Control::Range mov_z = Control::KeyRange{Input::Key::eS, Input::Key::eW};
-		Control::Range speed = Control::AxisRange{0, Input::Axis::eMouseScrollY};
+		input::Range mov_x = input::KeyRange{input::Key::eA, input::Key::eD};
+		input::Range mov_z = input::KeyRange{input::Key::eS, input::Key::eW};
+		input::Range speed = input::AxisRange{0, input::Axis::eMouseScrollY};
 
-		Control::Trigger look = {Input::Key::eMouseButton2, Input::Action::eHeld};
-		Control::Trigger look_toggle = {Input::Key::eL, Input::Action::ePressed, Input::Mod::eControl};
+		input::Trigger look = {input::Key::eMouseButton2, input::Action::eHeld};
+		input::Trigger look_toggle = {input::Key::eL, input::Action::ePressed, input::Mod::eControl};
 	} m_controls;
 
   private:

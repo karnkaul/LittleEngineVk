@@ -59,7 +59,7 @@ Engine::Engine(Window& winInst, CreateInfo const& info) : m_win(winInst), m_io(i
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 
-Input::Out Engine::poll(bool consume) noexcept {
+input::Driver::Out Engine::poll(bool consume) noexcept {
 	auto ret = m_input.update(m_win.get().pollEvents(), m_editor.view(), consume, m_pDesktop);
 	m_inputState = ret.state;
 	for (auto& [_, context] : m_receivers) {
@@ -70,7 +70,7 @@ Input::Out Engine::poll(bool consume) noexcept {
 	return ret;
 }
 
-void Engine::pushReceiver(Input::IReceiver& context) {
+void Engine::pushReceiver(input::Receiver& context) {
 	context.m_inputTag = m_receivers.emplace_back(context);
 }
 

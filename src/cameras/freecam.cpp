@@ -1,10 +1,11 @@
 #include <core/maths.hpp>
 #include <engine/cameras/freecam.hpp>
+#include <engine/input/state.hpp>
 #include <window/desktop_instance.hpp>
 #include <window/instance.hpp>
 
 namespace le {
-void FreeCam::tick(Input::State const& state, Time_s dt, [[maybe_unused]] Desktop* desktop) {
+void FreeCam::tick(input::State const& state, Time_s dt, [[maybe_unused]] Desktop* desktop) {
 	f32 const dt_ = dt.count();
 	auto const& s = m_params.xz_speed_limit;
 	m_params.xz_speed = std::clamp(m_params.xz_speed + state.cursor.scroll.y * 0.1f, s.x, s.y);

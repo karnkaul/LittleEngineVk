@@ -2,8 +2,8 @@
 #include <core/io.hpp>
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
-#include <engine/input/input.hpp>
-#include <engine/render/drawer.hpp>
+#include <engine/input/driver.hpp>
+#include <engine/input/receiver.hpp>
 #include <engine/tagged_deque.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render_context.hpp>
@@ -61,8 +61,8 @@ class Engine {
 
 	Engine(Window& winInst, CreateInfo const& info);
 
-	Input::Out poll(bool consume) noexcept;
-	void pushReceiver(Input::IReceiver& context);
+	input::Driver::Out poll(bool consume) noexcept;
+	void pushReceiver(input::Receiver& context);
 
 	bool editorActive() const noexcept;
 	bool editorEngaged() const noexcept;
@@ -79,7 +79,7 @@ class Engine {
 
 	GFX& gfx();
 	GFX const& gfx() const;
-	Input::State const& inputState() const noexcept;
+	input::State const& inputState() const noexcept;
 	Desktop* desktop() const noexcept;
 
 	glm::ivec2 framebufferSize() const noexcept;
@@ -91,16 +91,16 @@ class Engine {
   private:
 	void updateStats();
 
-	using Receiver = Ref<Input::IReceiver>;
-	using TagDeque = TaggedDeque<Receiver, InputTag::type>;
-	using Receivers = TaggedStore<Receiver, InputTag, TagDeque>;
+	using Receiver = Ref<input::Receiver>;
+	using TagDeque = TaggedDeque<Receiver, input::tag_t::type>;
+	using Receivers = TaggedStore<Receiver, input::tag_t, TagDeque>;
 
 	inline static Stats s_stats = {};
 
 	io::Service m_io;
 	std::optional<GFX> m_gfx;
 	Editor m_editor;
-	Input m_input;
+	input::Driver m_input;
 	struct {
 		struct {
 			time::Point stamp{};
@@ -109,7 +109,7 @@ class Engine {
 		} frame;
 	} m_stats;
 	Receivers m_receivers;
-	Input::State m_inputState;
+	input::State m_inputState;
 	Desktop* m_pDesktop = {};
 };
 
@@ -128,19 +128,12 @@ struct Engine::DrawFrame {
 	~DrawFrame();
 
 	graphics::CommandBuffer& cmd() noexcept;
-
-	template <typename D, typename T = typename std::decay_t<D>::type>
-	void batch(D&& dispatch, decf::registry_t& out_reg);
 };
 
 // impl
 
 inline graphics::CommandBuffer& Engine::DrawFrame::cmd() noexcept {
 	return frame.primary;
-}
-template <typename D, typename T>
-void Engine::DrawFrame::batch(D&& dispatch, decf::registry_t& out_reg) {
-	batchDraw<D, T>(std::forward<D>(dispatch), out_reg, frame.primary);
 }
 
 inline Engine::Stats const& Engine::stats() noexcept {
@@ -163,7 +156,7 @@ inline Engine::GFX const& Engine::gfx() const {
 	ENSURE(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
-inline Input::State const& Engine::inputState() const noexcept {
+inline input::State const& Engine::inputState() const noexcept {
 	return m_inputState;
 }
 } // namespace le

@@ -13,7 +13,7 @@ class Driver {
 		EventQueue residue;
 	};
 
-	Out update(EventQueue queue, Viewport const& view, bool consume = true, DesktopInstance const* pDI = {}) noexcept;
+	Out update(EventQueue queue, Viewport const& view, glm::vec2 size, bool consume = true, Desktop const* pDI = {}) noexcept;
 
   private:
 	struct KeySet {

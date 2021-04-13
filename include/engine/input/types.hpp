@@ -14,7 +14,7 @@ static constexpr ActionMask allActions = ActionMask::fill(maths::enumEnd(Action:
 
 enum class Focus { eUnchanged, eGained, eLost };
 using Gamepad = window::Gamepad;
-using DesktopInstance = window::DesktopInstance;
+using Desktop = window::DesktopInstance;
 
 using Key = window::Key;
 using Axis = window::Axis;

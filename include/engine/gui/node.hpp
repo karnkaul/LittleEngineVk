@@ -6,6 +6,7 @@
 #include <engine/ibase.hpp>
 #include <engine/render/flex.hpp>
 #include <engine/scene/primitive.hpp>
+#include <engine/utils.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/basis.hpp>
 
@@ -19,6 +20,7 @@ class Root {
 	bool pop(Node& node) noexcept;
 
 	void update(glm::vec2 space, glm::vec2 offset = {});
+	Node* leafHit(glm::vec2 point) const noexcept;
 
 	std::vector<std::unique_ptr<Node>> m_nodes;
 };
@@ -32,6 +34,7 @@ class Node : public Root, public IBase {
 	void update(glm::vec2 extent, glm::vec2 origin);
 	glm::vec3 position() const noexcept;
 	glm::mat4 model() const noexcept;
+	bool hit(glm::vec2 point) const noexcept;
 
 	virtual View<Primitive> primitives() const noexcept {
 		return {};
@@ -76,5 +79,9 @@ inline glm::vec3 Node::position() const noexcept {
 inline glm::mat4 Node::model() const noexcept {
 	static constexpr auto base = glm::mat4(1.0f);
 	return glm::translate(base, position()) * glm::toMat4(m_orientation);
+}
+inline bool Node::hit(glm::vec2 point) const noexcept {
+	glm::vec2 const s = {m_size.x * 0.5f, -m_size.y * 0.5f};
+	return utils::inAABB(point, m_origin - s, m_origin + s);
 }
 } // namespace le::gui

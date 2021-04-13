@@ -246,6 +246,10 @@ bool SetPool::unassigned() const noexcept {
 	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](BindingInfo const& b) { return b.bUnassigned; });
 }
 
+void SetPool::clear() noexcept {
+	m_storage.descriptorSets.clear();
+}
+
 ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) {
 	m_setPools = pipe.makeSetPools(rotateCount);
 }
@@ -344,5 +348,11 @@ SetPool& ShaderInput::operator[](u32 set) {
 
 SetPool const& ShaderInput::operator[](u32 set) const {
 	return this->set(set);
+}
+
+void ShaderInput::clearSets() noexcept {
+	for (auto& [_, pool] : m_setPools) {
+		pool.clear();
+	}
 }
 } // namespace le::graphics

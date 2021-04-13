@@ -116,6 +116,7 @@ class SetPool {
 
 	bool contains(u32 bind) const noexcept;
 	bool unassigned() const noexcept;
+	void clear() noexcept;
 
   private:
 	struct Storage {
@@ -148,6 +149,8 @@ class ShaderInput {
 
 	SetPool& operator[](u32 set);
 	SetPool const& operator[](u32 set) const;
+
+	void clearSets() noexcept;
 
   private:
 	std::unordered_map<u32, SetPool> m_setPools;

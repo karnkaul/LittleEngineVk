@@ -28,7 +28,8 @@ C& operator-=(C& self, C const& rhs) {
 }
 } // namespace
 
-Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& view, bool consume, [[maybe_unused]] DesktopInstance const* pDI) noexcept {
+Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& view, glm::vec2 size, bool consume,
+						   [[maybe_unused]] Desktop const* pDI) noexcept {
 	Out ret;
 	auto& [s, q] = ret;
 	m_transient.pressed -= m_transient.released;
@@ -42,7 +43,7 @@ Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& vi
 	copy(m_transient.pressed, s.keys, Action::ePressed);
 	copy(m_persistent.held, s.keys, Action::eHeld);
 	copy(m_transient.released, s.keys, Action::eReleased);
-	s.cursor.screenPos = s.cursor.position = m_persistent.cursor;
+	s.cursor.position = s.cursor.screenPos = m_persistent.cursor;
 	s.others = m_transient.others;
 	s.text = m_transient.text;
 	s.suspended = m_persistent.suspended;
@@ -59,6 +60,8 @@ Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& vi
 		s.cursor.position *= (glm::vec2(f32(ifb.x), f32(ifb.y)) / win);
 	}
 #endif
+	s.cursor.position = s.cursor.position - size * 0.5f;
+	s.cursor.position = {s.cursor.position.x, -s.cursor.position.y};
 	return ret;
 }
 

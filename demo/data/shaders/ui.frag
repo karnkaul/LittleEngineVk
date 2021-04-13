@@ -5,14 +5,7 @@ layout(location = 0) in vec4 fragColour;
 layout(set = 2, binding = 0) uniform sampler2D diffuse;
 layout(set = 2, binding = 1) uniform sampler2D rmo;
 
-struct Albedo {
-	vec4 ambient;
-	vec4 diffuse;
-	vec4 specular;
-};
-
 layout(std140, set = 3, binding = 0) uniform Material {
-	Albedo albedo;
 	vec4 tint;
 } material;
 

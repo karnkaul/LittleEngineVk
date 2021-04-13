@@ -57,7 +57,7 @@ class SceneDrawer {
 	template <typename Po = Populator>
 	static std::vector<Group> groups(decf::registry_t const& registry, bool sort);
 	template <typename Di, typename Po = Populator>
-	static void draw(Di&& dispatch, decf::registry_t const& registry, graphics::CommandBuffer const& cb, bool sort);
+	static void draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb);
 
 	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, View<Primitive> primitives);
 };
@@ -80,13 +80,9 @@ std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& regi
 }
 
 template <typename Di, typename Po>
-void SceneDrawer::draw(Di&& dispatch, decf::registry_t const& registry, graphics::CommandBuffer const& cb, bool sort) {
-	auto const grs = groups<Po>(registry, sort);
-	for (auto& list : grs) {
-		dispatch.update(list);
-	}
+void SceneDrawer::draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb) {
 	std::unordered_set<Ref<graphics::Pipeline>> ps;
-	for (auto const& gr : grs) {
+	for (auto const& gr : groups) {
 		if (gr.group.pipeline) {
 			ps.insert(*gr.group.pipeline);
 			cb.bindPipe(*gr.group.pipeline);
@@ -96,6 +92,5 @@ void SceneDrawer::draw(Di&& dispatch, decf::registry_t const& registry, graphics
 	for (graphics::Pipeline& pipe : ps) {
 		pipe.shaderInput().swap();
 	}
-	dispatch.swap();
 }
 } // namespace le

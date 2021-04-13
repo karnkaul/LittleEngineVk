@@ -60,7 +60,8 @@ Engine::Engine(Window& winInst, CreateInfo const& info) : m_win(winInst), m_io(i
 }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
-	auto ret = m_input.update(m_win.get().pollEvents(), m_editor.view(), consume, m_pDesktop);
+	auto const extent = m_gfx ? m_gfx->context.extent() : glm::ivec2(0);
+	auto ret = m_input.update(m_win.get().pollEvents(), m_editor.view(), extent, consume, m_pDesktop);
 	m_inputState = ret.state;
 	for (auto& [_, context] : m_receivers) {
 		if (context.get().block(ret.state)) {

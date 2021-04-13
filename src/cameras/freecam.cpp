@@ -33,7 +33,7 @@ void FreeCam::tick(input::State const& state, Time_s dt, [[maybe_unused]] Deskto
 		}
 		glm::vec2 const dlook = 3.0f * m_params.look_sens * (state.cursor.position - *m_cursor.prev) * dt_;
 		if (glm::length2(dlook) > 0.01f) {
-			auto const pitch = glm::angleAxis(glm::radians(dlook.y), -graphics::right);
+			auto const pitch = glm::angleAxis(glm::radians(-dlook.y), -graphics::right);
 			auto const yaw = glm::angleAxis(glm::radians(dlook.x), -graphics::up);
 			orientation = yaw * orientation * pitch;
 		}

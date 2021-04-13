@@ -214,10 +214,8 @@ struct Albedo {
 };
 
 struct ShadeMat {
-	enum Flag { eDrop = 1 << 0 };
-
-	alignas(16) Albedo albedo;
 	alignas(16) glm::vec4 tint;
+	alignas(16) Albedo albedo;
 
 	static ShadeMat make(Colour tint = colours::white, Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
 		ShadeMat ret;
@@ -243,7 +241,7 @@ struct DirLight {
 
 struct DirLights {
 	alignas(16) std::array<DirLight, 4> lights;
-	alignas(16) u32 count = 0;
+	alignas(4) u32 count;
 };
 
 struct SpringArm {
@@ -340,7 +338,7 @@ class DrawDispatch {
 	DrawDispatch(graphics::VRAM& vram) noexcept : m_vram(vram) {
 	}
 
-	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights) {
+	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights, View<SceneDrawer::Group> groups) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
@@ -348,8 +346,11 @@ class DrawDispatch {
 			for (std::size_t idx = 0; idx < lights.size() && idx < dl.lights.size(); ++idx) {
 				dl.lights[idx] = lights[idx];
 			}
-			dl.count = (u32)lights.size();
+			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
+		}
+		for (auto& group : groups) {
+			update(group);
 		}
 	}
 
@@ -364,32 +365,37 @@ class DrawDispatch {
 		auto const sb21 = SetBind(si, 2, 1);
 		auto const sb22 = SetBind(si, 2, 2);
 		auto const sb30 = SetBind(si, 3, 0);
-		std::size_t idx = 0;
+		std::size_t primIdx = 0;
+		std::size_t itemIdx = 0;
 		for (SceneDrawer::Item const& item : group.items) {
-			if (sb10) {
-				graphics::Buffer const buf = m_vram.get().makeBO(item.model, vk::BufferUsageFlagBits::eUniformBuffer);
-				si.update(buf, sb10.set, sb10.bind, idx);
-			}
-			for (Primitive const& prim : item.primitives) {
-				Material const& mat = prim.material;
-				if (group.group.order < 0) {
-					ENSURE(mat.map_Kd, "Null cubemap");
-					si.update(*mat.map_Kd, 0, 1, idx);
+			if (!item.primitives.empty()) {
+				if (sb10) {
+					graphics::Buffer const buf = m_vram.get().makeBO(item.model, vk::BufferUsageFlagBits::eUniformBuffer);
+					si.update(buf, sb10.set, sb10.bind, itemIdx);
 				}
-				if (sb20) {
-					si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, idx);
+				++itemIdx;
+				for (Primitive const& prim : item.primitives) {
+					Material const& mat = prim.material;
+					if (group.group.order < 0) {
+						ENSURE(mat.map_Kd, "Null cubemap");
+						si.update(*mat.map_Kd, 0, 1, primIdx);
+					}
+					if (sb20) {
+						si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, primIdx);
+					}
+					if (sb21) {
+						si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, primIdx);
+					}
+					if (sb22) {
+						si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, primIdx);
+					}
+					if (sb30) {
+						auto const sm = ShadeMat::make(mat);
+						graphics::Buffer const buf = m_vram.get().makeBO(sm, vk::BufferUsageFlagBits::eUniformBuffer);
+						si.update(buf, sb30.set, sb30.bind, primIdx);
+					}
+					++primIdx;
 				}
-				if (sb21) {
-					si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, idx);
-				}
-				if (sb22) {
-					si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, idx);
-				}
-				if (sb30) {
-					graphics::Buffer const buf = m_vram.get().makeBO(ShadeMat::make(mat), vk::BufferUsageFlagBits::eUniformBuffer);
-					si.update(buf, sb30.set, sb30.bind, idx);
-				}
-				++idx;
 			}
 		}
 	}
@@ -402,14 +408,16 @@ class DrawDispatch {
 	void draw(graphics::CommandBuffer const& cb, SceneDrawer::Group const& group) const {
 		graphics::Pipeline const& pipe = *group.group.pipeline;
 		pipe.bindSet(cb, 0, 0);
-		std::size_t idx = 0;
+		std::size_t itemIdx = 0;
+		std::size_t primIdx = 0;
 		for (SceneDrawer::Item const& d : group.items) {
-			pipe.bindSet(cb, 1, idx);
-			for (Primitive const& prim : d.primitives) {
-				pipe.bindSet(cb, {2, 3}, idx);
-				ENSURE(prim.mesh, "Null mesh");
-				prim.mesh->draw(cb);
-				++idx;
+			if (!d.primitives.empty()) {
+				pipe.bindSet(cb, 1, itemIdx++);
+				for (Primitive const& prim : d.primitives) {
+					pipe.bindSet(cb, {2, 3}, primIdx++);
+					ENSURE(prim.mesh, "Null mesh");
+					prim.mesh->draw(cb);
+				}
 			}
 		}
 	}
@@ -642,8 +650,12 @@ class App : public input::Receiver {
 			bg.m_local.norm = {-0.5f, 0.5f};
 			bg.m_material.Tf = colours::cyan;
 			auto& centre = bg.push<gui::Quad>(vram);
-			centre.m_size = {20.0f, 20.0f};
+			centre.m_size = {50.0f, 50.0f};
 			centre.m_material.Tf = colours::red;
+			auto& dot = centre.push<gui::Quad>(vram);
+			dot.offsetBySize({30.0f, 20.0f});
+			dot.m_material.Tf = Colour(0x333333ff);
+			dot.m_local.norm = {-1.0f, -1.0f};
 			auto& topLeft = bg.push<gui::Quad>(vram);
 			topLeft.m_local.norm = {-1.0f, 1.0f};
 			topLeft.offsetBySize({25.0f, 25.0f}, {1.0f, -1.0f});
@@ -672,7 +684,10 @@ class App : public input::Receiver {
 			mat.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
 			mat.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			m_data.player = spawn("player", "meshes/cube", mat, m_data.groups["test_lit"]);
+			auto player = spawn("player", "meshes/cube", mat, m_data.groups["test_lit"]);
+			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
+			m_data.player = player;
+			// m_data.player = spawn("player");
 			m_data.registry.attach<PlayerController>(m_data.player);
 		}
 		{
@@ -688,6 +703,7 @@ class App : public input::Receiver {
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", m_data.groups["test_lit"]);
+				// auto ent0 = spawn("model_0_0");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
@@ -704,7 +720,7 @@ class App : public input::Receiver {
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
-			{
+			if (m_store.contains<Model>("models/nanosuit")) {
 				auto ent = spawn("model_1", "models/nanosuit", m_data.groups["test_lit"]);
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
@@ -729,7 +745,29 @@ class App : public input::Receiver {
 		if (m_data.registry.empty()) {
 			init1();
 		}
-		m_data.registry.get<gui::Root>(m_data.guiRoot).update(m_eng.get().framebufferSize());
+		auto& guiRoot = m_data.registry.get<gui::Root>(m_data.guiRoot);
+		guiRoot.update(m_eng.get().framebufferSize());
+		{
+			/*auto const& p = m_eng.get().inputState().cursor.position;
+			logD("c: {}, {}", p.x, p.y);*/
+			static gui::Quad* s_prev = {};
+			static Colour s_col;
+			if (auto node = guiRoot.leafHit(m_eng.get().inputState().cursor.position)) {
+				if (auto quad = dynamic_cast<gui::Quad*>(node)) {
+					if (s_prev != quad) {
+						if (s_prev) {
+							s_prev->m_material.Tf = s_col;
+						}
+						s_col = quad->m_material.Tf;
+						s_prev = quad;
+						quad->m_material.Tf = colours::yellow;
+					}
+				}
+			} else if (s_prev) {
+				s_prev->m_material.Tf = s_col;
+				s_prev = {};
+			}
+		}
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
 		if (pc.active) {
@@ -754,19 +792,22 @@ class App : public input::Receiver {
 
 	void render() {
 		Engine& eng = m_eng;
-		// write / update
-		if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
-			m_drawDispatch.write(*cam, eng.framebufferSize(), m_data.dirLights);
-		}
-		// draw
-		if (auto frame = eng.drawFrame(Colour(0x040404ff))) {
-			frame->cmd().setViewportScissor(eng.viewport(), eng.scissor());
-			// frame->batch(m_drawer, m_data.registry);
-			if (!m_data.registry.empty()) {
-				SceneDrawer::draw(m_drawDispatch, m_data.registry, frame->cmd(), true);
+		if (eng.drawReady()) {
+			// write / update
+			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
+				m_groups = SceneDrawer::groups(m_data.registry, true);
+				m_drawDispatch.write(*cam, m_eng.get().framebufferSize(), m_data.dirLights, m_groups);
+			}
+			if (auto frame = eng.drawFrame(Colour(0x040404ff))) {
+				// draw
+				frame->cmd().setViewportScissor(eng.viewport(), eng.scissor());
+				SceneDrawer::draw(m_drawDispatch, m_groups, frame->cmd());
+				m_drawDispatch.swap();
 			}
 		}
 	}
+
+	std::vector<SceneDrawer::Group> m_groups;
 
   private:
 	struct Data {
@@ -867,9 +908,7 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 				if (app) {
 					// kt::kthread::sleep_for(5ms);
 					app->tick(flags, dt);
-					if (engine.drawReady()) {
-						app->render();
-					}
+					app->render();
 				}
 				flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
 			}

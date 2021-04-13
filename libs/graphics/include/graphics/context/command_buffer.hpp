@@ -41,6 +41,8 @@ class CommandBuffer {
 
 	bool begin(vk::CommandBufferUsageFlags usage);
 	bool begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, PassInfo const& info);
+	void setViewport(vk::Viewport viewport) const;
+	void setScissor(vk::Rect2D scissor) const;
 	void setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const;
 
 	void bindPipe(Pipeline const& pipeline, Hash variant = Hash()) const;

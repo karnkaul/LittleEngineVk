@@ -1,6 +1,7 @@
 #include <build_version.hpp>
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
+#include <engine/gui/node.hpp>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/mesh.hpp>
 #include <window/android_instance.hpp>
@@ -69,6 +70,17 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 		}
 	}
 	return ret;
+}
+
+void Engine::update(gui::Root* root) {
+	if (root) {
+		glm::vec2 wSize = {};
+#if defined(LEVK_DESKTOP)
+		ENSURE(m_win.get().isDesktop(), "Invariant violated");
+		wSize = static_cast<Desktop&>(m_win.get()).windowSize();
+#endif
+		root->update(m_editor.view(), framebufferSize(), wSize);
+	}
 }
 
 void Engine::pushReceiver(input::Receiver& context) {

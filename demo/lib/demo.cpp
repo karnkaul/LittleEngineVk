@@ -413,6 +413,9 @@ class DrawDispatch {
 		for (SceneDrawer::Item const& d : group.items) {
 			if (!d.primitives.empty()) {
 				pipe.bindSet(cb, 1, itemIdx++);
+				if (d.scissor) {
+					cb.setScissor(*d.scissor);
+				}
 				for (Primitive const& prim : d.primitives) {
 					pipe.bindSet(cb, {2, 3}, primIdx++);
 					ENSURE(prim.mesh, "Null mesh");
@@ -745,14 +748,14 @@ class App : public input::Receiver {
 		if (m_data.registry.empty()) {
 			init1();
 		}
-		auto& guiRoot = m_data.registry.get<gui::Root>(m_data.guiRoot);
-		guiRoot.update(m_eng.get().framebufferSize());
-		{
+		auto guiRoot = m_data.registry.find<gui::Root>(m_data.guiRoot);
+		m_eng.get().update(guiRoot);
+		if (guiRoot) {
 			/*auto const& p = m_eng.get().inputState().cursor.position;
 			logD("c: {}, {}", p.x, p.y);*/
 			static gui::Quad* s_prev = {};
 			static Colour s_col;
-			if (auto node = guiRoot.leafHit(m_eng.get().inputState().cursor.position)) {
+			if (auto node = guiRoot->leafHit(m_eng.get().inputState().cursor.position)) {
 				if (auto quad = dynamic_cast<gui::Quad*>(node)) {
 					if (s_prev != quad) {
 						if (s_prev) {

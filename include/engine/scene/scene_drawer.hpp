@@ -36,6 +36,7 @@ class SceneDrawer {
   public:
 	struct Item {
 		glm::mat4 model = glm::mat4(1.0f);
+		std::optional<vk::Rect2D> scissor;
 		View<Primitive> primitives;
 	};
 

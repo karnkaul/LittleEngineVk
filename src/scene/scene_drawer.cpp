@@ -3,6 +3,7 @@
 #include <engine/gui/node.hpp>
 #include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
+#include <graphics/utils/utils.hpp>
 
 namespace le {
 std::size_t DrawGroup::Hasher::operator()(DrawGroup const& gr) const noexcept {
@@ -13,7 +14,7 @@ void SceneDrawer::Populator::operator()(ItemMap& map, decf::registry_t const& re
 	for (auto& [_, d] : registry.view<DrawGroup, SceneNode, PrimList>()) {
 		auto& [gr, node, pl] = d;
 		if (!pl.empty() && gr.pipeline) {
-			map[gr].push_back({node.model(), pl});
+			map[gr].push_back({node.model(), std::nullopt, pl});
 		}
 	}
 	for (auto& [_, d] : registry.view<DrawGroup, gui::Root>()) {
@@ -25,7 +26,7 @@ void SceneDrawer::Populator::operator()(ItemMap& map, decf::registry_t const& re
 void SceneDrawer::add(ItemMap& map, DrawGroup const& group, gui::Root const& root) {
 	for (auto& node : root.m_nodes) {
 		if (auto prims = node->primitives(); !prims.empty()) {
-			map[group].push_back({node->model(), prims});
+			map[group].push_back({node->model(), graphics::utils::scissor(node->m_scissor), prims});
 		}
 	}
 	for (auto& node : root.m_nodes) {

@@ -15,6 +15,10 @@ class IInstance;
 class DesktopInstance;
 } // namespace window
 
+namespace gui {
+class Root;
+}
+
 class Engine {
   public:
 	using Window = window::IInstance;
@@ -63,6 +67,7 @@ class Engine {
 
 	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(input::Receiver& context);
+	void update(gui::Root* root);
 
 	bool editorActive() const noexcept;
 	bool editorEngaged() const noexcept;
@@ -85,6 +90,7 @@ class Engine {
 	glm::ivec2 framebufferSize() const noexcept;
 	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	vk::Rect2D scissor(Viewport const& view = {}) const noexcept;
+	Viewport const& gameView() const noexcept;
 
 	Ref<Window> m_win;
 
@@ -158,5 +164,8 @@ inline Engine::GFX const& Engine::gfx() const {
 }
 inline input::State const& Engine::inputState() const noexcept {
 	return m_inputState;
+}
+inline Viewport const& Engine::gameView() const noexcept {
+	return m_editor.view();
 }
 } // namespace le

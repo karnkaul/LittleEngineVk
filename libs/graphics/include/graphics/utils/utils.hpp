@@ -5,6 +5,7 @@
 #include <graphics/context/physical_device.hpp>
 #include <graphics/context/queue_multiplex.hpp>
 #include <graphics/descriptor_set.hpp>
+#include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/pipeline.hpp>
 #include <graphics/shader.hpp>
@@ -49,5 +50,33 @@ constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "
 std::array<bytearray, 6> loadCubemap(io::Reader const& reader, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageIDs const& ids = cubeImageIDs);
 
 std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface);
+
+constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;
+constexpr vk::Rect2D scissor(DrawScissor const& scissor) noexcept;
 } // namespace utils
+
+// impl
+
+constexpr vk::Viewport utils::viewport(DrawViewport const& viewport) noexcept {
+	vk::Viewport ret;
+	ret.minDepth = viewport.depth.x;
+	ret.maxDepth = viewport.depth.y;
+	auto const size = viewport.size();
+	ret.width = size.x;
+	ret.height = -size.y; // flip viewport about X axis
+	ret.x = viewport.lt.x;
+	ret.y = viewport.lt.y;
+	ret.y -= ret.height;
+	return ret;
+}
+
+constexpr vk::Rect2D utils::scissor(DrawScissor const& scissor) noexcept {
+	vk::Rect2D ret;
+	glm::vec2 const size = scissor.size();
+	ret.offset.x = (s32)scissor.lt.x;
+	ret.offset.y = (s32)scissor.lt.y;
+	ret.extent.width = (u32)size.x;
+	ret.extent.height = (u32)size.y;
+	return ret;
+}
 } // namespace le::graphics

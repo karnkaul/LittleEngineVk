@@ -6,7 +6,7 @@
 
 namespace le::graphics {
 template <typename T = f32, s64 Min = 0, s64 Max = 1>
-struct TRect final {
+struct TRect {
 	using type = T;
 	using type_float = std::conditional<std::is_floating_point_v<T>, T, f32>;
 

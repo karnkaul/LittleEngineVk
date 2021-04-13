@@ -6,6 +6,7 @@
 #include <graphics/common.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render_context.hpp>
+#include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
@@ -178,28 +179,22 @@ vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 depth, ScreenR
 	if (!Swapchain::valid(extent)) {
 		extent = this->extent();
 	}
-	vk::Viewport ret;
-	glm::vec2 const size = nRect.size();
-	ret.minDepth = depth.x;
-	ret.maxDepth = depth.y;
-	ret.width = size.x * (f32)extent.x;
-	ret.height = -(size.y * (f32)extent.y); // flip viewport about X axis
-	ret.x = nRect.lt.x * (f32)extent.x + offset.x;
-	ret.y = nRect.lt.y * (f32)extent.y + offset.y;
-	ret.y -= ret.height;
-	return ret;
+	DrawViewport view;
+	glm::vec2 const e = {(f32)extent.x, (f32)extent.y};
+	view.lt = nRect.lt * e + offset;
+	view.rb = nRect.rb * e + offset;
+	view.depth = depth;
+	return utils::viewport(view);
 }
 
 vk::Rect2D RenderContext::scissor(glm::ivec2 extent, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
 	if (!Swapchain::valid(extent)) {
 		extent = this->extent();
 	}
-	vk::Rect2D scissor;
-	glm::vec2 const size = nRect.size();
-	scissor.offset.x = (s32)(nRect.lt.x * (f32)extent.x + offset.x);
-	scissor.offset.y = (s32)(nRect.lt.y * (f32)extent.y + offset.y);
-	scissor.extent.width = (u32)(size.x * (f32)extent.x);
-	scissor.extent.height = (u32)(size.y * (f32)extent.y);
-	return scissor;
+	DrawScissor scissor;
+	glm::vec2 const e = {(f32)extent.x, (f32)extent.y};
+	scissor.lt = nRect.lt * e + offset;
+	scissor.rb = nRect.rb * e + offset;
+	return utils::scissor(scissor);
 }
 } // namespace le::graphics

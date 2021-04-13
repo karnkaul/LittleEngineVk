@@ -1,5 +1,6 @@
 #include <core/utils/algo.hpp>
 #include <engine/input/driver.hpp>
+#include <engine/input/space.hpp>
 #include <engine/render/viewport.hpp>
 #include <window/desktop_instance.hpp>
 
@@ -43,25 +44,20 @@ Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& vi
 	copy(m_transient.pressed, s.keys, Action::ePressed);
 	copy(m_persistent.held, s.keys, Action::eHeld);
 	copy(m_transient.released, s.keys, Action::eReleased);
-	s.cursor.position = s.cursor.screenPos = m_persistent.cursor;
+	s.cursor.screenPos = m_persistent.cursor;
 	s.others = m_transient.others;
 	s.text = m_transient.text;
 	s.suspended = m_persistent.suspended;
+	glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
 	if (pDI) {
+		wSize = pDI->windowSize();
 		m_transient.gamepads = pDI->activeGamepads();
 		s.gamepads = m_transient.gamepads;
-		auto const ifb = pDI->framebufferSize();
-		auto const iwin = pDI->windowSize();
-		glm::vec2 const win(f32(iwin.x), f32(iwin.y));
-		if (view.scale < 1.0f) {
-			s.cursor.position = (s.cursor.screenPos - win * view.topLeft.norm - view.topLeft.offset) / view.scale;
-		}
-		s.cursor.position *= (glm::vec2(f32(ifb.x), f32(ifb.y)) / win);
 	}
 #endif
-	s.cursor.position = s.cursor.position - size * 0.5f;
-	s.cursor.position = {s.cursor.position.x, -s.cursor.position.y};
+	Space const sp(size, wSize, view);
+	s.cursor.position = sp.world(s.cursor.screenPos);
 	return ret;
 }
 

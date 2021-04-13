@@ -53,6 +53,16 @@ bool CommandBuffer::begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer
 	return false;
 }
 
+void CommandBuffer::setViewport(vk::Viewport viewport) const {
+	ENSURE(rendering(), "Command buffer not rendering!");
+	m_cb.setViewport(0, viewport);
+}
+
+void CommandBuffer::setScissor(vk::Rect2D scissor) const {
+	ENSURE(rendering(), "Command buffer not rendering!");
+	m_cb.setScissor(0, scissor);
+}
+
 void CommandBuffer::setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	m_cb.setViewport(0, viewport);

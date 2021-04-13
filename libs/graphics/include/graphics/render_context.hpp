@@ -5,6 +5,7 @@
 #include <core/hash.hpp>
 #include <graphics/context/frame_sync.hpp>
 #include <graphics/context/swapchain.hpp>
+#include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/pipeline.hpp>
 #include <graphics/screen_rect.hpp>

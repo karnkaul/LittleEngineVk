@@ -113,33 +113,6 @@ struct Args {
 using ArgsParser = kt::args_parser<>;
 
 ///
-/// \brief Interface representing a command line argument
-///
-struct ICmdArg {
-	///
-	/// \brief Data structure describing a command's usage
-	///
-	struct Usage {
-		std::string_view params;
-		std::string_view summary;
-	};
-
-	virtual ~ICmdArg() = default;
-	///
-	/// \brief Must return the possible keys to match against
-	///
-	virtual View<std::string_view> keyVariants() const = 0;
-	///
-	/// \brief Must return true to stop processing
-	///
-	virtual bool halt(std::string_view value) = 0;
-	///
-	/// \brief Must return valid Usage
-	///
-	virtual Usage usage() const = 0;
-};
-
-///
 /// \brief Initialise OS service
 ///
 void args(Args const& args);
@@ -172,10 +145,6 @@ std::deque<ArgsParser::entry> const& args() noexcept;
 ///
 template <typename Arg, typename... Args>
 std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept;
-///
-/// \brief Check if any passed ICmdArg requests to halt
-///
-bool halt(View<Ref<ICmdArg>> cmdArgs);
 
 ///
 /// \brief Check if a debugger is attached to the runtime

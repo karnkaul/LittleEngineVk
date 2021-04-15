@@ -1,7 +1,10 @@
+#include <iostream>
 #include <build_version.hpp>
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/node.hpp>
+#include <engine/utils/command_line.hpp>
+#include <graphics/common.hpp>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/mesh.hpp>
 #include <window/android_instance.hpp>
@@ -50,6 +53,64 @@ Engine::DrawFrame::~DrawFrame() {
 
 Version Engine::version() noexcept {
 	return g_engineVersion;
+}
+
+View<graphics::PhysicalDevice> Engine::availableDevices() {
+	auto const verb = graphics::g_log.minVerbosity;
+	if (s_devices.empty()) {
+		graphics::g_log.minVerbosity = LibLogger::Verbosity::eEndUser;
+		graphics::Instance inst(graphics::Instance::CreateInfo{});
+		s_devices = inst.availableDevices(graphics::Device::requiredExtensions);
+	}
+	graphics::g_log.minVerbosity = verb;
+	return s_devices;
+}
+
+bool Engine::processClArgs(ArgMap args) {
+	bool boot = true;
+	{
+		utils::Exec exec;
+		exec.label = "list available GPUs";
+		exec.callback = [&boot](View<std::string_view>) {
+			std::stringstream str;
+			str << "Available GPUs:\n";
+			int i = 0;
+			for (auto const& d : availableDevices()) {
+				str << i++ << ". " << d << "\n";
+			}
+			std::cout << str.str();
+			boot = false;
+		};
+		args[{"gpu-list"}] = std::move(exec);
+	}
+	{
+		utils::Exec exec;
+		exec.label = "device override (index)";
+		exec.callback = [](View<std::string_view> args) {
+			if (!args.empty()) {
+				if (s64 const i = utils::toS64(args[0], -1); i >= 0) {
+					auto const idx = std::size_t(i);
+					std::size_t const total = availableDevices().size();
+					if (idx < total) {
+						Engine::s_options.gpuOverride = idx;
+						std::cout << "GPU Override set to: " << idx << '\n';
+					} else {
+						std::cout << "Invalid GPU Override: " << idx << "; total: " << total << '\n';
+					}
+				} else {
+					Engine::s_options.gpuOverride.reset();
+					std::cout << "GPU Override cleared\n";
+				}
+			}
+		};
+		args[{"override-gpu", true}] = std::move(exec);
+	}
+	utils::CommandLine cl(std::move(args));
+	std::vector<utils::CommandLine::Expr> expressions;
+	for (auto const& arg : os::args()) {
+		expressions.push_back({arg.k, arg.v});
+	}
+	return cl.execute(expressions, boot);
 }
 
 Engine::Engine(Window& winInst, CreateInfo const& info) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {
@@ -145,8 +206,11 @@ bool Engine::endDraw(Context::Frame const& frame) {
 	return false;
 }
 
-bool Engine::boot(Boot::CreateInfo const& boot) {
+bool Engine::boot(Boot::CreateInfo boot) {
 	if (!m_gfx) {
+		if (s_options.gpuOverride) {
+			boot.device.pickOverride = s_options.gpuOverride;
+		}
 		m_gfx.emplace(m_win, boot);
 		return true;
 	}

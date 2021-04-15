@@ -1,5 +1,6 @@
 #pragma once
 #include <core/io.hpp>
+#include <core/io/cmd_interpreter.hpp>
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
@@ -15,6 +16,14 @@ class IInstance;
 class DesktopInstance;
 } // namespace window
 
+namespace graphics {
+struct PhysicalDevice;
+}
+
+namespace utils {
+struct Exec;
+}
+
 namespace gui {
 class Root;
 }
@@ -25,6 +34,8 @@ class Engine {
 	using Desktop = window::DesktopInstance;
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
+	using Cmd = io::CmdInterpreter::Cmd;
+	using ArgMap = std::unordered_map<Cmd, utils::Exec, Cmd::Hasher>;
 
 	struct GFX {
 		Boot boot;
@@ -35,6 +46,10 @@ class Engine {
 
 	  private:
 		static Boot::MakeSurface makeSurface(Window const& winst);
+	};
+
+	struct Options {
+		std::optional<std::size_t> gpuOverride;
 	};
 
 	struct Stats {
@@ -60,8 +75,13 @@ class Engine {
 	struct CreateInfo;
 	struct DrawFrame;
 
+	inline static Options s_options;
+
 	static Version version() noexcept;
 	static Stats const& stats() noexcept;
+	static View<graphics::PhysicalDevice> availableDevices();
+
+	static bool processClArgs(ArgMap args);
 
 	Engine(Window& winInst, CreateInfo const& info);
 
@@ -78,7 +98,7 @@ class Engine {
 	std::optional<DrawFrame> drawFrame(Colour clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
 	bool endDraw(Context::Frame const& frame);
 
-	bool boot(Boot::CreateInfo const& boot);
+	bool boot(Boot::CreateInfo boot);
 	bool unboot() noexcept;
 	bool booted() const noexcept;
 
@@ -102,6 +122,7 @@ class Engine {
 	using Receivers = TaggedStore<Receiver, input::tag_t, TagDeque>;
 
 	inline static Stats s_stats = {};
+	inline static kt::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
 	io::Service m_io;
 	std::optional<GFX> m_gfx;

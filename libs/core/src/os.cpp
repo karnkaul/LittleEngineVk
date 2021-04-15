@@ -89,19 +89,6 @@ std::deque<os::ArgsParser::entry> const& os::args() noexcept {
 	return g_args;
 }
 
-bool os::halt(View<Ref<ICmdArg>> cmdArgs) {
-	for (auto const& entry : g_args) {
-		for (ICmdArg& cmdArg : cmdArgs) {
-			auto const matches = cmdArg.keyVariants();
-			bool const bMatch = std::any_of(matches.begin(), matches.end(), [&entry](std::string_view m) { return entry.k == m; });
-			if (bMatch && cmdArg.halt(entry.v)) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 bool os::debugging() {
 	bool ret = false;
 #if defined(LEVK_OS_WINDOWS)

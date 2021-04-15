@@ -10,16 +10,17 @@
 #include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
+#include <engine/gui/quad.hpp>
 #include <engine/input/control.hpp>
 #include <engine/render/model.hpp>
+#include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
 #include <graphics/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
-#include <engine/gui/quad.hpp>
-#include <engine/scene/scene_drawer.hpp>
+#include <engine/utils/exec.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -55,74 +56,6 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 	}
 }
 
-struct GPULister : os::ICmdArg {
-	inline static constexpr std::array names = {"gpu-list"sv, "list-gpus"sv};
-
-	View<std::string_view> keyVariants() const override {
-		return names;
-	}
-
-	bool halt(std::string_view) override {
-		graphics::g_log.minVerbosity = LibLogger::Verbosity::eEndUser;
-		graphics::Instance inst(graphics::Instance::CreateInfo{});
-		std::stringstream str;
-		str << "Available GPUs:\n";
-		int i = 0;
-		for (auto const& d : inst.availableDevices(graphics::Device::requiredExtensions)) {
-			str << '\t' << i++ << ". " << d << "\n";
-		}
-		str << "\n";
-		std::cout << str.str();
-		return true;
-	}
-
-	Usage usage() const override {
-		return {"", "List supported GPUs"};
-	}
-};
-
-struct GPUPicker : os::ICmdArg {
-	inline static constexpr std::array names = {"use-gpu"sv, "pick-gpu"sv};
-
-	inline static std::optional<std::size_t> s_picked;
-
-	View<std::string_view> keyVariants() const override {
-		return names;
-	}
-
-	bool halt(std::string_view params) override {
-		s32 idx = utils::to<s32>(params, -1);
-		if (idx >= 0) {
-			s_picked = (std::size_t)idx;
-			logD("Using custom GPU index: {}", idx);
-		}
-		return false;
-	}
-
-	Usage usage() const override {
-		return {"<0-...>", "Select a custom available GPU"};
-	}
-};
-
-void listCmdArgs();
-
-struct HelpCmd : os::ICmdArg {
-	inline static constexpr std::array names = {"h"sv, "help"sv};
-
-	View<std::string_view> keyVariants() const override {
-		return names;
-	}
-
-	bool halt(std::string_view) override {
-		listCmdArgs();
-		return true;
-	}
-
-	Usage usage() const override {
-		return {"", "List all command line arguments"};
-	}
-};
-
 struct Text {
 	using Type = graphics::Mesh::Type;
 
@@ -152,32 +85,6 @@ struct Text {
 		return ret;
 	}
 };
-
-GPULister g_gpuLister;
-GPUPicker g_gpuPicker;
-HelpCmd g_help;
-std::array<Ref<os::ICmdArg>, 3> const g_cmdArgs = {g_gpuLister, g_gpuPicker, g_help};
-
-void listCmdArgs() {
-	std::stringstream str;
-	for (os::ICmdArg const& arg : g_cmdArgs) {
-		str << '[';
-		bool bFirst = true;
-		for (auto key : arg.keyVariants()) {
-			if (!bFirst) {
-				str << ", ";
-			}
-			bFirst = false;
-			str << (key.length() == 1 ? "-"sv : "--"sv) << key;
-		}
-		auto const u = arg.usage();
-		if (!u.params.empty()) {
-			str << '=' << u.params;
-		}
-		str << "] : " << u.summary << '\n';
-	}
-	std::cout << str.str();
-}
 
 using namespace dts;
 
@@ -863,9 +770,6 @@ struct FlagsInput : input::Receiver {
 };
 
 bool run(io::Reader const& reader, ErasedRef androidApp) {
-	if (os::halt(g_cmdArgs)) {
-		return true;
-	}
 	try {
 		window::Instance::CreateInfo winInfo;
 		winInfo.config.androidApp = androidApp;
@@ -878,7 +782,6 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 		bootInfo.instance.bValidation = levk_debug;
 		bootInfo.instance.validationLog = dl::level::info;
 		std::optional<App> app;
-		bootInfo.device.pickOverride = GPUPicker::s_picked;
 		Engine engine(winst, {});
 		Flags flags;
 		FlagsInput flagsInput(flags);

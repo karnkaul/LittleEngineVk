@@ -1,7 +1,7 @@
 #pragma once
 #include <core/io/path.hpp>
-#include <graphics/bitmap_text.hpp>
 #include <graphics/geometry.hpp>
+#include <graphics/text_factory.hpp>
 #include <graphics/texture.hpp>
 
 namespace le {

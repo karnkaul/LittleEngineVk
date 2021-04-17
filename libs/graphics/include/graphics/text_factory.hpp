@@ -17,10 +17,7 @@ struct Glyph {
 	bool blank = false;
 };
 
-struct BitmapText {
-	enum class HAlign : s8 { Centre = 0, Left, Right };
-	enum class VAlign : s8 { Middle = 0, Top, Bottom };
-
+struct TextFactory {
 	using Size = std::variant<u32, f32>;
 
 	struct Layout {
@@ -34,10 +31,9 @@ struct BitmapText {
 
 	std::string text;
 	glm::vec3 pos = glm::vec3(0.0f);
+	glm::vec2 align = {};
 	Size size = 1.0f;
 	f32 nYPad = 0.2f;
-	HAlign halign = HAlign::Centre;
-	VAlign valign = VAlign::Middle;
 	Colour colour = colours::white;
 
 	Geometry generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;

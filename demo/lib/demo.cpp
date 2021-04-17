@@ -20,6 +20,7 @@
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
+#include <engine/render/bitmap_text.hpp>
 #include <engine/utils/exec.hpp>
 
 namespace le::demo {
@@ -55,36 +56,6 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 		}
 	}
 }
-
-struct Text {
-	using Type = graphics::Mesh::Type;
-
-	graphics::BitmapText text;
-	std::optional<graphics::Mesh> mesh;
-	static constexpr glm::mat4 const model = glm::mat4(1.0f);
-
-	void create(graphics::VRAM& vram, Type type = Type::eDynamic) {
-		mesh = graphics::Mesh(vram, type);
-	}
-
-	bool set(BitmapFont const& font, std::string_view str) {
-		text.text = str;
-		if (mesh) {
-			return mesh->construct(text.generate(font.glyphs(), font.atlas().data().size));
-		}
-		return false;
-	}
-
-	Primitive primitive(BitmapFont const& font) const {
-		Primitive ret;
-		if (mesh) {
-			ret.material.map_Kd = &font.atlas();
-			ret.material.map_d = &font.atlas();
-			ret.mesh = &*mesh;
-		}
-		return ret;
-	}
-};
 
 using namespace dts;
 
@@ -533,6 +504,7 @@ class App : public input::Receiver {
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
+		// m_data.text.text.align = {-0.5f, 0.5f};
 		m_data.text.set(font.get(), "Hi!");
 
 		auto freecam = m_data.registry.spawn<FreeCam, SpringArm>("freecam");
@@ -724,7 +696,7 @@ class App : public input::Receiver {
 		std::unordered_map<Hash, decf::entity_t> entities;
 		std::unordered_map<Hash, DrawGroup> groups;
 
-		Text text;
+		BitmapText text;
 		std::vector<DirLight> dirLights;
 
 		SceneNode::Root root;

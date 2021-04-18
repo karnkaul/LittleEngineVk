@@ -4,6 +4,6 @@
 if [[ -z $VULKAN_SDK ]]; then
 	echo -e "  ERROR: VULKAN_SDK not defined!"
 else
-	export PATH="$VULKAN_SDK/../source/Vulkan-Headers/include:$VULKAN_SDK/lib:$VULKAN_SDK/bin:$PATH"
+	export PATH="$VULKAN_SDK/lib:$VULKAN_SDK/bin:$PATH"
 	export VK_LAYER_PATH="$VULKAN_SDK/etc/vulkan/explicit_layer.d"
 fi

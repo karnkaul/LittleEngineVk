@@ -28,6 +28,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:${PLATFORM},Linux>:-fPIC>)
+target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>)
 
 # PCH
 if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")

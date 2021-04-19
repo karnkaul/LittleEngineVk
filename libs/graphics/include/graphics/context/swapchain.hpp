@@ -85,7 +85,7 @@ class Swapchain {
 		vk::ImageView depthImageView;
 		vk::SwapchainKHR swapchain;
 		kt::fixed_vector<Frame, 4> frames;
-		std::optional<vk::ResultValue<u32>> acquired;
+		std::optional<u32> acquired;
 
 		Display current;
 		u8 imageCount = 0;

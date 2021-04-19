@@ -163,10 +163,10 @@ kt::fixed_vector<u32, 3> QueueMultiplex::familyIndices(QFlags flags) const {
 vk::Result QueueMultiplex::present(vk::PresentInfoKHR const& info, bool bLock) {
 	auto& q = queue(QType::ePresent);
 	if (!bLock) {
-		return q.queue.presentKHR(info);
+		return q.queue.presentKHR(&info);
 	} else {
 		auto lock = mutex(QType::ePresent).lock();
-		return q.queue.presentKHR(info);
+		return q.queue.presentKHR(&info);
 	}
 }
 

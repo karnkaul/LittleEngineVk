@@ -94,7 +94,7 @@ struct SwapchainCreateInfo {
 
 Swapchain::Frame& Swapchain::Storage::frame() {
 	ENSURE(acquired, "Image not acquired");
-	return frames[acquired->value];
+	return frames[(std::size_t)*acquired];
 }
 
 Swapchain::Swapchain(VRAM& vram) : m_vram(vram), m_device(vram.m_device) {
@@ -131,20 +131,14 @@ kt::result<RenderTarget> Swapchain::acquireNextImage(RenderSync const& sync) {
 		g_log.log(lvl::warning, 1, "[{}] Attempt to acquire image without presenting previously acquired one", g_name);
 		return m_storage.frame().target;
 	}
-	try {
-		m_storage.acquired = m_device.get().device().acquireNextImageKHR(m_storage.swapchain, maths::max<u64>(), sync.drawReady, {});
-		setFlags(m_storage.acquired->result);
-	} catch (vk::OutOfDateKHRError const& e) {
-		m_storage.flags.set(Flag::eOutOfDate);
-		g_log.log(lvl::warning, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name, e.what());
+	u32 acquired;
+	auto const result = m_device.get().device().acquireNextImageKHR(m_storage.swapchain, maths::max<u64>(), sync.drawReady, {}, &acquired);
+	setFlags(result);
+	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+		g_log.log(lvl::warning, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name, g_vkResultStr[result]);
 		return kt::null_result;
 	}
-	if (!m_storage.acquired || (m_storage.acquired->result != vk::Result::eSuccess && m_storage.acquired->result != vk::Result::eSuboptimalKHR)) {
-		g_log.log(lvl::warning, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name,
-				  m_storage.acquired ? g_vkResultStr[m_storage.acquired->result] : "Unknown Error");
-		m_storage.acquired.reset();
-		return kt::null_result;
-	}
+	m_storage.acquired = acquired;
 	auto& frame = m_storage.frame();
 	m_device.get().waitFor(frame.drawn);
 	return frame.target;
@@ -161,21 +155,13 @@ bool Swapchain::present(RenderSync const& sync) {
 	}
 	Frame& frame = m_storage.frame();
 	vk::PresentInfoKHR presentInfo;
-	auto const index = m_storage.acquired->value;
+	auto const index = *m_storage.acquired;
 	presentInfo.waitSemaphoreCount = 1U;
 	presentInfo.pWaitSemaphores = &sync.presentReady;
 	presentInfo.swapchainCount = 1U;
 	presentInfo.pSwapchains = &m_storage.swapchain;
 	presentInfo.pImageIndices = &index;
-	vk::Result result;
-	try {
-		result = m_device.get().queues().present(presentInfo, false);
-	} catch (vk::OutOfDateKHRError const& e) {
-		g_log.log(lvl::warning, 1, "[{}] Swapchain Failed to present image [{}]", g_name, e.what());
-		m_storage.flags.set(Flag::eOutOfDate);
-		m_storage.acquired.reset();
-		return false;
-	}
+	auto const result = m_device.get().queues().present(presentInfo, false);
 	setFlags(result);
 	m_storage.acquired.reset();
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {

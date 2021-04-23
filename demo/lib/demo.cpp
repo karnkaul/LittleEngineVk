@@ -22,6 +22,7 @@
 
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
+#include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
 #include <engine/utils/exec.hpp>
 
@@ -547,6 +548,12 @@ class App : public input::Receiver {
 			auto& text = bg.push<gui::Text>(&vram, &*font);
 			text.m_str = "click";
 			text.m_text.size = 60U;
+			m_data.button = &root.push<gui::Widget>(&vram, &*font);
+			m_data.button->m_size = {200.0f, 100.0f};
+			m_data.button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
+			m_data.button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
+			m_data.button->m_text->m_text.size = 40U;
+			m_data.button->m_text->m_str = "Button";
 		}
 
 		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});
@@ -637,7 +644,7 @@ class App : public input::Receiver {
 		if (guiRoot) {
 			/*auto const& p = m_eng->inputState().cursor.position;
 			logD("c: {}, {}", p.x, p.y);*/
-			static gui::Quad* s_prev = {};
+			/*static gui::Quad* s_prev = {};
 			static Colour s_col;
 			if (auto node = guiRoot->leafHit(m_eng->inputState().cursor.position)) {
 				if (auto quad = dynamic_cast<gui::Quad*>(node)) {
@@ -653,7 +660,10 @@ class App : public input::Receiver {
 			} else if (s_prev) {
 				s_prev->m_material.Tf = s_col;
 				s_prev = {};
-			}
+			}*/
+		}
+		if (m_data.button && m_data.button->clicked(m_eng->inputState())) {
+			logD("click!");
 		}
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
@@ -709,6 +719,8 @@ class App : public input::Receiver {
 		decf::entity_t player;
 		decf::entity_t guiRoot;
 		AssetListLoader loader;
+
+		gui::Widget* button = {};
 	};
 
 	Data m_data;

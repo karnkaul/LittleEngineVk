@@ -5,7 +5,6 @@
 #include <fmt/format.h>
 #include <core/erased_ref.hpp>
 #include <core/io/path.hpp>
-#include <core/ref.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <kt/args_parser/args_parser.hpp>

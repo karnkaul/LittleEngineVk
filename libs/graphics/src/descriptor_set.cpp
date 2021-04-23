@@ -38,7 +38,7 @@ bool stale(DescriptorSet::Bufs const& lhs, DescriptorSet::Bufs const& rhs) noexc
 }
 } // namespace
 
-DescriptorSet::DescriptorSet(Device& device, CreateInfo const& info) : m_device(device) {
+DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) : m_device(device) {
 	m_storage.rotateCount = (u32)info.rotateCount;
 	m_storage.layout = info.layout;
 	m_storage.setNumber = info.setNumber;
@@ -61,8 +61,8 @@ DescriptorSet::DescriptorSet(Device& device, CreateInfo const& info) : m_device(
 					set.bindings[b].name = bindingInfo.name;
 				}
 			}
-			set.pool = m_device.get().makeDescriptorPool(poolSizes, 1);
-			set.set = m_device.get().allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
+			set.pool = m_device->makeDescriptorPool(poolSizes, 1);
+			set.set = m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
 			m_storage.setBuffer.push(std::move(set));
 		}
 	}
@@ -152,11 +152,11 @@ bool DescriptorSet::unassigned() const noexcept {
 }
 
 void DescriptorSet::update(vk::WriteDescriptorSet write) {
-	m_device.get().device().updateDescriptorSets(write, {});
+	m_device->device().updateDescriptorSets(write, {});
 }
 
 void DescriptorSet::destroy() {
-	Device& d = m_device;
+	Device& d = *m_device;
 	d.defer([b = m_storage.setBuffer, &d]() mutable {
 		for (Set& set : b.ts) {
 			d.destroy(set.pool);
@@ -174,7 +174,7 @@ std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u
 	return {set, binding};
 }
 
-SetPool::SetPool(Device& device, DescriptorSet::CreateInfo const& info) : m_device(device) {
+SetPool::SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info) : m_device(device) {
 	m_storage.layout = info.layout;
 	m_storage.rotateCount = info.rotateCount;
 	m_storage.setNumber = info.setNumber;

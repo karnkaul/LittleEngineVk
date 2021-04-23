@@ -3,7 +3,7 @@
 #include <engine/scene/primitive.hpp>
 
 namespace le {
-void BitmapText::create(graphics::VRAM& vram, Type type) {
+void BitmapText::create(not_null<graphics::VRAM*> vram, Type type) {
 	mesh = graphics::Mesh(vram, type);
 }
 

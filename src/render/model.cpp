@@ -335,7 +335,7 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	return parser(reader);
 }
 
-Model::Result<View<Primitive>> Model::construct(VRAM& vram, CreateInfo const& info, Sampler const& sampler, vk::Format texFormat) {
+Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, vk::Format texFormat) {
 	Map<Material> materials;
 	decltype(m_storage) storage;
 	for (auto const& tex : info.textures) {

@@ -10,8 +10,8 @@ class Sampler {
 	using MinMag = std::pair<vk::Filter, vk::Filter>;
 	static vk::SamplerCreateInfo info(MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
 
-	Sampler(Device& device, vk::SamplerCreateInfo const& info);
-	Sampler(Device& device, MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
+	Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info);
+	Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
 	Sampler(Sampler&&);
 	Sampler& operator=(Sampler&&);
 	virtual ~Sampler();
@@ -24,7 +24,7 @@ class Sampler {
 	void destroy();
 
 	vk::Sampler m_sampler;
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 };
 
 class Texture {
@@ -50,7 +50,7 @@ class Texture {
 
 	inline static constexpr auto srgbFormat = vk::Format::eR8G8B8A8Srgb;
 
-	Texture(VRAM& vram);
+	Texture(not_null<VRAM*> vram);
 	Texture(Texture&&);
 	Texture& operator=(Texture&&);
 	virtual ~Texture();
@@ -65,7 +65,7 @@ class Texture {
 	Data const& data() const noexcept;
 	Image const& image() const;
 
-	Ref<VRAM> m_vram;
+	not_null<VRAM*> m_vram;
 
   private:
 	struct Storage {

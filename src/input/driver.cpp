@@ -57,7 +57,7 @@ Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& vi
 	}
 #endif
 	Space const sp(size, wSize, view);
-	s.cursor.position = sp.world(s.cursor.screenPos);
+	s.cursor.position = sp.world(s.cursor.screenPos, false);
 	return ret;
 }
 

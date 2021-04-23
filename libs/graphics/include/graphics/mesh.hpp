@@ -1,4 +1,5 @@
 #pragma once
+#include <core/ref.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/geometry.hpp>
 
@@ -16,7 +17,7 @@ class Mesh {
 
 	inline static auto s_trisDrawn = std::atomic<u32>(0);
 
-	Mesh(VRAM& vram, Type type = Type::eStatic);
+	Mesh(not_null<VRAM*> vram, Type type = Type::eStatic);
 	Mesh(Mesh&&);
 	Mesh& operator=(Mesh&&);
 	virtual ~Mesh();
@@ -38,7 +39,7 @@ class Mesh {
 
 	bool hasIndices() const noexcept;
 
-	Ref<VRAM> m_vram;
+	not_null<VRAM*> m_vram;
 
   private:
 	struct Storage {

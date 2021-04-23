@@ -3,7 +3,7 @@
 #include <vector>
 #include <core/ensure.hpp>
 #include <core/hash.hpp>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
@@ -34,7 +34,7 @@ class CommandBuffer {
 
 	inline static auto s_drawCalls = std::atomic<u32>(0);
 
-	static std::vector<CommandBuffer> make(Device& device, vk::CommandPool pool, u32 count, bool bSecondary);
+	static std::vector<CommandBuffer> make(not_null<Device*> device, vk::CommandPool pool, u32 count, bool bSecondary);
 
 	CommandBuffer() = default;
 	CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool);

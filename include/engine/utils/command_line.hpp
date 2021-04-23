@@ -2,7 +2,6 @@
 #include <array>
 #include <unordered_map>
 #include <core/io/cmd_interpreter.hpp>
-#include <core/ref.hpp>
 #include <engine/utils/exec.hpp>
 #include <kt/uint_flags/uint_flags.hpp>
 

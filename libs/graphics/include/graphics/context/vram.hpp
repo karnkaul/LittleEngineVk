@@ -11,7 +11,7 @@ class VRAM final : public Memory {
 	using notify_t = Transfer::notify_t;
 	using Future = ::le::utils::Future<notify_t>;
 
-	VRAM(Device& device, Transfer::CreateInfo const& transferInfo = {});
+	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});
 	~VRAM();
 
 	Buffer makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible);
@@ -22,11 +22,11 @@ class VRAM final : public Memory {
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 	[[nodiscard]] Future copy(View<View<std::byte>> pixelsArr, Image& out_dst, LayoutPair layouts);
 
-	template <typename Cont = std::initializer_list<Ref<Future const>>>
+	template <typename Cont>
 	void wait(Cont&& futures) const;
 	void waitIdle();
 
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 
   private:
 	Transfer m_transfer;

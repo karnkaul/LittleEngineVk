@@ -16,7 +16,7 @@ struct BitmapText {
 	graphics::TextFactory text;
 	std::optional<graphics::Mesh> mesh;
 
-	void create(graphics::VRAM& vram, Type type = Type::eDynamic);
+	void create(not_null<graphics::VRAM*> vram, Type type = Type::eDynamic);
 	bool set(BitmapFont const& font, std::string_view str);
 	bool set(View<graphics::Glyph> glyphs, glm::ivec2 atlas, std::string_view str);
 	Primitive primitive(BitmapFont const& font) const;

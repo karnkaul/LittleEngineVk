@@ -3,7 +3,7 @@
 #include <list>
 #include <memory>
 #include <vector>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <core/time.hpp>
 #include <graphics/resources.hpp>
@@ -42,7 +42,7 @@ class Transfer final {
 		u8 framePad = 1;
 	};
 
-	Transfer(Memory& memory, CreateInfo const& info);
+	Transfer(not_null<Memory*> memory, CreateInfo const& info);
 	~Transfer();
 
 	static Promise makePromise() noexcept;
@@ -79,7 +79,7 @@ class Transfer final {
 		std::vector<Batch> submitted;
 	} m_batches;
 	kt::async_queue<std::function<void()>> m_queue;
-	Ref<Memory> m_memory;
+	not_null<Memory*> m_memory;
 
 	friend class VRAM;
 };

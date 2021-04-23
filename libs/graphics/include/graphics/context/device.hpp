@@ -1,4 +1,5 @@
 #pragma once
+#include <core/not_null.hpp>
 #include <core/traits.hpp>
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/instance.hpp>
@@ -15,7 +16,7 @@ class Device final {
 
 	struct CreateInfo;
 
-	Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& info);
+	Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo const& info);
 	~Device();
 
 	void waitIdle();
@@ -78,7 +79,7 @@ class Device final {
 		return m_metadata.surface;
 	}
 
-	Ref<Instance> m_instance;
+	not_null<Instance*> m_instance;
 
   private:
 	PhysicalDevice m_physicalDevice;
@@ -132,11 +133,11 @@ void Device::destroy(T& out_t, Ts&... out_ts) {
 	if constexpr (std::is_same_v<T, vk::Instance> || std::is_same_v<T, vk::Device>) {
 		out_t.destroy();
 	} else {
-		if (!default_v(m_device) && !default_v(m_instance.get().m_instance) && !default_v(out_t)) {
+		if (!default_v(m_device) && !default_v(m_instance->m_instance) && !default_v(out_t)) {
 			if constexpr (std::is_same_v<T, vk::SurfaceKHR>) {
-				m_instance.get().m_instance.destroySurfaceKHR(out_t);
+				m_instance->m_instance.destroySurfaceKHR(out_t);
 			} else if constexpr (std::is_same_v<T, vk::DebugUtilsMessengerEXT>) {
-				m_instance.get().m_instance.destroy(out_t, nullptr);
+				m_instance->m_instance.destroy(out_t, nullptr);
 			} else if constexpr (std::is_same_v<T, vk::DescriptorSetLayout>) {
 				m_device.destroyDescriptorSetLayout(out_t);
 			} else if constexpr (std::is_same_v<T, vk::DescriptorPool>) {

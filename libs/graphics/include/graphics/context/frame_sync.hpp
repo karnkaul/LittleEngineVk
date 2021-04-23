@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <vector>
+#include <core/not_null.hpp>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/render_types.hpp>
@@ -25,7 +26,7 @@ struct FrameSync {
 
 class BufferedFrameSync : public RingBuffer<FrameSync> {
   public:
-	BufferedFrameSync(Device& device, std::size_t size, u32 secondaryCount = 0);
+	BufferedFrameSync(not_null<Device*> device, std::size_t size, u32 secondaryCount = 0);
 	BufferedFrameSync(BufferedFrameSync&&);
 	BufferedFrameSync& operator=(BufferedFrameSync&&);
 	~BufferedFrameSync();
@@ -39,7 +40,7 @@ class BufferedFrameSync : public RingBuffer<FrameSync> {
   private:
 	void destroy();
 
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 };
 
 // impl

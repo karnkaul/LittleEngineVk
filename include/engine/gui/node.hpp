@@ -1,7 +1,8 @@
 #pragma once
 #include <memory>
+#include <optional>
 #include <vector>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <engine/ibase.hpp>
 #include <engine/render/flex.hpp>
@@ -31,16 +32,18 @@ class Root {
 	void update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset = {});
 	Node* leafHit(glm::vec2 point) const noexcept;
 
+	glm::vec2 m_size = {};
+	glm::vec2 m_origin = {};
 	std::vector<std::unique_ptr<Node>> m_nodes;
 };
 
 class Node : public Root, public IBase {
   public:
-	Node(Root& root) noexcept;
+	Node(not_null<Root*> root) noexcept;
 
 	Node& offsetBySize(glm::vec2 size, glm::vec2 coeff = {1.0f, 1.0f}) noexcept;
 
-	void update(input::Space const& space, glm::vec2 extent, glm::vec2 origin);
+	void update(input::Space const& space);
 	glm::vec3 position() const noexcept;
 	glm::mat4 model() const noexcept;
 	bool hit(glm::vec2 point) const noexcept;
@@ -52,14 +55,13 @@ class Node : public Root, public IBase {
 	DrawScissor m_scissor;
 	TFlex<glm::vec2> m_local;
 	glm::quat m_orientation = graphics::identity;
-	glm::vec2 m_size = {};
-	glm::vec2 m_origin = {};
 	f32 m_zIndex = {};
+	bool m_hitTest = false;
 
-	Ref<Root> m_parent;
+	not_null<Root*> m_parent;
 
-  protected:
-	virtual void onUpdate() {
+  private:
+	virtual void onUpdate(input::Space const&) {
 	}
 
 	friend class Root;
@@ -70,13 +72,13 @@ class Node : public Root, public IBase {
 template <typename T, typename... Args>
 T& Root::push(Args&&... args) {
 	static_assert(std::is_base_of_v<Node, T>, "T must derive from Node");
-	auto t = std::make_unique<T>(*this, std::forward<Args>(args)...);
+	auto t = std::make_unique<T>(this, std::forward<Args>(args)...);
 	T& ret = *t;
 	m_nodes.push_back(std::move(t));
 	return ret;
 }
 
-inline Node::Node(Root& root) noexcept : m_parent(root) {
+inline Node::Node(not_null<Root*> root) noexcept : m_parent(root) {
 }
 inline Node& Node::offsetBySize(glm::vec2 size, glm::vec2 coeff) noexcept {
 	m_size = size;

@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+#include <core/not_null.hpp>
 #include <core/ref.hpp>
 #include <core/span.hpp>
 #include <graphics/resources.hpp>
@@ -40,7 +41,7 @@ class DescriptorSet {
 	};
 	struct CreateInfo;
 
-	DescriptorSet(Device& device, CreateInfo const& info);
+	DescriptorSet(not_null<Device*> device, CreateInfo const& info);
 	DescriptorSet(DescriptorSet&&) noexcept;
 	DescriptorSet& operator=(DescriptorSet&&) noexcept;
 	~DescriptorSet();
@@ -63,7 +64,7 @@ class DescriptorSet {
 	bool contains(u32 bind) const noexcept;
 	bool unassigned() const noexcept;
 
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 
   private:
 	template <typename T>
@@ -105,7 +106,7 @@ struct DescriptorSet::CreateInfo {
 // Manages N DescriptorSet instances (drawables)
 class SetPool {
   public:
-	SetPool(Device& device, DescriptorSet::CreateInfo const& info);
+	SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info);
 
 	DescriptorSet& front();
 	DescriptorSet& index(std::size_t idx);
@@ -127,7 +128,7 @@ class SetPool {
 		std::size_t rotateCount = 0;
 		u32 setNumber = 0;
 	} m_storage;
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 };
 
 // Manages multiple inputs for a shader via set numbers

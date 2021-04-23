@@ -20,22 +20,22 @@ Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
 	info.queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
-	return Buffer(memory, info);
+	return Buffer(&memory, info);
 }
 } // namespace
 
-Transfer::Transfer(Memory& memory, CreateInfo const& info) : m_memory(memory) {
+Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	poolInfo.queueFamilyIndex = memory.m_device.get().queues().familyIndex(QType::eTransfer);
-	m_data.pool = memory.m_device.get().device().createCommandPool(poolInfo);
+	poolInfo.queueFamilyIndex = memory->m_device->queues().familyIndex(QType::eTransfer);
+	m_data.pool = memory->m_device->device().createCommandPool(poolInfo);
 	m_queue.active(true);
 	m_sync.stagingThread = kt::kthread([this, r = info.reserve]() {
 		{
 			auto lock = m_sync.mutex.lock();
 			for (auto const& range : r) {
 				for (auto i = range.count; i > 0; --i) {
-					m_data.buffers.push_back(makeStagingBuffer(m_memory, range.size));
+					m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size));
 				}
 			}
 		}
@@ -66,8 +66,8 @@ Transfer::~Transfer() {
 		f();
 	}
 	m_sync.stagingThread = {};
-	Memory& m = m_memory;
-	Device& d = m.m_device;
+	Memory& m = *m_memory;
+	Device& d = *m.m_device;
 	d.waitIdle();
 	d.destroy(m_data.pool);
 	for (auto& fence : m_data.fences) {
@@ -84,7 +84,7 @@ Transfer::~Transfer() {
 
 std::size_t Transfer::update() {
 	auto removeDone = [this](Batch& batch) -> bool {
-		if (m_memory.get().m_device.get().signalled(batch.done)) {
+		if (m_memory->m_device->signalled(batch.done)) {
 			if (batch.framePad == 0) {
 				for (auto& [stage, promise] : batch.entries) {
 					promise->set_value();
@@ -108,7 +108,7 @@ std::size_t Transfer::update() {
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = (u32)commands.size();
 		submitInfo.pCommandBuffers = commands.data();
-		m_memory.get().m_device.get().queues().submit(QType::eTransfer, submitInfo, m_batches.active.done, true);
+		m_memory->m_device->queues().submit(QType::eTransfer, submitInfo, m_batches.active.done, true);
 		m_batches.submitted.push_back(std::move(m_batches.active));
 	}
 	m_batches.active = {};
@@ -133,7 +133,7 @@ Buffer Transfer::nextBuffer(vk::DeviceSize size) {
 			return ret;
 		}
 	}
-	return makeStagingBuffer(m_memory, size);
+	return makeStagingBuffer(*m_memory, size);
 }
 
 vk::CommandBuffer Transfer::nextCommand() {
@@ -146,14 +146,14 @@ vk::CommandBuffer Transfer::nextCommand() {
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = m_data.pool;
-	return m_memory.get().m_device.get().device().allocateCommandBuffers(commandBufferInfo).front();
+	return m_memory->m_device->device().allocateCommandBuffers(commandBufferInfo).front();
 }
 
 void Transfer::scavenge(Stage&& stage, vk::Fence fence) {
 	m_data.commands.push_back(std::move(stage.command));
 	m_data.buffers.push_back(std::move(stage.buffer));
 	if (std::find(m_data.fences.begin(), m_data.fences.end(), fence) == m_data.fences.end()) {
-		m_memory.get().m_device.get().resetFence(fence);
+		m_memory->m_device->resetFence(fence);
 		m_data.fences.push_back(fence);
 	}
 }
@@ -164,6 +164,6 @@ vk::Fence Transfer::nextFence() {
 		m_data.fences.pop_back();
 		return ret;
 	}
-	return m_memory.get().m_device.get().makeFence(false);
+	return m_memory->m_device->makeFence(false);
 }
 } // namespace le::graphics

@@ -110,25 +110,25 @@ void setStyle() {
 DearImGui::DearImGui() : TMonoInstance(false) {
 }
 
-DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopInstance const& window, [[maybe_unused]] CreateInfo const& info)
+DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]] not_null<Desktop const*> window, [[maybe_unused]] CreateInfo const& info)
 	: TMonoInstance(true) {
 #if defined(LEVK_USE_IMGUI) && defined(LEVK_USE_GLFW)
-	m_device = &device;
+	m_device = device;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 	if (info.texFormat == Texture::srgbFormat) {
 		setStyle();
 	}
-	auto const glfwWindow = window.nativePtr();
+	auto const glfwWindow = window->nativePtr();
 	ENSURE(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
 	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
-	auto const& queue = device.queues().queue(QType::eGraphics);
-	m_pool = makePool(device, info.descriptorCount);
-	initInfo.Instance = device.m_instance.get().instance();
-	initInfo.Device = device.device();
-	initInfo.PhysicalDevice = device.physicalDevice().device;
+	auto const& queue = device->queues().queue(QType::eGraphics);
+	m_pool = makePool(*device, info.descriptorCount);
+	initInfo.Instance = device->m_instance->instance();
+	initInfo.Device = device->device();
+	initInfo.PhysicalDevice = device->physicalDevice().device;
 	initInfo.Queue = queue.queue;
 	initInfo.QueueFamily = queue.familyIndex;
 	initInfo.MinImageCount = (u32)info.minImageCount;
@@ -136,17 +136,17 @@ DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopIn
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	initInfo.DescriptorPool = m_pool;
 	if (!ImGui_ImplVulkan_Init(&initInfo, info.renderPass)) {
-		device.destroy(m_pool);
+		device->destroy(m_pool);
 		throw std::runtime_error("ImGui_ImplVulkan_Init failed");
 	}
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	poolInfo.queueFamilyIndex = queue.familyIndex;
-	auto pool = device.device().createCommandPool(poolInfo);
+	auto pool = device->device().createCommandPool(poolInfo);
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = pool;
-	auto commandBuffer = device.device().allocateCommandBuffers(commandBufferInfo).front();
+	auto commandBuffer = device->device().allocateCommandBuffers(commandBufferInfo).front();
 	vk::CommandBufferBeginInfo beginInfo;
 	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 	commandBuffer.begin(beginInfo);
@@ -155,11 +155,11 @@ DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopIn
 	vk::SubmitInfo endInfo;
 	endInfo.commandBufferCount = 1;
 	endInfo.pCommandBuffers = &commandBuffer;
-	auto done = device.makeFence(false);
+	auto done = device->makeFence(false);
 	queue.queue.submit(endInfo, done);
-	device.waitFor(done);
+	device->waitFor(done);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
-	device.destroy(pool, done);
+	device->destroy(pool, done);
 	logD("[DearImGui] constructed");
 #endif
 }

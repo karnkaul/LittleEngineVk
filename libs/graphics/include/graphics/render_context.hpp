@@ -31,7 +31,7 @@ class RenderContext : NoCopy {
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
 
-	RenderContext(Swapchain& swapchain, u32 rotateCount = 2, u32 secondaryCmdCount = 0);
+	RenderContext(not_null<Swapchain*> swapchain, u32 rotateCount = 2, u32 secondaryCmdCount = 0);
 	RenderContext(RenderContext&&);
 	RenderContext& operator=(RenderContext&&);
 
@@ -64,9 +64,9 @@ class RenderContext : NoCopy {
 	BufferedFrameSync m_sync;
 	Storage m_storage;
 
-	Ref<Swapchain> m_swapchain;
-	Ref<VRAM> m_vram;
-	Ref<Device> m_device;
+	not_null<Swapchain*> m_swapchain;
+	not_null<VRAM*> m_vram;
+	not_null<Device*> m_device;
 };
 
 struct VertexInputCreateInfo {
@@ -137,11 +137,11 @@ inline RenderContext::Status RenderContext::status() const noexcept {
 	return m_storage.status;
 }
 inline glm::ivec2 RenderContext::extent() const noexcept {
-	vk::Extent2D const ext = m_swapchain.get().display().extent;
+	vk::Extent2D const ext = m_swapchain->display().extent;
 	return glm::ivec2(ext.width, ext.height);
 }
 inline vk::SurfaceFormatKHR RenderContext::swapchainFormat() const noexcept {
-	return m_swapchain.get().colourFormat();
+	return m_swapchain->colourFormat();
 }
 inline vk::Format RenderContext::textureFormat() const noexcept {
 	return swapchainFormat().colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;

@@ -19,8 +19,8 @@ struct Space {
 	constexpr Space(glm::vec2 fbSize, glm::vec2 wSize, Viewport const& view) noexcept;
 
 	constexpr glm::vec2 density() const noexcept;
-	constexpr glm::vec2 world(glm::vec2 screen) const noexcept;
-	constexpr glm::vec2 screen(glm::vec2 world) const noexcept;
+	constexpr glm::vec2 world(glm::vec2 screen, bool normalised) const noexcept;
+	constexpr glm::vec2 screen(glm::vec2 world, bool normalised) const noexcept;
 };
 
 // impl
@@ -35,7 +35,10 @@ constexpr Space::Space(glm::vec2 fbSize, glm::vec2 wSize, Viewport const& view) 
 constexpr glm::vec2 Space::density() const noexcept {
 	return anyZero(wSize, fbSize) ? glm::vec2(1.0f) : fbSize / wSize;
 }
-constexpr glm::vec2 Space::world(glm::vec2 screen) const noexcept {
+constexpr glm::vec2 Space::world(glm::vec2 screen, bool normalised) const noexcept {
+	if (normalised) {
+		screen *= wSize;
+	}
 	if (scale < 1.0f) {
 		screen = (screen - delta) / scale;
 	}
@@ -43,7 +46,10 @@ constexpr glm::vec2 Space::world(glm::vec2 screen) const noexcept {
 	screen -= (fbSize * 0.5f);
 	return {screen.x, -screen.y};
 }
-constexpr glm::vec2 Space::screen(glm::vec2 world) const noexcept {
+constexpr glm::vec2 Space::screen(glm::vec2 world, bool normalised) const noexcept {
+	if (normalised) {
+		world *= fbSize;
+	}
 	world = {world.x, -world.y};
 	world += (fbSize * 0.5f);
 	world /= density();

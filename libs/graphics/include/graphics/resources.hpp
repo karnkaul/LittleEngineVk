@@ -2,7 +2,7 @@
 #include <atomic>
 #include <vk_mem_alloc.h>
 #include <core/log.hpp>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/qflags.hpp>
 #include <vulkan/vulkan.hpp>
@@ -40,7 +40,7 @@ class Resource {
 		vk::SharingMode mode;
 	};
 
-	Resource(Memory& memory) : m_memory(memory) {
+	Resource(not_null<Memory*> memory) : m_memory(memory) {
 	}
 	Resource(Resource&&) = default;
 	Resource& operator=(Resource&&) = default;
@@ -55,20 +55,20 @@ class Resource {
 
   protected:
 	Data m_data;
-	Ref<Memory> m_memory;
+	not_null<Memory*> m_memory;
 
 	friend class VRAM;
 };
 
 class Memory {
   public:
-	Memory(Device& device);
+	Memory(not_null<Device*> device);
 	~Memory();
 
 	u64 bytes(Resource::Type type) const noexcept;
 
 	dl::level m_logLevel = dl::level::debug;
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 
   protected:
 	VmaAllocator m_allocator;
@@ -86,7 +86,7 @@ class Buffer : public Resource {
 
 	static constexpr Resource::Type type = Resource::Type::eBuffer;
 
-	Buffer(Memory& memory, CreateInfo const& info);
+	Buffer(not_null<Memory*> memory, CreateInfo const& info);
 	Buffer(Buffer&&);
 	Buffer& operator=(Buffer&&);
 	~Buffer() override;
@@ -144,7 +144,7 @@ class Image : public Resource {
 
 	static constexpr Resource::Type type = Resource::Type::eImage;
 
-	Image(Memory& memory, CreateInfo const& info);
+	Image(not_null<Memory*> memory, CreateInfo const& info);
 	Image(Image&&);
 	Image& operator=(Image&&);
 	~Image() override;

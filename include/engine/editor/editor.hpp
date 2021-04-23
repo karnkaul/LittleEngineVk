@@ -1,5 +1,4 @@
 #pragma once
-#include <core/ref.hpp>
 #include <core/time.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <engine/editor/log_stats.hpp>

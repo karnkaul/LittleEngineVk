@@ -5,6 +5,7 @@
 #include <core/hash.hpp>
 #include <core/io/file_monitor.hpp>
 #include <core/io/reader.hpp>
+#include <core/not_null.hpp>
 #include <core/os.hpp>
 #include <kt/async_queue/locker.hpp>
 
@@ -42,7 +43,7 @@ class Resources {
   public:
 	using FMode = io::FileMonitor::Mode;
 
-	void reader(io::Reader const& reader);
+	void reader(not_null<io::Reader const*> reader);
 	io::Reader const& reader() const;
 	io::FileReader& fileReader();
 
@@ -56,6 +57,6 @@ class Resources {
   protected:
 	kt::locker_t<std::unordered_map<Hash, Resource>, std::shared_mutex> m_loaded;
 	io::FileReader m_fileReader;
-	io::Reader const* m_pReader = nullptr;
+	io::Reader const* m_reader = nullptr;
 };
 } // namespace le

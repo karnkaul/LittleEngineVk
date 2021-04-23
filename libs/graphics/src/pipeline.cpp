@@ -29,7 +29,7 @@ bool valid(Shader::ModuleMap const& shaders) noexcept {
 }
 } // namespace
 
-Pipeline::Pipeline(VRAM& vram, Shader const& shader, CreateInfo info, Hash id) : m_vram(vram), m_device(vram.m_device) {
+Pipeline::Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo info, Hash id) : m_vram(vram), m_device(vram->m_device) {
 	m_metadata.main = std::move(info);
 	m_storage.id = id;
 	construct(shader, m_metadata.main, m_storage.dynamic.main, true);
@@ -170,7 +170,7 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	}
 	m_metadata.name = shader.m_name;
 	if (Device::default_v(m_storage.dynamic.cache)) {
-		m_storage.dynamic.cache = m_device.get().makePipelineCache();
+		m_storage.dynamic.cache = m_device->makePipelineCache();
 	}
 	if (bFixed) {
 		auto& f = m_storage.fixed;
@@ -183,11 +183,11 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 					bindings.push_back(setBinding.binding);
 				}
 			}
-			auto const descLayout = m_device.get().makeDescriptorSetLayout(bindings);
+			auto const descLayout = m_device->makeDescriptorSetLayout(bindings);
 			f.setLayouts.push_back(descLayout);
 			f.bindingInfos.push_back(std::move(binds));
 		}
-		f.layout = m_device.get().makePipelineLayout(setBindings.push, f.setLayouts);
+		f.layout = m_device->makePipelineLayout(setBindings.push, f.setLayouts);
 		m_storage.input = ShaderInput(*this, m_metadata.main.rotateCount);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
@@ -266,13 +266,13 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	createInfo.layout = m_storage.fixed.layout;
 	createInfo.renderPass = c.renderPass;
 	createInfo.subpass = c.subpass;
-	auto result = m_device.get().device().createGraphicsPipeline(m_storage.dynamic.cache, createInfo);
+	auto result = m_device->device().createGraphicsPipeline(m_storage.dynamic.cache, createInfo);
 	out_pipe = result;
 	return true;
 }
 
 void Pipeline::destroy() {
-	Device& d = m_device;
+	Device& d = *m_device;
 	destroy(m_storage.dynamic.main);
 	for (auto const& [_, pipe] : m_storage.dynamic.variants) {
 		destroy(pipe);
@@ -289,7 +289,7 @@ void Pipeline::destroy() {
 
 void Pipeline::destroy(vk::Pipeline pipeline) {
 	if (!Device::default_v(pipeline)) {
-		Device& d = m_device;
+		Device& d = *m_device;
 		d.defer([&d, pipeline]() mutable { d.destroy(pipeline); });
 	}
 }

@@ -25,8 +25,8 @@ T const* fromNextChain(U* pNext, vk::StructureType type) {
 // Prevent validation spam on Windows
 extern dl::level g_validationLevel;
 
-Device::Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& info) : m_instance(instance) {
-	if (default_v(instance.m_instance)) {
+Device::Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo const& info) : m_instance(instance) {
+	if (default_v(instance->m_instance)) {
 		throw std::runtime_error("Invalid graphics Instance");
 	}
 	if (default_v(surface)) {
@@ -36,7 +36,7 @@ Device::Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& inf
 	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warning);
 	std::unordered_set<std::string_view> const extSet = {info.extensions.begin(), info.extensions.end()};
 	std::vector<std::string_view> const extArr = {extSet.begin(), extSet.end()};
-	kt::fixed_vector<PhysicalDevice, 8> const devices = instance.availableDevices(extArr);
+	kt::fixed_vector<PhysicalDevice, 8> const devices = instance->availableDevices(extArr);
 	if (devices.empty()) {
 		g_log.log(lvl::error, 0, "[{}] No compatible Vulkan physical device detected!", g_name);
 		throw std::runtime_error("No physical devices");
@@ -82,15 +82,15 @@ Device::Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& inf
 	deviceCreateInfo.queueCreateInfoCount = (u32)queueCreateInfos.size();
 	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-	if (!instance.m_metadata.layers.empty()) {
-		deviceCreateInfo.enabledLayerCount = (u32)instance.m_metadata.layers.size();
-		deviceCreateInfo.ppEnabledLayerNames = instance.m_metadata.layers.data();
+	if (!instance->m_metadata.layers.empty()) {
+		deviceCreateInfo.enabledLayerCount = (u32)instance->m_metadata.layers.size();
+		deviceCreateInfo.ppEnabledLayerNames = instance->m_metadata.layers.data();
 	}
 	deviceCreateInfo.enabledExtensionCount = (u32)m_metadata.extensions.size();
 	deviceCreateInfo.ppEnabledExtensionNames = m_metadata.extensions.data();
 	m_device = m_physicalDevice.device.createDevice(deviceCreateInfo);
 	m_queues.setup(m_device);
-	instance.m_loader.init(m_device);
+	instance->m_loader.init(m_device);
 	g_log.log(lvl::info, 0, "[{}] Vulkan device constructed, using GPU {}", g_name, m_physicalDevice.toString());
 	g_validationLevel = validationLevel;
 }
@@ -253,8 +253,8 @@ vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::Image
 
 bool Device::setDebugUtilsName([[maybe_unused]] vk::DebugUtilsObjectNameInfoEXT const& info) const {
 #if !defined(__ANDROID__)
-	if (!default_v(m_instance.get().m_messenger)) {
-		m_device.setDebugUtilsObjectNameEXT(info, m_instance.get().loader());
+	if (!default_v(m_instance->m_messenger)) {
+		m_device.setDebugUtilsObjectNameEXT(info, m_instance->loader());
 		return true;
 	}
 #endif

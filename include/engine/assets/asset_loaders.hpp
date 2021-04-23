@@ -13,9 +13,9 @@ template <>
 struct AssetLoadData<graphics::Shader> {
 	std::string name;
 	std::unordered_map<graphics::Shader::Type, io::Path> shaderPaths;
-	Ref<graphics::Device> device;
+	not_null<graphics::Device*> device;
 
-	AssetLoadData(graphics::Device& device) : device(device) {
+	AssetLoadData(not_null<graphics::Device*> device) : device(device) {
 	}
 };
 
@@ -34,10 +34,10 @@ struct AssetLoadData<graphics::Pipeline> {
 	std::optional<graphics::Pipeline::CreateInfo> info;
 	graphics::PFlags flags;
 	std::string name;
-	Ref<graphics::RenderContext> context;
+	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
 
-	AssetLoadData(graphics::RenderContext& context) : context(context) {
+	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {
 	}
 };
 
@@ -53,10 +53,10 @@ struct AssetLoadData<graphics::Texture> {
 	graphics::Texture::Raw raw;
 	io::Path prefix;
 	std::string ext;
-	Ref<graphics::VRAM> vram;
+	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
-	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {
 	}
 };
 
@@ -74,10 +74,10 @@ template <>
 struct AssetLoadData<BitmapFont> {
 	io::Path jsonID;
 	vk::Format texFormat = graphics::Texture::srgbFormat;
-	Ref<graphics::VRAM> vram;
+	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
-	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {
 	}
 };
 
@@ -94,10 +94,10 @@ struct AssetLoadData<Model> {
 	std::string modelID;
 	io::Path jsonID;
 	vk::Format texFormat = graphics::Texture::srgbFormat;
-	Ref<graphics::VRAM> vram;
+	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
-	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {
 	}
 };
 

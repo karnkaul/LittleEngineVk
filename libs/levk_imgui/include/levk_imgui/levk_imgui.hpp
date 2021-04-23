@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <core/erased_ref.hpp>
 #include <core/mono_instance.hpp>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/texture.hpp>
 
@@ -35,11 +35,11 @@ class DearImGui final : public TMonoInstance<DearImGui> {
   public:
 	enum class State { eEnd, eBegin, eRender };
 
-	using DesktopInstance = window::DesktopInstance;
+	using Desktop = window::DesktopInstance;
 	struct CreateInfo;
 
 	DearImGui();
-	DearImGui(graphics::Device& device, DesktopInstance const& window, CreateInfo const& info);
+	DearImGui(not_null<graphics::Device*> device, not_null<Desktop const*> window, CreateInfo const& info);
 	DearImGui(DearImGui&&) = default;
 	DearImGui& operator=(DearImGui&&) = default;
 	~DearImGui();

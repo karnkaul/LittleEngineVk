@@ -86,7 +86,7 @@ class Asset {
 	using type = T;
 	using OnModified = AssetStore::OnModified;
 
-	Asset(type& t, OnModified& onMod, std::string_view id);
+	Asset(not_null<type*> t, not_null<OnModified*> onMod, std::string_view id);
 
 	type& get() const;
 	type& operator*() const;
@@ -96,8 +96,8 @@ class Asset {
 	std::string_view m_id;
 
   private:
-	Ref<T> m_t;
-	Ref<OnModified> m_onModified;
+	not_null<T*> m_t;
+	not_null<OnModified*> m_onModified;
 };
 
 // impl
@@ -135,7 +135,7 @@ class TAssetMap : public AssetMap {
 
 template <typename T, typename U>
 constexpr Asset<T> makeAsset(U&& wrap, AssetStore::OnModified& onModified) noexcept {
-	return {*wrap.t, onModified, wrap.id};
+	return {&*wrap.t, &onModified, wrap.id};
 }
 
 template <typename T>
@@ -158,7 +158,7 @@ template <typename Data>
 std::optional<TAsset<T>> TAssetMap<T>::load(AssetStore const& store, AssetStore::OnModified& onMod, Resources& res, std::string id, Data&& data) {
 	AssetLoader<T> loader;
 	TAsset<T> asset;
-	asset.loadInfo = AssetLoadInfo<T>(store, res, onMod, std::forward<Data>(data), id);
+	asset.loadInfo = AssetLoadInfo<T>(&store, &res, &onMod, std::forward<Data>(data), id);
 	asset.t = loader.load(*asset.loadInfo);
 	if (asset.t) {
 		conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", id);
@@ -333,11 +333,11 @@ bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
 }
 
 template <typename T>
-Asset<T>::Asset(type& t, OnModified& onMod, std::string_view id) : m_id(id), m_t(t), m_onModified(onMod) {
+Asset<T>::Asset(not_null<type*> t, not_null<OnModified*> onMod, std::string_view id) : m_id(id), m_t(t), m_onModified(onMod) {
 }
 template <typename T>
 typename Asset<T>::type& Asset<T>::get() const {
-	return m_t;
+	return *m_t;
 }
 template <typename T>
 typename Asset<T>::type& Asset<T>::operator*() const {
@@ -349,12 +349,12 @@ typename Asset<T>::type* Asset<T>::operator->() const {
 }
 template <typename T>
 typename Asset<T>::OnModified::Tk Asset<T>::onModified(OnModified::Callback const& callback) {
-	return m_onModified.get().subscribe(callback);
+	return m_onModified->subscribe(callback);
 }
 
 template <typename T>
 template <typename U>
 void AssetLoadInfo<T>::reloadDepend(Asset<U>& out_asset) const {
-	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s.get().template forceDirty<T>(id); }));
+	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s->template forceDirty<T>(id); }));
 }
 } // namespace le

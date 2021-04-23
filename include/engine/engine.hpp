@@ -1,6 +1,7 @@
 #pragma once
 #include <core/io.hpp>
 #include <core/io/cmd_interpreter.hpp>
+#include <core/not_null.hpp>
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
@@ -42,7 +43,7 @@ class Engine {
 		Context context;
 		DearImGui imgui;
 
-		GFX(Window const& winst, Boot::CreateInfo const& bci);
+		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci);
 
 	  private:
 		static Boot::MakeSurface makeSurface(Window const& winst);
@@ -83,10 +84,10 @@ class Engine {
 
 	static bool processClArgs(ArgMap args);
 
-	Engine(Window& winInst, CreateInfo const& info);
+	Engine(not_null<Window*> winInst, CreateInfo const& info);
 
 	input::Driver::Out poll(bool consume) noexcept;
-	void pushReceiver(input::Receiver& context);
+	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::Root* root);
 
 	bool editorActive() const noexcept;
@@ -112,12 +113,12 @@ class Engine {
 	vk::Rect2D scissor(Viewport const& view = {}) const noexcept;
 	Viewport const& gameView() const noexcept;
 
-	Ref<Window> m_win;
+	not_null<Window*> m_win;
 
   private:
 	void updateStats();
 
-	using Receiver = Ref<input::Receiver>;
+	using Receiver = not_null<input::Receiver*>;
 	using TagDeque = TaggedDeque<Receiver, input::tag_t::type>;
 	using Receivers = TaggedStore<Receiver, input::tag_t, TagDeque>;
 
@@ -137,7 +138,7 @@ class Engine {
 	} m_stats;
 	Receivers m_receivers;
 	input::State m_inputState;
-	Desktop* m_pDesktop = {};
+	Desktop* m_desktop = {};
 };
 
 struct Engine::CreateInfo {
@@ -147,9 +148,9 @@ struct Engine::CreateInfo {
 
 struct Engine::DrawFrame {
 	Context::Frame frame;
-	Ref<Engine> engine;
+	not_null<Engine*> engine;
 
-	DrawFrame(Engine& engine, Context::Frame&& frame) noexcept;
+	DrawFrame(not_null<Engine*> engine, Context::Frame&& frame) noexcept;
 	DrawFrame(DrawFrame&&) noexcept;
 	DrawFrame& operator=(DrawFrame&&) noexcept;
 	~DrawFrame();

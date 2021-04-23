@@ -60,13 +60,13 @@ bool Resource::load(io::Reader const& reader, io::Path path, Type type, bool bMo
 	return false;
 }
 
-void Resources::reader(io::Reader const& reader) {
-	m_pReader = &reader;
+void Resources::reader(not_null<io::Reader const*> reader) {
+	m_reader = reader;
 }
 
 io::Reader const& Resources::reader() const {
-	if (m_pReader) {
-		return *m_pReader;
+	if (m_reader) {
+		return *m_reader;
 	}
 	return m_fileReader;
 }

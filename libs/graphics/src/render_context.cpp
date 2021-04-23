@@ -50,8 +50,8 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(Swapchain& swapchain, u32 rotateCount, u32 secondaryCmdCount)
-	: m_sync(swapchain.m_device, rotateCount, secondaryCmdCount), m_swapchain(swapchain), m_vram(swapchain.m_vram), m_device(swapchain.m_device) {
+RenderContext::RenderContext(not_null<Swapchain*> swapchain, u32 rotateCount, u32 secondaryCmdCount)
+	: m_sync(swapchain->m_device, rotateCount, secondaryCmdCount), m_swapchain(swapchain), m_vram(swapchain->m_vram), m_device(swapchain->m_device) {
 	m_storage.status = Status::eReady;
 }
 
@@ -73,8 +73,8 @@ RenderContext& RenderContext::operator=(RenderContext&& rhs) {
 }
 
 bool RenderContext::waitForFrame() {
-	if (!m_vram.get().m_transfer.polling()) {
-		m_vram.get().m_transfer.update();
+	if (!m_vram->m_transfer.polling()) {
+		m_vram->m_transfer.update();
 	}
 	if (m_storage.status == Status::eReady) {
 		return true;
@@ -84,8 +84,8 @@ bool RenderContext::waitForFrame() {
 		return false;
 	}
 	auto& sync = m_sync.get();
-	m_device.get().waitFor(sync.sync.drawing);
-	m_device.get().decrementDeferred();
+	m_device->waitFor(sync.sync.drawing);
+	m_device->decrementDeferred();
 	m_storage.status = Status::eReady;
 	return true;
 }
@@ -95,22 +95,22 @@ std::optional<RenderContext::Frame> RenderContext::beginFrame(CommandBuffer::Pas
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
-	if (m_swapchain.get().flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) {
+	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) {
 		return std::nullopt;
 	}
 	FrameSync& sync = m_sync.get();
-	auto target = m_swapchain.get().acquireNextImage(sync.sync);
+	auto target = m_swapchain->acquireNextImage(sync.sync);
 	if (!target) {
 		return std::nullopt;
 	}
 	m_storage.status = Status::eDrawing;
-	m_device.get().destroy(sync.framebuffer);
-	sync.framebuffer = m_device.get().makeFramebuffer(m_swapchain.get().renderPass(), target->attachments(), target->extent);
-	if (!sync.primary.commandBuffer.begin(m_swapchain.get().renderPass(), sync.framebuffer, target->extent, info)) {
+	m_device->destroy(sync.framebuffer);
+	sync.framebuffer = m_device->makeFramebuffer(m_swapchain->renderPass(), target->attachments(), target->extent);
+	if (!sync.primary.commandBuffer.begin(m_swapchain->renderPass(), sync.framebuffer, target->extent, info)) {
 		ENSURE(false, "Failed to begin recording command buffer");
 		m_storage.status = Status::eReady;
-		m_device.get().destroy(sync.framebuffer, sync.sync.drawReady);
-		sync.sync.drawReady = m_device.get().makeSemaphore(); // sync.drawReady will be signalled by acquireNextImage and cannot be reused
+		m_device->destroy(sync.framebuffer, sync.sync.drawReady);
+		sync.sync.drawReady = m_device->makeSemaphore(); // sync.drawReady will be signalled by acquireNextImage and cannot be reused
 		return std::nullopt;
 	}
 	return Frame{*target, sync.primary.commandBuffer};
@@ -132,10 +132,10 @@ bool RenderContext::endFrame() {
 	submitInfo.pCommandBuffers = &sync.primary.commandBuffer.m_cb;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &sync.sync.presentReady;
-	m_device.get().device().resetFences(sync.sync.drawing);
-	m_device.get().queues().submit(QType::eGraphics, submitInfo, sync.sync.drawing, false);
+	m_device->device().resetFences(sync.sync.drawing);
+	m_device->queues().submit(QType::eGraphics, submitInfo, sync.sync.drawing, false);
 	m_storage.status = Status::eWaiting;
-	auto present = m_swapchain.get().present(sync.sync);
+	auto present = m_swapchain->present(sync.sync);
 	if (!present) {
 		return false;
 	}
@@ -144,9 +144,9 @@ bool RenderContext::endFrame() {
 }
 
 bool RenderContext::reconstructed(glm::ivec2 framebufferSize) {
-	auto const flags = m_swapchain.get().flags();
+	auto const flags = m_swapchain->flags();
 	if (flags.any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
-		if (m_swapchain.get().reconstruct(framebufferSize)) {
+		if (m_swapchain->reconstruct(framebufferSize)) {
 			m_storage.status = Status::eWaiting;
 			return true;
 		}
@@ -155,14 +155,14 @@ bool RenderContext::reconstructed(glm::ivec2 framebufferSize) {
 }
 
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo) {
-	createInfo.renderPass = m_swapchain.get().renderPass();
+	createInfo.renderPass = m_swapchain->renderPass();
 	return Pipeline(m_vram, shader, std::move(createInfo), id);
 }
 
 glm::mat4 RenderContext::preRotate() const noexcept {
 	glm::mat4 ret(1.0f);
 	f32 rad = 0.0f;
-	auto const transform = m_swapchain.get().display().transform;
+	auto const transform = m_swapchain->display().transform;
 	if (transform == vk::SurfaceTransformFlagBitsKHR::eIdentity) {
 		return ret;
 	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate90) {

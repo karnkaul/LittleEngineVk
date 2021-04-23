@@ -5,12 +5,12 @@
 #include <graphics/resources.hpp>
 
 namespace le::graphics {
-std::vector<CommandBuffer> CommandBuffer::make(Device& device, vk::CommandPool pool, u32 count, bool bSecondary) {
+std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::CommandPool pool, u32 count, bool bSecondary) {
 	vk::CommandBufferAllocateInfo allocInfo;
 	allocInfo.commandPool = pool;
 	allocInfo.level = bSecondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
 	allocInfo.commandBufferCount = count;
-	auto buffers = device.device().allocateCommandBuffers(allocInfo);
+	auto buffers = device->device().allocateCommandBuffers(allocInfo);
 	std::vector<CommandBuffer> ret;
 	for (auto& buffer : buffers) {
 		ret.push_back({buffer, pool});

@@ -7,8 +7,10 @@ namespace le::gui {
 namespace {
 Node* tryLeafHit(Node& root, glm::vec2 point) noexcept {
 	for (auto& n : root.m_nodes) {
-		if (auto ret = tryLeafHit(*n, point)) {
-			return ret;
+		if (n->m_hitTest) {
+			if (auto ret = tryLeafHit(*n, point)) {
+				return ret;
+			}
 		}
 	}
 	return root.hit(point) ? &root : nullptr;
@@ -26,8 +28,10 @@ bool Root::pop(Node& node) noexcept {
 
 void Root::update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset) {
 	input::Space const space(fbSize, wSize, view);
+	m_size = fbSize;
+	m_origin = offset;
 	for (auto& node : m_nodes) {
-		node->Node::update(space, fbSize, offset);
+		node->Node::update(space);
 	}
 }
 
@@ -40,14 +44,13 @@ Node* Root::leafHit(glm::vec2 point) const noexcept {
 	return nullptr;
 }
 
-void Node::update(input::Space const& space, glm::vec2 extent, glm::vec2 origin) {
-	m_origin = origin + (m_local.norm * extent * 0.5f) + m_local.offset;
-	glm::vec2 const hs = {m_size.x * 0.5f, -m_size.y * 0.5f};
-	m_scissor.lt = space.screen(m_origin - hs);
-	m_scissor.rb = space.screen(m_origin + hs);
-	onUpdate();
+void Node::update(input::Space const& space) {
+	m_origin = m_parent->m_origin + (m_local.norm * m_parent->m_size) + m_local.offset;
+	m_scissor.lt = space.screen({-0.5f, 0.5f}, true);
+	m_scissor.rb = space.screen({0.5f, -0.5f}, true);
+	onUpdate(space);
 	for (auto& node : m_nodes) {
-		node->Node::update(space, m_size, m_origin);
+		node->Node::update(space);
 	}
 }
 } // namespace le::gui

@@ -5,9 +5,9 @@
 namespace le::gui {
 class Quad : public Node {
   public:
-	Quad(Root& root, graphics::VRAM& vram) noexcept;
+	Quad(not_null<Root*> root, not_null<graphics::VRAM*> vram) noexcept;
 
-	void onUpdate() override;
+	void onUpdate(input::Space const& space) override;
 	View<Primitive> primitives() const noexcept override;
 
 	Material m_material;
@@ -19,7 +19,8 @@ class Quad : public Node {
 
 // impl
 
-inline Quad::Quad(Root& root, graphics::VRAM& vram) noexcept : Node(root), m_mesh(vram, graphics::Mesh::Type::eDynamic) {
+inline Quad::Quad(not_null<Root*> root, not_null<graphics::VRAM*> vram) noexcept : Node(root), m_mesh(vram, graphics::Mesh::Type::eDynamic) {
+	m_hitTest = true;
 }
 inline View<Primitive> Quad::primitives() const noexcept {
 	m_prim = {m_material, &m_mesh};

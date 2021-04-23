@@ -1,6 +1,6 @@
 #pragma once
 #include <optional>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/context/render_types.hpp>
@@ -46,8 +46,8 @@ class Swapchain {
 	static constexpr std::string_view presentModeName(vk::PresentModeKHR mode) noexcept;
 	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept;
 
-	Swapchain(VRAM& vram);
-	Swapchain(VRAM& vram, CreateInfo const& info, glm::ivec2 framebufferSize = {});
+	Swapchain(not_null<VRAM*> vram);
+	Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 framebufferSize = {});
 	Swapchain(Swapchain&&);
 	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
@@ -72,8 +72,8 @@ class Swapchain {
 		return m_metadata.formats.colour;
 	}
 
-	Ref<VRAM> m_vram;
-	Ref<Device> m_device;
+	not_null<VRAM*> m_vram;
+	not_null<Device*> m_device;
 
   private:
 	struct Frame {

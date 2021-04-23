@@ -3,9 +3,9 @@
 #include <graphics/context/vram.hpp>
 
 namespace le::graphics {
-VRAM::VRAM(Device& device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(*this, transferInfo) {
+VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {
 	g_log.log(lvl::info, 1, "[{}] VRAM constructed", g_name);
-	if (device.queues().queue(QType::eTransfer).flags.test(QType::eGraphics)) {
+	if (device->queues().queue(QType::eTransfer).flags.test(QType::eGraphics)) {
 		m_post.access = vk::AccessFlagBits::eShaderRead;
 		m_post.stages = vk::PipelineStageFlagBits::eFragmentShader;
 	}
@@ -29,7 +29,7 @@ Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bH
 		bufferInfo.queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
 	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
-	return Buffer(*this, bufferInfo);
+	return Buffer(this, bufferInfo);
 }
 
 VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size) {
@@ -50,7 +50,7 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 		g_log.log(lvl::error, 1, "[{}] Source buffer is larger than destination buffer!", g_name);
 		return {};
 	}
-	[[maybe_unused]] auto const indices = m_device.get().queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
+	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	if (indices.size() > 1) {
 		ENSURE(sq.test() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 		ENSURE(dq.test() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
@@ -76,7 +76,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	if (size == 0) {
 		size = out_deviceBuffer.writeSize();
 	}
-	auto const indices = m_device.get().queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
+	auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	ENSURE(indices.size() == 1 || out_deviceBuffer.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	bool const bQueueFlags = out_deviceBuffer.data().queueFlags.test(QType::eTransfer);
 	ENSURE(bQueueFlags, "Invalid queue flags!");
@@ -117,7 +117,7 @@ VRAM::Future VRAM::copy(View<View<std::byte>> pixelsArr, Image& out_dst, LayoutP
 		imgSize += layerSize;
 	}
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
-	[[maybe_unused]] auto const indices = m_device.get().queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
+	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	auto promise = Transfer::makePromise();
 	auto ret = promise->get_future();

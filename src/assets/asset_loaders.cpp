@@ -72,23 +72,23 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 }
 
 std::optional<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoadInfo<graphics::Pipeline> const& info) const {
-	if (auto shader = info.m_store.get().find<graphics::Shader>(info.m_data.shaderID)) {
+	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
 		info.reloadDepend(*shader);
-		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context.get().pipeInfo(info.m_data.flags);
-		return info.m_data.context.get().makePipeline(info.m_data.name, shader->get(), pipeInfo);
+		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
+		return info.m_data.context->makePipeline(info.m_data.name, shader->get(), pipeInfo);
 	}
 	return std::nullopt;
 }
 
 bool AssetLoader<graphics::Pipeline>::reload(graphics::Pipeline& out_pipe, AssetLoadInfo<graphics::Pipeline> const& info) const {
-	if (auto shader = info.m_store.get().find<graphics::Shader>(info.m_data.shaderID)) {
+	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
 		return out_pipe.reconstruct(shader->get());
 	}
 	return false;
 }
 
 std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) {
 		return std::nullopt;
 	}
@@ -105,7 +105,7 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 }
 
 bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) {
 		return false;
 	}
@@ -205,7 +205,7 @@ bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapF
 }
 
 bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
-	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) {
 		return false;
 	}
@@ -229,7 +229,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 }
 
 std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
-	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) {
 		return std::nullopt;
 	}
@@ -243,7 +243,7 @@ std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) 
 }
 
 bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& info) const {
-	auto const sampler = info.m_store.get().find<graphics::Sampler>(info.m_data.samplerID);
+	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) {
 		return false;
 	}

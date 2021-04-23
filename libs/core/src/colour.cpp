@@ -11,7 +11,7 @@ namespace le {
 Colour::Colour(glm::vec3 const& colour) noexcept : Colour(glm::vec4(colour, 1.0f)) {
 }
 
-Colour::Colour(glm::vec4 const& colour) noexcept : r(colour.r), g(colour.g), b(colour.b), a(colour.a) {
+Colour::Colour(glm::vec4 const& colour) noexcept : r(colour.x), g(colour.y), b(colour.z), a(colour.w) {
 }
 
 Colour::Colour(std::string_view hex) noexcept {

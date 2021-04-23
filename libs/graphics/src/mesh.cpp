@@ -3,7 +3,7 @@
 #include <graphics/mesh.hpp>
 
 namespace le::graphics {
-Mesh::Mesh(VRAM& vram, Type type) : m_vram(vram), m_type(type) {
+Mesh::Mesh(not_null<VRAM*> vram, Type type) : m_vram(vram), m_type(type) {
 }
 Mesh::Mesh(Mesh&& rhs)
 	: m_vram(rhs.m_vram), m_vbo(std::exchange(rhs.m_vbo, Storage())), m_ibo(std::exchange(rhs.m_ibo, Storage())), m_triCount(rhs.m_triCount),
@@ -25,10 +25,10 @@ Mesh::~Mesh() {
 
 Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
-	ret.buffer = m_vram.get().makeBuffer(size, usage, m_type == Type::eDynamic);
+	ret.buffer = m_vram->makeBuffer(size, usage, m_type == Type::eDynamic);
 	ENSURE(ret.buffer, "Invalid buffer");
 	if (m_type == Type::eStatic) {
-		ret.transfer = m_vram.get().stage(*ret.buffer, pData, size);
+		ret.transfer = m_vram->stage(*ret.buffer, pData, size);
 	} else {
 		[[maybe_unused]] bool const bRes = ret.buffer->write(pData, size);
 		ENSURE(bRes, "Write failure");
@@ -68,7 +68,9 @@ bool Mesh::ready() const {
 
 void Mesh::wait() const {
 	if (m_type == Type::eDynamic) {
-		m_vram.get().wait({m_vbo.transfer, m_ibo.transfer});
+		using RF = Ref<VRAM::Future const>;
+		std::array const arr = {RF(m_vbo.transfer), RF(m_ibo.transfer)};
+		m_vram->wait(arr);
 	}
 }
 

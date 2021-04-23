@@ -1,6 +1,5 @@
 #pragma once
 #include <core/colour.hpp>
-#include <core/ref.hpp>
 
 namespace le {
 namespace graphics {

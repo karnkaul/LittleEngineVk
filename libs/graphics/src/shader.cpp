@@ -3,10 +3,10 @@
 #include <graphics/shader.hpp>
 
 namespace le::graphics {
-Shader::Shader(Device& device, std::string name) : m_name(std::move(name)), m_device(device) {
+Shader::Shader(not_null<Device*> device, std::string name) : m_name(std::move(name)), m_device(device) {
 }
 
-Shader::Shader(Device& device, std::string name, SpirVMap const& spirV) : m_name(std::move(name)), m_device(device) {
+Shader::Shader(not_null<Device*> device, std::string name, SpirVMap const& spirV) : m_name(std::move(name)), m_device(device) {
 	construct(spirV, m_spirV, m_modules);
 }
 
@@ -62,7 +62,7 @@ bool Shader::construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_
 			vk::ShaderModuleCreateInfo createInfo;
 			createInfo.codeSize = code.size() * sizeof(decltype(code[0]));
 			createInfo.pCode = code.data();
-			out_map[idx++] = m_device.get().device().createShaderModule(createInfo);
+			out_map[idx++] = m_device->device().createShaderModule(createInfo);
 		}
 	}
 	return true;
@@ -89,7 +89,7 @@ bool Shader::empty() const noexcept {
 void Shader::destroy() {
 	for (auto& module : m_modules) {
 		if (!Device::default_v(module)) {
-			m_device.get().device().destroyShaderModule(module);
+			m_device->device().destroyShaderModule(module);
 		}
 		module = vk::ShaderModule();
 	}

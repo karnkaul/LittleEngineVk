@@ -11,12 +11,12 @@
 #include <window/desktop_instance.hpp>
 
 namespace le {
-Engine::GFX::GFX([[maybe_unused]] Window const& winst, Boot::CreateInfo const& bci)
-	: boot(bci, makeSurface(winst), winst.framebufferSize()), context(boot.swapchain) {
+Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci)
+	: boot(bci, makeSurface(*winst), winst->framebufferSize()), context(&boot.swapchain) {
 #if defined(LEVK_DESKTOP)
 	DearImGui::CreateInfo dici(boot.swapchain.renderPass());
 	dici.texFormat = context.textureFormat();
-	imgui = DearImGui(boot.device, static_cast<window::DesktopInstance const&>(winst), dici);
+	imgui = DearImGui(&boot.device, static_cast<window::DesktopInstance const*>(winst.get()), dici);
 #endif
 }
 
@@ -28,7 +28,7 @@ Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	};
 }
 
-Engine::DrawFrame::DrawFrame(Engine& engine, Context::Frame&& frame) noexcept : frame(std::move(frame)), engine(engine) {
+Engine::DrawFrame::DrawFrame(not_null<Engine*> engine, Context::Frame&& frame) noexcept : frame(std::move(frame)), engine(engine) {
 }
 
 Engine::DrawFrame::DrawFrame(DrawFrame&& rhs) noexcept : frame(std::exchange(rhs.frame, Context::Frame())), engine(rhs.engine) {
@@ -37,7 +37,7 @@ Engine::DrawFrame::DrawFrame(DrawFrame&& rhs) noexcept : frame(std::exchange(rhs
 Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
 	if (&rhs != this) {
 		if (frame.primary.valid()) {
-			engine.get().endDraw(frame);
+			engine->endDraw(frame);
 		}
 		frame = std::exchange(rhs.frame, Context::Frame());
 		engine = rhs.engine;
@@ -47,7 +47,7 @@ Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
 
 Engine::DrawFrame::~DrawFrame() {
 	if (frame.primary.valid()) {
-		engine.get().endDraw(frame);
+		engine->endDraw(frame);
 	}
 }
 
@@ -113,9 +113,9 @@ bool Engine::processClArgs(ArgMap args) {
 	return cl.execute(expressions, boot);
 }
 
-Engine::Engine(Window& winInst, CreateInfo const& info) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {
+Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {
 #if defined(LEVK_DESKTOP)
-	m_pDesktop = static_cast<Desktop*>(&winInst);
+	m_desktop = static_cast<Desktop*>(winInst.get());
 #endif
 	conf::g_log.minVerbosity = info.verbosity;
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
@@ -123,10 +123,10 @@ Engine::Engine(Window& winInst, CreateInfo const& info) : m_win(winInst), m_io(i
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
 	auto const extent = m_gfx ? m_gfx->context.extent() : glm::ivec2(0);
-	auto ret = m_input.update(m_win.get().pollEvents(), m_editor.view(), extent, consume, m_pDesktop);
+	auto ret = m_input.update(m_win->pollEvents(), m_editor.view(), extent, consume, m_desktop);
 	m_inputState = ret.state;
 	for (auto& [_, context] : m_receivers) {
-		if (context.get().block(ret.state)) {
+		if (context->block(ret.state)) {
 			break;
 		}
 	}
@@ -137,15 +137,15 @@ void Engine::update(gui::Root* root) {
 	if (root) {
 		glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
-		ENSURE(m_win.get().isDesktop(), "Invariant violated");
-		wSize = static_cast<Desktop&>(m_win.get()).windowSize();
+		ENSURE(m_win->isDesktop(), "Invariant violated");
+		wSize = m_desktop->windowSize();
 #endif
 		root->update(m_editor.view(), framebufferSize(), wSize);
 	}
 }
 
-void Engine::pushReceiver(input::Receiver& context) {
-	context.m_inputTag = m_receivers.emplace_back(context);
+void Engine::pushReceiver(not_null<input::Receiver*> context) {
+	context->m_inputTag = m_receivers.emplace_back(context);
 }
 
 bool Engine::beginFrame(bool waitDrawReady) {
@@ -155,7 +155,7 @@ bool Engine::beginFrame(bool waitDrawReady) {
 			[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 			ENSURE(b, "Failed to begin DearImGui frame");
 		}
-		if (m_gfx->context.reconstructed(m_win.get().framebufferSize())) {
+		if (m_gfx->context.reconstructed(m_win->framebufferSize())) {
 			return false;
 		}
 		if (waitDrawReady) {
@@ -177,8 +177,8 @@ std::optional<Engine::Context::Frame> Engine::beginDraw(Colour clear, vk::ClearD
 	if (m_gfx) {
 		if constexpr (levk_imgui) {
 			if (m_gfx->imgui.state() == DearImGui::State::eBegin) {
-				ENSURE(m_pDesktop, "Invariant violated");
-				m_editor.update(*m_pDesktop, m_inputState);
+				ENSURE(m_desktop, "Invariant violated");
+				m_editor.update(*m_desktop, m_inputState);
 			}
 		}
 		vk::ClearColorValue const c = std::array{clear.r.toF32(), clear.g.toF32(), clear.b.toF32(), clear.a.toF32()};
@@ -190,7 +190,7 @@ std::optional<Engine::Context::Frame> Engine::beginDraw(Colour clear, vk::ClearD
 
 std::optional<Engine::DrawFrame> Engine::drawFrame(Colour clear, vk::ClearDepthStencilValue depth) {
 	if (auto frame = beginDraw(clear, depth)) {
-		return DrawFrame(*this, std::move(*frame));
+		return DrawFrame(this, std::move(*frame));
 	}
 	return std::nullopt;
 }
@@ -211,7 +211,7 @@ bool Engine::boot(Boot::CreateInfo boot) {
 		if (s_options.gpuOverride) {
 			boot.device.pickOverride = s_options.gpuOverride;
 		}
-		m_gfx.emplace(m_win, boot);
+		m_gfx.emplace(m_win.get(), boot);
 		return true;
 	}
 	return false;
@@ -226,7 +226,7 @@ bool Engine::unboot() noexcept {
 }
 
 glm::ivec2 Engine::framebufferSize() const noexcept {
-	return m_gfx ? m_gfx->context.extent() : m_win.get().framebufferSize();
+	return m_gfx ? m_gfx->context.extent() : m_win->framebufferSize();
 }
 
 vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexcept {
@@ -246,11 +246,7 @@ vk::Rect2D Engine::scissor(Viewport const& view) const noexcept {
 }
 
 Engine::Desktop* Engine::desktop() const noexcept {
-#if defined(LEVK_DESKTOP)
-	return m_win.get().isDesktop() ? &static_cast<Desktop&>(m_win.get()) : nullptr;
-#else
-	return nullptr;
-#endif
+	return m_desktop;
 }
 
 void Engine::updateStats() {

@@ -5,13 +5,13 @@
 namespace le::graphics {
 namespace {
 using sv = std::string_view;
-Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<View<std::byte>> bytes) {
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<BMPview> bitmaps) {
 	Image::CreateInfo imageInfo;
 	imageInfo.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
 	imageInfo.createInfo.format = format;
 	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-	if (bytes.size() > 1) {
+	if (bitmaps.size() > 1) {
 		imageInfo.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 	}
 	imageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -20,9 +20,9 @@ Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 s
 	imageInfo.createInfo.imageType = vk::ImageType::e2D;
 	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.createInfo.mipLevels = 1;
-	imageInfo.createInfo.arrayLayers = (u32)bytes.size();
+	imageInfo.createInfo.arrayLayers = (u32)bitmaps.size();
 	Image ret(&vram, imageInfo);
-	out_future = vram.copy(bytes, ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
+	out_future = vram.copy(bitmaps, ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 	return ret;
 }
 } // namespace
@@ -128,42 +128,48 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 	if (Device::default_v(info.sampler)) {
 		return false;
 	}
-	Img const* pImg = std::get_if<Img>(&info.data);
-	Cubemap const* pCube = std::get_if<Cubemap>(&info.data);
-	Raw const* pRaw = std::get_if<Raw>(&info.data);
-	if ((!pRaw || pRaw->bytes.empty()) && (!pImg || pImg->bytes.empty()) && !pCube) {
+	auto const* pImg = std::get_if<Img>(&info.data);
+	auto const* pCube = std::get_if<Cubemap>(&info.data);
+	auto const* pRaw = std::get_if<Bitmap>(&info.data);
+	if ((!pRaw || pRaw->bytes.empty()) && (!pImg || pImg->empty()) && !pCube) {
 		return false;
 	}
 	if (pCube) {
-		if (std::any_of(pCube->bytes.begin(), pCube->bytes.end(), [](bytearray const& b) { return b.empty(); })) {
+		if (std::any_of(pCube->begin(), pCube->end(), [](Bitmap::type const& b) { return b.empty(); })) {
 			return false;
 		}
 	}
 	out_storage.data.sampler = info.sampler;
+	vk::Format fallback;
+	kt::fixed_vector<BMPview, 6> bmps;
+	kt::fixed_vector<utils::STBImg, 6> stbimgs;
 	if (pCube || pImg) {
 		if (pCube) {
-			for (auto const& bytes : pCube->bytes) {
-				out_storage.raw.imgs.push_back(utils::decompress(bytes));
-				out_storage.raw.bytes.push_back(out_storage.raw.imgs.back().bytes);
+			for (auto const& bytes : *pCube) {
+				stbimgs.push_back(utils::STBImg(bytes));
+				bmps.push_back(stbimgs.back().bytes);
 				out_storage.data.type = Type::eCube;
 			}
 		} else {
-			out_storage.raw.imgs.push_back(utils::decompress(pImg->bytes));
-			out_storage.raw.bytes.push_back(out_storage.raw.imgs.back().bytes);
+			stbimgs.push_back(utils::STBImg(*pImg));
+			bmps.push_back(stbimgs.back().bytes);
 			out_storage.data.type = Type::e2D;
 		}
-		out_storage.data.size = {out_storage.raw.imgs.back().width, out_storage.raw.imgs.back().height};
+		out_storage.data.size = {stbimgs.back().size.x, stbimgs.back().size.y};
+		fallback = srgb;
 	} else {
 		if (std::size_t(pRaw->size.x * pRaw->size.y) * 4 /*channels*/ != pRaw->bytes.size()) {
 			ENSURE(false, "Invalid Raw image size/dimensions");
 			return false;
 		}
 		out_storage.data.size = pRaw->size;
-		out_storage.raw.bytes.push_back(pRaw->bytes);
+		bmps.push_back(pRaw->bytes);
 		out_storage.data.type = Type::e2D;
+		fallback = linear;
 	}
-	out_storage.image = load(*m_vram, out_storage.transfer, info.format, out_storage.data.size, out_storage.raw.bytes);
-	out_storage.data.format = info.format;
+	vk::Format const format = info.forceFormat.value_or(fallback);
+	out_storage.image = load(*m_vram, out_storage.transfer, format, out_storage.data.size, bmps);
+	out_storage.data.format = format;
 	Device& d = *m_vram->m_device;
 	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
 	out_storage.data.imageView = d.makeImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
@@ -173,12 +179,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 void Texture::destroy() {
 	wait();
 	Device& d = *m_vram->m_device;
-	d.defer([&d, data = m_storage.data, r = m_storage.raw]() mutable {
-		d.destroy(data.imageView);
-		for (auto const& img : r.imgs) {
-			utils::release(img);
-		}
-	});
+	d.defer([&d, data = m_storage.data]() mutable { d.destroy(data.imageView); });
 	m_storage = {};
 }
 } // namespace le::graphics

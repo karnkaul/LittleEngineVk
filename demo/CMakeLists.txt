@@ -19,6 +19,7 @@ if(LEVK_USE_PCH)
 endif()
 
 # Android
+set(ANDROID_CMAKE_VERSION 3.18.1)
 set(ANDROID_DATA "\"../../data\"")
 set(ANDROID_ABI "\"arm64-v8a\", \"armeabi-v7a\"")
 set(ANDROID_VALIDATION "\"src/lib\"")

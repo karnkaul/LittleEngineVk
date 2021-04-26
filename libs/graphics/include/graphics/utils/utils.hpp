@@ -2,6 +2,8 @@
 #include <map>
 #include <core/io/reader.hpp>
 #include <core/os.hpp>
+#include <graphics/bitmap.hpp>
+#include <graphics/common.hpp>
 #include <graphics/context/physical_device.hpp>
 #include <graphics/context/queue_multiplex.hpp>
 #include <graphics/descriptor_set.hpp>
@@ -27,6 +29,14 @@ struct VertexInfoFactory<Vertex> {
 };
 
 namespace utils {
+class STBImg : public TBitmap<BMPview> {
+  public:
+	explicit STBImg(Bitmap::type const& compressed, u8 channels = 4);
+	STBImg(STBImg&&) noexcept;
+	STBImg& operator=(STBImg&&) noexcept;
+	~STBImg();
+};
+
 using set_t = u32;
 struct SetBindings {
 	std::map<set_t, kt::fixed_vector<BindingInfo, 16>> sets;
@@ -40,10 +50,8 @@ io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
 kt::result<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
 SetBindings extractBindings(Shader const& shader);
 
-bytearray convert(std::initializer_list<u8> bytes);
-bytearray convert(View<u8> bytes);
-Texture::RawImage decompress(bytearray compressed, u8 channels = 4);
-void release(Texture::RawImage rawImage);
+Bitmap::type bitmap(std::initializer_list<u8> bytes);
+Bitmap::type convert(View<u8> bytes);
 
 using CubeImageIDs = std::array<std::string_view, 6>;
 constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};

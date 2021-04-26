@@ -11,8 +11,8 @@ bool BitmapFont::create(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo
 	storage.atlas.emplace(graphics::Texture(vram));
 	graphics::Texture::CreateInfo tci;
 	tci.sampler = sampler.sampler();
-	tci.data = graphics::Texture::Img{{info.atlas.begin(), info.atlas.end()}};
-	tci.format = info.format;
+	tci.data = graphics::Texture::Img{info.atlas.begin(), info.atlas.end()};
+	tci.forceFormat = info.forceFormat;
 	if (!storage.atlas->construct(tci)) {
 		return false;
 	}

@@ -30,7 +30,7 @@ class Model {
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
 
-	Result<View<Primitive>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, vk::Format texFormat = Texture::srgbFormat);
+	Result<View<Primitive>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
 	View<Primitive> primitives() const noexcept;
 

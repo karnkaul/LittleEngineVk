@@ -105,6 +105,7 @@ Colour operator-(Colour lhs, Colour rhs) noexcept;
 /// \brief Multiplicative blend
 /// \param n Normalised (`[0.0f, 1.0f]`) blend fraction
 /// \param colour Colour to blend by `n`
+///
 Colour& operator*=(f32 n, Colour& colour) noexcept;
 ///
 /// \brief Multiplicative blend

@@ -65,10 +65,10 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 
 struct DearImGui::CreateInfo {
 	vk::RenderPass renderPass;
-	vk::Format texFormat = graphics::Texture::srgbFormat;
 	u32 descriptorCount = 1000;
 	u8 imageCount = 3;
 	u8 minImageCount = 2;
+	bool correctStyleColours = true;
 
 	explicit CreateInfo(vk::RenderPass renderPass) : renderPass(renderPass) {
 	}

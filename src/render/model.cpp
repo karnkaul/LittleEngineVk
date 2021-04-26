@@ -335,15 +335,15 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	return parser(reader);
 }
 
-Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, vk::Format texFormat) {
+Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
 	Map<Material> materials;
 	decltype(m_storage) storage;
 	for (auto const& tex : info.textures) {
 		if (!tex.bytes.empty()) {
 			graphics::Texture::CreateInfo tci;
-			tci.format = texFormat;
+			tci.forceFormat = forceFormat;
 			tci.sampler = sampler.sampler();
-			tci.data = graphics::Texture::Img{{tex.bytes.begin(), tex.bytes.end()}};
+			tci.data = graphics::Texture::Img{tex.bytes.begin(), tex.bytes.end()};
 			graphics::Texture texture(vram);
 			if (!texture.construct(tci)) {
 				return std::string("Failed to construct texture");

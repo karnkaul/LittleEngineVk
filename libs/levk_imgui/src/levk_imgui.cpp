@@ -12,7 +12,6 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <glm/common.hpp>
-#include <glm/gtc/color_space.hpp>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <window/desktop_instance.hpp>
@@ -47,62 +46,61 @@ vk::DescriptorPool makePool(Device& device, u32 count) {
 	return device.device().createDescriptorPool(pool_info);
 }
 
-void toSRGB(ImVec4& imColour) {
-	glm::vec3 const colour = glm::convertSRGBToLinear(glm::vec3{imColour.x, imColour.y, imColour.z});
-	imColour = {colour.x, colour.y, colour.z, imColour.w};
+void correct(ImVec4& imColour) {
+	glm::vec4 const colour = Colour({imColour.x, imColour.y, imColour.z, imColour.w}).toRGB();
+	imColour = {colour.x, colour.y, colour.z, colour.w};
 }
 
-void setStyle() {
+void fixStyle() {
 	ImVec4* pColours = ImGui::GetStyle().Colors;
-
-	toSRGB(pColours[ImGuiCol_Text]);
-	toSRGB(pColours[ImGuiCol_TextDisabled]);
-	toSRGB(pColours[ImGuiCol_WindowBg]);
-	toSRGB(pColours[ImGuiCol_ChildBg]);
-	toSRGB(pColours[ImGuiCol_PopupBg]);
-	toSRGB(pColours[ImGuiCol_Border]);
-	toSRGB(pColours[ImGuiCol_BorderShadow]);
-	toSRGB(pColours[ImGuiCol_FrameBg]);
-	toSRGB(pColours[ImGuiCol_FrameBgHovered]);
-	toSRGB(pColours[ImGuiCol_FrameBgActive]);
-	toSRGB(pColours[ImGuiCol_TitleBg]);
-	toSRGB(pColours[ImGuiCol_TitleBgActive]);
-	toSRGB(pColours[ImGuiCol_TitleBgCollapsed]);
-	toSRGB(pColours[ImGuiCol_MenuBarBg]);
-	toSRGB(pColours[ImGuiCol_ScrollbarBg]);
-	toSRGB(pColours[ImGuiCol_ScrollbarGrab]);
-	toSRGB(pColours[ImGuiCol_ScrollbarGrabHovered]);
-	toSRGB(pColours[ImGuiCol_ScrollbarGrabActive]);
-	toSRGB(pColours[ImGuiCol_CheckMark]);
-	toSRGB(pColours[ImGuiCol_SliderGrab]);
-	toSRGB(pColours[ImGuiCol_SliderGrabActive]);
-	toSRGB(pColours[ImGuiCol_Button]);
-	toSRGB(pColours[ImGuiCol_ButtonHovered]);
-	toSRGB(pColours[ImGuiCol_ButtonActive]);
-	toSRGB(pColours[ImGuiCol_Header]);
-	toSRGB(pColours[ImGuiCol_HeaderHovered]);
-	toSRGB(pColours[ImGuiCol_HeaderActive]);
-	toSRGB(pColours[ImGuiCol_Separator]);
-	toSRGB(pColours[ImGuiCol_SeparatorHovered]);
-	toSRGB(pColours[ImGuiCol_SeparatorActive]);
-	toSRGB(pColours[ImGuiCol_ResizeGrip]);
-	toSRGB(pColours[ImGuiCol_ResizeGripHovered]);
-	toSRGB(pColours[ImGuiCol_ResizeGripActive]);
-	toSRGB(pColours[ImGuiCol_Tab]);
-	toSRGB(pColours[ImGuiCol_TabHovered]);
-	toSRGB(pColours[ImGuiCol_TabActive]);
-	toSRGB(pColours[ImGuiCol_TabUnfocused]);
-	toSRGB(pColours[ImGuiCol_TabUnfocusedActive]);
-	toSRGB(pColours[ImGuiCol_PlotLines]);
-	toSRGB(pColours[ImGuiCol_PlotLinesHovered]);
-	toSRGB(pColours[ImGuiCol_PlotHistogram]);
-	toSRGB(pColours[ImGuiCol_PlotHistogramHovered]);
-	toSRGB(pColours[ImGuiCol_TextSelectedBg]);
-	toSRGB(pColours[ImGuiCol_DragDropTarget]);
-	toSRGB(pColours[ImGuiCol_NavHighlight]);
-	toSRGB(pColours[ImGuiCol_NavWindowingHighlight]);
-	toSRGB(pColours[ImGuiCol_NavWindowingDimBg]);
-	toSRGB(pColours[ImGuiCol_ModalWindowDimBg]);
+	correct(pColours[ImGuiCol_Text]);
+	correct(pColours[ImGuiCol_TextDisabled]);
+	correct(pColours[ImGuiCol_WindowBg]);
+	correct(pColours[ImGuiCol_ChildBg]);
+	correct(pColours[ImGuiCol_PopupBg]);
+	correct(pColours[ImGuiCol_Border]);
+	correct(pColours[ImGuiCol_BorderShadow]);
+	correct(pColours[ImGuiCol_FrameBg]);
+	correct(pColours[ImGuiCol_FrameBgHovered]);
+	correct(pColours[ImGuiCol_FrameBgActive]);
+	correct(pColours[ImGuiCol_TitleBg]);
+	correct(pColours[ImGuiCol_TitleBgActive]);
+	correct(pColours[ImGuiCol_TitleBgCollapsed]);
+	correct(pColours[ImGuiCol_MenuBarBg]);
+	correct(pColours[ImGuiCol_ScrollbarBg]);
+	correct(pColours[ImGuiCol_ScrollbarGrab]);
+	correct(pColours[ImGuiCol_ScrollbarGrabHovered]);
+	correct(pColours[ImGuiCol_ScrollbarGrabActive]);
+	correct(pColours[ImGuiCol_CheckMark]);
+	correct(pColours[ImGuiCol_SliderGrab]);
+	correct(pColours[ImGuiCol_SliderGrabActive]);
+	correct(pColours[ImGuiCol_Button]);
+	correct(pColours[ImGuiCol_ButtonHovered]);
+	correct(pColours[ImGuiCol_ButtonActive]);
+	correct(pColours[ImGuiCol_Header]);
+	correct(pColours[ImGuiCol_HeaderHovered]);
+	correct(pColours[ImGuiCol_HeaderActive]);
+	correct(pColours[ImGuiCol_Separator]);
+	correct(pColours[ImGuiCol_SeparatorHovered]);
+	correct(pColours[ImGuiCol_SeparatorActive]);
+	correct(pColours[ImGuiCol_ResizeGrip]);
+	correct(pColours[ImGuiCol_ResizeGripHovered]);
+	correct(pColours[ImGuiCol_ResizeGripActive]);
+	correct(pColours[ImGuiCol_Tab]);
+	correct(pColours[ImGuiCol_TabHovered]);
+	correct(pColours[ImGuiCol_TabActive]);
+	correct(pColours[ImGuiCol_TabUnfocused]);
+	correct(pColours[ImGuiCol_TabUnfocusedActive]);
+	correct(pColours[ImGuiCol_PlotLines]);
+	correct(pColours[ImGuiCol_PlotLinesHovered]);
+	correct(pColours[ImGuiCol_PlotHistogram]);
+	correct(pColours[ImGuiCol_PlotHistogramHovered]);
+	correct(pColours[ImGuiCol_TextSelectedBg]);
+	correct(pColours[ImGuiCol_DragDropTarget]);
+	correct(pColours[ImGuiCol_NavHighlight]);
+	correct(pColours[ImGuiCol_NavWindowingHighlight]);
+	correct(pColours[ImGuiCol_NavWindowingDimBg]);
+	correct(pColours[ImGuiCol_ModalWindowDimBg]);
 }
 } // namespace
 #endif
@@ -117,8 +115,8 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	if (info.texFormat == Texture::srgbFormat) {
-		setStyle();
+	if (info.correctStyleColours) {
+		fixStyle();
 	}
 	auto const glfwWindow = window->nativePtr();
 	ENSURE(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");

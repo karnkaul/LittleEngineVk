@@ -28,15 +28,15 @@ class BitmapFont {
 
   private:
 	struct {
-		std::optional<Texture> atlas;
 		std::array<Glyph, max_glyphs> glyphs;
+		std::optional<Texture> atlas;
 	} m_storage;
 };
 
 struct BitmapFont::CreateInfo {
+	std::optional<vk::Format> forceFormat;
 	View<Glyph> glyphs;
-	View<std::byte> atlas;
-	vk::Format format = Texture::srgbFormat;
+	graphics::BMPview atlas;
 };
 
 inline bool BitmapFont::valid() const noexcept {

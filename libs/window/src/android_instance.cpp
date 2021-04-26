@@ -73,6 +73,8 @@ s32 handleInput(android_app* pApp, AInputEvent* event) {
 			std::size_t const index = std::size_t((pointer & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
 			if (source == AINPUT_SOURCE_TOUCHSCREEN) {
 				switch (action) {
+				case AMOTION_EVENT_ACTION_POINTER_UP:
+				case AMOTION_EVENT_ACTION_UP:
 				case AMOTION_EVENT_ACTION_DOWN:
 				case AMOTION_EVENT_ACTION_POINTER_DOWN: {
 					Event ev;
@@ -85,7 +87,7 @@ s32 handleInput(android_app* pApp, AInputEvent* event) {
 					g_state.events.m_events.push_back(ev);
 					Event::Input input;
 					input.key = Key::eMouseButton1;
-					input.action = Action::ePress;
+					input.action = (action == AMOTION_EVENT_ACTION_POINTER_UP || action == AMOTION_EVENT_ACTION_UP) ? Action::eRelease : Action::ePress;
 					ev.type = Event::Type::eInput;
 					ev.payload.input = input;
 					g_state.events.m_events.push_back(ev);

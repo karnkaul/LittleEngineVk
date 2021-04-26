@@ -108,10 +108,10 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return {std::move(ret)};
 }
 
-VRAM::Future VRAM::copy(View<View<std::byte>> pixelsArr, Image& out_dst, LayoutPair layouts) {
+VRAM::Future VRAM::copy(View<BMPview> bitmaps, Image& out_dst, LayoutPair layouts) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
-	for (auto pixels : pixelsArr) {
+	for (auto pixels : bitmaps) {
 		ENSURE(layerSize == 0 || layerSize == pixels.size(), "Invalid image data!");
 		layerSize = pixels.size();
 		imgSize += layerSize;
@@ -122,8 +122,8 @@ VRAM::Future VRAM::copy(View<View<std::byte>> pixelsArr, Image& out_dst, LayoutP
 	auto promise = Transfer::makePromise();
 	auto ret = promise->get_future();
 	std::vector<bytearray> data;
-	data.reserve(pixelsArr.size());
-	for (auto layer : pixelsArr) {
+	data.reserve(bitmaps.size());
+	for (auto layer : bitmaps) {
 		bytearray bytes(layer.size(), {});
 		std::memcpy(bytes.data(), layer.data(), bytes.size());
 		data.push_back(std::move(bytes));

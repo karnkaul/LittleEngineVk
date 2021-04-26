@@ -15,7 +15,7 @@ Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci)
 	: boot(bci, makeSurface(*winst), winst->framebufferSize()), context(&boot.swapchain) {
 #if defined(LEVK_DESKTOP)
 	DearImGui::CreateInfo dici(boot.swapchain.renderPass());
-	dici.texFormat = context.textureFormat();
+	dici.correctStyleColours = context.colourCorrection() == graphics::ColourCorrection::eAuto;
 	imgui = DearImGui(&boot.device, static_cast<window::DesktopInstance const*>(winst.get()), dici);
 #endif
 }
@@ -104,6 +104,12 @@ bool Engine::processClArgs(ArgMap args) {
 			}
 		};
 		args[{"override-gpu", true}] = std::move(exec);
+	}
+	{
+		utils::Exec exec;
+		exec.label = "enable VSYNC (if available)";
+		exec.callback = [](View<std::string_view>) { graphics::Swapchain::s_forceVsync = true; };
+		args[{"vsync", false}] = std::move(exec);
 	}
 	utils::CommandLine cl(std::move(args));
 	std::vector<utils::CommandLine::Expr> expressions;

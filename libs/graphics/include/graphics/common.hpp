@@ -10,6 +10,8 @@ using lvl = dl::level;
 template <typename T>
 using vAP = vk::ArrayProxy<T const> const&;
 
+enum class ColourCorrection { eAuto, eNone };
+
 namespace stages {
 constexpr vk::ShaderStageFlags v = vk::ShaderStageFlagBits::eVertex;
 constexpr vk::ShaderStageFlags f = vk::ShaderStageFlagBits::eFragment;

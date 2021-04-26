@@ -50,11 +50,12 @@ struct AssetLoader<graphics::Pipeline> {
 template <>
 struct AssetLoadData<graphics::Texture> {
 	kt::fixed_vector<io::Path, 6> imageIDs;
-	graphics::Texture::Raw raw;
+	graphics::Bitmap bitmap;
 	io::Path prefix;
 	std::string ext;
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
+	bool rawBytes = false;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {
 	}
@@ -73,7 +74,7 @@ struct AssetLoader<graphics::Texture> {
 template <>
 struct AssetLoadData<BitmapFont> {
 	io::Path jsonID;
-	vk::Format texFormat = graphics::Texture::srgbFormat;
+	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
@@ -93,7 +94,7 @@ template <>
 struct AssetLoadData<Model> {
 	std::string modelID;
 	io::Path jsonID;
-	vk::Format texFormat = graphics::Texture::srgbFormat;
+	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 

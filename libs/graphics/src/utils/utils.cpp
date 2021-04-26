@@ -1,5 +1,6 @@
 #include <stb/stb_image.h>
 #include <core/log.hpp>
+#include <core/maths.hpp>
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
@@ -7,6 +8,8 @@
 #include <graphics/render_context.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
+
+static_assert(sizeof(stbi_uc) == sizeof(std::byte) && alignof(stbi_uc) == alignof(std::byte), "Invalid type size/alignment");
 
 namespace le::graphics {
 namespace {
@@ -191,11 +194,11 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 	return ret;
 }
 
-bytearray utils::convert(std::initializer_list<u8> bytes) {
-	return bytes.size() == 0 ? bytearray() : convert(View<u8>(&(*bytes.begin()), bytes.size()));
+Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) {
+	return bytes.size() == 0 ? Bitmap::type() : convert(View<u8>(&(*bytes.begin()), bytes.size()));
 }
 
-bytearray utils::convert(View<u8> bytes) {
+Bitmap::type utils::convert(View<u8> bytes) {
 	bytearray ret;
 	for (u8 byte : bytes) {
 		ret.push_back(static_cast<std::byte>(byte));
@@ -203,23 +206,35 @@ bytearray utils::convert(View<u8> bytes) {
 	return ret;
 }
 
-Texture::RawImage utils::decompress(bytearray imgBytes, u8 channels) {
-	Texture::RawImage ret;
-	int ch;
-	auto pIn = reinterpret_cast<stbi_uc const*>(imgBytes.data());
-	auto pOut = stbi_load_from_memory(pIn, (int)imgBytes.size(), &ret.width, &ret.height, &ch, (int)channels);
+utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
+	ENSURE(compressed.size() <= maths::max<int>(), "size too large!");
+	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
+	int w, h, ch;
+	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);
 	if (!pOut) {
 		g_log.log(lvl::warning, 1, "[{}] Failed to decompress image data", g_name);
-		return {};
 	}
-	std::size_t const size = (std::size_t)(ret.width * ret.height * channels);
-	ret.bytes = View<std::byte>(reinterpret_cast<std::byte*>(pOut), size);
-	return ret;
+	size = {u32(w), u32(h)};
+	bytes = BMPview(reinterpret_cast<std::byte*>(pOut), std::size_t(size.x * size.y * channels));
 }
 
-void utils::release(Texture::RawImage rawImage) {
-	if (!rawImage.bytes.empty()) {
-		stbi_image_free((void*)rawImage.bytes.data());
+utils::STBImg::STBImg(STBImg&& rhs) noexcept : TBitmap<BMPview>(std::move(rhs)) {
+	rhs.bytes = {};
+	rhs.size = {};
+}
+
+utils::STBImg& utils::STBImg::operator=(STBImg&& rhs) noexcept {
+	if (&rhs != this) {
+		TBitmap<BMPview>::operator=(std::move(rhs));
+		rhs.bytes = {};
+		rhs.size = {};
+	}
+	return *this;
+}
+
+utils::STBImg::~STBImg() {
+	if (!bytes.empty()) {
+		stbi_image_free((void*)bytes.data());
 	}
 }
 

@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <core/colour.hpp>
 #include <core/hash.hpp>
+#include <graphics/common.hpp>
 #include <graphics/context/frame_sync.hpp>
 #include <graphics/context/swapchain.hpp>
 #include <graphics/draw_view.hpp>
@@ -48,8 +49,9 @@ class RenderContext : NoCopy {
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo);
 
 	vk::SurfaceFormatKHR swapchainFormat() const noexcept;
-	vk::Format textureFormat() const noexcept;
+	vk::Format colourImageFormat() const noexcept;
 
+	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
 	glm::mat4 preRotate() const noexcept;
 	vk::Viewport viewport(glm::ivec2 extent = {0, 0}, glm::vec2 depth = {0.0f, 1.0f}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
@@ -140,10 +142,13 @@ inline glm::ivec2 RenderContext::extent() const noexcept {
 	vk::Extent2D const ext = m_swapchain->display().extent;
 	return glm::ivec2(ext.width, ext.height);
 }
+inline ColourCorrection RenderContext::colourCorrection() const noexcept {
+	return Swapchain::srgb(swapchainFormat().format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
+}
 inline vk::SurfaceFormatKHR RenderContext::swapchainFormat() const noexcept {
 	return m_swapchain->colourFormat();
 }
-inline vk::Format RenderContext::textureFormat() const noexcept {
-	return swapchainFormat().colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
+inline vk::Format RenderContext::colourImageFormat() const noexcept {
+	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
 }
 } // namespace le::graphics

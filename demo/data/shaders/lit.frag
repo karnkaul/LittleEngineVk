@@ -56,8 +56,8 @@ void main() {
 		const float lambert = max(dot(-direction, fragNorm), 0.0);
 		const float phong = pow(max(dot(reflectDir, toView), 0.0), material.specular.w);
 		ambientLight += opaque(dirLight.ambient);
-		diffuseLight += opaque(dirLight.diffuse) * lambert;
-		specularLight += opaque(dirLight.specular) * phong * metallic;
+		diffuseLight += opaque(dirLight.diffuse * lambert);
+		specularLight += opaque(dirLight.specular * phong * metallic);
 	}
 	ambientColour *= ambientLight;
 	diffuseColour *= diffuseLight;

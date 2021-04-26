@@ -119,13 +119,17 @@ bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, Asse
 }
 
 std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Texture>::data(AssetLoadInfo<graphics::Texture> const& info) const {
-	if (!info.m_data.raw.bytes.empty()) {
-		return info.m_data.raw;
+	if (!info.m_data.bitmap.bytes.empty()) {
+		if (info.m_data.rawBytes) {
+			return info.m_data.bitmap;
+		} else {
+			return info.m_data.bitmap.bytes;
+		}
 	} else if (info.m_data.imageIDs.size() == 1) {
 		auto path = info.m_data.prefix / info.m_data.imageIDs[0];
 		path += info.m_data.ext;
 		if (auto pRes = info.resource(path, Resource::Type::eBinary, true)) {
-			return graphics::Texture::Img{{pRes->bytes().begin(), pRes->bytes().end()}};
+			return graphics::Texture::Img{pRes->bytes().begin(), pRes->bytes().end()};
 		}
 	} else if (info.m_data.imageIDs.size() == 6) {
 		graphics::Texture::Cubemap cubemap;
@@ -137,7 +141,7 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 			if (!pRes) {
 				return std::nullopt;
 			}
-			cubemap.bytes[idx++] = {pRes->bytes().begin(), pRes->bytes().end()};
+			cubemap[idx++] = {pRes->bytes().begin(), pRes->bytes().end()};
 		}
 		return cubemap;
 	}
@@ -217,7 +221,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 				return false;
 			}
 			BitmapFont::CreateInfo bci;
-			bci.format = info.m_data.texFormat;
+			bci.forceFormat = info.m_data.forceFormat;
 			bci.glyphs = fi.glyphs;
 			bci.atlas = atlas->bytes();
 			if (out_font.create(info.m_data.vram, sampler->get(), bci)) {
@@ -235,7 +239,7 @@ std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) 
 	}
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
 		Model model;
-		if (model.construct(info.m_data.vram, *mci, sampler->get(), info.m_data.texFormat)) {
+		if (model.construct(info.m_data.vram, *mci, sampler->get(), info.m_data.forceFormat)) {
 			return model;
 		}
 	}
@@ -248,7 +252,7 @@ bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& in
 		return false;
 	}
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
-		return out_model.construct(info.m_data.vram, mci.move(), sampler->get(), info.m_data.texFormat).has_result();
+		return out_model.construct(info.m_data.vram, mci.move(), sampler->get(), info.m_data.forceFormat).has_result();
 	}
 	return false;
 }

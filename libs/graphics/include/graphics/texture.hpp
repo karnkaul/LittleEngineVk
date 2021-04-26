@@ -1,6 +1,7 @@
 #pragma once
 #include <variant>
 #include <glm/vec2.hpp>
+#include <graphics/bitmap.hpp>
 #include <graphics/context/vram.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 
@@ -37,18 +38,13 @@ class Texture {
 		glm::ivec2 size = {};
 		Type type;
 	};
-	struct RawImage {
-		View<std::byte> bytes;
-		int width = 0;
-		int height = 0;
-	};
 
-	struct Img;
-	struct Cubemap;
-	struct Raw;
+	using Img = Bitmap::type;
+	using Cubemap = std::array<Bitmap::type, 6>;
 	struct CreateInfo;
 
-	inline static constexpr auto srgbFormat = vk::Format::eR8G8B8A8Srgb;
+	inline static constexpr auto srgb = vk::Format::eR8G8B8A8Srgb;
+	inline static constexpr auto linear = vk::Format::eR8G8B8A8Unorm;
 
 	Texture(not_null<VRAM*> vram);
 	Texture(Texture&&);
@@ -69,12 +65,8 @@ class Texture {
 
   private:
 	struct Storage {
-		Data data;
 		std::optional<Image> image;
-		struct {
-			kt::fixed_vector<View<std::byte>, 6> bytes;
-			kt::fixed_vector<RawImage, 6> imgs;
-		} raw;
+		Data data;
 		VRAM::Future transfer;
 	};
 
@@ -84,21 +76,11 @@ class Texture {
 	Storage m_storage;
 };
 
-struct Texture::Img {
-	bytearray bytes;
-};
-struct Texture::Cubemap {
-	std::array<bytearray, 6> bytes;
-};
-struct Texture::Raw {
-	bytearray bytes;
-	glm::ivec2 size = {};
-};
 struct Texture::CreateInfo {
-	using Data = std::variant<Img, Cubemap, Raw>;
+	using Data = std::variant<Img, Cubemap, Bitmap>;
 
 	Data data;
 	vk::Sampler sampler;
-	vk::Format format = Texture::srgbFormat;
+	std::optional<vk::Format> forceFormat;
 };
 } // namespace le::graphics

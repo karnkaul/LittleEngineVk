@@ -6,6 +6,27 @@
 #include <graphics/context/vram.hpp>
 
 namespace le::graphics {
+
+vk::SurfaceFormatKHR Swapchain::FormatPicker::pick(View<vk::SurfaceFormatKHR> options) const noexcept {
+	static constexpr auto space = vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear;
+	static constexpr std::array formats = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb};
+	std::vector<vk::SurfaceFormatKHR> avail;
+	avail.reserve(options.size());
+	for (auto const& option : options) {
+		if (option.colorSpace == space && std::find(formats.begin(), formats.end(), option.format) != formats.end()) {
+			avail.push_back(option);
+		}
+	}
+	for (auto format : formats) {
+		for (auto const& option : avail) {
+			if (option.format == format) {
+				return option;
+			}
+		}
+	}
+	return options.front();
+}
+
 namespace {
 template <typename T, typename U, typename V>
 constexpr T bestFit(U&& all, V&& desired, T fallback) noexcept {
@@ -22,26 +43,11 @@ struct SwapchainCreateInfo {
 		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
 		std::vector<vk::SurfaceFormatKHR> colourFormats = pd.getSurfaceFormatsKHR(surface);
 		availableModes = pd.getSurfacePresentModesKHR(surface);
-		std::map<u32, std::vector<vk::SurfaceFormatKHR>> ranked;
-		for (auto const& available : colourFormats) {
-			u32 spaceRank = 0;
-			for (auto desired : info.desired.colourSpaces) {
-				if (desired == available.colorSpace) {
-					break;
-				}
-				++spaceRank;
-			}
-			u32 formatRank = 0;
-			for (auto desired : info.desired.colourFormats) {
-				if (desired == available.format) {
-					break;
-				}
-				++formatRank;
-			}
-			ranked[spaceRank + formatRank].push_back(available);
-		}
-		colourFormat = ranked.begin()->second.front();
-		for (auto format : info.desired.depthFormats) {
+		static Swapchain::FormatPicker const s_picker;
+		Swapchain::FormatPicker const* picker = info.custom ? info.custom : &s_picker;
+		colourFormat = picker->pick(colourFormats);
+		static constexpr std::array depthFormats = {vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint};
+		for (auto format : depthFormats) {
 			vk::FormatProperties const props = pd.getFormatProperties(format);
 			static constexpr auto features = vk::FormatFeatureFlagBits::eDepthStencilAttachment;
 			if ((props.optimalTilingFeatures & features) == features) {
@@ -52,7 +58,24 @@ struct SwapchainCreateInfo {
 		if (Device::default_v(depthFormat)) {
 			depthFormat = vk::Format::eD16Unorm;
 		}
-		presentMode = bestFit(availableModes, info.desired.presentModes, availableModes.front());
+		kt::fixed_vector<vk::PresentModeKHR, 8> presentModes;
+		if (info.desired.vsync || Swapchain::s_forceVsync) {
+			presentModes.push_back(vk::PresentModeKHR::eImmediate);
+		}
+		if constexpr (levk_desktopOS) {
+			presentModes.push_back(vk::PresentModeKHR::eMailbox);
+		}
+		presentModes.push_back(vk::PresentModeKHR::eFifoRelaxed);
+		presentModes.push_back(vk::PresentModeKHR::eFifo);
+		presentMode = bestFit(availableModes, presentModes, availableModes.front());
+		if (info.desired.vsync || Swapchain::s_forceVsync) {
+			static auto const name = Swapchain::presentModeName(vk::PresentModeKHR::eImmediate);
+			if (presentMode == vk::PresentModeKHR::eImmediate) {
+				g_log.log(lvl::info, 0, "[{}] VSYNC ({} present mode) requested", g_name, name);
+			} else {
+				g_log.log(lvl::warning, 0, "[{}] VSYNC ({} present mode) requested but not available!", g_name, name);
+			}
+		}
 		imageCount = capabilities.minImageCount + 1;
 		if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < imageCount) {
 			imageCount = capabilities.maxImageCount;
@@ -173,10 +196,8 @@ bool Swapchain::present(RenderSync const& sync) {
 	return true;
 }
 
-bool Swapchain::reconstruct(glm::ivec2 framebufferSize, View<vk::PresentModeKHR> desiredModes) {
-	if (!desiredModes.empty()) {
-		m_metadata.info.desired.presentModes = desiredModes;
-	}
+bool Swapchain::reconstruct(glm::ivec2 framebufferSize, bool vsync) {
+	m_metadata.info.desired.vsync = vsync;
 	Storage retired = std::move(m_storage);
 	m_metadata.retired = retired.swapchain;
 	bool const bResult = construct(framebufferSize);

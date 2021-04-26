@@ -335,7 +335,6 @@ class App : public input::Receiver {
 			ald.modelID = "models/plant";
 			ald.jsonID = "models/plant/plant.json";
 			ald.samplerID = "samplers/default";
-			ald.texFormat = m_eng->gfx().context.textureFormat();
 			models.add("models/plant", std::move(ald));
 
 			ald.jsonID = "models/teapot/teapot.json";
@@ -352,7 +351,6 @@ class App : public input::Receiver {
 
 		AssetLoadData<BitmapFont> fld(&m_eng->gfx().boot.vram);
 		fld.jsonID = "fonts/default/default.json";
-		fld.texFormat = m_eng->gfx().context.textureFormat();
 		fld.samplerID = "samplers/default";
 		m_data.loader.stage(m_store, AssetList<BitmapFont>{{{"fonts/default", std::move(fld)}}}, m_tasks);
 		{
@@ -406,14 +404,15 @@ class App : public input::Receiver {
 		textureLD.imageIDs = {"textures/container2_specular.png"};
 		texList.add("textures/container2/specular", std::move(textureLD));
 		textureLD.imageIDs.clear();
-		textureLD.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
-		textureLD.raw.size = {1, 1};
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0, 0, 0xff});
+		textureLD.bitmap.size = {1, 1};
+		textureLD.rawBytes = true;
 		texList.add("textures/red", std::move(textureLD));
-		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0xff});
 		texList.add("textures/black", std::move(textureLD));
-		textureLD.raw.bytes = graphics::utils::convert({0xff, 0xff, 0xff, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0xff, 0xff, 0xff});
 		texList.add("textures/white", std::move(textureLD));
-		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0});
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0});
 		texList.add("textures/blank", std::move(textureLD));
 		m_data.loader.stage(m_store, texList, m_tasks);
 		m_eng->pushReceiver(this);

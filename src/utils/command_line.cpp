@@ -41,7 +41,7 @@ std::vector<CommandLine::Expr> CommandLine::parse(View<std::string_view> tokens)
 				Expr expr;
 				if (auto idx = token.find('='); idx < token.size()) {
 					expr.first = token.substr(2, idx - 2);
-					expr.second = token.substr(idx - 1);
+					expr.second = token.substr(idx + 1);
 				} else {
 					expr.first = token.substr(2);
 				}
@@ -132,12 +132,13 @@ bool CommandLine::interact(View<ExecEntry> es) {
 		std::cout << ':';
 		std::string str;
 		std::getline(std::cin, str);
+		kt::fixed_vector<std::string_view, 16> params;
 		std::size_t const idx = str.find('=');
 		auto const id = idx < str.size() ? str.substr(0, idx) : str;
 		if (idx < str.size()) {
 			str = str.substr(idx + 1);
+			params = utils::tokenise<16>(str, ' ');
 		}
-		auto const params = utils::tokenise<16>(str, ' ');
 		for (auto const& entry : es) {
 			if (!id.empty() && match(id, entry.cmd.get().id, entry.ch)) {
 				if (entry.exec.get().callback) {

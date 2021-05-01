@@ -24,6 +24,8 @@ class Instance final {
 		return m_loader;
 	}
 
+	inline static std::optional<bool> s_forceValidation;
+
   private:
 	struct {
 		std::vector<char const*> extensions;

@@ -93,7 +93,10 @@ Instance::Instance(CreateInfo const& info) {
 	m_metadata.layers.clear();
 	std::unordered_set<std::string_view> requiredExtensionsSet = {info.extensions.begin(), info.extensions.end()};
 	bool bValidation = false;
-	if (info.bValidation) {
+	if (s_forceValidation) {
+		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, *s_forceValidation ? "on" : "off");
+	}
+	if ((!s_forceValidation && info.bValidation) || *s_forceValidation) {
 		if (!findLayer(layerProps, szValidationLayer, dl::level::warning)) {
 			ENSURE(false, "Validation layers requested but not present!");
 		} else {

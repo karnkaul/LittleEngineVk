@@ -6,8 +6,11 @@
 #include <kt/uint_flags/uint_flags.hpp>
 
 namespace le::utils {
-class CommandLine : public io::CmdInterpreter {
+class CommandLine : private io::CmdInterpreter {
   public:
+	using io::CmdInterpreter::Args;
+	using io::CmdInterpreter::Cmd;
+	using io::CmdInterpreter::Expr;
 	using ExecMap = std::unordered_map<Cmd, Exec, Cmd::Hasher>;
 
 	inline static std::string_view id_help = "help";
@@ -17,7 +20,7 @@ class CommandLine : public io::CmdInterpreter {
 
 	static std::vector<Expr> parse(View<std::string_view> tokens);
 
-	CommandLine(ExecMap args);
+	CommandLine(ExecMap execs);
 
 	bool map(Cmd cmd, Exec exec);
 	bool execute(View<Expr> expressions, bool& boot);

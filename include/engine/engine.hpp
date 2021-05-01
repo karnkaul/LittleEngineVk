@@ -36,7 +36,7 @@ class Engine {
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
 	using Cmd = io::CmdInterpreter::Cmd;
-	using ArgMap = std::unordered_map<Cmd, utils::Exec, Cmd::Hasher>;
+	using ExecMap = std::unordered_map<Cmd, utils::Exec, Cmd::Hasher>;
 
 	struct GFX {
 		Boot boot;
@@ -82,7 +82,7 @@ class Engine {
 	static Stats const& stats() noexcept;
 	static View<graphics::PhysicalDevice> availableDevices();
 
-	static bool processClArgs(ArgMap args);
+	static bool processClArgs(ExecMap execs);
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
 

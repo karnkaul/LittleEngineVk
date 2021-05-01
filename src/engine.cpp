@@ -112,10 +112,7 @@ bool Engine::processClArgs(ArgMap args) {
 		args[{"vsync", false}] = std::move(exec);
 	}
 	utils::CommandLine cl(std::move(args));
-	std::vector<utils::CommandLine::Expr> expressions;
-	for (auto const& arg : os::args()) {
-		expressions.push_back({arg.k, arg.v});
-	}
+	std::vector<utils::CommandLine::Expr> const expressions = utils::CommandLine::parse(os::args());
 	return cl.execute(expressions, boot);
 }
 

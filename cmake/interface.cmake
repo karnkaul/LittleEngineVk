@@ -18,6 +18,7 @@ if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8 -Wno-unknown-pragmas>
 		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:${CLANG_COMMON}>
+		$<$<BOOL:${LEVK_ASAN}>:-O1 -g -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls>
 	)
 elseif(WINDOWS_MSBUILD)
 	set(COMPILE_OPTS
@@ -33,6 +34,7 @@ if(PLATFORM STREQUAL "Linux")
 	set(LINK_OPTS
 		-no-pie         # Build as application
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
+		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
 	)
 elseif(PLATFORM STREQUAL "Win64" AND NOT WINDOWS_GCC)
 	if(MSVC)

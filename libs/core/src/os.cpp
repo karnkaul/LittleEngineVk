@@ -25,22 +25,30 @@ io::Path g_exeLocation;
 io::Path g_exePath;
 io::Path g_workingDir;
 std::string g_exePathStr;
-std::deque<os::ArgsParser::entry> g_args;
+std::vector<std::string_view> g_args;
+
+std::vector<std::string_view> buildArgs(os::Args const& args) {
+	std::vector<std::string_view> ret;
+	ret.reserve(std::size_t(args.argc));
+	for (int i = 0; i < args.argc; ++i) {
+		ret.push_back(args.argv[std::size_t(i)]);
+	}
+	return ret;
+}
 } // namespace
 
 void os::args(Args const& args) {
 	g_workingDir = io::absolute(io::current_path());
-	if (args.argc > 0) {
-		ArgsParser parser;
-		g_args = parser.parse(args.argc, args.argv);
-		auto& arg0 = g_args.front();
-		g_exeLocation = io::absolute(arg0.k);
-		g_exePath = g_exeLocation.parent_path();
-		while (g_exePath.filename().generic_string() == ".") {
-			g_exePath = g_exePath.parent_path();
+	g_args = buildArgs(args);
+	if (!g_args.empty()) {
+		io::Path const arg0 = io::absolute(g_args.front());
+		if (!arg0.empty() && io::is_regular_file(arg0)) {
+			g_exePath = arg0.parent_path();
+			while (g_exePath.filename().string() == ".") {
+				g_exePath = g_exePath.parent_path();
+			}
+			g_exeLocation = g_exePath / arg0.filename();
 		}
-		g_exeLocation = g_exePath / g_exeLocation.filename();
-		g_args.pop_front();
 	}
 }
 
@@ -85,7 +93,7 @@ kt::result<io::Path, std::string> os::findData(io::Path pattern, Dir start, u8 m
 	return data.move();
 }
 
-std::deque<os::ArgsParser::entry> const& os::args() noexcept {
+std::vector<std::string_view> const& os::args() noexcept {
 	return g_args;
 }
 

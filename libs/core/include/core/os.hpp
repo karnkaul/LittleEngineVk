@@ -7,7 +7,6 @@
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <kt/args_parser/args_parser.hpp>
 #include <kt/result/result.hpp>
 
 namespace le::os {
@@ -105,11 +104,9 @@ namespace os {
 enum class Dir : s8 { eWorking, eExecutable, eCOUNT_ };
 
 struct Args {
-	s32 argc = 0;
-	char const* const* argv = nullptr;
+	int argc = {};
+	char const* const* argv = {};
 };
-
-using ArgsParser = kt::args_parser<>;
 
 ///
 /// \brief Initialise OS service
@@ -137,13 +134,7 @@ kt::result<io::Path, std::string> findData(io::Path pattern = "data", Dir start 
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///
-std::deque<ArgsParser::entry> const& args() noexcept;
-///
-/// \brief Check if a string or its variant was passed as a command line argument
-/// \returns `std::nullopt` if arg is not defined, else the value of the arg (empty if key-only arg)
-///
-template <typename Arg, typename... Args>
-std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept;
+std::vector<std::string_view> const& args() noexcept;
 
 ///
 /// \brief Check if a debugger is attached to the runtime
@@ -166,18 +157,6 @@ template <typename Arg1, typename... Args>
 bool sysCall(std::string_view expr, Arg1&& arg1, Args&&... args) {
 	auto const command = fmt::format(expr, std::forward<Arg1>(arg1), std::forward<Args>(args)...);
 	return sysCall(command);
-}
-
-template <typename Arg, typename... Args>
-std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept {
-	static_assert(std::is_convertible_v<Arg, std::string> && (std::is_convertible_v<Args, std::string> && ...), "Invalid Types!");
-	auto const& allArgs = args();
-	auto matchAny = [&](ArgsParser::entry const& arg) { return (arg.k == key || ((arg.k == variants) || ...)); };
-	auto search = std::find_if(allArgs.begin(), allArgs.end(), matchAny);
-	if (search != allArgs.end()) {
-		return search->v;
-	}
-	return std::nullopt;
 }
 } // namespace os
 } // namespace le

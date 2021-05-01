@@ -31,6 +31,33 @@ std::string header(std::string_view id, bool args, char ch, bool prefix) {
 }
 } // namespace
 
+std::vector<CommandLine::Expr> CommandLine::parse(View<std::string_view> tokens) {
+	std::vector<CommandLine::Expr> ret;
+	for (auto token : tokens) {
+		bool const letters = token.size() >= 2 && token[0] == '-' && token[1] != '-';
+		bool const word = token.size() > 2 && token[0] == '-' && token[1] == '-' && token[2] != '-';
+		if (letters || word) {
+			if (word) {
+				Expr expr;
+				if (auto idx = token.find('='); idx < token.size()) {
+					expr.first = token.substr(2, idx - 2);
+					expr.second = token.substr(idx - 1);
+				} else {
+					expr.first = token.substr(2);
+				}
+				ret.push_back(std::move(expr));
+			} else {
+				token = token.substr(1);
+				while (!token.empty()) {
+					ret.push_back({std::string(token.substr(0, 1)), {}});
+					token = token.substr(1);
+				}
+			}
+		}
+	}
+	return ret;
+}
+
 CommandLine::CommandLine(ExecMap args) : m_map(std::move(args)) {
 	Exec help;
 	help.label = "print this text";

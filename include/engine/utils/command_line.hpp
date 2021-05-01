@@ -15,6 +15,8 @@ class CommandLine : public io::CmdInterpreter {
 	inline static std::string_view id_run = "run";
 	inline static std::string_view id_quit = "quit";
 
+	static std::vector<Expr> parse(View<std::string_view> tokens);
+
 	CommandLine(ExecMap args);
 
 	bool map(Cmd cmd, Exec exec);

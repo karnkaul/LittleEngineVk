@@ -35,7 +35,7 @@ class CmdInterpreter {
 	static std::vector<Entry> entries(CmdInterpreter::CmdSet const& set);
 	static Entry const* find(View<Entry> entries, std::string_view str);
 
-	std::vector<Out> interpret(View<Expr> expressions) const;
+	std::vector<Out> interpret(std::vector<Expr>& out_expressions) const;
 
 	CmdSet m_set;
 };

@@ -1,4 +1,5 @@
 #include <core/io/cmd_interpreter.hpp>
+#include <core/utils/algo.hpp>
 #include <core/utils/string.hpp>
 
 namespace le::io {
@@ -31,14 +32,16 @@ std::vector<CmdInterpreter::Entry> CmdInterpreter::entries(CmdInterpreter::CmdSe
 	return ret;
 }
 
-std::vector<CmdInterpreter::Out> CmdInterpreter::interpret(View<Expr> expressions) const {
+std::vector<CmdInterpreter::Out> CmdInterpreter::interpret(std::vector<Expr>& out_expressions) const {
 	std::vector<CmdInterpreter::Out> ret;
 	auto const es = entries(m_set);
-	for (auto const& expr : expressions) {
+	for (auto& expr : out_expressions) {
 		if (Entry const* entry = find(es, expr.first)) {
 			ret.push_back({expr.second, entry->cmd});
+			expr = {};
 		}
 	}
+	utils::erase_if(out_expressions, [](Expr const& e) { return e.first.empty(); });
 	return ret;
 }
 } // namespace le::io

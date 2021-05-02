@@ -23,7 +23,7 @@ class CommandLine : private io::CmdInterpreter {
 	CommandLine(ExecMap execs);
 
 	bool map(Cmd cmd, Exec exec);
-	bool execute(View<Expr> expressions, bool& boot);
+	bool execute(std::vector<Expr>& out_expressions, bool* boot = nullptr);
 
   private:
 	enum Flag { eInteractive = 1 << 0, eQuit = 1 << 1, eBreak = 1 << 2 };

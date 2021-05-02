@@ -96,21 +96,23 @@ bool CommandLine::map(Cmd cmd, Exec exec) {
 	return false;
 }
 
-bool CommandLine::execute(View<Expr> expressions, bool& boot) {
+bool CommandLine::execute(std::vector<Expr>& out_expressions, bool* boot) {
 	m_flags.update(0, Flag::eInteractive);
-	auto const cmds = CmdInterpreter::interpret(expressions);
+	auto const cmds = interpret(out_expressions);
 	for (Out const& cmd : cmds) {
 		auto& arg = m_map[cmd.cmd];
 		if (arg.callback) {
 			arg.callback(utils::tokenise<16>(cmd.args, ','));
 		}
 	}
-	auto const entries = execEntries();
-	if (m_flags.all(Flag::eInteractive)) {
-		help(entries);
-		return interact(entries);
+	if (boot) {
+		auto const entries = execEntries();
+		if (m_flags.all(Flag::eInteractive)) {
+			help(entries);
+			return interact(entries);
+		}
 	}
-	return !m_flags.all(Flag::eQuit) && boot;
+	return !m_flags.all(Flag::eQuit) && (!boot || *boot);
 }
 
 std::vector<CommandLine::ExecEntry> CommandLine::execEntries() const {

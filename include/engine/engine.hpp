@@ -1,6 +1,5 @@
 #pragma once
 #include <core/io.hpp>
-#include <core/io/cmd_interpreter.hpp>
 #include <core/not_null.hpp>
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
@@ -21,10 +20,6 @@ namespace graphics {
 struct PhysicalDevice;
 }
 
-namespace utils {
-struct Exec;
-}
-
 namespace gui {
 class Root;
 }
@@ -35,8 +30,6 @@ class Engine {
 	using Desktop = window::DesktopInstance;
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
-	using Cmd = io::CmdInterpreter::Cmd;
-	using ExecMap = std::unordered_map<Cmd, utils::Exec, Cmd::Hasher>;
 
 	struct GFX {
 		Boot boot;
@@ -81,8 +74,6 @@ class Engine {
 	static Version version() noexcept;
 	static Stats const& stats() noexcept;
 	static View<graphics::PhysicalDevice> availableDevices();
-
-	static bool processClArgs(ExecMap execs);
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
 

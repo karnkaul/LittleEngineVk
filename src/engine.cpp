@@ -3,7 +3,6 @@
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/node.hpp>
-#include <engine/utils/command_line.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/mesh.hpp>
@@ -64,71 +63,6 @@ View<graphics::PhysicalDevice> Engine::availableDevices() {
 	}
 	graphics::g_log.minVerbosity = verb;
 	return s_devices;
-}
-
-bool Engine::processClArgs(ExecMap execs) {
-	bool boot = true;
-	if constexpr (levk_desktopOS) {
-		{
-			utils::Exec exec;
-			exec.label = "list available GPUs";
-			exec.callback = [&boot](View<std::string_view>) {
-				std::stringstream str;
-				str << "Available GPUs:\n";
-				int i = 0;
-				for (auto const& d : availableDevices()) {
-					str << i++ << ". " << d << "\n";
-				}
-				std::cout << str.str();
-				boot = false;
-			};
-			execs[{"gpu-list"}] = std::move(exec);
-		}
-		{
-			utils::Exec exec;
-			exec.label = "device override [index]";
-			exec.callback = [](View<std::string_view> args) {
-				if (!args.empty()) {
-					if (s64 const i = utils::toS64(args[0], -1); i >= 0) {
-						auto const idx = std::size_t(i);
-						std::size_t const total = availableDevices().size();
-						if (idx < total) {
-							Engine::s_options.gpuOverride = idx;
-							std::cout << "GPU Override set to: " << idx << '\n';
-						} else {
-							std::cout << "Invalid GPU Override: " << idx << "; total: " << total << '\n';
-						}
-					} else {
-						Engine::s_options.gpuOverride.reset();
-						std::cout << "GPU Override cleared\n";
-					}
-				}
-			};
-			execs[{"override-gpu", true}] = std::move(exec);
-		}
-		{
-			utils::Exec exec;
-			exec.label = "enable VSYNC (if available)";
-			exec.callback = [](View<std::string_view>) { graphics::Swapchain::s_forceVsync = true; };
-			execs[{"vsync"}] = std::move(exec);
-		}
-		{
-			utils::Exec exec;
-			exec.label = "force validation layers on/off [\"true\"|\"false\"]";
-			exec.callback = [](View<std::string_view> args) {
-				if (!args.empty()) {
-					graphics::Instance::s_forceValidation = utils::toBool(args[0], true);
-					std::cout << "Validation layers overriden: " << (*graphics::Instance::s_forceValidation ? "on" : "off") << '\n';
-				} else {
-					graphics::Instance::s_forceValidation.reset();
-					std::cout << "Validation layers override cleared\n";
-				}
-			};
-			execs[{"validation", true}] = std::move(exec);
-		}
-	}
-	utils::CommandLine cl(std::move(execs));
-	return cl.execute(cl.parse(os::args()), boot);
 }
 
 Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {

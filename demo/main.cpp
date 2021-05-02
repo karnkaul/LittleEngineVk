@@ -1,16 +1,13 @@
 #include <core/log.hpp>
-#include <core/os.hpp>
 #include <demo.hpp>
-#include <engine/engine.hpp>
-#include <engine/utils/exec.hpp>
+#include <engine/utils/env.hpp>
 
 int main(int argc, char* argv[]) {
 	using namespace le;
-	os::args({argc, argv});
-	if (!Engine::processClArgs({})) {
+	if (!utils::Env::init(argc, argv, {})) {
 		return 0;
 	}
-	auto data = os::findData("demo/data");
+	auto data = utils::Env::findData("demo/data");
 	if (!data) {
 		logE("FATAL: {}!", data.error());
 		return 1;

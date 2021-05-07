@@ -150,6 +150,7 @@ add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)
 add_subdirectory(libs/dtasks)
 add_subdirectory(libs/decf)
+add_subdirectory(libs/clap)
 add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
@@ -183,6 +184,7 @@ target_link_libraries(${TARGET_NAME}
 		levk::window
 		levk::core
 		djson::djson
+		clap::clap
 		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
 		levk::interface
 	PRIVATE

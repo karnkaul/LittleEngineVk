@@ -2,12 +2,14 @@
 #include <demo.hpp>
 #include <engine/utils/env.hpp>
 
+#include <clap/interpreter.hpp>
+
 int main(int argc, char* argv[]) {
 	using namespace le;
-	if (!utils::Env::init(argc, argv, {})) {
+	if (env::init(argc, argv, {}) == env::Run::quit) {
 		return 0;
 	}
-	auto data = utils::Env::findData("demo/data");
+	auto data = env::findData("demo/data");
 	if (!data) {
 		logE("FATAL: {}!", data.error());
 		return 1;

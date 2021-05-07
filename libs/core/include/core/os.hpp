@@ -116,6 +116,10 @@ void args(Args const& args);
 ///
 std::string argv0();
 ///
+/// \brief Obtain `argv[0]`
+///
+std::string exeName();
+///
 /// \brief Obtain working/executable directory
 ///
 io::Path dirPath(Dir dir);

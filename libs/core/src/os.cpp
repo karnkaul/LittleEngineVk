@@ -55,6 +55,10 @@ std::string os::argv0() {
 	return g_exeLocation.generic_string();
 }
 
+std::string os::exeName() {
+	return g_exeLocation.filename().string();
+}
+
 io::Path os::dirPath(Dir dir) {
 	switch (dir) {
 	default:

@@ -96,7 +96,7 @@ Instance::Instance(CreateInfo const& info) {
 	if (s_forceValidation) {
 		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, *s_forceValidation ? "on" : "off");
 	}
-	if ((!s_forceValidation && info.bValidation) || *s_forceValidation) {
+	if ((!s_forceValidation && info.bValidation) || s_forceValidation.value_or(false)) {
 		if (!findLayer(layerProps, szValidationLayer, dl::level::warning)) {
 			ENSURE(false, "Validation layers requested but not present!");
 		} else {

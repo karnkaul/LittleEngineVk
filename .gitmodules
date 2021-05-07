@@ -28,3 +28,6 @@
 [submodule "docs/doxygen_dark_theme"]
 	path = docs/doxygen_dark_theme
 	url = https://github.com/MaJerle/doxygen-dark-theme
+[submodule "libs/clap"]
+	path = libs/clap
+	url = https://github.com/karnkaul/clap

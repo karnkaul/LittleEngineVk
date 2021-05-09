@@ -16,23 +16,31 @@ env::Run env::init(int argc, char* const argv[], Spec::cmd_map_t cmds) {
 		gpu.args_fmt = "[index]";
 		gpu.callback = [&ret](clap::interpreter::params_t const& p) {
 			if (p.arguments.empty()) {
-				std::stringstream str;
-				str << "Available GPUs:\n";
-				int i = 0;
-				for (auto const& d : Engine::availableDevices()) {
-					str << i++ << ". " << d << "\n";
+				try {
+					std::stringstream str;
+					str << "Available GPUs:\n";
+					int i = 0;
+					for (auto const& d : Engine::availableDevices()) {
+						str << i++ << ". " << d << "\n";
+					}
+					std::cout << str.str();
+				} catch (std::runtime_error const& e) {
+					std::cerr << "Failed to poll GPUs: " << e.what() << '\n';
 				}
-				std::cout << str.str();
 				ret = Run::quit;
 			} else {
 				if (s64 const i = utils::toS64(p.arguments[0], -1); i >= 0) {
 					auto const idx = std::size_t(i);
-					std::size_t const total = Engine::availableDevices().size();
-					if (idx < total) {
-						Engine::s_options.gpuOverride = idx;
-						std::cout << "GPU Override set to: " << idx << '\n';
-					} else {
-						std::cout << "Invalid GPU Override: " << idx << "; total: " << total << '\n';
+					try {
+						std::size_t const total = Engine::availableDevices().size();
+						if (idx < total) {
+							Engine::s_options.gpuOverride = idx;
+							std::cout << "GPU Override set to: " << idx << '\n';
+						} else {
+							std::cout << "Invalid GPU Override: " << idx << "; total: " << total << '\n';
+						}
+					} catch (std::runtime_error const& e) {
+						std::cerr << "Failed to poll GPUs:" << e.what() << '\n';
 					}
 				}
 			}

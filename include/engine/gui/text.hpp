@@ -29,6 +29,5 @@ class Text : public Node {
 // impl
 
 inline Text::Text(not_null<Root*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) noexcept
-	: Node(root), m_font(font), m_mesh(vram, graphics::Mesh::Type::eDynamic) {
-}
+	: Node(root), m_font(font), m_mesh(vram, graphics::Mesh::Type::eDynamic) {}
 } // namespace le::gui

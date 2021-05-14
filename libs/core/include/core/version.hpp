@@ -48,20 +48,11 @@ struct Version {
 
 // impl
 
-constexpr Version::Version(u32 major, u32 minor, u32 patch, u32 tweak) noexcept : mj(major), mn(minor), pa(patch), tw(tweak) {
-}
-constexpr u32 Version::major() const noexcept {
-	return mj;
-}
-constexpr u32 Version::minor() const noexcept {
-	return mn;
-}
-constexpr u32 Version::patch() const noexcept {
-	return pa;
-}
-constexpr u32 Version::tweak() const noexcept {
-	return tw;
-}
+constexpr Version::Version(u32 major, u32 minor, u32 patch, u32 tweak) noexcept : mj(major), mn(minor), pa(patch), tw(tweak) {}
+constexpr u32 Version::major() const noexcept { return mj; }
+constexpr u32 Version::minor() const noexcept { return mn; }
+constexpr u32 Version::patch() const noexcept { return pa; }
+constexpr u32 Version::tweak() const noexcept { return tw; }
 constexpr bool Version::upgrade(Version const& rhs) noexcept {
 	if (*this < rhs) {
 		*this = rhs;
@@ -72,21 +63,15 @@ constexpr bool Version::upgrade(Version const& rhs) noexcept {
 constexpr bool operator==(Version const& lhs, Version const& rhs) noexcept {
 	return lhs.mj == rhs.mj && lhs.mn == rhs.mn && lhs.pa == rhs.pa && lhs.tw == rhs.tw;
 }
-constexpr bool operator!=(Version const& lhs, Version const& rhs) noexcept {
-	return !(lhs == rhs);
-}
+constexpr bool operator!=(Version const& lhs, Version const& rhs) noexcept { return !(lhs == rhs); }
 constexpr bool operator<(Version const& lhs, Version const& rhs) noexcept {
 	return (lhs.mj < rhs.mj) || (lhs.mj == rhs.mj && lhs.mn < rhs.mn) || (lhs.mj == rhs.mj && lhs.mn == rhs.mn && lhs.pa < rhs.pa) ||
 		   (lhs.mj == rhs.mj && lhs.mn == rhs.mn && lhs.pa == rhs.pa && lhs.tw < rhs.tw);
 }
-constexpr bool operator<=(Version const& lhs, Version const& rhs) noexcept {
-	return (lhs == rhs) || (lhs < rhs);
-}
+constexpr bool operator<=(Version const& lhs, Version const& rhs) noexcept { return (lhs == rhs) || (lhs < rhs); }
 constexpr bool operator>(Version const& lhs, Version const& rhs) noexcept {
 	return (lhs.mj > rhs.mj) || (lhs.mj == rhs.mj && lhs.mn > rhs.mn) || (lhs.mj == rhs.mj && lhs.mn == rhs.mn && lhs.pa > rhs.pa) ||
 		   (lhs.mj == rhs.mj && lhs.mn == rhs.mn && lhs.pa == rhs.pa && lhs.tw > rhs.tw);
 }
-constexpr bool operator>=(Version const& lhs, Version const& rhs) noexcept {
-	return (lhs == rhs) || (lhs > rhs);
-}
+constexpr bool operator>=(Version const& lhs, Version const& rhs) noexcept { return (lhs == rhs) || (lhs > rhs); }
 } // namespace le

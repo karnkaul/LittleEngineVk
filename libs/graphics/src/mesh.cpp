@@ -3,12 +3,10 @@
 #include <graphics/mesh.hpp>
 
 namespace le::graphics {
-Mesh::Mesh(not_null<VRAM*> vram, Type type) : m_vram(vram), m_type(type) {
-}
+Mesh::Mesh(not_null<VRAM*> vram, Type type) : m_vram(vram), m_type(type) {}
 Mesh::Mesh(Mesh&& rhs)
 	: m_vram(rhs.m_vram), m_vbo(std::exchange(rhs.m_vbo, Storage())), m_ibo(std::exchange(rhs.m_ibo, Storage())), m_triCount(rhs.m_triCount),
-	  m_type(rhs.m_type) {
-}
+	  m_type(rhs.m_type) {}
 Mesh& Mesh::operator=(Mesh&& rhs) {
 	if (&rhs != this) {
 		destroy();
@@ -19,9 +17,7 @@ Mesh& Mesh::operator=(Mesh&& rhs) {
 	}
 	return *this;
 }
-Mesh::~Mesh() {
-	destroy();
-}
+Mesh::~Mesh() { destroy(); }
 
 Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
@@ -51,9 +47,7 @@ bool Mesh::draw(CommandBuffer const& cb, u32 instances, u32 first) const {
 	return false;
 }
 
-bool Mesh::valid() const noexcept {
-	return m_vbo.buffer.has_value();
-}
+bool Mesh::valid() const noexcept { return m_vbo.buffer.has_value(); }
 
 bool Mesh::busy() const {
 	if (!valid() || m_type == Type::eDynamic) {
@@ -62,9 +56,7 @@ bool Mesh::busy() const {
 	return m_vbo.transfer.busy() || m_ibo.transfer.busy();
 }
 
-bool Mesh::ready() const {
-	return valid() && m_vbo.transfer.ready(true) && m_ibo.transfer.ready(true);
-}
+bool Mesh::ready() const { return valid() && m_vbo.transfer.ready(true) && m_ibo.transfer.ready(true); }
 
 void Mesh::wait() const {
 	if (m_type == Type::eDynamic) {

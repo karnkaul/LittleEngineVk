@@ -165,8 +165,7 @@ class TaggedStore final : detail::TaggedStoreBase<Tg> {
 // impl
 
 template <typename T>
-constexpr Tag<T>::Tag(detail::TaggedStoreBase<Tag>* parent, type id) noexcept : store(parent), id(id) {
-}
+constexpr Tag<T>::Tag(detail::TaggedStoreBase<Tag>* parent, type id) noexcept : store(parent), id(id) {}
 template <typename T>
 constexpr Tag<T>::Tag(Tag&& rhs) noexcept : store(rhs.store), id(rhs.id) {
 	rhs.store = nullptr;

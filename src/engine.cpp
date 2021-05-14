@@ -27,11 +27,9 @@ Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	};
 }
 
-Engine::DrawFrame::DrawFrame(not_null<Engine*> engine, Context::Frame&& frame) noexcept : frame(std::move(frame)), engine(engine) {
-}
+Engine::DrawFrame::DrawFrame(not_null<Engine*> engine, Context::Frame&& frame) noexcept : frame(std::move(frame)), engine(engine) {}
 
-Engine::DrawFrame::DrawFrame(DrawFrame&& rhs) noexcept : frame(std::exchange(rhs.frame, Context::Frame())), engine(rhs.engine) {
-}
+Engine::DrawFrame::DrawFrame(DrawFrame&& rhs) noexcept : frame(std::exchange(rhs.frame, Context::Frame())), engine(rhs.engine) {}
 
 Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
 	if (&rhs != this) {
@@ -50,9 +48,7 @@ Engine::DrawFrame::~DrawFrame() {
 	}
 }
 
-Version Engine::version() noexcept {
-	return g_engineVersion;
-}
+Version Engine::version() noexcept { return g_engineVersion; }
 
 View<graphics::PhysicalDevice> Engine::availableDevices() {
 	auto const verb = graphics::g_log.minVerbosity;
@@ -96,9 +92,7 @@ void Engine::update(gui::Root* root) {
 	}
 }
 
-void Engine::pushReceiver(not_null<input::Receiver*> context) {
-	context->m_inputTag = m_receivers.emplace_back(context);
-}
+void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputTag = m_receivers.emplace_back(context); }
 
 bool Engine::beginFrame(bool waitDrawReady) {
 	updateStats();
@@ -177,9 +171,7 @@ bool Engine::unboot() noexcept {
 	return false;
 }
 
-glm::ivec2 Engine::framebufferSize() const noexcept {
-	return m_gfx ? m_gfx->context.extent() : m_win->framebufferSize();
-}
+glm::ivec2 Engine::framebufferSize() const noexcept { return m_gfx ? m_gfx->context.extent() : m_win->framebufferSize(); }
 
 vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexcept {
 	if (!m_gfx) {
@@ -197,9 +189,7 @@ vk::Rect2D Engine::scissor(Viewport const& view) const noexcept {
 	return m_gfx->context.scissor(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset);
 }
 
-Engine::Desktop* Engine::desktop() const noexcept {
-	return m_desktop;
-}
+Engine::Desktop* Engine::desktop() const noexcept { return m_desktop; }
 
 void Engine::updateStats() {
 	++m_stats.frame.count;

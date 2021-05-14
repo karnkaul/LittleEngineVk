@@ -23,17 +23,12 @@ struct TZero final {
 
 	constexpr operator T() const noexcept;
 
-	constexpr friend bool operator==(TZero<T, Zero> const& lhs, TZero<T, Zero> const& rhs) {
-		return lhs.payload == rhs.payload;
-	}
-	constexpr friend bool operator!=(TZero<T, Zero> const& lhs, TZero<T, Zero> const& rhs) {
-		return lhs.payload != rhs.payload;
-	}
+	constexpr friend bool operator==(TZero<T, Zero> const& lhs, TZero<T, Zero> const& rhs) { return lhs.payload == rhs.payload; }
+	constexpr friend bool operator!=(TZero<T, Zero> const& lhs, TZero<T, Zero> const& rhs) { return lhs.payload != rhs.payload; }
 };
 
 template <typename T, T Zero>
-constexpr TZero<T, Zero>::TZero(T payload) noexcept : payload(payload) {
-}
+constexpr TZero<T, Zero>::TZero(T payload) noexcept : payload(payload) {}
 
 template <typename T, T Zero>
 constexpr TZero<T, Zero>::TZero(TZero<T, Zero>&& rhs) noexcept : payload(rhs.payload) {

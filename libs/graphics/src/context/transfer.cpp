@@ -115,9 +115,7 @@ std::size_t Transfer::update() {
 	return m_batches.submitted.size();
 }
 
-Transfer::Stage Transfer::newStage(vk::DeviceSize bufferSize) {
-	return Stage{nextBuffer(bufferSize), nextCommand()};
-}
+Transfer::Stage Transfer::newStage(vk::DeviceSize bufferSize) { return Stage{nextBuffer(bufferSize), nextCommand()}; }
 
 void Transfer::addStage(Stage&& stage, Promise&& promise) {
 	auto lock = m_sync.mutex.lock();

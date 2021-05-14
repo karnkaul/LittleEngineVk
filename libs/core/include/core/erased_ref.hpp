@@ -27,8 +27,7 @@ struct ErasedRef final {
 // impl
 
 template <typename T, typename>
-constexpr ErasedRef::ErasedRef(T& out_t, tag<T>) noexcept : pPtr(&out_t), hash(typeid(T).hash_code()) {
-}
+constexpr ErasedRef::ErasedRef(T& out_t, tag<T>) noexcept : pPtr(&out_t), hash(typeid(T).hash_code()) {}
 template <typename T>
 constexpr bool ErasedRef::contains() const noexcept {
 	return hash && typeid(T).hash_code();

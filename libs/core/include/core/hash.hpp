@@ -33,15 +33,11 @@ struct Hash final {
 ///
 /// \brief Comparison operator
 ///
-inline constexpr bool operator==(Hash lhs, Hash rhs) noexcept {
-	return lhs.hash == rhs.hash;
-}
+inline constexpr bool operator==(Hash lhs, Hash rhs) noexcept { return lhs.hash == rhs.hash; }
 ///
 /// \brief Comparison operator
 ///
-inline constexpr bool operator!=(Hash lhs, Hash rhs) noexcept {
-	return !(lhs == rhs);
-}
+inline constexpr bool operator!=(Hash lhs, Hash rhs) noexcept { return !(lhs == rhs); }
 
 template <typename T>
 Hash::Hash(T const& t) {
@@ -58,16 +54,12 @@ template <std::size_t N>
 Hash::Hash(char const (&t)[N]) {
 	hash = std::hash<std::string_view>{}(std::string_view(t));
 }
-constexpr inline Hash::operator std::size_t() const noexcept {
-	return hash;
-}
+constexpr inline Hash::operator std::size_t() const noexcept { return hash; }
 } // namespace le
 
 namespace std {
 template <>
 struct hash<le::Hash> {
-	size_t operator()(le::Hash hash) const noexcept {
-		return hash;
-	}
+	size_t operator()(le::Hash hash) const noexcept { return hash; }
 };
 } // namespace std

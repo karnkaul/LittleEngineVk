@@ -20,9 +20,7 @@ void clicks(MU GUIState& out_state) {
 #endif
 }
 
-Styler::Styler(StyleFlags flags) : flags(flags) {
-	(*this)();
-}
+Styler::Styler(StyleFlags flags) : flags(flags) { (*this)(); }
 
 void Styler::operator()(MU std::optional<StyleFlags> f) {
 #if defined(LEVK_USE_IMGUI)
@@ -38,12 +36,9 @@ void Styler::operator()(MU std::optional<StyleFlags> f) {
 #endif
 }
 
-GUIStateful::GUIStateful() {
-	clicks(guiState);
-}
+GUIStateful::GUIStateful() { clicks(guiState); }
 
-GUIStateful::GUIStateful(GUIStateful&& rhs) : guiState(std::exchange(rhs.guiState, GUIState{})) {
-}
+GUIStateful::GUIStateful(GUIStateful&& rhs) : guiState(std::exchange(rhs.guiState, GUIState{})) {}
 
 GUIStateful& GUIStateful::operator=(GUIStateful&& rhs) {
 	if (&rhs != this) {
@@ -52,9 +47,7 @@ GUIStateful& GUIStateful::operator=(GUIStateful&& rhs) {
 	return *this;
 }
 
-void GUIStateful::refresh() {
-	clicks(guiState);
-}
+void GUIStateful::refresh() { clicks(guiState); }
 
 Text::Text(MU sv text) {
 #if defined(LEVK_USE_IMGUI)

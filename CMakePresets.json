@@ -101,7 +101,7 @@
 		{
 			"name": "levk-rl",
 			"displayName": "Release ",
-			"description": "Release build using Make",
+			"description": "Release build using Ninja",
 			"generator": "Ninja",
 			"binaryDir": "out/rl",
 			"cacheVariables": {

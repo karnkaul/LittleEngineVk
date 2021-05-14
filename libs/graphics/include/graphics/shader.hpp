@@ -52,7 +52,5 @@ constexpr bool operator==(Shader const& lhs, Shader const& rhs) noexcept {
 	return true;
 }
 
-constexpr bool operator!=(Shader const& lhs, Shader const& rhs) noexcept {
-	return !(lhs == rhs);
-}
+constexpr bool operator!=(Shader const& lhs, Shader const& rhs) noexcept { return !(lhs == rhs); }
 } // namespace le::graphics

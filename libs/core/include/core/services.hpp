@@ -41,8 +41,7 @@ class Services final {
 #if defined(LEVK_DEBUG)
 		std::string targetType;
 #endif
-		virtual ~Concept() {
-		}
+		virtual ~Concept() {}
 	};
 	template <typename S>
 	struct Model : public Concept {

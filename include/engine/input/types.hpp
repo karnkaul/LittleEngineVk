@@ -39,11 +39,7 @@ using KeyAct = KeyCombo<ActionMask>;
 
 // impl
 
-constexpr KeyMods::KeyMods(Key k) noexcept : key(k) {
-}
-constexpr KeyMods::KeyMods(Key k, Mod mod) noexcept : key(k) {
-	mods.add(mod);
-}
-constexpr KeyMods::KeyMods(Key k, Mods m) noexcept : key(k), mods(m) {
-}
+constexpr KeyMods::KeyMods(Key k) noexcept : key(k) {}
+constexpr KeyMods::KeyMods(Key k, Mod mod) noexcept : key(k) { mods.add(mod); }
+constexpr KeyMods::KeyMods(Key k, Mods m) noexcept : key(k), mods(m) {}
 } // namespace le::input

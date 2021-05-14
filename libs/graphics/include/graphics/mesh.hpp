@@ -81,16 +81,8 @@ bool Mesh::construct(Geom<V> const& geom) {
 	return construct<Vert<V>>(geom.vertices, geom.indices);
 }
 
-inline Mesh::Data Mesh::vbo() const noexcept {
-	return {*m_vbo.buffer, m_vbo.count};
-}
-inline Mesh::Data Mesh::ibo() const noexcept {
-	return {*m_ibo.buffer, m_ibo.count};
-}
-inline Mesh::Type Mesh::type() const noexcept {
-	return m_type;
-}
-inline bool Mesh::hasIndices() const noexcept {
-	return m_ibo.count > 0 && m_ibo.buffer && m_ibo.buffer->buffer() != vk::Buffer();
-}
+inline Mesh::Data Mesh::vbo() const noexcept { return {*m_vbo.buffer, m_vbo.count}; }
+inline Mesh::Data Mesh::ibo() const noexcept { return {*m_ibo.buffer, m_ibo.count}; }
+inline Mesh::Type Mesh::type() const noexcept { return m_type; }
+inline bool Mesh::hasIndices() const noexcept { return m_ibo.count > 0 && m_ibo.buffer && m_ibo.buffer->buffer() != vk::Buffer(); }
 } // namespace le::graphics

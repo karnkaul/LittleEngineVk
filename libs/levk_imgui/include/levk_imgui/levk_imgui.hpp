@@ -70,16 +70,11 @@ struct DearImGui::CreateInfo {
 	u8 minImageCount = 2;
 	bool correctStyleColours = true;
 
-	explicit CreateInfo(vk::RenderPass renderPass) : renderPass(renderPass) {
-	}
+	explicit CreateInfo(vk::RenderPass renderPass) : renderPass(renderPass) {}
 };
 
 // impl
 
-inline DearImGui::State DearImGui::state() const noexcept {
-	return m_state;
-}
-inline bool DearImGui::ready() const noexcept {
-	return m_state == State::eBegin;
-}
+inline DearImGui::State DearImGui::state() const noexcept { return m_state; }
+inline bool DearImGui::ready() const noexcept { return m_state == State::eBegin; }
 } // namespace le

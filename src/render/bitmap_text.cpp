@@ -3,13 +3,9 @@
 #include <engine/scene/primitive.hpp>
 
 namespace le {
-void BitmapText::create(not_null<graphics::VRAM*> vram, Type type) {
-	mesh = graphics::Mesh(vram, type);
-}
+void BitmapText::create(not_null<graphics::VRAM*> vram, Type type) { mesh = graphics::Mesh(vram, type); }
 
-bool BitmapText::set(BitmapFont const& font, std::string_view str) {
-	return set(font.glyphs(), font.atlas().data().size, str);
-}
+bool BitmapText::set(BitmapFont const& font, std::string_view str) { return set(font.glyphs(), font.atlas().data().size, str); }
 
 bool BitmapText::set(View<graphics::Glyph> glyphs, glm::ivec2 atlas, std::string_view str) {
 	text.text = str;
@@ -19,9 +15,7 @@ bool BitmapText::set(View<graphics::Glyph> glyphs, glm::ivec2 atlas, std::string
 	return false;
 }
 
-Primitive BitmapText::primitive(BitmapFont const& font) const {
-	return primitive(font.atlas());
-}
+Primitive BitmapText::primitive(BitmapFont const& font) const { return primitive(font.atlas()); }
 
 Primitive BitmapText::primitive(graphics::Texture const& atlas) const {
 	Primitive ret;

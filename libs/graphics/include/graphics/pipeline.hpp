@@ -102,16 +102,12 @@ class Pipeline final {
 
 // impl
 
-inline Hash Pipeline::id() const noexcept {
-	return m_storage.id;
-}
+inline Hash Pipeline::id() const noexcept { return m_storage.id; }
 } // namespace le::graphics
 
 namespace std {
 template <>
 struct hash<le::graphics::Pipeline> {
-	size_t operator()(le::graphics::Pipeline const& pipe) const {
-		return pipe.id();
-	}
+	size_t operator()(le::graphics::Pipeline const& pipe) const { return pipe.id(); }
 };
 } // namespace std

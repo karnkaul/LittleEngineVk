@@ -5,8 +5,7 @@
 namespace le::window {
 class AndroidInstance final : public IInstance {
   public:
-	AndroidInstance() : IInstance(false) {
-	}
+	AndroidInstance() : IInstance(false) {}
 	explicit AndroidInstance(CreateInfo const& info);
 	AndroidInstance(AndroidInstance&&) = default;
 	AndroidInstance& operator=(AndroidInstance&&) = default;

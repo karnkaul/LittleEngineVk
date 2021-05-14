@@ -55,8 +55,7 @@ bool operator==(Path const& lhs, Path const& rhs);
 bool operator!=(Path const& lhs, Path const& rhs);
 
 template <typename T, typename>
-Path::Path(T const& t) : Path(std::string_view(t)) {
-}
+Path::Path(T const& t) : Path(std::string_view(t)) {}
 
 inline Path operator/(Path const& lhs, Path const& rhs) {
 	auto ret = lhs;

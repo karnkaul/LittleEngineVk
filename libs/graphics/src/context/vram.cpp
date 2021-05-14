@@ -11,9 +11,7 @@ VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) :
 	}
 }
 
-VRAM::~VRAM() {
-	g_log.log(lvl::info, 1, "[{}] VRAM destroyed", g_name);
-}
+VRAM::~VRAM() { g_log.log(lvl::info, 1, "[{}] VRAM destroyed", g_name); }
 
 Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible) {
 	Buffer::CreateInfo bufferInfo;

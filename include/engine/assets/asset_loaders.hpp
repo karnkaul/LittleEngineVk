@@ -15,8 +15,7 @@ struct AssetLoadData<graphics::Shader> {
 	std::unordered_map<graphics::Shader::Type, io::Path> shaderPaths;
 	not_null<graphics::Device*> device;
 
-	AssetLoadData(not_null<graphics::Device*> device) : device(device) {
-	}
+	AssetLoadData(not_null<graphics::Device*> device) : device(device) {}
 };
 
 template <>
@@ -37,8 +36,7 @@ struct AssetLoadData<graphics::Pipeline> {
 	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
 
-	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {
-	}
+	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
 };
 
 template <>
@@ -57,8 +55,7 @@ struct AssetLoadData<graphics::Texture> {
 	Hash samplerID;
 	bool rawBytes = false;
 
-	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {
-	}
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
 
 template <>
@@ -78,8 +75,7 @@ struct AssetLoadData<BitmapFont> {
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
-	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {
-	}
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
 
 template <>
@@ -98,8 +94,7 @@ struct AssetLoadData<Model> {
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
-	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {
-	}
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
 
 template <>

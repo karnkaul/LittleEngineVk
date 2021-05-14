@@ -11,16 +11,10 @@ struct src_loc final {
 	char const* szFunc = nullptr;
 	std::uint_least32_t line_num = 0;
 
-	constexpr std::uint_least32_t line() const noexcept {
-		return line_num;
-	}
+	constexpr std::uint_least32_t line() const noexcept { return line_num; }
 
-	constexpr char const* file_name() const noexcept {
-		return szFile;
-	}
+	constexpr char const* file_name() const noexcept { return szFile; }
 
-	constexpr char const* function_name() const noexcept {
-		return szFunc;
-	}
+	constexpr char const* function_name() const noexcept { return szFunc; }
 };
 } // namespace le

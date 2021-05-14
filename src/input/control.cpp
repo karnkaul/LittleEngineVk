@@ -41,13 +41,9 @@ bool Trigger::operator()(State const& state) const noexcept {
 	return false;
 }
 
-Range::Range(AxisRange axis) noexcept {
-	matches.push_back(axis);
-}
+Range::Range(AxisRange axis) noexcept { matches.push_back(axis); }
 
-Range::Range(KeyRange key) noexcept {
-	matches.push_back(key);
-}
+Range::Range(KeyRange key) noexcept { matches.push_back(key); }
 
 f32 Range::operator()(State const& state) const noexcept {
 	f32 ret = 0.0f;

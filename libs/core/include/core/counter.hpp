@@ -141,8 +141,7 @@ TCounter<T, true>::operator T() const noexcept {
 }
 
 template <typename T>
-constexpr TCounter<T, false>::TCounter(T init) noexcept : counter(init) {
-}
+constexpr TCounter<T, false>::TCounter(T init) noexcept : counter(init) {}
 
 template <typename T>
 constexpr T TCounter<T, false>::operator++() noexcept {
@@ -180,8 +179,7 @@ TCounter<T, true>::Semaphore::Semaphore(TCounter<T>& counter) noexcept : pTCount
 }
 
 template <typename T>
-TCounter<T, true>::Semaphore::Semaphore(Semaphore&& rhs) noexcept : pTCounter(std::exchange(rhs.pTCounter, nullptr)) {
-}
+TCounter<T, true>::Semaphore::Semaphore(Semaphore&& rhs) noexcept : pTCounter(std::exchange(rhs.pTCounter, nullptr)) {}
 
 template <typename T>
 typename TCounter<T, true>::Semaphore& TCounter<T, true>::Semaphore::operator=(Semaphore&& rhs) noexcept {

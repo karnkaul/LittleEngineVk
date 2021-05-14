@@ -4,9 +4,7 @@
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
-TreeNode makeNode(std::string_view id, bool selected, bool leaf) {
-	return TreeNode(id, selected, leaf, true, false);
-}
+TreeNode makeNode(std::string_view id, bool selected, bool leaf) { return TreeNode(id, selected, leaf, true, false); }
 
 void walk(SceneNode& node, decf::registry_t& reg) {
 	auto& ins = Editor::s_out.inspecting;

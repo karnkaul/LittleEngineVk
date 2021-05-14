@@ -35,25 +35,15 @@ Path::Path(std::string_view str) {
 	}
 }
 
-bool Path::has_parent_path() const {
-	return m_units.size() > 2 || (m_units.size() > 1 && m_units.back()[0] != '.');
-}
+bool Path::has_parent_path() const { return m_units.size() > 2 || (m_units.size() > 1 && m_units.back()[0] != '.'); }
 
-bool Path::empty() const {
-	return m_units.empty();
-}
+bool Path::empty() const { return m_units.empty(); }
 
-bool Path::has_filename() const {
-	return !m_units.empty() && (m_units.size() > 2 || m_units.back()[0] != '.');
-}
+bool Path::has_filename() const { return !m_units.empty() && (m_units.size() > 2 || m_units.back()[0] != '.'); }
 
-bool Path::has_extension() const {
-	return !m_units.empty() && m_units.back()[0] == '.';
-}
+bool Path::has_extension() const { return !m_units.empty() && m_units.back()[0] == '.'; }
 
-bool Path::has_root_directory() const {
-	return !m_units.empty() && (m_units.front().front() == '/' || m_units.front().back() == ':');
-}
+bool Path::has_root_directory() const { return !m_units.empty() && (m_units.front().front() == '/' || m_units.front().back() == ':'); }
 
 Path Path::parent_path() const {
 	auto parent = m_units;
@@ -79,21 +69,13 @@ Path Path::filename() const {
 	return Path();
 }
 
-Path Path::extension() const {
-	return has_extension() ? Path(m_units.back()) : Path();
-}
+Path Path::extension() const { return has_extension() ? Path(m_units.back()) : Path(); }
 
-std::string Path::string() const {
-	return to_string(g_separator);
-}
+std::string Path::string() const { return to_string(g_separator); }
 
-std::string Path::generic_string() const {
-	return to_string('/');
-}
+std::string Path::generic_string() const { return to_string('/'); }
 
-void Path::clear() {
-	m_units.clear();
-}
+void Path::clear() { m_units.clear(); }
 
 Path& Path::append(Path const& rhs) {
 	auto copy = rhs.m_units;
@@ -111,9 +93,7 @@ Path& Path::append(Path const& rhs) {
 	return *this;
 }
 
-Path& Path::operator/=(Path const& rhs) {
-	return append(rhs);
-}
+Path& Path::operator/=(Path const& rhs) { return append(rhs); }
 
 Path& Path::concat(Path const& rhs) {
 	if (m_units.empty()) {
@@ -152,12 +132,9 @@ Path& Path::concat(Path const& rhs) {
 	return *this;
 }
 
-Path& Path::operator+=(Path const& rhs) {
-	return concat(rhs);
-}
+Path& Path::operator+=(Path const& rhs) { return concat(rhs); }
 
-Path::Path(std::vector<std::string>&& units) : m_units(std::move(units)) {
-}
+Path::Path(std::vector<std::string>&& units) : m_units(std::move(units)) {}
 
 std::string Path::to_string(char separator) const {
 	std::stringstream str;
@@ -214,10 +191,6 @@ bool is_directory(Path const& path) {
 #endif
 }
 
-bool operator==(Path const& lhs, Path const& rhs) {
-	return lhs.generic_string() == rhs.generic_string();
-}
-bool operator!=(Path const& lhs, Path const& rhs) {
-	return !(lhs == rhs);
-}
+bool operator==(Path const& lhs, Path const& rhs) { return lhs.generic_string() == rhs.generic_string(); }
+bool operator!=(Path const& lhs, Path const& rhs) { return !(lhs == rhs); }
 } // namespace le::io

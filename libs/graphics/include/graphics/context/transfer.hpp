@@ -11,9 +11,7 @@
 #include <kt/kthread/kthread.hpp>
 
 namespace le::graphics {
-constexpr vk::DeviceSize operator""_MB(unsigned long long size) {
-	return size << 20;
-}
+constexpr vk::DeviceSize operator""_MB(unsigned long long size) { return size << 20; }
 
 class Transfer final {
   public:
@@ -52,9 +50,7 @@ class Transfer final {
 	Stage newStage(vk::DeviceSize bufferSize);
 	void addStage(Stage&& stage, Promise&& promise);
 
-	bool polling() const noexcept {
-		return m_sync.bPoll.load();
-	}
+	bool polling() const noexcept { return m_sync.bPoll.load(); }
 
   private:
 	void scavenge(Stage&& stage, vk::Fence fence);
@@ -90,7 +86,5 @@ struct Transfer::CreateInfo {
 };
 
 // impl
-inline Transfer::Promise Transfer::makePromise() noexcept {
-	return std::make_shared<Promise::element_type>();
-}
+inline Transfer::Promise Transfer::makePromise() noexcept { return std::make_shared<Promise::element_type>(); }
 } // namespace le::graphics

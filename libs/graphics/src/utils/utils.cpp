@@ -194,9 +194,7 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 	return ret;
 }
 
-Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) {
-	return bytes.size() == 0 ? Bitmap::type() : convert(View<u8>(&(*bytes.begin()), bytes.size()));
-}
+Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) { return bytes.size() == 0 ? Bitmap::type() : convert(View<u8>(&(*bytes.begin()), bytes.size())); }
 
 Bitmap::type utils::convert(View<u8> bytes) {
 	bytearray ret;

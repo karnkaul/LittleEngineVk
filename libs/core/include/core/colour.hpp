@@ -32,15 +32,7 @@ struct Colour {
 	///
 	/// eg: 0xffff00ff for opaque yellow
 	///
-	constexpr explicit Colour(u32 mask) noexcept {
-		a = mask & 0xff;
-		mask >>= 8;
-		b = mask & 0xff;
-		mask >>= 8;
-		g = mask & 0xff;
-		mask >>= 8;
-		r = mask & 0xff;
-	}
+	constexpr explicit Colour(u32 mask) noexcept : r(u8((mask >> 24) & 0xff)), g(u8((mask >> 16) & 0xff)), b(u8((mask >> 8) & 0xff)), a(u8(mask & 0xff)) {}
 	///
 	/// \brief Construct from a vec4 (XYZW => RGBA)
 	///

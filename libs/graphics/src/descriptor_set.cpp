@@ -68,8 +68,7 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 	}
 }
 
-DescriptorSet::DescriptorSet(DescriptorSet&& rhs) noexcept : m_device(rhs.m_device), m_storage(std::exchange(rhs.m_storage, Storage())) {
-}
+DescriptorSet::DescriptorSet(DescriptorSet&& rhs) noexcept : m_device(rhs.m_device), m_storage(std::exchange(rhs.m_storage, Storage())) {}
 
 DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
 	if (&rhs != this) {
@@ -80,9 +79,7 @@ DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
 	return *this;
 }
 
-DescriptorSet::~DescriptorSet() {
-	destroy();
-}
+DescriptorSet::~DescriptorSet() { destroy(); }
 
 void DescriptorSet::index(std::size_t index) {
 	if (index < m_storage.rotateCount) {
@@ -90,13 +87,9 @@ void DescriptorSet::index(std::size_t index) {
 	}
 }
 
-void DescriptorSet::swap() {
-	m_storage.setBuffer.next();
-}
+void DescriptorSet::swap() { m_storage.setBuffer.next(); }
 
-vk::DescriptorSet DescriptorSet::get() const {
-	return m_storage.setBuffer.get().set;
-}
+vk::DescriptorSet DescriptorSet::get() const { return m_storage.setBuffer.get().set; }
 
 void DescriptorSet::updateBufs(u32 binding, Bufs bufs) {
 	auto [set, bind] = setBind(binding, bufs.type, (u32)bufs.buffers.size());
@@ -151,9 +144,7 @@ bool DescriptorSet::unassigned() const noexcept {
 	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](auto const& kvp) { return kvp.second.bUnassigned; });
 }
 
-void DescriptorSet::update(vk::WriteDescriptorSet write) {
-	m_device->device().updateDescriptorSets(write, {});
-}
+void DescriptorSet::update(vk::WriteDescriptorSet write) { m_device->device().updateDescriptorSets(write, {}); }
 
 void DescriptorSet::destroy() {
 	Device& d = *m_device;
@@ -246,13 +237,9 @@ bool SetPool::unassigned() const noexcept {
 	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](BindingInfo const& b) { return b.bUnassigned; });
 }
 
-void SetPool::clear() noexcept {
-	m_storage.descriptorSets.clear();
-}
+void SetPool::clear() noexcept { m_storage.descriptorSets.clear(); }
 
-ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) {
-	m_setPools = pipe.makeSetPools(rotateCount);
-}
+ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) { m_setPools = pipe.makeSetPools(rotateCount); }
 
 SetPool& ShaderInput::set(u32 set) {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
@@ -276,9 +263,7 @@ void ShaderInput::swap() {
 	}
 }
 
-bool ShaderInput::empty() const noexcept {
-	return m_setPools.empty();
-}
+bool ShaderInput::empty() const noexcept { return m_setPools.empty(); }
 
 bool ShaderInput::contains(u32 set) const noexcept {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
@@ -342,13 +327,9 @@ bool ShaderInput::update(ShaderBuffer const& buffer, u32 set, u32 bind, std::siz
 	}
 }
 
-SetPool& ShaderInput::operator[](u32 set) {
-	return this->set(set);
-}
+SetPool& ShaderInput::operator[](u32 set) { return this->set(set); }
 
-SetPool const& ShaderInput::operator[](u32 set) const {
-	return this->set(set);
-}
+SetPool const& ShaderInput::operator[](u32 set) const { return this->set(set); }
 
 void ShaderInput::clearSets() noexcept {
 	for (auto& [_, pool] : m_setPools) {

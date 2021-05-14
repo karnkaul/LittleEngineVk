@@ -7,9 +7,7 @@
 
 namespace le {
 namespace {
-bool isGlsl(io::Path const& path) {
-	return path.has_extension() && (path.extension() == ".vert" || path.extension() == ".frag");
-}
+bool isGlsl(io::Path const& path) { return path.has_extension() && (path.extension() == ".vert" || path.extension() == ".frag"); }
 } // namespace
 
 std::optional<graphics::Shader> AssetLoader<graphics::Shader>::load(AssetLoadInfo<graphics::Shader> const& info) const {
@@ -204,9 +202,7 @@ std::optional<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFont
 	return std::nullopt;
 }
 
-bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
-	return load(out_font, info);
-}
+bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const { return load(out_font, info); }
 
 bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
 	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);

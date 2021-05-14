@@ -48,9 +48,7 @@ class Node : public Root, public IBase {
 	glm::mat4 model() const noexcept;
 	bool hit(glm::vec2 point) const noexcept;
 
-	virtual View<Primitive> primitives() const noexcept {
-		return {};
-	}
+	virtual View<Primitive> primitives() const noexcept { return {}; }
 
 	DrawScissor m_scissor;
 	TFlex<glm::vec2> m_local;
@@ -61,8 +59,7 @@ class Node : public Root, public IBase {
 	not_null<Root*> m_parent;
 
   private:
-	virtual void onUpdate(input::Space const&) {
-	}
+	virtual void onUpdate(input::Space const&) {}
 
 	friend class Root;
 };
@@ -78,16 +75,13 @@ T& Root::push(Args&&... args) {
 	return ret;
 }
 
-inline Node::Node(not_null<Root*> root) noexcept : m_parent(root) {
-}
+inline Node::Node(not_null<Root*> root) noexcept : m_parent(root) {}
 inline Node& Node::offsetBySize(glm::vec2 size, glm::vec2 coeff) noexcept {
 	m_size = size;
 	m_local.offset = m_size * 0.5f * coeff;
 	return *this;
 }
-inline glm::vec3 Node::position() const noexcept {
-	return {m_origin, m_zIndex};
-}
+inline glm::vec3 Node::position() const noexcept { return {m_origin, m_zIndex}; }
 inline glm::mat4 Node::model() const noexcept {
 	static constexpr auto base = glm::mat4(1.0f);
 	return glm::translate(base, position()) * glm::toMat4(m_orientation);

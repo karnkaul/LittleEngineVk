@@ -71,8 +71,7 @@ bool findLayer(std::vector<vk::LayerProperties> const& available, char const* sz
 
 Instance::Instance(Instance&& rhs)
 	: m_metadata(std::move(rhs.m_metadata)), m_instance(std::exchange(rhs.m_instance, vk::Instance())),
-	  m_loader(std::exchange(rhs.m_loader, vk::DispatchLoaderDynamic())), m_messenger(std::exchange(rhs.m_messenger, vk::DebugUtilsMessengerEXT())) {
-}
+	  m_loader(std::exchange(rhs.m_loader, vk::DispatchLoaderDynamic())), m_messenger(std::exchange(rhs.m_messenger, vk::DebugUtilsMessengerEXT())) {}
 
 Instance& Instance::operator=(Instance&& rhs) {
 	if (&rhs != this) {
@@ -137,9 +136,7 @@ Instance::Instance(CreateInfo const& info) {
 	g_validationLevel = info.validationLog;
 }
 
-Instance::~Instance() {
-	destroy();
-}
+Instance::~Instance() { destroy(); }
 
 kt::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(View<std::string_view> required) const {
 	kt::fixed_vector<PhysicalDevice, 8> ret;

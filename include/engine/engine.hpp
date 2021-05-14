@@ -151,22 +151,12 @@ struct Engine::DrawFrame {
 
 // impl
 
-inline graphics::CommandBuffer& Engine::DrawFrame::cmd() noexcept {
-	return frame.primary;
-}
+inline graphics::CommandBuffer& Engine::DrawFrame::cmd() noexcept { return frame.primary; }
 
-inline Engine::Stats const& Engine::stats() noexcept {
-	return s_stats;
-}
-inline bool Engine::editorActive() const noexcept {
-	return m_editor.active();
-}
-inline bool Engine::editorEngaged() const noexcept {
-	return m_editor.active() && Editor::s_engaged;
-}
-inline bool Engine::booted() const noexcept {
-	return m_gfx.has_value();
-}
+inline Engine::Stats const& Engine::stats() noexcept { return s_stats; }
+inline bool Engine::editorActive() const noexcept { return m_editor.active(); }
+inline bool Engine::editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
+inline bool Engine::booted() const noexcept { return m_gfx.has_value(); }
 inline Engine::GFX& Engine::gfx() {
 	ENSURE(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
@@ -175,10 +165,6 @@ inline Engine::GFX const& Engine::gfx() const {
 	ENSURE(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
-inline input::State const& Engine::inputState() const noexcept {
-	return m_inputState;
-}
-inline Viewport const& Engine::gameView() const noexcept {
-	return m_editor.view();
-}
+inline input::State const& Engine::inputState() const noexcept { return m_inputState; }
+inline Viewport const& Engine::gameView() const noexcept { return m_editor.view(); }
 } // namespace le

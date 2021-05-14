@@ -63,9 +63,7 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 using namespace dts;
 
 struct TaskErr : error_handler_t {
-	void operator()(std::runtime_error const& err, u64) const override {
-		ENSURE(false, err.what());
-	}
+	void operator()(std::runtime_error const& err, u64) const override { ENSURE(false, err.what()); }
 };
 TaskErr g_taskErr;
 
@@ -208,16 +206,12 @@ class DrawDispatch {
 		u32 bind;
 		bool valid;
 
-		SetBind(graphics::ShaderInput const& si, u32 s, u32 b) : set(s), bind(b), valid(si.contains(s, b)) {
-		}
+		SetBind(graphics::ShaderInput const& si, u32 s, u32 b) : set(s), bind(b), valid(si.contains(s, b)) {}
 
-		explicit operator bool() const noexcept {
-			return valid;
-		}
+		explicit operator bool() const noexcept { return valid; }
 	};
 
-	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {
-	}
+	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
 	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights, View<SceneDrawer::Group> groups) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
@@ -739,8 +733,7 @@ class App : public input::Receiver {
 struct FlagsInput : input::Receiver {
 	Flags& flags;
 
-	FlagsInput(Flags& flags) : flags(flags) {
-	}
+	FlagsInput(Flags& flags) : flags(flags) {}
 
 	bool block(input::State const& state) override {
 		bool ret = false;

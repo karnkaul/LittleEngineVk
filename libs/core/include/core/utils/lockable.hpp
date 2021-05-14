@@ -30,8 +30,7 @@ struct Lockable<false, M> {
 		///
 		/// \brief Custom destructor to suppress unused variable warnings
 		///
-		~Dummy() {
-		}
+		~Dummy() {}
 	};
 
 	template <template <typename...> typename = std::scoped_lock, typename...>

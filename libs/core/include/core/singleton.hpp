@@ -14,13 +14,9 @@ namespace detail {
 template <typename T>
 class SingletonBase {
   public:
-	static T& instance() {
-		return T::inst();
-	}
+	static T& instance() { return T::inst(); }
 
-	static T& self() {
-		return T::inst();
-	}
+	static T& self() { return T::inst(); }
 };
 } // namespace detail
 

@@ -10,23 +10,17 @@ class IInstance : public TMonoInstance<IInstance>, public ISurface {
   public:
 	struct CreateInfo;
 
-	IInstance(bool bValid) : TMonoInstance(bValid) {
-	}
+	IInstance(bool bValid) : TMonoInstance(bValid) {}
 	IInstance(IInstance&&) = default;
 	IInstance& operator=(IInstance&&) = default;
 	virtual ~IInstance() = default;
 
-	bool isDesktop() const noexcept {
-		return m_desktop;
-	}
+	bool isDesktop() const noexcept { return m_desktop; }
 
 	virtual EventQueue pollEvents() = 0;
 
-	virtual void show() const {
-	}
-	virtual glm::ivec2 framebufferSize() const noexcept {
-		return {0, 0};
-	}
+	virtual void show() const {}
+	virtual glm::ivec2 framebufferSize() const noexcept { return {0, 0}; }
 
   protected:
 	LibLogger m_log;

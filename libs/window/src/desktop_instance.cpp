@@ -313,9 +313,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	g_state.events.m_events.push_back(event);
 }
 
-DesktopInstance::~DesktopInstance() {
-	deinit();
-}
+DesktopInstance::~DesktopInstance() { deinit(); }
 
 View<std::string_view> DesktopInstance::vkInstanceExtensions() const {
 	static std::vector<std::string_view> ret;
@@ -344,9 +342,7 @@ bool DesktopInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurf
 	return false;
 }
 
-ErasedRef DesktopInstance::nativePtr() const noexcept {
-	return g_state.bInit && g_state.pWindow ? g_state.pWindow : ErasedRef();
-}
+ErasedRef DesktopInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pWindow ? g_state.pWindow : ErasedRef(); }
 
 EventQueue DesktopInstance::pollEvents() {
 	if (g_state.bInit && g_state.pWindow) {
@@ -355,17 +351,11 @@ EventQueue DesktopInstance::pollEvents() {
 	return std::move(g_state.events);
 }
 
-glm::ivec2 DesktopInstance::windowSize() const noexcept {
-	return getGlfwValue<s32>(&glfwGetWindowSize);
-}
+glm::ivec2 DesktopInstance::windowSize() const noexcept { return getGlfwValue<s32>(&glfwGetWindowSize); }
 
-glm::ivec2 DesktopInstance::framebufferSize() const noexcept {
-	return getGlfwValue<s32>(&glfwGetFramebufferSize);
-}
+glm::ivec2 DesktopInstance::framebufferSize() const noexcept { return getGlfwValue<s32>(&glfwGetFramebufferSize); }
 
-CursorType DesktopInstance::cursorType() const noexcept {
-	return g_state.cursors.active.type;
-}
+CursorType DesktopInstance::cursorType() const noexcept { return g_state.cursors.active.type; }
 
 CursorMode DesktopInstance::cursorMode() const noexcept {
 	if (g_state.bInit && g_state.pWindow) {
@@ -384,9 +374,7 @@ CursorMode DesktopInstance::cursorMode() const noexcept {
 	return CursorMode::eDefault;
 }
 
-glm::vec2 DesktopInstance::cursorPosition() const noexcept {
-	return getGlfwValue<f32, f64>(&glfwGetCursorPos);
-}
+glm::vec2 DesktopInstance::cursorPosition() const noexcept { return getGlfwValue<f32, f64>(&glfwGetCursorPos); }
 
 void DesktopInstance::cursorType(CursorType type) {
 	if (g_state.bInit && g_state.pWindow) {

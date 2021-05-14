@@ -90,15 +90,9 @@ inline State::Res<KeyMods> State::acted(Key key, Action action) const noexcept {
 	}
 	return kt::null_result;
 }
-inline State::Res<KeyMods> State::pressed(Key key) const noexcept {
-	return acted(key, Action::ePressed);
-}
-inline State::Res<KeyMods> State::held(Key key) const noexcept {
-	return acted(key, Action::eHeld);
-}
-inline State::Res<KeyMods> State::released(Key key) const noexcept {
-	return acted(key, Action::eReleased);
-}
+inline State::Res<KeyMods> State::pressed(Key key) const noexcept { return acted(key, Action::ePressed); }
+inline State::Res<KeyMods> State::held(Key key) const noexcept { return acted(key, Action::eHeld); }
+inline State::Res<KeyMods> State::released(Key key) const noexcept { return acted(key, Action::eReleased); }
 inline bool State::any(List<Key> keys, ActionMask mask) const noexcept {
 	for (Key const k : keys) {
 		if (actions(k).any(mask)) {

@@ -57,8 +57,7 @@ struct AssetLoader {
 template <typename T>
 template <typename Data>
 AssetLoadInfo<T>::AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash id)
-	: m_data(std::forward<Data>(data)), m_store(store), m_onModified(onModified), m_id(id), m_resources(resources) {
-}
+	: m_data(std::forward<Data>(data)), m_store(store), m_onModified(onModified), m_id(id), m_resources(resources) {}
 template <typename T>
 Resource const* AssetLoadInfo<T>::resource(io::Path const& path, Resource::Type type, bool bMonitor, bool bForceReload) const {
 	if (auto pRes = m_resources->load(path, type, bMonitor, bForceReload)) {

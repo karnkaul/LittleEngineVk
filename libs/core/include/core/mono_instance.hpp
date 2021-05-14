@@ -37,8 +37,7 @@ TMonoInstance<T>::TMonoInstance(bool bActive) : m_bActive(bActive) {
 	}
 }
 template <typename T>
-TMonoInstance<T>::TMonoInstance(TMonoInstance&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {
-}
+TMonoInstance<T>::TMonoInstance(TMonoInstance&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {}
 template <typename T>
 TMonoInstance<T>& TMonoInstance<T>::operator=(TMonoInstance&& rhs) noexcept {
 	if (&rhs != this) {

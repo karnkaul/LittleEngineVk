@@ -71,8 +71,7 @@ Service::Service([[maybe_unused]] Path logFilePath) {
 #endif
 }
 
-Service::Service(Service&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {
-}
+Service::Service(Service&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {}
 
 Service& Service::operator=(Service&& rhs) noexcept {
 	if (&rhs != this) {
@@ -82,9 +81,7 @@ Service& Service::operator=(Service&& rhs) noexcept {
 	return *this;
 }
 
-Service::~Service() {
-	destroy();
-}
+Service::~Service() { destroy(); }
 
 void Service::destroy() {
 	impl::deinitPhysfs();

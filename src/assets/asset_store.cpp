@@ -1,9 +1,7 @@
 #include <engine/assets/asset_store.hpp>
 
 namespace le {
-AssetStore::~AssetStore() {
-	clear();
-}
+AssetStore::~AssetStore() { clear(); }
 
 void AssetStore::update() {
 	static constexpr u32 maxPasses = 10;

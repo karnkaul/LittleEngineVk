@@ -83,14 +83,8 @@ void CommandBuffer::push(vk::PipelineLayout layout, vk::ShaderStageFlags stages,
 	ENSURE(rendering(), "Command buffer not recording!");
 	m_cb.pushConstants<T>(layout, stages, offset, pushConstants);
 }
-inline bool CommandBuffer::valid() const noexcept {
-	return m_cb != vk::CommandBuffer();
-}
-inline bool CommandBuffer::recording() const noexcept {
-	return valid() && m_flags.test(Flag::eRecording);
-}
+inline bool CommandBuffer::valid() const noexcept { return m_cb != vk::CommandBuffer(); }
+inline bool CommandBuffer::recording() const noexcept { return valid() && m_flags.test(Flag::eRecording); }
 
-inline bool CommandBuffer::rendering() const noexcept {
-	return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering);
-}
+inline bool CommandBuffer::rendering() const noexcept { return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering); }
 } // namespace le::graphics

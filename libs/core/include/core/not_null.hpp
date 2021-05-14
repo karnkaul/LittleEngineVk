@@ -32,12 +32,8 @@ class not_null {
 	constexpr decltype(auto) operator*() const noexcept;
 	constexpr decltype(auto) operator->() const noexcept;
 
-	friend constexpr bool operator==(not_null<T> const& lhs, not_null<T> const& rhs) noexcept {
-		return lhs.m_ptr == rhs.m_ptr;
-	}
-	friend constexpr bool operator!=(not_null<T> const& lhs, not_null<T> const& rhs) noexcept {
-		return !(lhs == rhs);
-	}
+	friend constexpr bool operator==(not_null<T> const& lhs, not_null<T> const& rhs) noexcept { return lhs.m_ptr == rhs.m_ptr; }
+	friend constexpr bool operator!=(not_null<T> const& lhs, not_null<T> const& rhs) noexcept { return !(lhs == rhs); }
 
   private:
 	type m_ptr;

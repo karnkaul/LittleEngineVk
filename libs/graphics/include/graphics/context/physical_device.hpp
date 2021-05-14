@@ -11,18 +11,10 @@ struct PhysicalDevice final {
 	vk::PhysicalDeviceFeatures features;
 	std::vector<vk::QueueFamilyProperties> queueFamilies;
 
-	inline std::string_view name() const noexcept {
-		return std::string_view(properties.deviceName);
-	}
-	inline bool discreteGPU() const noexcept {
-		return properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu;
-	}
-	inline bool integratedGPU() const noexcept {
-		return properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
-	}
-	inline bool virtualGPU() const noexcept {
-		return properties.deviceType == vk::PhysicalDeviceType::eVirtualGpu;
-	}
+	inline std::string_view name() const noexcept { return std::string_view(properties.deviceName); }
+	inline bool discreteGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu; }
+	inline bool integratedGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu; }
+	inline bool virtualGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eVirtualGpu; }
 
 	bool surfaceSupport(u32 queueFamily, vk::SurfaceKHR surface) const;
 	vk::SurfaceCapabilitiesKHR surfaceCapabilities(vk::SurfaceKHR surface) const;
@@ -61,9 +53,7 @@ class DevicePicker {
 	/// \brief Override to modify the base score of a device
 	/// (Returns base score by default)
 	///
-	virtual inline Score modify(Score base, PhysicalDevice const&) const {
-		return base;
-	}
+	virtual inline Score modify(Score base, PhysicalDevice const&) const { return base; }
 	///
 	/// \brief Override to select a device from a list with identical scores
 	/// (Returns front element by default)

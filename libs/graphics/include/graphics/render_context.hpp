@@ -129,15 +129,9 @@ inline f32 RenderContext::aspectRatio() const noexcept {
 	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
 }
 
-inline std::size_t RenderContext::index() const noexcept {
-	return m_sync.index;
-}
-inline std::size_t RenderContext::rotateCount() const noexcept {
-	return m_sync.size();
-}
-inline RenderContext::Status RenderContext::status() const noexcept {
-	return m_storage.status;
-}
+inline std::size_t RenderContext::index() const noexcept { return m_sync.index; }
+inline std::size_t RenderContext::rotateCount() const noexcept { return m_sync.size(); }
+inline RenderContext::Status RenderContext::status() const noexcept { return m_storage.status; }
 inline glm::ivec2 RenderContext::extent() const noexcept {
 	vk::Extent2D const ext = m_swapchain->display().extent;
 	return glm::ivec2(ext.width, ext.height);
@@ -145,9 +139,7 @@ inline glm::ivec2 RenderContext::extent() const noexcept {
 inline ColourCorrection RenderContext::colourCorrection() const noexcept {
 	return Swapchain::srgb(swapchainFormat().format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
 }
-inline vk::SurfaceFormatKHR RenderContext::swapchainFormat() const noexcept {
-	return m_swapchain->colourFormat();
-}
+inline vk::SurfaceFormatKHR RenderContext::swapchainFormat() const noexcept { return m_swapchain->colourFormat(); }
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
 }

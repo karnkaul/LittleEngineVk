@@ -180,9 +180,7 @@ void QueueMultiplex::submit(QType type, vAP<vk::SubmitInfo> infos, vk::Fence sig
 	}
 }
 
-QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, View<f32> prio) {
-	return {createInfo(gpt, prio)};
-}
+QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, View<f32> prio) { return {createInfo(gpt, prio)}; }
 
 QueueMultiplex::QCIArr<2> QueueMultiplex::makeFrom2(Family& a, Family& b, View<f32> pa, View<f32> pb) {
 	std::array<QueueMultiplex::QCI, 2> ret;

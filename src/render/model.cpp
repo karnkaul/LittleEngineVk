@@ -20,9 +20,7 @@ namespace {
 struct fhasher {
 	std::size_t i = 0;
 
-	std::size_t operator()(float f) noexcept {
-		return std::hash<float>{}(f) << i++;
-	}
+	std::size_t operator()(float f) noexcept { return std::hash<float>{}(f) << i++; }
 };
 } // namespace
 
@@ -50,17 +48,13 @@ constexpr glm::vec2 texCoords(View<f32> arr, std::size_t idx, bool invertY) noex
 	return {arr[2 * idx + 0], invertY ? 1.0f - y : y};
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, std::size_t idx) noexcept {
-	return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]};
-}
+constexpr glm::vec3 vec3(View<f32> arr, std::size_t idx) noexcept { return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]}; }
 
 constexpr glm::vec2 texCoords(View<f32> arr, int idx, bool invertY) noexcept {
 	return arr.empty() || idx < 0 ? glm::vec2(0.0f, 1.0f) : texCoords(arr, (std::size_t)idx, invertY);
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, int idx) noexcept {
-	return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx);
-}
+constexpr glm::vec3 vec3(View<f32> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
 
 template <typename T>
 kt::result<std::size_t> find(T const& arr, Hash hash) noexcept {
@@ -141,8 +135,7 @@ class OBJReader final {
 
 OBJReader::OBJReader(Data data)
 	: m_obj(std::move(data.obj)), m_mtl(std::move(data.mtl)), m_modelID(std::move(data.modelID)), m_jsonID(std::move(data.jsonID)),
-	  m_samplerID(std::move(data.samplerID)), m_origin(data.origin), m_scale(data.scale), m_invertV(data.invertV) {
-}
+	  m_samplerID(std::move(data.samplerID)), m_origin(data.origin), m_scale(data.scale), m_invertV(data.invertV) {}
 
 Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader) {
 	auto const idStr = m_jsonID.generic_string();

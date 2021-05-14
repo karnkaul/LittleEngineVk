@@ -28,9 +28,7 @@ struct DrawGroup {
 	};
 };
 
-constexpr bool operator==(DrawGroup const& l, DrawGroup const& r) noexcept {
-	return l.pipeline == r.pipeline && l.order == r.order;
-}
+constexpr bool operator==(DrawGroup const& l, DrawGroup const& r) noexcept { return l.pipeline == r.pipeline && l.order == r.order; }
 
 class SceneDrawer {
   public:

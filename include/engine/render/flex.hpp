@@ -44,8 +44,7 @@ constexpr TFlex<T> operator/(TFlex<T> const& lhs, TFlex<T> const& rhs) noexcept 
 // impl
 
 template <typename T>
-constexpr TFlex<T>::TFlex(type const& norm, type const& offset) noexcept : norm(norm), offset(offset) {
-}
+constexpr TFlex<T>::TFlex(type const& norm, type const& offset) noexcept : norm(norm), offset(offset) {}
 
 template <typename T>
 constexpr TFlex<T>& TFlex<T>::operator+=(TFlex const& rhs) noexcept {

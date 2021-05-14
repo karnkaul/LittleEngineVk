@@ -105,8 +105,7 @@ void fixStyle() {
 } // namespace
 #endif
 
-DearImGui::DearImGui() : TMonoInstance(false) {
-}
+DearImGui::DearImGui() : TMonoInstance(false) {}
 
 DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]] not_null<Desktop const*> window, [[maybe_unused]] CreateInfo const& info)
 	: TMonoInstance(true) {

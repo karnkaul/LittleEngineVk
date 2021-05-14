@@ -18,9 +18,7 @@ std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::Com
 	return ret;
 }
 
-CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool) : m_cb(cmd), m_pool(pool) {
-	ENSURE(!Device::default_v(cmd), "Null command buffer!");
-}
+CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool) : m_cb(cmd), m_pool(pool) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
 
 bool CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
 	ENSURE(m_flags.none(Flag::eRecording), "Command buffer already recording!");
@@ -86,9 +84,7 @@ void CommandBuffer::bindSets(vk::PipelineLayout layout, vAP<vk::DescriptorSet> s
 	m_cb.bindDescriptorSets(bindPoint, layout, firstSet, sets, offsets);
 }
 
-void CommandBuffer::bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const {
-	bindSets(layout, set.get(), set.setNumber());
-}
+void CommandBuffer::bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const { bindSets(layout, set.get(), set.setNumber()); }
 
 void CommandBuffer::bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const {
 	ENSURE(rendering(), "Command buffer not rendering!");

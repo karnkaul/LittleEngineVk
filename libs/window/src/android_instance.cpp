@@ -151,9 +151,7 @@ bool AndroidInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurf
 	return false;
 }
 
-ErasedRef AndroidInstance::nativePtr() const noexcept {
-	return g_state.bInit && g_state.pApp ? g_state.pApp : ErasedRef();
-}
+ErasedRef AndroidInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pApp ? g_state.pApp : ErasedRef(); }
 
 EventQueue AndroidInstance::pollEvents() {
 	if (g_state.bInit && g_state.pApp) {

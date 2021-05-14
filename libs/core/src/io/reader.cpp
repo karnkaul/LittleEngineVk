@@ -14,9 +14,7 @@
 
 namespace le::io {
 #if defined(LEVK_OS_ANDROID)
-constexpr android_app* unpack(ErasedRef app) {
-	return app.contains<android_app*>() ? app.get<android_app*>() : nullptr;
-}
+constexpr android_app* unpack(ErasedRef app) { return app.contains<android_app*>() ? app.get<android_app*>() : nullptr; }
 
 struct AndroidAsset {
 	AAsset* pAsset = nullptr;
@@ -35,9 +33,7 @@ struct AndroidAsset {
 		}
 	}
 
-	constexpr explicit operator bool() const noexcept {
-		return pAsset != nullptr;
-	}
+	constexpr explicit operator bool() const noexcept { return pAsset != nullptr; }
 
 	bytearray bytes() const {
 		bytearray ret;
@@ -101,9 +97,7 @@ Reader::Result<std::string> Reader::string(io::Path const& id) const {
 	return kt::null_result;
 }
 
-bool Reader::present(const io::Path& id) const {
-	return findPrefixed(id).has_result();
-}
+bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_result(); }
 
 bool Reader::checkPresence(io::Path const& id) const {
 	if (!present(id)) {
@@ -121,9 +115,7 @@ bool Reader::checkPresences(View<io::Path> ids) const {
 	return bRet;
 }
 
-std::string_view Reader::medium() const {
-	return m_medium;
-}
+std::string_view Reader::medium() const { return m_medium; }
 
 Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] View<io::Path> anyOf, [[maybe_unused]] u8 maxHeight) {
 #if defined(LEVK_OS_ANDROID)
@@ -143,9 +135,7 @@ Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const
 #endif
 }
 
-FileReader::FileReader() noexcept {
-	m_medium = "Filesystem";
-}
+FileReader::FileReader() noexcept { m_medium = "Filesystem"; }
 
 bool FileReader::mount([[maybe_unused]] io::Path path) {
 #if defined(LEVK_OS_ANDROID)
@@ -221,9 +211,7 @@ io::Path FileReader::fullPath(io::Path const& id) const {
 	return id;
 }
 
-ZIPReader::ZIPReader() {
-	m_medium = "ZIP";
-}
+ZIPReader::ZIPReader() { m_medium = "ZIP"; }
 
 bool ZIPReader::mount(io::Path path) {
 	impl::initPhysfs();
@@ -332,7 +320,5 @@ void impl::initPhysfs() {
 	}
 }
 
-void impl::deinitPhysfs() {
-	g_physfsHandle.reset();
-}
+void impl::deinitPhysfs() { g_physfsHandle.reset(); }
 } // namespace le::io

@@ -55,21 +55,11 @@ constexpr erased_semantics_t::erased_semantics_t(tag_t<T>) noexcept
 	static_assert(can_copy_v<T>, "T must be copiable");
 }
 
-inline void erased_semantics_t::move_construct(void* src, void* dst) const noexcept {
-	m_mc(src, dst);
-}
-inline void erased_semantics_t::move_assign(void* src, void* dst) const noexcept {
-	m_ma(src, dst);
-}
-inline void erased_semantics_t::copy_construct(void const* src, void* dst) const {
-	m_cc(src, dst);
-}
-inline void erased_semantics_t::copy_assign(void const* src, void* dst) const {
-	m_ca(src, dst);
-}
-inline void erased_semantics_t::destroy(void const* src) const noexcept {
-	m_d(src);
-}
+inline void erased_semantics_t::move_construct(void* src, void* dst) const noexcept { m_mc(src, dst); }
+inline void erased_semantics_t::move_assign(void* src, void* dst) const noexcept { m_ma(src, dst); }
+inline void erased_semantics_t::copy_construct(void const* src, void* dst) const { m_cc(src, dst); }
+inline void erased_semantics_t::copy_assign(void const* src, void* dst) const { m_ca(src, dst); }
+inline void erased_semantics_t::destroy(void const* src) const noexcept { m_d(src); }
 template <typename T>
 void erased_semantics_t::move_c(void* src, void* dst) noexcept {
 	new (dst) T(std::move(*std::launder(reinterpret_cast<T*>(src))));

@@ -212,13 +212,9 @@ bool Swapchain::reconstruct(glm::ivec2 framebufferSize, bool vsync) {
 	return bResult;
 }
 
-bool Swapchain::suboptimal() const noexcept {
-	return m_storage.flags.test(Flag::eSuboptimal);
-}
+bool Swapchain::suboptimal() const noexcept { return m_storage.flags.test(Flag::eSuboptimal); }
 
-bool Swapchain::paused() const noexcept {
-	return m_storage.flags.test(Flag::ePaused);
-}
+bool Swapchain::paused() const noexcept { return m_storage.flags.test(Flag::ePaused); }
 
 bool Swapchain::construct(glm::ivec2 framebufferSize) {
 	m_storage = {};

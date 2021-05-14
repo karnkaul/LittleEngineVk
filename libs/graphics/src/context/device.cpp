@@ -103,9 +103,7 @@ Device::~Device() {
 	destroy(m_metadata.surface, m_device);
 }
 
-bool Device::valid(vk::SurfaceKHR surface) const {
-	return m_physicalDevice.surfaceSupport(m_queues.familyIndex(QType::ePresent), surface);
-}
+bool Device::valid(vk::SurfaceKHR surface) const { return m_physicalDevice.surfaceSupport(m_queues.familyIndex(QType::ePresent), surface); }
 
 void Device::waitIdle() {
 	if (!default_v(m_device)) {
@@ -114,9 +112,7 @@ void Device::waitIdle() {
 	m_deferred.flush();
 }
 
-vk::Semaphore Device::makeSemaphore() const {
-	return m_device.createSemaphore({});
-}
+vk::Semaphore Device::makeSemaphore() const { return m_device.createSemaphore({}); }
 
 vk::Fence Device::makeFence(bool bSignalled) const {
 	vk::FenceCreateFlags flags = bSignalled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags();
@@ -192,9 +188,7 @@ vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::Imag
 	return m_device.createImageView(createInfo);
 }
 
-vk::PipelineCache Device::makePipelineCache() const {
-	return m_device.createPipelineCache({});
-}
+vk::PipelineCache Device::makePipelineCache() const { return m_device.createPipelineCache({}); }
 
 vk::PipelineLayout Device::makePipelineLayout(vAP<vk::PushConstantRange> pushConstants, vAP<vk::DescriptorSetLayout> setLayouts) const {
 	vk::PipelineLayoutCreateInfo createInfo;
@@ -269,11 +263,7 @@ bool Device::setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view
 	return setDebugUtilsName(info);
 }
 
-void Device::defer(Deferred::Callback callback, u64 defer) {
-	m_deferred.defer({std::move(callback), defer});
-}
+void Device::defer(Deferred::Callback callback, u64 defer) { m_deferred.defer({std::move(callback), defer}); }
 
-void Device::decrementDeferred() {
-	m_deferred.decrement();
-}
+void Device::decrementDeferred() { m_deferred.decrement(); }
 } // namespace le::graphics

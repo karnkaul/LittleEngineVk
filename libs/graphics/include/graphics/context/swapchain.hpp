@@ -60,18 +60,10 @@ class Swapchain {
 	bool suboptimal() const noexcept;
 	bool paused() const noexcept;
 
-	Display display() const noexcept {
-		return m_storage.current;
-	}
-	Flags flags() const noexcept {
-		return m_storage.flags;
-	}
-	vk::RenderPass renderPass() const noexcept {
-		return m_metadata.renderPass;
-	}
-	vk::SurfaceFormatKHR const& colourFormat() const noexcept {
-		return m_metadata.formats.colour;
-	}
+	Display display() const noexcept { return m_storage.current; }
+	Flags flags() const noexcept { return m_storage.flags; }
+	vk::RenderPass renderPass() const noexcept { return m_metadata.renderPass; }
+	vk::SurfaceFormatKHR const& colourFormat() const noexcept { return m_metadata.formats.colour; }
 
 	inline static bool s_forceVsync = false;
 
@@ -138,9 +130,7 @@ constexpr std::string_view Swapchain::presentModeName(vk::PresentModeKHR mode) n
 	}
 }
 
-constexpr bool Swapchain::valid(glm::ivec2 framebufferSize) noexcept {
-	return framebufferSize.x > 0 && framebufferSize.y > 0;
-}
+constexpr bool Swapchain::valid(glm::ivec2 framebufferSize) noexcept { return framebufferSize.x > 0 && framebufferSize.y > 0; }
 
 constexpr bool Swapchain::srgb(vk::Format format) noexcept {
 	switch (format) {

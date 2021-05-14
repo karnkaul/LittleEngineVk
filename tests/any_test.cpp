@@ -13,9 +13,7 @@ struct vec2 final {
 	f32 y = 0;
 };
 
-bool operator==(vec2 const& l, vec2 const& r) {
-	return maths::equals(l.x, r.x) && maths::equals(l.y, r.y);
-}
+bool operator==(vec2 const& l, vec2 const& r) { return maths::equals(l.x, r.x) && maths::equals(l.y, r.y); }
 
 template <typename T, std::size_t N>
 bool compare(std::vector<T> const& lhs, kt::fixed_any<N> const& any) {

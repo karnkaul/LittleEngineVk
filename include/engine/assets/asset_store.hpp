@@ -317,9 +317,7 @@ template <template <typename...> typename L>
 L<std::mutex> AssetStore::reloadLock() const {
 	return m_reloadMutex.lock<L>();
 }
-inline Resources& AssetStore::resources() {
-	return m_resources;
-}
+inline Resources& AssetStore::resources() { return m_resources; }
 template <typename T>
 bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
 	auto lock = reloadLock();
@@ -333,8 +331,7 @@ bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
 }
 
 template <typename T>
-Asset<T>::Asset(not_null<type*> t, not_null<OnModified*> onMod, std::string_view id) : m_id(id), m_t(t), m_onModified(onMod) {
-}
+Asset<T>::Asset(not_null<type*> t, not_null<OnModified*> onMod, std::string_view id) : m_id(id), m_t(t), m_onModified(onMod) {}
 template <typename T>
 typename Asset<T>::type& Asset<T>::get() const {
 	return *m_t;

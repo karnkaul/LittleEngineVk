@@ -20,6 +20,4 @@ void t0(kt::executor_t const& ex) {
 	ex.expect_eq(hPath, hLiteral);
 }
 
-int main() {
-	return kt::runner_t({{"compare", &t0}}).run(false);
-}
+int main() { return kt::runner_t({{"compare", &t0}}).run(false); }

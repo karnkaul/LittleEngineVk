@@ -81,7 +81,5 @@ struct Model::CreateInfo {
 
 // impl
 
-inline View<Primitive> Model::primitives() const noexcept {
-	return m_storage.primitives;
-}
+inline View<Primitive> Model::primitives() const noexcept { return m_storage.primitives; }
 } // namespace le

@@ -73,15 +73,11 @@ struct uint_flags {
 	///
 	/// \brief Compare two uint_flags
 	///
-	friend constexpr bool operator==(uint_flags a, uint_flags b) noexcept {
-		return a.bits == b.bits;
-	}
+	friend constexpr bool operator==(uint_flags a, uint_flags b) noexcept { return a.bits == b.bits; }
 	///
 	/// \brief Compare two uint_flags
 	///
-	friend constexpr bool operator!=(uint_flags a, uint_flags b) noexcept {
-		return !(a == b);
-	}
+	friend constexpr bool operator!=(uint_flags a, uint_flags b) noexcept { return !(a == b); }
 };
 
 // impl

@@ -17,9 +17,7 @@ class Sampler {
 	Sampler& operator=(Sampler&&);
 	virtual ~Sampler();
 
-	vk::Sampler sampler() const noexcept {
-		return m_sampler;
-	}
+	vk::Sampler sampler() const noexcept { return m_sampler; }
 
   private:
 	void destroy();

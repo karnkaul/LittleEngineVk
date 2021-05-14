@@ -42,13 +42,9 @@ BufferedFrameSync& BufferedFrameSync::operator=(BufferedFrameSync&& rhs) {
 	return *this;
 }
 
-BufferedFrameSync::~BufferedFrameSync() {
-	destroy();
-}
+BufferedFrameSync::~BufferedFrameSync() { destroy(); }
 
-void BufferedFrameSync::swap() {
-	next();
-}
+void BufferedFrameSync::swap() { next(); }
 
 void BufferedFrameSync::refreshSync() {
 	if (!ts.empty()) {

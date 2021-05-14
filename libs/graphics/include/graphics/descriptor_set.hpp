@@ -159,9 +159,7 @@ class ShaderInput {
 
 // impl
 
-inline u32 DescriptorSet::setNumber() const noexcept {
-	return m_storage.setNumber;
-}
+inline u32 DescriptorSet::setNumber() const noexcept { return m_storage.setNumber; }
 
 template <typename T>
 void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes) {
@@ -198,10 +196,6 @@ bool DescriptorSet::update(u32 binding, C const& textures) {
 	}
 	return updateImgs(binding, std::move(imgs));
 }
-inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) {
-	update(binding, View<Ref<Buffer const>>(buffer), type);
-}
-inline bool DescriptorSet::update(u32 binding, Texture const& texture) {
-	return update(binding, View<Ref<Texture const>>(texture));
-}
+inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) { update(binding, View<Ref<Buffer const>>(buffer), type); }
+inline bool DescriptorSet::update(u32 binding, Texture const& texture) { return update(binding, View<Ref<Texture const>>(texture)); }
 } // namespace le::graphics

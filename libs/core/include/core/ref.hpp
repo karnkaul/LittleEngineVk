@@ -22,8 +22,7 @@ template <typename T>
 constexpr bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept;
 
 template <typename T>
-constexpr Ref<T>::Ref(T& t) noexcept : pPtr(&t) {
-}
+constexpr Ref<T>::Ref(T& t) noexcept : pPtr(&t) {}
 
 template <typename T>
 constexpr Ref<T>::operator T&() const noexcept {

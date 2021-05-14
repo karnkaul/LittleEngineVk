@@ -78,9 +78,7 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : Resource(memo
 	memory->m_allocations[(std::size_t)type].fetch_add(m_storage.writeSize);
 }
 
-Buffer::Buffer(Buffer&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) {
-	m_data = std::exchange(rhs.m_data, Data());
-}
+Buffer::Buffer(Buffer&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) { m_data = std::exchange(rhs.m_data, Data()); }
 
 Buffer& Buffer::operator=(Buffer&& rhs) {
 	if (&rhs != this) {
@@ -92,9 +90,7 @@ Buffer& Buffer::operator=(Buffer&& rhs) {
 	return *this;
 }
 
-Buffer::~Buffer() {
-	destroy();
-}
+Buffer::~Buffer() { destroy(); }
 
 void Buffer::destroy() {
 	Memory& m = *m_memory;
@@ -174,9 +170,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	memory->m_allocations[(std::size_t)type].fetch_add(m_storage.allocatedSize);
 }
 
-Image::Image(Image&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) {
-	m_data = std::exchange(rhs.m_data, Data());
-}
+Image::Image(Image&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) { m_data = std::exchange(rhs.m_data, Data()); }
 
 Image& Image::operator=(Image&& rhs) {
 	if (&rhs != this) {
@@ -188,9 +182,7 @@ Image& Image::operator=(Image&& rhs) {
 	return *this;
 }
 
-Image::~Image() {
-	destroy();
-}
+Image::~Image() { destroy(); }
 
 void Image::destroy() {
 	if (!Device::default_v(m_storage.image)) {

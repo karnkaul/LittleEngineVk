@@ -79,12 +79,8 @@ std::string format(Time_s duration);
 } // namespace time
 
 // impl
-inline time::Point time::now() noexcept {
-	return Clock::now();
-}
-inline time::SysTime time::sysTime() noexcept {
-	return stdch::system_clock::now();
-}
+inline time::Point time::now() noexcept { return Clock::now(); }
+inline time::SysTime time::sysTime() noexcept { return stdch::system_clock::now(); }
 template <typename Ret, typename Dur>
 constexpr Ret time::cast(Dur&& dur) noexcept {
 	return stdch::duration_cast<Ret>(dur);

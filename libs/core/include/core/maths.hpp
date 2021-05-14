@@ -150,9 +150,7 @@ constexpr std::uint8_t enumEnd(T lastEnum) noexcept {
 	return (lsbIndex(static_cast<u32>(lastEnum))) + 1;
 }
 
-inline void Random::seed(std::optional<u32> value) noexcept {
-	m_engine = std::mt19937(value.value_or(m_device()));
-}
+inline void Random::seed(std::optional<u32> value) noexcept { m_engine = std::mt19937(value.value_or(m_device())); }
 
 template <typename T, template <typename> typename Dist, typename... Args>
 T Random::range(Args&&... args) noexcept {

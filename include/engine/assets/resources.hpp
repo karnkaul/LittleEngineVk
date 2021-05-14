@@ -16,9 +16,7 @@ class Resource {
   public:
 	enum class Type { eText, eBinary };
 
-	io::Path const& path() const {
-		return m_path;
-	}
+	io::Path const& path() const { return m_path; }
 	std::string_view string() const noexcept;
 	View<std::byte> bytes() const noexcept;
 	Type type() const noexcept;

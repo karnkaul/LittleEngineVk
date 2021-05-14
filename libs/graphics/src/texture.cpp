@@ -43,15 +43,11 @@ vk::SamplerCreateInfo Sampler::info(MinMag minMag, vk::SamplerMipmapMode mip) {
 	return ret;
 }
 
-Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info) : m_device(device) {
-	m_sampler = device->device().createSampler(info);
-}
+Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info) : m_device(device) { m_sampler = device->device().createSampler(info); }
 
-Sampler::Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip) : Sampler(device, info(minMag, mip)) {
-}
+Sampler::Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip) : Sampler(device, info(minMag, mip)) {}
 
-Sampler::Sampler(Sampler&& rhs) : m_sampler(std::exchange(rhs.m_sampler, vk::Sampler())), m_device(rhs.m_device) {
-}
+Sampler::Sampler(Sampler&& rhs) : m_sampler(std::exchange(rhs.m_sampler, vk::Sampler())), m_device(rhs.m_device) {}
 
 Sampler& Sampler::operator=(Sampler&& rhs) {
 	if (&rhs != this) {
@@ -62,9 +58,7 @@ Sampler& Sampler::operator=(Sampler&& rhs) {
 	return *this;
 }
 
-Sampler::~Sampler() {
-	destroy();
-}
+Sampler::~Sampler() { destroy(); }
 
 void Sampler::destroy() {
 	if (!Device::default_v(m_sampler)) {
@@ -73,10 +67,8 @@ void Sampler::destroy() {
 	}
 }
 
-Texture::Texture(not_null<VRAM*> vram) : m_vram(vram) {
-}
-Texture::Texture(Texture&& rhs) : m_vram(rhs.m_vram), m_storage(std::exchange(rhs.m_storage, Storage())) {
-}
+Texture::Texture(not_null<VRAM*> vram) : m_vram(vram) {}
+Texture::Texture(Texture&& rhs) : m_vram(rhs.m_vram), m_storage(std::exchange(rhs.m_storage, Storage())) {}
 Texture& Texture::operator=(Texture&& rhs) {
 	if (&rhs != this) {
 		destroy();
@@ -85,9 +77,7 @@ Texture& Texture::operator=(Texture&& rhs) {
 	}
 	return *this;
 }
-Texture::~Texture() {
-	destroy();
-}
+Texture::~Texture() { destroy(); }
 
 bool Texture::construct(CreateInfo const& info) {
 	Storage storage;
@@ -99,25 +89,15 @@ bool Texture::construct(CreateInfo const& info) {
 	return false;
 }
 
-bool Texture::valid() const noexcept {
-	return m_storage.image.has_value();
-}
+bool Texture::valid() const noexcept { return m_storage.image.has_value(); }
 
-bool Texture::busy() const {
-	return valid() && m_storage.transfer.busy();
-}
+bool Texture::busy() const { return valid() && m_storage.transfer.busy(); }
 
-bool Texture::ready() const {
-	return valid() && m_storage.transfer.ready(true);
-}
+bool Texture::ready() const { return valid() && m_storage.transfer.ready(true); }
 
-void Texture::wait() const {
-	m_storage.transfer.wait();
-}
+void Texture::wait() const { m_storage.transfer.wait(); }
 
-Texture::Data const& Texture::data() const noexcept {
-	return m_storage.data;
-}
+Texture::Data const& Texture::data() const noexcept { return m_storage.data; }
 
 Image const& Texture::image() const {
 	ENSURE(m_storage.image.has_value(), "Invalid image");

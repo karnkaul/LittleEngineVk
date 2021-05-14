@@ -22,13 +22,9 @@ View<std::byte> Resource::bytes() const noexcept {
 	}
 }
 
-Resource::Type Resource::type() const noexcept {
-	return m_type;
-}
+Resource::Type Resource::type() const noexcept { return m_type; }
 
-bool Resource::monitoring() const noexcept {
-	return m_monitor.has_value();
-}
+bool Resource::monitoring() const noexcept { return m_monitor.has_value(); }
 
 std::optional<io::FileMonitor::Status> Resource::status() const {
 	if (m_monitor) {
@@ -60,9 +56,7 @@ bool Resource::load(io::Reader const& reader, io::Path path, Type type, bool bMo
 	return false;
 }
 
-void Resources::reader(not_null<io::Reader const*> reader) {
-	m_reader = reader;
-}
+void Resources::reader(not_null<io::Reader const*> reader) { m_reader = reader; }
 
 io::Reader const& Resources::reader() const {
 	if (m_reader) {
@@ -71,9 +65,7 @@ io::Reader const& Resources::reader() const {
 	return m_fileReader;
 }
 
-io::FileReader& Resources::fileReader() {
-	return m_fileReader;
-}
+io::FileReader& Resources::fileReader() { return m_fileReader; }
 
 Resource const* Resources::find(Hash id) const noexcept {
 	auto lock = m_loaded.lock<std::shared_lock>();

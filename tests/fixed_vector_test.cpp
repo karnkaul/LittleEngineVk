@@ -20,9 +20,7 @@ struct foo {
 		inst = ++total;
 		++alive;
 	}
-	~foo() {
-		--alive;
-	}
+	~foo() { --alive; }
 };
 
 int foo::alive = 0;

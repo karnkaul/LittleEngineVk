@@ -34,24 +34,16 @@ class QueueMultiplex final {
 	std::vector<vk::DeviceQueueCreateInfo> select(std::vector<Family> families);
 	void setup(vk::Device device);
 
-	u32 familyIndex(QType type) const noexcept {
-		return queue(type).familyIndex;
-	}
-	u32 arrayIndex(QType type) const noexcept {
-		return queue(type).arrayIndex;
-	}
+	u32 familyIndex(QType type) const noexcept { return queue(type).familyIndex; }
+	u32 arrayIndex(QType type) const noexcept { return queue(type).arrayIndex; }
 
 	kt::fixed_vector<u32, 3> familyIndices(QFlags flags) const;
 
 	void submit(QType type, vk::ArrayProxy<vk::SubmitInfo const> const& infos, vk::Fence signal, bool bLock);
 	vk::Result present(vk::PresentInfoKHR const& info, bool bLock);
 
-	u32 familyCount() const noexcept {
-		return m_familyCount;
-	}
-	u32 queueCount() const noexcept {
-		return m_queueCount;
-	}
+	u32 familyCount() const noexcept { return m_familyCount; }
+	u32 queueCount() const noexcept { return m_queueCount; }
 
 	template <template <typename...> typename L = std::scoped_lock>
 	auto lockMutex(QType type) {
@@ -59,22 +51,14 @@ class QueueMultiplex final {
 	}
 
 	using Lock = std::scoped_lock<std::mutex, std::mutex>;
-	Lock lock() {
-		return Lock(m_mutexes.gp.mutex, m_mutexes.t.mutex);
-	}
+	Lock lock() { return Lock(m_mutexes.gp.mutex, m_mutexes.t.mutex); }
 
-	Queue& queue(QType type) noexcept {
-		return m_queues[(std::size_t)type].first;
-	}
+	Queue& queue(QType type) noexcept { return m_queues[(std::size_t)type].first; }
 
-	Queue const& queue(QType type) const noexcept {
-		return m_queues[(std::size_t)type].first;
-	}
+	Queue const& queue(QType type) const noexcept { return m_queues[(std::size_t)type].first; }
 
   private:
-	kt::lockable_t<>& mutex(QType type) {
-		return *m_queues[(std::size_t)type].second;
-	}
+	kt::lockable_t<>& mutex(QType type) { return *m_queues[(std::size_t)type].second; }
 
 	template <std::size_t N>
 	using QCIArr = std::array<QCI, N>;

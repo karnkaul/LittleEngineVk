@@ -5,8 +5,7 @@
 namespace le::window {
 class DesktopInstance final : public IInstance {
   public:
-	DesktopInstance() : IInstance(false) {
-	}
+	DesktopInstance() : IInstance(false) {}
 	explicit DesktopInstance(CreateInfo const& info);
 	DesktopInstance(DesktopInstance&&) = default;
 	DesktopInstance& operator=(DesktopInstance&&) = default;

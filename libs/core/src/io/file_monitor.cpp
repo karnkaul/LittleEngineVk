@@ -21,8 +21,7 @@ stdfs::file_time_type lwt([[maybe_unused]] stdfs::path const& path, [[maybe_unus
 }
 } // namespace
 
-FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode) {
-}
+FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode) {}
 
 FileMonitor::FileMonitor(FileMonitor&&) = default;
 FileMonitor& FileMonitor::operator=(FileMonitor&&) = default;
@@ -67,21 +66,13 @@ FileMonitor::Status FileMonitor::update() {
 	return m_status;
 }
 
-FileMonitor::Status FileMonitor::lastStatus() const {
-	return m_status;
-}
+FileMonitor::Status FileMonitor::lastStatus() const { return m_status; }
 
-stdfs::file_time_type FileMonitor::lastWriteTime() const {
-	return m_lastWriteTime;
-}
+stdfs::file_time_type FileMonitor::lastWriteTime() const { return m_lastWriteTime; }
 
-stdfs::file_time_type FileMonitor::lastModifiedTime() const {
-	return m_lastModifiedTime;
-}
+stdfs::file_time_type FileMonitor::lastModifiedTime() const { return m_lastModifiedTime; }
 
-stdfs::path const& FileMonitor::path() const {
-	return m_path;
-}
+stdfs::path const& FileMonitor::path() const { return m_path; }
 
 std::string_view FileMonitor::text() const {
 	ENSURE(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");

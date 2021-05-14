@@ -152,9 +152,7 @@ T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str
 }
 } // namespace
 
-Key parseKey(std::string_view str) noexcept {
-	return parse(g_keyMap, str, Key::eUnknown);
-}
+Key parseKey(std::string_view str) noexcept { return parse(g_keyMap, str, Key::eUnknown); }
 
 Action parseAction(std::string_view str) noexcept {
 	if (str == "press") {
@@ -174,7 +172,5 @@ Mods parseMods(View<std::string> vec) noexcept {
 	return ret;
 }
 
-Axis parseAxis(std::string_view str) noexcept {
-	return parse(g_axisMap, str, Axis::eUnknown);
-}
+Axis parseAxis(std::string_view str) noexcept { return parse(g_axisMap, str, Axis::eUnknown); }
 } // namespace le::window

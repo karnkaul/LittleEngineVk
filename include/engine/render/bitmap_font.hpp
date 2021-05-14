@@ -39,14 +39,10 @@ struct BitmapFont::CreateInfo {
 	graphics::BMPview atlas;
 };
 
-inline bool BitmapFont::valid() const noexcept {
-	return m_storage.atlas.has_value();
-}
+inline bool BitmapFont::valid() const noexcept { return m_storage.atlas.has_value(); }
 inline BitmapFont::Texture const& BitmapFont::atlas() const {
 	ENSURE(m_storage.atlas.has_value(), "Empty atlas");
 	return *m_storage.atlas;
 }
-inline View<BitmapFont::Glyph> BitmapFont::glyphs() const noexcept {
-	return m_storage.glyphs;
-}
+inline View<BitmapFont::Glyph> BitmapFont::glyphs() const noexcept { return m_storage.glyphs; }
 } // namespace le

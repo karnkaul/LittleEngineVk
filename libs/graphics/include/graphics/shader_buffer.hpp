@@ -59,12 +59,8 @@ constexpr vk::BufferUsageFlagBits ShaderBuffer::usage(vk::DescriptorType type) n
 	}
 }
 
-inline bool ShaderBuffer::valid() const noexcept {
-	return m_vram != nullptr;
-}
-inline vk::DescriptorType ShaderBuffer::type() const noexcept {
-	return m_storage.type;
-}
+inline bool ShaderBuffer::valid() const noexcept { return m_vram != nullptr; }
+inline vk::DescriptorType ShaderBuffer::type() const noexcept { return m_storage.type; }
 
 template <typename T>
 ShaderBuffer& ShaderBuffer::write(T const& t, std::size_t offset) {

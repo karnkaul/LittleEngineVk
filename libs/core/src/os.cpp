@@ -51,13 +51,9 @@ void os::args(Args const& args) {
 	}
 }
 
-std::string os::argv0() {
-	return g_exeLocation.generic_string();
-}
+std::string os::argv0() { return g_exeLocation.generic_string(); }
 
-std::string os::exeName() {
-	return g_exeLocation.filename().string();
-}
+std::string os::exeName() { return g_exeLocation.filename().string(); }
 
 io::Path os::dirPath(Dir dir) {
 	switch (dir) {
@@ -87,9 +83,7 @@ io::Path os::androidStorage([[maybe_unused]] ErasedRef const& androidApp, [[mayb
 	return io::Path();
 }
 
-std::vector<std::string_view> const& os::args() noexcept {
-	return g_args;
-}
+std::vector<std::string_view> const& os::args() noexcept { return g_args; }
 
 bool os::debugging() {
 	bool ret = false;

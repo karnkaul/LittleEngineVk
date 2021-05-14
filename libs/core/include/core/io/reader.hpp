@@ -50,9 +50,7 @@ class Reader {
 	/// \brief Mount a path on the IO medium
 	/// Mounted paths are prefixed to `id`s being searched
 	///
-	[[nodiscard]] virtual bool mount([[maybe_unused]] io::Path path) {
-		return false;
-	}
+	[[nodiscard]] virtual bool mount([[maybe_unused]] io::Path path) { return false; }
 	///
 	/// \brief Obtain data as `bytearray` (`std::vector<std::byte>`)
 	///

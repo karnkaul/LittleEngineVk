@@ -53,9 +53,7 @@ Pipeline& Pipeline::operator=(Pipeline&& rhs) {
 	return *this;
 }
 
-Pipeline::~Pipeline() {
-	destroy();
-}
+Pipeline::~Pipeline() { destroy(); }
 
 kt::result<vk::Pipeline, void> Pipeline::constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed) {
 	if (id == Hash()) {
@@ -105,26 +103,18 @@ bool Pipeline::reconstruct(Shader const& shader) {
 	return true;
 }
 
-vk::PipelineBindPoint Pipeline::bindPoint() const {
-	return m_metadata.main.bindPoint;
-}
+vk::PipelineBindPoint Pipeline::bindPoint() const { return m_metadata.main.bindPoint; }
 
-vk::PipelineLayout Pipeline::layout() const {
-	return m_storage.fixed.layout;
-}
+vk::PipelineLayout Pipeline::layout() const { return m_storage.fixed.layout; }
 
 vk::DescriptorSetLayout Pipeline::setLayout(u32 set) const {
 	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
 	return m_storage.fixed.setLayouts[(std::size_t)set];
 }
 
-ShaderInput& Pipeline::shaderInput() {
-	return m_storage.input;
-}
+ShaderInput& Pipeline::shaderInput() { return m_storage.input; }
 
-ShaderInput const& Pipeline::shaderInput() const {
-	return m_storage.input;
-}
+ShaderInput const& Pipeline::shaderInput() const { return m_storage.input; }
 
 SetPool Pipeline::makeSetPool(u32 set, std::size_t rotateCount) const {
 	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");

@@ -32,12 +32,10 @@ struct TRect {
 };
 
 template <typename T, s64 Min, s64 Max>
-constexpr TRect<T, Min, Max>::TRect(glm::tvec2<T> const& lt, glm::tvec2<T> const& rb) : lt(lt), rb(rb) {
-}
+constexpr TRect<T, Min, Max>::TRect(glm::tvec2<T> const& lt, glm::tvec2<T> const& rb) : lt(lt), rb(rb) {}
 
 template <typename T, s64 Min, s64 Max>
-constexpr TRect<T, Min, Max>::TRect(glm::tvec4<T> const& ltrb) : lt(ltrb.x, ltrb.y), rb(ltrb.z, ltrb.w) {
-}
+constexpr TRect<T, Min, Max>::TRect(glm::tvec4<T> const& ltrb) : lt(ltrb.x, ltrb.y), rb(ltrb.z, ltrb.w) {}
 
 template <typename T, s64 Min, s64 Max>
 constexpr TRect<T, Min, Max> TRect<T, Min, Max>::sizeTL(glm::tvec2<T> const& size, glm::tvec2<T> const& leftTop) noexcept {

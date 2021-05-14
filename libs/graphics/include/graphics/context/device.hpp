@@ -63,21 +63,11 @@ class Device final {
 		return t == T();
 	}
 
-	PhysicalDevice const& physicalDevice() const noexcept {
-		return m_physicalDevice;
-	}
-	QueueMultiplex& queues() noexcept {
-		return m_queues;
-	}
-	QueueMultiplex const& queues() const noexcept {
-		return m_queues;
-	}
-	vk::Device device() const noexcept {
-		return m_device;
-	}
-	vk::SurfaceKHR surface() const noexcept {
-		return m_metadata.surface;
-	}
+	PhysicalDevice const& physicalDevice() const noexcept { return m_physicalDevice; }
+	QueueMultiplex& queues() noexcept { return m_queues; }
+	QueueMultiplex const& queues() const noexcept { return m_queues; }
+	vk::Device device() const noexcept { return m_device; }
+	vk::SurfaceKHR surface() const noexcept { return m_metadata.surface; }
 
 	not_null<Instance*> m_instance;
 

@@ -25,9 +25,7 @@ constexpr ArrayMap<4, lvl, Colour> lvlColour = {
 
 kt::locker_t<std::deque<LogText>> g_logs;
 
-ImVec4 imvec4(Colour c) noexcept {
-	return {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()};
-}
+ImVec4 imvec4(Colour c) noexcept { return {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()}; }
 
 void onLog(std::string_view text, dl::level level) {
 	std::string str(text);

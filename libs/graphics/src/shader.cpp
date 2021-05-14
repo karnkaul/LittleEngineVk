@@ -3,8 +3,7 @@
 #include <graphics/shader.hpp>
 
 namespace le::graphics {
-Shader::Shader(not_null<Device*> device, std::string name) : m_name(std::move(name)), m_device(device) {
-}
+Shader::Shader(not_null<Device*> device, std::string name) : m_name(std::move(name)), m_device(device) {}
 
 Shader::Shader(not_null<Device*> device, std::string name, SpirVMap const& spirV) : m_name(std::move(name)), m_device(device) {
 	construct(spirV, m_spirV, m_modules);
@@ -30,9 +29,7 @@ Shader& Shader::operator=(Shader&& rhs) {
 	return *this;
 }
 
-Shader::~Shader() {
-	destroy();
-}
+Shader::~Shader() { destroy(); }
 
 bool Shader::reconstruct(SpirVMap const& spirV) {
 	CodeMap code;
@@ -78,13 +75,9 @@ vk::ShaderStageFlags Shader::stages() const noexcept {
 	return ret;
 }
 
-bool Shader::valid() const noexcept {
-	return stages() != vk::ShaderStageFlags();
-}
+bool Shader::valid() const noexcept { return stages() != vk::ShaderStageFlags(); }
 
-bool Shader::empty() const noexcept {
-	return !valid();
-}
+bool Shader::empty() const noexcept { return !valid(); }
 
 void Shader::destroy() {
 	for (auto& module : m_modules) {

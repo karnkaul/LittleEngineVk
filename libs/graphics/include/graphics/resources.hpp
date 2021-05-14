@@ -22,8 +22,7 @@ struct QShare final {
 	vk::SharingMode desired;
 
 	// TODO: Use exclusive queues
-	constexpr QShare(vk::SharingMode desired = vk::SharingMode::eConcurrent) : desired(desired) {
-	}
+	constexpr QShare(vk::SharingMode desired = vk::SharingMode::eConcurrent) : desired(desired) {}
 
 	vk::SharingMode operator()(Device const& device, QFlags queues) const;
 };
@@ -40,15 +39,12 @@ class Resource {
 		vk::SharingMode mode;
 	};
 
-	Resource(not_null<Memory*> memory) : m_memory(memory) {
-	}
+	Resource(not_null<Memory*> memory) : m_memory(memory) {}
 	Resource(Resource&&) = default;
 	Resource& operator=(Resource&&) = default;
 	virtual ~Resource() = default;
 
-	Data const& data() const noexcept {
-		return m_data;
-	}
+	Data const& data() const noexcept { return m_data; }
 
   private:
 	void destroy();
@@ -91,24 +87,12 @@ class Buffer : public Resource {
 	Buffer& operator=(Buffer&&);
 	~Buffer() override;
 
-	vk::Buffer buffer() const noexcept {
-		return m_storage.buffer;
-	}
-	vk::DeviceSize writeSize() const noexcept {
-		return m_storage.writeSize;
-	}
-	std::size_t writeCount() const noexcept {
-		return m_storage.writeCount;
-	}
-	vk::BufferUsageFlags usage() const noexcept {
-		return m_storage.usage;
-	}
-	Type bufferType() const noexcept {
-		return m_storage.type;
-	}
-	void const* mapped() const noexcept {
-		return m_storage.pMap;
-	}
+	vk::Buffer buffer() const noexcept { return m_storage.buffer; }
+	vk::DeviceSize writeSize() const noexcept { return m_storage.writeSize; }
+	std::size_t writeCount() const noexcept { return m_storage.writeCount; }
+	vk::BufferUsageFlags usage() const noexcept { return m_storage.usage; }
+	Type bufferType() const noexcept { return m_storage.type; }
+	void const* mapped() const noexcept { return m_storage.pMap; }
 
 	void const* map();
 	bool unmap();
@@ -149,12 +133,8 @@ class Image : public Resource {
 	Image& operator=(Image&&);
 	~Image() override;
 
-	vk::Image image() const noexcept {
-		return m_storage.image;
-	}
-	u32 layerCount() const noexcept {
-		return m_storage.layerCount;
-	}
+	vk::Image image() const noexcept { return m_storage.image; }
+	u32 layerCount() const noexcept { return m_storage.layerCount; }
 
   private:
 	void destroy();
@@ -190,9 +170,7 @@ struct Image::CreateInfo final : ResourceCreateInfo {
 
 // impl
 
-inline u64 Memory::bytes(Resource::Type type) const noexcept {
-	return m_allocations[(std::size_t)type].load();
-}
+inline u64 Memory::bytes(Resource::Type type) const noexcept { return m_allocations[(std::size_t)type].load(); }
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {

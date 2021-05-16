@@ -73,9 +73,7 @@ T& Services::add(Args&&... args) {
 template <typename T>
 T* Services::locate() {
 	for (auto& uConcept : m_services) {
-		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel) {
-			return &pModel->s;
-		}
+		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel) { return &pModel->s; }
 	}
 	return nullptr;
 }
@@ -83,9 +81,7 @@ T* Services::locate() {
 template <typename T>
 T const* Services::locate() const {
 	for (auto& uConcept : m_services) {
-		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel) {
-			return &pModel->s;
-		}
+		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel) { return &pModel->s; }
 	}
 	return nullptr;
 }

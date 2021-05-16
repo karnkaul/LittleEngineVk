@@ -16,25 +16,18 @@ bool Trigger::operator()(State const& state) const noexcept {
 		if (combo.key != Key::eUnknown) {
 			switch (combo.t) {
 			case Action::ePressed: {
-				if (auto k = state.pressed(combo.key)) {
-					return k->mods.all(combo.mods.bits);
-				}
+				if (auto k = state.pressed(combo.key)) { return k->mods.all(combo.mods.bits); }
 				break;
 			}
 			case Action::eReleased: {
-				if (auto k = state.released(combo.key)) {
-					return k->mods.all(combo.mods.bits);
-				}
+				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods.bits); }
 				break;
 			}
 			case Action::eHeld: {
-				if (auto k = state.held(combo.key)) {
-					return k->mods.all(combo.mods.bits);
-				}
+				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods.bits); }
 				break;
 			}
-			default:
-				break;
+			default: break;
 			}
 		}
 	}
@@ -61,15 +54,11 @@ f32 Range::operator()(State const& state) const noexcept {
 			}
 			case Axis::eLeftTrigger:
 			case Axis::eRightTrigger: {
-				if (pad) {
-					ret += window::triggerToAxis(pad->axis(ax->axis));
-				}
+				if (pad) { ret += window::triggerToAxis(pad->axis(ax->axis)); }
 				break;
 			}
 			default: {
-				if (pad) {
-					ret += pad->axis(ax->axis);
-				}
+				if (pad) { ret += pad->axis(ax->axis); }
 				break;
 			}
 			}

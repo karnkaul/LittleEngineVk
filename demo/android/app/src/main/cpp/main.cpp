@@ -8,7 +8,5 @@
 void android_main(android_app* pApp) {
 	using namespace le;
 	io::AAssetReader reader(pApp);
-	if (!demo::run(reader, pApp)) {
-		return;
-	}
+	if (!demo::run(reader, pApp)) { return; }
 }

@@ -50,9 +50,7 @@ bool Mesh::draw(CommandBuffer const& cb, u32 instances, u32 first) const {
 bool Mesh::valid() const noexcept { return m_vbo.buffer.has_value(); }
 
 bool Mesh::busy() const {
-	if (!valid() || m_type == Type::eDynamic) {
-		return false;
-	}
+	if (!valid() || m_type == Type::eDynamic) { return false; }
 	return m_vbo.transfer.busy() || m_ibo.transfer.busy();
 }
 

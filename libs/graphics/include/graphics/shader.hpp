@@ -44,10 +44,8 @@ class Shader {
 };
 
 constexpr bool operator==(Shader const& lhs, Shader const& rhs) noexcept {
-	for (std::size_t idx = 0; idx < lhs.m_modules.size(); ++idx) {
-		if (lhs.m_modules[idx] != rhs.m_modules[idx]) {
-			return false;
-		}
+	for (std::size_t idx = 0; idx < arraySize(lhs.m_modules.arr); ++idx) {
+		if (lhs.m_modules.arr[idx] != rhs.m_modules.arr[idx]) { return false; }
 	}
 	return true;
 }

@@ -174,9 +174,7 @@ constexpr Tag<T>::Tag(Tag&& rhs) noexcept : store(rhs.store), id(rhs.id) {
 template <typename T>
 Tag<T>& Tag<T>::operator=(Tag&& rhs) noexcept {
 	if (&rhs != this) {
-		if (valid()) {
-			store->pop(id);
-		}
+		if (valid()) { store->pop(id); }
 		store = std::exchange(rhs.store, nullptr);
 		id = std::exchange(rhs.id, null);
 	}
@@ -184,9 +182,7 @@ Tag<T>& Tag<T>::operator=(Tag&& rhs) noexcept {
 }
 template <typename T>
 Tag<T>::~Tag() {
-	if (valid()) {
-		store->pop(id);
-	}
+	if (valid()) { store->pop(id); }
 }
 template <typename T>
 constexpr typename Tag<T>::type Tag<T>::increment(T t) noexcept {
@@ -208,16 +204,12 @@ void TaggedMap<Ty, Id>::pop(id_t id) noexcept {
 }
 template <typename Ty, typename Id>
 Ty* TaggedMap<Ty, Id>::find(id_t id) noexcept {
-	if (auto const it = storage.find(id); it != storage.end()) {
-		return &it->second;
-	}
+	if (auto const it = storage.find(id); it != storage.end()) { return &it->second; }
 	return nullptr;
 }
 template <typename Ty, typename Id>
 Ty const* TaggedMap<Ty, Id>::find(id_t id) const noexcept {
-	if (auto const it = storage.find(id); it != storage.end()) {
-		return &it->second;
-	}
+	if (auto const it = storage.find(id); it != storage.end()) { return &it->second; }
 	return nullptr;
 }
 

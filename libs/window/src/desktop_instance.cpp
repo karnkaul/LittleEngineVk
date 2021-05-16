@@ -32,29 +32,18 @@ constexpr std::string_view g_name = "Window";
 using lvl = dl::level;
 
 Cursor const& cursor(CursorType type) {
-	auto& cursor = g_state.cursors.loaded[(std::size_t)type];
+	auto& cursor = g_state.cursors.loaded[type];
 	if (type != CursorType::eDefault && !cursor.data.contains<GLFWcursor*>()) {
 		s32 gCursor = 0;
 		switch (type) {
 		default:
-		case CursorType::eDefault:
-			break;
-		case CursorType::eResizeEW:
-			gCursor = GLFW_RESIZE_EW_CURSOR;
-			break;
-		case CursorType::eResizeNS:
-			gCursor = GLFW_RESIZE_NS_CURSOR;
-			break;
-		case CursorType::eResizeNWSE:
-			gCursor = GLFW_RESIZE_NWSE_CURSOR;
-			break;
-		case CursorType::eResizeNESW:
-			gCursor = GLFW_RESIZE_NESW_CURSOR;
-			break;
+		case CursorType::eDefault: break;
+		case CursorType::eResizeEW: gCursor = GLFW_RESIZE_EW_CURSOR; break;
+		case CursorType::eResizeNS: gCursor = GLFW_RESIZE_NS_CURSOR; break;
+		case CursorType::eResizeNWSE: gCursor = GLFW_RESIZE_NWSE_CURSOR; break;
+		case CursorType::eResizeNESW: gCursor = GLFW_RESIZE_NESW_CURSOR; break;
 		}
-		if (gCursor != 0) {
-			cursor.data = glfwCreateStandardCursor(gCursor);
-		}
+		if (gCursor != 0) { cursor.data = glfwCreateStandardCursor(gCursor); }
 	}
 	cursor.type = type;
 	return cursor;
@@ -86,10 +75,8 @@ bool init(LibLogger& logger) {
 }
 
 void deinit() {
-	for (Cursor& cursor : g_state.cursors.loaded) {
-		if (cursor.data.contains<GLFWcursor*>()) {
-			glfwDestroyCursor(cursor.data.get<GLFWcursor*>());
-		}
+	for (Cursor& cursor : g_state.cursors.loaded.arr) {
+		if (cursor.data.contains<GLFWcursor*>()) { glfwDestroyCursor(cursor.data.get<GLFWcursor*>()); }
 	}
 	glfwTerminate();
 	g_state = {};
@@ -98,13 +85,15 @@ void deinit() {
 } // namespace
 
 namespace {
-constexpr ArrayMap<6, Mod, s32> modMap = {{Mod::eShift, GLFW_MOD_SHIFT}, {Mod::eControl, GLFW_MOD_CONTROL},	   {Mod::eAlt, GLFW_MOD_ALT},
-										  {Mod::eSuper, GLFW_MOD_SUPER}, {Mod::eCapsLock, GLFW_MOD_CAPS_LOCK}, {Mod::eNumLock, GLFW_MOD_NUM_LOCK}};
+constexpr ArrayMap<Mod, s32, 6> modMap = {{{Mod::eShift, GLFW_MOD_SHIFT},
+										   {Mod::eControl, GLFW_MOD_CONTROL},
+										   {Mod::eAlt, GLFW_MOD_ALT},
+										   {Mod::eSuper, GLFW_MOD_SUPER},
+										   {Mod::eCapsLock, GLFW_MOD_CAPS_LOCK},
+										   {Mod::eNumLock, GLFW_MOD_NUM_LOCK}}};
 
 void fillMod(Mods& out_mods, int mods, int mod) {
-	if (mods & mod) {
-		out_mods.update(mapped<Mod>(modMap, mod));
-	}
+	if (mods & mod) { out_mods.update(modMap[mod]); }
 }
 void fillMods(Mods& out_mods, int mods) {
 	fillMod(out_mods, mods, GLFW_MOD_SHIFT);
@@ -229,12 +218,8 @@ void onScroll(GLFWwindow* pGLFWwindow, f64 dx, f64 dy) {
 } // namespace
 
 DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
-	if (g_state.bInit || g_state.pWindow) {
-		throw std::runtime_error("Duplicate GLFW instance");
-	}
-	if (!init(m_log)) {
-		throw std::runtime_error("Fatal errorin creating Window Instance");
-	}
+	if (g_state.bInit || g_state.pWindow) { throw std::runtime_error("Duplicate GLFW instance"); }
+	if (!init(m_log)) { throw std::runtime_error("Fatal errorin creating Window Instance"); }
 	m_desktop = true;
 	m_log.minVerbosity = info.options.verbosity;
 	int screenCount;
@@ -291,9 +276,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, false);
 	g_state.pWindow = glfwCreateWindow(width, height, info.config.title.data(), pTarget, nullptr);
-	if (!g_state.pWindow) {
-		throw std::runtime_error("Failed to create Window");
-	}
+	if (!g_state.pWindow) { throw std::runtime_error("Failed to create Window"); }
 	glfwSetWindowPos(g_state.pWindow, cX, cY);
 	glfwSetWindowFocusCallback(g_state.pWindow, &onFocus);
 	glfwSetWindowSizeCallback(g_state.pWindow, &onWindowResize);
@@ -305,9 +288,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 	glfwSetMouseButtonCallback(g_state.pWindow, &onMouseButton);
 	glfwSetScrollCallback(g_state.pWindow, &onScroll);
 	glfwSetWindowIconifyCallback(g_state.pWindow, &onIconify);
-	if (info.options.bAutoShow) {
-		show();
-	}
+	if (info.options.bAutoShow) { show(); }
 	Event event;
 	event.type = Event::Type::eInit;
 	g_state.events.m_events.push_back(event);
@@ -321,9 +302,7 @@ View<std::string_view> DesktopInstance::vkInstanceExtensions() const {
 		u32 glfwExtCount;
 		char const** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
 		ret.reserve((std::size_t)glfwExtCount);
-		for (u32 i = 0; i < glfwExtCount; ++i) {
-			ret.push_back(glfwExtensions[i]);
-		}
+		for (u32 i = 0; i < glfwExtCount; ++i) { ret.push_back(glfwExtensions[i]); }
 	}
 	return ret;
 }
@@ -345,9 +324,7 @@ bool DesktopInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurf
 ErasedRef DesktopInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pWindow ? g_state.pWindow : ErasedRef(); }
 
 EventQueue DesktopInstance::pollEvents() {
-	if (g_state.bInit && g_state.pWindow) {
-		glfwPollEvents();
-	}
+	if (g_state.bInit && g_state.pWindow) { glfwPollEvents(); }
 	return std::move(g_state.events);
 }
 
@@ -361,14 +338,10 @@ CursorMode DesktopInstance::cursorMode() const noexcept {
 	if (g_state.bInit && g_state.pWindow) {
 		int val = glfwGetInputMode(g_state.pWindow, GLFW_CURSOR);
 		switch (val) {
-		case GLFW_CURSOR_NORMAL:
-			return CursorMode::eDefault;
-		case GLFW_CURSOR_HIDDEN:
-			return CursorMode::eHidden;
-		case GLFW_CURSOR_DISABLED:
-			return CursorMode::eDisabled;
-		default:
-			break;
+		case GLFW_CURSOR_NORMAL: return CursorMode::eDefault;
+		case GLFW_CURSOR_HIDDEN: return CursorMode::eHidden;
+		case GLFW_CURSOR_DISABLED: return CursorMode::eDisabled;
+		default: break;
 		}
 	}
 	return CursorMode::eDefault;
@@ -389,15 +362,9 @@ void DesktopInstance::cursorMode(CursorMode mode) {
 	if (g_state.bInit && g_state.pWindow) {
 		int val;
 		switch (mode) {
-		case CursorMode::eDefault:
-			val = GLFW_CURSOR_NORMAL;
-			break;
-		case CursorMode::eHidden:
-			val = GLFW_CURSOR_HIDDEN;
-			break;
-		case CursorMode::eDisabled:
-			val = GLFW_CURSOR_DISABLED;
-			break;
+		case CursorMode::eDefault: val = GLFW_CURSOR_NORMAL; break;
+		case CursorMode::eHidden: val = GLFW_CURSOR_HIDDEN; break;
+		case CursorMode::eDisabled: val = GLFW_CURSOR_DISABLED; break;
 		default:
 			mode = CursorMode::eDefault;
 			val = glfwGetInputMode(g_state.pWindow, GLFW_CURSOR);
@@ -408,15 +375,11 @@ void DesktopInstance::cursorMode(CursorMode mode) {
 }
 
 void DesktopInstance::cursorPosition(glm::vec2 position) {
-	if (g_state.bInit && g_state.pWindow) {
-		glfwSetCursorPos(g_state.pWindow, position.x, position.y);
-	}
+	if (g_state.bInit && g_state.pWindow) { glfwSetCursorPos(g_state.pWindow, position.x, position.y); }
 }
 
 void DesktopInstance::show() const {
-	if (g_state.bInit && g_state.pWindow) {
-		glfwShowWindow(g_state.pWindow);
-	}
+	if (g_state.bInit && g_state.pWindow) { glfwShowWindow(g_state.pWindow); }
 }
 
 void DesktopInstance::close() {
@@ -459,18 +422,12 @@ Joystick DesktopInstance::joyState(s32 id) const {
 		int count;
 		auto const axes = glfwGetJoystickAxes((int)id, &count);
 		ENSURE((std::size_t)count < ret.axes.size(), "Too many axes");
-		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) {
-			ret.axes[idx] = axes[idx];
-		}
+		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.axes[idx] = axes[idx]; }
 		auto const buttons = glfwGetJoystickButtons((int)id, &count);
 		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
-		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) {
-			ret.buttons[idx] = buttons[idx];
-		}
+		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.buttons[idx] = buttons[idx]; }
 		auto const szName = glfwGetJoystickName((int)id);
-		if (szName) {
-			ret.name = szName;
-		}
+		if (szName) { ret.name = szName; }
 	}
 	return ret;
 }

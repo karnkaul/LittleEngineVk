@@ -50,8 +50,6 @@ Buffer VRAM::makeBO(T const& t, vk::BufferUsageFlags usage) {
 
 template <typename Cont>
 void VRAM::wait(Cont&& futures) const {
-	for (Future const& f : futures) {
-		f.wait();
-	}
+	for (Future const& f : futures) { f.wait(); }
 }
 } // namespace le::graphics

@@ -43,16 +43,12 @@ void t0(kt::executor_t const& ex) {
 	ex.expect_eq(vec0.size(), vec1.size());
 	{
 		std::size_t idx = 0;
-		for (int& i : vec0) {
-			ex.expect_eq(i, vec1.at(idx++));
-		}
+		for (int& i : vec0) { ex.expect_eq(i, vec1.at(idx++)); }
 	}
 	{
 		auto const& v = vec0;
 		std::size_t idx = 0;
-		for (int const& i : v) {
-			ex.expect_eq(i, vec1.at(idx++));
-		}
+		for (int const& i : v) { ex.expect_eq(i, vec1.at(idx++)); }
 	}
 	vec1 = std::move(vec0);
 	ex.expect_eq(vec0.empty(), true);
@@ -79,16 +75,12 @@ void t1(kt::executor_t const& ex) {
 	ex.expect_eq(foo::alive, 4);
 	{
 		std::size_t idx = 0;
-		for (foo& f : vec0) {
-			ex.expect_eq(f.val, vec1.at(idx++).val);
-		}
+		for (foo& f : vec0) { ex.expect_eq(f.val, vec1.at(idx++).val); }
 	}
 	{
 		auto const& v = vec0;
 		std::size_t idx = 0;
-		for (foo const& f : v) {
-			ex.expect_eq(f.val, vec1.at(idx++).val);
-		}
+		for (foo const& f : v) { ex.expect_eq(f.val, vec1.at(idx++).val); }
 	}
 	vec1 = std::move(vec0);
 	ex.expect_eq(vec0.empty(), true);

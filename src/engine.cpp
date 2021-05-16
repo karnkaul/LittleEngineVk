@@ -33,9 +33,7 @@ Engine::DrawFrame::DrawFrame(DrawFrame&& rhs) noexcept : frame(std::exchange(rhs
 
 Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
 	if (&rhs != this) {
-		if (frame.primary.valid()) {
-			engine->endDraw(frame);
-		}
+		if (frame.primary.valid()) { engine->endDraw(frame); }
 		frame = std::exchange(rhs.frame, Context::Frame());
 		engine = rhs.engine;
 	}
@@ -43,9 +41,7 @@ Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
 }
 
 Engine::DrawFrame::~DrawFrame() {
-	if (frame.primary.valid()) {
-		engine->endDraw(frame);
-	}
+	if (frame.primary.valid()) { engine->endDraw(frame); }
 }
 
 Version Engine::version() noexcept { return g_engineVersion; }
@@ -74,9 +70,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 	auto ret = m_input.update(m_win->pollEvents(), m_editor.view(), extent, consume, m_desktop);
 	m_inputState = ret.state;
 	for (auto& [_, context] : m_receivers) {
-		if (context->block(ret.state)) {
-			break;
-		}
+		if (context->block(ret.state)) { break; }
 	}
 	return ret;
 }
@@ -101,21 +95,15 @@ bool Engine::beginFrame(bool waitDrawReady) {
 			[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 			ENSURE(b, "Failed to begin DearImGui frame");
 		}
-		if (m_gfx->context.reconstructed(m_win->framebufferSize())) {
-			return false;
-		}
-		if (waitDrawReady) {
-			return drawReady();
-		}
+		if (m_gfx->context.reconstructed(m_win->framebufferSize())) { return false; }
+		if (waitDrawReady) { return drawReady(); }
 		return true;
 	}
 	return false;
 }
 
 bool Engine::drawReady() {
-	if (m_gfx) {
-		return m_gfx->context.waitForFrame();
-	}
+	if (m_gfx) { return m_gfx->context.waitForFrame(); }
 	return false;
 }
 
@@ -135,9 +123,7 @@ std::optional<Engine::Context::Frame> Engine::beginDraw(Colour clear, vk::ClearD
 }
 
 std::optional<Engine::DrawFrame> Engine::drawFrame(Colour clear, vk::ClearDepthStencilValue depth) {
-	if (auto frame = beginDraw(clear, depth)) {
-		return DrawFrame(this, std::move(*frame));
-	}
+	if (auto frame = beginDraw(clear, depth)) { return DrawFrame(this, std::move(*frame)); }
 	return std::nullopt;
 }
 
@@ -154,9 +140,7 @@ bool Engine::endDraw(Context::Frame const& frame) {
 
 bool Engine::boot(Boot::CreateInfo boot) {
 	if (!m_gfx) {
-		if (s_options.gpuOverride) {
-			boot.device.pickOverride = s_options.gpuOverride;
-		}
+		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
 		m_gfx.emplace(m_win.get(), boot);
 		return true;
 	}
@@ -174,17 +158,13 @@ bool Engine::unboot() noexcept {
 glm::ivec2 Engine::framebufferSize() const noexcept { return m_gfx ? m_gfx->context.extent() : m_win->framebufferSize(); }
 
 vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexcept {
-	if (!m_gfx) {
-		return {};
-	}
+	if (!m_gfx) { return {}; }
 	Viewport const vp = m_editor.view() * view;
 	return m_gfx->context.viewport(m_gfx->context.extent(), depth, vp.rect(), vp.topLeft.offset);
 }
 
 vk::Rect2D Engine::scissor(Viewport const& view) const noexcept {
-	if (!m_gfx) {
-		return {};
-	}
+	if (!m_gfx) { return {}; }
 	Viewport const vp = m_editor.view() * view;
 	return m_gfx->context.scissor(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset);
 }

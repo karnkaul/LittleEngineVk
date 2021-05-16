@@ -52,10 +52,8 @@ struct ShaderBuffer::CreateInfo {
 
 constexpr vk::BufferUsageFlagBits ShaderBuffer::usage(vk::DescriptorType type) noexcept {
 	switch (type) {
-	case vk::DescriptorType::eStorageBuffer:
-		return vk::BufferUsageFlagBits::eStorageBuffer;
-	default:
-		return vk::BufferUsageFlagBits::eUniformBuffer;
+	case vk::DescriptorType::eStorageBuffer: return vk::BufferUsageFlagBits::eStorageBuffer;
+	default: return vk::BufferUsageFlagBits::eUniformBuffer;
 	}
 }
 
@@ -74,9 +72,7 @@ ShaderBuffer& ShaderBuffer::writeArray(T const& t) {
 	using value_type = typename T::value_type;
 	resize(sizeof(value_type), t.size());
 	std::size_t idx = 0;
-	for (auto const& x : t) {
-		m_storage.buffers[idx++].get().write(&x, sizeof(value_type));
-	}
+	for (auto const& x : t) { m_storage.buffers[idx++].get().write(&x, sizeof(value_type)); }
 	return *this;
 }
 } // namespace le::graphics

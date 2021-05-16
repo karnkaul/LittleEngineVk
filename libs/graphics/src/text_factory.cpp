@@ -2,12 +2,8 @@
 
 namespace le::graphics {
 Geometry TextFactory::generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
-	if (text.empty()) {
-		return {};
-	}
-	if (!layout) {
-		layout = this->layout(glyphs, text, size, nYPad);
-	}
+	if (text.empty()) { return {}; }
+	if (!layout) { layout = this->layout(glyphs, text, size, nYPad); }
 	glm::vec2 const realTopLeft = pos;
 	glm::vec2 textTL = realTopLeft;
 	std::size_t nextLineIdx = 0;
@@ -49,9 +45,7 @@ Geometry TextFactory::generate(View<Glyph> glyphs, glm::ivec2 texSize, std::opti
 			continue;
 		}
 		std::size_t const idx = (std::size_t)ch;
-		if (idx >= glyphs.size()) {
-			continue;
-		}
+		if (idx >= glyphs.size()) { continue; }
 		glm::vec3 const c(colour.toVec4());
 		auto const& glyph = glyphs[idx];
 		auto const offset = glm::vec3(xPos - (f32)glyph.offset.x * layout->scale, (f32)glyph.offset.y * layout->scale, 0.0f);
@@ -89,9 +83,7 @@ TextFactory::Layout TextFactory::layout(View<Glyph> glyphs, std::string_view tex
 	ret.maxBounds = glyphBounds(glyphs, text);
 	ret.lineCount = 1;
 	for (std::size_t idx = 0; idx < text.size(); ++idx) {
-		if (text[idx] == '\n') {
-			++ret.lineCount;
-		}
+		if (text[idx] == '\n') { ++ret.lineCount; }
 	}
 	if (auto pPx = std::get_if<u32>(&size)) {
 		ret.scale = (f32)(*pPx) / (f32)ret.maxBounds.y;

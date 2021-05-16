@@ -20,8 +20,7 @@ struct LogText {
 
 using lvl = dl::level;
 
-constexpr ArrayMap<4, lvl, Colour> lvlColour = {
-	{lvl::error, Colour(0xff1111ff)}, {lvl::warning, Colour(0xdddd22ff)}, {lvl::info, Colour(0xccccccff)}, {lvl::debug, Colour(0x666666ff)}};
+constexpr EnumArray<lvl, Colour, 4> lvlColour = {Colour(0x666666ff), Colour(0xccccccff), Colour(0xdddd22ff), Colour(0xff1111ff)};
 
 kt::locker_t<std::deque<LogText>> g_logs;
 
@@ -29,12 +28,10 @@ ImVec4 imvec4(Colour c) noexcept { return {c.r.toF32(), c.g.toF32(), c.b.toF32()
 
 void onLog(std::string_view text, dl::level level) {
 	std::string str(text);
-	ImVec4 const colour = imvec4(mapped<Colour>(lvlColour, level));
+	ImVec4 const colour = imvec4(lvlColour[level]);
 	auto lock = g_logs.lock();
 	lock.get().push_front({std::move(str), colour, level});
-	while (lock.get().size() > LogStats::s_maxLines) {
-		lock.get().pop_back();
-	}
+	while (lock.get().size() > LogStats::s_maxLines) { lock.get().pop_back(); }
 }
 
 struct FrameTime {
@@ -45,9 +42,7 @@ struct FrameTime {
 
 void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 	static f32 const s_yPad = 3.0f;
-	if (logHeight - s_yPad <= 50.0f) {
-		return;
-	}
+	if (logHeight - s_yPad <= 50.0f) { return; }
 
 	static std::array<char, 64> filter = {0};
 	bool bClear = false;
@@ -76,9 +71,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			Styler s(Style::eSameLine);
 			bClear = static_cast<bool>(Button("Clear"));
 			s();
-			if (ImGui::GetIO().MouseWheel > 0.0f) {
-				LogStats::s_autoScroll = false;
-			}
+			if (ImGui::GetIO().MouseWheel > 0.0f) { LogStats::s_autoScroll = false; }
 			ImGui::Checkbox("Auto-scroll", &LogStats::s_autoScroll);
 		}
 		{
@@ -106,15 +99,11 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			std::vector<Ref<LogText const>> filtered;
 			filtered.reserve(LogStats::s_lineCount);
 			auto lock = g_logs.lock();
-			if (bClear) {
-				lock.get().clear();
-			}
+			if (bClear) { lock.get().clear(); }
 			for (auto const& entry : lock.get()) {
 				if (entry.level >= LogStats::s_logLevel && (logFilter.empty() || entry.text.find(logFilter) != std::string::npos)) {
 					filtered.push_back(entry);
-					if (filtered.size() == LogStats::s_lineCount) {
-						break;
-					}
+					if (filtered.size() == LogStats::s_lineCount) { break; }
 				}
 			}
 			for (auto it = filtered.rbegin(); it != filtered.rend(); ++it) {
@@ -122,9 +111,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 				ImGui::TextColored(entry.colour, "%s", entry.text.data());
 			}
 			ImGui::PopStyleVar();
-			if (LogStats::s_autoScroll && ImGui::GetScrollY() <= ImGui::GetScrollMaxY()) {
-				ImGui::SetScrollHereY(1.0f);
-			}
+			if (LogStats::s_autoScroll && ImGui::GetScrollY() <= ImGui::GetScrollMaxY()) { ImGui::SetScrollHereY(1.0f); }
 		}
 	}
 	ImGui::End();
@@ -142,12 +129,8 @@ LogStats::LogStats() {
 void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f32 height) {
 #if defined(LEVK_USE_IMGUI)
 	auto const& stats = Engine::stats().frame;
-	if (stats.ft != Time_s()) {
-		m_frameTime.fts.push_back(stats.ft);
-	}
-	while (m_frameTime.fts.size() > s_frameTimeCount) {
-		m_frameTime.fts.pop_front();
-	}
+	if (stats.ft != Time_s()) { m_frameTime.fts.push_back(stats.ft); }
+	while (m_frameTime.fts.size() > s_frameTimeCount) { m_frameTime.fts.pop_front(); }
 	if (auto imgui = DearImGui::inst(); imgui && imgui->ready()) {
 		m_frameTime.samples.clear();
 		m_frameTime.samples.reserve(s_frameTimeCount);

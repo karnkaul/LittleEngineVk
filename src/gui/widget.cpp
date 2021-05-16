@@ -27,15 +27,11 @@ bool Widget::clicked(input::State const& state, bool style) noexcept {
 	auto const st = status(state);
 	if (style && (!cooldown || st <= Status::eHover)) {
 		m_material = m_styles.quad[st];
-		if (m_text) {
-			m_text->m_text.colour = m_styles.text[st];
-		}
+		if (m_text) { m_text->m_text.colour = m_styles.text[st]; }
 	}
 	auto const prev = std::exchange(m_previous.status, st);
 	bool const ret = !cooldown && st == Status::eRelease && (prev >= Status::ePress && prev <= Status::eHold);
-	if (ret) {
-		m_previous.point = time::now();
-	}
+	if (ret) { m_previous.point = time::now(); }
 	return ret;
 }
 } // namespace le::gui

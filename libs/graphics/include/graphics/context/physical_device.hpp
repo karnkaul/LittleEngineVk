@@ -41,9 +41,7 @@ class DevicePicker {
 	inline static constexpr Score integrated = -20;
 
 	inline static void addIf(Score& out_base, bool predicate, Score mod) noexcept {
-		if (predicate) {
-			out_base += mod;
-		}
+		if (predicate) { out_base += mod; }
 	}
 
 	PhysicalDevice pick(View<PhysicalDevice> devices, std::optional<std::size_t> indexOverride) const;

@@ -50,9 +50,7 @@ void BufferedFrameSync::refreshSync() {
 	if (!ts.empty()) {
 		Device& d = *m_device;
 		d.defer([&d, sync = ts]() mutable {
-			for (auto& s : sync) {
-				d.destroy(s.sync.drawing, s.sync.drawReady, s.sync.presentReady);
-			}
+			for (auto& s : sync) { d.destroy(s.sync.drawing, s.sync.drawReady, s.sync.presentReady); }
 		});
 		for (auto& s : ts) {
 			s.sync.drawReady = d.makeSemaphore();
@@ -70,9 +68,7 @@ void BufferedFrameSync::destroy() {
 			for (auto& s : sync) {
 				d.destroy(s.framebuffer, s.sync.drawing, s.sync.drawReady, s.sync.presentReady);
 				d.destroy(s.primary.pool);
-				for (FrameSync::Command& c : s.secondary) {
-					d.destroy(c.pool);
-				}
+				for (FrameSync::Command& c : s.secondary) { d.destroy(c.pool); }
 			}
 		});
 		g_log.log(lvl::info, 1, "[{}] BufferedFrameSync destroyed", g_name);

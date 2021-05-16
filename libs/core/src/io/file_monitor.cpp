@@ -31,9 +31,7 @@ FileMonitor::Status FileMonitor::update() {
 	std::error_code errCode;
 	if (rf(m_path, errCode)) {
 		auto const lastWriteTime = lwt(m_path, errCode);
-		if (errCode) {
-			return m_status;
-		}
+		if (errCode) { return m_status; }
 		if (lastWriteTime != m_lastWriteTime || m_status == Status::eNotFound) {
 			bool bDirty = m_lastWriteTime != stdfs::file_time_type();
 			m_lastWriteTime = lastWriteTime;

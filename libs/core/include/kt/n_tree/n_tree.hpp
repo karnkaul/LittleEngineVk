@@ -97,9 +97,7 @@ void n_tree<T>::clear_children() noexcept {
 }
 template <typename T>
 bool n_tree<T>::erase_child(n_tree const& node) noexcept {
-	if (!has_children()) {
-		return false;
-	}
+	if (!has_children()) { return false; }
 	// First node is a special case (cannot erase_after())
 	auto it = m_children.begin();
 	if (&*it == &node) {
@@ -107,9 +105,7 @@ bool n_tree<T>::erase_child(n_tree const& node) noexcept {
 		return true;
 	}
 	// Depth first
-	if (it->erase_child(node)) {
-		return true;
-	}
+	if (it->erase_child(node)) { return true; }
 	// Other nodes are general cases
 	for (auto prev = it++; it != m_children.end(); ++it) {
 		if (&*it == &node) {
@@ -117,9 +113,7 @@ bool n_tree<T>::erase_child(n_tree const& node) noexcept {
 			return true;
 		}
 		// Depth first
-		if (it->erase_child(node)) {
-			return true;
-		}
+		if (it->erase_child(node)) { return true; }
 		prev = it;
 	}
 	return false;
@@ -136,26 +130,18 @@ template <typename T>
 template <typename Pred>
 n_tree<T>* n_tree<T>::depth_first_find(Pred pred) noexcept {
 	for (auto& child : m_children) {
-		if (auto ret = child.find(pred)) {
-			return ret;
-		}
+		if (auto ret = child.find(pred)) { return ret; }
 	}
-	if (pred(m_t)) {
-		return this;
-	}
+	if (pred(m_t)) { return this; }
 	return nullptr;
 }
 template <typename T>
 template <typename Pred>
 n_tree<T> const* n_tree<T>::depth_first_find(Pred pred) const noexcept {
 	for (auto const& child : m_children) {
-		if (auto const ret = child.find(pred)) {
-			return ret;
-		}
+		if (auto const ret = child.find(pred)) { return ret; }
 	}
-	if (pred(m_t)) {
-		return this;
-	}
+	if (pred(m_t)) { return this; }
 	return nullptr;
 }
 } // namespace kt

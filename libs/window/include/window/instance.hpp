@@ -28,7 +28,7 @@ class IInstance : public TMonoInstance<IInstance>, public ISurface {
 };
 
 enum class Style { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };
-constexpr static EnumArray<Style> const styleNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
+constexpr EnumArray<Style, std::string_view> const styleNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
 
 struct IInstance::CreateInfo {
 	struct {

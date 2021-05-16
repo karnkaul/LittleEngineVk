@@ -11,9 +11,7 @@
 
 #define IMGUI(statemt)                                                                                                                                         \
 	do {                                                                                                                                                       \
-		if (auto in = DearImGui::inst(); in && in->ready()) {                                                                                                  \
-			statemt;                                                                                                                                           \
-		}                                                                                                                                                      \
+		if (auto in = DearImGui::inst(); in && in->ready()) { statemt; }                                                                                       \
 	} while (0)
 
 constexpr bool levk_imgui = true;

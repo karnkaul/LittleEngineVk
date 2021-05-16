@@ -23,9 +23,7 @@ void Inspector::update() {
 		auto& registry = *Editor::s_in.registry;
 		Text(registry.name(entity));
 		TWidgetWrap<bool> enb;
-		if (enb(registry.enabled(entity), "Enabled", enb.out)) {
-			registry.enable(entity, enb.out);
-		}
+		if (enb(registry.enabled(entity), "Enabled", enb.out)) { registry.enable(entity, enb.out); }
 		Styler s{Style::eSeparator};
 		static std::string const trID("Transform");
 		if (node) {
@@ -33,9 +31,7 @@ void Inspector::update() {
 			tr(*node, registry);
 		}
 		for (auto& [id, gadget] : s_gadgets) {
-			if ((*gadget)(entity, registry)) {
-				s();
-			}
+			if ((*gadget)(entity, registry)) { s(); }
 		}
 	}
 #endif

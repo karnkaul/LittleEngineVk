@@ -24,15 +24,9 @@ Styler::Styler(StyleFlags flags) : flags(flags) { (*this)(); }
 
 void Styler::operator()(MU std::optional<StyleFlags> f) {
 #if defined(LEVK_USE_IMGUI)
-	if (f) {
-		flags = *f;
-	}
-	if (flags.test(Style::eSameLine)) {
-		ImGui::SameLine();
-	}
-	if (flags.test(Style::eSeparator)) {
-		ImGui::Separator();
-	}
+	if (f) { flags = *f; }
+	if (flags.test(Style::eSameLine)) { ImGui::SameLine(); }
+	if (flags.test(Style::eSeparator)) { ImGui::Separator(); }
 #endif
 }
 
@@ -41,9 +35,7 @@ GUIStateful::GUIStateful() { clicks(guiState); }
 GUIStateful::GUIStateful(GUIStateful&& rhs) : guiState(std::exchange(rhs.guiState, GUIState{})) {}
 
 GUIStateful& GUIStateful::operator=(GUIStateful&& rhs) {
-	if (&rhs != this) {
-		guiState = std::exchange(rhs.guiState, GUIState{});
-	}
+	if (&rhs != this) { guiState = std::exchange(rhs.guiState, GUIState{}); }
 	return *this;
 }
 
@@ -60,15 +52,11 @@ Radio::Radio(MU View<sv> options, MU s32 preSelect, MU bool sameLine) : select(p
 	bool first = true;
 	s32 idx = 0;
 	for (auto text : options) {
-		if (!first && sameLine) {
-			Styler s(Style::eSameLine);
-		}
+		if (!first && sameLine) { Styler s(Style::eSameLine); }
 		first = false;
 		ImGui::RadioButton(text.data(), &select, idx++);
 	}
-	if (select >= 0) {
-		selected = options[(std::size_t)select];
-	}
+	if (select >= 0) { selected = options[(std::size_t)select]; }
 #endif
 }
 
@@ -92,9 +80,7 @@ Combo::Combo(MU sv id, MU View<sv> entries, MU sv preSelect) {
 					select = (s32)i;
 					selected = entry;
 				}
-				if (bSelected) {
-					ImGui::SetItemDefaultFocus();
-				}
+				if (bSelected) { ImGui::SetItemDefaultFocus(); }
 				++i;
 			}
 			ImGui::EndCombo();
@@ -123,9 +109,7 @@ TreeNode::TreeNode(MU sv id, MU bool bSelected, MU bool bLeaf, MU bool bFullWidt
 
 TreeNode::~TreeNode() {
 #if defined(LEVK_USE_IMGUI)
-	if (test(GUI::eOpen)) {
-		ImGui::TreePop();
-	}
+	if (test(GUI::eOpen)) { ImGui::TreePop(); }
 #endif
 }
 
@@ -137,31 +121,23 @@ MenuBar::Menu::Menu(MU sv id) {
 
 MenuBar::Menu::~Menu() {
 #if defined(LEVK_USE_IMGUI)
-	if (guiState[GUI::eOpen]) {
-		ImGui::EndMenu();
-	}
+	if (guiState[GUI::eOpen]) { ImGui::EndMenu(); }
 #endif
 }
 
 MenuBar::Item::Item(MU sv id, MU bool separator) {
 #if defined(LEVK_USE_IMGUI)
 	guiState[GUI::eLeftClicked] = ImGui::MenuItem(id.data());
-	if (separator) {
-		Styler s{Style::eSeparator};
-	}
+	if (separator) { Styler s{Style::eSeparator}; }
 #endif
 }
 
 void MenuBar::walk(MU MenuList::Tree const& tree) {
 #if defined(LEVK_USE_IMGUI)
 	if (!tree.has_children()) {
-		if (auto it = MenuBar::Item(tree.m_t.id, tree.m_t.separator); it && tree.m_t.callback) {
-			tree.m_t.callback();
-		}
+		if (auto it = MenuBar::Item(tree.m_t.id, tree.m_t.separator); it && tree.m_t.callback) { tree.m_t.callback(); }
 	} else if (auto mb = Menu(tree.m_t.id)) {
-		for (MenuList::Tree const& item : tree.children()) {
-			walk(item);
-		}
+		for (MenuList::Tree const& item : tree.children()) { walk(item); }
 	}
 #endif
 }
@@ -176,9 +152,7 @@ MenuBar::MenuBar(MU MenuList const& list) {
 #if defined(LEVK_USE_IMGUI)
 	guiState.reset();
 	if (ImGui::BeginMenuBar()) {
-		for (MenuList::Tree const& tree : list.trees) {
-			walk(tree);
-		}
+		for (MenuList::Tree const& tree : list.trees) { walk(tree); }
 		ImGui::EndMenuBar();
 	}
 #endif
@@ -186,9 +160,7 @@ MenuBar::MenuBar(MU MenuList const& list) {
 
 MenuBar::~MenuBar() {
 #if defined(LEVK_USE_IMGUI)
-	if (guiState[GUI::eOpen]) {
-		ImGui::EndMenuBar();
-	}
+	if (guiState[GUI::eOpen]) { ImGui::EndMenuBar(); }
 #endif
 }
 
@@ -200,9 +172,7 @@ TabBar::TabBar(MU std::string_view id, MU s32 flags) {
 
 TabBar::~TabBar() {
 #if defined(LEVK_USE_IMGUI)
-	if (guiState[GUI::eOpen]) {
-		ImGui::EndTabBar();
-	}
+	if (guiState[GUI::eOpen]) { ImGui::EndTabBar(); }
 #endif
 }
 
@@ -214,9 +184,7 @@ TabBar::Item::Item(MU std::string_view id, MU s32 flags) {
 
 TabBar::Item::~Item() {
 #if defined(LEVK_USE_IMGUI)
-	if (guiState[GUI::eOpen]) {
-		ImGui::EndTabItem();
-	}
+	if (guiState[GUI::eOpen]) { ImGui::EndTabItem(); }
 #endif
 }
 
@@ -225,9 +193,7 @@ Pane::Pane(MU std::string_view id, MU glm::vec2 size, MU glm::vec2 pos, MU bool*
 	ImGui::SetNextWindowSize({size.x, size.y}, ImGuiCond_Once);
 	ImGui::SetNextWindowPos({pos.x, pos.y}, ImGuiCond_Once);
 	guiState[GUI::eOpen] = ImGui::Begin(id.data(), open, flags);
-	if (guiState[GUI::eOpen] && blockResize) {
-		s_blockResize = true;
-	}
+	if (guiState[GUI::eOpen] && blockResize) { s_blockResize = true; }
 #endif
 }
 
@@ -255,18 +221,14 @@ TWidget<bool>::TWidget(MU sv id, MU bool& out_b) {
 
 TWidget<s32>::TWidget(MU sv id, MU s32& out_s, MU f32 w) {
 #if defined(LEVK_USE_IMGUI)
-	if (w > 0.0f) {
-		ImGui::SetNextItemWidth(w);
-	}
+	if (w > 0.0f) { ImGui::SetNextItemWidth(w); }
 	ImGui::DragInt(id.empty() ? "[Unnamed]" : id.data(), &out_s);
 #endif
 }
 
 TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w) {
 #if defined(LEVK_USE_IMGUI)
-	if (w > 0.0f) {
-		ImGui::SetNextItemWidth(w);
-	}
+	if (w > 0.0f) { ImGui::SetNextItemWidth(w); }
 	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_f, df);
 #endif
 }
@@ -281,9 +243,7 @@ TWidget<Colour>::TWidget(MU sv id, MU Colour& out_colour) {
 
 TWidget<std::string>::TWidget(MU sv id, MU ZeroedBuf& out_buf, MU f32 width, MU std::size_t max) {
 #if defined(LEVK_USE_IMGUI)
-	if (max <= (std::size_t)width) {
-		max = (std::size_t)width;
-	}
+	if (max <= (std::size_t)width) { max = (std::size_t)width; }
 	out_buf.reserve(max);
 	if (out_buf.size() < max) {
 		std::size_t const diff = max - out_buf.size();
@@ -305,9 +265,7 @@ TWidget<glm::vec2>::TWidget(MU sv id, MU glm::vec2& out_vec, MU bool bNormalised
 		}
 	}
 	ImGui::DragFloat2(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
-	if (bNormalised) {
-		out_vec = glm::normalize(out_vec);
-	}
+	if (bNormalised) { out_vec = glm::normalize(out_vec); }
 #endif
 }
 
@@ -321,9 +279,7 @@ TWidget<glm::vec3>::TWidget(MU sv id, MU glm::vec3& out_vec, MU bool bNormalised
 		}
 	}
 	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
-	if (bNormalised) {
-		out_vec = glm::normalize(out_vec);
-	}
+	if (bNormalised) { out_vec = glm::normalize(out_vec); }
 #endif
 }
 
@@ -353,13 +309,9 @@ TWidget<SceneNode>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU SceneNode&
 TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s64 max, MU s64 dt) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::PushButtonRepeat(true);
-	if (ImGui::ArrowButton(fmt::format("##{}_left", id).data(), ImGuiDir_Left) && out_t > min) {
-		out_t -= dt;
-	}
+	if (ImGui::ArrowButton(fmt::format("##{}_left", id).data(), ImGuiDir_Left) && out_t > min) { out_t -= dt; }
 	ImGui::SameLine(0.0f, 3.0f);
-	if (ImGui::ArrowButton(fmt::format("##{}_right", id).data(), ImGuiDir_Right) && out_t < max) {
-		out_t += dt;
-	}
+	if (ImGui::ArrowButton(fmt::format("##{}_right", id).data(), ImGuiDir_Right) && out_t < max) { out_t += dt; }
 	ImGui::PopButtonRepeat();
 	ImGui::SameLine(0.0f, 5.0f);
 	ImGui::Text("%s", id.data());
@@ -373,9 +325,7 @@ Editor::Editor() {
 }
 
 bool Editor::active() const noexcept {
-	if constexpr (levk_imgui) {
-		return DearImGui::inst() != nullptr;
-	}
+	if constexpr (levk_imgui) { return DearImGui::inst() != nullptr; }
 	return false;
 }
 
@@ -386,16 +336,10 @@ Viewport const& Editor::view() const noexcept {
 
 void Editor::update([[maybe_unused]] DesktopInstance& win, [[maybe_unused]] input::State const& state) {
 #if defined(LEVK_DESKTOP)
-	if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) {
-		s_out = {};
-	}
-	if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) {
-		s_out.inspecting = {};
-	}
+	if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) { s_out = {}; }
+	if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
 	if (active() && s_engaged) {
-		if (!edi::Pane::s_blockResize) {
-			m_storage.resizer(win, m_storage.gameView, state);
-		}
+		if (!edi::Pane::s_blockResize) { m_storage.resizer(win, m_storage.gameView, state); }
 		edi::Pane::s_blockResize = false;
 		m_storage.menu(s_in.menu);
 		glm::vec2 const fbSize = {f32(win.framebufferSize().x), f32(win.framebufferSize().y)};

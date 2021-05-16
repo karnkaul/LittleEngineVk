@@ -43,19 +43,12 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 		}
 		case window::Event::Type::eResize: {
 			auto const& resize = e->payload.resize;
-			if (resize.bFramebuffer) {
-				out_flags.set(Flag::eResized);
-			}
+			if (resize.bFramebuffer) { out_flags.set(Flag::eResized); }
 			break;
 		}
-		case window::Event::Type::eInit:
-			out_flags.set(Flag::eInit);
-			break;
-		case window::Event::Type::eTerm:
-			out_flags.set(Flag::eTerm);
-			break;
-		default:
-			break;
+		case window::Event::Type::eInit: out_flags.set(Flag::eInit); break;
+		case window::Event::Type::eTerm: out_flags.set(Flag::eTerm); break;
+		default: break;
 		}
 	}
 }
@@ -218,23 +211,17 @@ class DrawDispatch {
 		m_view.mats.write(v);
 		if (!lights.empty()) {
 			DirLights dl;
-			for (std::size_t idx = 0; idx < lights.size() && idx < dl.lights.size(); ++idx) {
-				dl.lights[idx] = lights[idx];
-			}
+			for (std::size_t idx = 0; idx < lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = lights[idx]; }
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : groups) {
-			update(group);
-		}
+		for (auto& group : groups) { update(group); }
 	}
 
 	void update(SceneDrawer::Group const& group) const {
 		auto& si = group.group.pipeline->shaderInput();
 		si.update(m_view.mats, 0, 0, 0);
-		if (group.group.order >= 0 && si.contains(0, 1)) {
-			si.update(m_view.lights, 0, 1, 0);
-		}
+		if (group.group.order >= 0 && si.contains(0, 1)) { si.update(m_view.lights, 0, 1, 0); }
 		auto const sb10 = SetBind(si, 1, 0);
 		auto const sb20 = SetBind(si, 2, 0);
 		auto const sb21 = SetBind(si, 2, 1);
@@ -255,15 +242,9 @@ class DrawDispatch {
 						ENSURE(mat.map_Kd, "Null cubemap");
 						si.update(*mat.map_Kd, 0, 1, primIdx);
 					}
-					if (sb20) {
-						si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, primIdx);
-					}
-					if (sb21) {
-						si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, primIdx);
-					}
-					if (sb22) {
-						si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, primIdx);
-					}
+					if (sb20) { si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, primIdx); }
+					if (sb21) { si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, primIdx); }
+					if (sb22) { si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, primIdx); }
 					if (sb30) {
 						auto const sm = ShadeMat::make(mat);
 						graphics::Buffer const buf = m_vram->makeBO(sm, vk::BufferUsageFlagBits::eUniformBuffer);
@@ -288,9 +269,7 @@ class DrawDispatch {
 		for (SceneDrawer::Item const& d : group.items) {
 			if (!d.primitives.empty()) {
 				pipe.bindSet(cb, 1, itemIdx++);
-				if (d.scissor) {
-					cb.setScissor(*d.scissor);
-				}
+				if (d.scissor) { cb.setScissor(*d.scissor); }
 				for (Primitive const& prim : d.primitives) {
 					pipe.bindSet(cb, {2, 3}, primIdx++);
 					ENSURE(prim.mesh, "Null mesh");
@@ -449,12 +428,8 @@ class App : public input::Receiver {
 	}
 
 	bool block(input::State const& state) override {
-		if (state.focus == input::Focus::eGained) {
-			m_store.update();
-		}
-		if (m_controls.editor(state)) {
-			Editor::s_engaged = !Editor::s_engaged;
-		}
+		if (state.focus == input::Focus::eGained) { m_store.update(); }
+		if (m_controls.editor(state)) { Editor::s_engaged = !Editor::s_engaged; }
 		return false;
 	}
 
@@ -626,12 +601,8 @@ class App : public input::Receiver {
 			Editor::s_in.customEntities.push_back(m_data.camera);
 		}
 
-		if (!m_data.loader.ready(&m_tasks)) {
-			return;
-		}
-		if (m_data.registry.empty()) {
-			init1();
-		}
+		if (!m_data.loader.ready(&m_tasks)) { return; }
+		if (m_data.registry.empty()) { init1(); }
 		auto guiRoot = m_data.registry.find<gui::Root>(m_data.guiRoot);
 		m_eng->update(guiRoot);
 		if (guiRoot) {
@@ -655,9 +626,7 @@ class App : public input::Receiver {
 				s_prev = {};
 			}*/
 		}
-		if (m_data.button && m_data.button->clicked(m_eng->inputState())) {
-			logD("click!");
-		}
+		if (m_data.button && m_data.button->clicked(m_eng->inputState())) { logD("click!"); }
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
 		if (pc.active) {
@@ -670,9 +639,7 @@ class App : public input::Receiver {
 			cam.tick(m_eng->inputState(), dt, m_eng->desktop());
 		}
 		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) {
-			node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
-		}
+		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
 		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_1_0"])) {
 			static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 			s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
@@ -777,9 +744,7 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 				engine.unboot();
 				break;
 			}
-			if (flags.test(Flag::ePaused)) {
-				continue;
-			}
+			if (flags.test(Flag::ePaused)) { continue; }
 			if (flags.test(Flag::eInit)) {
 				app.reset();
 				engine.boot(bootInfo);
@@ -799,9 +764,7 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 				flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
 			}
 		}
-	} catch (std::exception const& e) {
-		logE("exception: {}", e.what());
-	}
+	} catch (std::exception const& e) { logE("exception: {}", e.what()); }
 	return true;
 }
 } // namespace le::demo

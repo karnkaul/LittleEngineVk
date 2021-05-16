@@ -7,21 +7,15 @@
 namespace le {
 u32 Fixed::toU32() const {
 	f64 val = toF64();
-	if (val < 0) {
-		val = -val;
-	}
+	if (val < 0) { val = -val; }
 	u32 floor = u32(val);
-	if ((floor * f64(s_scaleFactor)) - f64(value) >= 0.5) {
-		return floor + 1;
-	}
+	if ((floor * f64(s_scaleFactor)) - f64(value) >= 0.5) { return floor + 1; }
 	return floor;
 }
 
 s32 Fixed::toS32() const {
 	s32 floor = s32(toF64());
-	if ((floor * f64(s_scaleFactor)) - f64(value) >= 0.5) {
-		return floor + 1;
-	}
+	if ((floor * f64(s_scaleFactor)) - f64(value) >= 0.5) { return floor + 1; }
 	return floor;
 }
 

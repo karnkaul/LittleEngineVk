@@ -10,29 +10,21 @@
 namespace le::graphics {
 namespace {
 bool stale(DescriptorSet::Imgs const& lhs, DescriptorSet::Imgs const& rhs) noexcept {
-	if (lhs.images.size() != rhs.images.size()) {
-		return true;
-	}
+	if (lhs.images.size() != rhs.images.size()) { return true; }
 	for (std::size_t idx = 0; idx < lhs.images.size(); ++idx) {
 		auto const& l = lhs.images[idx];
 		auto const& r = rhs.images[idx];
-		if (l.image != r.image || l.sampler != r.sampler) {
-			return true;
-		}
+		if (l.image != r.image || l.sampler != r.sampler) { return true; }
 	}
 	return false;
 }
 
 bool stale(DescriptorSet::Bufs const& lhs, DescriptorSet::Bufs const& rhs) noexcept {
-	if (lhs.buffers.size() != rhs.buffers.size() || lhs.type != rhs.type) {
-		return true;
-	}
+	if (lhs.buffers.size() != rhs.buffers.size() || lhs.type != rhs.type) { return true; }
 	for (std::size_t idx = 0; idx < lhs.buffers.size(); ++idx) {
 		auto const& l = lhs.buffers[idx];
 		auto const& r = rhs.buffers[idx];
-		if (l.size != r.size || l.writes != r.writes || l.buffer != r.buffer) {
-			return true;
-		}
+		if (l.size != r.size || l.writes != r.writes || l.buffer != r.buffer) { return true; }
 	}
 	return false;
 }
@@ -82,9 +74,7 @@ DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
 DescriptorSet::~DescriptorSet() { destroy(); }
 
 void DescriptorSet::index(std::size_t index) {
-	if (index < m_storage.rotateCount) {
-		m_storage.setBuffer.index = index;
-	}
+	if (index < m_storage.rotateCount) { m_storage.setBuffer.index = index; }
 }
 
 void DescriptorSet::swap() { m_storage.setBuffer.next(); }
@@ -126,16 +116,12 @@ bool DescriptorSet::updateImgs(u32 binding, Imgs imgs) {
 }
 
 BindingInfo const* DescriptorSet::binding(u32 bind) const noexcept {
-	if (auto it = m_storage.bindingInfos.find(bind); it != m_storage.bindingInfos.end()) {
-		return &it->second;
-	}
+	if (auto it = m_storage.bindingInfos.find(bind); it != m_storage.bindingInfos.end()) { return &it->second; }
 	return nullptr;
 }
 
 bool DescriptorSet::contains(u32 bind) const noexcept {
-	if (auto b = binding(bind)) {
-		return b && !b->bUnassigned;
-	}
+	if (auto b = binding(bind)) { return b && !b->bUnassigned; }
 	return false;
 }
 
@@ -149,9 +135,7 @@ void DescriptorSet::update(vk::WriteDescriptorSet write) { m_device->device().up
 void DescriptorSet::destroy() {
 	Device& d = *m_device;
 	d.defer([b = m_storage.setBuffer, &d]() mutable {
-		for (Set& set : b.ts) {
-			d.destroy(set.pool);
-		}
+		for (Set& set : b.ts) { d.destroy(set.pool); }
 	});
 	m_storage = {};
 }
@@ -213,15 +197,11 @@ Span<DescriptorSet> SetPool::populate(std::size_t count) {
 }
 
 void SetPool::swap() {
-	for (auto& descriptorSet : m_storage.descriptorSets) {
-		descriptorSet.swap();
-	}
+	for (auto& descriptorSet : m_storage.descriptorSets) { descriptorSet.swap(); }
 }
 
 bool SetPool::contains(u32 bind) const noexcept {
-	if (!m_storage.descriptorSets.empty()) {
-		return m_storage.descriptorSets.front().contains(bind);
-	}
+	if (!m_storage.descriptorSets.empty()) { return m_storage.descriptorSets.front().contains(bind); }
 	if (bind < (u32)m_storage.bindInfos.size()) {
 		auto const& bi = m_storage.bindInfos[(std::size_t)bind];
 		return bi.binding.binding == bind && !bi.bUnassigned;
@@ -230,9 +210,7 @@ bool SetPool::contains(u32 bind) const noexcept {
 }
 
 bool SetPool::unassigned() const noexcept {
-	if (!m_storage.descriptorSets.empty()) {
-		return m_storage.descriptorSets.front().unassigned();
-	}
+	if (!m_storage.descriptorSets.empty()) { return m_storage.descriptorSets.front().unassigned(); }
 	auto const& bi = m_storage.bindInfos;
 	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](BindingInfo const& b) { return b.bUnassigned; });
 }
@@ -242,40 +220,30 @@ void SetPool::clear() noexcept { m_storage.descriptorSets.clear(); }
 ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) { m_setPools = pipe.makeSetPools(rotateCount); }
 
 SetPool& ShaderInput::set(u32 set) {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
-		return it->second;
-	}
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
 	ENSURE(false, "Nonexistent set");
 	throw std::runtime_error("Nonexistent set");
 }
 
 SetPool const& ShaderInput::set(u32 set) const {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
-		return it->second;
-	}
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
 	ENSURE(false, "Nonexistent set");
 	throw std::runtime_error("Nonexistent set");
 }
 
 void ShaderInput::swap() {
-	for (auto& [_, set] : m_setPools) {
-		set.swap();
-	}
+	for (auto& [_, set] : m_setPools) { set.swap(); }
 }
 
 bool ShaderInput::empty() const noexcept { return m_setPools.empty(); }
 
 bool ShaderInput::contains(u32 set) const noexcept {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
-		return !it->second.unassigned();
-	}
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return !it->second.unassigned(); }
 	return false;
 }
 
 bool ShaderInput::contains(u32 set, u32 bind) const noexcept {
-	if (auto it = m_setPools.find(set); it != m_setPools.end()) {
-		return it->second.contains(bind);
-	}
+	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second.contains(bind); }
 	return false;
 }
 
@@ -303,9 +271,7 @@ bool ShaderInput::update(View<Buffer> buffers, u32 set, u32 bind, std::size_t id
 			return false;
 		}
 	}
-	if (buffers.empty()) {
-		return false;
-	}
+	if (buffers.empty()) { return false; }
 	this->set(set).index(idx).update(bind, buffers, type);
 	return true;
 }
@@ -332,8 +298,6 @@ SetPool& ShaderInput::operator[](u32 set) { return this->set(set); }
 SetPool const& ShaderInput::operator[](u32 set) const { return this->set(set); }
 
 void ShaderInput::clearSets() noexcept {
-	for (auto& [_, pool] : m_setPools) {
-		pool.clear();
-	}
+	for (auto& [_, pool] : m_setPools) { pool.clear(); }
 }
 } // namespace le::graphics

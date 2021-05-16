@@ -250,9 +250,7 @@ TInspector<T>::TInspector(decf::registry_t& out_registry, decf::entity_t entity,
 		node.emplace(this->id);
 		if (*node) {
 			bOpen = true;
-			if (node->test(GUI::eRightClicked)) {
-				out_registry.detach<T>(entity);
-			}
+			if (node->test(GUI::eRightClicked)) { out_registry.detach<T>(entity); }
 		}
 	}
 }

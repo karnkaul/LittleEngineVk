@@ -40,9 +40,7 @@ Memory::Memory(not_null<Device*> device) : m_device(device) {
 	vkFunc.vkGetPhysicalDeviceMemoryProperties2KHR = dl.vkGetPhysicalDeviceMemoryProperties2KHR;
 	allocatorInfo.pVulkanFunctions = &vkFunc;
 	vmaCreateAllocator(&allocatorInfo, &m_allocator);
-	for (auto& count : m_allocations) {
-		count.store(0);
-	}
+	for (auto& count : m_allocations.arr) { count.store(0); }
 	g_log.log(lvl::info, 1, "[{}] Memory constructed", g_name);
 }
 
@@ -75,7 +73,7 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : Resource(memo
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(memory->m_allocator, m_data.handle, &allocationInfo);
 	m_data.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};
-	memory->m_allocations[(std::size_t)type].fetch_add(m_storage.writeSize);
+	memory->m_allocations[type].fetch_add(m_storage.writeSize);
 }
 
 Buffer::Buffer(Buffer&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) { m_data = std::exchange(rhs.m_data, Data()); }
@@ -94,11 +92,9 @@ Buffer::~Buffer() { destroy(); }
 
 void Buffer::destroy() {
 	Memory& m = *m_memory;
-	if (m_storage.pMap) {
-		vmaUnmapMemory(m.m_allocator, m_data.handle);
-	}
+	if (m_storage.pMap) { vmaUnmapMemory(m.m_allocator, m_data.handle); }
 	if (!Device::default_v(m_storage.buffer)) {
-		m.m_allocations[(std::size_t)type].fetch_sub(m_storage.writeSize);
+		m.m_allocations[type].fetch_sub(m_storage.writeSize);
 		auto del = [a = m.m_allocator, b = m_storage.buffer, h = m_data.handle]() { vmaDestroyBuffer(a, static_cast<VkBuffer>(b), h); };
 		m.m_device->defer(del);
 	}
@@ -109,9 +105,7 @@ void const* Buffer::map() {
 		g_log.log(lvl::error, 1, "[{}] Attempt to map GPU-only Buffer!", g_name);
 		return nullptr;
 	}
-	if (!m_storage.pMap && m_storage.writeSize > 0) {
-		vmaMapMemory(m_memory->m_allocator, m_data.handle, &m_storage.pMap);
-	}
+	if (!m_storage.pMap && m_storage.writeSize > 0) { vmaMapMemory(m_memory->m_allocator, m_data.handle, &m_storage.pMap); }
 	return mapped();
 }
 
@@ -130,9 +124,7 @@ bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset
 		return false;
 	}
 	if (!Device::default_v(m_data.alloc.memory) && !Device::default_v(m_storage.buffer)) {
-		if (size == 0) {
-			size = m_storage.writeSize - offset;
-		}
+		if (size == 0) { size = m_storage.writeSize - offset; }
 		if (auto pMap = map()) {
 			void* pStart = (void*)((char*)pMap + offset);
 			std::memcpy(pStart, pData, (std::size_t)size);
@@ -167,7 +159,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	m_data.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};
 	m_storage.allocatedSize = requirements.size;
 	m_data.mode = imageInfo.sharingMode;
-	memory->m_allocations[(std::size_t)type].fetch_add(m_storage.allocatedSize);
+	memory->m_allocations[type].fetch_add(m_storage.allocatedSize);
 }
 
 Image::Image(Image&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) { m_data = std::exchange(rhs.m_data, Data()); }
@@ -187,7 +179,7 @@ Image::~Image() { destroy(); }
 void Image::destroy() {
 	if (!Device::default_v(m_storage.image)) {
 		Memory& m = *m_memory;
-		m.m_allocations[(std::size_t)type].fetch_sub(m_storage.allocatedSize);
+		m.m_allocations[type].fetch_sub(m_storage.allocatedSize);
 		auto del = [a = m.m_allocator, i = m_storage.image, h = m_data.handle]() { vmaDestroyImage(a, static_cast<VkImage>(i), h); };
 		m.m_device->defer(del);
 	}

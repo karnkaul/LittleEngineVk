@@ -3,6 +3,7 @@
 #define __STDC_FORMAT_MACROS
 #endif
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -51,8 +52,16 @@ using bytearray = std::vector<std::byte>;
 
 using namespace std::string_view_literals;
 
-template <typename E, typename T = std::string_view, std::size_t N = (std::size_t)E::eCOUNT_>
-using EnumArray = std::array<T, N>;
+template <typename Enum, typename Ty, std::size_t N = (std::size_t)Enum::eCOUNT_>
+requires std::is_enum_v<Enum>
+struct EnumArray {
+	using type = Ty;
+
+	type arr[N] = {};
+
+	constexpr type const& operator[](Enum e) const noexcept { return arr[(std::size_t)e]; }
+	constexpr type& operator[](Enum e) noexcept { return arr[(std::size_t)e]; }
+};
 
 template <typename...>
 constexpr bool false_v = false;
@@ -64,7 +73,7 @@ constexpr bool true_v = true;
 /// \brief Obtain the number of elements in a stack array
 ///
 template <typename T, std::size_t N>
-constexpr std::size_t arraySize(T (&)[N]) {
+constexpr std::size_t arraySize(T (&)[N]) noexcept {
 	return N;
 }
 

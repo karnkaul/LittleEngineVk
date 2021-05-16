@@ -21,12 +21,8 @@ Version::Version(std::string_view serialised) noexcept {
 std::string Version::toString(bool bFull) const {
 	std::stringstream ret;
 	ret << mj << "." << mn;
-	if (tw > 0 || pa > 0 || bFull) {
-		ret << "." << pa;
-	}
-	if (tw > 0 || bFull) {
-		ret << "." << tw;
-	}
+	if (tw > 0 || pa > 0 || bFull) { ret << "." << pa; }
+	if (tw > 0 || bFull) { ret << "." << tw; }
 	return ret.str();
 }
 } // namespace le

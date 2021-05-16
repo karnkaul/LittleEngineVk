@@ -181,9 +181,7 @@ void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes)
 template <typename C>
 void DescriptorSet::update(u32 binding, C const& buffers, vk::DescriptorType type) {
 	Bufs bufs;
-	for (Buffer const& buf : buffers) {
-		bufs.buffers.push_back({buf.buffer(), (std::size_t)buf.writeSize(), buf.writeCount()});
-	}
+	for (Buffer const& buf : buffers) { bufs.buffers.push_back({buf.buffer(), (std::size_t)buf.writeSize(), buf.writeCount()}); }
 	bufs.type = type;
 	updateBufs(binding, std::move(bufs));
 }
@@ -191,9 +189,7 @@ template <typename C>
 bool DescriptorSet::update(u32 binding, C const& textures) {
 	Imgs imgs;
 	imgs.images.reserve(textures.size());
-	for (Texture const& tex : textures) {
-		imgs.images.push_back({tex.data().imageView, tex.data().sampler});
-	}
+	for (Texture const& tex : textures) { imgs.images.push_back({tex.data().imageView, tex.data().sampler}); }
 	return updateImgs(binding, std::move(imgs));
 }
 inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) { update(binding, View<Ref<Buffer const>>(buffer), type); }

@@ -36,20 +36,14 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 		ENSURE(false, VK_LOG_MSG);
 		return true;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		if (g_validationLevel <= dl::level::warning) {
-			g_log.log(lvl::warning, 1, "[{}] {}", name, VK_LOG_MSG);
-		}
+		if (g_validationLevel <= dl::level::warning) { g_log.log(lvl::warning, 1, "[{}] {}", name, VK_LOG_MSG); }
 		break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		if (g_validationLevel <= dl::level::info) {
-			g_log.log(lvl::info, 1, "[{}] {}", name, VK_LOG_MSG);
-		}
+		if (g_validationLevel <= dl::level::info) { g_log.log(lvl::info, 1, "[{}] {}", name, VK_LOG_MSG); }
 		break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		if (g_validationLevel <= dl::level::debug) {
-			g_log.log(lvl::debug, 2, "[{}] {}", name, VK_LOG_MSG);
-		}
+		if (g_validationLevel <= dl::level::debug) { g_log.log(lvl::debug, 2, "[{}] {}", name, VK_LOG_MSG); }
 		break;
 	}
 	return false;
@@ -58,13 +52,9 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 bool findLayer(std::vector<vk::LayerProperties> const& available, char const* szLayer, std::optional<dl::level> log) {
 	std::string_view const layerName(szLayer);
 	for (auto& layer : available) {
-		if (std::string_view(layer.layerName) == layerName) {
-			return true;
-		}
+		if (std::string_view(layer.layerName) == layerName) { return true; }
 	}
-	if (log) {
-		dl::log(*log, "[{}] Requested layer [{}] not available!", g_name, szLayer);
-	}
+	if (log) { dl::log(*log, "[{}] Requested layer [{}] not available!", g_name, szLayer); }
 	return false;
 }
 } // namespace
@@ -92,9 +82,7 @@ Instance::Instance(CreateInfo const& info) {
 	m_metadata.layers.clear();
 	std::unordered_set<std::string_view> requiredExtensionsSet = {info.extensions.begin(), info.extensions.end()};
 	bool bValidation = false;
-	if (s_forceValidation) {
-		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, *s_forceValidation ? "on" : "off");
-	}
+	if (s_forceValidation) { g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, *s_forceValidation ? "on" : "off"); }
 	if ((!s_forceValidation && info.bValidation) || s_forceValidation.value_or(false)) {
 		if (!findLayer(layerProps, szValidationLayer, dl::level::warning)) {
 			ENSURE(false, "Validation layers requested but not present!");
@@ -104,9 +92,7 @@ Instance::Instance(CreateInfo const& info) {
 			bValidation = true;
 		}
 	}
-	for (auto ext : requiredExtensionsSet) {
-		m_metadata.extensions.push_back(ext.data());
-	}
+	for (auto ext : requiredExtensionsSet) { m_metadata.extensions.push_back(ext.data()); }
 	vk::ApplicationInfo appInfo;
 	appInfo.pApplicationName = "LittleEngineVk Game";
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -144,9 +130,7 @@ kt::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(View<std::string_
 	for (auto const& device : devices) {
 		std::unordered_set<std::string_view> missing(required.begin(), required.end());
 		std::vector<vk::ExtensionProperties> const supported = device.enumerateDeviceExtensionProperties();
-		for (std::size_t idx = 0; idx < supported.size() && !missing.empty(); ++idx) {
-			missing.erase(std::string_view(supported[idx].extensionName));
-		}
+		for (std::size_t idx = 0; idx < supported.size() && !missing.empty(); ++idx) { missing.erase(std::string_view(supported[idx].extensionName)); }
 		if (missing.empty()) {
 			PhysicalDevice available;
 			available.properties = device.getProperties();
@@ -154,9 +138,7 @@ kt::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(View<std::string_
 			available.features = device.getFeatures();
 			available.device = device;
 			ret.push_back(std::move(available));
-			if (ret.size() == ret.capacity()) {
-				break;
-			}
+			if (ret.size() == ret.capacity()) { break; }
 		}
 	}
 	return ret;

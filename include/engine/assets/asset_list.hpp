@@ -106,9 +106,7 @@ AssetListLoader::StageID AssetListLoader::stage(AssetStore& store, AssetList<T> 
 
 template <typename T>
 void AssetListLoader::load(AssetStore& store, AssetList<T> const& list) {
-	for (auto const& cb : list.callbacks(store)) {
-		cb();
-	}
+	for (auto const& cb : list.callbacks(store)) { cb(); }
 }
 
 inline bool AssetListLoader::ready(Scheduler const* scheduler) const noexcept {

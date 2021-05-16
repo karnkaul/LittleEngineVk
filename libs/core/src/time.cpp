@@ -15,9 +15,7 @@ std::string time::format(Time_s duration) {
 		h -= d;
 		str << d.count() << ':' << std::setw(2);
 	}
-	if (h > stdch::hours(0)) {
-		str << h.count() << ':';
-	}
+	if (h > stdch::hours(0)) { str << h.count() << ':'; }
 	auto const m = cast<stdch::minutes>(duration) % stdch::minutes(60);
 	auto const s = cast<stdch::seconds>(duration) % stdch::seconds(60);
 	str << std::setw(2) << m.count() << ':' << std::setw(2) << s.count();

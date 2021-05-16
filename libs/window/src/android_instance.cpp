@@ -25,9 +25,7 @@ void apollEvents(android_app* pApp) {
 		int events;
 		android_poll_source* pSource;
 		if (ALooper_pollAll(0, nullptr, &events, (void**)&pSource) >= 0) {
-			if (pSource) {
-				pSource->process(pApp, pSource);
-			}
+			if (pSource) { pSource->process(pApp, pSource); }
 		}
 		if (pApp->destroyRequested) {
 			Event event;
@@ -118,20 +116,14 @@ void deinit() {
 } // namespace
 
 AndroidInstance::AndroidInstance(CreateInfo const& info) : IInstance(true) {
-	if (g_state.bInit || g_state.pApp) {
-		throw std::runtime_error("Duplicate Android instance");
-	}
-	if (!info.config.androidApp.contains<android_app*>()) {
-		throw std::runtime_error("android_app* required to function");
-	}
+	if (g_state.bInit || g_state.pApp) { throw std::runtime_error("Duplicate Android instance"); }
+	if (!info.config.androidApp.contains<android_app*>()) { throw std::runtime_error("android_app* required to function"); }
 	init(m_log, info.config.androidApp.get<android_app*>());
 	m_log.minVerbosity = info.options.verbosity;
 }
 
 AndroidInstance::~AndroidInstance() {
-	if (m_bActive) {
-		deinit();
-	}
+	if (m_bActive) { deinit(); }
 }
 
 View<std::string_view> AndroidInstance::vkInstanceExtensions() const {
@@ -154,9 +146,7 @@ bool AndroidInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurf
 ErasedRef AndroidInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pApp ? g_state.pApp : ErasedRef(); }
 
 EventQueue AndroidInstance::pollEvents() {
-	if (g_state.bInit && g_state.pApp) {
-		apollEvents(g_state.pApp);
-	}
+	if (g_state.bInit && g_state.pApp) { apollEvents(g_state.pApp); }
 	return std::move(g_state.events);
 }
 } // namespace le::window

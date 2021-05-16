@@ -33,9 +33,7 @@ template <typename T>
 class Singleton<T, SingletonStorage::eHeap> : public detail::SingletonBase<T> {
   public:
 	static T& inst() {
-		if (!s_uInst) {
-			s_uInst = std::make_unique<T>();
-		}
+		if (!s_uInst) { s_uInst = std::make_unique<T>(); }
 		return *s_uInst;
 	}
 

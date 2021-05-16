@@ -19,9 +19,7 @@ ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) co
 	if (m_storage.buffers.size() > 1) {
 		std::vector<Ref<Buffer const>> vec;
 		vec.reserve(m_storage.buffers.size());
-		for (RingBuffer<Buffer> const& rb : m_storage.buffers) {
-			vec.push_back(rb.get());
-		}
+		for (RingBuffer<Buffer> const& rb : m_storage.buffers) { vec.push_back(rb.get()); }
 		out_set.update(binding, vec, m_storage.type);
 	} else {
 		out_set.update(binding, m_storage.buffers.front().get(), m_storage.type);
@@ -30,9 +28,7 @@ ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) co
 }
 
 ShaderBuffer& ShaderBuffer::swap() {
-	for (auto& rb : m_storage.buffers) {
-		rb.next();
-	}
+	for (auto& rb : m_storage.buffers) { rb.next(); }
 	return *this;
 }
 
@@ -44,9 +40,7 @@ void ShaderBuffer::resize(std::size_t size, std::size_t count) {
 		m_storage.buffers.reserve(count);
 		for (std::size_t i = m_storage.buffers.size(); i < count; ++i) {
 			RingBuffer<Buffer> buffer;
-			for (u32 j = 0; j < m_storage.rotateCount; ++j) {
-				buffer.ts.push_back(m_vram->makeBuffer(m_storage.elemSize, m_storage.usage, true));
-			}
+			for (u32 j = 0; j < m_storage.rotateCount; ++j) { buffer.ts.push_back(m_vram->makeBuffer(m_storage.elemSize, m_storage.usage, true)); }
 			m_storage.buffers.push_back(std::move(buffer));
 		}
 	}

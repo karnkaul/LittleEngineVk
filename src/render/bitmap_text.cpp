@@ -9,9 +9,7 @@ bool BitmapText::set(BitmapFont const& font, std::string_view str) { return set(
 
 bool BitmapText::set(View<graphics::Glyph> glyphs, glm::ivec2 atlas, std::string_view str) {
 	text.text = str;
-	if (mesh) {
-		return mesh->construct(text.generate(glyphs, atlas));
-	}
+	if (mesh) { return mesh->construct(text.generate(glyphs, atlas)); }
 	return false;
 }
 

@@ -62,9 +62,7 @@ template <typename T>
 Resource const* AssetLoadInfo<T>::resource(io::Path const& path, Resource::Type type, bool bMonitor, bool bForceReload) const {
 	if (auto pRes = m_resources->load(path, type, bMonitor, bForceReload)) {
 		auto const pathStr = path.generic_string();
-		if (bMonitor && !utils::contains(m_monitors, pathStr)) {
-			m_monitors.emplace(pathStr, pRes);
-		}
+		if (bMonitor && !utils::contains(m_monitors, pathStr)) { m_monitors.emplace(pathStr, pRes); }
 		return pRes;
 	}
 	return nullptr;
@@ -75,13 +73,9 @@ io::Reader const& AssetLoadInfo<T>::reader() const {
 }
 template <typename T>
 bool AssetLoadInfo<T>::modified() const {
-	if (m_bDirty) {
-		return true;
-	}
+	if (m_bDirty) { return true; }
 	for (auto const& [_, resource] : m_monitors) {
-		if (auto status = resource->status(); status && *status == io::FileMonitor::Status::eModified) {
-			return true;
-		}
+		if (auto status = resource->status(); status && *status == io::FileMonitor::Status::eModified) { return true; }
 	}
 	return false;
 }

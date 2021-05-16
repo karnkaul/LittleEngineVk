@@ -9,21 +9,15 @@ namespace {
 std::vector<Ref<Deferred::Callback>> decrementImpl(std::vector<Deferred>& out_v) {
 	std::vector<Ref<Deferred::Callback>> ret;
 	for (auto& deferred : out_v) {
-		if (deferred.defer > 0) {
-			--deferred.defer;
-		}
-		if (deferred.defer == 0) {
-			ret.emplace_back(deferred.callback);
-		}
+		if (deferred.defer > 0) { --deferred.defer; }
+		if (deferred.defer == 0) { ret.emplace_back(deferred.callback); }
 	}
 	return ret;
 }
 
 void invokeImpl(View<Ref<Deferred::Callback>> callbacks) {
 	for (Deferred::Callback const& callback : callbacks) {
-		if (callback) {
-			callback();
-		}
+		if (callback) { callback(); }
 	}
 }
 
@@ -43,9 +37,7 @@ std::size_t DeferQueue::decrement() {
 void DeferQueue::flush() {
 	auto lock = m_deferred.lock();
 	for (auto const& [callback, _] : lock.get()) {
-		if (callback) {
-			callback();
-		}
+		if (callback) { callback(); }
 	}
 	lock.get().clear();
 }

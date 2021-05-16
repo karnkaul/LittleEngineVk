@@ -19,9 +19,7 @@ template <typename T, std::size_t N>
 bool compare(std::vector<T> const& lhs, kt::fixed_any<N> const& any) {
 	if (any.template contains<std::vector<T>>()) {
 		auto const& rhs = any.template get<std::vector<T>>();
-		if (lhs.size() == rhs.size()) {
-			return std::equal(lhs.begin(), lhs.end(), rhs.begin());
-		}
+		if (lhs.size() == rhs.size()) { return std::equal(lhs.begin(), lhs.end(), rhs.begin()); }
 	}
 	return false;
 }

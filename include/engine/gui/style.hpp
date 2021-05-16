@@ -22,25 +22,23 @@ struct Style {
 
 template <typename T>
 constexpr T const& Style<T>::operator[](Status s) const noexcept {
-	return overrides[(std::size_t)s].has_value() ? *overrides[(std::size_t)s] : base;
+	return overrides[s].has_value() ? *overrides[s] : base;
 }
 
 template <typename T>
 constexpr T& Style<T>::at(Status s) noexcept {
-	auto& o = overrides[(std::size_t)s];
-	if (!o) {
-		o = base;
-	}
+	auto& o = overrides[s];
+	if (!o) { o = base; }
 	return *o;
 }
 
 template <typename T>
 constexpr void Style<T>::set(Status s, T t) noexcept {
-	overrides[(std::size_t)s] = std::move(t);
+	overrides[s] = std::move(t);
 }
 
 template <typename T>
 constexpr void Style<T>::reset(Status s) noexcept {
-	overrides[(std::size_t)s].reset();
+	overrides[s].reset();
 }
 } // namespace le::gui

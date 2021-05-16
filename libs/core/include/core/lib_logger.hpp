@@ -14,9 +14,7 @@ struct LibLogger {
 
 	template <typename... Args>
 	void log(dl::level level, Verbosity verbosity, std::string_view fmt, Args&&... args) {
-		if (verbosity <= minVerbosity) {
-			::le::detail::logImpl(level, fmt, std::forward<Args>(args)...);
-		}
+		if (verbosity <= minVerbosity) { ::le::detail::logImpl(level, fmt, std::forward<Args>(args)...); }
 	}
 
 	template <typename... Args>

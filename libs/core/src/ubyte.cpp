@@ -4,9 +4,7 @@ namespace le {
 UByte::UByte(std::string_view hex) {
 	std::string str;
 	str += hex;
-	while (str.length() < 2) {
-		str += "f";
-	}
+	while (str.length() < 2) { str += "f"; }
 	rawValue = (u8)stoul(str, nullptr, 16);
 }
 

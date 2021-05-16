@@ -31,9 +31,7 @@ Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bH
 }
 
 VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size) {
-	if (size == 0) {
-		size = src.writeSize();
-	}
+	if (size == 0) { size = src.writeSize(); }
 	[[maybe_unused]] auto const& sq = src.data().queueFlags;
 	[[maybe_unused]] auto const& dq = out_dst.data().queueFlags;
 	[[maybe_unused]] bool const bReady = sq.test(QType::eTransfer) && dq.test(QType::eTransfer);
@@ -71,9 +69,7 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 }
 
 VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size) {
-	if (size == 0) {
-		size = out_deviceBuffer.writeSize();
-	}
+	if (size == 0) { size = out_deviceBuffer.writeSize(); }
 	auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	ENSURE(indices.size() == 1 || out_deviceBuffer.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	bool const bQueueFlags = out_deviceBuffer.data().queueFlags.test(QType::eTransfer);
@@ -191,8 +187,6 @@ VRAM::Future VRAM::copy(View<BMPview> bitmaps, Image& out_dst, LayoutPair layout
 }
 
 void VRAM::waitIdle() {
-	while (m_transfer.update() > 0) {
-		kt::kthread::yield();
-	}
+	while (m_transfer.update() > 0) { kt::kthread::yield(); }
 }
 } // namespace le::graphics

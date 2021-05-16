@@ -29,9 +29,7 @@ std::vector<std::string_view> g_args;
 std::vector<std::string_view> buildArgs(os::Args const& args) {
 	std::vector<std::string_view> ret;
 	ret.reserve(std::size_t(args.argc));
-	for (int i = 0; i < args.argc; ++i) {
-		ret.push_back(args.argv[std::size_t(i)]);
-	}
+	for (int i = 0; i < args.argc; ++i) { ret.push_back(args.argv[std::size_t(i)]); }
 	return ret;
 }
 } // namespace
@@ -43,9 +41,7 @@ void os::args(Args const& args) {
 		io::Path const arg0 = io::absolute(g_args.front());
 		if (!arg0.empty() && io::is_regular_file(arg0)) {
 			g_exePath = arg0.parent_path();
-			while (g_exePath.filename().string() == ".") {
-				g_exePath = g_exePath.parent_path();
-			}
+			while (g_exePath.filename().string() == ".") { g_exePath = g_exePath.parent_path(); }
 			g_exeLocation = g_exePath / arg0.filename();
 		}
 	}
@@ -59,9 +55,7 @@ io::Path os::dirPath(Dir dir) {
 	switch (dir) {
 	default:
 	case os::Dir::eWorking:
-		if (g_workingDir.empty()) {
-			g_workingDir = io::absolute(io::current_path());
-		}
+		if (g_workingDir.empty()) { g_workingDir = io::absolute(io::current_path()); }
 		return g_workingDir;
 	case os::Dir::eExecutable:
 		if (g_exePath.empty()) {
@@ -99,13 +93,9 @@ bool os::debugging() {
 		std::string_view str(buf.data());
 		if (std::size_t const tracer = str.find(tracerPid); tracer < str.size()) {
 			std::size_t begin = tracer + tracerPid.size();
-			while (begin < str.size() && std::isspace(static_cast<unsigned char>(str[begin]))) {
-				++begin;
-			}
+			while (begin < str.size() && std::isspace(static_cast<unsigned char>(str[begin]))) { ++begin; }
 			std::size_t end = begin;
-			while (end < str.size() && !std::isspace(static_cast<unsigned char>(str[end]))) {
-				++end;
-			}
+			while (end < str.size() && !std::isspace(static_cast<unsigned char>(str[end]))) { ++end; }
 			if (str = str.substr(begin, end - begin); !str.empty()) {
 				if (str.size() == 1) {
 					ret = str[0] != '0';
@@ -131,9 +121,7 @@ void os::debugBreak() {
 }
 
 bool os::sysCall(std::string_view command) {
-	if (std::system(command.data()) == 0) {
-		return true;
-	}
+	if (std::system(command.data()) == 0) { return true; }
 	return false;
 }
 } // namespace le

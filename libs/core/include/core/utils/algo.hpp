@@ -32,17 +32,13 @@ constexpr auto find_if(C const& c, F&& f) noexcept {
 
 template <typename In, template <typename...> typename Out, typename... Args>
 constexpr void move_append(In const& in, Out<Args...>& out) {
-	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) {
-		out.reserve(out.size() + in.size());
-	}
+	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) { out.reserve(out.size() + in.size()); }
 	std::move(std::begin(in), std::end(in), std::back_inserter(out));
 }
 
 template <typename In, template <typename...> typename Out, typename... Args>
 constexpr void copy_append(In const& in, Out<Args...>& out) {
-	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) {
-		out.reserve(out.size() + in.size());
-	}
+	if constexpr (std::is_same_v<std::decay_t<Out<Args...>>, std::vector<Args...>>) { out.reserve(out.size() + in.size()); }
 	std::copy(std::begin(in), std::end(in), std::back_inserter(out));
 }
 

@@ -142,8 +142,6 @@ void Device::destroy(T& out_t, Ts&... out_ts) {
 			out_t = T();
 		}
 	}
-	if constexpr (sizeof...(Ts) > 0) {
-		destroy(out_ts...);
-	}
+	if constexpr (sizeof...(Ts) > 0) { destroy(out_ts...); }
 }
 } // namespace le::graphics

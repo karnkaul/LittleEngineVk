@@ -13,9 +13,7 @@ std::size_t DrawGroup::Hasher::operator()(DrawGroup const& gr) const noexcept {
 void SceneDrawer::Populator::operator()(ItemMap& map, decf::registry_t const& registry) const {
 	for (auto& [_, d] : registry.view<DrawGroup, SceneNode, PrimList>()) {
 		auto& [gr, node, pl] = d;
-		if (!pl.empty() && gr.pipeline) {
-			map[gr].push_back({node.model(), std::nullopt, pl});
-		}
+		if (!pl.empty() && gr.pipeline) { map[gr].push_back({node.model(), std::nullopt, pl}); }
 	}
 	for (auto& [_, d] : registry.view<DrawGroup, gui::Root>()) {
 		auto& [gr, root] = d;
@@ -25,13 +23,9 @@ void SceneDrawer::Populator::operator()(ItemMap& map, decf::registry_t const& re
 
 void SceneDrawer::add(ItemMap& map, DrawGroup const& group, gui::Root const& root) {
 	for (auto& node : root.m_nodes) {
-		if (auto prims = node->primitives(); !prims.empty()) {
-			map[group].push_back({node->model(), graphics::utils::scissor(node->m_scissor), prims});
-		}
+		if (auto prims = node->primitives(); !prims.empty()) { map[group].push_back({node->model(), graphics::utils::scissor(node->m_scissor), prims}); }
 	}
-	for (auto& node : root.m_nodes) {
-		add(map, group, *node);
-	}
+	for (auto& node : root.m_nodes) { add(map, group, *node); }
 }
 
 void SceneDrawer::sort(Span<Group> items) noexcept {

@@ -7,7 +7,6 @@
 #include <imgui_impl_glfw.h>
 #endif
 #include <imgui_impl_vulkan.h>
-#include <core/array_map.hpp>
 #include <core/colour.hpp>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
@@ -24,7 +23,7 @@ using namespace window;
 #if defined(LEVK_USE_IMGUI)
 namespace {
 using DIS = DearImGui::State;
-constexpr ArrayMap<3, DIS, std::string_view> stateStr = {{DIS::eBegin, "eBegin"}, {DIS::eEnd, "eEnd"}, {DIS::eRender, "eRender"}};
+constexpr EnumArray<DIS, std::string_view, 3> stateStr = {"eEnd", "eBegin", "eRender"};
 
 vk::DescriptorPool makePool(Device& device, u32 count) {
 	vk::DescriptorPoolSize pool_sizes[] = {{vk::DescriptorType::eSampler, count},
@@ -114,9 +113,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	if (info.correctStyleColours) {
-		fixStyle();
-	}
+	if (info.correctStyleColours) { fixStyle(); }
 	auto const glfwWindow = window->nativePtr();
 	ENSURE(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
 	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);
@@ -179,11 +176,8 @@ bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive) {
 		if (m_state != State::eEnd) {
-			static constexpr std::string_view beginStr = mapped<std::string_view>(stateStr, State::eBegin);
-			logW("[DearImGui] Forcing [State::{}] from [State::{}]", beginStr, mapped<std::string_view>(stateStr, m_state));
-			if (m_state == State::eBegin) {
-				ImGui::Render();
-			}
+			logW("[DearImGui] Forcing [State::{}] from [State::{}]", stateStr[State::eBegin], stateStr[State::eEnd], m_state);
+			if (m_state == State::eBegin) { ImGui::Render(); }
 		}
 		next(m_state, State::eBegin);
 		ImGui_ImplVulkan_NewFrame();
@@ -191,9 +185,7 @@ bool DearImGui::beginFrame() {
 		ImGui_ImplGlfw_NewFrame();
 #endif
 		ImGui::NewFrame();
-		if (m_showDemo) {
-			ImGui::ShowDemoWindow(&m_showDemo);
-		}
+		if (m_showDemo) { ImGui::ShowDemoWindow(&m_showDemo); }
 		return true;
 	}
 #endif

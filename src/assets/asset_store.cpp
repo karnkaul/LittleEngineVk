@@ -12,14 +12,10 @@ void AssetStore::update() {
 	for (; pass < maxPasses && (pass == 0 || !bIdle); ++pass) {
 		m_resources.update();
 		u64 reloaded = 0;
-		for (auto& [_, store] : lock.get().storeMap) {
-			reloaded += store->update(*this);
-		}
+		for (auto& [_, store] : lock.get().storeMap) { reloaded += store->update(*this); }
 		bIdle = reloaded == 0;
 		total += reloaded;
-		if (!bIdle) {
-			conf::g_log.log(dl::level::debug, 2, "[Assets] [{}] Update pass: reloaded [{}]", pass, reloaded);
-		}
+		if (!bIdle) { conf::g_log.log(dl::level::debug, 2, "[Assets] [{}] Update pass: reloaded [{}]", pass, reloaded); }
 	}
 	if (!bIdle && pass == maxPasses) {
 		conf::g_log.log(dl::level::warning, 0, "[Assets] Exceeded max update passes [{}], bailing out... Asset(s) stuck in reload loops?", maxPasses);

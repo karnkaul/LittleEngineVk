@@ -10,9 +10,7 @@ namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 void showDemo() {
-	if (auto imgui = DearImGui::inst()) {
-		imgui->m_showDemo = true;
-	}
+	if (auto imgui = DearImGui::inst()) { imgui->m_showDemo = true; }
 }
 
 bool g_showStats = false;
@@ -50,17 +48,11 @@ MainMenu::MainMenu() {
 void MainMenu::operator()([[maybe_unused]] MenuList const& extras) const {
 #if defined(LEVK_USE_IMGUI)
 	if (ImGui::BeginMainMenuBar()) {
-		for (auto const& tree : m_main.trees) {
-			MenuBar::walk(tree);
-		}
-		for (auto const& tree : extras.trees) {
-			MenuBar::walk(tree);
-		}
+		for (auto const& tree : m_main.trees) { MenuBar::walk(tree); }
+		for (auto const& tree : extras.trees) { MenuBar::walk(tree); }
 		ImGui::EndMainMenuBar();
 	}
-	if (g_showStats) {
-		showStats();
-	}
+	if (g_showStats) { showStats(); }
 #endif
 }
 } // namespace le::edi

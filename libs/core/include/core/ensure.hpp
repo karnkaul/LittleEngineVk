@@ -28,9 +28,7 @@ void ensureImpl(std::string_view message, src_loc const& sl);
 ///
 inline void ensure([[maybe_unused]] bool predicate, [[maybe_unused]] std::string_view message, [[maybe_unused]] src_loc const& sl) {
 	if constexpr (levk_ensures) {
-		if (!predicate) {
-			ensureImpl(message, sl);
-		}
+		if (!predicate) { ensureImpl(message, sl); }
 	}
 }
 } // namespace le

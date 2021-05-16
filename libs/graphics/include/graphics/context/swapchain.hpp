@@ -117,16 +117,11 @@ class Swapchain {
 
 constexpr std::string_view Swapchain::presentModeName(vk::PresentModeKHR mode) noexcept {
 	switch (mode) {
-	case vk::PresentModeKHR::eFifo:
-		return "FIFO";
-	case vk::PresentModeKHR::eFifoRelaxed:
-		return "FIFO Relaxed";
-	case vk::PresentModeKHR::eImmediate:
-		return "Immediate";
-	case vk::PresentModeKHR::eMailbox:
-		return "Mailbox";
-	default:
-		return "Other";
+	case vk::PresentModeKHR::eFifo: return "FIFO";
+	case vk::PresentModeKHR::eFifoRelaxed: return "FIFO Relaxed";
+	case vk::PresentModeKHR::eImmediate: return "Immediate";
+	case vk::PresentModeKHR::eMailbox: return "Mailbox";
+	default: return "Other";
 	}
 }
 
@@ -142,8 +137,7 @@ constexpr bool Swapchain::srgb(vk::Format format) noexcept {
 		return true;
 		break;
 	}
-	default:
-		break;
+	default: break;
 	}
 	return false;
 }

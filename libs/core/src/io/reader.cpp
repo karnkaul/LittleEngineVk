@@ -22,15 +22,11 @@ struct AndroidAsset {
 
 	AndroidAsset() = default;
 	AndroidAsset(android_app* pApp, Path const& path) : pApp(pApp) {
-		if (pApp && pApp->activity) {
-			pAsset = AAssetManager_open(pApp->activity->assetManager, path.generic_string().data(), AASSET_MODE_BUFFER);
-		}
+		if (pApp && pApp->activity) { pAsset = AAssetManager_open(pApp->activity->assetManager, path.generic_string().data(), AASSET_MODE_BUFFER); }
 	}
 
 	~AndroidAsset() {
-		if (pAsset && pApp && pApp->activity) {
-			AAsset_close(pAsset);
-		}
+		if (pAsset && pApp && pApp->activity) { AAsset_close(pAsset); }
 	}
 
 	constexpr explicit operator bool() const noexcept { return pAsset != nullptr; }
@@ -91,9 +87,7 @@ Reader& Reader::operator=(Reader const&) = default;
 Reader::~Reader() = default;
 
 Reader::Result<std::string> Reader::string(io::Path const& id) const {
-	if (auto str = sstream(id)) {
-		return str->str();
-	}
+	if (auto str = sstream(id)) { return str->str(); }
 	return kt::null_result;
 }
 
@@ -109,9 +103,7 @@ bool Reader::checkPresence(io::Path const& id) const {
 
 bool Reader::checkPresences(View<io::Path> ids) const {
 	bool bRet = true;
-	for (auto const& id : ids) {
-		bRet &= checkPresence(id);
-	}
+	for (auto const& id : ids) { bRet &= checkPresence(id); }
 	return bRet;
 }
 
@@ -128,9 +120,7 @@ Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
-	if (bEnd) {
-		return kt::null_result;
-	}
+	if (bEnd) { return kt::null_result; }
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 #endif
 }
@@ -185,29 +175,21 @@ Reader::Result<std::stringstream> FileReader::sstream(io::Path const& id) const 
 Reader::Result<io::Path> FileReader::findPrefixed(io::Path const& id) const {
 	auto const paths = finalPaths(id);
 	for (auto const& path : paths) {
-		if (io::is_regular_file(path)) {
-			return io::Path(path);
-		}
+		if (io::is_regular_file(path)) { return io::Path(path); }
 	}
 	return kt::null_result;
 }
 
 std::vector<io::Path> FileReader::finalPaths(io::Path const& id) const {
-	if (id.has_root_directory()) {
-		return {id};
-	}
+	if (id.has_root_directory()) { return {id}; }
 	std::vector<io::Path> ret;
 	ret.reserve(m_dirs.size());
-	for (auto const& prefix : m_dirs) {
-		ret.push_back(prefix / id);
-	}
+	for (auto const& prefix : m_dirs) { ret.push_back(prefix / id); }
 	return ret;
 }
 
 io::Path FileReader::fullPath(io::Path const& id) const {
-	if (auto path = findPrefixed(id)) {
-		return io::absolute(*path);
-	}
+	if (auto path = findPrefixed(id)) { return io::absolute(*path); }
 	return id;
 }
 
@@ -238,9 +220,7 @@ bool ZIPReader::mount(io::Path path) {
 }
 
 Reader::Result<io::Path> ZIPReader::findPrefixed(io::Path const& id) const {
-	if (PHYSFS_exists(id.generic_string().data()) != 0) {
-		return io::Path(id);
-	}
+	if (PHYSFS_exists(id.generic_string().data()) != 0) { return io::Path(id); }
 	return kt::null_result;
 }
 
@@ -282,9 +262,7 @@ AAssetReader::AAssetReader(ErasedRef const& pAndroidApp) : m_androidApp(pAndroid
 
 Reader::Result<bytearray> AAssetReader::bytes([[maybe_unused]] io::Path const& id) const {
 #if defined(LEVK_OS_ANDROID)
-	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
-		return asset.bytes();
-	}
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) { return asset.bytes(); }
 	return kt::null_result;
 #else
 	return kt::null_result;
@@ -293,9 +271,7 @@ Reader::Result<bytearray> AAssetReader::bytes([[maybe_unused]] io::Path const& i
 
 Reader::Result<std::stringstream> AAssetReader::sstream([[maybe_unused]] io::Path const& id) const {
 #if defined(LEVK_OS_ANDROID)
-	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
-		return asset.sstream();
-	}
+	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) { return asset.sstream(); }
 	return kt::null_result;
 #else
 	return kt::null_result;
@@ -315,9 +291,7 @@ Reader::Result<io::Path> AAssetReader::findPrefixed([[maybe_unused]] io::Path co
 }
 
 void impl::initPhysfs() {
-	if (!g_physfsHandle) {
-		g_physfsHandle = PhysfsHandle();
-	}
+	if (!g_physfsHandle) { g_physfsHandle = PhysfsHandle(); }
 }
 
 void impl::deinitPhysfs() { g_physfsHandle.reset(); }

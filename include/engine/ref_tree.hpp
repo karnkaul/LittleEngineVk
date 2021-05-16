@@ -82,9 +82,7 @@ bool RefTreeRoot<T, Base>::isRoot() const noexcept {
 template <typename T, typename Base>
 void RefTreeRoot<T, Base>::addChild(not_null<type*> child) {
 	if constexpr (levk_debug) {
-		for (auto const& ch : m_children) {
-			ENSURE(child != ch, "Duplicate child!");
-		}
+		for (auto const& ch : m_children) { ENSURE(child != ch, "Duplicate child!"); }
 	}
 	m_children.push_front(child);
 }
@@ -92,9 +90,7 @@ void RefTreeRoot<T, Base>::addChild(not_null<type*> child) {
 template <typename T, typename Base>
 bool RefTreeRoot<T, Base>::removeChild(not_null<type*> child) noexcept {
 	auto it = m_children.begin();
-	if (it == m_children.end()) {
-		return false;
-	}
+	if (it == m_children.end()) { return false; }
 	if (*it == child) {
 		m_children.pop_front();
 		return true;
@@ -114,9 +110,7 @@ template <typename U, typename Pred>
 void RefTreeRoot<T, Base>::walk(U&& root, Pred pred) {
 	static_assert(std::is_base_of_v<RefTreeRoot, std::decay_t<U>>, "Invalid type!");
 	for (auto& child : root.m_children) {
-		if (pred(*child)) {
-			walk(*child, pred);
-		}
+		if (pred(*child)) { walk(*child, pred); }
 	}
 }
 
@@ -164,17 +158,13 @@ T& RefTreeNode<T, Base>::parent(not_null<Root*> parent) noexcept {
 template <typename T, typename Base>
 RefTreeRoot<T, Base>& RefTreeNode<T, Base>::root() noexcept {
 	not_null<RefTreeRoot<T, Base>*> ret = m_parent;
-	while (!ret->m_root) {
-		ret = cast(ret.get())->m_parent;
-	}
+	while (!ret->m_root) { ret = cast(ret.get())->m_parent; }
 	return *ret;
 }
 template <typename T, typename Base>
 RefTreeRoot<T, Base> const& RefTreeNode<T, Base>::root() const noexcept {
 	not_null<RefTreeRoot<T, Base> const*> ret = m_parent;
-	while (!ret.get().m_root) {
-		ret = cast(ret.get())->m_parent;
-	}
+	while (!ret.get().m_root) { ret = cast(ret.get())->m_parent; }
 	return *ret;
 }
 template <typename T, typename Base>

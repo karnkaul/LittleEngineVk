@@ -184,9 +184,7 @@ TCounter<T, true>::Semaphore::Semaphore(Semaphore&& rhs) noexcept : pTCounter(st
 template <typename T>
 typename TCounter<T, true>::Semaphore& TCounter<T, true>::Semaphore::operator=(Semaphore&& rhs) noexcept {
 	if (&rhs != this) {
-		if (rhs.pTCounter != pTCounter) {
-			reset();
-		}
+		if (rhs.pTCounter != pTCounter) { reset(); }
 		pTCounter = std::exchange(rhs.pTCounter, nullptr);
 	}
 	return *this;
@@ -199,9 +197,7 @@ TCounter<T, true>::Semaphore::~Semaphore() {
 
 template <typename T>
 void TCounter<T, true>::Semaphore::reset() noexcept {
-	if (pTCounter) {
-		--(*pTCounter);
-	}
+	if (pTCounter) { --(*pTCounter); }
 	pTCounter = nullptr;
 }
 } // namespace le

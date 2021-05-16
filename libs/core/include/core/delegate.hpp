@@ -45,9 +45,7 @@ typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback const& call
 
 template <typename... Args>
 void Delegate<Args...>::operator()(Args... args) const {
-	for (auto const& [_, callback] : m_tokens) {
-		callback(args...);
-	};
+	for (auto const& [_, callback] : m_tokens) { callback(args...); };
 }
 
 template <typename... Args>

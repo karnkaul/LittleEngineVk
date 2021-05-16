@@ -12,20 +12,16 @@ namespace le::graphics {
 namespace {
 template <typename T, typename U>
 void ensureSet(T& out_src, U&& u) {
-	if (out_src == T()) {
-		out_src = u;
-	}
+	if (out_src == T()) { out_src = u; }
 }
 
 template <typename T, typename U>
 void setIfSet(T& out_dst, U&& u) {
-	if (!Device::default_v(u)) {
-		out_dst = u;
-	}
+	if (!Device::default_v(u)) { out_dst = u; }
 }
 
 bool valid(Shader::ModuleMap const& shaders) noexcept {
-	return std::any_of(shaders.begin(), shaders.end(), [](vk::ShaderModule const& m) -> bool { return !Device::default_v(m); });
+	return std::any_of(std::begin(shaders.arr), std::end(shaders.arr), [](vk::ShaderModule const& m) -> bool { return !Device::default_v(m); });
 }
 } // namespace
 
@@ -56,36 +52,26 @@ Pipeline& Pipeline::operator=(Pipeline&& rhs) {
 Pipeline::~Pipeline() { destroy(); }
 
 kt::result<vk::Pipeline, void> Pipeline::constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed) {
-	if (id == Hash()) {
-		return kt::null_result;
-	}
+	if (id == Hash()) { return kt::null_result; }
 	vk::Pipeline pipe;
 	CreateInfo info = m_metadata.main;
 	info.fixedState = fixed;
-	if (!construct(shader, info, pipe, false)) {
-		return kt::null_result;
-	}
+	if (!construct(shader, info, pipe, false)) { return kt::null_result; }
 	m_metadata.variants[id] = std::move(info.fixedState);
 	m_storage.dynamic.variants[id] = pipe;
 	return pipe;
 }
 
 kt::result<vk::Pipeline, void> Pipeline::variant(Hash id) const {
-	if (id == Hash()) {
-		return m_storage.dynamic.main;
-	}
-	if (auto it = m_storage.dynamic.variants.find(id); it != m_storage.dynamic.variants.end()) {
-		return it->second;
-	}
+	if (id == Hash()) { return m_storage.dynamic.main; }
+	if (auto it = m_storage.dynamic.variants.find(id); it != m_storage.dynamic.variants.end()) { return it->second; }
 	return kt::null_result;
 }
 
 bool Pipeline::reconstruct(Shader const& shader) {
 	vk::Pipeline pipe;
 	auto info = m_metadata.main;
-	if (!construct(shader, info, pipe, false)) {
-		return false;
-	}
+	if (!construct(shader, info, pipe, false)) { return false; }
 	destroy(m_storage.dynamic.main);
 	m_storage.dynamic.main = pipe;
 	m_metadata.name = shader.m_name;
@@ -94,9 +80,7 @@ bool Pipeline::reconstruct(Shader const& shader) {
 		vk::Pipeline pipe;
 		auto ci = m_metadata.main;
 		ci.fixedState = f;
-		if (!construct(shader, ci, pipe, false)) {
-			return false;
-		}
+		if (!construct(shader, ci, pipe, false)) { return false; }
 		destroy(m_storage.dynamic.variants[id]);
 		m_storage.dynamic.variants[id] = pipe;
 	}
@@ -119,9 +103,7 @@ ShaderInput const& Pipeline::shaderInput() const { return m_storage.input; }
 SetPool Pipeline::makeSetPool(u32 set, std::size_t rotateCount) const {
 	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
 	auto& f = m_storage.fixed;
-	if (rotateCount == 0) {
-		rotateCount = m_metadata.main.rotateCount;
-	}
+	if (rotateCount == 0) { rotateCount = m_metadata.main.rotateCount; }
 	DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
 	return SetPool(m_device, info);
 }
@@ -129,9 +111,7 @@ SetPool Pipeline::makeSetPool(u32 set, std::size_t rotateCount) const {
 std::unordered_map<u32, SetPool> Pipeline::makeSetPools(std::size_t rotateCount) const {
 	std::unordered_map<u32, SetPool> ret;
 	auto const& f = m_storage.fixed;
-	if (rotateCount == 0) {
-		rotateCount = m_metadata.main.rotateCount;
-	}
+	if (rotateCount == 0) { rotateCount = m_metadata.main.rotateCount; }
 	for (u32 set = 0; set < (u32)m_storage.fixed.setLayouts.size(); ++set) {
 		DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
 		ret.emplace(set, SetPool(m_device, info));
@@ -140,28 +120,20 @@ std::unordered_map<u32, SetPool> Pipeline::makeSetPools(std::size_t rotateCount)
 }
 
 void Pipeline::bindSet(CommandBuffer const& cb, u32 set, std::size_t idx) const {
-	if (m_storage.input.contains(set)) {
-		cb.bindSet(m_storage.fixed.layout, m_storage.input.set(set).index(idx));
-	}
+	if (m_storage.input.contains(set)) { cb.bindSet(m_storage.fixed.layout, m_storage.input.set(set).index(idx)); }
 }
 
 void Pipeline::bindSet(CommandBuffer const& cb, std::initializer_list<u32> sets, std::size_t idx) const {
-	for (u32 const set : sets) {
-		bindSet(cb, set, idx);
-	}
+	for (u32 const set : sets) { bindSet(cb, set, idx); }
 }
 
 bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipeline& out_pipe, bool bFixed) {
 	auto& c = out_info;
 	ENSURE(!Device::default_v(c.renderPass), "Invalid render pass");
 	ENSURE(valid(shader.m_modules), "Invalid shader m_modules");
-	if (!valid(shader.m_modules) || Device::default_v(c.renderPass)) {
-		return false;
-	}
+	if (!valid(shader.m_modules) || Device::default_v(c.renderPass)) { return false; }
 	m_metadata.name = shader.m_name;
-	if (Device::default_v(m_storage.dynamic.cache)) {
-		m_storage.dynamic.cache = m_device->makePipelineCache();
-	}
+	if (Device::default_v(m_storage.dynamic.cache)) { m_storage.dynamic.cache = m_device->makePipelineCache(); }
 	if (bFixed) {
 		auto& f = m_storage.fixed;
 		f = {};
@@ -169,9 +141,7 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 		for (auto& [set, binds] : setBindings.sets) {
 			std::vector<vk::DescriptorSetLayoutBinding> bindings;
 			for (auto& setBinding : binds) {
-				if (!setBinding.bUnassigned) {
-					bindings.push_back(setBinding.binding);
-				}
+				if (!setBinding.bUnassigned) { bindings.push_back(setBinding.binding); }
 			}
 			auto const descLayout = m_device->makeDescriptorSetLayout(bindings);
 			f.setLayouts.push_back(descLayout);
@@ -229,9 +199,9 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	}
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
 	{
-		shaderCreateInfo.reserve(shader.m_modules.size());
-		for (std::size_t idx = 0; idx < shader.m_modules.size(); ++idx) {
-			vk::ShaderModule const& module = shader.m_modules[idx];
+		shaderCreateInfo.reserve(arraySize(shader.m_modules.arr));
+		for (std::size_t idx = 0; idx < arraySize(shader.m_modules.arr); ++idx) {
+			vk::ShaderModule const& module = shader.m_modules.arr[idx];
 			if (!Device::default_v(module)) {
 				vk::PipelineShaderStageCreateInfo createInfo;
 				createInfo.stage = Shader::typeToFlag[idx];
@@ -264,15 +234,11 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 void Pipeline::destroy() {
 	Device& d = *m_device;
 	destroy(m_storage.dynamic.main);
-	for (auto const& [_, pipe] : m_storage.dynamic.variants) {
-		destroy(pipe);
-	}
+	for (auto const& [_, pipe] : m_storage.dynamic.variants) { destroy(pipe); }
 	d.defer([&d, f = m_storage.fixed, c = m_storage.dynamic.cache]() mutable {
 		d.destroy(f.layout);
 		d.destroy(c);
-		for (auto dsl : f.setLayouts) {
-			d.destroy(dsl);
-		}
+		for (auto dsl : f.setLayouts) { d.destroy(dsl); }
 	});
 	m_storage = {};
 }

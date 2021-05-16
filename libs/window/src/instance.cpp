@@ -145,9 +145,7 @@ std::unordered_map<std::string_view, Axis> const g_axisMap = {
 
 template <typename T>
 T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str, T fail) {
-	if (auto search = map.find(str); search != map.end() && !str.empty()) {
-		return search->second;
-	}
+	if (auto search = map.find(str); search != map.end() && !str.empty()) { return search->second; }
 	return fail;
 }
 } // namespace
@@ -155,9 +153,7 @@ T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str
 Key parseKey(std::string_view str) noexcept { return parse(g_keyMap, str, Key::eUnknown); }
 
 Action parseAction(std::string_view str) noexcept {
-	if (str == "press") {
-		return Action::ePress;
-	}
+	if (str == "press") { return Action::ePress; }
 	return Action::eRelease;
 }
 
@@ -165,9 +161,7 @@ Mods parseMods(View<std::string> vec) noexcept {
 	Mods ret;
 	std::memset(&ret, 0, sizeof(ret));
 	for (auto const& str : vec) {
-		if (auto search = g_modsMap.find(str); search != g_modsMap.end()) {
-			ret.update(search->second);
-		}
+		if (auto search = g_modsMap.find(str); search != g_modsMap.end()) { ret.update(search->second); }
 	}
 	return ret;
 }

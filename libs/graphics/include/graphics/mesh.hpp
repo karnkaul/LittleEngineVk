@@ -65,9 +65,7 @@ bool Mesh::construct(View<T> vertices, View<u32> indices) {
 	if (!vertices.empty()) {
 		destroy();
 		m_vbo = construct(vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));
-		if (!indices.empty()) {
-			m_ibo = construct(vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32));
-		}
+		if (!indices.empty()) { m_ibo = construct(vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32)); }
 		m_vbo.count = (u32)vertices.size();
 		m_ibo.count = (u32)indices.size();
 		m_triCount = indices.empty() ? u32(vertices.size() / 3) : u32(indices.size() / 3);

@@ -20,13 +20,9 @@ env::Run env::init(int argc, char* const argv[], Spec::cmd_map_t cmds) {
 					std::stringstream str;
 					str << "Available GPUs:\n";
 					int i = 0;
-					for (auto const& d : Engine::availableDevices()) {
-						str << i++ << ". " << d << "\n";
-					}
+					for (auto const& d : Engine::availableDevices()) { str << i++ << ". " << d << "\n"; }
 					std::cout << str.str();
-				} catch (std::runtime_error const& e) {
-					std::cerr << "Failed to poll GPUs: " << e.what() << '\n';
-				}
+				} catch (std::runtime_error const& e) { std::cerr << "Failed to poll GPUs: " << e.what() << '\n'; }
 				ret = Run::quit;
 			} else {
 				if (s64 const i = utils::toS64(p.arguments[0], -1); i >= 0) {
@@ -39,9 +35,7 @@ env::Run env::init(int argc, char* const argv[], Spec::cmd_map_t cmds) {
 						} else {
 							std::cout << "Invalid GPU Override: " << idx << "; total: " << total << '\n';
 						}
-					} catch (std::runtime_error const& e) {
-						std::cerr << "Failed to poll GPUs:" << e.what() << '\n';
-					}
+					} catch (std::runtime_error const& e) { std::cerr << "Failed to poll GPUs:" << e.what() << '\n'; }
 				}
 			}
 		};
@@ -75,9 +69,7 @@ env::Run env::init(int argc, char* const argv[], Spec::cmd_map_t cmds) {
 	clap::interpreter helper;
 	auto const expr = helper.parse(argc, argv);
 	auto const result = helper.interpret(std::cout, std::move(spec), expr);
-	if (result == Run::quit) {
-		return result;
-	}
+	if (result == Run::quit) { return result; }
 	return ret;
 }
 

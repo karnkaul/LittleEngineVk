@@ -53,12 +53,12 @@ class QueueMultiplex final {
 	using Lock = std::scoped_lock<std::mutex, std::mutex>;
 	Lock lock() { return Lock(m_mutexes.gp.mutex, m_mutexes.t.mutex); }
 
-	Queue& queue(QType type) noexcept { return m_queues[(std::size_t)type].first; }
+	Queue& queue(QType type) noexcept { return m_queues[type].first; }
 
-	Queue const& queue(QType type) const noexcept { return m_queues[(std::size_t)type].first; }
+	Queue const& queue(QType type) const noexcept { return m_queues[type].first; }
 
   private:
-	kt::lockable_t<>& mutex(QType type) { return *m_queues[(std::size_t)type].second; }
+	kt::lockable_t<>& mutex(QType type) { return *m_queues[type].second; }
 
 	template <std::size_t N>
 	using QCIArr = std::array<QCI, N>;

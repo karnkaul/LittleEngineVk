@@ -107,9 +107,7 @@ Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags) {
 		ret.fixedState.depthStencilState.depthTestEnable = true;
 		ret.fixedState.depthStencilState.depthCompareOp = vk::CompareOp::eLess;
 	}
-	if (flags.test(PFlag::eDepthWrite)) {
-		ret.fixedState.depthStencilState.depthWriteEnable = true;
-	}
+	if (flags.test(PFlag::eDepthWrite)) { ret.fixedState.depthStencilState.depthWriteEnable = true; }
 	if (flags.test(PFlag::eAlphaBlend)) {
 		using CCF = vk::ColorComponentFlagBits;
 		ret.fixedState.colorBlendAttachment.colorWriteMask = CCF::eR | CCF::eG | CCF::eB | CCF::eA;

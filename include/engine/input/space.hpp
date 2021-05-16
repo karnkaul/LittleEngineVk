@@ -33,26 +33,18 @@ constexpr Space::Space(glm::vec2 fbSize, glm::vec2 wSize, Viewport const& view) 
 	: fbSize(fbSize), wSize(anyZero(wSize) ? fbSize : wSize), delta(this->wSize * view.topLeft.norm + view.topLeft.offset), scale(view.scale) {}
 constexpr glm::vec2 Space::density() const noexcept { return anyZero(wSize, fbSize) ? glm::vec2(1.0f) : fbSize / wSize; }
 constexpr glm::vec2 Space::world(glm::vec2 screen, bool normalised) const noexcept {
-	if (normalised) {
-		screen *= wSize;
-	}
-	if (scale < 1.0f) {
-		screen = (screen - delta) / scale;
-	}
+	if (normalised) { screen *= wSize; }
+	if (scale < 1.0f) { screen = (screen - delta) / scale; }
 	screen *= density();
 	screen -= (fbSize * 0.5f);
 	return {screen.x, -screen.y};
 }
 constexpr glm::vec2 Space::screen(glm::vec2 world, bool normalised) const noexcept {
-	if (normalised) {
-		world *= fbSize;
-	}
+	if (normalised) { world *= fbSize; }
 	world = {world.x, -world.y};
 	world += (fbSize * 0.5f);
 	world /= density();
-	if (scale < 1.0f) {
-		world = (world * scale) + delta;
-	}
+	if (scale < 1.0f) { world = (world * scale) + delta; }
 	return world;
 }
 } // namespace le::input

@@ -9,12 +9,8 @@ namespace stdfs = std::filesystem;
 Path::Path(std::string_view str) {
 	while (!str.empty()) {
 		std::size_t count = 0;
-		if (m_units.empty() && str[0] == '/') {
-			++count;
-		}
-		while (count < str.size() && str[count] != '/' && str[count] != '\\') {
-			++count;
-		}
+		if (m_units.empty() && str[0] == '/') { ++count; }
+		while (count < str.size() && str[count] != '/' && str[count] != '\\') { ++count; }
 		if (count > 0) {
 			m_units.push_back(std::string(str.data(), count));
 			str = str.substr(count);
@@ -29,9 +25,7 @@ Path::Path(std::string_view str) {
 			ext = name.substr(search);
 			name = name.substr(0, search);
 		}
-		if (!ext.empty()) {
-			m_units.push_back(std::move(ext));
-		}
+		if (!ext.empty()) { m_units.push_back(std::move(ext)); }
 	}
 }
 
@@ -47,23 +41,15 @@ bool Path::has_root_directory() const { return !m_units.empty() && (m_units.fron
 
 Path Path::parent_path() const {
 	auto parent = m_units;
-	if (!parent.empty() && parent.back()[0] == '.') {
-		parent.pop_back();
-	}
-	if (!parent.empty()) {
-		parent.pop_back();
-	}
+	if (!parent.empty() && parent.back()[0] == '.') { parent.pop_back(); }
+	if (!parent.empty()) { parent.pop_back(); }
 	return Path(std::move(parent));
 }
 
 Path Path::filename() const {
 	if (!m_units.empty()) {
-		if (m_units.size() == 1 && m_units.back()[0] == '/') {
-			return Path(m_units.back().substr(1));
-		}
-		if (m_units.back()[0] == '.') {
-			return m_units.size() > 1 ? Path(m_units[m_units.size() - 2]) : Path(m_units.back());
-		}
+		if (m_units.size() == 1 && m_units.back()[0] == '/') { return Path(m_units.back().substr(1)); }
+		if (m_units.back()[0] == '.') { return m_units.size() > 1 ? Path(m_units[m_units.size() - 2]) : Path(m_units.back()); }
 		return Path(m_units.back());
 	}
 	return Path();
@@ -83,9 +69,7 @@ Path& Path::append(Path const& rhs) {
 		m_units.reserve(m_units.size() + copy.size());
 		for (auto& item : copy) {
 			if (!m_units.empty()) {
-				while (item[0] == '/' || item[0] == '\\') {
-					item = item.substr(1);
-				}
+				while (item[0] == '/' || item[0] == '\\') { item = item.substr(1); }
 			}
 			m_units.push_back(std::move(item));
 		}
@@ -100,22 +84,16 @@ Path& Path::concat(Path const& rhs) {
 		m_units = rhs.m_units;
 		return *this;
 	}
-	if (rhs.empty()) {
-		return *this;
-	}
+	if (rhs.empty()) { return *this; }
 	if (m_units.size() > 1 && m_units.back()[0] == '.') {
 		m_units[m_units.size() - 2] += std::move(m_units.back());
 		m_units.pop_back();
 	}
 	std::string ext;
 	auto units = rhs.m_units;
-	if (units.back()[0] == '.') {
-		ext = std::move(units.back());
-	}
+	if (units.back()[0] == '.') { ext = std::move(units.back()); }
 	auto squash = units.front();
-	while (!squash.empty() && squash[0] == '/') {
-		squash = squash.substr(1);
-	}
+	while (!squash.empty() && squash[0] == '/') { squash = squash.substr(1); }
 	m_units.back() += std::move(squash);
 	std::size_t const end = ext.empty() ? units.size() : units.size() - 1;
 	for (std::size_t idx = 1; idx < end; ++idx) {
@@ -126,9 +104,7 @@ Path& Path::concat(Path const& rhs) {
 			m_units.push_back(unit);
 		}
 	}
-	if (!ext.empty()) {
-		m_units.push_back(std::move(ext));
-	}
+	if (!ext.empty()) { m_units.push_back(std::move(ext)); }
 	return *this;
 }
 
@@ -150,9 +126,7 @@ std::string Path::to_string(char separator) const {
 			name = std::move(copy.back());
 			copy.pop_back();
 		}
-		for (auto& item : copy) {
-			str << item << separator;
-		}
+		for (auto& item : copy) { str << item << separator; }
 		str << name << ext;
 		return str.str();
 	}

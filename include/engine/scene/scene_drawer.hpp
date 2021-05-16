@@ -69,12 +69,8 @@ std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& regi
 	Po{}(map, registry);
 	std::vector<Group> ret;
 	ret.reserve(map.size());
-	for (auto& [gr, items] : map) {
-		ret.push_back(Group({gr, std::move(items)}));
-	}
-	if (sort) {
-		SceneDrawer::sort(ret);
-	}
+	for (auto& [gr, items] : map) { ret.push_back(Group({gr, std::move(items)})); }
+	if (sort) { SceneDrawer::sort(ret); }
 	return ret;
 }
 
@@ -88,8 +84,6 @@ void SceneDrawer::draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffe
 			dispatch.draw(cb, gr);
 		}
 	}
-	for (graphics::Pipeline& pipe : ps) {
-		pipe.shaderInput().swap();
-	}
+	for (graphics::Pipeline& pipe : ps) { pipe.shaderInput().swap(); }
 }
 } // namespace le

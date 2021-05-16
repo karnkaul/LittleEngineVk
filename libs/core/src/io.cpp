@@ -27,9 +27,7 @@ FileLogger::FileLogger() {
 		std::rename(g_logFilePath.generic_string().data(), backup.generic_string().data());
 	}
 	std::ofstream oFile(g_logFilePath.generic_string());
-	if (!oFile.good()) {
-		return;
-	}
+	if (!oFile.good()) { return; }
 	oFile.close();
 	g_queue.active(true);
 	logI("Logging to file: {}", absolute(g_logFilePath).generic_string());
@@ -54,9 +52,7 @@ std::optional<FileLogger> g_fileLogger;
 dl::config::on_log::token g_token;
 
 [[maybe_unused]] void fileLog(std::string_view text, dl::level) {
-	if (g_fileLogger) {
-		g_queue.push(std::string(text));
-	}
+	if (g_fileLogger) { g_queue.push(std::string(text)); }
 }
 } // namespace
 

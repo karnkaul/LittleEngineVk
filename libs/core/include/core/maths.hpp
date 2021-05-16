@@ -137,9 +137,7 @@ constexpr std::uint8_t lsbIndex(T bit) noexcept {
 	std::size_t const b = static_cast<std::size_t>(bit);
 	for (std::size_t i = 0; i <= std::numeric_limits<T>::digits; ++i) {
 		std::size_t const flag = unity << i;
-		if ((b & flag) == flag) {
-			return static_cast<std::uint8_t>(i);
-		}
+		if ((b & flag) == flag) { return static_cast<std::uint8_t>(i); }
 	}
 	return std::numeric_limits<std::uint8_t>::max();
 }

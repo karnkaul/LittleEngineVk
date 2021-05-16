@@ -11,9 +11,7 @@ Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 s
 	imageInfo.createInfo.format = format;
 	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
 	imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-	if (bitmaps.size() > 1) {
-		imageInfo.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
-	}
+	if (bitmaps.size() > 1) { imageInfo.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible; }
 	imageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	imageInfo.createInfo.extent = vk::Extent3D((u32)size.x, (u32)size.y, 1);
 	imageInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
@@ -105,19 +103,13 @@ Image const& Texture::image() const {
 }
 
 bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
-	if (Device::default_v(info.sampler)) {
-		return false;
-	}
+	if (Device::default_v(info.sampler)) { return false; }
 	auto const* pImg = std::get_if<Img>(&info.data);
 	auto const* pCube = std::get_if<Cubemap>(&info.data);
 	auto const* pRaw = std::get_if<Bitmap>(&info.data);
-	if ((!pRaw || pRaw->bytes.empty()) && (!pImg || pImg->empty()) && !pCube) {
-		return false;
-	}
+	if ((!pRaw || pRaw->bytes.empty()) && (!pImg || pImg->empty()) && !pCube) { return false; }
 	if (pCube) {
-		if (std::any_of(pCube->begin(), pCube->end(), [](Bitmap::type const& b) { return b.empty(); })) {
-			return false;
-		}
+		if (std::any_of(pCube->begin(), pCube->end(), [](Bitmap::type const& b) { return b.empty(); })) { return false; }
 	}
 	out_storage.data.sampler = info.sampler;
 	vk::Format fallback;

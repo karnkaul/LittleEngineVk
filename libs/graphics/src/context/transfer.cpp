@@ -7,9 +7,7 @@ namespace le::graphics {
 namespace {
 constexpr vk::DeviceSize ceilPOT(vk::DeviceSize size) noexcept {
 	vk::DeviceSize ret = 2;
-	while (ret < size) {
-		ret <<= 1;
-	}
+	while (ret < size) { ret <<= 1; }
 	return ret;
 }
 
@@ -34,15 +32,11 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 		{
 			auto lock = m_sync.mutex.lock();
 			for (auto const& range : r) {
-				for (auto i = range.count; i > 0; --i) {
-					m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size));
-				}
+				for (auto i = range.count; i > 0; --i) { m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size)); }
 			}
 		}
 		g_log.log(lvl::info, 1, "[{}] Transfer thread started", g_name);
-		while (auto f = m_queue.pop()) {
-			(*f)();
-		}
+		while (auto f = m_queue.pop()) { (*f)(); }
 		g_log.log(lvl::info, 1, "[{}] Transfer thread completed", g_name);
 	});
 	if (info.autoPollRate && *info.autoPollRate > 0ms) {
@@ -62,20 +56,14 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 Transfer::~Transfer() {
 	m_sync.bPoll.store(false);
 	auto residue = m_queue.clear();
-	for (auto& f : residue) {
-		f();
-	}
+	for (auto& f : residue) { f(); }
 	m_sync.stagingThread = {};
 	Memory& m = *m_memory;
 	Device& d = *m.m_device;
 	d.waitIdle();
 	d.destroy(m_data.pool);
-	for (auto& fence : m_data.fences) {
-		d.destroy(fence);
-	}
-	for (auto& batch : m_batches.submitted) {
-		d.destroy(batch.done);
-	}
+	for (auto& fence : m_data.fences) { d.destroy(fence); }
+	for (auto& batch : m_batches.submitted) { d.destroy(batch.done); }
 	m_data = {};
 	m_batches = {};
 	d.waitIdle(); // force flush deferred
@@ -102,9 +90,7 @@ std::size_t Transfer::update() {
 		std::vector<vk::CommandBuffer> commands;
 		commands.reserve(m_batches.active.entries.size());
 		m_batches.active.done = nextFence();
-		for (auto& [stage, _] : m_batches.active.entries) {
-			commands.push_back(stage.command);
-		}
+		for (auto& [stage, _] : m_batches.active.entries) { commands.push_back(stage.command); }
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = (u32)commands.size();
 		submitInfo.pCommandBuffers = commands.data();

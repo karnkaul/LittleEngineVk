@@ -107,15 +107,11 @@ template <std::size_t N>
 constexpr fixed_any<N>& fixed_any<N>::operator=(fixed_any&& rhs) noexcept {
 	if (&rhs != this) {
 		if (m_erased == rhs.m_erased) {
-			if (m_erased) {
-				m_erased->move_assign(&rhs.m_bytes, &m_bytes);
-			}
+			if (m_erased) { m_erased->move_assign(&rhs.m_bytes, &m_bytes); }
 		} else {
 			clear();
 			m_erased = rhs.m_erased;
-			if (m_erased) {
-				m_erased->move_construct(&rhs.m_bytes, &m_bytes);
-			}
+			if (m_erased) { m_erased->move_construct(&rhs.m_bytes, &m_bytes); }
 		}
 	}
 	return *this;
@@ -125,15 +121,11 @@ template <std::size_t N>
 constexpr fixed_any<N>& fixed_any<N>::operator=(fixed_any const& rhs) {
 	if (&rhs != this) {
 		if (m_erased == rhs.m_erased) {
-			if (m_erased) {
-				m_erased->copy_assign(&rhs.m_bytes, &m_bytes);
-			}
+			if (m_erased) { m_erased->copy_assign(&rhs.m_bytes, &m_bytes); }
 		} else {
 			clear();
 			m_erased = rhs.m_erased;
-			if (m_erased) {
-				m_erased->copy_construct(&rhs.m_bytes, &m_bytes);
-			}
+			if (m_erased) { m_erased->copy_construct(&rhs.m_bytes, &m_bytes); }
 		}
 	}
 	return *this;
@@ -171,9 +163,7 @@ constexpr bool fixed_any<N>::empty() const noexcept {
 template <std::size_t N>
 template <typename T>
 constexpr T const& fixed_any<N>::get() const {
-	if (contains<T>()) {
-		return *std::launder(reinterpret_cast<T const*>(&m_bytes));
-	}
+	if (contains<T>()) { return *std::launder(reinterpret_cast<T const*>(&m_bytes)); }
 	if constexpr (throw_exception) {
 		throw std::runtime_error("fixed_any_t: Type mismatch!");
 	} else {
@@ -185,9 +175,7 @@ constexpr T const& fixed_any<N>::get() const {
 template <std::size_t N>
 template <typename T>
 constexpr T& fixed_any<N>::get() {
-	if (contains<T>()) {
-		return *std::launder(reinterpret_cast<T*>(&m_bytes));
-	}
+	if (contains<T>()) { return *std::launder(reinterpret_cast<T*>(&m_bytes)); }
 	if constexpr (throw_exception) {
 		throw std::runtime_error("fixed_any_t: Type mismatch!");
 	} else {
@@ -199,9 +187,7 @@ constexpr T& fixed_any<N>::get() {
 template <std::size_t N>
 template <typename T>
 constexpr T fixed_any<N>::value_or(T const& fallback) const {
-	if (contains<T>()) {
-		return *std::launder(reinterpret_cast<T const*>(&m_bytes));
-	}
+	if (contains<T>()) { return *std::launder(reinterpret_cast<T const*>(&m_bytes)); }
 	return fallback;
 }
 

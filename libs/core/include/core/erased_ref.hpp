@@ -34,9 +34,7 @@ constexpr bool ErasedRef::contains() const noexcept {
 }
 template <typename T>
 constexpr T& ErasedRef::get() const {
-	if (!contains<T>()) {
-		throw std::runtime_error("Invalid type");
-	}
+	if (!contains<T>()) { throw std::runtime_error("Invalid type"); }
 	return *reinterpret_cast<T*>(pPtr);
 }
 } // namespace le

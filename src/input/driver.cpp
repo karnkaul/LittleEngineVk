@@ -37,9 +37,7 @@ Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& vi
 	m_persistent.held += m_transient.pressed;
 	m_transient = {};
 	while (auto e = queue.pop()) {
-		if (!extract(*e, s) || !consume) {
-			q.m_events.push_back(*e);
-		}
+		if (!extract(*e, s) || !consume) { q.m_events.push_back(*e); }
 	}
 	copy(m_transient.pressed, s.keys, Action::ePressed);
 	copy(m_persistent.held, s.keys, Action::eHeld);
@@ -91,9 +89,7 @@ bool Driver::KeySet::erase(Key k) noexcept {
 
 void Driver::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Action action) {
 	for (KeyMods const& key : in.keys) {
-		if (key.key == Key::eUnknown) {
-			continue;
-		}
+		if (key.key == Key::eUnknown) { continue; }
 		bool found = false;
 		for (auto& k : out_keys) {
 			if (k.key == key.key) {
@@ -141,9 +137,7 @@ bool Driver::extract(Event const& event, State& out_state) noexcept {
 		return true;
 	}
 	case Event::Type::eText: {
-		if (m_transient.text.has_space()) {
-			m_transient.text.push_back(event.payload.text.c);
-		}
+		if (m_transient.text.has_space()) { m_transient.text.push_back(event.payload.text.c); }
 		return true;
 	}
 	case Event::Type::eFocus: {
@@ -154,8 +148,7 @@ bool Driver::extract(Event const& event, State& out_state) noexcept {
 		m_persistent.suspended = event.payload.bSet;
 		return false;
 	}
-	default:
-		return false;
+	default: return false;
 	}
 }
 } // namespace le::input

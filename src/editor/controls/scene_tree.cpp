@@ -11,9 +11,7 @@ void walk(SceneNode& node, decf::registry_t& reg) {
 	if (reg.contains(node.entity())) {
 		auto tn = makeNode(reg.name(node.entity()), &node == ins.node, node.children().empty());
 		if (tn.test(GUI::eOpen)) {
-			for (not_null<SceneNode*> child : node.children()) {
-				walk(*child, reg);
-			}
+			for (not_null<SceneNode*> child : node.children()) { walk(*child, reg); }
 		}
 		if (tn.test(GUI::eLeftClicked)) {
 			ins = {&node, node.entity()};
@@ -29,9 +27,7 @@ void SceneTree::update() {
 #if defined(LEVK_USE_IMGUI)
 	if (Editor::s_in.root && Editor::s_in.registry) {
 		auto& reg = *Editor::s_in.registry;
-		for (auto node : Editor::s_in.root->children()) {
-			walk(*node, reg);
-		}
+		for (auto node : Editor::s_in.root->children()) { walk(*node, reg); }
 		if (!Editor::s_in.customEntities.empty()) {
 			auto const tn = makeNode("[Custom]", false, false);
 			if (tn.test(GUI::eOpen)) {

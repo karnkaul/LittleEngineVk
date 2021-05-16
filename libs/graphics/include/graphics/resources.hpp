@@ -170,7 +170,7 @@ struct Image::CreateInfo final : ResourceCreateInfo {
 
 // impl
 
-inline u64 Memory::bytes(Resource::Type type) const noexcept { return m_allocations[(std::size_t)type].load(); }
+inline u64 Memory::bytes(Resource::Type type) const noexcept { return m_allocations[type].load(); }
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {

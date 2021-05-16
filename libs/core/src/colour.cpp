@@ -14,16 +14,10 @@ Colour::Colour(glm::vec4 const& colour) noexcept : r(colour.x), g(colour.y), b(c
 
 Colour::Colour(std::string_view hex) noexcept {
 	ENSURE(!hex.empty(), "Empty hex string!");
-	if (hex[0] == '#') {
-		hex = hex.substr(1);
-	}
+	if (hex[0] == '#') { hex = hex.substr(1); }
 	std::string hexStr(hex);
-	while (hexStr.length() < 3) {
-		hexStr += "0";
-	}
-	while (hexStr.length() < 8) {
-		hexStr += "f";
-	}
+	while (hexStr.length() < 3) { hexStr += "0"; }
+	while (hexStr.length() < 8) { hexStr += "f"; }
 	u32 mask = (u32)stoul(hexStr, nullptr, 16);
 	a = mask & 0xff;
 	mask >>= 8;
@@ -37,9 +31,7 @@ Colour::Colour(std::string_view hex) noexcept {
 Colour Colour::lerp(Colour min, Colour max, f32 alpha) noexcept {
 	if (alpha > 1.0f / 0xff) {
 		auto lerpChannel = [&](UByte& out_l, UByte const& r) {
-			if (out_l != r) {
-				out_l = maths::lerp(out_l, r, alpha);
-			}
+			if (out_l != r) { out_l = maths::lerp(out_l, r, alpha); }
 		};
 		lerpChannel(min.r, max.r);
 		lerpChannel(min.g, max.g);
@@ -90,12 +82,8 @@ std::string Colour::toStr(bool bLeadingHash) const {
 	auto temp = str.str();
 	std::string ret;
 	ret.reserve(8);
-	if (bLeadingHash) {
-		ret += '#';
-	}
-	for (s16 lead = (s16)(8U - temp.size()); lead > 0; --lead) {
-		ret += '0';
-	}
+	if (bLeadingHash) { ret += '#'; }
+	for (s16 lead = (s16)(8U - temp.size()); lead > 0; --lead) { ret += '0'; }
 	ret += std::move(temp);
 	return ret;
 }

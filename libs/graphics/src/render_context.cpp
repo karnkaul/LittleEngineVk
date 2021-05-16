@@ -73,12 +73,8 @@ RenderContext& RenderContext::operator=(RenderContext&& rhs) {
 }
 
 bool RenderContext::waitForFrame() {
-	if (!m_vram->m_transfer.polling()) {
-		m_vram->m_transfer.update();
-	}
-	if (m_storage.status == Status::eReady) {
-		return true;
-	}
+	if (!m_vram->m_transfer.polling()) { m_vram->m_transfer.update(); }
+	if (m_storage.status == Status::eReady) { return true; }
 	if (m_storage.status != Status::eWaiting) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
@@ -95,14 +91,10 @@ std::optional<RenderContext::Frame> RenderContext::beginFrame(CommandBuffer::Pas
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
-	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) {
-		return std::nullopt;
-	}
+	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
 	FrameSync& sync = m_sync.get();
 	auto target = m_swapchain->acquireNextImage(sync.sync);
-	if (!target) {
-		return std::nullopt;
-	}
+	if (!target) { return std::nullopt; }
 	m_storage.status = Status::eDrawing;
 	m_device->destroy(sync.framebuffer);
 	sync.framebuffer = m_device->makeFramebuffer(m_swapchain->renderPass(), target->attachments(), target->extent);
@@ -136,9 +128,7 @@ bool RenderContext::endFrame() {
 	m_device->queues().submit(QType::eGraphics, submitInfo, sync.sync.drawing, false);
 	m_storage.status = Status::eWaiting;
 	auto present = m_swapchain->present(sync.sync);
-	if (!present) {
-		return false;
-	}
+	if (!present) { return false; }
 	m_sync.swap();
 	return true;
 }
@@ -176,9 +166,7 @@ glm::mat4 RenderContext::preRotate() const noexcept {
 }
 
 vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 depth, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
-	if (!Swapchain::valid(extent)) {
-		extent = this->extent();
-	}
+	if (!Swapchain::valid(extent)) { extent = this->extent(); }
 	DrawViewport view;
 	glm::vec2 const e = {(f32)extent.x, (f32)extent.y};
 	view.lt = nRect.lt * e + offset;
@@ -188,9 +176,7 @@ vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 depth, ScreenR
 }
 
 vk::Rect2D RenderContext::scissor(glm::ivec2 extent, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
-	if (!Swapchain::valid(extent)) {
-		extent = this->extent();
-	}
+	if (!Swapchain::valid(extent)) { extent = this->extent(); }
 	DrawScissor scissor;
 	glm::vec2 const e = {(f32)extent.x, (f32)extent.y};
 	scissor.lt = nRect.lt * e + offset;

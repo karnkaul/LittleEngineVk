@@ -1,14 +1,7 @@
+#include <clap/interpreter.hpp>
 #include <core/log.hpp>
 #include <demo.hpp>
 #include <engine/utils/env.hpp>
-
-#include <clap/interpreter.hpp>
-
-#include <concepts>
-
-template <typename T>
-requires requires(T t) { t << std::declval<std::string>(); }
-void foo(T t) {}
 
 int main(int argc, char* argv[]) {
 	using namespace le;

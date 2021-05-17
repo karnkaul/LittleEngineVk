@@ -36,11 +36,11 @@ struct Colour {
 	///
 	/// \brief Construct from a vec4 (XYZW => RGBA)
 	///
-	explicit Colour(glm::vec4 const& colour) noexcept;
+	constexpr Colour(glm::vec3 const& colour) noexcept : Colour(glm::vec4(colour, 1.0f)) {}
 	///
 	/// \brief Construct from a vec3 (XYZ => RGB, A = 0xff)
 	///
-	explicit Colour(glm::vec3 const& colour) noexcept;
+	constexpr Colour(glm::vec4 const& colour) noexcept : r(colour.x), g(colour.y), b(colour.z), a(colour.w) {}
 	///
 	/// \brief Construct from a string mask
 	///
@@ -48,25 +48,27 @@ struct Colour {
 	///
 	explicit Colour(std::string_view hex) noexcept;
 
+	constexpr bool operator==(Colour const&) const = default;
+
 	///
 	/// \brief Additive blend
 	///
-	Colour& operator+=(Colour rhs) noexcept;
+	constexpr Colour& operator+=(Colour rhs) noexcept;
 	///
 	/// \brief Additive blend
 	///
-	Colour& operator-=(Colour rhs) noexcept;
+	constexpr Colour& operator-=(Colour rhs) noexcept;
 
 	///
 	/// \brief Convert to GLSL format
 	/// \returns RGBA normalised to [0.0f, 1.0f]
 	///
-	glm::vec4 toVec4() const noexcept;
+	constexpr glm::vec4 toVec4() const noexcept { return {r.toF32(), g.toF32(), b.toF32(), a.toF32()}; }
 	///
 	/// \brief Convert to GLSL format
 	/// \returns RGB normalised to [0.0f, 1.0f]
 	///
-	glm::vec3 toVec3() const noexcept;
+	constexpr glm::vec3 toVec3() const noexcept { return {r.toF32(), g.toF32(), b.toF32()}; }
 	///
 	/// \brief Convert colour space to sRGB
 	///
@@ -78,33 +80,33 @@ struct Colour {
 	///
 	/// \brief Convert to flat 32 bits
 	///
-	u32 toU32() const noexcept;
+	constexpr u32 toU32() const noexcept;
 	///
 	/// \brief Serialise as hex string
 	///
-	std::string toStr(bool bLeadingHash) const;
+	std::string toString(bool leadingHash) const;
 };
 
 ///
 /// \brief Additive blend
 ///
-Colour operator+(Colour lhs, Colour rhs) noexcept;
+constexpr Colour operator+(Colour lhs, Colour rhs) noexcept { return lhs += rhs; }
 ///
 /// \brief Additive blend
 ///
-Colour operator-(Colour lhs, Colour rhs) noexcept;
+constexpr Colour operator-(Colour lhs, Colour rhs) noexcept { return lhs -= rhs; }
 ///
 /// \brief Multiplicative blend
 /// \param n Normalised (`[0.0f, 1.0f]`) blend fraction
 /// \param colour Colour to blend by `n`
 ///
-Colour& operator*=(f32 n, Colour& colour) noexcept;
+constexpr Colour& operator*=(f32 n, Colour& colour) noexcept;
 ///
 /// \brief Multiplicative blend
 /// \param colour
 /// \param n: Normalised (`[0.0f, 1.0f]`) blend fraction
 ///
-Colour operator*(f32 n, Colour colour) noexcept;
+constexpr Colour operator*(f32 n, Colour colour) noexcept { return n *= colour; }
 
 bool operator==(Colour lhs, Colour rhs) noexcept;
 bool operator!=(Colour lhs, Colour rhs) noexcept;
@@ -120,4 +122,39 @@ inline constexpr Colour magenta(0xff00ffff);
 inline constexpr Colour cyan(0x00ffffff);
 inline constexpr Colour transparent(0x0);
 } // namespace colours
+
+// impl
+
+constexpr Colour& Colour::operator+=(Colour rhs) noexcept {
+	r += rhs.r;
+	g += rhs.g;
+	b += rhs.b;
+	a += rhs.a;
+	return *this;
+}
+constexpr Colour& Colour::operator-=(Colour rhs) noexcept {
+	r -= rhs.r;
+	g -= rhs.g;
+	b -= rhs.b;
+	a -= rhs.a;
+	return *this;
+}
+constexpr u32 Colour::toU32() const noexcept {
+	u32 raw = r.value;
+	raw <<= 8;
+	raw |= g.value;
+	raw <<= 8;
+	raw |= b.value;
+	raw <<= 8;
+	raw |= a.value;
+	return raw;
+}
+constexpr Colour& operator*=(f32 n, Colour& c) noexcept {
+	n = std::clamp(n, 0.0f, 1.0f);
+	c.r = n * c.r;
+	c.g = n * c.g;
+	c.b = n * c.b;
+	c.a = n * c.a;
+	return c;
+}
 } // namespace le

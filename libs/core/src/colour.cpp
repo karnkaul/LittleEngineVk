@@ -8,10 +8,6 @@
 #include <glm/gtc/color_space.hpp>
 
 namespace le {
-Colour::Colour(glm::vec3 const& colour) noexcept : Colour(glm::vec4(colour, 1.0f)) {}
-
-Colour::Colour(glm::vec4 const& colour) noexcept : r(colour.x), g(colour.y), b(colour.z), a(colour.w) {}
-
 Colour::Colour(std::string_view hex) noexcept {
 	ENSURE(!hex.empty(), "Empty hex string!");
 	if (hex[0] == '#') { hex = hex.substr(1); }
@@ -41,69 +37,19 @@ Colour Colour::lerp(Colour min, Colour max, f32 alpha) noexcept {
 	return min;
 }
 
-Colour& Colour::operator+=(Colour rhs) noexcept {
-	r += rhs.r;
-	g += rhs.g;
-	b += rhs.b;
-	a += rhs.a;
-	return *this;
-}
-
-Colour& Colour::operator-=(Colour rhs) noexcept {
-	r -= rhs.r;
-	g -= rhs.g;
-	b -= rhs.b;
-	a -= rhs.a;
-	return *this;
-}
-
-glm::vec4 Colour::toVec4() const noexcept { return {r.toF32(), g.toF32(), b.toF32(), a.toF32()}; }
-
-glm::vec3 Colour::toVec3() const noexcept { return {r.toF32(), g.toF32(), b.toF32()}; }
-
 glm::vec4 Colour::toSRGB() const noexcept { return glm::convertLinearToSRGB(toVec4()); }
 
 glm::vec4 Colour::toRGB() const noexcept { return glm::convertSRGBToLinear(toVec4()); }
 
-u32 Colour::toU32() const noexcept {
-	u32 raw = r.toU8();
-	raw <<= 8;
-	raw |= g.toU8();
-	raw <<= 8;
-	raw |= b.toU8();
-	raw <<= 8;
-	raw |= a.toU8();
-	return raw;
-}
-
-std::string Colour::toStr(bool bLeadingHash) const {
+std::string Colour::toString(bool leadingHash) const {
 	std::stringstream str;
 	str << std::hex << toU32();
 	auto temp = str.str();
 	std::string ret;
 	ret.reserve(8);
-	if (bLeadingHash) { ret += '#'; }
+	if (leadingHash) { ret += '#'; }
 	for (s16 lead = (s16)(8U - temp.size()); lead > 0; --lead) { ret += '0'; }
 	ret += std::move(temp);
 	return ret;
 }
-
-Colour operator+(Colour lhs, Colour rhs) noexcept { return lhs += rhs; }
-
-Colour operator-(Colour lhs, Colour rhs) noexcept { return lhs -= rhs; }
-
-Colour& operator*=(f32 n, Colour& c) noexcept {
-	n = std::clamp(n, 0.0f, 1.0f);
-	c.r = n * c.r;
-	c.g = n * c.g;
-	c.b = n * c.b;
-	c.a = n * c.a;
-	return c;
-}
-
-Colour operator*(f32 n, Colour colour) noexcept { return n *= colour; }
-
-bool operator==(Colour lhs, Colour rhs) noexcept { return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b && lhs.a == rhs.a; }
-
-bool operator!=(Colour lhs, Colour rhs) noexcept { return !(lhs == rhs); }
 } // namespace le

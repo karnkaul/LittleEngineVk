@@ -9,33 +9,52 @@ namespace le {
 /// Useful for storing values between 0x00-0xff
 ///
 struct UByte {
-	u8 rawValue;
+	u8 value;
 
 	// Any literals passed in must be positive!
-	constexpr UByte(u8 value = 0) noexcept : rawValue(value) {}
-	constexpr explicit UByte(f32 nValue) noexcept : rawValue((u8)(nValue * 0xff)) {}
-	explicit UByte(std::string_view hex);
+	constexpr UByte(u8 value = 0) noexcept : value(value) {}
+	constexpr explicit UByte(f32 nValue) noexcept : value((u8)(nValue * 0xff)) {}
 
-	u8 toU8() const noexcept;
 	///
 	/// \brief Obtain normalised value
 	/// \returns Value in [0.0f, 1.0f]
 	///
-	f32 toF32() const noexcept;
+	constexpr f32 toF32() const noexcept { return value / (f32)0xff; }
 
-	UByte operator+=(UByte rhs) noexcept;
-	UByte operator-=(UByte rhs) noexcept;
-	UByte operator*=(UByte rhs) noexcept;
-	UByte operator/=(UByte rhs) noexcept;
+	constexpr auto operator<=>(UByte const&) const = default;
+
+	constexpr UByte operator+=(UByte rhs) noexcept;
+	constexpr UByte operator-=(UByte rhs) noexcept;
+	constexpr UByte operator*=(UByte rhs) noexcept;
+	constexpr UByte operator/=(UByte rhs) noexcept;
 };
 
-bool operator==(UByte lhs, UByte rhs) noexcept;
-bool operator!=(UByte lhs, UByte rhs) noexcept;
+constexpr UByte operator+(UByte lhs, UByte rhs) noexcept { return lhs += rhs; }
+constexpr UByte operator-(UByte lhs, UByte rhs) noexcept { return lhs -= rhs; }
+constexpr UByte operator*(UByte lhs, UByte rhs) noexcept { return lhs *= rhs; }
+constexpr UByte operator/(UByte lhs, UByte rhs) noexcept { return lhs /= rhs; }
+constexpr UByte operator*(f32 lhs, UByte rhs) noexcept { return UByte(u8(f32(rhs.value) * lhs)); }
+constexpr UByte operator*(f32 lhs, UByte rhs) noexcept;
 
-UByte operator+(UByte lhs, UByte rhs) noexcept;
-UByte operator-(UByte lhs, UByte rhs) noexcept;
-UByte operator*(UByte lhs, UByte rhs) noexcept;
-UByte operator/(UByte lhs, UByte rhs) noexcept;
+// impl
 
-UByte operator*(f32 lhs, UByte rhs) noexcept;
+constexpr UByte UByte::operator+=(UByte rhs) noexcept {
+	value = u8(s16(value) + s16(rhs.value));
+	return *this;
+}
+
+constexpr UByte UByte::operator-=(UByte rhs) noexcept {
+	value = u8(s16(value) - s16(rhs.value));
+	return *this;
+}
+
+constexpr UByte UByte::operator*=(UByte rhs) noexcept {
+	value = u8(s16(value) * s16(rhs.value));
+	return *this;
+}
+
+constexpr UByte UByte::operator/=(UByte rhs) noexcept {
+	value = u8(s16(value) * s16(rhs.value));
+	return *this;
+}
 } // namespace le

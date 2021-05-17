@@ -17,8 +17,8 @@ class Path {
   public:
 	Path() = default;
 	Path(std::string_view str);
-	template <typename T, typename = require<!std::is_same_v<T, Path>>>
-	Path(T const& t);
+	template <typename T>
+	Path(T const& t) requires(!std::is_same_v<T, Path>);
 
 	bool has_parent_path() const;
 	bool empty() const;
@@ -54,8 +54,8 @@ bool is_directory(Path const& path);
 bool operator==(Path const& lhs, Path const& rhs);
 bool operator!=(Path const& lhs, Path const& rhs);
 
-template <typename T, typename>
-Path::Path(T const& t) : Path(std::string_view(t)) {}
+template <typename T>
+Path::Path(T const& t) requires(!std::is_same_v<T, Path>) : Path(std::string_view(t)) {}
 
 inline Path operator/(Path const& lhs, Path const& rhs) {
 	auto ret = lhs;

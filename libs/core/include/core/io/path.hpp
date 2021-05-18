@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <core/traits.hpp>
 
 namespace le::io {
 #if defined(_WIN32) || defined(_WIN64)

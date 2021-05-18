@@ -1,5 +1,4 @@
 #pragma once
-#include <core/traits.hpp>
 #include <core/utils/future.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/context/transfer.hpp>

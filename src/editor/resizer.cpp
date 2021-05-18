@@ -10,8 +10,8 @@ using CursorType = window::CursorType;
 
 namespace {
 using Hd = Resizer::Handle;
-constexpr EnumArray<Resizer::Handle, CursorType, 6> handleCursor = {CursorType::eDefault,	CursorType::eResizeEW,	 CursorType::eResizeEW,
-																	 CursorType::eResizeNS, CursorType::eResizeNESW, CursorType::eResizeNWSE};
+constexpr EnumArray<Resizer::Handle, CursorType, 6> handleCursor = {CursorType::eDefault,  CursorType::eResizeEW,	CursorType::eResizeEW,
+																	CursorType::eResizeNS, CursorType::eResizeNESW, CursorType::eResizeNWSE};
 
 [[nodiscard]] Resizer::Handle endResize() {
 	IMGUI(ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange);

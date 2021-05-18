@@ -1,6 +1,5 @@
 #pragma once
 #include <core/not_null.hpp>
-#include <core/traits.hpp>
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/instance.hpp>
 #include <graphics/context/queue_multiplex.hpp>

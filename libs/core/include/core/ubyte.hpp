@@ -1,4 +1,5 @@
 #pragma once
+#include <compare>
 #include <string>
 #include <core/std_types.hpp>
 

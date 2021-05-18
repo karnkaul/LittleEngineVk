@@ -9,7 +9,6 @@ namespace le {
 /// \brief Compressed wrapper struct for Colour
 ///
 struct Colour {
-  public:
 	UByte r;
 	UByte g;
 	UByte b;

@@ -4,9 +4,9 @@
 
 namespace le::io {
 #if defined(_WIN32) || defined(_WIN64)
-inline constexpr char g_separator = '\\';
+inline constexpr char path_separator = '\\';
 #else
-inline constexpr char g_separator = '/';
+inline constexpr char path_separator = '/';
 #endif
 
 ///
@@ -16,8 +16,12 @@ class Path {
   public:
 	Path() = default;
 	Path(std::string_view str);
-	template <typename T>
-	Path(T const& t) requires(!std::is_same_v<T, Path>);
+	template <std::size_t N>
+	Path(char const (&str)[N]) : Path(std::string_view(str)) {}
+	Path(char const* szStr) : Path(std::string_view(szStr)) {}
+	Path(std::string const& str) : Path(std::string_view(str)) {}
+
+	bool operator==(Path const& rhs) const noexcept;
 
 	bool has_parent_path() const;
 	bool empty() const;
@@ -49,12 +53,6 @@ Path absolute(Path const& path);
 Path current_path();
 bool is_regular_file(Path const& path);
 bool is_directory(Path const& path);
-
-bool operator==(Path const& lhs, Path const& rhs);
-bool operator!=(Path const& lhs, Path const& rhs);
-
-template <typename T>
-Path::Path(T const& t) requires(!std::is_same_v<T, Path>) : Path(std::string_view(t)) {}
 
 inline Path operator/(Path const& lhs, Path const& rhs) {
 	auto ret = lhs;

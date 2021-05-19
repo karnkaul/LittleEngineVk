@@ -1,46 +1,23 @@
 #pragma once
+#include <type_traits>
 
 namespace le {
 ///
 /// \brief Ultra-light reference wrapper
 ///
 template <typename T>
-struct Ref {
+requires requires(T) { !std::is_reference<T>::value; }
+class Ref {
+  public:
 	using type = T;
 
-	T* pPtr;
+	constexpr Ref(T& t) noexcept : m_ptr(&t) {}
 
-	constexpr Ref(T& t) noexcept;
+	constexpr operator T&() const noexcept { return *m_ptr; }
+	constexpr T& get() const noexcept { return *m_ptr; }
+	constexpr bool operator==(Ref<T> const& rhs) const { return get() == rhs.get(); }
 
-	constexpr operator T&() const noexcept;
-	constexpr T& get() const noexcept;
+  private:
+	T* m_ptr;
 };
-
-template <typename T>
-constexpr bool operator==(Ref<T> lhs, Ref<T> rhs) noexcept;
-template <typename T>
-constexpr bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept;
-
-template <typename T>
-constexpr Ref<T>::Ref(T& t) noexcept : pPtr(&t) {}
-
-template <typename T>
-constexpr Ref<T>::operator T&() const noexcept {
-	return *pPtr;
-}
-
-template <typename T>
-constexpr T& Ref<T>::get() const noexcept {
-	return *pPtr;
-}
-
-template <typename T>
-constexpr bool operator==(Ref<T> lhs, Ref<T> rhs) noexcept {
-	return &lhs.get() == &rhs.get();
-}
-
-template <typename T>
-constexpr bool operator!=(Ref<T> lhs, Ref<T> rhs) noexcept {
-	return &lhs.get() != &rhs.get();
-}
 } // namespace le

@@ -146,8 +146,8 @@ endif()
 
 # Libraries
 if(NOT CI_BUILD)
-	# configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
-	configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.fallback.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
+	configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
+	# configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.fallback.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
 endif()
 add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)

@@ -15,19 +15,25 @@ install:
       sudo add-apt-repository ppa:ubuntu-toolchain-r/test
       echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y gcc-10 g++-10 xorg-dev
 before_build:
-  - cmd: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview\VC\Auxiliary\Build\vcvars64.bat"
-        cmake -G Ninja . -B out -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
+  - cmd: cmake -G "Visual Studio 16 2019" . -B out -A x64 -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1
   - sh: cmake -G Ninja . -B out -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
-build_script:
-  - cmd: |
-      echo "== Building Windows %CONFIGURATION% %LEVK_VERSION% =="
-      cmake --build out -v
-  - sh: echo "== Building Linux $CONFIGURATION $LEVK_VERSION ==" && cmake --build out -v || exit 1
+for:
+  - matrix:
+      only:
+        - job_name: Windows x64
+    build:
+      project: out/LittleEngineVk.sln
+      parallel: true
+      verbosity: minimal
+  - matrix:
+      only:
+        - job_name: Linux x64
+    build_script:
+      - sh: echo "== Building Linux $CONFIGURATION $LEVK_VERSION ==" && cmake --build out -v || exit 1
 test_script:
   - cmd: |
-      "out/demo/levk-demo" -h
-      "out/demo/levk-demo" gpu
+      "out/demo/Release/levk-demo" -h
+      "out/demo/Release/levk-demo" gpu
       cd out
       ctest || exit 1
   - sh: |

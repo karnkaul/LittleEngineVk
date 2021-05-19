@@ -9,7 +9,7 @@ namespace std {
 ///
 template <typename T>
 struct hash<le::Ref<T>> {
-	size_t operator()(le::Ref<T> const& lhs) const { return std::hash<T const*>()(&lhs.get()); }
+	size_t operator()(le::Ref<T> const& lhs) const { return std::hash<T>()(lhs.get()); }
 };
 
 ///

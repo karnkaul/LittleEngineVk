@@ -131,19 +131,19 @@ View<std::string_view> AndroidInstance::vkInstanceExtensions() const {
 	return ret;
 }
 
-bool AndroidInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const {
-	if (g_state.bInit && g_state.pApp && vkInstance.contains<vk::Instance>() && out_vkSurface.contains<vk::SurfaceKHR>()) {
-		auto& out_surface = out_vkSurface.get<vk::SurfaceKHR>();
-		auto const& instance = vkInstance.get<vk::Instance>();
-		vk::AndroidSurfaceCreateInfoKHR sinfo;
-		sinfo.window = g_state.pApp->window;
-		out_surface = instance.createAndroidSurfaceKHR(sinfo);
-		return out_surface != vk::SurfaceKHR();
+bool AndroidInstance::vkCreateSurface(ErasedPtr vkInstance, ErasedPtr vkSurface) const {
+	if (g_state.bInit && g_state.pApp && vkInstance.contains<vk::Instance*>() && vkSurface.contains<vk::SurfaceKHR*>()) {
+		auto out_surface = vkSurface.get<vk::SurfaceKHR*>();
+		auto instance = vkInstance.get<vk::Instance*>();
+		vk::AndroidSurfaceCreateInfoKHR info;
+		info.window = g_state.pApp->window;
+		*out_surface = instance->createAndroidSurfaceKHR(info);
+		return *out_surface != vk::SurfaceKHR();
 	}
 	return false;
 }
 
-ErasedRef AndroidInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pApp ? g_state.pApp : ErasedRef(); }
+ErasedPtr AndroidInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pApp ? g_state.pApp : ErasedPtr(); }
 
 EventQueue AndroidInstance::pollEvents() {
 	if (g_state.bInit && g_state.pApp) { apollEvents(g_state.pApp); }

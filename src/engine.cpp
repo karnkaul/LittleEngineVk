@@ -22,7 +22,7 @@ Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci)
 Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	return [&winst](vk::Instance vkinst) {
 		vk::SurfaceKHR ret;
-		winst.vkCreateSurface(vkinst, ret);
+		winst.vkCreateSurface(&vkinst, &ret);
 		return ret;
 	};
 }

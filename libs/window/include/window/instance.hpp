@@ -37,7 +37,7 @@ struct IInstance::CreateInfo {
 		glm::ivec2 size = {32, 32};
 		glm::ivec2 centreOffset = {};
 		// Android
-		ErasedRef androidApp;
+		ErasedPtr androidApp;
 	} config;
 
 	struct {

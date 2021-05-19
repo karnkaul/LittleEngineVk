@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <fmt/format.h>
-#include <core/erased_ref.hpp>
+#include <core/erased_ptr.hpp>
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
@@ -126,7 +126,7 @@ io::Path dirPath(Dir dir);
 ///
 /// \brief Obtain internal/external storage path
 ///
-io::Path androidStorage(ErasedRef const& androidApp, bool bExternal);
+io::Path androidStorage(ErasedPtr androidApp, bool bExternal);
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///

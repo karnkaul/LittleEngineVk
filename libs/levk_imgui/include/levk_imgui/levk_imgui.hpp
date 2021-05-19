@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <core/erased_ref.hpp>
 #include <core/mono_instance.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>

@@ -76,14 +76,14 @@ std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& regi
 
 template <typename Di, typename Po>
 void SceneDrawer::draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb) {
-	std::unordered_set<Ref<graphics::Pipeline>> ps;
+	std::unordered_set<graphics::Pipeline*> ps;
 	for (auto const& gr : groups) {
 		if (gr.group.pipeline) {
-			ps.insert(*gr.group.pipeline);
+			ps.insert(gr.group.pipeline);
 			cb.bindPipe(*gr.group.pipeline);
 			dispatch.draw(cb, gr);
 		}
 	}
-	for (graphics::Pipeline& pipe : ps) { pipe.shaderInput().swap(); }
+	for (graphics::Pipeline* pipe : ps) { pipe->shaderInput().swap(); }
 }
 } // namespace le

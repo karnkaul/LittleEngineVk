@@ -716,7 +716,7 @@ struct FlagsInput : input::Receiver {
 	}
 };
 
-bool run(io::Reader const& reader, ErasedRef androidApp) {
+bool run(io::Reader const& reader, ErasedPtr androidApp) {
 	try {
 		window::Instance::CreateInfo winInfo;
 		winInfo.config.androidApp = androidApp;

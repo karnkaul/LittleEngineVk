@@ -307,21 +307,21 @@ View<std::string_view> DesktopInstance::vkInstanceExtensions() const {
 	return ret;
 }
 
-bool DesktopInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const {
-	if (g_state.bInit && g_state.pWindow && vkInstance.contains<vk::Instance>() && out_vkSurface.contains<vk::SurfaceKHR>()) {
-		auto& out_surface = out_vkSurface.get<vk::SurfaceKHR>();
-		auto const& instance = vkInstance.get<vk::Instance>();
+bool DesktopInstance::vkCreateSurface(ErasedPtr vkInstance, ErasedPtr vkSurface) const {
+	if (g_state.bInit && g_state.pWindow && vkInstance.contains<vk::Instance*>() && vkSurface.contains<vk::SurfaceKHR*>()) {
+		auto out_surface = vkSurface.get<vk::SurfaceKHR*>();
+		auto instance = vkInstance.get<vk::Instance*>();
 		VkSurfaceKHR surface;
-		auto result = glfwCreateWindowSurface(instance, g_state.pWindow, nullptr, &surface);
+		auto result = glfwCreateWindowSurface(*instance, g_state.pWindow, nullptr, &surface);
 		if (result == VK_SUCCESS) {
-			out_surface = surface;
+			*out_surface = surface;
 			return true;
 		}
 	}
 	return false;
 }
 
-ErasedRef DesktopInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pWindow ? g_state.pWindow : ErasedRef(); }
+ErasedPtr DesktopInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pWindow ? g_state.pWindow : ErasedPtr(); }
 
 EventQueue DesktopInstance::pollEvents() {
 	if (g_state.bInit && g_state.pWindow) { glfwPollEvents(); }

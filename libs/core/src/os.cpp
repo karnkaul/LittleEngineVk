@@ -66,7 +66,7 @@ io::Path os::dirPath(Dir dir) {
 	}
 }
 
-io::Path os::androidStorage([[maybe_unused]] ErasedRef const& androidApp, [[maybe_unused]] bool bExternal) {
+io::Path os::androidStorage([[maybe_unused]] ErasedPtr androidApp, [[maybe_unused]] bool bExternal) {
 #if defined(LEVK_OS_ANDROID)
 	if (androidApp.contains<android_app*>()) {
 		if (android_app* pApp = androidApp.get<android_app*>(); pApp->activity) {

@@ -14,7 +14,7 @@
 
 namespace le::io {
 #if defined(LEVK_OS_ANDROID)
-constexpr android_app* unpack(ErasedRef app) { return app.contains<android_app*>() ? app.get<android_app*>() : nullptr; }
+constexpr android_app* unpack(ErasedPtr app) { return app.contains<android_app*>() ? app.get<android_app*>() : nullptr; }
 
 struct AndroidAsset {
 	AAsset* pAsset = nullptr;
@@ -254,7 +254,7 @@ Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
 	return kt::null_result;
 }
 
-AAssetReader::AAssetReader(ErasedRef const& pAndroidApp) : m_androidApp(pAndroidApp) {
+AAssetReader::AAssetReader(ErasedPtr androidApp) : m_androidApp(androidApp) {
 #if defined(LEVK_OS_ANDROID)
 	ENSURE(unpack(m_androidApp), "Invalid android_app pointer");
 #endif

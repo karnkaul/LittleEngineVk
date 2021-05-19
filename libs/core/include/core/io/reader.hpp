@@ -1,7 +1,7 @@
 #pragma once
 #include <sstream>
 #include <string_view>
-#include <core/erased_ref.hpp>
+#include <core/erased_ptr.hpp>
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <kt/result/result.hpp>
@@ -134,14 +134,14 @@ class ZIPReader final : public Reader {
 ///
 class AAssetReader final : public Reader {
   public:
-	AAssetReader(ErasedRef const& pAndroidApp);
+	AAssetReader(ErasedPtr androidApp);
 
   public:
 	Result<bytearray> bytes(io::Path const& id) const override;
 	Result<std::stringstream> sstream(io::Path const& id) const override;
 
   private:
-	ErasedRef m_androidApp;
+	ErasedPtr m_androidApp;
 
   private:
 	Result<io::Path> findPrefixed(io::Path const& id) const override;

@@ -13,8 +13,8 @@ class AndroidInstance final : public IInstance {
 
 	// IISurface
 	View<std::string_view> vkInstanceExtensions() const override;
-	bool vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const override;
-	ErasedRef nativePtr() const noexcept override;
+	bool vkCreateSurface(ErasedPtr vkInstance, ErasedPtr vkSurface) const override;
+	ErasedPtr nativePtr() const noexcept override;
 
 	// Instance
 	EventQueue pollEvents() override;

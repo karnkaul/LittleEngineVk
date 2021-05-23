@@ -1,9 +1,10 @@
 #include <core/hash.hpp>
-#include <kt/ktest/ktest.hpp>
+#include <ktest/ktest.hpp>
 
+namespace {
 using namespace le;
 
-void t0(kt::executor_t const& ex) {
+TEST(hash_compare) {
 	io::Path const path = "some/long/path";
 	std::string const str = path.generic_string();
 	std::string_view const strView = str;
@@ -13,11 +14,10 @@ void t0(kt::executor_t const& ex) {
 	Hash hChar = str.data();
 	Hash hStrView = strView;
 	Hash hLiteral = "some/long/path";
-	ex.expect_eq(hPath, hStr);
-	ex.expect_eq(hPath, hCStr);
-	ex.expect_eq(hPath, hChar);
-	ex.expect_eq(hPath, hStrView);
-	ex.expect_eq(hPath, hLiteral);
+	EXPECT_EQ(hPath, hStr);
+	EXPECT_EQ(hPath, hCStr);
+	EXPECT_EQ(hPath, hChar);
+	EXPECT_EQ(hPath, hStrView);
+	EXPECT_EQ(hPath, hLiteral);
 }
-
-int main() { return kt::runner_t({{"compare", &t0}}).run(false); }
+} // namespace

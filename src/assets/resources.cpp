@@ -78,7 +78,7 @@ Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonito
 	Resource resource;
 	if (resource.load(reader(), path, type, bMonitor && levk_resourceMonitor)) {
 		auto [it, bRes] = lock.get().emplace(std::move(path), std::move(resource));
-		ENSURE(bRes, "Map insertion failure");
+		ENSURE(bRes, "Duplicate Resource");
 		return &it->second;
 	}
 	return nullptr;

@@ -69,8 +69,8 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 	auto const extent = m_gfx ? m_gfx->context.extent() : glm::ivec2(0);
 	auto ret = m_input.update(m_win->pollEvents(), m_editor.view(), extent, consume, m_desktop);
 	m_inputState = ret.state;
-	for (auto& [_, context] : m_receivers) {
-		if (context->block(ret.state)) { break; }
+	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
+		if ((*it)->block(ret.state)) { break; }
 	}
 	return ret;
 }
@@ -86,7 +86,7 @@ void Engine::update(gui::Root* root) {
 	}
 }
 
-void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputTag = m_receivers.emplace_back(context); }
+void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }
 
 bool Engine::beginFrame(bool waitDrawReady) {
 	updateStats();

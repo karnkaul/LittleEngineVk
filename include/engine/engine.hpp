@@ -5,7 +5,6 @@
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/receiver.hpp>
-#include <engine/tagged_deque.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render_context.hpp>
 #include <levk_imgui/levk_imgui.hpp>
@@ -109,10 +108,6 @@ class Engine {
   private:
 	void updateStats();
 
-	using Receiver = not_null<input::Receiver*>;
-	using TagDeque = TaggedDeque<Receiver, input::tag_t::type>;
-	using Receivers = TaggedStore<Receiver, input::tag_t, TagDeque>;
-
 	inline static Stats s_stats = {};
 	inline static kt::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
@@ -127,7 +122,7 @@ class Engine {
 			u32 count;
 		} frame;
 	} m_stats;
-	Receivers m_receivers;
+	input::Receivers m_receivers;
 	input::State m_inputState;
 	Desktop* m_desktop = {};
 };

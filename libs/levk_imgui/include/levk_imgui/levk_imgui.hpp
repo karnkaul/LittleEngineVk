@@ -1,8 +1,7 @@
 #pragma once
 #include <cstdint>
-#include <core/erased_ref.hpp>
 #include <core/mono_instance.hpp>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/texture.hpp>
 
@@ -11,9 +10,7 @@
 
 #define IMGUI(statemt)                                                                                                                                         \
 	do {                                                                                                                                                       \
-		if (auto in = DearImGui::inst(); in && in->ready()) {                                                                                                  \
-			statemt;                                                                                                                                           \
-		}                                                                                                                                                      \
+		if (auto in = DearImGui::inst(); in && in->ready()) { statemt; }                                                                                       \
 	} while (0)
 
 constexpr bool levk_imgui = true;
@@ -35,18 +32,18 @@ class DearImGui final : public TMonoInstance<DearImGui> {
   public:
 	enum class State { eEnd, eBegin, eRender };
 
-	using DesktopInstance = window::DesktopInstance;
+	using Desktop = window::DesktopInstance;
 	struct CreateInfo;
 
 	DearImGui();
-	DearImGui(graphics::Device& device, DesktopInstance const& window, CreateInfo const& info);
+	DearImGui(not_null<graphics::Device*> device, not_null<Desktop const*> window, CreateInfo const& info);
 	DearImGui(DearImGui&&) = default;
 	DearImGui& operator=(DearImGui&&) = default;
 	~DearImGui();
 
 	bool beginFrame();
-	bool render();
-	bool endFrame(graphics::CommandBuffer const& cb);
+	bool endFrame();
+	bool renderDrawData(graphics::CommandBuffer const& cb);
 
 	State state() const noexcept;
 	bool ready() const noexcept;
@@ -65,21 +62,16 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 
 struct DearImGui::CreateInfo {
 	vk::RenderPass renderPass;
-	vk::Format texFormat = graphics::Texture::srgbFormat;
 	u32 descriptorCount = 1000;
 	u8 imageCount = 3;
 	u8 minImageCount = 2;
+	bool correctStyleColours = true;
 
-	explicit CreateInfo(vk::RenderPass renderPass) : renderPass(renderPass) {
-	}
+	explicit CreateInfo(vk::RenderPass renderPass) : renderPass(renderPass) {}
 };
 
 // impl
 
-inline DearImGui::State DearImGui::state() const noexcept {
-	return m_state;
-}
-inline bool DearImGui::ready() const noexcept {
-	return m_state == State::eBegin;
-}
+inline DearImGui::State DearImGui::state() const noexcept { return m_state; }
+inline bool DearImGui::ready() const noexcept { return m_state == State::eBegin; }
 } // namespace le

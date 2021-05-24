@@ -1,14 +1,15 @@
 #pragma once
 #include <unordered_map>
+#include <core/not_null.hpp>
 #include <core/ref.hpp>
 #include <core/span.hpp>
+#include <graphics/resources.hpp>
+#include <graphics/texture.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
 class Device;
-class Texture;
-class Buffer;
 class Image;
 class Pipeline;
 class ShaderBuffer;
@@ -26,9 +27,21 @@ class DescriptorSet {
 		vk::ImageView image;
 		vk::Sampler sampler;
 	};
+	struct BO {
+		vk::Buffer buffer;
+		std::size_t size = 0;
+		std::size_t writes = 0;
+	};
+	struct Imgs {
+		std::vector<CIS> images;
+	};
+	struct Bufs {
+		std::vector<BO> buffers;
+		vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
+	};
 	struct CreateInfo;
 
-	DescriptorSet(Device& device, CreateInfo const& info);
+	DescriptorSet(not_null<Device*> device, CreateInfo const& info);
 	DescriptorSet(DescriptorSet&&) noexcept;
 	DescriptorSet& operator=(DescriptorSet&&) noexcept;
 	~DescriptorSet();
@@ -37,16 +50,21 @@ class DescriptorSet {
 	void swap();
 	vk::DescriptorSet get() const;
 
-	void updateBuffers(u32 binding, View<Ref<Buffer const>> buffers, std::size_t size, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
-	bool updateCIS(u32 binding, std::vector<CIS> cis);
-	bool updateTextures(u32 binding, View<Texture> textures);
+	void updateBufs(u32 binding, Bufs bufs);
+	bool updateImgs(u32 binding, Imgs imgs);
+	template <typename C>
+	void update(u32 binding, C const& buffers, vk::DescriptorType type);
+	template <typename C>
+	bool update(u32 binding, C const& textures);
+	void update(u32 binding, Buffer const& buffer, vk::DescriptorType type);
+	bool update(u32 binding, Texture const& texture);
 
 	u32 setNumber() const noexcept;
 	BindingInfo const* binding(u32 bind) const noexcept;
 	bool contains(u32 bind) const noexcept;
 	bool unassigned() const noexcept;
 
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 
   private:
 	template <typename T>
@@ -57,8 +75,8 @@ class DescriptorSet {
 	struct Binding {
 		std::string name;
 		vk::DescriptorType type;
-		std::vector<Ref<Buffer const>> buffers;
-		std::vector<CIS> cis;
+		Bufs buffers;
+		Imgs images;
 		u32 count = 1;
 	};
 	struct Set {
@@ -88,7 +106,7 @@ struct DescriptorSet::CreateInfo {
 // Manages N DescriptorSet instances (drawables)
 class SetPool {
   public:
-	SetPool(Device& device, DescriptorSet::CreateInfo const& info);
+	SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info);
 
 	DescriptorSet& front();
 	DescriptorSet& index(std::size_t idx);
@@ -99,6 +117,7 @@ class SetPool {
 
 	bool contains(u32 bind) const noexcept;
 	bool unassigned() const noexcept;
+	void clear() noexcept;
 
   private:
 	struct Storage {
@@ -109,7 +128,7 @@ class SetPool {
 		std::size_t rotateCount = 0;
 		u32 setNumber = 0;
 	} m_storage;
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 };
 
 // Manages multiple inputs for a shader via set numbers
@@ -126,10 +145,13 @@ class ShaderInput {
 	bool contains(u32 set, u32 bind) const noexcept;
 
 	bool update(View<Texture> textures, u32 set, u32 bind, std::size_t idx = 0);
+	bool update(View<Buffer> buffers, u32 set, u32 bind, std::size_t idx = 0, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx = 0);
 
 	SetPool& operator[](u32 set);
 	SetPool const& operator[](u32 set) const;
+
+	void clearSets() noexcept;
 
   private:
 	std::unordered_map<u32, SetPool> m_setPools;
@@ -137,9 +159,7 @@ class ShaderInput {
 
 // impl
 
-inline u32 DescriptorSet::setNumber() const noexcept {
-	return m_storage.setNumber;
-}
+inline u32 DescriptorSet::setNumber() const noexcept { return m_storage.setNumber; }
 
 template <typename T>
 void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes) {
@@ -158,4 +178,20 @@ void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes)
 	}
 	update(write);
 }
+template <typename C>
+void DescriptorSet::update(u32 binding, C const& buffers, vk::DescriptorType type) {
+	Bufs bufs;
+	for (Buffer const& buf : buffers) { bufs.buffers.push_back({buf.buffer(), (std::size_t)buf.writeSize(), buf.writeCount()}); }
+	bufs.type = type;
+	updateBufs(binding, std::move(bufs));
+}
+template <typename C>
+bool DescriptorSet::update(u32 binding, C const& textures) {
+	Imgs imgs;
+	imgs.images.reserve(textures.size());
+	for (Texture const& tex : textures) { imgs.images.push_back({tex.data().imageView, tex.data().sampler}); }
+	return updateImgs(binding, std::move(imgs));
+}
+inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) { update(binding, View<Ref<Buffer const>>(buffer), type); }
+inline bool DescriptorSet::update(u32 binding, Texture const& texture) { return update(binding, View<Ref<Texture const>>(texture)); }
 } // namespace le::graphics

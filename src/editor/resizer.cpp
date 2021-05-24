@@ -10,9 +10,8 @@ using CursorType = window::CursorType;
 
 namespace {
 using Hd = Resizer::Handle;
-constexpr ArrayMap<6, Resizer::Handle, CursorType> handleCursor = {{Hd::eNone, CursorType::eDefault},		   {Hd::eLeft, CursorType::eResizeEW},
-																   {Hd::eRight, CursorType::eResizeEW},		   {Hd::eBottom, CursorType::eResizeNS},
-																   {Hd::eLeftBottom, CursorType::eResizeNESW}, {Hd::eRightBottom, CursorType::eResizeNWSE}};
+constexpr EnumArray<Resizer::Handle, CursorType, 6> handleCursor = {CursorType::eDefault,  CursorType::eResizeEW,	CursorType::eResizeEW,
+																	CursorType::eResizeNS, CursorType::eResizeNESW, CursorType::eResizeNWSE};
 
 [[nodiscard]] Resizer::Handle endResize() {
 	IMGUI(ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange);
@@ -21,9 +20,7 @@ constexpr ArrayMap<6, Resizer::Handle, CursorType> handleCursor = {{Hd::eNone, C
 
 bool inZone(f32 a, f32 b) {
 	static constexpr f32 nDelta = 10.0f;
-	if (maths::equals(a, b, nDelta)) {
-		return true;
-	}
+	if (maths::equals(a, b, nDelta)) { return true; }
 	return false;
 }
 
@@ -31,9 +28,7 @@ f32 clampScale(f32 scale, glm::vec2 fb, glm::vec2 offset) noexcept {
 	scale = std::clamp(scale, Resizer::s_minScale, 1.0f);
 	glm::vec2 const maxSize = fb - glm::vec2(offset);
 	glm::vec2 const size = scale * fb;
-	if (size.x > maxSize.x || size.y > maxSize.y) {
-		return std::min(maxSize.x / fb.x, maxSize.y / fb.y);
-	}
+	if (size.x > maxSize.x || size.y > maxSize.y) { return std::min(maxSize.x / fb.x, maxSize.y / fb.y); }
 	return scale;
 }
 
@@ -59,13 +54,11 @@ Resizer::ViewData::ViewData([[maybe_unused]] window::DesktopInstance const& win,
 	offset = view.topLeft.offset * ratio;
 }
 
-bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input::State const& state) {
+bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, input::State const& state) {
 	ViewData const data(out_w, out_vp);
 	glm::vec2 const nCursor = {state.cursor.screenPos.x / data.wSize.x, state.cursor.screenPos.y / data.wSize.y};
 	CursorType toSet = CursorType::eDefault;
-	if (m_handle != Handle::eNone && !state.held(Key::eMouseButton1)) {
-		m_handle = endResize();
-	}
+	if (m_handle != Handle::eNone && !state.held(Key::eMouseButton1)) { m_handle = endResize(); }
 	if (state.pressed(Key::eEscape)) {
 		out_vp = m_prev;
 		m_handle = endResize();
@@ -77,36 +70,35 @@ bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input
 			break;
 		}
 		case Handle::eLeft: {
-			out_vp.topLeft.n.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
-			toSet = mapped<CursorType>(handleCursor, m_handle);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
+			toSet = handleCursor[m_handle];
 			break;
 		}
 		case Handle::eRight: {
-			out_vp.topLeft.n.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
-			toSet = mapped<CursorType>(handleCursor, m_handle);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
+			toSet = handleCursor[m_handle];
 			break;
 		}
 		case Handle::eBottom: {
-			auto const centre = out_vp.topLeft.n.x + out_vp.scale * 0.5f;
+			auto const centre = out_vp.topLeft.norm.x + out_vp.scale * 0.5f;
 			out_vp.scale = clampScale(nCursor.y, data.fbSize, 2.0f * out_vp.topLeft.offset);
-			out_vp.topLeft.n.x = clampLeft(centre - out_vp.scale * 0.5f, out_vp.scale, data.fbSize.x, xOffset);
-			toSet = mapped<CursorType>(handleCursor, m_handle);
+			out_vp.topLeft.norm.x = clampLeft(centre - out_vp.scale * 0.5f, out_vp.scale, data.fbSize.x, xOffset);
+			toSet = handleCursor[m_handle];
 			break;
 		}
 		case Handle::eLeftBottom: {
 			out_vp.scale = clampScale(nCursor.y, data.fbSize, 2.0f * out_vp.topLeft.offset);
-			out_vp.topLeft.n.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
-			toSet = mapped<CursorType>(handleCursor, m_handle);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x, out_vp.scale, data.fbSize.x, xOffset);
+			toSet = handleCursor[m_handle];
 			break;
 		}
 		case Handle::eRightBottom: {
 			out_vp.scale = clampScale(nCursor.y, data.fbSize, 2.0f * out_vp.topLeft.offset);
-			out_vp.topLeft.n.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
-			toSet = mapped<CursorType>(handleCursor, m_handle);
+			out_vp.topLeft.norm.x = clampLeft(nCursor.x - out_vp.scale, out_vp.scale, data.fbSize.x, xOffset);
+			toSet = handleCursor[m_handle];
 			break;
 		}
-		default:
-			break;
+		default: break;
 		}
 	}
 #if defined(LEVK_DESKTOP)
@@ -115,7 +107,7 @@ bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input
 	return m_handle > Handle::eNone;
 }
 
-CursorType Resizer::check(ViewData const& data, Viewport& out_vp, Input::State const& state) {
+CursorType Resizer::check(ViewData const& data, Viewport& out_vp, input::State const& state) {
 	auto const rect = out_vp.rect();
 	auto const cursor = state.cursor.screenPos;
 	bool const click = state.pressed(Key::eMouseButton1).has_result();
@@ -134,7 +126,7 @@ CursorType Resizer::check(ViewData const& data, Viewport& out_vp, Input::State c
 void Resizer::check(Viewport& out_vp, CursorType& out_c, bool active, Handle h, bool click) {
 	if (active) {
 		IMGUI(ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange);
-		out_c = mapped(handleCursor, h, CursorType::eDefault);
+		out_c = handleCursor[h];
 		if (click) {
 			m_prev = out_vp;
 			m_handle = h;

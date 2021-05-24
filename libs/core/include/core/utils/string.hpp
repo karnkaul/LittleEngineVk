@@ -115,9 +115,7 @@ std::string concatenate(Cont&& strings, Delim const& delim) {
 	std::stringstream ret;
 	bool first = true;
 	for (auto const& str : strings) {
-		if (!first) {
-			ret << delim;
-		}
+		if (!first) { ret << delim; }
 		ret << str;
 		first = false;
 	}

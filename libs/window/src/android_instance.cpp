@@ -25,9 +25,7 @@ void apollEvents(android_app* pApp) {
 		int events;
 		android_poll_source* pSource;
 		if (ALooper_pollAll(0, nullptr, &events, (void**)&pSource) >= 0) {
-			if (pSource) {
-				pSource->process(pApp, pSource);
-			}
+			if (pSource) { pSource->process(pApp, pSource); }
 		}
 		if (pApp->destroyRequested) {
 			Event event;
@@ -73,6 +71,8 @@ s32 handleInput(android_app* pApp, AInputEvent* event) {
 			std::size_t const index = std::size_t((pointer & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
 			if (source == AINPUT_SOURCE_TOUCHSCREEN) {
 				switch (action) {
+				case AMOTION_EVENT_ACTION_POINTER_UP:
+				case AMOTION_EVENT_ACTION_UP:
 				case AMOTION_EVENT_ACTION_DOWN:
 				case AMOTION_EVENT_ACTION_POINTER_DOWN: {
 					Event ev;
@@ -85,7 +85,7 @@ s32 handleInput(android_app* pApp, AInputEvent* event) {
 					g_state.events.m_events.push_back(ev);
 					Event::Input input;
 					input.key = Key::eMouseButton1;
-					input.action = Action::ePress;
+					input.action = (action == AMOTION_EVENT_ACTION_POINTER_UP || action == AMOTION_EVENT_ACTION_UP) ? Action::eRelease : Action::ePress;
 					ev.type = Event::Type::eInput;
 					ev.payload.input = input;
 					g_state.events.m_events.push_back(ev);
@@ -116,20 +116,14 @@ void deinit() {
 } // namespace
 
 AndroidInstance::AndroidInstance(CreateInfo const& info) : IInstance(true) {
-	if (g_state.bInit || g_state.pApp) {
-		throw std::runtime_error("Duplicate Android instance");
-	}
-	if (!info.config.androidApp.contains<android_app*>()) {
-		throw std::runtime_error("android_app* required to function");
-	}
+	if (g_state.bInit || g_state.pApp) { throw std::runtime_error("Duplicate Android instance"); }
+	if (!info.config.androidApp.contains<android_app*>()) { throw std::runtime_error("android_app* required to function"); }
 	init(m_log, info.config.androidApp.get<android_app*>());
 	m_log.minVerbosity = info.options.verbosity;
 }
 
 AndroidInstance::~AndroidInstance() {
-	if (m_bActive) {
-		deinit();
-	}
+	if (m_bActive) { deinit(); }
 }
 
 View<std::string_view> AndroidInstance::vkInstanceExtensions() const {
@@ -137,26 +131,22 @@ View<std::string_view> AndroidInstance::vkInstanceExtensions() const {
 	return ret;
 }
 
-bool AndroidInstance::vkCreateSurface(ErasedRef vkInstance, ErasedRef out_vkSurface) const {
-	if (g_state.bInit && g_state.pApp && vkInstance.contains<vk::Instance>() && out_vkSurface.contains<vk::SurfaceKHR>()) {
-		auto& out_surface = out_vkSurface.get<vk::SurfaceKHR>();
-		auto const& instance = vkInstance.get<vk::Instance>();
-		vk::AndroidSurfaceCreateInfoKHR sinfo;
-		sinfo.window = g_state.pApp->window;
-		out_surface = instance.createAndroidSurfaceKHR(sinfo);
-		return out_surface != vk::SurfaceKHR();
+bool AndroidInstance::vkCreateSurface(ErasedPtr vkInstance, ErasedPtr vkSurface) const {
+	if (g_state.bInit && g_state.pApp && vkInstance.contains<vk::Instance*>() && vkSurface.contains<vk::SurfaceKHR*>()) {
+		auto out_surface = vkSurface.get<vk::SurfaceKHR*>();
+		auto instance = vkInstance.get<vk::Instance*>();
+		vk::AndroidSurfaceCreateInfoKHR info;
+		info.window = g_state.pApp->window;
+		*out_surface = instance->createAndroidSurfaceKHR(info);
+		return *out_surface != vk::SurfaceKHR();
 	}
 	return false;
 }
 
-ErasedRef AndroidInstance::nativePtr() const noexcept {
-	return g_state.bInit && g_state.pApp ? g_state.pApp : ErasedRef();
-}
+ErasedPtr AndroidInstance::nativePtr() const noexcept { return g_state.bInit && g_state.pApp ? g_state.pApp : ErasedPtr(); }
 
 EventQueue AndroidInstance::pollEvents() {
-	if (g_state.bInit && g_state.pApp) {
-		apollEvents(g_state.pApp);
-	}
+	if (g_state.bInit && g_state.pApp) { apollEvents(g_state.pApp); }
 	return std::move(g_state.events);
 }
 } // namespace le::window

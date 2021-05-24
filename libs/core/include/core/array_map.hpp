@@ -1,15 +1,35 @@
 #pragma once
-#include <tuple>
+#include <type_traits>
 
 namespace le {
-template <std::size_t N, typename... T>
-using ArrayMap = std::tuple<T...>[N];
+template <typename A, typename B, typename T, typename U>
+concept combination_types = (std::is_same_v<A, T> && std::is_same_v<B, U>) || (std::is_same_v<A, U> && std::is_same_v<B, T>);
 
-template <typename Out, typename In, std::size_t N, typename... T>
-constexpr Out const& mapped(ArrayMap<N, T...> const& map, In const& key, Out const& fallback = {}) noexcept {
-	for (auto const& t : map) {
-		if (std::get<In>(t) == key) {
-			return std::get<Out>(t);
+template <typename A, typename B, std::size_t N>
+struct ArrayMap {
+	struct Pair {
+		A a;
+		B b;
+	};
+
+	static constexpr auto blank = Pair{};
+
+	Pair pairs[N];
+
+	template <typename Out, typename In>
+	Out const& get(In const& in, Out const& fallback) const noexcept requires combination_types<A, B, In, Out>;
+	constexpr B const& operator[](A const& lhs) const noexcept { return get(lhs, blank.b); }
+	constexpr A const& operator[](B const& lhs) const noexcept { return get(lhs, blank.a); }
+};
+
+template <typename A, typename B, std::size_t N>
+template <typename Out, typename In>
+Out const& ArrayMap<A, B, N>::get(In const& in, Out const& fallback) const noexcept requires combination_types<A, B, In, Out> {
+	for (auto const& [a, b] : pairs) {
+		if constexpr (std::is_same_v<In, A>) {
+			if (a == in) { return b; }
+		} else {
+			if (b == in) { return a; }
 		}
 	}
 	return fallback;

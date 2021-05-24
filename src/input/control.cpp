@@ -1,8 +1,9 @@
 #include <engine/input/control.hpp>
+#include <engine/input/state.hpp>
 #include <window/desktop_instance.hpp>
 
-namespace le {
-Control::Trigger::Trigger(Input::Key key, Action action, Mod mod) noexcept {
+namespace le::input {
+Trigger::Trigger(Key key, Action action, Mod mod) noexcept {
 	KeyAction ka;
 	ka.key = key;
 	ka.t = action;
@@ -10,49 +11,38 @@ Control::Trigger::Trigger(Input::Key key, Action action, Mod mod) noexcept {
 	combos.push_back(ka);
 }
 
-bool Control::Trigger::operator()(Input::State const& state) const noexcept {
+bool Trigger::operator()(State const& state) const noexcept {
 	for (auto const& combo : combos) {
-		if (combo.key != Input::Key::eUnknown) {
+		if (combo.key != Key::eUnknown) {
 			switch (combo.t) {
 			case Action::ePressed: {
-				if (auto k = state.pressed(combo.key)) {
-					return k->mods.all(combo.mods.bits);
-				}
+				if (auto k = state.pressed(combo.key)) { return k->mods.all(combo.mods.bits); }
 				break;
 			}
 			case Action::eReleased: {
-				if (auto k = state.released(combo.key)) {
-					return k->mods.all(combo.mods.bits);
-				}
+				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods.bits); }
 				break;
 			}
 			case Action::eHeld: {
-				if (auto k = state.held(combo.key)) {
-					return k->mods.all(combo.mods.bits);
-				}
+				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods.bits); }
 				break;
 			}
-			default:
-				break;
+			default: break;
 			}
 		}
 	}
 	return false;
 }
 
-Control::Range::Range(AxisRange axis) noexcept {
-	matches.push_back(axis);
-}
+Range::Range(AxisRange axis) noexcept { matches.push_back(axis); }
 
-Control::Range::Range(KeyRange key) noexcept {
-	matches.push_back(key);
-}
+Range::Range(KeyRange key) noexcept { matches.push_back(key); }
 
-f32 Control::Range::operator()(Input::State const& state) const noexcept {
+f32 Range::operator()(State const& state) const noexcept {
 	f32 ret = 0.0f;
 	for (auto const& match : matches) {
 		if (auto const& ax = std::get_if<AxisRange>(&match)) {
-			Input::Gamepad const* pad = ax->padID < state.gamepads.size() ? &state.gamepads[ax->padID] : nullptr;
+			Gamepad const* pad = ax->padID < state.gamepads.size() ? &state.gamepads[ax->padID] : nullptr;
 			switch (ax->axis) {
 			case Axis::eMouseScrollX: {
 				ret += state.cursor.scroll.x;
@@ -64,15 +54,11 @@ f32 Control::Range::operator()(Input::State const& state) const noexcept {
 			}
 			case Axis::eLeftTrigger:
 			case Axis::eRightTrigger: {
-				if (pad) {
-					ret += window::triggerToAxis(pad->axis(ax->axis));
-				}
+				if (pad) { ret += window::triggerToAxis(pad->axis(ax->axis)); }
 				break;
 			}
 			default: {
-				if (pad) {
-					ret += pad->axis(ax->axis);
-				}
+				if (pad) { ret += pad->axis(ax->axis); }
 				break;
 			}
 			}
@@ -89,4 +75,4 @@ f32 Control::Range::operator()(Input::State const& state) const noexcept {
 	}
 	return ret;
 }
-} // namespace le
+} // namespace le::input

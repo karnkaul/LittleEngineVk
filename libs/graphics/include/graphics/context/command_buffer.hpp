@@ -1,8 +1,9 @@
 #pragma once
+#include <atomic>
 #include <vector>
 #include <core/ensure.hpp>
 #include <core/hash.hpp>
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
@@ -31,13 +32,17 @@ class CommandBuffer {
 		vk::CommandBufferUsageFlags usage = {};
 	};
 
-	static std::vector<CommandBuffer> make(Device& device, vk::CommandPool pool, u32 count, bool bSecondary);
+	inline static auto s_drawCalls = std::atomic<u32>(0);
+
+	static std::vector<CommandBuffer> make(not_null<Device*> device, vk::CommandPool pool, u32 count, bool bSecondary);
 
 	CommandBuffer() = default;
 	CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool);
 
 	bool begin(vk::CommandBufferUsageFlags usage);
 	bool begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, PassInfo const& info);
+	void setViewport(vk::Viewport viewport) const;
+	void setScissor(vk::Rect2D scissor) const;
 	void setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const;
 
 	void bindPipe(Pipeline const& pipeline, Hash variant = Hash()) const;
@@ -49,8 +54,8 @@ class CommandBuffer {
 	void bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const;
 	void bindIBO(vk::Buffer buffer, vk::DeviceSize offset = vk::DeviceSize(0), vk::IndexType indexType = vk::IndexType::eUint32) const;
 	void bindVBO(Buffer const& vbo, Buffer const* pIbo = nullptr) const;
-	void drawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, s32 vertexOffset = 0, u32 firstInstance = 0) const;
-	void draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0) const;
+	void drawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstInstance = 0, s32 vertexOffset = 0, u32 firstIndex = 0) const;
+	void draw(u32 vertexCount, u32 instanceCount = 1, u32 firstInstance = 0, u32 firstVertex = 0) const;
 
 	void transitionImage(Image const& image, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
 	void transitionImage(vk::Image image, u32 layerCount, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
@@ -78,14 +83,8 @@ void CommandBuffer::push(vk::PipelineLayout layout, vk::ShaderStageFlags stages,
 	ENSURE(rendering(), "Command buffer not recording!");
 	m_cb.pushConstants<T>(layout, stages, offset, pushConstants);
 }
-inline bool CommandBuffer::valid() const noexcept {
-	return m_cb != vk::CommandBuffer();
-}
-inline bool CommandBuffer::recording() const noexcept {
-	return valid() && m_flags.test(Flag::eRecording);
-}
+inline bool CommandBuffer::valid() const noexcept { return m_cb != vk::CommandBuffer(); }
+inline bool CommandBuffer::recording() const noexcept { return valid() && m_flags.test(Flag::eRecording); }
 
-inline bool CommandBuffer::rendering() const noexcept {
-	return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering);
-}
+inline bool CommandBuffer::rendering() const noexcept { return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering); }
 } // namespace le::graphics

@@ -1,7 +1,7 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
-#include <engine/render/primitive.hpp>
+#include <engine/scene/primitive.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
 #include <kt/result/result.hpp>
@@ -30,7 +30,7 @@ class Model {
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
 
-	Result<View<Primitive>> construct(VRAM& vram, CreateInfo const& info, Sampler const& sampler, vk::Format texFormat = Texture::srgbFormat);
+	Result<View<Primitive>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
 	View<Primitive> primitives() const noexcept;
 
@@ -81,7 +81,5 @@ struct Model::CreateInfo {
 
 // impl
 
-inline View<Primitive> Model::primitives() const noexcept {
-	return m_storage.primitives;
-}
+inline View<Primitive> Model::primitives() const noexcept { return m_storage.primitives; }
 } // namespace le

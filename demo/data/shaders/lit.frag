@@ -1,13 +1,9 @@
 #version 450 core
 
-struct Albedo {
+struct DirLight {
 	vec4 ambient;
 	vec4 diffuse;
 	vec4 specular;
-};
-
-struct DirLight {
-	Albedo albedo;
 	vec4 direction;
 };
 
@@ -21,8 +17,10 @@ layout(set = 2, binding = 1) uniform sampler2D rmo;
 layout(set = 2, binding = 2) uniform sampler2D specular;
 
 layout(std140, set = 3, binding = 0) uniform Material {
-	Albedo albedo;
 	vec4 tint;
+	vec4 ambient;
+	vec4 diffuse;
+	vec4 specular;
 } material;
 
 layout(location = 0) in vec4 fragColour;
@@ -44,9 +42,9 @@ void main() {
 	if (opacity < 0.1) {
 		discard;
 	}
-	vec4 ambientColour = texture(diffuse, uv) * material.albedo.ambient;
-	vec4 diffuseColour = texture(diffuse, uv) * material.albedo.diffuse;
-	vec4 specularColour = texture(specular, uv) * vec4(vec3(material.albedo.specular), 1.0);
+	vec4 ambientColour = texture(diffuse, uv) * material.ambient;
+	vec4 diffuseColour = texture(diffuse, uv) * material.diffuse;
+	vec4 specularColour = texture(specular, uv) * vec4(vec3(material.specular), 1.0);
 	vec4 ambientLight = vec4(0.0);
 	vec4 diffuseLight = vec4(0.0);
 	vec4 specularLight = vec4(0.0);
@@ -56,10 +54,10 @@ void main() {
 		const vec3 toView = normalize(viewPos - vec3(fragPos));
 		const vec3 reflectDir = reflect(direction, fragNorm);
 		const float lambert = max(dot(-direction, fragNorm), 0.0);
-		const float phong = pow(max(dot(reflectDir, toView), 0.0), material.albedo.specular.w);
-		ambientLight += opaque(dirLight.albedo.ambient);
-		diffuseLight += opaque(dirLight.albedo.diffuse) * lambert;
-		specularLight += opaque(dirLight.albedo.specular) * phong * metallic;
+		const float phong = pow(max(dot(reflectDir, toView), 0.0), material.specular.w);
+		ambientLight += opaque(dirLight.ambient);
+		diffuseLight += opaque(dirLight.diffuse * lambert);
+		specularLight += opaque(dirLight.specular * phong * metallic);
 	}
 	ambientColour *= ambientLight;
 	diffuseColour *= diffuseLight;

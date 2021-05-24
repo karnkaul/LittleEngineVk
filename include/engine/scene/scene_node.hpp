@@ -20,7 +20,7 @@ class SceneNode : public RefTreeNode<SceneNode> {
   public:
 	using Root = typename RefTreeNode<SceneNode>::Root;
 
-	SceneNode(Root& root, decf::entity_t entity = {}, SceneTransform const& transform = {});
+	SceneNode(not_null<Root*> root, decf::entity_t entity = {}, SceneTransform const& transform = {});
 
 	///
 	/// \brief Set (local) position
@@ -121,9 +121,8 @@ inline glm::mat4 SceneTransform::matrix() const noexcept {
 	return t * r * s;
 }
 
-inline SceneNode::SceneNode(Root& parent, decf::entity_t entity, SceneTransform const& transform)
-	: RefTreeNode(parent), m_transform(transform), m_entity(entity) {
-}
+inline SceneNode::SceneNode(not_null<Root*> parent, decf::entity_t entity, SceneTransform const& transform)
+	: RefTreeNode(parent), m_transform(transform), m_entity(entity) {}
 
 inline SceneNode& SceneNode::reset(SceneTransform const& transform) {
 	m_transform = transform;
@@ -157,34 +156,24 @@ inline SceneNode& SceneNode::scale(glm::vec3 const& scale) noexcept {
 	return *this;
 }
 
-inline glm::vec3 const& SceneNode::position() const noexcept {
-	return m_transform.position;
-}
+inline glm::vec3 const& SceneNode::position() const noexcept { return m_transform.position; }
 
-inline glm::quat const& SceneNode::orientation() const noexcept {
-	return m_transform.orientation;
-}
+inline glm::quat const& SceneNode::orientation() const noexcept { return m_transform.orientation; }
 
-inline glm::vec3 const& SceneNode::scale() const noexcept {
-	return m_transform.scale;
-}
+inline glm::vec3 const& SceneNode::scale() const noexcept { return m_transform.scale; }
 
-inline SceneTransform const& SceneNode::transform() const noexcept {
-	return m_transform;
-}
+inline SceneTransform const& SceneNode::transform() const noexcept { return m_transform; }
 
 inline bool SceneNode::isotropic() const noexcept {
 	return m_transform.scale.x == m_transform.scale.y && m_transform.scale.y == m_transform.scale.z &&
-		   (m_parent.get().isRoot() || static_cast<SceneNode const&>(m_parent.get()).isotropic());
+		   (m_parent->isRoot() || static_cast<SceneNode const*>(m_parent.get())->isotropic());
 }
 
-inline glm::vec3 SceneNode::worldPosition() const noexcept {
-	return glm::vec3(model()[3]);
-}
+inline glm::vec3 SceneNode::worldPosition() const noexcept { return glm::vec3(model()[3]); }
 
 inline glm::mat4 SceneNode::model() const noexcept {
 	refresh();
-	return m_parent.get().isRoot() ? m_mat : static_cast<SceneNode const&>(m_parent.get()).model() * m_mat;
+	return m_parent->isRoot() ? m_mat : static_cast<SceneNode const*>(m_parent.get())->model() * m_mat;
 }
 
 inline glm::mat4 SceneNode::normalModel() const noexcept {
@@ -192,9 +181,7 @@ inline glm::mat4 SceneNode::normalModel() const noexcept {
 	return m_normalMat;
 }
 
-inline bool SceneNode::stale() const noexcept {
-	return m_dirty || (m_parent.get().isRoot() ? false : static_cast<SceneNode const&>(m_parent.get()).stale());
-}
+inline bool SceneNode::stale() const noexcept { return m_dirty || (m_parent->isRoot() ? false : static_cast<SceneNode const*>(m_parent.get())->stale()); }
 
 inline void SceneNode::refresh() const noexcept {
 	if (m_dirty) {
@@ -205,11 +192,7 @@ inline void SceneNode::refresh() const noexcept {
 	return;
 }
 
-inline decf::entity_t SceneNode::entity() const noexcept {
-	return m_entity;
-}
+inline decf::entity_t SceneNode::entity() const noexcept { return m_entity; }
 
-inline void SceneNode::entity(decf::entity_t entity) noexcept {
-	m_entity = entity;
-}
+inline void SceneNode::entity(decf::entity_t entity) noexcept { m_entity = entity; }
 } // namespace le

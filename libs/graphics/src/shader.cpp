@@ -3,17 +3,14 @@
 #include <graphics/shader.hpp>
 
 namespace le::graphics {
-Shader::Shader(Device& device, std::string name) : m_name(std::move(name)), m_device(device) {
-}
+Shader::Shader(not_null<Device*> device, std::string name) : m_name(std::move(name)), m_device(device) {}
 
-Shader::Shader(Device& device, std::string name, SpirVMap const& spirV) : m_name(std::move(name)), m_device(device) {
+Shader::Shader(not_null<Device*> device, std::string name, SpirVMap const& spirV) : m_name(std::move(name)), m_device(device) {
 	construct(spirV, m_spirV, m_modules);
 }
 
 Shader::Shader(Shader&& rhs) : m_name(std::move(rhs.m_name)), m_modules(std::move(rhs.m_modules)), m_spirV(std::move(rhs.m_spirV)), m_device(rhs.m_device) {
-	for (auto& m : rhs.m_modules) {
-		m = vk::ShaderModule();
-	}
+	for (auto& m : rhs.m_modules.arr) { m = vk::ShaderModule(); }
 }
 
 Shader& Shader::operator=(Shader&& rhs) {
@@ -23,16 +20,12 @@ Shader& Shader::operator=(Shader&& rhs) {
 		m_modules = std::move(rhs.m_modules);
 		m_spirV = std::move(rhs.m_spirV);
 		m_device = rhs.m_device;
-		for (auto& m : rhs.m_modules) {
-			m = vk::ShaderModule();
-		}
+		for (auto& m : rhs.m_modules.arr) { m = vk::ShaderModule(); }
 	}
 	return *this;
 }
 
-Shader::~Shader() {
-	destroy();
-}
+Shader::~Shader() { destroy(); }
 
 bool Shader::reconstruct(SpirVMap const& spirV) {
 	CodeMap code;
@@ -47,22 +40,20 @@ bool Shader::reconstruct(SpirVMap const& spirV) {
 }
 
 bool Shader::construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_map) {
-	if (std::all_of(spirV.begin(), spirV.end(), [](auto const& v) -> bool { return v.empty(); })) {
-		return false;
-	}
-	for (std::size_t idx = 0; idx < spirV.size(); ++idx) {
-		ENSURE(spirV[idx].size() % 4 == 0, "Invalid SPIR-V");
-		out_code[idx].clear();
-		out_code[idx].resize(spirV[idx].size() / 4);
-		std::memcpy(out_code[idx].data(), spirV[idx].data(), spirV[idx].size());
+	if (std::all_of(std::begin(spirV.arr), std::end(spirV.arr), [](auto const& v) { return v.empty(); })) { return false; }
+	for (std::size_t idx = 0; idx < arraySize(spirV.arr); ++idx) {
+		ENSURE(spirV.arr[idx].size() % 4 == 0, "Invalid SPIR-V");
+		out_code.arr[idx].clear();
+		out_code.arr[idx].resize(spirV.arr[idx].size() / 4);
+		std::memcpy(out_code.arr[idx].data(), spirV.arr[idx].data(), spirV.arr[idx].size());
 	}
 	std::size_t idx = 0;
-	for (auto const& code : out_code) {
+	for (auto const& code : out_code.arr) {
 		if (!code.empty()) {
 			vk::ShaderModuleCreateInfo createInfo;
 			createInfo.codeSize = code.size() * sizeof(decltype(code[0]));
 			createInfo.pCode = code.data();
-			out_map[idx++] = m_device.get().device().createShaderModule(createInfo);
+			out_map.arr[idx++] = m_device->device().createShaderModule(createInfo);
 		}
 	}
 	return true;
@@ -70,27 +61,19 @@ bool Shader::construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_
 
 vk::ShaderStageFlags Shader::stages() const noexcept {
 	vk::ShaderStageFlags ret;
-	for (std::size_t idx = 0; idx < m_modules.size(); ++idx) {
-		if (!Device::default_v(m_modules[idx])) {
-			ret |= typeToFlag[idx];
-		}
+	for (std::size_t idx = 0; idx < arraySize(m_modules.arr); ++idx) {
+		if (!Device::default_v(m_modules.arr[idx])) { ret |= typeToFlag[idx]; }
 	}
 	return ret;
 }
 
-bool Shader::valid() const noexcept {
-	return stages() != vk::ShaderStageFlags();
-}
+bool Shader::valid() const noexcept { return stages() != vk::ShaderStageFlags(); }
 
-bool Shader::empty() const noexcept {
-	return !valid();
-}
+bool Shader::empty() const noexcept { return !valid(); }
 
 void Shader::destroy() {
-	for (auto& module : m_modules) {
-		if (!Device::default_v(module)) {
-			m_device.get().device().destroyShaderModule(module);
-		}
+	for (auto& module : m_modules.arr) {
+		if (!Device::default_v(module)) { m_device->device().destroyShaderModule(module); }
 		module = vk::ShaderModule();
 	}
 }

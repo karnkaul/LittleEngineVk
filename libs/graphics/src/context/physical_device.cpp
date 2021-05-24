@@ -28,9 +28,7 @@ PhysicalDevice DevicePicker::pick(View<PhysicalDevice> devices, std::optional<st
 	}
 	using DevList = kt::fixed_vector<Ref<PhysicalDevice const>, 4>;
 	std::map<Score, DevList, std::greater<Score>> deviceMap;
-	for (auto const& device : devices) {
-		deviceMap[score(device)].emplace_back(device);
-	}
+	for (auto const& device : devices) { deviceMap[score(device)].emplace_back(device); }
 	DevList const& list = deviceMap.begin()->second;
 	return list.size() == 1 ? list.front().get() : tieBreak(deviceMap.begin()->second);
 }

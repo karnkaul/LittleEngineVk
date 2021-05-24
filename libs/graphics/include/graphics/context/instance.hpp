@@ -17,12 +17,10 @@ class Instance final {
 	~Instance();
 
 	kt::fixed_vector<PhysicalDevice, 8> availableDevices(View<std::string_view> requiredExtensions) const;
-	vk::Instance instance() const noexcept {
-		return m_instance;
-	}
-	vk::DispatchLoaderDynamic loader() const {
-		return m_loader;
-	}
+	vk::Instance instance() const noexcept { return m_instance; }
+	vk::DispatchLoaderDynamic loader() const { return m_loader; }
+
+	inline static std::optional<bool> s_forceValidation;
 
   private:
 	struct {

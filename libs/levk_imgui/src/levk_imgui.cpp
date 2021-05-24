@@ -11,7 +11,6 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <glm/common.hpp>
-#include <glm/gtc/color_space.hpp>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <window/desktop_instance.hpp>
@@ -23,7 +22,10 @@ using namespace window;
 
 #if defined(LEVK_USE_IMGUI)
 namespace {
-vk::DescriptorPool createPool(Device& device, u32 count) {
+using DIS = DearImGui::State;
+constexpr EnumArray<DIS, std::string_view, 3> stateStr = {"eEnd", "eBegin", "eRender"};
+
+vk::DescriptorPool makePool(Device& device, u32 count) {
 	vk::DescriptorPoolSize pool_sizes[] = {{vk::DescriptorType::eSampler, count},
 										   {vk::DescriptorType::eCombinedImageSampler, count},
 										   {vk::DescriptorType::eSampledImage, count},
@@ -43,88 +45,84 @@ vk::DescriptorPool createPool(Device& device, u32 count) {
 	return device.device().createDescriptorPool(pool_info);
 }
 
-void toSRGB(ImVec4& imColour) {
-	glm::vec3 const colour = glm::convertSRGBToLinear(glm::vec3{imColour.x, imColour.y, imColour.z});
-	imColour = {colour.x, colour.y, colour.z, imColour.w};
+void correct(ImVec4& imColour) {
+	glm::vec4 const colour = Colour({imColour.x, imColour.y, imColour.z, imColour.w}).toRGB();
+	imColour = {colour.x, colour.y, colour.z, colour.w};
 }
 
-void setStyle() {
+void fixStyle() {
 	ImVec4* pColours = ImGui::GetStyle().Colors;
-
-	toSRGB(pColours[ImGuiCol_Text]);
-	toSRGB(pColours[ImGuiCol_TextDisabled]);
-	toSRGB(pColours[ImGuiCol_WindowBg]);
-	toSRGB(pColours[ImGuiCol_ChildBg]);
-	toSRGB(pColours[ImGuiCol_PopupBg]);
-	toSRGB(pColours[ImGuiCol_Border]);
-	toSRGB(pColours[ImGuiCol_BorderShadow]);
-	toSRGB(pColours[ImGuiCol_FrameBg]);
-	toSRGB(pColours[ImGuiCol_FrameBgHovered]);
-	toSRGB(pColours[ImGuiCol_FrameBgActive]);
-	toSRGB(pColours[ImGuiCol_TitleBg]);
-	toSRGB(pColours[ImGuiCol_TitleBgActive]);
-	toSRGB(pColours[ImGuiCol_TitleBgCollapsed]);
-	toSRGB(pColours[ImGuiCol_MenuBarBg]);
-	toSRGB(pColours[ImGuiCol_ScrollbarBg]);
-	toSRGB(pColours[ImGuiCol_ScrollbarGrab]);
-	toSRGB(pColours[ImGuiCol_ScrollbarGrabHovered]);
-	toSRGB(pColours[ImGuiCol_ScrollbarGrabActive]);
-	toSRGB(pColours[ImGuiCol_CheckMark]);
-	toSRGB(pColours[ImGuiCol_SliderGrab]);
-	toSRGB(pColours[ImGuiCol_SliderGrabActive]);
-	toSRGB(pColours[ImGuiCol_Button]);
-	toSRGB(pColours[ImGuiCol_ButtonHovered]);
-	toSRGB(pColours[ImGuiCol_ButtonActive]);
-	toSRGB(pColours[ImGuiCol_Header]);
-	toSRGB(pColours[ImGuiCol_HeaderHovered]);
-	toSRGB(pColours[ImGuiCol_HeaderActive]);
-	toSRGB(pColours[ImGuiCol_Separator]);
-	toSRGB(pColours[ImGuiCol_SeparatorHovered]);
-	toSRGB(pColours[ImGuiCol_SeparatorActive]);
-	toSRGB(pColours[ImGuiCol_ResizeGrip]);
-	toSRGB(pColours[ImGuiCol_ResizeGripHovered]);
-	toSRGB(pColours[ImGuiCol_ResizeGripActive]);
-	toSRGB(pColours[ImGuiCol_Tab]);
-	toSRGB(pColours[ImGuiCol_TabHovered]);
-	toSRGB(pColours[ImGuiCol_TabActive]);
-	toSRGB(pColours[ImGuiCol_TabUnfocused]);
-	toSRGB(pColours[ImGuiCol_TabUnfocusedActive]);
-	toSRGB(pColours[ImGuiCol_PlotLines]);
-	toSRGB(pColours[ImGuiCol_PlotLinesHovered]);
-	toSRGB(pColours[ImGuiCol_PlotHistogram]);
-	toSRGB(pColours[ImGuiCol_PlotHistogramHovered]);
-	toSRGB(pColours[ImGuiCol_TextSelectedBg]);
-	toSRGB(pColours[ImGuiCol_DragDropTarget]);
-	toSRGB(pColours[ImGuiCol_NavHighlight]);
-	toSRGB(pColours[ImGuiCol_NavWindowingHighlight]);
-	toSRGB(pColours[ImGuiCol_NavWindowingDimBg]);
-	toSRGB(pColours[ImGuiCol_ModalWindowDimBg]);
+	correct(pColours[ImGuiCol_Text]);
+	correct(pColours[ImGuiCol_TextDisabled]);
+	correct(pColours[ImGuiCol_WindowBg]);
+	correct(pColours[ImGuiCol_ChildBg]);
+	correct(pColours[ImGuiCol_PopupBg]);
+	correct(pColours[ImGuiCol_Border]);
+	correct(pColours[ImGuiCol_BorderShadow]);
+	correct(pColours[ImGuiCol_FrameBg]);
+	correct(pColours[ImGuiCol_FrameBgHovered]);
+	correct(pColours[ImGuiCol_FrameBgActive]);
+	correct(pColours[ImGuiCol_TitleBg]);
+	correct(pColours[ImGuiCol_TitleBgActive]);
+	correct(pColours[ImGuiCol_TitleBgCollapsed]);
+	correct(pColours[ImGuiCol_MenuBarBg]);
+	correct(pColours[ImGuiCol_ScrollbarBg]);
+	correct(pColours[ImGuiCol_ScrollbarGrab]);
+	correct(pColours[ImGuiCol_ScrollbarGrabHovered]);
+	correct(pColours[ImGuiCol_ScrollbarGrabActive]);
+	correct(pColours[ImGuiCol_CheckMark]);
+	correct(pColours[ImGuiCol_SliderGrab]);
+	correct(pColours[ImGuiCol_SliderGrabActive]);
+	correct(pColours[ImGuiCol_Button]);
+	correct(pColours[ImGuiCol_ButtonHovered]);
+	correct(pColours[ImGuiCol_ButtonActive]);
+	correct(pColours[ImGuiCol_Header]);
+	correct(pColours[ImGuiCol_HeaderHovered]);
+	correct(pColours[ImGuiCol_HeaderActive]);
+	correct(pColours[ImGuiCol_Separator]);
+	correct(pColours[ImGuiCol_SeparatorHovered]);
+	correct(pColours[ImGuiCol_SeparatorActive]);
+	correct(pColours[ImGuiCol_ResizeGrip]);
+	correct(pColours[ImGuiCol_ResizeGripHovered]);
+	correct(pColours[ImGuiCol_ResizeGripActive]);
+	correct(pColours[ImGuiCol_Tab]);
+	correct(pColours[ImGuiCol_TabHovered]);
+	correct(pColours[ImGuiCol_TabActive]);
+	correct(pColours[ImGuiCol_TabUnfocused]);
+	correct(pColours[ImGuiCol_TabUnfocusedActive]);
+	correct(pColours[ImGuiCol_PlotLines]);
+	correct(pColours[ImGuiCol_PlotLinesHovered]);
+	correct(pColours[ImGuiCol_PlotHistogram]);
+	correct(pColours[ImGuiCol_PlotHistogramHovered]);
+	correct(pColours[ImGuiCol_TextSelectedBg]);
+	correct(pColours[ImGuiCol_DragDropTarget]);
+	correct(pColours[ImGuiCol_NavHighlight]);
+	correct(pColours[ImGuiCol_NavWindowingHighlight]);
+	correct(pColours[ImGuiCol_NavWindowingDimBg]);
+	correct(pColours[ImGuiCol_ModalWindowDimBg]);
 }
 } // namespace
 #endif
 
-DearImGui::DearImGui() : TMonoInstance(false) {
-}
+DearImGui::DearImGui() : TMonoInstance(false) {}
 
-DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopInstance const& window, [[maybe_unused]] CreateInfo const& info)
+DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]] not_null<Desktop const*> window, [[maybe_unused]] CreateInfo const& info)
 	: TMonoInstance(true) {
 #if defined(LEVK_USE_IMGUI) && defined(LEVK_USE_GLFW)
-	m_device = &device;
+	m_device = device;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	if (info.texFormat == Texture::srgbFormat) {
-		setStyle();
-	}
-	auto const glfwWindow = window.nativePtr();
+	if (info.correctStyleColours) { fixStyle(); }
+	auto const glfwWindow = window->nativePtr();
 	ENSURE(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
 	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
-	auto const& queue = device.queues().queue(QType::eGraphics);
-	m_pool = createPool(device, info.descriptorCount);
-	initInfo.Instance = device.m_instance.get().instance();
-	initInfo.Device = device.device();
-	initInfo.PhysicalDevice = device.physicalDevice().device;
+	auto const& queue = device->queues().queue(QType::eGraphics);
+	m_pool = makePool(*device, info.descriptorCount);
+	initInfo.Instance = device->m_instance->instance();
+	initInfo.Device = device->device();
+	initInfo.PhysicalDevice = device->physicalDevice().device;
 	initInfo.Queue = queue.queue;
 	initInfo.QueueFamily = queue.familyIndex;
 	initInfo.MinImageCount = (u32)info.minImageCount;
@@ -132,17 +130,17 @@ DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopIn
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	initInfo.DescriptorPool = m_pool;
 	if (!ImGui_ImplVulkan_Init(&initInfo, info.renderPass)) {
-		device.destroy(m_pool);
+		device->destroy(m_pool);
 		throw std::runtime_error("ImGui_ImplVulkan_Init failed");
 	}
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	poolInfo.queueFamilyIndex = queue.familyIndex;
-	auto pool = device.device().createCommandPool(poolInfo);
+	auto pool = device->device().createCommandPool(poolInfo);
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = pool;
-	auto commandBuffer = device.device().allocateCommandBuffers(commandBufferInfo).front();
+	auto commandBuffer = device->device().allocateCommandBuffers(commandBufferInfo).front();
 	vk::CommandBufferBeginInfo beginInfo;
 	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 	commandBuffer.begin(beginInfo);
@@ -151,11 +149,11 @@ DearImGui::DearImGui([[maybe_unused]] Device& device, [[maybe_unused]] DesktopIn
 	vk::SubmitInfo endInfo;
 	endInfo.commandBufferCount = 1;
 	endInfo.pCommandBuffers = &commandBuffer;
-	auto done = device.createFence(false);
+	auto done = device->makeFence(false);
 	queue.queue.submit(endInfo, done);
-	device.waitFor(done);
+	device->waitFor(done);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
-	device.destroy(pool, done);
+	device->destroy(pool, done);
 	logD("[DearImGui] constructed");
 #endif
 }
@@ -176,22 +174,25 @@ DearImGui::~DearImGui() {
 
 bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive && next(State::eEnd, State::eBegin)) {
+	if (m_bActive) {
+		if (m_state != State::eEnd) {
+			logW("[DearImGui] Forcing [State::{}] from [State::{}]", stateStr[State::eBegin], stateStr[State::eEnd], m_state);
+			if (m_state == State::eBegin) { ImGui::Render(); }
+		}
+		next(m_state, State::eBegin);
 		ImGui_ImplVulkan_NewFrame();
 #if defined(LEVK_USE_GLFW)
 		ImGui_ImplGlfw_NewFrame();
 #endif
 		ImGui::NewFrame();
-		if (m_showDemo) {
-			ImGui::ShowDemoWindow(&m_showDemo);
-		}
+		if (m_showDemo) { ImGui::ShowDemoWindow(&m_showDemo); }
 		return true;
 	}
 #endif
 	return false;
 }
 
-bool DearImGui::render() {
+bool DearImGui::endFrame() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive && next(State::eBegin, State::eRender)) {
 		ImGui::Render();
@@ -201,7 +202,7 @@ bool DearImGui::render() {
 	return false;
 }
 
-bool DearImGui::endFrame([[maybe_unused]] graphics::CommandBuffer const& cb) {
+bool DearImGui::renderDrawData([[maybe_unused]] graphics::CommandBuffer const& cb) {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive && next(State::eRender, State::eEnd)) {
 		if (auto const pData = ImGui::GetDrawData()) {

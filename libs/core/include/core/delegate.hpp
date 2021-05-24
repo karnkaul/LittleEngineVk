@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
-#include <core/tagged_store.hpp>
+#include <kt/monotonic_map/monotonic_map.hpp>
 
 namespace le {
 ///
@@ -12,9 +12,9 @@ template <typename... Args>
 class Delegate {
   public:
 	using Callback = std::function<void(Args...)>;
-	using Tk = Tag<>;
+	using Storage = kt::monotonic_map<Callback>;
+	using Tk = typename Storage::handle;
 
-  public:
 	///
 	/// \brief Register callback and obtain token
 	/// \returns Subscription token (discard to unregister)
@@ -35,29 +35,27 @@ class Delegate {
 	void clear() noexcept;
 
   private:
-	TaggedStore<Callback> m_tokens;
+	Storage m_callbacks;
 };
 
 template <typename... Args>
 typename Delegate<Args...>::Tk Delegate<Args...>::subscribe(Callback const& callback) {
-	return m_tokens.emplace_back(callback);
+	return m_callbacks.push(callback);
 }
 
 template <typename... Args>
 void Delegate<Args...>::operator()(Args... args) const {
-	for (auto const& [_, callback] : m_tokens) {
-		callback(args...);
-	};
+	for (auto const& callback : m_callbacks) { callback(args...); };
 }
 
 template <typename... Args>
 bool Delegate<Args...>::alive() const noexcept {
-	return !m_tokens.empty();
+	return !m_callbacks.empty();
 }
 
 template <typename... Args>
 void Delegate<Args...>::clear() noexcept {
-	m_tokens.clear();
+	m_callbacks.clear();
 	return;
 }
 } // namespace le

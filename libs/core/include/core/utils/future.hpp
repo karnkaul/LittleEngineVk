@@ -49,9 +49,7 @@ bool Future<T>::ready(bool bAllowInvalid) const {
 
 template <typename T>
 void Future<T>::wait() const {
-	if (future.valid()) {
-		future.get();
-	}
+	if (future.valid()) { future.get(); }
 }
 } // namespace utils
 
@@ -62,12 +60,9 @@ FutureState utils::futureState(std::future<T> const& future) noexcept {
 		auto const status = future.wait_for(0ms);
 		switch (status) {
 		default:
-		case std::future_status::deferred:
-			return FutureState::eDeferred;
-		case std::future_status::ready:
-			return FutureState::eReady;
-		case std::future_status::timeout:
-			return FutureState::eTimeout;
+		case std::future_status::deferred: return FutureState::eDeferred;
+		case std::future_status::ready: return FutureState::eReady;
+		case std::future_status::timeout: return FutureState::eTimeout;
 		}
 	}
 	return FutureState::eInvalid;

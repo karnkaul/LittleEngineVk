@@ -1,55 +1,16 @@
-#include <graphics/bitmap_text.hpp>
+#include <graphics/text_factory.hpp>
 
 namespace le::graphics {
-namespace {
-constexpr glm::vec2 textTLOffset(BitmapText::HAlign h, BitmapText::VAlign v) noexcept {
-	glm::vec2 textTLoffset = glm::vec2(0.0f);
-	switch (h) {
-	case BitmapText::HAlign::Centre: {
-		textTLoffset.x = -0.5f;
-		break;
-	}
-	case BitmapText::HAlign::Left:
-	default:
-		break;
-
-	case BitmapText::HAlign::Right: {
-		textTLoffset.x = -1.0f;
-		break;
-	}
-	}
-	switch (v) {
-	case BitmapText::VAlign::Middle: {
-		textTLoffset.y = 0.5f;
-		break;
-	}
-	default:
-	case BitmapText::VAlign::Top: {
-		break;
-	}
-	case BitmapText::VAlign::Bottom: {
-		textTLoffset.y = 1.0f;
-		break;
-	}
-	}
-	return textTLoffset;
-}
-} // namespace
-
-Geometry BitmapText::generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
-	if (text.empty()) {
-		return {};
-	}
-	if (!layout) {
-		layout = this->layout(glyphs, text, size, nYPad);
-	}
+Geometry TextFactory::generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
+	if (text.empty()) { return {}; }
+	if (!layout) { layout = this->layout(glyphs, text, size, nYPad); }
 	glm::vec2 const realTopLeft = pos;
 	glm::vec2 textTL = realTopLeft;
 	std::size_t nextLineIdx = 0;
 	s32 yIdx = 0;
 	f32 xPos = 0.0f;
 	f32 lineWidth = 0.0f;
-	auto const textTLoffset = textTLOffset(halign, valign);
+	glm::vec2 const textTLoffset = {align.x - 0.5f, align.y + 0.5f};
 	auto updateTextTL = [&]() {
 		lineWidth = 0.0f;
 		f32 maxOffsetY = 0.0f;
@@ -84,9 +45,7 @@ Geometry BitmapText::generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optio
 			continue;
 		}
 		std::size_t const idx = (std::size_t)ch;
-		if (idx >= glyphs.size()) {
-			continue;
-		}
+		if (idx >= glyphs.size()) { continue; }
 		glm::vec3 const c(colour.toVec4());
 		auto const& glyph = glyphs[idx];
 		auto const offset = glm::vec3(xPos - (f32)glyph.offset.x * layout->scale, (f32)glyph.offset.y * layout->scale, 0.0f);
@@ -107,7 +66,7 @@ Geometry BitmapText::generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optio
 	return ret;
 }
 
-glm::ivec2 BitmapText::glyphBounds(View<Glyph> glyphs, std::string_view text) const noexcept {
+glm::ivec2 TextFactory::glyphBounds(View<Glyph> glyphs, std::string_view text) const noexcept {
 	glm::ivec2 ret = {};
 	for (char c : text) {
 		std::size_t const idx = (std::size_t)c;
@@ -119,14 +78,12 @@ glm::ivec2 BitmapText::glyphBounds(View<Glyph> glyphs, std::string_view text) co
 	return ret;
 }
 
-BitmapText::Layout BitmapText::layout(View<Glyph> glyphs, std::string_view text, Size size, f32 nPadY) const noexcept {
+TextFactory::Layout TextFactory::layout(View<Glyph> glyphs, std::string_view text, Size size, f32 nPadY) const noexcept {
 	Layout ret;
 	ret.maxBounds = glyphBounds(glyphs, text);
 	ret.lineCount = 1;
 	for (std::size_t idx = 0; idx < text.size(); ++idx) {
-		if (text[idx] == '\n') {
-			++ret.lineCount;
-		}
+		if (text[idx] == '\n') { ++ret.lineCount; }
 	}
 	if (auto pPx = std::get_if<u32>(&size)) {
 		ret.scale = (f32)(*pPx) / (f32)ret.maxBounds.y;

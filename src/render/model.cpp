@@ -20,9 +20,7 @@ namespace {
 struct fhasher {
 	std::size_t i = 0;
 
-	std::size_t operator()(float f) noexcept {
-		return std::hash<float>{}(f) << i++;
-	}
+	std::size_t operator()(float f) noexcept { return std::hash<float>{}(f) << i++; }
 };
 } // namespace
 
@@ -50,39 +48,29 @@ constexpr glm::vec2 texCoords(View<f32> arr, std::size_t idx, bool invertY) noex
 	return {arr[2 * idx + 0], invertY ? 1.0f - y : y};
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, std::size_t idx) noexcept {
-	return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]};
-}
+constexpr glm::vec3 vec3(View<f32> arr, std::size_t idx) noexcept { return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]}; }
 
 constexpr glm::vec2 texCoords(View<f32> arr, int idx, bool invertY) noexcept {
 	return arr.empty() || idx < 0 ? glm::vec2(0.0f, 1.0f) : texCoords(arr, (std::size_t)idx, invertY);
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, int idx) noexcept {
-	return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx);
-}
+constexpr glm::vec3 vec3(View<f32> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
 
 template <typename T>
 kt::result<std::size_t> find(T const& arr, Hash hash) noexcept {
 	for (std::size_t idx = 0; idx < arr.size(); ++idx) {
-		if (arr[idx].hash == hash) {
-			return idx;
-		}
+		if (arr[idx].hash == hash) { return idx; }
 	}
 	return kt::null_result;
 }
 
 Colour colour(f32 const (&arr)[3], Colour fallback, f32 a = 1.0f) {
-	if (arr[0] > 0.0f && arr[1] > 0.0f && arr[2] > 0.0f) {
-		return Colour({arr[0], arr[1], arr[2], a});
-	}
+	if (arr[0] > 0.0f && arr[1] > 0.0f && arr[2] > 0.0f) { return Colour({arr[0], arr[1], arr[2], a}); }
 	return Colour(glm::vec4(fallback.toVec3(), a));
 }
 
 glm::vec3 vec3(dj::node_t const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
-	if (auto const pVec = json.find(id)) {
-		return {pVec->safe_get("x").as<f32>(), pVec->safe_get("y").as<f32>(), pVec->safe_get("z").as<f32>()};
-	}
+	if (auto const pVec = json.find(id)) { return {pVec->safe_get("x").as<f32>(), pVec->safe_get("y").as<f32>(), pVec->safe_get("z").as<f32>()}; }
 	return fallback;
 }
 } // namespace
@@ -141,8 +129,7 @@ class OBJReader final {
 
 OBJReader::OBJReader(Data data)
 	: m_obj(std::move(data.obj)), m_mtl(std::move(data.mtl)), m_modelID(std::move(data.modelID)), m_jsonID(std::move(data.jsonID)),
-	  m_samplerID(std::move(data.samplerID)), m_origin(data.origin), m_scale(data.scale), m_invertV(data.invertV) {
-}
+	  m_samplerID(std::move(data.samplerID)), m_origin(data.origin), m_scale(data.scale), m_invertV(data.invertV) {}
 
 Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader) {
 	auto const idStr = m_jsonID.generic_string();
@@ -153,28 +140,16 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader)
 		msr = &*m_matStrReader;
 	}
 	bool const bOK = tinyobj::LoadObj(&m_attrib, &m_shapes, &m_materials, &warn, &err, &m_obj, msr);
-	if (m_shapes.empty()) {
-		return std::string("No shapes parsed!");
-	}
-	if (!warn.empty() && !bOK) {
-		return warn;
-	}
-	if (!err.empty()) {
-		return err;
-	}
-	if (!bOK) {
-		return std::string("Unknown error(s)");
-	}
+	if (m_shapes.empty()) { return std::string("No shapes parsed!"); }
+	if (!warn.empty() && !bOK) { return warn; }
+	if (!err.empty()) { return err; }
+	if (!bOK) { return std::string("Unknown error(s)"); }
 	Model::CreateInfo ret;
-	for (auto const& shape : m_shapes) {
-		ret.meshes.push_back(processShape(ret, shape));
-	}
+	for (auto const& shape : m_shapes) { ret.meshes.push_back(processShape(ret, shape)); }
 	for (auto& texture : ret.textures) {
 		auto bytes = reader.bytes(texture.filename);
 		ENSURE(bytes.has_result(), "Texture not found!");
-		if (bytes) {
-			texture.bytes = bytes.move();
-		}
+		if (bytes) { texture.bytes = bytes.move(); }
 	}
 	return Model::Result<Model::CreateInfo>(std::move(ret));
 }
@@ -191,9 +166,7 @@ Model::MeshData OBJReader::processShape(Model::CreateInfo& info, tinyobj::shape_
 std::size_t OBJReader::texIdx(Model::CreateInfo& info, std::string_view texName) {
 	auto const id = (m_modelID / texName).generic_string();
 	Hash const hash = id;
-	if (auto search = find(info.textures, hash)) {
-		return *search;
-	}
+	if (auto search = find(info.textures, hash)) { return *search; }
 	Model::TexData tex;
 	tex.filename = m_jsonID.parent_path() / texName;
 	tex.id = std::move(id);
@@ -205,9 +178,7 @@ std::size_t OBJReader::texIdx(Model::CreateInfo& info, std::string_view texName)
 
 std::size_t OBJReader::matIdx(Model::CreateInfo& info, tinyobj::material_t const& fromMat, std::string_view id) {
 	Hash const hash = id;
-	if (auto search = find(info.materials, hash)) {
-		return *search;
-	}
+	if (auto search = find(info.materials, hash)) { return *search; }
 	Model::MatData mat;
 	mat.id = id;
 	mat.hash = hash;
@@ -218,27 +189,17 @@ std::size_t OBJReader::matIdx(Model::CreateInfo& info, tinyobj::material_t const
 	mat.mtl.Tf = colour(fromMat.transmittance, colours::white);
 	mat.mtl.Ns = std::min(fromMat.shininess, 0.0f);
 	mat.mtl.d = std::clamp(fromMat.dissolve, 0.0f, 1.0f);
-	if (!fromMat.diffuse_texname.empty()) {
-		mat.diffuse.push_back(texIdx(info, fromMat.diffuse_texname));
-	}
-	if (!fromMat.specular_texname.empty()) {
-		mat.specular.push_back(texIdx(info, fromMat.specular_texname));
-	}
-	if (!fromMat.bump_texname.empty()) {
-		mat.bump.push_back(texIdx(info, fromMat.bump_texname));
-	}
-	if (!fromMat.alpha_texname.empty()) {
-		mat.alpha.push_back(texIdx(info, fromMat.alpha_texname));
-	}
+	if (!fromMat.diffuse_texname.empty()) { mat.diffuse.push_back(texIdx(info, fromMat.diffuse_texname)); }
+	if (!fromMat.specular_texname.empty()) { mat.specular.push_back(texIdx(info, fromMat.specular_texname)); }
+	if (!fromMat.bump_texname.empty()) { mat.bump.push_back(texIdx(info, fromMat.bump_texname)); }
+	if (!fromMat.alpha_texname.empty()) { mat.alpha.push_back(texIdx(info, fromMat.alpha_texname)); }
 	info.materials.push_back(std::move(mat));
 	return info.materials.size() - 1;
 }
 
 std::string OBJReader::meshName(Model::CreateInfo& info, tinyobj::shape_t const& shape) {
 	auto ret = (m_modelID / shape.name).generic_string();
-	if (m_meshIDs.find(ret) != m_meshIDs.end()) {
-		ret = fmt::format("{}_{}", std::move(ret), info.meshes.size());
-	}
+	if (m_meshIDs.find(ret) != m_meshIDs.end()) { ret = fmt::format("{}_{}", std::move(ret), info.meshes.size()); }
 	m_meshIDs.insert(ret);
 	return ret;
 }
@@ -289,9 +250,7 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 		std::size_t const idx = indices.front();
 		if (idx < tex.size()) {
 			auto const& tx = tex[idx];
-			if (auto const it = map.find(tx.hash); it != map.end()) {
-				return &it->second;
-			}
+			if (auto const it = map.find(tx.hash); it != map.end()) { return &it->second; }
 		}
 	}
 	return nullptr;
@@ -300,31 +259,21 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 
 Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Reader const& reader) {
 	auto res = reader.string(jsonID);
-	if (!res) {
-		return std::string("JSON not found");
-	}
+	if (!res) { return std::string("JSON not found"); }
 	auto json = dj::node_t::make(*res);
-	if (!json || !json->is_object()) {
-		return std::string("Failed to read json");
-	}
-	if (!json->contains("obj")) {
-		return std::string("JSON missing obj");
-	}
+	if (!json || !json->is_object()) { return std::string("Failed to read json"); }
+	if (!json->contains("obj")) { return std::string("JSON missing obj"); }
 	auto const jsonDir = jsonID.parent_path();
 	auto const objID = jsonDir / json->get("obj").as<std::string>();
 	auto const mtlID = jsonDir / json->safe_get("mtl").as<std::string>();
 	auto obj = reader.sstream(objID);
 	auto mtl = reader.sstream(mtlID);
-	if (!obj) {
-		return std::string("obj not found");
-	}
+	if (!obj) { return std::string("obj not found"); }
 	auto pSamplerID = json->find("sampler");
 	auto pScale = json->find("scale");
 	OBJReader::Data objData;
 	objData.obj = obj.move();
-	if (mtl) {
-		objData.mtl = mtl.move();
-	}
+	if (mtl) { objData.mtl = mtl.move(); }
 	objData.modelID = std::move(modelID);
 	objData.jsonID = std::move(jsonID);
 	objData.modelID = jsonDir;
@@ -335,19 +284,17 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	return parser(reader);
 }
 
-Model::Result<View<Primitive>> Model::construct(VRAM& vram, CreateInfo const& info, Sampler const& sampler, vk::Format texFormat) {
+Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
 	Map<Material> materials;
 	decltype(m_storage) storage;
 	for (auto const& tex : info.textures) {
 		if (!tex.bytes.empty()) {
 			graphics::Texture::CreateInfo tci;
-			tci.format = texFormat;
+			tci.forceFormat = forceFormat;
 			tci.sampler = sampler.sampler();
-			tci.data = graphics::Texture::Img{{tex.bytes.begin(), tex.bytes.end()}};
-			graphics::Texture texture((info.id / tex.id).generic_string(), vram);
-			if (!texture.construct(tci)) {
-				return std::string("Failed to construct texture");
-			}
+			tci.data = graphics::Texture::Img{tex.bytes.begin(), tex.bytes.end()};
+			graphics::Texture texture(vram);
+			if (!texture.construct(tci)) { return std::string("Failed to construct texture"); }
 			storage.textures.emplace(tex.id, std::move(texture));
 		}
 	}
@@ -359,7 +306,7 @@ Model::Result<View<Primitive>> Model::construct(VRAM& vram, CreateInfo const& in
 		materials.emplace(mat.hash, material);
 	}
 	for (auto const& m : info.meshes) {
-		graphics::Mesh mesh((info.id / m.id).generic_string(), vram);
+		graphics::Mesh mesh(vram);
 		mesh.construct(m.geometry);
 		auto [it, _] = storage.meshes.emplace((info.id / m.id).generic_string(), std::move(mesh));
 		Primitive prim;
@@ -368,9 +315,7 @@ Model::Result<View<Primitive>> Model::construct(VRAM& vram, CreateInfo const& in
 			auto const& mat = info.materials[m.matIndices.front()];
 			auto const it = materials.find(mat.hash);
 			ENSURE(it != materials.end(), "Invalid hash");
-			if (it != materials.end()) {
-				prim.material = it->second;
-			}
+			if (it != materials.end()) { prim.material = it->second; }
 		}
 		storage.primitives.push_back(prim);
 	}

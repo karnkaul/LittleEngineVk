@@ -5,13 +5,10 @@ set(COMPILE_DEFS
 	$<$<CONFIG:Debug>:LEVK_DEBUG>
 	$<$<BOOL:${MSVC_RUNTIME}>:WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS>
 	# LEVK Flags
-	$<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW LEVK_DESKTOP>
-	$<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>
-	$<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>
 	$<$<STREQUAL:${PLATFORM},Android>:LEVK_ANDROID>
 	$<$<BOOL:${LEVK_PRE_RELEASE}>:LEVK_PRE_RELEASE>
 )
-set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused -Wno-unknown-pragmas)
+set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused -Wno-unknown-pragmas -Wno-deprecated-volatile)
 if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
 	set(COMPILE_OPTS
 		-Wextra
@@ -19,8 +16,9 @@ if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
 		$<$<NOT:$<CONFIG:Debug>>:-Werror>
 		$<$<NOT:$<BOOL:${WINDOWS_CLANG}>>:-fexceptions>
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
-		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8 -Wno-unknown-pragmas>
+		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8 -Wno-unknown-pragmas -Wno-volatile>
 		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:${CLANG_COMMON}>
+		$<$<BOOL:${LEVK_ASAN}>:-O1 -g -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls>
 	)
 elseif(WINDOWS_MSBUILD)
 	set(COMPILE_OPTS
@@ -36,6 +34,7 @@ if(PLATFORM STREQUAL "Linux")
 	set(LINK_OPTS
 		-no-pie         # Build as application
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
+		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
 	)
 elseif(PLATFORM STREQUAL "Win64" AND NOT WINDOWS_GCC)
 	if(MSVC)
@@ -58,7 +57,7 @@ if(LINUX_GCC AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "10.0.0")
 	list(APPEND COMPILE_OPTS -Wno-deprecated-copy -Wno-class-memaccess -Wno-init-list-lifetime)
 endif()
 
-set(COMPILE_FTRS cxx_std_17)
+set(COMPILE_FTRS cxx_std_20)
 set(LINK_LIBS $<$<STREQUAL:${PLATFORM},Linux>:pthread stdc++fs dl>)
 
 add_library(levk-interface INTERFACE)

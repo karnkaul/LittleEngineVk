@@ -22,6 +22,7 @@ cd "$THISDIR"
 FILES=$(find . -not -path "$EXCLUDE0" -not -path "$BUILD" -not -path "$EXCLUDE1" \( -name $PATTERN0 -o -name $PATTERN1 \))
 COUNT=$(echo -e "$FILES" | wc -l)
 echo -e "\nFiles:\n\n$FILES\n"
+echo -e "\n$($CLANG_FORMAT --version)\n"
 
 if [ "$RUN" == "TRUE" ]; then
 	$CLANG_FORMAT -i $FILES

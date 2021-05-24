@@ -38,9 +38,7 @@ void logImpl(dl::level level, std::string_view fmt, Args&&... args) {
 
 template <typename... Args>
 void le::logD([[maybe_unused]] std::string_view fmt, [[maybe_unused]] Args&&... args) {
-	if constexpr (dl::dlog_debug) {
-		::le::detail::logImpl(dl::level::debug, fmt, std::forward<Args>(args)...);
-	}
+	if constexpr (dl::dlog_debug) { ::le::detail::logImpl(dl::level::debug, fmt, std::forward<Args>(args)...); }
 }
 template <typename... Args>
 void le::logI(std::string_view fmt, Args&&... args) {
@@ -56,15 +54,11 @@ void le::logE(std::string_view fmt, Args&&... args) {
 }
 template <typename Pred, typename... Args>
 void le::log_if(Pred pred, dl::level level, std::string_view fmt, Args&&... args) {
-	if (pred) {
-		::le::detail::logImpl(level, fmt, std::forward<Args>(args)...);
-	}
+	if (pred) { ::le::detail::logImpl(level, fmt, std::forward<Args>(args)...); }
 }
 template <typename Pred, typename... Args>
 void le::logD_if([[maybe_unused]] Pred pred, [[maybe_unused]] std::string_view fmt, [[maybe_unused]] Args&&... args) {
-	if constexpr (dl::dlog_debug) {
-		log_if(pred, dl::level::debug, fmt, std::forward<Args>(args)...);
-	}
+	if constexpr (dl::dlog_debug) { log_if(pred, dl::level::debug, fmt, std::forward<Args>(args)...); }
 }
 template <typename Pred, typename... Args>
 void le::logI_if(Pred pred, std::string_view fmt, Args&&... args) {

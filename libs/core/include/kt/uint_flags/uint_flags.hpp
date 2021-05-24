@@ -73,15 +73,11 @@ struct uint_flags {
 	///
 	/// \brief Compare two uint_flags
 	///
-	friend constexpr bool operator==(uint_flags a, uint_flags b) noexcept {
-		return a.bits == b.bits;
-	}
+	friend constexpr bool operator==(uint_flags a, uint_flags b) noexcept { return a.bits == b.bits; }
 	///
 	/// \brief Compare two uint_flags
 	///
-	friend constexpr bool operator!=(uint_flags a, uint_flags b) noexcept {
-		return !(a == b);
-	}
+	friend constexpr bool operator!=(uint_flags a, uint_flags b) noexcept { return !(a == b); }
 };
 
 // impl
@@ -96,18 +92,14 @@ constexpr uint_flags<Ty> uint_flags<Ty>::combine(T... t) noexcept {
 template <typename Ty>
 constexpr uint_flags<Ty> uint_flags<Ty>::fill(std::uint8_t count) noexcept {
 	uint_flags ret{};
-	for (std::uint8_t i = 0; i < count; ++i) {
-		ret.update(1 << i);
-	}
+	for (std::uint8_t i = 0; i < count; ++i) { ret.update(1 << i); }
 	return ret;
 }
 template <typename Ty>
 template <typename T, typename... Ts>
 constexpr uint_flags<Ty>& uint_flags<Ty>::add(T t, Ts... ts) noexcept {
 	update(t);
-	if constexpr (sizeof...(Ts) > 0) {
-		add(ts...);
-	}
+	if constexpr (sizeof...(Ts) > 0) { add(ts...); }
 	return *this;
 }
 template <typename Ty>

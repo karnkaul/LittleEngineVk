@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <thread>
 #include <core/ensure.hpp>
-#include <core/io/reader.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
 
@@ -25,36 +24,38 @@ io::Path g_exeLocation;
 io::Path g_exePath;
 io::Path g_workingDir;
 std::string g_exePathStr;
-std::deque<os::ArgsParser::entry> g_args;
+std::vector<std::string_view> g_args;
+
+std::vector<std::string_view> buildArgs(os::Args const& args) {
+	std::vector<std::string_view> ret;
+	ret.reserve(std::size_t(args.argc));
+	for (int i = 0; i < args.argc; ++i) { ret.push_back(args.argv[std::size_t(i)]); }
+	return ret;
+}
 } // namespace
 
 void os::args(Args const& args) {
 	g_workingDir = io::absolute(io::current_path());
-	if (args.argc > 0) {
-		ArgsParser parser;
-		g_args = parser.parse(args.argc, args.argv);
-		auto& arg0 = g_args.front();
-		g_exeLocation = io::absolute(arg0.k);
-		g_exePath = g_exeLocation.parent_path();
-		while (g_exePath.filename().generic_string() == ".") {
-			g_exePath = g_exePath.parent_path();
+	g_args = buildArgs(args);
+	if (!g_args.empty()) {
+		io::Path const arg0 = io::absolute(g_args.front());
+		if (!arg0.empty() && io::is_regular_file(arg0)) {
+			g_exePath = arg0.parent_path();
+			while (g_exePath.filename().string() == ".") { g_exePath = g_exePath.parent_path(); }
+			g_exeLocation = g_exePath / arg0.filename();
 		}
-		g_exeLocation = g_exePath / g_exeLocation.filename();
-		g_args.pop_front();
 	}
 }
 
-std::string os::argv0() {
-	return g_exeLocation.generic_string();
-}
+std::string os::argv0() { return g_exeLocation.generic_string(); }
+
+std::string os::exeName() { return g_exeLocation.filename().string(); }
 
 io::Path os::dirPath(Dir dir) {
 	switch (dir) {
 	default:
 	case os::Dir::eWorking:
-		if (g_workingDir.empty()) {
-			g_workingDir = io::absolute(io::current_path());
-		}
+		if (g_workingDir.empty()) { g_workingDir = io::absolute(io::current_path()); }
 		return g_workingDir;
 	case os::Dir::eExecutable:
 		if (g_exePath.empty()) {
@@ -65,7 +66,7 @@ io::Path os::dirPath(Dir dir) {
 	}
 }
 
-io::Path os::androidStorage([[maybe_unused]] ErasedRef const& androidApp, [[maybe_unused]] bool bExternal) {
+io::Path os::androidStorage([[maybe_unused]] ErasedPtr androidApp, [[maybe_unused]] bool bExternal) {
 #if defined(LEVK_OS_ANDROID)
 	if (androidApp.contains<android_app*>()) {
 		if (android_app* pApp = androidApp.get<android_app*>(); pApp->activity) {
@@ -76,31 +77,7 @@ io::Path os::androidStorage([[maybe_unused]] ErasedRef const& androidApp, [[mayb
 	return io::Path();
 }
 
-kt::result<io::Path, std::string> os::findData(io::Path pattern, Dir start, u8 maxHeight) {
-	auto const root = os::dirPath(start);
-	auto data = io::FileReader::findUpwards(root, pattern, maxHeight);
-	if (!data) {
-		return fmt::format("[OS] {} not found (searched {} levels up from {})", pattern.generic_string(), maxHeight, root.generic_string());
-	}
-	return data.move();
-}
-
-std::deque<os::ArgsParser::entry> const& os::args() noexcept {
-	return g_args;
-}
-
-bool os::halt(View<Ref<ICmdArg>> cmdArgs) {
-	for (auto const& entry : g_args) {
-		for (ICmdArg& cmdArg : cmdArgs) {
-			auto const matches = cmdArg.keyVariants();
-			bool const bMatch = std::any_of(matches.begin(), matches.end(), [&entry](std::string_view m) { return entry.k == m; });
-			if (bMatch && cmdArg.halt(entry.v)) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
+std::vector<std::string_view> const& os::args() noexcept { return g_args; }
 
 bool os::debugging() {
 	bool ret = false;
@@ -116,13 +93,9 @@ bool os::debugging() {
 		std::string_view str(buf.data());
 		if (std::size_t const tracer = str.find(tracerPid); tracer < str.size()) {
 			std::size_t begin = tracer + tracerPid.size();
-			while (begin < str.size() && std::isspace(static_cast<unsigned char>(str[begin]))) {
-				++begin;
-			}
+			while (begin < str.size() && std::isspace(static_cast<unsigned char>(str[begin]))) { ++begin; }
 			std::size_t end = begin;
-			while (end < str.size() && !std::isspace(static_cast<unsigned char>(str[end]))) {
-				++end;
-			}
+			while (end < str.size() && !std::isspace(static_cast<unsigned char>(str[end]))) { ++end; }
 			if (str = str.substr(begin, end - begin); !str.empty()) {
 				if (str.size() == 1) {
 					ret = str[0] != '0';
@@ -148,9 +121,7 @@ void os::debugBreak() {
 }
 
 bool os::sysCall(std::string_view command) {
-	if (std::system(command.data()) == 0) {
-		return true;
-	}
+	if (std::system(command.data()) == 0) { return true; }
 	return false;
 }
 } // namespace le

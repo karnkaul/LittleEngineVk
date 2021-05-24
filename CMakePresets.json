@@ -78,9 +78,30 @@
 			}
 		},
 		{
+			"name": "levk-asan",
+			"displayName": "asan",
+			"description": "ASAN build using Ninja/clang",
+			"generator": "Ninja",
+			"binaryDir": "out/asan",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": {
+					"type": "STRING",
+					"value": "clang"
+				},
+				"CMAKE_CXX_COMPILER": {
+					"type": "STRING",
+					"value": "clang++"
+				},
+				"LEVK_ASAN": {
+					"type": "BOOL",
+					"value": "ON"
+				}
+			}
+		},
+		{
 			"name": "levk-rl",
 			"displayName": "Release ",
-			"description": "Release build using Make",
+			"description": "Release build using Ninja",
 			"generator": "Ninja",
 			"binaryDir": "out/rl",
 			"cacheVariables": {

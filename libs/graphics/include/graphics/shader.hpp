@@ -1,5 +1,5 @@
 #pragma once
-#include <core/ref.hpp>
+#include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -20,8 +20,8 @@ class Shader {
 	using ModuleMap = ArrayMap<vk::ShaderModule>;
 	using ResourcesMap = ArrayMap<Resources>;
 
-	Shader(Device& device, std::string name);
-	Shader(Device& device, std::string name, SpirVMap const& bytes);
+	Shader(not_null<Device*> device, std::string name);
+	Shader(not_null<Device*> device, std::string name, SpirVMap const& bytes);
 	Shader(Shader&&);
 	Shader& operator=(Shader&&);
 	~Shader();
@@ -40,19 +40,15 @@ class Shader {
 	bool construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_map);
 	void destroy();
 
-	Ref<Device> m_device;
+	not_null<Device*> m_device;
 };
 
 constexpr bool operator==(Shader const& lhs, Shader const& rhs) noexcept {
-	for (std::size_t idx = 0; idx < lhs.m_modules.size(); ++idx) {
-		if (lhs.m_modules[idx] != rhs.m_modules[idx]) {
-			return false;
-		}
+	for (std::size_t idx = 0; idx < arraySize(lhs.m_modules.arr); ++idx) {
+		if (lhs.m_modules.arr[idx] != rhs.m_modules.arr[idx]) { return false; }
 	}
 	return true;
 }
 
-constexpr bool operator!=(Shader const& lhs, Shader const& rhs) noexcept {
-	return !(lhs == rhs);
-}
+constexpr bool operator!=(Shader const& lhs, Shader const& rhs) noexcept { return !(lhs == rhs); }
 } // namespace le::graphics

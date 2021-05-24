@@ -4,7 +4,7 @@ An attempt to write a simple 3D game engine with a (mostly hard-coded) Vulkan re
 
 [Documentation](https://karnkaul.github.io/levk-docs) is located here (WIP).
 
-[![Build status](https://ci.appveyor.com/api/projects/status/pulw8g0clgeu58pm?svg=true)](https://ci.appveyor.com/project/karnkaul/littleenginevk)
+[![Build status](https://ci.appveyor.com/api/projects/status/pulw8g0clgeu58pm?svg=true)](https://ci.appveyor.com/project/karnkaul/littleenginevk) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e79ed5707cf34431aaba70cb2cd3779d)](https://www.codacy.com/gh/karnkaul/LittleEngineVk/dashboard?utm_source=github.com&utm_medium=referral&utm_content=karnkaul/LittleEngineVk&utm_campaign=Badge_Grade)
 
 ![Screenshot](demo/data/images/demo_screenshot_0.png)
 

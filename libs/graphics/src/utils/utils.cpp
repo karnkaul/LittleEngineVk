@@ -1,5 +1,6 @@
 #include <stb/stb_image.h>
 #include <core/log.hpp>
+#include <core/maths.hpp>
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
@@ -7,6 +8,8 @@
 #include <graphics/render_context.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
+
+static_assert(sizeof(stbi_uc) == sizeof(std::byte) && alignof(stbi_uc) == alignof(std::byte), "Invalid type size/alignment");
 
 namespace le::graphics {
 namespace {
@@ -22,12 +25,8 @@ struct Spv : Singleton<Spv> {
 
 	std::string compile(io::Path const& src, io::Path const& dst, std::string_view flags) {
 		if (bOnline) {
-			if (!io::is_regular_file(src)) {
-				return fmt::format("source file [{}] not found", src.generic_string());
-			}
-			if (!os::sysCall("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string())) {
-				return "compilation failed";
-			}
+			if (!io::is_regular_file(src)) { return fmt::format("source file [{}] not found", src.generic_string()); }
+			if (!os::sysCall("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string())) { return "compilation failed"; }
 			return {};
 		}
 		return fmt::format("[{}] offline", utils::g_compiler);
@@ -113,12 +112,12 @@ VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
 
 Shader::ResourcesMap utils::shaderResources(Shader const& shader) {
 	Shader::ResourcesMap ret;
-	for (std::size_t idx = 0; idx < shader.m_spirV.size(); ++idx) {
-		auto spirV = shader.m_spirV[idx];
+	for (std::size_t idx = 0; idx < arraySize(shader.m_spirV.arr); ++idx) {
+		auto spirV = shader.m_spirV.arr[idx];
 		if (!spirV.empty()) {
-			auto& res = ret[idx];
+			auto& res = ret.arr[idx];
 			res.compiler = std::make_unique<spvc::Compiler>(spirV);
-			res.resources = ret[idx].compiler->get_shader_resources();
+			res.resources = res.compiler->get_shader_resources();
 		}
 	}
 	return ret;
@@ -145,8 +144,8 @@ kt::result<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& dst
 utils::SetBindings utils::extractBindings(Shader const& shader) {
 	SetBindings ret;
 	Sets sets;
-	for (std::size_t idx = 0; idx < shader.m_spirV.size(); ++idx) {
-		auto spirV = shader.m_spirV[idx];
+	for (std::size_t idx = 0; idx < arraySize(shader.m_spirV.arr); ++idx) {
+		auto spirV = shader.m_spirV.arr[idx];
 		if (!spirV.empty()) {
 			spvc::Compiler compiler(spirV);
 			auto const resources = compiler.get_shader_resources();
@@ -191,36 +190,40 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 	return ret;
 }
 
-bytearray utils::convert(std::initializer_list<u8> bytes) {
-	return bytes.size() == 0 ? bytearray() : convert(View<u8>(&(*bytes.begin()), bytes.size()));
-}
+Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) { return bytes.size() == 0 ? Bitmap::type() : convert(View<u8>(&(*bytes.begin()), bytes.size())); }
 
-bytearray utils::convert(View<u8> bytes) {
+Bitmap::type utils::convert(View<u8> bytes) {
 	bytearray ret;
-	for (u8 byte : bytes) {
-		ret.push_back(static_cast<std::byte>(byte));
-	}
+	for (u8 byte : bytes) { ret.push_back(static_cast<std::byte>(byte)); }
 	return ret;
 }
 
-Texture::RawImage utils::decompress(bytearray imgBytes, u8 channels) {
-	Texture::RawImage ret;
-	int ch;
-	auto pIn = reinterpret_cast<stbi_uc const*>(imgBytes.data());
-	auto pOut = stbi_load_from_memory(pIn, (int)imgBytes.size(), &ret.width, &ret.height, &ch, (int)channels);
-	if (!pOut) {
-		g_log.log(lvl::warning, 1, "[{}] Failed to decompress image data", g_name);
-		return {};
-	}
-	std::size_t const size = (std::size_t)(ret.width * ret.height * channels);
-	ret.bytes = View<std::byte>(reinterpret_cast<std::byte*>(pOut), size);
-	return ret;
+utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
+	ENSURE(compressed.size() <= maths::max<int>(), "size too large!");
+	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
+	int w, h, ch;
+	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);
+	if (!pOut) { g_log.log(lvl::warning, 1, "[{}] Failed to decompress image data", g_name); }
+	size = {u32(w), u32(h)};
+	bytes = BMPview(reinterpret_cast<std::byte*>(pOut), std::size_t(size.x * size.y * channels));
 }
 
-void utils::release(Texture::RawImage rawImage) {
-	if (!rawImage.bytes.empty()) {
-		stbi_image_free((void*)rawImage.bytes.data());
+utils::STBImg::STBImg(STBImg&& rhs) noexcept : TBitmap<BMPview>(std::move(rhs)) {
+	rhs.bytes = {};
+	rhs.size = {};
+}
+
+utils::STBImg& utils::STBImg::operator=(STBImg&& rhs) noexcept {
+	if (&rhs != this) {
+		TBitmap<BMPview>::operator=(std::move(rhs));
+		rhs.bytes = {};
+		rhs.size = {};
 	}
+	return *this;
+}
+
+utils::STBImg::~STBImg() {
+	if (!bytes.empty()) { stbi_image_free((void*)bytes.data()); }
 }
 
 std::array<bytearray, 6> utils::loadCubemap(io::Reader const& reader, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
@@ -247,15 +250,9 @@ std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& d
 		family.familyIndex = fidx;
 		family.total = props.queueCount;
 		bool const bSurfaceSupport = device.device.getSurfaceSupportKHR(fidx, surface);
-		if ((props.queueFlags & vkqf::eTransfer) == vkqf::eTransfer) {
-			family.flags.set(QType::eTransfer);
-		}
-		if ((props.queueFlags & vkqf::eGraphics) == vkqf::eGraphics) {
-			family.flags.set(QFlags(QType::eGraphics) | QType::eTransfer);
-		}
-		if (bSurfaceSupport) {
-			family.flags.set(QType::ePresent);
-		}
+		if ((props.queueFlags & vkqf::eTransfer) == vkqf::eTransfer) { family.flags.set(QType::eTransfer); }
+		if ((props.queueFlags & vkqf::eGraphics) == vkqf::eGraphics) { family.flags.set(QFlags(QType::eGraphics) | QType::eTransfer); }
+		if (bSurfaceSupport) { family.flags.set(QType::ePresent); }
 		ret.push_back(family);
 		++fidx;
 	}

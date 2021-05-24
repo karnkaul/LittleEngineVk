@@ -86,7 +86,7 @@ class Asset {
 	using type = T;
 	using OnModified = AssetStore::OnModified;
 
-	Asset(type& t, OnModified& onMod, std::string_view id);
+	Asset(not_null<type*> t, not_null<OnModified*> onMod, std::string_view id);
 
 	type& get() const;
 	type& operator*() const;
@@ -96,8 +96,8 @@ class Asset {
 	std::string_view m_id;
 
   private:
-	Ref<T> m_t;
-	Ref<OnModified> m_onModified;
+	not_null<T*> m_t;
+	not_null<OnModified*> m_onModified;
 };
 
 // impl
@@ -135,7 +135,7 @@ class TAssetMap : public AssetMap {
 
 template <typename T, typename U>
 constexpr Asset<T> makeAsset(U&& wrap, AssetStore::OnModified& onModified) noexcept {
-	return {*wrap.t, onModified, wrap.id};
+	return {&*wrap.t, &onModified, wrap.id};
 }
 
 template <typename T>
@@ -143,9 +143,7 @@ template <typename U>
 Asset<T> TAssetMap<T>::add(AssetStore::OnModified& onMod, io::Path const& id, U&& u) {
 	auto idStr = id.generic_string();
 	auto const [it, bNew] = m_storage.insert({idStr, TAsset<T>{}});
-	if (!bNew) {
-		conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", idStr);
-	}
+	if (!bNew) { conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", idStr); }
 	TAsset<T>& asset = it->second;
 	asset.t.emplace(std::forward<U>(u));
 	asset.loadInfo.reset();
@@ -158,7 +156,7 @@ template <typename Data>
 std::optional<TAsset<T>> TAssetMap<T>::load(AssetStore const& store, AssetStore::OnModified& onMod, Resources& res, std::string id, Data&& data) {
 	AssetLoader<T> loader;
 	TAsset<T> asset;
-	asset.loadInfo = AssetLoadInfo<T>(store, res, onMod, std::forward<Data>(data), id);
+	asset.loadInfo = AssetLoadInfo<T>(&store, &res, &onMod, std::forward<Data>(data), id);
 	asset.t = loader.load(*asset.loadInfo);
 	if (asset.t) {
 		conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", id);
@@ -172,9 +170,7 @@ template <typename T>
 Asset<T> TAssetMap<T>::insert(TAsset<T>&& asset, AssetStore::OnModified& onMod) {
 	Hash const id = asset.id;
 	auto const [it, bNew] = m_storage.insert({id, std::move(asset)});
-	if (!bNew) {
-		conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", asset.id);
-	}
+	if (!bNew) { conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", asset.id); }
 	return makeAsset<T>(it->second, onMod);
 }
 template <typename T>
@@ -263,9 +259,7 @@ OptAsset<T> AssetStore::find(Hash id) const {
 	auto lock = m_assets.lock<std::shared_lock>();
 	if (lock.get().contains<T>()) {
 		auto& store = lock.get().get<T>().m_storage;
-		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]);
-		}
+		if (auto it = store.find(id); it != store.end() && it->second.t) { return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]); }
 	}
 	return std::nullopt;
 }
@@ -274,9 +268,7 @@ Asset<T> AssetStore::get(Hash id) const {
 	auto lock = m_assets.lock<std::shared_lock>();
 	if (lock.get().contains<T>()) {
 		auto& store = lock.get().get<T>().m_storage;
-		if (auto it = store.find(id); it != store.end() && it->second.t) {
-			return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]);
-		}
+		if (auto it = store.find(id); it != store.end() && it->second.t) { return detail::makeAsset<T>(it->second, m_onModified.lock().get()[id]); }
 	}
 	ENSURE(false, "Asset not found!");
 	throw std::runtime_error("Asset not present");
@@ -284,42 +276,32 @@ Asset<T> AssetStore::get(Hash id) const {
 template <typename T>
 bool AssetStore::contains(Hash id) const noexcept {
 	auto lock = m_assets.lock<std::shared_lock>();
-	if (lock.get().contains<T>()) {
-		return utils::contains(lock.get().get<T>().m_storage, id);
-	}
+	if (lock.get().contains<T>()) { return utils::contains(lock.get().get<T>().m_storage, id); }
 	return false;
 }
 template <typename T>
 bool AssetStore::reload(Hash id) {
 	auto lock = m_assets.lock<std::shared_lock>();
-	if (lock.get().contains<T>()) {
-		return lock.get().get<T>().reload(id);
-	}
+	if (lock.get().contains<T>()) { return lock.get().get<T>().reload(id); }
 	return false;
 }
 template <typename T>
 bool AssetStore::forceDirty(Hash id) const {
 	auto lock = m_assets.lock<std::shared_lock>();
-	if (lock.get().contains<T>()) {
-		return lock.get().get<T>().forceDirty(id);
-	}
+	if (lock.get().contains<T>()) { return lock.get().get<T>().forceDirty(id); }
 	return false;
 }
 template <typename T>
 bool AssetStore::unload(Hash id) {
 	auto lock = m_assets.lock<std::unique_lock>();
-	if (lock.get().contains<T>()) {
-		return lock.get().get<T>().unload(id);
-	}
+	if (lock.get().contains<T>()) { return lock.get().get<T>().unload(id); }
 	return false;
 }
 template <template <typename...> typename L>
 L<std::mutex> AssetStore::reloadLock() const {
 	return m_reloadMutex.lock<L>();
 }
-inline Resources& AssetStore::resources() {
-	return m_resources;
-}
+inline Resources& AssetStore::resources() { return m_resources; }
 template <typename T>
 bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
 	auto lock = reloadLock();
@@ -333,11 +315,10 @@ bool AssetStore::reloadAsset(T& out_asset, AssetLoadInfo<T> const& info) const {
 }
 
 template <typename T>
-Asset<T>::Asset(type& t, OnModified& onMod, std::string_view id) : m_id(id), m_t(t), m_onModified(onMod) {
-}
+Asset<T>::Asset(not_null<type*> t, not_null<OnModified*> onMod, std::string_view id) : m_id(id), m_t(t), m_onModified(onMod) {}
 template <typename T>
 typename Asset<T>::type& Asset<T>::get() const {
-	return m_t;
+	return *m_t;
 }
 template <typename T>
 typename Asset<T>::type& Asset<T>::operator*() const {
@@ -349,12 +330,12 @@ typename Asset<T>::type* Asset<T>::operator->() const {
 }
 template <typename T>
 typename Asset<T>::OnModified::Tk Asset<T>::onModified(OnModified::Callback const& callback) {
-	return m_onModified.get().subscribe(callback);
+	return m_onModified->subscribe(callback);
 }
 
 template <typename T>
 template <typename U>
 void AssetLoadInfo<T>::reloadDepend(Asset<U>& out_asset) const {
-	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s.get().template forceDirty<T>(id); }));
+	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s->template forceDirty<T>(id); }));
 }
 } // namespace le

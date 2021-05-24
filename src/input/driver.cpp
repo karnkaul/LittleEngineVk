@@ -1,9 +1,10 @@
 #include <core/utils/algo.hpp>
-#include <engine/input/input.hpp>
+#include <engine/input/driver.hpp>
+#include <engine/input/space.hpp>
 #include <engine/render/viewport.hpp>
 #include <window/desktop_instance.hpp>
 
-namespace le {
+namespace le::input {
 namespace {
 template <bool Erase, typename C>
 C& op_equals(C& self, C const& rhs) {
@@ -28,41 +29,37 @@ C& operator-=(C& self, C const& rhs) {
 }
 } // namespace
 
-Input::Out Input::update(EventQueue queue, [[maybe_unused]] Viewport const& view, bool consume, [[maybe_unused]] DesktopInstance const* pDI) noexcept {
+Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& view, glm::vec2 size, bool consume,
+						   [[maybe_unused]] Desktop const* pDI) noexcept {
 	Out ret;
 	auto& [s, q] = ret;
 	m_transient.pressed -= m_transient.released;
 	m_persistent.held += m_transient.pressed;
 	m_transient = {};
 	while (auto e = queue.pop()) {
-		if (!extract(*e, s) || !consume) {
-			q.m_events.push_back(*e);
-		}
+		if (!extract(*e, s) || !consume) { q.m_events.push_back(*e); }
 	}
 	copy(m_transient.pressed, s.keys, Action::ePressed);
 	copy(m_persistent.held, s.keys, Action::eHeld);
 	copy(m_transient.released, s.keys, Action::eReleased);
-	s.cursor.screenPos = s.cursor.position = m_persistent.cursor;
+	s.cursor.screenPos = m_persistent.cursor;
 	s.others = m_transient.others;
 	s.text = m_transient.text;
 	s.suspended = m_persistent.suspended;
+	glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
 	if (pDI) {
+		wSize = pDI->windowSize();
 		m_transient.gamepads = pDI->activeGamepads();
 		s.gamepads = m_transient.gamepads;
-		auto const ifb = pDI->framebufferSize();
-		auto const iwin = pDI->windowSize();
-		glm::vec2 const win(f32(iwin.x), f32(iwin.y));
-		if (view.scale < 1.0f) {
-			s.cursor.position = (s.cursor.screenPos - win * view.topLeft.n - view.topLeft.offset) / view.scale;
-		}
-		s.cursor.position *= (glm::vec2(f32(ifb.x), f32(ifb.y)) / win);
 	}
 #endif
+	Space const sp(size, wSize, view);
+	s.cursor.position = sp.world(s.cursor.screenPos, false);
 	return ret;
 }
 
-bool Input::KeySet::insert(Key k, Mods const& mods) {
+bool Driver::KeySet::insert(Key k, Mods const& mods) {
 	if (k != Key::eUnknown) {
 		for (auto& key : keys) {
 			if (key.key == k) {
@@ -80,7 +77,7 @@ bool Input::KeySet::insert(Key k, Mods const& mods) {
 	return false;
 }
 
-bool Input::KeySet::erase(Key k) noexcept {
+bool Driver::KeySet::erase(Key k) noexcept {
 	for (auto& key : keys) {
 		if (key.key == k) {
 			key = {};
@@ -90,11 +87,9 @@ bool Input::KeySet::erase(Key k) noexcept {
 	return false;
 }
 
-void Input::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Input::Action action) {
+void Driver::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Action action) {
 	for (KeyMods const& key : in.keys) {
-		if (key.key == Key::eUnknown) {
-			continue;
-		}
+		if (key.key == Key::eUnknown) { continue; }
 		bool found = false;
 		for (auto& k : out_keys) {
 			if (k.key == key.key) {
@@ -112,7 +107,7 @@ void Input::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Input
 	}
 }
 
-bool Input::extract(Event const& event, State& out_state) noexcept {
+bool Driver::extract(Event const& event, State& out_state) noexcept {
 	switch (event.type) {
 	case Event::Type::eInput: {
 		Event::Input const& input = event.payload.input;
@@ -142,21 +137,18 @@ bool Input::extract(Event const& event, State& out_state) noexcept {
 		return true;
 	}
 	case Event::Type::eText: {
-		if (m_transient.text.has_space()) {
-			m_transient.text.push_back(event.payload.text.c);
-		}
+		if (m_transient.text.has_space()) { m_transient.text.push_back(event.payload.text.c); }
 		return true;
 	}
 	case Event::Type::eFocus: {
-		out_state.focus = event.payload.bSet ? Input::Focus::eGained : Input::Focus::eLost;
+		out_state.focus = event.payload.bSet ? Focus::eGained : Focus::eLost;
 		return true;
 	}
 	case Event::Type::eSuspend: {
 		m_persistent.suspended = event.payload.bSet;
 		return false;
 	}
-	default:
-		return false;
+	default: return false;
 	}
 }
-} // namespace le
+} // namespace le::input

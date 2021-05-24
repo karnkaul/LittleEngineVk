@@ -13,9 +13,7 @@ struct RenderTarget final {
 	RenderImage depth;
 	vk::Extent2D extent;
 
-	inline std::array<vk::ImageView, 2> attachments() const {
-		return {colour.view, depth.view};
-	}
+	inline std::array<vk::ImageView, 2> attachments() const { return {colour.view, depth.view}; }
 };
 
 struct RenderSync {

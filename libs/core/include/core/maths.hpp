@@ -137,9 +137,7 @@ constexpr std::uint8_t lsbIndex(T bit) noexcept {
 	std::size_t const b = static_cast<std::size_t>(bit);
 	for (std::size_t i = 0; i <= std::numeric_limits<T>::digits; ++i) {
 		std::size_t const flag = unity << i;
-		if ((b & flag) == flag) {
-			return static_cast<std::uint8_t>(i);
-		}
+		if ((b & flag) == flag) { return static_cast<std::uint8_t>(i); }
 	}
 	return std::numeric_limits<std::uint8_t>::max();
 }
@@ -150,9 +148,7 @@ constexpr std::uint8_t enumEnd(T lastEnum) noexcept {
 	return (lsbIndex(static_cast<u32>(lastEnum))) + 1;
 }
 
-inline void Random::seed(std::optional<u32> value) noexcept {
-	m_engine = std::mt19937(value.value_or(m_device()));
-}
+inline void Random::seed(std::optional<u32> value) noexcept { m_engine = std::mt19937(value.value_or(m_device())); }
 
 template <typename T, template <typename> typename Dist, typename... Args>
 T Random::range(Args&&... args) noexcept {

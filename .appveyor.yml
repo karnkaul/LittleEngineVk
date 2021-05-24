@@ -4,7 +4,7 @@ environment:
     LEVK_VERSION: "0.0.9.0"
   matrix:
     - job_name: Windows x64
-      appveyor_build_worker_image: Visual Studio 2019
+      appveyor_build_worker_image: Visual Studio 2019 Preview
     - job_name: Linux x64
       appveyor_build_worker_image: Ubuntu
 configuration:
@@ -12,14 +12,11 @@ configuration:
 install:
   - sh: |
       [ "$SKIP_LINUX" == "true" ] && echo "-- Skipping Linux --" && exit
-      echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y xorg-dev ninja-build
-      sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-9 30
-      sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-9 30
-      sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-9 30
-      sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-9 30
+      sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+      echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y gcc-10 g++-10 xorg-dev
 before_build:
-  - cmd: cmake -G "Visual Studio 16 2019" . -B out -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1
-  - sh: cmake -G Ninja . -B out -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
+  - cmd: cmake -G "Visual Studio 16 2019" . -B out -A x64 -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1
+  - sh: cmake -G Ninja . -B out -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
 for:
   - matrix:
       only:
@@ -33,9 +30,17 @@ for:
         - job_name: Linux x64
     build_script:
       - sh: echo "== Building Linux $CONFIGURATION $LEVK_VERSION ==" && cmake --build out -v || exit 1
-test_script: |
-  cd out
-  ctest || exit 1
+test_script:
+  - cmd: |
+      "out/demo/Release/levk-demo" -h
+      "out/demo/Release/levk-demo" gpu
+      cd out
+      ctest || exit 1
+  - sh: |
+      out/demo/levk-demo -h
+      out/demo/levk-demo gpu
+      cd out
+      ctest || exit 1
 matrix:
   fast_finish: true
 skip_branch_with_pr: true

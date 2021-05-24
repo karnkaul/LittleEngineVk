@@ -210,18 +210,10 @@ std::string_view toString(s32 key);
 
 // impl
 
-constexpr bool le::window::isMouseButton(Key key) noexcept {
-	return key >= Key::eMouseButtonBegin && key < Key::eMouseButtonEnd;
-}
+constexpr bool le::window::isMouseButton(Key key) noexcept { return key >= Key::eMouseButtonBegin && key < Key::eMouseButtonEnd; }
 
-constexpr bool le::window::isGamepadButton(Key key) noexcept {
-	return key >= Key::eGamepadButtonBegin && key < Key::eGamepadButtonEnd;
-}
+constexpr bool le::window::isGamepadButton(Key key) noexcept { return key >= Key::eGamepadButtonBegin && key < Key::eGamepadButtonEnd; }
 
-constexpr bool le::window::isMouseAxis(Axis axis) noexcept {
-	return axis >= Axis::eMouseBegin && axis < Axis::eMouseEnd;
-}
+constexpr bool le::window::isMouseAxis(Axis axis) noexcept { return axis >= Axis::eMouseBegin && axis < Axis::eMouseEnd; }
 
-constexpr le::f32 le::window::triggerToAxis(f32 triggerValue) noexcept {
-	return (triggerValue + 1.0f) * 0.5f;
-}
+constexpr le::f32 le::window::triggerToAxis(f32 triggerValue) noexcept { return (triggerValue + 1.0f) * 0.5f; }

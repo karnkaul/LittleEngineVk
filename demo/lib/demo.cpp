@@ -1,4 +1,5 @@
 #include <iostream>
+#include <core/not_null.hpp>
 #include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
 #include <core/utils/string.hpp>
@@ -11,13 +12,19 @@
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
 #include <engine/input/control.hpp>
-#include <engine/render/drawer.hpp>
 #include <engine/render/model.hpp>
-#include <engine/scene_node.hpp>
+#include <engine/scene/scene_drawer.hpp>
+#include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
 #include <graphics/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
+
+#include <engine/gui/quad.hpp>
+#include <engine/gui/text.hpp>
+#include <engine/gui/widget.hpp>
+#include <engine/render/bitmap_text.hpp>
+#include <engine/utils/exec.hpp>
 
 namespace le::demo {
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
@@ -36,153 +43,20 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 		}
 		case window::Event::Type::eResize: {
 			auto const& resize = e->payload.resize;
-			if (resize.bFramebuffer) {
-				out_flags.set(Flag::eResized);
-			}
+			if (resize.bFramebuffer) { out_flags.set(Flag::eResized); }
 			break;
 		}
-		case window::Event::Type::eInit:
-			out_flags.set(Flag::eInit);
-			break;
-		case window::Event::Type::eTerm:
-			out_flags.set(Flag::eTerm);
-			break;
-		default:
-			break;
+		case window::Event::Type::eInit: out_flags.set(Flag::eInit); break;
+		case window::Event::Type::eTerm: out_flags.set(Flag::eTerm); break;
+		default: break;
 		}
 	}
-}
-
-struct GPULister : os::ICmdArg {
-	inline static constexpr std::array names = {"gpu-list"sv, "list-gpus"sv};
-
-	View<std::string_view> keyVariants() const override {
-		return names;
-	}
-
-	bool halt(std::string_view) override {
-		graphics::g_log.minVerbosity = LibLogger::Verbosity::eEndUser;
-		graphics::Instance inst(graphics::Instance::CreateInfo{});
-		std::stringstream str;
-		str << "Available GPUs:\n";
-		int i = 0;
-		for (auto const& d : inst.availableDevices(graphics::Device::requiredExtensions)) {
-			str << '\t' << i++ << ". " << d << "\n";
-		}
-		str << "\n";
-		std::cout << str.str();
-		return true;
-	}
-
-	Usage usage() const override {
-		return {"", "List supported GPUs"};
-	}
-};
-
-struct GPUPicker : os::ICmdArg {
-	inline static constexpr std::array names = {"use-gpu"sv, "pick-gpu"sv};
-
-	inline static std::optional<std::size_t> s_picked;
-
-	View<std::string_view> keyVariants() const override {
-		return names;
-	}
-
-	bool halt(std::string_view params) override {
-		s32 idx = utils::to<s32>(params, -1);
-		if (idx >= 0) {
-			s_picked = (std::size_t)idx;
-			logD("Using custom GPU index: {}", idx);
-		}
-		return false;
-	}
-
-	Usage usage() const override {
-		return {"<0-...>", "Select a custom available GPU"};
-	}
-};
-
-void listCmdArgs();
-
-struct HelpCmd : os::ICmdArg {
-	inline static constexpr std::array names = {"h"sv, "help"sv};
-
-	View<std::string_view> keyVariants() const override {
-		return names;
-	}
-
-	bool halt(std::string_view) override {
-		listCmdArgs();
-		return true;
-	}
-
-	Usage usage() const override {
-		return {"", "List all command line arguments"};
-	}
-};
-
-struct Text {
-	using Type = graphics::Mesh::Type;
-
-	graphics::BitmapText text;
-	std::optional<graphics::Mesh> mesh;
-	static constexpr glm::mat4 const model = glm::mat4(1.0f);
-
-	void create(graphics::VRAM& vram, io::Path const& id, Type type = Type::eDynamic) {
-		mesh = graphics::Mesh((id / "mesh").generic_string(), vram, type);
-	}
-
-	bool set(BitmapFont const& font, std::string_view str) {
-		text.text = str;
-		if (mesh) {
-			return mesh->construct(text.generate(font.glyphs(), font.atlas().data().size));
-		}
-		return false;
-	}
-
-	Primitive primitive(BitmapFont const& font) const {
-		Primitive ret;
-		if (mesh) {
-			ret.material.map_Kd = &font.atlas();
-			ret.material.map_d = &font.atlas();
-			ret.mesh = &*mesh;
-		}
-		return ret;
-	}
-};
-
-GPULister g_gpuLister;
-GPUPicker g_gpuPicker;
-HelpCmd g_help;
-std::array<Ref<os::ICmdArg>, 3> const g_cmdArgs = {g_gpuLister, g_gpuPicker, g_help};
-
-void listCmdArgs() {
-	std::stringstream str;
-	for (os::ICmdArg const& arg : g_cmdArgs) {
-		str << '[';
-		bool bFirst = true;
-		for (auto key : arg.keyVariants()) {
-			if (!bFirst) {
-				str << ", ";
-			}
-			bFirst = false;
-			str << (key.length() == 1 ? "-"sv : "--"sv) << key;
-		}
-		auto const u = arg.usage();
-		if (!u.params.empty()) {
-			str << '=' << u.params;
-		}
-		str << "] : " << u.summary << '\n';
-	}
-	std::cout << str.str();
 }
 
 using namespace dts;
 
 struct TaskErr : error_handler_t {
-	void operator()(std::runtime_error const& err, u64) const override {
-		ENSURE(false, err.what());
-	}
+	void operator()(std::runtime_error const& err, u64) const override { ENSURE(false, err.what()); }
 };
 TaskErr g_taskErr;
 
@@ -204,18 +78,16 @@ struct Albedo {
 		Albedo ret;
 		glm::vec3 const c = colour.toVec3();
 		f32 const a = colour.a.toF32();
-		ret.ambient = {c * amdispsh.r, a};
-		ret.diffuse = {c * amdispsh.g, a};
-		ret.specular = {c * amdispsh.b, amdispsh.a};
+		ret.ambient = {c * amdispsh.x, a};
+		ret.diffuse = {c * amdispsh.y, a};
+		ret.specular = {c * amdispsh.z, amdispsh.w};
 		return ret;
 	}
 };
 
 struct ShadeMat {
-	enum Flag { eDrop = 1 << 0 };
-
-	alignas(16) Albedo albedo;
 	alignas(16) glm::vec4 tint;
+	alignas(16) Albedo albedo;
 
 	static ShadeMat make(Colour tint = colours::white, Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
 		ShadeMat ret;
@@ -241,7 +113,7 @@ struct DirLight {
 
 struct DirLights {
 	alignas(16) std::array<DirLight, 4> lights;
-	alignas(16) u32 count = 0;
+	alignas(4) u32 count;
 };
 
 struct SpringArm {
@@ -285,15 +157,15 @@ struct PlayerController {
 	f32 maxSpeed = 10.0f;
 	bool active = true;
 
-	void tick(Input::State const& state, SceneNode& node, Time_s dt) noexcept {
-		Control::Range r(Control::KeyRange{Input::Key::eA, Input::Key::eD});
+	void tick(input::State const& state, SceneNode& node, Time_s dt) noexcept {
+		input::Range r(input::KeyRange{input::Key::eA, input::Key::eD});
 		roll = r(state);
 		if (maths::abs(roll) < 0.25f) {
 			roll = 0.0f;
 		} else if (maths::abs(roll) > 0.9f) {
 			roll = roll < 0.0f ? -1.0f : 1.0f;
 		}
-		r = Control::KeyRange{Input::Key::eS, Input::Key::eW};
+		r = input::KeyRange{input::Key::eS, input::Key::eW};
 		f32 dspeed = r(state);
 		if (maths::abs(dspeed) < 0.25f) {
 			dspeed = 0.0f;
@@ -309,55 +181,9 @@ struct PlayerController {
 	}
 };
 
-struct DrawObj {
-	graphics::ShaderBuffer material;
-	Primitive primitive;
-};
-
-struct Drawable {
-	using Mesh = graphics::Mesh;
-
-	graphics::ShaderBuffer mat_m;
-	std::vector<DrawObj> objs;
-	Ref<SceneNode> node;
-	std::string_view name;
-
-	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, View<Primitive> primitives) : node(node), name(name) {
-		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
-		set(vram, primitives);
-	}
-
-	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, Mesh const& mesh, Material const& mat) : node(node), name(name) {
-		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
-		Primitive prim;
-		prim.mesh = &mesh;
-		prim.material = mat;
-		set(vram, prim);
-	}
-
-	Drawable(SceneNode& node, graphics::VRAM& vram, std::string const& name, Model const& model) : node(node), name(name) {
-		mat_m = graphics::ShaderBuffer(vram, name + "/mat_m", {});
-		set(vram, model.primitives());
-	}
-
-	void set(graphics::VRAM& vram, View<Primitive> primitives) {
-		objs.reserve(std::max(objs.size(), primitives.size()));
-		for (std::size_t i = 0; i < primitives.size(); ++i) {
-			if (i < objs.size()) {
-				objs[i].primitive = primitives[i];
-			} else {
-				DrawObj obj;
-				obj.primitive = primitives[i];
-				obj.material = graphics::ShaderBuffer(vram, std::string(name) + "/material", {});
-				objs.push_back(std::move(obj));
-			}
-		}
-	}
-};
-
-class Drawer {
+class DrawDispatch {
   public:
-	using type = Drawable;
+	not_null<graphics::VRAM*> m_vram;
 
 	struct {
 		graphics::ShaderBuffer mats;
@@ -373,67 +199,59 @@ class Drawer {
 		u32 bind;
 		bool valid;
 
-		SetBind(graphics::ShaderInput const& si, u32 s, u32 b) : set(s), bind(b), valid(si.contains(s, b)) {
-		}
+		SetBind(graphics::ShaderInput const& si, u32 s, u32 b) : set(s), bind(b), valid(si.contains(s, b)) {}
 
-		explicit operator bool() const noexcept {
-			return valid;
-		}
+		explicit operator bool() const noexcept { return valid; }
 	};
 
-	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights) {
+	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
+
+	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights, View<SceneDrawer::Group> groups) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
 			DirLights dl;
-			for (std::size_t idx = 0; idx < lights.size() && idx < dl.lights.size(); ++idx) {
-				dl.lights[idx] = lights[idx];
-			}
-			dl.count = (u32)lights.size();
+			for (std::size_t idx = 0; idx < lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = lights[idx]; }
+			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
+		for (auto& group : groups) { update(group); }
 	}
 
-	void update(DrawList<type> const& list) const {
-		auto& si = list.layer.pipeline->shaderInput();
+	void update(SceneDrawer::Group const& group) const {
+		auto& si = group.group.pipeline->shaderInput();
 		si.update(m_view.mats, 0, 0, 0);
-		if (list.layer.order >= 0 && si.contains(0, 1)) {
-			si.update(m_view.lights, 0, 1, 0);
-		}
+		if (group.group.order >= 0 && si.contains(0, 1)) { si.update(m_view.lights, 0, 1, 0); }
 		auto const sb10 = SetBind(si, 1, 0);
 		auto const sb20 = SetBind(si, 2, 0);
 		auto const sb21 = SetBind(si, 2, 1);
 		auto const sb22 = SetBind(si, 2, 2);
 		auto const sb30 = SetBind(si, 3, 0);
-		std::size_t idx = 0;
-		for (type& d : list.ts) {
-			if (sb10) {
-				d.mat_m.write(d.node.get().model());
-				si.update(d.mat_m, sb10.set, sb10.bind, idx);
-				d.mat_m.swap();
-			}
-			for (DrawObj& obj : d.objs) {
-				Material const& mat = obj.primitive.material;
-				if (list.layer.order < 0) {
-					ENSURE(mat.map_Kd, "Null cubemap");
-					si.update(*mat.map_Kd, 0, 1, idx);
+		std::size_t primIdx = 0;
+		std::size_t itemIdx = 0;
+		for (SceneDrawer::Item const& item : group.items) {
+			if (!item.primitives.empty()) {
+				if (sb10) {
+					graphics::Buffer const buf = m_vram->makeBO(item.model, vk::BufferUsageFlagBits::eUniformBuffer);
+					si.update(buf, sb10.set, sb10.bind, itemIdx);
 				}
-				if (sb20) {
-					si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, idx);
+				++itemIdx;
+				for (Primitive const& prim : item.primitives) {
+					Material const& mat = prim.material;
+					if (group.group.order < 0) {
+						ENSURE(mat.map_Kd, "Null cubemap");
+						si.update(*mat.map_Kd, 0, 1, primIdx);
+					}
+					if (sb20) { si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, primIdx); }
+					if (sb21) { si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, primIdx); }
+					if (sb22) { si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, primIdx); }
+					if (sb30) {
+						auto const sm = ShadeMat::make(mat);
+						graphics::Buffer const buf = m_vram->makeBO(sm, vk::BufferUsageFlagBits::eUniformBuffer);
+						si.update(buf, sb30.set, sb30.bind, primIdx);
+					}
+					++primIdx;
 				}
-				if (sb21) {
-					si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, idx);
-				}
-				if (sb22) {
-					si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, idx);
-				}
-				if (sb30) {
-					ShadeMat const mat = ShadeMat::make(obj.primitive.material);
-					obj.material.write(mat);
-					si.update(obj.material, sb30.set, sb30.bind, idx);
-					obj.material.swap();
-				}
-				++idx;
 			}
 		}
 	}
@@ -443,28 +261,31 @@ class Drawer {
 		m_view.lights.swap();
 	}
 
-	void draw(graphics::CommandBuffer const& cb, DrawList<type> const& list) const {
-		graphics::Pipeline const& pipe = *list.layer.pipeline;
+	void draw(graphics::CommandBuffer const& cb, SceneDrawer::Group const& group) const {
+		graphics::Pipeline const& pipe = *group.group.pipeline;
 		pipe.bindSet(cb, 0, 0);
-		std::size_t idx = 0;
-		for (Drawable const& d : list.ts) {
-			pipe.bindSet(cb, 1, idx);
-			for (DrawObj const& obj : d.objs) {
-				pipe.bindSet(cb, {2, 3}, idx);
-				ENSURE(obj.primitive.mesh, "Null mesh");
-				obj.primitive.mesh->draw(cb);
-				++idx;
+		std::size_t itemIdx = 0;
+		std::size_t primIdx = 0;
+		for (SceneDrawer::Item const& d : group.items) {
+			if (!d.primitives.empty()) {
+				pipe.bindSet(cb, 1, itemIdx++);
+				if (d.scissor) { cb.setScissor(*d.scissor); }
+				for (Primitive const& prim : d.primitives) {
+					pipe.bindSet(cb, {2, 3}, primIdx++);
+					ENSURE(prim.mesh, "Null mesh");
+					prim.mesh->draw(cb);
+				}
 			}
 		}
 	}
 };
 
-class App : public Input::IReceiver {
+class App : public input::Receiver {
   public:
-	App(Engine& eng, io::Reader const& reader) : m_eng(eng) {
+	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawDispatch(&eng->gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
-			AssetLoadData<graphics::Shader> shaderLD{m_eng.get().gfx().boot.device};
+			AssetLoadData<graphics::Shader> shaderLD{&m_eng->gfx().boot.device};
 			shaderLD.name = id;
 			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
 			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
@@ -472,22 +293,21 @@ class App : public Input::IReceiver {
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
 		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
-			AssetLoadData<graphics::Pipeline> pipelineLD{m_eng.get().gfx().context};
+			AssetLoadData<graphics::Pipeline> pipelineLD{&m_eng->gfx().context};
 			pipelineLD.name = id;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
 			pipelineLD.flags = flags;
 			return pipelineLD;
 		};
-		m_store.resources().reader(reader);
-		m_store.add("samplers/default", graphics::Sampler{eng.gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+		m_store.resources().reader(&reader);
+		m_store.add("samplers/default", graphics::Sampler{&eng->gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 		{
 			AssetList<Model> models;
-			AssetLoadData<Model> ald(m_eng.get().gfx().boot.vram);
+			AssetLoadData<Model> ald(&m_eng->gfx().boot.vram);
 			ald.modelID = "models/plant";
 			ald.jsonID = "models/plant/plant.json";
 			ald.samplerID = "samplers/default";
-			ald.texFormat = m_eng.get().gfx().context.textureFormat();
 			models.add("models/plant", std::move(ald));
 
 			ald.jsonID = "models/teapot/teapot.json";
@@ -502,21 +322,19 @@ class App : public Input::IReceiver {
 			m_data.loader.stage(m_store, models, m_tasks);
 		}
 
-		AssetLoadData<BitmapFont> fld(m_eng.get().gfx().boot.vram);
+		AssetLoadData<BitmapFont> fld(&m_eng->gfx().boot.vram);
 		fld.jsonID = "fonts/default/default.json";
-		fld.texFormat = m_eng.get().gfx().context.textureFormat();
-		fld.name = "fonts/default";
 		fld.samplerID = "samplers/default";
 		m_data.loader.stage(m_store, AssetList<BitmapFont>{{{"fonts/default", std::move(fld)}}}, m_tasks);
 		{
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
 			auto const skyCubeV = gcube.positions();
-			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh("meshes/cube", eng.gfx().boot.vram));
+			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh(&eng->gfx().boot.vram));
 			cube->construct(gcube);
-			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh("meshes/cone", eng.gfx().boot.vram));
+			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
 			cone->construct(graphics::makeCone());
-			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh("skycube", eng.gfx().boot.vram));
+			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh(&eng->gfx().boot.vram));
 			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
 		}
 
@@ -530,52 +348,48 @@ class App : public Input::IReceiver {
 			auto load_shaders = m_data.loader.stage(m_store, shaders, m_tasks);
 
 			AssetList<graphics::Pipeline> pipes;
-			static PCI pci_skybox = eng.gfx().context.pipeInfo();
+			static PCI pci_skybox = eng->gfx().context.pipeInfo();
 			pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
-			pci_skybox.fixedState.vertexInput = eng.gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
+			pci_skybox.fixedState.vertexInput = eng->gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 			pipes.add("pipelines/basic", loadPipe("pipelines/basic", "shaders/basic", graphics::PFlags::inverse()));
 			pipes.add("pipelines/tex", loadPipe("pipelines/tex", "shaders/tex", graphics::PFlags::inverse()));
 			pipes.add("pipelines/lit", loadPipe("pipelines/lit", "shaders/lit", graphics::PFlags::inverse()));
-			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", graphics::PFlags::inverse()));
+			graphics::PFlags ui = graphics::PFlags::inverse();
+			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
+			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", ui));
 			pipes.add("pipelines/skybox", loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox));
 			m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
 		}
 
 		AssetList<graphics::Texture> texList;
-		AssetLoadData<graphics::Texture> textureLD{eng.gfx().boot.vram};
+		AssetLoadData<graphics::Texture> textureLD{&eng->gfx().boot.vram};
 		textureLD.samplerID = "samplers/default";
-		textureLD.name = "cubemaps/sky_dusk";
 		textureLD.prefix = "skyboxes/sky_dusk";
 		textureLD.ext = ".jpg";
 		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
 		texList.add("cubemaps/sky_dusk", std::move(textureLD));
-		textureLD.name = "textures/container2/diffuse";
 		textureLD.prefix.clear();
 		textureLD.ext.clear();
 		textureLD.imageIDs = {"textures/container2.png"};
 		texList.add("textures/container2/diffuse", std::move(textureLD));
-		textureLD.name = "textures/container2/specular";
 		textureLD.prefix.clear();
 		textureLD.ext.clear();
 		textureLD.imageIDs = {"textures/container2_specular.png"};
 		texList.add("textures/container2/specular", std::move(textureLD));
-		textureLD.name = "textures/red";
 		textureLD.imageIDs.clear();
-		textureLD.raw.bytes = graphics::utils::convert({0xff, 0, 0, 0xff});
-		textureLD.raw.size = {1, 1};
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0, 0, 0xff});
+		textureLD.bitmap.size = {1, 1};
+		textureLD.rawBytes = true;
 		texList.add("textures/red", std::move(textureLD));
-		textureLD.name = "textures/black";
-		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0xff});
 		texList.add("textures/black", std::move(textureLD));
-		textureLD.name = "textures/white";
-		textureLD.raw.bytes = graphics::utils::convert({0xff, 0xff, 0xff, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0xff, 0xff, 0xff});
 		texList.add("textures/white", std::move(textureLD));
-		textureLD.name = "textures/blank";
-		textureLD.raw.bytes = graphics::utils::convert({0, 0, 0, 0});
+		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0});
 		texList.add("textures/blank", std::move(textureLD));
 		m_data.loader.stage(m_store, texList, m_tasks);
-		m_eng.get().pushReceiver(*this);
-		eng.m_win.get().show();
+		m_eng->pushReceiver(this);
+		eng->m_win->show();
 
 		struct GFreeCam : edi::Gadget {
 			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
@@ -613,38 +427,35 @@ class App : public Input::IReceiver {
 		edi::Inspector::attach<GSpringArm>("SpringArm");
 	}
 
-	bool block(Input::State const& state) override {
-		if (state.focus == Input::Focus::eGained) {
-			m_store.update();
-		}
-		if (m_controls.editor(state)) {
-			Editor::s_engaged = !Editor::s_engaged;
-		}
+	bool block(input::State const& state) override {
+		if (state.focus == input::Focus::eGained) { m_store.update(); }
+		if (m_controls.editor(state)) { Editor::s_engaged = !Editor::s_engaged; }
 		return false;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer) {
-		auto ret = m_data.registry.spawn<SceneNode>(name, m_data.root);
+	decf::spawn_t<SceneNode> spawn(std::string name) {
+		auto ret = m_data.registry.spawn<SceneNode>(name, &m_data.root);
 		ret.get<SceneNode>().entity(ret);
-		m_data.registry.attach<DrawLayer>(ret, layer);
 		return ret;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, View<Primitive> primitives, DrawLayer const& layer) {
-		auto ret = spawn(std::move(name), layer);
-		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, primitives);
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawGroup const& group, View<Primitive> primitives) {
+		auto ret = spawn(std::move(name));
+		SceneDrawer::attach(m_data.registry, ret, group, primitives);
 		return ret;
 	};
 
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, graphics::Mesh const& mesh, Material const& mat = {}) {
-		auto ret = spawn(std::move(name), layer);
-		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, mesh, mat);
+	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawGroup const& group) {
+		auto m = m_store.get<graphics::Mesh>(meshID);
+		auto ret = spawn(std::move(name));
+		SceneDrawer::attach(m_data.registry, ret, group, Primitive{mat, &*m});
 		return ret;
 	};
 
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, Model const& model) {
-		auto ret = spawn(std::move(name), layer);
-		m_data.registry.attach<Drawable>(ret, ret.get<SceneNode>(), m_eng.get().gfx().boot.vram, name, model);
+	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawGroup const& group) {
+		auto m = m_store.get<Model>(modelID);
+		auto ret = spawn(std::move(name));
+		SceneDrawer::attach(m_data.registry, ret, group, m->primitives());
 		return ret;
 	};
 
@@ -654,18 +465,17 @@ class App : public Input::IReceiver {
 		auto pipe_testLit = m_store.find<graphics::Pipeline>("pipelines/lit");
 		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
 		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
-		auto skycube = m_store.get<graphics::Mesh>("skycube");
-		auto cube = m_store.get<graphics::Mesh>("meshes/cube");
-		auto cone = m_store.get<graphics::Mesh>("meshes/cone");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_store.get<BitmapFont>("fonts/default");
-		m_data.drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
-		m_data.drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
+		m_drawDispatch.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
+		m_drawDispatch.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
+		auto& vram = m_eng->gfx().boot.vram;
 
-		m_data.text.create(m_eng.get().gfx().boot.vram, "text");
+		m_data.text.create(&vram);
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
+		// m_data.text.text.align = {-0.5f, 0.5f};
 		m_data.text.set(font.get(), "Hi!");
 
 		auto freecam = m_data.registry.spawn<FreeCam, SpringArm>("freecam");
@@ -677,16 +487,48 @@ class App : public Input::IReceiver {
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
-		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
-		m_data.layers["test"] = DrawLayer{&pipe_test->get(), 0};
-		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
-		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
-		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
-		m_data.drawer.m_view.mats = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, "view_mats", {});
+		m_data.groups["sky"] = DrawGroup{&pipe_sky->get(), -10};
+		m_data.groups["test"] = DrawGroup{&pipe_test->get(), 0};
+		m_data.groups["test_tex"] = DrawGroup{&pipe_testTex->get(), 0};
+		m_data.groups["test_lit"] = DrawGroup{&pipe_testLit->get(), 0};
+		m_data.groups["ui"] = DrawGroup{&pipe_ui->get(), 10};
+
+		auto guiRoot = m_data.registry.spawn<gui::Root>("gui_root");
+		m_data.registry.attach<DrawGroup>(guiRoot, m_data.groups["ui"]);
+		auto& root = guiRoot.get<gui::Root>();
+		m_data.guiRoot = guiRoot;
+		{
+			auto& bg = root.push<gui::Quad>(&vram);
+			bg.m_size = {200.0f, 100.0f};
+			bg.m_local.norm = {-0.25f, 0.25f};
+			bg.m_material.Tf = colours::cyan;
+			auto& centre = bg.push<gui::Quad>(&vram);
+			centre.m_size = {50.0f, 50.0f};
+			centre.m_material.Tf = colours::red;
+			auto& dot = centre.push<gui::Quad>(&vram);
+			dot.offsetBySize({30.0f, 20.0f});
+			dot.m_material.Tf = Colour(0x333333ff);
+			dot.m_local.norm = {-0.5f, -0.5f};
+			auto& topLeft = bg.push<gui::Quad>(&vram);
+			topLeft.m_local.norm = {-0.5f, 0.5f};
+			topLeft.offsetBySize({25.0f, 25.0f}, {1.0f, -1.0f});
+			topLeft.m_material.Tf = colours::magenta;
+			auto& text = bg.push<gui::Text>(&vram, &*font);
+			text.m_str = "click";
+			text.m_text.size = 60U;
+			m_data.button = &root.push<gui::Widget>(&vram, &*font);
+			m_data.button->m_size = {200.0f, 100.0f};
+			m_data.button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
+			m_data.button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
+			m_data.button->m_text->m_text.size = 40U;
+			m_data.button->m_text->m_str = "Button";
+		}
+
+		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
 			info.type = vk::DescriptorType::eStorageBuffer;
-			m_data.drawer.m_view.lights = graphics::ShaderBuffer(m_eng.get().gfx().boot.vram, "lights", {});
+			m_drawDispatch.m_view.lights = graphics::ShaderBuffer(vram, {});
 		}
 		DirLight l0, l1;
 		l0.direction = {-graphics::front, 0.0f};
@@ -697,47 +539,51 @@ class App : public Input::IReceiver {
 		{
 			Material mat;
 			mat.map_Kd = &*skymap;
-			spawn("skybox", m_data.layers["sky"], *skycube, mat);
+			spawn("skybox", "skycube", mat, m_data.groups["sky"]);
 		}
 		{
 			Material mat;
 			mat.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
 			mat.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			m_data.player = spawn("player", m_data.layers["test_lit"], *cube, mat);
+			auto player = spawn("player", "meshes/cube", mat, m_data.groups["test_lit"]);
+			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
+			m_data.player = player;
+			// m_data.player = spawn("player");
 			m_data.registry.attach<PlayerController>(m_data.player);
 		}
 		{
-			auto ent = spawn("prop_1", m_data.layers["test"], *cube);
+			auto ent = spawn("prop_1", "meshes/cube", {}, m_data.groups["test"]);
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawn("prop_2", m_data.layers["test_tex"], *cone);
+			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.groups["test_tex"]);
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", m_data.text.primitive(*font), m_data.layers["ui"]); }
+		{ spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
 		{
-			if (auto model = m_store.find<Model>("models/plant")) {
-				auto ent0 = spawn("model_0_0", m_data.layers["test_lit"], **model);
+			{
+				auto ent0 = spawn("model_0_0", "models/plant", m_data.groups["test_lit"]);
+				// auto ent0 = spawn("model_0_0");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", m_data.layers["test_lit"], **model);
+				auto ent1 = spawn("model_0_1", "models/plant", m_data.groups["test_lit"]);
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
-				node.parent(m_data.registry.get<SceneNode>(m_data.entities["model_0_0"]));
+				node.parent(&m_data.registry.get<SceneNode>(m_data.entities["model_0_0"]));
 			}
 			if (auto model = m_store.find<Model>("models/teapot")) {
 				Primitive prim = model->get().primitives().front();
 				prim.material.Tf = Colour(0xfc2320ff);
-				auto ent0 = spawn("model_1_0", prim, m_data.layers["test_lit"]);
+				auto ent0 = spawn("model_1_0", m_data.groups["test_lit"], prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
-			if (auto model = m_store.find<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", m_data.layers["test_lit"], **model);
+			if (m_store.contains<Model>("models/nanosuit")) {
+				auto ent = spawn("model_1", "models/nanosuit", m_data.groups["test_lit"]);
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
@@ -753,30 +599,47 @@ class App : public Input::IReceiver {
 			Editor::s_in.registry = &m_data.registry;
 			Editor::s_in.root = &m_data.root;
 			Editor::s_in.customEntities.push_back(m_data.camera);
-			m_eng.get().updateEditor();
 		}
 
-		if (!m_data.loader.ready(&m_tasks)) {
-			return;
+		if (!m_data.loader.ready(&m_tasks)) { return; }
+		if (m_data.registry.empty()) { init1(); }
+		auto guiRoot = m_data.registry.find<gui::Root>(m_data.guiRoot);
+		m_eng->update(guiRoot);
+		if (guiRoot) {
+			/*auto const& p = m_eng->inputState().cursor.position;
+			logD("c: {}, {}", p.x, p.y);*/
+			/*static gui::Quad* s_prev = {};
+			static Colour s_col;
+			if (auto node = guiRoot->leafHit(m_eng->inputState().cursor.position)) {
+				if (auto quad = dynamic_cast<gui::Quad*>(node)) {
+					if (s_prev != quad) {
+						if (s_prev) {
+							s_prev->m_material.Tf = s_col;
+						}
+						s_col = quad->m_material.Tf;
+						s_prev = quad;
+						quad->m_material.Tf = colours::yellow;
+					}
+				}
+			} else if (s_prev) {
+				s_prev->m_material.Tf = s_col;
+				s_prev = {};
+			}*/
 		}
-		if (m_data.registry.empty()) {
-			init1();
-		}
+		if (m_data.button && m_data.button->clicked(m_eng->inputState())) { logD("click!"); }
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
 		if (pc.active) {
 			auto& node = m_data.registry.get<SceneNode>(m_data.player);
-			m_data.registry.get<PlayerController>(m_data.player).tick(m_eng.get().inputState(), node, dt);
+			m_data.registry.get<PlayerController>(m_data.player).tick(m_eng->inputState(), node, dt);
 			glm::vec3 const& forward = node.orientation() * -graphics::front;
 			cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 			cam.face(forward);
 		} else {
-			cam.tick(m_eng.get().inputState(), dt, m_eng.get().desktop());
+			cam.tick(m_eng->inputState(), dt, m_eng->desktop());
 		}
 		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) {
-			node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up);
-		}
+		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
 		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_1_0"])) {
 			static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 			s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
@@ -785,41 +648,39 @@ class App : public Input::IReceiver {
 	}
 
 	void render() {
-		Engine& eng = m_eng;
-		if (eng.gfx().context.waitForFrame()) {
+		if (m_eng->drawReady()) {
 			// write / update
-			if (!m_data.registry.empty()) {
-				auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
-				m_data.drawer.write(cam, eng.gfx().context.extent(), m_data.dirLights);
+			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
+				m_groups = SceneDrawer::groups(m_data.registry, true);
+				m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, m_groups);
 			}
-
-			// draw
-			if (auto r = eng.gfx().context.render(Colour(0x040404ff))) {
-				eng.gfx().imgui.render();
-				auto& cb = r->primary();
-				if (!m_data.registry.empty()) {
-					cb.setViewportScissor(eng.viewport(), eng.gfx().context.scissor());
-					batchDraw(m_data.drawer, m_data.registry, cb);
-				}
-				eng.gfx().imgui.endFrame(cb);
+			if (auto frame = m_eng->drawFrame(Colour(0x040404ff))) {
+				// draw
+				frame->cmd().setViewportScissor(m_eng->viewport(), m_eng->scissor());
+				SceneDrawer::draw(m_drawDispatch, m_groups, frame->cmd());
+				m_drawDispatch.swap();
 			}
 		}
 	}
 
+	std::vector<SceneDrawer::Group> m_groups;
+
   private:
 	struct Data {
 		std::unordered_map<Hash, decf::entity_t> entities;
-		std::unordered_map<Hash, DrawLayer> layers;
-		Drawer drawer;
+		std::unordered_map<Hash, DrawGroup> groups;
 
-		Text text;
+		BitmapText text;
 		std::vector<DirLight> dirLights;
 
 		SceneNode::Root root;
 		decf::registry_t registry;
 		decf::entity_t camera;
 		decf::entity_t player;
+		decf::entity_t guiRoot;
 		AssetListLoader loader;
+
+		gui::Widget* button = {};
 	};
 
 	Data m_data;
@@ -828,26 +689,26 @@ class App : public Input::IReceiver {
   public:
 	AssetStore m_store;
 	scheduler m_tasks;
-	Ref<Engine> m_eng;
+	not_null<Engine*> m_eng;
+	DrawDispatch m_drawDispatch;
 
 	struct {
-		Control::Trigger editor = {Input::Key::eE, Input::Action::ePressed, Input::Mod::eControl};
+		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
 	} m_controls;
 };
 
-struct FlagsInput : Input::IReceiver {
+struct FlagsInput : input::Receiver {
 	Flags& flags;
 
-	FlagsInput(Flags& flags) : flags(flags) {
-	}
+	FlagsInput(Flags& flags) : flags(flags) {}
 
-	bool block(Input::State const& state) override {
+	bool block(input::State const& state) override {
 		bool ret = false;
-		if (auto key = state.released(Input::Key::eW); key && key->mods[Input::Mod::eControl]) {
+		if (auto key = state.released(input::Key::eW); key && key->mods[input::Mod::eControl]) {
 			flags.set(Flag::eClosed);
 			ret = true;
 		}
-		if (auto key = state.pressed(Input::Key::eD); key && key->mods[Input::Mod::eControl]) {
+		if (auto key = state.pressed(input::Key::eD); key && key->mods[input::Mod::eControl]) {
 			flags.set(Flag::eDebug0);
 			ret = true;
 		}
@@ -855,10 +716,7 @@ struct FlagsInput : Input::IReceiver {
 	}
 };
 
-bool run(io::Reader const& reader, ErasedRef androidApp) {
-	if (os::halt(g_cmdArgs)) {
-		return true;
-	}
+bool run(io::Reader const& reader, ErasedPtr androidApp) {
 	try {
 		window::Instance::CreateInfo winInfo;
 		winInfo.config.androidApp = androidApp;
@@ -871,11 +729,10 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 		bootInfo.instance.bValidation = levk_debug;
 		bootInfo.instance.validationLog = dl::level::info;
 		std::optional<App> app;
-		bootInfo.device.pickOverride = GPUPicker::s_picked;
-		Engine engine(winst, {});
+		Engine engine(&winst, {});
 		Flags flags;
 		FlagsInput flagsInput(flags);
-		engine.pushReceiver(flagsInput);
+		engine.pushReceiver(&flagsInput);
 		time::Point t = time::now();
 		while (true) {
 			Time_s dt = time::now() - t;
@@ -887,38 +744,27 @@ bool run(io::Reader const& reader, ErasedRef androidApp) {
 				engine.unboot();
 				break;
 			}
-			if (flags.test(Flag::ePaused)) {
-				continue;
-			}
+			if (flags.test(Flag::ePaused)) { continue; }
 			if (flags.test(Flag::eInit)) {
 				app.reset();
 				engine.boot(bootInfo);
-				app.emplace(engine, reader);
+				app.emplace(&engine, reader);
 			}
 			if (flags.test(Flag::eTerm)) {
 				app.reset();
 				engine.unboot();
 			}
-			if (flags.test(Flag::eResized)) {
-				/*if (!context.recreated(winst.framebufferSize())) {
-					ENSURE(false, "Swapchain failure");
-				}*/
-				flags.reset(Flag::eResized);
-			}
-			if (engine.booted() && engine.gfx().context.reconstructed(winst.framebufferSize())) {
-				continue;
-			}
 
-			if (app) {
-				// threads::sleep(5ms);
-				app->tick(flags, dt);
-				app->render();
+			if (engine.beginFrame(false)) {
+				if (app) {
+					// kt::kthread::sleep_for(5ms);
+					app->tick(flags, dt);
+					app->render();
+				}
+				flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
 			}
-			flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
 		}
-	} catch (std::exception const& e) {
-		logE("exception: {}", e.what());
-	}
+	} catch (std::exception const& e) { logE("exception: {}", e.what()); }
 	return true;
 }
 } // namespace le::demo

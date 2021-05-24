@@ -13,9 +13,7 @@ template <typename T, typename U>
 T const* fromNextChain(U* pNext, vk::StructureType type) {
 	if (pNext) {
 		auto* pIn = reinterpret_cast<vk::BaseInStructure const*>(pNext);
-		if (pIn->sType == type) {
-			return reinterpret_cast<T const*>(pIn);
-		}
+		if (pIn->sType == type) { return reinterpret_cast<T const*>(pIn); }
 		return fromNextChain<T>(pIn->pNext, type);
 	}
 	return nullptr;
@@ -25,18 +23,14 @@ T const* fromNextChain(U* pNext, vk::StructureType type) {
 // Prevent validation spam on Windows
 extern dl::level g_validationLevel;
 
-Device::Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& info) : m_instance(instance) {
-	if (default_v(instance.m_instance)) {
-		throw std::runtime_error("Invalid graphics Instance");
-	}
-	if (default_v(surface)) {
-		throw std::runtime_error("Invalid Vulkan surface");
-	}
+Device::Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo const& info) : m_instance(instance) {
+	if (default_v(instance->m_instance)) { throw std::runtime_error("Invalid graphics Instance"); }
+	if (default_v(surface)) { throw std::runtime_error("Invalid Vulkan surface"); }
 	// Prevent validation spam on Windows
 	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warning);
 	std::unordered_set<std::string_view> const extSet = {info.extensions.begin(), info.extensions.end()};
 	std::vector<std::string_view> const extArr = {extSet.begin(), extSet.end()};
-	kt::fixed_vector<PhysicalDevice, 8> const devices = instance.availableDevices(extArr);
+	kt::fixed_vector<PhysicalDevice, 8> const devices = instance->availableDevices(extArr);
 	if (devices.empty()) {
 		g_log.log(lvl::error, 0, "[{}] No compatible Vulkan physical device detected!", g_name);
 		throw std::runtime_error("No physical devices");
@@ -44,15 +38,11 @@ Device::Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& inf
 	static DevicePicker const s_picker;
 	DevicePicker const* pPicker = info.pPicker ? info.pPicker : &s_picker;
 	PhysicalDevice picked = pPicker->pick(devices, info.pickOverride);
-	if (default_v(picked.device)) {
-		throw std::runtime_error("Failed to select a physical device!");
-	}
+	if (default_v(picked.device)) { throw std::runtime_error("Failed to select a physical device!"); }
 	m_physicalDevice = std::move(picked);
 	m_metadata.available = std::move(devices);
 	m_metadata.surface = surface;
-	for (auto const& ext : extArr) {
-		m_metadata.extensions.push_back(ext.data());
-	}
+	for (auto const& ext : extArr) { m_metadata.extensions.push_back(ext.data()); }
 	m_metadata.limits = m_physicalDevice.properties.limits;
 	m_metadata.lineWidth.first = m_physicalDevice.properties.limits.lineWidthRange[0U];
 	m_metadata.lineWidth.second = m_physicalDevice.properties.limits.lineWidthRange[1U];
@@ -82,50 +72,42 @@ Device::Device(Instance& instance, vk::SurfaceKHR surface, CreateInfo const& inf
 	deviceCreateInfo.queueCreateInfoCount = (u32)queueCreateInfos.size();
 	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-	if (!instance.m_metadata.layers.empty()) {
-		deviceCreateInfo.enabledLayerCount = (u32)instance.m_metadata.layers.size();
-		deviceCreateInfo.ppEnabledLayerNames = instance.m_metadata.layers.data();
+	if (!instance->m_metadata.layers.empty()) {
+		deviceCreateInfo.enabledLayerCount = (u32)instance->m_metadata.layers.size();
+		deviceCreateInfo.ppEnabledLayerNames = instance->m_metadata.layers.data();
 	}
 	deviceCreateInfo.enabledExtensionCount = (u32)m_metadata.extensions.size();
 	deviceCreateInfo.ppEnabledExtensionNames = m_metadata.extensions.data();
 	m_device = m_physicalDevice.device.createDevice(deviceCreateInfo);
 	m_queues.setup(m_device);
-	instance.m_loader.init(m_device);
+	instance->m_loader.init(m_device);
 	g_log.log(lvl::info, 0, "[{}] Vulkan device constructed, using GPU {}", g_name, m_physicalDevice.toString());
 	g_validationLevel = validationLevel;
 }
 
 Device::~Device() {
 	waitIdle();
-	if (!default_v(m_device)) {
-		g_log.log(lvl::info, 1, "[{}] Vulkan device destroyed", g_name);
-	}
+	if (!default_v(m_device)) { g_log.log(lvl::info, 1, "[{}] Vulkan device destroyed", g_name); }
 	destroy(m_metadata.surface, m_device);
 }
 
-bool Device::valid(vk::SurfaceKHR surface) const {
-	return m_physicalDevice.surfaceSupport(m_queues.familyIndex(QType::ePresent), surface);
-}
+bool Device::valid(vk::SurfaceKHR surface) const { return m_physicalDevice.surfaceSupport(m_queues.familyIndex(QType::ePresent), surface); }
 
 void Device::waitIdle() {
-	if (!default_v(m_device)) {
-		m_device.waitIdle();
-	}
+	if (!default_v(m_device)) { m_device.waitIdle(); }
 	m_deferred.flush();
 }
 
-vk::Semaphore Device::createSemaphore() const {
-	return m_device.createSemaphore({});
-}
+vk::Semaphore Device::makeSemaphore() const { return m_device.createSemaphore({}); }
 
-vk::Fence Device::createFence(bool bSignalled) const {
+vk::Fence Device::makeFence(bool bSignalled) const {
 	vk::FenceCreateFlags flags = bSignalled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags();
 	return m_device.createFence(flags);
 }
 
-void Device::resetOrCreateFence(vk::Fence& out_fence, bool bSignalled) const {
+void Device::resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const {
 	if (default_v(out_fence)) {
-		out_fence = createFence(bSignalled);
+		out_fence = makeFence(bSignalled);
 	} else {
 		resetFence(out_fence);
 	}
@@ -137,9 +119,7 @@ void Device::waitFor(vk::Fence optional) const {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = m_device.waitForFences(optional, true, s_wait);
 			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) {
-				g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name);
-			}
+			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name); }
 		} else {
 			m_device.waitForFences(optional, true, maths::max<u64>());
 		}
@@ -152,9 +132,7 @@ void Device::waitAll(vAP<vk::Fence> validFences) const {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = m_device.waitForFences(std::move(validFences), true, s_wait);
 			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) {
-				g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name);
-			}
+			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name); }
 		} else {
 			m_device.waitForFences(std::move(validFences), true, maths::max<u64>());
 		}
@@ -162,15 +140,11 @@ void Device::waitAll(vAP<vk::Fence> validFences) const {
 }
 
 void Device::resetFence(vk::Fence optional) const {
-	if (!default_v(optional)) {
-		m_device.resetFences(optional);
-	}
+	if (!default_v(optional)) { m_device.resetFences(optional); }
 }
 
 void Device::resetAll(vAP<vk::Fence> validFences) const {
-	if (!validFences.empty()) {
-		m_device.resetFences(std::move(validFences));
-	}
+	if (!validFences.empty()) { m_device.resetFences(std::move(validFences)); }
 }
 
 bool Device::signalled(View<vk::Fence> fences) const {
@@ -178,7 +152,7 @@ bool Device::signalled(View<vk::Fence> fences) const {
 	return std::all_of(fences.begin(), fences.end(), s);
 }
 
-vk::ImageView Device::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
+vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
 	createInfo.viewType = type;
@@ -192,7 +166,9 @@ vk::ImageView Device::createImageView(vk::Image image, vk::Format format, vk::Im
 	return m_device.createImageView(createInfo);
 }
 
-vk::PipelineLayout Device::createPipelineLayout(vAP<vk::PushConstantRange> pushConstants, vAP<vk::DescriptorSetLayout> setLayouts) const {
+vk::PipelineCache Device::makePipelineCache() const { return m_device.createPipelineCache({}); }
+
+vk::PipelineLayout Device::makePipelineLayout(vAP<vk::PushConstantRange> pushConstants, vAP<vk::DescriptorSetLayout> setLayouts) const {
 	vk::PipelineLayoutCreateInfo createInfo;
 	createInfo.setLayoutCount = setLayouts.size();
 	createInfo.pSetLayouts = setLayouts.data();
@@ -201,14 +177,14 @@ vk::PipelineLayout Device::createPipelineLayout(vAP<vk::PushConstantRange> pushC
 	return m_device.createPipelineLayout(createInfo);
 }
 
-vk::DescriptorSetLayout Device::createDescriptorSetLayout(vAP<vk::DescriptorSetLayoutBinding> bindings) const {
+vk::DescriptorSetLayout Device::makeDescriptorSetLayout(vAP<vk::DescriptorSetLayoutBinding> bindings) const {
 	vk::DescriptorSetLayoutCreateInfo createInfo;
 	createInfo.bindingCount = bindings.size();
 	createInfo.pBindings = bindings.data();
 	return m_device.createDescriptorSetLayout(createInfo);
 }
 
-vk::DescriptorPool Device::createDescriptorPool(vAP<vk::DescriptorPoolSize> poolSizes, u32 maxSets) const {
+vk::DescriptorPool Device::makeDescriptorPool(vAP<vk::DescriptorPoolSize> poolSizes, u32 maxSets) const {
 	vk::DescriptorPoolCreateInfo createInfo;
 	createInfo.poolSizeCount = poolSizes.size();
 	createInfo.pPoolSizes = poolSizes.data();
@@ -224,8 +200,8 @@ std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool
 	return m_device.allocateDescriptorSets(allocInfo);
 }
 
-vk::RenderPass Device::createRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
-										vAP<vk::SubpassDependency> dependencies) const {
+vk::RenderPass Device::makeRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
+									  vAP<vk::SubpassDependency> dependencies) const {
 	vk::RenderPassCreateInfo createInfo;
 	createInfo.attachmentCount = attachments.size();
 	createInfo.pAttachments = attachments.data();
@@ -236,7 +212,7 @@ vk::RenderPass Device::createRenderPass(vAP<vk::AttachmentDescription> attachmen
 	return m_device.createRenderPass(createInfo);
 }
 
-vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers) const {
+vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers) const {
 	vk::FramebufferCreateInfo createInfo;
 	createInfo.attachmentCount = attachments.size();
 	createInfo.pAttachments = attachments.data();
@@ -249,8 +225,8 @@ vk::Framebuffer Device::createFramebuffer(vk::RenderPass renderPass, vAP<vk::Ima
 
 bool Device::setDebugUtilsName([[maybe_unused]] vk::DebugUtilsObjectNameInfoEXT const& info) const {
 #if !defined(__ANDROID__)
-	if (!default_v(m_instance.get().m_messenger)) {
-		m_device.setDebugUtilsObjectNameEXT(info, m_instance.get().loader());
+	if (!default_v(m_instance->m_messenger)) {
+		m_device.setDebugUtilsObjectNameEXT(info, m_instance->loader());
 		return true;
 	}
 #endif
@@ -265,11 +241,7 @@ bool Device::setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view
 	return setDebugUtilsName(info);
 }
 
-void Device::defer(Deferred::Callback callback, u64 defer) {
-	m_deferred.defer({std::move(callback), defer});
-}
+void Device::defer(Deferred::Callback callback, u64 defer) { m_deferred.defer({std::move(callback), defer}); }
 
-void Device::decrementDeferred() {
-	m_deferred.decrement();
-}
+void Device::decrementDeferred() { m_deferred.decrement(); }
 } // namespace le::graphics

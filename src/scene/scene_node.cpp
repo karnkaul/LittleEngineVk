@@ -1,4 +1,4 @@
-#include <engine/scene_node.hpp>
+#include <engine/scene/scene_node.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
 namespace le {

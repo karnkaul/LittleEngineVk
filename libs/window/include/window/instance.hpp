@@ -10,23 +10,17 @@ class IInstance : public TMonoInstance<IInstance>, public ISurface {
   public:
 	struct CreateInfo;
 
-	IInstance(bool bValid) : TMonoInstance(bValid) {
-	}
+	IInstance(bool bValid) : TMonoInstance(bValid) {}
 	IInstance(IInstance&&) = default;
 	IInstance& operator=(IInstance&&) = default;
 	virtual ~IInstance() = default;
 
-	bool isDesktop() const noexcept {
-		return m_desktop;
-	}
+	bool isDesktop() const noexcept { return m_desktop; }
 
 	virtual EventQueue pollEvents() = 0;
 
-	virtual void show() const {
-	}
-	virtual glm::ivec2 framebufferSize() const noexcept {
-		return {0, 0};
-	}
+	virtual void show() const {}
+	virtual glm::ivec2 framebufferSize() const noexcept { return {0, 0}; }
 
   protected:
 	LibLogger m_log;
@@ -34,7 +28,7 @@ class IInstance : public TMonoInstance<IInstance>, public ISurface {
 };
 
 enum class Style { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };
-constexpr static EnumArray<Style> const styleNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
+constexpr EnumArray<Style, std::string_view> const styleNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
 
 struct IInstance::CreateInfo {
 	struct {
@@ -43,7 +37,7 @@ struct IInstance::CreateInfo {
 		glm::ivec2 size = {32, 32};
 		glm::ivec2 centreOffset = {};
 		// Android
-		ErasedRef androidApp;
+		ErasedPtr androidApp;
 	} config;
 
 	struct {

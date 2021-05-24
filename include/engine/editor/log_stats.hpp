@@ -28,7 +28,6 @@ class LogStats {
 		std::deque<Time_s> fts;
 		std::vector<f32> samples;
 	} m_frameTime;
-	time::Point m_elapsed;
 	dl::config::on_log::token m_token;
 #endif
 };

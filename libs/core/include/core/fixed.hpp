@@ -14,12 +14,9 @@ struct Fixed final {
 	s32 value;
 
   public:
-	constexpr Fixed() noexcept : value(0) {
-	}
-	constexpr explicit Fixed(f32 value) noexcept : value(s32(value * s_scaleFactor)) {
-	}
-	constexpr explicit Fixed(f64 value) noexcept : value(s32(value * s_scaleFactor)) {
-	}
+	constexpr Fixed() noexcept : value(0) {}
+	constexpr explicit Fixed(f32 value) noexcept : value(s32(value * s_scaleFactor)) {}
+	constexpr explicit Fixed(f64 value) noexcept : value(s32(value * s_scaleFactor)) {}
 	constexpr Fixed(s32 numerator, s32 denominator = 1) noexcept : value(s32(s64(numerator) * s64(s_scaleFactor) / s64(denominator))){};
 
 	u32 toU32() const;
@@ -119,29 +116,17 @@ inline Fixed Fixed::operator--(int) {
 	return temporary;
 }
 
-inline Fixed Fixed::abs() const {
-	return (value < 0) ? -*this : *this;
-}
+inline Fixed Fixed::abs() const { return (value < 0) ? -*this : *this; }
 
-inline bool Fixed::operator==(Fixed rhs) const {
-	return value == rhs.value;
-}
+inline bool Fixed::operator==(Fixed rhs) const { return value == rhs.value; }
 
-inline bool Fixed::operator>(Fixed rhs) const {
-	return value > rhs.value;
-}
+inline bool Fixed::operator>(Fixed rhs) const { return value > rhs.value; }
 
-inline bool Fixed::operator<(Fixed rhs) const {
-	return value < rhs.value;
-}
+inline bool Fixed::operator<(Fixed rhs) const { return value < rhs.value; }
 
-inline bool Fixed::operator<=(Fixed rhs) const {
-	return value <= rhs.value;
-}
+inline bool Fixed::operator<=(Fixed rhs) const { return value <= rhs.value; }
 
-inline bool Fixed::operator>=(Fixed rhs) const {
-	return value >= rhs.value;
-}
+inline bool Fixed::operator>=(Fixed rhs) const { return value >= rhs.value; }
 
 inline Fixed operator-(Fixed rhs) {
 	Fixed ret;
@@ -149,31 +134,17 @@ inline Fixed operator-(Fixed rhs) {
 	return ret;
 }
 
-inline std::ostream& operator<<(std::ostream& os, Fixed rhs) {
-	return os << rhs.toF64();
-}
+inline std::ostream& operator<<(std::ostream& os, Fixed rhs) { return os << rhs.toF64(); }
 
-inline Fixed operator+(Fixed lhs, Fixed rhs) {
-	return Fixed(lhs) += rhs;
-}
+inline Fixed operator+(Fixed lhs, Fixed rhs) { return Fixed(lhs) += rhs; }
 
-inline Fixed operator-(Fixed lhs, Fixed rhs) {
-	return Fixed(lhs) -= rhs;
-}
+inline Fixed operator-(Fixed lhs, Fixed rhs) { return Fixed(lhs) -= rhs; }
 
-inline Fixed operator*(Fixed lhs, Fixed rhs) {
-	return Fixed(lhs) *= rhs;
-}
+inline Fixed operator*(Fixed lhs, Fixed rhs) { return Fixed(lhs) *= rhs; }
 
-inline Fixed operator/(Fixed lhs, Fixed rhs) {
-	return Fixed(lhs) /= rhs;
-}
+inline Fixed operator/(Fixed lhs, Fixed rhs) { return Fixed(lhs) /= rhs; }
 
-inline Fixed operator%(Fixed lhs, Fixed rhs) {
-	return Fixed(lhs) %= rhs;
-}
+inline Fixed operator%(Fixed lhs, Fixed rhs) { return Fixed(lhs) %= rhs; }
 
-inline bool operator!=(Fixed lhs, Fixed rhs) {
-	return !(lhs == rhs);
-}
+inline bool operator!=(Fixed lhs, Fixed rhs) { return !(lhs == rhs); }
 } // namespace le

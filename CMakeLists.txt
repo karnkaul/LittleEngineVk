@@ -55,6 +55,10 @@ else()
 endif()
 option(LEVK_COPY_CCJSON "Copy compile_commands.json to project root" OFF)
 
+if(LINUX_CLANG OR WINDOWS_CLANG)
+	option(LEVK_ASAN OFF)
+endif()
+
 if(PLATFORM STREQUAL Android)
 	if(LEVK_EDITOR OR LEVK_USE_GLFW OR LEVK_USE_IMGUI)
 		message(FATAL_ERROR "Cannot build Android with LEVK_EDITOR or LEVK_USE_GLFW or LEVK_USE_IMGUI!")
@@ -98,6 +102,8 @@ include(cmake/interface.cmake)
 set(BUILD_CONFIG ${CMAKE_BUILD_TYPE})
 if(CMAKE_CONFIGURATION_TYPES)
 	set(BUILD_CONFIG "Multi-config")
+elseif(LEVK_ASAN)
+	set(BUILD_CONFIG "${CMAKE_BUILD_TYPE} ASAN")
 endif()
 message(STATUS "[${CMAKE_SYSTEM_PROCESSOR}] [${PLATFORM}] [${CMAKE_GENERATOR}] [${CMAKE_CXX_COMPILER_ID}] [${BUILD_CONFIG}]")
 if(CI_BUILD)
@@ -139,11 +145,16 @@ if(NOT LEVK_LIBRARY_TYPE STREQUAL STATIC AND LEVK_USE_PCH)
 endif()
 
 # Libraries
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
+if(NOT CI_BUILD)
+	configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
+	# configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.fallback.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
+endif()
 add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)
 add_subdirectory(libs/dtasks)
 add_subdirectory(libs/decf)
+add_subdirectory(libs/clap)
+add_subdirectory(libs/ktest)
 add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
@@ -158,6 +169,7 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${LEVK_INCLUDES} ${LEVK_SO
 source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${LEVK_GENERATED})
 add_library(${TARGET_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES} ${LEVK_GENERATED})
 add_library(levk::engine ALIAS ${TARGET_NAME})
+target_compile_definitions(${TARGET_NAME} PUBLIC $<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>)
 target_include_directories(${TARGET_NAME} SYSTEM
 	INTERFACE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -176,6 +188,7 @@ target_link_libraries(${TARGET_NAME}
 		levk::window
 		levk::core
 		djson::djson
+		clap::clap
 		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
 		levk::interface
 	PRIVATE

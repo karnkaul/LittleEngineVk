@@ -9,10 +9,6 @@ out/*
 redist/*
 .editorconfig
 
-# Docs
-docs
-docs/*
-
 # RenderDoc capture config (local)
 *.cap
 # SPIR-V shaders (generated)

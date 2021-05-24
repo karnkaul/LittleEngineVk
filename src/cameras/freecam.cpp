@@ -1,10 +1,11 @@
 #include <core/maths.hpp>
 #include <engine/cameras/freecam.hpp>
+#include <engine/input/state.hpp>
 #include <window/desktop_instance.hpp>
 #include <window/instance.hpp>
 
 namespace le {
-void FreeCam::tick(Input::State const& state, Time_s dt, [[maybe_unused]] Desktop* desktop) {
+void FreeCam::tick(input::State const& state, Time_s dt, [[maybe_unused]] Desktop* desktop) {
 	f32 const dt_ = dt.count();
 	auto const& s = m_params.xz_speed_limit;
 	m_params.xz_speed = std::clamp(m_params.xz_speed + state.cursor.scroll.y * 0.1f, s.x, s.y);
@@ -17,22 +18,16 @@ void FreeCam::tick(Input::State const& state, Time_s dt, [[maybe_unused]] Deskto
 		glm::vec3 const dpos = 3.0f * m_params.xz_speed * m_params.xz_speed * (dxz.x * right + dxz.z * forward);
 		position += (dpos * dt_);
 	}
-	if (m_controls.look_toggle(state)) {
-		m_look = !m_look;
-	}
+	if (m_controls.look_toggle(state)) { m_look = !m_look; }
 	bool const look = m_controls.look(state) || m_look;
 #if defined(LEVK_DESKTOP)
-	if (desktop) {
-		desktop->cursorMode(look ? window::CursorMode::eDisabled : window::CursorMode::eDefault);
-	}
+	if (desktop) { desktop->cursorMode(look ? window::CursorMode::eDisabled : window::CursorMode::eDefault); }
 #endif
 	if (look) {
-		if (!m_cursor.prev) {
-			m_cursor.prev = state.cursor.position;
-		}
+		if (!m_cursor.prev) { m_cursor.prev = state.cursor.position; }
 		glm::vec2 const dlook = 3.0f * m_params.look_sens * (state.cursor.position - *m_cursor.prev) * dt_;
 		if (glm::length2(dlook) > 0.01f) {
-			auto const pitch = glm::angleAxis(glm::radians(dlook.y), -graphics::right);
+			auto const pitch = glm::angleAxis(glm::radians(-dlook.y), -graphics::right);
 			auto const yaw = glm::angleAxis(glm::radians(dlook.x), -graphics::up);
 			orientation = yaw * orientation * pitch;
 		}

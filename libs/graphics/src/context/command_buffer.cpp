@@ -5,22 +5,18 @@
 #include <graphics/resources.hpp>
 
 namespace le::graphics {
-std::vector<CommandBuffer> CommandBuffer::make(Device& device, vk::CommandPool pool, u32 count, bool bSecondary) {
+std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::CommandPool pool, u32 count, bool bSecondary) {
 	vk::CommandBufferAllocateInfo allocInfo;
 	allocInfo.commandPool = pool;
 	allocInfo.level = bSecondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
 	allocInfo.commandBufferCount = count;
-	auto buffers = device.device().allocateCommandBuffers(allocInfo);
+	auto buffers = device->device().allocateCommandBuffers(allocInfo);
 	std::vector<CommandBuffer> ret;
-	for (auto& buffer : buffers) {
-		ret.push_back({buffer, pool});
-	}
+	for (auto& buffer : buffers) { ret.push_back({buffer, pool}); }
 	return ret;
 }
 
-CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool) : m_cb(cmd), m_pool(pool) {
-	ENSURE(!Device::default_v(cmd), "Null command buffer!");
-}
+CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool) : m_cb(cmd), m_pool(pool) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
 
 bool CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
 	ENSURE(m_flags.none(Flag::eRecording), "Command buffer already recording!");
@@ -37,9 +33,7 @@ bool CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
 bool CommandBuffer::begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, PassInfo const& info) {
 	ENSURE(m_flags.none(Flag::eRendering), "Command buffer already rendering a pass!");
 	if (valid() && !rendering()) {
-		if (!recording() && !begin(info.usage)) {
-			ENSURE(false, "Invariant violated");
-		}
+		if (!recording() && !begin(info.usage)) { ENSURE(false, "Invariant violated"); }
 		vk::RenderPassBeginInfo renderPassInfo;
 		renderPassInfo.renderPass = renderPass;
 		renderPassInfo.framebuffer = framebuffer;
@@ -51,6 +45,16 @@ bool CommandBuffer::begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer
 		return true;
 	}
 	return false;
+}
+
+void CommandBuffer::setViewport(vk::Viewport viewport) const {
+	ENSURE(rendering(), "Command buffer not rendering!");
+	m_cb.setViewport(0, viewport);
+}
+
+void CommandBuffer::setScissor(vk::Rect2D scissor) const {
+	ENSURE(rendering(), "Command buffer not rendering!");
+	m_cb.setScissor(0, scissor);
 }
 
 void CommandBuffer::setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const {
@@ -76,9 +80,7 @@ void CommandBuffer::bindSets(vk::PipelineLayout layout, vAP<vk::DescriptorSet> s
 	m_cb.bindDescriptorSets(bindPoint, layout, firstSet, sets, offsets);
 }
 
-void CommandBuffer::bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const {
-	bindSets(layout, set.get(), set.setNumber());
-}
+void CommandBuffer::bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const { bindSets(layout, set.get(), set.setNumber()); }
 
 void CommandBuffer::bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
@@ -93,19 +95,19 @@ void CommandBuffer::bindIBO(vk::Buffer buffer, vk::DeviceSize offset, vk::IndexT
 void CommandBuffer::bindVBO(Buffer const& vbo, Buffer const* pIbo) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	bindVBOs(0, vbo.buffer(), vk::DeviceSize(0));
-	if (pIbo) {
-		bindIBO(pIbo->buffer());
-	}
+	if (pIbo) { bindIBO(pIbo->buffer()); }
 }
 
-void CommandBuffer::drawIndexed(u32 indexCount, u32 instanceCount, u32 firstIndex, s32 vertexOffset, u32 firstInstance) const {
+void CommandBuffer::drawIndexed(u32 indexCount, u32 instanceCount, u32 firstInstance, s32 vertexOffset, u32 firstIndex) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	m_cb.drawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+	s_drawCalls.fetch_add(1);
 }
 
-void CommandBuffer::draw(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) const {
+void CommandBuffer::draw(u32 vertexCount, u32 instanceCount, u32 firstInstance, u32 firstVertex) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	m_cb.draw(vertexCount, instanceCount, firstVertex, firstInstance);
+	s_drawCalls.fetch_add(1);
 }
 
 void CommandBuffer::transitionImage(Image const& image, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const {

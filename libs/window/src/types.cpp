@@ -10,9 +10,7 @@ f32 window::Gamepad::axis(Axis axis) const {
 #if defined(LEVK_USE_GLFW)
 	s32 max = 0;
 	glfwGetJoystickAxes(id, &max);
-	if (idx < (std::size_t)max && idx < axes.size()) {
-		return axes[idx];
-	}
+	if (idx < (std::size_t)max && idx < axes.size()) { return axes[idx]; }
 #endif
 	return 0.0f;
 }
@@ -22,14 +20,12 @@ bool window::Gamepad::pressed(Key button) const {
 #if defined(LEVK_USE_GLFW)
 	s32 max = 0;
 	glfwGetJoystickButtons(id, &max);
-	if (idx < (std::size_t)max && idx < buttons.size()) {
-		return buttons[idx];
-	}
+	if (idx < (std::size_t)max && idx < buttons.size()) { return buttons[idx]; }
 #endif
 	return false;
 }
 
-std::string_view window::toString(s32 key) {
+std::string_view window::toString([[maybe_unused]] s32 key) {
 	static constexpr std::string_view unknown = "(Unknown)";
 #if defined(LEVK_USE_GLFW)
 	char const* szName = glfwGetKeyName((int)key, 0);

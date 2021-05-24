@@ -71,13 +71,16 @@ using Time_ms = time::Duration<s64, std::milli>;
 ///
 using Time_us = time::Duration<s64, std::micro>;
 
+namespace time {
+///
+/// \brief Format duration as d:HH:MM:SS[:ms]
+///
+std::string format(Time_s duration);
+} // namespace time
+
 // impl
-inline time::Point time::now() noexcept {
-	return Clock::now();
-}
-inline time::SysTime time::sysTime() noexcept {
-	return stdch::system_clock::now();
-}
+inline time::Point time::now() noexcept { return Clock::now(); }
+inline time::SysTime time::sysTime() noexcept { return stdch::system_clock::now(); }
 template <typename Ret, typename Dur>
 constexpr Ret time::cast(Dur&& dur) noexcept {
 	return stdch::duration_cast<Ret>(dur);

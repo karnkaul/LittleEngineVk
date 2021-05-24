@@ -100,29 +100,22 @@ using View = Span<T const>;
 // impl
 
 template <typename T>
-constexpr Span<T>::Span() noexcept : m_data(nullptr), m_size(0) {
-}
+constexpr Span<T>::Span() noexcept : m_data(nullptr), m_size(0) {}
 template <typename T>
-constexpr Span<T>::Span(T* data, std::size_t size) noexcept : m_data(data), m_size(size) {
-}
+constexpr Span<T>::Span(T* data, std::size_t size) noexcept : m_data(data), m_size(size) {}
 template <typename T>
-constexpr Span<T>::Span(T& data) noexcept : m_data(&data), m_size(1) {
-}
+constexpr Span<T>::Span(T& data) noexcept : m_data(&data), m_size(1) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T>::Span(std::array<T, N>& arr) noexcept : m_data(N == 0 ? nullptr : &arr.front()), m_size(N) {
-}
+constexpr Span<T>::Span(std::array<T, N>& arr) noexcept : m_data(N == 0 ? nullptr : &arr.front()), m_size(N) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T>::Span(kt::fixed_vector<T, N>& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {
-}
+constexpr Span<T>::Span(kt::fixed_vector<T, N>& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T>::Span(T (&arr)[N]) noexcept : m_data(N == 0 ? nullptr : &arr[0]), m_size(N) {
-}
+constexpr Span<T>::Span(T (&arr)[N]) noexcept : m_data(N == 0 ? nullptr : &arr[0]), m_size(N) {}
 template <typename T>
-constexpr Span<T>::Span(std::vector<T>& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {
-}
+constexpr Span<T>::Span(std::vector<T>& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
 template <typename T>
 constexpr std::size_t Span<T>::size() const noexcept {
 	return m_size;
@@ -195,29 +188,22 @@ constexpr Span<T> Span<T>::subspan(std::size_t offset, std::size_t count) const 
 	return Span<T>(m_data + offset, count);
 }
 template <typename T>
-constexpr Span<T const>::Span() noexcept : m_data(nullptr), m_size(0) {
-}
+constexpr Span<T const>::Span() noexcept : m_data(nullptr), m_size(0) {}
 template <typename T>
-constexpr Span<T const>::Span(T const* data, std::size_t size) noexcept : m_data(data), m_size(size) {
-}
+constexpr Span<T const>::Span(T const* data, std::size_t size) noexcept : m_data(data), m_size(size) {}
 template <typename T>
-constexpr Span<T const>::Span(T const& data) noexcept : m_data(&data), m_size(1) {
-}
+constexpr Span<T const>::Span(T const& data) noexcept : m_data(&data), m_size(1) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T const>::Span(std::array<T, N> const& arr) noexcept : m_data(N == 0 ? nullptr : &arr.front()), m_size(N) {
-}
+constexpr Span<T const>::Span(std::array<T, N> const& arr) noexcept : m_data(N == 0 ? nullptr : &arr.front()), m_size(N) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T const>::Span(kt::fixed_vector<T, N> const& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {
-}
+constexpr Span<T const>::Span(kt::fixed_vector<T, N> const& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T const>::Span(T const (&arr)[N]) noexcept : m_data(N == 0 ? nullptr : &arr[0]), m_size(N) {
-}
+constexpr Span<T const>::Span(T const (&arr)[N]) noexcept : m_data(N == 0 ? nullptr : &arr[0]), m_size(N) {}
 template <typename T>
-constexpr Span<T const>::Span(std::vector<T> const& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {
-}
+constexpr Span<T const>::Span(std::vector<T> const& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
 template <typename T>
 constexpr std::size_t Span<T const>::size() const noexcept {
 	return m_size;

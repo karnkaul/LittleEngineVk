@@ -6,7 +6,7 @@
 #include <core/span.hpp>
 #include <core/utils/string.hpp>
 #include <dumb_ecf/registry.hpp>
-#include <engine/scene_node.hpp>
+#include <engine/scene/scene_node.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #include <kt/n_tree/n_tree.hpp>
 
@@ -53,13 +53,9 @@ struct GUIStateful {
 
 	void refresh();
 
-	bool test(GUI s) const {
-		return guiState.test(s);
-	}
+	bool test(GUI s) const { return guiState.test(s); }
 
-	explicit virtual operator bool() const {
-		return test(GUI::eLeftClicked);
-	}
+	explicit virtual operator bool() const { return test(GUI::eLeftClicked); }
 };
 
 struct Text final {
@@ -83,9 +79,7 @@ struct Combo final : GUIStateful {
 
 	Combo(std::string_view id, View<std::string_view> entries, std::string_view preSelect);
 
-	explicit operator bool() const override {
-		return test(GUI::eOpen);
-	}
+	explicit operator bool() const override { return test(GUI::eOpen); }
 };
 
 struct TreeNode final : GUIStateful {
@@ -93,9 +87,7 @@ struct TreeNode final : GUIStateful {
 	TreeNode(std::string_view id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen);
 	~TreeNode() override;
 
-	explicit operator bool() const override {
-		return test(GUI::eOpen);
-	}
+	explicit operator bool() const override { return test(GUI::eOpen); }
 };
 
 struct MenuBar : GUIStateful {
@@ -103,9 +95,7 @@ struct MenuBar : GUIStateful {
 		Menu(std::string_view id);
 		~Menu() override;
 
-		explicit operator bool() const override {
-			return test(GUI::eOpen);
-		}
+		explicit operator bool() const override { return test(GUI::eOpen); }
 	};
 
 	struct Item : GUIStateful {
@@ -124,31 +114,25 @@ struct TabBar : GUIStateful {
 		explicit Item(std::string_view id, s32 flags = 0);
 		~Item() override;
 
-		explicit operator bool() const override {
-			return test(GUI::eOpen);
-		}
+		explicit operator bool() const override { return test(GUI::eOpen); }
 	};
 
 	TabBar(std::string_view id, s32 flags = 0);
 	~TabBar() override;
 
-	explicit operator bool() const override {
-		return test(GUI::eOpen);
-	}
+	explicit operator bool() const override { return test(GUI::eOpen); }
 };
 
 struct Pane : GUIStateful {
-	inline static std::size_t s_open = 0;
+	inline static bool s_blockResize = false;
 
-	Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool child, s32 flags = 0);
+	Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool* open, bool blockResize = true, s32 flags = 0);
+	Pane(std::string_view id, glm::vec2 size = {}, bool border = false, s32 flags = 0);
 	~Pane() override;
 
 	bool child = false;
-	bool open = true;
 
-	explicit operator bool() const override {
-		return test(GUI::eOpen);
-	}
+	explicit operator bool() const override { return test(GUI::eOpen); }
 };
 
 template <typename T>
@@ -266,9 +250,7 @@ TInspector<T>::TInspector(decf::registry_t& out_registry, decf::entity_t entity,
 		node.emplace(this->id);
 		if (*node) {
 			bOpen = true;
-			if (node->test(GUI::eRightClicked)) {
-				out_registry.detach<T>(entity);
-			}
+			if (node->test(GUI::eRightClicked)) { out_registry.detach<T>(entity); }
 		}
 	}
 }
@@ -276,8 +258,7 @@ TInspector<T>::TInspector(decf::registry_t& out_registry, decf::entity_t entity,
 template <typename T>
 TInspector<T>::TInspector(TInspector<T>&& rhs)
 	: node(std::move(rhs.node)), pReg(std::exchange(rhs.pReg, nullptr)), id(std::move(id)), bNew(std::exchange(rhs.bNew, false)),
-	  bOpen(std::exchange(rhs.bOpen, false)) {
-}
+	  bOpen(std::exchange(rhs.bOpen, false)) {}
 
 template <typename T>
 TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {

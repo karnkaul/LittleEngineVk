@@ -6,7 +6,7 @@
 
 namespace le::graphics {
 template <typename T = f32, s64 Min = 0, s64 Max = 1>
-struct TRect final {
+struct TRect {
 	using type = T;
 	using type_float = std::conditional<std::is_floating_point_v<T>, T, f32>;
 
@@ -32,12 +32,10 @@ struct TRect final {
 };
 
 template <typename T, s64 Min, s64 Max>
-constexpr TRect<T, Min, Max>::TRect(glm::tvec2<T> const& lt, glm::tvec2<T> const& rb) : lt(lt), rb(rb) {
-}
+constexpr TRect<T, Min, Max>::TRect(glm::tvec2<T> const& lt, glm::tvec2<T> const& rb) : lt(lt), rb(rb) {}
 
 template <typename T, s64 Min, s64 Max>
-constexpr TRect<T, Min, Max>::TRect(glm::tvec4<T> const& ltrb) : lt(ltrb.x, ltrb.y), rb(ltrb.z, ltrb.w) {
-}
+constexpr TRect<T, Min, Max>::TRect(glm::tvec4<T> const& ltrb) : lt(ltrb.x, ltrb.y), rb(ltrb.z, ltrb.w) {}
 
 template <typename T, s64 Min, s64 Max>
 constexpr TRect<T, Min, Max> TRect<T, Min, Max>::sizeTL(glm::tvec2<T> const& size, glm::tvec2<T> const& leftTop) noexcept {

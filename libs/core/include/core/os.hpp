@@ -3,13 +3,10 @@
 #include <string>
 #include <vector>
 #include <fmt/format.h>
-#include <core/erased_ref.hpp>
+#include <core/erased_ptr.hpp>
 #include <core/io/path.hpp>
-#include <core/ref.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <kt/args_parser/args_parser.hpp>
-#include <kt/result/result.hpp>
 
 namespace le::os {
 enum class OS : s8 { eWindows, eLinux, eAndroid, eUnknown };
@@ -106,37 +103,8 @@ namespace os {
 enum class Dir : s8 { eWorking, eExecutable, eCOUNT_ };
 
 struct Args {
-	s32 argc = 0;
-	char const* const* argv = nullptr;
-};
-
-using ArgsParser = kt::args_parser<>;
-
-///
-/// \brief Interface representing a command line argument
-///
-struct ICmdArg {
-	///
-	/// \brief Data structure describing a command's usage
-	///
-	struct Usage {
-		std::string_view params;
-		std::string_view summary;
-	};
-
-	virtual ~ICmdArg() = default;
-	///
-	/// \brief Must return the possible keys to match against
-	///
-	virtual View<std::string_view> keyVariants() const = 0;
-	///
-	/// \brief Must return true to stop processing
-	///
-	virtual bool halt(std::string_view value) = 0;
-	///
-	/// \brief Must return valid Usage
-	///
-	virtual Usage usage() const = 0;
+	int argc = {};
+	char const* const* argv = {};
 };
 
 ///
@@ -148,34 +116,21 @@ void args(Args const& args);
 ///
 std::string argv0();
 ///
+/// \brief Obtain `argv[0]`
+///
+std::string exeName();
+///
 /// \brief Obtain working/executable directory
 ///
 io::Path dirPath(Dir dir);
 ///
 /// \brief Obtain internal/external storage path
 ///
-io::Path androidStorage(ErasedRef const& androidApp, bool bExternal);
-///
-/// \brief Obtain full path to directory containing pattern, traced from the executable path
-/// \param pattern sub-path to match against
-/// \param start Dir to start search from
-/// \param maxHeight maximum recursive depth
-///
-kt::result<io::Path, std::string> findData(io::Path pattern = "data", Dir start = Dir::eExecutable, u8 maxHeight = 10);
+io::Path androidStorage(ErasedPtr androidApp, bool bExternal);
 ///
 /// \brief Obtain all command line arguments passed to the runtime
 ///
-std::deque<ArgsParser::entry> const& args() noexcept;
-///
-/// \brief Check if a string or its variant was passed as a command line argument
-/// \returns `std::nullopt` if arg is not defined, else the value of the arg (empty if key-only arg)
-///
-template <typename Arg, typename... Args>
-std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept;
-///
-/// \brief Check if any passed ICmdArg requests to halt
-///
-bool halt(View<Ref<ICmdArg>> cmdArgs);
+std::vector<std::string_view> const& args() noexcept;
 
 ///
 /// \brief Check if a debugger is attached to the runtime
@@ -198,18 +153,6 @@ template <typename Arg1, typename... Args>
 bool sysCall(std::string_view expr, Arg1&& arg1, Args&&... args) {
 	auto const command = fmt::format(expr, std::forward<Arg1>(arg1), std::forward<Args>(args)...);
 	return sysCall(command);
-}
-
-template <typename Arg, typename... Args>
-std::optional<std::string_view> isDefined(Arg&& key, Args&&... variants) noexcept {
-	static_assert(std::is_convertible_v<Arg, std::string> && (std::is_convertible_v<Args, std::string> && ...), "Invalid Types!");
-	auto const& allArgs = args();
-	auto matchAny = [&](ArgsParser::entry const& arg) { return (arg.k == key || ((arg.k == variants) || ...)); };
-	auto search = std::find_if(allArgs.begin(), allArgs.end(), matchAny);
-	if (search != allArgs.end()) {
-		return search->v;
-	}
-	return std::nullopt;
 }
 } // namespace os
 } // namespace le

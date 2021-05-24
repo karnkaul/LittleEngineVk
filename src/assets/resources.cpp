@@ -22,18 +22,12 @@ View<std::byte> Resource::bytes() const noexcept {
 	}
 }
 
-Resource::Type Resource::type() const noexcept {
-	return m_type;
-}
+Resource::Type Resource::type() const noexcept { return m_type; }
 
-bool Resource::monitoring() const noexcept {
-	return m_monitor.has_value();
-}
+bool Resource::monitoring() const noexcept { return m_monitor.has_value(); }
 
 std::optional<io::FileMonitor::Status> Resource::status() const {
-	if (m_monitor) {
-		return m_monitor->lastStatus();
-	}
+	if (m_monitor) { return m_monitor->lastStatus(); }
 	return std::nullopt;
 }
 
@@ -60,41 +54,31 @@ bool Resource::load(io::Reader const& reader, io::Path path, Type type, bool bMo
 	return false;
 }
 
-void Resources::reader(io::Reader const& reader) {
-	m_pReader = &reader;
-}
+void Resources::reader(not_null<io::Reader const*> reader) { m_reader = reader; }
 
 io::Reader const& Resources::reader() const {
-	if (m_pReader) {
-		return *m_pReader;
-	}
+	if (m_reader) { return *m_reader; }
 	return m_fileReader;
 }
 
-io::FileReader& Resources::fileReader() {
-	return m_fileReader;
-}
+io::FileReader& Resources::fileReader() { return m_fileReader; }
 
 Resource const* Resources::find(Hash id) const noexcept {
 	auto lock = m_loaded.lock<std::shared_lock>();
-	if (auto it = lock.get().find(id); it != lock.get().end()) {
-		return &it->second;
-	}
+	if (auto it = lock.get().find(id); it != lock.get().end()) { return &it->second; }
 	return nullptr;
 }
 
 Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonitor, bool bForceReload) {
 	if (!bForceReload) {
-		if (auto pRes = find(path)) {
-			return pRes;
-		}
+		if (auto pRes = find(path)) { return pRes; }
 	}
 	auto lock = m_loaded.lock<std::unique_lock>();
 	lock.get().erase(path);
 	Resource resource;
 	if (resource.load(reader(), path, type, bMonitor && levk_resourceMonitor)) {
 		auto [it, bRes] = lock.get().emplace(std::move(path), std::move(resource));
-		ENSURE(bRes, "Map insertion failure");
+		ENSURE(bRes, "Duplicate Resource");
 		return &it->second;
 	}
 	return nullptr;
@@ -108,9 +92,7 @@ bool Resources::loaded(Hash id) const noexcept {
 void Resources::update() {
 	auto lock = m_loaded.lock<std::shared_lock>();
 	for (auto& [_, resource] : lock.get()) {
-		if (resource.m_monitor) {
-			resource.m_monitor->update();
-		}
+		if (resource.m_monitor) { resource.m_monitor->update(); }
 	}
 }
 

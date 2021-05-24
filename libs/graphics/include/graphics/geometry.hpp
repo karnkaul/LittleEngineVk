@@ -82,9 +82,7 @@ void Geom<V>::addIndices(View<u32> newIndices) {
 template <VertType V>
 std::vector<glm::vec3> Geom<V>::positions() const {
 	std::vector<glm::vec3> ret;
-	for (auto const& v : vertices) {
-		ret.push_back(v.position);
-	}
+	for (auto const& v : vertices) { ret.push_back(v.position); }
 	return ret;
 }
 } // namespace le::graphics

@@ -13,10 +13,9 @@ template <>
 struct AssetLoadData<graphics::Shader> {
 	std::string name;
 	std::unordered_map<graphics::Shader::Type, io::Path> shaderPaths;
-	Ref<graphics::Device> device;
+	not_null<graphics::Device*> device;
 
-	AssetLoadData(graphics::Device& device) : device(device) {
-	}
+	AssetLoadData(not_null<graphics::Device*> device) : device(device) {}
 };
 
 template <>
@@ -34,11 +33,10 @@ struct AssetLoadData<graphics::Pipeline> {
 	std::optional<graphics::Pipeline::CreateInfo> info;
 	graphics::PFlags flags;
 	std::string name;
-	Ref<graphics::RenderContext> context;
+	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
 
-	AssetLoadData(graphics::RenderContext& context) : context(context) {
-	}
+	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
 };
 
 template <>
@@ -50,15 +48,14 @@ struct AssetLoader<graphics::Pipeline> {
 template <>
 struct AssetLoadData<graphics::Texture> {
 	kt::fixed_vector<io::Path, 6> imageIDs;
-	graphics::Texture::Raw raw;
+	graphics::Bitmap bitmap;
 	io::Path prefix;
 	std::string ext;
-	std::string name;
-	Ref<graphics::VRAM> vram;
+	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
+	bool rawBytes = false;
 
-	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
-	}
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
 
 template <>
@@ -73,14 +70,12 @@ struct AssetLoader<graphics::Texture> {
 
 template <>
 struct AssetLoadData<BitmapFont> {
-	std::string name;
 	io::Path jsonID;
-	vk::Format texFormat = graphics::Texture::srgbFormat;
-	Ref<graphics::VRAM> vram;
+	std::optional<vk::Format> forceFormat;
+	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
-	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
-	}
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
 
 template <>
@@ -95,12 +90,11 @@ template <>
 struct AssetLoadData<Model> {
 	std::string modelID;
 	io::Path jsonID;
-	vk::Format texFormat = graphics::Texture::srgbFormat;
-	Ref<graphics::VRAM> vram;
+	std::optional<vk::Format> forceFormat;
+	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 
-	AssetLoadData(graphics::VRAM& vram) : vram(vram) {
-	}
+	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
 
 template <>

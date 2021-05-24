@@ -1,5 +1,5 @@
 #pragma once
-#include <engine/input/input.hpp>
+#include <engine/input/state.hpp>
 #include <engine/render/viewport.hpp>
 
 namespace le {
@@ -15,7 +15,7 @@ class Resizer {
 	inline static f32 s_offsetX = 25.0f;
 	inline static f32 s_minScale = 0.25f;
 
-	bool operator()(window::DesktopInstance& out_w, Viewport& out_vp, Input::State const& state);
+	bool operator()(window::DesktopInstance& out_w, Viewport& out_vp, input::State const& state);
 
   private:
 	struct ViewData {
@@ -27,7 +27,7 @@ class Resizer {
 		ViewData(window::DesktopInstance const& win, Viewport const& view);
 	};
 
-	window::CursorType check(ViewData const& data, Viewport& out_vp, Input::State const& state);
+	window::CursorType check(ViewData const& data, Viewport& out_vp, input::State const& state);
 	void check(Viewport& out_vp, window::CursorType& out_c, bool active, Handle h, bool click);
 
 	Viewport m_prev;

@@ -47,24 +47,16 @@ int main() {
 			bPass &= verify(entity);
 			auto const toss = maths::randomRange(0, 1 << 7);
 			if (toss & 1 << 0) {
-				if (!r.get().find<A>(entity)) {
-					r.get().attach<A>(entity);
-				}
+				if (!r.get().find<A>(entity)) { r.get().attach<A>(entity); }
 			}
 			if (toss & 1 << 1) {
-				if (!r.get().find<B>(entity)) {
-					r.get().attach<B>(entity);
-				}
+				if (!r.get().find<B>(entity)) { r.get().attach<B>(entity); }
 			}
 			if (toss & 1 << 2) {
-				if (!r.get().find<C>(entity)) {
-					r.get().attach<C>(entity);
-				}
+				if (!r.get().find<C>(entity)) { r.get().attach<C>(entity); }
 			}
 			if (toss & 1 << 3) {
-				if (!r.get().find<D>(entity)) {
-					r.get().attach<D>(entity);
-				}
+				if (!r.get().find<D>(entity)) { r.get().attach<D>(entity); }
 			}
 			if (toss & 1 << 4) {
 				if (!r.get().find<D>(entity) && !r.get().find<C>(entity)) {
@@ -73,21 +65,15 @@ int main() {
 				}
 			}
 			if (toss & 1 << 5) {
-				if (!r.get().find<E>(entity)) {
-					r.get().attach<E>(entity);
-				}
+				if (!r.get().find<E>(entity)) { r.get().attach<E>(entity); }
 			}
 			if (toss & 1 << 6) {
-				if (!r.get().find<F>(entity)) {
-					r.get().attach<F>(entity);
-				}
+				if (!r.get().find<F>(entity)) { r.get().attach<F>(entity); }
 			}
 		});
 	}
 	tq.wait_idle();
-	if (!bPass) {
-		return 1;
-	}
+	if (!bPass) { return 1; }
 	std::vector<dts::task_id> handles;
 	{
 		auto wait = []() -> Time_ms { return time::cast<Time_ms>(Time_us(maths::randomRange(0, 3000))); };

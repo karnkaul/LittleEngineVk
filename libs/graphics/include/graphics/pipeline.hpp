@@ -1,7 +1,6 @@
 #pragma once
 #include <unordered_set>
 #include <core/hash.hpp>
-#include <core/ref.hpp>
 #include <core/utils/std_hash.hpp>
 #include <graphics/descriptor_set.hpp>
 #include <kt/result/result.hpp>
@@ -45,7 +44,7 @@ class Pipeline final {
 		std::size_t index = 0;
 	};
 
-	Pipeline(VRAM& vram, Shader const& shader, CreateInfo createInfo, Hash id);
+	Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo createInfo, Hash id);
 	Pipeline(Pipeline&&);
 	Pipeline& operator=(Pipeline&&);
 	~Pipeline();
@@ -95,24 +94,20 @@ class Pipeline final {
 
 	Storage m_storage;
 	Metadata m_metadata;
-	Ref<VRAM> m_vram;
-	Ref<Device> m_device;
+	not_null<VRAM*> m_vram;
+	not_null<Device*> m_device;
 
 	friend struct Hasher;
 };
 
 // impl
 
-inline Hash Pipeline::id() const noexcept {
-	return m_storage.id;
-}
+inline Hash Pipeline::id() const noexcept { return m_storage.id; }
 } // namespace le::graphics
 
 namespace std {
 template <>
 struct hash<le::graphics::Pipeline> {
-	size_t operator()(le::graphics::Pipeline const& pipe) const {
-		return pipe.id();
-	}
+	size_t operator()(le::graphics::Pipeline const& pipe) const { return pipe.id(); }
 };
 } // namespace std

@@ -13,22 +13,16 @@ class Selector {
   public:
 	Selector(std::vector<QueueMultiplex::Family> families) : m_families(std::move(families)) {
 		QFlags found;
-		for (auto const& family : m_families) {
-			found.set(family.flags);
-		}
+		for (auto const& family : m_families) { found.set(family.flags); }
 		bool const valid = found.all(QFlags::inverse());
 		ENSURE(valid, "Required queues not present");
-		if (!valid) {
-			g_log.log(lvl::error, 0, "[{}] Required Vulkan Queues not present on selected physical device!");
-		}
+		if (!valid) { g_log.log(lvl::error, 0, "[{}] Required Vulkan Queues not present on selected physical device!"); }
 	}
 
 	QueueMultiplex::Family* exact(QFlags flags) {
 		for (auto& f : m_families) {
 			// Only return if queue flags match exactly
-			if (f.flags == flags && f.reserved < f.total) {
-				return &f;
-			}
+			if (f.flags == flags && f.reserved < f.total) { return &f; }
 		}
 		return nullptr;
 	}
@@ -36,9 +30,7 @@ class Selector {
 	QueueMultiplex::Family* best(QFlags flags) {
 		for (auto& f : m_families) {
 			// Return if queue supports desired flags
-			if (f.flags.test(flags) && f.reserved < f.total) {
-				return &f;
-			}
+			if (f.flags.test(flags) && f.reserved < f.total) { return &f; }
 		}
 		return nullptr;
 	}
@@ -50,16 +42,12 @@ class Selector {
 		QueueMultiplex::Family* f = nullptr;
 		// First pass: exact match
 		for (QFlags flags : combo) {
-			if (f = exact(flags); f && f->reserved < f->total) {
-				break;
-			}
+			if (f = exact(flags); f && f->reserved < f->total) { break; }
 		}
 		if (!f || f->reserved >= f->total) {
 			// Second pass: best match
 			for (QFlags flags : combo) {
-				if (f = best(flags); f && f->reserved < f->total) {
-					break;
-				}
+				if (f = best(flags); f && f->reserved < f->total) { break; }
 			}
 		}
 		if (f && f->reserved < f->total) {
@@ -109,9 +97,7 @@ std::vector<vk::DeviceQueueCreateInfo> QueueMultiplex::select(std::vector<Family
 	// Reserve another for transfer
 	auto ft = sl.reserve({QType::eTransfer, QFlags(QType::eTransfer) | QType::ePresent, QFlags(QType::eTransfer) | QType::eGraphics});
 	// Can't function without graphics/present
-	if (!fpg) {
-		return ret;
-	}
+	if (!fpg) { return ret; }
 	if (ft && uniqueFam(*fpg, *ft)) {
 		// Two families, two queues
 		static std::array const prio = {1.0f};
@@ -127,15 +113,15 @@ std::vector<vk::DeviceQueueCreateInfo> QueueMultiplex::select(std::vector<Family
 			makeQueues(ret, makeFrom1(*fpg, prio), {{{0, 0}, {0, 0}, {0, 0}}});
 		}
 	}
-	m_queues[(std::size_t)QType::eGraphics].second = &m_mutexes.gp;
-	m_queues[(std::size_t)QType::ePresent].second = &m_mutexes.gp;
-	m_queues[(std::size_t)QType::eTransfer].second = &m_mutexes.t;
+	m_queues[QType::eGraphics].second = &m_mutexes.gp;
+	m_queues[QType::ePresent].second = &m_mutexes.gp;
+	m_queues[QType::eTransfer].second = &m_mutexes.t;
 	return ret;
 }
 
 void QueueMultiplex::setup(vk::Device device) {
 	std::set<u32> families, queues;
-	for (auto& [queue, _] : m_queues) {
+	for (auto& [queue, _] : m_queues.arr) {
 		queue.queue = device.getQueue(queue.familyIndex, queue.arrayIndex);
 		families.insert(queue.familyIndex);
 		queues.insert((queue.familyIndex << 4) ^ queue.arrayIndex);
@@ -148,9 +134,7 @@ void QueueMultiplex::setup(vk::Device device) {
 
 kt::fixed_vector<u32, 3> QueueMultiplex::familyIndices(QFlags flags) const {
 	kt::fixed_vector<u32, 3> ret;
-	if (flags.test(QType::eGraphics)) {
-		ret.push_back(queue(QType::eGraphics).familyIndex);
-	}
+	if (flags.test(QType::eGraphics)) { ret.push_back(queue(QType::eGraphics).familyIndex); }
 	if (flags.test(QType::ePresent) && queue(QType::ePresent).familyIndex != queue(QType::eGraphics).familyIndex) {
 		ret.push_back(queue(QType::ePresent).familyIndex);
 	}
@@ -163,10 +147,10 @@ kt::fixed_vector<u32, 3> QueueMultiplex::familyIndices(QFlags flags) const {
 vk::Result QueueMultiplex::present(vk::PresentInfoKHR const& info, bool bLock) {
 	auto& q = queue(QType::ePresent);
 	if (!bLock) {
-		return q.queue.presentKHR(info);
+		return q.queue.presentKHR(&info);
 	} else {
 		auto lock = mutex(QType::ePresent).lock();
-		return q.queue.presentKHR(info);
+		return q.queue.presentKHR(&info);
 	}
 }
 
@@ -180,9 +164,7 @@ void QueueMultiplex::submit(QType type, vAP<vk::SubmitInfo> infos, vk::Fence sig
 	}
 }
 
-QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, View<f32> prio) {
-	return {createInfo(gpt, prio)};
-}
+QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, View<f32> prio) { return {createInfo(gpt, prio)}; }
 
 QueueMultiplex::QCIArr<2> QueueMultiplex::makeFrom2(Family& a, Family& b, View<f32> pa, View<f32> pb) {
 	std::array<QueueMultiplex::QCI, 2> ret;
@@ -200,9 +182,7 @@ QueueMultiplex::QCIArr<3> QueueMultiplex::makeFrom3(Family& g, Family& p, Family
 }
 
 void QueueMultiplex::makeQueues(qcivec& out_vec, View<QCI> qcis, Assign const& a) {
-	for (auto const& [info, _] : qcis) {
-		out_vec.push_back(info);
-	}
+	for (auto const& [info, _] : qcis) { out_vec.push_back(info); }
 	assign(qcis[a[0].first].second[a[0].second], qcis[a[1].first].second[a[1].second], qcis[a[2].first].second[a[2].second]);
 }
 

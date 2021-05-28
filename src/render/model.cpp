@@ -4,7 +4,7 @@
 #include <fmt/format.h>
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <core/io/reader.hpp>
-#include <dumb_json/djson.hpp>
+#include <dumb_json/json.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
 #include <graphics/mesh.hpp>
@@ -69,9 +69,14 @@ Colour colour(f32 const (&arr)[3], Colour fallback, f32 a = 1.0f) {
 	return Colour(glm::vec4(fallback.toVec3(), a));
 }
 
-glm::vec3 vec3(dj::node_t const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
-	if (auto const pVec = json.find(id)) { return {pVec->safe_get("x").as<f32>(), pVec->safe_get("y").as<f32>(), pVec->safe_get("z").as<f32>()}; }
-	return fallback;
+glm::vec3 vec3(dj::json_t const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
+	glm::vec3 ret = fallback;
+	if (auto const pVec = json.find(id)) {
+		if (auto x = pVec->find("x")) { ret.x = x->as<f32>(); }
+		if (auto y = pVec->find("x")) { ret.y = y->as<f32>(); }
+		if (auto z = pVec->find("z")) { ret.z = z->as<f32>(); }
+	}
+	return ret;
 }
 } // namespace
 
@@ -260,17 +265,18 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Reader const& reader) {
 	auto res = reader.string(jsonID);
 	if (!res) { return std::string("JSON not found"); }
-	auto json = dj::node_t::make(*res);
-	if (!json || !json->is_object()) { return std::string("Failed to read json"); }
-	if (!json->contains("obj")) { return std::string("JSON missing obj"); }
+	dj::json_t json;
+	auto result = json.read(*res);
+	if (result.failure || !result.errors.empty() || !json.is_object()) { return std::string("Failed to read json: ") + result.to_string(); }
+	if (!json.contains("obj")) { return std::string("JSON missing obj"); }
 	auto const jsonDir = jsonID.parent_path();
-	auto const objID = jsonDir / json->get("obj").as<std::string>();
-	auto const mtlID = jsonDir / json->safe_get("mtl").as<std::string>();
+	auto const objID = jsonDir / json["obj"].as<std::string>();
+	auto const mtlID = jsonDir / (json.contains("mtl") ? json["mtl"].as<std::string>() : std::string());
 	auto obj = reader.sstream(objID);
 	auto mtl = reader.sstream(mtlID);
 	if (!obj) { return std::string("obj not found"); }
-	auto pSamplerID = json->find("sampler");
-	auto pScale = json->find("scale");
+	auto pSamplerID = json.find("sampler");
+	auto pScale = json.find("scale");
 	OBJReader::Data objData;
 	objData.obj = obj.move();
 	if (mtl) { objData.mtl = mtl.move(); }
@@ -279,7 +285,7 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	objData.modelID = jsonDir;
 	objData.samplerID = pSamplerID ? pSamplerID->as<std::string>() : "samplers/default";
 	objData.scale = pScale ? pScale->as<f32>() : 1.0f;
-	objData.origin = vec3(*json, "origin");
+	objData.origin = vec3(json, "origin");
 	OBJReader parser(std::move(objData));
 	return parser(reader);
 }

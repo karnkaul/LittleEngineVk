@@ -1,5 +1,4 @@
 #include <core/io/reader.hpp>
-#include <dumb_json/djson.hpp>
 #include <engine/render/bitmap_font.hpp>
 
 namespace le {

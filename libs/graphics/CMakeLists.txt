@@ -27,7 +27,6 @@ target_link_libraries(${PROJECT_NAME}
 		tinyobjloader
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:${PLATFORM},Linux>:-fPIC>)
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>)
 
 # PCH

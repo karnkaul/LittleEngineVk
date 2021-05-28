@@ -30,7 +30,6 @@ if(WINDOWS_CLANG AND MSVC)
 	list(APPEND COMPILE_OPTS /W4 -utf-8)
 endif()
 if(PLATFORM STREQUAL "Linux")
-	list(APPEND COMPILE_OPTS -fPIC)
 	set(LINK_OPTS
 		-no-pie         # Build as application
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH

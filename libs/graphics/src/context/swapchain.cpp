@@ -88,6 +88,11 @@ struct SwapchainCreateInfo {
 		}
 	}
 
+	bool unstable(vk::Extent2D target) {
+		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
+		return target != capabilities.currentExtent;
+	}
+
 	vk::PhysicalDevice pd;
 	vk::SurfaceKHR surface;
 	std::vector<vk::PresentModeKHR> availableModes;
@@ -223,8 +228,10 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 			m_storage.flags.set(Flag::ePaused);
 			return false;
 		}
-		m_storage.current = info.current;
+		if (info.unstable(createInfo.imageExtent)) { return false; }
 		m_storage.swapchain = m_device->device().createSwapchainKHR(createInfo);
+		m_storage.current.extent = createInfo.imageExtent;
+		m_storage.current.transform = info.current.transform;
 		m_metadata.formats.colour = info.colourFormat;
 		m_metadata.formats.depth = info.depthFormat;
 		if (!m_metadata.original) { m_metadata.original = info.current; }

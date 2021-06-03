@@ -133,15 +133,12 @@ bool RenderContext::endFrame() {
 	return true;
 }
 
-bool RenderContext::reconstructed(glm::ivec2 framebufferSize) {
-	auto const flags = m_swapchain->flags();
-	if (flags.any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
-		if (m_swapchain->reconstruct(framebufferSize)) {
-			m_storage.status = Status::eWaiting;
-			return true;
-		}
+bool RenderContext::ready(glm::ivec2 framebufferSize) {
+	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
+		if (m_swapchain->reconstruct(framebufferSize)) { m_storage.status = Status::eWaiting; }
+		return false;
 	}
-	return false;
+	return true;
 }
 
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo) {

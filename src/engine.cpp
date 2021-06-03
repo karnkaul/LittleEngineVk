@@ -91,11 +91,25 @@ void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_input
 bool Engine::beginFrame(bool waitDrawReady) {
 	updateStats();
 	if (m_gfx) {
+		auto const size = m_win->framebufferSize();
+		if constexpr (levk_desktopOS) {
+			if (m_recreateInterval > 0ms) {
+				if (m_fb.size.x == 0 || m_fb.size.y == 0) {
+					m_fb.size = size;
+					m_fb.resized = {};
+				} else if (size != m_fb.size) {
+					m_fb.size = size;
+					m_fb.resized = time::now();
+					return false;
+				}
+				if (m_fb.resized != time::Point{} && time::diff(m_fb.resized) < m_recreateInterval) { return false; }
+			}
+		}
+		if (!m_gfx->context.ready(size)) { return false; }
 		if constexpr (levk_imgui) {
 			[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 			ENSURE(b, "Failed to begin DearImGui frame");
 		}
-		if (m_gfx->context.reconstructed(m_win->framebufferSize())) { return false; }
 		if (waitDrawReady) { return drawReady(); }
 		return true;
 	}

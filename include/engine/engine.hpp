@@ -105,6 +105,7 @@ class Engine {
 	Viewport const& gameView() const noexcept;
 
 	not_null<Window*> m_win;
+	Time_ms m_recreateInterval = 30ms;
 
   private:
 	void updateStats();
@@ -125,7 +126,11 @@ class Engine {
 	} m_stats;
 	input::Receivers m_receivers;
 	input::State m_inputState;
-	Desktop* m_desktop = {};
+	struct {
+		glm::ivec2 size{};
+		time::Point resized{};
+	} m_fb;
+	Desktop* m_desktop{};
 };
 
 struct Engine::CreateInfo {

@@ -120,7 +120,7 @@ void onWindowResize(GLFWwindow* pGLFWwindow, int width, int height) {
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), false};
 		g_state.events.m_events.push_back(event);
-		g_log->log(lvl::info, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
+		g_log->log(lvl::debug, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
 	}
 }
 
@@ -130,7 +130,7 @@ void onFramebufferResize(GLFWwindow* pGLFWwindow, int width, int height) {
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), true};
 		g_state.events.m_events.push_back(event);
-		g_log->log(lvl::info, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
+		g_log->log(lvl::debug, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
 	}
 }
 

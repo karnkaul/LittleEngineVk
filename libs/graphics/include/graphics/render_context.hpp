@@ -44,7 +44,7 @@ class RenderContext : NoCopy {
 	std::size_t index() const noexcept;
 	std::size_t rotateCount() const noexcept;
 	glm::ivec2 extent() const noexcept;
-	bool reconstructed(glm::ivec2 framebufferSize);
+	bool ready(glm::ivec2 framebufferSize);
 
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo);
 

@@ -75,9 +75,13 @@ struct Albedo {
 	alignas(16) glm::vec4 specular;
 
 	static Albedo make(Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
+		return make(colour.toVec4(), amdispsh);
+	}
+
+	static Albedo make(glm::vec4 const& colour, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
 		Albedo ret;
-		glm::vec3 const c = colour.toVec3();
-		f32 const a = colour.a.toF32();
+		glm::vec3 const& c = colour;
+		f32 const& a = colour.w;
 		ret.ambient = {c * amdispsh.x, a};
 		ret.diffuse = {c * amdispsh.y, a};
 		ret.specular = {c * amdispsh.z, amdispsh.w};
@@ -89,19 +93,12 @@ struct ShadeMat {
 	alignas(16) glm::vec4 tint;
 	alignas(16) Albedo albedo;
 
-	static ShadeMat make(Colour tint = colours::white, Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
-		ShadeMat ret;
-		ret.albedo = Albedo::make(colour, amdispsh);
-		ret.tint = tint.toVec4();
-		return ret;
-	}
-
 	static ShadeMat make(Material const& mtl) noexcept {
 		ShadeMat ret;
 		ret.albedo.ambient = mtl.Ka.toVec4();
 		ret.albedo.diffuse = mtl.Kd.toVec4();
 		ret.albedo.specular = mtl.Ks.toVec4();
-		ret.tint = {mtl.Tf.toVec3(), mtl.d};
+		ret.tint = {static_cast<glm::vec3 const&>(mtl.Tf.toVec4()), mtl.d};
 		return ret;
 	}
 };
@@ -377,15 +374,15 @@ class App : public input::Receiver {
 		textureLD.imageIDs = {"textures/container2_specular.png"};
 		texList.add("textures/container2/specular", std::move(textureLD));
 		textureLD.imageIDs.clear();
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0, 0, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0xff0000ff});
 		textureLD.bitmap.size = {1, 1};
 		textureLD.rawBytes = true;
 		texList.add("textures/red", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0x000000ff});
 		texList.add("textures/black", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0xff, 0xff, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0xffffffff});
 		texList.add("textures/white", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0x0});
 		texList.add("textures/blank", std::move(textureLD));
 		m_data.loader.stage(m_store, texList, m_tasks);
 		m_eng->pushReceiver(this);
@@ -531,8 +528,8 @@ class App : public input::Receiver {
 			m_drawDispatch.m_view.lights = graphics::ShaderBuffer(vram, {});
 		}
 		DirLight l0, l1;
-		l0.direction = {-graphics::front, 0.0f};
-		l1.direction = {-graphics::up, 0.0f};
+		l0.direction = {-graphics::up, 0.0f};
+		l1.direction = {-graphics::front, 0.0f};
 		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
@@ -577,7 +574,7 @@ class App : public input::Receiver {
 			}
 			if (auto model = m_store.find<Model>("models/teapot")) {
 				Primitive prim = model->get().primitives().front();
-				prim.material.Tf = Colour(0xfc2320ff);
+				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 				auto ent0 = spawn("model_1_0", m_data.groups["test_lit"], prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
@@ -654,10 +651,12 @@ class App : public input::Receiver {
 				m_groups = SceneDrawer::groups(m_data.registry, true);
 				m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, m_groups);
 			}
-			if (auto frame = m_eng->drawFrame(Colour(0x040404ff))) {
-				// draw
-				frame->cmd().setViewportScissor(m_eng->viewport(), m_eng->scissor());
-				SceneDrawer::draw(m_drawDispatch, m_groups, frame->cmd());
+			if (auto frame = m_eng->drawFrame(RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
+				if (!m_data.registry.empty()) {
+					// draw
+					frame->cmd().setViewportScissor(m_eng->viewport(), m_eng->scissor());
+					SceneDrawer::draw(m_drawDispatch, m_groups, frame->cmd());
+				}
 				m_drawDispatch.swap();
 			}
 		}

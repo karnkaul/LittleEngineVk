@@ -51,8 +51,10 @@ struct AssetLoadData<graphics::Texture> {
 	graphics::Bitmap bitmap;
 	io::Path prefix;
 	std::string ext;
+	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
+	graphics::Texture::Payload payload = graphics::Texture::Payload::eColour;
 	bool rawBytes = false;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}

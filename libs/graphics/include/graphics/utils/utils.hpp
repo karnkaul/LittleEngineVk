@@ -51,6 +51,8 @@ kt::result<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, 
 SetBindings extractBindings(Shader const& shader);
 
 Bitmap::type bitmap(std::initializer_list<u8> bytes);
+Bitmap::type bitmapPx(std::initializer_list<Colour> pixels);
+void append(Bitmap::type& out, View<u8> bytes);
 Bitmap::type convert(View<u8> bytes);
 
 using CubeImageIDs = std::array<std::string_view, 6>;

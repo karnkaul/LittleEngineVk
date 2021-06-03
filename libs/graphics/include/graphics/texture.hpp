@@ -3,6 +3,7 @@
 #include <glm/vec2.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/context/vram.hpp>
+#include <core/colour.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le::graphics {
@@ -29,12 +30,15 @@ class Sampler {
 class Texture {
   public:
 	enum class Type { e2D, eCube };
+	enum class Payload { eColour, eData };
+
 	struct Data {
 		vk::ImageView imageView;
 		vk::Sampler sampler;
-		vk::Format format;
-		glm::ivec2 size = {};
-		Type type;
+		vk::Format format{};
+		glm::ivec2 size{};
+		Payload payload{};
+		Type type{};
 	};
 
 	using Img = Bitmap::type;
@@ -80,5 +84,8 @@ struct Texture::CreateInfo {
 	Data data;
 	vk::Sampler sampler;
 	std::optional<vk::Format> forceFormat;
+	Payload payload = Payload::eColour;
+
+	static Data build(kt::fixed_vector<Colour, 256> const& pixels);
 };
 } // namespace le::graphics

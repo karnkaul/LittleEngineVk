@@ -107,7 +107,7 @@ bool Engine::drawReady() {
 	return false;
 }
 
-std::optional<Engine::Context::Frame> Engine::beginDraw(Colour clear, vk::ClearDepthStencilValue depth) {
+std::optional<Engine::Context::Frame> Engine::beginDraw(RGBA clear, vk::ClearDepthStencilValue depth) {
 	if (m_gfx) {
 		if constexpr (levk_imgui) {
 			if (m_gfx->imgui.state() == DearImGui::State::eBegin) {
@@ -115,14 +115,15 @@ std::optional<Engine::Context::Frame> Engine::beginDraw(Colour clear, vk::ClearD
 				m_editor.update(*m_desktop, m_inputState);
 			}
 		}
-		vk::ClearColorValue const c = std::array{clear.r.toF32(), clear.g.toF32(), clear.b.toF32(), clear.a.toF32()};
+		auto const cl = clear.toVec4();
+		vk::ClearColorValue const c = std::array{cl.x, cl.y, cl.z, cl.w};
 		graphics::CommandBuffer::PassInfo const pass{{c, depth}};
 		return m_gfx->context.beginFrame(pass);
 	}
 	return std::nullopt;
 }
 
-std::optional<Engine::DrawFrame> Engine::drawFrame(Colour clear, vk::ClearDepthStencilValue depth) {
+std::optional<Engine::DrawFrame> Engine::drawFrame(RGBA clear, vk::ClearDepthStencilValue depth) {
 	if (auto frame = beginDraw(clear, depth)) { return DrawFrame(this, std::move(*frame)); }
 	return std::nullopt;
 }

@@ -78,6 +78,8 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 		graphics::Texture::CreateInfo createInfo;
 		createInfo.data = std::move(*d);
 		createInfo.sampler = sampler->get().sampler();
+		createInfo.forceFormat = info.m_data.forceFormat;
+		createInfo.payload = info.m_data.payload;
 		graphics::Texture ret(info.m_data.vram);
 		if (ret.construct(createInfo)) { return ret; }
 	}
@@ -90,6 +92,8 @@ bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, Asse
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
 		createInfo.data = std::move(*d);
+		createInfo.forceFormat = info.m_data.forceFormat;
+		createInfo.payload = info.m_data.payload;
 		createInfo.sampler = sampler->get().sampler();
 		return out_texture.construct(createInfo);
 	}

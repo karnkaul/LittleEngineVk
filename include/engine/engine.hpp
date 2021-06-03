@@ -5,6 +5,7 @@
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/receiver.hpp>
+#include <engine/render/rgba.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render_context.hpp>
 #include <levk_imgui/levk_imgui.hpp>
@@ -85,8 +86,8 @@ class Engine {
 
 	bool beginFrame(bool waitDrawReady);
 	bool drawReady();
-	std::optional<Context::Frame> beginDraw(Colour clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
-	std::optional<DrawFrame> drawFrame(Colour clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	std::optional<Context::Frame> beginDraw(RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	std::optional<DrawFrame> drawFrame(RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
 	bool endDraw(Context::Frame const& frame);
 
 	bool boot(Boot::CreateInfo boot);

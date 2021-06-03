@@ -190,11 +190,26 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 	return ret;
 }
 
-Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) { return bytes.size() == 0 ? Bitmap::type() : convert(View<u8>(&(*bytes.begin()), bytes.size())); }
+Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) { return bytes.size() == 0 ? Bitmap::type() : convert(View<u8>(&*bytes.begin(), bytes.size())); }
+
+Bitmap::type utils::bitmapPx(std::initializer_list<Colour> pixels) {
+	bytearray ret;
+	ret.reserve(pixels.size() * 4);
+	for (Colour const pixel : pixels) {
+		u8 const bytes[] = {pixel.r.value, pixel.g.value, pixel.b.value, pixel.a.value};
+		append(ret, bytes);
+	}
+	return ret;
+}
+
+void utils::append(Bitmap::type& out, View<u8> bytes) {
+	out.reserve(out.size() + bytes.size());
+	for (u8 const byte : bytes) { out.push_back(static_cast<std::byte>(byte)); }
+}
 
 Bitmap::type utils::convert(View<u8> bytes) {
 	bytearray ret;
-	for (u8 byte : bytes) { ret.push_back(static_cast<std::byte>(byte)); }
+	append(ret, bytes);
 	return ret;
 }
 

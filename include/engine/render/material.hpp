@@ -1,5 +1,5 @@
 #pragma once
-#include <core/colour.hpp>
+#include <engine/render/rgba.hpp>
 
 namespace le {
 namespace graphics {
@@ -26,19 +26,19 @@ struct Material {
 	///
 	/// \brief Ambient colour
 	///
-	Colour Ka = colours::white;
+	RGBA Ka = colours::white;
 	///
 	/// \brief Diffuse colour
 	///
-	Colour Kd = colours::white;
+	RGBA Kd = colours::white;
 	///
 	/// \brief Specular colour
 	///
-	Colour Ks = colours::black;
+	RGBA Ks = colours::black;
 	///
 	/// \brief Transmission filter
 	///
-	Colour Tf = colours::white;
+	RGBA Tf = colours::white;
 	///
 	/// \brief Specular coefficient
 	///

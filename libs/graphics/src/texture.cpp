@@ -128,7 +128,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 			out_storage.data.type = Type::e2D;
 		}
 		out_storage.data.size = {stbimgs.back().size.x, stbimgs.back().size.y};
-		fallback = srgb;
+		fallback = info.payload == Payload::eColour ? srgb : linear;
 	} else {
 		if (std::size_t(pRaw->size.x * pRaw->size.y) * 4 /*channels*/ != pRaw->bytes.size()) {
 			ENSURE(false, "Invalid Raw image size/dimensions");
@@ -153,5 +153,15 @@ void Texture::destroy() {
 	Device& d = *m_vram->m_device;
 	d.defer([&d, data = m_storage.data]() mutable { d.destroy(data.imageView); });
 	m_storage = {};
+}
+
+Texture::CreateInfo::Data Texture::CreateInfo::build(kt::fixed_vector<Colour, 256> const& pixels) {
+	Bitmap::type ret;
+	ret.reserve(pixels.size());
+	for (Colour const& c : pixels) {
+		u8 const bytes[] = {c.r.value, c.g.value, c.b.value, c.a.value};
+		utils::append(ret, bytes);
+	}
+	return ret;
 }
 } // namespace le::graphics

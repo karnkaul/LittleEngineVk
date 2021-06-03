@@ -6,7 +6,6 @@
 #include <graphics/context/vram.hpp>
 
 namespace le::graphics {
-
 vk::SurfaceFormatKHR Swapchain::FormatPicker::pick(View<vk::SurfaceFormatKHR> options) const noexcept {
 	static constexpr auto space = vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear;
 	static constexpr std::array formats = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb};
@@ -195,6 +194,12 @@ bool Swapchain::paused() const noexcept { return m_storage.flags.test(Flag::ePau
 bool Swapchain::construct(glm::ivec2 framebufferSize) {
 	m_storage = {};
 	SwapchainCreateInfo info(m_device->physicalDevice().device, m_metadata.surface, m_metadata.info);
+	if (info.colourFormat.colorSpace == vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear && !srgb(info.colourFormat.format)) {
+		g_log.log(lvl::warning, 0,
+				  "[{}] Swapchain image format is not sRGB! If linear (Unorm), Vulkan will not gamma correct writes to it, "
+				  "and interpolation, blending, and lighting *will be* incorrect!",
+				  g_name);
+	}
 	m_metadata.availableModes = std::move(info.availableModes);
 	{
 		vk::SwapchainCreateInfoKHR createInfo;

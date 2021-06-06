@@ -14,7 +14,7 @@ class registry_t;
 }
 namespace le {
 namespace gui {
-class Root;
+class TreeRoot;
 }
 
 using PrimList = std::vector<Primitive>;
@@ -23,12 +23,12 @@ struct DrawGroup {
 	graphics::Pipeline* pipeline = {};
 	s64 order = 0;
 
+	constexpr bool operator==(DrawGroup const& rhs) const noexcept = default;
+
 	struct Hasher {
 		std::size_t operator()(DrawGroup const& gr) const noexcept;
 	};
 };
-
-constexpr bool operator==(DrawGroup const& l, DrawGroup const& r) noexcept { return l.pipeline == r.pipeline && l.order == r.order; }
 
 class SceneDrawer {
   public:
@@ -43,22 +43,25 @@ class SceneDrawer {
 	struct Group {
 		DrawGroup group;
 		std::vector<Item> items;
+
+		constexpr auto operator<=>(Group const& rhs) const noexcept { return group.order <=> rhs.group.order; }
 	};
 
-	struct Populator {
-		// Populates DrawGroup + SceneNode + PrimList, DrawGroup + gui::Root
-		void operator()(ItemMap& map, decf::registry_t const& registry) const;
-	};
+	struct Populator;
 
-	static void add(ItemMap& map, DrawGroup const& group, gui::Root const& root);
+	static void add(ItemMap& map, DrawGroup const& group, gui::TreeRoot const& root);
 
-	static void sort(Span<Group> items) noexcept;
 	template <typename Po = Populator>
 	static std::vector<Group> groups(decf::registry_t const& registry, bool sort);
 	template <typename Di, typename Po = Populator>
 	static void draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb);
 
 	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, View<Primitive> primitives);
+};
+
+struct SceneDrawer::Populator {
+	// Populates DrawGroup + SceneNode + PrimList, DrawGroup + gui::ViewStack
+	void operator()(ItemMap& map, decf::registry_t const& registry) const;
 };
 
 // impl
@@ -70,7 +73,7 @@ std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& regi
 	std::vector<Group> ret;
 	ret.reserve(map.size());
 	for (auto& [gr, items] : map) { ret.push_back(Group({gr, std::move(items)})); }
-	if (sort) { SceneDrawer::sort(ret); }
+	if (sort) { std::sort(ret.begin(), ret.end()); }
 	return ret;
 }
 

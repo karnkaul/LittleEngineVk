@@ -22,6 +22,7 @@
 
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
+#include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
 #include <engine/utils/exec.hpp>
@@ -490,31 +491,32 @@ class App : public input::Receiver {
 		m_data.groups["test_lit"] = DrawGroup{&pipe_testLit->get(), 0};
 		m_data.groups["ui"] = DrawGroup{&pipe_ui->get(), 10};
 
-		auto guiRoot = m_data.registry.spawn<gui::Root>("gui_root");
-		m_data.registry.attach<DrawGroup>(guiRoot, m_data.groups["ui"]);
-		auto& root = guiRoot.get<gui::Root>();
-		m_data.guiRoot = guiRoot;
+		auto guiStack = m_data.registry.spawn<gui::ViewStack>("gui_root");
+		m_data.registry.attach<DrawGroup>(guiStack, m_data.groups["ui"]);
+		auto& stack = guiStack.get<gui::ViewStack>();
+		auto& view = stack.push<gui::View>();
+		m_data.guiStack = guiStack;
 		{
-			auto& bg = root.push<gui::Quad>(&vram);
-			bg.m_size = {200.0f, 100.0f};
-			bg.m_local.norm = {-0.25f, 0.25f};
+			auto& bg = view.push<gui::Quad>(&vram);
+			bg.m_rect.size = {200.0f, 100.0f};
+			bg.m_rect.anchor.norm = {-0.25f, 0.25f};
 			bg.m_material.Tf = colours::cyan;
 			auto& centre = bg.push<gui::Quad>(&vram);
-			centre.m_size = {50.0f, 50.0f};
+			centre.m_rect.size = {50.0f, 50.0f};
 			centre.m_material.Tf = colours::red;
 			auto& dot = centre.push<gui::Quad>(&vram);
-			dot.offsetBySize({30.0f, 20.0f});
+			dot.offset({30.0f, 20.0f});
 			dot.m_material.Tf = Colour(0x333333ff);
-			dot.m_local.norm = {-0.5f, -0.5f};
+			dot.m_rect.anchor.norm = {-0.5f, -0.5f};
 			auto& topLeft = bg.push<gui::Quad>(&vram);
-			topLeft.m_local.norm = {-0.5f, 0.5f};
-			topLeft.offsetBySize({25.0f, 25.0f}, {1.0f, -1.0f});
+			topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
+			topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 			topLeft.m_material.Tf = colours::magenta;
 			auto& text = bg.push<gui::Text>(&vram, &*font);
 			text.m_str = "click";
 			text.m_text.size = 60U;
-			m_data.button = &root.push<gui::Widget>(&vram, &*font);
-			m_data.button->m_size = {200.0f, 100.0f};
+			m_data.button = &view.push<gui::Widget>(&vram, &*font);
+			m_data.button->m_rect.size = {200.0f, 100.0f};
 			m_data.button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
 			m_data.button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
 			m_data.button->m_text->m_text.size = 40U;
@@ -600,9 +602,9 @@ class App : public input::Receiver {
 
 		if (!m_data.loader.ready(&m_tasks)) { return; }
 		if (m_data.registry.empty()) { init1(); }
-		auto guiRoot = m_data.registry.find<gui::Root>(m_data.guiRoot);
-		m_eng->update(guiRoot);
-		if (guiRoot) {
+		auto guiStack = m_data.registry.find<gui::ViewStack>(m_data.guiStack);
+		if (guiStack) {
+			m_eng->update(*guiStack);
 			/*auto const& p = m_eng->inputState().cursor.position;
 			logD("c: {}, {}", p.x, p.y);*/
 			/*static gui::Quad* s_prev = {};
@@ -623,7 +625,12 @@ class App : public input::Receiver {
 				s_prev = {};
 			}*/
 		}
-		if (m_data.button && m_data.button->clicked(m_eng->inputState())) { logD("click!"); }
+		if (m_data.button && m_data.button->clicked(m_eng->inputState())) {
+			logD("click!");
+			guiStack->top()->setDestroyed();
+			guiStack->pop(guiStack->top());
+			m_data.button = {};
+		}
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
 		if (pc.active) {
@@ -676,7 +683,7 @@ class App : public input::Receiver {
 		decf::registry_t registry;
 		decf::entity_t camera;
 		decf::entity_t player;
-		decf::entity_t guiRoot;
+		decf::entity_t guiStack;
 		AssetListLoader loader;
 
 		gui::Widget* button = {};

@@ -21,7 +21,7 @@ struct PhysicalDevice;
 }
 
 namespace gui {
-class Root;
+class ViewStack;
 }
 
 class Engine {
@@ -79,7 +79,7 @@ class Engine {
 
 	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
-	void update(gui::Root* root);
+	void update(gui::ViewStack& out_stack);
 
 	bool editorActive() const noexcept;
 	bool editorEngaged() const noexcept;

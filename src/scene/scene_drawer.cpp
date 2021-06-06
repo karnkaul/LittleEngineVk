@@ -1,6 +1,6 @@
 #include <core/utils/std_hash.hpp>
 #include <dumb_ecf/registry.hpp>
-#include <engine/gui/node.hpp>
+#include <engine/gui/view.hpp>
 #include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/utils/utils.hpp>
@@ -15,21 +15,17 @@ void SceneDrawer::Populator::operator()(ItemMap& map, decf::registry_t const& re
 		auto& [gr, node, pl] = d;
 		if (!pl.empty() && gr.pipeline) { map[gr].push_back({node.model(), std::nullopt, pl}); }
 	}
-	for (auto& [_, d] : registry.view<DrawGroup, gui::Root>()) {
-		auto& [gr, root] = d;
-		add(map, gr, root);
+	for (auto& [_, d] : registry.view<DrawGroup, gui::ViewStack>()) {
+		auto& [gr, stack] = d;
+		for (auto const& view : stack.views()) { add(map, gr, *view); }
 	}
 }
 
-void SceneDrawer::add(ItemMap& map, DrawGroup const& group, gui::Root const& root) {
-	for (auto& node : root.m_nodes) {
+void SceneDrawer::add(ItemMap& map, DrawGroup const& group, gui::TreeRoot const& root) {
+	for (auto& node : root.nodes()) {
 		if (auto prims = node->primitives(); !prims.empty()) { map[group].push_back({node->model(), graphics::utils::scissor(node->m_scissor), prims}); }
 	}
-	for (auto& node : root.m_nodes) { add(map, group, *node); }
-}
-
-void SceneDrawer::sort(Span<Group> items) noexcept {
-	std::sort(items.begin(), items.end(), [](Group const& a, Group const& b) { return a.group.order < b.group.order; });
+	for (auto& node : root.nodes()) { add(map, group, *node); }
 }
 
 void SceneDrawer::attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, View<Primitive> primitives) {

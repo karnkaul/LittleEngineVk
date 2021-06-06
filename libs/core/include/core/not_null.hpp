@@ -15,8 +15,9 @@ constexpr bool is_comparable_to_nullptr_v = is_comparable_to_nullptr<T>::value;
 } // namespace detail
 
 template <typename T>
-requires detail::is_comparable_to_nullptr_v<T>
 class not_null {
+	static_assert(detail::is_comparable_to_nullptr_v<T>, "Cannot compare T to nullptr");
+
   public:
 	using type = T;
 
@@ -31,9 +32,12 @@ class not_null {
 	constexpr decltype(auto) operator*() const noexcept { return *m_ptr; }
 	constexpr decltype(auto) operator->() const noexcept { return m_ptr; }
 
-	constexpr bool operator==(not_null<T> const& rhs) const noexcept { return m_ptr == rhs.m_ptr; }
-
   private:
 	type m_ptr;
 };
+
+template <typename T>
+constexpr bool operator==(not_null<T> const& lhs, not_null<T> const& rhs) noexcept {
+	return lhs.get() == rhs.get();
+}
 } // namespace le

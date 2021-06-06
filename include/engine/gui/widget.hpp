@@ -8,7 +8,7 @@
 namespace le::gui {
 class Widget : public Quad {
   public:
-	Widget(not_null<Root*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font);
+	Widget(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font);
 	Widget(Widget&&) = delete;
 	Widget& operator=(Widget&&) = delete;
 

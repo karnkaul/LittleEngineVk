@@ -2,7 +2,7 @@
 #include <build_version.hpp>
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
-#include <engine/gui/node.hpp>
+#include <engine/gui/view.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/mesh.hpp>
@@ -75,15 +75,13 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 	return ret;
 }
 
-void Engine::update(gui::Root* root) {
-	if (root) {
-		glm::vec2 wSize = {};
+void Engine::update(gui::ViewStack& out_stack) {
+	glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
-		ENSURE(m_win->isDesktop(), "Invariant violated");
-		wSize = m_desktop->windowSize();
+	ENSURE(m_win->isDesktop(), "Invariant violated");
+	wSize = m_desktop->windowSize();
 #endif
-		root->update(m_editor.view(), framebufferSize(), wSize);
-	}
+	out_stack.update(m_editor.view(), framebufferSize(), wSize);
 }
 
 void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }

@@ -1,5 +1,5 @@
 #pragma once
-#include <engine/gui/node.hpp>
+#include <engine/gui/tree.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/text_factory.hpp>
 
@@ -8,11 +8,11 @@ class BitmapFont;
 }
 
 namespace le::gui {
-class Text : public Node {
+class Text : public TreeNode {
   public:
 	using Factory = graphics::TextFactory;
 
-	Text(not_null<Root*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) noexcept;
+	Text(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) noexcept;
 
 	void onUpdate(input::Space const&) override;
 	View<Primitive> primitives() const noexcept override;
@@ -28,6 +28,6 @@ class Text : public Node {
 
 // impl
 
-inline Text::Text(not_null<Root*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) noexcept
-	: Node(root), m_font(font), m_mesh(vram, graphics::Mesh::Type::eDynamic) {}
+inline Text::Text(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) noexcept
+	: TreeNode(root), m_font(font), m_mesh(vram, graphics::Mesh::Type::eDynamic) {}
 } // namespace le::gui

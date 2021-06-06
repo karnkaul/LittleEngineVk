@@ -25,26 +25,36 @@ namespace le::graphics {
 dl::level g_validationLevel = dl::level::warning;
 
 namespace {
-#define VK_LOG_MSG pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN"
+
+void validationLog(dl::level level, int verbosity, std::string_view msg) {
+	static constexpr std::string_view name = "vk::validation";
+	if (level == dl::level::error || g_validationLevel <= level) { g_log.log(level, verbosity, "[{}] {}", name, msg); }
+}
+
+bool skipError(std::string_view msg) noexcept {
+	static constexpr std::string_view skip = {"VkSwapchainCreateInfoKHR-imageExtent"};
+	if (!msg.empty()) {
+		for (auto str : skip) {
+			if (msg.find(str) < msg.size()) { return true; }
+		}
+	}
+	return false;
+}
 
 VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
 													VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*) {
-	static constexpr std::string_view name = "vk::validation";
+	std::string_view const msg = pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN";
 	switch (messageSeverity) {
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-		g_log.log(lvl::error, 0, "[{}] {}", name, VK_LOG_MSG);
-		ENSURE(false, VK_LOG_MSG);
-		return true;
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-		if (g_validationLevel <= dl::level::warning) { g_log.log(lvl::warning, 1, "[{}] {}", name, VK_LOG_MSG); }
-		break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
+		validationLog(lvl::error, 0, msg);
+		bool const ret = !skipError(msg);
+		ENSURE(!ret, msg);
+		return ret;
+	}
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warning, 1, msg); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: validationLog(lvl::debug, 2, msg); break;
 	default:
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-		if (g_validationLevel <= dl::level::info) { g_log.log(lvl::info, 1, "[{}] {}", name, VK_LOG_MSG); }
-		break;
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-		if (g_validationLevel <= dl::level::debug) { g_log.log(lvl::debug, 2, "[{}] {}", name, VK_LOG_MSG); }
-		break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: validationLog(lvl::info, 1, msg); break;
 	}
 	return false;
 }

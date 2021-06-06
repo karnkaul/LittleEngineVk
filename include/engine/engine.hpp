@@ -105,7 +105,7 @@ class Engine {
 	Viewport const& gameView() const noexcept;
 
 	not_null<Window*> m_win;
-	Time_ms m_recreateInterval = 30ms;
+	Time_ms m_recreateInterval = 10ms;
 
   private:
 	void updateStats();

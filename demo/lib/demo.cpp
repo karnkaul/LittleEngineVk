@@ -278,6 +278,47 @@ class DrawDispatch {
 	}
 };
 
+class TestGui : public gui::View {
+  public:
+	TestGui(not_null<gui::ViewStack*> parent, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) : gui::View(parent) {
+		auto& bg = push<gui::Quad>(vram);
+		bg.m_rect.size = {200.0f, 100.0f};
+		bg.m_rect.anchor.norm = {-0.25f, 0.25f};
+		bg.m_material.Tf = colours::cyan;
+		auto& centre = bg.push<gui::Quad>(vram);
+		centre.m_rect.size = {50.0f, 50.0f};
+		centre.m_material.Tf = colours::red;
+		auto& dot = centre.push<gui::Quad>(vram);
+		dot.offset({30.0f, 20.0f});
+		dot.m_material.Tf = Colour(0x333333ff);
+		dot.m_rect.anchor.norm = {-0.5f, -0.5f};
+		auto& topLeft = bg.push<gui::Quad>(vram);
+		topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
+		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
+		topLeft.m_material.Tf = colours::magenta;
+		auto& text = bg.push<gui::Text>(vram, font);
+		graphics::TextFactory tf;
+		tf.size = 60U;
+		text.set("click");
+		text.set(tf);
+		m_button = &push<gui::Widget>(vram, font);
+		m_button->m_rect.size = {200.0f, 100.0f};
+		m_button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
+		m_button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
+		tf.size = 40U;
+		m_button->m_text->set(tf);
+		m_button->m_text->set("Button");
+		m_button->refresh();
+		m_tk = m_button->onClick([this]() { setDestroyed(); });
+	}
+
+	TestGui(TestGui&&) = delete;
+	TestGui& operator=(TestGui&&) = delete;
+
+	gui::Widget* m_button{};
+	gui::OnClick::Tk m_tk;
+};
+
 class App : public input::Receiver {
   public:
 	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawDispatch(&eng->gfx().boot.vram) {
@@ -492,41 +533,10 @@ class App : public input::Receiver {
 		m_data.groups["ui"] = DrawGroup{&pipe_ui->get(), 10};
 
 		auto guiStack = m_data.registry.spawn<gui::ViewStack>("gui_root");
+		m_data.guiStack = guiStack;
 		m_data.registry.attach<DrawGroup>(guiStack, m_data.groups["ui"]);
 		auto& stack = guiStack.get<gui::ViewStack>();
-		auto& view = stack.push<gui::View>();
-		m_data.guiStack = guiStack;
-		{
-			auto& bg = view.push<gui::Quad>(&vram);
-			bg.m_rect.size = {200.0f, 100.0f};
-			bg.m_rect.anchor.norm = {-0.25f, 0.25f};
-			bg.m_material.Tf = colours::cyan;
-			auto& centre = bg.push<gui::Quad>(&vram);
-			centre.m_rect.size = {50.0f, 50.0f};
-			centre.m_material.Tf = colours::red;
-			auto& dot = centre.push<gui::Quad>(&vram);
-			dot.offset({30.0f, 20.0f});
-			dot.m_material.Tf = Colour(0x333333ff);
-			dot.m_rect.anchor.norm = {-0.5f, -0.5f};
-			auto& topLeft = bg.push<gui::Quad>(&vram);
-			topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
-			topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
-			topLeft.m_material.Tf = colours::magenta;
-			auto& text = bg.push<gui::Text>(&vram, &*font);
-			graphics::TextFactory tf;
-			tf.size = 60U;
-			text.set("click");
-			text.set(tf);
-			m_data.button = &view.push<gui::Widget>(&vram, &*font);
-			m_data.button->m_rect.size = {200.0f, 100.0f};
-			m_data.button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
-			m_data.button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
-			tf.size = 40U;
-			m_data.button->m_text->set(tf);
-			m_data.button->m_text->set("Button");
-			m_data.oncl = m_data.button->onClick([v = &view]() { v->setDestroyed(); });
-			m_data.button->refresh();
-		}
+		stack.push<TestGui>(&m_eng->gfx().boot.vram, &font.get());
 
 		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
@@ -630,12 +640,6 @@ class App : public input::Receiver {
 				s_prev = {};
 			}*/
 		}
-		/*if (m_data.button && m_data.button->clicked(m_eng->inputState())) {
-			logD("click!");
-			guiStack->top()->setDestroyed();
-			guiStack->pop(guiStack->top());
-			m_data.button = {};
-		}*/
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
 		if (pc.active) {
@@ -690,9 +694,6 @@ class App : public input::Receiver {
 		decf::entity_t player;
 		decf::entity_t guiStack;
 		AssetListLoader loader;
-
-		gui::OnClick::Tk oncl;
-		gui::Widget* button = {};
 	};
 
 	Data m_data;

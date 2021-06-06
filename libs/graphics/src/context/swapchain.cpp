@@ -79,18 +79,13 @@ struct SwapchainCreateInfo {
 	vk::Extent2D extent(glm::ivec2 fbSize) {
 		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
 		current.transform = capabilities.currentTransform;
-		current.extent = capabilities.currentExtent;
 		if (!Swapchain::valid(fbSize) || current.extent.width != maths::max<u32>()) {
-			return capabilities.currentExtent;
+			current.extent = capabilities.currentExtent;
 		} else {
-			return vk::Extent2D(std::clamp((u32)fbSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-								std::clamp((u32)fbSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
+			current.extent = vk::Extent2D(std::clamp((u32)fbSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+										  std::clamp((u32)fbSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
 		}
-	}
-
-	bool unstable(vk::Extent2D target) {
-		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
-		return target != capabilities.currentExtent;
+		return current.extent;
 	}
 
 	vk::PhysicalDevice pd;
@@ -228,10 +223,9 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 			m_storage.flags.set(Flag::ePaused);
 			return false;
 		}
-		if (info.unstable(createInfo.imageExtent)) { return false; }
-		m_storage.swapchain = m_device->device().createSwapchainKHR(createInfo);
-		m_storage.current.extent = createInfo.imageExtent;
-		m_storage.current.transform = info.current.transform;
+		auto const result = m_device->device().createSwapchainKHR(&createInfo, nullptr, &m_storage.swapchain);
+		if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) { return false; }
+		m_storage.current = info.current;
 		m_metadata.formats.colour = info.colourFormat;
 		m_metadata.formats.depth = info.depthFormat;
 		if (!m_metadata.original) { m_metadata.original = info.current; }

@@ -15,7 +15,6 @@ class Widget : public Quad {
 	Status status(input::State const& state) const noexcept;
 	bool clicked(input::State const& state, bool style = true) noexcept;
 
-	// EnumArray<Status, Style> m_mats;
 	struct {
 		Style<Material> quad;
 		Style<Colour> text;
@@ -23,6 +22,7 @@ class Widget : public Quad {
 	struct {
 		time::Point point{};
 		Status status = {};
+		bool set = false;
 	} m_previous;
 	Time_ms m_debounce = 5ms;
 	Text* m_text = {};

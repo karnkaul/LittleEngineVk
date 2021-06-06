@@ -16,10 +16,13 @@ namespace input {
 struct Space;
 }
 } // namespace le
+
 namespace le::gui {
 class TreeNode;
 
 using graphics::DrawScissor;
+
+DrawScissor scissor(input::Space const& space, glm::vec2 centre = {}, glm::vec2 halfSize = {0.5f, -0.5f}, bool normalised = true) noexcept;
 
 class TreeRoot : public IBase, public Owner<TreeNode> {
   public:

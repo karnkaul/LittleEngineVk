@@ -513,14 +513,17 @@ class App : public input::Receiver {
 			topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 			topLeft.m_material.Tf = colours::magenta;
 			auto& text = bg.push<gui::Text>(&vram, &*font);
-			text.m_str = "click";
-			text.m_text.size = 60U;
+			graphics::TextFactory tf;
+			tf.size = 60U;
+			text.set("click");
+			text.set(tf);
 			m_data.button = &view.push<gui::Widget>(&vram, &*font);
 			m_data.button->m_rect.size = {200.0f, 100.0f};
 			m_data.button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
 			m_data.button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
-			m_data.button->m_text->m_text.size = 40U;
-			m_data.button->m_text->m_str = "Button";
+			tf.size = 40U;
+			m_data.button->m_text->set(tf);
+			m_data.button->m_text->set("Button");
 		}
 
 		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});

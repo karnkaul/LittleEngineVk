@@ -25,7 +25,7 @@ class Owner {
 
 	template <typename Ty>
 	requires requires(Ty) { derived_v<std::decay_t<Ty>>; }
-	void pop(Ty&& t) noexcept {
+	void pop(Ty const& t) noexcept {
 		if constexpr (std::is_same_v<container_t, std::vector<std::unique_ptr<type>, Ar...>>) {
 			std::erase_if(m_ts, [t](auto const& r) { return t == r.get(); });
 		} else {

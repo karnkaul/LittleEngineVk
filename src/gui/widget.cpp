@@ -27,7 +27,12 @@ bool Widget::clicked(input::State const& state, bool style) noexcept {
 	auto const st = status(state);
 	if (style && (!cooldown || st <= Status::eHover)) {
 		m_material = m_styles.quad[st];
-		if (m_text) { m_text->m_text.colour = m_styles.text[st]; }
+		if (m_text && (!m_previous.set || st != m_previous.status)) {
+			Text::Factory factory = m_text->factory();
+			factory.colour = m_styles.text[st];
+			m_text->set(std::move(factory));
+			m_previous.set = true;
+		}
 	}
 	auto const prev = std::exchange(m_previous.status, st);
 	bool const ret = !cooldown && st == Status::eRelease && (prev >= Status::ePress && prev <= Status::eHold);

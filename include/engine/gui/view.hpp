@@ -1,6 +1,11 @@
 #pragma once
+#include <engine/gui/style.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/owner.hpp>
+
+namespace le::input {
+struct State;
+}
 
 namespace le::gui {
 class View;
@@ -8,13 +13,17 @@ class ViewStack;
 
 class View : public TreeRoot {
   public:
-	View(not_null<ViewStack*> parent) noexcept : m_parent(parent) {}
+	enum class Block { eNone, eBlock };
+
+	View(not_null<ViewStack*> parent, Block block = {}) noexcept : m_block(block), m_parent(parent) {}
 
 	TreeNode* leafHit(glm::vec2 point) const noexcept;
 	void update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset);
 
 	void setDestroyed() noexcept { m_remove = true; }
 	bool destroyed() const noexcept { return m_remove; }
+
+	Block m_block;
 
   private:
 	not_null<ViewStack*> m_parent;
@@ -29,7 +38,7 @@ class ViewStack : public Owner<View> {
 	requires requires(T) { derived_v<T>; }
 	T& push(Args&&... args) { return Owner::template push<T>(this, std::forward<Args>(args)...); }
 
-	void update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset = {});
+	void update(input::State const& state, Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset = {});
 	template <typename T = View>
 	T* top() const noexcept;
 

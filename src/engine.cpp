@@ -46,7 +46,7 @@ Engine::DrawFrame::~DrawFrame() {
 
 Version Engine::version() noexcept { return g_engineVersion; }
 
-View<graphics::PhysicalDevice> Engine::availableDevices() {
+Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	auto const verb = graphics::g_log.minVerbosity;
 	if (s_devices.empty()) {
 		graphics::g_log.minVerbosity = LibLogger::Verbosity::eEndUser;
@@ -81,7 +81,7 @@ void Engine::update(gui::ViewStack& out_stack) {
 	ENSURE(m_win->isDesktop(), "Invariant violated");
 	wSize = m_desktop->windowSize();
 #endif
-	out_stack.update(m_editor.view(), framebufferSize(), wSize);
+	out_stack.update(m_inputState, m_editor.view(), framebufferSize(), wSize);
 }
 
 void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }

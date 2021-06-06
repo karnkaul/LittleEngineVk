@@ -6,7 +6,7 @@
 #include <graphics/context/vram.hpp>
 
 namespace le::graphics {
-vk::SurfaceFormatKHR Swapchain::FormatPicker::pick(View<vk::SurfaceFormatKHR> options) const noexcept {
+vk::SurfaceFormatKHR Swapchain::FormatPicker::pick(Span<vk::SurfaceFormatKHR const> options) const noexcept {
 	static constexpr auto space = vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear;
 	static constexpr std::array formats = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb};
 	std::vector<vk::SurfaceFormatKHR> avail;

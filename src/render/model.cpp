@@ -43,18 +43,18 @@ struct hash<glm::vec3> {
 
 namespace le {
 namespace {
-constexpr glm::vec2 texCoords(View<f32> arr, std::size_t idx, bool invertY) noexcept {
+constexpr glm::vec2 texCoords(Span<f32 const> arr, std::size_t idx, bool invertY) noexcept {
 	f32 const y = arr[2 * idx + 1];
 	return {arr[2 * idx + 0], invertY ? 1.0f - y : y};
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, std::size_t idx) noexcept { return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]}; }
+constexpr glm::vec3 vec3(Span<f32 const> arr, std::size_t idx) noexcept { return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]}; }
 
-constexpr glm::vec2 texCoords(View<f32> arr, int idx, bool invertY) noexcept {
+constexpr glm::vec2 texCoords(Span<f32 const> arr, int idx, bool invertY) noexcept {
 	return arr.empty() || idx < 0 ? glm::vec2(0.0f, 1.0f) : texCoords(arr, (std::size_t)idx, invertY);
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
+constexpr glm::vec3 vec3(Span<f32 const> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
 
 template <typename T>
 kt::result<std::size_t> find(T const& arr, Hash hash) noexcept {
@@ -250,7 +250,7 @@ graphics::Geometry OBJReader::vertices(tinyobj::shape_t const& shape) {
 } // namespace
 
 namespace {
-graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> const& map, View<Model::TexData> tex, View<std::size_t> indices) {
+graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> const& map, Span<Model::TexData const> tex, Span<std::size_t const> indices) {
 	if (!indices.empty()) {
 		std::size_t const idx = indices.front();
 		if (idx < tex.size()) {
@@ -290,7 +290,8 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	return parser(reader);
 }
 
-Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
+Model::Result<Span<Primitive const>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler,
+													  std::optional<vk::Format> forceFormat) {
 	Map<Material> materials;
 	decltype(m_storage) storage;
 	for (auto const& tex : info.textures) {
@@ -326,6 +327,6 @@ Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo
 		storage.primitives.push_back(prim);
 	}
 	m_storage = std::move(storage);
-	return View<Primitive>(m_storage.primitives);
+	return Span<Primitive const>(m_storage.primitives);
 }
 } // namespace le

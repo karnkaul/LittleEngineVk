@@ -73,7 +73,7 @@ class Engine {
 
 	static Version version() noexcept;
 	static Stats const& stats() noexcept;
-	static View<graphics::PhysicalDevice> availableDevices();
+	static Span<graphics::PhysicalDevice const> availableDevices();
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
 

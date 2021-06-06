@@ -35,7 +35,7 @@ class SceneDrawer {
 	struct Item {
 		glm::mat4 model = glm::mat4(1.0f);
 		std::optional<vk::Rect2D> scissor;
-		View<Primitive> primitives;
+		Span<Primitive const> primitives;
 	};
 
 	using ItemMap = std::unordered_map<DrawGroup, std::vector<Item>, DrawGroup::Hasher>;
@@ -54,9 +54,9 @@ class SceneDrawer {
 	template <typename Po = Populator>
 	static std::vector<Group> groups(decf::registry_t const& registry, bool sort);
 	template <typename Di, typename Po = Populator>
-	static void draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb);
+	static void draw(Di&& dispatch, Span<Group const> groups, graphics::CommandBuffer const& cb);
 
-	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, View<Primitive> primitives);
+	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, Span<Primitive const> primitives);
 };
 
 struct SceneDrawer::Populator {
@@ -78,7 +78,7 @@ std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& regi
 }
 
 template <typename Di, typename Po>
-void SceneDrawer::draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb) {
+void SceneDrawer::draw(Di&& dispatch, Span<Group const> groups, graphics::CommandBuffer const& cb) {
 	std::unordered_set<graphics::Pipeline*> ps;
 	for (auto const& gr : groups) {
 		if (gr.group.pipeline) {

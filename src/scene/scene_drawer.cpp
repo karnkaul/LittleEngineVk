@@ -28,7 +28,7 @@ void SceneDrawer::add(ItemMap& map, DrawGroup const& group, gui::TreeRoot const&
 	for (auto& node : root.nodes()) { add(map, group, *node); }
 }
 
-void SceneDrawer::attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, View<Primitive> primitives) {
+void SceneDrawer::attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, Span<Primitive const> primitives) {
 	reg.attach<PrimList>(entity) = {primitives.begin(), primitives.end()};
 	reg.attach<DrawGroup>(entity, group);
 }

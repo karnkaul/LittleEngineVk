@@ -247,7 +247,7 @@ bool ShaderInput::contains(u32 set, u32 bind) const noexcept {
 	return false;
 }
 
-bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t idx) {
+bool ShaderInput::update(Span<Texture const> textures, u32 set, u32 bind, std::size_t idx) {
 	if constexpr (levk_debug) {
 		if (contains(set)) {
 			DescriptorSet& ds = this->set(set).index(idx);
@@ -264,7 +264,7 @@ bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t 
 	}
 }
 
-bool ShaderInput::update(View<Buffer> buffers, u32 set, u32 bind, std::size_t idx, vk::DescriptorType type) {
+bool ShaderInput::update(Span<Buffer const> buffers, u32 set, u32 bind, std::size_t idx, vk::DescriptorType type) {
 	if constexpr (levk_debug) {
 		if (!contains(set)) {
 			ENSURE(false, "DescriptorSet update failure");

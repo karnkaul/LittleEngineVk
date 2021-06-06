@@ -32,7 +32,7 @@ class AssetListLoader {
 	using StageID = dts::scheduler::stage_id;
 
 	template <typename T>
-	StageID stage(AssetStore& store, AssetList<T> const& list, Scheduler& scheduler, View<StageID> deps = {});
+	StageID stage(AssetStore& store, AssetList<T> const& list, Scheduler& scheduler, Span<StageID const> deps = {});
 	template <typename T>
 	void load(AssetStore& store, AssetList<T> const& list);
 	bool ready(Scheduler const* scheduler) const noexcept;
@@ -92,7 +92,7 @@ std::size_t AssetList<T>::append(AssetList<T>& out, AssetList<T> const& exclude)
 }
 
 template <typename T>
-AssetListLoader::StageID AssetListLoader::stage(AssetStore& store, AssetList<T> const& list, Scheduler& scheduler, View<StageID> deps) {
+AssetListLoader::StageID AssetListLoader::stage(AssetStore& store, AssetList<T> const& list, Scheduler& scheduler, Span<StageID const> deps) {
 	dts::scheduler::stage_t st;
 	st.tasks = list.callbacks(store);
 	if (!st.tasks.empty()) {

@@ -8,7 +8,7 @@ class Quad : public TreeNode {
 	Quad(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, bool hitTest = true) noexcept;
 
 	void onUpdate(input::Space const& space) override;
-	View<Primitive> primitives() const noexcept override;
+	Span<Primitive const> primitives() const noexcept override;
 
 	Material m_material;
 
@@ -24,7 +24,7 @@ inline Quad::Quad(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, bool
 	: TreeNode(root), m_mesh(vram, graphics::Mesh::Type::eDynamic) {
 	m_hitTest = hitTest;
 }
-inline View<Primitive> Quad::primitives() const noexcept {
+inline Span<Primitive const> Quad::primitives() const noexcept {
 	m_prim = {m_material, &m_mesh};
 	return m_prim;
 }

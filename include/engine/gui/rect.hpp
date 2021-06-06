@@ -5,14 +5,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-namespace le {
-struct Viewport;
-namespace input {
-struct Space;
-}
-} // namespace le
 namespace le::gui {
-
 struct Rect {
 	TFlex<glm::vec2> anchor;
 	glm::vec2 origin = {};

@@ -36,8 +36,8 @@ struct TextFactory {
 	f32 nYPad = 0.2f;
 	Colour colour = colours::white;
 
-	Geometry generate(View<Glyph> glyphs, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;
-	glm::ivec2 glyphBounds(View<Glyph> glyphs, std::string_view text = {}) const noexcept;
-	Layout layout(View<Glyph> glyphs, std::string_view text, Size size = 1.0f, f32 nPadY = 0.1f) const noexcept;
+	Geometry generate(Span<Glyph const> glyphs, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;
+	glm::ivec2 glyphBounds(Span<Glyph const> glyphs, std::string_view text = {}) const noexcept;
+	Layout layout(Span<Glyph const> glyphs, std::string_view text, Size size = 1.0f, f32 nPadY = 0.1f) const noexcept;
 };
 } // namespace le::graphics

@@ -81,7 +81,7 @@ class Transfer final {
 };
 
 struct Transfer::CreateInfo {
-	View<MemRange> reserve = defaultReserve;
+	Span<MemRange const> reserve = defaultReserve;
 	std::optional<Time_ms> autoPollRate = 3ms;
 };
 

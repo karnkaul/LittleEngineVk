@@ -5,7 +5,7 @@
 namespace le::graphics {
 namespace {
 using sv = std::string_view;
-Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<BMPview> bitmaps) {
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, Span<BMPview const> bitmaps) {
 	Image::CreateInfo imageInfo;
 	imageInfo.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
 	imageInfo.createInfo.format = format;

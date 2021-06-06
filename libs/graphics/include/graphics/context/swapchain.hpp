@@ -23,7 +23,7 @@ class Swapchain {
 		/// \brief Override to provide a custom format
 		/// Note: engine assumes sRGB swapchain image format; correct colour in subpasses / shaders if not so
 		///
-		virtual vk::SurfaceFormatKHR pick(View<vk::SurfaceFormatKHR> options) const noexcept;
+		virtual vk::SurfaceFormatKHR pick(Span<vk::SurfaceFormatKHR const> options) const noexcept;
 	};
 	struct Display {
 		vk::Extent2D extent = {};

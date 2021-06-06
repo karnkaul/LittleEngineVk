@@ -30,9 +30,9 @@ class Model {
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
 
-	Result<View<Primitive>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
+	Result<Span<Primitive const>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
-	View<Primitive> primitives() const noexcept;
+	Span<Primitive const> primitives() const noexcept;
 
   private:
 	template <typename V>
@@ -81,5 +81,5 @@ struct Model::CreateInfo {
 
 // impl
 
-inline View<Primitive> Model::primitives() const noexcept { return m_storage.primitives; }
+inline Span<Primitive const> Model::primitives() const noexcept { return m_storage.primitives; }
 } // namespace le

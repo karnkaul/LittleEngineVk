@@ -47,7 +47,7 @@ Text::Text(MU sv text) {
 #endif
 }
 
-Radio::Radio(MU View<sv> options, MU s32 preSelect, MU bool sameLine) : select(preSelect) {
+Radio::Radio(MU Span<sv const> options, MU s32 preSelect, MU bool sameLine) : select(preSelect) {
 #if defined(LEVK_USE_IMGUI)
 	bool first = true;
 	s32 idx = 0;
@@ -67,7 +67,7 @@ Button::Button(MU sv id) {
 #endif
 }
 
-Combo::Combo(MU sv id, MU View<sv> entries, MU sv preSelect) {
+Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 #if defined(LEVK_USE_IMGUI)
 	if (!entries.empty()) {
 		guiState[GUI::eOpen] = ImGui::BeginCombo(id.empty() ? "[Unnamed]" : id.data(), preSelect.data());

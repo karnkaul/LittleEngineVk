@@ -7,7 +7,7 @@ void BitmapText::create(not_null<graphics::VRAM*> vram, Type type) { mesh = grap
 
 bool BitmapText::set(BitmapFont const& font, std::string_view str) { return set(font.glyphs(), font.atlas().data().size, str); }
 
-bool BitmapText::set(View<graphics::Glyph> glyphs, glm::ivec2 atlas, std::string_view str) {
+bool BitmapText::set(Span<graphics::Glyph const> glyphs, glm::ivec2 atlas, std::string_view str) {
 	text.text = str;
 	if (mesh) { return mesh->construct(text.generate(glyphs, atlas)); }
 	return false;

@@ -126,7 +126,7 @@ AndroidInstance::~AndroidInstance() {
 	if (m_bActive) { deinit(); }
 }
 
-View<std::string_view> AndroidInstance::vkInstanceExtensions() const {
+Span<std::string_view const> AndroidInstance::vkInstanceExtensions() const {
 	static constexpr std::array ret = {"VK_KHR_surface"sv, "VK_KHR_android_surface"sv};
 	return ret;
 }

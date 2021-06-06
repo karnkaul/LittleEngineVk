@@ -22,9 +22,9 @@ struct State {
 
 	kt::fixed_vector<KeyAct, 16> keys;
 	Cursor cursor;
-	View<Gamepad> gamepads;
-	View<Event::Cursor> others;
-	View<char> text;
+	Span<Gamepad const> gamepads;
+	Span<Event::Cursor const> others;
+	Span<char const> text;
 	Focus focus = Focus::eUnchanged;
 	bool suspended = false;
 

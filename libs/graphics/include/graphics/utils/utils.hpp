@@ -52,8 +52,8 @@ SetBindings extractBindings(Shader const& shader);
 
 Bitmap::type bitmap(std::initializer_list<u8> bytes);
 Bitmap::type bitmapPx(std::initializer_list<Colour> pixels);
-void append(Bitmap::type& out, View<u8> bytes);
-Bitmap::type convert(View<u8> bytes);
+void append(Bitmap::type& out, Span<u8 const> bytes);
+Bitmap::type convert(Span<u8 const> bytes);
 
 using CubeImageIDs = std::array<std::string_view, 6>;
 constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};

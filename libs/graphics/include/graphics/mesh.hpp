@@ -23,7 +23,7 @@ class Mesh {
 	virtual ~Mesh();
 
 	template <typename T = glm::vec3>
-	bool construct(View<T> vertices, View<u32> indices);
+	bool construct(Span<T const> vertices, Span<u32 const> indices);
 	template <VertType V>
 	bool construct(Geom<V> const& geom);
 	bool draw(CommandBuffer const& cb, u32 instances = 1, u32 first = 0) const;
@@ -61,7 +61,7 @@ class Mesh {
 // impl
 
 template <typename T>
-bool Mesh::construct(View<T> vertices, View<u32> indices) {
+bool Mesh::construct(Span<T const> vertices, Span<u32 const> indices) {
 	if (!vertices.empty()) {
 		destroy();
 		m_vbo = construct(vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));

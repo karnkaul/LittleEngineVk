@@ -204,7 +204,7 @@ class DrawDispatch {
 
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights, View<SceneDrawer::Group> groups) {
+	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
@@ -333,7 +333,7 @@ class App : public input::Receiver {
 			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
 			cone->construct(graphics::makeCone());
 			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh(&eng->gfx().boot.vram));
-			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
+			skycube->construct(Span<glm::vec3 const>(skyCubeV), skyCubeI);
 		}
 
 		{
@@ -437,7 +437,7 @@ class App : public input::Receiver {
 		return ret;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawGroup const& group, View<Primitive> primitives) {
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawGroup const& group, Span<Primitive const> primitives) {
 		auto ret = spawn(std::move(name));
 		SceneDrawer::attach(m_data.registry, ret, group, primitives);
 		return ret;
@@ -524,6 +524,8 @@ class App : public input::Receiver {
 			tf.size = 40U;
 			m_data.button->m_text->set(tf);
 			m_data.button->m_text->set("Button");
+			m_data.oncl = m_data.button->onClick([v = &view]() { v->setDestroyed(); });
+			m_data.button->refresh();
 		}
 
 		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});
@@ -628,12 +630,12 @@ class App : public input::Receiver {
 				s_prev = {};
 			}*/
 		}
-		if (m_data.button && m_data.button->clicked(m_eng->inputState())) {
+		/*if (m_data.button && m_data.button->clicked(m_eng->inputState())) {
 			logD("click!");
 			guiStack->top()->setDestroyed();
 			guiStack->pop(guiStack->top());
 			m_data.button = {};
-		}
+		}*/
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
 		if (pc.active) {
@@ -689,6 +691,7 @@ class App : public input::Receiver {
 		decf::entity_t guiStack;
 		AssetListLoader loader;
 
+		gui::OnClick::Tk oncl;
 		gui::Widget* button = {};
 	};
 

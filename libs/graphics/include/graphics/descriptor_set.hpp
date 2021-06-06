@@ -68,7 +68,7 @@ class DescriptorSet {
 
   private:
 	template <typename T>
-	void update(u32 binding, vk::DescriptorType type, View<T> writes);
+	void update(u32 binding, vk::DescriptorType type, Span<T const> writes);
 	void update(vk::WriteDescriptorSet set);
 	void destroy();
 
@@ -98,7 +98,7 @@ class DescriptorSet {
 struct DescriptorSet::CreateInfo {
 	std::string_view name;
 	vk::DescriptorSetLayout layout;
-	View<BindingInfo> bindingInfos;
+	Span<BindingInfo const> bindingInfos;
 	std::size_t rotateCount = 2;
 	u32 setNumber = 0;
 };
@@ -144,8 +144,8 @@ class ShaderInput {
 	bool contains(u32 set) const noexcept;
 	bool contains(u32 set, u32 bind) const noexcept;
 
-	bool update(View<Texture> textures, u32 set, u32 bind, std::size_t idx = 0);
-	bool update(View<Buffer> buffers, u32 set, u32 bind, std::size_t idx = 0, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
+	bool update(Span<Texture const> textures, u32 set, u32 bind, std::size_t idx = 0);
+	bool update(Span<Buffer const> buffers, u32 set, u32 bind, std::size_t idx = 0, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx = 0);
 
 	SetPool& operator[](u32 set);
@@ -162,7 +162,7 @@ class ShaderInput {
 inline u32 DescriptorSet::setNumber() const noexcept { return m_storage.setNumber; }
 
 template <typename T>
-void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes) {
+void DescriptorSet::update(u32 binding, vk::DescriptorType type, Span<T const> writes) {
 	vk::WriteDescriptorSet write;
 	write.dstSet = get();
 	write.dstBinding = binding;
@@ -192,6 +192,6 @@ bool DescriptorSet::update(u32 binding, C const& textures) {
 	for (Texture const& tex : textures) { imgs.images.push_back({tex.data().imageView, tex.data().sampler}); }
 	return updateImgs(binding, std::move(imgs));
 }
-inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) { update(binding, View<Ref<Buffer const>>(buffer), type); }
-inline bool DescriptorSet::update(u32 binding, Texture const& texture) { return update(binding, View<Ref<Texture const>>(texture)); }
+inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) { update(binding, Span<Ref<Buffer const> const>(buffer), type); }
+inline bool DescriptorSet::update(u32 binding, Texture const& texture) { return update(binding, Span<Ref<Texture const> const>(texture)); }
 } // namespace le::graphics

@@ -44,7 +44,7 @@ class DevicePicker {
 		if (predicate) { out_base += mod; }
 	}
 
-	PhysicalDevice pick(View<PhysicalDevice> devices, std::optional<std::size_t> indexOverride) const;
+	PhysicalDevice pick(Span<PhysicalDevice const> devices, std::optional<std::size_t> indexOverride) const;
 	Score score(PhysicalDevice const& device) const;
 
 	///
@@ -56,7 +56,7 @@ class DevicePicker {
 	/// \brief Override to select a device from a list with identical scores
 	/// (Returns front element by default)
 	///
-	virtual PhysicalDevice tieBreak(View<Ref<PhysicalDevice const>> devices) const {
+	virtual PhysicalDevice tieBreak(Span<Ref<PhysicalDevice const> const> devices) const {
 		ENSURE(!devices.empty(), "Empty list");
 		return devices.begin()->get();
 	}

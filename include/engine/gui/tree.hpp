@@ -48,7 +48,7 @@ class TreeNode : public TreeRoot {
 	glm::mat4 model() const noexcept;
 	bool hit(glm::vec2 point) const noexcept { return m_hitTest && m_rect.hit(point); }
 
-	virtual View<Primitive> primitives() const noexcept { return {}; }
+	virtual Span<Primitive const> primitives() const noexcept { return {}; }
 
 	DrawScissor m_scissor;
 	glm::quat m_orientation = graphics::identity;

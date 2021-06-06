@@ -3,7 +3,7 @@
 #include <engine/render/bitmap_font.hpp>
 
 namespace le::gui {
-View<Primitive> Text::primitives() const noexcept {
+Span<Primitive const> Text::primitives() const noexcept {
 	if (m_font && m_mesh.valid()) {
 		m_prim.material.map_Kd = &m_font->atlas();
 		m_prim.material.map_d = &m_font->atlas();

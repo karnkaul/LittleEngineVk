@@ -22,9 +22,29 @@ Status Widget::status(input::State const& state) const noexcept {
 	return Status::eIdle;
 }
 
-bool Widget::clicked(input::State const& state, bool style) noexcept {
-	bool const cooldown = m_previous.point != time::Point() && time::diff(m_previous.point) < m_debounce;
+bool Widget::clicked(input::State const& state, bool style, Status* out) noexcept {
 	auto const st = status(state);
+	if (out) { *out = st; }
+	return clickedImpl(style, st);
+}
+
+void Widget::refresh(input::State const* state) {
+	m_previous.set = false;
+	if (state) {
+		clicked(*state);
+	} else {
+		clickedImpl(true, Status::eIdle);
+	}
+}
+
+Status Widget::onInput(input::State const& state) {
+	Status ret;
+	if (clicked(state, true, &ret)) { m_onClick(); }
+	return ret;
+}
+
+bool Widget::clickedImpl(bool style, Status st) noexcept {
+	bool const cooldown = m_previous.point != time::Point() && time::diff(m_previous.point) < m_debounce;
 	if (style && (!cooldown || st <= Status::eHover)) {
 		m_material = m_styles.quad[st];
 		if (m_text && (!m_previous.set || st != m_previous.status)) {

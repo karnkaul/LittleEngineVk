@@ -35,7 +35,7 @@ void onLog(std::string_view text, dl::level level) {
 }
 
 struct FrameTime {
-	View<f32> samples;
+	Span<f32 const> samples;
 	f32 average{};
 	u32 rate{};
 };

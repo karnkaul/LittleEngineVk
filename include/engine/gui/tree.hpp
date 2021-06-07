@@ -29,7 +29,7 @@ class TreeRoot : public IBase, public Owner<TreeNode> {
 	using Owner::container_t;
 
 	template <typename T, typename... Args>
-	requires requires(T) { derived_v<T>; }
+		requires(is_derived_v<T>)
 	T& push(Args&&... args) { return Owner::template push<T>(this, std::forward<Args>(args)...); }
 
 	container_t const& nodes() const noexcept { return m_ts; }
@@ -59,8 +59,6 @@ class TreeNode : public TreeRoot {
 
   private:
 	virtual void onUpdate(input::Space const&) {}
-
-	friend class TreeRoot;
 };
 
 // impl

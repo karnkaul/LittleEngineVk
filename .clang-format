@@ -16,6 +16,7 @@ AllowShortLambdasOnASingleLine: All
 AllowShortBlocksOnASingleLine: Always
 AllowShortIfStatementsOnASingleLine: Always
 AllowShortLoopsOnASingleLine: true
+IndentRequires: true
 IncludeCategories:
   # Headers in <> without extension.
   - Regex:           '<([A-Za-z0-9\/-_])+>'

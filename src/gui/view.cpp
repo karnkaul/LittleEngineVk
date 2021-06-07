@@ -27,6 +27,7 @@ void View::update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::
 		input::Space const space(fbSize, wSize, view);
 		m_rect.size = fbSize;
 		m_rect.origin = offset;
+		onUpdate(space);
 		for (auto& node : m_ts) { node->update(space); }
 	}
 }

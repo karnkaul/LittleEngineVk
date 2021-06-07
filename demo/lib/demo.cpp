@@ -278,9 +278,10 @@ class DrawDispatch {
 	}
 };
 
-class TestGui : public gui::View {
+class TestView : public gui::View {
   public:
-	TestGui(not_null<gui::ViewStack*> parent, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) : gui::View(parent) {
+	TestView(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font) : gui::View(parent) {
+		graphics::VRAM* vram = parent->m_vram;
 		auto& bg = push<gui::Quad>(vram);
 		bg.m_rect.size = {200.0f, 100.0f};
 		bg.m_rect.anchor.norm = {-0.25f, 0.25f};
@@ -312,8 +313,8 @@ class TestGui : public gui::View {
 		m_tk = m_button->onClick([this]() { setDestroyed(); });
 	}
 
-	TestGui(TestGui&&) = delete;
-	TestGui& operator=(TestGui&&) = delete;
+	TestView(TestView&&) = delete;
+	TestView& operator=(TestView&&) = delete;
 
 	gui::Widget* m_button{};
 	gui::OnClick::Tk m_tk;
@@ -532,11 +533,11 @@ class App : public input::Receiver {
 		m_data.groups["test_lit"] = DrawGroup{&pipe_testLit->get(), 0};
 		m_data.groups["ui"] = DrawGroup{&pipe_ui->get(), 10};
 
-		auto guiStack = m_data.registry.spawn<gui::ViewStack>("gui_root");
+		auto guiStack = m_data.registry.spawn<gui::ViewStack>("gui_root", &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
 		m_data.registry.attach<DrawGroup>(guiStack, m_data.groups["ui"]);
 		auto& stack = guiStack.get<gui::ViewStack>();
-		stack.push<TestGui>(&m_eng->gfx().boot.vram, &font.get());
+		stack.push<TestView>(&font.get());
 
 		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{

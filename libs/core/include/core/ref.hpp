@@ -6,7 +6,7 @@ namespace le {
 /// \brief Ultra-light reference wrapper
 ///
 template <typename T>
-requires requires(T) { !std::is_reference<T>::value; }
+	requires(!std::is_reference_v<T>)
 class Ref {
   public:
 	using type = T;

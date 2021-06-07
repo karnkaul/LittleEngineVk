@@ -1,9 +1,9 @@
 #pragma once
 #include <variant>
+#include <core/colour.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/context/vram.hpp>
-#include <core/colour.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le::graphics {

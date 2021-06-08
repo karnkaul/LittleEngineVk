@@ -1,8 +1,12 @@
+#include <core/services.hpp>
 #include <engine/gui/text.hpp>
 #include <engine/input/space.hpp>
 #include <engine/render/bitmap_font.hpp>
 
 namespace le::gui {
+Text::Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept
+	: TreeNode(root), m_font(font), m_mesh(Services::locate<graphics::VRAM>(), graphics::Mesh::Type::eDynamic) {}
+
 Span<Primitive const> Text::primitives() const noexcept {
 	if (m_font && m_mesh.valid()) {
 		m_prim.material.map_Kd = &m_font->atlas();

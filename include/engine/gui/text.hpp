@@ -12,7 +12,7 @@ class Text : public TreeNode {
   public:
 	using Factory = graphics::TextFactory;
 
-	Text(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) noexcept;
+	Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept;
 
 	Factory const& factory() const noexcept { return m_factory; }
 	std::string_view str() const noexcept { return m_str; }
@@ -34,9 +34,6 @@ class Text : public TreeNode {
 };
 
 // impl
-
-inline Text::Text(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) noexcept
-	: TreeNode(root), m_font(font), m_mesh(vram, graphics::Mesh::Type::eDynamic) {}
 inline void Text::set(std::string str) {
 	m_str = std::move(str);
 	m_dirty = true;

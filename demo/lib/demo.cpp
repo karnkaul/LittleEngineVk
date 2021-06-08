@@ -281,30 +281,29 @@ class DrawDispatch {
 class TestView : public gui::View {
   public:
 	TestView(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font) : gui::View(parent) {
-		graphics::VRAM* vram = parent->m_vram;
 		m_canvas.size.value = {1280.0f, 720.0f};
 		m_canvas.size.unit = gui::Unit::eAbsolute;
-		auto& bg = push<gui::Quad>(vram);
+		auto& bg = push<gui::Quad>();
 		bg.m_rect.size = {200.0f, 100.0f};
 		bg.m_rect.anchor.norm = {-0.25f, 0.25f};
 		bg.m_material.Tf = colours::cyan;
-		auto& centre = bg.push<gui::Quad>(vram);
+		auto& centre = bg.push<gui::Quad>();
 		centre.m_rect.size = {50.0f, 50.0f};
 		centre.m_material.Tf = colours::red;
-		auto& dot = centre.push<gui::Quad>(vram);
+		auto& dot = centre.push<gui::Quad>();
 		dot.offset({30.0f, 20.0f});
 		dot.m_material.Tf = Colour(0x333333ff);
 		dot.m_rect.anchor.norm = {-0.5f, -0.5f};
-		auto& topLeft = bg.push<gui::Quad>(vram);
+		auto& topLeft = bg.push<gui::Quad>();
 		topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 		topLeft.m_material.Tf = colours::magenta;
-		auto& text = bg.push<gui::Text>(vram, font);
+		auto& text = bg.push<gui::Text>(font);
 		graphics::TextFactory tf;
 		tf.size = 60U;
 		text.set("click");
 		text.set(tf);
-		m_button = &push<gui::Widget>(vram, font);
+		m_button = &push<gui::Widget>(font);
 		m_button->m_rect.size = {200.0f, 100.0f};
 		m_button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
 		m_button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;

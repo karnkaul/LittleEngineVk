@@ -1,5 +1,6 @@
 #include <iostream>
 #include <build_version.hpp>
+#include <core/services.hpp>
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
@@ -155,6 +156,7 @@ bool Engine::boot(Boot::CreateInfo boot) {
 	if (!m_gfx) {
 		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
 		m_gfx.emplace(m_win.get(), boot);
+		Services::track<Engine, Context, graphics::VRAM>(this, &m_gfx->context, &m_gfx->boot.vram);
 		return true;
 	}
 	return false;
@@ -163,6 +165,7 @@ bool Engine::boot(Boot::CreateInfo boot) {
 bool Engine::unboot() noexcept {
 	if (m_gfx) {
 		m_gfx.reset();
+		Services::clear();
 		return true;
 	}
 	return false;

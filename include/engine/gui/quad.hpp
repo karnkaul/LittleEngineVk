@@ -5,7 +5,7 @@
 namespace le::gui {
 class Quad : public TreeNode {
   public:
-	Quad(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, bool hitTest = true) noexcept;
+	Quad(not_null<TreeRoot*> root, bool hitTest = true) noexcept;
 
 	void onUpdate(input::Space const& space) override;
 	Span<Primitive const> primitives() const noexcept override;
@@ -20,10 +20,6 @@ class Quad : public TreeNode {
 
 // impl
 
-inline Quad::Quad(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, bool hitTest) noexcept
-	: TreeNode(root), m_mesh(vram, graphics::Mesh::Type::eDynamic) {
-	m_hitTest = hitTest;
-}
 inline Span<Primitive const> Quad::primitives() const noexcept {
 	m_prim = {m_material, &m_mesh};
 	return m_prim;

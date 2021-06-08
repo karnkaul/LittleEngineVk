@@ -1,9 +1,9 @@
 #include <engine/gui/widget.hpp>
 
 namespace le::gui {
-Widget::Widget(not_null<TreeRoot*> root, not_null<graphics::VRAM*> vram, not_null<BitmapFont const*> font) : Quad(root, vram) {
+Widget::Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) : Quad(root, true) {
 	m_rect.size = {50.0f, 50.0f};
-	m_text = &push<Text>(vram, font);
+	m_text = &push<Text>(font);
 	m_styles.text.base = colours::black;
 }
 

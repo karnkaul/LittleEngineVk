@@ -25,8 +25,8 @@ TreeNode* View::leafHit(glm::vec2 point) const noexcept {
 void View::update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset) {
 	if (!destroyed()) {
 		input::Space const space(fbSize, wSize, view);
-		m_rect.size = fbSize;
-		m_rect.origin = offset;
+		m_rect.size = m_canvas.size(fbSize);
+		m_rect.origin = m_canvas.centre(fbSize) + offset;
 		onUpdate(space);
 		for (auto& node : m_ts) { node->update(space); }
 	}

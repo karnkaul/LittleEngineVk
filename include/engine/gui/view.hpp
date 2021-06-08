@@ -15,6 +15,27 @@ namespace le::gui {
 class View;
 class ViewStack;
 
+enum class Unit { eRelative, eAbsolute };
+
+template <typename T>
+struct Measure {
+	using type = T;
+
+	T value{};
+	T delta{};
+	Unit unit{};
+
+	constexpr Measure(T value = {}, T delta = {}, Unit unit = Unit::eRelative) noexcept : value(value), delta(delta), unit(unit) {}
+	constexpr Measure(Unit unit) noexcept : Measure({}, {}, unit) {}
+
+	constexpr T operator()(T const& full) noexcept { return unit == Unit::eRelative ? value * full + delta : value; }
+};
+
+struct Canvas {
+	Measure<glm::vec2> size = {{1.0f, 1.0f}};
+	Measure<glm::vec2> centre;
+};
+
 class View : public TreeRoot {
   public:
 	enum class Block { eNone, eBlock };
@@ -27,6 +48,7 @@ class View : public TreeRoot {
 	void setDestroyed() noexcept { m_remove = true; }
 	bool destroyed() const noexcept { return m_remove; }
 
+	Canvas m_canvas;
 	Block m_block;
 
   private:

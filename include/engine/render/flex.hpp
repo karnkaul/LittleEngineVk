@@ -5,10 +5,10 @@ template <typename T>
 struct TFlex {
 	using type = T;
 
-	type norm;
-	type offset;
+	T norm;
+	T offset;
 
-	constexpr TFlex(type const& norm = {}, type const& offset = {}) noexcept : norm(norm), offset(offset) {}
+	constexpr TFlex(T const& norm = {}, T const& offset = {}) noexcept : norm(norm), offset(offset) {}
 
 	constexpr TFlex<T>& operator+=(TFlex const& rhs) noexcept;
 	constexpr TFlex<T>& operator-=(TFlex const& rhs) noexcept;

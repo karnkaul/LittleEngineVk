@@ -282,6 +282,8 @@ class TestView : public gui::View {
   public:
 	TestView(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font) : gui::View(parent) {
 		graphics::VRAM* vram = parent->m_vram;
+		m_canvas.size.value = {1280.0f, 720.0f};
+		m_canvas.size.unit = gui::Unit::eAbsolute;
 		auto& bg = push<gui::Quad>(vram);
 		bg.m_rect.size = {200.0f, 100.0f};
 		bg.m_rect.anchor.norm = {-0.25f, 0.25f};

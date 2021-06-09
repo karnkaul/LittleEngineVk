@@ -91,7 +91,7 @@ Reader::Result<std::string> Reader::string(io::Path const& id) const {
 	return kt::null_result;
 }
 
-bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_result(); }
+bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_value(); }
 
 bool Reader::checkPresence(io::Path const& id) const {
 	if (!present(id)) {

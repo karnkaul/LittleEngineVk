@@ -10,6 +10,9 @@ class ServiceLocator;
 
 using Services = ServiceLocator<16>;
 
+template <typename T>
+class IService;
+
 ///
 /// \brief Type-safe mapping for (pointers to) objects used as services
 ///
@@ -64,5 +67,12 @@ class ServiceLocator final {
 
 	inline static void* s_ts[N] = {};
 	inline static std::size_t s_typeID = 0;
+};
+
+template <typename T>
+class IService {
+  public:
+	IService() noexcept { Services::track<T>(static_cast<T*>(this)); }
+	virtual ~IService() noexcept { Services::untrack<T>(); }
 };
 } // namespace le

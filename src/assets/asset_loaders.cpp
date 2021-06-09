@@ -208,7 +208,7 @@ bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& in
 	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) { return false; }
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
-		return out_model.construct(info.m_data.vram, mci.move(), sampler->get(), info.m_data.forceFormat).has_result();
+		return out_model.construct(info.m_data.vram, std::move(mci).value(), sampler->get(), info.m_data.forceFormat).has_value();
 	}
 	return false;
 }

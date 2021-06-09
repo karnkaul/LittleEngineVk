@@ -1,6 +1,7 @@
 #pragma once
 #include <core/io.hpp>
 #include <core/not_null.hpp>
+#include <core/services.hpp>
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
@@ -24,12 +25,13 @@ namespace gui {
 class ViewStack;
 }
 
-class Engine {
+class Engine : public IService<Engine> {
   public:
 	using Window = window::IInstance;
 	using Desktop = window::DesktopInstance;
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
+	using VRAM = graphics::VRAM;
 
 	struct GFX {
 		Boot boot;

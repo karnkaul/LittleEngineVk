@@ -34,3 +34,6 @@
 [submodule "libs/core/include/kt/monotonic_map"]
 	path = libs/core/include/kt/monotonic_map
 	url = https://github.com/karnkaul/monotonic_map.git
+[submodule "libs/core/include/kt/not_null"]
+	path = libs/core/include/kt/not_null
+	url = https://github.com/karnkaul/not-null.git

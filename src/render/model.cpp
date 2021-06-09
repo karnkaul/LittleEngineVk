@@ -153,8 +153,8 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader)
 	for (auto const& shape : m_shapes) { ret.meshes.push_back(processShape(ret, shape)); }
 	for (auto& texture : ret.textures) {
 		auto bytes = reader.bytes(texture.filename);
-		ENSURE(bytes.has_result(), "Texture not found!");
-		if (bytes) { texture.bytes = bytes.move(); }
+		ENSURE(bytes.has_value(), "Texture not found!");
+		if (bytes) { texture.bytes = std::move(bytes).value(); }
 	}
 	return Model::Result<Model::CreateInfo>(std::move(ret));
 }
@@ -278,8 +278,8 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	auto pSamplerID = json.find("sampler");
 	auto pScale = json.find("scale");
 	OBJReader::Data objData;
-	objData.obj = obj.move();
-	if (mtl) { objData.mtl = mtl.move(); }
+	objData.obj = std::move(obj).value();
+	if (mtl) { objData.mtl = std::move(mtl).value(); }
 	objData.modelID = std::move(modelID);
 	objData.jsonID = std::move(jsonID);
 	objData.modelID = jsonDir;

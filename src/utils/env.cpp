@@ -79,6 +79,6 @@ kt::result<io::Path, std::string> env::findData(io::Path pattern, u8 maxHeight) 
 	if (!data) {
 		return fmt::format("[{}] {} not found (searched {} levels up from {})", conf::g_name, pattern.generic_string(), maxHeight, root.generic_string());
 	}
-	return data.move();
+	return std::move(data).value();
 }
 } // namespace le

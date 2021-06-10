@@ -55,13 +55,7 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	auto ret = promise->get_future();
 	auto f = [p = std::move(promise), s = src.buffer(), d = out_dst.buffer(), size, this]() mutable {
 		auto stage = m_transfer.newStage(size);
-		vk::CommandBufferBeginInfo beginInfo;
-		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		stage.command.begin(beginInfo);
-		vk::BufferCopy copyRegion;
-		copyRegion.size = size;
-		stage.command.copyBuffer(s, d, copyRegion);
-		stage.command.end();
+		copy(stage.command, s, d, size);
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
 	m_transfer.m_queue.push(std::move(f));
@@ -85,13 +79,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	auto f = [p = std::move(promise), dst = out_deviceBuffer.buffer(), d = std::move(data), this]() mutable {
 		auto stage = m_transfer.newStage(vk::DeviceSize(d.size()));
 		if (stage.buffer.write(d.data(), d.size())) {
-			vk::CommandBufferBeginInfo beginInfo;
-			beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-			stage.command.begin(beginInfo);
-			vk::BufferCopy copyRegion;
-			copyRegion.size = vk::DeviceSize(d.size());
-			stage.command.copyBuffer(stage.buffer.buffer(), dst, copyRegion);
-			stage.command.end();
+			copy(stage.command, stage.buffer.buffer(), dst, d.size());
 			m_transfer.addStage(std::move(stage), std::move(p));
 		} else {
 			g_log.log(lvl::error, 1, "[{}] Error staging data!", g_name);
@@ -147,39 +135,12 @@ VRAM::Future VRAM::copy(Span<BMPview const> bitmaps, Image& out_dst, LayoutPair 
 			copyRegions.push_back(std::move(copyRegion));
 			++layerIdx;
 		}
-		vk::CommandBufferBeginInfo beginInfo;
-		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		stage.command.begin(beginInfo);
-		vk::ImageMemoryBarrier barrier;
-		barrier.oldLayout = layouts.first;
-		barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = i;
-		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = l;
-		barrier.srcAccessMask = {};
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-		using vkstg = vk::PipelineStageFlagBits;
-		stage.command.pipelineBarrier(vkstg::eTopOfPipe, vkstg::eTransfer, {}, {}, {}, barrier);
-		stage.command.copyBufferToImage(stage.buffer.buffer(), i, vk::ImageLayout::eTransferDstOptimal, copyRegions);
-		barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-		barrier.newLayout = layouts.second;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = i;
-		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = l;
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
-		barrier.dstAccessMask = m_post.access;
-		stage.command.pipelineBarrier(vkstg::eTransfer, vkstg::eBottomOfPipe | m_post.stages, {}, {}, {}, barrier);
-		stage.command.end();
+		ImgMeta meta;
+		meta.layouts = layouts;
+		meta.stages.second = m_post.stages;
+		meta.access.second = m_post.access;
+		meta.layerCount = l;
+		copy(stage.command, stage.buffer.buffer(), i, copyRegions, meta);
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
 	m_transfer.m_queue.push(std::move(f));

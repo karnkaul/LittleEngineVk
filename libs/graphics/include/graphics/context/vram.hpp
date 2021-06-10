@@ -10,6 +10,7 @@ class VRAM final : public Memory {
   public:
 	using notify_t = Transfer::notify_t;
 	using Future = ::le::utils::Future<notify_t>;
+	using Memory::copy;
 
 	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});
 	~VRAM();

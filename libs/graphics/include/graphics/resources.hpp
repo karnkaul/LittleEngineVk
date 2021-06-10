@@ -10,6 +10,8 @@
 namespace le::graphics {
 class Device;
 
+using StagePair = std::pair<vk::PipelineStageFlags, vk::PipelineStageFlags>;
+using AccessPair = std::pair<vk::AccessFlags, vk::AccessFlags>;
 using LayoutPair = std::pair<vk::ImageLayout, vk::ImageLayout>;
 
 struct Alloc final {
@@ -58,10 +60,28 @@ class Resource {
 
 class Memory {
   public:
+	template <typename T>
+	using vAP = vk::ArrayProxy<T const> const&;
+
+	struct ImgMeta {
+		AccessPair access;
+		StagePair stages;
+		LayoutPair layouts;
+		vk::ImageAspectFlags aspects = vk::ImageAspectFlagBits::eColor;
+		u32 firstLayer = 0;
+		u32 layerCount = 1;
+		u32 firstMip = 0;
+		u32 mipLevels = 1;
+	};
+
 	Memory(not_null<Device*> device);
 	~Memory();
 
 	u64 bytes(Resource::Type type) const noexcept;
+
+	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
+	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
+	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
 
 	dl::level m_logLevel = dl::level::debug;
 	not_null<Device*> m_device;

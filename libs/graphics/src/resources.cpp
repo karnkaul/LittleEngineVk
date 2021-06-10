@@ -49,6 +49,51 @@ Memory::~Memory() {
 	g_log.log(lvl::info, 1, "[{}] Memory destroyed", g_name);
 }
 
+void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size) {
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	cb.begin(beginInfo);
+	vk::BufferCopy copyRegion;
+	copyRegion.size = size;
+	cb.copyBuffer(src, dst, copyRegion);
+	cb.end();
+}
+
+void Memory::imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta) {
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = meta.layouts.first;
+	barrier.newLayout = meta.layouts.second;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = meta.aspects;
+	barrier.subresourceRange.baseMipLevel = meta.firstMip;
+	barrier.subresourceRange.levelCount = meta.mipLevels;
+	barrier.subresourceRange.baseArrayLayer = meta.firstLayer;
+	barrier.subresourceRange.layerCount = meta.layerCount;
+	barrier.srcAccessMask = meta.access.first;
+	barrier.dstAccessMask = meta.access.second;
+	cb.pipelineBarrier(meta.stages.first, meta.stages.second, {}, {}, {}, barrier);
+}
+
+void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta) {
+	using vkstg = vk::PipelineStageFlagBits;
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	cb.begin(beginInfo);
+	ImgMeta first = meta, second = meta;
+	first.layouts.second = vk::ImageLayout::eTransferDstOptimal;
+	first.access.second = vk::AccessFlagBits::eTransferWrite;
+	first.stages = {vkstg::eTopOfPipe | meta.stages.first, vkstg::eTransfer};
+	second.layouts.first = vk::ImageLayout::eTransferDstOptimal;
+	second.access.first = vk::AccessFlagBits::eTransferRead;
+	second.stages = {vkstg::eTransfer, vkstg::eBottomOfPipe | meta.stages.second};
+	imageBarrier(cb, dst, first);
+	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);
+	imageBarrier(cb, dst, second);
+	cb.end();
+}
+
 Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory) {
 	Device& device = *memory->m_device;
 	vk::BufferCreateInfo bufferInfo;

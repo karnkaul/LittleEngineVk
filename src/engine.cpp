@@ -163,8 +163,8 @@ bool Engine::boot(Boot::CreateInfo boot) {
 
 bool Engine::unboot() noexcept {
 	if (m_gfx) {
-		m_gfx.reset();
 		Services::untrack<Context, VRAM>();
+		m_gfx.reset();
 		return true;
 	}
 	return false;

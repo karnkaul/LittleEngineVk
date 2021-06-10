@@ -50,7 +50,7 @@ class Transfer final {
 	Stage newStage(vk::DeviceSize bufferSize);
 	void addStage(Stage&& stage, Promise&& promise);
 
-	bool polling() const noexcept { return m_sync.bPoll.load(); }
+	bool polling() const noexcept { return m_sync.poll.active(); }
 
   private:
 	void scavenge(Stage&& stage, vk::Fence fence);
@@ -65,10 +65,9 @@ class Transfer final {
 		std::list<Buffer> buffers;
 	} m_data;
 	struct {
-		std::optional<kt::kthread> stagingThread;
-		std::optional<kt::kthread> pollThread;
+		kt::kthread staging;
+		kt::kthread poll;
 		kt::lockable_t<> mutex;
-		std::atomic<bool> bPoll;
 	} m_sync;
 	struct {
 		Batch active;

@@ -32,7 +32,7 @@ void validationLog(dl::level level, int verbosity, std::string_view msg) {
 }
 
 bool skipError(std::string_view msg) noexcept {
-	static constexpr std::string_view skip = {"VkSwapchainCreateInfoKHR-imageExtent"};
+	static constexpr std::string_view skip[] = {"VkSwapchainCreateInfoKHR-imageExtent"};
 	if (!msg.empty()) {
 		for (auto str : skip) {
 			if (msg.find(str) < msg.size()) { return true; }
@@ -48,7 +48,7 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
 		validationLog(lvl::error, 0, msg);
 		bool const ret = !skipError(msg);
-		ENSURE(!ret, msg);
+		ENSURE(!ret, "Validation error");
 		return ret;
 	}
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warning, 1, msg); break;

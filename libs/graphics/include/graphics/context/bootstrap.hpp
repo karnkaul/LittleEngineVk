@@ -3,8 +3,8 @@
 #include <core/lib_logger.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/instance.hpp>
-#include <graphics/context/swapchain.hpp>
 #include <graphics/context/vram.hpp>
+#include <graphics/render/swapchain.hpp>
 
 namespace le::graphics {
 struct Bootstrap {

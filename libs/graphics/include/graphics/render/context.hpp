@@ -1,14 +1,15 @@
 #pragma once
+#include <memory>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <core/colour.hpp>
 #include <core/hash.hpp>
 #include <graphics/common.hpp>
-#include <graphics/context/frame_sync.hpp>
-#include <graphics/context/swapchain.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/pipeline.hpp>
+#include <graphics/render/fwd_swp_renderer.hpp>
 #include <graphics/screen_rect.hpp>
 
 namespace le::graphics {
@@ -22,32 +23,35 @@ using PFlags = kt::enum_flags<PFlag>;
 class RenderContext : NoCopy {
   public:
 	enum class Status { eIdle, eWaiting, eReady, eDrawing };
-	struct Frame {
-		RenderTarget target;
-		CommandBuffer primary;
-	};
+
+	using Frame = ARenderer::Draw;
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
 
-	RenderContext(not_null<Swapchain*> swapchain, u32 rotateCount = 2, u32 secondaryCmdCount = 0);
+	template <typename T = RendererFS, typename... Args>
+		requires(std::is_base_of_v<ARenderer, T>)
+	RenderContext(not_null<Swapchain*> swapchain, u32 buffering = 2, Args&&... args)
+		: RenderContext(swapchain, std::make_unique<T>(swapchain, buffering, std::forward<Args>(args)...)) {}
+	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer> renderer);
 	RenderContext(RenderContext&&);
 	RenderContext& operator=(RenderContext&&);
 
 	bool waitForFrame();
-	std::optional<Frame> beginFrame(CommandBuffer::PassInfo const& info);
+	std::optional<ARenderer::Draw> beginFrame(CommandBuffer::PassInfo const& info);
 	bool endFrame();
 
 	Status status() const noexcept;
 	std::size_t index() const noexcept;
-	std::size_t rotateCount() const noexcept;
+	std::size_t buffering() const noexcept;
 	glm::ivec2 extent() const noexcept;
 	bool ready(glm::ivec2 framebufferSize);
 
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo);
 
+	ARenderer& renderer() const noexcept;
 	vk::SurfaceFormatKHR swapchainFormat() const noexcept;
 	vk::Format colourImageFormat() const noexcept;
 
@@ -59,15 +63,13 @@ class RenderContext : NoCopy {
 
   private:
 	struct Storage {
+		std::unique_ptr<ARenderer> renderer;
 		std::optional<RenderTarget> target;
 		Status status = {};
 	};
 
-	BufferedFrameSync m_sync;
 	Storage m_storage;
-
 	not_null<Swapchain*> m_swapchain;
-	not_null<VRAM*> m_vram;
 	not_null<Device*> m_device;
 };
 
@@ -126,9 +128,12 @@ inline f32 RenderContext::aspectRatio() const noexcept {
 	glm::ivec2 const ext = extent();
 	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
 }
-
-inline std::size_t RenderContext::index() const noexcept { return m_sync.index; }
-inline std::size_t RenderContext::rotateCount() const noexcept { return m_sync.size(); }
+inline ARenderer& RenderContext::renderer() const noexcept {
+	ENSURE(m_storage.renderer, "Invariant violated");
+	return *m_storage.renderer;
+}
+inline std::size_t RenderContext::index() const noexcept { return m_storage.renderer->index(); }
+inline std::size_t RenderContext::buffering() const noexcept { return m_storage.renderer->buffering(); }
 inline RenderContext::Status RenderContext::status() const noexcept { return m_storage.status; }
 inline glm::ivec2 RenderContext::extent() const noexcept {
 	vk::Extent2D const ext = m_swapchain->display().extent;

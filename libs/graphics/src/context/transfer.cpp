@@ -106,7 +106,8 @@ void Transfer::addStage(Stage&& stage, Promise&& promise) {
 	m_batches.active.entries.emplace_back(std::move(stage), std::move(promise));
 }
 
-Buffer Transfer::nextBuffer(vk::DeviceSize size) {
+std::optional<Buffer> Transfer::nextBuffer(vk::DeviceSize size) {
+	if (size == 0) { return std::nullopt; }
 	auto lock = m_sync.mutex.lock();
 	for (auto iter = m_data.buffers.begin(); iter != m_data.buffers.end(); ++iter) {
 		if (iter->writeSize() >= size) {
@@ -133,7 +134,7 @@ vk::CommandBuffer Transfer::nextCommand() {
 
 void Transfer::scavenge(Stage&& stage, vk::Fence fence) {
 	m_data.commands.push_back(std::move(stage.command));
-	m_data.buffers.push_back(std::move(stage.buffer));
+	if (stage.buffer) { m_data.buffers.push_back(std::move(*stage.buffer)); }
 	if (std::find(m_data.fences.begin(), m_data.fences.end(), fence) == m_data.fences.end()) {
 		m_memory->m_device->resetFence(fence);
 		m_data.fences.push_back(fence);

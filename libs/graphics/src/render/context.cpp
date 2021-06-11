@@ -5,7 +5,7 @@
 #include <glm/gtx/transform.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/vram.hpp>
-#include <graphics/render_context.hpp>
+#include <graphics/render/context.hpp>
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
@@ -50,22 +50,19 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(not_null<Swapchain*> swapchain, u32 rotateCount, u32 secondaryCmdCount)
-	: m_sync(swapchain->m_device, rotateCount, secondaryCmdCount), m_swapchain(swapchain), m_vram(swapchain->m_vram), m_device(swapchain->m_device) {
-	m_storage.status = Status::eReady;
+RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer> renderer) : m_swapchain(swapchain), m_device(swapchain->m_device) {
+	m_storage.renderer = std::move(renderer);
+	m_storage.status = Status::eWaiting;
 }
 
-RenderContext::RenderContext(RenderContext&& rhs)
-	: m_sync(std::move(rhs.m_sync)), m_storage(std::move(rhs.m_storage)), m_swapchain(rhs.m_swapchain), m_vram(rhs.m_vram), m_device(rhs.m_device) {
+RenderContext::RenderContext(RenderContext&& rhs) : m_storage(std::move(rhs.m_storage)), m_swapchain(rhs.m_swapchain), m_device(rhs.m_device) {
 	rhs.m_storage.status = Status::eIdle;
 }
 
 RenderContext& RenderContext::operator=(RenderContext&& rhs) {
 	if (&rhs != this) {
-		m_sync = std::move(rhs.m_sync);
 		m_storage = std::move(rhs.m_storage);
 		m_swapchain = rhs.m_swapchain;
-		m_vram = rhs.m_vram;
 		m_device = rhs.m_device;
 		rhs.m_storage.status = Status::eIdle;
 	}
@@ -73,39 +70,28 @@ RenderContext& RenderContext::operator=(RenderContext&& rhs) {
 }
 
 bool RenderContext::waitForFrame() {
-	if (!m_vram->m_transfer.polling()) { m_vram->m_transfer.update(); }
-	if (m_storage.status == Status::eReady) { return true; }
-	if (m_storage.status != Status::eWaiting) {
-		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
+	if (m_storage.status != Status::eReady) {
+		if (m_storage.status != Status::eWaiting) {
+			g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+			return false;
+		}
+		m_storage.renderer->waitForFrame();
+		m_storage.status = Status::eReady;
 	}
-	auto& sync = m_sync.get();
-	m_device->waitFor(sync.sync.drawing);
-	m_device->decrementDeferred();
-	m_storage.status = Status::eReady;
 	return true;
 }
 
-std::optional<RenderContext::Frame> RenderContext::beginFrame(CommandBuffer::PassInfo const& info) {
+std::optional<ARenderer::Draw> RenderContext::beginFrame(CommandBuffer::PassInfo const& info) {
 	if (m_storage.status != Status::eReady) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
 	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
-	FrameSync& sync = m_sync.get();
-	auto target = m_swapchain->acquireNextImage(sync.sync);
-	if (!target) { return std::nullopt; }
-	m_storage.status = Status::eDrawing;
-	m_device->destroy(sync.framebuffer);
-	sync.framebuffer = m_device->makeFramebuffer(m_swapchain->renderPass(), target->attachments(), target->extent);
-	if (!sync.primary.commandBuffer.begin(m_swapchain->renderPass(), sync.framebuffer, target->extent, info)) {
-		ENSURE(false, "Failed to begin recording command buffer");
-		m_storage.status = Status::eReady;
-		m_device->destroy(sync.framebuffer, sync.sync.drawReady);
-		sync.sync.drawReady = m_device->makeSemaphore(); // sync.drawReady will be signalled by acquireNextImage and cannot be reused
-		return std::nullopt;
+	if (auto ret = m_storage.renderer->beginFrame(info)) {
+		m_storage.status = Status::eDrawing;
+		return ret;
 	}
-	return Frame{*target, sync.primary.commandBuffer};
+	return std::nullopt;
 }
 
 bool RenderContext::endFrame() {
@@ -113,37 +99,27 @@ bool RenderContext::endFrame() {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
-	FrameSync& sync = m_sync.get();
-	sync.primary.commandBuffer.end();
-	vk::SubmitInfo submitInfo;
-	vk::PipelineStageFlags const waitStages = vk::PipelineStageFlagBits::eTopOfPipe;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &sync.sync.drawReady;
-	submitInfo.pWaitDstStageMask = &waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &sync.primary.commandBuffer.m_cb;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &sync.sync.presentReady;
-	m_device->device().resetFences(sync.sync.drawing);
-	m_device->queues().submit(QType::eGraphics, submitInfo, sync.sync.drawing, false);
-	m_storage.status = Status::eWaiting;
-	auto present = m_swapchain->present(sync.sync);
-	if (!present) { return false; }
-	m_sync.swap();
-	return true;
+	if (m_storage.renderer->endFrame()) {
+		m_storage.status = Status::eWaiting;
+		return true;
+	}
+	return false;
 }
 
 bool RenderContext::ready(glm::ivec2 framebufferSize) {
 	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
-		if (m_swapchain->reconstruct(framebufferSize)) { m_storage.status = Status::eWaiting; }
+		if (m_swapchain->reconstruct(framebufferSize)) {
+			m_storage.renderer->refresh();
+			m_storage.status = Status::eWaiting;
+		}
 		return false;
 	}
 	return true;
 }
 
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo) {
-	createInfo.renderPass = m_swapchain->renderPass();
-	return Pipeline(m_vram, shader, std::move(createInfo), id);
+	if (createInfo.renderPass == vk::RenderPass()) { createInfo.renderPass = m_storage.renderer->renderPasses().front(); }
+	return Pipeline(m_swapchain->m_vram, shader, std::move(createInfo), id);
 }
 
 glm::mat4 RenderContext::preRotate() const noexcept {

@@ -28,7 +28,7 @@ class Transfer final {
 	struct CreateInfo;
 
 	struct Stage final {
-		Buffer buffer;
+		std::optional<Buffer> buffer;
 		vk::CommandBuffer command;
 	};
 
@@ -55,7 +55,7 @@ class Transfer final {
   private:
 	void scavenge(Stage&& stage, vk::Fence fence);
 	vk::Fence nextFence();
-	Buffer nextBuffer(vk::DeviceSize size);
+	std::optional<Buffer> nextBuffer(vk::DeviceSize size);
 	vk::CommandBuffer nextCommand();
 
 	struct {

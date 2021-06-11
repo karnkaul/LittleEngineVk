@@ -8,7 +8,7 @@
 #include <engine/input/receiver.hpp>
 #include <engine/render/rgba.hpp>
 #include <graphics/context/bootstrap.hpp>
-#include <graphics/render_context.hpp>
+#include <graphics/render/context.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le {
@@ -154,7 +154,7 @@ struct Engine::DrawFrame {
 
 // impl
 
-inline graphics::CommandBuffer& Engine::DrawFrame::cmd() noexcept { return frame.primary; }
+inline graphics::CommandBuffer& Engine::DrawFrame::cmd() noexcept { return frame.commandBuffer; }
 
 inline Engine::Stats const& Engine::stats() noexcept { return s_stats; }
 inline bool Engine::editorActive() const noexcept { return m_editor.active(); }

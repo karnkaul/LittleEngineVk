@@ -55,7 +55,7 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 			}
 			set.pool = m_device->makeDescriptorPool(poolSizes, 1);
 			set.set = m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
-			m_storage.setBuffer.push(std::move(set));
+			m_storage.setBuffer.emplace(std::move(set));
 		}
 	}
 }

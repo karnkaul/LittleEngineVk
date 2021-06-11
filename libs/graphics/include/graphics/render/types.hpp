@@ -2,16 +2,15 @@
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
-struct RenderImage final {
+struct RenderImage {
 	vk::Image image;
 	vk::ImageView view;
 	vk::Extent2D extent;
 };
 
-struct RenderTarget final {
+struct RenderTarget {
 	RenderImage colour;
 	RenderImage depth;
-	vk::Extent2D extent;
 
 	inline std::array<vk::ImageView, 2> attachments() const { return {colour.view, depth.view}; }
 };

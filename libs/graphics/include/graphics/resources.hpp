@@ -10,9 +10,12 @@
 namespace le::graphics {
 class Device;
 
-using StagePair = std::pair<vk::PipelineStageFlags, vk::PipelineStageFlags>;
-using AccessPair = std::pair<vk::AccessFlags, vk::AccessFlags>;
-using LayoutPair = std::pair<vk::ImageLayout, vk::ImageLayout>;
+template <typename T, typename U = T>
+using TPair = std::pair<T, U>;
+
+using StagePair = TPair<vk::PipelineStageFlags>;
+using AccessPair = TPair<vk::AccessFlags>;
+using LayoutPair = TPair<vk::ImageLayout>;
 
 struct Alloc final {
 	vk::DeviceMemory memory;
@@ -81,7 +84,12 @@ class Memory {
 
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
+	static void blit(vk::CommandBuffer cb, vk::Image src, vk::Image dst, TPair<vk::Extent3D> extents, LayoutPair layouts,
+					 vk::Filter filter = vk::Filter::eLinear,
+					 TPair<vk::ImageAspectFlags> aspects = {vk::ImageAspectFlagBits::eColor, vk::ImageAspectFlagBits::eColor});
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
+	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects = vk::ImageAspectFlagBits::eColor, vk::DeviceSize offset = 0,
+											   u32 layerIdx = 0, u32 layerCount = 1);
 
 	dl::level m_logLevel = dl::level::debug;
 	not_null<Device*> m_device;
@@ -154,7 +162,12 @@ class Image : public Resource {
 	~Image() override;
 
 	vk::Image image() const noexcept { return m_storage.image; }
+	vk::ImageView view() const noexcept { return m_storage.view; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
+	vk::Extent3D extent() const noexcept { return m_storage.extent; }
+	vk::ImageLayout layout() const noexcept { return m_storage.layout; }
+	void layout(vk::ImageLayout layout) noexcept { m_storage.layout = layout; }
+	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
 
   private:
 	void destroy();
@@ -162,8 +175,11 @@ class Image : public Resource {
   protected:
 	struct Storage {
 		vk::Image image;
+		vk::ImageView view;
 		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
+		vk::ImageUsageFlags usage;
+		vk::ImageLayout layout;
 		u32 layerCount = 1;
 	};
 	Storage m_storage;
@@ -186,6 +202,11 @@ struct Buffer::CreateInfo : ResourceCreateInfo {
 
 struct Image::CreateInfo final : ResourceCreateInfo {
 	vk::ImageCreateInfo createInfo;
+	struct {
+		vk::Format format;
+		vk::ImageAspectFlags aspects;
+		vk::ImageViewType type = vk::ImageViewType::e2D;
+	} view;
 };
 
 // impl

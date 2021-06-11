@@ -11,13 +11,7 @@
 
 namespace le {
 Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci)
-	: boot(bci, makeSurface(*winst), winst->framebufferSize()), context(&boot.swapchain) {
-#if defined(LEVK_DESKTOP)
-	DearImGui::CreateInfo dici(boot.swapchain.renderPass());
-	dici.correctStyleColours = context.colourCorrection() == graphics::ColourCorrection::eAuto;
-	imgui = DearImGui(&boot.device, static_cast<window::DesktopInstance const*>(winst.get()), dici);
-#endif
-}
+	: boot(bci, makeSurface(*winst), winst->framebufferSize()), context(&boot.swapchain) {}
 
 Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	return [&winst](vk::Instance vkinst) {
@@ -33,7 +27,7 @@ Engine::DrawFrame::DrawFrame(DrawFrame&& rhs) noexcept : frame(std::exchange(rhs
 
 Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
 	if (&rhs != this) {
-		if (frame.primary.valid()) { engine->endDraw(frame); }
+		if (frame.commandBuffer.valid()) { engine->endDraw(frame); }
 		frame = std::exchange(rhs.frame, Context::Frame());
 		engine = rhs.engine;
 	}
@@ -41,7 +35,7 @@ Engine::DrawFrame& Engine::DrawFrame::operator=(DrawFrame&& rhs) noexcept {
 }
 
 Engine::DrawFrame::~DrawFrame() {
-	if (frame.primary.valid()) { engine->endDraw(frame); }
+	if (frame.commandBuffer.valid()) { engine->endDraw(frame); }
 }
 
 Version Engine::version() noexcept { return g_engineVersion; }
@@ -144,7 +138,7 @@ bool Engine::endDraw(Context::Frame const& frame) {
 	if (m_gfx) {
 		if constexpr (levk_imgui) {
 			m_gfx->imgui.endFrame();
-			m_gfx->imgui.renderDrawData(frame.primary);
+			m_gfx->imgui.renderDrawData(frame.commandBuffer);
 		}
 		return m_gfx->context.endFrame();
 	}
@@ -156,6 +150,11 @@ bool Engine::boot(Boot::CreateInfo boot) {
 		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
 		m_gfx.emplace(m_win.get(), boot);
 		Services::track<Context, VRAM>(&m_gfx->context, &m_gfx->boot.vram);
+#if defined(LEVK_DESKTOP)
+		DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPasses().front());
+		dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
+		m_gfx->imgui = DearImGui(&m_gfx->boot.device, m_desktop, dici);
+#endif
 		return true;
 	}
 	return false;

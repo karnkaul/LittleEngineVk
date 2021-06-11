@@ -10,6 +10,7 @@ class VRAM final : public Memory {
   public:
 	using notify_t = Transfer::notify_t;
 	using Future = ::le::utils::Future<notify_t>;
+	using Memory::blit;
 	using Memory::copy;
 
 	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});
@@ -22,10 +23,14 @@ class VRAM final : public Memory {
 	[[nodiscard]] Future copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
 	[[nodiscard]] Future copy(Span<BMPview const> bitmaps, Image& out_dst, LayoutPair layouts);
+	[[nodiscard]] Future blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects,
+							  vk::Filter filter = vk::Filter::eLinear);
 
 	template <typename Cont>
-	void wait(Cont&& futures) const;
+	void wait(Cont const& futures) const;
 	void waitIdle();
+
+	bool update(bool force = false);
 
 	not_null<Device*> m_device;
 
@@ -35,8 +40,6 @@ class VRAM final : public Memory {
 		vk::PipelineStageFlags stages;
 		vk::AccessFlags access;
 	} m_post;
-
-	friend class RenderContext;
 };
 
 // impl
@@ -49,7 +52,7 @@ Buffer VRAM::makeBO(T const& t, vk::BufferUsageFlags usage) {
 }
 
 template <typename Cont>
-void VRAM::wait(Cont&& futures) const {
+void VRAM::wait(Cont const& futures) const {
 	for (Future const& f : futures) { f.wait(); }
 }
 } // namespace le::graphics

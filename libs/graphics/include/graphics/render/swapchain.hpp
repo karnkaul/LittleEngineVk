@@ -3,8 +3,8 @@
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <glm/vec2.hpp>
-#include <graphics/context/render_types.hpp>
 #include <graphics/qflags.hpp>
+#include <graphics/render/types.hpp>
 #include <graphics/resources.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <kt/result/result.hpp>
@@ -30,21 +30,18 @@ class Swapchain {
 		vk::SurfaceTransformFlagBitsKHR transform = {};
 	};
 	struct CreateInfo {
-		struct {
-			u32 imageCount = 2;
-			bool vsync = false;
-		} desired;
-
-		struct {
-			LayoutPair colour = {vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
-			LayoutPair depth = {vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal};
-		} transitions;
-
+		u32 imageCount = 2;
+		bool vsync = false;
 		FormatPicker const* custom = {};
+	};
+	struct Acquire {
+		RenderImage image;
+		u32 index = 0;
 	};
 
 	static constexpr std::string_view presentModeName(vk::PresentModeKHR mode) noexcept;
 	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept;
+	static constexpr bool valid(vk::Extent2D extent) noexcept { return valid(glm::ivec2{extent.width, extent.height}); }
 	static constexpr bool srgb(vk::Format format) noexcept;
 
 	Swapchain(not_null<VRAM*> vram);
@@ -53,17 +50,17 @@ class Swapchain {
 	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
-	kt::result<RenderTarget> acquireNextImage(RenderSync const& sync);
-	bool present(RenderSync const& sync);
+	kt::result<Acquire> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
+	bool present(vk::Semaphore swait);
 	bool reconstruct(glm::ivec2 framebufferSize = {}, bool vsync = false);
 
 	bool suboptimal() const noexcept;
 	bool paused() const noexcept;
 
-	Display display() const noexcept { return m_storage.current; }
+	Display display() const noexcept { return m_storage.display; }
 	Flags flags() const noexcept { return m_storage.flags; }
-	vk::RenderPass renderPass() const noexcept { return m_metadata.renderPass; }
 	vk::SurfaceFormatKHR const& colourFormat() const noexcept { return m_metadata.formats.colour; }
+	vk::Format depthFormat() const noexcept { return m_metadata.formats.depth; }
 
 	inline static bool s_forceVsync = false;
 
@@ -71,26 +68,20 @@ class Swapchain {
 	not_null<Device*> m_device;
 
   private:
-	struct Frame {
-		RenderTarget target;
-		vk::Fence drawn;
-	};
 	struct Storage {
-		std::optional<Image> depthImage;
-		vk::ImageView depthImageView;
+		kt::fixed_vector<RenderImage, 4> images;
 		vk::SwapchainKHR swapchain;
-		kt::fixed_vector<Frame, 4> frames;
 		std::optional<u32> acquired;
 
-		Display current;
+		Display display;
 		u8 imageCount = 0;
 		Flags flags;
 
-		Frame& frame();
+		Acquire current() const;
+		Acquire current(u32 acquired);
 	};
 	struct Metadata {
 		CreateInfo info;
-		vk::RenderPass renderPass;
 		vk::SurfaceKHR surface;
 		vk::SwapchainKHR retired;
 		vk::PresentModeKHR presentMode;
@@ -107,8 +98,7 @@ class Swapchain {
 
   private:
 	bool construct(glm::ivec2 framebufferSize);
-	void makeRenderPass();
-	void destroy(Storage& out_storage, bool bMeta);
+	void destroy(Storage& out_storage);
 	void setFlags(vk::Result result);
 	void orientCheck();
 };

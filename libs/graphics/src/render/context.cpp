@@ -65,7 +65,7 @@ RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARe
 	m_storage.renderer = std::move(renderer);
 	m_storage.status = Status::eWaiting;
 	validateBuffering(m_swapchain->buffering(), m_storage.renderer->buffering());
-	Deferred::defaultDefer = m_storage.renderer->buffering();
+	DeferQueue::defaultDefer = m_storage.renderer->buffering();
 	m_storage.pipelineCache = m_device->makePipelineCache();
 }
 
@@ -86,7 +86,7 @@ RenderContext& RenderContext::operator=(RenderContext&& rhs) {
 	return *this;
 }
 
-RenderContext::~RenderContext() { destroy();}
+RenderContext::~RenderContext() { destroy(); }
 
 void RenderContext::destroy() {
 	m_device->defer([d = m_device.get(), c = m_storage.pipelineCache]() mutable { d->destroy(c); });

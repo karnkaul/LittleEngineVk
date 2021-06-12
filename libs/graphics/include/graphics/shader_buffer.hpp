@@ -45,7 +45,7 @@ class ShaderBuffer {
 
 struct ShaderBuffer::CreateInfo {
 	vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
-	Buffering buffering = Deferred::defaultDefer;
+	Buffering buffering = DeferQueue::defaultDefer;
 };
 
 // impl

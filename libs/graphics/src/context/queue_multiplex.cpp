@@ -149,7 +149,7 @@ vk::Result QueueMultiplex::present(vk::PresentInfoKHR const& info, bool bLock) {
 	if (!bLock) {
 		return q.queue.presentKHR(&info);
 	} else {
-		auto lock = mutex(QType::ePresent).lock();
+		std::scoped_lock lock(mutex(QType::ePresent));
 		return q.queue.presentKHR(&info);
 	}
 }
@@ -159,7 +159,7 @@ void QueueMultiplex::submit(QType type, vAP<vk::SubmitInfo> infos, vk::Fence sig
 	if (!bLock) {
 		q.queue.submit(infos, signal);
 	} else {
-		auto lock = mutex(QType::ePresent).lock();
+		std::scoped_lock lock(mutex(QType::ePresent));
 		q.queue.submit(infos, signal);
 	}
 }

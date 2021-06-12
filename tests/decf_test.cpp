@@ -7,8 +7,8 @@
 #include <core/utils/algo.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <dumb_tasks/scheduler.hpp>
-#include <kt/async_queue/locker.hpp>
 #include <kt/kthread/kthread.hpp>
+#include <kt/tmutex/tmutex.hpp>
 
 using namespace le;
 using namespace decf;
@@ -22,10 +22,10 @@ struct E {};
 struct F {};
 
 std::unordered_set<entity_t> g_spawned;
-kt::lockable_t<> g_mutex;
+std::mutex g_mutex;
 
 bool verify(entity_t entity) {
-	auto lock = g_mutex.lock();
+	std::scoped_lock lock(g_mutex);
 	bool const bRet = !utils::contains(g_spawned, entity);
 	ENSURE(bRet, "DUPLICATE");
 	g_spawned.insert(entity);
@@ -35,40 +35,40 @@ bool verify(entity_t entity) {
 
 int main() {
 	dts::task_queue tq;
-	kt::locker_t<registry_t> registry;
+	kt::tmutex<registry_t> registry;
 	constexpr s32 entityCount = 10000;
 	std::array<entity_t, entityCount> entities;
 	s32 idx = 0;
 	bool bPass = true;
 	for (auto& entity : entities) {
 		tq.enqueue([&entity, &registry, &idx, &bPass]() {
-			auto r = registry.lock();
-			entity = r.get().spawn("e" + std::to_string(idx++));
+			kt::tlock lock(registry);
+			entity = lock->spawn("e" + std::to_string(idx++));
 			bPass &= verify(entity);
 			auto const toss = maths::randomRange(0, 1 << 7);
 			if (toss & 1 << 0) {
-				if (!r.get().find<A>(entity)) { r.get().attach<A>(entity); }
+				if (!lock->find<A>(entity)) { lock->attach<A>(entity); }
 			}
 			if (toss & 1 << 1) {
-				if (!r.get().find<B>(entity)) { r.get().attach<B>(entity); }
+				if (!lock->find<B>(entity)) { lock->attach<B>(entity); }
 			}
 			if (toss & 1 << 2) {
-				if (!r.get().find<C>(entity)) { r.get().attach<C>(entity); }
+				if (!lock->find<C>(entity)) { lock->attach<C>(entity); }
 			}
 			if (toss & 1 << 3) {
-				if (!r.get().find<D>(entity)) { r.get().attach<D>(entity); }
+				if (!lock->find<D>(entity)) { lock->attach<D>(entity); }
 			}
 			if (toss & 1 << 4) {
-				if (!r.get().find<D>(entity) && !r.get().find<C>(entity)) {
-					r.get().attach<D>(entity);
-					r.get().attach<D>(entity);
+				if (!lock->find<D>(entity) && !lock->find<C>(entity)) {
+					lock->attach<D>(entity);
+					lock->attach<D>(entity);
 				}
 			}
 			if (toss & 1 << 5) {
-				if (!r.get().find<E>(entity)) { r.get().attach<E>(entity); }
+				if (!lock->find<E>(entity)) { lock->attach<E>(entity); }
 			}
 			if (toss & 1 << 6) {
-				if (!r.get().find<F>(entity)) { r.get().attach<F>(entity); }
+				if (!lock->find<F>(entity)) { lock->attach<F>(entity); }
 			}
 		});
 	}
@@ -81,32 +81,34 @@ int main() {
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
 				kt::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-				registry.lock().get().destroy(entities[idx]);
+				kt::tlock lock(registry);
+				lock->destroy(entities[idx]);
 			}));
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
 				kt::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-				auto r = registry.lock();
-				r.get().detach<A>(entities[idx]);
-				r.get().detach<B>(entities[idx]);
-				r.get().detach<D>(entities[idx]);
+				kt::tlock lock(registry);
+				lock.get().detach<A>(entities[idx]);
+				lock.get().detach<B>(entities[idx]);
+				lock.get().detach<D>(entities[idx]);
 			}));
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
 				kt::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-				registry.lock().get().enable(entities[idx], false);
+				kt::tlock lock(registry);
+				lock->enable(entities[idx], false);
 			}));
 		}
 	}
 	{
 		constexpr s32 viewIters = 10;
 		for (s32 i = 0; i < viewIters; ++i) {
-			[[maybe_unused]] auto viewA = registry.lock().get().view<A>();
-			[[maybe_unused]] auto viewB = registry.lock().get().view<B>();
-			[[maybe_unused]] auto viewC = registry.lock().get().view<C>();
-			[[maybe_unused]] auto viewAB = registry.lock().get().view<A, B>();
-			[[maybe_unused]] auto viewABC = registry.lock().get().view<A, B, C>();
-			[[maybe_unused]] auto viewCEF = registry.lock().get().view<C, E, F>();
+			[[maybe_unused]] auto viewA = kt::tlock(registry)->view<A>();
+			[[maybe_unused]] auto viewB = kt::tlock(registry)->view<B>();
+			[[maybe_unused]] auto viewC = kt::tlock(registry)->view<C>();
+			[[maybe_unused]] auto viewAB = kt::tlock(registry)->view<A, B>();
+			[[maybe_unused]] auto viewABC = kt::tlock(registry)->view<A, B, C>();
+			[[maybe_unused]] auto viewCEF = kt::tlock(registry)->view<C, E, F>();
 		}
 	}
 	tq.wait_tasks(handles);

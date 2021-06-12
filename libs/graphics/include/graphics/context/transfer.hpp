@@ -67,7 +67,7 @@ class Transfer final {
 	struct {
 		kt::kthread staging;
 		kt::kthread poll;
-		kt::lockable_t<> mutex;
+		std::mutex mutex;
 	} m_sync;
 	struct {
 		Batch active;

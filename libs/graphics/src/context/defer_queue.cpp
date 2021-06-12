@@ -6,15 +6,15 @@
 
 namespace le::graphics {
 void DeferQueue::defer(Callback const& callback, Buffering defer) {
-	auto lock = m_entries.lock();
-	lock.get().push_back({.callback = callback, .defer = defer == Buffering() ? 1_B : defer, .done = false});
+	kt::tlock lock(m_entries);
+	lock->push_back({.callback = callback, .defer = defer == Buffering() ? 1_B : defer, .done = false});
 }
 
 std::size_t DeferQueue::decrement() {
-	auto lock = m_entries.lock();
+	kt::tlock lock(m_entries);
 	std::vector<Ref<Callback const>> done;
-	done.reserve(lock.get().size());
-	for (Entry& entry : lock.get()) {
+	done.reserve(lock->size());
+	for (Entry& entry : *lock) {
 		if (entry.defer == 0_B) {
 			entry.done = true;
 			done.push_back(entry.callback);
@@ -25,13 +25,13 @@ std::size_t DeferQueue::decrement() {
 	for (Callback const& callback : done) {
 		if (callback) { callback(); }
 	}
-	utils::erase_if(lock.get(), [](Entry const& d) -> bool { return d.done; });
-	return lock.get().size();
+	utils::erase_if(*lock, [](Entry const& d) -> bool { return d.done; });
+	return lock->size();
 }
 
 void DeferQueue::flush() {
-	auto lock = m_entries.lock();
-	for (auto const& d : lock.get()) {
+	kt::tlock lock(m_entries);
+	for (auto const& d : *lock) {
 		if (d.callback) { d.callback(); }
 	}
 	lock.get().clear();

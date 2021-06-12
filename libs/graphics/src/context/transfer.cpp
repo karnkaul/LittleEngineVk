@@ -29,7 +29,7 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 	m_data.pool = memory->m_device->device().createCommandPool(poolInfo);
 	m_sync.staging = kt::kthread([this, r = info.reserve]() {
 		{
-			auto lock = m_sync.mutex.lock();
+			std::scoped_lock lock(m_sync.mutex);
 			for (auto const& range : r) {
 				for (auto i = range.count; i > 0; --i) { m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size)); }
 			}
@@ -82,7 +82,7 @@ std::size_t Transfer::update() {
 		}
 		return false;
 	};
-	auto lock = m_sync.mutex.lock();
+	std::scoped_lock lock(m_sync.mutex);
 	utils::erase_if(m_batches.submitted, removeDone);
 	if (!m_batches.active.entries.empty()) {
 		std::vector<vk::CommandBuffer> commands;
@@ -102,13 +102,13 @@ std::size_t Transfer::update() {
 Transfer::Stage Transfer::newStage(vk::DeviceSize bufferSize) { return Stage{nextBuffer(bufferSize), nextCommand()}; }
 
 void Transfer::addStage(Stage&& stage, Promise&& promise) {
-	auto lock = m_sync.mutex.lock();
+	std::scoped_lock lock(m_sync.mutex);
 	m_batches.active.entries.emplace_back(std::move(stage), std::move(promise));
 }
 
 std::optional<Buffer> Transfer::nextBuffer(vk::DeviceSize size) {
 	if (size == 0) { return std::nullopt; }
-	auto lock = m_sync.mutex.lock();
+	std::scoped_lock lock(m_sync.mutex);
 	for (auto iter = m_data.buffers.begin(); iter != m_data.buffers.end(); ++iter) {
 		if (iter->writeSize() >= size) {
 			Buffer ret = std::move(*iter);
@@ -120,7 +120,7 @@ std::optional<Buffer> Transfer::nextBuffer(vk::DeviceSize size) {
 }
 
 vk::CommandBuffer Transfer::nextCommand() {
-	auto lock = m_sync.mutex.lock();
+	std::scoped_lock lock(m_sync.mutex);
 	if (!m_data.commands.empty()) {
 		auto ret = m_data.commands.back();
 		m_data.commands.pop_back();

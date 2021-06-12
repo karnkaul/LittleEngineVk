@@ -31,7 +31,7 @@ bool stale(DescriptorSet::Bufs const& lhs, DescriptorSet::Bufs const& rhs) noexc
 } // namespace
 
 DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) : m_device(device) {
-	m_storage.rotateCount = (u32)info.rotateCount;
+	m_storage.buffering = info.buffering;
 	m_storage.layout = info.layout;
 	m_storage.setNumber = info.setNumber;
 	bool bActive = false;
@@ -42,11 +42,11 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 	if (bActive) {
 		std::vector<vk::DescriptorPoolSize> poolSizes;
 		poolSizes.reserve(m_storage.bindingInfos.size());
-		for (u32 buf = 0; buf < m_storage.rotateCount; ++buf) {
+		for (Buffering buf{}; buf < m_storage.buffering; ++buf.value) {
 			Set set;
 			for (auto const& [b, bindingInfo] : m_storage.bindingInfos) {
 				if (!bindingInfo.bUnassigned) {
-					u32 const totalSize = bindingInfo.binding.descriptorCount * m_storage.rotateCount;
+					u32 const totalSize = bindingInfo.binding.descriptorCount * m_storage.buffering.value;
 					poolSizes.push_back({bindingInfo.binding.descriptorType, totalSize});
 					set.bindings[b].type = bindingInfo.binding.descriptorType;
 					set.bindings[b].count = bindingInfo.binding.descriptorCount;
@@ -74,7 +74,7 @@ DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
 DescriptorSet::~DescriptorSet() { destroy(); }
 
 void DescriptorSet::index(std::size_t index) {
-	if (index < m_storage.rotateCount) { m_storage.setBuffer.index = index; }
+	if (index < m_storage.buffering.value) { m_storage.setBuffer.index = index; }
 }
 
 void DescriptorSet::swap() { m_storage.setBuffer.next(); }
@@ -151,7 +151,7 @@ std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u
 
 SetPool::SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info) : m_device(device) {
 	m_storage.layout = info.layout;
-	m_storage.rotateCount = info.rotateCount;
+	m_storage.buffering = info.buffering;
 	m_storage.setNumber = info.setNumber;
 	bool bActive = false;
 	for (auto const& bi : info.bindingInfos) {
@@ -190,7 +190,7 @@ DescriptorSet const& SetPool::index(std::size_t idx) const {
 Span<DescriptorSet> SetPool::populate(std::size_t count) {
 	m_storage.descriptorSets.reserve(count);
 	while (m_storage.descriptorSets.size() < count) {
-		DescriptorSet::CreateInfo info{m_storage.name, m_storage.layout, m_storage.bindInfos, m_storage.rotateCount, m_storage.setNumber};
+		DescriptorSet::CreateInfo info{m_storage.name, m_storage.layout, m_storage.bindInfos, m_storage.buffering, m_storage.setNumber};
 		m_storage.descriptorSets.emplace_back(m_device, info);
 	}
 	return Span(m_storage.descriptorSets.data(), count);
@@ -217,7 +217,7 @@ bool SetPool::unassigned() const noexcept {
 
 void SetPool::clear() noexcept { m_storage.descriptorSets.clear(); }
 
-ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) { m_setPools = pipe.makeSetPools(rotateCount); }
+ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) { m_setPools = pipe.makeSetPools(buffering); }
 
 SetPool& ShaderInput::set(u32 set) {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }

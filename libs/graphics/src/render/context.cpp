@@ -4,11 +4,22 @@
 #include <core/maths.hpp>
 #include <glm/gtx/transform.hpp>
 #include <graphics/common.hpp>
+#include <graphics/context/defer_queue.hpp>
+#include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
+namespace {
+void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
+	ENSURE(images > 1_B, "Insufficient swapchain images");
+	ENSURE(buffering > 0_B, "Insufficient buffering");
+	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warning, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
+	if (buffering < 2_B) { g_log.log(lvl::warning, 0, "[{}] Buffering less than double; expect hitches", g_name); }
+}
+} // namespace
+
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;
@@ -53,20 +64,33 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer> renderer) : m_swapchain(swapchain), m_device(swapchain->m_device) {
 	m_storage.renderer = std::move(renderer);
 	m_storage.status = Status::eWaiting;
+	validateBuffering(m_swapchain->buffering(), m_storage.renderer->buffering());
+	Deferred::defaultDefer = m_storage.renderer->buffering();
+	m_storage.pipelineCache = m_device->makePipelineCache();
 }
 
 RenderContext::RenderContext(RenderContext&& rhs) : m_storage(std::move(rhs.m_storage)), m_swapchain(rhs.m_swapchain), m_device(rhs.m_device) {
 	rhs.m_storage.status = Status::eIdle;
+	rhs.m_storage.pipelineCache = vk::PipelineCache();
 }
 
 RenderContext& RenderContext::operator=(RenderContext&& rhs) {
 	if (&rhs != this) {
+		destroy();
 		m_storage = std::move(rhs.m_storage);
 		m_swapchain = rhs.m_swapchain;
 		m_device = rhs.m_device;
 		rhs.m_storage.status = Status::eIdle;
+		rhs.m_storage.pipelineCache = vk::PipelineCache();
 	}
 	return *this;
+}
+
+RenderContext::~RenderContext() { destroy();}
+
+void RenderContext::destroy() {
+	m_device->defer([d = m_device.get(), c = m_storage.pipelineCache]() mutable { d->destroy(c); });
+	m_storage.pipelineCache = vk::PipelineCache();
 }
 
 bool RenderContext::waitForFrame() {
@@ -119,6 +143,8 @@ bool RenderContext::ready(glm::ivec2 framebufferSize) {
 
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo) {
 	if (createInfo.renderPass == vk::RenderPass()) { createInfo.renderPass = m_storage.renderer->renderPasses().front(); }
+	createInfo.buffering = m_storage.renderer->buffering();
+	createInfo.cache = m_storage.pipelineCache;
 	return Pipeline(m_swapchain->m_vram, shader, std::move(createInfo), id);
 }
 

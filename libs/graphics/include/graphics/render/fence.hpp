@@ -29,12 +29,12 @@ class RenderFence {
 		State state(vk::Device device) const;
 	};
 
-	RenderFence(not_null<Device*> device, u8 buffering = 2);
+	RenderFence(not_null<Device*> device, Buffering buffering = 2_B);
 	RenderFence(RenderFence&&) = default;
 	RenderFence& operator=(RenderFence&&);
 	~RenderFence();
 
-	u8 buffering() const noexcept { return (u8)m_storage.fences.size(); }
+	Buffering buffering() const noexcept { return {(u8)m_storage.fences.size()}; }
 
 	std::size_t index() const noexcept { return m_storage.index; }
 

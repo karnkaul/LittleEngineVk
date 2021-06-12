@@ -1,6 +1,7 @@
 #pragma once
 #include <graphics/context/command_buffer.hpp>
 #include <graphics/context/vram.hpp>
+#include <graphics/render/buffering.hpp>
 #include <graphics/render/fence.hpp>
 
 namespace le::graphics {
@@ -36,7 +37,7 @@ class ARenderer {
 		vk::CommandBuffer buffer;
 	};
 
-	ARenderer(not_null<Swapchain*> swapchain, u8 buffering, vk::Extent2D extent, vk::Format depthFormat);
+	ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, vk::Extent2D extent, vk::Format depthFormat);
 	virtual ~ARenderer() = default;
 
 	static constexpr vk::Extent2D extent2D(vk::Extent3D extent) { return {extent.width, extent.height}; }
@@ -44,7 +45,7 @@ class ARenderer {
 
 	bool hasDepthImage() const noexcept { return m_depth.has_value(); }
 	std::size_t index() const noexcept { return m_fence.index(); }
-	std::size_t buffering() const noexcept { return m_fence.buffering(); }
+	Buffering buffering() const noexcept { return m_fence.buffering(); }
 
 	std::optional<RenderImage> depthImage(vk::Format depthFormat, vk::Extent2D extent);
 	RenderSemaphore makeSemaphore() const;

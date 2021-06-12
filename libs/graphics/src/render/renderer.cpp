@@ -3,7 +3,7 @@
 #include <graphics/render/swapchain.hpp>
 
 namespace le::graphics {
-ARenderer::ARenderer(not_null<Swapchain*> swapchain, u8 buffering, vk::Extent2D extent, vk::Format depthFormat)
+ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, vk::Extent2D extent, vk::Format depthFormat)
 	: m_swapchain(swapchain), m_device(swapchain->m_device), m_fence(m_device, buffering) {
 	depthImage(depthFormat, extent);
 }

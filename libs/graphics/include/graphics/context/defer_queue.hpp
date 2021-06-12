@@ -2,21 +2,22 @@
 #include <functional>
 #include <vector>
 #include <core/std_types.hpp>
+#include <graphics/render/buffering.hpp>
 #include <kt/async_queue/locker.hpp>
 
 namespace le::graphics {
 struct Deferred {
 	using Callback = std::function<void()>;
-	inline static constexpr u64 defaultDefer = 3;
+	inline static Buffering defaultDefer = 2_B;
 
 	Callback callback;
-	u64 defer = defaultDefer;
+	Buffering defer = defaultDefer;
 };
 
 class DeferQueue {
   public:
 	void defer(Deferred deferred);
-	void defer(Deferred::Callback const& callback, u64 defer = Deferred::defaultDefer);
+	void defer(Deferred::Callback const& callback, Buffering defer = Deferred::defaultDefer);
 	std::size_t decrement();
 	void flush();
 
@@ -30,7 +31,7 @@ inline void DeferQueue::defer(Deferred deferred) {
 	auto lock = m_deferred.lock();
 	lock.get().push_back(std::move(deferred));
 }
-inline void DeferQueue::defer(Deferred::Callback const& callback, u64 defer) {
+inline void DeferQueue::defer(Deferred::Callback const& callback, Buffering defer) {
 	auto lock = m_deferred.lock();
 	lock.get().push_back({callback, defer});
 }

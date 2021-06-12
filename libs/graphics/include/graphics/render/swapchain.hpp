@@ -1,9 +1,11 @@
 #pragma once
 #include <optional>
+#include <core/array_map.hpp>
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/qflags.hpp>
+#include <graphics/render/buffering.hpp>
 #include <graphics/render/types.hpp>
 #include <graphics/resources.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
@@ -12,6 +14,13 @@
 namespace le::graphics {
 class VRAM;
 class Device;
+
+constexpr ArrayMap<vk::PresentModeKHR, std::string_view, 4> presentModeNames = {{
+	{vk::PresentModeKHR::eFifo, "FIFO"},
+	{vk::PresentModeKHR::eFifoRelaxed, "FIFO Relaxed"},
+	{vk::PresentModeKHR::eImmediate, "Immediate"},
+	{vk::PresentModeKHR::eMailbox, "Mailbox"},
+}};
 
 class Swapchain {
   public:
@@ -39,7 +48,6 @@ class Swapchain {
 		u32 index = 0;
 	};
 
-	static constexpr std::string_view presentModeName(vk::PresentModeKHR mode) noexcept;
 	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept;
 	static constexpr bool valid(vk::Extent2D extent) noexcept { return valid(glm::ivec2{extent.width, extent.height}); }
 	static constexpr bool srgb(vk::Format format) noexcept;
@@ -57,6 +65,8 @@ class Swapchain {
 	bool suboptimal() const noexcept;
 	bool paused() const noexcept;
 
+	u8 imageCount() const noexcept { return (u8)m_storage.images.size(); }
+	Buffering buffering() const noexcept { return {imageCount()}; }
 	Display display() const noexcept { return m_storage.display; }
 	Flags flags() const noexcept { return m_storage.flags; }
 	vk::SurfaceFormatKHR const& colourFormat() const noexcept { return m_metadata.formats.colour; }
@@ -74,7 +84,6 @@ class Swapchain {
 		std::optional<u32> acquired;
 
 		Display display;
-		u8 imageCount = 0;
 		Flags flags;
 
 		Acquire current() const;
@@ -104,16 +113,6 @@ class Swapchain {
 };
 
 // impl
-
-constexpr std::string_view Swapchain::presentModeName(vk::PresentModeKHR mode) noexcept {
-	switch (mode) {
-	case vk::PresentModeKHR::eFifo: return "FIFO";
-	case vk::PresentModeKHR::eFifoRelaxed: return "FIFO Relaxed";
-	case vk::PresentModeKHR::eImmediate: return "Immediate";
-	case vk::PresentModeKHR::eMailbox: return "Mailbox";
-	default: return "Other";
-	}
-}
 
 constexpr bool Swapchain::valid(glm::ivec2 framebufferSize) noexcept { return framebufferSize.x > 0 && framebufferSize.y > 0; }
 

@@ -216,7 +216,7 @@ Bitmap::type utils::convert(Span<u8 const> bytes) {
 }
 
 utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
-	ENSURE(compressed.size() <= maths::max<int>(), "size too large!");
+	ENSURE(compressed.size() <= (std::size_t)maths::max<int>(), "size too large!");
 	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
 	int w, h, ch;
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);

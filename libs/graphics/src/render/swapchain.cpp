@@ -56,7 +56,7 @@ struct SwapchainCreateInfo {
 		presentModes.push_back(vk::PresentModeKHR::eFifo);
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
 		if (info.vsync || Swapchain::s_forceVsync) {
-			static auto const name = Swapchain::presentModeName(vk::PresentModeKHR::eImmediate);
+			static auto const name = presentModeNames[vk::PresentModeKHR::eImmediate];
 			if (presentMode == vk::PresentModeKHR::eImmediate) {
 				g_log.log(lvl::info, 0, "[{}] VSYNC ({} present mode) requested", g_name, name);
 			} else {
@@ -120,7 +120,7 @@ Swapchain::Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 fr
 	if (!construct(framebufferSize)) { throw std::runtime_error("Failed to construct Vulkan swapchain"); }
 	// makeRenderPass();
 	auto const extent = m_storage.display.extent;
-	auto const mode = presentModeName(m_metadata.presentMode);
+	auto const mode = presentModeNames[m_metadata.presentMode];
 	g_log.log(lvl::info, 1, "[{}] Vulkan swapchain constructed [{}x{}] [{}]", g_name, extent.width, extent.height, mode);
 }
 
@@ -177,7 +177,7 @@ bool Swapchain::reconstruct(glm::ivec2 framebufferSize, bool vsync) {
 	m_metadata.retired = retired.swapchain;
 	bool const bResult = construct(framebufferSize);
 	auto const extent = m_storage.display.extent;
-	auto const mode = presentModeName(m_metadata.presentMode);
+	auto const mode = presentModeNames[m_metadata.presentMode];
 	if (bResult) {
 		g_log.log(lvl::info, 1, "[{}] Vulkan swapchain reconstructed [{}x{}] [{}]", g_name, extent.width, extent.height, mode);
 	} else if (!m_storage.flags.test(Flag::ePaused)) {

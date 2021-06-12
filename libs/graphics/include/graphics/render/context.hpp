@@ -33,11 +33,12 @@ class RenderContext : NoCopy {
 
 	template <typename T = RendererFS, typename... Args>
 		requires(std::is_base_of_v<ARenderer, T>)
-	RenderContext(not_null<Swapchain*> swapchain, u32 buffering = 2, Args&&... args)
+	RenderContext(not_null<Swapchain*> swapchain, Buffering buffering = 2_B, Args&&... args)
 		: RenderContext(swapchain, std::make_unique<T>(swapchain, buffering, std::forward<Args>(args)...)) {}
 	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer> renderer);
 	RenderContext(RenderContext&&);
 	RenderContext& operator=(RenderContext&&);
+	virtual ~RenderContext();
 
 	bool waitForFrame();
 	std::optional<ARenderer::Draw> beginFrame(CommandBuffer::PassInfo const& info);
@@ -45,7 +46,7 @@ class RenderContext : NoCopy {
 
 	Status status() const noexcept;
 	std::size_t index() const noexcept;
-	std::size_t buffering() const noexcept;
+	Buffering buffering() const noexcept;
 	glm::ivec2 extent() const noexcept;
 	bool ready(glm::ivec2 framebufferSize);
 
@@ -62,9 +63,12 @@ class RenderContext : NoCopy {
 	vk::Rect2D scissor(glm::ivec2 extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
 
   private:
+	void destroy();
+
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
 		std::optional<RenderTarget> target;
+		vk::PipelineCache pipelineCache;
 		Status status = {};
 	};
 
@@ -133,7 +137,7 @@ inline ARenderer& RenderContext::renderer() const noexcept {
 	return *m_storage.renderer;
 }
 inline std::size_t RenderContext::index() const noexcept { return m_storage.renderer->index(); }
-inline std::size_t RenderContext::buffering() const noexcept { return m_storage.renderer->buffering(); }
+inline Buffering RenderContext::buffering() const noexcept { return m_storage.renderer->buffering(); }
 inline RenderContext::Status RenderContext::status() const noexcept { return m_storage.status; }
 inline glm::ivec2 RenderContext::extent() const noexcept {
 	vk::Extent2D const ext = m_swapchain->display().extent;

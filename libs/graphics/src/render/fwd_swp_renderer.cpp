@@ -2,7 +2,8 @@
 #include <graphics/render/fwd_swp_renderer.hpp>
 
 namespace le::graphics {
-RendererFS::RendererFS(not_null<Swapchain*> swapchain, u8 buffering) : ARenderer(swapchain, buffering, swapchain->display().extent, swapchain->depthFormat()) {
+RendererFS::RendererFS(not_null<Swapchain*> swapchain, Buffering buffering)
+	: ARenderer(swapchain, buffering, swapchain->display().extent, swapchain->depthFormat()) {
 	ENSURE(hasDepthImage(), "RendererFS requires depth image");
 	m_attachments.colour.format = m_swapchain->colourFormat().format;
 	m_attachments.depth.format = m_swapchain->depthFormat();
@@ -48,7 +49,7 @@ bool RendererFS::endFrame() {
 
 RendererFS::Storage RendererFS::make() const {
 	Storage ret;
-	for (u8 i = 0; i < m_fence.buffering(); ++i) { ret.buf.push({makeCommand(), makeSemaphore(), {}}); }
+	for (u8 i = 0; i < m_fence.buffering().value; ++i) { ret.buf.push({makeCommand(), makeSemaphore(), {}}); }
 	ret.renderPass = makeRenderPass(m_attachments.colour, m_attachments.depth, {});
 	return ret;
 }

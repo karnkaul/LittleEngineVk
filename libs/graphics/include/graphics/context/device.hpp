@@ -53,7 +53,7 @@ class Device final {
 	T construct(Args&&... args);
 	template <typename T, typename... Ts>
 	void destroy(T& out_t, Ts&... out_ts);
-	void defer(Deferred::Callback callback, u64 defer = Deferred::defaultDefer);
+	void defer(Deferred::Callback callback, Buffering defer = Deferred::defaultDefer);
 
 	void decrementDeferred();
 

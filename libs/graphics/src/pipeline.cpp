@@ -100,20 +100,20 @@ ShaderInput& Pipeline::shaderInput() { return m_storage.input; }
 
 ShaderInput const& Pipeline::shaderInput() const { return m_storage.input; }
 
-SetPool Pipeline::makeSetPool(u32 set, std::size_t rotateCount) const {
+SetPool Pipeline::makeSetPool(u32 set, Buffering buffering) const {
 	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
 	auto& f = m_storage.fixed;
-	if (rotateCount == 0) { rotateCount = m_metadata.main.rotateCount; }
-	DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
+	if (buffering == 0_B) { buffering = m_metadata.main.buffering; }
+	DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], buffering, set};
 	return SetPool(m_device, info);
 }
 
-std::unordered_map<u32, SetPool> Pipeline::makeSetPools(std::size_t rotateCount) const {
+std::unordered_map<u32, SetPool> Pipeline::makeSetPools(Buffering buffering) const {
 	std::unordered_map<u32, SetPool> ret;
 	auto const& f = m_storage.fixed;
-	if (rotateCount == 0) { rotateCount = m_metadata.main.rotateCount; }
+	if (buffering == 0_B) { buffering = m_metadata.main.buffering; }
 	for (u32 set = 0; set < (u32)m_storage.fixed.setLayouts.size(); ++set) {
-		DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], rotateCount, set};
+		DescriptorSet::CreateInfo const info{m_metadata.name, f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], buffering, set};
 		ret.emplace(set, SetPool(m_device, info));
 	}
 	return ret;
@@ -133,7 +133,7 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	ENSURE(valid(shader.m_modules), "Invalid shader m_modules");
 	if (!valid(shader.m_modules) || Device::default_v(c.renderPass)) { return false; }
 	m_metadata.name = shader.m_name;
-	if (Device::default_v(m_storage.dynamic.cache)) { m_storage.dynamic.cache = m_device->makePipelineCache(); }
+	m_storage.cache = out_info.cache;
 	if (bFixed) {
 		auto& f = m_storage.fixed;
 		f = {};
@@ -148,7 +148,7 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 			f.bindingInfos.push_back(std::move(binds));
 		}
 		f.layout = m_device->makePipelineLayout(setBindings.push, f.setLayouts);
-		m_storage.input = ShaderInput(*this, m_metadata.main.rotateCount);
+		m_storage.input = ShaderInput(*this, m_metadata.main.buffering);
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
 	{
@@ -226,7 +226,7 @@ bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipelin
 	createInfo.layout = m_storage.fixed.layout;
 	createInfo.renderPass = c.renderPass;
 	createInfo.subpass = c.subpass;
-	auto result = m_device->device().createGraphicsPipeline(m_storage.dynamic.cache, createInfo);
+	auto result = m_device->device().createGraphicsPipeline(m_storage.cache, createInfo);
 	out_pipe = result;
 	return true;
 }
@@ -235,9 +235,8 @@ void Pipeline::destroy() {
 	Device& d = *m_device;
 	destroy(m_storage.dynamic.main);
 	for (auto const& [_, pipe] : m_storage.dynamic.variants) { destroy(pipe); }
-	d.defer([&d, f = m_storage.fixed, c = m_storage.dynamic.cache]() mutable {
+	d.defer([&d, f = m_storage.fixed]() mutable {
 		d.destroy(f.layout);
-		d.destroy(c);
 		for (auto dsl : f.setLayouts) { d.destroy(dsl); }
 	});
 	m_storage = {};

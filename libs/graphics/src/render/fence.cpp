@@ -18,9 +18,8 @@ RenderFence::State RenderFence::Fence::state(vk::Device device) const {
 	return ret;
 }
 
-RenderFence::RenderFence(not_null<Device*> device, u8 buffering) : m_device(device) {
-	if (buffering < 2) { buffering = 2; }
-	for (u8 i = 0; i < buffering; ++i) { m_storage.fences.push_back({m_device->makeFence(true), State::eReady}); }
+RenderFence::RenderFence(not_null<Device*> device, Buffering buffering) : m_device(device) {
+	for (u8 i = 0; i < buffering.value; ++i) { m_storage.fences.push_back({m_device->makeFence(true), State::eReady}); }
 }
 
 RenderFence& RenderFence::operator=(RenderFence&& rhs) {

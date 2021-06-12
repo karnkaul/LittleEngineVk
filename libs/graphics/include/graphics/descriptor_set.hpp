@@ -3,6 +3,7 @@
 #include <core/not_null.hpp>
 #include <core/ref.hpp>
 #include <core/span.hpp>
+#include <graphics/render/buffering.hpp>
 #include <graphics/resources.hpp>
 #include <graphics/texture.hpp>
 #include <graphics/utils/ring_buffer.hpp>
@@ -88,7 +89,7 @@ class DescriptorSet {
 		vk::DescriptorSetLayout layout;
 		RingBuffer<Set> setBuffer;
 		std::unordered_map<u32, BindingInfo> bindingInfos;
-		u32 rotateCount = 1;
+		Buffering buffering = 1_B;
 		u32 setNumber = 0;
 	} m_storage;
 
@@ -99,7 +100,7 @@ struct DescriptorSet::CreateInfo {
 	std::string_view name;
 	vk::DescriptorSetLayout layout;
 	Span<BindingInfo const> bindingInfos;
-	std::size_t rotateCount = 2;
+	Buffering buffering = 2_B;
 	u32 setNumber = 0;
 };
 
@@ -125,7 +126,7 @@ class SetPool {
 		vk::DescriptorSetLayout layout;
 		std::vector<BindingInfo> bindInfos;
 		std::vector<DescriptorSet> descriptorSets;
-		std::size_t rotateCount = 0;
+		Buffering buffering;
 		u32 setNumber = 0;
 	} m_storage;
 	not_null<Device*> m_device;
@@ -135,7 +136,7 @@ class SetPool {
 class ShaderInput {
   public:
 	ShaderInput() = default;
-	ShaderInput(Pipeline const& pipe, std::size_t rotateCount);
+	ShaderInput(Pipeline const& pipe, Buffering buffering);
 
 	SetPool& set(u32 set);
 	SetPool const& set(u32 set) const;

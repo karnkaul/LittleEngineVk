@@ -21,7 +21,7 @@ struct ArrayMap {
 
 	template <typename Out, typename In>
 		requires(combination_types_v<In, Out>)
-	Out const& get(In const& in, Out const& fallback) const noexcept {
+	constexpr Out const& get(In const& in, Out const& fallback) const noexcept {
 		for (auto const& [a, b] : pairs) {
 			if constexpr (std::is_same_v<In, A>) {
 				if (a == in) { return b; }

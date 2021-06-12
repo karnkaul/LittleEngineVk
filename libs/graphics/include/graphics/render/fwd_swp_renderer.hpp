@@ -6,7 +6,7 @@ namespace le::graphics {
 // Forward, Swapchain
 class RendererFS : public ARenderer {
   public:
-	RendererFS(not_null<Swapchain*> swapchain, u8 buffering = 2);
+	RendererFS(not_null<Swapchain*> swapchain, Buffering buffering = 2_B);
 	~RendererFS() override;
 
 	Technique technique() const noexcept override { return {.approach = Approach::eForward, .target = Target::eSwapchain}; }

@@ -3,6 +3,7 @@
 #include <core/hash.hpp>
 #include <core/utils/std_hash.hpp>
 #include <graphics/descriptor_set.hpp>
+#include <graphics/render/buffering.hpp>
 #include <kt/result/result.hpp>
 
 namespace le::graphics {
@@ -35,9 +36,10 @@ class Pipeline final {
 
 		Fixed fixedState;
 		vk::RenderPass renderPass;
+		vk::PipelineCache cache;
 		vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics;
+		Buffering buffering = 2_B;
 		u32 subpass = 0;
-		u32 rotateCount = 2;
 	};
 	struct SetIndex {
 		u32 set = 0;
@@ -59,8 +61,8 @@ class Pipeline final {
 	ShaderInput& shaderInput();
 	ShaderInput const& shaderInput() const;
 
-	SetPool makeSetPool(u32 set, std::size_t rotateCount = 0) const;
-	std::unordered_map<u32, SetPool> makeSetPools(std::size_t rotateCount = 0) const;
+	SetPool makeSetPool(u32 set, Buffering buffering) const;
+	std::unordered_map<u32, SetPool> makeSetPools(Buffering buffering) const;
 
 	void bindSet(CommandBuffer const& cb, u32 set, std::size_t idx) const;
 	void bindSet(CommandBuffer const& cb, std::initializer_list<u32> sets, std::size_t idx) const;
@@ -76,7 +78,6 @@ class Pipeline final {
 		ShaderInput input;
 		struct {
 			vk::Pipeline main;
-			vk::PipelineCache cache;
 			std::unordered_map<Hash, vk::Pipeline> variants;
 		} dynamic;
 		struct {
@@ -84,6 +85,7 @@ class Pipeline final {
 			std::vector<vk::DescriptorSetLayout> setLayouts;
 			std::vector<kt::fixed_vector<BindingInfo, 16>> bindingInfos;
 		} fixed;
+		vk::PipelineCache cache;
 		Hash id;
 	};
 	struct Metadata {

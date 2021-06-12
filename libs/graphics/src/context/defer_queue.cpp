@@ -9,8 +9,8 @@ namespace {
 std::vector<Ref<Deferred::Callback>> decrementImpl(std::vector<Deferred>& out_v) {
 	std::vector<Ref<Deferred::Callback>> ret;
 	for (auto& deferred : out_v) {
-		if (deferred.defer > 0) { --deferred.defer; }
-		if (deferred.defer == 0) { ret.emplace_back(deferred.callback); }
+		if (deferred.defer > 0_B) { --deferred.defer.value; }
+		if (deferred.defer == 0_B) { ret.emplace_back(deferred.callback); }
 	}
 	return ret;
 }
@@ -22,7 +22,7 @@ void invokeImpl(Span<Ref<Deferred::Callback> const> callbacks) {
 }
 
 void clearImpl(std::vector<Deferred>& out_v) {
-	utils::erase_if(out_v, [](Deferred const& d) -> bool { return d.defer == 0; });
+	utils::erase_if(out_v, [](Deferred const& d) -> bool { return d.defer == 0_B; });
 }
 } // namespace
 

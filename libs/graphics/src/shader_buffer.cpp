@@ -5,7 +5,7 @@ namespace le::graphics {
 ShaderBuffer::ShaderBuffer(VRAM& vram, CreateInfo const& info) : m_vram(&vram) {
 	m_storage.type = info.type;
 	m_storage.usage = usage(info.type);
-	m_storage.rotateCount = info.rotateCount;
+	m_storage.buffering = info.buffering;
 }
 
 ShaderBuffer& ShaderBuffer::write(void const* data, std::size_t size, std::size_t offset) {
@@ -40,7 +40,7 @@ void ShaderBuffer::resize(std::size_t size, std::size_t count) {
 		m_storage.buffers.reserve(count);
 		for (std::size_t i = m_storage.buffers.size(); i < count; ++i) {
 			RingBuffer<Buffer> buffer;
-			for (u32 j = 0; j < m_storage.rotateCount; ++j) { buffer.ts.push_back(m_vram->makeBuffer(m_storage.elemSize, m_storage.usage, true)); }
+			for (Buffering j{}; j < m_storage.buffering; ++j.value) { buffer.ts.push_back(m_vram->makeBuffer(m_storage.elemSize, m_storage.usage, true)); }
 			m_storage.buffers.push_back(std::move(buffer));
 		}
 	}

@@ -9,11 +9,12 @@
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/pipeline.hpp>
-#include <graphics/render/fwd_swp_renderer.hpp>
+#include <graphics/render/renderer.hpp>
+#include <graphics/render/rgba.hpp>
 #include <graphics/screen_rect.hpp>
+#include <graphics/utils/fwd_enum_state.hpp>
 
 namespace le::graphics {
-
 struct QuickVertexInput;
 struct VertexInputCreateInfo;
 
@@ -22,7 +23,7 @@ using PFlags = kt::enum_flags<PFlag>;
 
 class RenderContext : NoCopy {
   public:
-	enum class Status { eIdle, eWaiting, eReady, eDrawing };
+	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing, eCOUNT_ };
 
 	using Frame = ARenderer::Draw;
 
@@ -31,23 +32,19 @@ class RenderContext : NoCopy {
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
 
-	template <typename T = RendererFS, typename... Args>
-		requires(std::is_base_of_v<ARenderer, T>)
-	RenderContext(not_null<Swapchain*> swapchain, Buffering buffering = 2_B, Args&&... args)
-		: RenderContext(swapchain, std::make_unique<T>(swapchain, buffering, std::forward<Args>(args)...)) {}
-	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer> renderer);
-	RenderContext(RenderContext&&);
-	RenderContext& operator=(RenderContext&&);
-	virtual ~RenderContext();
+	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer);
 
 	bool waitForFrame();
-	std::optional<ARenderer::Draw> beginFrame(CommandBuffer::PassInfo const& info);
+	std::optional<ARenderer::Draw> beginFrame();
+	bool beginDraw(graphics::FrameDrawer& out_drawer, RGBA clear, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	bool endDraw();
 	bool endFrame();
+	bool submitFrame();
 
 	Status status() const noexcept;
 	std::size_t index() const noexcept;
 	Buffering buffering() const noexcept;
-	glm::ivec2 extent() const noexcept;
+	Extent2D extent() const noexcept;
 	bool ready(glm::ivec2 framebufferSize);
 
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo);
@@ -59,16 +56,22 @@ class RenderContext : NoCopy {
 	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
 	glm::mat4 preRotate() const noexcept;
-	vk::Viewport viewport(glm::ivec2 extent = {0, 0}, glm::vec2 depth = {0.0f, 1.0f}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
-	vk::Rect2D scissor(glm::ivec2 extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
+	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
+	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
+
+	struct {
+		ScreenRect rect;
+		glm::vec2 offset{};
+	} m_viewport;
 
   private:
-	void destroy();
+	inline static FwdEnumState<Status>::States s_states;
 
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
 		std::optional<RenderTarget> target;
-		vk::PipelineCache pipelineCache;
+		Deferred<vk::PipelineCache> pipelineCache;
+		FwdEnumState<Status> state;
 		Status status = {};
 	};
 
@@ -139,10 +142,7 @@ inline ARenderer& RenderContext::renderer() const noexcept {
 inline std::size_t RenderContext::index() const noexcept { return m_storage.renderer->index(); }
 inline Buffering RenderContext::buffering() const noexcept { return m_storage.renderer->buffering(); }
 inline RenderContext::Status RenderContext::status() const noexcept { return m_storage.status; }
-inline glm::ivec2 RenderContext::extent() const noexcept {
-	vk::Extent2D const ext = m_swapchain->display().extent;
-	return glm::ivec2(ext.width, ext.height);
-}
+inline Extent2D RenderContext::extent() const noexcept { return m_swapchain->display().extent; }
 inline ColourCorrection RenderContext::colourCorrection() const noexcept {
 	return Swapchain::srgb(swapchainFormat().format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
 }

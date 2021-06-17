@@ -6,7 +6,7 @@
 #include <glm/vec2.hpp>
 #include <graphics/qflags.hpp>
 #include <graphics/render/buffering.hpp>
-#include <graphics/render/types.hpp>
+#include <graphics/render/target.hpp>
 #include <graphics/resources.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <kt/result/result.hpp>
@@ -35,7 +35,7 @@ class Swapchain {
 		virtual vk::SurfaceFormatKHR pick(Span<vk::SurfaceFormatKHR const> options) const noexcept;
 	};
 	struct Display {
-		vk::Extent2D extent = {};
+		Extent2D extent = {};
 		vk::SurfaceTransformFlagBitsKHR transform = {};
 	};
 	struct CreateInfo {
@@ -71,6 +71,7 @@ class Swapchain {
 	Flags flags() const noexcept { return m_storage.flags; }
 	vk::SurfaceFormatKHR const& colourFormat() const noexcept { return m_metadata.formats.colour; }
 	vk::Format depthFormat() const noexcept { return m_metadata.formats.depth; }
+	Span<RenderImage const> images() const noexcept { return m_storage.images; }
 
 	inline static bool s_forceVsync = false;
 

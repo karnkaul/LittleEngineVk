@@ -10,7 +10,7 @@ void busy(RenderFence::Fence& fence) noexcept { fence.previous = RenderFence::St
 
 RenderFence::State RenderFence::Fence::state(vk::Device device) const {
 	State ret = previous;
-	switch (device.getFenceStatus(*this)) {
+	switch (device.getFenceStatus(*fence)) {
 	case vk::Result::eSuccess: ret = State::eReady; break;
 	case vk::Result::eNotReady: break;
 	default: break;
@@ -19,53 +19,38 @@ RenderFence::State RenderFence::Fence::state(vk::Device device) const {
 }
 
 RenderFence::RenderFence(not_null<Device*> device, Buffering buffering) : m_device(device) {
-	for (u8 i = 0; i < buffering.value; ++i) { m_storage.fences.push_back({m_device->makeFence(true), State::eReady}); }
+	for (u8 i = 0; i < buffering.value; ++i) { m_storage.fences.push_back({makeDeferred<vk::Fence>(m_device, true), State::eReady}); }
 }
-
-RenderFence& RenderFence::operator=(RenderFence&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_storage = std::move(rhs.m_storage);
-		m_device = rhs.m_device;
-	}
-	return *this;
-}
-
-RenderFence::~RenderFence() { destroy(); }
 
 void RenderFence::wait() {
 	auto& ret = current();
-	m_device->waitFor(ret);
+	m_device->waitFor(*ret.fence);
 	ready(ret);
 }
 
 void RenderFence::refresh() {
-	for (auto& fence : m_storage.fences) {
-		m_device->destroy(fence);
-		fence = {m_device->makeFence(true), State::eReady};
-	}
+	for (auto& fence : m_storage.fences) { fence = {makeDeferred<vk::Fence>(m_device, true), State::eReady}; }
 }
 
-RenderFence::Fence RenderFence::associate(u32 imageIndex) {
+void RenderFence::associate(u32 imageIndex) {
 	ENSURE(imageIndex < arraySize(m_storage.ptrs), "Invalid imageIndex");
 	auto& curr = current();
 	auto ret = std::exchange(m_storage.ptrs[(std::size_t)imageIndex], &curr);
-	if (ret) { m_device->waitFor(*ret); }
+	if (ret) { m_device->waitFor(*ret->fence); }
 	busy(curr);
-	return ret ? *ret : Fence();
 }
 
-kt::result<Swapchain::Acquire> RenderFence::acquire(Swapchain& swapchain, RenderSemaphore rs) {
+kt::result<Swapchain::Acquire> RenderFence::acquire(Swapchain& swapchain, vk::Semaphore wait) {
 	if (swapchain.flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return kt::null_result; }
-	auto ret = swapchain.acquireNextImage(rs.draw, drawFence()); // waited for by drawing (external) and associate
+	auto ret = swapchain.acquireNextImage(wait, drawFence()); // waited for by drawing (external) and associate
 	if (ret) { associate(ret->index); }
 	return ret;
 }
 
-bool RenderFence::present(Swapchain& swapchain, vk::SubmitInfo const& info, RenderSemaphore rs) {
-	ENSURE(info.signalSemaphoreCount == 0 || *info.pSignalSemaphores == rs.present, "Semaphore mismatch");
+bool RenderFence::present(Swapchain& swapchain, vk::SubmitInfo const& info, vk::Semaphore wait) {
+	ENSURE(info.signalSemaphoreCount == 0 || *info.pSignalSemaphores == wait, "Semaphore mismatch");
 	m_device->queues().submit(QType::eGraphics, info, submitFence(), false);
-	if (!swapchain.present(rs.present)) { return false; } // signalled by drawing submit
+	if (!swapchain.present(wait)) { return false; } // signalled by drawing submit
 	next();
 	return true;
 }
@@ -75,25 +60,19 @@ void RenderFence::next() noexcept {
 	m_storage.index = (m_storage.index + 1) % m_storage.fences.size();
 }
 
-RenderFence::Fence RenderFence::drawFence() {
+vk::Fence RenderFence::drawFence() {
 	auto& ret = current();
 	ENSURE(ret.state(m_device->device()) == State::eReady, "Invalid fence state");
-	m_device->resetFence(ret);
+	m_device->resetFence(*ret.fence);
 	ready(ret);
-	return ret;
+	return *ret.fence;
 }
 
-RenderFence::Fence RenderFence::submitFence() {
+vk::Fence RenderFence::submitFence() {
 	auto& ret = current();
-	m_device->waitFor(ret);
-	m_device->resetFence(ret);
+	m_device->waitFor(*ret.fence);
+	m_device->resetFence(*ret.fence);
 	ready(ret);
-	return ret;
-}
-
-void RenderFence::destroy() {
-	m_device->defer([f = m_storage.fences, d = m_device]() {
-		for (auto fence : f) { d->destroy(fence); }
-	});
+	return *ret.fence;
 }
 } // namespace le::graphics

@@ -47,9 +47,6 @@ class Pipeline final {
 	};
 
 	Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo createInfo, Hash id);
-	Pipeline(Pipeline&&);
-	Pipeline& operator=(Pipeline&&);
-	~Pipeline();
 
 	kt::result<vk::Pipeline, void> constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed);
 	kt::result<vk::Pipeline, void> variant(Hash id) const;
@@ -64,25 +61,23 @@ class Pipeline final {
 	SetPool makeSetPool(u32 set, Buffering buffering) const;
 	std::unordered_map<u32, SetPool> makeSetPools(Buffering buffering) const;
 
-	void bindSet(CommandBuffer const& cb, u32 set, std::size_t idx) const;
-	void bindSet(CommandBuffer const& cb, std::initializer_list<u32> sets, std::size_t idx) const;
+	void bindSet(CommandBuffer cb, u32 set, std::size_t idx) const;
+	void bindSet(CommandBuffer cb, std::initializer_list<u32> sets, std::size_t idx) const;
 
 	Hash id() const noexcept;
 
   private:
 	bool construct(Shader const& shader, CreateInfo& out_info, vk::Pipeline& out_pipe, bool bFixed);
-	void destroy();
-	void destroy(vk::Pipeline pipeline);
 
 	struct Storage {
 		ShaderInput input;
 		struct {
-			vk::Pipeline main;
-			std::unordered_map<Hash, vk::Pipeline> variants;
+			Deferred<vk::Pipeline> main;
+			std::unordered_map<Hash, Deferred<vk::Pipeline>> variants;
 		} dynamic;
 		struct {
-			vk::PipelineLayout layout;
-			std::vector<vk::DescriptorSetLayout> setLayouts;
+			Deferred<vk::PipelineLayout> layout;
+			std::vector<Deferred<vk::DescriptorSetLayout>> setLayouts;
 			std::vector<kt::fixed_vector<BindingInfo, 16>> bindingInfos;
 		} fixed;
 		vk::PipelineCache cache;

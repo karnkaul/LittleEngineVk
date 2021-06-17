@@ -152,6 +152,11 @@ bool Device::signalled(Span<vk::Fence const> fences) const {
 	return std::all_of(fences.begin(), fences.end(), s);
 }
 
+vk::CommandPool Device::makeCommandPool(vk::CommandPoolCreateFlags flags, QType qtype) const {
+	vk::CommandPoolCreateInfo info(flags, m_queues.familyIndex(qtype));
+	return m_device.createCommandPool(info);
+}
+
 vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
@@ -222,6 +227,8 @@ vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::Image
 	createInfo.layers = layers;
 	return m_device.createFramebuffer(createInfo);
 }
+
+vk::Sampler Device::makeSampler(vk::SamplerCreateInfo info) const { return m_device.createSampler(info); }
 
 bool Device::setDebugUtilsName([[maybe_unused]] vk::DebugUtilsObjectNameInfoEXT const& info) const {
 #if !defined(__ANDROID__)

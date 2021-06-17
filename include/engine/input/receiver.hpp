@@ -11,7 +11,7 @@ class Receiver;
 using Receivers = kt::monotonic_map<Receiver*, std::map<u64, Receiver*>>;
 using Handle = Receivers::handle;
 
-class Receiver : public IBase {
+class Receiver : public VBase {
   public:
 	virtual bool block(State const& state) = 0;
 

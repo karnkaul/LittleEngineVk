@@ -32,7 +32,7 @@ Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size
 	return ret;
 }
 
-bool Mesh::draw(CommandBuffer const& cb, u32 instances, u32 first) const {
+bool Mesh::draw(CommandBuffer cb, u32 instances, u32 first) const {
 	if (valid()) {
 		Buffer const* ibo = m_ibo.buffer.has_value() ? &*m_ibo.buffer : nullptr;
 		cb.bindVBO(*m_vbo.buffer, ibo);

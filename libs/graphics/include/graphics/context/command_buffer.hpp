@@ -4,9 +4,11 @@
 #include <core/ensure.hpp>
 #include <core/hash.hpp>
 #include <core/not_null.hpp>
+#include <glm/vec2.hpp>
+#include <graphics/common.hpp>
+#include <graphics/qflags.hpp>
 #include <kt/enum_flags/enum_flags.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
-#include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
 class Device;
@@ -17,30 +19,27 @@ class Image;
 
 class CommandBuffer {
   public:
-	template <typename T>
-	using vAP = vk::ArrayProxy<T const> const&;
 	using vBP = vk::PipelineBindPoint;
-	template <typename T>
-	using Duet = std::pair<T, T>;
-	using Layouts = Duet<vk::ImageLayout>;
-	using Access = Duet<vk::AccessFlags>;
-	using Stages = Duet<vk::PipelineStageFlags>;
+	using Layouts = TPair<vk::ImageLayout>;
+	using Access = TPair<vk::AccessFlags>;
+	using Stages = TPair<vk::PipelineStageFlags>;
 
 	struct PassInfo {
 		kt::fixed_vector<vk::ClearValue, 2> clearValues;
+		vk::CommandBufferUsageFlags usage;
 		vk::SubpassContents subpassContents = vk::SubpassContents::eInline;
-		vk::CommandBufferUsageFlags usage = {};
 	};
 
 	inline static auto s_drawCalls = std::atomic<u32>(0);
 
-	static std::vector<CommandBuffer> make(not_null<Device*> device, vk::CommandPool pool, u32 count, bool bSecondary);
+	static std::vector<CommandBuffer> make(not_null<Device*> device, vk::CommandPool pool, u32 count);
+	static CommandBuffer make(not_null<Device*> device, vk::CommandPoolCreateFlags flags, QType queue = QType::eGraphics);
 
 	CommandBuffer() = default;
 	CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool);
 
-	bool begin(vk::CommandBufferUsageFlags usage);
-	bool begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, PassInfo const& info);
+	void begin(vk::CommandBufferUsageFlags usage);
+	void beginRenderPass(vk::RenderPass renderPass, vk::Framebuffer framebuffer, Extent2D extent, PassInfo const& info);
 	void setViewport(vk::Viewport viewport) const;
 	void setScissor(vk::Rect2D scissor) const;
 	void setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const;
@@ -63,9 +62,9 @@ class CommandBuffer {
 	void endRenderPass();
 	void end();
 
-	bool valid() const noexcept;
-	bool recording() const noexcept;
-	bool rendering() const noexcept;
+	bool valid() const noexcept { return m_cb != vk::CommandBuffer(); }
+	bool recording() const noexcept { return valid() && m_flags.test(Flag::eRecording); }
+	bool rendering() const noexcept { return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering); }
 
 	vk::CommandBuffer m_cb;
 	vk::CommandPool m_pool;
@@ -83,8 +82,4 @@ void CommandBuffer::push(vk::PipelineLayout layout, vk::ShaderStageFlags stages,
 	ENSURE(rendering(), "Command buffer not recording!");
 	m_cb.pushConstants<T>(layout, stages, offset, pushConstants);
 }
-inline bool CommandBuffer::valid() const noexcept { return m_cb != vk::CommandBuffer(); }
-inline bool CommandBuffer::recording() const noexcept { return valid() && m_flags.test(Flag::eRecording); }
-
-inline bool CommandBuffer::rendering() const noexcept { return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering); }
 } // namespace le::graphics

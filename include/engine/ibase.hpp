@@ -1,12 +1,12 @@
 #pragma once
 
 namespace le {
-struct IBase {
-	IBase() = default;
-	IBase(IBase&&) = default;
-	IBase(IBase const&) = default;
-	IBase& operator=(IBase&&) = default;
-	IBase& operator=(IBase const&) = default;
-	virtual ~IBase() = default;
+struct VBase {
+	VBase() = default;
+	VBase(VBase&&) = default;
+	VBase(VBase const&) = default;
+	VBase& operator=(VBase&&) = default;
+	VBase& operator=(VBase const&) = default;
+	virtual ~VBase() = default;
 };
 } // namespace le

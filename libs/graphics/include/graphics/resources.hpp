@@ -4,14 +4,11 @@
 #include <core/log.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
+#include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
-#include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
 class Device;
-
-template <typename T, typename U = T>
-using TPair = std::pair<T, U>;
 
 using StagePair = TPair<vk::PipelineStageFlags>;
 using AccessPair = TPair<vk::AccessFlags>;

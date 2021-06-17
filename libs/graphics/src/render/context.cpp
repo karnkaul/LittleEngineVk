@@ -8,7 +8,6 @@
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
 namespace {
@@ -61,72 +60,101 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer> renderer) : m_swapchain(swapchain), m_device(swapchain->m_device) {
+RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer) : m_swapchain(swapchain), m_device(swapchain->m_device) {
 	m_storage.renderer = std::move(renderer);
 	m_storage.status = Status::eWaiting;
 	validateBuffering(m_swapchain->buffering(), m_storage.renderer->buffering());
 	DeferQueue::defaultDefer = m_storage.renderer->buffering();
-	m_storage.pipelineCache = m_device->makePipelineCache();
-}
-
-RenderContext::RenderContext(RenderContext&& rhs) : m_storage(std::move(rhs.m_storage)), m_swapchain(rhs.m_swapchain), m_device(rhs.m_device) {
-	rhs.m_storage.status = Status::eIdle;
-	rhs.m_storage.pipelineCache = vk::PipelineCache();
-}
-
-RenderContext& RenderContext::operator=(RenderContext&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_storage = std::move(rhs.m_storage);
-		m_swapchain = rhs.m_swapchain;
-		m_device = rhs.m_device;
-		rhs.m_storage.status = Status::eIdle;
-		rhs.m_storage.pipelineCache = vk::PipelineCache();
+	m_storage.pipelineCache = makeDeferred<vk::PipelineCache>(m_device);
+	if (s_states.empty()) {
+		auto add = [&](Status value, auto... to) {
+			FwdEnumState<Status>::State st;
+			st.value = value;
+			(st.to.push_back(to), ...);
+			s_states.push_back(st);
+		};
+		add(Status::eWaiting, Status::eReady);
+		add(Status::eBegun, Status::eDrawing, Status::eEnded);
+		add(Status::eReady, Status::eBegun, Status::eReady);
+		add(Status::eDrawing, Status::eEnded);
+		add(Status::eEnded, Status::eWaiting);
 	}
-	return *this;
-}
-
-RenderContext::~RenderContext() { destroy(); }
-
-void RenderContext::destroy() {
-	m_device->defer([d = m_device.get(), c = m_storage.pipelineCache]() mutable { d->destroy(c); });
-	m_storage.pipelineCache = vk::PipelineCache();
+	m_storage.state = {&s_states};
+	m_storage.state.set(Status::eWaiting);
 }
 
 bool RenderContext::waitForFrame() {
 	if (m_storage.status != Status::eReady) {
-		if (m_storage.status != Status::eWaiting) {
+		if (m_storage.status != Status::eWaiting && m_storage.status != Status::eBegun) {
 			g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 			return false;
 		}
+		ENSURE(m_storage.state.transition(Status::eReady, true), "fux");
 		m_storage.renderer->waitForFrame();
 		m_storage.status = Status::eReady;
 	}
 	return true;
 }
 
-std::optional<ARenderer::Draw> RenderContext::beginFrame(CommandBuffer::PassInfo const& info) {
+std::optional<ARenderer::Draw> RenderContext::beginFrame() {
 	if (m_storage.status != Status::eReady) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
 	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
-	if (auto ret = m_storage.renderer->beginFrame(info)) {
-		m_storage.status = Status::eDrawing;
+	if (auto ret = m_storage.renderer->beginFrame()) {
+		ENSURE(m_storage.state.transition(Status::eBegun, true), "fux");
+		m_storage.status = Status::eBegun;
+		m_storage.target = ret->target;
 		return ret;
 	}
 	return std::nullopt;
 }
 
-bool RenderContext::endFrame() {
-	if (m_storage.status != Status::eDrawing) {
+bool RenderContext::beginDraw(graphics::FrameDrawer& out_drawer, RGBA clear, vk::ClearDepthStencilValue depth) {
+	if (m_storage.status != Status::eBegun) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
-	if (m_storage.renderer->endFrame()) {
-		m_storage.status = Status::eWaiting;
+	if (m_storage.target) {
+		ENSURE(m_storage.state.transition(Status::eDrawing, true), "fux");
+		m_storage.status = Status::eDrawing;
+		m_storage.renderer->m_viewport = {m_viewport.rect, m_viewport.offset};
+		m_storage.renderer->beginDraw(*m_storage.target, out_drawer, clear, depth);
 		return true;
 	}
+	return false;
+}
+
+bool RenderContext::endDraw() {
+	if (!m_storage.target || m_storage.status != Status::eDrawing) {
+		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		return false;
+	}
+	m_storage.renderer->endDraw(*m_storage.target);
+	return true;
+}
+
+bool RenderContext::endFrame() {
+	if (m_storage.status != Status::eDrawing && m_storage.status != Status::eBegun) {
+		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		return false;
+	}
+	ENSURE(m_storage.state.transition(Status::eEnded, true), "fux");
+	m_storage.status = Status::eEnded;
+	m_storage.target.reset();
+	m_storage.renderer->endFrame();
+	return true;
+}
+
+bool RenderContext::submitFrame() {
+	if (m_storage.status != Status::eEnded) {
+		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		return false;
+	}
+	ENSURE(m_storage.state.transition(Status::eWaiting, true), "fux");
+	m_storage.status = Status::eWaiting;
+	if (m_storage.renderer->submitFrame()) { return true; }
 	return false;
 }
 
@@ -142,9 +170,9 @@ bool RenderContext::ready(glm::ivec2 framebufferSize) {
 }
 
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo) {
-	if (createInfo.renderPass == vk::RenderPass()) { createInfo.renderPass = m_storage.renderer->renderPasses().front(); }
+	if (createInfo.renderPass == vk::RenderPass()) { createInfo.renderPass = m_storage.renderer->renderPass3D(); }
 	createInfo.buffering = m_storage.renderer->buffering();
-	createInfo.cache = m_storage.pipelineCache;
+	createInfo.cache = *m_storage.pipelineCache;
 	return Pipeline(m_swapchain->m_vram, shader, std::move(createInfo), id);
 }
 
@@ -164,22 +192,11 @@ glm::mat4 RenderContext::preRotate() const noexcept {
 	return glm::rotate(ret, rad, front);
 }
 
-vk::Viewport RenderContext::viewport(glm::ivec2 extent, glm::vec2 depth, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
-	if (!Swapchain::valid(extent)) { extent = this->extent(); }
-	DrawViewport view;
-	glm::vec2 const e = {(f32)extent.x, (f32)extent.y};
-	view.lt = nRect.lt * e + offset;
-	view.rb = nRect.rb * e + offset;
-	view.depth = depth;
-	return utils::viewport(view);
+vk::Viewport RenderContext::viewport(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset, glm::vec2 depth) const noexcept {
+	return m_storage.renderer->viewport(Swapchain::valid(extent) ? extent : this->extent(), nRect, offset, depth);
 }
 
-vk::Rect2D RenderContext::scissor(glm::ivec2 extent, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
-	if (!Swapchain::valid(extent)) { extent = this->extent(); }
-	DrawScissor scissor;
-	glm::vec2 const e = {(f32)extent.x, (f32)extent.y};
-	scissor.lt = nRect.lt * e + offset;
-	scissor.rb = nRect.rb * e + offset;
-	return utils::scissor(scissor);
+vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
+	return m_storage.renderer->scissor(Swapchain::valid(extent) ? extent : this->extent(), nRect, offset);
 }
 } // namespace le::graphics

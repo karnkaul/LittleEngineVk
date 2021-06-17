@@ -1,7 +1,7 @@
 #pragma once
 #include <core/colour.hpp>
 
-namespace le {
+namespace le::graphics {
 struct RGBA {
 	enum class Type { eIntensity, eAbsolute };
 
@@ -12,4 +12,4 @@ struct RGBA {
 
 	glm::vec4 toVec4() const noexcept { return type == Type::eAbsolute ? colour.toRGB() : colour.toVec4(); }
 };
-} // namespace le
+} // namespace le::graphics

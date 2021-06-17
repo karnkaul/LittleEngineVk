@@ -35,6 +35,7 @@ struct AssetLoadData<graphics::Pipeline> {
 	std::string name;
 	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
+	bool gui = false;
 
 	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
 };

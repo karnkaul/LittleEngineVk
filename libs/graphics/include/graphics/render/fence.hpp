@@ -2,6 +2,7 @@
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/render/swapchain.hpp>
+#include <graphics/utils/deferred.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -15,44 +16,34 @@ struct RenderSemaphore {
 
 class RenderFence {
   public:
-	struct Fnc {
-		vk::Fence fence;
-		std::size_t index{};
-	};
-
 	enum class State { eReady, eBusy };
 
-	struct Fence : vk::Fence {
-
+	struct Fence {
+		Deferred<vk::Fence> fence;
 		State previous{};
 
 		State state(vk::Device device) const;
 	};
 
 	RenderFence(not_null<Device*> device, Buffering buffering = 2_B);
-	RenderFence(RenderFence&&) = default;
-	RenderFence& operator=(RenderFence&&);
-	~RenderFence();
 
 	Buffering buffering() const noexcept { return {(u8)m_storage.fences.size()}; }
-
 	std::size_t index() const noexcept { return m_storage.index; }
 
 	void wait();
-	kt::result<Swapchain::Acquire> acquire(Swapchain& swapchain, RenderSemaphore rs);
-	bool present(Swapchain& swapchain, vk::SubmitInfo const& info, RenderSemaphore rs);
+	kt::result<Swapchain::Acquire> acquire(Swapchain& swapchain, vk::Semaphore wait);
+	bool present(Swapchain& swapchain, vk::SubmitInfo const& info, vk::Semaphore wait);
 	void refresh();
 
 	not_null<Device*> m_device;
 
   private:
 	Fence& current() noexcept { return m_storage.fences[index()]; }
-	Fence associate(u32 imageIndex);
+	void associate(u32 imageIndex);
 	void next() noexcept;
 
-	Fence drawFence();
-	Fence submitFence();
-	void destroy();
+	vk::Fence drawFence();
+	vk::Fence submitFence();
 
 	struct {
 		kt::fixed_vector<Fence, 4> fences;

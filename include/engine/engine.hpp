@@ -6,14 +6,16 @@
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/receiver.hpp>
-#include <engine/render/rgba.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
+#include <graphics/render/renderer_fwd_swp.hpp>
+#include <graphics/render/rgba.hpp>
 #include <levk_imgui/levk_imgui.hpp>
+#include <window/instance.hpp>
 
 namespace le {
 namespace window {
-class IInstance;
+class InstanceBase;
 class DesktopInstance;
 } // namespace window
 
@@ -25,20 +27,31 @@ namespace gui {
 class ViewStack;
 }
 
-class Engine : public IService<Engine> {
+using graphics::Extent2D;
+
+class Engine : public Service<Engine> {
+	template <typename T>
+	struct tag_t {};
+
   public:
-	using Window = window::IInstance;
+	using Window = window::InstanceBase;
 	using Desktop = window::DesktopInstance;
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
+	using Drawer = graphics::FrameDrawer;
 	using VRAM = graphics::VRAM;
+	using RGBA = graphics::RGBA;
+	using ARenderer = graphics::ARenderer;
 
 	struct GFX {
 		Boot boot;
 		Context context;
 		DearImGui imgui;
 
-		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci);
+		template <typename T, typename... Args>
+		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, tag_t<T>, Args&&... args)
+			: boot(bci, makeSurface(*winst), winst->framebufferSize()),
+			  context(&boot.swapchain, std::make_unique<T>(&boot.swapchain, std::forward<Args>(args)...)) {}
 
 	  private:
 		static Boot::MakeSurface makeSurface(Window const& winst);
@@ -69,7 +82,6 @@ class Engine : public IService<Engine> {
 	};
 
 	struct CreateInfo;
-	struct DrawFrame;
 
 	inline static Options s_options;
 
@@ -86,13 +98,12 @@ class Engine : public IService<Engine> {
 	bool editorActive() const noexcept;
 	bool editorEngaged() const noexcept;
 
-	bool beginFrame(bool waitDrawReady);
 	bool drawReady();
-	std::optional<Context::Frame> beginDraw(RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
-	std::optional<DrawFrame> drawFrame(RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
-	bool endDraw(Context::Frame const& frame);
+	std::optional<Context::Frame> beginDraw();
+	bool render(Context::Frame const& draw, Drawer& drawer, RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
 
-	bool boot(Boot::CreateInfo boot);
+	template <graphics::concrete_renderer Rd = graphics::RendererFwdSwp, typename... Args>
+	bool boot(Boot::CreateInfo boot, Args&&... args);
 	bool unboot() noexcept;
 	bool booted() const noexcept;
 
@@ -101,7 +112,7 @@ class Engine : public IService<Engine> {
 	input::State const& inputState() const noexcept;
 	Desktop* desktop() const noexcept;
 
-	glm::ivec2 framebufferSize() const noexcept;
+	Extent2D framebufferSize() const noexcept;
 	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	vk::Rect2D scissor(Viewport const& view = {}) const noexcept;
 	Viewport const& gameView() const noexcept;
@@ -111,6 +122,7 @@ class Engine : public IService<Engine> {
 
   private:
 	void updateStats();
+	void bootImpl();
 
 	inline static Stats s_stats = {};
 	inline static kt::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
@@ -132,6 +144,7 @@ class Engine : public IService<Engine> {
 		glm::ivec2 size{};
 		time::Point resized{};
 	} m_fb;
+	graphics::CommandBuffer m_drawing;
 	Desktop* m_desktop{};
 };
 
@@ -140,21 +153,17 @@ struct Engine::CreateInfo {
 	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
 };
 
-struct Engine::DrawFrame {
-	Context::Frame frame;
-	not_null<Engine*> engine;
-
-	DrawFrame(not_null<Engine*> engine, Context::Frame&& frame) noexcept;
-	DrawFrame(DrawFrame&&) noexcept;
-	DrawFrame& operator=(DrawFrame&&) noexcept;
-	~DrawFrame();
-
-	graphics::CommandBuffer& cmd() noexcept;
-};
-
 // impl
-
-inline graphics::CommandBuffer& Engine::DrawFrame::cmd() noexcept { return frame.commandBuffer; }
+template <graphics::concrete_renderer Rd, typename... Args>
+bool Engine::boot(Boot::CreateInfo boot, Args&&... args) {
+	if (!m_gfx) {
+		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
+		m_gfx.emplace(m_win.get(), boot, tag_t<Rd>{}, std::forward<Args>(args)...);
+		bootImpl();
+		return true;
+	}
+	return false;
+}
 
 inline Engine::Stats const& Engine::stats() noexcept { return s_stats; }
 inline bool Engine::editorActive() const noexcept { return m_editor.active(); }

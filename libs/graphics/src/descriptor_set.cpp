@@ -53,25 +53,12 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 					set.bindings[b].name = bindingInfo.name;
 				}
 			}
-			set.pool = m_device->makeDescriptorPool(poolSizes, 1);
-			set.set = m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
+			set.pool = makeDeferred<vk::DescriptorPool>(m_device, poolSizes, 1U);
+			set.set = m_device->allocateDescriptorSets(*set.pool, m_storage.layout, 1).front();
 			m_storage.setBuffer.emplace(std::move(set));
 		}
 	}
 }
-
-DescriptorSet::DescriptorSet(DescriptorSet&& rhs) noexcept : m_device(rhs.m_device), m_storage(std::exchange(rhs.m_storage, Storage())) {}
-
-DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
-	if (&rhs != this) {
-		destroy();
-		m_storage = std::exchange(rhs.m_storage, Storage());
-		m_device = rhs.m_device;
-	}
-	return *this;
-}
-
-DescriptorSet::~DescriptorSet() { destroy(); }
 
 void DescriptorSet::index(std::size_t index) {
 	if (index < m_storage.buffering.value) { m_storage.setBuffer.index = index; }
@@ -131,14 +118,6 @@ bool DescriptorSet::unassigned() const noexcept {
 }
 
 void DescriptorSet::update(vk::WriteDescriptorSet write) { m_device->device().updateDescriptorSets(write, {}); }
-
-void DescriptorSet::destroy() {
-	Device& d = *m_device;
-	d.defer([b = m_storage.setBuffer, &d]() mutable {
-		for (Set& set : b.ts) { d.destroy(set.pool); }
-	});
-	m_storage = {};
-}
 
 std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u32 bind, vk::DescriptorType type, u32 count) {
 	auto& set = m_storage.setBuffer.get();

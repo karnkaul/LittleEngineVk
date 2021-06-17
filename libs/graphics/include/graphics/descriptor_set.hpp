@@ -6,6 +6,7 @@
 #include <graphics/render/buffering.hpp>
 #include <graphics/resources.hpp>
 #include <graphics/texture.hpp>
+#include <graphics/utils/deferred.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -43,9 +44,8 @@ class DescriptorSet {
 	struct CreateInfo;
 
 	DescriptorSet(not_null<Device*> device, CreateInfo const& info);
-	DescriptorSet(DescriptorSet&&) noexcept;
-	DescriptorSet& operator=(DescriptorSet&&) noexcept;
-	~DescriptorSet();
+	DescriptorSet(DescriptorSet&&) = default;
+	DescriptorSet& operator=(DescriptorSet&&) = default;
 
 	void index(std::size_t index);
 	void swap();
@@ -71,7 +71,6 @@ class DescriptorSet {
 	template <typename T>
 	void update(u32 binding, vk::DescriptorType type, Span<T const> writes);
 	void update(vk::WriteDescriptorSet set);
-	void destroy();
 
 	struct Binding {
 		std::string name;
@@ -82,7 +81,7 @@ class DescriptorSet {
 	};
 	struct Set {
 		vk::DescriptorSet set;
-		vk::DescriptorPool pool;
+		Deferred<vk::DescriptorPool> pool;
 		std::unordered_map<u32, Binding> bindings;
 	};
 	struct Storage {

@@ -1,21 +1,39 @@
 #include <graphics/context/device.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/swapchain.hpp>
+#include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
-ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, vk::Extent2D extent, vk::Format depthFormat)
+vk::Viewport ARenderer::viewport(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset, glm::vec2 depth) noexcept {
+	DrawViewport view;
+	glm::vec2 const e(extent);
+	view.lt = nRect.lt * e + offset;
+	view.rb = nRect.rb * e + offset;
+	view.depth = depth;
+	return utils::viewport(view);
+}
+
+vk::Rect2D ARenderer::scissor(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset) noexcept {
+	DrawScissor scissor;
+	glm::vec2 const e(extent);
+	scissor.lt = nRect.lt * e + offset;
+	scissor.rb = nRect.rb * e + offset;
+	return utils::scissor(scissor);
+}
+
+ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, Extent2D extent, vk::Format depthFormat)
 	: m_swapchain(swapchain), m_device(swapchain->m_device), m_fence(m_device, buffering) {
 	depthImage(depthFormat, extent);
 }
 
-std::optional<RenderImage> ARenderer::depthImage(vk::Format depthFormat, vk::Extent2D extent) {
+std::optional<RenderImage> ARenderer::depthImage(vk::Format depthFormat, Extent2D extent) {
 	if (m_depth && extent2D(m_depth->extent()) == extent) { return renderImage(*m_depth); }
 	m_depth.reset();
 	if (depthFormat != vk::Format() && Swapchain::valid(extent)) {
 		Image::CreateInfo info;
 		info.createInfo.format = depthFormat;
 		info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		info.createInfo.extent = vk::Extent3D(extent, 1);
+		info.createInfo.extent = vk::Extent3D(cast(extent), 1);
 		info.createInfo.tiling = vk::ImageTiling::eOptimal;
 		info.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 		if constexpr (levk_desktopOS) {
@@ -37,17 +55,6 @@ std::optional<RenderImage> ARenderer::depthImage(vk::Format depthFormat, vk::Ext
 }
 
 RenderSemaphore ARenderer::makeSemaphore() const { return {m_device->makeSemaphore(), m_device->makeSemaphore()}; }
-
-ARenderer::Command ARenderer::makeCommand() const {
-	vk::CommandPoolCreateInfo commandPoolCreateInfo;
-	commandPoolCreateInfo.queueFamilyIndex = m_device->queues().familyIndex(QType::eGraphics);
-	commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient;
-	Command ret;
-	ret.pool = m_device->device().createCommandPool(commandPoolCreateInfo);
-	ret.commandBuffer = CommandBuffer::make(m_device, ret.pool, 1, false).back();
-	ret.buffer = ret.commandBuffer.m_cb;
-	return ret;
-}
 
 vk::RenderPass ARenderer::makeRenderPass(Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps) const {
 	std::array<vk::AttachmentDescription, 2> attachments;
@@ -81,6 +88,10 @@ vk::RenderPass ARenderer::makeRenderPass(Attachment colour, Attachment depth, vA
 	subpass.pColorAttachments = &colourAttachment;
 	subpass.pDepthStencilAttachment = depth.format == vk::Format() ? nullptr : &depthAttachment;
 	return m_device->makeRenderPass(attachments, subpass, deps);
+}
+
+vk::Framebuffer ARenderer::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, Extent2D extent, u32 layers) const {
+	return m_device->makeFramebuffer(renderPass, attachments, cast(extent), layers);
 }
 
 void ARenderer::waitForFrame() {

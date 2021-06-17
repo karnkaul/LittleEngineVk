@@ -76,14 +76,14 @@ struct SwapchainCreateInfo {
 		}
 	}
 
-	vk::Extent2D extent(glm::ivec2 fbSize) {
+	Extent2D extent(glm::ivec2 fbSize) {
 		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
 		current.transform = capabilities.currentTransform;
-		if (!Swapchain::valid(fbSize) || current.extent.width != maths::max<u32>()) {
-			current.extent = capabilities.currentExtent;
+		if (!Swapchain::valid(fbSize) || current.extent.x != maths::max<u32>()) {
+			current.extent = cast(capabilities.currentExtent);
 		} else {
-			current.extent = vk::Extent2D(std::clamp((u32)fbSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-										  std::clamp((u32)fbSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
+			current.extent = {std::clamp((u32)fbSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+							  std::clamp((u32)fbSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
 		}
 		return current.extent;
 	}
@@ -121,7 +121,7 @@ Swapchain::Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 fr
 	// makeRenderPass();
 	auto const extent = m_storage.display.extent;
 	auto const mode = presentModeNames[m_metadata.presentMode];
-	g_log.log(lvl::info, 1, "[{}] Vulkan swapchain constructed [{}x{}] [{}]", g_name, extent.width, extent.height, mode);
+	g_log.log(lvl::info, 1, "[{}] Vulkan swapchain constructed [{}x{}] [{}]", g_name, extent.x, extent.y, mode);
 }
 
 Swapchain::~Swapchain() {
@@ -179,7 +179,7 @@ bool Swapchain::reconstruct(glm::ivec2 framebufferSize, bool vsync) {
 	auto const extent = m_storage.display.extent;
 	auto const mode = presentModeNames[m_metadata.presentMode];
 	if (bResult) {
-		g_log.log(lvl::info, 1, "[{}] Vulkan swapchain reconstructed [{}x{}] [{}]", g_name, extent.width, extent.height, mode);
+		g_log.log(lvl::info, 1, "[{}] Vulkan swapchain reconstructed [{}x{}] [{}]", g_name, extent.x, extent.y, mode);
 	} else if (!m_storage.flags.test(Flag::ePaused)) {
 		g_log.log(lvl::error, 1, "[{}] Vulkan swapchain reconstruction failed!", g_name);
 	}
@@ -217,7 +217,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		createInfo.clipped = vk::Bool32(true);
 		createInfo.surface = m_metadata.surface;
 		createInfo.oldSwapchain = m_metadata.retired;
-		createInfo.imageExtent = info.extent(framebufferSize);
+		createInfo.imageExtent = cast(info.extent(framebufferSize));
 		createInfo.preTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity;
 		if (createInfo.imageExtent.width <= 0 || createInfo.imageExtent.height <= 0) {
 			m_storage.flags.set(Flag::ePaused);
@@ -268,6 +268,8 @@ void Swapchain::setFlags(vk::Result result) {
 
 void Swapchain::orientCheck() {
 	auto const capabilities = m_device->physicalDevice().surfaceCapabilities(m_metadata.surface);
-	if (capabilities.currentExtent != maths::max<u32>() && capabilities.currentExtent != m_storage.display.extent) { m_storage.flags.set(Flag::eOutOfDate); }
+	if (capabilities.currentExtent != maths::max<u32>() && capabilities.currentExtent != cast(m_storage.display.extent)) {
+		m_storage.flags.set(Flag::eOutOfDate);
+	}
 }
 } // namespace le::graphics

@@ -3,9 +3,9 @@
 #include <window/instance.hpp>
 
 namespace le::window {
-class AndroidInstance final : public IInstance {
+class AndroidInstance final : public InstanceBase {
   public:
-	AndroidInstance() : IInstance(false) {}
+	AndroidInstance() : InstanceBase(false) {}
 	explicit AndroidInstance(CreateInfo const& info);
 	AndroidInstance(AndroidInstance&&) = default;
 	AndroidInstance& operator=(AndroidInstance&&) = default;

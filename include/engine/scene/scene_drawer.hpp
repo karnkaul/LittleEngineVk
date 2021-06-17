@@ -1,4 +1,5 @@
 #pragma once
+#include <compare>
 #include <unordered_set>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
@@ -24,6 +25,7 @@ struct DrawGroup {
 	s64 order = 0;
 
 	constexpr bool operator==(DrawGroup const& rhs) const noexcept = default;
+	constexpr auto operator<=>(DrawGroup const& rhs) const noexcept { return order <=> rhs.order; }
 
 	struct Hasher {
 		std::size_t operator()(DrawGroup const& gr) const noexcept;
@@ -44,23 +46,32 @@ class SceneDrawer {
 		DrawGroup group;
 		std::vector<Item> items;
 
-		constexpr auto operator<=>(Group const& rhs) const noexcept { return group.order <=> rhs.group.order; }
+		constexpr auto operator<=>(Group const& rhs) const noexcept { return group <=> rhs.group; }
 	};
 
-	struct Populator;
+	using PipeSet = std::unordered_set<graphics::Pipeline*>;
+
+	struct Populator3D;
+	struct PopulatorUI;
 
 	static void add(ItemMap& map, DrawGroup const& group, gui::TreeRoot const& root);
 
-	template <typename Po = Populator>
+	template <typename Po = Populator3D>
 	static std::vector<Group> groups(decf::registry_t const& registry, bool sort);
-	template <typename Di, typename Po = Populator>
-	static void draw(Di&& dispatch, Span<Group const> groups, graphics::CommandBuffer const& cb);
+
+	template <typename Di>
+	static void draw(Di&& dispatch, PipeSet& out_set, Span<Group const> groups, graphics::CommandBuffer cb);
 
 	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, Span<Primitive const> primitives);
 };
 
-struct SceneDrawer::Populator {
-	// Populates DrawGroup + SceneNode + PrimList, DrawGroup + gui::ViewStack
+struct SceneDrawer::Populator3D {
+	// Populates DrawGroup + SceneNode + PrimList
+	void operator()(ItemMap& map, decf::registry_t const& registry) const;
+};
+
+struct SceneDrawer::PopulatorUI {
+	// Populates DrawGroup + gui::ViewStack
 	void operator()(ItemMap& map, decf::registry_t const& registry) const;
 };
 
@@ -77,16 +88,14 @@ std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& regi
 	return ret;
 }
 
-template <typename Di, typename Po>
-void SceneDrawer::draw(Di&& dispatch, Span<Group const> groups, graphics::CommandBuffer const& cb) {
-	std::unordered_set<graphics::Pipeline*> ps;
+template <typename Di>
+void SceneDrawer::draw(Di&& dispatch, PipeSet& out_set, Span<Group const> groups, graphics::CommandBuffer cb) {
 	for (auto const& gr : groups) {
 		if (gr.group.pipeline) {
-			ps.insert(gr.group.pipeline);
+			out_set.insert(gr.group.pipeline);
 			cb.bindPipe(*gr.group.pipeline);
 			dispatch.draw(cb, gr);
 		}
 	}
-	for (graphics::Pipeline* pipe : ps) { pipe->shaderInput().swap(); }
 }
 } // namespace le

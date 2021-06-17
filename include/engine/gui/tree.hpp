@@ -24,7 +24,7 @@ using graphics::DrawScissor;
 
 DrawScissor scissor(input::Space const& space, glm::vec2 centre = {}, glm::vec2 halfSize = {0.5f, -0.5f}, bool normalised = true) noexcept;
 
-class TreeRoot : public IBase, public Owner<TreeNode> {
+class TreeRoot : public VBase, public Owner<TreeNode> {
   public:
 	using Owner::container_t;
 

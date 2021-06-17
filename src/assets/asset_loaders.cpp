@@ -8,6 +8,31 @@
 namespace le {
 namespace {
 bool isGlsl(io::Path const& path) { return path.has_extension() && (path.extension() == ".vert" || path.extension() == ".frag"); }
+
+template <bool D = levk_debug>
+io::Path spirvPath(io::Path const& glsl, io::FileReader const& reader);
+
+template <>
+[[maybe_unused]] io::Path spirvPath<true>(io::Path const& glsl, io::FileReader const& reader) {
+	auto spv = graphics::utils::spirVpath(glsl);
+	if (auto res = graphics::utils::compileGlsl(reader.fullPath(glsl))) {
+		spv = *res;
+	} else {
+		ENSURE(false, "Failed to compile GLSL");
+	}
+	// compile Release shader too
+	graphics::utils::compileGlsl(reader.fullPath(glsl), {}, {}, false);
+	return spv;
+}
+
+template <>
+[[maybe_unused]] io::Path spirvPath<false>(io::Path const& glsl, io::FileReader const& reader) {
+	auto spv = graphics::utils::spirVpath(glsl);
+	if (!reader.checkPresence(spv)) {
+		if (auto res = graphics::utils::compileGlsl(reader.fullPath(glsl))) { spv = *res; }
+	}
+	return spv;
+}
 } // namespace
 
 std::optional<graphics::Shader> AssetLoader<graphics::Shader>::load(AssetLoadInfo<graphics::Shader> const& info) const {
@@ -25,29 +50,22 @@ bool AssetLoader<graphics::Shader>::reload(graphics::Shader& out_shader, AssetLo
 
 std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>::data(AssetLoadInfo<graphics::Shader> const& info) const {
 	graphics::Shader::SpirVMap spirV;
-	io::FileReader const* pFR = nullptr;
+	io::FileReader const* fr = nullptr;
 	for (auto& [type, id] : info.m_data.shaderPaths) {
 		auto path = id;
 		if (isGlsl(path)) {
-			if constexpr (!levk_shaderCompiler) {
-				// Fallback to previously compiled shader
-				path = graphics::utils::spirVpath(path);
-			} else {
-				if (!pFR && !(pFR = dynamic_cast<io::FileReader const*>(&info.reader()))) { return std::nullopt; }
-				auto spv = graphics::utils::compileGlsl(pFR->fullPath(id));
-				if (levk_debug) {
-					// Compile release shader too
-					graphics::utils::compileGlsl(pFR->fullPath(id), {}, {}, false);
-				}
-				if (!spv) {
-					if constexpr (levk_debug) { ENSURE(false, "Failed to compile GLSL"); }
-					// Fallback to previously compiled shader
-					spv = graphics::utils::spirVpath(path);
+			if constexpr (levk_shaderCompiler) {
+				if (!fr && !(fr = dynamic_cast<io::FileReader const*>(&info.reader()))) {
+					// cannot compile shaders without FileReader
+					path = graphics::utils::spirVpath(id);
 				} else {
-					// Ensure resource presence (and add monitor if supported)
+					// ensure resource presence (and add monitor if supported)
 					if (!info.resource(id, Resource::Type::eText, true)) { return std::nullopt; }
+					path = spirvPath(id, *fr);
 				}
-				path = *spv;
+			} else {
+				// fallback to previously compiled shader
+				path = graphics::utils::spirVpath(id);
 			}
 		}
 		auto pRes = info.resource(path, Resource::Type::eBinary, false, true);
@@ -61,6 +79,7 @@ std::optional<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoa
 	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
 		info.reloadDepend(*shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
+		pipeInfo.renderPass = info.m_data.gui ? info.m_data.context->renderer().renderPassUI() : info.m_data.context->renderer().renderPass3D();
 		return info.m_data.context->makePipeline(info.m_data.name, shader->get(), pipeInfo);
 	}
 	return std::nullopt;

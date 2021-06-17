@@ -11,7 +11,7 @@ class ServiceLocator;
 using Services = ServiceLocator<16>;
 
 template <typename T>
-class IService;
+class Service;
 
 ///
 /// \brief Type-safe mapping for (pointers to) objects used as services
@@ -70,9 +70,9 @@ class ServiceLocator final {
 };
 
 template <typename T>
-class IService {
+class Service {
   public:
-	IService() noexcept { Services::track<T>(static_cast<T*>(this)); }
-	virtual ~IService() noexcept { Services::untrack<T>(); }
+	Service() noexcept { Services::track<T>(static_cast<T*>(this)); }
+	virtual ~Service() noexcept { Services::untrack<T>(); }
 };
 } // namespace le

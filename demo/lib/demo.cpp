@@ -28,6 +28,8 @@
 #include <engine/utils/exec.hpp>
 
 namespace le::demo {
+using RGBA = graphics::RGBA;
+
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
 using Flags = kt::enum_flags<Flag>;
 
@@ -204,7 +206,7 @@ class DrawDispatch {
 
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups) {
+	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
@@ -213,7 +215,8 @@ class DrawDispatch {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : groups) { update(group); }
+		for (auto& group : groups3D) { update(group); }
+		for (auto& group : groupsUI) { update(group); }
 	}
 
 	void update(SceneDrawer::Group const& group) const {
@@ -259,7 +262,7 @@ class DrawDispatch {
 		m_view.lights.swap();
 	}
 
-	void draw(graphics::CommandBuffer const& cb, SceneDrawer::Group const& group) const {
+	void draw(graphics::CommandBuffer cb, SceneDrawer::Group const& group) const {
 		graphics::Pipeline const& pipe = *group.group.pipeline;
 		pipe.bindSet(cb, 0, 0);
 		std::size_t itemIdx = 0;
@@ -276,6 +279,31 @@ class DrawDispatch {
 			}
 		}
 	}
+};
+
+using graphics::CommandBuffer;
+
+class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
+  public:
+	struct Data {
+		Span<SceneDrawer::Group const> groups3D;
+		Span<SceneDrawer::Group const> groupsUI;
+		vk::Viewport viewport;
+		vk::Rect2D scissor;
+		not_null<DrawDispatch*> dispatch;
+	};
+
+	RenderDisp(Data d) : m_data(d) {}
+	~RenderDisp() override {
+		for (auto pipe : m_pipes) { pipe->shaderInput().swap(); }
+	}
+
+	void draw3D(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groups3D, cb); }
+	void drawUI(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb); }
+
+  private:
+	Data m_data;
+	SceneDrawer::PipeSet m_pipes;
 };
 
 class TestView : public gui::View {
@@ -333,9 +361,10 @@ class App : public input::Receiver {
 			return shaderLD;
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
-		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
+		auto loadPipe = [this](std::string_view id, Hash shaderID, bool gui, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
 			AssetLoadData<graphics::Pipeline> pipelineLD{&m_eng->gfx().context};
 			pipelineLD.name = id;
+			pipelineLD.gui = gui;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
 			pipelineLD.flags = flags;
@@ -392,13 +421,13 @@ class App : public input::Receiver {
 			static PCI pci_skybox = eng->gfx().context.pipeInfo();
 			pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
 			pci_skybox.fixedState.vertexInput = eng->gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
-			pipes.add("pipelines/basic", loadPipe("pipelines/basic", "shaders/basic", graphics::PFlags::inverse()));
-			pipes.add("pipelines/tex", loadPipe("pipelines/tex", "shaders/tex", graphics::PFlags::inverse()));
-			pipes.add("pipelines/lit", loadPipe("pipelines/lit", "shaders/lit", graphics::PFlags::inverse()));
+			pipes.add("pipelines/basic", loadPipe("pipelines/basic", "shaders/basic", false, graphics::PFlags::inverse()));
+			pipes.add("pipelines/tex", loadPipe("pipelines/tex", "shaders/tex", false, graphics::PFlags::inverse()));
+			pipes.add("pipelines/lit", loadPipe("pipelines/lit", "shaders/lit", false, graphics::PFlags::inverse()));
 			graphics::PFlags ui = graphics::PFlags::inverse();
 			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
-			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", ui));
-			pipes.add("pipelines/skybox", loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox));
+			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", true, ui));
+			pipes.add("pipelines/skybox", loadPipe("pipelines/skybox", "shaders/skybox", false, {}, pci_skybox));
 			m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
 		}
 
@@ -577,7 +606,7 @@ class App : public input::Receiver {
 			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.groups["test_tex"]);
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
+		// { spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", m_data.groups["test_lit"]);
@@ -663,24 +692,20 @@ class App : public input::Receiver {
 	}
 
 	void render() {
-		if (m_eng->drawReady()) {
+		if (auto frame = m_eng->beginDraw()) {
 			// write / update
+			std::vector<SceneDrawer::Group> gr3D, grUI;
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
-				m_groups = SceneDrawer::groups(m_data.registry, true);
-				m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, m_groups);
+				gr3D = SceneDrawer::groups(m_data.registry, true);
+				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
+				m_drawDispatch.write(*cam, frame->target.colour.extent, m_data.dirLights, gr3D, grUI);
 			}
-			if (auto frame = m_eng->drawFrame(RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
-				if (!m_data.registry.empty()) {
-					// draw
-					frame->cmd().setViewportScissor(m_eng->viewport(), m_eng->scissor());
-					SceneDrawer::draw(m_drawDispatch, m_groups, frame->cmd());
-				}
-				m_drawDispatch.swap();
-			}
+			// draw
+			RenderDisp rd{{gr3D, grUI, m_eng->viewport(), m_eng->scissor(), &m_drawDispatch}};
+			m_eng->render(*frame, rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
+			m_drawDispatch.swap();
 		}
 	}
-
-	std::vector<SceneDrawer::Group> m_groups;
 
   private:
 	struct Data {
@@ -733,7 +758,7 @@ struct FlagsInput : input::Receiver {
 
 bool run(io::Reader const& reader, ErasedPtr androidApp) {
 	try {
-		window::Instance::CreateInfo winInfo;
+		window::InstanceBase::CreateInfo winInfo;
 		winInfo.config.androidApp = androidApp;
 		winInfo.config.title = "levk demo";
 		winInfo.config.size = {1280, 720};
@@ -770,7 +795,7 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 				engine.unboot();
 			}
 
-			if (engine.beginFrame(false)) {
+			if (engine.drawReady()) {
 				if (app) {
 					// kt::kthread::sleep_for(5ms);
 					app->tick(flags, dt);

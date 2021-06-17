@@ -1,11 +1,11 @@
 #pragma once
-#include <vulkan/vulkan.hpp>
+#include <graphics/common.hpp>
 
 namespace le::graphics {
 struct RenderImage {
 	vk::Image image;
 	vk::ImageView view;
-	vk::Extent2D extent;
+	Extent2D extent;
 };
 
 struct RenderTarget {
@@ -13,11 +13,5 @@ struct RenderTarget {
 	RenderImage depth;
 
 	inline std::array<vk::ImageView, 2> attachments() const { return {colour.view, depth.view}; }
-};
-
-struct RenderSync {
-	vk::Semaphore drawReady;
-	vk::Semaphore presentReady;
-	vk::Fence drawing;
 };
 } // namespace le::graphics

@@ -217,7 +217,7 @@ void onScroll(GLFWwindow* pGLFWwindow, f64 dx, f64 dy) {
 }
 } // namespace
 
-DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
+DesktopInstance::DesktopInstance(CreateInfo const& info) : InstanceBase(true) {
 	if (g_state.bInit || g_state.pWindow) { throw std::runtime_error("Duplicate GLFW instance"); }
 	if (!init(m_log)) { throw std::runtime_error("Fatal errorin creating Window Instance"); }
 	m_desktop = true;

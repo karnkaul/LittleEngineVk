@@ -1,5 +1,5 @@
-#include <graphics/descriptor_set.hpp>
-#include <graphics/shader_buffer.hpp>
+#include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/shader_buffer.hpp>
 
 namespace le::graphics {
 ShaderBuffer::ShaderBuffer(VRAM& vram, CreateInfo const& info) : m_vram(&vram) {

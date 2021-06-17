@@ -25,9 +25,9 @@ void RendererFwdSwp::beginDraw(RenderTarget const& target, FrameDrawer& drawer, 
 	vk::ClearColorValue const c = std::array{cl.x, cl.y, cl.z, cl.w};
 	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
 	auto& buf = m_storage.buf.get();
-	buf.cb.transitionImage(target.colour.image, 1, vk::ImageAspectFlagBits::eColor, {vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal},
-						   {{}, vAFB::eColorAttachmentWrite}, {vPSFB::eTopOfPipe, vPSFB::eColorAttachmentOutput});
 	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, *m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
+	m_device->m_layouts.transition({target.colour.image}, buf.cb, vk::ImageLayout::eColorAttachmentOptimal, topOfPipe, colourWrite);
+	m_device->m_layouts.transition({target.depth.image, depthStencil}, buf.cb, vk::ImageLayout::eDepthStencilAttachmentOptimal, topOfPipe, depthWrite);
 	buf.cb.beginRenderPass(*m_storage.renderPass, *buf.framebuffer, target.colour.extent, info);
 	buf.cb.setViewport(viewport(target.colour.extent, m_viewport.rect, m_viewport.offset));
 	buf.cb.setScissor(scissor(target.colour.extent, m_viewport.rect, m_viewport.offset));
@@ -38,8 +38,8 @@ void RendererFwdSwp::beginDraw(RenderTarget const& target, FrameDrawer& drawer, 
 void RendererFwdSwp::endDraw(RenderTarget const& target) {
 	auto& buf = m_storage.buf.get();
 	buf.cb.endRenderPass();
-	buf.cb.transitionImage(target.colour.image, 1, vk::ImageAspectFlagBits::eColor, {vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR},
-						   {vAFB::eColorAttachmentWrite, {}}, {vPSFB::eColorAttachmentOutput, vPSFB::eBottomOfPipe});
+	m_device->m_layouts.transition({target.colour.image}, buf.cb, vk::ImageLayout::ePresentSrcKHR, colourWrite, bottomOfPipe);
+	m_device->m_layouts.drawn(target.depth.image);
 }
 
 void RendererFwdSwp::endFrame() {
@@ -75,6 +75,7 @@ RendererFwdSwp::Storage RendererFwdSwp::make() const {
 	colour.layouts = {vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
 	colour.layouts = {vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eColorAttachmentOptimal};
 	depth.layouts = {vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal};
+	depth.layouts = {vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageLayout::eDepthStencilAttachmentOptimal};
 	ret.renderPass = {m_device, makeRenderPass(colour, depth, {})};
 	return ret;
 }

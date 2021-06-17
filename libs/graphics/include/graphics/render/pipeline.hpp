@@ -2,8 +2,8 @@
 #include <unordered_set>
 #include <core/hash.hpp>
 #include <core/utils/std_hash.hpp>
-#include <graphics/descriptor_set.hpp>
 #include <graphics/render/buffering.hpp>
+#include <graphics/render/descriptor_set.hpp>
 #include <kt/result/result.hpp>
 
 namespace le::graphics {

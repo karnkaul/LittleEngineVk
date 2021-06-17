@@ -1,8 +1,8 @@
 #pragma once
 #include <type_traits>
-#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/buffering.hpp>
+#include <graphics/render/command_buffer.hpp>
 #include <graphics/render/fence.hpp>
 #include <graphics/render/frame_drawer.hpp>
 #include <graphics/render/rgba.hpp>

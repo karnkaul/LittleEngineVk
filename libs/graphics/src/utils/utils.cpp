@@ -4,8 +4,8 @@
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
-#include <graphics/pipeline.hpp>
 #include <graphics/render/context.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
 

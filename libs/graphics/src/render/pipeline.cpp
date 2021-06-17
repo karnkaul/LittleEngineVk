@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <core/maths.hpp>
-#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/command_buffer.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
 #include <vulkan/vulkan.hpp>

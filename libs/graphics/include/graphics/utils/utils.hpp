@@ -6,10 +6,10 @@
 #include <graphics/common.hpp>
 #include <graphics/context/physical_device.hpp>
 #include <graphics/context/queue_multiplex.hpp>
-#include <graphics/descriptor_set.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>

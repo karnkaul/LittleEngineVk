@@ -11,8 +11,8 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <glm/common.hpp>
-#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
+#include <graphics/render/command_buffer.hpp>
 #include <window/desktop_instance.hpp>
 #endif
 

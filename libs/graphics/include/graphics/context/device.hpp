@@ -3,6 +3,7 @@
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/instance.hpp>
 #include <graphics/context/queue_multiplex.hpp>
+#include <graphics/utils/layout_state.hpp>
 
 namespace le::graphics {
 class Device final {
@@ -73,6 +74,7 @@ class Device final {
 	vk::Device device() const noexcept { return m_device; }
 	vk::SurfaceKHR surface() const noexcept { return m_metadata.surface; }
 
+	LayoutState m_layouts;
 	not_null<Instance*> m_instance;
 
   private:

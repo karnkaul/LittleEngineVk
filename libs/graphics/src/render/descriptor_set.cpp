@@ -1,10 +1,10 @@
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
-#include <graphics/descriptor_set.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/pipeline.hpp>
+#include <graphics/render/shader_buffer.hpp>
 #include <graphics/resources.hpp>
-#include <graphics/shader_buffer.hpp>
 #include <graphics/texture.hpp>
 
 namespace le::graphics {

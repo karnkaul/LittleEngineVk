@@ -16,7 +16,7 @@
 #include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
-#include <graphics/shader_buffer.hpp>
+#include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 

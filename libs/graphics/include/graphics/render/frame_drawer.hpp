@@ -1,5 +1,5 @@
 #pragma once
-#include <graphics/context/command_buffer.hpp>
+#include <graphics/render/command_buffer.hpp>
 
 namespace le::graphics {
 class FrameDrawer {

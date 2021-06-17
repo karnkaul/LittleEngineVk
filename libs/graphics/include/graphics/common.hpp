@@ -14,6 +14,10 @@ using vAP = vk::ArrayProxy<T const> const&;
 template <typename T, typename U = T>
 using TPair = std::pair<T, U>;
 
+using StagePair = TPair<vk::PipelineStageFlags>;
+using AccessPair = TPair<vk::AccessFlags>;
+using LayoutPair = TPair<vk::ImageLayout>;
+
 using vAFB = vk::AccessFlagBits;
 using vPSFB = vk::PipelineStageFlagBits;
 

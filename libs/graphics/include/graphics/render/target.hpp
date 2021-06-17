@@ -2,6 +2,8 @@
 #include <graphics/common.hpp>
 
 namespace le::graphics {
+class CommandBuffer;
+
 struct RenderImage {
 	vk::Image image;
 	vk::ImageView view;

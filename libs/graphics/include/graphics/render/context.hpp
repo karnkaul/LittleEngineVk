@@ -8,11 +8,10 @@
 #include <graphics/common.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/screen_rect.hpp>
-#include <graphics/utils/fwd_enum_state.hpp>
 
 namespace le::graphics {
 struct QuickVertexInput;
@@ -59,19 +58,22 @@ class RenderContext : NoCopy {
 	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
 
+	template <typename... T>
+	bool check(T... any) noexcept {
+		return ((m_storage.status == any) || ...);
+	}
+	void set(Status s) noexcept { m_storage.status = s; }
+
 	struct {
 		ScreenRect rect;
 		glm::vec2 offset{};
 	} m_viewport;
 
   private:
-	inline static FwdEnumState<Status>::States s_states;
-
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
 		std::optional<RenderTarget> target;
 		Deferred<vk::PipelineCache> pipelineCache;
-		FwdEnumState<Status> state;
 		Status status = {};
 	};
 

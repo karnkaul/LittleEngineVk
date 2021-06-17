@@ -6,9 +6,9 @@
 #include <dumb_ecf/types.hpp>
 #include <engine/scene/primitive.hpp>
 #include <glm/mat4x4.hpp>
-#include <graphics/context/command_buffer.hpp>
-#include <graphics/descriptor_set.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/command_buffer.hpp>
+#include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/pipeline.hpp>
 
 namespace decf {
 class registry_t;

@@ -41,12 +41,12 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 			break;
 		}
 		case window::Event::Type::eSuspend: {
-			out_flags[Flag::ePaused] = e->payload.bSet;
+			out_flags[Flag::ePaused] = e->payload.set;
 			break;
 		}
 		case window::Event::Type::eResize: {
 			auto const& resize = e->payload.resize;
-			if (resize.bFramebuffer) { out_flags.set(Flag::eResized); }
+			if (resize.framebuffer) { out_flags.set(Flag::eResized); }
 			break;
 		}
 		case window::Event::Type::eInit: out_flags.set(Flag::eInit); break;

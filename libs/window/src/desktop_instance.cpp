@@ -108,7 +108,7 @@ void onFocus(GLFWwindow* pGLFWwindow, int entered) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eFocus;
-		event.payload.bSet = entered != 0;
+		event.payload.set = entered != 0;
 		g_state.events.m_events.push_back(event);
 		g_log->log(lvl::info, 1, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
 	}
@@ -138,7 +138,7 @@ void onIconify(GLFWwindow* pWindow, int iconified) {
 	if (g_state.bInit && g_state.pWindow == pWindow) {
 		Event event;
 		event.type = Event::Type::eSuspend;
-		event.payload.bSet = iconified != 0;
+		event.payload.set = iconified != 0;
 		g_state.events.m_events.push_back(event);
 		g_log->log(lvl::info, 1, "[{}] Window {}", g_name, iconified != 0 ? "suspended" : "resumed");
 	}
@@ -198,7 +198,7 @@ void onText(GLFWwindow* pGLFWwindow, u32 codepoint) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eText;
-		event.payload.text = {static_cast<char>(codepoint)};
+		event.payload.text = static_cast<char>(codepoint);
 		g_state.events.m_events.push_back(event);
 	}
 }

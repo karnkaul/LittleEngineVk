@@ -46,6 +46,7 @@ class SceneDrawer {
 		DrawGroup group;
 		std::vector<Item> items;
 
+		constexpr bool operator==(Group const& rhs) const noexcept { return group == rhs.group; }
 		constexpr auto operator<=>(Group const& rhs) const noexcept { return group <=> rhs.group; }
 	};
 

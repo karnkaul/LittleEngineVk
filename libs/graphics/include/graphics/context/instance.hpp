@@ -16,7 +16,7 @@ class Instance final {
 	Instance& operator=(Instance&&);
 	~Instance();
 
-	kt::fixed_vector<PhysicalDevice, 8> availableDevices(View<std::string_view> requiredExtensions) const;
+	kt::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view const> requiredExtensions) const;
 	vk::Instance instance() const noexcept { return m_instance; }
 	vk::DispatchLoaderDynamic loader() const { return m_loader; }
 
@@ -38,7 +38,7 @@ class Instance final {
 };
 
 struct Instance::CreateInfo {
-	View<std::string_view> extensions;
+	Span<std::string_view const> extensions;
 	dl::level validationLog = dl::level::info;
 	bool bValidation = false;
 };

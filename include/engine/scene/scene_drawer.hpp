@@ -1,20 +1,21 @@
 #pragma once
+#include <compare>
 #include <unordered_set>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <dumb_ecf/types.hpp>
 #include <engine/scene/primitive.hpp>
 #include <glm/mat4x4.hpp>
-#include <graphics/context/command_buffer.hpp>
-#include <graphics/descriptor_set.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/command_buffer.hpp>
+#include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/pipeline.hpp>
 
 namespace decf {
 class registry_t;
 }
 namespace le {
 namespace gui {
-class Root;
+class TreeRoot;
 }
 
 using PrimList = std::vector<Primitive>;
@@ -23,19 +24,20 @@ struct DrawGroup {
 	graphics::Pipeline* pipeline = {};
 	s64 order = 0;
 
+	constexpr bool operator==(DrawGroup const& rhs) const noexcept = default;
+	constexpr auto operator<=>(DrawGroup const& rhs) const noexcept { return order <=> rhs.order; }
+
 	struct Hasher {
 		std::size_t operator()(DrawGroup const& gr) const noexcept;
 	};
 };
-
-constexpr bool operator==(DrawGroup const& l, DrawGroup const& r) noexcept { return l.pipeline == r.pipeline && l.order == r.order; }
 
 class SceneDrawer {
   public:
 	struct Item {
 		glm::mat4 model = glm::mat4(1.0f);
 		std::optional<vk::Rect2D> scissor;
-		View<Primitive> primitives;
+		Span<Primitive const> primitives;
 	};
 
 	using ItemMap = std::unordered_map<DrawGroup, std::vector<Item>, DrawGroup::Hasher>;
@@ -43,22 +45,35 @@ class SceneDrawer {
 	struct Group {
 		DrawGroup group;
 		std::vector<Item> items;
+
+		constexpr bool operator==(Group const& rhs) const noexcept { return group == rhs.group; }
+		constexpr auto operator<=>(Group const& rhs) const noexcept { return group <=> rhs.group; }
 	};
 
-	struct Populator {
-		// Populates DrawGroup + SceneNode + PrimList, DrawGroup + gui::Root
-		void operator()(ItemMap& map, decf::registry_t const& registry) const;
-	};
+	using PipeSet = std::unordered_set<graphics::Pipeline*>;
 
-	static void add(ItemMap& map, DrawGroup const& group, gui::Root const& root);
+	struct Populator3D;
+	struct PopulatorUI;
 
-	static void sort(Span<Group> items) noexcept;
-	template <typename Po = Populator>
+	static void add(ItemMap& map, DrawGroup const& group, gui::TreeRoot const& root);
+
+	template <typename Po = Populator3D>
 	static std::vector<Group> groups(decf::registry_t const& registry, bool sort);
-	template <typename Di, typename Po = Populator>
-	static void draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb);
 
-	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, View<Primitive> primitives);
+	template <typename Di>
+	static void draw(Di&& dispatch, PipeSet& out_set, Span<Group const> groups, graphics::CommandBuffer cb);
+
+	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, Span<Primitive const> primitives);
+};
+
+struct SceneDrawer::Populator3D {
+	// Populates DrawGroup + SceneNode + PrimList
+	void operator()(ItemMap& map, decf::registry_t const& registry) const;
+};
+
+struct SceneDrawer::PopulatorUI {
+	// Populates DrawGroup + gui::ViewStack
+	void operator()(ItemMap& map, decf::registry_t const& registry) const;
 };
 
 // impl
@@ -70,20 +85,18 @@ std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& regi
 	std::vector<Group> ret;
 	ret.reserve(map.size());
 	for (auto& [gr, items] : map) { ret.push_back(Group({gr, std::move(items)})); }
-	if (sort) { SceneDrawer::sort(ret); }
+	if (sort) { std::sort(ret.begin(), ret.end()); }
 	return ret;
 }
 
-template <typename Di, typename Po>
-void SceneDrawer::draw(Di&& dispatch, View<Group> groups, graphics::CommandBuffer const& cb) {
-	std::unordered_set<graphics::Pipeline*> ps;
+template <typename Di>
+void SceneDrawer::draw(Di&& dispatch, PipeSet& out_set, Span<Group const> groups, graphics::CommandBuffer cb) {
 	for (auto const& gr : groups) {
 		if (gr.group.pipeline) {
-			ps.insert(gr.group.pipeline);
+			out_set.insert(gr.group.pipeline);
 			cb.bindPipe(*gr.group.pipeline);
 			dispatch.draw(cb, gr);
 		}
 	}
-	for (graphics::Pipeline* pipe : ps) { pipe->shaderInput().swap(); }
 }
 } // namespace le

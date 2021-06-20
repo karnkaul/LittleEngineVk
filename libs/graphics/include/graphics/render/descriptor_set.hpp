@@ -3,8 +3,10 @@
 #include <core/not_null.hpp>
 #include <core/ref.hpp>
 #include <core/span.hpp>
+#include <graphics/render/buffering.hpp>
 #include <graphics/resources.hpp>
 #include <graphics/texture.hpp>
+#include <graphics/utils/deferred.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -42,9 +44,8 @@ class DescriptorSet {
 	struct CreateInfo;
 
 	DescriptorSet(not_null<Device*> device, CreateInfo const& info);
-	DescriptorSet(DescriptorSet&&) noexcept;
-	DescriptorSet& operator=(DescriptorSet&&) noexcept;
-	~DescriptorSet();
+	DescriptorSet(DescriptorSet&&) = default;
+	DescriptorSet& operator=(DescriptorSet&&) = default;
 
 	void index(std::size_t index);
 	void swap();
@@ -68,9 +69,8 @@ class DescriptorSet {
 
   private:
 	template <typename T>
-	void update(u32 binding, vk::DescriptorType type, View<T> writes);
+	void update(u32 binding, vk::DescriptorType type, Span<T const> writes);
 	void update(vk::WriteDescriptorSet set);
-	void destroy();
 
 	struct Binding {
 		std::string name;
@@ -81,14 +81,14 @@ class DescriptorSet {
 	};
 	struct Set {
 		vk::DescriptorSet set;
-		vk::DescriptorPool pool;
+		Deferred<vk::DescriptorPool> pool;
 		std::unordered_map<u32, Binding> bindings;
 	};
 	struct Storage {
 		vk::DescriptorSetLayout layout;
 		RingBuffer<Set> setBuffer;
 		std::unordered_map<u32, BindingInfo> bindingInfos;
-		u32 rotateCount = 1;
+		Buffering buffering = 1_B;
 		u32 setNumber = 0;
 	} m_storage;
 
@@ -98,8 +98,8 @@ class DescriptorSet {
 struct DescriptorSet::CreateInfo {
 	std::string_view name;
 	vk::DescriptorSetLayout layout;
-	View<BindingInfo> bindingInfos;
-	std::size_t rotateCount = 2;
+	Span<BindingInfo const> bindingInfos;
+	Buffering buffering = 2_B;
 	u32 setNumber = 0;
 };
 
@@ -125,7 +125,7 @@ class SetPool {
 		vk::DescriptorSetLayout layout;
 		std::vector<BindingInfo> bindInfos;
 		std::vector<DescriptorSet> descriptorSets;
-		std::size_t rotateCount = 0;
+		Buffering buffering;
 		u32 setNumber = 0;
 	} m_storage;
 	not_null<Device*> m_device;
@@ -135,7 +135,7 @@ class SetPool {
 class ShaderInput {
   public:
 	ShaderInput() = default;
-	ShaderInput(Pipeline const& pipe, std::size_t rotateCount);
+	ShaderInput(Pipeline const& pipe, Buffering buffering);
 
 	SetPool& set(u32 set);
 	SetPool const& set(u32 set) const;
@@ -144,8 +144,8 @@ class ShaderInput {
 	bool contains(u32 set) const noexcept;
 	bool contains(u32 set, u32 bind) const noexcept;
 
-	bool update(View<Texture> textures, u32 set, u32 bind, std::size_t idx = 0);
-	bool update(View<Buffer> buffers, u32 set, u32 bind, std::size_t idx = 0, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
+	bool update(Span<Texture const> textures, u32 set, u32 bind, std::size_t idx = 0);
+	bool update(Span<Buffer const> buffers, u32 set, u32 bind, std::size_t idx = 0, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx = 0);
 
 	SetPool& operator[](u32 set);
@@ -162,7 +162,7 @@ class ShaderInput {
 inline u32 DescriptorSet::setNumber() const noexcept { return m_storage.setNumber; }
 
 template <typename T>
-void DescriptorSet::update(u32 binding, vk::DescriptorType type, View<T> writes) {
+void DescriptorSet::update(u32 binding, vk::DescriptorType type, Span<T const> writes) {
 	vk::WriteDescriptorSet write;
 	write.dstSet = get();
 	write.dstBinding = binding;
@@ -192,6 +192,6 @@ bool DescriptorSet::update(u32 binding, C const& textures) {
 	for (Texture const& tex : textures) { imgs.images.push_back({tex.data().imageView, tex.data().sampler}); }
 	return updateImgs(binding, std::move(imgs));
 }
-inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) { update(binding, View<Ref<Buffer const>>(buffer), type); }
-inline bool DescriptorSet::update(u32 binding, Texture const& texture) { return update(binding, View<Ref<Texture const>>(texture)); }
+inline void DescriptorSet::update(u32 binding, Buffer const& buffer, vk::DescriptorType type) { update(binding, Span<Ref<Buffer const> const>(buffer), type); }
+inline bool DescriptorSet::update(u32 binding, Texture const& texture) { return update(binding, Span<Ref<Texture const> const>(texture)); }
 } // namespace le::graphics

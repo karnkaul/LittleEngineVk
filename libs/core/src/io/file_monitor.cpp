@@ -40,7 +40,7 @@ FileMonitor::Status FileMonitor::update() {
 					if (*text == m_text) {
 						bDirty = false;
 					} else {
-						m_text = text.move();
+						m_text = std::move(text).value();
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}
@@ -49,7 +49,7 @@ FileMonitor::Status FileMonitor::update() {
 					if (*bytes == m_bytes) {
 						bDirty = false;
 					} else {
-						m_bytes = bytes.move();
+						m_bytes = std::move(bytes).value();
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}

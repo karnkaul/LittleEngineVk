@@ -1,6 +1,6 @@
-#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/mesh.hpp>
+#include <graphics/render/command_buffer.hpp>
 
 namespace le::graphics {
 Mesh::Mesh(not_null<VRAM*> vram, Type type) : m_vram(vram), m_type(type) {}
@@ -32,7 +32,7 @@ Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size
 	return ret;
 }
 
-bool Mesh::draw(CommandBuffer const& cb, u32 instances, u32 first) const {
+bool Mesh::draw(CommandBuffer cb, u32 instances, u32 first) const {
 	if (valid()) {
 		Buffer const* ibo = m_ibo.buffer.has_value() ? &*m_ibo.buffer : nullptr;
 		cb.bindVBO(*m_vbo.buffer, ibo);

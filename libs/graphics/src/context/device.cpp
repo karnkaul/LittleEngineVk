@@ -147,9 +147,14 @@ void Device::resetAll(vAP<vk::Fence> validFences) const {
 	if (!validFences.empty()) { m_device.resetFences(std::move(validFences)); }
 }
 
-bool Device::signalled(View<vk::Fence> fences) const {
+bool Device::signalled(Span<vk::Fence const> fences) const {
 	auto const s = [this](vk::Fence const& fence) -> bool { return default_v(fence) || m_device.getFenceStatus(fence) == vk::Result::eSuccess; };
 	return std::all_of(fences.begin(), fences.end(), s);
+}
+
+vk::CommandPool Device::makeCommandPool(vk::CommandPoolCreateFlags flags, QType qtype) const {
+	vk::CommandPoolCreateInfo info(flags, m_queues.familyIndex(qtype));
+	return m_device.createCommandPool(info);
 }
 
 vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
@@ -223,6 +228,8 @@ vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::Image
 	return m_device.createFramebuffer(createInfo);
 }
 
+vk::Sampler Device::makeSampler(vk::SamplerCreateInfo info) const { return m_device.createSampler(info); }
+
 bool Device::setDebugUtilsName([[maybe_unused]] vk::DebugUtilsObjectNameInfoEXT const& info) const {
 #if !defined(__ANDROID__)
 	if (!default_v(m_instance->m_messenger)) {
@@ -241,7 +248,7 @@ bool Device::setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view
 	return setDebugUtilsName(info);
 }
 
-void Device::defer(Deferred::Callback callback, u64 defer) { m_deferred.defer({std::move(callback), defer}); }
+void Device::defer(DeferQueue::Callback const& callback, Buffering defer) { m_deferred.defer(callback, defer); }
 
 void Device::decrementDeferred() { m_deferred.decrement(); }
 } // namespace le::graphics

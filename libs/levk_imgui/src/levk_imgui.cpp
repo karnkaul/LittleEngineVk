@@ -11,8 +11,8 @@
 #include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <glm/common.hpp>
-#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
+#include <graphics/render/command_buffer.hpp>
 #include <window/desktop_instance.hpp>
 #endif
 
@@ -119,7 +119,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = device->queues().queue(QType::eGraphics);
-	m_pool = makePool(*device, info.descriptorCount);
+	m_pool = {device, makePool(*device, info.descriptorCount)};
 	initInfo.Instance = device->m_instance->instance();
 	initInfo.Device = device->device();
 	initInfo.PhysicalDevice = device->physicalDevice().device;
@@ -128,11 +128,8 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	initInfo.MinImageCount = (u32)info.minImageCount;
 	initInfo.ImageCount = (u32)info.imageCount;
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	initInfo.DescriptorPool = m_pool;
-	if (!ImGui_ImplVulkan_Init(&initInfo, info.renderPass)) {
-		device->destroy(m_pool);
-		throw std::runtime_error("ImGui_ImplVulkan_Init failed");
-	}
+	initInfo.DescriptorPool = *m_pool;
+	if (!ImGui_ImplVulkan_Init(&initInfo, info.renderPass)) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	poolInfo.queueFamilyIndex = queue.familyIndex;
@@ -154,21 +151,16 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	device->waitFor(done);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 	device->destroy(pool, done);
+	m_del = {m_device, nullptr};
 	logD("[DearImGui] constructed");
 #endif
 }
 
-DearImGui::~DearImGui() {
+void DearImGui::Del::operator()(not_null<graphics::Device*>, void*) const {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive && m_device) {
-		Device& d = *m_device;
-		d.defer([&d, p = m_pool]() mutable {
-			ImGui_ImplVulkan_Shutdown();
-			ImGui::DestroyContext();
-			d.destroy(p);
-		});
-		logD("[DearImGui] destroyed");
-	}
+	ImGui_ImplVulkan_Shutdown();
+	ImGui::DestroyContext();
+	logD("[DearImGui] destroyed");
 #endif
 }
 

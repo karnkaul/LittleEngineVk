@@ -3,7 +3,7 @@
 #include <engine/assets/asset_loader.hpp>
 #include <engine/render/bitmap_font.hpp>
 #include <engine/render/model.hpp>
-#include <graphics/render_context.hpp>
+#include <graphics/render/context.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
@@ -35,6 +35,7 @@ struct AssetLoadData<graphics::Pipeline> {
 	std::string name;
 	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
+	bool gui = false;
 
 	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
 };
@@ -51,8 +52,10 @@ struct AssetLoadData<graphics::Texture> {
 	graphics::Bitmap bitmap;
 	io::Path prefix;
 	std::string ext;
+	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
+	graphics::Texture::Payload payload = graphics::Texture::Payload::eColour;
 	bool rawBytes = false;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}

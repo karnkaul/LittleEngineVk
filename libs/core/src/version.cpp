@@ -7,7 +7,7 @@
 
 namespace le {
 namespace {
-u32 parse(View<std::string_view> const& vec, std::size_t idx) noexcept { return (vec.size() > idx) ? utils::to<u32>(vec[idx], 0) : 0; }
+u32 parse(Span<std::string_view const> const& vec, std::size_t idx) noexcept { return (vec.size() > idx) ? utils::to<u32>(vec[idx], 0) : 0; }
 } // namespace
 
 Version::Version(std::string_view serialised) noexcept {

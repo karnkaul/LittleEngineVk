@@ -108,7 +108,7 @@ void onFocus(GLFWwindow* pGLFWwindow, int entered) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eFocus;
-		event.payload.bSet = entered != 0;
+		event.payload.set = entered != 0;
 		g_state.events.m_events.push_back(event);
 		g_log->log(lvl::info, 1, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
 	}
@@ -120,7 +120,7 @@ void onWindowResize(GLFWwindow* pGLFWwindow, int width, int height) {
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), false};
 		g_state.events.m_events.push_back(event);
-		g_log->log(lvl::info, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
+		g_log->log(lvl::debug, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
 	}
 }
 
@@ -130,7 +130,7 @@ void onFramebufferResize(GLFWwindow* pGLFWwindow, int width, int height) {
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), true};
 		g_state.events.m_events.push_back(event);
-		g_log->log(lvl::info, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
+		g_log->log(lvl::debug, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
 	}
 }
 
@@ -138,7 +138,7 @@ void onIconify(GLFWwindow* pWindow, int iconified) {
 	if (g_state.bInit && g_state.pWindow == pWindow) {
 		Event event;
 		event.type = Event::Type::eSuspend;
-		event.payload.bSet = iconified != 0;
+		event.payload.set = iconified != 0;
 		g_state.events.m_events.push_back(event);
 		g_log->log(lvl::info, 1, "[{}] Window {}", g_name, iconified != 0 ? "suspended" : "resumed");
 	}
@@ -198,7 +198,7 @@ void onText(GLFWwindow* pGLFWwindow, u32 codepoint) {
 	if (g_state.bInit && g_state.pWindow == pGLFWwindow) {
 		Event event;
 		event.type = Event::Type::eText;
-		event.payload.text = {static_cast<char>(codepoint)};
+		event.payload.text = static_cast<char>(codepoint);
 		g_state.events.m_events.push_back(event);
 	}
 }
@@ -217,7 +217,7 @@ void onScroll(GLFWwindow* pGLFWwindow, f64 dx, f64 dy) {
 }
 } // namespace
 
-DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
+DesktopInstance::DesktopInstance(CreateInfo const& info) : InstanceBase(true) {
 	if (g_state.bInit || g_state.pWindow) { throw std::runtime_error("Duplicate GLFW instance"); }
 	if (!init(m_log)) { throw std::runtime_error("Fatal errorin creating Window Instance"); }
 	m_desktop = true;
@@ -296,7 +296,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : IInstance(true) {
 
 DesktopInstance::~DesktopInstance() { deinit(); }
 
-View<std::string_view> DesktopInstance::vkInstanceExtensions() const {
+Span<std::string_view const> DesktopInstance::vkInstanceExtensions() const {
 	static std::vector<std::string_view> ret;
 	if (ret.empty()) {
 		u32 glfwExtCount;

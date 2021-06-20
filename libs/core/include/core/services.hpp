@@ -1,88 +1,78 @@
 #pragma once
-#include <memory>
-#include <tuple>
-#include <vector>
-#if defined(LEVK_DEBUG)
-#include <core/utils/string.hpp>
-#endif
+#include <cstdint>
+#include <core/ensure.hpp>
+#include <core/not_null.hpp>
+#include <core/std_types.hpp>
 
 namespace le {
-///
-/// \brief Type-erased container for objects used as services
-///
-class Services final {
-  public:
-	Services();
-	Services(Services&&);
-	Services& operator=(Services&&);
-	~Services();
+template <std::size_t N>
+class ServiceLocator;
 
-  public:
-	///
-	/// \brief Add a new service object
-	///
-	template <typename T, typename... Args>
-	T& add(Args&&... args);
+using Services = ServiceLocator<16>;
 
+template <typename T>
+class Service;
+
+///
+/// \brief Type-safe mapping for (pointers to) objects used as services
+///
+template <std::size_t N>
+class ServiceLocator final {
+  public:
+	static constexpr std::size_t maxServices = N;
+
+	///
+	/// \brief Track passed service objects
+	///
+	template <typename... Ts>
+	static void track(not_null<Ts*>... ts) {
+		((s_ts[typeID<Ts>()] = ts.get()), ...);
+	}
+	///
+	/// \brief Untrack service objects
+	///
+	template <typename... Ts>
+	static void untrack() noexcept {
+		((s_ts[typeID<Ts>()] = nullptr), ...);
+	}
+	///
+	/// \brief Clear tracked service objects
+	///
+	static void clear() noexcept {
+		for (auto& p : s_ts) { p = nullptr; }
+	}
+	///
+	/// \brief Check if a service object corresponding to T exists
+	///
+	template <typename T>
+	[[nodiscard]] static bool exists() noexcept {
+		return s_ts[typeID<T>()] != nullptr;
+	}
 	///
 	/// \brief Locate an existing service object
 	///
 	template <typename T>
-	T* locate();
-
-	///
-	/// \brief Locate an existing service object
-	///
-	template <typename T>
-	T const* locate() const;
+	[[nodiscard]] static T* locate() noexcept {
+		ENSURE(exists<T>(), "Service not found");
+		return reinterpret_cast<T*>(s_ts[typeID<T>()]);
+	}
 
   private:
-	struct Concept {
-#if defined(LEVK_DEBUG)
-		std::string targetType;
-#endif
-		virtual ~Concept() {}
-	};
-	template <typename S>
-	struct Model : public Concept {
-		S s;
+	template <typename T>
+	static std::size_t typeID() noexcept {
+		static std::size_t ret = ++s_typeID;
+		ENSURE(ret < maxServices, "Max services exceeded");
+		return ret;
+	}
 
-		template <typename... Args>
-		Model(Args&&... args);
-	};
-
-	std::vector<std::unique_ptr<Concept>> m_services;
+	inline static void* s_ts[N] = {};
+	inline static std::size_t s_typeID = 0;
 };
 
-template <typename S>
-template <typename... Args>
-Services::Model<S>::Model(Args&&... args) : s(std::forward<Args>(args)...) {
-#if defined(LEVK_DEBUG)
-	targetType = utils::tName(&s);
-#endif
-}
-
-template <typename T, typename... Args>
-T& Services::add(Args&&... args) {
-	auto uT = std::make_unique<Model<T>>(std::forward<Args>(args)...);
-	auto& ret = uT->s;
-	m_services.push_back(std::move(uT));
-	return ret;
-}
-
 template <typename T>
-T* Services::locate() {
-	for (auto& uConcept : m_services) {
-		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel) { return &pModel->s; }
-	}
-	return nullptr;
-}
-
-template <typename T>
-T const* Services::locate() const {
-	for (auto& uConcept : m_services) {
-		if (auto pModel = dynamic_cast<Model<T>*>(uConcept.get()); pModel) { return &pModel->s; }
-	}
-	return nullptr;
-}
+class Service {
+  public:
+	Service() noexcept { Services::track<T>(static_cast<T*>(this)); }
+	virtual ~Service() noexcept { Services::untrack<T>(); }
+};
 } // namespace le

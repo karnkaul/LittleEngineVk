@@ -3,12 +3,16 @@
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/instance.hpp>
 #include <graphics/context/queue_multiplex.hpp>
+#include <graphics/utils/layout_state.hpp>
 
 namespace le::graphics {
 class Device final {
   public:
 	template <typename T>
 	using vAP = vk::ArrayProxy<T const> const&;
+
+	template <typename T>
+	struct Deleter;
 
 	enum class QSelect { eOptimal, eSingleFamily, eSingleQueue };
 	inline static constexpr std::array<std::string_view, 2> requiredExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME};
@@ -29,8 +33,9 @@ class Device final {
 	void resetFence(vk::Fence optional) const;
 	void resetAll(vAP<vk::Fence> validFences) const;
 
-	bool signalled(View<vk::Fence> fences) const;
+	bool signalled(Span<vk::Fence const> fences) const;
 
+	vk::CommandPool makeCommandPool(vk::CommandPoolCreateFlags flags, QType qtype) const;
 	vk::ImageView makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
 								vk::ImageViewType type = vk::ImageViewType::e2D) const;
 
@@ -42,18 +47,19 @@ class Device final {
 	std::vector<vk::DescriptorSet> allocateDescriptorSets(vk::DescriptorPool pool, vAP<vk::DescriptorSetLayout> layouts, u32 setCount = 1) const;
 
 	vk::RenderPass makeRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
-								  vAP<vk::SubpassDependency> dependencies) const;
+								  vAP<vk::SubpassDependency> dependencies = {}) const;
 
 	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers = 1) const;
+	vk::Sampler makeSampler(vk::SamplerCreateInfo info) const;
 
 	bool setDebugUtilsName(vk::DebugUtilsObjectNameInfoEXT const& info) const;
 	bool setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view name) const;
 
 	template <typename T, typename... Args>
-	T construct(Args&&... args);
+	T make(Args&&... args);
 	template <typename T, typename... Ts>
 	void destroy(T& out_t, Ts&... out_ts);
-	void defer(Deferred::Callback callback, u64 defer = Deferred::defaultDefer);
+	void defer(DeferQueue::Callback const& callback, Buffering defer = DeferQueue::defaultDefer);
 
 	void decrementDeferred();
 
@@ -68,6 +74,7 @@ class Device final {
 	vk::Device device() const noexcept { return m_device; }
 	vk::SurfaceKHR surface() const noexcept { return m_metadata.surface; }
 
+	LayoutState m_layouts;
 	not_null<Instance*> m_instance;
 
   private:
@@ -86,7 +93,7 @@ class Device final {
 };
 
 struct Device::CreateInfo {
-	View<std::string_view> extensions = requiredExtensions;
+	Span<std::string_view const> extensions = requiredExtensions;
 	DevicePicker* pPicker = nullptr;
 	std::optional<std::size_t> pickOverride;
 	QSelect qselect = QSelect::eOptimal;
@@ -94,8 +101,13 @@ struct Device::CreateInfo {
 
 // impl
 
+template <typename T>
+struct Device::Deleter {
+	void operator()(not_null<Device*> device, T t) const { device->destroy(t); }
+};
+
 template <typename T, typename... Args>
-T Device::construct(Args&&... args) {
+T Device::make(Args&&... args) {
 	if constexpr (std::is_same_v<T, vk::Semaphore>) {
 		return makeSemaphore(std::forward<Args>(args)...);
 	} else if constexpr (std::is_same_v<T, vk::Fence>) {
@@ -112,6 +124,12 @@ T Device::construct(Args&&... args) {
 		return makeRenderPass(std::forward<Args>(args)...);
 	} else if constexpr (std::is_same_v<T, vk::Framebuffer>) {
 		return makeFramebuffer(std::forward<Args>(args)...);
+	} else if constexpr (std::is_same_v<T, vk::CommandPool>) {
+		return makeCommandPool(std::forward<Args>(args)...);
+	} else if constexpr (std::is_same_v<T, vk::PipelineCache>) {
+		return makePipelineCache(std::forward<Args>(args)...);
+	} else if constexpr (std::is_same_v<T, vk::Sampler>) {
+		return makeSampler(std::forward<Args>(args)...);
 	} else {
 		static_assert(false_v<T>, "Invalid type");
 	}

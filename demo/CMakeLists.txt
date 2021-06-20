@@ -14,9 +14,6 @@ target_link_libraries(${PROJECT_NAME} levk::demo-lib)
 if(WINDOWS_MSBUILD)
 	set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 endif()
-if(LEVK_USE_PCH)
-	target_precompile_headers(${PROJECT_NAME} REUSE_FROM levk-engine)
-endif()
 
 # Android
 set(ANDROID_CMAKE_VERSION 3.18.1)

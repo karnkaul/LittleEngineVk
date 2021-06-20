@@ -7,7 +7,7 @@
 #include <core/io/reader.hpp>
 #include <core/not_null.hpp>
 #include <core/os.hpp>
-#include <kt/async_queue/locker.hpp>
+#include <kt/tmutex/shared_tmutex.hpp>
 
 constexpr bool levk_resourceMonitor = levk_debug && levk_desktopOS;
 
@@ -18,7 +18,7 @@ class Resource {
 
 	io::Path const& path() const { return m_path; }
 	std::string_view string() const noexcept;
-	View<std::byte> bytes() const noexcept;
+	Span<std::byte const> bytes() const noexcept;
 	Type type() const noexcept;
 
 	bool monitoring() const noexcept;
@@ -53,7 +53,9 @@ class Resources {
 	void clear();
 
   protected:
-	kt::locker_t<std::unordered_map<Hash, Resource>, std::shared_mutex> m_loaded;
+	using ResourceMap = std::unordered_map<Hash, Resource>;
+
+	kt::shared_strict_tmutex<ResourceMap> m_loaded;
 	io::FileReader m_fileReader;
 	io::Reader const* m_reader = nullptr;
 };

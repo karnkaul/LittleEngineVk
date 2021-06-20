@@ -1,8 +1,8 @@
 #pragma once
+#include <mutex>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <graphics/qflags.hpp>
-#include <kt/async_queue/lockable.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -47,35 +47,35 @@ class QueueMultiplex final {
 
 	template <template <typename...> typename L = std::scoped_lock>
 	auto lockMutex(QType type) {
-		return mutex(type).lock<L>();
+		return L<std::mutex>(mutex(type));
 	}
 
 	using Lock = std::scoped_lock<std::mutex, std::mutex>;
-	Lock lock() { return Lock(m_mutexes.gp.mutex, m_mutexes.t.mutex); }
+	Lock lock() { return Lock(m_mutexes.gp, m_mutexes.t); }
 
 	Queue& queue(QType type) noexcept { return m_queues[type].first; }
 
 	Queue const& queue(QType type) const noexcept { return m_queues[type].first; }
 
   private:
-	kt::lockable_t<>& mutex(QType type) { return *m_queues[type].second; }
+	std::mutex& mutex(QType type) { return *m_queues[type].second; }
 
 	template <std::size_t N>
 	using QCIArr = std::array<QCI, N>;
-	QCIArr<1> makeFrom1(Family& gpt, View<f32> prio);
-	QCIArr<2> makeFrom2(Family& a, Family& b, View<f32> pa, View<f32> pb);
-	QCIArr<3> makeFrom3(Family& g, Family& p, Family& t, View<f32> pg, View<f32> pp, View<f32> pt);
+	QCIArr<1> makeFrom1(Family& gpt, Span<f32 const> prio);
+	QCIArr<2> makeFrom2(Family& a, Family& b, Span<f32 const> pa, Span<f32 const> pb);
+	QCIArr<3> makeFrom3(Family& g, Family& p, Family& t, Span<f32 const> pg, Span<f32 const> pp, Span<f32 const> pt);
 
 	using qcivec = std::vector<vk::DeviceQueueCreateInfo>;
 	using Assign = std::array<std::pair<std::size_t, std::size_t>, 3>;
-	void makeQueues(qcivec& out_vec, View<QCI> qcis, Assign const& a);
+	void makeQueues(qcivec& out_vec, Span<QCI const> qcis, Assign const& a);
 
 	void assign(Queue g, Queue p, Queue t);
 
-	EnumArray<QType, std::pair<Queue, kt::lockable_t<>*>> m_queues;
+	EnumArray<QType, std::pair<Queue, std::mutex*>> m_queues;
 	struct {
-		kt::lockable_t<> gp;
-		kt::lockable_t<> t;
+		std::mutex gp;
+		std::mutex t;
 	} m_mutexes;
 	u32 m_familyCount = 0;
 	u32 m_queueCount = 0;

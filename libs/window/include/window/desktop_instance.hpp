@@ -3,16 +3,16 @@
 #include <window/instance.hpp>
 
 namespace le::window {
-class DesktopInstance final : public IInstance {
+class DesktopInstance final : public InstanceBase {
   public:
-	DesktopInstance() : IInstance(false) {}
+	DesktopInstance() : InstanceBase(false) {}
 	explicit DesktopInstance(CreateInfo const& info);
 	DesktopInstance(DesktopInstance&&) = default;
 	DesktopInstance& operator=(DesktopInstance&&) = default;
 	~DesktopInstance();
 
 	// ISurface
-	View<std::string_view> vkInstanceExtensions() const override;
+	Span<std::string_view const> vkInstanceExtensions() const override;
 	bool vkCreateSurface(ErasedPtr vkInstance, ErasedPtr vkSurface) const override;
 	ErasedPtr nativePtr() const noexcept override;
 

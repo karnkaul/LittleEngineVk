@@ -1,10 +1,12 @@
 #pragma once
 #include <optional>
+#include <core/array_map.hpp>
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <glm/vec2.hpp>
-#include <graphics/context/render_types.hpp>
 #include <graphics/qflags.hpp>
+#include <graphics/render/buffering.hpp>
+#include <graphics/render/target.hpp>
 #include <graphics/resources.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <kt/result/result.hpp>
@@ -12,6 +14,13 @@
 namespace le::graphics {
 class VRAM;
 class Device;
+
+constexpr ArrayMap<vk::PresentModeKHR, std::string_view, 4> presentModeNames = {{
+	{vk::PresentModeKHR::eFifo, "FIFO"},
+	{vk::PresentModeKHR::eFifoRelaxed, "FIFO Relaxed"},
+	{vk::PresentModeKHR::eImmediate, "Immediate"},
+	{vk::PresentModeKHR::eMailbox, "Mailbox"},
+}};
 
 class Swapchain {
   public:
@@ -23,28 +32,24 @@ class Swapchain {
 		/// \brief Override to provide a custom format
 		/// Note: engine assumes sRGB swapchain image format; correct colour in subpasses / shaders if not so
 		///
-		virtual vk::SurfaceFormatKHR pick(View<vk::SurfaceFormatKHR> options) const noexcept;
+		virtual vk::SurfaceFormatKHR pick(Span<vk::SurfaceFormatKHR const> options) const noexcept;
 	};
 	struct Display {
-		vk::Extent2D extent = {};
+		Extent2D extent = {};
 		vk::SurfaceTransformFlagBitsKHR transform = {};
 	};
 	struct CreateInfo {
-		struct {
-			u32 imageCount = 2;
-			bool vsync = false;
-		} desired;
-
-		struct {
-			LayoutPair colour = {vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
-			LayoutPair depth = {vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal};
-		} transitions;
-
+		u32 imageCount = 2;
+		bool vsync = false;
 		FormatPicker const* custom = {};
 	};
+	struct Acquire {
+		RenderImage image;
+		u32 index = 0;
+	};
 
-	static constexpr std::string_view presentModeName(vk::PresentModeKHR mode) noexcept;
 	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept;
+	static constexpr bool valid(vk::Extent2D extent) noexcept { return valid(glm::ivec2{extent.width, extent.height}); }
 	static constexpr bool srgb(vk::Format format) noexcept;
 
 	Swapchain(not_null<VRAM*> vram);
@@ -53,17 +58,20 @@ class Swapchain {
 	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
-	kt::result<RenderTarget> acquireNextImage(RenderSync const& sync);
-	bool present(RenderSync const& sync);
+	kt::result<Acquire> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
+	bool present(vk::Semaphore swait);
 	bool reconstruct(glm::ivec2 framebufferSize = {}, bool vsync = false);
 
 	bool suboptimal() const noexcept;
 	bool paused() const noexcept;
 
-	Display display() const noexcept { return m_storage.current; }
+	u8 imageCount() const noexcept { return (u8)m_storage.images.size(); }
+	Buffering buffering() const noexcept { return {imageCount()}; }
+	Display display() const noexcept { return m_storage.display; }
 	Flags flags() const noexcept { return m_storage.flags; }
-	vk::RenderPass renderPass() const noexcept { return m_metadata.renderPass; }
 	vk::SurfaceFormatKHR const& colourFormat() const noexcept { return m_metadata.formats.colour; }
+	vk::Format depthFormat() const noexcept { return m_metadata.formats.depth; }
+	Span<RenderImage const> images() const noexcept { return m_storage.images; }
 
 	inline static bool s_forceVsync = false;
 
@@ -71,26 +79,19 @@ class Swapchain {
 	not_null<Device*> m_device;
 
   private:
-	struct Frame {
-		RenderTarget target;
-		vk::Fence drawn;
-	};
 	struct Storage {
-		std::optional<Image> depthImage;
-		vk::ImageView depthImageView;
+		kt::fixed_vector<RenderImage, 4> images;
 		vk::SwapchainKHR swapchain;
-		kt::fixed_vector<Frame, 4> frames;
 		std::optional<u32> acquired;
 
-		Display current;
-		u8 imageCount = 0;
+		Display display;
 		Flags flags;
 
-		Frame& frame();
+		Acquire current() const;
+		Acquire current(u32 acquired);
 	};
 	struct Metadata {
 		CreateInfo info;
-		vk::RenderPass renderPass;
 		vk::SurfaceKHR surface;
 		vk::SwapchainKHR retired;
 		vk::PresentModeKHR presentMode;
@@ -107,23 +108,12 @@ class Swapchain {
 
   private:
 	bool construct(glm::ivec2 framebufferSize);
-	void makeRenderPass();
-	void destroy(Storage& out_storage, bool bMeta);
+	void destroy(Storage& out_storage);
 	void setFlags(vk::Result result);
 	void orientCheck();
 };
 
 // impl
-
-constexpr std::string_view Swapchain::presentModeName(vk::PresentModeKHR mode) noexcept {
-	switch (mode) {
-	case vk::PresentModeKHR::eFifo: return "FIFO";
-	case vk::PresentModeKHR::eFifoRelaxed: return "FIFO Relaxed";
-	case vk::PresentModeKHR::eImmediate: return "Immediate";
-	case vk::PresentModeKHR::eMailbox: return "Mailbox";
-	default: return "Other";
-	}
-}
 
 constexpr bool Swapchain::valid(glm::ivec2 framebufferSize) noexcept { return framebufferSize.x > 0 && framebufferSize.y > 0; }
 

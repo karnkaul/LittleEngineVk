@@ -27,10 +27,9 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	poolInfo.queueFamilyIndex = memory->m_device->queues().familyIndex(QType::eTransfer);
 	m_data.pool = memory->m_device->device().createCommandPool(poolInfo);
-	m_queue.active(true);
-	m_sync.stagingThread = kt::kthread([this, r = info.reserve]() {
+	m_sync.staging = kt::kthread([this, r = info.reserve]() {
 		{
-			auto lock = m_sync.mutex.lock();
+			std::scoped_lock lock(m_sync.mutex);
 			for (auto const& range : r) {
 				for (auto i = range.count; i > 0; --i) { m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size)); }
 			}
@@ -40,10 +39,9 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 		g_log.log(lvl::info, 1, "[{}] Transfer thread completed", g_name);
 	});
 	if (info.autoPollRate && *info.autoPollRate > 0ms) {
-		m_sync.bPoll.store(true);
-		m_sync.pollThread = kt::kthread([this, rate = *info.autoPollRate]() {
+		m_sync.poll = kt::kthread([this, rate = *info.autoPollRate](kt::kthread::stop_t stop) {
 			g_log.log(lvl::info, 1, "[{}] Transfer poll thread started", g_name);
-			while (m_sync.bPoll.load()) {
+			while (!stop.stop_requested()) {
 				update();
 				kt::kthread::sleep_for(rate);
 			}
@@ -54,10 +52,10 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 }
 
 Transfer::~Transfer() {
-	m_sync.bPoll.store(false);
+	m_sync.poll.request_stop();
 	auto residue = m_queue.clear();
 	for (auto& f : residue) { f(); }
-	m_sync.stagingThread = {};
+	m_sync.staging = {};
 	Memory& m = *m_memory;
 	Device& d = *m.m_device;
 	d.waitIdle();
@@ -84,7 +82,7 @@ std::size_t Transfer::update() {
 		}
 		return false;
 	};
-	auto lock = m_sync.mutex.lock();
+	std::scoped_lock lock(m_sync.mutex);
 	utils::erase_if(m_batches.submitted, removeDone);
 	if (!m_batches.active.entries.empty()) {
 		std::vector<vk::CommandBuffer> commands;
@@ -104,12 +102,13 @@ std::size_t Transfer::update() {
 Transfer::Stage Transfer::newStage(vk::DeviceSize bufferSize) { return Stage{nextBuffer(bufferSize), nextCommand()}; }
 
 void Transfer::addStage(Stage&& stage, Promise&& promise) {
-	auto lock = m_sync.mutex.lock();
+	std::scoped_lock lock(m_sync.mutex);
 	m_batches.active.entries.emplace_back(std::move(stage), std::move(promise));
 }
 
-Buffer Transfer::nextBuffer(vk::DeviceSize size) {
-	auto lock = m_sync.mutex.lock();
+std::optional<Buffer> Transfer::nextBuffer(vk::DeviceSize size) {
+	if (size == 0) { return std::nullopt; }
+	std::scoped_lock lock(m_sync.mutex);
 	for (auto iter = m_data.buffers.begin(); iter != m_data.buffers.end(); ++iter) {
 		if (iter->writeSize() >= size) {
 			Buffer ret = std::move(*iter);
@@ -121,7 +120,7 @@ Buffer Transfer::nextBuffer(vk::DeviceSize size) {
 }
 
 vk::CommandBuffer Transfer::nextCommand() {
-	auto lock = m_sync.mutex.lock();
+	std::scoped_lock lock(m_sync.mutex);
 	if (!m_data.commands.empty()) {
 		auto ret = m_data.commands.back();
 		m_data.commands.pop_back();
@@ -135,7 +134,7 @@ vk::CommandBuffer Transfer::nextCommand() {
 
 void Transfer::scavenge(Stage&& stage, vk::Fence fence) {
 	m_data.commands.push_back(std::move(stage.command));
-	m_data.buffers.push_back(std::move(stage.buffer));
+	if (stage.buffer) { m_data.buffers.push_back(std::move(*stage.buffer)); }
 	if (std::find(m_data.fences.begin(), m_data.fences.end(), fence) == m_data.fences.end()) {
 		m_memory->m_device->resetFence(fence);
 		m_data.fences.push_back(fence);

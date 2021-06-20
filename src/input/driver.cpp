@@ -137,15 +137,15 @@ bool Driver::extract(Event const& event, State& out_state) noexcept {
 		return true;
 	}
 	case Event::Type::eText: {
-		if (m_transient.text.has_space()) { m_transient.text.push_back(event.payload.text.c); }
+		if (m_transient.text.has_space()) { m_transient.text.push_back(event.payload.text); }
 		return true;
 	}
 	case Event::Type::eFocus: {
-		out_state.focus = event.payload.bSet ? Focus::eGained : Focus::eLost;
+		out_state.focus = event.payload.set ? Focus::eGained : Focus::eLost;
 		return true;
 	}
 	case Event::Type::eSuspend: {
-		m_persistent.suspended = event.payload.bSet;
+		m_persistent.suspended = event.payload.set;
 		return false;
 	}
 	default: return false;

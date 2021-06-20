@@ -6,14 +6,14 @@
 #include <window/surface.hpp>
 
 namespace le::window {
-class IInstance : public TMonoInstance<IInstance>, public ISurface {
+class InstanceBase : public TMonoInstance<InstanceBase>, public Surface {
   public:
 	struct CreateInfo;
 
-	IInstance(bool bValid) : TMonoInstance(bValid) {}
-	IInstance(IInstance&&) = default;
-	IInstance& operator=(IInstance&&) = default;
-	virtual ~IInstance() = default;
+	InstanceBase(bool bValid) : TMonoInstance(bValid) {}
+	InstanceBase(InstanceBase&&) = default;
+	InstanceBase& operator=(InstanceBase&&) = default;
+	virtual ~InstanceBase() = default;
 
 	bool isDesktop() const noexcept { return m_desktop; }
 
@@ -30,7 +30,7 @@ class IInstance : public TMonoInstance<IInstance>, public ISurface {
 enum class Style { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };
 constexpr EnumArray<Style, std::string_view> const styleNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
 
-struct IInstance::CreateInfo {
+struct InstanceBase::CreateInfo {
 	struct {
 		// Desktop
 		std::string title;
@@ -53,6 +53,6 @@ struct IInstance::CreateInfo {
 
 Key parseKey(std::string_view str) noexcept;
 Action parseAction(std::string_view str) noexcept;
-Mods parseMods(View<std::string> vec) noexcept;
+Mods parseMods(Span<std::string const> vec) noexcept;
 Axis parseAxis(std::string_view str) noexcept;
 } // namespace le::window

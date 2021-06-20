@@ -35,7 +35,7 @@ class ShaderBuffer {
 		std::vector<RingBuffer<Buffer>> buffers;
 		vk::DescriptorType type;
 		vk::BufferUsageFlagBits usage = {};
-		u32 rotateCount = 0;
+		Buffering buffering;
 		std::size_t elemSize = 0;
 	};
 
@@ -45,7 +45,7 @@ class ShaderBuffer {
 
 struct ShaderBuffer::CreateInfo {
 	vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
-	u32 rotateCount = 2;
+	Buffering buffering = DeferQueue::defaultDefer;
 };
 
 // impl

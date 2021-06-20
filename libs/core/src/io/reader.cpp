@@ -91,7 +91,7 @@ Reader::Result<std::string> Reader::string(io::Path const& id) const {
 	return kt::null_result;
 }
 
-bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_result(); }
+bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_value(); }
 
 bool Reader::checkPresence(io::Path const& id) const {
 	if (!present(id)) {
@@ -101,7 +101,7 @@ bool Reader::checkPresence(io::Path const& id) const {
 	return true;
 }
 
-bool Reader::checkPresences(View<io::Path> ids) const {
+bool Reader::checkPresences(Span<io::Path const> ids) const {
 	bool bRet = true;
 	for (auto const& id : ids) { bRet &= checkPresence(id); }
 	return bRet;
@@ -109,7 +109,8 @@ bool Reader::checkPresences(View<io::Path> ids) const {
 
 std::string_view Reader::medium() const { return m_medium; }
 
-Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] View<io::Path> anyOf, [[maybe_unused]] u8 maxHeight) {
+Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path const> anyOf,
+												 [[maybe_unused]] u8 maxHeight) {
 #if defined(LEVK_OS_ANDROID)
 	return kt::null_result;
 #else

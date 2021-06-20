@@ -115,7 +115,7 @@ void deinit() {
 }
 } // namespace
 
-AndroidInstance::AndroidInstance(CreateInfo const& info) : IInstance(true) {
+AndroidInstance::AndroidInstance(CreateInfo const& info) : InstanceBase(true) {
 	if (g_state.bInit || g_state.pApp) { throw std::runtime_error("Duplicate Android instance"); }
 	if (!info.config.androidApp.contains<android_app*>()) { throw std::runtime_error("android_app* required to function"); }
 	init(m_log, info.config.androidApp.get<android_app*>());
@@ -126,7 +126,7 @@ AndroidInstance::~AndroidInstance() {
 	if (m_bActive) { deinit(); }
 }
 
-View<std::string_view> AndroidInstance::vkInstanceExtensions() const {
+Span<std::string_view const> AndroidInstance::vkInstanceExtensions() const {
 	static constexpr std::array ret = {"VK_KHR_surface"sv, "VK_KHR_android_surface"sv};
 	return ret;
 }

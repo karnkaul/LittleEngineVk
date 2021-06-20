@@ -110,7 +110,7 @@ bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, input
 CursorType Resizer::check(ViewData const& data, Viewport& out_vp, input::State const& state) {
 	auto const rect = out_vp.rect();
 	auto const cursor = state.cursor.screenPos;
-	bool const click = state.pressed(Key::eMouseButton1).has_result();
+	bool const click = state.pressed(Key::eMouseButton1).has_value();
 	CursorType ret = CursorType::eDefault;
 	auto const left = rect.lt.x * data.wSize.x + data.offset.x;
 	auto const right = rect.rb.x * data.wSize.x + data.offset.x;

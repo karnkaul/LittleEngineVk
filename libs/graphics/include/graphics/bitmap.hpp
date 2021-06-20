@@ -12,5 +12,5 @@ struct TBitmap {
 };
 
 using Bitmap = TBitmap<bytearray>;
-using BMPview = View<Bitmap::type::value_type>;
+using BMPview = Span<Bitmap::type::value_type const>;
 } // namespace le::graphics

@@ -3,16 +3,16 @@
 #include <window/instance.hpp>
 
 namespace le::window {
-class AndroidInstance final : public IInstance {
+class AndroidInstance final : public InstanceBase {
   public:
-	AndroidInstance() : IInstance(false) {}
+	AndroidInstance() : InstanceBase(false) {}
 	explicit AndroidInstance(CreateInfo const& info);
 	AndroidInstance(AndroidInstance&&) = default;
 	AndroidInstance& operator=(AndroidInstance&&) = default;
 	~AndroidInstance();
 
 	// IISurface
-	View<std::string_view> vkInstanceExtensions() const override;
+	Span<std::string_view const> vkInstanceExtensions() const override;
 	bool vkCreateSurface(ErasedPtr vkInstance, ErasedPtr vkSurface) const override;
 	ErasedPtr nativePtr() const noexcept override;
 

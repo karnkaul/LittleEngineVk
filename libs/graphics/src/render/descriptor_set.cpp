@@ -1,10 +1,10 @@
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
-#include <graphics/descriptor_set.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/pipeline.hpp>
+#include <graphics/render/shader_buffer.hpp>
 #include <graphics/resources.hpp>
-#include <graphics/shader_buffer.hpp>
 #include <graphics/texture.hpp>
 
 namespace le::graphics {
@@ -31,7 +31,7 @@ bool stale(DescriptorSet::Bufs const& lhs, DescriptorSet::Bufs const& rhs) noexc
 } // namespace
 
 DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) : m_device(device) {
-	m_storage.rotateCount = (u32)info.rotateCount;
+	m_storage.buffering = info.buffering;
 	m_storage.layout = info.layout;
 	m_storage.setNumber = info.setNumber;
 	bool bActive = false;
@@ -42,39 +42,26 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 	if (bActive) {
 		std::vector<vk::DescriptorPoolSize> poolSizes;
 		poolSizes.reserve(m_storage.bindingInfos.size());
-		for (u32 buf = 0; buf < m_storage.rotateCount; ++buf) {
+		for (Buffering buf{}; buf < m_storage.buffering; ++buf.value) {
 			Set set;
 			for (auto const& [b, bindingInfo] : m_storage.bindingInfos) {
 				if (!bindingInfo.bUnassigned) {
-					u32 const totalSize = bindingInfo.binding.descriptorCount * m_storage.rotateCount;
+					u32 const totalSize = bindingInfo.binding.descriptorCount * m_storage.buffering.value;
 					poolSizes.push_back({bindingInfo.binding.descriptorType, totalSize});
 					set.bindings[b].type = bindingInfo.binding.descriptorType;
 					set.bindings[b].count = bindingInfo.binding.descriptorCount;
 					set.bindings[b].name = bindingInfo.name;
 				}
 			}
-			set.pool = m_device->makeDescriptorPool(poolSizes, 1);
-			set.set = m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
-			m_storage.setBuffer.push(std::move(set));
+			set.pool = makeDeferred<vk::DescriptorPool>(m_device, poolSizes, 1U);
+			set.set = m_device->allocateDescriptorSets(*set.pool, m_storage.layout, 1).front();
+			m_storage.setBuffer.emplace(std::move(set));
 		}
 	}
 }
 
-DescriptorSet::DescriptorSet(DescriptorSet&& rhs) noexcept : m_device(rhs.m_device), m_storage(std::exchange(rhs.m_storage, Storage())) {}
-
-DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
-	if (&rhs != this) {
-		destroy();
-		m_storage = std::exchange(rhs.m_storage, Storage());
-		m_device = rhs.m_device;
-	}
-	return *this;
-}
-
-DescriptorSet::~DescriptorSet() { destroy(); }
-
 void DescriptorSet::index(std::size_t index) {
-	if (index < m_storage.rotateCount) { m_storage.setBuffer.index = index; }
+	if (index < m_storage.buffering.value) { m_storage.setBuffer.index = index; }
 }
 
 void DescriptorSet::swap() { m_storage.setBuffer.next(); }
@@ -132,14 +119,6 @@ bool DescriptorSet::unassigned() const noexcept {
 
 void DescriptorSet::update(vk::WriteDescriptorSet write) { m_device->device().updateDescriptorSets(write, {}); }
 
-void DescriptorSet::destroy() {
-	Device& d = *m_device;
-	d.defer([b = m_storage.setBuffer, &d]() mutable {
-		for (Set& set : b.ts) { d.destroy(set.pool); }
-	});
-	m_storage = {};
-}
-
 std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u32 bind, vk::DescriptorType type, u32 count) {
 	auto& set = m_storage.setBuffer.get();
 	ENSURE(utils::contains(set.bindings, bind), "Nonexistent binding");
@@ -151,7 +130,7 @@ std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u
 
 SetPool::SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info) : m_device(device) {
 	m_storage.layout = info.layout;
-	m_storage.rotateCount = info.rotateCount;
+	m_storage.buffering = info.buffering;
 	m_storage.setNumber = info.setNumber;
 	bool bActive = false;
 	for (auto const& bi : info.bindingInfos) {
@@ -190,7 +169,7 @@ DescriptorSet const& SetPool::index(std::size_t idx) const {
 Span<DescriptorSet> SetPool::populate(std::size_t count) {
 	m_storage.descriptorSets.reserve(count);
 	while (m_storage.descriptorSets.size() < count) {
-		DescriptorSet::CreateInfo info{m_storage.name, m_storage.layout, m_storage.bindInfos, m_storage.rotateCount, m_storage.setNumber};
+		DescriptorSet::CreateInfo info{m_storage.name, m_storage.layout, m_storage.bindInfos, m_storage.buffering, m_storage.setNumber};
 		m_storage.descriptorSets.emplace_back(m_device, info);
 	}
 	return Span(m_storage.descriptorSets.data(), count);
@@ -217,7 +196,7 @@ bool SetPool::unassigned() const noexcept {
 
 void SetPool::clear() noexcept { m_storage.descriptorSets.clear(); }
 
-ShaderInput::ShaderInput(Pipeline const& pipe, std::size_t rotateCount) { m_setPools = pipe.makeSetPools(rotateCount); }
+ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) { m_setPools = pipe.makeSetPools(buffering); }
 
 SetPool& ShaderInput::set(u32 set) {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
@@ -247,7 +226,7 @@ bool ShaderInput::contains(u32 set, u32 bind) const noexcept {
 	return false;
 }
 
-bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t idx) {
+bool ShaderInput::update(Span<Texture const> textures, u32 set, u32 bind, std::size_t idx) {
 	if constexpr (levk_debug) {
 		if (contains(set)) {
 			DescriptorSet& ds = this->set(set).index(idx);
@@ -264,7 +243,7 @@ bool ShaderInput::update(View<Texture> textures, u32 set, u32 bind, std::size_t 
 	}
 }
 
-bool ShaderInput::update(View<Buffer> buffers, u32 set, u32 bind, std::size_t idx, vk::DescriptorType type) {
+bool ShaderInput::update(Span<Buffer const> buffers, u32 set, u32 bind, std::size_t idx, vk::DescriptorType type) {
 	if constexpr (levk_debug) {
 		if (!contains(set)) {
 			ENSURE(false, "DescriptorSet update failure");

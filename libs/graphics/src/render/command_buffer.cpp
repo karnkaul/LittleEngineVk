@@ -1,50 +1,45 @@
 #include <graphics/common.hpp>
-#include <graphics/context/command_buffer.hpp>
 #include <graphics/context/device.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/command_buffer.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/resources.hpp>
 
 namespace le::graphics {
-std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::CommandPool pool, u32 count, bool bSecondary) {
-	vk::CommandBufferAllocateInfo allocInfo;
-	allocInfo.commandPool = pool;
-	allocInfo.level = bSecondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandBufferCount = count;
+std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::CommandPool pool, u32 count) {
+	vk::CommandBufferAllocateInfo allocInfo(pool, vk::CommandBufferLevel::ePrimary, count);
 	auto buffers = device->device().allocateCommandBuffers(allocInfo);
 	std::vector<CommandBuffer> ret;
 	for (auto& buffer : buffers) { ret.push_back({buffer, pool}); }
 	return ret;
 }
 
-CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool) : m_cb(cmd), m_pool(pool) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
-
-bool CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
-	ENSURE(m_flags.none(Flag::eRecording), "Command buffer already recording!");
-	if (valid() && !recording()) {
-		vk::CommandBufferBeginInfo beginInfo;
-		beginInfo.flags = usage;
-		m_cb.begin(beginInfo);
-		m_flags.set(Flag::eRecording);
-		return true;
-	}
-	return false;
+CommandBuffer CommandBuffer::make(not_null<Device*> device, vk::CommandPoolCreateFlags flags, QType queue) {
+	CommandBuffer ret;
+	ret.m_pool = device->device().createCommandPool(vk::CommandPoolCreateInfo(flags, device->queues().familyIndex(queue)));
+	ret.m_cb = device->device().allocateCommandBuffers(vk::CommandBufferAllocateInfo(ret.m_pool, vk::CommandBufferLevel::ePrimary, 1)).front();
+	return ret;
 }
 
-bool CommandBuffer::begin(vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D extent, PassInfo const& info) {
-	ENSURE(m_flags.none(Flag::eRendering), "Command buffer already rendering a pass!");
-	if (valid() && !rendering()) {
-		if (!recording() && !begin(info.usage)) { ENSURE(false, "Invariant violated"); }
-		vk::RenderPassBeginInfo renderPassInfo;
-		renderPassInfo.renderPass = renderPass;
-		renderPassInfo.framebuffer = framebuffer;
-		renderPassInfo.renderArea.extent = extent;
-		renderPassInfo.clearValueCount = (u32)info.clearValues.size();
-		renderPassInfo.pClearValues = info.clearValues.data();
-		m_cb.beginRenderPass(renderPassInfo, info.subpassContents);
-		m_flags.set(Flag::eRendering);
-		return true;
-	}
-	return false;
+CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool) : m_cb(cmd), m_pool(pool) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
+
+void CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
+	ENSURE(valid() && !recording() && !rendering(), "Invalid command buffer state");
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = usage;
+	m_cb.begin(beginInfo);
+	m_flags.set(Flag::eRecording);
+}
+
+void CommandBuffer::beginRenderPass(vk::RenderPass renderPass, vk::Framebuffer framebuffer, Extent2D extent, PassInfo const& info) {
+	ENSURE(valid() && recording() && !rendering(), "Invalid command buffer state");
+	vk::RenderPassBeginInfo renderPassInfo;
+	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.framebuffer = framebuffer;
+	renderPassInfo.renderArea.extent = cast(extent);
+	renderPassInfo.clearValueCount = (u32)info.clearValues.size();
+	renderPassInfo.pClearValues = info.clearValues.data();
+	m_cb.beginRenderPass(renderPassInfo, info.subpassContents);
+	m_flags.set(Flag::eRendering);
 }
 
 void CommandBuffer::setViewport(vk::Viewport viewport) const {
@@ -66,8 +61,8 @@ void CommandBuffer::setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor
 void CommandBuffer::bindPipe(Pipeline const& pipeline, Hash variant) const {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	auto pipe = pipeline.variant(variant);
-	ENSURE(pipe.has_result(), "Invalid variant id");
-	m_cb.bindPipeline(pipeline.bindPoint(), pipe.get_result());
+	ENSURE(pipe.has_value(), "Invalid variant id");
+	m_cb.bindPipeline(pipeline.bindPoint(), *pipe);
 }
 
 void CommandBuffer::bind(vk::Pipeline pipeline, vBP bindPoint) const {
@@ -134,21 +129,13 @@ void CommandBuffer::transitionImage(vk::Image image, u32 layerCount, vk::ImageAs
 
 void CommandBuffer::endRenderPass() {
 	ENSURE(rendering(), "Command buffer not rendering!");
-	if (m_flags.test(Flag::eRendering)) {
-		m_cb.endRenderPass();
-		m_flags.reset(Flag::eRendering);
-	}
+	m_cb.endRenderPass();
+	m_flags.reset(Flag::eRendering);
 }
 
 void CommandBuffer::end() {
-	ENSURE(recording(), "Command buffer not recording!");
-	if (m_flags.test(Flag::eRendering)) {
-		m_cb.endRenderPass();
-		m_flags.reset(Flag::eRendering);
-	}
-	if (m_flags.test(Flag::eRecording)) {
-		m_cb.end();
-		m_flags.reset(Flag::eRecording);
-	}
+	ENSURE(recording() && !rendering(), "Command buffer not recording!");
+	m_cb.end();
+	m_flags.reset(Flag::eRecording);
 }
 } // namespace le::graphics

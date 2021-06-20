@@ -4,8 +4,8 @@
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
-#include <graphics/pipeline.hpp>
-#include <graphics/render_context.hpp>
+#include <graphics/render/context.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
 
@@ -190,16 +190,33 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 	return ret;
 }
 
-Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) { return bytes.size() == 0 ? Bitmap::type() : convert(View<u8>(&(*bytes.begin()), bytes.size())); }
+Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) {
+	return bytes.size() == 0 ? Bitmap::type() : convert(Span<u8 const>(&*bytes.begin(), bytes.size()));
+}
 
-Bitmap::type utils::convert(View<u8> bytes) {
+Bitmap::type utils::bitmapPx(std::initializer_list<Colour> pixels) {
 	bytearray ret;
-	for (u8 byte : bytes) { ret.push_back(static_cast<std::byte>(byte)); }
+	ret.reserve(pixels.size() * 4);
+	for (Colour const pixel : pixels) {
+		u8 const bytes[] = {pixel.r.value, pixel.g.value, pixel.b.value, pixel.a.value};
+		append(ret, bytes);
+	}
+	return ret;
+}
+
+void utils::append(Bitmap::type& out, Span<u8 const> bytes) {
+	out.reserve(out.size() + bytes.size());
+	for (u8 const byte : bytes) { out.push_back(static_cast<std::byte>(byte)); }
+}
+
+Bitmap::type utils::convert(Span<u8 const> bytes) {
+	bytearray ret;
+	append(ret, bytes);
 	return ret;
 }
 
 utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
-	ENSURE(compressed.size() <= maths::max<int>(), "size too large!");
+	ENSURE(compressed.size() <= (std::size_t)maths::max<int>(), "size too large!");
 	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
 	int w, h, ch;
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);

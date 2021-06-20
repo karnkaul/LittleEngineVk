@@ -1,8 +1,10 @@
 #pragma once
 #include <variant>
+#include <core/colour.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/context/vram.hpp>
+#include <graphics/utils/deferred.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le::graphics {
@@ -13,28 +15,26 @@ class Sampler {
 
 	Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info);
 	Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
-	Sampler(Sampler&&);
-	Sampler& operator=(Sampler&&);
-	virtual ~Sampler();
 
-	vk::Sampler sampler() const noexcept { return m_sampler; }
+	vk::Sampler sampler() const noexcept { return *m_sampler; }
 
   private:
-	void destroy();
-
-	vk::Sampler m_sampler;
+	Deferred<vk::Sampler> m_sampler;
 	not_null<Device*> m_device;
 };
 
 class Texture {
   public:
 	enum class Type { e2D, eCube };
+	enum class Payload { eColour, eData };
+
 	struct Data {
 		vk::ImageView imageView;
 		vk::Sampler sampler;
-		vk::Format format;
-		glm::ivec2 size = {};
-		Type type;
+		vk::Format format{};
+		glm::ivec2 size{};
+		Payload payload{};
+		Type type{};
 	};
 
 	using Img = Bitmap::type;
@@ -45,9 +45,6 @@ class Texture {
 	inline static constexpr auto linear = vk::Format::eR8G8B8A8Unorm;
 
 	Texture(not_null<VRAM*> vram);
-	Texture(Texture&&);
-	Texture& operator=(Texture&&);
-	virtual ~Texture();
 
 	bool construct(CreateInfo const& info);
 
@@ -64,12 +61,12 @@ class Texture {
   private:
 	struct Storage {
 		std::optional<Image> image;
+		Deferred<vk::ImageView> view;
 		Data data;
 		VRAM::Future transfer;
 	};
 
 	bool construct(CreateInfo const& info, Storage& out_storage);
-	void destroy();
 
 	Storage m_storage;
 };
@@ -80,5 +77,8 @@ struct Texture::CreateInfo {
 	Data data;
 	vk::Sampler sampler;
 	std::optional<vk::Format> forceFormat;
+	Payload payload = Payload::eColour;
+
+	static Data build(kt::fixed_vector<Colour, 256> const& pixels);
 };
 } // namespace le::graphics

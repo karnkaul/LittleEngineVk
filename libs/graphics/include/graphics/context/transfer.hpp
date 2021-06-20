@@ -28,7 +28,7 @@ class Transfer final {
 	struct CreateInfo;
 
 	struct Stage final {
-		Buffer buffer;
+		std::optional<Buffer> buffer;
 		vk::CommandBuffer command;
 	};
 
@@ -50,12 +50,12 @@ class Transfer final {
 	Stage newStage(vk::DeviceSize bufferSize);
 	void addStage(Stage&& stage, Promise&& promise);
 
-	bool polling() const noexcept { return m_sync.bPoll.load(); }
+	bool polling() const noexcept { return m_sync.poll.active(); }
 
   private:
 	void scavenge(Stage&& stage, vk::Fence fence);
 	vk::Fence nextFence();
-	Buffer nextBuffer(vk::DeviceSize size);
+	std::optional<Buffer> nextBuffer(vk::DeviceSize size);
 	vk::CommandBuffer nextCommand();
 
 	struct {
@@ -65,10 +65,9 @@ class Transfer final {
 		std::list<Buffer> buffers;
 	} m_data;
 	struct {
-		std::optional<kt::kthread> stagingThread;
-		std::optional<kt::kthread> pollThread;
-		kt::lockable_t<> mutex;
-		std::atomic<bool> bPoll;
+		kt::kthread staging;
+		kt::kthread poll;
+		std::mutex mutex;
 	} m_sync;
 	struct {
 		Batch active;
@@ -81,7 +80,7 @@ class Transfer final {
 };
 
 struct Transfer::CreateInfo {
-	View<MemRange> reserve = defaultReserve;
+	Span<MemRange const> reserve = defaultReserve;
 	std::optional<Time_ms> autoPollRate = 3ms;
 };
 

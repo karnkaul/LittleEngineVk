@@ -66,7 +66,7 @@ struct Radio {
 	s32 select = -1;
 	std::string_view selected;
 
-	Radio(View<std::string_view> options, s32 preSelect = -1, bool sameLine = true);
+	Radio(Span<std::string_view const> options, s32 preSelect = -1, bool sameLine = true);
 };
 
 struct Button final : GUIStateful {
@@ -77,7 +77,7 @@ struct Combo final : GUIStateful {
 	s32 select = -1;
 	std::string_view selected;
 
-	Combo(std::string_view id, View<std::string_view> entries, std::string_view preSelect);
+	Combo(std::string_view id, Span<std::string_view const> entries, std::string_view preSelect);
 
 	explicit operator bool() const override { return test(GUI::eOpen); }
 };
@@ -145,7 +145,7 @@ struct FlagsWidget {
 	using type = typename Flags::type;
 	static constexpr std::size_t size = Flags::size;
 
-	FlagsWidget(View<std::string_view> ids, Flags& out_flags);
+	FlagsWidget(Span<std::string_view const> ids, Flags& out_flags);
 };
 
 template <typename T>
@@ -232,7 +232,7 @@ struct TWidget<std::pair<s64, s64>> {
 };
 
 template <typename Flags>
-FlagsWidget<Flags>::FlagsWidget(View<std::string_view> ids, Flags& flags) {
+FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) {
 	ENSURE(ids.size() <= size, "Overflow!");
 	std::size_t idx = 0;
 	for (auto id : ids) {

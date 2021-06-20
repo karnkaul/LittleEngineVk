@@ -55,13 +55,7 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	auto ret = promise->get_future();
 	auto f = [p = std::move(promise), s = src.buffer(), d = out_dst.buffer(), size, this]() mutable {
 		auto stage = m_transfer.newStage(size);
-		vk::CommandBufferBeginInfo beginInfo;
-		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		stage.command.begin(beginInfo);
-		vk::BufferCopy copyRegion;
-		copyRegion.size = size;
-		stage.command.copyBuffer(s, d, copyRegion);
-		stage.command.end();
+		copy(stage.command, s, d, size);
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
 	m_transfer.m_queue.push(std::move(f));
@@ -84,14 +78,8 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	auto ret = promise->get_future();
 	auto f = [p = std::move(promise), dst = out_deviceBuffer.buffer(), d = std::move(data), this]() mutable {
 		auto stage = m_transfer.newStage(vk::DeviceSize(d.size()));
-		if (stage.buffer.write(d.data(), d.size())) {
-			vk::CommandBufferBeginInfo beginInfo;
-			beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-			stage.command.begin(beginInfo);
-			vk::BufferCopy copyRegion;
-			copyRegion.size = vk::DeviceSize(d.size());
-			stage.command.copyBuffer(stage.buffer.buffer(), dst, copyRegion);
-			stage.command.end();
+		if (stage.buffer->write(d.data(), d.size())) {
+			copy(stage.command, stage.buffer->buffer(), dst, d.size());
 			m_transfer.addStage(std::move(stage), std::move(p));
 		} else {
 			g_log.log(lvl::error, 1, "[{}] Error staging data!", g_name);
@@ -102,7 +90,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return {std::move(ret)};
 }
 
-VRAM::Future VRAM::copy(View<BMPview> bitmaps, Image& out_dst, LayoutPair layouts) {
+VRAM::Future VRAM::copy(Span<BMPview const> bitmaps, Image& out_dst, LayoutPair layouts) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : bitmaps) {
@@ -113,6 +101,8 @@ VRAM::Future VRAM::copy(View<BMPview> bitmaps, Image& out_dst, LayoutPair layout
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	ENSURE(out_dst.layout() == layouts.first, "Mismatched image layouts");
 	auto promise = Transfer::makePromise();
 	auto ret = promise->get_future();
 	std::vector<bytearray> data;
@@ -126,67 +116,51 @@ VRAM::Future VRAM::copy(View<BMPview> bitmaps, Image& out_dst, LayoutPair layout
 	auto f = [p = std::move(promise), d = std::move(data), i = out_dst.image(), l = out_dst.m_storage.layerCount, e = out_dst.m_storage.extent, layouts,
 			  imgSize, layerSize, this]() mutable {
 		auto stage = m_transfer.newStage(imgSize);
-		[[maybe_unused]] bool const bResult = stage.buffer.map();
+		[[maybe_unused]] bool const bResult = stage.buffer->map();
 		ENSURE(bResult, "Memory map failed");
 		u32 layerIdx = 0;
 		std::vector<vk::BufferImageCopy> copyRegions;
 		for (auto const& pixels : d) {
 			auto const offset = layerIdx * layerSize;
-			void* pStart = (u8*)stage.buffer.mapped() + offset;
-			std::memcpy(pStart, pixels.data(), pixels.size());
-			vk::BufferImageCopy copyRegion;
-			copyRegion.bufferOffset = offset;
-			copyRegion.bufferRowLength = 0;
-			copyRegion.bufferImageHeight = 0;
-			copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-			copyRegion.imageSubresource.mipLevel = 0;
-			copyRegion.imageSubresource.baseArrayLayer = (u32)layerIdx;
-			copyRegion.imageSubresource.layerCount = 1;
-			copyRegion.imageOffset = vk::Offset3D(0, 0, 0);
-			copyRegion.imageExtent = e;
-			copyRegions.push_back(std::move(copyRegion));
-			++layerIdx;
+			std::memcpy((u8*)stage.buffer->mapped() + offset, pixels.data(), pixels.size());
+			copyRegions.push_back(bufferImageCopy(e, vk::ImageAspectFlagBits::eColor, offset, (u32)layerIdx++));
 		}
-		vk::CommandBufferBeginInfo beginInfo;
-		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		stage.command.begin(beginInfo);
-		vk::ImageMemoryBarrier barrier;
-		barrier.oldLayout = layouts.first;
-		barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = i;
-		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = l;
-		barrier.srcAccessMask = {};
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-		using vkstg = vk::PipelineStageFlagBits;
-		stage.command.pipelineBarrier(vkstg::eTopOfPipe, vkstg::eTransfer, {}, {}, {}, barrier);
-		stage.command.copyBufferToImage(stage.buffer.buffer(), i, vk::ImageLayout::eTransferDstOptimal, copyRegions);
-		barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-		barrier.newLayout = layouts.second;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = i;
-		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = l;
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
-		barrier.dstAccessMask = m_post.access;
-		stage.command.pipelineBarrier(vkstg::eTransfer, vkstg::eBottomOfPipe | m_post.stages, {}, {}, {}, barrier);
-		stage.command.end();
+		ImgMeta meta;
+		meta.layouts = layouts;
+		meta.stages.second = m_post.stages;
+		meta.access.second = m_post.access;
+		meta.layerCount = l;
+		copy(stage.command, stage.buffer->buffer(), i, copyRegions, meta);
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
 	m_transfer.m_queue.push(std::move(f));
+	out_dst.layout(layouts.second);
+	return {std::move(ret)};
+}
+
+VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter) {
+	ENSURE((src.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	auto promise = Transfer::makePromise();
+	auto ret = promise->get_future();
+	TPair<vk::Extent3D> const extents = {src.extent(), out_dst.extent()};
+	auto f = [this, p = std::move(promise), s = src.image(), d = out_dst.image(), extents, layouts, aspects, filter]() mutable {
+		auto stage = m_transfer.newStage(0);
+		blit(stage.command, s, d, extents, layouts, filter, aspects);
+		m_transfer.addStage(std::move(stage), std::move(p));
+	};
 	return {std::move(ret)};
 }
 
 void VRAM::waitIdle() {
 	while (m_transfer.update() > 0) { kt::kthread::yield(); }
+}
+
+bool VRAM::update(bool force) {
+	if (!m_transfer.polling() || force) {
+		m_transfer.update();
+		return true;
+	}
+	return false;
 }
 } // namespace le::graphics

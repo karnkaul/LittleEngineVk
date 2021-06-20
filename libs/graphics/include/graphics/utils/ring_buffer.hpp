@@ -8,7 +8,9 @@ struct RingBuffer {
 	using type = T;
 
 	template <typename... U>
-	void push(U&&... u);
+	void emplace(U&&... u);
+	void push(T&& t) { emplace(std::move(t)); }
+	void push(T const& t) { emplace(t); }
 
 	T& get();
 	T const& get() const;
@@ -23,7 +25,7 @@ struct RingBuffer {
 
 template <typename T>
 template <typename... U>
-void RingBuffer<T>::push(U&&... u) {
+void RingBuffer<T>::emplace(U&&... u) {
 	ts.emplace_back(std::forward<U>(u)...);
 }
 template <typename T>

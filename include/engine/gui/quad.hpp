@@ -1,28 +1,26 @@
 #pragma once
-#include <engine/gui/node.hpp>
+#include <engine/gui/tree.hpp>
 #include <graphics/mesh.hpp>
 
 namespace le::gui {
-class Quad : public Node {
+class Quad : public TreeNode {
   public:
-	Quad(not_null<Root*> root, not_null<graphics::VRAM*> vram) noexcept;
+	Quad(not_null<TreeRoot*> root, bool hitTest = true) noexcept;
 
 	void onUpdate(input::Space const& space) override;
-	View<Primitive> primitives() const noexcept override;
+	Span<Primitive const> primitives() const noexcept override;
 
 	Material m_material;
 
   private:
 	graphics::Mesh m_mesh;
+	glm::vec2 m_size = {};
 	mutable Primitive m_prim;
 };
 
 // impl
 
-inline Quad::Quad(not_null<Root*> root, not_null<graphics::VRAM*> vram) noexcept : Node(root), m_mesh(vram, graphics::Mesh::Type::eDynamic) {
-	m_hitTest = true;
-}
-inline View<Primitive> Quad::primitives() const noexcept {
+inline Span<Primitive const> Quad::primitives() const noexcept {
 	m_prim = {m_material, &m_mesh};
 	return m_prim;
 }

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)	# Don't let OPTION erase above non-cache variables
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(TARGET_NAME levk-engine)
 set(LEVK_VERSION 0.0.9.0 CACHE STRING "Application Version" FORCE)
@@ -13,6 +14,8 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
 
 # Includes
+include(CheckPIESupported)
+check_pie_supported()
 include(FetchContent)
 include(cmake/platform.cmake)
 include(cmake/utils.cmake)

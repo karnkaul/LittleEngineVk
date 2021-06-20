@@ -4,6 +4,7 @@
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/texture.hpp>
+#include <graphics/utils/deferred.hpp>
 
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
@@ -39,7 +40,6 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 	DearImGui(not_null<graphics::Device*> device, not_null<Desktop const*> window, CreateInfo const& info);
 	DearImGui(DearImGui&&) = default;
 	DearImGui& operator=(DearImGui&&) = default;
-	~DearImGui();
 
 	bool beginFrame();
 	bool endFrame();
@@ -51,11 +51,16 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 	bool m_showDemo = false;
 
   private:
+	struct Del {
+		void operator()(not_null<graphics::Device*>, void*) const;
+	};
+
 	bool next(State from, State to);
 
 #if defined(LEVK_USE_IMGUI)
 	graphics::Device* m_device = {};
-	vk::DescriptorPool m_pool;
+	graphics::Deferred<vk::DescriptorPool> m_pool;
+	graphics::Deferred<void*, Del> m_del;
 #endif
 	State m_state = State::eEnd;
 };

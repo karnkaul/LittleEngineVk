@@ -5,7 +5,7 @@
 namespace le::graphics {
 namespace {
 using sv = std::string_view;
-Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, View<BMPview> bitmaps) {
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, glm::ivec2 size, Span<BMPview const> bitmaps) {
 	Image::CreateInfo imageInfo;
 	imageInfo.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
 	imageInfo.createInfo.format = format;
@@ -41,46 +41,14 @@ vk::SamplerCreateInfo Sampler::info(MinMag minMag, vk::SamplerMipmapMode mip) {
 	return ret;
 }
 
-Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info) : m_device(device) { m_sampler = device->device().createSampler(info); }
-
+Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info) : m_device(device) { m_sampler = makeDeferred<vk::Sampler>(device, info); }
 Sampler::Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip) : Sampler(device, info(minMag, mip)) {}
 
-Sampler::Sampler(Sampler&& rhs) : m_sampler(std::exchange(rhs.m_sampler, vk::Sampler())), m_device(rhs.m_device) {}
-
-Sampler& Sampler::operator=(Sampler&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_sampler = std::exchange(rhs.m_sampler, vk::Sampler());
-		m_device = rhs.m_device;
-	}
-	return *this;
-}
-
-Sampler::~Sampler() { destroy(); }
-
-void Sampler::destroy() {
-	if (!Device::default_v(m_sampler)) {
-		Device& d = *m_device;
-		d.defer([&d, s = m_sampler]() { d.device().destroySampler(s); });
-	}
-}
-
 Texture::Texture(not_null<VRAM*> vram) : m_vram(vram) {}
-Texture::Texture(Texture&& rhs) : m_vram(rhs.m_vram), m_storage(std::exchange(rhs.m_storage, Storage())) {}
-Texture& Texture::operator=(Texture&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_storage = std::exchange(rhs.m_storage, Storage());
-		m_vram = rhs.m_vram;
-	}
-	return *this;
-}
-Texture::~Texture() { destroy(); }
 
 bool Texture::construct(CreateInfo const& info) {
 	Storage storage;
 	if (construct(info, storage)) {
-		destroy();
 		m_storage = std::move(storage);
 		return true;
 	}
@@ -128,7 +96,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 			out_storage.data.type = Type::e2D;
 		}
 		out_storage.data.size = {stbimgs.back().size.x, stbimgs.back().size.y};
-		fallback = srgb;
+		fallback = info.payload == Payload::eColour ? srgb : linear;
 	} else {
 		if (std::size_t(pRaw->size.x * pRaw->size.y) * 4 /*channels*/ != pRaw->bytes.size()) {
 			ENSURE(false, "Invalid Raw image size/dimensions");
@@ -144,14 +112,18 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 	out_storage.data.format = format;
 	Device& d = *m_vram->m_device;
 	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
-	out_storage.data.imageView = d.makeImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type);
+	out_storage.view = {&d, d.makeImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type)};
+	out_storage.data.imageView = *out_storage.view;
 	return true;
 }
 
-void Texture::destroy() {
-	wait();
-	Device& d = *m_vram->m_device;
-	d.defer([&d, data = m_storage.data]() mutable { d.destroy(data.imageView); });
-	m_storage = {};
+Texture::CreateInfo::Data Texture::CreateInfo::build(kt::fixed_vector<Colour, 256> const& pixels) {
+	Bitmap::type ret;
+	ret.reserve(pixels.size());
+	for (Colour const& c : pixels) {
+		u8 const bytes[] = {c.r.value, c.g.value, c.b.value, c.a.value};
+		utils::append(ret, bytes);
+	}
+	return ret;
 }
 } // namespace le::graphics

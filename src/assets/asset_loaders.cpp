@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <dumb_json/djson.hpp>
+#include <dumb_json/json.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/config.hpp>
@@ -8,6 +8,31 @@
 namespace le {
 namespace {
 bool isGlsl(io::Path const& path) { return path.has_extension() && (path.extension() == ".vert" || path.extension() == ".frag"); }
+
+template <bool D = levk_debug>
+io::Path spirvPath(io::Path const& glsl, io::FileReader const& reader);
+
+template <>
+[[maybe_unused]] io::Path spirvPath<true>(io::Path const& glsl, io::FileReader const& reader) {
+	auto spv = graphics::utils::spirVpath(glsl);
+	if (auto res = graphics::utils::compileGlsl(reader.fullPath(glsl))) {
+		spv = *res;
+	} else {
+		ENSURE(false, "Failed to compile GLSL");
+	}
+	// compile Release shader too
+	graphics::utils::compileGlsl(reader.fullPath(glsl), {}, {}, false);
+	return spv;
+}
+
+template <>
+[[maybe_unused]] io::Path spirvPath<false>(io::Path const& glsl, io::FileReader const& reader) {
+	auto spv = graphics::utils::spirVpath(glsl);
+	if (!reader.checkPresence(spv)) {
+		if (auto res = graphics::utils::compileGlsl(reader.fullPath(glsl))) { spv = *res; }
+	}
+	return spv;
+}
 } // namespace
 
 std::optional<graphics::Shader> AssetLoader<graphics::Shader>::load(AssetLoadInfo<graphics::Shader> const& info) const {
@@ -25,29 +50,22 @@ bool AssetLoader<graphics::Shader>::reload(graphics::Shader& out_shader, AssetLo
 
 std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>::data(AssetLoadInfo<graphics::Shader> const& info) const {
 	graphics::Shader::SpirVMap spirV;
-	io::FileReader const* pFR = nullptr;
+	io::FileReader const* fr = nullptr;
 	for (auto& [type, id] : info.m_data.shaderPaths) {
 		auto path = id;
 		if (isGlsl(path)) {
-			if constexpr (!levk_shaderCompiler) {
-				// Fallback to previously compiled shader
-				path = graphics::utils::spirVpath(path);
-			} else {
-				if (!pFR && !(pFR = dynamic_cast<io::FileReader const*>(&info.reader()))) { return std::nullopt; }
-				auto spv = graphics::utils::compileGlsl(pFR->fullPath(id));
-				if (levk_debug) {
-					// Compile release shader too
-					graphics::utils::compileGlsl(pFR->fullPath(id), {}, {}, false);
-				}
-				if (!spv) {
-					if constexpr (levk_debug) { ENSURE(false, "Failed to compile GLSL"); }
-					// Fallback to previously compiled shader
-					spv = graphics::utils::spirVpath(path);
+			if constexpr (levk_shaderCompiler) {
+				if (!fr && !(fr = dynamic_cast<io::FileReader const*>(&info.reader()))) {
+					// cannot compile shaders without FileReader
+					path = graphics::utils::spirVpath(id);
 				} else {
-					// Ensure resource presence (and add monitor if supported)
+					// ensure resource presence (and add monitor if supported)
 					if (!info.resource(id, Resource::Type::eText, true)) { return std::nullopt; }
+					path = spirvPath(id, *fr);
 				}
-				path = *spv;
+			} else {
+				// fallback to previously compiled shader
+				path = graphics::utils::spirVpath(id);
 			}
 		}
 		auto pRes = info.resource(path, Resource::Type::eBinary, false, true);
@@ -61,6 +79,7 @@ std::optional<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoa
 	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
 		info.reloadDepend(*shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
+		pipeInfo.renderPass = info.m_data.gui ? info.m_data.context->renderer().renderPassUI() : info.m_data.context->renderer().renderPass3D();
 		return info.m_data.context->makePipeline(info.m_data.name, shader->get(), pipeInfo);
 	}
 	return std::nullopt;
@@ -78,6 +97,8 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 		graphics::Texture::CreateInfo createInfo;
 		createInfo.data = std::move(*d);
 		createInfo.sampler = sampler->get().sampler();
+		createInfo.forceFormat = info.m_data.forceFormat;
+		createInfo.payload = info.m_data.payload;
 		graphics::Texture ret(info.m_data.vram);
 		if (ret.construct(createInfo)) { return ret; }
 	}
@@ -90,6 +111,8 @@ bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, Asse
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
 		createInfo.data = std::move(*d);
+		createInfo.forceFormat = info.m_data.forceFormat;
+		createInfo.payload = info.m_data.payload;
 		createInfo.sampler = sampler->get().sampler();
 		return out_texture.construct(createInfo);
 	}
@@ -129,24 +152,24 @@ struct FontInfo {
 	s32 orgSizePt = 0;
 };
 
-graphics::Glyph deserialise(u8 c, dj::node_t const& json) {
+graphics::Glyph deserialise(u8 c, dj::json_t const& json) {
 	graphics::Glyph ret;
 	ret.ch = c;
-	ret.st = {json.get("x").as<s32>(), json.get("y").as<s32>()};
-	ret.uv = ret.cell = {json.get("width").as<s32>(), json.get("height").as<s32>()};
-	ret.offset = {json.get("originX").as<s32>(), json.get("originY").as<s32>()};
+	ret.st = {json["x"].as<s32>(), json["y"].as<s32>()};
+	ret.uv = ret.cell = {json["width"].as<s32>(), json["height"].as<s32>()};
+	ret.offset = {json["originX"].as<s32>(), json["originY"].as<s32>()};
 	auto const pAdvance = json.find("advance");
 	ret.xAdv = pAdvance ? pAdvance->as<s32>() : ret.cell.x;
 	if (auto pBlank = json.find("isBlank")) { ret.blank = pBlank->as<bool>(); }
 	return ret;
 }
 
-FontInfo deserialise(dj::node_t const& json) {
+FontInfo deserialise(dj::json_t const& json) {
 	FontInfo ret;
 	if (auto pAtlas = json.find("sheetID")) { ret.atlasID = pAtlas->as<std::string>(); }
 	if (auto pSize = json.find("size")) { ret.orgSizePt = pSize->as<s32>(); }
 	if (auto pGlyphsData = json.find("glyphs")) {
-		for (auto& [key, value] : pGlyphsData->as<dj::map_nodes_t>()) {
+		for (auto& [key, value] : pGlyphsData->as<dj::map_t>()) {
 			if (!key.empty()) {
 				if (ret.glyphs.size() == ret.glyphs.capacity()) { break; }
 				graphics::Glyph const glyph = deserialise((u8)key[0], *value);
@@ -174,8 +197,10 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) { return false; }
 	if (auto text = info.resource(info.m_data.jsonID, Resource::Type::eText, true)) {
-		if (auto json = dj::node_t::make(text->string())) {
-			FontInfo const fi = deserialise(*json);
+		dj::json_t json;
+		auto result = json.read(text->string());
+		if (result && result.errors.empty()) {
+			FontInfo const fi = deserialise(json);
 			auto const atlas = info.resource(info.m_data.jsonID.parent_path() / fi.atlasID, Resource::Type::eBinary, true);
 			if (!atlas) { return false; }
 			BitmapFont::CreateInfo bci;
@@ -202,7 +227,7 @@ bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& in
 	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
 	if (!sampler) { return false; }
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
-		return out_model.construct(info.m_data.vram, mci.move(), sampler->get(), info.m_data.forceFormat).has_result();
+		return out_model.construct(info.m_data.vram, std::move(mci).value(), sampler->get(), info.m_data.forceFormat).has_value();
 	}
 	return false;
 }

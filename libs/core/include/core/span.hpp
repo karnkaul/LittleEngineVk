@@ -94,9 +94,6 @@ class Span<T const> {
 	std::size_t m_size;
 };
 
-template <typename T>
-using View = Span<T const>;
-
 // impl
 
 template <typename T>

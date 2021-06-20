@@ -63,7 +63,7 @@ class Selector {
 	u32 m_queueCount = 0;
 };
 
-QueueMultiplex::QCI createInfo(QueueMultiplex::Family& out_family, View<f32> prio) {
+QueueMultiplex::QCI createInfo(QueueMultiplex::Family& out_family, Span<f32 const> prio) {
 	QueueMultiplex::QCI ret;
 	ret.first.queueFamilyIndex = out_family.familyIndex;
 	ret.first.queueCount = (u32)prio.size();
@@ -149,7 +149,7 @@ vk::Result QueueMultiplex::present(vk::PresentInfoKHR const& info, bool bLock) {
 	if (!bLock) {
 		return q.queue.presentKHR(&info);
 	} else {
-		auto lock = mutex(QType::ePresent).lock();
+		std::scoped_lock lock(mutex(QType::ePresent));
 		return q.queue.presentKHR(&info);
 	}
 }
@@ -159,21 +159,21 @@ void QueueMultiplex::submit(QType type, vAP<vk::SubmitInfo> infos, vk::Fence sig
 	if (!bLock) {
 		q.queue.submit(infos, signal);
 	} else {
-		auto lock = mutex(QType::ePresent).lock();
+		std::scoped_lock lock(mutex(QType::ePresent));
 		q.queue.submit(infos, signal);
 	}
 }
 
-QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, View<f32> prio) { return {createInfo(gpt, prio)}; }
+QueueMultiplex::QCIArr<1> QueueMultiplex::makeFrom1(Family& gpt, Span<f32 const> prio) { return {createInfo(gpt, prio)}; }
 
-QueueMultiplex::QCIArr<2> QueueMultiplex::makeFrom2(Family& a, Family& b, View<f32> pa, View<f32> pb) {
+QueueMultiplex::QCIArr<2> QueueMultiplex::makeFrom2(Family& a, Family& b, Span<f32 const> pa, Span<f32 const> pb) {
 	std::array<QueueMultiplex::QCI, 2> ret;
 	ret[0] = createInfo(a, pa);
 	ret[1] = createInfo(b, pb);
 	return ret;
 }
 
-QueueMultiplex::QCIArr<3> QueueMultiplex::makeFrom3(Family& g, Family& p, Family& t, View<f32> pg, View<f32> pp, View<f32> pt) {
+QueueMultiplex::QCIArr<3> QueueMultiplex::makeFrom3(Family& g, Family& p, Family& t, Span<f32 const> pg, Span<f32 const> pp, Span<f32 const> pt) {
 	std::array<QueueMultiplex::QCI, 3> ret;
 	ret[0] = createInfo(g, pg);
 	ret[1] = createInfo(p, pp);
@@ -181,7 +181,7 @@ QueueMultiplex::QCIArr<3> QueueMultiplex::makeFrom3(Family& g, Family& p, Family
 	return ret;
 }
 
-void QueueMultiplex::makeQueues(qcivec& out_vec, View<QCI> qcis, Assign const& a) {
+void QueueMultiplex::makeQueues(qcivec& out_vec, Span<QCI const> qcis, Assign const& a) {
 	for (auto const& [info, _] : qcis) { out_vec.push_back(info); }
 	assign(qcis[a[0].first].second[a[0].second], qcis[a[1].first].second[a[1].second], qcis[a[2].first].second[a[2].second]);
 }

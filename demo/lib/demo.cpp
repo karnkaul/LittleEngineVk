@@ -16,17 +16,20 @@
 #include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
-#include <graphics/shader_buffer.hpp>
+#include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
 
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
+#include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
 #include <engine/utils/exec.hpp>
 
 namespace le::demo {
+using RGBA = graphics::RGBA;
+
 enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
 using Flags = kt::enum_flags<Flag>;
 
@@ -38,12 +41,12 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 			break;
 		}
 		case window::Event::Type::eSuspend: {
-			out_flags[Flag::ePaused] = e->payload.bSet;
+			out_flags[Flag::ePaused] = e->payload.set;
 			break;
 		}
 		case window::Event::Type::eResize: {
 			auto const& resize = e->payload.resize;
-			if (resize.bFramebuffer) { out_flags.set(Flag::eResized); }
+			if (resize.framebuffer) { out_flags.set(Flag::eResized); }
 			break;
 		}
 		case window::Event::Type::eInit: out_flags.set(Flag::eInit); break;
@@ -75,9 +78,13 @@ struct Albedo {
 	alignas(16) glm::vec4 specular;
 
 	static Albedo make(Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
+		return make(colour.toVec4(), amdispsh);
+	}
+
+	static Albedo make(glm::vec4 const& colour, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
 		Albedo ret;
-		glm::vec3 const c = colour.toVec3();
-		f32 const a = colour.a.toF32();
+		glm::vec3 const& c = colour;
+		f32 const& a = colour.w;
 		ret.ambient = {c * amdispsh.x, a};
 		ret.diffuse = {c * amdispsh.y, a};
 		ret.specular = {c * amdispsh.z, amdispsh.w};
@@ -89,19 +96,12 @@ struct ShadeMat {
 	alignas(16) glm::vec4 tint;
 	alignas(16) Albedo albedo;
 
-	static ShadeMat make(Colour tint = colours::white, Colour colour = colours::white, glm::vec4 const& amdispsh = {0.5f, 0.8f, 0.4f, 42.0f}) noexcept {
-		ShadeMat ret;
-		ret.albedo = Albedo::make(colour, amdispsh);
-		ret.tint = tint.toVec4();
-		return ret;
-	}
-
 	static ShadeMat make(Material const& mtl) noexcept {
 		ShadeMat ret;
 		ret.albedo.ambient = mtl.Ka.toVec4();
 		ret.albedo.diffuse = mtl.Kd.toVec4();
 		ret.albedo.specular = mtl.Ks.toVec4();
-		ret.tint = {mtl.Tf.toVec3(), mtl.d};
+		ret.tint = {static_cast<glm::vec3 const&>(mtl.Tf.toVec4()), mtl.d};
 		return ret;
 	}
 };
@@ -206,7 +206,7 @@ class DrawDispatch {
 
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 fb, View<DirLight> lights, View<SceneDrawer::Group> groups) {
+	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
@@ -215,7 +215,8 @@ class DrawDispatch {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : groups) { update(group); }
+		for (auto& group : groups3D) { update(group); }
+		for (auto& group : groupsUI) { update(group); }
 	}
 
 	void update(SceneDrawer::Group const& group) const {
@@ -261,7 +262,7 @@ class DrawDispatch {
 		m_view.lights.swap();
 	}
 
-	void draw(graphics::CommandBuffer const& cb, SceneDrawer::Group const& group) const {
+	void draw(graphics::CommandBuffer cb, SceneDrawer::Group const& group) const {
 		graphics::Pipeline const& pipe = *group.group.pipeline;
 		pipe.bindSet(cb, 0, 0);
 		std::size_t itemIdx = 0;
@@ -280,6 +281,74 @@ class DrawDispatch {
 	}
 };
 
+using graphics::CommandBuffer;
+
+class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
+  public:
+	struct Data {
+		Span<SceneDrawer::Group const> groups3D;
+		Span<SceneDrawer::Group const> groupsUI;
+		vk::Viewport viewport;
+		vk::Rect2D scissor;
+		not_null<DrawDispatch*> dispatch;
+	};
+
+	RenderDisp(Data d) : m_data(d) {}
+	~RenderDisp() override {
+		for (auto pipe : m_pipes) { pipe->shaderInput().swap(); }
+	}
+
+	void draw3D(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groups3D, cb); }
+	void drawUI(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb); }
+
+  private:
+	Data m_data;
+	SceneDrawer::PipeSet m_pipes;
+};
+
+class TestView : public gui::View {
+  public:
+	TestView(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font) : gui::View(parent) {
+		m_canvas.size.value = {1280.0f, 720.0f};
+		m_canvas.size.unit = gui::Unit::eAbsolute;
+		auto& bg = push<gui::Quad>();
+		bg.m_rect.size = {200.0f, 100.0f};
+		bg.m_rect.anchor.norm = {-0.25f, 0.25f};
+		bg.m_material.Tf = colours::cyan;
+		auto& centre = bg.push<gui::Quad>();
+		centre.m_rect.size = {50.0f, 50.0f};
+		centre.m_material.Tf = colours::red;
+		auto& dot = centre.push<gui::Quad>();
+		dot.offset({30.0f, 20.0f});
+		dot.m_material.Tf = Colour(0x333333ff);
+		dot.m_rect.anchor.norm = {-0.5f, -0.5f};
+		auto& topLeft = bg.push<gui::Quad>();
+		topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
+		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
+		topLeft.m_material.Tf = colours::magenta;
+		auto& text = bg.push<gui::Text>(font);
+		graphics::TextFactory tf;
+		tf.size = 60U;
+		text.set("click");
+		text.set(tf);
+		m_button = &push<gui::Widget>(font);
+		m_button->m_rect.size = {200.0f, 100.0f};
+		m_button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
+		m_button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
+		tf.size = 40U;
+		m_button->m_text->set(tf);
+		m_button->m_text->set("Button");
+		m_button->refresh();
+		m_tk = m_button->onClick([this]() { setDestroyed(); });
+	}
+
+	TestView(TestView&&) = delete;
+	TestView& operator=(TestView&&) = delete;
+
+	gui::Widget* m_button{};
+	gui::OnClick::Tk m_tk;
+};
+
 class App : public input::Receiver {
   public:
 	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawDispatch(&eng->gfx().boot.vram) {
@@ -292,9 +361,10 @@ class App : public input::Receiver {
 			return shaderLD;
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
-		auto loadPipe = [this](std::string_view id, Hash shaderID, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
+		auto loadPipe = [this](std::string_view id, Hash shaderID, bool gui, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
 			AssetLoadData<graphics::Pipeline> pipelineLD{&m_eng->gfx().context};
 			pipelineLD.name = id;
+			pipelineLD.gui = gui;
 			pipelineLD.shaderID = shaderID;
 			pipelineLD.info = pci;
 			pipelineLD.flags = flags;
@@ -335,7 +405,7 @@ class App : public input::Receiver {
 			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
 			cone->construct(graphics::makeCone());
 			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh(&eng->gfx().boot.vram));
-			skycube->construct(View<glm::vec3>(skyCubeV), skyCubeI);
+			skycube->construct(Span<glm::vec3 const>(skyCubeV), skyCubeI);
 		}
 
 		{
@@ -351,13 +421,13 @@ class App : public input::Receiver {
 			static PCI pci_skybox = eng->gfx().context.pipeInfo();
 			pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
 			pci_skybox.fixedState.vertexInput = eng->gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
-			pipes.add("pipelines/basic", loadPipe("pipelines/basic", "shaders/basic", graphics::PFlags::inverse()));
-			pipes.add("pipelines/tex", loadPipe("pipelines/tex", "shaders/tex", graphics::PFlags::inverse()));
-			pipes.add("pipelines/lit", loadPipe("pipelines/lit", "shaders/lit", graphics::PFlags::inverse()));
+			pipes.add("pipelines/basic", loadPipe("pipelines/basic", "shaders/basic", false, graphics::PFlags::inverse()));
+			pipes.add("pipelines/tex", loadPipe("pipelines/tex", "shaders/tex", false, graphics::PFlags::inverse()));
+			pipes.add("pipelines/lit", loadPipe("pipelines/lit", "shaders/lit", false, graphics::PFlags::inverse()));
 			graphics::PFlags ui = graphics::PFlags::inverse();
 			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
-			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", ui));
-			pipes.add("pipelines/skybox", loadPipe("pipelines/skybox", "shaders/skybox", {}, pci_skybox));
+			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", true, ui));
+			pipes.add("pipelines/skybox", loadPipe("pipelines/skybox", "shaders/skybox", false, {}, pci_skybox));
 			m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
 		}
 
@@ -377,15 +447,15 @@ class App : public input::Receiver {
 		textureLD.imageIDs = {"textures/container2_specular.png"};
 		texList.add("textures/container2/specular", std::move(textureLD));
 		textureLD.imageIDs.clear();
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0, 0, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0xff0000ff});
 		textureLD.bitmap.size = {1, 1};
 		textureLD.rawBytes = true;
 		texList.add("textures/red", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0x000000ff});
 		texList.add("textures/black", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0xff, 0xff, 0xff, 0xff});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0xffffffff});
 		texList.add("textures/white", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmap({0, 0, 0, 0});
+		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0x0});
 		texList.add("textures/blank", std::move(textureLD));
 		m_data.loader.stage(m_store, texList, m_tasks);
 		m_eng->pushReceiver(this);
@@ -439,7 +509,7 @@ class App : public input::Receiver {
 		return ret;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawGroup const& group, View<Primitive> primitives) {
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawGroup const& group, Span<Primitive const> primitives) {
 		auto ret = spawn(std::move(name));
 		SceneDrawer::attach(m_data.registry, ret, group, primitives);
 		return ret;
@@ -493,36 +563,11 @@ class App : public input::Receiver {
 		m_data.groups["test_lit"] = DrawGroup{&pipe_testLit->get(), 0};
 		m_data.groups["ui"] = DrawGroup{&pipe_ui->get(), 10};
 
-		auto guiRoot = m_data.registry.spawn<gui::Root>("gui_root");
-		m_data.registry.attach<DrawGroup>(guiRoot, m_data.groups["ui"]);
-		auto& root = guiRoot.get<gui::Root>();
-		m_data.guiRoot = guiRoot;
-		{
-			auto& bg = root.push<gui::Quad>(&vram);
-			bg.m_size = {200.0f, 100.0f};
-			bg.m_local.norm = {-0.25f, 0.25f};
-			bg.m_material.Tf = colours::cyan;
-			auto& centre = bg.push<gui::Quad>(&vram);
-			centre.m_size = {50.0f, 50.0f};
-			centre.m_material.Tf = colours::red;
-			auto& dot = centre.push<gui::Quad>(&vram);
-			dot.offsetBySize({30.0f, 20.0f});
-			dot.m_material.Tf = Colour(0x333333ff);
-			dot.m_local.norm = {-0.5f, -0.5f};
-			auto& topLeft = bg.push<gui::Quad>(&vram);
-			topLeft.m_local.norm = {-0.5f, 0.5f};
-			topLeft.offsetBySize({25.0f, 25.0f}, {1.0f, -1.0f});
-			topLeft.m_material.Tf = colours::magenta;
-			auto& text = bg.push<gui::Text>(&vram, &*font);
-			text.m_str = "click";
-			text.m_text.size = 60U;
-			m_data.button = &root.push<gui::Widget>(&vram, &*font);
-			m_data.button->m_size = {200.0f, 100.0f};
-			m_data.button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
-			m_data.button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
-			m_data.button->m_text->m_text.size = 40U;
-			m_data.button->m_text->m_str = "Button";
-		}
+		auto guiStack = m_data.registry.spawn<gui::ViewStack>("gui_root", &m_eng->gfx().boot.vram);
+		m_data.guiStack = guiStack;
+		m_data.registry.attach<DrawGroup>(guiStack, m_data.groups["ui"]);
+		auto& stack = guiStack.get<gui::ViewStack>();
+		stack.push<TestView>(&font.get());
 
 		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
@@ -531,8 +576,8 @@ class App : public input::Receiver {
 			m_drawDispatch.m_view.lights = graphics::ShaderBuffer(vram, {});
 		}
 		DirLight l0, l1;
-		l0.direction = {-graphics::front, 0.0f};
-		l1.direction = {-graphics::up, 0.0f};
+		l0.direction = {-graphics::up, 0.0f};
+		l1.direction = {-graphics::front, 0.0f};
 		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
@@ -561,7 +606,7 @@ class App : public input::Receiver {
 			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.groups["test_tex"]);
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
+		// { spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", m_data.groups["test_lit"]);
@@ -577,7 +622,7 @@ class App : public input::Receiver {
 			}
 			if (auto model = m_store.find<Model>("models/teapot")) {
 				Primitive prim = model->get().primitives().front();
-				prim.material.Tf = Colour(0xfc2320ff);
+				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 				auto ent0 = spawn("model_1_0", m_data.groups["test_lit"], prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
@@ -603,9 +648,9 @@ class App : public input::Receiver {
 
 		if (!m_data.loader.ready(&m_tasks)) { return; }
 		if (m_data.registry.empty()) { init1(); }
-		auto guiRoot = m_data.registry.find<gui::Root>(m_data.guiRoot);
-		m_eng->update(guiRoot);
-		if (guiRoot) {
+		auto guiStack = m_data.registry.find<gui::ViewStack>(m_data.guiStack);
+		if (guiStack) {
+			m_eng->update(*guiStack);
 			/*auto const& p = m_eng->inputState().cursor.position;
 			logD("c: {}, {}", p.x, p.y);*/
 			/*static gui::Quad* s_prev = {};
@@ -626,7 +671,6 @@ class App : public input::Receiver {
 				s_prev = {};
 			}*/
 		}
-		if (m_data.button && m_data.button->clicked(m_eng->inputState())) { logD("click!"); }
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
 		if (pc.active) {
@@ -648,22 +692,20 @@ class App : public input::Receiver {
 	}
 
 	void render() {
-		if (m_eng->drawReady()) {
+		if (auto frame = m_eng->beginDraw()) {
 			// write / update
+			std::vector<SceneDrawer::Group> gr3D, grUI;
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
-				m_groups = SceneDrawer::groups(m_data.registry, true);
-				m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, m_groups);
+				gr3D = SceneDrawer::groups(m_data.registry, true);
+				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
+				m_drawDispatch.write(*cam, frame->target.colour.extent, m_data.dirLights, gr3D, grUI);
 			}
-			if (auto frame = m_eng->drawFrame(Colour(0x040404ff))) {
-				// draw
-				frame->cmd().setViewportScissor(m_eng->viewport(), m_eng->scissor());
-				SceneDrawer::draw(m_drawDispatch, m_groups, frame->cmd());
-				m_drawDispatch.swap();
-			}
+			// draw
+			RenderDisp rd{{gr3D, grUI, m_eng->viewport(), m_eng->scissor(), &m_drawDispatch}};
+			m_eng->render(*frame, rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
+			m_drawDispatch.swap();
 		}
 	}
-
-	std::vector<SceneDrawer::Group> m_groups;
 
   private:
 	struct Data {
@@ -677,10 +719,8 @@ class App : public input::Receiver {
 		decf::registry_t registry;
 		decf::entity_t camera;
 		decf::entity_t player;
-		decf::entity_t guiRoot;
+		decf::entity_t guiStack;
 		AssetListLoader loader;
-
-		gui::Widget* button = {};
 	};
 
 	Data m_data;
@@ -718,7 +758,7 @@ struct FlagsInput : input::Receiver {
 
 bool run(io::Reader const& reader, ErasedPtr androidApp) {
 	try {
-		window::Instance::CreateInfo winInfo;
+		window::InstanceBase::CreateInfo winInfo;
 		winInfo.config.androidApp = androidApp;
 		winInfo.config.title = "levk demo";
 		winInfo.config.size = {1280, 720};
@@ -755,7 +795,7 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 				engine.unboot();
 			}
 
-			if (engine.beginFrame(false)) {
+			if (engine.drawReady()) {
 				if (app) {
 					// kt::kthread::sleep_for(5ms);
 					app->tick(flags, dt);

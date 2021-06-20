@@ -24,7 +24,7 @@ class BitmapFont {
 
 	bool valid() const noexcept;
 	Texture const& atlas() const;
-	View<Glyph> glyphs() const noexcept;
+	Span<Glyph const> glyphs() const noexcept;
 
   private:
 	struct {
@@ -35,7 +35,7 @@ class BitmapFont {
 
 struct BitmapFont::CreateInfo {
 	std::optional<vk::Format> forceFormat;
-	View<Glyph> glyphs;
+	Span<Glyph const> glyphs;
 	graphics::BMPview atlas;
 };
 
@@ -44,5 +44,5 @@ inline BitmapFont::Texture const& BitmapFont::atlas() const {
 	ENSURE(m_storage.atlas.has_value(), "Empty atlas");
 	return *m_storage.atlas;
 }
-inline View<BitmapFont::Glyph> BitmapFont::glyphs() const noexcept { return m_storage.glyphs; }
+inline Span<BitmapFont::Glyph const> BitmapFont::glyphs() const noexcept { return m_storage.glyphs; }
 } // namespace le

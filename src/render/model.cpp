@@ -4,7 +4,7 @@
 #include <fmt/format.h>
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <core/io/reader.hpp>
-#include <dumb_json/djson.hpp>
+#include <dumb_json/json.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
 #include <graphics/mesh.hpp>
@@ -43,18 +43,18 @@ struct hash<glm::vec3> {
 
 namespace le {
 namespace {
-constexpr glm::vec2 texCoords(View<f32> arr, std::size_t idx, bool invertY) noexcept {
+constexpr glm::vec2 texCoords(Span<f32 const> arr, std::size_t idx, bool invertY) noexcept {
 	f32 const y = arr[2 * idx + 1];
 	return {arr[2 * idx + 0], invertY ? 1.0f - y : y};
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, std::size_t idx) noexcept { return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]}; }
+constexpr glm::vec3 vec3(Span<f32 const> arr, std::size_t idx) noexcept { return {arr[3 * idx + 0], arr[3 * idx + 1], arr[3 * idx + 2]}; }
 
-constexpr glm::vec2 texCoords(View<f32> arr, int idx, bool invertY) noexcept {
+constexpr glm::vec2 texCoords(Span<f32 const> arr, int idx, bool invertY) noexcept {
 	return arr.empty() || idx < 0 ? glm::vec2(0.0f, 1.0f) : texCoords(arr, (std::size_t)idx, invertY);
 }
 
-constexpr glm::vec3 vec3(View<f32> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
+constexpr glm::vec3 vec3(Span<f32 const> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
 
 template <typename T>
 kt::result<std::size_t> find(T const& arr, Hash hash) noexcept {
@@ -69,9 +69,14 @@ Colour colour(f32 const (&arr)[3], Colour fallback, f32 a = 1.0f) {
 	return Colour(glm::vec4(fallback.toVec3(), a));
 }
 
-glm::vec3 vec3(dj::node_t const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
-	if (auto const pVec = json.find(id)) { return {pVec->safe_get("x").as<f32>(), pVec->safe_get("y").as<f32>(), pVec->safe_get("z").as<f32>()}; }
-	return fallback;
+glm::vec3 vec3(dj::json_t const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
+	glm::vec3 ret = fallback;
+	if (auto const pVec = json.find(id)) {
+		if (auto x = pVec->find("x")) { ret.x = x->as<f32>(); }
+		if (auto y = pVec->find("x")) { ret.y = y->as<f32>(); }
+		if (auto z = pVec->find("z")) { ret.z = z->as<f32>(); }
+	}
+	return ret;
 }
 } // namespace
 
@@ -148,8 +153,8 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader)
 	for (auto const& shape : m_shapes) { ret.meshes.push_back(processShape(ret, shape)); }
 	for (auto& texture : ret.textures) {
 		auto bytes = reader.bytes(texture.filename);
-		ENSURE(bytes.has_result(), "Texture not found!");
-		if (bytes) { texture.bytes = bytes.move(); }
+		ENSURE(bytes.has_value(), "Texture not found!");
+		if (bytes) { texture.bytes = std::move(bytes).value(); }
 	}
 	return Model::Result<Model::CreateInfo>(std::move(ret));
 }
@@ -245,7 +250,7 @@ graphics::Geometry OBJReader::vertices(tinyobj::shape_t const& shape) {
 } // namespace
 
 namespace {
-graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> const& map, View<Model::TexData> tex, View<std::size_t> indices) {
+graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> const& map, Span<Model::TexData const> tex, Span<std::size_t const> indices) {
 	if (!indices.empty()) {
 		std::size_t const idx = indices.front();
 		if (idx < tex.size()) {
@@ -260,31 +265,33 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Reader const& reader) {
 	auto res = reader.string(jsonID);
 	if (!res) { return std::string("JSON not found"); }
-	auto json = dj::node_t::make(*res);
-	if (!json || !json->is_object()) { return std::string("Failed to read json"); }
-	if (!json->contains("obj")) { return std::string("JSON missing obj"); }
+	dj::json_t json;
+	auto result = json.read(*res);
+	if (result.failure || !result.errors.empty() || !json.is_object()) { return std::string("Failed to read json: ") + result.to_string(); }
+	if (!json.contains("obj")) { return std::string("JSON missing obj"); }
 	auto const jsonDir = jsonID.parent_path();
-	auto const objID = jsonDir / json->get("obj").as<std::string>();
-	auto const mtlID = jsonDir / json->safe_get("mtl").as<std::string>();
+	auto const objID = jsonDir / json["obj"].as<std::string>();
+	auto const mtlID = jsonDir / (json.contains("mtl") ? json["mtl"].as<std::string>() : std::string());
 	auto obj = reader.sstream(objID);
 	auto mtl = reader.sstream(mtlID);
 	if (!obj) { return std::string("obj not found"); }
-	auto pSamplerID = json->find("sampler");
-	auto pScale = json->find("scale");
+	auto pSamplerID = json.find("sampler");
+	auto pScale = json.find("scale");
 	OBJReader::Data objData;
-	objData.obj = obj.move();
-	if (mtl) { objData.mtl = mtl.move(); }
+	objData.obj = std::move(obj).value();
+	if (mtl) { objData.mtl = std::move(mtl).value(); }
 	objData.modelID = std::move(modelID);
 	objData.jsonID = std::move(jsonID);
 	objData.modelID = jsonDir;
 	objData.samplerID = pSamplerID ? pSamplerID->as<std::string>() : "samplers/default";
 	objData.scale = pScale ? pScale->as<f32>() : 1.0f;
-	objData.origin = vec3(*json, "origin");
+	objData.origin = vec3(json, "origin");
 	OBJReader parser(std::move(objData));
 	return parser(reader);
 }
 
-Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
+Model::Result<Span<Primitive const>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler,
+													  std::optional<vk::Format> forceFormat) {
 	Map<Material> materials;
 	decltype(m_storage) storage;
 	for (auto const& tex : info.textures) {
@@ -320,6 +327,6 @@ Model::Result<View<Primitive>> Model::construct(not_null<VRAM*> vram, CreateInfo
 		storage.primitives.push_back(prim);
 	}
 	m_storage = std::move(storage);
-	return View<Primitive>(m_storage.primitives);
+	return Span<Primitive const>(m_storage.primitives);
 }
 } // namespace le

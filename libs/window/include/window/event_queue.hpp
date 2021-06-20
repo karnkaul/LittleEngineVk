@@ -20,29 +20,24 @@ struct Event {
 		eInit,
 		eTerm,
 	};
-	using Focus = bool;
-	using Suspend = bool;
-	struct Resize final : glm::ivec2 {
-		bool bFramebuffer;
+	struct Resize : glm::uvec2 {
+		bool framebuffer;
 	};
-	struct Input final {
+	struct Input {
 		Key key;
 		Action action;
 		Mods mods;
 		s32 scancode;
 	};
-	struct Text final {
-		char c;
-	};
-	struct Cursor final : glm::tvec2<f64> {
+	struct Cursor : glm::tvec2<f64> {
 		s32 id;
 	};
 	union Store {
-		bool bSet;
 		Resize resize;
 		Input input;
-		Text text;
 		Cursor cursor;
+		char text;
+		bool set;
 	};
 
 	Store payload;
@@ -50,17 +45,15 @@ struct Event {
 };
 
 struct EventQueue {
-	std::optional<Event> pop();
-
 	std::deque<Event> m_events;
-};
 
-inline std::optional<Event> EventQueue::pop() {
-	if (!m_events.empty()) {
-		Event ret = m_events.front();
-		m_events.pop_front();
-		return ret;
+	std::optional<Event> pop() noexcept {
+		if (!m_events.empty()) {
+			Event ret = m_events.front();
+			m_events.pop_front();
+			return ret;
+		}
+		return std::nullopt;
 	}
-	return std::nullopt;
-}
+};
 } // namespace le::window

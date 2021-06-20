@@ -4,8 +4,8 @@
 #include <core/span.hpp>
 
 namespace le::window {
-struct ISurface {
-	virtual View<std::string_view> vkInstanceExtensions() const = 0;
+struct Surface {
+	virtual Span<std::string_view const> vkInstanceExtensions() const = 0;
 	virtual bool vkCreateSurface(ErasedPtr vkInstance, ErasedPtr vkSurface) const = 0;
 	virtual ErasedPtr nativePtr() const noexcept = 0;
 };

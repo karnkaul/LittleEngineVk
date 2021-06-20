@@ -6,10 +6,10 @@
 #include <graphics/common.hpp>
 #include <graphics/context/physical_device.hpp>
 #include <graphics/context/queue_multiplex.hpp>
-#include <graphics/descriptor_set.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/pipeline.hpp>
+#include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
@@ -51,7 +51,9 @@ kt::result<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, 
 SetBindings extractBindings(Shader const& shader);
 
 Bitmap::type bitmap(std::initializer_list<u8> bytes);
-Bitmap::type convert(View<u8> bytes);
+Bitmap::type bitmapPx(std::initializer_list<Colour> pixels);
+void append(Bitmap::type& out, Span<u8 const> bytes);
+Bitmap::type convert(Span<u8 const> bytes);
 
 using CubeImageIDs = std::array<std::string_view, 6>;
 constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};

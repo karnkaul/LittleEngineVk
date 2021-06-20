@@ -33,10 +33,10 @@ class CommandBuffer {
 	inline static auto s_drawCalls = std::atomic<u32>(0);
 
 	static std::vector<CommandBuffer> make(not_null<Device*> device, vk::CommandPool pool, u32 count);
-	static CommandBuffer make(not_null<Device*> device, vk::CommandPoolCreateFlags flags, QType queue = QType::eGraphics);
 
 	CommandBuffer() = default;
-	CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool);
+	CommandBuffer(vk::CommandBuffer cmd);
+	CommandBuffer(Device& device, vk::CommandPool cmd);
 
 	void begin(vk::CommandBufferUsageFlags usage);
 	void beginRenderPass(vk::RenderPass renderPass, vk::Framebuffer framebuffer, Extent2D extent, PassInfo const& info);
@@ -67,7 +67,6 @@ class CommandBuffer {
 	bool rendering() const noexcept { return valid() && m_flags.all(Flags(Flag::eRecording) | Flag::eRendering); }
 
 	vk::CommandBuffer m_cb;
-	vk::CommandPool m_pool;
 
   private:
 	enum class Flag { eRecording, eRendering, eCOUNT_ };

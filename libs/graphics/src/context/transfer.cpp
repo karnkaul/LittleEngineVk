@@ -52,9 +52,8 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 }
 
 Transfer::~Transfer() {
-	m_sync.poll.request_stop();
-	auto residue = m_queue.clear();
-	for (auto& f : residue) { f(); }
+	stopPolling();
+	stopTransfer();
 	m_sync.staging = {};
 	Memory& m = *m_memory;
 	Device& d = *m.m_device;
@@ -148,5 +147,15 @@ vk::Fence Transfer::nextFence() {
 		return ret;
 	}
 	return m_memory->m_device->makeFence(false);
+}
+
+void Transfer::stopPolling() {
+	m_sync.poll.request_stop();
+	m_sync.poll.join();
+}
+
+void Transfer::stopTransfer() {
+	auto residue = m_queue.clear();
+	for (auto& f : residue) { f(); }
 }
 } // namespace le::graphics

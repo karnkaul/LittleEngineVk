@@ -57,6 +57,8 @@ class Transfer final {
 	vk::Fence nextFence();
 	std::optional<Buffer> nextBuffer(vk::DeviceSize size);
 	vk::CommandBuffer nextCommand();
+	void stopPolling();
+	void stopTransfer();
 
 	struct {
 		vk::CommandPool pool;

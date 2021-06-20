@@ -9,18 +9,18 @@ std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::Com
 	vk::CommandBufferAllocateInfo allocInfo(pool, vk::CommandBufferLevel::ePrimary, count);
 	auto buffers = device->device().allocateCommandBuffers(allocInfo);
 	std::vector<CommandBuffer> ret;
-	for (auto& buffer : buffers) { ret.push_back({buffer, pool}); }
+	ret.reserve(buffers.size());
+	std::copy(buffers.begin(), buffers.end(), std::back_inserter(ret));
 	return ret;
 }
 
-CommandBuffer CommandBuffer::make(not_null<Device*> device, vk::CommandPoolCreateFlags flags, QType queue) {
-	CommandBuffer ret;
-	ret.m_pool = device->device().createCommandPool(vk::CommandPoolCreateInfo(flags, device->queues().familyIndex(queue)));
-	ret.m_cb = device->device().allocateCommandBuffers(vk::CommandBufferAllocateInfo(ret.m_pool, vk::CommandBufferLevel::ePrimary, 1)).front();
-	return ret;
-}
+CommandBuffer::CommandBuffer(vk::CommandBuffer cmd) : m_cb(cmd) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
 
-CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, vk::CommandPool pool) : m_cb(cmd), m_pool(pool) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
+CommandBuffer::CommandBuffer(Device& device, vk::CommandPool pool) {
+	vk::CommandBufferAllocateInfo allocInfo(pool, vk::CommandBufferLevel::ePrimary, 1U);
+	auto buffers = device.device().allocateCommandBuffers(allocInfo);
+	m_cb = buffers.front();
+}
 
 void CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
 	ENSURE(valid() && !recording() && !rendering(), "Invalid command buffer state");

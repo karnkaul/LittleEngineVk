@@ -163,4 +163,10 @@ bool VRAM::update(bool force) {
 	}
 	return false;
 }
+
+void VRAM::shutdown() {
+	g_log.log(lvl::debug, 2, "[{}] VRAM shutting down", g_name);
+	m_transfer.stopPolling();
+	m_transfer.stopTransfer();
+}
 } // namespace le::graphics

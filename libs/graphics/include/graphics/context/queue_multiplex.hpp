@@ -39,7 +39,7 @@ class QueueMultiplex final {
 
 	kt::fixed_vector<u32, 3> familyIndices(QFlags flags) const;
 
-	void submit(QType type, vk::ArrayProxy<vk::SubmitInfo const> const& infos, vk::Fence signal, bool bLock);
+	void submit(QType type, vk::ArrayProxy<vk::SubmitInfo const> const& infos, vk::Fence signal, bool lock);
 	vk::Result present(vk::PresentInfoKHR const& info, bool bLock);
 
 	u32 familyCount() const noexcept { return m_familyCount; }

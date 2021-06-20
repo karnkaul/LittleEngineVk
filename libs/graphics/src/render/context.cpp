@@ -60,12 +60,31 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer) : m_swapchain(swapchain), m_device(swapchain->m_device) {
+RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer)
+	: m_pool(swapchain->m_device, vk::CommandPoolCreateFlagBits::eTransient), m_swapchain(swapchain), m_device(swapchain->m_device) {
 	m_storage.renderer = std::move(renderer);
 	m_storage.status = Status::eWaiting;
 	validateBuffering(m_swapchain->buffering(), m_storage.renderer->buffering());
 	DeferQueue::defaultDefer = m_storage.renderer->buffering();
 	m_storage.pipelineCache = makeDeferred<vk::PipelineCache>(m_device);
+}
+
+Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
+	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_storage.renderer->renderPass3D(); }
+	info.buffering = m_storage.renderer->buffering();
+	info.cache = *m_storage.pipelineCache;
+	return Pipeline(m_swapchain->m_vram, shader, std::move(info), id);
+}
+
+bool RenderContext::ready(glm::ivec2 framebufferSize) {
+	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
+		if (m_swapchain->reconstruct(framebufferSize)) {
+			m_storage.renderer->refresh();
+			m_storage.status = Status::eWaiting;
+		}
+		return false;
+	}
+	return true;
 }
 
 bool RenderContext::waitForFrame() {
@@ -75,6 +94,7 @@ bool RenderContext::waitForFrame() {
 			return false;
 		}
 		m_storage.renderer->waitForFrame();
+		m_pool.update();
 		set(Status::eReady);
 	}
 	return true;
@@ -136,24 +156,6 @@ bool RenderContext::submitFrame() {
 	set(Status::eWaiting);
 	if (m_storage.renderer->submitFrame()) { return true; }
 	return false;
-}
-
-bool RenderContext::ready(glm::ivec2 framebufferSize) {
-	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
-		if (m_swapchain->reconstruct(framebufferSize)) {
-			m_storage.renderer->refresh();
-			m_storage.status = Status::eWaiting;
-		}
-		return false;
-	}
-	return true;
-}
-
-Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo) {
-	if (createInfo.renderPass == vk::RenderPass()) { createInfo.renderPass = m_storage.renderer->renderPass3D(); }
-	createInfo.buffering = m_storage.renderer->buffering();
-	createInfo.cache = *m_storage.pipelineCache;
-	return Pipeline(m_swapchain->m_vram, shader, std::move(createInfo), id);
 }
 
 glm::mat4 RenderContext::preRotate() const noexcept {

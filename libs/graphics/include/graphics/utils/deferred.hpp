@@ -20,6 +20,7 @@ class Deferred {
 
 	T operator*() const noexcept { return m_t; }
 	T get() const noexcept { return m_t; }
+	bool active() const noexcept { return m_device != nullptr; }
 
 	T m_t;
 

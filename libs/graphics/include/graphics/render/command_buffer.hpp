@@ -33,6 +33,7 @@ class CommandBuffer {
 	inline static auto s_drawCalls = std::atomic<u32>(0);
 
 	static std::vector<CommandBuffer> make(not_null<Device*> device, vk::CommandPool pool, u32 count);
+	static void make(std::vector<CommandBuffer>& out, not_null<Device*> device, vk::CommandPool pool, u32 count);
 
 	CommandBuffer() = default;
 	CommandBuffer(vk::CommandBuffer cmd);

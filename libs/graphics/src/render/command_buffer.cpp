@@ -6,12 +6,16 @@
 
 namespace le::graphics {
 std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::CommandPool pool, u32 count) {
+	std::vector<CommandBuffer> ret;
+	make(ret, device, pool, count);
+	return ret;
+}
+
+void CommandBuffer::make(std::vector<CommandBuffer>& out, not_null<Device*> device, vk::CommandPool pool, u32 count) {
 	vk::CommandBufferAllocateInfo allocInfo(pool, vk::CommandBufferLevel::ePrimary, count);
 	auto buffers = device->device().allocateCommandBuffers(allocInfo);
-	std::vector<CommandBuffer> ret;
-	ret.reserve(buffers.size());
-	std::copy(buffers.begin(), buffers.end(), std::back_inserter(ret));
-	return ret;
+	out.reserve(out.size() + buffers.size());
+	std::copy(buffers.begin(), buffers.end(), std::back_inserter(out));
 }
 
 CommandBuffer::CommandBuffer(vk::CommandBuffer cmd) : m_cb(cmd) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }

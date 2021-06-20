@@ -49,7 +49,7 @@ kt::result<Swapchain::Acquire> RenderFence::acquire(Swapchain& swapchain, vk::Se
 
 bool RenderFence::present(Swapchain& swapchain, vk::SubmitInfo const& info, vk::Semaphore wait) {
 	ENSURE(info.signalSemaphoreCount == 0 || *info.pSignalSemaphores == wait, "Semaphore mismatch");
-	m_device->queues().submit(QType::eGraphics, info, submitFence(), false);
+	m_device->queues().submit(QType::eGraphics, info, submitFence(), true);
 	if (!swapchain.present(wait)) { return false; } // signalled by drawing submit
 	next();
 	return true;

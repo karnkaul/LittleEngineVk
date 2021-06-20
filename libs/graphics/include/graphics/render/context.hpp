@@ -8,6 +8,7 @@
 #include <graphics/common.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
+#include <graphics/render/command_pool.hpp>
 #include <graphics/render/pipeline.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
@@ -32,7 +33,10 @@ class RenderContext : NoCopy {
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
 
 	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer);
+	
+	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
 
+	bool ready(glm::ivec2 framebufferSize);
 	bool waitForFrame();
 	std::optional<ARenderer::Draw> beginFrame();
 	bool beginDraw(graphics::FrameDrawer& out_drawer, RGBA clear, vk::ClearDepthStencilValue depth = {1.0f, 0});
@@ -40,29 +44,20 @@ class RenderContext : NoCopy {
 	bool endFrame();
 	bool submitFrame();
 
-	Status status() const noexcept;
-	std::size_t index() const noexcept;
-	Buffering buffering() const noexcept;
-	Extent2D extent() const noexcept;
-	bool ready(glm::ivec2 framebufferSize);
-
-	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo createInfo);
-
-	ARenderer& renderer() const noexcept;
-	vk::SurfaceFormatKHR swapchainFormat() const noexcept;
+	Status status() const noexcept { return m_storage.status; }
+	std::size_t index() const noexcept { return m_storage.renderer->index(); }
+	Buffering buffering() const noexcept { return m_storage.renderer->buffering(); }
+	Extent2D extent() const noexcept { return m_swapchain->display().extent; }
+	vk::SurfaceFormatKHR swapchainFormat() const noexcept { return m_swapchain->colourFormat(); }
 	vk::Format colourImageFormat() const noexcept;
-
 	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
 	glm::mat4 preRotate() const noexcept;
 	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
 
-	template <typename... T>
-	bool check(T... any) noexcept {
-		return ((m_storage.status == any) || ...);
-	}
-	void set(Status s) noexcept { m_storage.status = s; }
+	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
+	CommandPool const& commandPool() const noexcept { return m_pool; }
 
 	struct {
 		ScreenRect rect;
@@ -70,6 +65,12 @@ class RenderContext : NoCopy {
 	} m_viewport;
 
   private:
+	template <typename... T>
+	bool check(T... any) noexcept {
+		return ((m_storage.status == any) || ...);
+	}
+	void set(Status s) noexcept { m_storage.status = s; }
+
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
 		std::optional<RenderTarget> target;
@@ -78,6 +79,7 @@ class RenderContext : NoCopy {
 	};
 
 	Storage m_storage;
+	CommandPool m_pool;
 	not_null<Swapchain*> m_swapchain;
 	not_null<Device*> m_device;
 };
@@ -137,18 +139,9 @@ inline f32 RenderContext::aspectRatio() const noexcept {
 	glm::ivec2 const ext = extent();
 	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
 }
-inline ARenderer& RenderContext::renderer() const noexcept {
-	ENSURE(m_storage.renderer, "Invariant violated");
-	return *m_storage.renderer;
-}
-inline std::size_t RenderContext::index() const noexcept { return m_storage.renderer->index(); }
-inline Buffering RenderContext::buffering() const noexcept { return m_storage.renderer->buffering(); }
-inline RenderContext::Status RenderContext::status() const noexcept { return m_storage.status; }
-inline Extent2D RenderContext::extent() const noexcept { return m_swapchain->display().extent; }
 inline ColourCorrection RenderContext::colourCorrection() const noexcept {
 	return Swapchain::srgb(swapchainFormat().format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
 }
-inline vk::SurfaceFormatKHR RenderContext::swapchainFormat() const noexcept { return m_swapchain->colourFormat(); }
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
 }

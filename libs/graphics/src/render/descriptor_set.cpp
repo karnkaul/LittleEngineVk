@@ -128,7 +128,7 @@ std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u
 	return {set, binding};
 }
 
-SetPool::SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info) : m_device(device) {
+DescriptorPool::DescriptorPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info) : m_device(device) {
 	m_storage.layout = info.layout;
 	m_storage.buffering = info.buffering;
 	m_storage.setNumber = info.setNumber;
@@ -146,27 +146,27 @@ SetPool::SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info
 	g_log.log(lvl::debug, 2, "[{}] SetPool [{}/{}] {}", g_name, info.name, info.setNumber, suffix);
 }
 
-DescriptorSet& SetPool::front() {
+DescriptorSet& DescriptorPool::front() {
 	populate(1);
 	return m_storage.descriptorSets.front();
 }
 
-DescriptorSet& SetPool::index(std::size_t idx) {
+DescriptorSet& DescriptorPool::index(std::size_t idx) {
 	populate(idx + 1);
 	return m_storage.descriptorSets[idx];
 }
 
-DescriptorSet const& SetPool::front() const {
+DescriptorSet const& DescriptorPool::front() const {
 	ENSURE(!m_storage.descriptorSets.empty(), "Nonexistent set index!");
 	return m_storage.descriptorSets.front();
 }
 
-DescriptorSet const& SetPool::index(std::size_t idx) const {
+DescriptorSet const& DescriptorPool::index(std::size_t idx) const {
 	ENSURE(m_storage.descriptorSets.size() > idx, "Nonexistent set index!");
 	return m_storage.descriptorSets[idx];
 }
 
-Span<DescriptorSet> SetPool::populate(std::size_t count) {
+Span<DescriptorSet> DescriptorPool::populate(std::size_t count) {
 	m_storage.descriptorSets.reserve(count);
 	while (m_storage.descriptorSets.size() < count) {
 		DescriptorSet::CreateInfo info{m_storage.name, m_storage.layout, m_storage.bindInfos, m_storage.buffering, m_storage.setNumber};
@@ -175,11 +175,11 @@ Span<DescriptorSet> SetPool::populate(std::size_t count) {
 	return Span(m_storage.descriptorSets.data(), count);
 }
 
-void SetPool::swap() {
+void DescriptorPool::swap() {
 	for (auto& descriptorSet : m_storage.descriptorSets) { descriptorSet.swap(); }
 }
 
-bool SetPool::contains(u32 bind) const noexcept {
+bool DescriptorPool::contains(u32 bind) const noexcept {
 	if (!m_storage.descriptorSets.empty()) { return m_storage.descriptorSets.front().contains(bind); }
 	if (bind < (u32)m_storage.bindInfos.size()) {
 		auto const& bi = m_storage.bindInfos[(std::size_t)bind];
@@ -188,23 +188,23 @@ bool SetPool::contains(u32 bind) const noexcept {
 	return false;
 }
 
-bool SetPool::unassigned() const noexcept {
+bool DescriptorPool::unassigned() const noexcept {
 	if (!m_storage.descriptorSets.empty()) { return m_storage.descriptorSets.front().unassigned(); }
 	auto const& bi = m_storage.bindInfos;
 	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](BindingInfo const& b) { return b.bUnassigned; });
 }
 
-void SetPool::clear() noexcept { m_storage.descriptorSets.clear(); }
+void DescriptorPool::clear() noexcept { m_storage.descriptorSets.clear(); }
 
-ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) { m_setPools = pipe.makeSetPools(buffering); }
+ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) : m_vram(pipe.m_vram) { m_setPools = pipe.makeSetPools(buffering); }
 
-SetPool& ShaderInput::set(u32 set) {
+DescriptorPool& ShaderInput::pool(u32 set) {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
 	ENSURE(false, "Nonexistent set");
 	throw std::runtime_error("Nonexistent set");
 }
 
-SetPool const& ShaderInput::set(u32 set) const {
+DescriptorPool const& ShaderInput::pool(u32 set) const {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
 	ENSURE(false, "Nonexistent set");
 	throw std::runtime_error("Nonexistent set");
@@ -229,7 +229,7 @@ bool ShaderInput::contains(u32 set, u32 bind) const noexcept {
 bool ShaderInput::update(Span<Texture const> textures, u32 set, u32 bind, std::size_t idx) {
 	if constexpr (levk_debug) {
 		if (contains(set)) {
-			DescriptorSet& ds = this->set(set).index(idx);
+			DescriptorSet& ds = this->pool(set).index(idx);
 			if (auto pInfo = ds.binding(bind); pInfo && pInfo->binding.descriptorType == vk::DescriptorType::eCombinedImageSampler) {
 				ds.update(bind, textures);
 				return true;
@@ -238,7 +238,7 @@ bool ShaderInput::update(Span<Texture const> textures, u32 set, u32 bind, std::s
 		ENSURE(false, "DescriptorSet update failure");
 		return false;
 	} else {
-		this->set(set).index(idx).update(bind, textures);
+		this->pool(set).index(idx).update(bind, textures);
 		return true;
 	}
 }
@@ -251,14 +251,14 @@ bool ShaderInput::update(Span<Buffer const> buffers, u32 set, u32 bind, std::siz
 		}
 	}
 	if (buffers.empty()) { return false; }
-	this->set(set).index(idx).update(bind, buffers, type);
+	this->pool(set).index(idx).update(bind, buffers, type);
 	return true;
 }
 
 bool ShaderInput::update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx) {
 	if constexpr (levk_debug) {
 		if (contains(set)) {
-			DescriptorSet& ds = this->set(set).index(idx);
+			DescriptorSet& ds = this->pool(set).index(idx);
 			if (auto pInfo = ds.binding(bind); pInfo && pInfo->binding.descriptorType == buffer.type()) {
 				buffer.update(ds, bind);
 				return true;
@@ -267,14 +267,14 @@ bool ShaderInput::update(ShaderBuffer const& buffer, u32 set, u32 bind, std::siz
 		ENSURE(false, "DescriptorSet update failure");
 		return false;
 	} else {
-		buffer.update(this->set(set).index(idx), bind);
+		buffer.update(this->pool(set).index(idx), bind);
 		return true;
 	}
 }
 
-SetPool& ShaderInput::operator[](u32 set) { return this->set(set); }
+DescriptorPool& ShaderInput::operator[](u32 set) { return this->pool(set); }
 
-SetPool const& ShaderInput::operator[](u32 set) const { return this->set(set); }
+DescriptorPool const& ShaderInput::operator[](u32 set) const { return pool(set); }
 
 void ShaderInput::clearSets() noexcept {
 	for (auto& [_, pool] : m_setPools) { pool.clear(); }

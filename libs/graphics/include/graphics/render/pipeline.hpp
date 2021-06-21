@@ -58,13 +58,17 @@ class Pipeline final {
 	ShaderInput& shaderInput();
 	ShaderInput const& shaderInput() const;
 
-	SetPool makeSetPool(u32 set, Buffering buffering) const;
-	std::unordered_map<u32, SetPool> makeSetPools(Buffering buffering) const;
+	DescriptorPool makeSetPool(u32 set, Buffering buffering) const;
+	std::unordered_map<u32, DescriptorPool> makeSetPools(Buffering buffering) const;
 
 	void bindSet(CommandBuffer cb, u32 set, std::size_t idx) const;
 	void bindSet(CommandBuffer cb, std::initializer_list<u32> sets, std::size_t idx) const;
+	void swap() { m_storage.input.swap(); }
 
 	Hash id() const noexcept;
+
+	not_null<VRAM*> m_vram;
+	not_null<Device*> m_device;
 
   private:
 	bool construct(Shader const& shader, CreateInfo& out_info, vk::Pipeline& out_pipe, bool bFixed);
@@ -91,8 +95,6 @@ class Pipeline final {
 
 	Storage m_storage;
 	Metadata m_metadata;
-	not_null<VRAM*> m_vram;
-	not_null<Device*> m_device;
 
 	friend struct Hasher;
 };

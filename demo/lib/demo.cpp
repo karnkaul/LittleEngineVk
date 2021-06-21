@@ -27,6 +27,9 @@
 #include <engine/render/bitmap_text.hpp>
 #include <engine/utils/exec.hpp>
 
+#include <core/utils/enumerate.hpp>
+#include <engine/render/descriptor_helper.hpp>
+
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
@@ -194,19 +197,11 @@ class DrawDispatch {
 		graphics::Texture const* black = {};
 	} m_defaults;
 
-	struct SetBind {
-		u32 set;
-		u32 bind;
-		bool valid;
-
-		SetBind(graphics::ShaderInput const& si, u32 s, u32 b) : set(s), bind(b), valid(si.contains(s, b)) {}
-
-		explicit operator bool() const noexcept { return valid; }
-	};
-
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
 	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
+		m_view.lights.swap();
+		m_view.mats.swap();
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
@@ -220,59 +215,38 @@ class DrawDispatch {
 	}
 
 	void update(SceneDrawer::Group const& group) const {
-		auto& si = group.group.pipeline->shaderInput();
-		si.update(m_view.mats, 0, 0, 0);
-		if (group.group.order >= 0 && si.contains(0, 1)) { si.update(m_view.lights, 0, 1, 0); }
-		auto const sb10 = SetBind(si, 1, 0);
-		auto const sb20 = SetBind(si, 2, 0);
-		auto const sb21 = SetBind(si, 2, 1);
-		auto const sb22 = SetBind(si, 2, 2);
-		auto const sb30 = SetBind(si, 3, 0);
-		std::size_t primIdx = 0;
-		std::size_t itemIdx = 0;
+		DescriptorMap map(group.group.pipeline);
+		auto set0 = map.set(0);
+		set0.update(0, m_view.mats);
+		if (group.group.order >= 0) { set0.update(1, m_view.lights); }
 		for (SceneDrawer::Item const& item : group.items) {
 			if (!item.primitives.empty()) {
-				if (sb10) {
-					graphics::Buffer const buf = m_vram->makeBO(item.model, vk::BufferUsageFlagBits::eUniformBuffer);
-					si.update(buf, sb10.set, sb10.bind, itemIdx);
-				}
-				++itemIdx;
+				map.set(1).update(0, item.model);
 				for (Primitive const& prim : item.primitives) {
 					Material const& mat = prim.material;
 					if (group.group.order < 0) {
 						ENSURE(mat.map_Kd, "Null cubemap");
-						si.update(*mat.map_Kd, 0, 1, primIdx);
+						set0.update(1, *mat.map_Kd);
 					}
-					if (sb20) { si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, primIdx); }
-					if (sb21) { si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, primIdx); }
-					if (sb22) { si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, primIdx); }
-					if (sb30) {
-						auto const sm = ShadeMat::make(mat);
-						graphics::Buffer const buf = m_vram->makeBO(sm, vk::BufferUsageFlagBits::eUniformBuffer);
-						si.update(buf, sb30.set, sb30.bind, primIdx);
-					}
-					++primIdx;
+					auto set2 = map.set(2);
+					set2.update(0, mat.map_Kd ? *mat.map_Kd : *m_defaults.white);
+					set2.update(1, mat.map_d ? *mat.map_d : *m_defaults.white);
+					set2.update(2, mat.map_Ks ? *mat.map_Ks : *m_defaults.black);
+					map.set(3).update(0, ShadeMat::make(mat));
 				}
 			}
 		}
 	}
 
-	void swap() {
-		m_view.mats.swap();
-		m_view.lights.swap();
-	}
-
 	void draw(graphics::CommandBuffer cb, SceneDrawer::Group const& group) const {
-		graphics::Pipeline const& pipe = *group.group.pipeline;
-		pipe.bindSet(cb, 0, 0);
-		std::size_t itemIdx = 0;
-		std::size_t primIdx = 0;
+		DescriptorBinder bind(group.group.pipeline, cb);
+		bind(0);
 		for (SceneDrawer::Item const& d : group.items) {
 			if (!d.primitives.empty()) {
-				pipe.bindSet(cb, 1, itemIdx++);
+				bind(1);
 				if (d.scissor) { cb.setScissor(*d.scissor); }
 				for (Primitive const& prim : d.primitives) {
-					pipe.bindSet(cb, {2, 3}, primIdx++);
+					bind({2, 3});
 					ENSURE(prim.mesh, "Null mesh");
 					prim.mesh->draw(cb);
 				}
@@ -295,7 +269,7 @@ class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
 
 	RenderDisp(Data d) : m_data(d) {}
 	~RenderDisp() override {
-		for (auto pipe : m_pipes) { pipe->shaderInput().swap(); }
+		for (auto pipe : m_pipes) { pipe->swap(); }
 	}
 
 	void draw3D(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groups3D, cb); }
@@ -703,7 +677,6 @@ class App : public input::Receiver {
 			// draw
 			RenderDisp rd{{gr3D, grUI, m_eng->viewport(), m_eng->scissor(), &m_drawDispatch}};
 			m_eng->render(*frame, rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
-			m_drawDispatch.swap();
 		}
 	}
 

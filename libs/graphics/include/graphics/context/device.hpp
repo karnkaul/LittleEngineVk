@@ -22,6 +22,8 @@ class Device final {
 	Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo const& info);
 	~Device();
 
+	static constexpr vk::BufferUsageFlagBits bufferUsage(vk::DescriptorType type) noexcept;
+
 	void waitIdle();
 	bool valid(vk::SurfaceKHR surface) const;
 
@@ -78,6 +80,9 @@ class Device final {
 	not_null<Instance*> m_instance;
 
   private:
+	CommandBuffer beginCmd();
+	void endCmd(CommandBuffer cb);
+
 	PhysicalDevice m_physicalDevice;
 	vk::Device m_device;
 	DeferQueue m_deferred;
@@ -105,6 +110,13 @@ template <typename T>
 struct Device::Deleter {
 	void operator()(not_null<Device*> device, T t) const { device->destroy(t); }
 };
+
+constexpr vk::BufferUsageFlagBits Device::bufferUsage(vk::DescriptorType type) noexcept {
+	switch (type) {
+	case vk::DescriptorType::eStorageBuffer: return vk::BufferUsageFlagBits::eStorageBuffer;
+	default: return vk::BufferUsageFlagBits::eUniformBuffer;
+	}
+}
 
 template <typename T, typename... Args>
 T Device::make(Args&&... args) {

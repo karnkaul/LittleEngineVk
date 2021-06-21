@@ -79,27 +79,27 @@ ShaderInput& Pipeline::shaderInput() { return m_storage.input; }
 
 ShaderInput const& Pipeline::shaderInput() const { return m_storage.input; }
 
-SetPool Pipeline::makeSetPool(u32 set, Buffering buffering) const {
+DescriptorPool Pipeline::makeSetPool(u32 set, Buffering buffering) const {
 	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
 	auto& f = m_storage.fixed;
 	if (buffering == 0_B) { buffering = m_metadata.main.buffering; }
 	DescriptorSet::CreateInfo const info{m_metadata.name, *f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], buffering, set};
-	return SetPool(m_device, info);
+	return DescriptorPool(m_device, info);
 }
 
-std::unordered_map<u32, SetPool> Pipeline::makeSetPools(Buffering buffering) const {
-	std::unordered_map<u32, SetPool> ret;
+std::unordered_map<u32, DescriptorPool> Pipeline::makeSetPools(Buffering buffering) const {
+	std::unordered_map<u32, DescriptorPool> ret;
 	auto const& f = m_storage.fixed;
 	if (buffering == 0_B) { buffering = m_metadata.main.buffering; }
 	for (u32 set = 0; set < (u32)m_storage.fixed.setLayouts.size(); ++set) {
 		DescriptorSet::CreateInfo const info{m_metadata.name, *f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], buffering, set};
-		ret.emplace(set, SetPool(m_device, info));
+		ret.emplace(set, DescriptorPool(m_device, info));
 	}
 	return ret;
 }
 
 void Pipeline::bindSet(CommandBuffer cb, u32 set, std::size_t idx) const {
-	if (m_storage.input.contains(set)) { cb.bindSet(*m_storage.fixed.layout, m_storage.input.set(set).index(idx)); }
+	if (m_storage.input.contains(set)) { cb.bindSet(*m_storage.fixed.layout, m_storage.input.pool(set).index(idx)); }
 }
 
 void Pipeline::bindSet(CommandBuffer cb, std::initializer_list<u32> sets, std::size_t idx) const {

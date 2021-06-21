@@ -12,8 +12,6 @@ class ShaderBuffer {
   public:
 	struct CreateInfo;
 
-	static constexpr vk::BufferUsageFlagBits usage(vk::DescriptorType type) noexcept;
-
 	ShaderBuffer() = default;
 	ShaderBuffer(VRAM& vram, CreateInfo const& info);
 
@@ -49,13 +47,6 @@ struct ShaderBuffer::CreateInfo {
 };
 
 // impl
-
-constexpr vk::BufferUsageFlagBits ShaderBuffer::usage(vk::DescriptorType type) noexcept {
-	switch (type) {
-	case vk::DescriptorType::eStorageBuffer: return vk::BufferUsageFlagBits::eStorageBuffer;
-	default: return vk::BufferUsageFlagBits::eUniformBuffer;
-	}
-}
 
 inline bool ShaderBuffer::valid() const noexcept { return m_vram != nullptr; }
 inline vk::DescriptorType ShaderBuffer::type() const noexcept { return m_storage.type; }

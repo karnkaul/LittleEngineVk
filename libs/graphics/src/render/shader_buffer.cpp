@@ -4,7 +4,7 @@
 namespace le::graphics {
 ShaderBuffer::ShaderBuffer(VRAM& vram, CreateInfo const& info) : m_vram(&vram) {
 	m_storage.type = info.type;
-	m_storage.usage = usage(info.type);
+	m_storage.usage = Device::bufferUsage(info.type);
 	m_storage.buffering = info.buffering;
 }
 

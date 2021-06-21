@@ -269,7 +269,7 @@ Asset<T> AssetStore::get(Hash id) const {
 		auto& store = lock.get().get<T>().m_storage;
 		if (auto it = store.find(id); it != store.end() && it->second.t) { return detail::makeAsset<T>(it->second, kt::tlock(m_onModified).get()[id]); }
 	}
-	ENSURE(false, "Asset not found!");
+	ensure(false, "Asset not found!");
 	throw std::runtime_error("Asset not present");
 }
 template <typename T>

@@ -208,7 +208,7 @@ inline u64 Memory::bytes(Resource::Type type) const noexcept { return m_allocati
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {
-	ENSURE(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
+	ensure(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
 	return write(&t, sizeof(T), offset);
 }
 } // namespace le::graphics

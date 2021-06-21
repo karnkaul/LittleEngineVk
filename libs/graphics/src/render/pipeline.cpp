@@ -71,7 +71,7 @@ vk::PipelineBindPoint Pipeline::bindPoint() const { return m_metadata.main.bindP
 vk::PipelineLayout Pipeline::layout() const { return *m_storage.fixed.layout; }
 
 vk::DescriptorSetLayout Pipeline::setLayout(u32 set) const {
-	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
+	ensure(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
 	return *m_storage.fixed.setLayouts[(std::size_t)set];
 }
 
@@ -80,7 +80,7 @@ ShaderInput& Pipeline::shaderInput() { return m_storage.input; }
 ShaderInput const& Pipeline::shaderInput() const { return m_storage.input; }
 
 DescriptorPool Pipeline::makeSetPool(u32 set, Buffering buffering) const {
-	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
+	ensure(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
 	auto& f = m_storage.fixed;
 	if (buffering == 0_B) { buffering = m_metadata.main.buffering; }
 	DescriptorSet::CreateInfo const info{m_metadata.name, *f.setLayouts[(std::size_t)set], f.bindingInfos[(std::size_t)set], buffering, set};
@@ -108,8 +108,8 @@ void Pipeline::bindSet(CommandBuffer cb, std::initializer_list<u32> sets, std::s
 
 bool Pipeline::construct(Shader const& shader, CreateInfo& out_info, vk::Pipeline& out_pipe, bool bFixed) {
 	auto& c = out_info;
-	ENSURE(!Device::default_v(c.renderPass), "Invalid render pass");
-	ENSURE(valid(shader.m_modules), "Invalid shader m_modules");
+	ensure(!Device::default_v(c.renderPass), "Invalid render pass");
+	ensure(valid(shader.m_modules), "Invalid shader m_modules");
 	if (!valid(shader.m_modules) || Device::default_v(c.renderPass)) { return false; }
 	m_metadata.name = shader.m_name;
 	m_storage.cache = out_info.cache;

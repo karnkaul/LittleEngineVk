@@ -53,7 +53,7 @@ class ServiceLocator final {
 	///
 	template <typename T>
 	[[nodiscard]] static T* locate() noexcept {
-		ENSURE(exists<T>(), "Service not found");
+		ensure(exists<T>(), "Service not found");
 		return reinterpret_cast<T*>(s_ts[typeID<T>()]);
 	}
 
@@ -61,7 +61,7 @@ class ServiceLocator final {
 	template <typename T>
 	static std::size_t typeID() noexcept {
 		static std::size_t ret = ++s_typeID;
-		ENSURE(ret < maxServices, "Max services exceeded");
+		ensure(ret < maxServices, "Max services exceeded");
 		return ret;
 	}
 

@@ -70,7 +70,7 @@ vk::RenderPass ARenderer::makeRenderPass(Attachment colour, Attachment depth, vA
 	colourAttachment.attachment = 0;
 	colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
 	if (depth.format != vk::Format()) {
-		ENSURE(hasDepthImage(), "No depth image in this Renderer instance");
+		ensure(hasDepthImage(), "No depth image in this Renderer instance");
 		attachments[1].format = depth.format;
 		attachments[1].samples = vk::SampleCountFlagBits::e1;
 		attachments[1].loadOp = vk::AttachmentLoadOp::eClear;

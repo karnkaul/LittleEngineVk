@@ -73,7 +73,7 @@ graphics::Geometry graphics::makeCube(f32 side /* = 1.0f */) {
 }
 
 graphics::Geometry graphics::makeCircle(f32 diameter, u16 points) {
-	ENSURE(points < 1000, "Max points is 1000");
+	ensure(points < 1000, "Max points is 1000");
 	f32 const r = diameter * 0.5f;
 	Geometry ret;
 	f32 const arc = 360.0f / points;
@@ -95,7 +95,7 @@ graphics::Geometry graphics::makeCircle(f32 diameter, u16 points) {
 }
 
 graphics::Geometry graphics::makeCone(f32 diam, f32 height, u16 points) {
-	ENSURE(points < 1000, "Max points is 1000");
+	ensure(points < 1000, "Max points is 1000");
 	f32 const r = diam * 0.5f;
 	Geometry verts;
 	f32 const angle = 360.0f / points;
@@ -131,7 +131,7 @@ graphics::Geometry graphics::makeCone(f32 diam, f32 height, u16 points) {
 }
 
 graphics::Geometry graphics::makeCubedSphere(f32 diam, u8 quadsPerSide) {
-	ENSURE(quadsPerSide < 30, "Max quads per side is 30");
+	ensure(quadsPerSide < 30, "Max quads per side is 30");
 	Geometry ret;
 	u32 qCount = (u32)(quadsPerSide * quadsPerSide);
 	ret.reserve(qCount * 4 * 6, qCount * 6 * 6);

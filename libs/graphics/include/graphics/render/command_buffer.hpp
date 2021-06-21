@@ -79,7 +79,7 @@ class CommandBuffer {
 
 template <typename T>
 void CommandBuffer::push(vk::PipelineLayout layout, vk::ShaderStageFlags stages, u32 offset, vAP<T> pushConstants) const {
-	ENSURE(rendering(), "Command buffer not recording!");
+	ensure(rendering(), "Command buffer not recording!");
 	m_cb.pushConstants<T>(layout, stages, offset, pushConstants);
 }
 } // namespace le::graphics

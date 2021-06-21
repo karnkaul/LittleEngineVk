@@ -15,7 +15,7 @@ class Selector {
 		QFlags found;
 		for (auto const& family : m_families) { found.set(family.flags); }
 		bool const valid = found.all(QFlags::inverse());
-		ENSURE(valid, "Required queues not present");
+		ensure(valid, "Required queues not present");
 		if (!valid) { g_log.log(lvl::error, 0, "[{}] Required Vulkan Queues not present on selected physical device!"); }
 	}
 
@@ -70,7 +70,7 @@ QueueMultiplex::QCI createInfo(QueueMultiplex::Family& out_family, Span<f32 cons
 	ret.first.pQueuePriorities = prio.data();
 	for (std::size_t i = 0; i < prio.size(); ++i) {
 		QueueMultiplex::Queue queue;
-		ENSURE(out_family.nextQueueIndex < out_family.total, "No queues remaining");
+		ensure(out_family.nextQueueIndex < out_family.total, "No queues remaining");
 		queue.arrayIndex = out_family.nextQueueIndex++;
 		queue.familyIndex = out_family.familyIndex;
 		queue.flags = out_family.flags;

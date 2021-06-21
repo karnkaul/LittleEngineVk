@@ -18,7 +18,7 @@ template <>
 	if (auto res = graphics::utils::compileGlsl(reader.fullPath(glsl))) {
 		spv = *res;
 	} else {
-		ENSURE(false, "Failed to compile GLSL");
+		ensure(false, "Failed to compile GLSL");
 	}
 	// compile Release shader too
 	graphics::utils::compileGlsl(reader.fullPath(glsl), {}, {}, false);

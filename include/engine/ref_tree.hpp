@@ -2,6 +2,7 @@
 #include <forward_list>
 #include <core/ensure.hpp>
 #include <core/not_null.hpp>
+#include <core/std_types.hpp>
 
 namespace le {
 struct RefTreeBase {};
@@ -82,7 +83,7 @@ bool RefTreeRoot<T, Base>::isRoot() const noexcept {
 template <typename T, typename Base>
 void RefTreeRoot<T, Base>::addChild(not_null<type*> child) {
 	if constexpr (levk_debug) {
-		for (auto const& ch : m_children) { ENSURE(child != ch, "Duplicate child!"); }
+		for (auto const& ch : m_children) { ensure(child != ch, "Duplicate child!"); }
 	}
 	m_children.push_front(child);
 }
@@ -147,7 +148,7 @@ RefTreeNode<T, Base>::~RefTreeNode() {
 }
 template <typename T, typename Base>
 T& RefTreeNode<T, Base>::parent(not_null<Root*> parent) noexcept {
-	ENSURE(parent.get() != this, "Setting parent to self!");
+	ensure(parent.get() != this, "Setting parent to self!");
 	if (parent.get() != this && m_parent != parent) {
 		m_parent->removeChild(cast(this));
 		m_parent = parent;

@@ -30,12 +30,12 @@ void RingBuffer<T>::emplace(U&&... u) {
 }
 template <typename T>
 typename RingBuffer<T>::type& RingBuffer<T>::get() {
-	ENSURE(!ts.empty(), "Empty buffer");
+	ensure(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>
 typename RingBuffer<T>::type const& RingBuffer<T>::get() const {
-	ENSURE(!ts.empty(), "Empty buffer");
+	ensure(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>

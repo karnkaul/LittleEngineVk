@@ -48,7 +48,7 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
 		validationLog(lvl::error, 0, msg);
 		bool const ret = !skipError(msg);
-		ENSURE(!ret, "Validation error");
+		ensure(!ret, "Validation error");
 		return ret;
 	}
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warning, 1, msg); break;
@@ -95,7 +95,7 @@ Instance::Instance(CreateInfo const& info) {
 	if (s_forceValidation) { g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, *s_forceValidation ? "on" : "off"); }
 	if ((!s_forceValidation && info.bValidation) || s_forceValidation.value_or(false)) {
 		if (!findLayer(layerProps, szValidationLayer, dl::level::warning)) {
-			ENSURE(false, "Validation layers requested but not present!");
+			ensure(false, "Validation layers requested but not present!");
 		} else {
 			requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 			m_metadata.layers.push_back(szValidationLayer);
@@ -125,7 +125,7 @@ Instance::Instance(CreateInfo const& info) {
 		using vktype = vk::DebugUtilsMessageTypeFlagBitsEXT;
 		createInfo.messageType = vktype::eGeneral | vktype::ePerformance | vktype::eValidation;
 		createInfo.pfnUserCallback = &validationCallback;
-		ENSURE(m_loader.vkCreateDebugUtilsMessengerEXT, "Function pointer is null");
+		ensure(m_loader.vkCreateDebugUtilsMessengerEXT, "Function pointer is null");
 		m_messenger = m_instance.createDebugUtilsMessengerEXT(createInfo, nullptr, m_loader);
 	}
 	g_log.log(lvl::info, 1, "[{}] Vulkan instance constructed", g_name);

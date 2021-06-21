@@ -18,7 +18,7 @@ void CommandBuffer::make(std::vector<CommandBuffer>& out, not_null<Device*> devi
 	std::copy(buffers.begin(), buffers.end(), std::back_inserter(out));
 }
 
-CommandBuffer::CommandBuffer(vk::CommandBuffer cmd) : m_cb(cmd) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
+CommandBuffer::CommandBuffer(vk::CommandBuffer cmd) : m_cb(cmd) { ensure(!Device::default_v(cmd), "Null command buffer!"); }
 
 CommandBuffer::CommandBuffer(Device& device, vk::CommandPool pool) {
 	vk::CommandBufferAllocateInfo allocInfo(pool, vk::CommandBufferLevel::ePrimary, 1U);
@@ -27,7 +27,7 @@ CommandBuffer::CommandBuffer(Device& device, vk::CommandPool pool) {
 }
 
 void CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
-	ENSURE(valid() && !recording() && !rendering(), "Invalid command buffer state");
+	ensure(valid() && !recording() && !rendering(), "Invalid command buffer state");
 	vk::CommandBufferBeginInfo beginInfo;
 	beginInfo.flags = usage;
 	m_cb.begin(beginInfo);
@@ -35,7 +35,7 @@ void CommandBuffer::begin(vk::CommandBufferUsageFlags usage) {
 }
 
 void CommandBuffer::beginRenderPass(vk::RenderPass renderPass, vk::Framebuffer framebuffer, Extent2D extent, PassInfo const& info) {
-	ENSURE(valid() && recording() && !rendering(), "Invalid command buffer state");
+	ensure(valid() && recording() && !rendering(), "Invalid command buffer state");
 	vk::RenderPassBeginInfo renderPassInfo;
 	renderPassInfo.renderPass = renderPass;
 	renderPassInfo.framebuffer = framebuffer;
@@ -47,64 +47,64 @@ void CommandBuffer::beginRenderPass(vk::RenderPass renderPass, vk::Framebuffer f
 }
 
 void CommandBuffer::setViewport(vk::Viewport viewport) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.setViewport(0, viewport);
 }
 
 void CommandBuffer::setScissor(vk::Rect2D scissor) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.setScissor(0, scissor);
 }
 
 void CommandBuffer::setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.setViewport(0, viewport);
 	m_cb.setScissor(0, scissor);
 }
 
 void CommandBuffer::bindPipe(Pipeline const& pipeline, Hash variant) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	auto pipe = pipeline.variant(variant);
-	ENSURE(pipe.has_value(), "Invalid variant id");
+	ensure(pipe.has_value(), "Invalid variant id");
 	m_cb.bindPipeline(pipeline.bindPoint(), *pipe);
 }
 
 void CommandBuffer::bind(vk::Pipeline pipeline, vBP bindPoint) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.bindPipeline(bindPoint, pipeline);
 }
 
 void CommandBuffer::bindSets(vk::PipelineLayout layout, vAP<vk::DescriptorSet> sets, u32 firstSet, vAP<u32> offsets, vBP bindPoint) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.bindDescriptorSets(bindPoint, layout, firstSet, sets, offsets);
 }
 
 void CommandBuffer::bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const { bindSets(layout, set.get(), set.setNumber()); }
 
 void CommandBuffer::bindVBOs(u32 first, vAP<vk::Buffer> buffers, vAP<vk::DeviceSize> offsets) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.bindVertexBuffers(first, buffers, offsets);
 }
 
 void CommandBuffer::bindIBO(vk::Buffer buffer, vk::DeviceSize offset, vk::IndexType indexType) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.bindIndexBuffer(buffer, offset, indexType);
 }
 
 void CommandBuffer::bindVBO(Buffer const& vbo, Buffer const* pIbo) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	bindVBOs(0, vbo.buffer(), vk::DeviceSize(0));
 	if (pIbo) { bindIBO(pIbo->buffer()); }
 }
 
 void CommandBuffer::drawIndexed(u32 indexCount, u32 instanceCount, u32 firstInstance, s32 vertexOffset, u32 firstIndex) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.drawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 	s_drawCalls.fetch_add(1);
 }
 
 void CommandBuffer::draw(u32 vertexCount, u32 instanceCount, u32 firstInstance, u32 firstVertex) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.draw(vertexCount, instanceCount, firstVertex, firstInstance);
 	s_drawCalls.fetch_add(1);
 }
@@ -114,7 +114,7 @@ void CommandBuffer::transitionImage(Image const& image, vk::ImageAspectFlags asp
 }
 
 void CommandBuffer::transitionImage(vk::Image image, u32 layerCount, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const {
-	ENSURE(recording(), "Command buffer not recording!");
+	ensure(recording(), "Command buffer not recording!");
 	vk::ImageMemoryBarrier barrier;
 	barrier.oldLayout = transition.first;
 	barrier.newLayout = transition.second;
@@ -132,13 +132,13 @@ void CommandBuffer::transitionImage(vk::Image image, u32 layerCount, vk::ImageAs
 }
 
 void CommandBuffer::endRenderPass() {
-	ENSURE(rendering(), "Command buffer not rendering!");
+	ensure(rendering(), "Command buffer not rendering!");
 	m_cb.endRenderPass();
 	m_flags.reset(Flag::eRendering);
 }
 
 void CommandBuffer::end() {
-	ENSURE(recording() && !rendering(), "Command buffer not recording!");
+	ensure(recording() && !rendering(), "Command buffer not recording!");
 	m_cb.end();
 	m_flags.reset(Flag::eRecording);
 }

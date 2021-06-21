@@ -115,7 +115,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	ImGui::StyleColorsDark();
 	if (info.correctStyleColours) { fixStyle(); }
 	auto const glfwWindow = window->nativePtr();
-	ENSURE(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
+	ensure(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
 	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = device->queues().queue(QType::eGraphics);

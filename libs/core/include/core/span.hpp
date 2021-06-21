@@ -151,37 +151,37 @@ constexpr typename Span<T>::iterator Span<T>::end() noexcept {
 }
 template <typename T>
 constexpr T const& Span<T>::front() const noexcept {
-	ENSURE(!empty(), "OOB access!");
+	ensure(!empty(), "OOB access!");
 	return *m_data;
 }
 template <typename T>
 constexpr T const& Span<T>::back() const noexcept {
-	ENSURE(!empty(), "OOB access!");
+	ensure(!empty(), "OOB access!");
 	return *(m_data + m_size - 1);
 }
 template <typename T>
 constexpr T& Span<T>::front() noexcept {
-	ENSURE(!empty(), "OOB access!");
+	ensure(!empty(), "OOB access!");
 	return *m_data;
 }
 template <typename T>
 constexpr T& Span<T>::back() noexcept {
-	ENSURE(!empty(), "OOB access!");
+	ensure(!empty(), "OOB access!");
 	return *(m_data + m_size - 1);
 }
 template <typename T>
 constexpr T const& Span<T>::operator[](std::size_t idx) const noexcept {
-	ENSURE(idx < m_size, "OOB access!");
+	ensure(idx < m_size, "OOB access!");
 	return *(m_data + idx);
 }
 template <typename T>
 constexpr T& Span<T>::operator[](std::size_t idx) noexcept {
-	ENSURE(idx < m_size, "OOB access!");
+	ensure(idx < m_size, "OOB access!");
 	return *(m_data + idx);
 }
 template <typename T>
 constexpr Span<T> Span<T>::subspan(std::size_t offset, std::size_t count) const noexcept {
-	ENSURE(offset + count < m_size, "OOB access!");
+	ensure(offset + count < m_size, "OOB access!");
 	return Span<T>(m_data + offset, count);
 }
 template <typename T>
@@ -227,22 +227,22 @@ constexpr typename Span<T const>::const_iterator Span<T const>::end() const noex
 }
 template <typename T>
 constexpr T const& Span<T const>::front() const noexcept {
-	ENSURE(!empty(), "OOB access!");
+	ensure(!empty(), "OOB access!");
 	return *m_data;
 }
 template <typename T>
 constexpr T const& Span<T const>::back() const noexcept {
-	ENSURE(!empty(), "OOB access!");
+	ensure(!empty(), "OOB access!");
 	return *(m_data + m_size - 1);
 }
 template <typename T>
 constexpr Span<T const> Span<T const>::subspan(std::size_t offset, std::size_t count) const noexcept {
-	ENSURE(offset + count < m_size, "OOB access!");
+	ensure(offset + count < m_size, "OOB access!");
 	return Span<T const>(m_data + offset, count);
 }
 template <typename T>
 constexpr T const& Span<T const>::operator[](std::size_t idx) const noexcept {
-	ENSURE(idx < m_size, "OOB access!");
+	ensure(idx < m_size, "OOB access!");
 	return *(m_data + idx);
 }
 } // namespace le

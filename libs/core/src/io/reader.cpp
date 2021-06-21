@@ -257,7 +257,7 @@ Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
 
 AAssetReader::AAssetReader(ErasedPtr androidApp) : m_androidApp(androidApp) {
 #if defined(LEVK_OS_ANDROID)
-	ENSURE(unpack(m_androidApp), "Invalid android_app pointer");
+	ensure(unpack(m_androidApp), "Invalid android_app pointer");
 #endif
 }
 

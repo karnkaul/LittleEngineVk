@@ -4,7 +4,7 @@
 namespace le::graphics {
 RendererFwdSwp::RendererFwdSwp(not_null<Swapchain*> swapchain, Buffering buffering)
 	: ARenderer(swapchain, buffering, swapchain->display().extent, swapchain->depthFormat()) {
-	ENSURE(hasDepthImage(), "RendererFS requires depth image");
+	ensure(hasDepthImage(), "RendererFS requires depth image");
 	m_storage = make();
 }
 
@@ -14,7 +14,7 @@ std::optional<RendererFwdSwp::Draw> RendererFwdSwp::beginFrame() {
 	if (!acquire) { return std::nullopt; }
 	m_device->device().resetCommandPool(*buf.pool, {});
 	auto depth = depthImage(m_swapchain->depthFormat(), m_swapchain->display().extent);
-	ENSURE(depth, "Depth image lost!");
+	ensure(depth.has_value(), "Depth image lost!");
 	RenderTarget const target{acquire->image, *depth};
 	buf.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 	return Draw{target, buf.cb};

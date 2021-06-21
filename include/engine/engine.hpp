@@ -170,11 +170,11 @@ inline bool Engine::editorActive() const noexcept { return m_editor.active(); }
 inline bool Engine::editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
 inline bool Engine::booted() const noexcept { return m_gfx.has_value(); }
 inline Engine::GFX& Engine::gfx() {
-	ENSURE(m_gfx.has_value(), "Not booted");
+	ensure(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
 inline Engine::GFX const& Engine::gfx() const {
-	ENSURE(m_gfx.has_value(), "Not booted");
+	ensure(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
 inline input::State const& Engine::inputState() const noexcept { return m_inputState; }

@@ -73,7 +73,7 @@ stdfs::file_time_type FileMonitor::lastModifiedTime() const { return m_lastModif
 stdfs::path const& FileMonitor::path() const { return m_path; }
 
 std::string_view FileMonitor::text() const {
-	ENSURE(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
+	ensure(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eTextContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
 	}
@@ -81,7 +81,7 @@ std::string_view FileMonitor::text() const {
 }
 
 bytearray const& FileMonitor::bytes() const {
-	ENSURE(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
+	ensure(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eBinaryContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
 	}

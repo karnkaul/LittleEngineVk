@@ -62,7 +62,7 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 using namespace dts;
 
 struct TaskErr : error_handler_t {
-	void operator()(std::runtime_error const& err, u64) const override { ENSURE(false, err.what()); }
+	void operator()(std::runtime_error const& err, u64) const override { ensure(false, err.what()); }
 };
 TaskErr g_taskErr;
 
@@ -225,7 +225,7 @@ class DrawDispatch {
 				for (Primitive const& prim : item.primitives) {
 					Material const& mat = prim.material;
 					if (group.group.order < 0) {
-						ENSURE(mat.map_Kd, "Null cubemap");
+						ensure(mat.map_Kd, "Null cubemap");
 						set0.update(1, *mat.map_Kd);
 					}
 					auto set2 = map.set(2);
@@ -247,7 +247,7 @@ class DrawDispatch {
 				if (d.scissor) { cb.setScissor(*d.scissor); }
 				for (Primitive const& prim : d.primitives) {
 					bind({2, 3});
-					ENSURE(prim.mesh, "Null mesh");
+					ensure(prim.mesh, "Null mesh");
 					prim.mesh->draw(cb);
 				}
 			}

@@ -20,7 +20,7 @@ std::string PhysicalDevice::toString() const {
 }
 
 PhysicalDevice DevicePicker::pick(Span<PhysicalDevice const> devices, std::optional<std::size_t> indexOverride) const {
-	ENSURE(!devices.empty(), "No devices to pick from");
+	ensure(!devices.empty(), "No devices to pick from");
 	if (indexOverride && *indexOverride < devices.size()) {
 		auto const& ret = devices[*indexOverride];
 		g_log.log(lvl::info, 0, "[{}] Device selection overridden: [{}] {}", g_name, *indexOverride, ret.toString());

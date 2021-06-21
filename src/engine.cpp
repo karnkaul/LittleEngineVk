@@ -52,7 +52,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 void Engine::update(gui::ViewStack& out_stack) {
 	glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
-	ENSURE(m_win->isDesktop(), "Invariant violated");
+	ensure(m_win->isDesktop(), "Invariant violated");
 	wSize = m_desktop->windowSize();
 #endif
 	out_stack.update(m_inputState, m_editor.view(), framebufferSize(), wSize);
@@ -80,7 +80,7 @@ bool Engine::drawReady() {
 		if (!m_gfx->context.ready(size)) { return false; }
 		// if constexpr (levk_imgui) {
 		// 	[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
-		// 	ENSURE(b, "Failed to begin DearImGui frame");
+		// 	ensure(b, "Failed to begin DearImGui frame");
 		// }
 		return true;
 	}
@@ -92,8 +92,8 @@ std::optional<Engine::Context::Frame> Engine::beginDraw() {
 		if (auto ret = m_gfx->context.beginFrame()) {
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
-				ENSURE(b, "Failed to begin DearImGui frame");
-				ENSURE(m_desktop, "Invariant violated");
+				ensure(b, "Failed to begin DearImGui frame");
+				ensure(m_desktop, "Invariant violated");
 				m_editor.update(*m_desktop, m_inputState);
 				m_gfx->context.m_viewport = {m_editor.view().rect(), m_editor.view().topLeft.offset};
 			}
@@ -106,7 +106,7 @@ std::optional<Engine::Context::Frame> Engine::beginDraw() {
 
 bool Engine::render(Context::Frame const& frame, Drawer& drawer, RGBA clear, vk::ClearDepthStencilValue depth) {
 	if (m_drawing.valid() && m_gfx) {
-		ENSURE(m_drawing.m_cb == frame.commandBuffer.m_cb, "Invalid frame");
+		ensure(m_drawing.m_cb == frame.commandBuffer.m_cb, "Invalid frame");
 		m_drawing = {};
 		if (m_gfx->context.beginDraw(drawer, clear, depth)) {
 			if constexpr (levk_imgui) {

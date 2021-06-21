@@ -33,7 +33,7 @@ class RenderContext : NoCopy {
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
 
 	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer);
-	
+
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
 
 	bool ready(glm::ivec2 framebufferSize);

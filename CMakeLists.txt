@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)	# Don't let OPTION erase above non-cache variables
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)	# don't let OPTION erase above non-cache variables
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(TARGET_NAME levk-engine)
+set(target_name levk-engine)
 set(LEVK_VERSION 0.0.9.0 CACHE STRING "Application Version" FORCE)
 project(LittleEngineVk VERSION ${LEVK_VERSION})
 
@@ -13,7 +13,13 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 	message(FATAL_ERROR "In-source builds are not supported; choose a subdirectory like `out/*` or `build/*` for CMake output")
 endif()
 
-# Includes
+set(is_root_project OFF)	# indicate if this is the top-level project
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  set(is_root_project ON)
+  message(STATUS "${PROJECT_NAME} is top level")
+endif()
+
+# includes
 include(CheckPIESupported)
 check_pie_supported()
 include(FetchContent)
@@ -30,7 +36,7 @@ else()
 	set(LEVK_PRE_RELEASE OFF)
 endif()
 
-# Options
+# options
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 if(${PLATFORM} STREQUAL Android)
 	option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" ON)
@@ -49,14 +55,8 @@ endif()
 if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
 	set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
 endif()
-if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
-	option(LEVK_BUILD_TESTS "Build Tests" ON)
-	option(LEVK_BUILD_DEMO "Build demo" ON)
-else()
-	option(LEVK_BUILD_TESTS "Build Tests" OFF)
-	option(LEVK_BUILD_DEMO "Build demo" OFF)
-endif()
-option(LEVK_COPY_CCJSON "Copy compile_commands.json to project root" OFF)
+option(LEVK_BUILD_TESTS "Build Tests" ${is_root_project})
+option(LEVK_BUILD_DEMO "Build demo" ${is_root_project})
 
 if(LINUX_CLANG OR WINDOWS_CLANG)
 	option(LEVK_ASAN OFF)
@@ -81,42 +81,36 @@ if(LEVK_USE_IMGUI AND LEVK_VULKAN_DYNAMIC)
 endif()
 
 # Git operations
-set(GIT_COMMIT_HASH "[unknown]")
 find_package(Git QUIET)
-if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
-	get_git_commit_hash(GIT_COMMIT_HASH)
-	if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
-		option(LEVK_GIT_UPDATE_SUBMODULES "Init/Update submodules during generation" ON)
-	else()
-		option(LEVK_GIT_UPDATE_SUBMODULES "Init/Update submodules during generation" OFF)
-	endif()
-	if(LEVK_GIT_UPDATE_SUBMODULES)
-		update_git_submodules(1)
+if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+	git_get_commit_hash(LEVK_GIT_COMMIT_HASH)	# store commit hash in LEVK_GIT_COMIT_HASH
+	if(is_root_project)
+		option(GIT_UPDATE_SUBMODULES "Init/Update submodules during generation" ${is_root_project})
+		if(GIT_UPDATE_SUBMODULES)
+			git_update_submodules(FATAL_ERROR)
+		endif()
 	endif()
 endif()
 
-# Constants
-set(LEVK_GIT_COMMIT_HASH ${GIT_COMMIT_HASH} CACHE STRING "git commit hash" FORCE)
+# interface
+add_subdirectory(cmake/interface)
 
-# Interface
-include(cmake/interface.cmake)
-
-# Header text
-set(BUILD_CONFIG ${CMAKE_BUILD_TYPE})
+# header text
+set(build_config ${CMAKE_BUILD_TYPE})
 if(CMAKE_CONFIGURATION_TYPES)
-	set(BUILD_CONFIG "Multi-config")
+	set(build_config "Multi-config")
 elseif(LEVK_ASAN)
-	set(BUILD_CONFIG "${CMAKE_BUILD_TYPE} ASAN")
+	set(build_config "${CMAKE_BUILD_TYPE} ASAN")
 endif()
-message(STATUS "[${CMAKE_SYSTEM_PROCESSOR}] [${PLATFORM}] [${CMAKE_GENERATOR}] [${CMAKE_CXX_COMPILER_ID}] [${BUILD_CONFIG}]")
+message(STATUS "[${CMAKE_SYSTEM_PROCESSOR}] [${PLATFORM}] [${CMAKE_GENERATOR}] [${CMAKE_CXX_COMPILER_ID}] [${build_config}]")
 if(CI_BUILD)
 	message(STATUS "== CI Build ==")
 endif()
 
-# Vulkan
+# vulkan
 add_subdirectory(ext/vulkan_hpp)
 
-# External
+# external
 add_subdirectory(ext/physfs)
 add_subdirectory(ext/glm)
 if(LEVK_USE_GLFW)
@@ -136,7 +130,7 @@ if(LEVK_USE_IMGUI)
 	add_subdirectory(ext/imgui)
 endif()
 
-# Engine
+# engine
 set(LEVK_LIBRARY_TYPE STATIC CACHE STRING "levk library type (STATIC/SHARED)")
 
 if(PLATFORM STREQUAL Win64 AND NOT LEVK_LIBRARY_TYPE STREQUAL STATIC)
@@ -147,8 +141,8 @@ if(NOT LEVK_LIBRARY_TYPE STREQUAL STATIC AND LEVK_USE_PCH)
 	set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
 endif()
 
-# Libraries
-if(NOT CI_BUILD)
+# libraries
+if(is_root_project AND NOT CI_BUILD)
 	configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
 	# configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.fallback.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
 endif()
@@ -163,28 +157,28 @@ add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
 add_subdirectory(libs/levk_imgui)
 
-# Engine
-set(LEVK_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
+# engine
+set(levk_generated "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/build_version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")
-file(GLOB_RECURSE LEVK_INCLUDES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.?pp")
-file(GLOB_RECURSE LEVK_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.?pp")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${LEVK_INCLUDES} ${LEVK_SOURCES})
-source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${LEVK_GENERATED})
-add_library(${TARGET_NAME} ${LEVK_LIBRARY_TYPE} ${LEVK_INCLUDES} ${LEVK_SOURCES} ${LEVK_GENERATED})
-add_library(levk::engine ALIAS ${TARGET_NAME})
-target_compile_definitions(${TARGET_NAME} PUBLIC $<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>)
-target_include_directories(${TARGET_NAME} SYSTEM
+file(GLOB_RECURSE levk_includes CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.?pp")
+file(GLOB_RECURSE levk_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.?pp")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${levk_includes} ${levk_sources})
+source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" FILES ${levk_generated})
+add_library(${target_name} ${LEVK_LIBRARY_TYPE} ${levk_includes} ${levk_sources} ${levk_generated})
+add_library(levk::engine ALIAS ${target_name})
+target_compile_definitions(${target_name} PUBLIC $<$<BOOL:${LEVK_EDITOR}>:LEVK_EDITOR>)
+target_include_directories(${target_name} SYSTEM
 	INTERFACE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_BINARY_DIR}/src/generated"
 )
-target_include_directories(${TARGET_NAME}
+target_include_directories(${target_name}
 	PRIVATE
 		"${CMAKE_CURRENT_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_BINARY_DIR}/src/generated"
 		"${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-target_link_libraries(${TARGET_NAME}
+target_link_libraries(${target_name}
 	PUBLIC
 		levk::imgui
 		levk::graphics
@@ -199,7 +193,7 @@ target_link_libraries(${TARGET_NAME}
 		tinyobjloader
 )
 if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
-	target_precompile_headers(${TARGET_NAME} 
+	target_precompile_headers(${target_name} 
 		PUBLIC
 			<deque>
 			<string>
@@ -213,19 +207,19 @@ if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
 	)
 endif()
 
-# Demo
+# demo
 if(LEVK_BUILD_DEMO)
 	add_subdirectory(demo)
 endif()
 
-# Tests
+# tests
 if(LEVK_BUILD_TESTS)
 	enable_testing()
 	add_subdirectory(tests)
 endif()
 
-set(CCJSON "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
-if(LEVK_COPY_CCJSON AND EXISTS "${CCJSON}")
-	message(STATUS "Copying ${CCJSON} to project root")
-	file(COPY "${CCJSON}" DESTINATION "${PROJECT_SOURCE_DIR}")
+set(ccjson "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
+if(is_root_project AND EXISTS "${ccjson}")
+	message(STATUS "Copying ${ccjson} to project root")
+	file(COPY "${ccjson}" DESTINATION "${PROJECT_SOURCE_DIR}")
 endif()

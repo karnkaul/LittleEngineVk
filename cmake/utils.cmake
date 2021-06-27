@@ -1,46 +1,32 @@
-macro(get_git_commit_hash OUTPUT_VAR)
-	set(${OUTPUT_VAR} "[unknown]")
+function(git_get_commit_hash OUTPUT_VAR)
+	set(git_commit_hash "[unknown]")
 	execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
 		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-		OUTPUT_VARIABLE ${OUTPUT_VAR}
+		OUTPUT_VARIABLE git_commit_hash
 		ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
-endmacro()
+	set(${OUTPUT_VAR} ${git_commit_hash} CACHE STRING "Git commit hash")
+	message(STATUS "Git commit hash [${git_commit_hash}] saved to [${OUTPUT_VAR}]")
+endfunction()
 
-function(update_git_submodules REQUIRED)
+function(git_update_submodules msg_type)
 	message(STATUS "Updating git submodules...")
 	execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
 		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 		RESULT_VARIABLE UPDATE_SUBMODULES_RESULT
 	)
 	if(NOT UPDATE_SUBMODULES_RESULT EQUAL "0")
-		if(REQUIRED)
-			message(FATAL_ERROR "git submodule update failed!")
-		else()
-			message(WARNING "git submodule update failed!")
-		endif()
+		message(${msg_type} "git submodule update failed!")
 	endif()
 endfunction()
 
-function(unzip_archive ARCHIVE_NAME SUBDIR)
-	if(NOT EXISTS "${SUBDIR}/${ARCHIVE_NAME}")
-		message(FATAL_ERROR "Required archvives missing!\n${SUBDIR}/${ARCHIVE_NAME}")
+function(unzip_archive archive_name subdir)
+	if(NOT EXISTS "${subdir}/${archive_name}")
+		message(FATAL_ERROR "Required archvives missing!\n${subdir}/${archive_name}")
 	endif()
-	message(STATUS "Extracting ${ARCHIVE_NAME}...")
+	message(STATUS "Extracting ${archive_name}...")
 	execute_process(COMMAND 
-		${CMAKE_COMMAND} -E tar -xf "${ARCHIVE_NAME}"
-		WORKING_DIRECTORY "${SUBDIR}"
+		${CMAKE_COMMAND} -E tar -xf "${archive_name}"
+		WORKING_DIRECTORY "${subdir}"
 	)
-endfunction()
-
-function(set_output_directory TARGET_NAME DIRECTORY_PATH)
-	set_target_properties(${TARGET_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${DIRECTORY_PATH}")
-	set_target_properties(${TARGET_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${DIRECTORY_PATH}")
-	set_target_properties(${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${DIRECTORY_PATH}")
-	foreach(CONFIG ${CMAKE_CONFIGURATION_TYPES})
-		string(TOUPPER ${CONFIG} CONFIG)
-		set_target_properties(${TARGET_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_${CONFIG} "${DIRECTORY_PATH}")
-		set_target_properties(${TARGET_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY_${CONFIG} "${DIRECTORY_PATH}")
-		set_target_properties(${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_${CONFIG} "${DIRECTORY_PATH}")
-	endforeach()
 endfunction()

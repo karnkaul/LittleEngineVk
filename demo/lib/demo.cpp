@@ -273,7 +273,10 @@ class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
 	}
 
 	void draw3D(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groups3D, cb); }
-	void drawUI(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb); }
+	void drawUI(CommandBuffer cb) override {
+		draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb);
+		DearImGui::render(cb);
+	}
 
   private:
 	Data m_data;

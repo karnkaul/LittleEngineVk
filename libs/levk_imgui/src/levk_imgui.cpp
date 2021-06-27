@@ -164,6 +164,11 @@ void DearImGui::Del::operator()(not_null<graphics::Device*>, void*) const {
 #endif
 }
 
+bool DearImGui::render(graphics::CommandBuffer const& cb) {
+	if (auto it = inst()) { return it->endFrame() && it->renderDrawData(cb); }
+	return false;
+}
+
 bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive) {

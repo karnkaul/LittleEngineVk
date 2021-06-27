@@ -41,6 +41,8 @@ class DearImGui final : public TMonoInstance<DearImGui> {
 	DearImGui(DearImGui&&) = default;
 	DearImGui& operator=(DearImGui&&) = default;
 
+	static bool render(graphics::CommandBuffer const& cb);
+
 	bool beginFrame();
 	bool endFrame();
 	bool renderDrawData(graphics::CommandBuffer const& cb);

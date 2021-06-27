@@ -109,10 +109,10 @@ bool Engine::render(Context::Frame const& frame, Drawer& drawer, RGBA clear, vk:
 		ensure(m_drawing.m_cb == frame.commandBuffer.m_cb, "Invalid frame");
 		m_drawing = {};
 		if (m_gfx->context.beginDraw(drawer, clear, depth)) {
-			if constexpr (levk_imgui) {
-				m_gfx->imgui.endFrame();
-				m_gfx->imgui.renderDrawData(frame.commandBuffer);
-			}
+			// if constexpr (levk_imgui) {
+			// 	m_gfx->imgui.endFrame();
+			// 	m_gfx->imgui.renderDrawData(frame.commandBuffer);
+			// }
 			m_gfx->context.endDraw();
 			m_gfx->context.endFrame();
 			return m_gfx->context.submitFrame();

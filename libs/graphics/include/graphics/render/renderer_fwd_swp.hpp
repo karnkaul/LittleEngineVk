@@ -21,14 +21,17 @@ class RendererFwdSwp : public ARenderer {
   private:
 	struct Buf : Cmd {
 		using Cmd::Cmd;
+		std::optional<Image> offscreen;
 		Deferred<vk::Framebuffer> framebuffer;
 	};
 	struct Storage {
 		RingBuffer<Buf> buf;
 		Deferred<vk::RenderPass> renderPass;
+		RenderImage swapImg;
 	};
 
 	Storage make() const;
+	Image& offscreen(Buf& buf, Extent2D extent);
 
 	Storage m_storage;
 };

@@ -7,7 +7,7 @@
 #include <engine/utils/env.hpp>
 
 namespace le {
-env::Run env::init(int argc, char* const argv[], Spec::cmd_map_t cmds) {
+env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	Run ret = Run::resume;
 	os::args({argc, argv});
 	{

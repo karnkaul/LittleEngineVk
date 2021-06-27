@@ -9,7 +9,7 @@ using Spec = clap::interpreter::spec_t;
 using Option = clap::interpreter::option_t;
 using Run = clap::interpreter::result;
 
-Run init(int argc, char* const argv[], Spec::cmd_map_t cmds);
+Run init(int argc, char const* const argv[], Spec::cmd_map_t cmds);
 
 ///
 /// \brief Obtain full path to directory containing pattern, traced from the executable path

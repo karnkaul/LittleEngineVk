@@ -208,7 +208,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		createInfo.imageFormat = info.colourFormat.format;
 		createInfo.imageColorSpace = info.colourFormat.colorSpace;
 		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc;
 		auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::ePresent);
 		createInfo.imageSharingMode = indices.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
 		createInfo.pQueueFamilyIndices = indices.data();

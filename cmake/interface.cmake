@@ -31,7 +31,6 @@ if(WINDOWS_CLANG AND MSVC)
 endif()
 if(PLATFORM STREQUAL "Linux")
 	set(LINK_OPTS
-		-no-pie         # Build as application
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
 		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
 	)

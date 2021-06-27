@@ -2,6 +2,7 @@
 #include <sstream>
 #include <core/io/reader.hpp>
 #include <core/os.hpp>
+#include <core/span.hpp>
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/env.hpp>
@@ -9,7 +10,7 @@
 namespace le {
 env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	Run ret = Run::resume;
-	os::args({argc, argv});
+	os::args(os::Args(argv, std::size_t(argc)));
 	{
 		Spec::cmd_t gpu;
 		gpu.description = "List / select from available GPUs";

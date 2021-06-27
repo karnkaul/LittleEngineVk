@@ -2,7 +2,7 @@
 #include <demo.hpp>
 #include <engine/utils/env.hpp>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char const* const argv[]) {
 	using namespace le;
 	if (env::init(argc, argv, {}) == env::Run::quit) { return 0; }
 	auto data = env::findData("demo/data");
@@ -14,4 +14,5 @@ int main(int argc, char* argv[]) {
 	reader.mount(std::move(data).value());
 	if (!le::demo::run(reader)) { return 1; }
 	return 0;
+
 }

@@ -15,6 +15,9 @@ namespace le {
 namespace window {
 class DesktopInstance;
 }
+namespace graphics {
+struct ScreenView;
+}
 
 namespace edi {
 struct In {
@@ -53,7 +56,7 @@ class Editor {
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
-	void update(DesktopInstance& win, input::Frame const& frame);
+	graphics::ScreenView update(DesktopInstance& win, input::Frame const& frame, f32 renderScale);
 
   private:
 	struct {

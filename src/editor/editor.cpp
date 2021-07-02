@@ -317,6 +317,13 @@ TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s6
 	ImGui::Text("%s", id.data());
 #endif
 }
+
+void displayScale(MU f32 renderScale) {
+#if defined(LEVK_USE_IMGUI)
+	auto& ds = ImGui::GetIO().DisplayFramebufferScale;
+	ds = {ds.x * renderScale, ds.y * renderScale};
+#endif
+}
 } // namespace edi
 
 Editor::Editor() {
@@ -334,26 +341,29 @@ Viewport const& Editor::view() const noexcept {
 	return active() && s_engaged ? m_storage.gameView : s_default;
 }
 
-void Editor::update(DesktopInstance& win, input::Frame const& frame) {
+graphics::ScreenView Editor::update(DesktopInstance& win, input::Frame const& frame, f32 renderScale) {
 	if constexpr (levk_desktopOS) {
 		if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) { s_out = {}; }
 		if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
 		if (active() && s_engaged) {
+			edi::displayScale(renderScale);
 			if (!edi::Pane::s_blockResize) { m_storage.resizer(win, m_storage.gameView, frame); }
 			edi::Pane::s_blockResize = false;
 			m_storage.menu(s_in.menu);
-			glm::vec2 const renderArea = frame.space.render.area;
+			glm::vec2 const& size = frame.space.display.window;
 			auto const rect = m_storage.gameView.rect();
 			f32 const offsetY = m_storage.gameView.topLeft.offset.y;
-			f32 const logHeight = renderArea.y - rect.rb.y * renderArea.y - offsetY;
-			glm::vec2 const leftPanelSize = {rect.lt.x * renderArea.x, renderArea.y - logHeight - offsetY};
-			glm::vec2 const rightPanelSize = {renderArea.x - rect.rb.x * renderArea.x, renderArea.y - logHeight - offsetY};
-			m_storage.logStats(renderArea, logHeight);
+			f32 const logHeight = size.y - rect.rb.y * size.y - offsetY;
+			glm::vec2 const leftPanelSize = {rect.lt.x * size.x, size.y - logHeight - offsetY};
+			glm::vec2 const rightPanelSize = {size.x - rect.rb.x * size.x, size.y - logHeight - offsetY};
+			m_storage.logStats(size, logHeight);
 			s_left.panel.update(s_left.id, leftPanelSize, {0.0f, offsetY});
-			s_right.panel.update(s_right.id, rightPanelSize, {renderArea.x - rightPanelSize.x, offsetY});
+			s_right.panel.update(s_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
 			m_storage.cached = std::move(s_in);
 			s_in = {};
+			return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * renderScale};
 		}
 	}
+	return {};
 }
 } // namespace le

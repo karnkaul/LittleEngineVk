@@ -114,8 +114,6 @@ class Engine : public Service<Engine> {
 	Desktop* desktop() const noexcept { return m_desktop; }
 
 	Extent2D framebufferSize() const noexcept;
-	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
-	vk::Rect2D scissor(Viewport const& view = {}) const noexcept;
 	Viewport const& gameView() const noexcept;
 
 	not_null<Window*> m_win;
@@ -141,6 +139,7 @@ class Engine : public Service<Engine> {
 	} m_stats;
 	input::Receivers m_receivers;
 	input::Frame m_inputFrame;
+	graphics::ScreenView m_view;
 	struct {
 		glm::ivec2 size{};
 		time::Point resized{};

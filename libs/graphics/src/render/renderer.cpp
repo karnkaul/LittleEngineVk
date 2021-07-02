@@ -4,21 +4,21 @@
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
-vk::Viewport ARenderer::viewport(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset, glm::vec2 depth) noexcept {
-	DrawViewport view;
+vk::Viewport ARenderer::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) noexcept {
+	DrawViewport ret;
 	glm::vec2 const e(extent);
-	view.lt = nRect.lt * e + offset;
-	view.rb = nRect.rb * e + offset;
-	view.depth = depth;
-	return utils::viewport(view);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	ret.depth = depth;
+	return utils::viewport(ret);
 }
 
-vk::Rect2D ARenderer::scissor(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset) noexcept {
-	DrawScissor scissor;
+vk::Rect2D ARenderer::scissor(Extent2D extent, ScreenView const& view) noexcept {
+	DrawScissor ret;
 	glm::vec2 const e(extent);
-	scissor.lt = nRect.lt * e + offset;
-	scissor.rb = nRect.rb * e + offset;
-	return utils::scissor(scissor);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	return utils::scissor(ret);
 }
 
 ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, Extent2D extent, vk::Format depthFormat)

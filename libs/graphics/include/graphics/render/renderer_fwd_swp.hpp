@@ -32,7 +32,7 @@ class RendererFwdSwp : public ARenderer {
 	vk::RenderPass renderPassUI() const noexcept override { return *m_storage.renderPass; }
 
 	std::optional<Draw> beginFrame() override;
-	void beginDraw(RenderTarget const& target, FrameDrawer& drawer, RGBA clear, vk::ClearDepthStencilValue depth = {1.0, 1}) override;
+	void beginDraw(RenderTarget const& target, FrameDrawer& drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth = {1.0, 1}) override;
 	void endDraw(RenderTarget const& target) override;
 	void endFrame() override;
 	bool submitFrame() override;

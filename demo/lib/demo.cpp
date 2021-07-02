@@ -262,8 +262,6 @@ class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
 	struct Data {
 		Span<SceneDrawer::Group const> groups3D;
 		Span<SceneDrawer::Group const> groupsUI;
-		vk::Viewport viewport;
-		vk::Rect2D scissor;
 		not_null<DrawDispatch*> dispatch;
 	};
 
@@ -680,7 +678,7 @@ class App : public input::Receiver {
 				m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, gr3D, grUI);
 			}
 			// draw
-			RenderDisp rd{{gr3D, grUI, m_eng->viewport(), m_eng->scissor(), &m_drawDispatch}};
+			RenderDisp rd{{gr3D, grUI, &m_drawDispatch}};
 			m_eng->render(*frame, rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 		}
 	}

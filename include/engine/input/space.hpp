@@ -14,7 +14,6 @@ struct Space {
 	} display;
 	struct {
 		glm::vec2 offset{};
-		glm::vec2 density{};
 		f32 scale = 1.0f;
 	} viewport;
 	struct {
@@ -36,15 +35,14 @@ template <typename... T>
 constexpr bool Space::zero(T const&... t) noexcept {
 	return ((maths::equals(t.x, 0.0f) || maths::equals(t.y, 0.0f)) || ...);
 }
-constexpr Space Space::make(glm::uvec2 swap, glm::uvec2 win, const Viewport& view, f32 renderScale) noexcept {
+constexpr Space Space::make(glm::uvec2 swap, glm::uvec2 win, const Viewport& view, f32 rscale) noexcept {
 	Space ret;
 	ret.display.swapchain = swap;
-	ret.render.scale = renderScale;
+	ret.render.scale = rscale;
 	ret.render.area = ret.display.swapchain * ret.render.scale;
-	if (!zero(ret.display.window = win)) { ret.display.density = ret.display.swapchain / ret.display.window; }
+	if (!zero(ret.display.window = win, ret.display.swapchain)) { ret.display.density = ret.display.swapchain / ret.display.window; }
 	if ((ret.viewport.scale = view.scale) != 1.0f && !zero(ret.display.window)) {
-		ret.viewport.density = ret.display.window / ret.render.area;
-		ret.viewport.offset = ret.display.window * view.topLeft.norm + view.topLeft.offset * ret.viewport.density;
+		ret.viewport.offset = ret.display.window * view.topLeft.norm + view.topLeft.offset;
 	}
 	return ret;
 }

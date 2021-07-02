@@ -18,7 +18,7 @@ RendererFwdSwp::RendererFwdSwp(not_null<Swapchain*> swapchain, Buffering bufferi
 	m_imgMaker.info.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
 	m_imgMaker.info.view.format = m_imgMaker.info.createInfo.format;
 	m_imgMaker.info.view.aspects = vk::ImageAspectFlagBits::eColor;
-	m_scale = 0.5f;
+	m_scale = 0.75f;
 	// m_scale = 1.25f;
 }
 
@@ -43,7 +43,7 @@ std::optional<RendererFwdSwp::Draw> RendererFwdSwp::beginFrame() {
 	return Draw{target, buf.cb};
 }
 
-void RendererFwdSwp::beginDraw(RenderTarget const& target, FrameDrawer& drawer, RGBA clear, vk::ClearDepthStencilValue depth) {
+void RendererFwdSwp::beginDraw(RenderTarget const& target, FrameDrawer& drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth) {
 	auto const cl = clear.toVec4();
 	vk::ClearColorValue const c = std::array{cl.x, cl.y, cl.z, cl.w};
 	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
@@ -52,8 +52,8 @@ void RendererFwdSwp::beginDraw(RenderTarget const& target, FrameDrawer& drawer, 
 	m_device->m_layouts.transition<lt::ColourWrite>(buf.cb, target.colour.image);
 	m_device->m_layouts.transition<lt::DepthStencilWrite>(buf.cb, target.depth.image, depthStencil);
 	buf.cb.beginRenderPass(*m_storage.renderPass, *buf.framebuffer, target.colour.extent, info);
-	buf.cb.setViewport(viewport(target.colour.extent, m_viewport.rect, m_viewport.offset));
-	buf.cb.setScissor(scissor(target.colour.extent, m_viewport.rect, m_viewport.offset));
+	buf.cb.setViewport(viewport(target.colour.extent, view));
+	buf.cb.setScissor(scissor(target.colour.extent, view));
 	drawer.draw3D(buf.cb);
 	drawer.drawUI(buf.cb);
 }

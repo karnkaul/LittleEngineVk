@@ -38,8 +38,8 @@ class RenderContext : NoCopy {
 
 	bool ready(glm::ivec2 framebufferSize);
 	bool waitForFrame();
-	std::optional<ARenderer::Draw> beginFrame();
-	bool beginDraw(graphics::FrameDrawer& out_drawer, RGBA clear, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	std::optional<Frame> beginFrame();
+	bool beginDraw(graphics::FrameDrawer& out_drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth = {1.0f, 0});
 	bool endDraw();
 	bool endFrame();
 	bool submitFrame();
@@ -53,16 +53,11 @@ class RenderContext : NoCopy {
 	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
 	glm::mat4 preRotate() const noexcept;
-	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
-	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenRect const& nRect = {}, glm::vec2 offset = {}) const noexcept;
+	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
+	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) const noexcept;
 
 	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
 	CommandPool const& commandPool() const noexcept { return m_pool; }
-
-	struct {
-		ScreenRect rect;
-		glm::vec2 offset{};
-	} m_viewport;
 
   private:
 	template <typename... T>
@@ -73,7 +68,7 @@ class RenderContext : NoCopy {
 
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
-		std::optional<RenderTarget> target;
+		std::optional<Frame> frame;
 		Deferred<vk::PipelineCache> pipelineCache;
 		Status status = {};
 	};

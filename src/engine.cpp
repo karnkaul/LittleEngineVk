@@ -94,8 +94,7 @@ std::optional<Engine::Context::Frame> Engine::beginDraw() {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 				ensure(b, "Failed to begin DearImGui frame");
 				ensure(m_desktop, "Invariant violated");
-				m_editor.update(*m_desktop, m_inputFrame);
-				m_gfx->context.m_viewport = {m_editor.view().rect(), m_editor.view().topLeft.offset};
+				m_view = m_editor.update(*m_desktop, m_inputFrame, m_gfx->context.renderer().m_scale);
 			}
 			m_drawing = ret->commandBuffer;
 			return ret;
@@ -108,7 +107,7 @@ bool Engine::render(Context::Frame const& frame, Drawer& drawer, RGBA clear, vk:
 	if (m_drawing.valid() && m_gfx) {
 		ensure(m_drawing.m_cb == frame.commandBuffer.m_cb, "Invalid frame");
 		m_drawing = {};
-		if (m_gfx->context.beginDraw(drawer, clear, depth)) {
+		if (m_gfx->context.beginDraw(drawer, m_view, clear, depth)) {
 			// if constexpr (levk_imgui) {
 			// 	m_gfx->imgui.endFrame();
 			// 	m_gfx->imgui.renderDrawData(frame.commandBuffer);
@@ -134,18 +133,6 @@ bool Engine::unboot() noexcept {
 Extent2D Engine::framebufferSize() const noexcept {
 	if (m_gfx) { return m_gfx->context.extent(); }
 	return m_win->framebufferSize();
-}
-
-vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexcept {
-	if (!m_gfx) { return {}; }
-	Viewport const vp = m_editor.view() * view;
-	return m_gfx->context.viewport(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset, depth);
-}
-
-vk::Rect2D Engine::scissor(Viewport const& view) const noexcept {
-	if (!m_gfx) { return {}; }
-	Viewport const vp = m_editor.view() * view;
-	return m_gfx->context.scissor(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset);
 }
 
 void Engine::updateStats() {

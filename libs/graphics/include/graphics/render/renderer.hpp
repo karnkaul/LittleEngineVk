@@ -43,8 +43,8 @@ class ARenderer {
 
 	static constexpr Extent2D extent2D(vk::Extent3D extent) { return {extent.width, extent.height}; }
 	static RenderImage renderImage(Image const& image) noexcept { return {image.image(), image.view(), cast(image.extent())}; }
-	static vk::Viewport viewport(Extent2D extent, ScreenRect const& nRect = {}, glm::vec2 offset = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
-	static vk::Rect2D scissor(Extent2D extent, ScreenRect const& nRect = {}, glm::vec2 offset = {}) noexcept;
+	static vk::Viewport viewport(Extent2D extent, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
+	static vk::Rect2D scissor(Extent2D extent, ScreenView const& view = {}) noexcept;
 
 	bool hasDepthImage() const noexcept { return m_depth.has_value(); }
 	std::size_t index() const noexcept { return m_fence.index(); }
@@ -60,18 +60,13 @@ class ARenderer {
 	virtual vk::RenderPass renderPassUI() const noexcept = 0;
 
 	virtual std::optional<Draw> beginFrame() = 0;
-	virtual void beginDraw(RenderTarget const&, FrameDrawer&, RGBA, vk::ClearDepthStencilValue) = 0;
+	virtual void beginDraw(RenderTarget const&, FrameDrawer&, ScreenView const&, RGBA, vk::ClearDepthStencilValue) = 0;
 	virtual void endDraw(RenderTarget const&) = 0;
 	virtual void endFrame() = 0;
 	virtual bool submitFrame() = 0;
 
 	void refresh() { m_fence.refresh(); }
 	void waitForFrame();
-
-	struct {
-		ScreenRect rect;
-		glm::vec2 offset{};
-	} m_viewport;
 
 	f32 m_scale = 1.0f;
 	not_null<Swapchain*> m_swapchain;

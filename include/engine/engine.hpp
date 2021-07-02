@@ -5,6 +5,7 @@
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
+#include <engine/input/frame.hpp>
 #include <engine/input/receiver.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
@@ -86,7 +87,7 @@ class Engine : public Service<Engine> {
 	inline static Options s_options;
 
 	static Version version() noexcept;
-	static Stats const& stats() noexcept;
+	static Stats const& stats() noexcept { return s_stats; }
 	static Span<graphics::PhysicalDevice const> availableDevices();
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
@@ -95,8 +96,8 @@ class Engine : public Service<Engine> {
 	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::ViewStack& out_stack);
 
-	bool editorActive() const noexcept;
-	bool editorEngaged() const noexcept;
+	bool editorActive() const noexcept { return m_editor.active(); }
+	bool editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
 
 	bool drawReady();
 	std::optional<Context::Frame> beginDraw();
@@ -105,12 +106,12 @@ class Engine : public Service<Engine> {
 	template <graphics::concrete_renderer Rd = graphics::RendererFwdSwp, typename... Args>
 	bool boot(Boot::CreateInfo boot, Args&&... args);
 	bool unboot() noexcept;
-	bool booted() const noexcept;
+	bool booted() const noexcept { return m_gfx.has_value(); }
 
 	GFX& gfx();
 	GFX const& gfx() const;
-	input::State const& inputState() const noexcept;
-	Desktop* desktop() const noexcept;
+	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
+	Desktop* desktop() const noexcept { return m_desktop; }
 
 	Extent2D framebufferSize() const noexcept;
 	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
@@ -139,7 +140,7 @@ class Engine : public Service<Engine> {
 		} frame;
 	} m_stats;
 	input::Receivers m_receivers;
-	input::State m_inputState;
+	input::Frame m_inputFrame;
 	struct {
 		glm::ivec2 size{};
 		time::Point resized{};
@@ -165,10 +166,6 @@ bool Engine::boot(Boot::CreateInfo boot, Args&&... args) {
 	return false;
 }
 
-inline Engine::Stats const& Engine::stats() noexcept { return s_stats; }
-inline bool Engine::editorActive() const noexcept { return m_editor.active(); }
-inline bool Engine::editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
-inline bool Engine::booted() const noexcept { return m_gfx.has_value(); }
 inline Engine::GFX& Engine::gfx() {
 	ensure(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
@@ -177,6 +174,4 @@ inline Engine::GFX const& Engine::gfx() const {
 	ensure(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
-inline input::State const& Engine::inputState() const noexcept { return m_inputState; }
-inline Viewport const& Engine::gameView() const noexcept { return m_editor.view(); }
 } // namespace le

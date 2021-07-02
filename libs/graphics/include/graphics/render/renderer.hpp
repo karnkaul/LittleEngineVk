@@ -73,6 +73,7 @@ class ARenderer {
 		glm::vec2 offset{};
 	} m_viewport;
 
+	f32 m_scale = 1.0f;
 	not_null<Swapchain*> m_swapchain;
 	not_null<Device*> m_device;
 

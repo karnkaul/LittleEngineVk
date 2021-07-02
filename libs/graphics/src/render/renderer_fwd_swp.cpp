@@ -3,9 +3,28 @@
 
 namespace le::graphics {
 RendererFwdSwp::RendererFwdSwp(not_null<Swapchain*> swapchain, Buffering buffering)
-	: ARenderer(swapchain, buffering, swapchain->display().extent, swapchain->depthFormat()) {
+	: ARenderer(swapchain, buffering, swapchain->display().extent, swapchain->depthFormat()), m_imgMaker(swapchain->m_vram) {
 	ensure(hasDepthImage(), "RendererFS requires depth image");
 	m_storage = make();
+	m_imgMaker.info.createInfo.format = vk::Format::eR8G8B8A8Unorm;
+	m_imgMaker.info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	m_imgMaker.info.createInfo.tiling = vk::ImageTiling::eOptimal;
+	m_imgMaker.info.createInfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
+	m_imgMaker.info.createInfo.samples = vk::SampleCountFlagBits::e1;
+	m_imgMaker.info.createInfo.imageType = vk::ImageType::e2D;
+	m_imgMaker.info.createInfo.initialLayout = vIL::eUndefined;
+	m_imgMaker.info.createInfo.mipLevels = 1;
+	m_imgMaker.info.createInfo.arrayLayers = 1;
+	m_imgMaker.info.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
+	m_imgMaker.info.view.format = m_imgMaker.info.createInfo.format;
+	m_imgMaker.info.view.aspects = vk::ImageAspectFlagBits::eColor;
+	m_scale = 0.5f;
+	// m_scale = 1.25f;
+}
+
+static Extent2D scale(Extent2D ext, f32 s) noexcept {
+	glm::vec2 const ret = glm::vec2(f32(ext.x), f32(ext.y)) * s;
+	return {u32(ret.x), u32(ret.y)};
 }
 
 std::optional<RendererFwdSwp::Draw> RendererFwdSwp::beginFrame() {
@@ -14,9 +33,10 @@ std::optional<RendererFwdSwp::Draw> RendererFwdSwp::beginFrame() {
 	if (!acquire) { return std::nullopt; }
 	m_storage.swapImg = acquire->image;
 	m_device->device().resetCommandPool(*buf.pool, {});
-	auto depth = depthImage(m_swapchain->depthFormat(), m_swapchain->display().extent);
+	auto const extent = scale(m_storage.swapImg.extent, m_scale);
+	auto depth = depthImage(m_swapchain->depthFormat(), extent);
 	ensure(depth.has_value(), "Depth image lost!");
-	Image& os = offscreen(buf, acquire->image.extent);
+	Image& os = m_imgMaker.refresh(buf.offscreen, extent);
 	RenderImage const colour{os.image(), os.view(), cast(os.extent())};
 	RenderTarget const target{colour, *depth};
 	buf.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
@@ -69,27 +89,6 @@ bool RendererFwdSwp::submitFrame() {
 	if (!m_fence.present(*m_swapchain, submitInfo, *buf.present)) { return false; }
 	m_storage.buf.next();
 	return true;
-}
-
-Image& RendererFwdSwp::offscreen(Buf& buf, Extent2D extent) {
-	if (!buf.offscreen || cast(buf.offscreen->extent()) != extent) {
-		Image::CreateInfo info;
-		info.createInfo.format = vk::Format::eR8G8B8A8Unorm;
-		info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		info.createInfo.extent = vk::Extent3D(cast(extent), 1);
-		info.createInfo.tiling = vk::ImageTiling::eOptimal;
-		info.createInfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
-		info.createInfo.samples = vk::SampleCountFlagBits::e1;
-		info.createInfo.imageType = vk::ImageType::e2D;
-		info.createInfo.initialLayout = vIL::eUndefined;
-		info.createInfo.mipLevels = 1;
-		info.createInfo.arrayLayers = 1;
-		info.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
-		info.view.format = info.createInfo.format;
-		info.view.aspects = vk::ImageAspectFlagBits::eColor;
-		buf.offscreen = Image(m_swapchain->m_vram, info);
-	}
-	return *buf.offscreen;
 }
 
 RendererFwdSwp::Storage RendererFwdSwp::make() const {

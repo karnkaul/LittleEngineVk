@@ -199,7 +199,7 @@ class DrawDispatch {
 
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
+	void write(Camera const& cam, Extent2D fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
 		m_view.lights.swap();
 		m_view.mats.swap();
 		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
@@ -650,14 +650,15 @@ class App : public input::Receiver {
 		}
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
+		auto const& state = m_eng->inputFrame().state;
 		if (pc.active) {
 			auto& node = m_data.registry.get<SceneNode>(m_data.player);
-			m_data.registry.get<PlayerController>(m_data.player).tick(m_eng->inputState(), node, dt);
+			m_data.registry.get<PlayerController>(m_data.player).tick(state, node, dt);
 			glm::vec3 const& forward = node.orientation() * -graphics::front;
 			cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 			cam.face(forward);
 		} else {
-			cam.tick(m_eng->inputState(), dt, m_eng->desktop());
+			cam.tick(state, dt, m_eng->desktop());
 		}
 		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
@@ -675,7 +676,8 @@ class App : public input::Receiver {
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
 				gr3D = SceneDrawer::groups(m_data.registry, true);
 				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
-				m_drawDispatch.write(*cam, frame->target.colour.extent, m_data.dirLights, gr3D, grUI);
+				// m_drawDispatch.write(*cam, frame->target.colour.extent, m_data.dirLights, gr3D, grUI);
+				m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, gr3D, grUI);
 			}
 			// draw
 			RenderDisp rd{{gr3D, grUI, m_eng->viewport(), m_eng->scissor(), &m_drawDispatch}};

@@ -3,6 +3,25 @@
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
+struct ImageMaker {
+	Image::CreateInfo info;
+	not_null<VRAM*> vram;
+
+	ImageMaker(not_null<VRAM*> vram) noexcept : vram(vram) {}
+
+	static bool ready(std::optional<Image>& out, Extent2D extent) noexcept { return out && cast(out->extent()) == extent; }
+
+	Image make(Extent2D extent) {
+		info.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
+		return Image(vram, info);
+	}
+
+	Image& refresh(std::optional<Image>& out, Extent2D extent) {
+		if (!ready(out, extent)) { out = make(extent); }
+		return *out;
+	}
+};
+
 // Forward, Swapchain
 class RendererFwdSwp : public ARenderer {
   public:
@@ -31,8 +50,8 @@ class RendererFwdSwp : public ARenderer {
 	};
 
 	Storage make() const;
-	Image& offscreen(Buf& buf, Extent2D extent);
 
 	Storage m_storage;
+	ImageMaker m_imgMaker;
 };
 } // namespace le::graphics

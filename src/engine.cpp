@@ -3,6 +3,7 @@
 #include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
+#include <engine/input/space.hpp>
 #include <graphics/common.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/render/command_buffer.hpp>
@@ -40,23 +41,22 @@ Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winIns
 }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
-	auto const extent = m_gfx ? m_gfx->context.extent() : Extent2D(0);
-	auto ret = m_input.update(m_win->pollEvents(), m_editor.view(), extent, consume, m_desktop);
-	m_inputState = ret.state;
-	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
-		if ((*it)->block(ret.state)) { break; }
-	}
-	return ret;
-}
-
-void Engine::update(gui::ViewStack& out_stack) {
 	glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
 	ensure(m_win->isDesktop(), "Invariant violated");
 	wSize = m_desktop->windowSize();
 #endif
-	out_stack.update(m_inputState, m_editor.view(), framebufferSize(), wSize);
+	auto const extent = m_gfx ? m_gfx->context.extent() : Extent2D(0);
+	f32 const rscale = m_gfx ? m_gfx->context.renderer().m_scale : 1.0f;
+	auto ret = m_input.update(m_win->pollEvents(), m_editor.view(), extent, rscale, consume, m_desktop);
+	m_inputFrame = ret.frame;
+	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
+		if ((*it)->block(ret.frame.state)) { break; }
+	}
+	return ret;
 }
+
+void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_inputFrame); }
 
 void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }
 
@@ -94,7 +94,7 @@ std::optional<Engine::Context::Frame> Engine::beginDraw() {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 				ensure(b, "Failed to begin DearImGui frame");
 				ensure(m_desktop, "Invariant violated");
-				m_editor.update(*m_desktop, m_inputState);
+				m_editor.update(*m_desktop, m_inputFrame);
 				m_gfx->context.m_viewport = {m_editor.view().rect(), m_editor.view().topLeft.offset};
 			}
 			m_drawing = ret->commandBuffer;
@@ -121,33 +121,6 @@ bool Engine::render(Context::Frame const& frame, Drawer& drawer, RGBA clear, vk:
 	}
 	return false;
 }
-/*
-bool Engine::endFrame(Context::Frame const& frame, bool draw) {
-	if (m_gfx) {
-		if constexpr (levk_imgui) {
-			m_gfx->imgui.endFrame();
-			if (draw) { m_gfx->imgui.renderDrawData(frame.commandBuffer); }
-		}
-		return m_gfx->context.endFrame();
-	}
-	return false;
-}
-*/
-/*
-bool Engine::boot(Boot::CreateInfo boot) {
-	if (!m_gfx) {
-		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
-		m_gfx.emplace(m_win.get(), boot);
-		Services::track<Context, VRAM>(&m_gfx->context, &m_gfx->boot.vram);
-#if defined(LEVK_DESKTOP)
-		DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPassUI());
-		dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
-		m_gfx->imgui = DearImGui(&m_gfx->boot.device, m_desktop, dici);
-#endif
-		return true;
-	}
-	return false;
-}*/
 
 bool Engine::unboot() noexcept {
 	if (m_gfx) {
@@ -174,8 +147,6 @@ vk::Rect2D Engine::scissor(Viewport const& view) const noexcept {
 	Viewport const vp = m_editor.view() * view;
 	return m_gfx->context.scissor(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset);
 }
-
-Engine::Desktop* Engine::desktop() const noexcept { return m_desktop; }
 
 void Engine::updateStats() {
 	++m_stats.frame.count;

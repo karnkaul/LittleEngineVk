@@ -27,7 +27,6 @@ struct Camera {
 	glm::mat4 view() const noexcept;
 	glm::mat4 perspective(f32 aspect, ZPlane nf = default3Dz) const noexcept;
 	glm::mat4 perspective(glm::ivec2 size, ZPlane nf = default3Dz) const noexcept;
-	glm::mat4 ortho(glm::vec2 xy, ZPlane nf = default2Dz) const noexcept;
 	glm::mat4 ortho(glm::ivec2 size, ZPlane nf = default2Dz) const noexcept;
 };
 
@@ -45,12 +44,14 @@ inline glm::mat4 Camera::perspective(f32 aspect, ZPlane nf) const noexcept {
 	nf = safe(nf, default3Dz);
 	return glm::perspective(glm::radians(safe(fov, defaultFOV)), safe(aspect), nf.near, nf.far);
 }
-inline glm::mat4 Camera::perspective(glm::ivec2 size, ZPlane nf) const noexcept { return perspective((f32)size.x / safe((f32)size.y), nf); }
-inline glm::mat4 Camera::ortho(glm::vec2 xy, ZPlane nf) const noexcept {
-	f32 const w = safe(xy.x * 0.5f);
-	f32 const h = safe(xy.y * 0.5f);
+inline glm::mat4 Camera::perspective(glm::ivec2 size, ZPlane nf) const noexcept {
+	nf = safe(nf, default3Dz);
+	return glm::perspectiveFov(safe(fov, defaultFOV), safe(f32(size.x)), safe(f32(size.y)), nf.near, nf.far);
+}
+inline glm::mat4 Camera::ortho(glm::ivec2 xy, ZPlane nf) const noexcept {
+	f32 const w = safe(f32(xy.x) * 0.5f);
+	f32 const h = safe(f32(xy.y) * 0.5f);
 	nf = safe(nf, default2Dz);
 	return glm::ortho(-w, w, -h, h, nf.near, nf.far);
 }
-inline glm::mat4 Camera::ortho(glm::ivec2 size, ZPlane nf) const noexcept { return ortho(glm::vec2((f32)size.x, (f32)size.y), nf); }
 } // namespace le

@@ -334,26 +334,26 @@ Viewport const& Editor::view() const noexcept {
 	return active() && s_engaged ? m_storage.gameView : s_default;
 }
 
-void Editor::update([[maybe_unused]] DesktopInstance& win, [[maybe_unused]] input::State const& state) {
-#if defined(LEVK_DESKTOP)
-	if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) { s_out = {}; }
-	if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
-	if (active() && s_engaged) {
-		if (!edi::Pane::s_blockResize) { m_storage.resizer(win, m_storage.gameView, state); }
-		edi::Pane::s_blockResize = false;
-		m_storage.menu(s_in.menu);
-		glm::vec2 const fbSize = {f32(win.framebufferSize().x), f32(win.framebufferSize().y)};
-		auto const rect = m_storage.gameView.rect();
-		f32 const offsetY = m_storage.gameView.topLeft.offset.y;
-		f32 const logHeight = fbSize.y - rect.rb.y * fbSize.y - offsetY;
-		glm::vec2 const leftPanelSize = {rect.lt.x * fbSize.x, fbSize.y - logHeight - offsetY};
-		glm::vec2 const rightPanelSize = {fbSize.x - rect.rb.x * fbSize.x, fbSize.y - logHeight - offsetY};
-		m_storage.logStats(fbSize, logHeight);
-		s_left.panel.update(s_left.id, leftPanelSize, {0.0f, offsetY});
-		s_right.panel.update(s_right.id, rightPanelSize, {fbSize.x - rightPanelSize.x, offsetY});
-		m_storage.cached = std::move(s_in);
-		s_in = {};
+void Editor::update(DesktopInstance& win, input::Frame const& frame) {
+	if constexpr (levk_desktopOS) {
+		if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) { s_out = {}; }
+		if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
+		if (active() && s_engaged) {
+			if (!edi::Pane::s_blockResize) { m_storage.resizer(win, m_storage.gameView, frame); }
+			edi::Pane::s_blockResize = false;
+			m_storage.menu(s_in.menu);
+			glm::vec2 const renderArea = frame.space.render.area;
+			auto const rect = m_storage.gameView.rect();
+			f32 const offsetY = m_storage.gameView.topLeft.offset.y;
+			f32 const logHeight = renderArea.y - rect.rb.y * renderArea.y - offsetY;
+			glm::vec2 const leftPanelSize = {rect.lt.x * renderArea.x, renderArea.y - logHeight - offsetY};
+			glm::vec2 const rightPanelSize = {renderArea.x - rect.rb.x * renderArea.x, renderArea.y - logHeight - offsetY};
+			m_storage.logStats(renderArea, logHeight);
+			s_left.panel.update(s_left.id, leftPanelSize, {0.0f, offsetY});
+			s_right.panel.update(s_right.id, rightPanelSize, {renderArea.x - rightPanelSize.x, offsetY});
+			m_storage.cached = std::move(s_in);
+			s_in = {};
+		}
 	}
-#endif
 }
 } // namespace le

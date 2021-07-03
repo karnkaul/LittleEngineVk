@@ -199,10 +199,10 @@ class DrawDispatch {
 
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, Extent2D fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
+	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights, Span<SceneDrawer::Group const> g3D, Span<SceneDrawer::Group const> gUI) {
 		m_view.lights.swap();
 		m_view.mats.swap();
-		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
+		ViewMats const v{cam.view(), cam.perspective(scene), cam.ortho(scene), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
 			DirLights dl;
@@ -210,8 +210,8 @@ class DrawDispatch {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : groups3D) { update(group); }
-		for (auto& group : groupsUI) { update(group); }
+		for (auto& group : g3D) { update(group); }
+		for (auto& group : gUI) { update(group); }
 	}
 
 	void update(SceneDrawer::Group const& group) const {
@@ -621,7 +621,6 @@ class App : public input::Receiver {
 			Editor::s_in.customEntities.push_back(m_data.camera);
 		}
 
-		m_worldSize = m_eng->renderer().renderExtent();
 		if (!m_data.loader.ready(&m_tasks)) { return; }
 		if (m_data.registry.empty()) { init1(); }
 		auto guiStack = m_data.registry.find<gui::ViewStack>(m_data.guiStack);
@@ -675,8 +674,7 @@ class App : public input::Receiver {
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
 				gr3D = SceneDrawer::groups(m_data.registry, true);
 				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
-				m_drawDispatch.write(*cam, m_worldSize, m_data.dirLights, gr3D, grUI);
-				// m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, gr3D, grUI);
+				m_drawDispatch.write(*cam, m_eng->sceneSpace(), m_data.dirLights, gr3D, grUI);
 			}
 			// draw
 			RenderDisp rd{{gr3D, grUI, &m_drawDispatch}};
@@ -708,7 +706,6 @@ class App : public input::Receiver {
 	scheduler m_tasks;
 	not_null<Engine*> m_eng;
 	DrawDispatch m_drawDispatch;
-	glm::vec2 m_worldSize{};
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
@@ -755,8 +752,7 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 		while (true) {
 			Time_s dt = time::now() - t;
 			t = time::now();
-			auto const worldSize = app ? app->m_worldSize : glm::vec2{};
-			auto [_, queue] = engine.poll(true, worldSize);
+			auto [_, queue] = engine.poll(true);
 			poll(flags, std::move(queue));
 			if (flags.test(Flag::eClosed)) {
 				app.reset();

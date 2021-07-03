@@ -12,8 +12,9 @@ class Driver {
 		EventQueue queue;
 		struct {
 			glm::uvec2 swapchain{};
-			glm::vec2 world{};
+			glm::vec2 scene{};
 		} size;
+		f32 renderScale = 1.0f;
 		Desktop const* desktop{};
 	};
 	struct Out {

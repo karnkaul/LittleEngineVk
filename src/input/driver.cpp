@@ -54,7 +54,7 @@ Driver::Out Driver::update(In in, Viewport const& view, bool consume) noexcept {
 		st.gamepads = m_transient.gamepads;
 	}
 #endif
-	sp = Space::make(in.size.world, in.size.swapchain, wSize, view);
+	sp = Space::make(in.size.scene, in.size.swapchain, wSize, view, in.renderScale);
 	st.cursor.position = sp.unproject(st.cursor.screenPos, false);
 	return ret;
 }

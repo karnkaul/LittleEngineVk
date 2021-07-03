@@ -7,6 +7,7 @@
 #include <engine/input/driver.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/input/receiver.hpp>
+#include <engine/scene/scene_space.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/render/renderer_fwd_swp.hpp>
@@ -97,7 +98,7 @@ class Engine : public Service<Engine> {
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
 
-	input::Driver::Out poll(bool consume, glm::vec2 worldSize = {}) noexcept;
+	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::ViewStack& out_stack);
 
@@ -120,8 +121,11 @@ class Engine : public Service<Engine> {
 	Desktop* desktop() const noexcept { return m_desktop; }
 
 	Extent2D framebufferSize() const noexcept;
+	Extent2D windowSize() const noexcept;
 	Viewport const& gameView() const noexcept;
+	glm::vec2 sceneSpace() const noexcept { return m_space(m_inputFrame.space); }
 
+	SceneSpace m_space;
 	not_null<Window*> m_win;
 	Time_ms m_recreateInterval = 10ms;
 

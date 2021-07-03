@@ -5,7 +5,7 @@
 
 namespace le::gui {
 DrawScissor scissor(input::Space const& space, glm::vec2 centre, glm::vec2 halfSize, bool normalised) noexcept {
-	return {space.project(centre - halfSize, normalised) * space.world.density, space.project(centre + halfSize, normalised) * space.world.density};
+	return {space.project(centre - halfSize, normalised) * space.render.scale, space.project(centre + halfSize, normalised) * space.render.scale};
 }
 
 void TreeNode::update(input::Space const& space) {

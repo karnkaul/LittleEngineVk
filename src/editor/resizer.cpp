@@ -41,7 +41,7 @@ f32 clampLeft(f32 left, f32 scale, f32 fbx, f32 offset) noexcept {
 }
 } // namespace
 
-bool Resizer::operator()(window::DesktopInstance& out_w, Viewport& out_vp, input::Frame const& frame) {
+bool Resizer::operator()([[maybe_unused]] window::DesktopInstance& out_w, Viewport& out_vp, input::Frame const& frame) {
 	auto const& size = frame.space.display.window;
 	glm::vec2 const nCursor = {frame.state.cursor.screenPos.x / size.x, frame.state.cursor.screenPos.y / size.y};
 	CursorType toSet = CursorType::eDefault;

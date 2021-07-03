@@ -11,17 +11,21 @@ struct Space {
 		glm::vec2 density = {1.0f, 1.0f};
 	} display;
 	struct {
+		glm::vec2 area{};
+		f32 scale = 1.0f;
+	} render;
+	struct {
 		glm::vec2 size{};
 		glm::vec2 density = {1.0f, 1.0f};
-	} world;
+	} scene;
 	struct {
 		glm::vec2 offset{};
 		f32 scale = 1.0f;
 	} viewport;
 
-	static Space make(glm::vec2 world, glm::uvec2 swap, glm::uvec2 win, Viewport const& view) noexcept;
+	static Space make(glm::vec2 scene, glm::uvec2 swap, glm::uvec2 win, Viewport const& view, f32 rscale) noexcept;
 
 	glm::vec2 unproject(glm::vec2 screen, bool normalised) const noexcept;
-	glm::vec2 project(glm::vec2 world, bool normalised) const noexcept;
+	glm::vec2 project(glm::vec2 ui, bool normalised) const noexcept;
 };
 } // namespace le::input

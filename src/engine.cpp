@@ -40,9 +40,9 @@ Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winIns
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 
-input::Driver::Out Engine::poll(bool consume, glm::vec2 worldSize) noexcept {
-	if ((worldSize.x == 0.0f || worldSize.y == 0.0f) && m_gfx) { worldSize = renderer().renderExtent(); }
-	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), worldSize}, m_desktop};
+input::Driver::Out Engine::poll(bool consume) noexcept {
+	f32 const rscale = m_gfx ? m_gfx->context.renderer().renderScale() : 1.0f;
+	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, m_desktop};
 	auto ret = m_input.update(std::move(in), m_editor.view(), consume);
 	m_inputFrame = ret.frame;
 	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
@@ -130,6 +130,14 @@ Extent2D Engine::framebufferSize() const noexcept {
 	return m_win->framebufferSize();
 }
 
+Extent2D Engine::windowSize() const noexcept {
+#if defined(LEVK_DESKTOP)
+	return m_desktop->windowSize();
+#else
+	return m_gfx ? m_gfx->context.extent() : Extent2D(0);
+#endif
+}
+
 void Engine::updateStats() {
 	++m_stats.frame.count;
 	++s_stats.frame.count;
@@ -148,7 +156,7 @@ void Engine::updateStats() {
 	s_stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Type::eImage);
 	s_stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
 	s_stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
-	s_stats.gfx.extents.window = m_desktop ? Extent2D(m_desktop->windowSize()) : Extent2D(0);
+	s_stats.gfx.extents.window = windowSize();
 	s_stats.gfx.extents.swapchain = m_gfx ? m_gfx->context.extent() : Extent2D(0);
 	s_stats.gfx.extents.renderer =
 		m_gfx ? graphics::ARenderer::scaleExtent(s_stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale()) : Extent2D(0);

@@ -18,13 +18,8 @@ RendererFwdSwp::RendererFwdSwp(not_null<Swapchain*> swapchain, Buffering bufferi
 	m_imgMaker.info.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
 	m_imgMaker.info.view.format = m_imgMaker.info.createInfo.format;
 	m_imgMaker.info.view.aspects = vk::ImageAspectFlagBits::eColor;
-	m_scale = 0.75f;
+	renderScale(0.75f);
 	// m_scale = 1.25f;
-}
-
-static Extent2D scale(Extent2D ext, f32 s) noexcept {
-	glm::vec2 const ret = glm::vec2(f32(ext.x), f32(ext.y)) * s;
-	return {u32(ret.x), u32(ret.y)};
 }
 
 std::optional<RendererFwdSwp::Draw> RendererFwdSwp::beginFrame() {
@@ -33,7 +28,7 @@ std::optional<RendererFwdSwp::Draw> RendererFwdSwp::beginFrame() {
 	if (!acquire) { return std::nullopt; }
 	m_storage.swapImg = acquire->image;
 	m_device->device().resetCommandPool(*buf.pool, {});
-	auto const extent = scale(m_storage.swapImg.extent, m_scale);
+	auto const extent = scaleExtent(m_storage.swapImg.extent, renderScale());
 	auto depth = depthImage(m_swapchain->depthFormat(), extent);
 	ensure(depth.has_value(), "Depth image lost!");
 	Image& os = m_imgMaker.refresh(buf.offscreen, extent);

@@ -3,31 +3,13 @@
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
-struct ImageMaker {
-	Image::CreateInfo info;
-	not_null<VRAM*> vram;
-
-	ImageMaker(not_null<VRAM*> vram) noexcept : vram(vram) {}
-
-	static bool ready(std::optional<Image>& out, Extent2D extent) noexcept { return out && cast(out->extent()) == extent; }
-
-	Image make(Extent2D extent) {
-		info.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
-		return Image(vram, info);
-	}
-
-	Image& refresh(std::optional<Image>& out, Extent2D extent) {
-		if (!ready(out, extent)) { out = make(extent); }
-		return *out;
-	}
-};
-
 // Forward, Swapchain
 class RendererFwdSwp : public ARenderer {
   public:
 	RendererFwdSwp(not_null<Swapchain*> swapchain, Buffering buffering = doubleBuffer);
 
-	Technique technique() const noexcept override { return {.approach = Approach::eForward, .target = Target::eSwapchain}; }
+	Tech tech() const noexcept override { return {Approach::eForward, Target::eOffScreen}; }
+
 	vk::RenderPass renderPass3D() const noexcept override { return *m_storage.renderPass; }
 	vk::RenderPass renderPassUI() const noexcept override { return *m_storage.renderPass; }
 

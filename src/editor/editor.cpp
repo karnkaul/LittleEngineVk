@@ -5,6 +5,7 @@
 #include <engine/editor/types.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
+#include <graphics/render/renderer.hpp>
 #include <window/desktop_instance.hpp>
 
 #define MU [[maybe_unused]]
@@ -226,10 +227,10 @@ TWidget<s32>::TWidget(MU sv id, MU s32& out_s, MU f32 w) {
 #endif
 }
 
-TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w) {
+TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w, MU glm::vec2 lm) {
 #if defined(LEVK_USE_IMGUI)
 	if (w > 0.0f) { ImGui::SetNextItemWidth(w); }
-	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_f, df);
+	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_f, df, lm.x, lm.y);
 #endif
 }
 
@@ -341,15 +342,15 @@ Viewport const& Editor::view() const noexcept {
 	return active() && s_engaged ? m_storage.gameView : s_default;
 }
 
-graphics::ScreenView Editor::update(DesktopInstance& win, input::Frame const& frame, f32 renderScale) {
+graphics::ScreenView Editor::update(Desktop& win, Renderer& renderer, input::Frame const& frame) {
 	if constexpr (levk_desktopOS) {
 		if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) { s_out = {}; }
 		if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
 		if (active() && s_engaged) {
-			edi::displayScale(renderScale);
+			edi::displayScale(renderer.renderScale());
 			if (!edi::Pane::s_blockResize) { m_storage.resizer(win, m_storage.gameView, frame); }
 			edi::Pane::s_blockResize = false;
-			m_storage.menu(s_in.menu);
+			m_storage.menu(s_in.menu, renderer);
 			glm::vec2 const& size = frame.space.display.window;
 			auto const rect = m_storage.gameView.rect();
 			f32 const offsetY = m_storage.gameView.topLeft.offset.y;
@@ -361,7 +362,7 @@ graphics::ScreenView Editor::update(DesktopInstance& win, input::Frame const& fr
 			s_right.panel.update(s_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
 			m_storage.cached = std::move(s_in);
 			s_in = {};
-			return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * renderScale};
+			return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * renderer.renderScale()};
 		}
 	}
 	return {};

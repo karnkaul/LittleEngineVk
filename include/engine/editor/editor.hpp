@@ -36,7 +36,8 @@ struct Out {
 
 class Editor {
   public:
-	using DesktopInstance = window::DesktopInstance;
+	using Desktop = window::DesktopInstance;
+	using Renderer = graphics::ARenderer;
 
 	struct Rail {
 		edi::Palette panel;
@@ -56,7 +57,7 @@ class Editor {
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
-	graphics::ScreenView update(DesktopInstance& win, input::Frame const& frame, f32 renderScale);
+	graphics::ScreenView update(Desktop& win, Renderer& renderer, input::Frame const& frame);
 
   private:
 	struct {

@@ -8,12 +8,20 @@ struct Viewport;
 namespace le::input {
 class Driver {
   public:
+	struct In {
+		EventQueue queue;
+		struct {
+			glm::uvec2 swapchain{};
+			glm::vec2 world{};
+		} size;
+		Desktop const* desktop{};
+	};
 	struct Out {
 		Frame frame;
 		EventQueue residue;
 	};
 
-	Out update(EventQueue queue, Viewport const& view, glm::vec2 size, f32 rscale, bool consume = true, Desktop const* pDI = {}) noexcept;
+	Out update(In in, Viewport const& view, bool consume = true) noexcept;
 
   private:
 	struct KeySet {

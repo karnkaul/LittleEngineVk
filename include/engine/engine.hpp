@@ -73,6 +73,11 @@ class Engine : public Service<Engine> {
 				u64 buffers;
 				u64 images;
 			} bytes;
+			struct {
+				Extent2D swapchain;
+				Extent2D window;
+				Extent2D renderer;
+			} extents;
 			u32 drawCalls;
 			u32 triCount;
 		};
@@ -92,7 +97,7 @@ class Engine : public Service<Engine> {
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
 
-	input::Driver::Out poll(bool consume) noexcept;
+	input::Driver::Out poll(glm::vec2 worldSize, bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::ViewStack& out_stack);
 

@@ -29,15 +29,14 @@ C& operator-=(C& self, C const& rhs) {
 }
 } // namespace
 
-Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& view, glm::vec2 size, f32 rscale, bool consume,
-						   [[maybe_unused]] Desktop const* pDI) noexcept {
+Driver::Out Driver::update(In in, Viewport const& view, bool consume) noexcept {
 	Out ret;
 	auto& [f, q] = ret;
 	auto& [st, sp] = f;
 	m_transient.pressed -= m_transient.released;
 	m_persistent.held += m_transient.pressed;
 	m_transient = {};
-	while (auto e = queue.pop()) {
+	while (auto e = in.queue.pop()) {
 		if (!extract(*e, st) || !consume) { q.m_events.push_back(*e); }
 	}
 	copy(m_transient.pressed, st.keys, Action::ePressed);
@@ -49,13 +48,13 @@ Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& vi
 	st.suspended = m_persistent.suspended;
 	glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
-	if (pDI) {
-		wSize = pDI->windowSize();
-		m_transient.gamepads = pDI->activeGamepads();
+	if (in.desktop) {
+		wSize = in.desktop->windowSize();
+		m_transient.gamepads = in.desktop->activeGamepads();
 		st.gamepads = m_transient.gamepads;
 	}
 #endif
-	sp = Space::make(size, wSize, view, rscale);
+	sp = Space::make(in.size.world, in.size.swapchain, wSize, view);
 	st.cursor.position = sp.unproject(st.cursor.screenPos, false);
 	return ret;
 }

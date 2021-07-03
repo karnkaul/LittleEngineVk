@@ -6,6 +6,7 @@
 #include <graphics/render/fence.hpp>
 #include <graphics/render/frame_drawer.hpp>
 #include <graphics/render/rgba.hpp>
+#include <graphics/render/swapchain.hpp>
 #include <graphics/screen_rect.hpp>
 
 namespace le::graphics {
@@ -21,9 +22,9 @@ class ARenderer {
 	enum class Approach { eForward, eDeferred, eOther };
 	enum class Target { eSwapchain, eOffScreen };
 
-	struct Technique {
-		Approach approach = Approach::eOther;
-		Target target = Target::eSwapchain;
+	struct Tech {
+		Approach approach{};
+		Target target{};
 	};
 
 	struct Attachment {
@@ -41,7 +42,7 @@ class ARenderer {
 	ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, Extent2D extent, vk::Format depthFormat);
 	virtual ~ARenderer() = default;
 
-	static constexpr Extent2D extent2D(vk::Extent3D extent) { return {extent.width, extent.height}; }
+	static constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept;
 	static RenderImage renderImage(Image const& image) noexcept { return {image.image(), image.view(), cast(image.extent())}; }
 	static vk::Viewport viewport(Extent2D extent, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissor(Extent2D extent, ScreenView const& view = {}) noexcept;
@@ -55,7 +56,8 @@ class ARenderer {
 	vk::RenderPass makeRenderPass(Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {}) const;
 	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, Extent2D extent, u32 layers = 1) const;
 
-	virtual Technique technique() const noexcept = 0;
+	virtual Tech tech() const noexcept = 0;
+
 	virtual vk::RenderPass renderPass3D() const noexcept = 0;
 	virtual vk::RenderPass renderPassUI() const noexcept = 0;
 
@@ -68,13 +70,18 @@ class ARenderer {
 	void refresh() { m_fence.refresh(); }
 	void waitForFrame();
 
-	f32 m_scale = 1.0f;
+	f32 renderScale() const noexcept { return m_scale; }
+	bool renderScale(f32) noexcept;
+
 	not_null<Swapchain*> m_swapchain;
 	not_null<Device*> m_device;
 
   protected:
 	RenderFence m_fence;
 	std::optional<Image> m_depth;
+
+  private:
+	f32 m_scale = 1.0f;
 };
 
 struct ARenderer::Cmd {
@@ -91,4 +98,28 @@ struct ARenderer::Cmd {
 	Deferred<vk::Semaphore> draw;
 	Deferred<vk::Semaphore> present;
 };
+
+struct ImageMaker {
+	Image::CreateInfo info;
+	not_null<VRAM*> vram;
+
+	ImageMaker(not_null<VRAM*> vram) noexcept : vram(vram) {}
+
+	static bool ready(std::optional<Image>& out, Extent2D extent) noexcept { return out && cast(out->extent()) == extent; }
+
+	Image make(Extent2D extent) {
+		info.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
+		return Image(vram, info);
+	}
+
+	Image& refresh(std::optional<Image>& out, Extent2D extent) {
+		if (!ready(out, extent)) { out = make(extent); }
+		return *out;
+	}
+};
+
+constexpr Extent2D ARenderer::scaleExtent(Extent2D extent, f32 scale) noexcept {
+	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
+	return {u32(ret.x), u32(ret.y)};
+}
 } // namespace le::graphics

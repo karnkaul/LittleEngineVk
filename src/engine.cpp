@@ -40,15 +40,9 @@ Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winIns
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 
-input::Driver::Out Engine::poll(bool consume) noexcept {
-	glm::vec2 wSize = {};
-#if defined(LEVK_DESKTOP)
-	ensure(m_win->isDesktop(), "Invariant violated");
-	wSize = m_desktop->windowSize();
-#endif
-	auto const extent = m_gfx ? m_gfx->context.extent() : Extent2D(0);
-	f32 const rscale = m_gfx ? m_gfx->context.renderer().m_scale : 1.0f;
-	auto ret = m_input.update(m_win->pollEvents(), m_editor.view(), extent, rscale, consume, m_desktop);
+input::Driver::Out Engine::poll(glm::vec2 worldSize, bool consume) noexcept {
+	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), worldSize}, m_desktop};
+	auto ret = m_input.update(std::move(in), m_editor.view(), consume);
 	m_inputFrame = ret.frame;
 	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
 		if ((*it)->block(ret.frame.state)) { break; }
@@ -94,7 +88,7 @@ std::optional<Engine::Context::Frame> Engine::beginDraw() {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 				ensure(b, "Failed to begin DearImGui frame");
 				ensure(m_desktop, "Invariant violated");
-				m_view = m_editor.update(*m_desktop, m_inputFrame, m_gfx->context.renderer().m_scale);
+				m_view = m_editor.update(*m_desktop, m_gfx->context.renderer(), m_inputFrame);
 			}
 			m_drawing = ret->commandBuffer;
 			return ret;
@@ -153,6 +147,10 @@ void Engine::updateStats() {
 	s_stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Type::eImage);
 	s_stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
 	s_stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
+	s_stats.gfx.extents.window = m_desktop ? Extent2D(m_desktop->windowSize()) : Extent2D(0);
+	s_stats.gfx.extents.swapchain = m_gfx ? m_gfx->context.extent() : Extent2D(0);
+	s_stats.gfx.extents.renderer =
+		m_gfx ? graphics::ARenderer::scaleExtent(s_stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale()) : Extent2D(0);
 	graphics::CommandBuffer::s_drawCalls.store(0);
 	graphics::Mesh::s_trisDrawn.store(0);
 }

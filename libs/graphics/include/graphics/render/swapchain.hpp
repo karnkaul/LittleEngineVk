@@ -41,6 +41,7 @@ class Swapchain {
 	struct CreateInfo {
 		u32 imageCount = 2;
 		bool vsync = false;
+		bool transfer = true;
 		FormatPicker const* custom = {};
 	};
 	struct Acquire {

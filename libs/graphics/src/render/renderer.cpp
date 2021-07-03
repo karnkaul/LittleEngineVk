@@ -27,7 +27,7 @@ ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, Extent
 }
 
 std::optional<RenderImage> ARenderer::depthImage(vk::Format depthFormat, Extent2D extent) {
-	if (m_depth && extent2D(m_depth->extent()) == extent) { return renderImage(*m_depth); }
+	if (m_depth && cast(m_depth->extent()) == extent) { return renderImage(*m_depth); }
 	m_depth.reset();
 	if (depthFormat != vk::Format() && Swapchain::valid(extent)) {
 		Image::CreateInfo info;
@@ -98,5 +98,13 @@ void ARenderer::waitForFrame() {
 	m_swapchain->m_vram->update(); // poll transfer if needed
 	m_fence.wait();
 	m_device->decrementDeferred(); // update deferred
+}
+
+bool ARenderer::renderScale(f32 rs) noexcept {
+	if (tech().target == Target::eOffScreen) {
+		m_scale = rs;
+		return true;
+	}
+	return false;
 }
 } // namespace le::graphics

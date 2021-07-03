@@ -621,7 +621,7 @@ class App : public input::Receiver {
 			Editor::s_in.customEntities.push_back(m_data.camera);
 		}
 
-		m_worldSize = graphics::ARenderer::scaleExtent(m_eng->framebufferSize(), m_eng->gfx().context.renderer().renderScale());
+		m_worldSize = m_eng->renderer().renderExtent();
 		if (!m_data.loader.ready(&m_tasks)) { return; }
 		if (m_data.registry.empty()) { init1(); }
 		auto guiStack = m_data.registry.find<gui::ViewStack>(m_data.guiStack);
@@ -675,7 +675,7 @@ class App : public input::Receiver {
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
 				gr3D = SceneDrawer::groups(m_data.registry, true);
 				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
-				m_drawDispatch.write(*cam, frame->target.colour.extent, m_data.dirLights, gr3D, grUI);
+				m_drawDispatch.write(*cam, m_worldSize, m_data.dirLights, gr3D, grUI);
 				// m_drawDispatch.write(*cam, m_eng->framebufferSize(), m_data.dirLights, gr3D, grUI);
 			}
 			// draw
@@ -756,7 +756,7 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 			Time_s dt = time::now() - t;
 			t = time::now();
 			auto const worldSize = app ? app->m_worldSize : glm::vec2{};
-			auto [_, queue] = engine.poll(worldSize, true);
+			auto [_, queue] = engine.poll(true, worldSize);
 			poll(flags, std::move(queue));
 			if (flags.test(Flag::eClosed)) {
 				app.reset();

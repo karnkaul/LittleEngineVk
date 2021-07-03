@@ -72,6 +72,7 @@ class ARenderer {
 
 	f32 renderScale() const noexcept { return m_scale; }
 	bool renderScale(f32) noexcept;
+	Extent2D renderExtent() const noexcept { return scaleExtent(m_swapchain->display().extent, renderScale()); }
 
 	not_null<Swapchain*> m_swapchain;
 	not_null<Device*> m_device;

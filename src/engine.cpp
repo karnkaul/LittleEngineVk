@@ -40,7 +40,8 @@ Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winIns
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 
-input::Driver::Out Engine::poll(glm::vec2 worldSize, bool consume) noexcept {
+input::Driver::Out Engine::poll(bool consume, glm::vec2 worldSize) noexcept {
+	if ((worldSize.x == 0.0f || worldSize.y == 0.0f) && m_gfx) { worldSize = renderer().renderExtent(); }
 	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), worldSize}, m_desktop};
 	auto ret = m_input.update(std::move(in), m_editor.view(), consume);
 	m_inputFrame = ret.frame;

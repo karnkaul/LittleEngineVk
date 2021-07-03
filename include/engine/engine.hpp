@@ -97,7 +97,7 @@ class Engine : public Service<Engine> {
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
 
-	input::Driver::Out poll(glm::vec2 worldSize, bool consume) noexcept;
+	input::Driver::Out poll(bool consume, glm::vec2 worldSize = {}) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::ViewStack& out_stack);
 
@@ -115,6 +115,7 @@ class Engine : public Service<Engine> {
 
 	GFX& gfx();
 	GFX const& gfx() const;
+	ARenderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
 	Desktop* desktop() const noexcept { return m_desktop; }
 
@@ -177,5 +178,9 @@ inline Engine::GFX& Engine::gfx() {
 inline Engine::GFX const& Engine::gfx() const {
 	ensure(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
+}
+inline Engine::ARenderer& Engine::renderer() const {
+	ensure(m_gfx.has_value(), "Not booted");
+	return m_gfx->context.renderer();
 }
 } // namespace le

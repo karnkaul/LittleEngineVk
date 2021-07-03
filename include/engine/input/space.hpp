@@ -11,12 +11,15 @@ struct Space {
 		glm::vec2 density = {1.0f, 1.0f};
 	} display;
 	struct {
+		glm::vec2 size{};
+		glm::vec2 density = {1.0f, 1.0f};
+	} world;
+	struct {
 		glm::vec2 offset{};
 		f32 scale = 1.0f;
 	} viewport;
-	glm::vec2 worldSize{};
 
-	static Space make(glm::vec2 worldSize, glm::uvec2 swap, glm::uvec2 win, Viewport const& view) noexcept;
+	static Space make(glm::vec2 world, glm::uvec2 swap, glm::uvec2 win, Viewport const& view) noexcept;
 
 	glm::vec2 unproject(glm::vec2 screen, bool normalised) const noexcept;
 	glm::vec2 project(glm::vec2 world, bool normalised) const noexcept;

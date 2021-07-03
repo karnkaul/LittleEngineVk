@@ -1,9 +1,9 @@
 #include <iostream>
 #include <build_version.hpp>
-#include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/input/space.hpp>
+#include <engine/utils/logger.hpp>
 #include <graphics/common.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/render/command_buffer.hpp>
@@ -36,7 +36,7 @@ Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winIns
 #if defined(LEVK_DESKTOP)
 	m_desktop = static_cast<Desktop*>(winInst.get());
 #endif
-	conf::g_log.minVerbosity = info.verbosity;
+	utils::g_log.minVerbosity = info.verbosity;
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 

@@ -8,6 +8,7 @@
 #include <engine/input/frame.hpp>
 #include <engine/input/receiver.hpp>
 #include <engine/scene/scene_space.hpp>
+#include <engine/utils/engine_stats.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/render/renderer_fwd_swp.hpp>
@@ -44,6 +45,7 @@ class Engine : public Service<Engine> {
 	using VRAM = graphics::VRAM;
 	using RGBA = graphics::RGBA;
 	using ARenderer = graphics::ARenderer;
+	using Stats = utils::EngineStats;
 
 	struct GFX {
 		Boot boot;
@@ -61,31 +63,6 @@ class Engine : public Service<Engine> {
 
 	struct Options {
 		std::optional<std::size_t> gpuOverride;
-	};
-
-	struct Stats {
-		struct Frame {
-			Time_s ft;
-			u32 rate;
-			u64 count;
-		};
-		struct Gfx {
-			struct {
-				u64 buffers;
-				u64 images;
-			} bytes;
-			struct {
-				Extent2D swapchain;
-				Extent2D window;
-				Extent2D renderer;
-			} extents;
-			u32 drawCalls;
-			u32 triCount;
-		};
-
-		Frame frame;
-		Gfx gfx;
-		Time_s upTime;
 	};
 
 	struct CreateInfo;

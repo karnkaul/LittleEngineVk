@@ -2,7 +2,7 @@
 #include <engine/gui/style.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/input/frame.hpp>
-#include <engine/owner.hpp>
+#include <engine/utils/owner.hpp>
 
 namespace le::graphics {
 class VRAM;
@@ -59,7 +59,7 @@ class View : public TreeRoot {
 	bool m_remove = false;
 };
 
-class ViewStack : public Owner<View> {
+class ViewStack : public utils::Owner<View> {
   public:
 	using Owner::container_t;
 

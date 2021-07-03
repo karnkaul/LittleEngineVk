@@ -1,6 +1,6 @@
 #pragma once
 
-namespace le {
+namespace le::utils {
 struct VBase {
 	VBase() = default;
 	VBase(VBase&&) = default;
@@ -9,4 +9,4 @@ struct VBase {
 	VBase& operator=(VBase const&) = default;
 	virtual ~VBase() = default;
 };
-} // namespace le
+} // namespace le::utils

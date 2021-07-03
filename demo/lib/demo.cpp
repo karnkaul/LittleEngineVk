@@ -7,7 +7,6 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
-#include <engine/camera.hpp>
 #include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
@@ -186,6 +185,8 @@ struct PlayerController {
 
 class DrawDispatch {
   public:
+	using Camera = graphics::Camera;
+
 	not_null<graphics::VRAM*> m_vram;
 
 	struct {

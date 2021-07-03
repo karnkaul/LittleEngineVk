@@ -1,9 +1,9 @@
 #pragma once
-#include <engine/aabb.hpp>
 #include <engine/render/flex.hpp>
+#include <engine/utils/aabb.hpp>
 
 namespace le::gui {
-struct Rect : AABB {
+struct Rect : utils::AABB {
 	TFlex<glm::vec2> anchor;
 
 	constexpr void offset(glm::vec2 size, glm::vec2 coeff = {1.0f, 1.0f}) noexcept { anchor.offset = (this->size = size) * 0.5f * coeff; }

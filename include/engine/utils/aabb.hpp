@@ -3,7 +3,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-namespace le {
+namespace le::utils {
 struct AABB {
 	glm::vec2 origin = {};
 	glm::vec2 size = {};
@@ -15,4 +15,4 @@ struct AABB {
 	static constexpr bool hit(glm::vec2 centre, glm::vec2 half, glm::vec2 point) noexcept { return in(point, centre - half, centre + half); }
 	static constexpr bool in(glm::vec2 pt, glm::vec2 tl, glm::vec2 br) noexcept { return pt.x >= tl.x && pt.x <= br.x && pt.y >= br.y && pt.y <= tl.y; }
 };
-} // namespace le
+} // namespace le::utils

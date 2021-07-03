@@ -23,7 +23,6 @@ using namespace window;
 #if defined(LEVK_USE_IMGUI)
 namespace {
 using DIS = DearImGui::State;
-constexpr EnumArray<DIS, std::string_view, 3> stateStr = {"eEnd", "eBegin", "eRender"};
 
 vk::DescriptorPool makePool(Device& device, u32 count) {
 	vk::DescriptorPoolSize pool_sizes[] = {{vk::DescriptorType::eSampler, count},
@@ -172,10 +171,7 @@ bool DearImGui::render(graphics::CommandBuffer const& cb) {
 bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
 	if (m_bActive) {
-		if (m_state != State::eEnd) {
-			logW("[DearImGui] Forcing [State::{}] from [State::{}]", stateStr[State::eBegin], stateStr[State::eEnd], m_state);
-			if (m_state == State::eBegin) { ImGui::Render(); }
-		}
+		if (m_state == State::eBegin) { ImGui::Render(); }
 		next(m_state, State::eBegin);
 		ImGui_ImplVulkan_NewFrame();
 #if defined(LEVK_USE_GLFW)

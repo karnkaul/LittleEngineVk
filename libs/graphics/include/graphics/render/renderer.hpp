@@ -8,6 +8,7 @@
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/swapchain.hpp>
 #include <graphics/screen_rect.hpp>
+#include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
 class Swapchain;
@@ -17,12 +18,25 @@ class ARenderer;
 template <typename Rd>
 concept concrete_renderer = std::is_base_of_v<ARenderer, Rd> && !std::is_same_v<ARenderer, Rd>;
 
+struct ImageMaker {
+	kt::fixed_vector<Image::CreateInfo, 8> infos;
+	not_null<VRAM*> vram;
+
+	ImageMaker(not_null<VRAM*> vram) noexcept : vram(vram) {}
+
+	bool ready(std::optional<Image>& out, Extent2D extent, vk::Format format, std::size_t idx) const noexcept;
+	Image make(Extent2D extent, vk::Format format, std::size_t idx);
+	Image& refresh(std::optional<Image>& out, Extent2D extent, vk::Format format, std::size_t idx);
+};
+
 class ARenderer {
   public:
+	enum class Transition { eRenderPass, eCommandBuffer };
 	enum class Approach { eForward, eDeferred, eOther };
 	enum class Target { eSwapchain, eOffScreen };
 
 	struct Tech {
+		Transition transition{};
 		Approach approach{};
 		Target target{};
 	};
@@ -37,9 +51,9 @@ class ARenderer {
 		CommandBuffer commandBuffer;
 	};
 
-	struct Cmd;
+	struct Buf;
 
-	ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, Extent2D extent, vk::Format depthFormat);
+	ARenderer(not_null<Swapchain*> swapchain, Buffering buffering);
 	virtual ~ARenderer() = default;
 
 	static constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept;
@@ -47,11 +61,11 @@ class ARenderer {
 	static vk::Viewport viewport(Extent2D extent, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissor(Extent2D extent, ScreenView const& view = {}) noexcept;
 
-	bool hasDepthImage() const noexcept { return m_depth.has_value(); }
+	bool hasDepthImage() const noexcept { return m_depthImage.has_value(); }
 	std::size_t index() const noexcept { return m_fence.index(); }
 	Buffering buffering() const noexcept { return m_fence.buffering(); }
 
-	std::optional<RenderImage> depthImage(vk::Format depthFormat, Extent2D extent);
+	RenderImage depthImage(Extent2D extent, vk::Format format = {});
 	RenderSemaphore makeSemaphore() const;
 	vk::RenderPass makeRenderPass(Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {}) const;
 	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, Extent2D extent, u32 layers = 1) const;
@@ -62,14 +76,15 @@ class ARenderer {
 	virtual vk::RenderPass renderPassUI() const noexcept = 0;
 
 	virtual std::optional<Draw> beginFrame() = 0;
-	virtual void beginDraw(RenderTarget const&, FrameDrawer&, ScreenView const&, RGBA, vk::ClearDepthStencilValue) = 0;
+	virtual void beginDraw(RenderTarget const& target, FrameDrawer& drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth);
 	virtual void endDraw(RenderTarget const&) = 0;
-	virtual void endFrame() = 0;
-	virtual bool submitFrame() = 0;
+	virtual void endFrame();
+	virtual bool submitFrame();
 
 	void refresh() { m_fence.refresh(); }
 	void waitForFrame();
 
+	bool canScale() const noexcept;
 	f32 renderScale() const noexcept { return m_scale; }
 	bool renderScale(f32) noexcept;
 	Extent2D renderExtent() const noexcept { return scaleExtent(m_swapchain->display().extent, renderScale()); }
@@ -78,16 +93,27 @@ class ARenderer {
 	not_null<Device*> m_device;
 
   protected:
+	struct Storage {
+		RingBuffer<Buf> buf;
+		Deferred<vk::RenderPass> renderPass;
+	};
+
+	Storage make(TPair<vk::Format> colourDepth, Transition transition) const;
+	kt::result<Swapchain::Acquire> acquire(bool begin = true);
+
+	Storage m_storage;
 	RenderFence m_fence;
-	std::optional<Image> m_depth;
+	std::optional<Image> m_depthImage;
+	ImageMaker m_imageMaker;
 
   private:
+	std::size_t m_depthIndex = 0;
 	f32 m_scale = 1.0f;
 };
 
-struct ARenderer::Cmd {
-	Cmd() = default;
-	Cmd(not_null<Device*> device, vk::CommandPoolCreateFlags flags = {}, QType qtype = QType::eGraphics) {
+struct ARenderer::Buf {
+	Buf() = default;
+	Buf(not_null<Device*> device, vk::CommandPoolCreateFlags flags = {}, QType qtype = QType::eGraphics) {
 		pool = makeDeferred<vk::CommandPool>(device, flags, qtype);
 		cb = CommandBuffer::make(device, *pool, 1).front();
 		draw = makeDeferred<vk::Semaphore>(device);
@@ -98,25 +124,8 @@ struct ARenderer::Cmd {
 	Deferred<vk::CommandPool> pool;
 	Deferred<vk::Semaphore> draw;
 	Deferred<vk::Semaphore> present;
-};
-
-struct ImageMaker {
-	Image::CreateInfo info;
-	not_null<VRAM*> vram;
-
-	ImageMaker(not_null<VRAM*> vram) noexcept : vram(vram) {}
-
-	static bool ready(std::optional<Image>& out, Extent2D extent) noexcept { return out && cast(out->extent()) == extent; }
-
-	Image make(Extent2D extent) {
-		info.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
-		return Image(vram, info);
-	}
-
-	Image& refresh(std::optional<Image>& out, Extent2D extent) {
-		if (!ready(out, extent)) { out = make(extent); }
-		return *out;
-	}
+	Deferred<vk::Framebuffer> framebuffer;
+	std::optional<Image> offscreen;
 };
 
 constexpr Extent2D ARenderer::scaleExtent(Extent2D extent, f32 scale) noexcept {

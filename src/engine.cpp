@@ -73,10 +73,6 @@ bool Engine::drawReady() {
 			}
 		}
 		if (!m_gfx->context.ready(size)) { return false; }
-		// if constexpr (levk_imgui) {
-		// 	[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
-		// 	ensure(b, "Failed to begin DearImGui frame");
-		// }
 		return true;
 	}
 	return false;
@@ -103,10 +99,6 @@ bool Engine::render(Context::Frame const& frame, Drawer& drawer, RGBA clear, vk:
 		ensure(m_drawing.m_cb == frame.commandBuffer.m_cb, "Invalid frame");
 		m_drawing = {};
 		if (m_gfx->context.beginDraw(drawer, m_view, clear, depth)) {
-			// if constexpr (levk_imgui) {
-			// 	m_gfx->imgui.endFrame();
-			// 	m_gfx->imgui.renderDrawData(frame.commandBuffer);
-			// }
 			m_gfx->context.endDraw();
 			m_gfx->context.endFrame();
 			return m_gfx->context.submitFrame();

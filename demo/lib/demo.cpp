@@ -15,6 +15,7 @@
 #include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
+#include <graphics/render/renderer_fwd_off.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
@@ -763,7 +764,8 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 			if (flags.test(Flag::ePaused)) { continue; }
 			if (flags.test(Flag::eInit)) {
 				app.reset();
-				engine.boot(bootInfo);
+				engine.boot<graphics::RendererFwdOff>(bootInfo);
+				// engine.boot(bootInfo);
 				app.emplace(&engine, reader);
 			}
 			if (flags.test(Flag::eTerm)) {

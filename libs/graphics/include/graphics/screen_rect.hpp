@@ -71,4 +71,9 @@ constexpr TRect<T, Min, Max> TRect<T, Min, Max>::adjust(const TRect<T, Min, Max>
 }
 
 using ScreenRect = TRect<>;
+
+struct ScreenView {
+	ScreenRect nRect;
+	glm::vec2 offset = {};
+};
 } // namespace le::graphics

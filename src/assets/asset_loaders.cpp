@@ -2,7 +2,7 @@
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <engine/config.hpp>
+#include <engine/utils/logger.hpp>
 #include <graphics/utils/utils.hpp>
 
 namespace le {
@@ -176,7 +176,7 @@ FontInfo deserialise(dj::json_t const& json) {
 				if (glyph.cell.x > 0 && glyph.cell.y > 0) {
 					ret.glyphs.push_back(glyph);
 				} else {
-					conf::g_log.log(dl::level::warning, 1, "[{}] [BitmapFont] Could not deserialise Glyph '{}'!", conf::g_name, key[0]);
+					utils::g_log.log(dl::level::warning, 1, "[{}] [BitmapFont] Could not deserialise Glyph '{}'!", utils::g_name, key[0]);
 				}
 			}
 		}

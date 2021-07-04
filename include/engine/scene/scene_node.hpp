@@ -1,6 +1,6 @@
 #pragma once
 #include <dumb_ecf/types.hpp>
-#include <engine/ref_tree.hpp>
+#include <engine/utils/ref_tree.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
@@ -16,7 +16,7 @@ struct SceneTransform {
 	glm::mat4 matrix() const noexcept;
 };
 
-class SceneNode : public RefTreeNode<SceneNode> {
+class SceneNode : public utils::RefTreeNode<SceneNode> {
   public:
 	using Root = typename RefTreeNode<SceneNode>::Root;
 

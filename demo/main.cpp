@@ -14,5 +14,4 @@ int main(int argc, char const* const argv[]) {
 	reader.mount(std::move(data).value());
 	if (!le::demo::run(reader)) { return 1; }
 	return 0;
-
 }

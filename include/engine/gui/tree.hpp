@@ -3,10 +3,10 @@
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <engine/gui/rect.hpp>
-#include <engine/ibase.hpp>
-#include <engine/owner.hpp>
 #include <engine/render/flex.hpp>
 #include <engine/scene/primitive.hpp>
+#include <engine/utils/owner.hpp>
+#include <engine/utils/vbase.hpp>
 #include <graphics/basis.hpp>
 #include <graphics/draw_view.hpp>
 
@@ -24,7 +24,7 @@ using graphics::DrawScissor;
 
 DrawScissor scissor(input::Space const& space, glm::vec2 centre = {}, glm::vec2 halfSize = {0.5f, -0.5f}, bool normalised = true) noexcept;
 
-class TreeRoot : public VBase, public Owner<TreeNode> {
+class TreeRoot : public utils::VBase, public utils::Owner<TreeNode> {
   public:
 	using Owner::container_t;
 

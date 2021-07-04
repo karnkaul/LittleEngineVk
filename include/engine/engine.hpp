@@ -5,10 +5,13 @@
 #include <core/version.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
+#include <engine/input/frame.hpp>
 #include <engine/input/receiver.hpp>
+#include <engine/scene/scene_space.hpp>
+#include <engine/utils/engine_stats.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/render/renderer_fwd_swp.hpp>
+#include <graphics/render/renderers.hpp>
 #include <graphics/render/rgba.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 #include <window/instance.hpp>
@@ -42,6 +45,7 @@ class Engine : public Service<Engine> {
 	using VRAM = graphics::VRAM;
 	using RGBA = graphics::RGBA;
 	using ARenderer = graphics::ARenderer;
+	using Stats = utils::EngineStats;
 
 	struct GFX {
 		Boot boot;
@@ -61,32 +65,12 @@ class Engine : public Service<Engine> {
 		std::optional<std::size_t> gpuOverride;
 	};
 
-	struct Stats {
-		struct Frame {
-			Time_s ft;
-			u32 rate;
-			u64 count;
-		};
-		struct Gfx {
-			struct {
-				u64 buffers;
-				u64 images;
-			} bytes;
-			u32 drawCalls;
-			u32 triCount;
-		};
-
-		Frame frame;
-		Gfx gfx;
-		Time_s upTime;
-	};
-
 	struct CreateInfo;
 
 	inline static Options s_options;
 
 	static Version version() noexcept;
-	static Stats const& stats() noexcept;
+	static Stats const& stats() noexcept { return s_stats; }
 	static Span<graphics::PhysicalDevice const> availableDevices();
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
@@ -95,28 +79,30 @@ class Engine : public Service<Engine> {
 	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::ViewStack& out_stack);
 
-	bool editorActive() const noexcept;
-	bool editorEngaged() const noexcept;
+	bool editorActive() const noexcept { return m_editor.active(); }
+	bool editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
 
 	bool drawReady();
 	std::optional<Context::Frame> beginDraw();
 	bool render(Context::Frame const& draw, Drawer& drawer, RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
 
-	template <graphics::concrete_renderer Rd = graphics::RendererFwdSwp, typename... Args>
+	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>
 	bool boot(Boot::CreateInfo boot, Args&&... args);
 	bool unboot() noexcept;
-	bool booted() const noexcept;
+	bool booted() const noexcept { return m_gfx.has_value(); }
 
 	GFX& gfx();
 	GFX const& gfx() const;
-	input::State const& inputState() const noexcept;
-	Desktop* desktop() const noexcept;
+	ARenderer& renderer() const;
+	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
+	Desktop* desktop() const noexcept { return m_desktop; }
 
 	Extent2D framebufferSize() const noexcept;
-	vk::Viewport viewport(Viewport const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
-	vk::Rect2D scissor(Viewport const& view = {}) const noexcept;
+	Extent2D windowSize() const noexcept;
 	Viewport const& gameView() const noexcept;
+	glm::vec2 sceneSpace() const noexcept { return m_space(m_inputFrame.space); }
 
+	SceneSpace m_space;
 	not_null<Window*> m_win;
 	Time_ms m_recreateInterval = 10ms;
 
@@ -139,7 +125,8 @@ class Engine : public Service<Engine> {
 		} frame;
 	} m_stats;
 	input::Receivers m_receivers;
-	input::State m_inputState;
+	input::Frame m_inputFrame;
+	graphics::ScreenView m_view;
 	struct {
 		glm::ivec2 size{};
 		time::Point resized{};
@@ -165,10 +152,6 @@ bool Engine::boot(Boot::CreateInfo boot, Args&&... args) {
 	return false;
 }
 
-inline Engine::Stats const& Engine::stats() noexcept { return s_stats; }
-inline bool Engine::editorActive() const noexcept { return m_editor.active(); }
-inline bool Engine::editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
-inline bool Engine::booted() const noexcept { return m_gfx.has_value(); }
 inline Engine::GFX& Engine::gfx() {
 	ensure(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
@@ -177,6 +160,8 @@ inline Engine::GFX const& Engine::gfx() const {
 	ensure(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
-inline input::State const& Engine::inputState() const noexcept { return m_inputState; }
-inline Viewport const& Engine::gameView() const noexcept { return m_editor.view(); }
+inline Engine::ARenderer& Engine::renderer() const {
+	ensure(m_gfx.has_value(), "Not booted");
+	return m_gfx->context.renderer();
+}
 } // namespace le

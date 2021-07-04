@@ -1,5 +1,5 @@
 #pragma once
-#include <engine/input/state.hpp>
+#include <engine/input/frame.hpp>
 
 namespace le {
 struct Viewport;
@@ -8,12 +8,21 @@ struct Viewport;
 namespace le::input {
 class Driver {
   public:
+	struct In {
+		EventQueue queue;
+		struct {
+			glm::uvec2 swapchain{};
+			glm::vec2 scene{};
+		} size;
+		f32 renderScale = 1.0f;
+		Desktop const* desktop{};
+	};
 	struct Out {
-		State state;
+		Frame frame;
 		EventQueue residue;
 	};
 
-	Out update(EventQueue queue, Viewport const& view, glm::vec2 size, bool consume = true, Desktop const* pDI = {}) noexcept;
+	Out update(In in, Viewport const& view, bool consume = true) noexcept;
 
   private:
 	struct KeySet {

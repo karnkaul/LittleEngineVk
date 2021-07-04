@@ -83,10 +83,10 @@ constexpr vk::Viewport utils::viewport(DrawViewport const& viewport) noexcept {
 constexpr vk::Rect2D utils::scissor(DrawScissor const& scissor) noexcept {
 	vk::Rect2D ret;
 	glm::vec2 const size = scissor.size();
-	ret.offset.x = (s32)scissor.lt.x;
-	ret.offset.y = (s32)scissor.lt.y;
-	ret.extent.width = (u32)size.x;
-	ret.extent.height = (u32)size.y;
+	ret.offset.x = std::max(0, (s32)scissor.lt.x);
+	ret.offset.y = std::max(0, (s32)scissor.lt.y);
+	ret.extent.width = std::max(0U, (u32)size.x);
+	ret.extent.height = std::max(0U, (u32)size.y);
 	return ret;
 }
 } // namespace le::graphics

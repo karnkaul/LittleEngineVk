@@ -36,9 +36,6 @@ class Deferred {
 	}
 };
 
-template <typename T, typename... Args>
-using DeviceFn = T (Device::*)(Args...) const;
-
 template <typename T, typename D = Device::Deleter<T>, typename... Args>
 Deferred<T, D> makeDeferred(not_null<Device*> device, Args&&... args) {
 	return {device, device->make<T>(std::forward<Args>(args)...)};

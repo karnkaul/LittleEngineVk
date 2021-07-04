@@ -7,7 +7,6 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
-#include <engine/camera.hpp>
 #include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
@@ -16,6 +15,7 @@
 #include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
+#include <graphics/render/renderers.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
@@ -186,6 +186,8 @@ struct PlayerController {
 
 class DrawDispatch {
   public:
+	using Camera = graphics::Camera;
+
 	not_null<graphics::VRAM*> m_vram;
 
 	struct {
@@ -199,10 +201,10 @@ class DrawDispatch {
 
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
+	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights, Span<SceneDrawer::Group const> g3D, Span<SceneDrawer::Group const> gUI) {
 		m_view.lights.swap();
 		m_view.mats.swap();
-		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
+		ViewMats const v{cam.view(), cam.perspective(scene), cam.ortho(scene), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
 			DirLights dl;
@@ -210,8 +212,8 @@ class DrawDispatch {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : groups3D) { update(group); }
-		for (auto& group : groupsUI) { update(group); }
+		for (auto& group : g3D) { update(group); }
+		for (auto& group : gUI) { update(group); }
 	}
 
 	void update(SceneDrawer::Group const& group) const {
@@ -262,8 +264,6 @@ class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
 	struct Data {
 		Span<SceneDrawer::Group const> groups3D;
 		Span<SceneDrawer::Group const> groupsUI;
-		vk::Viewport viewport;
-		vk::Rect2D scissor;
 		not_null<DrawDispatch*> dispatch;
 	};
 
@@ -273,7 +273,10 @@ class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
 	}
 
 	void draw3D(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groups3D, cb); }
-	void drawUI(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb); }
+	void drawUI(CommandBuffer cb) override {
+		draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb);
+		DearImGui::render(cb);
+	}
 
   private:
 	Data m_data;
@@ -647,14 +650,15 @@ class App : public input::Receiver {
 		}
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
+		auto const& state = m_eng->inputFrame().state;
 		if (pc.active) {
 			auto& node = m_data.registry.get<SceneNode>(m_data.player);
-			m_data.registry.get<PlayerController>(m_data.player).tick(m_eng->inputState(), node, dt);
+			m_data.registry.get<PlayerController>(m_data.player).tick(state, node, dt);
 			glm::vec3 const& forward = node.orientation() * -graphics::front;
 			cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 			cam.face(forward);
 		} else {
-			cam.tick(m_eng->inputState(), dt, m_eng->desktop());
+			cam.tick(state, dt, m_eng->desktop());
 		}
 		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
@@ -672,10 +676,10 @@ class App : public input::Receiver {
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
 				gr3D = SceneDrawer::groups(m_data.registry, true);
 				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
-				m_drawDispatch.write(*cam, frame->target.colour.extent, m_data.dirLights, gr3D, grUI);
+				m_drawDispatch.write(*cam, m_eng->sceneSpace(), m_data.dirLights, gr3D, grUI);
 			}
 			// draw
-			RenderDisp rd{{gr3D, grUI, m_eng->viewport(), m_eng->scissor(), &m_drawDispatch}};
+			RenderDisp rd{{gr3D, grUI, &m_drawDispatch}};
 			m_eng->render(*frame, rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 		}
 	}
@@ -760,7 +764,9 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 			if (flags.test(Flag::ePaused)) { continue; }
 			if (flags.test(Flag::eInit)) {
 				app.reset();
-				engine.boot(bootInfo);
+				using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
+				engine.boot<renderer_t>(bootInfo);
+				// engine.boot(bootInfo);
 				app.emplace(&engine, reader);
 			}
 			if (flags.test(Flag::eTerm)) {

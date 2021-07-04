@@ -1,7 +1,8 @@
 #pragma once
 #include <engine/gui/style.hpp>
 #include <engine/gui/tree.hpp>
-#include <engine/owner.hpp>
+#include <engine/input/frame.hpp>
+#include <engine/utils/owner.hpp>
 
 namespace le::graphics {
 class VRAM;
@@ -43,7 +44,7 @@ class View : public TreeRoot {
 	View(not_null<ViewStack*> parent, Block block = {}) noexcept : m_block(block), m_parent(parent) {}
 
 	TreeNode* leafHit(glm::vec2 point) const noexcept;
-	void update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset);
+	void update(input::Space const& space, glm::vec2 offset);
 
 	void setDestroyed() noexcept { m_remove = true; }
 	bool destroyed() const noexcept { return m_remove; }
@@ -58,7 +59,7 @@ class View : public TreeRoot {
 	bool m_remove = false;
 };
 
-class ViewStack : public Owner<View> {
+class ViewStack : public utils::Owner<View> {
   public:
 	using Owner::container_t;
 
@@ -68,7 +69,7 @@ class ViewStack : public Owner<View> {
 		requires(is_derived_v<T>)
 	T& push(Args&&... args) { return Owner::template push<T>(this, std::forward<Args>(args)...); }
 
-	void update(input::State const& state, Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset = {});
+	void update(input::Frame const& frame, glm::vec2 offset = {});
 	View* top() const noexcept { return m_ts.empty() ? nullptr : m_ts.back().get(); }
 	container_t const& views() const { return m_ts; }
 

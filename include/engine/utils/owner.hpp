@@ -4,7 +4,7 @@
 #include <vector>
 #include <core/not_null.hpp>
 
-namespace le {
+namespace le::utils {
 template <typename T, template <typename...> typename Cont = std::vector, typename... Ar>
 class Owner {
   public:
@@ -36,4 +36,4 @@ class Owner {
   protected:
 	container_t m_ts;
 };
-} // namespace le
+} // namespace le::utils

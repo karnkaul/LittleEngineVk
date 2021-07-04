@@ -100,7 +100,7 @@ bool RenderContext::waitForFrame() {
 	return true;
 }
 
-std::optional<ARenderer::Draw> RenderContext::beginFrame() {
+std::optional<RenderContext::Frame> RenderContext::beginFrame() {
 	if (!check(Status::eReady)) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
@@ -108,32 +108,32 @@ std::optional<ARenderer::Draw> RenderContext::beginFrame() {
 	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
 	if (auto ret = m_storage.renderer->beginFrame()) {
 		set(Status::eBegun);
-		m_storage.target = ret->target;
+		m_storage.frame = *ret;
 		return ret;
 	}
 	return std::nullopt;
 }
 
-bool RenderContext::beginDraw(graphics::FrameDrawer& out_drawer, RGBA clear, vk::ClearDepthStencilValue depth) {
+bool RenderContext::beginDraw(FrameDrawer& out_drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth) {
 	if (!check(Status::eBegun)) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
-	if (m_storage.target) {
-		set(Status::eDrawing);
-		m_storage.renderer->m_viewport = {m_viewport.rect, m_viewport.offset};
-		m_storage.renderer->beginDraw(*m_storage.target, out_drawer, clear, depth);
-		return true;
+	if (!m_storage.frame) {
+		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext Frame", g_name);
+		return false;
 	}
-	return false;
+	set(Status::eDrawing);
+	m_storage.renderer->beginDraw(m_storage.frame->target, out_drawer, view, clear, depth);
+	return true;
 }
 
 bool RenderContext::endDraw() {
-	if (!m_storage.target || !check(Status::eDrawing)) {
+	if (!m_storage.frame || !check(Status::eDrawing)) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
-	m_storage.renderer->endDraw(*m_storage.target);
+	m_storage.renderer->endDraw(m_storage.frame->target);
 	return true;
 }
 
@@ -143,7 +143,7 @@ bool RenderContext::endFrame() {
 		return false;
 	}
 	set(Status::eEnded);
-	m_storage.target.reset();
+	m_storage.frame.reset();
 	m_storage.renderer->endFrame();
 	return true;
 }
@@ -174,11 +174,11 @@ glm::mat4 RenderContext::preRotate() const noexcept {
 	return glm::rotate(ret, rad, front);
 }
 
-vk::Viewport RenderContext::viewport(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset, glm::vec2 depth) const noexcept {
-	return m_storage.renderer->viewport(Swapchain::valid(extent) ? extent : this->extent(), nRect, offset, depth);
+vk::Viewport RenderContext::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) const noexcept {
+	return m_storage.renderer->viewport(Swapchain::valid(extent) ? extent : this->extent(), view, depth);
 }
 
-vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset) const noexcept {
-	return m_storage.renderer->scissor(Swapchain::valid(extent) ? extent : this->extent(), nRect, offset);
+vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenView const& view) const noexcept {
+	return m_storage.renderer->scissor(Swapchain::valid(extent) ? extent : this->extent(), view);
 }
 } // namespace le::graphics

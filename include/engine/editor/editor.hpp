@@ -6,7 +6,7 @@
 #include <engine/editor/panel.hpp>
 #include <engine/editor/resizer.hpp>
 #include <engine/editor/types.hpp>
-#include <engine/input/state.hpp>
+#include <engine/input/frame.hpp>
 #include <engine/render/viewport.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <levk_imgui/levk_imgui.hpp>
@@ -14,6 +14,9 @@
 namespace le {
 namespace window {
 class DesktopInstance;
+}
+namespace graphics {
+struct ScreenView;
 }
 
 namespace edi {
@@ -33,7 +36,8 @@ struct Out {
 
 class Editor {
   public:
-	using DesktopInstance = window::DesktopInstance;
+	using Desktop = window::DesktopInstance;
+	using Renderer = graphics::ARenderer;
 
 	struct Rail {
 		edi::Palette panel;
@@ -53,7 +57,7 @@ class Editor {
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
-	void update(DesktopInstance& win, input::State const& state);
+	graphics::ScreenView update(Desktop& win, Renderer& renderer, input::Frame const& frame);
 
   private:
 	struct {

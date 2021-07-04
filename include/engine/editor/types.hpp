@@ -186,7 +186,7 @@ struct TWidget<bool> {
 
 template <>
 struct TWidget<f32> {
-	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f);
+	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f, glm::vec2 lm = {});
 };
 
 template <>

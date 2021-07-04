@@ -29,33 +29,33 @@ C& operator-=(C& self, C const& rhs) {
 }
 } // namespace
 
-Driver::Out Driver::update(EventQueue queue, [[maybe_unused]] Viewport const& view, glm::vec2 size, bool consume,
-						   [[maybe_unused]] Desktop const* pDI) noexcept {
+Driver::Out Driver::update(In in, Viewport const& view, bool consume) noexcept {
 	Out ret;
-	auto& [s, q] = ret;
+	auto& [f, q] = ret;
+	auto& [st, sp] = f;
 	m_transient.pressed -= m_transient.released;
 	m_persistent.held += m_transient.pressed;
 	m_transient = {};
-	while (auto e = queue.pop()) {
-		if (!extract(*e, s) || !consume) { q.m_events.push_back(*e); }
+	while (auto e = in.queue.pop()) {
+		if (!extract(*e, st) || !consume) { q.m_events.push_back(*e); }
 	}
-	copy(m_transient.pressed, s.keys, Action::ePressed);
-	copy(m_persistent.held, s.keys, Action::eHeld);
-	copy(m_transient.released, s.keys, Action::eReleased);
-	s.cursor.screenPos = m_persistent.cursor;
-	s.others = m_transient.others;
-	s.text = m_transient.text;
-	s.suspended = m_persistent.suspended;
+	copy(m_transient.pressed, st.keys, Action::ePressed);
+	copy(m_persistent.held, st.keys, Action::eHeld);
+	copy(m_transient.released, st.keys, Action::eReleased);
+	st.cursor.screenPos = m_persistent.cursor;
+	st.others = m_transient.others;
+	st.text = m_transient.text;
+	st.suspended = m_persistent.suspended;
 	glm::vec2 wSize = {};
 #if defined(LEVK_DESKTOP)
-	if (pDI) {
-		wSize = pDI->windowSize();
-		m_transient.gamepads = pDI->activeGamepads();
-		s.gamepads = m_transient.gamepads;
+	if (in.desktop) {
+		wSize = in.desktop->windowSize();
+		m_transient.gamepads = in.desktop->activeGamepads();
+		st.gamepads = m_transient.gamepads;
 	}
 #endif
-	Space const sp(size, wSize, view);
-	s.cursor.position = sp.world(s.cursor.screenPos, false);
+	sp = Space::make(in.size.scene, in.size.swapchain, wSize, view, in.renderScale);
+	st.cursor.position = sp.unproject(st.cursor.screenPos, false);
 	return ret;
 }
 

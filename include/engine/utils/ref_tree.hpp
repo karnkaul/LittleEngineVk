@@ -4,7 +4,7 @@
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 
-namespace le {
+namespace le::utils {
 struct RefTreeBase {};
 
 template <typename T, typename Base = RefTreeBase>
@@ -44,7 +44,7 @@ class RefTreeRoot : public Base {
 };
 
 template <typename T, typename Base = RefTreeBase>
-class RefTreeNode : public RefTreeRoot<T, Base> {
+class RefTreeNode : public utils::RefTreeRoot<T, Base> {
   public:
 	using type = T;
 	using Root = RefTreeRoot<T, Base>;
@@ -173,4 +173,4 @@ template <typename U>
 T* RefTreeNode<T, Base>::cast(U obj) noexcept {
 	return static_cast<T*>(obj);
 }
-} // namespace le
+} // namespace le::utils

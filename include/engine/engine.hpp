@@ -11,7 +11,7 @@
 #include <engine/utils/engine_stats.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/render/renderer_fwd_swp.hpp>
+#include <graphics/render/renderers.hpp>
 #include <graphics/render/rgba.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 #include <window/instance.hpp>
@@ -86,7 +86,7 @@ class Engine : public Service<Engine> {
 	std::optional<Context::Frame> beginDraw();
 	bool render(Context::Frame const& draw, Drawer& drawer, RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
 
-	template <graphics::concrete_renderer Rd = graphics::RendererFwdSwp, typename... Args>
+	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>
 	bool boot(Boot::CreateInfo boot, Args&&... args);
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }

@@ -1,9 +1,42 @@
 #include <graphics/context/device.hpp>
-#include <graphics/render/renderer_fwd_off.hpp>
+#include <graphics/render/renderers.hpp>
 
 namespace le::graphics {
-RendererFwdOff::RendererFwdOff(not_null<Swapchain*> swapchain, Buffering buffering) : ARenderer(swapchain, buffering) {
-	m_storage = make({m_colourFormat, {}}, Transition::eCommandBuffer);
+RendererFSR::RendererFSR(not_null<Swapchain*> swapchain, Buffering buffering) : ARenderer(swapchain, buffering) { m_storage = make(tech_v.transition); }
+
+std::optional<ARenderer::Draw> RendererFSR::beginFrame() {
+	if (auto acq = acquire()) {
+		RenderTarget const target{acq->image, depthImage(acq->image.extent)};
+		return Draw{target, m_storage.buf.get().cb};
+	}
+	return std::nullopt;
+}
+
+void RendererFSR::endDraw(RenderTarget const& target) {
+	auto& buf = m_storage.buf.get();
+	buf.cb.endRenderPass();
+	m_device->m_layouts.drawn(target.depth.image);
+}
+
+RendererFSC::RendererFSC(not_null<Swapchain*> swapchain, Buffering buffering) : ARenderer(swapchain, buffering) { m_storage = make(tech_v.transition); }
+
+std::optional<RendererFSC::Draw> RendererFSC::beginFrame() {
+	if (auto acq = acquire()) {
+		RenderTarget const target{acq->image, depthImage(acq->image.extent)};
+		return Draw{target, m_storage.buf.get().cb};
+	}
+	return std::nullopt;
+}
+
+void RendererFSC::endDraw(RenderTarget const& target) {
+	auto& buf = m_storage.buf.get();
+	buf.cb.endRenderPass();
+	m_device->m_layouts.transition<lt::TransferPresent>(buf.cb, target.colour.image);
+	m_device->m_layouts.drawn(target.depth.image);
+}
+
+RendererFOC::RendererFOC(not_null<Swapchain*> swapchain, Buffering buffering) : ARenderer(swapchain, buffering) {
+	m_storage = make(tech_v.transition, {m_colourFormat, {}});
 	Image::CreateInfo colourInfo;
 	colourInfo.createInfo.format = m_colourFormat;
 	colourInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -22,7 +55,7 @@ RendererFwdOff::RendererFwdOff(not_null<Swapchain*> swapchain, Buffering bufferi
 	renderScale(0.75f);
 }
 
-std::optional<RendererFwdOff::Draw> RendererFwdOff::beginFrame() {
+std::optional<RendererFOC::Draw> RendererFOC::beginFrame() {
 	if (auto acq = acquire()) {
 		auto& buf = m_storage.buf.get();
 		m_swapchainImage = acq->image;
@@ -34,7 +67,7 @@ std::optional<RendererFwdOff::Draw> RendererFwdOff::beginFrame() {
 	return std::nullopt;
 }
 
-void RendererFwdOff::endDraw(RenderTarget const& target) {
+void RendererFOC::endDraw(RenderTarget const& target) {
 	auto& buf = m_storage.buf.get();
 	buf.cb.endRenderPass();
 	m_device->m_layouts.transition<lt::TransferSrc>(buf.cb, target.colour.image);

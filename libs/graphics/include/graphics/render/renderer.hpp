@@ -11,6 +11,19 @@
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
+
+namespace rtech {
+enum class Transition { eRenderPass, eCommandBuffer };
+enum class Approach { eForward, eDeferred, eOther };
+enum class Target { eSwapchain, eOffScreen };
+
+struct Tech {
+	Approach approach{};
+	Target target{};
+	Transition transition{};
+};
+} // namespace rtech
+
 class Swapchain;
 
 class ARenderer;
@@ -31,15 +44,10 @@ struct ImageMaker {
 
 class ARenderer {
   public:
-	enum class Transition { eRenderPass, eCommandBuffer };
-	enum class Approach { eForward, eDeferred, eOther };
-	enum class Target { eSwapchain, eOffScreen };
-
-	struct Tech {
-		Transition transition{};
-		Approach approach{};
-		Target target{};
-	};
+	using Tech = rtech::Tech;
+	using Approach = rtech::Approach;
+	using Target = rtech::Target;
+	using Transition = rtech::Transition;
 
 	struct Attachment {
 		LayoutPair layouts;
@@ -72,8 +80,8 @@ class ARenderer {
 
 	virtual Tech tech() const noexcept = 0;
 
-	virtual vk::RenderPass renderPass3D() const noexcept = 0;
-	virtual vk::RenderPass renderPassUI() const noexcept = 0;
+	virtual vk::RenderPass renderPass3D() const noexcept { return *m_storage.renderPass; }
+	virtual vk::RenderPass renderPassUI() const noexcept { return *m_storage.renderPass; }
 
 	virtual std::optional<Draw> beginFrame() = 0;
 	virtual void beginDraw(RenderTarget const& target, FrameDrawer& drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth);
@@ -98,7 +106,7 @@ class ARenderer {
 		Deferred<vk::RenderPass> renderPass;
 	};
 
-	Storage make(TPair<vk::Format> colourDepth, Transition transition) const;
+	Storage make(Transition transition, TPair<vk::Format> colourDepth = {}) const;
 	kt::result<Swapchain::Acquire> acquire(bool begin = true);
 
 	Storage m_storage;

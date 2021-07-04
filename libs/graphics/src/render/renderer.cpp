@@ -116,8 +116,10 @@ void ARenderer::beginDraw(RenderTarget const& target, FrameDrawer& drawer, Scree
 	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
 	auto& buf = m_storage.buf.get();
 	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, *m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
-	m_device->m_layouts.transition<lt::ColourWrite>(buf.cb, target.colour.image);
-	m_device->m_layouts.transition<lt::DepthStencilWrite>(buf.cb, target.depth.image, depthStencil);
+	if (tech().transition != Transition::eRenderPass) {
+		m_device->m_layouts.transition<lt::ColourWrite>(buf.cb, target.colour.image);
+		m_device->m_layouts.transition<lt::DepthStencilWrite>(buf.cb, target.depth.image, depthStencil);
+	}
 	buf.cb.beginRenderPass(*m_storage.renderPass, *buf.framebuffer, target.colour.extent, info);
 	buf.cb.setViewport(viewport(target.colour.extent, view));
 	buf.cb.setScissor(scissor(target.colour.extent, view));
@@ -153,7 +155,7 @@ bool ARenderer::renderScale(f32 rs) noexcept {
 	return false;
 }
 
-ARenderer::Storage ARenderer::make(TPair<vk::Format> colourDepth, Transition transition) const {
+ARenderer::Storage ARenderer::make(Transition transition, TPair<vk::Format> colourDepth) const {
 	Storage ret;
 	for (u8 i = 0; i < m_fence.buffering().value; ++i) { ret.buf.push({m_device, vk::CommandPoolCreateFlagBits::eTransient}); }
 	Attachment colour, depth;

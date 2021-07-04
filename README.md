@@ -1,6 +1,6 @@
 # Little Engine Vulkan
 
-An attempt to write a simple 3D game engine with a (mostly hard-coded) Vulkan renderer.
+A simple C++20 3D game engine using a customizable Vulkan renderer.
 
 [Documentation](https://karnkaul.github.io/levk-docs) is located here (WIP).
 
@@ -27,36 +27,45 @@ An attempt to write a simple 3D game engine with a (mostly hard-coded) Vulkan re
 - Multi-threaded task scheduler
 - Entity-Component framework
 - JSON de/serialisation
-- Customizable Editor (powered by Dear ImGui)
+- Customizable Editor
 
 ### Limitations
 
 - No dynamic library support on Windows
 - Single window instance
 - Single draw command buffer
-- Hard-coded single render pass (for time being)
 
 ### Usage
 
-- Clone this repo (manually initialising git submodules is not required, it will be done by the CMake script)
+- Clone this repo (manually initializing git submodules is not required, it will be done by the CMake script)
 - Use CMake and a generator of your choice
 
 ```
 # Examples
-cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ . -B out/Debug
+cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ . -B out/db
 # OR
-cmake . -B out/Debug
-ccmake out/Debug
+cmake -S --preset=levk-db
 ```
 
 - Adjust CMake variables as needed: all variables pertaining to this project are prefixed with `LEVK`
 - Build engine / demo / tests
 
 ```
-cmake --build out/Debug
+cmake --build out/db
 ```
 
 - Debug/Run desired executables / Link `levk-engine` to custom application
+
+### External Dependencies
+
+- [{fmt}](https://github.com/fmtlib/fmt)
+- [GLFW](https://github.com/glfw/glfw)
+- [glm](https://github.com/g-truc/glm)
+- [Dear ImGui](https://github.com/ocornut/imgui)
+- [PhysicsFS]()
+- [stb](https://github.com/nothings/stb)
+- [tiny-obj-loader](https://github.com/tinyobjloader/tinyobjloader)
+- [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
 
 [Original repository](https://github.com/karnkaul/LittleEngineVk)
 

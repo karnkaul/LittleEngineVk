@@ -14,8 +14,6 @@ constexpr StageAccess depthWrite = {vPSFB::eEarlyFragmentTests | vPSFB::eLateFra
 constexpr StageAccess colourWrite = {vPSFB::eColorAttachmentOutput, vAFB::eColorAttachmentWrite};
 constexpr vk::ImageAspectFlags depthStencil = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
 
-enum class Transition { eColourWrite, eDepthWrite };
-
 class LayoutState {
   public:
 	vk::ImageLayout get(vk::Image img) const;

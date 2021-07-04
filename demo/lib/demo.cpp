@@ -7,7 +7,6 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
-#include <engine/camera.hpp>
 #include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
@@ -16,6 +15,7 @@
 #include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
+#include <graphics/render/renderers.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/bootstrap.hpp>
@@ -26,6 +26,9 @@
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
 #include <engine/utils/exec.hpp>
+
+#include <core/utils/enumerate.hpp>
+#include <engine/render/descriptor_helper.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -59,7 +62,7 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 using namespace dts;
 
 struct TaskErr : error_handler_t {
-	void operator()(std::runtime_error const& err, u64) const override { ENSURE(false, err.what()); }
+	void operator()(std::runtime_error const& err, u64) const override { ensure(false, err.what()); }
 };
 TaskErr g_taskErr;
 
@@ -183,6 +186,8 @@ struct PlayerController {
 
 class DrawDispatch {
   public:
+	using Camera = graphics::Camera;
+
 	not_null<graphics::VRAM*> m_vram;
 
 	struct {
@@ -194,20 +199,12 @@ class DrawDispatch {
 		graphics::Texture const* black = {};
 	} m_defaults;
 
-	struct SetBind {
-		u32 set;
-		u32 bind;
-		bool valid;
-
-		SetBind(graphics::ShaderInput const& si, u32 s, u32 b) : set(s), bind(b), valid(si.contains(s, b)) {}
-
-		explicit operator bool() const noexcept { return valid; }
-	};
-
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 fb, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups3D, Span<SceneDrawer::Group const> groupsUI) {
-		ViewMats const v{cam.view(), cam.perspective(fb), cam.ortho(fb), {cam.position, 1.0f}};
+	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights, Span<SceneDrawer::Group const> g3D, Span<SceneDrawer::Group const> gUI) {
+		m_view.lights.swap();
+		m_view.mats.swap();
+		ViewMats const v{cam.view(), cam.perspective(scene), cam.ortho(scene), {cam.position, 1.0f}};
 		m_view.mats.write(v);
 		if (!lights.empty()) {
 			DirLights dl;
@@ -215,65 +212,44 @@ class DrawDispatch {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : groups3D) { update(group); }
-		for (auto& group : groupsUI) { update(group); }
+		for (auto& group : g3D) { update(group); }
+		for (auto& group : gUI) { update(group); }
 	}
 
 	void update(SceneDrawer::Group const& group) const {
-		auto& si = group.group.pipeline->shaderInput();
-		si.update(m_view.mats, 0, 0, 0);
-		if (group.group.order >= 0 && si.contains(0, 1)) { si.update(m_view.lights, 0, 1, 0); }
-		auto const sb10 = SetBind(si, 1, 0);
-		auto const sb20 = SetBind(si, 2, 0);
-		auto const sb21 = SetBind(si, 2, 1);
-		auto const sb22 = SetBind(si, 2, 2);
-		auto const sb30 = SetBind(si, 3, 0);
-		std::size_t primIdx = 0;
-		std::size_t itemIdx = 0;
+		DescriptorMap map(group.group.pipeline);
+		auto set0 = map.set(0);
+		set0.update(0, m_view.mats);
+		if (group.group.order >= 0) { set0.update(1, m_view.lights); }
 		for (SceneDrawer::Item const& item : group.items) {
 			if (!item.primitives.empty()) {
-				if (sb10) {
-					graphics::Buffer const buf = m_vram->makeBO(item.model, vk::BufferUsageFlagBits::eUniformBuffer);
-					si.update(buf, sb10.set, sb10.bind, itemIdx);
-				}
-				++itemIdx;
+				map.set(1).update(0, item.model);
 				for (Primitive const& prim : item.primitives) {
 					Material const& mat = prim.material;
 					if (group.group.order < 0) {
-						ENSURE(mat.map_Kd, "Null cubemap");
-						si.update(*mat.map_Kd, 0, 1, primIdx);
+						ensure(mat.map_Kd, "Null cubemap");
+						set0.update(1, *mat.map_Kd);
 					}
-					if (sb20) { si.update(mat.map_Kd ? *mat.map_Kd : *m_defaults.white, sb20.set, sb20.bind, primIdx); }
-					if (sb21) { si.update(mat.map_d ? *mat.map_d : *m_defaults.white, sb21.set, sb21.bind, primIdx); }
-					if (sb22) { si.update(mat.map_Ks ? *mat.map_Ks : *m_defaults.black, sb22.set, sb22.bind, primIdx); }
-					if (sb30) {
-						auto const sm = ShadeMat::make(mat);
-						graphics::Buffer const buf = m_vram->makeBO(sm, vk::BufferUsageFlagBits::eUniformBuffer);
-						si.update(buf, sb30.set, sb30.bind, primIdx);
-					}
-					++primIdx;
+					auto set2 = map.set(2);
+					set2.update(0, mat.map_Kd ? *mat.map_Kd : *m_defaults.white);
+					set2.update(1, mat.map_d ? *mat.map_d : *m_defaults.white);
+					set2.update(2, mat.map_Ks ? *mat.map_Ks : *m_defaults.black);
+					map.set(3).update(0, ShadeMat::make(mat));
 				}
 			}
 		}
 	}
 
-	void swap() {
-		m_view.mats.swap();
-		m_view.lights.swap();
-	}
-
 	void draw(graphics::CommandBuffer cb, SceneDrawer::Group const& group) const {
-		graphics::Pipeline const& pipe = *group.group.pipeline;
-		pipe.bindSet(cb, 0, 0);
-		std::size_t itemIdx = 0;
-		std::size_t primIdx = 0;
+		DescriptorBinder bind(group.group.pipeline, cb);
+		bind(0);
 		for (SceneDrawer::Item const& d : group.items) {
 			if (!d.primitives.empty()) {
-				pipe.bindSet(cb, 1, itemIdx++);
+				bind(1);
 				if (d.scissor) { cb.setScissor(*d.scissor); }
 				for (Primitive const& prim : d.primitives) {
-					pipe.bindSet(cb, {2, 3}, primIdx++);
-					ENSURE(prim.mesh, "Null mesh");
+					bind({2, 3});
+					ensure(prim.mesh, "Null mesh");
 					prim.mesh->draw(cb);
 				}
 			}
@@ -288,18 +264,19 @@ class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
 	struct Data {
 		Span<SceneDrawer::Group const> groups3D;
 		Span<SceneDrawer::Group const> groupsUI;
-		vk::Viewport viewport;
-		vk::Rect2D scissor;
 		not_null<DrawDispatch*> dispatch;
 	};
 
 	RenderDisp(Data d) : m_data(d) {}
 	~RenderDisp() override {
-		for (auto pipe : m_pipes) { pipe->shaderInput().swap(); }
+		for (auto pipe : m_pipes) { pipe->swap(); }
 	}
 
 	void draw3D(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groups3D, cb); }
-	void drawUI(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb); }
+	void drawUI(CommandBuffer cb) override {
+		draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb);
+		DearImGui::render(cb);
+	}
 
   private:
 	Data m_data;
@@ -673,14 +650,15 @@ class App : public input::Receiver {
 		}
 		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
 		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
+		auto const& state = m_eng->inputFrame().state;
 		if (pc.active) {
 			auto& node = m_data.registry.get<SceneNode>(m_data.player);
-			m_data.registry.get<PlayerController>(m_data.player).tick(m_eng->inputState(), node, dt);
+			m_data.registry.get<PlayerController>(m_data.player).tick(state, node, dt);
 			glm::vec3 const& forward = node.orientation() * -graphics::front;
 			cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 			cam.face(forward);
 		} else {
-			cam.tick(m_eng->inputState(), dt, m_eng->desktop());
+			cam.tick(state, dt, m_eng->desktop());
 		}
 		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
@@ -698,12 +676,11 @@ class App : public input::Receiver {
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
 				gr3D = SceneDrawer::groups(m_data.registry, true);
 				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
-				m_drawDispatch.write(*cam, frame->target.colour.extent, m_data.dirLights, gr3D, grUI);
+				m_drawDispatch.write(*cam, m_eng->sceneSpace(), m_data.dirLights, gr3D, grUI);
 			}
 			// draw
-			RenderDisp rd{{gr3D, grUI, m_eng->viewport(), m_eng->scissor(), &m_drawDispatch}};
+			RenderDisp rd{{gr3D, grUI, &m_drawDispatch}};
 			m_eng->render(*frame, rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
-			m_drawDispatch.swap();
 		}
 	}
 
@@ -787,7 +764,9 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 			if (flags.test(Flag::ePaused)) { continue; }
 			if (flags.test(Flag::eInit)) {
 				app.reset();
-				engine.boot(bootInfo);
+				using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
+				engine.boot<renderer_t>(bootInfo);
+				// engine.boot(bootInfo);
 				app.emplace(&engine, reader);
 			}
 			if (flags.test(Flag::eTerm)) {

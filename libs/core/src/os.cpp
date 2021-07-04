@@ -24,21 +24,14 @@ io::Path g_exeLocation;
 io::Path g_exePath;
 io::Path g_workingDir;
 std::string g_exePathStr;
-std::vector<std::string_view> g_args;
-
-std::vector<std::string_view> buildArgs(os::Args const& args) {
-	std::vector<std::string_view> ret;
-	ret.reserve(std::size_t(args.argc));
-	for (int i = 0; i < args.argc; ++i) { ret.push_back(args.argv[std::size_t(i)]); }
-	return ret;
-}
+os::Args g_args;
 } // namespace
 
-void os::args(Args const& args) {
+void os::args(Args args) {
 	g_workingDir = io::absolute(io::current_path());
-	g_args = buildArgs(args);
+	g_args = args;
 	if (!g_args.empty()) {
-		io::Path const arg0 = io::absolute(g_args.front());
+		io::Path const arg0 = io::absolute(g_args[0]);
 		if (!arg0.empty() && io::is_regular_file(arg0)) {
 			g_exePath = arg0.parent_path();
 			while (g_exePath.filename().string() == ".") { g_exePath = g_exePath.parent_path(); }
@@ -50,6 +43,8 @@ void os::args(Args const& args) {
 std::string os::argv0() { return g_exeLocation.generic_string(); }
 
 std::string os::exeName() { return g_exeLocation.filename().string(); }
+
+os::Args os::args() noexcept { return g_args; }
 
 io::Path os::dirPath(Dir dir) {
 	switch (dir) {
@@ -76,8 +71,6 @@ io::Path os::androidStorage([[maybe_unused]] ErasedPtr androidApp, [[maybe_unuse
 #endif
 	return io::Path();
 }
-
-std::vector<std::string_view> const& os::args() noexcept { return g_args; }
 
 bool os::debugging() {
 	bool ret = false;

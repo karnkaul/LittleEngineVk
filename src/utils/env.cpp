@@ -2,14 +2,15 @@
 #include <sstream>
 #include <core/io/reader.hpp>
 #include <core/os.hpp>
-#include <engine/config.hpp>
+#include <core/span.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/env.hpp>
+#include <engine/utils/logger.hpp>
 
 namespace le {
-env::Run env::init(int argc, char* const argv[], Spec::cmd_map_t cmds) {
+env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	Run ret = Run::resume;
-	os::args({argc, argv});
+	os::args(os::Args(argv, std::size_t(argc)));
 	{
 		Spec::cmd_t gpu;
 		gpu.description = "List / select from available GPUs";
@@ -77,7 +78,7 @@ kt::result<io::Path, std::string> env::findData(io::Path pattern, u8 maxHeight) 
 	auto const root = os::dirPath(os::Dir::eExecutable);
 	auto data = io::FileReader::findUpwards(root, pattern, maxHeight);
 	if (!data) {
-		return fmt::format("[{}] {} not found (searched {} levels up from {})", conf::g_name, pattern.generic_string(), maxHeight, root.generic_string());
+		return fmt::format("[{}] {} not found (searched {} levels up from {})", utils::g_name, pattern.generic_string(), maxHeight, root.generic_string());
 	}
 	return std::move(data).value();
 }

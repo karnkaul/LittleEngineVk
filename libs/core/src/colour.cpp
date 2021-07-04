@@ -9,7 +9,7 @@
 
 namespace le {
 Colour::Colour(std::string_view hex) noexcept {
-	ENSURE(!hex.empty(), "Empty hex string!");
+	ensure(!hex.empty(), "Empty hex string!");
 	if (hex[0] == '#') { hex = hex.substr(1); }
 	std::string hexStr(hex);
 	while (hexStr.length() < 3) { hexStr += "0"; }

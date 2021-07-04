@@ -14,8 +14,8 @@ void showDemo() {
 }
 
 bool g_showStats = false;
-void showStats() {
-	if (auto p = Pane("Engine Stats", {200.0f, 200.0f}, {200.0f, 200.0f}, &g_showStats, false)) {
+void showStats(graphics::ARenderer& renderer) {
+	if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_showStats, false)) {
 		auto const& s = Engine::stats();
 		auto t = Text(fmt::format("FPS: {}", s.frame.rate));
 		t = Text(fmt::format("Frame #: {}", s.frame.count));
@@ -26,6 +26,13 @@ void showStats() {
 		t = Text(fmt::format("Images: {:.1f}{}", isize, iunit));
 		t = Text(fmt::format("Draw calls: {}", s.gfx.drawCalls));
 		t = Text(fmt::format("Triangles: {}", s.gfx.triCount));
+		t = Text(fmt::format("Window: {}x{}", s.gfx.extents.window.x, s.gfx.extents.window.y));
+		t = Text(fmt::format("Swapchain: {}x{}", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
+		t = Text(fmt::format("Renderer: {}x{}", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
+		Styler st(Style::eSeparator);
+		f32 rs = renderer.renderScale();
+		TWidget<f32> rsw("Render Scale", rs, 0.03f, 0.0f, {0.5f, 4.0f});
+		renderer.renderScale(rs);
 	}
 }
 } // namespace
@@ -45,14 +52,14 @@ MainMenu::MainMenu() {
 #endif
 }
 
-void MainMenu::operator()([[maybe_unused]] MenuList const& extras) const {
+void MainMenu::operator()([[maybe_unused]] MenuList const& extras, [[maybe_unused]] graphics::ARenderer& renderer) const {
 #if defined(LEVK_USE_IMGUI)
 	if (ImGui::BeginMainMenuBar()) {
 		for (auto const& tree : m_main.trees) { MenuBar::walk(tree); }
 		for (auto const& tree : extras.trees) { MenuBar::walk(tree); }
 		ImGui::EndMainMenuBar();
 	}
-	if (g_showStats) { showStats(); }
+	if (g_showStats) { showStats(renderer); }
 #endif
 }
 } // namespace le::edi

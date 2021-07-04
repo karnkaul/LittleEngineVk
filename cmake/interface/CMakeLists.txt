@@ -1,3 +1,5 @@
+project(levk-interface)
+
 # Interface library target
 set(COMPILE_DEFS
 	_UNICODE
@@ -29,22 +31,6 @@ endif()
 if(WINDOWS_CLANG AND MSVC)
 	list(APPEND COMPILE_OPTS /W4 -utf-8)
 endif()
-if(PLATFORM STREQUAL "Linux")
-	set(LINK_OPTS
-		-no-pie         # Build as application
-		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
-		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
-	)
-elseif(PLATFORM STREQUAL "Win64" AND NOT WINDOWS_GCC)
-	if(MSVC)
-		set(LINK_OPTS
-			/ENTRY:mainCRTStartup                              # Link to main() and not WinMain()
-			/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>   # Spawn a console in Debug
-		)
-	else()
-		set(LINK_OPTS -Wl,/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>,/ENTRY:mainCRTStartup)
-	endif()
-endif()
 if(LINUX_CLANG AND NOT PLATFORM STREQUAL Android AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
 	# Ignore Vulkan.hpp warnings
 	message(STATUS "clang++ ${CMAKE_CXX_COMPILER_VERSION} detected; adding -Wno-deprecated-copy for vulkan.hpp")
@@ -59,10 +45,32 @@ endif()
 set(COMPILE_FTRS cxx_std_20)
 set(LINK_LIBS $<$<STREQUAL:${PLATFORM},Linux>:pthread stdc++fs dl>)
 
-add_library(levk-interface INTERFACE)
-add_library(levk::interface ALIAS levk-interface)
-target_compile_features(levk-interface INTERFACE ${COMPILE_FTRS})
-target_compile_definitions(levk-interface INTERFACE ${COMPILE_DEFS})
-target_compile_options(levk-interface INTERFACE ${COMPILE_OPTS})
-target_link_options(levk-interface INTERFACE ${LINK_OPTS})
-target_link_libraries(levk-interface INTERFACE ${LINK_LIBS})
+# library interface
+add_library(${PROJECT_NAME} INTERFACE)
+add_library(levk::interface ALIAS ${PROJECT_NAME})
+target_compile_features(${PROJECT_NAME} INTERFACE ${COMPILE_FTRS})
+target_compile_definitions(${PROJECT_NAME} INTERFACE ${COMPILE_DEFS})
+target_compile_options(${PROJECT_NAME} INTERFACE ${COMPILE_OPTS})
+target_link_libraries(${PROJECT_NAME} INTERFACE ${LINK_LIBS})
+
+if(PLATFORM STREQUAL "Linux")
+	set(LINK_OPTS
+		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
+		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
+	)
+elseif(PLATFORM STREQUAL "Win64" AND NOT WINDOWS_GCC)
+	if(MSVC)
+		set(LINK_OPTS
+			/ENTRY:mainCRTStartup                              # Link to main() and not WinMain()
+			/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>   # Spawn a console in Debug
+		)
+	else()
+		set(LINK_OPTS -Wl,/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>,/ENTRY:mainCRTStartup)
+	endif()
+endif()
+
+# executable interface
+add_library(${PROJECT_NAME}-exe INTERFACE)
+add_library(levk::interface::exe ALIAS ${PROJECT_NAME}-exe)
+target_link_options(${PROJECT_NAME}-exe INTERFACE ${LINK_OPTS})
+target_link_libraries(${PROJECT_NAME}-exe INTERFACE levk::interface)

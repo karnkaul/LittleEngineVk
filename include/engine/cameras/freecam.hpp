@@ -1,14 +1,14 @@
 #pragma once
 #include <core/time.hpp>
-#include <engine/camera.hpp>
 #include <engine/input/control.hpp>
+#include <graphics/render/camera.hpp>
 
 namespace le {
 namespace window {
 class DesktopInstance;
 }
 
-class FreeCam : public Camera {
+class FreeCam : public graphics::Camera {
   public:
 	using Desktop = window::DesktopInstance;
 

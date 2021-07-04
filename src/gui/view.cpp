@@ -22,23 +22,22 @@ TreeNode* View::leafHit(glm::vec2 point) const noexcept {
 	return nullptr;
 }
 
-void View::update(Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset) {
+void View::update(input::Space const& space, glm::vec2 offset) {
 	if (!destroyed()) {
-		input::Space const space(fbSize, wSize, view);
-		m_rect.size = m_canvas.size(fbSize);
-		m_rect.origin = m_canvas.centre(fbSize) + offset;
+		m_rect.size = m_canvas.size(space.display.swapchain);
+		m_rect.origin = m_canvas.centre(space.display.swapchain) + offset;
 		onUpdate(space);
 		for (auto& node : m_ts) { node->update(space); }
 	}
 }
 
-void ViewStack::update(input::State const& state, Viewport const& view, glm::vec2 fbSize, glm::vec2 wSize, glm::vec2 offset) {
+void ViewStack::update(input::Frame const& frame, glm::vec2 offset) {
 	std::erase_if(m_ts, [](auto& stack) { return stack->destroyed(); });
-	for (auto& v : m_ts) { v->update(view, fbSize, wSize, offset); }
+	for (auto& v : m_ts) { v->update(frame.space, offset); }
 	for (auto it = m_ts.rbegin(); it != m_ts.rend(); ++it) {
 		auto& v = *it;
 		for (auto& node : v->nodes()) {
-			if (auto widget = dynamic_cast<Widget*>(node.get())) { widget->onInput(state); }
+			if (auto widget = dynamic_cast<Widget*>(node.get())) { widget->onInput(frame.state); }
 		}
 		if (v->m_block == View::Block::eBlock) { break; }
 	}

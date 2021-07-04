@@ -6,7 +6,7 @@
 #include <core/log.hpp>
 #include <core/utils/algo.hpp>
 #include <engine/assets/asset_loader.hpp>
-#include <engine/config.hpp>
+#include <engine/utils/logger.hpp>
 #include <kt/tmutex/shared_tmutex.hpp>
 
 namespace le {
@@ -142,11 +142,11 @@ template <typename U>
 Asset<T> TAssetMap<T>::add(AssetStore::OnModified& onMod, io::Path const& id, U&& u) {
 	auto idStr = id.generic_string();
 	auto const [it, bNew] = m_storage.insert({idStr, TAsset<T>{}});
-	if (!bNew) { conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", idStr); }
+	if (!bNew) { utils::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", idStr); }
 	TAsset<T>& asset = it->second;
 	asset.t.emplace(std::forward<U>(u));
 	asset.loadInfo.reset();
-	conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", idStr);
+	utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", idStr);
 	asset.id = std::move(idStr);
 	return makeAsset<T>(asset, onMod);
 }
@@ -158,18 +158,18 @@ std::optional<TAsset<T>> TAssetMap<T>::load(AssetStore const& store, AssetStore:
 	asset.loadInfo = AssetLoadInfo<T>(&store, &res, &onMod, std::forward<Data>(data), id);
 	asset.t = loader.load(*asset.loadInfo);
 	if (asset.t) {
-		conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", id);
+		utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", id);
 		asset.id = std::move(id);
 		return asset;
 	}
-	conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to load [{}]!", id);
+	utils::g_log.log(dl::level::warning, 0, "[Asset] Failed to load [{}]!", id);
 	return std::nullopt;
 }
 template <typename T>
 Asset<T> TAssetMap<T>::insert(TAsset<T>&& asset, AssetStore::OnModified& onMod) {
 	Hash const id = asset.id;
 	auto const [it, bNew] = m_storage.insert({id, std::move(asset)});
-	if (!bNew) { conf::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", asset.id); }
+	if (!bNew) { utils::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", asset.id); }
 	return makeAsset<T>(it->second, onMod);
 }
 template <typename T>
@@ -177,10 +177,10 @@ bool TAssetMap<T>::reload(AssetStore const& store, Hash id) {
 	if (auto it = m_storage.find(id); it != m_storage.end()) {
 		auto& asset = it->second;
 		if (store.reloadAsset<T>(*asset.t, *asset.loadInfo)) {
-			conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
+			utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
 			return true;
 		} else {
-			conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to reload [{}]!", asset.id);
+			utils::g_log.log(dl::level::warning, 0, "[Asset] Failed to reload [{}]!", asset.id);
 		}
 	}
 	return false;
@@ -188,7 +188,7 @@ bool TAssetMap<T>::reload(AssetStore const& store, Hash id) {
 template <typename T>
 bool TAssetMap<T>::unload(Hash id) {
 	if (auto it = m_storage.find(id); it != m_storage.end()) {
-		conf::g_log.log(dl::level::info, 1, "-- [Asset] [{}] unloaded", it->second.id);
+		utils::g_log.log(dl::level::info, 1, "-- [Asset] [{}] unloaded", it->second.id);
 		m_storage.erase(it);
 		return true;
 	}
@@ -208,10 +208,10 @@ u64 TAssetMap<T>::update(AssetStore const& store) {
 	for (auto& [_, asset] : m_storage) {
 		if (asset.t && asset.loadInfo && asset.loadInfo->modified()) {
 			if (store.reloadAsset<T>(*asset.t, *asset.loadInfo)) {
-				conf::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
+				utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
 				++ret;
 			} else {
-				conf::g_log.log(dl::level::warning, 0, "[Asset] Failed to reload [{}]!", asset.id);
+				utils::g_log.log(dl::level::warning, 0, "[Asset] Failed to reload [{}]!", asset.id);
 			}
 		}
 	}
@@ -269,7 +269,7 @@ Asset<T> AssetStore::get(Hash id) const {
 		auto& store = lock.get().get<T>().m_storage;
 		if (auto it = store.find(id); it != store.end() && it->second.t) { return detail::makeAsset<T>(it->second, kt::tlock(m_onModified).get()[id]); }
 	}
-	ENSURE(false, "Asset not found!");
+	ensure(false, "Asset not found!");
 	throw std::runtime_error("Asset not present");
 }
 template <typename T>

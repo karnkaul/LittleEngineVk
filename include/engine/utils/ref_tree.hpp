@@ -2,8 +2,9 @@
 #include <forward_list>
 #include <core/ensure.hpp>
 #include <core/not_null.hpp>
+#include <core/std_types.hpp>
 
-namespace le {
+namespace le::utils {
 struct RefTreeBase {};
 
 template <typename T, typename Base = RefTreeBase>
@@ -43,7 +44,7 @@ class RefTreeRoot : public Base {
 };
 
 template <typename T, typename Base = RefTreeBase>
-class RefTreeNode : public RefTreeRoot<T, Base> {
+class RefTreeNode : public utils::RefTreeRoot<T, Base> {
   public:
 	using type = T;
 	using Root = RefTreeRoot<T, Base>;
@@ -82,7 +83,7 @@ bool RefTreeRoot<T, Base>::isRoot() const noexcept {
 template <typename T, typename Base>
 void RefTreeRoot<T, Base>::addChild(not_null<type*> child) {
 	if constexpr (levk_debug) {
-		for (auto const& ch : m_children) { ENSURE(child != ch, "Duplicate child!"); }
+		for (auto const& ch : m_children) { ensure(child != ch, "Duplicate child!"); }
 	}
 	m_children.push_front(child);
 }
@@ -147,7 +148,7 @@ RefTreeNode<T, Base>::~RefTreeNode() {
 }
 template <typename T, typename Base>
 T& RefTreeNode<T, Base>::parent(not_null<Root*> parent) noexcept {
-	ENSURE(parent.get() != this, "Setting parent to self!");
+	ensure(parent.get() != this, "Setting parent to self!");
 	if (parent.get() != this && m_parent != parent) {
 		m_parent->removeChild(cast(this));
 		m_parent = parent;
@@ -172,4 +173,4 @@ template <typename U>
 T* RefTreeNode<T, Base>::cast(U obj) noexcept {
 	return static_cast<T*>(obj);
 }
-} // namespace le
+} // namespace le::utils

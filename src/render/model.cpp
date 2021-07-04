@@ -153,7 +153,7 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader)
 	for (auto const& shape : m_shapes) { ret.meshes.push_back(processShape(ret, shape)); }
 	for (auto& texture : ret.textures) {
 		auto bytes = reader.bytes(texture.filename);
-		ENSURE(bytes.has_value(), "Texture not found!");
+		ensure(bytes.has_value(), "Texture not found!");
 		if (bytes) { texture.bytes = std::move(bytes).value(); }
 	}
 	return Model::Result<Model::CreateInfo>(std::move(ret));
@@ -321,7 +321,7 @@ Model::Result<Span<Primitive const>> Model::construct(not_null<VRAM*> vram, Crea
 		if (!m.matIndices.empty()) {
 			auto const& mat = info.materials[m.matIndices.front()];
 			auto const it = materials.find(mat.hash);
-			ENSURE(it != materials.end(), "Invalid hash");
+			ensure(it != materials.end(), "Invalid hash");
 			if (it != materials.end()) { prim.material = it->second; }
 		}
 		storage.primitives.push_back(prim);

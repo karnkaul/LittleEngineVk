@@ -33,6 +33,8 @@ constexpr T bestFit(U&& all, V&& desired, T fallback) noexcept {
 
 struct SwapchainCreateInfo {
 	SwapchainCreateInfo(vk::PhysicalDevice pd, vk::SurfaceKHR surface, Swapchain::CreateInfo const& info) : pd(pd), surface(surface) {
+		usage = vk::ImageUsageFlagBits::eColorAttachment;
+		if (info.transfer) { usage |= vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc; }
 		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
 		std::vector<vk::SurfaceFormatKHR> colourFormats = pd.getSurfaceFormatsKHR(surface);
 		availableModes = pd.getSurfacePresentModesKHR(surface);
@@ -95,13 +97,14 @@ struct SwapchainCreateInfo {
 	vk::Format depthFormat = {};
 	vk::PresentModeKHR presentMode = {};
 	vk::CompositeAlphaFlagBitsKHR compositeAlpha;
+	vk::ImageUsageFlags usage;
 	Swapchain::Display current;
 	u32 imageCount = 0;
 };
 } // namespace
 
 Swapchain::Acquire Swapchain::Storage::current() const {
-	ENSURE(acquired, "Image not acquired");
+	ensure(acquired.has_value(), "Image not acquired");
 	return {images[(std::size_t)*acquired], *acquired};
 }
 
@@ -118,7 +121,6 @@ Swapchain::Swapchain(not_null<VRAM*> vram) : m_vram(vram), m_device(vram->m_devi
 Swapchain::Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 framebufferSize) : Swapchain(vram) {
 	m_metadata.info = info;
 	if (!construct(framebufferSize)) { throw std::runtime_error("Failed to construct Vulkan swapchain"); }
-	// makeRenderPass();
 	auto const extent = m_storage.display.extent;
 	auto const mode = presentModeNames[m_metadata.presentMode];
 	g_log.log(lvl::info, 1, "[{}] Vulkan swapchain constructed [{}x{}] [{}]", g_name, extent.x, extent.y, mode);
@@ -208,7 +210,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		createInfo.imageFormat = info.colourFormat.format;
 		createInfo.imageColorSpace = info.colourFormat.colorSpace;
 		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | info.usage;
 		auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::ePresent);
 		createInfo.imageSharingMode = indices.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
 		createInfo.pQueueFamilyIndices = indices.data();
@@ -234,7 +236,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 	}
 	{
 		auto images = m_device->device().getSwapchainImagesKHR(m_storage.swapchain);
-		ENSURE(images.size() < m_storage.images.capacity(), "Too many swapchain images");
+		ensure(images.size() < m_storage.images.capacity(), "Too many swapchain images");
 		auto const format = info.colourFormat.format;
 		auto const aspectFlags = vk::ImageAspectFlagBits::eColor;
 		for (auto const& image : images) { m_storage.images.push_back({image, m_device->makeImageView(image, format, aspectFlags), m_storage.display.extent}); }

@@ -111,7 +111,7 @@ void AssetListLoader::load(AssetStore& store, AssetList<T> const& list) {
 
 inline bool AssetListLoader::ready(Scheduler const* scheduler) const noexcept {
 	if (!m_staged.empty()) {
-		ENSURE(scheduler, "Scheduler required to check staged tasks");
+		ensure(scheduler, "Scheduler required to check staged tasks");
 		return scheduler->stages_done(m_staged);
 	}
 	return true;

@@ -77,8 +77,8 @@ class Memory {
 
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
-	static void blit(vk::CommandBuffer cb, vk::Image src, vk::Image dst, TPair<vk::Extent3D> extents, LayoutPair layouts,
-					 vk::Filter filter = vk::Filter::eLinear,
+	static void blit(vk::CommandBuffer cb, vk::Image src, vk::Image dst, TPair<vk::Extent3D> extents,
+					 LayoutPair layouts = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal}, vk::Filter filter = vk::Filter::eLinear,
 					 TPair<vk::ImageAspectFlags> aspects = {vk::ImageAspectFlagBits::eColor, vk::ImageAspectFlagBits::eColor});
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
 	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects = vk::ImageAspectFlagBits::eColor, vk::DeviceSize offset = 0,
@@ -208,7 +208,7 @@ inline u64 Memory::bytes(Resource::Type type) const noexcept { return m_allocati
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {
-	ENSURE(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
+	ensure(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
 	return write(&t, sizeof(T), offset);
 }
 } // namespace le::graphics

@@ -27,7 +27,7 @@ std::mutex g_mutex;
 bool verify(entity_t entity) {
 	std::scoped_lock lock(g_mutex);
 	bool const bRet = !utils::contains(g_spawned, entity);
-	ENSURE(bRet, "DUPLICATE");
+	ensure(bRet, "DUPLICATE");
 	g_spawned.insert(entity);
 	return bRet;
 }

@@ -104,9 +104,9 @@ struct DescriptorSet::CreateInfo {
 };
 
 // Manages N DescriptorSet instances (drawables)
-class SetPool {
+class DescriptorPool {
   public:
-	SetPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info);
+	DescriptorPool(not_null<Device*> device, DescriptorSet::CreateInfo const& info);
 
 	DescriptorSet& front();
 	DescriptorSet& index(std::size_t idx);
@@ -137,8 +137,8 @@ class ShaderInput {
 	ShaderInput() = default;
 	ShaderInput(Pipeline const& pipe, Buffering buffering);
 
-	SetPool& set(u32 set);
-	SetPool const& set(u32 set) const;
+	DescriptorPool& pool(u32 set);
+	DescriptorPool const& pool(u32 set) const;
 	void swap();
 	bool empty() const noexcept;
 	bool contains(u32 set) const noexcept;
@@ -148,13 +148,15 @@ class ShaderInput {
 	bool update(Span<Buffer const> buffers, u32 set, u32 bind, std::size_t idx = 0, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx = 0);
 
-	SetPool& operator[](u32 set);
-	SetPool const& operator[](u32 set) const;
+	DescriptorPool& operator[](u32 set);
+	DescriptorPool const& operator[](u32 set) const;
 
 	void clearSets() noexcept;
 
+	VRAM* m_vram{};
+
   private:
-	std::unordered_map<u32, SetPool> m_setPools;
+	std::unordered_map<u32, DescriptorPool> m_setPools;
 };
 
 // impl

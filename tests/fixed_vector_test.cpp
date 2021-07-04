@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <iostream>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <ktest/ktest.hpp>
 
@@ -41,9 +43,14 @@ TEST(fixed_vector_trivial) {
 	EXPECT_EQ(vec0[1], 2);
 	auto vec1 = vec0;
 	EXPECT_EQ(vec0.size(), vec1.size());
+	EXPECT_EQ(vec0.begin(), vec0.cbegin());
 	{
 		std::size_t idx = 0;
 		for (int& i : vec0) { EXPECT_EQ(i, vec1.at(idx++)); }
+	}
+	{
+		std::size_t idx = vec1.size();
+		for (auto it = vec0.rbegin(); it != vec0.rend(); ++it) { EXPECT_EQ(*it, vec1.at(--idx)); }
 	}
 	{
 		auto const& v = vec0;
@@ -52,6 +59,36 @@ TEST(fixed_vector_trivial) {
 	}
 	vec1 = std::move(vec0);
 	EXPECT_EQ(vec0.empty(), true);
+	auto it = vec0.insert(vec0.begin(), 1);
+	EXPECT_EQ(*it, 1);
+	it = vec0.insert(vec0.begin(), 2);
+	EXPECT_EQ(*it, 2);
+	EXPECT_EQ(it, vec0.begin());
+	EXPECT_EQ(*(it + 1), 1);
+	it = vec0.insert(it + 1, 3);
+	EXPECT_EQ(it, vec0.begin() + 1);
+	EXPECT_EQ(*(it - 1), 2);
+	it = vec0.erase(it);
+	EXPECT_EQ(*it, 1);
+	vec0 = {0, 1, 2, 3};
+	auto it0 = vec0.begin() + 1;
+	auto it1 = it0 + 2;
+	it = vec0.erase(it0, it1);
+	EXPECT_EQ(*it, 3);
+	EXPECT_EQ(it + 1, vec0.end());
+	EXPECT_EQ(vec0.size(), 2U);
+	vec0 = {5, 3, 1, 2};
+	std::sort(vec0.begin(), vec0.end());
+	EXPECT_EQ(std::is_sorted(vec0.begin(), vec0.end()), true);
+	vec0.erase(std::remove_if(vec0.begin(), vec0.end(), [](int const i) { return i < 3; }), vec0.end());
+	ASSERT_EQ(vec0.size(), 2U);
+	EXPECT_EQ(vec0[0], 3);
+	EXPECT_EQ(vec0[1], 5);
+	vec1 = {vec0.begin(), vec0.end()};
+	EXPECT_EQ(vec0, vec1);
+	vec1.resize(vec1.capacity(), -1);
+	EXPECT_EQ(vec1.size(), vec1.capacity());
+	EXPECT_EQ(vec1.back(), -1);
 }
 
 TEST(fixed_vector_class) {

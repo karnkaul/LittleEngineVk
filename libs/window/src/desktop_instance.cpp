@@ -268,7 +268,7 @@ DesktopInstance::DesktopInstance(CreateInfo const& info) : InstanceBase(true) {
 	int cY = (mode->height - height) / 2;
 	cX += info.config.centreOffset.x;
 	cY -= info.config.centreOffset.y;
-	ENSURE(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
+	ensure(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
 	glfwWindowHint(GLFW_DECORATED, bDecorated ? 1 : 0);
 	glfwWindowHint(GLFW_RED_BITS, mode->redBits);
 	glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
@@ -421,10 +421,10 @@ Joystick DesktopInstance::joyState(s32 id) const {
 		ret.id = id;
 		int count;
 		auto const axes = glfwGetJoystickAxes((int)id, &count);
-		ENSURE((std::size_t)count < ret.axes.size(), "Too many axes");
+		ensure((std::size_t)count < ret.axes.size(), "Too many axes");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.axes[idx] = axes[idx]; }
 		auto const buttons = glfwGetJoystickButtons((int)id, &count);
-		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
+		ensure((std::size_t)count < ret.buttons.size(), "Too many buttons");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.buttons[idx] = buttons[idx]; }
 		auto const szName = glfwGetJoystickName((int)id);
 		if (szName) { ret.name = szName; }

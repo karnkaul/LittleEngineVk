@@ -20,6 +20,7 @@ class Deferred {
 
 	T operator*() const noexcept { return m_t; }
 	T get() const noexcept { return m_t; }
+	bool active() const noexcept { return m_device != nullptr; }
 
 	T m_t;
 
@@ -34,9 +35,6 @@ class Deferred {
 		m_device = {};
 	}
 };
-
-template <typename T, typename... Args>
-using DeviceFn = T (Device::*)(Args...) const;
 
 template <typename T, typename D = Device::Deleter<T>, typename... Args>
 Deferred<T, D> makeDeferred(not_null<Device*> device, Args&&... args) {

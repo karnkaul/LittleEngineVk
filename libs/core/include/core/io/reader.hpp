@@ -4,6 +4,7 @@
 #include <core/erased_ptr.hpp>
 #include <core/io/path.hpp>
 #include <core/span.hpp>
+#include <core/std_types.hpp>
 #include <kt/result/result.hpp>
 
 namespace le::io {

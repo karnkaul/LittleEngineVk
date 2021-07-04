@@ -57,7 +57,7 @@ class DevicePicker {
 	/// (Returns front element by default)
 	///
 	virtual PhysicalDevice tieBreak(Span<Ref<PhysicalDevice const> const> devices) const {
-		ENSURE(!devices.empty(), "Empty list");
+		ensure(!devices.empty(), "Empty list");
 		return devices.begin()->get();
 	}
 };

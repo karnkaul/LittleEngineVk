@@ -4,54 +4,65 @@
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
-vk::Viewport ARenderer::viewport(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset, glm::vec2 depth) noexcept {
-	DrawViewport view;
+bool ImageMaker::ready(std::optional<Image>& out, Extent2D extent, vk::Format format, std::size_t idx) const noexcept {
+	auto const& info = infos[idx];
+	return out && cast(out->extent()) == extent && info.createInfo.format == format;
+}
+
+Image ImageMaker::make(Extent2D extent, vk::Format format, std::size_t idx) {
+	auto& info = infos[idx];
+	info.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
+	info.createInfo.format = info.view.format = format;
+	return Image(vram, info);
+}
+
+Image& ImageMaker::refresh(std::optional<Image>& out, Extent2D extent, vk::Format format, std::size_t idx) {
+	if (!ready(out, extent, format, idx)) { out = make(extent, format, idx); }
+	return *out;
+}
+
+vk::Viewport ARenderer::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) noexcept {
+	DrawViewport ret;
 	glm::vec2 const e(extent);
-	view.lt = nRect.lt * e + offset;
-	view.rb = nRect.rb * e + offset;
-	view.depth = depth;
-	return utils::viewport(view);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	ret.depth = depth;
+	return utils::viewport(ret);
 }
 
-vk::Rect2D ARenderer::scissor(Extent2D extent, ScreenRect const& nRect, glm::vec2 offset) noexcept {
-	DrawScissor scissor;
+vk::Rect2D ARenderer::scissor(Extent2D extent, ScreenView const& view) noexcept {
+	DrawScissor ret;
 	glm::vec2 const e(extent);
-	scissor.lt = nRect.lt * e + offset;
-	scissor.rb = nRect.rb * e + offset;
-	return utils::scissor(scissor);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	return utils::scissor(ret);
 }
 
-ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering, Extent2D extent, vk::Format depthFormat)
-	: m_swapchain(swapchain), m_device(swapchain->m_device), m_fence(m_device, buffering) {
-	depthImage(depthFormat, extent);
-}
-
-std::optional<RenderImage> ARenderer::depthImage(vk::Format depthFormat, Extent2D extent) {
-	if (m_depth && extent2D(m_depth->extent()) == extent) { return renderImage(*m_depth); }
-	m_depth.reset();
-	if (depthFormat != vk::Format() && Swapchain::valid(extent)) {
-		Image::CreateInfo info;
-		info.createInfo.format = depthFormat;
-		info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		info.createInfo.extent = vk::Extent3D(cast(extent), 1);
-		info.createInfo.tiling = vk::ImageTiling::eOptimal;
-		info.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-		if constexpr (levk_desktopOS) {
-			info.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
-			info.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
-		}
-		info.createInfo.samples = vk::SampleCountFlagBits::e1;
-		info.createInfo.imageType = vk::ImageType::e2D;
-		info.createInfo.initialLayout = vk::ImageLayout::eUndefined;
-		info.createInfo.mipLevels = 1;
-		info.createInfo.arrayLayers = 1;
-		info.queueFlags = QType::eGraphics;
-		info.view.format = info.createInfo.format;
-		info.view.aspects = vk::ImageAspectFlagBits::eDepth;
-		m_depth = Image(m_swapchain->m_vram, info);
-		return renderImage(*m_depth);
+ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering)
+	: m_swapchain(swapchain), m_device(swapchain->m_device), m_fence(m_device, buffering), m_imageMaker(m_swapchain->m_vram) {
+	Image::CreateInfo depthInfo;
+	depthInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	depthInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
+	depthInfo.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	if constexpr (levk_desktopOS) {
+		depthInfo.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
+		depthInfo.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
 	}
-	return std::nullopt;
+	depthInfo.createInfo.samples = vk::SampleCountFlagBits::e1;
+	depthInfo.createInfo.imageType = vk::ImageType::e2D;
+	depthInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
+	depthInfo.createInfo.mipLevels = 1;
+	depthInfo.createInfo.arrayLayers = 1;
+	depthInfo.queueFlags = QType::eGraphics;
+	depthInfo.view.format = depthInfo.createInfo.format;
+	depthInfo.view.aspects = vk::ImageAspectFlagBits::eDepth;
+	m_imageMaker.infos.push_back(depthInfo);
+	m_depthIndex = m_imageMaker.infos.size() - 1;
+}
+
+RenderImage ARenderer::depthImage(Extent2D extent, vk::Format format) {
+	if (format == vk::Format()) { format = m_swapchain->depthFormat(); }
+	return renderImage(m_imageMaker.refresh(m_depthImage, extent, format, m_depthIndex));
 }
 
 RenderSemaphore ARenderer::makeSemaphore() const { return {m_device->makeSemaphore(), m_device->makeSemaphore()}; }
@@ -70,7 +81,6 @@ vk::RenderPass ARenderer::makeRenderPass(Attachment colour, Attachment depth, vA
 	colourAttachment.attachment = 0;
 	colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
 	if (depth.format != vk::Format()) {
-		ENSURE(hasDepthImage(), "No depth image in this Renderer instance");
 		attachments[1].format = depth.format;
 		attachments[1].samples = vk::SampleCountFlagBits::e1;
 		attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
@@ -98,5 +108,80 @@ void ARenderer::waitForFrame() {
 	m_swapchain->m_vram->update(); // poll transfer if needed
 	m_fence.wait();
 	m_device->decrementDeferred(); // update deferred
+}
+
+void ARenderer::beginDraw(RenderTarget const& target, FrameDrawer& drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth) {
+	auto const cl = clear.toVec4();
+	vk::ClearColorValue const c = std::array{cl.x, cl.y, cl.z, cl.w};
+	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+	auto& buf = m_storage.buf.get();
+	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, *m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
+	if (tech().transition != Transition::eRenderPass) {
+		m_device->m_layouts.transition<lt::ColourWrite>(buf.cb, target.colour.image);
+		m_device->m_layouts.transition<lt::DepthStencilWrite>(buf.cb, target.depth.image, depthStencil);
+	}
+	buf.cb.beginRenderPass(*m_storage.renderPass, *buf.framebuffer, target.colour.extent, info);
+	buf.cb.setViewport(viewport(target.colour.extent, view));
+	buf.cb.setScissor(scissor(target.colour.extent, view));
+	drawer.draw3D(buf.cb);
+	drawer.drawUI(buf.cb);
+}
+
+void ARenderer::endFrame() { m_storage.buf.get().cb.end(); }
+
+bool ARenderer::submitFrame() {
+	auto& buf = m_storage.buf.get();
+	vk::SubmitInfo submitInfo;
+	vk::PipelineStageFlags const waitStages = vPSFB::eTopOfPipe;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &buf.draw.m_t;
+	submitInfo.pWaitDstStageMask = &waitStages;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &buf.cb.m_cb;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &buf.present.m_t;
+	if (!m_fence.present(*m_swapchain, submitInfo, *buf.present)) { return false; }
+	m_storage.buf.next();
+	return true;
+}
+
+bool ARenderer::canScale() const noexcept { return tech().target == Target::eOffScreen; }
+
+bool ARenderer::renderScale(f32 rs) noexcept {
+	if (canScale()) {
+		m_scale = rs;
+		return true;
+	}
+	return false;
+}
+
+ARenderer::Storage ARenderer::make(Transition transition, TPair<vk::Format> colourDepth) const {
+	Storage ret;
+	for (u8 i = 0; i < m_fence.buffering().value; ++i) { ret.buf.push({m_device, vk::CommandPoolCreateFlagBits::eTransient}); }
+	Attachment colour, depth;
+	if (colourDepth.first == vk::Format()) { colourDepth.first = m_swapchain->colourFormat().format; }
+	if (colourDepth.second == vk::Format()) { colourDepth.second = m_swapchain->depthFormat(); }
+	colour.format = colourDepth.first;
+	depth.format = colourDepth.second;
+	if (transition == Transition::eRenderPass) {
+		colour.layouts = {vIL::eUndefined, vIL::ePresentSrcKHR};
+		depth.layouts = {vIL::eUndefined, vIL::eDepthStencilAttachmentOptimal};
+	} else {
+		colour.layouts = {vIL::eColorAttachmentOptimal, vIL::eColorAttachmentOptimal};
+		depth.layouts = {vIL::eDepthStencilAttachmentOptimal, vIL::eDepthStencilAttachmentOptimal};
+	}
+	ret.renderPass = {m_device, makeRenderPass(colour, depth, {})};
+	return ret;
+}
+
+kt::result<Swapchain::Acquire> ARenderer::acquire(bool begin) {
+	auto& buf = m_storage.buf.get();
+	auto acquire = m_fence.acquire(*m_swapchain, *buf.draw);
+	if (!acquire) { return kt::null_result; }
+	if (begin) {
+		m_device->device().resetCommandPool(*buf.pool, {});
+		buf.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+	}
+	return acquire;
 }
 } // namespace le::graphics

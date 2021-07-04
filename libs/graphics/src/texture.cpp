@@ -66,7 +66,7 @@ void Texture::wait() const { m_storage.transfer.wait(); }
 Texture::Data const& Texture::data() const noexcept { return m_storage.data; }
 
 Image const& Texture::image() const {
-	ENSURE(m_storage.image.has_value(), "Invalid image");
+	ensure(m_storage.image.has_value(), "Invalid image");
 	return *m_storage.image;
 }
 
@@ -99,7 +99,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 		fallback = info.payload == Payload::eColour ? srgb : linear;
 	} else {
 		if (std::size_t(pRaw->size.x * pRaw->size.y) * 4 /*channels*/ != pRaw->bytes.size()) {
-			ENSURE(false, "Invalid Raw image size/dimensions");
+			ensure(false, "Invalid Raw image size/dimensions");
 			return false;
 		}
 		out_storage.data.size = pRaw->size;

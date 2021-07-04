@@ -102,15 +102,12 @@ namespace le {
 namespace os {
 enum class Dir : s8 { eWorking, eExecutable, eCOUNT_ };
 
-struct Args {
-	int argc = {};
-	char const* const* argv = {};
-};
+using Args = Span<char const* const>;
 
 ///
 /// \brief Initialise OS service
 ///
-void args(Args const& args);
+void args(Args args);
 ///
 /// \brief Obtain `argv[0]`
 ///
@@ -120,6 +117,10 @@ std::string argv0();
 ///
 std::string exeName();
 ///
+/// \brief Obtain all command line arguments passed to the runtime
+///
+Args args() noexcept;
+///
 /// \brief Obtain working/executable directory
 ///
 io::Path dirPath(Dir dir);
@@ -127,10 +128,6 @@ io::Path dirPath(Dir dir);
 /// \brief Obtain internal/external storage path
 ///
 io::Path androidStorage(ErasedPtr androidApp, bool bExternal);
-///
-/// \brief Obtain all command line arguments passed to the runtime
-///
-std::vector<std::string_view> const& args() noexcept;
 
 ///
 /// \brief Check if a debugger is attached to the runtime

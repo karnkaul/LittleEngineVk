@@ -69,7 +69,7 @@ vk::ImageBlit imageBlit(Memory::ImgMeta const& src, Memory::ImgMeta const& dst, 
 	offsets[0] = dstOff.first;
 	offsets[1] = dstOff.second;
 	idx = 0;
-	for (auto& off : ret.srcOffsets) { off = offsets[idx++]; }
+	for (auto& off : ret.dstOffsets) { off = offsets[idx++]; }
 	return ret;
 }
 

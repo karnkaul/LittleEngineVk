@@ -22,12 +22,12 @@ Mesh::~Mesh() { destroy(); }
 Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
 	ret.buffer = m_vram->makeBuffer(size, usage, m_type == Type::eDynamic);
-	ENSURE(ret.buffer, "Invalid buffer");
+	ensure(ret.buffer.has_value(), "Invalid buffer");
 	if (m_type == Type::eStatic) {
 		ret.transfer = m_vram->stage(*ret.buffer, pData, size);
 	} else {
 		[[maybe_unused]] bool const bRes = ret.buffer->write(pData, size);
-		ENSURE(bRes, "Write failure");
+		ensure(bRes, "Write failure");
 	}
 	return ret;
 }

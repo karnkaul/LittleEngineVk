@@ -4,7 +4,7 @@
 namespace le::graphics {
 ShaderBuffer::ShaderBuffer(VRAM& vram, CreateInfo const& info) : m_vram(&vram) {
 	m_storage.type = info.type;
-	m_storage.usage = usage(info.type);
+	m_storage.usage = Device::bufferUsage(info.type);
 	m_storage.buffering = info.buffering;
 }
 
@@ -14,8 +14,8 @@ ShaderBuffer& ShaderBuffer::write(void const* data, std::size_t size, std::size_
 }
 
 ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) const {
-	ENSURE(valid(), "Invalid ShaderBuffer instance");
-	ENSURE(!m_storage.buffers.empty() && m_storage.elemSize > 0, "Empty buffer!");
+	ensure(valid(), "Invalid ShaderBuffer instance");
+	ensure(!m_storage.buffers.empty() && m_storage.elemSize > 0, "Empty buffer!");
 	if (m_storage.buffers.size() > 1) {
 		std::vector<Ref<Buffer const>> vec;
 		vec.reserve(m_storage.buffers.size());
@@ -33,7 +33,7 @@ ShaderBuffer& ShaderBuffer::swap() {
 }
 
 void ShaderBuffer::resize(std::size_t size, std::size_t count) {
-	ENSURE(valid(), "Invalid ShaderBuffer instance");
+	ensure(valid(), "Invalid ShaderBuffer instance");
 	if (size != m_storage.elemSize || count != m_storage.buffers.size()) {
 		m_storage.elemSize = size;
 		m_storage.buffers.clear();

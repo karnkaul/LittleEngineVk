@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <core/span.hpp>
+#include <core/std_types.hpp>
 #include <kt/uint_flags/uint_flags.hpp>
 
 namespace le::window {

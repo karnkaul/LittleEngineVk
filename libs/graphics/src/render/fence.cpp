@@ -33,7 +33,7 @@ void RenderFence::refresh() {
 }
 
 void RenderFence::associate(u32 imageIndex) {
-	ENSURE(imageIndex < arraySize(m_storage.ptrs), "Invalid imageIndex");
+	ensure(imageIndex < arraySize(m_storage.ptrs), "Invalid imageIndex");
 	auto& curr = current();
 	auto ret = std::exchange(m_storage.ptrs[(std::size_t)imageIndex], &curr);
 	if (ret) { m_device->waitFor(*ret->fence); }
@@ -48,8 +48,8 @@ kt::result<Swapchain::Acquire> RenderFence::acquire(Swapchain& swapchain, vk::Se
 }
 
 bool RenderFence::present(Swapchain& swapchain, vk::SubmitInfo const& info, vk::Semaphore wait) {
-	ENSURE(info.signalSemaphoreCount == 0 || *info.pSignalSemaphores == wait, "Semaphore mismatch");
-	m_device->queues().submit(QType::eGraphics, info, submitFence(), false);
+	ensure(info.signalSemaphoreCount == 0 || *info.pSignalSemaphores == wait, "Semaphore mismatch");
+	m_device->queues().submit(QType::eGraphics, info, submitFence(), true);
 	if (!swapchain.present(wait)) { return false; } // signalled by drawing submit
 	next();
 	return true;
@@ -62,7 +62,7 @@ void RenderFence::next() noexcept {
 
 vk::Fence RenderFence::drawFence() {
 	auto& ret = current();
-	ENSURE(ret.state(m_device->device()) == State::eReady, "Invalid fence state");
+	ensure(ret.state(m_device->device()) == State::eReady, "Invalid fence state");
 	m_device->resetFence(*ret.fence);
 	ready(ret);
 	return *ret.fence;

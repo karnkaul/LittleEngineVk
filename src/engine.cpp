@@ -1,8 +1,9 @@
 #include <iostream>
 #include <build_version.hpp>
-#include <engine/config.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
+#include <engine/input/space.hpp>
+#include <engine/utils/logger.hpp>
 #include <graphics/common.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/render/command_buffer.hpp>
@@ -35,28 +36,22 @@ Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winIns
 #if defined(LEVK_DESKTOP)
 	m_desktop = static_cast<Desktop*>(winInst.get());
 #endif
-	conf::g_log.minVerbosity = info.verbosity;
+	utils::g_log.minVerbosity = info.verbosity;
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
-	auto const extent = m_gfx ? m_gfx->context.extent() : Extent2D(0);
-	auto ret = m_input.update(m_win->pollEvents(), m_editor.view(), extent, consume, m_desktop);
-	m_inputState = ret.state;
+	f32 const rscale = m_gfx ? m_gfx->context.renderer().renderScale() : 1.0f;
+	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, m_desktop};
+	auto ret = m_input.update(std::move(in), m_editor.view(), consume);
+	m_inputFrame = ret.frame;
 	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
-		if ((*it)->block(ret.state)) { break; }
+		if ((*it)->block(ret.frame.state)) { break; }
 	}
 	return ret;
 }
 
-void Engine::update(gui::ViewStack& out_stack) {
-	glm::vec2 wSize = {};
-#if defined(LEVK_DESKTOP)
-	ENSURE(m_win->isDesktop(), "Invariant violated");
-	wSize = m_desktop->windowSize();
-#endif
-	out_stack.update(m_inputState, m_editor.view(), framebufferSize(), wSize);
-}
+void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_inputFrame); }
 
 void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }
 
@@ -78,10 +73,6 @@ bool Engine::drawReady() {
 			}
 		}
 		if (!m_gfx->context.ready(size)) { return false; }
-		// if constexpr (levk_imgui) {
-		// 	[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
-		// 	ENSURE(b, "Failed to begin DearImGui frame");
-		// }
 		return true;
 	}
 	return false;
@@ -92,10 +83,9 @@ std::optional<Engine::Context::Frame> Engine::beginDraw() {
 		if (auto ret = m_gfx->context.beginFrame()) {
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
-				ENSURE(b, "Failed to begin DearImGui frame");
-				ENSURE(m_desktop, "Invariant violated");
-				m_editor.update(*m_desktop, m_inputState);
-				m_gfx->context.m_viewport = {m_editor.view().rect(), m_editor.view().topLeft.offset};
+				ensure(b, "Failed to begin DearImGui frame");
+				ensure(m_desktop, "Invariant violated");
+				m_view = m_editor.update(*m_desktop, m_gfx->context.renderer(), m_inputFrame);
 			}
 			m_drawing = ret->commandBuffer;
 			return ret;
@@ -106,13 +96,9 @@ std::optional<Engine::Context::Frame> Engine::beginDraw() {
 
 bool Engine::render(Context::Frame const& frame, Drawer& drawer, RGBA clear, vk::ClearDepthStencilValue depth) {
 	if (m_drawing.valid() && m_gfx) {
-		ENSURE(m_drawing.m_cb == frame.commandBuffer.m_cb, "Invalid frame");
+		ensure(m_drawing.m_cb == frame.commandBuffer.m_cb, "Invalid frame");
 		m_drawing = {};
-		if (m_gfx->context.beginDraw(drawer, clear, depth)) {
-			if constexpr (levk_imgui) {
-				m_gfx->imgui.endFrame();
-				m_gfx->imgui.renderDrawData(frame.commandBuffer);
-			}
+		if (m_gfx->context.beginDraw(drawer, m_view, clear, depth)) {
 			m_gfx->context.endDraw();
 			m_gfx->context.endFrame();
 			return m_gfx->context.submitFrame();
@@ -121,33 +107,6 @@ bool Engine::render(Context::Frame const& frame, Drawer& drawer, RGBA clear, vk:
 	}
 	return false;
 }
-/*
-bool Engine::endFrame(Context::Frame const& frame, bool draw) {
-	if (m_gfx) {
-		if constexpr (levk_imgui) {
-			m_gfx->imgui.endFrame();
-			if (draw) { m_gfx->imgui.renderDrawData(frame.commandBuffer); }
-		}
-		return m_gfx->context.endFrame();
-	}
-	return false;
-}
-*/
-/*
-bool Engine::boot(Boot::CreateInfo boot) {
-	if (!m_gfx) {
-		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
-		m_gfx.emplace(m_win.get(), boot);
-		Services::track<Context, VRAM>(&m_gfx->context, &m_gfx->boot.vram);
-#if defined(LEVK_DESKTOP)
-		DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPassUI());
-		dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
-		m_gfx->imgui = DearImGui(&m_gfx->boot.device, m_desktop, dici);
-#endif
-		return true;
-	}
-	return false;
-}*/
 
 bool Engine::unboot() noexcept {
 	if (m_gfx) {
@@ -163,19 +122,13 @@ Extent2D Engine::framebufferSize() const noexcept {
 	return m_win->framebufferSize();
 }
 
-vk::Viewport Engine::viewport(Viewport const& view, glm::vec2 depth) const noexcept {
-	if (!m_gfx) { return {}; }
-	Viewport const vp = m_editor.view() * view;
-	return m_gfx->context.viewport(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset, depth);
+Extent2D Engine::windowSize() const noexcept {
+#if defined(LEVK_DESKTOP)
+	return m_desktop->windowSize();
+#else
+	return m_gfx ? m_gfx->context.extent() : Extent2D(0);
+#endif
 }
-
-vk::Rect2D Engine::scissor(Viewport const& view) const noexcept {
-	if (!m_gfx) { return {}; }
-	Viewport const vp = m_editor.view() * view;
-	return m_gfx->context.scissor(m_gfx->context.extent(), vp.rect(), vp.topLeft.offset);
-}
-
-Engine::Desktop* Engine::desktop() const noexcept { return m_desktop; }
 
 void Engine::updateStats() {
 	++m_stats.frame.count;
@@ -195,6 +148,10 @@ void Engine::updateStats() {
 	s_stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Type::eImage);
 	s_stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
 	s_stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
+	s_stats.gfx.extents.window = windowSize();
+	s_stats.gfx.extents.swapchain = m_gfx ? m_gfx->context.extent() : Extent2D(0);
+	s_stats.gfx.extents.renderer =
+		m_gfx ? graphics::ARenderer::scaleExtent(s_stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale()) : Extent2D(0);
 	graphics::CommandBuffer::s_drawCalls.store(0);
 	graphics::Mesh::s_trisDrawn.store(0);
 }

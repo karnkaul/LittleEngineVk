@@ -186,7 +186,7 @@ struct TWidget<bool> {
 
 template <>
 struct TWidget<f32> {
-	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f);
+	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f, glm::vec2 lm = {});
 };
 
 template <>
@@ -233,7 +233,7 @@ struct TWidget<std::pair<s64, s64>> {
 
 template <typename Flags>
 FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) {
-	ENSURE(ids.size() <= size, "Overflow!");
+	ensure(ids.size() <= size, "Overflow!");
 	std::size_t idx = 0;
 	for (auto id : ids) {
 		bool bVal = flags.test((type)idx);

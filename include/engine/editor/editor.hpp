@@ -57,9 +57,11 @@ class Editor {
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
-	graphics::ScreenView update(Desktop& win, Renderer& renderer, input::Frame const& frame);
+	bool draw(graphics::CommandBuffer cb) const;
 
   private:
+	graphics::ScreenView update(Desktop& win, Renderer& renderer, input::Frame const& frame);
+
 	struct {
 		edi::Resizer resizer;
 		edi::LogStats logStats;
@@ -67,5 +69,7 @@ class Editor {
 		Viewport gameView = s_comboView;
 		edi::In cached;
 	} m_storage;
+
+	friend class Engine;
 };
 } // namespace le

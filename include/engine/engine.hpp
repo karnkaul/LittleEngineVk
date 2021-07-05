@@ -41,9 +41,9 @@ class Engine : public Service<Engine> {
 	using Desktop = window::DesktopInstance;
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
-	using Drawer = graphics::FrameDrawer;
 	using VRAM = graphics::VRAM;
 	using RGBA = graphics::RGBA;
+	using ClearDepth = graphics::ClearDepth;
 	using ARenderer = graphics::ARenderer;
 	using Stats = utils::EngineStats;
 
@@ -70,10 +70,10 @@ class Engine : public Service<Engine> {
 	inline static Options s_options;
 
 	static Version version() noexcept;
-	static Stats const& stats() noexcept { return s_stats; }
 	static Span<graphics::PhysicalDevice const> availableDevices();
 
 	Engine(not_null<Window*> winInst, CreateInfo const& info);
+	~Engine();
 
 	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
@@ -83,8 +83,9 @@ class Engine : public Service<Engine> {
 	bool editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
 
 	bool drawReady();
-	std::optional<Context::Frame> beginDraw();
-	bool render(Context::Frame const& draw, Drawer& drawer, RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	bool nextFrame(graphics::RenderTarget* out = {});
+	template <typename Drawer>
+	bool draw(Drawer&& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>
 	bool boot(Boot::CreateInfo boot, Args&&... args);
@@ -95,6 +96,7 @@ class Engine : public Service<Engine> {
 	GFX const& gfx() const;
 	ARenderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
+	Stats const& stats() noexcept { return m_stats.stats; }
 	Desktop* desktop() const noexcept { return m_desktop; }
 
 	Extent2D framebufferSize() const noexcept;
@@ -104,34 +106,24 @@ class Engine : public Service<Engine> {
 
 	SceneSpace m_space;
 	not_null<Window*> m_win;
-	Time_ms m_recreateInterval = 10ms;
 
   private:
 	void updateStats();
 	void bootImpl();
+	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
+	bool endDraw(graphics::CommandBuffer cb);
 
-	inline static Stats s_stats = {};
 	inline static kt::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
 	io::Service m_io;
 	std::optional<GFX> m_gfx;
-	Editor m_editor;
 	input::Driver m_input;
-	struct {
-		struct {
-			time::Point stamp{};
-			Time_s elapsed{};
-			u32 count;
-		} frame;
-	} m_stats;
+	Editor m_editor;
+	Stats::Counter m_stats;
 	input::Receivers m_receivers;
 	input::Frame m_inputFrame;
 	graphics::ScreenView m_view;
-	struct {
-		glm::ivec2 size{};
-		time::Point resized{};
-	} m_fb;
-	graphics::CommandBuffer m_drawing;
+	std::optional<graphics::RenderTarget> m_drawing;
 	Desktop* m_desktop{};
 };
 
@@ -149,6 +141,12 @@ bool Engine::boot(Boot::CreateInfo boot, Args&&... args) {
 		bootImpl();
 		return true;
 	}
+	return false;
+}
+
+template <typename Drawer>
+bool Engine::draw(Drawer&& drawer, RGBA clear, ClearDepth depth) {
+	if (auto cb = beginDraw(clear, depth)) { return (drawer.draw(*cb), endDraw(*cb)); }
 	return false;
 }
 

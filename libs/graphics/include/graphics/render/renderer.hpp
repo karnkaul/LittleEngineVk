@@ -4,7 +4,6 @@
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/command_buffer.hpp>
 #include <graphics/render/fence.hpp>
-#include <graphics/render/frame_drawer.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/swapchain.hpp>
 #include <graphics/screen_rect.hpp>
@@ -54,13 +53,6 @@ class ARenderer {
 		vk::Format format;
 	};
 
-	struct Draw {
-		RenderTarget target;
-		CommandBuffer commandBuffer;
-	};
-
-	struct Buf;
-
 	ARenderer(not_null<Swapchain*> swapchain, Buffering buffering);
 	virtual ~ARenderer() = default;
 
@@ -83,8 +75,8 @@ class ARenderer {
 	virtual vk::RenderPass renderPass3D() const noexcept { return *m_storage.renderPass; }
 	virtual vk::RenderPass renderPassUI() const noexcept { return *m_storage.renderPass; }
 
-	virtual std::optional<Draw> beginFrame() = 0;
-	virtual void beginDraw(RenderTarget const& target, FrameDrawer& drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth);
+	virtual std::optional<RenderTarget> beginFrame();
+	virtual CommandBuffer beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) = 0;
 	virtual void endDraw(RenderTarget const&) = 0;
 	virtual void endFrame();
 	virtual bool submitFrame();
@@ -101,6 +93,7 @@ class ARenderer {
 	not_null<Device*> m_device;
 
   protected:
+	struct Buf;
 	struct Storage {
 		RingBuffer<Buf> buf;
 		Deferred<vk::RenderPass> renderPass;

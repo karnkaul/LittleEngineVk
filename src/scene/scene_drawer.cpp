@@ -10,17 +10,17 @@ std::size_t DrawGroup::Hasher::operator()(DrawGroup const& gr) const noexcept {
 	return std::hash<graphics::Pipeline const*>{}(gr.pipeline) ^ (std::hash<s64>{}(gr.order) << 1);
 }
 
-void SceneDrawer::Populator3D::operator()(ItemMap& map, decf::registry_t const& registry) const {
+void ScenePopulator3D::operator()(SceneDrawer::ItemMap& map, decf::registry_t const& registry) const {
 	for (auto& [_, d] : registry.view<DrawGroup, SceneNode, PrimList>()) {
 		auto& [gr, node, pl] = d;
 		if (!pl.empty() && gr.pipeline) { map[gr].push_back({node.model(), std::nullopt, pl}); }
 	}
 }
 
-void SceneDrawer::PopulatorUI::operator()(ItemMap& map, decf::registry_t const& registry) const {
+void ScenePopulatorUI::operator()(SceneDrawer::ItemMap& map, decf::registry_t const& registry) const {
 	for (auto& [_, d] : registry.view<DrawGroup, gui::ViewStack>()) {
 		auto& [gr, stack] = d;
-		for (auto const& view : stack.views()) { add(map, gr, *view); }
+		for (auto const& view : stack.views()) { SceneDrawer::add(map, gr, *view); }
 	}
 }
 

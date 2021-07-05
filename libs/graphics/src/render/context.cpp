@@ -100,7 +100,7 @@ bool RenderContext::waitForFrame() {
 	return true;
 }
 
-std::optional<RenderContext::Frame> RenderContext::beginFrame() {
+std::optional<RenderTarget> RenderContext::beginFrame() {
 	if (!check(Status::eReady)) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
@@ -108,32 +108,27 @@ std::optional<RenderContext::Frame> RenderContext::beginFrame() {
 	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
 	if (auto ret = m_storage.renderer->beginFrame()) {
 		set(Status::eBegun);
-		m_storage.frame = *ret;
+		m_storage.drawing = *ret;
 		return ret;
 	}
 	return std::nullopt;
 }
 
-bool RenderContext::beginDraw(FrameDrawer& out_drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth) {
-	if (!check(Status::eBegun)) {
+std::optional<CommandBuffer> RenderContext::beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth) {
+	if (!check(Status::eBegun) || !m_storage.drawing) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
-	}
-	if (!m_storage.frame) {
-		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext Frame", g_name);
-		return false;
+		return std::nullopt;
 	}
 	set(Status::eDrawing);
-	m_storage.renderer->beginDraw(m_storage.frame->target, out_drawer, view, clear, depth);
-	return true;
+	return m_storage.renderer->beginDraw(*m_storage.drawing, view, clear, depth);
 }
 
 bool RenderContext::endDraw() {
-	if (!m_storage.frame || !check(Status::eDrawing)) {
+	if (!m_storage.drawing || !check(Status::eDrawing)) {
 		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
-	m_storage.renderer->endDraw(m_storage.frame->target);
+	m_storage.renderer->endDraw(*m_storage.drawing);
 	return true;
 }
 
@@ -143,7 +138,7 @@ bool RenderContext::endFrame() {
 		return false;
 	}
 	set(Status::eEnded);
-	m_storage.frame.reset();
+	m_storage.drawing.reset();
 	m_storage.renderer->endFrame();
 	return true;
 }

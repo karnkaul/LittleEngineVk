@@ -110,21 +110,9 @@ void ARenderer::waitForFrame() {
 	m_device->decrementDeferred(); // update deferred
 }
 
-void ARenderer::beginDraw(RenderTarget const& target, FrameDrawer& drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth) {
-	auto const cl = clear.toVec4();
-	vk::ClearColorValue const c = std::array{cl.x, cl.y, cl.z, cl.w};
-	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-	auto& buf = m_storage.buf.get();
-	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, *m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
-	if (tech().transition != Transition::eRenderPass) {
-		m_device->m_layouts.transition<lt::ColourWrite>(buf.cb, target.colour.image);
-		m_device->m_layouts.transition<lt::DepthStencilWrite>(buf.cb, target.depth.image, depthStencil);
-	}
-	buf.cb.beginRenderPass(*m_storage.renderPass, *buf.framebuffer, target.colour.extent, info);
-	buf.cb.setViewport(viewport(target.colour.extent, view));
-	buf.cb.setScissor(scissor(target.colour.extent, view));
-	drawer.draw3D(buf.cb);
-	drawer.drawUI(buf.cb);
+std::optional<RenderTarget> ARenderer::beginFrame() {
+	if (auto acq = acquire()) { return RenderTarget{acq->image, depthImage(acq->image.extent)}; }
+	return std::nullopt;
 }
 
 void ARenderer::endFrame() { m_storage.buf.get().cb.end(); }

@@ -52,12 +52,9 @@ class SceneDrawer {
 
 	using PipeSet = std::unordered_set<graphics::Pipeline*>;
 
-	struct Populator3D;
-	struct PopulatorUI;
-
 	static void add(ItemMap& map, DrawGroup const& group, gui::TreeRoot const& root);
 
-	template <typename Po = Populator3D>
+	template <typename... Populator>
 	static std::vector<Group> groups(decf::registry_t const& registry, bool sort);
 
 	template <typename Di>
@@ -66,22 +63,22 @@ class SceneDrawer {
 	static void attach(decf::registry_t& reg, decf::entity_t entity, DrawGroup const& group, Span<Primitive const> primitives);
 };
 
-struct SceneDrawer::Populator3D {
+struct ScenePopulator3D {
 	// Populates DrawGroup + SceneNode + PrimList
-	void operator()(ItemMap& map, decf::registry_t const& registry) const;
+	void operator()(SceneDrawer::ItemMap& map, decf::registry_t const& registry) const;
 };
 
-struct SceneDrawer::PopulatorUI {
+struct ScenePopulatorUI {
 	// Populates DrawGroup + gui::ViewStack
-	void operator()(ItemMap& map, decf::registry_t const& registry) const;
+	void operator()(SceneDrawer::ItemMap& map, decf::registry_t const& registry) const;
 };
 
 // impl
 
-template <typename Po>
+template <typename... Populator>
 std::vector<SceneDrawer::Group> SceneDrawer::groups(decf::registry_t const& registry, bool sort) {
 	ItemMap map;
-	Po{}(map, registry);
+	(Populator{}(map, registry), ...);
 	std::vector<Group> ret;
 	ret.reserve(map.size());
 	for (auto& [gr, items] : map) { ret.push_back(Group({gr, std::move(items)})); }

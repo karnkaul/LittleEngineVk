@@ -4,6 +4,7 @@
 #if defined(LEVK_USE_IMGUI)
 #include <core/array_map.hpp>
 #include <core/colour.hpp>
+#include <core/services.hpp>
 #include <engine/engine.hpp>
 #include <kt/tmutex/tmutex.hpp>
 #include <levk_imgui/levk_imgui.hpp>
@@ -128,20 +129,22 @@ LogStats::LogStats() {
 
 void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f32 height) {
 #if defined(LEVK_USE_IMGUI)
-	auto const& stats = Engine::stats().frame;
-	if (stats.ft != Time_s()) { m_frameTime.fts.push_back(stats.ft); }
-	while (m_frameTime.fts.size() > s_frameTimeCount) { m_frameTime.fts.pop_front(); }
-	if (auto imgui = DearImGui::inst(); imgui && imgui->ready()) {
-		m_frameTime.samples.clear();
-		m_frameTime.samples.reserve(s_frameTimeCount);
-		stdch::duration<f32, std::milli> avg{};
-		for (Time_s const ft : m_frameTime.fts) {
-			avg += ft;
-			m_frameTime.samples.push_back(time::cast<decltype(avg)>(ft).count());
+	if (auto eng = Services::locate<Engine>()) {
+		auto const& stats = eng->stats().frame;
+		if (stats.dt != Time_s()) { m_frameTime.fts.push_back(stats.dt); }
+		while (m_frameTime.fts.size() > s_frameTimeCount) { m_frameTime.fts.pop_front(); }
+		if (auto imgui = DearImGui::inst(); imgui && imgui->ready()) {
+			m_frameTime.samples.clear();
+			m_frameTime.samples.reserve(s_frameTimeCount);
+			stdch::duration<f32, std::milli> avg{};
+			for (Time_s const ft : m_frameTime.fts) {
+				avg += ft;
+				m_frameTime.samples.push_back(time::cast<decltype(avg)>(ft).count());
+			}
+			avg /= (f32)m_frameTime.fts.size();
+			u32 const rate = stats.rate == 0 ? (u32)stats.count : stats.rate;
+			drawLog(fbSize, height, {m_frameTime.samples, avg.count(), rate});
 		}
-		avg /= (f32)m_frameTime.fts.size();
-		u32 const rate = stats.rate == 0 ? (u32)stats.count : stats.rate;
-		drawLog(fbSize, height, {m_frameTime.samples, avg.count(), rate});
 	}
 #endif
 }

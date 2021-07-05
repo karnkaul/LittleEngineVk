@@ -1,6 +1,6 @@
 #pragma once
+#include <core/utils/vbase.hpp>
 #include <dumb_ecf/registry.hpp>
-#include <engine/utils/vbase.hpp>
 
 namespace le::edi {
 struct Gadget : utils::VBase {

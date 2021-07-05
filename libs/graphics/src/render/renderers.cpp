@@ -4,12 +4,16 @@
 namespace le::graphics {
 RendererFSR::RendererFSR(not_null<Swapchain*> swapchain, Buffering buffering) : ARenderer(swapchain, buffering) { m_storage = make(tech_v.transition); }
 
-std::optional<ARenderer::Draw> RendererFSR::beginFrame() {
-	if (auto acq = acquire()) {
-		RenderTarget const target{acq->image, depthImage(acq->image.extent)};
-		return Draw{target, m_storage.buf.get().cb};
-	}
-	return std::nullopt;
+CommandBuffer RendererFSR::beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) {
+	auto& buf = m_storage.buf.get();
+	auto const cl = clear.toVec4();
+	vk::ClearColorValue const c = std::array{cl.x, cl.y, cl.z, cl.w};
+	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, *m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
+	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+	buf.cb.beginRenderPass(*m_storage.renderPass, *buf.framebuffer, target.colour.extent, info);
+	buf.cb.setViewport(viewport(target.colour.extent, view));
+	buf.cb.setScissor(scissor(target.colour.extent, view));
+	return buf.cb;
 }
 
 void RendererFSR::endDraw(RenderTarget const& target) {
@@ -18,24 +22,21 @@ void RendererFSR::endDraw(RenderTarget const& target) {
 	m_device->m_layouts.drawn(target.depth.image);
 }
 
-RendererFSC::RendererFSC(not_null<Swapchain*> swapchain, Buffering buffering) : ARenderer(swapchain, buffering) { m_storage = make(tech_v.transition); }
+RendererFSC::RendererFSC(not_null<Swapchain*> swapchain, Buffering buffering) : RendererFSR(swapchain, buffering) { m_storage = make(tech_v.transition); }
 
-std::optional<RendererFSC::Draw> RendererFSC::beginFrame() {
-	if (auto acq = acquire()) {
-		RenderTarget const target{acq->image, depthImage(acq->image.extent)};
-		return Draw{target, m_storage.buf.get().cb};
-	}
-	return std::nullopt;
+CommandBuffer RendererFSC::beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) {
+	auto& buf = m_storage.buf.get();
+	m_device->m_layouts.transition<lt::ColourWrite>(buf.cb, target.colour.image);
+	m_device->m_layouts.transition<lt::DepthStencilWrite>(buf.cb, target.depth.image, depthStencil);
+	return RendererFSR::beginDraw(target, view, clear, depth);
 }
 
 void RendererFSC::endDraw(RenderTarget const& target) {
-	auto& buf = m_storage.buf.get();
-	buf.cb.endRenderPass();
-	m_device->m_layouts.transition<lt::TransferPresent>(buf.cb, target.colour.image);
-	m_device->m_layouts.drawn(target.depth.image);
+	RendererFSR::endDraw(target);
+	m_device->m_layouts.transition<lt::TransferPresent>(m_storage.buf.get().cb, target.colour.image);
 }
 
-RendererFOC::RendererFOC(not_null<Swapchain*> swapchain, Buffering buffering) : ARenderer(swapchain, buffering) {
+RendererFOC::RendererFOC(not_null<Swapchain*> swapchain, Buffering buffering) : RendererFSR(swapchain, buffering) {
 	m_storage = make(tech_v.transition, {m_colourFormat, {}});
 	Image::CreateInfo colourInfo;
 	colourInfo.createInfo.format = m_colourFormat;
@@ -55,27 +56,30 @@ RendererFOC::RendererFOC(not_null<Swapchain*> swapchain, Buffering buffering) : 
 	renderScale(0.75f);
 }
 
-std::optional<RendererFOC::Draw> RendererFOC::beginFrame() {
+std::optional<RenderTarget> RendererFOC::beginFrame() {
 	if (auto acq = acquire()) {
 		auto& buf = m_storage.buf.get();
 		m_swapchainImage = acq->image;
 		auto const extent = scaleExtent(m_swapchainImage.extent, renderScale());
 		auto depth = depthImage(extent);
-		RenderTarget const target{renderImage(m_imageMaker.refresh(buf.offscreen, extent, m_colourFormat, m_colourIndex)), depth};
-		return Draw{target, buf.cb};
+		return RenderTarget{renderImage(m_imageMaker.refresh(buf.offscreen, extent, m_colourFormat, m_colourIndex)), depth};
 	}
 	return std::nullopt;
 }
 
-void RendererFOC::endDraw(RenderTarget const& target) {
+CommandBuffer RendererFOC::beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) {
 	auto& buf = m_storage.buf.get();
-	buf.cb.endRenderPass();
+	m_device->m_layouts.transition<lt::ColourWrite>(buf.cb, target.colour.image);
+	m_device->m_layouts.transition<lt::DepthStencilWrite>(buf.cb, target.depth.image, depthStencil);
+	return RendererFSR::beginDraw(target, view, clear, depth);
+}
+
+void RendererFOC::endDraw(RenderTarget const& target) {
+	RendererFSR::endDraw(target);
+	auto& buf = m_storage.buf.get();
 	m_device->m_layouts.transition<lt::TransferSrc>(buf.cb, target.colour.image);
 	m_device->m_layouts.transition<lt::TransferDst>(buf.cb, m_swapchainImage.image);
-	vk::Extent3D off = vk::Extent3D{cast(target.colour.extent), 1};
-	vk::Extent3D swp = vk::Extent3D{cast(m_swapchainImage.extent), 1};
-	m_swapchain->m_vram->blit(buf.cb.m_cb, target.colour.image, m_swapchainImage.image, {off, swp});
+	VRAM::blit(buf.cb, {target.colour, m_swapchainImage});
 	m_device->m_layouts.transition<lt::TransferPresent>(buf.cb, m_swapchainImage.image);
-	m_device->m_layouts.drawn(target.depth.image);
 }
 } // namespace le::graphics

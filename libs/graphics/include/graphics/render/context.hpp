@@ -25,8 +25,6 @@ class RenderContext : NoCopy {
   public:
 	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing, eCOUNT_ };
 
-	using Frame = ARenderer::Draw;
-
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
@@ -38,8 +36,8 @@ class RenderContext : NoCopy {
 
 	bool ready(glm::ivec2 framebufferSize);
 	bool waitForFrame();
-	std::optional<Frame> beginFrame();
-	bool beginDraw(graphics::FrameDrawer& out_drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	std::optional<RenderTarget> beginFrame();
+	std::optional<CommandBuffer> beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth = {1.0f, 0});
 	bool endDraw();
 	bool endFrame();
 	bool submitFrame();
@@ -68,7 +66,7 @@ class RenderContext : NoCopy {
 
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
-		std::optional<Frame> frame;
+		std::optional<RenderTarget> drawing;
 		Deferred<vk::PipelineCache> pipelineCache;
 		Status status = {};
 	};

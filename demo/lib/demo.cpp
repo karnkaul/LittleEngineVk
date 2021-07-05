@@ -33,7 +33,7 @@
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
-enum class Flag { eRecreated, eResized, ePaused, eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
+enum class Flag { eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
 using Flags = kt::enum_flags<Flag>;
 
 static void poll(Flags& out_flags, window::EventQueue queue) {
@@ -41,15 +41,6 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 		switch (e->type) {
 		case window::Event::Type::eClose: {
 			out_flags.set(Flag::eClosed);
-			break;
-		}
-		case window::Event::Type::eSuspend: {
-			out_flags[Flag::ePaused] = e->payload.set;
-			break;
-		}
-		case window::Event::Type::eResize: {
-			auto const& resize = e->payload.resize;
-			if (resize.framebuffer) { out_flags.set(Flag::eResized); }
 			break;
 		}
 		case window::Event::Type::eInit: out_flags.set(Flag::eInit); break;
@@ -201,7 +192,7 @@ class DrawDispatch {
 
 	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights, Span<SceneDrawer::Group const> g3D, Span<SceneDrawer::Group const> gUI) {
+	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups) {
 		m_view.lights.swap();
 		m_view.mats.swap();
 		ViewMats const v{cam.view(), cam.perspective(scene), cam.ortho(scene), {cam.position, 1.0f}};
@@ -212,8 +203,7 @@ class DrawDispatch {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : g3D) { update(group); }
-		for (auto& group : gUI) { update(group); }
+		for (auto& group : groups) { update(group); }
 	}
 
 	void update(SceneDrawer::Group const& group) const {
@@ -259,27 +249,19 @@ class DrawDispatch {
 
 using graphics::CommandBuffer;
 
-class RenderDisp : public graphics::FrameDrawer, SceneDrawer {
+class RenderDisp {
   public:
-	struct Data {
-		Span<SceneDrawer::Group const> groups3D;
-		Span<SceneDrawer::Group const> groupsUI;
-		not_null<DrawDispatch*> dispatch;
-	};
+	Span<SceneDrawer::Group const> m_groups;
+	not_null<DrawDispatch*> m_dispatch;
 
-	RenderDisp(Data d) : m_data(d) {}
-	~RenderDisp() override {
+	RenderDisp(Span<SceneDrawer::Group const> groups, not_null<DrawDispatch*> dispatch) : m_groups(groups), m_dispatch(dispatch) {}
+	~RenderDisp() {
 		for (auto pipe : m_pipes) { pipe->swap(); }
 	}
 
-	void draw3D(CommandBuffer cb) override { draw(*m_data.dispatch, m_pipes, m_data.groups3D, cb); }
-	void drawUI(CommandBuffer cb) override {
-		draw(*m_data.dispatch, m_pipes, m_data.groupsUI, cb);
-		DearImGui::render(cb);
-	}
+	void draw(CommandBuffer cb) { SceneDrawer::draw(*m_dispatch, m_pipes, m_groups, cb); }
 
   private:
-	Data m_data;
 	SceneDrawer::PipeSet m_pipes;
 };
 
@@ -583,7 +565,7 @@ class App : public input::Receiver {
 			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.groups["test_tex"]);
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		// { spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
+		{ spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", m_data.groups["test_lit"]);
@@ -623,64 +605,66 @@ class App : public input::Receiver {
 			Editor::s_in.customEntities.push_back(m_data.camera);
 		}
 
-		if (!m_data.loader.ready(&m_tasks)) { return; }
-		if (m_data.registry.empty()) { init1(); }
-		auto guiStack = m_data.registry.find<gui::ViewStack>(m_data.guiStack);
-		if (guiStack) {
-			m_eng->update(*guiStack);
-			/*auto const& p = m_eng->inputState().cursor.position;
-			logD("c: {}, {}", p.x, p.y);*/
-			/*static gui::Quad* s_prev = {};
-			static Colour s_col;
-			if (auto node = guiRoot->leafHit(m_eng->inputState().cursor.position)) {
-				if (auto quad = dynamic_cast<gui::Quad*>(node)) {
-					if (s_prev != quad) {
-						if (s_prev) {
-							s_prev->m_material.Tf = s_col;
+		if (m_data.loader.ready(&m_tasks)) {
+			if (m_data.registry.empty()) { init1(); }
+			auto guiStack = m_data.registry.find<gui::ViewStack>(m_data.guiStack);
+			if (guiStack) {
+				m_eng->update(*guiStack);
+				/*auto const& p = m_eng->inputState().cursor.position;
+				logD("c: {}, {}", p.x, p.y);*/
+				/*static gui::Quad* s_prev = {};
+				static Colour s_col;
+				if (auto node = guiRoot->leafHit(m_eng->inputState().cursor.position)) {
+					if (auto quad = dynamic_cast<gui::Quad*>(node)) {
+						if (s_prev != quad) {
+							if (s_prev) {
+								s_prev->m_material.Tf = s_col;
+							}
+							s_col = quad->m_material.Tf;
+							s_prev = quad;
+							quad->m_material.Tf = colours::yellow;
 						}
-						s_col = quad->m_material.Tf;
-						s_prev = quad;
-						quad->m_material.Tf = colours::yellow;
 					}
-				}
-			} else if (s_prev) {
-				s_prev->m_material.Tf = s_col;
-				s_prev = {};
-			}*/
+				} else if (s_prev) {
+					s_prev->m_material.Tf = s_col;
+					s_prev = {};
+				}*/
+			}
+			auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
+			auto& pc = m_data.registry.get<PlayerController>(m_data.player);
+			auto const& state = m_eng->inputFrame().state;
+			if (pc.active) {
+				auto& node = m_data.registry.get<SceneNode>(m_data.player);
+				m_data.registry.get<PlayerController>(m_data.player).tick(state, node, dt);
+				glm::vec3 const& forward = node.orientation() * -graphics::front;
+				cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
+				cam.face(forward);
+			} else {
+				cam.tick(state, dt, m_eng->desktop());
+			}
+			m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+			if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
+			if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_1_0"])) {
+				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
+				node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+			}
 		}
-		auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
-		auto& pc = m_data.registry.get<PlayerController>(m_data.player);
-		auto const& state = m_eng->inputFrame().state;
-		if (pc.active) {
-			auto& node = m_data.registry.get<SceneNode>(m_data.player);
-			m_data.registry.get<PlayerController>(m_data.player).tick(state, node, dt);
-			glm::vec3 const& forward = node.orientation() * -graphics::front;
-			cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
-			cam.face(forward);
-		} else {
-			cam.tick(state, dt, m_eng->desktop());
-		}
-		m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-		if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_1_0"])) {
-			static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
-			s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-			node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
-		}
+		// draw
+		render();
 	}
 
 	void render() {
-		if (auto frame = m_eng->beginDraw()) {
+		if (m_eng->nextFrame()) {
 			// write / update
-			std::vector<SceneDrawer::Group> gr3D, grUI;
+			std::vector<SceneDrawer::Group> groups;
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
-				gr3D = SceneDrawer::groups(m_data.registry, true);
-				grUI = SceneDrawer::groups<SceneDrawer::PopulatorUI>(m_data.registry, true);
-				m_drawDispatch.write(*cam, m_eng->sceneSpace(), m_data.dirLights, gr3D, grUI);
+				groups = SceneDrawer::groups<ScenePopulator3D, ScenePopulatorUI>(m_data.registry, true);
+				m_drawDispatch.write(*cam, m_eng->sceneSpace(), m_data.dirLights, groups);
 			}
 			// draw
-			RenderDisp rd{{gr3D, grUI, &m_drawDispatch}};
-			m_eng->render(*frame, rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
+			RenderDisp rd{groups, &m_drawDispatch};
+			m_eng->draw(rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 		}
 	}
 
@@ -745,43 +729,23 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 		bootInfo.instance.extensions = winst.vkInstanceExtensions();
 		bootInfo.instance.bValidation = levk_debug;
 		bootInfo.instance.validationLog = dl::level::info;
-		std::optional<App> app;
 		Engine engine(&winst, {});
 		Flags flags;
 		FlagsInput flagsInput(flags);
 		engine.pushReceiver(&flagsInput);
-		time::Point t = time::now();
+		std::optional<App> app;
+		DeltaTime dt;
 		while (true) {
-			Time_s dt = time::now() - t;
-			t = time::now();
-			auto [_, queue] = engine.poll(true);
-			poll(flags, std::move(queue));
-			if (flags.test(Flag::eClosed)) {
-				app.reset();
-				engine.unboot();
-				break;
-			}
-			if (flags.test(Flag::ePaused)) { continue; }
+			poll(flags, engine.poll(true).residue);
+			if (flags.any(Flags(Flag::eClosed) | Flag::eTerm)) { break; }
 			if (flags.test(Flag::eInit)) {
-				app.reset();
 				using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
 				engine.boot<renderer_t>(bootInfo);
 				// engine.boot(bootInfo);
 				app.emplace(&engine, reader);
+				flags.reset(Flag::eInit);
 			}
-			if (flags.test(Flag::eTerm)) {
-				app.reset();
-				engine.unboot();
-			}
-
-			if (engine.drawReady()) {
-				if (app) {
-					// kt::kthread::sleep_for(5ms);
-					app->tick(flags, dt);
-					app->render();
-				}
-				flags.reset(Flags(Flag::eRecreated) | Flag::eInit | Flag::eTerm);
-			}
+			if (app) { app->tick(flags, ++dt); }
 		}
 	} catch (std::exception const& e) { logE("exception: {}", e.what()); }
 	return true;

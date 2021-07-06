@@ -3,6 +3,7 @@
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/input/space.hpp>
+#include <engine/scene/list_drawer.hpp>
 #include <engine/utils/logger.hpp>
 #include <graphics/common.hpp>
 #include <graphics/mesh.hpp>
@@ -79,6 +80,14 @@ bool Engine::nextFrame(graphics::RenderTarget* out) {
 			if (out) { *out = *ret; }
 			return true;
 		}
+	}
+	return false;
+}
+
+bool Engine::draw(ListDrawer& drawer, RGBA clear, ClearDepth depth) {
+	if (auto cb = beginDraw(clear, depth)) {
+		drawer.draw(*cb);
+		return endDraw(*cb);
 	}
 	return false;
 }

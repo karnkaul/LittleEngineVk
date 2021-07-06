@@ -30,6 +30,7 @@ namespace gui {
 class ViewStack;
 }
 
+class ListDrawer;
 using graphics::Extent2D;
 
 class Engine : public Service<Engine> {
@@ -84,8 +85,7 @@ class Engine : public Service<Engine> {
 
 	bool drawReady();
 	bool nextFrame(graphics::RenderTarget* out = {});
-	template <typename Drawer>
-	bool draw(Drawer&& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
+	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>
 	bool boot(Boot::CreateInfo boot, Args&&... args);
@@ -141,12 +141,6 @@ bool Engine::boot(Boot::CreateInfo boot, Args&&... args) {
 		bootImpl();
 		return true;
 	}
-	return false;
-}
-
-template <typename Drawer>
-bool Engine::draw(Drawer&& drawer, RGBA clear, ClearDepth depth) {
-	if (auto cb = beginDraw(clear, depth)) { return (drawer.draw(*cb), endDraw(*cb)); }
 	return false;
 }
 

@@ -12,7 +12,6 @@
 #include <engine/engine.hpp>
 #include <engine/input/control.hpp>
 #include <engine/render/model.hpp>
-#include <engine/scene/scene_drawer.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/renderers.hpp>
@@ -25,6 +24,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
+#include <engine/scene/list_drawer.hpp>
 #include <engine/utils/exec.hpp>
 
 #include <core/utils/enumerate.hpp>
@@ -175,7 +175,7 @@ struct PlayerController {
 	}
 };
 
-class DrawDispatch {
+class Drawer : public ListDrawer {
   public:
 	using Camera = graphics::Camera;
 
@@ -190,9 +190,31 @@ class DrawDispatch {
 		graphics::Texture const* black = {};
 	} m_defaults;
 
-	DrawDispatch(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
+	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights, Span<SceneDrawer::Group const> groups) {
+	void update(decf::registry_t const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt) {
+		populate<DrawListGen3D, DrawListGenUI>(reg);
+		write(cam, sp, lt);
+	}
+
+  private:
+	void draw(DrawList const& list, graphics::CommandBuffer cb) const override {
+		DescriptorBinder bind(list.layer.pipeline, cb);
+		bind(0);
+		for (Drawable const& d : list.drawables) {
+			if (!d.primitives.empty()) {
+				bind(1);
+				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
+				for (Primitive const& prim : d.primitives) {
+					bind({2, 3});
+					ensure(prim.mesh, "Null mesh");
+					prim.mesh->draw(cb);
+				}
+			}
+		}
+	}
+
+	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights) {
 		m_view.lights.swap();
 		m_view.mats.swap();
 		ViewMats const v{cam.view(), cam.perspective(scene), cam.ortho(scene), {cam.position, 1.0f}};
@@ -203,20 +225,20 @@ class DrawDispatch {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& group : groups) { update(group); }
+		for (auto& list : m_lists) { update(list); }
 	}
 
-	void update(SceneDrawer::Group const& group) const {
-		DescriptorMap map(group.group.pipeline);
+	void update(DrawList const& list) const {
+		DescriptorMap map(list.layer.pipeline);
 		auto set0 = map.set(0);
 		set0.update(0, m_view.mats);
-		if (group.group.order >= 0) { set0.update(1, m_view.lights); }
-		for (SceneDrawer::Item const& item : group.items) {
-			if (!item.primitives.empty()) {
-				map.set(1).update(0, item.model);
-				for (Primitive const& prim : item.primitives) {
+		if (list.layer.order >= 0) { set0.update(1, m_view.lights); }
+		for (Drawable const& drawable : list.drawables) {
+			if (!drawable.primitives.empty()) {
+				map.set(1).update(0, drawable.model);
+				for (Primitive const& prim : drawable.primitives) {
 					Material const& mat = prim.material;
-					if (group.group.order < 0) {
+					if (list.layer.order < 0) {
 						ensure(mat.map_Kd, "Null cubemap");
 						set0.update(1, *mat.map_Kd);
 					}
@@ -229,40 +251,6 @@ class DrawDispatch {
 			}
 		}
 	}
-
-	void draw(graphics::CommandBuffer cb, SceneDrawer::Group const& group) const {
-		DescriptorBinder bind(group.group.pipeline, cb);
-		bind(0);
-		for (SceneDrawer::Item const& d : group.items) {
-			if (!d.primitives.empty()) {
-				bind(1);
-				if (d.scissor) { cb.setScissor(*d.scissor); }
-				for (Primitive const& prim : d.primitives) {
-					bind({2, 3});
-					ensure(prim.mesh, "Null mesh");
-					prim.mesh->draw(cb);
-				}
-			}
-		}
-	}
-};
-
-using graphics::CommandBuffer;
-
-class RenderDisp {
-  public:
-	Span<SceneDrawer::Group const> m_groups;
-	not_null<DrawDispatch*> m_dispatch;
-
-	RenderDisp(Span<SceneDrawer::Group const> groups, not_null<DrawDispatch*> dispatch) : m_groups(groups), m_dispatch(dispatch) {}
-	~RenderDisp() {
-		for (auto pipe : m_pipes) { pipe->swap(); }
-	}
-
-	void draw(CommandBuffer cb) { SceneDrawer::draw(*m_dispatch, m_pipes, m_groups, cb); }
-
-  private:
-	SceneDrawer::PipeSet m_pipes;
 };
 
 class TestView : public gui::View {
@@ -310,7 +298,7 @@ class TestView : public gui::View {
 
 class App : public input::Receiver {
   public:
-	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawDispatch(&eng->gfx().boot.vram) {
+	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> shaderLD{&m_eng->gfx().boot.device};
@@ -468,23 +456,23 @@ class App : public input::Receiver {
 		return ret;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawGroup const& group, Span<Primitive const> primitives) {
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, Span<Primitive const> primitives) {
 		auto ret = spawn(std::move(name));
-		SceneDrawer::attach(m_data.registry, ret, group, primitives);
+		m_drawer.attach(m_data.registry, ret, layer, primitives);
 		return ret;
 	};
 
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawGroup const& group) {
+	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawLayer const& layer) {
 		auto m = m_store.get<graphics::Mesh>(meshID);
 		auto ret = spawn(std::move(name));
-		SceneDrawer::attach(m_data.registry, ret, group, Primitive{mat, &*m});
+		m_drawer.attach(m_data.registry, ret, layer, Primitive{mat, &*m});
 		return ret;
 	};
 
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawGroup const& group) {
+	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer const& layer) {
 		auto m = m_store.get<Model>(modelID);
 		auto ret = spawn(std::move(name));
-		SceneDrawer::attach(m_data.registry, ret, group, m->primitives());
+		m_drawer.attach(m_data.registry, ret, layer, m->primitives());
 		return ret;
 	};
 
@@ -496,8 +484,8 @@ class App : public input::Receiver {
 		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_store.get<BitmapFont>("fonts/default");
-		m_drawDispatch.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
-		m_drawDispatch.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
+		m_drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
+		m_drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
 		auto& vram = m_eng->gfx().boot.vram;
 
 		m_data.text.create(&vram);
@@ -516,23 +504,23 @@ class App : public input::Receiver {
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
-		m_data.groups["sky"] = DrawGroup{&pipe_sky->get(), -10};
-		m_data.groups["test"] = DrawGroup{&pipe_test->get(), 0};
-		m_data.groups["test_tex"] = DrawGroup{&pipe_testTex->get(), 0};
-		m_data.groups["test_lit"] = DrawGroup{&pipe_testLit->get(), 0};
-		m_data.groups["ui"] = DrawGroup{&pipe_ui->get(), 10};
+		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
+		m_data.layers["test"] = DrawLayer{&pipe_test->get(), 0};
+		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
+		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
+		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
 
 		auto guiStack = m_data.registry.spawn<gui::ViewStack>("gui_root", &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
-		m_data.registry.attach<DrawGroup>(guiStack, m_data.groups["ui"]);
+		m_data.registry.attach<DrawLayer>(guiStack, m_data.layers["ui"]);
 		auto& stack = guiStack.get<gui::ViewStack>();
 		stack.push<TestView>(&font.get());
 
-		m_drawDispatch.m_view.mats = graphics::ShaderBuffer(vram, {});
+		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
 			info.type = vk::DescriptorType::eStorageBuffer;
-			m_drawDispatch.m_view.lights = graphics::ShaderBuffer(vram, {});
+			m_drawer.m_view.lights = graphics::ShaderBuffer(vram, {});
 		}
 		DirLight l0, l1;
 		l0.direction = {-graphics::up, 0.0f};
@@ -543,37 +531,37 @@ class App : public input::Receiver {
 		{
 			Material mat;
 			mat.map_Kd = &*skymap;
-			spawn("skybox", "skycube", mat, m_data.groups["sky"]);
+			spawn("skybox", "skycube", mat, m_data.layers["sky"]);
 		}
 		{
 			Material mat;
 			mat.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
 			mat.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawn("player", "meshes/cube", mat, m_data.groups["test_lit"]);
+			auto player = spawn("player", "meshes/cube", mat, m_data.layers["test_lit"]);
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			// m_data.player = spawn("player");
 			m_data.registry.attach<PlayerController>(m_data.player);
 		}
 		{
-			auto ent = spawn("prop_1", "meshes/cube", {}, m_data.groups["test"]);
+			auto ent = spawn("prop_1", "meshes/cube", {}, m_data.layers["test"]);
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.groups["test_tex"]);
+			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.layers["test_tex"]);
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", m_data.groups["ui"], m_data.text.primitive(*font)); }
+		{ spawn("ui_1", m_data.layers["ui"], m_data.text.primitive(*font)); }
 		{
 			{
-				auto ent0 = spawn("model_0_0", "models/plant", m_data.groups["test_lit"]);
+				auto ent0 = spawn("model_0_0", "models/plant", m_data.layers["test_lit"]);
 				// auto ent0 = spawn("model_0_0");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", "models/plant", m_data.groups["test_lit"]);
+				auto ent1 = spawn("model_0_1", "models/plant", m_data.layers["test_lit"]);
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
@@ -582,12 +570,12 @@ class App : public input::Receiver {
 			if (auto model = m_store.find<Model>("models/teapot")) {
 				Primitive prim = model->get().primitives().front();
 				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawn("model_1_0", m_data.groups["test_lit"], prim);
+				auto ent0 = spawn("model_1_0", m_data.layers["test_lit"], prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_store.contains<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", "models/nanosuit", m_data.groups["test_lit"]);
+				auto ent = spawn("model_1", "models/nanosuit", m_data.layers["test_lit"]);
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
@@ -657,21 +645,18 @@ class App : public input::Receiver {
 	void render() {
 		if (m_eng->nextFrame()) {
 			// write / update
-			std::vector<SceneDrawer::Group> groups;
 			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
-				groups = SceneDrawer::groups<ScenePopulator3D, ScenePopulatorUI>(m_data.registry, true);
-				m_drawDispatch.write(*cam, m_eng->sceneSpace(), m_data.dirLights, groups);
+				m_drawer.update(m_data.registry, *cam, m_eng->sceneSpace(), m_data.dirLights);
 			}
 			// draw
-			RenderDisp rd{groups, &m_drawDispatch};
-			m_eng->draw(rd, RGBA(0x777777ff, RGBA::Type::eAbsolute));
+			m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 		}
 	}
 
   private:
 	struct Data {
 		std::unordered_map<Hash, decf::entity_t> entities;
-		std::unordered_map<Hash, DrawGroup> groups;
+		std::unordered_map<Hash, DrawLayer> layers;
 
 		BitmapText text;
 		std::vector<DirLight> dirLights;
@@ -691,7 +676,7 @@ class App : public input::Receiver {
 	AssetStore m_store;
 	scheduler m_tasks;
 	not_null<Engine*> m_eng;
-	DrawDispatch m_drawDispatch;
+	Drawer m_drawer;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};

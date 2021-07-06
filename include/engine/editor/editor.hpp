@@ -8,7 +8,6 @@
 #include <engine/editor/types.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/render/viewport.hpp>
-#include <engine/scene/scene_node.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le {
@@ -18,13 +17,13 @@ class DesktopInstance;
 namespace graphics {
 struct ScreenView;
 }
+class SceneRegistry;
 
 namespace edi {
 struct In {
 	edi::MenuList menu;
 	std::vector<decf::entity_t> customEntities;
-	SceneNode::Root* root = {};
-	decf::registry_t* registry = {};
+	SceneRegistry* registry = {};
 };
 struct Out {
 	struct {

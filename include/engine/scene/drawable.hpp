@@ -16,5 +16,4 @@ struct Drawable {
 	Rect2D scissor;
 	Span<Primitive const> primitives;
 };
-
 } // namespace le

@@ -3,6 +3,7 @@
 #include <engine/editor/controls/scene_tree.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/editor/types.hpp>
+#include <engine/scene/scene_registry.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
@@ -349,8 +350,8 @@ Viewport const& Editor::view() const noexcept {
 
 graphics::ScreenView Editor::update(Desktop& win, Renderer& renderer, input::Frame const& frame) {
 	if constexpr (levk_desktopOS) {
-		if (m_storage.cached.root != s_in.root || m_storage.cached.registry != s_in.registry) { s_out = {}; }
-		if (!s_in.registry || !s_in.registry->contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
+		if (m_storage.cached.registry != s_in.registry) { s_out = {}; }
+		if (!s_in.registry || !s_in.registry->registry().contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
 		if (active() && s_engaged) {
 			edi::displayScale(renderer.renderScale());
 			if (!edi::Pane::s_blockResize) { m_storage.resizer(win, m_storage.gameView, frame); }

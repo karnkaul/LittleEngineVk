@@ -11,7 +11,7 @@ Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, 
 } // namespace
 
 void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry_t const& registry) const {
-	for (auto& [_, d] : registry.view<DrawLayer, SceneNode, std::vector<Primitive>>()) {
+	for (auto& [_, d] : registry.view<DrawLayer, SceneNode, PrimitiveList>()) {
 		auto& [layer, node, prims] = d;
 		if (!prims.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, prims}); }
 	}
@@ -35,7 +35,7 @@ void DrawListFactory::add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot c
 }
 
 void DrawListFactory::attach(decf::registry_t& registry, decf::entity_t entity, DrawLayer layer, Span<Primitive const> primitives) {
-	registry.attach<std::vector<Primitive>>(entity) = {primitives.begin(), primitives.end()};
+	registry.attach<PrimitiveList>(entity) = primitives;
 	registry.attach<DrawLayer>(entity, layer);
 }
 } // namespace le

@@ -14,6 +14,8 @@ namespace gui {
 class TreeRoot;
 }
 
+using PrimitiveList = Span<Primitive const>;
+
 class DrawListFactory {
   public:
 	using LayerMap = std::unordered_map<DrawLayer, std::vector<Drawable>, LayerHasher>;
@@ -23,11 +25,12 @@ class DrawListFactory {
 	template <typename... Gen>
 	static std::vector<DrawList> lists(decf::registry_t const& registry, bool sort);
 
+	// Attaches DrawLayer, PrimitiveList
 	static void attach(decf::registry_t& registry, decf::entity_t entity, DrawLayer layer, Span<Primitive const> primitives);
 };
 
 struct DrawListGen3D {
-	// Populates DrawLayer + SceneNode + PrimList
+	// Populates DrawLayer + SceneNode + PrimitiveList
 	void operator()(DrawListFactory::LayerMap& map, decf::registry_t const& registry) const;
 };
 

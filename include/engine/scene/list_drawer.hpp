@@ -10,7 +10,7 @@ class ListDrawer : public utils::VBase {
 	static constexpr vk::Rect2D cast(Rect2D rect) noexcept { return {{rect.offset.x, rect.offset.y}, {rect.extent.x, rect.extent.y}}; }
 
 	static void attach(decf::registry_t& registry, decf::entity_t entity, DrawLayer layer, Span<Primitive const> primitives);
-	
+
 	template <typename... Gen>
 	void populate(decf::registry_t const& registry, bool sort = true);
 	void draw(graphics::CommandBuffer cb) const;

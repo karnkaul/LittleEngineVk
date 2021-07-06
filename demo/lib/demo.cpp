@@ -25,6 +25,7 @@
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
 #include <engine/scene/list_drawer.hpp>
+#include <engine/scene/scene_registry.hpp>
 #include <engine/utils/exec.hpp>
 
 #include <core/utils/enumerate.hpp>
@@ -296,8 +297,10 @@ class TestView : public gui::View {
 	gui::OnClick::Tk m_tk;
 };
 
-class App : public input::Receiver {
+class App : public input::Receiver, public SceneRegistry {
   public:
+	using SceneRegistry::spawn;
+
 	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
 		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
@@ -450,30 +453,12 @@ class App : public input::Receiver {
 		return false;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name) {
-		auto ret = m_data.registry.spawn<SceneNode>(name, &m_data.root);
-		ret.get<SceneNode>().entity(ret);
-		return ret;
-	}
-
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer const& layer, Span<Primitive const> primitives) {
-		auto ret = spawn(std::move(name));
-		m_drawer.attach(m_data.registry, ret, layer, primitives);
-		return ret;
+	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawLayer layer) {
+		return spawn(std::move(name), layer, &*m_store.get<graphics::Mesh>(meshID), mat);
 	};
 
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawLayer const& layer) {
-		auto m = m_store.get<graphics::Mesh>(meshID);
-		auto ret = spawn(std::move(name));
-		m_drawer.attach(m_data.registry, ret, layer, Primitive{mat, &*m});
-		return ret;
-	};
-
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer const& layer) {
-		auto m = m_store.get<Model>(modelID);
-		auto ret = spawn(std::move(name));
-		m_drawer.attach(m_data.registry, ret, layer, m->primitives());
-		return ret;
+	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer layer) {
+		return spawn(std::move(name), layer, m_store.get<Model>(modelID)->primitives());
 	};
 
 	void init1() {
@@ -495,7 +480,7 @@ class App : public input::Receiver {
 		// m_data.text.text.align = {-0.5f, 0.5f};
 		m_data.text.set(font.get(), "Hi!");
 
-		auto freecam = m_data.registry.spawn<FreeCam, SpringArm>("freecam");
+		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
 		auto& cam = freecam.get<FreeCam>();
 		cam.position = {0.0f, 0.5f, 4.0f};
@@ -510,9 +495,8 @@ class App : public input::Receiver {
 		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
 		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
 
-		auto guiStack = m_data.registry.spawn<gui::ViewStack>("gui_root", &m_eng->gfx().boot.vram);
+		auto guiStack = spawnStack("gui_root", m_data.layers["ui"], &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
-		m_data.registry.attach<DrawLayer>(guiStack, m_data.layers["ui"]);
 		auto& stack = guiStack.get<gui::ViewStack>();
 		stack.push<TestView>(&font.get());
 
@@ -542,7 +526,7 @@ class App : public input::Receiver {
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			// m_data.player = spawn("player");
-			m_data.registry.attach<PlayerController>(m_data.player);
+			m_registry.attach<PlayerController>(m_data.player);
 		}
 		{
 			auto ent = spawn("prop_1", "meshes/cube", {}, m_data.layers["test"]);
@@ -553,7 +537,7 @@ class App : public input::Receiver {
 			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.layers["test_tex"]);
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", m_data.layers["ui"], m_data.text.primitive(*font)); }
+		{ spawn("ui_1", m_data.layers["ui"], m_data.text.update(*font)); }
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", m_data.layers["test_lit"]);
@@ -565,10 +549,10 @@ class App : public input::Receiver {
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
-				node.parent(&m_data.registry.get<SceneNode>(m_data.entities["model_0_0"]));
+				node.parent(&m_registry.get<SceneNode>(m_data.entities["model_0_0"]));
 			}
 			if (auto model = m_store.find<Model>("models/teapot")) {
-				Primitive prim = model->get().primitives().front();
+				Primitive& prim = model->get().primitivesRW().front();
 				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 				auto ent0 = spawn("model_1_0", m_data.layers["test_lit"], prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
@@ -588,14 +572,13 @@ class App : public input::Receiver {
 			file.m_t.id = "File";
 			file.push_front({"Quit", [&out_flags]() { out_flags.set(Flag::eClosed); }});
 			Editor::s_in.menu.trees.push_back(std::move(file));
-			Editor::s_in.registry = &m_data.registry;
-			Editor::s_in.root = &m_data.root;
+			Editor::s_in.registry = this;
 			Editor::s_in.customEntities.push_back(m_data.camera);
 		}
 
 		if (m_data.loader.ready(&m_tasks)) {
-			if (m_data.registry.empty()) { init1(); }
-			auto guiStack = m_data.registry.find<gui::ViewStack>(m_data.guiStack);
+			if (m_registry.empty()) { init1(); }
+			auto guiStack = m_registry.find<gui::ViewStack>(m_data.guiStack);
 			if (guiStack) {
 				m_eng->update(*guiStack);
 				/*auto const& p = m_eng->inputState().cursor.position;
@@ -618,21 +601,21 @@ class App : public input::Receiver {
 					s_prev = {};
 				}*/
 			}
-			auto& cam = m_data.registry.get<FreeCam>(m_data.camera);
-			auto& pc = m_data.registry.get<PlayerController>(m_data.player);
+			auto& cam = m_registry.get<FreeCam>(m_data.camera);
+			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
-				auto& node = m_data.registry.get<SceneNode>(m_data.player);
-				m_data.registry.get<PlayerController>(m_data.player).tick(state, node, dt);
+				auto& node = m_registry.get<SceneNode>(m_data.player);
+				m_registry.get<PlayerController>(m_data.player).tick(state, node, dt);
 				glm::vec3 const& forward = node.orientation() * -graphics::front;
-				cam.position = m_data.registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
+				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
 			} else {
 				cam.tick(state, dt, m_eng->desktop());
 			}
-			m_data.registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-			if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			if (auto node = m_data.registry.find<SceneNode>(m_data.entities["model_1_0"])) {
+			m_registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
+			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
 				node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
@@ -645,9 +628,7 @@ class App : public input::Receiver {
 	void render() {
 		if (m_eng->nextFrame()) {
 			// write / update
-			if (auto cam = m_data.registry.find<FreeCam>(m_data.camera)) {
-				m_drawer.update(m_data.registry, *cam, m_eng->sceneSpace(), m_data.dirLights);
-			}
+			if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights); }
 			// draw
 			m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 		}
@@ -661,8 +642,6 @@ class App : public input::Receiver {
 		BitmapText text;
 		std::vector<DirLight> dirLights;
 
-		SceneNode::Root root;
-		decf::registry_t registry;
 		decf::entity_t camera;
 		decf::entity_t player;
 		decf::entity_t guiStack;

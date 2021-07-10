@@ -8,13 +8,13 @@
 namespace le {
 class SceneRegistry : public utils::VBase {
   public:
-	decf::registry_t& registry() noexcept { return m_registry; }
-	decf::registry_t const& registry() const noexcept { return m_registry; }
+	decf::registry& registry() noexcept { return m_registry; }
+	decf::registry const& registry() const noexcept { return m_registry; }
 	SceneNode::Root& root() noexcept { return m_root; }
 	SceneNode::Root const& root() const noexcept { return m_root; }
 
-	void attach(decf::entity_t entity, DrawLayer layer, Span<Primitive const> primitives);
-	void attach(decf::entity_t entity, DrawLayer layer);
+	void attach(decf::entity entity, DrawLayer layer, Span<Primitive const> primitives);
+	void attach(decf::entity entity, DrawLayer layer);
 	decf::spawn_t<SceneNode> spawnNode(std::string name);
 	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, not_null<graphics::Mesh const*> mesh, Material const& material);
 	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, Span<Primitive const> primitives);
@@ -22,16 +22,16 @@ class SceneRegistry : public utils::VBase {
 
   protected:
 	SceneNode::Root m_root;
-	decf::registry_t m_registry;
+	decf::registry m_registry;
 };
 
 // impl
 
-inline void SceneRegistry::attach(decf::entity_t entity, DrawLayer layer, Span<Primitive const> primitives) {
+inline void SceneRegistry::attach(decf::entity entity, DrawLayer layer, Span<Primitive const> primitives) {
 	DrawListFactory::attach(m_registry, entity, layer, primitives);
 }
 
-inline void SceneRegistry::attach(decf::entity_t entity, DrawLayer layer) { m_registry.attach<DrawLayer>(entity, layer); }
+inline void SceneRegistry::attach(decf::entity entity, DrawLayer layer) { m_registry.attach<DrawLayer>(entity, layer); }
 
 inline decf::spawn_t<SceneNode> SceneRegistry::spawnNode(std::string name) {
 	auto ret = m_registry.spawn<SceneNode>(name, &m_root);

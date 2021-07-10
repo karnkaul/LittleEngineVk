@@ -74,7 +74,7 @@ bool Engine::nextFrame(graphics::RenderTarget* out) {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 				ensure(b, "Failed to begin DearImGui frame");
 				ensure(m_desktop, "Invariant violated");
-				m_view = m_editor.update(*m_desktop, m_gfx->context.renderer(), m_inputFrame);
+				m_view = m_editor.update(m_inputFrame);
 			}
 			m_drawing = *ret;
 			if (out) { *out = *ret; }

@@ -49,16 +49,23 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	{
 		Spec::opt_t vsync;
 		vsync.id = "vsync";
-		vsync.description = "Force VSYNC";
-		Spec::opt_t validnOp;
-		validnOp.id = "validation";
-		validnOp.description = "Force validation layers on/off";
+		vsync.description = "Force VSYNC (immediate mode)";
+		vsync.value_fmt = "[off/on/adaptive]";
+		Spec::opt_t validation;
+		validation.id = "validation";
+		validation.description = "Force validation layers on/off";
 		spec.main.options.push_back(vsync);
-		spec.main.options.push_back(validnOp);
+		spec.main.options.push_back(validation);
 		spec.main.callback = [](clap::interpreter::params_t const& p) {
-			if (p.opt_value("vsync")) {
-				std::cout << "Requesting VSYNC\n";
-				graphics::Swapchain::s_forceVsync = true;
+			if (auto val = p.opt_value("no-vsync")) {
+				std::cout << "Requesting no VSYNC / immediate mode\n";
+				if (*val == "off") {
+					graphics::Swapchain::s_forceVsync = graphics::Vsync::eOff;
+				} else if (*val == "on") {
+					graphics::Swapchain::s_forceVsync = graphics::Vsync::eOn;
+				} else if (*val == "adaptive") {
+					graphics::Swapchain::s_forceVsync = graphics::Vsync::eAdaptive;
+				}
 			}
 			if (auto val = p.opt_value("validation")) {
 				bool const b = utils::toBool(*val, false);

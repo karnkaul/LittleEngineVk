@@ -10,14 +10,14 @@ namespace {
 Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
 } // namespace
 
-void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry_t const& registry) const {
+void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
 	for (auto& [_, d] : registry.view<DrawLayer, SceneNode, PrimitiveList>()) {
 		auto& [layer, node, prims] = d;
 		if (!prims.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, prims}); }
 	}
 }
 
-void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, decf::registry_t const& registry) const {
+void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
 	for (auto& [_, d] : registry.view<DrawLayer, gui::ViewStack>()) {
 		auto& [gr, stack] = d;
 		for (auto const& view : stack.views()) { DrawListFactory::add(map, gr, *view); }
@@ -34,7 +34,7 @@ void DrawListFactory::add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot c
 	for (auto& node : root.nodes()) { add(map, layer, *node); }
 }
 
-void DrawListFactory::attach(decf::registry_t& registry, decf::entity_t entity, DrawLayer layer, Span<Primitive const> primitives) {
+void DrawListFactory::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Primitive const> primitives) {
 	registry.attach<PrimitiveList>(entity) = primitives;
 	registry.attach<DrawLayer>(entity, layer);
 }

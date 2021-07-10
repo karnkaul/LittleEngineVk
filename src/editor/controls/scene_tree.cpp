@@ -7,7 +7,7 @@ namespace le::edi {
 namespace {
 TreeNode makeNode(std::string_view id, bool selected, bool leaf) { return TreeNode(id, selected, leaf, true, false); }
 
-void walk(SceneNode& node, decf::registry_t& reg) {
+void walk(SceneNode& node, decf::registry& reg) {
 	auto& ins = Editor::s_out.inspecting;
 	if (reg.contains(node.entity())) {
 		auto tn = makeNode(reg.name(node.entity()), &node == ins.node, node.children().empty());
@@ -34,7 +34,7 @@ void SceneTree::update() {
 			if (tn.test(GUI::eOpen)) {
 				auto& ins = Editor::s_out.inspecting;
 				for (auto const& entity : Editor::s_in.customEntities) {
-					if (entity != decf::entity_t() && reg.registry().contains(entity)) {
+					if (entity != decf::entity() && reg.registry().contains(entity)) {
 						auto tn = makeNode(reg.registry().name(entity), entity == ins.entity, true);
 						if (tn.test(GUI::eLeftClicked)) {
 							ins = {nullptr, entity};

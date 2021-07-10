@@ -42,6 +42,8 @@ class RenderContext : NoCopy {
 	bool endFrame();
 	bool submitFrame();
 
+	void reconstruct(std::optional<graphics::Vsync> vsync = std::nullopt);
+
 	Status status() const noexcept { return m_storage.status; }
 	std::size_t index() const noexcept { return m_storage.renderer->index(); }
 	Buffering buffering() const noexcept { return m_storage.renderer->buffering(); }
@@ -53,6 +55,7 @@ class RenderContext : NoCopy {
 	glm::mat4 preRotate() const noexcept;
 	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) const noexcept;
+	bool supported(Vsync vsync) const noexcept { return m_swapchain->supportedVsync().test(vsync); }
 
 	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
 	CommandPool const& commandPool() const noexcept { return m_pool; }
@@ -63,12 +66,16 @@ class RenderContext : NoCopy {
 		return ((m_storage.status == any) || ...);
 	}
 	void set(Status s) noexcept { m_storage.status = s; }
-
+	enum Flag { eRecreate = 1 << 0, eVsync = 1 << 1 };
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
 		std::optional<RenderTarget> drawing;
 		Deferred<vk::PipelineCache> pipelineCache;
 		Status status = {};
+		struct {
+			std::optional<graphics::Vsync> vsync;
+			bool trigger = false;
+		} reconstruct;
 	};
 
 	Storage m_storage;

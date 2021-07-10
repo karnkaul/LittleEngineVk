@@ -8,7 +8,7 @@ namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct Transform {
-	bool operator()(SceneNode& node, decf::registry_t&) const {
+	bool operator()(SceneNode& node, decf::registry&) const {
 		auto tr = TWidget<SceneNode>("Pos", "Orn", "Scl", node);
 		return true;
 	}
@@ -18,7 +18,7 @@ struct Transform {
 
 void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
-	if (Editor::s_in.registry && Editor::s_out.inspecting.entity != decf::entity_t()) {
+	if (Editor::s_in.registry && Editor::s_out.inspecting.entity != decf::entity()) {
 		auto entity = Editor::s_out.inspecting.entity;
 		auto node = Editor::s_out.inspecting.node;
 		auto& registry = Editor::s_in.registry->registry();

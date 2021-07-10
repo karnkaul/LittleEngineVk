@@ -5,8 +5,8 @@
 #include <engine/scene/layer_hasher.hpp>
 
 namespace decf {
-class entity_t;
-class registry_t;
+class entity;
+class registry;
 } // namespace decf
 
 namespace le {
@@ -23,26 +23,26 @@ class DrawListFactory {
 	static void add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot const& root);
 
 	template <typename... Gen>
-	static std::vector<DrawList> lists(decf::registry_t const& registry, bool sort);
+	static std::vector<DrawList> lists(decf::registry const& registry, bool sort);
 
 	// Attaches DrawLayer, PrimitiveList
-	static void attach(decf::registry_t& registry, decf::entity_t entity, DrawLayer layer, Span<Primitive const> primitives);
+	static void attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Primitive const> primitives);
 };
 
 struct DrawListGen3D {
 	// Populates DrawLayer + SceneNode + PrimitiveList
-	void operator()(DrawListFactory::LayerMap& map, decf::registry_t const& registry) const;
+	void operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const;
 };
 
 struct DrawListGenUI {
 	// Populates DrawLayer + gui::ViewStack
-	void operator()(DrawListFactory::LayerMap& map, decf::registry_t const& registry) const;
+	void operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const;
 };
 
 // impl
 
 template <typename... Gen>
-std::vector<DrawList> DrawListFactory::lists(decf::registry_t const& registry, bool sort) {
+std::vector<DrawList> DrawListFactory::lists(decf::registry const& registry, bool sort) {
 	LayerMap map;
 	(Gen{}(map, registry), ...);
 	std::vector<DrawList> ret;

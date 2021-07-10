@@ -22,22 +22,19 @@ class SceneRegistry;
 namespace edi {
 struct In {
 	edi::MenuList menu;
-	std::vector<decf::entity_t> customEntities;
+	std::vector<decf::entity> customEntities;
 	SceneRegistry* registry = {};
 };
 struct Out {
 	struct {
 		SceneNode* node = {};
-		decf::entity_t entity;
+		decf::entity entity;
 	} inspecting;
 };
 } // namespace edi
 
 class Editor {
   public:
-	using Desktop = window::DesktopInstance;
-	using Renderer = graphics::ARenderer;
-
 	struct Rail {
 		edi::Palette panel;
 		std::string_view id;
@@ -59,7 +56,7 @@ class Editor {
 	bool draw(graphics::CommandBuffer cb) const;
 
   private:
-	graphics::ScreenView update(Desktop& win, Renderer& renderer, input::Frame const& frame);
+	graphics::ScreenView update(input::Frame const& frame);
 
 	struct {
 		edi::Resizer resizer;

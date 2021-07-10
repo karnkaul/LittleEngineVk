@@ -82,7 +82,7 @@ class DeltaTime {
 	T dt() const noexcept { return m_dt; }
 	operator T() const noexcept { return dt(); }
 
-	T next() noexcept;
+	T next() noexcept { return m_dt = time::diffExchg(m_t); }
 	T operator++() noexcept { return next(); }
 	T operator++(int) noexcept;
 
@@ -116,12 +116,6 @@ constexpr Ret time::diffExchg(Point& from, Point const& to) noexcept {
 	auto const ret = diff(from, to);
 	from = to;
 	return ret;
-}
-template <typename T>
-T DeltaTime<T>::next() noexcept {
-	auto const new_t = time::now();
-	m_dt = new_t - std::exchange(m_t, new_t);
-	return m_dt;
 }
 template <typename T>
 T DeltaTime<T>::operator++(int) noexcept {

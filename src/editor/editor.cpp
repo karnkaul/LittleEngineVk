@@ -1,8 +1,11 @@
 #include <core/maths.hpp>
+#include <core/services.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/editor/controls/scene_tree.hpp>
+#include <engine/editor/controls/settings.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/editor/types.hpp>
+#include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
@@ -330,6 +333,7 @@ void displayScale(MU f32 renderScale) {
 
 Editor::Editor() {
 	s_left.panel.attach<edi::SceneTree>("Scene");
+	s_left.panel.attach<edi::Settings>("Settings");
 	s_right.panel.attach<edi::Inspector>("Inspector");
 }
 
@@ -348,15 +352,16 @@ Viewport const& Editor::view() const noexcept {
 	return active() && s_engaged ? m_storage.gameView : s_default;
 }
 
-graphics::ScreenView Editor::update(Desktop& win, Renderer& renderer, input::Frame const& frame) {
+graphics::ScreenView Editor::update(input::Frame const& frame) {
 	if constexpr (levk_desktopOS) {
 		if (m_storage.cached.registry != s_in.registry) { s_out = {}; }
 		if (!s_in.registry || !s_in.registry->registry().contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
 		if (active() && s_engaged) {
-			edi::displayScale(renderer.renderScale());
-			if (!edi::Pane::s_blockResize) { m_storage.resizer(win, m_storage.gameView, frame); }
+			auto eng = Services::locate<Engine>();
+			edi::displayScale(eng->renderer().renderScale());
+			if (!edi::Pane::s_blockResize) { m_storage.resizer(*eng->desktop(), m_storage.gameView, frame); }
 			edi::Pane::s_blockResize = false;
-			m_storage.menu(s_in.menu, renderer);
+			m_storage.menu(s_in.menu);
 			glm::vec2 const& size = frame.space.display.window;
 			auto const rect = m_storage.gameView.rect();
 			f32 const offsetY = m_storage.gameView.topLeft.offset.y;
@@ -368,7 +373,7 @@ graphics::ScreenView Editor::update(Desktop& win, Renderer& renderer, input::Fra
 			s_right.panel.update(s_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
 			m_storage.cached = std::move(s_in);
 			s_in = {};
-			return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * renderer.renderScale()};
+			return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 		}
 	}
 	return {};

@@ -164,14 +164,14 @@ struct TWidgetWrap {
 template <typename T>
 struct TInspector {
 	std::optional<TreeNode> node;
-	decf::registry_t* pReg = nullptr;
-	decf::entity_t entity;
+	decf::registry* pReg = nullptr;
+	decf::entity entity;
 	std::string id;
 	bool bNew = false;
 	bool bOpen = false;
 
 	TInspector() = default;
-	TInspector(decf::registry_t& out_registry, decf::entity_t entity, T const* pT, std::string_view id = {});
+	TInspector(decf::registry& out_registry, decf::entity entity, T const* pT, std::string_view id = {});
 	TInspector(TInspector<T>&&);
 	TInspector& operator=(TInspector<T>&&);
 	~TInspector();
@@ -243,7 +243,7 @@ FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) 
 }
 
 template <typename T>
-TInspector<T>::TInspector(decf::registry_t& out_registry, decf::entity_t entity, T const* pT, std::string_view id)
+TInspector<T>::TInspector(decf::registry& out_registry, decf::entity entity, T const* pT, std::string_view id)
 	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id) {
 	bNew = pT == nullptr;
 	if (!bNew) {
@@ -276,7 +276,7 @@ template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
 		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked)) {
-			decf::registry_t& registry = *pReg;
+			decf::registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}
 	}

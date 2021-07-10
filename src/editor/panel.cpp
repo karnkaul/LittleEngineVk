@@ -1,9 +1,10 @@
+#include <algorithm>
 #include <engine/editor/panel.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le::edi {
-bool Palette::detach(std::string const& id) {
-	if (auto it = m_items.find(id); it != m_items.end()) {
+bool Palette::detach(std::string_view id) {
+	if (auto it = std::find_if(m_items.begin(), m_items.end(), [&id](Entry const& e) { return e.id == id; }); it != m_items.end()) {
 		m_items.erase(it);
 		return true;
 	}
@@ -21,8 +22,8 @@ bool Palette::update([[maybe_unused]] std::string_view id, [[maybe_unused]] glm:
 	ImGui::SetNextWindowPos(ImVec2(pos.x + s_xPad, pos.y + s_dy), ImGuiCond_Always);
 	if ((ret = ImGui::Begin(id.data(), nullptr, flags)); !m_items.empty()) {
 		if (auto tab = TabBar(id)) {
-			for (auto& [id, item] : m_items) {
-				if (auto it = TabBar::Item(id)) { item->update(); }
+			for (auto& item : m_items) {
+				if (auto it = TabBar::Item(item.id)) { item.control->update(); }
 			}
 		}
 	}

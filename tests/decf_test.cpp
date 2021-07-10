@@ -21,10 +21,10 @@ struct D {};
 struct E {};
 struct F {};
 
-std::unordered_set<entity_t> g_spawned;
+std::unordered_set<entity> g_spawned;
 std::mutex g_mutex;
 
-bool verify(entity_t entity) {
+bool verify(entity entity) {
 	std::scoped_lock lock(g_mutex);
 	bool const bRet = !utils::contains(g_spawned, entity);
 	ensure(bRet, "DUPLICATE");
@@ -35,9 +35,9 @@ bool verify(entity_t entity) {
 
 int main() {
 	dts::task_queue tq;
-	kt::tmutex<registry_t> registry;
+	kt::tmutex<registry> registry;
 	constexpr s32 entityCount = 10000;
-	std::array<entity_t, entityCount> entities;
+	std::array<entity, entityCount> entities;
 	s32 idx = 0;
 	bool bPass = true;
 	for (auto& entity : entities) {

@@ -77,10 +77,13 @@ Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, 
 }
 
 bool RenderContext::ready(glm::ivec2 framebufferSize) {
-	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
-		if (m_swapchain->reconstruct(framebufferSize)) {
+	if (m_storage.reconstruct.trigger || m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
+		auto const& vsync = m_storage.reconstruct.vsync;
+		bool const ret = vsync ? m_swapchain->reconstruct(*vsync, framebufferSize) : m_swapchain->reconstruct(framebufferSize);
+		if (ret) {
 			m_storage.renderer->refresh();
 			m_storage.status = Status::eWaiting;
+			m_storage.reconstruct = {};
 		}
 		return false;
 	}
@@ -151,6 +154,11 @@ bool RenderContext::submitFrame() {
 	set(Status::eWaiting);
 	if (m_storage.renderer->submitFrame()) { return true; }
 	return false;
+}
+
+void RenderContext::reconstruct(std::optional<graphics::Vsync> vsync) {
+	m_storage.reconstruct.trigger = true;
+	m_storage.reconstruct.vsync = vsync;
 }
 
 glm::mat4 RenderContext::preRotate() const noexcept {

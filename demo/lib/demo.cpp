@@ -193,7 +193,7 @@ class Drawer : public ListDrawer {
 
 	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void update(decf::registry_t const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt) {
+	void update(decf::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt) {
 		populate<DrawListGen3D, DrawListGenUI>(reg);
 		write(cam, sp, lt);
 	}
@@ -412,7 +412,7 @@ class App : public input::Receiver, public SceneRegistry {
 		eng->m_win->show();
 
 		struct GFreeCam : edi::Gadget {
-			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
+			bool operator()(decf::entity entity, decf::registry& reg) override {
 				if (auto freecam = reg.find<FreeCam>(entity)) {
 					edi::Text title("FreeCam");
 					edi::TWidget<f32>("Speed", freecam->m_params.xz_speed);
@@ -422,7 +422,7 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		};
 		struct GPlayerController : edi::Gadget {
-			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
+			bool operator()(decf::entity entity, decf::registry& reg) override {
 				if (auto pc = reg.find<PlayerController>(entity)) {
 					edi::Text title("PlayerController");
 					edi::TWidget<bool>("Active", pc->active);
@@ -432,7 +432,7 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		};
 		struct GSpringArm : edi::Gadget {
-			bool operator()(decf::entity_t entity, decf::registry_t& reg) override {
+			bool operator()(decf::entity entity, decf::registry& reg) override {
 				if (auto sa = reg.find<SpringArm>(entity)) {
 					edi::Text title("SpringArm");
 					edi::TWidget<f32>("k", sa->k, 0.01f);
@@ -566,12 +566,8 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 	}
 
-	void tick(Flags& out_flags, Time_s dt) {
+	void tick(Time_s dt) {
 		if constexpr (levk_editor) {
-			edi::MenuList::Tree file;
-			file.m_t.id = "File";
-			file.push_front({"Quit", [&out_flags]() { out_flags.set(Flag::eClosed); }});
-			Editor::s_in.menu.trees.push_back(std::move(file));
 			Editor::s_in.registry = this;
 			Editor::s_in.customEntities.push_back(m_data.camera);
 		}
@@ -636,15 +632,15 @@ class App : public input::Receiver, public SceneRegistry {
 
   private:
 	struct Data {
-		std::unordered_map<Hash, decf::entity_t> entities;
+		std::unordered_map<Hash, decf::entity> entities;
 		std::unordered_map<Hash, DrawLayer> layers;
 
 		BitmapText text;
 		std::vector<DirLight> dirLights;
 
-		decf::entity_t camera;
-		decf::entity_t player;
-		decf::entity_t guiStack;
+		decf::entity camera;
+		decf::entity player;
+		decf::entity guiStack;
 		AssetListLoader loader;
 	};
 
@@ -709,7 +705,7 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 				app.emplace(&engine, reader);
 				flags.reset(Flag::eInit);
 			}
-			if (app) { app->tick(flags, ++dt); }
+			if (app) { app->tick(++dt); }
 		}
 	} catch (std::exception const& e) { logE("exception: {}", e.what()); }
 	return true;

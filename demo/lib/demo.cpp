@@ -189,6 +189,7 @@ class Drawer : public ListDrawer {
 	struct {
 		graphics::Texture const* white = {};
 		graphics::Texture const* black = {};
+		graphics::Texture const* cube = {};
 	} m_defaults;
 
 	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
@@ -241,12 +242,12 @@ class Drawer : public ListDrawer {
 					Material const& mat = prim.material;
 					if (list.layer.order < 0) {
 						ensure(mat.map_Kd, "Null cubemap");
-						set0.update(1, *mat.map_Kd);
+						set0.update(1, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.cube);
 					}
 					auto set2 = map.set(2);
-					set2.update(0, mat.map_Kd ? *mat.map_Kd : *m_defaults.white);
-					set2.update(1, mat.map_d ? *mat.map_d : *m_defaults.white);
-					set2.update(2, mat.map_Ks ? *mat.map_Ks : *m_defaults.black);
+					set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
+					set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
+					set2.update(2, mat.map_Ks && mat.map_Ks->ready() ? *mat.map_Ks : *m_defaults.black);
 					map.set(3).update(0, ShadeMat::make(mat));
 				}
 			}
@@ -385,6 +386,7 @@ class App : public input::Receiver, public SceneRegistry {
 		AssetLoadData<graphics::Texture> textureLD{&eng->gfx().boot.vram};
 		textureLD.samplerID = "samplers/default";
 		textureLD.prefix = "skyboxes/sky_dusk";
+		// textureLD.prefix = "skyboxes/test";
 		textureLD.ext = ".jpg";
 		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
 		texList.add("cubemaps/sky_dusk", std::move(textureLD));
@@ -397,16 +399,17 @@ class App : public input::Receiver, public SceneRegistry {
 		textureLD.imageIDs = {"textures/container2_specular.png"};
 		texList.add("textures/container2/specular", std::move(textureLD));
 		textureLD.imageIDs.clear();
-		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0xff0000ff});
-		textureLD.bitmap.size = {1, 1};
-		textureLD.rawBytes = true;
+		textureLD.bitmap = graphics::utils::bitmap({0xff0000ff}, 1);
 		texList.add("textures/red", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0x000000ff});
+		textureLD.bitmap = graphics::utils::bitmap({0x000000ff}, 1);
 		texList.add("textures/black", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0xffffffff});
+		textureLD.bitmap = graphics::utils::bitmap({0xffffffff}, 1);
 		texList.add("textures/white", std::move(textureLD));
-		textureLD.bitmap.bytes = graphics::utils::bitmapPx({0x0});
+		textureLD.bitmap = graphics::utils::bitmap({0x0}, 1);
 		texList.add("textures/blank", std::move(textureLD));
+		textureLD.bitmap = {};
+		textureLD.cubemap = graphics::Texture::unitCubemap(colours::transparent);
+		texList.add("cubemaps/blank", std::move(textureLD));
 		m_data.loader.stage(m_store, texList, m_tasks);
 		m_eng->pushReceiver(this);
 		eng->m_win->show();
@@ -471,6 +474,7 @@ class App : public input::Receiver, public SceneRegistry {
 		auto font = m_store.get<BitmapFont>("fonts/default");
 		m_drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
 		m_drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
+		m_drawer.m_defaults.cube = &m_store.get<graphics::Texture>("cubemaps/blank").get();
 		auto& vram = m_eng->gfx().boot.vram;
 
 		m_data.text.create(&vram);

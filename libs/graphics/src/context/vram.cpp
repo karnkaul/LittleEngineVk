@@ -91,7 +91,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return {std::move(ret)};
 }
 
-VRAM::Future VRAM::copy(Span<BMPview const> bitmaps, Image& out_dst, LayoutPair layouts) {
+VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair layouts) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : bitmaps) {

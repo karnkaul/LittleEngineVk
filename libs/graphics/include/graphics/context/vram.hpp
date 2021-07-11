@@ -23,7 +23,7 @@ class VRAM final : public Memory {
 
 	[[nodiscard]] Future copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
-	[[nodiscard]] Future copy(Span<BMPview const> bitmaps, Image& out_dst, LayoutPair layouts);
+	[[nodiscard]] Future copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair layouts);
 	[[nodiscard]] Future blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects,
 							  vk::Filter filter = vk::Filter::eLinear);
 
@@ -44,7 +44,7 @@ class VRAM final : public Memory {
 
 	Transfer m_transfer;
 	struct {
-		vk::PipelineStageFlags stages;
+		vk::PipelineStageFlags stages = vk::PipelineStageFlagBits::eBottomOfPipe;
 		vk::AccessFlags access;
 	} m_post;
 

@@ -29,7 +29,7 @@ struct VertexInfoFactory<Vertex> {
 };
 
 namespace utils {
-class STBImg : public TBitmap<BMPview> {
+class STBImg : public TBitmap<Span<u8>> {
   public:
 	explicit STBImg(Bitmap::type const& compressed, u8 channels = 4);
 	STBImg(STBImg&&) noexcept;
@@ -50,10 +50,11 @@ io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
 kt::result<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
 SetBindings extractBindings(Shader const& shader);
 
-Bitmap::type bitmap(std::initializer_list<u8> bytes);
-Bitmap::type bitmapPx(std::initializer_list<Colour> pixels);
-void append(Bitmap::type& out, Span<u8 const> bytes);
-Bitmap::type convert(Span<u8 const> bytes);
+Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);
+Bitmap bitmap(Span<Colour const> pixels, u32 width, u32 height = 0);
+void append(BmpBytes& out, Colour pixel);
+void append(BmpBytes& out, Span<std::byte const> bytes);
+BmpBytes bmpBytes(Span<std::byte const> bytes);
 
 using CubeImageIDs = std::array<std::string_view, 6>;
 constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};

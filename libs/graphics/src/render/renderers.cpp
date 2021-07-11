@@ -53,7 +53,7 @@ RendererFOC::RendererFOC(not_null<Swapchain*> swapchain, Buffering buffering) : 
 	colourInfo.view.aspects = vk::ImageAspectFlagBits::eColor;
 	m_imageMaker.infos.push_back(colourInfo);
 	m_colourIndex = m_imageMaker.infos.size() - 1;
-	renderScale(0.75f);
+	// renderScale(0.75f);
 }
 
 std::optional<RenderTarget> RendererFOC::beginFrame() {

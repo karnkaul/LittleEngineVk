@@ -190,27 +190,28 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 	return ret;
 }
 
-Bitmap::type utils::bitmap(std::initializer_list<u8> bytes) {
-	return bytes.size() == 0 ? Bitmap::type() : convert(Span<u8 const>(&*bytes.begin(), bytes.size()));
-}
+Bitmap utils::bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height) { return bitmap(Span(&*pixels.begin(), pixels.size()), width, height); }
 
-Bitmap::type utils::bitmapPx(std::initializer_list<Colour> pixels) {
-	bytearray ret;
-	ret.reserve(pixels.size() * 4);
-	for (Colour const pixel : pixels) {
-		u8 const bytes[] = {pixel.r.value, pixel.g.value, pixel.b.value, pixel.a.value};
-		append(ret, bytes);
-	}
+Bitmap utils::bitmap(Span<Colour const> pixels, u32 width, u32 height) {
+	Bitmap ret{{}, {width, height > 0 ? height : u32(pixels.size()) / width}, false};
+	ret.bytes.reserve(pixels.size() * 4);
+	for (Colour const pixel : pixels) { append(ret.bytes, pixel); }
 	return ret;
 }
 
-void utils::append(Bitmap::type& out, Span<u8 const> bytes) {
+void utils::append(BmpBytes& out, Span<std::byte const> bytes) {
 	out.reserve(out.size() + bytes.size());
-	for (u8 const byte : bytes) { out.push_back(static_cast<std::byte>(byte)); }
+	for (auto const byte : bytes) { out.push_back(static_cast<Bitmap::type::value_type>(byte)); }
 }
 
-Bitmap::type utils::convert(Span<u8 const> bytes) {
-	bytearray ret;
+void utils::append(BmpBytes& out, Colour pixel) {
+	u8 const bytes[] = {pixel.r.value, pixel.g.value, pixel.b.value, pixel.a.value};
+	out.reserve(out.size() + arraySize(bytes));
+	for (auto const byte : bytes) { out.push_back(byte); }
+}
+
+BmpBytes utils::bmpBytes(Span<std::byte const> bytes) {
+	BmpBytes ret;
 	append(ret, bytes);
 	return ret;
 }
@@ -222,17 +223,17 @@ utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);
 	if (!pOut) { g_log.log(lvl::warning, 1, "[{}] Failed to decompress image data", g_name); }
 	size = {u32(w), u32(h)};
-	bytes = BMPview(reinterpret_cast<std::byte*>(pOut), std::size_t(size.x * size.y * channels));
+	bytes = Span(pOut, std::size_t(size.x * size.y * channels));
 }
 
-utils::STBImg::STBImg(STBImg&& rhs) noexcept : TBitmap<BMPview>(std::move(rhs)) {
+utils::STBImg::STBImg(STBImg&& rhs) noexcept : TBitmap<Span<u8>>(std::move(rhs)) {
 	rhs.bytes = {};
 	rhs.size = {};
 }
 
 utils::STBImg& utils::STBImg::operator=(STBImg&& rhs) noexcept {
 	if (&rhs != this) {
-		TBitmap<BMPview>::operator=(std::move(rhs));
+		TBitmap<Span<u8>>::operator=(std::move(rhs));
 		rhs.bytes = {};
 		rhs.size = {};
 	}
@@ -240,7 +241,7 @@ utils::STBImg& utils::STBImg::operator=(STBImg&& rhs) noexcept {
 }
 
 utils::STBImg::~STBImg() {
-	if (!bytes.empty()) { stbi_image_free((void*)bytes.data()); }
+	if (!bytes.empty()) { stbi_image_free(bytes.data()); }
 }
 
 std::array<bytearray, 6> utils::loadCubemap(io::Reader const& reader, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {

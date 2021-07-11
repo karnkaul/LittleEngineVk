@@ -68,9 +68,9 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 				path = graphics::utils::spirVpath(id);
 			}
 		}
-		auto pRes = info.resource(path, Resource::Type::eBinary, false, true);
-		if (!pRes) { return std::nullopt; }
-		spirV[type] = {pRes->bytes().begin(), pRes->bytes().end()};
+		auto res = info.resource(path, Resource::Type::eBinary, false, true);
+		if (!res) { return std::nullopt; }
+		spirV[type] = {res->bytes().begin(), res->bytes().end()};
 	}
 	return spirV;
 }
@@ -121,26 +121,32 @@ bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, Asse
 
 std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Texture>::data(AssetLoadInfo<graphics::Texture> const& info) const {
 	if (!info.m_data.bitmap.bytes.empty()) {
-		if (info.m_data.rawBytes) {
+		if (!info.m_data.bitmap.compressed) {
 			return info.m_data.bitmap;
 		} else {
 			return info.m_data.bitmap.bytes;
 		}
+	} else if (!info.m_data.cubemap.bytes[0].empty()) {
+		if (!info.m_data.cubemap.compressed) {
+			return info.m_data.cubemap;
+		} else {
+			return info.m_data.cubemap.bytes;
+		}
 	} else if (info.m_data.imageIDs.size() == 1) {
 		auto path = info.m_data.prefix / info.m_data.imageIDs[0];
 		path += info.m_data.ext;
-		if (auto pRes = info.resource(path, Resource::Type::eBinary, true)) { return graphics::Texture::Img{pRes->bytes().begin(), pRes->bytes().end()}; }
+		if (auto res = info.resource(path, Resource::Type::eBinary, true)) { return graphics::Texture::img(res->bytes()); }
 	} else if (info.m_data.imageIDs.size() == 6) {
-		graphics::Texture::Cubemap cubemap;
+		graphics::Texture::Cube cube;
 		std::size_t idx = 0;
 		for (auto const& p : info.m_data.imageIDs) {
 			auto path = info.m_data.prefix / p;
 			path += info.m_data.ext;
-			auto pRes = info.resource(path, Resource::Type::eBinary, true);
-			if (!pRes) { return std::nullopt; }
-			cubemap[idx++] = {pRes->bytes().begin(), pRes->bytes().end()};
+			auto res = info.resource(path, Resource::Type::eBinary, true);
+			if (!res) { return std::nullopt; }
+			cube[idx++] = graphics::Texture::img(res->bytes());
 		}
-		return cubemap;
+		return cube;
 	}
 	return std::nullopt;
 }
@@ -206,7 +212,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 			BitmapFont::CreateInfo bci;
 			bci.forceFormat = info.m_data.forceFormat;
 			bci.glyphs = fi.glyphs;
-			bci.atlas = atlas->bytes();
+			bci.atlas = graphics::Texture::img(atlas->bytes());
 			if (out_font.create(info.m_data.vram, sampler->get(), bci)) { return true; }
 		}
 	}

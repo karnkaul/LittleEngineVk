@@ -86,8 +86,6 @@ class Swapchain {
 	Vsync vsync() const noexcept;
 	Vsyncs supportedVsync() const noexcept { return m_metadata.vsyncs; }
 
-	inline static std::optional<Vsync> s_forceVsync;
-
 	not_null<VRAM*> m_vram;
 	not_null<Device*> m_device;
 

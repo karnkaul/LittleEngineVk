@@ -12,7 +12,7 @@ void ListDrawer::draw(graphics::CommandBuffer cb) const {
 	for (auto const& list : m_lists) {
 		if (list.layer.pipeline) {
 			pipes.insert(list.layer.pipeline);
-			cb.bindPipe(*list.layer.pipeline);
+			cb.bindPipe(*list.layer.pipeline, list.variant);
 			draw(list, cb);
 		}
 	}

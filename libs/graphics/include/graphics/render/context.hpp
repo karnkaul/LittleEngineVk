@@ -28,7 +28,7 @@ class RenderContext : NoCopy {
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
-	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
+	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
 
 	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer);
 
@@ -113,7 +113,7 @@ struct QuickVertexInput {
 // impl
 
 template <typename V>
-Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags) {
+Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
 	Pipeline::CreateInfo ret;
 	ret.fixedState.vertexInput = VertexInfoFactory<V>()(0);
 	if (flags.test(PFlag::eDepthTest)) {
@@ -131,6 +131,10 @@ Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags) {
 		ret.fixedState.colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
 		ret.fixedState.colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
 		ret.fixedState.colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
+	}
+	if (wire > 0.0f) {
+		ret.fixedState.rasterizerState.polygonMode = vk::PolygonMode::eLine;
+		ret.fixedState.rasterizerState.lineWidth = wire;
 	}
 	return ret;
 }

@@ -6,6 +6,8 @@
 #include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le::graphics {
+enum class Validation { eOn, eOff };
+
 class Instance final {
   public:
 	struct CreateInfo;
@@ -19,8 +21,6 @@ class Instance final {
 	kt::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view const> requiredExtensions) const;
 	vk::Instance instance() const noexcept { return m_instance; }
 	vk::DispatchLoaderDynamic loader() const { return m_loader; }
-
-	inline static std::optional<bool> s_forceValidation;
 
   private:
 	struct {
@@ -39,7 +39,9 @@ class Instance final {
 
 struct Instance::CreateInfo {
 	Span<std::string_view const> extensions;
-	dl::level validationLog = dl::level::info;
-	bool bValidation = false;
+	struct {
+		dl::level logLevel = dl::level::info;
+		Validation mode = Validation::eOff;
+	} validation;
 };
 } // namespace le::graphics

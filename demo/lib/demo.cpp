@@ -194,9 +194,12 @@ class Drawer : public ListDrawer {
 
 	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void update(decf::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt) {
+	void update(decf::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt, Hash wire) {
 		populate<DrawListGen3D, DrawListGenUI>(reg);
 		write(cam, sp, lt);
+		for (auto& list : m_lists) {
+			if (list.layer.pipeline->id() == wire) { list.variant = "wireframe"; }
+		}
 	}
 
   private:
@@ -304,22 +307,24 @@ class App : public input::Receiver, public SceneRegistry {
 
 	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
-		auto loadShader = [this](std::string_view id, io::Path v, io::Path f) {
-			AssetLoadData<graphics::Shader> shaderLD{&m_eng->gfx().boot.device};
-			shaderLD.name = id;
-			shaderLD.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
-			shaderLD.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
-			return shaderLD;
+		auto shaderLD = [d = &m_eng->gfx().boot.device](std::string_view id, io::Path v, io::Path f) {
+			AssetLoadData<graphics::Shader> ret{d};
+			ret.name = id;
+			ret.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
+			ret.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
+			return ret;
 		};
 		using PCI = graphics::Pipeline::CreateInfo;
-		auto loadPipe = [this](std::string_view id, Hash shaderID, bool gui, graphics::PFlags flags = {}, std::optional<PCI> pci = std::nullopt) {
-			AssetLoadData<graphics::Pipeline> pipelineLD{&m_eng->gfx().context};
-			pipelineLD.name = id;
-			pipelineLD.gui = gui;
-			pipelineLD.shaderID = shaderID;
-			pipelineLD.info = pci;
-			pipelineLD.flags = flags;
-			return pipelineLD;
+		auto pipeLD = [c = &m_eng->gfx().context](std::string_view id, Hash shaderID, bool gui, graphics::PFlags flags = {},
+												  std::optional<PCI> pci = std::nullopt, f32 wf = {}) {
+			AssetLoadData<graphics::Pipeline> ret{c};
+			ret.name = id;
+			ret.gui = gui;
+			ret.shaderID = shaderID;
+			ret.info = pci;
+			ret.flags = flags;
+			ret.wireframe = wf;
+			return ret;
 		};
 		m_store.resources().reader(&reader);
 		m_store.add("samplers/default", graphics::Sampler{&eng->gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
@@ -361,24 +366,24 @@ class App : public input::Receiver, public SceneRegistry {
 
 		{
 			AssetList<graphics::Shader> shaders;
-			shaders.add("shaders/basic", loadShader("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"));
-			shaders.add("shaders/tex", loadShader("shaders/tex", "shaders/basic.vert", "shaders/tex.frag"));
-			shaders.add("shaders/lit", loadShader("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"));
-			shaders.add("shaders/ui", loadShader("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"));
-			shaders.add("shaders/skybox", loadShader("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"));
+			shaders.add("shaders/basic", shaderLD("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"));
+			shaders.add("shaders/tex", shaderLD("shaders/tex", "shaders/basic.vert", "shaders/tex.frag"));
+			shaders.add("shaders/lit", shaderLD("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"));
+			shaders.add("shaders/ui", shaderLD("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"));
+			shaders.add("shaders/skybox", shaderLD("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"));
 			auto load_shaders = m_data.loader.stage(m_store, shaders, m_tasks);
 
 			AssetList<graphics::Pipeline> pipes;
 			static PCI pci_skybox = eng->gfx().context.pipeInfo();
 			pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
 			pci_skybox.fixedState.vertexInput = eng->gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
-			pipes.add("pipelines/basic", loadPipe("pipelines/basic", "shaders/basic", false, graphics::PFlags::inverse()));
-			pipes.add("pipelines/tex", loadPipe("pipelines/tex", "shaders/tex", false, graphics::PFlags::inverse()));
-			pipes.add("pipelines/lit", loadPipe("pipelines/lit", "shaders/lit", false, graphics::PFlags::inverse()));
+			pipes.add("pipelines/basic", pipeLD("pipelines/basic", "shaders/basic", false, graphics::PFlags::inverse()));
+			pipes.add("pipelines/tex", pipeLD("pipelines/tex", "shaders/tex", false, graphics::PFlags::inverse()));
+			pipes.add("pipelines/lit", pipeLD("pipelines/lit", "shaders/lit", false, graphics::PFlags::inverse(), {}, 3.0f));
 			graphics::PFlags ui = graphics::PFlags::inverse();
 			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
-			pipes.add("pipelines/ui", loadPipe("pipelines/ui", "shaders/ui", true, ui));
-			pipes.add("pipelines/skybox", loadPipe("pipelines/skybox", "shaders/skybox", false, {}, pci_skybox));
+			pipes.add("pipelines/ui", pipeLD("pipelines/ui", "shaders/ui", true, ui));
+			pipes.add("pipelines/skybox", pipeLD("pipelines/skybox", "shaders/skybox", false, {}, pci_skybox));
 			m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
 		}
 
@@ -453,6 +458,7 @@ class App : public input::Receiver, public SceneRegistry {
 	bool block(input::State const& state) override {
 		if (state.focus == input::Focus::eGained) { m_store.update(); }
 		if (m_controls.editor(state)) { Editor::s_engaged = !Editor::s_engaged; }
+		if (m_controls.wireframe(state)) { m_data.wire = m_data.wire == Hash() ? "pipelines/lit" : Hash(); }
 		return false;
 	}
 
@@ -466,8 +472,8 @@ class App : public input::Receiver, public SceneRegistry {
 
 	void init1() {
 		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/basic");
-		auto pipe_testTex = m_store.find<graphics::Pipeline>("pipelines/tex");
-		auto pipe_testLit = m_store.find<graphics::Pipeline>("pipelines/lit");
+		auto pipe_tex = m_store.find<graphics::Pipeline>("pipelines/tex");
+		auto pipe_lit = m_store.find<graphics::Pipeline>("pipelines/lit");
 		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
 		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
@@ -495,8 +501,8 @@ class App : public input::Receiver, public SceneRegistry {
 
 		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
 		m_data.layers["test"] = DrawLayer{&pipe_test->get(), 0};
-		m_data.layers["test_tex"] = DrawLayer{&pipe_testTex->get(), 0};
-		m_data.layers["test_lit"] = DrawLayer{&pipe_testLit->get(), 0};
+		m_data.layers["test_tex"] = DrawLayer{&pipe_tex->get(), 0};
+		m_data.layers["test_lit"] = DrawLayer{&pipe_lit->get(), 0};
 		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
 
 		auto guiStack = spawnStack("gui_root", m_data.layers["ui"], &m_eng->gfx().boot.vram);
@@ -628,7 +634,7 @@ class App : public input::Receiver, public SceneRegistry {
 	void render() {
 		if (m_eng->nextFrame()) {
 			// write / update
-			if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights); }
+			if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
 			// draw
 			m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 		}
@@ -646,6 +652,7 @@ class App : public input::Receiver, public SceneRegistry {
 		decf::entity player;
 		decf::entity guiStack;
 		AssetListLoader loader;
+		Hash wire;
 	};
 
 	Data m_data;
@@ -659,6 +666,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
+		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eControl};
 	} m_controls;
 };
 
@@ -691,8 +699,8 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 		window::Instance winst(winInfo);
 		graphics::Bootstrap::CreateInfo bootInfo;
 		bootInfo.instance.extensions = winst.vkInstanceExtensions();
-		bootInfo.instance.bValidation = levk_debug;
-		bootInfo.instance.validationLog = dl::level::info;
+		if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
+		bootInfo.instance.validation.logLevel = dl::level::info;
 		Engine engine(&winst, {});
 		Flags flags;
 		FlagsInput flagsInput(flags);

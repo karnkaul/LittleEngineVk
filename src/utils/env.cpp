@@ -3,6 +3,7 @@
 #include <core/io/reader.hpp>
 #include <core/os.hpp>
 #include <core/span.hpp>
+#include <core/utils/data_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/env.hpp>
 #include <engine/utils/logger.hpp>
@@ -10,6 +11,7 @@
 namespace le {
 env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	Run ret = Run::resume;
+	DataStore::set("vsync", graphics::Vsync::eTripleBuffer);
 	os::args(os::Args(argv, std::size_t(argc)));
 	{
 		Spec::cmd_t gpu;
@@ -49,30 +51,35 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	{
 		Spec::opt_t vsync;
 		vsync.id = "vsync";
-		vsync.description = "Force VSYNC (immediate mode)";
-		vsync.value_fmt = "[off/on/adaptive]";
+		vsync.description = "Override VSYNC";
+		vsync.value_fmt = "[off/on/adaptive/triple]";
 		Spec::opt_t validation;
 		validation.id = "validation";
 		validation.description = "Force validation layers on/off";
+		validation.value_fmt = "[off/on]";
 		spec.main.options.push_back(vsync);
 		spec.main.options.push_back(validation);
 		spec.main.callback = [](clap::interpreter::params_t const& p) {
 			if (auto val = p.opt_value("vsync")) {
-				std::cout << "Requesting no VSYNC / immediate mode\n";
+				std::optional<graphics::Vsync> vsync;
 				if (*val == "off") {
-					graphics::Swapchain::s_forceVsync = graphics::Vsync::eOff;
+					vsync = graphics::Vsync::eOff;
 				} else if (*val == "on") {
-					graphics::Swapchain::s_forceVsync = graphics::Vsync::eOn;
+					vsync = graphics::Vsync::eOn;
 				} else if (*val == "adaptive") {
-					graphics::Swapchain::s_forceVsync = graphics::Vsync::eAdaptive;
+					vsync = graphics::Vsync::eAdaptive;
 				} else if (*val == "triple" || *val == "triple-buffer") {
-					graphics::Swapchain::s_forceVsync = graphics::Vsync::eTripleBuffer;
+					vsync = graphics::Vsync::eTripleBuffer;
+				}
+				if (vsync) {
+					DataStore::set("vsync", *vsync);
+					std::cout << "Overriding VSYNC to " << graphics::vsyncNames[*vsync] << "\n";
 				}
 			}
 			if (auto val = p.opt_value("validation")) {
-				bool const b = utils::toBool(*val, false);
-				graphics::Instance::s_forceValidation = b;
-				std::cout << "Validation layers overriden: " << (b ? "on" : "off") << '\n';
+				graphics::Validation const vd = *val == "on" ? graphics::Validation::eOn : graphics::Validation::eOff;
+				DataStore::set("validation", vd);
+				std::cout << "Validation layers overriden: " << (vd == graphics::Validation::eOn ? "on" : "off") << '\n';
 			};
 		};
 	}

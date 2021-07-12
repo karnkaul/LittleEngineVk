@@ -1,5 +1,6 @@
 #include <map>
 #include <core/maths.hpp>
+#include <core/utils/data_store.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
@@ -72,7 +73,10 @@ struct SwapchainCreateInfo {
 		}
 		if (Device::default_v(depthFormat)) { depthFormat = vk::Format::eD16Unorm; }
 		auto presentModes = info.vsync;
-		if (Swapchain::s_forceVsync) { presentModes.insert(info.vsync.begin(), *Swapchain::s_forceVsync); }
+		if (auto forceVsync = DataStore::find<Vsync>("vsync")) {
+			presentModes.insert(info.vsync.begin(), *forceVsync);
+			DataStore::erase("vsync");
+		}
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
 		g_log.log(lvl::info, 0, "[{}] {} ({} present mode) selected", g_name, vsyncNames[vsyncModes[presentMode]], presentModeNames[presentMode]);
 		imageCount = std::clamp(capabilities.minImageCount + 1, capabilities.minImageCount, capabilities.maxImageCount);

@@ -31,10 +31,11 @@ struct AssetLoader<graphics::Shader> {
 template <>
 struct AssetLoadData<graphics::Pipeline> {
 	std::optional<graphics::Pipeline::CreateInfo> info;
-	graphics::PFlags flags;
 	std::string name;
+	graphics::PFlags flags;
 	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
+	f32 wireframe = 0.0f;
 	bool gui = false;
 
 	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}

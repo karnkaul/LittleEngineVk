@@ -80,7 +80,15 @@ std::optional<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoa
 		info.reloadDepend(*shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
 		pipeInfo.renderPass = info.m_data.gui ? info.m_data.context->renderer().renderPassUI() : info.m_data.context->renderer().renderPass3D();
-		return info.m_data.context->makePipeline(info.m_data.name, shader->get(), pipeInfo);
+		auto ret = info.m_data.context->makePipeline(info.m_data.name, shader->get(), pipeInfo);
+		if (info.m_data.wireframe > 0.0f) {
+			auto fixed = ret.fixedState();
+			fixed.rasterizerState.lineWidth = info.m_data.wireframe;
+			fixed.rasterizerState.polygonMode = vk::PolygonMode::eLine;
+			auto const res = ret.constructVariant("wireframe", fixed);
+			ensure(res.has_value(), "Pipeline variant construction failure");
+		}
+		return ret;
 	}
 	return std::nullopt;
 }

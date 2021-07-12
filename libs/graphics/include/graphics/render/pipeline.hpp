@@ -4,6 +4,7 @@
 #include <core/utils/std_hash.hpp>
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/descriptor_set.hpp>
+#include <graphics/shader.hpp>
 #include <kt/result/result.hpp>
 
 namespace le::graphics {
@@ -48,7 +49,7 @@ class Pipeline final {
 
 	Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo createInfo, Hash id);
 
-	kt::result<vk::Pipeline, void> constructVariant(Hash id, Shader const& shader, CreateInfo::Fixed fixed);
+	kt::result<vk::Pipeline, void> constructVariant(Hash id, CreateInfo::Fixed const& fixed);
 	kt::result<vk::Pipeline, void> variant(Hash id) const;
 
 	bool reconstruct(Shader const& shader);
@@ -66,18 +67,21 @@ class Pipeline final {
 	void swap() { m_storage.input.swap(); }
 
 	Hash id() const noexcept;
+	CreateInfo::Fixed fixedState(Hash variant = {}) const noexcept;
 
 	not_null<VRAM*> m_vram;
 	not_null<Device*> m_device;
 
   private:
-	bool construct(Shader const& shader, CreateInfo& out_info, vk::Pipeline& out_pipe, bool bFixed);
+	bool setup(Shader const& shader);
+	bool construct(CreateInfo& out_info, vk::Pipeline& out_pipe);
 
 	struct Storage {
 		ShaderInput input;
 		struct {
-			Deferred<vk::Pipeline> main;
 			std::unordered_map<Hash, Deferred<vk::Pipeline>> variants;
+			Shader::ModuleMap modules;
+			Deferred<vk::Pipeline> main;
 		} dynamic;
 		struct {
 			Deferred<vk::PipelineLayout> layout;

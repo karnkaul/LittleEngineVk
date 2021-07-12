@@ -57,7 +57,7 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 		spec.main.options.push_back(vsync);
 		spec.main.options.push_back(validation);
 		spec.main.callback = [](clap::interpreter::params_t const& p) {
-			if (auto val = p.opt_value("no-vsync")) {
+			if (auto val = p.opt_value("vsync")) {
 				std::cout << "Requesting no VSYNC / immediate mode\n";
 				if (*val == "off") {
 					graphics::Swapchain::s_forceVsync = graphics::Vsync::eOff;
@@ -65,6 +65,8 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 					graphics::Swapchain::s_forceVsync = graphics::Vsync::eOn;
 				} else if (*val == "adaptive") {
 					graphics::Swapchain::s_forceVsync = graphics::Vsync::eAdaptive;
+				} else if (*val == "triple" || *val == "triple-buffer") {
+					graphics::Swapchain::s_forceVsync = graphics::Vsync::eTripleBuffer;
 				}
 			}
 			if (auto val = p.opt_value("validation")) {

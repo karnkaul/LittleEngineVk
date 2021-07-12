@@ -148,6 +148,7 @@ constexpr bool Swapchain::srgb(vk::Format format) noexcept {
 
 inline Vsync Swapchain::vsync() const noexcept {
 	switch (m_metadata.presentMode) {
+	case vk::PresentModeKHR::eMailbox: return Vsync::eTripleBuffer;
 	case vk::PresentModeKHR::eImmediate: return Vsync::eOff;
 	case vk::PresentModeKHR::eFifoRelaxed: return Vsync::eAdaptive;
 	default: return Vsync::eOn;

@@ -73,7 +73,7 @@ constexpr bool true_v = true;
 /// \brief Obtain the number of elements in a stack array
 ///
 template <typename T, std::size_t N>
-constexpr std::size_t arraySize(T (&)[N]) noexcept {
+constexpr std::size_t arraySize(T const (&)[N]) noexcept {
 	return N;
 }
 

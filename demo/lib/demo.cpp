@@ -328,8 +328,9 @@ class App : public input::Receiver, public SceneRegistry {
 		};
 		m_store.resources().reader(&reader);
 		m_store.add("samplers/default", graphics::Sampler{&eng->gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+		// m_data.loader.m_mode = AssetListLoader::Mode::eImmediate;
 		{
-			AssetList<Model> models;
+			AssetLoadList<Model> models;
 			AssetLoadData<Model> ald(&m_eng->gfx().boot.vram);
 			ald.modelID = "models/plant";
 			ald.jsonID = "models/plant/plant.json";
@@ -351,7 +352,9 @@ class App : public input::Receiver, public SceneRegistry {
 		AssetLoadData<BitmapFont> fld(&m_eng->gfx().boot.vram);
 		fld.jsonID = "fonts/default/default.json";
 		fld.samplerID = "samplers/default";
-		m_data.loader.stage(m_store, AssetList<BitmapFont>{{{"fonts/default", std::move(fld)}}}, m_tasks);
+		AssetLoadList<BitmapFont> fontList;
+		fontList.add("fonts/default", std::move(fld));
+		m_data.loader.stage(m_store, std::move(fontList), m_tasks);
 		{
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
@@ -364,8 +367,9 @@ class App : public input::Receiver, public SceneRegistry {
 			skycube->construct(Span<glm::vec3 const>(skyCubeV), skyCubeI);
 		}
 
+		dts::scheduler::stage_id load_pipes;
 		{
-			AssetList<graphics::Shader> shaders;
+			AssetLoadList<graphics::Shader> shaders;
 			shaders.add("shaders/basic", shaderLD("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"));
 			shaders.add("shaders/tex", shaderLD("shaders/tex", "shaders/basic.vert", "shaders/tex.frag"));
 			shaders.add("shaders/lit", shaderLD("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"));
@@ -373,7 +377,7 @@ class App : public input::Receiver, public SceneRegistry {
 			shaders.add("shaders/skybox", shaderLD("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"));
 			auto load_shaders = m_data.loader.stage(m_store, shaders, m_tasks);
 
-			AssetList<graphics::Pipeline> pipes;
+			AssetLoadList<graphics::Pipeline> pipes;
 			static PCI pci_skybox = eng->gfx().context.pipeInfo();
 			pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
 			pci_skybox.fixedState.vertexInput = eng->gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
@@ -384,38 +388,49 @@ class App : public input::Receiver, public SceneRegistry {
 			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
 			pipes.add("pipelines/ui", pipeLD("pipelines/ui", "shaders/ui", true, ui));
 			pipes.add("pipelines/skybox", pipeLD("pipelines/skybox", "shaders/skybox", false, {}, pci_skybox));
-			m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
+			load_pipes = m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
 		}
-
-		AssetList<graphics::Texture> texList;
-		AssetLoadData<graphics::Texture> textureLD{&eng->gfx().boot.vram};
-		textureLD.samplerID = "samplers/default";
-		textureLD.prefix = "skyboxes/sky_dusk";
-		// textureLD.prefix = "skyboxes/test";
-		textureLD.ext = ".jpg";
-		textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
-		texList.add("cubemaps/sky_dusk", std::move(textureLD));
-		textureLD.prefix.clear();
-		textureLD.ext.clear();
-		textureLD.imageIDs = {"textures/container2.png"};
-		texList.add("textures/container2/diffuse", std::move(textureLD));
-		textureLD.prefix.clear();
-		textureLD.ext.clear();
-		textureLD.imageIDs = {"textures/container2_specular.png"};
-		texList.add("textures/container2/specular", std::move(textureLD));
-		textureLD.imageIDs.clear();
-		textureLD.bitmap = graphics::utils::bitmap({0xff0000ff}, 1);
-		texList.add("textures/red", std::move(textureLD));
-		textureLD.bitmap = graphics::utils::bitmap({0x000000ff}, 1);
-		texList.add("textures/black", std::move(textureLD));
-		textureLD.bitmap = graphics::utils::bitmap({0xffffffff}, 1);
-		texList.add("textures/white", std::move(textureLD));
-		textureLD.bitmap = graphics::utils::bitmap({0x0}, 1);
-		texList.add("textures/blank", std::move(textureLD));
-		textureLD.bitmap = {};
-		textureLD.cubemap = graphics::Texture::unitCubemap(colours::transparent);
-		texList.add("cubemaps/blank", std::move(textureLD));
-		m_data.loader.stage(m_store, texList, m_tasks);
+		{
+			AssetLoadList<graphics::Texture> texList;
+			AssetLoadData<graphics::Texture> textureLD{&eng->gfx().boot.vram};
+			textureLD.samplerID = "samplers/default";
+			textureLD.prefix = "skyboxes/sky_dusk";
+			// textureLD.prefix = "skyboxes/test";
+			textureLD.ext = ".jpg";
+			textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
+			texList.add("cubemaps/sky_dusk", std::move(textureLD));
+			textureLD.prefix.clear();
+			textureLD.ext.clear();
+			textureLD.imageIDs = {"textures/container2.png"};
+			texList.add("textures/container2/diffuse", std::move(textureLD));
+			textureLD.prefix.clear();
+			textureLD.ext.clear();
+			textureLD.imageIDs = {"textures/container2_specular.png"};
+			texList.add("textures/container2/specular", std::move(textureLD));
+			textureLD.imageIDs.clear();
+			textureLD.bitmap = graphics::utils::bitmap({0xff0000ff}, 1);
+			texList.add("textures/red", std::move(textureLD));
+			textureLD.bitmap = graphics::utils::bitmap({0x000000ff}, 1);
+			texList.add("textures/black", std::move(textureLD));
+			textureLD.bitmap = graphics::utils::bitmap({0xffffffff}, 1);
+			texList.add("textures/white", std::move(textureLD));
+			textureLD.bitmap = graphics::utils::bitmap({0x0}, 1);
+			texList.add("textures/blank", std::move(textureLD));
+			textureLD.bitmap = {};
+			textureLD.cubemap = graphics::Texture::unitCubemap(colours::transparent);
+			texList.add("cubemaps/blank", std::move(textureLD));
+			m_data.loader.stage(m_store, texList, m_tasks);
+		}
+		//
+		{
+			AssetList<DrawLayer> layers;
+			layers.add("layers/sky", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/skybox"), -10}; });
+			layers.add("layers/basic", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/basic"), 0}; });
+			layers.add("layers/tex", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/tex"), 0}; });
+			layers.add("layers/lit", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/lit"), 0}; });
+			layers.add("layers/ui", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/ui"), 10}; });
+			m_data.loader.stage(m_store, layers, m_tasks, load_pipes);
+		}
 		m_eng->pushReceiver(this);
 		eng->m_win->show();
 
@@ -471,11 +486,6 @@ class App : public input::Receiver, public SceneRegistry {
 	};
 
 	void init1() {
-		auto pipe_test = m_store.find<graphics::Pipeline>("pipelines/basic");
-		auto pipe_tex = m_store.find<graphics::Pipeline>("pipelines/tex");
-		auto pipe_lit = m_store.find<graphics::Pipeline>("pipelines/lit");
-		auto pipe_ui = m_store.find<graphics::Pipeline>("pipelines/ui");
-		auto pipe_sky = m_store.find<graphics::Pipeline>("pipelines/skybox");
 		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_store.get<BitmapFont>("fonts/default");
 		m_drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
@@ -499,13 +509,7 @@ class App : public input::Receiver, public SceneRegistry {
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
-		m_data.layers["sky"] = DrawLayer{&pipe_sky->get(), -10};
-		m_data.layers["test"] = DrawLayer{&pipe_test->get(), 0};
-		m_data.layers["test_tex"] = DrawLayer{&pipe_tex->get(), 0};
-		m_data.layers["test_lit"] = DrawLayer{&pipe_lit->get(), 0};
-		m_data.layers["ui"] = DrawLayer{&pipe_ui->get(), 10};
-
-		auto guiStack = spawnStack("gui_root", m_data.layers["ui"], &m_eng->gfx().boot.vram);
+		auto guiStack = spawnStack("gui_root", *m_store.get<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
 		stack.push<TestView>(&font.get());
@@ -525,37 +529,37 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			Material mat;
 			mat.map_Kd = &*skymap;
-			spawn("skybox", "skycube", mat, m_data.layers["sky"]);
+			spawn("skybox", "skycube", mat, *m_store.get<DrawLayer>("layers/sky"));
 		}
 		{
 			Material mat;
 			mat.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
 			mat.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawn("player", "meshes/cube", mat, m_data.layers["test_lit"]);
+			auto player = spawn("player", "meshes/cube", mat, *m_store.get<DrawLayer>("layers/lit"));
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			// m_data.player = spawn("player");
 			m_registry.attach<PlayerController>(m_data.player);
 		}
 		{
-			auto ent = spawn("prop_1", "meshes/cube", {}, m_data.layers["test"]);
+			auto ent = spawn("prop_1", "meshes/cube", {}, *m_store.get<DrawLayer>("layers/basic"));
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawn("prop_2", "meshes/cone", {}, m_data.layers["test_tex"]);
+			auto ent = spawn("prop_2", "meshes/cone", {}, *m_store.get<DrawLayer>("layers/tex"));
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", m_data.layers["ui"], m_data.text.update(*font)); }
+		{ spawn("ui_1", *m_store.get<DrawLayer>("layers/ui"), m_data.text.update(*font)); }
 		{
 			{
-				auto ent0 = spawn("model_0_0", "models/plant", m_data.layers["test_lit"]);
+				auto ent0 = spawn("model_0_0", "models/plant", *m_store.get<DrawLayer>("layers/lit"));
 				// auto ent0 = spawn("model_0_0");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", "models/plant", m_data.layers["test_lit"]);
+				auto ent1 = spawn("model_0_1", "models/plant", *m_store.get<DrawLayer>("layers/lit"));
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
@@ -564,12 +568,12 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto model = m_store.find<Model>("models/teapot")) {
 				Primitive& prim = model->get().primitivesRW().front();
 				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawn("model_1_0", m_data.layers["test_lit"], prim);
+				auto ent0 = spawn("model_1_0", *m_store.get<DrawLayer>("layers/lit"), prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
-			if (m_store.contains<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", "models/nanosuit", m_data.layers["test_lit"]);
+			if (m_store.exists<Model>("models/nanosuit")) {
+				auto ent = spawn("model_1", "models/nanosuit", *m_store.get<DrawLayer>("layers/lit"));
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
@@ -582,7 +586,7 @@ class App : public input::Receiver, public SceneRegistry {
 			Editor::s_in.customEntities.push_back(m_data.camera);
 		}
 
-		if (m_data.loader.ready(&m_tasks)) {
+		if (m_data.loader.ready(m_tasks)) {
 			if (m_registry.empty()) { init1(); }
 			auto guiStack = m_registry.find<gui::ViewStack>(m_data.guiStack);
 			if (guiStack) {
@@ -643,7 +647,6 @@ class App : public input::Receiver, public SceneRegistry {
   private:
 	struct Data {
 		std::unordered_map<Hash, decf::entity> entities;
-		std::unordered_map<Hash, DrawLayer> layers;
 
 		BitmapText text;
 		std::vector<DirLight> dirLights;

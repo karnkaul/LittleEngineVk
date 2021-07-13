@@ -50,7 +50,7 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	Asset<T> get(Hash id) const;
 	template <typename T>
-	bool contains(Hash id) const noexcept;
+	bool exists(Hash id) const noexcept;
 	template <typename T>
 	bool unload(Hash id);
 	template <typename T>
@@ -273,7 +273,7 @@ Asset<T> AssetStore::get(Hash id) const {
 	throw std::runtime_error("Asset not present");
 }
 template <typename T>
-bool AssetStore::contains(Hash id) const noexcept {
+bool AssetStore::exists(Hash id) const noexcept {
 	kt::shared_tlock<detail::TAssets const> lock(m_assets);
 	if (lock.get().contains<T>()) { return utils::contains(lock.get().get<T>().m_storage, id); }
 	return false;

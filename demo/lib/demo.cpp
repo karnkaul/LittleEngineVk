@@ -305,7 +305,7 @@ class App : public input::Receiver, public SceneRegistry {
   public:
 	using SceneRegistry::spawn;
 
-	App(not_null<Engine*> eng, io::Reader const& reader) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
+	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
 		auto shaderLD = [d = &m_eng->gfx().boot.device](std::string_view id, io::Path v, io::Path f) {
 			AssetLoadData<graphics::Shader> ret{d};
@@ -326,8 +326,7 @@ class App : public input::Receiver, public SceneRegistry {
 			ret.wireframe = wf;
 			return ret;
 		};
-		m_store.resources().reader(&reader);
-		m_store.add("samplers/default", graphics::Sampler{&eng->gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+		m_eng->store().add("samplers/default", graphics::Sampler{&eng->gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 		// m_data.loader.m_mode = AssetListLoader::Mode::eImmediate;
 		{
 			AssetLoadList<Model> models;
@@ -342,11 +341,11 @@ class App : public input::Receiver, public SceneRegistry {
 			models.add("models/teapot", std::move(ald));
 
 			ald.jsonID = "models/test/nanosuit/nanosuit.json";
-			if (m_store.resources().reader().present(ald.jsonID)) {
+			if (m_eng->store().resources().reader().present(ald.jsonID)) {
 				ald.modelID = "models/nanosuit";
 				models.add("models/nanosuit", std::move(ald));
 			}
-			m_data.loader.stage(m_store, models, m_tasks);
+			m_data.loader.stage(models, &m_tasks);
 		}
 
 		AssetLoadData<BitmapFont> fld(&m_eng->gfx().boot.vram);
@@ -354,16 +353,16 @@ class App : public input::Receiver, public SceneRegistry {
 		fld.samplerID = "samplers/default";
 		AssetLoadList<BitmapFont> fontList;
 		fontList.add("fonts/default", std::move(fld));
-		m_data.loader.stage(m_store, std::move(fontList), m_tasks);
+		m_data.loader.stage(std::move(fontList), &m_tasks);
 		{
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
 			auto const skyCubeV = gcube.positions();
-			auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh(&eng->gfx().boot.vram));
+			auto cube = m_eng->store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&eng->gfx().boot.vram));
 			cube->construct(gcube);
-			auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
+			auto cone = m_eng->store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
 			cone->construct(graphics::makeCone());
-			auto skycube = m_store.add<graphics::Mesh>("skycube", graphics::Mesh(&eng->gfx().boot.vram));
+			auto skycube = m_eng->store().add<graphics::Mesh>("skycube", graphics::Mesh(&eng->gfx().boot.vram));
 			skycube->construct(Span<glm::vec3 const>(skyCubeV), skyCubeI);
 		}
 
@@ -375,7 +374,7 @@ class App : public input::Receiver, public SceneRegistry {
 			shaders.add("shaders/lit", shaderLD("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"));
 			shaders.add("shaders/ui", shaderLD("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"));
 			shaders.add("shaders/skybox", shaderLD("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"));
-			auto load_shaders = m_data.loader.stage(m_store, shaders, m_tasks);
+			auto load_shaders = m_data.loader.stage(shaders, &m_tasks);
 
 			AssetLoadList<graphics::Pipeline> pipes;
 			static PCI pci_skybox = eng->gfx().context.pipeInfo();
@@ -388,7 +387,7 @@ class App : public input::Receiver, public SceneRegistry {
 			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
 			pipes.add("pipelines/ui", pipeLD("pipelines/ui", "shaders/ui", true, ui));
 			pipes.add("pipelines/skybox", pipeLD("pipelines/skybox", "shaders/skybox", false, {}, pci_skybox));
-			load_pipes = m_data.loader.stage(m_store, pipes, m_tasks, load_shaders);
+			load_pipes = m_data.loader.stage(pipes, &m_tasks, load_shaders);
 		}
 		{
 			AssetLoadList<graphics::Texture> texList;
@@ -419,17 +418,17 @@ class App : public input::Receiver, public SceneRegistry {
 			textureLD.bitmap = {};
 			textureLD.cubemap = graphics::Texture::unitCubemap(colours::transparent);
 			texList.add("cubemaps/blank", std::move(textureLD));
-			m_data.loader.stage(m_store, texList, m_tasks);
+			m_data.loader.stage(texList, &m_tasks);
 		}
 		//
 		{
 			AssetList<DrawLayer> layers;
-			layers.add("layers/sky", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/skybox"), -10}; });
-			layers.add("layers/basic", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/basic"), 0}; });
-			layers.add("layers/tex", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/tex"), 0}; });
-			layers.add("layers/lit", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/lit"), 0}; });
-			layers.add("layers/ui", [this]() { return DrawLayer{&*m_store.get<graphics::Pipeline>("pipelines/ui"), 10}; });
-			m_data.loader.stage(m_store, layers, m_tasks, load_pipes);
+			layers.add("layers/sky", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/skybox"), -10}; });
+			layers.add("layers/basic", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/basic"), 0}; });
+			layers.add("layers/tex", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/tex"), 0}; });
+			layers.add("layers/lit", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/lit"), 0}; });
+			layers.add("layers/ui", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/ui"), 10}; });
+			m_data.loader.stage(layers, &m_tasks, load_pipes);
 		}
 		m_eng->pushReceiver(this);
 		eng->m_win->show();
@@ -471,26 +470,25 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	bool block(input::State const& state) override {
-		if (state.focus == input::Focus::eGained) { m_store.update(); }
-		if (m_controls.editor(state)) { Editor::s_engaged = !Editor::s_engaged; }
+		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
 		if (m_controls.wireframe(state)) { m_data.wire = m_data.wire == Hash() ? "pipelines/lit" : Hash(); }
 		return false;
 	}
 
 	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawLayer layer) {
-		return spawn(std::move(name), layer, &*m_store.get<graphics::Mesh>(meshID), mat);
+		return spawn(std::move(name), layer, &*m_eng->store().get<graphics::Mesh>(meshID), mat);
 	};
 
 	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer layer) {
-		return spawn(std::move(name), layer, m_store.get<Model>(modelID)->primitives());
+		return spawn(std::move(name), layer, m_eng->store().get<Model>(modelID)->primitives());
 	};
 
 	void init1() {
-		auto skymap = m_store.get<graphics::Texture>("cubemaps/sky_dusk");
-		auto font = m_store.get<BitmapFont>("fonts/default");
-		m_drawer.m_defaults.black = &m_store.get<graphics::Texture>("textures/black").get();
-		m_drawer.m_defaults.white = &m_store.get<graphics::Texture>("textures/white").get();
-		m_drawer.m_defaults.cube = &m_store.get<graphics::Texture>("cubemaps/blank").get();
+		auto skymap = m_eng->store().get<graphics::Texture>("cubemaps/sky_dusk");
+		auto font = m_eng->store().get<BitmapFont>("fonts/default");
+		m_drawer.m_defaults.black = &m_eng->store().get<graphics::Texture>("textures/black").get();
+		m_drawer.m_defaults.white = &m_eng->store().get<graphics::Texture>("textures/white").get();
+		m_drawer.m_defaults.cube = &m_eng->store().get<graphics::Texture>("cubemaps/blank").get();
 		auto& vram = m_eng->gfx().boot.vram;
 
 		m_data.text.create(&vram);
@@ -509,7 +507,7 @@ class App : public input::Receiver, public SceneRegistry {
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
-		auto guiStack = spawnStack("gui_root", *m_store.get<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
+		auto guiStack = spawnStack("gui_root", *m_eng->store().get<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
 		stack.push<TestView>(&font.get());
@@ -529,51 +527,51 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			Material mat;
 			mat.map_Kd = &*skymap;
-			spawn("skybox", "skycube", mat, *m_store.get<DrawLayer>("layers/sky"));
+			spawn("skybox", "skycube", mat, *m_eng->store().get<DrawLayer>("layers/sky"));
 		}
 		{
 			Material mat;
-			mat.map_Kd = &*m_store.get<graphics::Texture>("textures/container2/diffuse");
-			mat.map_Ks = &*m_store.get<graphics::Texture>("textures/container2/specular");
+			mat.map_Kd = &*m_eng->store().get<graphics::Texture>("textures/container2/diffuse");
+			mat.map_Ks = &*m_eng->store().get<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawn("player", "meshes/cube", mat, *m_store.get<DrawLayer>("layers/lit"));
+			auto player = spawn("player", "meshes/cube", mat, *m_eng->store().get<DrawLayer>("layers/lit"));
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			// m_data.player = spawn("player");
 			m_registry.attach<PlayerController>(m_data.player);
 		}
 		{
-			auto ent = spawn("prop_1", "meshes/cube", {}, *m_store.get<DrawLayer>("layers/basic"));
+			auto ent = spawn("prop_1", "meshes/cube", {}, *m_eng->store().get<DrawLayer>("layers/basic"));
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawn("prop_2", "meshes/cone", {}, *m_store.get<DrawLayer>("layers/tex"));
+			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().get<DrawLayer>("layers/tex"));
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", *m_store.get<DrawLayer>("layers/ui"), m_data.text.update(*font)); }
+		{ spawn("ui_1", *m_eng->store().get<DrawLayer>("layers/ui"), m_data.text.update(*font)); }
 		{
 			{
-				auto ent0 = spawn("model_0_0", "models/plant", *m_store.get<DrawLayer>("layers/lit"));
+				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().get<DrawLayer>("layers/lit"));
 				// auto ent0 = spawn("model_0_0");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", "models/plant", *m_store.get<DrawLayer>("layers/lit"));
+				auto ent1 = spawn("model_0_1", "models/plant", *m_eng->store().get<DrawLayer>("layers/lit"));
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
 				node.parent(&m_registry.get<SceneNode>(m_data.entities["model_0_0"]));
 			}
-			if (auto model = m_store.find<Model>("models/teapot")) {
+			if (auto model = m_eng->store().find<Model>("models/teapot")) {
 				Primitive& prim = model->get().primitivesRW().front();
 				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawn("model_1_0", *m_store.get<DrawLayer>("layers/lit"), prim);
+				auto ent0 = spawn("model_1_0", *m_eng->store().get<DrawLayer>("layers/lit"), prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
-			if (m_store.exists<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", "models/nanosuit", *m_store.get<DrawLayer>("layers/lit"));
+			if (m_eng->store().exists<Model>("models/nanosuit")) {
+				auto ent = spawn("model_1", "models/nanosuit", *m_eng->store().get<DrawLayer>("layers/lit"));
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
@@ -581,10 +579,7 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	void tick(Time_s dt) {
-		if constexpr (levk_editor) {
-			Editor::s_in.registry = this;
-			Editor::s_in.customEntities.push_back(m_data.camera);
-		}
+		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
 		if (m_data.loader.ready(m_tasks)) {
 			if (m_registry.empty()) { init1(); }
@@ -659,10 +654,6 @@ class App : public input::Receiver, public SceneRegistry {
 	};
 
 	Data m_data;
-	std::future<void> m_ready;
-
-  public:
-	AssetStore m_store;
 	scheduler m_tasks;
 	not_null<Engine*> m_eng;
 	Drawer m_drawer;
@@ -704,7 +695,7 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 		bootInfo.instance.extensions = winst.vkInstanceExtensions();
 		if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
 		bootInfo.instance.validation.logLevel = dl::level::info;
-		Engine engine(&winst, {});
+		Engine engine(&winst, {}, &reader);
 		Flags flags;
 		FlagsInput flagsInput(flags);
 		engine.pushReceiver(&flagsInput);
@@ -717,7 +708,7 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 				using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
 				engine.boot<renderer_t>(bootInfo);
 				// engine.boot(bootInfo);
-				app.emplace(&engine, reader);
+				app.emplace(&engine);
 				flags.reset(Flag::eInit);
 			}
 			if (app) { app->tick(++dt); }

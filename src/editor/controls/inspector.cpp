@@ -1,7 +1,8 @@
+#include <core/services.hpp>
 #include <core/utils/algo.hpp>
 #include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
-#include <engine/editor/editor.hpp>
+#include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
 
 namespace le::edi {
@@ -18,10 +19,11 @@ struct Transform {
 
 void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
-	if (Editor::s_in.registry && Editor::s_out.inspecting.entity != decf::entity()) {
-		auto entity = Editor::s_out.inspecting.entity;
-		auto node = Editor::s_out.inspecting.node;
-		auto& registry = Editor::s_in.registry->registry();
+	auto& editor = Services::locate<Engine>()->editor();
+	if (editor.m_in.registry && editor.m_out.inspecting.entity != decf::entity()) {
+		auto entity = editor.m_out.inspecting.entity;
+		auto node = editor.m_out.inspecting.node;
+		auto& registry = editor.m_in.registry->registry();
 		Text(registry.name(entity));
 		TWidgetWrap<bool> enb;
 		if (enb(registry.enabled(entity), "Enabled", enb.out)) { registry.enable(entity, enb.out); }

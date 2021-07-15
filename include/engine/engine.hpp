@@ -3,6 +3,7 @@
 #include <core/not_null.hpp>
 #include <core/services.hpp>
 #include <core/version.hpp>
+#include <engine/assets/asset_store.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/frame.hpp>
@@ -73,15 +74,12 @@ class Engine : public Service<Engine> {
 	static Version version() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
 
-	Engine(not_null<Window*> winInst, CreateInfo const& info);
+	Engine(not_null<Window*> winInst, CreateInfo const& info, io::Reader const* custom = {});
 	~Engine();
 
 	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::ViewStack& out_stack);
-
-	bool editorActive() const noexcept { return m_editor.active(); }
-	bool editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
 
 	bool drawReady();
 	bool nextFrame(graphics::RenderTarget* out = {});
@@ -92,12 +90,16 @@ class Engine : public Service<Engine> {
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }
 
+	Editor& editor() noexcept { return m_editor; }
+	Editor const& editor() const noexcept { return m_editor; }
 	GFX& gfx();
 	GFX const& gfx() const;
 	ARenderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
 	Stats const& stats() noexcept { return m_stats.stats; }
 	Desktop* desktop() const noexcept { return m_desktop; }
+	AssetStore& store() noexcept { return m_store; }
+	AssetStore const& store() const noexcept { return m_store; }
 
 	Extent2D framebufferSize() const noexcept;
 	Extent2D windowSize() const noexcept;
@@ -117,6 +119,7 @@ class Engine : public Service<Engine> {
 
 	io::Service m_io;
 	std::optional<GFX> m_gfx;
+	AssetStore m_store;
 	input::Driver m_input;
 	Editor m_editor;
 	Stats::Counter m_stats;

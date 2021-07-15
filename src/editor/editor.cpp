@@ -332,9 +332,9 @@ void displayScale(MU f32 renderScale) {
 } // namespace edi
 
 Editor::Editor() {
-	s_left.panel.attach<edi::SceneTree>("Scene");
-	s_left.panel.attach<edi::Settings>("Settings");
-	s_right.panel.attach<edi::Inspector>("Inspector");
+	m_left.panel.attach<edi::SceneTree>("Scene");
+	m_left.panel.attach<edi::Settings>("Settings");
+	m_right.panel.attach<edi::Inspector>("Inspector");
 }
 
 bool Editor::draw(graphics::CommandBuffer cb) const {
@@ -349,19 +349,19 @@ bool Editor::active() const noexcept {
 
 Viewport const& Editor::view() const noexcept {
 	static constexpr Viewport s_default;
-	return active() && s_engaged ? m_storage.gameView : s_default;
+	return active() && engaged() ? m_storage.gameView : s_default;
 }
 
 graphics::ScreenView Editor::update(input::Frame const& frame) {
 	if constexpr (levk_desktopOS) {
-		if (m_storage.cached.registry != s_in.registry) { s_out = {}; }
-		if (!s_in.registry || !s_in.registry->registry().contains(s_out.inspecting.entity)) { s_out.inspecting = {}; }
-		if (active() && s_engaged) {
+		if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
+		if (!m_in.registry || !m_in.registry->registry().contains(m_out.inspecting.entity)) { m_out.inspecting = {}; }
+		if (active() && engaged()) {
 			auto eng = Services::locate<Engine>();
 			edi::displayScale(eng->renderer().renderScale());
 			if (!edi::Pane::s_blockResize) { m_storage.resizer(*eng->desktop(), m_storage.gameView, frame); }
 			edi::Pane::s_blockResize = false;
-			m_storage.menu(s_in.menu);
+			m_storage.menu(m_menu);
 			glm::vec2 const& size = frame.space.display.window;
 			auto const rect = m_storage.gameView.rect();
 			f32 const offsetY = m_storage.gameView.topLeft.offset.y;
@@ -369,10 +369,10 @@ graphics::ScreenView Editor::update(input::Frame const& frame) {
 			glm::vec2 const leftPanelSize = {rect.lt.x * size.x, size.y - logHeight - offsetY};
 			glm::vec2 const rightPanelSize = {size.x - rect.rb.x * size.x, size.y - logHeight - offsetY};
 			m_storage.logStats(size, logHeight);
-			s_left.panel.update(s_left.id, leftPanelSize, {0.0f, offsetY});
-			s_right.panel.update(s_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
-			m_storage.cached = std::move(s_in);
-			s_in = {};
+			m_left.panel.update(m_left.id, leftPanelSize, {0.0f, offsetY});
+			m_right.panel.update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
+			m_storage.cached = std::move(m_in);
+			m_in = {};
 			return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 		}
 	}

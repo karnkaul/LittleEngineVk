@@ -49,7 +49,7 @@ MainMenu::MainMenu() {
 	main.m_t.id = "File";
 	MenuList::Menu stats{"Show Stats", []() { g_showStats = true; }};
 	MenuList::Menu demo{"Show ImGui Demo", []() { showDemo(); }};
-	MenuList::Menu close{"Close Editor", []() { Editor::s_engaged = false; }, true};
+	MenuList::Menu close{"Close Editor", []() { Services::locate<Engine>()->editor().engage(false); }, true};
 	MenuList::Menu quit{"Quit", []() { Services::locate<Engine>()->desktop()->close(); }};
 	main.push_front(quit);
 	main.push_front(close);

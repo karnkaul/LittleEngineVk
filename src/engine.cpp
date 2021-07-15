@@ -33,11 +33,12 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	return s_devices;
 }
 
-Engine::Engine(not_null<Window*> winInst, CreateInfo const& info) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {
+Engine::Engine(not_null<Window*> winInst, CreateInfo const& info, io::Reader const* custom) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {
 #if defined(LEVK_DESKTOP)
 	m_desktop = static_cast<Desktop*>(winInst.get());
 #endif
 	utils::g_log.minVerbosity = info.verbosity;
+	if (custom) { m_store.resources().reader(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 }
 
@@ -51,6 +52,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
 		if ((*it)->block(ret.frame.state)) { break; }
 	}
+	if (m_inputFrame.state.focus == input::Focus::eGained) { m_store.update(); }
 	return ret;
 }
 
@@ -94,7 +96,8 @@ bool Engine::draw(ListDrawer& drawer, RGBA clear, ClearDepth depth) {
 
 bool Engine::unboot() noexcept {
 	if (m_gfx) {
-		Services::untrack<Context, VRAM>();
+		m_store.clear();
+		Services::untrack<Context, VRAM, AssetStore>();
 		m_gfx.reset();
 		return true;
 	}
@@ -130,7 +133,7 @@ void Engine::updateStats() {
 }
 
 void Engine::bootImpl() {
-	Services::track<Context, VRAM>(&m_gfx->context, &m_gfx->boot.vram);
+	Services::track<Context, VRAM, AssetStore>(&m_gfx->context, &m_gfx->boot.vram, &m_store);
 #if defined(LEVK_DESKTOP)
 	DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPassUI());
 	dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;

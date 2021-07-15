@@ -21,8 +21,10 @@ class SceneRegistry;
 
 namespace edi {
 struct In {
-	edi::MenuList menu;
-	std::vector<decf::entity> customEntities;
+	static constexpr std::size_t max_custom = 16;
+	using custom_t = kt::fixed_vector<decf::entity, max_custom>;
+
+	custom_t customEntities;
 	SceneRegistry* registry = {};
 };
 struct Out {
@@ -41,19 +43,24 @@ class Editor {
 	};
 
 	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
-	inline static bool s_engaged = false;
-	inline static Rail s_left = {{}, "Left"};
-	inline static Rail s_right = {{}, "Right"};
-
-	inline static edi::In s_in;
-	inline static edi::Out s_out;
 
 	Editor();
+
+	void bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom = {});
+	bool engaged() const noexcept { return m_storage.engaged; }
+	void engage(bool set) noexcept { m_storage.engaged = set; }
+	void toggle() noexcept { engage(!engaged()); }
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
 	bool draw(graphics::CommandBuffer cb) const;
+
+	Rail m_left = {{}, "Left"};
+	Rail m_right = {{}, "Right"};
+	edi::MenuList m_menu;
+	edi::In m_in;
+	edi::Out m_out;
 
   private:
 	graphics::ScreenView update(input::Frame const& frame);
@@ -64,8 +71,14 @@ class Editor {
 		edi::MainMenu menu;
 		Viewport gameView = s_comboView;
 		edi::In cached;
+		bool engaged{};
 	} m_storage;
 
 	friend class Engine;
 };
+
+inline void Editor::bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom) {
+	m_in.registry = registry;
+	m_in.customEntities = custom;
+}
 } // namespace le

@@ -27,7 +27,7 @@ std::size_t AssetManifest::preload(dj::json_t const& root) {
 	for (auto const& [groupName, entries] : root.as<dj::map_t>()) {
 		Group group;
 		for (auto const& json : entries->as<dj::vec_t>()) {
-			if (auto id = json->find("id"); id && id->is_string()) { group.push_back({id->as<std::string>(), json}); }
+			if (auto id = json->find_as<std::string>("id")) { group.insert({std::move(*id), json}); }
 		}
 		if (!group.empty()) { ret += add(groupName, std::move(group)); }
 	}
@@ -93,8 +93,8 @@ std::size_t AssetManifest::addSamplers(Group group) {
 			minMag.first = (*json)["min"].as<std::string>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
 			minMag.second = (*json)["mag"].as<std::string>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
 			vk::SamplerCreateInfo createInfo;
-			if (auto mipMode = json->find("mip_mode")) {
-				auto const mm = mipMode->as<std::string>() == "nearest" ? vk::SamplerMipmapMode::eNearest : vk::SamplerMipmapMode::eLinear;
+			if (auto mipMode = json->find_as<std::string>("mip_mode")) {
+				auto const mm = *mipMode == "nearest" ? vk::SamplerMipmapMode::eNearest : vk::SamplerMipmapMode::eLinear;
 				createInfo = graphics::Sampler::info(minMag, mm);
 			} else {
 				createInfo = graphics::Sampler::info(minMag);
@@ -109,10 +109,10 @@ std::size_t AssetManifest::addSamplers(Group group) {
 std::size_t AssetManifest::addShaders(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
-		if (auto files = json->find("files")) {
+		if (auto files = json->find_as<std::vector<std::string>>("files")) {
 			AssetLoadData<graphics::Shader> data(&device());
 			data.name = id.generic_string();
-			for (auto const& str : files->as<std::vector<std::string>>()) {
+			for (auto const& str : *files) {
 				io::Path path = str;
 				auto const ext = path.extension().generic_string();
 				if (ext.starts_with(".vert")) {
@@ -133,21 +133,17 @@ std::size_t AssetManifest::addTextures(Group group) {
 	for (auto& [id, json] : group) {
 		using Payload = graphics::Texture::Payload;
 		AssetLoadData<graphics::Texture> data(&vram());
-		if (auto files = json->find("files"); files && files->is_array()) {
-			auto const f = files->as<std::vector<std::string>>();
-			data.imageIDs = {f.begin(), f.end()};
-		} else if (auto file = json->find("file"); file && file->is_string()) {
-			data.imageIDs = {file->as<std::string>()};
+		if (auto files = json->find_as<std::vector<std::string>>("files")) {
+			data.imageIDs = {files->begin(), files->end()};
+		} else if (auto file = json->find_as<std::string>("file")) {
+			data.imageIDs = {std::move(*file)};
 		} else {
 			data.imageIDs = {id.generic_string()};
 		}
-		if (auto prefix = json->find("prefix"); prefix && prefix->is_string()) { data.prefix = prefix->as<std::string>(); }
-		if (auto ext = json->find("ext"); ext && ext->is_string()) { data.ext = ext->as<std::string>(); }
-		if (auto sampler = json->find("sampler"); sampler && sampler->is_string()) { data.samplerID = sampler->as<std::string>(); }
-		if (auto payload = json->find("payload"); payload && payload->is_string()) {
-			data.payload = payload->as<std::string>() == "data" ? Payload::eData : Payload::eColour;
-		}
-		logD("texture: {}", id.generic_string());
+		data.prefix = json->get_as<std::string>("prefix");
+		data.ext = json->get_as<std::string>("ext");
+		data.samplerID = json->get_as<std::string>("sampler");
+		if (auto payload = json->find_as<std::string>("payload")) { data.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
 		m_textures.add(std::move(id), std::move(data));
 		++ret;
 	}
@@ -161,10 +157,10 @@ std::size_t AssetManifest::addPipelines(Group group) {
 			AssetLoadData<graphics::Pipeline> data(&context());
 			data.name = id.generic_string();
 			data.shaderID = shader->as<std::string>();
-			if (auto name = json->find("name"); name && name->is_string()) { data.name = name->as<std::string>(); }
-			if (auto flags = json->find("flags"); flags && flags->is_array()) { data.flags = parseFlags(flags->as<std::vector<std::string>>()); }
-			if (auto gui = json->find("gui"); gui && gui->is_boolean()) { data.gui = gui->as<bool>(); }
-			if (auto wf = json->find("wireframe"); wf && wf->is_number()) { data.wireframe = wf->as<f32>(); }
+			if (auto name = json->find_as<std::string>("name")) { data.name = std::move(*name); }
+			if (auto flags = json->find_as<std::vector<std::string>>("flags")) { data.flags = parseFlags(*flags); }
+			data.gui = json->get_as<bool>("gui");
+			data.wireframe = json->get_as<f32>("wireframe");
 			m_pipelines.add(std::move(id), std::move(data));
 			++ret;
 		}
@@ -176,9 +172,8 @@ std::size_t AssetManifest::addDrawLayers(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
-			s64 order = 0;
 			Hash const pid = pipe->as<std::string>();
-			if (auto ord = json->find("order"); ord && ord->is_number()) { order = ord->as<s64>(); }
+			s64 const order = json->get_as<s64>("order");
 			m_drawLayers.add(std::move(id), [this, pid, order]() {
 				if (auto pl = store().find<graphics::Pipeline>(pid)) { return DrawLayer{&**pl, order}; }
 				ensure(false, "Pipeline not found!");
@@ -199,7 +194,7 @@ std::size_t AssetManifest::addBitmapFonts(Group group) {
 		} else {
 			data.jsonID = id / id.filename() + ".json";
 		}
-		if (auto sampler = json->find("sampler"); sampler && sampler->is_string()) { data.samplerID = sampler->as<std::string>(); }
+		data.samplerID = json->get_as<std::string>("sampler");
 		m_bitmapFonts.add(std::move(id), std::move(data));
 		++ret;
 	}
@@ -216,7 +211,7 @@ std::size_t AssetManifest::addModels(Group group) {
 		} else {
 			data.jsonID = id / id.filename() + ".json";
 		}
-		if (auto sampler = json->find("sampler"); sampler && sampler->is_string()) { data.samplerID = sampler->as<std::string>(); }
+		data.samplerID = json->get_as<std::string>("sampler");
 		m_models.add(std::move(id), std::move(data));
 		++ret;
 	}

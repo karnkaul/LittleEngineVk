@@ -35,11 +35,8 @@ class AssetManifest : public utils::VBase {
 	AssetStore& store();
 
   private:
-	struct Metadata {
-		io::Path id;
-		dj::ptr<dj::json_t> json;
-	};
-	using Group = std::vector<Metadata>;
+	using Metadata = dj::ptr<dj::json_t>;
+	using Group = std::unordered_map<io::Path, Metadata>;
 
 	not_null<class Engine*> engine();
 

@@ -71,6 +71,28 @@ using Time_ms = time::Duration<s64, std::milli>;
 ///
 using Time_us = time::Duration<s64, std::micro>;
 
+///
+/// \brief Models incremental delta time via increment operators
+///
+template <typename T = Time_s>
+class DeltaTime {
+  public:
+	using type = T;
+
+	T dt() const noexcept { return m_dt; }
+	operator T() const noexcept { return dt(); }
+
+	T next() noexcept { return m_dt = time::diffExchg(m_t); }
+	T operator++() noexcept { return next(); }
+	T operator++(int) noexcept;
+
+	void reset() { m_t = time::now(); }
+
+  private:
+	time::Point m_t = time::now();
+	T m_dt{};
+};
+
 namespace time {
 ///
 /// \brief Format duration as d:HH:MM:SS[:ms]
@@ -93,6 +115,12 @@ template <typename Ret>
 constexpr Ret time::diffExchg(Point& from, Point const& to) noexcept {
 	auto const ret = diff(from, to);
 	from = to;
+	return ret;
+}
+template <typename T>
+T DeltaTime<T>::operator++(int) noexcept {
+	auto const ret = dt();
+	next();
 	return ret;
 }
 } // namespace le

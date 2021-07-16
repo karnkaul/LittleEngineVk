@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <core/ensure.hpp>
+#include <core/utils/data_store.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/instance.hpp>
@@ -91,15 +92,19 @@ Instance::Instance(CreateInfo const& info) {
 	auto const layerProps = vk::enumerateInstanceLayerProperties();
 	m_metadata.layers.clear();
 	std::unordered_set<std::string_view> requiredExtensionsSet = {info.extensions.begin(), info.extensions.end()};
-	bool bValidation = false;
-	if (s_forceValidation) { g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, *s_forceValidation ? "on" : "off"); }
-	if ((!s_forceValidation && info.bValidation) || s_forceValidation.value_or(false)) {
+	Validation validation = info.validation.mode;
+	if (auto vd = DataStore::find<Validation>("validation")) {
+		validation = *vd;
+		DataStore::erase("validation");
+		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, validation == Validation::eOn ? "on" : "off");
+	}
+	if (validation == Validation::eOn) {
 		if (!findLayer(layerProps, szValidationLayer, dl::level::warning)) {
 			ensure(false, "Validation layers requested but not present!");
 		} else {
 			requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 			m_metadata.layers.push_back(szValidationLayer);
-			bValidation = true;
+			validation = Validation::eOn;
 		}
 	}
 	for (auto ext : requiredExtensionsSet) { m_metadata.extensions.push_back(ext.data()); }
@@ -118,7 +123,7 @@ Instance::Instance(CreateInfo const& info) {
 	m_instance = vk::createInstance(createInfo, nullptr);
 	VK_DISPATCHER.init(m_instance);
 	m_loader = VK_DISPATCHER;
-	if (bValidation) {
+	if (validation == Validation::eOn) {
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 		using vksev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 		createInfo.messageSeverity = vksev::eError | vksev::eWarning | vksev::eInfo | vksev::eVerbose;
@@ -129,7 +134,7 @@ Instance::Instance(CreateInfo const& info) {
 		m_messenger = m_instance.createDebugUtilsMessengerEXT(createInfo, nullptr, m_loader);
 	}
 	g_log.log(lvl::info, 1, "[{}] Vulkan instance constructed", g_name);
-	g_validationLevel = info.validationLog;
+	g_validationLevel = info.validation.logLevel;
 }
 
 Instance::~Instance() { destroy(); }

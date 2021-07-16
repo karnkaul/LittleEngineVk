@@ -9,6 +9,7 @@
 #include <engine/render/model.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
+#include <graphics/utils/utils.hpp>
 
 #if !defined(__ANDROID__)
 #include <glm/gtx/hash.hpp>
@@ -299,7 +300,7 @@ Model::Result<Span<Primitive const>> Model::construct(not_null<VRAM*> vram, Crea
 			graphics::Texture::CreateInfo tci;
 			tci.forceFormat = forceFormat;
 			tci.sampler = sampler.sampler();
-			tci.data = graphics::Texture::Img{tex.bytes.begin(), tex.bytes.end()};
+			tci.data = graphics::utils::bmpBytes(tex.bytes);
 			graphics::Texture texture(vram);
 			if (!texture.construct(tci)) { return std::string("Failed to construct texture"); }
 			storage.textures.emplace(tex.id, std::move(texture));

@@ -8,7 +8,7 @@ void AssetStore::update() {
 	bool bIdle = false;
 	u64 total = 0;
 	u32 pass = 0;
-	kt::tlock lock(m_assets);
+	kt::shared_tlock<detail::TAssets> lock(m_assets);
 	for (; pass < maxPasses && (pass == 0 || !bIdle); ++pass) {
 		m_resources.update();
 		u64 reloaded = 0;

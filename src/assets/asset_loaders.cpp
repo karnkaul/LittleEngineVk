@@ -68,9 +68,9 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 				path = graphics::utils::spirVpath(id);
 			}
 		}
-		auto pRes = info.resource(path, Resource::Type::eBinary, false, true);
-		if (!pRes) { return std::nullopt; }
-		spirV[type] = {pRes->bytes().begin(), pRes->bytes().end()};
+		auto res = info.resource(path, Resource::Type::eBinary, false, true);
+		if (!res) { return std::nullopt; }
+		spirV[type] = {res->bytes().begin(), res->bytes().end()};
 	}
 	return spirV;
 }
@@ -80,7 +80,15 @@ std::optional<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoa
 		info.reloadDepend(*shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
 		pipeInfo.renderPass = info.m_data.gui ? info.m_data.context->renderer().renderPassUI() : info.m_data.context->renderer().renderPass3D();
-		return info.m_data.context->makePipeline(info.m_data.name, shader->get(), pipeInfo);
+		auto ret = info.m_data.context->makePipeline(info.m_data.name, shader->get(), pipeInfo);
+		if (info.m_data.wireframe > 0.0f) {
+			auto fixed = ret.fixedState();
+			fixed.rasterizerState.lineWidth = info.m_data.wireframe;
+			fixed.rasterizerState.polygonMode = vk::PolygonMode::eLine;
+			auto const res = ret.constructVariant("wireframe", fixed);
+			ensure(res.has_value(), "Pipeline variant construction failure");
+		}
+		return ret;
 	}
 	return std::nullopt;
 }
@@ -91,7 +99,8 @@ bool AssetLoader<graphics::Pipeline>::reload(graphics::Pipeline& out_pipe, Asset
 }
 
 std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return std::nullopt; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
@@ -106,7 +115,8 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 }
 
 bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
@@ -121,26 +131,32 @@ bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, Asse
 
 std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Texture>::data(AssetLoadInfo<graphics::Texture> const& info) const {
 	if (!info.m_data.bitmap.bytes.empty()) {
-		if (info.m_data.rawBytes) {
+		if (!info.m_data.bitmap.compressed) {
 			return info.m_data.bitmap;
 		} else {
 			return info.m_data.bitmap.bytes;
 		}
+	} else if (!info.m_data.cubemap.bytes[0].empty()) {
+		if (!info.m_data.cubemap.compressed) {
+			return info.m_data.cubemap;
+		} else {
+			return info.m_data.cubemap.bytes;
+		}
 	} else if (info.m_data.imageIDs.size() == 1) {
 		auto path = info.m_data.prefix / info.m_data.imageIDs[0];
 		path += info.m_data.ext;
-		if (auto pRes = info.resource(path, Resource::Type::eBinary, true)) { return graphics::Texture::Img{pRes->bytes().begin(), pRes->bytes().end()}; }
+		if (auto res = info.resource(path, Resource::Type::eBinary, true)) { return graphics::Texture::img(res->bytes()); }
 	} else if (info.m_data.imageIDs.size() == 6) {
-		graphics::Texture::Cubemap cubemap;
+		graphics::Texture::Cube cube;
 		std::size_t idx = 0;
 		for (auto const& p : info.m_data.imageIDs) {
 			auto path = info.m_data.prefix / p;
 			path += info.m_data.ext;
-			auto pRes = info.resource(path, Resource::Type::eBinary, true);
-			if (!pRes) { return std::nullopt; }
-			cubemap[idx++] = {pRes->bytes().begin(), pRes->bytes().end()};
+			auto res = info.resource(path, Resource::Type::eBinary, true);
+			if (!res) { return std::nullopt; }
+			cube[idx++] = graphics::Texture::img(res->bytes());
 		}
-		return cubemap;
+		return cube;
 	}
 	return std::nullopt;
 }
@@ -194,7 +210,8 @@ std::optional<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFont
 bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const { return load(out_font, info); }
 
 bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto text = info.resource(info.m_data.jsonID, Resource::Type::eText, true)) {
 		dj::json_t json;
@@ -206,7 +223,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 			BitmapFont::CreateInfo bci;
 			bci.forceFormat = info.m_data.forceFormat;
 			bci.glyphs = fi.glyphs;
-			bci.atlas = atlas->bytes();
+			bci.atlas = graphics::Texture::img(atlas->bytes());
 			if (out_font.create(info.m_data.vram, sampler->get(), bci)) { return true; }
 		}
 	}
@@ -214,7 +231,8 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 }
 
 std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return std::nullopt; }
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
 		Model model;
@@ -224,7 +242,8 @@ std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) 
 }
 
 bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
 		return out_model.construct(info.m_data.vram, std::move(mci).value(), sampler->get(), info.m_data.forceFormat).has_value();

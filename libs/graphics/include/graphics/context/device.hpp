@@ -75,6 +75,7 @@ class Device final {
 	QueueMultiplex const& queues() const noexcept { return m_queues; }
 	vk::Device device() const noexcept { return m_device; }
 	vk::SurfaceKHR surface() const noexcept { return m_metadata.surface; }
+	TPair<f32> lineWidthLimit() const noexcept { return m_metadata.lineWidth; }
 
 	LayoutState m_layouts;
 	not_null<Instance*> m_instance;
@@ -93,7 +94,7 @@ class Device final {
 		vk::SurfaceKHR surface;
 		kt::fixed_vector<PhysicalDevice, 8> available;
 		vk::PhysicalDeviceLimits limits;
-		std::pair<f32, f32> lineWidth;
+		TPair<f32> lineWidth;
 	} m_metadata;
 };
 

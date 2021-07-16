@@ -20,7 +20,7 @@ class BitmapFont {
 
 	static constexpr std::size_t max_glyphs = maths::max<u8>();
 
-	bool create(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo const& info);
+	bool create(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo info);
 
 	bool valid() const noexcept;
 	Texture const& atlas() const;
@@ -36,7 +36,7 @@ class BitmapFont {
 struct BitmapFont::CreateInfo {
 	std::optional<vk::Format> forceFormat;
 	Span<Glyph const> glyphs;
-	graphics::BMPview atlas;
+	graphics::Texture::Img atlas;
 };
 
 inline bool BitmapFont::valid() const noexcept { return m_storage.atlas.has_value(); }

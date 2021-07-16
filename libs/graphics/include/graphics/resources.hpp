@@ -77,7 +77,7 @@ class Memory {
 
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
-	static void blit(vk::CommandBuffer cb, vk::Image src, vk::Image dst, TPair<vk::Extent3D> extents,
+	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents,
 					 LayoutPair layouts = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal}, vk::Filter filter = vk::Filter::eLinear,
 					 TPair<vk::ImageAspectFlags> aspects = {vk::ImageAspectFlagBits::eColor, vk::ImageAspectFlagBits::eColor});
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);

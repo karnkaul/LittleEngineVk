@@ -95,7 +95,7 @@ bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_val
 
 bool Reader::checkPresence(io::Path const& id) const {
 	if (!present(id)) {
-		logE("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
+		logW("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
 		return false;
 	}
 	return true;

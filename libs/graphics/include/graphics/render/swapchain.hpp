@@ -15,17 +15,26 @@ namespace le::graphics {
 class VRAM;
 class Device;
 
+enum class Vsync { eOff, eOn, eAdaptive, eTripleBuffer, eCOUNT_ };
+
 constexpr ArrayMap<vk::PresentModeKHR, std::string_view, 4> presentModeNames = {{
 	{vk::PresentModeKHR::eFifo, "FIFO"},
 	{vk::PresentModeKHR::eFifoRelaxed, "FIFO Relaxed"},
 	{vk::PresentModeKHR::eImmediate, "Immediate"},
 	{vk::PresentModeKHR::eMailbox, "Mailbox"},
 }};
+constexpr ArrayMap<Vsync, std::string_view, 4> vsyncNames = {
+	{{Vsync::eOff, "Vsync Off"}, {Vsync::eOn, "Vsync On"}, {Vsync::eAdaptive, "Vsync Adaptive"}, {Vsync::eTripleBuffer, "Vsync Triple Buffer"}}};
+constexpr ArrayMap<Vsync, vk::PresentModeKHR, 4> vsyncModes = {{{Vsync::eOff, vk::PresentModeKHR::eImmediate},
+																{Vsync::eOn, vk::PresentModeKHR::eFifo},
+																{Vsync::eAdaptive, vk::PresentModeKHR::eFifoRelaxed},
+																{Vsync::eTripleBuffer, vk::PresentModeKHR::eMailbox}}};
 
 class Swapchain {
   public:
 	enum class Flag : s8 { ePaused, eOutOfDate, eSuboptimal, eCOUNT_ };
 	using Flags = kt::enum_flags<Flag>;
+	using Vsyncs = kt::enum_flags<Vsync>;
 
 	struct FormatPicker {
 		///
@@ -39,10 +48,10 @@ class Swapchain {
 		vk::SurfaceTransformFlagBitsKHR transform = {};
 	};
 	struct CreateInfo {
+		kt::fixed_vector<Vsync, 4> vsync = {Vsync::eTripleBuffer, Vsync::eOn};
 		u32 imageCount = 2;
-		bool vsync = false;
-		bool transfer = true;
 		FormatPicker const* custom = {};
+		bool transfer = true;
 	};
 	struct Acquire {
 		RenderImage image;
@@ -61,7 +70,8 @@ class Swapchain {
 
 	kt::result<Acquire> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
 	bool present(vk::Semaphore swait);
-	bool reconstruct(glm::ivec2 framebufferSize = {}, bool vsync = false);
+	bool reconstruct(glm::ivec2 framebufferSize = {});
+	bool reconstruct(Vsync vsync, glm::ivec2 framebufferSize = {});
 
 	bool suboptimal() const noexcept;
 	bool paused() const noexcept;
@@ -73,8 +83,8 @@ class Swapchain {
 	vk::SurfaceFormatKHR const& colourFormat() const noexcept { return m_metadata.formats.colour; }
 	vk::Format depthFormat() const noexcept { return m_metadata.formats.depth; }
 	Span<RenderImage const> images() const noexcept { return m_storage.images; }
-
-	inline static bool s_forceVsync = false;
+	Vsync vsync() const noexcept;
+	Vsyncs supportedVsync() const noexcept { return m_metadata.vsyncs; }
 
 	not_null<VRAM*> m_vram;
 	not_null<Device*> m_device;
@@ -98,6 +108,7 @@ class Swapchain {
 		vk::PresentModeKHR presentMode;
 		std::optional<Display> original;
 		std::vector<vk::PresentModeKHR> availableModes;
+		Vsyncs vsyncs;
 		struct {
 			vk::SurfaceFormatKHR colour;
 			vk::Format depth;
@@ -131,5 +142,14 @@ constexpr bool Swapchain::srgb(vk::Format format) noexcept {
 	default: break;
 	}
 	return false;
+}
+
+inline Vsync Swapchain::vsync() const noexcept {
+	switch (m_metadata.presentMode) {
+	case vk::PresentModeKHR::eMailbox: return Vsync::eTripleBuffer;
+	case vk::PresentModeKHR::eImmediate: return Vsync::eOff;
+	case vk::PresentModeKHR::eFifoRelaxed: return Vsync::eAdaptive;
+	default: return Vsync::eOn;
+	}
 }
 } // namespace le::graphics

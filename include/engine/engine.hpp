@@ -3,6 +3,7 @@
 #include <core/not_null.hpp>
 #include <core/services.hpp>
 #include <core/version.hpp>
+#include <engine/assets/asset_loaders_store.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/frame.hpp>
@@ -30,6 +31,7 @@ namespace gui {
 class ViewStack;
 }
 
+class ListDrawer;
 using graphics::Extent2D;
 
 class Engine : public Service<Engine> {
@@ -41,9 +43,9 @@ class Engine : public Service<Engine> {
 	using Desktop = window::DesktopInstance;
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
-	using Drawer = graphics::FrameDrawer;
 	using VRAM = graphics::VRAM;
 	using RGBA = graphics::RGBA;
+	using ClearDepth = graphics::ClearDepth;
 	using ARenderer = graphics::ARenderer;
 	using Stats = utils::EngineStats;
 
@@ -61,41 +63,37 @@ class Engine : public Service<Engine> {
 		static Boot::MakeSurface makeSurface(Window const& winst);
 	};
 
-	struct Options {
-		std::optional<std::size_t> gpuOverride;
-	};
-
 	struct CreateInfo;
 
-	inline static Options s_options;
-
 	static Version version() noexcept;
-	static Stats const& stats() noexcept { return s_stats; }
 	static Span<graphics::PhysicalDevice const> availableDevices();
 
-	Engine(not_null<Window*> winInst, CreateInfo const& info);
+	Engine(not_null<Window*> winInst, CreateInfo const& info, io::Reader const* custom = {});
+	~Engine();
 
 	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
 	void update(gui::ViewStack& out_stack);
 
-	bool editorActive() const noexcept { return m_editor.active(); }
-	bool editorEngaged() const noexcept { return m_editor.active() && Editor::s_engaged; }
-
 	bool drawReady();
-	std::optional<Context::Frame> beginDraw();
-	bool render(Context::Frame const& draw, Drawer& drawer, RGBA clear = colours::black, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	bool nextFrame(graphics::RenderTarget* out = {});
+	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>
-	bool boot(Boot::CreateInfo boot, Args&&... args);
+	void boot(Boot::CreateInfo const& boot, Args&&... args);
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }
 
+	Editor& editor() noexcept { return m_editor; }
+	Editor const& editor() const noexcept { return m_editor; }
 	GFX& gfx();
 	GFX const& gfx() const;
 	ARenderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
+	Stats const& stats() noexcept { return m_stats.stats; }
 	Desktop* desktop() const noexcept { return m_desktop; }
+	AssetStore& store() noexcept { return m_store; }
+	AssetStore const& store() const noexcept { return m_store; }
 
 	Extent2D framebufferSize() const noexcept;
 	Extent2D windowSize() const noexcept;
@@ -104,34 +102,27 @@ class Engine : public Service<Engine> {
 
 	SceneSpace m_space;
 	not_null<Window*> m_win;
-	Time_ms m_recreateInterval = 10ms;
 
   private:
 	void updateStats();
+	Boot::CreateInfo adjust(Boot::CreateInfo const& info);
 	void bootImpl();
+	void addDefaultAssets();
+	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
+	bool endDraw(graphics::CommandBuffer cb);
 
-	inline static Stats s_stats = {};
 	inline static kt::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
 	io::Service m_io;
 	std::optional<GFX> m_gfx;
-	Editor m_editor;
+	AssetStore m_store;
 	input::Driver m_input;
-	struct {
-		struct {
-			time::Point stamp{};
-			Time_s elapsed{};
-			u32 count;
-		} frame;
-	} m_stats;
+	Editor m_editor;
+	Stats::Counter m_stats;
 	input::Receivers m_receivers;
 	input::Frame m_inputFrame;
 	graphics::ScreenView m_view;
-	struct {
-		glm::ivec2 size{};
-		time::Point resized{};
-	} m_fb;
-	graphics::CommandBuffer m_drawing;
+	std::optional<graphics::RenderTarget> m_drawing;
 	Desktop* m_desktop{};
 };
 
@@ -142,14 +133,10 @@ struct Engine::CreateInfo {
 
 // impl
 template <graphics::concrete_renderer Rd, typename... Args>
-bool Engine::boot(Boot::CreateInfo boot, Args&&... args) {
-	if (!m_gfx) {
-		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
-		m_gfx.emplace(m_win.get(), boot, tag_t<Rd>{}, std::forward<Args>(args)...);
-		bootImpl();
-		return true;
-	}
-	return false;
+void Engine::boot(Boot::CreateInfo const& info, Args&&... args) {
+	unboot();
+	m_gfx.emplace(m_win.get(), adjust(info), tag_t<Rd>{}, std::forward<Args>(args)...);
+	bootImpl();
 }
 
 inline Engine::GFX& Engine::gfx() {

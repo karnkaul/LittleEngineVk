@@ -1,6 +1,7 @@
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
+#include <graphics/render/command_buffer.hpp>
 
 namespace le::graphics {
 VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {
@@ -90,7 +91,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return {std::move(ret)};
 }
 
-VRAM::Future VRAM::copy(Span<BMPview const> bitmaps, Image& out_dst, LayoutPair layouts) {
+VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair layouts) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : bitmaps) {
@@ -146,10 +147,16 @@ VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TP
 	TPair<vk::Extent3D> const extents = {src.extent(), out_dst.extent()};
 	auto f = [this, p = std::move(promise), s = src.image(), d = out_dst.image(), extents, layouts, aspects, filter]() mutable {
 		auto stage = m_transfer.newStage(0);
-		blit(stage.command, s, d, extents, layouts, filter, aspects);
+		blit(stage.command, {s, d}, extents, layouts, filter, aspects);
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
 	return {std::move(ret)};
+}
+
+void VRAM::blit(CommandBuffer cb, TPair<RenderImage> images, LayoutPair layouts, vk::Filter filter, TPair<vk::ImageAspectFlags> aspects) {
+	vk::Extent3D const src(cast(images.first.extent), 1);
+	vk::Extent3D const dst(cast(images.second.extent), 1);
+	blit(cb.m_cb, {images.first.image, images.second.image}, {src, dst}, layouts, filter, aspects);
 }
 
 void VRAM::waitIdle() {

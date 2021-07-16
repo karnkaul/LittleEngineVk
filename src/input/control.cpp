@@ -11,6 +11,14 @@ Trigger::Trigger(Key key, Action action, Mod mod) noexcept {
 	combos.push_back(ka);
 }
 
+Trigger::Trigger(Key key, Action action, Mods mods) noexcept {
+	KeyAction ka;
+	ka.key = key;
+	ka.t = action;
+	ka.mods = mods;
+	combos.push_back(ka);
+}
+
 bool Trigger::operator()(State const& state) const noexcept {
 	for (auto const& combo : combos) {
 		if (combo.key != Key::eUnknown) {

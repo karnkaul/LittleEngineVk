@@ -8,7 +8,6 @@
 #include <engine/editor/types.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/render/viewport.hpp>
-#include <engine/scene/scene_node.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le {
@@ -18,54 +17,68 @@ class DesktopInstance;
 namespace graphics {
 struct ScreenView;
 }
+class SceneRegistry;
 
 namespace edi {
 struct In {
-	edi::MenuList menu;
-	std::vector<decf::entity_t> customEntities;
-	SceneNode::Root* root = {};
-	decf::registry_t* registry = {};
+	static constexpr std::size_t max_custom = 16;
+	using custom_t = kt::fixed_vector<decf::entity, max_custom>;
+
+	custom_t customEntities;
+	SceneRegistry* registry = {};
 };
 struct Out {
 	struct {
 		SceneNode* node = {};
-		decf::entity_t entity;
+		decf::entity entity;
 	} inspecting;
 };
 } // namespace edi
 
 class Editor {
   public:
-	using Desktop = window::DesktopInstance;
-	using Renderer = graphics::ARenderer;
-
 	struct Rail {
 		edi::Palette panel;
 		std::string_view id;
 	};
 
 	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
-	inline static bool s_engaged = false;
-	inline static Rail s_left = {{}, "Left"};
-	inline static Rail s_right = {{}, "Right"};
-
-	inline static edi::In s_in;
-	inline static edi::Out s_out;
 
 	Editor();
+
+	void bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom = {});
+	bool engaged() const noexcept { return m_storage.engaged; }
+	void engage(bool set) noexcept { m_storage.engaged = set; }
+	void toggle() noexcept { engage(!engaged()); }
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
-	graphics::ScreenView update(Desktop& win, Renderer& renderer, input::Frame const& frame);
+	bool draw(graphics::CommandBuffer cb) const;
+
+	Rail m_left = {{}, "Left"};
+	Rail m_right = {{}, "Right"};
+	edi::MenuList m_menu;
+	edi::In m_in;
+	edi::Out m_out;
 
   private:
+	graphics::ScreenView update(input::Frame const& frame);
+
 	struct {
 		edi::Resizer resizer;
 		edi::LogStats logStats;
 		edi::MainMenu menu;
 		Viewport gameView = s_comboView;
 		edi::In cached;
+		bool engaged{};
 	} m_storage;
+
+	friend class Engine;
 };
+
+inline void Editor::bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom) {
+	m_in.registry = registry;
+	m_in.customEntities = custom;
+}
 } // namespace le

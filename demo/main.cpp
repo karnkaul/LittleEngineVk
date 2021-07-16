@@ -12,6 +12,6 @@ int main(int argc, char const* const argv[]) {
 	}
 	io::FileReader reader;
 	reader.mount(std::move(data).value());
-	if (!le::demo::run(reader)) { return 1; }
+	if (!demo::run(reader)) { return 1; }
 	return 0;
 }

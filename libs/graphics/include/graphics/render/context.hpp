@@ -25,12 +25,10 @@ class RenderContext : NoCopy {
   public:
 	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing, eCOUNT_ };
 
-	using Frame = ARenderer::Draw;
-
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
-	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite);
+	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
 
 	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer);
 
@@ -38,11 +36,13 @@ class RenderContext : NoCopy {
 
 	bool ready(glm::ivec2 framebufferSize);
 	bool waitForFrame();
-	std::optional<Frame> beginFrame();
-	bool beginDraw(graphics::FrameDrawer& out_drawer, ScreenView const& view, RGBA clear, vk::ClearDepthStencilValue depth = {1.0f, 0});
+	std::optional<RenderTarget> beginFrame();
+	std::optional<CommandBuffer> beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth = {1.0f, 0});
 	bool endDraw();
 	bool endFrame();
 	bool submitFrame();
+
+	void reconstruct(std::optional<graphics::Vsync> vsync = std::nullopt);
 
 	Status status() const noexcept { return m_storage.status; }
 	std::size_t index() const noexcept { return m_storage.renderer->index(); }
@@ -55,6 +55,7 @@ class RenderContext : NoCopy {
 	glm::mat4 preRotate() const noexcept;
 	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) const noexcept;
+	bool supported(Vsync vsync) const noexcept { return m_swapchain->supportedVsync().test(vsync); }
 
 	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
 	CommandPool const& commandPool() const noexcept { return m_pool; }
@@ -65,12 +66,16 @@ class RenderContext : NoCopy {
 		return ((m_storage.status == any) || ...);
 	}
 	void set(Status s) noexcept { m_storage.status = s; }
-
+	enum Flag { eRecreate = 1 << 0, eVsync = 1 << 1 };
 	struct Storage {
 		std::unique_ptr<ARenderer> renderer;
-		std::optional<Frame> frame;
+		std::optional<RenderTarget> drawing;
 		Deferred<vk::PipelineCache> pipelineCache;
 		Status status = {};
+		struct {
+			std::optional<graphics::Vsync> vsync;
+			bool trigger = false;
+		} reconstruct;
 	};
 
 	Storage m_storage;
@@ -108,7 +113,7 @@ struct QuickVertexInput {
 // impl
 
 template <typename V>
-Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags) {
+Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
 	Pipeline::CreateInfo ret;
 	ret.fixedState.vertexInput = VertexInfoFactory<V>()(0);
 	if (flags.test(PFlag::eDepthTest)) {
@@ -126,6 +131,10 @@ Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags) {
 		ret.fixedState.colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
 		ret.fixedState.colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
 		ret.fixedState.colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
+	}
+	if (wire > 0.0f) {
+		ret.fixedState.rasterizerState.polygonMode = vk::PolygonMode::eLine;
+		ret.fixedState.rasterizerState.lineWidth = wire;
 	}
 	return ret;
 }

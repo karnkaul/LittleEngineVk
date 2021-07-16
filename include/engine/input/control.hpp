@@ -26,6 +26,7 @@ struct Trigger {
 
 	Trigger() = default;
 	Trigger(Key key, Action action = Action::ePressed, Mod mod = {}) noexcept;
+	Trigger(Key key, Action action, Mods mods) noexcept;
 
 	bool operator()(State const& state) const noexcept;
 };

@@ -1,5 +1,6 @@
 #include <map>
 #include <core/maths.hpp>
+#include <core/utils/data_store.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
@@ -23,13 +24,32 @@ vk::SurfaceFormatKHR Swapchain::FormatPicker::pick(Span<vk::SurfaceFormatKHR con
 }
 
 namespace {
-template <typename T, typename U, typename V>
-constexpr T bestFit(U&& all, V&& desired, T fallback) noexcept {
+constexpr vk::PresentModeKHR bestFit(Span<vk::PresentModeKHR const> all, Span<Vsync const> desired, vk::PresentModeKHR fallback) noexcept {
 	for (auto const& d : desired) {
-		if (std::find(all.begin(), all.end(), d) != all.end()) { return d; }
+		auto const pm = vsyncModes[d];
+		for (auto const p : all) {
+			if (p == pm) { return pm; }
+		}
 	}
 	return fallback;
 }
+
+template <typename Flag>
+struct vkFlagGetter {
+	vk::Flags<Flag> flags;
+	Flag fallback{};
+
+	constexpr Flag operator()(std::initializer_list<Flag> options) noexcept {
+		for (Flag const f : options) {
+			if ((flags & f) == f) { return f; }
+		}
+		return fallback;
+	}
+	template <typename... T>
+	constexpr Flag operator()(T... options) noexcept {
+		return (*this)({options...});
+	}
+};
 
 struct SwapchainCreateInfo {
 	SwapchainCreateInfo(vk::PhysicalDevice pd, vk::SurfaceKHR surface, Swapchain::CreateInfo const& info) : pd(pd), surface(surface) {
@@ -38,6 +58,7 @@ struct SwapchainCreateInfo {
 		vk::SurfaceCapabilitiesKHR capabilities = pd.getSurfaceCapabilitiesKHR(surface);
 		std::vector<vk::SurfaceFormatKHR> colourFormats = pd.getSurfaceFormatsKHR(surface);
 		availableModes = pd.getSurfacePresentModesKHR(surface);
+		for (vk::PresentModeKHR mode : availableModes) { vsyncs.set(vsyncModes[mode]); }
 		static Swapchain::FormatPicker const s_picker;
 		Swapchain::FormatPicker const* picker = info.custom ? info.custom : &s_picker;
 		colourFormat = picker->pick(colourFormats);
@@ -51,31 +72,17 @@ struct SwapchainCreateInfo {
 			}
 		}
 		if (Device::default_v(depthFormat)) { depthFormat = vk::Format::eD16Unorm; }
-		kt::fixed_vector<vk::PresentModeKHR, 8> presentModes;
-		if (info.vsync || Swapchain::s_forceVsync) { presentModes.push_back(vk::PresentModeKHR::eImmediate); }
-		if constexpr (levk_desktopOS) { presentModes.push_back(vk::PresentModeKHR::eMailbox); }
-		presentModes.push_back(vk::PresentModeKHR::eFifoRelaxed);
-		presentModes.push_back(vk::PresentModeKHR::eFifo);
+		auto presentModes = info.vsync;
+		if (auto forceVsync = DataStore::find<Vsync>("vsync")) {
+			presentModes.insert(info.vsync.begin(), *forceVsync);
+			DataStore::erase("vsync");
+		}
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
-		if (info.vsync || Swapchain::s_forceVsync) {
-			static auto const name = presentModeNames[vk::PresentModeKHR::eImmediate];
-			if (presentMode == vk::PresentModeKHR::eImmediate) {
-				g_log.log(lvl::info, 0, "[{}] VSYNC ({} present mode) requested", g_name, name);
-			} else {
-				g_log.log(lvl::warning, 0, "[{}] VSYNC ({} present mode) requested but not available!", g_name, name);
-			}
-		}
-		imageCount = capabilities.minImageCount + 1;
-		if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < imageCount) { imageCount = capabilities.maxImageCount; }
-		if (capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::eOpaque) {
-			compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-		} else if (capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::eInherit) {
-			compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eInherit;
-		} else if (capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::ePreMultiplied) {
-			compositeAlpha = vk::CompositeAlphaFlagBitsKHR::ePreMultiplied;
-		} else {
-			compositeAlpha = vk::CompositeAlphaFlagBitsKHR::ePostMultiplied;
-		}
+		g_log.log(lvl::info, 0, "[{}] {} ({} present mode) selected", g_name, vsyncNames[vsyncModes[presentMode]], presentModeNames[presentMode]);
+		imageCount = std::clamp(capabilities.minImageCount + 1, capabilities.minImageCount, capabilities.maxImageCount);
+		using vCAFB = vk::CompositeAlphaFlagBitsKHR;
+		vkFlagGetter<vCAFB> alpha{capabilities.supportedCompositeAlpha, vCAFB::eOpaque};
+		compositeAlpha = alpha(vCAFB::eInherit, vCAFB::ePreMultiplied, vCAFB::ePostMultiplied);
 	}
 
 	Extent2D extent(glm::ivec2 fbSize) {
@@ -99,6 +106,7 @@ struct SwapchainCreateInfo {
 	vk::CompositeAlphaFlagBitsKHR compositeAlpha;
 	vk::ImageUsageFlags usage;
 	Swapchain::Display current;
+	Swapchain::Vsyncs vsyncs;
 	u32 imageCount = 0;
 };
 } // namespace
@@ -174,8 +182,7 @@ bool Swapchain::present(vk::Semaphore swait) {
 	return true;
 }
 
-bool Swapchain::reconstruct(glm::ivec2 framebufferSize, bool vsync) {
-	m_metadata.info.vsync = vsync;
+bool Swapchain::reconstruct(glm::ivec2 framebufferSize) {
 	Storage retired = std::move(m_storage);
 	m_metadata.retired = retired.swapchain;
 	bool const bResult = construct(framebufferSize);
@@ -188,6 +195,11 @@ bool Swapchain::reconstruct(glm::ivec2 framebufferSize, bool vsync) {
 	}
 	destroy(retired);
 	return bResult;
+}
+
+bool Swapchain::reconstruct(Vsync vsync, glm::ivec2 framebufferSize) {
+	m_metadata.info.vsync = {vsync};
+	return reconstruct(framebufferSize);
 }
 
 bool Swapchain::suboptimal() const noexcept { return m_storage.flags.test(Flag::eSuboptimal); }
@@ -204,6 +216,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 				  g_name);
 	}
 	m_metadata.availableModes = std::move(info.availableModes);
+	m_metadata.vsyncs = info.vsyncs;
 	{
 		vk::SwapchainCreateInfoKHR createInfo;
 		createInfo.minImageCount = info.imageCount;

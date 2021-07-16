@@ -65,6 +65,7 @@ class Span<T const> {
 	using const_iterator = T const*;
 
 	constexpr Span() noexcept;
+	constexpr Span(Span<T> rhs) noexcept;
 	constexpr explicit Span(T const* data, std::size_t size) noexcept;
 	constexpr Span(T const& data) noexcept;
 	template <std::size_t N>
@@ -186,6 +187,8 @@ constexpr Span<T> Span<T>::subspan(std::size_t offset, std::size_t count) const 
 }
 template <typename T>
 constexpr Span<T const>::Span() noexcept : m_data(nullptr), m_size(0) {}
+template <typename T>
+constexpr Span<T const>::Span(Span<T> rhs) noexcept : m_data(rhs.data()), m_size(rhs.size()) {}
 template <typename T>
 constexpr Span<T const>::Span(T const* data, std::size_t size) noexcept : m_data(data), m_size(size) {}
 template <typename T>

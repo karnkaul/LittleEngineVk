@@ -21,6 +21,7 @@ using LayoutPair = TPair<vk::ImageLayout>;
 using vIL = vk::ImageLayout;
 using vAFB = vk::AccessFlagBits;
 using vPSFB = vk::PipelineStageFlagBits;
+using ClearDepth = vk::ClearDepthStencilValue;
 
 using Extent2D = glm::tvec2<u32>;
 constexpr Extent2D cast(vk::Extent2D extent) noexcept { return {extent.width, extent.height}; }

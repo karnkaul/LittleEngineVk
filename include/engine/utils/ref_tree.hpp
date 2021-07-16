@@ -129,6 +129,10 @@ RefTreeNode<T, Base>::RefTreeNode(RefTreeNode&& rhs) noexcept : Root(std::move(r
 template <typename T, typename Base>
 RefTreeNode<T, Base>& RefTreeNode<T, Base>::operator=(RefTreeNode&& rhs) noexcept {
 	if (&rhs != this) {
+		for (auto& child : this->m_children) {
+			static_cast<type*>(child)->m_parent = m_parent;
+			m_parent->addChild(child);
+		}
 		Root::operator=(std::move(rhs));
 		if (&rhs.m_parent != &m_parent) {
 			m_parent->removeChild(cast(this));
@@ -140,6 +144,7 @@ RefTreeNode<T, Base>& RefTreeNode<T, Base>::operator=(RefTreeNode&& rhs) noexcep
 }
 template <typename T, typename Base>
 RefTreeNode<T, Base>::~RefTreeNode() {
+	if constexpr (levk_debug) { ensure(!m_parent->m_children.empty(), "Invariant violated"); }
 	m_parent->removeChild(cast(this));
 	for (auto& child : this->m_children) {
 		static_cast<type*>(child)->m_parent = m_parent;

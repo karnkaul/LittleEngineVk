@@ -10,7 +10,7 @@
 namespace le::graphics {
 class Sampler {
   public:
-	using MinMag = std::pair<vk::Filter, vk::Filter>;
+	using MinMag = TPair<vk::Filter>;
 	static vk::SamplerCreateInfo info(MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
 
 	Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info);
@@ -32,19 +32,22 @@ class Texture {
 		vk::ImageView imageView;
 		vk::Sampler sampler;
 		vk::Format format{};
-		glm::ivec2 size{};
+		Extent2D size{};
 		Payload payload{};
 		Type type{};
 	};
 
-	using Img = Bitmap::type;
-	using Cubemap = std::array<Bitmap::type, 6>;
+	using Img = BmpBytes;
+	using Cube = CubeBytes;
 	struct CreateInfo;
 
 	inline static constexpr auto srgb = vk::Format::eR8G8B8A8Srgb;
 	inline static constexpr auto linear = vk::Format::eR8G8B8A8Unorm;
 
 	Texture(not_null<VRAM*> vram);
+
+	static Img img(Span<std::byte const> bytes);
+	static Cubemap unitCubemap(Colour colour);
 
 	bool construct(CreateInfo const& info);
 
@@ -72,13 +75,11 @@ class Texture {
 };
 
 struct Texture::CreateInfo {
-	using Data = std::variant<Img, Cubemap, Bitmap>;
+	using Data = std::variant<Img, Cube, Bitmap, Cubemap>;
 
 	Data data;
 	vk::Sampler sampler;
 	std::optional<vk::Format> forceFormat;
 	Payload payload = Payload::eColour;
-
-	static Data build(kt::fixed_vector<Colour, 256> const& pixels);
 };
 } // namespace le::graphics

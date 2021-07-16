@@ -73,14 +73,14 @@ vk::ImageBlit imageBlit(Memory::ImgMeta const& src, Memory::ImgMeta const& dst, 
 	return ret;
 }
 
-void Memory::blit(vk::CommandBuffer cb, vk::Image src, vk::Image dst, TPair<vk::Extent3D> extents, LayoutPair layouts, vk::Filter filter,
+void Memory::blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, LayoutPair layouts, vk::Filter filter,
 				  TPair<vk::ImageAspectFlags> aspects) {
 	ImgMeta msrc, mdst;
 	msrc.aspects = aspects.first;
 	mdst.aspects = aspects.second;
 	vk::Offset3D const osrc((int)extents.first.width, (int)extents.first.height, (int)extents.first.depth);
 	vk::Offset3D const odst((int)extents.second.width, (int)extents.second.height, (int)extents.second.depth);
-	cb.blitImage(src, layouts.first, dst, layouts.second, imageBlit(msrc, mdst, {{}, osrc}, {{}, odst}), filter);
+	cb.blitImage(images.first, layouts.first, images.second, layouts.second, imageBlit(msrc, mdst, {{}, osrc}, {{}, odst}), filter);
 }
 
 void Memory::imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta) {

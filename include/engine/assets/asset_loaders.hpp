@@ -31,10 +31,11 @@ struct AssetLoader<graphics::Shader> {
 template <>
 struct AssetLoadData<graphics::Pipeline> {
 	std::optional<graphics::Pipeline::CreateInfo> info;
-	graphics::PFlags flags;
 	std::string name;
+	graphics::PFlags flags;
 	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
+	f32 wireframe = 0.0f;
 	bool gui = false;
 
 	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
@@ -50,13 +51,13 @@ template <>
 struct AssetLoadData<graphics::Texture> {
 	kt::fixed_vector<io::Path, 6> imageIDs;
 	graphics::Bitmap bitmap;
+	graphics::Cubemap cubemap;
 	io::Path prefix;
 	std::string ext;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
 	Hash samplerID;
 	graphics::Texture::Payload payload = graphics::Texture::Payload::eColour;
-	bool rawBytes = false;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };

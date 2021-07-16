@@ -27,29 +27,30 @@ class RendererFSR : public ARenderer {
 	static constexpr Tech tech_v = {Approach::eForward, Target::eSwapchain, Transition::eRenderPass};
 	Tech tech() const noexcept override { return tech_v; }
 
-	std::optional<Draw> beginFrame() override;
+	CommandBuffer beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) override;
 	void endDraw(RenderTarget const& target) override;
 };
 
-class RendererFSC : public ARenderer {
+class RendererFSC : public RendererFSR {
   public:
 	RendererFSC(not_null<Swapchain*> swapchain, Buffering buffering = doubleBuffer);
 
 	static constexpr Tech tech_v = {Approach::eForward, Target::eSwapchain, Transition::eCommandBuffer};
 	Tech tech() const noexcept override { return tech_v; }
 
-	std::optional<Draw> beginFrame() override;
+	CommandBuffer beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) override;
 	void endDraw(RenderTarget const& target) override;
 };
 
-class RendererFOC : public ARenderer {
+class RendererFOC : public RendererFSR {
   public:
 	RendererFOC(not_null<Swapchain*> swapchain, Buffering buffering = doubleBuffer);
 
 	static constexpr Tech tech_v = {Approach::eForward, Target::eOffScreen, Transition::eCommandBuffer};
 	Tech tech() const noexcept override { return tech_v; }
 
-	std::optional<Draw> beginFrame() override;
+	CommandBuffer beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) override;
+	std::optional<RenderTarget> beginFrame() override;
 	void endDraw(RenderTarget const& target) override;
 
   private:

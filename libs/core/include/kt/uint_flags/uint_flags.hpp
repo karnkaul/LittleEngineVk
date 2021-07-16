@@ -41,6 +41,10 @@ struct uint_flags {
 	template <typename T>
 	constexpr bool operator[](T t) const noexcept;
 	///
+	/// \brief Test if any bits are set
+	///
+	constexpr bool any() const noexcept { return bits != Ty{}; }
+	///
 	/// \brief Test if any bits in t are set
 	///
 	template <typename T>

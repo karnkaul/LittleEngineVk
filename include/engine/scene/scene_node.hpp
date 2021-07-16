@@ -20,7 +20,7 @@ class SceneNode : public utils::RefTreeNode<SceneNode> {
   public:
 	using Root = typename RefTreeNode<SceneNode>::Root;
 
-	SceneNode(not_null<Root*> root, decf::entity_t entity = {}, SceneTransform const& transform = {});
+	SceneNode(not_null<Root*> root, decf::entity entity = {}, SceneTransform const& transform = {});
 
 	///
 	/// \brief Set (local) position
@@ -98,14 +98,14 @@ class SceneNode : public utils::RefTreeNode<SceneNode> {
 	///
 	void refresh() const noexcept;
 
-	decf::entity_t entity() const noexcept;
-	void entity(decf::entity_t entity) noexcept;
+	decf::entity entity() const noexcept;
+	void entity(decf::entity entity) noexcept;
 
   private:
 	mutable glm::mat4 m_mat = glm::mat4(1.0f);
 	mutable glm::mat4 m_normalMat = glm::mat4(1.0f);
 	SceneTransform m_transform;
-	decf::entity_t m_entity;
+	decf::entity m_entity;
 	mutable bool m_dirty = false;
 };
 
@@ -121,7 +121,7 @@ inline glm::mat4 SceneTransform::matrix() const noexcept {
 	return t * r * s;
 }
 
-inline SceneNode::SceneNode(not_null<Root*> parent, decf::entity_t entity, SceneTransform const& transform)
+inline SceneNode::SceneNode(not_null<Root*> parent, decf::entity entity, SceneTransform const& transform)
 	: RefTreeNode(parent), m_transform(transform), m_entity(entity) {}
 
 inline SceneNode& SceneNode::reset(SceneTransform const& transform) {
@@ -192,7 +192,7 @@ inline void SceneNode::refresh() const noexcept {
 	return;
 }
 
-inline decf::entity_t SceneNode::entity() const noexcept { return m_entity; }
+inline decf::entity SceneNode::entity() const noexcept { return m_entity; }
 
-inline void SceneNode::entity(decf::entity_t entity) noexcept { m_entity = entity; }
+inline void SceneNode::entity(decf::entity entity) noexcept { m_entity = entity; }
 } // namespace le

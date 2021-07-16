@@ -32,7 +32,8 @@ class Model {
 
 	Result<Span<Primitive const>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
-	Span<Primitive const> primitives() const noexcept;
+	Span<Primitive const> primitives() const noexcept { return m_storage.primitives; }
+	Span<Primitive> primitivesRW() noexcept { return m_storage.primitives; }
 
   private:
 	template <typename V>
@@ -78,8 +79,4 @@ struct Model::CreateInfo {
 	std::vector<MatData> materials;
 	io::Path id;
 };
-
-// impl
-
-inline Span<Primitive const> Model::primitives() const noexcept { return m_storage.primitives; }
 } // namespace le

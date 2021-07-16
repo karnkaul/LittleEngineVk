@@ -112,6 +112,7 @@ class Engine : public Service<Engine> {
   private:
 	void updateStats();
 	void bootImpl();
+	void addDefaultAssets();
 	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
 	bool endDraw(graphics::CommandBuffer cb);
 

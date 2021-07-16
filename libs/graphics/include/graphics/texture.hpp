@@ -10,7 +10,7 @@
 namespace le::graphics {
 class Sampler {
   public:
-	using MinMag = std::pair<vk::Filter, vk::Filter>;
+	using MinMag = TPair<vk::Filter>;
 	static vk::SamplerCreateInfo info(MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
 
 	Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info);

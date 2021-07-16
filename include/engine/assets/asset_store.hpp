@@ -141,13 +141,13 @@ template <typename T>
 template <typename U>
 Asset<T> TAssetMap<T>::add(AssetStore::OnModified& onMod, io::Path const& id, U&& u) {
 	auto idStr = id.generic_string();
-	auto const [it, bNew] = m_storage.insert({idStr, TAsset<T>{}});
-	if (!bNew) { utils::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", idStr); }
+	auto const [it, nascent] = m_storage.emplace(idStr, TAsset<T>{});
+	if (!nascent) { utils::g_log.log(dl::level::warning, 0, "[Asset] Overwriting [{}]!", idStr); }
 	TAsset<T>& asset = it->second;
 	asset.t.emplace(std::forward<U>(u));
 	asset.loadInfo.reset();
-	utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", idStr);
 	asset.id = std::move(idStr);
+	utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", asset.id);
 	return makeAsset<T>(asset, onMod);
 }
 template <typename T>

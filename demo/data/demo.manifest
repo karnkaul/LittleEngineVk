@@ -1,20 +1,68 @@
 {
+	"shaders": [
+		{
+			"id": "shaders/basic",
+			"files": [
+				"shaders/basic.vert",
+				"shaders/basic.frag"
+			]
+		},
+		{
+			"id": "shaders/tex",
+			"files": [
+				"shaders/basic.vert",
+				"shaders/tex.frag"
+			]
+		},
+		{
+			"id": "shaders/lit",
+			"files": [
+				"shaders/lit.vert",
+				"shaders/lit.frag"
+			]
+		},
+		{
+			"id": "shaders/ui",
+			"files": [
+				"shaders/ui.vert",
+				"shaders/ui.frag"
+			]
+		},
+		{
+			"id": "shaders/skybox",
+			"files": [
+				"shaders/skybox.vert",
+				"shaders/skybox.frag"
+			]
+		}
+	],
 	"textures": [
 		{
-			"id": "textures/container2.png",
-			"sampler": "samplers/default"
+			"id": "textures/container2/diffuse",
+			"file": "textures/container2.png"
 		},
 		{
-			"id": "textures/container2_specular.png",
-			"sampler": "samplers/default"
+			"id": "textures/container2/specular",
+			"file": "textures/container2_specular.png"
 		},
 		{
-			"id": "textures/awesomeface.png",
-			"sampler": "samplers/default"
+			"id": "textures/awesomeface.png"
+		},
+		{
+			"id": "cubemaps/sky_dusk",
+			"prefix": "skyboxes/sky_dusk",
+			"ext": ".jpg",
+			"files": [
+				"right",
+				"left",
+				"up",
+				"down",
+				"front",
+				"back"
+			]
 		},
 		{
 			"id": "textures/test.png",
-			"sampler": "samplers/default",
 			"optional": true
 		}
 	],

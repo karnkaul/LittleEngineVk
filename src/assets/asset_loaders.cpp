@@ -99,7 +99,8 @@ bool AssetLoader<graphics::Pipeline>::reload(graphics::Pipeline& out_pipe, Asset
 }
 
 std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return std::nullopt; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
@@ -114,7 +115,8 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 }
 
 bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;

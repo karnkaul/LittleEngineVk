@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <functional>
 #include <core/io/path.hpp>
 #include <core/services.hpp>
@@ -38,6 +39,7 @@ class AssetListLoader {
 	template <typename T>
 	void load(TAssetList<T> list);
 	bool ready(Scheduler const& scheduler) const noexcept;
+	void wait(Scheduler& scheduler) const noexcept;
 
 	Mode m_mode = Mode::eAsync;
 
@@ -51,7 +53,7 @@ class AssetListLoader {
 	template <typename T>
 	void load_(AssetList<T> list) const;
 
-	std::vector<StageID> m_staged;
+	mutable std::vector<StageID> m_staged;
 };
 
 // impl
@@ -74,7 +76,7 @@ template <typename T>
 std::size_t TAssetList<T>::append(TAssetList<T>& out, TAssetList<T> const& exclude) const {
 	std::size_t ret = 0;
 	for (auto const& kvp : map) {
-		if (!exclude.contains(kvp.first)) {
+		if (!exclude.map.contains(kvp.first)) {
 			out.map.insert(kvp);
 			++ret;
 		}
@@ -90,7 +92,7 @@ AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* s
 		dts::scheduler::stage_t st;
 		st.tasks = callbacks(std::move(list));
 		if (!st.tasks.empty()) {
-			st.deps = {deps.begin(), deps.end()};
+			std::copy_if(deps.begin(), deps.end(), std::back_inserter(st.deps), [](auto stage) { return stage.id > 0; });
 			auto const ret = scheduler->stage(std::move(st));
 			m_staged.push_back(ret);
 			return ret;
@@ -105,8 +107,15 @@ void AssetListLoader::load(TAssetList<T> list) {
 }
 
 inline bool AssetListLoader::ready(Scheduler const& scheduler) const noexcept {
-	if (!m_staged.empty()) { return scheduler.stages_done(m_staged); }
-	return true;
+	if (!m_staged.empty() && scheduler.stages_done(m_staged)) { m_staged.clear(); }
+	return m_staged.empty();
+}
+
+inline void AssetListLoader::wait(Scheduler& scheduler) const noexcept {
+	if (!m_staged.empty()) {
+		scheduler.wait_stages(m_staged);
+		m_staged.clear();
+	}
 }
 
 template <typename T>
@@ -138,12 +147,16 @@ std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetList<T> list
 template <typename T>
 void AssetListLoader::load_(AssetLoadList<T> list) const {
 	auto& store = *Services::locate<AssetStore>();
-	for (auto& [id, data] : list.map) { store.load<T>(id, std::move(data)); }
+	for (auto& [id, data] : list.map) {
+		if (!store.exists<T>(id)) { store.load<T>(id, std::move(data)); }
+	}
 }
 
 template <typename T>
 void AssetListLoader::load_(AssetList<T> list) const {
 	auto& store = *Services::locate<AssetStore>();
-	for (auto& [id, cb] : list.map) { store.add(id, cb()); }
+	for (auto& [id, cb] : list.map) {
+		if (!store.exists<T>(id)) { store.add(id, cb()); }
+	}
 }
 } // namespace le

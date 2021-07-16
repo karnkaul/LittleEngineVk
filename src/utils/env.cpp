@@ -33,7 +33,7 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 					try {
 						std::size_t const total = Engine::availableDevices().size();
 						if (idx < total) {
-							Engine::s_options.gpuOverride = idx;
+							DataStore::set<std::size_t>("gpuOverride", idx);
 							std::cout << "GPU Override set to: " << idx << '\n';
 						} else {
 							std::cout << "Invalid GPU Override: " << idx << "; total: " << total << '\n';

@@ -63,13 +63,7 @@ class Engine : public Service<Engine> {
 		static Boot::MakeSurface makeSurface(Window const& winst);
 	};
 
-	struct Options {
-		std::optional<std::size_t> gpuOverride;
-	};
-
 	struct CreateInfo;
-
-	inline static Options s_options;
 
 	static Version version() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
@@ -86,7 +80,7 @@ class Engine : public Service<Engine> {
 	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>
-	bool boot(Boot::CreateInfo boot, Args&&... args);
+	void boot(Boot::CreateInfo const& boot, Args&&... args);
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }
 
@@ -111,6 +105,7 @@ class Engine : public Service<Engine> {
 
   private:
 	void updateStats();
+	Boot::CreateInfo adjust(Boot::CreateInfo const& info);
 	void bootImpl();
 	void addDefaultAssets();
 	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
@@ -138,14 +133,10 @@ struct Engine::CreateInfo {
 
 // impl
 template <graphics::concrete_renderer Rd, typename... Args>
-bool Engine::boot(Boot::CreateInfo boot, Args&&... args) {
-	if (!m_gfx) {
-		if (s_options.gpuOverride) { boot.device.pickOverride = s_options.gpuOverride; }
-		m_gfx.emplace(m_win.get(), boot, tag_t<Rd>{}, std::forward<Args>(args)...);
-		bootImpl();
-		return true;
-	}
-	return false;
+void Engine::boot(Boot::CreateInfo const& info, Args&&... args) {
+	unboot();
+	m_gfx.emplace(m_win.get(), adjust(info), tag_t<Rd>{}, std::forward<Args>(args)...);
+	bootImpl();
 }
 
 inline Engine::GFX& Engine::gfx() {

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <build_version.hpp>
+#include <core/utils/data_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/input/space.hpp>
@@ -131,6 +132,12 @@ void Engine::updateStats() {
 	}
 	graphics::CommandBuffer::s_drawCalls.store(0);
 	graphics::Mesh::s_trisDrawn.store(0);
+}
+
+Engine::Boot::CreateInfo Engine::adjust(Boot::CreateInfo const& info) {
+	auto ret = info;
+	if (auto gpuOverride = DataStore::find<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
+	return ret;
 }
 
 void Engine::bootImpl() {

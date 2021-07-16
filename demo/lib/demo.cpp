@@ -402,6 +402,7 @@ class App : public input::Receiver, public SceneRegistry {
 	bool block(input::State const& state) override {
 		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
 		if (m_controls.wireframe(state)) { m_data.wire = m_data.wire == Hash() ? "pipelines/lit" : Hash(); }
+		if (m_controls.reboot(state)) { m_data.reboot = true; }
 		return false;
 	}
 
@@ -509,6 +510,8 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 	}
 
+	bool reboot() const noexcept { return m_data.reboot; }
+
 	void tick(Time_s dt) {
 		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
@@ -581,6 +584,7 @@ class App : public input::Receiver, public SceneRegistry {
 		decf::entity player;
 		decf::entity guiStack;
 		Hash wire;
+		bool reboot = false;
 	};
 
 	Data m_data;
@@ -592,6 +596,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
 		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eControl};
+		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mod::eAlt};
 	} m_controls;
 };
 
@@ -635,7 +640,11 @@ bool run(io::Reader const& reader, ErasedPtr androidApp) {
 		while (true) {
 			poll(flags, engine.poll(true).residue);
 			if (flags.any(Flags(Flag::eClosed) | Flag::eTerm)) { break; }
-			if (flags.test(Flag::eInit)) {
+			if (flags.test(Flag::eInit) || (app && app->reboot())) {
+				if (app) {
+					logD("Rebooting...");
+					app.reset();
+				}
 				using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
 				engine.boot<renderer_t>(bootInfo);
 				// engine.boot(bootInfo);

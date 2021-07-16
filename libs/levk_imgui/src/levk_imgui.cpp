@@ -158,6 +158,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 void DearImGui::Del::operator()(not_null<graphics::Device*>, void*) const {
 #if defined(LEVK_USE_IMGUI)
 	ImGui_ImplVulkan_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 	logD("[DearImGui] destroyed");
 #endif

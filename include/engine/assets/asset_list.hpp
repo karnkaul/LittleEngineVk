@@ -1,10 +1,12 @@
 #pragma once
+#include <algorithm>
 #include <functional>
 #include <core/io/path.hpp>
 #include <core/services.hpp>
 #include <core/utils/std_hash.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 
 namespace le {
 template <typename T>
@@ -28,7 +30,8 @@ TAssetList<T> operator+(TAssetList<T> const& lhs, TAssetList<T> const& rhs);
 
 class AssetListLoader {
   public:
-	enum class Mode { eAsync, eImmediate };
+	enum class Flag { eImmediate, eOverwrite, eCOUNT_ };
+	using Flags = kt::enum_flags<Flag>;
 
 	using Scheduler = dts::scheduler;
 	using StageID = dts::scheduler::stage_id;
@@ -38,8 +41,9 @@ class AssetListLoader {
 	template <typename T>
 	void load(TAssetList<T> list);
 	bool ready(Scheduler const& scheduler) const noexcept;
+	void wait(Scheduler& scheduler) const noexcept;
 
-	Mode m_mode = Mode::eAsync;
+	Flags m_flags;
 
   private:
 	template <typename T>
@@ -51,7 +55,14 @@ class AssetListLoader {
 	template <typename T>
 	void load_(AssetList<T> list) const;
 
-	std::vector<StageID> m_staged;
+	AssetStore& store() const { return m_store ? *m_store : *(m_store = Services::locate<AssetStore>()); }
+	template <typename T>
+	bool skip(io::Path const& id) const noexcept {
+		return store().exists<T>(id) && !m_flags.test(Flag::eOverwrite);
+	}
+
+	mutable AssetStore* m_store{};
+	mutable std::vector<StageID> m_staged;
 };
 
 // impl
@@ -74,7 +85,7 @@ template <typename T>
 std::size_t TAssetList<T>::append(TAssetList<T>& out, TAssetList<T> const& exclude) const {
 	std::size_t ret = 0;
 	for (auto const& kvp : map) {
-		if (!exclude.contains(kvp.first)) {
+		if (!exclude.map.contains(kvp.first)) {
 			out.map.insert(kvp);
 			++ret;
 		}
@@ -84,13 +95,13 @@ std::size_t TAssetList<T>::append(TAssetList<T>& out, TAssetList<T> const& exclu
 
 template <typename T>
 AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps) {
-	if (m_mode == Mode::eImmediate || !scheduler) {
+	if (m_flags.test(Flag::eImmediate) || !scheduler) {
 		load_(std::move(list));
 	} else {
 		dts::scheduler::stage_t st;
 		st.tasks = callbacks(std::move(list));
 		if (!st.tasks.empty()) {
-			st.deps = {deps.begin(), deps.end()};
+			std::copy_if(deps.begin(), deps.end(), std::back_inserter(st.deps), [](auto stage) { return stage.id > 0; });
 			auto const ret = scheduler->stage(std::move(st));
 			m_staged.push_back(ret);
 			return ret;
@@ -105,17 +116,23 @@ void AssetListLoader::load(TAssetList<T> list) {
 }
 
 inline bool AssetListLoader::ready(Scheduler const& scheduler) const noexcept {
-	if (!m_staged.empty()) { return scheduler.stages_done(m_staged); }
-	return true;
+	if (!m_staged.empty() && scheduler.stages_done(m_staged)) { m_staged.clear(); }
+	return m_staged.empty();
+}
+
+inline void AssetListLoader::wait(Scheduler& scheduler) const noexcept {
+	if (!m_staged.empty()) {
+		scheduler.wait_stages(m_staged);
+		m_staged.clear();
+	}
 }
 
 template <typename T>
 std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetLoadList<T> list) const {
 	std::vector<dts::scheduler::task_t> ret;
-	auto& store = *Services::locate<AssetStore>();
 	for (auto& kvp : list.map) {
-		if (!store.exists<T>(kvp.first)) {
-			ret.push_back([&store, kvp = std::move(kvp)]() mutable { store.load<T>(std::move(kvp.first), std::move(kvp.second)); });
+		if (!skip<T>(kvp.first)) {
+			ret.push_back([s = &store(), kvp = std::move(kvp)]() mutable { s->load<T>(std::move(kvp.first), std::move(kvp.second)); });
 		}
 	}
 	list.map.clear();
@@ -125,10 +142,9 @@ std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetLoadList<T> 
 template <typename T>
 std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetList<T> list) const {
 	std::vector<dts::scheduler::task_t> ret;
-	auto& store = *Services::locate<AssetStore>();
 	for (auto& kvp : list.map) {
-		if (!store.exists<T>(kvp.first)) {
-			ret.push_back([&store, kvp = std::move(kvp)]() mutable { store.add(std::move(kvp.first), kvp.second()); });
+		if (!skip<T>(kvp.first)) {
+			ret.push_back([s = &store(), kvp = std::move(kvp)]() mutable { s->add(std::move(kvp.first), kvp.second()); });
 		}
 	}
 	list.map.clear();
@@ -137,13 +153,15 @@ std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetList<T> list
 
 template <typename T>
 void AssetListLoader::load_(AssetLoadList<T> list) const {
-	auto& store = *Services::locate<AssetStore>();
-	for (auto& [id, data] : list.map) { store.load<T>(id, std::move(data)); }
+	for (auto& [id, data] : list.map) {
+		if (!skip<T>(id)) { store().load<T>(id, std::move(data)); }
+	}
 }
 
 template <typename T>
 void AssetListLoader::load_(AssetList<T> list) const {
-	auto& store = *Services::locate<AssetStore>();
-	for (auto& [id, cb] : list.map) { store.add(id, cb()); }
+	for (auto& [id, cb] : list.map) {
+		if (!skip<T>(id)) { store().add(id, cb()); }
+	}
 }
 } // namespace le

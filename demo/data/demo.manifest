@@ -1,34 +1,85 @@
 {
+	"shaders": [
+		{
+			"id": "shaders/basic",
+			"files": [
+				"shaders/basic.vert",
+				"shaders/basic.frag"
+			]
+		},
+		{
+			"id": "shaders/tex",
+			"files": [
+				"shaders/basic.vert",
+				"shaders/tex.frag"
+			]
+		},
+		{
+			"id": "shaders/lit",
+			"files": [
+				"shaders/lit.vert",
+				"shaders/lit.frag"
+			]
+		},
+		{
+			"id": "shaders/ui",
+			"files": [
+				"shaders/ui.vert",
+				"shaders/ui.frag"
+			]
+		},
+		{
+			"id": "shaders/skybox",
+			"files": [
+				"shaders/skybox.vert",
+				"shaders/skybox.frag"
+			]
+		}
+	],
 	"textures": [
 		{
-			"id": "textures/container2.png",
-			"sampler": "samplers/default"
+			"id": "textures/container2/diffuse",
+			"file": "textures/container2.png"
 		},
 		{
-			"id": "textures/container2_specular.png",
-			"sampler": "samplers/default"
+			"id": "textures/container2/specular",
+			"file": "textures/container2_specular.png"
 		},
 		{
-			"id": "textures/awesomeface.png",
-			"sampler": "samplers/default"
+			"id": "textures/awesomeface.png"
+		},
+		{
+			"id": "cubemaps/sky_dusk",
+			"prefix": "skyboxes/sky_dusk",
+			"files": [
+				"right.jpg",
+				"left.jpg",
+				"up.jpg",
+				"down.jpg",
+				"front.jpg",
+				"back.jpg"
+			]
+		},
+		{
+			"id": "cubemaps/test",
+			"prefix": "skyboxes/test",
+			"files": [
+				"right.jpg",
+				"left.jpg",
+				"up.jpg",
+				"down.jpg",
+				"front.jpg",
+				"back.jpg"
+			]
 		},
 		{
 			"id": "textures/test.png",
-			"sampler": "samplers/default",
 			"optional": true
 		}
 	],
-	"cubemaps": [
+	"bitmap_fonts": [
 		{
-			"id": "skyboxes/sky_dusk",
-			"textures": [
-				"skyboxes/sky_dusk/right.jpg",
-				"skyboxes/sky_dusk/left.jpg",
-				"skyboxes/sky_dusk/up.jpg",
-				"skyboxes/sky_dusk/down.jpg",
-				"skyboxes/sky_dusk/front.jpg",
-				"skyboxes/sky_dusk/back.jpg"
-			]
+			"id": "fonts/default"
 		}
 	],
 	"models": [
@@ -36,11 +87,16 @@
 			"id": "models/plant"
 		},
 		{
-			"id": "models/test/nanosuit",
+			"id": "models/teapot"
+		},
+		{
+			"id": "models/nanosuit",
+			"file": "models/test/nanosuit/nanosuit.json",
 			"optional": true
 		},
 		{
-			"id": "models/test/fox",
+			"id": "models/fox",
+			"file": "models/test/fox/fox.json",
 			"optional": true
 		}
 	]

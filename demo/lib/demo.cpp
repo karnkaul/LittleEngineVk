@@ -6,7 +6,6 @@
 #include <dumb_tasks/error_handler.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
-#include <engine/assets/asset_loaders.hpp>
 #include <engine/cameras/freecam.hpp>
 #include <engine/editor/controls/inspector.hpp>
 #include <engine/engine.hpp>
@@ -29,6 +28,7 @@
 #include <engine/utils/exec.hpp>
 
 #include <core/utils/enumerate.hpp>
+#include <engine/assets/asset_manifest.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
 namespace le::demo {
@@ -307,53 +307,11 @@ class App : public input::Receiver, public SceneRegistry {
 
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
-		auto shaderLD = [d = &m_eng->gfx().boot.device](std::string_view id, io::Path v, io::Path f) {
-			AssetLoadData<graphics::Shader> ret{d};
-			ret.name = id;
-			ret.shaderPaths[graphics::Shader::Type::eVertex] = std::move(v);
-			ret.shaderPaths[graphics::Shader::Type::eFragment] = std::move(f);
-			return ret;
-		};
-		using PCI = graphics::Pipeline::CreateInfo;
-		auto pipeLD = [c = &m_eng->gfx().context](std::string_view id, Hash shaderID, bool gui, graphics::PFlags flags = {},
-												  std::optional<PCI> pci = std::nullopt, f32 wf = {}) {
-			AssetLoadData<graphics::Pipeline> ret{c};
-			ret.name = id;
-			ret.gui = gui;
-			ret.shaderID = shaderID;
-			ret.info = pci;
-			ret.flags = flags;
-			ret.wireframe = wf;
-			return ret;
-		};
-		m_eng->store().add("samplers/default", graphics::Sampler{&eng->gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
-		// m_data.loader.m_mode = AssetListLoader::Mode::eImmediate;
-		{
-			AssetLoadList<Model> models;
-			AssetLoadData<Model> ald(&m_eng->gfx().boot.vram);
-			ald.modelID = "models/plant";
-			ald.jsonID = "models/plant/plant.json";
-			ald.samplerID = "samplers/default";
-			models.add("models/plant", std::move(ald));
+		// m_manifest.loaderFlags(AssetListLoader::Flag::eImmediate);
+		m_manifest.loaderFlags(AssetListLoader::Flag::eOverwrite);
+		auto const res = m_manifest.load("demo", &m_tasks);
+		ensure(res > 0, "Manifest missing/empty");
 
-			ald.jsonID = "models/teapot/teapot.json";
-			ald.modelID = "models/teapot";
-			models.add("models/teapot", std::move(ald));
-
-			ald.jsonID = "models/test/nanosuit/nanosuit.json";
-			if (m_eng->store().resources().reader().present(ald.jsonID)) {
-				ald.modelID = "models/nanosuit";
-				models.add("models/nanosuit", std::move(ald));
-			}
-			m_data.loader.stage(models, &m_tasks);
-		}
-
-		AssetLoadData<BitmapFont> fld(&m_eng->gfx().boot.vram);
-		fld.jsonID = "fonts/default/default.json";
-		fld.samplerID = "samplers/default";
-		AssetLoadList<BitmapFont> fontList;
-		fontList.add("fonts/default", std::move(fld));
-		m_data.loader.stage(std::move(fontList), &m_tasks);
 		{
 			graphics::Geometry gcube = graphics::makeCube(0.5f);
 			auto const skyCubeI = gcube.indices;
@@ -368,16 +326,20 @@ class App : public input::Receiver, public SceneRegistry {
 
 		dts::scheduler::stage_id load_pipes;
 		{
-			AssetLoadList<graphics::Shader> shaders;
-			shaders.add("shaders/basic", shaderLD("shaders/basic", "shaders/basic.vert", "shaders/basic.frag"));
-			shaders.add("shaders/tex", shaderLD("shaders/tex", "shaders/basic.vert", "shaders/tex.frag"));
-			shaders.add("shaders/lit", shaderLD("shaders/lit", "shaders/lit.vert", "shaders/lit.frag"));
-			shaders.add("shaders/ui", shaderLD("shaders/ui", "shaders/ui.vert", "shaders/ui.frag"));
-			shaders.add("shaders/skybox", shaderLD("shaders/skybox", "shaders/skybox.vert", "shaders/skybox.frag"));
-			auto load_shaders = m_data.loader.stage(shaders, &m_tasks);
-
+			using PCI = graphics::Pipeline::CreateInfo;
+			auto pipeLD = [c = &m_eng->gfx().context](std::string_view id, Hash shaderID, bool gui, graphics::PFlags flags = {},
+													  std::optional<PCI> pci = std::nullopt, f32 wf = {}) {
+				AssetLoadData<graphics::Pipeline> ret{c};
+				ret.name = id;
+				ret.gui = gui;
+				ret.shaderID = shaderID;
+				ret.info = pci;
+				ret.flags = flags;
+				ret.wireframe = wf;
+				return ret;
+			};
 			AssetLoadList<graphics::Pipeline> pipes;
-			static PCI pci_skybox = eng->gfx().context.pipeInfo();
+			PCI pci_skybox = eng->gfx().context.pipeInfo();
 			pci_skybox.fixedState.depthStencilState.depthWriteEnable = false;
 			pci_skybox.fixedState.vertexInput = eng->gfx().context.vertexInput({0, sizeof(glm::vec3), {{vk::Format::eR32G32B32Sfloat, 0}}});
 			pipes.add("pipelines/basic", pipeLD("pipelines/basic", "shaders/basic", false, graphics::PFlags::inverse()));
@@ -387,40 +349,8 @@ class App : public input::Receiver, public SceneRegistry {
 			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
 			pipes.add("pipelines/ui", pipeLD("pipelines/ui", "shaders/ui", true, ui));
 			pipes.add("pipelines/skybox", pipeLD("pipelines/skybox", "shaders/skybox", false, {}, pci_skybox));
-			load_pipes = m_data.loader.stage(pipes, &m_tasks, load_shaders);
+			load_pipes = m_manifest.stage(std::move(pipes), &m_tasks, AssetManifest::Kind::eShader);
 		}
-		{
-			AssetLoadList<graphics::Texture> texList;
-			AssetLoadData<graphics::Texture> textureLD{&eng->gfx().boot.vram};
-			textureLD.samplerID = "samplers/default";
-			textureLD.prefix = "skyboxes/sky_dusk";
-			// textureLD.prefix = "skyboxes/test";
-			textureLD.ext = ".jpg";
-			textureLD.imageIDs = {"right", "left", "up", "down", "front", "back"};
-			texList.add("cubemaps/sky_dusk", std::move(textureLD));
-			textureLD.prefix.clear();
-			textureLD.ext.clear();
-			textureLD.imageIDs = {"textures/container2.png"};
-			texList.add("textures/container2/diffuse", std::move(textureLD));
-			textureLD.prefix.clear();
-			textureLD.ext.clear();
-			textureLD.imageIDs = {"textures/container2_specular.png"};
-			texList.add("textures/container2/specular", std::move(textureLD));
-			textureLD.imageIDs.clear();
-			textureLD.bitmap = graphics::utils::bitmap({0xff0000ff}, 1);
-			texList.add("textures/red", std::move(textureLD));
-			textureLD.bitmap = graphics::utils::bitmap({0x000000ff}, 1);
-			texList.add("textures/black", std::move(textureLD));
-			textureLD.bitmap = graphics::utils::bitmap({0xffffffff}, 1);
-			texList.add("textures/white", std::move(textureLD));
-			textureLD.bitmap = graphics::utils::bitmap({0x0}, 1);
-			texList.add("textures/blank", std::move(textureLD));
-			textureLD.bitmap = {};
-			textureLD.cubemap = graphics::Texture::unitCubemap(colours::transparent);
-			texList.add("cubemaps/blank", std::move(textureLD));
-			m_data.loader.stage(texList, &m_tasks);
-		}
-		//
 		{
 			AssetList<DrawLayer> layers;
 			layers.add("layers/sky", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/skybox"), -10}; });
@@ -428,7 +358,7 @@ class App : public input::Receiver, public SceneRegistry {
 			layers.add("layers/tex", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/tex"), 0}; });
 			layers.add("layers/lit", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/lit"), 0}; });
 			layers.add("layers/ui", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/ui"), 10}; });
-			m_data.loader.stage(layers, &m_tasks, load_pipes);
+			m_manifest.stage(std::move(layers), &m_tasks, AssetManifest::Kind::ePipeline, load_pipes);
 		}
 		m_eng->pushReceiver(this);
 		eng->m_win->show();
@@ -484,7 +414,8 @@ class App : public input::Receiver, public SceneRegistry {
 	};
 
 	void init1() {
-		auto skymap = m_eng->store().get<graphics::Texture>("cubemaps/sky_dusk");
+		auto sky_test = m_eng->store().find<graphics::Texture>("cubemaps/test");
+		auto skymap = sky_test ? *sky_test : m_eng->store().get<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_eng->store().get<BitmapFont>("fonts/default");
 		m_drawer.m_defaults.black = &m_eng->store().get<graphics::Texture>("textures/black").get();
 		m_drawer.m_defaults.white = &m_eng->store().get<graphics::Texture>("textures/white").get();
@@ -581,7 +512,7 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
-		if (m_data.loader.ready(m_tasks)) {
+		if (m_manifest.ready(m_tasks)) {
 			if (m_registry.empty()) { init1(); }
 			auto guiStack = m_registry.find<gui::ViewStack>(m_data.guiStack);
 			if (guiStack) {
@@ -649,12 +580,12 @@ class App : public input::Receiver, public SceneRegistry {
 		decf::entity camera;
 		decf::entity player;
 		decf::entity guiStack;
-		AssetListLoader loader;
 		Hash wire;
 	};
 
 	Data m_data;
 	scheduler m_tasks;
+	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
 	Drawer m_drawer;
 

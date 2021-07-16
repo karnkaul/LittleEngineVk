@@ -99,7 +99,8 @@ bool AssetLoader<graphics::Pipeline>::reload(graphics::Pipeline& out_pipe, Asset
 }
 
 std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return std::nullopt; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
@@ -114,7 +115,8 @@ std::optional<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadI
 }
 
 bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
@@ -208,7 +210,8 @@ std::optional<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFont
 bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const { return load(out_font, info); }
 
 bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto text = info.resource(info.m_data.jsonID, Resource::Type::eText, true)) {
 		dj::json_t json;
@@ -228,7 +231,8 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 }
 
 std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return std::nullopt; }
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
 		Model model;
@@ -238,7 +242,8 @@ std::optional<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) 
 }
 
 bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& info) const {
-	auto const sampler = info.m_store->find<graphics::Sampler>(info.m_data.samplerID);
+	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.reader())) {
 		return out_model.construct(info.m_data.vram, std::move(mci).value(), sampler->get(), info.m_data.forceFormat).has_value();

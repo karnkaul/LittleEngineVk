@@ -8,6 +8,7 @@
 #include <graphics/common.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/render/command_buffer.hpp>
+#include <graphics/utils/utils.hpp>
 #include <window/android_instance.hpp>
 #include <window/desktop_instance.hpp>
 
@@ -139,6 +140,28 @@ void Engine::bootImpl() {
 	dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
 	m_gfx->imgui = DearImGui(&m_gfx->boot.device, m_desktop, dici);
 #endif
+	addDefaultAssets();
+}
+
+void Engine::addDefaultAssets() {
+	static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
+	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
+	auto sampler = m_store.add("samplers/default", graphics::Sampler{&gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+	/*Textures*/ {
+		graphics::Texture::CreateInfo tci;
+		tci.sampler = sampler->sampler();
+		tci.data = graphics::utils::bitmap({0xff0000ff}, 1);
+		graphics::Texture texture(&gfx().boot.vram);
+		if (texture.construct(tci)) { m_store.add("textures/red", std::move(texture)); }
+		tci.data = graphics::utils::bitmap({0x000000ff}, 1);
+		if (texture.construct(tci)) { m_store.add("textures/black", std::move(texture)); }
+		tci.data = graphics::utils::bitmap({0xffffffff}, 1);
+		if (texture.construct(tci)) { m_store.add("textures/white", std::move(texture)); }
+		tci.data = graphics::utils::bitmap({0x0}, 1);
+		if (texture.construct(tci)) { m_store.add("textures/blank", std::move(texture)); }
+		tci.data = graphics::Texture::unitCubemap(colours::transparent);
+		if (texture.construct(tci)) { m_store.add("cubemaps/blank", std::move(texture)); }
+	}
 }
 
 std::optional<graphics::CommandBuffer> Engine::beginDraw(RGBA clear, ClearDepth depth) {

@@ -48,9 +48,21 @@ class AssetLoadInfo {
 
 template <typename T>
 struct AssetLoader {
+	static constexpr bool specialized = false;
+
 	std::optional<T> load(AssetLoadInfo<T> const& info) const;
 	bool reload(T& out_t, AssetLoadInfo<T> const& info) const;
 };
+
+namespace detail {
+template <typename T>
+struct specialized_asset_loader : std::true_type {};
+template <typename T>
+	requires(!AssetLoader<T>::specialized)
+struct specialized_asset_loader<T> : std::false_type {};
+template <typename T>
+static constexpr bool reloadable_asset_v = specialized_asset_loader<T>::value;
+} // namespace detail
 
 // impl
 
@@ -82,10 +94,5 @@ bool AssetLoadInfo<T>::modified() const {
 template <typename T>
 void AssetLoadInfo<T>::forceDirty(bool bDirty) const noexcept {
 	m_bDirty = bDirty;
-}
-
-template <typename T>
-bool AssetLoader<T>::reload([[maybe_unused]] T& out_t, [[maybe_unused]] AssetLoadInfo<T> const& info) const {
-	return false;
 }
 } // namespace le

@@ -3,7 +3,7 @@
 #include <core/not_null.hpp>
 #include <core/services.hpp>
 #include <core/version.hpp>
-#include <engine/assets/asset_store.hpp>
+#include <engine/assets/asset_loaders_store.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/frame.hpp>
@@ -112,6 +112,7 @@ class Engine : public Service<Engine> {
   private:
 	void updateStats();
 	void bootImpl();
+	void addDefaultAssets();
 	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
 	bool endDraw(graphics::CommandBuffer cb);
 

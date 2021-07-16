@@ -303,55 +303,16 @@ class App : public input::Receiver, public SceneRegistry {
 
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		dts::g_error_handler = &g_taskErr;
-		// m_manifest.loaderFlags(AssetListLoader::Flag::eImmediate);
-		m_manifest.loaderFlags(AssetListLoader::Flag::eOverwrite);
+		// m_manifest.loaderFlags().set(AssetListLoader::Flag::eImmediate);
+		m_manifest.loaderFlags().set(AssetListLoader::Flag::eOverwrite);
 		auto const res = m_manifest.load("demo", &m_tasks);
 		ensure(res > 0, "Manifest missing/empty");
 
-		{
-			graphics::Geometry gcube = graphics::makeCube(0.5f);
-			auto const skyCubeI = gcube.indices;
-			auto const skyCubeV = gcube.positions();
+		/* custom meshes */ {
 			auto cube = m_eng->store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&eng->gfx().boot.vram));
-			cube->construct(gcube);
+			cube->construct(graphics::makeCube(0.5f));
 			auto cone = m_eng->store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
 			cone->construct(graphics::makeCone());
-			auto skycube = m_eng->store().add<graphics::Mesh>("skycube", graphics::Mesh(&eng->gfx().boot.vram));
-			skycube->construct(Span<glm::vec3 const>(skyCubeV), skyCubeI);
-		}
-
-		dts::scheduler::stage_id load_pipes;
-		{
-			using PCI = graphics::Pipeline::CreateInfo;
-			auto pipeLD = [c = &m_eng->gfx().context](std::string_view id, Hash shaderID, bool gui, graphics::PFlags flags = {},
-													  std::optional<PCI> pci = std::nullopt, f32 wf = {}) {
-				AssetLoadData<graphics::Pipeline> ret{c};
-				ret.name = id;
-				ret.gui = gui;
-				ret.shaderID = shaderID;
-				ret.info = pci;
-				ret.flags = flags;
-				ret.wireframe = wf;
-				return ret;
-			};
-			AssetLoadList<graphics::Pipeline> pipes;
-			pipes.add("pipelines/basic", pipeLD("pipelines/basic", "shaders/basic", false, graphics::PFlags::inverse()));
-			pipes.add("pipelines/tex", pipeLD("pipelines/tex", "shaders/tex", false, graphics::PFlags::inverse()));
-			pipes.add("pipelines/lit", pipeLD("pipelines/lit", "shaders/lit", false, graphics::PFlags::inverse(), {}, 3.0f));
-			graphics::PFlags ui = graphics::PFlags::inverse();
-			ui.reset(graphics::PFlags(graphics::PFlag::eDepthTest) | graphics::PFlag::eDepthWrite);
-			pipes.add("pipelines/ui", pipeLD("pipelines/ui", "shaders/ui", true, ui));
-			pipes.add("pipelines/skybox", pipeLD("pipelines/skybox", "shaders/skybox", false));
-			load_pipes = m_manifest.stage(std::move(pipes), &m_tasks, AssetManifest::Kind::eShader);
-		}
-		{
-			AssetList<DrawLayer> layers;
-			layers.add("layers/sky", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/skybox"), -10}; });
-			layers.add("layers/basic", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/basic"), 0}; });
-			layers.add("layers/tex", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/tex"), 0}; });
-			layers.add("layers/lit", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/lit"), 0}; });
-			layers.add("layers/ui", [this]() { return DrawLayer{&*m_eng->store().get<graphics::Pipeline>("pipelines/ui"), 10}; });
-			m_manifest.stage(std::move(layers), &m_tasks, AssetManifest::Kind::ePipeline, load_pipes);
 		}
 		m_eng->pushReceiver(this);
 		eng->m_win->show();
@@ -449,7 +410,7 @@ class App : public input::Receiver, public SceneRegistry {
 		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
-		spawnSkybox(*m_eng->store().get<DrawLayer>("layers/sky"), &*skymap);
+		spawnSkybox(*m_eng->store().get<DrawLayer>("layers/skybox"), &*skymap);
 		{
 			Material mat;
 			mat.map_Kd = &*m_eng->store().get<graphics::Texture>("textures/container2/diffuse");

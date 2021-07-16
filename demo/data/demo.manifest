@@ -36,6 +36,69 @@
 			]
 		}
 	],
+	"pipelines": [
+		{
+			"id": "pipelines/basic",
+			"shader": "shaders/basic",
+			"flags": [
+				"inverse"
+			]
+		},
+		{
+			"id": "pipelines/tex",
+			"shader": "shaders/tex",
+			"flags": [
+				"inverse"
+			]
+		},
+		{
+			"id": "pipelines/lit",
+			"shader": "shaders/lit",
+			"flags": [
+				"inverse"
+			],
+			"wireframe": 3
+		},
+		{
+			"id": "pipelines/ui",
+			"shader": "shaders/ui",
+			"flags": [
+				"alpha_blend"
+			],
+			"gui": true
+		},
+		{
+			"id": "pipelines/skybox",
+			"shader": "shaders/skybox"
+		}
+	],
+	"draw_layers": [
+		{
+			"id": "layers/basic",
+			"pipeline": "pipelines/basic",
+			"order": 0
+		},
+		{
+			"id": "layers/skybox",
+			"pipeline": "pipelines/skybox",
+			"order": -10
+		},
+		{
+			"id": "layers/tex",
+			"pipeline": "pipelines/tex",
+			"order": 0
+		},
+		{
+			"id": "layers/lit",
+			"pipeline": "pipelines/lit",
+			"order": 0
+		},
+		{
+			"id": "layers/ui",
+			"pipeline": "pipelines/ui",
+			"order": 10
+		}
+	],
 	"textures": [
 		{
 			"id": "textures/container2/diffuse",

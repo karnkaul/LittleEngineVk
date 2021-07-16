@@ -4,6 +4,19 @@
 #include <graphics/context/bootstrap.hpp>
 
 namespace le {
+namespace {
+graphics::PFlags parseFlags(Span<std::string const> arr) {
+	graphics::PFlags ret;
+	for (std::string const& str : arr) {
+		if (str == "inverse") { return graphics::PFlags::inverse(); }
+		if (str == "depth_test") { ret.set(graphics::PFlag::eDepthTest); }
+		if (str == "depth_write") { ret.set(graphics::PFlag::eDepthWrite); }
+		if (str == "alpha_blend") { ret.set(graphics::PFlag::eAlphaBlend); }
+	}
+	return ret;
+}
+} // namespace
+
 void AssetManifest::append(AssetManifest const& rhs) {
 	m_samplers = m_samplers + rhs.m_samplers;
 	m_textures = m_textures + rhs.m_textures;
@@ -25,7 +38,8 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler);
 	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler]);
 	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler);
-	m_deps[Kind::ePipeline] = m_loader.stage(std::move(m_pipelines), scheduler, m_deps[Kind::ePipeline]);
+	m_deps[Kind::ePipeline] = m_loader.stage(std::move(m_pipelines), scheduler, m_deps[Kind::eShader]);
+	m_deps[Kind::eDrawLayer] = m_loader.stage(std::move(m_drawLayers), scheduler, m_deps[Kind::ePipeline]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler);
 	loadCustom(scheduler);
@@ -53,8 +67,11 @@ std::vector<AssetManifest::StageID> AssetManifest::deps(Flags flags) const noexc
 	return ret;
 }
 
-not_null<graphics::Device*> AssetManifest::device() { return m_device ? m_device : (m_device = &Services::locate<Engine>()->gfx().boot.device); }
-not_null<graphics::VRAM*> AssetManifest::vram() { return m_vram ? m_vram : (m_vram = &Services::locate<Engine>()->gfx().boot.vram); }
+graphics::Device& AssetManifest::device() { return engine()->gfx().boot.device; }
+graphics::VRAM& AssetManifest::vram() { return engine()->gfx().boot.vram; }
+graphics::RenderContext& AssetManifest::context() { return engine()->gfx().context; }
+AssetStore& AssetManifest::store() { return engine()->store(); }
+not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engine = Services::locate<Engine>()); }
 
 std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "samplers") { return addSamplers(std::move(group)); }
@@ -62,14 +79,14 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "models") { return addModels(std::move(group)); }
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
-	/*if (groupName == "pipeline") { return Kind::ePipeline; }
-	if (groupName == "draw_layers") { return Kind::eDrawLayer; }*/
-	return addCustom(std::move(group));
+	if (groupName == "pipelines") { return addPipelines(std::move(group)); }
+	if (groupName == "draw_layers") { return addDrawLayers(std::move(group)); }
+	return addCustom(groupName, std::move(group));
 }
 
 std::size_t AssetManifest::addSamplers(Group group) {
 	std::size_t ret{};
-	auto dv = device();
+	auto& dv = device();
 	for (auto& [id, json] : group) {
 		if (json->contains("min") && json->contains("mag")) {
 			graphics::TPair<vk::Filter> minMag;
@@ -82,7 +99,7 @@ std::size_t AssetManifest::addSamplers(Group group) {
 			} else {
 				createInfo = graphics::Sampler::info(minMag);
 			}
-			m_samplers.add(std::move(id), [createInfo, dv]() { return graphics::Sampler(dv, createInfo); });
+			m_samplers.add(std::move(id), [createInfo, &dv]() { return graphics::Sampler(&dv, createInfo); });
 			++ret;
 		}
 	}
@@ -93,7 +110,7 @@ std::size_t AssetManifest::addShaders(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
 		if (auto files = json->find("files")) {
-			AssetLoadData<graphics::Shader> data(device());
+			AssetLoadData<graphics::Shader> data(&device());
 			data.name = id.generic_string();
 			for (auto const& str : files->as<std::vector<std::string>>()) {
 				io::Path path = str;
@@ -115,7 +132,7 @@ std::size_t AssetManifest::addTextures(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
 		using Payload = graphics::Texture::Payload;
-		AssetLoadData<graphics::Texture> data(vram());
+		AssetLoadData<graphics::Texture> data(&vram());
 		if (auto files = json->find("files"); files && files->is_array()) {
 			auto const f = files->as<std::vector<std::string>>();
 			data.imageIDs = {f.begin(), f.end()};
@@ -137,10 +154,46 @@ std::size_t AssetManifest::addTextures(Group group) {
 	return ret;
 }
 
+std::size_t AssetManifest::addPipelines(Group group) {
+	std::size_t ret{};
+	for (auto& [id, json] : group) {
+		if (auto shader = json->find("shader"); shader && shader->is_string()) {
+			AssetLoadData<graphics::Pipeline> data(&context());
+			data.name = id.generic_string();
+			data.shaderID = shader->as<std::string>();
+			if (auto name = json->find("name"); name && name->is_string()) { data.name = name->as<std::string>(); }
+			if (auto flags = json->find("flags"); flags && flags->is_array()) { data.flags = parseFlags(flags->as<std::vector<std::string>>()); }
+			if (auto gui = json->find("gui"); gui && gui->is_boolean()) { data.gui = gui->as<bool>(); }
+			if (auto wf = json->find("wireframe"); wf && wf->is_number()) { data.wireframe = wf->as<f32>(); }
+			m_pipelines.add(std::move(id), std::move(data));
+			++ret;
+		}
+	}
+	return ret;
+}
+
+std::size_t AssetManifest::addDrawLayers(Group group) {
+	std::size_t ret{};
+	for (auto& [id, json] : group) {
+		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
+			s64 order = 0;
+			Hash const pid = pipe->as<std::string>();
+			if (auto ord = json->find("order"); ord && ord->is_number()) { order = ord->as<s64>(); }
+			m_drawLayers.add(std::move(id), [this, pid, order]() {
+				if (auto pl = store().find<graphics::Pipeline>(pid)) { return DrawLayer{&**pl, order}; }
+				ensure(false, "Pipeline not found!");
+				return DrawLayer{nullptr, order};
+			});
+			++ret;
+		}
+	}
+	return ret;
+}
+
 std::size_t AssetManifest::addBitmapFonts(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
-		AssetLoadData<BitmapFont> data(vram());
+		AssetLoadData<BitmapFont> data(&vram());
 		if (auto file = json->find("file"); file && file->is_string()) {
 			data.jsonID = file->as<std::string>();
 		} else {
@@ -156,14 +209,14 @@ std::size_t AssetManifest::addBitmapFonts(Group group) {
 std::size_t AssetManifest::addModels(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
-		AssetLoadData<Model> data(vram());
+		AssetLoadData<Model> data(&vram());
 		data.modelID = id.generic_string();
 		if (auto file = json->find("file"); file && file->is_string()) {
 			data.jsonID = file->as<std::string>();
 		} else {
 			data.jsonID = id / id.filename() + ".json";
 		}
-		if (auto sampler = json->find("sampler_id"); sampler && sampler->is_string()) { data.samplerID = sampler->as<std::string>(); }
+		if (auto sampler = json->find("sampler"); sampler && sampler->is_string()) { data.samplerID = sampler->as<std::string>(); }
 		m_models.add(std::move(id), std::move(data));
 		++ret;
 	}

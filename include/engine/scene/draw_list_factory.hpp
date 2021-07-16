@@ -30,7 +30,7 @@ class DrawListFactory {
 };
 
 struct DrawListGen3D {
-	// Populates DrawLayer + SceneNode + PrimitiveList
+	// Populates DrawLayer + SceneNode + PrimitiveList, DrawLayer + Skybox
 	void operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const;
 };
 

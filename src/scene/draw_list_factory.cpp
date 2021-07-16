@@ -3,6 +3,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/scene/draw_list_factory.hpp>
 #include <engine/scene/scene_node.hpp>
+#include <engine/scene/skybox.hpp>
 #include <graphics/utils/utils.hpp>
 
 namespace le {
@@ -11,15 +12,19 @@ Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, 
 } // namespace
 
 void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
-	for (auto& [_, d] : registry.view<DrawLayer, SceneNode, PrimitiveList>()) {
-		auto& [layer, node, prims] = d;
+	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, PrimitiveList>()) {
+		auto& [layer, node, prims] = c;
 		if (!prims.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, prims}); }
+	}
+	for (auto& [_, c] : registry.view<DrawLayer, Skybox>()) {
+		auto& [layer, skybox] = c;
+		if (layer.pipeline) { map[layer].push_back({glm::mat4(1.0f), {}, skybox.primitive()}); }
 	}
 }
 
 void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
-	for (auto& [_, d] : registry.view<DrawLayer, gui::ViewStack>()) {
-		auto& [gr, stack] = d;
+	for (auto& [_, c] : registry.view<DrawLayer, gui::ViewStack>()) {
+		auto& [gr, stack] = c;
 		for (auto const& view : stack.views()) { DrawListFactory::add(map, gr, *view); }
 	}
 }

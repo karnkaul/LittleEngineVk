@@ -73,8 +73,7 @@
 			]
 		},
 		{
-			"id": "textures/test.png",
-			"optional": true
+			"id": "textures/test.png"
 		}
 	],
 	"bitmap_fonts": [
@@ -91,13 +90,11 @@
 		},
 		{
 			"id": "models/nanosuit",
-			"file": "models/test/nanosuit/nanosuit.json",
-			"optional": true
+			"file": "models/test/nanosuit/nanosuit.json"
 		},
 		{
 			"id": "models/fox",
-			"file": "models/test/fox/fox.json",
-			"optional": true
+			"file": "models/test/fox/fox.json"
 		}
 	]
 }

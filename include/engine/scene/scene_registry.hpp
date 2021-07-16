@@ -4,6 +4,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/scene/draw_list_factory.hpp>
 #include <engine/scene/scene_node.hpp>
+#include <engine/scene/skybox.hpp>
 
 namespace le {
 class SceneRegistry : public utils::VBase {
@@ -18,11 +19,13 @@ class SceneRegistry : public utils::VBase {
 	decf::spawn_t<SceneNode> spawnNode(std::string name);
 	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, not_null<graphics::Mesh const*> mesh, Material const& material);
 	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, Span<Primitive const> primitives);
+	decf::spawn_t<Skybox> spawnSkybox(DrawLayer layer, not_null<Skybox::Cubemap const*> cubemap);
 	decf::spawn_t<gui::ViewStack> spawnStack(std::string name, DrawLayer layer, not_null<graphics::VRAM*> vram);
 
   protected:
 	SceneNode::Root m_root;
 	decf::registry m_registry;
+	decf::entity m_skybox;
 };
 
 // impl
@@ -52,6 +55,14 @@ inline decf::spawn_t<SceneNode> SceneRegistry::spawn(std::string name, DrawLayer
 	attach(ret, layer, primitives);
 	return ret;
 };
+
+inline decf::spawn_t<Skybox> SceneRegistry::spawnSkybox(DrawLayer layer, not_null<const Skybox::Cubemap*> cubemap) {
+	ensure(!m_skybox.valid(), "Duplicate skybox");
+	auto ret = m_registry.spawn<Skybox>("skybox", cubemap);
+	m_registry.attach<DrawLayer>(ret, layer);
+	m_skybox = ret;
+	return ret;
+}
 
 inline decf::spawn_t<gui::ViewStack> SceneRegistry::spawnStack(std::string name, DrawLayer layer, not_null<graphics::VRAM*> vram) {
 	auto ret = m_registry.spawn<gui::ViewStack>(std::move(name), vram);

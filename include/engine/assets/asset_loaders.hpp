@@ -22,7 +22,7 @@ template <>
 struct AssetLoader<graphics::Shader> {
 	using Data = graphics::Shader::SpirVMap;
 
-	std::optional<graphics::Shader> load(AssetLoadInfo<graphics::Shader> const& info) const;
+	std::unique_ptr<graphics::Shader> load(AssetLoadInfo<graphics::Shader> const& info) const;
 	bool reload(graphics::Shader& out_shader, AssetLoadInfo<graphics::Shader> const& info) const;
 
 	std::optional<Data> data(AssetLoadInfo<graphics::Shader> const& info) const;
@@ -43,7 +43,7 @@ struct AssetLoadData<graphics::Pipeline> {
 
 template <>
 struct AssetLoader<graphics::Pipeline> {
-	std::optional<graphics::Pipeline> load(AssetLoadInfo<graphics::Pipeline> const& info) const;
+	std::unique_ptr<graphics::Pipeline> load(AssetLoadInfo<graphics::Pipeline> const& info) const;
 	bool reload(graphics::Pipeline& out_shader, AssetLoadInfo<graphics::Pipeline> const& info) const;
 };
 
@@ -66,7 +66,7 @@ template <>
 struct AssetLoader<graphics::Texture> {
 	using Data = graphics::Texture::CreateInfo::Data;
 
-	std::optional<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
+	std::unique_ptr<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
 	bool reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const;
 
 	std::optional<Data> data(AssetLoadInfo<graphics::Texture> const& info) const;
@@ -84,7 +84,7 @@ struct AssetLoadData<BitmapFont> {
 
 template <>
 struct AssetLoader<BitmapFont> {
-	std::optional<BitmapFont> load(AssetLoadInfo<BitmapFont> const& info) const;
+	std::unique_ptr<BitmapFont> load(AssetLoadInfo<BitmapFont> const& info) const;
 	bool reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const;
 
 	bool load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const;
@@ -103,7 +103,7 @@ struct AssetLoadData<Model> {
 
 template <>
 struct AssetLoader<Model> {
-	std::optional<Model> load(AssetLoadInfo<Model> const& info) const;
+	std::unique_ptr<Model> load(AssetLoadInfo<Model> const& info) const;
 	bool reload(Model& out_model, AssetLoadInfo<Model> const& info) const;
 };
 } // namespace le

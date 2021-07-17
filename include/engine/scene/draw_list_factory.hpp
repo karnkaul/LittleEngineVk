@@ -47,8 +47,8 @@ std::vector<DrawList> DrawListFactory::lists(decf::registry const& registry, boo
 	(Gen{}(map, registry), ...);
 	std::vector<DrawList> ret;
 	ret.reserve(map.size());
-	for (auto& [gr, list] : map) {
-		if (gr.pipeline) { ret.push_back(DrawList({gr, std::move(list), {}})); }
+	for (auto& [dlayer, list] : map) {
+		if (dlayer.pipeline) { ret.push_back(DrawList({dlayer, std::move(list), {}})); }
 	}
 	if (sort) { std::sort(ret.begin(), ret.end()); }
 	return ret;

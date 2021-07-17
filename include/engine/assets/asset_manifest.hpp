@@ -26,6 +26,7 @@ class AssetManifest : public utils::VBase {
 	template <typename T>
 	StageID stage(TAssetList<T> list, dts::scheduler* scheduler, Kinds kinds = {}, Span<StageID const> deps = {});
 	std::size_t load(io::Path const& jsonID, dts::scheduler* scheduler);
+	std::size_t unload(io::Path const& jsonID, dts::scheduler& scheduler);
 
 	std::vector<StageID> deps(Kinds kinds) const noexcept;
 
@@ -53,9 +54,13 @@ class AssetManifest : public utils::VBase {
 	std::size_t addFonts(Group group);
 	std::size_t addBitmapFonts(Group group);
 	std::size_t addModels(Group group);
+	std::size_t unload();
+	template <typename T, typename U>
+	std::size_t unload(U& cont);
 
 	virtual std::size_t addCustom(std::string_view, Group) { return 0; }
 	virtual void loadCustom(dts::scheduler*) {}
+	virtual std::size_t unloadCustom() { return 0; }
 
 	AssetList<graphics::Sampler> m_samplers;
 	AssetLoadList<graphics::Shader> m_shaders;

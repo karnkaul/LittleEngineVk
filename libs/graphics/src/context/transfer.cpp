@@ -52,8 +52,8 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 }
 
 Transfer::~Transfer() {
-	stopPolling();
 	stopTransfer();
+	stopPolling();
 	m_sync.staging = {};
 	Memory& m = *m_memory;
 	Device& d = *m.m_device;
@@ -155,7 +155,7 @@ void Transfer::stopPolling() {
 }
 
 void Transfer::stopTransfer() {
-	auto residue = m_queue.clear();
-	for (auto& f : residue) { f(); }
+	m_queue.clear(false);
+	m_sync.staging.join();
 }
 } // namespace le::graphics

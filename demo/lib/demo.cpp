@@ -190,16 +190,16 @@ class Drawer : public ListDrawer {
 	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
 	void update(decf::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt, Hash wire) {
-		populate<DrawListGen3D, DrawListGenUI>(reg);
-		write(cam, sp, lt);
-		for (auto& list : m_lists) {
-			if (list.layer.pipeline->id() == wire) { list.variant = "wireframe"; }
+		auto lists = populate<DrawListGen3D, DrawListGenUI>(reg);
+		write(lists, cam, sp, lt);
+		for (auto& list : lists) {
+			if (list.pipeline->id() == wire) { list.variant = "wireframe"; }
 		}
 	}
 
   private:
-	void draw(DrawList const& list, graphics::CommandBuffer cb) const override {
-		DescriptorBinder bind(list.layer.pipeline, cb);
+	void draw(List const& list, graphics::CommandBuffer cb) const override {
+		DescriptorBinder bind(list.pipeline, cb);
 		bind(0);
 		for (Drawable const& d : list.drawables) {
 			if (!d.primitives.empty()) {
@@ -214,7 +214,7 @@ class Drawer : public ListDrawer {
 		}
 	}
 
-	void write(Camera const& cam, glm::vec2 scene, Span<DirLight const> lights) {
+	void write(Span<List const> lists, Camera const& cam, glm::vec2 scene, Span<DirLight const> lights) {
 		m_view.lights.swap();
 		m_view.mats.swap();
 		ViewMats const v{cam.view(), cam.perspective(scene), cam.ortho(scene), {cam.position, 1.0f}};
@@ -225,11 +225,11 @@ class Drawer : public ListDrawer {
 			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
 		}
-		for (auto& list : m_lists) { update(list); }
+		for (auto& list : lists) { update(list); }
 	}
 
-	void update(DrawList const& list) const {
-		DescriptorMap map(list.layer.pipeline);
+	void update(List const& list) const {
+		DescriptorMap map(list.pipeline);
 		auto set0 = map.set(0);
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
@@ -353,27 +353,32 @@ class App : public input::Receiver, public SceneRegistry {
 		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
 		if (m_controls.wireframe(state)) { m_data.wire = m_data.wire == Hash() ? "pipelines/lit" : Hash(); }
 		if (m_controls.reboot(state)) { m_data.reboot = true; }
+		if (m_controls.unload(state)) {
+			m_data.unloaded = true;
+			m_registry.clear();
+			logI("{} unloaded", m_manifest.unload("demo", m_tasks));
+		}
 		return false;
 	}
 
 	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawLayer layer) {
-		return spawn(std::move(name), layer, &*m_eng->store().get<graphics::Mesh>(meshID), mat);
+		return spawn(std::move(name), layer, &*m_eng->store().find<graphics::Mesh>(meshID), mat);
 	};
 
 	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer layer) {
-		return spawn(std::move(name), layer, m_eng->store().get<Model>(modelID)->primitives());
+		return spawn(std::move(name), layer, m_eng->store().find<Model>(modelID)->primitives());
 	};
 
 	void init1() {
 		auto sky_test = m_eng->store().find<graphics::Texture>("cubemaps/test");
-		auto skymap = sky_test ? *sky_test : m_eng->store().get<graphics::Texture>("cubemaps/sky_dusk");
-		auto font = m_eng->store().get<BitmapFont>("fonts/default");
-		m_drawer.m_defaults.black = &m_eng->store().get<graphics::Texture>("textures/black").get();
-		m_drawer.m_defaults.white = &m_eng->store().get<graphics::Texture>("textures/white").get();
-		m_drawer.m_defaults.cube = &m_eng->store().get<graphics::Texture>("cubemaps/blank").get();
+		auto skymap = sky_test ? sky_test : m_eng->store().find<graphics::Texture>("cubemaps/sky_dusk");
+		auto font = m_eng->store().find<BitmapFont>("fonts/default");
+		m_drawer.m_defaults.black = &*m_eng->store().find<graphics::Texture>("textures/black");
+		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
+		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
 
-		m_data.text.create(&vram);
+		m_data.text.make(&vram);
 		m_data.text.text.size = 80U;
 		m_data.text.text.colour = colours::yellow;
 		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
@@ -389,7 +394,7 @@ class App : public input::Receiver, public SceneRegistry {
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
-		auto guiStack = spawnStack("gui_root", *m_eng->store().get<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
+		auto guiStack = spawnStack("gui_root", *m_eng->store().find<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
 		stack.push<TestView>(&font.get());
@@ -406,49 +411,49 @@ class App : public input::Receiver, public SceneRegistry {
 		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
-		spawnSkybox(*m_eng->store().get<DrawLayer>("layers/skybox"), &*skymap);
+		spawnSkybox(*m_eng->store().find<DrawLayer>("layers/skybox"), &*skymap);
 		{
 			Material mat;
-			mat.map_Kd = &*m_eng->store().get<graphics::Texture>("textures/container2/diffuse");
-			mat.map_Ks = &*m_eng->store().get<graphics::Texture>("textures/container2/specular");
+			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
+			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawn("player", "meshes/cube", mat, *m_eng->store().get<DrawLayer>("layers/lit"));
+			auto player = spawn("player", "meshes/cube", mat, *m_eng->store().find<DrawLayer>("layers/lit"));
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
 		}
 		{
-			auto ent = spawn("prop_1", "meshes/cube", {}, *m_eng->store().get<DrawLayer>("layers/basic"));
+			auto ent = spawn("prop_1", "meshes/cube", {}, *m_eng->store().find<DrawLayer>("layers/basic"));
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().get<DrawLayer>("layers/tex"));
+			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().find<DrawLayer>("layers/tex"));
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", *m_eng->store().get<DrawLayer>("layers/ui"), m_data.text.update(*font)); }
+		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.update(*font)); }
 		{
 			{
-				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().get<DrawLayer>("layers/lit"));
+				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
 				// auto ent0 = spawn("model_0_0");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", "models/plant", *m_eng->store().get<DrawLayer>("layers/lit"));
+				auto ent1 = spawn("model_0_1", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
 				node.parent(&m_registry.get<SceneNode>(m_data.entities["model_0_0"]));
 			}
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
-				Primitive& prim = model->get().primitivesRW().front();
+				Primitive& prim = model->primitivesRW().front();
 				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawn("model_1_0", *m_eng->store().get<DrawLayer>("layers/lit"), prim);
+				auto ent0 = spawn("model_1_0", *m_eng->store().find<DrawLayer>("layers/lit"), prim);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", "models/nanosuit", *m_eng->store().get<DrawLayer>("layers/lit"));
+				auto ent = spawn("model_1", "models/nanosuit", *m_eng->store().find<DrawLayer>("layers/lit"));
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
@@ -460,7 +465,7 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
-		if (m_manifest.ready(m_tasks)) {
+		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			if (m_registry.empty()) { init1(); }
 			auto guiStack = m_registry.find<gui::ViewStack>(m_data.guiStack);
 			if (guiStack) {
@@ -530,6 +535,7 @@ class App : public input::Receiver, public SceneRegistry {
 		decf::entity guiStack;
 		Hash wire;
 		bool reboot = false;
+		bool unloaded = {};
 	};
 
 	Data m_data;
@@ -542,6 +548,7 @@ class App : public input::Receiver, public SceneRegistry {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
 		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eControl};
 		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mods::make(input::Mod::eControl, input::Mod::eShift)};
+		input::Trigger unload = {input::Key::eU, input::Action::ePressed, input::Mods::make(input::Mod::eControl, input::Mod::eShift)};
 	} m_controls;
 };
 

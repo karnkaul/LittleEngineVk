@@ -58,6 +58,20 @@ std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* schedule
 	return ret;
 }
 
+std::size_t AssetManifest::unload(io::Path const& jsonID, dts::scheduler& scheduler) {
+	wait(scheduler);
+	std::size_t count{};
+	if (auto eng = Services::locate<Engine>()) {
+		dj::json_t json;
+		auto& resources = eng->store().resources();
+		auto res = resources.load(jsonID, Resource::Type::eText);
+		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }
+		if (res && json.read(res->string())) { count = preload(json); }
+	}
+	if (count > 0) { return unload(); }
+	return 0;
+}
+
 std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexcept {
 	std::vector<StageID> ret;
 	ret.reserve(std::size_t(Kind::eCOUNT_));
@@ -174,11 +188,7 @@ std::size_t AssetManifest::addDrawLayers(Group group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
 			Hash const pid = pipe->as<std::string>();
 			s64 const order = json->get_as<s64>("order");
-			m_drawLayers.add(std::move(id), [this, pid, order]() {
-				if (auto pl = store().find<graphics::Pipeline>(pid)) { return DrawLayer{&**pl, order}; }
-				ensure(false, "Pipeline not found!");
-				return DrawLayer{nullptr, order};
-			});
+			m_drawLayers.add(std::move(id), [this, pid, order]() { return DrawLayer{store().find<graphics::Pipeline>(pid).peek(), order}; });
 			++ret;
 		}
 	}
@@ -215,6 +225,28 @@ std::size_t AssetManifest::addModels(Group group) {
 		m_models.add(std::move(id), std::move(data));
 		++ret;
 	}
+	return ret;
+}
+
+template <typename T, typename U>
+std::size_t AssetManifest::unload(U& cont) {
+	std::size_t ret{};
+	for (auto const& [id, _] : cont) {
+		if (store().unload<T>(id)) { ++ret; }
+	}
+	cont.clear();
+	return ret;
+}
+
+std::size_t AssetManifest::unload() {
+	std::size_t ret = unload<graphics::Sampler>(m_samplers.map);
+	ret += unload<graphics::Shader>(m_shaders.map);
+	ret += unload<graphics::Texture>(m_textures.map);
+	ret += unload<Model>(m_models.map);
+	ret += unload<BitmapFont>(m_bitmapFonts.map);
+	ret += unload<graphics::Pipeline>(m_pipelines.map);
+	ret += unload<DrawLayer>(m_drawLayers.map);
+	ret += unloadCustom();
 	return ret;
 }
 } // namespace le

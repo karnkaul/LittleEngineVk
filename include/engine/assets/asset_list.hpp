@@ -1,5 +1,4 @@
 #pragma once
-#include <algorithm>
 #include <functional>
 #include <core/io/path.hpp>
 #include <core/services.hpp>
@@ -101,7 +100,7 @@ AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* s
 		dts::scheduler::stage_t st;
 		st.tasks = callbacks(std::move(list));
 		if (!st.tasks.empty()) {
-			std::copy_if(deps.begin(), deps.end(), std::back_inserter(st.deps), [](auto stage) { return stage.id > 0; });
+			st.deps = {deps.begin(), deps.end()};
 			auto const ret = scheduler->stage(std::move(st));
 			m_staged.push_back(ret);
 			return ret;

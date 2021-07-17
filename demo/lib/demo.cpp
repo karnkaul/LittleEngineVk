@@ -53,11 +53,6 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 
 using namespace dts;
 
-struct TaskErr : error_handler_t {
-	void operator()(std::runtime_error const& err, u64) const override { ensure(false, err.what()); }
-};
-TaskErr g_taskErr;
-
 using namespace std::chrono;
 
 struct ViewMats {
@@ -302,7 +297,6 @@ class App : public input::Receiver, public SceneRegistry {
 	using SceneRegistry::spawn;
 
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
-		dts::g_error_handler = &g_taskErr;
 		// m_manifest.loaderFlags().set(AssetListLoader::Flag::eImmediate);
 		m_manifest.loaderFlags().set(AssetListLoader::Flag::eOverwrite);
 		auto const res = m_manifest.load("demo", &m_tasks);
@@ -569,6 +563,7 @@ struct FlagsInput : input::Receiver {
 };
 
 bool run(io::Reader const& reader, ErasedPtr androidApp) {
+	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
 	try {
 		window::InstanceBase::CreateInfo winInfo;
 		winInfo.config.androidApp = androidApp;

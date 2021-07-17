@@ -59,7 +59,7 @@ option(LEVK_BUILD_TESTS "Build Tests" ${is_root_project})
 option(LEVK_BUILD_DEMO "Build demo" ${is_root_project})
 
 if(LINUX_CLANG OR WINDOWS_CLANG)
-	option(LEVK_ASAN OFF)
+	option(LEVK_ASAN "Enable asan" OFF)
 endif()
 
 if(PLATFORM STREQUAL Android)
@@ -185,6 +185,7 @@ target_link_libraries(${target_name}
 		levk::window
 		levk::core
 		djson::djson
+		dtasks::dtasks
 		clap::clap
 		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
 		levk::interface

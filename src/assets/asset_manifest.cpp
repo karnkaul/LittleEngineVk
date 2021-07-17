@@ -58,11 +58,11 @@ std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* schedule
 	return ret;
 }
 
-std::vector<AssetManifest::StageID> AssetManifest::deps(Flags flags) const noexcept {
+std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexcept {
 	std::vector<StageID> ret;
 	ret.reserve(std::size_t(Kind::eCOUNT_));
 	for (Kind const k : utils::EnumValues<Kind>()) {
-		if (flags.test(k)) { ret.push_back(m_deps[k]); }
+		if (kinds.test(k)) { ret.push_back(m_deps[k]); }
 	}
 	return ret;
 }

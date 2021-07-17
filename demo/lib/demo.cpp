@@ -297,8 +297,8 @@ class App : public input::Receiver, public SceneRegistry {
 	using SceneRegistry::spawn;
 
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
-		// m_manifest.loaderFlags().set(AssetListLoader::Flag::eImmediate);
-		m_manifest.loaderFlags().set(AssetListLoader::Flag::eOverwrite);
+		// m_manifest.flags().set(AssetManifest::Flag::eImmediate);
+		m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
 		auto const res = m_manifest.load("demo", &m_tasks);
 		ensure(res > 0, "Manifest missing/empty");
 
@@ -342,9 +342,11 @@ class App : public input::Receiver, public SceneRegistry {
 				return false;
 			}
 		};
-		edi::Inspector::attach<GFreeCam>("FreeCam");
-		edi::Inspector::attach<GPlayerController>("PlayerController");
-		edi::Inspector::attach<GSpringArm>("SpringArm");
+		if (auto inspector = Services::locate<edi::Inspector>(false)) {
+			inspector->attach<GFreeCam>("FreeCam");
+			inspector->attach<GPlayerController>("PlayerController");
+			inspector->attach<GSpringArm>("SpringArm");
+		}
 	}
 
 	bool block(input::State const& state) override {
@@ -539,7 +541,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
 		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eControl};
-		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mod::eAlt};
+		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mods::make(input::Mod::eControl, input::Mod::eShift)};
 	} m_controls;
 };
 

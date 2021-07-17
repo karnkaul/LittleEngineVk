@@ -21,19 +21,21 @@ struct uint_flags {
 	type bits;
 
 	///
-	/// \brief Build an instance by adding all inputs
+	/// \brief Build an instance by setting t
 	///
 	template <typename... T>
-	static constexpr uint_flags combine(T... t) noexcept;
-	///
-	/// \brief Build an instance by filling count lowest significant bits
-	///
-	static constexpr uint_flags fill(std::uint8_t count) noexcept;
+	static constexpr uint_flags make(T... t) noexcept;
+
 	///
 	/// \brief Add all inputs to this instance
 	///
-	template <typename T, typename... Ts>
-	constexpr uint_flags& add(T t, Ts... ts) noexcept;
+	template <typename... T>
+	constexpr uint_flags& set(T... t) noexcept;
+	///
+	/// \brief Remove all inputs fron this instance
+	///
+	template <typename... T>
+	constexpr uint_flags& reset(T... t) noexcept;
 
 	///
 	/// \brief Test if all bits in t are set
@@ -58,22 +60,12 @@ struct uint_flags {
 	/// \brief Add set bits and remove unset bits
 	///
 	template <typename T, typename U = int>
-	constexpr uint_flags& update(T set, U unset = 0) noexcept;
+	constexpr uint_flags& update(T set, U reset = U{}) noexcept;
 
 	///
-	/// \brief Test if any bits in rhs are set
+	/// \brief Conversion operator
 	///
-	constexpr bool any(uint_flags rhs) const noexcept;
-	///
-	/// \brief Test if all bits in rhs are set
-	///
-	constexpr bool all(uint_flags rhs) const noexcept;
-	///
-	/// \brief Add set flags and remove unset bits
-	///
-	template <typename T = int>
-	constexpr uint_flags& update(uint_flags set, T unset = 0) noexcept;
-
+	constexpr explicit operator Ty() const noexcept { return bits; }
 	///
 	/// \brief Compare two uint_flags
 	///
@@ -88,22 +80,15 @@ struct uint_flags {
 
 template <typename Ty>
 template <typename... T>
-constexpr uint_flags<Ty> uint_flags<Ty>::combine(T... t) noexcept {
+constexpr uint_flags<Ty> uint_flags<Ty>::make(T... t) noexcept {
 	uint_flags ret{};
-	ret.add(t...);
+	ret.set(t...);
 	return ret;
 }
 template <typename Ty>
-constexpr uint_flags<Ty> uint_flags<Ty>::fill(std::uint8_t count) noexcept {
-	uint_flags ret{};
-	for (std::uint8_t i = 0; i < count; ++i) { ret.update(1 << i); }
-	return ret;
-}
-template <typename Ty>
-template <typename T, typename... Ts>
-constexpr uint_flags<Ty>& uint_flags<Ty>::add(T t, Ts... ts) noexcept {
-	update(t);
-	if constexpr (sizeof...(Ts) > 0) { add(ts...); }
+template <typename... T>
+constexpr uint_flags<Ty>& uint_flags<Ty>::set(T... t) noexcept {
+	(update(t), ...);
 	return *this;
 }
 template <typename Ty>
@@ -114,31 +99,18 @@ constexpr bool uint_flags<Ty>::operator[](T t) const noexcept {
 template <typename Ty>
 template <typename T>
 constexpr bool uint_flags<Ty>::any(T t) const noexcept {
-	return (bits & static_cast<type>(t)) != 0;
+	return (bits & static_cast<Ty>(t)) != 0;
 }
 template <typename Ty>
 template <typename T>
 constexpr bool uint_flags<Ty>::all(T t) const noexcept {
-	return (bits & static_cast<type>(t)) == static_cast<type>(t);
+	return (bits & static_cast<Ty>(t)) == static_cast<Ty>(t);
 }
 template <typename Ty>
 template <typename T, typename U>
 constexpr uint_flags<Ty>& uint_flags<Ty>::update(T set, U unset) noexcept {
-	bits |= static_cast<type>(set);
-	bits &= ~static_cast<type>(unset);
+	bits |= static_cast<Ty>(set);
+	bits &= ~static_cast<Ty>(unset);
 	return *this;
-}
-template <typename Ty>
-constexpr bool uint_flags<Ty>::any(uint_flags rhs) const noexcept {
-	return any(rhs.bits);
-}
-template <typename Ty>
-constexpr bool uint_flags<Ty>::all(uint_flags rhs) const noexcept {
-	return all(rhs.bits);
-}
-template <typename Ty>
-template <typename T>
-constexpr uint_flags<Ty>& uint_flags<Ty>::update(uint_flags set, T unset) noexcept {
-	return update(set.bits, unset);
 }
 } // namespace kt

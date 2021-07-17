@@ -11,19 +11,23 @@ namespace le {
 class AssetManifest : public utils::VBase {
   public:
 	enum class Kind { eSampler, eShader, eTexture, ePipeline, eDrawLayer, eBitmapFont, eModel, eCOUNT_ };
-	using Flags = kt::enum_flags<Kind>;
+	using Kinds = kt::enum_flags<Kind>;
 
 	using StageID = AssetListLoader::StageID;
+	using Flag = AssetListLoader::Flag;
+	using Flags = AssetListLoader::Flags;
 
-	AssetListLoader::Flags& loaderFlags() noexcept { return m_loader.m_flags; }
+	Flags& flags() noexcept { return m_loader.m_flags; }
+	Flags const& flags() const noexcept { return m_loader.m_flags; }
+
 	void append(AssetManifest const& rhs);
 	std::size_t preload(dj::json_t const& root);
 	void stage(dts::scheduler* scheduler);
 	template <typename T>
-	StageID stage(TAssetList<T> list, dts::scheduler* scheduler, Flags flags = {}, Span<StageID const> deps = {});
+	StageID stage(TAssetList<T> list, dts::scheduler* scheduler, Kinds kinds = {}, Span<StageID const> deps = {});
 	std::size_t load(io::Path const& jsonID, dts::scheduler* scheduler);
 
-	std::vector<StageID> deps(Flags flags) const noexcept;
+	std::vector<StageID> deps(Kinds kinds) const noexcept;
 
 	bool ready(dts::scheduler const& scheduler) const { return m_loader.ready(scheduler); }
 	void wait(dts::scheduler& scheduler) const { m_loader.wait(scheduler); }
@@ -68,8 +72,9 @@ class AssetManifest : public utils::VBase {
 // impl
 
 template <typename T>
-AssetManifest::StageID AssetManifest::stage(TAssetList<T> lists, dts::scheduler* scheduler, Flags flags, Span<StageID const> deps) {
-	auto dp = this->deps(flags);
+AssetManifest::StageID AssetManifest::stage(TAssetList<T> lists, dts::scheduler* scheduler, Kinds kinds, Span<StageID const> deps) {
+	auto dp = this->deps(kinds);
+	dp.reserve(dp.size() + deps.size());
 	std::copy(deps.begin(), deps.end(), std::back_inserter(dp));
 	return m_loader.stage(std::move(lists), scheduler, dp);
 }

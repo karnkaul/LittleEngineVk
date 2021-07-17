@@ -169,8 +169,8 @@ enum class Key {
 	eGamepadButtonTriangle = eGamepadButtonY,
 };
 
-enum class Mod : s8 { eNone = 0, eShift = 1 << 0, eControl = 1 << 1, eAlt = 1 << 2, eSuper = 1 << 3, eCapsLock = 1 << 4, eNumLock = 1 << 5 };
-using Mods = kt::uint_flags<>;
+enum class Mod : u8 { eNone = 0, eShift = 1 << 0, eControl = 1 << 1, eAlt = 1 << 2, eSuper = 1 << 3, eCapsLock = 1 << 4, eNumLock = 1 << 5 };
+using Mods = kt::uint_flags<u8>;
 
 enum class Axis : s8 {
 	eUnknown,

@@ -1,9 +1,8 @@
 #pragma once
 #include <core/maths.hpp>
+#include <kt/enum_flags/enum_flags.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <window/types.hpp>
-
-#include <kt/enum_flags/enum_flags.hpp>
 
 namespace le::window {
 class DesktopInstance;

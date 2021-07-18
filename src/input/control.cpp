@@ -22,11 +22,11 @@ bool Trigger::operator()(State const& state) const noexcept {
 				break;
 			}
 			case Action::eReleased: {
-				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods.bits); }
+				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods); }
 				break;
 			}
 			case Action::eHeld: {
-				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods.bits); }
+				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods); }
 				break;
 			}
 			default: break;

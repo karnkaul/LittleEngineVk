@@ -27,6 +27,11 @@ struct uint_flags {
 	static constexpr uint_flags make(T... t) noexcept;
 
 	///
+	/// \brief Conversion operator
+	///
+	constexpr explicit operator Ty() const noexcept { return bits; }
+
+	///
 	/// \brief Add all inputs to this instance
 	///
 	template <typename... T>
@@ -61,19 +66,6 @@ struct uint_flags {
 	///
 	template <typename T, typename U = int>
 	constexpr uint_flags& update(T set, U reset = U{}) noexcept;
-
-	///
-	/// \brief Conversion operator
-	///
-	constexpr explicit operator Ty() const noexcept { return bits; }
-	///
-	/// \brief Compare two uint_flags
-	///
-	friend constexpr bool operator==(uint_flags a, uint_flags b) noexcept { return a.bits == b.bits; }
-	///
-	/// \brief Compare two uint_flags
-	///
-	friend constexpr bool operator!=(uint_flags a, uint_flags b) noexcept { return !(a == b); }
 };
 
 // impl

@@ -38,8 +38,8 @@ struct State {
 	Res<KeyMods> held(Key key) const noexcept;
 	Res<KeyMods> released(Key key) const noexcept;
 
-	bool any(List<Key> keys, Actions mask = Actions::make(Action::eAll)) const noexcept;
-	bool all(List<Key> keys, Actions mask = Actions::make(Action::eAll)) const noexcept;
+	bool any(List<Key> keys, Actions mask = actions_all) const noexcept;
+	bool all(List<Key> keys, Actions mask = actions_all) const noexcept;
 };
 
 // impl

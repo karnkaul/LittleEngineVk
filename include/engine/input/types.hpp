@@ -3,13 +3,16 @@
 #include <kt/fixed_vector/fixed_vector.hpp>
 #include <window/types.hpp>
 
+#include <kt/enum_flags/enum_flags.hpp>
+
 namespace le::window {
 class DesktopInstance;
 }
 
 namespace le::input {
-enum class Action : u8 { ePressed = 0b001, eHeld = 0b010, eReleased = 0b100, eAll = 0b111 };
-using Actions = kt::uint_flags<u8>;
+enum class Action : u8 { ePressed, eHeld, eReleased };
+using Actions = kt::enum_flags<Action, u8>;
+constexpr Actions actions_all = Actions(Action::ePressed, Action::eHeld, Action::eReleased);
 
 enum class Focus { eUnchanged, eGained, eLost };
 using Gamepad = window::Gamepad;

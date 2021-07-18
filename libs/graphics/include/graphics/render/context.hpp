@@ -20,7 +20,7 @@ struct VertexInputCreateInfo;
 
 enum class PFlag { eDepthTest, eDepthWrite, eAlphaBlend };
 using PFlags = kt::enum_flags<PFlag, u8>;
-constexpr PFlags pflags_all = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite | PFlag::eAlphaBlend;
+constexpr PFlags pflags_all = PFlags(PFlag::eDepthTest, PFlag::eDepthWrite, PFlag::eAlphaBlend);
 static_assert(pflags_all.count() == 3, "Invariant violated");
 
 class RenderContext : NoCopy {

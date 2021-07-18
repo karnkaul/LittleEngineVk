@@ -18,12 +18,14 @@ namespace le::graphics {
 struct QuickVertexInput;
 struct VertexInputCreateInfo;
 
-enum class PFlag { eDepthTest, eDepthWrite, eAlphaBlend, eCOUNT_ };
-using PFlags = kt::enum_flags<PFlag>;
+enum class PFlag { eDepthTest, eDepthWrite, eAlphaBlend };
+using PFlags = kt::enum_flags<PFlag, u8>;
+constexpr PFlags pflags_all = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite | PFlag::eAlphaBlend;
+static_assert(pflags_all.count() == 3, "Invariant violated");
 
 class RenderContext : NoCopy {
   public:
-	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing, eCOUNT_ };
+	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing };
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);

@@ -34,8 +34,8 @@
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
-enum class Flag { eClosed, eInit, eTerm, eDebug0, eCOUNT_ };
-using Flags = kt::enum_flags<Flag>;
+enum class Flag { eClosed, eInit, eTerm, eDebug0 };
+using Flags = kt::enum_flags<Flag, u8>;
 
 static void poll(Flags& out_flags, window::EventQueue queue) {
 	while (auto e = queue.pop()) {

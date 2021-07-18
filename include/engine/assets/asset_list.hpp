@@ -29,8 +29,8 @@ TAssetList<T> operator+(TAssetList<T> const& lhs, TAssetList<T> const& rhs);
 
 class AssetListLoader {
   public:
-	enum class Flag { eImmediate, eOverwrite, eCOUNT_ };
-	using Flags = kt::enum_flags<Flag>;
+	enum class Flag { eImmediate, eOverwrite };
+	using Flags = kt::enum_flags<Flag, u8>;
 
 	using Scheduler = dts::scheduler;
 	using StageID = dts::scheduler::stage_id;

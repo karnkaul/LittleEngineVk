@@ -14,7 +14,7 @@ class Selector {
 	Selector(std::vector<QueueMultiplex::Family> families) : m_families(std::move(families)) {
 		QFlags found;
 		for (auto const& family : m_families) { found.set(family.flags); }
-		bool const valid = found.all(QFlags::inverse());
+		bool const valid = found.all(qflags_all);
 		ensure(valid, "Required queues not present");
 		if (!valid) { g_log.log(lvl::error, 0, "[{}] Required Vulkan Queues not present on selected physical device!"); }
 	}
@@ -30,7 +30,7 @@ class Selector {
 	QueueMultiplex::Family* best(QFlags flags) {
 		for (auto& f : m_families) {
 			// Return if queue supports desired flags
-			if (f.flags.test(flags) && f.reserved < f.total) { return &f; }
+			if (f.flags.all(flags) && f.reserved < f.total) { return &f; }
 		}
 		return nullptr;
 	}

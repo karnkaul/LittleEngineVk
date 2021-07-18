@@ -49,8 +49,8 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	}
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	if (indices.size() > 1) {
-		ensure(sq.test() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
-		ensure(dq.test() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ensure(sq.count() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ensure(dq.count() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 	}
 	auto promise = Transfer::makePromise();
 	auto ret = promise->get_future();

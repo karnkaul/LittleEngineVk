@@ -8,7 +8,7 @@ namespace {
 graphics::PFlags parseFlags(Span<std::string const> arr) {
 	graphics::PFlags ret;
 	for (std::string const& str : arr) {
-		if (str == "inverse") { return graphics::PFlags::inverse(); }
+		if (str == "all") { return graphics::pflags_all; }
 		if (str == "depth_test") { ret.set(graphics::PFlag::eDepthTest); }
 		if (str == "depth_write") { ret.set(graphics::PFlag::eDepthWrite); }
 		if (str == "alpha_blend") { ret.set(graphics::PFlag::eAlphaBlend); }

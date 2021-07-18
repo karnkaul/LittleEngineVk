@@ -50,7 +50,7 @@ Device::Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo 
 	if (info.qselect == QSelect::eSingleFamily || info.qselect == QSelect::eSingleQueue) {
 		std::optional<QueueMultiplex::Family> uber;
 		for (auto const& family : families) {
-			if (family.flags.all(QFlags::inverse())) {
+			if (family.flags.all(qflags_all)) {
 				uber = family;
 				g_log.log(lvl::info, 1, "[{}] Forcing single Vulkan queue family [{}]", g_name, family.familyIndex);
 				break;

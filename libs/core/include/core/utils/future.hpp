@@ -3,7 +3,7 @@
 #include <core/std_types.hpp>
 
 namespace le {
-enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout, eCOUNT_ };
+enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout };
 namespace utils {
 ///
 /// \brief std::future wrapper

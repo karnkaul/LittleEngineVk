@@ -17,11 +17,11 @@ constexpr bool levk_editor = false;
 #endif
 
 namespace le::edi {
-enum GUI { eOpen, eLeftClicked, eRightClicked, eCOUNT_ };
-using GUIState = kt::enum_flags<GUI>;
+enum GUI { eOpen, eLeftClicked, eRightClicked };
+using GUIState = kt::enum_flags<GUI, u8>;
 
-enum class Style { eSameLine, eSeparator, eCOUNT_ };
-using StyleFlags = kt::enum_flags<Style>;
+enum class Style { eSameLine, eSeparator };
+using StyleFlags = kt::enum_flags<Style, u8>;
 
 struct MenuList {
 	struct Menu {

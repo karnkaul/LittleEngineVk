@@ -41,21 +41,21 @@
 			"id": "pipelines/basic",
 			"shader": "shaders/basic",
 			"flags": [
-				"inverse"
+				"all"
 			]
 		},
 		{
 			"id": "pipelines/tex",
 			"shader": "shaders/tex",
 			"flags": [
-				"inverse"
+				"all"
 			]
 		},
 		{
 			"id": "pipelines/lit",
 			"shader": "shaders/lit",
 			"flags": [
-				"inverse"
+				"all"
 			],
 			"wireframe": 3
 		},

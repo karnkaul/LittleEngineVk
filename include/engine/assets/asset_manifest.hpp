@@ -5,13 +5,12 @@
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/scene/draw_layer.hpp>
-#include <kt/enum_flags/enum_flags.hpp>
 
 namespace le {
 class AssetManifest : public utils::VBase {
   public:
 	enum class Kind { eSampler, eShader, eTexture, ePipeline, eDrawLayer, eBitmapFont, eModel, eCOUNT_ };
-	using Kinds = kt::enum_flags<Kind>;
+	using Kinds = kt::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
 	using Flag = AssetListLoader::Flag;

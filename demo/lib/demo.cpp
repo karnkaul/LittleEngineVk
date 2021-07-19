@@ -31,6 +31,8 @@
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
+#include <kt/enum_flags/enumerate_enum.hpp>
+
 namespace le::demo {
 using RGBA = graphics::RGBA;
 

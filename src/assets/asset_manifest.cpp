@@ -1,7 +1,7 @@
-#include <core/utils/enum_values.hpp>
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/engine.hpp>
 #include <graphics/context/bootstrap.hpp>
+#include <kt/enum_flags/enumerate_enum.hpp>
 
 namespace le {
 namespace {
@@ -75,7 +75,7 @@ std::size_t AssetManifest::unload(io::Path const& jsonID, dts::scheduler& schedu
 std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexcept {
 	std::vector<StageID> ret;
 	ret.reserve(std::size_t(Kind::eCOUNT_));
-	for (Kind const k : utils::EnumValues<Kind>()) {
+	for (Kind const k : kt::enumerate_enum<Kind>()) {
 		if (kinds.test(k)) { ret.push_back(m_deps[k]); }
 	}
 	return ret;

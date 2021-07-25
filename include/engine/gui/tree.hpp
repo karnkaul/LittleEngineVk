@@ -34,6 +34,18 @@ class TreeRoot : public utils::VBase, public utils::Owner<TreeNode> {
 
 	container_t const& nodes() const noexcept { return m_ts; }
 
+	template <typename T, typename Ret, typename... Args>
+		requires(is_derived_v<T>)
+	void forEachNode(Ret (T::*memberFunc)(Args...), Args&&... args) const {
+		for (auto& u : nodes()) {
+			if constexpr (std::is_same_v<std::remove_const_t<T>, TreeNode>) {
+				(u->*memberFunc)(std::forward<Args>(args)...);
+			} else {
+				if (auto t = dynamic_cast<T*>(u.get())) { (t->*memberFunc)(std::forward<Args>(args)...); }
+			}
+		}
+	}
+
 	Rect m_rect;
 };
 

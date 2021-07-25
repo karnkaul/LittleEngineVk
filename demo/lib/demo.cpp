@@ -274,15 +274,13 @@ class TestView : public gui::View {
 		auto& text = bg.push<gui::Text>(font);
 		graphics::TextFactory tf;
 		tf.size = 60U;
-		text.set("click");
-		text.set(tf);
+		text.set("click", tf);
 		m_button = &push<gui::Widget>(font);
 		m_button->m_rect.size = {200.0f, 100.0f};
 		m_button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
 		m_button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
 		tf.size = 40U;
-		m_button->m_text->set(tf);
-		m_button->m_text->set("Button");
+		m_button->m_text->set("Button", tf);
 		m_button->refresh();
 		m_tk = m_button->onClick([this]() { setDestroyed(); });
 	}

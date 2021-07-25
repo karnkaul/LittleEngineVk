@@ -38,6 +38,15 @@ template <typename T>
 constexpr bool inRange(T const& value, T const& min, T const& max, bool bInclusive = true) noexcept;
 
 ///
+/// \brief Obtain 2 raised to exp
+///
+constexpr u64 pow2(u8 exp) noexcept;
+///
+/// \brief Obtain log base 2 of power of two
+///
+constexpr u64 log2(u64 pot) noexcept;
+
+///
 /// \brief Linearly interpolate between `min` to `max` based on `alpha`
 ///
 template <typename T>
@@ -106,6 +115,15 @@ constexpr T lerp(T const& min, T const& max, f32 alpha) noexcept {
 template <typename T>
 constexpr bool inRange(T const& value, T const& min, T const& max, bool bInclusive) noexcept {
 	return bInclusive ? value >= min && value <= max : value > min && value < max;
+}
+
+constexpr u64 pow2(u8 exp) noexcept { return 1 << exp; }
+
+constexpr u64 log2(u64 pot) noexcept {
+	if (pot == 0) { return 1; }
+	u64 ret{};
+	for (; pot > 1; pot >>= 1) { ++ret; }
+	return ret;
 }
 
 template <typename T>

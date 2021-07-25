@@ -36,6 +36,7 @@ class Widget : public Quad {
 
   protected:
 	OnClick m_onClick;
+	not_null<BitmapFont const*> m_font;
 
   private:
 	bool clickedImpl(bool style, Status st) noexcept;

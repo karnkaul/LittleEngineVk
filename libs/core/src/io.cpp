@@ -17,7 +17,6 @@ struct FileLogger final {
 Path g_logFilePath;
 kt::async_queue<std::string> g_queue;
 void dumpToFile(Path const& path, std::string const& str);
-
 FileLogger::FileLogger() {
 	std::ifstream iFile(g_logFilePath.generic_string());
 	if (iFile.good()) {

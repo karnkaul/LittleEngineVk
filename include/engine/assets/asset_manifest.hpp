@@ -13,6 +13,7 @@ class AssetManifest : public utils::VBase {
 	using Kinds = kt::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
+	using QueueID = AssetListLoader::QueueID;
 	using Flag = AssetListLoader::Flag;
 	using Flags = AssetListLoader::Flags;
 
@@ -23,7 +24,7 @@ class AssetManifest : public utils::VBase {
 	std::size_t preload(dj::json_t const& root);
 	void stage(dts::scheduler* scheduler);
 	template <typename T>
-	StageID stage(TAssetList<T> list, dts::scheduler* scheduler, Kinds kinds = {}, Span<StageID const> deps = {});
+	StageID stage(TAssetList<T> list, dts::scheduler* scheduler, Kinds kinds = {}, Span<StageID const> deps = {}, QueueID qid = {});
 	std::size_t load(io::Path const& jsonID, dts::scheduler* scheduler);
 	std::size_t unload(io::Path const& jsonID, dts::scheduler& scheduler);
 
@@ -31,6 +32,8 @@ class AssetManifest : public utils::VBase {
 
 	bool ready(dts::scheduler const& scheduler) const { return m_loader.ready(scheduler); }
 	void wait(dts::scheduler& scheduler) const { m_loader.wait(scheduler); }
+
+	EnumArray<Kind, QueueID> m_jsonQIDs = {};
 
   protected:
 	graphics::Device& device();
@@ -76,10 +79,10 @@ class AssetManifest : public utils::VBase {
 // impl
 
 template <typename T>
-AssetManifest::StageID AssetManifest::stage(TAssetList<T> lists, dts::scheduler* scheduler, Kinds kinds, Span<StageID const> deps) {
+AssetManifest::StageID AssetManifest::stage(TAssetList<T> lists, dts::scheduler* scheduler, Kinds kinds, Span<StageID const> deps, QueueID qid) {
 	auto dp = this->deps(kinds);
 	dp.reserve(dp.size() + deps.size());
 	std::copy(deps.begin(), deps.end(), std::back_inserter(dp));
-	return m_loader.stage(std::move(lists), scheduler, dp);
+	return m_loader.stage(std::move(lists), scheduler, dp, qid);
 }
 } // namespace le

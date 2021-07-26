@@ -117,7 +117,7 @@ constexpr bool inRange(T const& value, T const& min, T const& max, bool bInclusi
 	return bInclusive ? value >= min && value <= max : value > min && value < max;
 }
 
-constexpr u64 pow2(u8 exp) noexcept { return 1 << exp; }
+constexpr u64 pow2(u8 exp) noexcept { return u64(1) << exp; }
 
 constexpr u64 log2(u64 pot) noexcept {
 	if (pot == 0) { return 1; }

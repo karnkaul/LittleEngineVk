@@ -35,13 +35,13 @@ std::size_t AssetManifest::preload(dj::json_t const& root) {
 }
 
 void AssetManifest::stage(dts::scheduler* scheduler) {
-	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler);
-	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler]);
-	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler);
-	m_deps[Kind::ePipeline] = m_loader.stage(std::move(m_pipelines), scheduler, m_deps[Kind::eShader]);
-	m_deps[Kind::eDrawLayer] = m_loader.stage(std::move(m_drawLayers), scheduler, m_deps[Kind::ePipeline]);
-	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler]);
-	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler);
+	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler, {}, m_jsonQIDs[Kind::eSampler]);
+	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eTexture]);
+	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler, {}, m_jsonQIDs[Kind::eShader]);
+	m_deps[Kind::ePipeline] = m_loader.stage(std::move(m_pipelines), scheduler, m_deps[Kind::eShader], m_jsonQIDs[Kind::ePipeline]);
+	m_deps[Kind::eDrawLayer] = m_loader.stage(std::move(m_drawLayers), scheduler, m_deps[Kind::ePipeline], m_jsonQIDs[Kind::eDrawLayer]);
+	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eBitmapFont]);
+	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
 	loadCustom(scheduler);
 }
 

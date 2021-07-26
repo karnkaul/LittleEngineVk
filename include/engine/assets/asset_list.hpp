@@ -34,9 +34,10 @@ class AssetListLoader {
 
 	using Scheduler = dts::scheduler;
 	using StageID = dts::scheduler::stage_id;
+	using QueueID = dts::scheduler::queue_id;
 
 	template <typename T>
-	StageID stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps = {});
+	StageID stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps = {}, QueueID qid = {});
 	template <typename T>
 	void load(TAssetList<T> list);
 	bool ready(Scheduler const& scheduler) const noexcept;
@@ -93,7 +94,7 @@ std::size_t TAssetList<T>::append(TAssetList<T>& out, TAssetList<T> const& exclu
 }
 
 template <typename T>
-AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps) {
+AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps, QueueID qid) {
 	if (m_flags.test(Flag::eImmediate) || !scheduler) {
 		load_(std::move(list));
 	} else {
@@ -101,7 +102,7 @@ AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* s
 		st.tasks = callbacks(std::move(list));
 		if (!st.tasks.empty()) {
 			st.deps = {deps.begin(), deps.end()};
-			auto const ret = scheduler->stage(std::move(st));
+			auto const ret = scheduler->stage(std::move(st), qid);
 			m_staged.push_back(ret);
 			return ret;
 		}

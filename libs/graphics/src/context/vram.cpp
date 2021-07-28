@@ -52,8 +52,8 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 		ensure(sq.count() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 		ensure(dq.count() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 	}
-	auto promise = Transfer::makePromise();
-	auto ret = promise->get_future();
+	Transfer::Promise promise;
+	auto ret = promise.get_future();
 	auto f = [p = std::move(promise), s = src.buffer(), d = out_dst.buffer(), size, this]() mutable {
 		auto stage = m_transfer.newStage(size);
 		copy(stage.command, s, d, size);
@@ -75,8 +75,8 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	}
 	bytearray data((std::size_t)size, {});
 	std::memcpy(data.data(), pData, data.size());
-	auto promise = Transfer::makePromise();
-	auto ret = promise->get_future();
+	Transfer::Promise promise;
+	auto ret = promise.get_future();
 	auto f = [p = std::move(promise), dst = out_deviceBuffer.buffer(), d = std::move(data), this]() mutable {
 		auto stage = m_transfer.newStage(vk::DeviceSize(d.size()));
 		if (stage.buffer->write(d.data(), d.size())) {
@@ -84,7 +84,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 			m_transfer.addStage(std::move(stage), std::move(p));
 		} else {
 			g_log.log(lvl::error, 1, "[{}] Error staging data!", g_name);
-			p->set_value();
+			p.set_value();
 		}
 	};
 	m_transfer.m_queue.push(std::move(f));
@@ -104,8 +104,8 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	ensure(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ensure((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ensure(out_dst.layout() == layouts.first, "Mismatched image layouts");
-	auto promise = Transfer::makePromise();
-	auto ret = promise->get_future();
+	Transfer::Promise promise;
+	auto ret = promise.get_future();
 	std::vector<bytearray> data;
 	data.reserve(bitmaps.size());
 	for (auto layer : bitmaps) {
@@ -142,14 +142,15 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter) {
 	ensure((src.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ensure((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	auto promise = Transfer::makePromise();
-	auto ret = promise->get_future();
+	Transfer::Promise promise;
+	auto ret = promise.get_future();
 	TPair<vk::Extent3D> const extents = {src.extent(), out_dst.extent()};
 	auto f = [this, p = std::move(promise), s = src.image(), d = out_dst.image(), extents, layouts, aspects, filter]() mutable {
 		auto stage = m_transfer.newStage(0);
 		blit(stage.command, {s, d}, extents, layouts, filter, aspects);
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
+	m_transfer.m_queue.push(std::move(f));
 	return {std::move(ret)};
 }
 

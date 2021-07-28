@@ -72,7 +72,7 @@ std::size_t Transfer::update() {
 		if (m_memory->m_device->signalled(batch.done)) {
 			if (batch.framePad == 0) {
 				for (auto& [stage, promise] : batch.entries) {
-					promise->set_value();
+					promise.set_value();
 					scavenge(std::move(stage), batch.done);
 				}
 				return true;

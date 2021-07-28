@@ -9,6 +9,7 @@
 #include <graphics/resources.hpp>
 #include <kt/async_queue/async_queue.hpp>
 #include <kt/kthread/kthread.hpp>
+#include <kt/move_only_function/move_only_function.hpp>
 
 namespace le::graphics {
 constexpr vk::DeviceSize operator""_MB(unsigned long long size) { return size << 20; }
@@ -16,7 +17,7 @@ constexpr vk::DeviceSize operator""_MB(unsigned long long size) { return size <<
 class Transfer final {
   public:
 	using notify_t = void;
-	using Promise = std::shared_ptr<std::promise<notify_t>>;
+	using Promise = std::promise<notify_t>;
 	using Future = std::future<notify_t>;
 
 	struct MemRange final {
@@ -27,6 +28,13 @@ class Transfer final {
 
 	struct CreateInfo;
 
+	Transfer(not_null<Memory*> memory, CreateInfo const& info);
+	~Transfer();
+
+	std::size_t update();
+	bool polling() const noexcept { return m_sync.poll.active(); }
+
+  private:
 	struct Stage final {
 		std::optional<Buffer> buffer;
 		vk::CommandBuffer command;
@@ -37,22 +45,12 @@ class Transfer final {
 
 		std::vector<Entry> entries;
 		vk::Fence done;
-		u8 framePad = 1;
+		u8 framePad = 0;
 	};
-
-	Transfer(not_null<Memory*> memory, CreateInfo const& info);
-	~Transfer();
-
-	static Promise makePromise() noexcept;
-
-	std::size_t update();
 
 	Stage newStage(vk::DeviceSize bufferSize);
 	void addStage(Stage&& stage, Promise&& promise);
 
-	bool polling() const noexcept { return m_sync.poll.active(); }
-
-  private:
 	void scavenge(Stage&& stage, vk::Fence fence);
 	vk::Fence nextFence();
 	std::optional<Buffer> nextBuffer(vk::DeviceSize size);
@@ -75,7 +73,7 @@ class Transfer final {
 		Batch active;
 		std::vector<Batch> submitted;
 	} m_batches;
-	kt::async_queue<std::function<void()>> m_queue;
+	kt::async_queue<kt::move_only_function<void()>> m_queue;
 	not_null<Memory*> m_memory;
 
 	friend class VRAM;
@@ -85,7 +83,4 @@ struct Transfer::CreateInfo {
 	Span<MemRange const> reserve = defaultReserve;
 	std::optional<Time_ms> autoPollRate = 3ms;
 };
-
-// impl
-inline Transfer::Promise Transfer::makePromise() noexcept { return std::make_shared<Promise::element_type>(); }
 } // namespace le::graphics

@@ -25,3 +25,6 @@
 [submodule "libs/clap"]
 	path = libs/clap
 	url = https://github.com/karnkaul/clap
+[submodule "ext/spirv_cross"]
+	path = ext/spirv_cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross

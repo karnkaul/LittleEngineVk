@@ -18,7 +18,7 @@ class FileMonitor {
 	///
 	/// \brief Monitor status
 	///
-	enum class Status : s8 { eUpToDate, eNotFound, eModified, eCOUNT_ };
+	enum class Status : s8 { eUpToDate, eNotFound, eModified };
 
   public:
 	///

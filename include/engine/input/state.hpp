@@ -30,7 +30,7 @@ struct State {
 
 	KeyAct const& keyMask(Key key) const noexcept;
 	Mods mods(Key key) const noexcept;
-	ActionMask actions(Key key) const noexcept;
+	Actions actions(Key key) const noexcept;
 
 	Res<KeyMods> acted(Key) const noexcept;
 	Res<KeyMods> acted(Key key, Action action) const noexcept;
@@ -38,8 +38,8 @@ struct State {
 	Res<KeyMods> held(Key key) const noexcept;
 	Res<KeyMods> released(Key key) const noexcept;
 
-	bool any(List<Key> keys, ActionMask mask = allActions) const noexcept;
-	bool all(List<Key> keys, ActionMask mask = allActions) const noexcept;
+	bool any(List<Key> keys, Actions mask = actions_all) const noexcept;
+	bool all(List<Key> keys, Actions mask = actions_all) const noexcept;
 };
 
 // impl
@@ -62,8 +62,8 @@ inline Mods State::mods(Key key) const noexcept {
 	}
 	return ret;
 }
-inline ActionMask State::actions(Key key) const noexcept {
-	ActionMask ret{};
+inline Actions State::actions(Key key) const noexcept {
+	Actions ret{};
 	for (KeyAct const& k : keys) {
 		if (k.key == key) {
 			ret = k.t;
@@ -85,13 +85,13 @@ inline State::Res<KeyMods> State::acted(Key key, Action action) const noexcept {
 inline State::Res<KeyMods> State::pressed(Key key) const noexcept { return acted(key, Action::ePressed); }
 inline State::Res<KeyMods> State::held(Key key) const noexcept { return acted(key, Action::eHeld); }
 inline State::Res<KeyMods> State::released(Key key) const noexcept { return acted(key, Action::eReleased); }
-inline bool State::any(List<Key> keys, ActionMask mask) const noexcept {
+inline bool State::any(List<Key> keys, Actions mask) const noexcept {
 	for (Key const k : keys) {
 		if (actions(k).any(mask)) { return true; }
 	}
 	return false;
 }
-inline bool State::all(List<Key> keys, ActionMask mask) const noexcept {
+inline bool State::all(List<Key> keys, Actions mask) const noexcept {
 	for (Key const k : keys) {
 		if (!actions(k).any(mask)) { return false; }
 	}

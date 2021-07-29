@@ -1,5 +1,4 @@
 #pragma once
-#include <algorithm>
 #include <functional>
 #include <core/io/path.hpp>
 #include <core/services.hpp>
@@ -30,14 +29,15 @@ TAssetList<T> operator+(TAssetList<T> const& lhs, TAssetList<T> const& rhs);
 
 class AssetListLoader {
   public:
-	enum class Flag { eImmediate, eOverwrite, eCOUNT_ };
-	using Flags = kt::enum_flags<Flag>;
+	enum class Flag { eImmediate, eOverwrite };
+	using Flags = kt::enum_flags<Flag, u8>;
 
 	using Scheduler = dts::scheduler;
 	using StageID = dts::scheduler::stage_id;
+	using QueueID = dts::scheduler::queue_id;
 
 	template <typename T>
-	StageID stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps = {});
+	StageID stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps = {}, QueueID qid = {});
 	template <typename T>
 	void load(TAssetList<T> list);
 	bool ready(Scheduler const& scheduler) const noexcept;
@@ -94,15 +94,15 @@ std::size_t TAssetList<T>::append(TAssetList<T>& out, TAssetList<T> const& exclu
 }
 
 template <typename T>
-AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps) {
+AssetListLoader::StageID AssetListLoader::stage(TAssetList<T> list, Scheduler* scheduler, Span<StageID const> deps, QueueID qid) {
 	if (m_flags.test(Flag::eImmediate) || !scheduler) {
 		load_(std::move(list));
 	} else {
 		dts::scheduler::stage_t st;
 		st.tasks = callbacks(std::move(list));
 		if (!st.tasks.empty()) {
-			std::copy_if(deps.begin(), deps.end(), std::back_inserter(st.deps), [](auto stage) { return stage.id > 0; });
-			auto const ret = scheduler->stage(std::move(st));
+			st.deps = {deps.begin(), deps.end()};
+			auto const ret = scheduler->stage(std::move(st), qid);
 			m_staged.push_back(ret);
 			return ret;
 		}

@@ -100,7 +100,7 @@ inline constexpr std::string_view levk_compiler_name = "Unknown";
 
 namespace le {
 namespace os {
-enum class Dir : s8 { eWorking, eExecutable, eCOUNT_ };
+enum class Dir : s8 { eWorking, eExecutable };
 
 using Args = Span<char const* const>;
 

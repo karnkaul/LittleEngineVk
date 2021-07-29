@@ -14,7 +14,7 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 add_library(levk::core ALIAS ${PROJECT_NAME})
 
-# glm defines
+# defines
 target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_XYZW_ONLY GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SILENT_WARNINGS GLM_ENABLE_EXPERIMENTAL GLM_EXT_INCLUDED)
 target_compile_definitions(${PROJECT_NAME} PUBLIC KT_FIXED_ANY_THROW)
 target_include_directories(${PROJECT_NAME}

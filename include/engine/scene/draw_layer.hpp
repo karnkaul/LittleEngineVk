@@ -7,10 +7,10 @@ class Pipeline;
 }
 
 struct DrawLayer {
-	graphics::Pipeline* pipeline = {};
+	graphics::Pipeline* pipeline{};
 	s64 order = 0;
 
-	constexpr bool operator==(DrawLayer const& rhs) const noexcept = default;
-	constexpr auto operator<=>(DrawLayer const& rhs) const noexcept { return order <=> rhs.order; }
+	bool operator==(DrawLayer const& rhs) const noexcept = default;
+	auto operator<=>(DrawLayer const& rhs) const noexcept { return order <=> rhs.order; }
 };
 } // namespace le

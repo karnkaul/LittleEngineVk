@@ -16,7 +16,7 @@ class Text : public TreeNode {
 
 	Factory const& factory() const noexcept { return m_factory; }
 	std::string_view str() const noexcept { return m_str; }
-	void set(std::string str);
+	void set(std::string str, std::optional<Factory> factory = std::nullopt);
 	void set(Factory factory);
 
 	Span<Primitive const> primitives() const noexcept override;
@@ -34,8 +34,9 @@ class Text : public TreeNode {
 };
 
 // impl
-inline void Text::set(std::string str) {
+inline void Text::set(std::string str, std::optional<Factory> factory) {
 	m_str = std::move(str);
+	if (factory) { set(std::move(*factory)); }
 	m_dirty = true;
 }
 inline void Text::set(Factory factory) {

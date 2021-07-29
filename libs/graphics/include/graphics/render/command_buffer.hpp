@@ -7,7 +7,6 @@
 #include <glm/vec2.hpp>
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
-#include <kt/enum_flags/enum_flags.hpp>
 #include <kt/fixed_vector/fixed_vector.hpp>
 
 namespace le::graphics {
@@ -70,8 +69,8 @@ class CommandBuffer {
 	vk::CommandBuffer m_cb;
 
   private:
-	enum class Flag { eRecording, eRendering, eCOUNT_ };
-	using Flags = kt::enum_flags<Flag>;
+	enum class Flag { eRecording, eRendering };
+	using Flags = kt::enum_flags<Flag, u8>;
 	Flags m_flags;
 };
 

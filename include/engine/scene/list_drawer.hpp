@@ -7,24 +7,35 @@
 namespace le {
 class ListDrawer : public utils::VBase {
   public:
+	struct List {
+		Span<Drawable const> drawables;
+		not_null<graphics::Pipeline*> pipeline;
+		Hash variant;
+	};
+
 	static constexpr vk::Rect2D cast(Rect2D rect) noexcept { return {{rect.offset.x, rect.offset.y}, {rect.extent.x, rect.extent.y}}; }
 
 	static void attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Primitive const> primitives);
 
 	template <typename... Gen>
-	void populate(decf::registry const& registry, bool sort = true);
-	void draw(graphics::CommandBuffer cb) const;
-
-	std::vector<DrawList> m_lists;
+	Span<List> populate(decf::registry const& registry, bool sort = true);
+	void draw(graphics::CommandBuffer cb);
 
   private:
-	virtual void draw(DrawList const&, graphics::CommandBuffer) const = 0;
+	virtual void draw(List const&, graphics::CommandBuffer) const = 0;
+
+	std::vector<DrawList> m_drawLists;
+	std::vector<List> m_lists;
 };
 
 // impl
 
 template <typename... Gen>
-void ListDrawer::populate(decf::registry const& registry, bool sort) {
-	m_lists = DrawListFactory::template lists<Gen...>(registry, sort);
+Span<ListDrawer::List> ListDrawer::populate(decf::registry const& registry, bool sort) {
+	m_drawLists = DrawListFactory::template lists<Gen...>(registry, sort);
+	m_lists.clear();
+	m_lists.reserve(m_drawLists.size());
+	for (auto& list : m_drawLists) { m_lists.push_back({list.drawables, list.layer.pipeline, list.variant}); }
+	return m_lists;
 }
 } // namespace le

@@ -20,8 +20,8 @@ using sv = std::string_view;
 
 void clicks(MU GUIState& out_state) {
 #if defined(LEVK_USE_IMGUI)
-	out_state[GUI::eLeftClicked] = ImGui::IsItemClicked(ImGuiMouseButton_Left);
-	out_state[GUI::eRightClicked] = ImGui::IsItemClicked(ImGuiMouseButton_Right);
+	out_state.assign(GUI::eLeftClicked, ImGui::IsItemClicked(ImGuiMouseButton_Left));
+	out_state.assign(GUI::eRightClicked, ImGui::IsItemClicked(ImGuiMouseButton_Right));
 #endif
 }
 
@@ -68,14 +68,14 @@ Radio::Radio(MU Span<sv const> options, MU s32 preSelect, MU bool sameLine) : se
 Button::Button(MU sv id) {
 #if defined(LEVK_USE_IMGUI)
 	refresh();
-	guiState[GUI::eLeftClicked] = ImGui::Button(id.empty() ? "[Unnamed]" : id.data());
+	guiState.assign(GUI::eLeftClicked, ImGui::Button(id.empty() ? "[Unnamed]" : id.data()));
 #endif
 }
 
 Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 #if defined(LEVK_USE_IMGUI)
 	if (!entries.empty()) {
-		guiState[GUI::eOpen] = ImGui::BeginCombo(id.empty() ? "[Unnamed]" : id.data(), preSelect.data());
+		guiState.assign(GUI::eOpen, ImGui::BeginCombo(id.empty() ? "[Unnamed]" : id.data(), preSelect.data()));
 		refresh();
 		if (test(GUI::eOpen)) {
 			std::size_t i = 0;
@@ -96,7 +96,7 @@ Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 
 TreeNode::TreeNode(MU sv id) {
 #if defined(LEVK_USE_IMGUI)
-	guiState[GUI::eOpen] = ImGui::TreeNode(id.empty() ? "[Unnamed]" : id.data());
+	guiState.assign(GUI::eOpen, ImGui::TreeNode(id.empty() ? "[Unnamed]" : id.data()));
 	refresh();
 #endif
 }
@@ -107,7 +107,7 @@ TreeNode::TreeNode(MU sv id, MU bool bSelected, MU bool bLeaf, MU bool bFullWidt
 	ImGuiTreeNodeFlags const branchFlags = (bLeftClickOpen ? 0 : ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
 	ImGuiTreeNodeFlags const metaFlags = (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | (bFullWidth ? ImGuiTreeNodeFlags_SpanAvailWidth : 0);
 	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | metaFlags;
-	guiState[GUI::eOpen] = ImGui::TreeNodeEx(id.empty() ? "[Unnamed]" : id.data(), nodeFlags) && !bLeaf;
+	guiState.assign(GUI::eOpen, ImGui::TreeNodeEx(id.empty() ? "[Unnamed]" : id.data(), nodeFlags) && !bLeaf);
 	refresh();
 #endif
 }
@@ -120,7 +120,7 @@ TreeNode::~TreeNode() {
 
 MenuBar::Menu::Menu(MU sv id) {
 #if defined(LEVK_USE_IMGUI)
-	guiState[GUI::eOpen] = ImGui::BeginMenu(id.data());
+	guiState.assign(GUI::eOpen, ImGui::BeginMenu(id.data()));
 #endif
 }
 
@@ -132,7 +132,7 @@ MenuBar::Menu::~Menu() {
 
 MenuBar::Item::Item(MU sv id, MU bool separator) {
 #if defined(LEVK_USE_IMGUI)
-	guiState[GUI::eLeftClicked] = ImGui::MenuItem(id.data());
+	guiState.assign(GUI::eLeftClicked, ImGui::MenuItem(id.data()));
 	if (separator) { Styler s{Style::eSeparator}; }
 #endif
 }
@@ -149,7 +149,7 @@ void MenuBar::walk(MU MenuList::Tree const& tree) {
 
 MenuBar::MenuBar() {
 #if defined(LEVK_USE_IMGUI)
-	guiState[GUI::eOpen] = ImGui::BeginMenuBar();
+	guiState.assign(GUI::eOpen, ImGui::BeginMenuBar());
 #endif
 }
 
@@ -171,7 +171,7 @@ MenuBar::~MenuBar() {
 
 TabBar::TabBar(MU std::string_view id, MU s32 flags) {
 #if defined(LEVK_USE_IMGUI)
-	guiState[GUI::eOpen] = ImGui::BeginTabBar(id.data(), flags);
+	guiState.assign(GUI::eOpen, ImGui::BeginTabBar(id.data(), flags));
 #endif
 }
 
@@ -183,7 +183,7 @@ TabBar::~TabBar() {
 
 TabBar::Item::Item(MU std::string_view id, MU s32 flags) {
 #if defined(LEVK_USE_IMGUI)
-	guiState[GUI::eOpen] = ImGui::BeginTabItem(id.data(), nullptr, flags);
+	guiState.assign(GUI::eOpen, ImGui::BeginTabItem(id.data(), nullptr, flags));
 #endif
 }
 
@@ -197,14 +197,14 @@ Pane::Pane(MU std::string_view id, MU glm::vec2 size, MU glm::vec2 pos, MU bool*
 #if defined(LEVK_USE_IMGUI)
 	ImGui::SetNextWindowSize({size.x, size.y}, ImGuiCond_Once);
 	ImGui::SetNextWindowPos({pos.x, pos.y}, ImGuiCond_Once);
-	guiState[GUI::eOpen] = ImGui::Begin(id.data(), open, flags);
+	guiState.assign(GUI::eOpen, ImGui::Begin(id.data(), open, flags));
 	if (guiState[GUI::eOpen] && blockResize) { s_blockResize = true; }
 #endif
 }
 
 Pane::Pane(MU std::string_view id, MU glm::vec2 size, MU bool border, MU s32 flags) : child(true) {
 #if defined(LEVK_USE_IMGUI)
-	guiState[GUI::eOpen] = ImGui::BeginChild(id.data(), {size.x, size.y}, border, flags);
+	guiState.assign(GUI::eOpen, ImGui::BeginChild(id.data(), {size.x, size.y}, border, flags));
 #endif
 }
 

@@ -33,7 +33,7 @@ void Inspector::update() {
 			Transform tr;
 			tr(*node, registry);
 		}
-		for (auto& [id, gadget] : s_gadgets) {
+		for (auto& [id, gadget] : m_gadgets) {
 			if ((*gadget)(entity, registry)) { s(); }
 		}
 	}

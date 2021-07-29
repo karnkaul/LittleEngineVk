@@ -47,8 +47,8 @@ class Services final {
 	/// \brief Locate an existing service object
 	///
 	template <typename T>
-	[[nodiscard]] static not_null<T*> locate() noexcept {
-		ensure(exists<T>(), "Service not found");
+	[[nodiscard]] static not_null<T*> locate(bool required = true) noexcept {
+		ensure(!required || exists<T>(), "Service not found");
 		return reinterpret_cast<T*>(s_ts[typeID<T>()]);
 	}
 	///

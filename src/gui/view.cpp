@@ -36,9 +36,7 @@ void ViewStack::update(input::Frame const& frame, glm::vec2 offset) {
 	for (auto& v : m_ts) { v->update(frame.space, offset); }
 	for (auto it = m_ts.rbegin(); it != m_ts.rend(); ++it) {
 		auto& v = *it;
-		for (auto& node : v->nodes()) {
-			if (auto widget = dynamic_cast<Widget*>(node.get())) { widget->onInput(frame.state); }
-		}
+		v->forEachNode<Widget>(&Widget::onInput, frame.state);
 		if (v->m_block == View::Block::eBlock) { break; }
 	}
 }

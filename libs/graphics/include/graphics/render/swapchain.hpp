@@ -23,8 +23,7 @@ constexpr ArrayMap<vk::PresentModeKHR, std::string_view, 4> presentModeNames = {
 	{vk::PresentModeKHR::eImmediate, "Immediate"},
 	{vk::PresentModeKHR::eMailbox, "Mailbox"},
 }};
-constexpr ArrayMap<Vsync, std::string_view, 4> vsyncNames = {
-	{{Vsync::eOff, "Vsync Off"}, {Vsync::eOn, "Vsync On"}, {Vsync::eAdaptive, "Vsync Adaptive"}, {Vsync::eTripleBuffer, "Vsync Triple Buffer"}}};
+constexpr EnumArray<Vsync, std::string_view> vsyncNames = {"Vsync Off", "Vsync On", "Vsync Adaptive", "Vsync Triple Buffer"};
 constexpr ArrayMap<Vsync, vk::PresentModeKHR, 4> vsyncModes = {{{Vsync::eOff, vk::PresentModeKHR::eImmediate},
 																{Vsync::eOn, vk::PresentModeKHR::eFifo},
 																{Vsync::eAdaptive, vk::PresentModeKHR::eFifoRelaxed},
@@ -32,9 +31,9 @@ constexpr ArrayMap<Vsync, vk::PresentModeKHR, 4> vsyncModes = {{{Vsync::eOff, vk
 
 class Swapchain {
   public:
-	enum class Flag : s8 { ePaused, eOutOfDate, eSuboptimal, eCOUNT_ };
-	using Flags = kt::enum_flags<Flag>;
-	using Vsyncs = kt::enum_flags<Vsync>;
+	enum class Flag { ePaused, eOutOfDate, eSuboptimal };
+	using Flags = kt::enum_flags<Flag, u8>;
+	using Vsyncs = kt::enum_flags<Vsync, u8>;
 
 	struct FormatPicker {
 		///

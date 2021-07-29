@@ -20,7 +20,7 @@ class BitmapFont {
 
 	static constexpr std::size_t max_glyphs = maths::max<u8>();
 
-	bool create(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo info);
+	bool make(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo info);
 
 	bool valid() const noexcept;
 	Texture const& atlas() const;

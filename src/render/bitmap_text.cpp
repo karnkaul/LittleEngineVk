@@ -3,7 +3,7 @@
 #include <engine/scene/primitive.hpp>
 
 namespace le {
-void BitmapText::create(not_null<graphics::VRAM*> vram, Type type) { mesh = graphics::Mesh(vram, type); }
+void BitmapText::make(not_null<graphics::VRAM*> vram, Type type) { mesh = graphics::Mesh(vram, type); }
 
 bool BitmapText::set(BitmapFont const& font, std::string_view str) { return set(font.glyphs(), font.atlas().data().size, str); }
 

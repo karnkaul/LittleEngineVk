@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <core/delegate.hpp>
 #include <core/utils/algo.hpp>
@@ -50,7 +51,7 @@ template <typename T>
 struct AssetLoader {
 	static constexpr bool specialized = false;
 
-	std::optional<T> load(AssetLoadInfo<T> const& info) const;
+	std::unique_ptr<T> load(AssetLoadInfo<T> const& info) const;
 	bool reload(T& out_t, AssetLoadInfo<T> const& info) const;
 };
 

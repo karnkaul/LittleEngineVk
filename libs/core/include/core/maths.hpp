@@ -38,6 +38,15 @@ template <typename T>
 constexpr bool inRange(T const& value, T const& min, T const& max, bool bInclusive = true) noexcept;
 
 ///
+/// \brief Obtain 2 raised to exp
+///
+constexpr u64 pow2(u8 exp) noexcept;
+///
+/// \brief Obtain log base 2 of power of two
+///
+constexpr u64 log2(u64 pot) noexcept;
+
+///
 /// \brief Linearly interpolate between `min` to `max` based on `alpha`
 ///
 template <typename T>
@@ -48,17 +57,6 @@ constexpr T lerp(T const& min, T const& max, f32 alpha) noexcept;
 ///
 template <typename T>
 T randomRange(T min, T max) noexcept;
-
-///
-/// \brief Obtain the index of the least significant set bit (0xff if none) of num
-///
-template <typename T>
-constexpr std::uint8_t lsbIndex(T num) noexcept;
-///
-/// \brief Obtain the index of the least significant set bit (0xff if none) of lastEnum plus one
-///
-template <typename T>
-constexpr std::uint8_t enumEnd(T lastEnum) noexcept;
 
 ///
 /// \brief Random Number Generator
@@ -119,6 +117,15 @@ constexpr bool inRange(T const& value, T const& min, T const& max, bool bInclusi
 	return bInclusive ? value >= min && value <= max : value > min && value < max;
 }
 
+constexpr u64 pow2(u8 exp) noexcept { return u64(1) << exp; }
+
+constexpr u64 log2(u64 pot) noexcept {
+	if (pot == 0) { return 1; }
+	u64 ret{};
+	for (; pot > 1; pot >>= 1) { ++ret; }
+	return ret;
+}
+
 template <typename T>
 T randomRange(T min, T max) noexcept {
 	static Random s_random;
@@ -128,24 +135,6 @@ T randomRange(T min, T max) noexcept {
 		s_bSeeded = true;
 	}
 	return s_random.template range<T>(min, max);
-}
-
-template <typename T>
-constexpr std::uint8_t lsbIndex(T bit) noexcept {
-	static_assert(std::is_integral_v<T>, "T must be integral");
-	constexpr std::size_t unity = 1;
-	std::size_t const b = static_cast<std::size_t>(bit);
-	for (std::size_t i = 0; i <= std::numeric_limits<T>::digits; ++i) {
-		std::size_t const flag = unity << i;
-		if ((b & flag) == flag) { return static_cast<std::uint8_t>(i); }
-	}
-	return std::numeric_limits<std::uint8_t>::max();
-}
-
-template <typename T>
-constexpr std::uint8_t enumEnd(T lastEnum) noexcept {
-	static_assert(std::is_enum_v<T>, "T must be enum");
-	return (lsbIndex(static_cast<u32>(lastEnum))) + 1;
 }
 
 inline void Random::seed(std::optional<u32> value) noexcept { m_engine = std::mt19937(value.value_or(m_device())); }

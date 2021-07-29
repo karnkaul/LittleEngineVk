@@ -3,13 +3,7 @@
 #include <window/desktop_instance.hpp>
 
 namespace le::input {
-Trigger::Trigger(Key key, Action action, Mod mod) noexcept {
-	KeyAction ka;
-	ka.key = key;
-	ka.t = action;
-	ka.mods.add(mod);
-	combos.push_back(ka);
-}
+Trigger::Trigger(Key key, Action action, Mod mod) noexcept : Trigger(key, action, Mods::make(mod)) {}
 
 Trigger::Trigger(Key key, Action action, Mods mods) noexcept {
 	KeyAction ka;
@@ -24,15 +18,15 @@ bool Trigger::operator()(State const& state) const noexcept {
 		if (combo.key != Key::eUnknown) {
 			switch (combo.t) {
 			case Action::ePressed: {
-				if (auto k = state.pressed(combo.key)) { return k->mods.all(combo.mods.bits); }
+				if (auto k = state.pressed(combo.key)) { return k->mods.all(combo.mods); }
 				break;
 			}
 			case Action::eReleased: {
-				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods.bits); }
+				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods); }
 				break;
 			}
 			case Action::eHeld: {
-				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods.bits); }
+				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods); }
 				break;
 			}
 			default: break;

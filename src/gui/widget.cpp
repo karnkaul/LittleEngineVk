@@ -1,7 +1,7 @@
 #include <engine/gui/widget.hpp>
 
 namespace le::gui {
-Widget::Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) : Quad(root, true) {
+Widget::Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) : Quad(root, true), m_font(font) {
 	m_rect.size = {50.0f, 50.0f};
 	m_text = &push<Text>(font);
 	m_styles.text.base = colours::black;
@@ -40,6 +40,7 @@ void Widget::refresh(input::State const* state) {
 Status Widget::onInput(input::State const& state) {
 	Status ret;
 	if (clicked(state, true, &ret)) { m_onClick(); }
+	forEachNode<Widget>(&Widget::onInput, state);
 	return ret;
 }
 

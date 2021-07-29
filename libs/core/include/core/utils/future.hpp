@@ -3,55 +3,47 @@
 #include <core/std_types.hpp>
 
 namespace le {
-enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout, eCOUNT_ };
+enum class FutureState : s8 { eInvalid, eDeferred, eReady, eTimeout };
 namespace utils {
-///
-/// \brief std::future wrapper
-///
-template <typename T>
-struct Future {
-	mutable std::future<T> future;
-
-	FutureState state() const;
-	bool busy() const;
-	bool ready(bool bAllowInvalid) const;
-	void wait() const;
-};
-
 template <typename T>
 FutureState futureState(std::future<T> const& future) noexcept;
 
 template <typename T>
 bool ready(std::future<T> const& future) noexcept;
+
+template <typename T>
+struct FutureBase {
+	mutable std::future<T> future;
+
+	FutureBase(std::future<T> future = {}) noexcept : future(std::move(future)) {}
+
+	FutureState state() const { return futureState(future); }
+	bool busy() const { return state() == FutureState::eDeferred; }
+	bool ready(bool allowInvalid) const { return (future.valid() && state() == FutureState::eReady) || allowInvalid; }
+	void wait() const {
+		if (this->future.valid()) { this->future.get(); }
+	}
+};
+
+///
+/// \brief Convenience wrapper over std::future<T>
+///
+template <typename T>
+struct Future : FutureBase<T> {
+	using FutureBase<T>::FutureBase;
+
+	T get(T const& fallback = {}) const { return this->future.valid() ? this->future.get() : fallback; }
+};
+///
+/// \brief Convenience wrapper over std::future<void>
+///
+template <>
+struct Future<void> : FutureBase<void> {
+	using FutureBase::FutureBase;
+};
 } // namespace utils
 
 // impl
-
-namespace utils {
-template <typename T>
-FutureState Future<T>::state() const {
-	return utils::futureState(future);
-}
-
-template <typename T>
-bool Future<T>::busy() const {
-	return state() == FutureState::eDeferred;
-}
-
-template <typename T>
-bool Future<T>::ready(bool bAllowInvalid) const {
-	if (future.valid()) {
-		return state() == FutureState::eReady;
-	} else {
-		return bAllowInvalid;
-	}
-}
-
-template <typename T>
-void Future<T>::wait() const {
-	if (future.valid()) { future.get(); }
-}
-} // namespace utils
 
 template <typename T>
 FutureState utils::futureState(std::future<T> const& future) noexcept {

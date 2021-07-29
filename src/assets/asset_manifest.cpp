@@ -1,14 +1,14 @@
-#include <core/utils/enum_values.hpp>
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/engine.hpp>
 #include <graphics/context/bootstrap.hpp>
+#include <kt/enum_flags/enumerate_enum.hpp>
 
 namespace le {
 namespace {
 graphics::PFlags parseFlags(Span<std::string const> arr) {
 	graphics::PFlags ret;
 	for (std::string const& str : arr) {
-		if (str == "inverse") { return graphics::PFlags::inverse(); }
+		if (str == "all") { return graphics::pflags_all; }
 		if (str == "depth_test") { ret.set(graphics::PFlag::eDepthTest); }
 		if (str == "depth_write") { ret.set(graphics::PFlag::eDepthWrite); }
 		if (str == "alpha_blend") { ret.set(graphics::PFlag::eAlphaBlend); }
@@ -35,13 +35,13 @@ std::size_t AssetManifest::preload(dj::json_t const& root) {
 }
 
 void AssetManifest::stage(dts::scheduler* scheduler) {
-	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler);
-	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler]);
-	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler);
-	m_deps[Kind::ePipeline] = m_loader.stage(std::move(m_pipelines), scheduler, m_deps[Kind::eShader]);
-	m_deps[Kind::eDrawLayer] = m_loader.stage(std::move(m_drawLayers), scheduler, m_deps[Kind::ePipeline]);
-	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler]);
-	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler);
+	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler, {}, m_jsonQIDs[Kind::eSampler]);
+	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eTexture]);
+	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler, {}, m_jsonQIDs[Kind::eShader]);
+	m_deps[Kind::ePipeline] = m_loader.stage(std::move(m_pipelines), scheduler, m_deps[Kind::eShader], m_jsonQIDs[Kind::ePipeline]);
+	m_deps[Kind::eDrawLayer] = m_loader.stage(std::move(m_drawLayers), scheduler, m_deps[Kind::ePipeline], m_jsonQIDs[Kind::eDrawLayer]);
+	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eBitmapFont]);
+	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
 	loadCustom(scheduler);
 }
 
@@ -58,11 +58,25 @@ std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* schedule
 	return ret;
 }
 
-std::vector<AssetManifest::StageID> AssetManifest::deps(Flags flags) const noexcept {
+std::size_t AssetManifest::unload(io::Path const& jsonID, dts::scheduler& scheduler) {
+	wait(scheduler);
+	std::size_t count{};
+	if (auto eng = Services::locate<Engine>()) {
+		dj::json_t json;
+		auto& resources = eng->store().resources();
+		auto res = resources.load(jsonID, Resource::Type::eText);
+		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }
+		if (res && json.read(res->string())) { count = preload(json); }
+	}
+	if (count > 0) { return unload(); }
+	return 0;
+}
+
+std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexcept {
 	std::vector<StageID> ret;
 	ret.reserve(std::size_t(Kind::eCOUNT_));
-	for (Kind const k : utils::EnumValues<Kind>()) {
-		if (flags.test(k)) { ret.push_back(m_deps[k]); }
+	for (Kind const k : kt::enumerate_enum<Kind>()) {
+		if (kinds.test(k)) { ret.push_back(m_deps[k]); }
 	}
 	return ret;
 }
@@ -174,11 +188,7 @@ std::size_t AssetManifest::addDrawLayers(Group group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
 			Hash const pid = pipe->as<std::string>();
 			s64 const order = json->get_as<s64>("order");
-			m_drawLayers.add(std::move(id), [this, pid, order]() {
-				if (auto pl = store().find<graphics::Pipeline>(pid)) { return DrawLayer{&**pl, order}; }
-				ensure(false, "Pipeline not found!");
-				return DrawLayer{nullptr, order};
-			});
+			m_drawLayers.add(std::move(id), [this, pid, order]() { return DrawLayer{store().find<graphics::Pipeline>(pid).peek(), order}; });
 			++ret;
 		}
 	}
@@ -215,6 +225,28 @@ std::size_t AssetManifest::addModels(Group group) {
 		m_models.add(std::move(id), std::move(data));
 		++ret;
 	}
+	return ret;
+}
+
+template <typename T, typename U>
+std::size_t AssetManifest::unload(U& cont) {
+	std::size_t ret{};
+	for (auto const& [id, _] : cont) {
+		if (store().unload<T>(id)) { ++ret; }
+	}
+	cont.clear();
+	return ret;
+}
+
+std::size_t AssetManifest::unload() {
+	std::size_t ret = unload<graphics::Sampler>(m_samplers.map);
+	ret += unload<graphics::Shader>(m_shaders.map);
+	ret += unload<graphics::Texture>(m_textures.map);
+	ret += unload<Model>(m_models.map);
+	ret += unload<BitmapFont>(m_bitmapFonts.map);
+	ret += unload<graphics::Pipeline>(m_pipelines.map);
+	ret += unload<DrawLayer>(m_drawLayers.map);
+	ret += unloadCustom();
 	return ret;
 }
 } // namespace le

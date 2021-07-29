@@ -292,11 +292,37 @@ class TestView : public gui::View {
 	gui::OnClick::Tk m_tk;
 };
 
+class WidgetList : public gui::Widget {
+  public:
+	WidgetList(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept : gui::Widget(root, font) {}
+
+	template <typename T = gui::Widget, typename... Args>
+		requires(std::is_base_of_v<gui::Widget, T>)
+	T& add(glm::vec2 size = {200.0f, 50.0f}, Args&&... args) {
+		auto& t = push<T>(m_font, std::forward<Args>(args)...);
+		t.m_rect.size = size;
+		glm::vec2 offset{};
+		if (!m_items.empty()) {
+			gui::Widget const& widget = *m_items.back();
+			offset = widget.m_rect.anchor.offset - glm::vec2(0.0f, widget.m_rect.size.y);
+		}
+		t.m_rect.anchor.offset = offset;
+		m_items.push_back(&t);
+		return t;
+	}
+
+  protected:
+	std::vector<gui::Widget*> m_items;
+};
+
 class App : public input::Receiver, public SceneRegistry {
   public:
 	using SceneRegistry::spawn;
 
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
+		// auto const io = m_tasks.add_queue();
+		// m_tasks.add_agent({io, 0});
+		// m_manifest.m_jsonQID = io;
 		// m_manifest.flags().set(AssetManifest::Flag::eImmediate);
 		m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
 		auto const res = m_manifest.load("demo", &m_tasks);
@@ -396,8 +422,14 @@ class App : public input::Receiver, public SceneRegistry {
 
 		auto guiStack = spawnStack("gui_root", *m_eng->store().find<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
-		auto& stack = guiStack.get<gui::ViewStack>();
-		stack.push<TestView>(&font.get());
+		[[maybe_unused]] auto& stack = guiStack.get<gui::ViewStack>();
+		/*auto& testView = stack.push<TestView>(&font.get());
+		auto& list = testView.push<WidgetList>(&font.get());
+		list.m_rect.anchor.offset = {100.0f, -100.0f};
+		auto& e0 = list.add();
+		e0.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
+		auto& e1 = list.add();
+		e1.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;*/
 
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{

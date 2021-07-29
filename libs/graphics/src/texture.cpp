@@ -94,8 +94,8 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 	}
 	out_storage.data.sampler = info.sampler;
 	vk::Format fallback;
-	kt::fixed_vector<ImgView, 6> bmps;
-	kt::fixed_vector<utils::STBImg, 6> stbimgs;
+	ktl::fixed_vector<ImgView, 6> bmps;
+	ktl::fixed_vector<utils::STBImg, 6> stbimgs;
 	auto checkSize = [](Extent2D size, auto const& bytes) {
 		if (std::size_t(size.x * size.y) * Bitmap::channels != bytes.size()) {
 			ensure(false, "Invalid Raw image size/dimensions");

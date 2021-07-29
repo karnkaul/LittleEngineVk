@@ -5,7 +5,7 @@
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/shader.hpp>
-#include <kt/result/result.hpp>
+#include <ktl/result.hpp>
 
 namespace le::graphics {
 class Device;
@@ -49,8 +49,8 @@ class Pipeline final {
 
 	Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo createInfo, Hash id);
 
-	kt::result<vk::Pipeline, void> constructVariant(Hash id, CreateInfo::Fixed const& fixed);
-	kt::result<vk::Pipeline, void> variant(Hash id) const;
+	ktl::result<vk::Pipeline, void> constructVariant(Hash id, CreateInfo::Fixed const& fixed);
+	ktl::result<vk::Pipeline, void> variant(Hash id) const;
 
 	bool reconstruct(Shader const& shader);
 	vk::PipelineBindPoint bindPoint() const;
@@ -86,7 +86,7 @@ class Pipeline final {
 		struct {
 			Deferred<vk::PipelineLayout> layout;
 			std::vector<Deferred<vk::DescriptorSetLayout>> setLayouts;
-			std::vector<kt::fixed_vector<BindingInfo, 16>> bindingInfos;
+			std::vector<ktl::fixed_vector<BindingInfo, 16>> bindingInfos;
 		} fixed;
 		vk::PipelineCache cache;
 		Hash id;

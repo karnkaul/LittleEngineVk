@@ -1,7 +1,7 @@
 #pragma once
 #include <engine/input/types.hpp>
 #include <glm/vec2.hpp>
-#include <kt/result/result.hpp>
+#include <ktl/result.hpp>
 #include <window/event_queue.hpp>
 
 namespace le::input {
@@ -18,9 +18,9 @@ struct State {
 	template <typename T>
 	using List = std::initializer_list<T>;
 	template <typename T>
-	using Res = kt::result<T, void>;
+	using Res = ktl::result<T, void>;
 
-	kt::fixed_vector<KeyAct, 16> keys;
+	ktl::fixed_vector<KeyAct, 16> keys;
 	Cursor cursor;
 	Span<Gamepad const> gamepads;
 	Span<Event::Cursor const> others;
@@ -75,12 +75,12 @@ inline Actions State::actions(Key key) const noexcept {
 inline State::Res<KeyMods> State::acted(Key key) const noexcept {
 	KeyAct const k = keyMask(key);
 	if (k.key != Key::eUnknown) { return k; }
-	return kt::null_result;
+	return ktl::null_result;
 }
 inline State::Res<KeyMods> State::acted(Key key, Action action) const noexcept {
 	KeyAct const k = keyMask(key);
 	if (k.key != Key::eUnknown && k.t[action]) { return k; }
-	return kt::null_result;
+	return ktl::null_result;
 }
 inline State::Res<KeyMods> State::pressed(Key key) const noexcept { return acted(key, Action::ePressed); }
 inline State::Res<KeyMods> State::held(Key key) const noexcept { return acted(key, Action::eHeld); }

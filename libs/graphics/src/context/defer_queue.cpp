@@ -6,12 +6,12 @@
 
 namespace le::graphics {
 void DeferQueue::defer(Callback const& callback, Buffering defer) {
-	kt::tlock lock(m_entries);
+	ktl::tlock lock(m_entries);
 	lock->push_back({.callback = callback, .defer = defer == Buffering() ? 1_B : defer, .done = false});
 }
 
 std::size_t DeferQueue::decrement() {
-	kt::tlock lock(m_entries);
+	ktl::tlock lock(m_entries);
 	std::vector<Ref<Callback const>> done;
 	done.reserve(lock->size());
 	for (Entry& entry : *lock) {
@@ -30,7 +30,7 @@ std::size_t DeferQueue::decrement() {
 }
 
 void DeferQueue::flush() {
-	kt::tlock lock(m_entries);
+	ktl::tlock lock(m_entries);
 	for (auto const& d : *lock) {
 		if (d.callback) { d.callback(); }
 	}

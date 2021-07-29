@@ -3,7 +3,7 @@
 #include <core/log.hpp>
 #include <core/span.hpp>
 #include <graphics/context/physical_device.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/fixed_vector.hpp>
 
 namespace le::graphics {
 enum class Validation { eOn, eOff };
@@ -18,7 +18,7 @@ class Instance final {
 	Instance& operator=(Instance&&);
 	~Instance();
 
-	kt::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view const> requiredExtensions) const;
+	ktl::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view const> requiredExtensions) const;
 	vk::Instance instance() const noexcept { return m_instance; }
 	vk::DispatchLoaderDynamic loader() const { return m_loader; }
 

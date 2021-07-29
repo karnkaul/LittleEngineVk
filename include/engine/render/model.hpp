@@ -4,7 +4,7 @@
 #include <engine/scene/primitive.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
-#include <kt/result/result.hpp>
+#include <ktl/result.hpp>
 
 namespace le {
 namespace io {
@@ -26,7 +26,7 @@ class Model {
 	using Texture = graphics::Texture;
 	using Mesh = graphics::Mesh;
 	template <typename T>
-	using Result = kt::result<T, std::string>;
+	using Result = ktl::result<T, std::string>;
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
 

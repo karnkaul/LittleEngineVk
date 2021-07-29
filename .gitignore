@@ -27,3 +27,6 @@ imgui.ini
 # CMakePresets.json in project root is picked by Visual Studio in CMake mode,
 # so this file has been moved to cmake/, and is ignored here; copy it if desired
 /CMakePresets.json
+
+# ktl - submodule is fetched into source subdir (not binary subdir)
+/libs/ktl

@@ -64,7 +64,7 @@ io::Reader const& Resources::reader() const {
 io::FileReader& Resources::fileReader() { return m_fileReader; }
 
 Resource const* Resources::find(Hash id) const noexcept {
-	kt::tlock lock(m_loaded);
+	ktl::tlock lock(m_loaded);
 	if (auto it = lock.get().find(id); it != lock.get().end()) { return &it->second; }
 	return nullptr;
 }
@@ -73,7 +73,7 @@ Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonito
 	if (!bForceReload) {
 		if (auto pRes = find(path)) { return pRes; }
 	}
-	kt::unique_tlock<ResourceMap> lock(m_loaded);
+	ktl::unique_tlock<ResourceMap> lock(m_loaded);
 	lock->erase(path);
 	Resource resource;
 	if (resource.load(reader(), path, type, bMonitor && levk_resourceMonitor)) {
@@ -85,19 +85,19 @@ Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonito
 }
 
 bool Resources::loaded(Hash id) const noexcept {
-	kt::tlock lock(m_loaded);
+	ktl::tlock lock(m_loaded);
 	return utils::contains(lock.get(), id);
 }
 
 void Resources::update() {
-	kt::tlock lock(m_loaded);
+	ktl::tlock lock(m_loaded);
 	for (auto& [_, resource] : lock.get()) {
 		if (resource.m_monitor) { resource.m_monitor->update(); }
 	}
 }
 
 void Resources::clear() {
-	kt::unique_tlock<ResourceMap> lock(m_loaded);
+	ktl::unique_tlock<ResourceMap> lock(m_loaded);
 	lock.get().clear();
 }
 } // namespace le

@@ -3,7 +3,7 @@
 #include <core/std_types.hpp>
 #include <graphics/render/swapchain.hpp>
 #include <graphics/utils/deferred.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
@@ -31,7 +31,7 @@ class RenderFence {
 	std::size_t index() const noexcept { return m_storage.index; }
 
 	void wait();
-	kt::result<Swapchain::Acquire> acquire(Swapchain& swapchain, vk::Semaphore wait);
+	ktl::result<Swapchain::Acquire> acquire(Swapchain& swapchain, vk::Semaphore wait);
 	bool present(Swapchain& swapchain, vk::SubmitInfo const& info, vk::Semaphore wait);
 	void refresh();
 
@@ -46,7 +46,7 @@ class RenderFence {
 	vk::Fence submitFence();
 
 	struct {
-		kt::fixed_vector<Fence, 4> fences;
+		ktl::fixed_vector<Fence, 4> fences;
 		Fence* ptrs[4] = {};
 		std::size_t index = 0;
 	} m_storage;

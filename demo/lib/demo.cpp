@@ -31,13 +31,13 @@
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
-#include <kt/enum_flags/enumerate_enum.hpp>
+#include <ktl/enum_flags/enumerate_enum.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
 enum class Flag { eClosed, eInit, eTerm, eDebug0 };
-using Flags = kt::enum_flags<Flag, u8>;
+using Flags = ktl::enum_flags<Flag, u8>;
 
 static void poll(Flags& out_flags, window::EventQueue queue) {
 	while (auto e = queue.pop()) {

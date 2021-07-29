@@ -7,7 +7,7 @@
 #include <glm/vec2.hpp>
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/fixed_vector.hpp>
 
 namespace le::graphics {
 class Device;
@@ -24,7 +24,7 @@ class CommandBuffer {
 	using Stages = TPair<vk::PipelineStageFlags>;
 
 	struct PassInfo {
-		kt::fixed_vector<vk::ClearValue, 2> clearValues;
+		ktl::fixed_vector<vk::ClearValue, 2> clearValues;
 		vk::CommandBufferUsageFlags usage;
 		vk::SubpassContents subpassContents = vk::SubpassContents::eInline;
 	};
@@ -70,7 +70,7 @@ class CommandBuffer {
 
   private:
 	enum class Flag { eRecording, eRendering };
-	using Flags = kt::enum_flags<Flag, u8>;
+	using Flags = ktl::enum_flags<Flag, u8>;
 	Flags m_flags;
 };
 

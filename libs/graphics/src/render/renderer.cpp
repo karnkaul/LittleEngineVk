@@ -162,10 +162,10 @@ ARenderer::Storage ARenderer::make(Transition transition, TPair<vk::Format> colo
 	return ret;
 }
 
-kt::result<Swapchain::Acquire> ARenderer::acquire(bool begin) {
+ktl::result<Swapchain::Acquire> ARenderer::acquire(bool begin) {
 	auto& buf = m_storage.buf.get();
 	auto acquire = m_fence.acquire(*m_swapchain, *buf.draw);
-	if (!acquire) { return kt::null_result; }
+	if (!acquire) { return ktl::null_result; }
 	if (begin) {
 		m_device->device().resetCommandPool(*buf.pool, {});
 		buf.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);

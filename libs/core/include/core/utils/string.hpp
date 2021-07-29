@@ -3,7 +3,7 @@
 #include <string_view>
 #include <type_traits>
 #include <core/std_types.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/fixed_vector.hpp>
 
 namespace le::utils {
 ///
@@ -59,7 +59,7 @@ void substitute(std::string& out_input, std::initializer_list<std::pair<char, ch
 /// \brief Tokenise a string in place via `delimiter`
 ///
 template <std::size_t N>
-kt::fixed_vector<std::string_view, N> tokenise(std::string_view text, char delim);
+ktl::fixed_vector<std::string_view, N> tokenise(std::string_view text, char delim);
 ///
 /// \brief Concatenate a container of strings via delim
 ///
@@ -95,8 +95,8 @@ T to(std::string_view input, T fallback) noexcept {
 }
 
 template <std::size_t N>
-kt::fixed_vector<std::string_view, N> tokenise(std::string_view text, char delim) {
-	kt::fixed_vector<std::string_view, N> ret;
+ktl::fixed_vector<std::string_view, N> tokenise(std::string_view text, char delim) {
+	ktl::fixed_vector<std::string_view, N> ret;
 	while (!text.empty() && ret.has_space()) {
 		std::size_t const idx = text.find_first_of(delim);
 		if (idx < text.size()) {

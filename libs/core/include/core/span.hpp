@@ -2,7 +2,7 @@
 #include <array>
 #include <vector>
 #include <core/ensure.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/fixed_vector.hpp>
 
 namespace le {
 ///
@@ -23,7 +23,7 @@ class Span {
 	template <std::size_t N>
 	constexpr Span(std::array<T, N>& arr) noexcept;
 	template <std::size_t N>
-	constexpr Span(kt::fixed_vector<T, N>& vec) noexcept;
+	constexpr Span(ktl::fixed_vector<T, N>& vec) noexcept;
 	template <std::size_t N>
 	constexpr Span(T (&arr)[N]) noexcept;
 	constexpr Span(std::vector<T>& vec) noexcept;
@@ -71,7 +71,7 @@ class Span<T const> {
 	template <std::size_t N>
 	constexpr Span(std::array<T, N> const& arr) noexcept;
 	template <std::size_t N>
-	constexpr Span(kt::fixed_vector<T, N> const& vec) noexcept;
+	constexpr Span(ktl::fixed_vector<T, N> const& vec) noexcept;
 	template <std::size_t N>
 	constexpr Span(T const (&arr)[N]) noexcept;
 	constexpr Span(std::vector<T> const& vec) noexcept;
@@ -108,7 +108,7 @@ template <std::size_t N>
 constexpr Span<T>::Span(std::array<T, N>& arr) noexcept : m_data(N == 0 ? nullptr : &arr.front()), m_size(N) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T>::Span(kt::fixed_vector<T, N>& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
+constexpr Span<T>::Span(ktl::fixed_vector<T, N>& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
 template <typename T>
 template <std::size_t N>
 constexpr Span<T>::Span(T (&arr)[N]) noexcept : m_data(N == 0 ? nullptr : &arr[0]), m_size(N) {}
@@ -198,7 +198,7 @@ template <std::size_t N>
 constexpr Span<T const>::Span(std::array<T, N> const& arr) noexcept : m_data(N == 0 ? nullptr : &arr.front()), m_size(N) {}
 template <typename T>
 template <std::size_t N>
-constexpr Span<T const>::Span(kt::fixed_vector<T, N> const& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
+constexpr Span<T const>::Span(ktl::fixed_vector<T, N> const& vec) noexcept : m_data(vec.empty() ? nullptr : &vec.front()), m_size(vec.size()) {}
 template <typename T>
 template <std::size_t N>
 constexpr Span<T const>::Span(T const (&arr)[N]) noexcept : m_data(N == 0 ? nullptr : &arr[0]), m_size(N) {}

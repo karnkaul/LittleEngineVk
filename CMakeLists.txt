@@ -141,6 +141,16 @@ if(NOT LEVK_LIBRARY_TYPE STREQUAL STATIC AND LEVK_USE_PCH)
 	set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
 endif()
 
+# ktl
+set(FETCHCONTENT_QUIET OFF)
+FetchContent_Declare(
+	ktl
+	GIT_REPOSITORY https://github.com/karnkaul/ktl
+	GIT_TAG origin/main
+	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
+)
+FetchContent_MakeAvailable(ktl)
+
 # libraries
 if(is_root_project AND NOT CI_BUILD)
 	configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")

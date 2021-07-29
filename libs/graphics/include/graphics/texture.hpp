@@ -5,7 +5,7 @@
 #include <graphics/bitmap.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/utils/deferred.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/fixed_vector.hpp>
 
 namespace le::graphics {
 class Sampler {

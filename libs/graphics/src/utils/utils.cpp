@@ -129,13 +129,13 @@ io::Path utils::spirVpath(io::Path const& src, bool bDebug) {
 	return ret;
 }
 
-kt::result<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& dst, io::Path const& prefix, bool bDebug) {
+ktl::result<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& dst, io::Path const& prefix, bool bDebug) {
 	auto const d = dst.empty() ? spirVpath(src, bDebug) : dst;
 	auto const flags = bDebug ? "-g" : std::string_view();
 	auto const result = Spv::inst().compile(io::absolute(prefix / src), io::absolute(prefix / d), flags);
 	if (!result.empty()) {
 		g_log.log(lvl::warning, 1, "[{}] Failed to compile GLSL [{}] to SPIR-V: {}", g_name, src.generic_string(), result);
-		return kt::null_result;
+		return ktl::null_result;
 	}
 	g_log.log(lvl::info, 1, "[{}] Compiled GLSL [{}] to SPIR-V [{}]", g_name, src.generic_string(), d.generic_string());
 	return d;

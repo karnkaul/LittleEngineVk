@@ -1,9 +1,6 @@
 [submodule "libs/djson"]
 	path = libs/djson
 	url = https://github.com/karnkaul/djson
-[submodule "libs/core/include/kt/result"]
-	path = libs/core/include/kt/result
-	url = https://github.com/karnkaul/kt-result
 [submodule "libs/dlog"]
 	path = libs/dlog
 	url = https://github.com/karnkaul/dlog
@@ -19,9 +16,6 @@
 [submodule "libs/core/include/kt/ktest"]
 	path = libs/ktest
 	url = https://github.com/karnkaul/ktest
-[submodule "libs/core/include/kt/fixed_vector"]
-	path = libs/core/include/kt/fixed_vector
-	url = https://github.com/karnkaul/fixed_vector.git
 [submodule "libs/decf"]
 	path = libs/decf
 	url = https://github.com/karnkaul/decf
@@ -31,12 +25,3 @@
 [submodule "libs/clap"]
 	path = libs/clap
 	url = https://github.com/karnkaul/clap
-[submodule "libs/core/include/kt/monotonic_map"]
-	path = libs/core/include/kt/monotonic_map
-	url = https://github.com/karnkaul/monotonic_map.git
-[submodule "libs/core/include/kt/not_null"]
-	path = libs/core/include/kt/not_null
-	url = https://github.com/karnkaul/not-null.git
-[submodule "libs/core/include/kt/tmutex"]
-	path = libs/core/include/kt/tmutex
-	url = https://github.com/karnkaul/tmutex

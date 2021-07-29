@@ -7,8 +7,8 @@
 #include <core/utils/algo.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <dumb_tasks/scheduler.hpp>
-#include <kt/kthread/kthread.hpp>
-#include <kt/tmutex/tmutex.hpp>
+#include <ktl/kthread.hpp>
+#include <ktl/tmutex.hpp>
 
 using namespace le;
 using namespace decf;
@@ -35,14 +35,14 @@ bool verify(entity entity) {
 
 int main() {
 	dts::task_queue tq;
-	kt::tmutex<registry> registry;
+	ktl::tmutex<registry> registry;
 	constexpr s32 entityCount = 10000;
 	std::array<entity, entityCount> entities;
 	s32 idx = 0;
 	bool bPass = true;
 	for (auto& entity : entities) {
 		tq.enqueue([&entity, &registry, &idx, &bPass]() {
-			kt::tlock lock(registry);
+			ktl::tlock lock(registry);
 			entity = lock->spawn("e" + std::to_string(idx++));
 			bPass &= verify(entity);
 			auto const toss = maths::randomRange(0, 1 << 7);
@@ -79,23 +79,23 @@ int main() {
 		auto wait = []() -> Time_ms { return time::cast<Time_ms>(Time_us(maths::randomRange(0, 3000))); };
 		for (s32 i = 0; i < entityCount / 10; ++i) {
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
-				kt::kthread::sleep_for(wait());
+				ktl::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-				kt::tlock lock(registry);
+				ktl::tlock lock(registry);
 				lock->destroy(entities[idx]);
 			}));
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
-				kt::kthread::sleep_for(wait());
+				ktl::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-				kt::tlock lock(registry);
+				ktl::tlock lock(registry);
 				lock.get().detach<A>(entities[idx]);
 				lock.get().detach<B>(entities[idx]);
 				lock.get().detach<D>(entities[idx]);
 			}));
 			handles.push_back(tq.enqueue([&registry, &entities, wait]() {
-				kt::kthread::sleep_for(wait());
+				ktl::kthread::sleep_for(wait());
 				std::size_t const idx = (std::size_t)maths::randomRange(0, (s32)entities.size() - 1);
-				kt::tlock lock(registry);
+				ktl::tlock lock(registry);
 				lock->enable(entities[idx], false);
 			}));
 		}
@@ -103,12 +103,12 @@ int main() {
 	{
 		constexpr s32 viewIters = 10;
 		for (s32 i = 0; i < viewIters; ++i) {
-			[[maybe_unused]] auto viewA = kt::tlock(registry)->view<A>();
-			[[maybe_unused]] auto viewB = kt::tlock(registry)->view<B>();
-			[[maybe_unused]] auto viewC = kt::tlock(registry)->view<C>();
-			[[maybe_unused]] auto viewAB = kt::tlock(registry)->view<A, B>();
-			[[maybe_unused]] auto viewABC = kt::tlock(registry)->view<A, B, C>();
-			[[maybe_unused]] auto viewCEF = kt::tlock(registry)->view<C, E, F>();
+			[[maybe_unused]] auto viewA = ktl::tlock(registry)->view<A>();
+			[[maybe_unused]] auto viewB = ktl::tlock(registry)->view<B>();
+			[[maybe_unused]] auto viewC = ktl::tlock(registry)->view<C>();
+			[[maybe_unused]] auto viewAB = ktl::tlock(registry)->view<A, B>();
+			[[maybe_unused]] auto viewABC = ktl::tlock(registry)->view<A, B, C>();
+			[[maybe_unused]] auto viewCEF = ktl::tlock(registry)->view<C, E, F>();
 		}
 	}
 	tq.wait_tasks(handles);

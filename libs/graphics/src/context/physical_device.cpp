@@ -26,7 +26,7 @@ PhysicalDevice DevicePicker::pick(Span<PhysicalDevice const> devices, std::optio
 		g_log.log(lvl::info, 0, "[{}] Device selection overridden: [{}] {}", g_name, *indexOverride, ret.toString());
 		return ret;
 	}
-	using DevList = kt::fixed_vector<Ref<PhysicalDevice const>, 4>;
+	using DevList = ktl::fixed_vector<Ref<PhysicalDevice const>, 4>;
 	std::map<Score, DevList, std::greater<Score>> deviceMap;
 	for (auto const& device : devices) { deviceMap[score(device)].emplace_back(device); }
 	DevList const& list = deviceMap.begin()->second;

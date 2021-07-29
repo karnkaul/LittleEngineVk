@@ -3,8 +3,8 @@
 #include <string>
 #include <core/maths.hpp>
 #include <core/std_types.hpp>
-#include <kt/fixed_any/fixed_any.hpp>
 #include <ktest/ktest.hpp>
+#include <ktl/fixed_any.hpp>
 
 namespace {
 using namespace le;
@@ -17,7 +17,7 @@ struct vec2 final {
 bool operator==(vec2 const& l, vec2 const& r) noexcept { return maths::equals(l.x, r.x) && maths::equals(l.y, r.y); }
 
 template <typename T, std::size_t N>
-bool compare(std::vector<T> const& lhs, kt::fixed_any<N> const& any) {
+bool compare(std::vector<T> const& lhs, ktl::fixed_any<N> const& any) {
 	if (any.template contains<std::vector<T>>()) {
 		auto const& rhs = any.template get<std::vector<T>>();
 		if (lhs.size() == rhs.size()) { return std::equal(lhs.begin(), lhs.end(), rhs.begin()); }
@@ -27,7 +27,7 @@ bool compare(std::vector<T> const& lhs, kt::fixed_any<N> const& any) {
 
 TEST(kt_fixed_any_t_all) {
 	char const* szHello = "hello";
-	kt::fixed_any<> any = szHello;
+	ktl::fixed_any<> any = szHello;
 	auto szTest = any.get<char const*>();
 	ASSERT_NE(szTest, nullptr);
 	EXPECT_EQ(std::strcmp(szTest, szHello), 0);
@@ -37,7 +37,7 @@ TEST(kt_fixed_any_t_all) {
 	ASSERT_EQ(any1.contains<char const*>(), true);
 	EXPECT_EQ(std::strcmp(any1.get<char const*>(), szHello), 0);
 	std::vector<vec2> foos(2, vec2());
-	kt::fixed_any<64> any0;
+	ktl::fixed_any<64> any0;
 	any0 = foos;
 	EXPECT_EQ(compare(foos, any0), true);
 	any0.clear();

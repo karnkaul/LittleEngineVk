@@ -31,7 +31,7 @@ template <typename Rd>
 concept concrete_renderer = std::is_base_of_v<ARenderer, Rd> && !std::is_same_v<ARenderer, Rd>;
 
 struct ImageMaker {
-	kt::fixed_vector<Image::CreateInfo, 8> infos;
+	ktl::fixed_vector<Image::CreateInfo, 8> infos;
 	not_null<VRAM*> vram;
 
 	ImageMaker(not_null<VRAM*> vram) noexcept : vram(vram) {}
@@ -100,7 +100,7 @@ class ARenderer {
 	};
 
 	Storage make(Transition transition, TPair<vk::Format> colourDepth = {}) const;
-	kt::result<Swapchain::Acquire> acquire(bool begin = true);
+	ktl::result<Swapchain::Acquire> acquire(bool begin = true);
 
 	Storage m_storage;
 	RenderFence m_fence;

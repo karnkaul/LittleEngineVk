@@ -5,7 +5,7 @@
 #include <core/utils/std_hash.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <kt/enum_flags/enum_flags.hpp>
+#include <ktl/enum_flags/enum_flags.hpp>
 
 namespace le {
 template <typename T>
@@ -30,7 +30,7 @@ TAssetList<T> operator+(TAssetList<T> const& lhs, TAssetList<T> const& rhs);
 class AssetListLoader {
   public:
 	enum class Flag { eImmediate, eOverwrite };
-	using Flags = kt::enum_flags<Flag, u8>;
+	using Flags = ktl::enum_flags<Flag, u8>;
 
 	using Scheduler = dts::scheduler;
 	using StageID = dts::scheduler::stage_id;

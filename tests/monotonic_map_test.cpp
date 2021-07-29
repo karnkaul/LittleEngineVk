@@ -1,12 +1,12 @@
 #include <array>
 #include <bitset>
 #include <map>
-#include <kt/monotonic_map/monotonic_map.hpp>
 #include <ktest/ktest.hpp>
+#include <ktl/monotonic_map.hpp>
 
 namespace {
 TEST(monotonic_map_ordered) {
-	using map_t = kt::monotonic_map<int, std::map<int, int>>;
+	using map_t = ktl::monotonic_map<int, std::map<int, int>>;
 	map_t::handle mh0, mh1;
 	{
 		map_t map;
@@ -42,7 +42,7 @@ TEST(monotonic_map_ordered) {
 }
 
 TEST(monotonic_map_unordered) {
-	using umap_t = kt::monotonic_map<int>;
+	using umap_t = ktl::monotonic_map<int>;
 	umap_t::handle uh0, uh1;
 	{
 		umap_t umap;

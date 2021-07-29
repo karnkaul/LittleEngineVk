@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <iostream>
-#include <kt/fixed_vector/fixed_vector.hpp>
 #include <ktest/ktest.hpp>
+#include <ktl/fixed_vector.hpp>
 
 namespace {
 struct foo {
@@ -29,7 +29,7 @@ int foo::alive = 0;
 int foo::total = 0;
 
 TEST(fixed_vector_trivial) {
-	kt::fixed_vector<int, 4> vec0;
+	ktl::fixed_vector<int, 4> vec0;
 	EXPECT_EQ(vec0.empty(), true);
 	vec0 = decltype(vec0)(3, 5);
 	EXPECT_EQ(vec0.capacity() - vec0.size(), 1U);
@@ -92,7 +92,7 @@ TEST(fixed_vector_trivial) {
 }
 
 TEST(fixed_vector_class) {
-	kt::fixed_vector<foo, 3> vec0;
+	ktl::fixed_vector<foo, 3> vec0;
 	EXPECT_EQ(vec0.empty(), true);
 	vec0 = decltype(vec0)(2, foo(2));
 	EXPECT_EQ(vec0.capacity() - vec0.size(), 1U);

@@ -34,7 +34,7 @@ class DesktopInstance final : public InstanceBase {
 	void close();
 
 	bool importControllerDB(std::string_view db) const;
-	kt::fixed_vector<Gamepad, 8> activeGamepads() const;
+	ktl::fixed_vector<Gamepad, 8> activeGamepads() const;
 	Joystick joyState(s32 id) const;
 	Gamepad gamepadState(s32 id) const;
 	std::size_t joystickAxesCount(s32 id) const;

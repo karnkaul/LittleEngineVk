@@ -10,7 +10,7 @@ namespace le {
 class AssetManifest : public utils::VBase {
   public:
 	enum class Kind { eSampler, eShader, eTexture, ePipeline, eDrawLayer, eBitmapFont, eModel, eCOUNT_ };
-	using Kinds = kt::enum_flags<Kind, u16>;
+	using Kinds = ktl::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
 	using QueueID = AssetListLoader::QueueID;

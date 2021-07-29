@@ -27,7 +27,7 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	poolInfo.queueFamilyIndex = memory->m_device->queues().familyIndex(QType::eTransfer);
 	m_data.pool = memory->m_device->device().createCommandPool(poolInfo);
-	m_sync.staging = kt::kthread([this, r = info.reserve]() {
+	m_sync.staging = ktl::kthread([this, r = info.reserve]() {
 		{
 			std::scoped_lock lock(m_sync.mutex);
 			for (auto const& range : r) {
@@ -39,11 +39,11 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 		g_log.log(lvl::info, 1, "[{}] Transfer thread completed", g_name);
 	});
 	if (info.autoPollRate && *info.autoPollRate > 0ms) {
-		m_sync.poll = kt::kthread([this, rate = *info.autoPollRate](kt::kthread::stop_t stop) {
+		m_sync.poll = ktl::kthread([this, rate = *info.autoPollRate](ktl::kthread::stop_t stop) {
 			g_log.log(lvl::info, 1, "[{}] Transfer poll thread started", g_name);
 			while (!stop.stop_requested()) {
 				update();
-				kt::kthread::sleep_for(rate);
+				ktl::kthread::sleep_for(rate);
 			}
 			g_log.log(lvl::info, 1, "[{}] Transfer poll thread completed", g_name);
 		});

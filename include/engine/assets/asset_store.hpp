@@ -8,7 +8,7 @@
 #include <engine/assets/asset.hpp>
 #include <engine/assets/asset_loader.hpp>
 #include <engine/utils/logger.hpp>
-#include <kt/tmutex/shared_tmutex.hpp>
+#include <ktl/shared_tmutex.hpp>
 
 namespace le {
 namespace detail {
@@ -68,8 +68,8 @@ class AssetStore : public NoCopy {
 	bool reloadAsset(detail::TAsset<T>& out_asset) const;
 
 	Resources m_resources;
-	kt::shared_strict_tmutex<detail::TAssets> m_assets;
-	mutable kt::strict_tmutex<std::unordered_map<Hash, OnModified>> m_onModified;
+	ktl::shared_strict_tmutex<detail::TAssets> m_assets;
+	mutable ktl::strict_tmutex<std::unordered_map<Hash, OnModified>> m_onModified;
 	mutable std::mutex m_reloadMutex;
 
 	template <typename T>
@@ -214,57 +214,57 @@ std::size_t TAssets::hash() const {
 
 template <typename T>
 Asset<T> AssetStore::add(io::Path const& id, T t) {
-	kt::unique_tlock<detail::TAssets> lock(m_assets);
-	return lock.get().get<T>().add(kt::tlock(m_onModified).get()[id], id, std::move(t));
+	ktl::unique_tlock<detail::TAssets> lock(m_assets);
+	return lock.get().get<T>().add(ktl::tlock(m_onModified).get()[id], id, std::move(t));
 }
 template <typename T>
 Asset<T> AssetStore::add(io::Path const& id, std::unique_ptr<T> t) {
-	kt::unique_tlock<detail::TAssets> lock(m_assets);
-	return lock.get().get<T>().add(kt::tlock(m_onModified).get()[id], id, std::move(t));
+	ktl::unique_tlock<detail::TAssets> lock(m_assets);
+	return lock.get().get<T>().add(ktl::tlock(m_onModified).get()[id], id, std::move(t));
 }
 template <typename T>
 Asset<T> AssetStore::load(io::Path const& id, AssetLoadData<T> data) {
 	auto idStr = id.generic_string();
-	auto& onMod = kt::tlock(m_onModified).get()[idStr];
+	auto& onMod = ktl::tlock(m_onModified).get()[idStr];
 	// AssetLoader may invoke find() etc which would need shared locks
 	if (auto asset = detail::TAssetMap<T>::load(*this, onMod, m_resources, std::move(idStr), std::move(data))) {
-		kt::unique_tlock<detail::TAssets> lock(m_assets);
+		ktl::unique_tlock<detail::TAssets> lock(m_assets);
 		return lock.get().get<T>().insert(std::move(*asset), onMod);
 	}
 	return {};
 }
 template <typename T>
 Asset<T> AssetStore::find(Hash id) const {
-	kt::shared_tlock<detail::TAssets const> lock(m_assets);
+	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
 	if (lock.get().contains<T>()) {
 		auto& store = lock.get().get<T>().m_storage;
-		if (auto it = store.find(id); it != store.end() && it->second.t) { return detail::wrap<T>(it->second, kt::tlock(m_onModified).get()[id]); }
+		if (auto it = store.find(id); it != store.end() && it->second.t) { return detail::wrap<T>(it->second, ktl::tlock(m_onModified).get()[id]); }
 	}
 	return {};
 }
 template <typename T>
 bool AssetStore::exists(Hash id) const noexcept {
-	kt::shared_tlock<detail::TAssets const> lock(m_assets);
+	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
 	if (lock.get().contains<T>()) { return utils::contains(lock.get().get<T>().m_storage, id); }
 	return false;
 }
 template <typename T>
 bool AssetStore::reload(Hash id) {
 	if constexpr (detail::reloadable_asset_v<T>) {
-		kt::shared_tlock<detail::TAssets> lock(m_assets);
+		ktl::shared_tlock<detail::TAssets> lock(m_assets);
 		if (lock.get().contains<T>()) { return lock.get().get<T>().reload(*this, id); }
 	}
 	return false;
 }
 template <typename T>
 bool AssetStore::forceDirty(Hash id) const {
-	kt::shared_tlock<detail::TAssets const> lock(m_assets);
+	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
 	if (lock.get().contains<T>()) { return lock.get().get<T>().forceDirty(id); }
 	return false;
 }
 template <typename T>
 bool AssetStore::unload(Hash id) {
-	kt::unique_tlock<detail::TAssets> lock(m_assets);
+	ktl::unique_tlock<detail::TAssets> lock(m_assets);
 	if (lock.get().contains<T>()) { return lock.get().get<T>().unload(id); }
 	return false;
 }
@@ -279,7 +279,7 @@ bool AssetStore::reloadAsset(detail::TAsset<T>& out_asset) const {
 		out_asset.loadInfo->forceDirty(false);
 		AssetLoader<T> loader;
 		if (loader.reload(*out_asset.t, *out_asset.loadInfo)) {
-			kt::tlock(m_onModified).get()[out_asset.loadInfo->m_id]();
+			ktl::tlock(m_onModified).get()[out_asset.loadInfo->m_id]();
 			return true;
 		}
 	}

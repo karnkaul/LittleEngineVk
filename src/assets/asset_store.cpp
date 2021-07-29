@@ -6,7 +6,7 @@ void AssetStore::update() {
 	bool idle = false;
 	u64 total = 0;
 	u32 pass = 0;
-	kt::shared_tlock<detail::TAssets> lock(m_assets);
+	ktl::shared_tlock<detail::TAssets> lock(m_assets);
 	for (; pass < maxPasses && (pass == 0 || !idle); ++pass) {
 		m_resources.update();
 		u64 reloaded = 0;
@@ -24,9 +24,9 @@ void AssetStore::update() {
 
 void AssetStore::clear() {
 	// clear assets
-	kt::unique_tlock<detail::TAssets>(m_assets)->storeMap.clear();
+	ktl::unique_tlock<detail::TAssets>(m_assets)->storeMap.clear();
 	// clear delegates
-	kt::tlock(m_onModified)->clear();
+	ktl::tlock(m_onModified)->clear();
 	// clear resources
 	m_resources.clear();
 }

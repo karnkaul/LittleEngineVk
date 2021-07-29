@@ -7,7 +7,7 @@ Testing/*
 build/*
 out/*
 redist/*
-.editorconfig
+/.editorconfig
 
 # RenderDoc capture config (local)
 *.cap
@@ -20,5 +20,10 @@ debug.log*
 log.txt*
 # Dear ImGui config (local)
 imgui.ini
-# 
-CMakeUserPresets.json
+
+# CMake
+/CMakeUserPresets.json
+
+# CMakePresets.json in project root is picked by Visual Studio in CMake mode,
+# so this file has been moved to cmake/, and is ignored here; copy it if desired
+/CMakePresets.json

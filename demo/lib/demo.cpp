@@ -31,13 +31,13 @@
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
-#include <kt/enum_flags/enumerate_enum.hpp>
+#include <ktl/enum_flags/enumerate_enum.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
 enum class Flag { eClosed, eInit, eTerm, eDebug0 };
-using Flags = kt::enum_flags<Flag, u8>;
+using Flags = ktl::enum_flags<Flag, u8>;
 
 static void poll(Flags& out_flags, window::EventQueue queue) {
 	while (auto e = queue.pop()) {
@@ -422,9 +422,9 @@ class App : public input::Receiver, public SceneRegistry {
 
 		auto guiStack = spawnStack("gui_root", *m_eng->store().find<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
-		[[maybe_unused]] auto& stack = guiStack.get<gui::ViewStack>();
-		/*auto& testView = stack.push<TestView>(&font.get());
-		auto& list = testView.push<WidgetList>(&font.get());
+		auto& stack = guiStack.get<gui::ViewStack>();
+		[[maybe_unused]] auto& testView = stack.push<TestView>(&font.get());
+		/*auto& list = testView.push<WidgetList>(&font.get());
 		list.m_rect.anchor.offset = {100.0f, -100.0f};
 		auto& e0 = list.add();
 		e0.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;

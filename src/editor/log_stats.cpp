@@ -6,7 +6,7 @@
 #include <core/colour.hpp>
 #include <core/services.hpp>
 #include <engine/engine.hpp>
-#include <kt/tmutex/tmutex.hpp>
+#include <ktl/tmutex.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 #endif
 
@@ -23,14 +23,14 @@ using lvl = dl::level;
 
 constexpr EnumArray<lvl, Colour, 4> lvlColour = {Colour(0x666666ff), Colour(0xccccccff), Colour(0xdddd22ff), Colour(0xff1111ff)};
 
-kt::tmutex<std::deque<LogText>> g_logs;
+ktl::tmutex<std::deque<LogText>> g_logs;
 
 ImVec4 imvec4(Colour c) noexcept { return {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()}; }
 
 void onLog(std::string_view text, dl::level level) {
 	std::string str(text);
 	ImVec4 const colour = imvec4(lvlColour[level]);
-	kt::tlock lock(g_logs);
+	ktl::tlock lock(g_logs);
 	lock->push_front({std::move(str), colour, level});
 	while (lock->size() > LogStats::s_maxLines) { lock->pop_back(); }
 }
@@ -99,7 +99,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 			std::vector<Ref<LogText const>> filtered;
 			filtered.reserve(LogStats::s_lineCount);
-			kt::tlock lock(g_logs);
+			ktl::tlock lock(g_logs);
 			if (bClear) { lock->clear(); }
 			for (auto const& entry : *lock) {
 				if (entry.level >= LogStats::s_logLevel && (logFilter.empty() || entry.text.find(logFilter) != std::string::npos)) {

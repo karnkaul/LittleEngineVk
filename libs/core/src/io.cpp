@@ -3,19 +3,19 @@
 #include <core/io.hpp>
 #include <core/log.hpp>
 #include <io_impl.hpp>
-#include <kt/async_queue/async_queue.hpp>
-#include <kt/kthread/kthread.hpp>
+#include <ktl/async_queue.hpp>
+#include <ktl/kthread.hpp>
 
 namespace le::io {
 namespace {
 struct FileLogger final {
 	FileLogger();
 
-	kt::kthread thread;
+	ktl::kthread thread;
 };
 
 Path g_logFilePath;
-kt::async_queue<std::string> g_queue;
+ktl::async_queue<std::string> g_queue;
 void dumpToFile(Path const& path, std::string const& str);
 FileLogger::FileLogger() {
 	std::ifstream iFile(g_logFilePath.generic_string());
@@ -30,7 +30,7 @@ FileLogger::FileLogger() {
 	oFile.close();
 	g_queue.active(true);
 	logI("Logging to file: {}", absolute(g_logFilePath).generic_string());
-	thread = kt::kthread([]() {
+	thread = ktl::kthread([]() {
 		while (auto str = g_queue.pop()) {
 			*str += "\n";
 			dumpToFile(g_logFilePath, *str);

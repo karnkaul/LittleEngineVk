@@ -8,7 +8,7 @@ add_test(Hash test-hash)
 # StaticAny
 add_executable(test-any any_test.cpp)
 target_link_libraries(test-any PRIVATE ktest::main levk::core levk::interface)
-add_test(kt::fixed_any test-any)
+add_test(ktl::fixed_any test-any)
 
 # ECS (Registry)
 add_executable(test-decf decf_test.cpp)
@@ -18,9 +18,9 @@ add_test(decf::registry test-decf)
 # fixed_vector
 add_executable(test-fv fixed_vector_test.cpp)
 target_link_libraries(test-fv PRIVATE ktest::main levk::core levk::interface)
-add_test(kt::fixed_vector test-fv)
+add_test(ktl::fixed_vector test-fv)
 
 # monotonic_map
 add_executable(test-mm monotonic_map_test.cpp)
 target_link_libraries(test-mm PRIVATE ktest::main levk::core levk::interface)
-add_test(kt::monotonic_map test-mm)
+add_test(ktl::monotonic_map test-mm)

@@ -149,7 +149,8 @@ constexpr u32 Colour::toU32() const noexcept {
 	return raw;
 }
 constexpr Colour& operator*=(f32 n, Colour& c) noexcept {
-	n = std::clamp(n, 0.0f, 1.0f);
+	if (n < 0.0f) { n = 0.0f; }
+	if (n > 1.0f) { n = 1.0f; }
 	c.r = n * c.r;
 	c.g = n * c.g;
 	c.b = n * c.b;

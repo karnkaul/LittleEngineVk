@@ -58,11 +58,11 @@ constexpr glm::vec2 texCoords(Span<f32 const> arr, int idx, bool invertY) noexce
 constexpr glm::vec3 vec3(Span<f32 const> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
 
 template <typename T>
-kt::result<std::size_t> find(T const& arr, Hash hash) noexcept {
+ktl::result<std::size_t> find(T const& arr, Hash hash) noexcept {
 	for (std::size_t idx = 0; idx < arr.size(); ++idx) {
 		if (arr[idx].hash == hash) { return idx; }
 	}
-	return kt::null_result;
+	return ktl::null_result;
 }
 
 Colour colour(f32 const (&arr)[3], Colour fallback, f32 a = 1.0f) {

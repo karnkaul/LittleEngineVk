@@ -139,8 +139,8 @@ Instance::Instance(CreateInfo const& info) {
 
 Instance::~Instance() { destroy(); }
 
-kt::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(Span<std::string_view const> required) const {
-	kt::fixed_vector<PhysicalDevice, 8> ret;
+ktl::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(Span<std::string_view const> required) const {
+	ktl::fixed_vector<PhysicalDevice, 8> ret;
 	std::vector<vk::PhysicalDevice> const devices = m_instance.enumeratePhysicalDevices();
 	for (auto const& device : devices) {
 		std::unordered_set<std::string_view> missing(required.begin(), required.end());

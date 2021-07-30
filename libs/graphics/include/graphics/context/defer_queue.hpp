@@ -3,7 +3,7 @@
 #include <vector>
 #include <core/std_types.hpp>
 #include <graphics/render/buffering.hpp>
-#include <kt/tmutex/tmutex.hpp>
+#include <ktl/tmutex.hpp>
 
 namespace le::graphics {
 class DeferQueue {
@@ -23,6 +23,6 @@ class DeferQueue {
 		bool done;
 	};
 
-	mutable kt::strict_tmutex<std::vector<Entry>> m_entries;
+	mutable ktl::strict_tmutex<std::vector<Entry>> m_entries;
 };
 } // namespace le::graphics

@@ -30,7 +30,7 @@ class DescriptorUpdater : public DescriptorHelper {
   private:
 	bool check(u32 bind) noexcept;
 
-	kt::fixed_vector<u32, 16> m_binds;
+	ktl::fixed_vector<u32, 16> m_binds;
 	ShaderInput* m_input{};
 	graphics::VRAM* m_vram{};
 	std::size_t m_index{};

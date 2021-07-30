@@ -7,9 +7,9 @@
 #include <core/span.hpp>
 #include <core/time.hpp>
 #include <graphics/resources.hpp>
-#include <kt/async_queue/async_queue.hpp>
-#include <kt/kthread/kthread.hpp>
-#include <kt/move_only_function/move_only_function.hpp>
+#include <ktl/async_queue.hpp>
+#include <ktl/kthread.hpp>
+#include <ktl/move_only_function.hpp>
 
 namespace le::graphics {
 constexpr vk::DeviceSize operator""_MB(unsigned long long size) { return size << 20; }
@@ -65,15 +65,15 @@ class Transfer final {
 		std::list<Buffer> buffers;
 	} m_data;
 	struct {
-		kt::kthread staging;
-		kt::kthread poll;
+		ktl::kthread staging;
+		ktl::kthread poll;
 		std::mutex mutex;
 	} m_sync;
 	struct {
 		Batch active;
 		std::vector<Batch> submitted;
 	} m_batches;
-	kt::async_queue<kt::move_only_function<void()>> m_queue;
+	ktl::async_queue<ktl::move_only_function<void()>> m_queue;
 	not_null<Memory*> m_memory;
 
 	friend class VRAM;

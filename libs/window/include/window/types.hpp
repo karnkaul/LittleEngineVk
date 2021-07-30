@@ -3,7 +3,7 @@
 #include <vector>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <kt/enum_flags/uint_flags.hpp>
+#include <ktl/enum_flags/uint_flags.hpp>
 
 namespace le::window {
 enum class Action : s8 { eRelease, ePress, eRepeat };
@@ -170,7 +170,7 @@ enum class Key {
 };
 
 enum class Mod : u8 { eNone = 0, eShift = 1 << 0, eControl = 1 << 1, eAlt = 1 << 2, eSuper = 1 << 3, eCapsLock = 1 << 4, eNumLock = 1 << 5 };
-using Mods = kt::uint_flags<u8>;
+using Mods = ktl::uint_flags<u8>;
 
 enum class Axis : s8 {
 	eUnknown,

@@ -1,7 +1,7 @@
 #pragma once
 #include <core/maths.hpp>
-#include <kt/enum_flags/enum_flags.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/enum_flags/enum_flags.hpp>
+#include <ktl/fixed_vector.hpp>
 #include <window/types.hpp>
 
 namespace le::window {
@@ -10,7 +10,7 @@ class DesktopInstance;
 
 namespace le::input {
 enum class Action : u8 { ePressed, eHeld, eReleased };
-using Actions = kt::enum_flags<Action, u8>;
+using Actions = ktl::enum_flags<Action, u8>;
 constexpr Actions actions_all = Actions(Action::ePressed, Action::eHeld, Action::eReleased);
 
 enum class Focus { eUnchanged, eGained, eLost };

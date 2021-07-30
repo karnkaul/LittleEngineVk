@@ -22,7 +22,7 @@ class SceneRegistry;
 namespace edi {
 struct In {
 	static constexpr std::size_t max_custom = 16;
-	using custom_t = kt::fixed_vector<decf::entity, max_custom>;
+	using custom_t = ktl::fixed_vector<decf::entity, max_custom>;
 
 	custom_t customEntities;
 	SceneRegistry* registry = {};

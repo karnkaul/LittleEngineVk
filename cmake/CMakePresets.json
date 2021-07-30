@@ -1,0 +1,105 @@
+{
+	"version": 2,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 20,
+		"patch": 0
+	},
+	"buildPresets": [
+		{
+			"name": "default",
+			"configurePreset": "default"
+		},
+		{
+			"name": "levk-db",
+			"configurePreset": "levk-db"
+		},
+		{
+			"name": "levk-rl",
+			"configurePreset": "levk-rl"
+		},
+		{
+			"name": "levk-edrw",
+			"configurePreset": "levk-edrw"
+		},
+		{
+			"name": "levk-rw",
+			"configurePreset": "levk-rw"
+		},
+		{
+			"name": "levk-asan",
+			"configurePreset": "levk-asan"
+		}
+	],
+	"configurePresets": [
+		{
+			"name": "default",
+			"displayName": "Default Config",
+			"description": "Default build using Ninja generator",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/out/default"
+		},
+		{
+			"name": "ninja-clang",
+			"displayName": "Ninja/clang base config",
+			"inherits": "default",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang++"
+			}
+		},
+		{
+			"name": "levk-db",
+			"displayName": "Debug",
+			"description": "Debug build config using Ninja/clang",
+			"binaryDir": "${sourceDir}/out/db",
+			"inherits": "ninja-clang",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug",
+				"LEVK_EDITOR": "ON"
+			}
+		},
+		{
+			"name": "levk-rl",
+			"displayName": "Release ",
+			"description": "Release build config using Ninja",
+			"binaryDir": "out/rl",
+			"inherits": "default",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"LEVK_VULKAN_DYNAMIC": "ON"
+			}
+		},
+		{
+			"name": "levk-edrw",
+			"displayName": "RelW Editor",
+			"description": "RelWithDebInfo build config with Editor using Ninja/clang",
+			"binaryDir": "out/edrw",
+			"inherits": "ninja-clang",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"LEVK_EDITOR": "ON"
+			}
+		},
+		{
+			"name": "levk-rw",
+			"displayName": "RelWithDebInfo",
+			"description": "RelWwithDebInfo build config using Ninja/clang",
+			"binaryDir": "out/rw",
+			"inherits": "ninja-clang",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo"
+			}
+		},
+		{
+			"name": "levk-asan",
+			"displayName": "asan",
+			"description": "ASAN build using Ninja/clang",
+			"binaryDir": "out/asan",
+			"inherits": "ninja-clang",
+			"cacheVariables": {
+				"LEVK_ASAN": "ON"
+			}
+		}
+	]
+}

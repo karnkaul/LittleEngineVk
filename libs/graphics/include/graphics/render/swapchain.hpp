@@ -8,8 +8,8 @@
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/target.hpp>
 #include <graphics/resources.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
-#include <kt/result/result.hpp>
+#include <ktl/fixed_vector.hpp>
+#include <ktl/result.hpp>
 
 namespace le::graphics {
 class VRAM;
@@ -32,8 +32,8 @@ constexpr ArrayMap<Vsync, vk::PresentModeKHR, 4> vsyncModes = {{{Vsync::eOff, vk
 class Swapchain {
   public:
 	enum class Flag { ePaused, eOutOfDate, eSuboptimal };
-	using Flags = kt::enum_flags<Flag, u8>;
-	using Vsyncs = kt::enum_flags<Vsync, u8>;
+	using Flags = ktl::enum_flags<Flag, u8>;
+	using Vsyncs = ktl::enum_flags<Vsync, u8>;
 
 	struct FormatPicker {
 		///
@@ -47,7 +47,7 @@ class Swapchain {
 		vk::SurfaceTransformFlagBitsKHR transform = {};
 	};
 	struct CreateInfo {
-		kt::fixed_vector<Vsync, 4> vsync = {Vsync::eTripleBuffer, Vsync::eOn};
+		ktl::fixed_vector<Vsync, 4> vsync = {Vsync::eTripleBuffer, Vsync::eOn};
 		u32 imageCount = 2;
 		FormatPicker const* custom = {};
 		bool transfer = true;
@@ -67,7 +67,7 @@ class Swapchain {
 	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
-	kt::result<Acquire> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
+	ktl::result<Acquire> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
 	bool present(vk::Semaphore swait);
 	bool reconstruct(glm::ivec2 framebufferSize = {});
 	bool reconstruct(Vsync vsync, glm::ivec2 framebufferSize = {});
@@ -90,7 +90,7 @@ class Swapchain {
 
   private:
 	struct Storage {
-		kt::fixed_vector<RenderImage, 4> images;
+		ktl::fixed_vector<RenderImage, 4> images;
 		vk::SwapchainKHR swapchain;
 		std::optional<u32> acquired;
 

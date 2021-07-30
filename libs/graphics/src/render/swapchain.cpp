@@ -140,9 +140,9 @@ Swapchain::~Swapchain() {
 	destroy(m_storage);
 }
 
-kt::result<Swapchain::Acquire> Swapchain::acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal) {
+ktl::result<Swapchain::Acquire> Swapchain::acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal) {
 	orientCheck();
-	if (m_storage.flags.any(Flags(Flag::ePaused) | Flag::eOutOfDate)) { return kt::null_result; }
+	if (m_storage.flags.any(Flags(Flag::ePaused) | Flag::eOutOfDate)) { return ktl::null_result; }
 	if (m_storage.acquired) {
 		g_log.log(lvl::warning, 1, "[{}] Attempt to acquire image without presenting previously acquired one", g_name);
 		return m_storage.current();
@@ -152,7 +152,7 @@ kt::result<Swapchain::Acquire> Swapchain::acquireNextImage(vk::Semaphore ssignal
 	setFlags(result);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
 		g_log.log(lvl::warning, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name, g_vkResultStr[result]);
-		return kt::null_result;
+		return ktl::null_result;
 	}
 	return m_storage.current(acquired);
 }

@@ -111,7 +111,7 @@ class Engine : public Service<Engine> {
 	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
 	bool endDraw(graphics::CommandBuffer cb);
 
-	inline static kt::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
+	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
 	io::Service m_io;
 	std::optional<GFX> m_gfx;

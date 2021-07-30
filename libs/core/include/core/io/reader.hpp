@@ -5,7 +5,7 @@
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <kt/result/result.hpp>
+#include <ktl/result.hpp>
 
 namespace le::io {
 ///
@@ -14,7 +14,7 @@ namespace le::io {
 class Reader {
   public:
 	template <typename T>
-	using Result = kt::result<T>;
+	using Result = ktl::result<T>;
 
   public:
 	Reader() noexcept;

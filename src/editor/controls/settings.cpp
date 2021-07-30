@@ -3,7 +3,7 @@
 #include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
-#include <kt/enum_flags/enumerate_enum.hpp>
+#include <ktl/enum_flags/enumerate_enum.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
@@ -11,8 +11,8 @@ namespace {
 void swapchain(graphics::RenderContext& rc, graphics::Vsync vsync) {
 	Text txt("Swapchain");
 	auto const& vn = graphics::vsyncNames;
-	kt::fixed_vector<std::string_view, std::size_t(graphics::Vsync::eCOUNT_)> vsyncNames;
-	for (auto const vs : kt::enumerate_enum<graphics::Vsync>()) {
+	ktl::fixed_vector<std::string_view, std::size_t(graphics::Vsync::eCOUNT_)> vsyncNames;
+	for (auto const vs : ktl::enumerate_enum<graphics::Vsync>()) {
 		if (rc.supported(vs)) { vsyncNames.push_back(vn[vs]); }
 	}
 	Combo vsyncCombo("vsync", vsyncNames, vn[vsync]);

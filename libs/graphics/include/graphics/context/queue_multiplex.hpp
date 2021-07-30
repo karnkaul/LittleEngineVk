@@ -3,7 +3,7 @@
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <graphics/qflags.hpp>
-#include <kt/fixed_vector/fixed_vector.hpp>
+#include <ktl/fixed_vector.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
@@ -37,7 +37,7 @@ class QueueMultiplex final {
 	u32 familyIndex(QType type) const noexcept { return queue(type).familyIndex; }
 	u32 arrayIndex(QType type) const noexcept { return queue(type).arrayIndex; }
 
-	kt::fixed_vector<u32, 3> familyIndices(QFlags flags) const;
+	ktl::fixed_vector<u32, 3> familyIndices(QFlags flags) const;
 
 	void submit(QType type, vk::ArrayProxy<vk::SubmitInfo const> const& infos, vk::Fence signal, bool lock);
 	vk::Result present(vk::PresentInfoKHR const& info, bool bLock);

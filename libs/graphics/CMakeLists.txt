@@ -18,9 +18,9 @@ target_include_directories(${PROJECT_NAME} SYSTEM
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		levk::core
+		levk::vulkan-hpp
 		spirv-cross-glsl
 		vma
-		levk::vulkan-hpp
 	PRIVATE
 		levk::interface
 		stb-image

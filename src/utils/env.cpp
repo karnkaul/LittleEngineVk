@@ -90,7 +90,7 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	return ret;
 }
 
-kt::result<io::Path, std::string> env::findData(io::Path pattern, u8 maxHeight) {
+ktl::result<io::Path, std::string> env::findData(io::Path pattern, u8 maxHeight) {
 	auto const root = os::dirPath(os::Dir::eExecutable);
 	auto data = io::FileReader::findUpwards(root, pattern, maxHeight);
 	if (!data) {

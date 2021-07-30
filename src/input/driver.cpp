@@ -87,7 +87,7 @@ bool Driver::KeySet::erase(Key k) noexcept {
 	return false;
 }
 
-void Driver::copy(KeySet const& in, kt::fixed_vector<KeyAct, 16>& out_keys, Action action) {
+void Driver::copy(KeySet const& in, ktl::fixed_vector<KeyAct, 16>& out_keys, Action action) {
 	for (KeyMods const& key : in.keys) {
 		if (key.key == Key::eUnknown) { continue; }
 		bool found = false;

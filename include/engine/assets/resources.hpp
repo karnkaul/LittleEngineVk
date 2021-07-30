@@ -7,7 +7,7 @@
 #include <core/io/reader.hpp>
 #include <core/not_null.hpp>
 #include <core/os.hpp>
-#include <kt/tmutex/shared_tmutex.hpp>
+#include <ktl/shared_tmutex.hpp>
 
 constexpr bool levk_resourceMonitor = levk_debug && levk_desktopOS;
 
@@ -55,7 +55,7 @@ class Resources {
   protected:
 	using ResourceMap = std::unordered_map<Hash, Resource>;
 
-	kt::shared_strict_tmutex<ResourceMap> m_loaded;
+	ktl::shared_strict_tmutex<ResourceMap> m_loaded;
 	io::FileReader m_fileReader;
 	io::Reader const* m_reader = nullptr;
 };

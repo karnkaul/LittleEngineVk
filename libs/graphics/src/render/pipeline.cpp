@@ -32,21 +32,21 @@ Pipeline::Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo info, 
 	if (setup(shader) && construct(m_metadata.main, pipe)) { m_storage.dynamic.main = {m_device, pipe}; }
 }
 
-kt::result<vk::Pipeline, void> Pipeline::constructVariant(Hash id, CreateInfo::Fixed const& fixed) {
-	if (id == Hash()) { return kt::null_result; }
+ktl::result<vk::Pipeline, void> Pipeline::constructVariant(Hash id, CreateInfo::Fixed const& fixed) {
+	if (id == Hash()) { return ktl::null_result; }
 	vk::Pipeline pipe;
 	CreateInfo info = m_metadata.main;
 	info.fixedState = fixed;
-	if (!construct(info, pipe)) { return kt::null_result; }
+	if (!construct(info, pipe)) { return ktl::null_result; }
 	m_metadata.variants[id] = std::move(info.fixedState);
 	m_storage.dynamic.variants[id] = {m_device, pipe};
 	return pipe;
 }
 
-kt::result<vk::Pipeline, void> Pipeline::variant(Hash id) const {
+ktl::result<vk::Pipeline, void> Pipeline::variant(Hash id) const {
 	if (id == Hash()) { return *m_storage.dynamic.main; }
 	if (auto it = m_storage.dynamic.variants.find(id); it != m_storage.dynamic.variants.end()) { return *it->second; }
-	return kt::null_result;
+	return ktl::null_result;
 }
 
 bool Pipeline::reconstruct(Shader const& shader) {

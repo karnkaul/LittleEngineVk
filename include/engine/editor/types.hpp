@@ -7,8 +7,8 @@
 #include <core/utils/string.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <engine/scene/scene_node.hpp>
-#include <kt/enum_flags/enum_flags.hpp>
-#include <kt/n_tree/n_tree.hpp>
+#include <ktl/enum_flags/enum_flags.hpp>
+#include <ktl/n_tree.hpp>
 
 #if defined(LEVK_EDITOR)
 constexpr bool levk_editor = true;
@@ -18,10 +18,10 @@ constexpr bool levk_editor = false;
 
 namespace le::edi {
 enum GUI { eOpen, eLeftClicked, eRightClicked };
-using GUIState = kt::enum_flags<GUI, u8>;
+using GUIState = ktl::enum_flags<GUI, u8>;
 
 enum class Style { eSameLine, eSeparator };
-using StyleFlags = kt::enum_flags<Style, u8>;
+using StyleFlags = ktl::enum_flags<Style, u8>;
 
 struct MenuList {
 	struct Menu {
@@ -30,7 +30,7 @@ struct MenuList {
 		bool separator = false;
 	};
 
-	using Tree = kt::n_tree<Menu>;
+	using Tree = ktl::n_tree<Menu>;
 
 	std::vector<Tree> trees;
 };

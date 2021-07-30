@@ -41,31 +41,4 @@ target_compile_definitions(${PROJECT_NAME} INTERFACE
 	>
 )
 
-# SPIR-V Cross
-FetchContent_Declare(
-	spirv-cross
-	GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
-	GIT_TAG 2020-09-17
-)
-if(NOT spirv-cross_POPULATED)
-	message(STATUS "== Fetching SPIR-V Cross")
-	FetchContent_Populate(spirv-cross)
-	set(SPIRV_CROSS_CLI OFF)
-	set(SPIRV_CROSS_ENABLE_CPP OFF)
-	set(SPIRV_CROSS_ENABLE_C_API OFF)
-	set(SPIRV_CROSS_ENABLE_GLSL ON)
-	set(SPIRV_CROSS_ENABLE_HLSL OFF)
-	set(SPIRV_CROSS_ENABLE_MSL OFF)
-	set(SPIRV_CROSS_ENABLE_REFLECT OFF)
-	set(SPIRV_CROSS_ENABLE_TESTS OFF)
-	set(SPIRV_CROSS_ENABLE_UTIL OFF)
-	set(SPIRV_CROSS_SHARED OFF)
-	set(SPIRV_CROSS_STATIC ON)
-	add_subdirectory("${spirv-cross_SOURCE_DIR}" "${spirv-cross_BINARY_DIR}")
-	if(LINUX_CLANG OR LINUX_GCC)
-		target_compile_options(spirv-cross-glsl PRIVATE -Wno-sign-conversion)
-	endif()
-	set(SPIRV-Cross_SOURCE "${spirv-cross_SOURCE_DIR}" CACHE STRING "SPIR-V Cross source (fetched)" FORCE)
-endif()
-
-message(STATUS "\n== Vulkan ${VK_LINK} ==\n\tHeaders      : ${Vulkan_INCLUDE_DIRS}\n\tLibraries    : ${Vulkan_LIBRARIES}\n\tSPIR-V Cross : ${SPIRV-Cross_SOURCE}\n")
+message(STATUS "\n== Vulkan ${VK_LINK} ==\n\tHeaders      : ${Vulkan_INCLUDE_DIRS}\n\tLibraries    : ${Vulkan_LIBRARIES}\n")

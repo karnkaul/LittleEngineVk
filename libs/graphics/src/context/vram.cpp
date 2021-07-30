@@ -161,7 +161,7 @@ void VRAM::blit(CommandBuffer cb, TPair<RenderImage> images, LayoutPair layouts,
 }
 
 void VRAM::waitIdle() {
-	while (m_transfer.update() > 0) { kt::kthread::yield(); }
+	while (m_transfer.update() > 0) { ktl::kthread::yield(); }
 }
 
 bool VRAM::update(bool force) {

@@ -164,7 +164,7 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 namespace {
 struct FontInfo {
 	io::Path atlasID;
-	kt::fixed_vector<graphics::Glyph, maths::max<u8>()> glyphs;
+	ktl::fixed_vector<graphics::Glyph, maths::max<u8>()> glyphs;
 	s32 orgSizePt = 0;
 };
 

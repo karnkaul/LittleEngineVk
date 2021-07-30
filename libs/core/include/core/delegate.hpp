@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
-#include <kt/monotonic_map/monotonic_map.hpp>
+#include <ktl/monotonic_map.hpp>
 
 namespace le {
 ///
@@ -12,7 +12,7 @@ template <typename... Args>
 class Delegate {
   public:
 	using Callback = std::function<void(Args...)>;
-	using Storage = kt::monotonic_map<Callback>;
+	using Storage = ktl::monotonic_map<Callback>;
 	using Tk = typename Storage::handle;
 
 	///

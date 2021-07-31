@@ -78,6 +78,7 @@ LittleEngineVk (`levk-engine`) is a library intended to be built from source and
 ### CMake submodules
 
 - [ktl](https://github.com/karnkaul/ktl)
+- [dtest](https://github.com/karnkaul/dtest)
 
 [Original repository](https://github.com/karnkaul/LittleEngineVk)
 

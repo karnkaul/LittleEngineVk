@@ -42,8 +42,12 @@ inline constexpr bool operator!=(Hash lhs, Hash rhs) noexcept { return !(lhs == 
 template <typename T>
 Hash::Hash(T const& t) {
 	if constexpr (std::is_convertible_v<T, std::string_view>) {
-		auto const str = std::string_view(t);
-		hash = str.empty() ? 0 : std::hash<std::string_view>{}(str);
+		if constexpr (std::is_null_pointer_v<T>) {
+			hash = 0;
+		} else {
+			auto const str = std::string_view(t);
+			hash = str.empty() ? 0 : std::hash<std::string_view>{}(str);
+		}
 	} else if constexpr (std::is_same_v<T, io::Path>) {
 		auto const str = t.generic_string();
 		hash = str.empty() ? 0 : std::hash<std::string>{}(str);

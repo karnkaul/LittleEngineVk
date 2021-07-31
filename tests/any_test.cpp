@@ -3,7 +3,7 @@
 #include <string>
 #include <core/maths.hpp>
 #include <core/std_types.hpp>
-#include <ktest/ktest.hpp>
+#include <dumb_test/dtest.hpp>
 #include <ktl/fixed_any.hpp>
 
 namespace {

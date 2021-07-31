@@ -13,9 +13,6 @@
 [submodule "libs/dtasks"]
 	path = libs/dtasks
 	url = https://github.com/karnkaul/dtasks
-[submodule "libs/core/include/kt/ktest"]
-	path = libs/ktest
-	url = https://github.com/karnkaul/ktest
 [submodule "libs/decf"]
 	path = libs/decf
 	url = https://github.com/karnkaul/decf

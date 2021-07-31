@@ -1,7 +1,7 @@
 #include <array>
 #include <bitset>
 #include <map>
-#include <ktest/ktest.hpp>
+#include <dumb_test/dtest.hpp>
 #include <ktl/monotonic_map.hpp>
 
 namespace {

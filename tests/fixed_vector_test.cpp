@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <iostream>
-#include <ktest/ktest.hpp>
+#include <dumb_test/dtest.hpp>
 #include <ktl/fixed_vector.hpp>
 
 namespace {
@@ -44,6 +44,7 @@ TEST(fixed_vector_trivial) {
 	auto vec1 = vec0;
 	EXPECT_EQ(vec0.size(), vec1.size());
 	EXPECT_EQ(vec0.begin(), vec0.cbegin());
+	EXPECT_EQ(vec0, vec1);
 	{
 		std::size_t idx = 0;
 		for (int& i : vec0) { EXPECT_EQ(i, vec1.at(idx++)); }

@@ -1,5 +1,5 @@
 #include <core/hash.hpp>
-#include <ktest/ktest.hpp>
+#include <dumb_test/dtest.hpp>
 
 namespace {
 using namespace le;

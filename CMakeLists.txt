@@ -176,6 +176,21 @@ else()
 	message(STATUS "ktl populated at: ${ktl_SOURCE_DIR}")
 endif()
 
+# dtest
+set(FETCHCONTENT_QUIET OFF)
+FetchContent_Declare(
+	dtest
+	GIT_REPOSITORY https://github.com/karnkaul/dtest
+	GIT_TAG origin/main
+	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/dtest"
+)
+FetchContent_MakeAvailable(dtest)
+FetchContent_GetProperties(dtest)
+if(NOT dtest_POPULATED)
+	message(FATAL_ERROR "Failed to populate dtest")
+else()
+	message(STATUS "dtest populated at: ${dtest_SOURCE_DIR}")
+endif()
 
 # libraries
 if(is_root_project AND NOT CI_BUILD)
@@ -187,7 +202,6 @@ add_subdirectory(libs/djson)
 add_subdirectory(libs/dtasks)
 add_subdirectory(libs/decf)
 add_subdirectory(libs/clap)
-add_subdirectory(libs/ktest)
 add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)

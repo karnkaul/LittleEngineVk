@@ -70,7 +70,7 @@ Colour colour(f32 const (&arr)[3], Colour fallback, f32 a = 1.0f) {
 	return Colour(glm::vec4(fallback.toVec3(), a));
 }
 
-glm::vec3 vec3(dj::json_t const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
+glm::vec3 vec3(dj::json const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
 	glm::vec3 ret = fallback;
 	if (auto const pVec = json.find(id)) {
 		if (auto x = pVec->find("x")) { ret.x = x->as<f32>(); }
@@ -266,7 +266,7 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Reader const& reader) {
 	auto res = reader.string(jsonID);
 	if (!res) { return std::string("JSON not found"); }
-	dj::json_t json;
+	dj::json json;
 	auto result = json.read(*res);
 	if (result.failure || !result.errors.empty() || !json.is_object()) { return std::string("Failed to read json: ") + result.to_string(); }
 	if (!json.contains("obj")) { return std::string("JSON missing obj"); }

@@ -168,7 +168,7 @@ struct FontInfo {
 	s32 orgSizePt = 0;
 };
 
-graphics::Glyph deserialise(u8 c, dj::json_t const& json) {
+graphics::Glyph deserialise(u8 c, dj::json const& json) {
 	graphics::Glyph ret;
 	ret.ch = c;
 	ret.st = {json["x"].as<s32>(), json["y"].as<s32>()};
@@ -180,7 +180,7 @@ graphics::Glyph deserialise(u8 c, dj::json_t const& json) {
 	return ret;
 }
 
-FontInfo deserialise(dj::json_t const& json) {
+FontInfo deserialise(dj::json const& json) {
 	FontInfo ret;
 	if (auto pAtlas = json.find("sheetID")) { ret.atlasID = pAtlas->as<std::string>(); }
 	if (auto pSize = json.find("size")) { ret.orgSizePt = pSize->as<s32>(); }
@@ -214,7 +214,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto text = info.resource(info.m_data.jsonID, Resource::Type::eText, true)) {
-		dj::json_t json;
+		dj::json json;
 		auto result = json.read(text->string());
 		if (result && result.errors.empty()) {
 			FontInfo const fi = deserialise(json);

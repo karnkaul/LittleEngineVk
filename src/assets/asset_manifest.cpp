@@ -22,7 +22,7 @@ void AssetManifest::append(AssetManifest const& rhs) {
 	m_textures = m_textures + rhs.m_textures;
 }
 
-std::size_t AssetManifest::preload(dj::json_t const& root) {
+std::size_t AssetManifest::preload(dj::json const& root) {
 	std::size_t ret{};
 	for (auto const& [groupName, entries] : root.as<dj::map_t>()) {
 		Group group;
@@ -48,7 +48,7 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* scheduler) {
 	std::size_t ret{};
 	if (auto eng = Services::locate<Engine>()) {
-		dj::json_t json;
+		dj::json json;
 		auto& resources = eng->store().resources();
 		auto res = resources.load(jsonID, Resource::Type::eText);
 		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }
@@ -62,7 +62,7 @@ std::size_t AssetManifest::unload(io::Path const& jsonID, dts::scheduler& schedu
 	wait(scheduler);
 	std::size_t count{};
 	if (auto eng = Services::locate<Engine>()) {
-		dj::json_t json;
+		dj::json json;
 		auto& resources = eng->store().resources();
 		auto res = resources.load(jsonID, Resource::Type::eText);
 		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }

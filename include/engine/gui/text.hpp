@@ -34,6 +34,7 @@ class Text : public TreeNode {
 };
 
 // impl
+
 inline void Text::set(std::string str, std::optional<Factory> factory) {
 	m_str = std::move(str);
 	if (factory) { set(std::move(*factory)); }

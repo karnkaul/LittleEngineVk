@@ -2,7 +2,7 @@
 #include <iterator>
 #include <utility>
 
-namespace le {
+namespace le::utils {
 template <typename Cont, typename I>
 class Enumerator {
   public:
@@ -84,4 +84,4 @@ class Enumerator<Cont, I>::iter_t {
 
 	friend class Enumerator;
 };
-} // namespace le
+} // namespace le::utils

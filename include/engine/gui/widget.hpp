@@ -7,10 +7,10 @@
 #include <engine/input/state.hpp>
 
 namespace le::gui {
-using OnClick = Delegate<>;
-
 class Widget : public Quad {
   public:
+	using OnClick = Delegate<Widget&>;
+
 	Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font);
 	Widget(Widget&&) = delete;
 	Widget& operator=(Widget&&) = delete;

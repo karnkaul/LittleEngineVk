@@ -31,6 +31,7 @@
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
+#include <engine/gui/dropdown.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
 
 namespace le::demo {
@@ -282,37 +283,14 @@ class TestView : public gui::View {
 		tf.size = 40U;
 		m_button->m_text->set("Button", tf);
 		m_button->refresh();
-		m_tk = m_button->onClick([this]() { setDestroyed(); });
+		m_tk = m_button->onClick([this](gui::Widget&) { setDestroyed(); });
 	}
 
 	TestView(TestView&&) = delete;
 	TestView& operator=(TestView&&) = delete;
 
 	gui::Widget* m_button{};
-	gui::OnClick::Tk m_tk;
-};
-
-class WidgetList : public gui::Widget {
-  public:
-	WidgetList(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept : gui::Widget(root, font) {}
-
-	template <typename T = gui::Widget, typename... Args>
-		requires(std::is_base_of_v<gui::Widget, T>)
-	T& add(glm::vec2 size = {200.0f, 50.0f}, Args&&... args) {
-		auto& t = push<T>(m_font, std::forward<Args>(args)...);
-		t.m_rect.size = size;
-		glm::vec2 offset{};
-		if (!m_items.empty()) {
-			gui::Widget const& widget = *m_items.back();
-			offset = widget.m_rect.anchor.offset - glm::vec2(0.0f, widget.m_rect.size.y);
-		}
-		t.m_rect.anchor.offset = offset;
-		m_items.push_back(&t);
-		return t;
-	}
-
-  protected:
-	std::vector<gui::Widget*> m_items;
+	gui::Widget::OnClick::Tk m_tk;
 };
 
 class App : public input::Receiver, public SceneRegistry {
@@ -430,6 +408,13 @@ class App : public input::Receiver, public SceneRegistry {
 		e0.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
 		auto& e1 = list.add();
 		e1.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;*/
+		gui::Dropdown::CreateInfo dci;
+		dci.quadStyle.at(gui::Status::eHover).Tf = colours::cyan;
+		dci.textFactory.size = 30U;
+		dci.options = {"zero", "one", "two", "three", "four"};
+		dci.selected = 2;
+		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
+		dropdown.m_rect.anchor.offset = {100.0f, -100.0f};
 
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{

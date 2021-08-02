@@ -3,7 +3,7 @@
 #include <core/std_types.hpp>
 
 namespace le::gui {
-enum class Status { eIdle, eHover, ePress, eHold, eRelease, eCOUNT_ };
+enum class Status { eIdle, eInactive, eHover, ePress, eHold, eRelease, eCOUNT_ };
 
 template <typename T>
 struct Style {

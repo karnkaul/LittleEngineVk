@@ -38,10 +38,12 @@ class TreeRoot : public utils::VBase, public utils::Owner<TreeNode> {
 		requires(is_derived_v<T>)
 	void forEachNode(Ret (T::*memberFunc)(Args...), Args&&... args) const {
 		for (auto& u : nodes()) {
-			if constexpr (std::is_same_v<std::remove_const_t<T>, TreeNode>) {
-				(u->*memberFunc)(std::forward<Args>(args)...);
-			} else {
-				if (auto t = dynamic_cast<T*>(u.get())) { (t->*memberFunc)(std::forward<Args>(args)...); }
+			if (u) {
+				if constexpr (std::is_same_v<std::remove_const_t<T>, TreeNode>) {
+					(u->*memberFunc)(std::forward<Args>(args)...);
+				} else {
+					if (auto t = dynamic_cast<T*>(u.get())) { (t->*memberFunc)(std::forward<Args>(args)...); }
+				}
 			}
 		}
 	}
@@ -66,6 +68,7 @@ class TreeNode : public TreeRoot {
 	glm::quat m_orientation = graphics::identity;
 	f32 m_zIndex = {};
 	bool m_hitTest = false;
+	bool m_active = true;
 
 	not_null<TreeRoot*> m_parent;
 

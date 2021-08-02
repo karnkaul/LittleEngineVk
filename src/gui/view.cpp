@@ -11,7 +11,17 @@ TreeNode* tryLeafHit(TreeNode& root, glm::vec2 point) noexcept {
 	}
 	return root.hit(point) ? &root : nullptr;
 }
+
+bool tryPop(TreeRoot& root, TreeNode const* node) noexcept {
+	if (root.pop(node)) { return true; }
+	for (auto& n : root.nodes()) {
+		if (tryPop(*n, node)) { return true; }
+	}
+	return false;
+}
 } // namespace
+
+bool View::popRecurse(TreeNode const* node) noexcept { return tryPop(*this, node); }
 
 TreeNode* View::leafHit(glm::vec2 point) const noexcept {
 	if (!destroyed()) {

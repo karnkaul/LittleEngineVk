@@ -68,11 +68,18 @@ Geometry TextFactory::generate(Span<Glyph const> glyphs, glm::ivec2 texSize, std
 
 glm::ivec2 TextFactory::glyphBounds(Span<Glyph const> glyphs, std::string_view text) const noexcept {
 	glm::ivec2 ret = {};
-	for (char c : text) {
-		std::size_t const idx = (std::size_t)c;
-		if (idx < glyphs.size()) {
-			ret.x = std::max(ret.x, glyphs[idx].cell.x);
-			ret.y = std::max(ret.y, glyphs[idx].cell.y);
+	if (text.empty()) {
+		for (auto const& glyph : glyphs) {
+			ret.x = std::max(ret.x, glyph.cell.x);
+			ret.y = std::max(ret.y, glyph.cell.y);
+		}
+	} else {
+		for (char c : text) {
+			std::size_t const idx = (std::size_t)c;
+			if (idx < glyphs.size()) {
+				ret.x = std::max(ret.x, glyphs[idx].cell.x);
+				ret.y = std::max(ret.y, glyphs[idx].cell.y);
+			}
 		}
 	}
 	return ret;
@@ -86,7 +93,7 @@ TextFactory::Layout TextFactory::layout(Span<Glyph const> glyphs, std::string_vi
 		if (text[idx] == '\n') { ++ret.lineCount; }
 	}
 	if (auto pPx = std::get_if<u32>(&size)) {
-		ret.scale = (f32)(*pPx) / (f32)ret.maxBounds.y;
+		ret.scale = (f32)(*pPx) / (f32)glyphBounds(glyphs).y;
 	} else {
 		ret.scale = std::get<f32>(size);
 	}

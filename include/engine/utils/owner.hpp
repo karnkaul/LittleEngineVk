@@ -25,11 +25,16 @@ class Owner {
 
 	template <typename Ty>
 		requires(is_derived_v<std::decay_t<Ty>>)
-	void pop(Ty const& t) noexcept {
+	bool pop(Ty const* t) noexcept {
 		if constexpr (std::is_same_v<container_t, std::vector<std::unique_ptr<type>, Ar...>>) {
-			std::erase_if(m_ts, [t](auto const& r) { return t == r.get(); });
+			return std::erase_if(m_ts, [t](auto const& r) { return t == r.get(); }) > 0;
 		} else {
-			m_ts.erase(std::find_if(m_ts.begin(), m_ts.end(), [t](auto const& r) { return t == r.get(); }));
+			auto it = std::find_if(m_ts.begin(), m_ts.end(), [t](auto const& r) { return t == r.get(); });
+			if (it != m_ts.end()) {
+				m_ts.erase();
+				return true;
+			}
+			return false;
 		}
 	}
 

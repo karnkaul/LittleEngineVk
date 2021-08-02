@@ -38,8 +38,9 @@ void Widget::refresh(input::State const* state) {
 }
 
 Status Widget::onInput(input::State const& state) {
+	if (!m_active) { return Status::eInactive; }
 	Status ret;
-	if (clicked(state, true, &ret)) { m_onClick(); }
+	if (clicked(state, true, &ret)) { m_onClick(*this); }
 	forEachNode<Widget>(&Widget::onInput, state);
 	return ret;
 }

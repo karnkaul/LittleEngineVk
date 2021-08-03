@@ -8,8 +8,8 @@
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/target.hpp>
 #include <graphics/resources.hpp>
+#include <ktl/expected.hpp>
 #include <ktl/fixed_vector.hpp>
-#include <ktl/result.hpp>
 
 namespace le::graphics {
 class VRAM;
@@ -67,7 +67,7 @@ class Swapchain {
 	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
-	ktl::result<Acquire> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
+	ktl::expected<Acquire, Flags> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
 	bool present(vk::Semaphore swait);
 	bool reconstruct(glm::ivec2 framebufferSize = {});
 	bool reconstruct(Vsync vsync, glm::ivec2 framebufferSize = {});

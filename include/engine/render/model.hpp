@@ -4,7 +4,7 @@
 #include <engine/scene/primitive.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
-#include <ktl/result.hpp>
+#include <ktl/expected.hpp>
 
 namespace le {
 namespace io {
@@ -16,6 +16,23 @@ class Sampler;
 
 class Model {
   public:
+	enum class Failcode {
+		eUnknown,
+		eJsonNotFound,
+		eJsonMissingData,
+		eJsonReadFailure,
+		eObjMtlReadFailure,
+		eTextureNotFound,
+		eObjNotFound,
+		eMtlNotFound,
+		eTextureCreateFailure
+	};
+
+	struct Error {
+		std::string message;
+		Failcode failcode{};
+	};
+
 	struct TexData;
 	struct MatData;
 	struct MeshData;
@@ -26,7 +43,7 @@ class Model {
 	using Texture = graphics::Texture;
 	using Mesh = graphics::Mesh;
 	template <typename T>
-	using Result = ktl::result<T, std::string>;
+	using Result = ktl::expected<T, Error>;
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
 

@@ -409,12 +409,13 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& e1 = list.add();
 		e1.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;*/
 		gui::Dropdown::CreateInfo dci;
+		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		dci.quadStyle.at(gui::Status::eHover).Tf = colours::cyan;
 		dci.textFactory.size = 30U;
-		dci.options = {"zero", "one", "two", "three", "four"};
+		dci.options = {"zero", "one", "two", "/bthree", "four"};
 		dci.selected = 2;
 		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
-		dropdown.m_rect.anchor.offset = {100.0f, -100.0f};
+		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
 
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{

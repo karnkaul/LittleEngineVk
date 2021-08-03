@@ -40,8 +40,7 @@ void RenderFence::associate(u32 imageIndex) {
 	busy(curr);
 }
 
-ktl::result<Swapchain::Acquire> RenderFence::acquire(Swapchain& swapchain, vk::Semaphore wait) {
-	if (swapchain.flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return ktl::null_result; }
+ktl::expected<Swapchain::Acquire, Swapchain::Flags> RenderFence::acquire(Swapchain& swapchain, vk::Semaphore wait) {
 	auto ret = swapchain.acquireNextImage(wait, drawFence()); // waited for by drawing (external) and associate
 	if (ret) { associate(ret->index); }
 	return ret;

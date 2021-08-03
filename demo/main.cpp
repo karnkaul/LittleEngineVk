@@ -7,11 +7,11 @@ int main(int argc, char const* const argv[]) {
 	if (env::init(argc, argv, {}) == env::Run::quit) { return 0; }
 	auto data = env::findData("demo/data");
 	if (!data) {
-		logE("FATAL: {}!", data.error());
+		logE("FATAL: Failed to locate data!");
 		return 1;
 	}
 	io::FileReader reader;
-	reader.mount(std::move(data).value());
+	reader.mount(std::move(*data));
 	if (!demo::run(reader)) { return 1; }
 	return 0;
 }

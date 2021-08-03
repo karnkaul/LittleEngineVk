@@ -100,7 +100,7 @@ class ARenderer {
 	};
 
 	Storage make(Transition transition, TPair<vk::Format> colourDepth = {}) const;
-	ktl::result<Swapchain::Acquire> acquire(bool begin = true);
+	ktl::expected<Swapchain::Acquire, Swapchain::Flags> acquire(bool begin = true);
 
 	Storage m_storage;
 	RenderFence m_fence;

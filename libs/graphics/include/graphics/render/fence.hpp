@@ -31,7 +31,7 @@ class RenderFence {
 	std::size_t index() const noexcept { return m_storage.index; }
 
 	void wait();
-	ktl::result<Swapchain::Acquire> acquire(Swapchain& swapchain, vk::Semaphore wait);
+	ktl::expected<Swapchain::Acquire, Swapchain::Flags> acquire(Swapchain& swapchain, vk::Semaphore wait);
 	bool present(Swapchain& swapchain, vk::SubmitInfo const& info, vk::Semaphore wait);
 	void refresh();
 

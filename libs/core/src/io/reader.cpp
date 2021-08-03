@@ -86,9 +86,9 @@ Reader::Reader(Reader const&) = default;
 Reader& Reader::operator=(Reader const&) = default;
 Reader::~Reader() = default;
 
-Reader::Result<std::string> Reader::string(io::Path const& id) const {
+std::optional<std::string> Reader::string(io::Path const& id) const {
 	if (auto str = sstream(id)) { return str->str(); }
-	return ktl::null_result;
+	return std::nullopt;
 }
 
 bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_value(); }
@@ -109,10 +109,10 @@ bool Reader::checkPresences(Span<io::Path const> ids) const {
 
 std::string_view Reader::medium() const { return m_medium; }
 
-Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path const> anyOf,
-												 [[maybe_unused]] u8 maxHeight) {
+std::optional<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path const> anyOf,
+												[[maybe_unused]] u8 maxHeight) {
 #if defined(LEVK_OS_ANDROID)
-	return ktl::null_result;
+	return std::nullopt;
 #else
 	for (auto const& name : anyOf) {
 		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
@@ -121,7 +121,7 @@ Reader::Result<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const
 		}
 	}
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
-	if (bEnd) { return ktl::null_result; }
+	if (bEnd) { return std::nullopt; }
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 #endif
 }
@@ -147,7 +147,7 @@ bool FileReader::mount([[maybe_unused]] io::Path path) {
 #endif
 }
 
-Reader::Result<bytearray> FileReader::bytes(io::Path const& id) const {
+std::optional<bytearray> FileReader::bytes(io::Path const& id) const {
 	if (auto path = findPrefixed(id)) {
 		std::ifstream file(path->generic_string(), std::ios::binary | std::ios::ate);
 		if (file.good()) {
@@ -158,10 +158,10 @@ Reader::Result<bytearray> FileReader::bytes(io::Path const& id) const {
 			return buf;
 		}
 	}
-	return ktl::null_result;
+	return std::nullopt;
 }
 
-Reader::Result<std::stringstream> FileReader::sstream(io::Path const& id) const {
+std::optional<std::stringstream> FileReader::sstream(io::Path const& id) const {
 	if (auto path = findPrefixed(id)) {
 		std::ifstream file(path->generic_string());
 		if (file.good()) {
@@ -170,15 +170,15 @@ Reader::Result<std::stringstream> FileReader::sstream(io::Path const& id) const 
 			return buf;
 		}
 	}
-	return ktl::null_result;
+	return std::nullopt;
 }
 
-Reader::Result<io::Path> FileReader::findPrefixed(io::Path const& id) const {
+std::optional<io::Path> FileReader::findPrefixed(io::Path const& id) const {
 	auto const paths = finalPaths(id);
 	for (auto const& path : paths) {
 		if (io::is_regular_file(path)) { return io::Path(path); }
 	}
-	return ktl::null_result;
+	return std::nullopt;
 }
 
 std::vector<io::Path> FileReader::finalPaths(io::Path const& id) const {
@@ -220,12 +220,12 @@ bool ZIPReader::mount(io::Path path) {
 	return false;
 }
 
-Reader::Result<io::Path> ZIPReader::findPrefixed(io::Path const& id) const {
+std::optional<io::Path> ZIPReader::findPrefixed(io::Path const& id) const {
 	if (PHYSFS_exists(id.generic_string().data()) != 0) { return io::Path(id); }
-	return ktl::null_result;
+	return std::nullopt;
 }
 
-Reader::Result<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
+std::optional<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
 	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile) {
@@ -238,10 +238,10 @@ Reader::Result<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
 		}
 		PHYSFS_close(pFile);
 	}
-	return ktl::null_result;
+	return std::nullopt;
 }
 
-Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
+std::optional<bytearray> ZIPReader::bytes(io::Path const& id) const {
 	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile) {
@@ -252,7 +252,7 @@ Reader::Result<bytearray> ZIPReader::bytes(io::Path const& id) const {
 		}
 		PHYSFS_close(pFile);
 	}
-	return ktl::null_result;
+	return std::nullopt;
 }
 
 AAssetReader::AAssetReader(ErasedPtr androidApp) : m_androidApp(androidApp) {
@@ -261,33 +261,33 @@ AAssetReader::AAssetReader(ErasedPtr androidApp) : m_androidApp(androidApp) {
 #endif
 }
 
-Reader::Result<bytearray> AAssetReader::bytes([[maybe_unused]] io::Path const& id) const {
+std::optional<bytearray> AAssetReader::bytes([[maybe_unused]] io::Path const& id) const {
 #if defined(LEVK_OS_ANDROID)
 	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) { return asset.bytes(); }
-	return ktl::null_result;
+	return std::nullopt;
 #else
-	return ktl::null_result;
+	return std::nullopt;
 #endif
 }
 
-Reader::Result<std::stringstream> AAssetReader::sstream([[maybe_unused]] io::Path const& id) const {
+std::optional<std::stringstream> AAssetReader::sstream([[maybe_unused]] io::Path const& id) const {
 #if defined(LEVK_OS_ANDROID)
 	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) { return asset.sstream(); }
-	return ktl::null_result;
+	return std::nullopt;
 #else
-	return ktl::null_result;
+	return std::nullopt;
 #endif
 }
 
-Reader::Result<io::Path> AAssetReader::findPrefixed([[maybe_unused]] io::Path const& id) const {
+std::optional<io::Path> AAssetReader::findPrefixed([[maybe_unused]] io::Path const& id) const {
 #if defined(LEVK_OS_ANDROID)
 	if (auto asset = AndroidAsset(unpack(m_androidApp), id)) {
 		return Path(id);
 	} else {
-		return ktl::null_result;
+		return std::nullopt;
 	}
 #else
-	return ktl::null_result;
+	return std::nullopt;
 #endif
 }
 

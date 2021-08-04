@@ -37,19 +37,19 @@ FileMonitor::Status FileMonitor::update() {
 			m_lastWriteTime = lastWriteTime;
 			if (m_mode == Mode::eTextContents) {
 				if (auto text = s_reader.string(m_path.generic_string())) {
-					if (*text == m_text) {
+					if (m_payload.contains<std::string>() && *text == m_payload.get<std::string>()) {
 						bDirty = false;
 					} else {
-						m_text = std::move(text).value();
+						m_payload = std::move(text).value();
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}
 			} else if (m_mode == Mode::eBinaryContents) {
 				if (auto bytes = s_reader.bytes(m_path.generic_string())) {
-					if (*bytes == m_bytes) {
+					if (m_payload.contains<bytearray>() && *bytes == m_payload.get<bytearray>()) {
 						bDirty = false;
 					} else {
-						m_bytes = std::move(bytes).value();
+						m_payload = std::move(bytes).value();
 						m_lastModifiedTime = m_lastWriteTime;
 					}
 				}
@@ -77,7 +77,7 @@ std::string_view FileMonitor::text() const {
 	if (m_mode != Mode::eTextContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
 	}
-	return m_text;
+	return m_payload.get<std::string>();
 }
 
 bytearray const& FileMonitor::bytes() const {
@@ -85,6 +85,6 @@ bytearray const& FileMonitor::bytes() const {
 	if (m_mode != Mode::eBinaryContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
 	}
-	return m_bytes;
+	return m_payload.get<bytearray>();
 }
 } // namespace le::io

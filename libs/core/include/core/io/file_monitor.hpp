@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <core/io/reader.hpp>
+#include <ktl/either.hpp>
 
 namespace le::io {
 namespace stdfs = std::filesystem;
@@ -72,8 +73,7 @@ class FileMonitor {
 	stdfs::file_time_type m_lastWriteTime = {};
 	stdfs::file_time_type m_lastModifiedTime = {};
 	stdfs::path m_path;
-	std::string m_text;
-	bytearray m_bytes;
+	ktl::either<std::string, bytearray> m_payload;
 	Mode m_mode;
 	Status m_status = Status::eNotFound;
 };

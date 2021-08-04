@@ -92,11 +92,7 @@ TextFactory::Layout TextFactory::layout(Span<Glyph const> glyphs, std::string_vi
 	for (std::size_t idx = 0; idx < text.size(); ++idx) {
 		if (text[idx] == '\n') { ++ret.lineCount; }
 	}
-	if (auto pPx = std::get_if<u32>(&size)) {
-		ret.scale = (f32)(*pPx) / (f32)glyphBounds(glyphs).y;
-	} else {
-		ret.scale = std::get<f32>(size);
-	}
+	size.visit([&](u32 u) { ret.scale = (f32)u / (f32)glyphBounds(glyphs).y; }, [&ret](f32 f) { ret.scale = f; });
 	ret.lineHeight = (f32)ret.maxBounds.y * ret.scale;
 	ret.linePad = nPadY * ret.lineHeight;
 	ret.textHeight = (f32)ret.lineHeight * ((f32)ret.lineCount + nPadY * f32(ret.lineCount - 1));

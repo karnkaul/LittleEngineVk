@@ -402,12 +402,6 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
 		[[maybe_unused]] auto& testView = stack.push<TestView>(&font.get());
-		/*auto& list = testView.push<WidgetList>(&font.get());
-		list.m_rect.anchor.offset = {100.0f, -100.0f};
-		auto& e0 = list.add();
-		e0.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
-		auto& e1 = list.add();
-		e1.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;*/
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		dci.quadStyle.at(gui::Status::eHover).Tf = colours::cyan;

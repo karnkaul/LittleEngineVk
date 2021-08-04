@@ -1,10 +1,10 @@
 #pragma once
-#include <variant>
-#include <core/colour.hpp>
-#include <core/maths.hpp>
+#include <optional>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <graphics/geometry.hpp>
+#include <graphics/render/rgba.hpp>
+#include <ktl/either.hpp>
 
 namespace le::graphics {
 struct Glyph {
@@ -18,7 +18,7 @@ struct Glyph {
 };
 
 struct TextFactory {
-	using Size = std::variant<u32, f32>;
+	using Size = ktl::either<u32, f32>;
 
 	struct Layout {
 		glm::ivec2 maxBounds = {};
@@ -34,7 +34,7 @@ struct TextFactory {
 	glm::vec2 align = {};
 	Size size = 1.0f;
 	f32 nYPad = 0.2f;
-	Colour colour = colours::white;
+	RGBA colour = colours::white;
 
 	Geometry generate(Span<Glyph const> glyphs, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;
 	glm::ivec2 glyphBounds(Span<Glyph const> glyphs, std::string_view text = {}) const noexcept;

@@ -36,8 +36,7 @@ class Dropdown : public Widget {
 			ensure(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
 			for (auto [entry, index] : utils::enumerate(m_options)) {
-				f32 const offset = itemOffset(entry, index);
-				add(m_flexbox->add<T>(m_rect.size, offset, std::forward<Args>(args)...), entry, index);
+				add(m_flexbox->add<T>(m_rect.size, itemPad(entry, index), std::forward<Args>(args)...), entry, index);
 			}
 			refresh();
 		}
@@ -51,7 +50,7 @@ class Dropdown : public Widget {
 	Quad* m_cover{};
 
   private:
-	f32 itemOffset(std::string& out_org, std::size_t index) const noexcept;
+	bool itemPad(std::string& out_org, std::size_t index) const noexcept;
 	void init(CreateInfoBase info);
 	void add(Widget& item, std::string_view text, std::size_t index);
 	void expand();

@@ -1,18 +1,18 @@
 #include <engine/gui/dropdown.hpp>
 
 namespace le::gui {
-f32 Dropdown::itemOffset(std::string& out_text, std::size_t index) const noexcept {
-	if (index == 0) { return 5.0f; }
+bool Dropdown::itemPad(std::string& out_text, std::size_t index) const noexcept {
+	if (index == 0) { return true; }
 	if (out_text.size() > 2 && out_text[0] == '/') {
 		switch (out_text[1]) {
 		case 'b': {
 			out_text = out_text.substr(2);
-			return 5.0f;
+			return true;
 		}
 		default: break;
 		}
 	}
-	return 0.0f;
+	return false;
 }
 
 void Dropdown::init(CreateInfoBase info) {

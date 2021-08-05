@@ -1,6 +1,7 @@
 #pragma once
 #include <core/utils/enumerate.hpp>
 #include <engine/gui/flexbox.hpp>
+#include <engine/gui/shape.hpp>
 
 namespace le::gui {
 class Dropdown : public Widget {
@@ -13,9 +14,13 @@ class Dropdown : public Widget {
 		std::vector<std::string> options;
 		std::size_t selected = 0;
 		struct TextColours {
-			Colour collapsed = colours::black;
-			Colour expanded = Colour(0x88888888);
+			graphics::RGBA collapsed = colours::black;
+			graphics::RGBA expanded = {Colour(0x88888888), graphics::RGBA::Type::eAbsolute};
 		} textColours;
+		struct CoverColours {
+			graphics::RGBA cover = {Colour(0x88888888), graphics::RGBA::Type::eAbsolute};
+			graphics::RGBA arrow = colours::white;
+		} coverColours;
 	};
 
 	template <typename T = Widget>
@@ -48,6 +53,7 @@ class Dropdown : public Widget {
 
 	Text::Factory m_textFactory;
 	Quad* m_cover{};
+	Shape* m_arrow{};
 
   private:
 	bool itemPad(std::string& out_org, std::size_t index) const noexcept;

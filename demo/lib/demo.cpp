@@ -410,7 +410,6 @@ class App : public input::Receiver, public SceneRegistry {
 		dci.selected = 2;
 		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
 		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
-
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;

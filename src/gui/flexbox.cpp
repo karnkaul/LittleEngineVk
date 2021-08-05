@@ -44,7 +44,7 @@ void Flexbox::resize() noexcept {
 		case Axis::eVert: size.y = std::abs(last.anchor.offset.y) + last.size.y * 0.5f + m_pad + 0.5f; break;
 		}
 	}
-	m_rect.size = {size.x, size.y};
+	m_rect.size = size;
 	m_rect.anchor.norm = m_axis == Axis::eVert ? glm::vec2(0.0f, -0.5f) : glm::vec2(0.5f, 0.0f);
 	m_rect.anchor.offset = m_axis == Axis::eVert ? glm::vec2(0.0f, -0.5 * m_rect.size.y) : glm::vec2(0.5f * m_rect.size.x, 0.0f);
 }

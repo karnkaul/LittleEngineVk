@@ -1,8 +1,16 @@
 #include <engine/gui/dropdown.hpp>
 
 namespace le::gui {
+namespace {
+graphics::Geometry makeArrow(f32 scale, graphics::RGBA colour) {
+	graphics::Geometry geom;
+	static constexpr glm::vec3 verts[] = {{-0.75f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.75f, 0.0f, 0.0f}};
+	for (auto const vert : verts) { geom.addVertex(graphics::Vertex{vert * scale, colour.toVec4()}); }
+	return geom;
+}
+} // namespace
+
 bool Dropdown::itemPad(std::string& out_text, std::size_t index) const noexcept {
-	if (index == 0) { return true; }
 	if (out_text.size() > 2 && out_text[0] == '/') {
 		switch (out_text[1]) {
 		case 'b': {
@@ -12,6 +20,7 @@ bool Dropdown::itemPad(std::string& out_text, std::size_t index) const noexcept 
 		default: break;
 		}
 	}
+	if (index == 0) { return true; }
 	return false;
 }
 
@@ -21,9 +30,11 @@ void Dropdown::init(CreateInfoBase info) {
 	m_rect.size = info.size;
 	m_textColours = info.textColours;
 	m_cover = &push<Quad>(false);
-	m_cover->m_material.Tf = m_textColours.expanded;
+	m_cover->m_material.Tf = info.coverColours.cover;
 	m_cover->m_rect.anchor.norm.x = 0.5f;
 	m_cover->m_rect.offset({m_rect.size.x * 0.12f, m_rect.size.y}, {-1.0f, 0.0f});
+	m_arrow = &m_cover->push<Shape>();
+	m_arrow->set(makeArrow(8.0f, info.coverColours.arrow));
 	info.flexbox.axis = Flexbox::Axis::eVert;
 	m_flexbox = &push<Flexbox>(m_font, std::move(info.flexbox));
 	f32 const yOffset = m_rect.size.y * 0.5f + m_rect.size.y * 0.5f + 0.5f; // +0.5f to round to next pixel
@@ -36,7 +47,9 @@ void Dropdown::init(CreateInfoBase info) {
 			collapse();
 		}
 	});
-	m_text->set(m_options[m_selected], m_textFactory);
+	std::string text = m_options[m_selected];
+	itemPad(text, 0);
+	m_text->set(std::move(text), m_textFactory);
 }
 
 void Dropdown::add(Widget& item, std::string_view text, std::size_t index) {

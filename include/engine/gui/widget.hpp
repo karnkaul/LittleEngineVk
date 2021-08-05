@@ -24,7 +24,7 @@ class Widget : public Quad {
 
 	struct {
 		Style<Material> quad;
-		Style<Colour> text;
+		Style<graphics::RGBA> text;
 	} m_styles;
 	struct {
 		time::Point point{};

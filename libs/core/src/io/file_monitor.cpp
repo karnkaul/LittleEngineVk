@@ -1,8 +1,11 @@
+#include <filesystem>
 #include <core/io/file_monitor.hpp>
 #include <core/log.hpp>
 #include <core/utils/string.hpp>
 
 namespace le::io {
+namespace stdfs = std::filesystem;
+
 namespace {
 bool rf([[maybe_unused]] stdfs::path const& path, [[maybe_unused]] std::error_code& err_code) { return stdfs::is_regular_file(path, err_code); }
 
@@ -11,16 +14,13 @@ stdfs::file_time_type lwt([[maybe_unused]] stdfs::path const& path, [[maybe_unus
 }
 } // namespace
 
-FileMonitor::FileMonitor(stdfs::path const& path, Mode mode) : m_path(path), m_mode(mode) {}
-
-FileMonitor::FileMonitor(FileMonitor&&) = default;
-FileMonitor& FileMonitor::operator=(FileMonitor&&) = default;
-FileMonitor::~FileMonitor() = default;
+FileMonitor::FileMonitor(Path path, Mode mode) : m_path(std::move(path)), m_mode(mode) {}
 
 FileMonitor::Status FileMonitor::update() {
 	std::error_code errCode;
-	if (rf(m_path, errCode)) {
-		auto const lastWriteTime = lwt(m_path, errCode);
+	stdfs::path const path(m_path.generic_string());
+	if (rf(path, errCode)) {
+		auto const lastWriteTime = lwt(path, errCode);
 		if (errCode) { return m_status; }
 		if (lastWriteTime != m_lastWriteTime || m_status == Status::eNotFound) {
 			bool bDirty = m_lastWriteTime != stdfs::file_time_type();
@@ -54,26 +54,20 @@ FileMonitor::Status FileMonitor::update() {
 	return m_status;
 }
 
-FileMonitor::Status FileMonitor::lastStatus() const { return m_status; }
-
-stdfs::file_time_type FileMonitor::lastWriteTime() const { return m_lastWriteTime; }
-
-stdfs::file_time_type FileMonitor::lastModifiedTime() const { return m_lastModifiedTime; }
-
-stdfs::path const& FileMonitor::path() const { return m_path; }
-
 std::string_view FileMonitor::text() const {
 	ensure(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eTextContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
+		return {};
 	}
 	return m_payload.get<std::string>();
 }
 
-bytearray const& FileMonitor::bytes() const {
+Span<std::byte const> FileMonitor::bytes() const {
 	ensure(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eBinaryContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FileReader>(), m_path.generic_string());
+		return {};
 	}
 	return m_payload.get<bytearray>();
 }

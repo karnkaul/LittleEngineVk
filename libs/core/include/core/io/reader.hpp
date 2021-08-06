@@ -125,22 +125,4 @@ class ZIPReader final : public Reader {
   private:
 	std::optional<io::Path> findPrefixed(io::Path const& id) const override;
 };
-
-///
-/// \brief Concrete class for Android AAsset IO
-///
-class AAssetReader final : public Reader {
-  public:
-	AAssetReader(ErasedPtr androidApp);
-
-  public:
-	std::optional<bytearray> bytes(io::Path const& id) const override;
-	std::optional<std::stringstream> sstream(io::Path const& id) const override;
-
-  private:
-	ErasedPtr m_androidApp;
-
-  private:
-	std::optional<io::Path> findPrefixed(io::Path const& id) const override;
-};
 } // namespace le::io

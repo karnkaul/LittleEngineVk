@@ -9,7 +9,7 @@
 #include <ktl/either.hpp>
 #include <ktl/shared_tmutex.hpp>
 
-constexpr bool levk_resourceMonitor = levk_debug && levk_desktopOS;
+constexpr bool levk_resourceMonitor = levk_debug;
 
 namespace le {
 class Resource {

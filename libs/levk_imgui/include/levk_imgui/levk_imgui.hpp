@@ -26,18 +26,18 @@ class Device;
 class CommandBuffer;
 } // namespace graphics
 namespace window {
-class DesktopInstance;
+class Instance;
 }
 
 class DearImGui final : public TMonoInstance<DearImGui> {
   public:
 	enum class State { eEnd, eBegin, eRender };
 
-	using Desktop = window::DesktopInstance;
+	using Window = window::Instance;
 	struct CreateInfo;
 
 	DearImGui();
-	DearImGui(not_null<graphics::Device*> device, not_null<Desktop const*> window, CreateInfo const& info);
+	DearImGui(not_null<graphics::Device*> device, not_null<Window const*> window, CreateInfo const& info);
 	DearImGui(DearImGui&&) = default;
 	DearImGui& operator=(DearImGui&&) = default;
 

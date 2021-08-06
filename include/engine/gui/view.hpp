@@ -42,7 +42,7 @@ class View : public TreeRoot {
 	enum class Block { eNone, eBlock };
 
 	View(not_null<ViewStack*> parent, Block block = {}) noexcept : m_block(block), m_parent(parent) {}
-	
+
 	bool popRecurse(TreeNode const* node) noexcept;
 
 	TreeNode* leafHit(glm::vec2 point) const noexcept;

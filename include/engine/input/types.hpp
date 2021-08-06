@@ -5,7 +5,7 @@
 #include <window/types.hpp>
 
 namespace le::window {
-class DesktopInstance;
+class Instance;
 }
 
 namespace le::input {
@@ -15,7 +15,7 @@ constexpr Actions actions_all = Actions(Action::ePressed, Action::eHeld, Action:
 
 enum class Focus { eUnchanged, eGained, eLost };
 using Gamepad = window::Gamepad;
-using Desktop = window::DesktopInstance;
+using Window = window::Instance;
 
 using Key = window::Key;
 using Axis = window::Axis;

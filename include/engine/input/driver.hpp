@@ -15,7 +15,7 @@ class Driver {
 			glm::vec2 scene{};
 		} size;
 		f32 renderScale = 1.0f;
-		Desktop const* desktop{};
+		Window const* win{};
 	};
 	struct Out {
 		Frame frame;

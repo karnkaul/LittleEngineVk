@@ -7,7 +7,6 @@ set(COMPILE_DEFS
 	$<$<CONFIG:Debug>:LEVK_DEBUG>
 	$<$<BOOL:${MSVC_RUNTIME}>:WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS>
 	# LEVK Flags
-	$<$<STREQUAL:${PLATFORM},Android>:LEVK_ANDROID>
 	$<$<BOOL:${LEVK_PRE_RELEASE}>:LEVK_PRE_RELEASE>
 )
 set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused -Wno-unknown-pragmas -Wno-deprecated-volatile)
@@ -31,7 +30,7 @@ endif()
 if(WINDOWS_CLANG AND MSVC)
 	list(APPEND COMPILE_OPTS /W4 -utf-8)
 endif()
-if(LINUX_CLANG AND NOT PLATFORM STREQUAL Android AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
+if(LINUX_CLANG AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "9.0.0")
 	# Ignore Vulkan.hpp warnings
 	message(STATUS "clang++ ${CMAKE_CXX_COMPILER_VERSION} detected; adding -Wno-deprecated-copy for vulkan.hpp")
 	list(APPEND COMPILE_OPTS -Wno-deprecated-copy)

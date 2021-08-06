@@ -44,10 +44,8 @@ ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering)
 	depthInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	depthInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
 	depthInfo.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	if constexpr (levk_desktopOS) {
-		depthInfo.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
-		depthInfo.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
-	}
+	depthInfo.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
+	depthInfo.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
 	depthInfo.createInfo.samples = vk::SampleCountFlagBits::e1;
 	depthInfo.createInfo.imageType = vk::ImageType::e2D;
 	depthInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;

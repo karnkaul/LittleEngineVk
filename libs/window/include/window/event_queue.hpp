@@ -11,14 +11,10 @@ struct Event {
 		eResize,
 		eSuspend,
 		eClose,
-		// Desktop only
 		eInput,
 		eText,
 		eCursor,
 		eScroll,
-		// Android only
-		eInit,
-		eTerm,
 	};
 	struct Resize : glm::uvec2 {
 		bool framebuffer;

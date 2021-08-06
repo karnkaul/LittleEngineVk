@@ -1,6 +1,5 @@
 #include <engine/input/control.hpp>
 #include <engine/input/state.hpp>
-#include <window/desktop_instance.hpp>
 
 namespace le::input {
 Trigger::Trigger(Key key, Action action, Mod mod) noexcept : Trigger(key, action, Mods::make(mod)) {}

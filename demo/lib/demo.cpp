@@ -16,7 +16,6 @@
 #include <graphics/render/renderers.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
-#include <window/bootstrap.hpp>
 
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
@@ -37,7 +36,7 @@
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
-enum class Flag { eClosed, eInit, eTerm, eDebug0 };
+enum class Flag { eClosed, eDebug0 };
 using Flags = ktl::enum_flags<Flag, u8>;
 
 static void poll(Flags& out_flags, window::EventQueue queue) {
@@ -47,8 +46,6 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 			out_flags.set(Flag::eClosed);
 			break;
 		}
-		case window::Event::Type::eInit: out_flags.set(Flag::eInit); break;
-		case window::Event::Type::eTerm: out_flags.set(Flag::eTerm); break;
 		default: break;
 		}
 	}
@@ -313,7 +310,6 @@ class App : public input::Receiver, public SceneRegistry {
 			cone->construct(graphics::makeCone());
 		}
 		m_eng->pushReceiver(this);
-		eng->m_win->show();
 
 		struct GFreeCam : edi::Gadget {
 			bool operator()(decf::entity entity, decf::registry& reg) override {
@@ -511,7 +507,7 @@ class App : public input::Receiver, public SceneRegistry {
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
 			} else {
-				cam.tick(state, dt, m_eng->desktop());
+				cam.tick(state, dt, &m_eng->window());
 			}
 			m_registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
@@ -582,41 +578,43 @@ struct FlagsInput : input::Receiver {
 	}
 };
 
-bool run(io::Reader const& reader, ErasedPtr androidApp) {
+bool run(io::Reader const& reader) {
 	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
 	try {
-		window::InstanceBase::CreateInfo winInfo;
-		winInfo.config.androidApp = androidApp;
-		winInfo.config.title = "levk demo";
-		winInfo.config.size = {1280, 720};
-		winInfo.options.bCentreCursor = true;
-		window::Instance winst(winInfo);
-		graphics::Bootstrap::CreateInfo bootInfo;
-		bootInfo.instance.extensions = winst.vkInstanceExtensions();
+		Engine::CreateInfo eci;
+		eci.winInfo.config.title = "levk demo";
+		eci.winInfo.config.size = {1280, 720};
+		eci.winInfo.options.centreCursor = true;
+		Engine engine(eci, &reader);
+		if (!engine.bootReady()) { return 1; }
+		Engine::Boot::CreateInfo bootInfo;
 		if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
 		bootInfo.instance.validation.logLevel = dl::level::info;
-		Engine engine(&winst, {}, &reader);
 		Flags flags;
 		FlagsInput flagsInput(flags);
 		engine.pushReceiver(&flagsInput);
-		std::optional<App> app;
-		DeltaTime dt;
-		while (true) {
-			poll(flags, engine.poll(true).residue);
-			if (flags.any(Flags(Flag::eClosed) | Flag::eTerm)) { break; }
-			if (flags.test(Flag::eInit) || (app && app->reboot())) {
-				if (app) {
-					logD("Rebooting...");
-					app.reset();
+		using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
+
+		bool reboot = false;
+		do {
+			// engine.boot(bootInfo);
+			engine.boot<renderer_t>(bootInfo);
+			App app(&engine);
+			DeltaTime dt;
+			std::optional<window::Instance> test;
+			while (!engine.closing()) {
+				poll(flags, engine.poll(true).residue);
+				if (flags.test(Flag::eClosed)) {
+					reboot = false;
+					break;
 				}
-				using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
-				engine.boot<renderer_t>(bootInfo);
-				// engine.boot(bootInfo);
-				app.emplace(&engine);
-				flags.reset(Flag::eInit);
+				if (app.reboot()) {
+					reboot = true;
+					break;
+				}
+				app.tick(++dt);
 			}
-			if (app) { app->tick(++dt); }
-		}
+		} while (reboot);
 	} catch (std::exception const& e) { logE("exception: {}", e.what()); }
 	return true;
 }

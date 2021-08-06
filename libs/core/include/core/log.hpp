@@ -27,12 +27,7 @@ void logE_if(Pred pred, std::string_view fmt, Args&&... args);
 namespace le::detail {
 template <typename... Args>
 void logImpl(dl::level level, std::string_view fmt, Args&&... args) {
-#if defined(LEVK_OS_ANDROID)
-	extern void logAndroid(dl::level level, std::string_view msg, std::string_view tag);
-	logAndroid(level, dl::format(level, fmt::format(fmt, std::forward<Args>(args)...)), "levk");
-#else
 	dl::log(level, fmt, std::forward<Args>(args)...);
-#endif
 }
 } // namespace le::detail
 

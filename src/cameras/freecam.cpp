@@ -1,11 +1,10 @@
 #include <core/maths.hpp>
 #include <engine/cameras/freecam.hpp>
 #include <engine/input/state.hpp>
-#include <window/desktop_instance.hpp>
 #include <window/instance.hpp>
 
 namespace le {
-void FreeCam::tick(input::State const& state, Time_s dt, [[maybe_unused]] Desktop* desktop) {
+void FreeCam::tick(input::State const& state, Time_s dt, Window* win) {
 	f32 const dt_ = dt.count();
 	auto const& s = m_params.xz_speed_limit;
 	m_params.xz_speed = std::clamp(m_params.xz_speed + state.cursor.scroll.y * 0.1f, s.x, s.y);
@@ -20,9 +19,7 @@ void FreeCam::tick(input::State const& state, Time_s dt, [[maybe_unused]] Deskto
 	}
 	if (m_controls.look_toggle(state)) { m_look = !m_look; }
 	bool const look = m_controls.look(state) || m_look;
-#if defined(LEVK_DESKTOP)
-	if (desktop) { desktop->cursorMode(look ? window::CursorMode::eDisabled : window::CursorMode::eDefault); }
-#endif
+	if (win) { win->cursorMode(look ? window::CursorMode::eDisabled : window::CursorMode::eDefault); }
 	if (look) {
 		if (!m_cursor.prev) { m_cursor.prev = state.cursor.position; }
 		glm::vec2 const dlook = 3.0f * m_params.look_sens * (state.cursor.position - *m_cursor.prev) * dt_;

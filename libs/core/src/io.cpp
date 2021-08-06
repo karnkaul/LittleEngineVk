@@ -56,14 +56,12 @@ dl::config::on_log::token g_token;
 } // namespace
 
 Service::Service([[maybe_unused]] Path logFilePath) {
-#if !defined(__ANDROID__)
 	if (!logFilePath.empty()) {
 		g_token = dl::config::g_on_log.add(&fileLog);
 		g_logFilePath = std::move(logFilePath);
 		g_fileLogger = FileLogger();
 		m_bActive = true;
 	}
-#endif
 }
 
 Service::Service(Service&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {}

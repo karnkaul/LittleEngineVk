@@ -10,16 +10,11 @@
 #include <graphics/mesh.hpp>
 #include <graphics/render/command_buffer.hpp>
 #include <graphics/utils/utils.hpp>
-#include <window/android_instance.hpp>
-#include <window/desktop_instance.hpp>
+#include <window/glue.hpp>
 
 namespace le {
 Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
-	return [&winst](vk::Instance vkinst) {
-		vk::SurfaceKHR ret;
-		winst.vkCreateSurface(&vkinst, &ret);
-		return ret;
-	};
+	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
 
 Version Engine::version() noexcept { return g_engineVersion; }
@@ -35,20 +30,22 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	return s_devices;
 }
 
-Engine::Engine(not_null<Window*> winInst, CreateInfo const& info, io::Reader const* custom) : m_win(winInst), m_io(info.logFile.value_or(io::Path())) {
-#if defined(LEVK_DESKTOP)
-	m_desktop = static_cast<Desktop*>(winInst.get());
-#endif
+Engine::Engine(CreateInfo const& info, io::Reader const* custom) : m_io(info.logFile.value_or(io::Path())) {
 	utils::g_log.minVerbosity = info.verbosity;
 	if (custom) { m_store.resources().reader(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
+	ensure(m_wm.ready(), "Window Manager not ready");
+	auto winInfo = info.winInfo;
+	winInfo.options.autoShow = false;
+	m_win = m_wm.make(winInfo);
 }
 
 Engine::~Engine() { unboot(); }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
+	if (!bootReady()) { return {}; }
 	f32 const rscale = m_gfx ? m_gfx->context.renderer().renderScale() : 1.0f;
-	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, m_desktop};
+	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_win};
 	auto ret = m_input.update(std::move(in), m_editor.view(), consume);
 	m_inputFrame = ret.frame;
 	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
@@ -63,7 +60,7 @@ void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_inputFrame);
 void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }
 
 bool Engine::drawReady() {
-	if (m_gfx) {
+	if (bootReady() && m_gfx) {
 		if (!m_gfx->context.ready(m_win->framebufferSize())) { return false; }
 		return true;
 	}
@@ -71,13 +68,12 @@ bool Engine::drawReady() {
 }
 
 bool Engine::nextFrame(graphics::RenderTarget* out) {
-	if (!m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
+	if (bootReady() && !m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
 		if (auto ret = m_gfx->context.beginFrame()) {
 			updateStats();
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 				ensure(b, "Failed to begin DearImGui frame");
-				ensure(m_desktop, "Invariant violated");
 				m_view = m_editor.update(m_inputFrame);
 			}
 			m_drawing = *ret;
@@ -108,16 +104,11 @@ bool Engine::unboot() noexcept {
 
 Extent2D Engine::framebufferSize() const noexcept {
 	if (m_gfx) { return m_gfx->context.extent(); }
-	return m_win->framebufferSize();
+	if (m_win) { return m_win->framebufferSize(); }
+	return {};
 }
 
-Extent2D Engine::windowSize() const noexcept {
-#if defined(LEVK_DESKTOP)
-	return m_desktop->windowSize();
-#else
-	return m_gfx ? m_gfx->context.extent() : Extent2D(0);
-#endif
-}
+Extent2D Engine::windowSize() const noexcept { return m_win->windowSize(); }
 
 void Engine::updateStats() {
 	m_stats.update();
@@ -136,18 +127,18 @@ void Engine::updateStats() {
 
 Engine::Boot::CreateInfo Engine::adjust(Boot::CreateInfo const& info) {
 	auto ret = info;
+	ret.instance.extensions = window::instanceExtensions(*m_win);
 	if (auto gpuOverride = DataStore::find<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
 	return ret;
 }
 
 void Engine::bootImpl() {
 	Services::track<Context, VRAM, AssetStore>(&m_gfx->context, &m_gfx->boot.vram, &m_store);
-#if defined(LEVK_DESKTOP)
 	DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPassUI());
 	dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
-	m_gfx->imgui = DearImGui(&m_gfx->boot.device, m_desktop, dici);
-#endif
+	m_gfx->imgui = DearImGui(&m_gfx->boot.device, &*m_win, dici);
 	addDefaultAssets();
+	m_win->show();
 }
 
 void Engine::addDefaultAssets() {

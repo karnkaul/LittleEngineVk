@@ -2,7 +2,7 @@
 #include <core/maths.hpp>
 #include <engine/editor/resizer.hpp>
 #include <levk_imgui/levk_imgui.hpp>
-#include <window/desktop_instance.hpp>
+#include <window/instance.hpp>
 
 namespace le::edi {
 using Key = window::Key;
@@ -41,7 +41,7 @@ f32 clampLeft(f32 left, f32 scale, f32 fbx, f32 offset) noexcept {
 }
 } // namespace
 
-bool Resizer::operator()([[maybe_unused]] window::DesktopInstance& out_w, Viewport& out_vp, input::Frame const& frame) {
+bool Resizer::operator()([[maybe_unused]] window::Instance& out_w, Viewport& out_vp, input::Frame const& frame) {
 	auto const& size = frame.space.display.window;
 	glm::vec2 const nCursor = {frame.state.cursor.screenPos.x / size.x, frame.state.cursor.screenPos.y / size.y};
 	CursorType toSet = CursorType::eDefault;
@@ -88,9 +88,7 @@ bool Resizer::operator()([[maybe_unused]] window::DesktopInstance& out_w, Viewpo
 		default: break;
 		}
 	}
-#if defined(LEVK_DESKTOP)
 	out_w.cursorType(toSet);
-#endif
 	return m_handle > Handle::eNone;
 }
 

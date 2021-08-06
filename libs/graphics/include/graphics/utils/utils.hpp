@@ -15,8 +15,6 @@
 #include <ktl/fixed_vector.hpp>
 #include <spirv_cross.hpp>
 
-inline constexpr bool levk_shaderCompiler = levk_desktopOS;
-
 namespace le::graphics {
 struct Shader::Resources {
 	spirv_cross::ShaderResources resources;

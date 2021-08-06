@@ -54,19 +54,17 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 	for (auto& [type, id] : info.m_data.shaderPaths) {
 		auto path = id;
 		if (isGlsl(path)) {
-			if constexpr (levk_shaderCompiler) {
-				if (!fr && !(fr = dynamic_cast<io::FileReader const*>(&info.reader()))) {
-					// cannot compile shaders without FileReader
-					path = graphics::utils::spirVpath(id);
-				} else {
-					// ensure resource presence (and add monitor if supported)
-					if (!info.resource(id, Resource::Type::eText, true)) { return std::nullopt; }
-					path = spirvPath(id, *fr);
-				}
-			} else {
-				// fallback to previously compiled shader
+			if (!fr && !(fr = dynamic_cast<io::FileReader const*>(&info.reader()))) {
+				// cannot compile shaders without FileReader
 				path = graphics::utils::spirVpath(id);
+			} else {
+				// ensure resource presence (and add monitor if supported)
+				if (!info.resource(id, Resource::Type::eText, true)) { return std::nullopt; }
+				path = spirvPath(id, *fr);
 			}
+		} else {
+			// fallback to previously compiled shader
+			path = graphics::utils::spirVpath(id);
 		}
 		auto res = info.resource(path, Resource::Type::eBinary, false, true);
 		if (!res) { return std::nullopt; }

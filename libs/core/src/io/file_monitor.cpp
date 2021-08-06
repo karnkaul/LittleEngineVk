@@ -4,20 +4,10 @@
 
 namespace le::io {
 namespace {
-bool rf([[maybe_unused]] stdfs::path const& path, [[maybe_unused]] std::error_code& err_code) {
-#if defined(__ANDROID__)
-	return false;
-#else
-	return stdfs::is_regular_file(path, err_code);
-#endif
-}
+bool rf([[maybe_unused]] stdfs::path const& path, [[maybe_unused]] std::error_code& err_code) { return stdfs::is_regular_file(path, err_code); }
 
 stdfs::file_time_type lwt([[maybe_unused]] stdfs::path const& path, [[maybe_unused]] std::error_code& err_code) {
-#if defined(__ANDROID__)
-	return {};
-#else
 	return stdfs::last_write_time(path, err_code);
-#endif
 }
 } // namespace
 

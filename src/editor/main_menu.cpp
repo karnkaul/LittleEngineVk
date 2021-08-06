@@ -5,7 +5,6 @@
 #include <core/utils/string.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
-#include <window/desktop_instance.hpp>
 #endif
 
 namespace le::edi {
@@ -50,7 +49,7 @@ MainMenu::MainMenu() {
 	MenuList::Menu stats{"Show Stats", []() { g_showStats = true; }};
 	MenuList::Menu demo{"Show ImGui Demo", []() { showDemo(); }};
 	MenuList::Menu close{"Close Editor", []() { Services::locate<Engine>()->editor().engage(false); }, true};
-	MenuList::Menu quit{"Quit", []() { Services::locate<Engine>()->desktop()->close(); }};
+	MenuList::Menu quit{"Quit", []() { Services::locate<Engine>()->window().close(); }};
 	main.push_front(quit);
 	main.push_front(close);
 	main.push_front(demo);

@@ -12,7 +12,7 @@
 
 namespace le {
 namespace window {
-class DesktopInstance;
+class Instance;
 }
 namespace graphics {
 struct ScreenView;

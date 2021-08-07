@@ -14,7 +14,9 @@ constexpr EnumArray<Resizer::Handle, CursorType, 6> handleCursor = {CursorType::
 																	CursorType::eResizeNS, CursorType::eResizeNESW, CursorType::eResizeNWSE};
 
 [[nodiscard]] Resizer::Handle endResize() {
-	IMGUI(ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange);
+#if defined(LEVK_USE_IMGUI)
+	ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+#endif
 	return Resizer::Handle::eNone;
 }
 
@@ -110,7 +112,9 @@ CursorType Resizer::check(Viewport& out_vp, input::Frame const& frame) {
 
 void Resizer::check(Viewport& out_vp, CursorType& out_c, bool active, Handle h, bool click) {
 	if (active) {
-		IMGUI(ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange);
+#if defined(LEVK_USE_IMGUI)
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+#endif
 		out_c = handleCursor[h];
 		if (click) {
 			m_prev = out_vp;

@@ -54,8 +54,6 @@ class Editor {
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
 
-	bool draw(graphics::CommandBuffer cb) const;
-
 	Rail m_left = {{}, "Left"};
 	Rail m_right = {{}, "Right"};
 	edi::MenuList m_menu;

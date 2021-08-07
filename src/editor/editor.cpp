@@ -336,13 +336,8 @@ Editor::Editor() {
 	m_right.panel.attach<edi::Inspector>("Inspector");
 }
 
-bool Editor::draw(graphics::CommandBuffer cb) const {
-	if constexpr (levk_imgui) { return DearImGui::draw(cb); }
-	return false;
-}
-
 bool Editor::active() const noexcept {
-	if constexpr (levk_imgui) { return DearImGui::inst() != nullptr; }
+	if constexpr (levk_imgui) { return true; }
 	return false;
 }
 

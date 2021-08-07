@@ -18,7 +18,7 @@ struct PhysfsHandle final {
 };
 
 PhysfsHandle::PhysfsHandle() {
-	if (PHYSFS_init(os::argv0().data()) != 0) {
+	if (PHYSFS_init(os::environment().arg0.data()) != 0) {
 		bInit = true;
 		logI("[le::io] PhysFS initialised");
 	} else {

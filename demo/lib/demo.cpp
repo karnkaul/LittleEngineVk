@@ -580,42 +580,39 @@ struct FlagsInput : input::Receiver {
 
 bool run(io::Reader const& reader) {
 	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
-	try {
-		Engine::CreateInfo eci;
-		eci.winInfo.config.title = "levk demo";
-		eci.winInfo.config.size = {1280, 720};
-		eci.winInfo.options.centreCursor = true;
-		Engine engine(eci, &reader);
-		if (!engine.bootReady()) { return 1; }
-		Engine::Boot::CreateInfo bootInfo;
-		if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
-		bootInfo.instance.validation.logLevel = dl::level::info;
-		Flags flags;
-		FlagsInput flagsInput(flags);
-		engine.pushReceiver(&flagsInput);
+	Engine::CreateInfo eci;
+	eci.winInfo.config.title = "levk demo";
+	eci.winInfo.config.size = {1280, 720};
+	eci.winInfo.options.centreCursor = true;
+	Engine engine(eci, &reader);
+	if (!engine.bootReady()) { return false; }
+	Flags flags;
+	FlagsInput flagsInput(flags);
+	engine.pushReceiver(&flagsInput);
+	bool reboot = false;
+	Engine::Boot::CreateInfo bootInfo;
+	if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
+	bootInfo.instance.validation.logLevel = dl::level::info;
+	do {
 		using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
-
-		bool reboot = false;
-		do {
-			// engine.boot(bootInfo);
-			engine.boot<renderer_t>(bootInfo);
-			App app(&engine);
-			DeltaTime dt;
-			std::optional<window::Instance> test;
-			while (!engine.closing()) {
-				poll(flags, engine.poll(true).residue);
-				if (flags.test(Flag::eClosed)) {
-					reboot = false;
-					break;
-				}
-				if (app.reboot()) {
-					reboot = true;
-					break;
-				}
-				app.tick(++dt);
+		// engine.boot(bootInfo);
+		engine.boot<renderer_t>(bootInfo);
+		App app(&engine);
+		DeltaTime dt;
+		std::optional<window::Instance> test;
+		while (!engine.closing()) {
+			poll(flags, engine.poll(true).residue);
+			if (flags.test(Flag::eClosed)) {
+				reboot = false;
+				break;
 			}
-		} while (reboot);
-	} catch (std::exception const& e) { logE("exception: {}", e.what()); }
+			if (app.reboot()) {
+				reboot = true;
+				break;
+			}
+			app.tick(++dt);
+		}
+	} while (reboot);
 	return true;
 }
 } // namespace le::demo

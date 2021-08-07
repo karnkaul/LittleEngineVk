@@ -13,64 +13,28 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#if defined(LEVK_OS_ANDROID)
-#include <android_native_app_glue.h>
-#endif
 #endif
 
 namespace le {
 namespace {
-io::Path g_exeLocation;
-io::Path g_exePath;
-io::Path g_workingDir;
-std::string g_exePathStr;
-os::Args g_args;
+os::Environment g_env;
 } // namespace
 
-void os::args(Args args) {
-	g_workingDir = io::absolute(io::current_path());
-	g_args = args;
-	if (!g_args.empty()) {
-		io::Path const arg0 = io::absolute(g_args[0]);
+void os::environment(Args args) {
+	g_env.paths.pwd = io::absolute(io::current_path());
+	g_env.args = args;
+	if (!g_env.args.empty()) {
+		g_env.arg0 = g_env.args[0];
+		io::Path const arg0 = io::absolute(g_env.arg0);
 		if (!arg0.empty() && io::is_regular_file(arg0)) {
-			g_exePath = arg0.parent_path();
-			while (g_exePath.filename().string() == ".") { g_exePath = g_exePath.parent_path(); }
-			g_exeLocation = g_exePath / arg0.filename();
+			auto bin = arg0.parent_path();
+			while (bin.filename().string() == ".") { bin = bin.parent_path(); }
+			g_env.paths.exe = std::move(bin) / arg0.filename();
 		}
 	}
 }
 
-std::string os::argv0() { return g_exeLocation.generic_string(); }
-
-std::string os::exeName() { return g_exeLocation.filename().string(); }
-
-os::Args os::args() noexcept { return g_args; }
-
-io::Path os::dirPath(Dir dir) {
-	switch (dir) {
-	default:
-	case os::Dir::eWorking:
-		if (g_workingDir.empty()) { g_workingDir = io::absolute(io::current_path()); }
-		return g_workingDir;
-	case os::Dir::eExecutable:
-		if (g_exePath.empty()) {
-			logW("[OS] Unknown executable path! Using working directory instead [{}]", g_workingDir.generic_string());
-			g_exePath = dirPath(Dir::eWorking);
-		}
-		return g_exePath;
-	}
-}
-
-io::Path os::androidStorage([[maybe_unused]] ErasedPtr androidApp, [[maybe_unused]] bool bExternal) {
-#if defined(LEVK_OS_ANDROID)
-	if (androidApp.contains<android_app*>()) {
-		if (android_app* pApp = androidApp.get<android_app*>(); pApp->activity) {
-			return bExternal ? pApp->activity->externalDataPath : pApp->activity->internalDataPath;
-		}
-	}
-#endif
-	return io::Path();
-}
+os::Environment const& os::environment() noexcept { return g_env; }
 
 bool os::debugging() {
 	bool ret = false;

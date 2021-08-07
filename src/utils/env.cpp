@@ -12,7 +12,7 @@ namespace le {
 env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	Run ret = Run::resume;
 	DataStore::set("vsync", graphics::Vsync::eTripleBuffer);
-	os::args(os::Args(argv, std::size_t(argc)));
+	os::environment(os::Args(argv, std::size_t(argc)));
 	{
 		Spec::cmd_t gpu;
 		gpu.description = "List / select from available GPUs";
@@ -46,7 +46,7 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	}
 	Spec spec;
 	spec.main.version = Engine::version().toString(false);
-	spec.main.exe = os::exeName();
+	spec.main.exe = os::environment().paths.exe.filename().generic_string();
 	spec.commands = std::move(cmds);
 	{
 		Spec::opt_t vsync;
@@ -91,8 +91,7 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 }
 
 std::optional<io::Path> env::findData(io::Path pattern, u8 maxHeight) {
-	auto const root = os::dirPath(os::Dir::eExecutable);
-	auto data = io::FileReader::findUpwards(root, pattern, maxHeight);
+	auto data = io::FileReader::findUpwards(os::environment().paths.bin(), pattern, maxHeight);
 	if (!data) { return std::nullopt; }
 	return std::move(data).value();
 }

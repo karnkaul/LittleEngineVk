@@ -1,4 +1,5 @@
 #include <core/log.hpp>
+#include <core/utils/execute.hpp>
 #include <demo.hpp>
 #include <engine/utils/env.hpp>
 
@@ -12,6 +13,5 @@ int main(int argc, char const* const argv[]) {
 	}
 	io::FileReader reader;
 	reader.mount(std::move(*data));
-	if (!demo::run(reader)) { return 1; }
-	return 0;
+	return utils::Execute([&reader]() { return demo::run(reader) ? 0 : 1; });
 }

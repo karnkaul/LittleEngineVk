@@ -73,18 +73,28 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 	return spirV;
 }
 
+namespace {
+void setup(graphics::Pipeline::CreateInfo::Fixed& out, AssetLoadData<graphics::Pipeline>::Variant const& variant) {
+	out.topology = variant.topology;
+	out.rasterizerState.polygonMode = variant.polygonMode;
+	if (variant.lineWidth > 0.0f) { out.rasterizerState.lineWidth = variant.lineWidth; }
+}
+} // namespace
+
 std::unique_ptr<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoadInfo<graphics::Pipeline> const& info) const {
 	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
 		info.reloadDepend(shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
 		pipeInfo.renderPass = info.m_data.gui ? info.m_data.context->renderer().renderPassUI() : info.m_data.context->renderer().renderPass3D();
+		setup(pipeInfo.fixedState, info.m_data.main);
 		auto ret = info.m_data.context->makePipeline(info.m_data.name, *shader, pipeInfo);
-		if (info.m_data.wireframe > 0.0f) {
-			auto fixed = ret.fixedState();
-			fixed.rasterizerState.lineWidth = info.m_data.wireframe;
-			fixed.rasterizerState.polygonMode = vk::PolygonMode::eLine;
-			auto const res = ret.constructVariant("wireframe", fixed);
-			ensure(res.has_value(), "Pipeline variant construction failure");
+		for (auto const& variant : info.m_data.variants) {
+			if (variant.id > Hash()) {
+				auto fixed = ret.fixedState();
+				setup(fixed, variant);
+				auto const res = ret.constructVariant(variant.id, fixed);
+				ensure(res.has_value(), "Pipeline variant construction failure");
+			}
 		}
 		return std::make_unique<graphics::Pipeline>(std::move(ret));
 	}

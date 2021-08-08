@@ -45,6 +45,12 @@
 			]
 		},
 		{
+			"id": "pipelines/wireframe",
+			"shader": "shaders/basic",
+			"line_width": 3,
+			"topology": "line_list"
+		},
+		{
 			"id": "pipelines/tex",
 			"shader": "shaders/tex",
 			"flags": [
@@ -57,7 +63,12 @@
 			"flags": [
 				"all"
 			],
-			"wireframe": 3
+			"variants": {
+				"wireframe": {
+					"line_width": 3,
+					"polygon_mode": "line"
+				}
+			}
 		},
 		{
 			"id": "pipelines/ui",

@@ -151,7 +151,7 @@ bool Pipeline::construct(CreateInfo& out_info, vk::Pipeline& out_pipe) {
 	}
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
 	{
-		inputAssemblyState.topology = vk::PrimitiveTopology::eTriangleList;
+		inputAssemblyState.topology = out_info.fixedState.topology;
 		inputAssemblyState.primitiveRestartEnable = false;
 	}
 	vk::PipelineViewportStateCreateInfo viewportState;

@@ -308,6 +308,8 @@ class App : public input::Receiver, public SceneRegistry {
 			cube->construct(graphics::makeCube(0.5f));
 			auto cone = m_eng->store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
 			cone->construct(graphics::makeCone());
+			auto wf_cube = m_eng->store().add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&eng->gfx().boot.vram));
+			wf_cube->construct(graphics::makeCube(1.0f, {}, colours::green.toVec3(), graphics::Topology::eLineList));
 		}
 		m_eng->pushReceiver(this);
 
@@ -464,6 +466,10 @@ class App : public input::Receiver, public SceneRegistry {
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
+		}
+		{
+			DrawLayer wireframe{&*m_eng->store().find<graphics::Pipeline>("pipelines/wireframe"), 5};
+			spawn("wireframes/cube", "wireframes/cube", {}, wireframe);
 		}
 	}
 

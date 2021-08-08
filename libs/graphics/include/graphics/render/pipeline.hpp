@@ -31,6 +31,7 @@ class Pipeline final {
 			vk::PipelineMultisampleStateCreateInfo multisamplerState;
 			vk::PipelineColorBlendAttachmentState colorBlendAttachment;
 			vk::PipelineDepthStencilStateCreateInfo depthStencilState;
+			vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
 			std::unordered_set<vk::DynamicState> dynamicStates;
 		};
 

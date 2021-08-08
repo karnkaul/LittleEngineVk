@@ -30,12 +30,20 @@ struct AssetLoader<graphics::Shader> {
 
 template <>
 struct AssetLoadData<graphics::Pipeline> {
+	struct Variant {
+		f32 lineWidth = 1.0f;
+		vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+		vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
+		Hash id;
+	};
+
 	std::optional<graphics::Pipeline::CreateInfo> info;
 	std::string name;
+	Variant main;
+	std::vector<Variant> variants;
 	graphics::PFlags flags;
 	not_null<graphics::RenderContext*> context;
 	Hash shaderID;
-	f32 wireframe = 0.0f;
 	bool gui = false;
 
 	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}

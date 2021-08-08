@@ -8,7 +8,6 @@ namespace le::env {
 using Spec = clap::interpreter::spec_t;
 using Run = clap::interpreter::result;
 
-
 Run init(int argc, char const* const argv[], Spec::cmd_map_t cmds);
 
 ///

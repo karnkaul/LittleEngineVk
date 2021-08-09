@@ -293,78 +293,127 @@ namespace le::gui {
 class Dialogue : public View {
   public:
 	struct CreateInfo;
-	using OnSelect = Delegate<Dialogue&, std::size_t>;
+	struct ButtonInfo {
+		glm::vec2 size = {150.0f, 35.0f};
+		Text::Size textSize = 25U;
+		Hash style;
+	};
 
 	Dialogue(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info);
 
+	[[nodiscard]] Widget::OnClick::Tk addButton(std::string text, Widget::OnClick::Callback const& onClick);
+
   protected:
+	void onUpdate(input::Frame const& frame) override;
+
 	struct Header {
-		Quad* bg{};
-		Text* text{};
+		Widget* title{};
 		Widget* close{};
 	};
-	struct Content {
-		Quad* bg{};
-		Text* text{};
-	};
 	struct Footer {
-		Quad* bg{};
+		Widget* bg{};
 		std::vector<Widget*> buttons;
 	};
-	std::vector<OnSelect> m_onSelect;
+	struct {
+		glm::vec2 prev{};
+		glm::vec2 start{};
+		glm::vec2 delta{};
+		bool moving = false;
+	} m_originDelta;
 	Header m_header;
-	Content m_content;
+	Widget* m_content{};
 	Footer m_footer;
+	ButtonInfo m_buttonInfo;
+	Widget::OnClick::Tk m_closeToken;
+	not_null<BitmapFont const*> m_font;
 };
 
 struct Dialogue::CreateInfo {
 	struct Content {
-		graphics::TextFactory textFactory;
 		std::string text;
-		glm::vec2 size = {500.0f, 300.0f};
-		graphics::RGBA background = colours::white;
+		glm::vec2 size = {500.0f, 200.0f};
+		Text::Size textSize = 25U;
+		Hash style;
 	};
 	struct Header {
-		graphics::TextFactory textFactory;
 		std::string text;
 		f32 height = 50.0f;
 		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
-	};
-	struct Button {
-		graphics::TextFactory textFactory;
-		std::string text;
-		InteractStyle<Material> style;
-		glm::vec2 size = {200.0f, 25.0f};
+		Text::Size textSize = 30U;
+		Hash style;
 	};
 	struct Footer {
-		std::vector<Button> buttons;
-		f32 height = 50.0f;
+		f32 height = 60.0f;
 		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
+		Hash style;
 	};
 
 	Header header;
 	Content content;
 	Footer footer;
+	ButtonInfo buttonInfo;
 };
 
-Dialogue::Dialogue(not_null<ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info) : View(parent) {
-	m_content.bg = &push<Quad>();
-	m_content.bg->m_rect.size = info.content.size;
-	m_content.bg->m_material.Tf = info.content.background;
-	m_content.text = &m_content.bg->push<Text>(font);
-	m_content.text->set(info.content.text, info.content.textFactory);
+Dialogue::Dialogue(not_null<ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info)
+	: View(parent, Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
+	m_content = &push<Widget>(font, info.content.style);
+	m_content->m_rect.size = info.content.size;
+	m_content->m_style.text.base.size = info.content.textSize;
+	m_content->m_text->set(info.content.text);
+	m_content->m_interact = false;
 
-	m_header.bg = &m_content.bg->push<Quad>();
-	m_header.bg->m_rect.size = {info.content.size.x, info.header.height};
-	m_header.bg->m_rect.anchor.norm.y = 0.5f;
-	m_header.bg->m_material.Tf = info.header.background;
-	m_header.text = &m_header.bg->push<Text>(font);
-	m_header.text->set(info.header.text, info.header.textFactory);
+	m_header.title = &m_content->push<Widget>(font, info.header.style);
+	m_header.title->m_rect.size = {info.content.size.x, info.header.height};
+	m_header.title->m_rect.anchor.norm.y = 0.5f;
+	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
+	m_header.title->m_style.quad.base.Tf = info.header.background;
+	m_header.title->m_style.text.base.size = info.header.textSize;
+	m_header.title->m_text->set(info.header.text);
+	// m_header.title->m_interact = false;
+	m_header.close = &m_header.title->push<Widget>(font);
+	m_header.close->m_style.quad.base.Tf = colours::red;
+	m_header.close->m_style.text.base.colour = colours::white;
+	m_header.close->m_style.text.base.size = 20U;
+	m_header.close->m_text->set("x");
+	m_header.close->m_rect.size = {20.0f, 20.0f};
+	m_header.close->m_rect.anchor.norm.x = 0.5f;
+	m_header.close->m_rect.anchor.offset.x = -20.0f;
+	m_closeToken = m_header.close->onClick([this](Widget&) { setDestroyed(); });
 
-	m_footer.bg = &m_content.bg->push<Quad>();
+	m_footer.bg = &m_content->push<Widget>(font, info.footer.style);
 	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
+	m_footer.bg->m_style.quad.base.Tf = info.footer.background;
 	m_footer.bg->m_rect.anchor.norm.y = -0.5f;
-	m_footer.bg->m_material.Tf = info.footer.background;
+	m_footer.bg->m_rect.anchor.offset.y = info.footer.height * -0.5f;
+	m_footer.bg->m_interact = false;
+}
+
+Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callback const& onClick) {
+	auto& button = m_footer.bg->push<Widget>(m_font, m_buttonInfo.style);
+	m_footer.buttons.push_back(&button);
+	button.m_style.text.base.size = m_buttonInfo.textSize;
+	button.m_rect.anchor.norm.x = -0.5f;
+	button.m_rect.size = m_buttonInfo.size;
+	button.m_text->set(std::move(text));
+	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
+	f32 offset = pad + m_buttonInfo.size.x * 0.5f;
+	for (auto btn : m_footer.buttons) {
+		btn->m_rect.anchor.offset.x = offset;
+		offset += (pad + m_buttonInfo.size.x);
+	}
+	return button.onClick(onClick);
+}
+
+void Dialogue::onUpdate(input::Frame const& frame) {
+	auto const st = m_header.title->m_previous.status;
+	bool const move = st == InteractStatus::eHold;
+	if (move && !m_originDelta.moving) {
+		m_originDelta.start = frame.state.cursor.position;
+		m_originDelta.prev = m_originDelta.delta;
+	}
+	m_originDelta.moving = move;
+	if (m_originDelta.moving) { m_originDelta.delta = m_originDelta.prev + frame.state.cursor.position - m_originDelta.start; }
+	m_rect.origin += m_originDelta.delta;
 }
 } // namespace le::gui
 
@@ -488,11 +537,11 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
 		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
 		gui::Dialogue::CreateInfo gdci;
-		gdci.header.textFactory.size = gdci.content.textFactory.size = 40U;
-		gdci.content.textFactory.colour = colours::black;
 		gdci.header.text = "Dialogue";
 		gdci.content.text = "Content goes here";
-		// stack.push<gui::Dialogue>(&font.get(), gdci);
+		auto& dialogue = stack.push<gui::Dialogue>(&font.get(), gdci);
+		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
+		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
@@ -627,6 +676,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 		BitmapText text;
 		std::vector<DirLight> dirLights;
+		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 
 		decf::entity camera;
 		decf::entity player;

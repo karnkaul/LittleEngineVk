@@ -47,6 +47,15 @@ class Styles {
 
 	static Style& getDefault() noexcept { return s_default; }
 
+	static void setup(graphics::TextFactory& out_factory, Style const* style = {}) noexcept {
+		if (!style) { style = &getDefault(); }
+		out_factory.size = style->base.text.size;
+		out_factory.align = style->base.text.align;
+		out_factory.colour = style->base.text.colour;
+	}
+
+	static void setup(graphics::TextFactory& out_factory, Hash style) noexcept { setup(out_factory, &get(style)); }
+
   private:
 	inline static std::unordered_map<Hash, Style> s_map;
 	inline static Style s_default;

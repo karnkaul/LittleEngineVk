@@ -32,18 +32,18 @@ TreeNode* View::leafHit(glm::vec2 point) const noexcept {
 	return nullptr;
 }
 
-void View::update(input::Space const& space, glm::vec2 offset) {
+void View::update(input::Frame const& frame, glm::vec2 offset) {
 	if (!destroyed()) {
-		m_rect.size = m_canvas.size(space.display.swapchain);
-		m_rect.origin = m_canvas.centre(space.display.swapchain) + offset;
-		onUpdate(space);
-		for (auto& node : m_ts) { node->update(space); }
+		m_rect.size = m_canvas.size(frame.space.display.swapchain);
+		m_rect.origin = m_canvas.centre(frame.space.display.swapchain) + offset;
+		onUpdate(frame);
+		for (auto& node : m_ts) { node->update(frame.space); }
 	}
 }
 
 void ViewStack::update(input::Frame const& frame, glm::vec2 offset) {
 	std::erase_if(m_ts, [](auto& stack) { return stack->destroyed(); });
-	for (auto& v : m_ts) { v->update(frame.space, offset); }
+	for (auto& v : m_ts) { v->update(frame, offset); }
 	for (auto it = m_ts.rbegin(); it != m_ts.rend(); ++it) {
 		auto& v = *it;
 		v->forEachNode<Widget>(&Widget::onInput, frame.state);

@@ -31,6 +31,7 @@ class Widget : public Quad {
 	} m_previous;
 	Time_ms m_debounce = 5ms;
 	Text* m_text = {};
+	bool m_interact = true;
 
   protected:
 	OnClick m_onClick;

@@ -8,7 +8,7 @@ Widget::Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, Hash 
 }
 
 Widget::Status Widget::status(input::State const& state) const noexcept {
-	if (hit(state.cursor.position)) {
+	if (m_interact && hit(state.cursor.position)) {
 		auto const actions = state.actions(input::Key::eMouseButton1);
 		if (actions.all(input::Action::eReleased)) {
 			return Status::eRelease;

@@ -11,6 +11,7 @@ namespace le::gui {
 class Text : public TreeNode {
   public:
 	using Factory = graphics::TextFactory;
+	using Size = Factory::Size;
 
 	Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept;
 

@@ -275,8 +275,6 @@ class TestView : public gui::View {
 		text.set("click", tf);
 		m_button = &push<gui::Widget>(font);
 		m_button->m_rect.size = {200.0f, 100.0f};
-		m_button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
-		m_button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
 		tf.size = 40U;
 		m_button->m_text->set("Button", tf);
 		m_button->refresh();
@@ -289,7 +287,88 @@ class TestView : public gui::View {
 	gui::Widget* m_button{};
 	gui::Widget::OnClick::Tk m_tk;
 };
+} // namespace le::demo
 
+namespace le::gui {
+class Dialogue : public View {
+  public:
+	struct CreateInfo;
+	using OnSelect = Delegate<Dialogue&, std::size_t>;
+
+	Dialogue(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info);
+
+  protected:
+	struct Header {
+		Quad* bg{};
+		Text* text{};
+		Widget* close{};
+	};
+	struct Content {
+		Quad* bg{};
+		Text* text{};
+	};
+	struct Footer {
+		Quad* bg{};
+		std::vector<Widget*> buttons;
+	};
+	std::vector<OnSelect> m_onSelect;
+	Header m_header;
+	Content m_content;
+	Footer m_footer;
+};
+
+struct Dialogue::CreateInfo {
+	struct Content {
+		graphics::TextFactory textFactory;
+		std::string text;
+		glm::vec2 size = {500.0f, 300.0f};
+		graphics::RGBA background = colours::white;
+	};
+	struct Header {
+		graphics::TextFactory textFactory;
+		std::string text;
+		f32 height = 50.0f;
+		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
+	};
+	struct Button {
+		graphics::TextFactory textFactory;
+		std::string text;
+		InteractStyle<Material> style;
+		glm::vec2 size = {200.0f, 25.0f};
+	};
+	struct Footer {
+		std::vector<Button> buttons;
+		f32 height = 50.0f;
+		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
+	};
+
+	Header header;
+	Content content;
+	Footer footer;
+};
+
+Dialogue::Dialogue(not_null<ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info) : View(parent) {
+	m_content.bg = &push<Quad>();
+	m_content.bg->m_rect.size = info.content.size;
+	m_content.bg->m_material.Tf = info.content.background;
+	m_content.text = &m_content.bg->push<Text>(font);
+	m_content.text->set(info.content.text, info.content.textFactory);
+
+	m_header.bg = &m_content.bg->push<Quad>();
+	m_header.bg->m_rect.size = {info.content.size.x, info.header.height};
+	m_header.bg->m_rect.anchor.norm.y = 0.5f;
+	m_header.bg->m_material.Tf = info.header.background;
+	m_header.text = &m_header.bg->push<Text>(font);
+	m_header.text->set(info.header.text, info.header.textFactory);
+
+	m_footer.bg = &m_content.bg->push<Quad>();
+	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
+	m_footer.bg->m_rect.anchor.norm.y = -0.5f;
+	m_footer.bg->m_material.Tf = info.footer.background;
+}
+} // namespace le::gui
+
+namespace le::demo {
 class App : public input::Receiver, public SceneRegistry {
   public:
 	using SceneRegistry::spawn;
@@ -402,12 +481,18 @@ class App : public input::Receiver, public SceneRegistry {
 		[[maybe_unused]] auto& testView = stack.push<TestView>(&font.get());
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
-		dci.quadStyle.at(gui::Status::eHover).Tf = colours::cyan;
-		dci.textFactory.size = 30U;
+		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
+		dci.textSize = 30U;
 		dci.options = {"zero", "one", "two", "/bthree", "four"};
 		dci.selected = 2;
 		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
 		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
+		gui::Dialogue::CreateInfo gdci;
+		gdci.header.textFactory.size = gdci.content.textFactory.size = 40U;
+		gdci.content.textFactory.colour = colours::black;
+		gdci.header.text = "Dialogue";
+		gdci.content.text = "Content goes here";
+		// stack.push<gui::Dialogue>(&font.get(), gdci);
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;

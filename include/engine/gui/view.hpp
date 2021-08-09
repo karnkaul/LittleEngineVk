@@ -1,5 +1,4 @@
 #pragma once
-#include <engine/gui/style.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/utils/owner.hpp>

@@ -8,8 +8,6 @@ class Dropdown : public Widget {
   public:
 	struct CreateInfoBase {
 		Flexbox::CreateInfo flexbox;
-		Style<Material> quadStyle;
-		Text::Factory textFactory;
 		glm::vec2 size = {200.0f, 50.0f};
 		std::vector<std::string> options;
 		std::size_t selected = 0;
@@ -21,6 +19,8 @@ class Dropdown : public Widget {
 			graphics::RGBA cover = {Colour(0x88888888), graphics::RGBA::Type::eAbsolute};
 			graphics::RGBA arrow = colours::white;
 		} coverColours;
+		Text::Factory::Size textSize = 40U;
+		Hash style;
 	};
 
 	template <typename T = Widget>
@@ -36,7 +36,7 @@ class Dropdown : public Widget {
 
 	template <typename T = Widget, typename... Args>
 	Dropdown(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo<T> info, Args&&... args) noexcept
-		: Widget(root, font), m_textFactory(std::move(info.textFactory)), m_options(std::move(info.options)) {
+		: Widget(root, font, info.style), m_options(std::move(info.options)) {
 		if (!m_options.empty()) {
 			ensure(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
@@ -51,7 +51,6 @@ class Dropdown : public Widget {
 	bool expanded() const noexcept { return m_flexbox->m_active; }
 	Select selected() const noexcept { return {m_options[m_selected], m_selected}; }
 
-	Text::Factory m_textFactory;
 	Quad* m_cover{};
 	Shape* m_arrow{};
 

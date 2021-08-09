@@ -1,13 +1,13 @@
 #include <engine/gui/widget.hpp>
 
 namespace le::gui {
-Widget::Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) : Quad(root, true), m_font(font) {
+Widget::Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, Hash style) : Quad(root, true), m_font(font) {
+	m_style = Styles::get(style).widget;
 	m_rect.size = {50.0f, 50.0f};
 	m_text = &push<Text>(font);
-	m_styles.text.base = colours::black;
 }
 
-Status Widget::status(input::State const& state) const noexcept {
+Widget::Status Widget::status(input::State const& state) const noexcept {
 	if (hit(state.cursor.position)) {
 		auto const actions = state.actions(input::Key::eMouseButton1);
 		if (actions.all(input::Action::eReleased)) {
@@ -37,7 +37,7 @@ void Widget::refresh(input::State const* state) {
 	}
 }
 
-Status Widget::onInput(input::State const& state) {
+Widget::Status Widget::onInput(input::State const& state) {
 	if (!m_active) { return Status::eInactive; }
 	Status ret;
 	if (clicked(state, true, &ret)) { m_onClick(*this); }
@@ -48,10 +48,13 @@ Status Widget::onInput(input::State const& state) {
 bool Widget::clickedImpl(bool style, Status st) noexcept {
 	bool const cooldown = m_previous.point != time::Point() && time::diff(m_previous.point) < m_debounce;
 	if (style && (!cooldown || st <= Status::eHover)) {
-		m_material = m_styles.quad[st];
+		m_material = m_style.quad[st];
 		if (m_text && (!m_previous.set || st != m_previous.status)) {
 			Text::Factory factory = m_text->factory();
-			factory.colour = m_styles.text[st];
+			auto& style = m_style.text[st];
+			factory.colour = style.colour;
+			factory.align = style.align;
+			factory.size = style.size;
 			m_text->set(std::move(factory));
 			m_previous.set = true;
 		}

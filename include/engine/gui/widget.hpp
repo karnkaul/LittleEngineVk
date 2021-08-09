@@ -9,9 +9,10 @@
 namespace le::gui {
 class Widget : public Quad {
   public:
+	using Status = InteractStatus;
 	using OnClick = Delegate<Widget&>;
 
-	Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font);
+	Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, Hash style = {});
 	Widget(Widget&&) = delete;
 	Widget& operator=(Widget&&) = delete;
 
@@ -22,10 +23,7 @@ class Widget : public Quad {
 
 	virtual Status onInput(input::State const& state);
 
-	struct {
-		Style<Material> quad;
-		Style<graphics::RGBA> text;
-	} m_styles;
+	WidgetStyle m_style;
 	struct {
 		time::Point point{};
 		Status status = {};

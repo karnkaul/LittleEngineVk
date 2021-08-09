@@ -10,6 +10,7 @@ class Flexbox : public Widget {
 		Material background;
 		Axis axis = Axis::eHorz;
 		f32 pad = 5.0f;
+		Hash style;
 	};
 
 	Flexbox(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info) noexcept;

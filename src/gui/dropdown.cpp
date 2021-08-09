@@ -1,4 +1,5 @@
 #include <engine/gui/dropdown.hpp>
+#include <engine/gui/style.hpp>
 
 namespace le::gui {
 namespace {
@@ -26,7 +27,7 @@ bool Dropdown::itemPad(std::string& out_text, std::size_t index) const noexcept 
 
 void Dropdown::init(CreateInfoBase info) {
 	m_selected = info.selected;
-	m_styles.quad = info.quadStyle;
+	m_style.text.base.size = info.textSize;
 	m_rect.size = info.size;
 	m_textColours = info.textColours;
 	m_cover = &push<Quad>(false);
@@ -49,25 +50,25 @@ void Dropdown::init(CreateInfoBase info) {
 	});
 	std::string text = m_options[m_selected];
 	itemPad(text, 0);
-	m_text->set(std::move(text), m_textFactory);
+	m_text->set(std::move(text));
 }
 
 void Dropdown::add(Widget& item, std::string_view text, std::size_t index) {
-	item.m_text->set(std::string(text), m_textFactory);
-	item.m_styles.quad = m_styles.quad;
+	item.m_text->set(std::string(text));
+	item.m_style = m_style;
 	m_entryTokens.push_back(item.onClick([this, index](Widget&) { select(index); }));
 }
 
 void Dropdown::expand() {
 	m_flexbox->m_active = true;
-	m_styles.text.base = m_textColours.expanded;
+	m_style.text.base.colour = m_textColours.expanded;
 	refresh();
 }
 
 void Dropdown::collapse() {
 	m_flexbox->m_active = false;
-	m_styles.text.base = m_textColours.collapsed;
-	m_text->set(m_options[m_selected], m_textFactory);
+	m_style.text.base.colour = m_textColours.collapsed;
+	m_text->set(m_options[m_selected]);
 	refresh();
 }
 

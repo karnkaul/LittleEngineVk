@@ -2,8 +2,9 @@
 
 namespace le::gui {
 Flexbox::Flexbox(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info) noexcept
-	: gui::Widget(root, font), m_axis(info.axis), m_pad(info.pad) {
-	m_styles.quad.base = info.background;
+	: gui::Widget(root, font, info.style), m_axis(info.axis), m_pad(info.pad) {
+	m_style.quad.reset();
+	m_style.quad.base = info.background;
 	resize();
 }
 

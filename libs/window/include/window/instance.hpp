@@ -1,58 +1,91 @@
 #pragma once
-#include <cassert>
+#include <memory>
 #include <core/lib_logger.hpp>
-#include <core/mono_instance.hpp>
 #include <window/event_queue.hpp>
-#include <window/surface.hpp>
 
 namespace le::window {
-class InstanceBase : public TMonoInstance<InstanceBase>, public Surface {
+struct CreateInfo;
+class Instance;
+
+class Manager {
   public:
-	struct CreateInfo;
+	explicit Manager();
+	~Manager();
 
-	InstanceBase(bool bValid) : TMonoInstance(bValid) {}
-	InstanceBase(InstanceBase&&) = default;
-	InstanceBase& operator=(InstanceBase&&) = default;
-	virtual ~InstanceBase() = default;
+	bool ready() const noexcept { return m_impl != nullptr; }
+	explicit operator bool() const noexcept { return ready(); }
 
-	bool isDesktop() const noexcept { return m_desktop; }
+	std::optional<Instance> make(CreateInfo const& info);
 
-	virtual EventQueue pollEvents() = 0;
+	class Impl;
 
-	virtual void show() const {}
-	virtual glm::ivec2 framebufferSize() const noexcept { return {0, 0}; }
-
-  protected:
-	LibLogger m_log;
-	bool m_desktop = false;
+  private:
+	std::unique_ptr<Impl> m_impl;
+	LibLogger m_logger;
 };
 
 enum class Style { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };
 constexpr EnumArray<Style, std::string_view> const styleNames = {"Decorated Window", "Borderless Window", "Borderless Fullscreen", "Dedicated Fullscreen"};
 
-struct InstanceBase::CreateInfo {
+struct CreateInfo {
 	struct {
-		// Desktop
 		std::string title;
-		glm::ivec2 size = {32, 32};
+		glm::ivec2 size = {640, 360};
 		glm::ivec2 centreOffset = {};
-		// Android
-		ErasedPtr androidApp;
 	} config;
 
 	struct {
-		// Common
 		LibLogger::Verbosity verbosity = LibLogger::Verbosity::eLibUser;
-		// Desktop
 		Style style = Style::eDecoratedWindow;
 		u8 screenID = 0;
-		bool bCentreCursor = true;
-		bool bAutoShow = false;
+		bool centreCursor = true;
+		bool autoShow = true;
 	} options;
 };
 
-Key parseKey(std::string_view str) noexcept;
-Action parseAction(std::string_view str) noexcept;
-Mods parseMods(Span<std::string const> vec) noexcept;
-Axis parseAxis(std::string_view str) noexcept;
+class Instance {
+  public:
+	Instance(Instance&&);
+	Instance& operator=(Instance&&);
+	~Instance();
+
+	EventQueue pollEvents();
+	bool show();
+	bool hide();
+	bool visible() const noexcept;
+	void close();
+	bool closing() const noexcept;
+
+	glm::uvec2 framebufferSize() const noexcept;
+	glm::uvec2 windowSize() const noexcept;
+	CursorType cursorType() const noexcept;
+	CursorMode cursorMode() const noexcept;
+	glm::vec2 cursorPosition() const noexcept;
+	void cursorType(CursorType type);
+	void cursorMode(CursorMode mode);
+	void cursorPosition(glm::vec2 position);
+
+	bool importControllerDB(std::string_view db) const;
+	ktl::fixed_vector<Gamepad, 8> activeGamepads() const;
+	Joystick joyState(s32 id) const;
+	Gamepad gamepadState(s32 id) const;
+	std::size_t joystickAxesCount(s32 id) const;
+	std::size_t joysticKButtonsCount(s32 id) const;
+
+	static Key parseKey(std::string_view str) noexcept;
+	static Action parseAction(std::string_view str) noexcept;
+	static Mods parseMods(Span<std::string const> vec) noexcept;
+	static Axis parseAxis(std::string_view str) noexcept;
+
+	class Impl;
+
+  private:
+	Instance(std::unique_ptr<Impl>&& impl) noexcept;
+
+	LibLogger m_log;
+	std::unique_ptr<Impl> m_impl;
+
+	friend class Manager;
+	friend Impl& impl(Instance const&);
+};
 } // namespace le::window

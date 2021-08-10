@@ -7,11 +7,12 @@
 #include <engine/input/state.hpp>
 
 namespace le::gui {
-using OnClick = Delegate<>;
-
 class Widget : public Quad {
   public:
-	Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font);
+	using Status = InteractStatus;
+	using OnClick = Delegate<Widget&>;
+
+	Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, Hash style = {});
 	Widget(Widget&&) = delete;
 	Widget& operator=(Widget&&) = delete;
 
@@ -22,10 +23,7 @@ class Widget : public Quad {
 
 	virtual Status onInput(input::State const& state);
 
-	struct {
-		Style<Material> quad;
-		Style<Colour> text;
-	} m_styles;
+	WidgetStyle m_style;
 	struct {
 		time::Point point{};
 		Status status = {};
@@ -33,6 +31,7 @@ class Widget : public Quad {
 	} m_previous;
 	Time_ms m_debounce = 5ms;
 	Text* m_text = {};
+	bool m_interact = true;
 
   protected:
 	OnClick m_onClick;

@@ -21,7 +21,7 @@ class AssetManifest : public utils::VBase {
 	Flags const& flags() const noexcept { return m_loader.m_flags; }
 
 	void append(AssetManifest const& rhs);
-	std::size_t preload(dj::json_t const& root);
+	std::size_t preload(dj::json const& root);
 	void stage(dts::scheduler* scheduler);
 	template <typename T>
 	StageID stage(TAssetList<T> list, dts::scheduler* scheduler, Kinds kinds = {}, Span<StageID const> deps = {}, QueueID qid = {});
@@ -42,7 +42,7 @@ class AssetManifest : public utils::VBase {
 	AssetStore& store();
 
   private:
-	using Metadata = dj::ptr<dj::json_t>;
+	using Metadata = dj::ptr<dj::json>;
 	using Group = std::unordered_map<io::Path, Metadata>;
 
 	not_null<class Engine*> engine();

@@ -12,7 +12,7 @@
 
 namespace le {
 namespace window {
-class DesktopInstance;
+class Instance;
 }
 namespace graphics {
 struct ScreenView;
@@ -53,8 +53,6 @@ class Editor {
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
-
-	bool draw(graphics::CommandBuffer cb) const;
 
 	Rail m_left = {{}, "Left"};
 	Rail m_right = {{}, "Right"};

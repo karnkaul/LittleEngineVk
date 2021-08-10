@@ -1,15 +1,15 @@
 #pragma once
 #include <shared_mutex>
 #include <unordered_map>
-#include <variant>
 #include <core/hash.hpp>
 #include <core/io/file_monitor.hpp>
 #include <core/io/reader.hpp>
 #include <core/not_null.hpp>
 #include <core/os.hpp>
+#include <ktl/either.hpp>
 #include <ktl/shared_tmutex.hpp>
 
-constexpr bool levk_resourceMonitor = levk_debug && levk_desktopOS;
+constexpr bool levk_resourceMonitor = levk_debug;
 
 namespace le {
 class Resource {
@@ -27,7 +27,7 @@ class Resource {
   private:
 	bool load(io::Reader const& reader, io::Path path, Type type, bool bMonitor);
 
-	using Data = std::variant<bytearray, std::string>;
+	using Data = ktl::either<bytearray, std::string>;
 
 	Data m_data;
 	io::Path m_path;

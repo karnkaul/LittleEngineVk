@@ -5,14 +5,14 @@
 
 namespace le {
 namespace window {
-class DesktopInstance;
+class Instance;
 }
 
 class FreeCam : public graphics::Camera {
   public:
-	using Desktop = window::DesktopInstance;
+	using Window = window::Instance;
 
-	void tick(input::State const& state, Time_s dt, Desktop* desktop = nullptr);
+	void tick(input::State const& state, Time_s dt, Window* win = nullptr);
 
 	struct {
 		f32 xz_speed = 1.0f;

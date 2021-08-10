@@ -1,5 +1,4 @@
 #pragma once
-#include <engine/gui/style.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/utils/owner.hpp>
@@ -43,8 +42,10 @@ class View : public TreeRoot {
 
 	View(not_null<ViewStack*> parent, Block block = {}) noexcept : m_block(block), m_parent(parent) {}
 
+	bool popRecurse(TreeNode const* node) noexcept;
+
 	TreeNode* leafHit(glm::vec2 point) const noexcept;
-	void update(input::Space const& space, glm::vec2 offset);
+	void update(input::Frame const& frame, glm::vec2 offset);
 
 	void setDestroyed() noexcept { m_remove = true; }
 	bool destroyed() const noexcept { return m_remove; }
@@ -53,7 +54,7 @@ class View : public TreeRoot {
 	Block m_block;
 
   private:
-	virtual void onUpdate(input::Space const&) {}
+	virtual void onUpdate(input::Frame const&) {}
 
 	not_null<ViewStack*> m_parent;
 	bool m_remove = false;

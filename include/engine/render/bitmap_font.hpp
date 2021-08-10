@@ -1,5 +1,6 @@
 #pragma once
 #include <core/io/path.hpp>
+#include <core/maths.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/text_factory.hpp>
 #include <graphics/texture.hpp>

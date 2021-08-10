@@ -1,21 +1,17 @@
 #pragma once
+#include <optional>
 #include <sstream>
 #include <string_view>
 #include <core/erased_ptr.hpp>
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <ktl/result.hpp>
 
 namespace le::io {
 ///
 /// \brief Abstract base class for reading data from various IO
 ///
 class Reader {
-  public:
-	template <typename T>
-	using Result = ktl::result<T>;
-
   public:
 	Reader() noexcept;
 	Reader(Reader&&) noexcept;
@@ -40,7 +36,7 @@ class Reader {
 	///
 	/// \brief Obtain data as `std::string`
 	///
-	[[nodiscard]] Result<std::string> string(io::Path const& id) const;
+	[[nodiscard]] std::optional<std::string> string(io::Path const& id) const;
 	///
 	/// \brief Obtain the IO medium (of the concrete class)
 	///
@@ -55,17 +51,17 @@ class Reader {
 	///
 	/// \brief Obtain data as `bytearray` (`std::vector<std::byte>`)
 	///
-	[[nodiscard]] virtual Result<bytearray> bytes(io::Path const& id) const = 0;
+	[[nodiscard]] virtual std::optional<bytearray> bytes(io::Path const& id) const = 0;
 	///
 	/// \brief Obtain data as `std::stringstream`
 	///
-	[[nodiscard]] virtual Result<std::stringstream> sstream(io::Path const& id) const = 0;
+	[[nodiscard]] virtual std::optional<std::stringstream> sstream(io::Path const& id) const = 0;
 
   protected:
 	std::string m_medium;
 
   protected:
-	virtual Result<io::Path> findPrefixed(io::Path const& id) const = 0;
+	virtual std::optional<io::Path> findPrefixed(io::Path const& id) const = 0;
 };
 
 ///
@@ -79,7 +75,7 @@ class FileReader final : public Reader {
 	/// \param anyOf list of sub-paths to match against
 	/// \param maxHeight maximum recursive depth
 	///
-	static Result<io::Path> findUpwards(io::Path const& leaf, Span<io::Path const> anyOf, u8 maxHeight = 10);
+	static std::optional<io::Path> findUpwards(io::Path const& leaf, Span<io::Path const> anyOf, u8 maxHeight = 10);
 
   public:
 	FileReader() noexcept;
@@ -95,14 +91,14 @@ class FileReader final : public Reader {
 	/// \brief Mount filesystem directory
 	///
 	bool mount(io::Path path) override;
-	Result<bytearray> bytes(io::Path const& id) const override;
-	Result<std::stringstream> sstream(io::Path const& id) const override;
+	std::optional<bytearray> bytes(io::Path const& id) const override;
+	std::optional<std::stringstream> sstream(io::Path const& id) const override;
 
   private:
 	std::vector<io::Path> m_dirs;
 
   private:
-	Result<io::Path> findPrefixed(io::Path const& id) const override;
+	std::optional<io::Path> findPrefixed(io::Path const& id) const override;
 
   private:
 	std::vector<io::Path> finalPaths(io::Path const& id) const;
@@ -120,31 +116,13 @@ class ZIPReader final : public Reader {
 	/// \brief Mount `.zip` file
 	///
 	bool mount(io::Path path) override;
-	Result<bytearray> bytes(io::Path const& id) const override;
-	Result<std::stringstream> sstream(io::Path const& id) const override;
+	std::optional<bytearray> bytes(io::Path const& id) const override;
+	std::optional<std::stringstream> sstream(io::Path const& id) const override;
 
   private:
 	std::vector<io::Path> m_zips;
 
   private:
-	Result<io::Path> findPrefixed(io::Path const& id) const override;
-};
-
-///
-/// \brief Concrete class for Android AAsset IO
-///
-class AAssetReader final : public Reader {
-  public:
-	AAssetReader(ErasedPtr androidApp);
-
-  public:
-	Result<bytearray> bytes(io::Path const& id) const override;
-	Result<std::stringstream> sstream(io::Path const& id) const override;
-
-  private:
-	ErasedPtr m_androidApp;
-
-  private:
-	Result<io::Path> findPrefixed(io::Path const& id) const override;
+	std::optional<io::Path> findPrefixed(io::Path const& id) const override;
 };
 } // namespace le::io

@@ -32,21 +32,21 @@ Pipeline::Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo info, 
 	if (setup(shader) && construct(m_metadata.main, pipe)) { m_storage.dynamic.main = {m_device, pipe}; }
 }
 
-ktl::result<vk::Pipeline, void> Pipeline::constructVariant(Hash id, CreateInfo::Fixed const& fixed) {
-	if (id == Hash()) { return ktl::null_result; }
+std::optional<vk::Pipeline> Pipeline::constructVariant(Hash id, CreateInfo::Fixed const& fixed) {
+	if (id == Hash()) { return std::nullopt; }
 	vk::Pipeline pipe;
 	CreateInfo info = m_metadata.main;
 	info.fixedState = fixed;
-	if (!construct(info, pipe)) { return ktl::null_result; }
+	if (!construct(info, pipe)) { return std::nullopt; }
 	m_metadata.variants[id] = std::move(info.fixedState);
 	m_storage.dynamic.variants[id] = {m_device, pipe};
 	return pipe;
 }
 
-ktl::result<vk::Pipeline, void> Pipeline::variant(Hash id) const {
+std::optional<vk::Pipeline> Pipeline::variant(Hash id) const {
 	if (id == Hash()) { return *m_storage.dynamic.main; }
 	if (auto it = m_storage.dynamic.variants.find(id); it != m_storage.dynamic.variants.end()) { return *it->second; }
-	return ktl::null_result;
+	return std::nullopt;
 }
 
 bool Pipeline::reconstruct(Shader const& shader) {
@@ -130,9 +130,9 @@ bool Pipeline::setup(Shader const& shader) {
 		layouts.push_back(descLayout);
 	}
 	f.layout = makeDeferred<vk::PipelineLayout>(m_device, setBindings.push, layouts);
+	m_metadata.name = shader.m_name;
 	m_storage.input = ShaderInput(*this, m_metadata.main.buffering);
 	m_storage.dynamic.modules = shader.m_modules;
-	m_metadata.name = shader.m_name;
 	return true;
 }
 
@@ -151,7 +151,7 @@ bool Pipeline::construct(CreateInfo& out_info, vk::Pipeline& out_pipe) {
 	}
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
 	{
-		inputAssemblyState.topology = vk::PrimitiveTopology::eTriangleList;
+		inputAssemblyState.topology = out_info.fixedState.topology;
 		inputAssemblyState.primitiveRestartEnable = false;
 	}
 	vk::PipelineViewportStateCreateInfo viewportState;

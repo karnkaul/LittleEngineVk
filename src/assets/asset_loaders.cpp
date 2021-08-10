@@ -54,19 +54,17 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 	for (auto& [type, id] : info.m_data.shaderPaths) {
 		auto path = id;
 		if (isGlsl(path)) {
-			if constexpr (levk_shaderCompiler) {
-				if (!fr && !(fr = dynamic_cast<io::FileReader const*>(&info.reader()))) {
-					// cannot compile shaders without FileReader
-					path = graphics::utils::spirVpath(id);
-				} else {
-					// ensure resource presence (and add monitor if supported)
-					if (!info.resource(id, Resource::Type::eText, true)) { return std::nullopt; }
-					path = spirvPath(id, *fr);
-				}
-			} else {
-				// fallback to previously compiled shader
+			if (!fr && !(fr = dynamic_cast<io::FileReader const*>(&info.reader()))) {
+				// cannot compile shaders without FileReader
 				path = graphics::utils::spirVpath(id);
+			} else {
+				// ensure resource presence (and add monitor if supported)
+				if (!info.resource(id, Resource::Type::eText, true)) { return std::nullopt; }
+				path = spirvPath(id, *fr);
 			}
+		} else {
+			// fallback to previously compiled shader
+			path = graphics::utils::spirVpath(id);
 		}
 		auto res = info.resource(path, Resource::Type::eBinary, false, true);
 		if (!res) { return std::nullopt; }
@@ -75,18 +73,28 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 	return spirV;
 }
 
+namespace {
+void setup(graphics::Pipeline::CreateInfo::Fixed& out, AssetLoadData<graphics::Pipeline>::Variant const& variant) {
+	out.topology = variant.topology;
+	out.rasterizerState.polygonMode = variant.polygonMode;
+	if (variant.lineWidth > 0.0f) { out.rasterizerState.lineWidth = variant.lineWidth; }
+}
+} // namespace
+
 std::unique_ptr<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoadInfo<graphics::Pipeline> const& info) const {
 	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
 		info.reloadDepend(shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
 		pipeInfo.renderPass = info.m_data.gui ? info.m_data.context->renderer().renderPassUI() : info.m_data.context->renderer().renderPass3D();
+		setup(pipeInfo.fixedState, info.m_data.main);
 		auto ret = info.m_data.context->makePipeline(info.m_data.name, *shader, pipeInfo);
-		if (info.m_data.wireframe > 0.0f) {
-			auto fixed = ret.fixedState();
-			fixed.rasterizerState.lineWidth = info.m_data.wireframe;
-			fixed.rasterizerState.polygonMode = vk::PolygonMode::eLine;
-			auto const res = ret.constructVariant("wireframe", fixed);
-			ensure(res.has_value(), "Pipeline variant construction failure");
+		for (auto const& variant : info.m_data.variants) {
+			if (variant.id > Hash()) {
+				auto fixed = ret.fixedState();
+				setup(fixed, variant);
+				auto const res = ret.constructVariant(variant.id, fixed);
+				ensure(res.has_value(), "Pipeline variant construction failure");
+			}
 		}
 		return std::make_unique<graphics::Pipeline>(std::move(ret));
 	}
@@ -168,7 +176,7 @@ struct FontInfo {
 	s32 orgSizePt = 0;
 };
 
-graphics::Glyph deserialise(u8 c, dj::json_t const& json) {
+graphics::Glyph deserialise(u8 c, dj::json const& json) {
 	graphics::Glyph ret;
 	ret.ch = c;
 	ret.st = {json["x"].as<s32>(), json["y"].as<s32>()};
@@ -180,7 +188,7 @@ graphics::Glyph deserialise(u8 c, dj::json_t const& json) {
 	return ret;
 }
 
-FontInfo deserialise(dj::json_t const& json) {
+FontInfo deserialise(dj::json const& json) {
 	FontInfo ret;
 	if (auto pAtlas = json.find("sheetID")) { ret.atlasID = pAtlas->as<std::string>(); }
 	if (auto pSize = json.find("size")) { ret.orgSizePt = pSize->as<s32>(); }
@@ -214,7 +222,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
 	if (!sampler) { return false; }
 	if (auto text = info.resource(info.m_data.jsonID, Resource::Type::eText, true)) {
-		dj::json_t json;
+		dj::json json;
 		auto result = json.read(text->string());
 		if (result && result.errors.empty()) {
 			FontInfo const fi = deserialise(json);

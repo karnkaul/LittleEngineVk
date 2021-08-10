@@ -1,7 +1,7 @@
 #include <graphics/text_factory.hpp>
 
 namespace le::graphics {
-Geometry TextFactory::generate(Span<Glyph const> glyphs, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
+Geometry TextFactory::generate(Span<Glyph const> glyphs, std::string_view text, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
 	if (text.empty()) { return {}; }
 	if (!layout) { layout = this->layout(glyphs, text, size, nYPad); }
 	glm::vec2 const realTopLeft = pos;
@@ -68,11 +68,18 @@ Geometry TextFactory::generate(Span<Glyph const> glyphs, glm::ivec2 texSize, std
 
 glm::ivec2 TextFactory::glyphBounds(Span<Glyph const> glyphs, std::string_view text) const noexcept {
 	glm::ivec2 ret = {};
-	for (char c : text) {
-		std::size_t const idx = (std::size_t)c;
-		if (idx < glyphs.size()) {
-			ret.x = std::max(ret.x, glyphs[idx].cell.x);
-			ret.y = std::max(ret.y, glyphs[idx].cell.y);
+	if (text.empty()) {
+		for (auto const& glyph : glyphs) {
+			ret.x = std::max(ret.x, glyph.cell.x);
+			ret.y = std::max(ret.y, glyph.cell.y);
+		}
+	} else {
+		for (char c : text) {
+			std::size_t const idx = (std::size_t)c;
+			if (idx < glyphs.size()) {
+				ret.x = std::max(ret.x, glyphs[idx].cell.x);
+				ret.y = std::max(ret.y, glyphs[idx].cell.y);
+			}
 		}
 	}
 	return ret;
@@ -85,11 +92,7 @@ TextFactory::Layout TextFactory::layout(Span<Glyph const> glyphs, std::string_vi
 	for (std::size_t idx = 0; idx < text.size(); ++idx) {
 		if (text[idx] == '\n') { ++ret.lineCount; }
 	}
-	if (auto pPx = std::get_if<u32>(&size)) {
-		ret.scale = (f32)(*pPx) / (f32)ret.maxBounds.y;
-	} else {
-		ret.scale = std::get<f32>(size);
-	}
+	size.visit(ktl::overloaded{[&](u32 u) { ret.scale = (f32)u / (f32)glyphBounds(glyphs).y; }, [&ret](f32 f) { ret.scale = f; }});
 	ret.lineHeight = (f32)ret.maxBounds.y * ret.scale;
 	ret.linePad = nPadY * ret.lineHeight;
 	ret.textHeight = (f32)ret.lineHeight * ((f32)ret.lineCount + nPadY * f32(ret.lineCount - 1));

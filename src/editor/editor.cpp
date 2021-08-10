@@ -10,7 +10,6 @@
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
-#include <window/desktop_instance.hpp>
 
 #define MU [[maybe_unused]]
 
@@ -337,13 +336,8 @@ Editor::Editor() {
 	m_right.panel.attach<edi::Inspector>("Inspector");
 }
 
-bool Editor::draw(graphics::CommandBuffer cb) const {
-	if constexpr (levk_imgui) { return DearImGui::draw(cb); }
-	return false;
-}
-
 bool Editor::active() const noexcept {
-	if constexpr (levk_imgui) { return DearImGui::inst() != nullptr; }
+	if constexpr (levk_imgui) { return true; }
 	return false;
 }
 
@@ -353,28 +347,26 @@ Viewport const& Editor::view() const noexcept {
 }
 
 graphics::ScreenView Editor::update(input::Frame const& frame) {
-	if constexpr (levk_desktopOS) {
-		if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
-		if (!m_in.registry || !m_in.registry->registry().contains(m_out.inspecting.entity)) { m_out.inspecting = {}; }
-		if (active() && engaged()) {
-			auto eng = Services::locate<Engine>();
-			edi::displayScale(eng->renderer().renderScale());
-			if (!edi::Pane::s_blockResize) { m_storage.resizer(*eng->desktop(), m_storage.gameView, frame); }
-			edi::Pane::s_blockResize = false;
-			m_storage.menu(m_menu);
-			glm::vec2 const& size = frame.space.display.window;
-			auto const rect = m_storage.gameView.rect();
-			f32 const offsetY = m_storage.gameView.topLeft.offset.y;
-			f32 const logHeight = size.y - rect.rb.y * size.y - offsetY;
-			glm::vec2 const leftPanelSize = {rect.lt.x * size.x, size.y - logHeight - offsetY};
-			glm::vec2 const rightPanelSize = {size.x - rect.rb.x * size.x, size.y - logHeight - offsetY};
-			m_storage.logStats(size, logHeight);
-			m_left.panel.update(m_left.id, leftPanelSize, {0.0f, offsetY});
-			m_right.panel.update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
-			m_storage.cached = std::move(m_in);
-			m_in = {};
-			return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
-		}
+	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
+	if (!m_in.registry || !m_in.registry->registry().contains(m_out.inspecting.entity)) { m_out.inspecting = {}; }
+	if (active() && engaged()) {
+		auto eng = Services::locate<Engine>();
+		edi::displayScale(eng->renderer().renderScale());
+		if (!edi::Pane::s_blockResize) { m_storage.resizer(eng->window(), m_storage.gameView, frame); }
+		edi::Pane::s_blockResize = false;
+		m_storage.menu(m_menu);
+		glm::vec2 const& size = frame.space.display.window;
+		auto const rect = m_storage.gameView.rect();
+		f32 const offsetY = m_storage.gameView.topLeft.offset.y;
+		f32 const logHeight = size.y - rect.rb.y * size.y - offsetY;
+		glm::vec2 const leftPanelSize = {rect.lt.x * size.x, size.y - logHeight - offsetY};
+		glm::vec2 const rightPanelSize = {size.x - rect.rb.x * size.x, size.y - logHeight - offsetY};
+		m_storage.logStats(size, logHeight);
+		m_left.panel.update(m_left.id, leftPanelSize, {0.0f, offsetY});
+		m_right.panel.update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
+		m_storage.cached = std::move(m_in);
+		m_in = {};
+		return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 	}
 	return {};
 }

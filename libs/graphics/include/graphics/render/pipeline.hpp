@@ -5,7 +5,6 @@
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/shader.hpp>
-#include <ktl/result.hpp>
 
 namespace le::graphics {
 class Device;
@@ -32,6 +31,7 @@ class Pipeline final {
 			vk::PipelineMultisampleStateCreateInfo multisamplerState;
 			vk::PipelineColorBlendAttachmentState colorBlendAttachment;
 			vk::PipelineDepthStencilStateCreateInfo depthStencilState;
+			vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
 			std::unordered_set<vk::DynamicState> dynamicStates;
 		};
 
@@ -49,8 +49,8 @@ class Pipeline final {
 
 	Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo createInfo, Hash id);
 
-	ktl::result<vk::Pipeline, void> constructVariant(Hash id, CreateInfo::Fixed const& fixed);
-	ktl::result<vk::Pipeline, void> variant(Hash id) const;
+	std::optional<vk::Pipeline> constructVariant(Hash id, CreateInfo::Fixed const& fixed);
+	std::optional<vk::Pipeline> variant(Hash id) const;
 
 	bool reconstruct(Shader const& shader);
 	vk::PipelineBindPoint bindPoint() const;

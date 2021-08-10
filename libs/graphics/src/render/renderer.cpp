@@ -44,10 +44,8 @@ ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering)
 	depthInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	depthInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
 	depthInfo.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	if constexpr (levk_desktopOS) {
-		depthInfo.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
-		depthInfo.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
-	}
+	depthInfo.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
+	depthInfo.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
 	depthInfo.createInfo.samples = vk::SampleCountFlagBits::e1;
 	depthInfo.createInfo.imageType = vk::ImageType::e2D;
 	depthInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
@@ -162,11 +160,10 @@ ARenderer::Storage ARenderer::make(Transition transition, TPair<vk::Format> colo
 	return ret;
 }
 
-ktl::result<Swapchain::Acquire> ARenderer::acquire(bool begin) {
+ktl::expected<Swapchain::Acquire, Swapchain::Flags> ARenderer::acquire(bool begin) {
 	auto& buf = m_storage.buf.get();
 	auto acquire = m_fence.acquire(*m_swapchain, *buf.draw);
-	if (!acquire) { return ktl::null_result; }
-	if (begin) {
+	if (acquire && begin) {
 		m_device->device().resetCommandPool(*buf.pool, {});
 		buf.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 	}

@@ -5,7 +5,7 @@ namespace le {
 std::string_view Resource::string() const noexcept {
 	if (m_monitor) {
 		return m_monitor->text();
-	} else if (auto pStr = std::get_if<std::string>(&m_data)) {
+	} else if (auto pStr = m_data.get_if<std::string>()) {
 		return *pStr;
 	} else {
 		return {};
@@ -15,7 +15,7 @@ std::string_view Resource::string() const noexcept {
 Span<std::byte const> Resource::bytes() const noexcept {
 	if (m_monitor) {
 		return m_monitor->bytes();
-	} else if (auto pBytes = std::get_if<bytearray>(&m_data)) {
+	} else if (auto pBytes = m_data.get_if<bytearray>()) {
 		return *pBytes;
 	} else {
 		return {};

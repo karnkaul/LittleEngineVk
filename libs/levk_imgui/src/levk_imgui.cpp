@@ -13,7 +13,7 @@
 #include <glm/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/render/command_buffer.hpp>
-#include <window/desktop_instance.hpp>
+#include <window/glue.hpp>
 #endif
 
 namespace le {
@@ -103,19 +103,16 @@ void fixStyle() {
 } // namespace
 #endif
 
-DearImGui::DearImGui() : TMonoInstance(false) {}
+DearImGui::DearImGui() = default;
 
-DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]] not_null<Desktop const*> window, [[maybe_unused]] CreateInfo const& info)
-	: TMonoInstance(true) {
+DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]] not_null<Window const*> window, [[maybe_unused]] CreateInfo const& info) {
 #if defined(LEVK_USE_IMGUI) && defined(LEVK_USE_GLFW)
 	m_device = device;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 	if (info.correctStyleColours) { fixStyle(); }
-	auto const glfwWindow = window->nativePtr();
-	ensure(glfwWindow.contains<GLFWwindow*>(), "Invalid Window!");
-	ImGui_ImplGlfw_InitForVulkan(glfwWindow.get<GLFWwindow*>(), true);
+	ImGui_ImplGlfw_InitForVulkan(glfwPtr(*window), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = device->queues().queue(QType::eGraphics);
 	m_pool = {device, makePool(*device, info.descriptorCount)};
@@ -164,14 +161,9 @@ void DearImGui::Del::operator()(not_null<graphics::Device*>, void*) const {
 #endif
 }
 
-bool DearImGui::draw(graphics::CommandBuffer const& cb) {
-	if (auto it = inst()) { return it->endFrame() && it->renderDrawData(cb); }
-	return false;
-}
-
 bool DearImGui::beginFrame() {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive) {
+	if (m_del.active()) {
 		if (m_state == State::eBegin) { ImGui::Render(); }
 		next(m_state, State::eBegin);
 		ImGui_ImplVulkan_NewFrame();
@@ -188,7 +180,7 @@ bool DearImGui::beginFrame() {
 
 bool DearImGui::endFrame() {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive && next(State::eBegin, State::eRender)) {
+	if (m_del.active() && next(State::eBegin, State::eRender)) {
 		ImGui::Render();
 		return true;
 	}
@@ -198,7 +190,7 @@ bool DearImGui::endFrame() {
 
 bool DearImGui::renderDrawData([[maybe_unused]] graphics::CommandBuffer const& cb) {
 #if defined(LEVK_USE_IMGUI)
-	if (m_bActive && next(State::eRender, State::eEnd)) {
+	if (m_del.active() && next(State::eRender, State::eEnd)) {
 		if (auto const pData = ImGui::GetDrawData()) {
 			ImGui_ImplVulkan_RenderDrawData(pData, cb.m_cb);
 			return true;

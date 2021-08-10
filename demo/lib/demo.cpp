@@ -16,7 +16,6 @@
 #include <graphics/render/renderers.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
-#include <window/bootstrap.hpp>
 
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
@@ -31,12 +30,13 @@
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
+#include <engine/gui/dropdown.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
-enum class Flag { eClosed, eInit, eTerm, eDebug0 };
+enum class Flag { eClosed, eDebug0 };
 using Flags = ktl::enum_flags<Flag, u8>;
 
 static void poll(Flags& out_flags, window::EventQueue queue) {
@@ -46,8 +46,6 @@ static void poll(Flags& out_flags, window::EventQueue queue) {
 			out_flags.set(Flag::eClosed);
 			break;
 		}
-		case window::Event::Type::eInit: out_flags.set(Flag::eInit); break;
-		case window::Event::Type::eTerm: out_flags.set(Flag::eTerm); break;
 		default: break;
 		}
 	}
@@ -277,44 +275,150 @@ class TestView : public gui::View {
 		text.set("click", tf);
 		m_button = &push<gui::Widget>(font);
 		m_button->m_rect.size = {200.0f, 100.0f};
-		m_button->m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
-		m_button->m_styles.quad.at(gui::Status::eHold).Tf = colours::yellow;
 		tf.size = 40U;
 		m_button->m_text->set("Button", tf);
 		m_button->refresh();
-		m_tk = m_button->onClick([this]() { setDestroyed(); });
+		m_tk = m_button->onClick([this](gui::Widget&) { setDestroyed(); });
 	}
 
 	TestView(TestView&&) = delete;
 	TestView& operator=(TestView&&) = delete;
 
 	gui::Widget* m_button{};
-	gui::OnClick::Tk m_tk;
+	gui::Widget::OnClick::Tk m_tk;
 };
+} // namespace le::demo
 
-class WidgetList : public gui::Widget {
+namespace le::gui {
+class Dialogue : public View {
   public:
-	WidgetList(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept : gui::Widget(root, font) {}
+	struct CreateInfo;
+	struct ButtonInfo {
+		glm::vec2 size = {150.0f, 35.0f};
+		Text::Size textSize = 25U;
+		Hash style;
+	};
 
-	template <typename T = gui::Widget, typename... Args>
-		requires(std::is_base_of_v<gui::Widget, T>)
-	T& add(glm::vec2 size = {200.0f, 50.0f}, Args&&... args) {
-		auto& t = push<T>(m_font, std::forward<Args>(args)...);
-		t.m_rect.size = size;
-		glm::vec2 offset{};
-		if (!m_items.empty()) {
-			gui::Widget const& widget = *m_items.back();
-			offset = widget.m_rect.anchor.offset - glm::vec2(0.0f, widget.m_rect.size.y);
-		}
-		t.m_rect.anchor.offset = offset;
-		m_items.push_back(&t);
-		return t;
-	}
+	Dialogue(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info);
+
+	[[nodiscard]] Widget::OnClick::Tk addButton(std::string text, Widget::OnClick::Callback const& onClick);
 
   protected:
-	std::vector<gui::Widget*> m_items;
+	void onUpdate(input::Frame const& frame) override;
+
+	struct Header {
+		Widget* title{};
+		Widget* close{};
+	};
+	struct Footer {
+		Widget* bg{};
+		std::vector<Widget*> buttons;
+	};
+	struct {
+		glm::vec2 prev{};
+		glm::vec2 start{};
+		glm::vec2 delta{};
+		bool moving = false;
+	} m_originDelta;
+	Header m_header;
+	Widget* m_content{};
+	Footer m_footer;
+	ButtonInfo m_buttonInfo;
+	Widget::OnClick::Tk m_closeToken;
+	not_null<BitmapFont const*> m_font;
 };
 
+struct Dialogue::CreateInfo {
+	struct Content {
+		std::string text;
+		glm::vec2 size = {500.0f, 200.0f};
+		Text::Size textSize = 25U;
+		Hash style;
+	};
+	struct Header {
+		std::string text;
+		f32 height = 50.0f;
+		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
+		Text::Size textSize = 30U;
+		Hash style;
+	};
+	struct Footer {
+		f32 height = 60.0f;
+		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
+		Hash style;
+	};
+
+	Header header;
+	Content content;
+	Footer footer;
+	ButtonInfo buttonInfo;
+};
+
+Dialogue::Dialogue(not_null<ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info)
+	: View(parent, Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
+	m_content = &push<Widget>(font, info.content.style);
+	m_content->m_rect.size = info.content.size;
+	m_content->m_style.text.base.size = info.content.textSize;
+	m_content->m_text->set(info.content.text);
+	m_content->m_interact = false;
+
+	m_header.title = &m_content->push<Widget>(font, info.header.style);
+	m_header.title->m_rect.size = {info.content.size.x, info.header.height};
+	m_header.title->m_rect.anchor.norm.y = 0.5f;
+	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
+	m_header.title->m_style.quad.base.Tf = info.header.background;
+	m_header.title->m_style.text.base.size = info.header.textSize;
+	m_header.title->m_text->set(info.header.text);
+	m_header.title->m_style.quad.reset(InteractStatus::eHover);
+	// m_header.title->m_interact = false;
+	m_header.close = &m_header.title->push<Widget>(font);
+	m_header.close->m_style.quad.base.Tf = colours::red;
+	m_header.close->m_style.text.base.colour = colours::white;
+	m_header.close->m_style.text.base.size = 20U;
+	m_header.close->m_text->set("x");
+	m_header.close->m_rect.size = {20.0f, 20.0f};
+	m_header.close->m_rect.anchor.norm.x = 0.5f;
+	m_header.close->m_rect.anchor.offset.x = -20.0f;
+	m_closeToken = m_header.close->onClick([this](Widget&) { setDestroyed(); });
+
+	m_footer.bg = &m_content->push<Widget>(font, info.footer.style);
+	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
+	m_footer.bg->m_style.quad.base.Tf = info.footer.background;
+	m_footer.bg->m_rect.anchor.norm.y = -0.5f;
+	m_footer.bg->m_rect.anchor.offset.y = info.footer.height * -0.5f;
+	m_footer.bg->m_interact = false;
+}
+
+Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callback const& onClick) {
+	auto& button = m_footer.bg->push<Widget>(m_font, m_buttonInfo.style);
+	m_footer.buttons.push_back(&button);
+	button.m_style.text.base.size = m_buttonInfo.textSize;
+	button.m_rect.anchor.norm.x = -0.5f;
+	button.m_rect.size = m_buttonInfo.size;
+	button.m_text->set(std::move(text));
+	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
+	f32 offset = pad + m_buttonInfo.size.x * 0.5f;
+	for (auto btn : m_footer.buttons) {
+		btn->m_rect.anchor.offset.x = offset;
+		offset += (pad + m_buttonInfo.size.x);
+	}
+	return button.onClick(onClick);
+}
+
+void Dialogue::onUpdate(input::Frame const& frame) {
+	auto const st = m_header.title->m_previous.status;
+	bool const move = st == InteractStatus::eHold;
+	if (move && !m_originDelta.moving) {
+		m_originDelta.start = frame.state.cursor.position;
+		m_originDelta.prev = m_originDelta.delta;
+	}
+	m_originDelta.moving = move;
+	if (m_originDelta.moving) { m_originDelta.delta = m_originDelta.prev + frame.state.cursor.position - m_originDelta.start; }
+	m_rect.origin += m_originDelta.delta;
+}
+} // namespace le::gui
+
+namespace le::demo {
 class App : public input::Receiver, public SceneRegistry {
   public:
 	using SceneRegistry::spawn;
@@ -333,9 +437,10 @@ class App : public input::Receiver, public SceneRegistry {
 			cube->construct(graphics::makeCube(0.5f));
 			auto cone = m_eng->store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
 			cone->construct(graphics::makeCone());
+			auto wf_cube = m_eng->store().add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&eng->gfx().boot.vram));
+			wf_cube->construct(graphics::makeCube(1.0f, {}, colours::green.toVec3(), graphics::Topology::eLineList));
 		}
 		m_eng->pushReceiver(this);
-		eng->m_win->show();
 
 		struct GFreeCam : edi::Gadget {
 			bool operator()(decf::entity entity, decf::registry& reg) override {
@@ -405,9 +510,9 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& vram = m_eng->gfx().boot.vram;
 
 		m_data.text.make(&vram);
-		m_data.text.text.size = 80U;
-		m_data.text.text.colour = colours::yellow;
-		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
+		m_data.text.factory.size = 80U;
+		m_data.text.factory.colour = colours::yellow;
+		m_data.text.factory.pos = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};
 		m_data.text.set(font.get(), "Hi!");
 
@@ -424,13 +529,20 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
 		[[maybe_unused]] auto& testView = stack.push<TestView>(&font.get());
-		/*auto& list = testView.push<WidgetList>(&font.get());
-		list.m_rect.anchor.offset = {100.0f, -100.0f};
-		auto& e0 = list.add();
-		e0.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;
-		auto& e1 = list.add();
-		e1.m_styles.quad.at(gui::Status::eHover).Tf = colours::cyan;*/
-
+		gui::Dropdown::CreateInfo dci;
+		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
+		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
+		dci.textSize = 30U;
+		dci.options = {"zero", "one", "two", "/bthree", "four"};
+		dci.selected = 2;
+		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
+		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
+		gui::Dialogue::CreateInfo gdci;
+		gdci.header.text = "Dialogue";
+		gdci.content.text = "Content goes here";
+		auto& dialogue = stack.push<gui::Dialogue>(&font.get(), gdci);
+		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
+		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
@@ -463,7 +575,7 @@ class App : public input::Receiver, public SceneRegistry {
 			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().find<DrawLayer>("layers/tex"));
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.update(*font)); }
+		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.primitive(*font)); }
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
@@ -489,6 +601,10 @@ class App : public input::Receiver, public SceneRegistry {
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
+		}
+		{
+			DrawLayer wireframe{&*m_eng->store().find<graphics::Pipeline>("pipelines/wireframe"), 5};
+			spawn("wireframes/cube", "wireframes/cube", {}, wireframe);
 		}
 	}
 
@@ -532,7 +648,7 @@ class App : public input::Receiver, public SceneRegistry {
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
 			} else {
-				cam.tick(state, dt, m_eng->desktop());
+				cam.tick(state, dt, &m_eng->window());
 			}
 			m_registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
@@ -561,6 +677,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 		BitmapText text;
 		std::vector<DirLight> dirLights;
+		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 
 		decf::entity camera;
 		decf::entity player;
@@ -603,42 +720,41 @@ struct FlagsInput : input::Receiver {
 	}
 };
 
-bool run(io::Reader const& reader, ErasedPtr androidApp) {
+bool run(io::Reader const& reader) {
 	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
-	try {
-		window::InstanceBase::CreateInfo winInfo;
-		winInfo.config.androidApp = androidApp;
-		winInfo.config.title = "levk demo";
-		winInfo.config.size = {1280, 720};
-		winInfo.options.bCentreCursor = true;
-		window::Instance winst(winInfo);
-		graphics::Bootstrap::CreateInfo bootInfo;
-		bootInfo.instance.extensions = winst.vkInstanceExtensions();
-		if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
-		bootInfo.instance.validation.logLevel = dl::level::info;
-		Engine engine(&winst, {}, &reader);
-		Flags flags;
-		FlagsInput flagsInput(flags);
-		engine.pushReceiver(&flagsInput);
-		std::optional<App> app;
+	Engine::CreateInfo eci;
+	eci.winInfo.config.title = "levk demo";
+	eci.winInfo.config.size = {1280, 720};
+	eci.winInfo.options.centreCursor = true;
+	Engine engine(eci, &reader);
+	if (!engine.bootReady()) { return false; }
+	Flags flags;
+	FlagsInput flagsInput(flags);
+	engine.pushReceiver(&flagsInput);
+	bool reboot = false;
+	Engine::Boot::CreateInfo bootInfo;
+	if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
+	bootInfo.instance.validation.logLevel = dl::level::info;
+	do {
+		using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
+		// engine.boot(bootInfo);
+		engine.boot<renderer_t>(bootInfo);
+		App app(&engine);
 		DeltaTime dt;
-		while (true) {
+		std::optional<window::Instance> test;
+		while (!engine.closing()) {
 			poll(flags, engine.poll(true).residue);
-			if (flags.any(Flags(Flag::eClosed) | Flag::eTerm)) { break; }
-			if (flags.test(Flag::eInit) || (app && app->reboot())) {
-				if (app) {
-					logD("Rebooting...");
-					app.reset();
-				}
-				using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
-				engine.boot<renderer_t>(bootInfo);
-				// engine.boot(bootInfo);
-				app.emplace(&engine);
-				flags.reset(Flag::eInit);
+			if (flags.test(Flag::eClosed)) {
+				reboot = false;
+				break;
 			}
-			if (app) { app->tick(++dt); }
+			if (app.reboot()) {
+				reboot = true;
+				break;
+			}
+			app.tick(++dt);
 		}
-	} catch (std::exception const& e) { logE("exception: {}", e.what()); }
+	} while (reboot);
 	return true;
 }
 } // namespace le::demo

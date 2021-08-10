@@ -18,11 +18,6 @@
 #include <window/instance.hpp>
 
 namespace le {
-namespace window {
-class InstanceBase;
-class DesktopInstance;
-} // namespace window
-
 namespace graphics {
 struct PhysicalDevice;
 }
@@ -39,8 +34,7 @@ class Engine : public Service<Engine> {
 	struct tag_t {};
 
   public:
-	using Window = window::InstanceBase;
-	using Desktop = window::DesktopInstance;
+	using Window = window::Instance;
 	using Boot = graphics::Bootstrap;
 	using Context = graphics::RenderContext;
 	using VRAM = graphics::VRAM;
@@ -68,8 +62,10 @@ class Engine : public Service<Engine> {
 	static Version version() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
 
-	Engine(not_null<Window*> winInst, CreateInfo const& info, io::Reader const* custom = {});
+	Engine(CreateInfo const& info, io::Reader const* custom = {});
 	~Engine();
+
+	bool bootReady() const noexcept { return m_win.has_value(); }
 
 	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
@@ -91,7 +87,6 @@ class Engine : public Service<Engine> {
 	ARenderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
 	Stats const& stats() noexcept { return m_stats.stats; }
-	Desktop* desktop() const noexcept { return m_desktop; }
 	AssetStore& store() noexcept { return m_store; }
 	AssetStore const& store() const noexcept { return m_store; }
 
@@ -100,8 +95,13 @@ class Engine : public Service<Engine> {
 	Viewport const& gameView() const noexcept;
 	glm::vec2 sceneSpace() const noexcept { return m_space(m_inputFrame.space); }
 
+	window::Manager& windowManager() noexcept { return m_wm; }
+	window::Manager const& windowManager() const noexcept { return m_wm; }
+	Window& window() noexcept;
+	Window const& window() const noexcept;
+	bool closing() const noexcept { return window().closing(); }
+
 	SceneSpace m_space;
-	not_null<Window*> m_win;
 
   private:
 	void updateStats();
@@ -114,6 +114,8 @@ class Engine : public Service<Engine> {
 	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
 	io::Service m_io;
+	window::Manager m_wm;
+	std::optional<Window> m_win;
 	std::optional<GFX> m_gfx;
 	AssetStore m_store;
 	input::Driver m_input;
@@ -123,10 +125,10 @@ class Engine : public Service<Engine> {
 	input::Frame m_inputFrame;
 	graphics::ScreenView m_view;
 	std::optional<graphics::RenderTarget> m_drawing;
-	Desktop* m_desktop{};
 };
 
 struct Engine::CreateInfo {
+	window::CreateInfo winInfo;
 	std::optional<io::Path> logFile = "log.txt";
 	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
 };
@@ -135,7 +137,8 @@ struct Engine::CreateInfo {
 template <graphics::concrete_renderer Rd, typename... Args>
 void Engine::boot(Boot::CreateInfo const& info, Args&&... args) {
 	unboot();
-	m_gfx.emplace(m_win.get(), adjust(info), tag_t<Rd>{}, std::forward<Args>(args)...);
+	ensure(m_win.has_value(), "No window");
+	m_gfx.emplace(&*m_win, adjust(info), tag_t<Rd>{}, std::forward<Args>(args)...);
 	bootImpl();
 }
 
@@ -150,5 +153,13 @@ inline Engine::GFX const& Engine::gfx() const {
 inline Engine::ARenderer& Engine::renderer() const {
 	ensure(m_gfx.has_value(), "Not booted");
 	return m_gfx->context.renderer();
+}
+inline Engine::Window& Engine::window() noexcept {
+	ensure(m_win.has_value(), "Not booted");
+	return *m_win;
+}
+inline Engine::Window const& Engine::window() const noexcept {
+	ensure(m_win.has_value(), "Not booted");
+	return *m_win;
 }
 } // namespace le

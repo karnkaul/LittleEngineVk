@@ -1,9 +1,10 @@
 #pragma once
-#include <filesystem>
+#include <chrono>
 #include <core/io/reader.hpp>
+#include <ktl/either.hpp>
 
 namespace le::io {
-namespace stdfs = std::filesystem;
+using file_time = std::chrono::file_clock::time_point;
 
 ///
 /// \brief Utility for monitoring filesystem files
@@ -26,35 +27,32 @@ class FileMonitor {
 	/// \param path: fully qualified file path to monitor
 	/// \param mode: mode to operate the monitor in
 	///
-	FileMonitor(stdfs::path const& path, Mode mode);
-	FileMonitor(FileMonitor&&);
-	FileMonitor& operator=(FileMonitor&&);
-	virtual ~FileMonitor();
+	FileMonitor(Path path, Mode mode);
 
   public:
 	///
 	/// \brief Obtain current status of file being monitored
 	///
-	virtual Status update();
+	Status update();
 
   public:
 	///
 	/// \brief Obtain previous status of file being monitored
 	///
-	Status lastStatus() const;
+	Status lastStatus() const noexcept { return m_status; }
 	///
 	/// \brief Obtain write-to-file timestamp
 	///
-	stdfs::file_time_type lastWriteTime() const;
+	file_time lastWriteTime() const noexcept { return m_lastWriteTime; }
 	///
 	/// \brief Obtain last modified timestamp
 	///
-	stdfs::file_time_type lastModifiedTime() const;
+	file_time lastModifiedTime() const noexcept { return m_lastModifiedTime; }
 
 	///
 	/// \brief Obtain the file path being monitored
 	///
-	stdfs::path const& path() const;
+	Path const& path() const noexcept { return m_path; }
 	///
 	/// \brief Obtain the last scanned contents of the file being monitored
 	/// Note: only valid for `eTextContents` mode
@@ -63,17 +61,16 @@ class FileMonitor {
 	///
 	/// \brief Obtain the last scanned contents of the file being monitored
 	/// Note: only valid for `eBinaryContents` mode
-	bytearray const& bytes() const;
+	Span<std::byte const> bytes() const;
 
   protected:
 	inline static io::FileReader s_reader;
 
   protected:
-	stdfs::file_time_type m_lastWriteTime = {};
-	stdfs::file_time_type m_lastModifiedTime = {};
-	stdfs::path m_path;
-	std::string m_text;
-	bytearray m_bytes;
+	file_time m_lastWriteTime = {};
+	file_time m_lastModifiedTime = {};
+	ktl::either<std::string, bytearray> m_payload;
+	Path m_path;
 	Mode m_mode;
 	Status m_status = Status::eNotFound;
 };

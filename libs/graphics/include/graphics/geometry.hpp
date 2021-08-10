@@ -7,6 +7,7 @@
 
 namespace le::graphics {
 enum class VertType { ePosCol, ePosColUV, ePosColNormUV };
+enum class Topology { eLineList = 1, eTriangleList = 2 };
 
 template <VertType V>
 struct Vert;
@@ -40,9 +41,10 @@ struct Geom {
 	std::vector<Vert<V>> vertices;
 	std::vector<u32> indices;
 
-	void reserve(u32 vertCount, u32 indexCount);
+	Geom& reserve(u32 vertCount, u32 indexCount);
 	u32 addVertex(Vert<V> const& vertex);
-	void addIndices(Span<u32 const> newIndices);
+	Geom& addIndices(Span<u32 const> newIndices);
+	Geom& autoIndex(Topology topology, u32 loopback = 0);
 
 	std::vector<glm::vec3> positions() const;
 };
@@ -53,18 +55,31 @@ struct Albedo final {
 	Colour specular = colours::white;
 };
 
-Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, glm::vec2 origin = {0.0f, 0.0f});
-Geometry makeCube(f32 side = 1.0f);
-Geometry makeCircle(f32 diameter = 1.0f, u16 points = 16);
-Geometry makeCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 16);
-Geometry makeCubedSphere(f32 diameter, u8 quadsPerSide);
+Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, glm::vec2 origin = {}, glm::vec3 colour = glm::vec3(1.0f), Topology topo = Topology::eTriangleList);
+Geometry makeCube(f32 side = 1.0f, glm::vec3 origin = {}, glm::vec3 colour = glm::vec3(1.0f), Topology topo = Topology::eTriangleList);
+Geometry makeCircle(f32 diameter = 1.0f, u16 points = 16, glm::vec3 colour = glm::vec3(1.0f));
+Geometry makeCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 16, glm::vec3 colour = glm::vec3(1.0f));
+Geometry makeCubedSphere(f32 diameter, u8 quadsPerSide, glm::vec3 colour = glm::vec3(1.0f));
+
+struct IndexStitcher {
+	std::vector<u32>& indices;
+	u32 start;
+	u32 stride;
+	u32 pin;
+
+	IndexStitcher(std::vector<u32>& indices, u32 start, u32 stride) noexcept : indices(indices), start(start), stride(stride), pin(start) {}
+
+	void add(u32 index);
+	void reset(u32 index);
+};
 
 // impl
 
 template <VertType V>
-void Geom<V>::reserve(u32 vertCount, u32 indexCount) {
+Geom<V>& Geom<V>::reserve(u32 vertCount, u32 indexCount) {
 	vertices.reserve(vertCount);
 	indices.reserve(indexCount);
+	return *this;
 }
 
 template <VertType V>
@@ -75,8 +90,9 @@ u32 Geom<V>::addVertex(Vert<V> const& vertex) {
 }
 
 template <VertType V>
-void Geom<V>::addIndices(Span<u32 const> newIndices) {
+Geom<V>& Geom<V>::addIndices(Span<u32 const> newIndices) {
 	std::copy(newIndices.begin(), newIndices.end(), std::back_inserter(indices));
+	return *this;
 }
 
 template <VertType V>
@@ -84,5 +100,19 @@ std::vector<glm::vec3> Geom<V>::positions() const {
 	std::vector<glm::vec3> ret;
 	for (auto const& v : vertices) { ret.push_back(v.position); }
 	return ret;
+}
+
+template <VertType V>
+Geom<V>& Geom<V>::autoIndex(Topology topology, u32 loopback) {
+	indices.clear();
+	if (!vertices.empty()) {
+		IndexStitcher indexer{indices, 0, u32(topology)};
+		for (u32 i = 0; i < u32(vertices.size()); ++i) {
+			if (loopback > 0 && i > 0 && i % loopback == 0) { indexer.reset(i); }
+			indexer.add(i);
+		}
+		if (loopback > 0) { indexer.reset(0); }
+	}
+	return *this;
 }
 } // namespace le::graphics

@@ -15,6 +15,28 @@ graphics::PFlags parseFlags(Span<std::string const> arr) {
 	}
 	return ret;
 }
+
+vk::PrimitiveTopology parseTopology(std::string_view text) noexcept {
+	if (text == "point_list") {
+		return vk::PrimitiveTopology::ePointList;
+	} else if (text == "line_list") {
+		return vk::PrimitiveTopology::eLineList;
+	} else if (text == "line_strip") {
+		return vk::PrimitiveTopology::eLineStrip;
+	} else if (text == "triangle_strip") {
+		return vk::PrimitiveTopology::eTriangleStrip;
+	}
+	return vk::PrimitiveTopology::eTriangleList;
+}
+
+vk::PolygonMode parsePolygonMode(std::string_view text) noexcept {
+	if (text == "line") {
+		return vk::PolygonMode::eLine;
+	} else if (text == "point") {
+		return vk::PolygonMode::ePoint;
+	}
+	return vk::PolygonMode::eFill;
+}
 } // namespace
 
 void AssetManifest::append(AssetManifest const& rhs) {
@@ -22,7 +44,7 @@ void AssetManifest::append(AssetManifest const& rhs) {
 	m_textures = m_textures + rhs.m_textures;
 }
 
-std::size_t AssetManifest::preload(dj::json_t const& root) {
+std::size_t AssetManifest::preload(dj::json const& root) {
 	std::size_t ret{};
 	for (auto const& [groupName, entries] : root.as<dj::map_t>()) {
 		Group group;
@@ -48,7 +70,7 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* scheduler) {
 	std::size_t ret{};
 	if (auto eng = Services::locate<Engine>()) {
-		dj::json_t json;
+		dj::json json;
 		auto& resources = eng->store().resources();
 		auto res = resources.load(jsonID, Resource::Type::eText);
 		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }
@@ -62,7 +84,7 @@ std::size_t AssetManifest::unload(io::Path const& jsonID, dts::scheduler& schedu
 	wait(scheduler);
 	std::size_t count{};
 	if (auto eng = Services::locate<Engine>()) {
-		dj::json_t json;
+		dj::json json;
 		auto& resources = eng->store().resources();
 		auto res = resources.load(jsonID, Resource::Type::eText);
 		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }
@@ -166,6 +188,11 @@ std::size_t AssetManifest::addTextures(Group group) {
 
 std::size_t AssetManifest::addPipelines(Group group) {
 	std::size_t ret{};
+	auto setupVariant = [](AssetLoadData<graphics::Pipeline>::Variant& out, dj::json const& json) {
+		out.lineWidth = json.get_as("line_width", 1.0f);
+		if (auto pm = json.find_as<std::string>("polygon_mode")) { out.polygonMode = parsePolygonMode(*pm); }
+		if (auto topology = json.find_as<std::string>("topology")) { out.topology = parseTopology(*topology); }
+	};
 	for (auto& [id, json] : group) {
 		if (auto shader = json->find("shader"); shader && shader->is_string()) {
 			AssetLoadData<graphics::Pipeline> data(&context());
@@ -174,7 +201,18 @@ std::size_t AssetManifest::addPipelines(Group group) {
 			if (auto name = json->find_as<std::string>("name")) { data.name = std::move(*name); }
 			if (auto flags = json->find_as<std::vector<std::string>>("flags")) { data.flags = parseFlags(*flags); }
 			data.gui = json->get_as<bool>("gui");
-			data.wireframe = json->get_as<f32>("wireframe");
+			setupVariant(data.main, *json);
+			if (auto variants = json->find_as<dj::map_t>("variants")) {
+				data.variants.reserve(variants->size());
+				for (auto const& [id, var] : *variants) {
+					if (!id.empty()) {
+						AssetLoadData<graphics::Pipeline>::Variant variant;
+						variant.id = id;
+						setupVariant(variant, *var);
+						data.variants.push_back(std::move(variant));
+					}
+				}
+			}
 			m_pipelines.add(std::move(id), std::move(data));
 			++ret;
 		}

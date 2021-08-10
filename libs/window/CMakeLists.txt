@@ -15,11 +15,10 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 		levk::core
+		levk::vulkan-hpp
+		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 	PRIVATE
 		levk::interface
-		levk::vulkan-hpp
-		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
-		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW LEVK_DESKTOP>)

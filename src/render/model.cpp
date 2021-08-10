@@ -7,40 +7,10 @@
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
+#include <glm/gtx/hash.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
 #include <graphics/utils/utils.hpp>
-
-#if !defined(__ANDROID__)
-#include <glm/gtx/hash.hpp>
-#endif
-
-#if defined(__ANDROID__)
-namespace std {
-namespace {
-struct fhasher {
-	std::size_t i = 0;
-
-	std::size_t operator()(float f) noexcept { return std::hash<float>{}(f) << i++; }
-};
-} // namespace
-
-template <>
-struct hash<glm::vec2> {
-	size_t operator()(glm::vec2 const& v) const noexcept {
-		fhasher f;
-		return f(v.x) ^ f(v.y);
-	}
-};
-template <>
-struct hash<glm::vec3> {
-	size_t operator()(glm::vec3 const& v) const noexcept {
-		fhasher f;
-		return f(v.x) ^ f(v.y) ^ f(v.z);
-	}
-};
-} // namespace std
-#endif
 
 namespace le {
 namespace {
@@ -58,11 +28,11 @@ constexpr glm::vec2 texCoords(Span<f32 const> arr, int idx, bool invertY) noexce
 constexpr glm::vec3 vec3(Span<f32 const> arr, int idx) noexcept { return arr.empty() || idx < 0 ? glm::vec3(0.0f) : vec3(arr, (std::size_t)idx); }
 
 template <typename T>
-ktl::result<std::size_t> find(T const& arr, Hash hash) noexcept {
+std::optional<std::size_t> find(T const& arr, Hash hash) noexcept {
 	for (std::size_t idx = 0; idx < arr.size(); ++idx) {
 		if (arr[idx].hash == hash) { return idx; }
 	}
-	return ktl::null_result;
+	return std::nullopt;
 }
 
 Colour colour(f32 const (&arr)[3], Colour fallback, f32 a = 1.0f) {
@@ -70,7 +40,7 @@ Colour colour(f32 const (&arr)[3], Colour fallback, f32 a = 1.0f) {
 	return Colour(glm::vec4(fallback.toVec3(), a));
 }
 
-glm::vec3 vec3(dj::json_t const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
+glm::vec3 vec3(dj::json const& json, std::string const& id, glm::vec3 const& fallback = glm::vec3(0.0f)) {
 	glm::vec3 ret = fallback;
 	if (auto const pVec = json.find(id)) {
 		if (auto x = pVec->find("x")) { ret.x = x->as<f32>(); }
@@ -96,6 +66,8 @@ class OBJReader final {
 	};
 
   private:
+	using Failcode = Model::Failcode;
+	using Error = Model::Error;
 	struct IncrHasher {
 		std::size_t count = 0;
 
@@ -146,16 +118,16 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader)
 		msr = &*m_matStrReader;
 	}
 	bool const bOK = tinyobj::LoadObj(&m_attrib, &m_shapes, &m_materials, &warn, &err, &m_obj, msr);
-	if (m_shapes.empty()) { return std::string("No shapes parsed!"); }
-	if (!warn.empty() && !bOK) { return warn; }
-	if (!err.empty()) { return err; }
-	if (!bOK) { return std::string("Unknown error(s)"); }
+	if (m_shapes.empty()) { return Error{"No shapes parsed", Failcode::eObjMtlReadFailure}; }
+	if (!warn.empty() && !bOK) { return Error{std::move(warn), Failcode::eObjMtlReadFailure}; }
+	if (!err.empty()) { return Error{std::move(err), Failcode::eObjMtlReadFailure}; }
+	if (!bOK) { return Error{"Unknown error", Failcode::eObjMtlReadFailure}; }
 	Model::CreateInfo ret;
 	for (auto const& shape : m_shapes) { ret.meshes.push_back(processShape(ret, shape)); }
 	for (auto& texture : ret.textures) {
 		auto bytes = reader.bytes(texture.filename);
-		ensure(bytes.has_value(), "Texture not found!");
-		if (bytes) { texture.bytes = std::move(bytes).value(); }
+		if (!bytes.has_value()) { return Error{texture.filename.generic_string(), Failcode::eTextureNotFound}; }
+		texture.bytes = std::move(bytes).value();
 	}
 	return Model::Result<Model::CreateInfo>(std::move(ret));
 }
@@ -265,17 +237,17 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 
 Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Reader const& reader) {
 	auto res = reader.string(jsonID);
-	if (!res) { return std::string("JSON not found"); }
-	dj::json_t json;
+	if (!res) { return Error{jsonID.generic_string(), Failcode::eJsonNotFound}; }
+	dj::json json;
 	auto result = json.read(*res);
-	if (result.failure || !result.errors.empty() || !json.is_object()) { return std::string("Failed to read json: ") + result.to_string(); }
-	if (!json.contains("obj")) { return std::string("JSON missing obj"); }
+	if (result.failure || !result.errors.empty() || !json.is_object()) { return Error{jsonID.generic_string(), Failcode::eJsonMissingData}; }
+	if (!json.contains("obj")) { return Error{jsonID.generic_string(), Failcode::eJsonMissingData}; }
 	auto const jsonDir = jsonID.parent_path();
 	auto const objID = jsonDir / json["obj"].as<std::string>();
 	auto const mtlID = jsonDir / (json.contains("mtl") ? json["mtl"].as<std::string>() : std::string());
 	auto obj = reader.sstream(objID);
 	auto mtl = reader.sstream(mtlID);
-	if (!obj) { return std::string("obj not found"); }
+	if (!obj) { return Error{objID.generic_string(), Failcode::eObjNotFound}; }
 	auto pSamplerID = json.find("sampler");
 	auto pScale = json.find("scale");
 	OBJReader::Data objData;
@@ -302,7 +274,7 @@ Model::Result<Span<Primitive const>> Model::construct(not_null<VRAM*> vram, Crea
 			tci.sampler = sampler.sampler();
 			tci.data = graphics::utils::bmpBytes(tex.bytes);
 			graphics::Texture texture(vram);
-			if (!texture.construct(tci)) { return std::string("Failed to construct texture"); }
+			if (!texture.construct(tci)) { return Error{{}, Failcode::eTextureCreateFailure}; }
 			storage.textures.emplace(tex.id, std::move(texture));
 		}
 	}

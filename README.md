@@ -12,7 +12,6 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 
 - Multi-platform windowing
   - Windows, Linux: via GLFW
-  - Android (alpha)
   - Keyboard, mouse, and gamepad support
 - Bootstrapped Vulkan context
   - Customizable device selection
@@ -42,8 +41,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 - C++20 compiler and stdlib
 - OS with desktop environment and Vulkan support
   - Windows 10
-  - Linux: X11 / Wayland (untested)
-  - Android (alpha)
+  - Linux: X, Wayland (untested)
 - GPU supporting Vulkan 1.1+, its driver, and loader (for running without validation layers)
 - Vulkan SDK and validation layers (for debugging / development)
 

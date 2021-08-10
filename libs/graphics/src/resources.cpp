@@ -121,10 +121,9 @@ void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::B
 	cb.begin(beginInfo);
 	ImgMeta first = meta, second = meta;
 	first.layouts.second = vk::ImageLayout::eTransferDstOptimal;
-	first.access.second = vk::AccessFlagBits::eTransferWrite;
+	first.access.second = second.access.first = vk::AccessFlagBits::eTransferWrite;
 	first.stages = {vkstg::eTopOfPipe | meta.stages.first, vkstg::eTransfer};
 	second.layouts.first = vk::ImageLayout::eTransferDstOptimal;
-	second.access.first = vk::AccessFlagBits::eTransferRead;
 	second.stages = {vkstg::eTransfer, vkstg::eBottomOfPipe | meta.stages.second};
 	imageBarrier(cb, dst, first);
 	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);

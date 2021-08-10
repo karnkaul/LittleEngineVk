@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <core/mono_instance.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/texture.hpp>
@@ -9,15 +8,9 @@
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>
 
-#define IMGUI(statemt)                                                                                                                                         \
-	do {                                                                                                                                                       \
-		if (auto in = DearImGui::inst(); in && in->ready()) { statemt; }                                                                                       \
-	} while (0)
-
 constexpr bool levk_imgui = true;
 #else
 constexpr bool levk_imgui = false;
-#define IMGUI(x)
 #endif
 
 namespace le {
@@ -26,22 +19,18 @@ class Device;
 class CommandBuffer;
 } // namespace graphics
 namespace window {
-class DesktopInstance;
+class Instance;
 }
 
-class DearImGui final : public TMonoInstance<DearImGui> {
+class DearImGui final {
   public:
 	enum class State { eEnd, eBegin, eRender };
 
-	using Desktop = window::DesktopInstance;
+	using Window = window::Instance;
 	struct CreateInfo;
 
 	DearImGui();
-	DearImGui(not_null<graphics::Device*> device, not_null<Desktop const*> window, CreateInfo const& info);
-	DearImGui(DearImGui&&) = default;
-	DearImGui& operator=(DearImGui&&) = default;
-
-	static bool draw(graphics::CommandBuffer const& cb);
+	DearImGui(not_null<graphics::Device*> device, not_null<Window const*> window, CreateInfo const& info);
 
 	bool beginFrame();
 	bool endFrame();

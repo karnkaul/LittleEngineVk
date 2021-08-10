@@ -1,6 +1,17 @@
 #include <unordered_map>
-#include <window/desktop_instance.hpp>
+#include <core/not_null.hpp>
+#include <instance_impl.hpp>
 #include <window/instance.hpp>
+
+#if defined(LEVK_USE_GLFW)
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
+#include <core/array_map.hpp>
+#include <core/ensure.hpp>
+#include <core/log.hpp>
+#include <ktl/fixed_any.hpp>
+#endif
 
 namespace le::window {
 namespace {
@@ -150,14 +161,83 @@ T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str
 }
 } // namespace
 
-Key parseKey(std::string_view str) noexcept { return parse(g_keyMap, str, Key::eUnknown); }
+using lvl = dl::level;
+constexpr std::string_view g_name = "Window";
 
-Action parseAction(std::string_view str) noexcept {
+Manager::Manager() {
+#if defined(LEVK_USE_GLFW)
+	m_impl = std::make_unique<Impl>(&m_logger);
+	if (glfwInit() != GLFW_TRUE) {
+		m_logger.log(lvl::error, 2, "[{}] Could not initialise GLFW!", g_name);
+		m_impl.reset();
+		return;
+	} else if (glfwVulkanSupported() != GLFW_TRUE) {
+		m_logger.log(lvl::error, 2, "[{}] Vulkan not supported!", g_name);
+		m_impl.reset();
+		return;
+	} else {
+		m_logger.log(lvl::info, 1, "[{}] Manager initialised successfully", g_name);
+	}
+#endif
+}
+
+Manager::~Manager() {
+#if defined(LEVK_USE_GLFW)
+	if (m_impl) {
+		for (Cursor& cursor : m_impl->m_cursors.arr) {
+			if (cursor.data.contains<GLFWcursor*>()) { glfwDestroyCursor(cursor.data.get<GLFWcursor*>()); }
+		}
+		glfwTerminate();
+		m_logger.log(lvl::info, 1, "[{}] Manager terminated", g_name);
+	}
+#endif
+}
+
+std::optional<Instance> Manager::make(CreateInfo const& info) {
+	std::optional<Instance> ret;
+#if defined(LEVK_USE_GLFW)
+	if (m_impl) {
+		if (auto win = m_impl->make(info)) {
+			ret = Instance(std::make_unique<Instance::Impl>(m_impl.get(), win));
+			if (info.options.autoShow) { ret->show(); }
+		}
+	}
+#endif
+	return ret;
+}
+
+Instance::Instance(Instance&&) = default;
+Instance& Instance::operator=(Instance&&) = default;
+Instance::Instance(std::unique_ptr<Impl>&& impl) noexcept : m_impl(std::move(impl)) {}
+Instance::~Instance() = default;
+EventQueue Instance::pollEvents() { return m_impl->pollEvents(); }
+bool Instance::show() { return m_impl->show(); }
+bool Instance::hide() { return m_impl->hide(); }
+bool Instance::visible() const noexcept { return m_impl->visible(); }
+CursorType Instance::cursorType() const noexcept { return m_impl->m_active.type; }
+CursorMode Instance::cursorMode() const noexcept { return m_impl->cursorMode(); }
+void Instance::cursorType(CursorType type) { m_impl->cursorType(type); }
+void Instance::cursorMode(CursorMode mode) { m_impl->cursorMode(mode); }
+glm::vec2 Instance::cursorPosition() const noexcept { return m_impl->cursorPosition(); }
+glm::uvec2 Instance::windowSize() const noexcept { return m_impl->windowSize(); }
+glm::uvec2 Instance::framebufferSize() const noexcept { return m_impl->framebufferSize(); }
+void Instance::close() { m_impl->close(); }
+bool Instance::closing() const noexcept { return m_impl->closing(); }
+bool Instance::importControllerDB(std::string_view db) const { return m_impl->importControllerDB(db); }
+ktl::fixed_vector<Gamepad, 8> Instance::activeGamepads() const { return m_impl->activeGamepads(); }
+Joystick Instance::joyState(s32 id) const { return m_impl->joyState(id); }
+Gamepad Instance::gamepadState(s32 id) const { return m_impl->gamepadState(id); }
+std::size_t Instance::joystickAxesCount(s32 id) const { return m_impl->joystickAxesCount(id); }
+std::size_t Instance::joysticKButtonsCount(s32 id) const { return m_impl->joysticKButtonsCount(id); }
+
+Key Instance::parseKey(std::string_view str) noexcept { return parse(g_keyMap, str, Key::eUnknown); }
+
+Action Instance::parseAction(std::string_view str) noexcept {
 	if (str == "press") { return Action::ePress; }
 	return Action::eRelease;
 }
 
-Mods parseMods(Span<std::string const> vec) noexcept {
+Mods Instance::parseMods(Span<std::string const> vec) noexcept {
 	Mods ret;
 	std::memset(&ret, 0, sizeof(ret));
 	for (auto const& str : vec) {
@@ -166,5 +246,5 @@ Mods parseMods(Span<std::string const> vec) noexcept {
 	return ret;
 }
 
-Axis parseAxis(std::string_view str) noexcept { return parse(g_axisMap, str, Axis::eUnknown); }
+Axis Instance::parseAxis(std::string_view str) noexcept { return parse(g_axisMap, str, Axis::eUnknown); }
 } // namespace le::window

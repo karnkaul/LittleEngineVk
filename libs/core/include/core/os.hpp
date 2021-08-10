@@ -9,7 +9,7 @@
 #include <core/std_types.hpp>
 
 namespace le::os {
-enum class OS : s8 { eWindows, eLinux, eAndroid, eUnknown };
+enum class OS : s8 { eWindows, eLinux, eUnknown };
 enum class Arch : s8 { eX64, eARM64, eX86, eUnknown };
 enum class StdLib : s8 { eMSVC, eLibStdCXX, eUnknown };
 enum class Compiler : s8 { eClang, eGCC, eVCXX, eUnknown };
@@ -33,15 +33,9 @@ inline constexpr le::os::Arch levk_arch = le::os::Arch::eX64;
 inline constexpr std::string_view levk_arch_name = "x64";
 #endif
 #elif defined(__linux__)
-#if defined(__ANDROID__)
-#define LEVK_OS_ANDROID
-inline constexpr le::os::OS levk_OS = le::os::OS::eAndroid;
-inline constexpr std::string_view levk_OS_name = "Android";
-#else
 #define LEVK_OS_LINUX
 inline constexpr le::os::OS levk_OS = le::os::OS::eLinux;
 inline constexpr std::string_view levk_OS_name = "Linux";
-#endif
 #if defined(__arm__)
 #define LEVK_ARCH_ARM64
 inline constexpr le::os::Arch levk_arch = le::os::Arch::eARM64;
@@ -78,7 +72,6 @@ inline constexpr std::string_view levk_stdlib_name = "libstdc++";
 inline constexpr le::os::StdLib levk_stdlib = le::os::StdLib::eUnknown;
 inline constexpr std::string_view levk_stdlib_name = "Unknown";
 #endif
-inline constexpr bool levk_desktopOS = levk_OS == le::os::OS::eWindows || levk_OS == le::os::OS::eLinux;
 
 #if defined(__clang__)
 #define LEVK_COMPILER_CLANG
@@ -100,34 +93,35 @@ inline constexpr std::string_view levk_compiler_name = "Unknown";
 
 namespace le {
 namespace os {
-enum class Dir : s8 { eWorking, eExecutable };
-
+///
+/// \brief Command line arguments
+///
 using Args = Span<char const* const>;
 
 ///
-/// \brief Initialise OS service
+/// \brief Working environment
 ///
-void args(Args args);
+struct Environment {
+	struct Paths {
+		io::Path exe;
+		io::Path pwd;
+
+		io::Path bin() const { return exe.parent_path(); }
+	};
+
+	Paths paths;
+	Args args;
+	std::string_view arg0;
+};
+
 ///
-/// \brief Obtain `argv[0]`
+/// \brief Initialise environment
 ///
-std::string argv0();
+void environment(Args args);
 ///
-/// \brief Obtain `argv[0]`
+/// \brief Obtain the current environment
 ///
-std::string exeName();
-///
-/// \brief Obtain all command line arguments passed to the runtime
-///
-Args args() noexcept;
-///
-/// \brief Obtain working/executable directory
-///
-io::Path dirPath(Dir dir);
-///
-/// \brief Obtain internal/external storage path
-///
-io::Path androidStorage(ErasedPtr androidApp, bool bExternal);
+Environment const& environment() noexcept;
 
 ///
 /// \brief Check if a debugger is attached to the runtime

@@ -31,12 +31,16 @@ void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, decf::registry co
 
 void DrawListFactory::add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
-		if (auto prims = node->primitives(); !prims.empty()) {
-			Rect2D const rect = cast(graphics::utils::scissor(node->m_scissor));
-			map[layer].push_back({node->model(), rect, prims});
+		if (node->m_active) {
+			if (auto prims = node->primitives(); !prims.empty()) {
+				Rect2D const rect = cast(graphics::utils::scissor(node->m_scissor));
+				map[layer].push_back({node->model(), rect, prims});
+			}
 		}
 	}
-	for (auto& node : root.nodes()) { add(map, layer, *node); }
+	for (auto& node : root.nodes()) {
+		if (node->m_active) { add(map, layer, *node); }
+	}
 }
 
 void DrawListFactory::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Primitive const> primitives) {

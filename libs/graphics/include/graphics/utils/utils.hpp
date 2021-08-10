@@ -15,8 +15,6 @@
 #include <ktl/fixed_vector.hpp>
 #include <spirv_cross.hpp>
 
-inline constexpr bool levk_shaderCompiler = levk_desktopOS;
-
 namespace le::graphics {
 struct Shader::Resources {
 	spirv_cross::ShaderResources resources;
@@ -47,7 +45,7 @@ inline std::string_view g_compiler = "glslc";
 
 Shader::ResourcesMap shaderResources(Shader const& shader);
 io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
-ktl::result<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
+std::optional<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
 SetBindings extractBindings(Shader const& shader);
 
 Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);

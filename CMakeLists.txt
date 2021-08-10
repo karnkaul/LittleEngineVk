@@ -26,7 +26,7 @@ include(FetchContent)
 include(cmake/platform.cmake)
 include(cmake/utils.cmake)
 
-if(NOT PLATFORM STREQUAL Android AND NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 	message(WARNING "Unsupported architecture, must be 64-bit")
 endif()
 
@@ -38,19 +38,12 @@ endif()
 
 # options
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
-if(${PLATFORM} STREQUAL Android)
-	option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" ON)
-	set(LEVK_EDITOR OFF CACHE BOOL "" FORCE)
-	set(LEVK_USE_GLFW OFF CACHE BOOL "" FORCE)
-	set(LEVK_USE_IMGUI OFF CACHE BOOL "" FORCE)
+option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
+option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" OFF)
+if("$CMAKE_BUILD_TYPE" STREQUAL "Debug")
+	option(LEVK_EDITOR "Enable Editor" ON)
 else()
-	option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
-	option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" OFF)
-	if("$CMAKE_BUILD_TYPE" STREQUAL "Debug")
-		option(LEVK_EDITOR "Enable Editor" ON)
-	else()
-		option(LEVK_EDITOR "Enable Editor" OFF)
-	endif()
+	option(LEVK_EDITOR "Enable Editor" OFF)
 endif()
 if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
 	set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
@@ -62,14 +55,6 @@ if(LINUX_CLANG OR WINDOWS_CLANG)
 	option(LEVK_ASAN "Enable asan" OFF)
 endif()
 
-if(PLATFORM STREQUAL Android)
-	if(LEVK_EDITOR OR LEVK_USE_GLFW OR LEVK_USE_IMGUI)
-		message(FATAL_ERROR "Cannot build Android with LEVK_EDITOR or LEVK_USE_GLFW or LEVK_USE_IMGUI!")
-	endif()
-	if(NOT LEVK_VULKAN_DYNAMIC)
-		message(FATAL_ERROR "Cannot build Android without LEVK_VULKAN_DYNAMIC!")
-	endif()
-endif()
 if(LEVK_EDITOR)
 	set(LEVK_USE_IMGUI ON CACHE BOOL "" FORCE)
 	if(NOT LEVK_USE_GLFW OR NOT LEVK_USE_IMGUI)
@@ -237,7 +222,6 @@ target_link_libraries(${target_name}
 		djson::djson
 		dtasks::dtasks
 		clap::clap
-		$<$<STREQUAL:${PLATFORM},Android>:levk::android-glue>
 		levk::interface
 	PRIVATE
 		stb-image

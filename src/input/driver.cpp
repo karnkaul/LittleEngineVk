@@ -2,7 +2,7 @@
 #include <engine/input/driver.hpp>
 #include <engine/input/space.hpp>
 #include <engine/render/viewport.hpp>
-#include <window/desktop_instance.hpp>
+#include <window/instance.hpp>
 
 namespace le::input {
 namespace {
@@ -47,13 +47,11 @@ Driver::Out Driver::update(In in, Viewport const& view, bool consume) noexcept {
 	st.text = m_transient.text;
 	st.suspended = m_persistent.suspended;
 	glm::vec2 wSize = {};
-#if defined(LEVK_DESKTOP)
-	if (in.desktop) {
-		wSize = in.desktop->windowSize();
-		m_transient.gamepads = in.desktop->activeGamepads();
+	if (in.win) {
+		wSize = in.win->windowSize();
+		m_transient.gamepads = in.win->activeGamepads();
 		st.gamepads = m_transient.gamepads;
 	}
-#endif
 	sp = Space::make(in.size.scene, in.size.swapchain, wSize, view, in.renderScale);
 	st.cursor.position = sp.unproject(st.cursor.screenPos, false);
 	return ret;

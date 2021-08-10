@@ -130,9 +130,9 @@ bool Pipeline::setup(Shader const& shader) {
 		layouts.push_back(descLayout);
 	}
 	f.layout = makeDeferred<vk::PipelineLayout>(m_device, setBindings.push, layouts);
+	m_metadata.name = shader.m_name;
 	m_storage.input = ShaderInput(*this, m_metadata.main.buffering);
 	m_storage.dynamic.modules = shader.m_modules;
-	m_metadata.name = shader.m_name;
 	return true;
 }
 

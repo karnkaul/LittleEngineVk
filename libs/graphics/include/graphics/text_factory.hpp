@@ -29,14 +29,13 @@ struct TextFactory {
 		f32 linePad = 0.2f;
 	};
 
-	std::string text;
 	glm::vec3 pos = glm::vec3(0.0f);
 	glm::vec2 align = {};
 	Size size = 1.0f;
 	f32 nYPad = 0.2f;
 	RGBA colour = colours::white;
 
-	Geometry generate(Span<Glyph const> glyphs, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;
+	Geometry generate(Span<Glyph const> glyphs, std::string_view text, glm::ivec2 texSize, std::optional<Layout> layout = std::nullopt) const noexcept;
 	glm::ivec2 glyphBounds(Span<Glyph const> glyphs, std::string_view text = {}) const noexcept;
 	Layout layout(Span<Glyph const> glyphs, std::string_view text, Size size = 1.0f, f32 nPadY = 0.1f) const noexcept;
 };

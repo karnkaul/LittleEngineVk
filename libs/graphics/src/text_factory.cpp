@@ -1,7 +1,7 @@
 #include <graphics/text_factory.hpp>
 
 namespace le::graphics {
-Geometry TextFactory::generate(Span<Glyph const> glyphs, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
+Geometry TextFactory::generate(Span<Glyph const> glyphs, std::string_view text, glm::ivec2 texSize, std::optional<Layout> layout) const noexcept {
 	if (text.empty()) { return {}; }
 	if (!layout) { layout = this->layout(glyphs, text, size, nYPad); }
 	glm::vec2 const realTopLeft = pos;

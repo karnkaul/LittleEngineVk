@@ -369,6 +369,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, not_null<BitmapFont const*> font
 	m_header.title->m_style.quad.base.Tf = info.header.background;
 	m_header.title->m_style.text.base.size = info.header.textSize;
 	m_header.title->m_text->set(info.header.text);
+	m_header.title->m_style.quad.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
 	m_header.close = &m_header.title->push<Widget>(font);
 	m_header.close->m_style.quad.base.Tf = colours::red;
@@ -509,9 +510,9 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& vram = m_eng->gfx().boot.vram;
 
 		m_data.text.make(&vram);
-		m_data.text.text.size = 80U;
-		m_data.text.text.colour = colours::yellow;
-		m_data.text.text.pos = {0.0f, 200.0f, 0.0f};
+		m_data.text.factory.size = 80U;
+		m_data.text.factory.colour = colours::yellow;
+		m_data.text.factory.pos = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};
 		m_data.text.set(font.get(), "Hi!");
 
@@ -574,7 +575,7 @@ class App : public input::Receiver, public SceneRegistry {
 			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().find<DrawLayer>("layers/tex"));
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.update(*font)); }
+		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.primitive(*font)); }
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));

@@ -1,7 +1,7 @@
 #pragma once
 #include <engine/gui/tree.hpp>
+#include <engine/render/bitmap_text.hpp>
 #include <graphics/mesh.hpp>
-#include <graphics/text_factory.hpp>
 
 namespace le {
 class BitmapFont;
@@ -15,7 +15,7 @@ class Text : public TreeNode {
 
 	Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept;
 
-	Factory const& factory() const noexcept { return m_factory; }
+	Factory const& factory() const noexcept { return m_text.factory; }
 	std::string_view str() const noexcept { return m_str; }
 	void set(std::string str, std::optional<Factory> factory = std::nullopt);
 	void set(Factory factory);
@@ -25,12 +25,10 @@ class Text : public TreeNode {
 	not_null<BitmapFont const*> m_font;
 
   private:
-	void onUpdate(input::Space const&) override;
+	void onUpdate(input::Space const& space) override;
 
-	graphics::Mesh m_mesh;
-	Factory m_factory;
+	BitmapText m_text;
 	std::string m_str;
-	mutable Primitive m_prim;
 	bool m_dirty = false;
 };
 
@@ -42,7 +40,7 @@ inline void Text::set(std::string str, std::optional<Factory> factory) {
 	m_dirty = true;
 }
 inline void Text::set(Factory factory) {
-	m_factory = std::move(factory);
+	m_text.factory = std::move(factory);
 	m_dirty = true;
 }
 } // namespace le::gui

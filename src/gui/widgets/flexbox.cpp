@@ -1,4 +1,4 @@
-#include <engine/gui/flexbox.hpp>
+#include <engine/gui/widgets/flexbox.hpp>
 
 namespace le::gui {
 Flexbox::Flexbox(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info) noexcept

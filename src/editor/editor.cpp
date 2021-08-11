@@ -348,7 +348,6 @@ Viewport const& Editor::view() const noexcept {
 
 graphics::ScreenView Editor::update(input::Frame const& frame) {
 	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
-	if (!m_in.registry || !m_in.registry->registry().contains(m_out.inspecting.entity)) { m_out.inspecting = {}; }
 	if (active() && engaged()) {
 		auto eng = Services::locate<Engine>();
 		edi::displayScale(eng->renderer().renderScale());

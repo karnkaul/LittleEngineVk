@@ -8,6 +8,7 @@
 #include <engine/editor/types.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/render/viewport.hpp>
+#include <ktl/either.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le {
@@ -16,6 +17,9 @@ class Instance;
 }
 namespace graphics {
 struct ScreenView;
+}
+namespace gui {
+class TreeRoot;
 }
 class SceneRegistry;
 
@@ -28,10 +32,7 @@ struct In {
 	SceneRegistry* registry = {};
 };
 struct Out {
-	struct {
-		SceneNode* node = {};
-		decf::entity entity;
-	} inspecting;
+	ktl::either<decf::entity, gui::TreeRoot*> inspecting;
 };
 } // namespace edi
 

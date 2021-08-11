@@ -30,7 +30,7 @@
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
-#include <engine/gui/dropdown.hpp>
+#include <engine/gui/widgets/dropdown.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
 
 namespace le::demo {
@@ -251,7 +251,7 @@ class Drawer : public ListDrawer {
 
 class TestView : public gui::View {
   public:
-	TestView(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font) : gui::View(parent) {
+	TestView(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font) : gui::View(parent, std::move(name)) {
 		m_canvas.size.value = {1280.0f, 720.0f};
 		m_canvas.size.unit = gui::Unit::eAbsolute;
 		auto& bg = push<gui::Quad>();
@@ -299,7 +299,7 @@ class Dialogue : public View {
 		Hash style;
 	};
 
-	Dialogue(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info);
+	Dialogue(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info);
 
 	[[nodiscard]] Widget::OnClick::Tk addButton(std::string text, Widget::OnClick::Callback const& onClick);
 
@@ -354,8 +354,8 @@ struct Dialogue::CreateInfo {
 	ButtonInfo buttonInfo;
 };
 
-Dialogue::Dialogue(not_null<ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info)
-	: View(parent, Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
+Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info)
+	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
 	m_content = &push<Widget>(font, info.content.style);
 	m_content->m_rect.size = info.content.size;
 	m_content->m_style.text.base.size = info.content.textSize;
@@ -474,9 +474,9 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		};
 		if (auto inspector = Services::locate<edi::Inspector>(false)) {
-			inspector->attach<GFreeCam>("FreeCam");
-			inspector->attach<GPlayerController>("PlayerController");
-			inspector->attach<GSpringArm>("SpringArm");
+			inspector->attach<GFreeCam>();
+			inspector->attach<GPlayerController>();
+			inspector->attach<GSpringArm>();
 		}
 	}
 
@@ -528,7 +528,7 @@ class App : public input::Receiver, public SceneRegistry {
 		auto guiStack = spawnStack("gui_root", *m_eng->store().find<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
-		[[maybe_unused]] auto& testView = stack.push<TestView>(&font.get());
+		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view", &font.get());
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
@@ -540,7 +540,7 @@ class App : public input::Receiver, public SceneRegistry {
 		gui::Dialogue::CreateInfo gdci;
 		gdci.header.text = "Dialogue";
 		gdci.content.text = "Content goes here";
-		auto& dialogue = stack.push<gui::Dialogue>(&font.get(), gdci);
+		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", &font.get(), gdci);
 		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
 		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});

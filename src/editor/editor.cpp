@@ -346,7 +346,8 @@ Viewport const& Editor::view() const noexcept {
 	return active() && engaged() ? m_storage.gameView : s_default;
 }
 
-graphics::ScreenView Editor::update(input::Frame const& frame) {
+graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) {
+#if defined(LEVK_EDITOR)
 	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
 	if (active() && engaged()) {
 		auto eng = Services::locate<Engine>();
@@ -367,6 +368,7 @@ graphics::ScreenView Editor::update(input::Frame const& frame) {
 		m_in = {};
 		return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 	}
+#endif
 	return {};
 }
 } // namespace le

@@ -263,8 +263,7 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	return parser(reader);
 }
 
-Model::Result<Span<Primitive const>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler,
-													  std::optional<vk::Format> forceFormat) {
+Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
 	Map<Material> materials;
 	decltype(m_storage) storage;
 	for (auto const& tex : info.textures) {
@@ -289,17 +288,17 @@ Model::Result<Span<Primitive const>> Model::construct(not_null<VRAM*> vram, Crea
 		graphics::Mesh mesh(vram);
 		mesh.construct(m.geometry);
 		auto [it, _] = storage.meshes.emplace((info.id / m.id).generic_string(), std::move(mesh));
-		Primitive prim;
-		prim.mesh = &it->second;
+		Prop prop;
+		prop.mesh = &it->second;
 		if (!m.matIndices.empty()) {
 			auto const& mat = info.materials[m.matIndices.front()];
 			auto const it = materials.find(mat.hash);
 			ensure(it != materials.end(), "Invalid hash");
-			if (it != materials.end()) { prim.material = it->second; }
+			if (it != materials.end()) { prop.material = it->second; }
 		}
-		storage.primitives.push_back(prim);
+		storage.props.push_back(prop);
 	}
 	m_storage = std::move(storage);
-	return Span<Primitive const>(m_storage.primitives);
+	return Span<Prop const>(m_storage.props);
 }
 } // namespace le

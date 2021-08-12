@@ -14,11 +14,11 @@ class SceneRegistry : public utils::VBase {
 	SceneNode::Root& root() noexcept { return m_root; }
 	SceneNode::Root const& root() const noexcept { return m_root; }
 
-	void attach(decf::entity entity, DrawLayer layer, Span<Primitive const> primitives);
+	void attach(decf::entity entity, DrawLayer layer, Span<Prop const> props);
 	void attach(decf::entity entity, DrawLayer layer);
 	decf::spawn_t<SceneNode> spawnNode(std::string name);
 	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, not_null<graphics::Mesh const*> mesh, Material const& material);
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, Span<Primitive const> primitives);
+	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, Span<Prop const> props);
 	decf::spawn_t<Skybox> spawnSkybox(DrawLayer layer, not_null<Skybox::Cubemap const*> cubemap);
 	decf::spawn_t<gui::ViewStack> spawnStack(std::string name, DrawLayer layer, not_null<graphics::VRAM*> vram);
 
@@ -30,9 +30,7 @@ class SceneRegistry : public utils::VBase {
 
 // impl
 
-inline void SceneRegistry::attach(decf::entity entity, DrawLayer layer, Span<Primitive const> primitives) {
-	DrawListFactory::attach(m_registry, entity, layer, primitives);
-}
+inline void SceneRegistry::attach(decf::entity entity, DrawLayer layer, Span<Prop const> props) { DrawListFactory::attach(m_registry, entity, layer, props); }
 
 inline void SceneRegistry::attach(decf::entity entity, DrawLayer layer) { m_registry.attach<DrawLayer>(entity, layer); }
 
@@ -44,15 +42,15 @@ inline decf::spawn_t<SceneNode> SceneRegistry::spawnNode(std::string name) {
 
 inline decf::spawn_t<SceneNode> SceneRegistry::spawn(std::string name, DrawLayer layer, not_null<graphics::Mesh const*> mesh, Material const& material) {
 	auto ret = spawnNode(std::move(name));
-	auto& prim = m_registry.attach<Primitive>(ret);
-	prim = {material, mesh};
-	attach(ret, layer, prim);
+	auto& prop = m_registry.attach<Prop>(ret);
+	prop = {material, mesh};
+	attach(ret, layer, prop);
 	return ret;
 }
 
-inline decf::spawn_t<SceneNode> SceneRegistry::spawn(std::string name, DrawLayer layer, Span<Primitive const> primitives) {
+inline decf::spawn_t<SceneNode> SceneRegistry::spawn(std::string name, DrawLayer layer, Span<Prop const> props) {
 	auto ret = spawnNode(std::move(name));
-	attach(ret, layer, primitives);
+	attach(ret, layer, props);
 	return ret;
 };
 

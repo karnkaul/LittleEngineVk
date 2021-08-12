@@ -202,13 +202,13 @@ class Drawer : public ListDrawer {
 		DescriptorBinder bind(list.pipeline, cb);
 		bind(0);
 		for (Drawable const& d : list.drawables) {
-			if (!d.primitives.empty()) {
+			if (!d.props.empty()) {
 				bind(1);
 				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
-				for (Primitive const& prim : d.primitives) {
+				for (Prop const& prop : d.props) {
 					bind({2, 3});
-					ensure(prim.mesh, "Null mesh");
-					prim.mesh->draw(cb);
+					ensure(prop.mesh, "Null mesh");
+					prop.mesh->draw(cb);
 				}
 			}
 		}
@@ -234,10 +234,10 @@ class Drawer : public ListDrawer {
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
 		for (Drawable const& drawable : list.drawables) {
-			if (!drawable.primitives.empty()) {
+			if (!drawable.props.empty()) {
 				map.set(1).update(0, drawable.model);
-				for (Primitive const& prim : drawable.primitives) {
-					Material const& mat = prim.material;
+				for (Prop const& prop : drawable.props) {
+					Material const& mat = prop.material;
 					auto set2 = map.set(2);
 					set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
 					set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
@@ -497,7 +497,7 @@ class App : public input::Receiver, public SceneRegistry {
 	};
 
 	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer layer) {
-		return spawn(std::move(name), layer, m_eng->store().find<Model>(modelID)->primitives());
+		return spawn(std::move(name), layer, m_eng->store().find<Model>(modelID)->props());
 	};
 
 	void init1() {
@@ -575,7 +575,7 @@ class App : public input::Receiver, public SceneRegistry {
 			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().find<DrawLayer>("layers/tex"));
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.primitive(*font)); }
+		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
 		{
 			{
 				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
@@ -590,9 +590,9 @@ class App : public input::Receiver, public SceneRegistry {
 				node.parent(&m_registry.get<SceneNode>(m_data.entities["model_0_0"]));
 			}
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
-				Primitive& prim = model->primitivesRW().front();
-				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawn("model_1_0", *m_eng->store().find<DrawLayer>("layers/lit"), prim);
+				Prop& prop = model->propsRW().front();
+				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
+				auto ent0 = spawn("model_1_0", *m_eng->store().find<DrawLayer>("layers/lit"), prop);
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}

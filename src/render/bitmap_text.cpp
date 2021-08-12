@@ -1,6 +1,6 @@
 #include <engine/render/bitmap_font.hpp>
 #include <engine/render/bitmap_text.hpp>
-#include <engine/scene/primitive.hpp>
+#include <engine/scene/prop.hpp>
 
 namespace le {
 void BitmapText::make(not_null<graphics::VRAM*> vram, Type type) { mesh = graphics::Mesh(vram, type); }
@@ -12,14 +12,14 @@ bool BitmapText::set(Span<graphics::Glyph const> glyphs, glm::ivec2 atlas, std::
 	return false;
 }
 
-Span<Primitive const> BitmapText::primitive(BitmapFont const& font) const { return primitive(font.atlas()); }
+Span<Prop const> BitmapText::prop(BitmapFont const& font) const { return prop(font.atlas()); }
 
-Span<Primitive const> BitmapText::primitive(graphics::Texture const& atlas) const {
+Span<Prop const> BitmapText::prop(graphics::Texture const& atlas) const {
 	if (mesh) {
-		prim.material.map_Kd = &atlas;
-		prim.material.map_d = &atlas;
-		prim.mesh = &*mesh;
-		return prim;
+		prop_.material.map_Kd = &atlas;
+		prop_.material.map_d = &atlas;
+		prop_.mesh = &*mesh;
+		return prop_;
 	}
 	return {};
 }

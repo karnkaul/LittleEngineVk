@@ -1,7 +1,7 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
-#include <engine/scene/primitive.hpp>
+#include <engine/scene/prop.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/expected.hpp>
@@ -47,10 +47,10 @@ class Model {
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
 
-	Result<Span<Primitive const>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
+	Result<Span<Prop const>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
-	Span<Primitive const> primitives() const noexcept { return m_storage.primitives; }
-	Span<Primitive> primitivesRW() noexcept { return m_storage.primitives; }
+	Span<Prop const> props() const noexcept { return m_storage.props; }
+	Span<Prop> propsRW() noexcept { return m_storage.props; }
 
   private:
 	template <typename V>
@@ -60,7 +60,7 @@ class Model {
 		Map<graphics::Texture> textures;
 		Map<Material> materials;
 		Map<graphics::Mesh> meshes;
-		std::vector<Primitive> primitives;
+		std::vector<Prop> props;
 	} m_storage;
 };
 

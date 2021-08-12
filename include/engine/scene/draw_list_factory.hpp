@@ -14,7 +14,7 @@ namespace gui {
 class TreeRoot;
 }
 
-using PrimitiveList = Span<Primitive const>;
+using PropList = Span<Prop const>;
 
 class DrawListFactory {
   public:
@@ -25,12 +25,12 @@ class DrawListFactory {
 	template <typename... Gen>
 	static std::vector<DrawList> lists(decf::registry const& registry, bool sort);
 
-	// Attaches DrawLayer, PrimitiveList
-	static void attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Primitive const> primitives);
+	// Attaches DrawLayer, PropList
+	static void attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Prop const> props);
 };
 
 struct DrawListGen3D {
-	// Populates DrawLayer + SceneNode + PrimitiveList, DrawLayer + Skybox
+	// Populates DrawLayer + SceneNode + PropList, DrawLayer + Skybox
 	void operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const;
 };
 

@@ -8,21 +8,21 @@ class Shape : public TreeNode {
 	Shape(not_null<TreeRoot*> root) noexcept;
 
 	void set(graphics::Geometry geometry) { m_mesh.construct(std::move(geometry)); }
-	Span<Primitive const> primitives() const noexcept override;
+	Span<Prop const> props() const noexcept override;
 
 	Material m_material;
 
   private:
 	graphics::Mesh m_mesh;
-	mutable Primitive m_prim;
+	mutable Prop m_prop;
 };
 
 // impl
 
-inline Span<Primitive const> Shape::primitives() const noexcept {
+inline Span<Prop const> Shape::props() const noexcept {
 	if (m_mesh.valid()) {
-		m_prim = {m_material, &m_mesh};
-		return m_prim;
+		m_prop = {m_material, &m_mesh};
+		return m_prop;
 	}
 	return {};
 }

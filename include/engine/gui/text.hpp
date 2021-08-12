@@ -20,7 +20,7 @@ class Text : public TreeNode {
 	void set(std::string str, std::optional<Factory> factory = std::nullopt);
 	void set(Factory factory);
 
-	Span<Primitive const> primitives() const noexcept override;
+	Span<Prop const> props() const noexcept override;
 
 	not_null<BitmapFont const*> m_font;
 

@@ -12,13 +12,13 @@ Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, 
 } // namespace
 
 void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
-	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, PrimitiveList>()) {
-		auto& [layer, node, prims] = c;
-		if (!prims.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, prims}); }
+	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, PropList>()) {
+		auto& [layer, node, props] = c;
+		if (!props.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, props}); }
 	}
 	for (auto& [_, c] : registry.view<DrawLayer, Skybox>()) {
 		auto& [layer, skybox] = c;
-		if (layer.pipeline) { map[layer].push_back({glm::mat4(1.0f), {}, skybox.primitive()}); }
+		if (layer.pipeline) { map[layer].push_back({glm::mat4(1.0f), {}, skybox.prop()}); }
 	}
 }
 
@@ -32,9 +32,9 @@ void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, decf::registry co
 void DrawListFactory::add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
 		if (node->m_active) {
-			if (auto prims = node->primitives(); !prims.empty()) {
+			if (auto props = node->props(); !props.empty()) {
 				Rect2D const rect = cast(graphics::utils::scissor(node->m_scissor));
-				map[layer].push_back({node->model(), rect, prims});
+				map[layer].push_back({node->model(), rect, props});
 			}
 		}
 	}
@@ -43,8 +43,8 @@ void DrawListFactory::add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot c
 	}
 }
 
-void DrawListFactory::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Primitive const> primitives) {
-	registry.attach<PrimitiveList>(entity) = primitives;
+void DrawListFactory::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Prop const> props) {
+	registry.attach<PropList>(entity) = props;
 	registry.attach<DrawLayer>(entity, layer);
 }
 } // namespace le

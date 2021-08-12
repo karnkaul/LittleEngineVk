@@ -3,8 +3,8 @@
 #include <graphics/render/pipeline.hpp>
 
 namespace le {
-void ListDrawer::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Primitive const> primitives) {
-	DrawListFactory::attach(registry, entity, layer, primitives);
+void ListDrawer::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Prop const> props) {
+	DrawListFactory::attach(registry, entity, layer, props);
 }
 
 void ListDrawer::draw(graphics::CommandBuffer cb) {

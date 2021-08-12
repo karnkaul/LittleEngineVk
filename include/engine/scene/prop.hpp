@@ -6,7 +6,7 @@ namespace graphics {
 class Mesh;
 } // namespace graphics
 
-struct Primitive {
+struct Prop {
 	Material material;
 	graphics::Mesh const* mesh = {};
 };

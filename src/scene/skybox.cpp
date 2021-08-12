@@ -10,9 +10,9 @@ Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cube(Services::locate<graph
 	ensure(m_cubemap->data().type == graphics::Texture::Type::eCube, "Invalid cubemap");
 }
 
-Primitive const& Skybox::primitive() const noexcept {
-	m_primitive.material.map_Kd = m_cubemap;
-	m_primitive.mesh = &m_cube;
-	return m_primitive;
+Prop const& Skybox::prop() const noexcept {
+	m_prop.material.map_Kd = m_cubemap;
+	m_prop.mesh = &m_cube;
+	return m_prop;
 }
 } // namespace le

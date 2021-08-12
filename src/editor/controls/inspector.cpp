@@ -62,8 +62,7 @@ void Inspector::update() {
 				if (enb(registry.enabled(entity), "Enabled", enb.out)) { registry.enable(entity, enb.out); }
 				Styler s{Style::eSeparator};
 				if (node) {
-					Transform tr;
-					tr(*node);
+					Transform{}(*node);
 					s();
 				}
 				for (auto& gadget : m_gadgets) {
@@ -73,18 +72,12 @@ void Inspector::update() {
 		} else {
 			auto tr = editor.m_out.inspecting.get<gui::TreeRoot*>();
 			Text txt("GUI");
-			GuiRect gr;
-			gr(tr->m_rect);
+			GuiRect{}(tr->m_rect);
 			if (auto view = dynamic_cast<gui::View*>(tr)) {
-				GuiViewWidget vw;
-				vw(*view);
+				GuiViewWidget{}(*view);
 			} else if (auto node = dynamic_cast<gui::TreeNode*>(tr)) {
-				GuiNode nd;
-				nd(*node);
-				if (auto widget = dynamic_cast<gui::Widget*>(tr)) {
-					GuiViewWidget wd;
-					wd(*widget);
-				}
+				GuiNode{}(*node);
+				if (auto widget = dynamic_cast<gui::Widget*>(tr)) { GuiViewWidget{}(*widget); }
 			}
 			Styler s{Style::eSeparator};
 			for (auto& gadget : m_guiGadgets) {

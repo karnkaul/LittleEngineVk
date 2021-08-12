@@ -9,7 +9,7 @@ Text::Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept 
 	m_text.set(*m_font, "");
 }
 
-Span<Primitive const> Text::primitives() const noexcept { return m_text.primitive(*m_font); }
+Span<Prop const> Text::props() const noexcept { return m_text.prop(*m_font); }
 
 void Text::onUpdate(input::Space const& space) {
 	m_scissor = scissor(space, m_rect.origin, m_parent->m_rect.halfSize(), false);

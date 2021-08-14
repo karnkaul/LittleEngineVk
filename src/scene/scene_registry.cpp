@@ -1,5 +1,7 @@
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <engine/engine.hpp>
+#include <engine/physics/collision.hpp>
 #include <engine/scene/scene_registry.hpp>
 
 namespace le {
@@ -31,5 +33,17 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 		if (auto layer = store->find<DrawLayer>(id)) { return *layer; }
 	}
 	return {};
+}
+
+void SceneRegistry::update() {
+	auto eng = Services::locate<Engine>();
+	for (auto [_, c] : m_registry.view<gui::ViewStack>()) {
+		auto& [stack] = c;
+		eng->update(stack);
+	}
+	for (auto [_, c] : m_registry.view<Collision>()) {
+		auto& [collision] = c;
+		collision.update();
+	}
 }
 } // namespace le

@@ -3,6 +3,7 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/gui/view.hpp>
+#include <engine/physics/collision.hpp>
 #include <engine/scene/draw_list_factory.hpp>
 #include <engine/scene/prop_provider.hpp>
 #include <engine/scene/scene_node.hpp>
@@ -15,18 +16,24 @@ Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, 
 } // namespace
 
 void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
-	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, Prop>()) {
+	for (auto [_, c] : registry.view<DrawLayer, SceneNode, Prop>()) {
 		auto& [layer, node, prop] = c;
 		if (prop.mesh && layer.pipeline) { map[layer].push_back({node.model(), {}, prop}); }
 	}
-	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, PropProvider>()) {
+	for (auto [_, c] : registry.view<DrawLayer, SceneNode, PropProvider>()) {
 		auto& [layer, node, provider] = c;
 		auto props = provider.props();
 		if (!props.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, props}); }
 	}
-	for (auto& [_, c] : registry.view<DrawLayer, Skybox>()) {
+	for (auto [_, c] : registry.view<DrawLayer, Skybox>()) {
 		auto& [layer, skybox] = c;
 		if (layer.pipeline) { map[layer].push_back({glm::mat4(1.0f), {}, skybox.prop()}); }
+	}
+	for (auto [_, c] : registry.view<DrawLayer, Collision>()) {
+		auto& [layer, collision] = c;
+		if (layer.pipeline) {
+			if (auto drawables = collision.drawables(); !drawables.empty()) { std::move(drawables.begin(), drawables.end(), std::back_inserter(map[layer])); }
+		}
 	}
 }
 

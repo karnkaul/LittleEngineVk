@@ -160,6 +160,14 @@ void Engine::addDefaultAssets() {
 		tci.data = graphics::Texture::unitCubemap(colours::transparent);
 		if (texture.construct(tci)) { m_store.add("cubemaps/blank", std::move(texture)); }
 	}
+	/* meshes */ {
+		auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));
+		cube->construct(graphics::makeCube());
+		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&gfx().boot.vram));
+		cone->construct(graphics::makeCone());
+		auto wf_cube = m_store.add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&m_gfx->boot.vram));
+		wf_cube->construct(graphics::makeCube(1.0f, {}, colours::white.toVec3(), graphics::Topology::eLineList));
+	}
 }
 
 std::optional<graphics::CommandBuffer> Engine::beginDraw(RGBA clear, ClearDepth depth) {

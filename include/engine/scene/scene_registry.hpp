@@ -30,6 +30,8 @@ class SceneRegistry : public utils::VBase {
 	template <typename T, typename... Args>
 	decf::spawn_t<T> spawn(std::string name, Hash layerID, Args&&... args);
 
+	// Updates gui::ViewStack and Collision instances
+	void update();
 	DrawLayer layer(Hash id) const;
 
   protected:

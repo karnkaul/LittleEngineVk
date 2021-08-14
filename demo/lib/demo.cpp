@@ -31,6 +31,7 @@
 #include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
+#include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
 
 namespace le::demo {
@@ -430,14 +431,6 @@ class App : public input::Receiver, public SceneRegistry {
 		auto const res = m_manifest.load("demo", &m_tasks);
 		ensure(res > 0, "Manifest missing/empty");
 
-		/* custom meshes */ {
-			auto cube = m_eng->store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&eng->gfx().boot.vram));
-			cube->construct(graphics::makeCube(0.5f));
-			auto cone = m_eng->store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
-			cone->construct(graphics::makeCone());
-			auto wf_cube = m_eng->store().add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&eng->gfx().boot.vram));
-			wf_cube->construct(graphics::makeCube(1.0f, {}, colours::green.toVec3(), graphics::Topology::eLineList));
-		}
 		m_eng->pushReceiver(this);
 
 		struct GFreeCam : edi::Gadget {
@@ -498,6 +491,9 @@ class App : public input::Receiver, public SceneRegistry {
 		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
 		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
+		auto coll = spawn<Collision>("collision", "layers/wireframe");
+		auto& collision = coll.get<Collision>();
+		m_data.collision = coll;
 
 		m_data.text = Text2D(&*font, &vram);
 		m_data.text.factory().size = 80U;
@@ -555,6 +551,9 @@ class App : public input::Receiver, public SceneRegistry {
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
+			auto coll = collision.add({});
+			m_colTk = coll.onCollide([](Collision::Collider) { logD("Collided!"); });
+			m_colID = coll.m_id;
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
@@ -592,7 +591,13 @@ class App : public input::Receiver, public SceneRegistry {
 				m_data.entities["model_1"] = ent;
 			}
 		}
-		{ spawnProp<graphics::Mesh>("wireframes/cube", "wireframes/cube", "layers/wireframe"); }
+		{
+			Material mat;
+			mat.Tf = colours::yellow;
+			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
+			node.get<SceneNode>().scale(2.0f);
+			collision.add({glm::vec3(2.0f)});
+		}
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
@@ -600,40 +605,20 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
+		update();
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
+			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (m_registry.empty()) { init1(); }
-			auto guiStack = m_registry.find<gui::ViewStack>(m_data.guiStack);
-			if (guiStack) {
-				m_eng->update(*guiStack);
-				/*auto const& p = m_eng->inputState().cursor.position;
-				logD("c: {}, {}", p.x, p.y);*/
-				/*static gui::Quad* s_prev = {};
-				static Colour s_col;
-				if (auto node = guiRoot->leafHit(m_eng->inputState().cursor.position)) {
-					if (auto quad = dynamic_cast<gui::Quad*>(node)) {
-						if (s_prev != quad) {
-							if (s_prev) {
-								s_prev->m_material.Tf = s_col;
-							}
-							s_col = quad->m_material.Tf;
-							s_prev = quad;
-							quad->m_material.Tf = colours::yellow;
-						}
-					}
-				} else if (s_prev) {
-					s_prev->m_material.Tf = s_col;
-					s_prev = {};
-				}*/
-			}
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
 				auto& node = m_registry.get<SceneNode>(m_data.player);
-				m_registry.get<PlayerController>(m_data.player).tick(state, node, dt);
+				pc.tick(state, node, dt);
 				glm::vec3 const& forward = node.orientation() * -graphics::front;
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
+				if (collision) { collision->find(m_colID)->position() = node.position(); }
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
@@ -669,6 +654,7 @@ class App : public input::Receiver, public SceneRegistry {
 		decf::entity camera;
 		decf::entity player;
 		decf::entity guiStack;
+		decf::entity collision;
 		Hash wire;
 		bool reboot = false;
 		bool unloaded = {};
@@ -679,6 +665,8 @@ class App : public input::Receiver, public SceneRegistry {
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
 	Drawer m_drawer;
+	Collision::ID m_colID{};
+	Collision::OnCollide::Tk m_colTk;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};

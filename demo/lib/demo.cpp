@@ -28,10 +28,10 @@
 
 #include <core/utils/enumerate.hpp>
 #include <engine/assets/asset_manifest.hpp>
+#include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
-#include <engine/gui/widgets/dropdown.hpp>
-#include <ktl/enum_flags/enumerate_enum.hpp>
+#include <engine/scene/prop_provider.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -421,8 +421,6 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 namespace le::demo {
 class App : public input::Receiver, public SceneRegistry {
   public:
-	using SceneRegistry::spawn;
-
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
@@ -492,14 +490,6 @@ class App : public input::Receiver, public SceneRegistry {
 		return false;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawLayer layer) {
-		return spawn(std::move(name), layer, &*m_eng->store().find<graphics::Mesh>(meshID), mat);
-	};
-
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer layer) {
-		return spawn(std::move(name), layer, m_eng->store().find<Model>(modelID)->props());
-	};
-
 	void init1() {
 		auto sky_test = m_eng->store().find<graphics::Texture>("cubemaps/test");
 		auto skymap = sky_test ? sky_test : m_eng->store().find<graphics::Texture>("cubemaps/sky_dusk");
@@ -509,12 +499,12 @@ class App : public input::Receiver, public SceneRegistry {
 		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
 
-		m_data.text.make(&vram);
-		m_data.text.factory.size = 80U;
-		m_data.text.factory.colour = colours::yellow;
-		m_data.text.factory.pos = {0.0f, 200.0f, 0.0f};
+		m_data.text = Text2D(&*font, &vram);
+		m_data.text.factory().size = 80U;
+		m_data.text.factory().colour = colours::yellow;
+		m_data.text.factory().pos = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};
-		m_data.text.set(font.get(), "Hi!");
+		m_data.text.set("Hi!");
 
 		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
@@ -525,7 +515,7 @@ class App : public input::Receiver, public SceneRegistry {
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
-		auto guiStack = spawnStack("gui_root", *m_eng->store().find<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
+		auto guiStack = spawn<gui::ViewStack>("gui_root", "layers/ui", &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
 		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view", &font.get());
@@ -555,35 +545,35 @@ class App : public input::Receiver, public SceneRegistry {
 		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
-		spawnSkybox(*m_eng->store().find<DrawLayer>("layers/skybox"), &*skymap);
+		spawn<Skybox>("skybox", "layers/skybox", &*skymap);
 		{
 			Material mat;
 			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawn("player", "meshes/cube", mat, *m_eng->store().find<DrawLayer>("layers/lit"));
+			auto player = spawnMesh("player", "meshes/cube", "layers/lit", mat);
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
 		}
 		{
-			auto ent = spawn("prop_1", "meshes/cube", {}, *m_eng->store().find<DrawLayer>("layers/basic"));
+			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().find<DrawLayer>("layers/tex"));
+			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "layers/tex");
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
+		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
+		{ spawnProp<Text2D>("text_2d", m_data.text, "layers/ui"); }
 		{
 			{
-				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
-				// auto ent0 = spawn("model_0_0");
+				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
+				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "layers/lit");
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
@@ -592,20 +582,17 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
 				Prop& prop = model->propsRW().front();
 				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawn("model_1_0", *m_eng->store().find<DrawLayer>("layers/lit"), prop);
+				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "layers/lit");
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", "models/nanosuit", *m_eng->store().find<DrawLayer>("layers/lit"));
+				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "layers/lit");
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
-		{
-			DrawLayer wireframe{&*m_eng->store().find<graphics::Pipeline>("pipelines/wireframe"), 5};
-			spawn("wireframes/cube", "wireframes/cube", {}, wireframe);
-		}
+		{ spawnProp<graphics::Mesh>("wireframes/cube", "wireframes/cube", "layers/wireframe"); }
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
@@ -675,7 +662,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct Data {
 		std::unordered_map<Hash, decf::entity> entities;
 
-		BitmapText text;
+		Text2D text;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 

@@ -3,6 +3,7 @@
 #include <dumb_ecf/registry.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/scene/draw_list_factory.hpp>
+#include <engine/scene/prop_provider.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <engine/scene/skybox.hpp>
 
@@ -14,57 +15,48 @@ class SceneRegistry : public utils::VBase {
 	SceneNode::Root& root() noexcept { return m_root; }
 	SceneNode::Root const& root() const noexcept { return m_root; }
 
-	void attach(decf::entity entity, DrawLayer layer, Span<Prop const> props);
+	void attach(decf::entity entity, DrawLayer layer, PropProvider provider);
 	void attach(decf::entity entity, DrawLayer layer);
+
 	decf::spawn_t<SceneNode> spawnNode(std::string name);
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, not_null<graphics::Mesh const*> mesh, Material const& material);
-	decf::spawn_t<SceneNode> spawn(std::string name, DrawLayer layer, Span<Prop const> props);
-	decf::spawn_t<Skybox> spawnSkybox(DrawLayer layer, not_null<Skybox::Cubemap const*> cubemap);
-	decf::spawn_t<gui::ViewStack> spawnStack(std::string name, DrawLayer layer, not_null<graphics::VRAM*> vram);
+	decf::spawn_t<SceneNode> spawnProp(std::string name, Hash layerID, PropProvider provider);
+	decf::spawn_t<SceneNode> spawnMesh(std::string name, Hash meshID, Hash layerID, Material material = {});
+
+	template <typename T>
+	decf::spawn_t<SceneNode> spawnProp(std::string name, Hash assetID, Hash layerID);
+	template <typename T>
+	decf::spawn_t<SceneNode> spawnProp(std::string name, T const& source, Hash layerID);
+
+	template <typename T, typename... Args>
+	decf::spawn_t<T> spawn(std::string name, Hash layerID, Args&&... args);
+
+	DrawLayer layer(Hash id) const;
 
   protected:
 	SceneNode::Root m_root;
 	decf::registry m_registry;
-	decf::entity m_skybox;
 };
 
 // impl
 
-inline void SceneRegistry::attach(decf::entity entity, DrawLayer layer, Span<Prop const> props) { DrawListFactory::attach(m_registry, entity, layer, props); }
-
-inline void SceneRegistry::attach(decf::entity entity, DrawLayer layer) { m_registry.attach<DrawLayer>(entity, layer); }
-
-inline decf::spawn_t<SceneNode> SceneRegistry::spawnNode(std::string name) {
-	auto ret = m_registry.spawn<SceneNode>(name, &m_root);
-	ret.get<SceneNode>().entity(ret);
-	return ret;
+template <typename T>
+decf::spawn_t<SceneNode> SceneRegistry::spawnProp(std::string name, T const& source, Hash layerID) {
+	return spawnProp(std::move(name), layerID, PropProvider::make<T>(source));
 }
 
-inline decf::spawn_t<SceneNode> SceneRegistry::spawn(std::string name, DrawLayer layer, not_null<graphics::Mesh const*> mesh, Material const& material) {
-	auto ret = spawnNode(std::move(name));
-	auto& prop = m_registry.attach<Prop>(ret);
-	prop = {material, mesh};
-	attach(ret, layer, prop);
-	return ret;
+template <typename T>
+decf::spawn_t<SceneNode> SceneRegistry::spawnProp(std::string name, Hash assetID, Hash layerID) {
+	if constexpr (std::is_same_v<T, graphics::Mesh>) {
+		return spawnMesh(std::move(name), assetID, layerID);
+	} else {
+		return spawnProp(std::move(name), layerID, PropProvider::make<T>(assetID));
+	}
 }
 
-inline decf::spawn_t<SceneNode> SceneRegistry::spawn(std::string name, DrawLayer layer, Span<Prop const> props) {
-	auto ret = spawnNode(std::move(name));
-	attach(ret, layer, props);
-	return ret;
-};
-
-inline decf::spawn_t<Skybox> SceneRegistry::spawnSkybox(DrawLayer layer, not_null<const Skybox::Cubemap*> cubemap) {
-	ensure(!m_skybox.valid(), "Duplicate skybox");
-	auto ret = m_registry.spawn<Skybox>("skybox", cubemap);
-	m_registry.attach<DrawLayer>(ret, layer);
-	m_skybox = ret;
-	return ret;
-}
-
-inline decf::spawn_t<gui::ViewStack> SceneRegistry::spawnStack(std::string name, DrawLayer layer, not_null<graphics::VRAM*> vram) {
-	auto ret = m_registry.spawn<gui::ViewStack>(std::move(name), vram);
-	m_registry.attach<DrawLayer>(ret, layer);
+template <typename T, typename... Args>
+decf::spawn_t<T> SceneRegistry::spawn(std::string name, Hash layerID, Args&&... args) {
+	auto ret = m_registry.spawn<T>(std::move(name), std::forward<Args>(args)...);
+	m_registry.attach<DrawLayer>(ret, layer(layerID));
 	return ret;
 }
 } // namespace le

@@ -1,7 +1,10 @@
+#include <core/services.hpp>
 #include <dumb_ecf/registry.hpp>
+#include <engine/assets/asset_store.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/scene/draw_list_factory.hpp>
+#include <engine/scene/prop_provider.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <engine/scene/skybox.hpp>
 #include <graphics/utils/utils.hpp>
@@ -12,8 +15,13 @@ Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, 
 } // namespace
 
 void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
-	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, PropList>()) {
-		auto& [layer, node, props] = c;
+	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, Prop>()) {
+		auto& [layer, node, prop] = c;
+		if (prop.mesh && layer.pipeline) { map[layer].push_back({node.model(), {}, prop}); }
+	}
+	for (auto& [_, c] : registry.view<DrawLayer, SceneNode, PropProvider>()) {
+		auto& [layer, node, provider] = c;
+		auto props = provider.props();
 		if (!props.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, props}); }
 	}
 	for (auto& [_, c] : registry.view<DrawLayer, Skybox>()) {
@@ -41,10 +49,5 @@ void DrawListFactory::add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot c
 	for (auto& node : root.nodes()) {
 		if (node->m_active) { add(map, layer, *node); }
 	}
-}
-
-void DrawListFactory::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Prop const> props) {
-	registry.attach<PropList>(entity) = props;
-	registry.attach<DrawLayer>(entity, layer);
 }
 } // namespace le

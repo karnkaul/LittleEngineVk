@@ -3,10 +3,6 @@
 #include <graphics/render/pipeline.hpp>
 
 namespace le {
-void ListDrawer::attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Prop const> props) {
-	DrawListFactory::attach(registry, entity, layer, props);
-}
-
 void ListDrawer::draw(graphics::CommandBuffer cb) {
 	std::unordered_set<graphics::Pipeline*> pipes;
 	ensure(m_drawLists.size() == m_lists.size(), "Invariant violated");

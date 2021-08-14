@@ -105,6 +105,11 @@
 			"order": 0
 		},
 		{
+			"id": "layers/wireframe",
+			"pipeline": "pipelines/wireframe",
+			"order": 5
+		},
+		{
 			"id": "layers/ui",
 			"pipeline": "pipelines/ui",
 			"order": 10

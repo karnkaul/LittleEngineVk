@@ -23,4 +23,8 @@ Span<Prop const> BitmapText::prop(graphics::Texture const& atlas) const {
 	}
 	return {};
 }
+
+Text2D::Text2D(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram, Type type) : m_font(font) { m_text.make(vram, type); }
+
+Span<Prop const> Text2D::props() const { return m_font ? m_text.prop(*m_font) : Span<Prop const>(); }
 } // namespace le

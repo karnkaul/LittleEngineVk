@@ -24,13 +24,10 @@ class DrawListFactory {
 
 	template <typename... Gen>
 	static std::vector<DrawList> lists(decf::registry const& registry, bool sort);
-
-	// Attaches DrawLayer, PropList
-	static void attach(decf::registry& registry, decf::entity entity, DrawLayer layer, Span<Prop const> props);
 };
 
 struct DrawListGen3D {
-	// Populates DrawLayer + SceneNode + PropList, DrawLayer + Skybox
+	// Populates DrawLayer + SceneNode + Prop, DrawLayer + SceneNode + PropProvider, DrawLayer + Skybox
 	void operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const;
 };
 

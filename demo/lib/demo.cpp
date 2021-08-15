@@ -31,6 +31,7 @@
 #include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
+#include <core/utils/tween.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
 
@@ -422,6 +423,8 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 namespace le::demo {
 class App : public input::Receiver, public SceneRegistry {
   public:
+	using Tweener = utils::Tweener<f32, utils::TweenEase>;
+
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
@@ -553,7 +556,7 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.attach<PlayerController>(m_data.player);
 			auto coll = collision.add({});
 			m_colTk = coll.onCollide([](Collision::Collider) { logD("Collided!"); });
-			m_colID = coll.m_id;
+			m_colID0 = coll.m_id;
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
@@ -596,7 +599,14 @@ class App : public input::Receiver, public SceneRegistry {
 			mat.Tf = colours::yellow;
 			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
 			node.get<SceneNode>().scale(2.0f);
-			collision.add({glm::vec3(2.0f)});
+			m_data.tween = node;
+			auto coll1 = collision.add({glm::vec3(2.0f)});
+			m_colID1 = coll1.m_id;
+			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
+			auto pos = node.get<SceneNode>().position();
+			pos.x = tweener.current();
+			coll1.position() = pos;
+			node.get<SceneNode>().position(pos);
 		}
 	}
 
@@ -618,7 +628,7 @@ class App : public input::Receiver, public SceneRegistry {
 				glm::vec3 const& forward = node.orientation() * -graphics::front;
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
-				if (collision) { collision->find(m_colID)->position() = node.position(); }
+				if (collision) { collision->find(m_colID0)->position() = node.position(); }
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
@@ -628,6 +638,13 @@ class App : public input::Receiver, public SceneRegistry {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
 				node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+			}
+			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
+				auto& tweener = m_registry.get<Tweener>(m_data.tween);
+				auto pos = node->position();
+				pos.x = tweener.tick(dt);
+				node->position(pos);
+				if (collision) { collision->find(m_colID1)->position() = node->position(); }
 			}
 		}
 		// draw
@@ -655,6 +672,7 @@ class App : public input::Receiver, public SceneRegistry {
 		decf::entity player;
 		decf::entity guiStack;
 		decf::entity collision;
+		decf::entity tween;
 		Hash wire;
 		bool reboot = false;
 		bool unloaded = {};
@@ -665,7 +683,7 @@ class App : public input::Receiver, public SceneRegistry {
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
 	Drawer m_drawer;
-	Collision::ID m_colID{};
+	Collision::ID m_colID0{}, m_colID1{};
 	Collision::OnCollide::Tk m_colTk;
 
 	struct {

@@ -617,6 +617,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 		update();
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
+			auto pr_ = Engine::profile("app::tick");
 			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (m_registry.empty()) { init1(); }
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);

@@ -10,10 +10,29 @@
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
-bool g_showStats = false;
-void showStats() {
+enum class Flag { eStats, eProfiler, eCOUNT_ };
+static constexpr auto flag_count = static_cast<std::size_t>(Flag::eCOUNT_);
+
+struct Panes {
+	bool flags[flag_count] = {};
+
+	bool& flag(Flag f) { return flags[static_cast<std::size_t>(f)]; }
+	bool flag(Flag f) const { return flags[static_cast<std::size_t>(f)]; }
+
+	void operator()() const {
+		if (flag(Flag::eStats)) { showStats(); }
+		if (flag(Flag::eProfiler)) { showProfiler(); }
+	}
+
+	void showStats() const;
+	void showProfiler() const;
+};
+
+Panes g_panes;
+
+void Panes::showStats() const {
 	if (auto eng = Services::locate<Engine>()) {
-		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_showStats, false)) {
+		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats), false)) {
 			auto const& s = eng->stats();
 			auto t = Text(fmt::format("FPS: {}", s.frame.rate));
 			t = Text(fmt::format("Frame #: {}", s.frame.count));
@@ -35,6 +54,23 @@ void showStats() {
 		}
 	}
 }
+
+void Panes::showProfiler() const {
+	if (auto profiler = Services::locate<Engine::Profiler>(false)) {
+		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler), false)) {
+			Engine::Profiler::Record const& record = profiler->m_record.back();
+			Time_s const total = record.total;
+			f32 maxLength{};
+			for (auto const& profile : record.entries) { maxLength = std::max(maxLength, ImGui::CalcTextSize(profile.name.data()).x); }
+			for (auto const& profile : record.entries) {
+				Text t(profile.name);
+				ImGui::SameLine(maxLength + 20.0f);
+				ImGui::ProgressBar(profile.dt / total, ImVec2{-1.0f, 0.0f}, fmt::format("{:1.2f}ms", profile.dt.count() * 1000.0f).data());
+			}
+		}
+		profiler->m_record.clear();
+	}
+}
 } // namespace
 #endif
 
@@ -42,11 +78,15 @@ MainMenu::MainMenu() {
 #if defined(LEVK_USE_IMGUI)
 	MenuList::Tree main;
 	main.m_t.id = "File";
-	MenuList::Menu stats{"Show Stats", []() { g_showStats = true; }};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::locate<Engine>()->gfx().imgui.m_showDemo = true; }};
+	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
+	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
 	MenuList::Menu close{"Close Editor", []() { Services::locate<Engine>()->editor().engage(false); }, true};
 	MenuList::Menu quit{"Quit", []() { Services::locate<Engine>()->window().close(); }};
 	main.push_front(quit);
 	main.push_front(close);
+	main.push_front(imDemo);
+	main.push_front(profiler);
 	main.push_front(stats);
 	m_main.trees.push_back(std::move(main));
 #endif
@@ -59,7 +99,7 @@ void MainMenu::operator()([[maybe_unused]] MenuList const& extras) const {
 		for (auto const& tree : extras.trees) { MenuBar::walk(tree); }
 		ImGui::EndMainMenuBar();
 	}
-	if (g_showStats) { showStats(); }
+	g_panes();
 #endif
 }
 } // namespace le::edi

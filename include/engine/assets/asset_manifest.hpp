@@ -32,6 +32,7 @@ class AssetManifest : public utils::VBase {
 
 	bool ready(dts::scheduler const& scheduler) const { return m_loader.ready(scheduler); }
 	void wait(dts::scheduler& scheduler) const { m_loader.wait(scheduler); }
+	f32 progress() const noexcept { return m_loader.progress(); }
 
 	EnumArray<Kind, QueueID> m_jsonQIDs = {};
 

@@ -57,9 +57,15 @@ struct Albedo final {
 
 Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, glm::vec2 origin = {}, glm::vec3 colour = glm::vec3(1.0f), Topology topo = Topology::eTriangleList);
 Geometry makeCube(f32 side = 1.0f, glm::vec3 origin = {}, glm::vec3 colour = glm::vec3(1.0f), Topology topo = Topology::eTriangleList);
-Geometry makeCircle(f32 diameter = 1.0f, u16 points = 16, glm::vec3 colour = glm::vec3(1.0f));
+Geometry makeSector(f32 radBegin, f32 radEnd, f32 diameter, u16 points, glm::vec2 origin = {}, glm::vec3 colour = glm::vec3(1.0f));
+Geometry makeCircle(f32 diameter = 1.0f, u16 points = 16, glm::vec2 origin = {}, glm::vec3 colour = glm::vec3(1.0f));
 Geometry makeCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 16, glm::vec3 colour = glm::vec3(1.0f));
 Geometry makeCubedSphere(f32 diameter, u8 quadsPerSide, glm::vec3 colour = glm::vec3(1.0f));
+Geometry makeRoundedQuad(glm::vec2 size = {1.0f, 1.0f}, f32 radius = 0.25f, u16 points = 16, glm::vec2 origin = {}, glm::vec3 colour = glm::vec3(1.0f));
+void append(Geometry& out_dst, Geometry const& in);
+template <typename... T>
+	requires((sizeof...(T) > 1) && (std::is_same_v<T, Geometry> && ...))
+void append(Geometry& out_dst, T const&... src) { (append(out_dst, src), ...); }
 
 struct IndexStitcher {
 	std::vector<u32>& indices;

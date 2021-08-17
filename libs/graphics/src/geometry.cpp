@@ -27,10 +27,10 @@ graphics::Geometry graphics::makeQuad(v2 size, v2 origin, v3 colour, Topology to
 	f32 const y = size.y * 0.5f;
 	// clang-format off
 	ret.vertices = {
-		{{-origin.x - x, -origin.y - y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-origin.x + x, -origin.y - y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-		{{-origin.x + x, -origin.y + y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-		{{-origin.x - x, -origin.y + y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}
+		{{origin.x - x, origin.y - y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{origin.x + x, origin.y - y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		{{origin.x + x, origin.y + y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+		{{origin.x - x, origin.y + y, 0.0f}, colour, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}
 	};
 	// clang-format on
 	ret.autoIndex(topo, 4);
@@ -43,61 +43,68 @@ graphics::Geometry graphics::makeCube(f32 side /* = 1.0f */, v3 o, v3 colour, To
 	// clang-format off
 	ret.vertices = {
 		// back
-		{{-o.x + -s, -o.y + -s, -o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
-		{{-o.x +  s, -o.y + -s, -o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
-		{{-o.x +  s, -o.y +  s, -o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
-		{{-o.x + -s, -o.y +  s, -o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
+		{{o.x + -s, o.y + -s, o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
+		{{o.x +  s, o.y + -s, o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
+		{{o.x +  s, o.y +  s, o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
+		{{o.x + -s, o.y +  s, o.z +  s}, colour, { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
 		// front
-		{{-o.x + -s, -o.y + -s, -o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
-		{{-o.x +  s, -o.y + -s, -o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
-		{{-o.x +  s, -o.y +  s, -o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
-		{{-o.x + -s, -o.y +  s, -o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {0.0f, 0.0f}},
+		{{o.x + -s, o.y + -s, o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
+		{{o.x +  s, o.y + -s, o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
+		{{o.x +  s, o.y +  s, o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
+		{{o.x + -s, o.y +  s, o.z + -s}, colour, { 0.0f,  0.0f, -1.0f}, {0.0f, 0.0f}},
 		// left
-		{{-o.x + -s, -o.y +  s, -o.z +  s}, colour, {-1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
-		{{-o.x + -s, -o.y +  s, -o.z + -s}, colour, {-1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
-		{{-o.x + -s, -o.y + -s, -o.z + -s}, colour, {-1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
-		{{-o.x + -s, -o.y + -s, -o.z +  s}, colour, {-1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
+		{{o.x + -s, o.y +  s, o.z +  s}, colour, {-1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
+		{{o.x + -s, o.y +  s, o.z + -s}, colour, {-1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
+		{{o.x + -s, o.y + -s, o.z + -s}, colour, {-1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
+		{{o.x + -s, o.y + -s, o.z +  s}, colour, {-1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
 		// right
-		{{-o.x +  s, -o.y +  s, -o.z +  s}, colour, { 1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
-		{{-o.x +  s, -o.y +  s, -o.z + -s}, colour, { 1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
-		{{-o.x +  s, -o.y + -s, -o.z + -s}, colour, { 1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
-		{{-o.x +  s, -o.y + -s, -o.z +  s}, colour, { 1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
+		{{o.x +  s, o.y +  s, o.z +  s}, colour, { 1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
+		{{o.x +  s, o.y +  s, o.z + -s}, colour, { 1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
+		{{o.x +  s, o.y + -s, o.z + -s}, colour, { 1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
+		{{o.x +  s, o.y + -s, o.z +  s}, colour, { 1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
 		// down
-		{{-o.x + -s, -o.y + -s, -o.z + -s}, colour, { 0.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
-		{{-o.x +  s, -o.y + -s, -o.z + -s}, colour, { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
-		{{-o.x +  s, -o.y + -s, -o.z +  s}, colour, { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
-		{{-o.x + -s, -o.y + -s, -o.z +  s}, colour, { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
+		{{o.x + -s, o.y + -s, o.z + -s}, colour, { 0.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
+		{{o.x +  s, o.y + -s, o.z + -s}, colour, { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
+		{{o.x +  s, o.y + -s, o.z +  s}, colour, { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
+		{{o.x + -s, o.y + -s, o.z +  s}, colour, { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
 		// up
-		{{-o.x + -s, -o.y +  s, -o.z + -s}, colour, { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
-		{{-o.x +  s, -o.y +  s, -o.z + -s}, colour, { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
-		{{-o.x +  s, -o.y +  s, -o.z +  s}, colour, { 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},
-		{{-o.x + -s, -o.y +  s, -o.z +  s}, colour, { 0.0f,  1.0f,  0.0f}, {0.0f, 1.0f}}
+		{{o.x + -s, o.y +  s, o.z + -s}, colour, { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
+		{{o.x +  s, o.y +  s, o.z + -s}, colour, { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
+		{{o.x +  s, o.y +  s, o.z +  s}, colour, { 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},
+		{{o.x + -s, o.y +  s, o.z +  s}, colour, { 0.0f,  1.0f,  0.0f}, {0.0f, 1.0f}}
 	};
 	// clang-format on
 	ret.autoIndex(topo, 4);
 	return ret;
 }
 
-graphics::Geometry graphics::makeCircle(f32 diameter, u16 points, glm::vec3 colour) {
+graphics::Geometry graphics::makeSector(f32 radBegin, f32 radEnd, f32 diameter, u16 points, glm::vec2 origin, glm::vec3 colour) {
 	ensure(points < 1000, "Max points is 1000");
-	f32 const r = diameter * 0.5f;
 	Geometry ret;
-	f32 const arc = 360.0f / points;
+	f32 const subArc = (radEnd - radBegin) / points;
+	f32 const r = diameter * 0.5f;
 	v3 const norm(0.0f, 0.0f, 1.0f);
+	v3 const o = {origin, 0.0f};
 	ret.reserve(1 + 1 + (u32)points, (1 + (u32)points) * 4);
-	u32 const iCentre = ret.addVertex({{}, colour, norm, {0.5f, 0.5f}});
-	for (s32 i = 0; i <= points; ++i) {
-		f32 const x1 = glm::cos(glm::radians(arc * (f32)i));
-		f32 const y1 = glm::sin(glm::radians(arc * (f32)i));
-		f32 const s1 = (x1 + 1.0f) * 0.5f;
-		f32 const t1 = (y1 + 1.0f) * 0.5f;
-		u32 const iv1 = ret.addVertex({{r * x1, r * y1, 0.0f}, colour, norm, {s1, t1}});
+	v2 uv = v2(0.5f, 0.5f);
+	u32 const iCentre = ret.addVertex({o, colour, norm, uv});
+	for (u16 i = 0; i <= points; ++i) {
+		f32 const x1 = glm::cos(subArc * (f32)i + radBegin);
+		f32 const y1 = glm::sin(subArc * (f32)i + radBegin);
+		f32 const s = (x1 + 1.0f) * 0.5f;
+		f32 const t = (y1 + 1.0f) * 0.5f;
+		uv = v2(s, 1.0f - t);
+		u32 const iv1 = ret.addVertex({o + v3{r * x1, r * y1, 0.0f}, colour, norm, uv});
 		if (i > 0) {
 			std::array const i = {iCentre, iv1 - 1, iv1};
 			ret.addIndices(i);
 		}
 	}
 	return ret;
+}
+
+graphics::Geometry graphics::makeCircle(f32 diameter, u16 points, glm::vec2 origin, glm::vec3 colour) {
+	return makeSector(0.0f, glm::pi<f32>() * 2.0f, diameter, points, origin, colour);
 }
 
 graphics::Geometry graphics::makeCone(f32 diam, f32 height, u16 points, glm::vec3 colour) {
@@ -185,5 +192,56 @@ graphics::Geometry graphics::makeCubedSphere(f32 diam, u8 quadsPerSide, glm::vec
 	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(glm::rotate(p, glm::radians(90.0f), right)); });
 	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(glm::rotate(p, glm::radians(-90.0f), right)); });
 	return ret;
+}
+
+graphics::Geometry graphics::makeRoundedQuad(glm::vec2 size, f32 radius, u16 points, glm::vec2 origin, glm::vec3 colour) {
+	if (radius <= 0.0f) { return makeQuad(size, origin, colour); }
+	v2 const csize = size - v2(radius * 2.0f, radius * 2.0f);
+	f32 const halfRadius = radius * 0.5f;
+	auto quadUVs = [](graphics::Geometry & out, v2 bl, v2 tr) {
+		out.vertices[0].texCoord = bl;
+		out.vertices[1].texCoord = {tr.x, bl.y};
+		out.vertices[2].texCoord = tr;
+		out.vertices[3].texCoord = {bl.x, tr.y};
+	};
+	auto left = makeQuad({radius, csize.y}, {origin.x - csize.x * 0.5f - halfRadius, origin.y}, colour);
+	quadUVs(left, {0.0f, 1.0f - radius / size.y}, {radius / size.x, radius / size.y});
+	auto right = makeQuad({radius, csize.y}, {origin.x + csize.x * 0.5f + halfRadius, origin.y}, colour);
+	quadUVs(right, {1.0f - radius / size.x, 1.0f - radius / size.y}, {1.0f, radius / size.y});
+	auto centre = makeQuad({csize.x, size.y}, origin, colour);
+	quadUVs(centre, {radius / size.x, 1.0f}, {1.0f - radius / size.x, 0.0f});
+	v2 const halfSize = csize * 0.5f;
+	f32 const hpi = glm::pi<f32>() * 0.5f;
+	auto sectorUVs = [radius](std::vector<Vertex>& out) {
+		v2 const offset = out[0].texCoord - 0.5f; // transform to [-0.5, 0.5]
+		for (std::size_t i = 1; i < out.size(); ++i) {
+			v2 const cv = out[i].texCoord - 0.5f; // transform to [-0.5, 0.5]
+			// transform cv to contribution (fake projection), multiply by coeff, move by offset
+			v2 const st = offset + radius * (cv * 2.0f);
+			out[i].texCoord = st + 0.5f; // transform back to [0, 1]
+		}
+	};
+	auto topRight = makeSector(0.0f, hpi, radius * 2.0f, points / 4, origin + halfSize, colour);
+	topRight.vertices[0].texCoord = {1.0f - radius / size.x, radius / size.y};
+	sectorUVs(topRight.vertices);
+	auto topLeft = makeSector(hpi, 2.0f * hpi, radius * 2.0f, points / 4, origin + v2{-halfSize.x, halfSize.y}, colour);
+	topLeft.vertices[0].texCoord = {radius / size.x, radius / size.y};
+	sectorUVs(topLeft.vertices);
+	auto bottomLeft = makeSector(2.0f * hpi, 3.0f * hpi, radius * 2.0f, points / 4, origin - halfSize, colour);
+	bottomLeft.vertices[0].texCoord = {radius / size.x, 1.0f - radius / size.y};
+	sectorUVs(bottomLeft.vertices);
+	auto bottomRight = makeSector(3.0f * hpi, 4.0f * hpi, radius * 2.0f, points / 4, origin + v2{halfSize.x, -halfSize.y}, colour);
+	bottomRight.vertices[0].texCoord = {1.0f - radius / size.x, 1.0f - radius / size.y};
+	sectorUVs(bottomRight.vertices);
+	append(left, right, topRight, topLeft, bottomLeft, bottomRight, centre);
+	return left;
+} // namespace le
+
+void graphics::append(graphics::Geometry& out_dst, graphics::Geometry const& src) {
+	out_dst.vertices.reserve(out_dst.vertices.size() + src.vertices.size());
+	out_dst.indices.reserve(out_dst.indices.size() + src.indices.size());
+	u32 offset = (u32)out_dst.vertices.size();
+	std::copy(src.vertices.begin(), src.vertices.end(), std::back_inserter(out_dst.vertices));
+	for (u32 const index : src.indices) { out_dst.indices.push_back(index + offset); }
 }
 } // namespace le

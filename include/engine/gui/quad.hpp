@@ -10,7 +10,10 @@ class Quad : public TreeNode {
 	void onUpdate(input::Space const& space) override;
 	Span<Prop const> props() const noexcept override;
 
+	inline static u16 s_cornerPoints = 16;
+
 	Material m_material;
+	f32 m_cornerRadius = 0.0f;
 
   private:
 	graphics::Mesh m_mesh;

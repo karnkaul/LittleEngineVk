@@ -397,6 +397,7 @@ Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callb
 	button.m_style.text.base.size = m_buttonInfo.textSize;
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
+	button.m_cornerRadius = 8.0f;
 	button.m_text->set(std::move(text));
 	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
 	f32 offset = pad + m_buttonInfo.size.x * 0.5f;
@@ -433,6 +434,11 @@ class App : public input::Receiver, public SceneRegistry {
 		m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
 		auto const res = m_manifest.load("demo", &m_tasks);
 		ensure(res > 0, "Manifest missing/empty");
+
+		/* custom meshes */ {
+			auto rQuad = m_eng->store().add<graphics::Mesh>("meshes/rounded_quad", graphics::Mesh(&m_eng->gfx().boot.vram));
+			rQuad->construct(graphics::makeRoundedQuad());
+		}
 
 		m_eng->pushReceiver(this);
 
@@ -566,6 +572,12 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "layers/tex");
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
+		}
+		{
+			Material mat;
+			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
+			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
+			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
 		{ spawnProp<Text2D>("text_2d", m_data.text, "layers/ui"); }

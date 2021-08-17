@@ -6,6 +6,38 @@
 
 namespace le {
 ///
+/// \brief Handle to an object in (global) DataStore
+///
+template <typename T>
+struct DataObject {
+	using type = T;
+
+	T* t{};
+	Hash id{};
+
+	///
+	/// \brief Point to object if exists
+	///
+	DataObject(Hash id);
+
+	///
+	/// \brief Assign t to existing / new value
+	///
+	DataObject& set(T t);
+	///
+	/// \brief Unset value if exists
+	///
+	void unset() noexcept;
+
+	DataObject& operator=(T t) { return set(std::move(t)); }
+	bool operator==(DataObject const& rhs) const { return t && t == rhs.t; };
+	explicit operator bool() const noexcept { return t != nullptr; }
+
+	T& operator*() const { return *t; }
+	T* operator->() const { return t; }
+};
+
+///
 /// \brief Global data store
 ///
 class DataStore {
@@ -88,4 +120,23 @@ class DataStore {
 
 	inline static Map s_map;
 };
+
+// impl
+
+template <typename T>
+DataObject<T>::DataObject(Hash id) : id(id) {
+	t = DataStore::find<T>(id);
+}
+
+template <typename T>
+void DataObject<T>::unset() noexcept {
+	DataStore::erase(id);
+	t = {};
+}
+
+template <typename T>
+DataObject<T>& DataObject<T>::set(T t) {
+	this->t = &DataStore::set(id, std::move(t));
+	return *this;
+}
 } // namespace le

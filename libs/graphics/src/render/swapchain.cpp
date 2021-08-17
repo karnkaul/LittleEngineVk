@@ -73,9 +73,9 @@ struct SwapchainCreateInfo {
 		}
 		if (Device::default_v(depthFormat)) { depthFormat = vk::Format::eD16Unorm; }
 		auto presentModes = info.vsync;
-		if (auto forceVsync = DataStore::find<Vsync>("vsync")) {
+		if (auto forceVsync = DataObject<Vsync>("vsync")) {
 			presentModes.insert(info.vsync.begin(), *forceVsync);
-			DataStore::erase("vsync");
+			forceVsync.unset();
 		}
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
 		g_log.log(lvl::info, 0, "[{}] {} ({} present mode) selected", g_name, vsyncNames[vsyncModes[presentMode]], presentModeNames[presentMode]);

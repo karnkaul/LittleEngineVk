@@ -138,7 +138,7 @@ void Engine::updateStats() {
 Engine::Boot::CreateInfo Engine::adjust(Boot::CreateInfo const& info) {
 	auto ret = info;
 	ret.instance.extensions = window::instanceExtensions(*m_win);
-	if (auto gpuOverride = DataStore::find<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
+	if (auto gpuOverride = DataObject<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
 	return ret;
 }
 

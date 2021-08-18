@@ -31,7 +31,6 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 ### Limitations
 
 - No dynamic library support on Windows
-- Single window instance
 - Single draw command buffer
 
 ### Requirements

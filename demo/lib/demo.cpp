@@ -296,7 +296,7 @@ class Dialogue : public View {
   public:
 	struct CreateInfo;
 	struct ButtonInfo {
-		glm::vec2 size = {150.0f, 35.0f};
+		glm::vec2 size = {150.0f, 40.0f};
 		Text::Size textSize = 25U;
 		Hash style;
 	};
@@ -397,7 +397,7 @@ Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callb
 	button.m_style.text.base.size = m_buttonInfo.textSize;
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
-	button.m_cornerRadius = 8.0f;
+	button.m_cornerRadius = 10.0f;
 	button.m_text->set(std::move(text));
 	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
 	f32 offset = pad + m_buttonInfo.size.x * 0.5f;

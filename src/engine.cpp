@@ -176,7 +176,7 @@ void Engine::addDefaultAssets() {
 		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&gfx().boot.vram));
 		cone->construct(graphics::makeCone());
 		auto wf_cube = m_store.add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&m_gfx->boot.vram));
-		wf_cube->construct(graphics::makeCube(1.0f, {}, colours::white.toVec3(), graphics::Topology::eLineList));
+		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
 }
 

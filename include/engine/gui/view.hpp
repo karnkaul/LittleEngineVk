@@ -40,7 +40,7 @@ class View : public TreeRoot {
   public:
 	enum class Block { eNone, eBlock };
 
-	View(not_null<ViewStack*> parent, Block block = {}) noexcept : m_block(block), m_parent(parent) {}
+	View(not_null<ViewStack*> parent, std::string name, Block block = {}) noexcept : m_name(std::move(name)), m_block(block), m_parent(parent) {}
 
 	bool popRecurse(TreeNode const* node) noexcept;
 
@@ -51,6 +51,7 @@ class View : public TreeRoot {
 	bool destroyed() const noexcept { return m_remove; }
 
 	Canvas m_canvas;
+	std::string m_name;
 	Block m_block;
 
   private:
@@ -68,7 +69,7 @@ class ViewStack : public utils::Owner<View> {
 
 	template <typename T, typename... Args>
 		requires(is_derived_v<T>)
-	T& push(Args&&... args) { return Owner::template push<T>(this, std::forward<Args>(args)...); }
+	T& push(std::string name, Args&&... args) { return Owner::template push<T>(this, std::move(name), std::forward<Args>(args)...); }
 
 	void update(input::Frame const& frame, glm::vec2 offset = {});
 	View* top() const noexcept { return m_ts.empty() ? nullptr : m_ts.back().get(); }

@@ -1,5 +1,5 @@
 #pragma once
-#include <engine/scene/primitive.hpp>
+#include <engine/scene/prop.hpp>
 #include <graphics/mesh.hpp>
 
 namespace le {
@@ -13,9 +13,9 @@ class Skybox {
 
 	Skybox(not_null<Cubemap const*> cubemap);
 
-	Primitive const& primitive() const noexcept;
+	Prop const& prop() const noexcept;
 
-	mutable Primitive m_primitive;
+	mutable Prop m_prop;
 	graphics::Mesh m_cube;
 	not_null<Cubemap const*> m_cubemap;
 };

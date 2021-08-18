@@ -2,6 +2,7 @@
 #include <core/io.hpp>
 #include <core/not_null.hpp>
 #include <core/services.hpp>
+#include <core/utils/profiler.hpp>
 #include <core/version.hpp>
 #include <engine/assets/asset_loaders_store.hpp>
 #include <engine/editor/editor.hpp>
@@ -42,6 +43,7 @@ class Engine : public Service<Engine> {
 	using ClearDepth = graphics::ClearDepth;
 	using ARenderer = graphics::ARenderer;
 	using Stats = utils::EngineStats;
+	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
 
 	struct GFX {
 		Boot boot;
@@ -61,6 +63,7 @@ class Engine : public Service<Engine> {
 
 	static Version version() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
+	static auto profile(std::string_view name) { return Services::locate<Profiler>()->profile(name); }
 
 	Engine(CreateInfo const& info, io::Reader const* custom = {});
 	~Engine();
@@ -86,7 +89,7 @@ class Engine : public Service<Engine> {
 	GFX const& gfx() const;
 	ARenderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
-	Stats const& stats() noexcept { return m_stats.stats; }
+	Stats const& stats() const noexcept { return m_stats.stats; }
 	AssetStore& store() noexcept { return m_store; }
 	AssetStore const& store() const noexcept { return m_store; }
 
@@ -125,6 +128,8 @@ class Engine : public Service<Engine> {
 	input::Frame m_inputFrame;
 	graphics::ScreenView m_view;
 	std::optional<graphics::RenderTarget> m_drawing;
+	Profiler m_profiler;
+	time::Point m_lastPoll{};
 };
 
 struct Engine::CreateInfo {

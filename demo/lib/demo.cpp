@@ -28,10 +28,12 @@
 
 #include <core/utils/enumerate.hpp>
 #include <engine/assets/asset_manifest.hpp>
+#include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
-#include <engine/gui/dropdown.hpp>
-#include <ktl/enum_flags/enumerate_enum.hpp>
+#include <core/utils/tween.hpp>
+#include <engine/physics/collision.hpp>
+#include <engine/scene/prop_provider.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -202,13 +204,13 @@ class Drawer : public ListDrawer {
 		DescriptorBinder bind(list.pipeline, cb);
 		bind(0);
 		for (Drawable const& d : list.drawables) {
-			if (!d.primitives.empty()) {
+			if (!d.props.empty()) {
 				bind(1);
 				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
-				for (Primitive const& prim : d.primitives) {
+				for (Prop const& prop : d.props) {
 					bind({2, 3});
-					ensure(prim.mesh, "Null mesh");
-					prim.mesh->draw(cb);
+					ensure(prop.mesh, "Null mesh");
+					prop.mesh->draw(cb);
 				}
 			}
 		}
@@ -234,10 +236,10 @@ class Drawer : public ListDrawer {
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
 		for (Drawable const& drawable : list.drawables) {
-			if (!drawable.primitives.empty()) {
+			if (!drawable.props.empty()) {
 				map.set(1).update(0, drawable.model);
-				for (Primitive const& prim : drawable.primitives) {
-					Material const& mat = prim.material;
+				for (Prop const& prop : drawable.props) {
+					Material const& mat = prop.material;
 					auto set2 = map.set(2);
 					set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
 					set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
@@ -251,7 +253,7 @@ class Drawer : public ListDrawer {
 
 class TestView : public gui::View {
   public:
-	TestView(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font) : gui::View(parent) {
+	TestView(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font) : gui::View(parent, std::move(name)) {
 		m_canvas.size.value = {1280.0f, 720.0f};
 		m_canvas.size.unit = gui::Unit::eAbsolute;
 		auto& bg = push<gui::Quad>();
@@ -294,12 +296,12 @@ class Dialogue : public View {
   public:
 	struct CreateInfo;
 	struct ButtonInfo {
-		glm::vec2 size = {150.0f, 35.0f};
+		glm::vec2 size = {150.0f, 40.0f};
 		Text::Size textSize = 25U;
 		Hash style;
 	};
 
-	Dialogue(not_null<gui::ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info);
+	Dialogue(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info);
 
 	[[nodiscard]] Widget::OnClick::Tk addButton(std::string text, Widget::OnClick::Callback const& onClick);
 
@@ -354,8 +356,8 @@ struct Dialogue::CreateInfo {
 	ButtonInfo buttonInfo;
 };
 
-Dialogue::Dialogue(not_null<ViewStack*> parent, not_null<BitmapFont const*> font, CreateInfo const& info)
-	: View(parent, Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
+Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info)
+	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
 	m_content = &push<Widget>(font, info.content.style);
 	m_content->m_rect.size = info.content.size;
 	m_content->m_style.text.base.size = info.content.textSize;
@@ -395,6 +397,7 @@ Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callb
 	button.m_style.text.base.size = m_buttonInfo.textSize;
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
+	button.m_cornerRadius = 10.0f;
 	button.m_text->set(std::move(text));
 	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
 	f32 offset = pad + m_buttonInfo.size.x * 0.5f;
@@ -421,7 +424,7 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 namespace le::demo {
 class App : public input::Receiver, public SceneRegistry {
   public:
-	using SceneRegistry::spawn;
+	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
 	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		// auto const io = m_tasks.add_queue();
@@ -433,13 +436,10 @@ class App : public input::Receiver, public SceneRegistry {
 		ensure(res > 0, "Manifest missing/empty");
 
 		/* custom meshes */ {
-			auto cube = m_eng->store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&eng->gfx().boot.vram));
-			cube->construct(graphics::makeCube(0.5f));
-			auto cone = m_eng->store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&eng->gfx().boot.vram));
-			cone->construct(graphics::makeCone());
-			auto wf_cube = m_eng->store().add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&eng->gfx().boot.vram));
-			wf_cube->construct(graphics::makeCube(1.0f, {}, colours::green.toVec3(), graphics::Topology::eLineList));
+			auto rQuad = m_eng->store().add<graphics::Mesh>("meshes/rounded_quad", graphics::Mesh(&m_eng->gfx().boot.vram));
+			rQuad->construct(graphics::makeRoundedQuad());
 		}
+
 		m_eng->pushReceiver(this);
 
 		struct GFreeCam : edi::Gadget {
@@ -474,9 +474,9 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		};
 		if (auto inspector = Services::locate<edi::Inspector>(false)) {
-			inspector->attach<GFreeCam>("FreeCam");
-			inspector->attach<GPlayerController>("PlayerController");
-			inspector->attach<GSpringArm>("SpringArm");
+			inspector->attach<GFreeCam>();
+			inspector->attach<GPlayerController>();
+			inspector->attach<GSpringArm>();
 		}
 	}
 
@@ -492,14 +492,6 @@ class App : public input::Receiver, public SceneRegistry {
 		return false;
 	}
 
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash meshID, Material const& mat, DrawLayer layer) {
-		return spawn(std::move(name), layer, &*m_eng->store().find<graphics::Mesh>(meshID), mat);
-	};
-
-	decf::spawn_t<SceneNode> spawn(std::string name, Hash modelID, DrawLayer layer) {
-		return spawn(std::move(name), layer, m_eng->store().find<Model>(modelID)->primitives());
-	};
-
 	void init1() {
 		auto sky_test = m_eng->store().find<graphics::Texture>("cubemaps/test");
 		auto skymap = sky_test ? sky_test : m_eng->store().find<graphics::Texture>("cubemaps/sky_dusk");
@@ -508,13 +500,16 @@ class App : public input::Receiver, public SceneRegistry {
 		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
 		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
+		auto coll = spawn<Collision>("collision", "layers/wireframe");
+		auto& collision = coll.get<Collision>();
+		m_data.collision = coll;
 
-		m_data.text.make(&vram);
-		m_data.text.factory.size = 80U;
-		m_data.text.factory.colour = colours::yellow;
-		m_data.text.factory.pos = {0.0f, 200.0f, 0.0f};
+		m_data.text = Text2D(&*font, &vram);
+		m_data.text.factory().size = 80U;
+		m_data.text.factory().colour = colours::yellow;
+		m_data.text.factory().pos = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};
-		m_data.text.set(font.get(), "Hi!");
+		m_data.text.set("Hi!");
 
 		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
@@ -525,10 +520,10 @@ class App : public input::Receiver, public SceneRegistry {
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
-		auto guiStack = spawnStack("gui_root", *m_eng->store().find<DrawLayer>("layers/ui"), &m_eng->gfx().boot.vram);
+		auto guiStack = spawn<gui::ViewStack>("gui_root", "layers/ui", &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
 		auto& stack = guiStack.get<gui::ViewStack>();
-		[[maybe_unused]] auto& testView = stack.push<TestView>(&font.get());
+		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view", &font.get());
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
@@ -540,7 +535,7 @@ class App : public input::Receiver, public SceneRegistry {
 		gui::Dialogue::CreateInfo gdci;
 		gdci.header.text = "Dialogue";
 		gdci.content.text = "Content goes here";
-		auto& dialogue = stack.push<gui::Dialogue>(&font.get(), gdci);
+		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", &font.get(), gdci);
 		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
 		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
@@ -555,56 +550,75 @@ class App : public input::Receiver, public SceneRegistry {
 		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
-		spawnSkybox(*m_eng->store().find<DrawLayer>("layers/skybox"), &*skymap);
+		spawn<Skybox>("skybox", "layers/skybox", &*skymap);
 		{
 			Material mat;
 			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawn("player", "meshes/cube", mat, *m_eng->store().find<DrawLayer>("layers/lit"));
+			auto player = spawnMesh("player", "meshes/cube", "layers/lit", mat);
 			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
+			auto coll = collision.add({});
+			m_colTk = coll.onCollide([](Collision::Collider) { logD("Collided!"); });
+			m_colID0 = coll.m_id;
 		}
 		{
-			auto ent = spawn("prop_1", "meshes/cube", {}, *m_eng->store().find<DrawLayer>("layers/basic"));
+			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
 			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawn("prop_2", "meshes/cone", {}, *m_eng->store().find<DrawLayer>("layers/tex"));
+			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "layers/tex");
 			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
 		}
-		{ spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.primitive(*font)); }
+		{
+			Material mat;
+			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
+			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
+			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
+		}
+		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
+		{ spawnProp<Text2D>("text_2d", m_data.text, "layers/ui"); }
 		{
 			{
-				auto ent0 = spawn("model_0_0", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
-				// auto ent0 = spawn("model_0_0");
+				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
 				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawn("model_0_1", "models/plant", *m_eng->store().find<DrawLayer>("layers/lit"));
+				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "layers/lit");
 				auto& node = ent1.get<SceneNode>();
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
 				node.parent(&m_registry.get<SceneNode>(m_data.entities["model_0_0"]));
 			}
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
-				Primitive& prim = model->primitivesRW().front();
-				prim.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawn("model_1_0", *m_eng->store().find<DrawLayer>("layers/lit"), prim);
+				Prop& prop = model->propsRW().front();
+				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
+				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "layers/lit");
 				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
-				auto ent = spawn("model_1", "models/nanosuit", *m_eng->store().find<DrawLayer>("layers/lit"));
+				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "layers/lit");
 				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
 		{
-			DrawLayer wireframe{&*m_eng->store().find<graphics::Pipeline>("pipelines/wireframe"), 5};
-			spawn("wireframes/cube", "wireframes/cube", {}, wireframe);
+			Material mat;
+			mat.Tf = colours::yellow;
+			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
+			node.get<SceneNode>().scale(2.0f);
+			m_data.tween = node;
+			auto coll1 = collision.add({glm::vec3(2.0f)});
+			m_colID1 = coll1.m_id;
+			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
+			auto pos = node.get<SceneNode>().position();
+			pos.x = tweener.current();
+			coll1.position() = pos;
+			node.get<SceneNode>().position(pos);
 		}
 	}
 
@@ -613,40 +627,21 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
+		update();
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
+			auto pr_ = Engine::profile("app::tick");
+			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (m_registry.empty()) { init1(); }
-			auto guiStack = m_registry.find<gui::ViewStack>(m_data.guiStack);
-			if (guiStack) {
-				m_eng->update(*guiStack);
-				/*auto const& p = m_eng->inputState().cursor.position;
-				logD("c: {}, {}", p.x, p.y);*/
-				/*static gui::Quad* s_prev = {};
-				static Colour s_col;
-				if (auto node = guiRoot->leafHit(m_eng->inputState().cursor.position)) {
-					if (auto quad = dynamic_cast<gui::Quad*>(node)) {
-						if (s_prev != quad) {
-							if (s_prev) {
-								s_prev->m_material.Tf = s_col;
-							}
-							s_col = quad->m_material.Tf;
-							s_prev = quad;
-							quad->m_material.Tf = colours::yellow;
-						}
-					}
-				} else if (s_prev) {
-					s_prev->m_material.Tf = s_col;
-					s_prev = {};
-				}*/
-			}
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
 				auto& node = m_registry.get<SceneNode>(m_data.player);
-				m_registry.get<PlayerController>(m_data.player).tick(state, node, dt);
+				pc.tick(state, node, dt);
 				glm::vec3 const& forward = node.orientation() * -graphics::front;
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
+				if (collision) { collision->find(m_colID0)->position() = node.position(); }
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
@@ -656,6 +651,13 @@ class App : public input::Receiver, public SceneRegistry {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
 				node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+			}
+			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
+				auto& tweener = m_registry.get<Tweener>(m_data.tween);
+				auto pos = node->position();
+				pos.x = tweener.tick(dt);
+				node->position(pos);
+				if (collision) { collision->find(m_colID1)->position() = node->position(); }
 			}
 		}
 		// draw
@@ -675,13 +677,15 @@ class App : public input::Receiver, public SceneRegistry {
 	struct Data {
 		std::unordered_map<Hash, decf::entity> entities;
 
-		BitmapText text;
+		Text2D text;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 
 		decf::entity camera;
 		decf::entity player;
 		decf::entity guiStack;
+		decf::entity collision;
+		decf::entity tween;
 		Hash wire;
 		bool reboot = false;
 		bool unloaded = {};
@@ -692,6 +696,8 @@ class App : public input::Receiver, public SceneRegistry {
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
 	Drawer m_drawer;
+	Collision::ID m_colID0{}, m_colID1{};
+	Collision::OnCollide::Tk m_colTk;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};

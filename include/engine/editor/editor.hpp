@@ -1,14 +1,18 @@
 #pragma once
 #include <core/time.hpp>
 #include <dumb_ecf/registry.hpp>
-#include <engine/editor/log_stats.hpp>
-#include <engine/editor/main_menu.hpp>
-#include <engine/editor/panel.hpp>
-#include <engine/editor/resizer.hpp>
+#include <engine/editor/palette.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/render/viewport.hpp>
+#include <ktl/either.hpp>
 #include <levk_imgui/levk_imgui.hpp>
+
+#if defined(LEVK_EDITOR)
+#include <engine/editor/log_stats.hpp>
+#include <engine/editor/main_menu.hpp>
+#include <engine/editor/resizer.hpp>
+#endif
 
 namespace le {
 namespace window {
@@ -16,6 +20,9 @@ class Instance;
 }
 namespace graphics {
 struct ScreenView;
+}
+namespace gui {
+class TreeRoot;
 }
 class SceneRegistry;
 
@@ -28,10 +35,7 @@ struct In {
 	SceneRegistry* registry = {};
 };
 struct Out {
-	struct {
-		SceneNode* node = {};
-		decf::entity entity;
-	} inspecting;
+	ktl::either<decf::entity, gui::TreeRoot*> inspecting;
 };
 } // namespace edi
 
@@ -64,9 +68,11 @@ class Editor {
 	graphics::ScreenView update(input::Frame const& frame);
 
 	struct {
+#if defined(LEVK_EDITOR)
 		edi::Resizer resizer;
 		edi::LogStats logStats;
 		edi::MainMenu menu;
+#endif
 		Viewport gameView = s_comboView;
 		edi::In cached;
 		bool engaged{};

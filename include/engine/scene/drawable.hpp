@@ -1,6 +1,6 @@
 #pragma once
 #include <core/span.hpp>
-#include <engine/scene/primitive.hpp>
+#include <engine/scene/prop.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 
@@ -14,6 +14,6 @@ struct Rect2D {
 struct Drawable {
 	glm::mat4 model = glm::mat4(1.0f);
 	Rect2D scissor;
-	Span<Primitive const> primitives;
+	Span<Prop const> props;
 };
 } // namespace le

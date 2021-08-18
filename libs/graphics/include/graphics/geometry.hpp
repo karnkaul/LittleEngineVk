@@ -55,11 +55,28 @@ struct Albedo final {
 	Colour specular = colours::white;
 };
 
-Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, glm::vec2 origin = {}, glm::vec3 colour = glm::vec3(1.0f), Topology topo = Topology::eTriangleList);
-Geometry makeCube(f32 side = 1.0f, glm::vec3 origin = {}, glm::vec3 colour = glm::vec3(1.0f), Topology topo = Topology::eTriangleList);
-Geometry makeCircle(f32 diameter = 1.0f, u16 points = 16, glm::vec3 colour = glm::vec3(1.0f));
-Geometry makeCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 16, glm::vec3 colour = glm::vec3(1.0f));
-Geometry makeCubedSphere(f32 diameter, u8 quadsPerSide, glm::vec3 colour = glm::vec3(1.0f));
+struct UVQuad {
+	glm::vec2 topLeft = {0.0f, 0.0f};
+	glm::vec2 bottomRight = {1.0f, 1.0f};
+};
+
+struct GeomInfo {
+	glm::vec3 origin{};
+	glm::vec3 colour = glm::vec3(1.0f);
+};
+
+Geometry makeQuad(glm::vec2 size = {1.0f, 1.0f}, GeomInfo const& info = {}, UVQuad const& uv = {}, Topology topo = Topology::eTriangleList);
+Geometry makeSector(glm::vec2 radExtent, f32 diameter, u16 points, GeomInfo const& info = {});
+Geometry makeCircle(f32 diameter = 1.0f, u16 points = 32, GeomInfo const& info = {});
+Geometry makeCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 32, GeomInfo const& info = {});
+Geometry makeCube(f32 side = 1.0f, GeomInfo const& info = {}, Topology topo = Topology::eTriangleList);
+Geometry makeCubedSphere(f32 diameter = 1.0f, u8 quadsPerSide = 8, GeomInfo const& info = {});
+Geometry makeRoundedQuad(glm::vec2 size = {1.0f, 1.0f}, f32 radius = 0.25f, u16 points = 32, GeomInfo const& info = {});
+
+void append(Geometry& out_dst, Geometry const& in);
+template <typename... T>
+	requires((sizeof...(T) > 1) && (std::is_same_v<T, Geometry> && ...))
+void append(Geometry& out_dst, T const&... src) { (append(out_dst, src), ...); }
 
 struct IndexStitcher {
 	std::vector<u32>& indices;

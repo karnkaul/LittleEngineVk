@@ -2,6 +2,7 @@
 #include <functional>
 #include <core/io/path.hpp>
 #include <core/services.hpp>
+#include <core/utils/ratio.hpp>
 #include <core/utils/std_hash.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_store.hpp>
@@ -42,6 +43,7 @@ class AssetListLoader {
 	void load(TAssetList<T> list);
 	bool ready(Scheduler const& scheduler) const noexcept;
 	void wait(Scheduler& scheduler) const noexcept;
+	f32 progress() const noexcept { return m_done.ratio(); }
 
 	Flags m_flags;
 
@@ -63,6 +65,7 @@ class AssetListLoader {
 
 	mutable AssetStore* m_store{};
 	mutable std::vector<StageID> m_staged;
+	mutable utils::Ratio<u64> m_done;
 };
 
 // impl
@@ -132,7 +135,11 @@ std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetLoadList<T> 
 	std::vector<dts::scheduler::task_t> ret;
 	for (auto& kvp : list.map) {
 		if (!skip<T>(kvp.first)) {
-			ret.push_back([s = &store(), kvp = std::move(kvp)]() mutable { s->load<T>(std::move(kvp.first), std::move(kvp.second)); });
+			ret.push_back([this, kvp = std::move(kvp)]() mutable {
+				store().load<T>(std::move(kvp.first), std::move(kvp.second));
+				++m_done.a;
+			});
+			++m_done.b;
 		}
 	}
 	list.map.clear();
@@ -144,7 +151,11 @@ std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetList<T> list
 	std::vector<dts::scheduler::task_t> ret;
 	for (auto& kvp : list.map) {
 		if (!skip<T>(kvp.first)) {
-			ret.push_back([s = &store(), kvp = std::move(kvp)]() mutable { s->add(std::move(kvp.first), kvp.second()); });
+			ret.push_back([this, kvp = std::move(kvp)]() mutable {
+				store().add(std::move(kvp.first), kvp.second());
+				++m_done.a;
+			});
+			++m_done.b;
 		}
 	}
 	list.map.clear();
@@ -154,14 +165,20 @@ std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetList<T> list
 template <typename T>
 void AssetListLoader::load_(AssetLoadList<T> list) const {
 	for (auto& [id, data] : list.map) {
-		if (!skip<T>(id)) { store().load<T>(id, std::move(data)); }
+		if (!skip<T>(id)) {
+			store().load<T>(id, std::move(data));
+			++m_done;
+		}
 	}
 }
 
 template <typename T>
 void AssetListLoader::load_(AssetList<T> list) const {
 	for (auto& [id, cb] : list.map) {
-		if (!skip<T>(id)) { store().add(id, cb()); }
+		if (!skip<T>(id)) {
+			store().add(id, cb());
+			++m_done;
+		}
 	}
 }
 } // namespace le

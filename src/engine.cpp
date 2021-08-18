@@ -13,6 +13,13 @@
 #include <window/glue.hpp>
 
 namespace le {
+namespace {
+template <typename T>
+void profilerNext(T& out_profiler, Time_s total) {
+	if constexpr (!std::is_same_v<T, utils::NullProfileDB>) { out_profiler.next(total); }
+}
+} // namespace
+
 Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
@@ -52,6 +59,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 		if ((*it)->block(ret.frame.state)) { break; }
 	}
 	if (m_inputFrame.state.focus == input::Focus::eGained) { m_store.update(); }
+	profilerNext(m_profiler, time::diffExchg(m_lastPoll));
 	return ret;
 }
 
@@ -68,6 +76,7 @@ bool Engine::drawReady() {
 }
 
 bool Engine::nextFrame(graphics::RenderTarget* out) {
+	auto pr_ = m_profiler.profile("eng::nextFrame");
 	if (bootReady() && !m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
 		if (auto ret = m_gfx->context.beginFrame()) {
 			updateStats();
@@ -85,6 +94,7 @@ bool Engine::nextFrame(graphics::RenderTarget* out) {
 }
 
 bool Engine::draw(ListDrawer& drawer, RGBA clear, ClearDepth depth) {
+	auto pr_ = m_profiler.profile("eng::draw");
 	if (auto cb = beginDraw(clear, depth)) {
 		drawer.draw(*cb);
 		return endDraw(*cb);
@@ -95,7 +105,7 @@ bool Engine::draw(ListDrawer& drawer, RGBA clear, ClearDepth depth) {
 bool Engine::unboot() noexcept {
 	if (m_gfx) {
 		m_store.clear();
-		Services::untrack<Context, VRAM, AssetStore>();
+		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_gfx.reset();
 		return true;
 	}
@@ -128,12 +138,12 @@ void Engine::updateStats() {
 Engine::Boot::CreateInfo Engine::adjust(Boot::CreateInfo const& info) {
 	auto ret = info;
 	ret.instance.extensions = window::instanceExtensions(*m_win);
-	if (auto gpuOverride = DataStore::find<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
+	if (auto gpuOverride = DataObject<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
 	return ret;
 }
 
 void Engine::bootImpl() {
-	Services::track<Context, VRAM, AssetStore>(&m_gfx->context, &m_gfx->boot.vram, &m_store);
+	Services::track<Context, VRAM, AssetStore, Profiler>(&m_gfx->context, &m_gfx->boot.vram, &m_store, &m_profiler);
 	DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPassUI());
 	dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
 	m_gfx->imgui = DearImGui(&m_gfx->boot.device, &*m_win, dici);
@@ -159,6 +169,14 @@ void Engine::addDefaultAssets() {
 		if (texture.construct(tci)) { m_store.add("textures/blank", std::move(texture)); }
 		tci.data = graphics::Texture::unitCubemap(colours::transparent);
 		if (texture.construct(tci)) { m_store.add("cubemaps/blank", std::move(texture)); }
+	}
+	/* meshes */ {
+		auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));
+		cube->construct(graphics::makeCube());
+		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&gfx().boot.vram));
+		cone->construct(graphics::makeCone());
+		auto wf_cube = m_store.add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&m_gfx->boot.vram));
+		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
 }
 

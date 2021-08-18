@@ -5,7 +5,7 @@
 #include <core/utils/vbase.hpp>
 #include <engine/gui/rect.hpp>
 #include <engine/render/flex.hpp>
-#include <engine/scene/primitive.hpp>
+#include <engine/scene/prop.hpp>
 #include <engine/utils/owner.hpp>
 #include <graphics/basis.hpp>
 #include <graphics/draw_view.hpp>
@@ -62,7 +62,7 @@ class TreeNode : public TreeRoot {
 	glm::mat4 model() const noexcept;
 	bool hit(glm::vec2 point) const noexcept { return m_hitTest && m_rect.hit(point); }
 
-	virtual Span<Primitive const> primitives() const noexcept { return {}; }
+	virtual Span<Prop const> props() const noexcept { return {}; }
 
 	DrawScissor m_scissor;
 	glm::quat m_orientation = graphics::identity;

@@ -9,19 +9,26 @@ class Inspector : public Control, public Service<Inspector> {
 	void update() override;
 
 	template <typename T, typename... Args>
-	T& attach(std::string id, Args&&... args);
+		requires(std::is_base_of_v<Gadget, T> || std::is_base_of_v<GuiGadget, T>)
+	T& attach(Args&&... args);
 	bool detach(std::string const& id);
 
   private:
-	std::unordered_map<std::string, std::unique_ptr<Gadget>> m_gadgets;
+	std::vector<std::unique_ptr<Gadget>> m_gadgets;
+	std::vector<std::unique_ptr<GuiGadget>> m_guiGadgets;
 };
 
 // impl
 
 template <typename T, typename... Args>
-T& Inspector::attach(std::string id, Args&&... args) {
-	static_assert(std::is_base_of_v<Gadget, T>, "T must derive from Gadget");
-	auto const [it, _] = m_gadgets.emplace(std::move(id), std::make_unique<T>(std::forward<Args>(args)...));
-	return static_cast<T&>(*it->second);
+	requires(std::is_base_of_v<Gadget, T> || std::is_base_of_v<GuiGadget, T>)
+T& Inspector::attach(Args&&... args) {
+	if constexpr (std::is_base_of_v<Gadget, T>) {
+		m_gadgets.push_back(std::make_unique<T>(std::forward<Args>(args)...));
+		return static_cast<T&>(*m_gadgets.back());
+	} else {
+		m_guiGadgets.push_back(std::make_unique<T>(std::forward<Args>(args)...));
+		return static_cast<T&>(*m_guiGadgets.back());
+	}
 }
 } // namespace le::edi

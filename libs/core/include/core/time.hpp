@@ -1,6 +1,5 @@
 #pragma once
 #include <chrono>
-#include <core/fixed.hpp>
 #include <core/std_types.hpp>
 
 namespace le {

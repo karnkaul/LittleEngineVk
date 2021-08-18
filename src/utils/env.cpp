@@ -11,7 +11,6 @@
 namespace le {
 env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 	Run ret = Run::resume;
-	DataStore::set("vsync", graphics::Vsync::eTripleBuffer);
 	os::environment(os::Args(argv, std::size_t(argc)));
 	{
 		Spec::cmd_t gpu;
@@ -33,7 +32,7 @@ env::Run env::init(int argc, char const* const argv[], Spec::cmd_map_t cmds) {
 					try {
 						std::size_t const total = Engine::availableDevices().size();
 						if (idx < total) {
-							DataStore::set<std::size_t>("gpuOverride", idx);
+							DataObject<std::size_t>("gpuOverride") = idx;
 							std::cout << "GPU Override set to: " << idx << '\n';
 						} else {
 							std::cout << "Invalid GPU Override: " << idx << "; total: " << total << '\n';

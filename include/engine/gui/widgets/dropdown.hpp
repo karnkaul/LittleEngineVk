@@ -1,7 +1,7 @@
 #pragma once
 #include <core/utils/enumerate.hpp>
-#include <engine/gui/flexbox.hpp>
 #include <engine/gui/shape.hpp>
+#include <engine/gui/widgets/flexbox.hpp>
 
 namespace le::gui {
 class Dropdown : public Widget {

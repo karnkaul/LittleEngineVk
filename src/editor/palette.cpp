@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <engine/editor/panel.hpp>
+#include <engine/editor/palette.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 
 namespace le::edi {

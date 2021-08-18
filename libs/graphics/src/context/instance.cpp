@@ -93,9 +93,9 @@ Instance::Instance(CreateInfo const& info) {
 	m_metadata.layers.clear();
 	std::unordered_set<std::string_view> requiredExtensionsSet = {info.extensions.begin(), info.extensions.end()};
 	Validation validation = info.validation.mode;
-	if (auto vd = DataStore::find<Validation>("validation")) {
+	if (auto vd = DataObject<Validation>("validation")) {
 		validation = *vd;
-		DataStore::erase("validation");
+		vd.unset();
 		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, validation == Validation::eOn ? "on" : "off");
 	}
 	if (validation == Validation::eOn) {

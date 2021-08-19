@@ -18,7 +18,7 @@ target_link_libraries(${PROJECT_NAME}
 		levk::vulkan-hpp
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 	PRIVATE
-		levk::interface
+		levk::compile-options
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_GLFW}>:LEVK_USE_GLFW LEVK_DESKTOP>)

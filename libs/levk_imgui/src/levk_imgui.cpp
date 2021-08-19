@@ -112,6 +112,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 	if (info.correctStyleColours) { fixStyle(); }
+	ImGui::GetStyle().WindowRounding = 0.0f;
 	ImGui_ImplGlfw_InitForVulkan(glfwPtr(*window), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = device->queues().queue(QType::eGraphics);

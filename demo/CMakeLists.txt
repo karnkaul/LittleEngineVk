@@ -4,8 +4,9 @@ project(levk-demo)
 add_subdirectory(lib)
 
 # executable
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX src FILES main.cpp)
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME})
+target_sources(${PROJECT_NAME} PRIVATE main.cpp)
+target_source_group(${PROJECT_NAME} src)
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(${PROJECT_NAME} levk::demo::lib levk::interface::exe)
 if(WINDOWS_MSBUILD)

@@ -10,26 +10,42 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 
 ### Features
 
-- Multi-platform windowing
-  - Windows, Linux: via GLFW
+- `window`
+  - Multi-platform windowing
+    - Windows, Linux: via GLFW
   - Keyboard, mouse, and gamepad support
-- Bootstrapped Vulkan context
+- `graphics`
+  - Bootstrapped Vulkan render context
+  - Customizable renderer
+    - Built-in swapchain and off-screen renderers
   - Customizable device selection
+  - Deferred resource release
   - Dedicated transfer queue, async transfers
   - Shader reflection via SPIR-V Cross
-  - Automatic descriptor Set management
+  - Automatic swapchain resize management
+  - Automatic descriptor set management
+  - Stall-less API (except during swapchain resize)
   - Validation layer support (on by default in `Debug`)
-- Asset Store
-  - Store any `T` associated with a lightweight `io::Path` ID
-  - Customizable asset loaders
-  - Asset hot reload support
-- Multi-threaded task scheduler
-- Entity-Component framework
-- JSON de/serialisation
-- Customizable Editor
+  - sRGB and linear colour spaces
+- `engine`
+  - Thread-safe `AssetStore`
+    - Multi-reader single-writer API
+    - Store any `T` associated with a lightweight `io::Path` ID
+    - Customizable asset loaders
+    - Asset hot reload support
+  - Customizable Editor
+  - Bitmap Fonts and 2D Text
+  - GUI view/widget trees
+  - Basic 3D AABB collision detection
+- `libs/*`
+  - Multi-threaded task scheduler
+  - Entity-Component framework
+  - JSON parser, de/serializer
+  - Formatted logger
 
 ### Limitations
 
+- No CMake install stage / `find_package` support (as yet)
 - No dynamic library support on Windows
 - Single draw command buffer
 
@@ -67,10 +83,12 @@ LittleEngineVk (`levk-engine`) is a library intended to be built from source and
 - [GLFW](https://github.com/glfw/glfw)
 - [glm](https://github.com/g-truc/glm)
 - [Dear ImGui](https://github.com/ocornut/imgui)
-- [PhysicsFS]()
+- [PhysicsFS](https://icculus.org/physfs/)
 - [stb](https://github.com/nothings/stb)
 - [tiny-obj-loader](https://github.com/tinyobjloader/tinyobjloader)
+- [VulkanHPP](https://github.com/KhronosGroup/Vulkan-Hpp)
 - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
+- [SPIR-V Cross](https://github.com/KhronosGroup/SPIRV-Cross)
 
 ### CMake submodules
 

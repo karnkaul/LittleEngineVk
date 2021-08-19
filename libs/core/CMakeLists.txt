@@ -22,8 +22,9 @@ target_link_libraries(${PROJECT_NAME}
 		dlog::dlog
 		dtasks::dtasks
 		decf::decf
-	PRIVATE
 		levk::interface
+	PRIVATE
+		levk::compile-options
 		physfs-static
 )
 

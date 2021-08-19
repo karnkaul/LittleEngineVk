@@ -22,7 +22,7 @@ target_link_libraries(${PROJECT_NAME}
 		spirv-cross-glsl
 		vma
 	PRIVATE
-		levk::interface
+		levk::compile-options
 		stb-image
 		tinyobjloader
 )

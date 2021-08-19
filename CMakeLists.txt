@@ -224,6 +224,7 @@ target_link_libraries(${target_name}
 		clap::clap
 		levk::interface
 	PRIVATE
+		levk::compile-options
 		stb-image
 		tinyobjloader
 )

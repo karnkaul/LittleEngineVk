@@ -30,3 +30,12 @@ function(unzip_archive archive_name subdir)
 		WORKING_DIRECTORY "${subdir}"
 	)
 endfunction()
+
+function(target_source_group target)
+	get_target_property(sources ${target} SOURCES)
+	if(${ARGC} GREATER 1)
+		source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX ${ARGV1} FILES ${sources})
+	else()
+		source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${sources})
+	endif()
+endfunction()

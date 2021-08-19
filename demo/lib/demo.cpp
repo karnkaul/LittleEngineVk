@@ -638,7 +638,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (pc.active) {
 				auto& node = m_registry.get<SceneNode>(m_data.player);
 				pc.tick(state, node, dt);
-				glm::vec3 const& forward = node.orientation() * -graphics::front;
+				auto const forward = nvec3(node.orientation() * -graphics::front);
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
 				if (collision) { collision->find(m_colID0)->position() = node.position(); }
@@ -650,7 +650,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-				node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+				node->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
 			}
 			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);

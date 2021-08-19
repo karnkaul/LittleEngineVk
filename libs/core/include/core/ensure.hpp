@@ -20,5 +20,5 @@ inline constexpr bool levk_ensures = false;
 ///
 /// \brief Trigger a break (if debugger present) / assert if predicate is false
 ///
-void ensure(bool pred, std::string_view msg, char const* fl = __builtin_FILE(), char const* fn = __builtin_FUNCTION(), int ln = __builtin_LINE());
+void ensure(bool pred, std::string_view msg = {}, char const* fl = __builtin_FILE(), char const* fn = __builtin_FUNCTION(), int ln = __builtin_LINE());
 } // namespace le

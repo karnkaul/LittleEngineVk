@@ -138,7 +138,7 @@ graphics::Geometry graphics::makeCone(f32 diam, f32 height, u16 points, GeomInfo
 		ret.addIndices(arr0); // reverse winding; bottom face is "front"
 		// Face
 		v3 const v2(0.0f, height, 0.0f);
-		auto const nFace = glm::normalize(glm::cross(v2 - v0, v1 - v0));
+		auto const nFace = nvec3(glm::cross(v2 - v0, v1 - v0));
 		u32 const i2 = ret.addVertex({o + v0, info.colour, nFace, {s0, 1.0f}});
 		u32 const i3 = ret.addVertex({o + v1, info.colour, nFace, {s1, 1.0f}});
 		u32 const i4 = ret.addVertex({o + v2, info.colour, nFace, {0.5f, 0.5f}});
@@ -171,7 +171,7 @@ graphics::Geometry graphics::makeCubedSphere(f32 diam, u8 quadsPerSide, GeomInfo
 			points.push_back(std::make_pair(v3(bl + v3(0.0f, s, 0.0f) + o), v2(u, 1.0f - v - duv)));
 		}
 	}
-	auto addSide = [c = info.colour](std::vector<std::pair<v3, v2>>& out_points, graphics::Geometry& out_ret, f32 diam, v3 (*transform)(v3 const&)) {
+	auto addSide = [c = info.colour](std::vector<std::pair<v3, v2>>& out_points, graphics::Geometry& out_ret, f32 diam, nvec3 (*transform)(v3 const&)) {
 		s32 idx = 0;
 		std::vector<u32> iV;
 		iV.reserve(4);
@@ -190,12 +190,12 @@ graphics::Geometry graphics::makeCubedSphere(f32 diam, u8 quadsPerSide, GeomInfo
 			out_ret.addIndices(arr);
 		}
 	};
-	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(p); });
-	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(glm::rotate(p, glm::radians(180.0f), up)); });
-	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(glm::rotate(p, glm::radians(90.0f), up)); });
-	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(glm::rotate(p, glm::radians(-90.0f), up)); });
-	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(glm::rotate(p, glm::radians(90.0f), right)); });
-	addSide(points, ret, diam, [](v3 const& p) -> v3 { return glm::normalize(glm::rotate(p, glm::radians(-90.0f), right)); });
+	addSide(points, ret, diam, [](v3 const& p) { return nvec3(p); });
+	addSide(points, ret, diam, [](v3 const& p) { return nvec3(glm::rotate(p, glm::radians(180.0f), up)); });
+	addSide(points, ret, diam, [](v3 const& p) { return nvec3(glm::rotate(p, glm::radians(90.0f), up)); });
+	addSide(points, ret, diam, [](v3 const& p) { return nvec3(glm::rotate(p, glm::radians(-90.0f), up)); });
+	addSide(points, ret, diam, [](v3 const& p) { return nvec3(glm::rotate(p, glm::radians(90.0f), right)); });
+	addSide(points, ret, diam, [](v3 const& p) { return nvec3(glm::rotate(p, glm::radians(-90.0f), right)); });
 	return ret;
 }
 

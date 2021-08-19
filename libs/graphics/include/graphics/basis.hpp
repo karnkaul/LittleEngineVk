@@ -1,6 +1,6 @@
 #pragma once
+#include <core/nvec.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <glm/vec3.hpp>
 
 namespace le::graphics {
 constexpr glm::vec3 up = {0.0f, 1.0f, 0.0f};

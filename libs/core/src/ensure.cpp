@@ -15,7 +15,7 @@ namespace le {
 void ensure(bool pred, std::string_view msg, char const* fl, char const* fn, int ln) {
 	if constexpr (levk_ensures) {
 		if (!pred) {
-			auto const m = fmt::format("Ensure failed: {}\n\t{}:{} [{}]", msg, fl, ln, fn);
+			auto const m = fmt::format("Ensure failed{} {}\n\t{}:{} [{}]", msg.empty() ? "" : ":", msg, fl, ln, fn);
 			std::cerr << m << std::endl;
 #if defined(LEVK_OS_WINDOWS)
 			OutputDebugStringA(msg.data());

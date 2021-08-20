@@ -34,6 +34,7 @@
 #include <core/utils/tween.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
+#include <engine/utils/error_handler.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -759,6 +760,7 @@ bool run(io::Reader const& reader) {
 				break;
 			}
 			app.tick(++dt);
+			if (flags.test(Flag::eDebug0)) { ensure(false, "test error"); }
 		}
 	} while (reboot);
 	return true;

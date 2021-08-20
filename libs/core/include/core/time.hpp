@@ -6,6 +6,11 @@ namespace le {
 namespace stdch = std::chrono;
 using namespace std::chrono_literals;
 
+///
+/// \brief Typedef for a time point on the system clock
+///
+using SysTime = stdch::system_clock::time_point;
+
 namespace time {
 ///
 /// \brief Typedef for clock used for now()
@@ -15,10 +20,6 @@ using Clock = stdch::steady_clock;
 /// \brief Typedef for a time point on Clock
 ///
 using Point = Clock::time_point;
-///
-/// \brief Typedef for a time point on the system clock
-///
-using SysTime = stdch::system_clock::time_point;
 
 ///
 /// \brief Typedef for a duration of time
@@ -94,14 +95,14 @@ class DeltaTime {
 
 namespace time {
 ///
-/// \brief Format duration as d:HH:MM:SS[:ms]
+/// \brief Format duration using dynamic / custom spec
 ///
-std::string format(Time_s duration);
+std::string format(Time_s duration, std::string_view fmt = {});
 } // namespace time
 
 // impl
 inline time::Point time::now() noexcept { return Clock::now(); }
-inline time::SysTime time::sysTime() noexcept { return stdch::system_clock::now(); }
+inline SysTime time::sysTime() noexcept { return stdch::system_clock::now(); }
 template <typename Ret, typename Dur>
 constexpr Ret time::cast(Dur&& dur) noexcept {
 	return stdch::duration_cast<Ret>(dur);

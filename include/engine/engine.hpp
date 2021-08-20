@@ -11,6 +11,7 @@
 #include <engine/input/receiver.hpp>
 #include <engine/scene/scene_space.hpp>
 #include <engine/utils/engine_stats.hpp>
+#include <engine/utils/error_handler.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/render/renderers.hpp>
@@ -129,6 +130,7 @@ class Engine : public Service<Engine> {
 	graphics::ScreenView m_view;
 	std::optional<graphics::RenderTarget> m_drawing;
 	Profiler m_profiler;
+	utils::ErrorHandler m_errorHandler;
 	time::Point m_lastPoll{};
 };
 

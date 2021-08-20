@@ -138,6 +138,11 @@ void debugBreak();
 bool sysCall(std::string_view command);
 
 ///
+/// \brief Obtain the CPU ID (if possible)
+///
+std::string_view cpuID();
+
+///
 /// \brief Perform a system call
 ///
 template <typename Arg1, typename... Args>

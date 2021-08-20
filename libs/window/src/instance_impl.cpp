@@ -61,19 +61,18 @@ Cursor const& Manager::Impl::cursor(CursorType type) {
 }
 
 GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
-	int screenCount;
-	GLFWmonitor* const* ppScreens = glfwGetMonitors(&screenCount);
-	if (screenCount < 1) {
+	Span<GLFWmonitor* const> screens = displays();
+	if (screens.empty()) {
 		log().log(lvl::error, 2, "[{}] Failed to detect screens!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
-	GLFWvidmode const* mode = glfwGetVideoMode(ppScreens[0]);
+	GLFWvidmode const* mode = glfwGetVideoMode(screens[0]);
 	if (!mode) {
 		log().log(lvl::error, 2, "[{}] Failed to detect video mode!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
-	std::size_t const screenIdx = info.options.screenID < screenCount ? (std::size_t)info.options.screenID : 0;
-	GLFWmonitor* pTarget = ppScreens[screenIdx];
+	std::size_t const screenIdx = info.options.screenID < screens.size() ? (std::size_t)info.options.screenID : 0;
+	GLFWmonitor* pTarget = screens[screenIdx];
 	int height = info.config.size.y;
 	int width = info.config.size.x;
 	bool bDecorated = true;
@@ -117,6 +116,12 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	auto ret = glfwCreateWindow(width, height, info.config.title.data(), pTarget, nullptr);
 	if (ret) { glfwSetWindowPos(ret, cX, cY); }
 	return ret;
+}
+
+Span<GLFWmonitor* const> Manager::Impl::displays() const {
+	int count;
+	GLFWmonitor* const* ppScreens = glfwGetMonitors(&count);
+	return Span(ppScreens, static_cast<std::size_t>(count));
 }
 
 Instance::Impl::Impl(not_null<Manager::Impl*> manager, not_null<GLFWwindow*> win) : m_win(win), m_manager(manager) {

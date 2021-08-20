@@ -206,6 +206,14 @@ std::optional<Instance> Manager::make(CreateInfo const& info) {
 	return ret;
 }
 
+std::size_t Manager::displayCount() const {
+	std::size_t ret{};
+#if defined(LEVK_USE_GLFW)
+	if (m_impl) { ret = m_impl->displays().size(); }
+#endif
+	return ret;
+}
+
 Instance::Instance(Instance&&) = default;
 Instance& Instance::operator=(Instance&&) = default;
 Instance::Instance(std::unique_ptr<Impl>&& impl) noexcept : m_impl(std::move(impl)) {}

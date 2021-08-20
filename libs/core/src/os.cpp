@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdlib>
+#include <sstream>
 #include <thread>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
@@ -18,6 +19,7 @@
 namespace le {
 namespace {
 os::Environment g_env;
+std::string g_cpuID;
 } // namespace
 
 void os::environment(Args args) {
@@ -80,5 +82,25 @@ void os::debugBreak() {
 bool os::sysCall(std::string_view command) {
 	if (std::system(command.data()) == 0) { return true; }
 	return false;
+}
+
+std::string_view os::cpuID() {
+	if (g_cpuID.empty()) {
+		if constexpr (levk_arch == Arch::eX64 || levk_arch == Arch::eX86) {
+			u32 regs[4] = {};
+#ifdef _WIN32
+			__cpuid((int*)regs, 0);
+#else
+			asm volatile("cpuid" : "=a"(regs[0]), "=b"(regs[1]), "=c"(regs[2]), "=d"(regs[3]) : "a"(0), "c"(0));
+#endif
+			auto strv = [&regs](std::size_t i) { return std::string_view(reinterpret_cast<char const*>(&regs[i]), 4); };
+			std::ostringstream str;
+			str << strv(1) << strv(3) << strv(2);
+			g_cpuID = str.str();
+		} else {
+			g_cpuID = "(unknown)";
+		}
+	}
+	return g_cpuID;
 }
 } // namespace le

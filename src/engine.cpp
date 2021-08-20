@@ -45,9 +45,14 @@ Engine::Engine(CreateInfo const& info, io::Reader const* custom) : m_io(info.log
 	auto winInfo = info.winInfo;
 	winInfo.options.autoShow = false;
 	m_win = m_wm.make(winInfo);
+	utils::g_onError = &m_errorHandler;
+	m_errorHandler.deleteFile();
 }
 
-Engine::~Engine() { unboot(); }
+Engine::~Engine() {
+	unboot();
+	utils::g_onError = {};
+}
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
 	if (!bootReady()) { return {}; }

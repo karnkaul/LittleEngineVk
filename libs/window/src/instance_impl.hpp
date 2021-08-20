@@ -27,6 +27,8 @@ class Manager::Impl {
 	LibLogger& log() noexcept { return *m_logger; }
 	GLFWwindow* make(CreateInfo const& info);
 
+	Span<GLFWmonitor* const> displays() const;
+
   private:
 	EnumArray<CursorType, Cursor> m_cursors;
 	not_null<LibLogger*> m_logger;

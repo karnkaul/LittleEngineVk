@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <core/lib_logger.hpp>
+#include <core/std_types.hpp>
 #include <window/event_queue.hpp>
 
 namespace le::window {
@@ -16,6 +17,8 @@ class Manager {
 	explicit operator bool() const noexcept { return ready(); }
 
 	std::optional<Instance> make(CreateInfo const& info);
+
+	std::size_t displayCount() const;
 
 	class Impl;
 

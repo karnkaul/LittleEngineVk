@@ -34,7 +34,7 @@
 #include <core/utils/tween.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
-#include <engine/utils/error_handler.hpp>
+#include <engine/utils/engine_config.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -726,7 +726,9 @@ struct FlagsInput : input::Receiver {
 		return ret;
 	}
 };
+} // namespace le::demo
 
+namespace le::demo {
 bool run(io::Reader const& reader) {
 	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
 	Engine::CreateInfo eci;

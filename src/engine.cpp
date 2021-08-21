@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <build_version.hpp>
 #include <core/utils/data_store.hpp>
@@ -5,6 +6,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/input/space.hpp>
 #include <engine/scene/list_drawer.hpp>
+#include <engine/utils/engine_config.hpp>
 #include <engine/utils/logger.hpp>
 #include <graphics/common.hpp>
 #include <graphics/mesh.hpp>
@@ -17,6 +19,27 @@ namespace {
 template <typename T>
 void profilerNext(T& out_profiler, Time_s total) {
 	if constexpr (!std::is_same_v<T, utils::NullProfileDB>) { out_profiler.next(total); }
+}
+
+std::optional<utils::EngineConfig> load(io::Path const& path) {
+	if (auto json = dj::json(); json.load(path.generic_string())) { return io::fromJson<utils::EngineConfig>(json); }
+	return std::nullopt;
+}
+
+bool save(utils::EngineConfig const& config, io::Path const& path) {
+	dj::json original;
+	original.read(path.generic_string());
+	auto overwrite = io::toJson(config);
+	for (auto& [id, json] : overwrite.as<dj::map_t>()) {
+		if (original.contains(id)) {
+			original[id] = std::move(*json);
+		} else {
+			original.insert(id, std::move(*json));
+		}
+	}
+	dj::serial_opts_t opts;
+	opts.sort_keys = opts.pretty = true;
+	return original.save(path.generic_string(), opts);
 }
 } // namespace
 
@@ -44,6 +67,11 @@ Engine::Engine(CreateInfo const& info, io::Reader const* custom) : m_io(info.log
 	ensure(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;
 	winInfo.options.autoShow = false;
+	if (auto config = load(m_configPath)) {
+		logI("[Engine] Config loaded from {}", m_configPath.generic_string());
+		if (config->win.size.x > 0 && config->win.size.y > 0) { winInfo.config.size = config->win.size; }
+		winInfo.config.position = config->win.position;
+	}
 	m_win = m_wm.make(winInfo);
 	utils::g_onError = &m_errorHandler;
 	m_errorHandler.deleteFile();
@@ -109,6 +137,7 @@ bool Engine::draw(ListDrawer& drawer, RGBA clear, ClearDepth depth) {
 
 bool Engine::unboot() noexcept {
 	if (m_gfx) {
+		saveConfig();
 		m_store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_gfx.reset();
@@ -200,5 +229,13 @@ bool Engine::endDraw(graphics::CommandBuffer cb) {
 	m_gfx->context.endDraw();
 	m_gfx->context.endFrame();
 	return m_gfx->context.submitFrame();
+}
+
+void Engine::saveConfig() const {
+	utils::EngineConfig config;
+	config.win.position = m_win->position();
+	config.win.size = m_win->windowSize();
+	config.win.maximized = m_win->maximized();
+	if (save(config, m_configPath)) { logI("[Engine] Config saved to {}", m_configPath.generic_string()); }
 }
 } // namespace le

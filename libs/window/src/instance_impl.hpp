@@ -53,6 +53,11 @@ class Instance::Impl {
 	void close();
 	bool closing() const noexcept;
 
+	glm::ivec2 position() const noexcept;
+	void position(glm::ivec2 pos) noexcept;
+	void maximize() noexcept;
+	void restore() noexcept;
+
 	CursorMode cursorMode() const noexcept;
 	void cursorType(CursorType type);
 	void cursorMode([[maybe_unused]] CursorMode mode);
@@ -67,6 +72,7 @@ class Instance::Impl {
 	std::size_t joysticKButtonsCount(s32 id) const;
 
 	Cursor m_active;
+	bool m_maximized{};
 #if defined(LEVK_USE_GLFW)
 	not_null<GLFWwindow*> m_win;
 #endif
@@ -83,6 +89,7 @@ class Instance::Impl {
 	static void onMouseButton(GLFWwindow* win, int key, int action, int mods);
 	static void onText(GLFWwindow* win, u32 codepoint);
 	static void onScroll(GLFWwindow* win, f64 dx, f64 dy);
+	static void onMaximize(GLFWwindow* win, int maximized);
 #endif
 
 	EventQueue m_events;

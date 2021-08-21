@@ -106,6 +106,7 @@ class Engine : public Service<Engine> {
 	bool closing() const noexcept { return window().closing(); }
 
 	SceneSpace m_space;
+	io::Path m_configPath = "config.json";
 
   private:
 	void updateStats();
@@ -114,6 +115,8 @@ class Engine : public Service<Engine> {
 	void addDefaultAssets();
 	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
 	bool endDraw(graphics::CommandBuffer cb);
+	void saveConfig() const;
+	struct EngineConfig loadConfig() const;
 
 	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 

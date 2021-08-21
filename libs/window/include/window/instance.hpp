@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <optional>
 #include <core/lib_logger.hpp>
 #include <core/std_types.hpp>
 #include <window/event_queue.hpp>
@@ -34,7 +35,8 @@ struct CreateInfo {
 	struct {
 		std::string title;
 		glm::ivec2 size = {640, 360};
-		glm::ivec2 centreOffset = {};
+		std::optional<glm::ivec2> position;
+		bool maximized = false;
 	} config;
 
 	struct {
@@ -58,6 +60,12 @@ class Instance {
 	bool visible() const noexcept;
 	void close();
 	bool closing() const noexcept;
+
+	glm::ivec2 position() const noexcept;
+	void position(glm::ivec2 pos) noexcept;
+	bool maximized() const noexcept;
+	void maximize() noexcept;
+	void restore() noexcept;
 
 	glm::uvec2 framebufferSize() const noexcept;
 	glm::uvec2 windowSize() const noexcept;

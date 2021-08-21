@@ -22,6 +22,7 @@ target_link_libraries(${PROJECT_NAME}
 		dlog::dlog
 		dtasks::dtasks
 		decf::decf
+		djson::djson
 		levk::interface
 	PRIVATE
 		levk::compile-options

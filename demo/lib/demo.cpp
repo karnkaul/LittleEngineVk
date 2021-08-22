@@ -32,11 +32,11 @@
 #include <engine/render/descriptor_helper.hpp>
 
 #include <fstream>
+#include <core/utils/async.hpp>
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
-#include <ktl/future.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -786,7 +786,8 @@ bool run(io::Reader const& reader) {
 		App app(&engine);
 		DeltaTime dt;
 		std::optional<window::Instance> test;
-		std::future<bool> bld;
+		ktl::future_t<bool> bf;
+		utils::Async async;
 		while (!engine.closing()) {
 			poll(flags, engine.poll(true).residue);
 			if (flags.test(Flag::eClosed)) {
@@ -798,13 +799,16 @@ bool run(io::Reader const& reader) {
 				break;
 			}
 			app.tick(++dt);
-			if (flags.test(Flag::eDebug0) && !bld.valid()) {
-				bld = std::async(&package, "out/autobuild", false);
+			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				flags.reset(Flag::eDebug0);
-			}
-			if (bld.valid() && utils::ready(bld)) {
-				if (!bld.get()) { logW("build failed"); }
-				bld = {};
+				bf = async(&package, "out/autobuild", false);
+				bf.then([](bool built) {
+					if (!built) {
+						logW("build failed");
+					} else {
+						logD("build success");
+					}
+				});
 			}
 		}
 	} while (reboot);

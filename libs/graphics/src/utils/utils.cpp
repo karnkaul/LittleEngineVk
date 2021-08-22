@@ -3,6 +3,7 @@
 #include <core/maths.hpp>
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
+#include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/render/pipeline.hpp>
@@ -14,19 +15,23 @@ static_assert(sizeof(stbi_uc) == sizeof(std::byte) && alignof(stbi_uc) == aligno
 namespace le::graphics {
 namespace {
 struct Spv : Singleton<Spv> {
+	using Shell = le::utils::ShellSilent;
+
 	Spv() {
-		if (os::sysCall("{} --version", utils::g_compiler)) {
+		if (auto compiler = Shell(fmt::format("{} --version", utils::g_compiler))) {
 			bOnline = true;
-			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler [{}] online", g_name, utils::g_compiler);
+			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler online: {}", g_name, compiler.redirectOutput());
 		} else {
-			g_log.log(lvl::warning, 1, "[{}] Failed to bring SPIR-V compiler [{}] online", g_name, utils::g_compiler);
+			g_log.log(lvl::warning, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.redirectOutput());
 		}
 	}
 
 	std::string compile(io::Path const& src, io::Path const& dst, std::string_view flags) {
 		if (bOnline) {
 			if (!io::is_regular_file(src)) { return fmt::format("source file [{}] not found", src.generic_string()); }
-			if (!os::sysCall("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string())) { return "compilation failed"; }
+			if (auto compile = Shell(fmt::format("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string())); !compile.success()) {
+				return "compilation failed: " + compile.redirectOutput();
+			}
 			return {};
 		}
 		return fmt::format("[{}] offline", utils::g_compiler);

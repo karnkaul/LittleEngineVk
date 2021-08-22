@@ -117,6 +117,12 @@ std::pair<std::string, std::string> utils::bisect(std::string_view input, char d
 							  : std::pair<std::string, std::string>(std::string(input), {});
 }
 
+std::string utils::toString(std::istream const &in) {
+	std::stringstream str;
+	str << in.rdbuf();
+	return str.str();
+}
+
 void utils::substitute(std::string& outInput, std::initializer_list<std::pair<char, char>> replacements) {
 	for (std::string::iterator iter = outInput.begin(); iter != outInput.end(); ++iter) {
 		for (auto const& replacement : replacements) {

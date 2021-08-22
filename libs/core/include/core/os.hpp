@@ -133,22 +133,8 @@ bool debugging();
 void debugBreak();
 
 ///
-/// \brief Perform a system call
-///
-bool sysCall(std::string_view command);
-
-///
 /// \brief Obtain the CPU ID (if possible)
 ///
 std::string_view cpuID();
-
-///
-/// \brief Perform a system call
-///
-template <typename Arg1, typename... Args>
-bool sysCall(std::string_view expr, Arg1&& arg1, Args&&... args) {
-	auto const command = fmt::format(expr, std::forward<Arg1>(arg1), std::forward<Args>(args)...);
-	return sysCall(command);
-}
 } // namespace os
 } // namespace le

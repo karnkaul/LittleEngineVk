@@ -53,6 +53,7 @@ Path absolute(Path const& path);
 Path current_path();
 bool is_regular_file(Path const& path);
 bool is_directory(Path const& path);
+bool remove(Path const& path);
 
 inline Path operator/(Path const& lhs, Path const& rhs) {
 	auto ret = lhs;

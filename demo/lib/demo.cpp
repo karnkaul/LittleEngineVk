@@ -31,10 +31,12 @@
 #include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
+#include <fstream>
+#include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
-#include <engine/utils/engine_config.hpp>
+#include <ktl/future.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -726,9 +728,42 @@ struct FlagsInput : input::Receiver {
 		return ret;
 	}
 };
-} // namespace le::demo
 
-namespace le::demo {
+bool openFilesystemPath(io::Path path) {
+	if (io::is_regular_file(path)) {
+		path = path.parent_path();
+	} else if (!io::is_directory(path)) {
+		return false;
+	}
+	std::string const dir = path.string();
+	if constexpr (levk_OS == os::OS::eLinux) {
+		static constexpr std::string_view mgrs[] = {"dolphin", "nautilus"};
+		for (auto const mgr : mgrs) {
+			if (auto open = utils::Shell(fmt::format("{} {}", mgr, dir))) { return true; }
+		}
+		return false;
+	} else if constexpr (levk_OS == os::OS::eWindows) {
+		return utils::Shell(fmt::format("explorer {}", dir)).success();
+	}
+}
+
+bool package(io::Path const& binary, bool clean) {
+	logD("Starting build...");
+	io::Path const log = binary / "autobuild.txt";
+	io::remove(log);
+	if (!io::is_regular_file(binary / "CMakeCache.txt")) {
+		if (!utils::Shell(fmt::format("cmake-gui -B {}", binary.string()))) { return false; }
+		if (!io::is_regular_file(binary / "CMakeCache.txt")) { return false; }
+	}
+	auto const cmake = utils::Shell(fmt::format("cmake --build {} {}", binary.string(), clean ? "--clean-first" : ""), log);
+	if (!cmake) {
+		logW("Build failure: \n{}", cmake.redirectOutput());
+		return false;
+	}
+	logD("... Build completed");
+	return openFilesystemPath(binary);
+}
+
 bool run(io::Reader const& reader) {
 	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
 	Engine::CreateInfo eci;
@@ -751,6 +786,7 @@ bool run(io::Reader const& reader) {
 		App app(&engine);
 		DeltaTime dt;
 		std::optional<window::Instance> test;
+		std::future<bool> bld;
 		while (!engine.closing()) {
 			poll(flags, engine.poll(true).residue);
 			if (flags.test(Flag::eClosed)) {
@@ -762,7 +798,14 @@ bool run(io::Reader const& reader) {
 				break;
 			}
 			app.tick(++dt);
-			if (flags.test(Flag::eDebug0)) { ensure(false, "test error"); }
+			if (flags.test(Flag::eDebug0) && !bld.valid()) {
+				bld = std::async(&package, "out/autobuild", false);
+				flags.reset(Flag::eDebug0);
+			}
+			if (bld.valid() && utils::ready(bld)) {
+				if (!bld.get()) { logW("build failed"); }
+				bld = {};
+			}
 		}
 	} while (reboot);
 	return true;

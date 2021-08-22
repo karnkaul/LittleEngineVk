@@ -4,11 +4,12 @@
 #include <thread>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
+#include <core/maths.hpp>
 #include <core/os.hpp>
 
 #if defined(LEVK_OS_WINDOWS)
 #include <Windows.h>
-#elif defined(LEVK_OS_LINUX) || defined(LEVK_OS_ANDROID)
+#elif defined(LEVK_OS_LINUX)
 #include <fstream>
 #include <iostream>
 #include <signal.h>
@@ -77,11 +78,6 @@ void os::debugBreak() {
 #endif
 #endif
 	return;
-}
-
-bool os::sysCall(std::string_view command) {
-	if (std::system(command.data()) == 0) { return true; }
-	return false;
 }
 
 std::string_view os::cpuID() {

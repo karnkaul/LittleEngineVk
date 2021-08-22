@@ -55,10 +55,6 @@ struct ExecPolicy {
 	/// \brief Exception signal, not required if return_type is void (can be mutable)
 	///
 	static constexpr return_type exception_v = 100;
-	///
-	/// \brief Whether to catch exceptions (can be mutable)
-	///
-	static constexpr bool catch_v = levk_debug;
 };
 ///
 /// \brief Executor, customized via Policy
@@ -80,18 +76,9 @@ class Execute {
 	template <typename F, typename... Args>
 	static return_type run(F&& func, Args&&... args) noexcept(false) {
 		if constexpr (std::is_void_v<typename Policy::return_type>) {
-			if (Policy::catch_v) {
-				return safeInvoke<handler_t>(std::forward<F>(func), std::forward<Args>(args)...);
-			} else {
-				std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
-				return true;
-			}
+			return safeInvoke<handler_t>(std::forward<F>(func), std::forward<Args>(args)...);
 		} else {
-			if (Policy::catch_v) {
-				return safeInvokeR<handler_t>(std::forward<F>(func), std::forward<Args>(args)..., Policy::exception_v);
-			} else {
-				return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
-			}
+			return safeInvokeR<handler_t>(std::forward<F>(func), std::forward<Args>(args)..., Policy::exception_v);
 		}
 	}
 

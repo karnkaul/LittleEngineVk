@@ -54,8 +54,8 @@ class DProfiler<ProfileDevNull> {
   public:
 	using dispatch_t = ProfileDevNull;
 
-	constexpr DProfiler(std::string_view, ProfileDevNull = {}) noexcept {}
-	constexpr ~DProfiler() = default;
+	DProfiler(std::string_view, ProfileDevNull = {}) noexcept {}
+	~DProfiler() noexcept {}
 };
 using NullProfiler = DProfiler<ProfileDevNull>;
 

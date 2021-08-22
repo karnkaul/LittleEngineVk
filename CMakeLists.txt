@@ -150,7 +150,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	ktl
 	GIT_REPOSITORY https://github.com/karnkaul/ktl
-	GIT_TAG origin/main
+	GIT_TAG ec7deb1
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)
@@ -166,7 +166,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	dtest
 	GIT_REPOSITORY https://github.com/karnkaul/dtest
-	GIT_TAG origin/main
+	GIT_TAG 770d733
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/dtest"
 )
 FetchContent_MakeAvailable(dtest)

@@ -7,9 +7,11 @@
 [submodule "ext/glm"]
 	path = ext/glm
 	url = https://github.com/g-truc/glm
+	shallow = true
 [submodule "ext/glfw"]
 	path = ext/glfw
 	url = https://github.com/glfw/glfw
+	shallow = true
 [submodule "libs/dtasks"]
 	path = libs/dtasks
 	url = https://github.com/karnkaul/dtasks
@@ -19,9 +21,11 @@
 [submodule "docs/doxygen_dark_theme"]
 	path = docs/doxygen_dark_theme
 	url = https://github.com/MaJerle/doxygen-dark-theme
+	shallow = true
 [submodule "libs/clap"]
 	path = libs/clap
 	url = https://github.com/karnkaul/clap
 [submodule "ext/spirv_cross"]
 	path = ext/spirv_cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross
+	shallow = true

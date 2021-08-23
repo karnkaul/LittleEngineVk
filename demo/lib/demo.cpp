@@ -32,11 +32,11 @@
 #include <engine/render/descriptor_helper.hpp>
 
 #include <fstream>
-#include <core/utils/async.hpp>
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
+#include <ktl/async.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -787,7 +787,7 @@ bool run(io::Reader const& reader) {
 		DeltaTime dt;
 		std::optional<window::Instance> test;
 		ktl::future<bool> bf;
-		utils::Async async;
+		ktl::async async;
 		while (!engine.closing()) {
 			poll(flags, engine.poll(true).residue);
 			if (flags.test(Flag::eClosed)) {

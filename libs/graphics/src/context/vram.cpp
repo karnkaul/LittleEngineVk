@@ -60,7 +60,7 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
 	m_transfer.m_queue.push(std::move(f));
-	return {std::move(ret)};
+	return ret;
 }
 
 VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size) {
@@ -88,7 +88,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 		}
 	};
 	m_transfer.m_queue.push(std::move(f));
-	return {std::move(ret)};
+	return ret;
 }
 
 VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair layouts) {
@@ -136,7 +136,7 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	};
 	m_transfer.m_queue.push(std::move(f));
 	out_dst.layout(layouts.second);
-	return {std::move(ret)};
+	return ret;
 }
 
 VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter) {
@@ -151,7 +151,7 @@ VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TP
 		m_transfer.addStage(std::move(stage), std::move(p));
 	};
 	m_transfer.m_queue.push(std::move(f));
-	return {std::move(ret)};
+	return ret;
 }
 
 void VRAM::blit(CommandBuffer cb, TPair<RenderImage> images, LayoutPair layouts, vk::Filter filter, TPair<vk::ImageAspectFlags> aspects) {

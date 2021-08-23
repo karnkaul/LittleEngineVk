@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <sstream>
 #include <core/io/path.hpp>
+#include <core/log.hpp>
 #include <core/os.hpp>
 
 namespace le::io {
@@ -146,5 +147,12 @@ bool is_regular_file(Path const& path) { return stdfs::is_regular_file(path.stri
 
 bool is_directory(Path const& path) { return stdfs::is_directory(path.string()); }
 
-bool remove(Path const& path) { return stdfs::remove(path.string()); }
+bool remove(Path const& path) {
+	try {
+		return stdfs::remove(path.string());
+	} catch (std::exception const& e) {
+		logW("[io] Failed to remove [{}]: {}", path.generic_string(), e.what());
+		return false;
+	}
+}
 } // namespace le::io

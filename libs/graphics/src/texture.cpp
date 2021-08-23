@@ -59,7 +59,7 @@ bool Texture::valid() const noexcept { return m_storage.image.has_value(); }
 
 bool Texture::busy() const { return valid() && m_storage.transfer.busy(); }
 
-bool Texture::ready() const { return valid() && m_storage.transfer.ready(true); }
+bool Texture::ready() const { return valid() && m_storage.transfer.ready(); }
 
 void Texture::wait() const { m_storage.transfer.wait(); }
 

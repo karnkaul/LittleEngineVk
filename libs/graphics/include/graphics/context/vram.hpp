@@ -1,5 +1,4 @@
 #pragma once
-#include <core/utils/future.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/context/transfer.hpp>
 #include <graphics/render/target.hpp>
@@ -10,7 +9,7 @@ class Device;
 class VRAM final : public Memory {
   public:
 	using notify_t = Transfer::notify_t;
-	using Future = ::le::utils::Future<notify_t>;
+	using Future = Transfer::Future;
 	using Memory::blit;
 	using Memory::copy;
 

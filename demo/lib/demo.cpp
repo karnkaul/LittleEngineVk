@@ -752,7 +752,7 @@ bool package(io::Path const& binary, bool clean) {
 	io::Path const log = binary / "autobuild.txt";
 	io::remove(log);
 	if (!io::is_regular_file(binary / "CMakeCache.txt")) {
-		if (!utils::Shell(fmt::format("cmake-gui -B {}", binary.string()))) { return false; }
+		if (!utils::Shell(fmt::format("cmake-gui -B {}", io::absolute(binary).string()), log)) { return false; }
 		if (!io::is_regular_file(binary / "CMakeCache.txt")) { return false; }
 	}
 	auto const cmake = utils::Shell(fmt::format("cmake --build {} {}", binary.string(), clean ? "--clean-first" : ""), log);
@@ -786,7 +786,7 @@ bool run(io::Reader const& reader) {
 		App app(&engine);
 		DeltaTime dt;
 		std::optional<window::Instance> test;
-		ktl::future_t<bool> bf;
+		ktl::future<bool> bf;
 		utils::Async async;
 		while (!engine.closing()) {
 			poll(flags, engine.poll(true).residue);

@@ -11,9 +11,9 @@ class Async {
 
 	template <typename F, typename... Args>
 		requires(!std::is_void_v<Ret<F, Args...>>)
-	ktl::future_t<Ret<F, Args...>>
+	ktl::future<Ret<F, Args...>>
 	operator()(F&& f, Args&&... args) {
-		ktl::promise_t<Ret<F, Args...>> promise;
+		ktl::promise<Ret<F, Args...>> promise;
 		auto ret = promise.get_future();
 		auto task = [p = std::move(promise), f = std::forward<F>(f), ... a = std::forward<Args>(args)]() mutable {
 			p.set_value(f(std::forward<decltype(a)>(a)...));
@@ -24,9 +24,9 @@ class Async {
 
 	template <typename F, typename... Args>
 		requires(std::is_void_v<Ret<F, Args...>>)
-	ktl::future_t<void>
+	ktl::future<void>
 	operator()(F&& f, Args&&... args) {
-		ktl::promise_t<void> promise;
+		ktl::promise<void> promise;
 		auto ret = promise.get_future();
 		auto task = [p = std::move(promise), f = std::forward<F>(f), ... a = std::forward<Args>(args)]() mutable {
 			f(std::forward<decltype(a)>(a)...);

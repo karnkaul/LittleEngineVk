@@ -6,6 +6,7 @@
 #include <core/maths.hpp>
 #include <core/utils/shell.hpp>
 #include <core/utils/string.hpp>
+#include <ktl/kthread.hpp>
 
 namespace le::utils {
 namespace {
@@ -57,8 +58,19 @@ ShellSilent::ShellSilent(Span<std::string const> commands, std::string_view pref
 
 ShellSilent::~ShellSilent() {
 	if (success()) {
-		logD("[Shell] Deleting [{}]", m_redirect.generic_string());
-		io::remove(m_redirect);
+		if (io::is_regular_file(m_redirect)) {
+			static constexpr int maxTries = 1000 / 50;
+			for (int i = 0; i < maxTries; ++i) {
+				if (io::remove(m_redirect)) {
+					logD("[Shell] Deleted [{}]", m_redirect.generic_string());
+					break;
+				}
+				ktl::kthread::sleep_for(std::chrono::milliseconds(50));
+			}
+			if (io::is_regular_file(m_redirect)) { logW("[Shell] Failed to delete [{}]!", m_redirect.generic_string()); }
+		}
+	} else {
+		logW("[Shell] command(s) failure; return code: [{}], redirect file: [{}]", result(), m_redirect.generic_string());
 	}
 }
 } // namespace le::utils

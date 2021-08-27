@@ -5,7 +5,11 @@
 
 int main(int argc, char const* const argv[]) {
 	using namespace le;
-	if (env::init(argc, argv, {}) == env::Run::quit) { return 0; }
+	switch (env::init(argc, argv)) {
+	case clap::parse_result::quit: return 0;
+	case clap::parse_result::parse_error: return 10;
+	default: break;
+	}
 	auto data = env::findData("demo/data");
 	if (!data) {
 		logE("FATAL: Failed to locate data!");

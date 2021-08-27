@@ -73,10 +73,7 @@ struct SwapchainCreateInfo {
 		}
 		if (Device::default_v(depthFormat)) { depthFormat = vk::Format::eD16Unorm; }
 		auto presentModes = info.vsync;
-		if (auto forceVsync = DataObject<Vsync>("vsync")) {
-			presentModes.insert(info.vsync.begin(), *forceVsync);
-			forceVsync.unset();
-		}
+		if (auto forceVsync = DataObject<Vsync>("vsync")) { presentModes.insert(info.vsync.begin(), *forceVsync); }
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
 		g_log.log(lvl::info, 0, "[{}] {} ({} present mode) selected", g_name, vsyncNames[vsyncModes[presentMode]], presentModeNames[presentMode]);
 		imageCount = std::clamp(capabilities.minImageCount + 1, capabilities.minImageCount, capabilities.maxImageCount);

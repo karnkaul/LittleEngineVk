@@ -1,14 +1,12 @@
 #pragma once
 #include <optional>
-#include <clap/interpreter.hpp>
 #include <core/io/path.hpp>
 #include <core/std_types.hpp>
 
-namespace le::env {
-using Spec = clap::interpreter::spec_t;
-using Run = clap::interpreter::result;
+#include <clap/clap.hpp>
 
-Run init(int argc, char const* const argv[], Spec::cmd_map_t cmds);
+namespace le::env {
+clap::parse_result init(int argc, char const* const argv[]);
 
 ///
 /// \brief Obtain full path to directory containing pattern, traced from the executable path

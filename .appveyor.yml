@@ -32,12 +32,12 @@ for:
       - sh: echo "== Building Linux $CONFIGURATION $LEVK_VERSION ==" && cmake --build out -v || exit 1
 test_script:
   - cmd: |
-      "out/demo/Release/levk-demo" -h
+      "out/demo/Release/levk-demo" --help
       "out/demo/Release/levk-demo" gpu
       cd out
       ctest || exit 1
   - sh: |
-      out/demo/levk-demo -h
+      out/demo/levk-demo --help
       out/demo/levk-demo gpu
       cd out
       ctest || exit 1

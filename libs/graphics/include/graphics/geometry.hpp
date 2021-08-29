@@ -45,6 +45,7 @@ struct Geom {
 	u32 addVertex(Vert<V> const& vertex);
 	Geom& addIndices(Span<u32 const> newIndices);
 	Geom& autoIndex(Topology topology, u32 loopback = 0);
+	Geom& offset(glm::vec3 offset) noexcept;
 
 	std::vector<glm::vec3> positions() const;
 };
@@ -130,6 +131,12 @@ Geom<V>& Geom<V>::autoIndex(Topology topology, u32 loopback) {
 		}
 		if (loopback > 0) { indexer.reset(0); }
 	}
+	return *this;
+}
+
+template <VertType V>
+Geom<V>& Geom<V>::offset(glm::vec3 offset) noexcept {
+	for (Vert<V>& vert : vertices) { vert.position += offset; }
 	return *this;
 }
 } // namespace le::graphics

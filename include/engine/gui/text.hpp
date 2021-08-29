@@ -10,37 +10,58 @@ class BitmapFont;
 namespace le::gui {
 class Text : public TreeNode {
   public:
-	using Factory = graphics::TextFactory;
-	using Size = Factory::Size;
+	using Size = graphics::BitmapGlyphPen::Size;
 
 	Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept;
 
-	Factory const& factory() const noexcept { return m_text.factory; }
 	std::string_view str() const noexcept { return m_str; }
-	void set(std::string str, std::optional<Factory> factory = std::nullopt);
-	void set(Factory factory);
+	Text& set(std::string str);
+	Text& size(Size size);
+	Text& colour(graphics::RGBA colour);
+	Text& position(glm::vec2 position);
+	Text& align(glm::vec2 align);
+	Text& font(not_null<BitmapFont const*> font);
+	BitmapFont const* font() const noexcept { return m_font; }
 
 	Span<Prop const> props() const noexcept override;
-
-	not_null<BitmapFont const*> m_font;
 
   private:
 	void onUpdate(input::Space const& space) override;
 
-	BitmapText m_text;
+	void write();
+
+	graphics::BitmapGlyphArray m_glyphs;
+	BitmapTextMesh m_text;
 	std::string m_str;
+	not_null<BitmapFont const*> m_font;
 	bool m_dirty = false;
 };
 
 // impl
 
-inline void Text::set(std::string str, std::optional<Factory> factory) {
+inline Text& Text::set(std::string str) {
 	m_str = std::move(str);
-	if (factory) { set(std::move(*factory)); }
 	m_dirty = true;
+	return *this;
 }
-inline void Text::set(Factory factory) {
-	m_text.factory = std::move(factory);
+inline Text& Text::size(Size size) {
+	m_text.size = size;
 	m_dirty = true;
+	return *this;
+}
+inline Text& Text::colour(graphics::RGBA colour) {
+	m_text.colour = colour;
+	m_dirty = true;
+	return *this;
+}
+inline Text& Text::position(glm::vec2 position) {
+	m_text.position = {position, m_zIndex};
+	m_dirty = true;
+	return *this;
+}
+inline Text& Text::align(glm::vec2 align) {
+	m_text.align = align;
+	m_dirty = true;
+	return *this;
 }
 } // namespace le::gui

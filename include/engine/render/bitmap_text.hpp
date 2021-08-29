@@ -2,8 +2,8 @@
 #include <optional>
 #include <string>
 #include <engine/scene/prop.hpp>
+#include <graphics/glyph_pen.hpp>
 #include <graphics/mesh.hpp>
-#include <graphics/text_factory.hpp>
 
 namespace le {
 namespace graphics {
@@ -12,33 +12,37 @@ class Texture;
 struct Prop;
 class BitmapFont;
 
-struct BitmapText {
+struct BitmapTextMesh {
 	using Type = graphics::Mesh::Type;
+	using Glyphs = graphics::BitmapGlyphArray;
 
 	std::optional<graphics::Mesh> mesh;
 	mutable Prop prop_;
-	graphics::TextFactory factory;
+	glm::vec3 position{};
+	glm::vec2 align{};
+	graphics::BitmapGlyphPen::Size size;
+	graphics::RGBA colour;
 
 	void make(not_null<graphics::VRAM*> vram, Type type = Type::eDynamic);
-	bool set(BitmapFont const& font, std::string_view text);
-	bool set(Span<graphics::Glyph const> glyphs, glm::ivec2 atlas, std::string_view text);
+	bool set(BitmapFont const& font, Glyphs const& glyphs, std::string_view text);
 	Span<Prop const> prop(BitmapFont const& font) const;
 	Span<Prop const> prop(graphics::Texture const& atlas) const;
 };
 
-class Text2D {
+class BitmapText {
   public:
-	using Type = BitmapText::Type;
+	using Type = BitmapTextMesh::Type;
 
-	Text2D() = default;
-	Text2D(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram, Type type = Type::eDynamic);
+	BitmapText() = default;
+	BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram, Type type = Type::eDynamic);
 
-	bool set(std::string_view text) { return m_font ? m_text.set(*m_font, text) : false; }
+	bool set(std::string_view text);
 	Span<Prop const> props() const;
-	graphics::TextFactory& factory() noexcept { return m_text.factory; }
+	BitmapTextMesh& mesh() noexcept { return m_text; }
 
   private:
-	BitmapText m_text;
+	graphics::BitmapGlyphArray m_glyphs;
+	BitmapTextMesh m_text;
 	BitmapFont const* m_font;
 };
 } // namespace le

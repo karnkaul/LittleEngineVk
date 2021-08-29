@@ -275,13 +275,10 @@ class TestView : public gui::View {
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 		topLeft.m_material.Tf = colours::magenta;
 		auto& text = bg.push<gui::Text>(font);
-		graphics::TextFactory tf;
-		tf.size = 60U;
-		text.set("click", tf);
+		text.set("click").size(60U);
 		m_button = &push<gui::Widget>(font);
 		m_button->m_rect.size = {200.0f, 100.0f};
-		tf.size = 40U;
-		m_button->m_text->set("Button", tf);
+		m_button->m_text->set("Button").size(40U);
 		m_button->refresh();
 		m_tk = m_button->onClick([this](gui::Widget&) { setDestroyed(); });
 	}
@@ -507,12 +504,13 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& collision = coll.get<Collision>();
 		m_data.collision = coll;
 
-		m_data.text = Text2D(&*font, &vram);
-		m_data.text.factory().size = 80U;
-		m_data.text.factory().colour = colours::yellow;
-		m_data.text.factory().pos = {0.0f, 200.0f, 0.0f};
+		m_data.text = BitmapText(&*font, &vram);
+		m_data.text.mesh().size = 80U;
+		m_data.text.mesh().size = 80U;
+		m_data.text.mesh().colour = colours::yellow;
+		m_data.text.mesh().position = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};
-		m_data.text.set("Hi!");
+		m_data.text.set("Hi!\nThere");
 
 		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
@@ -583,7 +581,7 @@ class App : public input::Receiver, public SceneRegistry {
 			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
-		{ spawnProp<Text2D>("text_2d", m_data.text, "layers/ui"); }
+		{ spawnProp<BitmapText>("text_2d", m_data.text, "layers/ui"); }
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
@@ -680,7 +678,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct Data {
 		std::unordered_map<Hash, decf::entity> entities;
 
-		Text2D text;
+		BitmapText text;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 

@@ -11,7 +11,7 @@ namespace graphics {
 class Mesh;
 }
 class Model;
-class Text2D;
+class BitmapText;
 
 template <typename T>
 struct PropExtractor {
@@ -65,8 +65,8 @@ struct PropExtractor<Model> {
 };
 
 template <>
-struct PropExtractor<Text2D> {
-	Span<Prop const> operator()(Text2D const& text) const noexcept;
+struct PropExtractor<BitmapText> {
+	Span<Prop const> operator()(BitmapText const& text) const noexcept;
 };
 
 // impl

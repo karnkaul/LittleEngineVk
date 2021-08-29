@@ -6,5 +6,5 @@
 namespace le {
 Span<Prop const> PropExtractor<Model>::operator()(Model const& model) const noexcept { return model.props(); }
 
-Span<Prop const> PropExtractor<Text2D>::operator()(Text2D const& text) const noexcept { return text.props(); }
+Span<Prop const> PropExtractor<BitmapText>::operator()(BitmapText const& text) const noexcept { return text.props(); }
 } // namespace le

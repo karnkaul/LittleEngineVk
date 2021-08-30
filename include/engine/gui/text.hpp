@@ -10,7 +10,7 @@ class BitmapFont;
 namespace le::gui {
 class Text : public TreeNode {
   public:
-	using Size = graphics::BitmapGlyphPen::Size;
+	using Size = graphics::Glyph::Size;
 
 	Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept;
 
@@ -30,8 +30,7 @@ class Text : public TreeNode {
 
 	void write();
 
-	graphics::BitmapGlyphArray m_glyphs;
-	BitmapTextMesh m_text;
+	TextMesh m_text;
 	std::string m_str;
 	not_null<BitmapFont const*> m_font;
 	bool m_dirty = false;

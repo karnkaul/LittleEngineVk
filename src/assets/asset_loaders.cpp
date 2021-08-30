@@ -172,19 +172,17 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 namespace {
 struct FontInfo {
 	io::Path atlasID;
-	ktl::fixed_vector<graphics::BitmapGlyph, maths::max<u8>()> glyphs;
+	ktl::fixed_vector<graphics::Glyph, maths::max<u8>()> glyphs;
 	s32 orgSizePt = 0;
 };
 
-graphics::BitmapGlyph deserialise(u8 c, dj::json const& json) {
-	graphics::BitmapGlyph ret;
-	ret.ch = c;
-	ret.st = {json["x"].as<s32>(), json["y"].as<s32>()};
-	ret.uv = ret.cell = {json["width"].as<s32>(), json["height"].as<s32>()};
-	ret.offset = {json["originX"].as<s32>(), json["originY"].as<s32>()};
-	auto const pAdvance = json.find("advance");
-	ret.xAdv = pAdvance ? pAdvance->as<s32>() : ret.cell.x;
-	if (auto pBlank = json.find("isBlank")) { ret.blank = pBlank->as<bool>(); }
+graphics::Glyph deserialise(u32 codePoint, dj::json const& json) {
+	graphics::Glyph ret;
+	ret.codePoint = codePoint;
+	ret.topLeft = {json["x"].as<s32>(), json["y"].as<s32>()};
+	ret.size = {json["width"].as<u32>(), json["height"].as<u32>()};
+	ret.origin = {json["originX"].as<s32>(), json["originY"].as<s32>()};
+	ret.advance = json.get_as<u32>("advance", ret.size.x);
 	return ret;
 }
 
@@ -196,8 +194,8 @@ FontInfo deserialise(dj::json const& json) {
 		for (auto& [key, value] : pGlyphsData->as<dj::map_t>()) {
 			if (!key.empty()) {
 				if (ret.glyphs.size() == ret.glyphs.capacity()) { break; }
-				graphics::BitmapGlyph const glyph = deserialise((u8)key[0], *value);
-				if (glyph.cell.x > 0 && glyph.cell.y > 0) {
+				graphics::Glyph const glyph = deserialise(static_cast<u32>(key[0]), *value);
+				if (glyph.size.x > 0 && glyph.size.y > 0) {
 					ret.glyphs.push_back(glyph);
 				} else {
 					utils::g_log.log(dl::level::warning, 1, "[{}] [BitmapFont] Could not deserialise Glyph '{}'!", utils::g_name, key[0]);

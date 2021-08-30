@@ -1,7 +1,7 @@
 #pragma once
 #include <core/io/path.hpp>
-#include <graphics/bitmap_glyph.hpp>
 #include <graphics/geometry.hpp>
+#include <graphics/glyph.hpp>
 #include <graphics/texture.hpp>
 
 namespace le {
@@ -14,7 +14,7 @@ class BitmapFont {
 	using VRAM = graphics::VRAM;
 	using Texture = graphics::Texture;
 	using Sampler = graphics::Sampler;
-	using Glyph = graphics::BitmapGlyph;
+	using Glyph = graphics::Glyph;
 
 	struct CreateInfo;
 
@@ -23,14 +23,12 @@ class BitmapFont {
 	bool valid() const noexcept { return m_storage.atlas.has_value(); }
 	Texture const& atlas() const;
 
-	Span<Glyph const> glyphs() const noexcept { return m_storage.glyphs.glyphs(); }
-
+	graphics::GlyphMap const& glyphs() const noexcept { return m_storage.glyphs; }
 	glm::uvec2 atlasSize() const noexcept { return atlas().data().size; }
-	glm::uvec2 bounds() const noexcept { return m_storage.glyphs.bounds(); }
 
   private:
 	struct {
-		graphics::BitmapGlyphArray glyphs;
+		graphics::GlyphMap glyphs;
 		std::optional<Texture> atlas;
 	} m_storage;
 };

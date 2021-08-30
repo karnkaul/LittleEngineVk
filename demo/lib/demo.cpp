@@ -510,7 +510,7 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.text.mesh().colour = colours::yellow;
 		m_data.text.mesh().position = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};
-		m_data.text.set("Hi!\nThere");
+		m_data.text.set("Hi!\nThere#");
 
 		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;

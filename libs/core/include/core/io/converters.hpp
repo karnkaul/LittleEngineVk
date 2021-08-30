@@ -99,6 +99,11 @@ struct JsonHelper {
 		return Jsonify<T>{}(json);
 	}
 
+	template <typename T>
+	void set(T& out, dj::json const& json) const {
+		out = to<T>(json);
+	}
+
 	template <typename T, typename... Ts>
 	void insert(dj::json& out, std::string key, T value, Ts... others) const {
 		out.insert(std::move(key), to(std::move(value)));

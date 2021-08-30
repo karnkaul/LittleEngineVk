@@ -506,7 +506,6 @@ class App : public input::Receiver, public SceneRegistry {
 
 		m_data.text = BitmapText(&*font, &vram);
 		m_data.text.mesh().size = 80U;
-		m_data.text.mesh().size = 80U;
 		m_data.text.mesh().colour = colours::yellow;
 		m_data.text.mesh().position = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};

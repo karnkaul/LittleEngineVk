@@ -12,9 +12,9 @@ dj::json io::Jsonify<utils::EngineConfig>::operator()(utils::EngineConfig const&
 utils::EngineConfig io::Jsonify<utils::EngineConfig>::operator()(dj::json const& json) const {
 	utils::EngineConfig ret;
 	if (auto win = json.find("window")) {
-		if (win->contains("position")) { ret.win.position = to<glm::vec2>(win->get("position")); }
-		ret.win.size = to<glm::vec2>(win->get("size"));
-		ret.win.maximized = to<bool>(win->get("maximized"));
+		if (win->contains("position")) { set(*ret.win.position, win->get("position")); }
+		set(ret.win.size, win->get("size"));
+		set(ret.win.maximized, win->get("maximized"));
 	}
 	return ret;
 }

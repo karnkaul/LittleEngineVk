@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <dumb_json/json.hpp>
+#include <engine/assets/asset_converters.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/utils/logger.hpp>
@@ -169,44 +170,6 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 	return std::nullopt;
 }
 
-namespace {
-struct FontInfo {
-	io::Path atlasID;
-	ktl::fixed_vector<graphics::Glyph, maths::max<u8>()> glyphs;
-	s32 orgSizePt = 0;
-};
-
-graphics::Glyph deserialise(u32 codePoint, dj::json const& json) {
-	graphics::Glyph ret;
-	ret.codePoint = codePoint;
-	ret.topLeft = {json["x"].as<s32>(), json["y"].as<s32>()};
-	ret.size = {json["width"].as<u32>(), json["height"].as<u32>()};
-	ret.origin = {json["originX"].as<s32>(), json["originY"].as<s32>()};
-	ret.advance = json.get_as<u32>("advance", ret.size.x);
-	return ret;
-}
-
-FontInfo deserialise(dj::json const& json) {
-	FontInfo ret;
-	if (auto pAtlas = json.find("sheetID")) { ret.atlasID = pAtlas->as<std::string>(); }
-	if (auto pSize = json.find("size")) { ret.orgSizePt = pSize->as<s32>(); }
-	if (auto pGlyphsData = json.find("glyphs")) {
-		for (auto& [key, value] : pGlyphsData->as<dj::map_t>()) {
-			if (!key.empty()) {
-				if (ret.glyphs.size() == ret.glyphs.capacity()) { break; }
-				graphics::Glyph const glyph = deserialise(static_cast<u32>(key[0]), *value);
-				if (glyph.size.x > 0 && glyph.size.y > 0) {
-					ret.glyphs.push_back(glyph);
-				} else {
-					utils::g_log.log(dl::level::warning, 1, "[{}] [BitmapFont] Could not deserialise Glyph '{}'!", utils::g_name, key[0]);
-				}
-			}
-		}
-	}
-	return ret;
-}
-} // namespace
-
 std::unique_ptr<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFont> const& info) const {
 	BitmapFont font;
 	if (load(font, info)) { return std::make_unique<BitmapFont>(std::move(font)); }
@@ -223,7 +186,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 		dj::json json;
 		auto result = json.read(text->string());
 		if (result && result.errors.empty()) {
-			FontInfo const fi = deserialise(json);
+			auto const fi = io::fromJson<BitmapFontInfo>(json);
 			auto const atlas = info.resource(info.m_data.jsonID.parent_path() / fi.atlasID, Resource::Type::eBinary, true);
 			if (!atlas) { return false; }
 			BitmapFont::CreateInfo bci;

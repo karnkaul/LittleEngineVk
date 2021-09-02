@@ -35,6 +35,8 @@ class Swapchain {
 	using Flags = ktl::enum_flags<Flag, u8>;
 	using Vsyncs = ktl::enum_flags<Vsync, u8>;
 
+	static constexpr std::size_t max_images_v = 8;
+
 	struct FormatPicker {
 		///
 		/// \brief Override to provide a custom format
@@ -90,7 +92,7 @@ class Swapchain {
 
   private:
 	struct Storage {
-		ktl::fixed_vector<RenderImage, 4> images;
+		ktl::fixed_vector<RenderImage, max_images_v> images;
 		vk::SwapchainKHR swapchain;
 		std::optional<u32> acquired;
 

@@ -46,8 +46,8 @@ class RenderFence {
 	vk::Fence submitFence();
 
 	struct {
-		ktl::fixed_vector<Fence, 4> fences;
-		Fence* ptrs[4] = {};
+		ktl::fixed_vector<Fence, Swapchain::max_images_v> fences;
+		Fence* ptrs[Swapchain::max_images_v] = {};
 		std::size_t index = 0;
 	} m_storage;
 };

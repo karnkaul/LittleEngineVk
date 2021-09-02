@@ -1,5 +1,6 @@
 #include <core/maths.hpp>
 #include <engine/input/space.hpp>
+#include <graphics/basis.hpp>
 
 namespace le ::input {
 Space Space::make(glm::vec2 scene, glm::uvec2 swap, glm::uvec2 win, Viewport const& view, f32 rscale) noexcept {
@@ -21,12 +22,12 @@ glm::vec2 Space::unproject(glm::vec2 screen, bool normalised) const noexcept {
 	if (viewport.scale < 1.0f) { screen = (screen - viewport.offset) / viewport.scale; }
 	screen *= (scene.density);
 	screen -= (scene.size * 0.5f);
-	return glm::vec2{screen.x, -screen.y};
+	return graphics::invertY(screen);
 }
 
 glm::vec2 Space::project(glm::vec2 ui, bool normalised) const noexcept {
 	if (normalised) { ui *= scene.size; }
-	ui = {ui.x, -ui.y};
+	ui = graphics::invertY(ui);
 	ui += (scene.size * 0.5f);
 	ui /= scene.density;
 	if (viewport.scale < 1.0f) { ui = (ui * viewport.scale) + viewport.offset; }

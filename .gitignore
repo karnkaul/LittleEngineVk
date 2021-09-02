@@ -18,6 +18,8 @@ CMakeSettings.json
 # Log files (local)
 debug.log*
 log.txt*
+config.json
+error.txt
 # Dear ImGui config (local)
 imgui.ini
 

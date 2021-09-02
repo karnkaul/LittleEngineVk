@@ -150,7 +150,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	ktl
 	GIT_REPOSITORY https://github.com/karnkaul/ktl
-	GIT_TAG origin/main
+	GIT_TAG 4247b26
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)
@@ -166,7 +166,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	dtest
 	GIT_REPOSITORY https://github.com/karnkaul/dtest
-	GIT_TAG origin/main
+	GIT_TAG 770d733
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/dtest"
 )
 FetchContent_MakeAvailable(dtest)
@@ -191,6 +191,11 @@ add_subdirectory(libs/core)
 add_subdirectory(libs/window)
 add_subdirectory(libs/graphics)
 add_subdirectory(libs/levk_imgui)
+# export clap targets for tools projects to find
+export(EXPORT clap-targets
+	FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"
+	NAMESPACE clap:: 
+)
 
 # engine
 set(levk_generated "${CMAKE_CURRENT_BINARY_DIR}/src/generated/build_version.hpp")

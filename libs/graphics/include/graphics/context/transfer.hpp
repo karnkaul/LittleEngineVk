@@ -1,5 +1,4 @@
 #pragma once
-#include <future>
 #include <list>
 #include <memory>
 #include <vector>
@@ -8,6 +7,7 @@
 #include <core/time.hpp>
 #include <graphics/resources.hpp>
 #include <ktl/async_queue.hpp>
+#include <ktl/future.hpp>
 #include <ktl/kthread.hpp>
 #include <ktl/move_only_function.hpp>
 
@@ -17,8 +17,8 @@ constexpr vk::DeviceSize operator""_MB(unsigned long long size) { return size <<
 class Transfer final {
   public:
 	using notify_t = void;
-	using Promise = std::promise<notify_t>;
-	using Future = std::future<notify_t>;
+	using Promise = ktl::promise<notify_t>;
+	using Future = ktl::future<notify_t>;
 
 	struct MemRange final {
 		vk::DeviceSize size = 2;

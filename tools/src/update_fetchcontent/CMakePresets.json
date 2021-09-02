@@ -1,0 +1,60 @@
+{
+	"version": 2,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 20,
+		"patch": 0
+	},
+	"buildPresets": [
+		{
+			"name": "default",
+			"configurePreset": "default"
+		},
+		{
+			"name": "debug",
+			"configurePreset": "debug"
+		},
+		{
+			"name": "release",
+			"configurePreset": "release"
+		}
+	],
+	"configurePresets": [
+		{
+			"name": "default",
+			"displayName": "Default Config",
+			"description": "Default build using Ninja generator",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/out/default"
+		},
+		{
+			"name": "ninja-clang",
+			"displayName": "Ninja/clang base config",
+			"inherits": "default",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang++"
+			}
+		},
+		{
+			"name": "debug",
+			"displayName": "Debug",
+			"description": "Debug build config using Ninja/clang",
+			"binaryDir": "${sourceDir}/out/db",
+			"inherits": "ninja-clang",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug"
+			}
+		},
+		{
+			"name": "release",
+			"displayName": "Release ",
+			"description": "Release build config using Ninja",
+			"binaryDir": "${sourceDir}/out/rl",
+			"inherits": "ninja-clang",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		}
+	]
+}

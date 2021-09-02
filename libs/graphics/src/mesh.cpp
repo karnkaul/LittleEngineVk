@@ -54,7 +54,7 @@ bool Mesh::busy() const {
 	return m_vbo.transfer.busy() || m_ibo.transfer.busy();
 }
 
-bool Mesh::ready() const { return valid() && m_vbo.transfer.ready(true) && m_ibo.transfer.ready(true); }
+bool Mesh::ready() const { return valid() && m_vbo.transfer.ready() && m_ibo.transfer.ready(); }
 
 void Mesh::wait() const {
 	if (m_type == Type::eDynamic) {

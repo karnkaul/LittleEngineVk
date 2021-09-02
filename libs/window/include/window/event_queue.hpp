@@ -9,6 +9,7 @@ struct Event {
 	enum class Type : s8 {
 		eFocus,
 		eResize,
+		eMaximize,
 		eSuspend,
 		eClose,
 		eInput,

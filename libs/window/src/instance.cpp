@@ -199,9 +199,18 @@ std::optional<Instance> Manager::make(CreateInfo const& info) {
 	if (m_impl) {
 		if (auto win = m_impl->make(info)) {
 			ret = Instance(std::make_unique<Instance::Impl>(m_impl.get(), win));
+			ret->m_impl->m_maximized = info.config.maximized;
 			if (info.options.autoShow) { ret->show(); }
 		}
 	}
+#endif
+	return ret;
+}
+
+std::size_t Manager::displayCount() const {
+	std::size_t ret{};
+#if defined(LEVK_USE_GLFW)
+	if (m_impl) { ret = m_impl->displays().size(); }
 #endif
 	return ret;
 }
@@ -214,6 +223,13 @@ EventQueue Instance::pollEvents() { return m_impl->pollEvents(); }
 bool Instance::show() { return m_impl->show(); }
 bool Instance::hide() { return m_impl->hide(); }
 bool Instance::visible() const noexcept { return m_impl->visible(); }
+void Instance::close() { m_impl->close(); }
+bool Instance::closing() const noexcept { return m_impl->closing(); }
+glm::ivec2 Instance::position() const noexcept { return m_impl->position(); }
+void Instance::position(glm::ivec2 pos) noexcept { m_impl->position(pos); }
+bool Instance::maximized() const noexcept { return m_impl->m_maximized; }
+void Instance::maximize() noexcept { m_impl->maximize(); }
+void Instance::restore() noexcept { m_impl->restore(); }
 CursorType Instance::cursorType() const noexcept { return m_impl->m_active.type; }
 CursorMode Instance::cursorMode() const noexcept { return m_impl->cursorMode(); }
 void Instance::cursorType(CursorType type) { m_impl->cursorType(type); }
@@ -221,8 +237,6 @@ void Instance::cursorMode(CursorMode mode) { m_impl->cursorMode(mode); }
 glm::vec2 Instance::cursorPosition() const noexcept { return m_impl->cursorPosition(); }
 glm::uvec2 Instance::windowSize() const noexcept { return m_impl->windowSize(); }
 glm::uvec2 Instance::framebufferSize() const noexcept { return m_impl->framebufferSize(); }
-void Instance::close() { m_impl->close(); }
-bool Instance::closing() const noexcept { return m_impl->closing(); }
 bool Instance::importControllerDB(std::string_view db) const { return m_impl->importControllerDB(db); }
 ktl::fixed_vector<Gamepad, 8> Instance::activeGamepads() const { return m_impl->activeGamepads(); }
 Joystick Instance::joyState(s32 id) const { return m_impl->joyState(id); }

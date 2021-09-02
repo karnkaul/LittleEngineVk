@@ -99,7 +99,7 @@ constexpr T epsilon() noexcept {
 
 template <typename T>
 constexpr T abs(T const& val) noexcept {
-	return val < 0 ? -val : val;
+	return val < T{} ? -val : val;
 }
 
 template <typename T>

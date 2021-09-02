@@ -11,6 +11,7 @@
 #include <engine/input/receiver.hpp>
 #include <engine/scene/scene_space.hpp>
 #include <engine/utils/engine_stats.hpp>
+#include <engine/utils/error_handler.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/render/renderers.hpp>
@@ -105,6 +106,7 @@ class Engine : public Service<Engine> {
 	bool closing() const noexcept { return window().closing(); }
 
 	SceneSpace m_space;
+	io::Path m_configPath = "config.json";
 
   private:
 	void updateStats();
@@ -113,6 +115,8 @@ class Engine : public Service<Engine> {
 	void addDefaultAssets();
 	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
 	bool endDraw(graphics::CommandBuffer cb);
+	void saveConfig() const;
+	struct EngineConfig loadConfig() const;
 
 	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
@@ -129,6 +133,7 @@ class Engine : public Service<Engine> {
 	graphics::ScreenView m_view;
 	std::optional<graphics::RenderTarget> m_drawing;
 	Profiler m_profiler;
+	utils::ErrorHandler m_errorHandler;
 	time::Point m_lastPoll{};
 };
 

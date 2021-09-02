@@ -61,22 +61,21 @@ Cursor const& Manager::Impl::cursor(CursorType type) {
 }
 
 GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
-	int screenCount;
-	GLFWmonitor* const* ppScreens = glfwGetMonitors(&screenCount);
-	if (screenCount < 1) {
+	Span<GLFWmonitor* const> screens = displays();
+	if (screens.empty()) {
 		log().log(lvl::error, 2, "[{}] Failed to detect screens!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
-	GLFWvidmode const* mode = glfwGetVideoMode(ppScreens[0]);
+	GLFWvidmode const* mode = glfwGetVideoMode(screens[0]);
 	if (!mode) {
 		log().log(lvl::error, 2, "[{}] Failed to detect video mode!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
-	std::size_t const screenIdx = info.options.screenID < screenCount ? (std::size_t)info.options.screenID : 0;
-	GLFWmonitor* pTarget = ppScreens[screenIdx];
+	std::size_t const screenIdx = info.options.screenID < screens.size() ? (std::size_t)info.options.screenID : 0;
+	GLFWmonitor* target = screens[screenIdx];
 	int height = info.config.size.y;
 	int width = info.config.size.x;
-	bool bDecorated = true;
+	bool decorated = true;
 	switch (info.options.style) {
 	default:
 	case Style::eDecoratedWindow: {
@@ -84,7 +83,7 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 			log().log(lvl::error, 2, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
-		pTarget = nullptr;
+		target = nullptr;
 		break;
 	}
 	case Style::eBorderlessWindow: {
@@ -92,8 +91,8 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 			log().log(lvl::error, 2, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
-		bDecorated = false;
-		pTarget = nullptr;
+		decorated = false;
+		target = nullptr;
 		break;
 	}
 	case Style::eBorderlessFullscreen: {
@@ -103,20 +102,23 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	}
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	int cX = (mode->width - width) / 2;
-	int cY = (mode->height - height) / 2;
-	cX += info.config.centreOffset.x;
-	cY -= info.config.centreOffset.y;
-	ensure(cX >= 0 && cY >= 0 && cX < mode->width && cY < mode->height, "Invalid centre-screen!");
-	glfwWindowHint(GLFW_DECORATED, bDecorated ? 1 : 0);
+	glm::ivec2 const pos = info.config.position.value_or(glm::ivec2((mode->width - width) / 2, (mode->height - height) / 2));
+	glfwWindowHint(GLFW_DECORATED, decorated ? 1 : 0);
 	glfwWindowHint(GLFW_RED_BITS, mode->redBits);
 	glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
 	glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
 	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 	glfwWindowHint(GLFW_VISIBLE, false);
-	auto ret = glfwCreateWindow(width, height, info.config.title.data(), pTarget, nullptr);
-	if (ret) { glfwSetWindowPos(ret, cX, cY); }
+	glfwWindowHint(GLFW_MAXIMIZED, info.config.maximized);
+	auto ret = glfwCreateWindow(width, height, info.config.title.data(), target, nullptr);
+	if (ret) { glfwSetWindowPos(ret, pos.x, pos.y); }
 	return ret;
+}
+
+Span<GLFWmonitor* const> Manager::Impl::displays() const {
+	int count;
+	GLFWmonitor* const* ppScreens = glfwGetMonitors(&count);
+	return Span(ppScreens, static_cast<std::size_t>(count));
 }
 
 Instance::Impl::Impl(not_null<Manager::Impl*> manager, not_null<GLFWwindow*> win) : m_win(win), m_manager(manager) {
@@ -130,6 +132,7 @@ Instance::Impl::Impl(not_null<Manager::Impl*> manager, not_null<GLFWwindow*> win
 	glfwSetMouseButtonCallback(m_win, &onMouseButton);
 	glfwSetScrollCallback(m_win, &onScroll);
 	glfwSetWindowIconifyCallback(m_win, &onIconify);
+	glfwSetWindowMaximizeCallback(m_win, &onMaximize);
 	g_impls.emplace(m_win, this);
 }
 
@@ -189,6 +192,34 @@ bool Instance::Impl::closing() const noexcept {
 	return glfwWindowShouldClose(m_win);
 #else
 	return false;
+#endif
+}
+
+glm::ivec2 Instance::Impl::position() const noexcept {
+	glm::ivec2 ret{};
+#if defined(LEVK_USE_GLFW)
+	glfwGetWindowPos(m_win, &ret.x, &ret.y);
+#endif
+	return ret;
+}
+
+void Instance::Impl::position(glm::ivec2 pos) noexcept {
+#if defined(LEVK_USE_GLFW)
+	glfwSetWindowPos(m_win, pos.x, pos.y);
+#endif
+}
+
+void Instance::Impl::maximize() noexcept {
+#if defined(LEVK_USE_GLFW)
+	m_maximized = true;
+	glfwMaximizeWindow(m_win);
+#endif
+}
+
+void Instance::Impl::restore() noexcept {
+#if defined(LEVK_USE_GLFW)
+	m_maximized = false;
+	glfwRestoreWindow(m_win);
 #endif
 }
 
@@ -447,6 +478,17 @@ void Instance::Impl::onScroll(GLFWwindow* win, f64 dx, f64 dy) {
 		cursor.id = 0;
 		event.type = Event::Type::eScroll;
 		event.payload.cursor = cursor;
+		inst.m_events.m_events.push_back(event);
+	}
+}
+
+void Instance::Impl::onMaximize(GLFWwindow* win, int maximized) {
+	if (auto it = g_impls.find(win); it != g_impls.end()) {
+		auto& inst = *it->second;
+		inst.m_maximized = maximized != 0;
+		Event event;
+		event.type = Event::Type::eMaximize;
+		event.payload.set = inst.m_maximized;
 		inst.m_events.m_events.push_back(event);
 	}
 }

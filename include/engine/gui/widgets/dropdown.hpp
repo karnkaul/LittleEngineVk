@@ -19,7 +19,7 @@ class Dropdown : public Widget {
 			graphics::RGBA cover = {Colour(0x88888888), graphics::RGBA::Type::eAbsolute};
 			graphics::RGBA arrow = colours::white;
 		} coverColours;
-		Text::Factory::Size textSize = 40U;
+		Text::Size textSize = 40U;
 		Hash style;
 	};
 

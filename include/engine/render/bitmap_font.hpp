@@ -1,8 +1,7 @@
 #pragma once
 #include <core/io/path.hpp>
-#include <core/maths.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/text_factory.hpp>
+#include <graphics/glyph.hpp>
 #include <graphics/texture.hpp>
 
 namespace le {
@@ -19,17 +18,17 @@ class BitmapFont {
 
 	struct CreateInfo;
 
-	static constexpr std::size_t max_glyphs = maths::max<u8>();
-
 	bool make(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo info);
 
-	bool valid() const noexcept;
+	bool valid() const noexcept { return m_storage.atlas.has_value(); }
 	Texture const& atlas() const;
-	Span<Glyph const> glyphs() const noexcept;
+
+	graphics::GlyphMap const& glyphs() const noexcept { return m_storage.glyphs; }
+	glm::uvec2 atlasSize() const noexcept { return atlas().data().size; }
 
   private:
 	struct {
-		std::array<Glyph, max_glyphs> glyphs;
+		graphics::GlyphMap glyphs;
 		std::optional<Texture> atlas;
 	} m_storage;
 };
@@ -40,10 +39,8 @@ struct BitmapFont::CreateInfo {
 	graphics::Texture::Img atlas;
 };
 
-inline bool BitmapFont::valid() const noexcept { return m_storage.atlas.has_value(); }
 inline BitmapFont::Texture const& BitmapFont::atlas() const {
-	ensure(m_storage.atlas.has_value(), "Empty atlas");
+	ensure(valid());
 	return *m_storage.atlas;
 }
-inline Span<BitmapFont::Glyph const> BitmapFont::glyphs() const noexcept { return m_storage.glyphs; }
 } // namespace le

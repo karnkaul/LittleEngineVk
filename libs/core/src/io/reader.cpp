@@ -68,9 +68,6 @@ std::string_view Reader::medium() const { return m_medium; }
 
 std::optional<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path const> anyOf,
 												[[maybe_unused]] u8 maxHeight) {
-#if defined(LEVK_OS_ANDROID)
-	return std::nullopt;
-#else
 	for (auto const& name : anyOf) {
 		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
@@ -80,15 +77,11 @@ std::optional<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const&
 	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
 	if (bEnd) { return std::nullopt; }
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
-#endif
 }
 
 FileReader::FileReader() noexcept { m_medium = "Filesystem"; }
 
 bool FileReader::mount([[maybe_unused]] io::Path path) {
-#if defined(LEVK_OS_ANDROID)
-	return false;
-#else
 	auto const pathStr = path.generic_string();
 	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end()) {
 		if (!io::is_directory(path)) {
@@ -101,7 +94,6 @@ bool FileReader::mount([[maybe_unused]] io::Path path) {
 	}
 	logW("[{}] [{}] directory already mounted", utils::tName<FileReader>(), pathStr);
 	return false;
-#endif
 }
 
 std::optional<bytearray> FileReader::bytes(io::Path const& id) const {
@@ -140,6 +132,7 @@ std::optional<io::Path> FileReader::findPrefixed(io::Path const& id) const {
 
 std::vector<io::Path> FileReader::finalPaths(io::Path const& id) const {
 	if (id.has_root_directory()) { return {id}; }
+	if (m_dirs.empty()) { return {id}; }
 	std::vector<io::Path> ret;
 	ret.reserve(m_dirs.size());
 	for (auto const& prefix : m_dirs) { ret.push_back(prefix / id); }

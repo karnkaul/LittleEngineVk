@@ -22,8 +22,8 @@ struct Camera {
 	static constexpr f32 safe(f32 in, f32 fallback = 1.0f) noexcept { return in <= 0.0f ? fallback : in; }
 	static constexpr Z safe(Z in, Z fallback) noexcept { return in.far - in.near <= 0.0f ? fallback : in; }
 
-	Camera& look(glm::vec3 const& target, glm::vec3 const& nUp = up) noexcept { return face(target - position, nUp); }
-	Camera& face(glm::vec3 const& direction, glm::vec3 const& nUp = up) noexcept;
+	Camera& look(glm::vec3 const& target, glm::vec3 const& nUp = up) noexcept { return face(nvec3(target - position), nUp); }
+	Camera& face(nvec3 const& direction, glm::vec3 const& nUp = up) noexcept;
 	glm::mat4 view() const noexcept { return glm::toMat4(glm::conjugate(orientation)) * glm::translate(glm::mat4(1.0f), -position); }
 	glm::mat4 perspective(f32 aspect, Z nf = default3Dz) const noexcept;
 	glm::mat4 perspective(glm::vec2 size, Z nf = default3Dz) const noexcept;
@@ -32,8 +32,8 @@ struct Camera {
 
 // impl
 
-inline Camera& Camera::face(glm::vec3 const& direction, glm::vec3 const& nUp) noexcept {
-	orientation = glm::quatLookAt(glm::normalize(direction), nUp);
+inline Camera& Camera::face(nvec3 const& direction, glm::vec3 const& nUp) noexcept {
+	orientation = glm::quatLookAt(direction, nUp);
 	return *this;
 }
 inline glm::mat4 Camera::perspective(f32 aspect, Z nf) const noexcept {

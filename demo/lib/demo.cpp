@@ -31,9 +31,12 @@
 #include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
+#include <fstream>
+#include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
+#include <ktl/async.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -272,13 +275,10 @@ class TestView : public gui::View {
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 		topLeft.m_material.Tf = colours::magenta;
 		auto& text = bg.push<gui::Text>(font);
-		graphics::TextFactory tf;
-		tf.size = 60U;
-		text.set("click", tf);
+		text.set("click").size(60U);
 		m_button = &push<gui::Widget>(font);
 		m_button->m_rect.size = {200.0f, 100.0f};
-		tf.size = 40U;
-		m_button->m_text->set("Button", tf);
+		m_button->m_text->set("Button").size(40U);
 		m_button->refresh();
 		m_tk = m_button->onClick([this](gui::Widget&) { setDestroyed(); });
 	}
@@ -504,12 +504,12 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& collision = coll.get<Collision>();
 		m_data.collision = coll;
 
-		m_data.text = Text2D(&*font, &vram);
-		m_data.text.factory().size = 80U;
-		m_data.text.factory().colour = colours::yellow;
-		m_data.text.factory().pos = {0.0f, 200.0f, 0.0f};
+		m_data.text = BitmapText(&*font, &vram);
+		m_data.text.mesh().size = 80U;
+		m_data.text.mesh().colour = colours::yellow;
+		m_data.text.mesh().position = {0.0f, 200.0f, 0.0f};
 		// m_data.text.text.align = {-0.5f, 0.5f};
-		m_data.text.set("Hi!");
+		m_data.text.set("Hi!\nThere#");
 
 		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
@@ -580,7 +580,7 @@ class App : public input::Receiver, public SceneRegistry {
 			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
-		{ spawnProp<Text2D>("text_2d", m_data.text, "layers/ui"); }
+		{ spawnProp<BitmapText>("text_2d", m_data.text, "layers/ui"); }
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
@@ -638,7 +638,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (pc.active) {
 				auto& node = m_registry.get<SceneNode>(m_data.player);
 				pc.tick(state, node, dt);
-				glm::vec3 const& forward = node.orientation() * -graphics::front;
+				auto const forward = nvec3(node.orientation() * -graphics::front);
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
 				cam.face(forward);
 				if (collision) { collision->find(m_colID0)->position() = node.position(); }
@@ -650,7 +650,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-				node->rotate(glm::radians(90.0f) * dt.count(), glm::normalize(s_axis * graphics::up));
+				node->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
 			}
 			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);
@@ -677,7 +677,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct Data {
 		std::unordered_map<Hash, decf::entity> entities;
 
-		Text2D text;
+		BitmapText text;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 
@@ -726,6 +726,41 @@ struct FlagsInput : input::Receiver {
 	}
 };
 
+bool openFilesystemPath(io::Path path) {
+	if (io::is_regular_file(path)) {
+		path = path.parent_path();
+	} else if (!io::is_directory(path)) {
+		return false;
+	}
+	std::string const dir = path.string();
+	if constexpr (levk_OS == os::OS::eLinux) {
+		static constexpr std::string_view mgrs[] = {"dolphin", "nautilus"};
+		for (auto const mgr : mgrs) {
+			if (auto open = utils::Shell(fmt::format("{} {}", mgr, dir))) { return true; }
+		}
+		return false;
+	} else if constexpr (levk_OS == os::OS::eWindows) {
+		return utils::Shell(fmt::format("explorer {}", dir)).success();
+	}
+}
+
+bool package(io::Path const& binary, bool clean) {
+	logD("Starting build...");
+	io::Path const log = binary / "autobuild.txt";
+	io::remove(log);
+	if (!io::is_regular_file(binary / "CMakeCache.txt")) {
+		if (!utils::Shell(fmt::format("cmake-gui -B {}", io::absolute(binary).string()), log)) { return false; }
+		if (!io::is_regular_file(binary / "CMakeCache.txt")) { return false; }
+	}
+	auto const cmake = utils::Shell(fmt::format("cmake --build {} {}", binary.string(), clean ? "--clean-first" : ""), log);
+	if (!cmake) {
+		logW("Build failure: \n{}", cmake.redirectOutput());
+		return false;
+	}
+	logD("... Build completed");
+	return openFilesystemPath(binary);
+}
+
 bool run(io::Reader const& reader) {
 	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
 	Engine::CreateInfo eci;
@@ -748,6 +783,8 @@ bool run(io::Reader const& reader) {
 		App app(&engine);
 		DeltaTime dt;
 		std::optional<window::Instance> test;
+		ktl::future<bool> bf;
+		ktl::async async;
 		while (!engine.closing()) {
 			poll(flags, engine.poll(true).residue);
 			if (flags.test(Flag::eClosed)) {
@@ -759,6 +796,17 @@ bool run(io::Reader const& reader) {
 				break;
 			}
 			app.tick(++dt);
+			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
+				flags.reset(Flag::eDebug0);
+				bf = async(&package, "out/autobuild", false);
+				bf.then([](bool built) {
+					if (!built) {
+						logW("build failed");
+					} else {
+						logD("build success");
+					}
+				});
+			}
 		}
 	} while (reboot);
 	return true;

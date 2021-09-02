@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <sstream>
 #include <core/io/path.hpp>
+#include <core/log.hpp>
 #include <core/os.hpp>
 
 namespace le::io {
@@ -138,35 +139,16 @@ std::string Path::to_string(char separator) const {
 	return {};
 }
 
-Path absolute(Path const& path) {
-#if defined(LEVK_OS_ANDROID)
-	return path;
-#else
-	return Path(stdfs::absolute(path.generic_string()).generic_string());
-#endif
-}
+Path absolute(Path const& path) { return Path(stdfs::absolute(path.string()).generic_string()); }
 
-Path current_path() {
-#if defined(LEVK_OS_ANDROID)
-	return Path();
-#else
-	return Path(stdfs::current_path().generic_string());
-#endif
-}
+Path current_path() { return Path(stdfs::current_path().generic_string()); }
 
-bool is_regular_file(Path const& path) {
-#if defined(LEVK_OS_ANDROID)
-	return !path.empty();
-#else
-	return stdfs::is_regular_file(path.generic_string());
-#endif
-}
+bool is_regular_file(Path const& path) { return stdfs::is_regular_file(path.string()); }
 
-bool is_directory(Path const& path) {
-#if defined(LEVK_OS_ANDROID)
-	return !path.empty();
-#else
-	return stdfs::is_directory(path.generic_string());
-#endif
+bool is_directory(Path const& path) { return stdfs::is_directory(path.string()); }
+
+bool remove(Path const& path) {
+	std::error_code ec;
+	return stdfs::remove(path.string(), ec);
 }
 } // namespace le::io

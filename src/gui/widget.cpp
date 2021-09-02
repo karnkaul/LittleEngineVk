@@ -50,12 +50,8 @@ bool Widget::clickedImpl(bool style, Status st) noexcept {
 	if (style && (!cooldown || st <= Status::eHover)) {
 		m_material = m_style.quad[st];
 		if (m_text && (!m_previous.set || st != m_previous.status)) {
-			Text::Factory factory = m_text->factory();
 			auto& style = m_style.text[st];
-			factory.colour = style.colour;
-			factory.align = style.align;
-			factory.size = style.size;
-			m_text->set(std::move(factory));
+			m_text->colour(style.colour).align(style.align).size(style.size);
 			m_previous.set = true;
 		}
 	}

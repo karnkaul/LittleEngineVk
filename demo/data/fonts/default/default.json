@@ -19,7 +19,7 @@
     " ":{"x":383,"y":609,"width":3,"height":3,"originX":1,"originY":1,"advance":54},
     "!":{"x":1186,"y":184,"width":25,"height":143,"originX":-15,"originY":141,"advance":54},
     "\"":{"x":1986,"y":469,"width":55,"height":51,"originX":-7,"originY":140,"advance":69},
-    "#":{"x":1648,"y":0,"width":107,"height":145,"originX":0,"originY":142,"advance":108,"isBlank":true},
+    "#":{"x":1648,"y":0,"width":107,"height":145,"originX":0,"originY":142,"advance":108},
     "$":{"x":541,"y":0,"width":96,"height":173,"originX":-5,"originY":153,"advance":108},
     "%":{"x":776,"y":0,"width":152,"height":148,"originX":-10,"originY":142,"advance":172},
     "&":{"x":1414,"y":0,"width":120,"height":145,"originX":-7,"originY":142,"advance":129},

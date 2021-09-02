@@ -95,7 +95,6 @@ Instance::Instance(CreateInfo const& info) {
 	Validation validation = info.validation.mode;
 	if (auto vd = DataObject<Validation>("validation")) {
 		validation = *vd;
-		vd.unset();
 		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, validation == Validation::eOn ? "on" : "off");
 	}
 	if (validation == Validation::eOn) {

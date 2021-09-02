@@ -1,4 +1,5 @@
 #pragma once
+#include <core/utils/dirty_flag.hpp>
 #include <dumb_ecf/types.hpp>
 #include <engine/utils/ref_tree.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -16,7 +17,7 @@ struct SceneTransform {
 	glm::mat4 matrix() const noexcept;
 };
 
-class SceneNode : public utils::RefTreeNode<SceneNode> {
+class SceneNode : public utils::RefTreeNode<SceneNode>, utils::DirtyFlag {
   public:
 	using Root = typename RefTreeNode<SceneNode>::Root;
 
@@ -106,7 +107,6 @@ class SceneNode : public utils::RefTreeNode<SceneNode> {
 	mutable glm::mat4 m_normalMat = glm::mat4(1.0f);
 	SceneTransform m_transform;
 	decf::entity m_entity;
-	mutable bool m_dirty = false;
 };
 
 inline SceneTransform const SceneTransform::identity = {};
@@ -132,27 +132,27 @@ inline SceneNode& SceneNode::reset(SceneTransform const& transform) {
 
 inline SceneNode& SceneNode::position(glm::vec3 const& position) noexcept {
 	m_transform.position = position;
-	m_dirty = true;
+	setDirty(true);
 	return *this;
 }
 inline SceneNode& SceneNode::orient(glm::quat const& orientation) noexcept {
 	m_transform.orientation = orientation;
-	m_dirty = true;
+	setDirty(true);
 	return *this;
 }
 inline SceneNode& SceneNode::rotate(f32 radians, glm::vec3 const& axis) noexcept {
 	m_transform.orientation = glm::rotate(m_transform.orientation, radians, axis);
-	m_dirty = true;
+	setDirty(true);
 	return *this;
 }
 inline SceneNode& SceneNode::scale(f32 scale) noexcept {
 	m_transform.scale = {scale, scale, scale};
-	m_dirty = true;
+	setDirty(true);
 	return *this;
 }
 inline SceneNode& SceneNode::scale(glm::vec3 const& scale) noexcept {
 	m_transform.scale = scale;
-	m_dirty = true;
+	setDirty(true);
 	return *this;
 }
 
@@ -181,13 +181,12 @@ inline glm::mat4 SceneNode::normalModel() const noexcept {
 	return m_normalMat;
 }
 
-inline bool SceneNode::stale() const noexcept { return m_dirty || (m_parent->isRoot() ? false : static_cast<SceneNode const*>(m_parent.get())->stale()); }
+inline bool SceneNode::stale() const noexcept { return dirty() || (m_parent->isRoot() ? false : static_cast<SceneNode const*>(m_parent.get())->stale()); }
 
 inline void SceneNode::refresh() const noexcept {
-	if (m_dirty) {
+	if (auto c = Clean(*this)) {
 		m_mat = m_transform.matrix();
 		m_normalMat = isotropic() ? m_mat : glm::mat4(glm::inverse(glm::transpose(glm::mat3(m_mat))));
-		m_dirty = false;
 	}
 	return;
 }

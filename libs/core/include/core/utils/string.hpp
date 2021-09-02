@@ -47,6 +47,8 @@ s64 toS64(std::string_view input, s64 fallback) noexcept;
 u64 toU64(std::string_view input, u64 fallback) noexcept;
 f64 toF64(std::string_view input, f64 fallback) noexcept;
 
+std::string toString(std::istream const& in);
+
 ///
 /// \brief Slice a string into a pair via the first occurence of `delimiter`
 ///

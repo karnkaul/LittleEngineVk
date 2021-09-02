@@ -4,14 +4,17 @@
 #include <core/hash.hpp>
 #include <engine/gui/interact.hpp>
 #include <engine/render/material.hpp>
+#include <glm/vec2.hpp>
 #include <graphics/render/rgba.hpp>
-#include <graphics/text_factory.hpp>
+#include <ktl/either.hpp>
 
 namespace le::gui {
 struct TextStyle {
+	using Size = ktl::either<u32, f32>;
+
 	glm::vec2 align = {};
 	graphics::RGBA colour = colours::black;
-	graphics::TextFactory::Size size = 40U;
+	Size size = 40U;
 };
 
 constexpr InteractStyle<Material> defaultQuadInteractStyle() noexcept;
@@ -46,15 +49,6 @@ class Styles {
 	}
 
 	static Style& getDefault() noexcept { return s_default; }
-
-	static void setup(graphics::TextFactory& out_factory, Style const* style = {}) noexcept {
-		if (!style) { style = &getDefault(); }
-		out_factory.size = style->base.text.size;
-		out_factory.align = style->base.text.align;
-		out_factory.colour = style->base.text.colour;
-	}
-
-	static void setup(graphics::TextFactory& out_factory, Hash style) noexcept { setup(out_factory, &get(style)); }
 
   private:
 	inline static std::unordered_map<Hash, Style> s_map;

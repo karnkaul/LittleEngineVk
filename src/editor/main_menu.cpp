@@ -19,12 +19,10 @@ struct Panes {
 	bool& flag(Flag f) { return flags[static_cast<std::size_t>(f)]; }
 	bool flag(Flag f) const { return flags[static_cast<std::size_t>(f)]; }
 
-	void operator()() const {
-		if (flag(Flag::eStats)) { showStats(); }
-		if (flag(Flag::eProfiler)) { showProfiler(); }
-	}
+	void operator()() const;
 
 	void showStats() const;
+	template <typename T>
 	void showProfiler() const;
 };
 
@@ -55,10 +53,11 @@ void Panes::showStats() const {
 	}
 }
 
+template <typename T>
 void Panes::showProfiler() const {
-	if (auto profiler = Services::locate<Engine::Profiler>(false)) {
+	if (auto profiler = Services::locate<T>(false)) {
 		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler), false)) {
-			Engine::Profiler::Record const& record = profiler->m_record.back();
+			auto const& record = profiler->m_record.back();
 			Time_s const total = record.total;
 			f32 maxLength{};
 			for (auto const& profile : record.entries) { maxLength = std::max(maxLength, ImGui::CalcTextSize(profile.name.data()).x); }
@@ -70,6 +69,14 @@ void Panes::showProfiler() const {
 		}
 		profiler->m_record.clear();
 	}
+}
+
+template <>
+void Panes::showProfiler<utils::NullProfileDB>() const {}
+
+void Panes::operator()() const {
+	if (flag(Flag::eStats)) { showStats(); }
+	if (flag(Flag::eProfiler)) { showProfiler<Engine::Profiler>(); }
 }
 } // namespace
 #endif

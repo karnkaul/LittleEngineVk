@@ -17,5 +17,5 @@ int main(int argc, char const* const argv[]) {
 	}
 	io::FileReader reader;
 	reader.mount(std::move(*data));
-	return utils::Execute([&reader]() { return demo::run(reader) ? 0 : 1; });
+	return utils::Execute([&reader]() { return demo::run(reader) ? 0 : 10; });
 }

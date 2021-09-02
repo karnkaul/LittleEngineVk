@@ -1,7 +1,7 @@
 #include <filesystem>
-#include <fstream>
 #include <fmt/format.h>
 #include <build_version.hpp>
+#include <core/io/reader.hpp>
 #include <core/services.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/engine.hpp>
@@ -61,13 +61,7 @@ std::string ErrInfo::json() const {
 	return json.to_string(opts);
 }
 
-bool ErrInfo::writeToFile(io::Path const& path) const {
-	if (auto file = std::ofstream(path.string())) {
-		file << json() << '\n';
-		return true;
-	}
-	return false;
-}
+bool ErrInfo::writeToFile(io::Path const& path) const { return io::FileReader::write(path, json()); }
 
 OnError const* g_onEnsureFail{};
 

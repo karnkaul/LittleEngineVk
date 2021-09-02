@@ -5,52 +5,18 @@
 #include <core/io/reader.hpp>
 #include <core/log.hpp>
 #include <core/os.hpp>
+#include <core/services.hpp>
 #include <core/utils/string.hpp>
-#include <io_impl.hpp>
 
 namespace le::io {
-namespace {
-struct PhysfsHandle final {
-	bool bInit = false;
-
-	PhysfsHandle();
-	~PhysfsHandle();
-};
-
-PhysfsHandle::PhysfsHandle() {
-	if (PHYSFS_init(os::environment().arg0.data()) != 0) {
-		bInit = true;
-		logI("[le::io] PhysFS initialised");
-	} else {
-		logE("Failed to initialise PhysFS!");
-	}
-}
-
-PhysfsHandle::~PhysfsHandle() {
-	if (bInit) {
-		PHYSFS_deinit();
-		logI("[le::io] PhysFS deinitialised");
-	}
-}
-
-std::optional<PhysfsHandle> g_physfsHandle;
-} // namespace
-
-Reader::Reader() noexcept = default;
-Reader::Reader(Reader&&) noexcept = default;
-Reader& Reader::operator=(Reader&&) noexcept = default;
-Reader::Reader(Reader const&) = default;
-Reader& Reader::operator=(Reader const&) = default;
-Reader::~Reader() = default;
-
-std::optional<std::string> Reader::string(io::Path const& id) const {
+std::optional<std::string> Reader::string(Path const& id) const {
 	if (auto str = sstream(id)) { return str->str(); }
 	return std::nullopt;
 }
 
-bool Reader::present(const io::Path& id) const { return findPrefixed(id).has_value(); }
+bool Reader::present(const Path& id) const { return findPrefixed(id).has_value(); }
 
-bool Reader::checkPresence(io::Path const& id) const {
+bool Reader::checkPresence(Path const& id) const {
 	if (!present(id)) {
 		logW("[{}] [{}] not found in {}!", utils::tName(this), id.generic_string(), m_medium);
 		return false;
@@ -58,45 +24,69 @@ bool Reader::checkPresence(io::Path const& id) const {
 	return true;
 }
 
-bool Reader::checkPresences(Span<io::Path const> ids) const {
-	bool bRet = true;
-	for (auto const& id : ids) { bRet &= checkPresence(id); }
-	return bRet;
+bool Reader::checkPresences(Span<Path const> ids) const {
+	bool ret = true;
+	for (auto const& id : ids) { ret &= checkPresence(id); }
+	return ret;
 }
 
-std::string_view Reader::medium() const { return m_medium; }
+FileReader::FileReader() noexcept { m_medium = "Filesystem"; }
 
-std::optional<io::Path> FileReader::findUpwards([[maybe_unused]] io::Path const& leaf, [[maybe_unused]] Span<io::Path const> anyOf,
-												[[maybe_unused]] u8 maxHeight) {
+std::optional<Path> FileReader::findUpwards(Path const& leaf, Span<Path const> anyOf, u8 maxHeight) {
 	for (auto const& name : anyOf) {
 		if (io::is_directory(leaf / name) || io::is_regular_file(leaf / name)) {
 			auto ret = leaf.filename() == "." ? leaf.parent_path() : leaf;
 			return ret / name;
 		}
 	}
-	bool bEnd = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
-	if (bEnd) { return std::nullopt; }
+	bool none = leaf.empty() || !leaf.has_parent_path() || leaf == leaf.parent_path() || maxHeight == 0;
+	if (none) { return std::nullopt; }
 	return findUpwards(leaf.parent_path(), anyOf, maxHeight - 1);
 }
 
-FileReader::FileReader() noexcept { m_medium = "Filesystem"; }
-
-bool FileReader::mount([[maybe_unused]] io::Path path) {
-	auto const pathStr = path.generic_string();
-	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end()) {
-		if (!io::is_directory(path)) {
-			logE("[{}] [{}] not found on Filesystem!", utils::tName<FileReader>(), pathStr);
-			return false;
-		}
-		logD("[{}] [{}] directory mounted", utils::tName<FileReader>(), pathStr);
-		m_dirs.push_back(std::move(path));
+bool FileReader::write(Path const& path, std::string_view str, bool newline) {
+	if (auto f = std::ofstream(path.string())) {
+		f << str;
+		if (newline) { f << '\n'; }
 		return true;
 	}
-	logW("[{}] [{}] directory already mounted", utils::tName<FileReader>(), pathStr);
 	return false;
 }
 
-std::optional<bytearray> FileReader::bytes(io::Path const& id) const {
+bool FileReader::write(Path const& path, Span<std::byte const> bytes) {
+	if (auto f = std::ofstream(path.string(), std::ios::binary)) {
+		for (std::byte const byte : bytes) { f << static_cast<u8>(byte); }
+		return true;
+	}
+	return false;
+}
+
+bool FileReader::mount(Path path) {
+	auto const pathStr = path.generic_string();
+	if (std::find(m_dirs.begin(), m_dirs.end(), path) == m_dirs.end()) {
+		if (!io::is_directory(path)) {
+			logE("[{}] directory not found on {} [{}]!", utils::tName<FileReader>(), m_medium, pathStr);
+			return false;
+		}
+		logD("[{}] directory mounted [{}]", utils::tName<FileReader>(), pathStr);
+		m_dirs.push_back(std::move(path));
+		return true;
+	}
+	logD("[{}] directory already mounted [{}]", utils::tName<FileReader>(), pathStr);
+	return true;
+}
+
+bool FileReader::unmount(Path const& path) noexcept {
+	if (std::erase_if(m_dirs, [&path](Path const& p) { return p == path; }) > 0) {
+		logD("[{}] directory umounted [{}]", utils::tName<FileReader>(), path.generic_string());
+		return true;
+	}
+	return false;
+}
+
+void FileReader::clear() noexcept { m_dirs.clear(); }
+
+std::optional<bytearray> FileReader::bytes(Path const& id) const {
 	if (auto path = findPrefixed(id)) {
 		std::ifstream file(path->generic_string(), std::ios::binary | std::ios::ate);
 		if (file.good()) {
@@ -110,7 +100,7 @@ std::optional<bytearray> FileReader::bytes(io::Path const& id) const {
 	return std::nullopt;
 }
 
-std::optional<std::stringstream> FileReader::sstream(io::Path const& id) const {
+std::optional<std::stringstream> FileReader::sstream(Path const& id) const {
 	if (auto path = findPrefixed(id)) {
 		std::ifstream file(path->generic_string());
 		if (file.good()) {
@@ -122,60 +112,99 @@ std::optional<std::stringstream> FileReader::sstream(io::Path const& id) const {
 	return std::nullopt;
 }
 
-std::optional<io::Path> FileReader::findPrefixed(io::Path const& id) const {
+std::optional<Path> FileReader::findPrefixed(Path const& id) const {
 	auto const paths = finalPaths(id);
 	for (auto const& path : paths) {
-		if (io::is_regular_file(path)) { return io::Path(path); }
+		if (io::is_regular_file(path)) { return Path(path); }
 	}
 	return std::nullopt;
 }
 
-std::vector<io::Path> FileReader::finalPaths(io::Path const& id) const {
+std::vector<Path> FileReader::finalPaths(Path const& id) const {
 	if (id.has_root_directory()) { return {id}; }
 	if (m_dirs.empty()) { return {id}; }
-	std::vector<io::Path> ret;
+	std::vector<Path> ret;
 	ret.reserve(m_dirs.size());
 	for (auto const& prefix : m_dirs) { ret.push_back(prefix / id); }
 	return ret;
 }
 
-io::Path FileReader::fullPath(io::Path const& id) const {
+Path FileReader::fullPath(Path const& id) const {
 	if (auto path = findPrefixed(id)) { return io::absolute(*path); }
 	return id;
 }
 
-ZIPReader::ZIPReader() { m_medium = "ZIP"; }
+ZIPReader::ZIPReader(not_null<ZIPFS const*> zipfs) noexcept : m_zipfs(zipfs) { m_medium = "ZIP"; }
 
-bool ZIPReader::mount(io::Path path) {
-	impl::initPhysfs();
+ZIPReader& ZIPReader::operator=(ZIPReader&& rhs) noexcept {
+	if (&rhs != this) {
+		clear();
+		Reader::operator=(std::move(rhs));
+		m_zips = std::move(rhs.m_zips);
+	}
+	return *this;
+}
+
+ZIPReader::~ZIPReader() noexcept { clear(); }
+
+bool ZIPReader::mount(Path path) {
+	if (!*m_zipfs) { return false; }
 	auto pathStr = path.generic_string();
 	FileReader file;
 	if (std::find(m_zips.begin(), m_zips.end(), path) == m_zips.end()) {
 		auto const bytes = file.bytes(path);
 		if (!bytes) {
-			logE("[{}] [{}] not found on Filesystem!", utils::tName<ZIPReader>(), pathStr);
+			logE("[{}] not found on {} [{}]!", utils::tName<ZIPReader>(), file.medium(), pathStr);
 			return false;
 		}
-		int const result = PHYSFS_mountMemory(bytes->data(), bytes->size(), nullptr, path.string().data(), nullptr, 0);
-		if (result == 0) {
-			logE("[{}] [{}] failed to decompress archive!", utils::tName<ZIPReader>(), pathStr);
-			return false;
-		}
-		PHYSFS_mount(path.string().data(), nullptr, 0);
-		logD("[{}] [{}] archive mounted", utils::tName<ZIPReader>(), pathStr);
-		m_zips.push_back(std::move(path));
-		return true;
+		return mount(std::move(path), std::move(*bytes));
 	}
 	logW("[{}] [{}] archive already mounted", utils::tName<FileReader>(), pathStr);
 	return false;
 }
 
-std::optional<io::Path> ZIPReader::findPrefixed(io::Path const& id) const {
-	if (PHYSFS_exists(id.generic_string().data()) != 0) { return io::Path(id); }
+bool ZIPReader::mount(Path point, Span<std::byte const> bytes) {
+	if (!*m_zipfs) { return false; }
+	auto const str = point.generic_string();
+	int const result = PHYSFS_mountMemory(bytes.data(), bytes.size(), nullptr, str.data(), nullptr, 0);
+	if (result == 0) {
+		logE("[{}] failed to decompress archive [{}]!", utils::tName<ZIPReader>(), str);
+		return false;
+	}
+	PHYSFS_mount(str.data(), nullptr, 0);
+	logD("[{}] archive mounted [{}]", utils::tName<ZIPReader>(), str);
+	m_zips.push_back(std::move(point));
+	return true;
+}
+
+bool ZIPReader::unmount(Path const& path) noexcept {
+	if (!*m_zipfs) { return false; }
+	for (auto it = m_zips.begin(); it != m_zips.end(); ++it) {
+		if (*it == path) {
+			auto const str = path.generic_string();
+			PHYSFS_unmount(str.data());
+			m_zips.erase(it);
+			logD("[{}] archive unmounted [{}]", utils::tName<ZIPReader>(), str);
+			return true;
+		}
+	}
+	return false;
+}
+
+void ZIPReader::clear() noexcept {
+	if (*m_zipfs) {
+		for (auto const& path : m_zips) { PHYSFS_unmount(path.generic_string().data()); }
+	}
+	m_zips.clear();
+}
+
+std::optional<Path> ZIPReader::findPrefixed(Path const& id) const {
+	if (!*m_zipfs) { return std::nullopt; }
+	if (PHYSFS_exists(id.generic_string().data()) != 0) { return Path(id); }
 	return std::nullopt;
 }
 
-std::optional<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
+std::optional<std::stringstream> ZIPReader::sstream(Path const& id) const {
 	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile) {
@@ -191,7 +220,7 @@ std::optional<std::stringstream> ZIPReader::sstream(io::Path const& id) const {
 	return std::nullopt;
 }
 
-std::optional<bytearray> ZIPReader::bytes(io::Path const& id) const {
+std::optional<bytearray> ZIPReader::bytes(Path const& id) const {
 	if (checkPresence(id)) {
 		auto pFile = PHYSFS_openRead(id.generic_string().data());
 		if (pFile) {
@@ -205,9 +234,25 @@ std::optional<bytearray> ZIPReader::bytes(io::Path const& id) const {
 	return std::nullopt;
 }
 
-void impl::initPhysfs() {
-	if (!g_physfsHandle) { g_physfsHandle = PhysfsHandle(); }
+ZIPFS::ZIPFS() {
+	if (auto zipfs = Services::locate<ZIPFS>(false); zipfs && *zipfs) {
+		logW("[io] ZIPFS already initialized");
+		return;
+	}
+	if (PHYSFS_init(os::environment().arg0.data()) != 0) {
+		logI("[io] ZIPFS initialized");
+		m_init = true;
+		Services::track<ZIPFS>(this);
+	} else {
+		logE("[io] Failed to initialize ZIPFS!");
+	}
 }
 
-void impl::deinitPhysfs() { g_physfsHandle.reset(); }
+ZIPFS::~ZIPFS() {
+	if (m_init) {
+		Services::untrack<ZIPFS>();
+		PHYSFS_deinit();
+		logD("[io] ZIPFS deinitialized");
+	}
+}
 } // namespace le::io

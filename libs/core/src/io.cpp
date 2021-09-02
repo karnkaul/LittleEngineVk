@@ -2,7 +2,6 @@
 #include <fstream>
 #include <core/io.hpp>
 #include <core/log.hpp>
-#include <io_impl.hpp>
 #include <ktl/async_queue.hpp>
 #include <ktl/kthread.hpp>
 
@@ -77,7 +76,6 @@ Service& Service::operator=(Service&& rhs) noexcept {
 Service::~Service() { destroy(); }
 
 void Service::destroy() {
-	impl::deinitPhysfs();
 	if (g_fileLogger && m_bActive) {
 		logI("File Logging terminated");
 		g_token = {};

@@ -76,7 +76,7 @@ struct SwapchainCreateInfo {
 		if (auto forceVsync = DataObject<Vsync>("vsync")) { presentModes.insert(info.vsync.begin(), *forceVsync); }
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
 		g_log.log(lvl::info, 0, "[{}] {} ({} present mode) selected", g_name, vsyncNames[vsyncModes[presentMode]], presentModeNames[presentMode]);
-		imageCount = std::clamp(capabilities.minImageCount + 1, capabilities.minImageCount, capabilities.maxImageCount);
+		imageCount = std::clamp(capabilities.minImageCount + 1, capabilities.minImageCount, capabilities.maxImageCount); 
 		using vCAFB = vk::CompositeAlphaFlagBitsKHR;
 		vkFlagGetter<vCAFB> alpha{capabilities.supportedCompositeAlpha, vCAFB::eOpaque};
 		compositeAlpha = alpha(vCAFB::eInherit, vCAFB::ePreMultiplied, vCAFB::ePostMultiplied);

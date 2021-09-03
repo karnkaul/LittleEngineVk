@@ -33,3 +33,9 @@ cd ..
 for lib in "${libs[@]}"; do
   tools/bin/$exe $options $lib libs/$lib
 done
+
+# decf
+tools/bin/$exe $options ktl libs/ktl -c=libs/decf/CMakeLists.txt
+
+# dtasks
+tools/bin/$exe $options ktl libs/ktl -c=libs/dtasks/CMakeLists.txt

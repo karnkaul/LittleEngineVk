@@ -3,7 +3,6 @@
 #include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
 #include <core/utils/string.hpp>
-#include <dumb_tasks/error_handler.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/cameras/freecam.hpp>
@@ -662,6 +661,7 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		// draw
 		render();
+		m_tasks.rethrow();
 	}
 
 	void render() {
@@ -672,6 +672,8 @@ class App : public input::Receiver, public SceneRegistry {
 			m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 		}
 	}
+
+	scheduler& sched() { return m_tasks; }
 
   private:
 	struct Data {
@@ -762,7 +764,6 @@ bool package(io::Path const& binary, bool clean) {
 }
 
 bool run(io::Media const& media) {
-	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
 	Engine::CreateInfo eci;
 	eci.winInfo.config.title = "levk demo";
 	eci.winInfo.config.size = {1280, 720};
@@ -797,15 +798,16 @@ bool run(io::Media const& media) {
 			}
 			app.tick(++dt);
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
+				app.sched().enqueue([]() { ensure(false, "test"); });
 				flags.reset(Flag::eDebug0);
-				bf = async(&package, "out/autobuild", false);
+				/*bf = async(&package, "out/autobuild", false);
 				bf.then([](bool built) {
 					if (!built) {
 						logW("build failed");
 					} else {
 						logD("build success");
 					}
-				});
+				});*/
 			}
 		}
 	} while (reboot);

@@ -1,4 +1,5 @@
 #pragma once
+#include <core/io/converters.hpp>
 #include <core/io/path.hpp>
 #include <core/std_types.hpp>
 #include <core/time.hpp>
@@ -21,11 +22,11 @@ struct ErrInfo {
 	Time_s upTime{};
 	u64 frameCount{};
 	u32 framerate{};
+	u32 logThreadID{};
 
 	ErrInfo(std::string message, SrcInfo const& source = {});
 
 	std::string logMsg() const;
-	std::string json() const;
 	bool writeToFile(io::Path const& path) const;
 };
 
@@ -38,3 +39,26 @@ struct ErrorHandler : OnError {
 	bool deleteFile() const;
 };
 } // namespace le::utils
+
+namespace le::io {
+template <>
+struct Jsonify<utils::SrcInfo> : JsonHelper {
+	dj::json operator()(utils::SrcInfo const& info) const;
+	// not supported
+	utils::SrcInfo operator()(dj::json const&) const { return {}; }
+};
+
+template <>
+struct Jsonify<utils::SysInfo> : JsonHelper {
+	dj::json operator()(utils::SysInfo const& info) const;
+	// not supported
+	utils::SysInfo operator()(dj::json const&) const { return {}; }
+};
+
+template <>
+struct Jsonify<utils::ErrInfo> : JsonHelper {
+	dj::json operator()(utils::ErrInfo const& info) const;
+	// not supported
+	utils::ErrInfo operator()(dj::json const&) const { return {{}}; }
+};
+} // namespace le::io

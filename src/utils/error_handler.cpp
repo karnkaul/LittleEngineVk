@@ -23,6 +23,7 @@ Version const ErrInfo::build = g_buildVersion;
 
 ErrInfo::ErrInfo(std::string message, SrcInfo const& source) : source(source), message(std::move(message)), timestamp(time::sysTime()) {
 	system = SysInfo::make();
+	logThreadID = dl::config::log_thread_id();
 	if (auto engine = Services::find<Engine>()) {
 		auto const& stats = engine->stats();
 		upTime = stats.upTime;
@@ -35,33 +36,11 @@ ErrInfo::ErrInfo(std::string message, SrcInfo const& source) : source(source), m
 
 std::string ErrInfo::logMsg() const { return fmt::format("Error: {} [{}:{}] [{}]", message, source.file, source.line, source.function); }
 
-std::string ErrInfo::json() const {
-	dj::json json;
-	add(json, "build", build.toString(true));
-	add(json, "timestamp", time::format(timestamp, "{:%a %F %T %Z}"));
-	add(json, "up_time", time::format(upTime));
-	add(json, "frame_count", frameCount);
-	add(json, "framerate", framerate);
-	add(json, "window_size", fmt::format("{}x{}", windowSize.x, windowSize.y));
-	add(json, "framebuffer_size", fmt::format("{}x{}", framebufferSize.x, framebufferSize.y));
-	add(json, "message", message);
-	dj::json src;
-	add(src, "function", source.function);
-	add(src, "file", source.file);
-	add(src, "line", source.line);
-	json.insert("source", std::move(src));
-	dj::json sys;
-	add(sys, "cpu_id", system.cpuID);
-	add(sys, "gpu", system.gpuName);
-	add(sys, "thread_count", system.threadCount);
-	add(sys, "display_count", system.displayCount);
-	json.insert("system", std::move(sys));
+bool ErrInfo::writeToFile(io::Path const& path) const {
 	dj::serial_opts_t opts;
 	opts.pretty = opts.sort_keys = true;
-	return json.to_string(opts);
+	return io::FSMedia{}.write(path, io::toJson(*this).to_string(opts));
 }
-
-bool ErrInfo::writeToFile(io::Path const& path) const { return io::FSMedia{}.write(path, json()); }
 
 OnError const* g_onEnsureFail{};
 
@@ -73,3 +52,19 @@ void ErrorHandler::operator()(std::string_view message, SrcInfo const& source) c
 bool ErrorHandler::fileExists() const { return stdfs::exists(path.generic_string()); }
 bool ErrorHandler::deleteFile() const { return stdfs::remove(path.generic_string()); }
 } // namespace le::utils
+
+namespace le::io {
+using namespace le::utils;
+
+dj::json Jsonify<SrcInfo>::operator()(SrcInfo const& info) const { return build("file", info.file, "function", info.function, "line", info.line); }
+
+dj::json Jsonify<SysInfo>::operator()(utils::SysInfo const& info) const {
+	return build("cpuID", info.cpuID, "gpu_name", info.gpuName, "display_count", info.displayCount, "thread_count", info.threadCount);
+}
+
+dj::json Jsonify<ErrInfo>::operator()(utils::ErrInfo const& info) const {
+	return build("thread_id", info.logThreadID, "build", info.build.toString(true), "timestamp", time::format(info.timestamp, "{:%a %F %T %Z}"), "up_time",
+				 time::format(info.upTime), "frame_count", info.frameCount, "framerate", info.framerate, "window_size", info.windowSize, "framebuffer_size",
+				 info.framebufferSize, "message", info.message, "system", info.system, "source", info.source);
+}
+} // namespace le::io

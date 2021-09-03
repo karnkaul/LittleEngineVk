@@ -21,7 +21,7 @@ struct Stringify : Converter<T, std::string> {
 struct JsonHelper;
 
 template <typename T>
-struct Jsonify : Converter<T, dj::json> {};
+struct Jsonify;
 
 template <typename T>
 struct Jsonify<glm::tvec2<T>>;
@@ -54,9 +54,20 @@ T fromJson(dj::json const& json) {
 
 template <typename T>
 	requires dj::json::is_settable<T>
-struct Jsonify<T> {
+struct Jsonify<T> : Converter<T, dj::json> {
 	dj::json operator()(T const& t) const { return dj::json(t); }
 	T operator()(dj::json const& json) const { return json.as<T>(); }
+};
+
+template <typename T>
+struct Jsonify<std::vector<T>> : Converter<std::vector<T>, dj::json> {
+	dj::json operator()(std::vector<T> const& ts) const {
+		dj::json ret;
+		for (T const& t : ts) { ret.push_back(Jsonify<T>{}(t)); }
+		return ret;
+	}
+
+	std::vector<T> operator()(dj::json const& json) const { return json.as<std::vector<T>>(); }
 };
 
 template <typename T>
@@ -92,6 +103,11 @@ struct JsonHelper {
 	template <typename T>
 	dj::json to(T const& t) const {
 		return Jsonify<T>{}(t);
+	}
+
+	template <typename T>
+	dj::json to(std::vector<T> const& t) const {
+		return Jsonify<std::vector<T>>{}(t);
 	}
 
 	template <typename T>

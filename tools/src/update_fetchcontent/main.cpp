@@ -250,12 +250,12 @@ int main(int argc, char const* const argv[]) {
 	}
 	if (pr.debug) { std::cout << "- git_commit\t: " << fc->commit << "\n\n"; }
 	if (target->git_tag.str == fc->commit) {
-		std::cout << "[" << pr.declare << "] no changes [" << target->git_tag.str << "] == [" << fc->commit << "]\n";
+		std::cout << "[" << pr.declare << "] no changes [" << target->git_tag.str << "] == [" << fc->commit << "] in [" << pr.cmake.generic_string() << "]\n";
 		return ret_val(result::success);
 	}
 	std::string const old_commit(target->git_tag.str);
 	for (std::size_t i = 0; i < fc->commit.size(); ++i) { fc->text[target->git_tag.first + i] = fc->commit[i]; }
 	if (auto res = write(fc->text, pr.cmake); res != result::success) { return ret_val(res); }
-	std::cout << "[" << pr.declare << "] updated [" << old_commit << "] to [" << fc->commit << "]\n";
+	std::cout << "[" << pr.declare << "] updated [" << old_commit << "] to [" << fc->commit << "] in [" << pr.cmake.generic_string() << "]\n";
 	return ret_val(result::success);
 }

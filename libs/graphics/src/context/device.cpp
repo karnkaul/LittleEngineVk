@@ -27,7 +27,7 @@ Device::Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo 
 	if (default_v(instance->m_instance)) { throw std::runtime_error("Invalid graphics Instance"); }
 	if (default_v(surface)) { throw std::runtime_error("Invalid Vulkan surface"); }
 	// Prevent validation spam on Windows
-	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warning);
+	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warn);
 	std::unordered_set<std::string_view> const extSet = {info.extensions.begin(), info.extensions.end()};
 	std::vector<std::string_view> const extArr = {extSet.begin(), extSet.end()};
 	ktl::fixed_vector<PhysicalDevice, 8> const devices = instance->availableDevices(extArr);

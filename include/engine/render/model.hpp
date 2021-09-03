@@ -8,7 +8,7 @@
 
 namespace le {
 namespace io {
-class Reader;
+class Media;
 }
 namespace graphics {
 class Sampler;
@@ -45,7 +45,7 @@ class Model {
 	template <typename T>
 	using Result = ktl::expected<T, Error>;
 
-	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Reader const& reader);
+	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Media const& media);
 
 	Result<Span<Prop const>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
@@ -65,7 +65,7 @@ class Model {
 };
 
 struct Model::TexData {
-	io::Path id;
+	io::Path uri;
 	io::Path filename;
 	bytearray bytes;
 	Hash samplerID;
@@ -73,7 +73,7 @@ struct Model::TexData {
 };
 
 struct Model::MatData {
-	io::Path id;
+	io::Path uri;
 	Material mtl;
 	std::vector<std::size_t> diffuse;
 	std::vector<std::size_t> specular;
@@ -83,7 +83,7 @@ struct Model::MatData {
 };
 
 struct Model::MeshData {
-	io::Path id;
+	io::Path uri;
 	graphics::Geometry geometry;
 	std::vector<std::size_t> matIndices;
 	Hash hash;
@@ -94,6 +94,6 @@ struct Model::CreateInfo {
 	std::vector<MeshData> meshes;
 	std::vector<TexData> textures;
 	std::vector<MatData> materials;
-	io::Path id;
+	io::Path uri;
 };
 } // namespace le

@@ -3,7 +3,7 @@
 #include <unordered_set>
 #include <fmt/format.h>
 #include <tinyobjloader/tiny_obj_loader.h>
-#include <core/io/reader.hpp>
+#include <core/io/media.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
@@ -94,7 +94,7 @@ class OBJReader final {
   public:
 	OBJReader(Data data);
 
-	Model::Result<Model::CreateInfo> operator()(io::Reader const& reader);
+	Model::Result<Model::CreateInfo> operator()(io::Media const& media);
 
   private:
 	Model::MeshData processShape(Model::CreateInfo& info, tinyobj::shape_t const& shape);
@@ -109,7 +109,7 @@ OBJReader::OBJReader(Data data)
 	: m_obj(std::move(data.obj)), m_mtl(std::move(data.mtl)), m_modelID(std::move(data.modelID)), m_jsonID(std::move(data.jsonID)),
 	  m_samplerID(std::move(data.samplerID)), m_origin(data.origin), m_scale(data.scale), m_invertV(data.invertV) {}
 
-Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader) {
+Model::Result<Model::CreateInfo> OBJReader::operator()(io::Media const& media) {
 	auto const idStr = m_jsonID.generic_string();
 	std::string warn, err;
 	tinyobj::MaterialStreamReader* msr = nullptr;
@@ -125,7 +125,7 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader)
 	Model::CreateInfo ret;
 	for (auto const& shape : m_shapes) { ret.meshes.push_back(processShape(ret, shape)); }
 	for (auto& texture : ret.textures) {
-		auto bytes = reader.bytes(texture.filename);
+		auto bytes = media.bytes(texture.filename);
 		if (!bytes.has_value()) { return Error{texture.filename.generic_string(), Failcode::eTextureNotFound}; }
 		texture.bytes = std::move(bytes).value();
 	}
@@ -134,8 +134,8 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Reader const& reader)
 
 Model::MeshData OBJReader::processShape(Model::CreateInfo& info, tinyobj::shape_t const& shape) {
 	Model::MeshData meshData;
-	meshData.id = meshName(info, shape);
-	meshData.hash = meshData.id;
+	meshData.uri = meshName(info, shape);
+	meshData.hash = meshData.uri;
 	meshData.geometry = vertices(shape);
 	meshData.matIndices = materials(info, shape);
 	return meshData;
@@ -147,7 +147,7 @@ std::size_t OBJReader::texIdx(Model::CreateInfo& info, std::string_view texName)
 	if (auto search = find(info.textures, hash)) { return *search; }
 	Model::TexData tex;
 	tex.filename = m_jsonID.parent_path() / texName;
-	tex.id = std::move(id);
+	tex.uri = std::move(id);
 	tex.hash = hash;
 	tex.samplerID = m_samplerID;
 	info.textures.push_back(std::move(tex));
@@ -158,7 +158,7 @@ std::size_t OBJReader::matIdx(Model::CreateInfo& info, tinyobj::material_t const
 	Hash const hash = id;
 	if (auto search = find(info.materials, hash)) { return *search; }
 	Model::MatData mat;
-	mat.id = id;
+	mat.uri = id;
 	mat.hash = hash;
 	mat.mtl.illum = fromMat.illum;
 	mat.mtl.Ka = colour(fromMat.ambient, colours::white);
@@ -235,8 +235,8 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 }
 } // namespace
 
-Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Reader const& reader) {
-	auto res = reader.string(jsonID);
+Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Media const& media) {
+	auto res = media.string(jsonID);
 	if (!res) { return Error{jsonID.generic_string(), Failcode::eJsonNotFound}; }
 	dj::json json;
 	auto result = json.read(*res);
@@ -245,8 +245,8 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	auto const jsonDir = jsonID.parent_path();
 	auto const objID = jsonDir / json["obj"].as<std::string>();
 	auto const mtlID = jsonDir / (json.contains("mtl") ? json["mtl"].as<std::string>() : std::string());
-	auto obj = reader.sstream(objID);
-	auto mtl = reader.sstream(mtlID);
+	auto obj = media.sstream(objID);
+	auto mtl = media.sstream(mtlID);
 	if (!obj) { return Error{objID.generic_string(), Failcode::eObjNotFound}; }
 	auto pSamplerID = json.find("sampler");
 	auto pScale = json.find("scale");
@@ -260,7 +260,7 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	objData.scale = pScale ? pScale->as<f32>() : 1.0f;
 	objData.origin = vec3(json, "origin");
 	OBJReader parser(std::move(objData));
-	return parser(reader);
+	return parser(media);
 }
 
 Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
@@ -274,7 +274,7 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 			tci.data = graphics::utils::bmpBytes(tex.bytes);
 			graphics::Texture texture(vram);
 			if (!texture.construct(tci)) { return Error{{}, Failcode::eTextureCreateFailure}; }
-			storage.textures.emplace(tex.id, std::move(texture));
+			storage.textures.emplace(tex.uri, std::move(texture));
 		}
 	}
 	for (auto const& mat : info.materials) {
@@ -287,7 +287,7 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 	for (auto const& m : info.meshes) {
 		graphics::Mesh mesh(vram);
 		mesh.construct(m.geometry);
-		auto [it, _] = storage.meshes.emplace((info.id / m.id).generic_string(), std::move(mesh));
+		auto [it, _] = storage.meshes.emplace((info.uri / m.uri).generic_string(), std::move(mesh));
 		Prop prop;
 		prop.mesh = &it->second;
 		if (!m.matIndices.empty()) {

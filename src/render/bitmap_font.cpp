@@ -1,4 +1,3 @@
-#include <core/io/reader.hpp>
 #include <engine/render/bitmap_font.hpp>
 
 namespace le {

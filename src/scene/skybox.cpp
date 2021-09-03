@@ -5,7 +5,7 @@
 #include <graphics/texture.hpp>
 
 namespace le {
-Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cube(Services::locate<graphics::VRAM>()), m_cubemap(cubemap) {
+Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cube(Services::get<graphics::VRAM>()), m_cubemap(cubemap) {
 	m_cube.construct(graphics::makeCube());
 	ensure(m_cubemap->data().type == graphics::Texture::Type::eCube, "Invalid cubemap");
 }

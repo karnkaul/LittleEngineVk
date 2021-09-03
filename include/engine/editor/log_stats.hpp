@@ -6,6 +6,7 @@
 #if defined(LEVK_USE_IMGUI)
 #include <deque>
 #include <core/time.hpp>
+#include <dumb_log/config.hpp>
 #endif
 
 namespace le::edi {

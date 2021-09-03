@@ -60,7 +60,7 @@ glm::vec3 GlyphPen::carriageReturn(bool nextLine) noexcept {
 glm::vec3 GlyphPen::writeLine(std::string_view text, Geometry* out) {
 	for (char const ch : text) {
 		if (ch == '\n') {
-			g_log.log(lvl::warning, 0, "[{}] BitmapGlyphPen: Unexpected newline in string: [{}]", g_name, text);
+			g_log.log(lvl::warn, 0, "[{}] BitmapGlyphPen: Unexpected newline in string: [{}]", g_name, text);
 			advance(' ', out);
 			return m_state.head;
 		}

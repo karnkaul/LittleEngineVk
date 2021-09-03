@@ -22,7 +22,7 @@ struct Spv : Singleton<Spv> {
 			bOnline = true;
 			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler online: {}", g_name, compiler.redirectOutput());
 		} else {
-			g_log.log(lvl::warning, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.redirectOutput());
+			g_log.log(lvl::warn, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.redirectOutput());
 		}
 	}
 
@@ -139,7 +139,7 @@ std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& 
 	auto const flags = bDebug ? "-g" : std::string_view();
 	auto const result = Spv::inst().compile(io::absolute(prefix / src), io::absolute(prefix / d), flags);
 	if (!result.empty()) {
-		g_log.log(lvl::warning, 1, "[{}] Failed to compile GLSL [{}] to SPIR-V: {}", g_name, src.generic_string(), result);
+		g_log.log(lvl::warn, 1, "[{}] Failed to compile GLSL [{}] to SPIR-V: {}", g_name, src.generic_string(), result);
 		return std::nullopt;
 	}
 	g_log.log(lvl::info, 1, "[{}] Compiled GLSL [{}] to SPIR-V [{}]", g_name, src.generic_string(), d.generic_string());
@@ -226,7 +226,7 @@ utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
 	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
 	int w, h, ch;
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);
-	if (!pOut) { g_log.log(lvl::warning, 1, "[{}] Failed to decompress image data", g_name); }
+	if (!pOut) { g_log.log(lvl::warn, 1, "[{}] Failed to decompress image data", g_name); }
 	size = {u32(w), u32(h)};
 	bytes = Span(pOut, std::size_t(size.x * size.y * channels));
 }
@@ -249,16 +249,16 @@ utils::STBImg::~STBImg() {
 	if (!bytes.empty()) { stbi_image_free(bytes.data()); }
 }
 
-std::array<bytearray, 6> utils::loadCubemap(io::Reader const& reader, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
+std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
 	std::array<bytearray, 6> ret;
 	std::size_t idx = 0;
 	for (std::string_view id : ids) {
 		io::Path const name = io::Path(id) + ext;
 		io::Path const path = prefix / name;
-		if (auto bytes = reader.bytes(path)) {
+		if (auto bytes = media.bytes(path)) {
 			ret[idx++] = std::move(*bytes);
 		} else {
-			g_log.log(lvl::warning, 0, "[{}] Failed to load bytes from [{}]", g_name, path.generic_string());
+			g_log.log(lvl::warn, 0, "[{}] Failed to load bytes from [{}]", g_name, path.generic_string());
 		}
 	}
 	return ret;

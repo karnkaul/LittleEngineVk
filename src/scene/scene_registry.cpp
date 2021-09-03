@@ -29,14 +29,14 @@ decf::spawn_t<SceneNode> SceneRegistry::spawnMesh(std::string name, Hash meshID,
 }
 
 DrawLayer SceneRegistry::layer(Hash id) const {
-	if (auto store = Services::locate<AssetStore>(false)) {
+	if (auto store = Services::find<AssetStore>()) {
 		if (auto layer = store->find<DrawLayer>(id)) { return *layer; }
 	}
 	return {};
 }
 
 void SceneRegistry::update() {
-	auto eng = Services::locate<Engine>();
+	auto eng = Services::get<Engine>();
 	for (auto [_, c] : m_registry.view<gui::ViewStack>()) {
 		auto& [stack] = c;
 		eng->update(stack);

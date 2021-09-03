@@ -16,7 +16,7 @@ void AssetStore::update() {
 		if (!idle) { utils::g_log.log(dl::level::debug, 2, "[Assets] [{}] Update pass: reloaded [{}]", pass, reloaded); }
 	}
 	if (!idle && pass == maxPasses) {
-		utils::g_log.log(dl::level::warning, 0, "[Assets] Exceeded max update passes [{}], bailing out... Asset(s) stuck in reload loops?", maxPasses);
+		utils::g_log.log(dl::level::warn, 0, "[Assets] Exceeded max update passes [{}], bailing out... Asset(s) stuck in reload loops?", maxPasses);
 	} else if (total > 0) {
 		utils::g_log.log(dl::level::info, 1, "[Assets] [{}] Reloads completed in [{}] passes", total, pass);
 	}

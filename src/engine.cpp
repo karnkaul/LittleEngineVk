@@ -60,9 +60,9 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	return s_devices;
 }
 
-Engine::Engine(CreateInfo const& info, io::Reader const* custom) : m_io(info.logFile.value_or(io::Path())) {
+Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logFile.value_or(io::Path())) {
 	utils::g_log.minVerbosity = info.verbosity;
-	if (custom) { m_store.resources().reader(custom); }
+	if (custom) { m_store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	ensure(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;

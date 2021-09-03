@@ -5,9 +5,7 @@
 #include <graphics/glyph_pen.hpp>
 
 namespace le::gui {
-Text::Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept : TreeNode(root), m_font(font) {
-	m_text.make(Services::locate<graphics::VRAM>());
-}
+Text::Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept : TreeNode(root), m_font(font) { m_text.make(Services::get<graphics::VRAM>()); }
 
 Text& Text::font(not_null<BitmapFont const*> font) {
 	m_font = font;

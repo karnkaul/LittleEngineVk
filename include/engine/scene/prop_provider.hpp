@@ -98,7 +98,7 @@ Span<Prop const> PropProvider::extract(PropProvider const* self) {
 template <typename T>
 void PropProvider::refresh() const {
 	if (m_id != Hash()) {
-		if (auto store = Services::locate<AssetStore>(false)) {
+		if (auto store = Services::find<AssetStore>()) {
 			if (auto asset = store->find<T>(m_id)) {
 				if constexpr (std::is_same_v<T, graphics::Mesh>) {
 					auto mat = m_props.get<Props>().material;

@@ -106,7 +106,7 @@ void walk(decf::spawn_t<gui::ViewStack> stack, InspectVerifier& iv, decf::regist
 
 void SceneTree::update() {
 #if defined(LEVK_USE_IMGUI)
-	auto& editor = Services::locate<Engine>()->editor();
+	auto& editor = Services::get<Engine>()->editor();
 	if (editor.m_in.registry) {
 		auto& reg = *editor.m_in.registry;
 		InspectVerifier iv(editor.m_out.inspecting);

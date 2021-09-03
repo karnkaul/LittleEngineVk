@@ -9,7 +9,7 @@ SysInfo SysInfo::make() {
 	SysInfo ret;
 	ret.cpuID = os::cpuID();
 	ret.threadCount = std::thread::hardware_concurrency();
-	if (auto eng = Services::locate<Engine>(false)) {
+	if (auto eng = Services::find<Engine>()) {
 		if (eng->booted()) { ret.gpuName = eng->gfx().boot.device.physicalDevice().name(); }
 		ret.displayCount = eng->windowManager().displayCount();
 	}

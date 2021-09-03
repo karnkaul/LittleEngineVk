@@ -1,7 +1,7 @@
 #include <filesystem>
 #include <fmt/format.h>
 #include <build_version.hpp>
-#include <core/io/reader.hpp>
+#include <core/io/fs_media.hpp>
 #include <core/services.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/engine.hpp>
@@ -23,7 +23,7 @@ Version const ErrInfo::build = g_buildVersion;
 
 ErrInfo::ErrInfo(std::string message, SrcInfo const& source) : source(source), message(std::move(message)), timestamp(time::sysTime()) {
 	system = SysInfo::make();
-	if (auto engine = Services::locate<Engine>(false)) {
+	if (auto engine = Services::find<Engine>()) {
 		auto const& stats = engine->stats();
 		upTime = stats.upTime;
 		frameCount = stats.frame.count;
@@ -61,7 +61,7 @@ std::string ErrInfo::json() const {
 	return json.to_string(opts);
 }
 
-bool ErrInfo::writeToFile(io::Path const& path) const { return io::FileReader::write(path, json()); }
+bool ErrInfo::writeToFile(io::Path const& path) const { return io::FSMedia{}.write(path, json()); }
 
 OnError const* g_onEnsureFail{};
 

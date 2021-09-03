@@ -29,7 +29,7 @@ struct Panes {
 Panes g_panes;
 
 void Panes::showStats() const {
-	if (auto eng = Services::locate<Engine>()) {
+	if (auto eng = Services::get<Engine>()) {
 		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats), false)) {
 			auto const& s = eng->stats();
 			auto t = Text(fmt::format("FPS: {}", s.frame.rate));
@@ -45,7 +45,7 @@ void Panes::showStats() const {
 			t = Text(fmt::format("Swapchain: {}x{}", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
 			t = Text(fmt::format("Renderer: {}x{}", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
 			Styler st(Style::eSeparator);
-			auto& renderer = Services::locate<Engine>()->gfx().context.renderer();
+			auto& renderer = Services::get<Engine>()->gfx().context.renderer();
 			f32 rs = renderer.renderScale();
 			TWidget<f32> rsw("Render Scale", rs, 0.03f, 75.0f, {0.5f, 4.0f});
 			renderer.renderScale(rs);
@@ -55,7 +55,7 @@ void Panes::showStats() const {
 
 template <typename T>
 void Panes::showProfiler() const {
-	if (auto profiler = Services::locate<T>(false)) {
+	if (auto profiler = Services::find<T>()) {
 		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler), false)) {
 			auto const& record = profiler->m_record.back();
 			Time_s const total = record.total;
@@ -85,11 +85,11 @@ MainMenu::MainMenu() {
 #if defined(LEVK_USE_IMGUI)
 	MenuList::Tree main;
 	main.m_t.id = "File";
-	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::locate<Engine>()->gfx().imgui.m_showDemo = true; }};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui.m_showDemo = true; }};
 	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
-	MenuList::Menu close{"Close Editor", []() { Services::locate<Engine>()->editor().engage(false); }, true};
-	MenuList::Menu quit{"Quit", []() { Services::locate<Engine>()->window().close(); }};
+	MenuList::Menu close{"Close Editor", []() { Services::get<Engine>()->editor().engage(false); }, true};
+	MenuList::Menu quit{"Quit", []() { Services::get<Engine>()->window().close(); }};
 	main.push_front(quit);
 	main.push_front(close);
 	main.push_front(imDemo);

@@ -64,9 +64,9 @@ class Engine : public Service<Engine> {
 
 	static Version version() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
-	static auto profile(std::string_view name) { return Services::locate<Profiler>()->profile(name); }
+	static auto profile(std::string_view name) { return Services::get<Profiler>()->profile(name); }
 
-	Engine(CreateInfo const& info, io::Reader const* custom = {});
+	Engine(CreateInfo const& info, io::Media const* custom = {});
 	~Engine();
 
 	bool bootReady() const noexcept { return m_win.has_value(); }

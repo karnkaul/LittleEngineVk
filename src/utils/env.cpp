@@ -1,6 +1,6 @@
 #include <iostream>
 #include <sstream>
-#include <core/io/reader.hpp>
+#include <core/io/fs_media.hpp>
 #include <core/os.hpp>
 #include <core/span.hpp>
 #include <core/utils/data_store.hpp>
@@ -123,7 +123,7 @@ clap::parse_result env::init(int argc, char const* const argv[]) {
 }
 
 std::optional<io::Path> env::findData(io::Path pattern, u8 maxHeight) {
-	auto data = io::FileReader::findUpwards(os::environment().paths.bin(), pattern, maxHeight);
+	auto data = io::FSMedia::findUpwards(os::environment().paths.bin(), pattern, maxHeight);
 	if (!data) { return std::nullopt; }
 	return std::move(data).value();
 }

@@ -35,7 +35,7 @@ void Collision::Data::push_back(ID id, Rect rect, glm::vec3 pos, CFlags flags) {
 	cflags.push_back(flags);
 	onCollides.emplace_back();
 	Prop prop;
-	if (auto store = Services::locate<AssetStore>(false)) {
+	if (auto store = Services::find<AssetStore>()) {
 		if (auto mesh = store->find<graphics::Mesh>("wireframes/cube")) {
 			prop.mesh = &*mesh;
 			prop.material.Tf = colours::green;

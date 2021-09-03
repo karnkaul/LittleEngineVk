@@ -23,7 +23,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
 namespace le::graphics {
 // global for Device to temporarily disable (to suppress spam on Windows)
-dl::level g_validationLevel = dl::level::warning;
+dl::level g_validationLevel = dl::level::warn;
 
 namespace {
 
@@ -52,7 +52,7 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 		ensure(!ret, "Validation error");
 		return ret;
 	}
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warning, 1, msg); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warn, 1, msg); break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: validationLog(lvl::debug, 2, msg); break;
 	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: validationLog(lvl::info, 1, msg); break;
@@ -98,7 +98,7 @@ Instance::Instance(CreateInfo const& info) {
 		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, validation == Validation::eOn ? "on" : "off");
 	}
 	if (validation == Validation::eOn) {
-		if (!findLayer(layerProps, szValidationLayer, dl::level::warning)) {
+		if (!findLayer(layerProps, szValidationLayer, dl::level::warn)) {
 			ensure(false, "Validation layers requested but not present!");
 		} else {
 			requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

@@ -473,7 +473,7 @@ class App : public input::Receiver, public SceneRegistry {
 				return false;
 			}
 		};
-		if (auto inspector = Services::locate<edi::Inspector>(false)) {
+		if (auto inspector = Services::find<edi::Inspector>()) {
 			inspector->attach<GFreeCam>();
 			inspector->attach<GPlayerController>();
 			inspector->attach<GSpringArm>();
@@ -761,13 +761,13 @@ bool package(io::Path const& binary, bool clean) {
 	return openFilesystemPath(binary);
 }
 
-bool run(io::Reader const& reader) {
+bool run(io::Media const& media) {
 	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
 	Engine::CreateInfo eci;
 	eci.winInfo.config.title = "levk demo";
 	eci.winInfo.config.size = {1280, 720};
 	eci.winInfo.options.centreCursor = true;
-	Engine engine(eci, &reader);
+	Engine engine(eci, &media);
 	if (!engine.bootReady()) { return false; }
 	Flags flags;
 	FlagsInput flagsInput(flags);

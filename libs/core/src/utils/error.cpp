@@ -21,11 +21,19 @@ std::string_view shortPath(std::string_view path) noexcept {
 }
 } // namespace
 
+void utils::OnError::unsetActive(bool force) noexcept {
+	if (force || isActive()) { s_active = {}; }
+}
+
+void utils::OnError::dispatch(std::string_view message, SrcInfo const& source) {
+	if (s_active) { (*s_active)(message, source); }
+}
+
 void utils::error(std::string msg, char const* fl, char const* fn, int ln) {
 	auto const sp = shortPath(fl);
 	logE("Error{} {}\n\t{}:{} [{}]", msg.empty() ? "" : ":", msg, sp, ln, fn);
 	if (os::debugging()) { os::debugBreak(); }
-	if (g_onError) { (*g_onError)(msg, {fn, sp, ln}); }
+	OnError::dispatch(msg, {fn, sp, ln});
 	throw Error(msg);
 }
 } // namespace le

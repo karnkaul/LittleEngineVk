@@ -799,6 +799,7 @@ bool run(io::Media const& media) {
 			app.tick(++dt);
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				app.sched().enqueue([]() { ensure(false, "test"); });
+				app.sched().enqueue([]() { ensure(false, "test2"); });
 				flags.reset(Flag::eDebug0);
 				/*bf = async(&package, "out/autobuild", false);
 				bf.then([](bool built) {

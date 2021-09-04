@@ -1,6 +1,7 @@
 #include <map>
 #include <core/maths.hpp>
 #include <core/utils/data_store.hpp>
+#include <core/utils/sys_info.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
@@ -76,9 +77,11 @@ struct SwapchainCreateInfo {
 		if (auto forceVsync = DataObject<Vsync>("vsync")) { presentModes.insert(info.vsync.begin(), *forceVsync); }
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
 		g_log.log(lvl::info, 0, "[{}] {} ({} present mode) selected", g_name, vsyncNames[vsyncModes[presentMode]], presentModeNames[presentMode]);
+		DataStore::getOrSet<utils::SysInfo>("sys_info").presentMode = presentModeNames[presentMode];
 		if (capabilities.maxImageCount == 0) { capabilities.maxImageCount = 8U; }
 		imageCount = std::clamp(3U, capabilities.minImageCount, capabilities.maxImageCount);
 		g_log.log(lvl::debug, 1, "[{}] Using [{}] swapchain images", g_name, imageCount);
+		DataStore::getOrSet<utils::SysInfo>("sys_info").swapchainImages = imageCount;
 		using vCAFB = vk::CompositeAlphaFlagBitsKHR;
 		vkFlagGetter<vCAFB> alpha{capabilities.supportedCompositeAlpha, vCAFB::eOpaque};
 		compositeAlpha = alpha(vCAFB::eInherit, vCAFB::ePreMultiplied, vCAFB::ePostMultiplied);

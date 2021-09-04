@@ -106,11 +106,6 @@ struct JsonHelper {
 	}
 
 	template <typename T>
-	dj::json to(std::vector<T> const& t) const {
-		return Jsonify<std::vector<T>>{}(t);
-	}
-
-	template <typename T>
 	T to(dj::json const& json) const {
 		return Jsonify<T>{}(json);
 	}

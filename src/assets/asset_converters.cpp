@@ -31,7 +31,7 @@ dj::json Jsonify<BitmapFontInfo>::operator()(BitmapFontInfo const& info) const {
 	insert(ret, "size", info.sizePt);
 	dj::json glyphs;
 	for (auto const& glyph : info.glyphs) {
-		char const ch = static_cast<char>(glyph.codePoint);
+		char const ch = static_cast<char>(glyph.codepoint);
 		glyphs.insert(std::string(1, ch), to(glyph));
 	}
 	return ret;
@@ -41,10 +41,10 @@ BitmapFontInfo Jsonify<BitmapFontInfo>::operator()(dj::json const& json) const {
 	BitmapFontInfo ret;
 	ret.atlasID = json.get_as<std::string>("sheetID");
 	set(ret.sizePt, json.get("size"));
-	for (auto const& [codePoint, glyph] : json.get_as<dj::map_t>("glyphs")) {
-		if (codePoint.size() == 1) {
+	for (auto const& [codepoint, glyph] : json.get_as<dj::map_t>("glyphs")) {
+		if (codepoint.size() == 1) {
 			ret.glyphs.push_back(to<graphics::Glyph>(*glyph));
-			ret.glyphs.back().codePoint = static_cast<u32>(codePoint[0]);
+			ret.glyphs.back().codepoint = static_cast<u32>(codepoint[0]);
 		}
 	}
 	return ret;

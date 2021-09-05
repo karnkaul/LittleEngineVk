@@ -33,10 +33,10 @@ bool GlyphPen::generate(Geometry& out_geometry, Glyph const& glyph) const {
 	return false;
 }
 
-glm::vec3 GlyphPen::advance(u32 codePoint, Geometry* out_geometry) {
-	if (codePoint == '\n') {
+glm::vec3 GlyphPen::advance(u32 codepoint, Geometry* out_geometry) {
+	if (codepoint == '\n') {
 		carriageReturn();
-	} else if (auto const& gl = glyph(codePoint); gl.valid()) {
+	} else if (auto const& gl = glyph(codepoint); gl.valid()) {
 		if (out_geometry) { generate(*out_geometry, gl); }
 		m_state.head.x += (f32)gl.advance * m_state.scale;
 		m_state.lineExtent.x = std::max(m_state.lineExtent.x, std::abs(m_state.head.x - m_state.orgX));

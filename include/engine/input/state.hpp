@@ -23,7 +23,7 @@ struct State {
 	Cursor cursor;
 	Span<Gamepad const> gamepads;
 	Span<Event::Cursor const> others;
-	Span<char const> text;
+	Span<u32 const> codepoints;
 	Focus focus = Focus::eUnchanged;
 	bool suspended = false;
 

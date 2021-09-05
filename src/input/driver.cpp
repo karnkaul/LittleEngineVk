@@ -44,7 +44,7 @@ Driver::Out Driver::update(In in, Viewport const& view, bool consume) noexcept {
 	copy(m_transient.released, st.keys, Action::eReleased);
 	st.cursor.screenPos = m_persistent.cursor;
 	st.others = m_transient.others;
-	st.text = m_transient.text;
+	st.codepoints = m_transient.codepoints;
 	st.suspended = m_persistent.suspended;
 	glm::vec2 wSize = {};
 	if (in.win) {
@@ -135,7 +135,7 @@ bool Driver::extract(Event const& event, State& out_state) noexcept {
 		return true;
 	}
 	case Event::Type::eText: {
-		if (m_transient.text.has_space()) { m_transient.text.push_back(event.payload.text); }
+		if (m_transient.codepoints.has_space()) { m_transient.codepoints.push_back(event.payload.codepoint); }
 		return true;
 	}
 	case Event::Type::eFocus: {

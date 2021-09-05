@@ -13,7 +13,7 @@ class GlyphPen {
 
 	bool generate(Geometry& out_geometry, Glyph const& glyph) const;
 
-	glm::vec3 advance(u32 codePoint, Geometry* out = {});
+	glm::vec3 advance(u32 codepoint, Geometry* out = {});
 	glm::vec3 carriageReturn(bool nextLine = true) noexcept;
 	glm::vec3 writeLine(std::string_view line, Geometry* out = {});
 	glm::vec3 write(std::string_view text, glm::vec2 align = {}, Geometry* out = {});
@@ -23,7 +23,7 @@ class GlyphPen {
 	void reset(glm::vec3 pos) noexcept;
 	void reset(RGBA colour) noexcept { m_state.colour = colour; }
 
-	Glyph const& glyph(u32 codePoint) const noexcept { return m_glyphs->glyph(codePoint); }
+	Glyph const& glyph(u32 codepoint) const noexcept { return m_glyphs->glyph(codepoint); }
 	glm::vec3 head() const noexcept { return m_state.head; }
 	f32 scale() const noexcept { return m_state.scale; }
 	u32 lineCount() const noexcept { return m_state.lineCount; }

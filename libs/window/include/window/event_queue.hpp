@@ -33,7 +33,7 @@ struct Event {
 		Resize resize;
 		Input input;
 		Cursor cursor;
-		char text;
+		u32 codepoint;
 		bool set;
 	};
 

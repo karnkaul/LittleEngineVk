@@ -466,7 +466,7 @@ void Instance::Impl::onText(GLFWwindow* win, u32 codepoint) {
 		auto& inst = *it->second;
 		Event event;
 		event.type = Event::Type::eText;
-		event.payload.text = static_cast<char>(codepoint);
+		event.payload.codepoint = codepoint;
 		inst.m_events.m_events.push_back(event);
 	}
 }

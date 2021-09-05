@@ -38,7 +38,7 @@ class Driver {
 	struct {
 		ktl::fixed_vector<Gamepad, 8> gamepads;
 		ktl::fixed_vector<Event::Cursor, 8> others;
-		ktl::fixed_vector<char, 4> text;
+		ktl::fixed_vector<u32, 4> codepoints;
 		KeySet pressed;
 		KeySet released;
 	} m_transient;

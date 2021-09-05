@@ -153,8 +153,7 @@ RefTreeNode<T, Base>::~RefTreeNode() {
 }
 template <typename T, typename Base>
 T& RefTreeNode<T, Base>::parent(not_null<Root*> parent) noexcept {
-	ensure(parent.get() != this, "Setting parent to self!");
-	if (parent.get() != this && m_parent != parent) {
+	if (parent != this && m_parent != parent) {
 		m_parent->removeChild(cast(this));
 		m_parent = parent;
 		parent->addChild(cast(this));

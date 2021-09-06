@@ -30,8 +30,10 @@ class Text : public TreeNode {
 
 	void write();
 
-	TextMesh m_text;
+	graphics::Mesh m_mesh;
+	TextGen m_gen;
 	std::string m_str;
+	mutable Prop m_prop;
 	not_null<BitmapFont const*> m_font;
 	bool m_dirty = false;
 };
@@ -44,22 +46,22 @@ inline Text& Text::set(std::string str) {
 	return *this;
 }
 inline Text& Text::size(Size size) {
-	m_text.size = size;
+	m_gen.size = size;
 	m_dirty = true;
 	return *this;
 }
 inline Text& Text::colour(graphics::RGBA colour) {
-	m_text.colour = colour;
+	m_gen.colour = colour;
 	m_dirty = true;
 	return *this;
 }
 inline Text& Text::position(glm::vec2 position) {
-	m_text.position = {position, m_zIndex};
+	m_gen.position = {position, m_zIndex};
 	m_dirty = true;
 	return *this;
 }
 inline Text& Text::align(glm::vec2 align) {
-	m_text.align = align;
+	m_gen.align = align;
 	m_dirty = true;
 	return *this;
 }

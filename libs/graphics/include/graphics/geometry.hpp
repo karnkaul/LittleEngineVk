@@ -46,6 +46,14 @@ struct Geom {
 	Geom& addIndices(Span<u32 const> newIndices);
 	Geom& autoIndex(Topology topology, u32 loopback = 0);
 	Geom& offset(glm::vec3 offset) noexcept;
+	Geom& append(Geom const& in);
+
+	template <typename... T>
+		requires((sizeof...(T) > 1) && (std::is_same_v<T, Geometry> && ...))
+	Geom& append(T const&... src) {
+		(append(src), ...);
+		return *this;
+	}
 
 	std::vector<glm::vec3> positions() const;
 };
@@ -73,11 +81,6 @@ Geometry makeCone(f32 diam = 1.0f, f32 height = 1.0f, u16 points = 32, GeomInfo 
 Geometry makeCube(f32 side = 1.0f, GeomInfo const& info = {}, Topology topo = Topology::eTriangleList);
 Geometry makeCubedSphere(f32 diameter = 1.0f, u8 quadsPerSide = 8, GeomInfo const& info = {});
 Geometry makeRoundedQuad(glm::vec2 size = {1.0f, 1.0f}, f32 radius = 0.25f, u16 points = 32, GeomInfo const& info = {});
-
-void append(Geometry& out_dst, Geometry const& in);
-template <typename... T>
-	requires((sizeof...(T) > 1) && (std::is_same_v<T, Geometry> && ...))
-void append(Geometry& out_dst, T const&... src) { (append(out_dst, src), ...); }
 
 struct IndexStitcher {
 	std::vector<u32>& indices;
@@ -137,6 +140,16 @@ Geom<V>& Geom<V>::autoIndex(Topology topology, u32 loopback) {
 template <VertType V>
 Geom<V>& Geom<V>::offset(glm::vec3 offset) noexcept {
 	for (Vert<V>& vert : vertices) { vert.position += offset; }
+	return *this;
+}
+
+template <VertType V>
+Geom<V>& Geom<V>::append(Geom const& in) {
+	vertices.reserve(vertices.size() + in.vertices.size());
+	indices.reserve(indices.size() + in.indices.size());
+	u32 offset = (u32)vertices.size();
+	std::copy(in.vertices.begin(), in.vertices.end(), std::back_inserter(vertices));
+	for (u32 const index : in.indices) { indices.push_back(index + offset); }
 	return *this;
 }
 } // namespace le::graphics

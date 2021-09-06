@@ -95,7 +95,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 
 void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_inputFrame); }
 
-void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }
+void Engine::pushReceiver(not_null<input::Receiver*> context) { context->pushSelf(m_receivers); }
 
 bool Engine::drawReady() {
 	if (bootReady() && m_gfx) {

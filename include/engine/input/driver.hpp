@@ -41,6 +41,7 @@ class Driver {
 		ktl::fixed_vector<u32, 4> codepoints;
 		KeySet pressed;
 		KeySet released;
+		KeySet repeated;
 	} m_transient;
 
 	struct {

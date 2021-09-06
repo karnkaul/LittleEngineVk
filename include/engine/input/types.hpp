@@ -9,9 +9,10 @@ class Instance;
 }
 
 namespace le::input {
-enum class Action : u8 { ePressed, eHeld, eReleased };
+enum class Action : u8 { ePressed, eHeld, eReleased, eRepeated };
 using Actions = ktl::enum_flags<Action, u8>;
-constexpr Actions actions_all = Actions(Action::ePressed, Action::eHeld, Action::eReleased);
+constexpr Actions actions_main = Actions(Action::ePressed, Action::eHeld, Action::eReleased);
+constexpr Actions actions_all = Actions(Action::ePressed, Action::eHeld, Action::eReleased, Action::eRepeated);
 
 enum class Focus { eUnchanged, eGained, eLost };
 using Gamepad = window::Gamepad;

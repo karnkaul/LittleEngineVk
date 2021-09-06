@@ -33,6 +33,7 @@
 #include <fstream>
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
+#include <engine/input/cursor_text.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
 #include <ktl/async.hpp>
@@ -503,12 +504,14 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& collision = coll.get<Collision>();
 		m_data.collision = coll;
 
-		m_data.text = BitmapText(&*font, &vram);
-		m_data.text.mesh().size = 80U;
-		m_data.text.mesh().colour = colours::yellow;
-		m_data.text.mesh().position = {0.0f, 200.0f, 0.0f};
-		// m_data.text.text.align = {-0.5f, 0.5f};
-		m_data.text.set("Hi!\nThere#");
+		m_data.text = input::CursorText(&*font, &vram);
+		m_data.text->gen().size = 80U;
+		m_data.text->gen().colour = colours::yellow;
+		m_data.text->gen().position = {0.0f, 200.0f, 0.0f};
+		// m_data.text->text.align = {-0.5f, 0.5f};
+		m_data.text->set("Hi\nThere!");
+		// m_data.text->set("Hello!");
+		m_data.text->deactivate();
 
 		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
@@ -533,7 +536,7 @@ class App : public input::Receiver, public SceneRegistry {
 		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
 		gui::Dialogue::CreateInfo gdci;
 		gdci.header.text = "Dialogue";
-		gdci.content.text = "Content goes here";
+		gdci.content.text = "Content\ngoes\nhere";
 		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", &font.get(), gdci);
 		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
 		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
@@ -578,8 +581,12 @@ class App : public input::Receiver, public SceneRegistry {
 			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
 			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
 		}
-		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
-		{ spawnProp<BitmapText>("text_2d", m_data.text, "layers/ui"); }
+		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text->prop(*font)); }
+		{
+			auto ent = spawnProp<input::CursorText>("text_2d", *m_data.text, "layers/ui");
+			m_data.entities["text_2d"] = ent;
+			m_eng->pushReceiver(&*m_data.text);
+		}
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
@@ -626,11 +633,18 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
+		if (auto text = m_registry.find<PropProvider>(m_data.entities["text_2d"])) {
+			// m_data.text->update(m_eng->inputFrame().state);
+			*text = PropProvider::make(*m_data.text);
+			if (!m_data.text->listening() && m_eng->inputFrame().state.pressed(input::Key::eEnter)) { m_eng->pushReceiver(&*m_data.text); }
+		}
+
 		update();
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
 			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (m_registry.empty()) { init1(); }
+			ensure(m_registry.contains(m_data.entities["text_2d"]));
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
@@ -679,7 +693,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct Data {
 		std::unordered_map<Hash, decf::entity> entities;
 
-		BitmapText text;
+		std::optional<input::CursorText> text;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 

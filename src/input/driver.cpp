@@ -42,6 +42,7 @@ Driver::Out Driver::update(In in, Viewport const& view, bool consume) noexcept {
 	copy(m_transient.pressed, st.keys, Action::ePressed);
 	copy(m_persistent.held, st.keys, Action::eHeld);
 	copy(m_transient.released, st.keys, Action::eReleased);
+	copy(m_transient.repeated, st.keys, Action::eRepeated);
 	st.cursor.screenPos = m_persistent.cursor;
 	st.others = m_transient.others;
 	st.codepoints = m_transient.codepoints;
@@ -110,12 +111,21 @@ bool Driver::extract(Event const& event, State& out_state) noexcept {
 	case Event::Type::eInput: {
 		Event::Input const& input = event.payload.input;
 		if (input.key != Key::eUnknown) {
-			if (input.action == window::Action::ePress) {
+			switch (input.action) {
+			case window::Action::ePress: {
 				m_transient.pressed.insert(input.key, input.mods);
 				m_persistent.held.erase(input.key);
-			} else if (input.action == window::Action::eRelease) {
+				break;
+			}
+			case window::Action::eRelease: {
 				m_transient.released.insert(input.key, input.mods);
 				m_persistent.held.erase(input.key);
+				break;
+			}
+			case window::Action::eRepeat: {
+				m_transient.repeated.insert(input.key, input.mods);
+				break;
+			}
 			}
 			return true;
 		}

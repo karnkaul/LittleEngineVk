@@ -5,6 +5,7 @@ Widget::Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, Hash 
 	m_style = Styles::get(style).widget;
 	m_rect.size = {50.0f, 50.0f};
 	m_text = &push<Text>(font);
+	m_text->size(m_style.text.base.size);
 }
 
 Widget::Status Widget::status(input::State const& state) const noexcept {

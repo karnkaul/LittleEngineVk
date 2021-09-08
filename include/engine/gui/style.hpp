@@ -26,7 +26,6 @@ struct BaseStyle {
 
 struct WidgetStyle {
 	InteractStyle<Material> quad = defaultQuadInteractStyle();
-	InteractStyle<TextStyle> text;
 };
 
 struct Style {

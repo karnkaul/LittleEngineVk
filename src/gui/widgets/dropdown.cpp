@@ -27,7 +27,8 @@ bool Dropdown::itemPad(std::string& out_text, std::size_t index) const noexcept 
 
 void Dropdown::init(CreateInfoBase info) {
 	m_selected = info.selected;
-	m_style.text.base.size = info.textSize;
+	m_style.base.text.size = info.textSize;
+	m_text->size(m_style.base.text.size);
 	m_rect.size = info.size;
 	m_textColours = info.textColours;
 	m_cover = &push<Quad>(false);
@@ -37,11 +38,11 @@ void Dropdown::init(CreateInfoBase info) {
 	m_arrow = &m_cover->push<Shape>();
 	m_arrow->set(makeArrow(8.0f, info.coverColours.arrow));
 	info.flexbox.axis = Flexbox::Axis::eVert;
-	m_flexbox = &push<Flexbox>(m_font, std::move(info.flexbox));
+	m_flexbox = &push<Flexbox>(std::move(info.flexbox));
 	f32 const yOffset = m_rect.size.y * 0.5f + m_rect.size.y * 0.5f + 0.5f; // +0.5f to round to next pixel
 	m_flexbox->m_rect.anchor.offset = {0.0f, -yOffset};
 	m_flexbox->m_active = false;
-	m_onClickTk = onClick([this](Widget&) {
+	m_onClickTk = onClick([this]() {
 		if (!m_flexbox->m_active) {
 			expand();
 		} else {
@@ -53,22 +54,21 @@ void Dropdown::init(CreateInfoBase info) {
 	m_text->set(std::move(text));
 }
 
-void Dropdown::add(Widget& item, std::string_view text, std::size_t index) {
-	item.m_text->set(std::string(text));
+void Dropdown::add(Button& item, std::string_view text, std::size_t index) {
+	item.m_text->set(std::string(text)).size(m_style.base.text.size).colour(m_style.base.text.colour).align(m_style.base.text.align);
 	item.m_style = m_style;
-	m_entryTokens.push_back(item.onClick([this, index](Widget&) { select(index); }));
+	m_entryTokens.push_back(item.onClick([this, index]() { select(index); }));
 }
 
 void Dropdown::expand() {
 	m_flexbox->m_active = true;
-	m_style.text.base.colour = m_textColours.expanded;
+	m_text->colour(m_textColours.expanded);
 	refresh();
 }
 
 void Dropdown::collapse() {
 	m_flexbox->m_active = false;
-	m_style.text.base.colour = m_textColours.collapsed;
-	m_text->set(m_options[m_selected]);
+	m_text->colour(m_textColours.collapsed).set(m_options[m_selected]);
 	refresh();
 }
 

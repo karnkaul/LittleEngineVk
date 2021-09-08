@@ -1,10 +1,12 @@
 #pragma once
 #include <core/utils/enumerate.hpp>
 #include <engine/gui/shape.hpp>
+#include <engine/gui/text.hpp>
+#include <engine/gui/widgets/button.hpp>
 #include <engine/gui/widgets/flexbox.hpp>
 
 namespace le::gui {
-class Dropdown : public Widget {
+class Dropdown : public Button {
   public:
 	struct CreateInfoBase {
 		Flexbox::CreateInfo flexbox;
@@ -23,8 +25,8 @@ class Dropdown : public Widget {
 		Hash style;
 	};
 
-	template <typename T = Widget>
-		requires(std::is_base_of_v<Widget, T>)
+	template <typename T = Button>
+		requires(std::is_base_of_v<Button, T>)
 	struct CreateInfo : CreateInfoBase {};
 
 	struct Select {
@@ -34,14 +36,14 @@ class Dropdown : public Widget {
 
 	using OnSelect = Delegate<Dropdown&, Select>;
 
-	template <typename T = Widget, typename... Args>
+	template <typename T = Button, typename... Args>
 	Dropdown(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo<T> info, Args&&... args) noexcept
-		: Widget(root, font, info.style), m_options(std::move(info.options)) {
+		: Button(root, font, info.style), m_options(std::move(info.options)) {
 		if (!m_options.empty()) {
 			ensure(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
 			for (auto [entry, index] : utils::enumerate(m_options)) {
-				add(m_flexbox->add<T>(m_rect.size, itemPad(entry, index), std::forward<Args>(args)...), entry, index);
+				add(m_flexbox->add<T>(m_rect.size, itemPad(entry, index), m_text->m_font, std::forward<Args>(args)...), entry, index);
 			}
 			refresh();
 		}
@@ -57,7 +59,7 @@ class Dropdown : public Widget {
   private:
 	bool itemPad(std::string& out_org, std::size_t index) const noexcept;
 	void init(CreateInfoBase info);
-	void add(Widget& item, std::string_view text, std::size_t index);
+	void add(Button& item, std::string_view text, std::size_t index);
 	void expand();
 	void collapse();
 	void select(std::size_t index);

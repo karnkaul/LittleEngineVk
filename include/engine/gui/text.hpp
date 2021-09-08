@@ -23,18 +23,17 @@ class Text : public TreeNode {
 	Text& font(not_null<BitmapFont const*> font);
 	BitmapFont const* font() const noexcept { return m_font; }
 
-	Span<Prop const> props() const noexcept override;
+	Span<Prop const> props() const noexcept override { return m_mesh.props(); }
+
+	not_null<BitmapFont const*> m_font;
 
   private:
 	void onUpdate(input::Space const& space) override;
 
 	void write();
 
-	graphics::Mesh m_mesh;
-	TextGen m_gen;
+	TextMesh m_mesh;
 	std::string m_str;
-	mutable Prop m_prop;
-	not_null<BitmapFont const*> m_font;
 	bool m_dirty = false;
 };
 
@@ -46,22 +45,22 @@ inline Text& Text::set(std::string str) {
 	return *this;
 }
 inline Text& Text::size(Size size) {
-	m_gen.size = size;
+	m_mesh.gen.size = size;
 	m_dirty = true;
 	return *this;
 }
 inline Text& Text::colour(graphics::RGBA colour) {
-	m_gen.colour = colour;
+	m_mesh.gen.colour = colour;
 	m_dirty = true;
 	return *this;
 }
 inline Text& Text::position(glm::vec2 position) {
-	m_gen.position = {position, m_zIndex};
+	m_mesh.gen.position = {position, m_zIndex};
 	m_dirty = true;
 	return *this;
 }
 inline Text& Text::align(glm::vec2 align) {
-	m_gen.align = align;
+	m_mesh.gen.align = align;
 	m_dirty = true;
 	return *this;
 }

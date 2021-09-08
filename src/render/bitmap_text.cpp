@@ -19,7 +19,7 @@ Prop TextGen::prop(graphics::Mesh const& mesh, graphics::Texture const& atlas) {
 
 BitmapText::BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram, Type type) : m_mesh(vram, type), m_font(font) {}
 
-bool BitmapText::set(std::string_view text) { return m_mesh.construct(m_gen(m_font->atlasSize(), m_font->glyphs(), text)); }
+void BitmapText::set(std::string_view text) { m_mesh.construct(m_gen(m_font->atlasSize(), m_font->glyphs(), text)); }
 
 Span<Prop const> BitmapText::props() const {
 	m_prop = m_gen.prop(m_mesh, m_font->atlas());

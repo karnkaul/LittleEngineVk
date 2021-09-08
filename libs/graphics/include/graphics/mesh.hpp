@@ -23,9 +23,9 @@ class Mesh {
 	virtual ~Mesh();
 
 	template <typename T = glm::vec3>
-	bool construct(Span<T const> vertices, Span<u32 const> indices);
+	void construct(Span<T const> vertices, Span<u32 const> indices);
 	template <VertType V>
-	bool construct(Geom<V> const& geom);
+	void construct(Geom<V> const& geom);
 	bool draw(CommandBuffer cb, u32 instances = 1, u32 first = 0) const;
 
 	bool valid() const noexcept;
@@ -61,22 +61,20 @@ class Mesh {
 // impl
 
 template <typename T>
-bool Mesh::construct(Span<T const> vertices, Span<u32 const> indices) {
+void Mesh::construct(Span<T const> vertices, Span<u32 const> indices) {
+	destroy();
 	if (!vertices.empty()) {
-		destroy();
 		m_vbo = construct(vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));
 		if (!indices.empty()) { m_ibo = construct(vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32)); }
 		m_vbo.count = (u32)vertices.size();
 		m_ibo.count = (u32)indices.size();
 		m_triCount = indices.empty() ? u32(vertices.size() / 3) : u32(indices.size() / 3);
-		return true;
 	}
-	return false;
 }
 
 template <VertType V>
-bool Mesh::construct(Geom<V> const& geom) {
-	return construct<Vert<V>>(geom.vertices, geom.indices);
+void Mesh::construct(Geom<V> const& geom) {
+	construct<Vert<V>>(geom.vertices, geom.indices);
 }
 
 inline Mesh::Data Mesh::vbo() const noexcept { return {*m_vbo.buffer, m_vbo.count}; }

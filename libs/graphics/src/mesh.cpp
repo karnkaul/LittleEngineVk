@@ -34,8 +34,7 @@ Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size
 
 bool Mesh::draw(CommandBuffer cb, u32 instances, u32 first) const {
 	if (valid()) {
-		Buffer const* ibo = m_ibo.buffer.has_value() ? &*m_ibo.buffer : nullptr;
-		cb.bindVBO(*m_vbo.buffer, ibo);
+		cb.bindVBO(*m_vbo.buffer, m_ibo.buffer.has_value() ? &*m_ibo.buffer : nullptr);
 		if (hasIndices()) {
 			cb.drawIndexed(m_ibo.count, instances, first);
 		} else {

@@ -33,7 +33,7 @@ class BitmapText {
 
 	BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram, Type type = Type::eDynamic);
 
-	virtual bool set(std::string_view text);
+	virtual void set(std::string_view text);
 	virtual Span<Prop const> props() const;
 	TextGen& gen() noexcept { return m_gen; }
 

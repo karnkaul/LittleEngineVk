@@ -15,12 +15,9 @@ struct Glyph {
 	u32 advance{};
 	u32 codepoint{};
 
-	static constexpr glm::uvec2 bounds(Span<Glyph const> glyphs) noexcept;
-	template <typename Map>
-	static constexpr glm::uvec2 bounds(Map const& glyphs) noexcept;
-
 	constexpr bool valid() const noexcept { return codepoint > 0; }
 	constexpr glm::uvec2 maxBounds(glm::uvec2 rhs) const noexcept;
+	constexpr u32 maxHeight(u32 rhs) const noexcept;
 
 	template <typename T = char>
 	constexpr T to() const noexcept {
@@ -37,7 +34,7 @@ class GlyphMap {
 
 	Map const& map() const noexcept { return m_glyphs; }
 	glm::uvec2 bounds() const noexcept { return m_bounds; }
-	f32 lineHeight(f32 scale) const noexcept { return static_cast<f32>(m_bounds.y) * scale; }
+	f32 lineHeight(f32 scale) const noexcept { return static_cast<f32>(m_maxHeight) * scale; }
 	Glyph const& glyph(u32 codepoint) const noexcept;
 
 	Glyph& operator[](u32 codepoint) { return m_glyphs[codepoint]; }
@@ -47,6 +44,7 @@ class GlyphMap {
   private:
 	Map m_glyphs;
 	glm::uvec2 m_bounds{};
+	u32 m_maxHeight{};
 };
 
 // impl
@@ -60,16 +58,12 @@ constexpr glm::uvec2 Glyph::maxBounds(glm::uvec2 rhs) const noexcept {
 	return ret;
 }
 
-constexpr glm::uvec2 Glyph::bounds(Span<Glyph const> glyphs) noexcept {
-	glm::uvec2 ret{};
-	for (Glyph const& glyph : glyphs) { ret = glyph.maxBounds(ret); }
-	return ret;
-}
-
-template <typename Map>
-constexpr glm::uvec2 Glyph::bounds(Map const& glyphs) noexcept {
-	glm::uvec2 ret{};
-	for (auto const& [_, glyph] : glyphs) { ret = glyph.maxBounds(ret); }
+constexpr u32 Glyph::maxHeight(u32 rhs) const noexcept {
+	u32 ret = rhs;
+	if (valid()) {
+		u32 const height = u32(maths::abs(origin.y));
+		if (height > ret) { ret = height; }
+	}
 	return ret;
 }
 
@@ -78,6 +72,7 @@ inline GlyphMap::GlyphMap(Span<Glyph const> glyphs) noexcept {
 		if (glyph.valid()) {
 			m_glyphs[glyph.codepoint] = glyph;
 			m_bounds = glyph.maxBounds(m_bounds);
+			m_maxHeight = glyph.maxHeight(m_maxHeight);
 		}
 	}
 }
@@ -92,6 +87,7 @@ inline bool GlyphMap::add(u32 codepoint, Glyph const& glyph) {
 	if (glyph.valid()) {
 		m_glyphs.insert_or_assign(codepoint, glyph);
 		m_bounds = glyph.maxBounds(m_bounds);
+		m_maxHeight = glyph.maxHeight(m_maxHeight);
 		return true;
 	}
 	return false;
@@ -99,6 +95,9 @@ inline bool GlyphMap::add(u32 codepoint, Glyph const& glyph) {
 
 inline void GlyphMap::remove(u32 codepoint) noexcept {
 	m_glyphs.erase(codepoint);
-	m_bounds = Glyph::bounds(m_glyphs);
+	for (auto const& [_, glyph] : m_glyphs) {
+		m_bounds = glyph.maxBounds(m_bounds);
+		m_maxHeight = glyph.maxHeight(m_maxHeight);
+	}
 }
 } // namespace le::graphics

@@ -51,15 +51,13 @@ class GlyphPen {
 	glm::vec3 head() const noexcept { return m_state.head; }
 	glm::vec2 extent() const noexcept { return m_state.lineExtent; }
 	f32 scale() const noexcept { return m_state.scale; }
-
-	f32 m_linePad = 5.0f;
+	f32 lineHeight() const noexcept { return m_glyphs->lineHeight(m_state.scale); }
 
   private:
 	struct {
 		glm::vec3 head{};
 		glm::vec2 lineExtent{};
 		f32 scale = 1.0f;
-		f32 yBound{};
 		f32 advanced{};
 		f32 orgX{};
 		RGBA colour = colours::black;

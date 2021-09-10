@@ -107,7 +107,7 @@ class TextCursor {
 	TextGen m_gen;
 	Flags m_flags;
 	Time_s m_blinkRate = 500ms;
-	f32 m_alpha = 0.8f;
+	f32 m_alpha = 0.85f;
 
   private:
 	graphics::Mesh m_mesh;

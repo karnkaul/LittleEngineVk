@@ -6,12 +6,7 @@
 namespace le::gui {
 class InputField : public Widget, public input::Receiver {
   public:
-	struct CreateInfo {
-		glm::vec2 size = {200.0f, 50.0f};
-		f32 border = 5.0f;
-		bool active = false;
-		bool multiLine = false;
-	};
+	struct CreateInfo;
 
 	InputField(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info, Hash style = {});
 
@@ -25,20 +20,38 @@ class InputField : public Widget, public input::Receiver {
 
 	void setActive(bool active) noexcept;
 	InputField& align(glm::vec2 align) noexcept;
+	std::string_view text() const noexcept { return m_secret ? m_exposed : m_cursor.m_text; }
 
   protected:
 	TextMesh m_mesh;
 	input::TextCursor m_cursor;
 
   private:
+	void onUpdate(input::Space const& space) override;
+	void reposition() noexcept;
+
 	mutable ktl::fixed_vector<Prop, 4> m_props;
+	std::string m_exposed;
+	std::optional<Quad> m_outline;
+	f32 m_offsetX{};
+	bool m_secret{};
+};
+
+struct InputField::CreateInfo {
+	glm::vec2 size = {200.0f, 50.0f};
+	f32 border = 5.0f;
+	f32 offsetX = 10.0f;
+	f32 alpha = 0.85f;
+	bool active = false;
+	bool multiLine = false;
+	bool secret = false;
 };
 
 // impl
 
 inline InputField& InputField::align(glm::vec2 align) noexcept {
 	m_cursor.m_gen.align = align;
-	m_cursor.m_gen.position = {m_rect.size * m_cursor.m_gen.align, m_zIndex};
+	reposition();
 	m_cursor.refresh();
 	return *this;
 }

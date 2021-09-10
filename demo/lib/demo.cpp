@@ -538,6 +538,7 @@ class App : public input::Receiver, public SceneRegistry {
 		gdci.content.text = "Content\ngoes\nhere";
 		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", &font.get(), gdci);
 		gui::InputField::CreateInfo info;
+		// info.secret = true;
 		auto& in = dialogue.push<gui::InputField>(&font.get(), info);
 		in.align({-0.5f, 0.0f});
 		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));

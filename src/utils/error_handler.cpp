@@ -57,7 +57,9 @@ ErrorHandler::~ErrorHandler() {
 		opts.sort_keys = opts.pretty = true;
 		m_list.errors.mutex.unlock();
 		if (io::FSMedia{}.write(m_path, io::toJson(m_list).to_string(opts))) { logI("Errors saved to [{}]", m_path.generic_string()); }
+		return;
 	}
+	m_list.errors.mutex.unlock();
 }
 
 bool ErrorHandler::fileExists() const { return stdfs::exists(m_path.generic_string()); }

@@ -5,7 +5,7 @@
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
-struct PhysicalDevice final {
+struct PhysicalDevice {
 	vk::PhysicalDevice device;
 	vk::PhysicalDeviceProperties properties;
 	vk::PhysicalDeviceFeatures features;

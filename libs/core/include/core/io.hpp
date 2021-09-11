@@ -9,13 +9,12 @@ class Service final {
   public:
 	Service() = default;
 	Service(Path logFilePath);
-	Service(Service&&) noexcept;
-	Service& operator=(Service&&) noexcept;
+	Service(Service&& rhs) noexcept { exchg(*this, rhs); }
+	Service& operator=(Service rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Service();
+	static void exchg(Service& lhs, Service& rhs) noexcept;
 
   private:
-	void destroy();
-
-	bool m_bActive = false;
+	bool m_active{};
 };
 } // namespace le::io

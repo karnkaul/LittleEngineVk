@@ -6,7 +6,7 @@
 #include <graphics/utils/layout_state.hpp>
 
 namespace le::graphics {
-class Device final {
+class Device final : public Pinned {
   public:
 	template <typename T>
 	using vAP = vk::ArrayProxy<T const> const&;

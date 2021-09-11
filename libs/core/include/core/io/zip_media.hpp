@@ -7,14 +7,9 @@ namespace le::io {
 ///
 /// Depends on active ZIPFS instance / service for member functions to be active
 ///
-class ZIPMedia final : public Media {
+class ZIPMedia final : public Media, public NoCopy {
   public:
 	static constexpr Info info_v = {"ZIP", Flag::eRead};
-
-	ZIPMedia() = default;
-	ZIPMedia(ZIPMedia&&) = default;
-	ZIPMedia& operator=(ZIPMedia&&) noexcept;
-	~ZIPMedia() noexcept override;
 
 	Info const& info() const noexcept override { return info_v; }
 
@@ -39,9 +34,21 @@ class ZIPMedia final : public Media {
 	std::optional<std::stringstream> sstream(Path const& uri) const override;
 
   private:
+	struct Zip {
+		Path path;
+
+		Zip(Path path);
+		Zip(Zip&& rhs) noexcept { exchg(*this, rhs); }
+		Zip& operator=(Zip rhs) noexcept { return (exchg(*this, rhs), *this); }
+		~Zip();
+		static void exchg(Zip& lhs, Zip& rhs) noexcept;
+
+		bool operator==(Zip const&) const = default;
+	};
+
 	std::optional<Path> findPrefixed(Path const& uri) const override;
 
-	std::vector<Path> m_zips;
+	std::vector<Zip> m_zips;
 };
 
 ///

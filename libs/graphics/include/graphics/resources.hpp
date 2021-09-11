@@ -28,7 +28,7 @@ struct QShare final {
 class Memory;
 class Resource {
   public:
-	enum class Type { eBuffer, eImage, eCOUNT_ };
+	enum class Kind { eBuffer, eImage, eCOUNT_ };
 
 	struct Data {
 		Alloc alloc;
@@ -42,19 +42,23 @@ class Resource {
 	Resource& operator=(Resource&&) = default;
 	virtual ~Resource() = default;
 
+	virtual Kind kind() const noexcept = 0;
 	Data const& data() const noexcept { return m_data; }
 
-  private:
-	void destroy();
-
   protected:
+	static void exchg(Resource& lhs, Resource& rhs) noexcept {
+		std::swap(lhs.m_data, rhs.m_data);
+		std::swap(lhs.m_memory, rhs.m_memory);
+	}
+
 	Data m_data;
 	not_null<Memory*> m_memory;
 
+  private:
 	friend class VRAM;
 };
 
-class Memory {
+class Memory : public Pinned {
   public:
 	template <typename T>
 	using vAP = vk::ArrayProxy<T const> const&;
@@ -73,7 +77,7 @@ class Memory {
 	Memory(not_null<Device*> device);
 	~Memory();
 
-	u64 bytes(Resource::Type type) const noexcept;
+	u64 bytes(Resource::Kind type) const noexcept;
 
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
@@ -89,7 +93,7 @@ class Memory {
 
   protected:
 	VmaAllocator m_allocator;
-	mutable EnumArray<Resource::Type, std::atomic<u64>> m_allocations;
+	mutable EnumArray<Resource::Kind, std::atomic<u64>> m_allocations;
 
 	friend class Buffer;
 	friend class Image;
@@ -101,12 +105,14 @@ class Buffer : public Resource {
 	struct CreateInfo;
 	struct Span;
 
-	static constexpr Resource::Type type = Resource::Type::eBuffer;
+	static constexpr Kind kind_v = Kind::eBuffer;
 
 	Buffer(not_null<Memory*> memory, CreateInfo const& info);
-	Buffer(Buffer&&);
-	Buffer& operator=(Buffer&&);
+	Buffer(Buffer&& rhs) noexcept : Resource(rhs.m_memory) { exchg(*this, rhs); }
+	Buffer& operator=(Buffer rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Buffer() override;
+
+	virtual Kind kind() const noexcept override { return kind_v; }
 
 	vk::Buffer buffer() const noexcept { return m_storage.buffer; }
 	vk::DeviceSize writeSize() const noexcept { return m_storage.writeSize; }
@@ -122,7 +128,7 @@ class Buffer : public Resource {
 	bool writeT(T const& t, vk::DeviceSize offset = 0);
 
   private:
-	void destroy();
+	static void exchg(Buffer& lhs, Buffer& rhs) noexcept;
 
   protected:
 	struct Storage {
@@ -147,12 +153,14 @@ class Image : public Resource {
   public:
 	struct CreateInfo;
 
-	static constexpr Resource::Type type = Resource::Type::eImage;
+	static constexpr Kind kind_v = Kind::eImage;
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
-	Image(Image&&);
-	Image& operator=(Image&&);
+	Image(Image&& rhs) noexcept : Resource(rhs.m_memory) { exchg(*this, rhs); }
+	Image& operator=(Image rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Image() override;
+
+	virtual Kind kind() const noexcept override { return kind_v; }
 
 	vk::Image image() const noexcept { return m_storage.image; }
 	vk::ImageView view() const noexcept { return m_storage.view; }
@@ -163,7 +171,7 @@ class Image : public Resource {
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
 
   private:
-	void destroy();
+	static void exchg(Image& lhs, Image& rhs) noexcept;
 
   protected:
 	struct Storage {
@@ -204,7 +212,7 @@ struct Image::CreateInfo final : ResourceCreateInfo {
 
 // impl
 
-inline u64 Memory::bytes(Resource::Type type) const noexcept { return m_allocations[type].load(); }
+inline u64 Memory::bytes(Resource::Kind type) const noexcept { return m_allocations[type].load(); }
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {

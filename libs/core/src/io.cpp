@@ -59,24 +59,12 @@ Service::Service([[maybe_unused]] Path logFilePath) {
 		g_token = dl::config::g_on_log.add(&fileLog);
 		g_logFilePath = std::move(logFilePath);
 		g_fileLogger = FileLogger();
-		m_bActive = true;
+		m_active = true;
 	}
 }
 
-Service::Service(Service&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {}
-
-Service& Service::operator=(Service&& rhs) noexcept {
-	if (&rhs != this) {
-		destroy();
-		m_bActive = std::exchange(rhs.m_bActive, false);
-	}
-	return *this;
-}
-
-Service::~Service() { destroy(); }
-
-void Service::destroy() {
-	if (g_fileLogger && m_bActive) {
+Service::~Service() {
+	if (g_fileLogger && m_active) {
 		logI("File Logging terminated");
 		g_token = {};
 		g_queue.active(false);
@@ -90,4 +78,6 @@ void Service::destroy() {
 		dumpToFile(g_logFilePath, residueStr);
 	}
 }
+
+void Service::exchg(Service& lhs, Service& rhs) noexcept { std::swap(lhs.m_active, rhs.m_active); }
 } // namespace le::io

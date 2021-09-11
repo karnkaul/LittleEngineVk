@@ -14,7 +14,7 @@
 namespace le::graphics {
 constexpr vk::DeviceSize operator""_MB(unsigned long long size) { return size << 20; }
 
-class Transfer final {
+class Transfer final : public Pinned {
   public:
 	using notify_t = void;
 	using Promise = ktl::promise<notify_t>;

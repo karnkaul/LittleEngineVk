@@ -155,28 +155,19 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : Resource(memo
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(memory->m_allocator, m_data.handle, &allocationInfo);
 	m_data.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};
-	memory->m_allocations[type].fetch_add(m_storage.writeSize);
+	memory->m_allocations[kind_v].fetch_add(m_storage.writeSize);
 }
 
-Buffer::Buffer(Buffer&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) { m_data = std::exchange(rhs.m_data, Data()); }
-
-Buffer& Buffer::operator=(Buffer&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_data = std::exchange(rhs.m_data, Data());
-		m_storage = std::exchange(rhs.m_storage, Storage());
-		m_memory = rhs.m_memory;
-	}
-	return *this;
+void Buffer::exchg(Buffer& lhs, Buffer& rhs) noexcept {
+	Resource::exchg(lhs, rhs);
+	std::swap(lhs.m_storage, rhs.m_storage);
 }
 
-Buffer::~Buffer() { destroy(); }
-
-void Buffer::destroy() {
+Buffer::~Buffer() {
 	Memory& m = *m_memory;
 	if (m_storage.pMap) { vmaUnmapMemory(m.m_allocator, m_data.handle); }
 	if (!Device::default_v(m_storage.buffer)) {
-		m.m_allocations[type].fetch_sub(m_storage.writeSize);
+		m.m_allocations[kind_v].fetch_sub(m_storage.writeSize);
 		auto del = [a = m.m_allocator, b = m_storage.buffer, h = m_data.handle]() { vmaDestroyBuffer(a, static_cast<VkBuffer>(b), h); };
 		m.m_device->defer(del);
 	}
@@ -243,35 +234,26 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	m_data.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};
 	m_storage.allocatedSize = requirements.size;
 	m_data.mode = imageInfo.sharingMode;
-	memory->m_allocations[type].fetch_add(m_storage.allocatedSize);
+	memory->m_allocations[kind_v].fetch_add(m_storage.allocatedSize);
 	if (info.view.aspects != vk::ImageAspectFlags() && info.view.format != vk::Format()) {
 		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type);
 	}
 }
 
-Image::Image(Image&& rhs) : Resource(rhs.m_memory), m_storage(std::exchange(rhs.m_storage, Storage())) { m_data = std::exchange(rhs.m_data, Data()); }
-
-Image& Image::operator=(Image&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_data = std::exchange(rhs.m_data, Data());
-		m_storage = std::exchange(rhs.m_storage, Storage());
-		m_memory = rhs.m_memory;
-	}
-	return *this;
-}
-
-Image::~Image() { destroy(); }
-
-void Image::destroy() {
+Image::~Image() {
 	if (!Device::default_v(m_storage.image)) {
 		Memory& m = *m_memory;
-		m.m_allocations[type].fetch_sub(m_storage.allocatedSize);
+		m.m_allocations[kind_v].fetch_sub(m_storage.allocatedSize);
 		auto del = [a = m.m_allocator, i = m_storage.image, h = m_data.handle, d = m.m_device, v = m_storage.view]() mutable {
 			d->destroy(v);
 			vmaDestroyImage(a, static_cast<VkImage>(i), h);
 		};
 		m.m_device->defer(del);
 	}
+}
+
+void Image::exchg(Image& lhs, Image& rhs) noexcept {
+	Resource::exchg(lhs, rhs);
+	std::swap(lhs.m_storage, rhs.m_storage);
 }
 } // namespace le::graphics

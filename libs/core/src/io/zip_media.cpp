@@ -6,16 +6,11 @@
 #include <core/utils/string.hpp>
 
 namespace le::io {
-ZIPMedia& ZIPMedia::operator=(ZIPMedia&& rhs) noexcept {
-	if (&rhs != this) {
-		clear();
-		Media::operator=(std::move(rhs));
-		m_zips = std::move(rhs.m_zips);
-	}
-	return *this;
+ZIPMedia::Zip::~Zip() {
+	if (!path.empty()) { PHYSFS_unmount(path.generic_string().data()); }
 }
 
-ZIPMedia::~ZIPMedia() noexcept { clear(); }
+void ZIPMedia::Zip::exchg(Zip& lhs, Zip& rhs) noexcept { std::swap(lhs.path, rhs.path); }
 
 bool ZIPMedia::fsActive() noexcept {
 	if (auto fs = Services::find<ZIPFS>()) { return fs->active(); }
@@ -65,12 +60,7 @@ bool ZIPMedia::unmount(Path const& path) noexcept {
 	return false;
 }
 
-void ZIPMedia::clear() noexcept {
-	if (fsActive()) {
-		for (auto const& path : m_zips) { PHYSFS_unmount(path.generic_string().data()); }
-	}
-	m_zips.clear();
-}
+void ZIPMedia::clear() noexcept { m_zips.clear(); }
 
 std::optional<Path> ZIPMedia::findPrefixed(Path const& uri) const {
 	if (fsActive() && PHYSFS_exists(uri.generic_string().data()) != 0) { return Path(uri); }

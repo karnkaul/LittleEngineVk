@@ -18,9 +18,10 @@ class Mesh {
 	inline static auto s_trisDrawn = std::atomic<u32>(0);
 
 	Mesh(not_null<VRAM*> vram, Type type = Type::eStatic);
-	Mesh(Mesh&&);
-	Mesh& operator=(Mesh&&);
-	virtual ~Mesh();
+	Mesh(Mesh&& rhs) noexcept : Mesh(rhs.m_vram) { exchg(*this, rhs); }
+	Mesh& operator=(Mesh rhs) noexcept { return (exchg(*this, rhs), *this); }
+	~Mesh();
+	static void exchg(Mesh& lhs, Mesh& rhs) noexcept;
 
 	template <typename T = glm::vec3>
 	void construct(Span<T const> vertices, Span<u32 const> indices);
@@ -49,7 +50,6 @@ class Mesh {
 	};
 
 	Storage construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const;
-	void destroy();
 
 	Storage m_vbo;
 	Storage m_ibo;
@@ -62,8 +62,11 @@ class Mesh {
 
 template <typename T>
 void Mesh::construct(Span<T const> vertices, Span<u32 const> indices) {
-	destroy();
-	if (!vertices.empty()) {
+	wait();
+	if (vertices.empty()) {
+		m_vbo = {};
+		m_ibo = {};
+	} else {
 		m_vbo = construct(vk::BufferUsageFlagBits::eVertexBuffer, (void*)vertices.data(), vertices.size() * sizeof(T));
 		if (!indices.empty()) { m_ibo = construct(vk::BufferUsageFlagBits::eIndexBuffer, (void*)indices.data(), indices.size() * sizeof(u32)); }
 		m_vbo.count = (u32)vertices.size();

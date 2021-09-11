@@ -70,21 +70,6 @@ bool findLayer(std::vector<vk::LayerProperties> const& available, char const* sz
 }
 } // namespace
 
-Instance::Instance(Instance&& rhs)
-	: m_metadata(std::move(rhs.m_metadata)), m_instance(std::exchange(rhs.m_instance, vk::Instance())),
-	  m_loader(std::exchange(rhs.m_loader, vk::DispatchLoaderDynamic())), m_messenger(std::exchange(rhs.m_messenger, vk::DebugUtilsMessengerEXT())) {}
-
-Instance& Instance::operator=(Instance&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_metadata = std::move(rhs.m_metadata);
-		m_instance = std::exchange(rhs.m_instance, vk::Instance());
-		m_loader = std::exchange(rhs.m_loader, vk::DispatchLoaderDynamic());
-		m_messenger = std::exchange(rhs.m_messenger, vk::DebugUtilsMessengerEXT());
-	}
-	return *this;
-}
-
 Instance::Instance(CreateInfo const& info) {
 	static constexpr char const* szValidationLayer = "VK_LAYER_KHRONOS_validation";
 	vk::DynamicLoader dl;
@@ -136,7 +121,16 @@ Instance::Instance(CreateInfo const& info) {
 	g_validationLevel = info.validation.logLevel;
 }
 
-Instance::~Instance() { destroy(); }
+Instance::~Instance() {
+	if (!Device::default_v(m_instance)) {
+		if (!Device::default_v(m_messenger)) {
+			m_instance.destroy(m_messenger, nullptr, m_loader);
+			m_messenger = vk::DebugUtilsMessengerEXT();
+		}
+		g_log.log(lvl::info, 1, "[{}] Vulkan instance destroyed", g_name);
+		m_instance.destroy();
+	}
+}
 
 ktl::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(Span<std::string_view const> required) const {
 	ktl::fixed_vector<PhysicalDevice, 8> ret;
@@ -156,17 +150,5 @@ ktl::fixed_vector<PhysicalDevice, 8> Instance::availableDevices(Span<std::string
 		}
 	}
 	return ret;
-}
-
-void Instance::destroy() {
-	if (!Device::default_v(m_instance)) {
-		if (!Device::default_v(m_messenger)) {
-			m_instance.destroy(m_messenger, nullptr, m_loader);
-			m_messenger = vk::DebugUtilsMessengerEXT();
-		}
-		g_log.log(lvl::info, 1, "[{}] Vulkan instance destroyed", g_name);
-		m_instance.destroy();
-		m_instance = vk::Instance();
-	}
 }
 } // namespace le::graphics

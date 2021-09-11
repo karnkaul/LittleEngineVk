@@ -36,13 +36,12 @@ class DProfiler {
 	using dispatch_t = D;
 
 	DProfiler(std::string_view name, D d = {}) noexcept : m_d(std::move(d)), m_name(name), m_start(time::now()) {}
-	DProfiler(DProfiler&&) noexcept;
-	DProfiler& operator=(DProfiler&&);
-	~DProfiler() { destroy(); }
+	DProfiler(DProfiler&& rhs) noexcept { exchg(*this, rhs); }
+	DProfiler& operator=(DProfiler rhs) noexcept { return (exchg(*this, rhs), *this); }
+	~DProfiler();
+	static void exchg(DProfiler& lhs, DProfiler& rhs) noexcept;
 
   private:
-	void destroy();
-
 	D m_d;
 	std::string_view m_name;
 	time::Point m_start;
@@ -107,29 +106,18 @@ void ProfileCacher<MaxEntries>::operator()(ProfileEntry const& entry) const {
 }
 
 template <typename D>
-DProfiler<D>::DProfiler(DProfiler&& rhs) noexcept {
-	m_name = std::exchange(rhs.m_name, std::string_view());
-	m_d = std::move(rhs.m_d);
-	m_start = rhs.m_start;
-}
-
-template <typename D>
-DProfiler<D>& DProfiler<D>::operator=(DProfiler&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_name = std::exchange(rhs.m_name, std::string_view());
-		m_d = std::move(rhs.m_d);
-		m_start = rhs.m_start;
-	}
-	return *this;
-}
-
-template <typename D>
-void DProfiler<D>::destroy() {
+DProfiler<D>::~DProfiler() {
 	if (!m_name.empty()) {
 		ProfileEntry entry{m_name, time::now(), {}};
 		entry.dt = time::diff(m_start, entry.stamp);
 		m_d(entry);
 	}
+}
+
+template <typename D>
+void DProfiler<D>::exchg(DProfiler<D>& lhs, DProfiler<D>& rhs) noexcept {
+	std::swap(lhs.m_name, rhs.m_name);
+	std::swap(lhs.m_d, rhs.m_d);
+	std::swap(lhs.m_start, rhs.m_start);
 }
 } // namespace le::utils

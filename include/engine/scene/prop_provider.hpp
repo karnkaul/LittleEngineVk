@@ -58,16 +58,14 @@ class PropProvider {
 };
 
 template <typename T>
-concept props_api = requires (T  const& t) {
+concept props_api = requires(T const& t) {
 	{ t.props() } -> std::same_as<Span<Prop const>>;
 };
 
 template <typename T>
 	requires props_api<T>
 struct PropExtractor<T> {
-	Span<Prop const> operator()(T const& t) const noexcept {
-		return t.props();
-	}
+	Span<Prop const> operator()(T const& t) const noexcept { return t.props(); }
 };
 
 // impl

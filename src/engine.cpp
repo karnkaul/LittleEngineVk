@@ -153,8 +153,8 @@ Extent2D Engine::windowSize() const noexcept { return m_win->windowSize(); }
 
 void Engine::updateStats() {
 	m_stats.update();
-	m_stats.stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Type::eBuffer);
-	m_stats.stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Type::eImage);
+	m_stats.stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
+	m_stats.stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
 	m_stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
 	m_stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
 	m_stats.stats.gfx.extents.window = windowSize();

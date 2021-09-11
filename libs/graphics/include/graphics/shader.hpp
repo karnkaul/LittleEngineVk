@@ -22,9 +22,10 @@ class Shader {
 
 	Shader(not_null<Device*> device, std::string name);
 	Shader(not_null<Device*> device, std::string name, SpirVMap const& bytes);
-	Shader(Shader&&);
-	Shader& operator=(Shader&&);
+	Shader(Shader&& rhs) noexcept : Shader(rhs.m_device) { exchg(*this, rhs); }
+	Shader& operator=(Shader rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Shader();
+	static void exchg(Shader& lhs, Shader& rhs) noexcept;
 
 	bool reconstruct(SpirVMap const& spirV);
 
@@ -33,10 +34,12 @@ class Shader {
 	bool empty() const noexcept;
 
 	std::string m_name;
-	ModuleMap m_modules;
-	CodeMap m_spirV;
+	ModuleMap m_modules = {};
+	CodeMap m_spirV = {};
 
-  protected:
+  private:
+	Shader(not_null<Device*> device) noexcept : m_device(device) {}
+
 	bool construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_map);
 	void destroy();
 

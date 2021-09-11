@@ -137,7 +137,6 @@ Swapchain::Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 fr
 }
 
 Swapchain::~Swapchain() {
-	m_vram->shutdown(); // stop transfer polling
 	if (!Device::default_v(m_storage.swapchain)) { g_log.log(lvl::info, 1, "[{}] Vulkan swapchain destroyed", g_name); }
 	destroy(m_storage);
 }

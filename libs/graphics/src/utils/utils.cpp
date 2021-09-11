@@ -231,23 +231,11 @@ utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
 	bytes = Span(pOut, std::size_t(size.x * size.y * channels));
 }
 
-utils::STBImg::STBImg(STBImg&& rhs) noexcept : TBitmap<Span<u8>>(std::move(rhs)) {
-	rhs.bytes = {};
-	rhs.size = {};
-}
-
-utils::STBImg& utils::STBImg::operator=(STBImg&& rhs) noexcept {
-	if (&rhs != this) {
-		TBitmap<Span<u8>>::operator=(std::move(rhs));
-		rhs.bytes = {};
-		rhs.size = {};
-	}
-	return *this;
-}
-
 utils::STBImg::~STBImg() {
 	if (!bytes.empty()) { stbi_image_free(bytes.data()); }
 }
+
+void utils::STBImg::exchg(STBImg& lhs, STBImg& rhs) noexcept { std::swap(static_cast<TBitmap<Span<u8>>&>(lhs), static_cast<TBitmap<Span<u8>>&>(rhs)); }
 
 std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
 	std::array<bytearray, 6> ret;

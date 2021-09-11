@@ -30,9 +30,11 @@ namespace utils {
 class STBImg : public TBitmap<Span<u8>> {
   public:
 	explicit STBImg(Bitmap::type const& compressed, u8 channels = 4);
-	STBImg(STBImg&&) noexcept;
-	STBImg& operator=(STBImg&&) noexcept;
+	STBImg(STBImg&& rhs) noexcept { exchg(*this, rhs); }
+	STBImg& operator=(STBImg rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~STBImg();
+
+	static void exchg(STBImg& lhs, STBImg& rhs) noexcept;
 };
 
 using set_t = u32;

@@ -29,7 +29,7 @@ constexpr ArrayMap<Vsync, vk::PresentModeKHR, 4> vsyncModes = {{{Vsync::eOff, vk
 																{Vsync::eAdaptive, vk::PresentModeKHR::eFifoRelaxed},
 																{Vsync::eTripleBuffer, vk::PresentModeKHR::eMailbox}}};
 
-class Swapchain {
+class Swapchain : public Pinned {
   public:
 	enum class Flag { ePaused, eOutOfDate, eSuboptimal };
 	using Flags = ktl::enum_flags<Flag, u8>;
@@ -65,8 +65,6 @@ class Swapchain {
 
 	Swapchain(not_null<VRAM*> vram);
 	Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 framebufferSize = {});
-	Swapchain(Swapchain&&);
-	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
 	ktl::expected<Acquire, Flags> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);

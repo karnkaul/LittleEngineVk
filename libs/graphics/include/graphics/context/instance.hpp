@@ -8,14 +8,12 @@
 namespace le::graphics {
 enum class Validation { eOn, eOff };
 
-class Instance final {
+class Instance final : public Pinned {
   public:
 	struct CreateInfo;
 
 	Instance() = default;
 	Instance(CreateInfo const& info);
-	Instance(Instance&&);
-	Instance& operator=(Instance&&);
 	~Instance();
 
 	ktl::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view const> requiredExtensions) const;
@@ -31,8 +29,6 @@ class Instance final {
 	vk::Instance m_instance;
 	vk::DispatchLoaderDynamic m_loader;
 	vk::DebugUtilsMessengerEXT m_messenger;
-
-	void destroy();
 
 	friend class Device;
 };

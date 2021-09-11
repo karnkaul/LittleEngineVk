@@ -4,20 +4,16 @@
 
 namespace le::graphics {
 Mesh::Mesh(not_null<VRAM*> vram, Type type) : m_vram(vram), m_type(type) {}
-Mesh::Mesh(Mesh&& rhs)
-	: m_vram(rhs.m_vram), m_vbo(std::exchange(rhs.m_vbo, Storage())), m_ibo(std::exchange(rhs.m_ibo, Storage())), m_triCount(rhs.m_triCount),
-	  m_type(rhs.m_type) {}
-Mesh& Mesh::operator=(Mesh&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_vbo = std::exchange(rhs.m_vbo, Storage());
-		m_ibo = std::exchange(rhs.m_ibo, Storage());
-		m_triCount = std::exchange(rhs.m_triCount, 0);
-		m_type = rhs.m_type;
-	}
-	return *this;
+
+Mesh::~Mesh() { wait(); }
+
+void Mesh::exchg(Mesh& lhs, Mesh& rhs) noexcept {
+	std::swap(lhs.m_vbo, rhs.m_vbo);
+	std::swap(lhs.m_ibo, rhs.m_ibo);
+	std::swap(lhs.m_type, rhs.m_type);
+	std::swap(lhs.m_triCount, rhs.m_triCount);
+	std::swap(lhs.m_vram, rhs.m_vram);
 }
-Mesh::~Mesh() { destroy(); }
 
 Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
@@ -61,11 +57,5 @@ void Mesh::wait() const {
 		std::array const arr = {RF(m_vbo.transfer), RF(m_ibo.transfer)};
 		m_vram->wait(arr);
 	}
-}
-
-void Mesh::destroy() {
-	wait();
-	m_vbo = {};
-	m_ibo = {};
 }
 } // namespace le::graphics

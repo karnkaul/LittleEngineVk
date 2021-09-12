@@ -1,4 +1,4 @@
-#include <physfs/physfs.h>
+#include <physfs.h>
 #include <core/io/fs_media.hpp>
 #include <core/io/zip_media.hpp>
 #include <core/log.hpp>

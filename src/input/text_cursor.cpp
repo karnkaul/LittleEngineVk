@@ -88,8 +88,7 @@ bool TextCursor::update(State const& state, graphics::Geometry* out) {
 		refr = true;
 	}
 	for (u32 const codepoint : state.codepoints) {
-		// TODO: confirm codepoint range
-		if (codepoint >= 32 && codepoint <= 255) {
+		if (Codepoint::Validate{}(codepoint)) {
 			insert(static_cast<char>(codepoint), nullptr);
 			refr = true;
 		}

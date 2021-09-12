@@ -1,6 +1,7 @@
 #pragma once
 #include <deque>
 #include <optional>
+#include <core/codepoint.hpp>
 #include <glm/vec2.hpp>
 #include <window/types.hpp>
 
@@ -33,7 +34,7 @@ struct Event {
 		Resize resize;
 		Input input;
 		Cursor cursor;
-		u32 codepoint;
+		Codepoint::type codepoint;
 		bool set;
 	};
 

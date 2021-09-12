@@ -18,7 +18,7 @@ bool GlyphPen::generate(Geometry& out_geometry, Glyph const& glyph) const {
 		auto const gtl = glm::vec2(glyph.topLeft);
 		auto const gsize = glm::vec2(glyph.size);
 		auto const st = gtl / atlas;
-		auto const uv = (gtl + gsize) / atlas;
+		auto const uv = glyph.codepoint == codepoint_blank_v ? st : (gtl + gsize) / atlas;
 		auto const size = gsize * m_scale;
 		auto const vtl = out_geometry.addVertex({tl, c, normal, st});
 		auto const vtr = out_geometry.addVertex({tl + glm::vec3(size.x, 0.0f, 0.0f), c, normal, {uv.x, st.y}});
@@ -82,7 +82,7 @@ glm::vec3 GlyphPen::writeLine(std::string_view text, Geometry* out_geom, std::si
 			advance(' ', out_geom);
 			return ret;
 		}
-		advance(static_cast<u8>(ch), out_geom); // advance for next glyph
+		advance(static_cast<u32>(ch), out_geom); // advance for next glyph
 	}
 	if (!index || *index >= text.size()) { ret = head(); } // index past last glyph
 	return ret;

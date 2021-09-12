@@ -540,6 +540,7 @@ class App : public input::Receiver, public SceneRegistry {
 		gui::InputField::CreateInfo info;
 		// info.secret = true;
 		auto& in = dialogue.push<gui::InputField>(&font.get(), info);
+		in.m_rect.anchor.offset.y = 60.0f;
 		in.align({-0.5f, 0.0f});
 		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));

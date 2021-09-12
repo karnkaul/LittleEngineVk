@@ -3,7 +3,7 @@
 namespace le {
 bool BitmapFont::make(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo info) {
 	decltype(m_storage) storage;
-	storage.glyphs = info.glyphs;
+	storage.glyphs = graphics::GlyphMap(info.glyphs);
 	storage.atlas.emplace(graphics::Texture(vram));
 	graphics::Texture::CreateInfo tci;
 	tci.sampler = sampler.sampler();

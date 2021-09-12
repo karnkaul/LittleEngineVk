@@ -47,7 +47,7 @@ void dumpToFile(Path const& path, std::string const& str) {
 }
 
 std::optional<FileLogger> g_fileLogger;
-dl::config::on_log::token g_token;
+dl::config::on_log::handle g_token;
 
 [[maybe_unused]] void fileLog(std::string_view text, dl::level) {
 	if (g_fileLogger) { g_queue.push(std::string(text)); }

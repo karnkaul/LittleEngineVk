@@ -35,7 +35,7 @@ class GlyphMap {
 	template <typename Cont>
 	explicit GlyphMap(Cont const& glyphs) noexcept;
 
-	Glyph makeBlank(glm::vec2 nSize = {0.3f, 0.9f}) const noexcept;
+	Glyph makeBlank(glm::vec2 nSize = {0.4f, 0.9f}) const noexcept;
 
 	Map const& map() const noexcept { return m_glyphs; }
 	glm::uvec2 bounds() const noexcept { return m_bounds; }

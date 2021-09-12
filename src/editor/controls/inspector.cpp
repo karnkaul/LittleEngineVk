@@ -10,7 +10,7 @@ namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct Transform {
-	void operator()(SceneNode& node) const { auto tr = TWidget<SceneNode>("Pos", "Orn", "Scl", node); }
+	void operator()(SceneNode& node) const { TWidget<SceneNode> tr("Pos", "Orn", "Scl", node); }
 };
 
 struct GuiRect {

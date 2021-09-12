@@ -156,7 +156,7 @@ struct TWidgetWrap {
 	template <typename... Args>
 	bool operator()(T const& t, Args&&... args) {
 		out = t;
-		auto tw = TWidget<T>(std::forward<Args>(args)...);
+		TWidget<T> tw(std::forward<Args>(args)...);
 		return t != out;
 	}
 };

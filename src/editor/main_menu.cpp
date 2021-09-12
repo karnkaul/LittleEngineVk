@@ -72,7 +72,7 @@ void Panes::showProfiler() const {
 }
 
 template <>
-void Panes::showProfiler<utils::NullProfileDB>() const {}
+[[maybe_unused]] void Panes::showProfiler<utils::NullProfileDB>() const {}
 
 void Panes::operator()() const {
 	if (flag(Flag::eStats)) { showStats(); }

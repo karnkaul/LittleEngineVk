@@ -3,7 +3,6 @@
 #include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
 #include <core/utils/string.hpp>
-#include <dumb_tasks/error_handler.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/cameras/freecam.hpp>
@@ -34,6 +33,8 @@
 #include <fstream>
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
+#include <engine/gui/widgets/input_field.hpp>
+#include <engine/input/text_cursor.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
 #include <ktl/async.hpp>
@@ -276,17 +277,17 @@ class TestView : public gui::View {
 		topLeft.m_material.Tf = colours::magenta;
 		auto& text = bg.push<gui::Text>(font);
 		text.set("click").size(60U);
-		m_button = &push<gui::Widget>(font);
+		m_button = &push<gui::Button>(font);
 		m_button->m_rect.size = {200.0f, 100.0f};
 		m_button->m_text->set("Button").size(40U);
 		m_button->refresh();
-		m_tk = m_button->onClick([this](gui::Widget&) { setDestroyed(); });
+		m_tk = m_button->onClick([this]() { setDestroyed(); });
 	}
 
 	TestView(TestView&&) = delete;
 	TestView& operator=(TestView&&) = delete;
 
-	gui::Widget* m_button{};
+	gui::Button* m_button{};
 	gui::Widget::OnClick::Tk m_tk;
 };
 } // namespace le::demo
@@ -309,12 +310,12 @@ class Dialogue : public View {
 	void onUpdate(input::Frame const& frame) override;
 
 	struct Header {
-		Widget* title{};
-		Widget* close{};
+		Button* title{};
+		Button* close{};
 	};
 	struct Footer {
 		Widget* bg{};
-		std::vector<Widget*> buttons;
+		std::vector<Button*> buttons;
 	};
 	struct {
 		glm::vec2 prev{};
@@ -323,10 +324,10 @@ class Dialogue : public View {
 		bool moving = false;
 	} m_originDelta;
 	Header m_header;
-	Widget* m_content{};
+	Button* m_content{};
 	Footer m_footer;
 	ButtonInfo m_buttonInfo;
-	Widget::OnClick::Tk m_closeToken;
+	Button::OnClick::Tk m_closeToken;
 	not_null<BitmapFont const*> m_font;
 };
 
@@ -358,47 +359,43 @@ struct Dialogue::CreateInfo {
 
 Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info)
 	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
-	m_content = &push<Widget>(font, info.content.style);
+	m_content = &push<Button>(font, info.content.style);
 	m_content->m_rect.size = info.content.size;
-	m_content->m_style.text.base.size = info.content.textSize;
-	m_content->m_text->set(info.content.text);
+	m_content->m_text->set(info.content.text).size(info.content.textSize);
 	m_content->m_interact = false;
 
-	m_header.title = &m_content->push<Widget>(font, info.header.style);
+	m_header.title = &m_content->push<Button>(font, info.header.style);
 	m_header.title->m_rect.size = {info.content.size.x, info.header.height};
 	m_header.title->m_rect.anchor.norm.y = 0.5f;
 	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
-	m_header.title->m_style.quad.base.Tf = info.header.background;
-	m_header.title->m_style.text.base.size = info.header.textSize;
-	m_header.title->m_text->set(info.header.text);
-	m_header.title->m_style.quad.reset(InteractStatus::eHover);
+	m_header.title->m_style.widget.quad.base.Tf = info.header.background;
+	m_header.title->m_text->set(info.header.text).size(info.header.textSize);
+	m_header.title->m_style.widget.quad.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
-	m_header.close = &m_header.title->push<Widget>(font);
-	m_header.close->m_style.quad.base.Tf = colours::red;
-	m_header.close->m_style.text.base.colour = colours::white;
-	m_header.close->m_style.text.base.size = 20U;
-	m_header.close->m_text->set("x");
+	m_header.close = &m_header.title->push<Button>(font);
+	m_header.close->m_style.widget.quad.base.Tf = colours::red;
+	m_header.close->m_style.base.text.colour = colours::white;
+	m_header.close->m_text->set("x").size(20U);
 	m_header.close->m_rect.size = {20.0f, 20.0f};
 	m_header.close->m_rect.anchor.norm.x = 0.5f;
 	m_header.close->m_rect.anchor.offset.x = -20.0f;
-	m_closeToken = m_header.close->onClick([this](Widget&) { setDestroyed(); });
+	m_closeToken = m_header.close->onClick([this]() { setDestroyed(); });
 
-	m_footer.bg = &m_content->push<Widget>(font, info.footer.style);
+	m_footer.bg = &m_content->push<Widget>(info.footer.style);
 	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
-	m_footer.bg->m_style.quad.base.Tf = info.footer.background;
+	m_footer.bg->m_style.widget.quad.base.Tf = info.footer.background;
 	m_footer.bg->m_rect.anchor.norm.y = -0.5f;
 	m_footer.bg->m_rect.anchor.offset.y = info.footer.height * -0.5f;
 	m_footer.bg->m_interact = false;
 }
 
 Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callback const& onClick) {
-	auto& button = m_footer.bg->push<Widget>(m_font, m_buttonInfo.style);
+	auto& button = m_footer.bg->push<Button>(m_font, m_buttonInfo.style);
 	m_footer.buttons.push_back(&button);
-	button.m_style.text.base.size = m_buttonInfo.textSize;
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
 	button.m_cornerRadius = 10.0f;
-	button.m_text->set(std::move(text));
+	button.m_text->set(std::move(text)).size(m_buttonInfo.textSize);
 	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
 	f32 offset = pad + m_buttonInfo.size.x * 0.5f;
 	for (auto btn : m_footer.buttons) {
@@ -473,7 +470,7 @@ class App : public input::Receiver, public SceneRegistry {
 				return false;
 			}
 		};
-		if (auto inspector = Services::locate<edi::Inspector>(false)) {
+		if (auto inspector = Services::find<edi::Inspector>()) {
 			inspector->attach<GFreeCam>();
 			inspector->attach<GPlayerController>();
 			inspector->attach<GSpringArm>();
@@ -504,12 +501,16 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& collision = coll.get<Collision>();
 		m_data.collision = coll;
 
-		m_data.text = BitmapText(&*font, &vram);
-		m_data.text.mesh().size = 80U;
-		m_data.text.mesh().colour = colours::yellow;
-		m_data.text.mesh().position = {0.0f, 200.0f, 0.0f};
-		// m_data.text.text.align = {-0.5f, 0.5f};
-		m_data.text.set("Hi!\nThere#");
+		m_data.text = TextMesh(&vram, &*font);
+		m_data.cursor = input::TextCursor(&*font);
+		m_data.cursor->m_gen.size = 80U;
+		m_data.cursor->m_gen.colour = colours::yellow;
+		m_data.cursor->m_gen.position = {0.0f, 200.0f, 0.0f};
+		m_data.text->gen = m_data.cursor->m_gen;
+		// m_data.text->text.align = {-0.5f, 0.5f};
+		// m_data.text->set("Hi\nThere!");
+		m_data.cursor->m_text = "Hello!";
+		m_data.text->mesh.construct(m_data.cursor->generateText());
 
 		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
@@ -534,10 +535,15 @@ class App : public input::Receiver, public SceneRegistry {
 		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
 		gui::Dialogue::CreateInfo gdci;
 		gdci.header.text = "Dialogue";
-		gdci.content.text = "Content goes here";
+		gdci.content.text = "Content\ngoes\nhere";
 		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", &font.get(), gdci);
-		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
-		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue](gui::Widget&) { dialogue.setDestroyed(); }));
+		gui::InputField::CreateInfo info;
+		// info.secret = true;
+		auto& in = dialogue.push<gui::InputField>(&font.get(), info);
+		in.m_rect.anchor.offset.y = 60.0f;
+		in.align({-0.5f, 0.0f});
+		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
+		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
@@ -579,8 +585,13 @@ class App : public input::Receiver, public SceneRegistry {
 			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
 			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
 		}
-		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text.prop(*font)); }
-		{ spawnProp<BitmapText>("text_2d", m_data.text, "layers/ui"); }
+		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text->prop(*font)); }
+		{
+			auto ent0 = spawnProp<TextMesh>("text_2d/mesh", *m_data.text, "layers/ui");
+			m_data.entities["text_2d/mesh"] = ent0;
+			auto ent = spawnProp<input::TextCursor>("text_2d/cursor", *m_data.cursor, "layers/ui");
+			m_data.entities["text_2d/cursor"] = ent;
+		}
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
@@ -627,11 +638,22 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
 
+		if (auto text = m_registry.find<PropProvider>(m_data.entities["text_2d/mesh"])) {
+			graphics::Geometry geom;
+			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->mesh.construct(std::move(geom)); }
+			*text = PropProvider::make(*m_data.text);
+			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
+			}
+			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
+		}
+
 		update();
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
 			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (m_registry.empty()) { init1(); }
+			ensure(m_registry.contains(m_data.entities["text_2d/mesh"]));
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
@@ -662,6 +684,7 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		// draw
 		render();
+		m_tasks.rethrow();
 	}
 
 	void render() {
@@ -673,11 +696,14 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 	}
 
+	scheduler& sched() { return m_tasks; }
+
   private:
 	struct Data {
 		std::unordered_map<Hash, decf::entity> entities;
 
-		BitmapText text;
+		std::optional<TextMesh> text;
+		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::Tk> btnTkns;
 
@@ -761,13 +787,12 @@ bool package(io::Path const& binary, bool clean) {
 	return openFilesystemPath(binary);
 }
 
-bool run(io::Reader const& reader) {
-	dts::g_error_handler = [](std::runtime_error const& err, u64) { ensure(false, err.what()); };
+bool run(io::Media const& media) {
 	Engine::CreateInfo eci;
 	eci.winInfo.config.title = "levk demo";
 	eci.winInfo.config.size = {1280, 720};
 	eci.winInfo.options.centreCursor = true;
-	Engine engine(eci, &reader);
+	Engine engine(eci, &media);
 	if (!engine.bootReady()) { return false; }
 	Flags flags;
 	FlagsInput flagsInput(flags);
@@ -797,15 +822,17 @@ bool run(io::Reader const& reader) {
 			}
 			app.tick(++dt);
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
+				app.sched().enqueue([]() { ensure(false, "test"); });
+				app.sched().enqueue([]() { ensure(false, "test2"); });
 				flags.reset(Flag::eDebug0);
-				bf = async(&package, "out/autobuild", false);
+				/*bf = async(&package, "out/autobuild", false);
 				bf.then([](bool built) {
 					if (!built) {
 						logW("build failed");
 					} else {
 						logD("build success");
 					}
-				});
+				});*/
 			}
 		}
 	} while (reboot);

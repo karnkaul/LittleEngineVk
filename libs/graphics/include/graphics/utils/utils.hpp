@@ -1,6 +1,6 @@
 #pragma once
 #include <map>
-#include <core/io/reader.hpp>
+#include <core/io/media.hpp>
 #include <core/os.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/common.hpp>
@@ -30,9 +30,11 @@ namespace utils {
 class STBImg : public TBitmap<Span<u8>> {
   public:
 	explicit STBImg(Bitmap::type const& compressed, u8 channels = 4);
-	STBImg(STBImg&&) noexcept;
-	STBImg& operator=(STBImg&&) noexcept;
+	STBImg(STBImg&& rhs) noexcept { exchg(*this, rhs); }
+	STBImg& operator=(STBImg rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~STBImg();
+
+	static void exchg(STBImg& lhs, STBImg& rhs) noexcept;
 };
 
 using set_t = u32;
@@ -56,7 +58,7 @@ BmpBytes bmpBytes(Span<std::byte const> bytes);
 
 using CubeImageIDs = std::array<std::string_view, 6>;
 constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};
-std::array<bytearray, 6> loadCubemap(io::Reader const& reader, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageIDs const& ids = cubeImageIDs);
+std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageIDs const& ids = cubeImageIDs);
 
 std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface);
 

@@ -3,6 +3,8 @@
 #include <sstream>
 #include <unordered_set>
 #include <core/maths.hpp>
+#include <core/utils/data_store.hpp>
+#include <core/utils/sys_info.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/utils/utils.hpp>
@@ -27,7 +29,7 @@ Device::Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo 
 	if (default_v(instance->m_instance)) { throw std::runtime_error("Invalid graphics Instance"); }
 	if (default_v(surface)) { throw std::runtime_error("Invalid Vulkan surface"); }
 	// Prevent validation spam on Windows
-	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warning);
+	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warn);
 	std::unordered_set<std::string_view> const extSet = {info.extensions.begin(), info.extensions.end()};
 	std::vector<std::string_view> const extArr = {extSet.begin(), extSet.end()};
 	ktl::fixed_vector<PhysicalDevice, 8> const devices = instance->availableDevices(extArr);
@@ -41,6 +43,7 @@ Device::Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo 
 	if (default_v(picked.device)) { throw std::runtime_error("Failed to select a physical device!"); }
 	m_physicalDevice = std::move(picked);
 	m_metadata.available = std::move(devices);
+	DataStore::getOrSet<::le::utils::SysInfo>("sys_info").gpuName = std::string(m_physicalDevice.name());
 	m_metadata.surface = surface;
 	for (auto const& ext : extArr) { m_metadata.extensions.push_back(ext.data()); }
 	m_metadata.limits = m_physicalDevice.properties.limits;

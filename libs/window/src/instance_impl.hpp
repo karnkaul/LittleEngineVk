@@ -2,7 +2,8 @@
 #include <window/instance.hpp>
 
 #if defined(LEVK_USE_GLFW)
-#define GLFW_INCLUDE_VULKAN
+#include <vulkan/vulkan.h>
+
 #include <GLFW/glfw3.h>
 #include <core/not_null.hpp>
 #include <ktl/fixed_any.hpp>

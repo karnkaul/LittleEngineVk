@@ -6,7 +6,7 @@
 
 namespace le {
 namespace io {
-class Reader;
+class Media;
 }
 
 class BitmapFont {

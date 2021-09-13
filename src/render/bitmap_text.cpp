@@ -4,35 +4,26 @@
 #include <graphics/glyph_pen.hpp>
 
 namespace le {
-void TextMesh::make(not_null<graphics::VRAM*> vram, Type type) { mesh = graphics::Mesh(vram, type); }
-
-bool TextMesh::set(glm::uvec2 atlas, Glyphs const& glyphs, std::string_view text) {
-	if (mesh) {
-		graphics::GlyphPen pen(&glyphs, atlas, size, position, colour);
-		return mesh->construct(pen.generate(text, align));
-	}
-	return false;
+graphics::Geometry TextGen::operator()(glm::uvec2 atlas, Glyphs const& glyphs, std::string_view text) const {
+	graphics::GlyphPen pen(&glyphs, atlas, size, position, colour);
+	return pen.generate(text, nLinePad, align);
 }
 
-Span<Prop const> TextMesh::prop(graphics::Texture const& atlas) const {
-	if (mesh) {
-		prop_.material.map_Kd = &atlas;
-		prop_.material.map_d = &atlas;
-		prop_.mesh = &*mesh;
-		return prop_;
-	}
-	return {};
+Prop TextGen::prop(graphics::Mesh const& mesh, graphics::Texture const& atlas) const noexcept {
+	Prop ret;
+	ret.material.map_Kd = &atlas;
+	ret.material.map_d = &atlas;
+	ret.material.Tf = colour;
+	ret.mesh = &mesh;
+	return ret;
 }
 
-BitmapText::BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram, Type type) : m_font(font) { m_text.make(vram, type); }
-
-bool BitmapText::set(std::string_view text) {
-	if (m_font) {
-		graphics::GlyphPen pen(&m_font->glyphs(), m_font->atlasSize(), m_text.size, m_text.position, m_text.colour);
-		return m_text.mesh->construct(pen.generate(text, m_text.align));
-	}
-	return false;
+Prop const& TextMesh::prop() const noexcept {
+	if (font) { prop_ = gen.prop(mesh, font->atlas()); }
+	return prop_;
 }
 
-Span<Prop const> BitmapText::props() const { return m_font ? m_text.prop(m_font->atlas()) : Span<Prop const>(); }
+BitmapText::BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram) : m_mesh(vram, font), m_font(font) {}
+
+void BitmapText::set(std::string_view text) { m_mesh.mesh.construct(m_mesh.gen(m_font->atlasSize(), m_font->glyphs(), text)); }
 } // namespace le

@@ -1,5 +1,6 @@
 #pragma once
 #include <core/os.hpp>
+#include <dumb_log/config.hpp>
 #include <dumb_log/log.hpp>
 
 namespace le {
@@ -33,7 +34,7 @@ void logImpl(dl::level level, std::string_view fmt, Args&&... args) {
 
 template <typename... Args>
 void le::logD([[maybe_unused]] std::string_view fmt, [[maybe_unused]] Args&&... args) {
-	if constexpr (dl::dlog_debug) { ::le::detail::logImpl(dl::level::debug, fmt, std::forward<Args>(args)...); }
+	if constexpr (dl::config::dlog_debug) { ::le::detail::logImpl(dl::level::debug, fmt, std::forward<Args>(args)...); }
 }
 template <typename... Args>
 void le::logI(std::string_view fmt, Args&&... args) {
@@ -41,7 +42,7 @@ void le::logI(std::string_view fmt, Args&&... args) {
 }
 template <typename... Args>
 void le::logW(std::string_view fmt, Args&&... args) {
-	::le::detail::logImpl(dl::level::warning, fmt, std::forward<Args>(args)...);
+	::le::detail::logImpl(dl::level::warn, fmt, std::forward<Args>(args)...);
 }
 template <typename... Args>
 void le::logE(std::string_view fmt, Args&&... args) {
@@ -53,7 +54,7 @@ void le::log_if(Pred pred, dl::level level, std::string_view fmt, Args&&... args
 }
 template <typename Pred, typename... Args>
 void le::logD_if([[maybe_unused]] Pred pred, [[maybe_unused]] std::string_view fmt, [[maybe_unused]] Args&&... args) {
-	if constexpr (dl::dlog_debug) { log_if(pred, dl::level::debug, fmt, std::forward<Args>(args)...); }
+	if constexpr (dl::config::dlog_debug) { log_if(pred, dl::level::debug, fmt, std::forward<Args>(args)...); }
 }
 template <typename Pred, typename... Args>
 void le::logI_if(Pred pred, std::string_view fmt, Args&&... args) {
@@ -61,7 +62,7 @@ void le::logI_if(Pred pred, std::string_view fmt, Args&&... args) {
 }
 template <typename Pred, typename... Args>
 void le::logW_if(Pred pred, std::string_view fmt, Args&&... args) {
-	log_if(pred, dl::level::warning, fmt, std::forward<Args>(args)...);
+	log_if(pred, dl::level::warn, fmt, std::forward<Args>(args)...);
 }
 template <typename Pred, typename... Args>
 void le::logE_if(Pred pred, std::string_view fmt, Args&&... args) {

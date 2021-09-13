@@ -23,7 +23,7 @@ struct State {
 	Cursor cursor;
 	Span<Gamepad const> gamepads;
 	Span<Event::Cursor const> others;
-	Span<char const> text;
+	Span<u32 const> codepoints;
 	Focus focus = Focus::eUnchanged;
 	bool suspended = false;
 
@@ -34,11 +34,12 @@ struct State {
 	Res<KeyMods> acted(Key) const noexcept;
 	Res<KeyMods> acted(Key key, Action action) const noexcept;
 	Res<KeyMods> pressed(Key key) const noexcept;
+	Res<KeyMods> repeated(Key key) const noexcept;
 	Res<KeyMods> held(Key key) const noexcept;
 	Res<KeyMods> released(Key key) const noexcept;
 
-	bool any(List<Key> keys, Actions mask = actions_all) const noexcept;
-	bool all(List<Key> keys, Actions mask = actions_all) const noexcept;
+	bool any(List<Key> keys, Actions mask = actions_main) const noexcept;
+	bool all(List<Key> keys, Actions mask = actions_main) const noexcept;
 };
 
 // impl
@@ -82,6 +83,7 @@ inline State::Res<KeyMods> State::acted(Key key, Action action) const noexcept {
 	return std::nullopt;
 }
 inline State::Res<KeyMods> State::pressed(Key key) const noexcept { return acted(key, Action::ePressed); }
+inline State::Res<KeyMods> State::repeated(Key key) const noexcept { return acted(key, Action::eRepeated); }
 inline State::Res<KeyMods> State::held(Key key) const noexcept { return acted(key, Action::eHeld); }
 inline State::Res<KeyMods> State::released(Key key) const noexcept { return acted(key, Action::eReleased); }
 inline bool State::any(List<Key> keys, Actions mask) const noexcept {

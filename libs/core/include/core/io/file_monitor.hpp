@@ -1,6 +1,6 @@
 #pragma once
 #include <chrono>
-#include <core/io/reader.hpp>
+#include <core/io/fs_media.hpp>
 #include <ktl/either.hpp>
 
 namespace le::io {
@@ -64,7 +64,7 @@ class FileMonitor {
 	Span<std::byte const> bytes() const;
 
   protected:
-	inline static io::FileReader s_reader;
+	inline static io::FSMedia s_fsMedia;
 
   protected:
 	file_time m_lastWriteTime = {};

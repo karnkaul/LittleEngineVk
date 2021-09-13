@@ -2,7 +2,6 @@
 #include <fstream>
 #include <core/io.hpp>
 #include <core/log.hpp>
-#include <io_impl.hpp>
 #include <ktl/async_queue.hpp>
 #include <ktl/kthread.hpp>
 
@@ -48,7 +47,7 @@ void dumpToFile(Path const& path, std::string const& str) {
 }
 
 std::optional<FileLogger> g_fileLogger;
-dl::config::on_log::token g_token;
+dl::config::on_log::handle g_token;
 
 [[maybe_unused]] void fileLog(std::string_view text, dl::level) {
 	if (g_fileLogger) { g_queue.push(std::string(text)); }
@@ -60,25 +59,12 @@ Service::Service([[maybe_unused]] Path logFilePath) {
 		g_token = dl::config::g_on_log.add(&fileLog);
 		g_logFilePath = std::move(logFilePath);
 		g_fileLogger = FileLogger();
-		m_bActive = true;
+		m_active = true;
 	}
 }
 
-Service::Service(Service&& rhs) noexcept : m_bActive(std::exchange(rhs.m_bActive, false)) {}
-
-Service& Service::operator=(Service&& rhs) noexcept {
-	if (&rhs != this) {
-		destroy();
-		m_bActive = std::exchange(rhs.m_bActive, false);
-	}
-	return *this;
-}
-
-Service::~Service() { destroy(); }
-
-void Service::destroy() {
-	impl::deinitPhysfs();
-	if (g_fileLogger && m_bActive) {
+Service::~Service() {
+	if (g_fileLogger && m_active) {
 		logI("File Logging terminated");
 		g_token = {};
 		g_queue.active(false);
@@ -92,4 +78,6 @@ void Service::destroy() {
 		dumpToFile(g_logFilePath, residueStr);
 	}
 }
+
+void Service::exchg(Service& lhs, Service& rhs) noexcept { std::swap(lhs.m_active, rhs.m_active); }
 } // namespace le::io

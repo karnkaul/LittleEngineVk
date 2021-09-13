@@ -10,8 +10,6 @@ namespace le {
 namespace graphics {
 class Mesh;
 }
-class Model;
-class BitmapText;
 
 template <typename T>
 struct PropExtractor {
@@ -59,14 +57,15 @@ class PropProvider {
 	Hash m_id{};
 };
 
-template <>
-struct PropExtractor<Model> {
-	Span<Prop const> operator()(Model const& model) const noexcept;
+template <typename T>
+concept props_api = requires(T const& t) {
+	{ t.props() } -> std::same_as<Span<Prop const>>;
 };
 
-template <>
-struct PropExtractor<BitmapText> {
-	Span<Prop const> operator()(BitmapText const& text) const noexcept;
+template <typename T>
+	requires props_api<T>
+struct PropExtractor<T> {
+	Span<Prop const> operator()(T const& t) const noexcept { return t.props(); }
 };
 
 // impl
@@ -98,7 +97,7 @@ Span<Prop const> PropProvider::extract(PropProvider const* self) {
 template <typename T>
 void PropProvider::refresh() const {
 	if (m_id != Hash()) {
-		if (auto store = Services::locate<AssetStore>(false)) {
+		if (auto store = Services::find<AssetStore>()) {
 			if (auto asset = store->find<T>(m_id)) {
 				if constexpr (std::is_same_v<T, graphics::Mesh>) {
 					auto mat = m_props.get<Props>().material;

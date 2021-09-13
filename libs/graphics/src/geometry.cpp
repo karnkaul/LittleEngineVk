@@ -233,15 +233,7 @@ graphics::Geometry graphics::makeRoundedQuad(glm::vec2 size, f32 radius, u16 poi
 	auto bottomRight = makeSector({3.0f * hpi, 4.0f * hpi}, r * 2.0f, points / 4, {o + v3{hs.x, -hs.y, 0.0f}, c});
 	bottomRight.vertices[0].texCoord = {1.0f - r / size.x, 1.0f - r / size.y};
 	sectorUVs(bottomRight.vertices);
-	append(ret, left, right, topRight, topLeft, bottomLeft, bottomRight, centre);
+	ret.append(left, right, topRight, topLeft, bottomLeft, bottomRight, centre);
 	return ret;
-}
-
-void graphics::append(graphics::Geometry& out_dst, graphics::Geometry const& src) {
-	out_dst.vertices.reserve(out_dst.vertices.size() + src.vertices.size());
-	out_dst.indices.reserve(out_dst.indices.size() + src.indices.size());
-	u32 offset = (u32)out_dst.vertices.size();
-	std::copy(src.vertices.begin(), src.vertices.end(), std::back_inserter(out_dst.vertices));
-	for (u32 const index : src.indices) { out_dst.indices.push_back(index + offset); }
 }
 } // namespace le

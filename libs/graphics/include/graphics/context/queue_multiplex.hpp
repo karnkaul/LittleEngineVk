@@ -9,7 +9,7 @@
 namespace le::graphics {
 class Instance;
 
-class QueueMultiplex final {
+class QueueMultiplex final : Pinned {
   public:
 	struct Family {
 		u32 familyIndex = 0;

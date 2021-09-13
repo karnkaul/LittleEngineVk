@@ -6,7 +6,7 @@
 #include <ktl/tmutex.hpp>
 
 namespace le::graphics {
-class DeferQueue {
+class DeferQueue : public Pinned {
   public:
 	using Callback = std::function<void()>;
 

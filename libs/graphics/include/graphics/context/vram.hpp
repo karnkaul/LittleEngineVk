@@ -35,19 +35,16 @@ class VRAM final : public Memory {
 	void waitIdle();
 
 	bool update(bool force = false);
+	void shutdown();
 
 	not_null<Device*> m_device;
 
   private:
-	void shutdown();
-
 	Transfer m_transfer;
 	struct {
 		vk::PipelineStageFlags stages = vk::PipelineStageFlagBits::eBottomOfPipe;
 		vk::AccessFlags access;
 	} m_post;
-
-	friend class Swapchain;
 };
 
 // impl

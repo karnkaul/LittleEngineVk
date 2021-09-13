@@ -5,17 +5,13 @@
 #include <graphics/glyph_pen.hpp>
 
 namespace le::gui {
-Text::Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept : TreeNode(root), m_font(font) {
-	m_text.make(Services::locate<graphics::VRAM>());
-}
+Text::Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept : TreeNode(root), m_font(font), m_mesh(Services::get<graphics::VRAM>(), font) {}
 
 Text& Text::font(not_null<BitmapFont const*> font) {
-	m_font = font;
+	m_font = m_mesh.font = font;
 	m_dirty = true;
 	return *this;
 }
-
-Span<Prop const> Text::props() const noexcept { return m_text.prop(m_font->atlas()); }
 
 void Text::onUpdate(input::Space const& space) {
 	m_scissor = scissor(space, m_rect.origin, m_parent->m_rect.halfSize(), false);
@@ -26,8 +22,7 @@ void Text::onUpdate(input::Space const& space) {
 }
 
 void Text::write() {
-	m_text.position.z = m_zIndex;
-	graphics::GlyphPen pen(&m_font->glyphs(), m_font->atlasSize(), m_text.size, m_text.position, m_text.colour);
-	m_text.mesh->construct(pen.generate(m_str, m_text.align));
+	m_mesh.gen.position.z = m_zIndex;
+	m_mesh.mesh.construct(m_mesh.gen(m_font->atlasSize(), m_font->glyphs(), m_str));
 }
 } // namespace le::gui

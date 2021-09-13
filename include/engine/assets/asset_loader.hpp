@@ -15,7 +15,7 @@ class Asset;
 ///
 template <typename T>
 struct AssetLoadData {
-	io::Path id;
+	io::Path uri;
 };
 
 template <typename T>
@@ -26,8 +26,8 @@ class AssetLoadInfo {
 	template <typename Data>
 	AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash id);
 
-	Resource const* resource(io::Path const& path, Resource::Type type, bool bMonitor, bool bForceReload = false) const;
-	io::Reader const& reader() const;
+	Resource const* resource(io::Path const& path, Resource::Type type, Resources::Flags flags) const;
+	io::Media const& media() const;
 	bool modified() const;
 	void forceDirty(bool bDirty) const noexcept;
 
@@ -72,17 +72,17 @@ template <typename Data>
 AssetLoadInfo<T>::AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash id)
 	: m_data(std::forward<Data>(data)), m_store(store), m_onModified(onModified), m_id(id), m_resources(resources) {}
 template <typename T>
-Resource const* AssetLoadInfo<T>::resource(io::Path const& path, Resource::Type type, bool bMonitor, bool bForceReload) const {
-	if (auto pRes = m_resources->load(path, type, bMonitor, bForceReload)) {
+Resource const* AssetLoadInfo<T>::resource(io::Path const& path, Resource::Type type, Resources::Flags flags) const {
+	if (auto pRes = m_resources->load(path, type, flags)) {
 		auto const pathStr = path.generic_string();
-		if (bMonitor && !m_monitors.contains(pathStr)) { m_monitors.emplace(pathStr, pRes); }
+		if (flags.test(Resources::Flag::eMonitor) && !m_monitors.contains(pathStr)) { m_monitors.emplace(pathStr, pRes); }
 		return pRes;
 	}
 	return nullptr;
 }
 template <typename T>
-io::Reader const& AssetLoadInfo<T>::reader() const {
-	return m_resources->reader();
+io::Media const& AssetLoadInfo<T>::media() const {
+	return m_resources->media();
 }
 template <typename T>
 bool AssetLoadInfo<T>::modified() const {

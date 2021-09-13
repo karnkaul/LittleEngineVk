@@ -84,8 +84,15 @@ class DataStore {
 	/// \brief Obtain reference to data associated with id (assumed to exist)
 	///
 	template <typename T>
-	static T& get(Hash id) noexcept {
+	static T& get(Hash id) {
 		return *find<T>(id);
+	}
+	///
+	/// \brief Obtain reference to / default construct data associated with id
+	///
+	template <typename T>
+	static T& getOrSet(Hash id) noexcept {
+		return contains(id) ? *find<T>(id) : set<T>(id, T{});
 	}
 
   private:

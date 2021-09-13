@@ -1,10 +1,9 @@
 #include <engine/gui/widgets/flexbox.hpp>
 
 namespace le::gui {
-Flexbox::Flexbox(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info) noexcept
-	: gui::Widget(root, font, info.style), m_axis(info.axis), m_pad(info.pad) {
-	m_style.quad.reset();
-	m_style.quad.base = info.background;
+Flexbox::Flexbox(not_null<TreeRoot*> root, CreateInfo const& info) noexcept : gui::Widget(root, info.style), m_axis(info.axis), m_pad(info.pad) {
+	m_style.widget.quad.reset();
+	m_style.widget.quad.base = info.background;
 	resize();
 }
 

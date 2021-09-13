@@ -6,6 +6,7 @@
 #if defined(LEVK_USE_IMGUI)
 #include <deque>
 #include <core/time.hpp>
+#include <dumb_log/config.hpp>
 #endif
 
 namespace le::edi {
@@ -28,7 +29,7 @@ class LogStats {
 		std::deque<Time_s> fts;
 		std::vector<f32> samples;
 	} m_frameTime;
-	dl::config::on_log::token m_token;
+	dl::config::on_log::handle m_token;
 #endif
 };
 } // namespace le::edi

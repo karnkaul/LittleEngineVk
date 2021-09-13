@@ -96,9 +96,23 @@ endif()
 add_subdirectory(ext/vulkan_hpp)
 
 # external
+set(PHYSFS_BUILD_STATIC ON)
+set(PHYSFS_ARCHIVE_GRP OFF)
+set(PHYSFS_ARCHIVE_HOG OFF)
+set(PHYSFS_ARCHIVE_ISO9660 OFF)
+set(PHYSFS_ARCHIVE_MVL OFF)
+set(PHYSFS_ARCHIVE_QPAK OFF)
+set(PHYSFS_ARCHIVE_SLB OFF)
+set(PHYSFS_ARCHIVE_VDF OFF)
+set(PHYSFS_ARCHIVE_WAD OFF)
+set(PHYSFS_ARCHIVE_ZIP ON)
 add_subdirectory(ext/physfs)
+target_include_directories(physfs-static SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/physfs/src>)
 add_subdirectory(ext/glm)
 if(LEVK_USE_GLFW)
+	if(NOT LEVK_VULKAN_DYNAMIC)
+		set(GLFW_VULKAN_STATIC ON)
+	endif()
 	set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
@@ -150,7 +164,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	ktl
 	GIT_REPOSITORY https://github.com/karnkaul/ktl
-	GIT_TAG 4247b26
+	GIT_TAG 75c233c
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)

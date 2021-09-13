@@ -29,11 +29,13 @@ constexpr ArrayMap<Vsync, vk::PresentModeKHR, 4> vsyncModes = {{{Vsync::eOff, vk
 																{Vsync::eAdaptive, vk::PresentModeKHR::eFifoRelaxed},
 																{Vsync::eTripleBuffer, vk::PresentModeKHR::eMailbox}}};
 
-class Swapchain {
+class Swapchain : public Pinned {
   public:
 	enum class Flag { ePaused, eOutOfDate, eSuboptimal };
 	using Flags = ktl::enum_flags<Flag, u8>;
 	using Vsyncs = ktl::enum_flags<Vsync, u8>;
+
+	static constexpr std::size_t max_images_v = 8;
 
 	struct FormatPicker {
 		///
@@ -63,8 +65,6 @@ class Swapchain {
 
 	Swapchain(not_null<VRAM*> vram);
 	Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 framebufferSize = {});
-	Swapchain(Swapchain&&);
-	Swapchain& operator=(Swapchain&&);
 	~Swapchain();
 
 	ktl::expected<Acquire, Flags> acquireNextImage(vk::Semaphore ssignal, vk::Fence fsignal);
@@ -90,7 +90,7 @@ class Swapchain {
 
   private:
 	struct Storage {
-		ktl::fixed_vector<RenderImage, 4> images;
+		ktl::fixed_vector<RenderImage, max_images_v> images;
 		vk::SwapchainKHR swapchain;
 		std::optional<u32> acquired;
 

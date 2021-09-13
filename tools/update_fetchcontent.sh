@@ -1,6 +1,7 @@
 #!/bin/bash
 
-declare -a libs=(ktl dtest)
+declare -a levk_libs=(ktl dtest)
+declare -a lib_dirs=(libs/decf libs/dtasks)
 
 options=$1
 
@@ -30,6 +31,10 @@ fi
 
 cd ..
 
-for lib in "${libs[@]}"; do
+for lib in "${levk_libs[@]}"; do
   tools/bin/$exe $options $lib libs/$lib
+done
+
+for lib_dir in "${lib_dirs[@]}"; do
+  tools/bin/$exe $options ktl libs/ktl -c=$lib_dir/CMakeLists.txt
 done

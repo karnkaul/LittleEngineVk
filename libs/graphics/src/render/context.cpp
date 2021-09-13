@@ -14,8 +14,8 @@ namespace {
 void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 	ensure(images > 1_B, "Insufficient swapchain images");
 	ensure(buffering > 0_B, "Insufficient buffering");
-	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warning, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
-	if (buffering < 2_B) { g_log.log(lvl::warning, 0, "[{}] Buffering less than double; expect hitches", g_name); }
+	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warn, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
+	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
 }
 } // namespace
 
@@ -93,7 +93,7 @@ bool RenderContext::ready(glm::ivec2 framebufferSize) {
 bool RenderContext::waitForFrame() {
 	if (!check(Status::eReady)) {
 		if (m_storage.status != Status::eWaiting && m_storage.status != Status::eBegun) {
-			g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+			g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
 			return false;
 		}
 		m_storage.renderer->waitForFrame();
@@ -105,7 +105,7 @@ bool RenderContext::waitForFrame() {
 
 std::optional<RenderTarget> RenderContext::beginFrame() {
 	if (!check(Status::eReady)) {
-		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
 	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
@@ -119,7 +119,7 @@ std::optional<RenderTarget> RenderContext::beginFrame() {
 
 std::optional<CommandBuffer> RenderContext::beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth) {
 	if (!check(Status::eBegun) || !m_storage.drawing) {
-		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
 	set(Status::eDrawing);
@@ -128,7 +128,7 @@ std::optional<CommandBuffer> RenderContext::beginDraw(ScreenView const& view, RG
 
 bool RenderContext::endDraw() {
 	if (!m_storage.drawing || !check(Status::eDrawing)) {
-		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
 	m_storage.renderer->endDraw(*m_storage.drawing);
@@ -137,7 +137,7 @@ bool RenderContext::endDraw() {
 
 bool RenderContext::endFrame() {
 	if (!check(Status::eDrawing, Status::eBegun)) {
-		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
 	set(Status::eEnded);
@@ -148,7 +148,7 @@ bool RenderContext::endFrame() {
 
 bool RenderContext::submitFrame() {
 	if (!check(Status::eEnded)) {
-		g_log.log(lvl::warning, 1, "[{}] Invalid RenderContext status", g_name);
+		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
 		return false;
 	}
 	set(Status::eWaiting);

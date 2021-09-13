@@ -47,6 +47,7 @@ bool Resizer::operator()([[maybe_unused]] window::Instance& out_w, Viewport& out
 	auto const& size = frame.space.display.window;
 	glm::vec2 const nCursor = {frame.state.cursor.screenPos.x / size.x, frame.state.cursor.screenPos.y / size.y};
 	CursorType toSet = CursorType::eDefault;
+	if (m_handle == Handle::eNone) { m_prev = out_vp; }
 	if (m_handle != Handle::eNone && !frame.state.held(Key::eMouseButton1)) { m_handle = endResize(); }
 	if (frame.state.pressed(Key::eEscape)) {
 		out_vp = m_prev;
@@ -94,7 +95,7 @@ bool Resizer::operator()([[maybe_unused]] window::Instance& out_w, Viewport& out
 	return m_handle > Handle::eNone;
 }
 
-CursorType Resizer::check(Viewport& out_vp, input::Frame const& frame) {
+CursorType Resizer::check(Viewport const& vp, input::Frame const& frame) {
 	auto const& size = frame.space.display.window;
 	auto const cursor = frame.state.cursor.screenPos;
 	bool const click = frame.state.pressed(Key::eMouseButton1).has_value();
@@ -102,22 +103,22 @@ CursorType Resizer::check(Viewport& out_vp, input::Frame const& frame) {
 	auto const left = frame.space.viewport.offset.x;
 	auto const right = left + frame.space.viewport.scale * size.x;
 	auto const bottom = frame.space.viewport.offset.y + frame.space.viewport.scale * size.y;
-	check(out_vp, ret, inZone(cursor.x, left) && cursor.y < bottom, Handle::eLeft, click);
-	check(out_vp, ret, inZone(cursor.x, right) && cursor.y < bottom, Handle::eRight, click);
-	check(out_vp, ret, inZone(cursor.y, bottom), Handle::eBottom, click);
-	check(out_vp, ret, inZone(cursor.x, left) && inZone(cursor.y, bottom), Handle::eLeftBottom, click);
-	check(out_vp, ret, inZone(cursor.x, right) && inZone(cursor.y, bottom), Handle::eRightBottom, click);
+	check(vp, ret, inZone(cursor.x, left) && cursor.y < bottom, Handle::eLeft, click);
+	check(vp, ret, inZone(cursor.x, right) && cursor.y < bottom, Handle::eRight, click);
+	check(vp, ret, inZone(cursor.y, bottom), Handle::eBottom, click);
+	check(vp, ret, inZone(cursor.x, left) && inZone(cursor.y, bottom), Handle::eLeftBottom, click);
+	check(vp, ret, inZone(cursor.x, right) && inZone(cursor.y, bottom), Handle::eRightBottom, click);
 	return ret;
 }
 
-void Resizer::check(Viewport& out_vp, CursorType& out_c, bool active, Handle h, bool click) {
+void Resizer::check(Viewport const& vp, CursorType& out_c, bool active, Handle h, bool click) {
 	if (active) {
 #if defined(LEVK_USE_IMGUI)
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 #endif
 		out_c = handleCursor[h];
 		if (click) {
-			m_prev = out_vp;
+			m_prev = vp;
 			m_handle = h;
 		}
 	}

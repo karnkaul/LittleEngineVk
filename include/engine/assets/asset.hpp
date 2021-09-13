@@ -15,11 +15,11 @@ class Asset {
 	Asset() = default;
 	Asset(not_null<type*> t, std::string_view id, OnModified* onMod = {}) noexcept;
 
-	operator Asset<T const>() const noexcept { return {m_t, m_id, m_onModified}; }
+	operator Asset<T const>() const noexcept { return {m_t, m_uri, m_onModified}; }
 
 	bool valid() const noexcept { return m_t != nullptr; }
 	explicit operator bool() const noexcept { return valid(); }
-	bool operator==(Asset<T> const& rhs) const noexcept { return m_id == rhs.m_id && m_t == rhs.m_t; }
+	bool operator==(Asset<T> const& rhs) const noexcept { return m_uri == rhs.m_uri && m_t == rhs.m_t; }
 
 	T* peek() const noexcept { return m_t; }
 	T& get() const;
@@ -27,7 +27,7 @@ class Asset {
 	T* operator->() const { return &get(); }
 	OnModified::Tk onModified(OnModified::Callback const& callback);
 
-	std::string_view m_id;
+	std::string_view m_uri;
 
   private:
 	T* m_t{};
@@ -37,7 +37,7 @@ class Asset {
 // impl
 
 template <typename T>
-Asset<T>::Asset(not_null<type*> t, std::string_view id, OnModified* onMod) noexcept : m_id(id), m_t(t), m_onModified(onMod) {}
+Asset<T>::Asset(not_null<type*> t, std::string_view id, OnModified* onMod) noexcept : m_uri(id), m_t(t), m_onModified(onMod) {}
 template <typename T>
 T& Asset<T>::get() const {
 	ensure(valid(), "Invalid asset");

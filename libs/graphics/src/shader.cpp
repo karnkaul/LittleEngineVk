@@ -9,20 +9,11 @@ Shader::Shader(not_null<Device*> device, std::string name, SpirVMap const& spirV
 	construct(spirV, m_spirV, m_modules);
 }
 
-Shader::Shader(Shader&& rhs) : m_name(std::move(rhs.m_name)), m_modules(std::move(rhs.m_modules)), m_spirV(std::move(rhs.m_spirV)), m_device(rhs.m_device) {
-	for (auto& m : rhs.m_modules.arr) { m = vk::ShaderModule(); }
-}
-
-Shader& Shader::operator=(Shader&& rhs) {
-	if (&rhs != this) {
-		destroy();
-		m_name = std::move(rhs.m_name);
-		m_modules = std::move(rhs.m_modules);
-		m_spirV = std::move(rhs.m_spirV);
-		m_device = rhs.m_device;
-		for (auto& m : rhs.m_modules.arr) { m = vk::ShaderModule(); }
-	}
-	return *this;
+void Shader::exchg(Shader& lhs, Shader& rhs) noexcept {
+	std::swap(lhs.m_name, rhs.m_name);
+	std::swap(lhs.m_modules, rhs.m_modules);
+	std::swap(lhs.m_spirV, rhs.m_spirV);
+	std::swap(lhs.m_device, rhs.m_device);
 }
 
 Shader::~Shader() { destroy(); }

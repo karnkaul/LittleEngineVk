@@ -3,16 +3,15 @@
 #include <core/time.hpp>
 #include <engine/gui/quad.hpp>
 #include <engine/gui/style.hpp>
-#include <engine/gui/text.hpp>
 #include <engine/input/state.hpp>
 
 namespace le::gui {
 class Widget : public Quad {
   public:
 	using Status = InteractStatus;
-	using OnClick = Delegate<Widget&>;
+	using OnClick = Delegate<>;
 
-	Widget(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, Hash style = {});
+	Widget(not_null<TreeRoot*> root, Hash style = {});
 	Widget(Widget&&) = delete;
 	Widget& operator=(Widget&&) = delete;
 
@@ -23,19 +22,17 @@ class Widget : public Quad {
 
 	virtual Status onInput(input::State const& state);
 
-	WidgetStyle m_style;
+	Style m_style;
 	struct {
 		time::Point point{};
 		Status status = {};
 		bool set = false;
 	} m_previous;
 	Time_ms m_debounce = 5ms;
-	Text* m_text = {};
 	bool m_interact = true;
 
   protected:
 	OnClick m_onClick;
-	not_null<BitmapFont const*> m_font;
 
   private:
 	bool clickedImpl(bool style, Status st) noexcept;

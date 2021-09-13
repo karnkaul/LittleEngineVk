@@ -69,12 +69,11 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 
 std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* scheduler) {
 	std::size_t ret{};
-	if (auto eng = Services::locate<Engine>()) {
+	if (auto eng = Services::find<Engine>()) {
 		dj::json json;
 		auto& resources = eng->store().resources();
-		auto res = resources.load(jsonID, Resource::Type::eText);
-		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }
-		if (res && json.read(res->string())) { ret = preload(json); }
+		io::Path uris[] = {jsonID, jsonID + ".manifest"};
+		if (auto res = resources.loadFirst(uris, Resource::Type::eText); res && json.read(res->string())) { ret = preload(json); }
 	}
 	if (ret > 0) { stage(scheduler); }
 	return ret;
@@ -83,7 +82,7 @@ std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* schedule
 std::size_t AssetManifest::unload(io::Path const& jsonID, dts::scheduler& scheduler) {
 	wait(scheduler);
 	std::size_t count{};
-	if (auto eng = Services::locate<Engine>()) {
+	if (auto eng = Services::find<Engine>()) {
 		dj::json json;
 		auto& resources = eng->store().resources();
 		auto res = resources.load(jsonID, Resource::Type::eText);
@@ -107,7 +106,7 @@ graphics::Device& AssetManifest::device() { return engine()->gfx().boot.device; 
 graphics::VRAM& AssetManifest::vram() { return engine()->gfx().boot.vram; }
 graphics::RenderContext& AssetManifest::context() { return engine()->gfx().context; }
 AssetStore& AssetManifest::store() { return engine()->store(); }
-not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engine = Services::locate<Engine>()); }
+not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engine = Services::get<Engine>()); }
 
 std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "samplers") { return addSamplers(std::move(group)); }

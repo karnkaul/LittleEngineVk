@@ -30,7 +30,7 @@ void renderer(graphics::ARenderer& rd) {
 
 void Settings::update() {
 #if defined(LEVK_USE_IMGUI)
-	auto eng = Services::locate<Engine>();
+	auto eng = Services::get<Engine>();
 	swapchain(eng->gfx().context, eng->gfx().boot.swapchain.vsync());
 	renderer(eng->gfx().context.renderer());
 #endif

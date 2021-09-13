@@ -22,14 +22,45 @@ struct Error : std::runtime_error {
 ///
 /// \brief Abstract interface for customization point
 ///
-struct OnError {
-	virtual void operator()(std::string_view message, SrcInfo const& source) const = 0;
-};
+class OnError {
+  public:
+	OnError() = default;
+	OnError(OnError&&) = default;
+	OnError(OnError const&) = default;
+	OnError& operator=(OnError&&) = default;
+	OnError& operator=(OnError const&) = default;
+	virtual ~OnError() noexcept { unsetActive(); }
 
-///
-/// \brief Customization point (invoked before Error is thrown)
-///
-inline OnError const* g_onError = {};
+	///
+	/// \brief Customization point
+	///
+	virtual void operator()(std::string_view message, SrcInfo const& source) = 0;
+
+	///
+	/// \brief Obtain active error handler
+	///
+	static OnError const* activeHandler() noexcept { return s_active; }
+	///
+	/// \brief Dispatch to active error handler, if set
+	///
+	static void dispatch(std::string_view message, SrcInfo const& source);
+
+	///
+	/// \brief Set this instance as active error handler
+	///
+	void setActive() noexcept { s_active = this; }
+	///
+	/// \brief Unset active handler if this instance (or if force)
+	///
+	void unsetActive(bool force = false) noexcept;
+	///
+	/// \brief Check if active handler is this instance
+	///
+	bool isActive() const noexcept { return activeHandler() == this; }
+
+  private:
+	inline static OnError* s_active{};
+};
 
 ///
 /// \brief Log msg as an error, break if debugging, and throw Error

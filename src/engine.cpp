@@ -60,9 +60,9 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	return s_devices;
 }
 
-Engine::Engine(CreateInfo const& info, io::Reader const* custom) : m_io(info.logFile.value_or(io::Path())) {
+Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logFile.value_or(io::Path())) {
 	utils::g_log.minVerbosity = info.verbosity;
-	if (custom) { m_store.resources().reader(custom); }
+	if (custom) { m_store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	ensure(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;
@@ -73,14 +73,11 @@ Engine::Engine(CreateInfo const& info, io::Reader const* custom) : m_io(info.log
 		winInfo.config.position = config->win.position;
 	}
 	m_win = m_wm.make(winInfo);
-	utils::g_onError = &m_errorHandler;
 	m_errorHandler.deleteFile();
+	if (!m_errorHandler.activeHandler()) { m_errorHandler.setActive(); }
 }
 
-Engine::~Engine() {
-	unboot();
-	utils::g_onError = {};
-}
+Engine::~Engine() { unboot(); }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
 	if (!bootReady()) { return {}; }
@@ -98,7 +95,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 
 void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_inputFrame); }
 
-void Engine::pushReceiver(not_null<input::Receiver*> context) { context->m_inputHandle = m_receivers.push(context); }
+void Engine::pushReceiver(not_null<input::Receiver*> context) { context->pushSelf(m_receivers); }
 
 bool Engine::drawReady() {
 	if (bootReady() && m_gfx) {
@@ -156,8 +153,8 @@ Extent2D Engine::windowSize() const noexcept { return m_win->windowSize(); }
 
 void Engine::updateStats() {
 	m_stats.update();
-	m_stats.stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Type::eBuffer);
-	m_stats.stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Type::eImage);
+	m_stats.stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
+	m_stats.stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
 	m_stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
 	m_stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
 	m_stats.stats.gfx.extents.window = windowSize();

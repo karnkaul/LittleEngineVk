@@ -14,8 +14,8 @@ class Resizer {
 	bool operator()(window::Instance& out_w, Viewport& out_vp, input::Frame const& frame);
 
   private:
-	window::CursorType check(Viewport& out_vp, input::Frame const& frame);
-	void check(Viewport& out_vp, window::CursorType& out_c, bool active, Handle h, bool click);
+	window::CursorType check(Viewport const& out_vp, input::Frame const& frame);
+	void check(Viewport const& vp, window::CursorType& out_c, bool active, Handle h, bool click);
 
 	Viewport m_prev;
 	Handle m_handle = {};

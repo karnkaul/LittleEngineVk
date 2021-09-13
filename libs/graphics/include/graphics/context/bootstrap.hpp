@@ -7,11 +7,12 @@
 #include <graphics/render/swapchain.hpp>
 
 namespace le::graphics {
-struct Bootstrap {
+struct Bootstrap : Pinned {
 	using MakeSurface = std::function<vk::SurfaceKHR(vk::Instance)>;
 	struct CreateInfo;
 
 	Bootstrap(CreateInfo const& info, MakeSurface const& makeSuface, glm::ivec2 framebufferSize = {});
+	~Bootstrap();
 
 	Instance instance;
 	Device device;

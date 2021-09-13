@@ -1,6 +1,7 @@
 #include <map>
 #include <core/maths.hpp>
 #include <core/utils/data_store.hpp>
+#include <core/utils/sys_info.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
@@ -76,7 +77,11 @@ struct SwapchainCreateInfo {
 		if (auto forceVsync = DataObject<Vsync>("vsync")) { presentModes.insert(info.vsync.begin(), *forceVsync); }
 		presentMode = bestFit(availableModes, presentModes, availableModes.front());
 		g_log.log(lvl::info, 0, "[{}] {} ({} present mode) selected", g_name, vsyncNames[vsyncModes[presentMode]], presentModeNames[presentMode]);
-		imageCount = std::clamp(capabilities.minImageCount + 1, capabilities.minImageCount, capabilities.maxImageCount);
+		DataStore::getOrSet<utils::SysInfo>("sys_info").presentMode = presentModeNames[presentMode];
+		if (capabilities.maxImageCount == 0) { capabilities.maxImageCount = 8U; }
+		imageCount = std::clamp(3U, capabilities.minImageCount, capabilities.maxImageCount);
+		g_log.log(lvl::debug, 1, "[{}] Using [{}] swapchain images", g_name, imageCount);
+		DataStore::getOrSet<utils::SysInfo>("sys_info").swapchainImages = imageCount;
 		using vCAFB = vk::CompositeAlphaFlagBitsKHR;
 		vkFlagGetter<vCAFB> alpha{capabilities.supportedCompositeAlpha, vCAFB::eOpaque};
 		compositeAlpha = alpha(vCAFB::eInherit, vCAFB::ePreMultiplied, vCAFB::ePostMultiplied);
@@ -132,7 +137,6 @@ Swapchain::Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 fr
 }
 
 Swapchain::~Swapchain() {
-	m_vram->shutdown(); // stop transfer polling
 	if (!Device::default_v(m_storage.swapchain)) { g_log.log(lvl::info, 1, "[{}] Vulkan swapchain destroyed", g_name); }
 	destroy(m_storage);
 }
@@ -141,14 +145,14 @@ ktl::expected<Swapchain::Acquire, Swapchain::Flags> Swapchain::acquireNextImage(
 	orientCheck();
 	if (m_storage.flags.any(Flags(Flag::ePaused) | Flag::eOutOfDate)) { return ktl::unexpected(m_storage.flags); }
 	if (m_storage.acquired) {
-		g_log.log(lvl::warning, 1, "[{}] Attempt to acquire image without presenting previously acquired one", g_name);
+		g_log.log(lvl::warn, 1, "[{}] Attempt to acquire image without presenting previously acquired one", g_name);
 		return m_storage.current();
 	}
 	u32 acquired;
 	auto const result = m_device->device().acquireNextImageKHR(m_storage.swapchain, maths::max<u64>(), ssignal, fsignal, &acquired);
 	setFlags(result);
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-		g_log.log(lvl::warning, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name, g_vkResultStr[result]);
+		g_log.log(lvl::warn, 1, "[{}] Swapchain failed to acquire next image [{}]", g_name, g_vkResultStr[result]);
 		return ktl::unexpected(m_storage.flags);
 	}
 	return m_storage.current(acquired);
@@ -157,7 +161,7 @@ ktl::expected<Swapchain::Acquire, Swapchain::Flags> Swapchain::acquireNextImage(
 bool Swapchain::present(vk::Semaphore swait) {
 	if (m_storage.flags.any(Flags(Flag::ePaused) | Flag::eOutOfDate)) { return false; }
 	if (!m_storage.acquired) {
-		g_log.log(lvl::warning, 1, "[{}] Attempt to present image without acquiring one", g_name);
+		g_log.log(lvl::warn, 1, "[{}] Attempt to present image without acquiring one", g_name);
 		orientCheck();
 		return false;
 	}
@@ -172,7 +176,7 @@ bool Swapchain::present(vk::Semaphore swait) {
 	setFlags(result);
 	m_storage.acquired.reset();
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-		g_log.log(lvl::warning, 1, "[{}] Swapchain Failed to present image [{}]", g_name, g_vkResultStr[result]);
+		g_log.log(lvl::warn, 1, "[{}] Swapchain Failed to present image [{}]", g_name, g_vkResultStr[result]);
 		return false;
 	}
 	orientCheck(); // Must submit acquired image, so skipping extent check here
@@ -207,7 +211,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 	m_storage = {};
 	SwapchainCreateInfo info(m_device->physicalDevice().device, m_metadata.surface, m_metadata.info);
 	if (info.colourFormat.colorSpace == vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear && !srgb(info.colourFormat.format)) {
-		g_log.log(lvl::warning, 0,
+		g_log.log(lvl::warn, 0,
 				  "[{}] Swapchain image format is not sRGB! If linear (Unorm), Vulkan will not gamma correct writes to it, "
 				  "and interpolation, blending, and lighting *will be* incorrect!",
 				  g_name);

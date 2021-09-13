@@ -350,7 +350,7 @@ graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) 
 #if defined(LEVK_EDITOR)
 	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
 	if (active() && engaged()) {
-		auto eng = Services::locate<Engine>();
+		auto eng = Services::get<Engine>();
 		edi::displayScale(eng->renderer().renderScale());
 		if (!edi::Pane::s_blockResize) { m_storage.resizer(eng->window(), m_storage.gameView, frame); }
 		edi::Pane::s_blockResize = false;

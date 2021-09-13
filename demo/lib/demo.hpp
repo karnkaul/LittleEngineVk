@@ -1,6 +1,9 @@
 #pragma once
-#include <core/io/reader.hpp>
+
+namespace le::io {
+class Media;
+}
 
 namespace le::demo {
-bool run(io::Reader const& reader);
+bool run(io::Media const& media);
 } // namespace le::demo

@@ -87,4 +87,15 @@ struct NoCopy {
 	NoCopy(NoCopy const&) = delete;
 	NoCopy& operator=(NoCopy const&) = delete;
 };
+
+///
+/// \brief Convenience base type with deleted movr/copy semantics
+///
+struct Pinned {
+	constexpr Pinned() = default;
+	Pinned(Pinned&&) = delete;
+	Pinned& operator=(Pinned&&) = delete;
+	Pinned(Pinned const&) = delete;
+	Pinned& operator=(Pinned const&) = delete;
+};
 } // namespace le

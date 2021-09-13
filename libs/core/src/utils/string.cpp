@@ -117,7 +117,7 @@ std::pair<std::string, std::string> utils::bisect(std::string_view input, char d
 							  : std::pair<std::string, std::string>(std::string(input), {});
 }
 
-std::string utils::toString(std::istream const &in) {
+std::string utils::toString(std::istream const& in) {
 	std::stringstream str;
 	str << in.rdbuf();
 	return str.str();

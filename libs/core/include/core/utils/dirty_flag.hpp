@@ -1,33 +1,34 @@
 #pragma once
-#include <utility>
+#include <core/maths.hpp>
+#include <ktl/enum_flags/uint_flags.hpp>
 
 namespace le ::utils {
 class DirtyFlag {
   public:
+	using Flags = ktl::uint_flags<u8>;
+	static constexpr Flags all_v = {maths::max<u8>()};
+
 	class Clean {
 		DirtyFlag const& m_flag;
+		Flags m_clean;
 
 	  public:
-		constexpr Clean(DirtyFlag const& out) noexcept : m_flag(out) {}
-		constexpr ~Clean() noexcept { m_flag.setDirty(false); }
+		constexpr Clean(DirtyFlag const& out, Flags clean = all_v) noexcept : m_flag(out), m_clean(clean) {}
+		constexpr ~Clean() noexcept { m_flag.setDirty(m_clean); }
 		explicit constexpr operator bool() const noexcept { return m_flag.dirty(); }
 	};
 
-	constexpr DirtyFlag(bool dirty = false) noexcept : m_dirty(dirty) {}
-	constexpr DirtyFlag(DirtyFlag&& rhs) noexcept : m_dirty(std::exchange(rhs.m_dirty, false)) {}
-	constexpr DirtyFlag& operator=(DirtyFlag&& rhs) noexcept;
+	constexpr DirtyFlag(Flags dirty = {}) noexcept : m_dirty(dirty) {}
+	constexpr DirtyFlag(DirtyFlag&& rhs) noexcept { exchg(*this, rhs); }
+	constexpr DirtyFlag& operator=(DirtyFlag rhs) noexcept { return (exchg(*this, rhs), *this); }
 
-	constexpr bool dirty() const noexcept { return m_dirty; }
-	constexpr void setDirty(bool dirty) const noexcept { m_dirty = dirty; }
+	constexpr bool dirty(Flags mask = all_v) const noexcept { return m_dirty.all(mask); }
+	constexpr void setDirty(Flags mask = all_v) const noexcept { m_dirty = mask; }
+
+  protected:
+	static constexpr void exchg(DirtyFlag& lhs, DirtyFlag& rhs) noexcept { std::swap(lhs.m_dirty, rhs.m_dirty); }
 
   private:
-	mutable bool m_dirty;
+	mutable Flags m_dirty{};
 };
-
-// impl
-
-constexpr DirtyFlag& DirtyFlag::operator=(DirtyFlag&& rhs) noexcept {
-	if (&rhs != this) { m_dirty = std::exchange(rhs.m_dirty, false); }
-	return *this;
-}
 } // namespace le::utils

@@ -11,7 +11,7 @@
 namespace le {
 template <typename T>
 struct TAssetList {
-	void add(io::Path id, T t) { map.emplace(std::move(id), std::move(t)); }
+	void add(io::Path uri, T t) { map.emplace(std::move(uri), std::move(t)); }
 	std::size_t append(TAssetList<T>& out, TAssetList<T> const& exclude) const;
 
 	std::unordered_map<io::Path, T> map;
@@ -57,10 +57,10 @@ class AssetListLoader {
 	template <typename T>
 	void load_(AssetList<T> list) const;
 
-	AssetStore& store() const { return m_store ? *m_store : *(m_store = Services::locate<AssetStore>()); }
+	AssetStore& store() const { return m_store ? *m_store : *(m_store = Services::get<AssetStore>()); }
 	template <typename T>
-	bool skip(io::Path const& id) const noexcept {
-		return store().exists<T>(id) && !m_flags.test(Flag::eOverwrite);
+	bool skip(io::Path const& uri) const noexcept {
+		return store().exists<T>(uri) && !m_flags.test(Flag::eOverwrite);
 	}
 
 	mutable AssetStore* m_store{};

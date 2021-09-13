@@ -31,37 +31,39 @@ std::optional<io::FileMonitor::Status> Resource::status() const {
 	return std::nullopt;
 }
 
-bool Resource::load(io::Reader const& reader, io::Path path, Type type, bool bMonitor) {
-	if (reader.checkPresence(path)) {
-		io::FileReader const* pFR = bMonitor ? dynamic_cast<io::FileReader const*>(&reader) : nullptr;
-		if (bMonitor && pFR) {
+bool Resource::load(io::Media const& media, io::Path uri, Type type, bool monitor, bool silent) {
+	std::optional<dl::level> lvl;
+	if (!silent) { lvl = dl::level::warn; }
+	if (media.present(uri, lvl)) {
+		io::FSMedia const* fm = monitor ? dynamic_cast<io::FSMedia const*>(&media) : nullptr;
+		if (monitor && fm) {
 			using FMode = io::FileMonitor::Mode;
-			m_monitor = io::FileMonitor(pFR->fullPath(path).generic_string(), type == Type::eText ? FMode::eTextContents : FMode::eBinaryContents);
+			m_monitor = io::FileMonitor(fm->fullPath(uri).generic_string(), type == Type::eText ? FMode::eTextContents : FMode::eBinaryContents);
 			m_monitor->update();
 			m_data = bytearray();
 		} else {
 			if (type == Type::eText) {
-				m_data = *reader.string(path);
+				m_data = *media.string(uri);
 			} else {
-				m_data = *reader.bytes(path);
+				m_data = *media.bytes(uri);
 			}
 			m_monitor.reset();
 		}
-		m_path = std::move(path);
+		m_uri = std::move(uri);
 		m_type = type;
 		return true;
 	}
 	return false;
 }
 
-void Resources::reader(not_null<io::Reader const*> reader) { m_reader = reader; }
+void Resources::media(not_null<io::Media const*> media) { m_media = media; }
 
-io::Reader const& Resources::reader() const {
-	if (m_reader) { return *m_reader; }
-	return m_fileReader;
+io::Media const& Resources::media() const {
+	if (m_media) { return *m_media; }
+	return m_fsMedia;
 }
 
-io::FileReader& Resources::fileReader() { return m_fileReader; }
+io::FSMedia& Resources::fsMedia() { return m_fsMedia; }
 
 Resource const* Resources::find(Hash id) const noexcept {
 	ktl::tlock lock(m_loaded);
@@ -69,17 +71,19 @@ Resource const* Resources::find(Hash id) const noexcept {
 	return nullptr;
 }
 
-Resource const* Resources::load(io::Path path, Resource::Type type, bool bMonitor, bool bForceReload) {
-	if (!bForceReload) {
-		if (auto pRes = find(path)) { return pRes; }
+Resource const* Resources::load(io::Path uri, Resource::Type type, Flags flags) {
+	if (!flags.test(Flag::eReload)) {
+		if (auto res = find(uri)) { return res; }
 	}
-	ktl::unique_tlock<ResourceMap> lock(m_loaded);
-	lock->erase(path);
-	Resource resource;
-	if (resource.load(reader(), path, type, bMonitor && levk_resourceMonitor)) {
-		auto [it, bRes] = lock.get().emplace(std::move(path), std::move(resource));
-		ensure(bRes, "Duplicate Resource");
-		return &it->second;
+	return loadImpl(std::move(uri), type, flags);
+}
+
+Resource const* Resources::loadFirst(Span<io::Path> uris, Resource::Type type, Flags flags) {
+	for (auto& uri : uris) {
+		if (!flags.test(Flag::eReload)) {
+			if (auto res = find(uri)) { return res; }
+		}
+		if (media().present(uri, std::nullopt)) { return loadImpl(std::move(uri), type, flags); }
 	}
 	return nullptr;
 }
@@ -99,5 +103,16 @@ void Resources::update() {
 void Resources::clear() {
 	ktl::unique_tlock<ResourceMap> lock(m_loaded);
 	lock.get().clear();
+}
+
+Resource const* Resources::loadImpl(io::Path uri, Resource::Type type, Flags flags) {
+	Resource resource;
+	if (resource.load(media(), uri, type, flags.test(Flag::eMonitor) && levk_resourceMonitor, flags.test(Flag::eSilent))) {
+		ktl::unique_tlock<ResourceMap> lock(m_loaded);
+		lock->erase(uri);
+		auto [it, _] = lock.get().emplace(std::move(uri), std::move(resource));
+		return &it->second;
+	}
+	return nullptr;
 }
 } // namespace le

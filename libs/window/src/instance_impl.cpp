@@ -1,4 +1,6 @@
 #include <core/array_map.hpp>
+#include <core/utils/data_store.hpp>
+#include <core/utils/sys_info.hpp>
 #include <instance_impl.hpp>
 
 namespace le::window {
@@ -66,6 +68,7 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 		log().log(lvl::error, 2, "[{}] Failed to detect screens!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
+	DataStore::getOrSet<utils::SysInfo>("sys_info").displayCount = screens.size();
 	GLFWvidmode const* mode = glfwGetVideoMode(screens[0]);
 	if (!mode) {
 		log().log(lvl::error, 2, "[{}] Failed to detect video mode!", g_name);
@@ -463,7 +466,7 @@ void Instance::Impl::onText(GLFWwindow* win, u32 codepoint) {
 		auto& inst = *it->second;
 		Event event;
 		event.type = Event::Type::eText;
-		event.payload.text = static_cast<char>(codepoint);
+		event.payload.codepoint = codepoint;
 		inst.m_events.m_events.push_back(event);
 	}
 }

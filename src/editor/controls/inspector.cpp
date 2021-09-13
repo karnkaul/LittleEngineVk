@@ -10,7 +10,7 @@ namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct Transform {
-	void operator()(SceneNode& node) const { auto tr = TWidget<SceneNode>("Pos", "Orn", "Scl", node); }
+	void operator()(SceneNode& node) const { TWidget<SceneNode> tr("Pos", "Orn", "Scl", node); }
 };
 
 struct GuiRect {
@@ -51,7 +51,7 @@ struct GuiNode {
 
 void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
-	auto& editor = Services::locate<Engine>()->editor();
+	auto& editor = Services::get<Engine>()->editor();
 	if (editor.m_in.registry) {
 		if (editor.m_out.inspecting.contains<decf::entity>()) {
 			if (auto entity = editor.m_out.inspecting.get<decf::entity>(); entity != decf::entity()) {

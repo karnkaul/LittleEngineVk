@@ -132,27 +132,27 @@ inline SceneNode& SceneNode::reset(SceneTransform const& transform) {
 
 inline SceneNode& SceneNode::position(glm::vec3 const& position) noexcept {
 	m_transform.position = position;
-	setDirty(true);
+	setDirty();
 	return *this;
 }
 inline SceneNode& SceneNode::orient(glm::quat const& orientation) noexcept {
 	m_transform.orientation = orientation;
-	setDirty(true);
+	setDirty();
 	return *this;
 }
 inline SceneNode& SceneNode::rotate(f32 radians, glm::vec3 const& axis) noexcept {
 	m_transform.orientation = glm::rotate(m_transform.orientation, radians, axis);
-	setDirty(true);
+	setDirty();
 	return *this;
 }
 inline SceneNode& SceneNode::scale(f32 scale) noexcept {
 	m_transform.scale = {scale, scale, scale};
-	setDirty(true);
+	setDirty();
 	return *this;
 }
 inline SceneNode& SceneNode::scale(glm::vec3 const& scale) noexcept {
 	m_transform.scale = scale;
-	setDirty(true);
+	setDirty();
 	return *this;
 }
 

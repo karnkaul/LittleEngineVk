@@ -3,7 +3,7 @@
 #include <engine/gui/quad.hpp>
 
 namespace le::gui {
-Quad::Quad(not_null<TreeRoot*> root, bool hitTest) noexcept : TreeNode(root), m_mesh(Services::locate<graphics::VRAM>(), graphics::Mesh::Type::eDynamic) {
+Quad::Quad(not_null<TreeRoot*> root, bool hitTest) noexcept : TreeNode(root), m_mesh(Services::get<graphics::VRAM>(), graphics::Mesh::Type::eDynamic) {
 	m_hitTest = hitTest;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #if defined(LEVK_USE_GLFW)
-#define GLFW_INCLUDE_VULKAN
+#include <vulkan/vulkan.h>
+
 #include <GLFW/glfw3.h>
 #include <core/span.hpp>
 #include <vulkan/vulkan.hpp>

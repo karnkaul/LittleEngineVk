@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <build_version.hpp>
+#include <core/io/zip_media.hpp>
 #include <core/utils/data_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
@@ -138,6 +139,7 @@ bool Engine::unboot() noexcept {
 		m_store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_gfx.reset();
+		io::ZIPMedia::fsDeinit();
 		return true;
 	}
 	return false;

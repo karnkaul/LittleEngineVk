@@ -40,7 +40,7 @@ endif()
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
 option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" OFF)
-if("$CMAKE_BUILD_TYPE" STREQUAL "Debug")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND NOT LEVK_VULKAN_DYNAMIC)
 	option(LEVK_EDITOR "Enable Editor" ON)
 else()
 	option(LEVK_EDITOR "Enable Editor" OFF)
@@ -97,6 +97,8 @@ add_subdirectory(ext/vulkan_hpp)
 
 # external
 set(PHYSFS_BUILD_STATIC ON)
+set(PHYSFS_BUILD_SHARED OFF)
+set(PHYSFS_BUILD_DOCS OFF)
 set(PHYSFS_ARCHIVE_GRP OFF)
 set(PHYSFS_ARCHIVE_HOG OFF)
 set(PHYSFS_ARCHIVE_ISO9660 OFF)
@@ -164,7 +166,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	ktl
 	GIT_REPOSITORY https://github.com/karnkaul/ktl
-	GIT_TAG 75c233c
+	GIT_TAG 1f3ca23
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)

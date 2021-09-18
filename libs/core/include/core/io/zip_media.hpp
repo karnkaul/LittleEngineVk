@@ -5,8 +5,6 @@ namespace le::io {
 ///
 /// \brief Concrete class for `.zip` IO
 ///
-/// Depends on active ZIPFS instance / service for member functions to be active
-///
 class ZIPMedia final : public Media, public NoCopy {
   public:
 	static constexpr Info info_v = {"ZIP", Flag::eRead};
@@ -14,11 +12,26 @@ class ZIPMedia final : public Media, public NoCopy {
 	Info const& info() const noexcept override { return info_v; }
 
 	///
-	/// \brief Check if ZIPFS service is available
+	/// \brief Initialize ZIP filesystem if not initialized
+	/// \returns true if successfully/already initialized
+	///
+	static bool fsInit();
+	///
+	/// \brief Deinitialize ZIP filesystem if initialized
+	/// \returns true if successfully/already deinitialized
+	///
+	static bool fsDeinit();
+	///
+	/// \brief Check if ZIPFS is initialized
 	///
 	/// Member functions early return if this is false
 	///
 	static bool fsActive() noexcept;
+
+	///
+	/// \brief Default constructor; calls fsInit()
+	///
+	ZIPMedia();
 
 	///
 	/// \brief Mount .zip file at path
@@ -37,7 +50,7 @@ class ZIPMedia final : public Media, public NoCopy {
 	struct Zip {
 		Path path;
 
-		Zip(Path path);
+		Zip(Path path) noexcept : path(std::move(path)) {}
 		Zip(Zip&& rhs) noexcept { exchg(*this, rhs); }
 		Zip& operator=(Zip rhs) noexcept { return (exchg(*this, rhs), *this); }
 		~Zip();
@@ -49,23 +62,5 @@ class ZIPMedia final : public Media, public NoCopy {
 	std::optional<Path> findPrefixed(Path const& uri) const override;
 
 	std::vector<Zip> m_zips;
-};
-
-///
-/// \brief RAII zip filesystem init/deinit
-///
-/// Only one active instance required/supported
-/// Registers self as service
-///
-class ZIPFS final {
-  public:
-	ZIPFS();
-	~ZIPFS();
-
-	bool active() const noexcept { return m_init; }
-	explicit operator bool() const noexcept { return active(); }
-
-  private:
-	bool m_init{};
 };
 } // namespace le::io

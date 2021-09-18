@@ -111,6 +111,7 @@ struct GPU : clap::option_parser {
 } // namespace
 
 clap::parse_result env::init(int argc, char const* const argv[]) {
+	os::environment(Span(argv, static_cast<std::size_t>(argc)));
 	Parser parser;
 	GPU gpu;
 	clap::option_parser* const cmds[] = {&gpu};

@@ -66,8 +66,7 @@
 			"binaryDir": "out/rl",
 			"inherits": "default",
 			"cacheVariables": {
-				"CMAKE_BUILD_TYPE": "Release",
-				"LEVK_VULKAN_DYNAMIC": "ON"
+				"CMAKE_BUILD_TYPE": "Release"
 			}
 		},
 		{

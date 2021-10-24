@@ -17,8 +17,8 @@ install:
 before_build:
   - cmd: |
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview\VC\Auxiliary\Build\vcvars64.bat"
-        cmake -G Ninja . -B out -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
-  - sh: cmake -G Ninja . -B out -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
+        cmake -G Ninja . -B out -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DCI_BUILD=1 || exit 1
+  - sh: cmake -G Ninja . -B out -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 || exit 1
 build_script:
   - cmd: |
       echo "== Building Windows %CONFIGURATION% %LEVK_VERSION% =="

@@ -15,8 +15,8 @@ install:
       sudo add-apt-repository ppa:ubuntu-toolchain-r/test
       echo "== Installing dependencies ==" && sudo apt -qq update && sudo apt -qq install -y gcc-10 g++-10 xorg-dev
 before_build:
-  - cmd: cmake -G "Visual Studio 16 2019" . -B out -A x64 -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1
-  - sh: cmake -G Ninja . -B out -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 -DLEVK_VULKAN_DYNAMIC=1 || exit 1
+  - cmd: cmake -G "Visual Studio 16 2019" . -B out -A x64 -DCI_BUILD=1
+  - sh: cmake -G Ninja . -B out -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_BUILD_TYPE=$CONFIGURATION -DCI_BUILD=1 || exit 1
 for:
   - matrix:
       only:

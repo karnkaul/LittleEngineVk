@@ -14,8 +14,8 @@ target_include_directories(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
+		vk-hpp::vk-hpp
 		levk::core
-		levk::vulkan-hpp
 		$<$<BOOL:${LEVK_USE_GLFW}>:glfw>
 	PRIVATE
 		levk::compile-options

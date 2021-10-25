@@ -160,7 +160,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	ktl
 	GIT_REPOSITORY https://github.com/karnkaul/ktl
-	GIT_TAG 1f3ca23
+	GIT_TAG 195724f
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)

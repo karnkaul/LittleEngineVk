@@ -34,12 +34,12 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 	m_storage.buffering = info.buffering;
 	m_storage.layout = info.layout;
 	m_storage.setNumber = info.setNumber;
-	bool bActive = false;
+	bool active = false;
 	for (auto const& bindingInfo : info.bindingInfos) {
 		m_storage.bindingInfos[bindingInfo.binding.binding] = bindingInfo;
-		bActive |= !bindingInfo.bUnassigned;
+		active |= !bindingInfo.bUnassigned;
 	}
-	if (bActive) {
+	if (active) {
 		std::vector<vk::DescriptorPoolSize> poolSizes;
 		poolSizes.reserve(m_storage.bindingInfos.size());
 		for (Buffering buf{}; buf < m_storage.buffering; ++buf.value) {
@@ -54,7 +54,7 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 				}
 			}
 			set.pool = makeDeferred<vk::DescriptorPool>(m_device, poolSizes, 1U);
-			set.set = m_device->allocateDescriptorSets(*set.pool, m_storage.layout, 1).front();
+			set.set = m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
 			m_storage.setBuffer.emplace(std::move(set));
 		}
 	}

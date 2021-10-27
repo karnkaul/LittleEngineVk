@@ -72,8 +72,8 @@ class ARenderer {
 
 	virtual Tech tech() const noexcept = 0;
 
-	virtual vk::RenderPass renderPass3D() const noexcept { return *m_storage.renderPass; }
-	virtual vk::RenderPass renderPassUI() const noexcept { return *m_storage.renderPass; }
+	virtual vk::RenderPass renderPass3D() const noexcept { return m_storage.renderPass; }
+	virtual vk::RenderPass renderPassUI() const noexcept { return m_storage.renderPass; }
 
 	virtual std::optional<RenderTarget> beginFrame();
 	virtual CommandBuffer beginDraw(RenderTarget const& target, ScreenView const& view, RGBA clear, ClearDepth depth) = 0;
@@ -116,7 +116,7 @@ struct ARenderer::Buf {
 	Buf() = default;
 	Buf(not_null<Device*> device, vk::CommandPoolCreateFlags flags = {}, QType qtype = QType::eGraphics) {
 		pool = makeDeferred<vk::CommandPool>(device, flags, qtype);
-		cb = CommandBuffer::make(device, *pool, 1).front();
+		cb = CommandBuffer::make(device, pool, 1).front();
 		draw = makeDeferred<vk::Semaphore>(device);
 		present = makeDeferred<vk::Semaphore>(device);
 	}

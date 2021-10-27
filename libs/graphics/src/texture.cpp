@@ -142,7 +142,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 	Device& d = *m_vram->m_device;
 	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
 	out_storage.view = {&d, d.makeImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type)};
-	out_storage.data.imageView = *out_storage.view;
+	out_storage.data.imageView = out_storage.view;
 	return true;
 }
 } // namespace le::graphics

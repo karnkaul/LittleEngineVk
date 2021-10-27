@@ -109,7 +109,7 @@ struct Device::CreateInfo {
 
 template <typename T>
 struct Device::Deleter {
-	void operator()(not_null<Device*> device, T t) const { device->destroy(t); }
+	void operator()(vk::Device device, T t) const { device.destroy(t); }
 };
 
 constexpr vk::BufferUsageFlagBits Device::bufferUsage(vk::DescriptorType type) noexcept {

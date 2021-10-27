@@ -126,7 +126,7 @@ bool ARenderer::submitFrame() {
 	submitInfo.pCommandBuffers = &buf.cb.m_cb;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &buf.present.m_t;
-	if (!m_fence.present(*m_swapchain, submitInfo, *buf.present)) { return false; }
+	if (!m_fence.present(*m_swapchain, submitInfo, buf.present)) { return false; }
 	m_storage.buf.next();
 	return true;
 }
@@ -162,9 +162,9 @@ ARenderer::Storage ARenderer::make(Transition transition, TPair<vk::Format> colo
 
 ktl::expected<Swapchain::Acquire, Swapchain::Flags> ARenderer::acquire(bool begin) {
 	auto& buf = m_storage.buf.get();
-	auto acquire = m_fence.acquire(*m_swapchain, *buf.draw);
+	auto acquire = m_fence.acquire(*m_swapchain, buf.draw);
 	if (acquire && begin) {
-		m_device->device().resetCommandPool(*buf.pool, {});
+		m_device->device().resetCommandPool(buf.pool, {});
 		buf.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 	}
 	return acquire;

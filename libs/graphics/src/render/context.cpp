@@ -72,7 +72,7 @@ RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARe
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
 	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_storage.renderer->renderPass3D(); }
 	info.buffering = m_storage.renderer->buffering();
-	info.cache = *m_storage.pipelineCache;
+	info.cache = m_storage.pipelineCache;
 	return Pipeline(m_swapchain->m_vram, shader, std::move(info), id);
 }
 

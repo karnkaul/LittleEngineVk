@@ -8,7 +8,7 @@ CommandPool::CommandPool(not_null<Device*> device, vk::CommandPoolCreateFlags fl
 
 void CommandPool::update() {
 	for (auto& cmd : m_busy) {
-		if (m_device->signalled(*cmd.fence)) {
+		if (m_device->signalled(cmd.fence.get())) {
 			cmd.cb.m_cb.reset({});
 			m_free.push_back(std::move(cmd));
 		}
@@ -16,7 +16,7 @@ void CommandPool::update() {
 	std::erase_if(m_busy, [](Cmd const& cmd) { return !cmd.fence.active(); });
 }
 
-CommandPool::Cmd CommandPool::newCmd() const { return {CommandBuffer::make(m_device, *m_pool, 1U).front(), makeDeferred<vk::Fence>(m_device, false)}; }
+CommandPool::Cmd CommandPool::newCmd() const { return {CommandBuffer::make(m_device, m_pool, 1U).front(), makeDeferred<vk::Fence>(m_device, false)}; }
 
 CommandPool::Cmd CommandPool::beginCmd() const {
 	Cmd ret;
@@ -40,7 +40,7 @@ void CommandPool::submit(Cmd cmd, vk::Semaphore wait, vk::PipelineStageFlags sta
 	info.pWaitDstStageMask = &stages;
 	info.signalSemaphoreCount = signal == vk::Semaphore() ? 0 : 1;
 	info.pSignalSemaphores = signal == vk::Semaphore() ? nullptr : &signal;
-	m_device->queues().submit(m_qtype, info, *cmd.fence, true);
+	m_device->queues().submit(m_qtype, info, cmd.fence, true);
 	m_busy.push_back(std::move(cmd));
 }
 } // namespace le::graphics

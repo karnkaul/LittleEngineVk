@@ -130,7 +130,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	initInfo.MinImageCount = (u32)info.minImageCount;
 	initInfo.ImageCount = (u32)info.imageCount;
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	initInfo.DescriptorPool = *m_pool;
+	initInfo.DescriptorPool = static_cast<VkDescriptorPool>(m_pool.get());
 	if (!ImGui_ImplVulkan_Init(&initInfo, info.renderPass)) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
@@ -158,7 +158,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 #endif
 }
 
-void DearImGui::Del::operator()(not_null<graphics::Device*>, void*) const {
+void DearImGui::Del::operator()(vk::Device, void*) const {
 #if defined(LEVK_USE_IMGUI)
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();

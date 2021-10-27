@@ -1,15 +1,15 @@
 #pragma once
-#include <core/delegate.hpp>
 #include <core/time.hpp>
 #include <engine/gui/quad.hpp>
 #include <engine/gui/style.hpp>
 #include <engine/input/state.hpp>
+#include <ktl/delegate.hpp>
 
 namespace le::gui {
 class Widget : public Quad {
   public:
 	using Status = InteractStatus;
-	using OnClick = Delegate<>;
+	using OnClick = ktl::delegate<>;
 
 	Widget(not_null<TreeRoot*> root, Hash style = {});
 	Widget(Widget&&) = delete;
@@ -17,7 +17,7 @@ class Widget : public Quad {
 
 	Status status(input::State const& state) const noexcept;
 	bool clicked(input::State const& state, bool style = true, Status* out = nullptr) noexcept;
-	[[nodiscard]] OnClick::Tk onClick(OnClick::Callback const& cb) { return m_onClick.subscribe(cb); }
+	[[nodiscard]] OnClick::handle onClick() { return m_onClick.make_signal(); }
 	void refresh(input::State const* state = nullptr);
 
 	virtual Status onInput(input::State const& state);

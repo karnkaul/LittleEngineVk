@@ -1,9 +1,9 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include <core/delegate.hpp>
 #include <core/utils/algo.hpp>
 #include <engine/assets/resources.hpp>
+#include <ktl/delegate.hpp>
 
 namespace le {
 class AssetStore;
@@ -21,7 +21,7 @@ struct AssetLoadData {
 template <typename T>
 class AssetLoadInfo {
   public:
-	using OnModified = Delegate<>;
+	using OnModified = ktl::delegate<>;
 
 	template <typename Data>
 	AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash id);
@@ -43,7 +43,7 @@ class AssetLoadInfo {
   private:
 	not_null<Resources*> m_resources;
 	mutable std::unordered_map<Hash, not_null<Resource const*>> m_monitors;
-	mutable std::vector<OnModified::Tk> m_tokens;
+	mutable std::vector<OnModified::signal> m_tokens;
 	mutable bool m_bDirty = false;
 };
 

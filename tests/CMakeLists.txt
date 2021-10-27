@@ -20,7 +20,7 @@ add_executable(test-fv fixed_vector_test.cpp)
 target_link_libraries(test-fv PRIVATE dtest::main levk::core levk::compile-options)
 add_test(ktl::fixed_vector test-fv)
 
-# monotonic_map
-add_executable(test-mm monotonic_map_test.cpp)
-target_link_libraries(test-mm PRIVATE dtest::main levk::core levk::compile-options)
-add_test(ktl::monotonic_map test-mm)
+# delegate
+add_executable(test-delegate delegate_test.cpp)
+target_link_libraries(test-delegate PRIVATE dtest::main levk::core levk::compile-options)
+add_test(ktl::delegate test-delegate)

@@ -42,13 +42,14 @@ void Dropdown::init(CreateInfoBase info) {
 	f32 const yOffset = m_rect.size.y * 0.5f + m_rect.size.y * 0.5f + 0.5f; // +0.5f to round to next pixel
 	m_flexbox->m_rect.anchor.offset = {0.0f, -yOffset};
 	m_flexbox->m_active = false;
-	m_onClickTk = onClick([this]() {
+	m_onClickTk = onClick();
+	m_onClickTk += [this]() {
 		if (!m_flexbox->m_active) {
 			expand();
 		} else {
 			collapse();
 		}
-	});
+	};
 	std::string text = m_options[m_selected];
 	itemPad(text, 0);
 	m_text->set(std::move(text));
@@ -57,7 +58,9 @@ void Dropdown::init(CreateInfoBase info) {
 void Dropdown::add(Button& item, std::string_view text, std::size_t index) {
 	item.m_text->set(std::string(text)).size(m_style.base.text.size).colour(m_style.base.text.colour).align(m_style.base.text.align);
 	item.m_style = m_style;
-	m_entryTokens.push_back(item.onClick([this, index]() { select(index); }));
+	auto signal = item.onClick();
+	signal += [this, index]() { select(index); };
+	m_entrySignals.push_back(std::move(signal));
 }
 
 void Dropdown::expand() {
@@ -75,6 +78,6 @@ void Dropdown::collapse() {
 void Dropdown::select(std::size_t index) {
 	m_selected = index;
 	collapse();
-	m_onSelect(*this, selected());
+	m_onSelect(selected());
 }
 } // namespace le::gui

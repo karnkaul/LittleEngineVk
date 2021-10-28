@@ -313,9 +313,9 @@ TWidget<SceneNode>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU SceneNode&
 TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s64 max, MU s64 dt) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::PushButtonRepeat(true);
-	if (ImGui::ArrowButton(fmt::format("##{}_left", id).data(), ImGuiDir_Left) && out_t > min) { out_t -= dt; }
+	if (ImGui::ArrowButton(CStr<64>("##%s_left", id.data()).data(), ImGuiDir_Left) && out_t > min) { out_t -= dt; }
 	ImGui::SameLine(0.0f, 3.0f);
-	if (ImGui::ArrowButton(fmt::format("##{}_right", id).data(), ImGuiDir_Right) && out_t < max) { out_t += dt; }
+	if (ImGui::ArrowButton(CStr<64>("##%s_right", id.data()).data(), ImGuiDir_Right) && out_t < max) { out_t += dt; }
 	ImGui::PopButtonRepeat();
 	ImGui::SameLine(0.0f, 5.0f);
 	ImGui::Text("%s", id.data());

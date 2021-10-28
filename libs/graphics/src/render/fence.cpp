@@ -10,7 +10,7 @@ void busy(RenderFence::Fence& fence) noexcept { fence.previous = RenderFence::St
 
 RenderFence::State RenderFence::Fence::state(vk::Device device) const {
 	State ret = previous;
-	switch (device.getFenceStatus(*fence)) {
+	switch (device.getFenceStatus(fence)) {
 	case vk::Result::eSuccess: ret = State::eReady; break;
 	case vk::Result::eNotReady: break;
 	default: break;
@@ -24,7 +24,7 @@ RenderFence::RenderFence(not_null<Device*> device, Buffering buffering) : m_devi
 
 void RenderFence::wait() {
 	auto& ret = current();
-	m_device->waitFor(*ret.fence);
+	m_device->waitFor(ret.fence);
 	ready(ret);
 }
 
@@ -36,7 +36,7 @@ void RenderFence::associate(u32 imageIndex) {
 	ensure(imageIndex < arraySize(m_storage.ptrs), "Invalid imageIndex");
 	auto& curr = current();
 	auto ret = std::exchange(m_storage.ptrs[(std::size_t)imageIndex], &curr);
-	if (ret) { m_device->waitFor(*ret->fence); }
+	if (ret) { m_device->waitFor(ret->fence); }
 	busy(curr);
 }
 
@@ -62,16 +62,16 @@ void RenderFence::next() noexcept {
 vk::Fence RenderFence::drawFence() {
 	auto& ret = current();
 	ensure(ret.state(m_device->device()) == State::eReady, "Invalid fence state");
-	m_device->resetFence(*ret.fence);
+	m_device->resetFence(ret.fence);
 	ready(ret);
-	return *ret.fence;
+	return ret.fence;
 }
 
 vk::Fence RenderFence::submitFence() {
 	auto& ret = current();
-	m_device->waitFor(*ret.fence);
-	m_device->resetFence(*ret.fence);
+	m_device->waitFor(ret.fence);
+	m_device->resetFence(ret.fence);
 	ready(ret);
-	return *ret.fence;
+	return ret.fence;
 }
 } // namespace le::graphics

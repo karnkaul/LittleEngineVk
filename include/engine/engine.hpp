@@ -73,6 +73,7 @@ class Engine : public Service<Engine> {
 
 	input::Driver::Out poll(bool consume) noexcept;
 	void pushReceiver(not_null<input::Receiver*> context);
+	input::Receiver::Store& receiverStore() noexcept { return m_receivers; }
 	void update(gui::ViewStack& out_stack);
 
 	bool drawReady();
@@ -128,7 +129,7 @@ class Engine : public Service<Engine> {
 	input::Driver m_input;
 	Editor m_editor;
 	Stats::Counter m_stats;
-	input::Receivers m_receivers;
+	input::ReceiverStore m_receivers;
 	input::Frame m_inputFrame;
 	graphics::ScreenView m_view;
 	std::optional<graphics::RenderTarget> m_drawing;

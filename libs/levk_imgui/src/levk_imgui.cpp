@@ -4,9 +4,9 @@
 #if defined(LEVK_USE_IMGUI)
 #include <GLFW/glfw3.h>
 #if defined(LEVK_USE_GLFW)
-#include <imgui_impl_glfw.h>
+#include <backends/imgui_impl_glfw.h>
 #endif
-#include <imgui_impl_vulkan.h>
+#include <backends/imgui_impl_vulkan.h>
 #include <core/colour.hpp>
 #include <core/ensure.hpp>
 #include <core/log.hpp>
@@ -108,6 +108,11 @@ DearImGui::DearImGui() = default;
 DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]] not_null<Window const*> window, [[maybe_unused]] CreateInfo const& info) {
 #if defined(LEVK_USE_IMGUI) && defined(LEVK_USE_GLFW)
 	m_device = device;
+	static vk::Instance s_inst;
+	static vk::DynamicLoader const s_dl;
+	s_inst = device->m_instance->instance();
+	auto const loader = [](char const* fn, void*) { return s_dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr")(s_inst, fn); };
+	ImGui_ImplVulkan_LoadFunctions(loader);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
@@ -125,7 +130,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	initInfo.MinImageCount = (u32)info.minImageCount;
 	initInfo.ImageCount = (u32)info.imageCount;
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	initInfo.DescriptorPool = *m_pool;
+	initInfo.DescriptorPool = static_cast<VkDescriptorPool>(m_pool.get());
 	if (!ImGui_ImplVulkan_Init(&initInfo, info.renderPass)) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
@@ -153,7 +158,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 #endif
 }
 
-void DearImGui::Del::operator()(not_null<graphics::Device*>, void*) const {
+void DearImGui::Del::operator()(vk::Device, void*) const {
 #if defined(LEVK_USE_IMGUI)
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();

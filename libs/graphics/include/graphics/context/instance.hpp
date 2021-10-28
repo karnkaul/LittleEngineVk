@@ -18,7 +18,6 @@ class Instance final : public Pinned {
 
 	ktl::fixed_vector<PhysicalDevice, 8> availableDevices(Span<std::string_view const> requiredExtensions) const;
 	vk::Instance instance() const noexcept { return m_instance; }
-	vk::DispatchLoaderDynamic loader() const { return m_loader; }
 
   private:
 	struct {
@@ -27,7 +26,6 @@ class Instance final : public Pinned {
 	} m_metadata;
 
 	vk::Instance m_instance;
-	vk::DispatchLoaderDynamic m_loader;
 	vk::DebugUtilsMessengerEXT m_messenger;
 
 	friend class Device;

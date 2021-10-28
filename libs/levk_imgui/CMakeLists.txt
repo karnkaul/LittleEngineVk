@@ -13,7 +13,7 @@ target_include_directories(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
-		$<$<BOOL:${LEVK_USE_IMGUI}>:imgui>
+		$<$<BOOL:${LEVK_USE_IMGUI}>:dear-imgui::dear-imgui>
 		levk::core
 		levk::graphics
 		levk::window

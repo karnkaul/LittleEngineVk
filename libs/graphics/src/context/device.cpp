@@ -83,7 +83,7 @@ Device::Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo 
 	deviceCreateInfo.ppEnabledExtensionNames = m_metadata.extensions.data();
 	m_device = m_physicalDevice.device.createDevice(deviceCreateInfo);
 	m_queues.setup(m_device);
-	instance->m_loader.init(m_device);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_device);
 	g_log.log(lvl::info, 0, "[{}] Vulkan device constructed, using GPU {}", g_name, m_physicalDevice.toString());
 	g_validationLevel = validationLevel;
 }
@@ -235,7 +235,7 @@ vk::Sampler Device::makeSampler(vk::SamplerCreateInfo info) const { return m_dev
 
 bool Device::setDebugUtilsName([[maybe_unused]] vk::DebugUtilsObjectNameInfoEXT const& info) const {
 	if (!default_v(m_instance->m_messenger)) {
-		m_device.setDebugUtilsObjectNameEXT(info, m_instance->loader());
+		m_device.setDebugUtilsObjectNameEXT(info);
 		return true;
 	}
 	return false;

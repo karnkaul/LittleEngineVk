@@ -281,14 +281,15 @@ class TestView : public gui::View {
 		m_button->m_rect.size = {200.0f, 100.0f};
 		m_button->m_text->set("Button").size(40U);
 		m_button->refresh();
-		m_tk = m_button->onClick([this]() { setDestroyed(); });
+		m_onClick = m_button->onClick();
+		m_onClick += [this]() { setDestroyed(); };
 	}
 
 	TestView(TestView&&) = delete;
 	TestView& operator=(TestView&&) = delete;
 
 	gui::Button* m_button{};
-	gui::Widget::OnClick::Tk m_tk;
+	gui::Widget::OnClick::handle m_onClick;
 };
 } // namespace le::demo
 
@@ -304,7 +305,7 @@ class Dialogue : public View {
 
 	Dialogue(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info);
 
-	[[nodiscard]] Widget::OnClick::Tk addButton(std::string text, Widget::OnClick::Callback const& onClick);
+	[[nodiscard]] Widget::OnClick::handle addButton(std::string text, Widget::OnClick::callback&& onClick);
 
   protected:
 	void onUpdate(input::Frame const& frame) override;
@@ -327,7 +328,7 @@ class Dialogue : public View {
 	Button* m_content{};
 	Footer m_footer;
 	ButtonInfo m_buttonInfo;
-	Button::OnClick::Tk m_closeToken;
+	Button::OnClick::handle m_closeSignal;
 	not_null<BitmapFont const*> m_font;
 };
 
@@ -379,7 +380,8 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 	m_header.close->m_rect.size = {20.0f, 20.0f};
 	m_header.close->m_rect.anchor.norm.x = 0.5f;
 	m_header.close->m_rect.anchor.offset.x = -20.0f;
-	m_closeToken = m_header.close->onClick([this]() { setDestroyed(); });
+	m_closeSignal = m_header.close->onClick();
+	m_closeSignal += [this]() { setDestroyed(); };
 
 	m_footer.bg = &m_content->push<Widget>(info.footer.style);
 	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
@@ -389,7 +391,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 	m_footer.bg->m_interact = false;
 }
 
-Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callback const& onClick) {
+Widget::OnClick::handle Dialogue::addButton(std::string text, Widget::OnClick::callback&& onClick) {
 	auto& button = m_footer.bg->push<Button>(m_font, m_buttonInfo.style);
 	m_footer.buttons.push_back(&button);
 	button.m_rect.anchor.norm.x = -0.5f;
@@ -402,7 +404,9 @@ Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callb
 		btn->m_rect.anchor.offset.x = offset;
 		offset += (pad + m_buttonInfo.size.x);
 	}
-	return button.onClick(onClick);
+	auto ret = button.onClick();
+	ret += std::move(onClick);
+	return ret;
 }
 
 void Dialogue::onUpdate(input::Frame const& frame) {
@@ -542,8 +546,8 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& in = dialogue.push<gui::InputField>(&font.get(), info);
 		in.m_rect.anchor.offset.y = 60.0f;
 		in.align({-0.5f, 0.0f});
-		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
-		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
+		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
@@ -567,7 +571,8 @@ class App : public input::Receiver, public SceneRegistry {
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
 			auto coll = collision.add({});
-			m_colTk = coll.onCollide([](Collision::Collider) { logD("Collided!"); });
+			m_onCollide = coll.onCollide();
+			m_onCollide += [](Collision::Collider) { logD("Collided!"); };
 			m_colID0 = coll.m_id;
 		}
 		{
@@ -705,7 +710,7 @@ class App : public input::Receiver, public SceneRegistry {
 		std::optional<TextMesh> text;
 		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;
-		std::vector<gui::Widget::OnClick::Tk> btnTkns;
+		std::vector<gui::Widget::OnClick::handle> btnSignals;
 
 		decf::entity camera;
 		decf::entity player;
@@ -723,7 +728,7 @@ class App : public input::Receiver, public SceneRegistry {
 	not_null<Engine*> m_eng;
 	Drawer m_drawer;
 	Collision::ID m_colID0{}, m_colID1{};
-	Collision::OnCollide::Tk m_colTk;
+	Collision::OnCollide::handle m_onCollide;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};

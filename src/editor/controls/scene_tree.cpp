@@ -56,15 +56,16 @@ void inspect(InspectVerifier& iv, edi::TreeNode& tn, T t) {
 }
 
 template <typename T>
-std::string uniqueGuiName(T const& t) {
-	std::stringstream str;
+CStr<128> uniqueGuiName(T const& t) {
+	CStr<128> str;
 	if constexpr (std::is_base_of_v<gui::View, T>) {
-		str << t.m_name;
+		str = t.m_name;
 	} else {
-		str << utils::tName(&t);
+		str = utils::tName(&t);
 	}
-	str << "##" << std::hex << &t;
-	return str.str();
+	str += CStr<128>("##");
+	str += CStr<128>("%x", &t);
+	return str;
 }
 
 void walk(SceneNode& node, InspectVerifier& iv, decf::registry& reg, Editor& editor) {

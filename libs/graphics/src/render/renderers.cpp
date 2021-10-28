@@ -8,9 +8,9 @@ CommandBuffer RendererFSR::beginDraw(RenderTarget const& target, ScreenView cons
 	auto& buf = m_storage.buf.get();
 	auto const cl = clear.toVec4();
 	vk::ClearColorValue const c = std::array{cl.x, cl.y, cl.z, cl.w};
-	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, *m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
+	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
 	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-	buf.cb.beginRenderPass(*m_storage.renderPass, *buf.framebuffer, target.colour.extent, info);
+	buf.cb.beginRenderPass(m_storage.renderPass, buf.framebuffer, target.colour.extent, info);
 	buf.cb.setViewport(viewport(target.colour.extent, view));
 	buf.cb.setScissor(scissor(target.colour.extent, view));
 	return buf.cb;

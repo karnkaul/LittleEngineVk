@@ -43,7 +43,7 @@ class DearImGui final {
 
   private:
 	struct Del {
-		void operator()(not_null<graphics::Device*>, void*) const;
+		void operator()(vk::Device, void*) const;
 	};
 
 	bool next(State from, State to);

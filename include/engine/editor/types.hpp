@@ -9,6 +9,7 @@
 #include <engine/scene/scene_node.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/n_tree.hpp>
+#include <ktl/stack_string.hpp>
 
 #if defined(LEVK_EDITOR)
 constexpr bool levk_editor = true;
@@ -23,9 +24,12 @@ using GUIState = ktl::enum_flags<GUI, u8>;
 enum class Style { eSameLine, eSeparator };
 using StyleFlags = ktl::enum_flags<Style, u8>;
 
+template <std::size_t N = 64>
+using CStr = ktl::stack_string<N>;
+
 struct MenuList {
 	struct Menu {
-		std::string id;
+		CStr<64> id;
 		std::function<void()> callback;
 		bool separator = false;
 	};
@@ -163,10 +167,10 @@ struct TWidgetWrap {
 
 template <typename T>
 struct TInspector {
+	CStr<128> id;
 	std::optional<TreeNode> node;
 	decf::registry* pReg = nullptr;
 	decf::entity entity;
-	std::string id;
 	bool bNew = false;
 	bool bOpen = false;
 
@@ -264,7 +268,7 @@ template <typename T>
 TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {
 	if (&rhs != this) {
 		node = std::move(rhs.node);
-		id = std::move(rhs.id);
+		id = std::exchange(rhs.id, CStr<128>());
 		pReg = std::exchange(rhs.pReg, nullptr);
 		bNew = std::exchange(rhs.bNew, false);
 		bOpen = std::exchange(rhs.bOpen, false);
@@ -275,7 +279,7 @@ TInspector<T>& TInspector<T>::operator=(TInspector<T>&& rhs) {
 template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
-		if (auto add = TreeNode(fmt::format("[Add {}]", id), false, true, true, false); add.test(GUI::eLeftClicked)) {
+		if (auto add = TreeNode(CStr<16>("[Add %s]", id.data()), false, true, true, false); add.test(GUI::eLeftClicked)) {
 			decf::registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}

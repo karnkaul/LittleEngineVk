@@ -39,8 +39,7 @@ endif()
 # options
 option(LEVK_USE_PCH "Generate pre-compiled header" ON)
 option(LEVK_USE_GLFW "Use GLFW for Windowing" ON)
-option(LEVK_VULKAN_DYNAMIC "Load Vulkan dynamically" OFF)
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND NOT LEVK_VULKAN_DYNAMIC)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	option(LEVK_EDITOR "Enable Editor" ON)
 else()
 	option(LEVK_EDITOR "Enable Editor" OFF)
@@ -60,9 +59,6 @@ if(LEVK_EDITOR)
 	if(NOT LEVK_USE_GLFW OR NOT LEVK_USE_IMGUI)
 		message(FATAL_ERROR "Cannot build Editor without LEVK_USE_GLFW and LEVK_USE_IMGUI!")
 	endif()
-endif()
-if(LEVK_USE_IMGUI AND LEVK_VULKAN_DYNAMIC)
-	message(FATAL_ERROR "Cannot have both LEVK_USE_IMGUI and LEVK_VULKAN_DYNAMIC set!")
 endif()
 
 # Git operations
@@ -92,8 +88,8 @@ if(CI_BUILD)
 	message(STATUS "== CI Build ==")
 endif()
 
-# vulkan
-add_subdirectory(ext/vulkan_hpp)
+# vk_hpp
+add_subdirectory(ext/vk_hpp)
 
 # external
 set(PHYSFS_BUILD_STATIC ON)
@@ -112,9 +108,7 @@ add_subdirectory(ext/physfs)
 target_include_directories(physfs-static SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/physfs/src>)
 add_subdirectory(ext/glm)
 if(LEVK_USE_GLFW)
-	if(NOT LEVK_VULKAN_DYNAMIC)
-		set(GLFW_VULKAN_STATIC ON)
-	endif()
+	set(GLFW_VULKAN_STATIC OFF)
 	set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "" FORCE)
 	set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
@@ -128,7 +122,7 @@ add_subdirectory(ext/vma)
 add_subdirectory(ext/stb)
 add_subdirectory(ext/tinyobjloader)
 if(LEVK_USE_IMGUI)
-	add_subdirectory(ext/imgui)
+	add_subdirectory(ext/dear_imgui)
 endif()
 set(SPIRV_CROSS_CLI OFF)
 set(SPIRV_CROSS_ENABLE_CPP OFF)
@@ -166,7 +160,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	ktl
 	GIT_REPOSITORY https://github.com/karnkaul/ktl
-	GIT_TAG 1f3ca23
+	GIT_TAG 08b6381
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)
@@ -182,7 +176,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	dtest
 	GIT_REPOSITORY https://github.com/karnkaul/dtest
-	GIT_TAG 770d733
+	GIT_TAG 6a92362
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/dtest"
 )
 FetchContent_MakeAvailable(dtest)
@@ -210,7 +204,7 @@ add_subdirectory(libs/levk_imgui)
 # export clap targets for tools projects to find
 export(EXPORT clap-targets
 	FILE "${CMAKE_CURRENT_BINARY_DIR}/libs/clap/clap-targets.cmake"
-	NAMESPACE clap:: 
+	NAMESPACE clap::
 )
 
 # engine

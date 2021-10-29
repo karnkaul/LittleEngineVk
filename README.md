@@ -53,12 +53,12 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 
 - CMake 3.14+
 - Git
-- C++20 compiler and stdlib
-- OS with desktop environment and Vulkan support
+- C++20 compiler and stdlib (modules, coroutines, and ranges are not yet used)
+- OS with desktop environment and Vulkan loader (`libvulkan1.so` / `vulkan1.dll`)
   - Windows 10
   - Linux: X, Wayland (untested)
-- GPU supporting Vulkan 1.1+, its driver, and loader (for running without validation layers)
-- Vulkan SDK and validation layers (for debugging / development)
+- GPU supporting Vulkan 1.0+, its driver, and loader
+- Vulkan SDK / `glslc` and validation layers (for compiling glsl shaders to SPIR-V in Debug and debugging / development)
 
 ### Usage
 
@@ -68,10 +68,10 @@ LittleEngineVk (`levk-engine`) is a library intended to be built from source and
 
 - Clone this repo (manually initializing git submodules is not required, it will be done by the CMake script)
 - Use CMake and a generator of your choice to configure an out-of-source build (`build` and `out` are ignored in git)
-- If using CMake 3.20+ / Visual Studio CMake, `cmake/CMakePresets.json` can be copied/symlinked to the project root for convenience
+- If using CMake 3.20+ / Visual Studio in CMake mode / CMake Tools with VSCode, `cmake/CMakePresets.json` can be copied/symlinked to the project root for convenience
   - Use `cmake --preset <name>` to configure and `cmake --build --preset <name>` to build on the command line
-  - VS CMake should pick up the presets by itself
-  - The presets are not checked into the repo root since that would force VS to use it, this way you can use `CMakeSettings.json` as well
+  - VS CMake and VSCode CMake Tools should pick up the presets by themselves
+  - The presets are not checked into the repo root since some IDEs/editors force its usage if present there
 - For other scenarios, use CMake GUI or the command line to configure and generate a build
   - Command line: `cmake -S . -B out`
   - If using an IDE generator, open the project/solution in the IDE and build/debug as usual

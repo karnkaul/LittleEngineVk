@@ -54,6 +54,11 @@ if(LINUX_CLANG OR WINDOWS_CLANG)
 	option(LEVK_ASAN "Enable asan" OFF)
 endif()
 
+# debug libstdc++
+if(is_root_project AND GCC_RUNTIME AND "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND NOT LEVK_ASAN)
+  add_definitions(-D_GLIBCXX_DEBUG)
+endif()
+
 if(LEVK_EDITOR)
 	set(LEVK_USE_IMGUI ON CACHE BOOL "" FORCE)
 	if(NOT LEVK_USE_GLFW OR NOT LEVK_USE_IMGUI)

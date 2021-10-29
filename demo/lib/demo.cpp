@@ -767,11 +767,11 @@ bool openFilesystemPath(io::Path path) {
 	if constexpr (levk_OS == os::OS::eLinux) {
 		static constexpr std::string_view mgrs[] = {"dolphin", "nautilus"};
 		for (auto const mgr : mgrs) {
-			if (auto open = utils::Shell(fmt::format("{} {}", mgr, dir))) { return true; }
+			if (auto open = utils::Shell(fmt::format("{} {}", mgr, dir).data())) { return true; }
 		}
 		return false;
 	} else if constexpr (levk_OS == os::OS::eWindows) {
-		return utils::Shell(fmt::format("explorer {}", dir)).success();
+		return utils::Shell(fmt::format("explorer {}", dir).data()).success();
 	}
 }
 
@@ -779,13 +779,15 @@ bool package(io::Path const& binary, bool clean) {
 	logD("Starting build...");
 	io::Path const log = binary / "autobuild.txt";
 	io::remove(log);
+	auto const logFile = log.string();
+	auto const binPath = io::absolute(binary).string();
 	if (!io::is_regular_file(binary / "CMakeCache.txt")) {
-		if (!utils::Shell(fmt::format("cmake-gui -B {}", io::absolute(binary).string()), log)) { return false; }
+		if (!utils::Shell(fmt::format("cmake-gui -B {}", binPath).data(), logFile.data())) { return false; }
 		if (!io::is_regular_file(binary / "CMakeCache.txt")) { return false; }
 	}
-	auto const cmake = utils::Shell(fmt::format("cmake --build {} {}", binary.string(), clean ? "--clean-first" : ""), log);
+	auto const cmake = utils::Shell(fmt::format("cmake --build {} {}", binPath, clean ? "--clean-first" : "").data(), logFile.data());
 	if (!cmake) {
-		logW("Build failure: \n{}", cmake.redirectOutput());
+		logW("Build failure: \n{}", cmake.output());
 		return false;
 	}
 	logD("... Build completed");

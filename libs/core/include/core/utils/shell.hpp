@@ -1,26 +1,29 @@
 #pragma once
-#include <core/io/path.hpp>
-#include <core/span.hpp>
-#include <ktl/fixed_vector.hpp>
+#include <optional>
+#include <string>
 
 namespace le::utils {
 ///
-/// \brief Executes one or more cshell commands
+/// \brief Executes a shell command
+///
+/// Supports output redirection (and subsequent extraction) and custom success codes (must be positive)
 ///
 class Shell {
   public:
-#if defined(LEVK_OS_WINDOWS)
-	inline static ktl::fixed_vector<int, 8> s_successCodes = {0, 1};
-#else
-	inline static ktl::fixed_vector<int, 8> s_successCodes = {0};
-#endif
-	inline static int s_redirectFailure = -100;
+	///
+	/// \brief Value stored as result on meta-execution errors
+	///
+	enum {
+		eSuccess = 0,
+		eUnsupportedShell = -10,
+		eRedirectFailure = -100,
+	};
 
+	Shell() = default;
 	///
-	/// \brief Execute passed commands, redirect output if non-empty
-	/// Execution will stop on the first failed command
+	/// \brief Execute passed command, redirect output if non-empty
 	///
-	Shell(Span<std::string const> commands, io::Path redirect = {});
+	explicit Shell(char const* command, char const* outputFile = {}, std::optional<int> successCode = std::nullopt);
 	virtual ~Shell() = default;
 
 	///
@@ -28,42 +31,56 @@ class Shell {
 	///
 	static bool supported();
 
-	io::Path const& redirectPath() const noexcept { return m_redirect; }
-	bool redirected() const noexcept { return supported() && !redirectPath().empty(); }
 	///
-	/// \brief Obtain redirected output, if file exists
+	/// \brief Execute command and obtain whether its return code matched a success code
 	///
-	std::string redirectOutput() const;
+	bool execute(char const* command, char const* outputFile = {}, std::optional<int> successCode = std::nullopt);
+	///
+	/// \brief Check if output has been redirected to a file
+	///
+	bool redirected() const noexcept { return supported() && m_redirected; }
+	///
+	/// \brief Obtain redirected output
+	///
+	std::string_view output() const { return m_output; }
 
 	///
 	/// \brief Obtain overall result of execution
 	///
 	int result() const noexcept { return m_result; }
-	bool success() const noexcept;
+	bool success() const noexcept { return m_success; }
 	explicit operator bool() const noexcept { return success(); }
 
   protected:
-	io::Path m_redirect;
-	int m_result;
+	std::string m_output;
+	int m_result{};
+	bool m_success{};
+	bool m_redirected{};
 };
 
 ///
-/// \brief Executes one or more shell commands without any redirection
+/// \brief Executes a shell command without any redirection; useful for single-threaded calls
+///
 /// Note: Multiple concurrent instances may clobber each others' immediate output
 ///
 class ShellInline : public Shell {
   public:
-	ShellInline(Span<std::string const> commands) : Shell(commands, {}) {}
+	ShellInline() = default;
+
+	explicit ShellInline(char const* command) : Shell(command, {}) {}
 };
 
 ///
-/// \brief Executes one or more shell commands, redirects output to a temporary file with a randomized suffix
-/// Destructor removes redirect file if success
-/// Note: Will block invoking thread without any output (it can be extracted before destruction if desired)
+/// \brief Executes a shell command, redirects output to a temporary file with a randomized suffix; useful for parallelized calls
+///
+/// Note: Will block invoking thread without any logs/output (can be extracted before destruction if desired)
+/// Output file is only deleted if execution was successful
 ///
 class ShellSilent : public Shell {
   public:
-	ShellSilent(Span<std::string const> commands, std::string_view prefix = "_levk_shell");
-	~ShellSilent() override;
+	ShellSilent() = default;
+	explicit ShellSilent(char const* command, std::string_view prefix = "_levk_shell", std::optional<int> successCode = std::nullopt);
+
+	bool execute(char const* command, std::string_view prefix = "_levk_shell", std::optional<int> successCode = std::nullopt);
 };
 } // namespace le::utils

@@ -18,26 +18,25 @@ struct Spv : Singleton<Spv> {
 	using Shell = le::utils::ShellSilent;
 
 	Spv() {
-		if (auto compiler = Shell(fmt::format("{} --version", utils::g_compiler))) {
-			bOnline = true;
-			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler online: {}", g_name, compiler.redirectOutput());
+		if (auto compiler = Shell(fmt::format("{} --version", utils::g_compiler).data())) {
+			online = true;
+			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler online: {}", g_name, compiler.output());
 		} else {
-			g_log.log(lvl::warn, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.redirectOutput());
+			g_log.log(lvl::warn, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.output());
 		}
 	}
 
 	std::string compile(io::Path const& src, io::Path const& dst, std::string_view flags) {
-		if (bOnline) {
+		if (online) {
 			if (!io::is_regular_file(src)) { return fmt::format("source file [{}] not found", src.generic_string()); }
-			if (auto compile = Shell(fmt::format("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string())); !compile.success()) {
-				return "compilation failed: " + compile.redirectOutput();
-			}
+			auto compile = Shell(fmt::format("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string()).data());
+			if (!compile) { return fmt::format("compilation failed: {}", compile.output()); }
 			return {};
 		}
 		return fmt::format("[{}] offline", utils::g_compiler);
 	}
 
-	bool bOnline = false;
+	bool online = false;
 };
 } // namespace
 

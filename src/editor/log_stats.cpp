@@ -60,7 +60,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 			TWidget<std::pair<s64, s64>> st(CStr<32>("ft count: %i", ftCount * scale), ftCount, s_minTCounter, s_maxTCounter, 1);
 			LogStats::s_frameTimeCount = (std::size_t)ftCount * scale;
 			f32 const ftime = ft.samples.empty() ? 0.0f : ft.samples.back();
-			auto const overlay = CStr<32>("%.4fms (avg of %uz})", ft.average, ft.samples.size());
+			auto const overlay = CStr<32>("%.4fms (avg of %u)", ft.average, ft.samples.size());
 			auto const title = CStr<32>("[%.3fms] [%u] FPS", ftime, ft.rate);
 			Styler s(Style::eSameLine);
 			ImGui::PlotLines(title.data(), ft.samples.data(), (s32)ft.samples.size(), 0, overlay.data());

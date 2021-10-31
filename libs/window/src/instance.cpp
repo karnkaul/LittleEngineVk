@@ -1,6 +1,7 @@
 #include <unordered_map>
 #include <core/not_null.hpp>
 #include <instance_impl.hpp>
+#include <ktl/enum_flags/bitflags.hpp>
 #include <window/instance.hpp>
 
 #if defined(LEVK_USE_GLFW)
@@ -144,7 +145,7 @@ std::unordered_map<std::string_view, Key> const g_keyMap = {
 	{"gamepad_dpad_left", Key::eGamepadButtonDpadLeft},
 };
 
-std::unordered_map<std::string_view, Mod> const g_modsMap = {{"ctrl", Mod::eControl}, {"alt", Mod::eAlt}, {"shift", Mod::eShift}};
+std::unordered_map<std::string_view, Mod> const g_modsMap = {{"ctrl", Mod::eCtrl}, {"alt", Mod::eAlt}, {"shift", Mod::eShift}};
 
 std::unordered_map<std::string_view, Axis> const g_axisMap = {
 	{"gamepad_left_x", Axis::eLeftX},	{"gamepad_left_y", Axis::eLeftY},	{"gamepad_right_x", Axis::eRightX},
@@ -252,7 +253,7 @@ Mods Instance::parseMods(Span<std::string const> vec) noexcept {
 	Mods ret;
 	std::memset(&ret, 0, sizeof(ret));
 	for (auto const& str : vec) {
-		if (auto search = g_modsMap.find(str); search != g_modsMap.end()) { ret.update(search->second); }
+		if (auto search = g_modsMap.find(str); search != g_modsMap.end()) { ret = ktl::flags::update(ret, u8(search->second), u8(0)); }
 	}
 	return ret;
 }

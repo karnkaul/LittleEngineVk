@@ -1,13 +1,17 @@
 #pragma once
 #include <engine/input/frame.hpp>
+#include <window/event_queue.hpp>
 
 namespace le {
 struct Viewport;
 }
 
 namespace le::input {
+using Event = window::Event;
+
 class Driver {
   public:
+	using EventQueue = window::EventQueue;
 	struct In {
 		EventQueue queue;
 		struct {
@@ -32,12 +36,11 @@ class Driver {
 		bool erase(Key k) noexcept;
 	};
 
-	static void copy(KeySet const& in, ktl::fixed_vector<KeyAct, 16>& out_keys, Action action);
+	static void copy(KeySet const& in, ktl::fixed_vector<KeyState, 16>& out_keys, Action action);
 	bool extract(Event const& event, State& out_state) noexcept;
 
 	struct {
 		ktl::fixed_vector<Gamepad, 8> gamepads;
-		ktl::fixed_vector<Event::Cursor, 8> others;
 		ktl::fixed_vector<u32, 4> codepoints;
 		KeySet pressed;
 		KeySet released;

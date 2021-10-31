@@ -2,6 +2,7 @@
 #include <engine/input/driver.hpp>
 #include <engine/input/space.hpp>
 #include <engine/render/viewport.hpp>
+#include <ktl/enum_flags/bitflags.hpp>
 #include <window/instance.hpp>
 
 namespace le::input {
@@ -44,7 +45,6 @@ Driver::Out Driver::update(In in, Viewport const& view, bool consume) noexcept {
 	copy(m_transient.released, st.keys, Action::eReleased);
 	copy(m_transient.repeated, st.keys, Action::eRepeated);
 	st.cursor.screenPos = m_persistent.cursor;
-	st.others = m_transient.others;
 	st.codepoints = m_transient.codepoints;
 	st.suspended = m_persistent.suspended;
 	glm::vec2 wSize = {};
@@ -86,21 +86,21 @@ bool Driver::KeySet::erase(Key k) noexcept {
 	return false;
 }
 
-void Driver::copy(KeySet const& in, ktl::fixed_vector<KeyAct, 16>& out_keys, Action action) {
+void Driver::copy(KeySet const& in, ktl::fixed_vector<KeyState, 16>& out_keys, Action action) {
 	for (KeyMods const& key : in.keys) {
 		if (key.key == Key::eUnknown) { continue; }
 		bool found = false;
 		for (auto& k : out_keys) {
 			if (k.key == key.key) {
 				found = true;
-				k.t.update(action);
+				k.actions.update(action);
 				k.mods = key.mods;
 				break;
 			}
 		}
 		if (!found && out_keys.has_space()) {
-			KeyAct k{key, {}};
-			k.t.update(action);
+			KeyState k(key.key, key.mods);
+			k.actions.update(action);
 			out_keys.push_back(k);
 		}
 	}
@@ -110,20 +110,21 @@ bool Driver::extract(Event const& event, State& out_state) noexcept {
 	switch (event.type) {
 	case Event::Type::eInput: {
 		Event::Input const& input = event.payload.input;
+		Mods const mods = Mod(input.mods);
 		if (input.key != Key::eUnknown) {
 			switch (input.action) {
 			case window::Action::ePress: {
-				m_transient.pressed.insert(input.key, input.mods);
+				m_transient.pressed.insert(input.key, mods);
 				m_persistent.held.erase(input.key);
 				break;
 			}
 			case window::Action::eRelease: {
-				m_transient.released.insert(input.key, input.mods);
+				m_transient.released.insert(input.key, mods);
 				m_persistent.held.erase(input.key);
 				break;
 			}
 			case window::Action::eRepeat: {
-				m_transient.repeated.insert(input.key, input.mods);
+				m_transient.repeated.insert(input.key, mods);
 				break;
 			}
 			}
@@ -132,12 +133,7 @@ bool Driver::extract(Event const& event, State& out_state) noexcept {
 		return false;
 	}
 	case Event::Type::eCursor: {
-		Event::Cursor const& cursor = event.payload.cursor;
-		if (cursor.id == 0) {
-			m_persistent.cursor = cursor;
-		} else if (m_transient.others.has_space()) {
-			m_transient.others.push_back(cursor);
-		}
+		if (event.payload.cursor.id == 0) { m_persistent.cursor = event.payload.cursor; }
 		return true;
 	}
 	case Event::Type::eScroll: {

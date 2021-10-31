@@ -2,34 +2,20 @@
 #include <engine/input/state.hpp>
 
 namespace le::input {
-Trigger::Trigger(Key key, Action action, Mod mod) noexcept : Trigger(key, action, Mods::make(mod)) {}
+Trigger::Trigger(Key key, Action action, Mod mod) noexcept : Trigger(key, action, Mods(mod)) {}
 
 Trigger::Trigger(Key key, Action action, Mods mods) noexcept {
-	KeyAction ka;
+	KeyState ka;
 	ka.key = key;
-	ka.t = action;
+	ka.actions = action;
 	ka.mods = mods;
 	combos.push_back(ka);
 }
 
 bool Trigger::operator()(State const& state) const noexcept {
 	for (auto const& combo : combos) {
-		if (combo.key != Key::eUnknown) {
-			switch (combo.t) {
-			case Action::ePressed: {
-				if (auto k = state.pressed(combo.key)) { return k->mods.all(combo.mods); }
-				break;
-			}
-			case Action::eReleased: {
-				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods); }
-				break;
-			}
-			case Action::eHeld: {
-				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods); }
-				break;
-			}
-			default: break;
-			}
+		if (KeyState const* key = state.keyState(combo.key)) {
+			if (key->actions == combo.actions) { return key->mods.all(combo.mods); }
 		}
 	}
 	return false;
@@ -65,9 +51,9 @@ f32 Range::operator()(State const& state) const noexcept {
 			}
 			return ax->invert ? -ret : ret;
 		} else if (auto const& ky = std::get_if<KeyRange>(&match)) {
-			auto const lo = state.held(ky->lo.key);
-			auto const hi = state.held(ky->hi.key);
-			if (lo || hi) {
+			auto const lo = state.keyState(ky->lo.key);
+			auto const hi = state.keyState(ky->hi.key);
+			if ((lo && lo->actions[Action::eHeld]) || (hi && hi->actions[Action::eHeld])) {
 				f32 const l = lo && lo->mods.all(ky->lo.mods) ? -1.0f : 0.0f;
 				f32 const r = hi && hi->mods.all(ky->hi.mods) ? 1.0f : 0.0f;
 				ret += (l + r);

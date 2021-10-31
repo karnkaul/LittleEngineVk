@@ -8,31 +8,11 @@ using lvl = dl::level;
 namespace {
 constexpr std::string_view g_name = "Window";
 
-constexpr ArrayMap<Mod, s32, 6> modMap = {{{Mod::eShift, GLFW_MOD_SHIFT},
-										   {Mod::eControl, GLFW_MOD_CONTROL},
-										   {Mod::eAlt, GLFW_MOD_ALT},
-										   {Mod::eSuper, GLFW_MOD_SUPER},
-										   {Mod::eCapsLock, GLFW_MOD_CAPS_LOCK},
-										   {Mod::eNumLock, GLFW_MOD_NUM_LOCK}}};
-
 template <typename T, typename U = T, typename F>
 glm::tvec2<T> getGlfwValue(GLFWwindow* win, F func) {
 	U x, y;
 	func(win, &x, &y);
 	return glm::tvec2<T>((T)x, (T)y);
-}
-
-void fillMod(Mods& out_mods, int mods, int mod) {
-	if (mods & mod) { out_mods.update(modMap[mod]); }
-}
-
-void fillMods(Mods& out_mods, int mods) {
-	fillMod(out_mods, mods, GLFW_MOD_SHIFT);
-	fillMod(out_mods, mods, GLFW_MOD_CONTROL);
-	fillMod(out_mods, mods, GLFW_MOD_ALT);
-	fillMod(out_mods, mods, GLFW_MOD_SUPER);
-	fillMod(out_mods, mods, GLFW_MOD_CAPS_LOCK);
-	fillMod(out_mods, mods, GLFW_MOD_NUM_LOCK);
 }
 } // namespace
 
@@ -424,7 +404,7 @@ void Instance::Impl::onKey(GLFWwindow* win, int key, int scancode, int action, i
 		Event::Input input{};
 		input.key = (Key)key;
 		input.action = (Action)action;
-		fillMods(input.mods, mods);
+		input.mods = u8(mods);
 		input.scancode = scancode;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;
@@ -453,7 +433,7 @@ void Instance::Impl::onMouseButton(GLFWwindow* win, int key, int action, int mod
 		Event::Input input{};
 		input.key = Key(key + (int)Key::eMouseButton1);
 		input.action = (Action)action;
-		fillMods(input.mods, mods);
+		input.mods = u8(mods);
 		input.scancode = 0;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;

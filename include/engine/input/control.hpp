@@ -16,13 +16,12 @@ struct KeyRange {
 };
 
 static constexpr std::size_t maxOptions = 8;
-using KeyAction = KeyCombo<Action>;
 using VRange = std::variant<KeyRange, AxisRange>;
 template <typename T>
 using Options = ktl::fixed_vector<T, maxOptions>;
 
 struct Trigger {
-	Options<KeyAction> combos;
+	Options<KeyState> combos;
 
 	Trigger() = default;
 	Trigger(Key key, Action action = Action::ePressed, Mod mod = {}) noexcept;

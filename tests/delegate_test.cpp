@@ -45,6 +45,9 @@ TEST(delegate_signal) {
 	s += t;
 	d();
 	EXPECT_EQ(t.called, 2);
+	auto s1 = std::move(s);
+	d();
+	EXPECT_EQ(t.called, 4);
 }
 
 TEST(delegate_lifetime) {

@@ -731,10 +731,10 @@ class App : public input::Receiver, public SceneRegistry {
 	Collision::OnCollide::handle m_onCollide;
 
 	struct {
-		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
-		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eControl};
-		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mods::make(input::Mod::eControl, input::Mod::eShift)};
-		input::Trigger unload = {input::Key::eU, input::Action::ePressed, input::Mods::make(input::Mod::eControl, input::Mod::eShift)};
+		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eCtrl};
+		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eCtrl};
+		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
+		input::Trigger unload = {input::Key::eU, input::Action::ePressed, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
 	} m_controls;
 };
 
@@ -745,11 +745,11 @@ struct FlagsInput : input::Receiver {
 
 	bool block(input::State const& state) override {
 		bool ret = false;
-		if (auto key = state.released(input::Key::eW); key && key->mods[input::Mod::eControl]) {
+		if (auto w = state.keyState(input::Key::eW); w && w->actions[input::Action::eReleased] && w->mods[input::Mod::eCtrl]) {
 			flags.set(Flag::eClosed);
 			ret = true;
 		}
-		if (auto key = state.pressed(input::Key::eD); key && key->mods[input::Mod::eControl]) {
+		if (auto ctrl = state.keyState(input::Key::eD); ctrl && ctrl->actions[input::Action::ePressed] && ctrl->mods[input::Mod::eCtrl]) {
 			flags.set(Flag::eDebug0);
 			ret = true;
 		}

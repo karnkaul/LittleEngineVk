@@ -26,7 +26,7 @@ class FreeCam : public graphics::Camera {
 		input::Range speed = input::AxisRange{0, input::Axis::eMouseScrollY};
 
 		input::Trigger look = {input::Key::eMouseButton2, input::Action::eHeld};
-		input::Trigger look_toggle = {input::Key::eL, input::Action::ePressed, input::Mod::eControl};
+		input::Trigger look_toggle = {input::Key::eL, input::Action::ePressed, input::Mod::eCtrl};
 	} m_controls;
 
   private:

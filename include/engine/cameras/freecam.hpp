@@ -23,10 +23,10 @@ class FreeCam : public graphics::Camera {
 	struct {
 		input::Range mov_x = input::KeyRange{input::Key::eA, input::Key::eD};
 		input::Range mov_z = input::KeyRange{input::Key::eS, input::Key::eW};
-		input::Range speed = input::AxisRange{0, input::Axis::eMouseScrollY};
+		input::Range speed = input::AxisRange{input::Axis::eMouseScrollY};
 
-		input::Trigger look = {input::Key::eMouseButton2, input::Action::eHeld};
-		input::Trigger look_toggle = {input::Key::eL, input::Action::ePressed, input::Mod::eCtrl};
+		input::Trigger look = input::Hold{input::Key::eMouseButton2};
+		input::Trigger look_toggle = {input::Key::eL, input::Action::ePress, input::Mod::eCtrl};
 	} m_controls;
 
   private:

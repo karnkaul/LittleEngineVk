@@ -83,6 +83,7 @@ class Instance {
 	std::size_t joystickAxesCount(s32 id) const;
 	std::size_t joysticKButtonsCount(s32 id) const;
 
+	static std::string_view keyName(Key key, int scancode) noexcept;
 	static Key parseKey(std::string_view str) noexcept;
 	static Action parseAction(std::string_view str) noexcept;
 	static Mods parseMods(Span<std::string const> vec) noexcept;

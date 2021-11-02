@@ -166,7 +166,7 @@ void Instance::Impl::close() {
 	glfwSetWindowShouldClose(m_win, 1);
 	Event event;
 	event.type = Event::Type::eClose;
-	m_events.m_events.push_back(event);
+	m_events.push_back(event);
 #endif
 }
 
@@ -351,7 +351,7 @@ void Instance::Impl::onFocus(GLFWwindow* win, int entered) {
 		Event event;
 		event.type = Event::Type::eFocus;
 		event.payload.set = entered != 0;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::info, 1, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
 	}
 }
@@ -362,7 +362,7 @@ void Instance::Impl::onWindowResize(GLFWwindow* win, int width, int height) {
 		Event event;
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), false};
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::debug, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
 	}
 }
@@ -373,7 +373,7 @@ void Instance::Impl::onFramebufferResize(GLFWwindow* win, int width, int height)
 		Event event;
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), true};
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::debug, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
 	}
 }
@@ -384,7 +384,7 @@ void Instance::Impl::onIconify(GLFWwindow* win, int iconified) {
 		Event event;
 		event.type = Event::Type::eSuspend;
 		event.payload.set = iconified != 0;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::info, 1, "[{}] Window {}", g_name, iconified != 0 ? "suspended" : "resumed");
 	}
 }
@@ -408,7 +408,7 @@ void Instance::Impl::onKey(GLFWwindow* win, int key, int scancode, int action, i
 		input.scancode = scancode;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -422,7 +422,7 @@ void Instance::Impl::onMouse(GLFWwindow* win, f64 x, f64 y) {
 		cursor.id = 0;
 		event.type = Event::Type::eCursor;
 		event.payload.cursor = cursor;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -437,7 +437,7 @@ void Instance::Impl::onMouseButton(GLFWwindow* win, int key, int action, int mod
 		input.scancode = 0;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -447,7 +447,7 @@ void Instance::Impl::onText(GLFWwindow* win, u32 codepoint) {
 		Event event;
 		event.type = Event::Type::eText;
 		event.payload.codepoint = codepoint;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -461,7 +461,7 @@ void Instance::Impl::onScroll(GLFWwindow* win, f64 dx, f64 dy) {
 		cursor.id = 0;
 		event.type = Event::Type::eScroll;
 		event.payload.cursor = cursor;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -472,7 +472,7 @@ void Instance::Impl::onMaximize(GLFWwindow* win, int maximized) {
 		Event event;
 		event.type = Event::Type::eMaximize;
 		event.payload.set = inst.m_maximized;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 #endif

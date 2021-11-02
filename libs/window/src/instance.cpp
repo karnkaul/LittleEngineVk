@@ -242,6 +242,25 @@ Gamepad Instance::gamepadState(s32 id) const { return m_impl->gamepadState(id); 
 std::size_t Instance::joystickAxesCount(s32 id) const { return m_impl->joystickAxesCount(id); }
 std::size_t Instance::joysticKButtonsCount(s32 id) const { return m_impl->joysticKButtonsCount(id); }
 
+std::string_view Instance::keyName(Key key, int scancode) noexcept {
+	std::string_view ret = "(Unknown)";
+#if defined(LEVK_USE_GLFW)
+	switch (key) {
+	case Key::eSpace: ret = "space"; break;
+	case Key::eLeftControl: ret = "lctrl"; break;
+	case Key::eRightControl: ret = "rctrl"; break;
+	case Key::eLeftShift: ret = "lshift"; break;
+	case Key::eRightShift: ret = "rshift"; break;
+	default: {
+		char const* const name = glfwGetKeyName(static_cast<int>(key), scancode);
+		if (name) { ret = name; }
+		break;
+	}
+	}
+#endif
+	return ret;
+}
+
 Key Instance::parseKey(std::string_view str) noexcept { return parse(g_keyMap, str, Key::eUnknown); }
 
 Action Instance::parseAction(std::string_view str) noexcept {

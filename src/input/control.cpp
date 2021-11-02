@@ -2,33 +2,21 @@
 #include <engine/input/state.hpp>
 
 namespace le::input {
-Trigger::Trigger(Key key, Action action, Mod mod) noexcept : Trigger(key, action, Mods(mod)) {}
-
-Trigger::Trigger(Key key, Action action, Mods mods) noexcept {
-	KeyState ka;
-	ka.key = key;
-	ka.actions = action;
-	ka.mods = mods;
-	combos.push_back(ka);
-}
-
 bool Trigger::operator()(State const& state) const noexcept {
 	for (auto const& combo : combos) {
-		if (KeyState const* key = state.keyState(combo.key)) {
-			if (key->actions == combo.actions) { return key->mods.all(combo.mods); }
+		if (auto const ev = combo.get_if<KeyEvent>()) {
+			if (auto const mods = state.mods(ev->key, ev->action)) { return *mods == ev->mods; }
+		} else if (auto const hold = combo.get_if<Hold>()) {
+			return state.held(hold->key);
 		}
 	}
 	return false;
 }
 
-Range::Range(AxisRange axis) noexcept { matches.push_back(axis); }
-
-Range::Range(KeyRange key) noexcept { matches.push_back(key); }
-
 f32 Range::operator()(State const& state) const noexcept {
 	f32 ret = 0.0f;
 	for (auto const& match : matches) {
-		if (auto const& ax = std::get_if<AxisRange>(&match)) {
+		if (auto const ax = match.get_if<AxisRange>()) {
 			Gamepad const* pad = ax->padID < state.gamepads.size() ? &state.gamepads[ax->padID] : nullptr;
 			switch (ax->axis) {
 			case Axis::eMouseScrollX: {
@@ -50,14 +38,10 @@ f32 Range::operator()(State const& state) const noexcept {
 			}
 			}
 			return ax->invert ? -ret : ret;
-		} else if (auto const& ky = std::get_if<KeyRange>(&match)) {
-			auto const lo = state.keyState(ky->lo.key);
-			auto const hi = state.keyState(ky->hi.key);
-			if ((lo && lo->actions[Action::eHeld]) || (hi && hi->actions[Action::eHeld])) {
-				f32 const l = lo && lo->mods.all(ky->lo.mods) ? -1.0f : 0.0f;
-				f32 const r = hi && hi->mods.all(ky->hi.mods) ? 1.0f : 0.0f;
-				ret += (l + r);
-			}
+		} else if (auto const key = match.get_if<KeyRange>()) {
+			f32 const l = key->lo > Key::eUnknown && state.held(key->lo) ? -1.0f : 0.0f;
+			f32 const r = key->hi > Key::eUnknown && state.held(key->hi) ? 1.0f : 0.0f;
+			return l + r;
 		}
 	}
 	return ret;

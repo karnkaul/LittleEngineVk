@@ -60,19 +60,19 @@ bool TextCursor::update(State const& state, graphics::Geometry* out) {
 		return false;
 	}
 	bool refr = {};
-	if (state.actions(Key::eBackspace).any(Actions(Action::ePressed, Action::eRepeated))) {
+	if (state.pressOrRepeat(Key::eBackspace)) {
 		backspace(nullptr);
 		refr = true;
 	}
-	if (state.actions(Key::eDelete).any(Actions(Action::ePressed, Action::eRepeated))) {
+	if (state.pressOrRepeat(Key::eDelete)) {
 		deleteFront(nullptr);
 		refr = true;
 	}
-	if (!m_flags.test(Flag::eNoNewLine) && state.actions(Key::eEnter).any(Actions(Action::ePressed, Action::eRepeated))) {
+	if (!m_flags.test(Flag::eNoNewLine) && state.pressOrRepeat(Key::eEnter)) {
 		insert('\n', nullptr);
 		refr = true;
 	}
-	if (state.actions(Key::eLeft).any(Actions(Action::ePressed, Action::eRepeated))) {
+	if (state.pressOrRepeat(Key::eLeft)) {
 		if (m_index >= m_text.size()) {
 			// reset to size - 1 if beyond it
 			m_index = m_text.size() - 1;
@@ -82,7 +82,7 @@ bool TextCursor::update(State const& state, graphics::Geometry* out) {
 		}
 		refr = true;
 	}
-	if (state.actions(Key::eRight).any(Actions(Action::ePressed, Action::eRepeated))) {
+	if (state.pressOrRepeat(Key::eRight)) {
 		// increment if less than size
 		if (m_index <= m_text.size()) { ++m_index; }
 		refr = true;

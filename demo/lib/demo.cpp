@@ -45,9 +45,9 @@ using RGBA = graphics::RGBA;
 enum class Flag { eClosed, eDebug0 };
 using Flags = ktl::enum_flags<Flag, u8>;
 
-static void poll(Flags& out_flags, window::EventQueue queue) {
-	while (auto e = queue.pop()) {
-		switch (e->type) {
+static void poll(Flags& out_flags, window::EventQueue const& queue) {
+	for (auto const& event : queue) {
+		switch (event.type) {
 		case window::Event::Type::eClose: {
 			out_flags.set(Flag::eClosed);
 			break;
@@ -731,10 +731,10 @@ class App : public input::Receiver, public SceneRegistry {
 	Collision::OnCollide::handle m_onCollide;
 
 	struct {
-		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eCtrl};
-		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eCtrl};
-		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
-		input::Trigger unload = {input::Key::eU, input::Action::ePressed, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
+		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};
+		input::Trigger wireframe = {input::Key::eP, input::Action::ePress, input::Mod::eCtrl};
+		input::Trigger reboot = {input::Key::eR, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
+		input::Trigger unload = {input::Key::eU, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
 	} m_controls;
 };
 
@@ -745,11 +745,11 @@ struct FlagsInput : input::Receiver {
 
 	bool block(input::State const& state) override {
 		bool ret = false;
-		if (auto w = state.keyState(input::Key::eW); w && w->actions[input::Action::eReleased] && w->mods[input::Mod::eCtrl]) {
+		if (auto w = state.released(input::Key::eW); w && w->test(input::Mod::eCtrl)) {
 			flags.set(Flag::eClosed);
 			ret = true;
 		}
-		if (auto ctrl = state.keyState(input::Key::eD); ctrl && ctrl->actions[input::Action::ePressed] && ctrl->mods[input::Mod::eCtrl]) {
+		if (auto d = state.released(input::Key::eD); d && d->test(input::Mod::eCtrl)) {
 			flags.set(Flag::eDebug0);
 			ret = true;
 		}

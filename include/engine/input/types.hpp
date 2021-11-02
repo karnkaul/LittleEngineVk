@@ -9,11 +9,7 @@ class Instance;
 }
 
 namespace le::input {
-enum class Action : u8 { ePressed, eHeld, eReleased, eRepeated };
-using Actions = ktl::enum_flags<Action, u8>;
-constexpr Actions actions_main = Actions(Action::ePressed, Action::eHeld, Action::eReleased);
-constexpr Actions actions_all = Actions(Action::ePressed, Action::eHeld, Action::eReleased, Action::eRepeated);
-
+using Action = window::Action;
 using Mod = window::Mod;
 using Mods = ktl::enum_flags<Mod, u8, ktl::enum_trait_pot>;
 
@@ -24,21 +20,17 @@ using Window = window::Instance;
 using Key = window::Key;
 using Axis = window::Axis;
 
-struct KeyMods {
-	Key key = Key::eUnknown;
-	Mods mods{};
-
-	constexpr KeyMods() = default;
-	constexpr KeyMods(Key k) noexcept : key(k) {}
-	constexpr KeyMods(Key k, Mod mod) noexcept : key(k) { mods.set(mod); }
-	constexpr KeyMods(Key k, Mods m) noexcept : key(k), mods(m) {}
+struct KeyEvent {
+	Key key{};
+	Action action{};
+	Mods mods;
 };
 
-struct KeyState : KeyMods {
-	using KeyMods::KeyMods;
-	Actions actions;
+template <typename T>
+using TKeyDB = EnumArray<Key, T, 512>;
 
-	constexpr KeyState(Key k, Mods m, Actions mask) noexcept : KeyMods(k, m), actions(mask) {}
+struct KeyDB {
+	TKeyDB<EnumArray<Action, std::optional<Mods>, 3>> mods;
+	TKeyDB<bool> held;
 };
-
 } // namespace le::input

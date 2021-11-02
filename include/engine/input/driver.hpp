@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <engine/input/frame.hpp>
 #include <window/event_queue.hpp>
 
@@ -8,10 +9,14 @@ struct Viewport;
 
 namespace le::input {
 using Event = window::Event;
+using EventQueue = window::EventQueue;
+
+// Calls parser(Event const&, State&) and expects it to return true on consuming event
+template <typename Parser>
+EventQueue parse(Parser& parser, EventQueue const& in, State& out);
 
 class Driver {
   public:
-	using EventQueue = window::EventQueue;
 	struct In {
 		EventQueue queue;
 		struct {
@@ -26,31 +31,42 @@ class Driver {
 		EventQueue residue;
 	};
 
-	Out update(In in, Viewport const& view, bool consume = true) noexcept;
+	Driver();
+
+	Out update(In in, Viewport const& view, bool consume = true);
+
+	bool operator()(Event const& event, State& out_state) noexcept;
 
   private:
-	struct KeySet {
-		std::array<KeyMods, 8> keys{};
+	struct KeyQueue {
+		ktl::fixed_vector<KeyEvent, 16> keys;
 
-		bool insert(Key k, Mods const& mods);
-		bool erase(Key k) noexcept;
+		void insert(KeyEvent event) noexcept;
+		void collapse(KeyDB& out) noexcept;
 	};
-
-	static void copy(KeySet const& in, ktl::fixed_vector<KeyState, 16>& out_keys, Action action);
-	bool extract(Event const& event, State& out_state) noexcept;
 
 	struct {
 		ktl::fixed_vector<Gamepad, 8> gamepads;
 		ktl::fixed_vector<u32, 4> codepoints;
-		KeySet pressed;
-		KeySet released;
-		KeySet repeated;
 	} m_transient;
 
 	struct {
-		KeySet held;
 		glm::vec2 cursor = {};
 		bool suspended = false;
 	} m_persistent;
+
+	KeyQueue m_keyQueue;
+	std::unique_ptr<KeyDB> m_keyDB; // 4K bytes, hence on heap
 };
+
+// impl
+
+template <typename Parser>
+EventQueue parse(Parser& parser, window::EventQueue const& in, State& out) {
+	EventQueue ret;
+	for (auto const& event : in) {
+		if (!parser(event, out)) { ret.push_back(event); }
+	}
+	return ret;
+}
 } // namespace le::input

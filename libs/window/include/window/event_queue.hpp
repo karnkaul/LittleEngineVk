@@ -1,5 +1,4 @@
 #pragma once
-#include <deque>
 #include <optional>
 #include <core/codepoint.hpp>
 #include <glm/vec2.hpp>
@@ -42,16 +41,5 @@ struct Event {
 	Type type;
 };
 
-struct EventQueue {
-	std::deque<Event> m_events;
-
-	std::optional<Event> pop() noexcept {
-		if (!m_events.empty()) {
-			Event ret = m_events.front();
-			m_events.pop_front();
-			return ret;
-		}
-		return std::nullopt;
-	}
-};
+using EventQueue = std::vector<Event>;
 } // namespace le::window

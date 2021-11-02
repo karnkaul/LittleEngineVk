@@ -10,56 +10,27 @@ struct Cursor {
 };
 
 struct State {
-	ktl::fixed_vector<KeyState, 16> keys;
 	Cursor cursor;
 	Span<Gamepad const> gamepads;
+	Span<KeyEvent const> keyQueue;
 	Span<u32 const> codepoints;
+	KeyDB const* keyDB{};
 	Focus focus = Focus::eUnchanged;
 	bool suspended = false;
 
-	KeyState const* keyState(Key key) const noexcept;
-	Mods mods(Key key) const noexcept;
-	Actions actions(Key key) const noexcept;
-
-	bool acted(Key key, Action action) const noexcept;
-	bool pressed(Key key) const noexcept { return acted(key, Action::ePressed); }
-	bool repeated(Key key) const noexcept { return acted(key, Action::eRepeated); }
-	bool held(Key key) const noexcept { return acted(key, Action::eHeld); }
-	bool released(Key key) const noexcept { return acted(key, Action::eReleased); }
+	static Mods const* getMods(std::optional<Mods> const& m) noexcept { return m ? &*m : nullptr; }
+	Mods const* mods(Key key, Action action) const noexcept { return keyDB ? getMods(keyDB->mods[key][action]) : nullptr; }
+	Mods const* pressed(Key key) const noexcept { return mods(key, Action::ePress); }
+	Mods const* released(Key key) const noexcept { return mods(key, Action::eRelease); }
+	Mods const* repeated(Key key) const noexcept { return mods(key, Action::eRepeat); }
+	Mods const* pressOrRepeat(Key key) const noexcept;
+	bool held(Key key) const noexcept { return keyDB && keyDB->held[key]; }
 };
 
 // impl
 
-inline KeyState const* State::keyState(Key key) const noexcept {
-	if (key != Key{}) {
-		for (auto const& k : keys) {
-			if (k.key == key) { return &k; }
-		}
-	}
-	return {};
-}
-inline Mods State::mods(Key key) const noexcept {
-	Mods ret{};
-	for (KeyState const& k : keys) {
-		if (k.key == key) {
-			ret = k.mods;
-			break;
-		}
-	}
-	return ret;
-}
-inline Actions State::actions(Key key) const noexcept {
-	Actions ret{};
-	for (KeyState const& k : keys) {
-		if (k.key == key) {
-			ret = k.actions;
-			break;
-		}
-	}
-	return ret;
-}
-inline bool State::acted(Key key, Action action) const noexcept {
-	if (auto k = keyState(key); k && k->actions[action]) { return true; }
-	return false;
+inline Mods const* State::pressOrRepeat(Key key) const noexcept {
+	if (auto const ret = pressed(key)) { return ret; }
+	return repeated(key);
 }
 } // namespace le::input

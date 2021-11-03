@@ -43,7 +43,8 @@ class Dropdown : public Button {
 			ensure(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
 			for (auto [entry, index] : utils::enumerate(m_options)) {
-				add(m_flexbox->add<T>(m_rect.size, itemPad(entry, index), m_text->m_font, std::forward<Args>(args)...), entry, index);
+				bool const pad = itemPad(entry, index);
+				add(m_flexbox->add<T>(m_rect.size, pad, m_text->m_font, std::forward<Args>(args)...), entry, index);
 			}
 			refresh();
 		}

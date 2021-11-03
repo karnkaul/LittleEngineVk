@@ -1,3 +1,4 @@
+#include <mutex>
 #include <stb/stb_image.h>
 #include <core/log.hpp>
 #include <core/maths.hpp>
@@ -29,6 +30,7 @@ struct Spv : Singleton<Spv> {
 	std::string compile(io::Path const& src, io::Path const& dst, std::string_view flags) {
 		if (online) {
 			if (!io::is_regular_file(src)) { return fmt::format("source file [{}] not found", src.generic_string()); }
+			std::lock_guard lock(mutex);
 			auto compile = Shell(fmt::format("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string()).data());
 			if (!compile) { return fmt::format("compilation failed: {}", compile.output()); }
 			return {};
@@ -36,6 +38,7 @@ struct Spv : Singleton<Spv> {
 		return fmt::format("[{}] offline", utils::g_compiler);
 	}
 
+	std::mutex mutex;
 	bool online = false;
 };
 } // namespace

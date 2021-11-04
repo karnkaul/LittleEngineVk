@@ -1,7 +1,7 @@
 #pragma once
 #include <unordered_map>
-#include <core/ensure.hpp>
 #include <core/hash.hpp>
+#include <core/utils/error.hpp>
 #include <engine/gui/interact.hpp>
 #include <engine/render/material.hpp>
 #include <glm/vec2.hpp>
@@ -43,7 +43,7 @@ class Styles {
 	}
 
 	static Style& getOrInsert(Hash id) {
-		ensure(id != Hash(), "Invalid id");
+		ENSURE(id != Hash(), "Invalid id");
 		return s_map[id];
 	}
 

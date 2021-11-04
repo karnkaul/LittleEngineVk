@@ -2,9 +2,10 @@
 #include <cstdint>
 #include <typeinfo>
 #include <unordered_map>
-#include <core/ensure.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
+#include <core/utils/error.hpp>
+#include <core/utils/expect.hpp>
 
 namespace le {
 ///
@@ -47,8 +48,8 @@ class Services final {
 	/// \brief Obtain an existing service object
 	///
 	template <typename T>
-	[[nodiscard]] static not_null<T*> get() noexcept {
-		ensure(exists<T>(), "Service not found");
+	[[nodiscard]] static not_null<T*> get() noexcept(false) {
+		ENSURE(exists<T>(), "Service not found");
 		return find<T>();
 	}
 	///
@@ -85,7 +86,7 @@ class Service {
 	using type = T;
 
 	Service() {
-		ensure(s_inst == nullptr, "Duplicate service instance");
+		ENSURE(s_inst == nullptr, "Duplicate service instance");
 		Services::track<T>(s_inst = m_inst = static_cast<storage_t>(this));
 	}
 
@@ -93,7 +94,7 @@ class Service {
 
 	Service& operator=(Service&& rhs) noexcept {
 		if (&rhs != this) {
-			ensure(m_inst == nullptr, "Duplicate service instance");
+			ENSURE(m_inst == nullptr, "Duplicate service instance");
 			m_inst = std::exchange(rhs.m_inst, nullptr);
 		}
 		return *this;
@@ -101,7 +102,7 @@ class Service {
 
 	~Service() noexcept {
 		if (m_inst) {
-			ensure(m_inst == s_inst, "Invariant violated");
+			EXPECT(m_inst == s_inst);
 			Services::untrack<T>();
 			s_inst = {};
 		}

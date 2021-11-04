@@ -37,10 +37,10 @@ class Dropdown : public Button {
 	using OnSelect = ktl::delegate<Select>;
 
 	template <typename T = Button, typename... Args>
-	Dropdown(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo<T> info, Args&&... args) noexcept
+	Dropdown(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo<T> info, Args&&... args)
 		: Button(root, font, info.style), m_options(std::move(info.options)) {
 		if (!m_options.empty()) {
-			ensure(info.selected < m_options.size(), "Invalid index");
+			ENSURE(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
 			for (auto [entry, index] : utils::enumerate(m_options)) {
 				bool const pad = itemPad(entry, index);

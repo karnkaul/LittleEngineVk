@@ -1,17 +1,28 @@
 #pragma once
 #include <stdexcept>
 #include <string>
+#include <core/utils/debug.hpp>
+#include <core/utils/src_info.hpp>
+
+#if defined(DISPATCH_ERROR)
+#undef DISPATCH_ERROR
+#endif
+#define DISPATCH_ERROR(msg)                                                                                                                                    \
+	do {                                                                                                                                                       \
+		::le::utils::OnError::Scoped s(msg, {__func__, __FILE__, __LINE__});                                                                                   \
+		DEBUG_TRAP();                                                                                                                                          \
+	} while (false)
+
+#if defined(ENSURE)
+#undef ENSURE
+#endif
+#define ENSURE(pred, msg)                                                                                                                                      \
+	if (!(pred)) {                                                                                                                                             \
+		DISPATCH_ERROR(msg);                                                                                                                                   \
+		throw ::le::utils::Error(msg);                                                                                                                         \
+	}
 
 namespace le::utils {
-///
-/// \brief Source information
-///
-struct SrcInfo {
-	std::string_view function = "(unknown)";
-	std::string_view file = "(unknown)";
-	int line = 0;
-};
-
 ///
 /// \brief Error exception type
 ///
@@ -30,6 +41,8 @@ class OnError {
 	OnError& operator=(OnError&&) = default;
 	OnError& operator=(OnError const&) = default;
 	virtual ~OnError() noexcept { unsetActive(); }
+
+	class Scoped;
 
 	///
 	/// \brief Customization point
@@ -62,8 +75,13 @@ class OnError {
 	inline static OnError* s_active{};
 };
 
-///
-/// \brief Log msg as an error, break if debugging, and throw Error
-///
-void error(std::string msg, char const* fl = __builtin_FILE(), char const* fn = __builtin_FUNCTION(), int ln = __builtin_LINE()) noexcept(false);
+class OnError::Scoped {
+  public:
+	Scoped(std::string_view msg, SrcInfo const& src);
+	~Scoped();
+
+  private:
+	std::string_view m_msg;
+	SrcInfo m_src;
+};
 } // namespace le::utils

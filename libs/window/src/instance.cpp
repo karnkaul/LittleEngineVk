@@ -6,8 +6,8 @@
 
 #if defined(LEVK_USE_GLFW)
 #include <core/array_map.hpp>
-#include <core/ensure.hpp>
 #include <core/log.hpp>
+#include <core/utils/error.hpp>
 #include <ktl/fixed_any.hpp>
 #endif
 

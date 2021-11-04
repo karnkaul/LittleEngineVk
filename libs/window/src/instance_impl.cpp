@@ -1,5 +1,6 @@
 #include <core/array_map.hpp>
 #include <core/utils/data_store.hpp>
+#include <core/utils/error.hpp>
 #include <core/utils/sys_info.hpp>
 #include <instance_impl.hpp>
 
@@ -302,10 +303,10 @@ Joystick Instance::Impl::joyState(s32 id) const {
 		ret.id = id;
 		int count;
 		auto const axes = glfwGetJoystickAxes((int)id, &count);
-		ensure((std::size_t)count < ret.axes.size(), "Too many axes");
+		ENSURE((std::size_t)count < ret.axes.size(), "Too many axes");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.axes[idx] = axes[idx]; }
 		auto const buttons = glfwGetJoystickButtons((int)id, &count);
-		ensure((std::size_t)count < ret.buttons.size(), "Too many buttons");
+		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.buttons[idx] = buttons[idx]; }
 		auto const szName = glfwGetJoystickName((int)id);
 		if (szName) { ret.name = szName; }

@@ -1,8 +1,8 @@
 #pragma once
 #include <string_view>
 #include <type_traits>
-#include <core/ensure.hpp>
 #include <core/not_null.hpp>
+#include <core/utils/error.hpp>
 #include <ktl/delegate.hpp>
 
 namespace le {
@@ -40,7 +40,7 @@ template <typename T>
 Asset<T>::Asset(not_null<type*> t, std::string_view id, OnModified* onMod) noexcept : m_uri(id), m_t(t), m_onModified(onMod) {}
 template <typename T>
 T& Asset<T>::get() const {
-	ensure(valid(), "Invalid asset");
+	ENSURE(valid(), "Invalid asset");
 	return *m_t;
 }
 template <typename T>

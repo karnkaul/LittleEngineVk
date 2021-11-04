@@ -4,6 +4,7 @@
 #include <core/log.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
+#include <core/utils/error.hpp>
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
 
@@ -216,7 +217,7 @@ inline u64 Memory::bytes(Resource::Kind type) const noexcept { return m_allocati
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {
-	ensure(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
+	ENSURE(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
 	return write(&t, sizeof(T), offset);
 }
 } // namespace le::graphics

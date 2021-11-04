@@ -3,8 +3,8 @@
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
-#include <core/ensure.hpp>
 #include <core/utils/data_store.hpp>
+#include <core/utils/error.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/instance.hpp>
@@ -37,7 +37,7 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
 		validationLog(lvl::error, 0, msg);
 		bool const ret = !skipError(msg);
-		ensure(!ret, "Validation error");
+		ENSURE(!ret, "Validation error");
 		return ret;
 	}
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warn, 1, msg); break;
@@ -100,7 +100,7 @@ Instance::Instance(CreateInfo const& info) {
 		using vktype = vk::DebugUtilsMessageTypeFlagBitsEXT;
 		createInfo.messageType = vktype::eGeneral | vktype::ePerformance | vktype::eValidation;
 		createInfo.pfnUserCallback = &validationCallback;
-		ensure(VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDebugUtilsMessengerEXT, "Function pointer is null");
+		ENSURE(VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDebugUtilsMessengerEXT, "Function pointer is null");
 		m_messenger = m_instance.createDebugUtilsMessengerEXT(createInfo, nullptr);
 	}
 	g_log.log(lvl::info, 1, "[{}] Vulkan instance constructed", g_name);

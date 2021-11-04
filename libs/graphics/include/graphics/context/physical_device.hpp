@@ -56,9 +56,6 @@ class DevicePicker {
 	/// \brief Override to select a device from a list with identical scores
 	/// (Returns front element by default)
 	///
-	virtual PhysicalDevice tieBreak(Span<Ref<PhysicalDevice const> const> devices) const {
-		ensure(!devices.empty(), "Empty list");
-		return devices.begin()->get();
-	}
+	virtual PhysicalDevice tieBreak(Span<Ref<PhysicalDevice const> const> devices) const;
 };
 } // namespace le::graphics

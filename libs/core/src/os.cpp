@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <sstream>
 #include <thread>
-#include <core/ensure.hpp>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <core/os.hpp>

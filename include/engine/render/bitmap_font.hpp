@@ -40,7 +40,7 @@ struct BitmapFont::CreateInfo {
 };
 
 inline BitmapFont::Texture const& BitmapFont::atlas() const {
-	ensure(valid());
+	ENSURE(valid(), "BitmapFont Texture not valid");
 	return *m_storage.atlas;
 }
 } // namespace le

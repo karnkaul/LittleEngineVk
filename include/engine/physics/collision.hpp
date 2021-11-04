@@ -1,10 +1,10 @@
 #pragma once
 #include <optional>
 #include <vector>
-#include <core/ensure.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <core/utils/enumerate.hpp>
+#include <core/utils/error.hpp>
 #include <engine/scene/drawable.hpp>
 #include <glm/vec3.hpp>
 #include <ktl/delegate.hpp>
@@ -72,8 +72,8 @@ class Collision {
 		void clear() noexcept;
 	};
 
-	Collider cube(std::size_t i) noexcept;
-	void update(std::size_t i, std::size_t j) noexcept;
+	Collider cube(std::size_t i);
+	void update(std::size_t i, std::size_t j);
 
 	Data m_data;
 	ID m_nextID{};

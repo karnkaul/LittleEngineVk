@@ -293,7 +293,7 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 		if (!m.matIndices.empty()) {
 			auto const& mat = info.materials[m.matIndices.front()];
 			auto const it = materials.find(mat.hash);
-			ensure(it != materials.end(), "Invalid hash");
+			ENSURE(it != materials.end(), "Invalid hash");
 			if (it != materials.end()) { prop.material = it->second; }
 		}
 		storage.props.push_back(prop);

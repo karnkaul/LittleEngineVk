@@ -237,7 +237,7 @@ struct TWidget<std::pair<s64, s64>> {
 
 template <typename Flags>
 FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) {
-	ensure(ids.size() <= size, "Overflow!");
+	ENSURE(ids.size() <= size, "Overflow!");
 	std::size_t idx = 0;
 	for (auto id : ids) {
 		bool bVal = flags.test((type)idx);

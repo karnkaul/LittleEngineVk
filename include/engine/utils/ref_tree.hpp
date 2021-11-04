@@ -1,8 +1,9 @@
 #pragma once
 #include <forward_list>
-#include <core/ensure.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
+#include <core/utils/error.hpp>
+#include <core/utils/expect.hpp>
 
 namespace le::utils {
 struct RefTreeBase {};
@@ -83,7 +84,7 @@ bool RefTreeRoot<T, Base>::isRoot() const noexcept {
 template <typename T, typename Base>
 void RefTreeRoot<T, Base>::addChild(not_null<type*> child) {
 	if constexpr (levk_debug) {
-		for (auto const& ch : m_children) { ensure(child != ch, "Duplicate child!"); }
+		for (auto const& ch : m_children) { ENSURE(child != ch, "Duplicate child!"); }
 	}
 	m_children.push_front(child);
 }
@@ -144,7 +145,7 @@ RefTreeNode<T, Base>& RefTreeNode<T, Base>::operator=(RefTreeNode&& rhs) noexcep
 }
 template <typename T, typename Base>
 RefTreeNode<T, Base>::~RefTreeNode() {
-	if constexpr (levk_debug) { ensure(!m_parent->m_children.empty(), "Invariant violated"); }
+	EXPECT(!m_parent->m_children.empty());
 	m_parent->removeChild(cast(this));
 	for (auto& child : this->m_children) {
 		static_cast<type*>(child)->m_parent = m_parent;

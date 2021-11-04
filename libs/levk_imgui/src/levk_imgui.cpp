@@ -8,8 +8,8 @@
 #endif
 #include <backends/imgui_impl_vulkan.h>
 #include <core/colour.hpp>
-#include <core/ensure.hpp>
 #include <core/log.hpp>
+#include <core/utils/error.hpp>
 #include <glm/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/render/command_buffer.hpp>

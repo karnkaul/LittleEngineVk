@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <core/io/file_monitor.hpp>
 #include <core/log.hpp>
+#include <core/utils/error.hpp>
 #include <core/utils/string.hpp>
 
 namespace le::io {
@@ -55,7 +56,7 @@ FileMonitor::Status FileMonitor::update() {
 }
 
 std::string_view FileMonitor::text() const {
-	ensure(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
+	ENSURE(m_mode == Mode::eTextContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eTextContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FSMedia>(), m_path.generic_string());
 		return {};
@@ -64,7 +65,7 @@ std::string_view FileMonitor::text() const {
 }
 
 Span<std::byte const> FileMonitor::bytes() const {
-	ensure(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
+	ENSURE(m_mode == Mode::eBinaryContents, "Monitor not in Text Contents mode!");
 	if (m_mode != Mode::eBinaryContents) {
 		logE("[{}] not monitoring file contents (only timestamp) [{}]!", utils::tName<FSMedia>(), m_path.generic_string());
 		return {};

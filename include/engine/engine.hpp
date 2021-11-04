@@ -102,9 +102,9 @@ class Engine : public Service<Engine> {
 
 	window::Manager& windowManager() noexcept { return m_wm; }
 	window::Manager const& windowManager() const noexcept { return m_wm; }
-	Window& window() noexcept;
-	Window const& window() const noexcept;
-	bool closing() const noexcept { return window().closing(); }
+	Window& window();
+	Window const& window() const;
+	bool closing() const { return window().closing(); }
 
 	SceneSpace m_space;
 	io::Path m_configPath = "config.json";
@@ -148,29 +148,29 @@ struct Engine::CreateInfo {
 template <graphics::concrete_renderer Rd, typename... Args>
 void Engine::boot(Boot::CreateInfo const& info, Args&&... args) {
 	unboot();
-	ensure(m_win.has_value(), "No window");
+	ENSURE(m_win.has_value(), "No window");
 	m_gfx.emplace(&*m_win, adjust(info), tag_t<Rd>{}, std::forward<Args>(args)...);
 	bootImpl();
 }
 
 inline Engine::GFX& Engine::gfx() {
-	ensure(m_gfx.has_value(), "Not booted");
+	ENSURE(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
 inline Engine::GFX const& Engine::gfx() const {
-	ensure(m_gfx.has_value(), "Not booted");
+	ENSURE(m_gfx.has_value(), "Not booted");
 	return *m_gfx;
 }
 inline Engine::ARenderer& Engine::renderer() const {
-	ensure(m_gfx.has_value(), "Not booted");
+	ENSURE(m_gfx.has_value(), "Not booted");
 	return m_gfx->context.renderer();
 }
-inline Engine::Window& Engine::window() noexcept {
-	ensure(m_win.has_value(), "Not booted");
+inline Engine::Window& Engine::window() {
+	ENSURE(m_win.has_value(), "Not booted");
 	return *m_win;
 }
-inline Engine::Window const& Engine::window() const noexcept {
-	ensure(m_win.has_value(), "Not booted");
+inline Engine::Window const& Engine::window() const {
+	ENSURE(m_win.has_value(), "Not booted");
 	return *m_win;
 }
 } // namespace le

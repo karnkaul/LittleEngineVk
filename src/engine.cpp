@@ -65,7 +65,7 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 	utils::g_log.minVerbosity = info.verbosity;
 	if (custom) { m_store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
-	ensure(m_wm.ready(), "Window Manager not ready");
+	ENSURE(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;
 	winInfo.options.autoShow = false;
 	if (auto config = load(m_configPath)) {
@@ -113,7 +113,7 @@ bool Engine::nextFrame(graphics::RenderTarget* out) {
 			updateStats();
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
-				ensure(b, "Failed to begin DearImGui frame");
+				ENSURE(b, "Failed to begin DearImGui frame");
 				m_view = m_editor.update(m_inputFrame);
 			}
 			m_drawing = *ret;

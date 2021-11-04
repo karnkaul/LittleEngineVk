@@ -66,7 +66,7 @@ void Texture::wait() const { m_storage.transfer.wait(); }
 Texture::Data const& Texture::data() const noexcept { return m_storage.data; }
 
 Image const& Texture::image() const {
-	ensure(m_storage.image.has_value(), "Invalid image");
+	ENSURE(m_storage.image.has_value(), "Invalid image");
 	return *m_storage.image;
 }
 
@@ -98,7 +98,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 	ktl::fixed_vector<utils::STBImg, 6> stbimgs;
 	auto checkSize = [](Extent2D size, auto const& bytes) {
 		if (std::size_t(size.x * size.y) * Bitmap::channels != bytes.size()) {
-			ensure(false, "Invalid Raw image size/dimensions");
+			ENSURE(false, "Invalid Raw image size/dimensions");
 			return false;
 		}
 		return true;

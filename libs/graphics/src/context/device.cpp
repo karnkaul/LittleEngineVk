@@ -121,7 +121,7 @@ void Device::waitFor(vk::Fence optional) const {
 		if constexpr (levk_debug) {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = m_device.waitForFences(optional, true, s_wait);
-			ensure(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name); }
 		} else {
 			m_device.waitForFences(optional, true, maths::max<u64>());
@@ -134,7 +134,7 @@ void Device::waitAll(vAP<vk::Fence> validFences) const {
 		if constexpr (levk_debug) {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = m_device.waitForFences(std::move(validFences), true, s_wait);
-			ensure(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
+			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
 			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name); }
 		} else {
 			m_device.waitForFences(std::move(validFences), true, maths::max<u64>());

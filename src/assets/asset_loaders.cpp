@@ -19,7 +19,7 @@ template <>
 	if (auto res = graphics::utils::compileGlsl(media.fullPath(glsl))) {
 		spv = *res;
 	} else {
-		ensure(false, "Failed to compile GLSL");
+		ENSURE(false, "Failed to compile GLSL");
 	}
 	// compile Release shader too
 	graphics::utils::compileGlsl(media.fullPath(glsl), {}, {}, false);
@@ -94,7 +94,7 @@ std::unique_ptr<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetL
 				auto fixed = ret.fixedState();
 				setup(fixed, variant);
 				auto const res = ret.constructVariant(variant.id, fixed);
-				ensure(res.has_value(), "Pipeline variant construction failure");
+				ENSURE(res.has_value(), "Pipeline variant construction failure");
 			}
 		}
 		return std::make_unique<graphics::Pipeline>(std::move(ret));

@@ -213,7 +213,7 @@ class Drawer : public ListDrawer {
 				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
 				for (Prop const& prop : d.props) {
 					bind({2, 3});
-					ensure(prop.mesh, "Null mesh");
+					ENSURE(prop.mesh, "Null mesh");
 					prop.mesh->draw(cb);
 				}
 			}
@@ -434,7 +434,7 @@ class App : public input::Receiver, public SceneRegistry {
 		// m_manifest.flags().set(AssetManifest::Flag::eImmediate);
 		m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
 		auto const res = m_manifest.load("demo", &m_tasks);
-		ensure(res > 0, "Manifest missing/empty");
+		ENSURE(res > 0, "Manifest missing/empty");
 
 		/* custom meshes */ {
 			auto rQuad = m_eng->store().add<graphics::Mesh>("meshes/rounded_quad", graphics::Mesh(&m_eng->gfx().boot.vram));
@@ -658,7 +658,7 @@ class App : public input::Receiver, public SceneRegistry {
 			auto pr_ = Engine::profile("app::tick");
 			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (m_registry.empty()) { init1(); }
-			ensure(m_registry.contains(m_data.entities["text_2d/mesh"]));
+			ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
@@ -829,8 +829,8 @@ bool run(io::Media const& media) {
 			}
 			app.tick(++dt);
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
-				app.sched().enqueue([]() { ensure(false, "test"); });
-				app.sched().enqueue([]() { ensure(false, "test2"); });
+				app.sched().enqueue([]() { ENSURE(false, "test"); });
+				app.sched().enqueue([]() { ENSURE(false, "test2"); });
 				flags.reset(Flag::eDebug0);
 				/*bf = async(&package, "out/autobuild", false);
 				bf.then([](bool built) {

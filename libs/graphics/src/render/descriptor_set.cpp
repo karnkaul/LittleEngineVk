@@ -34,12 +34,12 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 	m_storage.buffering = info.buffering;
 	m_storage.layout = info.layout;
 	m_storage.setNumber = info.setNumber;
-	bool bActive = false;
+	bool active = false;
 	for (auto const& bindingInfo : info.bindingInfos) {
 		m_storage.bindingInfos[bindingInfo.binding.binding] = bindingInfo;
-		bActive |= !bindingInfo.bUnassigned;
+		active |= !bindingInfo.bUnassigned;
 	}
-	if (bActive) {
+	if (active) {
 		std::vector<vk::DescriptorPoolSize> poolSizes;
 		poolSizes.reserve(m_storage.bindingInfos.size());
 		for (Buffering buf{}; buf < m_storage.buffering; ++buf.value) {
@@ -54,7 +54,7 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 				}
 			}
 			set.pool = makeDeferred<vk::DescriptorPool>(m_device, poolSizes, 1U);
-			set.set = m_device->allocateDescriptorSets(*set.pool, m_storage.layout, 1).front();
+			set.set = m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
 			m_storage.setBuffer.emplace(std::move(set));
 		}
 	}
@@ -121,10 +121,10 @@ void DescriptorSet::update(vk::WriteDescriptorSet write) { m_device->device().up
 
 std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u32 bind, vk::DescriptorType type, u32 count) {
 	auto& set = m_storage.setBuffer.get();
-	ensure(utils::contains(set.bindings, bind), "Nonexistent binding");
+	ENSURE(utils::contains(set.bindings, bind), "Nonexistent binding");
 	auto& binding = set.bindings[bind];
-	ensure(binding.type == type, "Mismatched descriptor type");
-	ensure(binding.count == count, "Mismatched descriptor size");
+	ENSURE(binding.type == type, "Mismatched descriptor type");
+	ENSURE(binding.count == count, "Mismatched descriptor size");
 	return {set, binding};
 }
 
@@ -157,12 +157,12 @@ DescriptorSet& DescriptorPool::index(std::size_t idx) {
 }
 
 DescriptorSet const& DescriptorPool::front() const {
-	ensure(!m_storage.descriptorSets.empty(), "Nonexistent set index!");
+	ENSURE(!m_storage.descriptorSets.empty(), "Nonexistent set index!");
 	return m_storage.descriptorSets.front();
 }
 
 DescriptorSet const& DescriptorPool::index(std::size_t idx) const {
-	ensure(m_storage.descriptorSets.size() > idx, "Nonexistent set index!");
+	ENSURE(m_storage.descriptorSets.size() > idx, "Nonexistent set index!");
 	return m_storage.descriptorSets[idx];
 }
 
@@ -200,14 +200,12 @@ ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) : m_vram(pip
 
 DescriptorPool& ShaderInput::pool(u32 set) {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
-	ensure(false, "Nonexistent set");
-	throw std::runtime_error("Nonexistent set");
+	ENSURE(false, "Nonexistent set");
 }
 
 DescriptorPool const& ShaderInput::pool(u32 set) const {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
-	ensure(false, "Nonexistent set");
-	throw std::runtime_error("Nonexistent set");
+	ENSURE(false, "Nonexistent set");
 }
 
 void ShaderInput::swap() {
@@ -235,7 +233,7 @@ bool ShaderInput::update(Span<Texture const> textures, u32 set, u32 bind, std::s
 				return true;
 			}
 		}
-		ensure(false, "DescriptorSet update failure");
+		ENSURE(false, "DescriptorSet update failure");
 		return false;
 	} else {
 		this->pool(set).index(idx).update(bind, textures);
@@ -246,7 +244,7 @@ bool ShaderInput::update(Span<Texture const> textures, u32 set, u32 bind, std::s
 bool ShaderInput::update(Span<Buffer const> buffers, u32 set, u32 bind, std::size_t idx, vk::DescriptorType type) {
 	if constexpr (levk_debug) {
 		if (!contains(set)) {
-			ensure(false, "DescriptorSet update failure");
+			ENSURE(false, "DescriptorSet update failure");
 			return false;
 		}
 	}
@@ -264,7 +262,7 @@ bool ShaderInput::update(ShaderBuffer const& buffer, u32 set, u32 bind, std::siz
 				return true;
 			}
 		}
-		ensure(false, "DescriptorSet update failure");
+		ENSURE(false, "DescriptorSet update failure");
 		return false;
 	} else {
 		buffer.update(this->pool(set).index(idx), bind);

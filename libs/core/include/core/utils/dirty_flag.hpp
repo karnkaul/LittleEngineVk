@@ -1,12 +1,11 @@
 #pragma once
-#include <core/maths.hpp>
-#include <ktl/enum_flags/uint_flags.hpp>
+#include <core/std_types.hpp>
 
-namespace le ::utils {
+namespace le::utils {
 class DirtyFlag {
   public:
-	using Flags = ktl::uint_flags<u8>;
-	static constexpr Flags all_v = {maths::max<u8>()};
+	using Flags = u8;
+	static constexpr Flags all_v = 0xff;
 
 	class Clean {
 		DirtyFlag const& m_flag;
@@ -22,7 +21,7 @@ class DirtyFlag {
 	constexpr DirtyFlag(DirtyFlag&& rhs) noexcept { exchg(*this, rhs); }
 	constexpr DirtyFlag& operator=(DirtyFlag rhs) noexcept { return (exchg(*this, rhs), *this); }
 
-	constexpr bool dirty(Flags mask = all_v) const noexcept { return m_dirty.all(mask); }
+	constexpr bool dirty(Flags mask = all_v) const noexcept { return m_dirty == mask; }
 	constexpr void setDirty(Flags mask = all_v) const noexcept { m_dirty = mask; }
 
   protected:

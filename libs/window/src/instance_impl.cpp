@@ -1,5 +1,6 @@
 #include <core/array_map.hpp>
 #include <core/utils/data_store.hpp>
+#include <core/utils/error.hpp>
 #include <core/utils/sys_info.hpp>
 #include <instance_impl.hpp>
 
@@ -8,31 +9,11 @@ using lvl = dl::level;
 namespace {
 constexpr std::string_view g_name = "Window";
 
-constexpr ArrayMap<Mod, s32, 6> modMap = {{{Mod::eShift, GLFW_MOD_SHIFT},
-										   {Mod::eControl, GLFW_MOD_CONTROL},
-										   {Mod::eAlt, GLFW_MOD_ALT},
-										   {Mod::eSuper, GLFW_MOD_SUPER},
-										   {Mod::eCapsLock, GLFW_MOD_CAPS_LOCK},
-										   {Mod::eNumLock, GLFW_MOD_NUM_LOCK}}};
-
 template <typename T, typename U = T, typename F>
 glm::tvec2<T> getGlfwValue(GLFWwindow* win, F func) {
 	U x, y;
 	func(win, &x, &y);
 	return glm::tvec2<T>((T)x, (T)y);
-}
-
-void fillMod(Mods& out_mods, int mods, int mod) {
-	if (mods & mod) { out_mods.update(modMap[mod]); }
-}
-
-void fillMods(Mods& out_mods, int mods) {
-	fillMod(out_mods, mods, GLFW_MOD_SHIFT);
-	fillMod(out_mods, mods, GLFW_MOD_CONTROL);
-	fillMod(out_mods, mods, GLFW_MOD_ALT);
-	fillMod(out_mods, mods, GLFW_MOD_SUPER);
-	fillMod(out_mods, mods, GLFW_MOD_CAPS_LOCK);
-	fillMod(out_mods, mods, GLFW_MOD_NUM_LOCK);
 }
 } // namespace
 
@@ -186,7 +167,7 @@ void Instance::Impl::close() {
 	glfwSetWindowShouldClose(m_win, 1);
 	Event event;
 	event.type = Event::Type::eClose;
-	m_events.m_events.push_back(event);
+	m_events.push_back(event);
 #endif
 }
 
@@ -322,10 +303,10 @@ Joystick Instance::Impl::joyState(s32 id) const {
 		ret.id = id;
 		int count;
 		auto const axes = glfwGetJoystickAxes((int)id, &count);
-		ensure((std::size_t)count < ret.axes.size(), "Too many axes");
+		ENSURE((std::size_t)count < ret.axes.size(), "Too many axes");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.axes[idx] = axes[idx]; }
 		auto const buttons = glfwGetJoystickButtons((int)id, &count);
-		ensure((std::size_t)count < ret.buttons.size(), "Too many buttons");
+		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.buttons[idx] = buttons[idx]; }
 		auto const szName = glfwGetJoystickName((int)id);
 		if (szName) { ret.name = szName; }
@@ -371,7 +352,7 @@ void Instance::Impl::onFocus(GLFWwindow* win, int entered) {
 		Event event;
 		event.type = Event::Type::eFocus;
 		event.payload.set = entered != 0;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::info, 1, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
 	}
 }
@@ -382,7 +363,7 @@ void Instance::Impl::onWindowResize(GLFWwindow* win, int width, int height) {
 		Event event;
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), false};
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::debug, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
 	}
 }
@@ -393,7 +374,7 @@ void Instance::Impl::onFramebufferResize(GLFWwindow* win, int width, int height)
 		Event event;
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), true};
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::debug, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
 	}
 }
@@ -404,7 +385,7 @@ void Instance::Impl::onIconify(GLFWwindow* win, int iconified) {
 		Event event;
 		event.type = Event::Type::eSuspend;
 		event.payload.set = iconified != 0;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 		inst.log().log(lvl::info, 1, "[{}] Window {}", g_name, iconified != 0 ? "suspended" : "resumed");
 	}
 }
@@ -424,11 +405,11 @@ void Instance::Impl::onKey(GLFWwindow* win, int key, int scancode, int action, i
 		Event::Input input{};
 		input.key = (Key)key;
 		input.action = (Action)action;
-		fillMods(input.mods, mods);
+		input.mods = u8(mods);
 		input.scancode = scancode;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -442,7 +423,7 @@ void Instance::Impl::onMouse(GLFWwindow* win, f64 x, f64 y) {
 		cursor.id = 0;
 		event.type = Event::Type::eCursor;
 		event.payload.cursor = cursor;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -453,11 +434,11 @@ void Instance::Impl::onMouseButton(GLFWwindow* win, int key, int action, int mod
 		Event::Input input{};
 		input.key = Key(key + (int)Key::eMouseButton1);
 		input.action = (Action)action;
-		fillMods(input.mods, mods);
+		input.mods = u8(mods);
 		input.scancode = 0;
 		event.type = Event::Type::eInput;
 		event.payload.input = input;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -467,7 +448,7 @@ void Instance::Impl::onText(GLFWwindow* win, u32 codepoint) {
 		Event event;
 		event.type = Event::Type::eText;
 		event.payload.codepoint = codepoint;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -481,7 +462,7 @@ void Instance::Impl::onScroll(GLFWwindow* win, f64 dx, f64 dy) {
 		cursor.id = 0;
 		event.type = Event::Type::eScroll;
 		event.payload.cursor = cursor;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 
@@ -492,7 +473,7 @@ void Instance::Impl::onMaximize(GLFWwindow* win, int maximized) {
 		Event event;
 		event.type = Event::Type::eMaximize;
 		event.payload.set = inst.m_maximized;
-		inst.m_events.m_events.push_back(event);
+		inst.m_events.push_back(event);
 	}
 }
 #endif

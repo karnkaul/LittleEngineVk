@@ -18,12 +18,12 @@ void Mesh::exchg(Mesh& lhs, Mesh& rhs) noexcept {
 Mesh::Storage Mesh::construct(vk::BufferUsageFlags usage, void* pData, std::size_t size) const {
 	Storage ret;
 	ret.buffer = m_vram->makeBuffer(size, usage, m_type == Type::eDynamic);
-	ensure(ret.buffer.has_value(), "Invalid buffer");
+	ENSURE(ret.buffer.has_value(), "Invalid buffer");
 	if (m_type == Type::eStatic) {
 		ret.transfer = m_vram->stage(*ret.buffer, pData, size);
 	} else {
 		[[maybe_unused]] bool const bRes = ret.buffer->write(pData, size);
-		ensure(bRes, "Write failure");
+		ENSURE(bRes, "Write failure");
 	}
 	return ret;
 }

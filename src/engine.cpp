@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <build_version.hpp>
+#include <core/io/zip_media.hpp>
 #include <core/utils/data_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
@@ -64,7 +65,7 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 	utils::g_log.minVerbosity = info.verbosity;
 	if (custom) { m_store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
-	ensure(m_wm.ready(), "Window Manager not ready");
+	ENSURE(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;
 	winInfo.options.autoShow = false;
 	if (auto config = load(m_configPath)) {
@@ -75,9 +76,13 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 	m_win = m_wm.make(winInfo);
 	m_errorHandler.deleteFile();
 	if (!m_errorHandler.activeHandler()) { m_errorHandler.setActive(); }
+	Services::track(this);
 }
 
-Engine::~Engine() { unboot(); }
+Engine::~Engine() {
+	unboot();
+	Services::untrack(this);
+}
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
 	if (!bootReady()) { return {}; }
@@ -95,7 +100,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 
 void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_inputFrame); }
 
-void Engine::pushReceiver(not_null<input::Receiver*> context) { context->pushSelf(m_receivers); }
+void Engine::pushReceiver(not_null<input::Receiver*> context) { context->attach(m_receivers); }
 
 bool Engine::drawReady() {
 	if (bootReady() && m_gfx) {
@@ -112,7 +117,7 @@ bool Engine::nextFrame(graphics::RenderTarget* out) {
 			updateStats();
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
-				ensure(b, "Failed to begin DearImGui frame");
+				ENSURE(b, "Failed to begin DearImGui frame");
 				m_view = m_editor.update(m_inputFrame);
 			}
 			m_drawing = *ret;
@@ -138,6 +143,7 @@ bool Engine::unboot() noexcept {
 		m_store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
 		m_gfx.reset();
+		io::ZIPMedia::fsDeinit();
 		return true;
 	}
 	return false;

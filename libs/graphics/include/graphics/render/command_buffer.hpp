@@ -1,9 +1,9 @@
 #pragma once
 #include <atomic>
 #include <vector>
-#include <core/ensure.hpp>
 #include <core/hash.hpp>
 #include <core/not_null.hpp>
+#include <core/utils/error.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
@@ -78,7 +78,7 @@ class CommandBuffer {
 
 template <typename T>
 void CommandBuffer::push(vk::PipelineLayout layout, vk::ShaderStageFlags stages, u32 offset, vAP<T> pushConstants) const {
-	ensure(rendering(), "Command buffer not recording!");
+	ENSURE(rendering(), "Command buffer not recording!");
 	m_cb.pushConstants<T>(layout, stages, offset, pushConstants);
 }
 } // namespace le::graphics

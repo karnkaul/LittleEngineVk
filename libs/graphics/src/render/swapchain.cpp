@@ -114,7 +114,7 @@ struct SwapchainCreateInfo {
 } // namespace
 
 Swapchain::Acquire Swapchain::Storage::current() const {
-	ensure(acquired.has_value(), "Image not acquired");
+	ENSURE(acquired.has_value(), "Image not acquired");
 	return {images[(std::size_t)*acquired], *acquired};
 }
 
@@ -250,7 +250,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 	}
 	{
 		auto images = m_device->device().getSwapchainImagesKHR(m_storage.swapchain);
-		ensure(images.size() < m_storage.images.capacity(), "Too many swapchain images");
+		ENSURE(images.size() < m_storage.images.capacity(), "Too many swapchain images");
 		auto const format = info.colourFormat.format;
 		auto const aspectFlags = vk::ImageAspectFlagBits::eColor;
 		for (auto const& image : images) { m_storage.images.push_back({image, m_device->makeImageView(image, format, aspectFlags), m_storage.display.extent}); }

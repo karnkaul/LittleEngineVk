@@ -1,5 +1,6 @@
 #include <map>
 #include <sstream>
+#include <core/utils/error.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/physical_device.hpp>
@@ -20,7 +21,7 @@ std::string PhysicalDevice::toString() const {
 }
 
 PhysicalDevice DevicePicker::pick(Span<PhysicalDevice const> devices, std::optional<std::size_t> indexOverride) const {
-	ensure(!devices.empty(), "No devices to pick from");
+	ENSURE(!devices.empty(), "No devices to pick from");
 	if (indexOverride && *indexOverride < devices.size()) {
 		auto const& ret = devices[*indexOverride];
 		g_log.log(lvl::info, 0, "[{}] Device selection overridden: [{}] {}", g_name, *indexOverride, ret.toString());
@@ -38,5 +39,10 @@ DevicePicker::Score DevicePicker::score(PhysicalDevice const& device) const {
 	addIf(total, device.discreteGPU(), discrete);
 	addIf(total, device.integratedGPU(), integrated);
 	return modify(total, device);
+}
+
+PhysicalDevice DevicePicker::tieBreak(Span<Ref<PhysicalDevice const> const> devices) const {
+	ENSURE(!devices.empty(), "Empty list");
+	return devices.begin()->get();
 }
 } // namespace le::graphics

@@ -1,3 +1,4 @@
+#include <core/utils/expect.hpp>
 #include <graphics/common.hpp>
 #include <graphics/glyph_pen.hpp>
 
@@ -32,10 +33,12 @@ bool GlyphPen::generate(Geometry& out_geometry, Glyph const& glyph) const {
 }
 
 Glyph const& GlyphPen::write(u32 codepoint, Geometry* out_geometry) const {
-	ensure(codepoint != '\n');
-	if (auto const& gl = glyph(codepoint); gl.valid()) {
-		if (out_geometry) { generate(*out_geometry, gl); }
-		return gl;
+	EXPECT(codepoint != '\n');
+	if (codepoint != '\n') {
+		if (auto const& gl = glyph(codepoint); gl.valid()) {
+			if (out_geometry) { generate(*out_geometry, gl); }
+			return gl;
+		}
 	}
 	static constexpr Glyph blank{};
 	return blank;

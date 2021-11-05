@@ -15,22 +15,18 @@ std::pair<f32, std::string_view> friendlySize(u64 byteCount) noexcept;
 ///
 /// \brief Demangle a compiler symbol name
 ///
-std::string demangle(std::string_view name, bool bMinimal);
+std::string_view demangle(std::string_view name, bool minimal);
 
 ///
 /// \brief Obtain demangled type name of an object or a type
 ///
 template <typename T, bool Minimal = true>
-std::string tName(T const* pT = nullptr);
+std::string_view tName(T const* t = nullptr);
 
 ///
 /// \brief Remove namespace prefixes from a type string
 ///
 void removeNamesapces(std::string& out_name);
-
-// ASCII only
-void toLower(std::string& outString);
-void toUpper(std::string& outString);
 
 ///
 /// \brief Convert input to a numeric / boolean type
@@ -71,11 +67,11 @@ std::string concatenate(Cont&& strings, Delim const& delim);
 // impl
 
 template <typename T, bool Minimal>
-std::string tName(T const* pT) {
+std::string_view tName(T const* t) {
 	if constexpr (Minimal) {
-		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), true);
+		return demangle(t ? typeid(*t).name() : typeid(T).name(), true);
 	} else {
-		return demangle(pT ? typeid(*pT).name() : typeid(T).name(), false);
+		return demangle(t ? typeid(*t).name() : typeid(T).name(), false);
 	}
 }
 

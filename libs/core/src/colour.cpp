@@ -2,26 +2,28 @@
 #include <sstream>
 #include <fmt/format.h>
 #include <core/colour.hpp>
-#include <core/ensure.hpp>
 #include <core/maths.hpp>
+#include <core/utils/expect.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
 
 namespace le {
 Colour::Colour(std::string_view hex) noexcept {
-	ensure(!hex.empty(), "Empty hex string!");
-	if (hex[0] == '#') { hex = hex.substr(1); }
-	std::string hexStr(hex);
-	while (hexStr.length() < 3) { hexStr += "0"; }
-	while (hexStr.length() < 8) { hexStr += "f"; }
-	u32 mask = (u32)stoul(hexStr, nullptr, 16);
-	a = mask & 0xff;
-	mask >>= 8;
-	b = mask & 0xff;
-	mask >>= 8;
-	g = mask & 0xff;
-	mask >>= 8;
-	r = mask & 0xff;
+	EXPECT(!hex.empty());
+	if (!hex.empty()) {
+		if (hex[0] == '#') { hex = hex.substr(1); }
+		std::string hexStr(hex);
+		while (hexStr.length() < 3) { hexStr += "0"; }
+		while (hexStr.length() < 8) { hexStr += "f"; }
+		u32 mask = (u32)stoul(hexStr, nullptr, 16);
+		a = mask & 0xff;
+		mask >>= 8;
+		b = mask & 0xff;
+		mask >>= 8;
+		g = mask & 0xff;
+		mask >>= 8;
+		r = mask & 0xff;
+	}
 }
 
 Colour Colour::lerp(Colour min, Colour max, f32 alpha) noexcept {

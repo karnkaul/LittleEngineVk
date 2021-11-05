@@ -1,3 +1,4 @@
+#include <core/utils/error.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/shader.hpp>
@@ -33,7 +34,7 @@ bool Shader::reconstruct(SpirVMap const& spirV) {
 bool Shader::construct(SpirVMap const& spirV, CodeMap& out_code, ModuleMap& out_map) {
 	if (std::all_of(std::begin(spirV.arr), std::end(spirV.arr), [](auto const& v) { return v.empty(); })) { return false; }
 	for (std::size_t idx = 0; idx < arraySize(spirV.arr); ++idx) {
-		ensure(spirV.arr[idx].size() % 4 == 0, "Invalid SPIR-V");
+		ENSURE(spirV.arr[idx].size() % 4 == 0, "Invalid SPIR-V");
 		out_code.arr[idx].clear();
 		out_code.arr[idx].resize(spirV.arr[idx].size() / 4);
 		std::memcpy(out_code.arr[idx].data(), spirV.arr[idx].data(), spirV.arr[idx].size());

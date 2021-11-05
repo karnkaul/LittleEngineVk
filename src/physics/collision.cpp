@@ -116,12 +116,12 @@ std::vector<Drawable> Collision::drawables() const {
 	return ret;
 }
 
-Collision::Collider Collision::cube(std::size_t i) noexcept {
-	ensure(i < m_data.ids.size(), "Invalid index");
+Collision::Collider Collision::cube(std::size_t i) {
+	ENSURE(i < m_data.ids.size(), "Invalid index");
 	return {m_data.ids[i], &m_data.rects[i], &m_data.positions[i], &m_data.cflags[i], &m_data.onCollides[i]};
 }
 
-void Collision::update(std::size_t i, std::size_t j) noexcept {
+void Collision::update(std::size_t i, std::size_t j) {
 	bool const ch = (m_data.cflags[i] & m_data.cflags[j]) != 0;
 	if (ch && colliding(m_data.rects[i], m_data.rects[j], m_data.positions[i], m_data.positions[j])) {
 		m_data.onCollides[i](cube(j));

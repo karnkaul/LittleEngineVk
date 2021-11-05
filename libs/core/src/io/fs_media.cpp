@@ -48,8 +48,7 @@ void FSMedia::clear() noexcept { m_dirs.clear(); }
 
 std::optional<bytearray> FSMedia::bytes(Path const& uri) const {
 	if (auto path = findPrefixed(uri)) {
-		std::ifstream file(path->generic_string(), std::ios::binary | std::ios::ate);
-		if (file.good()) {
+		if (auto file = std::ifstream(path->string(), std::ios::binary | std::ios::ate)) {
 			auto pos = file.tellg();
 			auto buf = bytearray((std::size_t)pos);
 			file.seekg(0, std::ios::beg);
@@ -62,8 +61,7 @@ std::optional<bytearray> FSMedia::bytes(Path const& uri) const {
 
 std::optional<std::stringstream> FSMedia::sstream(Path const& uri) const {
 	if (auto path = findPrefixed(uri)) {
-		std::ifstream file(path->generic_string());
-		if (file.good()) {
+		if (auto file = std::ifstream(path->generic_string())) {
 			std::stringstream buf;
 			buf << file.rdbuf();
 			return buf;

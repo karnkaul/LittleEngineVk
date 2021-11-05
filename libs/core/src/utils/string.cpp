@@ -1,12 +1,77 @@
 #include <algorithm>
 #include <cerrno>
+#include <unordered_map>
 #include <core/utils/string.hpp>
+#include <ktl/tmutex.hpp>
 
 #if defined(__GNUG__)
 #include <cxxabi.h>
 #endif
 
 namespace le {
+namespace {
+struct TNames {
+	using Full = std::string_view;
+	struct Demangled {
+		std::string full;
+		std::string_view minimal;
+	};
+
+	ktl::strict_tmutex<std::unordered_map<Full, Demangled>> names;
+
+	static std::string_view minimalName(std::string_view full) noexcept {
+		static constexpr std::string_view prefix = "::";
+		static constexpr std::string_view skip = "<";
+		auto ps = full.find(prefix);
+		auto ss = full.find(skip);
+		while (ps < full.size() && ss > ps) {
+			full = full.substr(ps + prefix.size());
+			ps = full.find(prefix);
+			ss = full.find(skip);
+		}
+		return full;
+	}
+
+	static void build(Demangled& out, std::string_view name) {
+#if defined(__GNUG__)
+		int status = -1;
+		std::size_t len = 0;
+		char* szRes = abi::__cxa_demangle(name.data(), nullptr, &len, &status);
+		if (status == 0 && szRes) {
+			out.full = szRes;
+			out.minimal = minimalName(out.full);
+		}
+		std::free(szRes);
+#else
+		static constexpr std::string_view CLASS = "class ";
+		static constexpr std::string_view STRUCT = "struct ";
+		auto idx = name.find(CLASS);
+		if (idx == 0) { name = name.substr(CLASS.size()); }
+		idx = name.find(STRUCT);
+		if (idx == 0) { name = name.substr(STRUCT.size()); }
+		out.full = name;
+		out.minimal = minimalName(out.full);
+#endif
+	}
+
+	std::string_view operator()(Full name, bool minimal) {
+		if (name.empty()) { return {}; }
+		auto lock = ktl::tlock(names);
+		auto it = lock->find(name);
+		if (it == lock->end()) {
+			auto [i, _] = lock->insert_or_assign(name, Demangled());
+			it = i;
+			build(it->second, name);
+		}
+		return minimal ? it->second.minimal : it->second.full;
+	}
+
+	void clear() noexcept { ktl::tlock(names)->clear(); }
+};
+
+TNames g_tNames;
+} // namespace
+
 std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount) noexcept {
 	static constexpr std::array suffixes = {"B"sv, "KiB"sv, "MiB"sv, "GiB"sv};
 	f32 bytes = f32(byteCount);
@@ -18,49 +83,11 @@ std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount) noexcept {
 	return {bytes, suffixes[idx < 4 ? idx : 3]};
 }
 
-std::string utils::demangle(std::string_view name, bool bMinimal) {
-	std::string ret(name);
-#if defined(__GNUG__)
-	s32 status = -1;
-	char* szRes = abi::__cxa_demangle(name.data(), nullptr, nullptr, &status);
-	if (status == 0) { ret = szRes; }
-	std::free(szRes);
-#else
-	static constexpr std::string_view CLASS = "class ";
-	static constexpr std::string_view STRUCT = "struct ";
-	auto idx = ret.find(CLASS);
-	if (idx == 0) { ret = ret.substr(CLASS.size()); }
-	idx = ret.find(STRUCT);
-	if (idx == 0) { ret = ret.substr(STRUCT.size()); }
-#endif
-	if (bMinimal) {
-		static constexpr std::string_view prefix = "::";
-		static constexpr std::string_view skip = "<";
-		auto ps = ret.find(prefix);
-		auto ss = ret.find(skip);
-		while (ps < ret.size() && ss > ps) {
-			ret = ret.substr(ps + prefix.size());
-			ps = ret.find(prefix);
-			ss = ret.find(skip);
-		}
-		return ret;
-	}
-	return ret;
-}
+std::string_view utils::demangle(std::string_view name, bool minimal) { return g_tNames(name, minimal); }
 
 void utils::removeNamesapces(std::string& out_name) {
 	auto const idx = out_name.find_last_of("::");
 	if (idx != std::string::npos) { out_name = out_name.substr(idx + 1); }
-}
-
-void utils::toLower(std::string& outString) {
-	std::transform(outString.begin(), outString.end(), outString.begin(), ::tolower);
-	return;
-}
-
-void utils::toUpper(std::string& outString) {
-	std::transform(outString.begin(), outString.end(), outString.begin(), ::toupper);
-	return;
 }
 
 bool utils::toBool(std::string_view input, bool fallback) noexcept {

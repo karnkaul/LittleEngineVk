@@ -1,16 +1,16 @@
 #pragma once
 #include <string_view>
 #include <type_traits>
-#include <core/delegate.hpp>
-#include <core/ensure.hpp>
 #include <core/not_null.hpp>
+#include <core/utils/error.hpp>
+#include <ktl/delegate.hpp>
 
 namespace le {
 template <typename T>
 class Asset {
   public:
 	using type = T;
-	using OnModified = Delegate<>;
+	using OnModified = ktl::delegate<>;
 
 	Asset() = default;
 	Asset(not_null<type*> t, std::string_view id, OnModified* onMod = {}) noexcept;
@@ -25,7 +25,7 @@ class Asset {
 	T& get() const;
 	T& operator*() const { return get(); }
 	T* operator->() const { return &get(); }
-	OnModified::Tk onModified(OnModified::Callback const& callback);
+	[[nodiscard]] OnModified::handle onModified();
 
 	std::string_view m_uri;
 
@@ -40,11 +40,11 @@ template <typename T>
 Asset<T>::Asset(not_null<type*> t, std::string_view id, OnModified* onMod) noexcept : m_uri(id), m_t(t), m_onModified(onMod) {}
 template <typename T>
 T& Asset<T>::get() const {
-	ensure(valid(), "Invalid asset");
+	ENSURE(valid(), "Invalid asset");
 	return *m_t;
 }
 template <typename T>
-typename Asset<T>::OnModified::Tk Asset<T>::onModified(OnModified::Callback const& callback) {
-	return m_onModified ? m_onModified->subscribe(callback) : OnModified::Tk();
+auto Asset<T>::onModified() -> OnModified::handle {
+	return m_onModified ? m_onModified->make_signal() : OnModified::handle();
 }
 } // namespace le

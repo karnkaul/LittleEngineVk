@@ -1,3 +1,4 @@
+#include <mutex>
 #include <stb/stb_image.h>
 #include <core/log.hpp>
 #include <core/maths.hpp>
@@ -18,26 +19,27 @@ struct Spv : Singleton<Spv> {
 	using Shell = le::utils::ShellSilent;
 
 	Spv() {
-		if (auto compiler = Shell(fmt::format("{} --version", utils::g_compiler))) {
-			bOnline = true;
-			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler online: {}", g_name, compiler.redirectOutput());
+		if (auto compiler = Shell(fmt::format("{} --version", utils::g_compiler).data())) {
+			online = true;
+			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler online: {}", g_name, compiler.output());
 		} else {
-			g_log.log(lvl::warn, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.redirectOutput());
+			g_log.log(lvl::warn, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.output());
 		}
 	}
 
 	std::string compile(io::Path const& src, io::Path const& dst, std::string_view flags) {
-		if (bOnline) {
+		if (online) {
 			if (!io::is_regular_file(src)) { return fmt::format("source file [{}] not found", src.generic_string()); }
-			if (auto compile = Shell(fmt::format("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string())); !compile.success()) {
-				return "compilation failed: " + compile.redirectOutput();
-			}
+			std::lock_guard lock(mutex); // prevent concurrent file usage
+			auto compile = Shell(fmt::format("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string()).data());
+			if (!compile) { return fmt::format("compilation failed: {}", compile.output()); }
 			return {};
 		}
 		return fmt::format("[{}] offline", utils::g_compiler);
 	}
 
-	bool bOnline = false;
+	std::mutex mutex;
+	bool online = false;
 };
 } // namespace
 
@@ -188,7 +190,7 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 				bindInfo.name = fmt::format("[Unassigned_{}_{}]", s, b);
 				bindInfo.bUnassigned = true;
 			}
-			ensure(binds.has_space(), "Max descriptor sets exceeded");
+			ENSURE(binds.has_space(), "Max descriptor sets exceeded");
 			binds.push_back(bindInfo);
 		}
 	}
@@ -222,7 +224,7 @@ BmpBytes utils::bmpBytes(Span<std::byte const> bytes) {
 }
 
 utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
-	ensure(compressed.size() <= (std::size_t)maths::max<int>(), "size too large!");
+	ENSURE(compressed.size() <= (std::size_t)maths::max<int>(), "size too large!");
 	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
 	int w, h, ch;
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);

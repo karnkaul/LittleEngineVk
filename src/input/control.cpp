@@ -2,47 +2,21 @@
 #include <engine/input/state.hpp>
 
 namespace le::input {
-Trigger::Trigger(Key key, Action action, Mod mod) noexcept : Trigger(key, action, Mods::make(mod)) {}
-
-Trigger::Trigger(Key key, Action action, Mods mods) noexcept {
-	KeyAction ka;
-	ka.key = key;
-	ka.t = action;
-	ka.mods = mods;
-	combos.push_back(ka);
-}
-
 bool Trigger::operator()(State const& state) const noexcept {
 	for (auto const& combo : combos) {
-		if (combo.key != Key::eUnknown) {
-			switch (combo.t) {
-			case Action::ePressed: {
-				if (auto k = state.pressed(combo.key)) { return k->mods.all(combo.mods); }
-				break;
-			}
-			case Action::eReleased: {
-				if (auto k = state.released(combo.key)) { return k->mods.all(combo.mods); }
-				break;
-			}
-			case Action::eHeld: {
-				if (auto k = state.held(combo.key)) { return k->mods.all(combo.mods); }
-				break;
-			}
-			default: break;
-			}
+		if (auto const ev = combo.get_if<KeyEvent>()) {
+			if (auto const mods = state.mods(ev->key, ev->action)) { return *mods == ev->mods; }
+		} else if (auto const hold = combo.get_if<Hold>()) {
+			return state.held(hold->key);
 		}
 	}
 	return false;
 }
 
-Range::Range(AxisRange axis) noexcept { matches.push_back(axis); }
-
-Range::Range(KeyRange key) noexcept { matches.push_back(key); }
-
 f32 Range::operator()(State const& state) const noexcept {
 	f32 ret = 0.0f;
 	for (auto const& match : matches) {
-		if (auto const& ax = std::get_if<AxisRange>(&match)) {
+		if (auto const ax = match.get_if<AxisRange>()) {
 			Gamepad const* pad = ax->padID < state.gamepads.size() ? &state.gamepads[ax->padID] : nullptr;
 			switch (ax->axis) {
 			case Axis::eMouseScrollX: {
@@ -64,14 +38,10 @@ f32 Range::operator()(State const& state) const noexcept {
 			}
 			}
 			return ax->invert ? -ret : ret;
-		} else if (auto const& ky = std::get_if<KeyRange>(&match)) {
-			auto const lo = state.held(ky->lo.key);
-			auto const hi = state.held(ky->hi.key);
-			if (lo || hi) {
-				f32 const l = lo && lo->mods.all(ky->lo.mods) ? -1.0f : 0.0f;
-				f32 const r = hi && hi->mods.all(ky->hi.mods) ? 1.0f : 0.0f;
-				ret += (l + r);
-			}
+		} else if (auto const key = match.get_if<KeyRange>()) {
+			f32 const l = key->lo > Key::eUnknown && state.held(key->lo) ? -1.0f : 0.0f;
+			f32 const r = key->hi > Key::eUnknown && state.held(key->hi) ? 1.0f : 0.0f;
+			return l + r;
 		}
 	}
 	return ret;

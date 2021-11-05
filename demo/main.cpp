@@ -17,7 +17,6 @@ int main(int argc, char const* const argv[]) {
 	// 	if (data) {
 	// 		io::FSMedia fr;
 	// 		if (auto zip = fr.bytes(*data)) {
-	// 			io::ZIPFS zipfs;
 	// 			io::ZIPMedia zr;
 	// 			if (zr.mount("demo/data.zip", std::move(*zip))) {
 	// 				return utils::Execute([&zr]() { return demo::run(zr) ? 0 : 10; });

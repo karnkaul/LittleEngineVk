@@ -1,8 +1,9 @@
 #pragma once
 #include <forward_list>
-#include <core/ensure.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
+#include <core/utils/error.hpp>
+#include <core/utils/expect.hpp>
 
 namespace le::utils {
 struct RefTreeBase {};
@@ -32,9 +33,10 @@ class RefTreeRoot : public Base {
 	template <typename U, typename Pred>
 	static void walk(U&& root, Pred pred);
 
-  private:
 	void addChild(not_null<type*> child);
-	bool removeChild(not_null<type*> child) noexcept;
+
+  private:
+	bool removeChild(void* child);
 
 	container_t m_children;
 	bool m_root = true;
@@ -51,8 +53,8 @@ class RefTreeNode : public utils::RefTreeRoot<T, Base> {
 	using typename Root::base_t;
 
 	RefTreeNode(not_null<Root*> root);
-	RefTreeNode(RefTreeNode&& rhs) noexcept;
-	RefTreeNode& operator=(RefTreeNode&& rhs) noexcept;
+	RefTreeNode(RefTreeNode&& rhs);
+	RefTreeNode& operator=(RefTreeNode&& rhs);
 	~RefTreeNode() override;
 
 	type& parent(not_null<Root*> root) noexcept;
@@ -83,13 +85,13 @@ bool RefTreeRoot<T, Base>::isRoot() const noexcept {
 template <typename T, typename Base>
 void RefTreeRoot<T, Base>::addChild(not_null<type*> child) {
 	if constexpr (levk_debug) {
-		for (auto const& ch : m_children) { ensure(child != ch, "Duplicate child!"); }
+		for (auto const& ch : m_children) { ENSURE(child != ch, "Duplicate child!"); }
 	}
 	m_children.push_front(child);
 }
 
 template <typename T, typename Base>
-bool RefTreeRoot<T, Base>::removeChild(not_null<type*> child) noexcept {
+bool RefTreeRoot<T, Base>::removeChild(void* child) {
 	auto it = m_children.begin();
 	if (it == m_children.end()) { return false; }
 	if (*it == child) {
@@ -119,15 +121,13 @@ template <typename T, typename Base>
 RefTreeNode<T, Base>::RefTreeNode(not_null<Root*> parent) : m_parent(parent) {
 	static_assert(std::is_base_of_v<RefTreeNode<T, Base>, T>, "CRTP misuse");
 	this->m_root = false;
-	parent->addChild(cast(this));
 }
 template <typename T, typename Base>
-RefTreeNode<T, Base>::RefTreeNode(RefTreeNode&& rhs) noexcept : Root(std::move(rhs)), m_parent(rhs.m_parent) {
+RefTreeNode<T, Base>::RefTreeNode(RefTreeNode&& rhs) : Root(std::move(rhs)), m_parent(rhs.m_parent) {
 	this->m_root = false;
-	m_parent->addChild(cast(this));
 }
 template <typename T, typename Base>
-RefTreeNode<T, Base>& RefTreeNode<T, Base>::operator=(RefTreeNode&& rhs) noexcept {
+RefTreeNode<T, Base>& RefTreeNode<T, Base>::operator=(RefTreeNode&& rhs) {
 	if (&rhs != this) {
 		for (auto& child : this->m_children) {
 			static_cast<type*>(child)->m_parent = m_parent;
@@ -144,8 +144,8 @@ RefTreeNode<T, Base>& RefTreeNode<T, Base>::operator=(RefTreeNode&& rhs) noexcep
 }
 template <typename T, typename Base>
 RefTreeNode<T, Base>::~RefTreeNode() {
-	if constexpr (levk_debug) { ensure(!m_parent->m_children.empty(), "Invariant violated"); }
-	m_parent->removeChild(cast(this));
+	EXPECT(!m_parent->m_children.empty());
+	m_parent->removeChild(this);
 	for (auto& child : this->m_children) {
 		static_cast<type*>(child)->m_parent = m_parent;
 		m_parent->addChild(child);

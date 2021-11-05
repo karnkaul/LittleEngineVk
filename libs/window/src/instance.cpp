@@ -1,12 +1,13 @@
 #include <unordered_map>
 #include <core/not_null.hpp>
 #include <instance_impl.hpp>
+#include <ktl/enum_flags/bitflags.hpp>
 #include <window/instance.hpp>
 
 #if defined(LEVK_USE_GLFW)
 #include <core/array_map.hpp>
-#include <core/ensure.hpp>
 #include <core/log.hpp>
+#include <core/utils/error.hpp>
 #include <ktl/fixed_any.hpp>
 #endif
 
@@ -144,7 +145,7 @@ std::unordered_map<std::string_view, Key> const g_keyMap = {
 	{"gamepad_dpad_left", Key::eGamepadButtonDpadLeft},
 };
 
-std::unordered_map<std::string_view, Mod> const g_modsMap = {{"ctrl", Mod::eControl}, {"alt", Mod::eAlt}, {"shift", Mod::eShift}};
+std::unordered_map<std::string_view, Mod> const g_modsMap = {{"ctrl", Mod::eCtrl}, {"alt", Mod::eAlt}, {"shift", Mod::eShift}};
 
 std::unordered_map<std::string_view, Axis> const g_axisMap = {
 	{"gamepad_left_x", Axis::eLeftX},	{"gamepad_left_y", Axis::eLeftY},	{"gamepad_right_x", Axis::eRightX},
@@ -241,6 +242,25 @@ Gamepad Instance::gamepadState(s32 id) const { return m_impl->gamepadState(id); 
 std::size_t Instance::joystickAxesCount(s32 id) const { return m_impl->joystickAxesCount(id); }
 std::size_t Instance::joysticKButtonsCount(s32 id) const { return m_impl->joysticKButtonsCount(id); }
 
+std::string_view Instance::keyName(Key key, int scancode) noexcept {
+	std::string_view ret = "(Unknown)";
+#if defined(LEVK_USE_GLFW)
+	switch (key) {
+	case Key::eSpace: ret = "space"; break;
+	case Key::eLeftControl: ret = "lctrl"; break;
+	case Key::eRightControl: ret = "rctrl"; break;
+	case Key::eLeftShift: ret = "lshift"; break;
+	case Key::eRightShift: ret = "rshift"; break;
+	default: {
+		char const* const name = glfwGetKeyName(static_cast<int>(key), scancode);
+		if (name) { ret = name; }
+		break;
+	}
+	}
+#endif
+	return ret;
+}
+
 Key Instance::parseKey(std::string_view str) noexcept { return parse(g_keyMap, str, Key::eUnknown); }
 
 Action Instance::parseAction(std::string_view str) noexcept {
@@ -252,7 +272,7 @@ Mods Instance::parseMods(Span<std::string const> vec) noexcept {
 	Mods ret;
 	std::memset(&ret, 0, sizeof(ret));
 	for (auto const& str : vec) {
-		if (auto search = g_modsMap.find(str); search != g_modsMap.end()) { ret.update(search->second); }
+		if (auto search = g_modsMap.find(str); search != g_modsMap.end()) { ret = ktl::flags::update(ret, u8(search->second), u8(0)); }
 	}
 	return ret;
 }

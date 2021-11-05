@@ -35,7 +35,7 @@ class Asset;
 
 class AssetStore : public NoCopy {
   public:
-	using OnModified = Delegate<>;
+	using OnModified = ktl::delegate<>;
 
 	template <typename T>
 	Asset<T> add(io::Path const& uri, T t);
@@ -289,6 +289,8 @@ bool AssetStore::reloadAsset(detail::TAsset<T>& out_asset) const {
 template <typename T>
 template <typename U>
 void AssetLoadInfo<T>::reloadDepend(Asset<U>& out_asset) const {
-	m_tokens.push_back(out_asset.onModified([s = m_store, id = m_id]() { s->template forceDirty<T>(id); }));
+	auto signal = out_asset.onModified();
+	signal += [s = m_store, id = m_id]() { s->template forceDirty<T>(id); };
+	m_tokens.push_back(std::move(signal));
 }
 } // namespace le

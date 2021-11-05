@@ -12,8 +12,8 @@
 namespace le::graphics {
 namespace {
 void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
-	ensure(images > 1_B, "Insufficient swapchain images");
-	ensure(buffering > 0_B, "Insufficient buffering");
+	ENSURE(images > 1_B, "Insufficient swapchain images");
+	ENSURE(buffering > 0_B, "Insufficient buffering");
 	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warn, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
 	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
 }
@@ -72,7 +72,7 @@ RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARe
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
 	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_storage.renderer->renderPass3D(); }
 	info.buffering = m_storage.renderer->buffering();
-	info.cache = *m_storage.pipelineCache;
+	info.cache = m_storage.pipelineCache;
 	return Pipeline(m_swapchain->m_vram, shader, std::move(info), id);
 }
 

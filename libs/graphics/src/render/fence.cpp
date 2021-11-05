@@ -1,4 +1,4 @@
-#include <core/ensure.hpp>
+#include <core/utils/error.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/render/fence.hpp>
 
@@ -10,7 +10,7 @@ void busy(RenderFence::Fence& fence) noexcept { fence.previous = RenderFence::St
 
 RenderFence::State RenderFence::Fence::state(vk::Device device) const {
 	State ret = previous;
-	switch (device.getFenceStatus(*fence)) {
+	switch (device.getFenceStatus(fence)) {
 	case vk::Result::eSuccess: ret = State::eReady; break;
 	case vk::Result::eNotReady: break;
 	default: break;
@@ -24,7 +24,7 @@ RenderFence::RenderFence(not_null<Device*> device, Buffering buffering) : m_devi
 
 void RenderFence::wait() {
 	auto& ret = current();
-	m_device->waitFor(*ret.fence);
+	m_device->waitFor(ret.fence);
 	ready(ret);
 }
 
@@ -33,10 +33,10 @@ void RenderFence::refresh() {
 }
 
 void RenderFence::associate(u32 imageIndex) {
-	ensure(imageIndex < arraySize(m_storage.ptrs), "Invalid imageIndex");
+	ENSURE(imageIndex < arraySize(m_storage.ptrs), "Invalid imageIndex");
 	auto& curr = current();
 	auto ret = std::exchange(m_storage.ptrs[(std::size_t)imageIndex], &curr);
-	if (ret) { m_device->waitFor(*ret->fence); }
+	if (ret) { m_device->waitFor(ret->fence); }
 	busy(curr);
 }
 
@@ -47,7 +47,7 @@ ktl::expected<Swapchain::Acquire, Swapchain::Flags> RenderFence::acquire(Swapcha
 }
 
 bool RenderFence::present(Swapchain& swapchain, vk::SubmitInfo const& info, vk::Semaphore wait) {
-	ensure(info.signalSemaphoreCount == 0 || *info.pSignalSemaphores == wait, "Semaphore mismatch");
+	ENSURE(info.signalSemaphoreCount == 0 || *info.pSignalSemaphores == wait, "Semaphore mismatch");
 	m_device->queues().submit(QType::eGraphics, info, submitFence(), true);
 	if (!swapchain.present(wait)) { return false; } // signalled by drawing submit
 	next();
@@ -61,17 +61,17 @@ void RenderFence::next() noexcept {
 
 vk::Fence RenderFence::drawFence() {
 	auto& ret = current();
-	ensure(ret.state(m_device->device()) == State::eReady, "Invalid fence state");
-	m_device->resetFence(*ret.fence);
+	ENSURE(ret.state(m_device->device()) == State::eReady, "Invalid fence state");
+	m_device->resetFence(ret.fence);
 	ready(ret);
-	return *ret.fence;
+	return ret.fence;
 }
 
 vk::Fence RenderFence::submitFence() {
 	auto& ret = current();
-	m_device->waitFor(*ret.fence);
-	m_device->resetFence(*ret.fence);
+	m_device->waitFor(ret.fence);
+	m_device->resetFence(ret.fence);
 	ready(ret);
-	return *ret.fence;
+	return ret.fence;
 }
 } // namespace le::graphics

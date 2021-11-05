@@ -98,7 +98,7 @@ bool Resizer::operator()([[maybe_unused]] window::Instance& out_w, Viewport& out
 CursorType Resizer::check(Viewport const& vp, input::Frame const& frame) {
 	auto const& size = frame.space.display.window;
 	auto const cursor = frame.state.cursor.screenPos;
-	bool const click = frame.state.pressed(Key::eMouseButton1).has_value();
+	bool const click = frame.state.pressed(Key::eMouseButton1);
 	CursorType ret = CursorType::eDefault;
 	auto const left = frame.space.viewport.offset.x;
 	auto const right = left + frame.space.viewport.scale * size.x;

@@ -22,6 +22,8 @@ class SceneNode : public utils::RefTreeNode<SceneNode>, utils::DirtyFlag {
 	using Root = typename RefTreeNode<SceneNode>::Root;
 
 	SceneNode(not_null<Root*> root, decf::entity entity = {}, SceneTransform const& transform = {});
+	SceneNode(SceneNode&& rhs);
+	SceneNode& operator=(SceneNode&&) = default;
 
 	///
 	/// \brief Set (local) position
@@ -122,7 +124,11 @@ inline glm::mat4 SceneTransform::matrix() const noexcept {
 }
 
 inline SceneNode::SceneNode(not_null<Root*> parent, decf::entity entity, SceneTransform const& transform)
-	: RefTreeNode(parent), m_transform(transform), m_entity(entity) {}
+	: RefTreeNode(parent), m_transform(transform), m_entity(entity) {
+	parent->addChild(this);
+}
+
+inline SceneNode::SceneNode(SceneNode&& rhs) : RefTreeNode(std::move(rhs)) { m_parent->addChild(this); }
 
 inline SceneNode& SceneNode::reset(SceneTransform const& transform) {
 	m_transform = transform;

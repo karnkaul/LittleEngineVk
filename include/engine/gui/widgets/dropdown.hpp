@@ -34,22 +34,23 @@ class Dropdown : public Button {
 		std::size_t index{};
 	};
 
-	using OnSelect = Delegate<Dropdown&, Select>;
+	using OnSelect = ktl::delegate<Select>;
 
 	template <typename T = Button, typename... Args>
-	Dropdown(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo<T> info, Args&&... args) noexcept
+	Dropdown(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo<T> info, Args&&... args)
 		: Button(root, font, info.style), m_options(std::move(info.options)) {
 		if (!m_options.empty()) {
-			ensure(info.selected < m_options.size(), "Invalid index");
+			ENSURE(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
 			for (auto [entry, index] : utils::enumerate(m_options)) {
-				add(m_flexbox->add<T>(m_rect.size, itemPad(entry, index), m_text->m_font, std::forward<Args>(args)...), entry, index);
+				bool const pad = itemPad(entry, index);
+				add(m_flexbox->add<T>(m_rect.size, pad, m_text->m_font, std::forward<Args>(args)...), entry, index);
 			}
 			refresh();
 		}
 	}
 
-	OnSelect::Tk onSelect(OnSelect::Callback const& cb) { return m_onSelect.subscribe(cb); }
+	OnSelect::signal onSelect() { return m_onSelect.make_signal(); }
 	bool expanded() const noexcept { return m_flexbox->m_active; }
 	Select selected() const noexcept { return {m_options[m_selected], m_selected}; }
 
@@ -65,9 +66,9 @@ class Dropdown : public Button {
 	void select(std::size_t index);
 
 	OnSelect m_onSelect;
-	OnClick::Tk m_onClickTk;
+	OnClick::signal m_onClickTk;
 	std::vector<std::string> m_options;
-	std::vector<OnClick::Tk> m_entryTokens;
+	std::vector<OnClick::signal> m_entrySignals;
 	std::size_t m_selected{};
 	Flexbox* m_flexbox{};
 	CreateInfoBase::TextColours m_textColours;

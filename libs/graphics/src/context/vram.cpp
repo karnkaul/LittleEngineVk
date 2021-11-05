@@ -36,9 +36,9 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	[[maybe_unused]] auto const& sq = src.data().queueFlags;
 	[[maybe_unused]] auto const& dq = out_dst.data().queueFlags;
 	[[maybe_unused]] bool const bReady = sq.test(QType::eTransfer) && dq.test(QType::eTransfer);
-	ensure(bReady, "Transfer flag not set!");
+	ENSURE(bReady, "Transfer flag not set!");
 	bool const bSizes = out_dst.writeSize() >= size;
-	ensure(bSizes, "Invalid buffer sizes!");
+	ENSURE(bSizes, "Invalid buffer sizes!");
 	if (!bReady) {
 		g_log.log(lvl::error, 1, "[{}] Source/destination buffers missing QType::eTransfer!", g_name);
 		return {};
@@ -49,8 +49,8 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	}
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	if (indices.size() > 1) {
-		ensure(sq.count() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
-		ensure(dq.count() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(sq.count() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(dq.count() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 	}
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
@@ -66,9 +66,9 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size) {
 	if (size == 0) { size = out_deviceBuffer.writeSize(); }
 	auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
-	ensure(indices.size() == 1 || out_deviceBuffer.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE(indices.size() == 1 || out_deviceBuffer.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	bool const bQueueFlags = out_deviceBuffer.data().queueFlags.test(QType::eTransfer);
-	ensure(bQueueFlags, "Invalid queue flags!");
+	ENSURE(bQueueFlags, "Invalid queue flags!");
 	if (!bQueueFlags) {
 		g_log.log(lvl::error, 1, "[{}] Invalid queue flags on source buffer!", g_name);
 		return {};
@@ -95,15 +95,15 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : bitmaps) {
-		ensure(layerSize == 0 || layerSize == pixels.size(), "Invalid image data!");
+		ENSURE(layerSize == 0 || layerSize == pixels.size(), "Invalid image data!");
 		layerSize = pixels.size();
 		imgSize += layerSize;
 	}
-	ensure(layerSize > 0 && imgSize > 0, "Invalid image data!");
+	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
-	ensure(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
-	ensure((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	ensure(out_dst.layout() == layouts.first, "Mismatched image layouts");
+	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	ENSURE(out_dst.layout() == layouts.first, "Mismatched image layouts");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
 	std::vector<bytearray> data;
@@ -118,7 +118,7 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 			  imgSize, layerSize, this]() mutable {
 		auto stage = m_transfer.newStage(imgSize);
 		[[maybe_unused]] bool const bResult = stage.buffer->map();
-		ensure(bResult, "Memory map failed");
+		ENSURE(bResult, "Memory map failed");
 		u32 layerIdx = 0;
 		std::vector<vk::BufferImageCopy> copyRegions;
 		for (auto const& pixels : d) {
@@ -140,8 +140,8 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 }
 
 VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter) {
-	ensure((src.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	ensure((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	ENSURE((src.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
 	TPair<vk::Extent3D> const extents = {src.extent(), out_dst.extent()};

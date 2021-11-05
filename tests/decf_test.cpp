@@ -1,10 +1,10 @@
 #include <array>
 #include <string>
 #include <unordered_set>
-#include <core/ensure.hpp>
 #include <core/maths.hpp>
 #include <core/time.hpp>
 #include <core/utils/algo.hpp>
+#include <core/utils/error.hpp>
 #include <dumb_ecf/registry.hpp>
 #include <dumb_tasks/scheduler.hpp>
 #include <ktl/kthread.hpp>
@@ -27,7 +27,7 @@ std::mutex g_mutex;
 bool verify(entity entity) {
 	std::scoped_lock lock(g_mutex);
 	bool const bRet = !utils::contains(g_spawned, entity);
-	ensure(bRet, "DUPLICATE");
+	ENSURE(bRet, "DUPLICATE");
 	g_spawned.insert(entity);
 	return bRet;
 }

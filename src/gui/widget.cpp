@@ -7,13 +7,13 @@ Widget::Widget(not_null<TreeRoot*> root, Hash style) : Quad(root, true) {
 }
 
 Widget::Status Widget::status(input::State const& state) const noexcept {
+	static constexpr auto key = input::Key::eMouseButton1;
 	if (m_interact && hit(state.cursor.position)) {
-		auto const actions = state.actions(input::Key::eMouseButton1);
-		if (actions.all(input::Action::eReleased)) {
+		if (state.released(key)) {
 			return Status::eRelease;
-		} else if (actions.all(input::Action::ePressed)) {
+		} else if (state.pressed(key)) {
 			return Status::ePress;
-		} else if (actions.all(input::Action::eHeld)) {
+		} else if (state.held(key)) {
 			return Status::eHold;
 		}
 		return Status::eHover;

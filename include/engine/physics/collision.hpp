@@ -1,13 +1,13 @@
 #pragma once
 #include <optional>
 #include <vector>
-#include <core/delegate.hpp>
-#include <core/ensure.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <core/utils/enumerate.hpp>
+#include <core/utils/error.hpp>
 #include <engine/scene/drawable.hpp>
 #include <glm/vec3.hpp>
+#include <ktl/delegate.hpp>
 
 namespace le {
 class Collision {
@@ -23,13 +23,13 @@ class Collision {
 	};
 
 	class Collider;
-	using OnCollide = Delegate<Collider>;
+	using OnCollide = ktl::delegate<Collider>;
 
 	class Collider {
 	  public:
 		Rect& rect() const noexcept { return *m_rect; }
 		glm::vec3& position() const noexcept { return *m_pos; }
-		[[nodiscard]] OnCollide::Tk onCollide(OnCollide::Callback const& cb) { return m_onCollide->subscribe(cb); }
+		[[nodiscard]] OnCollide::handle onCollide() { return m_onCollide->make_signal(); }
 		CFlags channels() const noexcept { return *m_cflags; }
 		void channels(u32 set, u32 unset = 0) const noexcept;
 
@@ -72,8 +72,8 @@ class Collision {
 		void clear() noexcept;
 	};
 
-	Collider cube(std::size_t i) noexcept;
-	void update(std::size_t i, std::size_t j) noexcept;
+	Collider cube(std::size_t i);
+	void update(std::size_t i, std::size_t j);
 
 	Data m_data;
 	ID m_nextID{};

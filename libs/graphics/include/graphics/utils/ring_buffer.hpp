@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include <core/ensure.hpp>
+#include <core/utils/error.hpp>
 
 namespace le {
 template <typename T>
@@ -30,12 +30,12 @@ void RingBuffer<T>::emplace(U&&... u) {
 }
 template <typename T>
 typename RingBuffer<T>::type& RingBuffer<T>::get() {
-	ensure(!ts.empty(), "Empty buffer");
+	ENSURE(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>
 typename RingBuffer<T>::type const& RingBuffer<T>::get() const {
-	ensure(!ts.empty(), "Empty buffer");
+	ENSURE(!ts.empty(), "Empty buffer");
 	return ts[index];
 }
 template <typename T>

@@ -45,9 +45,9 @@ using RGBA = graphics::RGBA;
 enum class Flag { eClosed, eDebug0 };
 using Flags = ktl::enum_flags<Flag, u8>;
 
-static void poll(Flags& out_flags, window::EventQueue queue) {
-	while (auto e = queue.pop()) {
-		switch (e->type) {
+static void poll(Flags& out_flags, window::EventQueue const& queue) {
+	for (auto const& event : queue) {
+		switch (event.type) {
 		case window::Event::Type::eClose: {
 			out_flags.set(Flag::eClosed);
 			break;
@@ -213,7 +213,7 @@ class Drawer : public ListDrawer {
 				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
 				for (Prop const& prop : d.props) {
 					bind({2, 3});
-					ensure(prop.mesh, "Null mesh");
+					ENSURE(prop.mesh, "Null mesh");
 					prop.mesh->draw(cb);
 				}
 			}
@@ -281,14 +281,15 @@ class TestView : public gui::View {
 		m_button->m_rect.size = {200.0f, 100.0f};
 		m_button->m_text->set("Button").size(40U);
 		m_button->refresh();
-		m_tk = m_button->onClick([this]() { setDestroyed(); });
+		m_onClick = m_button->onClick();
+		m_onClick += [this]() { setDestroyed(); };
 	}
 
 	TestView(TestView&&) = delete;
 	TestView& operator=(TestView&&) = delete;
 
 	gui::Button* m_button{};
-	gui::Widget::OnClick::Tk m_tk;
+	gui::Widget::OnClick::handle m_onClick;
 };
 } // namespace le::demo
 
@@ -304,7 +305,7 @@ class Dialogue : public View {
 
 	Dialogue(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info);
 
-	[[nodiscard]] Widget::OnClick::Tk addButton(std::string text, Widget::OnClick::Callback const& onClick);
+	[[nodiscard]] Widget::OnClick::handle addButton(std::string text, Widget::OnClick::callback&& onClick);
 
   protected:
 	void onUpdate(input::Frame const& frame) override;
@@ -327,7 +328,7 @@ class Dialogue : public View {
 	Button* m_content{};
 	Footer m_footer;
 	ButtonInfo m_buttonInfo;
-	Button::OnClick::Tk m_closeToken;
+	Button::OnClick::handle m_closeSignal;
 	not_null<BitmapFont const*> m_font;
 };
 
@@ -379,7 +380,8 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 	m_header.close->m_rect.size = {20.0f, 20.0f};
 	m_header.close->m_rect.anchor.norm.x = 0.5f;
 	m_header.close->m_rect.anchor.offset.x = -20.0f;
-	m_closeToken = m_header.close->onClick([this]() { setDestroyed(); });
+	m_closeSignal = m_header.close->onClick();
+	m_closeSignal += [this]() { setDestroyed(); };
 
 	m_footer.bg = &m_content->push<Widget>(info.footer.style);
 	m_footer.bg->m_rect.size = {info.content.size.x, info.footer.height};
@@ -389,7 +391,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 	m_footer.bg->m_interact = false;
 }
 
-Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callback const& onClick) {
+Widget::OnClick::handle Dialogue::addButton(std::string text, Widget::OnClick::callback&& onClick) {
 	auto& button = m_footer.bg->push<Button>(m_font, m_buttonInfo.style);
 	m_footer.buttons.push_back(&button);
 	button.m_rect.anchor.norm.x = -0.5f;
@@ -402,7 +404,9 @@ Widget::OnClick::Tk Dialogue::addButton(std::string text, Widget::OnClick::Callb
 		btn->m_rect.anchor.offset.x = offset;
 		offset += (pad + m_buttonInfo.size.x);
 	}
-	return button.onClick(onClick);
+	auto ret = button.onClick();
+	ret += std::move(onClick);
+	return ret;
 }
 
 void Dialogue::onUpdate(input::Frame const& frame) {
@@ -430,7 +434,7 @@ class App : public input::Receiver, public SceneRegistry {
 		// m_manifest.flags().set(AssetManifest::Flag::eImmediate);
 		m_manifest.flags().set(AssetManifest::Flag::eOverwrite);
 		auto const res = m_manifest.load("demo", &m_tasks);
-		ensure(res > 0, "Manifest missing/empty");
+		ENSURE(res > 0, "Manifest missing/empty");
 
 		/* custom meshes */ {
 			auto rQuad = m_eng->store().add<graphics::Mesh>("meshes/rounded_quad", graphics::Mesh(&m_eng->gfx().boot.vram));
@@ -470,11 +474,9 @@ class App : public input::Receiver, public SceneRegistry {
 				return false;
 			}
 		};
-		if (auto inspector = Services::find<edi::Inspector>()) {
-			inspector->attach<GFreeCam>();
-			inspector->attach<GPlayerController>();
-			inspector->attach<GSpringArm>();
-		}
+		m_eng->editor().inspector().attach<GFreeCam>();
+		m_eng->editor().inspector().attach<GPlayerController>();
+		m_eng->editor().inspector().attach<GSpringArm>();
 	}
 
 	bool block(input::State const& state) override {
@@ -542,8 +544,8 @@ class App : public input::Receiver, public SceneRegistry {
 		auto& in = dialogue.push<gui::InputField>(&font.get(), info);
 		in.m_rect.anchor.offset.y = 60.0f;
 		in.align({-0.5f, 0.0f});
-		m_data.btnTkns.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
-		m_data.btnTkns.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
+		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
+		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_drawer.m_view.mats = graphics::ShaderBuffer(vram, {});
 		{
 			graphics::ShaderBuffer::CreateInfo info;
@@ -567,7 +569,8 @@ class App : public input::Receiver, public SceneRegistry {
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
 			auto coll = collision.add({});
-			m_colTk = coll.onCollide([](Collision::Collider) { logD("Collided!"); });
+			m_onCollide = coll.onCollide();
+			m_onCollide += [](Collision::Collider) { logD("Collided!"); };
 			m_colID0 = coll.m_id;
 		}
 		{
@@ -653,7 +656,7 @@ class App : public input::Receiver, public SceneRegistry {
 			auto pr_ = Engine::profile("app::tick");
 			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (m_registry.empty()) { init1(); }
-			ensure(m_registry.contains(m_data.entities["text_2d/mesh"]));
+			ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
@@ -705,7 +708,7 @@ class App : public input::Receiver, public SceneRegistry {
 		std::optional<TextMesh> text;
 		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;
-		std::vector<gui::Widget::OnClick::Tk> btnTkns;
+		std::vector<gui::Widget::OnClick::handle> btnSignals;
 
 		decf::entity camera;
 		decf::entity player;
@@ -723,13 +726,13 @@ class App : public input::Receiver, public SceneRegistry {
 	not_null<Engine*> m_eng;
 	Drawer m_drawer;
 	Collision::ID m_colID0{}, m_colID1{};
-	Collision::OnCollide::Tk m_colTk;
+	Collision::OnCollide::handle m_onCollide;
 
 	struct {
-		input::Trigger editor = {input::Key::eE, input::Action::ePressed, input::Mod::eControl};
-		input::Trigger wireframe = {input::Key::eP, input::Action::ePressed, input::Mod::eControl};
-		input::Trigger reboot = {input::Key::eR, input::Action::ePressed, input::Mods::make(input::Mod::eControl, input::Mod::eShift)};
-		input::Trigger unload = {input::Key::eU, input::Action::ePressed, input::Mods::make(input::Mod::eControl, input::Mod::eShift)};
+		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};
+		input::Trigger wireframe = {input::Key::eP, input::Action::ePress, input::Mod::eCtrl};
+		input::Trigger reboot = {input::Key::eR, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
+		input::Trigger unload = {input::Key::eU, input::Action::ePress, input::Mods(input::Mod::eCtrl, input::Mod::eShift)};
 	} m_controls;
 };
 
@@ -740,11 +743,11 @@ struct FlagsInput : input::Receiver {
 
 	bool block(input::State const& state) override {
 		bool ret = false;
-		if (auto key = state.released(input::Key::eW); key && key->mods[input::Mod::eControl]) {
+		if (auto w = state.released(input::Key::eW); w && w->test(input::Mod::eCtrl)) {
 			flags.set(Flag::eClosed);
 			ret = true;
 		}
-		if (auto key = state.pressed(input::Key::eD); key && key->mods[input::Mod::eControl]) {
+		if (auto d = state.released(input::Key::eD); d && d->test(input::Mod::eCtrl)) {
 			flags.set(Flag::eDebug0);
 			ret = true;
 		}
@@ -762,11 +765,11 @@ bool openFilesystemPath(io::Path path) {
 	if constexpr (levk_OS == os::OS::eLinux) {
 		static constexpr std::string_view mgrs[] = {"dolphin", "nautilus"};
 		for (auto const mgr : mgrs) {
-			if (auto open = utils::Shell(fmt::format("{} {}", mgr, dir))) { return true; }
+			if (auto open = utils::Shell(fmt::format("{} {}", mgr, dir).data())) { return true; }
 		}
 		return false;
 	} else if constexpr (levk_OS == os::OS::eWindows) {
-		return utils::Shell(fmt::format("explorer {}", dir)).success();
+		return utils::Shell(fmt::format("explorer {}", dir).data()).success();
 	}
 }
 
@@ -774,13 +777,15 @@ bool package(io::Path const& binary, bool clean) {
 	logD("Starting build...");
 	io::Path const log = binary / "autobuild.txt";
 	io::remove(log);
+	auto const logFile = log.string();
+	auto const binPath = io::absolute(binary).string();
 	if (!io::is_regular_file(binary / "CMakeCache.txt")) {
-		if (!utils::Shell(fmt::format("cmake-gui -B {}", io::absolute(binary).string()), log)) { return false; }
+		if (!utils::Shell(fmt::format("cmake-gui -B {}", binPath).data(), logFile.data())) { return false; }
 		if (!io::is_regular_file(binary / "CMakeCache.txt")) { return false; }
 	}
-	auto const cmake = utils::Shell(fmt::format("cmake --build {} {}", binary.string(), clean ? "--clean-first" : ""), log);
+	auto const cmake = utils::Shell(fmt::format("cmake --build {} {}", binPath, clean ? "--clean-first" : "").data(), logFile.data());
 	if (!cmake) {
-		logW("Build failure: \n{}", cmake.redirectOutput());
+		logW("Build failure: \n{}", cmake.output());
 		return false;
 	}
 	logD("... Build completed");
@@ -822,8 +827,8 @@ bool run(io::Media const& media) {
 			}
 			app.tick(++dt);
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
-				app.sched().enqueue([]() { ensure(false, "test"); });
-				app.sched().enqueue([]() { ensure(false, "test2"); });
+				app.sched().enqueue([]() { ENSURE(false, "test"); });
+				app.sched().enqueue([]() { ENSURE(false, "test2"); });
 				flags.reset(Flag::eDebug0);
 				/*bf = async(&package, "out/autobuild", false);
 				bf.then([](bool built) {

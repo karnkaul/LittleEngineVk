@@ -27,6 +27,8 @@ class TreeRoot;
 class SceneRegistry;
 
 namespace edi {
+class Inspector;
+
 struct In {
 	static constexpr std::size_t max_custom = 16;
 	using custom_t = ktl::fixed_vector<decf::entity, max_custom>;
@@ -57,6 +59,8 @@ class Editor {
 
 	Viewport const& view() const noexcept;
 	bool active() const noexcept;
+	edi::Inspector& inspector() noexcept { return *m_inspector; }
+	edi::Inspector const& inspector() const noexcept { return *m_inspector; }
 
 	Rail m_left = {{}, "Left"};
 	Rail m_right = {{}, "Right"};
@@ -66,6 +70,7 @@ class Editor {
 
   private:
 	graphics::ScreenView update(input::Frame const& frame);
+	edi::Inspector* m_inspector{};
 
 	struct {
 #if defined(LEVK_EDITOR)

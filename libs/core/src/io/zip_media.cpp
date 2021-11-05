@@ -6,16 +6,49 @@
 #include <core/utils/string.hpp>
 
 namespace le::io {
+namespace {
+struct Physfs {
+	bool init_{};
+
+	bool init() {
+		if (!init_) {
+			if (PHYSFS_init(os::environment().arg0.data()) != 0) {
+				logI("[io] ZIPFS initialized");
+				init_ = true;
+			} else {
+				logE("[io] Failed to initialize ZIPFS!");
+			}
+		}
+		return init_;
+	}
+
+	bool deinit() {
+		if (init_) {
+			init_ = false;
+			if (!PHYSFS_deinit()) {
+				logE("[io] ZIPFS deinit failure!");
+				return false;
+			}
+			logD("[io] ZIPFS deinitialized");
+		}
+		return !init_;
+	}
+};
+
+Physfs g_physfs;
+} // namespace
+
 ZIPMedia::Zip::~Zip() {
-	if (!path.empty()) { PHYSFS_unmount(path.generic_string().data()); }
+	if (g_physfs.init_ && !path.empty()) { PHYSFS_unmount(path.generic_string().data()); }
 }
 
 void ZIPMedia::Zip::exchg(Zip& lhs, Zip& rhs) noexcept { std::swap(lhs.path, rhs.path); }
 
-bool ZIPMedia::fsActive() noexcept {
-	if (auto fs = Services::find<ZIPFS>()) { return fs->active(); }
-	return false;
-}
+bool ZIPMedia::fsInit() { return g_physfs.init(); }
+bool ZIPMedia::fsDeinit() { return g_physfs.deinit(); }
+bool ZIPMedia::fsActive() noexcept { return g_physfs.init_; }
+
+ZIPMedia::ZIPMedia() { fsInit(); }
 
 bool ZIPMedia::mount(Path path) {
 	if (!fsActive()) { return false; }
@@ -93,27 +126,5 @@ std::optional<bytearray> ZIPMedia::bytes(Path const& uri) const {
 		}
 	}
 	return std::nullopt;
-}
-
-ZIPFS::ZIPFS() {
-	if (auto zipfs = Services::find<ZIPFS>(); zipfs && *zipfs) {
-		logW("[io] ZIPFS already initialized");
-		return;
-	}
-	if (PHYSFS_init(os::environment().arg0.data()) != 0) {
-		logI("[io] ZIPFS initialized");
-		m_init = true;
-		Services::track<ZIPFS>(this);
-	} else {
-		logE("[io] Failed to initialize ZIPFS!");
-	}
-}
-
-ZIPFS::~ZIPFS() {
-	if (m_init) {
-		Services::untrack<ZIPFS>();
-		PHYSFS_deinit();
-		logD("[io] ZIPFS deinitialized");
-	}
 }
 } // namespace le::io

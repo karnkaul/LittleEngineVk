@@ -11,21 +11,21 @@ class Deferred final {
 	Deferred& operator=(Deferred rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Deferred() {
 		if (m_device) {
-			m_device->defer([d = m_device, t = m_t]() { D{}(d, t); });
+			m_device->defer([d = m_device->device(), t = m_t]() { D{}(d, t); });
 		}
 	}
-	static void exchg(Deferred& lhs, Deferred& rhs) noexcept {
-		std::swap(lhs.m_t, rhs.m_t);
-		std::swap(lhs.m_device, rhs.m_device);
-	}
-
-	T operator*() const noexcept { return m_t; }
+	operator T() const noexcept { return m_t; }
 	T get() const noexcept { return m_t; }
 	bool active() const noexcept { return m_device != nullptr; }
 
 	T m_t{};
 
   private:
+	static void exchg(Deferred& lhs, Deferred& rhs) noexcept {
+		std::swap(lhs.m_t, rhs.m_t);
+		std::swap(lhs.m_device, rhs.m_device);
+	}
+
 	Device* m_device = {};
 };
 

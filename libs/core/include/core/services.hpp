@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <typeinfo>
+#include <typeindex>
 #include <unordered_map>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
@@ -9,26 +9,19 @@
 
 namespace le {
 ///
-/// \brief CRTP base class for RAII service types
-/// note: creating multiple instances of a service type is UB
-///
-template <typename T>
-class Service;
-
-///
 /// \brief Type-safe mapping for (pointers to) objects used as services
 /// note: calling track() before main() is UB
 ///
 class Services final {
-	using id_t = std::size_t;
+	using id_t = std::type_index;
 
   public:
 	///
 	/// \brief Track passed service objects
 	///
 	template <typename... Ts>
-	static void track(not_null<Ts*>... ts) {
-		((s_ts[typeID<Ts>()] = ts.get()), ...);
+	static void track(Ts*... ts) {
+		((s_ts[typeID<Ts>()] = ts), ...);
 	}
 	///
 	/// \brief Untrack service objects
@@ -36,6 +29,10 @@ class Services final {
 	template <typename... Ts>
 	static void untrack() noexcept {
 		((s_ts.erase(typeID<Ts>())), ...);
+	}
+	template <typename... Ts>
+	static void untrack(Ts*...) {
+		untrack<Ts...>();
 	}
 	///
 	/// \brief Check if a service object corresponding to T exists
@@ -71,45 +68,9 @@ class Services final {
   private:
 	template <typename T>
 	static id_t typeID() noexcept {
-		return typeid(T).hash_code();
+		return std::type_index(typeid(T));
 	}
 
 	inline static std::unordered_map<id_t, void*> s_ts;
-};
-
-// impl
-template <typename T>
-class Service {
-	using storage_t = T*;
-
-  public:
-	using type = T;
-
-	Service() {
-		ENSURE(s_inst == nullptr, "Duplicate service instance");
-		Services::track<T>(s_inst = m_inst = static_cast<storage_t>(this));
-	}
-
-	Service(Service&& rhs) noexcept : m_inst(std::exchange(rhs.m_inst, nullptr)) {}
-
-	Service& operator=(Service&& rhs) noexcept {
-		if (&rhs != this) {
-			ENSURE(m_inst == nullptr, "Duplicate service instance");
-			m_inst = std::exchange(rhs.m_inst, nullptr);
-		}
-		return *this;
-	}
-
-	~Service() noexcept {
-		if (m_inst) {
-			EXPECT(m_inst == s_inst);
-			Services::untrack<T>();
-			s_inst = {};
-		}
-	}
-
-  private:
-	inline static storage_t s_inst = {};
-	storage_t m_inst = {};
 };
 } // namespace le

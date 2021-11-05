@@ -333,7 +333,7 @@ void displayScale(MU f32 renderScale) {
 Editor::Editor() {
 	m_left.panel.attach<edi::SceneTree>("Scene");
 	m_left.panel.attach<edi::Settings>("Settings");
-	m_right.panel.attach<edi::Inspector>("Inspector");
+	m_inspector = &m_right.panel.attach<edi::Inspector>("Inspector");
 }
 
 bool Editor::active() const noexcept {

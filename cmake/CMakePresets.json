@@ -5,32 +5,6 @@
 		"minor": 20,
 		"patch": 0
 	},
-	"buildPresets": [
-		{
-			"name": "default",
-			"configurePreset": "default"
-		},
-		{
-			"name": "levk-db",
-			"configurePreset": "levk-db"
-		},
-		{
-			"name": "levk-rl",
-			"configurePreset": "levk-rl"
-		},
-		{
-			"name": "levk-edrw",
-			"configurePreset": "levk-edrw"
-		},
-		{
-			"name": "levk-rw",
-			"configurePreset": "levk-rw"
-		},
-		{
-			"name": "levk-asan",
-			"configurePreset": "levk-asan"
-		}
-	],
 	"configurePresets": [
 		{
 			"name": "default",
@@ -97,8 +71,50 @@
 			"binaryDir": "out/asan",
 			"inherits": "ninja-clang",
 			"cacheVariables": {
-				"LEVK_ASAN": "ON"
+				"LEVK_ASAN": "ON",
+				"LEVK_USE_PCH": "OFF"
 			}
+		},
+		{
+			"name": "levk-ubsan",
+			"displayName": "ubsan",
+			"description": "UBSAN build using Ninja/clang",
+			"binaryDir": "out/ubsan",
+			"inherits": "ninja-clang",
+			"cacheVariables": {
+				"LEVK_UBSAN": "ON",
+				"LEVK_USE_PCH": "OFF"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "default",
+			"configurePreset": "default"
+		},
+		{
+			"name": "levk-db",
+			"configurePreset": "levk-db"
+		},
+		{
+			"name": "levk-rl",
+			"configurePreset": "levk-rl"
+		},
+		{
+			"name": "levk-edrw",
+			"configurePreset": "levk-edrw"
+		},
+		{
+			"name": "levk-rw",
+			"configurePreset": "levk-rw"
+		},
+		{
+			"name": "levk-asan",
+			"configurePreset": "levk-asan"
+		},
+		{
+			"name": "levk-ubsan",
+			"configurePreset": "levk-ubsan"
 		}
 	]
 }

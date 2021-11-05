@@ -30,7 +30,9 @@ if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8 -Wno-unknown-pragmas -Wno-volatile>
 		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:${CLANG_COMMON}>
-		$<$<BOOL:${LEVK_ASAN}>:-O1 -g -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls>
+		$<$<OR:$<BOOL:${LEVK_ASAN}>,$<BOOL:${LEVK_UBSAN}>>:-O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls>
+		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
+		$<$<BOOL:${LEVK_UBSAN}>:-fsanitize=undefined>
 	)
 elseif(WINDOWS_MSBUILD)
 	set(COMPILE_OPTS
@@ -53,6 +55,7 @@ if(PLATFORM STREQUAL "Linux")
 	target_link_options(${PROJECT_NAME}-exe INTERFACE
 		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
 		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
+		$<$<BOOL:${LEVK_UBSAN}>:-fsanitize=undefined>
 	)
 elseif(PLATFORM STREQUAL "Win64" AND NOT WINDOWS_GCC)
 	if(MSVC)

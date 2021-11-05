@@ -4,7 +4,7 @@
 #include <engine/editor/widget.hpp>
 
 namespace le::edi {
-class Inspector : public Control, public Service<Inspector> {
+class Inspector : public Control {
   public:
 	void update() override;
 
@@ -23,12 +23,13 @@ class Inspector : public Control, public Service<Inspector> {
 template <typename T, typename... Args>
 	requires(std::is_base_of_v<Gadget, T> || std::is_base_of_v<GuiGadget, T>)
 T& Inspector::attach(Args&&... args) {
+	auto t = std::make_unique<T>(std::forward<Args>(args)...);
+	auto ret = t.get();
 	if constexpr (std::is_base_of_v<Gadget, T>) {
-		m_gadgets.push_back(std::make_unique<T>(std::forward<Args>(args)...));
-		return static_cast<T&>(*m_gadgets.back());
+		m_gadgets.push_back(std::move(t));
 	} else {
-		m_guiGadgets.push_back(std::make_unique<T>(std::forward<Args>(args)...));
-		return static_cast<T&>(*m_guiGadgets.back());
+		m_guiGadgets.push_back(std::move(t));
 	}
+	return *ret;
 }
 } // namespace le::edi

@@ -76,9 +76,13 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 	m_win = m_wm.make(winInfo);
 	m_errorHandler.deleteFile();
 	if (!m_errorHandler.activeHandler()) { m_errorHandler.setActive(); }
+	Services::track(this);
 }
 
-Engine::~Engine() { unboot(); }
+Engine::~Engine() {
+	unboot();
+	Services::untrack(this);
+}
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
 	if (!bootReady()) { return {}; }

@@ -474,11 +474,9 @@ class App : public input::Receiver, public SceneRegistry {
 				return false;
 			}
 		};
-		if (auto inspector = Services::find<edi::Inspector>()) {
-			inspector->attach<GFreeCam>();
-			inspector->attach<GPlayerController>();
-			inspector->attach<GSpringArm>();
-		}
+		m_eng->editor().inspector().attach<GFreeCam>();
+		m_eng->editor().inspector().attach<GPlayerController>();
+		m_eng->editor().inspector().attach<GSpringArm>();
 	}
 
 	bool block(input::State const& state) override {

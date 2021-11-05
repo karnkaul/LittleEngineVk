@@ -31,7 +31,7 @@ class ViewStack;
 class ListDrawer;
 using graphics::Extent2D;
 
-class Engine : public Service<Engine> {
+class Engine {
 	template <typename T>
 	struct tag_t {};
 

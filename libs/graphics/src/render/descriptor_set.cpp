@@ -201,13 +201,11 @@ ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) : m_vram(pip
 DescriptorPool& ShaderInput::pool(u32 set) {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
 	ENSURE(false, "Nonexistent set");
-	throw std::runtime_error("Nonexistent set");
 }
 
 DescriptorPool const& ShaderInput::pool(u32 set) const {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }
 	ENSURE(false, "Nonexistent set");
-	throw std::runtime_error("Nonexistent set");
 }
 
 void ShaderInput::swap() {

@@ -43,7 +43,7 @@ class registry2 {
 
 	template <typename... Types>
 		requires(sizeof...(Types) > 0)
-	bool detach(entity e);
+	bool detach(entity e) { return (do_detach<Types>(e) && ...); }
 
 	template <typename T>
 	T* find(entity e) const;
@@ -122,14 +122,15 @@ T& registry2::attach(entity e, Args&&... args) {
 
 template <typename T>
 bool registry2::attached(entity e) const {
-	if (e.registry_id != m_id) { return false; }
 	if (auto it = m_records.find(e); it != m_records.end()) { return it->second.arch && it->second.arch->find<T>(); }
 }
 
 template <typename T>
 T* registry2::find(entity e) const {
-	if (e.registry_id != m_id) { return {}; }
-	if (auto it = m_records.find(e); it != m_records.end() && it->second.arch) { return &it->second.arch->get<T>().m_storage.at(it->second.index); }
+	if (auto it = m_records.find(e); it != m_records.end() && it->second.arch) {
+		record const& r = it->second;
+		if (auto const& array = r.arch->find<T>()) { return &array->m_storage.at(r.index); }
+	}
 	return {};
 }
 
@@ -170,19 +171,16 @@ bool registry2::do_detach(entity e) {
 	}
 	if (rec.arch->id().types.size() == 1) {
 		rec.arch->pop_back();
+		rec = {};
 	} else {
-		auto signs = rec.arch->id().types;
-		bool found{};
-		for (auto it = signs.begin(); it != signs.end(); ++it) {
-			if (*it == detail::sign_t::make<T>()) {
-				signs.erase(it);
-				found = true;
-				break;
-			}
-		}
-		if (!found) { return false; }
-		// TODO: move to target archetype
-		auto& target = m_map.get_or_make(signs);
+		auto id = rec.arch->id().make(detail::sign_t::make<T>());
+		assert(id != rec.arch->id());
+		detail::archetype& target = m_map.get_or_make(id.types);
+		[[maybe_unused]] entity migrated = rec.arch->migrate_back(target);
+		assert(&m_records[migrated] == &rec);
+		rec.arch = &target;
+		assert(!target.empty());
+		rec.index = target.size() - 1;
 	}
 	return true;
 }

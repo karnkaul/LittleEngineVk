@@ -29,6 +29,12 @@ int main(int argc, char const* const argv[]) {
 		for (std::size_t i = 0; i < view.size(); ++i) { le::logD("int: {}, float: {}", std::get<int&>(view[i]), std::get<float&>(view[i])); }
 	}
 	le::logD("{}", r.get<std::string>(e4));
+	bool b = r.detach<float>(e3);
+	float* f = r.find<float>(e3);
+	le::logD("detached: {}, found: {}", b, f != nullptr);
+	for (auto view : r.view<int, float>()) {
+		for (std::size_t i = 0; i < view.size(); ++i) { le::logD("int: {}, float: {}", std::get<int&>(view[i]), std::get<float&>(view[i])); }
+	}
 
 	using namespace le;
 	switch (env::init(argc, argv)) {

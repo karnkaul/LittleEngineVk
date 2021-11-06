@@ -16,6 +16,17 @@ class archetype {
 			return ret;
 		}
 
+		id_t make(sign_t remove) const {
+			auto ret = types;
+			for (auto it = ret.begin(); it != ret.end(); ++it) {
+				if (*it == remove) {
+					ret.erase(it);
+					return make(ret);
+				}
+			}
+			return *this;
+		}
+
 		bool operator==(id_t const& rhs) const noexcept { return combined == rhs.combined; }
 
 		struct hasher {

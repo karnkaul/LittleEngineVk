@@ -14,10 +14,9 @@ registry2::record& registry2::get_or_make(entity e) {
 
 void registry2::migrate(record& out_record, detail::archetype& out_arch) {
 	send_to_back(out_record);
-	auto popped = out_record.arch->migrate_back(out_arch);
-	auto& record = m_records[popped];
-	assert(record.arch == out_record.arch);
-	record.arch = &out_arch;
+	[[maybe_unused]] auto popped = out_record.arch->migrate_back(out_arch);
+	assert(&m_records[popped] == &out_record);
+	out_record.arch = &out_arch;
 	// record.index = out_arch.size(); must be done by caller
 }
 

@@ -189,7 +189,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
 	dtest
 	GIT_REPOSITORY https://github.com/karnkaul/dtest
-	GIT_TAG 6a92362
+	GIT_TAG 8c07e2c
 	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/dtest"
 )
 FetchContent_MakeAvailable(dtest)
@@ -209,6 +209,7 @@ add_subdirectory(libs/dlog)
 add_subdirectory(libs/djson)
 add_subdirectory(libs/dtasks)
 add_subdirectory(libs/decf)
+set(DENS_BUILD_TESTS ON)
 add_subdirectory(libs/dens)
 add_subdirectory(libs/clap)
 add_subdirectory(libs/core)

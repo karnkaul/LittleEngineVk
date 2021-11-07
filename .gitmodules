@@ -36,3 +36,6 @@
 	path = ext/dear_imgui/src
 	url = https://github.com/ocornut/imgui
 	shallow = true
+[submodule "libs/dens"]
+	path = libs/dens
+	url = https://github.com/karnkaul/dens

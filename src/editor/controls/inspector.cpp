@@ -46,6 +46,16 @@ struct GuiNode {
 		TWidget<glm::quat> orn("Orient", node.m_orientation);
 	}
 };
+
+bool enabled(dens::entity e, dens::registry const& r) { return !r.attached<SceneNode::Disable>(e); }
+
+void enable(dens::entity e, dens::registry& r, bool set) {
+	if (set) {
+		if (!enabled(e, r)) { r.detach<SceneNode::Disable>(e); }
+	} else {
+		if (enabled(e, r)) { r.attach<SceneNode::Disable>(e); }
+	}
+}
 } // namespace
 #endif
 
@@ -53,13 +63,13 @@ void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
 	auto& editor = Services::get<Engine>()->editor();
 	if (editor.m_in.registry) {
-		if (editor.m_out.inspecting.contains<decf::entity>()) {
-			if (auto entity = editor.m_out.inspecting.get<decf::entity>(); entity != decf::entity()) {
+		if (editor.m_out.inspecting.contains<dens::entity>()) {
+			if (auto entity = editor.m_out.inspecting.get<dens::entity>(); entity != dens::entity()) {
 				auto& registry = editor.m_in.registry->registry();
 				auto node = registry.find<SceneNode>(entity);
 				Text(registry.name(entity));
 				TWidgetWrap<bool> enb;
-				if (enb(registry.enabled(entity), "Enabled", enb.out)) { registry.enable(entity, enb.out); }
+				if (enb(enabled(entity, registry), "Enabled", enb.out)) { enable(entity, registry, enb.out); }
 				Styler s{Style::eSeparator};
 				if (node) {
 					Transform{}(*node);

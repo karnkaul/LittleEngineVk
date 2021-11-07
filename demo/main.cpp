@@ -8,7 +8,7 @@
 #include <dens/registry.hpp>
 
 int main(int argc, char const* const argv[]) {
-	dens::registry r;
+	/*dens::registry r;
 	auto e = r.make_entity();
 	r.attach<int>(e) = 50;
 	r.attach<float>(e) = -100.0f;
@@ -31,7 +31,7 @@ int main(int argc, char const* const argv[]) {
 	bool b = r.detach<float>(e3);
 	float* f = r.find<float>(e3);
 	le::logD("detached: {}, found: {}", b, f != nullptr);
-	for (auto entity : r.view<int, float>()) { le::logD("{}: int: {}, float: {}", r.name(entity), entity.get<int>(), entity.get<float>()); }
+	for (auto entity : r.view<int, float>()) { le::logD("{}: int: {}, float: {}", r.name(entity), entity.get<int>(), entity.get<float>()); }*/
 
 	using namespace le;
 	switch (env::init(argc, argv)) {

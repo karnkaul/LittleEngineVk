@@ -27,6 +27,7 @@ class registry {
 	std::string_view name(entity e) const;
 	bool rename(entity e, std::string name);
 	std::size_t size() const noexcept { return m_records.size(); }
+	bool empty() const noexcept { return m_records.empty(); }
 	void clear() noexcept;
 
 	template <typename T, typename... Args>
@@ -128,7 +129,7 @@ inline void registry::clear() noexcept {
 
 template <typename T, typename... Args>
 T& registry::attach(entity e, Args&&... args) {
-	assert(e.registry_id == m_id);
+	assert(e.id > entity::null_id && e.registry_id == m_id);
 	m_map.register_types<T>();
 	record& rec = get_or_make(e);
 	if (rec.arch) {
@@ -172,7 +173,7 @@ T* registry::find(entity e) const {
 
 template <typename T>
 T& registry::get(entity e) const {
-	assert(e.registry_id == m_id);
+	assert(e.id > entity::null_id && e.registry_id == m_id);
 	auto ret = find<T>(e);
 	assert(ret);
 	return *ret;

@@ -1,15 +1,15 @@
 #pragma once
-#include <functional>
-#include <string>
 #include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/span.hpp>
 #include <core/utils/string.hpp>
-#include <dumb_ecf/registry.hpp>
+#include <dens/registry.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/n_tree.hpp>
 #include <ktl/stack_string.hpp>
+#include <functional>
+#include <string>
 
 #if defined(LEVK_EDITOR)
 constexpr bool levk_editor = true;
@@ -169,13 +169,13 @@ template <typename T>
 struct TInspector {
 	CStr<128> id;
 	std::optional<TreeNode> node;
-	decf::registry* pReg = nullptr;
-	decf::entity entity;
+	dens::registry* pReg = nullptr;
+	dens::entity entity;
 	bool bNew = false;
 	bool bOpen = false;
 
 	TInspector() = default;
-	TInspector(decf::registry& out_registry, decf::entity entity, T const* pT, std::string_view id = {});
+	TInspector(dens::registry& out_registry, dens::entity entity, T const* pT, std::string_view id = {});
 	TInspector(TInspector<T>&&);
 	TInspector& operator=(TInspector<T>&&);
 	~TInspector();
@@ -247,7 +247,7 @@ FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) 
 }
 
 template <typename T>
-TInspector<T>::TInspector(decf::registry& out_registry, decf::entity entity, T const* pT, std::string_view id)
+TInspector<T>::TInspector(dens::registry& out_registry, dens::entity entity, T const* pT, std::string_view id)
 	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id) {
 	bNew = pT == nullptr;
 	if (!bNew) {
@@ -280,7 +280,7 @@ template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
 		if (auto add = TreeNode(CStr<16>("[Add %s]", id.data()), false, true, true, false); add.test(GUI::eLeftClicked)) {
-			decf::registry& registry = *pReg;
+			dens::registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}
 	}

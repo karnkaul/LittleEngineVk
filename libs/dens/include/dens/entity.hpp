@@ -4,6 +4,8 @@
 
 namespace dens {
 struct entity {
+	static constexpr std::size_t null_id = 0;
+
 	std::size_t id{};
 	std::size_t registry_id{};
 
@@ -17,8 +19,8 @@ struct entity {
 
 template <typename... Types>
 struct entity_view {
-	std::tuple<Types&...> components;
 	entity entity;
+	std::tuple<Types&...> components;
 
 	operator struct entity() const noexcept { return entity; }
 

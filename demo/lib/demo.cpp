@@ -1,4 +1,3 @@
-#include <iostream>
 #include <core/not_null.hpp>
 #include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
@@ -15,6 +14,7 @@
 #include <graphics/render/renderers.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
+#include <iostream>
 
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
@@ -30,7 +30,6 @@
 #include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
-#include <fstream>
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
@@ -38,6 +37,7 @@
 #include <engine/physics/collision.hpp>
 #include <engine/scene/prop_provider.hpp>
 #include <ktl/async.hpp>
+#include <fstream>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -153,7 +153,7 @@ struct PlayerController {
 	f32 maxSpeed = 10.0f;
 	bool active = true;
 
-	void tick(input::State const& state, SceneNode& node, Time_s dt) noexcept {
+	void tick(input::State const& state, SceneNode2& node, Time_s dt) noexcept {
 		input::Range r(input::KeyRange{input::Key::eA, input::Key::eD});
 		roll = r(state);
 		if (maths::abs(roll) < 0.25f) {
@@ -195,8 +195,8 @@ class Drawer : public ListDrawer {
 
 	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void update(decf::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt, Hash wire) {
-		auto lists = populate<DrawListGen3D, DrawListGenUI>(reg);
+	void update(dens::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt, Hash wire) {
+		auto lists = populate<DrawListGen3D2, DrawListGenUI>(reg);
 		write(lists, cam, sp, lt);
 		for (auto& list : lists) {
 			if (list.pipeline->id() == wire) { list.variant = "wireframe"; }
@@ -423,7 +423,7 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 } // namespace le::gui
 
 namespace le::demo {
-class App : public input::Receiver, public SceneRegistry {
+class App : public input::Receiver, public SceneRegistry2 {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
@@ -444,7 +444,7 @@ class App : public input::Receiver, public SceneRegistry {
 		m_eng->pushReceiver(this);
 
 		struct GFreeCam : edi::Gadget {
-			bool operator()(decf::entity entity, decf::registry& reg) override {
+			bool operator()(dens::entity entity, dens::registry& reg) override {
 				if (auto freecam = reg.find<FreeCam>(entity)) {
 					edi::Text title("FreeCam");
 					edi::TWidget<f32>("Speed", freecam->m_params.xz_speed);
@@ -454,7 +454,7 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		};
 		struct GPlayerController : edi::Gadget {
-			bool operator()(decf::entity entity, decf::registry& reg) override {
+			bool operator()(dens::entity entity, dens::registry& reg) override {
 				if (auto pc = reg.find<PlayerController>(entity)) {
 					edi::Text title("PlayerController");
 					edi::TWidget<bool>("Active", pc->active);
@@ -464,7 +464,7 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		};
 		struct GSpringArm : edi::Gadget {
-			bool operator()(decf::entity entity, decf::registry& reg) override {
+			bool operator()(dens::entity entity, dens::registry& reg) override {
 				if (auto sa = reg.find<SpringArm>(entity)) {
 					edi::Text title("SpringArm");
 					edi::TWidget<f32>("k", sa->k, 0.01f);
@@ -500,7 +500,7 @@ class App : public input::Receiver, public SceneRegistry {
 		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
 		auto coll = spawn<Collision>("collision", "layers/wireframe");
-		auto& collision = coll.get<Collision>();
+		auto& collision = m_registry.get<Collision>(coll);
 		m_data.collision = coll;
 
 		m_data.text = TextMesh(&vram, &*font);
@@ -514,18 +514,18 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.cursor->m_text = "Hello!";
 		m_data.text->mesh.construct(m_data.cursor->generateText());
 
-		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
+		auto freecam = m_registry.make_entity<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
-		auto& cam = freecam.get<FreeCam>();
+		auto& cam = m_registry.get<FreeCam>(freecam);
 		cam.position = {0.0f, 0.5f, 4.0f};
 		cam.look({});
-		auto& spring = freecam.get<SpringArm>();
+		auto& spring = m_registry.get<SpringArm>(freecam);
 		spring.position = cam.position;
 		spring.offset = spring.position;
 
 		auto guiStack = spawn<gui::ViewStack>("gui_root", "layers/ui", &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
-		auto& stack = guiStack.get<gui::ViewStack>();
+		auto& stack = m_registry.get<gui::ViewStack>(guiStack);
 		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view", &font.get());
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
@@ -565,7 +565,7 @@ class App : public input::Receiver, public SceneRegistry {
 			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
 			auto player = spawnMesh("player", "meshes/cube", "layers/lit", mat);
-			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
+			m_registry.get<SceneNode2>(player).position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
 			auto coll = collision.add({});
@@ -575,18 +575,18 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
-			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
+			m_registry.get<SceneNode2>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "layers/tex");
-			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
+			m_registry.get<SceneNode2>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			Material mat;
 			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
-			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
+			m_registry.get<SceneNode2>(ent).position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text->prop(*font)); }
 		{
@@ -598,25 +598,25 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
-				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
+				m_registry.get<SceneNode2>(ent0).position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
 				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "layers/lit");
-				auto& node = ent1.get<SceneNode>();
+				auto& node = m_registry.get<SceneNode2>(ent1);
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
-				node.parent(&m_registry.get<SceneNode>(m_data.entities["model_0_0"]));
+				node.parent(m_registry, m_data.entities["model_0_0"]);
 			}
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
 				Prop& prop = model->propsRW().front();
 				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "layers/lit");
-				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
+				m_registry.get<SceneNode2>(ent0).position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
 				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "layers/lit");
-				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
+				m_registry.get<SceneNode2>(ent).position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
@@ -624,16 +624,17 @@ class App : public input::Receiver, public SceneRegistry {
 			Material mat;
 			mat.Tf = colours::yellow;
 			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
-			node.get<SceneNode>().scale(2.0f);
+			m_registry.get<SceneNode2>(node).scale(2.0f);
 			m_data.tween = node;
 			auto coll1 = collision.add({glm::vec3(2.0f)});
 			m_colID1 = coll1.m_id;
 			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
-			auto pos = node.get<SceneNode>().position();
+			auto pos = m_registry.get<SceneNode2>(node).position();
 			pos.x = tweener.current();
 			coll1.position() = pos;
-			node.get<SceneNode>().position(pos);
+			m_registry.get<SceneNode2>(node).position(pos);
 		}
+		m_data.init = true;
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
@@ -655,13 +656,13 @@ class App : public input::Receiver, public SceneRegistry {
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
 			auto collision = m_registry.find<Collision>(m_data.collision);
-			if (m_registry.empty()) { init1(); }
-			ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
+			if (!m_data.init) { init1(); }
+			// ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
-				auto& node = m_registry.get<SceneNode>(m_data.player);
+				auto& node = m_registry.get<SceneNode2>(m_data.player);
 				pc.tick(state, node, dt);
 				auto const forward = nvec3(node.orientation() * -graphics::front);
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
@@ -670,14 +671,14 @@ class App : public input::Receiver, public SceneRegistry {
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
-			m_registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_1_0"])) {
+			m_registry.get<SceneNode2>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+			if (auto node = m_registry.find<SceneNode2>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
+			if (auto node = m_registry.find<SceneNode2>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
 				node->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
 			}
-			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
+			if (auto node = m_registry.find<SceneNode2>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);
 				auto pos = node->position();
 				pos.x = tweener.tick(dt);
@@ -703,21 +704,22 @@ class App : public input::Receiver, public SceneRegistry {
 
   private:
 	struct Data {
-		std::unordered_map<Hash, decf::entity> entities;
+		std::unordered_map<Hash, dens::entity> entities;
 
 		std::optional<TextMesh> text;
 		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::handle> btnSignals;
 
-		decf::entity camera;
-		decf::entity player;
-		decf::entity guiStack;
-		decf::entity collision;
-		decf::entity tween;
+		dens::entity camera;
+		dens::entity player;
+		dens::entity guiStack;
+		dens::entity collision;
+		dens::entity tween;
 		Hash wire;
 		bool reboot = false;
 		bool unloaded = {};
+		bool init{};
 	};
 
 	Data m_data;

@@ -77,7 +77,7 @@ class archetype {
 	template <typename... Types>
 	entity_view<Types...> at(std::size_t index) const {
 		assert(index < size());
-		return {std::tie(get<Types>().m_storage.at(index)...), m_entities[index]};
+		return {m_entities[index], std::tie(get<Types>().m_storage.at(index)...)};
 	}
 
 	template <typename... Types>

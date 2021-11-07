@@ -1,10 +1,14 @@
 #pragma once
 #include <core/utils/dirty_flag.hpp>
-#include <dumb_ecf/types.hpp>
+#include <dens/entity.hpp>
 #include <engine/utils/ref_tree.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
+
+namespace dens {
+class registry;
+}
 
 namespace le {
 struct SceneTransform {
@@ -15,13 +19,20 @@ struct SceneTransform {
 	static SceneTransform const identity;
 
 	glm::mat4 matrix() const noexcept;
+	bool isotropic() const noexcept { return scale.x == scale.y && scale.y == scale.z; }
+
+	static glm::vec3 worldPosition(glm::mat4 const& mat) noexcept { return mat[3]; }
+	static glm::quat worldOrientation(glm::mat4 const& mat) noexcept;
+	static glm::vec3 worldScale(glm::mat4 const& mat) noexcept;
 };
 
 class SceneNode : public utils::RefTreeNode<SceneNode>, utils::DirtyFlag {
   public:
 	using Root = typename RefTreeNode<SceneNode>::Root;
 
-	SceneNode(not_null<Root*> root, decf::entity entity = {}, SceneTransform const& transform = {});
+	struct Disable {};
+
+	SceneNode(not_null<Root*> root, dens::entity entity = {}, SceneTransform const& transform = {});
 	SceneNode(SceneNode&& rhs);
 	SceneNode& operator=(SceneNode&&) = default;
 
@@ -101,15 +112,79 @@ class SceneNode : public utils::RefTreeNode<SceneNode>, utils::DirtyFlag {
 	///
 	void refresh() const noexcept;
 
-	decf::entity entity() const noexcept;
-	void entity(decf::entity entity) noexcept;
+	dens::entity entity() const noexcept;
+	void entity(dens::entity entity) noexcept;
 
   private:
 	mutable glm::mat4 m_mat = glm::mat4(1.0f);
 	mutable glm::mat4 m_normalMat = glm::mat4(1.0f);
 	SceneTransform m_transform;
-	decf::entity m_entity;
+	dens::entity m_entity;
 };
+
+class SceneRoot {
+  public:
+	SceneRoot(dens::entity parent = {}) noexcept : m_parent(parent) {}
+
+  protected:
+	std::vector<dens::entity> m_nodes;
+	dens::entity m_parent;
+	dens::entity m_entity;
+};
+
+template <typename T>
+class TSceneMatrix : utils::DirtyFlag {
+  public:
+	T& position(glm::vec3 const& position) noexcept { return (m_transform.position = position, makeDirty()); }
+	T& orient(glm::quat const& orientation) noexcept { return (m_transform.orientation = orientation, makeDirty()); }
+	T& rotate(f32 radians, glm::vec3 const& axis) noexcept { return orient(glm::rotate(m_transform.orientation, radians, axis)); }
+	T& scale(f32 scale) noexcept { return this->scale({scale, scale, scale}); }
+	T& scale(glm::vec3 const& scale) noexcept { return (m_transform.scale = scale, makeDirty()); }
+	T& reset(SceneTransform const& transform = {}) { return (m_transform = transform, makeDirty()); }
+
+	glm::vec3 const& position() const noexcept { return m_transform.position; }
+	glm::quat const& orientation() const noexcept { return m_transform.orientation; }
+	glm::vec3 const& scale() const noexcept { return m_transform.scale; }
+	SceneTransform const& transform() const noexcept { return m_transform; }
+	bool isotropic() const noexcept { return m_transform.isotropic(); }
+
+	glm::mat4 matrix() const noexcept { return (refresh(), m_mat); }
+
+	bool stale() const noexcept { return dirty(); }
+	void refresh() const noexcept {
+		if (stale()) { m_mat = m_transform.matrix(); }
+	}
+
+  private:
+	T& makeDirty() noexcept { return (setDirty(), static_cast<T&>(*this)); }
+
+	mutable glm::mat4 m_mat = glm::mat4(1.0f);
+	SceneTransform m_transform;
+};
+
+class SceneNode2 : public TSceneMatrix<SceneNode2> {
+  public:
+	SceneNode2(dens::entity entity = {}) noexcept : m_entity(entity) {}
+
+	bool parent(dens::registry const& registry, dens::entity parent);
+	SceneNode2* parent(dens::registry const& registry) const;
+	void clean(dens::registry const& registry);
+	dens::entity entity() const noexcept { return m_entity; }
+	Span<dens::entity const> nodes() const noexcept { return m_nodes; }
+
+	bool isotropic(dens::registry const& registry) const;
+	glm::mat4 model(dens::registry const& registry) const;
+	glm::mat4 normalModel(dens::registry const& registry) const;
+
+  private:
+	bool hasNode(dens::entity node) const noexcept;
+
+	std::vector<dens::entity> m_nodes;
+	dens::entity m_parent;
+	dens::entity m_entity;
+};
+
+using SceneRoot2 = std::vector<dens::entity>;
 
 inline SceneTransform const SceneTransform::identity = {};
 
@@ -123,7 +198,7 @@ inline glm::mat4 SceneTransform::matrix() const noexcept {
 	return t * r * s;
 }
 
-inline SceneNode::SceneNode(not_null<Root*> parent, decf::entity entity, SceneTransform const& transform)
+inline SceneNode::SceneNode(not_null<Root*> parent, dens::entity entity, SceneTransform const& transform)
 	: RefTreeNode(parent), m_transform(transform), m_entity(entity) {
 	parent->addChild(this);
 }
@@ -197,7 +272,7 @@ inline void SceneNode::refresh() const noexcept {
 	return;
 }
 
-inline decf::entity SceneNode::entity() const noexcept { return m_entity; }
+inline dens::entity SceneNode::entity() const noexcept { return m_entity; }
 
-inline void SceneNode::entity(decf::entity entity) noexcept { m_entity = entity; }
+inline void SceneNode::entity(dens::entity entity) noexcept { m_entity = entity; }
 } // namespace le

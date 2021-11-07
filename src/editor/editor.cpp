@@ -349,6 +349,7 @@ Viewport const& Editor::view() const noexcept {
 graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) {
 #if defined(LEVK_EDITOR)
 	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
+	if (m_storage.cached.registry2 != m_in.registry2) { m_out = {}; }
 	if (active() && engaged()) {
 		auto eng = Services::get<Engine>();
 		edi::displayScale(eng->renderer().renderScale());

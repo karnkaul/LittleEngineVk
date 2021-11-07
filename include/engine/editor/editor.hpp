@@ -1,6 +1,6 @@
 #pragma once
 #include <core/time.hpp>
-#include <dumb_ecf/registry.hpp>
+#include <dens/entity.hpp>
 #include <engine/editor/palette.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/input/frame.hpp>
@@ -25,19 +25,21 @@ namespace gui {
 class TreeRoot;
 }
 class SceneRegistry;
+class SceneRegistry2;
 
 namespace edi {
 class Inspector;
 
 struct In {
 	static constexpr std::size_t max_custom = 16;
-	using custom_t = ktl::fixed_vector<decf::entity, max_custom>;
+	using custom_t = ktl::fixed_vector<dens::entity, max_custom>;
 
 	custom_t customEntities;
 	SceneRegistry* registry = {};
+	SceneRegistry2* registry2 = {};
 };
 struct Out {
-	ktl::either<decf::entity, gui::TreeRoot*> inspecting;
+	ktl::either<dens::entity, gui::TreeRoot*> inspecting;
 };
 } // namespace edi
 
@@ -53,6 +55,7 @@ class Editor {
 	Editor();
 
 	void bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom = {});
+	void bindNextFrame(not_null<SceneRegistry2*> registry, edi::In::custom_t const& custom = {});
 	bool engaged() const noexcept { return m_storage.engaged; }
 	void engage(bool set) noexcept { m_storage.engaged = set; }
 	void toggle() noexcept { engage(!engaged()); }
@@ -88,6 +91,11 @@ class Editor {
 
 inline void Editor::bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom) {
 	m_in.registry = registry;
+	m_in.customEntities = custom;
+}
+
+inline void Editor::bindNextFrame(not_null<SceneRegistry2*> registry, edi::In::custom_t const& custom) {
+	m_in.registry2 = registry;
 	m_in.customEntities = custom;
 }
 } // namespace le

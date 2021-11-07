@@ -25,19 +25,13 @@ int main(int argc, char const* const argv[]) {
 	r.get<std::string>(e4) = "a very long string to trigger heap allocs and sidestep short string optimization (SSO)";
 	r.get<float>(e4) = -9.87f;
 	r.attach<int>(e4, 420);
-	for (auto view : r.view<int, float>()) {
-		for (std::size_t i = 0; i < view.size(); ++i) { le::logD("int: {}, float: {}", std::get<int&>(view[i]), std::get<float&>(view[i])); }
-	}
-	for (auto view : r.view<int>(decf::exclude<std::string>{})) {
-		for (std::size_t i = 0; i < view.size(); ++i) { le::logD("int: {}", std::get<int&>(view[i])); }
-	}
+	for (auto entity : r.view<int, float>()) { le::logD("{}: int: {}, float: {}", r.name(entity), entity.get<int>(), entity.get<float>()); }
+	for (auto entity : r.view<int>(decf::exclude<std::string>{})) { le::logD("{}: int: {}", r.name(entity), entity.get<int>()); }
 	le::logD("{}", r.get<std::string>(e4));
 	bool b = r.detach<float>(e3);
 	float* f = r.find<float>(e3);
 	le::logD("detached: {}, found: {}", b, f != nullptr);
-	for (auto view : r.view<int, float>()) {
-		for (std::size_t i = 0; i < view.size(); ++i) { le::logD("int: {}, float: {}", std::get<int&>(view[i]), std::get<float&>(view[i])); }
-	}
+	for (auto entity : r.view<int, float>()) { le::logD("{}: int: {}, float: {}", r.name(entity), entity.get<int>(), entity.get<float>()); }
 
 	using namespace le;
 	switch (env::init(argc, argv)) {

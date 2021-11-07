@@ -3,11 +3,7 @@
 #include <dumb_ecf/detail/tarray.hpp>
 #include <dumb_ecf/entity.hpp>
 
-namespace decf {
-template <typename... Types>
-using slice_t = std::tuple<Types&...>;
-
-namespace detail {
+namespace decf::detail {
 class archetype {
   public:
 	struct id_t {
@@ -79,12 +75,13 @@ class archetype {
 	}
 
 	template <typename... Types>
-	slice_t<Types...> at(std::size_t index) const {
-		return std::tie(get<Types>().m_storage.at(index)...);
+	entity_view<Types...> at(std::size_t index) const {
+		assert(index < size());
+		return {std::tie(get<Types>().m_storage.at(index)...), m_entities[index]};
 	}
 
 	template <typename... Types>
-	slice_t<Types...> push_array(Types&&... args) {
+	entity_view<Types...> push_array(Types&&... args) {
 		(get<Types>().m_storage.push_back(std::forward<Types>(args)), ...);
 		return at<Types...>(size() - 1);
 	}
@@ -178,5 +175,4 @@ class archetype_map {
 	storage_map m_map;
 	tarray_factory m_factory;
 };
-} // namespace detail
-} // namespace decf
+} // namespace decf::detail

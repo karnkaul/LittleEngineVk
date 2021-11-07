@@ -1,16 +1,31 @@
 #pragma once
-#include <dumb_ecf/view.hpp>
+#include <string>
+#include <dumb_ecf/detail/archetype.hpp>
 
 namespace decf {
+template <typename... Types>
+struct exclude {
+	inline static detail::sign_t const signs[sizeof...(Types)] = {detail::sign_t::make<Types>()...};
+};
+
+template <>
+struct exclude<> {
+	static constexpr std::span<detail::sign_t const> signs = {};
+};
+
 class registry2 {
   public:
+	inline static std::string s_name_prefix = "entity_";
+
 	registry2() noexcept;
 	std::size_t id() const noexcept { return m_id; }
 
 	template <typename... Types>
-	entity make_entity();
+	entity make_entity(std::string name = {});
 
 	bool contains(entity e) const { return m_records.contains(e); }
+	std::string_view name(entity e) const;
+	bool rename(entity e, std::string name);
 
 	template <typename T, typename... Args>
 	T& attach(entity e, Args&&... args);
@@ -33,13 +48,16 @@ class registry2 {
 	T& get(entity e) const;
 
 	template <typename... Types, typename... Exclude>
-	std::vector<array_view<Types...>> view(exclude<Exclude...> = exclude<>{}) const;
+	std::vector<entity_view<Types...>> view(exclude<Exclude...> = exclude<>{}) const;
 
   private:
 	struct record {
+		std::string name;
 		detail::archetype* arch{};
 		std::size_t index{};
 	};
+
+	static std::string make_name(std::size_t id);
 
 	record& get_or_make(entity e);
 	template <typename T>
@@ -48,6 +66,8 @@ class registry2 {
 	void send_to_back(record& r);
 	template <typename T>
 	bool do_detach(entity e);
+	template <typename... T>
+	void append(std::vector<entity_view<T...>>& out, detail::archetype const& arch) const;
 
 	inline static std::size_t s_next_id{};
 
@@ -62,8 +82,10 @@ class registry2 {
 inline registry2::registry2() noexcept : m_id(++s_next_id) {}
 
 template <typename... Types>
-entity registry2::make_entity() {
-	auto [it, _] = m_records.emplace(entity{++m_next_id, m_id}, record{});
+entity registry2::make_entity(std::string name) {
+	auto const id = ++m_next_id;
+	if (name.empty()) { name = make_name(id); }
+	auto [it, _] = m_records.emplace(entity{id, m_id}, record{std::move(name)});
 	if constexpr (sizeof...(Types) > 0) {
 		detail::sign_t const signs[] = {detail::sign_t::make<Types>()...};
 		m_map.register_types<Types...>();
@@ -72,6 +94,19 @@ entity registry2::make_entity() {
 		(emplace_back<Types>(it->second, arch), ...);
 	}
 	return it->first;
+}
+
+inline std::string_view registry2::name(entity e) const {
+	if (auto it = m_records.find(e); it != m_records.end()) { return it->second.name; }
+	return {};
+}
+
+inline bool registry2::rename(entity e, std::string name) {
+	if (auto it = m_records.find(e); it != m_records.end()) {
+		it->second.name = std::move(name);
+		return true;
+	}
+	return false;
 }
 
 template <typename T, typename... Args>
@@ -126,10 +161,10 @@ T& registry2::get(entity e) const {
 }
 
 template <typename... Types, typename... Exclude>
-std::vector<array_view<Types...>> registry2::view(exclude<Exclude...>) const {
-	std::vector<array_view<Types...>> ret;
+std::vector<entity_view<Types...>> registry2::view(exclude<Exclude...>) const {
+	std::vector<entity_view<Types...>> ret;
 	for (auto const& [_, arch] : m_map.m_map) {
-		if ((arch.find<Types>() && ...) && !arch.has_any(exclude<Exclude...>::signs)) { ret.push_back(&arch); }
+		if ((arch.find<Types>() && ...) && !arch.has_any(exclude<Exclude...>::signs)) { append(ret, arch); }
 	}
 	return ret;
 }
@@ -192,5 +227,18 @@ bool registry2::do_detach(entity e) {
 		rec.index = target.size() - 1;
 	}
 	return true;
+}
+
+template <typename... T>
+void registry2::append(std::vector<entity_view<T...>>& out, detail::archetype const& arch) const {
+	std::size_t const size = arch.size();
+	out.reserve(out.size() + size);
+	for (std::size_t i = 0; i < size; ++i) { out.push_back(arch.at<T...>(i)); }
+}
+
+inline std::string registry2::make_name(std::size_t id) {
+	std::string ret = s_name_prefix;
+	ret += std::to_string(id);
+	return ret;
 }
 } // namespace decf

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <tuple>
 
 namespace decf {
 struct entity {
@@ -12,5 +13,18 @@ struct entity {
 	struct hasher {
 		std::size_t operator()(entity const& e) const noexcept { return e.id ^ (e.registry_id << 8); }
 	};
+};
+
+template <typename... Types>
+struct entity_view {
+	std::tuple<Types&...> components;
+	entity entity;
+
+	operator struct entity() const noexcept { return entity; }
+
+	template <typename T>
+	T& get() const noexcept {
+		return std::get<T&>(components);
+	}
 };
 } // namespace decf

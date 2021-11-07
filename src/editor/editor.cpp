@@ -310,21 +310,6 @@ TWidget<SceneNode>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU SceneNode&
 #endif
 }
 
-TWidget<SceneNode2>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU SceneNode2& out_t, MU glm::vec3 const& dPOS) {
-#if defined(LEVK_USE_IMGUI)
-	auto posn = out_t.position();
-	auto scl = out_t.scale();
-	auto const& orn = out_t.orientation();
-	auto rot = glm::eulerAngles(orn);
-	ImGui::DragFloat3(idPos.data(), &posn.x, dPOS.x);
-	out_t.position(posn);
-	ImGui::DragFloat3(idOrn.data(), &rot.x, dPOS.y);
-	out_t.orient(glm::quat(rot));
-	ImGui::DragFloat3(idScl.data(), &scl.x, dPOS.z);
-	out_t.scale(scl);
-#endif
-}
-
 TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s64 max, MU s64 dt) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::PushButtonRepeat(true);
@@ -364,7 +349,6 @@ Viewport const& Editor::view() const noexcept {
 graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) {
 #if defined(LEVK_EDITOR)
 	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
-	if (m_storage.cached.registry2 != m_in.registry2) { m_out = {}; }
 	if (active() && engaged()) {
 		auto eng = Services::get<Engine>();
 		edi::displayScale(eng->renderer().renderScale());

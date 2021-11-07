@@ -153,7 +153,7 @@ struct PlayerController {
 	f32 maxSpeed = 10.0f;
 	bool active = true;
 
-	void tick(input::State const& state, SceneNode2& node, Time_s dt) noexcept {
+	void tick(input::State const& state, SceneNode& node, Time_s dt) noexcept {
 		input::Range r(input::KeyRange{input::Key::eA, input::Key::eD});
 		roll = r(state);
 		if (maths::abs(roll) < 0.25f) {
@@ -423,7 +423,7 @@ void Dialogue::onUpdate(input::Frame const& frame) {
 } // namespace le::gui
 
 namespace le::demo {
-class App : public input::Receiver, public SceneRegistry2 {
+class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
@@ -565,7 +565,7 @@ class App : public input::Receiver, public SceneRegistry2 {
 			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
 			auto player = spawnMesh("player", "meshes/cube", "layers/lit", mat);
-			m_registry.get<SceneNode2>(player).position({0.0f, 0.0f, 5.0f});
+			m_registry.get<SceneNode>(player).position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
 			auto coll = collision.add({});
@@ -575,18 +575,18 @@ class App : public input::Receiver, public SceneRegistry2 {
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
-			m_registry.get<SceneNode2>(ent).position({-5.0f, -1.0f, -2.0f});
+			m_registry.get<SceneNode>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "layers/tex");
-			m_registry.get<SceneNode2>(ent).position({1.0f, -2.0f, -3.0f});
+			m_registry.get<SceneNode>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			Material mat;
 			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
-			m_registry.get<SceneNode2>(ent).position({2.0f, 0.0f, 6.0f});
+			m_registry.get<SceneNode>(ent).position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text->prop(*font)); }
 		{
@@ -598,11 +598,11 @@ class App : public input::Receiver, public SceneRegistry2 {
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
-				m_registry.get<SceneNode2>(ent0).position({-2.0f, -1.0f, 2.0f});
+				m_registry.get<SceneNode>(ent0).position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
 				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "layers/lit");
-				auto& node = m_registry.get<SceneNode2>(ent1);
+				auto& node = m_registry.get<SceneNode>(ent1);
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
 				node.parent(m_registry, m_data.entities["model_0_0"]);
@@ -611,12 +611,12 @@ class App : public input::Receiver, public SceneRegistry2 {
 				Prop& prop = model->propsRW().front();
 				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "layers/lit");
-				m_registry.get<SceneNode2>(ent0).position({2.0f, -1.0f, 2.0f});
+				m_registry.get<SceneNode>(ent0).position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
 				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "layers/lit");
-				m_registry.get<SceneNode2>(ent).position({-1.0f, -2.0f, -3.0f});
+				m_registry.get<SceneNode>(ent).position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
@@ -624,15 +624,15 @@ class App : public input::Receiver, public SceneRegistry2 {
 			Material mat;
 			mat.Tf = colours::yellow;
 			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
-			m_registry.get<SceneNode2>(node).scale(2.0f);
+			m_registry.get<SceneNode>(node).scale(2.0f);
 			m_data.tween = node;
 			auto coll1 = collision.add({glm::vec3(2.0f)});
 			m_colID1 = coll1.m_id;
 			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
-			auto pos = m_registry.get<SceneNode2>(node).position();
+			auto pos = m_registry.get<SceneNode>(node).position();
 			pos.x = tweener.current();
 			coll1.position() = pos;
-			m_registry.get<SceneNode2>(node).position(pos);
+			m_registry.get<SceneNode>(node).position(pos);
 		}
 		m_data.init = true;
 	}
@@ -662,7 +662,7 @@ class App : public input::Receiver, public SceneRegistry2 {
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
-				auto& node = m_registry.get<SceneNode2>(m_data.player);
+				auto& node = m_registry.get<SceneNode>(m_data.player);
 				pc.tick(state, node, dt);
 				auto const forward = nvec3(node.orientation() * -graphics::front);
 				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
@@ -671,14 +671,14 @@ class App : public input::Receiver, public SceneRegistry2 {
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
-			m_registry.get<SceneNode2>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-			if (auto node = m_registry.find<SceneNode2>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			if (auto node = m_registry.find<SceneNode2>(m_data.entities["model_1_0"])) {
+			m_registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
+			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
 				node->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
 			}
-			if (auto node = m_registry.find<SceneNode2>(m_data.tween)) {
+			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);
 				auto pos = node->position();
 				pos.x = tweener.tick(dt);

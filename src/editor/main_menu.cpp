@@ -90,11 +90,11 @@ MainMenu::MainMenu() {
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
 	MenuList::Menu close{"Close Editor", []() { Services::get<Engine>()->editor().engage(false); }, true};
 	MenuList::Menu quit{"Quit", []() { Services::get<Engine>()->window().close(); }};
-	main.push_front(quit);
-	main.push_front(close);
-	main.push_front(imDemo);
-	main.push_front(profiler);
-	main.push_front(stats);
+	main.push_front(std::move(quit));
+	main.push_front(std::move(close));
+	main.push_front(std::move(imDemo));
+	main.push_front(std::move(profiler));
+	main.push_front(std::move(stats));
 	m_main.trees.push_back(std::move(main));
 #endif
 }

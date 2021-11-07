@@ -2,13 +2,15 @@
 #include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/span.hpp>
+#include <core/utils/error.hpp>
 #include <core/utils/string.hpp>
 #include <dens/registry.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
+#include <ktl/move_only_function.hpp>
 #include <ktl/n_tree.hpp>
 #include <ktl/stack_string.hpp>
-#include <functional>
+#include <optional>
 #include <string>
 
 #if defined(LEVK_EDITOR)
@@ -30,7 +32,7 @@ using CStr = ktl::stack_string<N>;
 struct MenuList {
 	struct Menu {
 		CStr<64> id;
-		std::function<void()> callback;
+		ktl::move_only_function<void()> callback;
 		bool separator = false;
 	};
 
@@ -228,11 +230,6 @@ struct TWidget<glm::quat> {
 template <>
 struct TWidget<SceneNode> {
 	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, SceneNode& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
-};
-
-template <>
-struct TWidget<SceneNode2> {
-	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, SceneNode2& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
 };
 
 template <>

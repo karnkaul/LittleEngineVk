@@ -25,6 +25,13 @@ TEST(decf_attach) {
 	reg.attach<int>(e1);
 	EXPECT_EQ(reg.view<int>().size(), std::size_t(2));
 	EXPECT_EQ(reg.view<int>(exclude<char>()).size(), std::size_t(1));
+	int* e1i = reg.find<int>(e1);
+	ASSERT_NE(e1i, nullptr);
+	EXPECT_EQ(*e1i, 0);
+	*e1i = 42;
+	e1i = &reg.attach<int>(e1);
+	ASSERT_NE(e1i, nullptr);
+	EXPECT_EQ(*e1i, 0);
 }
 
 TEST(decf_detach) {

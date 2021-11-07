@@ -10,7 +10,7 @@ namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct Transform {
-	void operator()(SceneNode2& node) const { TWidget<SceneNode2> tr("Pos", "Orn", "Scl", node); }
+	void operator()(SceneNode& node) const { TWidget<SceneNode> tr("Pos", "Orn", "Scl", node); }
 };
 
 struct GuiRect {
@@ -47,13 +47,13 @@ struct GuiNode {
 	}
 };
 
-bool enabled(dens::entity e, dens::registry const& r) { return !r.attached<SceneNode::Disable>(e); }
+bool shouldDraw(dens::entity e, dens::registry const& r) { return !r.attached<NoDraw>(e); }
 
-void enable(dens::entity e, dens::registry& r, bool set) {
+void shouldDraw(dens::entity e, dens::registry& r, bool set) {
 	if (set) {
-		if (!enabled(e, r)) { r.detach<SceneNode::Disable>(e); }
+		r.detach<NoDraw>(e);
 	} else {
-		if (enabled(e, r)) { r.attach<SceneNode::Disable>(e); }
+		r.attach<NoDraw>(e);
 	}
 }
 } // namespace
@@ -62,14 +62,14 @@ void enable(dens::entity e, dens::registry& r, bool set) {
 void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
 	auto& editor = Services::get<Engine>()->editor();
-	if (editor.m_in.registry2) {
+	if (editor.m_in.registry) {
 		if (editor.m_out.inspecting.contains<dens::entity>()) {
 			if (auto entity = editor.m_out.inspecting.get<dens::entity>(); entity != dens::entity()) {
-				auto& registry = editor.m_in.registry2->m_registry;
-				auto node = registry.find<SceneNode2>(entity);
+				auto& registry = editor.m_in.registry->m_registry;
+				auto node = registry.find<SceneNode>(entity);
 				Text(registry.name(entity));
-				TWidgetWrap<bool> enb;
-				if (enb(enabled(entity, registry), "Enabled", enb.out)) { enable(entity, registry, enb.out); }
+				TWidgetWrap<bool> draw;
+				if (draw(shouldDraw(entity, registry), "Draw", draw.out)) { shouldDraw(entity, registry, draw.out); }
 				Styler s{Style::eSeparator};
 				if (node) {
 					Transform{}(*node);

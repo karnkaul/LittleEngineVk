@@ -68,22 +68,12 @@ CStr<128> uniqueGuiName(T const& t) {
 	return str;
 }
 
-void walk(SceneNode& node, InspectVerifier& iv, dens::registry& reg, Editor& editor) {
-	if (reg.contains(node.entity())) {
-		auto tn = makeNode(reg.name(node.entity()), iv(node.entity()), node.children().empty());
-		if (tn.test(GUI::eOpen)) {
-			for (not_null<SceneNode*> child : node.children()) { walk(*child, iv, reg, editor); }
-		}
-		inspect(iv, tn, node.entity());
-	}
-}
-
-void walk(SceneNode2& node, InspectVerifier& iv, dens::registry const& reg, Editor& editor) {
+void walk(SceneNode& node, InspectVerifier& iv, dens::registry const& reg, Editor& editor) {
 	if (reg.contains(node.entity())) {
 		auto tn = makeNode(reg.name(node.entity()), iv(node.entity()), node.nodes().empty());
 		if (tn.test(GUI::eOpen)) {
 			for (dens::entity child : node.nodes()) {
-				if (auto n = reg.find<SceneNode2>(child)) { walk(*n, iv, reg, editor); }
+				if (auto n = reg.find<SceneNode>(child)) { walk(*n, iv, reg, editor); }
 			}
 		}
 		inspect(iv, tn, node.entity());
@@ -123,26 +113,9 @@ void SceneTree::update() {
 	if (editor.m_in.registry) {
 		auto& reg = *editor.m_in.registry;
 		InspectVerifier iv(editor.m_out.inspecting);
-		for (auto node : reg.root().children()) { walk(*node, iv, reg.registry(), editor); }
-		for (auto query : reg.registry().view<gui::ViewStack>()) { walk(query, iv, reg.registry(), editor); }
-		if (!editor.m_in.customEntities.empty()) {
-			auto const tn = makeNode("[Custom]", false, false);
-			if (tn.test(GUI::eOpen)) {
-				for (auto const& entity : editor.m_in.customEntities) {
-					if (entity != dens::entity() && reg.registry().contains(entity)) {
-						auto tn = makeNode(reg.registry().name(entity), iv(entity), true);
-						inspect(iv, tn, entity);
-					}
-				}
-			}
-		}
-	}
-	if (editor.m_in.registry2) {
-		auto& reg = *editor.m_in.registry2;
-		InspectVerifier iv(editor.m_out.inspecting);
-		if (auto root = reg.registry().find<SceneNode2>(reg.root())) {
+		if (auto root = reg.registry().find<SceneNode>(reg.root())) {
 			for (auto node : root->nodes()) {
-				if (auto n = reg.registry().find<SceneNode2>(node)) { walk(*n, iv, reg.registry(), editor); }
+				if (auto n = reg.registry().find<SceneNode>(node)) { walk(*n, iv, reg.registry(), editor); }
 			}
 		}
 		for (auto query : reg.registry().view<gui::ViewStack>()) { walk(query, iv, reg.registry(), editor); }

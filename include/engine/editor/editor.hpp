@@ -25,7 +25,6 @@ namespace gui {
 class TreeRoot;
 }
 class SceneRegistry;
-class SceneRegistry2;
 
 namespace edi {
 class Inspector;
@@ -36,7 +35,6 @@ struct In {
 
 	custom_t customEntities;
 	SceneRegistry* registry = {};
-	SceneRegistry2* registry2 = {};
 };
 struct Out {
 	ktl::either<dens::entity, gui::TreeRoot*> inspecting;
@@ -55,7 +53,6 @@ class Editor {
 	Editor();
 
 	void bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom = {});
-	void bindNextFrame(not_null<SceneRegistry2*> registry, edi::In::custom_t const& custom = {});
 	bool engaged() const noexcept { return m_storage.engaged; }
 	void engage(bool set) noexcept { m_storage.engaged = set; }
 	void toggle() noexcept { engage(!engaged()); }
@@ -91,11 +88,6 @@ class Editor {
 
 inline void Editor::bindNextFrame(not_null<SceneRegistry*> registry, edi::In::custom_t const& custom) {
 	m_in.registry = registry;
-	m_in.customEntities = custom;
-}
-
-inline void Editor::bindNextFrame(not_null<SceneRegistry2*> registry, edi::In::custom_t const& custom) {
-	m_in.registry2 = registry;
 	m_in.customEntities = custom;
 }
 } // namespace le

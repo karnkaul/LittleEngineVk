@@ -8,31 +8,6 @@
 #include <dens/registry.hpp>
 
 int main(int argc, char const* const argv[]) {
-	/*dens::registry r;
-	auto e = r.make_entity();
-	r.attach<int>(e) = 50;
-	r.attach<float>(e) = -100.0f;
-	auto e1 = r.make_entity<int, float>();
-	r.get<int>(e1) = 0;
-	r.get<float>(e1) = 0.0f;
-	auto e2 = r.make_entity<int, float>();
-	r.get<int>(e2) = 42;
-	r.get<float>(e2) = 3.14f;
-	auto e3 = r.make_entity<char, float, int>();
-	r.get<int>(e3) = -6;
-	r.get<float>(e3) = 65.8f;
-	auto e4 = r.make_entity<std::string, float>();
-	r.get<std::string>(e4) = "a very long string to trigger heap allocs and sidestep short string optimization (SSO)";
-	r.get<float>(e4) = -9.87f;
-	r.attach<int>(e4, 420);
-	for (auto entity : r.view<int, float>()) { le::logD("{}: int: {}, float: {}", r.name(entity), entity.get<int>(), entity.get<float>()); }
-	for (auto entity : r.view<int>(dens::exclude<std::string>{})) { le::logD("{}: int: {}", r.name(entity), entity.get<int>()); }
-	le::logD("{}", r.get<std::string>(e4));
-	bool b = r.detach<float>(e3);
-	float* f = r.find<float>(e3);
-	le::logD("detached: {}, found: {}", b, f != nullptr);
-	for (auto entity : r.view<int, float>()) { le::logD("{}: int: {}, float: {}", r.name(entity), entity.get<int>(), entity.get<float>()); }*/
-
 	using namespace le;
 	switch (env::init(argc, argv)) {
 	case clap::parse_result::quit: return 0;

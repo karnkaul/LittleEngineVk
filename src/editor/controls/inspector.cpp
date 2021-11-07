@@ -10,7 +10,7 @@ namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
 struct Transform {
-	void operator()(SceneNode& node) const { TWidget<SceneNode> tr("Pos", "Orn", "Scl", node); }
+	void operator()(SceneNode2& node) const { TWidget<SceneNode2> tr("Pos", "Orn", "Scl", node); }
 };
 
 struct GuiRect {
@@ -62,11 +62,11 @@ void enable(dens::entity e, dens::registry& r, bool set) {
 void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
 	auto& editor = Services::get<Engine>()->editor();
-	if (editor.m_in.registry) {
+	if (editor.m_in.registry2) {
 		if (editor.m_out.inspecting.contains<dens::entity>()) {
 			if (auto entity = editor.m_out.inspecting.get<dens::entity>(); entity != dens::entity()) {
-				auto& registry = editor.m_in.registry->registry();
-				auto node = registry.find<SceneNode>(entity);
+				auto& registry = editor.m_in.registry2->m_registry;
+				auto node = registry.find<SceneNode2>(entity);
 				Text(registry.name(entity));
 				TWidgetWrap<bool> enb;
 				if (enb(enabled(entity, registry), "Enabled", enb.out)) { enable(entity, registry, enb.out); }

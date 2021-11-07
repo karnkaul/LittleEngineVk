@@ -38,20 +38,21 @@ void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, dens::registry co
 }
 
 void DrawListGen3D2::operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const {
-	for (auto [_, c] : registry.view<DrawLayer, SceneNode2, Prop>()) {
+	static constexpr auto exclude = dens::exclude<SceneNode::Disable>();
+	for (auto [_, c] : registry.view<DrawLayer, SceneNode2, Prop>(exclude)) {
 		auto& [layer, node, prop] = c;
 		if (prop.mesh && layer.pipeline) { map[layer].push_back({node.model(registry), {}, prop}); }
 	}
-	for (auto [_, c] : registry.view<DrawLayer, SceneNode2, PropProvider>()) {
+	for (auto [_, c] : registry.view<DrawLayer, SceneNode2, PropProvider>(exclude)) {
 		auto& [layer, node, provider] = c;
 		auto props = provider.props();
 		if (!props.empty() && layer.pipeline) { map[layer].push_back({node.model(registry), {}, props}); }
 	}
-	for (auto [_, c] : registry.view<DrawLayer, Skybox>()) {
+	for (auto [_, c] : registry.view<DrawLayer, Skybox>(exclude)) {
 		auto& [layer, skybox] = c;
 		if (layer.pipeline) { map[layer].push_back({glm::mat4(1.0f), {}, skybox.prop()}); }
 	}
-	for (auto [_, c] : registry.view<DrawLayer, Collision>()) {
+	for (auto [_, c] : registry.view<DrawLayer, Collision>(exclude)) {
 		auto& [layer, collision] = c;
 		if (layer.pipeline) {
 			if (auto drawables = collision.drawables(); !drawables.empty()) { std::move(drawables.begin(), drawables.end(), std::back_inserter(map[layer])); }

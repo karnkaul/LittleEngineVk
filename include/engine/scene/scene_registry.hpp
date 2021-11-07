@@ -8,6 +8,10 @@
 #include <engine/scene/skybox.hpp>
 
 namespace le {
+namespace edi {
+class Inspector;
+}
+
 class SceneRegistry : public utils::VBase {
   public:
 	dens::registry& registry() noexcept { return m_registry; }
@@ -70,6 +74,8 @@ class SceneRegistry2 : public utils::VBase {
   protected:
 	dens::registry m_registry;
 	dens::entity m_root;
+
+	friend class edi::Inspector;
 };
 
 // impl

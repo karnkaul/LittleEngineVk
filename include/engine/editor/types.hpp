@@ -231,6 +231,11 @@ struct TWidget<SceneNode> {
 };
 
 template <>
+struct TWidget<SceneNode2> {
+	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, SceneNode2& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
+};
+
+template <>
 struct TWidget<std::pair<s64, s64>> {
 	TWidget(std::string_view id, s64& out_t, s64 min, s64 max, s64 dt);
 };

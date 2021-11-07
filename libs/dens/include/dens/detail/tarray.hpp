@@ -3,9 +3,9 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
-#include <dumb_ecf/detail/sign.hpp>
+#include <dens/detail/sign.hpp>
 
-namespace decf::detail {
+namespace dens::detail {
 class tarray_base {
   public:
 	virtual ~tarray_base() = default;
@@ -77,4 +77,4 @@ class tarray_factory {
 	using make_tarray_t = std::unique_ptr<tarray_base> (*)();
 	std::unordered_map<sign_t, make_tarray_t, sign_t::hasher> m_map;
 };
-} // namespace decf::detail
+} // namespace dens::detail

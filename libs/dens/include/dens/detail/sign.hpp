@@ -3,7 +3,7 @@
 #include <span>
 #include <typeinfo>
 
-namespace decf::detail {
+namespace dens::detail {
 struct sign_t {
 	std::size_t hash{};
 
@@ -28,4 +28,4 @@ struct sign_t {
 		return ret;
 	}
 };
-} // namespace decf::detail
+} // namespace dens::detail

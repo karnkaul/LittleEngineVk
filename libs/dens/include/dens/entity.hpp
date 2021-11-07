@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <tuple>
 
-namespace decf {
+namespace dens {
 struct entity {
 	std::size_t id{};
 	std::size_t registry_id{};
@@ -27,4 +27,4 @@ struct entity_view {
 		return std::get<T&>(components);
 	}
 };
-} // namespace decf
+} // namespace dens

@@ -18,6 +18,11 @@ add_executable(test-decf decf_test.cpp)
 target_link_libraries(test-decf PRIVATE levk::core dtasks::dtasks decf::decf levk-test)
 add_test(decf::registry test-decf)
 
+# ECS (Registry)
+add_executable(test-dens dens_test.cpp)
+target_link_libraries(test-dens PRIVATE dtest::main dens::dens levk-test)
+add_test(dens test-dens)
+
 # fixed_vector
 add_executable(test-fv fixed_vector_test.cpp)
 target_link_libraries(test-fv PRIVATE dtest::main levk::core levk-test)

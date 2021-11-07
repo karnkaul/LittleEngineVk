@@ -1,8 +1,8 @@
 #pragma once
+#include <dens/detail/archetype.hpp>
 #include <string>
-#include <dumb_ecf/detail/archetype.hpp>
 
-namespace decf {
+namespace dens {
 template <typename... Types>
 struct exclude {
 	inline static detail::sign_t const signs[sizeof...(Types)] = {detail::sign_t::make<Types>()...};
@@ -13,19 +13,21 @@ struct exclude<> {
 	static constexpr std::span<detail::sign_t const> signs = {};
 };
 
-class registry2 {
+class registry {
   public:
 	inline static std::string s_name_prefix = "entity_";
 
-	registry2() noexcept;
+	registry() noexcept;
 	std::size_t id() const noexcept { return m_id; }
 
 	template <typename... Types>
 	entity make_entity(std::string name = {});
-
 	bool contains(entity e) const { return m_records.contains(e); }
+	bool destroy(entity e);
 	std::string_view name(entity e) const;
 	bool rename(entity e, std::string name);
+	std::size_t size() const noexcept { return m_records.size(); }
+	void clear() noexcept;
 
 	template <typename T, typename... Args>
 	T& attach(entity e, Args&&... args);
@@ -62,7 +64,7 @@ class registry2 {
 	record& get_or_make(entity e);
 	template <typename T>
 	void emplace_back(record& r, detail::archetype& arch);
-	void migrate(record& out_record, detail::archetype& out_arch);
+	void migrate_to(record& out_record, detail::archetype* out_arch);
 	void send_to_back(record& r);
 	template <typename T>
 	bool do_detach(entity e);
@@ -79,10 +81,10 @@ class registry2 {
 
 // impl
 
-inline registry2::registry2() noexcept : m_id(++s_next_id) {}
+inline registry::registry() noexcept : m_id(++s_next_id) {}
 
 template <typename... Types>
-entity registry2::make_entity(std::string name) {
+entity registry::make_entity(std::string name) {
 	auto const id = ++m_next_id;
 	if (name.empty()) { name = make_name(id); }
 	auto [it, _] = m_records.emplace(entity{id, m_id}, record{std::move(name)});
@@ -96,12 +98,22 @@ entity registry2::make_entity(std::string name) {
 	return it->first;
 }
 
-inline std::string_view registry2::name(entity e) const {
+inline std::string_view registry::name(entity e) const {
 	if (auto it = m_records.find(e); it != m_records.end()) { return it->second.name; }
 	return {};
 }
 
-inline bool registry2::rename(entity e, std::string name) {
+inline bool registry::destroy(entity e) {
+	if (auto it = m_records.find(e); it != m_records.end()) {
+		auto& r = it->second;
+		if (r.arch) { migrate_to(r, nullptr); }
+		m_records.erase(it);
+		return true;
+	}
+	return false;
+}
+
+inline bool registry::rename(entity e, std::string name) {
 	if (auto it = m_records.find(e); it != m_records.end()) {
 		it->second.name = std::move(name);
 		return true;
@@ -109,8 +121,13 @@ inline bool registry2::rename(entity e, std::string name) {
 	return false;
 }
 
+inline void registry::clear() noexcept {
+	m_map.m_map.clear();
+	m_records.clear();
+}
+
 template <typename T, typename... Args>
-T& registry2::attach(entity e, Args&&... args) {
+T& registry::attach(entity e, Args&&... args) {
 	assert(e.registry_id == m_id);
 	m_map.register_types<T>();
 	record& rec = get_or_make(e);
@@ -121,7 +138,7 @@ T& registry2::attach(entity e, Args&&... args) {
 			return array->m_storage.at(rec.index);
 		}
 		// migrate record to archetype with existing components + T, to be pushed
-		migrate(rec, m_map.copy_append<T>(*rec.arch));
+		migrate_to(rec, &m_map.copy_append<T>(*rec.arch));
 	} else {
 		// no existing components, use archetype with only T, to be pushed
 		detail::sign_t const signs[] = {detail::sign_t::make<T>()};
@@ -139,12 +156,13 @@ T& registry2::attach(entity e, Args&&... args) {
 }
 
 template <typename T>
-bool registry2::attached(entity e) const {
-	if (auto it = m_records.find(e); it != m_records.end()) { return it->second.arch && it->second.arch->find<T>(); }
+bool registry::attached(entity e) const {
+	if (auto it = m_records.find(e); it != m_records.end() && it->second.arch) { return it->second.arch->find<T>(); }
+	return false;
 }
 
 template <typename T>
-T* registry2::find(entity e) const {
+T* registry::find(entity e) const {
 	if (auto it = m_records.find(e); it != m_records.end() && it->second.arch) {
 		record const& r = it->second;
 		if (auto const& array = r.arch->find<T>()) { return &array->m_storage.at(r.index); }
@@ -153,7 +171,7 @@ T* registry2::find(entity e) const {
 }
 
 template <typename T>
-T& registry2::get(entity e) const {
+T& registry::get(entity e) const {
 	assert(e.registry_id == m_id);
 	auto ret = find<T>(e);
 	assert(ret);
@@ -161,7 +179,7 @@ T& registry2::get(entity e) const {
 }
 
 template <typename... Types, typename... Exclude>
-std::vector<entity_view<Types...>> registry2::view(exclude<Exclude...>) const {
+std::vector<entity_view<Types...>> registry::view(exclude<Exclude...>) const {
 	std::vector<entity_view<Types...>> ret;
 	for (auto const& [_, arch] : m_map.m_map) {
 		if ((arch.find<Types>() && ...) && !arch.has_any(exclude<Exclude...>::signs)) { append(ret, arch); }
@@ -169,7 +187,7 @@ std::vector<entity_view<Types...>> registry2::view(exclude<Exclude...>) const {
 	return ret;
 }
 
-inline registry2::record& registry2::get_or_make(entity e) {
+inline registry::record& registry::get_or_make(entity e) {
 	auto it = m_records.find(e);
 	if (it == m_records.end()) {
 		auto [i, _] = m_records.emplace(e, record{});
@@ -179,22 +197,22 @@ inline registry2::record& registry2::get_or_make(entity e) {
 }
 
 template <typename T>
-void registry2::emplace_back(record& r, detail::archetype& arch) {
+void registry::emplace_back(record& r, detail::archetype& arch) {
 	r.arch = &arch;
 	auto& vec = r.arch->get<T>().m_storage;
 	r.index = vec.size();
 	vec.emplace_back();
 }
 
-inline void registry2::migrate(record& out_record, detail::archetype& out_arch) {
+inline void registry::migrate_to(record& out_record, detail::archetype* out_arch) {
 	send_to_back(out_record);
 	[[maybe_unused]] auto popped = out_record.arch->migrate_back(out_arch);
 	assert(&m_records[popped] == &out_record);
-	out_record.arch = &out_arch;
+	out_record.arch = out_arch;
 	// record.index = out_arch.size(); must be done by caller
 }
 
-inline void registry2::send_to_back(record& r) {
+inline void registry::send_to_back(record& r) {
 	if (!r.arch->is_last(r.index)) {
 		// swap with last
 		entity displaced = r.arch->swap_back(r.index);
@@ -203,8 +221,9 @@ inline void registry2::send_to_back(record& r) {
 		m_records[displaced].index = r.index;
 	}
 }
+
 template <typename T>
-bool registry2::do_detach(entity e) {
+bool registry::do_detach(entity e) {
 	if (e.registry_id != m_id) { return false; }
 	auto it = m_records.find(e);
 	if (it == m_records.end() || !it->second.arch) { return false; }
@@ -220,7 +239,7 @@ bool registry2::do_detach(entity e) {
 		auto id = rec.arch->id().make(detail::sign_t::make<T>());
 		assert(id != rec.arch->id());
 		detail::archetype& target = m_map.get_or_make(id.types);
-		[[maybe_unused]] entity migrated = rec.arch->migrate_back(target);
+		[[maybe_unused]] entity migrated = rec.arch->migrate_back(&target);
 		assert(&m_records[migrated] == &rec);
 		rec.arch = &target;
 		assert(!target.empty());
@@ -230,15 +249,15 @@ bool registry2::do_detach(entity e) {
 }
 
 template <typename... T>
-void registry2::append(std::vector<entity_view<T...>>& out, detail::archetype const& arch) const {
+void registry::append(std::vector<entity_view<T...>>& out, detail::archetype const& arch) const {
 	std::size_t const size = arch.size();
 	out.reserve(out.size() + size);
 	for (std::size_t i = 0; i < size; ++i) { out.push_back(arch.at<T...>(i)); }
 }
 
-inline std::string registry2::make_name(std::size_t id) {
+inline std::string registry::make_name(std::size_t id) {
 	std::string ret = s_name_prefix;
 	ret += std::to_string(id);
 	return ret;
 }
-} // namespace decf
+} // namespace dens

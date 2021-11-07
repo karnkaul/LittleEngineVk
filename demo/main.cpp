@@ -5,10 +5,10 @@
 #include <demo.hpp>
 #include <engine/utils/env.hpp>
 
-#include <dumb_ecf/registry2.hpp>
+#include <dens/registry.hpp>
 
 int main(int argc, char const* const argv[]) {
-	decf::registry2 r;
+	dens::registry r;
 	auto e = r.make_entity();
 	r.attach<int>(e) = 50;
 	r.attach<float>(e) = -100.0f;
@@ -26,7 +26,7 @@ int main(int argc, char const* const argv[]) {
 	r.get<float>(e4) = -9.87f;
 	r.attach<int>(e4, 420);
 	for (auto entity : r.view<int, float>()) { le::logD("{}: int: {}, float: {}", r.name(entity), entity.get<int>(), entity.get<float>()); }
-	for (auto entity : r.view<int>(decf::exclude<std::string>{})) { le::logD("{}: int: {}", r.name(entity), entity.get<int>()); }
+	for (auto entity : r.view<int>(dens::exclude<std::string>{})) { le::logD("{}: int: {}", r.name(entity), entity.get<int>()); }
 	le::logD("{}", r.get<std::string>(e4));
 	bool b = r.detach<float>(e3);
 	float* f = r.find<float>(e3);

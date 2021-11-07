@@ -1,9 +1,9 @@
 #pragma once
+#include <dens/detail/tarray.hpp>
+#include <dens/entity.hpp>
 #include <tuple>
-#include <dumb_ecf/detail/tarray.hpp>
-#include <dumb_ecf/entity.hpp>
 
-namespace decf::detail {
+namespace dens::detail {
 class archetype {
   public:
 	struct id_t {
@@ -95,11 +95,17 @@ class archetype {
 		return m_entities.at(index);
 	}
 
-	entity migrate_back(archetype& target) {
+	entity migrate_back(archetype* target) {
 		auto const ret = m_entities.back();
 		m_entities.pop_back();
-		for (auto& array : m_arrays) { array->pop_push_back(target.find_base(array->sign())); }
-		target.m_entities.push_back(ret);
+		for (auto& array : m_arrays) {
+			if (target) {
+				array->pop_push_back(target->find_base(array->sign()));
+			} else {
+				array->pop_back();
+			}
+		}
+		if (target) { target->m_entities.push_back(ret); }
 		return ret;
 	}
 
@@ -175,4 +181,4 @@ class archetype_map {
 	storage_map m_map;
 	tarray_factory m_factory;
 };
-} // namespace decf::detail
+} // namespace dens::detail

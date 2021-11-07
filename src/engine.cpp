@@ -1,5 +1,3 @@
-#include <fstream>
-#include <iostream>
 #include <build_version.hpp>
 #include <core/io/zip_media.hpp>
 #include <core/utils/data_store.hpp>
@@ -14,6 +12,8 @@
 #include <graphics/render/command_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/glue.hpp>
+#include <fstream>
+#include <iostream>
 
 namespace le {
 namespace {

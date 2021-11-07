@@ -39,7 +39,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Basic 3D AABB collision detection
 - `libs/*`
   - Multi-threaded task scheduler
-  - Entity-Component framework
+  - Archetypal entity-component framework
   - JSON parser, de/serializer
   - Formatted logger
 

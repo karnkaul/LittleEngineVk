@@ -1,6 +1,6 @@
 #pragma once
-#include <functional>
 #include <engine/assets/asset.hpp>
+#include <functional>
 
 namespace le {
 template <typename T>

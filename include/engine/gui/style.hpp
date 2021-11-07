@@ -1,5 +1,4 @@
 #pragma once
-#include <unordered_map>
 #include <core/hash.hpp>
 #include <core/utils/error.hpp>
 #include <engine/gui/interact.hpp>
@@ -7,6 +6,7 @@
 #include <glm/vec2.hpp>
 #include <graphics/render/rgba.hpp>
 #include <ktl/either.hpp>
+#include <unordered_map>
 
 namespace le::gui {
 struct TextStyle {

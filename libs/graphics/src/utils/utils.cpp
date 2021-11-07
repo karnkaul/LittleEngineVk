@@ -1,4 +1,3 @@
-#include <mutex>
 #include <stb/stb_image.h>
 #include <core/log.hpp>
 #include <core/maths.hpp>
@@ -10,6 +9,7 @@
 #include <graphics/render/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
+#include <mutex>
 
 static_assert(sizeof(stbi_uc) == sizeof(std::byte) && alignof(stbi_uc) == alignof(std::byte), "Invalid type size/alignment");
 

@@ -1,6 +1,4 @@
 #pragma once
-#include <atomic>
-#include <vector>
 #include <core/hash.hpp>
 #include <core/not_null.hpp>
 #include <core/utils/error.hpp>
@@ -8,6 +6,8 @@
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <atomic>
+#include <vector>
 
 namespace le::graphics {
 class Device;

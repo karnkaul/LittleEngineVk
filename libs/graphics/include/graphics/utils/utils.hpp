@@ -1,5 +1,4 @@
 #pragma once
-#include <map>
 #include <core/io/media.hpp>
 #include <core/os.hpp>
 #include <graphics/bitmap.hpp>
@@ -14,6 +13,7 @@
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <spirv_cross.hpp>
+#include <map>
 
 namespace le::graphics {
 struct Shader::Resources {

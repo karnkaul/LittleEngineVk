@@ -1,8 +1,4 @@
 #pragma once
-#include <memory>
-#include <string_view>
-#include <type_traits>
-#include <unordered_map>
 #include <core/colour.hpp>
 #include <core/hash.hpp>
 #include <graphics/common.hpp>
@@ -13,6 +9,10 @@
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/screen_rect.hpp>
+#include <memory>
+#include <string_view>
+#include <type_traits>
+#include <unordered_map>
 
 namespace le::graphics {
 struct QuickVertexInput;

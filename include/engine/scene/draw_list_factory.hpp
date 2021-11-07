@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 namespace dens {
-class entity;
+struct entity;
 class registry;
 } // namespace dens
 
@@ -26,8 +26,8 @@ class DrawListFactory {
 	static std::vector<DrawList> lists(dens::registry const& registry, bool sort);
 };
 
-struct DrawListGen3D2 {
-	// Populates DrawLayer + SceneNode2 + Prop, DrawLayer + SceneNode2 + PropProvider, DrawLayer + Skybox
+struct DrawListGen3D {
+	// Populates DrawLayer + SceneNode + Prop, DrawLayer + SceneNode + PropProvider, DrawLayer + Skybox
 	void operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const;
 };
 

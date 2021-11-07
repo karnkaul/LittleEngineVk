@@ -196,7 +196,7 @@ class Drawer : public ListDrawer {
 	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
 	void update(dens::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt, Hash wire) {
-		auto lists = populate<DrawListGen3D2, DrawListGenUI>(reg);
+		auto lists = populate<DrawListGen3D, DrawListGenUI>(reg);
 		write(lists, cam, sp, lt);
 		for (auto& list : lists) {
 			if (list.pipeline->id() == wire) { list.variant = "wireframe"; }

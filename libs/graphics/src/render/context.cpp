@@ -1,5 +1,3 @@
-#include <map>
-#include <stdexcept>
 #include <core/log.hpp>
 #include <core/maths.hpp>
 #include <glm/gtx/transform.hpp>
@@ -8,6 +6,8 @@
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/context.hpp>
+#include <map>
+#include <stdexcept>
 
 namespace le::graphics {
 namespace {

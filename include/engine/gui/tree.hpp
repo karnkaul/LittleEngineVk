@@ -1,5 +1,4 @@
 #pragma once
-#include <optional>
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <core/utils/vbase.hpp>
@@ -9,6 +8,7 @@
 #include <engine/utils/owner.hpp>
 #include <graphics/basis.hpp>
 #include <graphics/draw_view.hpp>
+#include <optional>
 
 namespace le {
 struct Viewport;

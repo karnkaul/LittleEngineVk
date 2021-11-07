@@ -1,6 +1,6 @@
 #pragma once
-#include <memory>
 #include <core/std_types.hpp>
+#include <memory>
 
 namespace le {
 enum class SingletonStorage : s8 { eStatic, eHeap };

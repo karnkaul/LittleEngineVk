@@ -1,13 +1,13 @@
-#include <iostream>
-#include <optional>
-#include <sstream>
-#include <unordered_map>
-#include <unordered_set>
 #include <core/utils/data_store.hpp>
 #include <core/utils/error.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/instance.hpp>
+#include <iostream>
+#include <optional>
+#include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace le::graphics {
 // global for Device to temporarily disable (to suppress spam on Windows)

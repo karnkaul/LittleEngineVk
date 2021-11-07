@@ -1,6 +1,4 @@
 #pragma once
-#include <shared_mutex>
-#include <unordered_map>
 #include <core/hash.hpp>
 #include <core/io/file_monitor.hpp>
 #include <core/io/media.hpp>
@@ -8,6 +6,8 @@
 #include <core/os.hpp>
 #include <ktl/either.hpp>
 #include <ktl/shared_tmutex.hpp>
+#include <shared_mutex>
+#include <unordered_map>
 
 constexpr bool levk_resourceMonitor = levk_debug;
 

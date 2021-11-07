@@ -1,10 +1,10 @@
-#include <algorithm>
 #include <core/log.hpp>
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/physics/collision.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/mesh.hpp>
+#include <algorithm>
 
 namespace le {
 namespace {

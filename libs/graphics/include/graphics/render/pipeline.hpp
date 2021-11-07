@@ -1,10 +1,10 @@
 #pragma once
-#include <unordered_set>
 #include <core/hash.hpp>
 #include <core/utils/std_hash.hpp>
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/shader.hpp>
+#include <unordered_set>
 
 namespace le::graphics {
 class Device;

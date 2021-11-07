@@ -1,8 +1,8 @@
-#include <algorithm>
-#include <iterator>
 #include <core/utils/error.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <graphics/geometry.hpp>
+#include <algorithm>
+#include <iterator>
 
 namespace le {
 using v3 = glm::vec3;

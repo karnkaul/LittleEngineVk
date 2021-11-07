@@ -1,10 +1,10 @@
-#include <algorithm>
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_converters.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/utils/logger.hpp>
 #include <graphics/utils/utils.hpp>
+#include <algorithm>
 
 namespace le {
 namespace {

@@ -1,8 +1,8 @@
+#include <core/utils/string.hpp>
+#include <ktl/tmutex.hpp>
 #include <algorithm>
 #include <cerrno>
 #include <unordered_map>
-#include <core/utils/string.hpp>
-#include <ktl/tmutex.hpp>
 
 #if defined(__GNUG__)
 #include <cxxabi.h>

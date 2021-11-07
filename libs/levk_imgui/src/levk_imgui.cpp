@@ -1,5 +1,5 @@
-#include <stdexcept>
 #include <levk_imgui/levk_imgui.hpp>
+#include <stdexcept>
 
 #if defined(LEVK_USE_IMGUI)
 #include <GLFW/glfw3.h>

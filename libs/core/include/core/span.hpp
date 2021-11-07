@@ -1,7 +1,7 @@
 #pragma once
+#include <ktl/fixed_vector.hpp>
 #include <array>
 #include <vector>
-#include <ktl/fixed_vector.hpp>
 
 namespace le {
 ///

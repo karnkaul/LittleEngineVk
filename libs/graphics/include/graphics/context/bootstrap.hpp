@@ -1,10 +1,10 @@
 #pragma once
-#include <functional>
 #include <core/lib_logger.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/instance.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/swapchain.hpp>
+#include <functional>
 
 namespace le::graphics {
 struct Bootstrap : Pinned {

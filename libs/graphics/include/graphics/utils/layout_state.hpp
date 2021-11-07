@@ -1,7 +1,7 @@
 #pragma once
-#include <unordered_map>
 #include <core/not_null.hpp>
 #include <graphics/common.hpp>
+#include <unordered_map>
 
 namespace le::graphics {
 class CommandBuffer;

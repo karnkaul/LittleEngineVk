@@ -1,13 +1,13 @@
-#include <algorithm>
-#include <iostream>
-#include <sstream>
-#include <unordered_set>
 #include <core/maths.hpp>
 #include <core/utils/data_store.hpp>
 #include <core/utils/sys_info.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/utils/utils.hpp>
+#include <algorithm>
+#include <iostream>
+#include <sstream>
+#include <unordered_set>
 
 namespace le::graphics {
 namespace {

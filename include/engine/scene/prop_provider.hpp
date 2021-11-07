@@ -1,10 +1,10 @@
 #pragma once
-#include <concepts>
 #include <core/hash.hpp>
 #include <core/services.hpp>
 #include <core/span.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/scene/prop.hpp>
+#include <concepts>
 
 namespace le {
 namespace graphics {

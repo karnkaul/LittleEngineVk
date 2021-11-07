@@ -5,8 +5,6 @@
 #include <demo.hpp>
 #include <engine/utils/env.hpp>
 
-#include <dens/registry.hpp>
-
 int main(int argc, char const* const argv[]) {
 	using namespace le;
 	switch (env::init(argc, argv)) {

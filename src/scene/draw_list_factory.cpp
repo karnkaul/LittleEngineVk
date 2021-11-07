@@ -15,7 +15,7 @@ namespace {
 Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
 } // namespace
 
-void DrawListGen3D2::operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const {
+void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const {
 	static constexpr auto exclude = dens::exclude<NoDraw>();
 	for (auto [_, c] : registry.view<DrawLayer, SceneNode, Prop>(exclude)) {
 		auto& [layer, node, prop] = c;

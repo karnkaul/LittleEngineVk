@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <fmt/format.h>
 #include <build_version.hpp>
 #include <core/io/fs_media.hpp>
@@ -7,6 +6,7 @@
 #include <dumb_json/json.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/error_handler.hpp>
+#include <filesystem>
 
 namespace le::utils {
 namespace stdfs = std::filesystem;

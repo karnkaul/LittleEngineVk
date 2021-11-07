@@ -1,11 +1,11 @@
-#include <algorithm>
-#include <sstream>
 #include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/maths.hpp>
 #include <core/utils/expect.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
+#include <algorithm>
+#include <sstream>
 
 namespace le {
 Colour::Colour(std::string_view hex) noexcept {

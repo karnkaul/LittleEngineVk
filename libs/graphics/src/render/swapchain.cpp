@@ -1,4 +1,3 @@
-#include <map>
 #include <core/maths.hpp>
 #include <core/utils/data_store.hpp>
 #include <core/utils/sys_info.hpp>
@@ -6,6 +5,7 @@
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/swapchain.hpp>
+#include <map>
 
 namespace le::graphics {
 vk::SurfaceFormatKHR Swapchain::FormatPicker::pick(Span<vk::SurfaceFormatKHR const> options) const noexcept {

@@ -1,6 +1,4 @@
 #pragma once
-#include <optional>
-#include <vector>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <core/utils/enumerate.hpp>
@@ -8,6 +6,8 @@
 #include <engine/scene/drawable.hpp>
 #include <glm/vec3.hpp>
 #include <ktl/delegate.hpp>
+#include <optional>
+#include <vector>
 
 namespace le {
 class Collision {

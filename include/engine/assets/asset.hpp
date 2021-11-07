@@ -1,9 +1,9 @@
 #pragma once
-#include <string_view>
-#include <type_traits>
 #include <core/not_null.hpp>
 #include <core/utils/error.hpp>
 #include <ktl/delegate.hpp>
+#include <string_view>
+#include <type_traits>
 
 namespace le {
 template <typename T>

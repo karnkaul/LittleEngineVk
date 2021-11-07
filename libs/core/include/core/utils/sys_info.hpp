@@ -1,8 +1,8 @@
 #pragma once
-#include <string_view>
-#include <thread>
 #include <core/os.hpp>
 #include <core/std_types.hpp>
+#include <string_view>
+#include <thread>
 
 namespace le::utils {
 struct SysInfo {

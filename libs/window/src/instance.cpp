@@ -1,8 +1,8 @@
-#include <unordered_map>
 #include <core/not_null.hpp>
 #include <instance_impl.hpp>
 #include <ktl/enum_flags/bitflags.hpp>
 #include <window/instance.hpp>
+#include <unordered_map>
 
 #if defined(LEVK_USE_GLFW)
 #include <core/array_map.hpp>

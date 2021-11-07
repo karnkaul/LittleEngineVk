@@ -1,26 +1,7 @@
 #pragma once
-#include <dumb_ecf/detail/archetype.hpp>
+#include <dumb_ecf/view.hpp>
 
 namespace decf {
-template <typename... Types>
-class component_view {
-  public:
-	component_view() = default;
-
-	std::size_t size() const noexcept { return m_size; }
-	view_t<Types...> operator[](std::size_t index) const noexcept {
-		assert(m_archetype);
-		return m_archetype->view<Types...>(index);
-	}
-
-  private:
-	component_view(detail::archetype const* archetype) noexcept : m_archetype(archetype), m_size(m_archetype->size()) {}
-	detail::archetype const* m_archetype{};
-	std::size_t m_size{};
-
-	friend class registry2;
-};
-
 class registry2 {
   public:
 	registry2() noexcept;
@@ -51,8 +32,8 @@ class registry2 {
 	template <typename T>
 	T& get(entity e) const;
 
-	template <typename... Types>
-	std::vector<component_view<Types...>> view() const;
+	template <typename... Types, typename... Exclude>
+	std::vector<array_view<Types...>> view(exclude<Exclude...> = exclude<>{}) const;
 
   private:
 	struct record {
@@ -77,6 +58,8 @@ class registry2 {
 };
 
 // impl
+
+inline registry2::registry2() noexcept : m_id(++s_next_id) {}
 
 template <typename... Types>
 entity registry2::make_entity() {
@@ -142,13 +125,22 @@ T& registry2::get(entity e) const {
 	return *ret;
 }
 
-template <typename... Types>
-std::vector<component_view<Types...>> registry2::view() const {
-	std::vector<component_view<Types...>> ret;
-	for (auto const& [_, archetype] : m_map.m_map) {
-		if ((archetype.find<Types>() && ...)) { ret.push_back(&archetype); }
+template <typename... Types, typename... Exclude>
+std::vector<array_view<Types...>> registry2::view(exclude<Exclude...>) const {
+	std::vector<array_view<Types...>> ret;
+	for (auto const& [_, arch] : m_map.m_map) {
+		if ((arch.find<Types>() && ...) && !arch.has_any(exclude<Exclude...>::signs)) { ret.push_back(&arch); }
 	}
 	return ret;
+}
+
+inline registry2::record& registry2::get_or_make(entity e) {
+	auto it = m_records.find(e);
+	if (it == m_records.end()) {
+		auto [i, _] = m_records.emplace(e, record{});
+		it = i;
+	}
+	return it->second;
 }
 
 template <typename T>
@@ -159,6 +151,23 @@ void registry2::emplace_back(record& r, detail::archetype& arch) {
 	vec.emplace_back();
 }
 
+inline void registry2::migrate(record& out_record, detail::archetype& out_arch) {
+	send_to_back(out_record);
+	[[maybe_unused]] auto popped = out_record.arch->migrate_back(out_arch);
+	assert(&m_records[popped] == &out_record);
+	out_record.arch = &out_arch;
+	// record.index = out_arch.size(); must be done by caller
+}
+
+inline void registry2::send_to_back(record& r) {
+	if (!r.arch->is_last(r.index)) {
+		// swap with last
+		entity displaced = r.arch->swap_back(r.index);
+		// reindex displaced
+		assert(m_records[displaced].arch == r.arch);
+		m_records[displaced].index = r.index;
+	}
+}
 template <typename T>
 bool registry2::do_detach(entity e) {
 	if (e.registry_id != m_id) { return false; }

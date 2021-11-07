@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <tuple>
 
 namespace decf {
 struct entity {
@@ -14,7 +13,4 @@ struct entity {
 		std::size_t operator()(entity const& e) const noexcept { return e.id ^ (e.registry_id << 8); }
 	};
 };
-
-template <typename... Types>
-using view_t = std::tuple<Types&...>;
 } // namespace decf

@@ -1,8 +1,13 @@
 #pragma once
+#include <tuple>
 #include <dumb_ecf/detail/tarray.hpp>
 #include <dumb_ecf/entity.hpp>
 
-namespace decf::detail {
+namespace decf {
+template <typename... Types>
+using slice_t = std::tuple<Types&...>;
+
+namespace detail {
 class archetype {
   public:
 	struct id_t {
@@ -53,6 +58,13 @@ class archetype {
 		return {};
 	}
 
+	bool has_any(std::span<sign_t const> signs) const noexcept {
+		for (auto const sign : signs) {
+			if (find_base(sign)) { return true; }
+		}
+		return false;
+	}
+
 	template <typename T>
 	tarray<T>* find() const noexcept {
 		if (auto ret = find_base(sign_t::make<T>())) { return static_cast<tarray<T>*>(ret); }
@@ -67,14 +79,14 @@ class archetype {
 	}
 
 	template <typename... Types>
-	view_t<Types...> view(std::size_t index) const {
+	slice_t<Types...> at(std::size_t index) const {
 		return std::tie(get<Types>().m_storage.at(index)...);
 	}
 
 	template <typename... Types>
-	view_t<Types...> push_array(Types&&... args) {
+	slice_t<Types...> push_array(Types&&... args) {
 		(get<Types>().m_storage.push_back(std::forward<Types>(args)), ...);
-		return view<Types...>(size() - 1);
+		return at<Types...>(size() - 1);
 	}
 
 	bool is_last(std::size_t index) const noexcept { return index + 1 == size(); }
@@ -166,4 +178,5 @@ class archetype_map {
 	storage_map m_map;
 	tarray_factory m_factory;
 };
-} // namespace decf::detail
+} // namespace detail
+} // namespace decf

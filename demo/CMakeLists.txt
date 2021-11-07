@@ -12,5 +12,3 @@ target_link_libraries(${PROJECT_NAME} levk::demo::lib levk::interface::exe)
 if(WINDOWS_MSBUILD)
 	set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 endif()
-
-target_sources(${PROJECT_NAME} PRIVATE dumb_ecf/src/registry2.cpp)

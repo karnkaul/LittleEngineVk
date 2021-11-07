@@ -28,6 +28,9 @@ int main(int argc, char const* const argv[]) {
 	for (auto view : r.view<int, float>()) {
 		for (std::size_t i = 0; i < view.size(); ++i) { le::logD("int: {}, float: {}", std::get<int&>(view[i]), std::get<float&>(view[i])); }
 	}
+	for (auto view : r.view<int>(decf::exclude<std::string>{})) {
+		for (std::size_t i = 0; i < view.size(); ++i) { le::logD("int: {}", std::get<int&>(view[i])); }
+	}
 	le::logD("{}", r.get<std::string>(e4));
 	bool b = r.detach<float>(e3);
 	float* f = r.find<float>(e3);

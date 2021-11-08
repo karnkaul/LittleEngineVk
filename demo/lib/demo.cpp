@@ -5,7 +5,7 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/cameras/freecam.hpp>
-#include <engine/editor/controls/inspector.hpp>
+#include <engine/editor/palettes/inspector.hpp>
 #include <engine/engine.hpp>
 #include <engine/input/control.hpp>
 #include <engine/render/model.hpp>
@@ -640,8 +640,6 @@ class App : public input::Receiver, public SceneRegistry {
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
-		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
-
 		if (auto text = m_registry.find<PropProvider>(m_data.entities["text_2d/mesh"])) {
 			graphics::Geometry geom;
 			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->mesh.construct(std::move(geom)); }
@@ -687,17 +685,15 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		}
 		// draw
-		render();
+		if (m_eng->nextFrame(nullptr, {m_registry, root(), m_data.camera})) { render(); }
 		m_tasks.rethrow();
 	}
 
-	void render() {
-		if (m_eng->nextFrame()) {
-			// write / update
-			if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
-			// draw
-			m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
-		}
+	void render() const {
+		// write / update
+		if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
+		// draw
+		m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 	}
 
 	scheduler& sched() { return m_tasks; }
@@ -726,7 +722,7 @@ class App : public input::Receiver, public SceneRegistry {
 	scheduler m_tasks;
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
-	Drawer m_drawer;
+	mutable Drawer m_drawer;
 	Collision::ID m_colID0{}, m_colID1{};
 	Collision::OnCollide::handle m_onCollide;
 

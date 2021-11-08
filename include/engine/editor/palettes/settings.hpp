@@ -1,8 +1,8 @@
 #pragma once
-#include <engine/editor/widget.hpp>
+#include <engine/editor/palette.hpp>
 
 namespace le::edi {
-class Settings : public Control {
+class Settings : public Palette {
   public:
 	void update() override;
 };

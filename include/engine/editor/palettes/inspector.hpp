@@ -1,10 +1,10 @@
 #pragma once
 #include <core/services.hpp>
 #include <engine/editor/gadget.hpp>
-#include <engine/editor/widget.hpp>
+#include <engine/editor/palette.hpp>
 
 namespace le::edi {
-class Inspector : public Control {
+class Inspector : public Palette {
   public:
 	void update() override;
 

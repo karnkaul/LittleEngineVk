@@ -1,9 +1,9 @@
-#include <engine/editor/palette.hpp>
+#include <engine/editor/palette_tab.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 #include <algorithm>
 
 namespace le::edi {
-bool Palette::detach(std::string_view id) {
+bool PaletteTab::detach(std::string_view id) {
 	if (auto it = std::find_if(m_items.begin(), m_items.end(), [&id](Entry const& e) { return e.id == id; }); it != m_items.end()) {
 		m_items.erase(it);
 		return true;
@@ -11,7 +11,10 @@ bool Palette::detach(std::string_view id) {
 	return false;
 }
 
-bool Palette::update([[maybe_unused]] std::string_view id, [[maybe_unused]] glm::vec2 size, [[maybe_unused]] glm::vec2 pos) {
+#define MU [[maybe_unused]]
+using namespace dens;
+
+bool PaletteTab::update(MU std::string_view id, MU glm::vec2 size, MU glm::vec2 pos, MU SceneRef scene) {
 	bool ret = false;
 #if defined(LEVK_USE_IMGUI)
 	if (size.x < s_minSize.x || size.y < s_minSize.y) { return false; }
@@ -23,7 +26,7 @@ bool Palette::update([[maybe_unused]] std::string_view id, [[maybe_unused]] glm:
 	if ((ret = ImGui::Begin(id.data(), nullptr, flags)); !m_items.empty()) {
 		if (auto tab = TabBar(id)) {
 			for (auto& item : m_items) {
-				if (auto it = TabBar::Item(item.id)) { item.control->update(); }
+				if (auto it = TabBar::Item(item.id)) { item.palette->doUpdate(scene); }
 			}
 		}
 	}

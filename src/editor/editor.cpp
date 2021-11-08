@@ -1,12 +1,11 @@
 #include <core/maths.hpp>
 #include <core/services.hpp>
-#include <engine/editor/controls/inspector.hpp>
-#include <engine/editor/controls/scene_tree.hpp>
-#include <engine/editor/controls/settings.hpp>
 #include <engine/editor/editor.hpp>
+#include <engine/editor/palettes/inspector.hpp>
+#include <engine/editor/palettes/scene_tree.hpp>
+#include <engine/editor/palettes/settings.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/engine.hpp>
-#include <engine/scene/scene_registry.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
@@ -331,9 +330,9 @@ void displayScale(MU f32 renderScale) {
 } // namespace edi
 
 Editor::Editor() {
-	m_left.panel.attach<edi::SceneTree>("Scene");
-	m_left.panel.attach<edi::Settings>("Settings");
-	m_inspector = &m_right.panel.attach<edi::Inspector>("Inspector");
+	m_left.tab.attach<edi::SceneTree>("Scene");
+	m_left.tab.attach<edi::Settings>("Settings");
+	m_inspector = &m_right.tab.attach<edi::Inspector>("Inspector");
 }
 
 bool Editor::active() const noexcept {
@@ -346,10 +345,12 @@ Viewport const& Editor::view() const noexcept {
 	return active() && engaged() ? m_storage.gameView : s_default;
 }
 
-graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) {
+graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU input::Frame const& frame) {
 #if defined(LEVK_EDITOR)
-	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
 	if (active() && engaged()) {
+		if (!scene.valid() || m_cache.prev != scene.m_registry) { m_cache = {}; }
+		m_cache.prev = scene.m_registry;
+		scene.m_inspect = &m_cache.inspect;
 		auto eng = Services::get<Engine>();
 		edi::displayScale(eng->renderer().renderScale());
 		if (!edi::Pane::s_blockResize) { m_storage.resizer(eng->window(), m_storage.gameView, frame); }
@@ -362,10 +363,8 @@ graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) 
 		glm::vec2 const leftPanelSize = {rect.lt.x * size.x, size.y - logHeight - offsetY};
 		glm::vec2 const rightPanelSize = {size.x - rect.rb.x * size.x, size.y - logHeight - offsetY};
 		m_storage.logStats(size, logHeight);
-		m_left.panel.update(m_left.id, leftPanelSize, {0.0f, offsetY});
-		m_right.panel.update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
-		m_storage.cached = std::move(m_in);
-		m_in = {};
+		m_left.tab.update(m_left.id, leftPanelSize, {0.0f, offsetY}, scene);
+		m_right.tab.update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY}, scene);
 		return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 	}
 #endif

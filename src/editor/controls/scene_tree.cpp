@@ -2,11 +2,11 @@
 #include <core/services.hpp>
 #include <core/utils/enumerate.hpp>
 #include <core/utils/string.hpp>
-#include <engine/editor/controls/scene_tree.hpp>
 #include <engine/editor/editor.hpp>
+#include <engine/editor/palettes/scene_tree.hpp>
 #include <engine/engine.hpp>
+#include <engine/gui/view.hpp>
 #include <engine/gui/widgets/dropdown.hpp>
-#include <engine/scene/scene_registry.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
@@ -109,22 +109,22 @@ void walk(dens::entity_view<gui::ViewStack> stack, InspectVerifier& iv, dens::re
 
 void SceneTree::update() {
 #if defined(LEVK_USE_IMGUI)
-	auto& editor = Services::get<Engine>()->editor();
-	if (editor.m_in.registry) {
-		auto& reg = *editor.m_in.registry;
-		InspectVerifier iv(editor.m_out.inspecting);
-		if (auto root = reg.registry().find<SceneNode>(reg.root())) {
+	if (hasScene()) {
+		auto& editor = Services::get<Engine>()->editor();
+		auto& reg = scene().registry();
+		InspectVerifier iv(*scene().m_inspect);
+		if (auto root = reg.find<SceneNode>(scene().root())) {
 			for (auto node : root->nodes()) {
-				if (auto n = reg.registry().find<SceneNode>(node)) { walk(*n, iv, reg.registry(), editor); }
+				if (auto n = reg.find<SceneNode>(node)) { walk(*n, iv, reg, editor); }
 			}
 		}
-		for (auto query : reg.registry().view<gui::ViewStack>()) { walk(query, iv, reg.registry(), editor); }
-		if (!editor.m_in.customEntities.empty()) {
+		for (auto query : reg.view<gui::ViewStack>()) { walk(query, iv, reg, editor); }
+		if (!scene().custom().empty()) {
 			auto const tn = makeNode("[Custom]", false, false);
 			if (tn.test(GUI::eOpen)) {
-				for (auto const& entity : editor.m_in.customEntities) {
-					if (entity != dens::entity() && reg.registry().contains(entity)) {
-						auto tn = makeNode(reg.registry().name(entity), iv(entity), true);
+				for (auto entity : scene().custom()) {
+					if (entity != dens::entity() && reg.contains(entity)) {
+						auto tn = makeNode(reg.name(entity), iv(entity), true);
 						inspect(iv, tn, entity);
 					}
 				}

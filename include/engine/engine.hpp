@@ -77,7 +77,7 @@ class Engine {
 	void update(gui::ViewStack& out_stack);
 
 	bool drawReady();
-	bool nextFrame(graphics::RenderTarget* out = {});
+	bool nextFrame(graphics::RenderTarget* out = {}, edi::SceneRef scene = {});
 	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>

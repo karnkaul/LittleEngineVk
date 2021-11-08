@@ -1,8 +1,7 @@
 #include <core/services.hpp>
-#include <engine/editor/controls/settings.hpp>
 #include <engine/editor/editor.hpp>
+#include <engine/editor/palettes/settings.hpp>
 #include <engine/engine.hpp>
-#include <engine/scene/scene_registry.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
 
 namespace le::edi {

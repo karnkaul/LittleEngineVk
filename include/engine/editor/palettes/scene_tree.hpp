@@ -1,8 +1,8 @@
 #pragma once
-#include <engine/editor/widget.hpp>
+#include <engine/editor/palette.hpp>
 
 namespace le::edi {
-class SceneTree : public Control {
+class SceneTree : public Palette {
   public:
 	void update() override;
 };

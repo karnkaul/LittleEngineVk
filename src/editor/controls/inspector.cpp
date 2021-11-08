@@ -1,10 +1,11 @@
 #include <core/services.hpp>
 #include <core/utils/algo.hpp>
 #include <engine/cameras/freecam.hpp>
-#include <engine/editor/controls/inspector.hpp>
+#include <engine/editor/palettes/inspector.hpp>
 #include <engine/engine.hpp>
+#include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
-#include <engine/scene/scene_registry.hpp>
+#include <engine/scene/drawable.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
@@ -61,26 +62,25 @@ void shouldDraw(dens::entity e, dens::registry& r, bool set) {
 
 void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
-	auto& editor = Services::get<Engine>()->editor();
-	if (editor.m_in.registry) {
-		if (editor.m_out.inspecting.contains<dens::entity>()) {
-			if (auto entity = editor.m_out.inspecting.get<dens::entity>(); entity != dens::entity()) {
-				auto& registry = editor.m_in.registry->m_registry;
-				auto node = registry.find<SceneNode>(entity);
-				Text(registry.name(entity));
+	if (hasScene()) {
+		if (scene().m_inspect->contains<dens::entity>()) {
+			if (auto entity = scene().m_inspect->get<dens::entity>(); entity != dens::entity()) {
+				auto& reg = *scene().m_registry;
+				auto node = reg.find<SceneNode>(entity);
+				Text(reg.name(entity));
 				TWidgetWrap<bool> draw;
-				if (draw(shouldDraw(entity, registry), "Draw", draw.out)) { shouldDraw(entity, registry, draw.out); }
+				if (draw(shouldDraw(entity, reg), "Draw", draw.out)) { shouldDraw(entity, reg, draw.out); }
 				Styler s{Style::eSeparator};
 				if (node) {
 					Transform{}(*node);
 					s();
 				}
 				for (auto& gadget : m_gadgets) {
-					if ((*gadget)(entity, registry)) { s(); }
+					if ((*gadget)(entity, reg)) { s(); }
 				}
 			}
 		} else {
-			auto tr = editor.m_out.inspecting.get<gui::TreeRoot*>();
+			auto tr = scene().m_inspect->get<gui::TreeRoot*>();
 			Text txt("GUI");
 			GuiRect{}(tr->m_rect);
 			if (auto view = dynamic_cast<gui::View*>(tr)) {

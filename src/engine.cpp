@@ -110,7 +110,7 @@ bool Engine::drawReady() {
 	return false;
 }
 
-bool Engine::nextFrame(graphics::RenderTarget* out) {
+bool Engine::nextFrame(graphics::RenderTarget* out, edi::SceneRef scene) {
 	auto pr_ = m_profiler.profile("eng::nextFrame");
 	if (bootReady() && !m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
 		if (auto ret = m_gfx->context.beginFrame()) {
@@ -118,7 +118,7 @@ bool Engine::nextFrame(graphics::RenderTarget* out) {
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
 				ENSURE(b, "Failed to begin DearImGui frame");
-				m_view = m_editor.update(m_inputFrame);
+				m_view = m_editor.update(scene, m_inputFrame);
 			}
 			m_drawing = *ret;
 			if (out) { *out = *ret; }

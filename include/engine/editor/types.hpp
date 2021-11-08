@@ -6,6 +6,7 @@
 #include <core/utils/string.hpp>
 #include <dens/registry.hpp>
 #include <engine/scene/scene_node.hpp>
+#include <ktl/either.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/move_only_function.hpp>
 #include <ktl/n_tree.hpp>
@@ -19,7 +20,38 @@ constexpr bool levk_editor = true;
 constexpr bool levk_editor = false;
 #endif
 
+namespace le {
+class Editor;
+namespace gui {
+class TreeRoot;
+}
+} // namespace le
+
 namespace le::edi {
+using Inspect = ktl::either<dens::entity, gui::TreeRoot*>;
+
+class SceneRef {
+  public:
+	SceneRef() = default;
+	SceneRef(dens::registry& out_registry, dens::entity root, Span<dens::entity const> custom = {}) noexcept
+		: m_custom(custom), m_registry(&out_registry), m_root(root) {}
+
+	bool valid() const noexcept { return m_registry; }
+	dens::registry const& registry() const { return *m_registry; }
+	dens::entity root() const noexcept { return m_root; }
+	Span<dens::entity const> custom() const noexcept { return m_custom; }
+
+  private:
+	Span<dens::entity const> m_custom;
+	dens::registry* m_registry{};
+	dens::entity m_root{};
+	Inspect* m_inspect{};
+
+	friend class ::le::Editor;
+	friend class Inspector;
+	friend class SceneTree;
+};
+
 enum GUI { eOpen, eLeftClicked, eRightClicked };
 using GUIState = ktl::enum_flags<GUI, u8>;
 

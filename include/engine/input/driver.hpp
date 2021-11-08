@@ -1,7 +1,7 @@
 #pragma once
-#include <memory>
 #include <engine/input/frame.hpp>
 #include <window/event_queue.hpp>
+#include <memory>
 
 namespace le {
 struct Viewport;

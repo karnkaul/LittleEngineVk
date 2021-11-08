@@ -1,12 +1,12 @@
 #pragma once
-#include <optional>
-#include <string>
-#include <vector>
 #include <fmt/format.h>
 #include <core/erased_ptr.hpp>
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace le::os {
 enum class OS : s8 { eWindows, eLinux, eUnknown };

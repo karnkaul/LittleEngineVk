@@ -1,6 +1,6 @@
 #pragma once
-#include <vector>
 #include <core/utils/error.hpp>
+#include <vector>
 
 namespace le {
 template <typename T>

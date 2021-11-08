@@ -1,8 +1,8 @@
 #pragma once
+#include <core/not_null.hpp>
 #include <algorithm>
 #include <memory>
 #include <vector>
-#include <core/not_null.hpp>
 
 namespace le::utils {
 template <typename T, template <typename...> typename Cont = std::vector, typename... Ar>

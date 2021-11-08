@@ -1,10 +1,10 @@
 #pragma once
-#include <unordered_map>
 #include <core/codepoint.hpp>
 #include <core/maths.hpp>
 #include <core/span.hpp>
 #include <glm/vec2.hpp>
 #include <ktl/either.hpp>
+#include <unordered_map>
 
 namespace le::graphics {
 

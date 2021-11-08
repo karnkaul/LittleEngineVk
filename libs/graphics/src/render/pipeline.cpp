@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <core/maths.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
@@ -7,6 +6,7 @@
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
 #include <vulkan/vulkan.hpp>
+#include <algorithm>
 
 namespace le::graphics {
 namespace {

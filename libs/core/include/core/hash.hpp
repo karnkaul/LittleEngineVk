@@ -1,8 +1,8 @@
 #pragma once
-#include <functional>
-#include <type_traits>
 #include <core/std_types.hpp>
 #include <core/utils/std_hash.hpp>
+#include <functional>
+#include <type_traits>
 
 namespace le {
 template <typename T>

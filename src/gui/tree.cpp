@@ -1,7 +1,7 @@
-#include <algorithm>
 #include <engine/gui/tree.hpp>
 #include <engine/input/space.hpp>
 #include <engine/render/viewport.hpp>
+#include <algorithm>
 
 namespace le::gui {
 DrawScissor scissor(input::Space const& space, glm::vec2 centre, glm::vec2 halfSize, bool normalised) noexcept {

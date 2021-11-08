@@ -1,6 +1,6 @@
 #pragma once
 #include <core/time.hpp>
-#include <dumb_ecf/registry.hpp>
+#include <dens/entity.hpp>
 #include <engine/editor/palette.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/input/frame.hpp>
@@ -31,13 +31,13 @@ class Inspector;
 
 struct In {
 	static constexpr std::size_t max_custom = 16;
-	using custom_t = ktl::fixed_vector<decf::entity, max_custom>;
+	using custom_t = ktl::fixed_vector<dens::entity, max_custom>;
 
 	custom_t customEntities;
 	SceneRegistry* registry = {};
 };
 struct Out {
-	ktl::either<decf::entity, gui::TreeRoot*> inspecting;
+	ktl::either<dens::entity, gui::TreeRoot*> inspecting;
 };
 } // namespace edi
 

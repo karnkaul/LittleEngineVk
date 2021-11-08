@@ -1,6 +1,6 @@
-#include <algorithm>
 #include <engine/editor/palette.hpp>
 #include <levk_imgui/levk_imgui.hpp>
+#include <algorithm>
 
 namespace le::edi {
 bool Palette::detach(std::string_view id) {

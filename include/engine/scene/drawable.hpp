@@ -16,4 +16,6 @@ struct Drawable {
 	Rect2D scissor;
 	Span<Prop const> props;
 };
+
+struct NoDraw {};
 } // namespace le

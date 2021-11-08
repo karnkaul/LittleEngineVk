@@ -1,7 +1,7 @@
 #pragma once
+#include <core/std_types.hpp>
 #include <compare>
 #include <string>
-#include <core/std_types.hpp>
 
 #if defined(__linux__)
 #undef major

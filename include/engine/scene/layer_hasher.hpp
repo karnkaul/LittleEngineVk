@@ -1,6 +1,6 @@
 #pragma once
-#include <functional>
 #include <engine/scene/draw_layer.hpp>
+#include <functional>
 
 namespace le {
 struct LayerHasher {

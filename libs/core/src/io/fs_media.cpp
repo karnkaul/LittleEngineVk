@@ -1,7 +1,7 @@
-#include <fstream>
 #include <core/io/fs_media.hpp>
 #include <core/log.hpp>
 #include <core/utils/string.hpp>
+#include <fstream>
 
 namespace le::io {
 std::optional<Path> FSMedia::findUpwards(Path const& leaf, Span<Path const> anyOf, u8 maxHeight) {

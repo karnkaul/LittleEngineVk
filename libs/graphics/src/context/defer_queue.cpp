@@ -1,8 +1,8 @@
-#include <algorithm>
 #include <core/ref.hpp>
 #include <core/span.hpp>
 #include <core/utils/algo.hpp>
 #include <graphics/context/defer_queue.hpp>
+#include <algorithm>
 
 namespace le::graphics {
 void DeferQueue::defer(Callback const& callback, Buffering defer) {

@@ -1,8 +1,8 @@
+#include <core/fixed.hpp>
 #include <array>
 #include <cmath>
 #include <iostream>
 #include <string>
-#include <core/fixed.hpp>
 
 namespace le {
 u32 Fixed::toU32() const {

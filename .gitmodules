@@ -15,9 +15,6 @@
 [submodule "libs/dtasks"]
 	path = libs/dtasks
 	url = https://github.com/karnkaul/dtasks
-[submodule "libs/decf"]
-	path = libs/decf
-	url = https://github.com/karnkaul/decf
 [submodule "docs/doxygen_dark_theme"]
 	path = docs/doxygen_dark_theme
 	url = https://github.com/MaJerle/doxygen-dark-theme
@@ -36,3 +33,6 @@
 	path = ext/dear_imgui/src
 	url = https://github.com/ocornut/imgui
 	shallow = true
+[submodule "libs/dens"]
+	path = libs/dens
+	url = https://github.com/karnkaul/dens

@@ -1,6 +1,6 @@
 #pragma once
-#include <ostream>
 #include <core/std_types.hpp>
+#include <ostream>
 
 namespace le {
 ///

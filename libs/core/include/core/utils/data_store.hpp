@@ -1,8 +1,8 @@
 #pragma once
+#include <core/hash.hpp>
 #include <memory>
 #include <typeinfo>
 #include <unordered_map>
-#include <core/hash.hpp>
 
 namespace le {
 ///

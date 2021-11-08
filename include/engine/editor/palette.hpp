@@ -1,8 +1,8 @@
 #pragma once
-#include <memory>
-#include <vector>
 #include <engine/editor/types.hpp>
 #include <engine/editor/widget.hpp>
+#include <memory>
+#include <vector>
 
 namespace le::edi {
 class Palette {

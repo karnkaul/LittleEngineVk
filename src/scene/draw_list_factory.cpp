@@ -1,5 +1,5 @@
 #include <core/services.hpp>
-#include <dumb_ecf/registry.hpp>
+#include <dens/registry.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/gui/view.hpp>
@@ -15,21 +15,22 @@ namespace {
 Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
 } // namespace
 
-void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
-	for (auto [_, c] : registry.view<DrawLayer, SceneNode, Prop>()) {
+void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const {
+	static constexpr auto exclude = dens::exclude<NoDraw>();
+	for (auto [_, c] : registry.view<DrawLayer, SceneNode, Prop>(exclude)) {
 		auto& [layer, node, prop] = c;
-		if (prop.mesh && layer.pipeline) { map[layer].push_back({node.model(), {}, prop}); }
+		if (prop.mesh && layer.pipeline) { map[layer].push_back({node.model(registry), {}, prop}); }
 	}
-	for (auto [_, c] : registry.view<DrawLayer, SceneNode, PropProvider>()) {
+	for (auto [_, c] : registry.view<DrawLayer, SceneNode, PropProvider>(exclude)) {
 		auto& [layer, node, provider] = c;
 		auto props = provider.props();
-		if (!props.empty() && layer.pipeline) { map[layer].push_back({node.model(), {}, props}); }
+		if (!props.empty() && layer.pipeline) { map[layer].push_back({node.model(registry), {}, props}); }
 	}
-	for (auto [_, c] : registry.view<DrawLayer, Skybox>()) {
+	for (auto [_, c] : registry.view<DrawLayer, Skybox>(exclude)) {
 		auto& [layer, skybox] = c;
 		if (layer.pipeline) { map[layer].push_back({glm::mat4(1.0f), {}, skybox.prop()}); }
 	}
-	for (auto [_, c] : registry.view<DrawLayer, Collision>()) {
+	for (auto [_, c] : registry.view<DrawLayer, Collision>(exclude)) {
 		auto& [layer, collision] = c;
 		if (layer.pipeline) {
 			if (auto drawables = collision.drawables(); !drawables.empty()) { std::move(drawables.begin(), drawables.end(), std::back_inserter(map[layer])); }
@@ -37,7 +38,7 @@ void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, decf::registry co
 	}
 }
 
-void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const {
+void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const {
 	for (auto& [_, c] : registry.view<DrawLayer, gui::ViewStack>()) {
 		auto& [gr, stack] = c;
 		for (auto const& view : stack.views()) { DrawListFactory::add(map, gr, *view); }

@@ -1,10 +1,10 @@
-#include <cstring>
-#include <memory>
-#include <string>
 #include <core/maths.hpp>
 #include <core/std_types.hpp>
 #include <dumb_test/dtest.hpp>
 #include <ktl/fixed_any.hpp>
+#include <cstring>
+#include <memory>
+#include <string>
 
 namespace {
 using namespace le;

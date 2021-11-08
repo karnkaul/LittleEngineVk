@@ -1,14 +1,14 @@
 #pragma once
-#include <memory>
-#include <stdexcept>
-#include <typeinfo>
-#include <unordered_map>
 #include <core/log.hpp>
 #include <core/utils/algo.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/assets/asset_loader.hpp>
 #include <engine/utils/logger.hpp>
 #include <ktl/shared_tmutex.hpp>
+#include <memory>
+#include <stdexcept>
+#include <typeinfo>
+#include <unordered_map>
 
 namespace le {
 namespace detail {

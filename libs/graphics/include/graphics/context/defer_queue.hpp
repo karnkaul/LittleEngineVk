@@ -1,9 +1,9 @@
 #pragma once
-#include <functional>
-#include <vector>
 #include <core/std_types.hpp>
 #include <graphics/render/buffering.hpp>
 #include <ktl/tmutex.hpp>
+#include <functional>
+#include <vector>
 
 namespace le::graphics {
 class DeferQueue : public Pinned {

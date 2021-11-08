@@ -1,9 +1,9 @@
 #pragma once
+#include <core/std_types.hpp>
+#include <ktl/fixed_vector.hpp>
 #include <sstream>
 #include <string_view>
 #include <type_traits>
-#include <core/std_types.hpp>
-#include <ktl/fixed_vector.hpp>
 
 namespace le::utils {
 ///

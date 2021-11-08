@@ -1,5 +1,5 @@
-#include <algorithm>
 #include <graphics/render/command_pool.hpp>
+#include <algorithm>
 
 namespace le::graphics {
 CommandPool::CommandPool(not_null<Device*> device, vk::CommandPoolCreateFlags flags, QType qtype) : m_qtype(qtype), m_device(device) {

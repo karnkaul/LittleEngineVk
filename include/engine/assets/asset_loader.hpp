@@ -1,9 +1,9 @@
 #pragma once
-#include <memory>
-#include <vector>
 #include <core/utils/algo.hpp>
 #include <engine/assets/resources.hpp>
 #include <ktl/delegate.hpp>
+#include <memory>
+#include <vector>
 
 namespace le {
 class AssetStore;

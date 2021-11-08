@@ -1,6 +1,6 @@
 #pragma once
-#include <optional>
 #include <core/std_types.hpp>
+#include <optional>
 
 namespace le::gui {
 enum class InteractStatus { eIdle, eInactive, eHover, ePress, eHold, eRelease, eCOUNT_ };

@@ -1,9 +1,9 @@
 #pragma once
-#include <memory>
 #include <core/log.hpp>
 #include <core/span.hpp>
 #include <graphics/context/physical_device.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <memory>
 
 namespace le::graphics {
 enum class Validation { eOn, eOff };

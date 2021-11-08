@@ -1,5 +1,4 @@
 #pragma once
-#include <unordered_map>
 #include <engine/assets/asset_loader.hpp>
 #include <engine/render/bitmap_font.hpp>
 #include <engine/render/model.hpp>
@@ -7,6 +6,7 @@
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <unordered_map>
 
 namespace le {
 template <>

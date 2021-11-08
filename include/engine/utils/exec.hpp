@@ -1,7 +1,7 @@
 #pragma once
+#include <core/span.hpp>
 #include <functional>
 #include <string>
-#include <core/span.hpp>
 
 namespace le::utils {
 struct Exec {

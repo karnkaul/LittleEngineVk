@@ -1,9 +1,9 @@
 #pragma once
-#include <optional>
-#include <string>
 #include <engine/scene/prop.hpp>
 #include <graphics/glyph.hpp>
 #include <graphics/mesh.hpp>
+#include <optional>
+#include <string>
 
 namespace le {
 namespace graphics {

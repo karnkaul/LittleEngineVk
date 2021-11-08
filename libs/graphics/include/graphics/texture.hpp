@@ -1,11 +1,11 @@
 #pragma once
-#include <variant>
 #include <core/colour.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <variant>
 
 namespace le::graphics {
 class Sampler {

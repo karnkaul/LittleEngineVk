@@ -1,9 +1,9 @@
 #pragma once
+#include <core/maths.hpp>
+#include <core/time.hpp>
 #include <algorithm>
 #include <numbers>
 #include <type_traits>
-#include <core/maths.hpp>
-#include <core/time.hpp>
 
 namespace le::utils {
 struct TweenLerp {

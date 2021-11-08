@@ -46,6 +46,16 @@ struct GuiNode {
 		TWidget<glm::quat> orn("Orient", node.m_orientation);
 	}
 };
+
+bool shouldDraw(dens::entity e, dens::registry const& r) { return !r.attached<NoDraw>(e); }
+
+void shouldDraw(dens::entity e, dens::registry& r, bool set) {
+	if (set) {
+		r.detach<NoDraw>(e);
+	} else {
+		r.attach<NoDraw>(e);
+	}
+}
 } // namespace
 #endif
 
@@ -53,13 +63,13 @@ void Inspector::update() {
 #if defined(LEVK_USE_IMGUI)
 	auto& editor = Services::get<Engine>()->editor();
 	if (editor.m_in.registry) {
-		if (editor.m_out.inspecting.contains<decf::entity>()) {
-			if (auto entity = editor.m_out.inspecting.get<decf::entity>(); entity != decf::entity()) {
-				auto& registry = editor.m_in.registry->registry();
+		if (editor.m_out.inspecting.contains<dens::entity>()) {
+			if (auto entity = editor.m_out.inspecting.get<dens::entity>(); entity != dens::entity()) {
+				auto& registry = editor.m_in.registry->m_registry;
 				auto node = registry.find<SceneNode>(entity);
 				Text(registry.name(entity));
-				TWidgetWrap<bool> enb;
-				if (enb(registry.enabled(entity), "Enabled", enb.out)) { registry.enable(entity, enb.out); }
+				TWidgetWrap<bool> draw;
+				if (draw(shouldDraw(entity, registry), "Draw", draw.out)) { shouldDraw(entity, registry, draw.out); }
 				Styler s{Style::eSeparator};
 				if (node) {
 					Transform{}(*node);

@@ -1,13 +1,13 @@
 #pragma once
-#include <unordered_map>
 #include <core/not_null.hpp>
 #include <engine/scene/draw_list.hpp>
 #include <engine/scene/layer_hasher.hpp>
+#include <unordered_map>
 
-namespace decf {
-class entity;
+namespace dens {
+struct entity;
 class registry;
-} // namespace decf
+} // namespace dens
 
 namespace le {
 namespace gui {
@@ -23,23 +23,23 @@ class DrawListFactory {
 	static void add(LayerMap& map, DrawLayer const& layer, gui::TreeRoot const& root);
 
 	template <typename... Gen>
-	static std::vector<DrawList> lists(decf::registry const& registry, bool sort);
+	static std::vector<DrawList> lists(dens::registry const& registry, bool sort);
 };
 
 struct DrawListGen3D {
 	// Populates DrawLayer + SceneNode + Prop, DrawLayer + SceneNode + PropProvider, DrawLayer + Skybox
-	void operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const;
+	void operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const;
 };
 
 struct DrawListGenUI {
 	// Populates DrawLayer + gui::ViewStack
-	void operator()(DrawListFactory::LayerMap& map, decf::registry const& registry) const;
+	void operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const;
 };
 
 // impl
 
 template <typename... Gen>
-std::vector<DrawList> DrawListFactory::lists(decf::registry const& registry, bool sort) {
+std::vector<DrawList> DrawListFactory::lists(dens::registry const& registry, bool sort) {
 	LayerMap map;
 	(Gen{}(map, registry), ...);
 	std::vector<DrawList> ret;

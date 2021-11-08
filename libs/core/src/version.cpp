@@ -1,9 +1,9 @@
-#include <sstream>
-#include <string>
-#include <vector>
 #include <core/span.hpp>
 #include <core/utils/string.hpp>
 #include <core/version.hpp>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace le {
 namespace {

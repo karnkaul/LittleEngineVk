@@ -1,9 +1,9 @@
 #pragma once
-#include <memory>
-#include <optional>
 #include <core/lib_logger.hpp>
 #include <core/std_types.hpp>
 #include <window/event_queue.hpp>
+#include <memory>
+#include <optional>
 
 namespace le::window {
 struct CreateInfo;

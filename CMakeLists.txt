@@ -17,6 +17,7 @@ set(is_root_project OFF)	# indicate if this is the top-level project
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   set(is_root_project ON)
   message(STATUS "${PROJECT_NAME} is top level")
+  set(LEVK_CONFIGURE_CI_SCRIPTS ON)
 endif()
 
 # includes
@@ -201,7 +202,8 @@ else()
 endif()
 
 # libraries
-if(is_root_project AND NOT CI_BUILD)
+if(NOT "${CI_BUILD}" AND "${LEVK_CONFIGURE_CI_SCRIPTS}")
+  message(STATUS "Configuring ${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in")
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
   # configure_file("${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml.fallback.in" "${CMAKE_CURRENT_SOURCE_DIR}/.appveyor.yml")
 endif()

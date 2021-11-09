@@ -9,7 +9,7 @@
 #include <engine/input/driver.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/input/receiver.hpp>
-#include <engine/scene/scene_space.hpp>
+#include <engine/scene/space.hpp>
 #include <engine/utils/engine_stats.hpp>
 #include <engine/utils/error_handler.hpp>
 #include <graphics/context/bootstrap.hpp>
@@ -106,7 +106,7 @@ class Engine {
 	Window const& window() const;
 	bool closing() const { return window().closing(); }
 
-	SceneSpace m_space;
+	scene::Space m_space;
 	io::Path m_configPath = "config.json";
 
   private:

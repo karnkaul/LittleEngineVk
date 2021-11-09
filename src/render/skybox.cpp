@@ -1,6 +1,6 @@
 #include <core/services.hpp>
 #include <engine/engine.hpp>
-#include <engine/scene/skybox.hpp>
+#include <engine/render/skybox.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/texture.hpp>
 

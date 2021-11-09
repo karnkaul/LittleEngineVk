@@ -1,5 +1,5 @@
 #pragma once
-#include <engine/scene/prop.hpp>
+#include <engine/render/prop.hpp>
 #include <graphics/glyph.hpp>
 #include <graphics/mesh.hpp>
 #include <optional>

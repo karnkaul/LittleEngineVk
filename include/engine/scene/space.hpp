@@ -1,8 +1,8 @@
 #pragma once
 #include <engine/input/space.hpp>
 
-namespace le {
-struct SceneSpace {
+namespace le::scene {
+struct Space {
 	enum class Type { eSwapchain, eRenderer, eCustom };
 
 	glm::vec2 custom{};
@@ -14,4 +14,4 @@ struct SceneSpace {
 		return space.display.swapchain;
 	}
 };
-} // namespace le
+} // namespace le::scene

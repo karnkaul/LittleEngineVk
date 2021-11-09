@@ -5,13 +5,14 @@
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
-#include <engine/scene/drawable.hpp>
+#include <engine/render/draw_layer.hpp>
+#include <engine/render/drawable.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
-struct Transform {
-	void operator()(SceneNode& node) const { TWidget<SceneNode> tr("Pos", "Orn", "Scl", node); }
+struct TransformWidget {
+	void operator()(Transform& transform) const { TWidget<Transform> tr("Pos", "Orn", "Scl", transform); }
 };
 
 struct GuiRect {
@@ -66,13 +67,14 @@ void Inspector::update() {
 		if (scene().m_inspect->contains<dens::entity>()) {
 			if (auto entity = scene().m_inspect->get<dens::entity>(); entity != dens::entity()) {
 				auto& reg = *scene().m_registry;
-				auto node = reg.find<SceneNode>(entity);
 				Text(reg.name(entity));
-				TWidgetWrap<bool> draw;
-				if (draw(shouldDraw(entity, reg), "Draw", draw.out)) { shouldDraw(entity, reg, draw.out); }
+				if (reg.attached<DrawLayer>(entity)) {
+					TWidgetWrap<bool> draw;
+					if (draw(shouldDraw(entity, reg), "Draw", draw.out)) { shouldDraw(entity, reg, draw.out); }
+				}
 				Styler s{Style::eSeparator};
-				if (node) {
-					Transform{}(*node);
+				if (auto transform = reg.find<Transform>(entity)) {
+					TransformWidget{}(*transform);
 					s();
 				}
 				for (auto& gadget : m_gadgets) {

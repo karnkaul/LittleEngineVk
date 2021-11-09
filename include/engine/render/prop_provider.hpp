@@ -3,7 +3,7 @@
 #include <core/services.hpp>
 #include <core/span.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <engine/scene/prop.hpp>
+#include <engine/render/prop.hpp>
 #include <concepts>
 
 namespace le {

@@ -294,7 +294,7 @@ TWidget<glm::quat>::TWidget(MU sv id, MU glm::quat& out_quat, MU f32 dq) {
 #endif
 }
 
-TWidget<SceneNode>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU SceneNode& out_t, MU glm::vec3 const& dPOS) {
+TWidget<Transform>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU Transform& out_t, MU glm::vec3 const& dPOS) {
 #if defined(LEVK_USE_IMGUI)
 	auto posn = out_t.position();
 	auto scl = out_t.scale();

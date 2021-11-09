@@ -1,6 +1,6 @@
 #pragma once
 #include <core/span.hpp>
-#include <engine/scene/prop.hpp>
+#include <engine/render/prop.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 

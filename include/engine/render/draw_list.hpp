@@ -1,7 +1,7 @@
 #pragma once
 #include <core/hash.hpp>
-#include <engine/scene/draw_layer.hpp>
-#include <engine/scene/drawable.hpp>
+#include <engine/render/draw_layer.hpp>
+#include <engine/render/drawable.hpp>
 #include <vector>
 
 namespace le {

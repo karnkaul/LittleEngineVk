@@ -21,7 +21,9 @@
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
-#include <engine/scene/list_drawer.hpp>
+#include <engine/render/list_drawer.hpp>
+#include <engine/render/skybox.hpp>
+#include <engine/scene/draw_list_gen.hpp>
 #include <engine/scene/scene_registry.hpp>
 #include <engine/utils/exec.hpp>
 
@@ -35,7 +37,7 @@
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
 #include <engine/physics/collision.hpp>
-#include <engine/scene/prop_provider.hpp>
+#include <engine/render/prop_provider.hpp>
 #include <ktl/async.hpp>
 #include <fstream>
 
@@ -153,7 +155,7 @@ struct PlayerController {
 	f32 maxSpeed = 10.0f;
 	bool active = true;
 
-	void tick(input::State const& state, SceneNode& node, Time_s dt) noexcept {
+	void tick(input::State const& state, Transform& transform, Time_s dt) noexcept {
 		input::Range r(input::KeyRange{input::Key::eA, input::Key::eD});
 		roll = r(state);
 		if (maths::abs(roll) < 0.25f) {
@@ -171,9 +173,9 @@ struct PlayerController {
 		speed = std::clamp(speed + dspeed * 0.03f, -maxSpeed, maxSpeed);
 		glm::quat const orient = glm::rotate(graphics::identity, -roll * maxRoll, graphics::front);
 		target = glm::slerp(target, orient, dt.count() * 10);
-		node.orient(target);
-		glm::vec3 const dpos = roll * graphics::right + speed * (node.orientation() * -graphics::front);
-		node.position(node.position() + 10.0f * dpos * dt.count());
+		transform.orient(target);
+		glm::vec3 const dpos = roll * graphics::right + speed * (transform.orientation() * -graphics::front);
+		transform.position(transform.position() + 10.0f * dpos * dt.count());
 	}
 };
 
@@ -565,7 +567,7 @@ class App : public input::Receiver, public SceneRegistry {
 			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
 			auto player = spawnMesh("player", "meshes/cube", "layers/lit", mat);
-			m_registry.get<SceneNode>(player).position({0.0f, 0.0f, 5.0f});
+			m_registry.get<Transform>(player).position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
 			auto coll = collision.add({});
@@ -575,18 +577,18 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
-			m_registry.get<SceneNode>(ent).position({-5.0f, -1.0f, -2.0f});
+			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "layers/tex");
-			m_registry.get<SceneNode>(ent).position({1.0f, -2.0f, -3.0f});
+			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			Material mat;
 			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
-			m_registry.get<SceneNode>(ent).position({2.0f, 0.0f, 6.0f});
+			m_registry.get<Transform>(ent).position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text->prop(*font)); }
 		{
@@ -598,25 +600,25 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
-				m_registry.get<SceneNode>(ent0).position({-2.0f, -1.0f, 2.0f});
+				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
 				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "layers/lit");
-				auto& node = m_registry.get<SceneNode>(ent1);
+				auto& node = m_registry.get<Transform>(ent1);
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
-				node.parent(m_registry, m_data.entities["model_0_0"]);
+				m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
 			}
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
 				Prop& prop = model->propsRW().front();
 				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "layers/lit");
-				m_registry.get<SceneNode>(ent0).position({2.0f, -1.0f, 2.0f});
+				m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
 				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "layers/lit");
-				m_registry.get<SceneNode>(ent).position({-1.0f, -2.0f, -3.0f});
+				m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
@@ -624,15 +626,15 @@ class App : public input::Receiver, public SceneRegistry {
 			Material mat;
 			mat.Tf = colours::yellow;
 			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
-			m_registry.get<SceneNode>(node).scale(2.0f);
+			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
 			auto coll1 = collision.add({glm::vec3(2.0f)});
 			m_colID1 = coll1.m_id;
 			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
-			auto pos = m_registry.get<SceneNode>(node).position();
+			auto pos = m_registry.get<Transform>(node).position();
 			pos.x = tweener.current();
 			coll1.position() = pos;
-			m_registry.get<SceneNode>(node).position(pos);
+			m_registry.get<Transform>(node).position(pos);
 		}
 		m_data.init = true;
 	}
@@ -660,28 +662,28 @@ class App : public input::Receiver, public SceneRegistry {
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
-				auto& node = m_registry.get<SceneNode>(m_data.player);
-				pc.tick(state, node, dt);
-				auto const forward = nvec3(node.orientation() * -graphics::front);
-				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
+				auto& transform = m_registry.get<Transform>(m_data.player);
+				pc.tick(state, transform, dt);
+				auto const forward = nvec3(transform.orientation() * -graphics::front);
+				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, transform.position());
 				cam.face(forward);
-				if (collision) { collision->find(m_colID0)->position() = node.position(); }
+				if (collision) { collision->find(m_colID0)->position() = transform.position(); }
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
-			m_registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_1_0"])) {
+			m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+			if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
+			if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-				node->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
+				tr->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
 			}
-			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
+			if (auto tr = m_registry.find<Transform>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);
-				auto pos = node->position();
+				auto pos = tr->position();
 				pos.x = tweener.tick(dt);
-				node->position(pos);
-				if (collision) { collision->find(m_colID1)->position() = node->position(); }
+				tr->position(pos);
+				if (collision) { collision->find(m_colID1)->position() = tr->position(); }
 			}
 		}
 		// draw

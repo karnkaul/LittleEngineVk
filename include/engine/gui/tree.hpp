@@ -4,7 +4,7 @@
 #include <core/utils/vbase.hpp>
 #include <engine/gui/rect.hpp>
 #include <engine/render/flex.hpp>
-#include <engine/scene/prop.hpp>
+#include <engine/render/prop.hpp>
 #include <engine/utils/owner.hpp>
 #include <graphics/basis.hpp>
 #include <graphics/draw_view.hpp>

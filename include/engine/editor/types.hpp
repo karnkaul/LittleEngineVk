@@ -260,8 +260,8 @@ struct TWidget<glm::quat> {
 };
 
 template <>
-struct TWidget<SceneNode> {
-	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, SceneNode& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
+struct TWidget<Transform> {
+	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, Transform& out_t, glm::vec3 const& dPOS = {0.1f, 0.01f, 0.1f});
 };
 
 template <>

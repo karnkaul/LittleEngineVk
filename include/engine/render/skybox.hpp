@@ -1,5 +1,5 @@
 #pragma once
-#include <engine/scene/prop.hpp>
+#include <engine/render/prop.hpp>
 #include <graphics/mesh.hpp>
 
 namespace le {
@@ -7,10 +7,10 @@ namespace graphics {
 class Texture;
 }
 
+using Cubemap = graphics::Texture;
+
 class Skybox {
   public:
-	using Cubemap = graphics::Texture;
-
 	Skybox(not_null<Cubemap const*> cubemap);
 
 	Prop const& prop() const noexcept;

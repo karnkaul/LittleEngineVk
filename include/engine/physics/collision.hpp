@@ -3,7 +3,7 @@
 #include <core/std_types.hpp>
 #include <core/utils/enumerate.hpp>
 #include <core/utils/error.hpp>
-#include <engine/scene/drawable.hpp>
+#include <engine/render/drawable.hpp>
 #include <glm/vec3.hpp>
 #include <ktl/delegate.hpp>
 #include <optional>

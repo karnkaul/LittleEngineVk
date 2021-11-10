@@ -3,9 +3,14 @@
 
 namespace le::graphics {
 namespace rtech {
-constexpr Tech fwdSwpRp = {Approach::eForward, Target::eSwapchain, Transition::eRenderPass};
-constexpr Tech fwdSwpCb = {Approach::eForward, Target::eSwapchain, Transition::eCommandBuffer};
-constexpr Tech fwdOffCb = {Approach::eForward, Target::eOffScreen, Transition::eCommandBuffer};
+// constexpr Tech fwdSwpRp = {Approach::eForward, Target::eSwapchain, Transition::eRenderPass};
+// constexpr Tech fwdSwpCb = {Approach::eForward, Target::eSwapchain, Transition::eCommandBuffer};
+// constexpr Tech fwdOffCb = {Approach::eForward, Target::eOffScreen, Transition::eCommandBuffer};
+enum Tech_ {
+	fwdSwpRp,
+	fwdSwpCb,
+	fwdOffCb,
+};
 } // namespace rtech
 
 // Forward, Swapchain, RenderPass
@@ -15,9 +20,9 @@ class RendererFSC;
 // Forward, OffScreen, CommandBuffer
 class RendererFOC;
 
-template <rtech::Tech RT>
+template <rtech::Tech_ RT>
 struct Renderer_type;
-template <rtech::Tech RT>
+template <rtech::Tech_ RT>
 using Renderer_t = typename Renderer_type<RT>::type;
 
 class RendererFSR : public ARenderer {

@@ -5,18 +5,15 @@
 #include <core/utils/profiler.hpp>
 #include <core/version.hpp>
 #include <engine/assets/asset_loaders_store.hpp>
-#include <engine/editor/editor.hpp>
+#include <engine/editor/scene_ref.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/input/receiver.hpp>
 #include <engine/scene/space.hpp>
-#include <engine/utils/engine_stats.hpp>
-#include <engine/utils/error_handler.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/render/renderers.hpp>
 #include <graphics/render/rgba.hpp>
-#include <levk_imgui/levk_imgui.hpp>
 #include <window/instance.hpp>
 
 namespace le {
@@ -28,8 +25,14 @@ namespace gui {
 class ViewStack;
 }
 
+namespace utils {
+struct EngineStats;
+}
+
+class Editor;
 class ListDrawer;
 using graphics::Extent2D;
+class DearImGui;
 
 class Engine {
 	template <typename T>
@@ -49,7 +52,7 @@ class Engine {
 	struct GFX {
 		Boot boot;
 		Context context;
-		DearImGui imgui;
+		std::unique_ptr<DearImGui> imgui;
 
 		template <typename T, typename... Args>
 		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, tag_t<T>, Args&&... args)
@@ -85,13 +88,13 @@ class Engine {
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }
 
-	Editor& editor() noexcept { return m_editor; }
-	Editor const& editor() const noexcept { return m_editor; }
+	Editor& editor() noexcept;
+	Editor const& editor() const noexcept;
 	GFX& gfx();
 	GFX const& gfx() const;
 	ARenderer& renderer() const;
 	input::Frame const& inputFrame() const noexcept { return m_inputFrame; }
-	Stats const& stats() const noexcept { return m_stats.stats; }
+	Stats const& stats() const noexcept;
 	AssetStore& store() noexcept { return m_store; }
 	AssetStore const& store() const noexcept { return m_store; }
 
@@ -121,21 +124,21 @@ class Engine {
 
 	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
+	struct Impl;
+
 	io::Service m_io;
 	window::Manager m_wm;
 	std::optional<Window> m_win;
 	std::optional<GFX> m_gfx;
 	AssetStore m_store;
 	input::Driver m_input;
-	Editor m_editor;
-	Stats::Counter m_stats;
 	input::ReceiverStore m_receivers;
 	input::Frame m_inputFrame;
 	graphics::ScreenView m_view;
 	std::optional<graphics::RenderTarget> m_drawing;
 	Profiler m_profiler;
-	utils::ErrorHandler m_errorHandler;
 	time::Point m_lastPoll{};
+	std::unique_ptr<Impl> m_impl;
 };
 
 struct Engine::CreateInfo {

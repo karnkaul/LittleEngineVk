@@ -6,6 +6,7 @@
 #include <core/colour.hpp>
 #include <core/services.hpp>
 #include <engine/engine.hpp>
+#include <engine/utils/engine_stats.hpp>
 #include <ktl/tmutex.hpp>
 #include <levk_imgui/levk_imgui.hpp>
 #endif

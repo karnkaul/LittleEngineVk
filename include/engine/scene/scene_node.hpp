@@ -12,6 +12,7 @@ class SceneNode {
   public:
 	SceneNode(dens::entity entity = {}) noexcept : m_entity(entity) {}
 
+	bool valid(dens::registry const& registry) const;
 	Transform& transform(dens::registry const& registry) const;
 	bool parent(dens::registry const& registry, dens::entity parent);
 	SceneNode* parent(dens::registry const& registry) const;

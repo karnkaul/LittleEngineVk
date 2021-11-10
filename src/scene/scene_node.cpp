@@ -17,6 +17,13 @@ bool refreshEntity(dens::registry const& registry, dens::entity& out) {
 bool find(std::span<dens::entity const> nodes, dens::entity node) noexcept { return std::find(nodes.begin(), nodes.end(), node) != nodes.end(); }
 } // namespace
 
+bool SceneNode::valid(dens::registry const& registry) const { return registry.all_attached<Transform, SceneNode>(m_entity); }
+
+Transform& SceneNode::transform(dens::registry const& registry) const {
+	EXPECT(valid(registry));
+	return registry.get<Transform>(m_entity);
+}
+
 bool SceneNode::parent(dens::registry const& registry, dens::entity parent) {
 	if (auto node = registry.find<SceneNode>(parent)) {
 		m_parent = parent;
@@ -24,11 +31,6 @@ bool SceneNode::parent(dens::registry const& registry, dens::entity parent) {
 		return true;
 	}
 	return false;
-}
-
-Transform& SceneNode::transform(dens::registry const& registry) const {
-	EXPECT(registry.attached<Transform>(m_entity));
-	return registry.get<Transform>(m_entity);
 }
 
 SceneNode* SceneNode::parent(dens::registry const& registry) const { return registry.find<SceneNode>(m_parent); }

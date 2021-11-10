@@ -5,6 +5,7 @@
 #include <core/utils/data_store.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/engine.hpp>
+#include <engine/utils/engine_stats.hpp>
 #include <engine/utils/error_handler.hpp>
 #include <filesystem>
 

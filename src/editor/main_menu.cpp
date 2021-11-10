@@ -5,6 +5,7 @@
 #include <core/utils/string.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
+#include <engine/utils/engine_stats.hpp>
 #endif
 
 namespace le::edi {
@@ -85,7 +86,7 @@ MainMenu::MainMenu() {
 #if defined(LEVK_USE_IMGUI)
 	MenuList::Tree main;
 	main.m_t.id = "File";
-	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui.m_showDemo = true; }};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui->m_showDemo = true; }};
 	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
 	MenuList::Menu close{"Close Editor", []() { Services::get<Engine>()->editor().engage(false); }, true};

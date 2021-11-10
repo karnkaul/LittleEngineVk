@@ -16,6 +16,7 @@
 #include <graphics/utils/utils.hpp>
 #include <iostream>
 
+#include <engine/editor/editor.hpp>
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
 #include <engine/gui/view.hpp>

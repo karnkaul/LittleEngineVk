@@ -26,7 +26,7 @@ std::string_view tName(T const* t = nullptr);
 ///
 /// \brief Remove namespace prefixes from a type string
 ///
-void removeNamesapces(std::string& out_name);
+std::string_view removeNamespaces(std::string_view name) noexcept;
 
 ///
 /// \brief Convert input to a numeric / boolean type

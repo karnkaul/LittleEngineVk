@@ -6,6 +6,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/input/space.hpp>
 #include <engine/render/list_drawer.hpp>
+#include <engine/scene/scene_registry.hpp>
 #include <engine/utils/engine_config.hpp>
 #include <engine/utils/engine_stats.hpp>
 #include <engine/utils/error_handler.hpp>
@@ -119,7 +120,7 @@ bool Engine::drawReady() {
 	return false;
 }
 
-bool Engine::nextFrame(graphics::RenderTarget* out, edi::SceneRef scene) {
+bool Engine::nextFrame(graphics::RenderTarget* out, SceneRegistry* scene) {
 	auto pr_ = m_profiler.profile("eng::nextFrame");
 	if (bootReady() && !m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
 		if (auto ret = m_gfx->context.beginFrame()) {
@@ -127,7 +128,7 @@ bool Engine::nextFrame(graphics::RenderTarget* out, edi::SceneRef scene) {
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui->beginFrame();
 				ENSURE(b, "Failed to begin DearImGui frame");
-				m_view = editor().update(scene, m_inputFrame);
+				m_view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), m_inputFrame);
 			}
 			m_drawing = *ret;
 			if (out) { *out = *ret; }

@@ -85,9 +85,10 @@ std::pair<f32, std::string_view> utils::friendlySize(u64 byteCount) noexcept {
 
 std::string_view utils::demangle(std::string_view name, bool minimal) { return g_tNames(name, minimal); }
 
-void utils::removeNamesapces(std::string& out_name) {
-	auto const idx = out_name.find_last_of("::");
-	if (idx != std::string::npos) { out_name = out_name.substr(idx + 1); }
+std::string_view utils::removeNamespaces(std::string_view name) noexcept {
+	auto const idx = name.find_last_of("::");
+	if (idx != std::string::npos) { return name.substr(idx + 1); }
+	return name;
 }
 
 bool utils::toBool(std::string_view input, bool fallback) noexcept {

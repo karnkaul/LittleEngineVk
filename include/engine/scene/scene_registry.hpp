@@ -8,7 +8,7 @@
 
 namespace le {
 namespace edi {
-class Inspector;
+class SceneRef;
 }
 
 class SceneRegistry : public utils::VBase {
@@ -37,13 +37,13 @@ class SceneRegistry : public utils::VBase {
 	void update();
 	DrawLayer layer(Hash id) const;
 
+	edi::SceneRef ediScene() noexcept;
+
 	bool m_cleanOnUpdate = levk_debug;
 
   protected:
 	dens::registry m_registry;
 	dens::entity m_root;
-
-	friend class edi::Inspector;
 };
 
 // impl

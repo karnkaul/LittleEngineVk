@@ -5,7 +5,7 @@
 #include <vector>
 
 namespace le::edi {
-class PaletteTab {
+class PaletteTab : public utils::VBase {
   public:
 	glm::vec2 s_minSize = {100.0f, 100.0f};
 
@@ -15,7 +15,9 @@ class PaletteTab {
 
 	bool update(std::string_view id, glm::vec2 size, glm::vec2 pos, SceneRef scene);
 
-  private:
+  protected:
+	virtual void loopItems(SceneRef scene);
+
 	struct Entry {
 		std::string id;
 		std::unique_ptr<Palette> palette;

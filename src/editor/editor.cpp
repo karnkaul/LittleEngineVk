@@ -1,9 +1,11 @@
 #include <core/maths.hpp>
 #include <core/services.hpp>
+#include <editor/sudo.hpp>
 #include <engine/editor/editor.hpp>
-#include <engine/editor/palettes/inspector.hpp>
-#include <engine/editor/palettes/scene_tree.hpp>
+#include <engine/editor/inspector.hpp>
+#include <engine/editor/palette_tab.hpp>
 #include <engine/editor/palettes/settings.hpp>
+#include <engine/editor/scene_tree.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/engine.hpp>
 #include <graphics/context/bootstrap.hpp>
@@ -327,13 +329,24 @@ void displayScale(MU f32 renderScale) {
 	ds = {ds.x * renderScale, ds.y * renderScale};
 #endif
 }
+
+template <typename T>
+class EditorTab : public PaletteTab {
+	void loopItems(SceneRef scene) override {
+		if (auto it = TabBar::Item(T::title_v)) { Sudo::update<T>(scene); }
+		PaletteTab::loopItems(scene);
+	}
+};
 } // namespace edi
 
 Editor::Editor() {
-	m_left.tab.attach<edi::SceneTree>("Scene");
-	m_left.tab.attach<edi::Settings>("Settings");
-	m_inspector = &m_right.tab.attach<edi::Inspector>("Inspector");
+	auto left = std::make_unique<edi::EditorTab<edi::SceneTree>>();
+	m_right.tab = std::make_unique<edi::EditorTab<edi::Inspector>>();
+	left->attach<edi::Settings>("Settings");
+	m_left.tab = std::move(left);
 }
+
+Editor::~Editor() noexcept { edi::Sudo::clear<edi::Inspector, edi::SceneTree>(); }
 
 bool Editor::active() const noexcept {
 	if constexpr (levk_imgui) { return true; }
@@ -348,9 +361,9 @@ Viewport const& Editor::view() const noexcept {
 graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU input::Frame const& frame) {
 #if defined(LEVK_EDITOR)
 	if (active() && engaged()) {
-		if (!scene.valid() || m_cache.prev != scene.m_registry) { m_cache = {}; }
-		m_cache.prev = scene.m_registry;
-		scene.m_inspect = &m_cache.inspect;
+		if (!scene.valid() || m_cache.prev != edi::Sudo::registry(scene)) { m_cache = {}; }
+		m_cache.prev = edi::Sudo::registry(scene);
+		edi::Sudo::inspect(scene, m_cache.inspect);
 		auto eng = Services::get<Engine>();
 		edi::displayScale(eng->renderer().renderScale());
 		if (!edi::Pane::s_blockResize) { m_storage.resizer(eng->window(), m_storage.gameView, frame); }
@@ -363,8 +376,8 @@ graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU input::Frame cons
 		glm::vec2 const leftPanelSize = {rect.lt.x * size.x, size.y - logHeight - offsetY};
 		glm::vec2 const rightPanelSize = {size.x - rect.rb.x * size.x, size.y - logHeight - offsetY};
 		m_storage.logStats(size, logHeight);
-		m_left.tab.update(m_left.id, leftPanelSize, {0.0f, offsetY}, scene);
-		m_right.tab.update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY}, scene);
+		m_left.tab->update(m_left.id, leftPanelSize, {0.0f, offsetY}, scene);
+		m_right.tab->update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY}, scene);
 		return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 	}
 #endif

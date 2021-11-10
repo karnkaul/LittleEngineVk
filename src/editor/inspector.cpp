@@ -1,7 +1,8 @@
 #include <core/services.hpp>
 #include <core/utils/algo.hpp>
+#include <editor/sudo.hpp>
 #include <engine/cameras/freecam.hpp>
-#include <engine/editor/palettes/inspector.hpp>
+#include <engine/editor/inspector.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
@@ -61,12 +62,13 @@ void shouldDraw(dens::entity e, dens::registry& r, bool set) {
 } // namespace
 #endif
 
-void Inspector::update() {
+void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 #if defined(LEVK_USE_IMGUI)
-	if (hasScene()) {
-		if (scene().m_inspect->contains<dens::entity>()) {
-			if (auto entity = scene().m_inspect->get<dens::entity>(); entity != dens::entity()) {
-				auto& reg = *scene().m_registry;
+	if (scene.valid()) {
+		auto inspect = Sudo::inspect(scene);
+		if (inspect->contains<dens::entity>()) {
+			if (auto entity = inspect->get<dens::entity>(); entity != dens::entity()) {
+				auto& reg = *Sudo::registry(scene);
 				Text(reg.name(entity));
 				if (reg.attached<DrawLayer>(entity)) {
 					TWidgetWrap<bool> draw;
@@ -77,12 +79,12 @@ void Inspector::update() {
 					TransformWidget{}(*transform);
 					s();
 				}
-				for (auto& gadget : m_gadgets) {
+				for (auto& gadget : s_gadgets) {
 					if ((*gadget)(entity, reg)) { s(); }
 				}
 			}
 		} else {
-			auto tr = scene().m_inspect->get<gui::TreeRoot*>();
+			auto tr = Sudo::inspect(scene)->get<gui::TreeRoot*>();
 			Text txt("GUI");
 			GuiRect{}(tr->m_rect);
 			if (auto view = dynamic_cast<gui::View*>(tr)) {
@@ -92,11 +94,16 @@ void Inspector::update() {
 				if (auto widget = dynamic_cast<gui::Widget*>(tr)) { GuiViewWidget{}(*widget); }
 			}
 			Styler s{Style::eSeparator};
-			for (auto& gadget : m_guiGadgets) {
+			for (auto& gadget : s_guiGadgets) {
 				if ((*gadget)(*tr)) { s(); }
 			}
 		}
 	}
 #endif
+}
+
+void Inspector::clear() {
+	s_gadgets.clear();
+	s_guiGadgets.clear();
 }
 } // namespace le::edi

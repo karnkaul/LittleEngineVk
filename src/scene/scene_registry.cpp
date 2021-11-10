@@ -1,5 +1,6 @@
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/scene_registry.hpp>
@@ -60,4 +61,5 @@ void SceneRegistry::update() {
 	}
 }
 
+edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_root}; }
 } // namespace le

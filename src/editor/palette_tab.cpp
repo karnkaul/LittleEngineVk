@@ -23,15 +23,19 @@ bool PaletteTab::update(MU std::string_view id, MU glm::vec2 size, MU glm::vec2 
 	static constexpr auto flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse;
 	ImGui::SetNextWindowSize(ImVec2(size.x - s_xPad - s_xPad, size.y - s_dy), ImGuiCond_Always);
 	ImGui::SetNextWindowPos(ImVec2(pos.x + s_xPad, pos.y + s_dy), ImGuiCond_Always);
-	if ((ret = ImGui::Begin(id.data(), nullptr, flags)); !m_items.empty()) {
-		if (auto tab = TabBar(id)) {
-			for (auto& item : m_items) {
-				if (auto it = TabBar::Item(item.id)) { item.palette->doUpdate(scene); }
-			}
-		}
+	if ((ret = ImGui::Begin(id.data(), nullptr, flags))) {
+		if (auto tab = TabBar(id)) { loopItems(scene); }
 	}
 	ImGui::End();
 #endif
 	return ret;
+}
+
+void PaletteTab::loopItems(MU SceneRef scene) {
+#if defined(LEVK_USE_IMGUI)
+	for (auto& item : m_items) {
+		if (auto it = TabBar::Item(item.id)) { item.palette->doUpdate(scene); }
+	}
+#endif
 }
 } // namespace le::edi

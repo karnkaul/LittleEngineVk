@@ -5,7 +5,6 @@
 #include <core/utils/profiler.hpp>
 #include <core/version.hpp>
 #include <engine/assets/asset_loaders_store.hpp>
-#include <engine/editor/scene_ref.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/frame.hpp>
 #include <engine/input/receiver.hpp>
@@ -33,6 +32,7 @@ class Editor;
 class ListDrawer;
 using graphics::Extent2D;
 class DearImGui;
+class SceneRegistry;
 
 class Engine {
 	template <typename T>
@@ -80,7 +80,7 @@ class Engine {
 	void update(gui::ViewStack& out_stack);
 
 	bool drawReady();
-	bool nextFrame(graphics::RenderTarget* out = {}, edi::SceneRef scene = {});
+	bool nextFrame(graphics::RenderTarget* out = {}, SceneRegistry* scene = {});
 	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>

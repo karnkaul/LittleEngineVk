@@ -5,7 +5,7 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/cameras/freecam.hpp>
-#include <engine/editor/palettes/inspector.hpp>
+#include <engine/editor/inspector.hpp>
 #include <engine/engine.hpp>
 #include <engine/input/control.hpp>
 #include <engine/render/model.hpp>
@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include <engine/editor/editor.hpp>
+#include <engine/editor/scene_tree.hpp>
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
 #include <engine/gui/view.hpp>
@@ -477,9 +478,9 @@ class App : public input::Receiver, public SceneRegistry {
 				return false;
 			}
 		};
-		m_eng->editor().inspector().attach<GFreeCam>();
-		m_eng->editor().inspector().attach<GPlayerController>();
-		m_eng->editor().inspector().attach<GSpringArm>();
+		edi::Inspector::attach<GFreeCam>();
+		edi::Inspector::attach<GPlayerController>();
+		edi::Inspector::attach<GSpringArm>();
 	}
 
 	bool block(input::State const& state) override {
@@ -519,6 +520,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 		auto freecam = m_registry.make_entity<FreeCam, SpringArm>("freecam");
 		m_data.camera = freecam;
+		edi::SceneTree::attach(freecam);
 		auto& cam = m_registry.get<FreeCam>(freecam);
 		cam.position = {0.0f, 0.5f, 4.0f};
 		cam.look({});
@@ -688,7 +690,7 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		}
 		// draw
-		if (m_eng->nextFrame(nullptr, {m_registry, root(), m_data.camera})) { render(); }
+		if (m_eng->nextFrame(nullptr, this)) { render(); }
 		m_tasks.rethrow();
 	}
 

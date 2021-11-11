@@ -810,7 +810,7 @@ bool run(io::Media const& media) {
 	if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
 	bootInfo.instance.validation.logLevel = dl::level::info;
 	do {
-		using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
+		using renderer_t = graphics::Renderer_t<graphics::RType::eOffscreenCommandbuffer>;
 		// engine.boot(bootInfo);
 		engine.boot<renderer_t>(bootInfo);
 		App app(&engine);

@@ -62,25 +62,36 @@ void shouldDraw(dens::entity e, dens::registry& r, bool set) {
 } // namespace
 #endif
 
+bool Inspector::detach(std::string const& id) {
+	auto doDetach = [id](auto& map) {
+		if (auto it = map.find(id); it != map.end()) {
+			map.erase(it);
+			return true;
+		}
+		return false;
+	};
+	return doDetach(s_gadgets) || doDetach(s_guiGadgets);
+}
+
 void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 #if defined(LEVK_USE_IMGUI)
 	if (scene.valid()) {
 		auto inspect = Sudo::inspect(scene);
-		if (inspect->contains<dens::entity>()) {
-			if (auto entity = inspect->get<dens::entity>(); entity != dens::entity()) {
+		if (auto entity = inspect->get_if<dens::entity>()) {
+			if (*entity != dens::entity()) {
 				auto& reg = *Sudo::registry(scene);
-				Text(reg.name(entity));
-				if (reg.attached<DrawLayer>(entity)) {
+				Text(reg.name(*entity));
+				if (reg.attached<DrawLayer>(*entity)) {
 					TWidgetWrap<bool> draw;
-					if (draw(shouldDraw(entity, reg), "Draw", draw.out)) { shouldDraw(entity, reg, draw.out); }
+					if (draw(shouldDraw(*entity, reg), "Draw", draw.out)) { shouldDraw(*entity, reg, draw.out); }
 				}
 				Styler s{Style::eSeparator};
-				if (auto transform = reg.find<Transform>(entity)) {
+				if (auto transform = reg.find<Transform>(*entity)) {
 					TransformWidget{}(*transform);
 					s();
 				}
-				for (auto& gadget : s_gadgets) {
-					if ((*gadget)(entity, reg)) { s(); }
+				for (auto const& [name, gadget] : s_gadgets) {
+					if (gadget->inspect(name, *entity, reg)) { s(); }
 				}
 			}
 		} else {
@@ -94,8 +105,8 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 				if (auto widget = dynamic_cast<gui::Widget*>(tr)) { GuiViewWidget{}(*widget); }
 			}
 			Styler s{Style::eSeparator};
-			for (auto& gadget : s_guiGadgets) {
-				if ((*gadget)(*tr)) { s(); }
+			for (auto const& [name, gadget] : s_guiGadgets) {
+				if (gadget->inspect(name, *tr)) { s(); }
 			}
 		}
 	}

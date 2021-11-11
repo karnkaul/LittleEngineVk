@@ -340,8 +340,8 @@ class EditorTab : public PaletteTab {
 } // namespace edi
 
 Editor::Editor() {
-	auto left = std::make_unique<edi::EditorTab<edi::SceneTree>>();
 	m_right.tab = std::make_unique<edi::EditorTab<edi::Inspector>>();
+	auto left = std::make_unique<edi::EditorTab<edi::SceneTree>>();
 	left->attach<edi::Settings>("Settings");
 	m_left.tab = std::move(left);
 }

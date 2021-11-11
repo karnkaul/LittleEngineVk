@@ -58,7 +58,7 @@ class Editor {
 	} m_storage;
 
 	struct {
-		edi::Inspect inspect;
+		edi::Inspecting inspect;
 		dens::registry const* prev{};
 	} m_cache;
 

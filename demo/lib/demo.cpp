@@ -447,40 +447,16 @@ class App : public input::Receiver, public SceneRegistry {
 
 		m_eng->pushReceiver(this);
 
-		struct GFreeCam : edi::Gadget {
-			bool operator()(dens::entity entity, dens::registry& reg) override {
-				if (auto freecam = reg.find<FreeCam>(entity)) {
-					edi::Text title("FreeCam");
-					edi::TWidget<f32>("Speed", freecam->m_params.xz_speed);
-					return true;
-				}
-				return false;
-			}
+		auto ifreecam = [](edi::Inspect<FreeCam> inspect) { edi::TWidget<f32>("Speed", inspect.get().m_params.xz_speed); };
+		auto ispringarm = [](edi::Inspect<SpringArm> inspect) {
+			edi::TWidget<f32>("k", inspect.get().k, 0.01f);
+			edi::TWidget<f32>("b", inspect.get().b, 0.001f);
 		};
-		struct GPlayerController : edi::Gadget {
-			bool operator()(dens::entity entity, dens::registry& reg) override {
-				if (auto pc = reg.find<PlayerController>(entity)) {
-					edi::Text title("PlayerController");
-					edi::TWidget<bool>("Active", pc->active);
-					return true;
-				}
-				return false;
-			}
-		};
-		struct GSpringArm : edi::Gadget {
-			bool operator()(dens::entity entity, dens::registry& reg) override {
-				if (auto sa = reg.find<SpringArm>(entity)) {
-					edi::Text title("SpringArm");
-					edi::TWidget<f32>("k", sa->k, 0.01f);
-					edi::TWidget<f32>("b", sa->b, 0.001f);
-					return true;
-				}
-				return false;
-			}
-		};
-		edi::Inspector::attach<GFreeCam>();
-		edi::Inspector::attach<GPlayerController>();
-		edi::Inspector::attach<GSpringArm>();
+		auto ipc = [](edi::Inspect<PlayerController> inspect) { edi::TWidget<bool>("Active", inspect.get().active); };
+		edi::Inspector::attach<FreeCam>(ifreecam);
+		edi::Inspector::attach<SpringArm>(ispringarm);
+		edi::Inspector::attach<PlayerController>(ipc);
+		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
 	}
 
 	bool block(input::State const& state) override {

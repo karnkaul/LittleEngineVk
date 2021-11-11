@@ -15,7 +15,7 @@ namespace {
 TreeNode makeNode(std::string_view id, bool selected, bool leaf) { return TreeNode(id, selected, leaf, true, false); }
 
 template <typename T>
-bool operator==(Inspect& either, T t) noexcept {
+bool operator==(Inspecting& either, T t) noexcept {
 	if constexpr (std::is_convertible_v<T, dens::entity>) {
 		return either.contains<dens::entity>() && either.get<dens::entity>() == t;
 	} else {
@@ -24,10 +24,10 @@ bool operator==(Inspect& either, T t) noexcept {
 }
 
 struct InspectVerifier {
-	Inspect& out;
+	Inspecting& out;
 	bool present{};
 
-	InspectVerifier(Inspect& out) noexcept : out(out) {}
+	InspectVerifier(Inspecting& out) noexcept : out(out) {}
 	~InspectVerifier() noexcept {
 		if (!present && (out.contains<gui::TreeRoot*>() || out.get<dens::entity>() != dens::entity())) { out = {}; }
 	}

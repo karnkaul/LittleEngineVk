@@ -13,7 +13,7 @@ class TreeRoot;
 }
 
 namespace edi {
-using Inspect = ktl::either<dens::entity, gui::TreeRoot*>;
+using Inspecting = ktl::either<dens::entity, gui::TreeRoot*>;
 
 class SceneRef {
   public:
@@ -27,7 +27,7 @@ class SceneRef {
   private:
 	dens::registry* m_registry{};
 	dens::entity m_root{};
-	Inspect* m_inspect{};
+	Inspecting* m_inspect{};
 
 	friend class Sudo;
 };

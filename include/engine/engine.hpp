@@ -83,7 +83,7 @@ class Engine {
 	bool nextFrame(graphics::RenderTarget* out = {}, SceneRegistry* scene = {});
 	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
-	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::rtech::fwdSwpRp>, typename... Args>
+	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::RType::eSwapchainRenderpass>, typename... Args>
 	void boot(Boot::CreateInfo const& boot, Args&&... args);
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }

@@ -75,6 +75,7 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 	utils::g_log.minVerbosity = info.verbosity;
 	if (custom) { m_store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
+	logI("Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
 	ENSURE(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;
 	winInfo.options.autoShow = false;

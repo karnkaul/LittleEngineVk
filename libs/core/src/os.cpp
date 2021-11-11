@@ -83,9 +83,9 @@ std::string_view os::cpuID() {
 	if (g_cpuID.empty()) {
 		if constexpr (levk_arch == Arch::eX64 || levk_arch == Arch::eX86) {
 			u32 regs[4] = {};
-#ifdef _WIN32
+#if defined(_MSC_VER)
 			__cpuid((int*)regs, 0);
-#else
+#elif defined(LEVK_ARCH_X64) || defined(LEVK_ARCH_X86)
 			asm volatile("cpuid" : "=a"(regs[0]), "=b"(regs[1]), "=c"(regs[2]), "=d"(regs[3]) : "a"(0), "c"(0));
 #endif
 			auto strv = [&regs](std::size_t i) { return std::string_view(reinterpret_cast<char const*>(&regs[i]), 4); };

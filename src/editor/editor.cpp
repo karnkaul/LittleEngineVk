@@ -27,6 +27,12 @@ void clicks(MU GUIState& out_state) {
 
 Styler::Styler(StyleFlags flags) : flags(flags) { (*this)(); }
 
+Styler::Styler(MU glm::vec2 dummy) {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::Dummy({dummy.x, dummy.y});
+#endif
+}
+
 void Styler::operator()(MU std::optional<StyleFlags> f) {
 #if defined(LEVK_USE_IMGUI)
 	if (f) { flags = *f; }
@@ -72,6 +78,13 @@ Button::Button(MU sv id) {
 #endif
 }
 
+Selectable::Selectable(MU sv id) {
+#if defined(LEVK_USE_IMGUI)
+	refresh();
+	guiState.assign(GUI::eLeftClicked, ImGui::Selectable(id.empty() ? "[Unnamed]" : id.data()));
+#endif
+}
+
 Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 #if defined(LEVK_USE_IMGUI)
 	if (!entries.empty()) {
@@ -91,6 +104,12 @@ Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 			ImGui::EndCombo();
 		}
 	}
+#endif
+}
+
+InputText::InputText(MU std::string_view id, MU char* str, MU std::size_t size, MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::InputText(id.data(), str, size, flags);
 #endif
 }
 
@@ -215,6 +234,30 @@ Pane::~Pane() {
 	} else {
 		ImGui::End();
 	}
+#endif
+}
+
+Popup::Popup(MU std::string_view id, MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	guiState.assign(GUI::eOpen, ImGui::BeginPopup(id.data(), flags));
+#endif
+}
+
+Popup::~Popup() {
+#if defined(LEVK_USE_IMGUI)
+	if (*this) { ImGui::EndPopup(); }
+#endif
+}
+
+void Popup::open(MU std::string_view id) {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::OpenPopup(id.data());
+#endif
+}
+
+void Popup::close() {
+#if defined(LEVK_USE_IMGUI)
+	if (*this) { ImGui::CloseCurrentPopup(); }
 #endif
 }
 

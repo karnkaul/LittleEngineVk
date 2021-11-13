@@ -53,6 +53,7 @@ struct Styler final {
 	StyleFlags flags;
 
 	Styler(StyleFlags flags);
+	Styler(glm::vec2 dummy);
 
 	void operator()(std::optional<StyleFlags> flags = std::nullopt);
 };
@@ -87,6 +88,10 @@ struct Button final : GUIStateful {
 	Button(std::string_view id);
 };
 
+struct Selectable : GUIStateful {
+	Selectable(std::string_view id);
+};
+
 struct Combo final : GUIStateful {
 	s32 select = -1;
 	std::string_view selected;
@@ -94,6 +99,10 @@ struct Combo final : GUIStateful {
 	Combo(std::string_view id, Span<std::string_view const> entries, std::string_view preSelect);
 
 	explicit operator bool() const override { return test(GUI::eOpen); }
+};
+
+struct InputText {
+	InputText(std::string_view id, char* str, std::size_t size, int flags = 0);
 };
 
 struct TreeNode final : GUIStateful {
@@ -147,6 +156,16 @@ struct Pane : GUIStateful {
 	bool child = false;
 
 	explicit operator bool() const override { return test(GUI::eOpen); }
+};
+
+struct Popup : GUIStateful {
+	Popup(std::string_view id, int flags = 0);
+	~Popup() override;
+
+	static void open(std::string_view id);
+
+	explicit operator bool() const override { return test(GUI::eOpen); }
+	void close();
 };
 
 template <typename T>

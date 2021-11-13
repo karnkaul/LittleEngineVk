@@ -453,8 +453,8 @@ class App : public input::Receiver, public SceneRegistry {
 			edi::TWidget<f32>("b", inspect.get().b, 0.001f);
 		};
 		auto ipc = [](edi::Inspect<PlayerController> inspect) { edi::TWidget<bool>("Active", inspect.get().active); };
-		edi::Inspector::attach<FreeCam>(ifreecam);
-		edi::Inspector::attach<SpringArm>(ispringarm);
+		edi::Inspector::attach<FreeCam>(ifreecam, [] { return FreeCam(); });
+		edi::Inspector::attach<SpringArm>(ispringarm, [] { return SpringArm{}; });
 		edi::Inspector::attach<PlayerController>(ipc);
 		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
 	}

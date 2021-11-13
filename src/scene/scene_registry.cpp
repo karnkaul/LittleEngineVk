@@ -6,10 +6,16 @@
 #include <engine/scene/scene_registry.hpp>
 
 namespace le {
-SceneRegistry::SceneRegistry() {
-	m_root = m_registry.make_entity<Transform>();
-	m_registry.attach<SceneNode>(m_root, m_root);
+namespace {
+template <typename... Types>
+dens::entity_view<Transform, SceneNode, Types...> makeNode(dens::registry& out, std::string name = {}) {
+	auto e = out.make_entity<Transform, Types...>(std::move(name));
+	auto& node = out.attach<SceneNode>(e, e);
+	return {e, std::tie(out.get<Transform>(e), node, out.get<Types>(e)...)};
 }
+} // namespace
+
+SceneRegistry::SceneRegistry() { m_root = makeNode(m_registry); }
 
 void SceneRegistry::attach(dens::entity entity, DrawLayer layer, PropProvider provider) {
 	m_registry.attach<DrawLayer>(entity, layer);
@@ -19,9 +25,8 @@ void SceneRegistry::attach(dens::entity entity, DrawLayer layer, PropProvider pr
 void SceneRegistry::attach(dens::entity entity, DrawLayer layer) { m_registry.attach<DrawLayer>(entity, layer); }
 
 dens::entity SceneRegistry::spawnNode(std::string name) {
-	auto ret = m_registry.make_entity<Transform>(std::move(name));
-	auto& node = m_registry.attach<SceneNode>(ret, ret);
-	[[maybe_unused]] bool const b = node.parent(m_registry, m_root);
+	auto ret = makeNode(m_registry, std::move(name));
+	[[maybe_unused]] bool const b = ret.get<SceneNode>().parent(m_registry, m_root);
 	EXPECT(b);
 	return ret;
 }

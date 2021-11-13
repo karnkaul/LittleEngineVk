@@ -13,7 +13,10 @@ class TreeRoot;
 }
 
 namespace edi {
-using Inspecting = ktl::either<dens::entity, gui::TreeRoot*>;
+struct Inspecting {
+	dens::entity entity;
+	gui::TreeRoot* tree{};
+};
 
 class SceneRef {
   public:

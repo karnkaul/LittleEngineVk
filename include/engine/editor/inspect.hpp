@@ -14,12 +14,4 @@ struct Inspect {
 
 	T& get() const noexcept { return out_t; }
 };
-
-template <typename T>
-	requires(std::is_base_of_v<gui::TreeRoot, T>)
-struct Inspect<T> {
-	T& out_t;
-
-	T& get() const noexcept { return out_t; }
-};
 } // namespace le::edi

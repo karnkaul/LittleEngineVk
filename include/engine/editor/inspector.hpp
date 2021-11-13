@@ -1,4 +1,5 @@
 #pragma once
+#include <core/utils/expect.hpp>
 #include <core/utils/string.hpp>
 #include <dens/detail/sign.hpp>
 #include <engine/editor/inspect.hpp>
@@ -10,15 +11,17 @@ class Inspector {
 	static constexpr std::string_view title_v = "Inspector";
 
 	template <typename T>
-	using Attach = ktl::move_only_function<T()>;
+	using OnAttach = ktl::move_only_function<T()>;
+	template <typename T>
+	using OnInspect = ktl::move_only_function<void(Inspect<T>)>;
 
 	template <typename T>
 	static std::string_view defaultName() {
 		return utils::removeNamespaces(utils::tName<T>());
 	}
 
-	template <typename T, typename Insp>
-	static void attach(Insp inspector = {}, Attach<T> attach = {}, std::string_view name = defaultName<T>());
+	template <typename T>
+	static void attach(OnInspect<T>&& onInspect, OnAttach<T>&& attach = {}, std::string_view name = defaultName<T>());
 	static bool detach(std::string const& id);
 
   private:
@@ -31,32 +34,18 @@ class Inspector {
 		virtual ~GadgetBase() = default;
 		virtual bool attachable() const noexcept = 0;
 		virtual void attach(dens::entity, dens::registry&) const = 0;
-		virtual bool inspect(std::string_view, dens::entity, dens::registry&) const { return false; }
-		virtual bool inspect(std::string_view, gui::TreeRoot&) const { return false; }
+		virtual bool inspect(std::string_view, dens::entity, dens::registry&, gui::TreeRoot* tree) const = 0;
 	};
 	template <typename T>
-	struct TAttach {
-		Attach<T> make;
-	};
-	template <typename T, typename Insp>
-	struct TGadgetBase : GadgetBase {
-		Insp inspector;
-		Attach<T> make;
-		TGadgetBase(Insp inspector, Attach<T> make) : inspector(std::move(inspector)), make(std::move(make)) {}
-		bool attachable() const noexcept override { return make.has_value(); }
+	struct TGadget : GadgetBase {
+		OnAttach<T> attach_;
+		OnInspect<T> inspect_;
+		TGadget(OnInspect<T>&& inspect, OnAttach<T>&& attach) : inspect_(std::move(inspect)), attach_(std::move(attach)) {}
+		bool attachable() const noexcept override { return attach_.has_value(); }
 		void attach(dens::entity e, dens::registry& r) const override {
-			if (attachable()) { r.attach<T>(e, make()); }
+			if (attachable()) { r.attach<T>(e, attach_()); }
 		}
-	};
-	template <typename T, typename Insp>
-	struct TGadget : TGadgetBase<T, Insp> {
-		using TGadgetBase<T, Insp>::TGadgetBase;
-		bool inspect(std::string_view id, dens::entity e, dens::registry& r) const override;
-	};
-	template <typename T, typename Insp>
-	struct TGuiGadget : TGadgetBase<T, Insp> {
-		using TGadgetBase<T, Insp>::TGadgetBase;
-		bool inspect(std::string_view id, gui::TreeRoot& r) const override;
+		bool inspect(std::string_view id, dens::entity entity, dens::registry& registry, gui::TreeRoot* tree) const override;
 	};
 
 	using GadgetMap = std::unordered_map<std::string, std::unique_ptr<GadgetBase>>;
@@ -67,38 +56,34 @@ class Inspector {
 
 // impl
 
-template <typename T, typename Ins>
-bool Inspector::TGadget<T, Ins>::inspect(std::string_view id, dens::entity e, dens::registry& r) const {
-	if (auto t = r.find<T>(e)) {
-		if (auto tn = TreeNode(id)) {
-			this->inspector(Inspect<T>{*t, r, e});
-			auto const detach = ktl::stack_string<64>("Detach##%s", id.data());
-			if (Button(detach.get())) { r.detach<T>(e); }
-		}
-		Styler s(Style::eSeparator);
-		return true;
-	}
-	return false;
-}
-
-template <typename T, typename Ins>
-bool Inspector::TGuiGadget<T, Ins>::inspect(std::string_view id, gui::TreeRoot& r) const {
-	if (auto t = dynamic_cast<T*>(&r)) {
-		if (auto tn = TreeNode(id)) {
-			this->inspector(Inspect<T>{*t});
-			Styler s(Style::eSeparator);
-		}
-		return true;
-	}
-	return false;
-}
-
-template <typename T, typename Insp>
-void Inspector::attach(Insp inspector, Attach<T> attach, std::string_view name) {
+template <typename T>
+bool Inspector::TGadget<T>::inspect(std::string_view id, dens::entity entity, dens::registry& registry, gui::TreeRoot* tree) const {
 	if constexpr (std::is_base_of_v<gui::TreeRoot, T>) {
-		s_guiGadgets.insert_or_assign(std::string(name), std::make_unique<TGuiGadget<T, Insp>>(std::move(inspector), std::move(attach)));
+		if (auto t = dynamic_cast<T*>(tree)) {
+			if (auto tn = TreeNode(id)) { inspect_(Inspect<T>{*t, registry, entity}); }
+			Styler s(Style::eSeparator);
+			return true;
+		}
 	} else {
-		s_gadgets.insert_or_assign(std::string(name), std::make_unique<TGadget<T, Insp>>(std::move(inspector), std::move(attach)));
+		if (auto t = registry.find<T>(entity)) {
+			if (auto tn = TreeNode(id)) {
+				inspect_(Inspect<T>{*t, registry, entity});
+				auto const detach = ktl::stack_string<64>("Detach##%s", id.data());
+				if (Button(detach.get())) { registry.detach<T>(entity); }
+			}
+			Styler s(Style::eSeparator);
+			return true;
+		}
+	}
+	return false;
+}
+
+template <typename T>
+void Inspector::attach(OnInspect<T>&& inspect, OnAttach<T>&& attach, std::string_view name) {
+	if constexpr (std::is_base_of_v<gui::TreeRoot, T>) {
+		s_guiGadgets.insert_or_assign(std::string(name), std::make_unique<TGadget<T>>(std::move(inspect), std::move(attach)));
+	} else {
+		s_gadgets.insert_or_assign(std::string(name), std::make_unique<TGadget<T>>(std::move(inspect), std::move(attach)));
 	}
 }
 } // namespace le::edi

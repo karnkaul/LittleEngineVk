@@ -84,29 +84,28 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 #if defined(LEVK_USE_IMGUI)
 	if (scene.valid()) {
 		auto inspect = Sudo::inspect(scene);
-		if (auto entity = inspect->get_if<dens::entity>()) {
-			if (*entity != dens::entity()) {
-				auto& reg = *Sudo::registry(scene);
-				Text(reg.name(*entity));
-				if (reg.attached<DrawLayer>(*entity)) {
+		if (inspect->entity != dens::entity()) {
+			auto& reg = *Sudo::registry(scene);
+			if (!inspect->tree) {
+				Text(reg.name(inspect->entity));
+				if (reg.attached<DrawLayer>(inspect->entity)) {
 					TWidgetWrap<bool> draw;
-					if (draw(shouldDraw(*entity, reg), "Draw", draw.out)) { shouldDraw(*entity, reg, draw.out); }
+					if (draw(shouldDraw(inspect->entity, reg), "Draw", draw.out)) { shouldDraw(inspect->entity, reg, draw.out); }
 				}
 				Styler s{Style::eSeparator};
-				if (auto transform = reg.find<Transform>(*entity)) { TransformWidget{}(*transform); }
-				attach(*entity, reg);
-			}
-		} else {
-			if (auto tr = Sudo::inspect(scene)->get<gui::TreeRoot*>()) {
-				Text txt("GUI");
-				GuiRect{}(tr->m_rect);
-				if (auto view = dynamic_cast<gui::View*>(tr)) {
+				if (auto transform = reg.find<Transform>(inspect->entity)) { TransformWidget{}(*transform); }
+				attach(inspect->entity, reg);
+			} else {
+				auto const name = ktl::stack_string<128>("%s -> [GUI node]", reg.name(inspect->entity).data());
+				Text txt(name.data());
+				GuiRect{}(inspect->tree->m_rect);
+				if (auto view = dynamic_cast<gui::View*>(inspect->tree)) {
 					GuiViewWidget{}(*view);
-				} else if (auto node = dynamic_cast<gui::TreeNode*>(tr)) {
+				} else if (auto node = dynamic_cast<gui::TreeNode*>(inspect->tree)) {
 					GuiNode{}(*node);
-					if (auto widget = dynamic_cast<gui::Widget*>(tr)) { GuiViewWidget{}(*widget); }
+					if (auto widget = dynamic_cast<gui::Widget*>(inspect->tree)) { GuiViewWidget{}(*widget); }
 				}
-				for (auto const& [name, gadget] : s_guiGadgets) { gadget->inspect(name, *tr); }
+				for (auto const& [id, gadget] : s_guiGadgets) { gadget->inspect(id, inspect->entity, reg, inspect->tree); }
 			}
 		}
 	}
@@ -123,7 +122,7 @@ void Inspector::attach(dens::entity entity, dens::registry& reg) {
 	attachable.reserve(s_gadgets.size());
 	for (auto it = s_gadgets.cbegin(); it != s_gadgets.cend(); ++it) {
 		auto const& [id, gadget] = *it;
-		if (!gadget->inspect(id, entity, reg) && gadget->attachable()) { attachable.push_back(it); }
+		if (!gadget->inspect(id, entity, reg, {}) && gadget->attachable()) { attachable.push_back(it); }
 	}
 	if (!attachable.empty()) {
 		Styler(glm::vec2{0.0f, 30.0f});

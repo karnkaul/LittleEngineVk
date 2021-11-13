@@ -10,17 +10,17 @@ class Inspector {
   public:
 	static constexpr std::string_view title_v = "Inspector";
 
-	template <typename T>
+	template <dens::Component T>
 	using OnAttach = ktl::move_only_function<T()>;
-	template <typename T>
+	template <dens::Component T>
 	using OnInspect = ktl::move_only_function<void(Inspect<T>)>;
 
-	template <typename T>
+	template <dens::Component T>
 	static std::string_view defaultName() {
 		return utils::removeNamespaces(utils::tName<T>());
 	}
 
-	template <typename T>
+	template <dens::Component T>
 	static void attach(OnInspect<T>&& onInspect, OnAttach<T>&& attach = {}, std::string_view name = defaultName<T>());
 	static bool detach(std::string const& id);
 
@@ -69,7 +69,7 @@ bool Inspector::TGadget<T>::inspect(std::string_view id, dens::entity entity, de
 			if (auto tn = TreeNode(id)) {
 				inspect_(Inspect<T>{*t, registry, entity});
 				auto const detach = ktl::stack_string<64>("Detach##%s", id.data());
-				if (Button(detach.get())) { registry.detach<T>(entity); }
+				if (Button(detach)) { registry.detach<T>(entity); }
 			}
 			Styler s(Style::eSeparator);
 			return true;
@@ -78,11 +78,16 @@ bool Inspector::TGadget<T>::inspect(std::string_view id, dens::entity entity, de
 	return false;
 }
 
-template <typename T>
+template <dens::Component T>
 void Inspector::attach(OnInspect<T>&& inspect, OnAttach<T>&& attach, std::string_view name) {
 	if constexpr (std::is_base_of_v<gui::TreeRoot, T>) {
 		s_guiGadgets.insert_or_assign(std::string(name), std::make_unique<TGadget<T>>(std::move(inspect), std::move(attach)));
 	} else {
+		if constexpr (std::is_default_constructible_v<T>) {
+			if (!attach) {
+				attach = []() { return T{}; };
+			}
+		}
 		s_gadgets.insert_or_assign(std::string(name), std::make_unique<TGadget<T>>(std::move(inspect), std::move(attach)));
 	}
 }

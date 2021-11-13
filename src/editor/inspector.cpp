@@ -88,6 +88,7 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 			auto& reg = *Sudo::registry(scene);
 			if (!inspect->tree) {
 				Text(reg.name(inspect->entity));
+				Text(ktl::stack_string<16>("id: %u", inspect->entity.id));
 				if (reg.attached<DrawLayer>(inspect->entity)) {
 					TWidgetWrap<bool> draw;
 					if (draw(shouldDraw(inspect->entity, reg), "Draw", draw.out)) { shouldDraw(inspect->entity, reg, draw.out); }
@@ -129,7 +130,7 @@ void Inspector::attach(dens::entity entity, dens::registry& reg) {
 		if (Button("Attach")) { Popup::open("attach_component"); }
 		if (auto attach = Popup("attach_component")) {
 			static ktl::stack_string<128> s_filter;
-			InputText("Search##component_filter", s_filter.c_str(), s_filter.capacity());
+			edi::TWidget<char*>("Search##component_filter", s_filter.c_str(), s_filter.capacity());
 			auto filter = s_filter.get();
 			for (auto const& kvp : attachable) {
 				auto const& [id, gadget] = *kvp;

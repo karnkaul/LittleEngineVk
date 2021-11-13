@@ -74,21 +74,21 @@ Radio::Radio(MU Span<sv const> options, MU s32 preSelect, MU bool sameLine) : se
 Button::Button(MU sv id) {
 #if defined(LEVK_USE_IMGUI)
 	refresh();
-	guiState.assign(GUI::eLeftClicked, ImGui::Button(id.empty() ? "[Unnamed]" : id.data()));
+	guiState.assign(GUI::eLeftClicked, ImGui::Button(id.data()));
 #endif
 }
 
 Selectable::Selectable(MU sv id) {
 #if defined(LEVK_USE_IMGUI)
 	refresh();
-	guiState.assign(GUI::eLeftClicked, ImGui::Selectable(id.empty() ? "[Unnamed]" : id.data()));
+	guiState.assign(GUI::eLeftClicked, ImGui::Selectable(id.data()));
 #endif
 }
 
 Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 #if defined(LEVK_USE_IMGUI)
 	if (!entries.empty()) {
-		guiState.assign(GUI::eOpen, ImGui::BeginCombo(id.empty() ? "[Unnamed]" : id.data(), preSelect.data()));
+		guiState.assign(GUI::eOpen, ImGui::BeginCombo(id.data(), preSelect.data()));
 		refresh();
 		if (test(GUI::eOpen)) {
 			std::size_t i = 0;
@@ -107,15 +107,9 @@ Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 #endif
 }
 
-InputText::InputText(MU std::string_view id, MU char* str, MU std::size_t size, MU int flags) {
-#if defined(LEVK_USE_IMGUI)
-	ImGui::InputText(id.data(), str, size, flags);
-#endif
-}
-
 TreeNode::TreeNode(MU sv id) {
 #if defined(LEVK_USE_IMGUI)
-	guiState.assign(GUI::eOpen, ImGui::TreeNode(id.empty() ? "[Unnamed]" : id.data()));
+	guiState.assign(GUI::eOpen, ImGui::TreeNode(id.data()));
 	refresh();
 #endif
 }
@@ -126,7 +120,7 @@ TreeNode::TreeNode(MU sv id, MU bool bSelected, MU bool bLeaf, MU bool bFullWidt
 	ImGuiTreeNodeFlags const branchFlags = (bLeftClickOpen ? 0 : ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
 	ImGuiTreeNodeFlags const metaFlags = (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | (bFullWidth ? ImGuiTreeNodeFlags_SpanAvailWidth : 0);
 	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | metaFlags;
-	guiState.assign(GUI::eOpen, ImGui::TreeNodeEx(id.empty() ? "[Unnamed]" : id.data(), nodeFlags) && !bLeaf);
+	guiState.assign(GUI::eOpen, ImGui::TreeNodeEx(id.data(), nodeFlags) && !bLeaf);
 	refresh();
 #endif
 }
@@ -263,43 +257,42 @@ void Popup::close() {
 
 TWidget<bool>::TWidget(MU sv id, MU bool& out_b) {
 #if defined(LEVK_USE_IMGUI)
-	ImGui::Checkbox(id.empty() ? "[Unnamed]" : id.data(), &out_b);
+	changed = ImGui::Checkbox(id.data(), &out_b);
 #endif
 }
 
-TWidget<s32>::TWidget(MU sv id, MU s32& out_s, MU f32 w) {
+TWidget<int>::TWidget(MU sv id, MU int& out_s, MU f32 w, MU glm::ivec2 rng, MU WType wt) {
 #if defined(LEVK_USE_IMGUI)
 	if (w > 0.0f) { ImGui::SetNextItemWidth(w); }
-	ImGui::DragInt(id.empty() ? "[Unnamed]" : id.data(), &out_s);
+	switch (wt) {
+	case WType::eDrag: changed = ImGui::DragInt(id.data(), &out_s, 0.1f, rng.x, rng.y); break;
+	default: changed = ImGui::InputInt(id.data(), &out_s); break;
+	}
 #endif
 }
 
-TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w, MU glm::vec2 lm) {
+TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w, MU glm::vec2 rng, MU WType wt) {
 #if defined(LEVK_USE_IMGUI)
 	if (w > 0.0f) { ImGui::SetNextItemWidth(w); }
-	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_f, df, lm.x, lm.y);
+	switch (wt) {
+	case WType::eDrag: changed = ImGui::DragFloat(id.data(), &out_f, df, rng.x, rng.y); break;
+	default: changed = ImGui::InputFloat(id.data(), &out_f, df); break;
+	}
 #endif
 }
 
 TWidget<Colour>::TWidget(MU sv id, MU Colour& out_colour) {
 #if defined(LEVK_USE_IMGUI)
 	auto c = out_colour.toVec4();
-	ImGui::ColorEdit3(id.empty() ? "[Unnamed]" : id.data(), &c.x);
+	changed = ImGui::ColorEdit3(id.data(), &c.x);
 	out_colour = Colour(c);
 #endif
 }
 
-TWidget<std::string>::TWidget(MU sv id, MU ZeroedBuf& out_buf, MU f32 width, MU std::size_t max) {
+TWidget<char*>::TWidget(MU sv id, MU char* str, MU std::size_t size, MU f32 width, MU int flags) {
 #if defined(LEVK_USE_IMGUI)
-	if (max <= (std::size_t)width) { max = (std::size_t)width; }
-	out_buf.reserve(max);
-	if (out_buf.size() < max) {
-		std::size_t const diff = max - out_buf.size();
-		std::string str(diff, '\0');
-		out_buf += str;
-	}
-	ImGui::SetNextItemWidth(width);
-	ImGui::InputText(id.empty() ? "[Unnamed]" : id.data(), out_buf.data(), max);
+	if (width > 0.0f) { ImGui::SetNextItemWidth(width); }
+	changed = ImGui::InputText(id.data(), str, size, flags);
 #endif
 }
 
@@ -312,7 +305,7 @@ TWidget<glm::vec2>::TWidget(MU sv id, MU glm::vec2& out_vec, MU bool bNormalised
 			out_vec = glm::normalize(out_vec);
 		}
 	}
-	ImGui::DragFloat2(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
+	changed = ImGui::DragFloat2(id.data(), &out_vec.x, dv);
 	if (bNormalised) { out_vec = glm::normalize(out_vec); }
 #endif
 }
@@ -326,7 +319,7 @@ TWidget<glm::vec3>::TWidget(MU sv id, MU glm::vec3& out_vec, MU bool bNormalised
 			out_vec = glm::normalize(out_vec);
 		}
 	}
-	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
+	changed = ImGui::DragFloat3(id.data(), &out_vec.x, dv);
 	if (bNormalised) { out_vec = glm::normalize(out_vec); }
 #endif
 }
@@ -334,7 +327,7 @@ TWidget<glm::vec3>::TWidget(MU sv id, MU glm::vec3& out_vec, MU bool bNormalised
 TWidget<glm::quat>::TWidget(MU sv id, MU glm::quat& out_quat, MU f32 dq) {
 #if defined(LEVK_USE_IMGUI)
 	auto rot = glm::eulerAngles(out_quat);
-	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &rot.x, dq);
+	changed = ImGui::DragFloat3(id.data(), &rot.x, dq);
 	out_quat = glm::quat(rot);
 #endif
 }
@@ -345,11 +338,11 @@ TWidget<Transform>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU Transform&
 	auto scl = out_t.scale();
 	auto const& orn = out_t.orientation();
 	auto rot = glm::eulerAngles(orn);
-	ImGui::DragFloat3(idPos.data(), &posn.x, dPOS.x);
+	changed = ImGui::DragFloat3(idPos.data(), &posn.x, dPOS.x);
 	out_t.position(posn);
-	ImGui::DragFloat3(idOrn.data(), &rot.x, dPOS.y);
+	changed |= ImGui::DragFloat3(idOrn.data(), &rot.x, dPOS.y);
 	out_t.orient(glm::quat(rot));
-	ImGui::DragFloat3(idScl.data(), &scl.x, dPOS.z);
+	changed |= ImGui::DragFloat3(idScl.data(), &scl.x, dPOS.z);
 	out_t.scale(scl);
 #endif
 }
@@ -357,9 +350,15 @@ TWidget<Transform>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU Transform&
 TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s64 max, MU s64 dt) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::PushButtonRepeat(true);
-	if (ImGui::ArrowButton(CStr<64>("##%s_left", id.data()).data(), ImGuiDir_Left) && out_t > min) { out_t -= dt; }
+	if (ImGui::ArrowButton(CStr<64>("##%s_left", id.data()).data(), ImGuiDir_Left) && out_t > min) {
+		out_t -= dt;
+		changed = true;
+	}
 	ImGui::SameLine(0.0f, 3.0f);
-	if (ImGui::ArrowButton(CStr<64>("##%s_right", id.data()).data(), ImGuiDir_Right) && out_t < max) { out_t += dt; }
+	if (ImGui::ArrowButton(CStr<64>("##%s_right", id.data()).data(), ImGuiDir_Right) && out_t < max) {
+		out_t += dt;
+		changed = true;
+	}
 	ImGui::PopButtonRepeat();
 	ImGui::SameLine(0.0f, 5.0f);
 	ImGui::Text("%s", id.data());

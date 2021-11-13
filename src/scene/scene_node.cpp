@@ -26,6 +26,7 @@ Transform& SceneNode::transform(dens::registry const& registry) const {
 
 bool SceneNode::parent(dens::registry const& registry, dens::entity parent) {
 	if (auto node = registry.find<SceneNode>(parent)) {
+		if (auto p = registry.find<SceneNode>(m_parent)) { std::erase(p->m_nodes, m_entity); }
 		m_parent = parent;
 		if (!find(node->m_nodes, m_entity)) { node->m_nodes.push_back(m_entity); }
 		return true;

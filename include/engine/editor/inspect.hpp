@@ -1,5 +1,9 @@
 #pragma once
-#include <dens/registry.hpp>
+#include <dens/entity.hpp>
+
+namespace dens {
+class registry;
+}
 
 namespace le::gui {
 class TreeRoot;

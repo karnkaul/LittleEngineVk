@@ -34,6 +34,8 @@ using GUIState = ktl::enum_flags<GUI, u8>;
 enum class Style { eSameLine, eSeparator };
 using StyleFlags = ktl::enum_flags<Style, u8>;
 
+enum class WType { eInput, eDrag };
+
 template <std::size_t N = 64>
 using CStr = ktl::stack_string<N>;
 
@@ -101,10 +103,6 @@ struct Combo final : GUIStateful {
 	explicit operator bool() const override { return test(GUI::eOpen); }
 };
 
-struct InputText {
-	InputText(std::string_view id, char* str, std::size_t size, int flags = 0);
-};
-
 struct TreeNode final : GUIStateful {
 	TreeNode(std::string_view id);
 	TreeNode(std::string_view id, bool bSelected, bool bLeaf, bool bFullWidth, bool bLeftClickOpen);
@@ -168,6 +166,11 @@ struct Popup : GUIStateful {
 	void close();
 };
 
+struct WidgetBase {
+	bool changed{};
+	explicit operator bool() const noexcept { return changed; }
+};
+
 template <typename T>
 struct TWidget {
 	static_assert(false_v<T>, "Invalid type");
@@ -213,54 +216,52 @@ struct TInspector {
 };
 
 template <>
-struct TWidget<bool> {
+struct TWidget<bool> : WidgetBase {
 	TWidget(std::string_view id, bool& out_b);
 };
 
 template <>
-struct TWidget<f32> {
-	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f, glm::vec2 lm = {});
+struct TWidget<f32> : WidgetBase {
+	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f, glm::vec2 rng = {}, WType wt = WType::eDrag);
 };
 
 template <>
-struct TWidget<s32> {
-	TWidget(std::string_view id, s32& out_s, f32 w = 0.0f);
+struct TWidget<int> : WidgetBase {
+	TWidget(std::string_view id, int& out_s, f32 w = 0.0f, glm::ivec2 rng = {}, WType wt = WType::eDrag);
 };
 
 template <>
-struct TWidget<std::string> {
-	using ZeroedBuf = std::string;
-
-	TWidget(std::string_view id, ZeroedBuf& out_buf, f32 width = 100.0f, std::size_t max = 0);
+struct TWidget<char*> : WidgetBase {
+	TWidget(std::string_view id, char* str, std::size_t size, f32 width = {}, int flags = {});
 };
 
 template <>
-struct TWidget<Colour> {
+struct TWidget<Colour> : WidgetBase {
 	TWidget(std::string_view id, Colour& out_colour);
 };
 
 template <>
-struct TWidget<glm::vec2> {
+struct TWidget<glm::vec2> : WidgetBase {
 	TWidget(std::string_view id, glm::vec2& out_vec, bool bNormalised, f32 dv = 0.1f);
 };
 
 template <>
-struct TWidget<glm::vec3> {
+struct TWidget<glm::vec3> : WidgetBase {
 	TWidget(std::string_view id, glm::vec3& out_vec, bool bNormalised, f32 dv = 0.1f);
 };
 
 template <>
-struct TWidget<glm::quat> {
+struct TWidget<glm::quat> : WidgetBase {
 	TWidget(std::string_view id, glm::quat& out_quat, f32 dq = 0.01f);
 };
 
 template <>
-struct TWidget<Transform> {
+struct TWidget<Transform> : WidgetBase {
 	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, Transform& out_t, glm::vec3 const& dPOS = {0.1f, 0.01f, 0.1f});
 };
 
 template <>
-struct TWidget<std::pair<s64, s64>> {
+struct TWidget<std::pair<s64, s64>> : WidgetBase {
 	TWidget(std::string_view id, s64& out_t, s64 min, s64 max, s64 dt);
 };
 

@@ -4,6 +4,7 @@
 #include <engine/engine.hpp>
 #include <engine/physics/collision.hpp>
 #include <engine/scene/scene_registry.hpp>
+#include <engine/systems/spring_arm_system.hpp>
 
 namespace le {
 namespace {
@@ -15,7 +16,18 @@ dens::entity_view<Transform, SceneNode, Types...> makeNode(dens::registry& out, 
 }
 } // namespace
 
-SceneRegistry::SceneRegistry() { m_root = makeNode(m_registry); }
+struct SceneRegistry::Impl {
+	struct {
+		System<SpringArm> springArm;
+	} systems;
+};
+
+SceneRegistry::SceneRegistry() : m_impl(std::make_unique<Impl>()) {
+	m_root = makeNode(m_registry);
+	m_systems.attach(&m_impl->systems.springArm);
+}
+
+SceneRegistry::~SceneRegistry() = default;
 
 void SceneRegistry::attach(dens::entity entity, DrawLayer layer, PropProvider provider) {
 	m_registry.attach<DrawLayer>(entity, layer);
@@ -48,7 +60,7 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 	return {};
 }
 
-void SceneRegistry::update() {
+void SceneRegistry::update(Time_s dt) {
 	if (m_cleanOnUpdate) {
 		for (auto [_, c] : m_registry.view<SceneNode>()) {
 			auto& [node] = c;
@@ -64,6 +76,7 @@ void SceneRegistry::update() {
 		auto& [collision] = c;
 		collision.update();
 	}
+	m_systems.tick(m_registry, dt);
 }
 
 edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_root}; }

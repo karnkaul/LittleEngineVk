@@ -597,7 +597,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
-		update();
+		update(dt);
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
 			auto collision = m_registry.find<Collision>(m_data.collision);
@@ -610,7 +610,6 @@ class App : public input::Receiver, public SceneRegistry {
 				auto& transform = m_registry.get<Transform>(m_data.player);
 				pc.tick(state, transform, dt);
 				auto const forward = nvec3(transform.orientation() * -graphics::front);
-				SpringArm::tick(dt, m_registry);
 				cam.face(forward);
 				cam.position = m_registry.get<Transform>(m_data.camera).position();
 				if (collision) { collision->find(m_colID0)->position() = transform.position(); }

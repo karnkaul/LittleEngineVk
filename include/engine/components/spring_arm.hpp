@@ -25,7 +25,6 @@ struct SpringArm {
 
 	static dens::entity_view<SpringArm, Transform> attach(dens::entity entity, dens::registry& out, dens::entity target = {});
 	static dens::entity_view<SpringArm, Transform> make(dens::registry& out, dens::entity target = {});
-	static void tick(Time_s dt, dens::registry const& registry);
 
 	static void inspect(edi::Inspect<SpringArm> out);
 };

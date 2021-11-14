@@ -36,12 +36,13 @@
 
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
-#include <engine/components/spring_arm.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <engine/physics/collision.hpp>
 #include <engine/render/prop_provider.hpp>
 #include <ktl/async.hpp>
+
+#include <engine/components/spring_arm.hpp>
+#include <engine/components/trigger.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -442,10 +443,11 @@ class App : public input::Receiver, public SceneRegistry {
 		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
 		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
-		auto coll = spawn<Collision>("collision", "layers/wireframe");
-		auto& collision = m_registry.get<Collision>(coll);
-		m_data.collision = coll;
 
+		if constexpr (levk_debug) {
+			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
+			m_registry.attach<DrawLayer>(triggerDebug) = layer("layers/wireframe");
+		}
 		m_data.text = TextMesh(&vram, &*font);
 		m_data.cursor = input::TextCursor(&*font);
 		m_data.cursor->m_gen.size = 80U;
@@ -466,10 +468,9 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.get<Transform>(player).position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
-			auto coll = collision.add({});
-			m_onCollide = coll.onCollide();
-			m_onCollide += [](Collision::Collider) { logD("Collided!"); };
-			m_colID0 = coll.m_id;
+			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
+			m_onCollide = trigger.onTrigger.make_signal();
+			m_onCollide += [](auto&&) { logD("Collided!"); };
 		}
 		{
 			auto freecam = m_registry.make_entity<FreeCam>("freecam");
@@ -570,15 +571,14 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			Material mat;
 			mat.Tf = colours::yellow;
-			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
+			auto node = spawnMesh("trigger/cube", "meshes/cube", "layers/basic", mat);
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
-			auto coll1 = collision.add({glm::vec3(2.0f)});
-			m_colID1 = coll1.m_id;
+			auto& trig1 = m_registry.attach<physics::Trigger>(node);
+			trig1.scale = glm::vec3(2.0f);
 			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
 			auto pos = m_registry.get<Transform>(node).position();
 			pos.x = tweener.current();
-			coll1.position() = pos;
 			m_registry.get<Transform>(node).position(pos);
 		}
 		m_data.init = true;
@@ -600,7 +600,6 @@ class App : public input::Receiver, public SceneRegistry {
 		update(dt);
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
-			auto collision = m_registry.find<Collision>(m_data.collision);
 			if (!m_data.init) { init1(); }
 			// ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
@@ -612,7 +611,6 @@ class App : public input::Receiver, public SceneRegistry {
 				auto const forward = nvec3(transform.orientation() * -graphics::front);
 				cam.face(forward);
 				cam.position = m_registry.get<Transform>(m_data.camera).position();
-				if (collision) { collision->find(m_colID0)->position() = transform.position(); }
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
@@ -628,7 +626,6 @@ class App : public input::Receiver, public SceneRegistry {
 				auto pos = tr->position();
 				pos.x = tweener.tick(dt);
 				tr->position(pos);
-				if (collision) { collision->find(m_colID1)->position() = tr->position(); }
 			}
 		}
 		// draw
@@ -657,7 +654,6 @@ class App : public input::Receiver, public SceneRegistry {
 		dens::entity camera;
 		dens::entity player;
 		dens::entity guiStack;
-		dens::entity collision;
 		dens::entity tween;
 		Hash wire;
 		bool reboot = false;
@@ -670,8 +666,7 @@ class App : public input::Receiver, public SceneRegistry {
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
 	mutable Drawer m_drawer;
-	Collision::ID m_colID0{}, m_colID1{};
-	Collision::OnCollide::handle m_onCollide;
+	physics::OnTrigger::handle m_onCollide;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};

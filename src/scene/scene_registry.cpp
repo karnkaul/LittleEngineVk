@@ -2,8 +2,8 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
-#include <engine/physics/collision.hpp>
 #include <engine/scene/scene_registry.hpp>
+#include <engine/systems/physics_system.hpp>
 #include <engine/systems/spring_arm_system.hpp>
 
 namespace le {
@@ -18,12 +18,14 @@ dens::entity_view<Transform, SceneNode, Types...> makeNode(dens::registry& out, 
 
 struct SceneRegistry::Impl {
 	struct {
-		System<SpringArm> springArm;
+		SpringArmSystem springArm;
+		PhysicsSystem physics;
 	} systems;
 };
 
 SceneRegistry::SceneRegistry() : m_impl(std::make_unique<Impl>()) {
 	m_root = makeNode(m_registry);
+	m_systems.addGroup({&m_impl->systems.physics}, "physics");
 	m_systems.attach(&m_impl->systems.springArm);
 }
 
@@ -61,7 +63,7 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 }
 
 void SceneRegistry::update(Time_s dt) {
-	if (m_cleanOnUpdate) {
+	if (m_cleanNodesOnUpdate) {
 		for (auto [_, c] : m_registry.view<SceneNode>()) {
 			auto& [node] = c;
 			node.clean(m_registry);
@@ -71,10 +73,6 @@ void SceneRegistry::update(Time_s dt) {
 	for (auto [_, c] : m_registry.view<gui::ViewStack>()) {
 		auto& [stack] = c;
 		eng->update(stack);
-	}
-	for (auto [_, c] : m_registry.view<Collision>()) {
-		auto& [collision] = c;
-		collision.update();
 	}
 	m_systems.tick(m_registry, dt);
 }

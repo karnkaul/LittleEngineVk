@@ -1,7 +1,7 @@
 #include <dens/registry.hpp>
+#include <engine/components/trigger.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/gui/view.hpp>
-#include <engine/physics/collision.hpp>
 #include <engine/render/prop_provider.hpp>
 #include <engine/render/skybox.hpp>
 #include <engine/scene/draw_list_gen.hpp>
@@ -42,10 +42,12 @@ void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, dens::registry co
 		auto& [layer, skybox] = c;
 		if (layer.pipeline) { map[layer].push_back({glm::mat4(1.0f), {}, skybox.prop()}); }
 	}
-	for (auto [_, c] : registry.view<DrawLayer, Collision>(exclude)) {
-		auto& [layer, collision] = c;
+	for (auto [_, c] : registry.view<DrawLayer, physics::Trigger::Debug>(exclude)) {
+		auto& [layer, physics] = c;
 		if (layer.pipeline) {
-			if (auto drawables = collision.drawables(); !drawables.empty()) { std::move(drawables.begin(), drawables.end(), std::back_inserter(map[layer])); }
+			if (auto drawables = physics.drawables(registry); !drawables.empty()) {
+				std::move(drawables.begin(), drawables.end(), std::back_inserter(map[layer]));
+			}
 		}
 	}
 }

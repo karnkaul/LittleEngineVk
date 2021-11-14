@@ -3,7 +3,7 @@
 #include <engine/systems/spring_arm_system.hpp>
 
 namespace le {
-void System<SpringArm>::tick(dens::registry const& registry, Time_s dt) {
+void SpringArmSystem::tick(dens::registry const& registry, Time_s dt) {
 	static constexpr u32 max = 64;
 	for (auto [e, c] : registry.view<SpringArm, Transform>()) {
 		auto& [spring, transform] = c;

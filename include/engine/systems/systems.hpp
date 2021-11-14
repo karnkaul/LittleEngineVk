@@ -11,11 +11,11 @@ class Systems {
 
 	struct Group {
 		std::string name;
-		std::vector<not_null<SystemBase*>> systems;
+		std::vector<not_null<System*>> systems;
 	};
 
-	bool attach(not_null<SystemBase*> system, ID group = 0);
-	ID addGroup(std::vector<not_null<SystemBase*>> systems = {}, std::string name = {});
+	bool attach(not_null<System*> system, std::optional<ID> group = std::nullopt);
+	ID addGroup(std::vector<not_null<System*>> systems = {}, std::string name = {});
 	Group* findGroup(ID id) noexcept;
 	Group const* findGroup(ID id) const noexcept;
 	bool containsGroup(ID id) const noexcept { return findGroup(id) != nullptr; }

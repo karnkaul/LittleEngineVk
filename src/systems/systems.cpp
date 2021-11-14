@@ -9,16 +9,16 @@ void Systems::tick(dens::registry const& registry, Time_s dt) {
 	}
 }
 
-bool Systems::attach(not_null<SystemBase*> system, ID group) {
+bool Systems::attach(not_null<System*> system, std::optional<ID> group) {
 	if (m_entries.empty()) { addEntry({.name = "(default)", .systems = {}}); }
-	if (auto g = findGroup(group)) {
+	if (auto g = group ? findGroup(*group) : &m_entries.back().group) {
 		g->systems.push_back(system);
 		return true;
 	}
 	return false;
 }
 
-Systems::ID Systems::addGroup(std::vector<not_null<SystemBase*>> systems, std::string name) {
+Systems::ID Systems::addGroup(std::vector<not_null<System*>> systems, std::string name) {
 	return addEntry({.name = std::move(name), .systems = std::move(systems)}).id;
 }
 

@@ -5,9 +5,9 @@
 
 namespace le {
 dens::entity_view<SpringArm, Transform> SpringArm::attach(dens::entity entity, dens::registry& out, dens::entity target) {
-	out.attach<SpringArm, Transform>(entity);
+	if (!out.attached<Transform>(entity)) { out.attach<Transform>(entity); }
+	out.attach<SpringArm>(entity).target = target;
 	auto ret = std::tie(out.get<SpringArm>(entity), out.get<Transform>(entity));
-	std::get<SpringArm&>(ret).target = target;
 	return {entity, ret};
 }
 

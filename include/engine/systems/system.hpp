@@ -5,7 +5,7 @@
 #include <dumb_tasks/scheduler.hpp>
 
 namespace le {
-class SystemBase : public utils::VBase {
+class System : public utils::VBase {
   protected:
 	using Scheduler = dts::scheduler;
 	using Stage = Scheduler::stage_t;
@@ -30,18 +30,15 @@ class SystemBase : public utils::VBase {
 	friend class Systems;
 };
 
-template <typename T>
-class System;
-
 // impl
 
 template <typename F>
-SystemBase::StageID SystemBase::stageTask(F&& func, std::vector<StageID> deps) {
+System::StageID System::stageTask(F&& func, std::vector<StageID> deps) {
 	return stageTasks({.tasks = {std::forward<F>(func)}, .deps = std::move(deps)});
 }
 
 template <typename Container>
-void SystemBase::waitStages(Container const& stageIDs) const {
+void System::waitStages(Container const& stageIDs) const {
 	m_scheduler->wait_stages(stageIDs);
 }
 } // namespace le

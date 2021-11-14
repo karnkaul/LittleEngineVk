@@ -3,6 +3,7 @@
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
+#include <engine/systems/gui_system.hpp>
 #include <engine/systems/physics_system.hpp>
 #include <engine/systems/spring_arm_system.hpp>
 
@@ -20,6 +21,7 @@ struct SceneRegistry::Impl {
 	struct {
 		SpringArmSystem springArm;
 		PhysicsSystem physics;
+		GuiSystem gui;
 	} systems;
 };
 
@@ -27,6 +29,7 @@ SceneRegistry::SceneRegistry() : m_impl(std::make_unique<Impl>()) {
 	m_root = makeNode(m_registry);
 	m_systems.addGroup({&m_impl->systems.physics}, "physics");
 	m_systems.attach(&m_impl->systems.springArm);
+	m_systems.attach(&m_impl->systems.gui);
 }
 
 SceneRegistry::~SceneRegistry() = default;
@@ -68,11 +71,6 @@ void SceneRegistry::update(Time_s dt) {
 			auto& [node] = c;
 			node.clean(m_registry);
 		}
-	}
-	auto eng = Services::get<Engine>();
-	for (auto [_, c] : m_registry.view<gui::ViewStack>()) {
-		auto& [stack] = c;
-		eng->update(stack);
 	}
 	m_systems.tick(m_registry, dt);
 }

@@ -5,6 +5,7 @@
 #include <engine/scene/scene_registry.hpp>
 #include <engine/systems/gui_system.hpp>
 #include <engine/systems/physics_system.hpp>
+#include <engine/systems/scene_clean_system.hpp>
 #include <engine/systems/spring_arm_system.hpp>
 #include <engine/systems/system_groups.hpp>
 
@@ -25,6 +26,7 @@ SceneRegistry::SceneRegistry() {
 	auto& tick = m_systemGroupRoot.attach<TickSystemGroup>();
 	tick.attach<SpringArmSystem>();
 	tick.attach<GuiSystem>(GuiSystem::order_v);
+	tick.attach<SceneCleanSystem>(SceneCleanSystem::order_v);
 }
 
 void SceneRegistry::attach(dens::entity entity, DrawLayer layer, PropProvider provider) {
@@ -58,15 +60,7 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 	return {};
 }
 
-void SceneRegistry::update(dts::scheduler& scheduler, Time_s dt) {
-	if (m_cleanNodesOnUpdate) {
-		for (auto [_, c] : m_registry.view<SceneNode>()) {
-			auto& [node] = c;
-			node.clean(m_registry);
-		}
-	}
-	m_systemGroupRoot.update(scheduler, m_registry, dt);
-}
+void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt) { m_systemGroupRoot.update(scheduler, m_registry, dt); }
 
 edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }
 } // namespace le

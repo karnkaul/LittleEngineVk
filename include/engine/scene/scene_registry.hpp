@@ -34,13 +34,10 @@ class SceneRegistry : public utils::VBase {
 	template <typename T, typename... Args>
 	dens::entity spawn(std::string name, Hash layerID, Args&&... args);
 
-	// Updates Systems and gui::ViewStack components
-	void update(dts::scheduler& scheduler, Time_s dt);
+	void updateSystems(dts::scheduler& scheduler, Time_s dt);
 	DrawLayer layer(Hash id) const;
 
 	edi::SceneRef ediScene() noexcept;
-
-	bool m_cleanNodesOnUpdate = levk_debug;
 
   protected:
 	SystemGroup m_systemGroupRoot;

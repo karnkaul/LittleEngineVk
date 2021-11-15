@@ -1,7 +1,10 @@
 #pragma once
-#include <engine/systems/system_group.hpp>
+#include <dens/system_group.hpp>
+#include <engine/systems/component_system.hpp>
 
 namespace le {
-class PhysicsSystemGroup : public SystemGroup {};
-class TickSystemGroup : public SystemGroup {};
+using ComponentSystemGroup = dens::system_group<SystemData>;
+
+class PhysicsSystemGroup : public ComponentSystemGroup {};
+class TickSystemGroup : public ComponentSystemGroup {};
 } // namespace le

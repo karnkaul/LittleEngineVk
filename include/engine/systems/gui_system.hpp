@@ -1,9 +1,9 @@
 #pragma once
-#include <engine/systems/system.hpp>
+#include <engine/systems/component_system.hpp>
 
 namespace le {
-class GuiSystem : public System {
-	void tick(dens::registry const& registry, Time_s dt) override;
+class GuiSystem : public ComponentSystem {
+	void update(dens::registry const& registry) override;
 
   public:
 	static constexpr Order order_v = 100;

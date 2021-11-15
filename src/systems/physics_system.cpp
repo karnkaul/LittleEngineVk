@@ -23,7 +23,7 @@ bool colliding(Trigger const& lt, Trigger const& rt, glm::vec3 const& lp, glm::v
 }
 } // namespace
 
-void PhysicsSystem::tick(dens::registry const& registry, Time_s) {
+void PhysicsSystem::update(dens::registry const& registry) {
 	auto view = registry.view<Trigger, Transform>();
 	for (std::size_t i = 0; i + 1 < view.size(); ++i) {
 		for (std::size_t j = i + 1; j < view.size(); ++j) {

@@ -3,8 +3,9 @@
 #include <engine/systems/spring_arm_system.hpp>
 
 namespace le {
-void SpringArmSystem::tick(dens::registry const& registry, Time_s dt) {
+void SpringArmSystem::update(dens::registry const& registry) {
 	static constexpr u32 max = 64;
+	auto const dt = data().dt;
 	for (auto [e, c] : registry.view<SpringArm, Transform>()) {
 		auto& [spring, transform] = c;
 		if (auto target = registry.find<Transform>(spring.target)) {

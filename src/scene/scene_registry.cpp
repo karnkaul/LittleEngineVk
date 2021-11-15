@@ -60,7 +60,7 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 	return {};
 }
 
-void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt) { m_systemGroupRoot.update(scheduler, m_registry, dt); }
+void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt) { m_systemGroupRoot.update(m_registry, SystemData{scheduler, dt}); }
 
 edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }
 } // namespace le

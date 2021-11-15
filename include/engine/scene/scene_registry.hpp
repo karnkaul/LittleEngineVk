@@ -5,7 +5,7 @@
 #include <engine/render/draw_list_factory.hpp>
 #include <engine/render/prop_provider.hpp>
 #include <engine/scene/scene_node.hpp>
-#include <engine/systems/system_group.hpp>
+#include <engine/systems/system_groups.hpp>
 
 namespace le {
 namespace edi {
@@ -40,7 +40,7 @@ class SceneRegistry : public utils::VBase {
 	edi::SceneRef ediScene() noexcept;
 
   protected:
-	SystemGroup m_systemGroupRoot;
+	ComponentSystemGroup m_systemGroupRoot;
 	dens::registry m_registry;
 	dens::entity m_sceneRoot;
 };

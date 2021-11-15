@@ -6,7 +6,9 @@ namespace le {
 using physics::Trigger;
 
 namespace {
-constexpr bool intersecting(glm::vec2 l, glm::vec2 r) noexcept { return (l.x >= r.x && l.x <= r.y) || (l.y >= r.x && l.y <= r.y); }
+constexpr bool intersecting(glm::vec2 l, glm::vec2 r) noexcept {
+	return (l.x >= r.x && l.x <= r.y) || (l.y >= r.x && l.y <= r.y) || (r.x >= l.x && r.x <= l.y) || (r.y >= l.x && r.y < l.y);
+}
 
 constexpr glm::vec2 lohi(f32 pos, f32 scale, f32 offset) noexcept { return {pos + scale * -0.5f + offset, pos + scale * 0.5f + offset}; }
 

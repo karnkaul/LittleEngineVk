@@ -5,7 +5,7 @@
 #include <engine/render/draw_list_factory.hpp>
 #include <engine/render/prop_provider.hpp>
 #include <engine/scene/scene_node.hpp>
-#include <engine/systems/systems.hpp>
+#include <engine/systems/system_group.hpp>
 
 namespace le {
 namespace edi {
@@ -15,10 +15,9 @@ class SceneRef;
 class SceneRegistry : public utils::VBase {
   public:
 	SceneRegistry();
-	~SceneRegistry() override;
 
 	dens::registry const& registry() const noexcept { return m_registry; }
-	dens::entity root() const noexcept { return m_root; }
+	dens::entity root() const noexcept { return m_sceneRoot; }
 
 	void attach(dens::entity entity, DrawLayer layer, PropProvider provider);
 	void attach(dens::entity entity, DrawLayer layer);
@@ -36,7 +35,7 @@ class SceneRegistry : public utils::VBase {
 	dens::entity spawn(std::string name, Hash layerID, Args&&... args);
 
 	// Updates Systems and gui::ViewStack components
-	void update(Time_s dt);
+	void update(dts::scheduler& scheduler, Time_s dt);
 	DrawLayer layer(Hash id) const;
 
 	edi::SceneRef ediScene() noexcept;
@@ -44,12 +43,9 @@ class SceneRegistry : public utils::VBase {
 	bool m_cleanNodesOnUpdate = levk_debug;
 
   protected:
-	struct Impl;
-
-	std::unique_ptr<Impl> m_impl;
-	Systems m_systems;
+	SystemGroup m_systemGroupRoot;
 	dens::registry m_registry;
-	dens::entity m_root;
+	dens::entity m_sceneRoot;
 };
 
 // impl

@@ -6,6 +6,7 @@
 #include <engine/systems/gui_system.hpp>
 #include <engine/systems/physics_system.hpp>
 #include <engine/systems/spring_arm_system.hpp>
+#include <engine/systems/system_groups.hpp>
 
 namespace le {
 namespace {
@@ -17,22 +18,14 @@ dens::entity_view<Transform, SceneNode, Types...> makeNode(dens::registry& out, 
 }
 } // namespace
 
-struct SceneRegistry::Impl {
-	struct {
-		SpringArmSystem springArm;
-		PhysicsSystem physics;
-		GuiSystem gui;
-	} systems;
-};
-
-SceneRegistry::SceneRegistry() : m_impl(std::make_unique<Impl>()) {
-	m_root = makeNode(m_registry);
-	m_systems.addGroup({&m_impl->systems.physics}, "physics");
-	m_systems.attach(&m_impl->systems.springArm);
-	m_systems.attach(&m_impl->systems.gui);
+SceneRegistry::SceneRegistry() {
+	m_sceneRoot = makeNode(m_registry);
+	auto& physics = m_systemGroupRoot.attach<PhysicsSystemGroup>();
+	physics.attach<PhysicsSystem>();
+	auto& tick = m_systemGroupRoot.attach<TickSystemGroup>();
+	tick.attach<SpringArmSystem>();
+	tick.attach<GuiSystem>(GuiSystem::order_v);
 }
-
-SceneRegistry::~SceneRegistry() = default;
 
 void SceneRegistry::attach(dens::entity entity, DrawLayer layer, PropProvider provider) {
 	m_registry.attach<DrawLayer>(entity, layer);
@@ -43,7 +36,7 @@ void SceneRegistry::attach(dens::entity entity, DrawLayer layer) { m_registry.at
 
 dens::entity SceneRegistry::spawnNode(std::string name) {
 	auto ret = makeNode(m_registry, std::move(name));
-	[[maybe_unused]] bool const b = ret.get<SceneNode>().parent(m_registry, m_root);
+	[[maybe_unused]] bool const b = ret.get<SceneNode>().parent(m_registry, m_sceneRoot);
 	EXPECT(b);
 	return ret;
 }
@@ -65,15 +58,15 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 	return {};
 }
 
-void SceneRegistry::update(Time_s dt) {
+void SceneRegistry::update(dts::scheduler& scheduler, Time_s dt) {
 	if (m_cleanNodesOnUpdate) {
 		for (auto [_, c] : m_registry.view<SceneNode>()) {
 			auto& [node] = c;
 			node.clean(m_registry);
 		}
 	}
-	m_systems.tick(m_registry, dt);
+	m_systemGroupRoot.update(scheduler, m_registry, dt);
 }
 
-edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_root}; }
+edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }
 } // namespace le

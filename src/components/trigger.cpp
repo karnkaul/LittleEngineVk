@@ -31,7 +31,7 @@ std::vector<Drawable> Trigger::Debug::drawables(dens::registry const& registry) 
 			Drawable drawable;
 			drawable.props = trigger.data.prop;
 			static constexpr auto idty = glm::mat4(1.0f);
-			drawable.model = glm::translate(idty, transform.position() + trigger.offset) * glm::scale(idty, transform.scale());
+			drawable.model = glm::translate(idty, transform.position() + trigger.offset) * glm::scale(idty, trigger.scale);
 			ret.push_back(drawable);
 		}
 	}

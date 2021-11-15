@@ -6,12 +6,15 @@
 
 namespace le {
 class System : public utils::VBase {
+  public:
+	using Order = s64;
+
+	void update(dts::scheduler& scheduler, dens::registry const& registry, Time_s dt);
+
   protected:
 	using Scheduler = dts::scheduler;
 	using Stage = Scheduler::stage_t;
 	using StageID = Scheduler::stage_id;
-
-	virtual void tick(dens::registry const& registry, Time_s dt) = 0;
 
 	template <typename F>
 	StageID stageTask(F&& func, std::vector<StageID> deps = {});
@@ -20,14 +23,14 @@ class System : public utils::VBase {
 	void waitStages(Container const& stageIDs) const;
 
   private:
-	void update(dts::scheduler& scheduler, dens::registry const& registry, Time_s dt);
+	virtual void tick(dens::registry const& registry, Time_s dt) = 0;
 
 	std::vector<dts::scheduler::stage_id> m_wait;
 	dts::scheduler* m_scheduler{};
 
 	struct Scope;
 	friend struct Scope;
-	friend class Systems;
+	friend class SystemGroup;
 };
 
 // impl

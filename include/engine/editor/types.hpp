@@ -1,15 +1,18 @@
 #pragma once
-#include <functional>
-#include <string>
 #include <fmt/format.h>
 #include <core/colour.hpp>
 #include <core/span.hpp>
+#include <core/utils/error.hpp>
 #include <core/utils/string.hpp>
-#include <dumb_ecf/registry.hpp>
+#include <dens/registry.hpp>
+#include <engine/editor/scene_ref.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
+#include <ktl/move_only_function.hpp>
 #include <ktl/n_tree.hpp>
 #include <ktl/stack_string.hpp>
+#include <optional>
+#include <string>
 
 #if defined(LEVK_EDITOR)
 constexpr bool levk_editor = true;
@@ -17,20 +20,31 @@ constexpr bool levk_editor = true;
 constexpr bool levk_editor = false;
 #endif
 
+namespace le {
+class Editor;
+namespace gui {
+class TreeRoot;
+}
+} // namespace le
+
 namespace le::edi {
-enum GUI { eOpen, eLeftClicked, eRightClicked };
+enum GUI { eOpen, eLeftClicked, eRightClicked, eDoubleClicked, eReleased };
 using GUIState = ktl::enum_flags<GUI, u8>;
 
 enum class Style { eSameLine, eSeparator };
 using StyleFlags = ktl::enum_flags<Style, u8>;
 
+enum class WType { eInput, eDrag };
+
 template <std::size_t N = 64>
 using CStr = ktl::stack_string<N>;
+
+f32 getWindowWidth();
 
 struct MenuList {
 	struct Menu {
 		CStr<64> id;
-		std::function<void()> callback;
+		ktl::move_only_function<void()> callback;
 		bool separator = false;
 	};
 
@@ -43,6 +57,8 @@ struct Styler final {
 	StyleFlags flags;
 
 	Styler(StyleFlags flags);
+	Styler(glm::vec2 dummy);
+	Styler(f32 sameLineX);
 
 	void operator()(std::optional<StyleFlags> flags = std::nullopt);
 };
@@ -74,7 +90,11 @@ struct Radio {
 };
 
 struct Button final : GUIStateful {
-	Button(std::string_view id);
+	Button(std::string_view id, std::optional<f32> hue = std::nullopt, bool small = false);
+};
+
+struct Selectable : GUIStateful {
+	Selectable(std::string_view id);
 };
 
 struct Combo final : GUIStateful {
@@ -139,6 +159,21 @@ struct Pane : GUIStateful {
 	explicit operator bool() const override { return test(GUI::eOpen); }
 };
 
+struct Popup : GUIStateful {
+	Popup(std::string_view id, int flags = 0);
+	~Popup() override;
+
+	static void open(std::string_view id);
+
+	explicit operator bool() const override { return test(GUI::eOpen); }
+	void close();
+};
+
+struct WidgetBase {
+	bool changed{};
+	explicit operator bool() const noexcept { return changed; }
+};
+
 template <typename T>
 struct TWidget {
 	static_assert(false_v<T>, "Invalid type");
@@ -169,13 +204,13 @@ template <typename T>
 struct TInspector {
 	CStr<128> id;
 	std::optional<TreeNode> node;
-	decf::registry* pReg = nullptr;
-	decf::entity entity;
+	dens::registry* pReg = nullptr;
+	dens::entity entity;
 	bool bNew = false;
 	bool bOpen = false;
 
 	TInspector() = default;
-	TInspector(decf::registry& out_registry, decf::entity entity, T const* pT, std::string_view id = {});
+	TInspector(dens::registry& out_registry, dens::entity entity, T const* pT, std::string_view id = {});
 	TInspector(TInspector<T>&&);
 	TInspector& operator=(TInspector<T>&&);
 	~TInspector();
@@ -183,55 +218,98 @@ struct TInspector {
 	explicit operator bool() const;
 };
 
+struct Payload {
+	void const* data{};
+	std::size_t size{};
+};
+
+struct DragDrop {
+	struct Source {
+		bool begun{};
+
+		Source(int flags = 0);
+		~Source();
+
+		explicit operator bool() const noexcept { return begun; }
+
+		template <typename T>
+		void payload(std::string_view type, T const& t) const {
+			payload(type, {&t, sizeof(T)});
+		}
+
+		void payload(std::string_view type, Payload payload) const;
+	};
+
+	struct Target {
+		bool begun{};
+
+		Target();
+		~Target();
+
+		Payload rawPayload(std::string_view type) const;
+
+		explicit operator bool() const noexcept { return begun; }
+
+		template <typename T>
+		T const* payload(std::string_view type) const {
+			if (auto t = rawPayload(type); t.data && t.size == sizeof(T)) { return reinterpret_cast<T const*>(t.data); }
+			return {};
+		}
+	};
+};
+
 template <>
-struct TWidget<bool> {
+struct TWidget<bool> : WidgetBase {
 	TWidget(std::string_view id, bool& out_b);
 };
 
 template <>
-struct TWidget<f32> {
-	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f, glm::vec2 lm = {});
+struct TWidget<f32> : WidgetBase {
+	TWidget(std::string_view id, f32& out_f, f32 df = 0.1f, f32 w = 0.0f, glm::vec2 rng = {}, WType wt = WType::eDrag);
 };
 
 template <>
-struct TWidget<s32> {
-	TWidget(std::string_view id, s32& out_s, f32 w = 0.0f);
+struct TWidget<int> : WidgetBase {
+	TWidget(std::string_view id, int& out_s, f32 w = 0.0f, glm::ivec2 rng = {}, WType wt = WType::eDrag);
 };
 
 template <>
-struct TWidget<std::string> {
-	using ZeroedBuf = std::string;
-
-	TWidget(std::string_view id, ZeroedBuf& out_buf, f32 width = 100.0f, std::size_t max = 0);
+struct TWidget<char*> : WidgetBase {
+	TWidget(std::string_view id, char* str, std::size_t size, f32 width = {}, int flags = {});
 };
 
 template <>
-struct TWidget<Colour> {
+struct TWidget<std::string_view> : WidgetBase {
+	TWidget(std::string_view id, std::string_view readonly, f32 width = {}, int flags = {});
+};
+
+template <>
+struct TWidget<Colour> : WidgetBase {
 	TWidget(std::string_view id, Colour& out_colour);
 };
 
 template <>
-struct TWidget<glm::vec2> {
+struct TWidget<glm::vec2> : WidgetBase {
 	TWidget(std::string_view id, glm::vec2& out_vec, bool bNormalised, f32 dv = 0.1f);
 };
 
 template <>
-struct TWidget<glm::vec3> {
+struct TWidget<glm::vec3> : WidgetBase {
 	TWidget(std::string_view id, glm::vec3& out_vec, bool bNormalised, f32 dv = 0.1f);
 };
 
 template <>
-struct TWidget<glm::quat> {
+struct TWidget<glm::quat> : WidgetBase {
 	TWidget(std::string_view id, glm::quat& out_quat, f32 dq = 0.01f);
 };
 
 template <>
-struct TWidget<SceneNode> {
-	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, SceneNode& out_t, glm::vec3 const& dPOS = glm::vec3(0.1f, 0.01f, 0.1f));
+struct TWidget<Transform> : WidgetBase {
+	TWidget(std::string_view idPos, std::string_view idOrn, std::string_view idScl, Transform& out_t, glm::vec3 const& dPOS = {0.1f, 0.01f, 0.1f});
 };
 
 template <>
-struct TWidget<std::pair<s64, s64>> {
+struct TWidget<std::pair<s64, s64>> : WidgetBase {
 	TWidget(std::string_view id, s64& out_t, s64 min, s64 max, s64 dt);
 };
 
@@ -247,7 +325,7 @@ FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) 
 }
 
 template <typename T>
-TInspector<T>::TInspector(decf::registry& out_registry, decf::entity entity, T const* pT, std::string_view id)
+TInspector<T>::TInspector(dens::registry& out_registry, dens::entity entity, T const* pT, std::string_view id)
 	: pReg(&out_registry), entity(entity), id(id.empty() ? utils::tName<T>() : id) {
 	bNew = pT == nullptr;
 	if (!bNew) {
@@ -280,7 +358,7 @@ template <typename T>
 TInspector<T>::~TInspector() {
 	if (bNew && pReg) {
 		if (auto add = TreeNode(CStr<16>("[Add %s]", id.data()), false, true, true, false); add.test(GUI::eLeftClicked)) {
-			decf::registry& registry = *pReg;
+			dens::registry& registry = *pReg;
 			registry.attach<T>(entity);
 		}
 	}

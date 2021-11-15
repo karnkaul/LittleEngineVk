@@ -1,16 +1,16 @@
 #pragma once
-#include <optional>
-#include <string>
-#include <vector>
 #include <fmt/format.h>
 #include <core/erased_ptr.hpp>
 #include <core/io/path.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace le::os {
 enum class OS : s8 { eWindows, eLinux, eUnknown };
-enum class Arch : s8 { eX64, eARM64, eX86, eUnknown };
+enum class Arch : s8 { eX64, eARM64, eX86, eARM32, eUnknown };
 enum class StdLib : s8 { eMSVC, eLibStdCXX, eUnknown };
 enum class Compiler : s8 { eClang, eGCC, eVCXX, eUnknown };
 } // namespace le::os
@@ -36,10 +36,16 @@ inline constexpr std::string_view levk_arch_name = "x64";
 #define LEVK_OS_LINUX
 inline constexpr le::os::OS levk_OS = le::os::OS::eLinux;
 inline constexpr std::string_view levk_OS_name = "Linux";
-#if defined(__arm__)
+#if defined(__arm__) || defined(__ARM_ARCH)
+#if defined(__ARM_ARCH_ISA_A64)
 #define LEVK_ARCH_ARM64
 inline constexpr le::os::Arch levk_arch = le::os::Arch::eARM64;
 inline constexpr std::string_view levk_arch_name = "ARM64";
+#else
+#define LEVK_ARCH_ARM32
+inline constexpr le::os::Arch levk_arch = le::os::Arch::eARM32;
+inline constexpr std::string_view levk_arch_name = "ARM32";
+#endif
 #elif defined(__x86_64__)
 #define LEVK_ARCH_X64
 inline constexpr le::os::Arch levk_arch = le::os::Arch::eX64;

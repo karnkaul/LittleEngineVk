@@ -1,34 +1,33 @@
 #pragma once
-#include <memory>
-#include <vector>
+#include <core/utils/expect.hpp>
+#include <core/utils/vbase.hpp>
 #include <engine/editor/types.hpp>
-#include <engine/editor/widget.hpp>
 
 namespace le::edi {
-class Palette {
+class PaletteTab;
+
+class Palette : public utils::VBase {
   public:
-	glm::vec2 s_minSize = {100.0f, 100.0f};
+	bool hasScene() const noexcept { return m_scene; }
+	SceneRef scene() const;
 
-	template <typename T, typename... Args>
-	T& attach(std::string id, Args&&... args);
-	bool detach(std::string_view id);
-
-	bool update(std::string_view id, glm::vec2 size, glm::vec2 pos);
+	virtual void update() = 0;
 
   private:
-	struct Entry {
-		std::string id;
-		std::unique_ptr<Control> control;
-	};
-	std::vector<Entry> m_items;
+	void doUpdate(SceneRef scene) {
+		m_scene = &scene;
+		update();
+	}
+
+	SceneRef const* m_scene{};
+
+	friend class PaletteTab;
 };
 
 // impl
 
-template <typename T, typename... Args>
-T& Palette::attach(std::string id, Args&&... args) {
-	static_assert(std::is_base_of_v<Control, T>, "T must derive from Control");
-	m_items.push_back({std::move(id), std::make_unique<T>(std::forward<Args>(args)...)});
-	return static_cast<T&>(*m_items.back().control);
+inline SceneRef Palette::scene() const {
+	EXPECT(m_scene);
+	return *m_scene;
 }
 } // namespace le::edi

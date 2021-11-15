@@ -1,9 +1,9 @@
 #pragma once
-#include <string_view>
 #include <core/log.hpp>
 #include <core/not_null.hpp>
 #include <core/time.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <string_view>
 
 namespace le::utils {
 struct ProfileEntry {

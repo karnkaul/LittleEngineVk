@@ -1,12 +1,13 @@
 #include <core/maths.hpp>
 #include <core/services.hpp>
-#include <engine/editor/controls/inspector.hpp>
-#include <engine/editor/controls/scene_tree.hpp>
-#include <engine/editor/controls/settings.hpp>
+#include <editor/sudo.hpp>
 #include <engine/editor/editor.hpp>
+#include <engine/editor/inspector.hpp>
+#include <engine/editor/palette_tab.hpp>
+#include <engine/editor/palettes/settings.hpp>
+#include <engine/editor/scene_tree.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/engine.hpp>
-#include <engine/scene/scene_registry.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
@@ -17,14 +18,40 @@ namespace le {
 namespace edi {
 using sv = std::string_view;
 
+f32 getWindowWidth() {
+#if defined(LEVK_USE_IMGUI)
+	return ImGui::GetWindowWidth();
+#else
+	return {};
+#endif
+}
+
 void clicks(MU GUIState& out_state) {
 #if defined(LEVK_USE_IMGUI)
 	out_state.assign(GUI::eLeftClicked, ImGui::IsItemClicked(ImGuiMouseButton_Left));
 	out_state.assign(GUI::eRightClicked, ImGui::IsItemClicked(ImGuiMouseButton_Right));
+	if (out_state.any(GUIState(GUI::eLeftClicked, GUI::eRightClicked))) {
+		out_state.assign(GUI::eDoubleClicked, ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Right));
+	} else if (ImGui::IsItemHovered()) {
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) { out_state.set(GUIState(GUI::eReleased, GUI::eLeftClicked)); }
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) { out_state.set(GUIState(GUI::eReleased, GUI::eRightClicked)); }
+	}
 #endif
 }
 
 Styler::Styler(StyleFlags flags) : flags(flags) { (*this)(); }
+
+Styler::Styler(MU glm::vec2 dummy) {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::Dummy({dummy.x, dummy.y});
+#endif
+}
+
+Styler::Styler(MU f32 sameLineX) {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::SameLine(sameLineX);
+#endif
+}
 
 void Styler::operator()(MU std::optional<StyleFlags> f) {
 #if defined(LEVK_USE_IMGUI)
@@ -64,17 +91,30 @@ Radio::Radio(MU Span<sv const> options, MU s32 preSelect, MU bool sameLine) : se
 #endif
 }
 
-Button::Button(MU sv id) {
+Button::Button(MU sv id, MU std::optional<f32> hue, MU bool small) {
 #if defined(LEVK_USE_IMGUI)
 	refresh();
-	guiState.assign(GUI::eLeftClicked, ImGui::Button(id.empty() ? "[Unnamed]" : id.data()));
+	if (hue) {
+		ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(*hue, 0.8f, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(*hue, 0.8f, 0.8f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(*hue, 0.9f, 0.9f));
+	}
+	guiState.assign(GUI::eLeftClicked, small ? ImGui::SmallButton(id.data()) : ImGui::Button(id.data()));
+	if (hue) { ImGui::PopStyleColor(3); }
+#endif
+}
+
+Selectable::Selectable(MU sv id) {
+#if defined(LEVK_USE_IMGUI)
+	refresh();
+	guiState.assign(GUI::eLeftClicked, ImGui::Selectable(id.data()));
 #endif
 }
 
 Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 #if defined(LEVK_USE_IMGUI)
 	if (!entries.empty()) {
-		guiState.assign(GUI::eOpen, ImGui::BeginCombo(id.empty() ? "[Unnamed]" : id.data(), preSelect.data()));
+		guiState.assign(GUI::eOpen, ImGui::BeginCombo(id.data(), preSelect.data()));
 		refresh();
 		if (test(GUI::eOpen)) {
 			std::size_t i = 0;
@@ -95,7 +135,7 @@ Combo::Combo(MU sv id, MU Span<sv const> entries, MU sv preSelect) {
 
 TreeNode::TreeNode(MU sv id) {
 #if defined(LEVK_USE_IMGUI)
-	guiState.assign(GUI::eOpen, ImGui::TreeNode(id.empty() ? "[Unnamed]" : id.data()));
+	guiState.assign(GUI::eOpen, ImGui::TreeNode(id.data()));
 	refresh();
 #endif
 }
@@ -106,7 +146,7 @@ TreeNode::TreeNode(MU sv id, MU bool bSelected, MU bool bLeaf, MU bool bFullWidt
 	ImGuiTreeNodeFlags const branchFlags = (bLeftClickOpen ? 0 : ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
 	ImGuiTreeNodeFlags const metaFlags = (bSelected ? ImGuiTreeNodeFlags_Selected : 0) | (bFullWidth ? ImGuiTreeNodeFlags_SpanAvailWidth : 0);
 	ImGuiTreeNodeFlags const nodeFlags = (bLeaf ? leafFlags : branchFlags) | metaFlags;
-	guiState.assign(GUI::eOpen, ImGui::TreeNodeEx(id.empty() ? "[Unnamed]" : id.data(), nodeFlags) && !bLeaf);
+	guiState.assign(GUI::eOpen, ImGui::TreeNodeEx(id.data(), nodeFlags) && !bLeaf);
 	refresh();
 #endif
 }
@@ -217,45 +257,112 @@ Pane::~Pane() {
 #endif
 }
 
+Popup::Popup(MU std::string_view id, MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	guiState.assign(GUI::eOpen, ImGui::BeginPopup(id.data(), flags));
+#endif
+}
+
+Popup::~Popup() {
+#if defined(LEVK_USE_IMGUI)
+	if (*this) { ImGui::EndPopup(); }
+#endif
+}
+
+void Popup::open(MU std::string_view id) {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::OpenPopup(id.data());
+#endif
+}
+
+void Popup::close() {
+#if defined(LEVK_USE_IMGUI)
+	if (*this) { ImGui::CloseCurrentPopup(); }
+#endif
+}
+
+DragDrop::Source::Source(MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	begun = ImGui::BeginDragDropSource(flags);
+#endif
+}
+
+DragDrop::Source::~Source() {
+#if defined(LEVK_USE_IMGUI)
+	if (begun) { ImGui::EndDragDropSource(); }
+#endif
+}
+
+void DragDrop::Source::payload(MU std::string_view type, MU Payload payload) const {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::SetDragDropPayload(type.data(), payload.data, payload.size);
+#endif
+}
+
+DragDrop::Target::Target() {
+#if defined(LEVK_USE_IMGUI)
+	begun = ImGui::BeginDragDropTarget();
+#endif
+}
+
+DragDrop::Target::~Target() {
+#if defined(LEVK_USE_IMGUI)
+	if (begun) { ImGui::EndDragDropTarget(); }
+#endif
+}
+
+Payload DragDrop::Target::rawPayload(MU std::string_view type) const {
+#if defined(LEVK_USE_IMGUI)
+	if (ImGuiPayload const* p = ImGui::AcceptDragDropPayload(type.data())) { return {p->Data, std::size_t(p->DataSize)}; }
+#endif
+	return {};
+}
+
 TWidget<bool>::TWidget(MU sv id, MU bool& out_b) {
 #if defined(LEVK_USE_IMGUI)
-	ImGui::Checkbox(id.empty() ? "[Unnamed]" : id.data(), &out_b);
+	changed = ImGui::Checkbox(id.data(), &out_b);
 #endif
 }
 
-TWidget<s32>::TWidget(MU sv id, MU s32& out_s, MU f32 w) {
+TWidget<int>::TWidget(MU sv id, MU int& out_s, MU f32 w, MU glm::ivec2 rng, MU WType wt) {
 #if defined(LEVK_USE_IMGUI)
 	if (w > 0.0f) { ImGui::SetNextItemWidth(w); }
-	ImGui::DragInt(id.empty() ? "[Unnamed]" : id.data(), &out_s);
+	switch (wt) {
+	case WType::eDrag: changed = ImGui::DragInt(id.data(), &out_s, 0.1f, rng.x, rng.y); break;
+	default: changed = ImGui::InputInt(id.data(), &out_s); break;
+	}
 #endif
 }
 
-TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w, MU glm::vec2 lm) {
+TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w, MU glm::vec2 rng, MU WType wt) {
 #if defined(LEVK_USE_IMGUI)
 	if (w > 0.0f) { ImGui::SetNextItemWidth(w); }
-	ImGui::DragFloat(id.empty() ? "[Unnamed]" : id.data(), &out_f, df, lm.x, lm.y);
+	switch (wt) {
+	case WType::eDrag: changed = ImGui::DragFloat(id.data(), &out_f, df, rng.x, rng.y); break;
+	default: changed = ImGui::InputFloat(id.data(), &out_f, df); break;
+	}
+#endif
+}
+
+TWidget<char*>::TWidget(MU sv id, MU char* str, MU std::size_t size, MU f32 width, MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	if (width > 0.0f) { ImGui::SetNextItemWidth(width); }
+	changed = ImGui::InputText(id.data(), str, size, flags);
+#endif
+}
+
+TWidget<std::string_view>::TWidget(MU sv id, MU sv readonly, MU f32 width, MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	if (width > 0.0f) { ImGui::SetNextItemWidth(width); }
+	changed = ImGui::InputText(id.data(), (char*)readonly.data(), readonly.size(), flags | ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
 #endif
 }
 
 TWidget<Colour>::TWidget(MU sv id, MU Colour& out_colour) {
 #if defined(LEVK_USE_IMGUI)
 	auto c = out_colour.toVec4();
-	ImGui::ColorEdit3(id.empty() ? "[Unnamed]" : id.data(), &c.x);
+	changed = ImGui::ColorEdit3(id.data(), &c.x);
 	out_colour = Colour(c);
-#endif
-}
-
-TWidget<std::string>::TWidget(MU sv id, MU ZeroedBuf& out_buf, MU f32 width, MU std::size_t max) {
-#if defined(LEVK_USE_IMGUI)
-	if (max <= (std::size_t)width) { max = (std::size_t)width; }
-	out_buf.reserve(max);
-	if (out_buf.size() < max) {
-		std::size_t const diff = max - out_buf.size();
-		std::string str(diff, '\0');
-		out_buf += str;
-	}
-	ImGui::SetNextItemWidth(width);
-	ImGui::InputText(id.empty() ? "[Unnamed]" : id.data(), out_buf.data(), max);
 #endif
 }
 
@@ -268,7 +375,7 @@ TWidget<glm::vec2>::TWidget(MU sv id, MU glm::vec2& out_vec, MU bool bNormalised
 			out_vec = glm::normalize(out_vec);
 		}
 	}
-	ImGui::DragFloat2(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
+	changed = ImGui::DragFloat2(id.data(), &out_vec.x, dv);
 	if (bNormalised) { out_vec = glm::normalize(out_vec); }
 #endif
 }
@@ -282,7 +389,7 @@ TWidget<glm::vec3>::TWidget(MU sv id, MU glm::vec3& out_vec, MU bool bNormalised
 			out_vec = glm::normalize(out_vec);
 		}
 	}
-	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &out_vec.x, dv);
+	changed = ImGui::DragFloat3(id.data(), &out_vec.x, dv);
 	if (bNormalised) { out_vec = glm::normalize(out_vec); }
 #endif
 }
@@ -290,22 +397,22 @@ TWidget<glm::vec3>::TWidget(MU sv id, MU glm::vec3& out_vec, MU bool bNormalised
 TWidget<glm::quat>::TWidget(MU sv id, MU glm::quat& out_quat, MU f32 dq) {
 #if defined(LEVK_USE_IMGUI)
 	auto rot = glm::eulerAngles(out_quat);
-	ImGui::DragFloat3(id.empty() ? "[Unnamed]" : id.data(), &rot.x, dq);
+	changed = ImGui::DragFloat3(id.data(), &rot.x, dq);
 	out_quat = glm::quat(rot);
 #endif
 }
 
-TWidget<SceneNode>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU SceneNode& out_t, MU glm::vec3 const& dPOS) {
+TWidget<Transform>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU Transform& out_t, MU glm::vec3 const& dPOS) {
 #if defined(LEVK_USE_IMGUI)
 	auto posn = out_t.position();
 	auto scl = out_t.scale();
 	auto const& orn = out_t.orientation();
 	auto rot = glm::eulerAngles(orn);
-	ImGui::DragFloat3(idPos.data(), &posn.x, dPOS.x);
+	changed = ImGui::DragFloat3(idPos.data(), &posn.x, dPOS.x);
 	out_t.position(posn);
-	ImGui::DragFloat3(idOrn.data(), &rot.x, dPOS.y);
+	changed |= ImGui::DragFloat3(idOrn.data(), &rot.x, dPOS.y);
 	out_t.orient(glm::quat(rot));
-	ImGui::DragFloat3(idScl.data(), &scl.x, dPOS.z);
+	changed |= ImGui::DragFloat3(idScl.data(), &scl.x, dPOS.z);
 	out_t.scale(scl);
 #endif
 }
@@ -313,9 +420,15 @@ TWidget<SceneNode>::TWidget(MU sv idPos, MU sv idOrn, MU sv idScl, MU SceneNode&
 TWidget<std::pair<s64, s64>>::TWidget(MU sv id, MU s64& out_t, MU s64 min, MU s64 max, MU s64 dt) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::PushButtonRepeat(true);
-	if (ImGui::ArrowButton(CStr<64>("##%s_left", id.data()).data(), ImGuiDir_Left) && out_t > min) { out_t -= dt; }
+	if (ImGui::ArrowButton(CStr<64>("##%s_left", id.data()).data(), ImGuiDir_Left) && out_t > min) {
+		out_t -= dt;
+		changed = true;
+	}
 	ImGui::SameLine(0.0f, 3.0f);
-	if (ImGui::ArrowButton(CStr<64>("##%s_right", id.data()).data(), ImGuiDir_Right) && out_t < max) { out_t += dt; }
+	if (ImGui::ArrowButton(CStr<64>("##%s_right", id.data()).data(), ImGuiDir_Right) && out_t < max) {
+		out_t += dt;
+		changed = true;
+	}
 	ImGui::PopButtonRepeat();
 	ImGui::SameLine(0.0f, 5.0f);
 	ImGui::Text("%s", id.data());
@@ -328,13 +441,24 @@ void displayScale(MU f32 renderScale) {
 	ds = {ds.x * renderScale, ds.y * renderScale};
 #endif
 }
+
+template <typename T>
+class EditorTab : public PaletteTab {
+	void loopItems(SceneRef scene) override {
+		if (auto it = TabBar::Item(T::title_v)) { Sudo::update<T>(scene); }
+		PaletteTab::loopItems(scene);
+	}
+};
 } // namespace edi
 
 Editor::Editor() {
-	m_left.panel.attach<edi::SceneTree>("Scene");
-	m_left.panel.attach<edi::Settings>("Settings");
-	m_inspector = &m_right.panel.attach<edi::Inspector>("Inspector");
+	m_right.tab = std::make_unique<edi::EditorTab<edi::Inspector>>();
+	auto left = std::make_unique<edi::EditorTab<edi::SceneTree>>();
+	left->attach<edi::Settings>("Settings");
+	m_left.tab = std::move(left);
 }
+
+Editor::~Editor() noexcept { edi::Sudo::clear<edi::Inspector, edi::SceneTree>(); }
 
 bool Editor::active() const noexcept {
 	if constexpr (levk_imgui) { return true; }
@@ -346,10 +470,12 @@ Viewport const& Editor::view() const noexcept {
 	return active() && engaged() ? m_storage.gameView : s_default;
 }
 
-graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) {
+graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU input::Frame const& frame) {
 #if defined(LEVK_EDITOR)
-	if (m_storage.cached.registry != m_in.registry) { m_out = {}; }
 	if (active() && engaged()) {
+		if (!scene.valid() || m_cache.prev != edi::Sudo::registry(scene)) { m_cache = {}; }
+		m_cache.prev = edi::Sudo::registry(scene);
+		edi::Sudo::inspect(scene, m_cache.inspect);
 		auto eng = Services::get<Engine>();
 		edi::displayScale(eng->renderer().renderScale());
 		if (!edi::Pane::s_blockResize) { m_storage.resizer(eng->window(), m_storage.gameView, frame); }
@@ -362,10 +488,8 @@ graphics::ScreenView Editor::update([[maybe_unused]] input::Frame const& frame) 
 		glm::vec2 const leftPanelSize = {rect.lt.x * size.x, size.y - logHeight - offsetY};
 		glm::vec2 const rightPanelSize = {size.x - rect.rb.x * size.x, size.y - logHeight - offsetY};
 		m_storage.logStats(size, logHeight);
-		m_left.panel.update(m_left.id, leftPanelSize, {0.0f, offsetY});
-		m_right.panel.update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY});
-		m_storage.cached = std::move(m_in);
-		m_in = {};
+		m_left.tab->update(m_left.id, leftPanelSize, {0.0f, offsetY}, scene);
+		m_right.tab->update(m_right.id, rightPanelSize, {size.x - rightPanelSize.x, offsetY}, scene);
 		return {m_storage.gameView.rect(), m_storage.gameView.topLeft.offset * eng->renderer().renderScale()};
 	}
 #endif

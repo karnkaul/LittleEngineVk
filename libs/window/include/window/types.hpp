@@ -1,8 +1,8 @@
 #pragma once
-#include <string>
-#include <vector>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
+#include <string>
+#include <vector>
 
 namespace le::window {
 enum class Action : s8 { eRelease, ePress, eRepeat };

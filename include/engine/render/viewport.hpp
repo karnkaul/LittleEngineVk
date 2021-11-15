@@ -1,9 +1,9 @@
 #pragma once
-#include <algorithm>
 #include <core/std_types.hpp>
 #include <engine/render/flex.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/screen_rect.hpp>
+#include <algorithm>
 
 namespace le {
 struct Viewport final {

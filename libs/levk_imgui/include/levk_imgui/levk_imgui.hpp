@@ -1,9 +1,9 @@
 #pragma once
-#include <cstdint>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/texture.hpp>
 #include <graphics/utils/deferred.hpp>
+#include <cstdint>
 
 #if defined(LEVK_USE_IMGUI)
 #include <imgui.h>

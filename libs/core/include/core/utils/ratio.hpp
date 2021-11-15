@@ -1,7 +1,7 @@
 #pragma once
+#include <core/std_types.hpp>
 #include <atomic>
 #include <type_traits>
-#include <core/std_types.hpp>
 
 namespace le::utils {
 template <typename T>

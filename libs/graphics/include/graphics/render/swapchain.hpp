@@ -1,5 +1,4 @@
 #pragma once
-#include <optional>
 #include <core/array_map.hpp>
 #include <core/not_null.hpp>
 #include <core/span.hpp>
@@ -10,6 +9,7 @@
 #include <graphics/resources.hpp>
 #include <ktl/expected.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <optional>
 
 namespace le::graphics {
 class VRAM;

@@ -39,7 +39,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Basic 3D AABB collision detection
 - `libs/*`
   - Multi-threaded task scheduler
-  - Entity-Component framework
+  - Archetypal entity-component framework
   - JSON parser, de/serializer
   - Formatted logger
 
@@ -56,7 +56,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 - C++20 compiler and stdlib (modules, coroutines, and ranges are not yet used)
 - OS with desktop environment and Vulkan loader (`libvulkan1.so` / `vulkan1.dll`)
   - Windows 10
-  - Linux: X, Wayland (untested)
+  - Linux: X, Wayland (untested), Raspberry Pi OS (64 bit bullseye+)
 - GPU supporting Vulkan 1.0+, its driver, and loader
 - Vulkan SDK / `glslc` and validation layers (for compiling glsl shaders to SPIR-V in Debug and debugging / development)
 

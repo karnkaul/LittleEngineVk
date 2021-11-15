@@ -1,5 +1,4 @@
 #pragma once
-#include <type_traits>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/command_buffer.hpp>
@@ -8,6 +7,7 @@
 #include <graphics/render/swapchain.hpp>
 #include <graphics/screen_rect.hpp>
 #include <graphics/utils/ring_buffer.hpp>
+#include <type_traits>
 
 namespace le::graphics {
 

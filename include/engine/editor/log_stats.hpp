@@ -4,9 +4,9 @@
 #include <glm/vec2.hpp>
 
 #if defined(LEVK_USE_IMGUI)
-#include <deque>
 #include <core/time.hpp>
 #include <dumb_log/config.hpp>
+#include <deque>
 #endif
 
 namespace le::edi {

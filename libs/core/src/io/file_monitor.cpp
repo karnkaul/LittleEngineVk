@@ -1,8 +1,8 @@
-#include <filesystem>
 #include <core/io/file_monitor.hpp>
 #include <core/log.hpp>
 #include <core/utils/error.hpp>
 #include <core/utils/string.hpp>
+#include <filesystem>
 
 namespace le::io {
 namespace stdfs = std::filesystem;

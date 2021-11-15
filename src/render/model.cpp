@@ -1,6 +1,3 @@
-#include <sstream>
-#include <unordered_map>
-#include <unordered_set>
 #include <fmt/format.h>
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <core/io/media.hpp>
@@ -11,6 +8,9 @@
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
 #include <graphics/utils/utils.hpp>
+#include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace le {
 namespace {

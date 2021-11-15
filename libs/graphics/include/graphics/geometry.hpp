@@ -1,9 +1,9 @@
 #pragma once
-#include <vector>
 #include <core/colour.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <graphics/basis.hpp>
+#include <vector>
 
 namespace le::graphics {
 enum class VertType { ePosCol, ePosColUV, ePosColNormUV };

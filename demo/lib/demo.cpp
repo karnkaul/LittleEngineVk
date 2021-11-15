@@ -1,4 +1,3 @@
-#include <iostream>
 #include <core/not_null.hpp>
 #include <core/utils/algo.hpp>
 #include <core/utils/std_hash.hpp>
@@ -6,7 +5,7 @@
 #include <dumb_tasks/scheduler.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/cameras/freecam.hpp>
-#include <engine/editor/controls/inspector.hpp>
+#include <engine/editor/inspector.hpp>
 #include <engine/engine.hpp>
 #include <engine/input/control.hpp>
 #include <engine/render/model.hpp>
@@ -15,13 +14,18 @@
 #include <graphics/render/renderers.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
+#include <iostream>
 
+#include <engine/editor/editor.hpp>
+#include <engine/editor/scene_tree.hpp>
 #include <engine/gui/quad.hpp>
 #include <engine/gui/text.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
-#include <engine/scene/list_drawer.hpp>
+#include <engine/render/list_drawer.hpp>
+#include <engine/render/skybox.hpp>
+#include <engine/scene/draw_list_gen.hpp>
 #include <engine/scene/scene_registry.hpp>
 #include <engine/utils/exec.hpp>
 
@@ -30,14 +34,15 @@
 #include <engine/gui/widgets/dropdown.hpp>
 #include <engine/render/descriptor_helper.hpp>
 
-#include <fstream>
 #include <core/utils/shell.hpp>
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <engine/physics/collision.hpp>
-#include <engine/scene/prop_provider.hpp>
+#include <engine/render/prop_provider.hpp>
 #include <ktl/async.hpp>
+
+#include <engine/components/spring_arm.hpp>
+#include <engine/components/trigger.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -112,39 +117,6 @@ struct DirLights {
 	alignas(4) u32 count;
 };
 
-struct SpringArm {
-	glm::vec3 offset = {};
-	glm::vec3 position = {};
-	Time_s fixed = 2ms;
-	f32 k = 0.5f;
-	f32 b = 0.05f;
-	struct {
-		glm::vec3 velocity = {};
-		Time_s ft;
-	} data;
-
-	glm::vec3 const& tick(Time_s dt, glm::vec3 const& target) noexcept {
-		static constexpr u32 max = 64;
-		if (dt.count() > fixed.count() * f32(max)) {
-			position = target + offset;
-		} else {
-			data.ft += dt;
-			for (u32 iter = 0; data.ft.count() > 0.0f; ++iter) {
-				if (iter == max) {
-					position = target + offset;
-					break;
-				}
-				Time_s const diff = data.ft > fixed ? fixed : data.ft;
-				data.ft -= diff;
-				auto const disp = target + offset - position;
-				data.velocity = (1.0f - b) * data.velocity + k * disp;
-				position += (diff.count() * data.velocity);
-			}
-		}
-		return position;
-	}
-};
-
 struct PlayerController {
 	glm::quat target = graphics::identity;
 	f32 roll = 0.0f;
@@ -153,7 +125,7 @@ struct PlayerController {
 	f32 maxSpeed = 10.0f;
 	bool active = true;
 
-	void tick(input::State const& state, SceneNode& node, Time_s dt) noexcept {
+	void tick(input::State const& state, Transform& transform, Time_s dt) noexcept {
 		input::Range r(input::KeyRange{input::Key::eA, input::Key::eD});
 		roll = r(state);
 		if (maths::abs(roll) < 0.25f) {
@@ -171,9 +143,9 @@ struct PlayerController {
 		speed = std::clamp(speed + dspeed * 0.03f, -maxSpeed, maxSpeed);
 		glm::quat const orient = glm::rotate(graphics::identity, -roll * maxRoll, graphics::front);
 		target = glm::slerp(target, orient, dt.count() * 10);
-		node.orient(target);
-		glm::vec3 const dpos = roll * graphics::right + speed * (node.orientation() * -graphics::front);
-		node.position(node.position() + 10.0f * dpos * dt.count());
+		transform.orient(target);
+		glm::vec3 const dpos = roll * graphics::right + speed * (transform.orientation() * -graphics::front);
+		transform.position(transform.position() + 10.0f * dpos * dt.count());
 	}
 };
 
@@ -195,7 +167,7 @@ class Drawer : public ListDrawer {
 
 	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
 
-	void update(decf::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt, Hash wire) {
+	void update(dens::registry const& reg, Camera const& cam, glm::vec2 sp, Span<DirLight const> lt, Hash wire) {
 		auto lists = populate<DrawListGen3D, DrawListGenUI>(reg);
 		write(lists, cam, sp, lt);
 		for (auto& list : lists) {
@@ -443,40 +415,12 @@ class App : public input::Receiver, public SceneRegistry {
 
 		m_eng->pushReceiver(this);
 
-		struct GFreeCam : edi::Gadget {
-			bool operator()(decf::entity entity, decf::registry& reg) override {
-				if (auto freecam = reg.find<FreeCam>(entity)) {
-					edi::Text title("FreeCam");
-					edi::TWidget<f32>("Speed", freecam->m_params.xz_speed);
-					return true;
-				}
-				return false;
-			}
-		};
-		struct GPlayerController : edi::Gadget {
-			bool operator()(decf::entity entity, decf::registry& reg) override {
-				if (auto pc = reg.find<PlayerController>(entity)) {
-					edi::Text title("PlayerController");
-					edi::TWidget<bool>("Active", pc->active);
-					return true;
-				}
-				return false;
-			}
-		};
-		struct GSpringArm : edi::Gadget {
-			bool operator()(decf::entity entity, decf::registry& reg) override {
-				if (auto sa = reg.find<SpringArm>(entity)) {
-					edi::Text title("SpringArm");
-					edi::TWidget<f32>("k", sa->k, 0.01f);
-					edi::TWidget<f32>("b", sa->b, 0.001f);
-					return true;
-				}
-				return false;
-			}
-		};
-		m_eng->editor().inspector().attach<GFreeCam>();
-		m_eng->editor().inspector().attach<GPlayerController>();
-		m_eng->editor().inspector().attach<GSpringArm>();
+		auto ifreecam = [](edi::Inspect<FreeCam> inspect) { edi::TWidget<f32>("Speed", inspect.get().m_params.xz_speed); };
+		auto ipc = [](edi::Inspect<PlayerController> inspect) { edi::TWidget<bool>("Active", inspect.get().active); };
+		edi::Inspector::attach<FreeCam>(ifreecam);
+		edi::Inspector::attach<SpringArm>(SpringArm::inspect);
+		edi::Inspector::attach<PlayerController>(ipc);
+		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
 	}
 
 	bool block(input::State const& state) override {
@@ -499,10 +443,11 @@ class App : public input::Receiver, public SceneRegistry {
 		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
 		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
-		auto coll = spawn<Collision>("collision", "layers/wireframe");
-		auto& collision = coll.get<Collision>();
-		m_data.collision = coll;
 
+		if constexpr (levk_debug) {
+			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
+			m_registry.attach<DrawLayer>(triggerDebug) = layer("layers/wireframe");
+		}
 		m_data.text = TextMesh(&vram, &*font);
 		m_data.cursor = input::TextCursor(&*font);
 		m_data.cursor->m_gen.size = 80U;
@@ -514,18 +459,35 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.cursor->m_text = "Hello!";
 		m_data.text->mesh.construct(m_data.cursor->generateText());
 
-		auto freecam = m_registry.spawn<FreeCam, SpringArm>("freecam");
-		m_data.camera = freecam;
-		auto& cam = freecam.get<FreeCam>();
-		cam.position = {0.0f, 0.5f, 4.0f};
-		cam.look({});
-		auto& spring = freecam.get<SpringArm>();
-		spring.position = cam.position;
-		spring.offset = spring.position;
+		{
+			Material mat;
+			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
+			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
+			// d.mat.albedo.diffuse = colours::cyan.toVec3();
+			auto player = spawnMesh("player", "meshes/cube", "layers/lit", mat);
+			m_registry.get<Transform>(player).position({0.0f, 0.0f, 5.0f});
+			m_data.player = player;
+			m_registry.attach<PlayerController>(m_data.player);
+			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
+			m_onCollide = trigger.onTrigger.make_signal();
+			m_onCollide += [](auto&&) { logD("Collided!"); };
+		}
+		{
+			auto freecam = m_registry.make_entity<FreeCam>("freecam");
+			m_data.camera = freecam;
+			auto [e, c] = SpringArm::attach(freecam, m_registry, m_data.player);
+			auto& [spring, transform] = c;
+			edi::SceneTree::attach(freecam);
+			auto& cam = m_registry.get<FreeCam>(freecam);
+			cam.position = {0.0f, 0.5f, 4.0f};
+			cam.look({});
+			transform.position(cam.position);
+			spring.offset = transform.position();
+		}
 
 		auto guiStack = spawn<gui::ViewStack>("gui_root", "layers/ui", &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
-		auto& stack = guiStack.get<gui::ViewStack>();
+		auto& stack = m_registry.get<gui::ViewStack>(guiStack);
 		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view", &font.get());
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
@@ -560,33 +522,19 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.dirLights = {l0, l1};
 		spawn<Skybox>("skybox", "layers/skybox", &*skymap);
 		{
-			Material mat;
-			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
-			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
-			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawnMesh("player", "meshes/cube", "layers/lit", mat);
-			player.get<SceneNode>().position({0.0f, 0.0f, 5.0f});
-			m_data.player = player;
-			m_registry.attach<PlayerController>(m_data.player);
-			auto coll = collision.add({});
-			m_onCollide = coll.onCollide();
-			m_onCollide += [](Collision::Collider) { logD("Collided!"); };
-			m_colID0 = coll.m_id;
-		}
-		{
 			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "layers/basic");
-			ent.get<SceneNode>().position({-5.0f, -1.0f, -2.0f});
+			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
 			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "layers/tex");
-			ent.get<SceneNode>().position({1.0f, -2.0f, -3.0f});
+			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			Material mat;
 			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "layers/tex", mat);
-			ent.get<SceneNode>().position({2.0f, 0.0f, 6.0f});
+			m_registry.get<Transform>(ent).position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("layers/ui"), m_data.text->prop(*font)); }
 		{
@@ -598,49 +546,47 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			{
 				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
-				ent0.get<SceneNode>().position({-2.0f, -1.0f, 2.0f});
+				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
 				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "layers/lit");
-				auto& node = ent1.get<SceneNode>();
+				auto& node = m_registry.get<Transform>(ent1);
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
-				node.parent(&m_registry.get<SceneNode>(m_data.entities["model_0_0"]));
+				m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
 			}
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
 				Prop& prop = model->propsRW().front();
 				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
 				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "layers/lit");
-				ent0.get<SceneNode>().position({2.0f, -1.0f, 2.0f});
+				m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
 				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "layers/lit");
-				ent.get<SceneNode>().position({-1.0f, -2.0f, -3.0f});
+				m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
 		}
 		{
 			Material mat;
 			mat.Tf = colours::yellow;
-			auto node = spawnMesh("collision/cube", "meshes/cube", "layers/basic", mat);
-			node.get<SceneNode>().scale(2.0f);
+			auto node = spawnMesh("trigger/cube", "meshes/cube", "layers/basic", mat);
+			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
-			auto coll1 = collision.add({glm::vec3(2.0f)});
-			m_colID1 = coll1.m_id;
+			auto& trig1 = m_registry.attach<physics::Trigger>(node);
+			trig1.scale = glm::vec3(2.0f);
 			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
-			auto pos = node.get<SceneNode>().position();
+			auto pos = m_registry.get<Transform>(node).position();
 			pos.x = tweener.current();
-			coll1.position() = pos;
-			node.get<SceneNode>().position(pos);
+			m_registry.get<Transform>(node).position(pos);
 		}
+		m_data.init = true;
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
-		if constexpr (levk_editor) { m_eng->editor().bindNextFrame(this, {m_data.camera}); }
-
 		if (auto text = m_registry.find<PropProvider>(m_data.entities["text_2d/mesh"])) {
 			graphics::Geometry geom;
 			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->mesh.construct(std::move(geom)); }
@@ -651,82 +597,76 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
-		update();
+		updateSystems(m_tasks, dt);
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
-			auto collision = m_registry.find<Collision>(m_data.collision);
-			if (m_registry.empty()) { init1(); }
-			ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
+			if (!m_data.init) { init1(); }
+			// ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
-				auto& node = m_registry.get<SceneNode>(m_data.player);
-				pc.tick(state, node, dt);
-				auto const forward = nvec3(node.orientation() * -graphics::front);
-				cam.position = m_registry.get<SpringArm>(m_data.camera).tick(dt, node.position());
+				auto& transform = m_registry.get<Transform>(m_data.player);
+				pc.tick(state, transform, dt);
+				auto const forward = nvec3(transform.orientation() * -graphics::front);
 				cam.face(forward);
-				if (collision) { collision->find(m_colID0)->position() = node.position(); }
+				cam.position = m_registry.get<Transform>(m_data.camera).position();
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
-			m_registry.get<SceneNode>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
-			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_0_0"])) { node->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			if (auto node = m_registry.find<SceneNode>(m_data.entities["model_1_0"])) {
+			m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
+			if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
+			if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
-				node->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
+				tr->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
 			}
-			if (auto node = m_registry.find<SceneNode>(m_data.tween)) {
+			if (auto tr = m_registry.find<Transform>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);
-				auto pos = node->position();
+				auto pos = tr->position();
 				pos.x = tweener.tick(dt);
-				node->position(pos);
-				if (collision) { collision->find(m_colID1)->position() = node->position(); }
+				tr->position(pos);
 			}
 		}
 		// draw
-		render();
+		if (m_eng->nextFrame(nullptr, this)) { render(); }
 		m_tasks.rethrow();
 	}
 
-	void render() {
-		if (m_eng->nextFrame()) {
-			// write / update
-			if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
-			// draw
-			m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
-		}
+	void render() const {
+		// write / update
+		if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
+		// draw
+		m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 	}
 
 	scheduler& sched() { return m_tasks; }
 
   private:
 	struct Data {
-		std::unordered_map<Hash, decf::entity> entities;
+		std::unordered_map<Hash, dens::entity> entities;
 
 		std::optional<TextMesh> text;
 		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::handle> btnSignals;
 
-		decf::entity camera;
-		decf::entity player;
-		decf::entity guiStack;
-		decf::entity collision;
-		decf::entity tween;
+		dens::entity camera;
+		dens::entity player;
+		dens::entity guiStack;
+		dens::entity tween;
 		Hash wire;
 		bool reboot = false;
 		bool unloaded = {};
+		bool init{};
 	};
 
 	Data m_data;
 	scheduler m_tasks;
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
-	Drawer m_drawer;
-	Collision::ID m_colID0{}, m_colID1{};
-	Collision::OnCollide::handle m_onCollide;
+	mutable Drawer m_drawer;
+	physics::OnTrigger::handle m_onCollide;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};
@@ -807,7 +747,7 @@ bool run(io::Media const& media) {
 	if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
 	bootInfo.instance.validation.logLevel = dl::level::info;
 	do {
-		using renderer_t = graphics::Renderer_t<graphics::rtech::fwdOffCb>;
+		using renderer_t = graphics::Renderer_t<graphics::RType::eOffscreenCommandbuffer>;
 		// engine.boot(bootInfo);
 		engine.boot<renderer_t>(bootInfo);
 		App app(&engine);

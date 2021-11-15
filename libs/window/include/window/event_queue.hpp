@@ -1,8 +1,8 @@
 #pragma once
-#include <optional>
 #include <core/codepoint.hpp>
 #include <glm/vec2.hpp>
 #include <window/types.hpp>
+#include <optional>
 
 namespace le::window {
 struct Event {

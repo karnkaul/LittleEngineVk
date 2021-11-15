@@ -1,5 +1,4 @@
 #pragma once
-#include <functional>
 #include <core/io/path.hpp>
 #include <core/services.hpp>
 #include <core/utils/ratio.hpp>

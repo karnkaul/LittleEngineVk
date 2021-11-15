@@ -1,19 +1,23 @@
-#include <fstream>
-#include <iostream>
 #include <build_version.hpp>
 #include <core/io/zip_media.hpp>
 #include <core/utils/data_store.hpp>
+#include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/input/space.hpp>
-#include <engine/scene/list_drawer.hpp>
+#include <engine/render/list_drawer.hpp>
+#include <engine/scene/scene_registry.hpp>
 #include <engine/utils/engine_config.hpp>
+#include <engine/utils/engine_stats.hpp>
+#include <engine/utils/error_handler.hpp>
 #include <engine/utils/logger.hpp>
 #include <graphics/common.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/render/command_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <window/glue.hpp>
+#include <fstream>
+#include <iostream>
 
 namespace le {
 namespace {
@@ -44,6 +48,12 @@ bool save(utils::EngineConfig const& config, io::Path const& path) {
 }
 } // namespace
 
+struct Engine::Impl {
+	Editor editor;
+	utils::EngineStats::Counter stats;
+	utils::ErrorHandler errorHandler;
+};
+
 Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
@@ -61,10 +71,11 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	return s_devices;
 }
 
-Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logFile.value_or(io::Path())) {
+Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logFile.value_or(io::Path())), m_impl(std::make_unique<Impl>()) {
 	utils::g_log.minVerbosity = info.verbosity;
 	if (custom) { m_store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
+	logI("Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
 	ENSURE(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;
 	winInfo.options.autoShow = false;
@@ -74,8 +85,8 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 		winInfo.config.position = config->win.position;
 	}
 	m_win = m_wm.make(winInfo);
-	m_errorHandler.deleteFile();
-	if (!m_errorHandler.activeHandler()) { m_errorHandler.setActive(); }
+	m_impl->errorHandler.deleteFile();
+	if (!m_impl->errorHandler.activeHandler()) { m_impl->errorHandler.setActive(); }
 	Services::track(this);
 }
 
@@ -88,7 +99,7 @@ input::Driver::Out Engine::poll(bool consume) noexcept {
 	if (!bootReady()) { return {}; }
 	f32 const rscale = m_gfx ? m_gfx->context.renderer().renderScale() : 1.0f;
 	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_win};
-	auto ret = m_input.update(std::move(in), m_editor.view(), consume);
+	auto ret = m_input.update(std::move(in), editor().view(), consume);
 	m_inputFrame = ret.frame;
 	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
 		if ((*it)->block(ret.frame.state)) { break; }
@@ -110,15 +121,15 @@ bool Engine::drawReady() {
 	return false;
 }
 
-bool Engine::nextFrame(graphics::RenderTarget* out) {
+bool Engine::nextFrame(graphics::RenderTarget* out, SceneRegistry* scene) {
 	auto pr_ = m_profiler.profile("eng::nextFrame");
 	if (bootReady() && !m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
 		if (auto ret = m_gfx->context.beginFrame()) {
 			updateStats();
 			if constexpr (levk_imgui) {
-				[[maybe_unused]] bool const b = m_gfx->imgui.beginFrame();
+				[[maybe_unused]] bool const b = m_gfx->imgui->beginFrame();
 				ENSURE(b, "Failed to begin DearImGui frame");
-				m_view = m_editor.update(m_inputFrame);
+				m_view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), m_inputFrame);
 			}
 			m_drawing = *ret;
 			if (out) { *out = *ret; }
@@ -149,6 +160,10 @@ bool Engine::unboot() noexcept {
 	return false;
 }
 
+Editor& Engine::editor() noexcept { return m_impl->editor; }
+Editor const& Engine::editor() const noexcept { return m_impl->editor; }
+Engine::Stats const& Engine::stats() const noexcept { return m_impl->stats.stats; }
+
 Extent2D Engine::framebufferSize() const noexcept {
 	if (m_gfx) { return m_gfx->context.extent(); }
 	if (m_win) { return m_win->framebufferSize(); }
@@ -158,15 +173,15 @@ Extent2D Engine::framebufferSize() const noexcept {
 Extent2D Engine::windowSize() const noexcept { return m_win->windowSize(); }
 
 void Engine::updateStats() {
-	m_stats.update();
-	m_stats.stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
-	m_stats.stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
-	m_stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
-	m_stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
-	m_stats.stats.gfx.extents.window = windowSize();
+	m_impl->stats.update();
+	m_impl->stats.stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
+	m_impl->stats.stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
+	m_impl->stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
+	m_impl->stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
+	m_impl->stats.stats.gfx.extents.window = windowSize();
 	if (m_gfx) {
-		m_stats.stats.gfx.extents.swapchain = m_gfx->context.extent();
-		m_stats.stats.gfx.extents.renderer = ARenderer::scaleExtent(m_stats.stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale());
+		m_impl->stats.stats.gfx.extents.swapchain = m_gfx->context.extent();
+		m_impl->stats.stats.gfx.extents.renderer = ARenderer::scaleExtent(m_impl->stats.stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale());
 	}
 	graphics::CommandBuffer::s_drawCalls.store(0);
 	graphics::Mesh::s_trisDrawn.store(0);
@@ -183,7 +198,7 @@ void Engine::bootImpl() {
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_gfx->context, &m_gfx->boot.vram, &m_store, &m_profiler);
 	DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPassUI());
 	dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
-	m_gfx->imgui = DearImGui(&m_gfx->boot.device, &*m_win, dici);
+	if constexpr (levk_imgui) { m_gfx->imgui = std::make_unique<DearImGui>(&m_gfx->boot.device, &*m_win, dici); }
 	addDefaultAssets();
 	m_win->show();
 }
@@ -226,8 +241,8 @@ std::optional<graphics::CommandBuffer> Engine::beginDraw(RGBA clear, ClearDepth 
 
 bool Engine::endDraw(graphics::CommandBuffer cb) {
 	if constexpr (levk_imgui) {
-		m_gfx->imgui.endFrame();
-		m_gfx->imgui.renderDrawData(cb);
+		m_gfx->imgui->endFrame();
+		m_gfx->imgui->renderDrawData(cb);
 	}
 	m_gfx->context.endDraw();
 	m_gfx->context.endFrame();

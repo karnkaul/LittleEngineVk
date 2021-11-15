@@ -1,7 +1,7 @@
 #pragma once
+#include <core/log.hpp>
 #include <exception>
 #include <type_traits>
-#include <core/log.hpp>
 
 namespace le::utils {
 ///

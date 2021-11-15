@@ -2,11 +2,7 @@
 #include <graphics/render/renderer.hpp>
 
 namespace le::graphics {
-namespace rtech {
-constexpr Tech fwdSwpRp = {Approach::eForward, Target::eSwapchain, Transition::eRenderPass};
-constexpr Tech fwdSwpCb = {Approach::eForward, Target::eSwapchain, Transition::eCommandBuffer};
-constexpr Tech fwdOffCb = {Approach::eForward, Target::eOffScreen, Transition::eCommandBuffer};
-} // namespace rtech
+enum class RType { eSwapchainRenderpass, eSwapchainCommandbuffer, eOffscreenCommandbuffer };
 
 // Forward, Swapchain, RenderPass
 class RendererFSR;
@@ -15,9 +11,9 @@ class RendererFSC;
 // Forward, OffScreen, CommandBuffer
 class RendererFOC;
 
-template <rtech::Tech RT>
+template <RType RT>
 struct Renderer_type;
-template <rtech::Tech RT>
+template <RType RT>
 using Renderer_t = typename Renderer_type<RT>::type;
 
 class RendererFSR : public ARenderer {
@@ -60,15 +56,15 @@ class RendererFOC : public RendererFSR {
 };
 
 template <>
-struct Renderer_type<rtech::fwdSwpRp> {
+struct Renderer_type<RType::eSwapchainRenderpass> {
 	using type = RendererFSR;
 };
 template <>
-struct Renderer_type<rtech::fwdSwpCb> {
+struct Renderer_type<RType::eSwapchainCommandbuffer> {
 	using type = RendererFSC;
 };
 template <>
-struct Renderer_type<rtech::fwdOffCb> {
+struct Renderer_type<RType::eOffscreenCommandbuffer> {
 	using type = RendererFOC;
 };
 } // namespace le::graphics

@@ -1,10 +1,10 @@
-#include <algorithm>
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_converters.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/utils/logger.hpp>
 #include <graphics/utils/utils.hpp>
+#include <algorithm>
 
 namespace le {
 namespace {
@@ -15,15 +15,23 @@ io::Path spirvPath(io::Path const& glsl, io::FSMedia const& media);
 
 template <>
 [[maybe_unused]] io::Path spirvPath<true>(io::Path const& glsl, io::FSMedia const& media) {
-	auto spv = graphics::utils::spirVpath(glsl);
+	auto dbg = graphics::utils::spirVpath(glsl);
 	if (auto res = graphics::utils::compileGlsl(media.fullPath(glsl))) {
-		spv = *res;
+		dbg = *res;
 	} else {
+		if (media.present(dbg)) {
+			logW("[Assets] Shader compilation failed, using existing SPIR-V [{}]", dbg.generic_string());
+			return dbg;
+		}
+		if (auto rel = graphics::utils::spirVpath(glsl, false); media.present(rel)) {
+			logW("[Assets] Shader compilation failed, using existing SPIR-V [{}]", rel.generic_string());
+			return rel;
+		}
 		ENSURE(false, "Failed to compile GLSL");
 	}
 	// compile Release shader too
 	graphics::utils::compileGlsl(media.fullPath(glsl), {}, {}, false);
-	return spv;
+	return dbg;
 }
 
 template <>

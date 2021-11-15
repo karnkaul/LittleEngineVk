@@ -1,5 +1,4 @@
 #pragma once
-#include <atomic>
 #include <vk_mem_alloc.h>
 #include <core/log.hpp>
 #include <core/not_null.hpp>
@@ -7,6 +6,7 @@
 #include <core/utils/error.hpp>
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
+#include <atomic>
 
 namespace le::graphics {
 class Device;

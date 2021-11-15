@@ -1,7 +1,7 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
-#include <engine/scene/prop.hpp>
+#include <engine/render/prop.hpp>
 #include <graphics/mesh.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/expected.hpp>

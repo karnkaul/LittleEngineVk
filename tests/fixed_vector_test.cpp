@@ -1,7 +1,7 @@
-#include <algorithm>
-#include <iostream>
 #include <dumb_test/dtest.hpp>
 #include <ktl/fixed_vector.hpp>
+#include <algorithm>
+#include <iostream>
 
 namespace {
 struct foo {

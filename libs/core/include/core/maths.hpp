@@ -1,10 +1,10 @@
 #pragma once
+#include <core/std_types.hpp>
 #include <cmath>
 #include <limits>
 #include <optional>
 #include <random>
 #include <type_traits>
-#include <core/std_types.hpp>
 
 namespace le::maths {
 ///

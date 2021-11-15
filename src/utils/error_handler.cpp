@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <fmt/format.h>
 #include <build_version.hpp>
 #include <core/io/fs_media.hpp>
@@ -6,7 +5,9 @@
 #include <core/utils/data_store.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/engine.hpp>
+#include <engine/utils/engine_stats.hpp>
 #include <engine/utils/error_handler.hpp>
+#include <filesystem>
 
 namespace le::utils {
 namespace stdfs = std::filesystem;
@@ -73,8 +74,8 @@ using namespace le::utils;
 dj::json Jsonify<SrcInfo>::operator()(SrcInfo const& info) const { return build("file", info.file, "function", info.function, "line", info.line); }
 
 dj::json Jsonify<SysInfo>::operator()(utils::SysInfo const& info) const {
-	return build("cpuID", info.cpuID, "gpu_name", info.gpuName, "display_count", info.displayCount, "thread_count", info.threadCount, "present_mode",
-				 info.presentMode, "swapchain_images", info.swapchainImages);
+	return build("os", info.osName, "arch", info.arch, "cpuID", info.cpuID, "gpu_name", info.gpuName, "display_count", info.displayCount, "thread_count",
+				 info.threadCount, "present_mode", info.presentMode, "swapchain_images", info.swapchainImages);
 }
 
 dj::json Jsonify<ErrInfo>::operator()(utils::ErrInfo const& info) const {

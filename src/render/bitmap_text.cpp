@@ -1,6 +1,6 @@
 #include <engine/render/bitmap_font.hpp>
 #include <engine/render/bitmap_text.hpp>
-#include <engine/scene/prop.hpp>
+#include <engine/render/prop.hpp>
 #include <graphics/glyph_pen.hpp>
 
 namespace le {

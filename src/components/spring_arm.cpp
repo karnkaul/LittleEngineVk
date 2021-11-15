@@ -15,30 +15,14 @@ dens::entity_view<SpringArm, Transform> SpringArm::make(dens::registry& out, den
 
 void SpringArm::inspect(edi::Inspect<SpringArm> inspect) {
 	auto& spring = inspect.get();
-	edi::TWidget<f32>("k", spring.k, 0.01f);
-	edi::TWidget<f32>("b", spring.b, 0.001f);
-	edi::TWidget<glm::vec3>("offset", spring.offset, false);
-	if (auto tn = edi::TreeNode("target")) {
-		edi::Text(inspect.registry.contains(spring.target) ? inspect.registry.name(spring.target) : "[None]");
-		edi::Text(ktl::stack_string<8>("id: %u", spring.target.id));
-		if (edi::Button("Change")) { edi::Popup::open("change_springarm_target"); }
-		int const current = int(spring.target.id);
-		static int s_customTarget{};
-		if (auto change = edi::Popup("change_springarm_target")) {
-			auto replace = dens::entity{std::size_t(s_customTarget), inspect.registry.id()};
-			std::string_view name = "[Invalid]";
-			bool valid{};
-			if (replace.id != inspect.entity.id && inspect.registry.contains(replace)) {
-				name = inspect.registry.name(replace);
-				valid = true;
-			}
-			edi::TWidget<int>(ktl::stack_string<128>("%s###springarm_target_id", name.data()), s_customTarget, 100.0f, {}, edi::WType::eInput);
-			if (valid && edi::Button("Set##springarm_target")) {
-				if (inspect.registry.contains(replace)) { spring.target = replace; }
-			}
-		} else {
-			s_customTarget = current;
-		}
+	edi::TWidget<f32>("k##springarm", spring.k, 0.01f);
+	edi::TWidget<f32>("b##springarm", spring.b, 0.001f);
+	edi::TWidget<glm::vec3>("offset##springarm", spring.offset, false);
+	auto const name = inspect.registry.contains(spring.target) ? inspect.registry.name(spring.target) : "[None]";
+	auto const label = ktl::stack_string<128>("%s [%u]", name.data(), inspect.entity.id);
+	edi::TWidget<std::string_view> select("target##springarm", label);
+	if (auto target = edi::DragDrop::Target()) {
+		if (auto e = target.payload<dens::entity>("ENTITY")) { spring.target = *e; }
 	}
 }
 } // namespace le

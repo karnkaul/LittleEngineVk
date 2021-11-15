@@ -50,7 +50,7 @@ struct InspectVerifier {
 };
 
 void inspect(InspectVerifier& iv, edi::TreeNode& tn, dens::entity entity, gui::TreeRoot* node) {
-	if (tn.test(GUI::eLeftClicked)) {
+	if (tn.guiState.all(GUIState(GUI::eLeftClicked, GUI::eReleased))) {
 		iv.out.entity = entity;
 		iv.out.tree = node;
 		iv.present = true;
@@ -74,7 +74,17 @@ CStr<128> uniqueGuiName(T const& t) {
 
 void walk(SceneNode& node, InspectVerifier& iv, dens::registry const& reg) {
 	if (reg.contains(node.entity())) {
-		auto tn = makeNode(reg.name(node.entity()), iv(node.entity()), node.nodes().empty());
+		auto entity = node.entity();
+		auto tn = makeNode(reg.name(entity), iv(entity), node.nodes().empty());
+		if (auto source = DragDrop::Source()) {
+			source.payload("ENTITY", entity);
+			Text(ktl::stack_string<128>("%s [%u]", reg.name(entity).data(), entity.id));
+		}
+		if (auto target = DragDrop::Target()) {
+			if (auto e = target.payload<dens::entity>("ENTITY")) {
+				if (auto n = reg.find<SceneNode>(*e)) { n->parent(reg, entity); }
+			}
+		}
 		if (tn.test(GUI::eOpen)) {
 			for (dens::entity child : node.nodes()) {
 				if (auto n = reg.find<SceneNode>(child)) { walk(*n, iv, reg); }
@@ -128,11 +138,7 @@ void SceneTree::update([[maybe_unused]] SceneRef scene) {
 	if (scene.valid()) {
 		auto& reg = scene.registry();
 		InspectVerifier iv(*Sudo::inspect(scene));
-		if (auto root = reg.find<SceneNode>(scene.root())) {
-			for (auto node : root->nodes()) {
-				if (auto n = reg.find<SceneNode>(node)) { walk(*n, iv, reg); }
-			}
-		}
+		if (auto root = reg.find<SceneNode>(scene.root())) { walk(*root, iv, reg); }
 		for (auto query : reg.view<gui::ViewStack>()) { walk(query, iv, reg); }
 		if (!s_custom.empty()) {
 			auto const tn = makeNode("[Custom]", false, false);

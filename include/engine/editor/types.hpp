@@ -28,7 +28,7 @@ class TreeRoot;
 } // namespace le
 
 namespace le::edi {
-enum GUI { eOpen, eLeftClicked, eRightClicked };
+enum GUI { eOpen, eLeftClicked, eRightClicked, eDoubleClicked, eReleased };
 using GUIState = ktl::enum_flags<GUI, u8>;
 
 enum class Style { eSameLine, eSeparator };
@@ -38,6 +38,8 @@ enum class WType { eInput, eDrag };
 
 template <std::size_t N = 64>
 using CStr = ktl::stack_string<N>;
+
+f32 getWindowWidth();
 
 struct MenuList {
 	struct Menu {
@@ -56,6 +58,7 @@ struct Styler final {
 
 	Styler(StyleFlags flags);
 	Styler(glm::vec2 dummy);
+	Styler(f32 sameLineX);
 
 	void operator()(std::optional<StyleFlags> flags = std::nullopt);
 };
@@ -87,7 +90,7 @@ struct Radio {
 };
 
 struct Button final : GUIStateful {
-	Button(std::string_view id);
+	Button(std::string_view id, std::optional<f32> hue = std::nullopt, bool small = false);
 };
 
 struct Selectable : GUIStateful {
@@ -215,6 +218,46 @@ struct TInspector {
 	explicit operator bool() const;
 };
 
+struct Payload {
+	void const* data{};
+	std::size_t size{};
+};
+
+struct DragDrop {
+	struct Source {
+		bool begun{};
+
+		Source(int flags = 0);
+		~Source();
+
+		explicit operator bool() const noexcept { return begun; }
+
+		template <typename T>
+		void payload(std::string_view type, T const& t) const {
+			payload(type, {&t, sizeof(T)});
+		}
+
+		void payload(std::string_view type, Payload payload) const;
+	};
+
+	struct Target {
+		bool begun{};
+
+		Target();
+		~Target();
+
+		Payload rawPayload(std::string_view type) const;
+
+		explicit operator bool() const noexcept { return begun; }
+
+		template <typename T>
+		T const* payload(std::string_view type) const {
+			if (auto t = rawPayload(type); t.data && t.size == sizeof(T)) { return reinterpret_cast<T const*>(t.data); }
+			return {};
+		}
+	};
+};
+
 template <>
 struct TWidget<bool> : WidgetBase {
 	TWidget(std::string_view id, bool& out_b);
@@ -233,6 +276,11 @@ struct TWidget<int> : WidgetBase {
 template <>
 struct TWidget<char*> : WidgetBase {
 	TWidget(std::string_view id, char* str, std::size_t size, f32 width = {}, int flags = {});
+};
+
+template <>
+struct TWidget<std::string_view> : WidgetBase {
+	TWidget(std::string_view id, std::string_view readonly, f32 width = {}, int flags = {});
 };
 
 template <>

@@ -18,10 +18,24 @@ namespace le {
 namespace edi {
 using sv = std::string_view;
 
+f32 getWindowWidth() {
+#if defined(LEVK_USE_IMGUI)
+	return ImGui::GetWindowWidth();
+#else
+	return {};
+#endif
+}
+
 void clicks(MU GUIState& out_state) {
 #if defined(LEVK_USE_IMGUI)
 	out_state.assign(GUI::eLeftClicked, ImGui::IsItemClicked(ImGuiMouseButton_Left));
 	out_state.assign(GUI::eRightClicked, ImGui::IsItemClicked(ImGuiMouseButton_Right));
+	if (out_state.any(GUIState(GUI::eLeftClicked, GUI::eRightClicked))) {
+		out_state.assign(GUI::eDoubleClicked, ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Right));
+	} else if (ImGui::IsItemHovered()) {
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) { out_state.set(GUIState(GUI::eReleased, GUI::eLeftClicked)); }
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) { out_state.set(GUIState(GUI::eReleased, GUI::eRightClicked)); }
+	}
 #endif
 }
 
@@ -30,6 +44,12 @@ Styler::Styler(StyleFlags flags) : flags(flags) { (*this)(); }
 Styler::Styler(MU glm::vec2 dummy) {
 #if defined(LEVK_USE_IMGUI)
 	ImGui::Dummy({dummy.x, dummy.y});
+#endif
+}
+
+Styler::Styler(MU f32 sameLineX) {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::SameLine(sameLineX);
 #endif
 }
 
@@ -71,10 +91,16 @@ Radio::Radio(MU Span<sv const> options, MU s32 preSelect, MU bool sameLine) : se
 #endif
 }
 
-Button::Button(MU sv id) {
+Button::Button(MU sv id, MU std::optional<f32> hue, MU bool small) {
 #if defined(LEVK_USE_IMGUI)
 	refresh();
-	guiState.assign(GUI::eLeftClicked, ImGui::Button(id.data()));
+	if (hue) {
+		ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(*hue, 0.8f, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(*hue, 0.8f, 0.8f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(*hue, 0.9f, 0.9f));
+	}
+	guiState.assign(GUI::eLeftClicked, small ? ImGui::SmallButton(id.data()) : ImGui::Button(id.data()));
+	if (hue) { ImGui::PopStyleColor(3); }
 #endif
 }
 
@@ -255,6 +281,43 @@ void Popup::close() {
 #endif
 }
 
+DragDrop::Source::Source(MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	begun = ImGui::BeginDragDropSource(flags);
+#endif
+}
+
+DragDrop::Source::~Source() {
+#if defined(LEVK_USE_IMGUI)
+	if (begun) { ImGui::EndDragDropSource(); }
+#endif
+}
+
+void DragDrop::Source::payload(MU std::string_view type, MU Payload payload) const {
+#if defined(LEVK_USE_IMGUI)
+	ImGui::SetDragDropPayload(type.data(), payload.data, payload.size);
+#endif
+}
+
+DragDrop::Target::Target() {
+#if defined(LEVK_USE_IMGUI)
+	begun = ImGui::BeginDragDropTarget();
+#endif
+}
+
+DragDrop::Target::~Target() {
+#if defined(LEVK_USE_IMGUI)
+	if (begun) { ImGui::EndDragDropTarget(); }
+#endif
+}
+
+Payload DragDrop::Target::rawPayload(MU std::string_view type) const {
+#if defined(LEVK_USE_IMGUI)
+	if (ImGuiPayload const* p = ImGui::AcceptDragDropPayload(type.data())) { return {p->Data, std::size_t(p->DataSize)}; }
+#endif
+	return {};
+}
+
 TWidget<bool>::TWidget(MU sv id, MU bool& out_b) {
 #if defined(LEVK_USE_IMGUI)
 	changed = ImGui::Checkbox(id.data(), &out_b);
@@ -281,18 +344,25 @@ TWidget<f32>::TWidget(MU sv id, MU f32& out_f, MU f32 df, MU f32 w, MU glm::vec2
 #endif
 }
 
+TWidget<char*>::TWidget(MU sv id, MU char* str, MU std::size_t size, MU f32 width, MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	if (width > 0.0f) { ImGui::SetNextItemWidth(width); }
+	changed = ImGui::InputText(id.data(), str, size, flags);
+#endif
+}
+
+TWidget<std::string_view>::TWidget(MU sv id, MU sv readonly, MU f32 width, MU int flags) {
+#if defined(LEVK_USE_IMGUI)
+	if (width > 0.0f) { ImGui::SetNextItemWidth(width); }
+	changed = ImGui::InputText(id.data(), (char*)readonly.data(), readonly.size(), flags | ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+#endif
+}
+
 TWidget<Colour>::TWidget(MU sv id, MU Colour& out_colour) {
 #if defined(LEVK_USE_IMGUI)
 	auto c = out_colour.toVec4();
 	changed = ImGui::ColorEdit3(id.data(), &c.x);
 	out_colour = Colour(c);
-#endif
-}
-
-TWidget<char*>::TWidget(MU sv id, MU char* str, MU std::size_t size, MU f32 width, MU int flags) {
-#if defined(LEVK_USE_IMGUI)
-	if (width > 0.0f) { ImGui::SetNextItemWidth(width); }
-	changed = ImGui::InputText(id.data(), str, size, flags);
 #endif
 }
 

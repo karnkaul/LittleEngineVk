@@ -66,12 +66,12 @@ bool Inspector::TGadget<T>::inspect(std::string_view id, dens::entity entity, de
 		}
 	} else {
 		if (auto t = registry.find<T>(entity)) {
-			if (auto tn = TreeNode(id)) {
-				inspect_(Inspect<T>{*t, registry, entity});
-				auto const detach = ktl::stack_string<64>("Detach##%s", id.data());
-				if (Button(detach)) { registry.detach<T>(entity); }
-			}
-			Styler s(Style::eSeparator);
+			auto tn = TreeNode(id);
+			auto const detach = ktl::stack_string<64>("x##%s", id.data());
+			Styler s(getWindowWidth() - 30.0f);
+			if (Button(detach, 0.0f, true)) { registry.detach<T>(entity); }
+			if (tn) { inspect_(Inspect<T>{*t, registry, entity}); }
+			s = Styler(Style::eSeparator);
 			return true;
 		}
 	}

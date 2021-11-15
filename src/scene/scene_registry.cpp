@@ -20,7 +20,7 @@ dens::entity_view<Transform, SceneNode, Types...> makeNode(dens::registry& out, 
 } // namespace
 
 SceneRegistry::SceneRegistry() {
-	m_sceneRoot = makeNode(m_registry);
+	m_sceneRoot = makeNode(m_registry, "scene_root");
 	auto& physics = m_systemGroupRoot.attach<PhysicsSystemGroup>();
 	physics.attach<PhysicsSystem>();
 	auto& tick = m_systemGroupRoot.attach<TickSystemGroup>();

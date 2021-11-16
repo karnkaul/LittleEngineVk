@@ -1,13 +1,14 @@
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <engine/ecs/systems/gui_system.hpp>
+#include <engine/ecs/systems/physics_system.hpp>
+#include <engine/ecs/systems/scene_clean_system.hpp>
+#include <engine/ecs/systems/spring_arm_system.hpp>
+#include <engine/ecs/systems/system_groups.hpp>
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
-#include <engine/systems/gui_system.hpp>
-#include <engine/systems/physics_system.hpp>
-#include <engine/systems/scene_clean_system.hpp>
-#include <engine/systems/spring_arm_system.hpp>
-#include <engine/systems/system_groups.hpp>
+#include <graphics/render/camera.hpp>
 
 namespace le {
 namespace {
@@ -21,6 +22,7 @@ dens::entity_view<Transform, SceneNode, Types...> makeNode(dens::registry& out, 
 
 SceneRegistry::SceneRegistry() {
 	m_sceneRoot = makeNode(m_registry, "scene_root");
+	m_registry.attach<graphics::Camera>(m_sceneRoot);
 	auto& physics = m_systemGroupRoot.attach<PhysicsSystemGroup>();
 	physics.attach<PhysicsSystem>();
 	auto& tick = m_systemGroupRoot.attach<TickSystemGroup>();
@@ -60,7 +62,12 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 	return {};
 }
 
-void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt) { m_systemGroupRoot.update(m_registry, SystemData{scheduler, dt}); }
+void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt) {
+	static input::Frame const s_blank{};
+	input::Frame const* frame = &s_blank;
+	if (auto eng = Services::find<Engine>()) { frame = &eng->inputFrame(); }
+	m_systemGroupRoot.update(m_registry, SystemData{scheduler, *frame, dt});
+}
 
 edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }
 } // namespace le

@@ -1,5 +1,5 @@
 #include <dens/registry.hpp>
-#include <engine/components/trigger.hpp>
+#include <engine/ecs/components/trigger.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/render/prop_provider.hpp>

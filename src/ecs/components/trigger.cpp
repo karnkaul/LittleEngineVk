@@ -2,7 +2,7 @@
 #include <core/transform.hpp>
 #include <dens/registry.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <engine/components/trigger.hpp>
+#include <engine/ecs/components/trigger.hpp>
 #include <graphics/mesh.hpp>
 
 namespace le::physics {

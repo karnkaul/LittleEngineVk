@@ -1,6 +1,6 @@
 #include <core/transform.hpp>
 #include <dens/registry.hpp>
-#include <engine/components/spring_arm.hpp>
+#include <engine/ecs/components/spring_arm.hpp>
 #include <engine/editor/types.hpp>
 
 namespace le {

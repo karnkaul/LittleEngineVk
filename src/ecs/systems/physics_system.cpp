@@ -1,6 +1,6 @@
 #include <core/transform.hpp>
-#include <engine/components/trigger.hpp>
-#include <engine/systems/physics_system.hpp>
+#include <engine/ecs/components/trigger.hpp>
+#include <engine/ecs/systems/physics_system.hpp>
 
 namespace le {
 using physics::Trigger;

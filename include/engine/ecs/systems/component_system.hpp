@@ -4,10 +4,12 @@
 #include <dens/registry.hpp>
 #include <dens/system.hpp>
 #include <dumb_tasks/scheduler.hpp>
+#include <engine/input/frame.hpp>
 
 namespace le {
 struct SystemData {
 	dts::scheduler& scheduler;
+	input::Frame const& frame;
 	Time_s dt{};
 };
 

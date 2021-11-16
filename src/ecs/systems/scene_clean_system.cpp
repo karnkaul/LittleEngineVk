@@ -1,5 +1,5 @@
+#include <engine/ecs/systems/scene_clean_system.hpp>
 #include <engine/scene/scene_node.hpp>
-#include <engine/systems/scene_clean_system.hpp>
 
 namespace le {
 void SceneCleanSystem::update(dens::registry const& registry) {

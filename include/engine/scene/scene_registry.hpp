@@ -1,11 +1,11 @@
 #pragma once
 #include <core/utils/vbase.hpp>
 #include <dens/registry.hpp>
+#include <engine/ecs/systems/system_groups.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/render/draw_list_factory.hpp>
 #include <engine/render/prop_provider.hpp>
 #include <engine/scene/scene_node.hpp>
-#include <engine/systems/system_groups.hpp>
 
 namespace le {
 namespace edi {

@@ -1,6 +1,6 @@
 #include <core/transform.hpp>
-#include <engine/components/spring_arm.hpp>
-#include <engine/systems/spring_arm_system.hpp>
+#include <engine/ecs/components/spring_arm.hpp>
+#include <engine/ecs/systems/spring_arm_system.hpp>
 
 namespace le {
 void SpringArmSystem::update(dens::registry const& registry) {

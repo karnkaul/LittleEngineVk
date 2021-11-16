@@ -1,5 +1,5 @@
 #pragma once
-#include <engine/systems/component_system.hpp>
+#include <engine/ecs/systems/component_system.hpp>
 
 namespace le {
 class SceneCleanSystem : public ComponentSystem {

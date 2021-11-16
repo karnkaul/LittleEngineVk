@@ -1,7 +1,7 @@
 #include <core/services.hpp>
+#include <engine/ecs/systems/gui_system.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
-#include <engine/systems/gui_system.hpp>
 
 namespace le {
 void GuiSystem::update(dens::registry const& registry) {

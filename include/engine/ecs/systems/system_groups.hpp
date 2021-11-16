@@ -1,6 +1,6 @@
 #pragma once
 #include <dens/system_group.hpp>
-#include <engine/systems/component_system.hpp>
+#include <engine/ecs/systems/component_system.hpp>
 
 namespace le {
 using ComponentSystemGroup = dens::system_group<SystemData>;

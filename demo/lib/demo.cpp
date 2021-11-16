@@ -41,8 +41,8 @@
 #include <engine/render/prop_provider.hpp>
 #include <ktl/async.hpp>
 
-#include <engine/components/spring_arm.hpp>
-#include <engine/components/trigger.hpp>
+#include <engine/ecs/components/spring_arm.hpp>
+#include <engine/ecs/components/trigger.hpp>
 
 namespace le::demo {
 using RGBA = graphics::RGBA;
@@ -614,6 +614,7 @@ class App : public input::Receiver, public SceneRegistry {
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
+			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 			m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 			if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
 			if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
@@ -634,8 +635,11 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	void render() const {
-		// write / update
-		if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
+		if (m_data.init) {
+			// write / update
+			m_drawer.update(m_registry, m_registry.get<graphics::Camera>(m_sceneRoot), m_eng->sceneSpace(), m_data.dirLights, m_data.wire);
+		}
+		// if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
 		// draw
 		m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 	}

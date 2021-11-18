@@ -67,7 +67,7 @@ class Device final : public Pinned {
 	T make(Args&&... args);
 	template <typename T, typename... Ts>
 	void destroy(T& out_t, Ts&... out_ts);
-	void defer(DeferQueue::Callback const& callback, Buffering defer = DeferQueue::defaultDefer);
+	void defer(DeferQueue::Callback&& callback, Buffering defer = DeferQueue::defaultDefer);
 
 	void decrementDeferred();
 

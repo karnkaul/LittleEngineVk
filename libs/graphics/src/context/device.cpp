@@ -382,7 +382,7 @@ bool Device::setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view
 	return setDebugUtilsName(info);
 }
 
-void Device::defer(DeferQueue::Callback const& callback, Buffering defer) { m_deferred.defer(callback, defer); }
+void Device::defer(DeferQueue::Callback&& callback, Buffering defer) { m_deferred.defer(std::move(callback), defer); }
 
 void Device::decrementDeferred() { m_deferred.decrement(); }
 } // namespace le::graphics

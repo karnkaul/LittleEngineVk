@@ -635,11 +635,10 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	void render() const {
-		if (m_data.init) {
+		if (m_data.init && !m_data.unloaded) {
 			// write / update
 			m_drawer.update(m_registry, m_registry.get<graphics::Camera>(m_sceneRoot), m_eng->sceneSpace(), m_data.dirLights, m_data.wire);
 		}
-		// if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
 		// draw
 		m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
 	}

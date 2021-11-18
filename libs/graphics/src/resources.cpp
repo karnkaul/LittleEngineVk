@@ -168,7 +168,7 @@ Buffer::~Buffer() {
 	if (!Device::default_v(m_storage.buffer)) {
 		m.m_allocations[kind_v].fetch_sub(m_storage.writeSize);
 		auto del = [a = m.m_allocator, b = m_storage.buffer, h = m_data.handle]() { vmaDestroyBuffer(a, static_cast<VkBuffer>(b), h); };
-		m.m_device->defer(std::move(del));
+		m.m_device->defer(del);
 	}
 }
 
@@ -247,7 +247,7 @@ Image::~Image() {
 			d->destroy(v);
 			vmaDestroyImage(a, static_cast<VkImage>(i), h);
 		};
-		m.m_device->defer(std::move(del));
+		m.m_device->defer(del);
 	}
 }
 

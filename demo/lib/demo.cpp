@@ -748,8 +748,8 @@ bool run(io::Media const& media) {
 	engine.pushReceiver(&flagsInput);
 	bool reboot = false;
 	Engine::Boot::CreateInfo bootInfo;
-	if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
-	bootInfo.instance.validation.logLevel = dl::level::info;
+	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
+	bootInfo.device.logLevel = dl::level::info;
 	do {
 		using renderer_t = graphics::Renderer_t<graphics::RType::eOffscreenCommandbuffer>;
 		// engine.boot(bootInfo);

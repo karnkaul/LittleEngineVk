@@ -1,13 +1,17 @@
 #pragma once
-#include <core/not_null.hpp>
 #include <graphics/context/defer_queue.hpp>
-#include <graphics/context/instance.hpp>
+#include <graphics/context/physical_device.hpp>
 #include <graphics/context/queue_multiplex.hpp>
 #include <graphics/utils/layout_state.hpp>
+#include <ktl/move_only_function.hpp>
 
 namespace le::graphics {
+enum class Validation { eOn, eOff };
+
 class Device final : public Pinned {
   public:
+	using MakeSurface = ktl::move_only_function<vk::SurfaceKHR(vk::Instance)>;
+
 	template <typename T>
 	using vAP = vk::ArrayProxy<T const> const&;
 
@@ -19,7 +23,9 @@ class Device final : public Pinned {
 
 	struct CreateInfo;
 
-	Device(not_null<Instance*> instance, vk::SurfaceKHR surface, CreateInfo const& info);
+	static ktl::fixed_vector<PhysicalDevice, 8> physicalDevices();
+
+	Device(CreateInfo const& info, MakeSurface&& makeSurface);
 	~Device();
 
 	static constexpr vk::BufferUsageFlagBits bufferUsage(vk::DescriptorType type) noexcept;
@@ -73,25 +79,27 @@ class Device final : public Pinned {
 	PhysicalDevice const& physicalDevice() const noexcept { return m_physicalDevice; }
 	QueueMultiplex& queues() noexcept { return m_queues; }
 	QueueMultiplex const& queues() const noexcept { return m_queues; }
-	vk::Device device() const noexcept { return m_device; }
-	vk::SurfaceKHR surface() const noexcept { return m_metadata.surface; }
+	vk::Instance instance() const noexcept { return *m_uinstance; }
+	vk::Device device() const noexcept { return *m_device; }
+	vk::SurfaceKHR surface() const noexcept { return m_surface; }
 	TPair<f32> lineWidthLimit() const noexcept { return m_metadata.lineWidth; }
 
 	LayoutState m_layouts;
-	not_null<Instance*> m_instance;
 
   private:
 	CommandBuffer beginCmd();
 	void endCmd(CommandBuffer cb);
 
+	vk::UniqueInstance m_uinstance;
+	vk::UniqueDebugUtilsMessengerEXT m_messenger;
 	PhysicalDevice m_physicalDevice;
-	vk::Device m_device;
+	vk::UniqueDevice m_device;
+	vk::SurfaceKHR m_surface;
 	DeferQueue m_deferred;
 	QueueMultiplex m_queues;
 
 	struct {
 		std::vector<char const*> extensions;
-		vk::SurfaceKHR surface;
 		ktl::fixed_vector<PhysicalDevice, 8> available;
 		vk::PhysicalDeviceLimits limits;
 		TPair<f32> lineWidth;
@@ -99,9 +107,15 @@ class Device final : public Pinned {
 };
 
 struct Device::CreateInfo {
+	struct {
+		Span<std::string_view const> extensions;
+		Validation validation = Validation::eOff;
+	} instance;
+
 	Span<std::string_view const> extensions = requiredExtensions;
-	DevicePicker* pPicker = nullptr;
+	DevicePicker* picker = nullptr;
 	std::optional<std::size_t> pickOverride;
+	dl::level logLevel = dl::level::info;
 	QSelect qselect = QSelect::eOptimal;
 };
 
@@ -150,27 +164,9 @@ T Device::make(Args&&... args) {
 
 template <typename T, typename... Ts>
 void Device::destroy(T& out_t, Ts&... out_ts) {
-	if constexpr (std::is_same_v<T, vk::Instance> || std::is_same_v<T, vk::Device>) {
-		out_t.destroy();
-	} else {
-		if (!default_v(m_device) && !default_v(m_instance->m_instance) && !default_v(out_t)) {
-			if constexpr (std::is_same_v<T, vk::SurfaceKHR>) {
-				m_instance->m_instance.destroySurfaceKHR(out_t);
-			} else if constexpr (std::is_same_v<T, vk::DebugUtilsMessengerEXT>) {
-				m_instance->m_instance.destroy(out_t, nullptr);
-			} else if constexpr (std::is_same_v<T, vk::DescriptorSetLayout>) {
-				m_device.destroyDescriptorSetLayout(out_t);
-			} else if constexpr (std::is_same_v<T, vk::DescriptorPool>) {
-				m_device.destroyDescriptorPool(out_t);
-			} else if constexpr (std::is_same_v<T, vk::ImageView>) {
-				m_device.destroyImageView(out_t);
-			} else if constexpr (std::is_same_v<T, vk::Sampler>) {
-				m_device.destroySampler(out_t);
-			} else {
-				m_device.destroy(out_t);
-			}
-			out_t = T();
-		}
+	if (!default_v(out_t)) {
+		m_device->destroy(out_t);
+		out_t = T();
 	}
 	if constexpr (sizeof...(Ts) > 0) { destroy(out_ts...); }
 }

@@ -10,9 +10,8 @@ vk::SharingMode QShare::operator()(Device const& device, QFlags queues) const {
 
 Memory::Memory(not_null<Device*> device) : m_device(device) {
 	VmaAllocatorCreateInfo allocatorInfo = {};
-	Instance& inst = *device->m_instance;
 	auto dl = VULKAN_HPP_DEFAULT_DISPATCHER;
-	allocatorInfo.instance = static_cast<VkInstance>(inst.instance());
+	allocatorInfo.instance = static_cast<VkInstance>(device->instance());
 	allocatorInfo.device = static_cast<VkDevice>(device->device());
 	allocatorInfo.physicalDevice = static_cast<VkPhysicalDevice>(device->physicalDevice().device);
 	VmaVulkanFunctions vkFunc = {};

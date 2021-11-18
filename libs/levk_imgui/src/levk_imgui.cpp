@@ -110,7 +110,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	m_device = device;
 	static vk::Instance s_inst;
 	static vk::DynamicLoader const s_dl;
-	s_inst = device->m_instance->instance();
+	s_inst = device->instance();
 	auto const loader = [](char const* fn, void*) { return s_dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr")(s_inst, fn); };
 	ImGui_ImplVulkan_LoadFunctions(loader);
 	IMGUI_CHECKVERSION();
@@ -122,7 +122,7 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = device->queues().queue(QType::eGraphics);
 	m_pool = {device, makePool(*device, info.descriptorCount)};
-	initInfo.Instance = device->m_instance->instance();
+	initInfo.Instance = device->instance();
 	initInfo.Device = device->device();
 	initInfo.PhysicalDevice = device->physicalDevice().device;
 	initInfo.Queue = queue.queue;

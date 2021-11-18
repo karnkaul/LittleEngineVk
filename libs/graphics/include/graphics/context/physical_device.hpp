@@ -3,6 +3,7 @@
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <vulkan/vulkan.hpp>
+#include <optional>
 
 namespace le::graphics {
 struct PhysicalDevice {

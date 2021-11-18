@@ -54,7 +54,7 @@ struct Engine::Impl {
 	utils::ErrorHandler errorHandler;
 };
 
-Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
+graphics::Bootstrap::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
 	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
 
@@ -64,8 +64,7 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	auto const verb = graphics::g_log.minVerbosity;
 	if (s_devices.empty()) {
 		graphics::g_log.minVerbosity = LibLogger::Verbosity::eEndUser;
-		graphics::Instance inst(graphics::Instance::CreateInfo{});
-		s_devices = inst.availableDevices(graphics::Device::requiredExtensions);
+		s_devices = graphics::Device::physicalDevices();
 	}
 	graphics::g_log.minVerbosity = verb;
 	return s_devices;
@@ -189,7 +188,7 @@ void Engine::updateStats() {
 
 Engine::Boot::CreateInfo Engine::adjust(Boot::CreateInfo const& info) {
 	auto ret = info;
-	ret.instance.extensions = window::instanceExtensions(*m_win);
+	ret.device.instance.extensions = window::instanceExtensions(*m_win);
 	if (auto gpuOverride = DataObject<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
 	return ret;
 }

@@ -41,6 +41,7 @@ class Engine {
   public:
 	using Window = window::Instance;
 	using Boot = graphics::Bootstrap;
+	using Swapchain = graphics::Swapchain;
 	using Context = graphics::RenderContext;
 	using VRAM = graphics::VRAM;
 	using RGBA = graphics::RGBA;
@@ -55,9 +56,10 @@ class Engine {
 		std::unique_ptr<DearImGui> imgui;
 
 		template <typename T, typename... Args>
-		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, tag_t<T>, Args&&... args)
-			: boot(bci, makeSurface(*winst), winst->framebufferSize()),
-			  context(&boot.swapchain, std::make_unique<T>(&boot.swapchain, std::forward<Args>(args)...)) {}
+		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, Swapchain::CreateInfo const& sci, tag_t<T>, Args&&... args)
+			: boot(bci, makeSurface(*winst)), context(&boot.vram, sci, winst->framebufferSize()) {
+			context.makeRenderer<T>(std::forward<Args>(args)...);
+		}
 
 	  private:
 		static Boot::MakeSurface makeSurface(Window const& winst);
@@ -84,7 +86,7 @@ class Engine {
 	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::RType::eSwapchainRenderpass>, typename... Args>
-	void boot(Boot::CreateInfo const& boot, Args&&... args);
+	void boot(Boot::CreateInfo const& boot, Swapchain::CreateInfo const& swapchain = {}, Args&&... args);
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }
 
@@ -149,10 +151,10 @@ struct Engine::CreateInfo {
 
 // impl
 template <graphics::concrete_renderer Rd, typename... Args>
-void Engine::boot(Boot::CreateInfo const& info, Args&&... args) {
+void Engine::boot(Boot::CreateInfo const& info, Swapchain::CreateInfo const& swapchain, Args&&... args) {
 	unboot();
 	ENSURE(m_win.has_value(), "No window");
-	m_gfx.emplace(&*m_win, adjust(info), tag_t<Rd>{}, std::forward<Args>(args)...);
+	m_gfx.emplace(&*m_win, adjust(info), swapchain, tag_t<Rd>{}, std::forward<Args>(args)...);
 	bootImpl();
 }
 

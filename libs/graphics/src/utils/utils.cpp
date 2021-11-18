@@ -262,10 +262,9 @@ std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& d
 		QueueMultiplex::Family family;
 		family.familyIndex = fidx;
 		family.total = props.queueCount;
-		bool const bSurfaceSupport = device.device.getSurfaceSupportKHR(fidx, surface);
 		if ((props.queueFlags & vkqf::eTransfer) == vkqf::eTransfer) { family.flags.set(QType::eTransfer); }
 		if ((props.queueFlags & vkqf::eGraphics) == vkqf::eGraphics) { family.flags.set(QFlags(QType::eGraphics) | QType::eTransfer); }
-		if (bSurfaceSupport) { family.flags.set(QType::ePresent); }
+		if (device.device.getSurfaceSupportKHR(fidx, surface)) { family.flags.set(QType::ePresent); }
 		ret.push_back(family);
 		++fidx;
 	}

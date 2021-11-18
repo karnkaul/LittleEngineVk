@@ -60,26 +60,28 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer)
-	: m_pool(swapchain->m_device, vk::CommandPoolCreateFlagBits::eTransient), m_swapchain(swapchain), m_device(swapchain->m_device) {
-	m_storage.renderer = std::move(renderer);
-	m_storage.status = Status::eWaiting;
-	validateBuffering(m_swapchain->buffering(), m_storage.renderer->buffering());
-	DeferQueue::defaultDefer = m_storage.renderer->buffering();
+RenderContext::RenderContext(not_null<VRAM*> vram, Swapchain::CreateInfo const& info, glm::vec2 fbSize)
+	: m_swapchain(vram, info, fbSize), m_pool(vram->m_device, vk::CommandPoolCreateFlagBits::eTransient), m_device(vram->m_device) {
 	m_storage.pipelineCache = makeDeferred<vk::PipelineCache>(m_device);
+}
+
+void RenderContext::initRenderer() {
+	m_storage.status = Status::eWaiting;
+	validateBuffering(m_swapchain.buffering(), m_storage.renderer->buffering());
+	DeferQueue::defaultDefer = m_storage.renderer->buffering();
 }
 
 Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
 	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_storage.renderer->renderPass3D(); }
 	info.buffering = m_storage.renderer->buffering();
 	info.cache = m_storage.pipelineCache;
-	return Pipeline(m_swapchain->m_vram, shader, std::move(info), id);
+	return Pipeline(m_swapchain.m_vram, shader, std::move(info), id);
 }
 
 bool RenderContext::ready(glm::ivec2 framebufferSize) {
-	if (m_storage.reconstruct.trigger || m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
+	if (m_storage.reconstruct.trigger || m_swapchain.flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
 		auto const& vsync = m_storage.reconstruct.vsync;
-		bool const ret = vsync ? m_swapchain->reconstruct(*vsync, framebufferSize) : m_swapchain->reconstruct(framebufferSize);
+		bool const ret = vsync ? m_swapchain.reconstruct(*vsync, framebufferSize) : m_swapchain.reconstruct(framebufferSize);
 		if (ret) {
 			m_storage.renderer->refresh();
 			m_storage.status = Status::eWaiting;
@@ -108,7 +110,7 @@ std::optional<RenderTarget> RenderContext::beginFrame() {
 		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
 		return std::nullopt;
 	}
-	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
+	if (m_swapchain.flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
 	if (auto ret = m_storage.renderer->beginFrame()) {
 		set(Status::eBegun);
 		m_storage.drawing = *ret;
@@ -164,7 +166,7 @@ void RenderContext::reconstruct(std::optional<graphics::Vsync> vsync) {
 glm::mat4 RenderContext::preRotate() const noexcept {
 	glm::mat4 ret(1.0f);
 	f32 rad = 0.0f;
-	auto const transform = m_swapchain->display().transform;
+	auto const transform = m_swapchain.display().transform;
 	if (transform == vk::SurfaceTransformFlagBitsKHR::eIdentity) {
 		return ret;
 	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate90) {

@@ -7,13 +7,14 @@
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
-void swapchain(graphics::RenderContext& rc, graphics::Vsync vsync) {
+void swapchain(graphics::RenderContext& rc) {
 	Text txt("Swapchain");
 	auto const& vn = graphics::vsyncNames;
 	ktl::fixed_vector<std::string_view, std::size_t(graphics::Vsync::eCOUNT_)> vsyncNames;
 	for (auto const vs : ktl::enumerate_enum<graphics::Vsync>()) {
 		if (rc.supported(vs)) { vsyncNames.push_back(vn[vs]); }
 	}
+	auto const vsync = rc.vsync();
 	Combo vsyncCombo("vsync", vsyncNames, vn[vsync]);
 	if (vsyncCombo.selected != vn[vsync] && vsyncCombo.select >= 0) { rc.reconstruct(static_cast<graphics::Vsync>(vsyncCombo.select)); }
 }
@@ -30,7 +31,7 @@ void renderer(graphics::ARenderer& rd) {
 void Settings::update() {
 #if defined(LEVK_USE_IMGUI)
 	auto eng = Services::get<Engine>();
-	swapchain(eng->gfx().context, eng->gfx().boot.swapchain.vsync());
+	swapchain(eng->gfx().context);
 	renderer(eng->gfx().context.renderer());
 #endif
 }

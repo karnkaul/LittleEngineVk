@@ -123,10 +123,7 @@ Swapchain::Acquire Swapchain::Storage::current(u32 acquired) {
 	return {images[(std::size_t)acquired], acquired};
 }
 
-Swapchain::Swapchain(not_null<VRAM*> vram) : m_vram(vram), m_device(vram->m_device) {
-	if (!m_device->valid(m_device->surface())) { throw std::runtime_error("Invalid surface"); }
-	m_metadata.surface = m_device->surface();
-}
+Swapchain::Swapchain(not_null<VRAM*> vram) : m_vram(vram), m_device(vram->m_device) { m_surface = m_device->makeSurface(); }
 
 Swapchain::Swapchain(not_null<VRAM*> vram, CreateInfo const& info, glm::ivec2 framebufferSize) : Swapchain(vram) {
 	m_metadata.info = info;
@@ -209,7 +206,7 @@ bool Swapchain::paused() const noexcept { return m_storage.flags.test(Flag::ePau
 
 bool Swapchain::construct(glm::ivec2 framebufferSize) {
 	m_storage = {};
-	SwapchainCreateInfo info(m_device->physicalDevice().device, m_metadata.surface, m_metadata.info);
+	SwapchainCreateInfo info(m_device->physicalDevice().device, *m_surface, m_metadata.info);
 	if (info.colourFormat.colorSpace == vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear && !srgb(info.colourFormat.format)) {
 		g_log.log(lvl::warn, 0,
 				  "[{}] Swapchain image format is not sRGB! If linear (Unorm), Vulkan will not gamma correct writes to it, "
@@ -232,7 +229,7 @@ bool Swapchain::construct(glm::ivec2 framebufferSize) {
 		createInfo.compositeAlpha = info.compositeAlpha;
 		m_metadata.presentMode = createInfo.presentMode = info.presentMode;
 		createInfo.clipped = vk::Bool32(true);
-		createInfo.surface = m_metadata.surface;
+		createInfo.surface = *m_surface;
 		createInfo.oldSwapchain = m_metadata.retired;
 		createInfo.imageExtent = cast(info.extent(framebufferSize));
 		createInfo.preTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity;
@@ -284,7 +281,7 @@ void Swapchain::setFlags(vk::Result result) {
 }
 
 void Swapchain::orientCheck() {
-	auto const capabilities = m_device->physicalDevice().surfaceCapabilities(m_metadata.surface);
+	auto const capabilities = m_device->physicalDevice().surfaceCapabilities(*m_surface);
 	if (capabilities.currentExtent != maths::max<u32>() && capabilities.currentExtent != cast(m_storage.display.extent)) {
 		m_storage.flags.set(Flag::eOutOfDate);
 	}

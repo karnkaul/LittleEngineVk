@@ -32,7 +32,10 @@ class RenderContext : NoCopy {
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
 
-	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer);
+	RenderContext(not_null<VRAM*> vram, Swapchain::CreateInfo const& info, glm::vec2 fbSize);
+
+	template <typename T, typename... Args>
+	void makeRenderer(Args&&... args);
 
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
 
@@ -49,20 +52,23 @@ class RenderContext : NoCopy {
 	Status status() const noexcept { return m_storage.status; }
 	std::size_t index() const noexcept { return m_storage.renderer->index(); }
 	Buffering buffering() const noexcept { return m_storage.renderer->buffering(); }
-	Extent2D extent() const noexcept { return m_swapchain->display().extent; }
-	vk::SurfaceFormatKHR swapchainFormat() const noexcept { return m_swapchain->colourFormat(); }
+	Extent2D extent() const noexcept { return m_swapchain.display().extent; }
+	vk::SurfaceFormatKHR swapchainFormat() const noexcept { return m_swapchain.colourFormat(); }
+	Vsync vsync() const noexcept { return m_swapchain.vsync(); }
 	vk::Format colourImageFormat() const noexcept;
 	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
 	glm::mat4 preRotate() const noexcept;
 	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
 	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) const noexcept;
-	bool supported(Vsync vsync) const noexcept { return m_swapchain->supportedVsync().test(vsync); }
+	bool supported(Vsync vsync) const noexcept { return m_swapchain.supportedVsync().test(vsync); }
 
 	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
 	CommandPool const& commandPool() const noexcept { return m_pool; }
 
   private:
+	void initRenderer();
+
 	template <typename... T>
 	bool check(T... any) noexcept {
 		return ((m_storage.status == any) || ...);
@@ -80,9 +86,9 @@ class RenderContext : NoCopy {
 		} reconstruct;
 	};
 
+	Swapchain m_swapchain;
 	Storage m_storage;
 	CommandPool m_pool;
-	not_null<Swapchain*> m_swapchain;
 	not_null<Device*> m_device;
 };
 
@@ -139,6 +145,13 @@ Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
 		ret.fixedState.rasterizerState.lineWidth = wire;
 	}
 	return ret;
+}
+
+template <typename T, typename... Args>
+void RenderContext::makeRenderer(Args&&... args) {
+	ENSURE(m_storage.status < Status::eReady, "Invalid RenderContext status");
+	m_storage.renderer = std::make_unique<T>(&m_swapchain, std::forward<Args>(args)...);
+	initRenderer();
 }
 
 inline f32 RenderContext::aspectRatio() const noexcept {

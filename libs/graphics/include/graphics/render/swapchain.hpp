@@ -102,7 +102,6 @@ class Swapchain : public Pinned {
 	};
 	struct Metadata {
 		CreateInfo info;
-		vk::SurfaceKHR surface;
 		vk::SwapchainKHR retired;
 		vk::PresentModeKHR presentMode;
 		std::optional<Display> original;
@@ -114,6 +113,7 @@ class Swapchain : public Pinned {
 		} formats;
 	};
 
+	vk::UniqueSurfaceKHR m_surface;
 	Storage m_storage;
 	Metadata m_metadata;
 

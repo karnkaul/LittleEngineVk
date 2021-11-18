@@ -33,6 +33,7 @@ class Device final : public Pinned {
 	void waitIdle();
 	bool valid(vk::SurfaceKHR surface) const;
 
+	vk::UniqueSurfaceKHR makeSurface() const;
 	vk::Semaphore makeSemaphore() const;
 	vk::Fence makeFence(bool bSignalled) const;
 	void resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const;
@@ -79,9 +80,8 @@ class Device final : public Pinned {
 	PhysicalDevice const& physicalDevice() const noexcept { return m_physicalDevice; }
 	QueueMultiplex& queues() noexcept { return m_queues; }
 	QueueMultiplex const& queues() const noexcept { return m_queues; }
-	vk::Instance instance() const noexcept { return *m_uinstance; }
+	vk::Instance instance() const noexcept { return *m_instance; }
 	vk::Device device() const noexcept { return *m_device; }
-	vk::SurfaceKHR surface() const noexcept { return m_surface; }
 	TPair<f32> lineWidthLimit() const noexcept { return m_metadata.lineWidth; }
 
 	LayoutState m_layouts;
@@ -90,11 +90,11 @@ class Device final : public Pinned {
 	CommandBuffer beginCmd();
 	void endCmd(CommandBuffer cb);
 
-	vk::UniqueInstance m_uinstance;
+	MakeSurface m_makeSurface;
+	vk::UniqueInstance m_instance;
 	vk::UniqueDebugUtilsMessengerEXT m_messenger;
 	PhysicalDevice m_physicalDevice;
 	vk::UniqueDevice m_device;
-	vk::SurfaceKHR m_surface;
 	DeferQueue m_deferred;
 	QueueMultiplex m_queues;
 

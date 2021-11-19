@@ -772,39 +772,23 @@ bool run(io::Media const& media) {
 		binfo.device.logLevel = dl::level::debug;
 		binfo.verbosity = LibLogger::Verbosity::eLibrary;
 		graphics::Bootstrap boot(binfo, makeSurface);
-		graphics::foo::Surface surface(&boot.vram);
-		surface.makeSwapchain(win->framebufferSize());
-		graphics::foo::RenderContext::Attachment colour;
-		colour.layouts = {vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
-		colour.format = surface.format().colour.format;
-		// depth.layouts = {vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal};
-		auto rp = graphics::foo::RenderContext::makeRenderPass(boot.device.device(), colour, {});
-		RingBuffer<graphics::foo::RenderContext::Sync> sync;
-		for (u8 i = 0; i < 2; ++i) { sync.push({&boot.device, vk::CommandPoolCreateFlagBits::eTransient}); }
+		graphics::foo::RenderContext rc(&boot.vram, std::nullopt, win->framebufferSize());
+		struct Dummy : graphics::IDrawer {
+			void draw3D(graphics::CommandBuffer) override {}
+			void drawUI(graphics::CommandBuffer) override {}
+		};
 		while (!win->closing()) {
+			// poll
 			for (auto ev : win->pollEvents()) {
 				if (ev.type == window::Event::Type::eClose) { win->close(); }
 			}
 			// tick
-			auto& s = sync.get();
-			if (auto acquire = surface.acquireNextImage(win->framebufferSize(), s.draw)) {
-				boot.device.waitFor(s.drawn);
-				boot.device.resetFence(s.drawn);
-				boot.device.device().resetCommandPool(s.pool, {});
-				s.framebuffer = graphics::makeDeferred<vk::Framebuffer>(&boot.device, *rp, acquire->image.view, graphics::cast(acquire->image.extent), 1U);
-				s.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-				vk::ClearColorValue const c = std::array{0.0f, 0.0f, 0.0f, 0.0f};
-				graphics::CommandBuffer::PassInfo const passInfo{{c, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-				s.cb.beginRenderPass(*rp, s.framebuffer, acquire->image.extent, passInfo);
-				s.cb.setViewport(viewport(acquire->image.extent, {}, {}));
-				s.cb.setScissor(scissor(acquire->image.extent, {}));
-				// draw
-				s.cb.endRenderPass();
-				s.cb.end();
-				surface.submit(s.cb.m_cb, {s.draw.m_t, s.present.m_t, s.drawn});
-				surface.present(win->framebufferSize(), *acquire, s.present);
-			}
-			sync.next();
+			// ...
+			// render
+			Dummy d;
+			graphics::RenderBegin rb;
+			rb.clear = Colour(0x770000ff);
+			rc.render(d, rb, win->framebufferSize());
 		}
 		boot.device.waitIdle();
 		return true;

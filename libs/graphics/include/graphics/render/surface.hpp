@@ -12,22 +12,6 @@ class VRAM;
 enum class VSync { eOn, eAdaptive, eOff, eCOUNT_ };
 constexpr EnumArray<VSync, std::string_view> vSyncNames = {"Vsync On", "Vsync Adaptive", "Vsync Off"};
 
-namespace foo {
-struct Swapchain {
-	struct Acquire {
-		RenderImage image;
-		std::uint32_t index{};
-	};
-
-	Span<RenderImage const> images;
-	vk::SwapchainKHR swapchain;
-	vk::Device device;
-	vk::Queue queue;
-
-	std::optional<Acquire> acquireNextImage(vk::Semaphore signal);
-	vk::Result present(Acquire image, vk::Semaphore wait);
-};
-
 class Surface {
   public:
 	struct Format {
@@ -36,16 +20,20 @@ class Surface {
 		VSync vsync{};
 	};
 
+	struct Acquire {
+		RenderImage image;
+		std::uint32_t index{};
+	};
+
 	struct Sync {
 		vk::Semaphore wait;
 		vk::Semaphore ssignal;
 		vk::Fence fsignal;
 	};
 
-	using Acquire = Swapchain::Acquire;
 	using VSyncs = ktl::enum_flags<VSync, u8>;
 
-	Surface(not_null<VRAM*> vram) noexcept;
+	Surface(not_null<VRAM*> vram, Extent2D fbSize = {}, std::optional<VSync> vsync = std::nullopt);
 	~Surface();
 
 	static constexpr bool srgb(vk::Format format) noexcept;
@@ -56,7 +44,6 @@ class Surface {
 	Format const& format() const noexcept { return m_storage.format; }
 	Extent2D extent() const noexcept { return cast(m_storage.info.extent); }
 	u32 imageCount() const noexcept { return m_storage.info.imageCount; }
-	Swapchain swapchain() const noexcept;
 
 	bool makeSwapchain(Extent2D fbSize = {}, std::optional<VSync> vsync = std::nullopt);
 
@@ -84,7 +71,6 @@ class Surface {
 	vk::UniqueSurfaceKHR m_surface;
 	Storage m_storage;
 	Storage m_retired;
-	Swapchain m_swapchain;
 	vk::SwapchainCreateInfoKHR m_createInfo;
 	VSyncs m_vsyncs;
 	not_null<VRAM*> m_vram;
@@ -106,6 +92,4 @@ constexpr bool Surface::srgb(vk::Format format) noexcept {
 	}
 	return false;
 }
-
-} // namespace foo
 } // namespace le::graphics

@@ -369,9 +369,9 @@ vk::RenderPass Device::makeRenderPass(vAP<vk::AttachmentDescription> attachments
 	return m_device->createRenderPass(createInfo);
 }
 
-vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers) const {
+vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, Span<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers) const {
 	vk::FramebufferCreateInfo createInfo;
-	createInfo.attachmentCount = attachments.size();
+	createInfo.attachmentCount = (u32)attachments.size();
 	createInfo.pAttachments = attachments.data();
 	createInfo.renderPass = renderPass;
 	createInfo.width = extent.width;

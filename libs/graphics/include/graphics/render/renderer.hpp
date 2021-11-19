@@ -68,7 +68,7 @@ class ARenderer {
 	RenderImage depthImage(Extent2D extent, vk::Format format = {});
 	RenderSemaphore makeSemaphore() const;
 	vk::RenderPass makeRenderPass(Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {}) const;
-	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, Extent2D extent, u32 layers = 1) const;
+	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, Span<vk::ImageView const> attachments, Extent2D extent, u32 layers = 1) const;
 
 	virtual Tech tech() const noexcept = 0;
 

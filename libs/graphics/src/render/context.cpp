@@ -1,11 +1,13 @@
 #include <core/log.hpp>
 #include <core/maths.hpp>
+#include <core/utils/expect.hpp>
 #include <glm/gtx/transform.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/context.hpp>
+#include <graphics/utils/utils.hpp>
 #include <map>
 #include <stdexcept>
 
@@ -16,6 +18,10 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 	ENSURE(buffering > 0_B, "Insufficient buffering");
 	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warn, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
 	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
+}
+
+std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
+	return std::make_unique<Renderer>(Renderer::CreateInfo{vram, format, buffering});
 }
 } // namespace
 
@@ -187,8 +193,136 @@ vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenView const& view) const
 	return m_storage.renderer->scissor(Swapchain::valid(extent) ? extent : this->extent(), view);
 }
 
-namespace foo {
+Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device) {
+	Cmd ret;
+	ret.pool = makeDeferred<vk::CommandPool>(device, vk::CommandPoolCreateFlagBits::eTransient, QType::eGraphics);
+	ret.cb = CommandBuffer::make(device, ret.pool, 1U).front();
+	return ret;
+}
 
+vk::Viewport Renderer::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) noexcept {
+	DrawViewport ret;
+	glm::vec2 const e(extent);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	ret.depth = depth;
+	return utils::viewport(ret);
+}
+
+vk::Rect2D Renderer::scissor(Extent2D extent, ScreenView const& view) noexcept {
+	DrawScissor ret;
+	glm::vec2 const e(extent);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	return utils::scissor(ret);
+}
+
+Renderer::Renderer(CreateInfo const& info) : m_vram(info.vram) {
+	Buffering const buffering = info.buffering < 2_B ? 2_B : info.buffering;
+	u8 const cmdPerFrame = info.cmdPerFrame < 1 ? 1 : info.cmdPerFrame;
+	for (Buffering i{0}; i < buffering; ++i.value) {
+		Cmds cmds;
+		for (u8 j = 0; j < cmdPerFrame; ++j) { cmds.push_back(Cmd::make(m_vram->m_device)); }
+		m_cmds.push(std::move(cmds));
+	}
+	m_surfaceFormat = info.format;
+	m_renderPass3D = makeRenderPass(Transition::eRenderPass);
+}
+
+Deferred<vk::Framebuffer> Renderer::makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers) const {
+	return makeDeferred<vk::Framebuffer>(m_vram->m_device, rp, views, graphics::cast(extent), layers);
+}
+
+Deferred<vk::RenderPass> Renderer::makeRenderPass(Device& device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps) {
+	vk::AttachmentDescription attachments[2];
+	u32 attachmentCount = 1;
+	vk::AttachmentReference colourAttachment, depthAttachment;
+	attachments[0].format = colour.format;
+	attachments[0].samples = vk::SampleCountFlagBits::e1;
+	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[0].initialLayout = colour.layouts.first;
+	attachments[0].finalLayout = colour.layouts.second;
+	colourAttachment.attachment = 0;
+	colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
+	if (depth.format != vk::Format()) {
+		attachments[1].format = depth.format;
+		attachments[1].samples = vk::SampleCountFlagBits::e1;
+		attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
+		attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
+		attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eClear;
+		attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments[1].initialLayout = depth.layouts.first;
+		attachments[1].finalLayout = depth.layouts.second;
+		depthAttachment.attachment = 1;
+		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		attachmentCount = 2;
+	}
+	vk::SubpassDescription subpass;
+	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colourAttachment;
+	subpass.pDepthStencilAttachment = depth.format == vk::Format() ? nullptr : &depthAttachment;
+	vk::RenderPassCreateInfo createInfo;
+	createInfo.attachmentCount = attachmentCount;
+	createInfo.pAttachments = attachments;
+	createInfo.subpassCount = 1U;
+	createInfo.pSubpasses = &subpass;
+	createInfo.dependencyCount = deps.size();
+	createInfo.pDependencies = deps.data();
+	return {&device, device.device().createRenderPass(createInfo)};
+}
+
+Deferred<vk::RenderPass> Renderer::makeRenderPass(Transition transition, vk::Format colour, std::optional<vk::Format> depth) const {
+	Attachment ac, ad;
+	if (colour == vk::Format()) { colour = m_surfaceFormat.colour.format; }
+	if (depth && *depth == vk::Format()) { depth = m_surfaceFormat.depth; }
+	ac.format = colour;
+	ad.format = depth.value_or(vk::Format());
+	if (transition == Transition::eRenderPass) {
+		ac.layouts = {vIL::eUndefined, vIL::ePresentSrcKHR};
+		ad.layouts = {vIL::eUndefined, vIL::eDepthStencilAttachmentOptimal};
+	} else {
+		ac.layouts = {vIL::eColorAttachmentOptimal, vIL::eColorAttachmentOptimal};
+		ad.layouts = {vIL::eDepthStencilAttachmentOptimal, vIL::eDepthStencilAttachmentOptimal};
+	}
+	return makeRenderPass(*m_vram->m_device, ac, ad, {});
+}
+
+CmdBufs Renderer::render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
+	for (auto& cmd : m_cmds.get()) {
+		m_vram->m_device->resetCommandPool(cmd.pool);
+		cmd.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+	}
+	doRender(out_drawer, acquired, rb);
+	CmdBufs ret;
+	for (auto& cmd : m_cmds.get()) {
+		cmd.cb.end();
+		ret.push_back(cmd.cb.m_cb);
+	}
+	next();
+	return ret;
+}
+
+void Renderer::next() { m_cmds.next(); }
+
+void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
+	auto& cmd = m_cmds.get().front();
+	auto fb = makeFramebuffer(m_renderPass3D, acquired.view, acquired.extent);
+	auto const cc = rb.clear.toVec4();
+	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
+	graphics::CommandBuffer::PassInfo const passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+	cmd.cb.beginRenderPass(m_renderPass3D, fb, acquired.extent, passInfo);
+	cmd.cb.setViewport(viewport(acquired.extent, {}, {}));
+	cmd.cb.setScissor(scissor(acquired.extent, {}));
+	out_drawer.draw3D(cmd.cb);
+	out_drawer.drawUI(cmd.cb);
+	cmd.cb.endRenderPass();
+}
+
+namespace foo {
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;
@@ -231,152 +365,43 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 }
 
 RenderContext::RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering)
-	: m_surface(vram), m_buffering(buffering), m_vram(vram) {
-	m_storage.pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
-	m_surface.makeSwapchain(fbSize, vsync);
+	: m_surface(vram, fbSize, vsync), m_vram(vram), m_renderer(makeRenderer(m_vram, m_surface.format(), buffering)), m_buffering(buffering) {
+	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
+	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }
 }
 
-vk::UniqueRenderPass RenderContext::makeRenderPass(vk::Device device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps) {
-	vk::AttachmentDescription attachments[2];
-	u32 attachmentCount = 1;
-	vk::AttachmentReference colourAttachment, depthAttachment;
-	attachments[0].format = colour.format;
-	attachments[0].samples = vk::SampleCountFlagBits::e1;
-	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
-	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
-	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[0].initialLayout = colour.layouts.first;
-	attachments[0].finalLayout = colour.layouts.second;
-	colourAttachment.attachment = 0;
-	colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
-	if (depth.format != vk::Format()) {
-		attachments[1].format = depth.format;
-		attachments[1].samples = vk::SampleCountFlagBits::e1;
-		attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
-		attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
-		attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eClear;
-		attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		attachments[1].initialLayout = depth.layouts.first;
-		attachments[1].finalLayout = depth.layouts.second;
-		depthAttachment.attachment = 1;
-		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-		attachmentCount = 2;
+std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
+
+void RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {
+	auto& sync = m_syncs.get();
+	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
+		m_vram->m_device->waitFor(sync.drawn);
+		m_vram->m_device->resetFence(sync.drawn);
+		auto ret = m_renderer->render(out_drawer, acquired->image, rb);
+		submit(ret, *acquired, fbSize);
 	}
-	vk::SubpassDescription subpass;
-	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colourAttachment;
-	subpass.pDepthStencilAttachment = depth.format == vk::Format() ? nullptr : &depthAttachment;
-	vk::RenderPassCreateInfo createInfo;
-	createInfo.attachmentCount = attachmentCount;
-	createInfo.pAttachments = attachments;
-	createInfo.subpassCount = 1U;
-	createInfo.pSubpasses = &subpass;
-	createInfo.dependencyCount = deps.size();
-	createInfo.pDependencies = deps.data();
-	return device.createRenderPassUnique(createInfo);
+	m_syncs.next();
 }
 
-Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
-	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_storage.renderer->renderPass3D(); }
-	info.buffering = m_storage.renderer->buffering();
-	info.cache = m_storage.pipelineCache;
-	return Pipeline(m_vram, shader, std::move(info), id);
+bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
+	return m_surface.makeSwapchain(fbSize, vsync.value_or(m_surface.format().vsync));
 }
 
-bool RenderContext::ready(Extent2D framebufferSize) {
-	if (m_storage.reconstruct.trigger) {
-		if (m_surface.makeSwapchain(framebufferSize, m_storage.reconstruct.vsync)) {
-			m_storage.renderer->refresh();
-			m_storage.reconstruct = {};
-		} else {
-			return false;
-		}
-	}
-	return true;
-}
-
-std::optional<RenderTarget> RenderContext::beginFrame(Extent2D fbSize) {
-	m_storage.fbSize = fbSize;
-	if (m_storage.acquire) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return std::nullopt;
-	}
-	auto& sync = m_sync.get();
-	m_vram->update();
-	m_vram->m_device->waitFor(sync.drawn);
-	m_vram->m_device->resetFence(sync.drawn);
-	m_vram->m_device->resetCommandPool(sync.pool);
-	m_vram->m_device->decrementDeferred();
-	if (auto acquire = m_surface.acquireNextImage(fbSize, m_sync.get().draw)) {
-		m_storage.acquire = *acquire;
-		// TODO: Pass acquired image to renderer, return render target
-		sync.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-		m_storage.drawing = m_storage.renderer->beginFrame();
-	}
-	return m_storage.drawing;
-}
-
-std::optional<CommandBuffer> RenderContext::beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth) {
-	if (!m_storage.drawing) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return std::nullopt;
-	}
-	return m_storage.renderer->beginDraw(*m_storage.drawing, view, clear, depth);
-}
-
-bool RenderContext::endDraw() {
-	if (!m_storage.drawing) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
-	}
-	m_storage.renderer->endDraw(*m_storage.drawing);
-	return true;
-}
-
-bool RenderContext::endFrame() {
-	if (!m_storage.drawing) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
-	}
-	m_storage.drawing.reset();
-	m_storage.renderer->endFrame();
-	return true;
-}
-
-bool RenderContext::submitFrame() {
-	if (!m_storage.acquire) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
-	}
-	m_storage.acquire.reset();
-	auto const& buf = m_sync.get();
+void RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
+	auto const& sync = m_syncs.get();
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags const waitStages = vPSFB::eTopOfPipe;
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &buf.draw.m_t;
+	submitInfo.pWaitSemaphores = &sync.draw.m_t;
 	submitInfo.pWaitDstStageMask = &waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &buf.cb.m_cb;
+	submitInfo.commandBufferCount = (u32)cbs.size();
+	submitInfo.pCommandBuffers = cbs.data();
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &buf.present.m_t;
-	return m_surface.present(m_storage.fbSize, *m_storage.acquire, buf.present);
-}
-
-void RenderContext::reconstruct(std::optional<graphics::VSync> vsync) {
-	m_storage.reconstruct.trigger = true;
-	m_storage.reconstruct.vsync = vsync;
-}
-
-vk::Viewport RenderContext::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) const noexcept {
-	return m_storage.renderer->viewport(Surface::valid(extent) ? extent : this->extent(), view, depth);
-}
-
-vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenView const& view) const noexcept {
-	return m_storage.renderer->scissor(Surface::valid(extent) ? extent : this->extent(), view);
+	submitInfo.pSignalSemaphores = &sync.present.m_t;
+	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
+	m_surface.present(fbSize, acquired, sync.present);
 }
 } // namespace foo
 } // namespace le::graphics

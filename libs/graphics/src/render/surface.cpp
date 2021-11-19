@@ -3,7 +3,7 @@
 #include <graphics/context/vram.hpp>
 #include <graphics/render/surface.hpp>
 
-namespace le::graphics::foo {
+namespace le::graphics {
 namespace {
 constexpr vk::Extent2D clamp(Extent2D target, vk::Extent2D lo, vk::Extent2D hi) noexcept {
 	auto const x = std::clamp(target.x, lo.width, hi.width);
@@ -65,26 +65,9 @@ vk::UniqueImageView makeImageView(vk::Device device, vk::Image image, vk::Format
 }
 } // namespace
 
-std::optional<Swapchain::Acquire> Swapchain::acquireNextImage(vk::Semaphore signal) {
-	std::uint32_t idx{};
-	auto const result = device.acquireNextImageKHR(swapchain, maths::max<u64>(), signal, {}, &idx);
-	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) { return std::nullopt; }
-	auto const i = std::size_t(idx);
-	assert(i < images.size());
-	return Acquire{images[i], idx};
+Surface::Surface(not_null<VRAM*> vram, Extent2D fbSize, std::optional<VSync> vsync) : m_surface(vram->m_device->makeSurface()), m_vram(vram) {
+	makeSwapchain(fbSize, vsync);
 }
-
-vk::Result Swapchain::present(Acquire image, vk::Semaphore wait) {
-	vk::PresentInfoKHR info;
-	info.waitSemaphoreCount = 1;
-	info.pWaitSemaphores = &wait;
-	info.swapchainCount = 1;
-	info.pSwapchains = &swapchain;
-	info.pImageIndices = &image.index;
-	return queue.presentKHR(&info);
-}
-
-Surface::Surface(not_null<VRAM*> vram) noexcept : m_surface(vram->m_device->makeSurface()), m_vram(vram) {}
 
 Surface::~Surface() { m_vram->m_device->waitIdle(); }
 
@@ -117,8 +100,7 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	auto const extent = cast(m_storage.info.extent);
 	if (ret) {
 		m_storage.swapchain = vk::UniqueSwapchainKHR(swapchain, m_vram->m_device->device());
-		m_swapchain.swapchain = *m_storage.swapchain;
-		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(m_swapchain.swapchain);
+		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(*m_storage.swapchain);
 		for (auto const image : images) {
 			m_storage.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
 			m_storage.images.push_back({image, *m_storage.imageViews.back(), extent});
@@ -128,14 +110,15 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 }
 
 std::optional<Surface::Acquire> Surface::acquireNextImage(Extent2D fbSize, vk::Semaphore signal) {
-	if (m_storage.swapchain) {
-		if (auto acquire = swapchain().acquireNextImage(signal)) {
-			return acquire;
-		} else {
-			makeSwapchain(fbSize, format().vsync);
-		}
+	std::uint32_t idx{};
+	auto const result = m_vram->m_device->device().acquireNextImageKHR(*m_storage.swapchain, maths::max<u64>(), signal, {}, &idx);
+	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+		makeSwapchain(fbSize, format().vsync);
+		return std::nullopt;
 	}
-	return std::nullopt;
+	auto const i = std::size_t(idx);
+	assert(i < m_storage.images.size());
+	return Acquire{m_storage.images[i], idx};
 }
 
 void Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const {
@@ -151,25 +134,19 @@ void Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const 
 	m_vram->m_device->queues().submit(graphics::QType::eGraphics, submitInfo, sync.fsignal, true);
 }
 
-bool Surface::present(Extent2D fbSize, Acquire image, vk::Semaphore wait) {
-	if (m_storage.swapchain) {
-		auto const result = swapchain().present(image, wait);
-		bool const ret = result == vk::Result::eSuccess;
-		if (!ret) {
-			makeSwapchain(fbSize, format().vsync);
-			return false;
-		}
-		return ret;
+bool Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
+	vk::PresentInfoKHR info;
+	info.waitSemaphoreCount = 1;
+	info.pWaitSemaphores = &wait;
+	info.swapchainCount = 1;
+	info.pSwapchains = &*m_storage.swapchain;
+	info.pImageIndices = &acquired.index;
+	auto const result = m_vram->m_device->queues().present(info, true);
+	if (result != vk::Result::eSuccess) {
+		makeSwapchain(fbSize, format().vsync);
+		return false;
 	}
-	return false;
-}
-
-Swapchain Surface::swapchain() const noexcept {
-	auto ret = m_swapchain;
-	ret.images = m_storage.images;
-	ret.device = m_vram->m_device->device();
-	ret.queue = m_vram->m_device->queues().queue(QType::ePresent).queue;
-	return ret;
+	return true;
 }
 
 Surface::Info Surface::makeInfo(Extent2D extent) const {
@@ -187,4 +164,4 @@ Surface::Info Surface::makeInfo(Extent2D extent) const {
 	}
 	return ret;
 }
-} // namespace le::graphics::foo
+} // namespace le::graphics

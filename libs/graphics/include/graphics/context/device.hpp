@@ -59,7 +59,7 @@ class Device final : public Pinned {
 	vk::RenderPass makeRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
 								  vAP<vk::SubpassDependency> dependencies = {}) const;
 
-	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, vk::Extent2D extent, u32 layers = 1) const;
+	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, Span<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers = 1) const;
 	vk::Sampler makeSampler(vk::SamplerCreateInfo info) const;
 
 	bool setDebugUtilsName(vk::DebugUtilsObjectNameInfoEXT const& info) const;

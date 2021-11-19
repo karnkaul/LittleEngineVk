@@ -98,7 +98,7 @@ vk::RenderPass ARenderer::makeRenderPass(Attachment colour, Attachment depth, vA
 	return m_device->makeRenderPass(attachments, subpass, deps);
 }
 
-vk::Framebuffer ARenderer::makeFramebuffer(vk::RenderPass renderPass, vAP<vk::ImageView> attachments, Extent2D extent, u32 layers) const {
+vk::Framebuffer ARenderer::makeFramebuffer(vk::RenderPass renderPass, Span<vk::ImageView const> attachments, Extent2D extent, u32 layers) const {
 	return m_device->makeFramebuffer(renderPass, attachments, cast(extent), layers);
 }
 

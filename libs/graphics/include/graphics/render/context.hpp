@@ -92,89 +92,128 @@ class RenderContext : NoCopy {
 	not_null<Device*> m_device;
 };
 
-namespace foo {
+struct RenderBegin {
+	RGBA clear;
+	ClearDepth depth;
+	ScreenView view;
+};
 
-class RenderContext : NoCopy {
+using CmdBufs = ktl::fixed_vector<vk::CommandBuffer, 8>;
+
+class IDrawer {
   public:
+	virtual void draw3D(CommandBuffer cb) = 0;
+	virtual void drawUI(CommandBuffer cb) = 0;
+};
+
+class Renderer {
+  public:
+	// TODO: private
+	struct Cmd {
+		Deferred<vk::CommandPool> pool;
+		CommandBuffer cb;
+
+		static Cmd make(not_null<Device*> device);
+	};
+
+	enum class Transition { eRenderPass, eCommandBuffer };
+
 	struct Attachment {
 		LayoutPair layouts;
 		vk::Format format;
 	};
 
+	struct CreateInfo;
+
+	static vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
+	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
+	static Deferred<vk::RenderPass> makeRenderPass(Device& device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {});
+
+	Renderer(CreateInfo const& info);
+	virtual ~Renderer() = default;
+
+	CmdBufs render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
+
+  protected:
+	Deferred<vk::Framebuffer> makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers = 1) const;
+	Deferred<vk::RenderPass> makeRenderPass(Transition transition, vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt) const;
+
+	virtual void doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
+	virtual void next();
+
+	not_null<VRAM*> m_vram;
+
+  private:
+	using Cmds = ktl::fixed_vector<Cmd, 8>;
+
+	RingBuffer<Cmds> m_cmds;
+	Deferred<vk::RenderPass> m_renderPass3D;
+	Deferred<vk::RenderPass> m_renderPassUI;
+	Surface::Format m_surfaceFormat;
+};
+
+struct Renderer::CreateInfo {
+	not_null<VRAM*> vram;
+	Surface::Format format;
+	Buffering buffering = 2_B;
+	u8 cmdPerFrame = 1;
+};
+
+namespace foo {
+class RenderContext : public NoCopy {
+  public:
+	using Acquire = Surface::Acquire;
+
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
-	static vk::UniqueRenderPass makeRenderPass(vk::Device device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {});
 
 	RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering = 2_B);
 
-	template <typename T, typename... Args>
-	void makeRenderer(Args&&... args);
+	std::unique_ptr<Renderer> defaultRenderer();
+	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept { m_renderer = std::move(renderer); }
 
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
 
-	bool ready(Extent2D framebufferSize);
-	std::optional<RenderTarget> beginFrame(Extent2D fbSize);
-	std::optional<CommandBuffer> beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth = {1.0f, 0});
-	bool endDraw();
-	bool endFrame();
-	bool submitFrame();
+	void render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
+	bool recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync);
 
-	void reconstruct(std::optional<graphics::VSync> vsync = std::nullopt);
-
-	std::size_t index() const noexcept { return m_storage.renderer->index(); }
-	Buffering buffering() const noexcept { return m_storage.renderer->buffering(); }
+	Buffering buffering() const noexcept { return m_buffering; }
 	Extent2D extent() const noexcept { return m_surface.extent(); }
 	Surface::Format surfaceFormat() const noexcept { return m_surface.format(); }
 	VSync vsync() const noexcept { return m_surface.format().vsync; }
 	vk::Format colourImageFormat() const noexcept;
 	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
-	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
-	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) const noexcept;
 	bool supported(VSync vsync) const noexcept { return m_surface.vsyncs().test(vsync); }
 
-	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
+	Renderer& renderer() const noexcept { return *m_renderer; }
 
 	struct Sync;
 
   private:
-	enum Flag { eRecreate = 1 << 0, eVsync = 1 << 1 };
-	struct Storage {
-		std::unique_ptr<ARenderer> renderer;
-		std::optional<Swapchain::Acquire> acquire;
-		std::optional<RenderTarget> drawing;
-		Deferred<vk::PipelineCache> pipelineCache;
-		Extent2D fbSize{};
-		struct {
-			std::optional<VSync> vsync;
-			bool trigger = false;
-		} reconstruct;
-	};
+	void submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize);
 
 	Surface m_surface;
-	RingBuffer<Sync> m_sync;
-	Storage m_storage;
-	Buffering m_buffering;
+	RingBuffer<Sync> m_syncs;
+	Deferred<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;
+	std::unique_ptr<Renderer> m_renderer;
+	Buffering m_buffering;
 };
 
 struct RenderContext::Sync {
-	Sync() = default;
-	Sync(not_null<Device*> device, vk::CommandPoolCreateFlags flags = {}, QType qtype = QType::eGraphics) {
-		pool = makeDeferred<vk::CommandPool>(device, flags, qtype);
-		cb = CommandBuffer::make(device, pool, 1).front();
-		draw = makeDeferred<vk::Semaphore>(device);
-		present = makeDeferred<vk::Semaphore>(device);
-		drawn = makeDeferred<vk::Fence>(device, true);
+	static Sync make(not_null<Device*> device) {
+		Sync ret;
+		ret.draw = makeDeferred<vk::Semaphore>(device);
+		ret.present = makeDeferred<vk::Semaphore>(device);
+		ret.drawn = makeDeferred<vk::Fence>(device, true);
+		return ret;
 	}
 
-	CommandBuffer cb;
-	Deferred<vk::CommandPool> pool;
 	Deferred<vk::Semaphore> draw;
 	Deferred<vk::Semaphore> present;
-	Deferred<vk::Framebuffer> framebuffer;
 	Deferred<vk::Fence> drawn;
 };
 } // namespace foo
@@ -253,12 +292,6 @@ inline vk::Format RenderContext::colourImageFormat() const noexcept {
 }
 
 namespace foo {
-template <typename T, typename... Args>
-void RenderContext::makeRenderer(Args&&... args) {
-	ENSURE(!m_storage.acquire.has_value(), "Invalid RenderContext status");
-	m_storage.renderer = std::make_unique<T>(std::forward<Args>(args)...);
-}
-
 inline f32 RenderContext::aspectRatio() const noexcept {
 	glm::ivec2 const ext = extent();
 	return f32(ext.x) / std::max(f32(ext.y), 1.0f);

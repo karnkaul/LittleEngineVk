@@ -41,6 +41,7 @@ class Device final : public Pinned {
 	void waitAll(vAP<vk::Fence> validFences) const;
 	void resetFence(vk::Fence optional) const;
 	void resetAll(vAP<vk::Fence> validFences) const;
+	void resetCommandPool(vk::CommandPool pool) const;
 
 	bool signalled(Span<vk::Fence const> fences) const;
 

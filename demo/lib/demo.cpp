@@ -44,6 +44,10 @@
 #include <engine/ecs/components/spring_arm.hpp>
 #include <engine/ecs/components/trigger.hpp>
 
+#include <graphics/draw_view.hpp>
+#include <graphics/render/surface.hpp>
+#include <window/glue.hpp>
+
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
@@ -735,7 +739,76 @@ bool package(io::Path const& binary, bool clean) {
 	return openFilesystemPath(binary);
 }
 
+vk::Viewport viewport(Extent2D extent, graphics::ScreenView const& view, glm::vec2 depth) noexcept {
+	graphics::DrawViewport ret;
+	glm::vec2 const e(extent);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	ret.depth = depth;
+	return graphics::utils::viewport(ret);
+}
+
+vk::Rect2D scissor(Extent2D extent, graphics::ScreenView const& view) noexcept {
+	graphics::DrawScissor ret;
+	glm::vec2 const e(extent);
+	ret.lt = view.nRect.lt * e + view.offset;
+	ret.rb = view.nRect.rb * e + view.offset;
+	return graphics::utils::scissor(ret);
+}
+
 bool run(io::Media const& media) {
+	{
+		using namespace le;
+		window::Manager wmgr;
+		window::CreateInfo winfo;
+		winfo.config.size = {1280, 720};
+		winfo.config.title = "graphics";
+		auto win = wmgr.make(winfo);
+		if (!win) { return false; }
+		auto makeSurface = [&win](vk::Instance vinst) { return window::makeSurface(vinst, *win); };
+		graphics::Bootstrap::CreateInfo binfo;
+		binfo.device.instance.extensions = window::instanceExtensions(*win);
+		binfo.device.instance.validation = graphics::Validation::eOn;
+		binfo.device.logLevel = dl::level::debug;
+		binfo.verbosity = LibLogger::Verbosity::eLibrary;
+		graphics::Bootstrap boot(binfo, makeSurface);
+		graphics::foo::Surface surface(&boot.vram);
+		surface.makeSwapchain(win->framebufferSize());
+		graphics::foo::RenderContext::Attachment colour;
+		colour.layouts = {vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
+		colour.format = surface.format().colour.format;
+		// depth.layouts = {vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal};
+		auto rp = graphics::foo::RenderContext::makeRenderPass(boot.device.device(), colour, {});
+		RingBuffer<graphics::foo::RenderContext::Sync> sync;
+		for (u8 i = 0; i < 2; ++i) { sync.push({&boot.device, vk::CommandPoolCreateFlagBits::eTransient}); }
+		while (!win->closing()) {
+			for (auto ev : win->pollEvents()) {
+				if (ev.type == window::Event::Type::eClose) { win->close(); }
+			}
+			// tick
+			auto& s = sync.get();
+			if (auto acquire = surface.acquireNextImage(win->framebufferSize(), s.draw)) {
+				boot.device.waitFor(s.drawn);
+				boot.device.resetFence(s.drawn);
+				boot.device.device().resetCommandPool(s.pool, {});
+				s.framebuffer = graphics::makeDeferred<vk::Framebuffer>(&boot.device, *rp, acquire->image.view, graphics::cast(acquire->image.extent), 1U);
+				s.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+				vk::ClearColorValue const c = std::array{0.0f, 0.0f, 0.0f, 0.0f};
+				graphics::CommandBuffer::PassInfo const passInfo{{c, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+				s.cb.beginRenderPass(*rp, s.framebuffer, acquire->image.extent, passInfo);
+				s.cb.setViewport(viewport(acquire->image.extent, {}, {}));
+				s.cb.setScissor(scissor(acquire->image.extent, {}));
+				// draw
+				s.cb.endRenderPass();
+				s.cb.end();
+				surface.submit(s.cb.m_cb, {s.draw.m_t, s.present.m_t, s.drawn});
+				surface.present(win->framebufferSize(), *acquire, s.present);
+			}
+			sync.next();
+		}
+		boot.device.waitIdle();
+		return true;
+	}
 	Engine::CreateInfo eci;
 	eci.winInfo.config.title = "levk demo";
 	eci.winInfo.config.size = {1280, 720};
@@ -755,7 +828,6 @@ bool run(io::Media const& media) {
 		engine.boot<renderer_t>(bootInfo);
 		App app(&engine);
 		DeltaTime dt;
-		std::optional<window::Instance> test;
 		ktl::future<bool> bf;
 		ktl::async async;
 		while (!engine.closing()) {

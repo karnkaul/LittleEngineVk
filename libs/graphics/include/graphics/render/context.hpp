@@ -8,6 +8,7 @@
 #include <graphics/render/pipeline.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
+#include <graphics/render/surface.hpp>
 #include <graphics/screen_rect.hpp>
 #include <memory>
 #include <string_view>
@@ -64,7 +65,6 @@ class RenderContext : NoCopy {
 	bool supported(Vsync vsync) const noexcept { return m_swapchain.supportedVsync().test(vsync); }
 
 	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
-	CommandPool const& commandPool() const noexcept { return m_pool; }
 
   private:
 	void initRenderer();
@@ -91,6 +91,93 @@ class RenderContext : NoCopy {
 	CommandPool m_pool;
 	not_null<Device*> m_device;
 };
+
+namespace foo {
+
+class RenderContext : NoCopy {
+  public:
+	struct Attachment {
+		LayoutPair layouts;
+		vk::Format format;
+	};
+
+	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
+	static VertexInputInfo vertexInput(QuickVertexInput const& info);
+	template <typename V = Vertex>
+	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
+	static vk::UniqueRenderPass makeRenderPass(vk::Device device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {});
+
+	RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering = 2_B);
+
+	template <typename T, typename... Args>
+	void makeRenderer(Args&&... args);
+
+	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
+
+	bool ready(Extent2D framebufferSize);
+	std::optional<RenderTarget> beginFrame(Extent2D fbSize);
+	std::optional<CommandBuffer> beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth = {1.0f, 0});
+	bool endDraw();
+	bool endFrame();
+	bool submitFrame();
+
+	void reconstruct(std::optional<graphics::VSync> vsync = std::nullopt);
+
+	std::size_t index() const noexcept { return m_storage.renderer->index(); }
+	Buffering buffering() const noexcept { return m_storage.renderer->buffering(); }
+	Extent2D extent() const noexcept { return m_surface.extent(); }
+	Surface::Format surfaceFormat() const noexcept { return m_surface.format(); }
+	VSync vsync() const noexcept { return m_surface.format().vsync; }
+	vk::Format colourImageFormat() const noexcept;
+	ColourCorrection colourCorrection() const noexcept;
+	f32 aspectRatio() const noexcept;
+	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
+	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) const noexcept;
+	bool supported(VSync vsync) const noexcept { return m_surface.vsyncs().test(vsync); }
+
+	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
+
+	struct Sync;
+
+  private:
+	enum Flag { eRecreate = 1 << 0, eVsync = 1 << 1 };
+	struct Storage {
+		std::unique_ptr<ARenderer> renderer;
+		std::optional<Swapchain::Acquire> acquire;
+		std::optional<RenderTarget> drawing;
+		Deferred<vk::PipelineCache> pipelineCache;
+		Extent2D fbSize{};
+		struct {
+			std::optional<VSync> vsync;
+			bool trigger = false;
+		} reconstruct;
+	};
+
+	Surface m_surface;
+	RingBuffer<Sync> m_sync;
+	Storage m_storage;
+	Buffering m_buffering;
+	not_null<VRAM*> m_vram;
+};
+
+struct RenderContext::Sync {
+	Sync() = default;
+	Sync(not_null<Device*> device, vk::CommandPoolCreateFlags flags = {}, QType qtype = QType::eGraphics) {
+		pool = makeDeferred<vk::CommandPool>(device, flags, qtype);
+		cb = CommandBuffer::make(device, pool, 1).front();
+		draw = makeDeferred<vk::Semaphore>(device);
+		present = makeDeferred<vk::Semaphore>(device);
+		drawn = makeDeferred<vk::Fence>(device, true);
+	}
+
+	CommandBuffer cb;
+	Deferred<vk::CommandPool> pool;
+	Deferred<vk::Semaphore> draw;
+	Deferred<vk::Semaphore> present;
+	Deferred<vk::Framebuffer> framebuffer;
+	Deferred<vk::Fence> drawn;
+};
+} // namespace foo
 
 struct VertexInputCreateInfo {
 	struct Member {
@@ -164,4 +251,23 @@ inline ColourCorrection RenderContext::colourCorrection() const noexcept {
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
 }
+
+namespace foo {
+template <typename T, typename... Args>
+void RenderContext::makeRenderer(Args&&... args) {
+	ENSURE(!m_storage.acquire.has_value(), "Invalid RenderContext status");
+	m_storage.renderer = std::make_unique<T>(std::forward<Args>(args)...);
+}
+
+inline f32 RenderContext::aspectRatio() const noexcept {
+	glm::ivec2 const ext = extent();
+	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
+}
+inline ColourCorrection RenderContext::colourCorrection() const noexcept {
+	return Surface::srgb(surfaceFormat().colour.format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
+}
+inline vk::Format RenderContext::colourImageFormat() const noexcept {
+	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
+}
+} // namespace foo
 } // namespace le::graphics

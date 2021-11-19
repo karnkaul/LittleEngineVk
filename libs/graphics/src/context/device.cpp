@@ -285,7 +285,14 @@ void Device::waitAll(vAP<vk::Fence> validFences) const {
 }
 
 void Device::resetFence(vk::Fence optional) const {
-	if (!default_v(optional)) { m_device->resetFences(optional); }
+	if (!default_v(optional)) {
+		if (m_device->getFenceStatus(optional) == vk::Result::eNotReady) { waitFor(optional); }
+		m_device->resetFences(optional);
+	}
+}
+
+void Device::resetCommandPool(vk::CommandPool pool) const {
+	if (!default_v(pool)) { m_device->resetCommandPool(pool, {}); }
 }
 
 void Device::resetAll(vAP<vk::Fence> validFences) const {

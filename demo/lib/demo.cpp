@@ -787,7 +787,7 @@ bool run(io::Media const& media) {
 			// render
 			Dummy d;
 			graphics::RenderBegin rb;
-			rb.clear = Colour(0x770000ff);
+			rb.clear = Colour(0x774444ff);
 			rc.render(d, rb, win->framebufferSize());
 		}
 		boot.device.waitIdle();
@@ -807,9 +807,9 @@ bool run(io::Media const& media) {
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
 	bootInfo.device.logLevel = dl::level::info;
 	do {
-		using renderer_t = graphics::Renderer_t<graphics::RType::eOffscreenCommandbuffer>;
-		// engine.boot(bootInfo);
-		engine.boot<renderer_t>(bootInfo);
+		// using renderer_t = graphics::Renderer_t<graphics::RType::eOffscreenCommandbuffer>;
+		// engine.boot<renderer_t>(bootInfo);
+		engine.boot(bootInfo);
 		App app(&engine);
 		DeltaTime dt;
 		ktl::future<bool> bf;
@@ -843,3 +843,7 @@ bool run(io::Media const& media) {
 	return true;
 }
 } // namespace le::demo
+
+#include <engine/engine2.hpp>
+
+void test() { le::foo::Engine engine({}); }

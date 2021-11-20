@@ -1,0 +1,117 @@
+#pragma once
+#include <core/utils/profiler.hpp>
+#include <core/version.hpp>
+#include <engine/input/driver.hpp>
+#include <engine/input/receiver.hpp>
+#include <engine/scene/space.hpp>
+#include <graphics/context/bootstrap.hpp>
+#include <graphics/render/context.hpp>
+#include <window/instance.hpp>
+
+namespace le {
+namespace io {
+class Media;
+}
+
+namespace gui {
+class ViewStack;
+}
+
+class AssetStore;
+class Editor;
+class DearImGui;
+class SceneRegistry;
+
+namespace utils {
+struct EngineStats;
+}
+
+namespace foo {
+using Extent2D = graphics::Extent2D;
+
+class Engine {
+  public:
+	using Window = window::Instance;
+	using Boot = graphics::Bootstrap;
+	using VSync = graphics::VSync;
+	using VRAM = graphics::VRAM;
+	using Context = graphics::foo::RenderContext;
+	using Renderer = graphics::Renderer;
+	using RenderBegin = graphics::RenderBegin;
+	using IDrawer = graphics::IDrawer;
+	using Stats = utils::EngineStats;
+	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
+
+	struct GFX;
+	struct CreateInfo;
+
+	static Version version() noexcept;
+	static Span<graphics::PhysicalDevice const> availableDevices();
+	static bool drawImgui(graphics::CommandBuffer cb);
+	// static auto profile(std::string_view name) { return Services::get<Profiler>()->profile(name); }
+
+	Engine(CreateInfo const& info, io::Media const* custom = {});
+	~Engine();
+
+	bool bootReady() const noexcept;
+
+	input::Driver::Out poll(bool consume) noexcept;
+	void pushReceiver(not_null<input::Receiver*> context);
+	input::Receiver::Store& receiverStore() noexcept;
+	void update(gui::ViewStack& out_stack);
+
+	bool drawReady();
+	// bool nextFrame(graphics::RenderTarget* out = {}, SceneRegistry* scene = {});
+	// bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
+
+	void boot(Boot::CreateInfo info, std::optional<VSync> vsync = std::nullopt);
+	bool unboot() noexcept;
+	bool booted() const noexcept;
+	bool setRenderer(std::unique_ptr<Renderer>&& renderer);
+	bool render(IDrawer& out_drawer, RenderBegin const& rb, SceneRegistry* scene = {});
+
+	Editor& editor() const noexcept;
+	GFX& gfx() const;
+	Renderer& renderer() const;
+	input::Frame const& inputFrame() const noexcept;
+	Stats const& stats() const noexcept;
+	AssetStore& store() const noexcept;
+
+	Extent2D framebufferSize() const noexcept;
+	Extent2D windowSize() const noexcept;
+	glm::vec2 sceneSpace() const noexcept;
+
+	window::Manager& windowManager() const noexcept;
+	Window& window() const;
+	bool closing() const;
+
+	scene::Space m_space;
+	io::Path m_configPath = "config.json";
+
+  private:
+	void updateStats();
+	void addDefaultAssets();
+	void saveConfig() const;
+
+	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
+
+	struct Impl;
+
+	std::unique_ptr<Impl> m_impl;
+};
+
+struct Engine::CreateInfo {
+	window::CreateInfo winInfo;
+	std::optional<io::Path> logFile = "log.txt";
+	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
+};
+
+struct Engine::GFX {
+	Boot boot;
+	Context context;
+	std::unique_ptr<DearImGui> imgui;
+
+	GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, std::optional<VSync> vsync);
+};
+} // namespace foo
+} // namespace le

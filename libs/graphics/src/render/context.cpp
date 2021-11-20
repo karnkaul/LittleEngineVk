@@ -7,6 +7,7 @@
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/context.hpp>
+#include <graphics/render/renderers.hpp>
 #include <graphics/utils/utils.hpp>
 #include <map>
 #include <stdexcept>
@@ -27,11 +28,6 @@ std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format
 	rci.buffering = buffering;
 	rci.target = Renderer::Target::eOffScreen;
 	return std::make_unique<Renderer>(rci);
-}
-
-constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept {
-	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
-	return {u32(ret.x), u32(ret.y)};
 }
 } // namespace
 
@@ -79,6 +75,7 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 RenderContext::RenderContext(not_null<VRAM*> vram, Swapchain::CreateInfo const& info, glm::vec2 fbSize)
 	: m_swapchain(vram, info, fbSize), m_pool(vram->m_device, vk::CommandPoolCreateFlagBits::eTransient), m_device(vram->m_device) {
 	m_storage.pipelineCache = makeDeferred<vk::PipelineCache>(m_device);
+	makeRenderer<RendererFOC>();
 }
 
 void RenderContext::initRenderer() {
@@ -291,7 +288,7 @@ Renderer::Renderer(CreateInfo const& info)
 	}
 	m_surfaceFormat = info.format;
 	auto const colourFormat = m_target == Target::eOffScreen ? m_colourFormat : m_surfaceFormat.colour.format;
-	m_renderPass3D = makeRenderPass(m_transition, colourFormat, m_surfaceFormat.depth);
+	m_singleRenderPass = makeRenderPass(m_transition, colourFormat, m_surfaceFormat.depth);
 	m_depthImage.setDepth();
 	m_colourImage.setColour();
 }
@@ -341,6 +338,68 @@ bool Renderer::renderScale(f32 rs) noexcept {
 	return false;
 }
 
+/*void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
+	m_scale = 0.75f;
+	auto& cmd = m_cmds.get().front();
+	Extent2D extent = acquired.extent;
+	RenderImage img3D = acquired;
+	RenderImage imgUI = acquired;
+	if (m_target == Target::eOffScreen) {
+		extent = scaleExtent(acquired.extent, renderScale());
+		auto& img = m_3DImage.refresh(extent, m_colourFormat);
+		img3D = {img.image(), img.view(), cast(img.extent())};
+		{
+			auto& img = m_UIImage.refresh(acquired.extent, m_colourFormat);
+			imgUI = {img.image(), img.view(), cast(img.extent())};
+		}
+	}
+	auto& depth = m_depthImage.refresh(extent, m_surfaceFormat.depth);
+	vk::ImageView const views[] = {img3D.view, depth.view()};
+	auto fb3D = makeFramebuffer(m_renderPass3D, views, extent);
+	decltype(fb3D) fbUI;
+	auto const cc = rb.clear.toVec4();
+	vk::ClearColorValue clear = std::array{cc.x, cc.y, cc.z, cc.w};
+	graphics::CommandBuffer::PassInfo passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+	if (m_transition == Transition::eCommandBuffer) {
+		m_vram->m_device->m_layouts.transition<lt::ColourWrite>(cmd.cb, img3D.image);
+		if (img3D.image != imgUI.image) {
+			m_vram->m_device->m_layouts.transition<lt::ColourWrite>(cmd.cb, imgUI.image);
+			fbUI = makeFramebuffer(m_renderPassUI, imgUI.view, acquired.extent);
+		}
+		m_vram->m_device->m_layouts.transition<lt::DepthStencilWrite>(cmd.cb, depth.image(), depthStencil);
+	}
+	auto renderPass = m_renderPass3D.get();
+	auto fb = fb3D.get();
+	cmd.cb.beginRenderPass(renderPass, fb, extent, passInfo);
+	cmd.cb.setViewport(viewport(extent, {}, {}));
+	cmd.cb.setScissor(scissor(extent, {}));
+	out_drawer.draw3D(cmd.cb);
+	if (!fbUI.active()) { out_drawer.drawUI(cmd.cb); }
+	cmd.cb.endRenderPass();
+
+	if (m_transition == Transition::eCommandBuffer) {
+		if (m_target == Target::eOffScreen) {
+			if (fbUI.active()) {
+				clear = std::array{0.0f, cc.y, cc.z, 0.3f};
+				graphics::CommandBuffer::PassInfo passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+				renderPass = m_renderPassUI.get();
+				fb = fbUI.get();
+				cmd.cb.beginRenderPass(renderPass, fb, acquired.extent, passInfo);
+				cmd.cb.setViewport(viewport(acquired.extent, {}, {}));
+				cmd.cb.setScissor(scissor(acquired.extent, {}));
+				out_drawer.drawUI(cmd.cb);
+				cmd.cb.endRenderPass();
+				m_vram->m_device->m_layouts.transition<lt::TransferSrc>(cmd.cb, imgUI.image);
+			}
+			m_vram->m_device->m_layouts.transition<lt::TransferSrc>(cmd.cb, img3D.image);
+			m_vram->m_device->m_layouts.transition<lt::TransferDst>(cmd.cb, acquired.image);
+			VRAM::blit(cmd.cb, {img3D, acquired});
+			if (fbUI.active()) { VRAM::blit(cmd.cb, {imgUI, acquired}); }
+		}
+		m_vram->m_device->m_layouts.transition<lt::TransferPresent>(cmd.cb, acquired.image);
+	}
+}*/
+
 void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
 	auto& cmd = m_cmds.get().front();
 	Extent2D extent = acquired.extent;
@@ -352,7 +411,7 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 	}
 	auto& depth = m_depthImage.refresh(extent, m_surfaceFormat.depth);
 	vk::ImageView const views[] = {colour.view, depth.view()};
-	auto fb = makeFramebuffer(m_renderPass3D, views, extent);
+	auto fb = makeFramebuffer(m_singleRenderPass, views, extent);
 	auto const cc = rb.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
 	graphics::CommandBuffer::PassInfo const passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
@@ -360,7 +419,7 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 		m_vram->m_device->m_layouts.transition<lt::ColourWrite>(cmd.cb, colour.image);
 		m_vram->m_device->m_layouts.transition<lt::DepthStencilWrite>(cmd.cb, depth.image(), depthStencil);
 	}
-	cmd.cb.beginRenderPass(m_renderPass3D, fb, acquired.extent, passInfo);
+	cmd.cb.beginRenderPass(m_singleRenderPass, fb, acquired.extent, passInfo);
 	cmd.cb.setViewport(viewport(acquired.extent, {}, {}));
 	cmd.cb.setScissor(scissor(acquired.extent, {}));
 	out_drawer.draw3D(cmd.cb);
@@ -472,22 +531,24 @@ RenderContext::RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, E
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
 
-void RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {
+bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {
 	auto& sync = m_syncs.get();
+	bool ret{};
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
 		m_vram->m_device->waitFor(sync.drawn);
 		m_vram->m_device->resetFence(sync.drawn);
-		auto ret = m_renderer->render(out_drawer, acquired->image, rb);
-		submit(ret, *acquired, fbSize);
+		auto cmds = m_renderer->render(out_drawer, acquired->image, rb);
+		ret = submit(cmds, *acquired, fbSize);
 	}
 	m_syncs.next();
+	return ret;
 }
 
 bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	return m_surface.makeSwapchain(fbSize, vsync.value_or(m_surface.format().vsync));
 }
 
-void RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
+bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
 	auto const& sync = m_syncs.get();
 	vk::SubmitInfo submitInfo;
 	vk::PipelineStageFlags const waitStages = vPSFB::eTopOfPipe;
@@ -499,7 +560,7 @@ void RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acq
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &sync.present.m_t;
 	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
-	m_surface.present(fbSize, acquired, sync.present);
+	return m_surface.present(fbSize, acquired, sync.present);
 }
 } // namespace foo
 } // namespace le::graphics

@@ -35,9 +35,6 @@ class DearImGui;
 class SceneRegistry;
 
 class Engine {
-	template <typename T>
-	struct tag_t {};
-
   public:
 	using Window = window::Instance;
 	using Boot = graphics::Bootstrap;
@@ -55,14 +52,7 @@ class Engine {
 		Context context;
 		std::unique_ptr<DearImGui> imgui;
 
-		template <typename T, typename... Args>
-		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, Swapchain::CreateInfo const& sci, tag_t<T>, Args&&... args)
-			: boot(bci, makeSurface(*winst)), context(&boot.vram, sci, winst->framebufferSize()) {
-			context.makeRenderer<T>(std::forward<Args>(args)...);
-		}
-
-	  private:
-		static Boot::MakeSurface makeSurface(Window const& winst);
+		GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, Swapchain::CreateInfo const& sci);
 	};
 
 	struct CreateInfo;
@@ -85,8 +75,7 @@ class Engine {
 	bool nextFrame(graphics::RenderTarget* out = {}, SceneRegistry* scene = {});
 	bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
-	template <graphics::concrete_renderer Rd = graphics::Renderer_t<graphics::RType::eSwapchainRenderpass>, typename... Args>
-	void boot(Boot::CreateInfo const& boot, Swapchain::CreateInfo const& swapchain = {}, Args&&... args);
+	void boot(Boot::CreateInfo const& boot, Swapchain::CreateInfo const& swapchain = {});
 	bool unboot() noexcept;
 	bool booted() const noexcept { return m_gfx.has_value(); }
 
@@ -102,7 +91,6 @@ class Engine {
 
 	Extent2D framebufferSize() const noexcept;
 	Extent2D windowSize() const noexcept;
-	Viewport const& gameView() const noexcept;
 	glm::vec2 sceneSpace() const noexcept { return m_space(m_inputFrame.space); }
 
 	window::Manager& windowManager() noexcept { return m_wm; }
@@ -122,7 +110,6 @@ class Engine {
 	std::optional<graphics::CommandBuffer> beginDraw(RGBA clear, ClearDepth depth);
 	bool endDraw(graphics::CommandBuffer cb);
 	void saveConfig() const;
-	struct EngineConfig loadConfig() const;
 
 	inline static ktl::fixed_vector<graphics::PhysicalDevice, 8> s_devices;
 
@@ -150,13 +137,6 @@ struct Engine::CreateInfo {
 };
 
 // impl
-template <graphics::concrete_renderer Rd, typename... Args>
-void Engine::boot(Boot::CreateInfo const& info, Swapchain::CreateInfo const& swapchain, Args&&... args) {
-	unboot();
-	ENSURE(m_win.has_value(), "No window");
-	m_gfx.emplace(&*m_win, adjust(info), swapchain, tag_t<Rd>{}, std::forward<Args>(args)...);
-	bootImpl();
-}
 
 inline Engine::GFX& Engine::gfx() {
 	ENSURE(m_gfx.has_value(), "Not booted");

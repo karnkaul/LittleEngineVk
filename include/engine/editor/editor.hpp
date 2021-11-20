@@ -28,6 +28,11 @@ namespace edi {
 class Inspector;
 } // namespace edi
 
+// TODO: REMOVE
+namespace foo {
+class Engine;
+}
+
 class Editor {
   public:
 	inline static Viewport s_comboView = {{0.2f, 0.0f}, {0.0f, 20.0f}, 0.6f};
@@ -71,5 +76,7 @@ class Editor {
 	Rail m_right = {"Right", {}};
 
 	friend class Engine;
+	// TODO: REMOVE
+	friend class foo::Engine;
 };
 } // namespace le

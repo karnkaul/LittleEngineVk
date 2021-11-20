@@ -46,6 +46,10 @@ bool save(utils::EngineConfig const& config, io::Path const& path) {
 	opts.sort_keys = opts.pretty = true;
 	return original.save(path.generic_string(), opts);
 }
+
+graphics::Bootstrap::MakeSurface makeSurface(window::Instance const& winst) {
+	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
+}
 } // namespace
 
 struct Engine::Impl {
@@ -54,9 +58,8 @@ struct Engine::Impl {
 	utils::ErrorHandler errorHandler;
 };
 
-graphics::Bootstrap::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
-	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
-}
+Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, Swapchain::CreateInfo const& sci)
+	: boot(bci, makeSurface(*winst)), context(&boot.vram, sci, winst->framebufferSize()) {}
 
 Version Engine::version() noexcept { return g_engineVersion; }
 
@@ -92,6 +95,13 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 Engine::~Engine() {
 	unboot();
 	Services::untrack(this);
+}
+
+void Engine::boot(Boot::CreateInfo const& info, Swapchain::CreateInfo const& swapchain) {
+	unboot();
+	ENSURE(m_win.has_value(), "No window");
+	m_gfx.emplace(&*m_win, adjust(info), swapchain);
+	bootImpl();
 }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {

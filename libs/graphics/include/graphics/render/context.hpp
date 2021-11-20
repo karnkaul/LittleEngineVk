@@ -145,6 +145,7 @@ class Renderer {
 
 	static vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
+	static constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept;
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
@@ -155,6 +156,9 @@ class Renderer {
 	bool canScale() const noexcept;
 	f32 renderScale() const noexcept { return m_scale; }
 	bool renderScale(f32) noexcept;
+
+	virtual vk::RenderPass renderPass3D() const noexcept { return m_singleRenderPass; }
+	virtual vk::RenderPass renderPassUI() const noexcept { return m_singleRenderPass; }
 
   protected:
 	Deferred<vk::Framebuffer> makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers = 1) const;
@@ -179,8 +183,7 @@ class Renderer {
 	using Cmds = ktl::fixed_vector<Cmd, 8>;
 
 	RingBuffer<Cmds> m_cmds;
-	Deferred<vk::RenderPass> m_renderPass3D;
-	Deferred<vk::RenderPass> m_renderPassUI;
+	Deferred<vk::RenderPass> m_singleRenderPass;
 	Surface::Format m_surfaceFormat;
 	Transition m_transition;
 	Target m_target;
@@ -215,7 +218,7 @@ class RenderContext : public NoCopy {
 
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
 
-	void render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
+	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
 	bool recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync);
 
 	Buffering buffering() const noexcept { return m_buffering; }
@@ -232,7 +235,7 @@ class RenderContext : public NoCopy {
 	struct Sync;
 
   private:
-	void submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize);
+	bool submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize);
 
 	Surface m_surface;
 	RingBuffer<Sync> m_syncs;
@@ -328,6 +331,11 @@ inline ColourCorrection RenderContext::colourCorrection() const noexcept {
 }
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
+}
+
+constexpr Extent2D Renderer::scaleExtent(Extent2D extent, f32 scale) noexcept {
+	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
+	return {u32(ret.x), u32(ret.y)};
 }
 
 namespace foo {

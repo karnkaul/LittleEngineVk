@@ -104,7 +104,7 @@ std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexc
 
 graphics::Device& AssetManifest::device() { return engine()->gfx().boot.device; }
 graphics::VRAM& AssetManifest::vram() { return engine()->gfx().boot.vram; }
-graphics::RenderContext& AssetManifest::context() { return engine()->gfx().context; }
+graphics::foo::RenderContext& AssetManifest::context() { return engine()->gfx().context; }
 AssetStore& AssetManifest::store() { return engine()->store(); }
 not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engine = Services::get<Engine>()); }
 

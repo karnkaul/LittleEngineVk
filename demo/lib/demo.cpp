@@ -549,7 +549,7 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		{
 			{
-				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
+				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/tex");
 				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
@@ -603,7 +603,8 @@ class App : public input::Receiver, public SceneRegistry {
 
 		updateSystems(m_tasks, dt);
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
-			auto pr_ = Engine::profile("app::tick");
+			// TODO: enable
+			// auto pr_ = Engine::profile("app::tick");
 			if (!m_data.init) { init1(); }
 			// ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
@@ -634,17 +635,19 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		}
 		// draw
-		if (m_eng->nextFrame(nullptr, this)) { render(); }
+		if (m_eng->nextFrame()) { render(); }
 		m_tasks.rethrow();
 	}
 
-	void render() const {
+	void render() {
 		if (m_data.init && !m_data.unloaded) {
 			// write / update
 			m_drawer.update(m_registry, m_registry.get<graphics::Camera>(m_sceneRoot), m_eng->sceneSpace(), m_data.dirLights, m_data.wire);
 		}
 		// draw
-		m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
+		graphics::RenderBegin rb;
+		rb.clear = RGBA(0x777777ff, RGBA::Type::eAbsolute);
+		m_eng->render(m_drawer, rb, this);
 	}
 
 	scheduler& sched() { return m_tasks; }
@@ -757,7 +760,7 @@ vk::Rect2D scissor(Extent2D extent, graphics::ScreenView const& view) noexcept {
 }
 
 bool run(io::Media const& media) {
-	{
+	/*{
 		using namespace le;
 		window::Manager wmgr;
 		window::CreateInfo winfo;
@@ -774,8 +777,7 @@ bool run(io::Media const& media) {
 		graphics::Bootstrap boot(binfo, makeSurface);
 		graphics::foo::RenderContext rc(&boot.vram, std::nullopt, win->framebufferSize());
 		struct Dummy : graphics::IDrawer {
-			void draw3D(graphics::CommandBuffer) override {}
-			void drawUI(graphics::CommandBuffer) override {}
+			void draw(graphics::CommandBuffer) override {}
 		};
 		while (!win->closing()) {
 			// poll
@@ -792,13 +794,12 @@ bool run(io::Media const& media) {
 		}
 		boot.device.waitIdle();
 		return true;
-	}
+	}*/
 	Engine::CreateInfo eci;
 	eci.winInfo.config.title = "levk demo";
 	eci.winInfo.config.size = {1280, 720};
 	eci.winInfo.options.centreCursor = true;
 	Engine engine(eci, &media);
-	if (!engine.bootReady()) { return false; }
 	Flags flags;
 	FlagsInput flagsInput(flags);
 	engine.pushReceiver(&flagsInput);
@@ -843,7 +844,3 @@ bool run(io::Media const& media) {
 	return true;
 }
 } // namespace le::demo
-
-#include <engine/engine2.hpp>
-
-void test() { le::foo::Engine engine({}); }

@@ -31,7 +31,7 @@ std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format
 }
 } // namespace
 
-VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
+VertexInputInfo RenderContext::vertexInputOld(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;
 	for (auto& type : info.types) {
@@ -53,7 +53,7 @@ VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	return ret;
 }
 
-VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
+VertexInputInfo RenderContext::vertexInputOld(QuickVertexInput const& info) {
 	VertexInputInfo ret;
 	vk::VertexInputBindingDescription binding;
 	binding.binding = info.binding;
@@ -193,11 +193,11 @@ glm::mat4 RenderContext::preRotate() const noexcept {
 }
 
 vk::Viewport RenderContext::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) const noexcept {
-	return m_storage.renderer->viewport(Swapchain::valid(extent) ? extent : this->extent(), view, depth);
+	return m_storage.renderer->viewportOld(Swapchain::valid(extent) ? extent : this->extent(), view, depth);
 }
 
 vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenView const& view) const noexcept {
-	return m_storage.renderer->scissor(Swapchain::valid(extent) ? extent : this->extent(), view);
+	return m_storage.renderer->scissorOld(Swapchain::valid(extent) ? extent : this->extent(), view);
 }
 
 // NEW
@@ -215,7 +215,6 @@ Image::CreateInfo& ImageCache::setDepth() {
 	m_info.createInfo.mipLevels = 1;
 	m_info.createInfo.arrayLayers = 1;
 	m_info.queueFlags = QType::eGraphics;
-	m_info.view.format = m_info.createInfo.format;
 	m_info.view.aspects = vk::ImageAspectFlagBits::eDepth;
 	return m_info;
 }
@@ -231,7 +230,6 @@ Image::CreateInfo& ImageCache::setColour() {
 	m_info.createInfo.mipLevels = 1;
 	m_info.createInfo.arrayLayers = 1;
 	m_info.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
-	m_info.view.format = m_info.createInfo.format;
 	m_info.view.aspects = vk::ImageAspectFlagBits::eColor;
 	return m_info;
 }
@@ -405,7 +403,7 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 	Extent2D extent = acquired.extent;
 	RenderImage colour = acquired;
 	if (m_target == Target::eOffScreen) {
-		extent = scaleExtent(acquired.extent, renderScale());
+		extent = scaleExtent(extent, renderScale());
 		auto& img = m_colourImage.refresh(extent, m_colourFormat);
 		colour = {img.image(), img.view(), cast(img.extent())};
 	}
@@ -414,16 +412,15 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 	auto fb = makeFramebuffer(m_singleRenderPass, views, extent);
 	auto const cc = rb.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
-	graphics::CommandBuffer::PassInfo const passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+	graphics::CommandBuffer::PassInfo const passInfo{{clear, rb.depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
 	if (m_transition == Transition::eCommandBuffer) {
 		m_vram->m_device->m_layouts.transition<lt::ColourWrite>(cmd.cb, colour.image);
 		m_vram->m_device->m_layouts.transition<lt::DepthStencilWrite>(cmd.cb, depth.image(), depthStencil);
 	}
-	cmd.cb.beginRenderPass(m_singleRenderPass, fb, acquired.extent, passInfo);
-	cmd.cb.setViewport(viewport(acquired.extent, {}, {}));
-	cmd.cb.setScissor(scissor(acquired.extent, {}));
-	out_drawer.draw3D(cmd.cb);
-	out_drawer.drawUI(cmd.cb);
+	cmd.cb.beginRenderPass(m_singleRenderPass, fb, extent, passInfo);
+	cmd.cb.setViewport(viewport(extent, rb.view));
+	cmd.cb.setScissor(scissor(extent, rb.view));
+	out_drawer.draw(cmd.cb);
 	cmd.cb.endRenderPass();
 	if (m_transition == Transition::eCommandBuffer) {
 		if (m_target == Target::eOffScreen) {
@@ -531,11 +528,20 @@ RenderContext::RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, E
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
 
+Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
+	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_renderer->renderPass(); }
+	info.buffering = m_buffering;
+	info.cache = m_pipelineCache;
+	return Pipeline(m_vram, shader, std::move(info), id);
+}
+
+void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
+
 bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {
-	auto& sync = m_syncs.get();
+	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
 	bool ret{};
+	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
-		m_vram->m_device->waitFor(sync.drawn);
 		m_vram->m_device->resetFence(sync.drawn);
 		auto cmds = m_renderer->render(out_drawer, acquired->image, rb);
 		ret = submit(cmds, *acquired, fbSize);

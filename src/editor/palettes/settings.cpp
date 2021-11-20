@@ -7,19 +7,19 @@
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
-void swapchain(graphics::RenderContext& rc) {
+void swapchain(graphics::foo::RenderContext& rc) {
 	Text txt("Swapchain");
-	auto const& vn = graphics::vsyncNames;
+	auto const& vn = graphics::vSyncNames;
 	ktl::fixed_vector<std::string_view, std::size_t(graphics::Vsync::eCOUNT_)> vsyncNames;
-	for (auto const vs : ktl::enumerate_enum<graphics::Vsync>()) {
+	for (auto const vs : ktl::enumerate_enum<graphics::VSync>()) {
 		if (rc.supported(vs)) { vsyncNames.push_back(vn[vs]); }
 	}
 	auto const vsync = rc.vsync();
 	Combo vsyncCombo("vsync", vsyncNames, vn[vsync]);
-	if (vsyncCombo.selected != vn[vsync] && vsyncCombo.select >= 0) { rc.reconstruct(static_cast<graphics::Vsync>(vsyncCombo.select)); }
+	if (vsyncCombo.selected != vn[vsync] && vsyncCombo.select >= 0) { rc.recreateSwapchain({}, static_cast<graphics::VSync>(vsyncCombo.select)); }
 }
 
-void renderer(graphics::ARenderer& rd) {
+void renderer(graphics::Renderer& rd) {
 	Text txt("Renderer");
 	f32 rs = rd.renderScale();
 	TWidget<f32> rsw("Render Scale", rs, 0.03f, 75.0f, {0.5f, 4.0f});

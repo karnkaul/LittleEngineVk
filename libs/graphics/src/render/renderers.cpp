@@ -11,8 +11,8 @@ CommandBuffer RendererFSR::beginDraw(RenderTarget const& target, ScreenView cons
 	buf.framebuffer = makeDeferred<vk::Framebuffer>(m_device, m_storage.renderPass, target.attachments(), cast(target.colour.extent), 1U);
 	graphics::CommandBuffer::PassInfo const info{{c, depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
 	buf.cb.beginRenderPass(m_storage.renderPass, buf.framebuffer, target.colour.extent, info);
-	buf.cb.setViewport(viewport(target.colour.extent, view));
-	buf.cb.setScissor(scissor(target.colour.extent, view));
+	buf.cb.setViewport(viewportOld(target.colour.extent, view));
+	buf.cb.setScissor(scissorOld(target.colour.extent, view));
 	return buf.cb;
 }
 
@@ -60,9 +60,9 @@ std::optional<RenderTarget> RendererFOC::beginFrame() {
 	if (auto acq = acquire()) {
 		auto& buf = m_storage.buf.get();
 		m_swapchainImage = acq->image;
-		auto const extent = scaleExtent(m_swapchainImage.extent, renderScale());
+		auto const extent = scaleExtentOld(m_swapchainImage.extent, renderScale());
 		auto depth = depthImage(extent);
-		return RenderTarget{renderImage(m_imageMaker.refresh(buf.offscreen, extent, m_colourFormat, m_colourIndex)), depth};
+		return RenderTarget{renderImageOld(m_imageMaker.refresh(buf.offscreen, extent, m_colourFormat, m_colourIndex)), depth};
 	}
 	return std::nullopt;
 }

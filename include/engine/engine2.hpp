@@ -26,7 +26,7 @@ namespace utils {
 struct EngineStats;
 }
 
-namespace foo {
+// namespace foo {
 using Extent2D = graphics::Extent2D;
 
 class Engine {
@@ -68,7 +68,9 @@ class Engine {
 	bool unboot() noexcept;
 	bool booted() const noexcept;
 	bool setRenderer(std::unique_ptr<Renderer>&& renderer);
-	bool render(IDrawer& out_drawer, RenderBegin const& rb, SceneRegistry* scene = {});
+
+	bool nextFrame();
+	bool render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene = {});
 
 	Editor& editor() const noexcept;
 	GFX& gfx() const;
@@ -113,5 +115,5 @@ struct Engine::GFX {
 
 	GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, std::optional<VSync> vsync);
 };
-} // namespace foo
+//} // namespace foo
 } // namespace le

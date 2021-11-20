@@ -20,7 +20,7 @@
 #include <window/glue.hpp>
 #include <window/instance.hpp>
 
-namespace le::foo {
+namespace le {
 namespace {
 template <typename T>
 void profilerNext(T& out_profiler, Time_s total) {
@@ -145,7 +145,7 @@ void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	if (auto gpuOverride = DataObject<std::size_t>("gpuOverride")) { info.device.pickOverride = *gpuOverride; }
 	m_impl->gfx.emplace(&*m_impl->win, info, vsync);
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
-	DearImGui::CreateInfo dici(m_impl->gfx->context.renderer().renderPassUI());
+	DearImGui::CreateInfo dici(m_impl->gfx->context.renderer().renderPass());
 	dici.correctStyleColours = m_impl->gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
 	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->boot.device, &*m_impl->win, dici); }
 	addDefaultAssets();
@@ -179,12 +179,21 @@ bool Engine::setRenderer(std::unique_ptr<Renderer>&& renderer) {
 	return false;
 }
 
-bool Engine::render(IDrawer& out_drawer, RenderBegin const& rb, SceneRegistry* scene) {
+bool Engine::nextFrame() {
+	if (booted()) {
+		gfx().context.waitForFrame();
+		updateStats();
+		return true;
+	}
+	return false;
+}
+
+bool Engine::render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene) {
 	if (booted()) {
 		if constexpr (levk_imgui) {
 			[[maybe_unused]] bool const imgui_begun = gfx().imgui->beginFrame();
 			EXPECT(imgui_begun);
-			m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), inputFrame());
+			rb.view = m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), inputFrame());
 		}
 		return m_impl->gfx->context.render(out_drawer, rb, m_impl->win->framebufferSize());
 	}
@@ -270,4 +279,4 @@ void Engine::updateStats() {
 	graphics::CommandBuffer::s_drawCalls.store(0);
 	graphics::Mesh::s_trisDrawn.store(0);
 }
-} // namespace le::foo
+} // namespace le

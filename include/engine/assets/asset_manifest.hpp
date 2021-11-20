@@ -39,7 +39,7 @@ class AssetManifest : public utils::VBase {
   protected:
 	graphics::Device& device();
 	graphics::VRAM& vram();
-	graphics::RenderContext& context();
+	graphics::foo::RenderContext& context();
 	AssetStore& store();
 
   private:

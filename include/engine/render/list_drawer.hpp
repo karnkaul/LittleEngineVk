@@ -1,11 +1,13 @@
 #pragma once
 #include <core/utils/vbase.hpp>
 #include <engine/render/draw_list_factory.hpp>
-#include <graphics/render/command_buffer.hpp>
 #include <unordered_set>
 
+// TODO: renderer only
+#include <graphics/render/context.hpp>
+
 namespace le {
-class ListDrawer : public utils::VBase {
+class ListDrawer : public graphics::IDrawer {
   public:
 	struct List {
 		Span<Drawable const> drawables;
@@ -17,7 +19,7 @@ class ListDrawer : public utils::VBase {
 
 	template <typename... Gen>
 	Span<List> populate(dens::registry const& registry, bool sort = true);
-	void draw(graphics::CommandBuffer cb);
+	void draw(graphics::CommandBuffer cb) override;
 
   private:
 	virtual void draw(List const&, graphics::CommandBuffer) const = 0;

@@ -114,7 +114,7 @@ VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
 					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, colour)},
 					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)},
 					  {vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
-	return RenderContext::vertexInput(qvi);
+	return foo::RenderContext::vertexInput(qvi);
 }
 
 Shader::ResourcesMap utils::shaderResources(Shader const& shader) {

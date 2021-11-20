@@ -42,11 +42,11 @@ struct AssetLoadData<graphics::Pipeline> {
 	Variant main;
 	std::vector<Variant> variants;
 	graphics::PFlags flags;
-	not_null<graphics::RenderContext*> context;
+	not_null<graphics::foo::RenderContext*> context;
 	Hash shaderID;
 	bool gui = false;
 
-	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
+	AssetLoadData(not_null<graphics::foo::RenderContext*> context) : context(context) {}
 };
 
 template <>

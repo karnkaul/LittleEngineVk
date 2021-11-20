@@ -28,10 +28,10 @@ class RenderContext : NoCopy {
   public:
 	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing };
 
-	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
-	static VertexInputInfo vertexInput(QuickVertexInput const& info);
+	static VertexInputInfo vertexInputOld(VertexInputCreateInfo const& info);
+	static VertexInputInfo vertexInputOld(QuickVertexInput const& info);
 	template <typename V = Vertex>
-	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
+	static Pipeline::CreateInfo pipeInfoOld(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
 
 	RenderContext(not_null<VRAM*> vram, Swapchain::CreateInfo const& info, glm::vec2 fbSize);
 
@@ -94,7 +94,7 @@ class RenderContext : NoCopy {
 
 struct RenderBegin {
 	RGBA clear;
-	ClearDepth depth;
+	ClearDepth depth = {1.0f, 0};
 	ScreenView view;
 };
 
@@ -102,8 +102,7 @@ using CmdBufs = ktl::fixed_vector<vk::CommandBuffer, 8>;
 
 class IDrawer {
   public:
-	virtual void draw3D(CommandBuffer cb) = 0;
-	virtual void drawUI(CommandBuffer cb) = 0;
+	virtual void draw(CommandBuffer cb) = 0;
 };
 
 class ImageCache {
@@ -157,8 +156,7 @@ class Renderer {
 	f32 renderScale() const noexcept { return m_scale; }
 	bool renderScale(f32) noexcept;
 
-	virtual vk::RenderPass renderPass3D() const noexcept { return m_singleRenderPass; }
-	virtual vk::RenderPass renderPassUI() const noexcept { return m_singleRenderPass; }
+	virtual vk::RenderPass renderPass() const noexcept { return m_singleRenderPass; }
 
   protected:
 	Deferred<vk::Framebuffer> makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers = 1) const;
@@ -218,6 +216,7 @@ class RenderContext : public NoCopy {
 
 	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
 
+	void waitForFrame();
 	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
 	bool recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync);
 
@@ -289,7 +288,7 @@ struct QuickVertexInput {
 // impl
 
 template <typename V>
-Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
+Pipeline::CreateInfo foo::RenderContext::pipeInfo(PFlags flags, f32 wire) {
 	Pipeline::CreateInfo ret;
 	ret.fixedState.vertexInput = VertexInfoFactory<V>()(0);
 	if (flags.test(PFlag::eDepthTest)) {

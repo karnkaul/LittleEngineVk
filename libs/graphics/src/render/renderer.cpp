@@ -21,7 +21,7 @@ Image& ImageMaker::refresh(std::optional<Image>& out, Extent2D extent, vk::Forma
 	return *out;
 }
 
-vk::Viewport ARenderer::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) noexcept {
+vk::Viewport ARenderer::viewportOld(Extent2D extent, ScreenView const& view, glm::vec2 depth) noexcept {
 	DrawViewport ret;
 	glm::vec2 const e(extent);
 	ret.lt = view.nRect.lt * e + view.offset;
@@ -30,7 +30,7 @@ vk::Viewport ARenderer::viewport(Extent2D extent, ScreenView const& view, glm::v
 	return utils::viewport(ret);
 }
 
-vk::Rect2D ARenderer::scissor(Extent2D extent, ScreenView const& view) noexcept {
+vk::Rect2D ARenderer::scissorOld(Extent2D extent, ScreenView const& view) noexcept {
 	DrawScissor ret;
 	glm::vec2 const e(extent);
 	ret.lt = view.nRect.lt * e + view.offset;
@@ -60,7 +60,7 @@ ARenderer::ARenderer(not_null<Swapchain*> swapchain, Buffering buffering)
 
 RenderImage ARenderer::depthImage(Extent2D extent, vk::Format format) {
 	if (format == vk::Format()) { format = m_swapchain->depthFormat(); }
-	return renderImage(m_imageMaker.refresh(m_depthImage, extent, format, m_depthIndex));
+	return renderImageOld(m_imageMaker.refresh(m_depthImage, extent, format, m_depthIndex));
 }
 
 RenderSemaphore ARenderer::makeSemaphore() const { return {m_device->makeSemaphore(), m_device->makeSemaphore()}; }

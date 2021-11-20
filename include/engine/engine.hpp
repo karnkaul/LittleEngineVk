@@ -15,6 +15,8 @@
 #include <graphics/render/rgba.hpp>
 #include <window/instance.hpp>
 
+#include <engine/engine2.hpp>
+
 namespace le {
 namespace graphics {
 struct PhysicalDevice;
@@ -34,6 +36,7 @@ using graphics::Extent2D;
 class DearImGui;
 class SceneRegistry;
 
+namespace old {
 class Engine {
   public:
 	using Window = window::Instance;
@@ -158,4 +161,5 @@ inline Engine::Window const& Engine::window() const {
 	ENSURE(m_win.has_value(), "Not booted");
 	return *m_win;
 }
+} // namespace old
 } // namespace le

@@ -56,10 +56,10 @@ class ARenderer {
 	ARenderer(not_null<Swapchain*> swapchain, Buffering buffering);
 	virtual ~ARenderer() = default;
 
-	static constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept;
-	static RenderImage renderImage(Image const& image) noexcept { return {image.image(), image.view(), cast(image.extent())}; }
-	static vk::Viewport viewport(Extent2D extent, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
-	static vk::Rect2D scissor(Extent2D extent, ScreenView const& view = {}) noexcept;
+	static constexpr Extent2D scaleExtentOld(Extent2D extent, f32 scale) noexcept;
+	static RenderImage renderImageOld(Image const& image) noexcept { return {image.image(), image.view(), cast(image.extent())}; }
+	static vk::Viewport viewportOld(Extent2D extent, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
+	static vk::Rect2D scissorOld(Extent2D extent, ScreenView const& view = {}) noexcept;
 
 	bool hasDepthImage() const noexcept { return m_depthImage.has_value(); }
 	std::size_t index() const noexcept { return m_fence.index(); }
@@ -128,7 +128,7 @@ struct ARenderer::Buf {
 	std::optional<Image> offscreen;
 };
 
-constexpr Extent2D ARenderer::scaleExtent(Extent2D extent, f32 scale) noexcept {
+constexpr Extent2D ARenderer::scaleExtentOld(Extent2D extent, f32 scale) noexcept {
 	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
 	return {u32(ret.x), u32(ret.y)};
 }

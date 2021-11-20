@@ -1,3 +1,4 @@
+#include <engine/engine.hpp>
 #include <engine/render/list_drawer.hpp>
 #include <graphics/render/pipeline.hpp>
 
@@ -15,5 +16,6 @@ void ListDrawer::draw(graphics::CommandBuffer cb) {
 	for (auto pipe : pipes) { pipe->swap(); }
 	m_drawLists.clear();
 	m_lists.clear();
+	Engine::drawImgui(cb);
 }
 } // namespace le

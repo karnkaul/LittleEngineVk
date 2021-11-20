@@ -15,7 +15,7 @@ vk::SurfaceFormatKHR bestColour(vk::PhysicalDevice pd, vk::SurfaceKHR surface) {
 	auto const formats = pd.getSurfaceFormatsKHR(surface);
 	for (auto const& format : formats) {
 		if (format.colorSpace == vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear) {
-			if (format.format == vk::Format::eR8G8B8A8Unorm || format.format == vk::Format::eB8G8R8A8Unorm) { return format; }
+			if (format.format == vk::Format::eR8G8B8A8Srgb || format.format == vk::Format::eB8G8R8A8Srgb) { return format; }
 		}
 	}
 	return formats.empty() ? vk::SurfaceFormatKHR() : formats.front();
@@ -90,7 +90,6 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	m_storage.format.depth = bestDepth(pd);
 	m_createInfo.imageFormat = m_storage.format.colour.format;
 	m_createInfo.imageColorSpace = m_storage.format.colour.colorSpace;
-	// m_vram->m_device->waitIdle();
 	m_storage.info = makeInfo(fbSize);
 	if (m_storage.info.extent.width == 0 || m_storage.info.extent.height == 0) { return false; }
 	m_createInfo.imageExtent = m_storage.info.extent;

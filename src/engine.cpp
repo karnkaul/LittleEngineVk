@@ -19,7 +19,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace le {
+namespace le::old {
 namespace {
 template <typename T>
 void profilerNext(T& out_profiler, Time_s total) {
@@ -130,7 +130,7 @@ bool Engine::drawReady() {
 	return false;
 }
 
-bool Engine::nextFrame(graphics::RenderTarget* out, SceneRegistry* scene) {
+bool Engine::nextFrame(graphics::RenderTarget* out, [[maybe_unused]] SceneRegistry* scene) {
 	auto pr_ = m_profiler.profile("eng::nextFrame");
 	if (bootReady() && !m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
 		if (auto ret = m_gfx->context.beginFrame()) {
@@ -138,7 +138,7 @@ bool Engine::nextFrame(graphics::RenderTarget* out, SceneRegistry* scene) {
 			if constexpr (levk_imgui) {
 				[[maybe_unused]] bool const b = m_gfx->imgui->beginFrame();
 				ENSURE(b, "Failed to begin DearImGui frame");
-				m_view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), m_inputFrame);
+				// m_view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), m_inputFrame);
 			}
 			m_drawing = *ret;
 			if (out) { *out = *ret; }
@@ -190,7 +190,8 @@ void Engine::updateStats() {
 	m_impl->stats.stats.gfx.extents.window = windowSize();
 	if (m_gfx) {
 		m_impl->stats.stats.gfx.extents.swapchain = m_gfx->context.extent();
-		m_impl->stats.stats.gfx.extents.renderer = ARenderer::scaleExtent(m_impl->stats.stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale());
+		m_impl->stats.stats.gfx.extents.renderer =
+			ARenderer::scaleExtentOld(m_impl->stats.stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale());
 	}
 	graphics::CommandBuffer::s_drawCalls.store(0);
 	graphics::Mesh::s_trisDrawn.store(0);
@@ -265,4 +266,4 @@ void Engine::saveConfig() const {
 	config.win.maximized = m_win->maximized();
 	if (save(config, m_configPath)) { logI("[Engine] Config saved to {}", m_configPath.generic_string()); }
 }
-} // namespace le
+} // namespace le::old

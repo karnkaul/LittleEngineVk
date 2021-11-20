@@ -43,10 +43,6 @@
 #include <engine/ecs/components/spring_arm.hpp>
 #include <engine/ecs/components/trigger.hpp>
 
-#include <graphics/draw_view.hpp>
-#include <graphics/render/surface.hpp>
-#include <window/glue.hpp>
-
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
@@ -548,7 +544,7 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		{
 			{
-				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/tex");
+				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "layers/lit");
 				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
@@ -758,41 +754,6 @@ vk::Rect2D scissor(Extent2D extent, graphics::ScreenView const& view) noexcept {
 }
 
 bool run(io::Media const& media) {
-	/*{
-		using namespace le;
-		window::Manager wmgr;
-		window::CreateInfo winfo;
-		winfo.config.size = {1280, 720};
-		winfo.config.title = "graphics";
-		auto win = wmgr.make(winfo);
-		if (!win) { return false; }
-		auto makeSurface = [&win](vk::Instance vinst) { return window::makeSurface(vinst, *win); };
-		graphics::Bootstrap::CreateInfo binfo;
-		binfo.device.instance.extensions = window::instanceExtensions(*win);
-		binfo.device.instance.validation = graphics::Validation::eOn;
-		binfo.device.logLevel = dl::level::debug;
-		binfo.verbosity = LibLogger::Verbosity::eLibrary;
-		graphics::Bootstrap boot(binfo, makeSurface);
-		graphics::foo::RenderContext rc(&boot.vram, std::nullopt, win->framebufferSize());
-		struct Dummy : graphics::IDrawer {
-			void draw(graphics::CommandBuffer) override {}
-		};
-		while (!win->closing()) {
-			// poll
-			for (auto ev : win->pollEvents()) {
-				if (ev.type == window::Event::Type::eClose) { win->close(); }
-			}
-			// tick
-			// ...
-			// render
-			Dummy d;
-			graphics::RenderBegin rb;
-			rb.clear = Colour(0x774444ff);
-			rc.render(d, rb, win->framebufferSize());
-		}
-		boot.device.waitIdle();
-		return true;
-	}*/
 	Engine::CreateInfo eci;
 	eci.winInfo.config.title = "levk demo";
 	eci.winInfo.config.size = {1280, 720};
@@ -806,8 +767,6 @@ bool run(io::Media const& media) {
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
 	bootInfo.device.logLevel = dl::level::info;
 	do {
-		// using renderer_t = graphics::Renderer_t<graphics::RType::eOffscreenCommandbuffer>;
-		// engine.boot<renderer_t>(bootInfo);
 		engine.boot(bootInfo);
 		App app(&engine);
 		DeltaTime dt;

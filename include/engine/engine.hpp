@@ -27,7 +27,6 @@ namespace utils {
 struct EngineStats;
 }
 
-// namespace foo {
 using Extent2D = graphics::Extent2D;
 
 class Engine {
@@ -44,6 +43,7 @@ class Engine {
 	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
 
 	struct GFX;
+	struct CustomDevice;
 	struct CreateInfo;
 
 	static Version version() noexcept;
@@ -101,6 +101,10 @@ class Engine {
 	std::unique_ptr<Impl> m_impl;
 };
 
+struct Engine::CustomDevice {
+	std::string name;
+};
+
 struct Engine::CreateInfo {
 	window::CreateInfo winInfo;
 	std::optional<io::Path> logFile = "log.txt";
@@ -114,5 +118,4 @@ struct Engine::GFX {
 
 	GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, std::optional<VSync> vsync);
 };
-//} // namespace foo
 } // namespace le

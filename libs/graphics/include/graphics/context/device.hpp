@@ -8,6 +8,8 @@
 namespace le::graphics {
 enum class Validation { eOn, eOff };
 
+struct PhysicalDevice;
+
 class Device final : public Pinned {
   public:
 	using MakeSurface = ktl::move_only_function<vk::SurfaceKHR(vk::Instance)>;
@@ -78,7 +80,7 @@ class Device final : public Pinned {
 		return t == T();
 	}
 
-	PhysicalDevice const& physicalDevice() const noexcept { return m_physicalDevice; }
+	PhysicalDevice const& physicalDevice() const noexcept { return m_metadata.available[m_physicalDeviceIndex]; }
 	QueueMultiplex& queues() noexcept { return m_queues; }
 	QueueMultiplex const& queues() const noexcept { return m_queues; }
 	vk::Instance instance() const noexcept { return *m_instance; }
@@ -94,10 +96,10 @@ class Device final : public Pinned {
 	MakeSurface m_makeSurface;
 	vk::UniqueInstance m_instance;
 	vk::UniqueDebugUtilsMessengerEXT m_messenger;
-	PhysicalDevice m_physicalDevice;
 	vk::UniqueDevice m_device;
 	DeferQueue m_deferred;
 	QueueMultiplex m_queues;
+	std::size_t m_physicalDeviceIndex{};
 
 	struct {
 		std::vector<char const*> extensions;
@@ -114,8 +116,7 @@ struct Device::CreateInfo {
 	} instance;
 
 	Span<std::string_view const> extensions = requiredExtensions;
-	DevicePicker* picker = nullptr;
-	std::optional<std::size_t> pickOverride;
+	std::string_view customDeviceName;
 	dl::level logLevel = dl::level::info;
 	QSelect qselect = QSelect::eOptimal;
 };

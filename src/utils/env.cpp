@@ -6,6 +6,7 @@
 #include <engine/engine.hpp>
 #include <engine/utils/env.hpp>
 #include <engine/utils/logger.hpp>
+#include <graphics/context/physical_device.hpp>
 #include <graphics/render/surface.hpp>
 #include <iostream>
 #include <sstream>
@@ -76,12 +77,13 @@ struct GPU : clap::option_parser {
 				if (i < 0) { return false; }
 				auto const idx = std::size_t(i);
 				try {
-					std::size_t const total = Engine::availableDevices().size();
-					if (idx < total) {
-						DataObject<std::size_t>("gpuOverride") = idx;
-						std::cout << "GPU Override set to: " << i << '\n';
+					auto const& devices = Engine::availableDevices();
+					if (idx < devices.size()) {
+						auto const& device = devices[std::size_t(i)];
+						DataObject<Engine::CustomDevice>("gpuOverride")->name = std::string(device.name());
+						std::cout << "GPU Override set to [" << device.name() << "]\n";
 					} else {
-						std::cerr << "Invalid GPU Override: " << arg << "; total: " << total << '\n';
+						std::cerr << "Invalid GPU Override: " << arg << "; total: " << devices.size() << '\n';
 						return false;
 					}
 				} catch (std::runtime_error const& e) { std::cerr << "Failed to poll GPUs:" << e.what() << '\n'; }

@@ -33,7 +33,6 @@ class RenderContext : public NoCopy {
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
-	static Deferred<vk::RenderPass> makeRenderPass(Device& device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {});
 
 	RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering = 2_B);
 
@@ -137,11 +136,6 @@ Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
 		ret.fixedState.rasterizerState.lineWidth = wire;
 	}
 	return ret;
-}
-
-constexpr Extent2D Renderer::scaleExtent(Extent2D extent, f32 scale) noexcept {
-	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
-	return {u32(ret.x), u32(ret.y)};
 }
 
 inline f32 RenderContext::aspectRatio() const noexcept {

@@ -23,30 +23,4 @@ struct PhysicalDevice {
 };
 
 std::ostream& operator<<(std::ostream& out, PhysicalDevice const& device);
-
-class DevicePicker {
-  public:
-	using Score = s32;
-
-	inline static constexpr Score discrete = 100;
-	inline static constexpr Score integrated = -20;
-
-	inline static void addIf(Score& out_base, bool predicate, Score mod) noexcept {
-		if (predicate) { out_base += mod; }
-	}
-
-	PhysicalDevice pick(Span<PhysicalDevice const> devices, std::optional<std::size_t> indexOverride) const;
-	Score score(PhysicalDevice const& device) const;
-
-	///
-	/// \brief Override to modify the base score of a device
-	/// (Returns base score by default)
-	///
-	virtual inline Score modify(Score base, PhysicalDevice const&) const { return base; }
-	///
-	/// \brief Override to select a device from a list with identical scores
-	/// (Returns front element by default)
-	///
-	virtual PhysicalDevice tieBreak(Span<Ref<PhysicalDevice const> const> devices) const;
-};
 } // namespace le::graphics

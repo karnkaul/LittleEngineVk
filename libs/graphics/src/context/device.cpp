@@ -1,5 +1,6 @@
 #include <core/maths.hpp>
 #include <core/utils/data_store.hpp>
+#include <core/utils/expect.hpp>
 #include <core/utils/sys_info.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
@@ -145,6 +146,19 @@ ktl::fixed_vector<PhysicalDevice, 8> validDevices(Span<std::string_view const> e
 	}
 	return ret;
 }
+
+std::size_t deviceIndex(Span<PhysicalDevice const> devices, std::string_view name) {
+	EXPECT(!devices.empty());
+	if (!name.empty()) {
+		for (std::size_t i = 0; i < devices.size(); ++i) {
+			if (devices[i].name() == name) { return i; }
+		}
+	}
+	for (std::size_t i = 0; i < devices.size(); ++i) {
+		if (devices[i].discreteGPU()) { return i; }
+	}
+	return 0U;
+}
 } // namespace
 
 ktl::fixed_vector<PhysicalDevice, 8> Device::physicalDevices() {
@@ -172,18 +186,18 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 		g_log.log(lvl::error, 0, "[{}] No compatible Vulkan physical device detected!", g_name);
 		throw std::runtime_error("No physical devices");
 	}
-	static DevicePicker const s_picker;
-	DevicePicker const* pPicker = info.picker ? info.picker : &s_picker;
-	PhysicalDevice picked = pPicker->pick(devices, info.pickOverride);
-	if (default_v(picked.device)) { throw std::runtime_error("Failed to select a physical device!"); }
-	m_physicalDevice = std::move(picked);
+	auto const index = deviceIndex(devices, info.customDeviceName);
+	EXPECT(index < devices.size());
+	if (default_v(devices[index].device)) { throw std::runtime_error("Failed to select a physical device!"); }
 	m_metadata.available = std::move(devices);
-	DataStore::getOrSet<::le::utils::SysInfo>("sys_info").gpuName = std::string(m_physicalDevice.name());
+	m_physicalDeviceIndex = index;
+	PhysicalDevice const& picked = physicalDevice();
+	DataStore::getOrSet<::le::utils::SysInfo>("sys_info").gpuName = std::string(physicalDevice().name());
 	for (auto const& ext : extensions) { m_metadata.extensions.push_back(ext.data()); }
-	m_metadata.limits = m_physicalDevice.properties.limits;
-	m_metadata.lineWidth.first = m_physicalDevice.properties.limits.lineWidthRange[0U];
-	m_metadata.lineWidth.second = m_physicalDevice.properties.limits.lineWidthRange[1U];
-	auto families = utils::queueFamilies(m_physicalDevice, surface);
+	m_metadata.limits = picked.properties.limits;
+	m_metadata.lineWidth.first = picked.properties.limits.lineWidthRange[0U];
+	m_metadata.lineWidth.second = picked.properties.limits.lineWidthRange[1U];
+	auto families = utils::queueFamilies(picked, surface);
 	if (info.qselect == QSelect::eSingleFamily || info.qselect == QSelect::eSingleQueue) {
 		std::optional<QueueMultiplex::Family> uber;
 		for (auto const& family : families) {
@@ -203,8 +217,8 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 	}
 	auto queueCreateInfos = m_queues.select(families);
 	vk::PhysicalDeviceFeatures deviceFeatures;
-	deviceFeatures.fillModeNonSolid = m_physicalDevice.features.fillModeNonSolid;
-	deviceFeatures.wideLines = m_physicalDevice.features.wideLines;
+	deviceFeatures.fillModeNonSolid = picked.features.fillModeNonSolid;
+	deviceFeatures.wideLines = picked.features.wideLines;
 	vk::DeviceCreateInfo deviceCreateInfo;
 	deviceCreateInfo.queueCreateInfoCount = (u32)queueCreateInfos.size();
 	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
@@ -213,14 +227,14 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 	deviceCreateInfo.ppEnabledLayerNames = instance.layers.data();
 	deviceCreateInfo.enabledExtensionCount = (u32)m_metadata.extensions.size();
 	deviceCreateInfo.ppEnabledExtensionNames = m_metadata.extensions.data();
-	m_device = m_physicalDevice.device.createDeviceUnique(deviceCreateInfo);
+	m_device = picked.device.createDeviceUnique(deviceCreateInfo);
 	m_queues.setup(*m_device);
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(*m_device);
 	if (!valid(surface)) {
 		m_instance->destroy(surface);
 		throw std::runtime_error("Invalid Vulkan surface");
 	}
-	g_log.log(lvl::info, 0, "[{}] Vulkan device constructed, using GPU {}", g_name, m_physicalDevice.toString());
+	g_log.log(lvl::info, 0, "[{}] Vulkan device constructed, using GPU {}", g_name, picked.toString());
 	g_validationLevel = validationLevel;
 	m_instance->destroy(surface);
 }
@@ -230,7 +244,7 @@ Device::~Device() {
 	g_log.log(lvl::info, 1, "[{}] Vulkan device destroyed", g_name);
 }
 
-bool Device::valid(vk::SurfaceKHR surface) const { return m_physicalDevice.surfaceSupport(m_queues.familyIndex(QType::ePresent), surface); }
+bool Device::valid(vk::SurfaceKHR surface) const { return physicalDevice().surfaceSupport(m_queues.familyIndex(QType::ePresent), surface); }
 
 void Device::waitIdle() {
 	m_device->waitIdle();

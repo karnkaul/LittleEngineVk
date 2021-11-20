@@ -28,8 +28,6 @@ struct RenderBegin {
 	ScreenView view;
 };
 
-using CmdBufs = ktl::fixed_vector<vk::CommandBuffer, 8>;
-
 class IDrawer {
   public:
 	virtual void draw(CommandBuffer cb) = 0;
@@ -60,10 +58,13 @@ class ImageCache {
 
 class Renderer {
   public:
+	static constexpr u8 max_cmd_per_frame_v = 8;
+
 	using Transition = rtech::Transition;
 	using Approach = rtech::Approach;
 	using Target = rtech::Target;
 	using Tech = rtech::Tech;
+	using Record = ktl::fixed_vector<vk::CommandBuffer, max_cmd_per_frame_v>;
 
 	struct Attachment {
 		LayoutPair layouts;
@@ -74,12 +75,13 @@ class Renderer {
 
 	static vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
+	static Deferred<vk::RenderPass> makeRenderPass(Device& device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
 	static constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept;
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
 
-	CmdBufs render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
+	Record render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
 
 	Tech tech() const noexcept { return Tech{Approach::eForward, m_target, m_transition}; }
 	bool canScale() const noexcept;
@@ -90,7 +92,8 @@ class Renderer {
 
   protected:
 	Deferred<vk::Framebuffer> makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers = 1) const;
-	Deferred<vk::RenderPass> makeRenderPass(Transition transition, vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt) const;
+	Deferred<vk::RenderPass> makeRenderPass(Transition transition, vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
+											Span<vk::SubpassDependency const> deps = {}) const;
 
 	virtual void doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
 	virtual void next();
@@ -108,7 +111,7 @@ class Renderer {
 		static Cmd make(not_null<Device*> device);
 	};
 
-	using Cmds = ktl::fixed_vector<Cmd, 8>;
+	using Cmds = ktl::fixed_vector<Cmd, max_cmd_per_frame_v>;
 
 	RingBuffer<Cmds> m_cmds;
 	Deferred<vk::RenderPass> m_singleRenderPass;
@@ -119,11 +122,20 @@ class Renderer {
 };
 
 struct Renderer::CreateInfo {
-	VRAM* vram{};
-	Surface::Format format;
+	not_null<VRAM*> vram;
+	Surface::Format surfaceFormat;
 	Transition transition = Transition::eCommandBuffer;
 	Target target = Target::eSwapchain;
 	Buffering buffering = 2_B;
 	u8 cmdPerFrame = 1;
+
+	CreateInfo(not_null<VRAM*> vram, Surface::Format const& surfaceFormat) : vram(vram), surfaceFormat(surfaceFormat) {}
 };
+
+// impl
+
+constexpr Extent2D Renderer::scaleExtent(Extent2D extent, f32 scale) noexcept {
+	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
+	return {u32(ret.x), u32(ret.y)};
+}
 } // namespace le::graphics

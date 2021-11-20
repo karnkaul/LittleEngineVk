@@ -1,10 +1,8 @@
 #pragma once
 #include <core/utils/vbase.hpp>
 #include <engine/render/draw_list_factory.hpp>
+#include <graphics/render/renderer.hpp>
 #include <unordered_set>
-
-// TODO: renderer only
-#include <graphics/render/context.hpp>
 
 namespace le {
 class ListDrawer : public graphics::IDrawer {

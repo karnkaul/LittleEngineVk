@@ -136,7 +136,7 @@ bool Engine::unboot() noexcept {
 void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	unboot();
 	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
-	if (auto gpuOverride = DataObject<std::size_t>("gpuOverride")) { info.device.pickOverride = *gpuOverride; }
+	if (auto gpuOverride = DataObject<CustomDevice>("gpuOverride")) { info.device.customDeviceName = gpuOverride->name; }
 	m_impl->gfx.emplace(&*m_impl->win, info, vsync);
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
 	DearImGui::CreateInfo dici(m_impl->gfx->context.renderer().renderPass());

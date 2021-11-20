@@ -136,11 +136,12 @@ Renderer::Renderer(CreateInfo const& info)
 	dep.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dep.srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 	dep.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead;
+	dep.srcStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
 	if (m_target == Target::eOffScreen) {
 		dep.srcAccessMask |= vk::AccessFlagBits::eColorAttachmentWrite;
 		dep.dstAccessMask |= vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead;
+		dep.srcStageMask |= vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	}
-	dep.srcStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
 	dep.dstStageMask = dep.srcStageMask;
 	m_singleRenderPass = makeRenderPass(m_transition, colourFormat, m_surfaceFormat.depth, dep);
 	m_depthImage.setDepth();

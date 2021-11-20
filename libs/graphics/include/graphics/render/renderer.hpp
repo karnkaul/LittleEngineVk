@@ -126,7 +126,7 @@ struct Renderer::CreateInfo {
 	not_null<VRAM*> vram;
 	Surface::Format surfaceFormat;
 	Transition transition = Transition::eCommandBuffer;
-	Target target = Target::eSwapchain;
+	Target target = Target::eOffScreen;
 	Buffering buffering = 2_B;
 	u8 cmdPerFrame = 1;
 

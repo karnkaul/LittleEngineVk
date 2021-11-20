@@ -72,8 +72,7 @@ Surface::Surface(not_null<VRAM*> vram, Extent2D fbSize, std::optional<VSync> vsy
 Surface::~Surface() { m_vram->m_device->waitIdle(); }
 
 bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
-	m_retired = std::move(m_storage);
-	m_storage = {};
+	m_retired = std::exchange(m_storage, Storage());
 	auto const pd = m_vram->m_device->physicalDevice().device;
 	m_vsyncs = availableVsyncs(pd, *m_surface);
 	m_storage.format.vsync = bestVSync(m_vsyncs, vsync);
@@ -104,6 +103,8 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 			m_storage.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
 			m_storage.images.push_back({image, *m_storage.imageViews.back(), extent});
 		}
+	} else {
+		m_storage = std::exchange(m_retired, Storage());
 	}
 	return ret;
 }

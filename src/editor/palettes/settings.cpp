@@ -14,9 +14,15 @@ void context(graphics::RenderContext& rc) {
 	for (auto const vs : ktl::enumerate_enum<graphics::VSync>()) {
 		if (rc.supported(vs)) { vsyncNames.push_back(vn[vs]); }
 	}
-	auto const vsync = rc.vsync();
+	auto const vsync = rc.surface().format().vsync;
 	Combo vsyncCombo("vsync", vsyncNames, vn[vsync]);
-	if (vsyncCombo.selected != vn[vsync] && vsyncCombo.select >= 0) { rc.recreateSwapchain({}, static_cast<graphics::VSync>(vsyncCombo.select)); }
+	if (vsyncCombo.selected != vn[vsync] && vsyncCombo.select >= 0) {
+		if (rc.recreateSwapchain({}, static_cast<graphics::VSync>(vsyncCombo.select))) {
+			logI("[Editor] VSync changed to [{}]", graphics::vSyncNames[rc.surface().format().vsync]);
+		} else {
+			logE("[Editor] Failed to change VSync to [{}]!", vsyncNames[std::size_t(vsyncCombo.select)]);
+		}
+	}
 }
 
 void renderer(graphics::Renderer& rd) {
@@ -26,7 +32,12 @@ void renderer(graphics::Renderer& rd) {
 	if (auto popup = Popup("settings_renderer_scale")) {
 		TWidget<f32> rsw("Render Scale", s_newScale, 0.03f, 75.0f, {0.5f, 4.0f});
 		if (Button("Set")) {
-			if (!rd.renderScale(s_newScale)) { s_newScale = rd.renderScale(); }
+			if (rd.renderScale(s_newScale)) {
+				logI("[Editor] Renderer scale changed to [{:.2f}]", rd.renderScale());
+			} else {
+				logW("[Editor] Failed to change renderer scale to [{:.2f}]", s_newScale);
+				s_newScale = rd.renderScale();
+			}
 			popup.close();
 		}
 	}

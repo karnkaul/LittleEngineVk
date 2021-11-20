@@ -138,6 +138,8 @@ void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
 	if (auto gpuOverride = DataObject<CustomDevice>("gpuOverride")) { info.device.customDeviceName = gpuOverride->name; }
 	m_impl->gfx.emplace(&*m_impl->win, info, vsync);
+	auto const& surface = m_impl->gfx->context.surface();
+	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
 	DearImGui::CreateInfo dici(m_impl->gfx->context.renderer().renderPass());
 	dici.correctStyleColours = m_impl->gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
@@ -218,7 +220,7 @@ Engine::Window& Engine::window() const {
 	return *m_impl->win;
 }
 Extent2D Engine::framebufferSize() const noexcept {
-	if (m_impl->gfx) { return m_impl->gfx->context.extent(); }
+	if (m_impl->gfx) { return m_impl->gfx->context.surface().extent(); }
 	return m_impl->win->framebufferSize();
 }
 Extent2D Engine::windowSize() const noexcept { return m_impl->win->windowSize(); }
@@ -268,7 +270,7 @@ void Engine::updateStats() {
 	m_impl->stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
 	m_impl->stats.stats.gfx.extents.window = windowSize();
 	if (m_impl->gfx) {
-		m_impl->stats.stats.gfx.extents.swapchain = m_impl->gfx->context.extent();
+		m_impl->stats.stats.gfx.extents.swapchain = m_impl->gfx->context.surface().extent();
 		m_impl->stats.stats.gfx.extents.renderer =
 			Renderer::scaleExtent(m_impl->stats.stats.gfx.extents.swapchain, m_impl->gfx->context.renderer().renderScale());
 	}

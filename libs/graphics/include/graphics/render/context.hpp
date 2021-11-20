@@ -45,10 +45,8 @@ class RenderContext : public NoCopy {
 	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
 	bool recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync);
 
+	Surface const& surface() const noexcept { return m_surface; }
 	Buffering buffering() const noexcept { return m_buffering; }
-	Extent2D extent() const noexcept { return m_surface.extent(); }
-	Surface::Format surfaceFormat() const noexcept { return m_surface.format(); }
-	VSync vsync() const noexcept { return m_surface.format().vsync; }
 	vk::Format colourImageFormat() const noexcept;
 	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
@@ -139,11 +137,11 @@ Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
 }
 
 inline f32 RenderContext::aspectRatio() const noexcept {
-	glm::ivec2 const ext = extent();
+	glm::ivec2 const ext = surface().extent();
 	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
 }
 inline ColourCorrection RenderContext::colourCorrection() const noexcept {
-	return Surface::srgb(surfaceFormat().colour.format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
+	return Surface::srgb(surface().format().colour.format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
 }
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;

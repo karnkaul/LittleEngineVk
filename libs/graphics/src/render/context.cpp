@@ -23,7 +23,12 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
 	Renderer::CreateInfo rci(vram, format);
 	rci.buffering = buffering;
-	rci.target = Renderer::Target::eOffScreen;
+	if (vram->m_device->physicalDevice().integratedGPU()) {
+		rci.transition = Renderer::Transition::eRenderPass;
+		rci.target = Renderer::Target::eSwapchain;
+	} else {
+		rci.target = Renderer::Target::eOffScreen;
+	}
 	return std::make_unique<Renderer>(rci);
 }
 } // namespace

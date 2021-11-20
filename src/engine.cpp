@@ -189,7 +189,7 @@ bool Engine::render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene) {
 		if constexpr (levk_imgui) {
 			[[maybe_unused]] bool const imgui_begun = gfx().imgui->beginFrame();
 			EXPECT(imgui_begun);
-			rb.view = m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), inputFrame());
+			rb.view = m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), *this);
 		}
 		return m_impl->gfx->context.render(out_drawer, rb, m_impl->win->framebufferSize());
 	}

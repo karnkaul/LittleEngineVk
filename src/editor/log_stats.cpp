@@ -130,7 +130,7 @@ LogStats::LogStats() {
 
 void LogStats::operator()([[maybe_unused]] glm::vec2 fbSize, [[maybe_unused]] f32 height) {
 #if defined(LEVK_USE_IMGUI)
-	if (auto eng = Services::get<Engine>()) {
+	if (auto eng = Services::find<Engine>()) {
 		auto const& stats = eng->stats().frame;
 		if (stats.dt != Time_s()) { m_frameTime.fts.push_back(stats.dt); }
 		while (m_frameTime.fts.size() > s_frameTimeCount) { m_frameTime.fts.pop_front(); }

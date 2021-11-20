@@ -596,7 +596,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
-		updateSystems(m_tasks, dt);
+		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
 			if (!m_data.init) { init1(); }

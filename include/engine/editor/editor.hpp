@@ -27,6 +27,7 @@ class TreeRoot;
 namespace edi {
 class Inspector;
 } // namespace edi
+class Engine;
 
 class Editor {
   public:
@@ -45,7 +46,7 @@ class Editor {
 	edi::MenuList m_menu;
 
   private:
-	graphics::ScreenView update(edi::SceneRef scene, input::Frame const& frame);
+	graphics::ScreenView update(edi::SceneRef scene, Engine const& engine);
 
 	struct {
 #if defined(LEVK_EDITOR)

@@ -736,23 +736,6 @@ bool package(io::Path const& binary, bool clean) {
 	return openFilesystemPath(binary);
 }
 
-vk::Viewport viewport(Extent2D extent, graphics::ScreenView const& view, glm::vec2 depth) noexcept {
-	graphics::DrawViewport ret;
-	glm::vec2 const e(extent);
-	ret.lt = view.nRect.lt * e + view.offset;
-	ret.rb = view.nRect.rb * e + view.offset;
-	ret.depth = depth;
-	return graphics::utils::viewport(ret);
-}
-
-vk::Rect2D scissor(Extent2D extent, graphics::ScreenView const& view) noexcept {
-	graphics::DrawScissor ret;
-	glm::vec2 const e(extent);
-	ret.lt = view.nRect.lt * e + view.offset;
-	ret.rb = view.nRect.rb * e + view.offset;
-	return graphics::utils::scissor(ret);
-}
-
 bool run(io::Media const& media) {
 	Engine::CreateInfo eci;
 	eci.winInfo.config.title = "levk demo";

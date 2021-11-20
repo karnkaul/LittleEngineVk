@@ -186,7 +186,7 @@ Renderer::Record Renderer::render(IDrawer& out_drawer, RenderImage const& acquir
 bool Renderer::canScale() const noexcept { return tech().target == Target::eOffScreen; }
 
 bool Renderer::renderScale(f32 rs) noexcept {
-	if (canScale()) {
+	if (canScale() && rs >= m_scaleLimits.first && rs <= m_scaleLimits.second) {
 		m_scale = rs;
 		return true;
 	}

@@ -8,8 +8,6 @@
 namespace le::graphics {
 enum class Validation { eOn, eOff };
 
-struct PhysicalDevice;
-
 class Device final : public Pinned {
   public:
 	using MakeSurface = ktl::move_only_function<vk::SurfaceKHR(vk::Instance)>;
@@ -57,9 +55,6 @@ class Device final : public Pinned {
 	vk::DescriptorSetLayout makeDescriptorSetLayout(vAP<vk::DescriptorSetLayoutBinding> bindings) const;
 	vk::DescriptorPool makeDescriptorPool(vAP<vk::DescriptorPoolSize> poolSizes, u32 maxSets = 1) const;
 	std::vector<vk::DescriptorSet> allocateDescriptorSets(vk::DescriptorPool pool, vAP<vk::DescriptorSetLayout> layouts, u32 setCount = 1) const;
-
-	vk::RenderPass makeRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
-								  vAP<vk::SubpassDependency> dependencies = {}) const;
 
 	vk::Framebuffer makeFramebuffer(vk::RenderPass renderPass, Span<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers = 1) const;
 	vk::Sampler makeSampler(vk::SamplerCreateInfo info) const;

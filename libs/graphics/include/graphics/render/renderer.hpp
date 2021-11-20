@@ -116,6 +116,7 @@ class Renderer {
 	RingBuffer<Cmds> m_cmds;
 	Deferred<vk::RenderPass> m_singleRenderPass;
 	Surface::Format m_surfaceFormat;
+	TPair<f32> m_scaleLimits = {0.25f, 4.0f};
 	Transition m_transition;
 	Target m_target;
 	f32 m_scale = 1.0f;

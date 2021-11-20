@@ -371,18 +371,6 @@ std::vector<vk::DescriptorSet> Device::allocateDescriptorSets(vk::DescriptorPool
 	return m_device->allocateDescriptorSets(allocInfo);
 }
 
-vk::RenderPass Device::makeRenderPass(vAP<vk::AttachmentDescription> attachments, vAP<vk::SubpassDescription> subpasses,
-									  vAP<vk::SubpassDependency> dependencies) const {
-	vk::RenderPassCreateInfo createInfo;
-	createInfo.attachmentCount = attachments.size();
-	createInfo.pAttachments = attachments.data();
-	createInfo.subpassCount = subpasses.size();
-	createInfo.pSubpasses = subpasses.data();
-	createInfo.dependencyCount = dependencies.size();
-	createInfo.pDependencies = dependencies.data();
-	return m_device->createRenderPass(createInfo);
-}
-
 vk::Framebuffer Device::makeFramebuffer(vk::RenderPass renderPass, Span<vk::ImageView const> attachments, vk::Extent2D extent, u32 layers) const {
 	vk::FramebufferCreateInfo createInfo;
 	createInfo.attachmentCount = (u32)attachments.size();

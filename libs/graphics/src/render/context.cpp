@@ -237,7 +237,7 @@ Image::CreateInfo& ImageCache::setColour() {
 }
 
 bool ImageCache::ready(Extent2D extent, vk::Format format) const noexcept {
-	return m_image && cast(m_image->extent()) == extent && m_info.createInfo.format == format;
+	return m_image && m_image->extent2D() == extent && m_info.createInfo.format == format;
 }
 
 Image& ImageCache::make(Extent2D extent, vk::Format format) {
@@ -345,7 +345,7 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 	if (m_target == Target::eOffScreen) {
 		extent = scaleExtent(extent, renderScale());
 		auto& img = m_colourImage.refresh(extent, m_colourFormat);
-		colour = {img.image(), img.view(), cast(img.extent())};
+		colour = {img.image(), img.view(), img.extent2D()};
 	}
 	auto& depth = m_depthImage.refresh(extent, m_surfaceFormat.depth);
 	vk::ImageView const views[] = {colour.view, depth.view()};

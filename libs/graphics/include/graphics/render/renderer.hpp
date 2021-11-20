@@ -57,7 +57,7 @@ class ARenderer {
 	virtual ~ARenderer() = default;
 
 	static constexpr Extent2D scaleExtentOld(Extent2D extent, f32 scale) noexcept;
-	static RenderImage renderImageOld(Image const& image) noexcept { return {image.image(), image.view(), cast(image.extent())}; }
+	static RenderImage renderImageOld(Image const& image) noexcept { return {image.image(), image.view(), image.extent2D()}; }
 	static vk::Viewport viewportOld(Extent2D extent, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissorOld(Extent2D extent, ScreenView const& view = {}) noexcept;
 

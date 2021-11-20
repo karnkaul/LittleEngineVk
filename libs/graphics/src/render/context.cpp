@@ -21,7 +21,11 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 }
 
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
-	return std::make_unique<Renderer>(Renderer::CreateInfo{vram, format, buffering});
+	Renderer::CreateInfo rci;
+	rci.vram = vram;
+	rci.format = format;
+	rci.buffering = buffering;
+	return std::make_unique<Renderer>(rci);
 }
 } // namespace
 
@@ -193,6 +197,42 @@ vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenView const& view) const
 	return m_storage.renderer->scissor(Swapchain::valid(extent) ? extent : this->extent(), view);
 }
 
+// NEW
+
+Image::CreateInfo& ImageCache::setDepth() {
+	m_info = {};
+	m_info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	m_info.createInfo.tiling = vk::ImageTiling::eOptimal;
+	m_info.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	m_info.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
+	m_info.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
+	m_info.createInfo.samples = vk::SampleCountFlagBits::e1;
+	m_info.createInfo.imageType = vk::ImageType::e2D;
+	m_info.createInfo.initialLayout = vk::ImageLayout::eUndefined;
+	m_info.createInfo.mipLevels = 1;
+	m_info.createInfo.arrayLayers = 1;
+	m_info.queueFlags = QType::eGraphics;
+	m_info.view.format = m_info.createInfo.format;
+	m_info.view.aspects = vk::ImageAspectFlagBits::eDepth;
+	return m_info;
+}
+
+bool ImageCache::ready(Extent2D extent, vk::Format format) const noexcept {
+	return m_image && cast(m_image->extent()) == extent && m_info.createInfo.format == format;
+}
+
+Image& ImageCache::make(Extent2D extent, vk::Format format) {
+	m_info.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
+	m_info.createInfo.format = m_info.view.format = format;
+	m_image.emplace(m_vram, m_info);
+	return *m_image;
+}
+
+Image& ImageCache::refresh(Extent2D extent, vk::Format format) {
+	if (!ready(extent, format)) { make(extent, format); }
+	return *m_image;
+}
+
 Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device) {
 	Cmd ret;
 	ret.pool = makeDeferred<vk::CommandPool>(device, vk::CommandPoolCreateFlagBits::eTransient, QType::eGraphics);
@@ -217,7 +257,7 @@ vk::Rect2D Renderer::scissor(Extent2D extent, ScreenView const& view) noexcept {
 	return utils::scissor(ret);
 }
 
-Renderer::Renderer(CreateInfo const& info) : m_vram(info.vram) {
+Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_vram(info.vram), m_transition(info.transition) {
 	Buffering const buffering = info.buffering < 2_B ? 2_B : info.buffering;
 	u8 const cmdPerFrame = info.cmdPerFrame < 1 ? 1 : info.cmdPerFrame;
 	for (Buffering i{0}; i < buffering; ++i.value) {
@@ -226,53 +266,12 @@ Renderer::Renderer(CreateInfo const& info) : m_vram(info.vram) {
 		m_cmds.push(std::move(cmds));
 	}
 	m_surfaceFormat = info.format;
-	m_renderPass3D = makeRenderPass(Transition::eRenderPass);
+	m_renderPass3D = makeRenderPass(m_transition, m_surfaceFormat.colour.format, m_surfaceFormat.depth);
+	m_depthImage.setDepth();
 }
 
 Deferred<vk::Framebuffer> Renderer::makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers) const {
 	return makeDeferred<vk::Framebuffer>(m_vram->m_device, rp, views, graphics::cast(extent), layers);
-}
-
-Deferred<vk::RenderPass> Renderer::makeRenderPass(Device& device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps) {
-	vk::AttachmentDescription attachments[2];
-	u32 attachmentCount = 1;
-	vk::AttachmentReference colourAttachment, depthAttachment;
-	attachments[0].format = colour.format;
-	attachments[0].samples = vk::SampleCountFlagBits::e1;
-	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
-	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
-	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[0].initialLayout = colour.layouts.first;
-	attachments[0].finalLayout = colour.layouts.second;
-	colourAttachment.attachment = 0;
-	colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
-	if (depth.format != vk::Format()) {
-		attachments[1].format = depth.format;
-		attachments[1].samples = vk::SampleCountFlagBits::e1;
-		attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
-		attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
-		attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eClear;
-		attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		attachments[1].initialLayout = depth.layouts.first;
-		attachments[1].finalLayout = depth.layouts.second;
-		depthAttachment.attachment = 1;
-		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-		attachmentCount = 2;
-	}
-	vk::SubpassDescription subpass;
-	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colourAttachment;
-	subpass.pDepthStencilAttachment = depth.format == vk::Format() ? nullptr : &depthAttachment;
-	vk::RenderPassCreateInfo createInfo;
-	createInfo.attachmentCount = attachmentCount;
-	createInfo.pAttachments = attachments;
-	createInfo.subpassCount = 1U;
-	createInfo.pSubpasses = &subpass;
-	createInfo.dependencyCount = deps.size();
-	createInfo.pDependencies = deps.data();
-	return {&device, device.device().createRenderPass(createInfo)};
 }
 
 Deferred<vk::RenderPass> Renderer::makeRenderPass(Transition transition, vk::Format colour, std::optional<vk::Format> depth) const {
@@ -288,7 +287,7 @@ Deferred<vk::RenderPass> Renderer::makeRenderPass(Transition transition, vk::For
 		ac.layouts = {vIL::eColorAttachmentOptimal, vIL::eColorAttachmentOptimal};
 		ad.layouts = {vIL::eDepthStencilAttachmentOptimal, vIL::eDepthStencilAttachmentOptimal};
 	}
-	return makeRenderPass(*m_vram->m_device, ac, ad, {});
+	return foo::RenderContext::makeRenderPass(*m_vram->m_device, ac, ad, {});
 }
 
 CmdBufs Renderer::render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
@@ -310,7 +309,9 @@ void Renderer::next() { m_cmds.next(); }
 
 void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
 	auto& cmd = m_cmds.get().front();
-	auto fb = makeFramebuffer(m_renderPass3D, acquired.view, acquired.extent);
+	auto& depth = m_depthImage.refresh(acquired.extent, m_surfaceFormat.depth);
+	vk::ImageView const views[] = {acquired.view, depth.view()};
+	auto fb = makeFramebuffer(m_renderPass3D, views, acquired.extent);
 	auto const cc = rb.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
 	graphics::CommandBuffer::PassInfo const passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
@@ -362,6 +363,48 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 		ret.attributes.push_back(attribute);
 	}
 	return ret;
+}
+
+Deferred<vk::RenderPass> RenderContext::makeRenderPass(Device& device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps) {
+	vk::AttachmentDescription attachments[2];
+	u32 attachmentCount = 1;
+	vk::AttachmentReference colourAttachment, depthAttachment;
+	attachments[0].format = colour.format;
+	attachments[0].samples = vk::SampleCountFlagBits::e1;
+	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[0].initialLayout = colour.layouts.first;
+	attachments[0].finalLayout = colour.layouts.second;
+	colourAttachment.attachment = 0;
+	colourAttachment.layout = vk::ImageLayout::eColorAttachmentOptimal;
+	if (depth.format != vk::Format()) {
+		attachments[1].format = depth.format;
+		attachments[1].samples = vk::SampleCountFlagBits::e1;
+		attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
+		attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
+		attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eClear;
+		attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		attachments[1].initialLayout = depth.layouts.first;
+		attachments[1].finalLayout = depth.layouts.second;
+		depthAttachment.attachment = 1;
+		depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		attachmentCount = 2;
+	}
+	vk::SubpassDescription subpass;
+	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colourAttachment;
+	subpass.pDepthStencilAttachment = depth.format == vk::Format() ? nullptr : &depthAttachment;
+	vk::RenderPassCreateInfo createInfo;
+	createInfo.attachmentCount = attachmentCount;
+	createInfo.pAttachments = attachments;
+	createInfo.subpassCount = 1U;
+	createInfo.pSubpasses = &subpass;
+	createInfo.dependencyCount = deps.size();
+	createInfo.pDependencies = deps.data();
+	return {&device, device.device().createRenderPass(createInfo)};
 }
 
 RenderContext::RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering)

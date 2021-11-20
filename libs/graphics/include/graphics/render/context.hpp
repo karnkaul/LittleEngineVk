@@ -106,16 +106,30 @@ class IDrawer {
 	virtual void drawUI(CommandBuffer cb) = 0;
 };
 
+class ImageCache {
+  public:
+	using CreateInfo = Image::CreateInfo;
+
+	ImageCache() = default;
+	ImageCache(not_null<VRAM*> vram, CreateInfo const& info = {}) noexcept : m_vram(vram) { setInfo(info); }
+
+	bool ready() const noexcept { return m_vram != nullptr; }
+
+	void setInfo(CreateInfo const& info) { m_info = std::move(info); }
+	CreateInfo& setDepth();
+
+	bool ready(Extent2D extent, vk::Format format) const noexcept;
+	Image& make(Extent2D extent, vk::Format format);
+	Image& refresh(Extent2D extent, vk::Format format);
+
+  private:
+	Image::CreateInfo m_info;
+	std::optional<Image> m_image;
+	VRAM* m_vram{};
+};
+
 class Renderer {
   public:
-	// TODO: private
-	struct Cmd {
-		Deferred<vk::CommandPool> pool;
-		CommandBuffer cb;
-
-		static Cmd make(not_null<Device*> device);
-	};
-
 	enum class Transition { eRenderPass, eCommandBuffer };
 
 	struct Attachment {
@@ -127,7 +141,6 @@ class Renderer {
 
 	static vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
-	static Deferred<vk::RenderPass> makeRenderPass(Device& device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {});
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
@@ -141,20 +154,30 @@ class Renderer {
 	virtual void doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
 	virtual void next();
 
+	ImageCache m_depthImage;
 	not_null<VRAM*> m_vram;
 
   private:
+	struct Cmd {
+		Deferred<vk::CommandPool> pool;
+		CommandBuffer cb;
+
+		static Cmd make(not_null<Device*> device);
+	};
+
 	using Cmds = ktl::fixed_vector<Cmd, 8>;
 
 	RingBuffer<Cmds> m_cmds;
 	Deferred<vk::RenderPass> m_renderPass3D;
 	Deferred<vk::RenderPass> m_renderPassUI;
 	Surface::Format m_surfaceFormat;
+	Transition m_transition;
 };
 
 struct Renderer::CreateInfo {
-	not_null<VRAM*> vram;
+	VRAM* vram{};
 	Surface::Format format;
+	Transition transition = Transition::eRenderPass;
 	Buffering buffering = 2_B;
 	u8 cmdPerFrame = 1;
 };
@@ -163,11 +186,13 @@ namespace foo {
 class RenderContext : public NoCopy {
   public:
 	using Acquire = Surface::Acquire;
+	using Attachment = Renderer::Attachment;
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
+	static Deferred<vk::RenderPass> makeRenderPass(Device& device, Attachment colour, Attachment depth, vAP<vk::SubpassDependency> deps = {});
 
 	RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering = 2_B);
 

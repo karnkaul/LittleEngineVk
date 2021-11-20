@@ -6,17 +6,18 @@
 #include <engine/engine.hpp>
 #include <engine/utils/env.hpp>
 #include <engine/utils/logger.hpp>
+#include <graphics/render/surface.hpp>
 #include <iostream>
 #include <sstream>
 
 namespace le {
 namespace {
 struct Parser : clap::option_parser {
-	enum Flag { eVsync };
+	enum Flag { eVSync };
 
 	Parser() {
 		static constexpr clap::option opts[] = {
-			{eVsync, "vsync", "override vsync", "VSYNC"},
+			{eVSync, "vSync", "override vSync", "VSYNC"},
 			{'v', "validation", "force Vulkan validation layers on/off", "VALIDN", clap::option::flag_optional},
 			{'t', "test", "quote test", "ARG"},
 		};
@@ -27,21 +28,19 @@ struct Parser : clap::option_parser {
 
 	bool operator()(clap::option_key key, clap::str_t arg, clap::parse_state) override {
 		switch (key) {
-		case eVsync: {
-			graphics::Vsync vsync;
+		case eVSync: {
+			graphics::VSync vSync;
 			if (arg == "off") {
-				vsync = graphics::Vsync::eOff;
+				vSync = graphics::VSync::eOff;
 			} else if (arg == "on") {
-				vsync = graphics::Vsync::eOn;
+				vSync = graphics::VSync::eOn;
 			} else if (arg == "adaptive") {
-				vsync = graphics::Vsync::eAdaptive;
-			} else if (arg == "triple" || arg == "triple-buffer") {
-				vsync = graphics::Vsync::eTripleBuffer;
+				vSync = graphics::VSync::eAdaptive;
 			} else {
 				return false;
 			}
-			DataStore::set("vsync", vsync);
-			std::cout << "Overriding VSYNC to " << graphics::vsyncNames[vsync] << "\n";
+			DataStore::set("vSync", vSync);
+			std::cout << "Overriding VSYNC to " << graphics::vSyncNames[vSync] << "\n";
 			return true;
 		}
 		case 'v': {

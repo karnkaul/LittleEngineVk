@@ -24,6 +24,7 @@ using PFlags = ktl::enum_flags<PFlag, u8>;
 constexpr PFlags pflags_all = PFlags(PFlag::eDepthTest, PFlag::eDepthWrite, PFlag::eAlphaBlend);
 static_assert(pflags_all.count() == 3, "Invariant violated");
 
+namespace old {
 class RenderContext : NoCopy {
   public:
 	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing };
@@ -91,6 +92,7 @@ class RenderContext : NoCopy {
 	CommandPool m_pool;
 	not_null<Device*> m_device;
 };
+} // namespace old
 
 struct RenderBegin {
 	RGBA clear;
@@ -197,7 +199,6 @@ struct Renderer::CreateInfo {
 	u8 cmdPerFrame = 1;
 };
 
-namespace foo {
 class RenderContext : public NoCopy {
   public:
 	using Acquire = Surface::Acquire;
@@ -257,7 +258,6 @@ struct RenderContext::Sync {
 	Deferred<vk::Semaphore> present;
 	Deferred<vk::Fence> drawn;
 };
-} // namespace foo
 
 struct VertexInputCreateInfo {
 	struct Member {
@@ -288,7 +288,7 @@ struct QuickVertexInput {
 // impl
 
 template <typename V>
-Pipeline::CreateInfo foo::RenderContext::pipeInfo(PFlags flags, f32 wire) {
+Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
 	Pipeline::CreateInfo ret;
 	ret.fixedState.vertexInput = VertexInfoFactory<V>()(0);
 	if (flags.test(PFlag::eDepthTest)) {
@@ -314,6 +314,7 @@ Pipeline::CreateInfo foo::RenderContext::pipeInfo(PFlags flags, f32 wire) {
 	return ret;
 }
 
+namespace old {
 template <typename T, typename... Args>
 void RenderContext::makeRenderer(Args&&... args) {
 	ENSURE(m_storage.status < Status::eReady, "Invalid RenderContext status");
@@ -331,13 +332,13 @@ inline ColourCorrection RenderContext::colourCorrection() const noexcept {
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
 }
+} // namespace old
 
 constexpr Extent2D Renderer::scaleExtent(Extent2D extent, f32 scale) noexcept {
 	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
 	return {u32(ret.x), u32(ret.y)};
 }
 
-namespace foo {
 inline f32 RenderContext::aspectRatio() const noexcept {
 	glm::ivec2 const ext = extent();
 	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
@@ -348,5 +349,4 @@ inline ColourCorrection RenderContext::colourCorrection() const noexcept {
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;
 }
-} // namespace foo
 } // namespace le::graphics

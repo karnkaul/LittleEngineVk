@@ -1,10 +1,8 @@
 #include <build_version.hpp>
 #include <core/io.hpp>
 #include <core/io/zip_media.hpp>
-#include <core/services.hpp>
 #include <core/utils/data_store.hpp>
 #include <core/utils/error.hpp>
-#include <core/utils/profiler.hpp>
 #include <engine/assets/asset_loaders_store.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/engine2.hpp>
@@ -63,7 +61,6 @@ struct Engine::Impl {
 	input::ReceiverStore receivers;
 	input::Frame inputFrame;
 	graphics::ScreenView view;
-	std::optional<graphics::RenderTarget> drawing;
 	Profiler profiler;
 	time::Point lastPoll{};
 	Editor editor;
@@ -100,10 +97,7 @@ bool Engine::drawImgui(graphics::CommandBuffer cb) {
 }
 
 Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_impl(std::make_unique<Impl>(std::move(info.logFile))) {
-	if (!m_impl->wm.ready()) {
-		// TODO: error message
-		throw std::runtime_error("Window manager not ready");
-	}
+	if (!m_impl->wm.ready()) { throw std::runtime_error("Window manager not ready"); }
 	utils::g_log.minVerbosity = info.verbosity;
 	if (custom) { m_impl->store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
@@ -181,6 +175,7 @@ bool Engine::setRenderer(std::unique_ptr<Renderer>&& renderer) {
 
 bool Engine::nextFrame() {
 	if (booted()) {
+		auto pr_ = profile("nextFrame");
 		gfx().context.waitForFrame();
 		updateStats();
 		return true;
@@ -190,6 +185,7 @@ bool Engine::nextFrame() {
 
 bool Engine::render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene) {
 	if (booted()) {
+		auto pr_ = profile("render");
 		if constexpr (levk_imgui) {
 			[[maybe_unused]] bool const imgui_begun = gfx().imgui->beginFrame();
 			EXPECT(imgui_begun);

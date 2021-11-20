@@ -1,4 +1,5 @@
 #pragma once
+#include <core/services.hpp>
 #include <core/utils/profiler.hpp>
 #include <core/version.hpp>
 #include <engine/input/driver.hpp>
@@ -35,7 +36,7 @@ class Engine {
 	using Boot = graphics::Bootstrap;
 	using VSync = graphics::VSync;
 	using VRAM = graphics::VRAM;
-	using Context = graphics::foo::RenderContext;
+	using Context = graphics::RenderContext;
 	using Renderer = graphics::Renderer;
 	using RenderBegin = graphics::RenderBegin;
 	using IDrawer = graphics::IDrawer;
@@ -48,7 +49,7 @@ class Engine {
 	static Version version() noexcept;
 	static Span<graphics::PhysicalDevice const> availableDevices();
 	static bool drawImgui(graphics::CommandBuffer cb);
-	// static auto profile(std::string_view name) { return Services::get<Profiler>()->profile(name); }
+	static auto profile(std::string_view name) { return Services::get<Profiler>()->profile(name); }
 
 	Engine(CreateInfo const& info, io::Media const* custom = {});
 	~Engine();
@@ -61,8 +62,6 @@ class Engine {
 	void update(gui::ViewStack& out_stack);
 
 	bool drawReady();
-	// bool nextFrame(graphics::RenderTarget* out = {}, SceneRegistry* scene = {});
-	// bool draw(ListDrawer& drawer, RGBA clear = colours::black, ClearDepth depth = {1.0f, 0});
 
 	void boot(Boot::CreateInfo info, std::optional<VSync> vsync = std::nullopt);
 	bool unboot() noexcept;

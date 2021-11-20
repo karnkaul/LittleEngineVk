@@ -603,8 +603,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 		updateSystems(m_tasks, dt);
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
-			// TODO: enable
-			// auto pr_ = Engine::profile("app::tick");
+			auto pr_ = Engine::profile("app::tick");
 			if (!m_data.init) { init1(); }
 			// ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);

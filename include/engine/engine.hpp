@@ -42,7 +42,7 @@ class Engine {
 	using Window = window::Instance;
 	using Boot = graphics::Bootstrap;
 	using Swapchain = graphics::Swapchain;
-	using Context = graphics::RenderContext;
+	using Context = graphics::old::RenderContext;
 	using VRAM = graphics::VRAM;
 	using RGBA = graphics::RGBA;
 	using ClearDepth = graphics::ClearDepth;

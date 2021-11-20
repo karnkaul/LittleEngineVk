@@ -31,6 +31,7 @@ std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format
 }
 } // namespace
 
+namespace old {
 VertexInputInfo RenderContext::vertexInputOld(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;
@@ -199,6 +200,7 @@ vk::Viewport RenderContext::viewport(Extent2D extent, ScreenView const& view, gl
 vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenView const& view) const noexcept {
 	return m_storage.renderer->scissorOld(Swapchain::valid(extent) ? extent : this->extent(), view);
 }
+} // namespace old
 
 // NEW
 
@@ -308,7 +310,7 @@ Deferred<vk::RenderPass> Renderer::makeRenderPass(Transition transition, vk::For
 		ac.layouts = {vIL::eColorAttachmentOptimal, vIL::eColorAttachmentOptimal};
 		ad.layouts = {vIL::eDepthStencilAttachmentOptimal, vIL::eDepthStencilAttachmentOptimal};
 	}
-	return foo::RenderContext::makeRenderPass(*m_vram->m_device, ac, ad, {});
+	return RenderContext::makeRenderPass(*m_vram->m_device, ac, ad, {});
 }
 
 CmdBufs Renderer::render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
@@ -335,68 +337,6 @@ bool Renderer::renderScale(f32 rs) noexcept {
 	}
 	return false;
 }
-
-/*void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
-	m_scale = 0.75f;
-	auto& cmd = m_cmds.get().front();
-	Extent2D extent = acquired.extent;
-	RenderImage img3D = acquired;
-	RenderImage imgUI = acquired;
-	if (m_target == Target::eOffScreen) {
-		extent = scaleExtent(acquired.extent, renderScale());
-		auto& img = m_3DImage.refresh(extent, m_colourFormat);
-		img3D = {img.image(), img.view(), cast(img.extent())};
-		{
-			auto& img = m_UIImage.refresh(acquired.extent, m_colourFormat);
-			imgUI = {img.image(), img.view(), cast(img.extent())};
-		}
-	}
-	auto& depth = m_depthImage.refresh(extent, m_surfaceFormat.depth);
-	vk::ImageView const views[] = {img3D.view, depth.view()};
-	auto fb3D = makeFramebuffer(m_renderPass3D, views, extent);
-	decltype(fb3D) fbUI;
-	auto const cc = rb.clear.toVec4();
-	vk::ClearColorValue clear = std::array{cc.x, cc.y, cc.z, cc.w};
-	graphics::CommandBuffer::PassInfo passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-	if (m_transition == Transition::eCommandBuffer) {
-		m_vram->m_device->m_layouts.transition<lt::ColourWrite>(cmd.cb, img3D.image);
-		if (img3D.image != imgUI.image) {
-			m_vram->m_device->m_layouts.transition<lt::ColourWrite>(cmd.cb, imgUI.image);
-			fbUI = makeFramebuffer(m_renderPassUI, imgUI.view, acquired.extent);
-		}
-		m_vram->m_device->m_layouts.transition<lt::DepthStencilWrite>(cmd.cb, depth.image(), depthStencil);
-	}
-	auto renderPass = m_renderPass3D.get();
-	auto fb = fb3D.get();
-	cmd.cb.beginRenderPass(renderPass, fb, extent, passInfo);
-	cmd.cb.setViewport(viewport(extent, {}, {}));
-	cmd.cb.setScissor(scissor(extent, {}));
-	out_drawer.draw3D(cmd.cb);
-	if (!fbUI.active()) { out_drawer.drawUI(cmd.cb); }
-	cmd.cb.endRenderPass();
-
-	if (m_transition == Transition::eCommandBuffer) {
-		if (m_target == Target::eOffScreen) {
-			if (fbUI.active()) {
-				clear = std::array{0.0f, cc.y, cc.z, 0.3f};
-				graphics::CommandBuffer::PassInfo passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-				renderPass = m_renderPassUI.get();
-				fb = fbUI.get();
-				cmd.cb.beginRenderPass(renderPass, fb, acquired.extent, passInfo);
-				cmd.cb.setViewport(viewport(acquired.extent, {}, {}));
-				cmd.cb.setScissor(scissor(acquired.extent, {}));
-				out_drawer.drawUI(cmd.cb);
-				cmd.cb.endRenderPass();
-				m_vram->m_device->m_layouts.transition<lt::TransferSrc>(cmd.cb, imgUI.image);
-			}
-			m_vram->m_device->m_layouts.transition<lt::TransferSrc>(cmd.cb, img3D.image);
-			m_vram->m_device->m_layouts.transition<lt::TransferDst>(cmd.cb, acquired.image);
-			VRAM::blit(cmd.cb, {img3D, acquired});
-			if (fbUI.active()) { VRAM::blit(cmd.cb, {imgUI, acquired}); }
-		}
-		m_vram->m_device->m_layouts.transition<lt::TransferPresent>(cmd.cb, acquired.image);
-	}
-}*/
 
 void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
 	auto& cmd = m_cmds.get().front();
@@ -434,7 +374,6 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 
 void Renderer::next() { m_cmds.next(); }
 
-namespace foo {
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;
@@ -568,5 +507,4 @@ bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acq
 	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
 	return m_surface.present(fbSize, acquired, sync.present);
 }
-} // namespace foo
 } // namespace le::graphics

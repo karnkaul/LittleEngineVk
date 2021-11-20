@@ -5,6 +5,7 @@
 
 namespace le::graphics {
 class Device;
+class CommandBuffer;
 
 class VRAM final : public Memory {
   public:

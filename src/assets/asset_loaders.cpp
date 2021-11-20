@@ -94,7 +94,7 @@ std::unique_ptr<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetL
 	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
 		info.reloadDepend(shader);
 		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
-		pipeInfo.renderPass = info.m_data.gui ? info.m_data.context->renderer().renderPassUI() : info.m_data.context->renderer().renderPass3D();
+		pipeInfo.renderPass = info.m_data.context->renderer().renderPass();
 		setup(pipeInfo.fixedState, info.m_data.main);
 		auto ret = info.m_data.context->makePipeline(info.m_data.name, *shader, pipeInfo);
 		for (auto const& variant : info.m_data.variants) {

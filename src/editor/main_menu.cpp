@@ -30,7 +30,7 @@ struct Panes {
 Panes g_panes;
 
 void Panes::showStats() const {
-	if (auto eng = Services::get<Engine>()) {
+	if (auto eng = Services::find<Engine>()) {
 		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats), false)) {
 			auto const& s = eng->stats();
 			auto t = Text(CStr<32>("FPS: %u", s.frame.rate));
@@ -46,7 +46,7 @@ void Panes::showStats() const {
 			t = Text(CStr<32>("Swapchain: %ux%u", s.gfx.extents.swapchain.x, s.gfx.extents.swapchain.y));
 			t = Text(CStr<32>("Renderer: %ux%u", s.gfx.extents.renderer.x, s.gfx.extents.renderer.y));
 			Styler st(Style::eSeparator);
-			auto& renderer = Services::get<Engine>()->gfx().context.renderer();
+			auto& renderer = eng->gfx().context.renderer();
 			f32 rs = renderer.renderScale();
 			TWidget<f32> rsw("Render Scale", rs, 0.03f, 75.0f, {0.5f, 4.0f});
 			renderer.renderScale(rs);

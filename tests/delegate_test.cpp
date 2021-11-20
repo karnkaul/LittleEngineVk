@@ -3,7 +3,7 @@
 
 namespace {
 struct tester_t {
-	int called{};
+	int& called;
 
 	template <typename... T>
 	void operator()(T const&...) {
@@ -13,8 +13,9 @@ struct tester_t {
 
 TEST(delegate_attach) {
 	using delegate = ktl::delegate<>;
+	int called{};
 	delegate d;
-	tester_t t;
+	tester_t t{called};
 	[[maybe_unused]] auto tag = d.attach(t);
 	EXPECT_EQ(d.size(), 1U);
 	d();
@@ -23,23 +24,25 @@ TEST(delegate_attach) {
 
 TEST(delegate_detach) {
 	using delegate = ktl::delegate<int>;
+	int called{};
 	delegate d;
-	tester_t t;
+	tester_t t{called};
 	EXPECT_EQ(d.empty(), true);
 	auto tag = d.attach(t);
 	d(42);
 	EXPECT_GT(t.called, 0);
-	t = {};
 	d.detach(tag);
 	EXPECT_EQ(d.size(), 0U);
+	int const prev = t.called;
 	d(-1);
-	EXPECT_EQ(t.called, 0);
+	EXPECT_EQ(t.called, prev);
 }
 
 TEST(delegate_signal) {
 	using delegate = ktl::delegate<>;
+	int called{};
 	delegate d;
-	tester_t t;
+	tester_t t{called};
 	auto s = d.make_signal();
 	s += t;
 	s += t;
@@ -52,8 +55,9 @@ TEST(delegate_signal) {
 
 TEST(delegate_lifetime) {
 	using delegate = ktl::delegate<>;
+	int called{};
 	delegate::handle s0;
-	tester_t t0;
+	tester_t t0{called};
 	{
 		delegate d;
 		s0 = d.make_signal();

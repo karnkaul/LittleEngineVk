@@ -1,23 +1,22 @@
 #include <build_version.hpp>
+#include <core/io.hpp>
 #include <core/io/zip_media.hpp>
 #include <core/utils/data_store.hpp>
+#include <core/utils/error.hpp>
+#include <engine/assets/asset_loaders_store.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
 #include <engine/gui/view.hpp>
-#include <engine/input/space.hpp>
-#include <engine/render/list_drawer.hpp>
+#include <engine/input/driver.hpp>
+#include <engine/input/receiver.hpp>
 #include <engine/scene/scene_registry.hpp>
 #include <engine/utils/engine_config.hpp>
 #include <engine/utils/engine_stats.hpp>
 #include <engine/utils/error_handler.hpp>
-#include <engine/utils/logger.hpp>
-#include <graphics/common.hpp>
-#include <graphics/mesh.hpp>
-#include <graphics/render/command_buffer.hpp>
 #include <graphics/utils/utils.hpp>
+#include <levk_imgui/levk_imgui.hpp>
 #include <window/glue.hpp>
-#include <fstream>
-#include <iostream>
+#include <window/instance.hpp>
 
 namespace le {
 namespace {
@@ -46,17 +45,33 @@ bool save(utils::EngineConfig const& config, io::Path const& path) {
 	opts.sort_keys = opts.pretty = true;
 	return original.save(path.generic_string(), opts);
 }
+
+graphics::Bootstrap::MakeSurface makeSurface(window::Instance const& winst) {
+	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
+}
 } // namespace
 
 struct Engine::Impl {
+	io::Service io;
+	window::Manager wm;
+	std::optional<Window> win;
+	std::optional<GFX> gfx;
+	AssetStore store;
+	input::Driver input;
+	input::ReceiverStore receivers;
+	input::Frame inputFrame;
+	graphics::ScreenView view;
+	Profiler profiler;
+	time::Point lastPoll{};
 	Editor editor;
 	utils::EngineStats::Counter stats;
 	utils::ErrorHandler errorHandler;
+
+	Impl(std::optional<io::Path> logPath) : io(logPath.value_or(io::Path())) {}
 };
 
-Engine::Boot::MakeSurface Engine::GFX::makeSurface(Window const& winst) {
-	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
-}
+Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, std::optional<VSync> vsync)
+	: boot(bci, makeSurface(*winst)), context(&boot.vram, vsync, winst->framebufferSize()) {}
 
 Version Engine::version() noexcept { return g_engineVersion; }
 
@@ -64,19 +79,29 @@ Span<graphics::PhysicalDevice const> Engine::availableDevices() {
 	auto const verb = graphics::g_log.minVerbosity;
 	if (s_devices.empty()) {
 		graphics::g_log.minVerbosity = LibLogger::Verbosity::eEndUser;
-		graphics::Instance inst(graphics::Instance::CreateInfo{});
-		s_devices = inst.availableDevices(graphics::Device::requiredExtensions);
+		s_devices = graphics::Device::physicalDevices();
 	}
 	graphics::g_log.minVerbosity = verb;
 	return s_devices;
 }
 
-Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logFile.value_or(io::Path())), m_impl(std::make_unique<Impl>()) {
+bool Engine::drawImgui(graphics::CommandBuffer cb) {
+	if constexpr (levk_imgui) {
+		if (auto eng = Services::find<Engine>(); eng && eng->gfx().imgui) {
+			eng->gfx().imgui->endFrame();
+			eng->gfx().imgui->renderDrawData(cb);
+			return true;
+		}
+	}
+	return false;
+}
+
+Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_impl(std::make_unique<Impl>(std::move(info.logFile))) {
+	if (!m_impl->wm.ready()) { throw std::runtime_error("Window manager not ready"); }
 	utils::g_log.minVerbosity = info.verbosity;
-	if (custom) { m_store.resources().media(custom); }
+	if (custom) { m_impl->store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	logI("Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
-	ENSURE(m_wm.ready(), "Window Manager not ready");
 	auto winInfo = info.winInfo;
 	winInfo.options.autoShow = false;
 	if (auto config = load(m_configPath)) {
@@ -84,7 +109,8 @@ Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_io(info.logF
 		if (config->win.size.x > 0 && config->win.size.y > 0) { winInfo.config.size = config->win.size; }
 		winInfo.config.position = config->win.position;
 	}
-	m_win = m_wm.make(winInfo);
+	m_impl->win = m_impl->wm.make(winInfo);
+	if (!m_impl->win) { throw std::runtime_error("Failed to create window"); }
 	m_impl->errorHandler.deleteFile();
 	if (!m_impl->errorHandler.activeHandler()) { m_impl->errorHandler.setActive(); }
 	Services::track(this);
@@ -95,165 +121,158 @@ Engine::~Engine() {
 	Services::untrack(this);
 }
 
-input::Driver::Out Engine::poll(bool consume) noexcept {
-	if (!bootReady()) { return {}; }
-	f32 const rscale = m_gfx ? m_gfx->context.renderer().renderScale() : 1.0f;
-	input::Driver::In in{m_win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_win};
-	auto ret = m_input.update(std::move(in), editor().view(), consume);
-	m_inputFrame = ret.frame;
-	for (auto it = m_receivers.rbegin(); it != m_receivers.rend(); ++it) {
-		if ((*it)->block(ret.frame.state)) { break; }
-	}
-	if (m_inputFrame.state.focus == input::Focus::eGained) { m_store.update(); }
-	profilerNext(m_profiler, time::diffExchg(m_lastPoll));
-	return ret;
-}
-
-void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_inputFrame); }
-
-void Engine::pushReceiver(not_null<input::Receiver*> context) { context->attach(m_receivers); }
-
-bool Engine::drawReady() {
-	if (bootReady() && m_gfx) {
-		if (!m_gfx->context.ready(m_win->framebufferSize())) { return false; }
-		return true;
-	}
-	return false;
-}
-
-bool Engine::nextFrame(graphics::RenderTarget* out, SceneRegistry* scene) {
-	auto pr_ = m_profiler.profile("eng::nextFrame");
-	if (bootReady() && !m_drawing && drawReady() && m_gfx->context.waitForFrame()) {
-		if (auto ret = m_gfx->context.beginFrame()) {
-			updateStats();
-			if constexpr (levk_imgui) {
-				[[maybe_unused]] bool const b = m_gfx->imgui->beginFrame();
-				ENSURE(b, "Failed to begin DearImGui frame");
-				m_view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), m_inputFrame);
-			}
-			m_drawing = *ret;
-			if (out) { *out = *ret; }
-			return true;
-		}
-	}
-	return false;
-}
-
-bool Engine::draw(ListDrawer& drawer, RGBA clear, ClearDepth depth) {
-	auto pr_ = m_profiler.profile("eng::draw");
-	if (auto cb = beginDraw(clear, depth)) {
-		drawer.draw(*cb);
-		return endDraw(*cb);
-	}
-	return false;
-}
-
 bool Engine::unboot() noexcept {
-	if (m_gfx) {
+	if (booted()) {
 		saveConfig();
-		m_store.clear();
+		m_impl->store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
-		m_gfx.reset();
+		m_impl->gfx.reset();
 		io::ZIPMedia::fsDeinit();
 		return true;
 	}
 	return false;
 }
 
-Editor& Engine::editor() noexcept { return m_impl->editor; }
-Editor const& Engine::editor() const noexcept { return m_impl->editor; }
-Engine::Stats const& Engine::stats() const noexcept { return m_impl->stats.stats; }
-
-Extent2D Engine::framebufferSize() const noexcept {
-	if (m_gfx) { return m_gfx->context.extent(); }
-	if (m_win) { return m_win->framebufferSize(); }
-	return {};
+void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
+	unboot();
+	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
+	if (auto gpuOverride = DataObject<CustomDevice>("gpuOverride")) { info.device.customDeviceName = gpuOverride->name; }
+	m_impl->gfx.emplace(&*m_impl->win, info, vsync);
+	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
+	DearImGui::CreateInfo dici(m_impl->gfx->context.renderer().renderPass());
+	dici.correctStyleColours = m_impl->gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
+	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->boot.device, &*m_impl->win, dici); }
+	addDefaultAssets();
+	m_impl->win->show();
 }
 
-Extent2D Engine::windowSize() const noexcept { return m_win->windowSize(); }
-
-void Engine::updateStats() {
-	m_impl->stats.update();
-	m_impl->stats.stats.gfx.bytes.buffers = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
-	m_impl->stats.stats.gfx.bytes.images = m_gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
-	m_impl->stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
-	m_impl->stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
-	m_impl->stats.stats.gfx.extents.window = windowSize();
-	if (m_gfx) {
-		m_impl->stats.stats.gfx.extents.swapchain = m_gfx->context.extent();
-		m_impl->stats.stats.gfx.extents.renderer = ARenderer::scaleExtent(m_impl->stats.stats.gfx.extents.swapchain, m_gfx->context.renderer().renderScale());
+input::Driver::Out Engine::poll(bool consume) noexcept {
+	f32 const rscale = m_impl->gfx ? m_impl->gfx->context.renderer().renderScale() : 1.0f;
+	input::Driver::In in{m_impl->win->pollEvents(), {framebufferSize(), sceneSpace()}, rscale, &*m_impl->win};
+	auto ret = m_impl->input.update(std::move(in), editor().view(), consume);
+	m_impl->inputFrame = ret.frame;
+	for (auto it = m_impl->receivers.rbegin(); it != m_impl->receivers.rend(); ++it) {
+		if ((*it)->block(ret.frame.state)) { break; }
 	}
-	graphics::CommandBuffer::s_drawCalls.store(0);
-	graphics::Mesh::s_trisDrawn.store(0);
-}
-
-Engine::Boot::CreateInfo Engine::adjust(Boot::CreateInfo const& info) {
-	auto ret = info;
-	ret.instance.extensions = window::instanceExtensions(*m_win);
-	if (auto gpuOverride = DataObject<std::size_t>("gpuOverride")) { ret.device.pickOverride = *gpuOverride; }
+	if (m_impl->inputFrame.state.focus == input::Focus::eGained) { m_impl->store.update(); }
+	profilerNext(m_impl->profiler, time::diffExchg(m_impl->lastPoll));
 	return ret;
 }
 
-void Engine::bootImpl() {
-	Services::track<Context, VRAM, AssetStore, Profiler>(&m_gfx->context, &m_gfx->boot.vram, &m_store, &m_profiler);
-	DearImGui::CreateInfo dici(m_gfx->context.renderer().renderPassUI());
-	dici.correctStyleColours = m_gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
-	if constexpr (levk_imgui) { m_gfx->imgui = std::make_unique<DearImGui>(&m_gfx->boot.device, &*m_win, dici); }
-	addDefaultAssets();
-	m_win->show();
+void Engine::update(gui::ViewStack& out_stack) { out_stack.update(m_impl->inputFrame); }
+
+void Engine::pushReceiver(not_null<input::Receiver*> context) { context->attach(m_impl->receivers); }
+
+bool Engine::booted() const noexcept { return m_impl->gfx.has_value(); }
+
+bool Engine::setRenderer(std::unique_ptr<Renderer>&& renderer) {
+	if (booted()) {
+		m_impl->gfx->context.setRenderer(std::move(renderer));
+		return true;
+	}
+	return false;
+}
+
+bool Engine::nextFrame() {
+	if (booted()) {
+		auto pr_ = profile("nextFrame");
+		gfx().context.waitForFrame();
+		updateStats();
+		return true;
+	}
+	return false;
+}
+
+bool Engine::render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene) {
+	if (booted()) {
+		auto pr_ = profile("render");
+		if constexpr (levk_imgui) {
+			[[maybe_unused]] bool const imgui_begun = gfx().imgui->beginFrame();
+			EXPECT(imgui_begun);
+			rb.view = m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), *this);
+		}
+		return m_impl->gfx->context.render(out_drawer, rb, m_impl->win->framebufferSize());
+	}
+	return false;
+}
+
+input::Receiver::Store& Engine::receiverStore() noexcept { return m_impl->receivers; }
+input::Frame const& Engine::inputFrame() const noexcept { return m_impl->inputFrame; }
+AssetStore& Engine::store() const noexcept { return m_impl->store; }
+glm::vec2 Engine::sceneSpace() const noexcept { return m_space(m_impl->inputFrame.space); }
+window::Manager& Engine::windowManager() const noexcept { return m_impl->wm; }
+bool Engine::closing() const { return window().closing(); }
+
+Engine::GFX& Engine::gfx() const {
+	ENSURE(m_impl->gfx.has_value(), "Not booted");
+	return *m_impl->gfx;
+}
+
+Engine::Renderer& Engine::renderer() const { return gfx().context.renderer(); }
+
+Editor& Engine::editor() const noexcept { return m_impl->editor; }
+Engine::Stats const& Engine::stats() const noexcept { return m_impl->stats.stats; }
+
+Engine::Window& Engine::window() const {
+	ENSURE(m_impl->win.has_value(), "Not booted");
+	return *m_impl->win;
+}
+Extent2D Engine::framebufferSize() const noexcept {
+	if (m_impl->gfx) { return m_impl->gfx->context.extent(); }
+	return m_impl->win->framebufferSize();
+}
+Extent2D Engine::windowSize() const noexcept { return m_impl->win->windowSize(); }
+
+void Engine::saveConfig() const {
+	utils::EngineConfig config;
+	config.win.position = m_impl->win->position();
+	config.win.size = m_impl->win->windowSize();
+	config.win.maximized = m_impl->win->maximized();
+	if (save(config, m_configPath)) { logI("[Engine] Config saved to {}", m_configPath.generic_string()); }
 }
 
 void Engine::addDefaultAssets() {
 	static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
 	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
-	auto sampler = m_store.add("samplers/default", graphics::Sampler{&gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+	auto sampler = store().add("samplers/default", graphics::Sampler{&gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 	/*Textures*/ {
 		graphics::Texture::CreateInfo tci;
 		tci.sampler = sampler->sampler();
 		tci.data = graphics::utils::bitmap({0xff0000ff}, 1);
 		graphics::Texture texture(&gfx().boot.vram);
-		if (texture.construct(tci)) { m_store.add("textures/red", std::move(texture)); }
+		if (texture.construct(tci)) { store().add("textures/red", std::move(texture)); }
 		tci.data = graphics::utils::bitmap({0x000000ff}, 1);
-		if (texture.construct(tci)) { m_store.add("textures/black", std::move(texture)); }
+		if (texture.construct(tci)) { store().add("textures/black", std::move(texture)); }
 		tci.data = graphics::utils::bitmap({0xffffffff}, 1);
-		if (texture.construct(tci)) { m_store.add("textures/white", std::move(texture)); }
+		if (texture.construct(tci)) { store().add("textures/white", std::move(texture)); }
 		tci.data = graphics::utils::bitmap({0x0}, 1);
-		if (texture.construct(tci)) { m_store.add("textures/blank", std::move(texture)); }
+		if (texture.construct(tci)) { store().add("textures/blank", std::move(texture)); }
 		tci.data = graphics::Texture::unitCubemap(colours::transparent);
-		if (texture.construct(tci)) { m_store.add("cubemaps/blank", std::move(texture)); }
+		if (texture.construct(tci)) { store().add("cubemaps/blank", std::move(texture)); }
 	}
 	/* meshes */ {
-		auto cube = m_store.add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));
+		auto cube = store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));
 		cube->construct(graphics::makeCube());
-		auto cone = m_store.add<graphics::Mesh>("meshes/cone", graphics::Mesh(&gfx().boot.vram));
+		auto cone = store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&gfx().boot.vram));
 		cone->construct(graphics::makeCone());
-		auto wf_cube = m_store.add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&m_gfx->boot.vram));
+		auto wf_cube = store().add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&gfx().boot.vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
 }
 
-std::optional<graphics::CommandBuffer> Engine::beginDraw(RGBA clear, ClearDepth depth) {
-	m_drawing = {};
-	if (auto cb = m_gfx->context.beginDraw(m_view, clear, depth)) { return cb; }
-	m_gfx->context.endFrame();
-	return std::nullopt;
-}
-
-bool Engine::endDraw(graphics::CommandBuffer cb) {
-	if constexpr (levk_imgui) {
-		m_gfx->imgui->endFrame();
-		m_gfx->imgui->renderDrawData(cb);
+void Engine::updateStats() {
+	m_impl->stats.update();
+	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
+	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
+	m_impl->stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
+	m_impl->stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
+	m_impl->stats.stats.gfx.extents.window = windowSize();
+	if (m_impl->gfx) {
+		m_impl->stats.stats.gfx.extents.swapchain = m_impl->gfx->context.extent();
+		m_impl->stats.stats.gfx.extents.renderer =
+			Renderer::scaleExtent(m_impl->stats.stats.gfx.extents.swapchain, m_impl->gfx->context.renderer().renderScale());
 	}
-	m_gfx->context.endDraw();
-	m_gfx->context.endFrame();
-	return m_gfx->context.submitFrame();
-}
-
-void Engine::saveConfig() const {
-	utils::EngineConfig config;
-	config.win.position = m_win->position();
-	config.win.size = m_win->windowSize();
-	config.win.maximized = m_win->maximized();
-	if (save(config, m_configPath)) { logI("[Engine] Config saved to {}", m_configPath.generic_string()); }
+	graphics::CommandBuffer::s_drawCalls.store(0);
+	graphics::Mesh::s_trisDrawn.store(0);
 }
 } // namespace le

@@ -4,6 +4,7 @@
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <core/utils/error.hpp>
+#include <graphics/bitmap.hpp>
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
 #include <atomic>
@@ -167,6 +168,7 @@ class Image : public Resource {
 	vk::ImageView view() const noexcept { return m_storage.view; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
+	Extent2D extent2D() const noexcept { return cast(extent()); }
 	vk::ImageLayout layout() const noexcept { return m_storage.layout; }
 	void layout(vk::ImageLayout layout) noexcept { m_storage.layout = layout; }
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }

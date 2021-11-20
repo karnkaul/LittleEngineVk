@@ -11,7 +11,6 @@
 #include <engine/render/model.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/common.hpp>
-#include <graphics/render/renderers.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
 #include <iostream>
@@ -597,7 +596,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
-		updateSystems(m_tasks, dt);
+		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
 			if (!m_data.init) { init1(); }
@@ -630,18 +629,19 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		}
 		// draw
-		if (m_eng->nextFrame(nullptr, this)) { render(); }
+		if (m_eng->nextFrame()) { render(); }
 		m_tasks.rethrow();
 	}
 
-	void render() const {
-		if (m_data.init) {
+	void render() {
+		if (m_data.init && !m_data.unloaded) {
 			// write / update
 			m_drawer.update(m_registry, m_registry.get<graphics::Camera>(m_sceneRoot), m_eng->sceneSpace(), m_data.dirLights, m_data.wire);
 		}
-		// if (auto cam = m_registry.find<FreeCam>(m_data.camera)) { m_drawer.update(m_registry, *cam, m_eng->sceneSpace(), m_data.dirLights, m_data.wire); }
 		// draw
-		m_eng->draw(m_drawer, RGBA(0x777777ff, RGBA::Type::eAbsolute));
+		graphics::RenderBegin rb;
+		rb.clear = RGBA(0x777777ff, RGBA::Type::eAbsolute);
+		m_eng->render(m_drawer, rb, this);
 	}
 
 	scheduler& sched() { return m_tasks; }
@@ -742,21 +742,17 @@ bool run(io::Media const& media) {
 	eci.winInfo.config.size = {1280, 720};
 	eci.winInfo.options.centreCursor = true;
 	Engine engine(eci, &media);
-	if (!engine.bootReady()) { return false; }
 	Flags flags;
 	FlagsInput flagsInput(flags);
 	engine.pushReceiver(&flagsInput);
 	bool reboot = false;
 	Engine::Boot::CreateInfo bootInfo;
-	if constexpr (levk_debug) { bootInfo.instance.validation.mode = graphics::Validation::eOn; }
-	bootInfo.instance.validation.logLevel = dl::level::info;
+	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
+	bootInfo.device.logLevel = dl::level::info;
 	do {
-		using renderer_t = graphics::Renderer_t<graphics::RType::eOffscreenCommandbuffer>;
-		// engine.boot(bootInfo);
-		engine.boot<renderer_t>(bootInfo);
+		engine.boot(bootInfo);
 		App app(&engine);
 		DeltaTime dt;
-		std::optional<window::Instance> test;
 		ktl::future<bool> bf;
 		ktl::async async;
 		while (!engine.closing()) {

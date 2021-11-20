@@ -8,6 +8,7 @@
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
+#include <graphics/mesh.hpp>
 #include <graphics/render/camera.hpp>
 
 namespace le {
@@ -62,10 +63,15 @@ DrawLayer SceneRegistry::layer(Hash id) const {
 	return {};
 }
 
-void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt) {
+void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame) {
 	static input::Frame const s_blank{};
-	input::Frame const* frame = &s_blank;
-	if (auto eng = Services::find<Engine>()) { frame = &eng->inputFrame(); }
+	if (!frame) {
+		if (auto eng = Services::find<Engine>()) {
+			frame = &eng->inputFrame();
+		} else {
+			frame = &s_blank;
+		}
+	}
 	m_systemGroupRoot.update(m_registry, SystemData{scheduler, *frame, dt});
 }
 

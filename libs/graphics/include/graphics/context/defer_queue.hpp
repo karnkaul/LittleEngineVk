@@ -1,18 +1,18 @@
 #pragma once
 #include <core/std_types.hpp>
 #include <graphics/render/buffering.hpp>
+#include <ktl/move_only_function.hpp>
 #include <ktl/tmutex.hpp>
-#include <functional>
 #include <vector>
 
 namespace le::graphics {
 class DeferQueue : public Pinned {
   public:
-	using Callback = std::function<void()>;
+	using Callback = ktl::move_only_function<void()>;
 
 	inline static Buffering defaultDefer = 2_B;
 
-	void defer(Callback const& callback, Buffering defer = defaultDefer);
+	void defer(Callback&& callback, Buffering defer = defaultDefer);
 	std::size_t decrement();
 	void flush();
 

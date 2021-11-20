@@ -34,7 +34,7 @@ class SceneRegistry : public utils::VBase {
 	template <typename T, typename... Args>
 	dens::entity spawn(std::string name, Hash layerID, Args&&... args);
 
-	void updateSystems(dts::scheduler& scheduler, Time_s dt);
+	void updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame = {});
 	DrawLayer layer(Hash id) const;
 
 	edi::SceneRef ediScene() noexcept;

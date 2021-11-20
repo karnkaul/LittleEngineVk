@@ -80,7 +80,7 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	m_createInfo.oldSwapchain = m_retired.swapchain ? *m_retired.swapchain : vk::SwapchainKHR();
 	m_createInfo.presentMode = g_modes[m_storage.format.vsync];
 	m_createInfo.imageArrayLayers = 1U;
-	m_createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+	m_createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc;
 	m_createInfo.imageSharingMode = vk::SharingMode::eExclusive;
 	auto const queues = m_vram->m_device->queues().familyIndices(QFlags(QType::eGraphics, QType::ePresent));
 	m_createInfo.pQueueFamilyIndices = queues.data();

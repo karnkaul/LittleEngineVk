@@ -117,6 +117,7 @@ class ImageCache {
 
 	void setInfo(CreateInfo const& info) { m_info = std::move(info); }
 	CreateInfo& setDepth();
+	CreateInfo& setColour();
 
 	bool ready(Extent2D extent, vk::Format format) const noexcept;
 	Image& make(Extent2D extent, vk::Format format);
@@ -130,7 +131,10 @@ class ImageCache {
 
 class Renderer {
   public:
-	enum class Transition { eRenderPass, eCommandBuffer };
+	using Transition = rtech::Transition;
+	using Approach = rtech::Approach;
+	using Target = rtech::Target;
+	using Tech = rtech::Tech;
 
 	struct Attachment {
 		LayoutPair layouts;
@@ -147,6 +151,11 @@ class Renderer {
 
 	CmdBufs render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
 
+	Tech tech() const noexcept { return Tech{Approach::eForward, m_target, m_transition}; }
+	bool canScale() const noexcept;
+	f32 renderScale() const noexcept { return m_scale; }
+	bool renderScale(f32) noexcept;
+
   protected:
 	Deferred<vk::Framebuffer> makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers = 1) const;
 	Deferred<vk::RenderPass> makeRenderPass(Transition transition, vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt) const;
@@ -155,6 +164,8 @@ class Renderer {
 	virtual void next();
 
 	ImageCache m_depthImage;
+	ImageCache m_colourImage;
+	vk::Format m_colourFormat = vk::Format::eR8G8B8A8Unorm;
 	not_null<VRAM*> m_vram;
 
   private:
@@ -172,12 +183,15 @@ class Renderer {
 	Deferred<vk::RenderPass> m_renderPassUI;
 	Surface::Format m_surfaceFormat;
 	Transition m_transition;
+	Target m_target;
+	f32 m_scale = 1.0f;
 };
 
 struct Renderer::CreateInfo {
 	VRAM* vram{};
 	Surface::Format format;
-	Transition transition = Transition::eRenderPass;
+	Transition transition = Transition::eCommandBuffer;
+	Target target = Target::eSwapchain;
 	Buffering buffering = 2_B;
 	u8 cmdPerFrame = 1;
 };

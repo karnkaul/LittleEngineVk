@@ -25,7 +25,13 @@ std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format
 	rci.vram = vram;
 	rci.format = format;
 	rci.buffering = buffering;
+	rci.target = Renderer::Target::eOffScreen;
 	return std::make_unique<Renderer>(rci);
+}
+
+constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept {
+	glm::vec2 const ret = glm::vec2(f32(extent.x), f32(extent.y)) * scale;
+	return {u32(ret.x), u32(ret.y)};
 }
 } // namespace
 
@@ -217,6 +223,22 @@ Image::CreateInfo& ImageCache::setDepth() {
 	return m_info;
 }
 
+Image::CreateInfo& ImageCache::setColour() {
+	m_info = {};
+	m_info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	m_info.createInfo.tiling = vk::ImageTiling::eOptimal;
+	m_info.createInfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
+	m_info.createInfo.samples = vk::SampleCountFlagBits::e1;
+	m_info.createInfo.imageType = vk::ImageType::e2D;
+	m_info.createInfo.initialLayout = vIL::eUndefined;
+	m_info.createInfo.mipLevels = 1;
+	m_info.createInfo.arrayLayers = 1;
+	m_info.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
+	m_info.view.format = m_info.createInfo.format;
+	m_info.view.aspects = vk::ImageAspectFlagBits::eColor;
+	return m_info;
+}
+
 bool ImageCache::ready(Extent2D extent, vk::Format format) const noexcept {
 	return m_image && cast(m_image->extent()) == extent && m_info.createInfo.format == format;
 }
@@ -257,7 +279,9 @@ vk::Rect2D Renderer::scissor(Extent2D extent, ScreenView const& view) noexcept {
 	return utils::scissor(ret);
 }
 
-Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_vram(info.vram), m_transition(info.transition) {
+Renderer::Renderer(CreateInfo const& info)
+	: m_depthImage(info.vram), m_colourImage(info.vram), m_vram(info.vram), m_transition(info.transition), m_target(info.target) {
+	if (m_target == Target::eOffScreen) { m_transition = Transition::eCommandBuffer; }
 	Buffering const buffering = info.buffering < 2_B ? 2_B : info.buffering;
 	u8 const cmdPerFrame = info.cmdPerFrame < 1 ? 1 : info.cmdPerFrame;
 	for (Buffering i{0}; i < buffering; ++i.value) {
@@ -266,8 +290,10 @@ Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_vram(inf
 		m_cmds.push(std::move(cmds));
 	}
 	m_surfaceFormat = info.format;
-	m_renderPass3D = makeRenderPass(m_transition, m_surfaceFormat.colour.format, m_surfaceFormat.depth);
+	auto const colourFormat = m_target == Target::eOffScreen ? m_colourFormat : m_surfaceFormat.colour.format;
+	m_renderPass3D = makeRenderPass(m_transition, colourFormat, m_surfaceFormat.depth);
 	m_depthImage.setDepth();
+	m_colourImage.setColour();
 }
 
 Deferred<vk::Framebuffer> Renderer::makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers) const {
@@ -305,23 +331,52 @@ CmdBufs Renderer::render(IDrawer& out_drawer, RenderImage const& acquired, Rende
 	return ret;
 }
 
-void Renderer::next() { m_cmds.next(); }
+bool Renderer::canScale() const noexcept { return tech().target == Target::eOffScreen; }
+
+bool Renderer::renderScale(f32 rs) noexcept {
+	if (canScale()) {
+		m_scale = rs;
+		return true;
+	}
+	return false;
+}
 
 void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
 	auto& cmd = m_cmds.get().front();
-	auto& depth = m_depthImage.refresh(acquired.extent, m_surfaceFormat.depth);
-	vk::ImageView const views[] = {acquired.view, depth.view()};
-	auto fb = makeFramebuffer(m_renderPass3D, views, acquired.extent);
+	Extent2D extent = acquired.extent;
+	RenderImage colour = acquired;
+	if (m_target == Target::eOffScreen) {
+		extent = scaleExtent(acquired.extent, renderScale());
+		auto& img = m_colourImage.refresh(extent, m_colourFormat);
+		colour = {img.image(), img.view(), cast(img.extent())};
+	}
+	auto& depth = m_depthImage.refresh(extent, m_surfaceFormat.depth);
+	vk::ImageView const views[] = {colour.view, depth.view()};
+	auto fb = makeFramebuffer(m_renderPass3D, views, extent);
 	auto const cc = rb.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
 	graphics::CommandBuffer::PassInfo const passInfo{{clear, {}}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+	if (m_transition == Transition::eCommandBuffer) {
+		m_vram->m_device->m_layouts.transition<lt::ColourWrite>(cmd.cb, colour.image);
+		m_vram->m_device->m_layouts.transition<lt::DepthStencilWrite>(cmd.cb, depth.image(), depthStencil);
+	}
 	cmd.cb.beginRenderPass(m_renderPass3D, fb, acquired.extent, passInfo);
 	cmd.cb.setViewport(viewport(acquired.extent, {}, {}));
 	cmd.cb.setScissor(scissor(acquired.extent, {}));
 	out_drawer.draw3D(cmd.cb);
 	out_drawer.drawUI(cmd.cb);
 	cmd.cb.endRenderPass();
+	if (m_transition == Transition::eCommandBuffer) {
+		if (m_target == Target::eOffScreen) {
+			m_vram->m_device->m_layouts.transition<lt::TransferSrc>(cmd.cb, colour.image);
+			m_vram->m_device->m_layouts.transition<lt::TransferDst>(cmd.cb, acquired.image);
+			VRAM::blit(cmd.cb, {colour, acquired});
+		}
+		m_vram->m_device->m_layouts.transition<lt::TransferPresent>(cmd.cb, acquired.image);
+	}
 }
+
+void Renderer::next() { m_cmds.next(); }
 
 namespace foo {
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {

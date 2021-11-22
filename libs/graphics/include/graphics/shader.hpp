@@ -11,14 +11,11 @@ class Shader {
 	enum class Type { eVertex, eFragment, eCOUNT_ };
 	static constexpr std::array typeToFlag = {vk::ShaderStageFlagBits::eVertex, vk::ShaderStageFlagBits::eFragment};
 
-	struct Resources;
-
 	template <typename T>
 	using ArrayMap = EnumArray<Type, T>;
 	using SpirVMap = ArrayMap<bytearray>;
 	using CodeMap = ArrayMap<std::vector<u32>>;
 	using ModuleMap = ArrayMap<vk::ShaderModule>;
-	using ResourcesMap = ArrayMap<Resources>;
 
 	Shader(not_null<Device*> device, std::string name);
 	Shader(not_null<Device*> device, std::string name, SpirVMap const& bytes);

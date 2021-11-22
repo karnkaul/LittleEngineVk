@@ -6,6 +6,7 @@
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/resources.hpp>
 #include <graphics/texture.hpp>
+#include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
 namespace {
@@ -121,7 +122,7 @@ void DescriptorSet::update(vk::WriteDescriptorSet write) { m_device->device().up
 
 std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u32 bind, vk::DescriptorType type, u32 count) {
 	auto& set = m_storage.setBuffer.get();
-	ENSURE(utils::contains(set.bindings, bind), "Nonexistent binding");
+	ENSURE(set.bindings.contains(bind), "Nonexistent binding");
 	auto& binding = set.bindings[bind];
 	ENSURE(binding.type == type, "Mismatched descriptor type");
 	ENSURE(binding.count == count, "Mismatched descriptor size");
@@ -133,6 +134,7 @@ DescriptorPool::DescriptorPool(not_null<Device*> device, DescriptorSet::CreateIn
 	m_storage.buffering = info.buffering;
 	m_storage.setNumber = info.setNumber;
 	bool bActive = false;
+	ENSURE(info.bindingInfos.size() < max_bindings_v, "DescriptorSet overflow");
 	for (auto const& bi : info.bindingInfos) {
 		m_storage.bindInfos.push_back(bi);
 		bActive |= !bi.bUnassigned;
@@ -197,6 +199,8 @@ bool DescriptorPool::unassigned() const noexcept {
 void DescriptorPool::clear() noexcept { m_storage.descriptorSets.clear(); }
 
 ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) : m_vram(pipe.m_vram) { m_setPools = pipe.makeSetPools(buffering); }
+
+ShaderInput::ShaderInput(not_null<VRAM*> vram, SetPoolsData data) : m_vram(vram) { m_setPools = utils::makeSetPools(*m_vram->m_device, std::move(data)); }
 
 DescriptorPool& ShaderInput::pool(u32 set) {
 	if (auto it = m_setPools.find(set); it != m_setPools.end()) { return it->second; }

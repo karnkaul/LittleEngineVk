@@ -22,6 +22,19 @@ struct BindingInfo {
 	bool bUnassigned = false;
 };
 
+struct SetLayoutData {
+	ktl::fixed_vector<BindingInfo, 16> bindings;
+	vk::DescriptorSetLayout layout;
+	std::string name;
+};
+
+struct SetPoolsData {
+	std::vector<SetLayoutData> sets;
+	Buffering buffering = 2_B;
+};
+
+static constexpr std::size_t max_bindings_v = 16;
+
 class DescriptorSet {
   public:
 	// Combined Image Sampler
@@ -123,7 +136,7 @@ class DescriptorPool {
 	struct Storage {
 		std::string_view name;
 		vk::DescriptorSetLayout layout;
-		std::vector<BindingInfo> bindInfos;
+		ktl::fixed_vector<BindingInfo, max_bindings_v> bindInfos;
 		std::vector<DescriptorSet> descriptorSets;
 		Buffering buffering;
 		u32 setNumber = 0;
@@ -136,6 +149,7 @@ class ShaderInput {
   public:
 	ShaderInput() = default;
 	ShaderInput(Pipeline const& pipe, Buffering buffering);
+	ShaderInput(not_null<VRAM*> vram, SetPoolsData data);
 
 	DescriptorPool& pool(u32 set);
 	DescriptorPool const& pool(u32 set) const;

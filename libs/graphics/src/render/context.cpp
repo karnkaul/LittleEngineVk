@@ -33,6 +33,17 @@ std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format
 }
 } // namespace
 
+VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
+	QuickVertexInput qvi;
+	qvi.binding = binding;
+	qvi.size = sizeof(Vertex);
+	qvi.attributes = {{vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
+					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, colour)},
+					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)},
+					  {vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
+	return RenderContext::vertexInput(qvi);
+}
+
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;

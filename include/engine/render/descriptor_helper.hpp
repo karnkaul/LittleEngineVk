@@ -1,7 +1,6 @@
 #pragma once
 #include <graphics/render/command_buffer.hpp>
 #include <graphics/render/descriptor_set.hpp>
-#include <graphics/render/pipeline.hpp>
 #include <map>
 
 namespace le {
@@ -30,7 +29,7 @@ class DescriptorUpdater : public DescriptorHelper {
   private:
 	bool check(u32 bind) noexcept;
 
-	ktl::fixed_vector<u32, 16> m_binds;
+	ktl::fixed_vector<u32, graphics::max_bindings_v> m_binds;
 	ShaderInput* m_input{};
 	graphics::VRAM* m_vram{};
 	std::size_t m_index{};
@@ -39,28 +38,31 @@ class DescriptorUpdater : public DescriptorHelper {
 
 class DescriptorMap : public DescriptorHelper {
   public:
-	explicit DescriptorMap(not_null<Pipeline*> pipeline) noexcept : m_input(&pipeline->shaderInput()) {}
+	explicit DescriptorMap(not_null<ShaderInput*> input) noexcept : m_input(input) {}
 
 	bool contains(u32 setNumber) { return m_input->contains(setNumber); }
 	DescriptorUpdater set(u32 setNumber);
 
   private:
-	std::map<u32, std::size_t> m_meta;
+	u32 m_meta[graphics::max_bindings_v] = {};
 	not_null<ShaderInput*> m_input;
 };
 
 class DescriptorBinder : public DescriptorHelper {
   public:
-	explicit DescriptorBinder(not_null<Pipeline*> pipeline, CommandBuffer cb) noexcept : m_cb(cb), m_pipe(pipeline), m_input(&pipeline->shaderInput()) {}
+	explicit DescriptorBinder(vk::PipelineLayout layout, not_null<ShaderInput*> input, CommandBuffer cb) noexcept
+		: m_cb(cb), m_layout(layout), m_input(input) {}
 
 	void operator()(u32 set);
-	void operator()(std::initializer_list<u32> sets);
+	template <typename... T>
+		requires(sizeof...(T) > 1)
+	void operator()(T const... sets) { ((*this)(sets), ...); }
 
   private:
 	CommandBuffer m_cb;
-	not_null<Pipeline*> m_pipe;
+	vk::PipelineLayout m_layout;
 	not_null<ShaderInput*> m_input;
-	std::map<u32, std::size_t> m_meta;
+	u32 m_meta[graphics::max_bindings_v] = {};
 };
 
 // impl
@@ -91,10 +93,6 @@ inline DescriptorUpdater DescriptorMap::set(u32 setNumber) {
 }
 
 inline void DescriptorBinder::operator()(u32 set) {
-	if (m_input->contains(set)) { m_pipe->bindSet(m_cb, set, m_meta[set]++); }
-}
-
-inline void DescriptorBinder::operator()(std::initializer_list<u32> sets) {
-	for (u32 const set : sets) { (*this)(set); }
+	if (m_input->contains(set)) { m_cb.bindSet(m_layout, m_input->pool(set).index(m_meta[set]++)); }
 }
 } // namespace le

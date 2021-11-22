@@ -1,4 +1,5 @@
 #include <core/maths.hpp>
+#include <core/utils/expect.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/command_buffer.hpp>
@@ -18,10 +19,6 @@ void ensureSet(T& out_src, U&& u) {
 template <typename T, typename U>
 void setIfSet(T& out_dst, U&& u) {
 	if (!Device::default_v(u)) { out_dst = u; }
-}
-
-bool valid(Shader::ModuleMap const& shaders) noexcept {
-	return std::any_of(std::begin(shaders.arr), std::end(shaders.arr), [](vk::ShaderModule const& m) -> bool { return !Device::default_v(m); });
 }
 } // namespace
 
@@ -70,11 +67,6 @@ vk::PipelineBindPoint Pipeline::bindPoint() const { return m_metadata.main.bindP
 
 vk::PipelineLayout Pipeline::layout() const { return m_storage.fixed.layout; }
 
-vk::DescriptorSetLayout Pipeline::setLayout(u32 set) const {
-	ENSURE(set < (u32)m_storage.fixed.setLayouts.size(), "Set does not exist on pipeline!");
-	return m_storage.fixed.setLayouts[(std::size_t)set];
-}
-
 ShaderInput& Pipeline::shaderInput() { return m_storage.input; }
 
 ShaderInput const& Pipeline::shaderInput() const { return m_storage.input; }
@@ -113,11 +105,11 @@ Pipeline::CreateInfo::Fixed Pipeline::fixedState(Hash variant) const noexcept {
 }
 
 bool Pipeline::setup(Shader const& shader) {
-	ENSURE(valid(shader.m_modules), "Invalid shader m_modules");
-	if (!valid(shader.m_modules)) { return false; }
+	EXPECT(utils::hasActiveModule(shader.m_modules));
+	if (!utils::hasActiveModule(shader.m_modules)) { return false; }
 	auto& f = m_storage.fixed;
 	f = {};
-	auto setBindings = utils::extractBindings(shader);
+	auto setBindings = utils::extractBindings(shader.m_spirV);
 	std::vector<vk::DescriptorSetLayout> layouts;
 	for (auto& [set, binds] : setBindings.sets) {
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
@@ -137,90 +129,27 @@ bool Pipeline::setup(Shader const& shader) {
 }
 
 bool Pipeline::construct(CreateInfo& out_info, vk::Pipeline& out_pipe) {
-	auto& c = out_info;
-	ENSURE(!Device::default_v(c.renderPass), "Invalid render pass");
-	if (Device::default_v(c.renderPass)) { return false; }
-	m_storage.cache = out_info.cache;
-	vk::PipelineVertexInputStateCreateInfo vertexInputState;
-	{
-		auto const& vi = c.fixedState.vertexInput;
-		vertexInputState.pVertexBindingDescriptions = vi.bindings.data();
-		vertexInputState.vertexBindingDescriptionCount = (u32)vi.bindings.size();
-		vertexInputState.pVertexAttributeDescriptions = vi.attributes.data();
-		vertexInputState.vertexAttributeDescriptionCount = (u32)vi.attributes.size();
+	PipelineSpec spec;
+	out_info.fixedState.dynamicStates.insert(vk::DynamicState::eViewport);
+	out_info.fixedState.dynamicStates.insert(vk::DynamicState::eScissor);
+	spec.fixedState.dynamicStates = {out_info.fixedState.dynamicStates.begin(), out_info.fixedState.dynamicStates.end()};
+	if (out_info.fixedState.depthStencilState.depthTestEnable) { spec.fixedState.flags.set(PFlag::eDepthTest); }
+	if (out_info.fixedState.depthStencilState.depthWriteEnable) { spec.fixedState.flags.set(PFlag::eDepthWrite); }
+	if (out_info.fixedState.colorBlendAttachment.blendEnable) { spec.fixedState.flags.set(PFlag::eAlphaBlend); }
+	if (out_info.fixedState.rasterizerState.polygonMode == vk::PolygonMode::eLine) { spec.fixedState.flags.set(PFlag::eWireframe); }
+	spec.fixedState.lineWidth = out_info.fixedState.rasterizerState.lineWidth;
+	spec.fixedState.mode = out_info.fixedState.rasterizerState.polygonMode;
+	spec.fixedState.topology = out_info.fixedState.topology;
+	spec.subpass = out_info.subpass;
+	spec.vertexInput = m_metadata.main.fixedState.vertexInput;
+	utils::PipeData data;
+	data.layout = m_storage.fixed.layout;
+	data.renderPass = m_metadata.main.renderPass;
+	data.cache = out_info.cache;
+	if (auto pipe = utils::makeGraphicsPipeline(*m_device, m_storage.dynamic.modules, spec, data)) {
+		out_pipe = *pipe;
+		return true;
 	}
-	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
-	{
-		inputAssemblyState.topology = out_info.fixedState.topology;
-		inputAssemblyState.primitiveRestartEnable = false;
-	}
-	vk::PipelineViewportStateCreateInfo viewportState;
-	{
-		viewportState.viewportCount = 1;
-		viewportState.scissorCount = 1;
-	}
-	{
-		c.fixedState.rasterizerState.depthClampEnable = false;
-		c.fixedState.rasterizerState.rasterizerDiscardEnable = false;
-		c.fixedState.rasterizerState.depthBiasEnable = false;
-		ensureSet(c.fixedState.rasterizerState.lineWidth, 1.0f);
-	}
-	{
-		using CC = vk::ColorComponentFlagBits;
-		ensureSet(c.fixedState.colorBlendAttachment.colorWriteMask, CC::eR | CC::eG | CC::eB | CC::eA);
-		ensureSet(c.fixedState.colorBlendAttachment.srcColorBlendFactor, vk::BlendFactor::eSrcAlpha);
-		ensureSet(c.fixedState.colorBlendAttachment.dstColorBlendFactor, vk::BlendFactor::eOneMinusSrcAlpha);
-		ensureSet(c.fixedState.colorBlendAttachment.srcAlphaBlendFactor, vk::BlendFactor::eOne);
-		auto const [lmin, lmax] = m_device->lineWidthLimit();
-		c.fixedState.rasterizerState.lineWidth = std::clamp(c.fixedState.rasterizerState.lineWidth, lmin, lmax);
-	}
-	vk::PipelineColorBlendStateCreateInfo colorBlendState;
-	{
-		colorBlendState.logicOpEnable = false;
-		colorBlendState.attachmentCount = 1;
-		colorBlendState.pAttachments = &c.fixedState.colorBlendAttachment;
-	}
-	{ ensureSet(c.fixedState.depthStencilState.depthCompareOp, vk::CompareOp::eLess); }
-	auto& states = c.fixedState.dynamicStates;
-	states.insert(vk::DynamicState::eViewport);
-	states.insert(vk::DynamicState::eScissor);
-	std::vector<vk::DynamicState> const stateFlags = {states.begin(), states.end()};
-	vk::PipelineDynamicStateCreateInfo dynamicState;
-	{
-		dynamicState.dynamicStateCount = (u32)stateFlags.size();
-		dynamicState.pDynamicStates = stateFlags.data();
-	}
-	std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo;
-	{
-		shaderCreateInfo.reserve(arraySize(m_storage.dynamic.modules.arr));
-		for (std::size_t idx = 0; idx < arraySize(m_storage.dynamic.modules.arr); ++idx) {
-			vk::ShaderModule const& module = m_storage.dynamic.modules.arr[idx];
-			if (!Device::default_v(module)) {
-				vk::PipelineShaderStageCreateInfo createInfo;
-				createInfo.stage = Shader::typeToFlag[idx];
-				createInfo.module = module;
-				createInfo.pName = "main";
-				shaderCreateInfo.push_back(std::move(createInfo));
-			}
-		}
-	}
-
-	vk::GraphicsPipelineCreateInfo createInfo;
-	createInfo.stageCount = (u32)shaderCreateInfo.size();
-	createInfo.pStages = shaderCreateInfo.data();
-	createInfo.pVertexInputState = &vertexInputState;
-	createInfo.pInputAssemblyState = &inputAssemblyState;
-	createInfo.pViewportState = &viewportState;
-	createInfo.pRasterizationState = &c.fixedState.rasterizerState;
-	createInfo.pMultisampleState = &c.fixedState.multisamplerState;
-	createInfo.pDepthStencilState = &c.fixedState.depthStencilState;
-	createInfo.pColorBlendState = &colorBlendState;
-	createInfo.pDynamicState = &dynamicState;
-	createInfo.layout = m_storage.fixed.layout;
-	createInfo.renderPass = c.renderPass;
-	createInfo.subpass = c.subpass;
-	auto result = m_device->device().createGraphicsPipeline(m_storage.cache, createInfo);
-	out_pipe = result;
-	return true;
+	return false;
 }
 } // namespace le::graphics

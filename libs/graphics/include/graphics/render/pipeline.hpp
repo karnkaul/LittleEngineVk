@@ -3,6 +3,7 @@
 #include <core/utils/std_hash.hpp>
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/vertex_input.hpp>
 #include <graphics/shader.hpp>
 #include <unordered_set>
 
@@ -11,16 +12,6 @@ class Device;
 class Shader;
 class CommandBuffer;
 class VRAM;
-
-struct VertexInputInfo {
-	std::vector<vk::VertexInputBindingDescription> bindings;
-	std::vector<vk::VertexInputAttributeDescription> attributes;
-};
-
-template <typename T>
-struct VertexInfoFactory {
-	struct VertexInputInfo operator()(u32 binding) const;
-};
 
 class Pipeline final {
   public:
@@ -55,7 +46,6 @@ class Pipeline final {
 	bool reconstruct(Shader const& shader);
 	vk::PipelineBindPoint bindPoint() const;
 	vk::PipelineLayout layout() const;
-	vk::DescriptorSetLayout setLayout(u32 set) const;
 	ShaderInput& shaderInput();
 	ShaderInput const& shaderInput() const;
 

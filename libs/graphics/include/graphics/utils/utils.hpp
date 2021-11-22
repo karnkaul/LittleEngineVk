@@ -9,6 +9,7 @@
 #include <graphics/geometry.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/render/pipeline.hpp>
+#include <graphics/render/pipeline_factory.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
@@ -16,7 +17,7 @@
 #include <map>
 
 namespace le::graphics {
-struct Shader::Resources {
+struct ShaderResources {
 	spirv_cross::ShaderResources resources;
 	std::unique_ptr<spirv_cross::Compiler> compiler;
 };
@@ -43,12 +44,31 @@ struct SetBindings {
 	std::vector<vk::PushConstantRange> push;
 };
 
+struct PipeData {
+	vk::PipelineLayout layout;
+	vk::RenderPass renderPass;
+	vk::PipelineCache cache;
+};
+
+using SetPools = std::unordered_map<u32, DescriptorPool>;
+
+struct HashGen {
+	std::size_t hash{};
+	std::uint8_t offset{};
+
+	constexpr operator std::size_t() const noexcept { return hash; }
+};
+
+template <typename T>
+	requires(std::is_convertible_v<T, std::size_t> || std::is_enum_v<T>)
+constexpr utils::HashGen& operator<<(utils::HashGen& out, T const next);
+
 inline std::string_view g_compiler = "glslc";
 
-Shader::ResourcesMap shaderResources(Shader const& shader);
+Shader::ArrayMap<ShaderResources> shaderResources(Shader::CodeMap const& spirV);
 io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
 std::optional<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
-SetBindings extractBindings(Shader const& shader);
+SetBindings extractBindings(Shader::CodeMap const& spirV);
 
 Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);
 Bitmap bitmap(Span<Colour const> pixels, u32 width, u32 height = 0);
@@ -64,6 +84,15 @@ std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, 
 
 constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;
 constexpr vk::Rect2D scissor(DrawScissor const& scissor) noexcept;
+
+bool hasActiveModule(Shader::ModuleMap const& shaders) noexcept;
+std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Shader::ModuleMap const& sh, PipelineSpec const& sp, PipeData const& data);
+
+SetPools makeSetPools(Device& d, SetPoolsData data);
+
+HashGen& operator<<(HashGen& out, VertexInputInfo const& vi);
+HashGen& operator<<(HashGen& out, FixedStateSpec const& fs);
+HashGen& operator<<(HashGen& out, PipelineSpec const& ps);
 } // namespace utils
 
 // impl
@@ -90,4 +119,14 @@ constexpr vk::Rect2D utils::scissor(DrawScissor const& scissor) noexcept {
 	ret.extent.height = std::max(0U, (u32)size.y);
 	return ret;
 }
+
+namespace utils {
+template <typename T>
+	requires(std::is_convertible_v<T, std::size_t> || std::is_enum_v<T>)
+constexpr utils::HashGen& operator<<(utils::HashGen& out, T const next) {
+	out.hash ^= (static_cast<std::size_t>(next) << out.offset++);
+	if (out.offset >= sizeof(std::size_t)) { out.offset = 0; }
+	return out;
+}
+} // namespace utils
 } // namespace le::graphics

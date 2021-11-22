@@ -3,6 +3,7 @@
 #include <core/maths.hpp>
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
+#include <core/utils/expect.hpp>
 #include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
@@ -106,24 +107,13 @@ void extractPush(Extractee ext, Push& out_push, vk::ShaderStageFlagBits stage) {
 }
 } // namespace
 
-VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
-	QuickVertexInput qvi;
-	qvi.binding = binding;
-	qvi.size = sizeof(Vertex);
-	qvi.attributes = {{vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
-					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, colour)},
-					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)},
-					  {vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
-	return RenderContext::vertexInput(qvi);
-}
-
-Shader::ResourcesMap utils::shaderResources(Shader const& shader) {
-	Shader::ResourcesMap ret;
-	for (std::size_t idx = 0; idx < arraySize(shader.m_spirV.arr); ++idx) {
-		auto spirV = shader.m_spirV.arr[idx];
-		if (!spirV.empty()) {
+Shader::ArrayMap<ShaderResources> utils::shaderResources(Shader::CodeMap const& spirV) {
+	Shader::ArrayMap<ShaderResources> ret;
+	for (std::size_t idx = 0; idx < arraySize(spirV.arr); ++idx) {
+		auto spV = spirV.arr[idx];
+		if (!spV.empty()) {
 			auto& res = ret.arr[idx];
-			res.compiler = std::make_unique<spvc::Compiler>(spirV);
+			res.compiler = std::make_unique<spvc::Compiler>(spV);
 			res.resources = res.compiler->get_shader_resources();
 		}
 	}
@@ -148,13 +138,13 @@ std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& 
 	return d;
 }
 
-utils::SetBindings utils::extractBindings(Shader const& shader) {
+utils::SetBindings utils::extractBindings(Shader::CodeMap const& spirV) {
 	SetBindings ret;
 	Sets sets;
-	for (std::size_t idx = 0; idx < arraySize(shader.m_spirV.arr); ++idx) {
-		auto spirV = shader.m_spirV.arr[idx];
-		if (!spirV.empty()) {
-			spvc::Compiler compiler(spirV);
+	for (std::size_t idx = 0; idx < arraySize(spirV.arr); ++idx) {
+		auto spV = spirV.arr[idx];
+		if (!spV.empty()) {
+			spvc::Compiler compiler(spV);
 			auto const resources = compiler.get_shader_resources();
 			auto const type = Shader::typeToFlag[idx];
 			extractBindings({compiler, resources}, sets, type);
@@ -270,4 +260,158 @@ std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& d
 	}
 	return ret;
 }
+
+namespace {
+template <typename T, typename U>
+void ensureSet(T& out_src, U&& u) {
+	if (out_src == T()) { out_src = u; }
+}
+
+template <typename T, typename U>
+void setIfSet(T& out_dst, U&& u) {
+	if (!Device::default_v(u)) { out_dst = u; }
+}
+
+using RasterizerState = vk::PipelineRasterizationStateCreateInfo;
+using BlendState = vk::PipelineColorBlendAttachmentState;
+using DepthState = vk::PipelineDepthStencilStateCreateInfo;
+
+void setStates(RasterizerState& rs, BlendState& bs, DepthState& ds, PFlags flags) {
+	if (flags.test(PFlag::eDepthTest)) {
+		ds.depthTestEnable = true;
+		ds.depthCompareOp = vk::CompareOp::eLess;
+	}
+	if (flags.test(PFlag::eDepthWrite)) { ds.depthWriteEnable = true; }
+	if (flags.test(PFlag::eAlphaBlend)) {
+		using CCF = vk::ColorComponentFlagBits;
+		bs.colorWriteMask = CCF::eR | CCF::eG | CCF::eB | CCF::eA;
+		bs.blendEnable = true;
+		bs.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		bs.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		bs.colorBlendOp = vk::BlendOp::eAdd;
+		bs.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+		bs.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+		bs.alphaBlendOp = vk::BlendOp::eAdd;
+	}
+	if (flags.test(PFlag::eWireframe)) { rs.polygonMode = vk::PolygonMode::eLine; }
+}
+} // namespace
+
+bool utils::hasActiveModule(Shader::ModuleMap const& shaders) noexcept {
+	return std::any_of(std::begin(shaders.arr), std::end(shaders.arr), [](vk::ShaderModule const& m) -> bool { return !Device::default_v(m); });
+}
+
+std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, Shader::ModuleMap const& sh, PipelineSpec const& sp, PipeData const& data) {
+	EXPECT(hasActiveModule(sh));
+	EXPECT(!Device::default_v(data.renderPass) && !Device::default_v(data.layout));
+	EXPECT(!sp.vertexInput.bindings.empty());
+	if (Device::default_v(data.renderPass) || Device::default_v(data.layout) || !hasActiveModule(sh) || sp.vertexInput.bindings.empty()) {
+		return std::nullopt;
+	}
+	vk::PipelineVertexInputStateCreateInfo vertexInputState;
+	{
+		auto const& vi = sp.vertexInput;
+		vertexInputState.pVertexBindingDescriptions = vi.bindings.data();
+		vertexInputState.vertexBindingDescriptionCount = (u32)vi.bindings.size();
+		vertexInputState.pVertexAttributeDescriptions = vi.attributes.data();
+		vertexInputState.vertexAttributeDescriptionCount = (u32)vi.attributes.size();
+	}
+	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
+	{
+		inputAssemblyState.topology = sp.fixedState.topology;
+		inputAssemblyState.primitiveRestartEnable = false;
+	}
+	vk::PipelineViewportStateCreateInfo viewportState;
+	{
+		viewportState.viewportCount = 1;
+		viewportState.scissorCount = 1;
+	}
+	vk::PipelineRasterizationStateCreateInfo rasterizerState;
+	{
+		rasterizerState.depthClampEnable = false;
+		rasterizerState.rasterizerDiscardEnable = false;
+		rasterizerState.depthBiasEnable = false;
+		auto const [lmin, lmax] = dv.lineWidthLimit();
+		rasterizerState.lineWidth = std::clamp(sp.fixedState.lineWidth, lmin, lmax);
+	}
+	vk::PipelineColorBlendAttachmentState colorBlendState;
+	{
+		using CC = vk::ColorComponentFlagBits;
+		colorBlendState.colorWriteMask = CC::eR | CC::eG | CC::eB | CC::eA;
+		colorBlendState.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		colorBlendState.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		colorBlendState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+	}
+	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
+	ensureSet(depthStencilState.depthCompareOp, vk::CompareOp::eLess);
+	setStates(rasterizerState, colorBlendState, depthStencilState, sp.fixedState.flags);
+	vk::PipelineColorBlendStateCreateInfo pcbsci;
+	{
+		pcbsci.logicOpEnable = false;
+		pcbsci.attachmentCount = 1;
+		pcbsci.pAttachments = &colorBlendState;
+	}
+	vk::PipelineDynamicStateCreateInfo dynamicState;
+	{
+		dynamicState.dynamicStateCount = (u32)sp.fixedState.dynamicStates.size();
+		dynamicState.pDynamicStates = sp.fixedState.dynamicStates.data();
+	}
+	ktl::fixed_vector<vk::PipelineShaderStageCreateInfo, 8> shaderCreateInfo;
+	{
+		for (std::size_t idx = 0; idx < arraySize(sh.arr); ++idx) {
+			vk::ShaderModule const& module = sh.arr[idx];
+			if (!Device::default_v(module)) {
+				vk::PipelineShaderStageCreateInfo createInfo;
+				createInfo.stage = Shader::typeToFlag[idx];
+				createInfo.module = module;
+				createInfo.pName = "main";
+				shaderCreateInfo.push_back(std::move(createInfo));
+			}
+		}
+	}
+	vk::PipelineMultisampleStateCreateInfo multisamplerState;
+	vk::GraphicsPipelineCreateInfo createInfo;
+	createInfo.stageCount = (u32)shaderCreateInfo.size();
+	createInfo.pStages = shaderCreateInfo.data();
+	createInfo.pVertexInputState = &vertexInputState;
+	createInfo.pInputAssemblyState = &inputAssemblyState;
+	createInfo.pViewportState = &viewportState;
+	createInfo.pRasterizationState = &rasterizerState;
+	createInfo.pMultisampleState = &multisamplerState;
+	createInfo.pDepthStencilState = &depthStencilState;
+	createInfo.pColorBlendState = &pcbsci;
+	createInfo.pDynamicState = &dynamicState;
+	createInfo.layout = data.layout;
+	createInfo.renderPass = data.renderPass;
+	createInfo.subpass = sp.subpass;
+	auto ret = dv.device().createGraphicsPipeline(data.cache, createInfo);
+	if (ret.result == vk::Result::eSuccess) { return ret.value; }
+	return std::nullopt;
+}
+
+utils::SetPools utils::makeSetPools(Device& d, SetPoolsData data) {
+	SetPools ret;
+	Buffering const buffering = data.buffering == 0_B ? 2_B : data.buffering;
+	for (std::size_t set = 0; set < data.sets.size(); ++set) {
+		auto& setData = data.sets[set];
+		DescriptorSet::CreateInfo const info{std::move(setData.name), setData.layout, setData.bindings, buffering, u32(set)};
+		ret.emplace(set, DescriptorPool(&d, info));
+	}
+	return ret;
+}
+
+utils::HashGen& utils::operator<<(HashGen& out, VertexInputInfo const& vi) {
+	out << vi.bindings.size() << vi.attributes.size();
+	for (auto const& bind : vi.bindings) { out << bind.binding << bind.stride << bind.inputRate; }
+	for (auto const& attr : vi.attributes) { out << attr.binding << attr.location << attr.offset << attr.format; }
+	return out;
+}
+
+utils::HashGen& utils::operator<<(HashGen& out, FixedStateSpec const& fs) {
+	out << fs.dynamicStates.size();
+	for (auto const state : fs.dynamicStates) { out << state; }
+	return out << fs.flags.bits() << fs.mode << fs.topology << fs.lineWidth;
+}
+
+utils::HashGen& utils::operator<<(HashGen& out, PipelineSpec const& ps) { return out << ps.vertexInput << ps.fixedState << ps.shaderURI << ps.subpass; }
 } // namespace le::graphics

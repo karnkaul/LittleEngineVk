@@ -56,13 +56,12 @@ class AssetListLoader {
 	template <typename T>
 	void load_(AssetList<T> list) const;
 
-	AssetStore& store() const { return m_store ? *m_store : *(m_store = Services::get<AssetStore>()); }
+	AssetStore& store() const { return *Services::get<AssetStore>(); }
 	template <typename T>
 	bool skip(io::Path const& uri) const noexcept {
 		return store().exists<T>(uri) && !m_flags.test(Flag::eOverwrite);
 	}
 
-	mutable AssetStore* m_store{};
 	mutable std::vector<StageID> m_staged;
 	mutable utils::Ratio<u64> m_done;
 };

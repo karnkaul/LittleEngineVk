@@ -6,6 +6,7 @@
 #include <graphics/geometry.hpp>
 #include <graphics/render/command_buffer.hpp>
 #include <graphics/render/pipeline.hpp>
+#include <graphics/render/pipeline_flags.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
@@ -18,11 +19,6 @@
 namespace le::graphics {
 struct QuickVertexInput;
 struct VertexInputCreateInfo;
-
-enum class PFlag { eDepthTest, eDepthWrite, eAlphaBlend };
-using PFlags = ktl::enum_flags<PFlag, u8>;
-constexpr PFlags pflags_all = PFlags(PFlag::eDepthTest, PFlag::eDepthWrite, PFlag::eAlphaBlend);
-static_assert(pflags_all.count() == 3, "Invariant violated");
 
 class RenderContext : public NoCopy {
   public:

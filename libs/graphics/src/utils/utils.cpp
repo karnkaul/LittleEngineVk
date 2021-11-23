@@ -7,7 +7,6 @@
 #include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/render/pipeline.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
 #include <mutex>
@@ -395,7 +394,7 @@ utils::SetPools utils::makeSetPools(Device& d, SetPoolsData data) {
 	for (std::size_t set = 0; set < data.sets.size(); ++set) {
 		auto& setData = data.sets[set];
 		DescriptorSet::CreateInfo const info{std::move(setData.name), setData.layout, setData.bindings, buffering, u32(set)};
-		ret.emplace(set, DescriptorPool(&d, info));
+		ret.emplace((u32)set, DescriptorPool(&d, info));
 	}
 	return ret;
 }

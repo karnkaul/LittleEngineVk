@@ -1,7 +1,7 @@
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/render/command_buffer.hpp>
-#include <graphics/render/pipeline.hpp>
+#include <graphics/render/descriptor_set.hpp>
 #include <graphics/resources.hpp>
 
 namespace le::graphics {
@@ -60,13 +60,6 @@ void CommandBuffer::setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor
 	ENSURE(rendering(), "Command buffer not rendering!");
 	m_cb.setViewport(0, viewport);
 	m_cb.setScissor(0, scissor);
-}
-
-void CommandBuffer::bindPipe(Pipeline const& pipeline, Hash variant) const {
-	ENSURE(rendering(), "Command buffer not rendering!");
-	auto pipe = pipeline.variant(variant);
-	ENSURE(pipe.has_value(), "Invalid variant id");
-	m_cb.bindPipeline(pipeline.bindPoint(), *pipe);
 }
 
 void CommandBuffer::bind(vk::Pipeline pipeline, vBP bindPoint) const {

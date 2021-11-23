@@ -11,7 +11,6 @@
 
 namespace le::graphics {
 class Device;
-class Pipeline;
 class DescriptorSet;
 class Buffer;
 class Image;
@@ -44,7 +43,6 @@ class CommandBuffer {
 	void setScissor(vk::Rect2D scissor) const;
 	void setViewportScissor(vk::Viewport viewport, vk::Rect2D scissor) const;
 
-	void bindPipe(Pipeline const& pipeline, Hash variant = Hash()) const;
 	void bind(vk::Pipeline pipeline, vBP bindPoint = vBP::eGraphics) const;
 	void bindSets(vk::PipelineLayout layout, vAP<vk::DescriptorSet> sets, u32 firstSet = 0, vAP<u32> offsets = {}, vBP bindPoint = vBP::eGraphics) const;
 	void bindSet(vk::PipelineLayout layout, DescriptorSet const& set) const;

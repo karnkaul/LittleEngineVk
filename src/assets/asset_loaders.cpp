@@ -87,44 +87,8 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 	return spirV;
 }
 
-namespace {
-void setup(graphics::Pipeline::CreateInfo::Fixed& out, AssetLoadData<graphics::Pipeline>::Variant const& variant) {
-	out.topology = variant.topology;
-	out.rasterizerState.polygonMode = variant.polygonMode;
-	if (variant.lineWidth > 0.0f) { out.rasterizerState.lineWidth = variant.lineWidth; }
-}
-} // namespace
-
-std::unique_ptr<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetLoadInfo<graphics::Pipeline> const& info) const {
-	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) {
-		info.reloadDepend(shader);
-		auto pipeInfo = info.m_data.info ? *info.m_data.info : info.m_data.context->pipeInfo(info.m_data.flags);
-		pipeInfo.renderPass = info.m_data.context->renderer().renderPass();
-		setup(pipeInfo.fixedState, info.m_data.main);
-		auto ret = info.m_data.context->makePipeline(info.m_data.name, *shader, pipeInfo);
-		for (auto const& variant : info.m_data.variants) {
-			if (variant.id > Hash()) {
-				auto fixed = ret.fixedState();
-				setup(fixed, variant);
-				auto const res = ret.constructVariant(variant.id, fixed);
-				ENSURE(res.has_value(), "Pipeline variant construction failure");
-			}
-		}
-		return std::make_unique<graphics::Pipeline>(std::move(ret));
-	}
-	return {};
-}
-
-bool AssetLoader<graphics::Pipeline>::reload(graphics::Pipeline& out_pipe, AssetLoadInfo<graphics::Pipeline> const& info) const {
-	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) { return out_pipe.reconstruct(*shader); }
-	return false;
-}
-
 std::unique_ptr<PipelineState> AssetLoader<PipelineState>::load(AssetLoadInfo<PipelineState> const& info) const {
-	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderURI)) {
-		info.reloadDepend(shader);
-		return std::make_unique<PipelineState>(from(info.m_data));
-	}
+	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderURI)) { return std::make_unique<PipelineState>(from(info.m_data)); }
 	return {};
 }
 

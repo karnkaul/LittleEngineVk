@@ -208,7 +208,7 @@ std::size_t AssetManifest::addDrawGroups(Group group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
 			Hash const pid = pipe->as<std::string>();
 			s64 const order = json->get_as<s64>("order");
-			m_drawGroups.add(std::move(id), [this, pid, order]() { return DrawGroup{*store().find<PipelineState>(pid), order}; });
+			m_drawGroups.add(std::move(id), [this, pid, order]() { return DrawGroup{store().find<PipelineState>(pid).peek(), order}; });
 			++ret;
 		}
 	}
@@ -264,8 +264,8 @@ std::size_t AssetManifest::unload() {
 	ret += unload<graphics::Texture>(m_textures.map);
 	ret += unload<Model>(m_models.map);
 	ret += unload<BitmapFont>(m_bitmapFonts.map);
-	ret += unload<graphics::Pipeline>(m_pipelines.map);
-	ret += unload<DrawLayer>(m_drawLayers.map);
+	ret += unload<PipelineState>(m_pipelineStates.map);
+	ret += unload<DrawGroup>(m_drawGroups.map);
 	ret += unloadCustom();
 	return ret;
 }

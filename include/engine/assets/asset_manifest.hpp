@@ -3,7 +3,7 @@
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
-#include <engine/render/draw_layer.hpp>
+#include <engine/render/draw_group.hpp>
 #include <unordered_map>
 
 namespace le {
@@ -67,9 +67,7 @@ class AssetManifest : public utils::VBase {
 
 	AssetList<graphics::Sampler> m_samplers;
 	AssetLoadList<graphics::Shader> m_shaders;
-	AssetLoadList<graphics::Pipeline> m_pipelines;
 	AssetLoadList<PipelineState> m_pipelineStates;
-	AssetList<DrawLayer> m_drawLayers;
 	AssetList<DrawGroup> m_drawGroups;
 	AssetLoadList<graphics::Texture> m_textures;
 	AssetLoadList<BitmapFont> m_bitmapFonts;

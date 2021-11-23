@@ -31,9 +31,6 @@ class AssetLoadInfo {
 	bool modified() const;
 	void forceDirty(bool bDirty) const noexcept;
 
-	template <typename U>
-	void reloadDepend(Asset<U>& out_asset) const; // impl in asset_store.hpp; must include to instantiate!
-
   public:
 	AssetLoadData<T> m_data;
 	not_null<AssetStore const*> m_store;

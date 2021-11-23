@@ -13,7 +13,6 @@
 namespace le::graphics {
 class Device;
 class Image;
-class Pipeline;
 class ShaderBuffer;
 
 struct BindingInfo {
@@ -147,7 +146,6 @@ class DescriptorPool {
 class ShaderInput {
   public:
 	ShaderInput() = default;
-	ShaderInput(Pipeline const& pipe, Buffering buffering);
 	ShaderInput(not_null<VRAM*> vram, SetPoolsData data);
 
 	DescriptorPool& pool(u32 set);

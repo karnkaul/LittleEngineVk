@@ -8,7 +8,6 @@
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/descriptor_set.hpp>
-#include <graphics/render/pipeline.hpp>
 #include <graphics/render/pipeline_factory.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>

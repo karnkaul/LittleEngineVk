@@ -1,7 +1,7 @@
 #pragma once
 #include <engine/assets/asset_loader.hpp>
 #include <engine/render/bitmap_font.hpp>
-#include <engine/render/draw_layer.hpp>
+#include <engine/render/draw_group.hpp>
 #include <engine/render/model.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/shader.hpp>
@@ -27,33 +27,6 @@ struct AssetLoader<graphics::Shader> {
 	bool reload(graphics::Shader& out_shader, AssetLoadInfo<graphics::Shader> const& info) const;
 
 	std::optional<Data> data(AssetLoadInfo<graphics::Shader> const& info) const;
-};
-
-template <>
-struct AssetLoadData<graphics::Pipeline> {
-	struct Variant {
-		f32 lineWidth = 1.0f;
-		vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-		vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-		Hash id;
-	};
-
-	std::optional<graphics::Pipeline::CreateInfo> info;
-	std::string name;
-	Variant main;
-	std::vector<Variant> variants;
-	graphics::PFlags flags;
-	not_null<graphics::RenderContext*> context;
-	Hash shaderID;
-	bool gui = false;
-
-	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
-};
-
-template <>
-struct AssetLoader<graphics::Pipeline> {
-	std::unique_ptr<graphics::Pipeline> load(AssetLoadInfo<graphics::Pipeline> const& info) const;
-	bool reload(graphics::Pipeline& out_shader, AssetLoadInfo<graphics::Pipeline> const& info) const;
 };
 
 template <>

@@ -96,13 +96,6 @@ RenderContext::RenderContext(not_null<VRAM*> vram, GetShader&& gs, std::optional
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
 
-Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
-	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_renderer->renderPass(); }
-	info.buffering = m_buffering;
-	info.cache = m_pipelineCache;
-	return Pipeline(m_vram, shader, std::move(info), id);
-}
-
 void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
 
 bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {

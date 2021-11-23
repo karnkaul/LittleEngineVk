@@ -5,7 +5,6 @@
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/command_buffer.hpp>
-#include <graphics/render/pipeline.hpp>
 #include <graphics/render/pipeline_factory.hpp>
 #include <graphics/render/pipeline_flags.hpp>
 #include <graphics/render/renderer.hpp>
@@ -29,15 +28,11 @@ class RenderContext : public NoCopy {
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
-	template <typename V = Vertex>
-	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
 
 	RenderContext(not_null<VRAM*> vram, GetShader&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
 
 	std::unique_ptr<Renderer> defaultRenderer();
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept { m_renderer = std::move(renderer); }
-
-	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
 
 	void waitForFrame();
 	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
@@ -109,33 +104,6 @@ struct QuickVertexInput {
 };
 
 // impl
-
-template <typename V>
-Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
-	Pipeline::CreateInfo ret;
-	ret.fixedState.vertexInput = VertexInfoFactory<V>()(0);
-	if (flags.test(PFlag::eDepthTest)) {
-		ret.fixedState.depthStencilState.depthTestEnable = true;
-		ret.fixedState.depthStencilState.depthCompareOp = vk::CompareOp::eLess;
-	}
-	if (flags.test(PFlag::eDepthWrite)) { ret.fixedState.depthStencilState.depthWriteEnable = true; }
-	if (flags.test(PFlag::eAlphaBlend)) {
-		using CCF = vk::ColorComponentFlagBits;
-		ret.fixedState.colorBlendAttachment.colorWriteMask = CCF::eR | CCF::eG | CCF::eB | CCF::eA;
-		ret.fixedState.colorBlendAttachment.blendEnable = true;
-		ret.fixedState.colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
-		ret.fixedState.colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
-		ret.fixedState.colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
-		ret.fixedState.colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
-		ret.fixedState.colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-		ret.fixedState.colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
-	}
-	if (wire > 0.0f) {
-		ret.fixedState.rasterizerState.polygonMode = vk::PolygonMode::eLine;
-		ret.fixedState.rasterizerState.lineWidth = wire;
-	}
-	return ret;
-}
 
 inline f32 RenderContext::aspectRatio() const noexcept {
 	glm::ivec2 const ext = surface().extent();

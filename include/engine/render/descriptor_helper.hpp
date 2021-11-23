@@ -10,7 +10,6 @@ class DescriptorHelper {
 	using Texture = graphics::Texture;
 	using ShaderBuffer = graphics::ShaderBuffer;
 	using CommandBuffer = graphics::CommandBuffer;
-	using Pipeline = graphics::Pipeline;
 };
 
 class DescriptorUpdater : public DescriptorHelper {

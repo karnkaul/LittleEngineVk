@@ -46,7 +46,7 @@ class ImageCache {
 
 	bool ready() const noexcept { return m_vram != nullptr; }
 
-	void setInfo(CreateInfo const& info) { m_info = std::move(info); }
+	void setInfo(CreateInfo const& info) { m_info = info; }
 	CreateInfo& setDepth();
 	CreateInfo& setColour();
 

@@ -51,8 +51,6 @@ class AssetStore : public NoCopy {
 	bool unload(Hash id);
 	template <typename T>
 	bool reload(Hash id);
-	template <typename T>
-	bool forceDirty(Hash id) const;
 
 	void update();
 	void clear();
@@ -257,12 +255,6 @@ bool AssetStore::reload(Hash id) {
 	return false;
 }
 template <typename T>
-bool AssetStore::forceDirty(Hash id) const {
-	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
-	if (lock.get().contains<T>()) { return lock.get().get<T>().forceDirty(id); }
-	return false;
-}
-template <typename T>
 bool AssetStore::unload(Hash id) {
 	ktl::unique_tlock<detail::TAssets> lock(m_assets);
 	if (lock.get().contains<T>()) { return lock.get().get<T>().unload(id); }
@@ -284,13 +276,5 @@ bool AssetStore::reloadAsset(detail::TAsset<T>& out_asset) const {
 		}
 	}
 	return false;
-}
-
-template <typename T>
-template <typename U>
-void AssetLoadInfo<T>::reloadDepend(Asset<U>& out_asset) const {
-	auto signal = out_asset.onModified();
-	signal += [s = m_store, id = m_id]() { s->template forceDirty<T>(id); };
-	m_tokens.push_back(std::move(signal));
 }
 } // namespace le

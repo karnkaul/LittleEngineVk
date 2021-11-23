@@ -150,7 +150,7 @@ struct PlayerController {
 	}
 };
 
-class Drawer : public ListDrawer2 {
+class Drawer : public ListDrawer {
   public:
 	using Camera = graphics::Camera;
 
@@ -159,7 +159,6 @@ class Drawer : public ListDrawer2 {
 		Camera const* camera{};
 		Span<DirLight const> lights;
 		glm::vec2 size{};
-		Hash wire{};
 	};
 
 	struct {
@@ -198,7 +197,7 @@ class Drawer : public ListDrawer2 {
 	}
 
 	void buildDrawLists(PipelineFactory& pf, vk::RenderPass rp) override {
-		if (m_scene.registry) { populate<DrawListGen3D2, DrawListGenUI2>(*m_scene.registry, pf, rp); }
+		if (m_scene.registry) { populate<DrawListGen3D, DrawListGenUI>(*m_scene.registry, pf, rp); }
 	}
 
 	void writeSets(DescriptorMap map, List const& list) override {
@@ -477,7 +476,17 @@ class App : public input::Receiver, public SceneRegistry {
 
 	bool block(input::State const& state) override {
 		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
-		if (m_controls.wireframe(state)) { m_data.wire = m_data.wire == Hash() ? "pipeline_states/lit" : Hash(); }
+		if (m_controls.wireframe(state)) {
+			if (auto lit = m_eng->store().find<PipelineState>("pipelines/lit")) {
+				if (lit->fixedState.flags.test(graphics::PFlag::eWireframe)) {
+					lit->fixedState.flags.reset(graphics::PFlag::eWireframe);
+					lit->fixedState.lineWidth = 1.0f;
+				} else {
+					lit->fixedState.flags.set(graphics::PFlag::eWireframe);
+					lit->fixedState.lineWidth = 3.0f;
+				}
+			}
+		}
 		if (m_controls.reboot(state)) { m_data.reboot = true; }
 		if (m_controls.unload(state)) {
 			m_data.unloaded = true;
@@ -697,7 +706,6 @@ class App : public input::Receiver, public SceneRegistry {
 		m_drawer.m_scene.registry = &m_registry;
 		m_drawer.m_scene.lights = m_data.dirLights;
 		m_drawer.m_scene.size = m_eng->sceneSpace();
-		m_drawer.m_scene.wire = m_data.wire;
 		// draw
 		graphics::RenderBegin rb;
 		rb.clear = RGBA(0x777777ff, RGBA::Type::eAbsolute);
@@ -719,7 +727,6 @@ class App : public input::Receiver, public SceneRegistry {
 		dens::entity player;
 		dens::entity guiStack;
 		dens::entity tween;
-		Hash wire;
 		bool reboot = false;
 		bool unloaded = {};
 		bool init{};

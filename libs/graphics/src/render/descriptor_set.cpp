@@ -2,7 +2,6 @@
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/render/descriptor_set.hpp>
-#include <graphics/render/pipeline.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/resources.hpp>
 #include <graphics/texture.hpp>
@@ -199,8 +198,6 @@ bool DescriptorPool::unassigned() const noexcept {
 }
 
 void DescriptorPool::clear() noexcept { m_storage.descriptorSets.clear(); }
-
-ShaderInput::ShaderInput(Pipeline const& pipe, Buffering buffering) : m_vram(pipe.m_vram) { m_setPools = pipe.makeSetPools(buffering); }
 
 ShaderInput::ShaderInput(not_null<VRAM*> vram, SetPoolsData data) : m_vram(vram) { m_setPools = utils::makeSetPools(*m_vram->m_device, std::move(data)); }
 

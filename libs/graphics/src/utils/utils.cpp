@@ -178,7 +178,7 @@ utils::SetBindings utils::extractBindings(Shader::CodeMap const& spirV) {
 			} else {
 				bindInfo.binding.descriptorCount = 0;
 				bindInfo.name = fmt::format("[Unassigned_{}_{}]", s, b);
-				bindInfo.bUnassigned = true;
+				bindInfo.binding.descriptorType = {};
 			}
 			ENSURE(binds.has_space(), "Max descriptor sets exceeded");
 			binds.push_back(bindInfo);

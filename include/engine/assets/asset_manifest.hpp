@@ -9,7 +9,7 @@
 namespace le {
 class AssetManifest : public utils::VBase {
   public:
-	enum class Kind { eSampler, eShader, eTexture, ePipeline, eDrawLayer, eBitmapFont, eModel, eCOUNT_ };
+	enum class Kind { eSampler, eShader, eTexture, ePipelineState, eDrawGroup, eBitmapFont, eModel, eCOUNT_ };
 	using Kinds = ktl::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
@@ -52,8 +52,8 @@ class AssetManifest : public utils::VBase {
 	std::size_t addSamplers(Group group);
 	std::size_t addShaders(Group group);
 	std::size_t addTextures(Group group);
-	std::size_t addPipelines(Group group);
-	std::size_t addDrawLayers(Group group);
+	std::size_t addPipelineStates(Group group);
+	std::size_t addDrawGroups(Group group);
 	std::size_t addFonts(Group group);
 	std::size_t addBitmapFonts(Group group);
 	std::size_t addModels(Group group);
@@ -68,7 +68,9 @@ class AssetManifest : public utils::VBase {
 	AssetList<graphics::Sampler> m_samplers;
 	AssetLoadList<graphics::Shader> m_shaders;
 	AssetLoadList<graphics::Pipeline> m_pipelines;
+	AssetLoadList<PipelineState> m_pipelineStates;
 	AssetList<DrawLayer> m_drawLayers;
+	AssetList<DrawGroup> m_drawGroups;
 	AssetLoadList<graphics::Texture> m_textures;
 	AssetLoadList<BitmapFont> m_bitmapFonts;
 	AssetLoadList<Model> m_models;

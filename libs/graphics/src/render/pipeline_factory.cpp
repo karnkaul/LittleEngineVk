@@ -3,9 +3,9 @@
 #include <graphics/render/pipeline_factory.hpp>
 #include <graphics/utils/utils.hpp>
 
-namespace le::graphics {
-PipelineData PipelineFactory::Pipe::data() const noexcept { return {&input, pipeline, layout}; }
+#include <core/services.hpp>
 
+namespace le::graphics {
 std::size_t PipelineFactory::Hasher::operator()(Spec const& spec) const {
 	utils::HashGen ret;
 	return ret << spec.vertexInput << spec.fixedState << spec.shaderURI;
@@ -37,9 +37,10 @@ PipelineData PipelineFactory::get(Spec const& spec, vk::RenderPass renderPass) {
 		sit->second.spec = spec;
 	}
 	auto& specMap = sit->second;
+	if (!specMap.meta.layout.active()) { specMap.meta = makeMeta(spec.shaderURI); }
 	auto pit = specMap.map.find(renderPass);
-	if (pit == specMap.map.end() || pit->second.refresh) {
-		auto pipe = make(spec, renderPass);
+	if (pit == specMap.map.end() || pit->second.stale) {
+		auto pipe = makePipe(specMap, renderPass);
 		ENSURE(pipe, "Failed to create pipeline");
 		auto [i, b] = specMap.map.insert_or_assign(renderPass, std::move(*pipe));
 		pit = i;
@@ -57,12 +58,16 @@ PipelineSpec const* PipelineFactory::find(Hash spec) const {
 	return nullptr;
 }
 
-std::size_t PipelineFactory::setDirty(Hash spec) {
-	if (auto sit = m_storage.find(spec); sit != m_storage.end()) {
-		for (auto& [_, pipe] : sit->second.map) { pipe.refresh = true; }
-		return sit->second.map.size();
+std::size_t PipelineFactory::markStale(Hash shaderURI) {
+	std::size_t ret{};
+	for (auto& [_, specMap] : m_storage) {
+		if (specMap.spec.shaderURI == shaderURI) {
+			specMap.map.clear();				// destroy pipelines
+			specMap.meta = makeMeta(shaderURI); // recreate metadata
+			++ret;
+		}
 	}
-	return {};
+	return ret;
 }
 
 std::size_t PipelineFactory::pipeCount(Hash spec) const noexcept {
@@ -74,46 +79,46 @@ void PipelineFactory::clear(Hash spec) noexcept {
 	if (auto sit = m_storage.find(spec); sit != m_storage.end()) { sit->second.map.clear(); }
 }
 
-std::optional<PipelineFactory::Pipe> PipelineFactory::make(Spec const& spec, vk::RenderPass renderPass) const {
-	auto const& shader = m_getShader(spec.shaderURI);
+std::optional<PipelineFactory::Pipe> PipelineFactory::makePipe(SpecMap const& spec, vk::RenderPass renderPass) const {
+	auto const& shader = m_getShader(spec.spec.shaderURI);
 	EXPECT(utils::hasActiveModule(shader.m_modules));
 	if (!utils::hasActiveModule(shader.m_modules)) { return std::nullopt; }
 	Pipe ret;
-	auto spd = setLayout(ret, shader);
+	ret.layout = spec.meta.layout;
 	utils::PipeData data;
 	data.renderPass = renderPass;
-	data.layout = ret.layout;
+	data.layout = spec.meta.layout;
 	// TODO
 	// in.cache = m_pipelineCache;
-	if (auto p = utils::makeGraphicsPipeline(*m_vram->m_device, shader.m_modules, spec, data)) {
+	if (auto p = utils::makeGraphicsPipeline(*m_vram->m_device, shader.m_modules, spec.spec, data)) {
 		ret.pipeline = Deferred<vk::Pipeline>{m_vram->m_device, *p};
-		ret.input = ShaderInput(m_vram, std::move(spd));
+		ret.input = ShaderInput(m_vram, spec.meta.spd);
 		return ret;
 	}
 	return std::nullopt;
 }
 
-SetPoolsData PipelineFactory::setLayout(Pipe& out_pipe, Shader const& shader) const {
-	Shader::CodeMap spirV;
-	auto setBindings = utils::extractBindings(shader.m_spirV);
-	SetPoolsData ret;
+PipelineFactory::Meta PipelineFactory::makeMeta(Hash shaderURI) const {
+	Meta ret;
+	auto setBindings = utils::extractBindings(m_getShader(shaderURI).m_spirV);
 	std::vector<vk::DescriptorSetLayout> layouts;
 	for (auto& [set, binds] : setBindings.sets) {
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
 		for (auto& setBinding : binds) {
-			if (!setBinding.bUnassigned) { bindings.push_back(setBinding.binding); }
+			if (setBinding.binding.descriptorType != vk::DescriptorType()) { bindings.push_back(setBinding.binding); }
 		}
 		auto const descLayout = m_vram->m_device->makeDescriptorSetLayout(bindings);
-		out_pipe.setLayouts.push_back({m_vram->m_device, descLayout});
-		out_pipe.bindingInfos.push_back(std::move(binds));
+		ret.setLayouts.push_back({m_vram->m_device, descLayout});
+		ret.bindingInfos.push_back(std::move(binds));
 		layouts.push_back(descLayout);
 
 		SetLayoutData sld;
-		sld.bindings = out_pipe.bindingInfos.back();
+		sld.bindings = ret.bindingInfos.back();
 		sld.layout = descLayout;
-		ret.sets.push_back(std::move(sld));
+		ret.spd.sets.push_back(std::move(sld));
 	}
-	out_pipe.layout = makeDeferred<vk::PipelineLayout>(m_vram->m_device, setBindings.push, layouts);
+	ret.layout = makeDeferred<vk::PipelineLayout>(m_vram->m_device, setBindings.push, layouts);
 	return ret;
 }
+
 } // namespace le::graphics

@@ -116,6 +116,6 @@ struct Engine::GFX {
 	Context context;
 	std::unique_ptr<DearImGui> imgui;
 
-	GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, std::optional<VSync> vsync);
+	GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, AssetStore const& store, std::optional<VSync> vsync);
 };
 } // namespace le

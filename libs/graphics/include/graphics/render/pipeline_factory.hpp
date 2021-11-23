@@ -7,7 +7,7 @@
 
 namespace le::graphics {
 struct PipelineData {
-	not_null<ShaderInput*> shderInput;
+	not_null<ShaderInput*> shaderInput;
 	vk::Pipeline pipeline;
 	vk::PipelineLayout layout;
 };
@@ -26,7 +26,7 @@ class PipelineFactory {
 	Data get(Spec const& spec, vk::RenderPass renderPass);
 	bool contains(Hash spec, vk::RenderPass renderPass) const;
 	Spec const* find(Hash spec) const;
-	std::size_t setDirty(Hash spec);
+	std::size_t markStale(Hash shaderURI);
 
 	std::size_t specCount() const noexcept { return m_storage.size(); }
 	void clear() noexcept { m_storage.clear(); }
@@ -36,22 +36,27 @@ class PipelineFactory {
   private:
 	struct Pipe {
 		Deferred<vk::Pipeline> pipeline;
+		vk::PipelineLayout layout;
+		mutable ShaderInput input;
+		bool stale{};
+
+		Data data() const noexcept { return {&input, pipeline, layout}; }
+	};
+	struct Meta {
+		SetPoolsData spd;
 		Deferred<vk::PipelineLayout> layout;
 		std::vector<Deferred<vk::DescriptorSetLayout>> setLayouts;
 		std::vector<ktl::fixed_vector<BindingInfo, 16>> bindingInfos;
-		mutable ShaderInput input;
-		bool refresh{};
-
-		Data data() const noexcept;
 	};
 	using PassMap = std::unordered_map<vk::RenderPass, Pipe>;
 	struct SpecMap {
 		PassMap map;
 		Spec spec;
+		Meta meta;
 	};
 
-	std::optional<Pipe> make(Spec const& spec, vk::RenderPass renderPass) const;
-	SetPoolsData setLayout(Pipe& out_pipe, Shader const& shader) const;
+	std::optional<Pipe> makePipe(SpecMap const& spec, vk::RenderPass renderPass) const;
+	Meta makeMeta(Hash shaderURI) const;
 
 	using SpecHash = Hash;
 	std::unordered_map<SpecHash, SpecMap> m_storage;

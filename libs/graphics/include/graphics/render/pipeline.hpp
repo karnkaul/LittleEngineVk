@@ -7,6 +7,8 @@
 #include <graphics/shader.hpp>
 #include <unordered_set>
 
+#include <graphics/render/pipeline_spec.hpp>
+
 namespace le::graphics {
 class Device;
 class Shader;
@@ -39,6 +41,8 @@ class Pipeline final {
 	};
 
 	Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo createInfo, Hash id);
+
+	Pipeline(not_null<VRAM*> vram, Shader const& shader, graphics::PipelineSpec const& state, vk::RenderPass rp, Hash id);
 
 	std::optional<vk::Pipeline> constructVariant(Hash id, CreateInfo::Fixed const& fixed);
 	std::optional<vk::Pipeline> variant(Hash id) const;
@@ -76,7 +80,7 @@ class Pipeline final {
 		struct {
 			Deferred<vk::PipelineLayout> layout;
 			std::vector<Deferred<vk::DescriptorSetLayout>> setLayouts;
-			std::vector<ktl::fixed_vector<BindingInfo, 16>> bindingInfos;
+			std::vector<ktl::fixed_vector<BindingInfo, max_bindings_v>> bindingInfos;
 		} fixed;
 		vk::PipelineCache cache;
 		Hash id;

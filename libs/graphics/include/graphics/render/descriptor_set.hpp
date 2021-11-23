@@ -19,7 +19,6 @@ class ShaderBuffer;
 struct BindingInfo {
 	vk::DescriptorSetLayoutBinding binding;
 	std::string name;
-	bool bUnassigned = false;
 };
 
 struct SetLayoutData {
@@ -95,12 +94,12 @@ class DescriptorSet {
 	struct Set {
 		vk::DescriptorSet set;
 		Deferred<vk::DescriptorPool> pool;
-		std::unordered_map<u32, Binding> bindings;
+		Binding bindings[max_bindings_v];
 	};
 	struct Storage {
 		vk::DescriptorSetLayout layout;
 		RingBuffer<Set> setBuffer;
-		std::unordered_map<u32, BindingInfo> bindingInfos;
+		BindingInfo bindingInfos[max_bindings_v];
 		Buffering buffering = 1_B;
 		u32 setNumber = 0;
 	} m_storage;

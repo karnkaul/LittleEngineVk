@@ -19,23 +19,23 @@ class SceneRegistry : public utils::VBase {
 	dens::registry const& registry() const noexcept { return m_registry; }
 	dens::entity root() const noexcept { return m_sceneRoot; }
 
-	void attach(dens::entity entity, DrawLayer layer, PropProvider provider);
-	void attach(dens::entity entity, DrawLayer layer);
+	void attach(dens::entity entity, DrawGroup group, PropProvider provider);
+	void attach(dens::entity entity, DrawGroup group);
 
 	dens::entity spawnNode(std::string name);
-	dens::entity spawnProp(std::string name, Hash layerID, PropProvider provider);
-	dens::entity spawnMesh(std::string name, Hash meshID, Hash layerID, Material material = {});
+	dens::entity spawnProp(std::string name, Hash groupURI, PropProvider provider);
+	dens::entity spawnMesh(std::string name, Hash meshURI, Hash groupURI, Material material = {});
 
 	template <typename T>
-	dens::entity spawnProp(std::string name, Hash assetID, Hash layerID);
+	dens::entity spawnProp(std::string name, Hash assetURI, Hash groupURI);
 	template <typename T>
-	dens::entity spawnProp(std::string name, T const& source, Hash layerID);
+	dens::entity spawnProp(std::string name, T const& source, Hash groupURI);
 
 	template <typename T, typename... Args>
-	dens::entity spawn(std::string name, Hash layerID, Args&&... args);
+	dens::entity spawn(std::string name, Hash groupURI, Args&&... args);
 
 	void updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame = {});
-	DrawLayer layer(Hash id) const;
+	DrawGroup drawGroup(Hash id) const;
 
 	edi::SceneRef ediScene() noexcept;
 
@@ -48,24 +48,24 @@ class SceneRegistry : public utils::VBase {
 // impl
 
 template <typename T>
-dens::entity SceneRegistry::spawnProp(std::string name, T const& source, Hash layerID) {
-	return spawnProp(std::move(name), layerID, PropProvider::make<T>(source));
+dens::entity SceneRegistry::spawnProp(std::string name, T const& source, Hash groupURI) {
+	return spawnProp(std::move(name), groupURI, PropProvider::make<T>(source));
 }
 
 template <typename T>
-dens::entity SceneRegistry::spawnProp(std::string name, Hash assetID, Hash layerID) {
+dens::entity SceneRegistry::spawnProp(std::string name, Hash assetID, Hash groupURI) {
 	if constexpr (std::is_same_v<T, graphics::Mesh>) {
-		return spawnMesh(std::move(name), assetID, layerID);
+		return spawnMesh(std::move(name), assetID, groupURI);
 	} else {
-		return spawnProp(std::move(name), layerID, PropProvider::make<T>(assetID));
+		return spawnProp(std::move(name), groupURI, PropProvider::make<T>(assetID));
 	}
 }
 
 template <typename T, typename... Args>
-dens::entity SceneRegistry::spawn(std::string name, Hash layerID, Args&&... args) {
+dens::entity SceneRegistry::spawn(std::string name, Hash groupURI, Args&&... args) {
 	auto ret = m_registry.make_entity(std::move(name));
 	auto& t = m_registry.attach<T>(ret, std::forward<Args>(args)...);
-	m_registry.attach<DrawLayer>(ret, layer(layerID));
+	m_registry.attach<DrawGroup>(ret, drawGroup(groupURI));
 	return ret;
 }
 } // namespace le

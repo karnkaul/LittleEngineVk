@@ -25,6 +25,20 @@ void addNodes(DrawListFactory::LayerMap& map, DrawLayer const& layer, gui::TreeR
 		if (node->m_active) { addNodes(map, layer, *node); }
 	}
 }
+
+void addNodes(DrawListFactory::GroupMap& map, DrawGroup const& group, gui::TreeRoot const& root) {
+	for (auto& node : root.nodes()) {
+		if (node->m_active) {
+			if (auto props = node->props(); !props.empty()) {
+				Rect2D const rect = cast(graphics::utils::scissor(node->m_scissor));
+				map[group].push_back({node->model(), rect, props});
+			}
+		}
+	}
+	for (auto& node : root.nodes()) {
+		if (node->m_active) { addNodes(map, group, *node); }
+	}
+}
 } // namespace
 
 void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const {
@@ -54,6 +68,34 @@ void DrawListGen3D::operator()(DrawListFactory::LayerMap& map, dens::registry co
 
 void DrawListGenUI::operator()(DrawListFactory::LayerMap& map, dens::registry const& registry) const {
 	for (auto& [_, c] : registry.view<DrawLayer, gui::ViewStack>()) {
+		auto& [gr, stack] = c;
+		for (auto const& view : stack.views()) { addNodes(map, gr, *view); }
+	}
+}
+
+void DrawListGen3D2::operator()(DrawListFactory::GroupMap& map, dens::registry const& registry) const {
+	static constexpr auto exclude = dens::exclude<NoDraw>();
+	for (auto [_, c] : registry.view<DrawGroup, SceneNode, Prop>(exclude)) {
+		auto& [group, node, prop] = c;
+		if (prop.mesh) { map[group].push_back({node.model(registry), {}, prop}); }
+	}
+	for (auto [_, c] : registry.view<DrawGroup, SceneNode, PropProvider>(exclude)) {
+		auto& [group, node, provider] = c;
+		auto props = provider.props();
+		if (!props.empty()) { map[group].push_back({node.model(registry), {}, props}); }
+	}
+	for (auto [_, c] : registry.view<DrawGroup, Skybox>(exclude)) {
+		auto& [group, skybox] = c;
+		map[group].push_back({glm::mat4(1.0f), {}, skybox.prop()});
+	}
+	for (auto [_, c] : registry.view<DrawGroup, physics::Trigger::Debug>(exclude)) {
+		auto& [group, physics] = c;
+		if (auto drawables = physics.drawables(registry); !drawables.empty()) { std::move(drawables.begin(), drawables.end(), std::back_inserter(map[group])); }
+	}
+}
+
+void DrawListGenUI2::operator()(DrawListFactory::GroupMap& map, dens::registry const& registry) const {
+	for (auto& [_, c] : registry.view<DrawGroup, gui::ViewStack>()) {
 		auto& [gr, stack] = c;
 		for (auto const& view : stack.views()) { addNodes(map, gr, *view); }
 	}

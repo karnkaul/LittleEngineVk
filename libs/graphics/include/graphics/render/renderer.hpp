@@ -28,8 +28,12 @@ struct RenderBegin {
 	ScreenView view;
 };
 
+class PipelineFactory;
+
 class IDrawer {
   public:
+	virtual void beginFrame() = 0;
+	virtual void beginPass(PipelineFactory& pf, vk::RenderPass rp) = 0;
 	virtual void draw(CommandBuffer cb) = 0;
 };
 
@@ -81,7 +85,7 @@ class Renderer {
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
 
-	Record render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
+	Record render(IDrawer& out_drawer, PipelineFactory& pf, RenderImage const& acquired, RenderBegin const& rb);
 
 	Tech tech() const noexcept { return Tech{Approach::eForward, m_target, m_transition}; }
 	bool canScale() const noexcept;
@@ -95,7 +99,7 @@ class Renderer {
 	Deferred<vk::RenderPass> makeRenderPass(Transition transition, vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
 											Span<vk::SubpassDependency const> deps = {}) const;
 
-	virtual void doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb);
+	virtual void doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderImage const& acquired, RenderBegin const& rb);
 	virtual void next();
 
 	ImageCache m_depthImage;

@@ -19,9 +19,13 @@ using PropList = Span<Prop const>;
 class DrawListFactory {
   public:
 	using LayerMap = std::unordered_map<DrawLayer, std::vector<Drawable>, LayerHasher>;
+	using GroupMap = std::unordered_map<DrawGroup, std::vector<Drawable>, DrawGroup::Hasher>;
 
 	template <typename... Gen>
 	static std::vector<DrawList> lists(dens::registry const& registry, bool sort);
+
+	template <typename... Gen>
+	static std::vector<DrawList2> lists2(dens::registry const& registry, bool sort);
 };
 
 // impl
@@ -35,6 +39,17 @@ std::vector<DrawList> DrawListFactory::lists(dens::registry const& registry, boo
 	for (auto& [dlayer, list] : map) {
 		if (dlayer.pipeline) { ret.push_back(DrawList({dlayer, std::move(list), {}})); }
 	}
+	if (sort) { std::sort(ret.begin(), ret.end()); }
+	return ret;
+}
+
+template <typename... Gen>
+std::vector<DrawList2> DrawListFactory::lists2(dens::registry const& registry, bool sort) {
+	GroupMap map;
+	(Gen{}(map, registry), ...);
+	std::vector<DrawList2> ret;
+	ret.reserve(map.size());
+	for (auto& [group, list] : map) { ret.push_back(DrawList2({std::move(group), std::move(list)})); }
 	if (sort) { std::sort(ret.begin(), ret.end()); }
 	return ret;
 }

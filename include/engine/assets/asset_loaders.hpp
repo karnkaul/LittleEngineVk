@@ -1,6 +1,7 @@
 #pragma once
 #include <engine/assets/asset_loader.hpp>
 #include <engine/render/bitmap_font.hpp>
+#include <engine/render/draw_layer.hpp>
 #include <engine/render/model.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/shader.hpp>
@@ -53,6 +54,23 @@ template <>
 struct AssetLoader<graphics::Pipeline> {
 	std::unique_ptr<graphics::Pipeline> load(AssetLoadInfo<graphics::Pipeline> const& info) const;
 	bool reload(graphics::Pipeline& out_shader, AssetLoadInfo<graphics::Pipeline> const& info) const;
+};
+
+template <>
+struct AssetLoadData<PipelineState> {
+	vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
+	graphics::PFlags flags;
+	f32 lineWidth = 1.0f;
+	Hash shaderURI;
+};
+
+template <>
+struct AssetLoader<PipelineState> {
+	std::unique_ptr<PipelineState> load(AssetLoadInfo<PipelineState> const& info) const;
+	bool reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const;
+
+	static PipelineState from(AssetLoadData<PipelineState> const& data);
 };
 
 template <>

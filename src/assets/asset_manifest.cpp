@@ -60,8 +60,8 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler, {}, m_jsonQIDs[Kind::eSampler]);
 	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eTexture]);
 	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler, {}, m_jsonQIDs[Kind::eShader]);
-	m_deps[Kind::ePipeline] = m_loader.stage(std::move(m_pipelines), scheduler, m_deps[Kind::eShader], m_jsonQIDs[Kind::ePipeline]);
-	m_deps[Kind::eDrawLayer] = m_loader.stage(std::move(m_drawLayers), scheduler, m_deps[Kind::ePipeline], m_jsonQIDs[Kind::eDrawLayer]);
+	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eShader], m_jsonQIDs[Kind::ePipelineState]);
+	m_deps[Kind::eDrawGroup] = m_loader.stage(std::move(m_drawGroups), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eDrawGroup]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eBitmapFont]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
 	loadCustom(scheduler);
@@ -114,8 +114,8 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "models") { return addModels(std::move(group)); }
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
-	if (groupName == "pipelines") { return addPipelines(std::move(group)); }
-	if (groupName == "draw_layers") { return addDrawLayers(std::move(group)); }
+	if (groupName == "pipelines") { return addPipelineStates(std::move(group)); }
+	if (groupName == "draw_groups") { return addDrawGroups(std::move(group)); }
 	return addCustom(groupName, std::move(group));
 }
 
@@ -185,47 +185,30 @@ std::size_t AssetManifest::addTextures(Group group) {
 	return ret;
 }
 
-std::size_t AssetManifest::addPipelines(Group group) {
+std::size_t AssetManifest::addPipelineStates(Group group) {
 	std::size_t ret{};
-	auto setupVariant = [](AssetLoadData<graphics::Pipeline>::Variant& out, dj::json const& json) {
-		out.lineWidth = json.get_as("line_width", 1.0f);
-		if (auto pm = json.find_as<std::string>("polygon_mode")) { out.polygonMode = parsePolygonMode(*pm); }
-		if (auto topology = json.find_as<std::string>("topology")) { out.topology = parseTopology(*topology); }
-	};
 	for (auto& [id, json] : group) {
 		if (auto shader = json->find("shader"); shader && shader->is_string()) {
-			AssetLoadData<graphics::Pipeline> data(&context());
-			data.name = id.generic_string();
-			data.shaderID = shader->as<std::string>();
-			if (auto name = json->find_as<std::string>("name")) { data.name = std::move(*name); }
+			AssetLoadData<PipelineState> data;
+			data.shaderURI = shader->as<std::string>();
+			data.lineWidth = json->get_as("line_width", 1.0f);
 			if (auto flags = json->find_as<std::vector<std::string>>("flags")) { data.flags = parseFlags(*flags); }
-			data.gui = json->get_as<bool>("gui");
-			setupVariant(data.main, *json);
-			if (auto variants = json->find_as<dj::map_t>("variants")) {
-				data.variants.reserve(variants->size());
-				for (auto const& [id, var] : *variants) {
-					if (!id.empty()) {
-						AssetLoadData<graphics::Pipeline>::Variant variant;
-						variant.id = id;
-						setupVariant(variant, *var);
-						data.variants.push_back(std::move(variant));
-					}
-				}
-			}
-			m_pipelines.add(std::move(id), std::move(data));
+			if (auto pm = json->find_as<std::string>("polygon_mode")) { data.polygonMode = parsePolygonMode(*pm); }
+			if (auto topology = json->find_as<std::string>("topology")) { data.topology = parseTopology(*topology); }
+			m_pipelineStates.add(std::move(id), std::move(data));
 			++ret;
 		}
 	}
 	return ret;
 }
 
-std::size_t AssetManifest::addDrawLayers(Group group) {
+std::size_t AssetManifest::addDrawGroups(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
 			Hash const pid = pipe->as<std::string>();
 			s64 const order = json->get_as<s64>("order");
-			m_drawLayers.add(std::move(id), [this, pid, order]() { return DrawLayer{store().find<graphics::Pipeline>(pid).peek(), order}; });
+			m_drawGroups.add(std::move(id), [this, pid, order]() { return DrawGroup{*store().find<PipelineState>(pid), order}; });
 			++ret;
 		}
 	}

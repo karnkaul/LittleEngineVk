@@ -6,6 +6,7 @@
 #include <graphics/geometry.hpp>
 #include <graphics/render/command_buffer.hpp>
 #include <graphics/render/pipeline.hpp>
+#include <graphics/render/pipeline_factory.hpp>
 #include <graphics/render/pipeline_flags.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
@@ -24,13 +25,14 @@ class RenderContext : public NoCopy {
   public:
 	using Acquire = Surface::Acquire;
 	using Attachment = Renderer::Attachment;
+	using GetShader = PipelineFactory::GetShader;
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 	template <typename V = Vertex>
 	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
 
-	RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering = 2_B);
+	RenderContext(not_null<VRAM*> vram, GetShader&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
 
 	std::unique_ptr<Renderer> defaultRenderer();
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept { m_renderer = std::move(renderer); }
@@ -49,6 +51,8 @@ class RenderContext : public NoCopy {
 	bool supported(VSync vsync) const noexcept { return m_surface.vsyncs().test(vsync); }
 
 	Renderer& renderer() const noexcept { return *m_renderer; }
+	PipelineFactory& pipelineFactory() noexcept { return m_pipelineFactory; }
+	PipelineFactory const& pipelineFactory() const noexcept { return m_pipelineFactory; }
 
 	struct Sync;
 
@@ -56,6 +60,7 @@ class RenderContext : public NoCopy {
 	bool submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize);
 
 	Surface m_surface;
+	PipelineFactory m_pipelineFactory;
 	RingBuffer<Sync> m_syncs;
 	Deferred<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;

@@ -29,6 +29,19 @@ Pipeline::Pipeline(not_null<VRAM*> vram, Shader const& shader, CreateInfo info, 
 	if (setup(shader) && construct(m_metadata.main, pipe)) { m_storage.dynamic.main = {m_device, pipe}; }
 }
 
+Pipeline::Pipeline(not_null<VRAM*> vram, Shader const& shader, graphics::PipelineSpec const& state, vk::RenderPass rp, Hash id)
+	: m_vram(vram), m_device(vram->m_device) {
+	m_storage.id = id;
+	if (setup(shader)) {
+		utils::PipeData data;
+		data.renderPass = rp;
+		data.layout = layout();
+		if (auto pipe = utils::makeGraphicsPipeline(*m_device, shader.m_modules, state, data)) { m_storage.dynamic.main = {m_device, *pipe}; }
+	}
+	// vk::Pipeline pipe;
+	// if (setup(shader) && construct(m_metadata.main, pipe)) { m_storage.dynamic.main = {m_device, pipe}; }
+}
+
 std::optional<vk::Pipeline> Pipeline::constructVariant(Hash id, CreateInfo::Fixed const& fixed) {
 	if (id == Hash()) { return std::nullopt; }
 	vk::Pipeline pipe;
@@ -114,7 +127,7 @@ bool Pipeline::setup(Shader const& shader) {
 	for (auto& [set, binds] : setBindings.sets) {
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
 		for (auto& setBinding : binds) {
-			if (!setBinding.bUnassigned) { bindings.push_back(setBinding.binding); }
+			if (setBinding.binding.descriptorType != vk::DescriptorType()) { bindings.push_back(setBinding.binding); }
 		}
 		auto const descLayout = m_device->makeDescriptorSetLayout(bindings);
 		f.setLayouts.push_back({m_device, descLayout});

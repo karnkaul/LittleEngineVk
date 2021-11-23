@@ -1,8 +1,10 @@
+#include <core/services.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_converters.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/utils/logger.hpp>
+#include <graphics/render/pipeline_factory.hpp>
 #include <graphics/utils/utils.hpp>
 #include <algorithm>
 
@@ -53,7 +55,10 @@ std::unique_ptr<graphics::Shader> AssetLoader<graphics::Shader>::load(AssetLoadI
 }
 
 bool AssetLoader<graphics::Shader>::reload(graphics::Shader& out_shader, AssetLoadInfo<graphics::Shader> const& info) const {
-	if (auto d = data(info)) { return out_shader.reconstruct(std::move(*d)); }
+	if (auto d = data(info); d && out_shader.reconstruct(std::move(*d))) {
+		if (auto context = Services::find<graphics::RenderContext>()) { context->pipelineFactory().markStale(out_shader.m_name); }
+		return true;
+	}
 	return false;
 }
 
@@ -113,6 +118,27 @@ std::unique_ptr<graphics::Pipeline> AssetLoader<graphics::Pipeline>::load(AssetL
 bool AssetLoader<graphics::Pipeline>::reload(graphics::Pipeline& out_pipe, AssetLoadInfo<graphics::Pipeline> const& info) const {
 	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderID)) { return out_pipe.reconstruct(*shader); }
 	return false;
+}
+
+std::unique_ptr<PipelineState> AssetLoader<PipelineState>::load(AssetLoadInfo<PipelineState> const& info) const {
+	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderURI)) {
+		info.reloadDepend(shader);
+		return std::make_unique<PipelineState>(from(info.m_data));
+	}
+	return {};
+}
+
+bool AssetLoader<PipelineState>::reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const {
+	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderURI)) { out_ps = from(info.m_data); }
+	return {};
+}
+
+PipelineState AssetLoader<PipelineState>::from(AssetLoadData<PipelineState> const& data) {
+	PipelineState ret = graphics::PipelineFactory::spec(data.shaderURI, data.flags);
+	ret.fixedState.mode = data.polygonMode;
+	ret.fixedState.lineWidth = data.lineWidth;
+	ret.fixedState.topology = data.topology;
+	return ret;
 }
 
 std::unique_ptr<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {

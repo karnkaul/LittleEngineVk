@@ -85,8 +85,9 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering)
-	: m_surface(vram, fbSize, vsync), m_vram(vram), m_renderer(makeRenderer(m_vram, m_surface.format(), buffering)), m_buffering(buffering) {
+RenderContext::RenderContext(not_null<VRAM*> vram, GetShader&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
+	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_vram(vram), m_renderer(makeRenderer(m_vram, m_surface.format(), bf)),
+	  m_buffering(bf) {
 	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
@@ -110,7 +111,7 @@ bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D 
 	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
 		m_vram->m_device->resetFence(sync.drawn);
-		auto cmds = m_renderer->render(out_drawer, acquired->image, rb);
+		auto cmds = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
 		ret = submit(cmds, *acquired, fbSize);
 	}
 	m_syncs.next();

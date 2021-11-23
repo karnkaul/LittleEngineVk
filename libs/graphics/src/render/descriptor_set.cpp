@@ -38,21 +38,23 @@ DescriptorSet::DescriptorSet(not_null<Device*> device, CreateInfo const& info) :
 	bool active = false;
 	for (auto const& bindingInfo : info.bindingInfos) {
 		m_storage.bindingInfos[bindingInfo.binding.binding] = bindingInfo;
-		active |= !bindingInfo.bUnassigned;
+		active |= bindingInfo.binding.descriptorType != vk::DescriptorType();
 	}
 	if (active) {
 		std::vector<vk::DescriptorPoolSize> poolSizes;
-		poolSizes.reserve(m_storage.bindingInfos.size());
+		poolSizes.reserve(max_bindings_v);
 		for (Buffering buf{}; buf < m_storage.buffering; ++buf.value) {
 			Set set;
-			for (auto const& [b, bindingInfo] : m_storage.bindingInfos) {
-				if (!bindingInfo.bUnassigned) {
+			u32 b{};
+			for (auto const& bindingInfo : m_storage.bindingInfos) {
+				if (bindingInfo.binding.descriptorType != vk::DescriptorType()) {
 					u32 const totalSize = bindingInfo.binding.descriptorCount * m_storage.buffering.value;
 					poolSizes.push_back({bindingInfo.binding.descriptorType, totalSize});
 					set.bindings[b].type = bindingInfo.binding.descriptorType;
 					set.bindings[b].count = bindingInfo.binding.descriptorCount;
 					set.bindings[b].name = bindingInfo.name;
 				}
+				++b;
 			}
 			set.pool = makeDeferred<vk::DescriptorPool>(m_device, poolSizes, 1U);
 			set.set = m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
@@ -104,25 +106,25 @@ bool DescriptorSet::updateImgs(u32 binding, Imgs imgs) {
 }
 
 BindingInfo const* DescriptorSet::binding(u32 bind) const noexcept {
-	if (auto it = m_storage.bindingInfos.find(bind); it != m_storage.bindingInfos.end()) { return &it->second; }
+	if (bind < max_bindings_v) {
+		auto const& ret = m_storage.bindingInfos[bind];
+		if (ret.binding.descriptorType != vk::DescriptorType()) { return &ret; }
+	}
 	return nullptr;
 }
 
-bool DescriptorSet::contains(u32 bind) const noexcept {
-	if (auto b = binding(bind)) { return b && !b->bUnassigned; }
-	return false;
-}
+bool DescriptorSet::contains(u32 bind) const noexcept { return binding(bind) != nullptr; }
 
 bool DescriptorSet::unassigned() const noexcept {
 	auto const& bi = m_storage.bindingInfos;
-	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](auto const& kvp) { return kvp.second.bUnassigned; });
+	return std::all_of(std::begin(bi), std::end(bi), [](BindingInfo const& bi) { return bi.binding.descriptorType == vk::DescriptorType(); });
 }
 
 void DescriptorSet::update(vk::WriteDescriptorSet write) { m_device->device().updateDescriptorSets(write, {}); }
 
 std::pair<DescriptorSet::Set&, DescriptorSet::Binding&> DescriptorSet::setBind(u32 bind, vk::DescriptorType type, u32 count) {
 	auto& set = m_storage.setBuffer.get();
-	ENSURE(set.bindings.contains(bind), "Nonexistent binding");
+	ENSURE(contains(bind), "Nonexistent binding");
 	auto& binding = set.bindings[bind];
 	ENSURE(binding.type == type, "Mismatched descriptor type");
 	ENSURE(binding.count == count, "Mismatched descriptor size");
@@ -137,8 +139,8 @@ DescriptorPool::DescriptorPool(not_null<Device*> device, DescriptorSet::CreateIn
 	ENSURE(info.bindingInfos.size() < max_bindings_v, "DescriptorSet overflow");
 	for (auto const& bi : info.bindingInfos) {
 		m_storage.bindInfos.push_back(bi);
-		bActive |= !bi.bUnassigned;
-		if (!bi.bUnassigned) {
+		bActive |= bi.binding.descriptorType != vk::DescriptorType();
+		if (bi.binding.descriptorType != vk::DescriptorType()) {
 			u32 const b = bi.binding.binding;
 			g_log.log(lvl::debug, 2, "[{}] Binding [{}/{}] [{}] for [{}] registered", g_name, info.setNumber, b, bi.name, info.name);
 		}
@@ -185,7 +187,7 @@ bool DescriptorPool::contains(u32 bind) const noexcept {
 	if (!m_storage.descriptorSets.empty()) { return m_storage.descriptorSets.front().contains(bind); }
 	if (bind < (u32)m_storage.bindInfos.size()) {
 		auto const& bi = m_storage.bindInfos[(std::size_t)bind];
-		return bi.binding.binding == bind && !bi.bUnassigned;
+		return bi.binding.binding == bind && bi.binding.descriptorType != vk::DescriptorType();
 	}
 	return false;
 }
@@ -193,7 +195,7 @@ bool DescriptorPool::contains(u32 bind) const noexcept {
 bool DescriptorPool::unassigned() const noexcept {
 	if (!m_storage.descriptorSets.empty()) { return m_storage.descriptorSets.front().unassigned(); }
 	auto const& bi = m_storage.bindInfos;
-	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](BindingInfo const& b) { return b.bUnassigned; });
+	return bi.empty() || std::all_of(bi.begin(), bi.end(), [](BindingInfo const& b) { return b.binding.descriptorType != vk::DescriptorType(); });
 }
 
 void DescriptorPool::clear() noexcept { m_storage.descriptorSets.clear(); }

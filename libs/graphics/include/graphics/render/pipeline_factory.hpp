@@ -1,7 +1,6 @@
 #pragma once
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/render/pipeline_spec.hpp>
-#include <graphics/shader.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <ktl/move_only_function.hpp>
 #include <unordered_map>
@@ -16,7 +15,6 @@ struct Pipeline {
 class PipelineFactory {
   public:
 	using Spec = PipelineSpec;
-	using GetShader = ktl::move_only_function<Shader const&(Hash)>;
 	using GetSpirV = ktl::move_only_function<SpirV(Hash)>;
 	struct Hasher;
 

@@ -4,31 +4,11 @@
 #include <engine/render/draw_group.hpp>
 #include <engine/render/model.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <unordered_map>
 
 namespace le {
-template <>
-struct AssetLoadData<graphics::Shader> {
-	std::string name;
-	std::unordered_map<graphics::Shader::Type, io::Path> shaderPaths;
-	not_null<graphics::Device*> device;
-
-	AssetLoadData(not_null<graphics::Device*> device) : device(device) {}
-};
-
-template <>
-struct AssetLoader<graphics::Shader> {
-	using Data = graphics::Shader::SpirVMap;
-
-	std::unique_ptr<graphics::Shader> load(AssetLoadInfo<graphics::Shader> const& info) const;
-	bool reload(graphics::Shader& out_shader, AssetLoadInfo<graphics::Shader> const& info) const;
-
-	std::optional<Data> data(AssetLoadInfo<graphics::Shader> const& info) const;
-};
-
 template <>
 struct AssetLoadData<graphics::SpirV> {
 	io::Path uri;

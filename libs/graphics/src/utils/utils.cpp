@@ -7,7 +7,6 @@
 #include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
 
 static_assert(sizeof(stbi_uc) == sizeof(std::byte) && alignof(stbi_uc) == alignof(std::byte), "Invalid type size/alignment");
@@ -280,11 +279,16 @@ std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, ShaderSpec::
 	}
 	ktl::fixed_vector<vk::PipelineShaderStageCreateInfo, 8> shaderCreateInfo;
 	{
+		static constexpr EnumArray<ShaderType, vk::ShaderStageFlagBits> flag = {
+			vk::ShaderStageFlagBits::eVertex,
+			vk::ShaderStageFlagBits::eFragment,
+			vk::ShaderStageFlagBits::eCompute,
+		};
 		for (std::size_t idx = 0; idx < arraySize(sh.arr); ++idx) {
 			vk::ShaderModule const& module = sh.arr[idx];
 			if (!Device::default_v(module)) {
 				vk::PipelineShaderStageCreateInfo createInfo;
-				createInfo.stage = Shader::typeToFlag[idx];
+				createInfo.stage = flag.arr[idx];
 				createInfo.module = module;
 				createInfo.pName = "main";
 				shaderCreateInfo.push_back(std::move(createInfo));

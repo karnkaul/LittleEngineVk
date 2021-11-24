@@ -46,22 +46,6 @@ template <>
 }
 } // namespace
 
-std::unique_ptr<graphics::Shader> AssetLoader<graphics::Shader>::load(AssetLoadInfo<graphics::Shader> const& info) const {
-	auto const& paths = info.m_data.shaderPaths;
-	if (!paths.empty() && std::all_of(paths.begin(), paths.end(), [&info](auto const& kvp) { return info.media().present(kvp.second, std::nullopt); })) {
-		if (auto d = data(info)) { return std::make_unique<graphics::Shader>(info.m_data.device, info.m_data.name, std::move(*d)); }
-	}
-	return {};
-}
-
-bool AssetLoader<graphics::Shader>::reload(graphics::Shader& out_shader, AssetLoadInfo<graphics::Shader> const& info) const {
-	if (auto d = data(info); d && out_shader.reconstruct(std::move(*d))) {
-		if (auto context = Services::find<graphics::RenderContext>()) { context->pipelineFactory().markStale(out_shader.m_name); }
-		return true;
-	}
-	return false;
-}
-
 std::unique_ptr<graphics::SpirV> AssetLoader<graphics::SpirV>::load(AssetLoadInfo<graphics::SpirV> const& info) const {
 	graphics::SpirV ret;
 	if (reload(ret, info)) { return std::make_unique<graphics::SpirV>(std::move(ret)); }
@@ -96,31 +80,6 @@ bool AssetLoader<graphics::SpirV>::load(graphics::SpirV& out_code, AssetLoadInfo
 	out_code = graphics::SpirV(res->bytes().size() / 4);
 	std::memcpy(out_code.data(), res->bytes().data(), res->bytes().size());
 	return true;
-}
-
-std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>::data(AssetLoadInfo<graphics::Shader> const& info) const {
-	graphics::Shader::SpirVMap spirV;
-	io::FSMedia const* fm = nullptr;
-	for (auto& [type, id] : info.m_data.shaderPaths) {
-		auto path = id;
-		if (isGlsl(path)) {
-			if (!fm && !(fm = dynamic_cast<io::FSMedia const*>(&info.media()))) {
-				// cannot compile shaders without FSMedia
-				path = graphics::utils::spirVpath(id);
-			} else {
-				// ensure resource presence (and add monitor if supported)
-				if (!info.resource(id, Resource::Type::eText, Resources::Flag::eMonitor)) { return std::nullopt; }
-				path = spirvPath(id, *fm);
-			}
-		} else {
-			// fallback to previously compiled shader
-			path = graphics::utils::spirVpath(id);
-		}
-		auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eReload);
-		if (!res) { return std::nullopt; }
-		spirV[type] = {res->bytes().begin(), res->bytes().end()};
-	}
-	return spirV;
 }
 
 std::unique_ptr<PipelineState> AssetLoader<PipelineState>::load(AssetLoadInfo<PipelineState> const& info) const {

@@ -9,7 +9,6 @@
 #include <graphics/geometry.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/render/pipeline_spec.hpp>
-#include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <spirv_cross.hpp>

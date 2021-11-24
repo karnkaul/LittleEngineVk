@@ -45,7 +45,7 @@ class PropProvider {
 	using Extract = Span<Prop const> (*)(PropProvider const*);
 
 	template <typename T>
-	PropProvider(Hash id, Material material, tag_t<T>) noexcept;
+	PropProvider(Hash uri, Material material, tag_t<T>) noexcept;
 
 	template <typename T>
 	static Span<Prop const> extract(PropProvider const* self);
@@ -54,7 +54,7 @@ class PropProvider {
 
 	mutable ktl::either<Props, Prop> m_props;
 	Extract m_extract{};
-	Hash m_id{};
+	Hash m_uri{};
 };
 
 template <typename T>
@@ -83,7 +83,7 @@ PropProvider PropProvider::make(T const& source) noexcept {
 inline PropProvider::PropProvider(Hash meshID, Material material) noexcept : PropProvider(meshID, material, tag_t<graphics::Mesh>{}) {}
 
 template <typename T>
-PropProvider::PropProvider(Hash id, Material material, tag_t<T>) noexcept : m_extract(&extract<T>), m_id(id) {
+PropProvider::PropProvider(Hash uri, Material material, tag_t<T>) noexcept : m_extract(&extract<T>), m_uri(uri) {
 	m_props.get<Props>().material = material;
 }
 
@@ -96,9 +96,9 @@ Span<Prop const> PropProvider::extract(PropProvider const* self) {
 
 template <typename T>
 void PropProvider::refresh() const {
-	if (m_id != Hash()) {
+	if (m_uri != Hash()) {
 		if (auto store = Services::find<AssetStore>()) {
-			if (auto asset = store->find<T>(m_id)) {
+			if (auto asset = store->find<T>(m_uri)) {
 				if constexpr (std::is_same_v<T, graphics::Mesh>) {
 					auto mat = m_props.get<Props>().material;
 					m_props = Prop{mat, &*asset};

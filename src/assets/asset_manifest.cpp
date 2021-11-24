@@ -49,13 +49,10 @@ std::size_t AssetManifest::preload(dj::json const& root) {
 	for (auto const& [groupName, entries] : root.as<dj::map_t>()) {
 		Group group;
 		for (auto const& json : entries->as<dj::vec_t>()) {
-			if (auto id = json->find_as<std::string>("id")) { group.insert({std::move(*id), json}); }
+			if (auto uri = json->find_as<std::string>("uri")) { group.insert({std::move(*uri), json}); }
 		}
 		if (group.empty()) {
-			for (auto& id : entries->as<std::vector<std::string>>()) {
-				logD("id: {}", id);
-				group.insert({std::move(id), {}});
-			}
+			for (auto& uri : entries->as<std::vector<std::string>>()) { group.insert({std::move(uri), {}}); }
 		}
 		if (!group.empty()) { ret += add(groupName, std::move(group)); }
 	}
@@ -128,7 +125,7 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 std::size_t AssetManifest::addSamplers(Group group) {
 	std::size_t ret{};
 	auto& dv = device();
-	for (auto& [id, json] : group) {
+	for (auto& [uri, json] : group) {
 		if (json->contains("min") && json->contains("mag")) {
 			graphics::TPair<vk::Filter> minMag;
 			minMag.first = (*json)["min"].as<std::string>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
@@ -140,7 +137,7 @@ std::size_t AssetManifest::addSamplers(Group group) {
 			} else {
 				createInfo = graphics::Sampler::info(minMag);
 			}
-			m_samplers.add(std::move(id), [createInfo, &dv]() { return graphics::Sampler(&dv, createInfo); });
+			m_samplers.add(std::move(uri), [createInfo, &dv]() { return graphics::Sampler(&dv, createInfo); });
 			++ret;
 		}
 	}
@@ -149,10 +146,10 @@ std::size_t AssetManifest::addSamplers(Group group) {
 
 std::size_t AssetManifest::addSpirV(Group group) {
 	std::size_t ret{};
-	for (auto& [id, json] : group) {
+	for (auto& [uri, json] : group) {
 		AssetLoadData<graphics::SpirV> data;
-		data.uri = id;
-		m_spirV.add(std::move(id), std::move(data));
+		data.uri = uri;
+		m_spirV.add(std::move(uri), std::move(data));
 		++ret;
 	}
 	return ret;
@@ -160,21 +157,21 @@ std::size_t AssetManifest::addSpirV(Group group) {
 
 std::size_t AssetManifest::addTextures(Group group) {
 	std::size_t ret{};
-	for (auto& [id, json] : group) {
+	for (auto& [uri, json] : group) {
 		using Payload = graphics::Texture::Payload;
 		AssetLoadData<graphics::Texture> data(&vram());
 		if (auto files = json->find_as<std::vector<std::string>>("files")) {
-			data.imageIDs = {files->begin(), files->end()};
+			data.imageURIs = {files->begin(), files->end()};
 		} else if (auto file = json->find_as<std::string>("file")) {
-			data.imageIDs = {std::move(*file)};
+			data.imageURIs = {std::move(*file)};
 		} else {
-			data.imageIDs = {id.generic_string()};
+			data.imageURIs = {uri.generic_string()};
 		}
 		data.prefix = json->get_as<std::string>("prefix");
 		data.ext = json->get_as<std::string>("ext");
-		data.samplerID = json->get_as<std::string>("sampler");
+		data.samplerURI = json->get_as<std::string>("sampler");
 		if (auto payload = json->find_as<std::string>("payload")) { data.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
-		m_textures.add(std::move(id), std::move(data));
+		m_textures.add(std::move(uri), std::move(data));
 		++ret;
 	}
 	return ret;
@@ -191,7 +188,7 @@ static graphics::ShaderType parseShaderType(std::string_view str) noexcept {
 
 std::size_t AssetManifest::addPipelineStates(Group group) {
 	std::size_t ret{};
-	for (auto& [id, json] : group) {
+	for (auto& [uri, json] : group) {
 		if (auto shaders = json->find("shaders"); shaders && shaders->is_array()) {
 			AssetLoadData<PipelineState> data;
 			for (auto const& uri : shaders->as<dj::vec_t>()) {
@@ -203,7 +200,7 @@ std::size_t AssetManifest::addPipelineStates(Group group) {
 			if (auto flags = json->find_as<std::vector<std::string>>("flags")) { data.flags = parseFlags(*flags); }
 			if (auto pm = json->find_as<std::string>("polygon_mode")) { data.polygonMode = parsePolygonMode(*pm); }
 			if (auto topology = json->find_as<std::string>("topology")) { data.topology = parseTopology(*topology); }
-			m_pipelineStates.add(std::move(id), std::move(data));
+			m_pipelineStates.add(std::move(uri), std::move(data));
 			++ret;
 		}
 	}
@@ -212,11 +209,11 @@ std::size_t AssetManifest::addPipelineStates(Group group) {
 
 std::size_t AssetManifest::addDrawGroups(Group group) {
 	std::size_t ret{};
-	for (auto& [id, json] : group) {
+	for (auto& [uri, json] : group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
 			Hash const pid = pipe->as<std::string>();
 			s64 const order = json->get_as<s64>("order");
-			m_drawGroups.add(std::move(id), [this, pid, order]() { return DrawGroup{store().find<PipelineState>(pid).peek(), order}; });
+			m_drawGroups.add(std::move(uri), [this, pid, order]() { return DrawGroup{store().find<PipelineState>(pid).peek(), order}; });
 			++ret;
 		}
 	}
@@ -225,15 +222,15 @@ std::size_t AssetManifest::addDrawGroups(Group group) {
 
 std::size_t AssetManifest::addBitmapFonts(Group group) {
 	std::size_t ret{};
-	for (auto& [id, json] : group) {
+	for (auto& [uri, json] : group) {
 		AssetLoadData<BitmapFont> data(&vram());
 		if (auto file = json->find("file"); file && file->is_string()) {
-			data.jsonID = file->as<std::string>();
+			data.jsonURI = file->as<std::string>();
 		} else {
-			data.jsonID = id / id.filename() + ".json";
+			data.jsonURI = uri / uri.filename() + ".json";
 		}
-		data.samplerID = json->get_as<std::string>("sampler");
-		m_bitmapFonts.add(std::move(id), std::move(data));
+		data.samplerURI = json->get_as<std::string>("sampler");
+		m_bitmapFonts.add(std::move(uri), std::move(data));
 		++ret;
 	}
 	return ret;
@@ -241,16 +238,16 @@ std::size_t AssetManifest::addBitmapFonts(Group group) {
 
 std::size_t AssetManifest::addModels(Group group) {
 	std::size_t ret{};
-	for (auto& [id, json] : group) {
+	for (auto& [uri, json] : group) {
 		AssetLoadData<Model> data(&vram());
-		data.modelID = id.generic_string();
+		data.modelURI = uri.generic_string();
 		if (auto file = json->find("file"); file && file->is_string()) {
-			data.jsonID = file->as<std::string>();
+			data.jsonURI = file->as<std::string>();
 		} else {
-			data.jsonID = id / id.filename() + ".json";
+			data.jsonURI = uri / uri.filename() + ".json";
 		}
-		data.samplerID = json->get_as<std::string>("sampler");
-		m_models.add(std::move(id), std::move(data));
+		data.samplerURI = json->get_as<std::string>("sampler");
+		m_models.add(std::move(uri), std::move(data));
 		++ret;
 	}
 	return ret;
@@ -259,8 +256,8 @@ std::size_t AssetManifest::addModels(Group group) {
 template <typename T, typename U>
 std::size_t AssetManifest::unload(U& cont) {
 	std::size_t ret{};
-	for (auto const& [id, _] : cont) {
-		if (store().unload<T>(id)) { ++ret; }
+	for (auto const& [uri, _] : cont) {
+		if (store().unload<T>(uri)) { ++ret; }
 	}
 	cont.clear();
 	return ret;

@@ -43,8 +43,6 @@
 #include <engine/ecs/components/spring_arm.hpp>
 #include <engine/ecs/components/trigger.hpp>
 
-#include <graphics/render/pipeline_factory.hpp>
-
 namespace le::demo {
 using RGBA = graphics::RGBA;
 
@@ -233,40 +231,6 @@ class Drawer : public ListDrawer {
 			}
 		}
 	}
-
-	/*void write(Span<List const> lists, Camera const& cam, glm::vec2 scene, Span<DirLight const> lights) {
-		m_view.lights.swap();
-		m_view.mats.swap();
-		ViewMats const v{cam.view(), cam.perspective(scene), cam.ortho(scene), {cam.position, 1.0f}};
-		m_view.mats.write(v);
-		if (!lights.empty()) {
-			DirLights dl;
-			for (std::size_t idx = 0; idx < lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = lights[idx]; }
-			dl.count = std::min((u32)lights.size(), (u32)dl.lights.size());
-			m_view.lights.write(dl);
-		}
-		for (auto& list : lists) { update(list); }
-	}
-
-	void update(List const& list) const {
-		DescriptorMap map(&list.pipeline->shaderInput());
-		auto set0 = map.set(0);
-		set0.update(0, m_view.mats);
-		set0.update(1, m_view.lights);
-		for (Drawable const& drawable : list.drawables) {
-			if (!drawable.props.empty()) {
-				map.set(1).update(0, drawable.model);
-				for (Prop const& prop : drawable.props) {
-					Material const& mat = prop.material;
-					auto set2 = map.set(2);
-					set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
-					set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
-					set2.update(2, mat.map_Ks && mat.map_Ks->ready() ? *mat.map_Ks : *m_defaults.black);
-					map.set(3).update(0, ShadeMat::make(mat));
-				}
-			}
-		}
-	}*/
 };
 
 class TestView : public gui::View {

@@ -357,7 +357,7 @@ utils::STBImg::~STBImg() {
 
 void utils::STBImg::exchg(STBImg& lhs, STBImg& rhs) noexcept { std::swap(static_cast<TBitmap<Span<u8>>&>(lhs), static_cast<TBitmap<Span<u8>>&>(rhs)); }
 
-std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
+std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageURIs const& ids) {
 	std::array<bytearray, 6> ret;
 	std::size_t idx = 0;
 	for (std::string_view id : ids) {

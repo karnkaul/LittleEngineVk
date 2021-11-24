@@ -12,7 +12,7 @@
 	],
 	"pipelines": [
 		{
-			"id": "pipelines/basic",
+			"uri": "pipelines/basic",
 			"shaders": [
 				{
 					"uri": "shaders/basic.vert",
@@ -28,7 +28,7 @@
 			]
 		},
 		{
-			"id": "pipelines/wireframe",
+			"uri": "pipelines/wireframe",
 			"shaders": [
 				{
 					"uri": "shaders/basic.vert",
@@ -43,7 +43,7 @@
 			"topology": "line_list"
 		},
 		{
-			"id": "pipelines/tex",
+			"uri": "pipelines/tex",
 			"shaders": [
 				{
 					"uri": "shaders/basic.vert",
@@ -59,7 +59,7 @@
 			]
 		},
 		{
-			"id": "pipelines/lit",
+			"uri": "pipelines/lit",
 			"shaders": [
 				{
 					"uri": "shaders/lit.vert",
@@ -76,7 +76,7 @@
 			]
 		},
 		{
-			"id": "pipelines/ui",
+			"uri": "pipelines/ui",
 			"shaders": [
 				{
 					"uri": "shaders/ui.vert",
@@ -92,7 +92,7 @@
 			]
 		},
 		{
-			"id": "pipelines/skybox",
+			"uri": "pipelines/skybox",
 			"shaders": [
 				{
 					"uri": "shaders/skybox.vert",
@@ -107,50 +107,50 @@
 	],
 	"draw_groups": [
 		{
-			"id": "draw_groups/basic",
+			"uri": "draw_groups/basic",
 			"pipeline": "pipelines/basic",
 			"order": 0
 		},
 		{
-			"id": "draw_groups/skybox",
+			"uri": "draw_groups/skybox",
 			"pipeline": "pipelines/skybox",
 			"order": -10
 		},
 		{
-			"id": "draw_groups/tex",
+			"uri": "draw_groups/tex",
 			"pipeline": "pipelines/tex",
 			"order": 0
 		},
 		{
-			"id": "draw_groups/lit",
+			"uri": "draw_groups/lit",
 			"pipeline": "pipelines/lit",
 			"order": 0
 		},
 		{
-			"id": "draw_groups/wireframe",
+			"uri": "draw_groups/wireframe",
 			"pipeline": "pipelines/wireframe",
 			"order": 5
 		},
 		{
-			"id": "draw_groups/ui",
+			"uri": "draw_groups/ui",
 			"pipeline": "pipelines/ui",
 			"order": 10
 		}
 	],
 	"textures": [
 		{
-			"id": "textures/container2/diffuse",
+			"uri": "textures/container2/diffuse",
 			"file": "textures/container2.png"
 		},
 		{
-			"id": "textures/container2/specular",
+			"uri": "textures/container2/specular",
 			"file": "textures/container2_specular.png"
 		},
 		{
-			"id": "textures/awesomeface.png"
+			"uri": "textures/awesomeface.png"
 		},
 		{
-			"id": "cubemaps/sky_dusk",
+			"uri": "cubemaps/sky_dusk",
 			"prefix": "skyboxes/sky_dusk",
 			"files": [
 				"right.jpg",
@@ -162,7 +162,7 @@
 			]
 		},
 		{
-			"id": "cubemaps/test",
+			"uri": "cubemaps/test",
 			"prefix": "skyboxes/test",
 			"files": [
 				"right.jpg",
@@ -174,27 +174,27 @@
 			]
 		},
 		{
-			"id": "textures/test.png"
+			"uri": "textures/test.png"
 		}
 	],
 	"bitmap_fonts": [
 		{
-			"id": "fonts/default"
+			"uri": "fonts/default"
 		}
 	],
 	"models": [
 		{
-			"id": "models/plant"
+			"uri": "models/plant"
 		},
 		{
-			"id": "models/teapot"
+			"uri": "models/teapot"
 		},
 		{
-			"id": "models/nanosuit",
+			"uri": "models/nanosuit",
 			"file": "models/test/nanosuit/nanosuit.json"
 		},
 		{
-			"id": "models/fox",
+			"uri": "models/fox",
 			"file": "models/test/fox/fox.json"
 		}
 	]

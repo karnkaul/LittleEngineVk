@@ -44,13 +44,13 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	Asset<T> load(io::Path const& uri, AssetLoadData<T> data);
 	template <typename T>
-	Asset<T> find(Hash id) const;
+	Asset<T> find(Hash uri) const;
 	template <typename T>
-	bool exists(Hash id) const noexcept;
+	bool exists(Hash uri) const noexcept;
 	template <typename T>
-	bool unload(Hash id);
+	bool unload(Hash uri);
 	template <typename T>
-	bool reload(Hash id);
+	bool reload(Hash uri);
 
 	void update();
 	void clear();
@@ -79,7 +79,7 @@ class AssetStore : public NoCopy {
 namespace detail {
 template <typename T>
 struct TAsset {
-	std::string id;
+	std::string uri;
 	std::optional<AssetLoadInfo<T>> loadInfo;
 	std::unique_ptr<T> t;
 };
@@ -97,11 +97,11 @@ class TAssetMap : public AssetMap {
 
 	template <typename... Args>
 	Asset<T> add(OnModified& onMod, io::Path const& uri, Args&&... args);
-	static std::optional<TAsset<T>> load(AssetStore const& store, OnModified& onMod, Resources& res, std::string id, AssetLoadData<T> data);
+	static std::optional<TAsset<T>> load(AssetStore const& store, OnModified& onMod, Resources& res, std::string uri, AssetLoadData<T> data);
 	Asset<T> insert(TAsset<T>&& asset, AssetStore::OnModified& onMod);
-	bool reload(AssetStore const& store, Hash id);
-	bool unload(Hash id);
-	bool forceDirty(Hash id) const;
+	bool reload(AssetStore const& store, Hash uri);
+	bool unload(Hash uri);
+	bool forceDirty(Hash uri) const;
 	u64 update(AssetStore const& store) override;
 
 	using Storage = std::unordered_map<Hash, TAsset<T>>;
@@ -110,7 +110,7 @@ class TAssetMap : public AssetMap {
 
 template <typename T>
 constexpr Asset<T> wrap(TAsset<T>& u, AssetStore::OnModified& onModified) noexcept {
-	return {&*u.t, u.id, &onModified};
+	return {&*u.t, u.uri, &onModified};
 }
 
 template <typename T>
@@ -119,55 +119,55 @@ Asset<T> TAssetMap<T>::add(AssetStore::OnModified& onMod, io::Path const& uri, A
 	TAsset<T> asset{uri.generic_string(), {}, std::make_unique<T>(std::forward<Args>(args)...)};
 	auto const [it, nascent] = m_storage.emplace(uri.generic_string(), std::move(asset));
 	TAsset<T>& ret = it->second;
-	if (!nascent) { utils::g_log.log(dl::level::warn, 0, "[Asset] Overwriting [{}]!", ret.id); }
-	utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", ret.id);
+	if (!nascent) { utils::g_log.log(dl::level::warn, 0, "[Asset] Overwriting [{}]!", ret.uri); }
+	utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", ret.uri);
 	return wrap<T>(ret, onMod);
 }
 template <typename T>
-std::optional<TAsset<T>> TAssetMap<T>::load(AssetStore const& store, AssetStore::OnModified& onMod, Resources& res, std::string id, AssetLoadData<T> data) {
+std::optional<TAsset<T>> TAssetMap<T>::load(AssetStore const& store, AssetStore::OnModified& onMod, Resources& res, std::string uri, AssetLoadData<T> data) {
 	AssetLoader<T> loader;
-	TAsset<T> asset{id, AssetLoadInfo<T>(&store, &res, &onMod, std::move(data), std::move(id)), {}};
+	TAsset<T> asset{uri, AssetLoadInfo<T>(&store, &res, &onMod, std::move(data), std::move(uri)), {}};
 	if ((asset.t = loader.load(*asset.loadInfo))) {
-		utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", asset.id);
+		utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", asset.uri);
 		return asset;
 	}
-	utils::g_log.log(dl::level::warn, 0, "[Asset] Failed to load [{}]!", id);
+	utils::g_log.log(dl::level::warn, 0, "[Asset] Failed to load [{}]!", uri);
 	return std::nullopt;
 }
 template <typename T>
 Asset<T> TAssetMap<T>::insert(TAsset<T>&& asset, AssetStore::OnModified& onMod) {
-	Hash const id = asset.id;
-	auto const [it, bNew] = m_storage.insert({id, std::move(asset)});
-	if (!bNew) { utils::g_log.log(dl::level::warn, 0, "[Asset] Overwriting [{}]!", asset.id); }
+	Hash const uri = asset.uri;
+	auto const [it, bNew] = m_storage.insert({uri, std::move(asset)});
+	if (!bNew) { utils::g_log.log(dl::level::warn, 0, "[Asset] Overwriting [{}]!", asset.uri); }
 	return wrap<T>(it->second, onMod);
 }
 template <typename T>
-bool TAssetMap<T>::reload(AssetStore const& store, Hash id) {
+bool TAssetMap<T>::reload(AssetStore const& store, Hash uri) {
 	if constexpr (detail::reloadable_asset_v<T>) {
-		if (auto it = m_storage.find(id); it != m_storage.end()) {
+		if (auto it = m_storage.find(uri); it != m_storage.end()) {
 			auto& asset = it->second;
 			if (store.reloadAsset<T>(asset)) {
-				utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
+				utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.uri);
 				return true;
 			} else {
-				utils::g_log.log(dl::level::warn, 0, "[Asset] Failed to reload [{}]!", asset.id);
+				utils::g_log.log(dl::level::warn, 0, "[Asset] Failed to reload [{}]!", asset.uri);
 			}
 		}
 	}
 	return false;
 }
 template <typename T>
-bool TAssetMap<T>::unload(Hash id) {
-	if (auto it = m_storage.find(id); it != m_storage.end()) {
-		utils::g_log.log(dl::level::info, 1, "-- [Asset] [{}] unloaded", it->second.id);
+bool TAssetMap<T>::unload(Hash uri) {
+	if (auto it = m_storage.find(uri); it != m_storage.end()) {
+		utils::g_log.log(dl::level::info, 1, "-- [Asset] [{}] unloaded", it->second.uri);
 		m_storage.erase(it);
 		return true;
 	}
 	return false;
 }
 template <typename T>
-bool TAssetMap<T>::forceDirty(Hash id) const {
-	if (auto it = m_storage.find(id); it != m_storage.end() && it->second.loadInfo) {
+bool TAssetMap<T>::forceDirty(Hash uri) const {
+	if (auto it = m_storage.find(uri); it != m_storage.end() && it->second.loadInfo) {
 		it->second.loadInfo->forceDirty(true);
 		return true;
 	}
@@ -180,10 +180,10 @@ u64 TAssetMap<T>::update(AssetStore const& store) {
 		for (auto& [_, asset] : m_storage) {
 			if (asset.t && asset.loadInfo && asset.loadInfo->modified()) {
 				if (store.reloadAsset<T>(asset)) {
-					utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.id);
+					utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", asset.uri);
 					++ret;
 				} else {
-					utils::g_log.log(dl::level::warn, 0, "[Asset] Failed to reload [{}]!", asset.id);
+					utils::g_log.log(dl::level::warn, 0, "[Asset] Failed to reload [{}]!", asset.uri);
 				}
 			}
 		}
@@ -222,42 +222,42 @@ Asset<T> AssetStore::add(io::Path const& uri, std::unique_ptr<T> t) {
 }
 template <typename T>
 Asset<T> AssetStore::load(io::Path const& uri, AssetLoadData<T> data) {
-	auto idStr = uri.generic_string();
-	auto& onMod = ktl::tlock(m_onModified).get()[idStr];
+	auto uriStr = uri.generic_string();
+	auto& onMod = ktl::tlock(m_onModified).get()[uriStr];
 	// AssetLoader may invoke find() etc which would need shared locks
-	if (auto asset = detail::TAssetMap<T>::load(*this, onMod, m_resources, std::move(idStr), std::move(data))) {
+	if (auto asset = detail::TAssetMap<T>::load(*this, onMod, m_resources, std::move(uriStr), std::move(data))) {
 		ktl::unique_tlock<detail::TAssets> lock(m_assets);
 		return lock.get().get<T>().insert(std::move(*asset), onMod);
 	}
 	return {};
 }
 template <typename T>
-Asset<T> AssetStore::find(Hash id) const {
+Asset<T> AssetStore::find(Hash uri) const {
 	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
 	if (lock.get().contains<T>()) {
 		auto& store = lock.get().get<T>().m_storage;
-		if (auto it = store.find(id); it != store.end() && it->second.t) { return detail::wrap<T>(it->second, ktl::tlock(m_onModified).get()[id]); }
+		if (auto it = store.find(uri); it != store.end() && it->second.t) { return detail::wrap<T>(it->second, ktl::tlock(m_onModified).get()[uri]); }
 	}
 	return {};
 }
 template <typename T>
-bool AssetStore::exists(Hash id) const noexcept {
+bool AssetStore::exists(Hash uri) const noexcept {
 	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
-	if (lock.get().contains<T>()) { return utils::contains(lock.get().get<T>().m_storage, id); }
+	if (lock.get().contains<T>()) { return utils::contains(lock.get().get<T>().m_storage, uri); }
 	return false;
 }
 template <typename T>
-bool AssetStore::reload(Hash id) {
+bool AssetStore::reload(Hash uri) {
 	if constexpr (detail::reloadable_asset_v<T>) {
 		ktl::shared_tlock<detail::TAssets> lock(m_assets);
-		if (lock.get().contains<T>()) { return lock.get().get<T>().reload(*this, id); }
+		if (lock.get().contains<T>()) { return lock.get().get<T>().reload(*this, uri); }
 	}
 	return false;
 }
 template <typename T>
-bool AssetStore::unload(Hash id) {
+bool AssetStore::unload(Hash uri) {
 	ktl::unique_tlock<detail::TAssets> lock(m_assets);
-	if (lock.get().contains<T>()) { return lock.get().get<T>().unload(id); }
+	if (lock.get().contains<T>()) { return lock.get().get<T>().unload(uri); }
 	return false;
 }
 template <template <typename...> typename L>
@@ -271,7 +271,7 @@ bool AssetStore::reloadAsset(detail::TAsset<T>& out_asset) const {
 		out_asset.loadInfo->forceDirty(false);
 		AssetLoader<T> loader;
 		if (loader.reload(*out_asset.t, *out_asset.loadInfo)) {
-			ktl::tlock(m_onModified).get()[out_asset.loadInfo->m_id]();
+			ktl::tlock(m_onModified).get()[out_asset.loadInfo->m_uri]();
 			return true;
 		}
 	}

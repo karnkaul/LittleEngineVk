@@ -55,7 +55,7 @@ std::unique_ptr<graphics::SpirV> AssetLoader<graphics::SpirV>::load(AssetLoadInf
 bool AssetLoader<graphics::SpirV>::reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const {
 	auto const ret = load(out_code, info);
 	if (ret) {
-		if (auto context = Services::find<graphics::RenderContext>()) { context->pipelineFactory().markStale(info.m_id); }
+		if (auto context = Services::find<graphics::RenderContext>()) { context->pipelineFactory().markStale(info.m_uri); }
 	}
 	return ret;
 }
@@ -106,8 +106,8 @@ PipelineState AssetLoader<PipelineState>::from(AssetLoadData<PipelineState> cons
 }
 
 std::unique_ptr<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
-	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
+	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return {}; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
@@ -122,8 +122,8 @@ std::unique_ptr<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoa
 }
 
 bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const {
-	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
-	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
+	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return false; }
 	if (auto d = data(info)) {
 		graphics::Texture::CreateInfo createInfo;
@@ -149,14 +149,14 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 		} else {
 			return info.m_data.cubemap.bytes;
 		}
-	} else if (info.m_data.imageIDs.size() == 1) {
-		auto path = info.m_data.prefix / info.m_data.imageIDs[0];
+	} else if (info.m_data.imageURIs.size() == 1) {
+		auto path = info.m_data.prefix / info.m_data.imageURIs[0];
 		path += info.m_data.ext;
 		if (auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor)) { return graphics::Texture::img(res->bytes()); }
-	} else if (info.m_data.imageIDs.size() == 6) {
+	} else if (info.m_data.imageURIs.size() == 6) {
 		graphics::Texture::Cube cube;
 		std::size_t idx = 0;
-		for (auto const& p : info.m_data.imageIDs) {
+		for (auto const& p : info.m_data.imageURIs) {
 			auto path = info.m_data.prefix / p;
 			path += info.m_data.ext;
 			auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor);
@@ -177,15 +177,15 @@ std::unique_ptr<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFo
 bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const { return load(out_font, info); }
 
 bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
-	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
-	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
+	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return false; }
-	if (auto text = info.resource(info.m_data.jsonID, Resource::Type::eText, Resources::Flag::eMonitor)) {
+	if (auto text = info.resource(info.m_data.jsonURI, Resource::Type::eText, Resources::Flag::eMonitor)) {
 		dj::json json;
 		auto result = json.read(text->string());
 		if (result && result.errors.empty()) {
 			auto const fi = io::fromJson<BitmapFontInfo>(json);
-			auto const atlas = info.resource(info.m_data.jsonID.parent_path() / fi.atlasID, Resource::Type::eBinary, Resources::Flag::eMonitor);
+			auto const atlas = info.resource(info.m_data.jsonURI.parent_path() / fi.atlasURI, Resource::Type::eBinary, Resources::Flag::eMonitor);
 			if (!atlas) { return false; }
 			BitmapFont::CreateInfo bci;
 			bci.forceFormat = info.m_data.forceFormat;
@@ -198,10 +198,11 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 }
 
 std::unique_ptr<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
-	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
-	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
+	static Hash const defaultSampler = "samplers/default";
+	auto const samplerURI = info.m_data.samplerURI == Hash{} ? defaultSampler : info.m_data.samplerURI;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return {}; }
-	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.media())) {
+	if (auto mci = Model::load(info.m_data.modelURI, info.m_data.jsonURI, info.media())) {
 		Model model;
 		if (model.construct(info.m_data.vram, *mci, *sampler, info.m_data.forceFormat)) { return std::make_unique<Model>(std::move(model)); }
 	}
@@ -209,10 +210,11 @@ std::unique_ptr<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info
 }
 
 bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& info) const {
-	auto const samplerID = info.m_data.samplerID == Hash{} ? "samplers/default" : info.m_data.samplerID;
-	auto const sampler = info.m_store->find<graphics::Sampler>(samplerID);
+	static Hash const defaultSampler = "samplers/default";
+	auto const samplerURI = info.m_data.samplerURI == Hash{} ? defaultSampler : info.m_data.samplerURI;
+	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return false; }
-	if (auto mci = Model::load(info.m_data.modelID, info.m_data.jsonID, info.media())) {
+	if (auto mci = Model::load(info.m_data.modelURI, info.m_data.jsonURI, info.media())) {
 		return out_model.construct(info.m_data.vram, std::move(mci).value(), *sampler, info.m_data.forceFormat).has_value();
 	}
 	return false;

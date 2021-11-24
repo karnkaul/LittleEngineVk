@@ -79,9 +79,9 @@ void append(BmpBytes& out, Colour pixel);
 void append(BmpBytes& out, Span<std::byte const> bytes);
 BmpBytes bmpBytes(Span<std::byte const> bytes);
 
-using CubeImageIDs = std::array<std::string_view, 6>;
-constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};
-std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageIDs const& ids = cubeImageIDs);
+using CubeImageURIs = std::array<std::string_view, 6>;
+constexpr CubeImageURIs cubeImageURIs = {"right", "left", "up", "down", "front", "back"};
+std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageURIs const& ids = cubeImageURIs);
 
 std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface);
 

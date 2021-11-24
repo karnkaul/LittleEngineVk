@@ -41,14 +41,14 @@ struct AssetLoader<PipelineState> {
 
 template <>
 struct AssetLoadData<graphics::Texture> {
-	ktl::fixed_vector<io::Path, 6> imageIDs;
+	ktl::fixed_vector<io::Path, 6> imageURIs;
 	graphics::Bitmap bitmap;
 	graphics::Cubemap cubemap;
 	io::Path prefix;
 	std::string ext;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
-	Hash samplerID;
+	Hash samplerURI;
 	graphics::Texture::Payload payload = graphics::Texture::Payload::eColour;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
@@ -66,10 +66,10 @@ struct AssetLoader<graphics::Texture> {
 
 template <>
 struct AssetLoadData<BitmapFont> {
-	io::Path jsonID;
+	io::Path jsonURI;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
-	Hash samplerID;
+	Hash samplerURI;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
@@ -84,11 +84,11 @@ struct AssetLoader<BitmapFont> {
 
 template <>
 struct AssetLoadData<Model> {
-	std::string modelID;
-	io::Path jsonID;
+	std::string modelURI;
+	io::Path jsonURI;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
-	Hash samplerID;
+	Hash samplerURI;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };

@@ -65,9 +65,8 @@ std::size_t AssetManifest::preload(dj::json const& root) {
 void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler, {}, m_jsonQIDs[Kind::eSampler]);
 	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eTexture]);
-	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler, {}, m_jsonQIDs[Kind::eShader]);
 	m_deps[Kind::eSpirV] = m_loader.stage(std::move(m_spirV), scheduler, {}, m_jsonQIDs[Kind::eSpirV]);
-	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eShader], m_jsonQIDs[Kind::ePipelineState]);
+	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eSpirV], m_jsonQIDs[Kind::ePipelineState]);
 	m_deps[Kind::eDrawGroup] = m_loader.stage(std::move(m_drawGroups), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eDrawGroup]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eBitmapFont]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
@@ -117,8 +116,7 @@ not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engi
 
 std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "samplers") { return addSamplers(std::move(group)); }
-	if (groupName == "shaders") { return addShaders(std::move(group)); }
-	if (groupName == "shaders2") { return addSpirV(std::move(group)); }
+	if (groupName == "shaders") { return addSpirV(std::move(group)); }
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "models") { return addModels(std::move(group)); }
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
@@ -143,28 +141,6 @@ std::size_t AssetManifest::addSamplers(Group group) {
 				createInfo = graphics::Sampler::info(minMag);
 			}
 			m_samplers.add(std::move(id), [createInfo, &dv]() { return graphics::Sampler(&dv, createInfo); });
-			++ret;
-		}
-	}
-	return ret;
-}
-
-std::size_t AssetManifest::addShaders(Group group) {
-	std::size_t ret{};
-	for (auto& [id, json] : group) {
-		if (auto files = json->find_as<std::vector<std::string>>("files")) {
-			AssetLoadData<graphics::Shader> data(&device());
-			data.name = id.generic_string();
-			for (auto const& str : *files) {
-				io::Path path = str;
-				auto const ext = path.extension().generic_string();
-				if (ext.starts_with(".vert")) {
-					data.shaderPaths.emplace(graphics::Shader::Type::eVertex, std::move(path));
-				} else if (ext.starts_with(".frag")) {
-					data.shaderPaths.emplace(graphics::Shader::Type::eFragment, std::move(path));
-				}
-			}
-			m_shaders.add(std::move(id), std::move(data));
 			++ret;
 		}
 	}
@@ -204,12 +180,25 @@ std::size_t AssetManifest::addTextures(Group group) {
 	return ret;
 }
 
+static graphics::ShaderType parseShaderType(std::string_view str) noexcept {
+	if (str == "vert" || str == "vertex") {
+		return graphics::ShaderType::eVertex;
+	} else if (str == "comp" || str == "compute") {
+		return graphics::ShaderType::eCompute;
+	}
+	return graphics::ShaderType::eFragment;
+}
+
 std::size_t AssetManifest::addPipelineStates(Group group) {
 	std::size_t ret{};
 	for (auto& [id, json] : group) {
-		if (auto shader = json->find("shader"); shader && shader->is_string()) {
+		if (auto shaders = json->find("shaders"); shaders && shaders->is_array()) {
 			AssetLoadData<PipelineState> data;
-			data.shaderURI = shader->as<std::string>();
+			for (auto const& uri : shaders->as<dj::vec_t>()) {
+				if (uri->contains("type") && uri->contains("uri")) {
+					data.shader.modules.push_back({parseShaderType(uri->get_as<std::string>("type")), uri->get_as<std::string>("uri")});
+				}
+			}
 			data.lineWidth = json->get_as("line_width", 1.0f);
 			if (auto flags = json->find_as<std::vector<std::string>>("flags")) { data.flags = parseFlags(*flags); }
 			if (auto pm = json->find_as<std::string>("polygon_mode")) { data.polygonMode = parsePolygonMode(*pm); }
@@ -279,7 +268,6 @@ std::size_t AssetManifest::unload(U& cont) {
 
 std::size_t AssetManifest::unload() {
 	std::size_t ret = unload<graphics::Sampler>(m_samplers.map);
-	ret += unload<graphics::Shader>(m_shaders.map);
 	ret += unload<graphics::SpirV>(m_spirV.map);
 	ret += unload<graphics::Texture>(m_textures.map);
 	ret += unload<Model>(m_models.map);

@@ -38,15 +38,17 @@ template <>
 struct AssetLoader<graphics::SpirV> {
 	std::unique_ptr<graphics::SpirV> load(AssetLoadInfo<graphics::SpirV> const& info) const;
 	bool reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
+
+	bool load(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
 };
 
 template <>
 struct AssetLoadData<PipelineState> {
+	graphics::ShaderSpec shader;
 	vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
 	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
 	graphics::PFlags flags;
 	f32 lineWidth = 1.0f;
-	Hash shaderURI;
 };
 
 template <>

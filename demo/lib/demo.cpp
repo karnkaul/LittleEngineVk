@@ -441,7 +441,7 @@ class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
-	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram), m_pf(&eng->gfx().boot.vram, getShader(*eng)) {
+	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -468,10 +468,6 @@ class App : public input::Receiver, public SceneRegistry {
 		graphics::ShaderBuffer::CreateInfo info;
 		info.type = vk::DescriptorType::eStorageBuffer;
 		m_drawer.m_view.lights = graphics::ShaderBuffer(m_eng->gfx().boot.vram, {});
-	}
-
-	static graphics::PipelineFactory::GetShader getShader(Engine& e) {
-		return [&e](Hash uri) -> graphics::Shader const& { return *e.store().find<graphics::Shader>(uri); };
 	}
 
 	bool block(input::State const& state) override {
@@ -637,18 +633,6 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.get<Transform>(node).position(pos);
 		}
 		m_data.init = true;
-
-		testPipes();
-	}
-
-	void testPipes() {
-		auto renderPass = m_eng->gfx().context.renderer().renderPass();
-		graphics::PipelineFactory::Spec spec;
-		spec.shaderURI = "shaders/basic";
-		spec.vertexInput = graphics::VertexInfoFactory<graphics::Vertex>()(0);
-		spec.fixedState.flags = graphics::pflags_all;
-		auto pipe = m_pf.get(spec, renderPass);
-		pipe = m_pf.get(spec, renderPass);
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
@@ -738,8 +722,6 @@ class App : public input::Receiver, public SceneRegistry {
 	not_null<Engine*> m_eng;
 	mutable Drawer m_drawer;
 	physics::OnTrigger::handle m_onCollide;
-
-	graphics::PipelineFactory m_pf;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};

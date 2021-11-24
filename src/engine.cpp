@@ -50,10 +50,10 @@ graphics::Bootstrap::MakeSurface makeSurface(window::Instance const& winst) {
 	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
 
-graphics::RenderContext::GetShader getShader(AssetStore const& store) {
+graphics::RenderContext::GetSpirV getShader(AssetStore const& store) {
 	return [&store](Hash uri) {
-		ENSURE(store.exists<graphics::Shader>(uri), "Shader doesn't exist");
-		return std::cref(*store.find<graphics::Shader>(uri));
+		ENSURE(store.exists<graphics::SpirV>(uri), "Shader doesn't exist");
+		return *store.find<graphics::SpirV>(uri);
 	};
 }
 } // namespace

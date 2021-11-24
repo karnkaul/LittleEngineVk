@@ -9,7 +9,7 @@
 namespace le {
 class AssetManifest : public utils::VBase {
   public:
-	enum class Kind { eSampler, eShader, eSpirV, eTexture, ePipelineState, eDrawGroup, eBitmapFont, eModel, eCOUNT_ };
+	enum class Kind { eSampler, eSpirV, eTexture, ePipelineState, eDrawGroup, eBitmapFont, eModel, eCOUNT_ };
 	using Kinds = ktl::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
@@ -50,7 +50,6 @@ class AssetManifest : public utils::VBase {
 
 	std::size_t add(std::string_view name, Group group);
 	std::size_t addSamplers(Group group);
-	std::size_t addShaders(Group group);
 	std::size_t addSpirV(Group group);
 	std::size_t addTextures(Group group);
 	std::size_t addPipelineStates(Group group);
@@ -67,7 +66,6 @@ class AssetManifest : public utils::VBase {
 	virtual std::size_t unloadCustom() { return 0; }
 
 	AssetList<graphics::Sampler> m_samplers;
-	AssetLoadList<graphics::Shader> m_shaders;
 	AssetLoadList<graphics::SpirV> m_spirV;
 	AssetLoadList<PipelineState> m_pipelineStates;
 	AssetList<DrawGroup> m_drawGroups;

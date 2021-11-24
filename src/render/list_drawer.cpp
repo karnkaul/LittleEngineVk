@@ -32,10 +32,8 @@ void ListDrawer::buildLists(graphics::PipelineFactory& pf, vk::RenderPass rp) {
 	m_lists.clear();
 	m_lists.reserve(m_drawLists.size());
 	for (auto& list : m_drawLists) {
-		if (list.group.state) {
-			auto pipe = pf.get(*list.group.state, rp);
-			m_lists.push_back({list.drawables, pipe});
-		}
+		auto pipe = pf.get(*list.group.state, rp);
+		m_lists.push_back({list.drawables, pipe});
 	}
 }
 } // namespace le

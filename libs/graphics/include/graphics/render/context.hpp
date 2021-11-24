@@ -24,12 +24,12 @@ class RenderContext : public NoCopy {
   public:
 	using Acquire = Surface::Acquire;
 	using Attachment = Renderer::Attachment;
-	using GetShader = PipelineFactory::GetShader;
+	using GetSpirV = PipelineFactory::GetSpirV;
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
 
-	RenderContext(not_null<VRAM*> vram, GetShader&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
+	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
 
 	std::unique_ptr<Renderer> defaultRenderer();
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept { m_renderer = std::move(renderer); }

@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 namespace le::graphics {
-struct PipelineData {
+struct Pipeline {
 	not_null<ShaderInput*> shaderInput;
 	vk::Pipeline pipeline;
 	vk::PipelineLayout layout;
@@ -15,16 +15,17 @@ struct PipelineData {
 
 class PipelineFactory {
   public:
-	using Data = PipelineData;
 	using Spec = PipelineSpec;
 	using GetShader = ktl::move_only_function<Shader const&(Hash)>;
+	using GetSpirV = ktl::move_only_function<SpirV(Hash)>;
 	struct Hasher;
 
-	static Spec spec(Hash shaderURI, PFlags flags = pflags_all, VertexInputInfo vertexInput = {});
+	static Spec spec(ShaderSpec shader, PFlags flags = pflags_all, VertexInputInfo vertexInput = {});
+	static vk::UniqueShaderModule makeModule(vk::Device device, SpirV const& spirV);
 
-	PipelineFactory(not_null<VRAM*> vram, GetShader&& getShader, Buffering buffering = 2_B) noexcept;
+	PipelineFactory(not_null<VRAM*> vram, GetSpirV&& getSpirV, Buffering buffering = 2_B) noexcept;
 
-	Data get(Spec const& spec, vk::RenderPass renderPass);
+	Pipeline get(Spec const& spec, vk::RenderPass renderPass);
 	bool contains(Hash spec, vk::RenderPass renderPass) const;
 	Spec const* find(Hash spec) const;
 	std::size_t markStale(Hash shaderURI);
@@ -41,7 +42,7 @@ class PipelineFactory {
 		mutable ShaderInput input;
 		bool stale{};
 
-		Data data() const noexcept { return {&input, pipeline, layout}; }
+		Pipeline pipe() const noexcept { return {&input, pipeline, layout}; }
 	};
 	struct Meta {
 		SetPoolsData spd;
@@ -57,11 +58,11 @@ class PipelineFactory {
 	};
 
 	std::optional<Pipe> makePipe(SpecMap const& spec, vk::RenderPass renderPass) const;
-	Meta makeMeta(Hash shaderURI) const;
+	Meta makeMeta(ShaderSpec const& shader) const;
 
 	using SpecHash = Hash;
 	std::unordered_map<SpecHash, SpecMap> m_storage;
-	GetShader m_getShader;
+	GetSpirV m_getSpirV;
 	not_null<VRAM*> m_vram;
 	Buffering m_buffering;
 };

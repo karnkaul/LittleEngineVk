@@ -10,7 +10,7 @@ namespace le {
 class ListDrawer : public graphics::IDrawer {
   public:
 	using PipelineFactory = graphics::PipelineFactory;
-	using Pipeline = PipelineFactory::Data;
+	using Pipeline = graphics::Pipeline;
 
 	struct List {
 		Span<Drawable const> drawables;

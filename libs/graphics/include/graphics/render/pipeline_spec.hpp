@@ -1,5 +1,6 @@
 #pragma once
 #include <core/hash.hpp>
+#include <core/span.hpp>
 #include <graphics/render/pipeline_flags.hpp>
 #include <graphics/render/vertex_input.hpp>
 
@@ -7,12 +8,15 @@ namespace le::graphics {
 using SpirV = std::vector<u32>;
 
 enum class ShaderType { eVertex, eFragment, eCompute, eCOUNT_ };
+constexpr EnumArray<ShaderType, vk::ShaderStageFlagBits> g_shaderStages = {
+	vk::ShaderStageFlagBits::eVertex,
+	vk::ShaderStageFlagBits::eFragment,
+	vk::ShaderStageFlagBits::eCompute,
+};
 
 struct ShaderSpec {
-
 	template <typename T>
 	using Map = EnumArray<ShaderType, T>;
-	using CodeMap = Map<SpirV>;
 	using ModMap = Map<vk::ShaderModule>;
 
 	struct Module {
@@ -39,9 +43,9 @@ struct PipelineSpec {
 
 	static std::size_t const default_hash_v;
 
+	ShaderSpec shader;
 	FixedStateSpec fixedState;
 	VertexInputInfo vertexInput;
-	Hash shaderURI;
 	u32 subpass = 0;
 
 	bool operator==(PipelineSpec const& rhs) const { return hash() == rhs.hash(); }

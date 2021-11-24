@@ -81,7 +81,7 @@ TEST(vertex_input) {
 TEST(pipe_hash) {
 	PipelineSpec ps;
 	ps.vertexInput = build();
-	ps.shaderURI = "shader";
+	ps.shader.modules.push_back({ShaderType::eVertex, "shader.vert"});
 	ps.fixedState.flags = PFlags(PFlag::eAlphaBlend, PFlag::eDepthTest, PFlag::eDepthWrite);
 	ps.fixedState.dynamicStates = {std::begin(FixedStateSpec::required_states_v), std::end(FixedStateSpec::required_states_v)};
 	EXPECT_NE(hash(ps), PipelineSpec::default_hash_v);

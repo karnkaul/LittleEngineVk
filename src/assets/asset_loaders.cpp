@@ -69,6 +69,14 @@ std::unique_ptr<graphics::SpirV> AssetLoader<graphics::SpirV>::load(AssetLoadInf
 }
 
 bool AssetLoader<graphics::SpirV>::reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const {
+	auto const ret = load(out_code, info);
+	if (ret) {
+		if (auto context = Services::find<graphics::RenderContext>()) { context->pipelineFactory().markStale(info.m_id); }
+	}
+	return ret;
+}
+
+bool AssetLoader<graphics::SpirV>::load(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const {
 	auto path = info.m_data.uri;
 	if (isGlsl(path)) {
 		if (auto fm = dynamic_cast<io::FSMedia const*>(&info.media())) {
@@ -86,7 +94,7 @@ bool AssetLoader<graphics::SpirV>::reload(graphics::SpirV& out_code, AssetLoadIn
 	auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eReload);
 	if (!res) { return false; }
 	out_code = graphics::SpirV(res->bytes().size() / 4);
-	std::memcpy(out_code.data(), res->bytes().data(), out_code.size());
+	std::memcpy(out_code.data(), res->bytes().data(), res->bytes().size());
 	return true;
 }
 
@@ -116,17 +124,22 @@ std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>
 }
 
 std::unique_ptr<PipelineState> AssetLoader<PipelineState>::load(AssetLoadInfo<PipelineState> const& info) const {
-	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderURI)) { return std::make_unique<PipelineState>(from(info.m_data)); }
-	return {};
+	for (auto const& module : info.m_data.shader.modules) {
+		if (!info.m_store->find<graphics::SpirV>(module.uri)) { return {}; }
+	}
+	return std::make_unique<PipelineState>(from(info.m_data));
 }
 
 bool AssetLoader<PipelineState>::reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const {
-	if (auto shader = info.m_store->find<graphics::Shader>(info.m_data.shaderURI)) { out_ps = from(info.m_data); }
-	return {};
+	for (auto const& module : info.m_data.shader.modules) {
+		if (!info.m_store->find<graphics::SpirV>(module.uri)) { return false; }
+	}
+	out_ps = from(info.m_data);
+	return true;
 }
 
 PipelineState AssetLoader<PipelineState>::from(AssetLoadData<PipelineState> const& data) {
-	PipelineState ret = graphics::PipelineFactory::spec(data.shaderURI, data.flags);
+	PipelineState ret = graphics::PipelineFactory::spec(data.shader, data.flags);
 	ret.fixedState.mode = data.polygonMode;
 	ret.fixedState.lineWidth = data.lineWidth;
 	ret.fixedState.topology = data.topology;

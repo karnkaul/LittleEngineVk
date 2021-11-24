@@ -52,7 +52,7 @@ std::size_t AssetManifest::preload(dj::json const& root) {
 			if (auto uri = json->find_as<std::string>("uri")) { group.insert({std::move(*uri), json}); }
 		}
 		if (group.empty()) {
-			for (auto& uri : entries->as<std::vector<std::string>>()) { group.insert({std::move(uri), {}}); }
+			for (auto& uri : entries->as<std::vector<std::string>>()) { group.insert({std::move(uri), std::make_shared<dj::json>()}); }
 		}
 		if (!group.empty()) { ret += add(groupName, std::move(group)); }
 	}
@@ -144,10 +144,36 @@ std::size_t AssetManifest::addSamplers(Group group) {
 	return ret;
 }
 
+namespace {
+graphics::ShaderType parseShaderType(std::string_view str) noexcept {
+	if (str == "vert" || str == "vertex") {
+		return graphics::ShaderType::eVertex;
+	} else if (str == "comp" || str == "compute") {
+		return graphics::ShaderType::eCompute;
+	}
+	return graphics::ShaderType::eFragment;
+}
+
+graphics::ShaderType shaderTypeFromExt(io::Path const& extension) {
+	auto const ext = extension.string();
+	if (ext == ".vert") {
+		return graphics::ShaderType::eVertex;
+	} else if (ext == ".comp") {
+		return graphics::ShaderType::eCompute;
+	}
+	return graphics::ShaderType::eFragment;
+}
+} // namespace
+
 std::size_t AssetManifest::addSpirV(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		AssetLoadData<graphics::SpirV> data;
+		if (auto type = json->get_as<std::string>("type"); !type.empty()) {
+			data.type = parseShaderType(json->get_as<std::string>("type"));
+		} else {
+			data.type = shaderTypeFromExt(uri.extension());
+		}
 		data.uri = uri;
 		m_spirV.add(std::move(uri), std::move(data));
 		++ret;
@@ -177,24 +203,13 @@ std::size_t AssetManifest::addTextures(Group group) {
 	return ret;
 }
 
-static graphics::ShaderType parseShaderType(std::string_view str) noexcept {
-	if (str == "vert" || str == "vertex") {
-		return graphics::ShaderType::eVertex;
-	} else if (str == "comp" || str == "compute") {
-		return graphics::ShaderType::eCompute;
-	}
-	return graphics::ShaderType::eFragment;
-}
-
 std::size_t AssetManifest::addPipelineStates(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		if (auto shaders = json->find("shaders"); shaders && shaders->is_array()) {
 			AssetLoadData<PipelineState> data;
 			for (auto const& uri : shaders->as<dj::vec_t>()) {
-				if (uri->contains("type") && uri->contains("uri")) {
-					data.shader.modules.push_back({parseShaderType(uri->get_as<std::string>("type")), uri->get_as<std::string>("uri")});
-				}
+				if (uri->is_string()) { data.shader.moduleURIs.push_back(uri->as<std::string>()); }
 			}
 			data.lineWidth = json->get_as("line_width", 1.0f);
 			if (auto flags = json->find_as<std::vector<std::string>>("flags")) { data.flags = parseFlags(*flags); }

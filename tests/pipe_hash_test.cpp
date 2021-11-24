@@ -21,8 +21,8 @@ TEST(blank) {
 
 TEST(shader) {
 	ShaderSpec ss;
-	ss.modules.push_back(ShaderSpec::Module{ShaderType::eVertex, "shader.vert"});
-	ss.modules.push_back(ShaderSpec::Module{ShaderType::eFragment, "shader.frag"});
+	ss.moduleURIs.push_back("shader.vert");
+	ss.moduleURIs.push_back("shader.frag");
 	EXPECT_NE(hash(ss), std::size_t(0));
 	auto copy = ss;
 	EXPECT_EQ(hash(ss), hash(copy));
@@ -81,7 +81,7 @@ TEST(vertex_input) {
 TEST(pipe_hash) {
 	PipelineSpec ps;
 	ps.vertexInput = build();
-	ps.shader.modules.push_back({ShaderType::eVertex, "shader.vert"});
+	ps.shader.moduleURIs.push_back("shader.vert");
 	ps.fixedState.flags = PFlags(PFlag::eAlphaBlend, PFlag::eDepthTest, PFlag::eDepthWrite);
 	ps.fixedState.dynamicStates = {std::begin(FixedStateSpec::required_states_v), std::end(FixedStateSpec::required_states_v)};
 	EXPECT_NE(hash(ps), PipelineSpec::default_hash_v);

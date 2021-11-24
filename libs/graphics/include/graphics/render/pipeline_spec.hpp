@@ -5,8 +5,6 @@
 #include <graphics/render/vertex_input.hpp>
 
 namespace le::graphics {
-using SpirV = std::vector<u32>;
-
 enum class ShaderType { eVertex, eFragment, eCompute, eCOUNT_ };
 constexpr EnumArray<ShaderType, vk::ShaderStageFlagBits> g_shaderStages = {
 	vk::ShaderStageFlagBits::eVertex,
@@ -14,17 +12,13 @@ constexpr EnumArray<ShaderType, vk::ShaderStageFlagBits> g_shaderStages = {
 	vk::ShaderStageFlagBits::eCompute,
 };
 
+struct SpirV {
+	std::vector<u32> spirV;
+	ShaderType type = ShaderType::eFragment;
+};
+
 struct ShaderSpec {
-	template <typename T>
-	using Map = EnumArray<ShaderType, T>;
-	using ModMap = Map<vk::ShaderModule>;
-
-	struct Module {
-		ShaderType type = ShaderType::eVertex;
-		Hash uri;
-	};
-
-	ktl::fixed_vector<Module, 4> modules;
+	ktl::fixed_vector<Hash, 4> moduleURIs;
 };
 
 struct FixedStateSpec {

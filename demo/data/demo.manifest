@@ -14,14 +14,8 @@
 		{
 			"uri": "pipelines/basic",
 			"shaders": [
-				{
-					"uri": "shaders/basic.vert",
-					"type": "vertex"
-				},
-				{
-					"uri": "shaders/basic.frag",
-					"type": "fragment"
-				}
+				"shaders/basic.vert",
+				"shaders/basic.frag"
 			],
 			"flags": [
 				"all"
@@ -30,14 +24,8 @@
 		{
 			"uri": "pipelines/wireframe",
 			"shaders": [
-				{
-					"uri": "shaders/basic.vert",
-					"type": "vertex"
-				},
-				{
-					"uri": "shaders/basic.frag",
-					"type": "fragment"
-				}
+				"shaders/basic.vert",
+				"shaders/basic.frag"
 			],
 			"line_width": 3,
 			"topology": "line_list"
@@ -45,14 +33,8 @@
 		{
 			"uri": "pipelines/tex",
 			"shaders": [
-				{
-					"uri": "shaders/basic.vert",
-					"type": "vertex"
-				},
-				{
-					"uri": "shaders/tex.frag",
-					"type": "fragment"
-				}
+				"shaders/basic.vert",
+				"shaders/tex.frag"
 			],
 			"flags": [
 				"all"
@@ -61,14 +43,8 @@
 		{
 			"uri": "pipelines/lit",
 			"shaders": [
-				{
-					"uri": "shaders/lit.vert",
-					"type": "vertex"
-				},
-				{
-					"uri": "shaders/lit.frag",
-					"type": "fragment"
-				}
+				"shaders/lit.vert",
+				"shaders/lit.frag"
 			],
 			"shader": "shaders/lit",
 			"flags": [
@@ -78,14 +54,8 @@
 		{
 			"uri": "pipelines/ui",
 			"shaders": [
-				{
-					"uri": "shaders/ui.vert",
-					"type": "vertex"
-				},
-				{
-					"uri": "shaders/ui.frag",
-					"type": "fragment"
-				}
+				"shaders/ui.vert",
+				"shaders/ui.frag"
 			],
 			"flags": [
 				"alpha_blend"
@@ -94,14 +64,8 @@
 		{
 			"uri": "pipelines/skybox",
 			"shaders": [
-				{
-					"uri": "shaders/skybox.vert",
-					"type": "vertex"
-				},
-				{
-					"uri": "shaders/skybox.frag",
-					"type": "fragment"
-				}
+				"shaders/skybox.vert",
+				"shaders/skybox.frag"
 			]
 		}
 	],

@@ -12,6 +12,7 @@ namespace le {
 template <>
 struct AssetLoadData<graphics::SpirV> {
 	io::Path uri;
+	graphics::ShaderType type = graphics::ShaderType::eFragment;
 };
 
 template <>

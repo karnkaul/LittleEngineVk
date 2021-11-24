@@ -1,4 +1,5 @@
 #pragma once
+#include <core/hash.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/render/pipeline_spec.hpp>
 #include <graphics/utils/deferred.hpp>

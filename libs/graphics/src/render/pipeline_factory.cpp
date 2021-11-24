@@ -13,7 +13,7 @@ std::size_t PipelineFactory::Hasher::operator()(Spec const& spec) const {
 
 PipelineFactory::Spec PipelineFactory::spec(ShaderSpec shader, PFlags flags, VertexInputInfo vertexInput) {
 	Spec ret;
-	EXPECT(!shader.modules.empty());
+	EXPECT(!shader.moduleURIs.empty());
 	ret.shader = shader;
 	ret.fixedState.flags = flags;
 	ret.vertexInput = vertexInput.bindings.empty() ? VertexInfoFactory<Vertex>{}(0) : std::move(vertexInput);
@@ -22,8 +22,8 @@ PipelineFactory::Spec PipelineFactory::spec(ShaderSpec shader, PFlags flags, Ver
 
 vk::UniqueShaderModule PipelineFactory::makeModule(vk::Device device, SpirV const& spirV) {
 	vk::ShaderModuleCreateInfo createInfo;
-	createInfo.codeSize = spirV.size() * sizeof(SpirV::value_type);
-	createInfo.pCode = spirV.data();
+	createInfo.codeSize = spirV.spirV.size() * sizeof(u32);
+	createInfo.pCode = spirV.spirV.data();
 	return device.createShaderModuleUnique(createInfo);
 }
 
@@ -33,7 +33,7 @@ PipelineFactory::PipelineFactory(not_null<VRAM*> vram, GetSpirV&& getSpirV, Buff
 }
 
 Pipeline PipelineFactory::get(Spec const& spec, vk::RenderPass renderPass) {
-	EXPECT(!spec.shader.modules.empty());
+	EXPECT(!spec.shader.moduleURIs.empty());
 	EXPECT(!Device::default_v(renderPass));
 	EXPECT(!spec.vertexInput.bindings.empty() && !spec.vertexInput.attributes.empty());
 	auto const specHash = spec.hash();
@@ -68,8 +68,8 @@ PipelineSpec const* PipelineFactory::find(Hash spec) const {
 std::size_t PipelineFactory::markStale(Hash shaderURI) {
 	std::size_t ret{};
 	for (auto& [_, specMap] : m_storage) {
-		for (auto const& mod : specMap.spec.shader.modules) {
-			if (mod.uri == shaderURI) {
+		for (Hash const uri : specMap.spec.shader.moduleURIs) {
+			if (uri == shaderURI) {
 				specMap.map.clear();						  // destroy pipelines
 				specMap.meta = makeMeta(specMap.spec.shader); // recreate shader
 				++ret;
@@ -90,23 +90,24 @@ void PipelineFactory::clear(Hash spec) noexcept {
 }
 
 std::optional<PipelineFactory::Pipe> PipelineFactory::makePipe(SpecMap const& spec, vk::RenderPass renderPass) const {
-	// auto const& shader = m_getShader(spec.spec.shaderURI);
-	// EXPECT(utils::hasActiveModule(shader.m_modules));
-	// if (!utils::hasActiveModule(shader.m_modules)) { return std::nullopt; }
 	Pipe ret;
 	ret.layout = spec.meta.layout;
 	utils::PipeData data;
 	data.renderPass = renderPass;
 	data.layout = spec.meta.layout;
 	ktl::fixed_vector<vk::UniqueShaderModule, 4> modules;
-	ShaderSpec::ModMap modMap;
-	for (auto const module : spec.spec.shader.modules) {
-		modules.push_back(makeModule(m_vram->m_device->device(), m_getSpirV(module.uri)));
-		modMap[module.type] = *modules.back();
+	ktl::fixed_vector<utils::ShaderModule, 4> sm;
+	for (auto const uri : spec.spec.shader.moduleURIs) {
+		auto const spirV = m_getSpirV(uri);
+		EXPECT(!spirV.spirV.empty());
+		if (!spirV.spirV.empty()) {
+			modules.push_back(makeModule(m_vram->m_device->device(), spirV));
+			sm.push_back({*modules.back(), spirV.type});
+		}
 	}
 	// TODO
 	// in.cache = m_pipelineCache;
-	if (auto p = utils::makeGraphicsPipeline(*m_vram->m_device, modMap, spec.spec, data)) {
+	if (auto p = utils::makeGraphicsPipeline(*m_vram->m_device, sm, spec.spec, data)) {
 		ret.pipeline = Deferred<vk::Pipeline>{m_vram->m_device, *p};
 		ret.input = ShaderInput(m_vram, spec.meta.spd);
 		return ret;
@@ -115,14 +116,15 @@ std::optional<PipelineFactory::Pipe> PipelineFactory::makePipe(SpecMap const& sp
 }
 
 PipelineFactory::Meta PipelineFactory::makeMeta(ShaderSpec const& shader) const {
-	ShaderSpec::Map<SpirV> spirV;
-	for (auto const& mod : shader.modules) {
-		spirV[mod.type] = m_getSpirV(mod.uri);
-		EXPECT(!spirV[mod.type].empty());
+	ktl::fixed_vector<SpirV, 4> spirV;
+	for (auto const& mod : shader.moduleURIs) {
+		auto spV = m_getSpirV(mod);
+		EXPECT(!spV.spirV.empty());
+		if (!spV.spirV.empty()) { spirV.push_back(std::move(spV)); }
 	}
 	Meta ret;
 	ret.spd.buffering = m_buffering;
-	auto setBindings = utils::extractBindings(std::move(spirV));
+	auto setBindings = utils::extractBindings(spirV);
 	std::vector<vk::DescriptorSetLayout> layouts;
 	for (auto& [set, binds] : setBindings.sets) {
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;

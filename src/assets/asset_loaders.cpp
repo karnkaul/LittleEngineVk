@@ -77,21 +77,22 @@ bool AssetLoader<graphics::SpirV>::load(graphics::SpirV& out_code, AssetLoadInfo
 	}
 	auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eReload);
 	if (!res) { return false; }
-	out_code = graphics::SpirV(res->bytes().size() / 4);
-	std::memcpy(out_code.data(), res->bytes().data(), res->bytes().size());
+	out_code.spirV = std::vector<u32>(res->bytes().size() / 4);
+	out_code.type = info.m_data.type;
+	std::memcpy(out_code.spirV.data(), res->bytes().data(), res->bytes().size());
 	return true;
 }
 
 std::unique_ptr<PipelineState> AssetLoader<PipelineState>::load(AssetLoadInfo<PipelineState> const& info) const {
-	for (auto const& module : info.m_data.shader.modules) {
-		if (!info.m_store->find<graphics::SpirV>(module.uri)) { return {}; }
+	for (Hash const uri : info.m_data.shader.moduleURIs) {
+		if (!info.m_store->find<graphics::SpirV>(uri)) { return {}; }
 	}
 	return std::make_unique<PipelineState>(from(info.m_data));
 }
 
 bool AssetLoader<PipelineState>::reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const {
-	for (auto const& module : info.m_data.shader.modules) {
-		if (!info.m_store->find<graphics::SpirV>(module.uri)) { return false; }
+	for (Hash const uri : info.m_data.shader.moduleURIs) {
+		if (!info.m_store->find<graphics::SpirV>(uri)) { return false; }
 	}
 	out_ps = from(info.m_data);
 	return true;

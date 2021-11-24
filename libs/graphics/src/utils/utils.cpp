@@ -102,15 +102,18 @@ void extractPush(Extractee ext, Push& out_push, vk::ShaderStageFlagBits stage) {
 }
 } // namespace
 
-ShaderSpec::Map<ShaderResources> utils::shaderResources(ShaderSpec::Map<SpirV> spirV) {
-	ShaderSpec::Map<ShaderResources> ret;
-	for (std::size_t idx = 0; idx < arraySize(spirV.arr); ++idx) {
-		auto spV = spirV.arr[idx];
-		if (!spV.empty()) {
-			auto& res = ret.arr[idx];
-			res.compiler = std::make_unique<spvc::Compiler>(std::move(spV));
+ktl::fixed_vector<ShaderResources, 4> utils::shaderResources(Span<SpirV> modules) {
+	ktl::fixed_vector<ShaderResources, 4> ret;
+	for (auto& module : modules) {
+		if (!module.spirV.empty()) {
+			ShaderResources res;
+			res.compiler = std::make_unique<spvc::Compiler>(std::move(module.spirV));
 			res.resources = res.compiler->get_shader_resources();
+			res.type = module.type;
+			ret.push_back(std::move(res));
 		}
+		EXPECT(ret.has_space());
+		if (!ret.has_space()) { break; }
 	}
 	return ret;
 }
@@ -133,17 +136,16 @@ std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& 
 	return d;
 }
 
-utils::SetBindings utils::extractBindings(ShaderSpec::Map<SpirV> spirV) {
+utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 	SetBindings ret;
 	Sets sets;
-	for (std::size_t idx = 0; idx < arraySize(spirV.arr); ++idx) {
-		auto spV = spirV.arr[idx];
-		if (!spV.empty()) {
-			spvc::Compiler compiler(std::move(spV));
+	for (auto const& module : modules) {
+		if (!module.spirV.empty()) {
+			spvc::Compiler compiler(std::move(module.spirV));
 			auto const resources = compiler.get_shader_resources();
-			auto const type = g_shaderStages[ShaderType(idx)];
-			extractBindings({compiler, resources}, sets, type);
-			extractPush({compiler, resources}, ret.push, type);
+			auto const stage = g_shaderStages[module.type];
+			extractBindings({compiler, resources}, sets, stage);
+			extractPush({compiler, resources}, ret.push, stage);
 		}
 	}
 	for (u32 set = 0; set < (u32)sets.size(); ++set) {
@@ -218,15 +220,15 @@ void setStates(RasterizerState& rs, BlendState& bs, DepthState& ds, PFlags flags
 }
 } // namespace
 
-bool utils::hasActiveModule(ShaderSpec::ModMap const& modules) noexcept {
-	return std::any_of(std::begin(modules.arr), std::end(modules.arr), [](vk::ShaderModule const& m) -> bool { return !Device::default_v(m); });
+bool utils::hasActiveModule(Span<ShaderModule const> modules) noexcept {
+	return !modules.empty() && std::any_of(std::begin(modules), std::end(modules), [](ShaderModule m) { return !Device::default_v(m.module); });
 }
 
-std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, ShaderSpec::ModMap const& sh, PipelineSpec const& sp, PipeData const& data) {
-	EXPECT(hasActiveModule(sh));
+std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, Span<ShaderModule const> sm, PipelineSpec const& sp, PipeData const& data) {
+	EXPECT(hasActiveModule(sm));
 	EXPECT(!Device::default_v(data.renderPass) && !Device::default_v(data.layout));
 	EXPECT(!sp.vertexInput.bindings.empty());
-	if (Device::default_v(data.renderPass) || Device::default_v(data.layout) || !hasActiveModule(sh) || sp.vertexInput.bindings.empty()) {
+	if (Device::default_v(data.renderPass) || Device::default_v(data.layout) || !hasActiveModule(sm) || sp.vertexInput.bindings.empty()) {
 		return std::nullopt;
 	}
 	vk::PipelineVertexInputStateCreateInfo vertexInputState;
@@ -284,15 +286,12 @@ std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, ShaderSpec::
 			vk::ShaderStageFlagBits::eFragment,
 			vk::ShaderStageFlagBits::eCompute,
 		};
-		for (std::size_t idx = 0; idx < arraySize(sh.arr); ++idx) {
-			vk::ShaderModule const& module = sh.arr[idx];
-			if (!Device::default_v(module)) {
-				vk::PipelineShaderStageCreateInfo createInfo;
-				createInfo.stage = flag.arr[idx];
-				createInfo.module = module;
-				createInfo.pName = "main";
-				shaderCreateInfo.push_back(std::move(createInfo));
-			}
+		for (auto const module : sm) {
+			vk::PipelineShaderStageCreateInfo createInfo;
+			createInfo.stage = flag[module.type];
+			createInfo.module = module.module;
+			createInfo.pName = "main";
+			shaderCreateInfo.push_back(std::move(createInfo));
 		}
 	}
 	vk::PipelineMultisampleStateCreateInfo multisamplerState;
@@ -397,7 +396,7 @@ utils::HashGen& utils::operator<<(HashGen& out, VertexInputInfo const& vi) {
 }
 
 utils::HashGen& utils::operator<<(HashGen& out, ShaderSpec const& ss) {
-	for (auto const& module : ss.modules) { out << module.uri; }
+	for (Hash const uri : ss.moduleURIs) { out << uri; }
 	return out;
 }
 

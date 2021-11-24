@@ -18,6 +18,7 @@ namespace le::graphics {
 struct ShaderResources {
 	spirv_cross::ShaderResources resources;
 	std::unique_ptr<spirv_cross::Compiler> compiler;
+	ShaderType type{};
 };
 
 template <>
@@ -47,6 +48,11 @@ struct SetBindings {
 	std::vector<vk::PushConstantRange> push;
 };
 
+struct ShaderModule {
+	vk::ShaderModule module;
+	ShaderType type{};
+};
+
 struct PipeData {
 	vk::PipelineLayout layout;
 	vk::RenderPass renderPass;
@@ -66,12 +72,12 @@ constexpr utils::HashGen& operator<<(utils::HashGen& out, T const next);
 
 inline std::string_view g_compiler = "glslc";
 
-ShaderSpec::Map<ShaderResources> shaderResources(ShaderSpec::Map<SpirV> spirV);
+ktl::fixed_vector<ShaderResources, 4> shaderResources(Span<SpirV> modules);
 io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
 std::optional<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
-SetBindings extractBindings(ShaderSpec::Map<SpirV> spirV);
-bool hasActiveModule(ShaderSpec::ModMap const& modules) noexcept;
-std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, ShaderSpec::ModMap const& sh, PipelineSpec const& sp, PipeData const& data);
+SetBindings extractBindings(Span<SpirV> modules);
+bool hasActiveModule(Span<ShaderModule const> modules) noexcept;
+std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Span<ShaderModule const> sm, PipelineSpec const& sp, PipeData const& data);
 
 Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);
 Bitmap bitmap(Span<Colour const> pixels, u32 width, u32 height = 0);

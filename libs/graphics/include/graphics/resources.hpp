@@ -34,9 +34,9 @@ class Resource {
 
 	struct Data {
 		Alloc alloc;
-		VmaAllocation handle;
+		VmaAllocation handle{};
 		QFlags queueFlags;
-		vk::SharingMode mode;
+		vk::SharingMode mode{};
 	};
 
 	Resource(not_null<Memory*> memory) : m_memory(memory) {}
@@ -138,7 +138,7 @@ class Buffer : public Resource {
 		vk::DeviceSize writeSize = {};
 		std::size_t writeCount = 0;
 		vk::BufferUsageFlags usage;
-		Type type;
+		Type type{};
 		void* pMap = nullptr;
 	};
 	Storage m_storage;
@@ -183,7 +183,7 @@ class Image : public Resource {
 		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
 		vk::ImageUsageFlags usage;
-		vk::ImageLayout layout;
+		vk::ImageLayout layout{};
 		u32 layerCount = 1;
 	};
 	Storage m_storage;
@@ -207,7 +207,7 @@ struct Buffer::CreateInfo : ResourceCreateInfo {
 struct Image::CreateInfo final : ResourceCreateInfo {
 	vk::ImageCreateInfo createInfo;
 	struct {
-		vk::Format format;
+		vk::Format format{};
 		vk::ImageAspectFlags aspects;
 		vk::ImageViewType type = vk::ImageViewType::e2D;
 	} view;

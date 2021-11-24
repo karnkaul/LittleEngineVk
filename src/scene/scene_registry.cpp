@@ -32,12 +32,12 @@ SceneRegistry::SceneRegistry() {
 	tick.attach<SceneCleanSystem>(SceneCleanSystem::order_v);
 }
 
-void SceneRegistry::attach(dens::entity entity, DrawLayer layer, PropProvider provider) {
-	m_registry.attach<DrawLayer>(entity, layer);
+void SceneRegistry::attach(dens::entity entity, DrawGroup group, PropProvider provider) {
+	m_registry.attach<DrawGroup>(entity, group);
 	m_registry.attach<PropProvider>(entity, provider);
 }
 
-void SceneRegistry::attach(dens::entity entity, DrawLayer layer) { m_registry.attach<DrawLayer>(entity, layer); }
+void SceneRegistry::attach(dens::entity entity, DrawGroup group) { m_registry.attach<DrawGroup>(entity, group); }
 
 dens::entity SceneRegistry::spawnNode(std::string name) {
 	auto ret = makeNode(m_registry, std::move(name));
@@ -46,19 +46,19 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnProp(std::string name, Hash layerID, PropProvider provider) {
+dens::entity SceneRegistry::spawnProp(std::string name, Hash groupURI, PropProvider provider) {
 	auto ret = spawnNode(std::move(name));
-	attach(ret, layer(layerID), provider);
+	attach(ret, drawGroup(groupURI), provider);
 	return ret;
 };
 
-dens::entity SceneRegistry::spawnMesh(std::string name, Hash meshID, Hash layerID, Material material) {
-	return spawnProp(std::move(name), layerID, PropProvider(meshID, material));
+dens::entity SceneRegistry::spawnMesh(std::string name, Hash meshURI, Hash groupURI, Material material) {
+	return spawnProp(std::move(name), groupURI, PropProvider(meshURI, material));
 }
 
-DrawLayer SceneRegistry::layer(Hash id) const {
+DrawGroup SceneRegistry::drawGroup(Hash id) const {
 	if (auto store = Services::find<AssetStore>()) {
-		if (auto layer = store->find<DrawLayer>(id)) { return *layer; }
+		if (auto group = store->find<DrawGroup>(id)) { return *group; }
 	}
 	return {};
 }

@@ -8,17 +8,17 @@
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/descriptor_set.hpp>
-#include <graphics/render/pipeline.hpp>
-#include <graphics/shader.hpp>
+#include <graphics/render/pipeline_spec.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <spirv_cross.hpp>
 #include <map>
 
 namespace le::graphics {
-struct Shader::Resources {
+struct ShaderResources {
 	spirv_cross::ShaderResources resources;
 	std::unique_ptr<spirv_cross::Compiler> compiler;
+	ShaderType type{};
 };
 
 template <>
@@ -37,18 +37,47 @@ class STBImg : public TBitmap<Span<u8>> {
 	static void exchg(STBImg& lhs, STBImg& rhs) noexcept;
 };
 
+struct BindingInfo {
+	vk::DescriptorSetLayoutBinding binding;
+	std::string name;
+};
+
 using set_t = u32;
 struct SetBindings {
 	std::map<set_t, ktl::fixed_vector<BindingInfo, 16>> sets;
 	std::vector<vk::PushConstantRange> push;
 };
 
+struct ShaderModule {
+	vk::ShaderModule module;
+	ShaderType type{};
+};
+
+struct PipeData {
+	vk::PipelineLayout layout;
+	vk::RenderPass renderPass;
+	vk::PipelineCache cache;
+};
+
+struct HashGen {
+	std::size_t hash{};
+	std::uint8_t offset{};
+
+	constexpr operator std::size_t() const noexcept { return hash; }
+};
+
+template <typename T>
+	requires(std::is_convertible_v<T, std::size_t> || std::is_enum_v<T>)
+constexpr utils::HashGen& operator<<(utils::HashGen& out, T const next);
+
 inline std::string_view g_compiler = "glslc";
 
-Shader::ResourcesMap shaderResources(Shader const& shader);
+ktl::fixed_vector<ShaderResources, 4> shaderResources(Span<SpirV> modules);
 io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
 std::optional<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
-SetBindings extractBindings(Shader const& shader);
+SetBindings extractBindings(Span<SpirV> modules);
+bool hasActiveModule(Span<ShaderModule const> modules) noexcept;
+std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Span<ShaderModule const> sm, PipelineSpec const& sp, PipeData const& data);
 
 Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);
 Bitmap bitmap(Span<Colour const> pixels, u32 width, u32 height = 0);
@@ -56,14 +85,19 @@ void append(BmpBytes& out, Colour pixel);
 void append(BmpBytes& out, Span<std::byte const> bytes);
 BmpBytes bmpBytes(Span<std::byte const> bytes);
 
-using CubeImageIDs = std::array<std::string_view, 6>;
-constexpr CubeImageIDs cubeImageIDs = {"right", "left", "up", "down", "front", "back"};
-std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageIDs const& ids = cubeImageIDs);
+using CubeImageURIs = std::array<std::string_view, 6>;
+constexpr CubeImageURIs cubeImageURIs = {"right", "left", "up", "down", "front", "back"};
+std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageURIs const& ids = cubeImageURIs);
 
 std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface);
 
 constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;
 constexpr vk::Rect2D scissor(DrawScissor const& scissor) noexcept;
+
+HashGen& operator<<(HashGen& out, VertexInputInfo const& vi);
+HashGen& operator<<(HashGen& out, ShaderSpec const& ss);
+HashGen& operator<<(HashGen& out, FixedStateSpec const& fs);
+HashGen& operator<<(HashGen& out, PipelineSpec const& ps);
 } // namespace utils
 
 // impl
@@ -90,4 +124,14 @@ constexpr vk::Rect2D utils::scissor(DrawScissor const& scissor) noexcept {
 	ret.extent.height = std::max(0U, (u32)size.y);
 	return ret;
 }
+
+namespace utils {
+template <typename T>
+	requires(std::is_convertible_v<T, std::size_t> || std::is_enum_v<T>)
+constexpr utils::HashGen& operator<<(utils::HashGen& out, T const next) {
+	out.hash ^= (static_cast<std::size_t>(next) << out.offset++);
+	if (out.offset >= sizeof(std::size_t)) { out.offset = 0; }
+	return out;
+}
+} // namespace utils
 } // namespace le::graphics

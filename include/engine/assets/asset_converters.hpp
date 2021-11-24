@@ -5,7 +5,7 @@
 
 namespace le {
 struct BitmapFontInfo {
-	io::Path atlasID;
+	io::Path atlasURI;
 	std::vector<graphics::Glyph> glyphs;
 	u32 sizePt{};
 };

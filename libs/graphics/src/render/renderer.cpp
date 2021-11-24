@@ -169,17 +169,12 @@ Deferred<vk::RenderPass> Renderer::makeRenderPass(Transition transition, vk::For
 	return makeRenderPass(*m_vram->m_device, ac, ad, deps);
 }
 
-Renderer::Record Renderer::render(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
-	for (auto& cmd : m_cmds.get()) {
-		m_vram->m_device->resetCommandPool(cmd.pool);
-		cmd.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-	}
-	doRender(out_drawer, acquired, rb);
+Renderer::Record Renderer::render(IDrawer& out_drawer, PipelineFactory& pf, RenderImage const& acquired, RenderBegin const& rb) {
+	out_drawer.beginFrame();
+	for (auto& cmd : m_cmds.get()) { m_vram->m_device->resetCommandPool(cmd.pool); }
+	doRender(out_drawer, pf, acquired, rb);
 	Record ret;
-	for (auto& cmd : m_cmds.get()) {
-		cmd.cb.end();
-		ret.push_back(cmd.cb.m_cb);
-	}
+	for (auto& cmd : m_cmds.get()) { ret.push_back(cmd.cb.m_cb); }
 	next();
 	return ret;
 }
@@ -194,7 +189,7 @@ bool Renderer::renderScale(f32 rs) noexcept {
 	return false;
 }
 
-void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, RenderBegin const& rb) {
+void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderImage const& acquired, RenderBegin const& rb) {
 	auto& cmd = m_cmds.get().front();
 	Extent2D extent = acquired.extent;
 	RenderImage colour = acquired;
@@ -206,6 +201,8 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 	auto& depth = m_depthImage.refresh(extent, m_surfaceFormat.depth);
 	vk::ImageView const views[] = {colour.view, depth.view()};
 	auto fb = makeFramebuffer(m_singleRenderPass, views, extent);
+	out_drawer.beginPass(pf, m_singleRenderPass);
+	cmd.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 	auto const cc = rb.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
 	graphics::CommandBuffer::PassInfo const passInfo{{clear, rb.depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
@@ -226,6 +223,7 @@ void Renderer::doRender(IDrawer& out_drawer, RenderImage const& acquired, Render
 		}
 		m_vram->m_device->m_layouts.transition<lt::TransferPresent>(cmd.cb, acquired.image);
 	}
+	cmd.cb.end();
 }
 
 void Renderer::next() { m_cmds.next(); }

@@ -48,10 +48,10 @@ class Resources {
 	io::Media const& media() const;
 	io::FSMedia& fsMedia();
 
-	Resource const* find(Hash id) const noexcept;
+	Resource const* find(Hash uri) const noexcept;
 	Resource const* load(io::Path uri, Resource::Type type, Flags flags = {});
 	Resource const* loadFirst(Span<io::Path> uris, Resource::Type type, Flags flags = {});
-	bool loaded(Hash id) const noexcept;
+	bool loaded(Hash uri) const noexcept;
 
 	void update();
 	void clear();

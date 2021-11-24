@@ -27,7 +27,7 @@ graphics::Glyph Jsonify<graphics::Glyph>::operator()(dj::json const& json) const
 
 dj::json Jsonify<BitmapFontInfo>::operator()(BitmapFontInfo const& info) const {
 	dj::json ret;
-	insert(ret, "sheetID", info.atlasID.generic_string());
+	insert(ret, "sheetID", info.atlasURI.generic_string());
 	insert(ret, "size", info.sizePt);
 	dj::json glyphs;
 	for (auto const& glyph : info.glyphs) {
@@ -39,7 +39,7 @@ dj::json Jsonify<BitmapFontInfo>::operator()(BitmapFontInfo const& info) const {
 
 BitmapFontInfo Jsonify<BitmapFontInfo>::operator()(dj::json const& json) const {
 	BitmapFontInfo ret;
-	ret.atlasID = json.get_as<std::string>("sheetID");
+	ret.atlasURI = json.get_as<std::string>("sheetID");
 	set(ret.sizePt, json.get("size"));
 	for (auto const& [codepoint, glyph] : json.get_as<dj::map_t>("glyphs")) {
 		if (codepoint.size() == 1) {

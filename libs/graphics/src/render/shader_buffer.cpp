@@ -17,12 +17,15 @@ ShaderBuffer const& ShaderBuffer::update(DescriptorSet& out_set, u32 binding) co
 	ENSURE(valid(), "Invalid ShaderBuffer instance");
 	ENSURE(!m_storage.buffers.empty() && m_storage.elemSize > 0, "Empty buffer!");
 	if (m_storage.buffers.size() > 1) {
-		std::vector<Ref<Buffer const>> vec;
-		vec.reserve(m_storage.buffers.size());
-		for (RingBuffer<Buffer> const& rb : m_storage.buffers) { vec.push_back(rb.get()); }
-		out_set.update(binding, vec, m_storage.type);
+		std::vector<DescriptorSet::Buf> bufs;
+		bufs.reserve(m_storage.buffers.size());
+		for (RingBuffer<Buffer> const& rb : m_storage.buffers) {
+			auto const& buf = rb.get();
+			bufs.push_back({buf.buffer(), buf.writeSize()});
+		}
+		out_set.updateBuffers(binding, bufs);
 	} else {
-		out_set.update(binding, m_storage.buffers.front().get(), m_storage.type);
+		out_set.update(binding, m_storage.buffers.front().get());
 	}
 	return *this;
 }

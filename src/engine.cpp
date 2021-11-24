@@ -49,6 +49,13 @@ bool save(utils::EngineConfig const& config, io::Path const& path) {
 graphics::Bootstrap::MakeSurface makeSurface(window::Instance const& winst) {
 	return [&winst](vk::Instance vkinst) { return window::makeSurface(vkinst, winst); };
 }
+
+graphics::RenderContext::GetSpirV getShader(AssetStore const& store) {
+	return [&store](Hash uri) {
+		ENSURE(store.exists<graphics::SpirV>(uri), "Shader doesn't exist");
+		return *store.find<graphics::SpirV>(uri);
+	};
+}
 } // namespace
 
 struct Engine::Impl {
@@ -70,8 +77,8 @@ struct Engine::Impl {
 	Impl(std::optional<io::Path> logPath) : io(logPath.value_or(io::Path())) {}
 };
 
-Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, std::optional<VSync> vsync)
-	: boot(bci, makeSurface(*winst)), context(&boot.vram, vsync, winst->framebufferSize()) {}
+Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, AssetStore const& store, std::optional<VSync> vsync)
+	: boot(bci, makeSurface(*winst)), context(&boot.vram, getShader(store), vsync, winst->framebufferSize()) {}
 
 Version Engine::version() noexcept { return g_engineVersion; }
 
@@ -137,7 +144,7 @@ void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	unboot();
 	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
 	if (auto gpuOverride = DataObject<CustomDevice>("gpuOverride")) { info.device.customDeviceName = gpuOverride->name; }
-	m_impl->gfx.emplace(&*m_impl->win, info, vsync);
+	m_impl->gfx.emplace(&*m_impl->win, info, m_impl->store, vsync);
 	auto const& surface = m_impl->gfx->context.surface();
 	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);

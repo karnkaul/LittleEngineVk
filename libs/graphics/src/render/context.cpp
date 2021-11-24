@@ -33,6 +33,17 @@ std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format
 }
 } // namespace
 
+VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
+	QuickVertexInput qvi;
+	qvi.binding = binding;
+	qvi.size = sizeof(Vertex);
+	qvi.attributes = {{vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
+					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, colour)},
+					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)},
+					  {vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
+	return RenderContext::vertexInput(qvi);
+}
+
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
 	u32 bindDelta = 0, locationDelta = 0;
@@ -74,8 +85,9 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, Extent2D fbSize, Buffering buffering)
-	: m_surface(vram, fbSize, vsync), m_vram(vram), m_renderer(makeRenderer(m_vram, m_surface.format(), buffering)), m_buffering(buffering) {
+RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
+	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_vram(vram), m_renderer(makeRenderer(m_vram, m_surface.format(), bf)),
+	  m_buffering(bf) {
 	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
@@ -83,13 +95,6 @@ RenderContext::RenderContext(not_null<VRAM*> vram, std::optional<VSync> vsync, E
 }
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
-
-Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
-	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_renderer->renderPass(); }
-	info.buffering = m_buffering;
-	info.cache = m_pipelineCache;
-	return Pipeline(m_vram, shader, std::move(info), id);
-}
 
 void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
 
@@ -99,7 +104,7 @@ bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D 
 	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
 		m_vram->m_device->resetFence(sync.drawn);
-		auto cmds = m_renderer->render(out_drawer, acquired->image, rb);
+		auto cmds = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
 		ret = submit(cmds, *acquired, fbSize);
 	}
 	m_syncs.next();

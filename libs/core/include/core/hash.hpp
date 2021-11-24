@@ -27,10 +27,16 @@ struct Hash final {
 	constexpr bool operator==(Hash const&) const = default;
 
 	///
+	/// \brief Copy hash directly
+	///
+	constexpr Hash(std::size_t hash) noexcept : hash(hash) {}
+	///
 	/// \brief Handled types: char const*, std::string, io::Path
 	///
 	template <typename T>
-	Hash(T const& t) noexcept : hash(compute(t)) {}
+		requires(!std::is_same_v<std::decay_t<T>, Hash>)
+	Hash(T const& t)
+	noexcept : hash(compute(t)) {}
 	///
 	/// \brief Handled types: string literals
 	///

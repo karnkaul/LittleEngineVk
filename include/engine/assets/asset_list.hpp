@@ -56,13 +56,12 @@ class AssetListLoader {
 	template <typename T>
 	void load_(AssetList<T> list) const;
 
-	AssetStore& store() const { return m_store ? *m_store : *(m_store = Services::get<AssetStore>()); }
+	AssetStore& store() const { return *Services::get<AssetStore>(); }
 	template <typename T>
 	bool skip(io::Path const& uri) const noexcept {
 		return store().exists<T>(uri) && !m_flags.test(Flag::eOverwrite);
 	}
 
-	mutable AssetStore* m_store{};
 	mutable std::vector<StageID> m_staged;
 	mutable utils::Ratio<u64> m_done;
 };
@@ -163,9 +162,9 @@ std::vector<dts::scheduler::task_t> AssetListLoader::callbacks(AssetList<T> list
 
 template <typename T>
 void AssetListLoader::load_(AssetLoadList<T> list) const {
-	for (auto& [id, data] : list.map) {
-		if (!skip<T>(id)) {
-			store().load<T>(id, std::move(data));
+	for (auto& [uri, data] : list.map) {
+		if (!skip<T>(uri)) {
+			store().load<T>(uri, std::move(data));
 			++m_done;
 		}
 	}
@@ -173,9 +172,9 @@ void AssetListLoader::load_(AssetLoadList<T> list) const {
 
 template <typename T>
 void AssetListLoader::load_(AssetList<T> list) const {
-	for (auto& [id, cb] : list.map) {
-		if (!skip<T>(id)) {
-			store().add(id, cb());
+	for (auto& [uri, cb] : list.map) {
+		if (!skip<T>(uri)) {
+			store().add(uri, cb());
 			++m_done;
 		}
 	}

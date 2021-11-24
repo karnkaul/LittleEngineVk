@@ -5,6 +5,17 @@
 #include <graphics/shader.hpp>
 
 namespace le::graphics {
+struct ShaderSpec {
+	enum class Type { eVertex, eFragment, eCompute, eCOUNT_ };
+
+	struct Module {
+		Type type = Type::eVertex;
+		Hash uri;
+	};
+
+	ktl::fixed_vector<Module, 4> modules;
+};
+
 struct FixedStateSpec {
 	static constexpr std::size_t max_states_v = 8;
 	static constexpr vk::DynamicState required_states_v[] = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};

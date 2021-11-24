@@ -1,5 +1,5 @@
 #include <core/utils/expect.hpp>
-#include <graphics/render/pipeline_factory.hpp>
+#include <graphics/render/pipeline_spec.hpp>
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {

@@ -104,16 +104,16 @@ PipelineFactory::Meta PipelineFactory::makeMeta(Hash shaderURI) const {
 	std::vector<vk::DescriptorSetLayout> layouts;
 	for (auto& [set, binds] : setBindings.sets) {
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
-		for (auto& setBinding : binds) {
-			if (setBinding.binding.descriptorType != vk::DescriptorType()) { bindings.push_back(setBinding.binding); }
+		for (auto& binding : binds) {
+			if (binding.binding.descriptorType != vk::DescriptorType()) { bindings.push_back(binding.binding); }
 		}
 		auto const descLayout = m_vram->m_device->makeDescriptorSetLayout(bindings);
 		ret.setLayouts.push_back({m_vram->m_device, descLayout});
-		ret.bindingInfos.push_back(std::move(binds));
+		ret.bindings.push_back({bindings.begin(), bindings.end()});
 		layouts.push_back(descLayout);
 
 		SetLayoutData sld;
-		sld.bindings = ret.bindingInfos.back();
+		sld.bindings = ret.bindings.back();
 		sld.layout = descLayout;
 		ret.spd.sets.push_back(std::move(sld));
 	}

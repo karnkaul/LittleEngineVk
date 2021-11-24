@@ -388,21 +388,15 @@ std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, Shader::Modu
 	return std::nullopt;
 }
 
-utils::SetPools utils::makeSetPools(Device& d, SetPoolsData data) {
-	SetPools ret;
-	Buffering const buffering = data.buffering == 0_B ? 2_B : data.buffering;
-	for (std::size_t set = 0; set < data.sets.size(); ++set) {
-		auto& setData = data.sets[set];
-		DescriptorSet::CreateInfo const info{std::move(setData.name), setData.layout, setData.bindings, buffering, u32(set)};
-		ret.emplace((u32)set, DescriptorPool(&d, info));
-	}
-	return ret;
-}
-
 utils::HashGen& utils::operator<<(HashGen& out, VertexInputInfo const& vi) {
 	out << vi.bindings.size() << vi.attributes.size();
 	for (auto const& bind : vi.bindings) { out << bind.binding << bind.stride << bind.inputRate; }
 	for (auto const& attr : vi.attributes) { out << attr.binding << attr.location << attr.offset << attr.format; }
+	return out;
+}
+
+utils::HashGen& utils::operator<<(HashGen& out, ShaderSpec const& ss) {
+	for (auto const& module : ss.modules) { out << module.uri; }
 	return out;
 }
 

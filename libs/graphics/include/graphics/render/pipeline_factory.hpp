@@ -46,7 +46,7 @@ class PipelineFactory {
 		SetPoolsData spd;
 		Deferred<vk::PipelineLayout> layout;
 		std::vector<Deferred<vk::DescriptorSetLayout>> setLayouts;
-		std::vector<ktl::fixed_vector<BindingInfo, 16>> bindingInfos;
+		std::vector<ktl::fixed_vector<vk::DescriptorSetLayoutBinding, 16>> bindings;
 	};
 	using PassMap = std::unordered_map<vk::RenderPass, Pipe>;
 	struct SpecMap {

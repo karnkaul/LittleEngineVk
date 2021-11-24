@@ -15,6 +15,8 @@
 #include <spirv_cross.hpp>
 #include <map>
 
+#include <graphics/shader.hpp>
+
 namespace le::graphics {
 struct ShaderResources {
 	spirv_cross::ShaderResources resources;
@@ -37,6 +39,11 @@ class STBImg : public TBitmap<Span<u8>> {
 	static void exchg(STBImg& lhs, STBImg& rhs) noexcept;
 };
 
+struct BindingInfo {
+	vk::DescriptorSetLayoutBinding binding;
+	std::string name;
+};
+
 using set_t = u32;
 struct SetBindings {
 	std::map<set_t, ktl::fixed_vector<BindingInfo, 16>> sets;
@@ -48,8 +55,6 @@ struct PipeData {
 	vk::RenderPass renderPass;
 	vk::PipelineCache cache;
 };
-
-using SetPools = std::unordered_map<u32, DescriptorPool>;
 
 struct HashGen {
 	std::size_t hash{};
@@ -87,9 +92,8 @@ constexpr vk::Rect2D scissor(DrawScissor const& scissor) noexcept;
 bool hasActiveModule(Shader::ModuleMap const& shaders) noexcept;
 std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Shader::ModuleMap const& sh, PipelineSpec const& sp, PipeData const& data);
 
-SetPools makeSetPools(Device& d, SetPoolsData data);
-
 HashGen& operator<<(HashGen& out, VertexInputInfo const& vi);
+HashGen& operator<<(HashGen& out, ShaderSpec const& ss);
 HashGen& operator<<(HashGen& out, FixedStateSpec const& fs);
 HashGen& operator<<(HashGen& out, PipelineSpec const& ps);
 } // namespace utils

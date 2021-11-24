@@ -100,6 +100,7 @@ std::optional<PipelineFactory::Pipe> PipelineFactory::makePipe(SpecMap const& sp
 
 PipelineFactory::Meta PipelineFactory::makeMeta(Hash shaderURI) const {
 	Meta ret;
+	ret.spd.buffering = m_buffering;
 	auto setBindings = utils::extractBindings(m_getShader(shaderURI).m_spirV);
 	std::vector<vk::DescriptorSetLayout> layouts;
 	for (auto& [set, binds] : setBindings.sets) {

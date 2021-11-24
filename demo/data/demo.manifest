@@ -36,6 +36,17 @@
 			]
 		}
 	],
+	"shaders2": [
+		"shaders/basic.vert",
+		"shaders/basic.frag",
+		"shaders/tex.frag",
+		"shaders/lit.vert",
+		"shaders/lit.frag",
+		"shaders/ui.vert",
+		"shaders/ui.frag",
+		"shaders/skybox.vert",
+		"shaders/skybox.frag"
+	],
 	"pipelines": [
 		{
 			"id": "pipelines/basic",

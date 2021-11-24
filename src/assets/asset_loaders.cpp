@@ -62,6 +62,34 @@ bool AssetLoader<graphics::Shader>::reload(graphics::Shader& out_shader, AssetLo
 	return false;
 }
 
+std::unique_ptr<graphics::SpirV> AssetLoader<graphics::SpirV>::load(AssetLoadInfo<graphics::SpirV> const& info) const {
+	graphics::SpirV ret;
+	if (reload(ret, info)) { return std::make_unique<graphics::SpirV>(std::move(ret)); }
+	return {};
+}
+
+bool AssetLoader<graphics::SpirV>::reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const {
+	auto path = info.m_data.uri;
+	if (isGlsl(path)) {
+		if (auto fm = dynamic_cast<io::FSMedia const*>(&info.media())) {
+			// ensure resource presence (and add monitor if supported)
+			if (!info.resource(path, Resource::Type::eText, Resources::Flag::eMonitor)) { return false; }
+			path = spirvPath(path, *fm);
+		} else {
+			// cannot compile shaders without FSMedia
+			path = graphics::utils::spirVpath(path);
+		}
+	} else {
+		// fallback to previously compiled shader
+		path = graphics::utils::spirVpath(path);
+	}
+	auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eReload);
+	if (!res) { return false; }
+	out_code = graphics::SpirV(res->bytes().size() / 4);
+	std::memcpy(out_code.data(), res->bytes().data(), out_code.size());
+	return true;
+}
+
 std::optional<AssetLoader<graphics::Shader>::Data> AssetLoader<graphics::Shader>::data(AssetLoadInfo<graphics::Shader> const& info) const {
 	graphics::Shader::SpirVMap spirV;
 	io::FSMedia const* fm = nullptr;

@@ -51,6 +51,12 @@ std::size_t AssetManifest::preload(dj::json const& root) {
 		for (auto const& json : entries->as<dj::vec_t>()) {
 			if (auto id = json->find_as<std::string>("id")) { group.insert({std::move(*id), json}); }
 		}
+		if (group.empty()) {
+			for (auto& id : entries->as<std::vector<std::string>>()) {
+				logD("id: {}", id);
+				group.insert({std::move(id), {}});
+			}
+		}
 		if (!group.empty()) { ret += add(groupName, std::move(group)); }
 	}
 	return ret;
@@ -60,6 +66,7 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler, {}, m_jsonQIDs[Kind::eSampler]);
 	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eTexture]);
 	m_deps[Kind::eShader] = m_loader.stage(std::move(m_shaders), scheduler, {}, m_jsonQIDs[Kind::eShader]);
+	m_deps[Kind::eSpirV] = m_loader.stage(std::move(m_spirV), scheduler, {}, m_jsonQIDs[Kind::eSpirV]);
 	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eShader], m_jsonQIDs[Kind::ePipelineState]);
 	m_deps[Kind::eDrawGroup] = m_loader.stage(std::move(m_drawGroups), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eDrawGroup]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eBitmapFont]);
@@ -111,6 +118,7 @@ not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engi
 std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "samplers") { return addSamplers(std::move(group)); }
 	if (groupName == "shaders") { return addShaders(std::move(group)); }
+	if (groupName == "shaders2") { return addSpirV(std::move(group)); }
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "models") { return addModels(std::move(group)); }
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
@@ -159,6 +167,17 @@ std::size_t AssetManifest::addShaders(Group group) {
 			m_shaders.add(std::move(id), std::move(data));
 			++ret;
 		}
+	}
+	return ret;
+}
+
+std::size_t AssetManifest::addSpirV(Group group) {
+	std::size_t ret{};
+	for (auto& [id, json] : group) {
+		AssetLoadData<graphics::SpirV> data;
+		data.uri = id;
+		m_spirV.add(std::move(id), std::move(data));
+		++ret;
 	}
 	return ret;
 }
@@ -261,6 +280,7 @@ std::size_t AssetManifest::unload(U& cont) {
 std::size_t AssetManifest::unload() {
 	std::size_t ret = unload<graphics::Sampler>(m_samplers.map);
 	ret += unload<graphics::Shader>(m_shaders.map);
+	ret += unload<graphics::SpirV>(m_spirV.map);
 	ret += unload<graphics::Texture>(m_textures.map);
 	ret += unload<Model>(m_models.map);
 	ret += unload<BitmapFont>(m_bitmapFonts.map);

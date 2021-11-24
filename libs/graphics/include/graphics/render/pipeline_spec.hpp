@@ -2,14 +2,21 @@
 #include <core/hash.hpp>
 #include <graphics/render/pipeline_flags.hpp>
 #include <graphics/render/vertex_input.hpp>
-#include <graphics/shader.hpp>
 
 namespace le::graphics {
+using SpirV = std::vector<u32>;
+
+enum class ShaderType { eVertex, eFragment, eCompute, eCOUNT_ };
+
 struct ShaderSpec {
-	enum class Type { eVertex, eFragment, eCompute, eCOUNT_ };
+
+	template <typename T>
+	using Map = EnumArray<ShaderType, T>;
+	using CodeMap = Map<SpirV>;
+	using ModMap = Map<vk::ShaderModule>;
 
 	struct Module {
-		Type type = Type::eVertex;
+		ShaderType type = ShaderType::eVertex;
 		Hash uri;
 	};
 

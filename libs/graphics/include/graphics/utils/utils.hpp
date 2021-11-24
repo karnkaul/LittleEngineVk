@@ -8,14 +8,12 @@
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/descriptor_set.hpp>
-#include <graphics/render/pipeline_factory.hpp>
+#include <graphics/render/pipeline_spec.hpp>
 #include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <spirv_cross.hpp>
 #include <map>
-
-#include <graphics/shader.hpp>
 
 namespace le::graphics {
 struct ShaderResources {
@@ -70,9 +68,15 @@ constexpr utils::HashGen& operator<<(utils::HashGen& out, T const next);
 inline std::string_view g_compiler = "glslc";
 
 Shader::ArrayMap<ShaderResources> shaderResources(Shader::CodeMap const& spirV);
+ShaderSpec::Map<ShaderResources> shaderResources(ShaderSpec::CodeMap const& spirV);
 io::Path spirVpath(io::Path const& src, bool bDebug = levk_debug);
 std::optional<io::Path> compileGlsl(io::Path const& src, io::Path const& dst = {}, io::Path const& prefix = {}, bool bDebug = levk_debug);
 SetBindings extractBindings(Shader::CodeMap const& spirV);
+SetBindings extractBindings(ShaderSpec::CodeMap const& spirV);
+bool hasActiveModule(Shader::ModuleMap const& shaders) noexcept;
+bool hasActiveModule(ShaderSpec::ModMap const& modules) noexcept;
+std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Shader::ModuleMap const& sh, PipelineSpec const& sp, PipeData const& data);
+std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, ShaderSpec::ModMap const& sh, PipelineSpec const& sp, PipeData const& data);
 
 Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);
 Bitmap bitmap(Span<Colour const> pixels, u32 width, u32 height = 0);
@@ -88,9 +92,6 @@ std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, 
 
 constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;
 constexpr vk::Rect2D scissor(DrawScissor const& scissor) noexcept;
-
-bool hasActiveModule(Shader::ModuleMap const& shaders) noexcept;
-std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Shader::ModuleMap const& sh, PipelineSpec const& sp, PipeData const& data);
 
 HashGen& operator<<(HashGen& out, VertexInputInfo const& vi);
 HashGen& operator<<(HashGen& out, ShaderSpec const& ss);

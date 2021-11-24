@@ -30,6 +30,17 @@ struct AssetLoader<graphics::Shader> {
 };
 
 template <>
+struct AssetLoadData<graphics::SpirV> {
+	io::Path uri;
+};
+
+template <>
+struct AssetLoader<graphics::SpirV> {
+	std::unique_ptr<graphics::SpirV> load(AssetLoadInfo<graphics::SpirV> const& info) const;
+	bool reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
+};
+
+template <>
 struct AssetLoadData<PipelineState> {
 	vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
 	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;

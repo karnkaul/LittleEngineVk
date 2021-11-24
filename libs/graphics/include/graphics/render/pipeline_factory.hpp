@@ -1,6 +1,7 @@
 #pragma once
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/render/pipeline_spec.hpp>
+#include <graphics/shader.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <ktl/move_only_function.hpp>
 #include <unordered_map>

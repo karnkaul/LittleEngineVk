@@ -21,8 +21,8 @@ TEST(blank) {
 
 TEST(shader) {
 	ShaderSpec ss;
-	ss.modules.push_back(ShaderSpec::Module{ShaderSpec::Type::eVertex, "shader.vert"});
-	ss.modules.push_back(ShaderSpec::Module{ShaderSpec::Type::eFragment, "shader.frag"});
+	ss.modules.push_back(ShaderSpec::Module{ShaderType::eVertex, "shader.vert"});
+	ss.modules.push_back(ShaderSpec::Module{ShaderType::eFragment, "shader.frag"});
 	EXPECT_NE(hash(ss), std::size_t(0));
 	auto copy = ss;
 	EXPECT_EQ(hash(ss), hash(copy));

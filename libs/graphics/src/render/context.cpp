@@ -95,6 +95,11 @@ RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
 
+void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
+	m_vram->m_device->waitIdle();
+	m_renderer = std::move(renderer);
+}
+
 void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
 
 bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {

@@ -32,7 +32,7 @@ class RenderContext : public NoCopy {
 	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
 
 	std::unique_ptr<Renderer> defaultRenderer();
-	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept { m_renderer = std::move(renderer); }
+	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept;
 
 	void waitForFrame();
 	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
@@ -48,6 +48,7 @@ class RenderContext : public NoCopy {
 	Renderer& renderer() const noexcept { return *m_renderer; }
 	PipelineFactory& pipelineFactory() noexcept { return m_pipelineFactory; }
 	PipelineFactory const& pipelineFactory() const noexcept { return m_pipelineFactory; }
+	VRAM& vram() noexcept { return *m_vram; }
 
 	struct Sync;
 

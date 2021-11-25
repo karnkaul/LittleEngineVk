@@ -149,9 +149,7 @@ void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	auto const& surface = m_impl->gfx->context.surface();
 	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
-	DearImGui::CreateInfo dici(m_impl->gfx->context.renderer().renderPass());
-	dici.correctStyleColours = m_impl->gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
-	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->boot.device, &*m_impl->win, dici); }
+	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
 	addDefaultAssets();
 	m_impl->win->show();
 }
@@ -177,7 +175,9 @@ bool Engine::booted() const noexcept { return m_impl->gfx.has_value(); }
 
 bool Engine::setRenderer(std::unique_ptr<Renderer>&& renderer) {
 	if (booted()) {
+		m_impl->gfx->imgui.reset();
 		m_impl->gfx->context.setRenderer(std::move(renderer));
+		if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
 		return true;
 	}
 	return false;

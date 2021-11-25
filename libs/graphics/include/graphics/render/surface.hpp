@@ -44,6 +44,7 @@ class Surface {
 	Format const& format() const noexcept { return m_storage.format; }
 	Extent2D extent() const noexcept { return cast(m_storage.info.extent); }
 	u32 imageCount() const noexcept { return m_storage.info.imageCount; }
+	u32 minImageCount() const noexcept { return m_storage.info.minImageCount; }
 
 	bool makeSwapchain(Extent2D fbSize = {}, std::optional<VSync> vsync = std::nullopt);
 
@@ -54,7 +55,8 @@ class Surface {
   private:
 	struct Info {
 		vk::Extent2D extent{};
-		std::uint32_t imageCount{};
+		u32 imageCount{};
+		u32 minImageCount{};
 	};
 
 	struct Storage {

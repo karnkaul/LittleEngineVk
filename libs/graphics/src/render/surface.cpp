@@ -152,6 +152,7 @@ bool Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
 Surface::Info Surface::makeInfo(Extent2D extent) const {
 	Info ret;
 	auto const caps = m_vram->m_device->physicalDevice().device.getSurfaceCapabilitiesKHR(*m_surface);
+	ret.minImageCount = caps.minImageCount;
 	if (caps.currentExtent.width < maths::max<u32>() && caps.currentExtent.height < maths::max<u32>()) {
 		ret.extent = caps.currentExtent;
 	} else {

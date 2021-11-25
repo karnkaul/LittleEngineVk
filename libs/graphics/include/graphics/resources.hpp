@@ -156,6 +156,10 @@ class Image : public Resource {
 	struct CreateInfo;
 
 	static constexpr Kind kind_v = Kind::eImage;
+	static constexpr vk::Format srgb_v = vk::Format::eR8G8B8A8Srgb;
+	static constexpr vk::Format linear_v = vk::Format::eR8G8B8A8Unorm;
+
+	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format, bool linear);
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
 	Image(Image&& rhs) noexcept : Resource(rhs.m_memory) { exchg(*this, rhs); }

@@ -41,9 +41,6 @@ class Texture {
 	using Cube = CubeBytes;
 	struct CreateInfo;
 
-	inline static constexpr auto srgb = vk::Format::eR8G8B8A8Srgb;
-	inline static constexpr auto linear = vk::Format::eR8G8B8A8Unorm;
-
 	Texture(not_null<VRAM*> vram);
 
 	static Img img(Span<std::byte const> bytes);
@@ -64,7 +61,6 @@ class Texture {
   private:
 	struct Storage {
 		std::optional<Image> image;
-		Deferred<vk::ImageView> view;
 		Data data;
 		VRAM::Future transfer;
 	};

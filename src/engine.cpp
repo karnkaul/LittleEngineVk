@@ -128,6 +128,20 @@ Engine::~Engine() {
 	Services::untrack(this);
 }
 
+void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
+	unboot();
+	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
+	if (auto gpuOverride = DataObject<CustomDevice>("gpuOverride")) { info.device.customDeviceName = gpuOverride->name; }
+	m_impl->gfx.emplace(&*m_impl->win, info, m_impl->store, vsync);
+	auto const& surface = m_impl->gfx->context.surface();
+	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
+	logD("[Engine] Device supports lazily allocated memory: {}", m_impl->gfx->boot.device.physicalDevice().supportsLazyAllocation());
+	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
+	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
+	addDefaultAssets();
+	m_impl->win->show();
+}
+
 bool Engine::unboot() noexcept {
 	if (booted()) {
 		saveConfig();
@@ -139,19 +153,6 @@ bool Engine::unboot() noexcept {
 		return true;
 	}
 	return false;
-}
-
-void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
-	unboot();
-	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
-	if (auto gpuOverride = DataObject<CustomDevice>("gpuOverride")) { info.device.customDeviceName = gpuOverride->name; }
-	m_impl->gfx.emplace(&*m_impl->win, info, m_impl->store, vsync);
-	auto const& surface = m_impl->gfx->context.surface();
-	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
-	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
-	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
-	addDefaultAssets();
-	m_impl->win->show();
 }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {

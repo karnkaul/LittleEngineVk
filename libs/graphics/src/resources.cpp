@@ -207,6 +207,27 @@ bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset
 	return false;
 }
 
+Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format, bool linear) {
+	CreateInfo ret;
+	ret.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
+	ret.createInfo.usage = usage;
+	ret.vmaUsage = vmaUsage;
+	ret.view.aspects = view;
+	if (view != vk::ImageAspectFlags()) {
+		ret.view.format = format;
+		ret.view.type = vk::ImageViewType::e2D;
+	}
+	if ((usage & vk::ImageUsageFlagBits::eTransferDst) != vk::ImageUsageFlags() || (usage & vk::ImageUsageFlagBits::eTransferSrc) != vk::ImageUsageFlags()) {
+		ret.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
+	}
+	ret.createInfo.format = format;
+	ret.createInfo.tiling = linear ? vk::ImageTiling::eLinear : vk::ImageTiling::eOptimal;
+	ret.createInfo.imageType = vk::ImageType::e2D;
+	ret.createInfo.mipLevels = 1U;
+	ret.createInfo.arrayLayers = 1U;
+	return ret;
+}
+
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory) {
 	Device& d = *memory->m_device;
 	vk::ImageCreateInfo imageInfo = info.createInfo;

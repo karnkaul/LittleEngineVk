@@ -137,6 +137,7 @@ ktl::fixed_vector<PhysicalDevice, 8> validDevices(Span<std::string_view const> e
 		if (missing.empty()) {
 			PhysicalDevice available;
 			available.properties = device.getProperties(d);
+			available.memoryProperties = device.getMemoryProperties();
 			available.queueFamilies = device.getQueueFamilyProperties(d);
 			available.features = device.getFeatures(d);
 			available.device = device;

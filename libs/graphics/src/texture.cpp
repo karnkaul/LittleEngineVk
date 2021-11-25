@@ -6,20 +6,14 @@ namespace le::graphics {
 namespace {
 using sv = std::string_view;
 Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D size, Span<ImgView const> bitmaps) {
-	Image::CreateInfo imageInfo;
-	imageInfo.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
-	imageInfo.createInfo.format = format;
-	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-	if (bitmaps.size() > 1) { imageInfo.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible; }
-	imageInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-	imageInfo.createInfo.extent = vk::Extent3D((u32)size.x, (u32)size.y, 1);
-	imageInfo.createInfo.tiling = vk::ImageTiling::eOptimal;
-	imageInfo.createInfo.imageType = vk::ImageType::e2D;
-	imageInfo.createInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.createInfo.mipLevels = 1;
-	imageInfo.createInfo.arrayLayers = (u32)bitmaps.size();
-	Image ret(&vram, imageInfo);
+	static constexpr vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+	auto info = Image::info(size, usage, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format, false);
+	if (bitmaps.size() > 1) {
+		info.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+		info.createInfo.arrayLayers = (u32)bitmaps.size();
+		info.view.type = vk::ImageViewType::eCube;
+	}
+	Image ret(&vram, info);
 	out_future = vram.copy(bitmaps, ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 	return ret;
 }
@@ -122,7 +116,7 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 			out_storage.data.type = Type::e2D;
 		}
 		out_storage.data.size = stbimgs.back().size;
-		fallback = info.payload == Payload::eColour ? srgb : linear;
+		fallback = info.payload == Payload::eColour ? Image::srgb_v : Image::linear_v;
 	} else {
 		if (pBmp) {
 			if (!pushBytes(pBmp->bytes, false, pBmp->size)) { return false; }
@@ -134,15 +128,13 @@ bool Texture::construct(CreateInfo const& info, Storage& out_storage) {
 			out_storage.data.type = Type::eCube;
 		}
 		out_storage.data.size = pBmp ? pBmp->size : pCmp->size;
-		fallback = linear;
+		fallback = Image::linear_v;
 	}
 	vk::Format const format = info.forceFormat.value_or(fallback);
 	out_storage.image = load(*m_vram, out_storage.transfer, format, out_storage.data.size, bmps);
 	out_storage.data.format = format;
-	Device& d = *m_vram->m_device;
-	vk::ImageViewType const type = out_storage.data.type == Type::eCube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
-	out_storage.view = {&d, d.makeImageView(out_storage.image->image(), out_storage.data.format, vk::ImageAspectFlagBits::eColor, type)};
-	out_storage.data.imageView = out_storage.view;
+	out_storage.data.payload = info.payload;
+	out_storage.data.imageView = out_storage.image->view();
 	return true;
 }
 } // namespace le::graphics

@@ -21,7 +21,7 @@ class Surface {
 	};
 
 	struct Acquire {
-		RenderImage image;
+		RenderTarget image;
 		std::uint32_t index{};
 	};
 
@@ -60,7 +60,7 @@ class Surface {
 	struct Storage {
 		vk::UniqueSwapchainKHR swapchain;
 		ktl::fixed_vector<vk::UniqueImageView, 8> imageViews;
-		ktl::fixed_vector<RenderImage, 8> images;
+		ktl::fixed_vector<RenderTarget, 8> images;
 		Format format;
 		Info info;
 	};

@@ -154,7 +154,7 @@ VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TP
 	return ret;
 }
 
-void VRAM::blit(CommandBuffer cb, TPair<RenderImage> images, LayoutPair layouts, vk::Filter filter, TPair<vk::ImageAspectFlags> aspects) {
+void VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, LayoutPair layouts, vk::Filter filter, TPair<vk::ImageAspectFlags> aspects) {
 	vk::Extent3D const src(cast(images.first.extent), 1);
 	vk::Extent3D const dst(cast(images.second.extent), 1);
 	blit(cb.m_cb, {images.first.image, images.second.image}, {src, dst}, layouts, filter, aspects);

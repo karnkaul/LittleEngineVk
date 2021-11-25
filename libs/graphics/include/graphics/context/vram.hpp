@@ -27,7 +27,7 @@ class VRAM final : public Memory {
 	[[nodiscard]] Future blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects,
 							  vk::Filter filter = vk::Filter::eLinear);
 
-	static void blit(CommandBuffer cb, TPair<RenderImage> images, LayoutPair layouts = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal},
+	static void blit(CommandBuffer cb, TPair<RenderTarget> images, LayoutPair layouts = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal},
 					 vk::Filter filter = vk::Filter::eLinear,
 					 TPair<vk::ImageAspectFlags> aspects = {vk::ImageAspectFlagBits::eColor, vk::ImageAspectFlagBits::eColor});
 

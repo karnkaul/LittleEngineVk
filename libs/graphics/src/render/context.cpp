@@ -24,7 +24,6 @@ std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format
 	Renderer::CreateInfo rci(vram, format);
 	rci.buffering = buffering;
 	if (vram->m_device->physicalDevice().integratedGPU()) {
-		rci.transition = Renderer::Transition::eRenderPass;
 		rci.target = Renderer::Target::eSwapchain;
 	} else {
 		rci.target = Renderer::Target::eOffScreen;

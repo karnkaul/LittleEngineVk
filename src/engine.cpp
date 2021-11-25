@@ -133,6 +133,7 @@ bool Engine::unboot() noexcept {
 		saveConfig();
 		m_impl->store.clear();
 		Services::untrack<Context, VRAM, AssetStore, Profiler>();
+		m_impl->gfx->boot.vram.shutdown();
 		m_impl->gfx.reset();
 		io::ZIPMedia::fsDeinit();
 		return true;

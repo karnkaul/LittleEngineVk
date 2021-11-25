@@ -226,6 +226,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	m_storage.image = vk::Image(vkImage);
 	m_storage.usage = info.createInfo.usage;
 	m_storage.layout = info.createInfo.initialLayout;
+	m_storage.imageFormat = info.createInfo.format;
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
 	m_data.queueFlags = info.queueFlags;
 	VmaAllocationInfo allocationInfo;
@@ -236,6 +237,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	memory->m_allocations[kind_v].fetch_add(m_storage.allocatedSize);
 	if (info.view.aspects != vk::ImageAspectFlags() && info.view.format != vk::Format()) {
 		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type);
+		m_storage.viewFormat = info.view.format;
 	}
 }
 

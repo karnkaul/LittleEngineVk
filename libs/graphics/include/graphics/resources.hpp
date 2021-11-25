@@ -166,6 +166,8 @@ class Image : public Resource {
 
 	vk::Image image() const noexcept { return m_storage.image; }
 	vk::ImageView view() const noexcept { return m_storage.view; }
+	vk::Format imageFormat() const noexcept { return m_storage.imageFormat; }
+	vk::Format viewFormat() const noexcept { return m_storage.viewFormat; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
 	Extent2D extent2D() const noexcept { return cast(extent()); }
@@ -184,6 +186,8 @@ class Image : public Resource {
 		vk::Extent3D extent = {};
 		vk::ImageUsageFlags usage;
 		vk::ImageLayout layout{};
+		vk::Format imageFormat{};
+		vk::Format viewFormat{};
 		u32 layerCount = 1;
 	};
 	Storage m_storage;

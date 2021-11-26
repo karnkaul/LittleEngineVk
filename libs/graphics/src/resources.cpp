@@ -246,8 +246,8 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	m_storage.extent = info.createInfo.extent;
 	m_storage.image = vk::Image(vkImage);
 	m_storage.usage = info.createInfo.usage;
-	m_storage.layout = info.createInfo.initialLayout;
 	m_storage.imageFormat = info.createInfo.format;
+	memory->m_device->m_layouts.force(m_storage.image, info.createInfo.initialLayout);
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
 	m_data.queueFlags = info.queueFlags;
 	VmaAllocationInfo allocationInfo;

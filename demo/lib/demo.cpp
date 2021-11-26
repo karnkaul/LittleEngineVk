@@ -782,8 +782,9 @@ bool run(io::Media const& media) {
 			}
 			app.tick(++dt);
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
-				app.sched().enqueue([]() { ENSURE(false, "test"); });
-				app.sched().enqueue([]() { ENSURE(false, "test2"); });
+				// app.sched().enqueue([]() { ENSURE(false, "test"); });
+				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
+				engine.setRenderer(engine.gfx().context.defaultRenderer());
 				flags.reset(Flag::eDebug0);
 				/*bf = async(&package, "out/autobuild", false);
 				bf.then([](bool built) {

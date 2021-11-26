@@ -23,34 +23,15 @@ vk::SubpassDependency makeSubpassDependency(bool offscreen) {
 } // namespace
 
 Image::CreateInfo& ImageCache::setDepth() {
-	m_info = {};
-	m_info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-	m_info.createInfo.tiling = vk::ImageTiling::eOptimal;
-	m_info.createInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	m_info.preferred = vk::MemoryPropertyFlagBits::eLazilyAllocated;
-	m_info.createInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
-	m_info.createInfo.samples = vk::SampleCountFlagBits::e1;
-	m_info.createInfo.imageType = vk::ImageType::e2D;
-	m_info.createInfo.initialLayout = vk::ImageLayout::eUndefined;
-	m_info.createInfo.mipLevels = 1;
-	m_info.createInfo.arrayLayers = 1;
-	m_info.queueFlags = QType::eGraphics;
-	m_info.view.aspects = vk::ImageAspectFlagBits::eDepth;
+	static constexpr auto usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eTransientAttachment;
+	auto const vmaUsage = m_vram->m_device->physicalDevice().supportsLazyAllocation() ? VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED : VMA_MEMORY_USAGE_GPU_ONLY;
+	m_info = Image::info({}, usage, vk::ImageAspectFlagBits::eDepth, vmaUsage, {}, false);
 	return m_info;
 }
 
 Image::CreateInfo& ImageCache::setColour() {
-	m_info = {};
-	m_info.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-	m_info.createInfo.tiling = vk::ImageTiling::eOptimal;
-	m_info.createInfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
-	m_info.createInfo.samples = vk::SampleCountFlagBits::e1;
-	m_info.createInfo.imageType = vk::ImageType::e2D;
-	m_info.createInfo.initialLayout = vIL::eUndefined;
-	m_info.createInfo.mipLevels = 1;
-	m_info.createInfo.arrayLayers = 1;
-	m_info.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
-	m_info.view.aspects = vk::ImageAspectFlagBits::eColor;
+	static constexpr auto usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
+	m_info = Image::info({}, usage, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, {}, false);
 	return m_info;
 }
 
@@ -234,7 +215,7 @@ void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget c
 	if (m_target == Target::eOffScreen) {
 		m_vram->m_device->m_layouts.transition<lt::TransferSrc>(cmd.cb, colour.image);
 		m_vram->m_device->m_layouts.transition<lt::TransferDst>(cmd.cb, acquired.image);
-		VRAM::blit(cmd.cb, {colour, acquired});
+		m_vram->blit(cmd.cb, {colour, acquired});
 	}
 	m_vram->m_device->m_layouts.transition<lt::TransferPresent>(cmd.cb, acquired.image);
 	cmd.cb.end();

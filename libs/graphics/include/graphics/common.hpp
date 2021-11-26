@@ -17,8 +17,10 @@ using TPair = std::pair<T, U>;
 using StagePair = TPair<vk::PipelineStageFlags>;
 using AccessPair = TPair<vk::AccessFlags>;
 using LayoutPair = TPair<vk::ImageLayout>;
+using AspectPair = TPair<vk::ImageAspectFlags>;
 
 using vIL = vk::ImageLayout;
+using vIAFB = vk::ImageAspectFlagBits;
 using vAFB = vk::AccessFlagBits;
 using vPSFB = vk::PipelineStageFlagBits;
 using ClearDepth = vk::ClearDepthStencilValue;

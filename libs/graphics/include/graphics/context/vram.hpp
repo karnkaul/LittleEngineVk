@@ -14,6 +14,9 @@ class VRAM final : public Memory {
 	using Memory::blit;
 	using Memory::copy;
 
+	static constexpr LayoutPair blit_layouts_v = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal};
+	static constexpr AspectPair colour_aspects_v = {vIAFB::eColor, vIAFB::eColor};
+
 	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});
 	~VRAM();
 
@@ -23,13 +26,9 @@ class VRAM final : public Memory {
 
 	[[nodiscard]] Future copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
-	[[nodiscard]] Future copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair layouts);
-	[[nodiscard]] Future blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects,
-							  vk::Filter filter = vk::Filter::eLinear);
-
-	static void blit(CommandBuffer cb, TPair<RenderTarget> images, LayoutPair layouts = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal},
-					 vk::Filter filter = vk::Filter::eLinear,
-					 TPair<vk::ImageAspectFlags> aspects = {vk::ImageAspectFlagBits::eColor, vk::ImageAspectFlagBits::eColor});
+	[[nodiscard]] Future copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+	[[nodiscard]] Future blit(Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v);
+	void blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 
 	template <typename Cont>
 	void wait(Cont const& futures) const;

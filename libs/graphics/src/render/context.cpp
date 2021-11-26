@@ -23,11 +23,7 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
 	Renderer::CreateInfo rci(vram, format);
 	rci.buffering = buffering;
-	if (vram->m_device->physicalDevice().integratedGPU()) {
-		rci.target = Renderer::Target::eSwapchain;
-	} else {
-		rci.target = Renderer::Target::eOffScreen;
-	}
+	rci.target = Renderer::Target::eOffScreen;
 	return std::make_unique<Renderer>(rci);
 }
 } // namespace
@@ -121,15 +117,6 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 
 bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
 	auto const& sync = m_syncs.get();
-	vk::SubmitInfo submitInfo;
-	vk::PipelineStageFlags const waitStages = vPSFB::eTopOfPipe;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &sync.draw.m_t;
-	submitInfo.pWaitDstStageMask = &waitStages;
-	submitInfo.commandBufferCount = (u32)cbs.size();
-	submitInfo.pCommandBuffers = cbs.data();
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &sync.present.m_t;
 	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
 	return m_surface.present(fbSize, acquired, sync.present);
 }

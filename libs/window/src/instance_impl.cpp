@@ -46,13 +46,13 @@ Cursor const& Manager::Impl::cursor(CursorType type) {
 GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	Span<GLFWmonitor* const> screens = displays();
 	if (screens.empty()) {
-		log().log(lvl::error, 2, "[{}] Failed to detect screens!", g_name);
+		log().log(lvl::error, 0, "[{}] Failed to detect screens!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
 	DataStore::getOrSet<utils::SysInfo>("sys_info").displayCount = screens.size();
 	GLFWvidmode const* mode = glfwGetVideoMode(screens[0]);
 	if (!mode) {
-		log().log(lvl::error, 2, "[{}] Failed to detect video mode!", g_name);
+		log().log(lvl::error, 0, "[{}] Failed to detect video mode!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
 	std::size_t const screenIdx = info.options.screenID < screens.size() ? (std::size_t)info.options.screenID : 0;
@@ -64,7 +64,7 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	default:
 	case Style::eDecoratedWindow: {
 		if (mode->width < width || mode->height < height) {
-			log().log(lvl::error, 2, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
+			log().log(lvl::error, 0, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		target = nullptr;
@@ -72,7 +72,7 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	}
 	case Style::eBorderlessWindow: {
 		if (mode->width < width || mode->height < height) {
-			log().log(lvl::error, 2, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
+			log().log(lvl::error, 0, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		decorated = false;

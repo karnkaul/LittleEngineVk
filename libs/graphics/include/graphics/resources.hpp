@@ -175,8 +175,6 @@ class Image : public Resource {
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
 	Extent2D extent2D() const noexcept { return cast(extent()); }
-	vk::ImageLayout layout() const noexcept { return m_storage.layout; }
-	void layout(vk::ImageLayout layout) noexcept { m_storage.layout = layout; }
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
 
   private:
@@ -189,7 +187,6 @@ class Image : public Resource {
 		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
 		vk::ImageUsageFlags usage;
-		vk::ImageLayout layout{};
 		vk::Format imageFormat{};
 		vk::Format viewFormat{};
 		u32 layerCount = 1;

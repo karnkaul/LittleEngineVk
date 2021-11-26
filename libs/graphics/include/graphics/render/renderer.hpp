@@ -41,6 +41,7 @@ class ImageCache {
 	bool ready() const noexcept { return m_vram != nullptr; }
 
 	void setInfo(CreateInfo const& info) { m_info = info; }
+	CreateInfo const& info() const noexcept { return m_info; }
 	CreateInfo& setDepth();
 	CreateInfo& setColour();
 
@@ -104,7 +105,7 @@ class Renderer {
 
 	ImageCache m_depthImage;
 	ImageCache m_colourImage;
-	vk::Format m_colourFormat = vk::Format::eR8G8B8A8Unorm;
+	vk::Format m_colourFormat = vk::Format::eR8G8B8A8Srgb;
 	not_null<VRAM*> m_vram;
 
   private:

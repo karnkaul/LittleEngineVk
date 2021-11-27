@@ -153,5 +153,5 @@ void DescriptorSet::update(u32 binding, vk::DescriptorType type, Span<T const> w
 }
 
 inline void DescriptorSet::update(u32 binding, Buffer const& buffer) { updateBuffers(binding, Buf{buffer.buffer(), (std::size_t)buffer.writeSize()}); }
-inline void DescriptorSet::update(u32 binding, Texture const& texture) { updateImages(binding, Img{texture.data().imageView, texture.data().sampler}); }
+inline void DescriptorSet::update(u32 binding, Texture const& texture) { updateImages(binding, Img{texture.image().view(), texture.sampler()}); }
 } // namespace le::graphics

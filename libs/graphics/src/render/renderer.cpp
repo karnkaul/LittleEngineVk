@@ -54,7 +54,7 @@ Image& ImageCache::refresh(Extent2D extent, vk::Format format) {
 Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device) {
 	Cmd ret;
 	ret.pool = makeDeferred<vk::CommandPool>(device, vk::CommandPoolCreateFlagBits::eTransient, QType::eGraphics);
-	ret.cb = CommandBuffer::make(device, ret.pool, 1U).front();
+	ret.cb = CommandBuffer(*device, ret.pool);
 	return ret;
 }
 

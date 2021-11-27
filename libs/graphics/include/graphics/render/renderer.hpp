@@ -1,6 +1,6 @@
 #pragma once
+#include <graphics/command_buffer.hpp>
 #include <graphics/render/buffering.hpp>
-#include <graphics/render/command_buffer.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
 #include <graphics/resources.hpp>

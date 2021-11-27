@@ -81,8 +81,8 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 }
 
 RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
-	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_vram(vram), m_renderer(makeRenderer(m_vram, m_surface.format(), bf)),
-	  m_buffering(bf) {
+	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
+	  m_renderer(makeRenderer(m_vram, m_surface.format(), bf)), m_buffering(bf) {
 	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
@@ -106,7 +106,9 @@ bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D 
 		m_vram->m_device->resetFence(sync.drawn);
 		auto cmds = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
 		ret = submit(cmds, *acquired, fbSize);
+		m_previousFrame = acquired->image;
 	}
+	m_commandRotator.submit();
 	m_syncs.next();
 	return ret;
 }

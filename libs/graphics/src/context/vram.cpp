@@ -1,8 +1,8 @@
 #include <core/utils/expect.hpp>
+#include <graphics/command_buffer.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
-#include <graphics/render/command_buffer.hpp>
 
 namespace le::graphics {
 VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {

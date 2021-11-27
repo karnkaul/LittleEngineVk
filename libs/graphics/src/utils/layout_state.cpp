@@ -1,4 +1,4 @@
-#include <graphics/render/command_buffer.hpp>
+#include <graphics/command_buffer.hpp>
 #include <graphics/utils/layout_state.hpp>
 
 namespace le::graphics {

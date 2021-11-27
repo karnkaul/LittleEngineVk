@@ -14,6 +14,7 @@ struct LayoutStages {
 
 	static constexpr StageAccess sa_top_v = {vPSFB::eTopOfPipe, {}};
 	static constexpr StageAccess sa_bottom_v = {vPSFB::eBottomOfPipe, {}};
+	static constexpr StageAccess sa_all_commands_v = {vPSFB::eAllCommands, {}};
 	static constexpr StageAccess sa_depth_v = {vPSFB::eEarlyFragmentTests | vPSFB::eLateFragmentTests, vAFB::eDepthStencilAttachmentWrite};
 	static constexpr StageAccess sa_colour_v = {vPSFB::eColorAttachmentOutput, vAFB::eColorAttachmentWrite};
 	static constexpr StageAccess sa_transfer_v = {vPSFB::eTransfer, vAFB::eTransferWrite | vAFB::eTransferRead};
@@ -22,6 +23,7 @@ struct LayoutStages {
 	StageAccess dst;
 	vk::ImageAspectFlags aspects;
 
+	static constexpr LayoutStages allCommands(vk::ImageAspectFlags aspects = af_colour_v) noexcept { return {sa_all_commands_v, sa_all_commands_v, aspects}; }
 	static constexpr LayoutStages topBottom(vk::ImageAspectFlags aspects = af_colour_v) noexcept { return {sa_top_v, sa_bottom_v, aspects}; }
 	static constexpr LayoutStages topColour(vk::ImageAspectFlags aspects = af_colour_v) noexcept { return {sa_top_v, sa_colour_v, aspects}; }
 	static constexpr LayoutStages colourTransfer(vk::ImageAspectFlags aspects = af_colour_v) noexcept { return {sa_colour_v, sa_transfer_v, aspects}; }

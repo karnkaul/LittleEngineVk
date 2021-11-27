@@ -405,7 +405,9 @@ class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
-	App(not_null<Engine*> eng) : m_eng(eng), m_drawer(&eng->gfx().boot.vram) {
+	App(not_null<Engine*> eng)
+		: m_eng(eng), m_drawer(&eng->gfx().boot.vram),
+		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/default")->sampler(), colours::red, {128, 128}) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -547,9 +549,12 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 		{
 			Material mat;
-			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
-			auto ent = spawnMesh("prop_3", "meshes/rounded_quad", "draw_groups/tex", mat);
-			m_registry.get<Transform>(ent).position({2.0f, 0.0f, 6.0f});
+			// mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
+			// auto tex = m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
+
+			mat.map_Kd = &m_testTex;
+			m_data.roundedQuad = spawnMesh("prop_3", "meshes/rounded_quad", "draw_groups/tex", mat);
+			m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 		}
 		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("draw_groups/ui"), m_data.text->prop(*font)); }
 		{
@@ -611,6 +616,8 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
+
+		m_testTex.blit(m_eng->gfx().context.commands().get(), m_eng->gfx().context.previousFrame());
 
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
@@ -675,6 +682,7 @@ class App : public input::Receiver, public SceneRegistry {
 		dens::entity player;
 		dens::entity guiStack;
 		dens::entity tween;
+		dens::entity roundedQuad;
 		bool reboot = false;
 		bool unloaded = {};
 		bool init{};
@@ -685,6 +693,7 @@ class App : public input::Receiver, public SceneRegistry {
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
 	mutable Drawer m_drawer;
+	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
 
 	struct {

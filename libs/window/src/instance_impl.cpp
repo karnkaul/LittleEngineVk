@@ -20,7 +20,7 @@ glm::tvec2<T> getGlfwValue(GLFWwindow* win, F func) {
 Manager::Impl::Impl(not_null<LibLogger*> logger) : m_logger(logger) {
 	static LibLogger* s_logger{};
 	s_logger = logger;
-	glfwSetErrorCallback([](s32 code, char const* szDesc) { s_logger->log(lvl::error, 1, "[{}] GLFW Error! [{}]: {}", g_name, code, szDesc); });
+	glfwSetErrorCallback([](int code, char const* szDesc) { s_logger->log(lvl::error, 1, "[{}] GLFW Error! [{}]: {}", g_name, code, szDesc); });
 }
 
 Manager::Impl::~Impl() { glfwSetErrorCallback(nullptr); }
@@ -28,7 +28,7 @@ Manager::Impl::~Impl() { glfwSetErrorCallback(nullptr); }
 Cursor const& Manager::Impl::cursor(CursorType type) {
 	auto& cursor = m_cursors[type];
 	if (type != CursorType::eDefault && !cursor.data.contains<GLFWcursor*>()) {
-		s32 gCursor = 0;
+		int gCursor = 0;
 		switch (type) {
 		default:
 		case CursorType::eDefault: break;
@@ -285,8 +285,7 @@ ktl::fixed_vector<Gamepad, 8> Instance::Impl::activeGamepads() const {
 		GLFWgamepadstate state;
 		if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id) && glfwGetGamepadState(id, &state)) {
 			Gamepad padi;
-			padi.name = glfwGetGamepadName(id);
-			padi.id = (s32)id;
+			padi.id = (int)id;
 			std::memcpy(padi.buttons.data(), state.buttons, padi.buttons.size());
 			std::memcpy(padi.axes.data(), state.axes, padi.axes.size() * sizeof(f32));
 			ret.push_back(std::move(padi));
@@ -296,10 +295,10 @@ ktl::fixed_vector<Gamepad, 8> Instance::Impl::activeGamepads() const {
 	return ret;
 }
 
-Joystick Instance::Impl::joyState(s32 id) const {
+Joystick Instance::Impl::joyState(int id) const {
 	Joystick ret;
 #if defined(LEVK_USE_GLFW)
-	if (glfwJoystickPresent((int)id)) {
+	if (glfwJoystickPresent(id)) {
 		ret.id = id;
 		int count;
 		auto const axes = glfwGetJoystickAxes((int)id, &count);
@@ -308,19 +307,16 @@ Joystick Instance::Impl::joyState(s32 id) const {
 		auto const buttons = glfwGetJoystickButtons((int)id, &count);
 		ENSURE((std::size_t)count < ret.buttons.size(), "Too many buttons");
 		for (std::size_t idx = 0; idx < (std::size_t)count; ++idx) { ret.buttons[idx] = buttons[idx]; }
-		auto const szName = glfwGetJoystickName((int)id);
-		if (szName) { ret.name = szName; }
 	}
 #endif
 	return ret;
 }
 
-Gamepad Instance::Impl::gamepadState(s32 id) const {
+Gamepad Instance::Impl::gamepadState(int id) const {
 	Gamepad ret;
 #if defined(LEVK_USE_GLFW)
 	GLFWgamepadstate state;
 	if (glfwJoystickIsGamepad((int)id) && glfwGetGamepadState((int)id, &state)) {
-		ret.name = glfwGetGamepadName(id);
 		ret.id = id;
 		std::memcpy(ret.buttons.data(), state.buttons, ret.buttons.size());
 		std::memcpy(ret.axes.data(), state.axes, ret.axes.size() * sizeof(f32));
@@ -329,7 +325,7 @@ Gamepad Instance::Impl::gamepadState(s32 id) const {
 	return ret;
 }
 
-std::size_t Instance::Impl::joystickAxesCount(s32 id) const {
+std::size_t Instance::Impl::joystickAxesCount(int id) const {
 	int max{};
 #if defined(LEVK_USE_GLFW)
 	glfwGetJoystickAxes((int)id, &max);
@@ -337,7 +333,7 @@ std::size_t Instance::Impl::joystickAxesCount(s32 id) const {
 	return std::size_t(max);
 }
 
-std::size_t Instance::Impl::joysticKButtonsCount(s32 id) const {
+std::size_t Instance::Impl::joysticKButtonsCount(int id) const {
 	int max{};
 #if defined(LEVK_USE_GLFW)
 	glfwGetJoystickButtons((int)id, &max);

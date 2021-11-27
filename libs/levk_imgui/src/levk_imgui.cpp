@@ -11,7 +11,7 @@
 #include <core/log.hpp>
 #include <core/utils/error.hpp>
 #include <glm/common.hpp>
-#include <graphics/render/command_buffer.hpp>
+#include <graphics/command_buffer.hpp>
 #include <graphics/render/context.hpp>
 #include <window/glue.hpp>
 #endif

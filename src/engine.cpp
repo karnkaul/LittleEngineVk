@@ -247,19 +247,16 @@ void Engine::addDefaultAssets() {
 	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
 	auto sampler = store().add("samplers/default", graphics::Sampler{&gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 	/*Textures*/ {
-		graphics::Texture::CreateInfo tci;
-		tci.sampler = sampler->sampler();
-		tci.data = graphics::utils::bitmap({0xff0000ff}, 1);
-		graphics::Texture texture(&gfx().boot.vram);
-		if (texture.construct(tci)) { store().add("textures/red", std::move(texture)); }
-		tci.data = graphics::utils::bitmap({0x000000ff}, 1);
-		if (texture.construct(tci)) { store().add("textures/black", std::move(texture)); }
-		tci.data = graphics::utils::bitmap({0xffffffff}, 1);
-		if (texture.construct(tci)) { store().add("textures/white", std::move(texture)); }
-		tci.data = graphics::utils::bitmap({0x0}, 1);
-		if (texture.construct(tci)) { store().add("textures/blank", std::move(texture)); }
-		tci.data = graphics::Texture::unitCubemap(colours::transparent);
-		if (texture.construct(tci)) { store().add("cubemaps/blank", std::move(texture)); }
+		using Tex = graphics::Texture;
+		auto v = &gfx().boot.vram;
+		vk::Sampler s = sampler->sampler();
+		store().add("textures/red", Tex(v, s, colours::red, {1, 1}));
+		store().add("textures/black", Tex(v, s, colours::black, {1, 1}));
+		store().add("textures/white", Tex(v, s, colours::white, {1, 1}));
+		store().add("textures/blank", Tex(v, s, 0x0, {1, 1}));
+		Tex blankCube(v, s);
+		blankCube.construct(Tex::unitCubemap(0x0));
+		store().add("cubemaps/blank", std::move(blankCube));
 	}
 	/* meshes */ {
 		auto cube = store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));

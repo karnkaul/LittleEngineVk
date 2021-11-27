@@ -1,3 +1,4 @@
+#include <core/utils/expect.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
@@ -139,28 +140,18 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	return ret;
 }
 
-VRAM::Future VRAM::blit(Image const& src, Image& out_dst, vk::Filter filter, AspectPair aspects) {
+void VRAM::blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter, AspectPair aspects) {
 	ENSURE((src.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	Transfer::Promise promise;
-	auto ret = promise.get_future();
 	TPair<RenderTarget> targets;
 	targets.first = RenderTarget{src.image(), src.view(), src.extent2D(), src.imageFormat()};
 	targets.second = RenderTarget{out_dst.image(), out_dst.view(), out_dst.extent2D(), out_dst.imageFormat()};
-	auto f = [this, p = std::move(promise), targets, aspects, filter]() mutable {
-		auto stage = m_transfer.newStage(0);
-		blit(stage.command, targets, filter, aspects);
-		m_transfer.addStage(std::move(stage), std::move(p));
-	};
-	m_transfer.m_queue.push(std::move(f));
-	return ret;
+	blit(cb, targets, filter, aspects);
 }
 
-void VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter, AspectPair aspects) const {
+void VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter, AspectPair aspects) {
 	vk::Extent3D const src(cast(images.first.extent), 1);
 	vk::Extent3D const dst(cast(images.second.extent), 1);
-	m_device->m_layouts.transition<lt::TransferSrc>(cb, images.first.image);
-	m_device->m_layouts.transition<lt::TransferDst>(cb, images.second.image);
 	blit(cb.m_cb, {images.first.image, images.second.image}, {src, dst}, blit_layouts_v, filter, aspects);
 }
 

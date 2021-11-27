@@ -34,7 +34,7 @@ class CommandBuffer {
 	static void make(std::vector<CommandBuffer>& out, not_null<Device*> device, vk::CommandPool pool, u32 count);
 
 	CommandBuffer() = default;
-	CommandBuffer(vk::CommandBuffer cmd);
+	explicit CommandBuffer(vk::CommandBuffer cmd);
 	CommandBuffer(Device& device, vk::CommandPool cmd);
 
 	void begin(vk::CommandBufferUsageFlags usage);

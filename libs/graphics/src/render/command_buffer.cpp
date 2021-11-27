@@ -15,7 +15,7 @@ void CommandBuffer::make(std::vector<CommandBuffer>& out, not_null<Device*> devi
 	vk::CommandBufferAllocateInfo allocInfo(pool, vk::CommandBufferLevel::ePrimary, count);
 	auto buffers = device->device().allocateCommandBuffers(allocInfo);
 	out.reserve(out.size() + buffers.size());
-	std::copy(buffers.begin(), buffers.end(), std::back_inserter(out));
+	for (auto const cb : buffers) { out.push_back(CommandBuffer(cb)); }
 }
 
 CommandBuffer::CommandBuffer(vk::CommandBuffer cmd) : m_cb(cmd) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }

@@ -21,6 +21,7 @@ using AspectPair = TPair<vk::ImageAspectFlags>;
 
 using vIL = vk::ImageLayout;
 using vIAFB = vk::ImageAspectFlagBits;
+using vIUFB = vk::ImageUsageFlagBits;
 using vAFB = vk::AccessFlagBits;
 using vPSFB = vk::PipelineStageFlagBits;
 using ClearDepth = vk::ClearDepthStencilValue;

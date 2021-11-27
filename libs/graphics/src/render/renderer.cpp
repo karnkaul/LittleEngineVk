@@ -138,8 +138,8 @@ void Renderer::render(not_null<Device*> device, IDrawer& out_drawer, PipelineFac
 	auto const cc = info.begin.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
 	graphics::CommandBuffer::PassInfo const passInfo{{clear, info.begin.depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-	device->m_layouts.transition<lt::ColourWrite>(info.cb, info.framebuffer.colour.image);
-	if (hasDepth) { device->m_layouts.transition<lt::DepthStencilWrite>(info.cb, info.framebuffer.depth.image, depthStencil); }
+	device->m_layouts.transition(info.cb, info.framebuffer.colour.image, vIL::eColorAttachmentOptimal, LayoutStages::topColour());
+	if (hasDepth) { device->m_layouts.transition(info.cb, info.framebuffer.depth.image, vIL::eDepthStencilAttachmentOptimal, LayoutStages::topDepth()); }
 	info.cb.beginRenderPass(info.pass, fb, extent, passInfo);
 	info.cb.setViewport(viewport(extent, info.begin.view));
 	info.cb.setScissor(scissor(extent, info.begin.view));
@@ -213,11 +213,11 @@ void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget c
 	ri.framebuffer.depth = {depthImage.image(), depthImage.view(), depthImage.extent2D(), depthImage.viewFormat()};
 	render(m_vram->m_device, out_drawer, pf, std::move(ri));
 	if (m_target == Target::eOffScreen) {
-		m_vram->m_device->m_layouts.transition<lt::TransferSrc>(cmd.cb, colour.image);
-		m_vram->m_device->m_layouts.transition<lt::TransferDst>(cmd.cb, acquired.image);
-		m_vram->blit(cmd.cb, {colour, acquired});
+		m_vram->m_device->m_layouts.transition(cmd.cb, colour.image, vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
+		m_vram->m_device->m_layouts.transition(cmd.cb, acquired.image, vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
+		VRAM::blit(cmd.cb, {colour, acquired});
 	}
-	m_vram->m_device->m_layouts.transition<lt::TransferPresent>(cmd.cb, acquired.image);
+	m_vram->m_device->m_layouts.transition(cmd.cb, acquired.image, vIL::ePresentSrcKHR, LayoutStages::transferBottom());
 	cmd.cb.end();
 }
 

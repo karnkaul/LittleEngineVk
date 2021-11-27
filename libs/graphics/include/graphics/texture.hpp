@@ -28,6 +28,8 @@ class Texture {
 	enum class Type { e2D, eCube };
 	enum class Payload { eColour, eData };
 
+	static constexpr vk::ImageUsageFlags usage_v = vIUFB::eSampled | vIUFB::eTransferSrc | vIUFB::eTransferDst;
+
 	struct Data {
 		vk::ImageView imageView;
 		vk::Sampler sampler;
@@ -47,6 +49,8 @@ class Texture {
 	static Cubemap unitCubemap(Colour colour);
 
 	bool construct(CreateInfo const& info);
+	bool assign(Image&& image, Type type = Type::e2D, Payload payload = Payload::eColour, vk::Sampler sampler = {});
+	bool blit(CommandBuffer cb, Image const& src, vk::Filter filter = vk::Filter::eLinear);
 
 	bool valid() const noexcept;
 	bool busy() const;

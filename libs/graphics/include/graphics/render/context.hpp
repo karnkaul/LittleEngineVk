@@ -1,16 +1,17 @@
 #pragma once
 #include <core/colour.hpp>
 #include <core/hash.hpp>
+#include <graphics/command_buffer.hpp>
 #include <graphics/common.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/render/command_buffer.hpp>
 #include <graphics/render/pipeline_factory.hpp>
 #include <graphics/render/pipeline_flags.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
 #include <graphics/screen_rect.hpp>
+#include <graphics/utils/command_rotator.hpp>
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -32,7 +33,7 @@ class RenderContext : public NoCopy {
 	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
 
 	std::unique_ptr<Renderer> defaultRenderer();
-	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept { m_renderer = std::move(renderer); }
+	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept;
 
 	void waitForFrame();
 	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
@@ -48,6 +49,9 @@ class RenderContext : public NoCopy {
 	Renderer& renderer() const noexcept { return *m_renderer; }
 	PipelineFactory& pipelineFactory() noexcept { return m_pipelineFactory; }
 	PipelineFactory const& pipelineFactory() const noexcept { return m_pipelineFactory; }
+	VRAM& vram() noexcept { return *m_vram; }
+	CommandRotator const& commands() const noexcept { return m_commandRotator; }
+	RenderTarget const& previousFrame() const noexcept { return m_previousFrame; }
 
 	struct Sync;
 
@@ -56,7 +60,9 @@ class RenderContext : public NoCopy {
 
 	Surface m_surface;
 	PipelineFactory m_pipelineFactory;
+	CommandRotator m_commandRotator;
 	RingBuffer<Sync> m_syncs;
+	RenderTarget m_previousFrame;
 	Deferred<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;
 	std::unique_ptr<Renderer> m_renderer;

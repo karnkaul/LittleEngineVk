@@ -9,6 +9,7 @@ namespace le::graphics {
 struct PhysicalDevice {
 	vk::PhysicalDevice device;
 	vk::PhysicalDeviceProperties properties;
+	vk::PhysicalDeviceMemoryProperties memoryProperties;
 	vk::PhysicalDeviceFeatures features;
 	std::vector<vk::QueueFamilyProperties> queueFamilies;
 
@@ -18,6 +19,7 @@ struct PhysicalDevice {
 	inline bool virtualGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eVirtualGpu; }
 
 	bool surfaceSupport(u32 queueFamily, vk::SurfaceKHR surface) const;
+	bool supportsLazyAllocation() const noexcept;
 	vk::SurfaceCapabilitiesKHR surfaceCapabilities(vk::SurfaceKHR surface) const;
 	std::string toString() const;
 };

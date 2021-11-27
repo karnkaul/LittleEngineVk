@@ -11,6 +11,7 @@ class Media;
 
 class BitmapFont {
   public:
+	using Extent2D = graphics::Extent2D;
 	using VRAM = graphics::VRAM;
 	using Texture = graphics::Texture;
 	using Sampler = graphics::Sampler;
@@ -24,7 +25,7 @@ class BitmapFont {
 	Texture const& atlas() const;
 
 	graphics::GlyphMap const& glyphs() const noexcept { return m_storage.glyphs; }
-	glm::uvec2 atlasSize() const noexcept { return atlas().data().size; }
+	Extent2D atlasSize() const noexcept { return atlas().extent(); }
 
   private:
 	struct {
@@ -36,7 +37,7 @@ class BitmapFont {
 struct BitmapFont::CreateInfo {
 	std::optional<vk::Format> forceFormat;
 	Span<Glyph const> glyphs;
-	graphics::Texture::Img atlas;
+	graphics::BmpBytes atlas;
 };
 
 inline BitmapFont::Texture const& BitmapFont::atlas() const {

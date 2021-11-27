@@ -7,6 +7,7 @@
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <unordered_map>
+#include <variant>
 
 namespace le {
 template <>
@@ -57,11 +58,12 @@ struct AssetLoadData<graphics::Texture> {
 
 template <>
 struct AssetLoader<graphics::Texture> {
-	using Data = graphics::Texture::CreateInfo::Data;
+	using Data = std::variant<graphics::Bitmap, graphics::BmpBytes, graphics::Cubemap, graphics::CubeBytes>;
 
 	std::unique_ptr<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
 	bool reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const;
 
+	bool load(graphics::Texture& out_texture, Data const& data, vk::Sampler sampler, std::optional<vk::Format> format) const;
 	std::optional<Data> data(AssetLoadInfo<graphics::Texture> const& info) const;
 };
 

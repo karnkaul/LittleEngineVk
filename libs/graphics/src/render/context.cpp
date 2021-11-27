@@ -23,12 +23,7 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
 	Renderer::CreateInfo rci(vram, format);
 	rci.buffering = buffering;
-	if (vram->m_device->physicalDevice().integratedGPU()) {
-		rci.transition = Renderer::Transition::eRenderPass;
-		rci.target = Renderer::Target::eSwapchain;
-	} else {
-		rci.target = Renderer::Target::eOffScreen;
-	}
+	rci.target = Renderer::Target::eOffScreen;
 	return std::make_unique<Renderer>(rci);
 }
 } // namespace
@@ -86,8 +81,8 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 }
 
 RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
-	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_vram(vram), m_renderer(makeRenderer(m_vram, m_surface.format(), bf)),
-	  m_buffering(bf) {
+	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
+	  m_renderer(makeRenderer(m_vram, m_surface.format(), bf)), m_buffering(bf) {
 	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
@@ -95,6 +90,11 @@ RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<
 }
 
 std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
+
+void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
+	m_vram->m_device->waitIdle();
+	m_renderer = std::move(renderer);
+}
 
 void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
 
@@ -106,7 +106,9 @@ bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D 
 		m_vram->m_device->resetFence(sync.drawn);
 		auto cmds = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
 		ret = submit(cmds, *acquired, fbSize);
+		m_previousFrame = acquired->image;
 	}
+	m_commandRotator.submit();
 	m_syncs.next();
 	return ret;
 }
@@ -117,15 +119,6 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 
 bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
 	auto const& sync = m_syncs.get();
-	vk::SubmitInfo submitInfo;
-	vk::PipelineStageFlags const waitStages = vPSFB::eTopOfPipe;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &sync.draw.m_t;
-	submitInfo.pWaitDstStageMask = &waitStages;
-	submitInfo.commandBufferCount = (u32)cbs.size();
-	submitInfo.pCommandBuffers = cbs.data();
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &sync.present.m_t;
 	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
 	return m_surface.present(fbSize, acquired, sync.present);
 }

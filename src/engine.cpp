@@ -128,18 +128,6 @@ Engine::~Engine() {
 	Services::untrack(this);
 }
 
-bool Engine::unboot() noexcept {
-	if (booted()) {
-		saveConfig();
-		m_impl->store.clear();
-		Services::untrack<Context, VRAM, AssetStore, Profiler>();
-		m_impl->gfx.reset();
-		io::ZIPMedia::fsDeinit();
-		return true;
-	}
-	return false;
-}
-
 void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	unboot();
 	info.device.instance.extensions = window::instanceExtensions(*m_impl->win);
@@ -147,12 +135,24 @@ void Engine::boot(Boot::CreateInfo info, std::optional<VSync> vsync) {
 	m_impl->gfx.emplace(&*m_impl->win, info, m_impl->store, vsync);
 	auto const& surface = m_impl->gfx->context.surface();
 	logI("[Engine] Swapchain image count: [{}] VSync: [{}]", surface.imageCount(), graphics::vSyncNames[surface.format().vsync]);
+	logD("[Engine] Device supports lazily allocated memory: {}", m_impl->gfx->boot.device.physicalDevice().supportsLazyAllocation());
 	Services::track<Context, VRAM, AssetStore, Profiler>(&m_impl->gfx->context, &m_impl->gfx->boot.vram, &m_impl->store, &m_impl->profiler);
-	DearImGui::CreateInfo dici(m_impl->gfx->context.renderer().renderPass());
-	dici.correctStyleColours = m_impl->gfx->context.colourCorrection() == graphics::ColourCorrection::eAuto;
-	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->boot.device, &*m_impl->win, dici); }
+	if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
 	addDefaultAssets();
 	m_impl->win->show();
+}
+
+bool Engine::unboot() noexcept {
+	if (booted()) {
+		saveConfig();
+		m_impl->store.clear();
+		Services::untrack<Context, VRAM, AssetStore, Profiler>();
+		m_impl->gfx->boot.vram.shutdown();
+		m_impl->gfx.reset();
+		io::ZIPMedia::fsDeinit();
+		return true;
+	}
+	return false;
 }
 
 input::Driver::Out Engine::poll(bool consume) noexcept {
@@ -176,7 +176,9 @@ bool Engine::booted() const noexcept { return m_impl->gfx.has_value(); }
 
 bool Engine::setRenderer(std::unique_ptr<Renderer>&& renderer) {
 	if (booted()) {
+		m_impl->gfx->imgui.reset();
 		m_impl->gfx->context.setRenderer(std::move(renderer));
+		if constexpr (levk_imgui) { m_impl->gfx->imgui = std::make_unique<DearImGui>(&m_impl->gfx->context, &*m_impl->win); }
 		return true;
 	}
 	return false;
@@ -245,19 +247,16 @@ void Engine::addDefaultAssets() {
 	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
 	auto sampler = store().add("samplers/default", graphics::Sampler{&gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
 	/*Textures*/ {
-		graphics::Texture::CreateInfo tci;
-		tci.sampler = sampler->sampler();
-		tci.data = graphics::utils::bitmap({0xff0000ff}, 1);
-		graphics::Texture texture(&gfx().boot.vram);
-		if (texture.construct(tci)) { store().add("textures/red", std::move(texture)); }
-		tci.data = graphics::utils::bitmap({0x000000ff}, 1);
-		if (texture.construct(tci)) { store().add("textures/black", std::move(texture)); }
-		tci.data = graphics::utils::bitmap({0xffffffff}, 1);
-		if (texture.construct(tci)) { store().add("textures/white", std::move(texture)); }
-		tci.data = graphics::utils::bitmap({0x0}, 1);
-		if (texture.construct(tci)) { store().add("textures/blank", std::move(texture)); }
-		tci.data = graphics::Texture::unitCubemap(colours::transparent);
-		if (texture.construct(tci)) { store().add("cubemaps/blank", std::move(texture)); }
+		using Tex = graphics::Texture;
+		auto v = &gfx().boot.vram;
+		vk::Sampler s = sampler->sampler();
+		store().add("textures/red", Tex(v, s, colours::red, {1, 1}));
+		store().add("textures/black", Tex(v, s, colours::black, {1, 1}));
+		store().add("textures/white", Tex(v, s, colours::white, {1, 1}));
+		store().add("textures/blank", Tex(v, s, 0x0, {1, 1}));
+		Tex blankCube(v, s);
+		blankCube.construct(Tex::unitCubemap(0x0));
+		store().add("cubemaps/blank", std::move(blankCube));
 	}
 	/* meshes */ {
 		auto cube = store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));

@@ -207,6 +207,27 @@ bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset
 	return false;
 }
 
+Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format, bool linear) {
+	CreateInfo ret;
+	ret.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
+	ret.createInfo.usage = usage;
+	ret.vmaUsage = vmaUsage;
+	ret.view.aspects = view;
+	if (view != vk::ImageAspectFlags()) {
+		ret.view.format = format;
+		ret.view.type = vk::ImageViewType::e2D;
+	}
+	if ((usage & vk::ImageUsageFlagBits::eTransferDst) != vk::ImageUsageFlags() || (usage & vk::ImageUsageFlagBits::eTransferSrc) != vk::ImageUsageFlags()) {
+		ret.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
+	}
+	ret.createInfo.format = format;
+	ret.createInfo.tiling = linear ? vk::ImageTiling::eLinear : vk::ImageTiling::eOptimal;
+	ret.createInfo.imageType = vk::ImageType::e2D;
+	ret.createInfo.mipLevels = 1U;
+	ret.createInfo.arrayLayers = 1U;
+	return ret;
+}
+
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory) {
 	Device& d = *memory->m_device;
 	vk::ImageCreateInfo imageInfo = info.createInfo;
@@ -225,7 +246,8 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	m_storage.extent = info.createInfo.extent;
 	m_storage.image = vk::Image(vkImage);
 	m_storage.usage = info.createInfo.usage;
-	m_storage.layout = info.createInfo.initialLayout;
+	m_storage.imageFormat = info.createInfo.format;
+	memory->m_device->m_layouts.force(m_storage.image, info.createInfo.initialLayout);
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
 	m_data.queueFlags = info.queueFlags;
 	VmaAllocationInfo allocationInfo;
@@ -236,6 +258,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	memory->m_allocations[kind_v].fetch_add(m_storage.allocatedSize);
 	if (info.view.aspects != vk::ImageAspectFlags() && info.view.format != vk::Format()) {
 		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type);
+		m_storage.viewFormat = info.view.format;
 	}
 }
 

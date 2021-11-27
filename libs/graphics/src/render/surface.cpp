@@ -101,7 +101,7 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(*m_storage.swapchain);
 		for (auto const image : images) {
 			m_storage.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
-			m_storage.images.push_back({image, *m_storage.imageViews.back(), extent});
+			m_storage.images.push_back({image, *m_storage.imageViews.back(), extent, m_createInfo.imageFormat});
 		}
 	} else {
 		m_storage = std::exchange(m_retired, Storage());
@@ -152,6 +152,7 @@ bool Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
 Surface::Info Surface::makeInfo(Extent2D extent) const {
 	Info ret;
 	auto const caps = m_vram->m_device->physicalDevice().device.getSurfaceCapabilitiesKHR(*m_surface);
+	ret.minImageCount = caps.minImageCount;
 	if (caps.currentExtent.width < maths::max<u32>() && caps.currentExtent.height < maths::max<u32>()) {
 		ret.extent = caps.currentExtent;
 	} else {

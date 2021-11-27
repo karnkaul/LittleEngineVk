@@ -9,6 +9,8 @@
 #include <algorithm>
 
 namespace le {
+using Payload = graphics::Texture::Payload;
+
 namespace {
 bool isGlsl(io::Path const& path) { return path.has_extension() && (path.extension() == ".vert" || path.extension() == ".frag"); }
 
@@ -111,28 +113,18 @@ std::unique_ptr<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoa
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return {}; }
 	if (auto d = data(info)) {
-		graphics::Texture::CreateInfo createInfo;
-		createInfo.data = std::move(*d);
-		createInfo.sampler = sampler->sampler();
-		createInfo.forceFormat = info.m_data.forceFormat;
-		createInfo.payload = info.m_data.payload;
-		graphics::Texture ret(info.m_data.vram);
-		if (ret.construct(createInfo)) { return std::make_unique<graphics::Texture>(std::move(ret)); }
+		graphics::Texture out_texture(info.m_data.vram, sampler->sampler());
+		if (load(out_texture, *d, sampler->sampler(), info.m_data.forceFormat)) { return std::make_unique<graphics::Texture>(std::move(out_texture)); }
 	}
 	return {};
 }
 
 bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const {
 	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
-	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
-	if (!sampler) { return false; }
 	if (auto d = data(info)) {
-		graphics::Texture::CreateInfo createInfo;
-		createInfo.data = std::move(*d);
-		createInfo.forceFormat = info.m_data.forceFormat;
-		createInfo.payload = info.m_data.payload;
-		createInfo.sampler = sampler->sampler();
-		return out_texture.construct(createInfo);
+		auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
+		vk::Sampler const s = sampler ? sampler->sampler() : vk::Sampler();
+		return load(out_texture, *d, s, info.m_data.forceFormat);
 	}
 	return false;
 }
@@ -153,20 +145,47 @@ std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Textur
 	} else if (info.m_data.imageURIs.size() == 1) {
 		auto path = info.m_data.prefix / info.m_data.imageURIs[0];
 		path += info.m_data.ext;
-		if (auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor)) { return graphics::Texture::img(res->bytes()); }
+		if (auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor)) { return graphics::Texture::bmpBytes(res->bytes()); }
 	} else if (info.m_data.imageURIs.size() == 6) {
-		graphics::Texture::Cube cube;
+		graphics::CubeBytes cube;
 		std::size_t idx = 0;
 		for (auto const& p : info.m_data.imageURIs) {
 			auto path = info.m_data.prefix / p;
 			path += info.m_data.ext;
 			auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor);
 			if (!res) { return std::nullopt; }
-			cube[idx++] = graphics::Texture::img(res->bytes());
+			cube[idx++] = graphics::Texture::bmpBytes(res->bytes());
 		}
 		return cube;
 	}
 	return std::nullopt;
+}
+
+bool AssetLoader<graphics::Texture>::load(graphics::Texture& out_texture, Data const& data, vk::Sampler sampler, std::optional<vk::Format> format) const {
+	auto construct = [&out_texture, sampler, format](auto const& data) {
+		if (format) {
+			if (out_texture.construct(data, Payload::eColour, *format)) {
+				if (sampler) { out_texture.changeSampler(sampler); }
+				return true;
+			}
+		} else {
+			if (out_texture.construct(data, Payload::eColour)) {
+				if (sampler) { out_texture.changeSampler(sampler); }
+				return true;
+			}
+		}
+		return false;
+	};
+	if (auto bitmap = std::get_if<graphics::Bitmap>(&data)) {
+		return construct(*bitmap);
+	} else if (auto bytes = std::get_if<graphics::BmpBytes>(&data)) {
+		return construct(*bytes);
+	} else if (auto cubemap = std::get_if<graphics::Cubemap>(&data)) {
+		return construct(*cubemap);
+	} else if (auto bytes = std::get_if<graphics::CubeBytes>(&data)) {
+		return construct(*bytes);
+	}
+	return false;
 }
 
 std::unique_ptr<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFont> const& info) const {
@@ -191,7 +210,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 			BitmapFont::CreateInfo bci;
 			bci.forceFormat = info.m_data.forceFormat;
 			bci.glyphs = fi.glyphs;
-			bci.atlas = graphics::Texture::img(atlas->bytes());
+			bci.atlas = graphics::Texture::bmpBytes(atlas->bytes());
 			if (out_font.make(info.m_data.vram, *sampler, bci)) { return true; }
 		}
 	}

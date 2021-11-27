@@ -1,7 +1,8 @@
+#include <core/utils/expect.hpp>
+#include <graphics/command_buffer.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
-#include <graphics/render/command_buffer.hpp>
 
 namespace le::graphics {
 VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {
@@ -91,7 +92,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return ret;
 }
 
-VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair layouts) {
+VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : bitmaps) {
@@ -103,7 +104,7 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	ENSURE(out_dst.layout() == layouts.first, "Mismatched image layouts");
+	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
 	std::vector<bytearray> data;
@@ -114,8 +115,8 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 		data.push_back(std::move(bytes));
 	}
 	out_dst.m_storage.layerCount = (u32)data.size();
-	auto f = [p = std::move(promise), d = std::move(data), i = out_dst.image(), l = out_dst.m_storage.layerCount, e = out_dst.m_storage.extent, layouts,
-			  imgSize, layerSize, this]() mutable {
+	auto f = [p = std::move(promise), d = std::move(data), i = out_dst.image(), l = out_dst.m_storage.layerCount, e = out_dst.m_storage.extent, fromTo, imgSize,
+			  layerSize, aspects, this]() mutable {
 		auto stage = m_transfer.newStage(imgSize);
 		[[maybe_unused]] bool const bResult = stage.buffer->map();
 		ENSURE(bResult, "Memory map failed");
@@ -124,40 +125,34 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 		for (auto const& pixels : d) {
 			auto const offset = layerIdx * layerSize;
 			std::memcpy((u8*)stage.buffer->mapped() + offset, pixels.data(), pixels.size());
-			copyRegions.push_back(bufferImageCopy(e, vk::ImageAspectFlagBits::eColor, offset, (u32)layerIdx++));
+			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++));
 		}
 		ImgMeta meta;
-		meta.layouts = layouts;
+		meta.layouts = fromTo;
 		meta.stages.second = m_post.stages;
 		meta.access.second = m_post.access;
 		meta.layerCount = l;
 		copy(stage.command, stage.buffer->buffer(), i, copyRegions, meta);
 		m_transfer.addStage(std::move(stage), std::move(p));
+		m_device->m_layouts.force(i, meta.layouts.second);
 	};
 	m_transfer.m_queue.push(std::move(f));
-	out_dst.layout(layouts.second);
 	return ret;
 }
 
-VRAM::Future VRAM::blit(Image const& src, Image& out_dst, LayoutPair layouts, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter) {
+void VRAM::blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter, AspectPair aspects) {
 	ENSURE((src.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	Transfer::Promise promise;
-	auto ret = promise.get_future();
-	TPair<vk::Extent3D> const extents = {src.extent(), out_dst.extent()};
-	auto f = [this, p = std::move(promise), s = src.image(), d = out_dst.image(), extents, layouts, aspects, filter]() mutable {
-		auto stage = m_transfer.newStage(0);
-		blit(stage.command, {s, d}, extents, layouts, filter, aspects);
-		m_transfer.addStage(std::move(stage), std::move(p));
-	};
-	m_transfer.m_queue.push(std::move(f));
-	return ret;
+	TPair<RenderTarget> targets;
+	targets.first = RenderTarget{src.image(), src.view(), src.extent2D(), src.imageFormat()};
+	targets.second = RenderTarget{out_dst.image(), out_dst.view(), out_dst.extent2D(), out_dst.imageFormat()};
+	blit(cb, targets, filter, aspects);
 }
 
-void VRAM::blit(CommandBuffer cb, TPair<RenderImage> images, LayoutPair layouts, vk::Filter filter, TPair<vk::ImageAspectFlags> aspects) {
+void VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter, AspectPair aspects) {
 	vk::Extent3D const src(cast(images.first.extent), 1);
 	vk::Extent3D const dst(cast(images.second.extent), 1);
-	blit(cb.m_cb, {images.first.image, images.second.image}, {src, dst}, layouts, filter, aspects);
+	blit(cb.m_cb, {images.first.image, images.second.image}, {src, dst}, blit_layouts_v, filter, aspects);
 }
 
 void VRAM::waitIdle() {

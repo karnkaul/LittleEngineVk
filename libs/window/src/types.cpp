@@ -5,6 +5,8 @@
 #endif
 
 namespace le {
+std::string_view window::Joystick::name() const { return joystickName(id); }
+
 f32 window::Gamepad::axis(Axis axis) const {
 	[[maybe_unused]] std::size_t idx = std::size_t(axis);
 #if defined(LEVK_USE_GLFW)
@@ -33,5 +35,13 @@ std::string_view window::toString([[maybe_unused]] s32 key) {
 #else
 	return unknown;
 #endif
+}
+
+std::string_view window::joystickName(int id) {
+#if defined(LEVK_USE_GLFW)
+	if (glfwJoystickIsGamepad(id)) { return glfwGetGamepadName(id); }
+	if (auto const name = glfwGetJoystickName(id)) { return name; }
+#endif
+	return {};
 }
 } // namespace le

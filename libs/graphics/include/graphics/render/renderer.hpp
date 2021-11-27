@@ -1,6 +1,6 @@
 #pragma once
+#include <graphics/command_buffer.hpp>
 #include <graphics/render/buffering.hpp>
-#include <graphics/render/command_buffer.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
 #include <graphics/resources.hpp>
@@ -9,18 +9,7 @@
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
-
-namespace rtech {
-enum class Transition { eRenderPass, eCommandBuffer };
-enum class Approach { eForward, eDeferred, eOther };
-enum class Target { eSwapchain, eOffScreen };
-
-struct Tech {
-	Approach approach{};
-	Target target{};
-	Transition transition{};
-};
-} // namespace rtech
+class PipelineFactory;
 
 struct RenderBegin {
 	RGBA clear;
@@ -28,7 +17,12 @@ struct RenderBegin {
 	ScreenView view;
 };
 
-class PipelineFactory;
+struct RenderInfo {
+	CommandBuffer cb;
+	Framebuffer framebuffer;
+	RenderBegin begin;
+	vk::RenderPass pass;
+};
 
 class IDrawer {
   public:
@@ -47,6 +41,7 @@ class ImageCache {
 	bool ready() const noexcept { return m_vram != nullptr; }
 
 	void setInfo(CreateInfo const& info) { m_info = info; }
+	CreateInfo const& info() const noexcept { return m_info; }
 	CreateInfo& setDepth();
 	CreateInfo& setColour();
 
@@ -64,30 +59,37 @@ class Renderer {
   public:
 	static constexpr u8 max_cmd_per_frame_v = 8;
 
-	using Transition = rtech::Transition;
-	using Approach = rtech::Approach;
-	using Target = rtech::Target;
-	using Tech = rtech::Tech;
 	using Record = ktl::fixed_vector<vk::CommandBuffer, max_cmd_per_frame_v>;
 
+	enum class Approach { eForward, eDeferred, eOther };
+	enum class Target { eSwapchain, eOffScreen };
+
+	struct Tech {
+		Approach approach{};
+		Target target{};
+	};
+
 	struct Attachment {
-		LayoutPair layouts;
-		vk::Format format;
+		LayoutPair layouts = {vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eColorAttachmentOptimal};
+		vk::Format format = vk::Format::eR8G8B8A8Unorm;
 	};
 
 	struct CreateInfo;
 
+	static constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept;
 	static vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
-	static Deferred<vk::RenderPass> makeRenderPass(Device& device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
-	static constexpr Extent2D scaleExtent(Extent2D extent, f32 scale) noexcept;
+
+	static Deferred<vk::RenderPass> makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
+	static Deferred<vk::RenderPass> makeSingleRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
+	static void render(not_null<Device*> device, IDrawer& out_drawer, PipelineFactory& pf, RenderInfo info);
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
 
-	Record render(IDrawer& out_drawer, PipelineFactory& pf, RenderImage const& acquired, RenderBegin const& rb);
+	Record render(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
 
-	Tech tech() const noexcept { return Tech{Approach::eForward, m_target, m_transition}; }
+	Tech tech() const noexcept { return Tech{Approach::eForward, m_target}; }
 	bool canScale() const noexcept;
 	f32 renderScale() const noexcept { return m_scale; }
 	bool renderScale(f32) noexcept;
@@ -95,16 +97,15 @@ class Renderer {
 	virtual vk::RenderPass renderPass() const noexcept { return m_singleRenderPass; }
 
   protected:
-	Deferred<vk::Framebuffer> makeFramebuffer(vk::RenderPass rp, Span<vk::ImageView const> views, Extent2D extent, u32 layers = 1) const;
-	Deferred<vk::RenderPass> makeRenderPass(Transition transition, vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
+	Deferred<vk::RenderPass> makeRenderPass(vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
 											Span<vk::SubpassDependency const> deps = {}) const;
 
-	virtual void doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderImage const& acquired, RenderBegin const& rb);
+	virtual void doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
 	virtual void next();
 
 	ImageCache m_depthImage;
 	ImageCache m_colourImage;
-	vk::Format m_colourFormat = vk::Format::eR8G8B8A8Unorm;
+	vk::Format m_colourFormat = vk::Format::eR8G8B8A8Srgb;
 	not_null<VRAM*> m_vram;
 
   private:
@@ -121,7 +122,6 @@ class Renderer {
 	Deferred<vk::RenderPass> m_singleRenderPass;
 	Surface::Format m_surfaceFormat;
 	TPair<f32> m_scaleLimits = {0.25f, 4.0f};
-	Transition m_transition;
 	Target m_target;
 	f32 m_scale = 1.0f;
 };
@@ -129,7 +129,6 @@ class Renderer {
 struct Renderer::CreateInfo {
 	not_null<VRAM*> vram;
 	Surface::Format surfaceFormat;
-	Transition transition = Transition::eCommandBuffer;
 	Target target = Target::eOffScreen;
 	Buffering buffering = 2_B;
 	u8 cmdPerFrame = 1;

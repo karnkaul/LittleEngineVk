@@ -8,6 +8,15 @@ bool PhysicalDevice::surfaceSupport(u32 queueFamily, vk::SurfaceKHR surface) con
 	return !Device::default_v(device) && device.getSurfaceSupportKHR(queueFamily, surface);
 }
 
+bool PhysicalDevice::supportsLazyAllocation() const noexcept {
+	for (u32 i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+		if ((memoryProperties.memoryTypes[i].propertyFlags & vk::MemoryPropertyFlagBits::eLazilyAllocated) == vk::MemoryPropertyFlagBits::eLazilyAllocated) {
+			return true;
+		}
+	}
+	return false;
+}
+
 vk::SurfaceCapabilitiesKHR PhysicalDevice::surfaceCapabilities(vk::SurfaceKHR surface) const {
 	return !Device::default_v(device) ? device.getSurfaceCapabilitiesKHR(surface) : vk::SurfaceCapabilitiesKHR();
 }

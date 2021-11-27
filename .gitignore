@@ -3,6 +3,7 @@
 **/compile_commands.json
 **/.clangd
 **/.cache
+*.kdev4
 Testing/*
 build/*
 out/*

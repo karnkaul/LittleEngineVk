@@ -15,7 +15,7 @@ constexpr bool levk_imgui = false;
 
 namespace le {
 namespace graphics {
-class Device;
+class RenderContext;
 class CommandBuffer;
 } // namespace graphics
 namespace window {
@@ -27,10 +27,9 @@ class DearImGui final {
 	enum class State { eEnd, eBegin, eRender };
 
 	using Window = window::Instance;
-	struct CreateInfo;
 
 	DearImGui();
-	DearImGui(not_null<graphics::Device*> device, not_null<Window const*> window, CreateInfo const& info);
+	DearImGui(not_null<graphics::RenderContext*> context, not_null<Window const*> window, std::size_t descriptorCount = 1000);
 
 	bool beginFrame();
 	bool endFrame();
@@ -54,16 +53,6 @@ class DearImGui final {
 	graphics::Deferred<void*, Del> m_del;
 #endif
 	State m_state = State::eEnd;
-};
-
-struct DearImGui::CreateInfo {
-	vk::RenderPass renderPass;
-	u32 descriptorCount = 1000;
-	u8 imageCount = 3;
-	u8 minImageCount = 2;
-	bool correctStyleColours = true;
-
-	explicit CreateInfo(vk::RenderPass renderPass) : renderPass(renderPass) {}
 };
 
 // impl

@@ -7,7 +7,7 @@
 namespace le {
 Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cube(Services::get<graphics::VRAM>()), m_cubemap(cubemap) {
 	m_cube.construct(graphics::makeCube());
-	ENSURE(m_cubemap->data().type == graphics::Texture::Type::eCube, "Invalid cubemap");
+	ENSURE(m_cubemap->type() == graphics::Texture::Type::eCube, "Invalid cubemap");
 }
 
 Prop const& Skybox::prop() const noexcept {

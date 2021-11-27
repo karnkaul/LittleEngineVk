@@ -1,5 +1,5 @@
 #pragma once
-#include <graphics/render/command_buffer.hpp>
+#include <graphics/command_buffer.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <map>
 

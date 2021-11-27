@@ -1,6 +1,6 @@
+#include <graphics/command_buffer.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/mesh.hpp>
-#include <graphics/render/command_buffer.hpp>
 
 namespace le::graphics {
 Mesh::Mesh(not_null<VRAM*> vram, Type type) : m_vram(vram), m_type(type) {}

@@ -20,7 +20,7 @@ target_compile_definitions(${PROJECT_NAME} INTERFACE
 	$<$<BOOL:${LEVK_PRE_RELEASE}>:LEVK_PRE_RELEASE>
 )
 
-set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused -Wno-unknown-pragmas -Wno-deprecated-volatile)
+set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused)
 if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
 	set(COMPILE_OPTS
 		-Wextra
@@ -28,7 +28,7 @@ if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
 		$<$<NOT:$<CONFIG:Debug>>:-Werror>
 		$<$<NOT:$<BOOL:${WINDOWS_CLANG}>>:-fexceptions>
 		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
-		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8 -Wno-unknown-pragmas -Wno-volatile>
+		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8>
 		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:${CLANG_COMMON}>
 		$<$<OR:$<BOOL:${LEVK_ASAN}>,$<BOOL:${LEVK_UBSAN}>>:-O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls>
 		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>

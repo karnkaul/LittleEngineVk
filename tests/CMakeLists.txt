@@ -22,3 +22,8 @@ add_test(ktl::fixed_vector test-fv)
 add_executable(test-delegate delegate_test.cpp)
 target_link_libraries(test-delegate PRIVATE dtest::main levk::core levk-test)
 add_test(ktl::delegate test-delegate)
+
+# pipe-hash
+add_executable(test-pipe-hash pipe_hash_test.cpp)
+target_link_libraries(test-pipe-hash PRIVATE dtest::main levk::graphics levk-test)
+add_test(pipe-hash test-pipe-hash)

@@ -65,9 +65,9 @@ io::Media const& Resources::media() const {
 
 io::FSMedia& Resources::fsMedia() { return m_fsMedia; }
 
-Resource const* Resources::find(Hash id) const noexcept {
+Resource const* Resources::find(Hash uri) const noexcept {
 	ktl::tlock lock(m_loaded);
-	if (auto it = lock.get().find(id); it != lock.get().end()) { return &it->second; }
+	if (auto it = lock.get().find(uri); it != lock.get().end()) { return &it->second; }
 	return nullptr;
 }
 
@@ -88,9 +88,9 @@ Resource const* Resources::loadFirst(Span<io::Path> uris, Resource::Type type, F
 	return nullptr;
 }
 
-bool Resources::loaded(Hash id) const noexcept {
+bool Resources::loaded(Hash uri) const noexcept {
 	ktl::tlock lock(m_loaded);
-	return utils::contains(lock.get(), id);
+	return utils::contains(lock.get(), uri);
 }
 
 void Resources::update() {

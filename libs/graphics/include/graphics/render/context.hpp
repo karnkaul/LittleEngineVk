@@ -1,14 +1,17 @@
 #pragma once
 #include <core/colour.hpp>
 #include <core/hash.hpp>
+#include <graphics/command_buffer.hpp>
 #include <graphics/common.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/render/command_pool.hpp>
-#include <graphics/render/pipeline.hpp>
+#include <graphics/render/pipeline_factory.hpp>
+#include <graphics/render/pipeline_flags.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/render/rgba.hpp>
+#include <graphics/render/surface.hpp>
 #include <graphics/screen_rect.hpp>
+#include <graphics/utils/command_rotator.hpp>
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -18,72 +21,66 @@ namespace le::graphics {
 struct QuickVertexInput;
 struct VertexInputCreateInfo;
 
-enum class PFlag { eDepthTest, eDepthWrite, eAlphaBlend };
-using PFlags = ktl::enum_flags<PFlag, u8>;
-constexpr PFlags pflags_all = PFlags(PFlag::eDepthTest, PFlag::eDepthWrite, PFlag::eAlphaBlend);
-static_assert(pflags_all.count() == 3, "Invariant violated");
-
-class RenderContext : NoCopy {
+class RenderContext : public NoCopy {
   public:
-	enum class Status { eIdle, eWaiting, eReady, eBegun, eEnded, eDrawing };
+	using Acquire = Surface::Acquire;
+	using Attachment = Renderer::Attachment;
+	using GetSpirV = PipelineFactory::GetSpirV;
 
 	static VertexInputInfo vertexInput(VertexInputCreateInfo const& info);
 	static VertexInputInfo vertexInput(QuickVertexInput const& info);
-	template <typename V = Vertex>
-	static Pipeline::CreateInfo pipeInfo(PFlags flags = PFlags(PFlag::eDepthTest) | PFlag::eDepthWrite, f32 wire = 0.0f);
 
-	RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer);
+	RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf = 2_B);
 
-	Pipeline makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info);
+	std::unique_ptr<Renderer> defaultRenderer();
+	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept;
 
-	bool ready(glm::ivec2 framebufferSize);
-	bool waitForFrame();
-	std::optional<RenderTarget> beginFrame();
-	std::optional<CommandBuffer> beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth = {1.0f, 0});
-	bool endDraw();
-	bool endFrame();
-	bool submitFrame();
+	void waitForFrame();
+	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
+	bool recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync);
 
-	void reconstruct(std::optional<graphics::Vsync> vsync = std::nullopt);
-
-	Status status() const noexcept { return m_storage.status; }
-	std::size_t index() const noexcept { return m_storage.renderer->index(); }
-	Buffering buffering() const noexcept { return m_storage.renderer->buffering(); }
-	Extent2D extent() const noexcept { return m_swapchain->display().extent; }
-	vk::SurfaceFormatKHR swapchainFormat() const noexcept { return m_swapchain->colourFormat(); }
+	Surface const& surface() const noexcept { return m_surface; }
+	Buffering buffering() const noexcept { return m_buffering; }
 	vk::Format colourImageFormat() const noexcept;
 	ColourCorrection colourCorrection() const noexcept;
 	f32 aspectRatio() const noexcept;
-	glm::mat4 preRotate() const noexcept;
-	vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) const noexcept;
-	vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) const noexcept;
-	bool supported(Vsync vsync) const noexcept { return m_swapchain->supportedVsync().test(vsync); }
+	bool supported(VSync vsync) const noexcept { return m_surface.vsyncs().test(vsync); }
 
-	ARenderer& renderer() const noexcept { return *m_storage.renderer; }
-	CommandPool const& commandPool() const noexcept { return m_pool; }
+	Renderer& renderer() const noexcept { return *m_renderer; }
+	PipelineFactory& pipelineFactory() noexcept { return m_pipelineFactory; }
+	PipelineFactory const& pipelineFactory() const noexcept { return m_pipelineFactory; }
+	VRAM& vram() noexcept { return *m_vram; }
+	CommandRotator const& commands() const noexcept { return m_commandRotator; }
+	RenderTarget const& previousFrame() const noexcept { return m_previousFrame; }
+
+	struct Sync;
 
   private:
-	template <typename... T>
-	bool check(T... any) noexcept {
-		return ((m_storage.status == any) || ...);
-	}
-	void set(Status s) noexcept { m_storage.status = s; }
-	enum Flag { eRecreate = 1 << 0, eVsync = 1 << 1 };
-	struct Storage {
-		std::unique_ptr<ARenderer> renderer;
-		std::optional<RenderTarget> drawing;
-		Deferred<vk::PipelineCache> pipelineCache;
-		Status status = {};
-		struct {
-			std::optional<graphics::Vsync> vsync;
-			bool trigger = false;
-		} reconstruct;
-	};
+	bool submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize);
 
-	Storage m_storage;
-	CommandPool m_pool;
-	not_null<Swapchain*> m_swapchain;
-	not_null<Device*> m_device;
+	Surface m_surface;
+	PipelineFactory m_pipelineFactory;
+	CommandRotator m_commandRotator;
+	RingBuffer<Sync> m_syncs;
+	RenderTarget m_previousFrame;
+	Deferred<vk::PipelineCache> m_pipelineCache;
+	not_null<VRAM*> m_vram;
+	std::unique_ptr<Renderer> m_renderer;
+	Buffering m_buffering;
+};
+
+struct RenderContext::Sync {
+	static Sync make(not_null<Device*> device) {
+		Sync ret;
+		ret.draw = makeDeferred<vk::Semaphore>(device);
+		ret.present = makeDeferred<vk::Semaphore>(device);
+		ret.drawn = makeDeferred<vk::Fence>(device, true);
+		return ret;
+	}
+
+	Deferred<vk::Semaphore> draw;
+	Deferred<vk::Semaphore> present;
+	Deferred<vk::Fence> drawn;
 };
 
 struct VertexInputCreateInfo {
@@ -114,39 +111,12 @@ struct QuickVertexInput {
 
 // impl
 
-template <typename V>
-Pipeline::CreateInfo RenderContext::pipeInfo(PFlags flags, f32 wire) {
-	Pipeline::CreateInfo ret;
-	ret.fixedState.vertexInput = VertexInfoFactory<V>()(0);
-	if (flags.test(PFlag::eDepthTest)) {
-		ret.fixedState.depthStencilState.depthTestEnable = true;
-		ret.fixedState.depthStencilState.depthCompareOp = vk::CompareOp::eLess;
-	}
-	if (flags.test(PFlag::eDepthWrite)) { ret.fixedState.depthStencilState.depthWriteEnable = true; }
-	if (flags.test(PFlag::eAlphaBlend)) {
-		using CCF = vk::ColorComponentFlagBits;
-		ret.fixedState.colorBlendAttachment.colorWriteMask = CCF::eR | CCF::eG | CCF::eB | CCF::eA;
-		ret.fixedState.colorBlendAttachment.blendEnable = true;
-		ret.fixedState.colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
-		ret.fixedState.colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
-		ret.fixedState.colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
-		ret.fixedState.colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
-		ret.fixedState.colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-		ret.fixedState.colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
-	}
-	if (wire > 0.0f) {
-		ret.fixedState.rasterizerState.polygonMode = vk::PolygonMode::eLine;
-		ret.fixedState.rasterizerState.lineWidth = wire;
-	}
-	return ret;
-}
-
 inline f32 RenderContext::aspectRatio() const noexcept {
-	glm::ivec2 const ext = extent();
+	glm::ivec2 const ext = surface().extent();
 	return f32(ext.x) / std::max(f32(ext.y), 1.0f);
 }
 inline ColourCorrection RenderContext::colourCorrection() const noexcept {
-	return Swapchain::srgb(swapchainFormat().format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
+	return Surface::srgb(surface().format().colour.format) ? ColourCorrection::eAuto : ColourCorrection::eNone;
 }
 inline vk::Format RenderContext::colourImageFormat() const noexcept {
 	return colourCorrection() == ColourCorrection::eAuto ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Snorm;

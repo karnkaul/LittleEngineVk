@@ -81,10 +81,10 @@ class OBJReader final {
 	std::stringstream m_mtl;
 	tinyobj::attrib_t m_attrib;
 	std::optional<tinyobj::MaterialStreamReader> m_matStrReader;
-	io::Path m_modelID;
-	io::Path m_jsonID;
-	io::Path m_samplerID;
-	std::unordered_set<std::string> m_meshIDs;
+	io::Path m_modelURI;
+	io::Path m_jsonURI;
+	io::Path m_samplerURI;
+	std::unordered_set<std::string> m_meshURIs;
 	std::vector<tinyobj::shape_t> m_shapes;
 	std::vector<tinyobj::material_t> m_materials;
 	glm::vec3 m_origin;
@@ -106,11 +106,11 @@ class OBJReader final {
 };
 
 OBJReader::OBJReader(Data data)
-	: m_obj(std::move(data.obj)), m_mtl(std::move(data.mtl)), m_modelID(std::move(data.modelID)), m_jsonID(std::move(data.jsonID)),
-	  m_samplerID(std::move(data.samplerID)), m_origin(data.origin), m_scale(data.scale), m_invertV(data.invertV) {}
+	: m_obj(std::move(data.obj)), m_mtl(std::move(data.mtl)), m_modelURI(std::move(data.modelID)), m_jsonURI(std::move(data.jsonID)),
+	  m_samplerURI(std::move(data.samplerID)), m_origin(data.origin), m_scale(data.scale), m_invertV(data.invertV) {}
 
 Model::Result<Model::CreateInfo> OBJReader::operator()(io::Media const& media) {
-	auto const idStr = m_jsonID.generic_string();
+	auto const idStr = m_jsonURI.generic_string();
 	std::string warn, err;
 	tinyobj::MaterialStreamReader* msr = nullptr;
 	if (m_mtl) {
@@ -142,14 +142,14 @@ Model::MeshData OBJReader::processShape(Model::CreateInfo& info, tinyobj::shape_
 }
 
 std::size_t OBJReader::texIdx(Model::CreateInfo& info, std::string_view texName) {
-	auto const id = (m_modelID / texName).generic_string();
+	auto const id = (m_modelURI / texName).generic_string();
 	Hash const hash = id;
 	if (auto search = find(info.textures, hash)) { return *search; }
 	Model::TexData tex;
-	tex.filename = m_jsonID.parent_path() / texName;
+	tex.filename = m_jsonURI.parent_path() / texName;
 	tex.uri = std::move(id);
 	tex.hash = hash;
-	tex.samplerID = m_samplerID;
+	tex.samplerID = m_samplerURI;
 	info.textures.push_back(std::move(tex));
 	return info.textures.size() - 1;
 }
@@ -176,9 +176,9 @@ std::size_t OBJReader::matIdx(Model::CreateInfo& info, tinyobj::material_t const
 }
 
 std::string OBJReader::meshName(Model::CreateInfo& info, tinyobj::shape_t const& shape) {
-	auto ret = (m_modelID / shape.name).generic_string();
-	if (m_meshIDs.find(ret) != m_meshIDs.end()) { ret = fmt::format("{}_{}", std::move(ret), info.meshes.size()); }
-	m_meshIDs.insert(ret);
+	auto ret = (m_modelURI / shape.name).generic_string();
+	if (m_meshURIs.find(ret) != m_meshURIs.end()) { ret = fmt::format("{}_{}", std::move(ret), info.meshes.size()); }
+	m_meshURIs.insert(ret);
 	return ret;
 }
 
@@ -188,7 +188,7 @@ std::vector<std::size_t> OBJReader::materials(Model::CreateInfo& info, tinyobj::
 		for (int const materialIdx : shape.mesh.material_ids) {
 			if (materialIdx >= 0) {
 				auto const& fromMat = m_materials[(std::size_t)materialIdx];
-				auto const id = (m_modelID / fromMat.name).generic_string();
+				auto const id = (m_modelURI / fromMat.name).generic_string();
 				uniqueIndices.insert(matIdx(info, fromMat, id));
 			}
 		}
@@ -268,12 +268,10 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 	decltype(m_storage) storage;
 	for (auto const& tex : info.textures) {
 		if (!tex.bytes.empty()) {
-			graphics::Texture::CreateInfo tci;
-			tci.forceFormat = forceFormat;
-			tci.sampler = sampler.sampler();
-			tci.data = graphics::utils::bmpBytes(tex.bytes);
-			graphics::Texture texture(vram);
-			if (!texture.construct(tci)) { return Error{{}, Failcode::eTextureCreateFailure}; }
+			graphics::Texture texture(vram, sampler.sampler());
+			if (!texture.construct(graphics::utils::bmpBytes(tex.bytes), graphics::Texture::Payload::eColour, forceFormat.value_or(graphics::Image::srgb_v))) {
+				return Error{{}, Failcode::eTextureCreateFailure};
+			}
 			storage.textures.emplace(tex.uri, std::move(texture));
 		}
 	}

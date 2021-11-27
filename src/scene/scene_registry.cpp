@@ -1,13 +1,15 @@
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <engine/ecs/systems/gui_system.hpp>
+#include <engine/ecs/systems/physics_system.hpp>
+#include <engine/ecs/systems/scene_clean_system.hpp>
+#include <engine/ecs/systems/spring_arm_system.hpp>
+#include <engine/ecs/systems/system_groups.hpp>
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
-#include <engine/systems/gui_system.hpp>
-#include <engine/systems/physics_system.hpp>
-#include <engine/systems/scene_clean_system.hpp>
-#include <engine/systems/spring_arm_system.hpp>
-#include <engine/systems/system_groups.hpp>
+#include <graphics/mesh.hpp>
+#include <graphics/render/camera.hpp>
 
 namespace le {
 namespace {
@@ -21,6 +23,7 @@ dens::entity_view<Transform, SceneNode, Types...> makeNode(dens::registry& out, 
 
 SceneRegistry::SceneRegistry() {
 	m_sceneRoot = makeNode(m_registry, "scene_root");
+	m_registry.attach<graphics::Camera>(m_sceneRoot);
 	auto& physics = m_systemGroupRoot.attach<PhysicsSystemGroup>();
 	physics.attach<PhysicsSystem>();
 	auto& tick = m_systemGroupRoot.attach<TickSystemGroup>();
@@ -29,12 +32,12 @@ SceneRegistry::SceneRegistry() {
 	tick.attach<SceneCleanSystem>(SceneCleanSystem::order_v);
 }
 
-void SceneRegistry::attach(dens::entity entity, DrawLayer layer, PropProvider provider) {
-	m_registry.attach<DrawLayer>(entity, layer);
+void SceneRegistry::attach(dens::entity entity, DrawGroup group, PropProvider provider) {
+	m_registry.attach<DrawGroup>(entity, group);
 	m_registry.attach<PropProvider>(entity, provider);
 }
 
-void SceneRegistry::attach(dens::entity entity, DrawLayer layer) { m_registry.attach<DrawLayer>(entity, layer); }
+void SceneRegistry::attach(dens::entity entity, DrawGroup group) { m_registry.attach<DrawGroup>(entity, group); }
 
 dens::entity SceneRegistry::spawnNode(std::string name) {
 	auto ret = makeNode(m_registry, std::move(name));
@@ -43,24 +46,34 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnProp(std::string name, Hash layerID, PropProvider provider) {
+dens::entity SceneRegistry::spawnProp(std::string name, Hash groupURI, PropProvider provider) {
 	auto ret = spawnNode(std::move(name));
-	attach(ret, layer(layerID), provider);
+	attach(ret, drawGroup(groupURI), provider);
 	return ret;
 };
 
-dens::entity SceneRegistry::spawnMesh(std::string name, Hash meshID, Hash layerID, Material material) {
-	return spawnProp(std::move(name), layerID, PropProvider(meshID, material));
+dens::entity SceneRegistry::spawnMesh(std::string name, Hash meshURI, Hash groupURI, Material material) {
+	return spawnProp(std::move(name), groupURI, PropProvider(meshURI, material));
 }
 
-DrawLayer SceneRegistry::layer(Hash id) const {
+DrawGroup SceneRegistry::drawGroup(Hash id) const {
 	if (auto store = Services::find<AssetStore>()) {
-		if (auto layer = store->find<DrawLayer>(id)) { return *layer; }
+		if (auto group = store->find<DrawGroup>(id)) { return *group; }
 	}
 	return {};
 }
 
-void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt) { m_systemGroupRoot.update(scheduler, m_registry, dt); }
+void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame) {
+	static input::Frame const s_blank{};
+	if (!frame) {
+		if (auto eng = Services::find<Engine>()) {
+			frame = &eng->inputFrame();
+		} else {
+			frame = &s_blank;
+		}
+	}
+	m_systemGroupRoot.update(m_registry, SystemData{scheduler, *frame, dt});
+}
 
 edi::SceneRef SceneRegistry::ediScene() noexcept { return {m_registry, m_sceneRoot}; }
 } // namespace le

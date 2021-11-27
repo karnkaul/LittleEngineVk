@@ -12,7 +12,7 @@ class DeferQueue : public Pinned {
 
 	inline static Buffering defaultDefer = 2_B;
 
-	void defer(Callback const& callback, Buffering defer = defaultDefer);
+	void defer(Callback&& callback, Buffering defer = defaultDefer);
 	std::size_t decrement();
 	void flush();
 

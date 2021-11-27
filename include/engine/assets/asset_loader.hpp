@@ -24,27 +24,23 @@ class AssetLoadInfo {
 	using OnModified = ktl::delegate<>;
 
 	template <typename Data>
-	AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash id);
+	AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash uri);
 
 	Resource const* resource(io::Path const& path, Resource::Type type, Resources::Flags flags) const;
 	io::Media const& media() const;
 	bool modified() const;
 	void forceDirty(bool bDirty) const noexcept;
 
-	template <typename U>
-	void reloadDepend(Asset<U>& out_asset) const; // impl in asset_store.hpp; must include to instantiate!
-
   public:
 	AssetLoadData<T> m_data;
 	not_null<AssetStore const*> m_store;
 	not_null<OnModified*> m_onModified;
-	Hash m_id;
+	Hash m_uri;
 
   private:
 	not_null<Resources*> m_resources;
 	mutable std::unordered_map<Hash, not_null<Resource const*>> m_monitors;
-	mutable std::vector<OnModified::signal> m_tokens;
-	mutable bool m_bDirty = false;
+	mutable bool m_dirty = false;
 };
 
 template <typename T>
@@ -69,8 +65,8 @@ static constexpr bool reloadable_asset_v = specialized_asset_loader<T>::value;
 
 template <typename T>
 template <typename Data>
-AssetLoadInfo<T>::AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash id)
-	: m_data(std::forward<Data>(data)), m_store(store), m_onModified(onModified), m_id(id), m_resources(resources) {}
+AssetLoadInfo<T>::AssetLoadInfo(not_null<AssetStore const*> store, not_null<Resources*> resources, not_null<OnModified*> onModified, Data&& data, Hash uri)
+	: m_data(std::forward<Data>(data)), m_store(store), m_onModified(onModified), m_uri(uri), m_resources(resources) {}
 template <typename T>
 Resource const* AssetLoadInfo<T>::resource(io::Path const& path, Resource::Type type, Resources::Flags flags) const {
 	if (auto pRes = m_resources->load(path, type, flags)) {
@@ -86,7 +82,7 @@ io::Media const& AssetLoadInfo<T>::media() const {
 }
 template <typename T>
 bool AssetLoadInfo<T>::modified() const {
-	if (m_bDirty) { return true; }
+	if (m_dirty) { return true; }
 	for (auto const& [_, resource] : m_monitors) {
 		if (auto status = resource->status(); status && *status == io::FileMonitor::Status::eModified) { return true; }
 	}
@@ -94,6 +90,6 @@ bool AssetLoadInfo<T>::modified() const {
 }
 template <typename T>
 void AssetLoadInfo<T>::forceDirty(bool bDirty) const noexcept {
-	m_bDirty = bDirty;
+	m_dirty = bDirty;
 }
 } // namespace le

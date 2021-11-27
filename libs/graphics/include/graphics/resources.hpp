@@ -4,6 +4,7 @@
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <core/utils/error.hpp>
+#include <graphics/bitmap.hpp>
 #include <graphics/common.hpp>
 #include <graphics/qflags.hpp>
 #include <atomic>
@@ -33,9 +34,9 @@ class Resource {
 
 	struct Data {
 		Alloc alloc;
-		VmaAllocation handle;
+		VmaAllocation handle{};
 		QFlags queueFlags;
-		vk::SharingMode mode;
+		vk::SharingMode mode{};
 	};
 
 	Resource(not_null<Memory*> memory) : m_memory(memory) {}
@@ -137,7 +138,7 @@ class Buffer : public Resource {
 		vk::DeviceSize writeSize = {};
 		std::size_t writeCount = 0;
 		vk::BufferUsageFlags usage;
-		Type type;
+		Type type{};
 		void* pMap = nullptr;
 	};
 	Storage m_storage;
@@ -155,6 +156,10 @@ class Image : public Resource {
 	struct CreateInfo;
 
 	static constexpr Kind kind_v = Kind::eImage;
+	static constexpr vk::Format srgb_v = vk::Format::eR8G8B8A8Srgb;
+	static constexpr vk::Format linear_v = vk::Format::eR8G8B8A8Unorm;
+
+	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format, bool linear);
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
 	Image(Image&& rhs) noexcept : Resource(rhs.m_memory) { exchg(*this, rhs); }
@@ -165,10 +170,11 @@ class Image : public Resource {
 
 	vk::Image image() const noexcept { return m_storage.image; }
 	vk::ImageView view() const noexcept { return m_storage.view; }
+	vk::Format imageFormat() const noexcept { return m_storage.imageFormat; }
+	vk::Format viewFormat() const noexcept { return m_storage.viewFormat; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
-	vk::ImageLayout layout() const noexcept { return m_storage.layout; }
-	void layout(vk::ImageLayout layout) noexcept { m_storage.layout = layout; }
+	Extent2D extent2D() const noexcept { return cast(extent()); }
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
 
   private:
@@ -181,7 +187,8 @@ class Image : public Resource {
 		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
 		vk::ImageUsageFlags usage;
-		vk::ImageLayout layout;
+		vk::Format imageFormat{};
+		vk::Format viewFormat{};
 		u32 layerCount = 1;
 	};
 	Storage m_storage;
@@ -205,7 +212,7 @@ struct Buffer::CreateInfo : ResourceCreateInfo {
 struct Image::CreateInfo final : ResourceCreateInfo {
 	vk::ImageCreateInfo createInfo;
 	struct {
-		vk::Format format;
+		vk::Format format{};
 		vk::ImageAspectFlags aspects;
 		vk::ImageViewType type = vk::ImageViewType::e2D;
 	} view;

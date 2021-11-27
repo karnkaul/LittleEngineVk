@@ -1,146 +1,120 @@
 {
 	"shaders": [
+		"shaders/basic.vert",
+		"shaders/basic.frag",
+		"shaders/tex.frag",
+		"shaders/lit.vert",
+		"shaders/lit.frag",
+		"shaders/ui.vert",
+		"shaders/ui.frag",
+		"shaders/skybox.vert",
+		"shaders/skybox.frag"
+	],
+	"pipelines": [
 		{
-			"id": "shaders/basic",
-			"files": [
+			"uri": "pipelines/basic",
+			"shaders": [
 				"shaders/basic.vert",
 				"shaders/basic.frag"
+			],
+			"flags": [
+				"all"
 			]
 		},
 		{
-			"id": "shaders/tex",
-			"files": [
+			"uri": "pipelines/wireframe",
+			"shaders": [
+				"shaders/basic.vert",
+				"shaders/basic.frag"
+			],
+			"line_width": 3,
+			"topology": "line_list"
+		},
+		{
+			"uri": "pipelines/tex",
+			"shaders": [
 				"shaders/basic.vert",
 				"shaders/tex.frag"
+			],
+			"flags": [
+				"all"
 			]
 		},
 		{
-			"id": "shaders/lit",
-			"files": [
+			"uri": "pipelines/lit",
+			"shaders": [
 				"shaders/lit.vert",
 				"shaders/lit.frag"
+			],
+			"shader": "shaders/lit",
+			"flags": [
+				"all"
 			]
 		},
 		{
-			"id": "shaders/ui",
-			"files": [
+			"uri": "pipelines/ui",
+			"shaders": [
 				"shaders/ui.vert",
 				"shaders/ui.frag"
+			],
+			"flags": [
+				"alpha_blend"
 			]
 		},
 		{
-			"id": "shaders/skybox",
-			"files": [
+			"uri": "pipelines/skybox",
+			"shaders": [
 				"shaders/skybox.vert",
 				"shaders/skybox.frag"
 			]
 		}
 	],
-	"pipelines": [
+	"draw_groups": [
 		{
-			"id": "pipelines/basic",
-			"shader": "shaders/basic",
-			"flags": [
-				"all"
-			]
-		},
-		{
-			"id": "pipelines/wireframe",
-			"shader": "shaders/basic",
-			"line_width": 3,
-			"topology": "line_list"
-		},
-		{
-			"id": "pipelines/tex",
-			"shader": "shaders/tex",
-			"flags": [
-				"all"
-			],
-			"variants": {
-				"wireframe": {
-					"line_width": 3,
-					"polygon_mode": "line"
-				}
-			}
-		},
-		{
-			"id": "pipelines/lit",
-			"shader": "shaders/lit",
-			"flags": [
-				"all"
-			],
-			"variants": {
-				"wireframe": {
-					"line_width": 3,
-					"polygon_mode": "line"
-				}
-			}
-		},
-		{
-			"id": "pipelines/ui",
-			"shader": "shaders/ui",
-			"flags": [
-				"alpha_blend"
-			],
-			"gui": true,
-			"variants": {
-				"wireframe": {
-					"line_width": 1,
-					"polygon_mode": "line"
-				}
-			}
-		},
-		{
-			"id": "pipelines/skybox",
-			"shader": "shaders/skybox"
-		}
-	],
-	"draw_layers": [
-		{
-			"id": "layers/basic",
+			"uri": "draw_groups/basic",
 			"pipeline": "pipelines/basic",
 			"order": 0
 		},
 		{
-			"id": "layers/skybox",
+			"uri": "draw_groups/skybox",
 			"pipeline": "pipelines/skybox",
 			"order": -10
 		},
 		{
-			"id": "layers/tex",
+			"uri": "draw_groups/tex",
 			"pipeline": "pipelines/tex",
 			"order": 0
 		},
 		{
-			"id": "layers/lit",
+			"uri": "draw_groups/lit",
 			"pipeline": "pipelines/lit",
 			"order": 0
 		},
 		{
-			"id": "layers/wireframe",
+			"uri": "draw_groups/wireframe",
 			"pipeline": "pipelines/wireframe",
 			"order": 5
 		},
 		{
-			"id": "layers/ui",
+			"uri": "draw_groups/ui",
 			"pipeline": "pipelines/ui",
 			"order": 10
 		}
 	],
 	"textures": [
 		{
-			"id": "textures/container2/diffuse",
+			"uri": "textures/container2/diffuse",
 			"file": "textures/container2.png"
 		},
 		{
-			"id": "textures/container2/specular",
+			"uri": "textures/container2/specular",
 			"file": "textures/container2_specular.png"
 		},
 		{
-			"id": "textures/awesomeface.png"
+			"uri": "textures/awesomeface.png"
 		},
 		{
-			"id": "cubemaps/sky_dusk",
+			"uri": "cubemaps/sky_dusk",
 			"prefix": "skyboxes/sky_dusk",
 			"files": [
 				"right.jpg",
@@ -152,7 +126,7 @@
 			]
 		},
 		{
-			"id": "cubemaps/test",
+			"uri": "cubemaps/test",
 			"prefix": "skyboxes/test",
 			"files": [
 				"right.jpg",
@@ -164,27 +138,27 @@
 			]
 		},
 		{
-			"id": "textures/test.png"
+			"uri": "textures/test.png"
 		}
 	],
 	"bitmap_fonts": [
 		{
-			"id": "fonts/default"
+			"uri": "fonts/default"
 		}
 	],
 	"models": [
 		{
-			"id": "models/plant"
+			"uri": "models/plant"
 		},
 		{
-			"id": "models/teapot"
+			"uri": "models/teapot"
 		},
 		{
-			"id": "models/nanosuit",
+			"uri": "models/nanosuit",
 			"file": "models/test/nanosuit/nanosuit.json"
 		},
 		{
-			"id": "models/fox",
+			"uri": "models/fox",
 			"file": "models/test/fox/fox.json"
 		}
 	]

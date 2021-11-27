@@ -2,18 +2,18 @@
 #include <graphics/common.hpp>
 
 namespace le::graphics {
-class CommandBuffer;
-
-struct RenderImage {
+struct RenderTarget {
 	vk::Image image;
 	vk::ImageView view;
-	Extent2D extent;
+	Extent2D extent{};
+	vk::Format format{};
 };
 
-struct RenderTarget {
-	RenderImage colour;
-	RenderImage depth;
+struct Framebuffer {
+	RenderTarget colour;
+	RenderTarget depth;
+	std::vector<RenderTarget> images;
 
-	inline std::array<vk::ImageView, 2> attachments() const { return {colour.view, depth.view}; }
+	constexpr Extent2D extent() const noexcept { return colour.extent; }
 };
 } // namespace le::graphics

@@ -195,10 +195,11 @@ enum class CursorType : s8 { eDefault = 0, eResizeEW, eResizeNS, eResizeNWSE, eR
 enum class CursorMode : s8 { eDefault = 0, eHidden, eDisabled };
 
 struct Joystick {
-	std::string name;
 	std::array<f32, 6> axes{};
 	std::array<u8, 15> buttons{};
-	s32 id = 0;
+	int id = 0;
+
+	std::string_view name() const;
 };
 
 struct Gamepad : Joystick {
@@ -210,7 +211,8 @@ constexpr bool isMouseButton(Key key) noexcept;
 constexpr bool isGamepadButton(Key key) noexcept;
 constexpr bool isMouseAxis(Axis axis) noexcept;
 constexpr f32 triggerToAxis(f32 triggerValue) noexcept;
-std::string_view toString(s32 key);
+std::string_view toString(int key);
+std::string_view joystickName(int id);
 } // namespace le::window
 
 // impl

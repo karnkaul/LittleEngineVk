@@ -1,70 +1,56 @@
 #pragma once
 #include <engine/assets/asset_loader.hpp>
 #include <engine/render/bitmap_font.hpp>
+#include <engine/render/draw_group.hpp>
 #include <engine/render/model.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/shader.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <unordered_map>
+#include <variant>
 
 namespace le {
 template <>
-struct AssetLoadData<graphics::Shader> {
-	std::string name;
-	std::unordered_map<graphics::Shader::Type, io::Path> shaderPaths;
-	not_null<graphics::Device*> device;
-
-	AssetLoadData(not_null<graphics::Device*> device) : device(device) {}
+struct AssetLoadData<graphics::SpirV> {
+	io::Path uri;
+	graphics::ShaderType type = graphics::ShaderType::eFragment;
 };
 
 template <>
-struct AssetLoader<graphics::Shader> {
-	using Data = graphics::Shader::SpirVMap;
+struct AssetLoader<graphics::SpirV> {
+	std::unique_ptr<graphics::SpirV> load(AssetLoadInfo<graphics::SpirV> const& info) const;
+	bool reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
 
-	std::unique_ptr<graphics::Shader> load(AssetLoadInfo<graphics::Shader> const& info) const;
-	bool reload(graphics::Shader& out_shader, AssetLoadInfo<graphics::Shader> const& info) const;
-
-	std::optional<Data> data(AssetLoadInfo<graphics::Shader> const& info) const;
+	bool load(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
 };
 
 template <>
-struct AssetLoadData<graphics::Pipeline> {
-	struct Variant {
-		f32 lineWidth = 1.0f;
-		vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-		vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-		Hash id;
-	};
-
-	std::optional<graphics::Pipeline::CreateInfo> info;
-	std::string name;
-	Variant main;
-	std::vector<Variant> variants;
+struct AssetLoadData<PipelineState> {
+	graphics::ShaderSpec shader;
+	vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
 	graphics::PFlags flags;
-	not_null<graphics::RenderContext*> context;
-	Hash shaderID;
-	bool gui = false;
-
-	AssetLoadData(not_null<graphics::RenderContext*> context) : context(context) {}
+	f32 lineWidth = 1.0f;
 };
 
 template <>
-struct AssetLoader<graphics::Pipeline> {
-	std::unique_ptr<graphics::Pipeline> load(AssetLoadInfo<graphics::Pipeline> const& info) const;
-	bool reload(graphics::Pipeline& out_shader, AssetLoadInfo<graphics::Pipeline> const& info) const;
+struct AssetLoader<PipelineState> {
+	std::unique_ptr<PipelineState> load(AssetLoadInfo<PipelineState> const& info) const;
+	bool reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const;
+
+	static PipelineState from(AssetLoadData<PipelineState> const& data);
 };
 
 template <>
 struct AssetLoadData<graphics::Texture> {
-	ktl::fixed_vector<io::Path, 6> imageIDs;
+	ktl::fixed_vector<io::Path, 6> imageURIs;
 	graphics::Bitmap bitmap;
 	graphics::Cubemap cubemap;
 	io::Path prefix;
 	std::string ext;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
-	Hash samplerID;
+	Hash samplerURI;
 	graphics::Texture::Payload payload = graphics::Texture::Payload::eColour;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
@@ -72,20 +58,21 @@ struct AssetLoadData<graphics::Texture> {
 
 template <>
 struct AssetLoader<graphics::Texture> {
-	using Data = graphics::Texture::CreateInfo::Data;
+	using Data = std::variant<graphics::Bitmap, graphics::BmpBytes, graphics::Cubemap, graphics::CubeBytes>;
 
 	std::unique_ptr<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
 	bool reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const;
 
+	bool load(graphics::Texture& out_texture, Data const& data, vk::Sampler sampler, std::optional<vk::Format> format) const;
 	std::optional<Data> data(AssetLoadInfo<graphics::Texture> const& info) const;
 };
 
 template <>
 struct AssetLoadData<BitmapFont> {
-	io::Path jsonID;
+	io::Path jsonURI;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
-	Hash samplerID;
+	Hash samplerURI;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
@@ -100,11 +87,11 @@ struct AssetLoader<BitmapFont> {
 
 template <>
 struct AssetLoadData<Model> {
-	std::string modelID;
-	io::Path jsonID;
+	std::string modelURI;
+	io::Path jsonURI;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
-	Hash samplerID;
+	Hash samplerURI;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };

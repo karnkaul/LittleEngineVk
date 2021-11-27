@@ -114,6 +114,10 @@ set(PHYSFS_ARCHIVE_ZIP ON)
 add_subdirectory(ext/physfs)
 target_include_directories(physfs-static SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/physfs/src>)
 add_subdirectory(ext/glm)
+target_compile_options(glm INTERFACE 
+  $<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-Wno-volatile> 
+  $<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:-Wno-deprecated-volatile>
+)
 if(LEVK_USE_GLFW)
   set(GLFW_VULKAN_STATIC OFF)
   set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
@@ -174,7 +178,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
   ktl
   GIT_REPOSITORY https://github.com/karnkaul/ktl
-  GIT_TAG 7dab5f5
+  GIT_TAG 7d2d753
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ktl"
 )
 FetchContent_MakeAvailable(ktl)

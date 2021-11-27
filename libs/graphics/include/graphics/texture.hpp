@@ -5,7 +5,6 @@
 #include <graphics/context/vram.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <ktl/fixed_vector.hpp>
-#include <variant>
 
 namespace le::graphics {
 class Sampler {
@@ -28,58 +27,46 @@ class Texture {
 	enum class Type { e2D, eCube };
 	enum class Payload { eColour, eData };
 
-	struct Data {
-		vk::ImageView imageView;
-		vk::Sampler sampler;
-		vk::Format format{};
-		Extent2D size{};
-		Payload payload{};
-		Type type{};
-	};
+	static constexpr vk::ImageUsageFlags usage_v = vIUFB::eSampled | vIUFB::eTransferSrc | vIUFB::eTransferDst;
 
-	using Img = BmpBytes;
-	using Cube = CubeBytes;
-	struct CreateInfo;
+	static constexpr Extent2D default_extent_v = {32U, 32U};
 
-	inline static constexpr auto srgb = vk::Format::eR8G8B8A8Srgb;
-	inline static constexpr auto linear = vk::Format::eR8G8B8A8Unorm;
-
-	Texture(not_null<VRAM*> vram);
-
-	static Img img(Span<std::byte const> bytes);
+	static BmpBytes bmpBytes(Span<std::byte const> bytes);
 	static Cubemap unitCubemap(Colour colour);
+	static RenderTarget makeRenderTarget(Image const& image) noexcept { return {image.image(), image.view(), image.extent2D(), image.viewFormat()}; }
 
-	bool construct(CreateInfo const& info);
+	Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour = colours::white, Extent2D extent = default_extent_v, Payload payload = Payload::eColour);
 
-	bool valid() const noexcept;
-	bool busy() const;
-	bool ready() const;
-	void wait() const;
+	bool construct(Bitmap const& bitmap, Payload payload = Payload::eColour, vk::Format format = Image::linear_v);
+	bool construct(BmpBytes const& bytes, Payload payload = Payload::eColour, vk::Format format = Image::srgb_v);
+	bool construct(Cubemap const& bitmap, Payload payload = Payload::eColour, vk::Format format = Image::linear_v);
+	bool construct(CubeBytes const& bytes, Payload payload = Payload::eColour, vk::Format format = Image::srgb_v);
 
-	Data const& data() const noexcept;
-	Image const& image() const;
+	bool changeSampler(vk::Sampler sampler);
+	bool assign(Image&& image, Type type = Type::e2D, Payload payload = Payload::eColour);
+	bool resize(CommandBuffer cb, Extent2D extent);
+	void blit(CommandBuffer cb, Texture const& src, vk::Filter filter = vk::Filter::eLinear);
+	bool blit(CommandBuffer cb, RenderTarget const& rt, vk::Filter filter = vk::Filter::eLinear);
 
-	not_null<VRAM*> m_vram;
+	bool busy() const { return m_transfer.busy(); }
+	bool ready() const { return m_transfer.ready(); }
+	void wait() const { m_transfer.wait(); }
+
+	Extent2D extent() const noexcept { return m_image.extent2D(); }
+	vk::Sampler sampler() const noexcept { return m_sampler; }
+	Image const& image() const noexcept { return m_image; }
+	RenderTarget renderTarget() const noexcept { return makeRenderTarget(m_image); }
+	Payload payload() const noexcept { return m_payload; }
+	Type type() const noexcept { return m_type; }
 
   private:
-	struct Storage {
-		std::optional<Image> image;
-		Deferred<vk::ImageView> view;
-		Data data;
-		VRAM::Future transfer;
-	};
+	void constructImpl(Span<ImgView const> bmps, Extent2D extent, Payload payload, vk::Format format);
 
-	bool construct(CreateInfo const& info, Storage& out_storage);
-
-	Storage m_storage;
-};
-
-struct Texture::CreateInfo {
-	using Data = std::variant<Img, Cube, Bitmap, Cubemap>;
-
-	Data data;
-	vk::Sampler sampler;
-	std::optional<vk::Format> forceFormat;
-	Payload payload = Payload::eColour;
+	Image m_image;
+	VRAM::Future m_transfer;
+	vk::Sampler m_sampler;
+	Payload m_payload{};
+	Type m_type{};
+	not_null<VRAM*> m_vram;
 };
 } // namespace le::graphics

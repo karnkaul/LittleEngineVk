@@ -3,13 +3,13 @@
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
-#include <engine/render/draw_layer.hpp>
+#include <engine/render/draw_group.hpp>
 #include <unordered_map>
 
 namespace le {
 class AssetManifest : public utils::VBase {
   public:
-	enum class Kind { eSampler, eShader, eTexture, ePipeline, eDrawLayer, eBitmapFont, eModel, eCOUNT_ };
+	enum class Kind { eSampler, eSpirV, eTexture, ePipelineState, eDrawGroup, eBitmapFont, eModel, eCOUNT_ };
 	using Kinds = ktl::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
@@ -50,10 +50,10 @@ class AssetManifest : public utils::VBase {
 
 	std::size_t add(std::string_view name, Group group);
 	std::size_t addSamplers(Group group);
-	std::size_t addShaders(Group group);
+	std::size_t addSpirV(Group group);
 	std::size_t addTextures(Group group);
-	std::size_t addPipelines(Group group);
-	std::size_t addDrawLayers(Group group);
+	std::size_t addPipelineStates(Group group);
+	std::size_t addDrawGroups(Group group);
 	std::size_t addFonts(Group group);
 	std::size_t addBitmapFonts(Group group);
 	std::size_t addModels(Group group);
@@ -66,9 +66,9 @@ class AssetManifest : public utils::VBase {
 	virtual std::size_t unloadCustom() { return 0; }
 
 	AssetList<graphics::Sampler> m_samplers;
-	AssetLoadList<graphics::Shader> m_shaders;
-	AssetLoadList<graphics::Pipeline> m_pipelines;
-	AssetList<DrawLayer> m_drawLayers;
+	AssetLoadList<graphics::SpirV> m_spirV;
+	AssetLoadList<PipelineState> m_pipelineStates;
+	AssetList<DrawGroup> m_drawGroups;
 	AssetLoadList<graphics::Texture> m_textures;
 	AssetLoadList<BitmapFont> m_bitmapFonts;
 	AssetLoadList<Model> m_models;

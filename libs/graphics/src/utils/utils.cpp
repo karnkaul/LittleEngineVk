@@ -3,13 +3,11 @@
 #include <core/maths.hpp>
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
+#include <core/utils/expect.hpp>
 #include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/render/pipeline.hpp>
-#include <graphics/shader.hpp>
 #include <graphics/utils/utils.hpp>
-#include <mutex>
 
 static_assert(sizeof(stbi_uc) == sizeof(std::byte) && alignof(stbi_uc) == alignof(std::byte), "Invalid type size/alignment");
 
@@ -30,7 +28,6 @@ struct Spv : Singleton<Spv> {
 	std::string compile(io::Path const& src, io::Path const& dst, std::string_view flags) {
 		if (online) {
 			if (!io::is_regular_file(src)) { return fmt::format("source file [{}] not found", src.generic_string()); }
-			std::lock_guard lock(mutex); // prevent concurrent file usage
 			auto compile = Shell(fmt::format("{} {} {} -o {}", utils::g_compiler, flags, src.string(), dst.string()).data());
 			if (!compile) { return fmt::format("compilation failed: {}", compile.output()); }
 			return {};
@@ -38,7 +35,6 @@ struct Spv : Singleton<Spv> {
 		return fmt::format("[{}] offline", utils::g_compiler);
 	}
 
-	std::mutex mutex;
 	bool online = false;
 };
 } // namespace
@@ -106,26 +102,18 @@ void extractPush(Extractee ext, Push& out_push, vk::ShaderStageFlagBits stage) {
 }
 } // namespace
 
-VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
-	QuickVertexInput qvi;
-	qvi.binding = binding;
-	qvi.size = sizeof(Vertex);
-	qvi.attributes = {{vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
-					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, colour)},
-					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)},
-					  {vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
-	return RenderContext::vertexInput(qvi);
-}
-
-Shader::ResourcesMap utils::shaderResources(Shader const& shader) {
-	Shader::ResourcesMap ret;
-	for (std::size_t idx = 0; idx < arraySize(shader.m_spirV.arr); ++idx) {
-		auto spirV = shader.m_spirV.arr[idx];
-		if (!spirV.empty()) {
-			auto& res = ret.arr[idx];
-			res.compiler = std::make_unique<spvc::Compiler>(spirV);
+ktl::fixed_vector<ShaderResources, 4> utils::shaderResources(Span<SpirV> modules) {
+	ktl::fixed_vector<ShaderResources, 4> ret;
+	for (auto& module : modules) {
+		if (!module.spirV.empty()) {
+			ShaderResources res;
+			res.compiler = std::make_unique<spvc::Compiler>(std::move(module.spirV));
 			res.resources = res.compiler->get_shader_resources();
+			res.type = module.type;
+			ret.push_back(std::move(res));
 		}
+		EXPECT(ret.has_space());
+		if (!ret.has_space()) { break; }
 	}
 	return ret;
 }
@@ -148,17 +136,16 @@ std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& 
 	return d;
 }
 
-utils::SetBindings utils::extractBindings(Shader const& shader) {
+utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 	SetBindings ret;
 	Sets sets;
-	for (std::size_t idx = 0; idx < arraySize(shader.m_spirV.arr); ++idx) {
-		auto spirV = shader.m_spirV.arr[idx];
-		if (!spirV.empty()) {
-			spvc::Compiler compiler(spirV);
+	for (auto const& module : modules) {
+		if (!module.spirV.empty()) {
+			spvc::Compiler compiler(std::move(module.spirV));
 			auto const resources = compiler.get_shader_resources();
-			auto const type = Shader::typeToFlag[idx];
-			extractBindings({compiler, resources}, sets, type);
-			extractPush({compiler, resources}, ret.push, type);
+			auto const stage = g_shaderStages[module.type];
+			extractBindings({compiler, resources}, sets, stage);
+			extractPush({compiler, resources}, ret.push, stage);
 		}
 	}
 	for (u32 set = 0; set < (u32)sets.size(); ++set) {
@@ -188,13 +175,143 @@ utils::SetBindings utils::extractBindings(Shader const& shader) {
 			} else {
 				bindInfo.binding.descriptorCount = 0;
 				bindInfo.name = fmt::format("[Unassigned_{}_{}]", s, b);
-				bindInfo.bUnassigned = true;
+				bindInfo.binding.descriptorType = {};
 			}
 			ENSURE(binds.has_space(), "Max descriptor sets exceeded");
 			binds.push_back(bindInfo);
 		}
 	}
 	return ret;
+}
+
+namespace {
+template <typename T, typename U>
+void ensureSet(T& out_src, U&& u) {
+	if (out_src == T()) { out_src = u; }
+}
+
+template <typename T, typename U>
+void setIfSet(T& out_dst, U&& u) {
+	if (!Device::default_v(u)) { out_dst = u; }
+}
+
+using RasterizerState = vk::PipelineRasterizationStateCreateInfo;
+using BlendState = vk::PipelineColorBlendAttachmentState;
+using DepthState = vk::PipelineDepthStencilStateCreateInfo;
+
+void setStates(RasterizerState& rs, BlendState& bs, DepthState& ds, PFlags flags) {
+	if (flags.test(PFlag::eDepthTest)) {
+		ds.depthTestEnable = true;
+		ds.depthCompareOp = vk::CompareOp::eLess;
+	}
+	if (flags.test(PFlag::eDepthWrite)) { ds.depthWriteEnable = true; }
+	if (flags.test(PFlag::eAlphaBlend)) {
+		using CCF = vk::ColorComponentFlagBits;
+		bs.colorWriteMask = CCF::eR | CCF::eG | CCF::eB | CCF::eA;
+		bs.blendEnable = true;
+		bs.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		bs.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		bs.colorBlendOp = vk::BlendOp::eAdd;
+		bs.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+		bs.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+		bs.alphaBlendOp = vk::BlendOp::eAdd;
+	}
+	if (flags.test(PFlag::eWireframe)) { rs.polygonMode = vk::PolygonMode::eLine; }
+}
+} // namespace
+
+bool utils::hasActiveModule(Span<ShaderModule const> modules) noexcept {
+	return !modules.empty() && std::any_of(std::begin(modules), std::end(modules), [](ShaderModule m) { return !Device::default_v(m.module); });
+}
+
+std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, Span<ShaderModule const> sm, PipelineSpec const& sp, PipeData const& data) {
+	EXPECT(hasActiveModule(sm));
+	EXPECT(!Device::default_v(data.renderPass) && !Device::default_v(data.layout));
+	EXPECT(!sp.vertexInput.bindings.empty());
+	if (Device::default_v(data.renderPass) || Device::default_v(data.layout) || !hasActiveModule(sm) || sp.vertexInput.bindings.empty()) {
+		return std::nullopt;
+	}
+	vk::PipelineVertexInputStateCreateInfo vertexInputState;
+	{
+		auto const& vi = sp.vertexInput;
+		vertexInputState.pVertexBindingDescriptions = vi.bindings.data();
+		vertexInputState.vertexBindingDescriptionCount = (u32)vi.bindings.size();
+		vertexInputState.pVertexAttributeDescriptions = vi.attributes.data();
+		vertexInputState.vertexAttributeDescriptionCount = (u32)vi.attributes.size();
+	}
+	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
+	{
+		inputAssemblyState.topology = sp.fixedState.topology;
+		inputAssemblyState.primitiveRestartEnable = false;
+	}
+	vk::PipelineViewportStateCreateInfo viewportState;
+	{
+		viewportState.viewportCount = 1;
+		viewportState.scissorCount = 1;
+	}
+	vk::PipelineRasterizationStateCreateInfo rasterizerState;
+	{
+		rasterizerState.depthClampEnable = false;
+		rasterizerState.rasterizerDiscardEnable = false;
+		rasterizerState.depthBiasEnable = false;
+		auto const [lmin, lmax] = dv.lineWidthLimit();
+		rasterizerState.lineWidth = std::clamp(sp.fixedState.lineWidth, lmin, lmax);
+	}
+	vk::PipelineColorBlendAttachmentState colorBlendState;
+	{
+		using CC = vk::ColorComponentFlagBits;
+		colorBlendState.colorWriteMask = CC::eR | CC::eG | CC::eB | CC::eA;
+		colorBlendState.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		colorBlendState.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		colorBlendState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+	}
+	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
+	ensureSet(depthStencilState.depthCompareOp, vk::CompareOp::eLess);
+	setStates(rasterizerState, colorBlendState, depthStencilState, sp.fixedState.flags);
+	vk::PipelineColorBlendStateCreateInfo pcbsci;
+	{
+		pcbsci.logicOpEnable = false;
+		pcbsci.attachmentCount = 1;
+		pcbsci.pAttachments = &colorBlendState;
+	}
+	vk::PipelineDynamicStateCreateInfo dynamicState;
+	{
+		dynamicState.dynamicStateCount = (u32)sp.fixedState.dynamicStates.size();
+		dynamicState.pDynamicStates = sp.fixedState.dynamicStates.data();
+	}
+	ktl::fixed_vector<vk::PipelineShaderStageCreateInfo, 8> shaderCreateInfo;
+	{
+		static constexpr EnumArray<ShaderType, vk::ShaderStageFlagBits> flag = {
+			vk::ShaderStageFlagBits::eVertex,
+			vk::ShaderStageFlagBits::eFragment,
+			vk::ShaderStageFlagBits::eCompute,
+		};
+		for (auto const module : sm) {
+			vk::PipelineShaderStageCreateInfo createInfo;
+			createInfo.stage = flag[module.type];
+			createInfo.module = module.module;
+			createInfo.pName = "main";
+			shaderCreateInfo.push_back(std::move(createInfo));
+		}
+	}
+	vk::PipelineMultisampleStateCreateInfo multisamplerState;
+	vk::GraphicsPipelineCreateInfo createInfo;
+	createInfo.stageCount = (u32)shaderCreateInfo.size();
+	createInfo.pStages = shaderCreateInfo.data();
+	createInfo.pVertexInputState = &vertexInputState;
+	createInfo.pInputAssemblyState = &inputAssemblyState;
+	createInfo.pViewportState = &viewportState;
+	createInfo.pRasterizationState = &rasterizerState;
+	createInfo.pMultisampleState = &multisamplerState;
+	createInfo.pDepthStencilState = &depthStencilState;
+	createInfo.pColorBlendState = &pcbsci;
+	createInfo.pDynamicState = &dynamicState;
+	createInfo.layout = data.layout;
+	createInfo.renderPass = data.renderPass;
+	createInfo.subpass = sp.subpass;
+	auto ret = dv.device().createGraphicsPipeline(data.cache, createInfo);
+	if (ret.result == vk::Result::eSuccess) { return ret.value; }
+	return std::nullopt;
 }
 
 Bitmap utils::bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height) { return bitmap(Span(&*pixels.begin(), pixels.size()), width, height); }
@@ -239,7 +356,7 @@ utils::STBImg::~STBImg() {
 
 void utils::STBImg::exchg(STBImg& lhs, STBImg& rhs) noexcept { std::swap(static_cast<TBitmap<Span<u8>>&>(lhs), static_cast<TBitmap<Span<u8>>&>(rhs)); }
 
-std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageIDs const& ids) {
+std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageURIs const& ids) {
 	std::array<bytearray, 6> ret;
 	std::size_t idx = 0;
 	for (std::string_view id : ids) {
@@ -262,13 +379,32 @@ std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& d
 		QueueMultiplex::Family family;
 		family.familyIndex = fidx;
 		family.total = props.queueCount;
-		bool const bSurfaceSupport = device.device.getSurfaceSupportKHR(fidx, surface);
 		if ((props.queueFlags & vkqf::eTransfer) == vkqf::eTransfer) { family.flags.set(QType::eTransfer); }
 		if ((props.queueFlags & vkqf::eGraphics) == vkqf::eGraphics) { family.flags.set(QFlags(QType::eGraphics) | QType::eTransfer); }
-		if (bSurfaceSupport) { family.flags.set(QType::ePresent); }
+		if (device.device.getSurfaceSupportKHR(fidx, surface)) { family.flags.set(QType::ePresent); }
 		ret.push_back(family);
 		++fidx;
 	}
 	return ret;
 }
+
+utils::HashGen& utils::operator<<(HashGen& out, VertexInputInfo const& vi) {
+	out << vi.bindings.size() << vi.attributes.size();
+	for (auto const& bind : vi.bindings) { out << bind.binding << bind.stride << bind.inputRate; }
+	for (auto const& attr : vi.attributes) { out << attr.binding << attr.location << attr.offset << attr.format; }
+	return out;
+}
+
+utils::HashGen& utils::operator<<(HashGen& out, ShaderSpec const& ss) {
+	for (Hash const uri : ss.moduleURIs) { out << uri; }
+	return out;
+}
+
+utils::HashGen& utils::operator<<(HashGen& out, FixedStateSpec const& fs) {
+	out << fs.dynamicStates.size();
+	for (auto const state : fs.dynamicStates) { out << state; }
+	return out << fs.flags.bits() << fs.mode << fs.topology << fs.lineWidth;
+}
+
+utils::HashGen& utils::operator<<(HashGen& out, PipelineSpec const& ps) { return out << ps.vertexInput << ps.fixedState << ps.shader << ps.subpass; }
 } // namespace le::graphics

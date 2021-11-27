@@ -1,11 +1,13 @@
 #include <core/log.hpp>
 #include <core/maths.hpp>
+#include <core/utils/expect.hpp>
 #include <glm/gtx/transform.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 #include <graphics/render/context.hpp>
+#include <graphics/utils/utils.hpp>
 #include <map>
 #include <stdexcept>
 
@@ -17,7 +19,25 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warn, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
 	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
 }
+
+std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
+	Renderer::CreateInfo rci(vram, format);
+	rci.buffering = buffering;
+	rci.target = Renderer::Target::eOffScreen;
+	return std::make_unique<Renderer>(rci);
+}
 } // namespace
+
+VertexInputInfo VertexInfoFactory<Vertex>::operator()(u32 binding) const {
+	QuickVertexInput qvi;
+	qvi.binding = binding;
+	qvi.size = sizeof(Vertex);
+	qvi.attributes = {{vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)},
+					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, colour)},
+					  {vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)},
+					  {vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
+	return RenderContext::vertexInput(qvi);
+}
 
 VertexInputInfo RenderContext::vertexInput(VertexInputCreateInfo const& info) {
 	VertexInputInfo ret;
@@ -60,128 +80,46 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 	return ret;
 }
 
-RenderContext::RenderContext(not_null<Swapchain*> swapchain, std::unique_ptr<ARenderer>&& renderer)
-	: m_pool(swapchain->m_device, vk::CommandPoolCreateFlagBits::eTransient), m_swapchain(swapchain), m_device(swapchain->m_device) {
-	m_storage.renderer = std::move(renderer);
-	m_storage.status = Status::eWaiting;
-	validateBuffering(m_swapchain->buffering(), m_storage.renderer->buffering());
-	DeferQueue::defaultDefer = m_storage.renderer->buffering();
-	m_storage.pipelineCache = makeDeferred<vk::PipelineCache>(m_device);
+RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
+	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
+	  m_renderer(makeRenderer(m_vram, m_surface.format(), bf)), m_buffering(bf) {
+	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
+	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
+	DeferQueue::defaultDefer = m_buffering;
+	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }
 }
 
-Pipeline RenderContext::makePipeline(std::string_view id, Shader const& shader, Pipeline::CreateInfo info) {
-	if (info.renderPass == vk::RenderPass()) { info.renderPass = m_storage.renderer->renderPass3D(); }
-	info.buffering = m_storage.renderer->buffering();
-	info.cache = m_storage.pipelineCache;
-	return Pipeline(m_swapchain->m_vram, shader, std::move(info), id);
+std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
+
+void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
+	m_vram->m_device->waitIdle();
+	m_renderer = std::move(renderer);
 }
 
-bool RenderContext::ready(glm::ivec2 framebufferSize) {
-	if (m_storage.reconstruct.trigger || m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::eOutOfDate) | Swapchain::Flag::ePaused)) {
-		auto const& vsync = m_storage.reconstruct.vsync;
-		bool const ret = vsync ? m_swapchain->reconstruct(*vsync, framebufferSize) : m_swapchain->reconstruct(framebufferSize);
-		if (ret) {
-			m_storage.renderer->refresh();
-			m_storage.status = Status::eWaiting;
-			m_storage.reconstruct = {};
-		}
-		return false;
+void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
+
+bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {
+	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
+	bool ret{};
+	auto& sync = m_syncs.get();
+	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
+		m_vram->m_device->resetFence(sync.drawn);
+		auto cmds = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
+		ret = submit(cmds, *acquired, fbSize);
+		m_previousFrame = acquired->image;
 	}
-	return true;
+	m_commandRotator.submit();
+	m_syncs.next();
+	return ret;
 }
 
-bool RenderContext::waitForFrame() {
-	if (!check(Status::eReady)) {
-		if (m_storage.status != Status::eWaiting && m_storage.status != Status::eBegun) {
-			g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-			return false;
-		}
-		m_storage.renderer->waitForFrame();
-		m_pool.update();
-		set(Status::eReady);
-	}
-	return true;
+bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
+	return m_surface.makeSwapchain(fbSize, vsync.value_or(m_surface.format().vsync));
 }
 
-std::optional<RenderTarget> RenderContext::beginFrame() {
-	if (!check(Status::eReady)) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return std::nullopt;
-	}
-	if (m_swapchain->flags().any(Swapchain::Flags(Swapchain::Flag::ePaused) | Swapchain::Flag::eOutOfDate)) { return std::nullopt; }
-	if (auto ret = m_storage.renderer->beginFrame()) {
-		set(Status::eBegun);
-		m_storage.drawing = *ret;
-		return ret;
-	}
-	return std::nullopt;
-}
-
-std::optional<CommandBuffer> RenderContext::beginDraw(ScreenView const& view, RGBA clear, ClearDepth depth) {
-	if (!check(Status::eBegun) || !m_storage.drawing) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return std::nullopt;
-	}
-	set(Status::eDrawing);
-	return m_storage.renderer->beginDraw(*m_storage.drawing, view, clear, depth);
-}
-
-bool RenderContext::endDraw() {
-	if (!m_storage.drawing || !check(Status::eDrawing)) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
-	}
-	m_storage.renderer->endDraw(*m_storage.drawing);
-	return true;
-}
-
-bool RenderContext::endFrame() {
-	if (!check(Status::eDrawing, Status::eBegun)) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
-	}
-	set(Status::eEnded);
-	m_storage.drawing.reset();
-	m_storage.renderer->endFrame();
-	return true;
-}
-
-bool RenderContext::submitFrame() {
-	if (!check(Status::eEnded)) {
-		g_log.log(lvl::warn, 1, "[{}] Invalid RenderContext status", g_name);
-		return false;
-	}
-	set(Status::eWaiting);
-	if (m_storage.renderer->submitFrame()) { return true; }
-	return false;
-}
-
-void RenderContext::reconstruct(std::optional<graphics::Vsync> vsync) {
-	m_storage.reconstruct.trigger = true;
-	m_storage.reconstruct.vsync = vsync;
-}
-
-glm::mat4 RenderContext::preRotate() const noexcept {
-	glm::mat4 ret(1.0f);
-	f32 rad = 0.0f;
-	auto const transform = m_swapchain->display().transform;
-	if (transform == vk::SurfaceTransformFlagBitsKHR::eIdentity) {
-		return ret;
-	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate90) {
-		rad = glm::radians(90.0f);
-	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate180) {
-		rad = glm::radians(180.0f);
-	} else if (transform == vk::SurfaceTransformFlagBitsKHR::eRotate180) {
-		rad = glm::radians(270.0f);
-	}
-	return glm::rotate(ret, rad, front);
-}
-
-vk::Viewport RenderContext::viewport(Extent2D extent, ScreenView const& view, glm::vec2 depth) const noexcept {
-	return m_storage.renderer->viewport(Swapchain::valid(extent) ? extent : this->extent(), view, depth);
-}
-
-vk::Rect2D RenderContext::scissor(Extent2D extent, ScreenView const& view) const noexcept {
-	return m_storage.renderer->scissor(Swapchain::valid(extent) ? extent : this->extent(), view);
+bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
+	auto const& sync = m_syncs.get();
+	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
+	return m_surface.present(fbSize, acquired, sync.present);
 }
 } // namespace le::graphics

@@ -11,14 +11,16 @@
 #include <core/log.hpp>
 #include <core/utils/error.hpp>
 #include <glm/common.hpp>
-#include <graphics/context/device.hpp>
-#include <graphics/render/command_buffer.hpp>
+#include <graphics/command_buffer.hpp>
+#include <graphics/render/context.hpp>
 #include <window/glue.hpp>
 #endif
 
 namespace le {
 using namespace graphics;
 using namespace window;
+
+#define MU [[maybe_unused]]
 
 #if defined(LEVK_USE_IMGUI)
 namespace {
@@ -105,41 +107,41 @@ void fixStyle() {
 
 DearImGui::DearImGui() = default;
 
-DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]] not_null<Window const*> window, [[maybe_unused]] CreateInfo const& info) {
+DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window const*> window, MU std::size_t descriptorCount) {
 #if defined(LEVK_USE_IMGUI) && defined(LEVK_USE_GLFW)
-	m_device = device;
+	m_device = context->vram().m_device;
 	static vk::Instance s_inst;
 	static vk::DynamicLoader const s_dl;
-	s_inst = device->m_instance->instance();
+	s_inst = m_device->instance();
 	auto const loader = [](char const* fn, void*) { return s_dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr")(s_inst, fn); };
 	ImGui_ImplVulkan_LoadFunctions(loader);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	if (info.correctStyleColours) { fixStyle(); }
+	if (context->colourCorrection() == graphics::ColourCorrection::eAuto) { fixStyle(); }
 	ImGui::GetStyle().WindowRounding = 0.0f;
 	ImGui_ImplGlfw_InitForVulkan(glfwPtr(*window), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
-	auto const& queue = device->queues().queue(QType::eGraphics);
-	m_pool = {device, makePool(*device, info.descriptorCount)};
-	initInfo.Instance = device->m_instance->instance();
-	initInfo.Device = device->device();
-	initInfo.PhysicalDevice = device->physicalDevice().device;
+	auto const& queue = m_device->queues().queue(QType::eGraphics);
+	m_pool = {m_device, makePool(*m_device, (u32)descriptorCount)};
+	initInfo.Instance = m_device->instance();
+	initInfo.Device = m_device->device();
+	initInfo.PhysicalDevice = m_device->physicalDevice().device;
 	initInfo.Queue = queue.queue;
 	initInfo.QueueFamily = queue.familyIndex;
-	initInfo.MinImageCount = (u32)info.minImageCount;
-	initInfo.ImageCount = (u32)info.imageCount;
+	initInfo.MinImageCount = context->surface().minImageCount();
+	initInfo.ImageCount = context->surface().imageCount();
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	initInfo.DescriptorPool = static_cast<VkDescriptorPool>(m_pool.get());
-	if (!ImGui_ImplVulkan_Init(&initInfo, info.renderPass)) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
+	if (!ImGui_ImplVulkan_Init(&initInfo, context->renderer().renderPass())) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	poolInfo.queueFamilyIndex = queue.familyIndex;
-	auto pool = device->device().createCommandPool(poolInfo);
+	auto pool = m_device->device().createCommandPool(poolInfo);
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = pool;
-	auto commandBuffer = device->device().allocateCommandBuffers(commandBufferInfo).front();
+	auto commandBuffer = m_device->device().allocateCommandBuffers(commandBufferInfo).front();
 	vk::CommandBufferBeginInfo beginInfo;
 	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 	commandBuffer.begin(beginInfo);
@@ -148,11 +150,11 @@ DearImGui::DearImGui([[maybe_unused]] not_null<Device*> device, [[maybe_unused]]
 	vk::SubmitInfo endInfo;
 	endInfo.commandBufferCount = 1;
 	endInfo.pCommandBuffers = &commandBuffer;
-	auto done = device->makeFence(false);
+	auto done = m_device->makeFence(false);
 	queue.queue.submit(endInfo, done);
-	device->waitFor(done);
+	m_device->waitFor(done);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
-	device->destroy(pool, done);
+	m_device->destroy(pool, done);
 	m_del = {m_device, nullptr};
 	logD("[DearImGui] constructed");
 #endif

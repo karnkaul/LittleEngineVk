@@ -16,24 +16,22 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Keyboard, mouse, and gamepad support
 - `graphics`
   - Bootstrapped Vulkan render context
-  - Customizable renderer
-    - Built-in swapchain and off-screen renderers
+  - Customizable off-screen (forward) renderer
   - Customizable device selection
   - Deferred resource release
   - Dedicated transfer queue, async transfers
   - Shader reflection via SPIR-V Cross
-  - Automatic swapchain resize management
-  - Automatic descriptor set management
-  - Stall-less API (except during swapchain resize)
-  - Validation layer support (on by default in `Debug`)
+  - Automatic pipeline creation
+  - Per pipeline descriptor set lists
+  - Stall-less API (including swapchain recreation)
   - sRGB and linear colour spaces
 - `engine`
   - Thread-safe `AssetStore`
     - Multi-reader single-writer API
     - Store any `T` associated with a lightweight `io::Path` ID
     - Customizable asset loaders
-    - Asset hot reload support
-  - Customizable Editor
+    - Asset hot reload support: shaders, pipelines, textures implemented
+  - Customizable Editor (via Dear ImGui)
   - Bitmap Fonts and 2D Text
   - GUI view/widget trees
   - Basic 3D AABB collision detection
@@ -47,7 +45,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 
 - No CMake install stage / `find_package` support (as yet)
 - No dynamic library support on Windows
-- Single draw command buffer
+- Single render pass
 
 ### Requirements
 
@@ -58,7 +56,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Windows 10
   - Linux: X, Wayland (untested), Raspberry Pi OS (64 bit bullseye+)
 - GPU supporting Vulkan 1.0+, its driver, and loader
-- Vulkan SDK / `glslc` and validation layers (for compiling glsl shaders to SPIR-V in Debug and debugging / development)
+- Vulkan SDK / `glslc` (for compiling glsl shaders to SPIR-V in Debug and validation layers)
 
 ### Usage
 

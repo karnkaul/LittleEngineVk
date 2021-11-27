@@ -24,6 +24,9 @@ error.txt
 # Dear ImGui config (local)
 imgui.ini
 
+# massif
+massif.out.*
+
 # CMake
 /CMakeUserPresets.json
 

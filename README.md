@@ -56,7 +56,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Windows 10
   - Linux: X, Wayland (untested), Raspberry Pi OS (64 bit bullseye+)
 - GPU supporting Vulkan 1.0+, its driver, and loader
-- Vulkan SDK / `glslc` (for compiling glsl shaders to SPIR-V in Debug and validation layers)
+- Vulkan SDK / `glslc` (for compiling glsl shaders to SPIR-V in Debug, and validation layers)
 
 ### Usage
 

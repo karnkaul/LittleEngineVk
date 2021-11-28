@@ -45,6 +45,7 @@ class Surface {
 	Extent2D extent() const noexcept { return cast(m_storage.info.extent); }
 	u32 imageCount() const noexcept { return m_storage.info.imageCount; }
 	u32 minImageCount() const noexcept { return m_storage.info.minImageCount; }
+	BlitFlags blitFlags() const noexcept { return m_storage.blitFlags; }
 
 	bool makeSwapchain(Extent2D fbSize = {}, std::optional<VSync> vsync = std::nullopt);
 
@@ -65,6 +66,7 @@ class Surface {
 		ktl::fixed_vector<RenderTarget, 8> images;
 		Format format;
 		Info info;
+		BlitFlags blitFlags;
 	};
 
 	Info makeInfo(Extent2D extent) const;

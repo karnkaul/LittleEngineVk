@@ -93,6 +93,7 @@ class Renderer {
 	bool canScale() const noexcept;
 	f32 renderScale() const noexcept { return m_scale; }
 	bool renderScale(f32) noexcept;
+	bool canBlitFrame() const noexcept { return m_blitFlags.test(BlitFlag::eSrc); }
 
 	virtual vk::RenderPass renderPass() const noexcept { return m_singleRenderPass; }
 
@@ -123,12 +124,14 @@ class Renderer {
 	Surface::Format m_surfaceFormat;
 	TPair<f32> m_scaleLimits = {0.25f, 4.0f};
 	Target m_target;
+	BlitFlags m_blitFlags;
 	f32 m_scale = 1.0f;
 };
 
 struct Renderer::CreateInfo {
 	not_null<VRAM*> vram;
 	Surface::Format surfaceFormat;
+	BlitFlags surfaceBlitFlags;
 	Target target = Target::eOffScreen;
 	Buffering buffering = 2_B;
 	u8 cmdPerFrame = 1;

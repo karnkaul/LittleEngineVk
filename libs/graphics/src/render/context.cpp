@@ -20,9 +20,10 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
 }
 
-std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
+std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, BlitFlags bf, Buffering buffering) {
 	Renderer::CreateInfo rci(vram, format);
 	rci.buffering = buffering;
+	rci.surfaceBlitFlags = bf;
 	rci.target = Renderer::Target::eOffScreen;
 	return std::make_unique<Renderer>(rci);
 }
@@ -82,14 +83,14 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 
 RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
 	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
-	  m_renderer(makeRenderer(m_vram, m_surface.format(), bf)), m_buffering(bf) {
+	  m_renderer(makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), bf)), m_buffering(bf) {
 	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
 	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }
 }
 
-std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
+std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), m_buffering); }
 
 void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
 	m_vram->m_device->waitIdle();

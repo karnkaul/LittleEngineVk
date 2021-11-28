@@ -45,7 +45,8 @@ class Texture {
 	bool changeSampler(vk::Sampler sampler);
 	bool assign(Image&& image, Type type = Type::e2D, Payload payload = Payload::eColour);
 	bool resize(CommandBuffer cb, Extent2D extent);
-	void blit(CommandBuffer cb, Texture const& src, vk::Filter filter = vk::Filter::eLinear);
+	bool blit(CommandBuffer cb, Texture const& src, vk::Filter filter = vk::Filter::eLinear);
+	bool blit(CommandBuffer cb, Image const& src, vk::Filter filter = vk::Filter::eLinear);
 	bool blit(CommandBuffer cb, RenderTarget const& rt, vk::Filter filter = vk::Filter::eLinear);
 
 	bool busy() const { return m_transfer.busy(); }

@@ -1,11 +1,20 @@
 #pragma once
 #include <core/lib_logger.hpp>
 #include <glm/vec2.hpp>
+#include <ktl/enum_flags/enum_flags.hpp>
 #include <vulkan/vulkan.hpp>
 #include <string_view>
 #include <unordered_map>
 
 namespace le::graphics {
+enum class BlitFlag { eSrc, eDst };
+using BlitFlags = ktl::enum_flags<BlitFlag, u8>;
+
+struct BlitCaps {
+	BlitFlags optimal;
+	BlitFlags linear;
+};
+
 using lvl = dl::level;
 
 template <typename T>

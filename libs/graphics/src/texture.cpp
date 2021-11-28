@@ -145,7 +145,12 @@ bool Texture::resize(CommandBuffer cb, Extent2D extent) {
 	return false;
 }
 
-void Texture::blit(CommandBuffer cb, Texture const& src, vk::Filter filter) { blit(cb, src.renderTarget(), filter); }
+bool Texture::blit(CommandBuffer cb, Texture const& src, vk::Filter filter) { return blit(cb, src.image(), filter); }
+
+bool Texture::blit(CommandBuffer cb, Image const& src, vk::Filter filter) {
+	wait();
+	return m_vram->blit(cb, src, m_image, filter);
+}
 
 bool Texture::blit(CommandBuffer cb, RenderTarget const& src, vk::Filter filter) {
 	EXPECT(src.image);
@@ -157,10 +162,10 @@ bool Texture::blit(CommandBuffer cb, RenderTarget const& src, vk::Filter filter)
 		auto layout = [](vIL l) { return l == vIL::eUndefined ? vIL::eShaderReadOnlyOptimal : l; };
 		m_vram->m_device->m_layouts.transition(cb, src.image, vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
 		m_vram->m_device->m_layouts.transition(cb, dst.image, vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
-		VRAM::blit(cb, {src, dst}, filter);
+		auto const ret = m_vram->blit(cb, {src, dst}, filter);
 		m_vram->m_device->m_layouts.transition(cb, src.image, layout(srcLayout), LayoutStages::allCommands());
 		m_vram->m_device->m_layouts.transition(cb, dst.image, layout(thisLayout), LayoutStages::allCommands());
-		return true;
+		return ret;
 	}
 	return false;
 }

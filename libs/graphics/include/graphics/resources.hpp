@@ -173,6 +173,7 @@ class Image : public Resource {
 	vk::Format imageFormat() const noexcept { return m_storage.imageFormat; }
 	vk::Format viewFormat() const noexcept { return m_storage.viewFormat; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
+	BlitFlags blitFlags() const noexcept { return m_storage.blitFlags; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
 	Extent2D extent2D() const noexcept { return cast(extent()); }
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
@@ -190,6 +191,7 @@ class Image : public Resource {
 		vk::Format imageFormat{};
 		vk::Format viewFormat{};
 		u32 layerCount = 1;
+		BlitFlags blitFlags;
 	};
 	Storage m_storage;
 

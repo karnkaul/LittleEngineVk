@@ -617,7 +617,7 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
-		m_testTex.blit(m_eng->gfx().context.commands().get(), m_eng->gfx().context.previousFrame());
+		if (m_eng->gfx().context.renderer().canBlitFrame()) { m_testTex.blit(m_eng->gfx().context.commands().get(), m_eng->gfx().context.previousFrame()); }
 
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {

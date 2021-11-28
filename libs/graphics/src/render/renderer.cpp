@@ -150,6 +150,8 @@ void Renderer::render(not_null<Device*> device, IDrawer& out_drawer, PipelineFac
 Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_colourImage(info.vram), m_vram(info.vram), m_target(info.target) {
 	Buffering const buffering = info.buffering < 2_B ? 2_B : info.buffering;
 	EXPECT(info.cmdPerFrame <= max_cmd_per_frame_v);
+	EXPECT(info.target == Target::eSwapchain || info.surfaceBlitFlags.test(BlitFlag::eDst));
+	if (!info.surfaceBlitFlags.test(BlitFlag::eDst)) { m_target = Target::eSwapchain; }
 	u8 const cmdPerFrame = std::clamp(info.cmdPerFrame, u8(1), max_cmd_per_frame_v);
 	for (Buffering i{0}; i < buffering; ++i.value) {
 		Cmds cmds;
@@ -157,6 +159,7 @@ Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_colourIm
 		m_cmds.push(std::move(cmds));
 	}
 	m_surfaceFormat = info.surfaceFormat;
+	m_blitFlags = info.surfaceBlitFlags;
 	auto const colourFormat = m_target == Target::eOffScreen ? m_colourFormat : m_surfaceFormat.colour.format;
 	m_singleRenderPass = makeRenderPass(colourFormat, m_surfaceFormat.depth, makeSubpassDependency(m_target == Target::eOffScreen));
 	m_depthImage.setDepth();
@@ -215,7 +218,7 @@ void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget c
 	if (m_target == Target::eOffScreen) {
 		m_vram->m_device->m_layouts.transition(cmd.cb, colour.image, vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
 		m_vram->m_device->m_layouts.transition(cmd.cb, acquired.image, vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
-		VRAM::blit(cmd.cb, {colour, acquired});
+		m_vram->blit(cmd.cb, {colour, acquired});
 	}
 	m_vram->m_device->m_layouts.transition(cmd.cb, acquired.image, vIL::ePresentSrcKHR, LayoutStages::transferBottom());
 	cmd.cb.end();

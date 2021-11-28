@@ -11,6 +11,7 @@
 
 namespace le::graphics {
 class Device;
+struct RenderTarget;
 
 struct Alloc final {
 	vk::DeviceMemory memory;
@@ -159,9 +160,10 @@ class Image : public Resource {
 	static constexpr vk::Format srgb_v = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::Format linear_v = vk::Format::eR8G8B8A8Unorm;
 
-	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format, bool linear);
+	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format);
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
+	Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format, vk::ImageUsageFlags usage);
 	Image(Image&& rhs) noexcept : Resource(rhs.m_memory) { exchg(*this, rhs); }
 	Image& operator=(Image rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Image() override;

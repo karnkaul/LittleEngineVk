@@ -35,6 +35,15 @@ void CommandRotator::Pool::release(Cmd&& cmd) {
 
 CommandRotator::CommandRotator(not_null<Device*> device, QType qtype) : m_pool(device, qtype), m_qtype(qtype), m_device(device) { updateCurrent(); }
 
+void CommandRotator::immediate(ktl::move_only_function<void(CommandBuffer const&)>&& func) {
+	if (func) {
+		func(get());
+		auto f = fence();
+		submit();
+		m_device->waitFor(f);
+	}
+}
+
 void CommandRotator::submit() {
 	releaseDone();
 	m_current.cb.end();
@@ -48,6 +57,7 @@ void CommandRotator::releaseDone() {
 	std::erase_if(m_submitted, [this](Cmd& cmd) {
 		if (m_device->signalled(vk::Fence(cmd.fence))) {
 			m_pool.release({std::move(cmd.fence), cmd.cb.m_cb});
+			cmd.promise.set_value();
 			return true;
 		}
 		return false;
@@ -56,7 +66,8 @@ void CommandRotator::releaseDone() {
 
 void CommandRotator::updateCurrent() {
 	auto acquire = m_pool.acquire();
-	m_current = {CommandBuffer(acquire.cb), std::move(acquire.fence)};
+	m_current = {CommandBuffer(acquire.cb), std::move(acquire.fence), {}};
 	m_current.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+	m_current.promise = {};
 }
 } // namespace le::graphics

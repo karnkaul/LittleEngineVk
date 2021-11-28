@@ -2,14 +2,18 @@
 #include <graphics/command_buffer.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
+#include <graphics/render/renderer.hpp>
 #include <graphics/texture.hpp>
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
 namespace {
-using sv = std::string_view;
+Image::CreateInfo imageInfo(Extent2D extent, vk::Format format) noexcept {
+	return Image::info(extent, Texture::usage_v, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format);
+}
+
 Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D extent, Span<ImgView const> bitmaps) {
-	auto info = Image::info(extent, Texture::usage_v, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format, false);
+	auto info = imageInfo(extent, format);
 	if (bitmaps.size() > 1) {
 		info.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 		info.createInfo.arrayLayers = (u32)bitmaps.size();
@@ -18,10 +22,6 @@ Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D ext
 	Image ret(&vram, info);
 	out_future = vram.copy(bitmaps, ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 	return ret;
-}
-
-Image::CreateInfo imageInfo(Extent2D extent, vk::Format format) noexcept {
-	return Image::info(extent, Texture::usage_v, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format, false);
 }
 
 bool checkSize(Extent2D size, Span<u8 const> bytes) noexcept {
@@ -137,10 +137,9 @@ bool Texture::assign(Image&& image, Type type, Payload payload) {
 bool Texture::resize(CommandBuffer cb, Extent2D extent) {
 	EXPECT(extent.x > 0 && extent.y > 0);
 	if (extent.x > 0 && extent.y > 0) {
-		auto info = Image::info(extent, usage_v, vIAFB::eColor, VMA_MEMORY_USAGE_GPU_ONLY, m_image.imageFormat(), false);
-		Image image(m_vram, info);
+		Image image(m_vram, imageInfo(extent, m_image.imageFormat()));
 		std::swap(m_image, image);
-		return blit(cb, makeRenderTarget(image));
+		return blit(cb, image);
 	}
 	return false;
 }
@@ -149,30 +148,25 @@ bool Texture::blit(CommandBuffer cb, Texture const& src, vk::Filter filter) { re
 
 bool Texture::blit(CommandBuffer cb, Image const& src, vk::Filter filter) {
 	wait();
-	return m_vram->blit(cb, src, m_image, filter);
-}
-
-bool Texture::blit(CommandBuffer cb, RenderTarget const& src, vk::Filter filter) {
-	EXPECT(src.image);
-	if (src.image) {
-		wait();
-		RenderTarget const dst = renderTarget();
-		auto const srcLayout = m_vram->m_device->m_layouts.get(src.image);
-		auto const thisLayout = m_vram->m_device->m_layouts.get(dst.image);
-		auto layout = [](vIL l) { return l == vIL::eUndefined ? vIL::eShaderReadOnlyOptimal : l; };
-		m_vram->m_device->m_layouts.transition(cb, src.image, vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
-		m_vram->m_device->m_layouts.transition(cb, dst.image, vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
-		auto const ret = m_vram->blit(cb, {src, dst}, filter);
-		m_vram->m_device->m_layouts.transition(cb, src.image, layout(srcLayout), LayoutStages::allCommands());
-		m_vram->m_device->m_layouts.transition(cb, dst.image, layout(thisLayout), LayoutStages::allCommands());
-		return ret;
-	}
-	return false;
+	return Blitter{}(m_vram, cb, src, m_image, filter);
 }
 
 void Texture::constructImpl(Span<ImgView const> bmps, Extent2D extent, Payload payload, vk::Format format) {
 	m_payload = payload;
 	m_type = bmps.size() > 1 ? Type::eCube : Type::e2D;
 	m_image = load(*m_vram, m_transfer, format, extent, bmps);
+}
+
+bool Texture::Blitter::operator()(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter) const {
+	auto const srcLayout = vram->m_device->m_layouts.get(src.image());
+	auto const thisLayout = vram->m_device->m_layouts.get(out_dst.image());
+	LayoutTransition tsrc{vram->m_device, cb, src.image()};
+	LayoutTransition tdst{vram->m_device, cb, out_dst.image()};
+	tsrc(vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
+	tdst(vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
+	auto const ret = vram->blit(cb, src, out_dst, filter);
+	tsrc(srcLayout, LayoutStages::allCommands());
+	tdst(thisLayout, LayoutStages::allCommands());
+	return ret;
 }
 } // namespace le::graphics

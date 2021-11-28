@@ -123,4 +123,9 @@ bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acq
 	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
 	return m_surface.present(fbSize, acquired, sync.present);
 }
+
+std::optional<Image> RenderContext::previousFrameAsImage() const {
+	if (m_previousFrame.image) { return Image(m_vram, previousFrame(), m_surface.format().colour.format, m_surface.usage()); }
+	return std::nullopt;
+}
 } // namespace le::graphics

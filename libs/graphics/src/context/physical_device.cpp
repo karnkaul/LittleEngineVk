@@ -25,13 +25,14 @@ BlitCaps PhysicalDevice::blitCaps(vk::Format format) const {
 	using vFFFB = vk::FormatFeatureFlagBits;
 	auto it = m_blitCaps.find(format);
 	if (it == m_blitCaps.end()) {
-		auto [i, _] = m_blitCaps.emplace(format, BlitCaps());
-		it = i;
+		BlitCaps bc;
 		auto const fp = formatProperties(format);
-		if ((fp.linearTilingFeatures & vFFFB::eTransferSrc) == vFFFB::eTransferSrc) { it->second.linear.set(BlitFlag::eSrc); }
-		if ((fp.linearTilingFeatures & vFFFB::eTransferDst) == vFFFB::eTransferDst) { it->second.linear.set(BlitFlag::eDst); }
-		if ((fp.optimalTilingFeatures & vFFFB::eTransferSrc) == vFFFB::eTransferSrc) { it->second.optimal.set(BlitFlag::eSrc); }
-		if ((fp.optimalTilingFeatures & vFFFB::eTransferDst) == vFFFB::eTransferDst) { it->second.optimal.set(BlitFlag::eDst); }
+		if (fp.linearTilingFeatures & vFFFB::eBlitSrc) { bc.linear.set(BlitFlag::eSrc); }
+		if (fp.linearTilingFeatures & vFFFB::eBlitDst) { bc.linear.set(BlitFlag::eDst); }
+		if (fp.optimalTilingFeatures & vFFFB::eBlitSrc) { bc.optimal.set(BlitFlag::eSrc); }
+		if (fp.optimalTilingFeatures & vFFFB::eBlitDst) { bc.optimal.set(BlitFlag::eDst); }
+		auto [i, _] = m_blitCaps.emplace(format, bc);
+		it = i;
 	}
 	return it->second;
 }

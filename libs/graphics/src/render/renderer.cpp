@@ -1,6 +1,7 @@
 #include <core/utils/expect.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
+#include <graphics/render/context.hpp>
 #include <graphics/render/renderer.hpp>
 #include <graphics/utils/utils.hpp>
 
@@ -22,16 +23,20 @@ vk::SubpassDependency makeSubpassDependency(bool offscreen) {
 }
 } // namespace
 
+void LayoutTransition::operator()(vk::ImageLayout layout, LayoutStages const& stages) const {
+	if (layout != vIL::eUndefined) { device->m_layouts.transition(cb, image, layout, stages); }
+}
+
 Image::CreateInfo& ImageCache::setDepth() {
 	static constexpr auto usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eTransientAttachment;
 	auto const vmaUsage = m_vram->m_device->physicalDevice().supportsLazyAllocation() ? VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED : VMA_MEMORY_USAGE_GPU_ONLY;
-	m_info = Image::info({}, usage, vk::ImageAspectFlagBits::eDepth, vmaUsage, {}, false);
+	m_info = Image::info({}, usage, vk::ImageAspectFlagBits::eDepth, vmaUsage, {});
 	return m_info;
 }
 
 Image::CreateInfo& ImageCache::setColour() {
 	static constexpr auto usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
-	m_info = Image::info({}, usage, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, {}, false);
+	m_info = Image::info({}, usage, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, {});
 	return m_info;
 }
 
@@ -215,12 +220,14 @@ void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget c
 	ri.framebuffer.colour = colour;
 	ri.framebuffer.depth = {depthImage.image(), depthImage.view(), depthImage.extent2D(), depthImage.viewFormat()};
 	render(m_vram->m_device, out_drawer, pf, std::move(ri));
+	LayoutTransition ltcolour{m_vram->m_device, cmd.cb, colour.image};
+	LayoutTransition ltacquired{m_vram->m_device, cmd.cb, acquired.image};
 	if (m_target == Target::eOffScreen) {
-		m_vram->m_device->m_layouts.transition(cmd.cb, colour.image, vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
-		m_vram->m_device->m_layouts.transition(cmd.cb, acquired.image, vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
+		ltcolour(vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
+		ltacquired(vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
 		m_vram->blit(cmd.cb, {colour, acquired});
 	}
-	m_vram->m_device->m_layouts.transition(cmd.cb, acquired.image, vIL::ePresentSrcKHR, LayoutStages::transferBottom());
+	ltacquired(vIL::ePresentSrcKHR, LayoutStages::transferBottom());
 	cmd.cb.end();
 }
 

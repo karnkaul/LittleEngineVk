@@ -46,6 +46,7 @@ class Surface {
 	u32 imageCount() const noexcept { return m_storage.info.imageCount; }
 	u32 minImageCount() const noexcept { return m_storage.info.minImageCount; }
 	BlitFlags blitFlags() const noexcept { return m_storage.blitFlags; }
+	vk::ImageUsageFlags usage() const noexcept { return m_createInfo.imageUsage; }
 
 	bool makeSwapchain(Extent2D fbSize = {}, std::optional<VSync> vsync = std::nullopt);
 

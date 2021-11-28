@@ -1,6 +1,8 @@
+#include <core/utils/expect.hpp>
 #include <core/utils/string.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
+#include <graphics/render/target.hpp>
 #include <graphics/resources.hpp>
 
 namespace le::graphics {
@@ -207,19 +209,19 @@ bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset
 	return false;
 }
 
-Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format, bool linear) {
+Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format) {
 	CreateInfo ret;
 	ret.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
 	ret.createInfo.usage = usage;
 	ret.vmaUsage = vmaUsage;
+	bool const linear = vmaUsage != VMA_MEMORY_USAGE_UNKNOWN && vmaUsage != VMA_MEMORY_USAGE_GPU_ONLY && vmaUsage != VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;
 	ret.view.aspects = view;
+	ret.queueFlags = QType::eGraphics;
 	if (view != vk::ImageAspectFlags()) {
 		ret.view.format = format;
 		ret.view.type = vk::ImageViewType::e2D;
 	}
-	if ((usage & vk::ImageUsageFlagBits::eTransferDst) != vk::ImageUsageFlags() || (usage & vk::ImageUsageFlagBits::eTransferSrc) != vk::ImageUsageFlags()) {
-		ret.queueFlags = QFlags(QType::eTransfer) | QType::eGraphics;
-	}
+	if ((usage & vk::ImageUsageFlagBits::eTransferDst) || (usage & vk::ImageUsageFlagBits::eTransferSrc)) { ret.queueFlags |= QType::eTransfer; }
 	ret.createInfo.format = format;
 	ret.createInfo.tiling = linear ? vk::ImageTiling::eLinear : vk::ImageTiling::eOptimal;
 	ret.createInfo.imageType = vk::ImageType::e2D;
@@ -240,7 +242,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	allocInfo.preferredFlags = static_cast<VkMemoryPropertyFlags>(info.preferred);
 	auto const vkImageInfo = static_cast<VkImageCreateInfo>(imageInfo);
 	VkImage vkImage;
-	if (vmaCreateImage(memory->m_allocator, &vkImageInfo, &allocInfo, &vkImage, &m_data.handle, nullptr) != VK_SUCCESS) {
+	if (auto res = vmaCreateImage(memory->m_allocator, &vkImageInfo, &allocInfo, &vkImage, &m_data.handle, nullptr); res != VK_SUCCESS) {
 		throw std::runtime_error("Allocation error");
 	}
 	m_storage.extent = info.createInfo.extent;
@@ -249,7 +251,6 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	m_storage.imageFormat = info.createInfo.format;
 	auto const blitCaps = memory->m_device->physicalDevice().blitCaps(info.createInfo.format);
 	m_storage.blitFlags = info.createInfo.tiling == vk::ImageTiling::eLinear ? blitCaps.linear : blitCaps.optimal;
-	memory->m_device->m_layouts.force(m_storage.image, info.createInfo.initialLayout);
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
 	m_data.queueFlags = info.queueFlags;
 	VmaAllocationInfo allocationInfo;
@@ -264,8 +265,19 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	}
 }
 
+Image::Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format, vk::ImageUsageFlags usage) : Resource(memory) {
+	EXPECT(rt.image);
+	m_storage.image = rt.image;
+	m_storage.view = rt.view;
+	m_storage.extent = vk::Extent3D(rt.extent.x, rt.extent.y, 1);
+	m_storage.imageFormat = m_storage.viewFormat = format;
+	m_storage.usage = usage;
+	m_storage.blitFlags = memory->m_device->physicalDevice().blitCaps(format).optimal;
+	m_storage.allocatedSize = 0U;
+}
+
 Image::~Image() {
-	if (!Device::default_v(m_storage.image)) {
+	if (!Device::default_v(m_storage.image) && m_storage.allocatedSize > 0U) {
 		Memory& m = *m_memory;
 		m.m_allocations[kind_v].fetch_sub(m_storage.allocatedSize);
 		auto del = [a = m.m_allocator, i = m_storage.image, h = m_data.handle, d = m.m_device, v = m_storage.view]() mutable {

@@ -144,26 +144,16 @@ bool VRAM::blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter f
 	if ((src.usage() & vk::ImageUsageFlagBits::eTransferSrc) == vk::ImageUsageFlags()) { return false; }
 	if ((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlags()) { return false; }
 	if (!src.blitFlags().test(BlitFlag::eSrc) || !out_dst.blitFlags().test(BlitFlag::eDst)) { return false; }
-	TPair<RenderTarget> targets;
-	targets.first = RenderTarget{src.image(), src.view(), src.extent2D(), src.imageFormat()};
-	targets.second = RenderTarget{out_dst.image(), out_dst.view(), out_dst.extent2D(), out_dst.imageFormat()};
-	auto const lsrc = m_device->m_layouts.get(src.image());
-	auto const ldst = m_device->m_layouts.get(out_dst.image());
-	auto const layout = [](vIL l) { return l == vIL::eUndefined ? vIL::eShaderReadOnlyOptimal : l; };
-	m_device->m_layouts.transition(cb, src.image(), vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
-	m_device->m_layouts.transition(cb, out_dst.image(), vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
-	blit(cb, targets, filter, aspects);
-	m_device->m_layouts.transition(cb, src.image(), layout(lsrc), LayoutStages::allCommands());
-	m_device->m_layouts.transition(cb, out_dst.image(), layout(ldst), LayoutStages::allCommands());
+	blit(cb.m_cb, {src.image(), out_dst.image()}, {src.extent(), out_dst.extent()}, blit_layouts_v, filter, aspects);
 	return true;
 }
 
 bool VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter, AspectPair aspects) const {
 	if (!m_device->physicalDevice().blitCaps(images.first.format).optimal.test(BlitFlag::eSrc)) { return false; }
 	if (!m_device->physicalDevice().blitCaps(images.second.format).optimal.test(BlitFlag::eDst)) { return false; }
-	vk::Extent3D const src(cast(images.first.extent), 1);
-	vk::Extent3D const dst(cast(images.second.extent), 1);
-	blit(cb.m_cb, {images.first.image, images.second.image}, {src, dst}, blit_layouts_v, filter, aspects);
+	vk::Extent3D const srcExt(cast(images.first.extent), 1);
+	vk::Extent3D const dstExt(cast(images.second.extent), 1);
+	blit(cb.m_cb, {images.first.image, images.second.image}, {srcExt, dstExt}, blit_layouts_v, filter, aspects);
 	return true;
 }
 

@@ -3,6 +3,7 @@
 #include <graphics/qflags.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <graphics/utils/ring_buffer.hpp>
+#include <ktl/future.hpp>
 
 namespace le::graphics {
 class CommandRotator {
@@ -34,8 +35,11 @@ class CommandRotator {
 
 	CommandRotator(not_null<Device*> device, QType qtype = QType::eGraphics);
 
+	void immediate(ktl::move_only_function<void(CommandBuffer const&)>&& func);
+
 	CommandBuffer const& get() const noexcept { return m_current.cb; }
 	vk::Fence fence() const noexcept { return m_current.fence; }
+	ktl::future<void> future() const { return m_current.promise.get_future(); }
 
 	void submit();
 
@@ -43,6 +47,7 @@ class CommandRotator {
 	struct Cmd {
 		CommandBuffer cb;
 		Deferred<vk::Fence> fence;
+		mutable ktl::promise<void> promise;
 	};
 
 	void releaseDone();

@@ -617,7 +617,9 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
-		if (m_eng->gfx().context.renderer().canBlitFrame()) { m_testTex.blit(m_eng->gfx().context.commands().get(), m_eng->gfx().context.previousFrame()); }
+		if (auto const frame = m_eng->gfx().context.previousFrameAsImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
+			m_testTex.blit(m_eng->gfx().context.commands().get(), *frame);
+		}
 
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
@@ -793,7 +795,22 @@ bool run(io::Media const& media) {
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
-				engine.setRenderer(engine.gfx().context.defaultRenderer());
+				using namespace graphics;
+				auto& ctx = engine.gfx().context;
+				if (auto src = ctx.previousFrameAsImage()) {
+					auto ici = Image::info(src->extent2D(), vIUFB::eTransferDst, vk::ImageAspectFlags(), VMA_MEMORY_USAGE_GPU_TO_CPU, Image::linear_v);
+					ici.createInfo.tiling = vk::ImageTiling::eLinear;
+					Image dst(&ctx.vram(), ici);
+					EXPECT(dst.blitFlags().test(BlitFlag::eDst));
+					if (Texture::Blitter{}(&ctx.vram(), ctx.commands().get(), *src, dst)) {
+						ctx.commands().future().then([]() { logD("Image ready"); });
+						logD("Blitting rendertarget to image");
+					} else {
+						logD("Failed to blit");
+					}
+				} else {
+					logD("Failed to get previous frame as image");
+				}
 				flags.reset(Flag::eDebug0);
 				/*bf = async(&package, "out/autobuild", false);
 				bf.then([](bool built) {

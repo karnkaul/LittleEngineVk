@@ -52,6 +52,7 @@ class RenderContext : public NoCopy {
 	VRAM& vram() noexcept { return *m_vram; }
 	CommandRotator const& commands() const noexcept { return m_commandRotator; }
 	RenderTarget const& previousFrame() const noexcept { return m_previousFrame; }
+	std::optional<Image> previousFrameAsImage() const;
 
 	struct Sync;
 

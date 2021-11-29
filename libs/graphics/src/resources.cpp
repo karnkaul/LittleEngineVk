@@ -6,6 +6,22 @@
 #include <graphics/resources.hpp>
 
 namespace le::graphics {
+namespace {
+vk::ImageBlit imageBlit(Memory::ImgMeta const& src, Memory::ImgMeta const& dst, TPair<vk::Offset3D> srcOff, TPair<vk::Offset3D> dstOff) {
+	vk::ImageBlit ret;
+	ret.srcSubresource = vk::ImageSubresourceLayers(src.aspects, src.firstMip, src.firstLayer, src.layerCount);
+	ret.dstSubresource = vk::ImageSubresourceLayers(dst.aspects, dst.firstMip, dst.firstLayer, dst.layerCount);
+	vk::Offset3D offsets[] = {srcOff.first, srcOff.second};
+	std::size_t idx = 0;
+	for (auto& off : ret.srcOffsets) { off = offsets[idx++]; }
+	offsets[0] = dstOff.first;
+	offsets[1] = dstOff.second;
+	idx = 0;
+	for (auto& off : ret.dstOffsets) { off = offsets[idx++]; }
+	return ret;
+}
+} // namespace
+
 vk::SharingMode QShare::operator()(Device const& device, QFlags queues) const {
 	return device.queues().familyIndices(queues).size() == 1 ? vk::SharingMode::eExclusive : desired;
 }
@@ -60,28 +76,42 @@ void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::Devi
 	cb.end();
 }
 
-vk::ImageBlit imageBlit(Memory::ImgMeta const& src, Memory::ImgMeta const& dst, TPair<vk::Offset3D> srcOff, TPair<vk::Offset3D> dstOff) {
-	vk::ImageBlit ret;
-	ret.srcSubresource = vk::ImageSubresourceLayers(src.aspects, src.firstMip, src.firstLayer, src.layerCount);
-	ret.dstSubresource = vk::ImageSubresourceLayers(dst.aspects, dst.firstMip, dst.firstLayer, dst.layerCount);
-	vk::Offset3D offsets[] = {srcOff.first, srcOff.second};
-	std::size_t idx = 0;
-	for (auto& off : ret.srcOffsets) { off = offsets[idx++]; }
-	offsets[0] = dstOff.first;
-	offsets[1] = dstOff.second;
-	idx = 0;
-	for (auto& off : ret.dstOffsets) { off = offsets[idx++]; }
-	return ret;
+void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta) {
+	using vkstg = vk::PipelineStageFlagBits;
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	cb.begin(beginInfo);
+	ImgMeta first = meta, second = meta;
+	first.layouts.second = vk::ImageLayout::eTransferDstOptimal;
+	first.access.second = second.access.first = vk::AccessFlagBits::eTransferWrite;
+	first.stages = {vkstg::eTopOfPipe | meta.stages.first, vkstg::eTransfer};
+	second.layouts.first = vk::ImageLayout::eTransferDstOptimal;
+	second.stages = {vkstg::eTransfer, vkstg::eBottomOfPipe | meta.stages.second};
+	imageBarrier(cb, dst, first);
+	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);
+	imageBarrier(cb, dst, second);
+	cb.end();
 }
 
-void Memory::blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, LayoutPair layouts, vk::Filter filter,
-				  TPair<vk::ImageAspectFlags> aspects) {
+void Memory::copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects) {
+	vk::ImageCopy region;
+	region.extent = extent;
+	vk::ImageSubresourceLayers subResource;
+	subResource.aspectMask = aspects;
+	subResource.baseArrayLayer = 0;
+	subResource.layerCount = 1U;
+	subResource.mipLevel = 0;
+	region.srcSubresource = region.dstSubresource = subResource;
+	cb.copyImage(images.first, vIL::eTransferSrcOptimal, images.second, vIL::eTransferDstOptimal, region);
+}
+
+void Memory::blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter) {
 	ImgMeta msrc, mdst;
 	msrc.aspects = aspects.first;
 	mdst.aspects = aspects.second;
 	vk::Offset3D const osrc((int)extents.first.width, (int)extents.first.height, (int)extents.first.depth);
 	vk::Offset3D const odst((int)extents.second.width, (int)extents.second.height, (int)extents.second.depth);
-	cb.blitImage(images.first, layouts.first, images.second, layouts.second, imageBlit(msrc, mdst, {{}, osrc}, {{}, odst}), filter);
+	cb.blitImage(images.first, vIL::eTransferSrcOptimal, images.second, vIL::eTransferDstOptimal, imageBlit(msrc, mdst, {{}, osrc}, {{}, odst}), filter);
 }
 
 void Memory::imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta) {
@@ -113,23 +143,6 @@ vk::BufferImageCopy Memory::bufferImageCopy(vk::Extent3D extent, vk::ImageAspect
 	ret.imageOffset = vk::Offset3D(0, 0, 0);
 	ret.imageExtent = extent;
 	return ret;
-}
-
-void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta) {
-	using vkstg = vk::PipelineStageFlagBits;
-	vk::CommandBufferBeginInfo beginInfo;
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	cb.begin(beginInfo);
-	ImgMeta first = meta, second = meta;
-	first.layouts.second = vk::ImageLayout::eTransferDstOptimal;
-	first.access.second = second.access.first = vk::AccessFlagBits::eTransferWrite;
-	first.stages = {vkstg::eTopOfPipe | meta.stages.first, vkstg::eTransfer};
-	second.layouts.first = vk::ImageLayout::eTransferDstOptimal;
-	second.stages = {vkstg::eTransfer, vkstg::eBottomOfPipe | meta.stages.second};
-	imageBarrier(cb, dst, first);
-	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);
-	imageBarrier(cb, dst, second);
-	cb.end();
 }
 
 Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory) {

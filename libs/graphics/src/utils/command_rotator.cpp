@@ -33,24 +33,22 @@ void CommandRotator::Pool::release(Cmd&& cmd) {
 	m_cbs.push_back(std::move(cmd));
 }
 
-CommandRotator::CommandRotator(not_null<Device*> device, QType qtype) : m_pool(device, qtype), m_qtype(qtype), m_device(device) { updateCurrent(); }
+CommandRotator::CommandRotator(not_null<Device*> device, QType qtype) : m_pool(device, qtype), m_qtype(qtype), m_device(device) { m_current = make(); }
 
 void CommandRotator::immediate(ktl::move_only_function<void(CommandBuffer const&)>&& func) {
 	if (func) {
-		func(get());
-		auto f = fence();
-		submit();
-		m_device->waitFor(f);
+		auto cmd = make();
+		func(cmd.cb);
+		submit(cmd);
+		m_device->waitFor(cmd.fence);
 	}
 }
 
 void CommandRotator::submit() {
 	releaseDone();
-	m_current.cb.end();
-	vk::SubmitInfo si(0U, nullptr, {}, 1U, &m_current.cb.m_cb);
-	m_device->queues().submit(m_qtype, si, m_current.fence, true);
+	submit(m_current);
 	m_submitted.push_back(std::move(m_current));
-	updateCurrent();
+	m_current = make();
 }
 
 void CommandRotator::releaseDone() {
@@ -64,10 +62,17 @@ void CommandRotator::releaseDone() {
 	});
 }
 
-void CommandRotator::updateCurrent() {
+CommandRotator::Cmd CommandRotator::make() {
 	auto acquire = m_pool.acquire();
-	m_current = {CommandBuffer(acquire.cb), std::move(acquire.fence), {}};
-	m_current.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-	m_current.promise = {};
+	Cmd out;
+	out = {CommandBuffer(acquire.cb), std::move(acquire.fence), {}};
+	out.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+	return out;
+}
+
+void CommandRotator::submit(Cmd& out) const {
+	out.cb.end();
+	vk::SubmitInfo si(0U, nullptr, {}, 1U, &out.cb.m_cb);
+	m_device->queues().submit(m_qtype, si, out.fence, true);
 }
 } // namespace le::graphics

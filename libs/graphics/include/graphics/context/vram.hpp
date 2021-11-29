@@ -14,13 +14,12 @@ class VRAM final : public Memory {
 	using Memory::blit;
 	using Memory::copy;
 
-	static constexpr LayoutPair blit_layouts_v = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal};
 	static constexpr AspectPair colour_aspects_v = {vIAFB::eColor, vIAFB::eColor};
 
 	VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo = {});
 	~VRAM();
 
-	Buffer makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible);
+	Buffer makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible);
 	template <typename T>
 	Buffer makeBO(T const& t, vk::BufferUsageFlags usage);
 
@@ -29,6 +28,7 @@ class VRAM final : public Memory {
 	[[nodiscard]] Future copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 	bool blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
+	bool copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
 
 	template <typename Cont>
 	void wait(Cont const& futures) const;

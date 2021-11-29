@@ -164,7 +164,8 @@ bool Texture::Blitter::operator()(not_null<VRAM*> vram, CommandBuffer cb, Image 
 	LayoutTransition tdst{vram->m_device, cb, out_dst.image()};
 	tsrc(vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
 	tdst(vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
-	auto const ret = vram->blit(cb, src, out_dst, filter);
+	bool const blit = src.blitFlags().test(BlitFlag::eSrc) && out_dst.blitFlags().test(BlitFlag::eDst);
+	auto const ret = blit ? vram->blit(cb, src, out_dst, filter) : vram->copy(cb, src, out_dst);
 	tsrc(srcLayout, LayoutStages::allCommands());
 	tdst(thisLayout, LayoutStages::allCommands());
 	return ret;

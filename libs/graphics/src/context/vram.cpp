@@ -15,10 +15,10 @@ VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) :
 
 VRAM::~VRAM() { g_log.log(lvl::info, 1, "[{}] VRAM destroyed", g_name); }
 
-Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible) {
+Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible) {
 	Buffer::CreateInfo bufferInfo;
 	bufferInfo.size = size;
-	if (bHostVisible) {
+	if (hostVisible) {
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		bufferInfo.queueFlags = QType::eGraphics;
@@ -125,7 +125,7 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 		for (auto const& pixels : d) {
 			auto const offset = layerIdx * layerSize;
 			std::memcpy((u8*)stage.buffer->mapped() + offset, pixels.data(), pixels.size());
-			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++));
+			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++, 1U));
 		}
 		ImgMeta meta;
 		meta.layouts = fromTo;
@@ -144,7 +144,7 @@ bool VRAM::blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter f
 	if ((src.usage() & vk::ImageUsageFlagBits::eTransferSrc) == vk::ImageUsageFlags()) { return false; }
 	if ((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlags()) { return false; }
 	if (!src.blitFlags().test(BlitFlag::eSrc) || !out_dst.blitFlags().test(BlitFlag::eDst)) { return false; }
-	blit(cb.m_cb, {src.image(), out_dst.image()}, {src.extent(), out_dst.extent()}, blit_layouts_v, filter, aspects);
+	blit(cb.m_cb, {src.image(), out_dst.image()}, {src.extent(), out_dst.extent()}, aspects, filter);
 	return true;
 }
 
@@ -153,7 +153,15 @@ bool VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter,
 	if (!m_device->physicalDevice().blitCaps(images.second.format).optimal.test(BlitFlag::eDst)) { return false; }
 	vk::Extent3D const srcExt(cast(images.first.extent), 1);
 	vk::Extent3D const dstExt(cast(images.second.extent), 1);
-	blit(cb.m_cb, {images.first.image, images.second.image}, {srcExt, dstExt}, blit_layouts_v, filter, aspects);
+	blit(cb.m_cb, {images.first.image, images.second.image}, {srcExt, dstExt}, aspects, filter);
+	return true;
+}
+
+bool VRAM::copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects) const {
+	if ((src.usage() & vk::ImageUsageFlagBits::eTransferSrc) == vk::ImageUsageFlags()) { return false; }
+	if ((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlags()) { return false; }
+	EXPECT(src.extent() == out_dst.extent());
+	copy(cb.m_cb, {src.image(), out_dst.image()}, src.extent(), aspects);
 	return true;
 }
 

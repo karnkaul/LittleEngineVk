@@ -38,7 +38,6 @@ class CommandRotator {
 	void immediate(ktl::move_only_function<void(CommandBuffer const&)>&& func);
 
 	CommandBuffer const& get() const noexcept { return m_current.cb; }
-	vk::Fence fence() const noexcept { return m_current.fence; }
 	ktl::future<void> future() const { return m_current.promise.get_future(); }
 
 	void submit();
@@ -51,7 +50,8 @@ class CommandRotator {
 	};
 
 	void releaseDone();
-	void updateCurrent();
+	Cmd make();
+	void submit(Cmd& out) const;
 
 	Pool m_pool;
 	Cmd m_current;

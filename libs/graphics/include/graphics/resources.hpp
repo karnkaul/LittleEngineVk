@@ -84,12 +84,10 @@ class Memory : public Pinned {
 
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
-	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents,
-					 LayoutPair layouts = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal}, vk::Filter filter = vk::Filter::eLinear,
-					 TPair<vk::ImageAspectFlags> aspects = {vk::ImageAspectFlagBits::eColor, vk::ImageAspectFlagBits::eColor});
+	static void copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects);
+	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter);
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
-	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects = vk::ImageAspectFlagBits::eColor, vk::DeviceSize offset = 0,
-											   u32 layerIdx = 0, u32 layerCount = 1);
+	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx, u32 layerCount);
 
 	dl::level m_logLevel = dl::level::debug;
 	not_null<Device*> m_device;

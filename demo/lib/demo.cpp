@@ -801,7 +801,6 @@ bool run(io::Media const& media) {
 					auto ici = Image::info(src->extent2D(), vIUFB::eTransferDst, vk::ImageAspectFlags(), VMA_MEMORY_USAGE_GPU_TO_CPU, Image::linear_v);
 					ici.createInfo.tiling = vk::ImageTiling::eLinear;
 					Image dst(&ctx.vram(), ici);
-					EXPECT(dst.blitFlags().test(BlitFlag::eDst));
 					if (Texture::Blitter{}(&ctx.vram(), ctx.commands().get(), *src, dst)) {
 						ctx.commands().future().then([]() { logD("Image ready"); });
 						logD("Blitting rendertarget to image");

@@ -7,7 +7,9 @@
 #include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
+#include <graphics/utils/command_rotator.hpp>
 #include <graphics/utils/utils.hpp>
+#include <ktl/stack_string.hpp>
 
 static_assert(sizeof(stbi_uc) == sizeof(std::byte) && alignof(stbi_uc) == alignof(std::byte), "Invalid type size/alignment");
 
@@ -371,6 +373,22 @@ std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path con
 	return ret;
 }
 
+void utils::Transition::operator()(vk::ImageLayout layout, LayoutStages const& stages) const {
+	if (layout != vIL::eUndefined) { device->m_layouts.transition(*cb, image, layout, stages); }
+}
+
+utils::DualTransition::DualTransition(not_null<Device*> device, not_null<CommandBuffer*> cb, TPair<vk::Image> images, LayoutPair layouts, Stages const& stages)
+	: m_a{device, cb, images.first}, m_b{device, cb, images.second}, m_stages(stages.second) {
+	m_layouts = {device->m_layouts.get(images.first), device->m_layouts.get(images.second)};
+	m_a(layouts.first, stages.first);
+	m_b(layouts.second, stages.first);
+}
+
+utils::DualTransition::~DualTransition() {
+	m_a(m_layouts.first, m_stages);
+	m_b(m_layouts.second, m_stages);
+}
+
 std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface) {
 	using vkqf = vk::QueueFlagBits;
 	std::vector<QueueMultiplex::Family> ret;
@@ -384,6 +402,65 @@ std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& d
 		if (device.device.getSurfaceSupportKHR(fidx, surface)) { family.flags.set(QType::ePresent); }
 		ret.push_back(family);
 		++fidx;
+	}
+	return ret;
+}
+
+bool utils::blit(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter) {
+	EXPECT(src.layerCount() == 1U && out_dst.layerCount() == 1U);
+	EXPECT(canBlit(src, out_dst));
+	if (src.layerCount() > 1U || out_dst.layerCount() > 1U || !canBlit(src, out_dst)) { return false; }
+	DualTransition dt(vram->m_device, &cb, {src.image(), out_dst.image()});
+	return vram->blit(cb, src, out_dst, filter);
+}
+
+bool utils::copy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst) {
+	EXPECT(src.layerCount() == 1U && out_dst.layerCount() == 1U);
+	EXPECT(src.extent() == out_dst.extent());
+	if (src.layerCount() > 1U || out_dst.layerCount() > 1U) { return false; }
+	if (src.extent() != out_dst.extent()) { return false; }
+	DualTransition dt(vram->m_device, &cb, {src.image(), out_dst.image()});
+	return vram->copy(cb, src, out_dst);
+}
+
+bool utils::blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter) {
+	return canBlit(src, out_dst) ? blit(vram, cb, src, out_dst, filter) : copy(vram, cb, src, out_dst);
+}
+
+std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, Image const& img) {
+	vk::Format format = Image::linear_v;
+	bool const blittable = img.blitFlags().test(BlitFlag::eSrc) && vram->m_device->physicalDevice().blitCaps(format).linear.test(BlitFlag::eDst);
+	if (!blittable && Surface::bgra(img.imageFormat())) { format = vk::Format::eB8G8R8A8Unorm; }
+	Image ret(vram, Image::storageInfo(img.extent2D(), format));
+	if (auto cmd = cr.instant()) {
+		if (blitOrCopy(vram, cmd.cb(), img, ret)) { return ret; }
+	}
+	return std::nullopt;
+}
+
+std::size_t utils::writePPM(not_null<Device*> device, Image& out_img, std::ostream& out_str) {
+	EXPECT(out_img.layerCount() == 1U);
+	std::size_t ret{};
+	if (out_img.layerCount() == 1U) {
+		bool const swizzle = Surface::bgra(out_img.imageFormat());
+		auto const extent = out_img.extent2D();
+		auto isr = device->device().getImageSubresourceLayout(out_img.image(), vk::ImageSubresource(vIAFB::eColor));
+		u8 const* data = (u8 const*)out_img.map();
+		data += isr.offset;
+		auto const header = ktl::stack_string<256>("P6\n%u\n%u\n255\n", extent.x, extent.y);
+		out_str << header.get();
+		for (u32 y = 0; y < extent.y; ++y) {
+			auto row = (u32 const*)data;
+			for (u32 x = 0; x < extent.x; ++x) {
+				auto const ch = (u8 const*)row;
+				out_str << (swizzle ? ch[2] : ch[0]);
+				out_str << ch[1];
+				out_str << (swizzle ? ch[0] : ch[2]);
+				ret += 3;
+				++row;
+			}
+			data += isr.rowPitch;
+		}
 	}
 	return ret;
 }

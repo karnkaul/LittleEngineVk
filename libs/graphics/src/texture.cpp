@@ -8,12 +8,8 @@
 
 namespace le::graphics {
 namespace {
-Image::CreateInfo imageInfo(Extent2D extent, vk::Format format) noexcept {
-	return Image::info(extent, Texture::usage_v, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format);
-}
-
 Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D extent, Span<ImgView const> bitmaps) {
-	auto info = imageInfo(extent, format);
+	auto info = Image::textureInfo(extent, format);
 	if (bitmaps.size() > 1) {
 		info.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 		info.createInfo.arrayLayers = (u32)bitmaps.size();
@@ -60,7 +56,7 @@ Cubemap Texture::unitCubemap(Colour colour) {
 }
 
 Texture::Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour, Extent2D extent, Payload payload)
-	: m_image(vram, imageInfo(extent, Image::linear_v)), m_sampler(sampler), m_vram(vram) {
+	: m_image(vram, Image::textureInfo(extent, Image::linear_v)), m_sampler(sampler), m_vram(vram) {
 	Bitmap bmp;
 	bmp.bytes.reserve(std::size_t(extent.x * extent.y));
 	for (u32 i = 0; i < extent.x; ++i) {
@@ -137,7 +133,7 @@ bool Texture::assign(Image&& image, Type type, Payload payload) {
 bool Texture::resize(CommandBuffer cb, Extent2D extent) {
 	EXPECT(extent.x > 0 && extent.y > 0);
 	if (extent.x > 0 && extent.y > 0) {
-		Image image(m_vram, imageInfo(extent, m_image.imageFormat()));
+		Image image(m_vram, Image::textureInfo(extent, m_image.imageFormat()));
 		std::swap(m_image, image);
 		return blit(cb, image);
 	}
@@ -148,26 +144,18 @@ bool Texture::blit(CommandBuffer cb, Texture const& src, vk::Filter filter) { re
 
 bool Texture::blit(CommandBuffer cb, Image const& src, vk::Filter filter) {
 	wait();
-	return Blitter{}(m_vram, cb, src, m_image, filter);
+	return utils::blit(m_vram, cb, src, m_image, filter);
+}
+
+bool Texture::copy(CommandBuffer cb, Image const& src) {
+	wait();
+	if (m_image.extent2D() != src.extent2D()) { resize(cb, src.extent2D()); }
+	return utils::copy(m_vram, cb, src, m_image);
 }
 
 void Texture::constructImpl(Span<ImgView const> bmps, Extent2D extent, Payload payload, vk::Format format) {
 	m_payload = payload;
 	m_type = bmps.size() > 1 ? Type::eCube : Type::e2D;
 	m_image = load(*m_vram, m_transfer, format, extent, bmps);
-}
-
-bool Texture::Blitter::operator()(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter) const {
-	auto const srcLayout = vram->m_device->m_layouts.get(src.image());
-	auto const thisLayout = vram->m_device->m_layouts.get(out_dst.image());
-	LayoutTransition tsrc{vram->m_device, cb, src.image()};
-	LayoutTransition tdst{vram->m_device, cb, out_dst.image()};
-	tsrc(vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
-	tdst(vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
-	bool const blit = src.blitFlags().test(BlitFlag::eSrc) && out_dst.blitFlags().test(BlitFlag::eDst);
-	auto const ret = blit ? vram->blit(cb, src, out_dst, filter) : vram->copy(cb, src, out_dst);
-	tsrc(srcLayout, LayoutStages::allCommands());
-	tdst(thisLayout, LayoutStages::allCommands());
-	return ret;
 }
 } // namespace le::graphics

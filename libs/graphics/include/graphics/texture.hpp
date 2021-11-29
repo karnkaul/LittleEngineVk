@@ -26,7 +26,6 @@ class Texture {
   public:
 	enum class Type { e2D, eCube };
 	enum class Payload { eColour, eData };
-	struct Blitter;
 
 	static constexpr vk::ImageUsageFlags usage_v = vIUFB::eSampled | vIUFB::eTransferSrc | vIUFB::eTransferDst;
 
@@ -48,6 +47,7 @@ class Texture {
 	bool resize(CommandBuffer cb, Extent2D extent);
 	bool blit(CommandBuffer cb, Texture const& src, vk::Filter filter = vk::Filter::eLinear);
 	bool blit(CommandBuffer cb, Image const& src, vk::Filter filter = vk::Filter::eLinear);
+	bool copy(CommandBuffer cb, Image const& src);
 
 	bool busy() const { return m_transfer.busy(); }
 	bool ready() const { return m_transfer.ready(); }
@@ -69,9 +69,5 @@ class Texture {
 	Payload m_payload{};
 	Type m_type{};
 	not_null<VRAM*> m_vram;
-};
-
-struct Texture::Blitter {
-	bool operator()(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear) const;
 };
 } // namespace le::graphics

@@ -4,6 +4,7 @@
 #include <graphics/context/device.hpp>
 #include <graphics/render/target.hpp>
 #include <graphics/resources.hpp>
+#include <graphics/texture.hpp>
 
 namespace le::graphics {
 namespace {
@@ -19,6 +20,11 @@ vk::ImageBlit imageBlit(Memory::ImgMeta const& src, Memory::ImgMeta const& dst, 
 	idx = 0;
 	for (auto& off : ret.dstOffsets) { off = offsets[idx++]; }
 	return ret;
+}
+
+constexpr bool hostVisible(VmaMemoryUsage usage) noexcept {
+	return usage == VMA_MEMORY_USAGE_CPU_TO_GPU || usage == VMA_MEMORY_USAGE_GPU_TO_CPU || usage == VMA_MEMORY_USAGE_CPU_ONLY ||
+		   usage == VMA_MEMORY_USAGE_CPU_COPY;
 }
 } // namespace
 
@@ -179,7 +185,7 @@ void Buffer::exchg(Buffer& lhs, Buffer& rhs) noexcept {
 
 Buffer::~Buffer() {
 	Memory& m = *m_memory;
-	if (m_storage.pMap) { vmaUnmapMemory(m.m_allocator, m_data.handle); }
+	if (m_storage.data) { vmaUnmapMemory(m.m_allocator, m_data.handle); }
 	if (!Device::default_v(m_storage.buffer)) {
 		m.m_allocations[kind_v].fetch_sub(m_storage.writeSize);
 		auto del = [a = m.m_allocator, b = m_storage.buffer, h = m_data.handle]() { vmaDestroyBuffer(a, static_cast<VkBuffer>(b), h); };
@@ -192,14 +198,14 @@ void const* Buffer::map() {
 		g_log.log(lvl::error, 1, "[{}] Attempt to map GPU-only Buffer!", g_name);
 		return nullptr;
 	}
-	if (!m_storage.pMap && m_storage.writeSize > 0) { vmaMapMemory(m_memory->m_allocator, m_data.handle, &m_storage.pMap); }
+	if (!m_storage.data && m_storage.writeSize > 0) { vmaMapMemory(m_memory->m_allocator, m_data.handle, &m_storage.data); }
 	return mapped();
 }
 
 bool Buffer::unmap() {
-	if (m_storage.pMap) {
+	if (m_storage.data) {
 		vmaUnmapMemory(m_memory->m_allocator, m_data.handle);
-		m_storage.pMap = nullptr;
+		m_storage.data = nullptr;
 		return true;
 	}
 	return false;
@@ -222,7 +228,7 @@ bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset
 	return false;
 }
 
-Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format) {
+Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format) noexcept {
 	CreateInfo ret;
 	ret.createInfo.extent = vk::Extent3D(extent.x, extent.y, 1);
 	ret.createInfo.usage = usage;
@@ -240,6 +246,22 @@ Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::Im
 	ret.createInfo.imageType = vk::ImageType::e2D;
 	ret.createInfo.mipLevels = 1U;
 	ret.createInfo.arrayLayers = 1U;
+	return ret;
+}
+
+Image::CreateInfo Image::textureInfo(Extent2D extent, vk::Format format, bool cubemap) noexcept {
+	auto ret = info(extent, Texture::usage_v, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format);
+	if (cubemap) {
+		ret.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+		ret.createInfo.arrayLayers = 6U;
+		ret.view.type = vk::ImageViewType::eCube;
+	}
+	return ret;
+}
+
+Image::CreateInfo Image::storageInfo(Extent2D extent, vk::Format format) noexcept {
+	auto ret = info(extent, vIUFB::eTransferDst, vk::ImageAspectFlags(), VMA_MEMORY_USAGE_GPU_TO_CPU, format);
+	ret.createInfo.tiling = vk::ImageTiling::eLinear;
 	return ret;
 }
 
@@ -262,6 +284,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : Resource(memory
 	m_storage.image = vk::Image(vkImage);
 	m_storage.usage = info.createInfo.usage;
 	m_storage.imageFormat = info.createInfo.format;
+	m_storage.vmaUsage = info.vmaUsage;
 	auto const blitCaps = memory->m_device->physicalDevice().blitCaps(info.createInfo.format);
 	m_storage.blitFlags = info.createInfo.tiling == vk::ImageTiling::eLinear ? blitCaps.linear : blitCaps.optimal;
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
@@ -290,8 +313,9 @@ Image::Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format
 }
 
 Image::~Image() {
+	Memory& m = *m_memory;
+	if (m_storage.data) { vmaUnmapMemory(m.m_allocator, m_data.handle); }
 	if (!Device::default_v(m_storage.image) && m_storage.allocatedSize > 0U) {
-		Memory& m = *m_memory;
 		m.m_allocations[kind_v].fetch_sub(m_storage.allocatedSize);
 		auto del = [a = m.m_allocator, i = m_storage.image, h = m_data.handle, d = m.m_device, v = m_storage.view]() mutable {
 			d->destroy(v);
@@ -299,6 +323,24 @@ Image::~Image() {
 		};
 		m.m_device->defer(del);
 	}
+}
+
+void const* Image::map() {
+	if (!hostVisible(m_storage.vmaUsage)) {
+		g_log.log(lvl::error, 1, "[{}] Attempt to map GPU-only Buffer!", g_name);
+		return nullptr;
+	}
+	if (!m_storage.data) { vmaMapMemory(m_memory->m_allocator, m_data.handle, &m_storage.data); }
+	return mapped();
+}
+
+bool Image::unmap() {
+	if (m_storage.data) {
+		vmaUnmapMemory(m_memory->m_allocator, m_data.handle);
+		m_storage.data = nullptr;
+		return true;
+	}
+	return false;
 }
 
 void Image::exchg(Image& lhs, Image& rhs) noexcept {

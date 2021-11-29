@@ -120,7 +120,7 @@ class Buffer : public Resource {
 	std::size_t writeCount() const noexcept { return m_storage.writeCount; }
 	vk::BufferUsageFlags usage() const noexcept { return m_storage.usage; }
 	Type bufferType() const noexcept { return m_storage.type; }
-	void const* mapped() const noexcept { return m_storage.pMap; }
+	void const* mapped() const noexcept { return m_storage.data; }
 
 	void const* map();
 	bool unmap();
@@ -138,7 +138,7 @@ class Buffer : public Resource {
 		std::size_t writeCount = 0;
 		vk::BufferUsageFlags usage;
 		Type type{};
-		void* pMap = nullptr;
+		void* data = nullptr;
 	};
 	Storage m_storage;
 
@@ -158,7 +158,9 @@ class Image : public Resource {
 	static constexpr vk::Format srgb_v = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::Format linear_v = vk::Format::eR8G8B8A8Unorm;
 
-	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format);
+	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format) noexcept;
+	static CreateInfo textureInfo(Extent2D extent, vk::Format format = srgb_v, bool cubemap = false) noexcept;
+	static CreateInfo storageInfo(Extent2D extent, vk::Format format = linear_v) noexcept;
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
 	Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format, vk::ImageUsageFlags usage);
@@ -177,6 +179,10 @@ class Image : public Resource {
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
 	Extent2D extent2D() const noexcept { return cast(extent()); }
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
+	void const* mapped() const noexcept { return m_storage.data; }
+
+	void const* map();
+	bool unmap();
 
   private:
 	static void exchg(Image& lhs, Image& rhs) noexcept;
@@ -185,9 +191,11 @@ class Image : public Resource {
 	struct Storage {
 		vk::Image image;
 		vk::ImageView view;
+		void* data{};
 		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
 		vk::ImageUsageFlags usage;
+		VmaMemoryUsage vmaUsage{};
 		vk::Format imageFormat{};
 		vk::Format viewFormat{};
 		u32 layerCount = 1;

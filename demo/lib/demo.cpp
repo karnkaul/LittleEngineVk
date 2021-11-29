@@ -13,7 +13,7 @@
 #include <graphics/common.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
-#include <iostream>
+#include <fstream>
 
 #include <engine/editor/editor.hpp>
 #include <engine/editor/scene_tree.hpp>
@@ -795,31 +795,25 @@ bool run(io::Media const& media) {
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
-				using namespace graphics;
 				auto& ctx = engine.gfx().context;
 				if (auto src = ctx.previousFrameAsImage()) {
-					auto ici = Image::info(src->extent2D(), vIUFB::eTransferDst, vk::ImageAspectFlags(), VMA_MEMORY_USAGE_GPU_TO_CPU, Image::linear_v);
-					ici.createInfo.tiling = vk::ImageTiling::eLinear;
-					Image dst(&ctx.vram(), ici);
-					if (Texture::Blitter{}(&ctx.vram(), ctx.commands().get(), *src, dst)) {
-						ctx.commands().future().then([]() { logD("Image ready"); });
-						logD("Blitting rendertarget to image");
-					} else {
-						logD("Failed to blit");
+					if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.commands(), *src)) {
+						if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
+							auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
+							if (written > 0) { logD("Screenshot saved to shot.ppm"); }
+						}
 					}
-				} else {
-					logD("Failed to get previous frame as image");
 				}
-				flags.reset(Flag::eDebug0);
-				/*bf = async(&package, "out/autobuild", false);
-				bf.then([](bool built) {
-					if (!built) {
-						logW("build failed");
-					} else {
-						logD("build success");
-					}
-				});*/
 			}
+			flags.reset(Flag::eDebug0);
+			/*bf = async(&package, "out/autobuild", false);
+			bf.then([](bool built) {
+				if (!built) {
+					logW("build failed");
+				} else {
+					logD("build success");
+				}
+			});*/
 		}
 	} while (reboot);
 	return true;

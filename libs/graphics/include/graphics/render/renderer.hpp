@@ -11,14 +11,6 @@
 namespace le::graphics {
 class PipelineFactory;
 
-struct LayoutTransition {
-	not_null<Device*> device;
-	CommandBuffer cb;
-	vk::Image image;
-
-	void operator()(vk::ImageLayout layout, LayoutStages const& stages = LayoutStages::allCommands()) const;
-};
-
 struct RenderBegin {
 	RGBA clear;
 	ClearDepth depth = {1.0f, 0};

@@ -33,16 +33,16 @@ void CommandRotator::Pool::release(Cmd&& cmd) {
 	m_cbs.push_back(std::move(cmd));
 }
 
-CommandRotator::CommandRotator(not_null<Device*> device, QType qtype) : m_pool(device, qtype), m_qtype(qtype), m_device(device) { m_current = make(); }
-
-void CommandRotator::immediate(ktl::move_only_function<void(CommandBuffer const&)>&& func) {
-	if (func) {
-		auto cmd = make();
-		func(cmd.cb);
-		submit(cmd);
-		m_device->waitFor(cmd.fence);
+CommandRotator::Instant::~Instant() {
+	if (valid()) {
+		m_rotator->submit(m_cmd);
+		m_rotator->m_device->waitFor(m_cmd.fence);
 	}
 }
+
+CommandRotator::CommandRotator(not_null<Device*> device, QType qtype) : m_pool(device, qtype), m_qtype(qtype), m_device(device) { m_current = make(); }
+
+CommandRotator::Instant CommandRotator::instant() const { return {this, make()}; }
 
 void CommandRotator::submit() {
 	releaseDone();
@@ -62,7 +62,7 @@ void CommandRotator::releaseDone() {
 	});
 }
 
-CommandRotator::Cmd CommandRotator::make() {
+CommandRotator::Cmd CommandRotator::make() const {
 	auto acquire = m_pool.acquire();
 	Cmd out;
 	out = {CommandBuffer(acquire.cb), std::move(acquire.fence), {}};

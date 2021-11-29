@@ -37,6 +37,8 @@ class Surface {
 	~Surface();
 
 	static constexpr bool srgb(vk::Format format) noexcept;
+	static constexpr bool rgba(vk::Format format) noexcept;
+	static constexpr bool bgra(vk::Format format) noexcept;
 	static constexpr bool valid(glm::ivec2 framebufferSize) noexcept { return framebufferSize.x > 0 && framebufferSize.y > 0; }
 
 	VRAM& vram() const noexcept { return *m_vram; }
@@ -89,12 +91,32 @@ constexpr bool Surface::srgb(vk::Format format) noexcept {
 	case vk::Format::eB8G8R8Srgb:
 	case vk::Format::eR8G8B8A8Srgb:
 	case vk::Format::eB8G8R8A8Srgb:
-	case vk::Format::eA8B8G8R8SrgbPack32: {
-		return true;
-		break;
+	case vk::Format::eA8B8G8R8SrgbPack32: return true;
+	default: return false;
 	}
-	default: break;
+}
+
+constexpr bool Surface::rgba(vk::Format format) noexcept {
+	switch (format) {
+	case vk::Format::eR8G8B8A8Uint:
+	case vk::Format::eR8G8B8A8Unorm:
+	case vk::Format::eR8G8B8A8Sint:
+	case vk::Format::eR8G8B8A8Snorm:
+	case vk::Format::eR8G8B8A8Uscaled:
+	case vk::Format::eR8G8B8A8Srgb: return true;
+	default: return false;
 	}
-	return false;
+}
+
+constexpr bool Surface::bgra(vk::Format format) noexcept {
+	switch (format) {
+	case vk::Format::eB8G8R8A8Uint:
+	case vk::Format::eB8G8R8A8Unorm:
+	case vk::Format::eB8G8R8A8Sint:
+	case vk::Format::eB8G8R8A8Snorm:
+	case vk::Format::eB8G8R8A8Uscaled:
+	case vk::Format::eB8G8R8A8Srgb: return true;
+	default: return false;
+	}
 }
 } // namespace le::graphics

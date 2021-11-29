@@ -23,10 +23,6 @@ vk::SubpassDependency makeSubpassDependency(bool offscreen) {
 }
 } // namespace
 
-void LayoutTransition::operator()(vk::ImageLayout layout, LayoutStages const& stages) const {
-	if (layout != vIL::eUndefined) { device->m_layouts.transition(cb, image, layout, stages); }
-}
-
 Image::CreateInfo& ImageCache::setDepth() {
 	static constexpr auto usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eTransientAttachment;
 	auto const vmaUsage = m_vram->m_device->physicalDevice().supportsLazyAllocation() ? VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED : VMA_MEMORY_USAGE_GPU_ONLY;
@@ -220,8 +216,8 @@ void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget c
 	ri.framebuffer.colour = colour;
 	ri.framebuffer.depth = {depthImage.image(), depthImage.view(), depthImage.extent2D(), depthImage.viewFormat()};
 	render(m_vram->m_device, out_drawer, pf, std::move(ri));
-	LayoutTransition ltcolour{m_vram->m_device, cmd.cb, colour.image};
-	LayoutTransition ltacquired{m_vram->m_device, cmd.cb, acquired.image};
+	utils::Transition ltcolour{m_vram->m_device, &cmd.cb, colour.image};
+	utils::Transition ltacquired{m_vram->m_device, &cmd.cb, acquired.image};
 	if (m_target == Target::eOffScreen) {
 		ltcolour(vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
 		ltacquired(vIL::eTransferDstOptimal, LayoutStages::colourTransfer());

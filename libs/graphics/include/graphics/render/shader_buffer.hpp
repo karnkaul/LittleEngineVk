@@ -2,7 +2,7 @@
 #include <core/span.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
-#include <graphics/resources.hpp>
+#include <graphics/memory.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {

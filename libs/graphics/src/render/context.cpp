@@ -121,7 +121,9 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
 	auto const& sync = m_syncs.get();
 	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
-	return m_surface.present(fbSize, acquired, sync.present);
+	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }
+	m_previousFrame = {};
+	return false;
 }
 
 std::optional<Image> RenderContext::previousFrameAsImage() const {

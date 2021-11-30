@@ -1,5 +1,5 @@
 #pragma once
-#include <graphics/resources.hpp>
+#include <graphics/memory.hpp>
 #include <graphics/texture.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 

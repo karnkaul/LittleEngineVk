@@ -270,8 +270,8 @@ void Engine::addDefaultAssets() {
 
 void Engine::updateStats() {
 	m_impl->stats.update();
-	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
-	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
+	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eBuffer);
+	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eImage);
 	m_impl->stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
 	m_impl->stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
 	m_impl->stats.stats.gfx.extents.window = windowSize();

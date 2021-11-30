@@ -1,9 +1,9 @@
 #pragma once
 #include <graphics/command_buffer.hpp>
+#include <graphics/memory.hpp>
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
-#include <graphics/resources.hpp>
 #include <graphics/screen_rect.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <graphics/utils/ring_buffer.hpp>

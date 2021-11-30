@@ -35,8 +35,8 @@ Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool ho
 
 VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size) {
 	if (size == 0) { size = src.writeSize(); }
-	[[maybe_unused]] auto const& sq = src.data().queueFlags;
-	[[maybe_unused]] auto const& dq = out_dst.data().queueFlags;
+	[[maybe_unused]] auto const& sq = src.m_storage.allocation.queueFlags;
+	[[maybe_unused]] auto const& dq = out_dst.m_storage.allocation.queueFlags;
 	[[maybe_unused]] bool const bReady = sq.test(QType::eTransfer) && dq.test(QType::eTransfer);
 	ENSURE(bReady, "Transfer flag not set!");
 	bool const bSizes = out_dst.writeSize() >= size;
@@ -51,8 +51,8 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	}
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	if (indices.size() > 1) {
-		ENSURE(sq.count() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
-		ENSURE(dq.count() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(sq.count() <= 1 || src.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(dq.count() <= 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 	}
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
@@ -68,8 +68,8 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size) {
 	if (size == 0) { size = out_deviceBuffer.writeSize(); }
 	auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
-	ENSURE(indices.size() == 1 || out_deviceBuffer.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
-	bool const bQueueFlags = out_deviceBuffer.data().queueFlags.test(QType::eTransfer);
+	ENSURE(indices.size() == 1 || out_deviceBuffer.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	bool const bQueueFlags = out_deviceBuffer.m_storage.allocation.queueFlags.test(QType::eTransfer);
 	ENSURE(bQueueFlags, "Invalid queue flags!");
 	if (!bQueueFlags) {
 		g_log.log(lvl::error, 1, "[{}] Invalid queue flags on source buffer!", g_name);
@@ -103,7 +103,7 @@ VRAM::Future VRAM::copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair 
 	}
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
-	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE(indices.size() == 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;
@@ -150,7 +150,7 @@ VRAM::Future VRAM::copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::Im
 	}
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
-	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE(indices.size() == 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;

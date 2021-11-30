@@ -1,8 +1,8 @@
 #include <graphics/command_buffer.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
+#include <graphics/memory.hpp>
 #include <graphics/render/descriptor_set.hpp>
-#include <graphics/resources.hpp>
 
 namespace le::graphics {
 std::vector<CommandBuffer> CommandBuffer::make(not_null<Device*> device, vk::CommandPool pool, u32 count) {

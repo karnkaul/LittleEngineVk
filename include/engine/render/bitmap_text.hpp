@@ -1,7 +1,7 @@
 #pragma once
 #include <engine/render/prop.hpp>
 #include <graphics/glyph.hpp>
-#include <graphics/mesh.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <optional>
 #include <string>
 
@@ -13,7 +13,7 @@ struct Prop;
 class BitmapFont;
 
 struct TextGen {
-	using Type = graphics::Mesh::Type;
+	using Type = graphics::MeshPrimitive::Type;
 	using Glyphs = graphics::GlyphMap;
 	using Size = graphics::Glyph::Size;
 
@@ -23,18 +23,18 @@ struct TextGen {
 	Size size = 1.0f;
 	f32 nLinePad = 0.3f;
 
-	Prop prop(graphics::Mesh const& mesh, graphics::Texture const& atlas) const noexcept;
+	Prop prop(graphics::MeshPrimitive const& primitive, graphics::Texture const& atlas) const noexcept;
 
 	graphics::Geometry operator()(glm::uvec2 atlas, Glyphs const& glyphs, std::string_view text) const;
 };
 
 struct TextMesh {
-	graphics::Mesh mesh;
+	graphics::MeshPrimitive primitive;
 	TextGen gen;
 	mutable Prop prop_;
 	BitmapFont const* font{};
 
-	TextMesh(not_null<graphics::VRAM*> vram, BitmapFont const* font) : mesh(vram, graphics::Mesh::Type::eDynamic), font(font) {}
+	TextMesh(not_null<graphics::VRAM*> vram, BitmapFont const* font) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic), font(font) {}
 
 	Prop const& prop() const noexcept;
 	Span<Prop const> props() const noexcept { return prop(); }
@@ -47,11 +47,11 @@ class BitmapText {
 	BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram);
 
 	virtual void set(std::string_view text);
-	virtual Span<Prop const> props() const { return m_mesh.props(); }
-	TextMesh& mesh() noexcept { return m_mesh; }
+	virtual Span<Prop const> props() const { return m_textMesh.props(); }
+	TextMesh& textMesh() noexcept { return m_textMesh; }
 
   protected:
-	TextMesh m_mesh;
+	TextMesh m_textMesh;
 	not_null<BitmapFont const*> m_font;
 };
 } // namespace le

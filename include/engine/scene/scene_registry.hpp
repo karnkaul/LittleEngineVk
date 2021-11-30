@@ -54,7 +54,7 @@ dens::entity SceneRegistry::spawnProp(std::string name, T const& source, Hash gr
 
 template <typename T>
 dens::entity SceneRegistry::spawnProp(std::string name, Hash assetID, Hash groupURI) {
-	if constexpr (std::is_same_v<T, graphics::Mesh>) {
+	if constexpr (std::is_same_v<T, graphics::MeshPrimitive>) {
 		return spawnMesh(std::move(name), assetID, groupURI);
 	} else {
 		return spawnProp(std::move(name), groupURI, PropProvider::make<T>(assetID));

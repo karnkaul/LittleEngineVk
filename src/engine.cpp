@@ -259,11 +259,11 @@ void Engine::addDefaultAssets() {
 		store().add("cubemaps/blank", std::move(blankCube));
 	}
 	/* meshes */ {
-		auto cube = store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));
+		auto cube = store().add<graphics::MeshPrimitive>("meshes/cube", graphics::MeshPrimitive(&gfx().boot.vram));
 		cube->construct(graphics::makeCube());
-		auto cone = store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&gfx().boot.vram));
+		auto cone = store().add<graphics::MeshPrimitive>("meshes/cone", graphics::MeshPrimitive(&gfx().boot.vram));
 		cone->construct(graphics::makeCone());
-		auto wf_cube = store().add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&gfx().boot.vram));
+		auto wf_cube = store().add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(&gfx().boot.vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
 }
@@ -273,7 +273,7 @@ void Engine::updateStats() {
 	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eBuffer);
 	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eImage);
 	m_impl->stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
-	m_impl->stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
+	m_impl->stats.stats.gfx.triCount = graphics::MeshPrimitive::s_trisDrawn.load();
 	m_impl->stats.stats.gfx.extents.window = windowSize();
 	if (m_impl->gfx) {
 		m_impl->stats.stats.gfx.extents.swapchain = m_impl->gfx->context.surface().extent();
@@ -281,6 +281,6 @@ void Engine::updateStats() {
 			Renderer::scaleExtent(m_impl->stats.stats.gfx.extents.swapchain, m_impl->gfx->context.renderer().renderScale());
 	}
 	graphics::CommandBuffer::s_drawCalls.store(0);
-	graphics::Mesh::s_trisDrawn.store(0);
+	graphics::MeshPrimitive::s_trisDrawn.store(0);
 }
 } // namespace le

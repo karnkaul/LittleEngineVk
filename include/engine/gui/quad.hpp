@@ -1,6 +1,6 @@
 #pragma once
 #include <engine/gui/tree.hpp>
-#include <graphics/mesh.hpp>
+#include <graphics/mesh_primitive.hpp>
 
 namespace le::gui {
 class Quad : public TreeNode {
@@ -16,7 +16,7 @@ class Quad : public TreeNode {
 	f32 m_cornerRadius = 0.0f;
 
   private:
-	graphics::Mesh m_mesh;
+	graphics::MeshPrimitive m_primitive;
 	glm::vec2 m_size = {};
 	mutable Prop m_prop;
 };
@@ -24,7 +24,7 @@ class Quad : public TreeNode {
 // impl
 
 inline Span<Prop const> Quad::props() const noexcept {
-	m_prop = {m_material, &m_mesh};
+	m_prop = {m_material, &m_primitive};
 	return m_prop;
 }
 } // namespace le::gui

@@ -5,7 +5,7 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
 #include <glm/gtx/hash.hpp>
-#include <graphics/mesh.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>
 #include <graphics/utils/utils.hpp>
 #include <sstream>
@@ -84,7 +84,7 @@ class OBJReader final {
 	io::Path m_modelURI;
 	io::Path m_jsonURI;
 	io::Path m_samplerURI;
-	std::unordered_set<std::string> m_meshURIs;
+	std::unordered_set<std::string> m_primitiveURIs;
 	std::vector<tinyobj::shape_t> m_shapes;
 	std::vector<tinyobj::material_t> m_materials;
 	glm::vec3 m_origin;
@@ -177,8 +177,8 @@ std::size_t OBJReader::matIdx(Model::CreateInfo& info, tinyobj::material_t const
 
 std::string OBJReader::meshName(Model::CreateInfo& info, tinyobj::shape_t const& shape) {
 	auto ret = (m_modelURI / shape.name).generic_string();
-	if (m_meshURIs.find(ret) != m_meshURIs.end()) { ret = fmt::format("{}_{}", std::move(ret), info.meshes.size()); }
-	m_meshURIs.insert(ret);
+	if (m_primitiveURIs.find(ret) != m_primitiveURIs.end()) { ret = fmt::format("{}_{}", std::move(ret), info.meshes.size()); }
+	m_primitiveURIs.insert(ret);
 	return ret;
 }
 
@@ -283,9 +283,9 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 		materials.emplace(mat.hash, material);
 	}
 	for (auto const& m : info.meshes) {
-		graphics::Mesh mesh(vram);
+		graphics::MeshPrimitive mesh(vram);
 		mesh.construct(m.geometry);
-		auto [it, _] = storage.meshes.emplace((info.uri / m.uri).generic_string(), std::move(mesh));
+		auto [it, _] = storage.primitives.emplace((info.uri / m.uri).generic_string(), std::move(mesh));
 		Prop prop;
 		prop.mesh = &it->second;
 		if (!m.matIndices.empty()) {

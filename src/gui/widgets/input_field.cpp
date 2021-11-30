@@ -4,7 +4,7 @@
 
 namespace le::gui {
 InputField::InputField(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info, Hash style)
-	: Widget(root, style), m_mesh(Services::get<graphics::VRAM>(), font), m_cursor(font), m_secret(info.secret) {
+	: Widget(root, style), m_textMesh(Services::get<graphics::VRAM>(), font), m_cursor(font), m_secret(info.secret) {
 	m_rect.size = info.size;
 	m_outline = Quad(this);
 	m_outline->m_rect.size = info.size + 5.0f;
@@ -30,7 +30,7 @@ InputField::Status InputField::onInput(input::State const& state) {
 }
 
 Span<Prop const> InputField::props() const noexcept {
-	m_props = {m_outline->props().front(), Quad::props().front(), m_mesh.prop()};
+	m_props = {m_outline->props().front(), Quad::props().front(), m_textMesh.prop()};
 	if (auto cursor = m_cursor.props(); !cursor.empty()) { m_props.push_back(cursor.front()); }
 	return m_props;
 }
@@ -45,9 +45,9 @@ bool InputField::block(input::State const& state) {
 				m_cursor.m_text = std::string(m_exposed.size(), '*');
 				geom = {};
 				m_cursor.refresh(&geom);
-				m_mesh.mesh.construct(std::move(geom));
+				m_textMesh.primitive.construct(std::move(geom));
 			} else {
-				m_mesh.mesh.construct(std::move(geom));
+				m_textMesh.primitive.construct(std::move(geom));
 			}
 		}
 		if (!m_cursor.active()) { setActive(false); }

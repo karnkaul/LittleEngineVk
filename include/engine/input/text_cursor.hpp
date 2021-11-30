@@ -110,7 +110,7 @@ class TextCursor {
 	f32 m_alpha = 0.85f;
 
   private:
-	graphics::Mesh m_mesh;
+	graphics::MeshPrimitive m_primitive;
 	mutable Prop m_prop;
 	glm::vec3 m_position{};
 	glm::vec2 m_offset = {0.3f, 0.3f};

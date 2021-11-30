@@ -3,13 +3,13 @@
 #include <dens/registry.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/ecs/components/trigger.hpp>
-#include <graphics/mesh.hpp>
+#include <graphics/mesh_primitive.hpp>
 
 namespace le::physics {
 namespace {
-graphics::Mesh const* cubeMesh() {
+graphics::MeshPrimitive const* cubeMesh() {
 	if (auto store = Services::find<AssetStore>()) {
-		if (auto mesh = store->find<graphics::Mesh>("wireframes/cube")) { return &*mesh; }
+		if (auto mesh = store->find<graphics::MeshPrimitive>("wireframes/cube")) { return &*mesh; }
 	}
 	return {};
 }

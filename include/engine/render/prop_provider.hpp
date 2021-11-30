@@ -8,7 +8,7 @@
 
 namespace le {
 namespace graphics {
-class Mesh;
+class MeshPrimitive;
 }
 
 template <typename T>
@@ -80,7 +80,7 @@ PropProvider PropProvider::make(T const& source) noexcept {
 	return PropProvider(PropExtractor<T>{}(source));
 }
 
-inline PropProvider::PropProvider(Hash meshID, Material material) noexcept : PropProvider(meshID, material, tag_t<graphics::Mesh>{}) {}
+inline PropProvider::PropProvider(Hash meshID, Material material) noexcept : PropProvider(meshID, material, tag_t<graphics::MeshPrimitive>{}) {}
 
 template <typename T>
 PropProvider::PropProvider(Hash uri, Material material, tag_t<T>) noexcept : m_extract(&extract<T>), m_uri(uri) {
@@ -99,7 +99,7 @@ void PropProvider::refresh() const {
 	if (m_uri != Hash()) {
 		if (auto store = Services::find<AssetStore>()) {
 			if (auto asset = store->find<T>(m_uri)) {
-				if constexpr (std::is_same_v<T, graphics::Mesh>) {
+				if constexpr (std::is_same_v<T, graphics::MeshPrimitive>) {
 					auto mat = m_props.get<Props>().material;
 					m_props = Prop{mat, &*asset};
 				} else {

@@ -2,7 +2,7 @@
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
 #include <engine/render/prop.hpp>
-#include <graphics/mesh.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/expected.hpp>
 
@@ -41,7 +41,7 @@ class Model {
 	using VRAM = graphics::VRAM;
 	using Sampler = graphics::Sampler;
 	using Texture = graphics::Texture;
-	using Mesh = graphics::Mesh;
+	using MeshPrimitive = graphics::MeshPrimitive;
 	template <typename T>
 	using Result = ktl::expected<T, Error>;
 
@@ -57,9 +57,9 @@ class Model {
 	using Map = std::unordered_map<Hash, V>;
 
 	struct {
-		Map<graphics::Texture> textures;
+		Map<Texture> textures;
 		Map<Material> materials;
-		Map<graphics::Mesh> meshes;
+		Map<MeshPrimitive> primitives;
 		std::vector<Prop> props;
 	} m_storage;
 };

@@ -417,7 +417,7 @@ class App : public input::Receiver, public SceneRegistry {
 		ENSURE(res > 0, "Manifest missing/empty");
 
 		/* custom meshes */ {
-			auto rQuad = m_eng->store().add<graphics::Mesh>("meshes/rounded_quad", graphics::Mesh(&m_eng->gfx().boot.vram));
+			auto rQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
 			rQuad->construct(graphics::makeRoundedQuad());
 		}
 
@@ -480,7 +480,7 @@ class App : public input::Receiver, public SceneRegistry {
 		// m_data.text->text.align = {-0.5f, 0.5f};
 		// m_data.text->set("Hi\nThere!");
 		m_data.cursor->m_text = "Hello!";
-		m_data.text->mesh.construct(m_data.cursor->generateText());
+		m_data.text->primitive.construct(m_data.cursor->generateText());
 
 		{
 			Material mat;
@@ -539,12 +539,12 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.dirLights = {l0, l1};
 		spawn<Skybox>("skybox", "draw_groups/skybox", &*skymap);
 		{
-			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "draw_groups/basic");
+			auto ent = spawnProp<graphics::MeshPrimitive>("prop_1", "meshes/cube", "draw_groups/basic");
 			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "draw_groups/tex");
+			auto ent = spawnProp<graphics::MeshPrimitive>("prop_2", "meshes/cone", "draw_groups/tex");
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
@@ -609,7 +609,7 @@ class App : public input::Receiver, public SceneRegistry {
 	void tick(Time_s dt) {
 		if (auto text = m_registry.find<PropProvider>(m_data.entities["text_2d/mesh"])) {
 			graphics::Geometry geom;
-			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->mesh.construct(std::move(geom)); }
+			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->primitive.construct(std::move(geom)); }
 			*text = PropProvider::make(*m_data.text);
 			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);

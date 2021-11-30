@@ -3,11 +3,11 @@
 
 namespace le {
 namespace graphics {
-class Mesh;
+class MeshPrimitive;
 } // namespace graphics
 
 struct Prop {
 	Material material;
-	graphics::Mesh const* mesh = {};
+	graphics::MeshPrimitive const* mesh = {};
 };
 } // namespace le

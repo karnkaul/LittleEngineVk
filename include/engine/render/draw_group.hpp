@@ -6,7 +6,7 @@ namespace le {
 using PipelineState = graphics::PipelineSpec;
 
 struct DrawGroup {
-	PipelineState* state{};
+	PipelineState const* state{};
 	s64 order = 0;
 
 	bool operator==(DrawGroup const& rhs) const noexcept { return state == rhs.state && order == rhs.order; }

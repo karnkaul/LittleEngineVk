@@ -8,7 +8,7 @@
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
 #include <engine/scene/scene_registry.hpp>
-#include <graphics/mesh.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <graphics/render/camera.hpp>
 
 namespace le {

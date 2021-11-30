@@ -23,7 +23,7 @@ class InputField : public Widget, public input::Receiver {
 	std::string_view text() const noexcept { return m_secret ? m_exposed : m_cursor.m_text; }
 
   protected:
-	TextMesh m_mesh;
+	TextMesh m_textMesh;
 	input::TextCursor m_cursor;
 
   private:

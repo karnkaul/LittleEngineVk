@@ -31,16 +31,15 @@ class Texture {
 
 	static constexpr Extent2D default_extent_v = {32U, 32U};
 
-	static BmpBytes bmpBytes(Span<std::byte const> bytes);
 	static Cubemap unitCubemap(Colour colour);
 	static RenderTarget makeRenderTarget(Image const& image) noexcept { return {image.image(), image.view(), image.extent2D(), image.viewFormat()}; }
 
 	Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour = colours::white, Extent2D extent = default_extent_v, Payload payload = Payload::eColour);
 
 	bool construct(Bitmap const& bitmap, Payload payload = Payload::eColour, vk::Format format = Image::linear_v);
-	bool construct(BmpBytes const& bytes, Payload payload = Payload::eColour, vk::Format format = Image::srgb_v);
-	bool construct(Cubemap const& bitmap, Payload payload = Payload::eColour, vk::Format format = Image::linear_v);
-	bool construct(CubeBytes const& bytes, Payload payload = Payload::eColour, vk::Format format = Image::srgb_v);
+	bool construct(ImageData img, Payload payload = Payload::eColour, vk::Format format = Image::srgb_v);
+	bool construct(Cubemap const& cubemap, Payload payload = Payload::eColour, vk::Format format = Image::linear_v);
+	bool construct(Span<ImageData const> cubeImgs, Payload payload = Payload::eColour, vk::Format format = Image::srgb_v);
 
 	bool changeSampler(vk::Sampler sampler);
 	bool assign(Image&& image, Type type = Type::e2D, Payload payload = Payload::eColour);
@@ -61,7 +60,8 @@ class Texture {
 	Type type() const noexcept { return m_type; }
 
   private:
-	void constructImpl(Span<ImgView const> bmps, Extent2D extent, Payload payload, vk::Format format);
+	bool constructImpl(Span<BmpView const> bmps, Extent2D extent, Payload payload, vk::Format format);
+	bool constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format format);
 
 	Image m_image;
 	VRAM::Future m_transfer;

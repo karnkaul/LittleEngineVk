@@ -8,7 +8,7 @@
 
 namespace le::graphics {
 namespace {
-Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D extent, Span<ImgView const> bitmaps) {
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D extent, Span<BmpView const> bitmaps) {
 	auto info = Image::textureInfo(extent, format);
 	if (bitmaps.size() > 1) {
 		info.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
@@ -20,7 +20,20 @@ Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D ext
 	return ret;
 }
 
-bool checkSize(Extent2D size, Span<u8 const> bytes) noexcept {
+Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, ktl::fixed_vector<utils::STBImg, 6> imgs) {
+	auto info = Image::textureInfo(imgs.front().size, format);
+	if (imgs.size() > 1) {
+		info.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+		info.createInfo.arrayLayers = (u32)imgs.size();
+		info.view.type = vk::ImageViewType::eCube;
+	}
+	Image ret(&vram, info);
+	out_future = vram.copy(std::move(imgs), ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
+	return ret;
+}
+
+template <typename T>
+bool checkSize(Extent2D size, T const& bytes) noexcept {
 	if (std::size_t(size.x * size.y) * Bitmap::channels != bytes.size()) { return false; }
 	return true;
 }
@@ -45,12 +58,9 @@ vk::SamplerCreateInfo Sampler::info(MinMag minMag, vk::SamplerMipmapMode mip) {
 Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info) : m_device(device) { m_sampler = makeDeferred<vk::Sampler>(device, info); }
 Sampler::Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip) : Sampler(device, info(minMag, mip)) {}
 
-BmpBytes Texture::bmpBytes(Span<std::byte const> bytes) { return utils::bmpBytes(bytes); }
-
 Cubemap Texture::unitCubemap(Colour colour) {
 	Cubemap ret;
 	ret.size = {1, 1};
-	ret.compressed = false;
 	for (auto& b : ret.bytes) { b = {colour.r.value, colour.g.value, colour.b.value, colour.a.value}; }
 	return ret;
 }
@@ -68,45 +78,28 @@ Texture::Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour, Exten
 
 bool Texture::construct(Bitmap const& bitmap, Payload payload, vk::Format format) {
 	if (!checkSize(bitmap.size, bitmap.bytes)) { return false; }
-	constructImpl(ImgView(bitmap.bytes), bitmap.size, payload, format);
+	constructImpl(BmpView(bitmap.bytes), bitmap.size, payload, format);
 	return true;
 }
 
-bool Texture::construct(BmpBytes const& bytes, Payload payload, vk::Format format) {
-	utils::STBImg stbimg(bytes);
-	if (!checkSize(stbimg.size, stbimg.bytes)) { return false; }
-	constructImpl(ImgView(stbimg.bytes), stbimg.size, payload, format);
-	return true;
+bool Texture::construct(ImageData img, Payload payload, vk::Format format) {
+	VRAM::Images imgs;
+	imgs.push_back(utils::STBImg(img));
+	return constructImpl(std::move(imgs), payload, format);
 }
 
 bool Texture::construct(Cubemap const& cubemap, Payload payload, vk::Format format) {
 	if (std::any_of(cubemap.bytes.begin(), cubemap.bytes.end(), [](Bitmap::type const& b) { return b.empty(); })) { return false; }
-	ktl::fixed_vector<ImgView, 6> bmps;
-	for (auto bytes : cubemap.bytes) {
-		if (!checkSize(cubemap.size, bytes)) { return false; }
-		bmps.push_back(bytes);
-	}
-	constructImpl(bmps, cubemap.size, payload, format);
-	return true;
+	ktl::fixed_vector<BmpView, 6> bmps;
+	for (auto const& bytes : cubemap.bytes) { bmps.push_back(bytes); }
+	return constructImpl(bmps, cubemap.size, payload, format);
 }
 
-bool Texture::construct(CubeBytes const& cubemap, Payload payload, vk::Format format) {
-	if (std::any_of(cubemap.begin(), cubemap.end(), [](Bitmap::type const& b) { return b.empty(); })) { return false; }
-	ktl::fixed_vector<ImgView, 6> bmps;
-	ktl::fixed_vector<utils::STBImg, 6> stbimgs;
-	Extent2D extent{};
-	for (auto const& bytes : cubemap) {
-		stbimgs.push_back(utils::STBImg(bytes));
-		if (!checkSize(stbimgs.back().size, stbimgs.back().bytes)) { return false; }
-		if (extent == Extent2D()) {
-			extent = stbimgs.back().size;
-		} else if (extent != stbimgs.back().size) {
-			return false;
-		}
-		bmps.push_back(stbimgs.back().bytes);
-	}
-	constructImpl(bmps, extent, payload, format);
-	return true;
+bool Texture::construct(Span<ImageData const> cubeImgs, Payload payload, vk::Format format) {
+	if (std::any_of(cubeImgs.begin(), cubeImgs.end(), [](auto const& b) { return b.empty(); })) { return false; }
+	VRAM::Images imgs;
+	for (auto const& bytes : cubeImgs) { imgs.push_back(utils::STBImg(bytes)); }
+	return constructImpl(std::move(imgs), payload, format);
 }
 
 bool Texture::changeSampler(vk::Sampler sampler) {
@@ -153,9 +146,23 @@ bool Texture::copy(CommandBuffer cb, Image const& src) {
 	return utils::copy(m_vram, cb, src, m_image);
 }
 
-void Texture::constructImpl(Span<ImgView const> bmps, Extent2D extent, Payload payload, vk::Format format) {
+bool Texture::constructImpl(Span<BmpView const> imgs, Extent2D extent, Payload payload, vk::Format format) {
+	for (auto const& bytes : imgs) {
+		if (!checkSize(extent, bytes)) { return false; }
+	}
 	m_payload = payload;
-	m_type = bmps.size() > 1 ? Type::eCube : Type::e2D;
-	m_image = load(*m_vram, m_transfer, format, extent, bmps);
+	m_type = imgs.size() > 1 ? Type::eCube : Type::e2D;
+	m_image = load(*m_vram, m_transfer, format, extent, imgs);
+	return true;
+}
+
+bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format format) {
+	for (auto const& img : imgs) {
+		if (!checkSize(img.size, img.bytes)) { return false; }
+	}
+	m_payload = payload;
+	m_type = imgs.size() > 1 ? Type::eCube : Type::e2D;
+	m_image = load(*m_vram, m_transfer, format, std::move(imgs));
+	return true;
 }
 } // namespace le::graphics

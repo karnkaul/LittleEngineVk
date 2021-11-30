@@ -319,15 +319,10 @@ std::optional<vk::Pipeline> utils::makeGraphicsPipeline(Device& dv, Span<ShaderM
 Bitmap utils::bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height) { return bitmap(Span(&*pixels.begin(), pixels.size()), width, height); }
 
 Bitmap utils::bitmap(Span<Colour const> pixels, u32 width, u32 height) {
-	Bitmap ret{{}, {width, height > 0 ? height : u32(pixels.size()) / width}, false};
+	Bitmap ret{{}, {width, height > 0 ? height : u32(pixels.size()) / width}};
 	ret.bytes.reserve(pixels.size() * 4);
 	for (Colour const pixel : pixels) { append(ret.bytes, pixel); }
 	return ret;
-}
-
-void utils::append(BmpBytes& out, Span<std::byte const> bytes) {
-	out.reserve(out.size() + bytes.size());
-	for (auto const byte : bytes) { out.push_back(static_cast<Bitmap::type::value_type>(byte)); }
 }
 
 void utils::append(BmpBytes& out, Colour pixel) {
@@ -336,13 +331,7 @@ void utils::append(BmpBytes& out, Colour pixel) {
 	for (auto const byte : bytes) { out.push_back(byte); }
 }
 
-BmpBytes utils::bmpBytes(Span<std::byte const> bytes) {
-	BmpBytes ret;
-	append(ret, bytes);
-	return ret;
-}
-
-utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
+utils::STBImg::STBImg(ImageData compressed, u8 channels) {
 	ENSURE(compressed.size() <= (std::size_t)maths::max<int>(), "size too large!");
 	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
 	int w, h, ch;
@@ -353,10 +342,12 @@ utils::STBImg::STBImg(Bitmap::type const& compressed, u8 channels) {
 }
 
 utils::STBImg::~STBImg() {
-	if (!bytes.empty()) { stbi_image_free(bytes.data()); }
+	if (!bytes.empty()) { stbi_image_free((void*)bytes.data()); }
 }
 
-void utils::STBImg::exchg(STBImg& lhs, STBImg& rhs) noexcept { std::swap(static_cast<TBitmap<Span<u8>>&>(lhs), static_cast<TBitmap<Span<u8>>&>(rhs)); }
+void utils::STBImg::exchg(STBImg& lhs, STBImg& rhs) noexcept {
+	std::swap(static_cast<TBitmap<Span<u8 const>>&>(lhs), static_cast<TBitmap<Span<u8 const>>&>(rhs));
+}
 
 std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext, CubeImageURIs const& ids) {
 	std::array<bytearray, 6> ret;

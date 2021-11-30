@@ -269,7 +269,7 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 	for (auto const& tex : info.textures) {
 		if (!tex.bytes.empty()) {
 			graphics::Texture texture(vram, sampler.sampler());
-			if (!texture.construct(graphics::utils::bmpBytes(tex.bytes), graphics::Texture::Payload::eColour, forceFormat.value_or(graphics::Image::srgb_v))) {
+			if (!texture.construct(tex.bytes, graphics::Texture::Payload::eColour, forceFormat.value_or(graphics::Image::srgb_v))) {
 				return Error{{}, Failcode::eTextureCreateFailure};
 			}
 			storage.textures.emplace(tex.uri, std::move(texture));

@@ -58,7 +58,8 @@ struct AssetLoadData<graphics::Texture> {
 
 template <>
 struct AssetLoader<graphics::Texture> {
-	using Data = std::variant<graphics::Bitmap, graphics::BmpBytes, graphics::Cubemap, graphics::CubeBytes>;
+	using Cube = std::array<graphics::ImageData, 6>;
+	using Data = std::variant<graphics::Bitmap, graphics::ImageData, graphics::Cubemap, Cube>;
 
 	std::unique_ptr<graphics::Texture> load(AssetLoadInfo<graphics::Texture> const& info) const;
 	bool reload(graphics::Texture& out_texture, AssetLoadInfo<graphics::Texture> const& info) const;

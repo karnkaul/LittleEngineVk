@@ -6,6 +6,9 @@
 namespace le::graphics {
 class Device;
 class CommandBuffer;
+namespace utils {
+class STBImg;
+}
 
 class VRAM final : public Memory {
   public:
@@ -13,6 +16,7 @@ class VRAM final : public Memory {
 	using Future = Transfer::Future;
 	using Memory::blit;
 	using Memory::copy;
+	using Images = ktl::fixed_vector<utils::STBImg, 6>;
 
 	static constexpr AspectPair colour_aspects_v = {vIAFB::eColor, vIAFB::eColor};
 
@@ -25,7 +29,8 @@ class VRAM final : public Memory {
 
 	[[nodiscard]] Future copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
-	[[nodiscard]] Future copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+	[[nodiscard]] Future copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+	[[nodiscard]] Future copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 	bool blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects = vIAFB::eColor) const;

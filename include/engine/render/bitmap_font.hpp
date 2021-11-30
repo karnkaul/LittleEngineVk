@@ -37,7 +37,7 @@ class BitmapFont {
 struct BitmapFont::CreateInfo {
 	std::optional<vk::Format> forceFormat;
 	Span<Glyph const> glyphs;
-	graphics::BmpBytes atlas;
+	graphics::ImageData atlas;
 };
 
 inline BitmapFont::Texture const& BitmapFont::atlas() const {

@@ -93,7 +93,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return ret;
 }
 
-VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+VRAM::Future VRAM::copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : bitmaps) {
@@ -108,8 +108,7 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
-	std::vector<bytearray> data;
-	data.reserve(bitmaps.size());
+	ktl::fixed_vector<bytearray, 8> data;
 	for (auto layer : bitmaps) {
 		bytearray bytes(layer.size(), {});
 		std::memcpy(bytes.data(), layer.data(), bytes.size());
@@ -126,6 +125,47 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 		for (auto const& pixels : d) {
 			auto const offset = layerIdx * layerSize;
 			std::memcpy((u8*)stage.buffer->mapped() + offset, pixels.data(), pixels.size());
+			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++, 1U));
+		}
+		ImgMeta meta;
+		meta.layouts = fromTo;
+		meta.stages.second = m_post.stages;
+		meta.access.second = m_post.access;
+		meta.layerCount = l;
+		copy(stage.command, stage.buffer->buffer(), i, copyRegions, meta);
+		m_transfer.addStage(std::move(stage), std::move(p));
+		m_device->m_layouts.force(i, meta.layouts.second);
+	};
+	m_transfer.m_queue.push(std::move(f));
+	return ret;
+}
+
+VRAM::Future VRAM::copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+	std::size_t imgSize = 0;
+	std::size_t layerSize = 0;
+	for (auto const& img : imgs) {
+		ENSURE(layerSize == 0 || layerSize == img.bytes.size(), "Invalid image data!");
+		layerSize = img.bytes.size();
+		imgSize += layerSize;
+	}
+	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
+	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
+	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
+	Transfer::Promise promise;
+	auto ret = promise.get_future();
+	out_dst.m_storage.layerCount = (u32)imgs.size();
+	auto f = [p = std::move(promise), imgs = std::move(imgs), i = out_dst.image(), l = out_dst.m_storage.layerCount, e = out_dst.m_storage.extent, fromTo,
+			  imgSize, layerSize, aspects, this]() mutable {
+		auto stage = m_transfer.newStage(imgSize);
+		[[maybe_unused]] bool const bResult = stage.buffer->map();
+		ENSURE(bResult, "Memory map failed");
+		u32 layerIdx = 0;
+		std::vector<vk::BufferImageCopy> copyRegions;
+		for (utils::STBImg const& img : imgs) {
+			auto const offset = layerIdx * layerSize;
+			std::memcpy((u8*)stage.buffer->mapped() + offset, img.bytes.data(), img.bytes.size());
 			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++, 1U));
 		}
 		ImgMeta meta;

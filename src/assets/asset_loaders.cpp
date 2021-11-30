@@ -131,30 +131,22 @@ bool AssetLoader<graphics::Texture>::reload(graphics::Texture& out_texture, Asse
 
 std::optional<AssetLoader<graphics::Texture>::Data> AssetLoader<graphics::Texture>::data(AssetLoadInfo<graphics::Texture> const& info) const {
 	if (!info.m_data.bitmap.bytes.empty()) {
-		if (!info.m_data.bitmap.compressed) {
-			return info.m_data.bitmap;
-		} else {
-			return info.m_data.bitmap.bytes;
-		}
+		return info.m_data.bitmap;
 	} else if (!info.m_data.cubemap.bytes[0].empty()) {
-		if (!info.m_data.cubemap.compressed) {
-			return info.m_data.cubemap;
-		} else {
-			return info.m_data.cubemap.bytes;
-		}
+		return info.m_data.cubemap;
 	} else if (info.m_data.imageURIs.size() == 1) {
 		auto path = info.m_data.prefix / info.m_data.imageURIs[0];
 		path += info.m_data.ext;
-		if (auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor)) { return graphics::Texture::bmpBytes(res->bytes()); }
+		if (auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor)) { return res->bytes(); }
 	} else if (info.m_data.imageURIs.size() == 6) {
-		graphics::CubeBytes cube;
+		Cube cube;
 		std::size_t idx = 0;
 		for (auto const& p : info.m_data.imageURIs) {
 			auto path = info.m_data.prefix / p;
 			path += info.m_data.ext;
 			auto res = info.resource(path, Resource::Type::eBinary, Resources::Flag::eMonitor);
 			if (!res) { return std::nullopt; }
-			cube[idx++] = graphics::Texture::bmpBytes(res->bytes());
+			cube[idx++] = res->bytes();
 		}
 		return cube;
 	}
@@ -178,12 +170,12 @@ bool AssetLoader<graphics::Texture>::load(graphics::Texture& out_texture, Data c
 	};
 	if (auto bitmap = std::get_if<graphics::Bitmap>(&data)) {
 		return construct(*bitmap);
-	} else if (auto bytes = std::get_if<graphics::BmpBytes>(&data)) {
+	} else if (auto bytes = std::get_if<graphics::ImageData>(&data)) {
 		return construct(*bytes);
 	} else if (auto cubemap = std::get_if<graphics::Cubemap>(&data)) {
 		return construct(*cubemap);
-	} else if (auto bytes = std::get_if<graphics::CubeBytes>(&data)) {
-		return construct(*bytes);
+	} else if (auto bytes = std::get_if<Cube>(&data)) {
+		return construct(Span<graphics::ImageData const>(*bytes));
 	}
 	return false;
 }
@@ -210,7 +202,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 			BitmapFont::CreateInfo bci;
 			bci.forceFormat = info.m_data.forceFormat;
 			bci.glyphs = fi.glyphs;
-			bci.atlas = graphics::Texture::bmpBytes(atlas->bytes());
+			bci.atlas = atlas->bytes();
 			if (out_font.make(info.m_data.vram, *sampler, bci)) { return true; }
 		}
 	}

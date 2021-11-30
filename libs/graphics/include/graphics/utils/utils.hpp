@@ -29,9 +29,9 @@ struct VertexInfoFactory<Vertex> {
 };
 
 namespace utils {
-class STBImg : public TBitmap<Span<u8>> {
+class STBImg : public TBitmap<Span<u8 const>> {
   public:
-	explicit STBImg(Bitmap::type const& compressed, u8 channels = 4);
+	explicit STBImg(ImageData compressed, u8 channels = 4);
 	STBImg(STBImg&& rhs) noexcept { exchg(*this, rhs); }
 	STBImg& operator=(STBImg rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~STBImg();
@@ -111,8 +111,6 @@ std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Span<ShaderModule c
 Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);
 Bitmap bitmap(Span<Colour const> pixels, u32 width, u32 height = 0);
 void append(BmpBytes& out, Colour pixel);
-void append(BmpBytes& out, Span<std::byte const> bytes);
-BmpBytes bmpBytes(Span<std::byte const> bytes);
 
 using CubeImageURIs = std::array<std::string_view, 6>;
 constexpr CubeImageURIs cubeImageURIs = {"right", "left", "up", "down", "front", "back"};

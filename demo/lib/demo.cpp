@@ -617,6 +617,10 @@ class App : public input::Receiver, public SceneRegistry {
 			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
+		if (auto const frame = m_eng->gfx().context.renderer().offScreen(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
+			m_testTex.blit(m_eng->gfx().context.commands().get(), *frame);
+		}
+
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
@@ -662,11 +666,7 @@ class App : public input::Receiver, public SceneRegistry {
 		// draw
 		graphics::RenderBegin rb;
 		rb.clear = RGBA(0x777777ff, RGBA::Type::eAbsolute);
-		if (m_eng->render(m_drawer, rb, this)) {
-			if (auto const frame = m_eng->gfx().context.previousFrameAsImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
-				m_testTex.blit(m_eng->gfx().context.commands().get(), *frame);
-			}
-		}
+		m_eng->render(m_drawer, rb, this);
 	}
 
 	scheduler& sched() { return m_tasks; }

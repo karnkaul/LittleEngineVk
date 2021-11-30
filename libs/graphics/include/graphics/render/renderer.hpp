@@ -48,6 +48,7 @@ class ImageCache {
 	bool ready(Extent2D extent, vk::Format format) const noexcept;
 	Image& make(Extent2D extent, vk::Format format);
 	Image& refresh(Extent2D extent, vk::Format format);
+	Image const* peek() const noexcept { return m_image ? &*m_image : nullptr; }
 
   private:
 	Image::CreateInfo m_info;
@@ -96,6 +97,7 @@ class Renderer {
 	bool canBlitFrame() const noexcept { return m_blitFlags.test(BlitFlag::eSrc); }
 
 	virtual vk::RenderPass renderPass() const noexcept { return m_singleRenderPass; }
+	virtual Image const* offScreen() const noexcept { return m_colourImage.peek(); }
 
   protected:
 	Deferred<vk::RenderPass> makeRenderPass(vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,

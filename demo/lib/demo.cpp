@@ -440,6 +440,10 @@ class App : public input::Receiver, public SceneRegistry {
 		info.type = vk::DescriptorType::eStorageBuffer;
 		m_drawer.m_view.lights = graphics::ShaderBuffer(m_eng->gfx().boot.vram, {});
 
+		m_drawer.m_defaults.black = &*m_eng->store().find<graphics::Texture>("textures/black");
+		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
+		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
+
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox"); }
 		{
 			m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "draw_groups/lit");
@@ -450,25 +454,67 @@ class App : public input::Receiver, public SceneRegistry {
 			m_onCollide += [](auto&&) { logD("Collided!"); };
 		}
 		{
-			{
-				auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "draw_groups/lit");
-				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
-				m_data.entities["model_0_0"] = ent0;
+			auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "draw_groups/lit");
+			m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
+			m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "draw_groups/lit");
-				auto& node = m_registry.get<Transform>(ent1);
-				node.position({-2.0f, -1.0f, 5.0f});
-				m_data.entities["model_0_1"] = ent1;
-				m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
+			auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "draw_groups/lit");
+			auto& node = m_registry.get<Transform>(ent1);
+			node.position({-2.0f, -1.0f, 5.0f});
+			m_data.entities["model_0_1"] = ent1;
+			m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
+		}
+		{
+			auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "draw_groups/lit");
+			m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
+			m_data.entities["model_1_0"] = ent0;
+			auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "draw_groups/lit");
+			m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
+			m_data.entities["model_1"] = ent;
+		}
+		{
+			m_data.camera = m_registry.make_entity<FreeCam>("freecam");
+			auto [e, c] = SpringArm::attach(m_data.camera, m_registry, m_data.player);
+			auto& [spring, transform] = c;
+			edi::SceneTree::attach(m_data.camera);
+			auto& cam = m_registry.get<FreeCam>(m_data.camera);
+			cam.position = {0.0f, 0.5f, 4.0f};
+			cam.look({});
+			transform.position(cam.position);
+			spring.offset = transform.position();
+			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
+		}
+		{
+			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "draw_groups/basic");
+			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
+			m_data.entities["prop_1"] = ent;
+		}
+		{
+			auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "draw_groups/tex");
+			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
+		}
+		{
+			m_testMat.map_Kd = &m_testTex;
+			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
+				m_data.roundedQuad = spawnNode("prop_3");
+				m_registry.attach<DrawGroupProvider>(m_data.roundedQuad, DrawGroupProvider::make("draw_groups/tex"));
+				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
+				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 			}
-			{
-				auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "draw_groups/lit");
-				m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
-				m_data.entities["model_1_0"] = ent0;
-				auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "draw_groups/lit");
-				m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
-				m_data.entities["model_1"] = ent;
-			}
+		}
+		{
+			Material mat;
+			mat.Tf = colours::yellow;
+			m_eng->store().add("materials/yellow", mat);
+			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "draw_groups/basic");
+			m_registry.get<Transform>(node).scale(2.0f);
+			m_data.tween = node;
+			auto& trig1 = m_registry.attach<physics::Trigger>(node);
+			trig1.scale = glm::vec3(2.0f);
+			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
+			auto pos = m_registry.get<Transform>(node).position();
+			pos.x = tweener.current();
+			m_registry.get<Transform>(node).position(pos);
 		}
 	}
 
@@ -498,9 +544,9 @@ class App : public input::Receiver, public SceneRegistry {
 		auto sky_test = m_eng->store().find<graphics::Texture>("cubemaps/test");
 		auto skymap = sky_test ? sky_test : m_eng->store().find<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_eng->store().find<BitmapFont>("fonts/default");
-		m_drawer.m_defaults.black = &*m_eng->store().find<graphics::Texture>("textures/black");
-		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
-		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
+		// m_drawer.m_defaults.black = &*m_eng->store().find<graphics::Texture>("textures/black");
+		// m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
+		// m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
 
 		if constexpr (levk_debug) {
@@ -531,18 +577,18 @@ class App : public input::Receiver, public SceneRegistry {
 			// m_onCollide = trigger.onTrigger.make_signal();
 			// m_onCollide += [](auto&&) { logD("Collided!"); };
 		}
-		{
-			auto freecam = m_registry.make_entity<FreeCam>("freecam");
-			m_data.camera = freecam;
-			auto [e, c] = SpringArm::attach(freecam, m_registry, m_data.player);
-			auto& [spring, transform] = c;
-			edi::SceneTree::attach(freecam);
-			auto& cam = m_registry.get<FreeCam>(freecam);
-			cam.position = {0.0f, 0.5f, 4.0f};
-			cam.look({});
-			transform.position(cam.position);
-			spring.offset = transform.position();
-		}
+		// {
+		// 	auto freecam = m_registry.make_entity<FreeCam>("freecam");
+		// 	m_data.camera = freecam;
+		// 	auto [e, c] = SpringArm::attach(freecam, m_registry, m_data.player);
+		// 	auto& [spring, transform] = c;
+		// 	edi::SceneTree::attach(freecam);
+		// 	auto& cam = m_registry.get<FreeCam>(freecam);
+		// 	cam.position = {0.0f, 0.5f, 4.0f};
+		// 	cam.look({});
+		// 	transform.position(cam.position);
+		// 	spring.offset = transform.position();
+		// }
 
 		auto guiStack = spawn<gui::ViewStack>("gui_root", "draw_groups/ui", &m_eng->gfx().boot.vram);
 		m_data.guiStack = guiStack;
@@ -577,24 +623,24 @@ class App : public input::Receiver, public SceneRegistry {
 			m_eng->store().add("skyboxes/sky_map", Skybox(&*skymap));
 			// spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox");
 		}
-		{
-			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "draw_groups/basic");
-			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
-			m_data.entities["prop_1"] = ent;
-		}
-		{
-			auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "draw_groups/tex");
-			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
-		}
-		{
-			m_testMat.map_Kd = &m_testTex;
-			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
-				m_data.roundedQuad = spawnNode("prop_3");
-				m_registry.attach<DrawGroupProvider>(m_data.roundedQuad, DrawGroupProvider::make("draw_groups/tex"));
-				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
-				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
-			}
-		}
+		// {
+		// 	auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "draw_groups/basic");
+		// 	m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
+		// 	m_data.entities["prop_1"] = ent;
+		// }
+		// {
+		// 	auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "draw_groups/tex");
+		// 	m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
+		// }
+		// {
+		// 	m_testMat.map_Kd = &m_testTex;
+		// 	if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
+		// 		m_data.roundedQuad = spawnNode("prop_3");
+		// 		m_registry.attach<DrawGroupProvider>(m_data.roundedQuad, DrawGroupProvider::make("draw_groups/tex"));
+		// 		m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
+		// 		m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
+		// 	}
+		// }
 		{
 			m_data.entities["text_2d/mesh"] = spawnMesh("text_2d/mesh", DynamicMesh::make<TextMesh>(&*m_data.text), "draw_groups/ui");
 			m_data.entities["text_2d/cursor"] = spawnMesh("text_2d/cursor", DynamicMesh::make<input::TextCursor>(&*m_data.cursor), "draw_groups/ui");
@@ -623,20 +669,20 @@ class App : public input::Receiver, public SceneRegistry {
 		// 		m_data.entities["model_1"] = ent;
 		// 	}
 		// }
-		{
-			Material mat;
-			mat.Tf = colours::yellow;
-			m_eng->store().add("materials/yellow", mat);
-			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "draw_groups/basic");
-			m_registry.get<Transform>(node).scale(2.0f);
-			m_data.tween = node;
-			auto& trig1 = m_registry.attach<physics::Trigger>(node);
-			trig1.scale = glm::vec3(2.0f);
-			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
-			auto pos = m_registry.get<Transform>(node).position();
-			pos.x = tweener.current();
-			m_registry.get<Transform>(node).position(pos);
-		}
+		// {
+		// 	Material mat;
+		// 	mat.Tf = colours::yellow;
+		// 	m_eng->store().add("materials/yellow", mat);
+		// 	auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "draw_groups/basic");
+		// 	m_registry.get<Transform>(node).scale(2.0f);
+		// 	m_data.tween = node;
+		// 	auto& trig1 = m_registry.attach<physics::Trigger>(node);
+		// 	trig1.scale = glm::vec3(2.0f);
+		// 	auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
+		// 	auto pos = m_registry.get<Transform>(node).position();
+		// 	pos.x = tweener.current();
+		// 	m_registry.get<Transform>(node).position(pos);
+		// }
 		m_data.init = true;
 	}
 

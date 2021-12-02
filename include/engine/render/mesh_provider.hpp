@@ -7,6 +7,8 @@
 #include <type_traits>
 
 namespace le {
+struct DrawGroup;
+
 template <typename T>
 concept MeshAPI = requires(T const& t) {
 	{ t.mesh() } -> std::same_as<MeshView>;
@@ -49,6 +51,21 @@ class DynamicMesh {
 
   private:
 	GetMesh m_getMesh;
+};
+
+class DrawGroupProvider {
+  public:
+	static DrawGroupProvider make(std::string assetURI);
+
+	std::string const& uri() const noexcept { return m_assetURI; }
+	void uri(std::string assetURI);
+
+	bool active() const noexcept { return m_hash != Hash(); }
+	DrawGroup group() const;
+
+  private:
+	std::string m_assetURI;
+	Hash m_hash;
 };
 
 // impl

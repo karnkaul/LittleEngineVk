@@ -2,25 +2,12 @@
 #include <engine/input/state.hpp>
 #include <engine/input/text_cursor.hpp>
 #include <engine/render/bitmap_font.hpp>
-#include <engine/render/prop.hpp>
 #include <graphics/glyph_pen.hpp>
 
 namespace le::input {
 TextCursor::TextCursor(not_null<BitmapFont const*> font, Flags flags)
 	: m_flags(flags), m_primitive(Services::get<graphics::VRAM>(), graphics::MeshPrimitive::Type::eDynamic), m_font(font) {
 	refresh();
-}
-
-Prop const& TextCursor::cursor() const noexcept {
-	m_material.Tf = m_gen.colour;
-	m_material.d = m_alpha;
-	m_prop = Prop{&m_material, &m_primitive};
-	return m_prop;
-}
-
-Span<Prop const> TextCursor::props() const noexcept {
-	if (m_drawCursor) { return cursor(); }
-	return {};
 }
 
 MeshView TextCursor::mesh() const noexcept {

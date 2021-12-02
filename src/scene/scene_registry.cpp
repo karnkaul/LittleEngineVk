@@ -7,6 +7,7 @@
 #include <engine/ecs/systems/system_groups.hpp>
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
+#include <engine/render/material.hpp>
 #include <engine/scene/scene_registry.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <graphics/render/camera.hpp>
@@ -32,12 +33,7 @@ SceneRegistry::SceneRegistry() {
 	tick.attach<SceneCleanSystem>(SceneCleanSystem::order_v);
 }
 
-void SceneRegistry::attach(dens::entity entity, DrawGroup group, PropProvider provider) {
-	m_registry.attach<DrawGroup>(entity, group);
-	m_registry.attach<PropProvider>(entity, provider);
-}
-
-void SceneRegistry::attach(dens::entity entity, DrawGroup group) { m_registry.attach<DrawGroup>(entity, group); }
+void SceneRegistry::attach(dens::entity entity, DrawGroupProvider&& group) { m_registry.attach<DrawGroupProvider>(entity, std::move(group)); }
 
 dens::entity SceneRegistry::spawnNode(std::string name) {
 	auto ret = makeNode(m_registry, std::move(name));
@@ -46,45 +42,26 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnProp(std::string name, Hash groupURI, PropProvider provider) {
+dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, std::string groupURI) {
 	auto ret = spawnNode(std::move(name));
-	attach(ret, drawGroup(groupURI), provider);
-	return ret;
-};
-
-dens::entity SceneRegistry::spawnMesh_old(std::string name, Hash meshURI, Hash groupURI, not_null<Material const*> material) {
-	return spawnProp(std::move(name), groupURI, PropProvider(meshURI, material));
-}
-
-dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, Hash groupURI) {
-	auto ret = spawnNode(std::move(name));
-	m_registry.attach<DrawGroup>(ret, drawGroup(groupURI));
+	m_registry.attach<DrawGroupProvider>(ret, DrawGroupProvider::make(std::move(groupURI)));
 	m_registry.attach<MeshProvider>(ret, std::move(provider));
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, Hash groupURI) {
+dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string groupURI) {
 	auto ret = spawnNode(std::move(name));
-	m_registry.attach<DrawGroup>(ret, drawGroup(groupURI));
+	m_registry.attach<DrawGroupProvider>(ret, DrawGroupProvider::make(std::move(groupURI)));
 	m_registry.attach<DynamicMesh>(ret, std::move(dynMesh));
 	return ret;
 }
 
-DrawGroup SceneRegistry::drawGroup(Hash id) const {
+Material const* SceneRegistry::defaultMaterial() const {
 	if (auto store = Services::find<AssetStore>()) {
-		if (auto group = store->find<DrawGroup>(id)) { return *group; }
+		if (auto mat = store->find<Material>("materials/default")) { return &*mat; }
 	}
 	return {};
 }
-
-Material const* SceneRegistry::material(Hash id) const {
-	if (auto store = Services::find<AssetStore>()) {
-		if (auto material = store->find<Material>(id)) { return &*material; }
-	}
-	return {};
-}
-
-Material const* SceneRegistry::defaultMaterial() const { return material("materials/default"); }
 
 void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame) {
 	static input::Frame const s_blank{};

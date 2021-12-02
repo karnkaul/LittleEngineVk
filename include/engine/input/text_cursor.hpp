@@ -29,14 +29,6 @@ class TextCursor {
 
 	TextCursor(not_null<BitmapFont const*> font, Flags flags = {});
 
-	///
-	/// \brief Obtain prop corresponding to cursor
-	///
-	Prop const& cursor() const noexcept;
-	///
-	/// \brief Obtain cursor if active else empty Span
-	///
-	Span<Prop const> props() const noexcept;
 	MeshView mesh() const noexcept;
 
 	///
@@ -113,7 +105,6 @@ class TextCursor {
   private:
 	graphics::MeshPrimitive m_primitive;
 	mutable Material m_material;
-	mutable Prop m_prop;
 	glm::vec3 m_position{};
 	glm::vec2 m_offset = {0.3f, 0.3f};
 	glm::vec2 m_size = {0.1f, 1.1f};

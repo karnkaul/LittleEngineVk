@@ -2,6 +2,7 @@
 #include <core/std_types.hpp>
 #include <dens/entity.hpp>
 #include <engine/render/drawable.hpp>
+#include <engine/render/material.hpp>
 #include <glm/vec3.hpp>
 #include <ktl/delegate.hpp>
 
@@ -28,7 +29,6 @@ struct Trigger {
 	CFlags cflags = all_flags;
 
 	struct {
-		Prop prop;
 		Material material;
 	} data;
 
@@ -41,8 +41,7 @@ struct Trigger {
 };
 
 struct Trigger::Debug {
-	std::vector<Drawable> drawables(dens::registry const& registry) const;
-	std::vector<Drawable2> drawables2(dens::registry const& registry) const;
+	std::vector<Drawable> drawables2(dens::registry const& registry) const;
 };
 } // namespace physics
 } // namespace le

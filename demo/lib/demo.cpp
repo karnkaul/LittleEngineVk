@@ -37,7 +37,6 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <engine/render/prop_provider.hpp>
 #include <ktl/async.hpp>
 
 #include <engine/ecs/components/spring_arm.hpp>
@@ -148,7 +147,7 @@ struct PlayerController {
 	}
 };
 
-class Drawer : public ListDrawer2 {
+class Drawer : public ListDrawer {
   public:
 	using Camera = graphics::Camera;
 
@@ -191,18 +190,20 @@ class Drawer : public ListDrawer2 {
 			for (std::size_t idx = 0; idx < m_scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = m_scene.lights[idx]; }
 			dl.count = std::min((u32)m_scene.lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
+		} else {
+			m_view.lights.write(DirLights());
 		}
 	}
 
 	void buildDrawLists(PipelineFactory& pf, vk::RenderPass rp) override {
-		if (m_scene.registry) { populate<DrawListGen>(*m_scene.registry, pf, rp); }
+		if (m_scene.registry) { populate<DrawListGen, DebugDrawListGen>(*m_scene.registry, pf, rp); }
 	}
 
 	void writeSets(DescriptorMap map, List const& list) override {
 		auto set0 = map.set(0);
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
-		for (Drawable2 const& drawable : list.drawables) {
+		for (Drawable const& drawable : list.drawables) {
 			if (auto const meshes = drawable.mesh.meshViews(); !meshes.empty()) {
 				map.set(1).update(0, drawable.model);
 				for (MeshObj const mesh : meshes) {
@@ -222,14 +223,15 @@ class Drawer : public ListDrawer2 {
 
 	void draw(DescriptorBinder bind, List const& list, graphics::CommandBuffer cb) const override {
 		bind(0);
-		for (Drawable2 const& d : list.drawables) {
+		for (Drawable const& d : list.drawables) {
 			if (auto meshes = d.mesh.meshViews(); !meshes.empty()) {
 				bind(1);
 				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
 				for (MeshObj const prop : meshes) {
-					bind(2, 3);
-					EXPECT(prop.primitive);
-					if (prop.primitive) { prop.primitive->draw(cb); }
+					if (prop.primitive) {
+						bind(2, 3);
+						prop.primitive->draw(cb);
+					}
 				}
 			}
 		}
@@ -437,6 +439,37 @@ class App : public input::Receiver, public SceneRegistry {
 		graphics::ShaderBuffer::CreateInfo info;
 		info.type = vk::DescriptorType::eStorageBuffer;
 		m_drawer.m_view.lights = graphics::ShaderBuffer(m_eng->gfx().boot.vram, {});
+
+		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox"); }
+		{
+			m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "draw_groups/lit");
+			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});
+			m_registry.attach<PlayerController>(m_data.player);
+			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
+			m_onCollide = trigger.onTrigger.make_signal();
+			m_onCollide += [](auto&&) { logD("Collided!"); };
+		}
+		{
+			{
+				auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "draw_groups/lit");
+				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
+				m_data.entities["model_0_0"] = ent0;
+
+				auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "draw_groups/lit");
+				auto& node = m_registry.get<Transform>(ent1);
+				node.position({-2.0f, -1.0f, 5.0f});
+				m_data.entities["model_0_1"] = ent1;
+				m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
+			}
+			{
+				auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "draw_groups/lit");
+				m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
+				m_data.entities["model_1_0"] = ent0;
+				auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "draw_groups/lit");
+				m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
+				m_data.entities["model_1"] = ent;
+			}
+		}
 	}
 
 	bool block(input::State const& state) override {
@@ -472,7 +505,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
-			m_registry.attach<DrawGroup>(triggerDebug) = drawGroup("draw_groups/wireframe");
+			m_registry.attach<DrawGroupProvider>(triggerDebug, DrawGroupProvider::make("draw_groups/wireframe"));
 		}
 		m_data.text = TextMesh(&vram, &*font);
 		m_data.cursor = input::TextCursor(&*font);
@@ -491,13 +524,12 @@ class App : public input::Receiver, public SceneRegistry {
 			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
 			m_eng->store().add("materials/player/cube", mat);
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "draw_groups/lit");
-			m_registry.get<Transform>(player).position({0.0f, 0.0f, 5.0f});
-			m_data.player = player;
-			m_registry.attach<PlayerController>(m_data.player);
-			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
-			m_onCollide = trigger.onTrigger.make_signal();
-			m_onCollide += [](auto&&) { logD("Collided!"); };
+			// m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "draw_groups/lit");
+			// m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});
+			// m_registry.attach<PlayerController>(m_data.player);
+			// auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
+			// m_onCollide = trigger.onTrigger.make_signal();
+			// m_onCollide += [](auto&&) { logD("Collided!"); };
 		}
 		{
 			auto freecam = m_registry.make_entity<FreeCam>("freecam");
@@ -543,10 +575,9 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.dirLights = {l0, l1};
 		{
 			m_eng->store().add("skyboxes/sky_map", Skybox(&*skymap));
-			spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox");
+			// spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox");
 		}
 		{
-			// auto ent = spawnProp<graphics::MeshPrimitive>("prop_1", "meshes/cube", "draw_groups/basic");
 			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "draw_groups/basic");
 			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
@@ -556,14 +587,10 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
-			// mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
-			// auto tex = m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
-
 			m_testMat.map_Kd = &m_testTex;
-			// m_data.roundedQuad = spawnMesh_old("prop_3", "meshes/rounded_quad", "draw_groups/tex", &m_testMat);
 			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
-				m_registry.attach<DrawGroup>(m_data.roundedQuad, drawGroup("draw_groups/tex"));
+				m_registry.attach<DrawGroupProvider>(m_data.roundedQuad, DrawGroupProvider::make("draw_groups/tex"));
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
 				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 			}
@@ -571,37 +598,31 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			m_data.entities["text_2d/mesh"] = spawnMesh("text_2d/mesh", DynamicMesh::make<TextMesh>(&*m_data.text), "draw_groups/ui");
 			m_data.entities["text_2d/cursor"] = spawnMesh("text_2d/cursor", DynamicMesh::make<input::TextCursor>(&*m_data.cursor), "draw_groups/ui");
-			/*auto ent0 = spawnProp<TextMesh>("text_2d/mesh", *m_data.text, "draw_groups/ui");
-			m_data.entities["text_2d/mesh"] = ent0;
-			auto ent = spawnProp<input::TextCursor>("text_2d/cursor", *m_data.cursor, "draw_groups/ui");
-			m_data.entities["text_2d/cursor"] = ent;*/
 		}
-		{
-			{
-				auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "draw_groups/lit");
-				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
-				m_data.entities["model_0_0"] = ent0;
+		// {
+		// 	{
+		// 		auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "draw_groups/lit");
+		// 		m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
+		// 		m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "draw_groups/lit");
-				auto& node = m_registry.get<Transform>(ent1);
-				node.position({-2.0f, -1.0f, 5.0f});
-				m_data.entities["model_0_1"] = ent1;
-				m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
-			}
-			if (auto model = m_eng->store().find<Model>("models/teapot")) {
-				// Prop& prop = model->propsRW().front();
-				//  prop.material2->Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "draw_groups/lit");
-				m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
-				m_data.entities["model_1_0"] = ent0;
-			}
-			if (m_eng->store().exists<Model>("models/nanosuit")) {
-				auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "draw_groups/lit");
-				m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
-				m_data.entities["model_1"] = ent;
-			}
+		// 		auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "draw_groups/lit");
+		// 		auto& node = m_registry.get<Transform>(ent1);
+		// 		node.position({-2.0f, -1.0f, 5.0f});
+		// 		m_data.entities["model_0_1"] = ent1;
+		// 		m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
+		// 	}
+		if (auto model = m_eng->store().find<Model>("models/teapot")) {
+			model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
+			// auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "draw_groups/lit");
+			// m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
+			// m_data.entities["model_1_0"] = ent0;
 		}
+		// 	if (m_eng->store().exists<Model>("models/nanosuit")) {
+		// 		auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "draw_groups/lit");
+		// 		m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
+		// 		m_data.entities["model_1"] = ent;
+		// 	}
+		// }
 		{
 			Material mat;
 			mat.Tf = colours::yellow;
@@ -622,15 +643,12 @@ class App : public input::Receiver, public SceneRegistry {
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
-		// if (auto text = m_registry.find<DynamicMesh>(m_data.entities["text_2d/mesh"])) {
 		if (m_data.text && m_data.cursor) {
 			graphics::Geometry geom;
 			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->primitive.construct(std::move(geom)); }
-			//*text = PropProvider::make(*m_data.text);
 			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
 			}
-			// if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
 		if (auto const frame = m_eng->gfx().context.renderer().offScreen(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
@@ -641,7 +659,6 @@ class App : public input::Receiver, public SceneRegistry {
 		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
 			auto pr_ = Engine::profile("app::tick");
 			if (!m_data.init) { init1(); }
-			// ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;

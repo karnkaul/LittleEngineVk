@@ -291,32 +291,13 @@ Model::Failcode Model::construct(not_null<VRAM*> vram, CreateInfo const& info, S
 			EXPECT(storage.materials.contains(mat.hash));
 			meshMat.mat = mat.hash;
 		} else {
-			auto [i, _] = storage.materials.emplace(hash, Material());
+			storage.materials.emplace(hash, Material());
 			meshMat.mat = hash;
 		}
 		storage.meshMats.push_back(std::move(meshMat));
 	}
 	m_storage = std::move(storage);
 	return Failcode::eNone;
-}
-
-Span<Prop const> Model::props() const {
-	m_props.clear();
-	m_props.reserve(m_storage.meshMats.size());
-	for (auto const& meshMat : m_storage.meshMats) {
-		Prop prop;
-		prop.primitive = &meshMat.primitive;
-		if (meshMat.mat != Hash()) {
-			auto const it = m_storage.materials.find(meshMat.mat);
-			EXPECT(it != m_storage.materials.end());
-			if (it != m_storage.materials.end()) {
-				// prop.material = it->second;
-				prop.material = &it->second;
-			}
-		}
-		m_props.push_back(prop);
-	}
-	return m_props;
 }
 
 MeshView Model::mesh() const {

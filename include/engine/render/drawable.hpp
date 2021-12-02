@@ -4,9 +4,6 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 
-// TODO: remove
-#include <engine/render/prop.hpp>
-
 namespace le {
 struct Rect2D {
 	glm::uvec2 extent{};
@@ -15,12 +12,6 @@ struct Rect2D {
 };
 
 struct Drawable {
-	glm::mat4 model = glm::mat4(1.0f);
-	Rect2D scissor;
-	Span<Prop const> props;
-};
-
-struct Drawable2 {
 	glm::mat4 model = glm::mat4(1.0f);
 	Rect2D scissor;
 	MeshView mesh;

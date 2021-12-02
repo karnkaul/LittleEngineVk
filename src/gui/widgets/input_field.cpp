@@ -29,12 +29,6 @@ InputField::Status InputField::onInput(input::State const& state) {
 	return ret;
 }
 
-Span<Prop const> InputField::props() const noexcept {
-	m_props = {m_outline->props().front(), Quad::props().front(), m_textMesh.prop()};
-	if (auto cursor = m_cursor.props(); !cursor.empty()) { m_props.push_back(cursor.front()); }
-	return m_props;
-}
-
 MeshView InputField::mesh() const noexcept {
 	m_meshes = {m_outline->mesh().front(), Quad::mesh().front(), m_textMesh.mesh().front()};
 	if (auto cursor = m_cursor.mesh(); !cursor.empty()) { m_meshes.push_back(cursor.front()); }

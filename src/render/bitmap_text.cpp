@@ -1,6 +1,5 @@
 #include <engine/render/bitmap_font.hpp>
 #include <engine/render/bitmap_text.hpp>
-#include <engine/render/prop.hpp>
 #include <graphics/glyph_pen.hpp>
 
 namespace le {
@@ -9,23 +8,11 @@ graphics::Geometry TextGen::operator()(glm::uvec2 atlas, Glyphs const& glyphs, s
 	return pen.generate(text, nLinePad, align);
 }
 
-Prop TextGen::prop(graphics::MeshPrimitive const& primitive, graphics::Texture const& atlas) const noexcept {
-	material.map_Kd = &atlas;
-	material.map_d = &atlas;
-	material.Tf = colour;
-	return Prop{&material, &primitive};
-}
-
 MeshView TextGen::mesh(graphics::MeshPrimitive const& primitive, graphics::Texture const& atlas) const noexcept {
 	material.map_Kd = &atlas;
 	material.map_d = &atlas;
 	material.Tf = colour;
 	return MeshObj{&primitive, &material};
-}
-
-Prop const& TextMesh::prop() const noexcept {
-	if (font) { prop_ = gen.prop(primitive, font->atlas()); }
-	return prop_;
 }
 
 MeshView TextMesh::mesh() const noexcept {

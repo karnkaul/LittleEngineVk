@@ -1,8 +1,8 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
+#include <engine/render/material.hpp>
 #include <engine/render/mesh_view.hpp>
-#include <engine/render/prop.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/expected.hpp>
@@ -51,9 +51,7 @@ class Model {
 
 	Failcode construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
-	Span<Prop const> props() const;
 	MeshView mesh() const;
-	// Span<Prop> propsRW() noexcept { return m_storage.props; }
 
 	std::size_t textureCount() const noexcept { return m_storage.textures.size(); }
 	std::size_t materialCount() const noexcept { return m_storage.materials.size(); }
@@ -76,7 +74,6 @@ class Model {
 		Map<Material> materials;
 		std::vector<MeshMat> meshMats;
 	} m_storage;
-	mutable std::vector<Prop> m_props;
 	mutable std::vector<MeshObj> m_meshes;
 };
 

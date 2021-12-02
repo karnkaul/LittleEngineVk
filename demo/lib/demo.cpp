@@ -240,7 +240,7 @@ class Drawer : public ListDrawer {
 
 class TestView : public gui::View {
   public:
-	TestView(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font) : gui::View(parent, std::move(name)) {
+	TestView(not_null<gui::ViewStack*> parent, std::string name, Hash fontURI = gui::defaultFontURI) : gui::View(parent, std::move(name)) {
 		m_canvas.size.value = {1280.0f, 720.0f};
 		m_canvas.size.unit = gui::Unit::eAbsolute;
 		auto& bg = push<gui::Quad>();
@@ -258,9 +258,9 @@ class TestView : public gui::View {
 		topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 		topLeft.m_material.Tf = colours::magenta;
-		auto& text = bg.push<gui::Text>(font);
+		auto& text = bg.push<gui::Text>(fontURI);
 		text.set("click").size(60U);
-		m_button = &push<gui::Button>(font);
+		m_button = &push<gui::Button>(fontURI);
 		m_button->m_rect.size = {200.0f, 100.0f};
 		m_button->m_text->set("Button").size(40U);
 		m_button->refresh();
@@ -286,7 +286,7 @@ class Dialogue : public View {
 		Hash style;
 	};
 
-	Dialogue(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info);
+	Dialogue(not_null<gui::ViewStack*> parent, std::string name, CreateInfo const& info);
 
 	[[nodiscard]] Widget::OnClick::handle addButton(std::string text, Widget::OnClick::callback&& onClick);
 
@@ -312,7 +312,7 @@ class Dialogue : public View {
 	Footer m_footer;
 	ButtonInfo m_buttonInfo;
 	Button::OnClick::handle m_closeSignal;
-	not_null<BitmapFont const*> m_font;
+	Hash m_fontURI;
 };
 
 struct Dialogue::CreateInfo {
@@ -339,16 +339,17 @@ struct Dialogue::CreateInfo {
 	Content content;
 	Footer footer;
 	ButtonInfo buttonInfo;
+	Hash fontURI = defaultFontURI;
 };
 
-Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info)
-	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
-	m_content = &push<Button>(font, info.content.style);
+Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo const& info)
+	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_fontURI(info.fontURI) {
+	m_content = &push<Button>(m_fontURI, info.content.style);
 	m_content->m_rect.size = info.content.size;
 	m_content->m_text->set(info.content.text).size(info.content.textSize);
 	m_content->m_interact = false;
 
-	m_header.title = &m_content->push<Button>(font, info.header.style);
+	m_header.title = &m_content->push<Button>(m_fontURI, info.header.style);
 	m_header.title->m_rect.size = {info.content.size.x, info.header.height};
 	m_header.title->m_rect.anchor.norm.y = 0.5f;
 	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
@@ -356,7 +357,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 	m_header.title->m_text->set(info.header.text).size(info.header.textSize);
 	m_header.title->m_style.widget.quad.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
-	m_header.close = &m_header.title->push<Button>(font);
+	m_header.close = &m_header.title->push<Button>(m_fontURI);
 	m_header.close->m_style.widget.quad.base.Tf = colours::red;
 	m_header.close->m_style.base.text.colour = colours::white;
 	m_header.close->m_text->set("x").size(20U);
@@ -375,7 +376,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 }
 
 Widget::OnClick::handle Dialogue::addButton(std::string text, Widget::OnClick::callback&& onClick) {
-	auto& button = m_footer.bg->push<Button>(m_font, m_buttonInfo.style);
+	auto& button = m_footer.bg->push<Button>(m_fontURI, m_buttonInfo.style);
 	m_footer.buttons.push_back(&button);
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
@@ -516,6 +517,15 @@ class App : public input::Receiver, public SceneRegistry {
 			pos.x = tweener.current();
 			m_registry.get<Transform>(node).position(pos);
 		}
+		{
+			DirLight l0, l1;
+			l0.direction = {-graphics::up, 0.0f};
+			l1.direction = {-graphics::front, 0.0f};
+			l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
+			l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
+			m_data.dirLights = {l0, l1};
+		}
+		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "draw_groups/ui", &m_eng->gfx().boot.vram);
 	}
 
 	bool block(input::State const& state) override {
@@ -541,8 +551,6 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	void init1() {
-		auto sky_test = m_eng->store().find<graphics::Texture>("cubemaps/test");
-		auto skymap = sky_test ? sky_test : m_eng->store().find<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_eng->store().find<BitmapFont>("fonts/default");
 		auto& vram = m_eng->gfx().boot.vram;
 
@@ -568,37 +576,27 @@ class App : public input::Receiver, public SceneRegistry {
 			m_eng->store().add("materials/player/cube", mat);
 		}
 
-		auto guiStack = spawn<gui::ViewStack>("gui_root", "draw_groups/ui", &m_eng->gfx().boot.vram);
-		m_data.guiStack = guiStack;
-		auto& stack = m_registry.get<gui::ViewStack>(guiStack);
-		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view", &font.get());
+		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
+		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
 		dci.textSize = 30U;
 		dci.options = {"zero", "one", "two", "/bthree", "four"};
 		dci.selected = 2;
-		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
+		auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
 		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
 		gui::Dialogue::CreateInfo gdci;
 		gdci.header.text = "Dialogue";
 		gdci.content.text = "Content\ngoes\nhere";
-		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", &font.get(), gdci);
+		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
 		gui::InputField::CreateInfo info;
 		// info.secret = true;
-		auto& in = dialogue.push<gui::InputField>(&font.get(), info);
+		auto& in = dialogue.push<gui::InputField>(info);
 		in.m_rect.anchor.offset.y = 60.0f;
 		in.align({-0.5f, 0.0f});
 		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
-		DirLight l0, l1;
-		l0.direction = {-graphics::up, 0.0f};
-		l1.direction = {-graphics::front, 0.0f};
-		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
-		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
-		m_data.dirLights = {l0, l1};
-
-		m_eng->store().add("skyboxes/sky_map", Skybox(&*skymap));
 
 		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;

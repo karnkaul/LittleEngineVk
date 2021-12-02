@@ -146,6 +146,13 @@
 			"uri": "fonts/default"
 		}
 	],
+	"skyboxes": [
+		{
+			"uri": "skyboxes/sky_map",
+			"cubemap": "cubemaps/test",
+			"fallback": "cubemaps/sky_dusk"
+		}
+	],
 	"models": [
 		{
 			"uri": "models/plant"

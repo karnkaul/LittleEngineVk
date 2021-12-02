@@ -7,9 +7,21 @@
 #include <unordered_map>
 
 namespace le {
+class Skybox;
+
 class AssetManifest : public utils::VBase {
   public:
-	enum class Kind { eSampler, eSpirV, eTexture, ePipelineState, eDrawGroup, eBitmapFont, eModel, eCOUNT_ };
+	enum class Kind {
+		eSampler,
+		eSpirV,
+		eTexture,
+		ePipelineState,
+		eDrawGroup,
+		eBitmapFont,
+		eSkybox,
+		eModel,
+		eCOUNT_,
+	};
 	using Kinds = ktl::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
@@ -56,6 +68,7 @@ class AssetManifest : public utils::VBase {
 	std::size_t addDrawGroups(Group group);
 	std::size_t addFonts(Group group);
 	std::size_t addBitmapFonts(Group group);
+	std::size_t addSkyboxes(Group group);
 	std::size_t addModels(Group group);
 	std::size_t unload();
 	template <typename T, typename U>
@@ -71,6 +84,7 @@ class AssetManifest : public utils::VBase {
 	AssetList<DrawGroup> m_drawGroups;
 	AssetLoadList<graphics::Texture> m_textures;
 	AssetLoadList<BitmapFont> m_bitmapFonts;
+	AssetList<Skybox> m_skyboxes;
 	AssetLoadList<Model> m_models;
 	AssetListLoader m_loader;
 	EnumArray<Kind, StageID> m_deps = {};

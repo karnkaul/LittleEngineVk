@@ -1,5 +1,7 @@
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/engine.hpp>
+#include <engine/render/skybox.hpp>
+#include <engine/utils/logger.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
 
@@ -66,6 +68,7 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eSpirV], m_jsonQIDs[Kind::ePipelineState]);
 	m_deps[Kind::eDrawGroup] = m_loader.stage(std::move(m_drawGroups), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eDrawGroup]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eBitmapFont]);
+	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eSkybox]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
 	loadCustom(scheduler);
 }
@@ -116,6 +119,7 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "shaders") { return addSpirV(std::move(group)); }
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "models") { return addModels(std::move(group)); }
+	if (groupName == "skyboxes") { return addSkyboxes(std::move(group)); }
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
 	if (groupName == "pipelines") { return addPipelineStates(std::move(group)); }
 	if (groupName == "draw_groups") { return addDrawGroups(std::move(group)); }
@@ -235,6 +239,23 @@ std::size_t AssetManifest::addDrawGroups(Group group) {
 	return ret;
 }
 
+std::size_t AssetManifest::addSkyboxes(Group group) {
+	std::size_t ret{};
+	for (auto& [uri, json] : group) {
+		if (auto const cubemap = json->find("cubemap"); cubemap && cubemap->is_string()) {
+			std::string fallback = json->get_as<std::string>("fallback");
+			m_skyboxes.add(std::move(uri), [this, uri = cubemap->as<std::string>(), fb = std::move(fallback)] {
+				if (auto cube = store().find<Cubemap>(uri)) { return Skybox(&*cube); }
+				if (auto cube = store().find<Cubemap>(fb)) { return Skybox(&*cube); }
+				utils::g_log.log(dl::level::warn, 1, "[Assets] Cubemaps not found: [{}] / [{}], using default", uri, fb);
+				return Skybox(store().find<Cubemap>("cubemaps/default").peek());
+			});
+			++ret;
+		}
+	}
+	return ret;
+}
+
 std::size_t AssetManifest::addBitmapFonts(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
@@ -284,6 +305,7 @@ std::size_t AssetManifest::unload() {
 	ret += unload<graphics::Texture>(m_textures.map);
 	ret += unload<Model>(m_models.map);
 	ret += unload<BitmapFont>(m_bitmapFonts.map);
+	ret += unload<Skybox>(m_skyboxes.map);
 	ret += unload<PipelineState>(m_pipelineStates.map);
 	ret += unload<DrawGroup>(m_drawGroups.map);
 	ret += unloadCustom();

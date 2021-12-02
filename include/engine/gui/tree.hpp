@@ -1,4 +1,5 @@
 #pragma once
+#include <core/hash.hpp>
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <core/utils/vbase.hpp>
@@ -12,6 +13,7 @@
 
 namespace le {
 struct Viewport;
+class BitmapFont;
 namespace input {
 struct Space;
 }
@@ -21,6 +23,8 @@ namespace le::gui {
 class TreeNode;
 
 using graphics::DrawScissor;
+
+inline Hash defaultFontURI = "fonts/default";
 
 DrawScissor scissor(input::Space const& space, glm::vec2 centre = {}, glm::vec2 halfSize = {0.5f, -0.5f}, bool normalised = true) noexcept;
 
@@ -33,6 +37,8 @@ class TreeRoot : public utils::VBase, public utils::Owner<TreeNode> {
 	T& push(Args&&... args) { return Owner::template push<T>(this, std::forward<Args>(args)...); }
 
 	container_t const& nodes() const noexcept { return m_ts; }
+
+	BitmapFont const* findFont(Hash uri = defaultFontURI) const;
 
 	template <typename T, typename Ret, typename... Args>
 		requires(is_derived_v<T>)

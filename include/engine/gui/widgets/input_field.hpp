@@ -8,7 +8,7 @@ class InputField : public Widget, public input::Receiver {
   public:
 	struct CreateInfo;
 
-	InputField(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info, Hash style = {});
+	InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fontURI = defaultFontURI, Hash style = {});
 
 	InputField(InputField&&) = delete;
 	InputField& operator=(InputField&&) = delete;

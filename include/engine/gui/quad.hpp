@@ -9,6 +9,7 @@ class Quad : public TreeNode {
 
 	void onUpdate(input::Space const& space) override;
 	Span<Prop const> props() const noexcept override;
+	MeshView mesh() const noexcept override { return MeshObj{&m_primitive, &m_material}; }
 
 	inline static u16 s_cornerPoints = 16;
 
@@ -24,7 +25,7 @@ class Quad : public TreeNode {
 // impl
 
 inline Span<Prop const> Quad::props() const noexcept {
-	m_prop = {m_material, &m_primitive};
+	m_prop = Prop{&m_material, &m_primitive};
 	return m_prop;
 }
 } // namespace le::gui

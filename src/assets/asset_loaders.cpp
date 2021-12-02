@@ -216,7 +216,9 @@ std::unique_ptr<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info
 	if (!sampler) { return {}; }
 	if (auto mci = Model::load(info.m_data.modelURI, info.m_data.jsonURI, info.media())) {
 		Model model;
-		if (model.construct(info.m_data.vram, *mci, *sampler, info.m_data.forceFormat)) { return std::make_unique<Model>(std::move(model)); }
+		if (model.construct(info.m_data.vram, *mci, *sampler, info.m_data.forceFormat) == Model::Failcode::eNone) {
+			return std::make_unique<Model>(std::move(model));
+		}
 	}
 	return {};
 }
@@ -227,7 +229,7 @@ bool AssetLoader<Model>::reload(Model& out_model, AssetLoadInfo<Model> const& in
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return false; }
 	if (auto mci = Model::load(info.m_data.modelURI, info.m_data.jsonURI, info.media())) {
-		return out_model.construct(info.m_data.vram, std::move(mci).value(), *sampler, info.m_data.forceFormat).has_value();
+		return out_model.construct(info.m_data.vram, std::move(mci).value(), *sampler, info.m_data.forceFormat) == Model::Failcode::eNone;
 	}
 	return false;
 }

@@ -29,6 +29,7 @@ struct Trigger {
 
 	struct {
 		Prop prop;
+		Material material;
 	} data;
 
 	void channels(u32 set, u32 unset = 0) noexcept {
@@ -41,6 +42,7 @@ struct Trigger {
 
 struct Trigger::Debug {
 	std::vector<Drawable> drawables(dens::registry const& registry) const;
+	std::vector<Drawable2> drawables2(dens::registry const& registry) const;
 };
 } // namespace physics
 } // namespace le

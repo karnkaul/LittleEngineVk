@@ -15,6 +15,7 @@ class InputField : public Widget, public input::Receiver {
 
 	Status onInput(input::State const& state) override;
 	Span<Prop const> props() const noexcept override;
+	MeshView mesh() const noexcept override;
 
 	bool block(input::State const& state) override;
 
@@ -31,6 +32,7 @@ class InputField : public Widget, public input::Receiver {
 	void reposition() noexcept;
 
 	mutable ktl::fixed_vector<Prop, 4> m_props;
+	mutable ktl::fixed_vector<MeshObj, 4> m_meshes;
 	std::string m_exposed;
 	std::optional<Quad> m_outline;
 	f32 m_offsetX{};

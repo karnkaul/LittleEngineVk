@@ -24,8 +24,8 @@ class PropProvider {
 	static PropProvider make(T const& source) noexcept;
 
 	PropProvider() = default;
-	explicit PropProvider(Hash meshID, Material material = {}) noexcept;
-	explicit PropProvider(Span<Prop const> props) noexcept : m_props({{}, props}) {}
+	explicit PropProvider(Hash meshID, not_null<Material const*> material) noexcept;
+	explicit PropProvider(Span<Prop const> props) noexcept : m_props({props, {}}) {}
 
 	bool active() const noexcept { return cached() || m_extract; }
 	explicit operator bool() const noexcept { return active(); }
@@ -35,8 +35,8 @@ class PropProvider {
 
   private:
 	struct Props {
-		Material material;
 		Span<Prop const> props;
+		Material const* material{};
 	};
 
 	template <typename T>
@@ -45,7 +45,7 @@ class PropProvider {
 	using Extract = Span<Prop const> (*)(PropProvider const*);
 
 	template <typename T>
-	PropProvider(Hash uri, Material material, tag_t<T>) noexcept;
+	PropProvider(Hash uri, Material const* material, tag_t<T>) noexcept;
 
 	template <typename T>
 	static Span<Prop const> extract(PropProvider const* self);
@@ -80,10 +80,11 @@ PropProvider PropProvider::make(T const& source) noexcept {
 	return PropProvider(PropExtractor<T>{}(source));
 }
 
-inline PropProvider::PropProvider(Hash meshID, Material material) noexcept : PropProvider(meshID, material, tag_t<graphics::MeshPrimitive>{}) {}
+inline PropProvider::PropProvider(Hash meshID, not_null<Material const*> material) noexcept
+	: PropProvider(meshID, material, tag_t<graphics::MeshPrimitive>{}) {}
 
 template <typename T>
-PropProvider::PropProvider(Hash uri, Material material, tag_t<T>) noexcept : m_extract(&extract<T>), m_uri(uri) {
+PropProvider::PropProvider(Hash uri, Material const* material, tag_t<T>) noexcept : m_extract(&extract<T>), m_uri(uri) {
 	m_props.get<Props>().material = material;
 }
 

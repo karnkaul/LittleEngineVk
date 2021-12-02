@@ -12,14 +12,23 @@ TextCursor::TextCursor(not_null<BitmapFont const*> font, Flags flags)
 }
 
 Prop const& TextCursor::cursor() const noexcept {
-	m_prop.mesh = &m_primitive;
-	m_prop.material.Tf = m_gen.colour;
-	m_prop.material.d = m_alpha;
+	m_material.Tf = m_gen.colour;
+	m_material.d = m_alpha;
+	m_prop = Prop{&m_material, &m_primitive};
 	return m_prop;
 }
 
 Span<Prop const> TextCursor::props() const noexcept {
 	if (m_drawCursor) { return cursor(); }
+	return {};
+}
+
+MeshView TextCursor::mesh() const noexcept {
+	if (m_drawCursor) {
+		m_material.Tf = m_gen.colour;
+		m_material.d = m_alpha;
+		return MeshObj{&m_primitive, &m_material};
+	}
 	return {};
 }
 

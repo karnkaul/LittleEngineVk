@@ -4,6 +4,7 @@
 #include <core/utils/vbase.hpp>
 #include <engine/gui/rect.hpp>
 #include <engine/render/flex.hpp>
+#include <engine/render/mesh_view.hpp>
 #include <engine/render/prop.hpp>
 #include <engine/utils/owner.hpp>
 #include <graphics/basis.hpp>
@@ -63,6 +64,7 @@ class TreeNode : public TreeRoot {
 	bool hit(glm::vec2 point) const noexcept { return m_hitTest && m_rect.hit(point); }
 
 	virtual Span<Prop const> props() const noexcept { return {}; }
+	virtual MeshView mesh() const noexcept { return {}; }
 
 	DrawScissor m_scissor;
 	glm::quat m_orientation = graphics::identity;

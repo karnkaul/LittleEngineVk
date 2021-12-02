@@ -52,8 +52,22 @@ dens::entity SceneRegistry::spawnProp(std::string name, Hash groupURI, PropProvi
 	return ret;
 };
 
-dens::entity SceneRegistry::spawnMesh(std::string name, Hash meshURI, Hash groupURI, Material material) {
+dens::entity SceneRegistry::spawnMesh_old(std::string name, Hash meshURI, Hash groupURI, not_null<Material const*> material) {
 	return spawnProp(std::move(name), groupURI, PropProvider(meshURI, material));
+}
+
+dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, Hash groupURI) {
+	auto ret = spawnNode(std::move(name));
+	m_registry.attach<DrawGroup>(ret, drawGroup(groupURI));
+	m_registry.attach<MeshProvider>(ret, std::move(provider));
+	return ret;
+}
+
+dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, Hash groupURI) {
+	auto ret = spawnNode(std::move(name));
+	m_registry.attach<DrawGroup>(ret, drawGroup(groupURI));
+	m_registry.attach<DynamicMesh>(ret, std::move(dynMesh));
+	return ret;
 }
 
 DrawGroup SceneRegistry::drawGroup(Hash id) const {
@@ -62,6 +76,15 @@ DrawGroup SceneRegistry::drawGroup(Hash id) const {
 	}
 	return {};
 }
+
+Material const* SceneRegistry::material(Hash id) const {
+	if (auto store = Services::find<AssetStore>()) {
+		if (auto material = store->find<Material>(id)) { return &*material; }
+	}
+	return {};
+}
+
+Material const* SceneRegistry::defaultMaterial() const { return material("materials/default"); }
 
 void SceneRegistry::updateSystems(dts::scheduler& scheduler, Time_s dt, input::Frame const* frame) {
 	static input::Frame const s_blank{};

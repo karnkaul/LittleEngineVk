@@ -1,6 +1,7 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
+#include <engine/render/mesh_view.hpp>
 #include <engine/render/prop.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>
@@ -25,7 +26,8 @@ class Model {
 		eTextureNotFound,
 		eObjNotFound,
 		eMtlNotFound,
-		eTextureCreateFailure
+		eTextureCreateFailure,
+		eNone
 	};
 
 	struct Error {
@@ -47,21 +49,35 @@ class Model {
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Media const& media);
 
-	Result<Span<Prop const>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
+	Failcode construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
-	Span<Prop const> props() const noexcept { return m_storage.props; }
-	Span<Prop> propsRW() noexcept { return m_storage.props; }
+	Span<Prop const> props() const;
+	MeshView mesh() const;
+	// Span<Prop> propsRW() noexcept { return m_storage.props; }
+
+	std::size_t textureCount() const noexcept { return m_storage.textures.size(); }
+	std::size_t materialCount() const noexcept { return m_storage.materials.size(); }
+	std::size_t primitiveCount() const noexcept { return m_storage.meshMats.size(); }
+
+	MeshPrimitive* primitive(std::size_t index);
+	Material* material(std::size_t index);
 
   private:
 	template <typename V>
 	using Map = std::unordered_map<Hash, V>;
 
+	struct MeshMat {
+		MeshPrimitive primitive;
+		Hash mat;
+	};
+
 	struct {
 		Map<Texture> textures;
 		Map<Material> materials;
-		Map<MeshPrimitive> primitives;
-		std::vector<Prop> props;
+		std::vector<MeshMat> meshMats;
 	} m_storage;
+	mutable std::vector<Prop> m_props;
+	mutable std::vector<MeshObj> m_meshes;
 };
 
 struct Model::TexData {

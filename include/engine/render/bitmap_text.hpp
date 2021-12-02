@@ -1,4 +1,5 @@
 #pragma once
+#include <engine/render/mesh_view.hpp>
 #include <engine/render/prop.hpp>
 #include <graphics/glyph.hpp>
 #include <graphics/mesh_primitive.hpp>
@@ -9,7 +10,6 @@ namespace le {
 namespace graphics {
 class Texture;
 }
-struct Prop;
 class BitmapFont;
 
 struct TextGen {
@@ -17,6 +17,7 @@ struct TextGen {
 	using Glyphs = graphics::GlyphMap;
 	using Size = graphics::Glyph::Size;
 
+	mutable Material material;
 	glm::vec3 position{};
 	glm::vec2 align{};
 	graphics::RGBA colour;
@@ -24,6 +25,7 @@ struct TextGen {
 	f32 nLinePad = 0.3f;
 
 	Prop prop(graphics::MeshPrimitive const& primitive, graphics::Texture const& atlas) const noexcept;
+	MeshView mesh(graphics::MeshPrimitive const& primitive, graphics::Texture const& atlas) const noexcept;
 
 	graphics::Geometry operator()(glm::uvec2 atlas, Glyphs const& glyphs, std::string_view text) const;
 };
@@ -38,6 +40,7 @@ struct TextMesh {
 
 	Prop const& prop() const noexcept;
 	Span<Prop const> props() const noexcept { return prop(); }
+	MeshView mesh() const noexcept;
 };
 
 class BitmapText {
@@ -48,6 +51,7 @@ class BitmapText {
 
 	virtual void set(std::string_view text);
 	virtual Span<Prop const> props() const { return m_textMesh.props(); }
+	MeshView mesh() const noexcept { return m_textMesh.mesh(); }
 	TextMesh& textMesh() noexcept { return m_textMesh; }
 
   protected:

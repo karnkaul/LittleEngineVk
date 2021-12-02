@@ -148,7 +148,7 @@ struct PlayerController {
 	}
 };
 
-class Drawer : public ListDrawer {
+class Drawer : public ListDrawer2 {
   public:
 	using Camera = graphics::Camera;
 
@@ -195,23 +195,26 @@ class Drawer : public ListDrawer {
 	}
 
 	void buildDrawLists(PipelineFactory& pf, vk::RenderPass rp) override {
-		if (m_scene.registry) { populate<DrawListGen3D, DrawListGenUI>(*m_scene.registry, pf, rp); }
+		if (m_scene.registry) { populate<DrawListGen>(*m_scene.registry, pf, rp); }
 	}
 
 	void writeSets(DescriptorMap map, List const& list) override {
 		auto set0 = map.set(0);
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
-		for (Drawable const& drawable : list.drawables) {
-			if (!drawable.props.empty()) {
+		for (Drawable2 const& drawable : list.drawables) {
+			if (auto const meshes = drawable.mesh.meshViews(); !meshes.empty()) {
 				map.set(1).update(0, drawable.model);
-				for (Prop const& prop : drawable.props) {
-					Material const& mat = prop.material;
-					auto set2 = map.set(2);
-					set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
-					set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
-					set2.update(2, mat.map_Ks && mat.map_Ks->ready() ? *mat.map_Ks : *m_defaults.black);
-					map.set(3).update(0, ShadeMat::make(mat));
+				for (MeshObj const mesh : meshes) {
+					if (mesh.primitive) {
+						static Material const s_blank;
+						Material const& mat = mesh.material ? *mesh.material : s_blank;
+						auto set2 = map.set(2);
+						set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
+						set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
+						set2.update(2, mat.map_Ks && mat.map_Ks->ready() ? *mat.map_Ks : *m_defaults.black);
+						map.set(3).update(0, ShadeMat::make(mat));
+					}
 				}
 			}
 		}
@@ -219,14 +222,14 @@ class Drawer : public ListDrawer {
 
 	void draw(DescriptorBinder bind, List const& list, graphics::CommandBuffer cb) const override {
 		bind(0);
-		for (Drawable const& d : list.drawables) {
-			if (!d.props.empty()) {
+		for (Drawable2 const& d : list.drawables) {
+			if (auto meshes = d.mesh.meshViews(); !meshes.empty()) {
 				bind(1);
 				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
-				for (Prop const& prop : d.props) {
+				for (MeshObj const prop : meshes) {
 					bind(2, 3);
-					ENSURE(prop.mesh, "Null mesh");
-					prop.mesh->draw(cb);
+					EXPECT(prop.primitive);
+					if (prop.primitive) { prop.primitive->draw(cb); }
 				}
 			}
 		}
@@ -486,8 +489,9 @@ class App : public input::Receiver, public SceneRegistry {
 			Material mat;
 			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
+			m_eng->store().add("materials/player/cube", mat);
 			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawnMesh("player", "meshes/cube", "draw_groups/lit", mat);
+			auto player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "draw_groups/lit");
 			m_registry.get<Transform>(player).position({0.0f, 0.0f, 5.0f});
 			m_data.player = player;
 			m_registry.attach<PlayerController>(m_data.player);
@@ -537,53 +541,63 @@ class App : public input::Receiver, public SceneRegistry {
 		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
 		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 		m_data.dirLights = {l0, l1};
-		spawn<Skybox>("skybox", "draw_groups/skybox", &*skymap);
 		{
-			auto ent = spawnProp<graphics::MeshPrimitive>("prop_1", "meshes/cube", "draw_groups/basic");
+			m_eng->store().add("skyboxes/sky_map", Skybox(&*skymap));
+			spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox");
+		}
+		{
+			// auto ent = spawnProp<graphics::MeshPrimitive>("prop_1", "meshes/cube", "draw_groups/basic");
+			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "draw_groups/basic");
 			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawnProp<graphics::MeshPrimitive>("prop_2", "meshes/cone", "draw_groups/tex");
+			auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "draw_groups/tex");
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
-			Material mat;
 			// mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 			// auto tex = m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 
-			mat.map_Kd = &m_testTex;
-			m_data.roundedQuad = spawnMesh("prop_3", "meshes/rounded_quad", "draw_groups/tex", mat);
-			m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
+			m_testMat.map_Kd = &m_testTex;
+			// m_data.roundedQuad = spawnMesh_old("prop_3", "meshes/rounded_quad", "draw_groups/tex", &m_testMat);
+			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
+				m_data.roundedQuad = spawnNode("prop_3");
+				m_registry.attach<DrawGroup>(m_data.roundedQuad, drawGroup("draw_groups/tex"));
+				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
+				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
+			}
 		}
-		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("draw_groups/ui"), m_data.text->prop(*font)); }
 		{
-			auto ent0 = spawnProp<TextMesh>("text_2d/mesh", *m_data.text, "draw_groups/ui");
+			m_data.entities["text_2d/mesh"] = spawnMesh("text_2d/mesh", DynamicMesh::make<TextMesh>(&*m_data.text), "draw_groups/ui");
+			m_data.entities["text_2d/cursor"] = spawnMesh("text_2d/cursor", DynamicMesh::make<input::TextCursor>(&*m_data.cursor), "draw_groups/ui");
+			/*auto ent0 = spawnProp<TextMesh>("text_2d/mesh", *m_data.text, "draw_groups/ui");
 			m_data.entities["text_2d/mesh"] = ent0;
 			auto ent = spawnProp<input::TextCursor>("text_2d/cursor", *m_data.cursor, "draw_groups/ui");
-			m_data.entities["text_2d/cursor"] = ent;
+			m_data.entities["text_2d/cursor"] = ent;*/
 		}
 		{
 			{
-				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "draw_groups/lit");
+				auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "draw_groups/lit");
 				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
 				m_data.entities["model_0_0"] = ent0;
 
-				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "draw_groups/lit");
+				auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "draw_groups/lit");
 				auto& node = m_registry.get<Transform>(ent1);
 				node.position({-2.0f, -1.0f, 5.0f});
 				m_data.entities["model_0_1"] = ent1;
 				m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
 			}
 			if (auto model = m_eng->store().find<Model>("models/teapot")) {
-				Prop& prop = model->propsRW().front();
-				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "draw_groups/lit");
+				// Prop& prop = model->propsRW().front();
+				//  prop.material2->Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
+				model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
+				auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "draw_groups/lit");
 				m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
 				m_data.entities["model_1_0"] = ent0;
 			}
 			if (m_eng->store().exists<Model>("models/nanosuit")) {
-				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "draw_groups/lit");
+				auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "draw_groups/lit");
 				m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
 				m_data.entities["model_1"] = ent;
 			}
@@ -591,7 +605,8 @@ class App : public input::Receiver, public SceneRegistry {
 		{
 			Material mat;
 			mat.Tf = colours::yellow;
-			auto node = spawnMesh("trigger/cube", "meshes/cube", "draw_groups/basic", mat);
+			m_eng->store().add("materials/yellow", mat);
+			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "draw_groups/basic");
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
 			auto& trig1 = m_registry.attach<physics::Trigger>(node);
@@ -607,14 +622,15 @@ class App : public input::Receiver, public SceneRegistry {
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
-		if (auto text = m_registry.find<PropProvider>(m_data.entities["text_2d/mesh"])) {
+		// if (auto text = m_registry.find<DynamicMesh>(m_data.entities["text_2d/mesh"])) {
+		if (m_data.text && m_data.cursor) {
 			graphics::Geometry geom;
 			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->primitive.construct(std::move(geom)); }
-			*text = PropProvider::make(*m_data.text);
+			//*text = PropProvider::make(*m_data.text);
 			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
 			}
-			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
+			// if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
 		if (auto const frame = m_eng->gfx().context.renderer().offScreen(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
@@ -641,11 +657,11 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 			m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 			if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
+			/*if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
 				tr->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
-			}
+			}*/
 			if (auto tr = m_registry.find<Transform>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);
 				auto pos = tr->position();
@@ -695,6 +711,7 @@ class App : public input::Receiver, public SceneRegistry {
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
 	mutable Drawer m_drawer;
+	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
 

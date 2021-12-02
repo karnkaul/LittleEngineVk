@@ -35,9 +35,9 @@ void PhysicsSystem::update(dens::registry const& registry) {
 			if (ch && colliding(ltrigger, rtrigger, ltransform.position(), rtransform.position())) {
 				ltrigger.onTrigger(rtrigger);
 				rtrigger.onTrigger(ltrigger);
-				ltrigger.data.prop.material.Tf = rtrigger.data.prop.material.Tf = colours::red;
+				ltrigger.data.material.Tf = rtrigger.data.material.Tf = colours::red;
 			} else {
-				ltrigger.data.prop.material.Tf = rtrigger.data.prop.material.Tf = colours::green;
+				ltrigger.data.material.Tf = rtrigger.data.material.Tf = colours::green;
 			}
 		}
 	}

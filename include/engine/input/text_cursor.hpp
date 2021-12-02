@@ -37,6 +37,7 @@ class TextCursor {
 	/// \brief Obtain cursor if active else empty Span
 	///
 	Span<Prop const> props() const noexcept;
+	MeshView mesh() const noexcept;
 
 	///
 	/// \brief Erase character one behind cursor and decrement cursor
@@ -111,6 +112,7 @@ class TextCursor {
 
   private:
 	graphics::MeshPrimitive m_primitive;
+	mutable Material m_material;
 	mutable Prop m_prop;
 	glm::vec3 m_position{};
 	glm::vec2 m_offset = {0.3f, 0.3f};

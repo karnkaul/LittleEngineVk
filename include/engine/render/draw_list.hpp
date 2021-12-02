@@ -17,4 +17,13 @@ struct DrawList {
 		std::size_t operator()(DrawList const& list) const { return list.hash(); }
 	};
 };
+
+struct DrawList2 {
+	DrawGroup group;
+	std::vector<Drawable2> drawables;
+
+	auto operator<=>(DrawList2 const& rhs) const noexcept { return group <=> rhs.group; }
+
+	Hash hash() const { return group.hash(); }
+};
 } // namespace le

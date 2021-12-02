@@ -7,6 +7,11 @@ struct DrawListGen3D {
 	void operator()(DrawListFactory::GroupMap& map, dens::registry const& registry) const;
 };
 
+struct DrawListGen {
+	// Populates DrawGroup + SceneNode + Prop, DrawGroup + SceneNode + PropProvider, DrawGroup + Skybox
+	void operator()(DrawListFactory::GroupMap2& map, dens::registry const& registry) const;
+};
+
 struct DrawListGenUI {
 	// Populates DrawGroup + gui::ViewStack
 	void operator()(DrawListFactory::GroupMap& map, dens::registry const& registry) const;

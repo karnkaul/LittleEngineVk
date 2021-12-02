@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <core/io/media.hpp>
+#include <core/utils/expect.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
@@ -263,14 +264,13 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	return parser(media);
 }
 
-Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
-	Map<Material> materials;
-	decltype(m_storage) storage;
+Model::Failcode Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
+	auto storage = decltype(m_storage){};
 	for (auto const& tex : info.textures) {
 		if (!tex.bytes.empty()) {
 			graphics::Texture texture(vram, sampler.sampler());
 			if (!texture.construct(tex.bytes, graphics::Texture::Payload::eColour, forceFormat.value_or(graphics::Image::srgb_v))) {
-				return Error{{}, Failcode::eTextureCreateFailure};
+				return Failcode::eTextureCreateFailure;
 			}
 			storage.textures.emplace(tex.uri, std::move(texture));
 		}
@@ -280,23 +280,71 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 		material.map_Kd = texture(storage.textures, info.textures, mat.diffuse);
 		material.map_Ks = texture(storage.textures, info.textures, mat.specular);
 		material.map_d = texture(storage.textures, info.textures, mat.alpha);
-		materials.emplace(mat.hash, material);
+		storage.materials.emplace(mat.hash, material);
 	}
 	for (auto const& m : info.meshes) {
-		graphics::MeshPrimitive mesh(vram);
-		mesh.construct(m.geometry);
-		auto [it, _] = storage.primitives.emplace((info.uri / m.uri).generic_string(), std::move(mesh));
-		Prop prop;
-		prop.mesh = &it->second;
+		MeshMat meshMat{MeshPrimitive(vram), {}};
+		meshMat.primitive.construct(m.geometry);
+		Hash const hash = info.uri / m.uri;
 		if (!m.matIndices.empty()) {
 			auto const& mat = info.materials[m.matIndices.front()];
-			auto const it = materials.find(mat.hash);
-			ENSURE(it != materials.end(), "Invalid hash");
-			if (it != materials.end()) { prop.material = it->second; }
+			EXPECT(storage.materials.contains(mat.hash));
+			meshMat.mat = mat.hash;
+		} else {
+			auto [i, _] = storage.materials.emplace(hash, Material());
+			meshMat.mat = hash;
 		}
-		storage.props.push_back(prop);
+		storage.meshMats.push_back(std::move(meshMat));
 	}
 	m_storage = std::move(storage);
-	return Span<Prop const>(m_storage.props);
+	return Failcode::eNone;
+}
+
+Span<Prop const> Model::props() const {
+	m_props.clear();
+	m_props.reserve(m_storage.meshMats.size());
+	for (auto const& meshMat : m_storage.meshMats) {
+		Prop prop;
+		prop.primitive = &meshMat.primitive;
+		if (meshMat.mat != Hash()) {
+			auto const it = m_storage.materials.find(meshMat.mat);
+			EXPECT(it != m_storage.materials.end());
+			if (it != m_storage.materials.end()) {
+				// prop.material = it->second;
+				prop.material = &it->second;
+			}
+		}
+		m_props.push_back(prop);
+	}
+	return m_props;
+}
+
+MeshView Model::mesh() const {
+	m_meshes.clear();
+	m_meshes.reserve(m_storage.meshMats.size());
+	for (auto const& meshMat : m_storage.meshMats) {
+		MeshObj mesh;
+		mesh.primitive = &meshMat.primitive;
+		EXPECT(meshMat.mat != Hash());
+		if (meshMat.mat != Hash()) {
+			auto const it = m_storage.materials.find(meshMat.mat);
+			EXPECT(it != m_storage.materials.end());
+			if (it != m_storage.materials.end()) { mesh.material = &it->second; }
+		}
+		m_meshes.push_back(mesh);
+	}
+	return MeshObjView(m_meshes);
+}
+
+MeshPrimitive* Model::primitive(std::size_t index) {
+	if (index < primitiveCount()) { return &m_storage.meshMats[index].primitive; }
+	return {};
+}
+
+Material* Model::material(std::size_t index) {
+	if (index < primitiveCount()) {
+		if (auto it = m_storage.materials.find(m_storage.meshMats[index].mat); it != m_storage.materials.end()) { return &it->second; }
+	}
+	return {};
 }
 } // namespace le

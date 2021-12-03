@@ -69,14 +69,6 @@ class OBJReader final {
   private:
 	using Failcode = Model::Failcode;
 	using Error = Model::Error;
-	struct IncrHasher {
-		std::size_t count = 0;
-
-		template <typename T>
-		std::size_t operator()(T const& t) noexcept {
-			return std::hash<T>{}(t) << count++;
-		}
-	};
 
 	std::stringstream m_obj;
 	std::stringstream m_mtl;
@@ -202,16 +194,28 @@ graphics::Geometry OBJReader::vertices(tinyobj::shape_t const& shape) {
 	ret.reserve((u32)m_attrib.vertices.size(), (u32)shape.mesh.indices.size());
 	std::unordered_map<std::size_t, u32> vertIndices;
 	vertIndices.reserve(shape.mesh.indices.size());
+	auto const fHash = [](Span<f32 const> fs) {
+		std::size_t ret{};
+		std::size_t offset{};
+		for (f32 const f : fs) { ret ^= (std::hash<f32>{}(f) << offset++); }
+		return ret;
+	};
+	auto const vertHash = [fHash](tinyobj::attrib_t const& attrib, tinyobj::index_t const& idx) {
+		std::size_t ret = fHash(Span(attrib.vertices.data() + std::size_t(idx.vertex_index), 3));
+		ret ^= (fHash(Span(attrib.colors.data() + std::size_t(idx.vertex_index), 3)) << 2);
+		if (idx.normal_index >= 0) { ret ^= (fHash(Span(attrib.normals.data() + std::size_t(idx.normal_index), 3)) << 4); }
+		if (idx.texcoord_index >= 0) { ret ^= (fHash(Span(attrib.texcoords.data() + std::size_t(idx.texcoord_index), 2)) << 8); }
+		return ret;
+	};
 	for (auto const& idx : shape.mesh.indices) {
-		glm::vec3 const p = m_scale * (m_origin + vec3(m_attrib.vertices, (std::size_t)idx.vertex_index));
-		glm::vec3 const c = vec3(m_attrib.colors, (std::size_t)idx.vertex_index);
-		glm::vec3 const n = vec3(m_attrib.normals, idx.normal_index);
-		glm::vec2 const t = texCoords(m_attrib.texcoords, idx.texcoord_index, m_invertV);
-		IncrHasher inc;
-		std::size_t const hash = inc(p) ^ inc(c) ^ inc(n) ^ inc(t);
+		auto const hash = vertHash(m_attrib, idx);
 		if (auto const search = vertIndices.find(hash); search != vertIndices.end()) {
 			ret.indices.push_back(search->second);
 		} else {
+			glm::vec3 const p = m_scale * (m_origin + vec3(m_attrib.vertices, (std::size_t)idx.vertex_index));
+			glm::vec3 const c = vec3(m_attrib.colors, (std::size_t)idx.vertex_index);
+			glm::vec3 const n = vec3(m_attrib.normals, idx.normal_index);
+			glm::vec2 const t = texCoords(m_attrib.texcoords, idx.texcoord_index, m_invertV);
 			auto const idx = ret.addVertex({p, c, n, t});
 			ret.indices.push_back(idx);
 			vertIndices.emplace(hash, idx);

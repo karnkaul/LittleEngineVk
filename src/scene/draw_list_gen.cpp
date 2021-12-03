@@ -56,7 +56,7 @@ void DebugDrawListGen::operator()(DrawListFactory::GroupMap& map, dens::registry
 		for (auto [_, c] : registry.view<DrawGroupProvider, physics::Trigger::Debug>(exclude)) {
 			auto& [group, physics] = c;
 			if (group.active()) {
-				if (auto drawables = physics.drawables2(registry); !drawables.empty()) {
+				if (auto drawables = physics.drawables(registry); !drawables.empty()) {
 					std::move(drawables.begin(), drawables.end(), std::back_inserter(map[group.group()]));
 				}
 			}

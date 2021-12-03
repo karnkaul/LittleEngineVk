@@ -22,7 +22,7 @@ dens::entity_view<Transform, Trigger> Trigger::attach(dens::entity entity, dens:
 	return {entity, ret};
 }
 
-std::vector<Drawable> Trigger::Debug::drawables2(dens::registry const& registry) const {
+std::vector<Drawable> Trigger::Debug::drawables(dens::registry const& registry) const {
 	std::vector<Drawable> ret;
 	if (auto mesh = cubeMesh()) {
 		for (auto const& [e, c] : registry.view<Trigger, Transform>()) {

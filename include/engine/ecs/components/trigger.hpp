@@ -41,7 +41,7 @@ struct Trigger {
 };
 
 struct Trigger::Debug {
-	std::vector<Drawable> drawables2(dens::registry const& registry) const;
+	std::vector<Drawable> drawables(dens::registry const& registry) const;
 };
 } // namespace physics
 } // namespace le

@@ -27,12 +27,6 @@ class Model {
 		eObjNotFound,
 		eMtlNotFound,
 		eTextureCreateFailure,
-		eNone
-	};
-
-	struct Error {
-		std::string message;
-		Failcode failcode{};
 	};
 
 	struct TexData;
@@ -45,11 +39,11 @@ class Model {
 	using Texture = graphics::Texture;
 	using MeshPrimitive = graphics::MeshPrimitive;
 	template <typename T>
-	using Result = ktl::expected<T, Error>;
+	using Result = ktl::expected<T, Failcode>;
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Media const& media);
 
-	Failcode construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
+	Result<void> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
 	MeshView mesh() const;
 

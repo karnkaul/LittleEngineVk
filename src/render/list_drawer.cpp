@@ -32,6 +32,7 @@ void ListDrawer::buildLists(graphics::PipelineFactory& pf, vk::RenderPass rp) {
 	m_lists.clear();
 	m_lists.reserve(m_drawLists.size());
 	for (auto& list : m_drawLists) {
+		ENSURE(list.group.state, "Invalid draw list");
 		auto pipe = pf.get(*list.group.state, rp);
 		m_lists.push_back({list.drawables, pipe});
 	}

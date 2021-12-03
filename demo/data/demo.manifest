@@ -141,9 +141,23 @@
 			"uri": "textures/test.png"
 		}
 	],
+	"materials": [
+		{
+			"uri": "materials/player/cube",
+			"map_Kd": "textures/container2/diffuse",
+			"map_Ks": "textures/container2/specular"
+		}
+	],
 	"bitmap_fonts": [
 		{
 			"uri": "fonts/default"
+		}
+	],
+	"skyboxes": [
+		{
+			"uri": "skyboxes/sky_map",
+			"cubemap": "cubemaps/test",
+			"fallback": "cubemaps/sky_dusk"
 		}
 	],
 	"models": [

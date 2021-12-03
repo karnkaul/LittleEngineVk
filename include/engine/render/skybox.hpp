@@ -1,5 +1,6 @@
 #pragma once
-#include <engine/render/prop.hpp>
+#include <engine/render/material.hpp>
+#include <engine/render/mesh_view.hpp>
 #include <graphics/mesh_primitive.hpp>
 
 namespace le {
@@ -13,9 +14,9 @@ class Skybox {
   public:
 	Skybox(not_null<Cubemap const*> cubemap);
 
-	Prop const& prop() const noexcept;
+	MeshView mesh() const;
 
-	mutable Prop m_prop;
+	mutable Material m_material;
 	graphics::MeshPrimitive m_cube;
 	not_null<Cubemap const*> m_cubemap;
 };

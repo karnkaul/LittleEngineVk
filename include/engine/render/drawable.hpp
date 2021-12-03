@@ -1,6 +1,6 @@
 #pragma once
 #include <core/span.hpp>
-#include <engine/render/prop.hpp>
+#include <engine/render/mesh_view.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 
@@ -14,7 +14,7 @@ struct Rect2D {
 struct Drawable {
 	glm::mat4 model = glm::mat4(1.0f);
 	Rect2D scissor;
-	Span<Prop const> props;
+	MeshView mesh;
 };
 
 struct NoDraw {};

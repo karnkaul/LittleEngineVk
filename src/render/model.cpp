@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <core/io/media.hpp>
+#include <core/utils/expect.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_store.hpp>
 #include <engine/render/model.hpp>
@@ -67,15 +68,6 @@ class OBJReader final {
 
   private:
 	using Failcode = Model::Failcode;
-	using Error = Model::Error;
-	struct IncrHasher {
-		std::size_t count = 0;
-
-		template <typename T>
-		std::size_t operator()(T const& t) noexcept {
-			return std::hash<T>{}(t) << count++;
-		}
-	};
 
 	std::stringstream m_obj;
 	std::stringstream m_mtl;
@@ -118,15 +110,15 @@ Model::Result<Model::CreateInfo> OBJReader::operator()(io::Media const& media) {
 		msr = &*m_matStrReader;
 	}
 	bool const bOK = tinyobj::LoadObj(&m_attrib, &m_shapes, &m_materials, &warn, &err, &m_obj, msr);
-	if (m_shapes.empty()) { return Error{"No shapes parsed", Failcode::eObjMtlReadFailure}; }
-	if (!warn.empty() && !bOK) { return Error{std::move(warn), Failcode::eObjMtlReadFailure}; }
-	if (!err.empty()) { return Error{std::move(err), Failcode::eObjMtlReadFailure}; }
-	if (!bOK) { return Error{"Unknown error", Failcode::eObjMtlReadFailure}; }
+	if (m_shapes.empty()) { return Failcode::eObjMtlReadFailure; }
+	if (!warn.empty() && !bOK) { return Failcode::eObjMtlReadFailure; }
+	if (!err.empty()) { return Failcode::eObjMtlReadFailure; }
+	if (!bOK) { return Failcode::eObjMtlReadFailure; }
 	Model::CreateInfo ret;
 	for (auto const& shape : m_shapes) { ret.meshes.push_back(processShape(ret, shape)); }
 	for (auto& texture : ret.textures) {
 		auto bytes = media.bytes(texture.filename);
-		if (!bytes.has_value()) { return Error{texture.filename.generic_string(), Failcode::eTextureNotFound}; }
+		if (!bytes.has_value()) { return Failcode::eTextureNotFound; }
 		texture.bytes = std::move(bytes).value();
 	}
 	return Model::Result<Model::CreateInfo>(std::move(ret));
@@ -201,16 +193,28 @@ graphics::Geometry OBJReader::vertices(tinyobj::shape_t const& shape) {
 	ret.reserve((u32)m_attrib.vertices.size(), (u32)shape.mesh.indices.size());
 	std::unordered_map<std::size_t, u32> vertIndices;
 	vertIndices.reserve(shape.mesh.indices.size());
+	auto const fHash = [](Span<f32 const> fs) {
+		std::size_t ret{};
+		std::size_t offset{};
+		for (f32 const f : fs) { ret ^= (std::hash<f32>{}(f) << offset++); }
+		return ret;
+	};
+	auto const vertHash = [fHash](tinyobj::attrib_t const& attrib, tinyobj::index_t const& idx) {
+		std::size_t ret = fHash(Span(attrib.vertices.data() + std::size_t(idx.vertex_index), 3));
+		ret ^= (fHash(Span(attrib.colors.data() + std::size_t(idx.vertex_index), 3)) << 2);
+		if (idx.normal_index >= 0) { ret ^= (fHash(Span(attrib.normals.data() + std::size_t(idx.normal_index), 3)) << 4); }
+		if (idx.texcoord_index >= 0) { ret ^= (fHash(Span(attrib.texcoords.data() + std::size_t(idx.texcoord_index), 2)) << 8); }
+		return ret;
+	};
 	for (auto const& idx : shape.mesh.indices) {
-		glm::vec3 const p = m_scale * (m_origin + vec3(m_attrib.vertices, (std::size_t)idx.vertex_index));
-		glm::vec3 const c = vec3(m_attrib.colors, (std::size_t)idx.vertex_index);
-		glm::vec3 const n = vec3(m_attrib.normals, idx.normal_index);
-		glm::vec2 const t = texCoords(m_attrib.texcoords, idx.texcoord_index, m_invertV);
-		IncrHasher inc;
-		std::size_t const hash = inc(p) ^ inc(c) ^ inc(n) ^ inc(t);
+		auto const hash = vertHash(m_attrib, idx);
 		if (auto const search = vertIndices.find(hash); search != vertIndices.end()) {
 			ret.indices.push_back(search->second);
 		} else {
+			glm::vec3 const p = m_scale * (m_origin + vec3(m_attrib.vertices, (std::size_t)idx.vertex_index));
+			glm::vec3 const c = vec3(m_attrib.colors, (std::size_t)idx.vertex_index);
+			glm::vec3 const n = vec3(m_attrib.normals, idx.normal_index);
+			glm::vec2 const t = texCoords(m_attrib.texcoords, idx.texcoord_index, m_invertV);
 			auto const idx = ret.addVertex({p, c, n, t});
 			ret.indices.push_back(idx);
 			vertIndices.emplace(hash, idx);
@@ -237,17 +241,17 @@ graphics::Texture const* texture(std::unordered_map<Hash, graphics::Texture> con
 
 Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, io::Media const& media) {
 	auto res = media.string(jsonID);
-	if (!res) { return Error{jsonID.generic_string(), Failcode::eJsonNotFound}; }
+	if (!res) { return Failcode::eJsonNotFound; }
 	dj::json json;
 	auto result = json.read(*res);
-	if (result.failure || !result.errors.empty() || !json.is_object()) { return Error{jsonID.generic_string(), Failcode::eJsonMissingData}; }
-	if (!json.contains("obj")) { return Error{jsonID.generic_string(), Failcode::eJsonMissingData}; }
+	if (result.failure || !result.errors.empty() || !json.is_object()) { return Failcode::eJsonMissingData; }
+	if (!json.contains("obj")) { return Failcode::eJsonMissingData; }
 	auto const jsonDir = jsonID.parent_path();
 	auto const objID = jsonDir / json["obj"].as<std::string>();
 	auto const mtlID = jsonDir / (json.contains("mtl") ? json["mtl"].as<std::string>() : std::string());
 	auto obj = media.sstream(objID);
 	auto mtl = media.sstream(mtlID);
-	if (!obj) { return Error{objID.generic_string(), Failcode::eObjNotFound}; }
+	if (!obj) { return Failcode::eObjNotFound; }
 	auto pSamplerID = json.find("sampler");
 	auto pScale = json.find("scale");
 	OBJReader::Data objData;
@@ -263,14 +267,13 @@ Model::Result<Model::CreateInfo> Model::load(io::Path modelID, io::Path jsonID, 
 	return parser(media);
 }
 
-Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
-	Map<Material> materials;
-	decltype(m_storage) storage;
+Model::Result<void> Model::construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat) {
+	auto storage = decltype(m_storage){};
 	for (auto const& tex : info.textures) {
 		if (!tex.bytes.empty()) {
 			graphics::Texture texture(vram, sampler.sampler());
 			if (!texture.construct(tex.bytes, graphics::Texture::Payload::eColour, forceFormat.value_or(graphics::Image::srgb_v))) {
-				return Error{{}, Failcode::eTextureCreateFailure};
+				return Failcode::eTextureCreateFailure;
 			}
 			storage.textures.emplace(tex.uri, std::move(texture));
 		}
@@ -280,23 +283,52 @@ Model::Result<Span<Prop const>> Model::construct(not_null<VRAM*> vram, CreateInf
 		material.map_Kd = texture(storage.textures, info.textures, mat.diffuse);
 		material.map_Ks = texture(storage.textures, info.textures, mat.specular);
 		material.map_d = texture(storage.textures, info.textures, mat.alpha);
-		materials.emplace(mat.hash, material);
+		storage.materials.emplace(mat.hash, material);
 	}
 	for (auto const& m : info.meshes) {
-		graphics::MeshPrimitive mesh(vram);
-		mesh.construct(m.geometry);
-		auto [it, _] = storage.primitives.emplace((info.uri / m.uri).generic_string(), std::move(mesh));
-		Prop prop;
-		prop.mesh = &it->second;
+		MeshMat meshMat{MeshPrimitive(vram), {}};
+		meshMat.primitive.construct(m.geometry);
+		Hash const hash = info.uri / m.uri;
 		if (!m.matIndices.empty()) {
 			auto const& mat = info.materials[m.matIndices.front()];
-			auto const it = materials.find(mat.hash);
-			ENSURE(it != materials.end(), "Invalid hash");
-			if (it != materials.end()) { prop.material = it->second; }
+			EXPECT(storage.materials.contains(mat.hash));
+			meshMat.mat = mat.hash;
+		} else {
+			storage.materials.emplace(hash, Material());
+			meshMat.mat = hash;
 		}
-		storage.props.push_back(prop);
+		storage.meshMats.push_back(std::move(meshMat));
 	}
 	m_storage = std::move(storage);
-	return Span<Prop const>(m_storage.props);
+	return Result<void>::success();
+}
+
+MeshView Model::mesh() const {
+	m_meshes.clear();
+	m_meshes.reserve(m_storage.meshMats.size());
+	for (auto const& meshMat : m_storage.meshMats) {
+		MeshObj mesh;
+		mesh.primitive = &meshMat.primitive;
+		EXPECT(meshMat.mat != Hash());
+		if (meshMat.mat != Hash()) {
+			auto const it = m_storage.materials.find(meshMat.mat);
+			EXPECT(it != m_storage.materials.end());
+			if (it != m_storage.materials.end()) { mesh.material = &it->second; }
+		}
+		m_meshes.push_back(mesh);
+	}
+	return MeshObjView(m_meshes);
+}
+
+MeshPrimitive* Model::primitive(std::size_t index) {
+	if (index < primitiveCount()) { return &m_storage.meshMats[index].primitive; }
+	return {};
+}
+
+Material* Model::material(std::size_t index) {
+	if (index < primitiveCount()) {
+		if (auto it = m_storage.materials.find(m_storage.meshMats[index].mat); it != m_storage.materials.end()) { return &it->second; }
+	}
+	return {};
 }
 } // namespace le

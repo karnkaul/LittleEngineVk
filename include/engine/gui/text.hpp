@@ -3,16 +3,12 @@
 #include <engine/render/bitmap_text.hpp>
 #include <graphics/mesh_primitive.hpp>
 
-namespace le {
-class BitmapFont;
-}
-
 namespace le::gui {
 class Text : public TreeNode {
   public:
 	using Size = graphics::Glyph::Size;
 
-	Text(not_null<TreeRoot*> root, not_null<BitmapFont const*> font) noexcept;
+	Text(not_null<TreeRoot*> root, Hash fontURI = defaultFontURI) noexcept;
 
 	std::string_view str() const noexcept { return m_str; }
 	Text& set(std::string str);
@@ -23,9 +19,10 @@ class Text : public TreeNode {
 	Text& font(not_null<BitmapFont const*> font);
 	BitmapFont const* font() const noexcept { return m_font; }
 
-	Span<Prop const> props() const noexcept override { return m_textMesh.props(); }
+	MeshView mesh() const noexcept override { return m_textMesh.mesh(); }
 
 	not_null<BitmapFont const*> m_font;
+	Hash m_fontURI = defaultFontURI;
 
   private:
 	void onUpdate(input::Space const& space) override;

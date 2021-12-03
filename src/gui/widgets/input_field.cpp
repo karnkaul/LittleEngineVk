@@ -3,8 +3,8 @@
 #include <engine/gui/widgets/input_field.hpp>
 
 namespace le::gui {
-InputField::InputField(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info, Hash style)
-	: Widget(root, style), m_textMesh(Services::get<graphics::VRAM>(), font), m_cursor(font), m_secret(info.secret) {
+InputField::InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fontURI, Hash style)
+	: Widget(root, style), m_textMesh(Services::get<graphics::VRAM>(), findFont(fontURI)), m_cursor(findFont(fontURI)), m_secret(info.secret) {
 	m_rect.size = info.size;
 	m_outline = Quad(this);
 	m_outline->m_rect.size = info.size + 5.0f;
@@ -29,10 +29,10 @@ InputField::Status InputField::onInput(input::State const& state) {
 	return ret;
 }
 
-Span<Prop const> InputField::props() const noexcept {
-	m_props = {m_outline->props().front(), Quad::props().front(), m_textMesh.prop()};
-	if (auto cursor = m_cursor.props(); !cursor.empty()) { m_props.push_back(cursor.front()); }
-	return m_props;
+MeshView InputField::mesh() const noexcept {
+	m_meshes = {m_outline->mesh().front(), Quad::mesh().front(), m_textMesh.mesh().front()};
+	if (auto cursor = m_cursor.mesh(); !cursor.empty()) { m_meshes.push_back(cursor.front()); }
+	return MeshObjView(m_meshes);
 }
 
 bool InputField::block(input::State const& state) {

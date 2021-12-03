@@ -12,9 +12,5 @@ struct DrawList {
 	auto operator<=>(DrawList const& rhs) const noexcept { return group <=> rhs.group; }
 
 	Hash hash() const { return group.hash(); }
-
-	struct Hasher {
-		std::size_t operator()(DrawList const& list) const { return list.hash(); }
-	};
 };
 } // namespace le

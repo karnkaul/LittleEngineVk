@@ -266,6 +266,7 @@ void Engine::addDefaultAssets() {
 		auto wf_cube = store().add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(&gfx().boot.vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
+	/* materials */ { store().add("materials/default", Material{}); }
 }
 
 void Engine::updateStats() {

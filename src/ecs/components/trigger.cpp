@@ -27,9 +27,8 @@ std::vector<Drawable> Trigger::Debug::drawables(dens::registry const& registry) 
 	if (auto mesh = cubeMesh()) {
 		for (auto const& [e, c] : registry.view<Trigger, Transform>()) {
 			auto& [trigger, transform] = c;
-			trigger.data.prop.mesh = mesh;
 			Drawable drawable;
-			drawable.props = trigger.data.prop;
+			drawable.mesh = MeshObj{mesh, &trigger.data.material};
 			static constexpr auto idty = glm::mat4(1.0f);
 			drawable.model = glm::translate(idty, transform.position() + trigger.offset) * glm::scale(idty, trigger.scale);
 			ret.push_back(drawable);

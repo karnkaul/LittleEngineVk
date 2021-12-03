@@ -2,7 +2,6 @@
 #include <engine/input/state.hpp>
 #include <engine/input/text_cursor.hpp>
 #include <engine/render/bitmap_font.hpp>
-#include <engine/render/prop.hpp>
 #include <graphics/glyph_pen.hpp>
 
 namespace le::input {
@@ -11,15 +10,12 @@ TextCursor::TextCursor(not_null<BitmapFont const*> font, Flags flags)
 	refresh();
 }
 
-Prop const& TextCursor::cursor() const noexcept {
-	m_prop.mesh = &m_primitive;
-	m_prop.material.Tf = m_gen.colour;
-	m_prop.material.d = m_alpha;
-	return m_prop;
-}
-
-Span<Prop const> TextCursor::props() const noexcept {
-	if (m_drawCursor) { return cursor(); }
+MeshView TextCursor::mesh() const noexcept {
+	if (m_drawCursor) {
+		m_material.Tf = m_gen.colour;
+		m_material.d = m_alpha;
+		return MeshObj{&m_primitive, &m_material};
+	}
 	return {};
 }
 

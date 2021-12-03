@@ -9,12 +9,6 @@ class registry;
 } // namespace dens
 
 namespace le {
-namespace gui {
-class TreeRoot;
-}
-
-using PropList = Span<Prop const>;
-
 class DrawListFactory {
   public:
 	using GroupMap = std::unordered_map<DrawGroup, std::vector<Drawable>, DrawGroup::Hasher>;
@@ -31,7 +25,9 @@ std::vector<DrawList> DrawListFactory::lists(dens::registry const& registry, boo
 	(Gen{}(map, registry), ...);
 	std::vector<DrawList> ret;
 	ret.reserve(map.size());
-	for (auto& [group, list] : map) { ret.push_back(DrawList({std::move(group), std::move(list)})); }
+	for (auto& [group, list] : map) {
+		if (group.state) { ret.push_back(DrawList({std::move(group), std::move(list)})); }
+	}
 	if (sort) { std::sort(ret.begin(), ret.end()); }
 	return ret;
 }

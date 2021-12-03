@@ -1,10 +1,11 @@
 #pragma once
+#include <core/hash.hpp>
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <core/utils/vbase.hpp>
 #include <engine/gui/rect.hpp>
 #include <engine/render/flex.hpp>
-#include <engine/render/prop.hpp>
+#include <engine/render/mesh_view.hpp>
 #include <engine/utils/owner.hpp>
 #include <graphics/basis.hpp>
 #include <graphics/draw_view.hpp>
@@ -12,6 +13,7 @@
 
 namespace le {
 struct Viewport;
+class BitmapFont;
 namespace input {
 struct Space;
 }
@@ -21,6 +23,8 @@ namespace le::gui {
 class TreeNode;
 
 using graphics::DrawScissor;
+
+inline Hash defaultFontURI = "fonts/default";
 
 DrawScissor scissor(input::Space const& space, glm::vec2 centre = {}, glm::vec2 halfSize = {0.5f, -0.5f}, bool normalised = true) noexcept;
 
@@ -33,6 +37,8 @@ class TreeRoot : public utils::VBase, public utils::Owner<TreeNode> {
 	T& push(Args&&... args) { return Owner::template push<T>(this, std::forward<Args>(args)...); }
 
 	container_t const& nodes() const noexcept { return m_ts; }
+
+	BitmapFont const* findFont(Hash uri = defaultFontURI) const;
 
 	template <typename T, typename Ret, typename... Args>
 		requires(is_derived_v<T>)
@@ -62,7 +68,7 @@ class TreeNode : public TreeRoot {
 	glm::mat4 model() const noexcept;
 	bool hit(glm::vec2 point) const noexcept { return m_hitTest && m_rect.hit(point); }
 
-	virtual Span<Prop const> props() const noexcept { return {}; }
+	virtual MeshView mesh() const noexcept { return {}; }
 
 	DrawScissor m_scissor;
 	glm::quat m_orientation = graphics::identity;

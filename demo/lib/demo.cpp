@@ -569,13 +569,6 @@ class App : public input::Receiver, public SceneRegistry {
 		m_data.cursor->m_text = "Hello!";
 		m_data.text->primitive.construct(m_data.cursor->generateText());
 
-		{
-			Material mat;
-			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
-			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
-			m_eng->store().add("materials/player/cube", mat);
-		}
-
 		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
 		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
 		gui::Dropdown::CreateInfo dci;

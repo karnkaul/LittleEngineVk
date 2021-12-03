@@ -67,7 +67,9 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eSpirV] = m_loader.stage(std::move(m_spirV), scheduler, {}, m_jsonQIDs[Kind::eSpirV]);
 	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eSpirV], m_jsonQIDs[Kind::ePipelineState]);
 	m_deps[Kind::eDrawGroup] = m_loader.stage(std::move(m_drawGroups), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eDrawGroup]);
-	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eBitmapFont]);
+	StageID const matDeps[] = {m_deps[Kind::eTexture], m_deps[Kind::ePipelineState]};
+	m_deps[Kind::eMaterial] = m_loader.stage(std::move(m_materials), scheduler, matDeps, m_jsonQIDs[Kind::eMaterial]);
+	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eBitmapFont]);
 	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eSkybox]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
 	loadCustom(scheduler);
@@ -119,6 +121,7 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "shaders") { return addSpirV(std::move(group)); }
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "models") { return addModels(std::move(group)); }
+	if (groupName == "materials") { return addMaterials(std::move(group)); }
 	if (groupName == "skyboxes") { return addSkyboxes(std::move(group)); }
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
 	if (groupName == "pipelines") { return addPipelineStates(std::move(group)); }
@@ -132,10 +135,10 @@ std::size_t AssetManifest::addSamplers(Group group) {
 	for (auto& [uri, json] : group) {
 		if (json->contains("min") && json->contains("mag")) {
 			graphics::TPair<vk::Filter> minMag;
-			minMag.first = (*json)["min"].as<std::string>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
-			minMag.second = (*json)["mag"].as<std::string>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
+			minMag.first = (*json)["min"].as<std::string_view>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
+			minMag.second = (*json)["mag"].as<std::string_view>() == "nearest" ? vk::Filter::eNearest : vk::Filter::eLinear;
 			vk::SamplerCreateInfo createInfo;
-			if (auto mipMode = json->find_as<std::string>("mip_mode")) {
+			if (auto mipMode = json->find_as<std::string_view>("mip_mode")) {
 				auto const mm = *mipMode == "nearest" ? vk::SamplerMipmapMode::eNearest : vk::SamplerMipmapMode::eLinear;
 				createInfo = graphics::Sampler::info(minMag, mm);
 			} else {
@@ -173,8 +176,8 @@ std::size_t AssetManifest::addSpirV(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		AssetLoadData<graphics::SpirV> data;
-		if (auto type = json->get_as<std::string>("type"); !type.empty()) {
-			data.type = parseShaderType(json->get_as<std::string>("type"));
+		if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
+			data.type = parseShaderType(type);
 		} else {
 			data.type = shaderTypeFromExt(uri.extension());
 		}
@@ -199,8 +202,8 @@ std::size_t AssetManifest::addTextures(Group group) {
 		}
 		data.prefix = json->get_as<std::string>("prefix");
 		data.ext = json->get_as<std::string>("ext");
-		data.samplerURI = json->get_as<std::string>("sampler");
-		if (auto payload = json->find_as<std::string>("payload")) { data.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
+		data.samplerURI = json->get_as<std::string_view>("sampler");
+		if (auto payload = json->find_as<std::string_view>("payload")) { data.payload = *payload == "data" ? Payload::eData : Payload::eColour; }
 		m_textures.add(std::move(uri), std::move(data));
 		++ret;
 	}
@@ -217,8 +220,8 @@ std::size_t AssetManifest::addPipelineStates(Group group) {
 			}
 			data.lineWidth = json->get_as("line_width", 1.0f);
 			if (auto flags = json->find_as<std::vector<std::string>>("flags")) { data.flags = parseFlags(*flags); }
-			if (auto pm = json->find_as<std::string>("polygon_mode")) { data.polygonMode = parsePolygonMode(*pm); }
-			if (auto topology = json->find_as<std::string>("topology")) { data.topology = parseTopology(*topology); }
+			if (auto pm = json->find_as<std::string_view>("polygon_mode")) { data.polygonMode = parsePolygonMode(*pm); }
+			if (auto topology = json->find_as<std::string_view>("topology")) { data.topology = parseTopology(*topology); }
 			m_pipelineStates.add(std::move(uri), std::move(data));
 			++ret;
 		}
@@ -230,11 +233,56 @@ std::size_t AssetManifest::addDrawGroups(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
-			Hash const pid = pipe->as<std::string>();
+			Hash const pid = pipe->as<std::string_view>();
 			s64 const order = json->get_as<s64>("order");
 			m_drawGroups.add(std::move(uri), [this, pid, order]() { return DrawGroup{store().find<PipelineState>(pid).peek(), order}; });
 			++ret;
 		}
+	}
+	return ret;
+}
+
+namespace {
+graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
+	if (json.is_string()) {
+		if (auto str = json.as<std::string_view>(); !str.empty() && str[0] == '#') { return Colour(str); }
+	} else if (json.contains("colour")) {
+		if (auto str = json.get_as<std::string_view>("colour"); !str.empty() && str[0] == '#') {
+			graphics::RGBA ret;
+			ret.colour = Colour(str);
+			ret.type = json.get_as<std::string_view>("type") == "absolute" ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity;
+			return ret;
+		}
+	}
+	return fallback;
+}
+} // namespace
+
+std::size_t AssetManifest::addMaterials(Group group) {
+	std::size_t ret{};
+	for (auto& [uri, json] : group) {
+		Material mat;
+		std::array<Hash, 4> texURIs;
+		texURIs[0] = json->get_as<std::string_view>("map_Kd");
+		texURIs[1] = json->get_as<std::string_view>("map_Ks");
+		texURIs[2] = json->get_as<std::string_view>("map_d");
+		texURIs[3] = json->get_as<std::string_view>("map_bump");
+		mat.Ka = parseRGBA(json->get("Ka"), mat.Ka);
+		mat.Kd = parseRGBA(json->get("Kd"), mat.Kd);
+		mat.Ks = parseRGBA(json->get("Ks"), mat.Ks);
+		mat.Tf = parseRGBA(json->get("Tf"), mat.Tf);
+		mat.Ns = json->get_as<f32>("Ns", mat.Ns);
+		mat.d = json->get_as<f32>("d", mat.d);
+		mat.illum = json->get_as<int>("illum", mat.illum);
+		m_materials.add(std::move(uri), [this, mat, texURIs]() {
+			Material ret = mat;
+			ret.map_Kd = store().find<graphics::Texture>(texURIs[0]).peek();
+			ret.map_Ks = store().find<graphics::Texture>(texURIs[1]).peek();
+			ret.map_d = store().find<graphics::Texture>(texURIs[2]).peek();
+			ret.map_Bump = store().find<graphics::Texture>(texURIs[3]).peek();
+			return ret;
+		});
+		++ret;
 	}
 	return ret;
 }
@@ -261,11 +309,11 @@ std::size_t AssetManifest::addBitmapFonts(Group group) {
 	for (auto& [uri, json] : group) {
 		AssetLoadData<BitmapFont> data(&vram());
 		if (auto file = json->find("file"); file && file->is_string()) {
-			data.jsonURI = file->as<std::string>();
+			data.jsonURI = file->as<std::string_view>();
 		} else {
 			data.jsonURI = uri / uri.filename() + ".json";
 		}
-		data.samplerURI = json->get_as<std::string>("sampler");
+		data.samplerURI = json->get_as<std::string_view>("sampler");
 		m_bitmapFonts.add(std::move(uri), std::move(data));
 		++ret;
 	}
@@ -278,11 +326,11 @@ std::size_t AssetManifest::addModels(Group group) {
 		AssetLoadData<Model> data(&vram());
 		data.modelURI = uri.generic_string();
 		if (auto file = json->find("file"); file && file->is_string()) {
-			data.jsonURI = file->as<std::string>();
+			data.jsonURI = file->as<std::string_view>();
 		} else {
 			data.jsonURI = uri / uri.filename() + ".json";
 		}
-		data.samplerURI = json->get_as<std::string>("sampler");
+		data.samplerURI = json->get_as<std::string_view>("sampler");
 		m_models.add(std::move(uri), std::move(data));
 		++ret;
 	}
@@ -304,6 +352,7 @@ std::size_t AssetManifest::unload() {
 	ret += unload<graphics::SpirV>(m_spirV.map);
 	ret += unload<graphics::Texture>(m_textures.map);
 	ret += unload<Model>(m_models.map);
+	ret += unload<Material>(m_materials.map);
 	ret += unload<BitmapFont>(m_bitmapFonts.map);
 	ret += unload<Skybox>(m_skyboxes.map);
 	ret += unload<PipelineState>(m_pipelineStates.map);

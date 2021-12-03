@@ -141,6 +141,13 @@
 			"uri": "textures/test.png"
 		}
 	],
+	"materials": [
+		{
+			"uri": "materials/player/cube",
+			"map_Kd": "textures/container2/diffuse",
+			"map_Ks": "textures/container2/specular"
+		}
+	],
 	"bitmap_fonts": [
 		{
 			"uri": "fonts/default"

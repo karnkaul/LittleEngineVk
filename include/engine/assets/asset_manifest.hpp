@@ -18,6 +18,7 @@ class AssetManifest : public utils::VBase {
 		ePipelineState,
 		eDrawGroup,
 		eBitmapFont,
+		eMaterial,
 		eSkybox,
 		eModel,
 		eCOUNT_,
@@ -67,6 +68,7 @@ class AssetManifest : public utils::VBase {
 	std::size_t addPipelineStates(Group group);
 	std::size_t addDrawGroups(Group group);
 	std::size_t addFonts(Group group);
+	std::size_t addMaterials(Group group);
 	std::size_t addBitmapFonts(Group group);
 	std::size_t addSkyboxes(Group group);
 	std::size_t addModels(Group group);
@@ -84,6 +86,7 @@ class AssetManifest : public utils::VBase {
 	AssetList<DrawGroup> m_drawGroups;
 	AssetLoadList<graphics::Texture> m_textures;
 	AssetLoadList<BitmapFont> m_bitmapFonts;
+	AssetList<Material> m_materials;
 	AssetList<Skybox> m_skyboxes;
 	AssetLoadList<Model> m_models;
 	AssetListLoader m_loader;

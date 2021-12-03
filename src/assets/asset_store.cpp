@@ -2,24 +2,11 @@
 
 namespace le {
 void AssetStore::update() {
-	static constexpr u32 maxPasses = 10;
-	bool idle = false;
-	u64 total = 0;
-	u32 pass = 0;
-	ktl::shared_tlock<detail::TAssets> lock(m_assets);
-	for (; pass < maxPasses && (pass == 0 || !idle); ++pass) {
-		m_resources.update();
-		u64 reloaded = 0;
-		for (auto& [_, store] : lock->storeMap) { reloaded += store->update(*this); }
-		idle = reloaded == 0;
-		total += reloaded;
-		if (!idle) { utils::g_log.log(dl::level::debug, 2, "[Assets] [{}] Update pass: reloaded [{}]", pass, reloaded); }
-	}
-	if (!idle && pass == maxPasses) {
-		utils::g_log.log(dl::level::warn, 0, "[Assets] Exceeded max update passes [{}], bailing out... Asset(s) stuck in reload loops?", maxPasses);
-	} else if (total > 0) {
-		utils::g_log.log(dl::level::info, 1, "[Assets] [{}] Reloads completed in [{}] passes", total, pass);
-	}
+	ktl::unique_tlock<detail::TAssets> lock(m_assets);
+	m_resources.update();
+	u64 reloaded = 0;
+	for (auto& [_, store] : lock->storeMap) { reloaded += store->update(*this); }
+	if (reloaded > 0) { utils::g_log.log(dl::level::info, 1, "[Assets] [{}] Reloads completed", reloaded); }
 }
 
 void AssetStore::clear() {
@@ -29,5 +16,21 @@ void AssetStore::clear() {
 	ktl::tlock(m_onModified)->clear();
 	// clear resources
 	m_resources.clear();
+}
+
+AssetStore::Index AssetStore::index(std::string_view filter) const {
+	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
+	Index ret;
+	ret.map.reserve(lock->storeMap.size());
+	for (auto const& [_, map] : lock->storeMap) {
+		if (auto vec = map->uris(filter); !vec.empty()) { ret.map.push_back({map->typeName(), std::move(vec)}); }
+	}
+	return ret;
+}
+
+AssetStore::TypeMap AssetStore::typeMap(std::size_t typeHash, std::string_view filter) const {
+	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
+	if (auto it = lock->storeMap.find(typeHash); it != lock->storeMap.end()) { return {it->second->typeName(), it->second->uris(filter)}; }
+	return {};
 }
 } // namespace le

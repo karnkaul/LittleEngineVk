@@ -3,15 +3,18 @@
 #if defined(LEVK_USE_IMGUI)
 #include <core/services.hpp>
 #include <core/utils/string.hpp>
+#include <engine/assets/asset_store.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/engine_stats.hpp>
 #endif
 
+#include <engine/render/material.hpp>
+
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)
 namespace {
-enum class Flag { eStats, eProfiler, eCOUNT_ };
+enum class Flag { eStats, eProfiler, eAssetIndex, eCOUNT_ };
 static constexpr auto flag_count = static_cast<std::size_t>(Flag::eCOUNT_);
 
 struct Panes {
@@ -31,7 +34,7 @@ Panes g_panes;
 
 void Panes::showStats() const {
 	if (auto eng = Services::find<Engine>()) {
-		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats), false)) {
+		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats))) {
 			auto const& s = eng->stats();
 			auto t = Text(CStr<32>("FPS: %u", s.frame.rate));
 			t = Text(CStr<32>("Frame #: %u", s.frame.count));
@@ -57,7 +60,7 @@ void Panes::showStats() const {
 template <typename T>
 void Panes::showProfiler() const {
 	if (auto profiler = Services::find<T>()) {
-		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler), false)) {
+		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler))) {
 			auto const& record = profiler->m_record.back();
 			Time_s const total = record.total;
 			f32 maxLength{};
@@ -78,6 +81,7 @@ template <>
 void Panes::operator()() const {
 	if (flag(Flag::eStats)) { showStats(); }
 	if (flag(Flag::eProfiler)) { showProfiler<Engine::Profiler>(); }
+	if (flag(Flag::eAssetIndex)) { MainMenu::showAssetIndexPane(); }
 }
 } // namespace
 #endif
@@ -86,9 +90,10 @@ MainMenu::MainMenu() {
 #if defined(LEVK_USE_IMGUI)
 	MenuList::Tree main;
 	main.m_t.id = "File";
-	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui->m_showDemo = true; }};
+	MenuList::Menu assetIndex{"Asset Index", []() { g_panes.flag(Flag::eAssetIndex) = true; }};
 	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui->m_showDemo = true; }};
 	MenuList::Menu close{"Close Editor", []() { Services::get<Engine>()->editor().engage(false); }, true};
 	MenuList::Menu quit{"Quit", []() { Services::get<Engine>()->window().close(); }};
 	main.push_front(std::move(quit));
@@ -96,7 +101,27 @@ MainMenu::MainMenu() {
 	main.push_front(std::move(imDemo));
 	main.push_front(std::move(profiler));
 	main.push_front(std::move(stats));
+	main.push_front(std::move(assetIndex));
 	m_main.trees.push_back(std::move(main));
+#endif
+}
+
+void MainMenu::showAssetIndexPane() {
+#if defined(LEVK_USE_IMGUI)
+	if (auto store = Services::find<AssetStore>()) {
+		if (auto p = Pane("Asset Index", {425.0f, 250.0f}, {50.0f, 100.0f}, &g_panes.flag(Flag::eAssetIndex))) {
+			static ktl::stack_string<128> s_filter;
+			TWidget<char*> filter("Search##asset_index", s_filter.c_str(), s_filter.capacity());
+			auto const index = store->index(s_filter);
+			Styler s(Style::eSeparator);
+			for (auto const& map : index.map) {
+				if (auto tn = TreeNode(map.typeName)) {
+					for (auto const uri : map.uris) { auto const asset = TreeNode(uri, false, true, true, false); }
+				}
+				s();
+			}
+		}
+	}
 #endif
 }
 
@@ -109,5 +134,25 @@ void MainMenu::operator()([[maybe_unused]] MenuList const& extras) const {
 	}
 	g_panes();
 #endif
+}
+
+std::string_view MainMenu::selectAssetURI([[maybe_unused]] std::size_t typeHash, [[maybe_unused]] std::string_view filter) {
+	std::string_view ret;
+#if defined(LEVK_USE_IMGUI)
+	if (auto store = Services::find<AssetStore>()) {
+		static ktl::stack_string<128> s_filter;
+		auto const map = store->typeMap(typeHash, s_filter);
+		auto const title = ktl::stack_string<128>("Asset Index: %s", map.typeName.data());
+		if (auto p = Pane(title, {425.0f, 250.0f}, {50.0f, 100.0f}, &g_panes.flag(Flag::eAssetIndex))) {
+			TWidget<char*> filter("Search##asset_index", s_filter.c_str(), s_filter.capacity());
+			for (auto const uri : map.uris) {
+				auto const asset = TreeNode(uri, false, true, true, false);
+				if (asset.test(GUI::eLeftClicked)) { ret = uri; }
+			}
+		}
+		if (!ret.empty()) { g_panes.flag(Flag::eAssetIndex) = false; }
+	}
+#endif
+	return ret;
 }
 } // namespace le::edi

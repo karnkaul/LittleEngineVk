@@ -1,6 +1,7 @@
 #pragma once
 #include <core/log.hpp>
 #include <core/utils/algo.hpp>
+#include <core/utils/string.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/assets/asset_loader.hpp>
 #include <engine/utils/logger.hpp>
@@ -24,18 +25,26 @@ struct TAssets final {
 	template <typename Value>
 	bool contains() const noexcept;
 	template <typename Value>
-	std::size_t hash() const;
+	static std::size_t hash();
 
 	mutable std::unordered_map<std::size_t, AssetMapPtr> storeMap;
 };
 } // namespace detail
 
+namespace edi {
+class MainMenu;
+}
+
 template <typename T>
 class Asset;
+
+struct AssetIndex;
 
 class AssetStore : public NoCopy {
   public:
 	using OnModified = ktl::delegate<>;
+	struct TypeMap;
+	struct Index;
 
 	template <typename T>
 	Asset<T> add(io::Path const& uri, T t);
@@ -55,6 +64,10 @@ class AssetStore : public NoCopy {
 	void update();
 	void clear();
 
+	Index index(std::string_view filter = {}) const;
+	template <typename T>
+	TypeMap typeMap(std::string_view filter = {}) const;
+
 	template <template <typename...> typename L = std::scoped_lock>
 	L<std::mutex> reloadLock() const;
 
@@ -64,6 +77,7 @@ class AssetStore : public NoCopy {
   private:
 	template <typename T>
 	bool reloadAsset(detail::TAsset<T>& out_asset) const;
+	TypeMap typeMap(std::size_t typeHash, std::string_view filter) const;
 
 	Resources m_resources;
 	ktl::shared_strict_tmutex<detail::TAssets> m_assets;
@@ -72,6 +86,16 @@ class AssetStore : public NoCopy {
 
 	template <typename T>
 	friend class detail::TAssetMap;
+	friend class edi::MainMenu;
+};
+
+struct AssetStore::TypeMap {
+	std::string_view typeName;
+	std::vector<std::string_view> uris;
+};
+
+struct AssetStore::Index {
+	std::vector<TypeMap> map;
 };
 
 // impl
@@ -88,6 +112,8 @@ class AssetMap {
   public:
 	virtual ~AssetMap() = default;
 	virtual u64 update(AssetStore const& store) = 0;
+	virtual std::string_view typeName() const = 0;
+	virtual std::vector<std::string_view> uris(std::string_view filter) const = 0;
 };
 
 template <typename T>
@@ -102,7 +128,10 @@ class TAssetMap : public AssetMap {
 	bool reload(AssetStore const& store, Hash uri);
 	bool unload(Hash uri);
 	bool forceDirty(Hash uri) const;
+
 	u64 update(AssetStore const& store) override;
+	std::string_view typeName() const override;
+	std::vector<std::string_view> uris(std::string_view filter) const override;
 
 	using Storage = std::unordered_map<Hash, TAsset<T>>;
 	Storage m_storage;
@@ -190,6 +219,19 @@ u64 TAssetMap<T>::update(AssetStore const& store) {
 	}
 	return ret;
 }
+template <typename T>
+std::string_view TAssetMap<T>::typeName() const {
+	static auto const ret = utils::removeNamespaces(utils::tName<T>());
+	return ret;
+}
+template <typename T>
+std::vector<std::string_view> TAssetMap<T>::uris(std::string_view filter) const {
+	std::vector<std::string_view> ret;
+	for (auto const& [_, asset] : m_storage) {
+		if (filter.empty() || asset.uri.find(filter) != std::string_view::npos) { ret.push_back(asset.uri); }
+	}
+	return ret;
+}
 
 template <typename Value>
 TAssetMap<Value>& TAssets::get() const {
@@ -205,7 +247,7 @@ bool TAssets::contains() const noexcept {
 	return utils::contains(storeMap, hash<Value>());
 }
 template <typename Value>
-std::size_t TAssets::hash() const {
+std::size_t TAssets::hash() {
 	return typeid(std::decay_t<Value>).hash_code();
 }
 } // namespace detail
@@ -276,5 +318,9 @@ bool AssetStore::reloadAsset(detail::TAsset<T>& out_asset) const {
 		}
 	}
 	return false;
+}
+template <typename T>
+AssetStore::TypeMap AssetStore::typeMap(std::string_view filter) const {
+	return typeMap(detail::TAssets::hash<T>(), filter);
 }
 } // namespace le

@@ -1,14 +1,16 @@
+#include <engine/assets/asset_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/render/list_drawer.hpp>
 
 namespace le {
 void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
 	buildDrawLists(pf, rp);
+	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
 	ENSURE(m_drawLists.size() == m_lists.size(), "Invariant violated");
 	[[maybe_unused]] std::size_t idx = 0;
 	for (auto const& list : m_lists) {
 		ENSURE(list.drawables.size() == m_drawLists[idx++].drawables.size(), "Invariant violated");
-		writeSets(DescriptorMap(list.pipeline.shaderInput), list);
+		writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list);
 	}
 }
 

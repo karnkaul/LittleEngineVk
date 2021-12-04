@@ -1,6 +1,8 @@
 #include <core/services.hpp>
+#include <engine/assets/asset_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/render/skybox.hpp>
+#include <engine/utils/logger.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/texture.hpp>
 
@@ -11,7 +13,12 @@ Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cube(Services::get<graphics
 }
 
 MeshView Skybox::mesh() const {
-	m_material.map_Kd = m_cubemap;
+	if (m_cubemap->ready()) {
+		m_material.map_Kd = m_cubemap;
+	} else {
+		utils::g_log.log(dl::level::warn, 2, "[Skybox] Cubemap not ready");
+		m_material.map_Kd = Services::get<AssetStore>()->find<graphics::Texture>("cubemaps/blank").peek();
+	}
 	return MeshObj{.primitive = &m_cube, .material = &m_material};
 }
 } // namespace le

@@ -13,7 +13,7 @@ class ShaderBuffer {
 	struct CreateInfo;
 
 	ShaderBuffer() = default;
-	ShaderBuffer(VRAM& vram, CreateInfo const& info);
+	ShaderBuffer(not_null<VRAM*> vram, CreateInfo const& info);
 
 	template <typename T>
 	ShaderBuffer& write(T const& t, std::size_t offset = 0);

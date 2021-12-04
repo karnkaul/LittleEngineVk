@@ -2,7 +2,7 @@
 #include <graphics/render/shader_buffer.hpp>
 
 namespace le::graphics {
-ShaderBuffer::ShaderBuffer(VRAM& vram, CreateInfo const& info) : m_vram(&vram) {
+ShaderBuffer::ShaderBuffer(not_null<VRAM*> vram, CreateInfo const& info) : m_vram(vram) {
 	m_storage.type = info.type;
 	m_storage.usage = Device::bufferUsage(info.type);
 	m_storage.buffering = info.buffering;

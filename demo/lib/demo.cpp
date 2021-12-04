@@ -158,21 +158,18 @@ class Drawer : public ListDrawer {
 		glm::vec2 size{};
 	};
 
+	Scene m_scene;
+
+	Drawer(not_null<graphics::VRAM*> vram) : m_vram(vram) {
+		m_view.mats = graphics::ShaderBuffer(vram, {});
+		m_view.lights = graphics::ShaderBuffer(vram, {});
+	}
+
+  private:
 	struct {
 		graphics::ShaderBuffer mats;
 		graphics::ShaderBuffer lights;
 	} m_view;
-	struct {
-		graphics::Texture const* white = {};
-		graphics::Texture const* black = {};
-		graphics::Texture const* cube = {};
-	} m_defaults;
-
-	Scene m_scene;
-
-	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
-
-  private:
 	not_null<graphics::VRAM*> m_vram;
 
 	void beginFrame() override {
@@ -211,9 +208,9 @@ class Drawer : public ListDrawer {
 						static Material const s_blank;
 						Material const& mat = mesh.material ? *mesh.material : s_blank;
 						auto set2 = map.set(2);
-						set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
-						set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
-						set2.update(2, mat.map_Ks && mat.map_Ks->ready() ? *mat.map_Ks : *m_defaults.black);
+						set2.update(0, mat.map_Kd, TexBind::eWhite);
+						set2.update(1, mat.map_d, TexBind::eWhite);
+						set2.update(2, mat.map_Ks, TexBind::eBlack);
 						map.set(3).update(0, ShadeMat::make(mat));
 					}
 				}
@@ -435,15 +432,6 @@ class App : public input::Receiver, public SceneRegistry {
 		edi::Inspector::attach<SpringArm>(SpringArm::inspect);
 		edi::Inspector::attach<PlayerController>(ipc);
 		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
-
-		m_drawer.m_view.mats = graphics::ShaderBuffer(m_eng->gfx().boot.vram, {});
-		graphics::ShaderBuffer::CreateInfo info;
-		info.type = vk::DescriptorType::eStorageBuffer;
-		m_drawer.m_view.lights = graphics::ShaderBuffer(m_eng->gfx().boot.vram, {});
-
-		m_drawer.m_defaults.black = &*m_eng->store().find<graphics::Texture>("textures/black");
-		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
-		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 
 		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox"); }
 		{

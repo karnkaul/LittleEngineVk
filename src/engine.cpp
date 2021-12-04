@@ -253,6 +253,7 @@ void Engine::addDefaultAssets() {
 		store().add("textures/red", Tex(v, s, colours::red, {1, 1}));
 		store().add("textures/black", Tex(v, s, colours::black, {1, 1}));
 		store().add("textures/white", Tex(v, s, colours::white, {1, 1}));
+		store().add("textures/magenta", Tex(v, s, colours::magenta, {1, 1}));
 		store().add("textures/blank", Tex(v, s, 0x0, {1, 1}));
 		Tex blankCube(v, s);
 		blankCube.construct(Tex::unitCubemap(0x0));

@@ -5,14 +5,16 @@
 #include <graphics/mesh_primitive.hpp>
 
 namespace le {
-MeshProvider MeshProvider::make(std::string primitiveURI, Hash const materialURI) {
+MeshProvider MeshProvider::make(std::string primitiveURI, std::string materialURI) {
 	MeshProvider ret;
 	ret.uri(std::move(primitiveURI));
-	ret.m_getMesh = [materialURI](Hash primitiveURI) {
+	Hash const mat = materialURI;
+	ret.m_materialURI = std::move(materialURI);
+	ret.m_typeHash = AssetStore::typeHash<MeshPrimitive>()[0];
+	ret.m_getMesh = [mat](Hash primitiveURI) {
 		if (auto store = Services::find<AssetStore>()) {
-			auto const material = store->find<Material>(materialURI);
+			auto const material = store->find<Material>(mat);
 			auto const primitive = store->find<MeshPrimitive>(primitiveURI);
-			// EXPECT(material && primitive);
 			if (material && primitive) { return MeshObj{.primitive = &*primitive, .material = &*material}; }
 		}
 		return MeshObj{};

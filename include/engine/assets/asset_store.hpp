@@ -31,10 +31,6 @@ struct TAssets final {
 };
 } // namespace detail
 
-namespace edi {
-class MainMenu;
-}
-
 template <typename T>
 class Asset;
 
@@ -43,7 +39,7 @@ struct AssetIndex;
 class AssetStore : public NoCopy {
   public:
 	using OnModified = ktl::delegate<>;
-	struct TypeMap;
+	struct Type;
 	struct Index;
 
 	template <typename T>
@@ -64,20 +60,21 @@ class AssetStore : public NoCopy {
 	void update();
 	void clear();
 
-	Index index(std::string_view filter = {}) const;
-	template <typename T>
-	TypeMap typeMap(std::string_view filter = {}) const;
-
 	template <template <typename...> typename L = std::scoped_lock>
 	L<std::mutex> reloadLock() const;
 
 	Resources& resources() noexcept { return m_resources; }
 	Resources const& resources() const noexcept { return m_resources; }
 
+	template <typename T, typename... Ts>
+	static std::array<std::size_t, 1U + sizeof...(Ts)> typeHash();
+	template <typename... Ts>
+	Index index(std::string_view filter = {}) const;
+	Index index(Span<std::size_t const> types, std::string_view filter) const;
+
   private:
 	template <typename T>
 	bool reloadAsset(detail::TAsset<T>& out_asset) const;
-	TypeMap typeMap(std::size_t typeHash, std::string_view filter) const;
 
 	Resources m_resources;
 	ktl::shared_strict_tmutex<detail::TAssets> m_assets;
@@ -86,16 +83,20 @@ class AssetStore : public NoCopy {
 
 	template <typename T>
 	friend class detail::TAssetMap;
-	friend class edi::MainMenu;
 };
 
-struct AssetStore::TypeMap {
-	std::string_view typeName;
-	std::vector<std::string_view> uris;
+struct AssetStore::Type {
+	std::string_view name;
+	std::size_t hash{};
 };
 
 struct AssetStore::Index {
-	std::vector<TypeMap> map;
+	struct Map {
+		Type type;
+		std::vector<std::string_view> uris;
+	};
+
+	std::vector<Map> maps;
 };
 
 // impl
@@ -319,8 +320,16 @@ bool AssetStore::reloadAsset(detail::TAsset<T>& out_asset) const {
 	}
 	return false;
 }
-template <typename T>
-AssetStore::TypeMap AssetStore::typeMap(std::string_view filter) const {
-	return typeMap(detail::TAssets::hash<T>(), filter);
+template <typename T, typename... Ts>
+std::array<std::size_t, 1U + sizeof...(Ts)> AssetStore::typeHash() {
+	return {{detail::TAssets::hash<T>(), detail::TAssets::hash<Ts>()...}};
+}
+template <typename... Ts>
+AssetStore::Index AssetStore::index(std::string_view filter) const {
+	if constexpr (sizeof...(Ts) > 0) {
+		return index(typeHash<Ts>()..., filter);
+	} else {
+		return index({}, filter);
+	}
 }
 } // namespace le

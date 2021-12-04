@@ -18,19 +18,18 @@ void AssetStore::clear() {
 	m_resources.clear();
 }
 
-AssetStore::Index AssetStore::index(std::string_view filter) const {
+AssetStore::Index AssetStore::index(Span<std::size_t const> types, std::string_view filter) const {
 	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
 	Index ret;
-	ret.map.reserve(lock->storeMap.size());
-	for (auto const& [_, map] : lock->storeMap) {
-		if (auto vec = map->uris(filter); !vec.empty()) { ret.map.push_back({map->typeName(), std::move(vec)}); }
+	ret.maps.reserve(lock->storeMap.size());
+	for (auto const& [hash, map] : lock->storeMap) {
+		if (types.empty() || std::find(types.begin(), types.end(), hash) != types.end()) {
+			if (auto vec = map->uris(filter); !vec.empty()) {
+				Type type{map->typeName(), hash};
+				ret.maps.push_back({type, std::move(vec)});
+			}
+		}
 	}
 	return ret;
-}
-
-AssetStore::TypeMap AssetStore::typeMap(std::size_t typeHash, std::string_view filter) const {
-	ktl::shared_tlock<detail::TAssets const> lock(m_assets);
-	if (auto it = lock->storeMap.find(typeHash); it != lock->storeMap.end()) { return {it->second->typeName(), it->second->uris(filter)}; }
-	return {};
 }
 } // namespace le

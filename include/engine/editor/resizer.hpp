@@ -6,6 +6,8 @@ namespace le {
 namespace edi {
 class Resizer {
   public:
+	inline static bool s_block = false;
+
 	enum class Handle { eNone, eLeft, eRight, eBottom, eLeftBottom, eRightBottom };
 
 	inline static f32 s_offsetX = 25.0f;

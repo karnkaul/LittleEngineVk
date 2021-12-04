@@ -4,14 +4,15 @@
 #include <core/services.hpp>
 #include <core/utils/string.hpp>
 #include <engine/assets/asset_store.hpp>
+#include <engine/editor/asset_index.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/engine_stats.hpp>
 #endif
 
-#include <engine/render/material.hpp>
-
 namespace le::edi {
+#define MU [[maybe_unused]]
+
 #if defined(LEVK_USE_IMGUI)
 namespace {
 enum class Flag { eStats, eProfiler, eAssetIndex, eCOUNT_ };
@@ -23,7 +24,7 @@ struct Panes {
 	bool& flag(Flag f) { return flags[static_cast<std::size_t>(f)]; }
 	bool flag(Flag f) const { return flags[static_cast<std::size_t>(f)]; }
 
-	void operator()() const;
+	void operator()();
 
 	void showStats() const;
 	template <typename T>
@@ -76,12 +77,14 @@ void Panes::showProfiler() const {
 }
 
 template <>
-[[maybe_unused]] void Panes::showProfiler<utils::NullProfileDB>() const {}
+MU void Panes::showProfiler<utils::NullProfileDB>() const {}
 
-void Panes::operator()() const {
+void Panes::operator()() {
 	if (flag(Flag::eStats)) { showStats(); }
 	if (flag(Flag::eProfiler)) { showProfiler<Engine::Profiler>(); }
-	if (flag(Flag::eAssetIndex)) { MainMenu::showAssetIndexPane(); }
+	if (flag(Flag::eAssetIndex)) {
+		if (auto p = Pane("Asset Index", {425.0f, 250.0f}, {50.0f, 100.0f}, &flag(Flag::eAssetIndex))) { AssetIndex::list(); }
+	}
 }
 } // namespace
 #endif
@@ -106,26 +109,7 @@ MainMenu::MainMenu() {
 #endif
 }
 
-void MainMenu::showAssetIndexPane() {
-#if defined(LEVK_USE_IMGUI)
-	if (auto store = Services::find<AssetStore>()) {
-		if (auto p = Pane("Asset Index", {425.0f, 250.0f}, {50.0f, 100.0f}, &g_panes.flag(Flag::eAssetIndex))) {
-			static ktl::stack_string<128> s_filter;
-			TWidget<char*> filter("Search##asset_index", s_filter.c_str(), s_filter.capacity());
-			auto const index = store->index(s_filter);
-			Styler s(Style::eSeparator);
-			for (auto const& map : index.map) {
-				if (auto tn = TreeNode(map.typeName)) {
-					for (auto const uri : map.uris) { auto const asset = TreeNode(uri, false, true, true, false); }
-				}
-				s();
-			}
-		}
-	}
-#endif
-}
-
-void MainMenu::operator()([[maybe_unused]] MenuList const& extras) const {
+void MainMenu::operator()(MU MenuList const& extras) const {
 #if defined(LEVK_USE_IMGUI)
 	if (ImGui::BeginMainMenuBar()) {
 		for (auto const& tree : m_main.trees) { MenuBar::walk(tree); }
@@ -134,25 +118,5 @@ void MainMenu::operator()([[maybe_unused]] MenuList const& extras) const {
 	}
 	g_panes();
 #endif
-}
-
-std::string_view MainMenu::selectAssetURI([[maybe_unused]] std::size_t typeHash, [[maybe_unused]] std::string_view filter) {
-	std::string_view ret;
-#if defined(LEVK_USE_IMGUI)
-	if (auto store = Services::find<AssetStore>()) {
-		static ktl::stack_string<128> s_filter;
-		auto const map = store->typeMap(typeHash, s_filter);
-		auto const title = ktl::stack_string<128>("Asset Index: %s", map.typeName.data());
-		if (auto p = Pane(title, {425.0f, 250.0f}, {50.0f, 100.0f}, &g_panes.flag(Flag::eAssetIndex))) {
-			TWidget<char*> filter("Search##asset_index", s_filter.c_str(), s_filter.capacity());
-			for (auto const uri : map.uris) {
-				auto const asset = TreeNode(uri, false, true, true, false);
-				if (asset.test(GUI::eLeftClicked)) { ret = uri; }
-			}
-		}
-		if (!ret.empty()) { g_panes.flag(Flag::eAssetIndex) = false; }
-	}
-#endif
-	return ret;
 }
 } // namespace le::edi

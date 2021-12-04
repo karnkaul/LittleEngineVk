@@ -38,8 +38,8 @@ class Inspector {
 	};
 	template <typename T>
 	struct TGadget : GadgetBase {
-		OnAttach<T> attach_;
 		OnInspect<T> inspect_;
+		OnAttach<T> attach_;
 		TGadget(OnInspect<T>&& inspect, OnAttach<T>&& attach) : inspect_(std::move(inspect)), attach_(std::move(attach)) {}
 		bool attachable() const noexcept override { return attach_.has_value(); }
 		void attach(dens::entity e, dens::registry& r) const override {

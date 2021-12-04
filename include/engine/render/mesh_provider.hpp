@@ -16,26 +16,30 @@ concept MeshAPI = requires(T const& t) {
 
 class MeshProvider {
   public:
-	inline static Hash const default_material_v = "materials/default";
+	inline static std::string const default_material_v = "materials/default";
 
 	template <MeshAPI T>
 	static MeshProvider make(std::string assetURI);
 	template <typename T, typename F>
 	static MeshProvider make(std::string assetURI, F&& getMesh);
-	static MeshProvider make(std::string primitiveURI, Hash materialURI = default_material_v);
+	static MeshProvider make(std::string primitiveURI, std::string materialURI = default_material_v);
 
-	std::string const& uri() const noexcept { return m_assetURI; }
+	std::string_view assetURI() const noexcept { return m_assetURI; }
+	std::string_view materialURI() const noexcept { return m_materialURI; }
 	void uri(std::string assetURI);
 
 	bool active() const noexcept { return m_getMesh.has_value(); }
 	MeshView mesh() const { return m_getMesh ? m_getMesh(m_hash) : MeshView{}; }
+	std::size_t typeHash() const noexcept { return m_typeHash; }
 
   private:
 	using GetMesh = ktl::move_only_function<MeshView(Hash)>;
 
 	std::string m_assetURI;
+	std::string m_materialURI;
 	GetMesh m_getMesh;
 	Hash m_hash;
+	std::size_t m_typeHash{};
 };
 
 class DynamicMesh {
@@ -74,6 +78,7 @@ template <typename T, typename F>
 MeshProvider MeshProvider::make(std::string assetURI, F&& getMesh) {
 	MeshProvider ret;
 	ret.uri(std::move(assetURI));
+	ret.m_typeHash = AssetStore::typeHash<T>()[0];
 	ret.m_getMesh = [gm = std::move(getMesh)](Hash assetURI) -> MeshView {
 		if (auto store = Services::find<AssetStore>()) {
 			if (auto asset = store->find<T>(assetURI)) { return gm(*asset); }

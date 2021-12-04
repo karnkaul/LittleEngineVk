@@ -1,6 +1,7 @@
 #include <core/maths.hpp>
 #include <core/services.hpp>
 #include <editor/sudo.hpp>
+#include <engine/editor/asset_index.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/editor/inspector.hpp>
 #include <engine/editor/palette_tab.hpp>
@@ -8,6 +9,9 @@
 #include <engine/editor/scene_tree.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/engine.hpp>
+#include <engine/render/draw_group.hpp>
+#include <engine/render/mesh_provider.hpp>
+#include <engine/render/model.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
@@ -89,6 +93,26 @@ Radio::Radio(MU Span<sv const> options, MU s32 preSelect, MU bool sameLine) : se
 	}
 	if (select >= 0) { selected = options[(std::size_t)select]; }
 #endif
+}
+
+TreeSelect::Select TreeSelect::list(MU Span<Group const> groups, MU std::string_view selected) {
+	Select ret;
+#if defined(LEVK_USE_IMGUI)
+	for (Group const& group : groups) {
+		if (!group.id.empty()) {
+			if (auto tn = TreeNode(group.id)) {
+				for (std::string_view const item : group.items) {
+					if (!item.empty()) {
+						auto const asset = TreeNode(item, selected == item, true, true, false);
+						if (asset.test(GUI::eLeftClicked)) { ret = {item, group.id}; }
+					}
+				}
+			}
+			Styler s(Style::eSeparator);
+		}
+	}
+#endif
+	return ret;
 }
 
 Button::Button(MU sv id, MU std::optional<f32> hue, MU bool small) {
@@ -237,7 +261,7 @@ Pane::Pane(MU std::string_view id, MU glm::vec2 size, MU glm::vec2 pos, MU bool*
 	ImGui::SetNextWindowSize({size.x, size.y}, ImGuiCond_Once);
 	ImGui::SetNextWindowPos({pos.x, pos.y}, ImGuiCond_Once);
 	guiState.assign(GUI::eOpen, ImGui::Begin(id.data(), open, flags));
-	if (guiState[GUI::eOpen] && blockResize) { s_blockResize = true; }
+	if (guiState[GUI::eOpen] && blockResize) { Resizer::s_block = true; }
 #endif
 }
 
@@ -257,9 +281,10 @@ Pane::~Pane() {
 #endif
 }
 
-Popup::Popup(MU std::string_view id, MU int flags) {
+Popup::Popup(MU std::string_view id, MU bool blockResize, MU int flags) {
 #if defined(LEVK_USE_IMGUI)
 	guiState.assign(GUI::eOpen, ImGui::BeginPopup(id.data(), flags));
+	if (guiState[GUI::eOpen] && blockResize) { Resizer::s_block = true; }
 #endif
 }
 
@@ -358,11 +383,24 @@ TWidget<std::string_view>::TWidget(MU sv id, MU sv readonly, MU f32 width, MU in
 #endif
 }
 
-TWidget<Colour>::TWidget(MU sv id, MU Colour& out_colour) {
+TWidget<Colour>::TWidget(MU sv id, MU Colour& out_colour, MU bool alpha, MU bool input) {
 #if defined(LEVK_USE_IMGUI)
+	ImGuiColorEditFlags const flags = input ? 0 : ImGuiColorEditFlags_NoInputs;
 	auto c = out_colour.toVec4();
-	changed = ImGui::ColorEdit3(id.data(), &c.x);
+	changed = alpha ? ImGui::ColorEdit4(id.data(), &c.x, flags) : ImGui::ColorEdit3(id.data(), &c.x, flags);
 	out_colour = Colour(c);
+#endif
+}
+
+TWidget<graphics::RGBA>::TWidget(MU sv id, MU graphics::RGBA& out_colour, MU bool alpha) {
+#if defined(LEVK_USE_IMGUI)
+	ImGuiColorEditFlags const flags = ImGuiColorEditFlags_NoInputs;
+	auto c = out_colour.colour.toVec4();
+	bool abs = out_colour.type == graphics::RGBA::Type::eAbsolute;
+	changed |= alpha ? ImGui::ColorEdit4(id.data(), &c.x, flags) : ImGui::ColorEdit3(id.data(), &c.x, flags);
+	Styler s(Style::eSameLine);
+	changed |= ImGui::Checkbox("Absolute", &abs);
+	if (changed) { out_colour = graphics::RGBA(c, abs ? graphics::RGBA::Type::eAbsolute : graphics::RGBA::Type::eIntensity); }
 #endif
 }
 
@@ -449,13 +487,98 @@ class EditorTab : public PaletteTab {
 		PaletteTab::loopItems(scene);
 	}
 };
+
+void inspectMat(Material* out_mat, std::string_view name, int idx) {
+	auto const id = idx >= 0 ? ktl::stack_string<64>("Material_%d", idx) : ktl::stack_string<64>("Material");
+	if (auto tn = TreeNode(id, false, false, true, true)) {
+		if (!name.empty()) { Selectable name_(name); }
+		if (out_mat) {
+			TWidget<graphics::RGBA> Tf("Tf", out_mat->Tf, true);
+			TWidget<f32> d("d", out_mat->d);
+		}
+	}
+}
+
+void inspectMP(Inspect<MeshProvider> provider) {
+	std::string_view type = "Other";
+	auto const th = provider.get().typeHash();
+	if (th == AssetStore::typeHash<MeshPrimitive>()[0]) {
+		type = "Mesh Primitive";
+	} else if (th == AssetStore::typeHash<Model>()[0]) {
+		type = "Model";
+	}
+	auto store = Services::find<AssetStore>();
+	Text typeStr(ktl::stack_string<64>("Type: %s", type.data()));
+	Text uri(provider.get().assetURI());
+	if (store) {
+		if (type == "Mesh Primitive") {
+			std::string_view const matURI = provider.get().materialURI();
+			inspectMat(store->find<Material>(matURI).peek(), matURI, -1);
+		} else if (type == "Model") {
+			if (auto model = store->find<Model>(provider.get().assetURI())) {
+				for (std::size_t i = 0; i < model->materialCount(); ++i) { inspectMat(model->material(i), {}, int(i)); }
+			}
+		}
+	}
+	static ktl::stack_string<128> s_search;
+	if (auto popup = Popup("Model##inspect_mesh_provider")) {
+		TWidget<char*> search("Search##inspect_mesh_provider", s_search.c_str(), s_search.capacity());
+		if (auto select = AssetIndex::list<Model>(s_search, s_search)) {
+			provider.get() = MeshProvider::make<Model>(std::string(select.item));
+			popup.close();
+		}
+	}
+	{
+		static std::string_view s_mesh, s_mat = "materials/default";
+		if (auto popup = Popup("Mesh Primitive##inspect_mesh_provider")) {
+			TWidget<char*> search("Search##inspect_mesh_provider", s_search.c_str(), s_search.capacity());
+			if (auto select = AssetIndex::list<MeshPrimitive>(s_search, s_mesh)) { s_mesh = select.item; }
+			if (auto select = AssetIndex::list<Material>(s_search, s_mat)) { s_mat = select.item; }
+			if (!s_mesh.empty() && !s_mat.empty() && Button("OK")) {
+				provider.get() = provider.get().make(std::string(s_mesh), std::string(s_mat));
+				popup.close();
+			}
+		}
+		std::string_view toPopup;
+		if (auto popup = Popup("Type##inspect_mesh_provider")) {
+			if (Selectable("Mesh Primitive")) {
+				toPopup = "Mesh Primitive##inspect_mesh_provider";
+				popup.close();
+			}
+			if (Selectable("Model")) {
+				toPopup = "Model##inspect_mesh_provider";
+				popup.close();
+			}
+		}
+		if (!toPopup.empty()) {
+			s_mat = {};
+			s_mesh = {};
+			Popup::open(toPopup);
+		}
+	}
+	if (Button("Edit...")) { Popup::open("Type##inspect_mesh_provider"); }
+}
+
+void inspectDGP(Inspect<DrawGroupProvider> provider) {
+	Text uri(provider.get().uri());
+	if (auto popup = Popup("DrawGroup##inspect_draw_group_provider")) {
+		static ktl::stack_string<128> s_search;
+		TWidget<char*> search("Search##inspect_draw_group_provider", s_search.c_str(), s_search.capacity());
+		if (auto select = AssetIndex::list<DrawGroup>(s_search)) {
+			provider.get() = DrawGroupProvider::make(std::string(select.item));
+			popup.close();
+		}
+	}
+	if (Button("Edit...")) { Popup::open("DrawGroup##inspect_draw_group_provider"); }
+}
 } // namespace edi
 
 Editor::Editor() {
+	m_left.tab = std::make_unique<edi::EditorTab<edi::SceneTree>>();
+	m_left.tab->attach<edi::Settings>("Settings");
 	m_right.tab = std::make_unique<edi::EditorTab<edi::Inspector>>();
-	auto left = std::make_unique<edi::EditorTab<edi::SceneTree>>();
-	left->attach<edi::Settings>("Settings");
-	m_left.tab = std::move(left);
+	edi::Inspector::attach<MeshProvider>(&edi::inspectMP);
+	edi::Inspector::attach<DrawGroupProvider>(&edi::inspectDGP);
 }
 
 Editor::~Editor() noexcept { edi::Sudo::clear<edi::Inspector, edi::SceneTree>(); }
@@ -477,8 +600,8 @@ graphics::ScreenView Editor::update(MU edi::SceneRef scene, MU Engine const& eng
 		m_cache.prev = edi::Sudo::registry(scene);
 		edi::Sudo::inspect(scene, m_cache.inspect);
 		edi::displayScale(engine.renderer().renderScale());
-		if (!edi::Pane::s_blockResize) { m_storage.resizer(engine.window(), m_storage.gameView, engine.inputFrame()); }
-		edi::Pane::s_blockResize = false;
+		if (!edi::Resizer::s_block) { m_storage.resizer(engine.window(), m_storage.gameView, engine.inputFrame()); }
+		edi::Resizer::s_block = false;
 		m_storage.menu(m_menu);
 		glm::vec2 const& size = engine.inputFrame().space.display.window;
 		auto const rect = m_storage.gameView.rect();

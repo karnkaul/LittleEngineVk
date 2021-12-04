@@ -155,9 +155,12 @@
 	],
 	"skyboxes": [
 		{
-			"uri": "skyboxes/sky_map",
+			"uri": "skyboxes/sky_dusk",
+			"cubemap": "cubemaps/sky_dusk"
+		},
+		{
+			"uri": "skyboxes/sky_test",
 			"cubemap": "cubemaps/test",
-			"fallback": "cubemaps/sky_dusk"
 		}
 	],
 	"models": [

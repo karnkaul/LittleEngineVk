@@ -17,7 +17,7 @@ struct TAssetList {
 };
 
 template <typename T>
-using AssetList = TAssetList<std::function<T()>>;
+using AssetList = TAssetList<std::function<std::unique_ptr<T>()>>;
 
 template <typename T>
 using AssetLoadList = TAssetList<AssetLoadData<T>>;

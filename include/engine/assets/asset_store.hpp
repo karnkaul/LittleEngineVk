@@ -45,7 +45,7 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	Asset<T> add(io::Path const& uri, T t);
 	template <typename T>
-	Asset<T> add(io::Path const& uri, std::unique_ptr<T> t);
+	Asset<T> add(io::Path const& uri, std::unique_ptr<T>&& t);
 	template <typename T>
 	Asset<T> load(io::Path const& uri, AssetLoadData<T> data);
 	template <typename T>
@@ -122,8 +122,7 @@ class TAssetMap : public AssetMap {
   public:
 	using OnModified = AssetStore::OnModified;
 
-	template <typename... Args>
-	Asset<T> add(OnModified& onMod, io::Path const& uri, Args&&... args);
+	Asset<T> add(OnModified& onMod, io::Path const& uri, std::unique_ptr<T>&& t);
 	static std::optional<TAsset<T>> load(AssetStore const& store, OnModified& onMod, Resources& res, std::string uri, AssetLoadData<T> data);
 	Asset<T> insert(TAsset<T>&& asset, AssetStore::OnModified& onMod);
 	bool reload(AssetStore const& store, Hash uri);
@@ -144,9 +143,8 @@ constexpr Asset<T> wrap(TAsset<T>& u, AssetStore::OnModified& onModified) noexce
 }
 
 template <typename T>
-template <typename... Args>
-Asset<T> TAssetMap<T>::add(AssetStore::OnModified& onMod, io::Path const& uri, Args&&... args) {
-	TAsset<T> asset{uri.generic_string(), {}, std::make_unique<T>(std::forward<Args>(args)...)};
+Asset<T> TAssetMap<T>::add(AssetStore::OnModified& onMod, io::Path const& uri, std::unique_ptr<T>&& t) {
+	TAsset<T> asset{uri.generic_string(), {}, std::move(t)};
 	auto const [it, nascent] = m_storage.emplace(uri.generic_string(), std::move(asset));
 	TAsset<T>& ret = it->second;
 	if (!nascent) { utils::g_log.log(dl::level::warn, 0, "[Asset] Overwriting [{}]!", ret.uri); }
@@ -256,12 +254,15 @@ std::size_t TAssets::hash() {
 template <typename T>
 Asset<T> AssetStore::add(io::Path const& uri, T t) {
 	ktl::unique_tlock<detail::TAssets> lock(m_assets);
-	return lock.get().get<T>().add(ktl::tlock(m_onModified).get()[uri], uri, std::move(t));
+	return lock.get().get<T>().add(ktl::tlock(m_onModified).get()[uri], uri, std::make_unique<T>(std::move(t)));
 }
 template <typename T>
-Asset<T> AssetStore::add(io::Path const& uri, std::unique_ptr<T> t) {
-	ktl::unique_tlock<detail::TAssets> lock(m_assets);
-	return lock.get().get<T>().add(ktl::tlock(m_onModified).get()[uri], uri, std::move(t));
+Asset<T> AssetStore::add(io::Path const& uri, std::unique_ptr<T>&& t) {
+	if (t) {
+		ktl::unique_tlock<detail::TAssets> lock(m_assets);
+		return lock.get().get<T>().add(ktl::tlock(m_onModified).get()[uri], uri, std::move(t));
+	}
+	return {};
 }
 template <typename T>
 Asset<T> AssetStore::load(io::Path const& uri, AssetLoadData<T> data) {

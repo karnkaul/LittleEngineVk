@@ -433,7 +433,7 @@ class App : public input::Receiver, public SceneRegistry {
 		edi::Inspector::attach<PlayerController>(ipc);
 		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
 
-		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_map", "draw_groups/skybox"); }
+		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "draw_groups/skybox"); }
 		{
 			m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "draw_groups/lit");
 			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});

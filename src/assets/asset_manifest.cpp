@@ -4,6 +4,7 @@
 #include <engine/utils/logger.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
+#include <ktl/stack_string.hpp>
 
 namespace le {
 namespace {
@@ -70,7 +71,7 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	StageID const matDeps[] = {m_deps[Kind::eTexture], m_deps[Kind::ePipelineState]};
 	m_deps[Kind::eMaterial] = m_loader.stage(std::move(m_materials), scheduler, matDeps, m_jsonQIDs[Kind::eMaterial]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eBitmapFont]);
-	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, {} /*m_deps[Kind::eTexture]*/, m_jsonQIDs[Kind::eSkybox]);
+	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eSkybox]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
 	loadCustom(scheduler);
 }
@@ -144,7 +145,7 @@ std::size_t AssetManifest::addSamplers(Group group) {
 			} else {
 				createInfo = graphics::Sampler::info(minMag);
 			}
-			m_samplers.add(std::move(uri), [createInfo, &dv]() { return graphics::Sampler(&dv, createInfo); });
+			m_samplers.add(std::move(uri), [createInfo, &dv]() { return std::make_unique<graphics::Sampler>(&dv, createInfo); });
 			++ret;
 		}
 	}
@@ -235,7 +236,9 @@ std::size_t AssetManifest::addDrawGroups(Group group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
 			Hash const pid = pipe->as<std::string_view>();
 			s64 const order = json->get_as<s64>("order");
-			m_drawGroups.add(std::move(uri), [this, pid, order]() { return DrawGroup{store().find<PipelineState>(pid).peek(), order}; });
+			m_drawGroups.add(std::move(uri), [this, pid, order]() {
+				return std::make_unique<DrawGroup>(DrawGroup{store().find<PipelineState>(pid).peek(), order});
+			});
 			++ret;
 		}
 	}
@@ -275,11 +278,11 @@ std::size_t AssetManifest::addMaterials(Group group) {
 		mat.d = json->get_as<f32>("d", mat.d);
 		mat.illum = json->get_as<int>("illum", mat.illum);
 		m_materials.add(std::move(uri), [this, mat, texURIs]() {
-			Material ret = mat;
-			ret.map_Kd = store().find<graphics::Texture>(texURIs[0]).peek();
-			ret.map_Ks = store().find<graphics::Texture>(texURIs[1]).peek();
-			ret.map_d = store().find<graphics::Texture>(texURIs[2]).peek();
-			ret.map_Bump = store().find<graphics::Texture>(texURIs[3]).peek();
+			auto ret = std::make_unique<Material>(mat);
+			ret->map_Kd = store().find<graphics::Texture>(texURIs[0]).peek();
+			ret->map_Ks = store().find<graphics::Texture>(texURIs[1]).peek();
+			ret->map_d = store().find<graphics::Texture>(texURIs[2]).peek();
+			ret->map_Bump = store().find<graphics::Texture>(texURIs[3]).peek();
 			return ret;
 		});
 		++ret;
@@ -291,12 +294,10 @@ std::size_t AssetManifest::addSkyboxes(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		if (auto const cubemap = json->find("cubemap"); cubemap && cubemap->is_string()) {
-			std::string fallback = json->get_as<std::string>("fallback");
-			m_skyboxes.add(std::move(uri), [this, uri = cubemap->as<std::string>(), fb = std::move(fallback)] {
-				if (auto cube = store().find<Cubemap>(uri)) { return Skybox(&*cube); }
-				if (auto cube = store().find<Cubemap>(fb)) { return Skybox(&*cube); }
-				utils::g_log.log(dl::level::warn, 1, "[Assets] Cubemaps not found: [{}] / [{}], using default", uri, fb);
-				return Skybox(store().find<Cubemap>("cubemaps/default").peek());
+			m_skyboxes.add(uri, [this, cb = cubemap->as<std::string>(), u = uri]() -> std::unique_ptr<Skybox> {
+				if (auto cube = store().find<Cubemap>(cb)) { return std::make_unique<Skybox>(&*cube); }
+				utils::g_log.log(dl::level::warn, 1, "[Asset] Failed to find Cubemap [{}] for Skybox [{}]", cb, u.generic_string());
+				return {};
 			});
 			++ret;
 		}

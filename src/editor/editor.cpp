@@ -12,6 +12,7 @@
 #include <engine/render/draw_group.hpp>
 #include <engine/render/mesh_provider.hpp>
 #include <engine/render/model.hpp>
+#include <engine/render/skybox.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
@@ -506,6 +507,8 @@ void inspectMP(Inspect<MeshProvider> provider) {
 		type = "Mesh Primitive";
 	} else if (th == AssetStore::typeHash<Model>()[0]) {
 		type = "Model";
+	} else if (th == AssetStore::typeHash<Skybox>()[0]) {
+		type = "Skybox";
 	}
 	auto store = Services::find<AssetStore>();
 	Text typeStr(ktl::stack_string<64>("Type: %s", type.data()));
@@ -525,6 +528,13 @@ void inspectMP(Inspect<MeshProvider> provider) {
 		TWidget<char*> search("Search##inspect_mesh_provider", s_search.c_str(), s_search.capacity());
 		if (auto select = AssetIndex::list<Model>(s_search, s_search)) {
 			provider.get() = MeshProvider::make<Model>(std::string(select.item));
+			popup.close();
+		}
+	}
+	if (auto popup = Popup("Skybox##inspect_mesh_provider")) {
+		TWidget<char*> search("Search##inspect_mesh_provider", s_search.c_str(), s_search.capacity());
+		if (auto select = AssetIndex::list<Skybox>(s_search, s_search)) {
+			provider.get() = MeshProvider::make<Skybox>(std::string(select.item));
 			popup.close();
 		}
 	}
@@ -556,7 +566,13 @@ void inspectMP(Inspect<MeshProvider> provider) {
 			Popup::open(toPopup);
 		}
 	}
-	if (Button("Edit...")) { Popup::open("Type##inspect_mesh_provider"); }
+	if (Button("Edit...")) {
+		if (type == "Skybox") {
+			Popup::open("Skybox##inspect_mesh_provider");
+		} else {
+			Popup::open("Type##inspect_mesh_provider");
+		}
+	}
 }
 
 void inspectDGP(Inspect<DrawGroupProvider> provider) {

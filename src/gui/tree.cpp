@@ -2,8 +2,8 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/input/space.hpp>
-#include <engine/render/bitmap_font.hpp>
 #include <engine/render/viewport.hpp>
+#include <graphics/bitmap_font.hpp>
 #include <algorithm>
 
 namespace le::gui {

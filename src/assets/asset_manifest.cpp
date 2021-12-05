@@ -69,7 +69,7 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eTexture]);
 	m_deps[Kind::eSpirV] = m_loader.stage(std::move(m_spirV), scheduler, {}, m_jsonQIDs[Kind::eSpirV]);
 	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eSpirV], m_jsonQIDs[Kind::ePipelineState]);
-	m_deps[Kind::eDrawGroup] = m_loader.stage(std::move(m_drawGroups), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eDrawGroup]);
+	m_deps[Kind::eRenderLayer] = m_loader.stage(std::move(m_renderLayers), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eRenderLayer]);
 	m_deps[Kind::eMaterial] = m_loader.stage(std::move(m_materials), scheduler, matDeps, m_jsonQIDs[Kind::eMaterial]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eBitmapFont]);
 	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eSkybox]);
@@ -129,7 +129,7 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "skyboxes") { return addSkyboxes(std::move(group)); }
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
 	if (groupName == "pipelines") { return addPipelineStates(std::move(group)); }
-	if (groupName == "draw_groups") { return addDrawGroups(std::move(group)); }
+	if (groupName == "layers") { return addRenderLayers(std::move(group)); }
 	static_assert(__LINE__ - start_ - 1 == int(Kind::eCOUNT_));
 	return addCustom(groupName, std::move(group));
 }
@@ -234,14 +234,14 @@ std::size_t AssetManifest::addPipelineStates(Group group) {
 	return ret;
 }
 
-std::size_t AssetManifest::addDrawGroups(Group group) {
+std::size_t AssetManifest::addRenderLayers(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		if (auto const pipe = json->find("pipeline"); pipe && pipe->is_string()) {
 			Hash const pid = pipe->as<std::string_view>();
 			s64 const order = json->get_as<s64>("order");
-			m_drawGroups.add(std::move(uri), [this, pid, order]() {
-				return std::make_unique<DrawGroup>(DrawGroup{store().find<PipelineState>(pid).peek(), order});
+			m_renderLayers.add(std::move(uri), [this, pid, order]() {
+				return std::make_unique<RenderLayer>(RenderLayer{store().find<PipelineState>(pid).peek(), order});
 			});
 			++ret;
 		}
@@ -252,7 +252,7 @@ std::size_t AssetManifest::addDrawGroups(Group group) {
 std::size_t AssetManifest::addBitmapFonts(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
-		AssetLoadData<BitmapFont> data(&vram());
+		AssetLoadData<graphics::BitmapFont> data(&vram());
 		if (auto file = json->find("file"); file && file->is_string()) {
 			data.jsonURI = file->as<std::string_view>();
 		} else {
@@ -354,7 +354,7 @@ std::size_t AssetManifest::unload() {
 	ret += unloadMap(m_bitmapFonts.map);
 	ret += unloadMap(m_skyboxes.map);
 	ret += unloadMap(m_pipelineStates.map);
-	ret += unloadMap(m_drawGroups.map);
+	ret += unloadMap(m_renderLayers.map);
 	static_assert(__LINE__ - start_ - 1 == int(Kind::eCOUNT_));
 	ret += unloadCustom();
 	return ret;

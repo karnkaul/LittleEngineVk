@@ -5,9 +5,6 @@
 #include <vector>
 
 namespace le {
-class DescriptorUpdater;
-class DescriptorMap;
-
 struct DrawList : DrawBindable {
 	std::vector<Drawable> drawables;
 	graphics::Pipeline pipeline;

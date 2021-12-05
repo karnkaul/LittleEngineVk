@@ -13,7 +13,9 @@
 
 namespace le {
 struct Viewport;
+namespace graphics {
 class BitmapFont;
+}
 namespace input {
 struct Space;
 }
@@ -22,6 +24,7 @@ struct Space;
 namespace le::gui {
 class TreeNode;
 
+using graphics::BitmapFont;
 using graphics::DrawScissor;
 
 inline Hash defaultFontURI = "fonts/default";

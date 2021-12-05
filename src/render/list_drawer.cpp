@@ -6,18 +6,18 @@
 #include <unordered_set>
 
 namespace le {
-void ListDrawer::add(GroupMap& out_map, DrawGroup const& group, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
-	if (group.state && !mesh.empty()) { out_map[group].push_back({{}, model, {{}, mesh}, scissor}); }
+void ListDrawer::add(LayerMap& out_map, RenderLayer const& layer, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
+	if (layer.state && !mesh.empty()) { out_map[layer].push_back({{}, model, {{}, mesh}, scissor}); }
 }
 
 void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
-	GroupMap map;
+	LayerMap map;
 	populate(map);
 	m_drawLists.clear();
 	m_drawLists.reserve(map.size());
-	for (auto& [group, list] : map) {
-		if (group.state) {
-			if (auto pipe = pf.get(*group.state, rp); pipe.valid()) { m_drawLists.push_back(DrawList{{}, std::move(list), pipe, group.order}); }
+	for (auto& [layer, list] : map) {
+		if (layer.state) {
+			if (auto pipe = pf.get(*layer.state, rp); pipe.valid()) { m_drawLists.push_back(DrawList{{}, std::move(list), pipe, layer.order}); }
 		}
 	}
 	std::sort(m_drawLists.begin(), m_drawLists.end());
@@ -25,7 +25,7 @@ void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
 	for (auto const& list : m_drawLists) { writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list); }
 }
 
-void ListDrawer::fill(GroupMap& out_map, dens::registry const& registry) {
+void ListDrawer::fill(LayerMap& out_map, dens::registry const& registry) {
 	DrawListGen{}(out_map, registry);
 	DebugDrawListGen{}(out_map, registry);
 }

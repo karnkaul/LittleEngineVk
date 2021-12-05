@@ -1,12 +1,13 @@
 #pragma once
 #include <engine/render/bitmap_text.hpp>
 
-namespace le {
+namespace le::graphics {
 class BitmapFont;
 }
 
 namespace le::input {
 struct State;
+using graphics::BitmapFont;
 
 ///
 /// \brief Interactive text input with cursor prop

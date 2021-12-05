@@ -3,7 +3,7 @@
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
-#include <engine/render/draw_group.hpp>
+#include <engine/render/layer.hpp>
 #include <unordered_map>
 
 namespace le {
@@ -16,7 +16,7 @@ class AssetManifest : public utils::VBase {
 		eSpirV,
 		eTexture,
 		ePipelineState,
-		eDrawGroup,
+		eRenderLayer,
 		eBitmapFont,
 		eMaterial,
 		eSkybox,
@@ -74,7 +74,7 @@ class AssetManifest : public utils::VBase {
 	std::size_t addSpirV(Group group);
 	std::size_t addTextures(Group group);
 	std::size_t addPipelineStates(Group group);
-	std::size_t addDrawGroups(Group group);
+	std::size_t addRenderLayers(Group group);
 	std::size_t addBitmapFonts(Group group);
 	std::size_t addMaterials(Group group);
 	std::size_t addSkyboxes(Group group);
@@ -84,9 +84,9 @@ class AssetManifest : public utils::VBase {
 	AssetList<graphics::Sampler> m_samplers;
 	AssetLoadList<graphics::SpirV> m_spirV;
 	AssetLoadList<PipelineState> m_pipelineStates;
-	AssetList<DrawGroup> m_drawGroups;
+	AssetList<RenderLayer> m_renderLayers;
 	AssetLoadList<graphics::Texture> m_textures;
-	AssetLoadList<BitmapFont> m_bitmapFonts;
+	AssetLoadList<graphics::BitmapFont> m_bitmapFonts;
 	AssetList<Material> m_materials;
 	AssetList<Skybox> m_skyboxes;
 	AssetLoadList<Model> m_models;

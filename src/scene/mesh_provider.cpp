@@ -1,7 +1,7 @@
 #include <core/utils/expect.hpp>
-#include <engine/render/draw_group.hpp>
+#include <engine/render/layer.hpp>
 #include <engine/render/material.hpp>
-#include <engine/render/mesh_provider.hpp>
+#include <engine/scene/mesh_provider.hpp>
 #include <graphics/mesh_primitive.hpp>
 
 namespace le {
@@ -33,20 +33,20 @@ DynamicMesh DynamicMesh::make(GetMesh&& getMesh) {
 	return ret;
 }
 
-DrawGroupProvider DrawGroupProvider::make(std::string assetURI) {
-	DrawGroupProvider ret;
+RenderLayerProvider RenderLayerProvider::make(std::string assetURI) {
+	RenderLayerProvider ret;
 	ret.uri(std::move(assetURI));
 	return ret;
 }
 
-DrawGroup DrawGroupProvider::group() const {
+RenderLayer RenderLayerProvider::layer() const {
 	if (auto store = Services::find<AssetStore>()) {
-		if (auto group = store->find<DrawGroup>(m_hash)) { return *group; }
+		if (auto rl = store->find<RenderLayer>(m_hash)) { return *rl; }
 	}
 	return {};
 }
 
-void DrawGroupProvider::uri(std::string assetURI) {
+void RenderLayerProvider::uri(std::string assetURI) {
 	m_assetURI = std::move(assetURI);
 	m_hash = m_assetURI;
 }

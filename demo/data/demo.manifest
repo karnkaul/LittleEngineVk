@@ -69,34 +69,34 @@
 			]
 		}
 	],
-	"draw_groups": [
+	"layers": [
 		{
-			"uri": "draw_groups/basic",
+			"uri": "layers/basic",
 			"pipeline": "pipelines/basic",
 			"order": 0
 		},
 		{
-			"uri": "draw_groups/skybox",
+			"uri": "layers/skybox",
 			"pipeline": "pipelines/skybox",
 			"order": -10
 		},
 		{
-			"uri": "draw_groups/tex",
+			"uri": "layers/tex",
 			"pipeline": "pipelines/tex",
 			"order": 0
 		},
 		{
-			"uri": "draw_groups/lit",
+			"uri": "layers/lit",
 			"pipeline": "pipelines/lit",
 			"order": 0
 		},
 		{
-			"uri": "draw_groups/wireframe",
+			"uri": "layers/wireframe",
 			"pipeline": "pipelines/wireframe",
 			"order": 5
 		},
 		{
-			"uri": "draw_groups/ui",
+			"uri": "layers/ui",
 			"pipeline": "pipelines/ui",
 			"order": 10
 		}

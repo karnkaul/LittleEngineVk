@@ -22,7 +22,7 @@ bool DescriptorUpdater::update(u32 bind, Texture const& tex) {
 	return false;
 }
 
-bool DescriptorUpdater::update(u32 bind, Texture const* tex, TexBind tb) {
+bool DescriptorUpdater::update(u32 bind, Texture const* tex, TextureFallback tb) {
 	if (check(bind)) {
 		m_input->set(m_setNumber, m_index).update(bind, tex && tex->ready() ? *tex : *m_cache->defaults[tb]);
 		return true;
@@ -54,11 +54,11 @@ void DescriptorBinder::operator()(u32 set) {
 }
 
 DescriptorHelper::Cache DescriptorHelper::Cache::make(not_null<const AssetStore*> store) {
-	Cache ret;
-	ret.defaults[TexBind::eBlack] = store->find<Texture>("textures/black").peek();
-	ret.defaults[TexBind::eWhite] = store->find<Texture>("textures/white").peek();
-	ret.defaults[TexBind::eMagenta] = store->find<Texture>("textures/magenta").peek();
-	EXPECT(ret.defaults[TexBind::eBlack] && ret.defaults[TexBind::eWhite] && ret.defaults[TexBind::eMagenta]);
-	return ret;
+	decltype(Cache::defaults) defaults = {
+		store->find<Texture>("textures/white").peek(),
+		store->find<Texture>("textures/black").peek(),
+		store->find<Texture>("textures/magenta").peek(),
+	};
+	return Cache{defaults};
 }
 } // namespace le

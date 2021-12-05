@@ -192,11 +192,11 @@ class Drawer : public ListDrawer {
 		}
 	}
 
-	void buildDrawLists(PipelineFactory& pf, vk::RenderPass rp) override {
-		if (m_scene.registry) { populate<DrawListGen, DebugDrawListGen>(*m_scene.registry, pf, rp); }
+	void populate(GroupMap& out_map) override {
+		if (m_scene.registry) { fill(out_map, *m_scene.registry); }
 	}
 
-	void writeSets(DescriptorMap map, List const& list) override {
+	void writeSets(DescriptorMap map, DrawList const& list) override {
 		auto set0 = map.set(0);
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
@@ -208,9 +208,9 @@ class Drawer : public ListDrawer {
 						static Material const s_blank;
 						Material const& mat = mesh.material ? *mesh.material : s_blank;
 						auto set2 = map.set(2);
-						set2.update(0, mat.map_Kd, TexBind::eWhite);
-						set2.update(1, mat.map_d, TexBind::eWhite);
-						set2.update(2, mat.map_Ks, TexBind::eBlack);
+						set2.update(0, mat.map_Kd, TextureFallback::eWhite);
+						set2.update(1, mat.map_d, TextureFallback::eWhite);
+						set2.update(2, mat.map_Ks, TextureFallback::eBlack);
 						map.set(3).update(0, ShadeMat::make(mat));
 					}
 				}
@@ -218,7 +218,7 @@ class Drawer : public ListDrawer {
 		}
 	}
 
-	void draw(DescriptorBinder bind, List const& list, graphics::CommandBuffer cb) const override {
+	void draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer cb) const override {
 		bind(0);
 		for (Drawable const& d : list.drawables) {
 			if (auto meshes = d.mesh.meshViews(); !meshes.empty()) {

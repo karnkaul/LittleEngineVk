@@ -1,18 +1,13 @@
 #pragma once
 #include <core/hash.hpp>
 #include <graphics/render/descriptor_set.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <graphics/render/pipeline_spec.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <ktl/move_only_function.hpp>
 #include <unordered_map>
 
 namespace le::graphics {
-struct Pipeline {
-	not_null<ShaderInput*> shaderInput;
-	vk::Pipeline pipeline;
-	vk::PipelineLayout layout;
-};
-
 class PipelineFactory {
   public:
 	using Spec = PipelineSpec;

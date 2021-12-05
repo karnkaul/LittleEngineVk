@@ -1,16 +1,15 @@
 #pragma once
 #include <core/hash.hpp>
-#include <engine/render/draw_group.hpp>
 #include <engine/render/drawable.hpp>
+#include <graphics/render/pipeline.hpp>
 #include <vector>
 
 namespace le {
 struct DrawList {
-	DrawGroup group;
+	graphics::Pipeline pipeline;
 	std::vector<Drawable> drawables;
+	s64 order = 0;
 
-	auto operator<=>(DrawList const& rhs) const noexcept { return group <=> rhs.group; }
-
-	Hash hash() const { return group.hash(); }
+	auto operator<=>(DrawList const& rhs) const noexcept { return order <=> rhs.order; }
 };
 } // namespace le

@@ -23,7 +23,7 @@ class MeshView {
 
 	MeshObjView meshViews() const noexcept;
 	MeshObj front() const noexcept { return empty() ? MeshObj{} : meshViews().front(); }
-	bool empty() const noexcept { return meshViews().empty(); }
+	bool empty() const noexcept;
 
   private:
 	ktl::either<MeshObjView, MeshObj> m_objects;
@@ -37,5 +37,10 @@ inline MeshObjView MeshView::meshViews() const noexcept {
 	} else {
 		return m_objects.get<MeshObjView>();
 	}
+}
+
+inline bool MeshView::empty() const noexcept {
+	if (auto view = m_objects.get_if<MeshObjView>()) { return view->empty(); }
+	return false;
 }
 } // namespace le

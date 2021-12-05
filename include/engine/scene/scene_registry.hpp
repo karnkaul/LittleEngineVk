@@ -3,7 +3,6 @@
 #include <dens/registry.hpp>
 #include <engine/ecs/systems/system_groups.hpp>
 #include <engine/gui/view.hpp>
-#include <engine/render/draw_list_factory.hpp>
 #include <engine/render/mesh_provider.hpp>
 #include <engine/scene/scene_node.hpp>
 

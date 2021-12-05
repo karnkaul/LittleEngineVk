@@ -7,7 +7,7 @@ namespace le {
 static constexpr auto max_bindings_v = graphics::max_bindings_v;
 class AssetStore;
 
-enum class TexBind { eWhite, eBlack, eMagenta, eCOUNT_ };
+enum class TextureFallback { eWhite, eBlack, eMagenta, eCOUNT_ };
 
 class DescriptorHelper {
   public:
@@ -29,7 +29,7 @@ class DescriptorUpdater : public DescriptorHelper {
 	template <typename T>
 	bool update(u32 bind, T const& t, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool update(u32 bind, Texture const& tex);
-	bool update(u32 bind, Texture const* tex, TexBind tb);
+	bool update(u32 bind, Texture const* tex, TextureFallback tb);
 	bool update(u32 bind, ShaderBuffer const& buffer);
 
   private:
@@ -74,7 +74,7 @@ class DescriptorBinder : public DescriptorHelper {
 };
 
 struct DescriptorHelper::Cache {
-	EnumArray<TexBind, Texture const*> defaults;
+	EnumArray<TextureFallback, not_null<Texture const*>> defaults;
 
 	static Cache make(not_null<AssetStore const*> store);
 };

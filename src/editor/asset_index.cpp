@@ -4,7 +4,7 @@
 namespace le::edi {
 #define MU [[maybe_unused]]
 
-AssetIndex::Select AssetIndex::list(MU Span<std::size_t const> types, MU std::string_view filter, MU std::string_view selectedURI) {
+AssetIndex::Select AssetIndex::list(MU Span<Sign const> types, MU std::string_view filter, MU std::string_view selectedURI) {
 	Select ret;
 #if defined(LEVK_USE_IMGUI)
 	if (auto store = Services::find<AssetStore>()) {

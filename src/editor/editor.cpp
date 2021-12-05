@@ -502,12 +502,12 @@ void inspectMat(Material* out_mat, std::string_view name, int idx) {
 
 void inspectMP(Inspect<MeshProvider> provider) {
 	std::string_view type = "Other";
-	auto const th = provider.get().typeHash();
-	if (th == AssetStore::typeHash<MeshPrimitive>()[0]) {
+	auto const th = provider.get().sign();
+	if (th == AssetStore::sign<MeshPrimitive>()[0]) {
 		type = "Mesh Primitive";
-	} else if (th == AssetStore::typeHash<Model>()[0]) {
+	} else if (th == AssetStore::sign<Model>()[0]) {
 		type = "Model";
-	} else if (th == AssetStore::typeHash<Skybox>()[0]) {
+	} else if (th == AssetStore::sign<Skybox>()[0]) {
 		type = "Skybox";
 	}
 	auto store = Services::find<AssetStore>();

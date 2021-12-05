@@ -57,7 +57,7 @@ class AssetManifest : public utils::VBase {
 
   private:
 	using Metadata = dj::ptr<dj::json>;
-	using Group = std::unordered_map<io::Path, Metadata>;
+	using Group = std::unordered_map<std::string, Metadata>;
 
 	not_null<class Engine*> engine();
 

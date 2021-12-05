@@ -16,6 +16,8 @@ concept MeshAPI = requires(T const& t) {
 
 class MeshProvider {
   public:
+	using Sign = AssetStore::Sign;
+
 	inline static std::string const default_material_v = "materials/default";
 
 	template <MeshAPI T>
@@ -30,7 +32,7 @@ class MeshProvider {
 
 	bool active() const noexcept { return m_getMesh.has_value(); }
 	MeshView mesh() const { return m_getMesh ? m_getMesh(m_hash) : MeshView{}; }
-	std::size_t typeHash() const noexcept { return m_typeHash; }
+	Sign sign() const noexcept { return m_sign; }
 
   private:
 	using GetMesh = ktl::move_only_function<MeshView(Hash)>;
@@ -39,7 +41,7 @@ class MeshProvider {
 	std::string m_materialURI;
 	GetMesh m_getMesh;
 	Hash m_hash;
-	std::size_t m_typeHash{};
+	Sign m_sign{};
 };
 
 class DynamicMesh {
@@ -78,7 +80,7 @@ template <typename T, typename F>
 MeshProvider MeshProvider::make(std::string assetURI, F&& getMesh) {
 	MeshProvider ret;
 	ret.uri(std::move(assetURI));
-	ret.m_typeHash = AssetStore::typeHash<T>()[0];
+	ret.m_sign = AssetStore::sign<T>()[0];
 	ret.m_getMesh = [gm = std::move(getMesh)](Hash assetURI) -> MeshView {
 		if (auto store = Services::find<AssetStore>()) {
 			if (auto asset = store->find<T>(assetURI)) { return gm(*asset); }

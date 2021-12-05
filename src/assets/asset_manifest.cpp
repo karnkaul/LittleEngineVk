@@ -180,7 +180,7 @@ std::size_t AssetManifest::addSpirV(Group group) {
 		if (auto type = json->get_as<std::string_view>("type"); !type.empty()) {
 			data.type = parseShaderType(type);
 		} else {
-			data.type = shaderTypeFromExt(uri.extension());
+			data.type = shaderTypeFromExt(io::Path(uri).extension());
 		}
 		data.uri = uri;
 		m_spirV.add(std::move(uri), std::move(data));
@@ -199,7 +199,7 @@ std::size_t AssetManifest::addTextures(Group group) {
 		} else if (auto file = json->find_as<std::string>("file")) {
 			data.imageURIs = {std::move(*file)};
 		} else {
-			data.imageURIs = {uri.generic_string()};
+			data.imageURIs = {uri};
 		}
 		data.prefix = json->get_as<std::string>("prefix");
 		data.ext = json->get_as<std::string>("ext");
@@ -294,9 +294,9 @@ std::size_t AssetManifest::addSkyboxes(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		if (auto const cubemap = json->find("cubemap"); cubemap && cubemap->is_string()) {
-			m_skyboxes.add(uri, [this, cb = cubemap->as<std::string>(), u = uri]() -> std::unique_ptr<Skybox> {
+			m_skyboxes.add(uri, [this, cb = cubemap->as<std::string>(), u = std::move(uri)]() -> std::unique_ptr<Skybox> {
 				if (auto cube = store().find<Cubemap>(cb)) { return std::make_unique<Skybox>(&*cube); }
-				utils::g_log.log(dl::level::warn, 1, "[Asset] Failed to find Cubemap [{}] for Skybox [{}]", cb, u.generic_string());
+				utils::g_log.log(dl::level::warn, 1, "[Asset] Failed to find Cubemap [{}] for Skybox [{}]", cb, u);
 				return {};
 			});
 			++ret;
@@ -312,7 +312,8 @@ std::size_t AssetManifest::addBitmapFonts(Group group) {
 		if (auto file = json->find("file"); file && file->is_string()) {
 			data.jsonURI = file->as<std::string_view>();
 		} else {
-			data.jsonURI = uri / uri.filename() + ".json";
+			io::Path path(uri);
+			data.jsonURI = path / path.filename() + ".json";
 		}
 		data.samplerURI = json->get_as<std::string_view>("sampler");
 		m_bitmapFonts.add(std::move(uri), std::move(data));
@@ -325,11 +326,12 @@ std::size_t AssetManifest::addModels(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
 		AssetLoadData<Model> data(&vram());
-		data.modelURI = uri.generic_string();
+		data.modelURI = uri;
 		if (auto file = json->find("file"); file && file->is_string()) {
 			data.jsonURI = file->as<std::string_view>();
 		} else {
-			data.jsonURI = uri / uri.filename() + ".json";
+			io::Path path(uri);
+			data.jsonURI = path / path.filename() + ".json";
 		}
 		data.samplerURI = json->get_as<std::string_view>("sampler");
 		m_models.add(std::move(uri), std::move(data));

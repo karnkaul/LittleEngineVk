@@ -5,7 +5,7 @@
 #include <core/utils/vbase.hpp>
 #include <engine/gui/rect.hpp>
 #include <engine/render/flex.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 #include <engine/utils/owner.hpp>
 #include <graphics/basis.hpp>
 #include <graphics/draw_view.hpp>

@@ -2,11 +2,12 @@
 #include <engine/engine.hpp>
 #include <engine/render/list_drawer.hpp>
 #include <engine/scene/draw_list_gen.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <unordered_set>
 
 namespace le {
-void ListDrawer::add(GroupMap& out_map, DrawGroup const& group, glm::mat4 const& model, MeshView const& mesh, Rect2D scissor) {
-	if (group.state && !mesh.empty()) { out_map[group].push_back({model, scissor, mesh}); }
+void ListDrawer::add(GroupMap& out_map, DrawGroup const& group, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
+	if (group.state && !mesh.empty()) { out_map[group].push_back({{}, model, {{}, mesh}, scissor}); }
 }
 
 void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
@@ -16,7 +17,7 @@ void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
 	m_drawLists.reserve(map.size());
 	for (auto& [group, list] : map) {
 		if (group.state) {
-			if (auto pipe = pf.get(*group.state, rp); pipe.valid()) { m_drawLists.push_back(DrawList{pipe, std::move(list), group.order}); }
+			if (auto pipe = pf.get(*group.state, rp); pipe.valid()) { m_drawLists.push_back(DrawList{{}, std::move(list), pipe, group.order}); }
 		}
 	}
 	std::sort(m_drawLists.begin(), m_drawLists.end());
@@ -40,5 +41,17 @@ void ListDrawer::draw(graphics::CommandBuffer cb) {
 	for (auto pipe : pipes) { pipe->swap(); }
 	m_drawLists.clear();
 	Engine::drawImgui(cb);
+}
+
+void ListDrawer::draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer cb) const {
+	for (u32 const set : list.sets) { bind(set); }
+	for (Drawable const& d : list.drawables) {
+		for (u32 const set : d.sets) { bind(set); }
+		if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
+		for (MeshObj const& mesh : d.mesh.mesh.meshViews()) {
+			for (u32 const set : d.mesh.sets) { bind(set); }
+			mesh.primitive->draw(cb);
+		}
+	}
 }
 } // namespace le

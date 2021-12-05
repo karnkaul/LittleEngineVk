@@ -9,14 +9,14 @@
 
 namespace le {
 namespace {
-Rect2D cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
+DrawScissor cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
 
 void addNodes(ListDrawer::GroupMap& map, DrawGroupProvider const& group, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
 		if (node->m_active && group.active()) {
 			if (auto mesh = node->mesh(); !mesh.empty()) {
-				Rect2D const rect = cast(graphics::utils::scissor(node->m_scissor));
-				map[group.group()].push_back({node->model(), rect, mesh});
+				DrawScissor const rect = cast(graphics::utils::scissor(node->m_scissor));
+				ListDrawer::add(map, group.group(), node->model(), mesh, rect);
 			}
 		}
 	}

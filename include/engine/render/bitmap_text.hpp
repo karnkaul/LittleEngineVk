@@ -1,6 +1,6 @@
 #pragma once
 #include <engine/render/material.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 #include <graphics/glyph.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <optional>

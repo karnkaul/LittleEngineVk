@@ -197,38 +197,21 @@ class Drawer : public ListDrawer {
 	}
 
 	void writeSets(DescriptorMap map, DrawList const& list) override {
-		auto set0 = map.set(0);
+		auto set0 = list.set(map, 0);
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
 		for (Drawable const& drawable : list.drawables) {
-			if (auto const meshes = drawable.mesh.meshViews(); !meshes.empty()) {
-				map.set(1).update(0, drawable.model);
-				for (MeshObj const mesh : meshes) {
-					if (mesh.primitive) {
-						static Material const s_blank;
-						Material const& mat = mesh.material ? *mesh.material : s_blank;
-						auto set2 = map.set(2);
-						set2.update(0, mat.map_Kd, TextureFallback::eWhite);
-						set2.update(1, mat.map_d, TextureFallback::eWhite);
-						set2.update(2, mat.map_Ks, TextureFallback::eBlack);
-						map.set(3).update(0, ShadeMat::make(mat));
-					}
-				}
-			}
-		}
-	}
-
-	void draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer cb) const override {
-		bind(0);
-		for (Drawable const& d : list.drawables) {
-			if (auto meshes = d.mesh.meshViews(); !meshes.empty()) {
-				bind(1);
-				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
-				for (MeshObj const prop : meshes) {
-					if (prop.primitive) {
-						bind(2, 3);
-						prop.primitive->draw(cb);
-					}
+			drawable.set(map, 1).update(0, drawable.model);
+			DrawMesh const& drawMesh = drawable.mesh;
+			for (MeshObj const& mesh : drawable.meshViews()) {
+				if (mesh.primitive) {
+					static Material const s_blank;
+					Material const& mat = mesh.material ? *mesh.material : s_blank;
+					auto set2 = drawMesh.set(map, 2);
+					set2.update(0, mat.map_Kd, TextureFallback::eWhite);
+					set2.update(1, mat.map_d, TextureFallback::eWhite);
+					set2.update(2, mat.map_Ks, TextureFallback::eBlack);
+					drawMesh.set(map, 3).update(0, ShadeMat::make(mat));
 				}
 			}
 		}
@@ -629,16 +612,16 @@ class App : public input::Receiver, public SceneRegistry {
 				tr->position(pos);
 			}
 		}
-		// draw
-		if (m_eng->nextFrame()) { render(); }
-		m_tasks.rethrow();
-	}
 
-	void render() {
 		m_drawer.m_scene.camera = m_registry.find<graphics::Camera>(m_sceneRoot);
 		m_drawer.m_scene.registry = &m_registry;
 		m_drawer.m_scene.lights = m_data.dirLights;
 		m_drawer.m_scene.size = m_eng->sceneSpace();
+		// draw
+		m_tasks.rethrow();
+	}
+
+	void render() {
 		// draw
 		graphics::RenderBegin rb;
 		rb.clear = RGBA(0x777777ff, RGBA::Type::eAbsolute);
@@ -759,6 +742,7 @@ bool run(io::Media const& media) {
 		ktl::future<bool> bf;
 		ktl::async async;
 		while (!engine.closing()) {
+			if (!engine.nextFrame()) { continue; }
 			poll(flags, engine.poll(true).residue);
 			if (flags.test(Flag::eClosed)) {
 				reboot = false;
@@ -769,6 +753,7 @@ bool run(io::Media const& media) {
 				break;
 			}
 			app.tick(++dt);
+			app.render();
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });

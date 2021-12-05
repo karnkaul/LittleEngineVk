@@ -2,7 +2,7 @@
 #include <core/hash.hpp>
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 #include <ktl/move_only_function.hpp>
 #include <type_traits>
 

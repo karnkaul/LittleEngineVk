@@ -2,7 +2,7 @@
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
 #include <engine/render/material.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/expected.hpp>

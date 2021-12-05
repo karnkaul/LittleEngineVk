@@ -10,7 +10,7 @@ MeshProvider MeshProvider::make(std::string primitiveURI, std::string materialUR
 	ret.uri(std::move(primitiveURI));
 	Hash const mat = materialURI;
 	ret.m_materialURI = std::move(materialURI);
-	ret.m_sign = AssetStore::sign<MeshPrimitive>()[0];
+	ret.m_sign = AssetStore::sign<MeshPrimitive>();
 	ret.m_getMesh = [mat](Hash primitiveURI) {
 		if (auto store = Services::find<AssetStore>()) {
 			auto const material = store->find<Material>(mat);

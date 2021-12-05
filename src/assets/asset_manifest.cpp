@@ -63,43 +63,33 @@ std::size_t AssetManifest::preload(dj::json const& root) {
 }
 
 void AssetManifest::stage(dts::scheduler* scheduler) {
+	StageID const matDeps[] = {m_deps[Kind::eTexture], m_deps[Kind::ePipelineState]};
+	static constexpr auto start_ = __LINE__;
 	m_deps[Kind::eSampler] = m_loader.stage(std::move(m_samplers), scheduler, {}, m_jsonQIDs[Kind::eSampler]);
 	m_deps[Kind::eTexture] = m_loader.stage(std::move(m_textures), scheduler, m_deps[Kind::eSampler], m_jsonQIDs[Kind::eTexture]);
 	m_deps[Kind::eSpirV] = m_loader.stage(std::move(m_spirV), scheduler, {}, m_jsonQIDs[Kind::eSpirV]);
 	m_deps[Kind::ePipelineState] = m_loader.stage(std::move(m_pipelineStates), scheduler, m_deps[Kind::eSpirV], m_jsonQIDs[Kind::ePipelineState]);
 	m_deps[Kind::eDrawGroup] = m_loader.stage(std::move(m_drawGroups), scheduler, m_deps[Kind::ePipelineState], m_jsonQIDs[Kind::eDrawGroup]);
-	StageID const matDeps[] = {m_deps[Kind::eTexture], m_deps[Kind::ePipelineState]};
 	m_deps[Kind::eMaterial] = m_loader.stage(std::move(m_materials), scheduler, matDeps, m_jsonQIDs[Kind::eMaterial]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eBitmapFont]);
 	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eSkybox]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
+	static_assert(__LINE__ - start_ - 1 == int(Kind::eCOUNT_));
 	loadCustom(scheduler);
 }
 
 std::size_t AssetManifest::load(io::Path const& jsonID, dts::scheduler* scheduler) {
-	std::size_t ret{};
-	if (auto eng = Services::find<Engine>()) {
-		dj::json json;
-		auto& resources = eng->store().resources();
-		io::Path uris[] = {jsonID, jsonID + ".manifest"};
-		if (auto res = resources.loadFirst(uris, Resource::Type::eText); res && json.read(res->string())) { ret = preload(json); }
+	if (auto const ret = preload(jsonID)) {
+		stage(scheduler);
+		return ret;
 	}
-	if (ret > 0) { stage(scheduler); }
-	return ret;
+	return 0U;
 }
 
 std::size_t AssetManifest::unload(io::Path const& jsonID, dts::scheduler& scheduler) {
 	wait(scheduler);
-	std::size_t count{};
-	if (auto eng = Services::find<Engine>()) {
-		dj::json json;
-		auto& resources = eng->store().resources();
-		auto res = resources.load(jsonID, Resource::Type::eText);
-		if (!res && !jsonID.has_extension()) { res = resources.load(jsonID + ".manifest", Resource::Type::eText); }
-		if (res && json.read(res->string())) { count = preload(json); }
-	}
-	if (count > 0) { return unload(); }
-	return 0;
+	if (preload(jsonID) > 0) { return unload(); }
+	return 0U;
 }
 
 std::vector<AssetManifest::StageID> AssetManifest::deps(Kinds kinds) const noexcept {
@@ -115,9 +105,22 @@ graphics::Device& AssetManifest::device() { return engine()->gfx().boot.device; 
 graphics::VRAM& AssetManifest::vram() { return engine()->gfx().boot.vram; }
 graphics::RenderContext& AssetManifest::context() { return engine()->gfx().context; }
 AssetStore& AssetManifest::store() { return engine()->store(); }
+
 not_null<Engine*> AssetManifest::engine() { return m_engine ? m_engine : (m_engine = Services::get<Engine>()); }
 
+std::size_t AssetManifest::preload(io::Path const& jsonID) {
+	std::size_t ret{};
+	if (auto eng = Services::find<Engine>()) {
+		dj::json json;
+		auto& resources = eng->store().resources();
+		io::Path uris[] = {jsonID, jsonID + ".manifest"};
+		if (auto res = resources.loadFirst(uris, Resource::Type::eText); res && json.read(res->string())) { ret = preload(json); }
+	}
+	return ret;
+}
+
 std::size_t AssetManifest::add(std::string_view groupName, Group group) {
+	static constexpr auto start_ = __LINE__;
 	if (groupName == "samplers") { return addSamplers(std::move(group)); }
 	if (groupName == "shaders") { return addSpirV(std::move(group)); }
 	if (groupName == "textures") { return addTextures(std::move(group)); }
@@ -127,6 +130,7 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
 	if (groupName == "pipelines") { return addPipelineStates(std::move(group)); }
 	if (groupName == "draw_groups") { return addDrawGroups(std::move(group)); }
+	static_assert(__LINE__ - start_ - 1 == int(Kind::eCOUNT_));
 	return addCustom(groupName, std::move(group));
 }
 
@@ -245,6 +249,23 @@ std::size_t AssetManifest::addDrawGroups(Group group) {
 	return ret;
 }
 
+std::size_t AssetManifest::addBitmapFonts(Group group) {
+	std::size_t ret{};
+	for (auto& [uri, json] : group) {
+		AssetLoadData<BitmapFont> data(&vram());
+		if (auto file = json->find("file"); file && file->is_string()) {
+			data.jsonURI = file->as<std::string_view>();
+		} else {
+			io::Path path(uri);
+			data.jsonURI = path / path.filename() + ".json";
+		}
+		data.samplerURI = json->get_as<std::string_view>("sampler");
+		m_bitmapFonts.add(std::move(uri), std::move(data));
+		++ret;
+	}
+	return ret;
+}
+
 namespace {
 graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
 	if (json.is_string()) {
@@ -305,23 +326,6 @@ std::size_t AssetManifest::addSkyboxes(Group group) {
 	return ret;
 }
 
-std::size_t AssetManifest::addBitmapFonts(Group group) {
-	std::size_t ret{};
-	for (auto& [uri, json] : group) {
-		AssetLoadData<BitmapFont> data(&vram());
-		if (auto file = json->find("file"); file && file->is_string()) {
-			data.jsonURI = file->as<std::string_view>();
-		} else {
-			io::Path path(uri);
-			data.jsonURI = path / path.filename() + ".json";
-		}
-		data.samplerURI = json->get_as<std::string_view>("sampler");
-		m_bitmapFonts.add(std::move(uri), std::move(data));
-		++ret;
-	}
-	return ret;
-}
-
 std::size_t AssetManifest::addModels(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
@@ -340,26 +344,18 @@ std::size_t AssetManifest::addModels(Group group) {
 	return ret;
 }
 
-template <typename T, typename U>
-std::size_t AssetManifest::unload(U& cont) {
-	std::size_t ret{};
-	for (auto const& [uri, _] : cont) {
-		if (store().unload<T>(uri)) { ++ret; }
-	}
-	cont.clear();
-	return ret;
-}
-
 std::size_t AssetManifest::unload() {
-	std::size_t ret = unload<graphics::Sampler>(m_samplers.map);
-	ret += unload<graphics::SpirV>(m_spirV.map);
-	ret += unload<graphics::Texture>(m_textures.map);
-	ret += unload<Model>(m_models.map);
-	ret += unload<Material>(m_materials.map);
-	ret += unload<BitmapFont>(m_bitmapFonts.map);
-	ret += unload<Skybox>(m_skyboxes.map);
-	ret += unload<PipelineState>(m_pipelineStates.map);
-	ret += unload<DrawGroup>(m_drawGroups.map);
+	static constexpr auto start_ = __LINE__;
+	std::size_t ret = unloadMap(m_samplers.map);
+	ret += unloadMap(m_spirV.map);
+	ret += unloadMap(m_textures.map);
+	ret += unloadMap(m_models.map);
+	ret += unloadMap(m_materials.map);
+	ret += unloadMap(m_bitmapFonts.map);
+	ret += unloadMap(m_skyboxes.map);
+	ret += unloadMap(m_pipelineStates.map);
+	ret += unloadMap(m_drawGroups.map);
+	static_assert(__LINE__ - start_ - 1 == int(Kind::eCOUNT_));
 	ret += unloadCustom();
 	return ret;
 }

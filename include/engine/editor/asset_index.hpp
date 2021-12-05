@@ -7,7 +7,7 @@ namespace le::edi {
 class AssetIndex {
   public:
 	using Select = TreeSelect::Select;
-	using Sign = dens::detail::sign_t;
+	using Sign = AssetStore::Sign;
 
 	static Select list(Span<Sign const> types, std::string_view filter = {}, std::string_view selectedURI = {});
 
@@ -19,11 +19,6 @@ class AssetIndex {
 
 template <typename... Types>
 AssetIndex::Select AssetIndex::list(std::string_view filter, std::string_view selectedURI) {
-	if constexpr (sizeof...(Types) > 0) {
-		static auto const types = AssetStore::sign<Types...>();
-		return list(types, filter, selectedURI);
-	} else {
-		return list({}, filter, selectedURI);
-	}
+	return list(AssetStore::signs<Types...>(), filter, selectedURI);
 }
 } // namespace le::edi

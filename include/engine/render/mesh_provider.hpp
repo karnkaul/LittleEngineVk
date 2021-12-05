@@ -80,7 +80,7 @@ template <typename T, typename F>
 MeshProvider MeshProvider::make(std::string assetURI, F&& getMesh) {
 	MeshProvider ret;
 	ret.uri(std::move(assetURI));
-	ret.m_sign = AssetStore::sign<T>()[0];
+	ret.m_sign = AssetStore::sign<T>();
 	ret.m_getMesh = [gm = std::move(getMesh)](Hash assetURI) -> MeshView {
 		if (auto store = Services::find<AssetStore>()) {
 			if (auto asset = store->find<T>(assetURI)) { return gm(*asset); }

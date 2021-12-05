@@ -32,6 +32,7 @@ class AssetStore : public NoCopy {
 	template <typename T>
 	bool unload(Hash uri);
 	template <typename T>
+		requires(detail::reloadable_asset_v<T>)
 	bool reload(Hash uri);
 
 	void update();
@@ -43,8 +44,11 @@ class AssetStore : public NoCopy {
 	Resources& resources() noexcept { return m_resources; }
 	Resources const& resources() const noexcept { return m_resources; }
 
-	template <typename T, typename... Ts>
-	static std::array<Sign, 1U + sizeof...(Ts)> sign();
+	template <typename T>
+	static Sign sign();
+	template <typename... T>
+	static Span<Sign const> signs();
+
 	template <typename... Ts>
 	Index index(std::string_view filter = {}) const;
 	Index index(Span<Sign const> signs, std::string_view filter) const;
@@ -52,38 +56,16 @@ class AssetStore : public NoCopy {
   private:
 	struct Base;
 	using DoUpdate = ktl::move_only_function<bool(Base*)>;
-	struct Base {
-		std::string uri;
-		std::string_view typeName;
-		OnModified onModified;
-		DoUpdate doUpdate;
-		Sign sign;
-		Base(std::string uri, std::string_view typeName, Sign sign, DoUpdate&& doUpdate) noexcept
-			: uri(std::move(uri)), typeName(typeName), doUpdate(std::move(doUpdate)), sign(sign) {}
-		virtual ~Base() = default;
-	};
-	template <typename T>
-	struct TAsset : Base {
-		std::optional<AssetLoadInfo<T>> info;
-		std::unique_ptr<T> t;
-
-		static std::string_view tName() { return utils::removeNamespaces(utils::tName<T>()); }
-
-		TAsset(std::string&& uri, std::unique_ptr<T>&& t) noexcept : Base(std::move(uri), tName(), Sign::make<T>(), {}), t(std::move(t)) {}
-		TAsset(std::string&& uri, AssetLoadInfo<T>&& info, DoUpdate&& doUpdate) noexcept
-			: Base(std::move(uri), tName(), Sign::make<T>(), std::move(doUpdate)), info(std::move(info)) {}
-	};
 	using TAssets = std::unordered_map<Hash, std::unique_ptr<Base>>;
+	template <typename T>
+	struct TAsset;
 
 	template <typename T>
 		requires(detail::reloadable_asset_v<T>)
 	bool reloadAsset(TAsset<T>& out_asset) const;
 
 	template <typename T>
-	static Asset<T> makeAsset(TAsset<T>& t) noexcept {
-		EXPECT(t.t);
-		return {&*t.t, t.uri, &t.onModified};
-	}
+	static Asset<T> makeAsset(TAsset<T>& t) noexcept;
 
 	Resources m_resources;
 	ktl::shared_strict_tmutex<TAssets> m_assets;
@@ -104,6 +86,29 @@ struct AssetStore::Index {
 };
 
 // impl
+
+struct AssetStore::Base {
+	std::string uri;
+	std::string_view typeName;
+	OnModified onModified;
+	DoUpdate doUpdate;
+	Sign sign;
+	Base(std::string uri, std::string_view typeName, Sign sign, DoUpdate&& doUpdate) noexcept
+		: uri(std::move(uri)), typeName(typeName), doUpdate(std::move(doUpdate)), sign(sign) {}
+	virtual ~Base() = default;
+};
+
+template <typename T>
+struct AssetStore::TAsset : Base {
+	std::optional<AssetLoadInfo<T>> info;
+	std::unique_ptr<T> t;
+
+	static std::string_view tName() { return utils::removeNamespaces(utils::tName<T>()); }
+
+	TAsset(std::string&& uri, std::unique_ptr<T>&& t) noexcept : Base(std::move(uri), tName(), Sign::make<T>(), {}), t(std::move(t)) {}
+	TAsset(std::string&& uri, AssetLoadInfo<T>&& info, DoUpdate&& doUpdate) noexcept
+		: Base(std::move(uri), tName(), Sign::make<T>(), std::move(doUpdate)), info(std::move(info)) {}
+};
 
 template <typename T>
 Asset<T> AssetStore::add(std::string uri, T t) {
@@ -171,13 +176,12 @@ bool AssetStore::exists(Hash uri) const noexcept {
 }
 
 template <typename T>
+	requires(detail::reloadable_asset_v<T>)
 bool AssetStore::reload(Hash uri) {
-	if constexpr (detail::reloadable_asset_v<T>) {
-		ktl::shared_tlock<TAssets> lock(m_assets);
-		if (auto it = lock->find(uri); it != lock->end()) {
-			EXPECT(it->second);
-			if (it->second->sign == Sign::make<T>()) { return reloadAsset(static_cast<TAsset<T>&>(*it->second)); }
-		}
+	ktl::shared_tlock<TAssets> lock(m_assets);
+	if (auto it = lock->find(uri); it != lock->end()) {
+		EXPECT(it->second);
+		if (it->second->sign == Sign::make<T>()) { return reloadAsset(static_cast<TAsset<T>&>(*it->second)); }
 	}
 	return false;
 }
@@ -206,23 +210,36 @@ bool AssetStore::reloadAsset(TAsset<T>& out_asset) const {
 	auto lock = reloadLock();
 	AssetLoader<T> loader;
 	if (loader.reload(*out_asset.t, *out_asset.info)) {
+		utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", out_asset.uri);
 		out_asset.onModified();
 		return true;
 	}
 	return false;
 }
 
-template <typename T, typename... Ts>
-std::array<AssetStore::Sign, 1U + sizeof...(Ts)> AssetStore::sign() {
-	return {{Sign::make<T>(), Sign::make<Ts>()...}};
+template <typename T>
+Asset<T> AssetStore::makeAsset(TAsset<T>& t) noexcept {
+	EXPECT(t.t);
+	return {&*t.t, t.uri, &t.onModified};
+}
+
+template <typename T>
+AssetStore::Sign AssetStore::sign() {
+	return Sign::make<T>();
+}
+
+template <typename... T>
+Span<AssetStore::Sign const> AssetStore::signs() {
+	if constexpr (sizeof...(T) > 0) {
+		thread_local Sign const ret[] = {Sign::make<T>()...};
+		return ret;
+	} else {
+		return {};
+	}
 }
 
 template <typename... Ts>
 AssetStore::Index AssetStore::index(std::string_view filter) const {
-	if constexpr (sizeof...(Ts) > 0) {
-		return index(sign<Ts...>(), filter);
-	} else {
-		return index({}, filter);
-	}
+	return index(sign<Ts...>(), filter);
 }
 } // namespace le

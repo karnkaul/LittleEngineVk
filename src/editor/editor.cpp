@@ -503,11 +503,11 @@ void inspectMat(Material* out_mat, std::string_view name, int idx) {
 void inspectMP(Inspect<MeshProvider> provider) {
 	std::string_view type = "Other";
 	auto const th = provider.get().sign();
-	if (th == AssetStore::sign<MeshPrimitive>()[0]) {
+	if (th == AssetStore::sign<MeshPrimitive>()) {
 		type = "Mesh Primitive";
-	} else if (th == AssetStore::sign<Model>()[0]) {
+	} else if (th == AssetStore::sign<Model>()) {
 		type = "Model";
-	} else if (th == AssetStore::sign<Skybox>()[0]) {
+	} else if (th == AssetStore::sign<Skybox>()) {
 		type = "Skybox";
 	}
 	auto store = Services::find<AssetStore>();

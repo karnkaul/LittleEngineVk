@@ -85,29 +85,6 @@ bool AssetLoader<graphics::SpirV>::load(graphics::SpirV& out_code, AssetLoadInfo
 	return true;
 }
 
-std::unique_ptr<PipelineState> AssetLoader<PipelineState>::load(AssetLoadInfo<PipelineState> const& info) const {
-	for (Hash const uri : info.m_data.shader.moduleURIs) {
-		if (!info.m_store->find<graphics::SpirV>(uri)) { return {}; }
-	}
-	return std::make_unique<PipelineState>(from(info.m_data));
-}
-
-bool AssetLoader<PipelineState>::reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const {
-	for (Hash const uri : info.m_data.shader.moduleURIs) {
-		if (!info.m_store->find<graphics::SpirV>(uri)) { return false; }
-	}
-	out_ps = from(info.m_data);
-	return true;
-}
-
-PipelineState AssetLoader<PipelineState>::from(AssetLoadData<PipelineState> const& data) {
-	PipelineState ret = graphics::PipelineFactory::spec(data.shader, data.flags);
-	ret.fixedState.mode = data.polygonMode;
-	ret.fixedState.lineWidth = data.lineWidth;
-	ret.fixedState.topology = data.topology;
-	return ret;
-}
-
 std::unique_ptr<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
 	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);

@@ -1,21 +1,20 @@
 #pragma once
-#include <core/std_types.hpp>
-#include <graphics/render/pipeline_spec.hpp>
+#include <graphics/render/pipeline_flags.hpp>
 
 namespace le {
-using PipelineState = graphics::PipelineSpec;
+enum class PolygonMode { eFill, eLine, ePoint, eCOUNT_ };
+enum class Topology { ePointList, eLineList, eLineStrip, eTriangleList, eTriangleStrip, eTriangleFan, eCOUNT_ };
+using RenderFlag = graphics::PFlag;
+using RenderFlags = graphics::PFlags;
+constexpr auto rflags_all = graphics::pflags_all;
 
 struct RenderLayer {
-	PipelineState const* state{};
+	PolygonMode mode = PolygonMode::eFill;
+	Topology topology = Topology::eTriangleList;
+	RenderFlags flags = rflags_all;
 	s64 order = 0;
+	f32 lineWidth = 1.0f;
 
-	bool operator==(RenderLayer const& rhs) const noexcept { return ((!state && !rhs.state) || (*state == *rhs.state)) && order == rhs.order; }
-	auto operator<=>(RenderLayer const& rhs) const noexcept { return order <=> rhs.order; }
-
-	Hash hash() const { return state ? state->hash() : Hash(); }
-
-	struct Hasher {
-		std::size_t operator()(RenderLayer const& list) const { return list.hash(); }
-	};
+	constexpr bool operator==(RenderLayer const& rhs) const = default;
 };
 } // namespace le

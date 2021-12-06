@@ -416,9 +416,9 @@ class App : public input::Receiver, public SceneRegistry {
 		edi::Inspector::attach<PlayerController>(ipc);
 		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
 
-		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "layers/skybox"); }
+		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
 		{
-			m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "layers/lit");
+			m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "render_pipelines/lit");
 			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});
 			m_registry.attach<PlayerController>(m_data.player);
 			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
@@ -426,21 +426,21 @@ class App : public input::Receiver, public SceneRegistry {
 			m_onCollide += [](auto&&) { logD("Collided!"); };
 		}
 		{
-			auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "layers/lit");
+			auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "render_pipelines/lit");
 			m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
 			m_data.entities["model_0_0"] = ent0;
 
-			auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "layers/lit");
+			auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "render_pipelines/lit");
 			auto& node = m_registry.get<Transform>(ent1);
 			node.position({-2.0f, -1.0f, 5.0f});
 			m_data.entities["model_0_1"] = ent1;
 			m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
 		}
 		{
-			auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "layers/lit");
+			auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "render_pipelines/lit");
 			m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
 			m_data.entities["model_1_0"] = ent0;
-			auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "layers/lit");
+			auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "render_pipelines/lit");
 			m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
 			m_data.entities["model_1"] = ent;
 		}
@@ -457,19 +457,19 @@ class App : public input::Receiver, public SceneRegistry {
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 		}
 		{
-			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "layers/basic");
+			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "render_pipelines/basic");
 			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
 			m_data.entities["prop_1"] = ent;
 		}
 		{
-			auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "layers/tex");
+			auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "render_pipelines/tex");
 			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
 		}
 		{
 			m_testMat.map_Kd = &m_testTex;
 			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
 				m_data.roundedQuad = spawnNode("prop_3");
-				m_registry.attach<RenderLayerProvider>(m_data.roundedQuad, RenderLayerProvider::make("layers/tex"));
+				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, RenderPipeProvider::make("render_pipelines/tex"));
 				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
 				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
 			}
@@ -478,7 +478,7 @@ class App : public input::Receiver, public SceneRegistry {
 			Material mat;
 			mat.Tf = colours::yellow;
 			m_eng->store().add("materials/yellow", mat);
-			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "layers/basic");
+			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "render_pipelines/basic");
 			m_registry.get<Transform>(node).scale(2.0f);
 			m_data.tween = node;
 			auto& trig1 = m_registry.attach<physics::Trigger>(node);
@@ -496,13 +496,13 @@ class App : public input::Receiver, public SceneRegistry {
 			l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
 			m_data.dirLights = {l0, l1};
 		}
-		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "layers/ui", &m_eng->gfx().boot.vram);
+		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &m_eng->gfx().boot.vram);
 	}
 
 	bool block(input::State const& state) override {
 		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
 		if (m_controls.wireframe(state)) {
-			if (auto lit = m_eng->store().find<PipelineState>("pipelines/lit")) {
+			/*if (auto lit = m_eng->store().find<PipelineState>("pipelines/lit")) {
 				if (lit->fixedState.flags.test(graphics::PFlag::eWireframe)) {
 					lit->fixedState.flags.reset(graphics::PFlag::eWireframe);
 					lit->fixedState.lineWidth = 1.0f;
@@ -510,7 +510,7 @@ class App : public input::Receiver, public SceneRegistry {
 					lit->fixedState.flags.set(graphics::PFlag::eWireframe);
 					lit->fixedState.lineWidth = 3.0f;
 				}
-			}
+			}*/
 		}
 		if (m_controls.reboot(state)) { m_data.reboot = true; }
 		if (m_controls.unload(state)) {
@@ -527,7 +527,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
-			m_registry.attach<RenderLayerProvider>(triggerDebug, RenderLayerProvider::make("layers/wireframe"));
+			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
 		}
 		m_data.text = TextMesh(&vram, &*font);
 		m_data.cursor = input::TextCursor(&*font);

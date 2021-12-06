@@ -10,95 +10,65 @@
 		"shaders/skybox.vert",
 		"shaders/skybox.frag"
 	],
-	"pipelines": [
+	"render_layers": [
 		{
-			"uri": "pipelines/basic",
+			"uri": "render_layers/wireframe",
+			"topology": "line_list",
+			"line_width": 3,
+			"flags": [
+				"wireframe"
+			],
+			"order": 50
+		}
+	],
+	"render_pipelines": [
+		{
+			"uri": "render_pipelines/basic",
+			"layer": "render_layers/default",
 			"shaders": [
 				"shaders/basic.vert",
 				"shaders/basic.frag"
-			],
-			"flags": [
-				"all"
 			]
 		},
 		{
-			"uri": "pipelines/wireframe",
+			"uri": "render_pipelines/wireframe",
+			"layer": "render_layers/wireframe",
 			"shaders": [
 				"shaders/basic.vert",
 				"shaders/basic.frag"
-			],
-			"line_width": 3,
-			"topology": "line_list"
+			]
 		},
 		{
-			"uri": "pipelines/tex",
+			"uri": "render_pipelines/tex",
+			"layer": "render_layers/default",
 			"shaders": [
 				"shaders/basic.vert",
 				"shaders/tex.frag"
-			],
-			"flags": [
-				"all"
 			]
 		},
 		{
-			"uri": "pipelines/lit",
+			"uri": "render_pipelines/lit",
+			"layer": "render_layers/default",
 			"shaders": [
 				"shaders/lit.vert",
 				"shaders/lit.frag"
-			],
-			"shader": "shaders/lit",
-			"flags": [
-				"all"
 			]
 		},
 		{
-			"uri": "pipelines/ui",
+			"uri": "render_pipelines/ui",
+			"layer": "render_layers/ui",
 			"shaders": [
 				"shaders/ui.vert",
 				"shaders/ui.frag"
-			],
-			"flags": [
-				"alpha_blend"
 			]
 		},
 		{
-			"uri": "pipelines/skybox",
+			"uri": "render_pipelines/skybox",
+			"layer": "render_layers/skybox",
 			"shaders": [
 				"shaders/skybox.vert",
 				"shaders/skybox.frag"
 			]
-		}
-	],
-	"layers": [
-		{
-			"uri": "layers/basic",
-			"pipeline": "pipelines/basic",
-			"order": 0
-		},
-		{
-			"uri": "layers/skybox",
-			"pipeline": "pipelines/skybox",
-			"order": -10
-		},
-		{
-			"uri": "layers/tex",
-			"pipeline": "pipelines/tex",
-			"order": 0
-		},
-		{
-			"uri": "layers/lit",
-			"pipeline": "pipelines/lit",
-			"order": 0
-		},
-		{
-			"uri": "layers/wireframe",
-			"pipeline": "pipelines/wireframe",
-			"order": 5
-		},
-		{
-			"uri": "layers/ui",
-			"pipeline": "pipelines/ui",
-			"order": 10
 		}
 	],
 	"textures": [
@@ -160,7 +130,7 @@
 		},
 		{
 			"uri": "skyboxes/sky_test",
-			"cubemap": "cubemaps/test",
+			"cubemap": "cubemaps/test"
 		}
 	],
 	"models": [

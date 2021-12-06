@@ -25,23 +25,6 @@ struct AssetLoader<graphics::SpirV> {
 };
 
 template <>
-struct AssetLoadData<PipelineState> {
-	graphics::ShaderSpec shader;
-	vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-	graphics::PFlags flags;
-	f32 lineWidth = 1.0f;
-};
-
-template <>
-struct AssetLoader<PipelineState> {
-	std::unique_ptr<PipelineState> load(AssetLoadInfo<PipelineState> const& info) const;
-	bool reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const;
-
-	static PipelineState from(AssetLoadData<PipelineState> const& data);
-};
-
-template <>
 struct AssetLoadData<graphics::Texture> {
 	ktl::fixed_vector<io::Path, 6> imageURIs;
 	graphics::Bitmap bitmap;

@@ -18,7 +18,7 @@ class SceneRegistry : public utils::VBase {
 	dens::registry const& registry() const noexcept { return m_registry; }
 	dens::entity root() const noexcept { return m_sceneRoot; }
 
-	void attach(dens::entity entity, RenderLayerProvider&& layer);
+	void attach(dens::entity entity, RenderPipeProvider&& rp);
 
 	dens::entity spawnNode(std::string name);
 
@@ -52,7 +52,7 @@ template <typename T, typename... Args>
 dens::entity SceneRegistry::spawn(std::string name, std::string layerURI, Args&&... args) {
 	auto ret = m_registry.make_entity(std::move(name));
 	auto& t = m_registry.attach<T>(ret, std::forward<Args>(args)...);
-	m_registry.attach<RenderLayerProvider>(ret, RenderLayerProvider::make(std::move(layerURI)));
+	m_registry.attach<RenderPipeProvider>(ret, RenderPipeProvider::make(std::move(layerURI)));
 	return ret;
 }
 } // namespace le

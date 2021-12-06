@@ -33,7 +33,7 @@ SceneRegistry::SceneRegistry() {
 	tick.attach<SceneCleanSystem>(SceneCleanSystem::order_v);
 }
 
-void SceneRegistry::attach(dens::entity entity, RenderLayerProvider&& layer) { m_registry.attach<RenderLayerProvider>(entity, std::move(layer)); }
+void SceneRegistry::attach(dens::entity entity, RenderPipeProvider&& rp) { m_registry.attach<RenderPipeProvider>(entity, std::move(rp)); }
 
 dens::entity SceneRegistry::spawnNode(std::string name) {
 	auto ret = makeNode(m_registry, std::move(name));
@@ -44,14 +44,14 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 
 dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, std::string layerURI) {
 	auto ret = spawnNode(std::move(name));
-	m_registry.attach<RenderLayerProvider>(ret, RenderLayerProvider::make(std::move(layerURI)));
+	m_registry.attach<RenderPipeProvider>(ret, RenderPipeProvider::make(std::move(layerURI)));
 	m_registry.attach<MeshProvider>(ret, std::move(provider));
 	return ret;
 }
 
 dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string layerURI) {
 	auto ret = spawnNode(std::move(name));
-	m_registry.attach<RenderLayerProvider>(ret, RenderLayerProvider::make(std::move(layerURI)));
+	m_registry.attach<RenderPipeProvider>(ret, RenderPipeProvider::make(std::move(layerURI)));
 	m_registry.attach<DynamicMesh>(ret, std::move(dynMesh));
 	return ret;
 }

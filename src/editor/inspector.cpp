@@ -7,7 +7,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/drawable.hpp>
-#include <engine/render/layer.hpp>
+#include <engine/render/pipeline.hpp>
 #include <engine/scene/mesh_provider.hpp>
 
 namespace le::edi {
@@ -90,7 +90,7 @@ void Inspector::update([[maybe_unused]] SceneRef const& scene) {
 			if (!inspect->tree) {
 				Text(reg.name(inspect->entity));
 				Text(ktl::stack_string<16>("id: %u", inspect->entity.id));
-				if (reg.attached<RenderLayer>(inspect->entity) || reg.attached<RenderLayerProvider>(inspect->entity)) {
+				if (reg.attached<RenderPipeline>(inspect->entity) || reg.attached<RenderPipeProvider>(inspect->entity)) {
 					TWidgetWrap<bool> draw;
 					if (draw(shouldDraw(inspect->entity, reg), "Draw", draw.out)) { shouldDraw(inspect->entity, reg, draw.out); }
 				}

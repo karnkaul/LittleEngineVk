@@ -32,22 +32,4 @@ DynamicMesh DynamicMesh::make(GetMesh&& getMesh) {
 	ret.m_getMesh = std::move(getMesh);
 	return ret;
 }
-
-RenderLayerProvider RenderLayerProvider::make(std::string assetURI) {
-	RenderLayerProvider ret;
-	ret.uri(std::move(assetURI));
-	return ret;
-}
-
-RenderLayer RenderLayerProvider::layer() const {
-	if (auto store = Services::find<AssetStore>()) {
-		if (auto rl = store->find<RenderLayer>(m_hash)) { return *rl; }
-	}
-	return {};
-}
-
-void RenderLayerProvider::uri(std::string assetURI) {
-	m_assetURI = std::move(assetURI);
-	m_hash = m_assetURI;
-}
 } // namespace le

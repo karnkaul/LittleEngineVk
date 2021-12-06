@@ -5,9 +5,29 @@
 #include <graphics/mesh_primitive.hpp>
 #include <unordered_set>
 
+#include <core/log.hpp>
+
 namespace le {
-void ListDrawer::add(LayerMap& out_map, RenderLayer const& layer, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
-	if (layer.state && !mesh.empty()) { out_map[layer].push_back({{}, model, {{}, mesh}, scissor}); }
+namespace {
+constexpr EnumArray<PolygonMode, vk::PolygonMode> polygonModes = {vk::PolygonMode::eFill, vk::PolygonMode::eLine, vk::PolygonMode::ePoint};
+constexpr EnumArray<Topology, vk::PrimitiveTopology> topologies = {
+	vk::PrimitiveTopology::ePointList,	  vk::PrimitiveTopology::eLineList,		vk::PrimitiveTopology::eLineStrip,
+	vk::PrimitiveTopology::eTriangleList, vk::PrimitiveTopology::eTriangleList, vk::PrimitiveTopology::eTriangleFan,
+};
+} // namespace
+
+void ListDrawer::add(LayerMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
+	if (!mesh.empty()) { out_map[rp].push_back({{}, model, {{}, mesh}, scissor}); }
+}
+
+graphics::PipelineSpec ListDrawer::pipelineSpec(RenderPipeline const& rp) {
+	graphics::ShaderSpec ss;
+	for (auto const& uri : rp.shaderURIs) { ss.moduleURIs.push_back(uri); }
+	graphics::PipelineSpec ret = graphics::PipelineFactory::spec(ss, rp.layer.flags);
+	ret.fixedState.lineWidth = rp.layer.lineWidth;
+	ret.fixedState.mode = polygonModes[rp.layer.mode];
+	ret.fixedState.topology = topologies[rp.layer.topology];
+	return ret;
 }
 
 void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
@@ -15,10 +35,8 @@ void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
 	populate(map);
 	m_drawLists.clear();
 	m_drawLists.reserve(map.size());
-	for (auto& [layer, list] : map) {
-		if (layer.state) {
-			if (auto pipe = pf.get(*layer.state, rp); pipe.valid()) { m_drawLists.push_back(DrawList{{}, std::move(list), pipe, layer.order}); }
-		}
+	for (auto& [rpipe, list] : map) {
+		if (auto pipe = pf.get(pipelineSpec(rpipe), rp); pipe.valid()) { m_drawLists.push_back(DrawList{{}, std::move(list), pipe, rpipe.layer.order}); }
 	}
 	std::sort(m_drawLists.begin(), m_drawLists.end());
 	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());

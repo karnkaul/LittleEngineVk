@@ -6,15 +6,16 @@
 
 namespace le::graphics {
 enum class ShaderType { eVertex, eFragment, eCompute, eCOUNT_ };
-constexpr EnumArray<ShaderType, vk::ShaderStageFlagBits> g_shaderStages = {
-	vk::ShaderStageFlagBits::eVertex,
-	vk::ShaderStageFlagBits::eFragment,
-	vk::ShaderStageFlagBits::eCompute,
-};
 
 struct SpirV {
 	std::vector<u32> spirV;
 	ShaderType type = ShaderType::eFragment;
+};
+
+constexpr EnumArray<ShaderType, vk::ShaderStageFlagBits> g_shaderStages = {
+	vk::ShaderStageFlagBits::eVertex,
+	vk::ShaderStageFlagBits::eFragment,
+	vk::ShaderStageFlagBits::eCompute,
 };
 
 struct ShaderSpec {

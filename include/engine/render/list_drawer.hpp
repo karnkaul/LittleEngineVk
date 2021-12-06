@@ -1,7 +1,7 @@
 #pragma once
 #include <engine/render/descriptor_helper.hpp>
 #include <engine/render/draw_list.hpp>
-#include <engine/render/layer.hpp>
+#include <engine/render/pipeline.hpp>
 #include <graphics/render/pipeline_factory.hpp>
 #include <graphics/render/renderer.hpp>
 
@@ -14,10 +14,11 @@ class ListDrawer : public graphics::IDrawer {
   public:
 	using PipelineFactory = graphics::PipelineFactory;
 	using Pipeline = graphics::Pipeline;
-	using LayerMap = std::unordered_map<RenderLayer, std::vector<Drawable>, RenderLayer::Hasher>;
+	using LayerMap = std::unordered_map<RenderPipeline, std::vector<Drawable>, RenderPipeline::Hasher>;
 
 	static constexpr vk::Rect2D cast(DrawScissor rect) noexcept { return {{rect.offset.x, rect.offset.y}, {rect.extent.x, rect.extent.y}}; }
-	static void add(LayerMap& out_map, RenderLayer const& layer, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor = {});
+	static graphics::PipelineSpec pipelineSpec(RenderPipeline const& rp);
+	static void add(LayerMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor = {});
 
 	void beginPass(PipelineFactory& pf, vk::RenderPass rp) override final;
 	void draw(graphics::CommandBuffer cb) override final;

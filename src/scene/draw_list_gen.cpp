@@ -11,17 +11,17 @@ namespace le {
 namespace {
 DrawScissor cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
 
-void addNodes(ListDrawer::LayerMap& map, RenderLayerProvider const& rl, gui::TreeRoot const& root) {
+void addNodes(ListDrawer::LayerMap& map, RenderPipeProvider const& rp, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
-		if (node->m_active && rl.active()) {
+		if (node->m_active && rp.ready()) {
 			if (auto mesh = node->mesh(); !mesh.empty()) {
 				DrawScissor const rect = cast(graphics::utils::scissor(node->m_scissor));
-				ListDrawer::add(map, rl.layer(), node->model(), mesh, rect);
+				ListDrawer::add(map, rp.get(), node->model(), mesh, rect);
 			}
 		}
 	}
 	for (auto& node : root.nodes()) {
-		if (node->m_active) { addNodes(map, rl, *node); }
+		if (node->m_active) { addNodes(map, rp, *node); }
 	}
 }
 } // namespace
@@ -36,28 +36,32 @@ void DrawListGen::operator()(ListDrawer::LayerMap& map, dens::registry const& re
 		}
 		return glm::mat4(1.0f);
 	};
-	for (auto [e, c] : registry.view<RenderLayerProvider, DynamicMesh>(exclude)) {
+	for (auto [e, c] : registry.view<RenderPipeProvider, DynamicMesh>(exclude)) {
 		auto& [rl, dm] = c;
-		if (rl.active()) { ListDrawer::add(map, rl.layer(), modelMat(e), dm.mesh()); }
+		if (rl.ready()) { ListDrawer::add(map, rl.get(), modelMat(e), dm.mesh()); }
 	}
-	for (auto [e, c] : registry.view<RenderLayerProvider, MeshProvider>(exclude)) {
+	for (auto [e, c] : registry.view<RenderPipeProvider, MeshProvider>(exclude)) {
 		auto& [rl, provider] = c;
-		if (rl.active()) { ListDrawer::add(map, rl.layer(), modelMat(e), provider.mesh()); }
+		if (rl.ready()) { ListDrawer::add(map, rl.get(), modelMat(e), provider.mesh()); }
 	}
-	for (auto& [_, c] : registry.view<RenderLayerProvider, gui::ViewStack>()) {
-		auto& [gr, stack] = c;
-		for (auto const& view : stack.views()) { addNodes(map, gr, *view); }
+	for (auto [e, c] : registry.view<RenderPipeProvider, MeshView>(exclude)) {
+		auto& [rl, view] = c;
+		if (rl.ready()) { ListDrawer::add(map, rl.get(), modelMat(e), view); }
+	}
+	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>()) {
+		auto& [rp, stack] = c;
+		for (auto const& view : stack.views()) { addNodes(map, rp, *view); }
 	}
 }
 
 void DebugDrawListGen::operator()(ListDrawer::LayerMap& map, dens::registry const& registry) const {
 	static constexpr auto exclude = dens::exclude<NoDraw>();
 	if (populate_v) {
-		for (auto [_, c] : registry.view<RenderLayerProvider, physics::Trigger::Debug>(exclude)) {
+		for (auto [_, c] : registry.view<RenderPipeProvider, physics::Trigger::Debug>(exclude)) {
 			auto& [rl, physics] = c;
-			if (rl.active()) {
+			if (rl.ready()) {
 				if (auto drawables = physics.drawables(registry); !drawables.empty()) {
-					std::move(drawables.begin(), drawables.end(), std::back_inserter(map[rl.layer()]));
+					std::move(drawables.begin(), drawables.end(), std::back_inserter(map[rl.get()]));
 				}
 			}
 		}

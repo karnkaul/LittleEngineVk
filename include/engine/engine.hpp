@@ -61,8 +61,6 @@ class Engine {
 	input::Receiver::Store& receiverStore() noexcept;
 	void update(gui::ViewStack& out_stack);
 
-	bool drawReady();
-
 	void boot(Boot::CreateInfo info, std::optional<VSync> vsync = std::nullopt);
 	bool unboot() noexcept;
 	bool booted() const noexcept;

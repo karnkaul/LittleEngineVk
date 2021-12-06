@@ -35,7 +35,6 @@ PipelineFactory::PipelineFactory(not_null<VRAM*> vram, GetSpirV&& getSpirV, Buff
 Pipeline PipelineFactory::get(Spec const& spec, vk::RenderPass renderPass) {
 	EXPECT(!spec.shader.moduleURIs.empty());
 	EXPECT(!Device::default_v(renderPass));
-	EXPECT(!spec.vertexInput.bindings.empty() && !spec.vertexInput.attributes.empty());
 	auto const specHash = spec.hash();
 	auto sit = m_storage.find(specHash);
 	if (sit == m_storage.end()) {

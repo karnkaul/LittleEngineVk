@@ -5,9 +5,9 @@
 #include <vector>
 
 namespace le {
-struct DrawList {
-	graphics::Pipeline pipeline;
+struct DrawList : DrawBindable {
 	std::vector<Drawable> drawables;
+	graphics::Pipeline pipeline;
 	s64 order = 0;
 
 	auto operator<=>(DrawList const& rhs) const noexcept { return order <=> rhs.order; }

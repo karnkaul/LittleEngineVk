@@ -9,6 +9,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/receiver.hpp>
+#include <engine/render/layer.hpp>
 #include <engine/scene/scene_registry.hpp>
 #include <engine/utils/engine_config.hpp>
 #include <engine/utils/engine_stats.hpp>
@@ -268,6 +269,16 @@ void Engine::addDefaultAssets() {
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
 	}
 	/* materials */ { store().add("materials/default", Material{}); }
+	/* render layers */ {
+		RenderLayer layer;
+		store().add("render_layers/default", layer);
+		layer.flags = RenderFlag::eAlphaBlend;
+		layer.order = 100;
+		store().add("render_layers/ui", layer);
+		layer.flags = {};
+		layer.order = -100;
+		store().add("render_layers/skybox", layer);
+	}
 }
 
 void Engine::updateStats() {

@@ -1,7 +1,7 @@
 #include <core/services.hpp>
 #include <engine/gui/text.hpp>
 #include <engine/input/space.hpp>
-#include <engine/render/bitmap_font.hpp>
+#include <graphics/bitmap_font.hpp>
 #include <graphics/glyph_pen.hpp>
 
 namespace le::gui {

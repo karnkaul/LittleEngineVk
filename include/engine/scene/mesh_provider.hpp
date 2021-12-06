@@ -2,12 +2,14 @@
 #include <core/hash.hpp>
 #include <core/services.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 #include <ktl/move_only_function.hpp>
 #include <type_traits>
 
 namespace le {
-struct DrawGroup;
+struct RenderLayer;
+struct RenderLayer;
+struct RenderPipeline;
 
 template <typename T>
 concept MeshAPI = requires(T const& t) {
@@ -59,20 +61,25 @@ class DynamicMesh {
 	GetMesh m_getMesh;
 };
 
-class DrawGroupProvider {
+template <typename T>
+class TProvider {
   public:
-	static DrawGroupProvider make(std::string assetURI);
+	static TProvider make(std::string assetURI);
 
 	std::string const& uri() const noexcept { return m_assetURI; }
 	void uri(std::string assetURI);
 
-	bool active() const noexcept { return m_hash != Hash(); }
-	DrawGroup group() const;
+	bool empty() const noexcept { return m_hash == Hash(); }
+	bool ready() const;
+	T const& get(T const& fallback = T{}) const;
 
   private:
 	std::string m_assetURI;
 	Hash m_hash;
 };
+
+using RenderLayerProvider = TProvider<RenderLayer>;
+using RenderPipeProvider = TProvider<RenderPipeline>;
 
 // impl
 
@@ -98,5 +105,32 @@ MeshProvider MeshProvider::make(std::string assetURI) {
 template <MeshAPI T>
 DynamicMesh DynamicMesh::make(not_null<T const*> source) {
 	return make([source]() { return source->mesh(); });
+}
+
+template <typename T>
+TProvider<T> TProvider<T>::make(std::string assetURI) {
+	TProvider ret;
+	ret.uri(std::move(assetURI));
+	return ret;
+}
+
+template <typename T>
+bool TProvider<T>::ready() const {
+	if (auto store = Services::find<AssetStore>()) { return store->exists<T>(m_hash); }
+	return false;
+}
+
+template <typename T>
+T const& TProvider<T>::get(T const& fallback) const {
+	if (auto store = Services::find<AssetStore>()) {
+		if (auto t = store->find<T>(m_hash)) { return *t; }
+	}
+	return fallback;
+}
+
+template <typename T>
+void TProvider<T>::uri(std::string assetURI) {
+	m_assetURI = std::move(assetURI);
+	m_hash = m_assetURI;
 }
 } // namespace le

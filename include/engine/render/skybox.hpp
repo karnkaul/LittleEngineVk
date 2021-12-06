@@ -1,7 +1,7 @@
 #pragma once
 #include <core/not_null.hpp>
 #include <engine/render/material.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 
 namespace le {
 namespace graphics {

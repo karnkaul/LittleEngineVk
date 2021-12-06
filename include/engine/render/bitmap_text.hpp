@@ -1,6 +1,6 @@
 #pragma once
 #include <engine/render/material.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 #include <graphics/glyph.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <optional>
@@ -9,8 +9,10 @@
 namespace le {
 namespace graphics {
 class Texture;
-}
 class BitmapFont;
+} // namespace graphics
+
+using BitmapFont = graphics::BitmapFont;
 
 struct TextGen {
 	using Type = graphics::MeshPrimitive::Type;
@@ -32,9 +34,9 @@ struct TextGen {
 struct TextMesh {
 	graphics::MeshPrimitive primitive;
 	TextGen gen;
-	BitmapFont const* font{};
+	graphics::BitmapFont const* font{};
 
-	TextMesh(not_null<graphics::VRAM*> vram, BitmapFont const* font) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic), font(font) {}
+	TextMesh(not_null<graphics::VRAM*> vram, graphics::BitmapFont const* font) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic), font(font) {}
 
 	MeshView mesh() const noexcept;
 };

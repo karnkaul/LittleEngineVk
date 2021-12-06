@@ -9,10 +9,10 @@
 #include <engine/editor/scene_tree.hpp>
 #include <engine/editor/types.hpp>
 #include <engine/engine.hpp>
-#include <engine/render/draw_group.hpp>
-#include <engine/render/mesh_provider.hpp>
 #include <engine/render/model.hpp>
+#include <engine/render/pipeline.hpp>
 #include <engine/render/skybox.hpp>
+#include <engine/scene/mesh_provider.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
@@ -575,17 +575,17 @@ void inspectMP(Inspect<MeshProvider> provider) {
 	}
 }
 
-void inspectDGP(Inspect<DrawGroupProvider> provider) {
+void inspectRLP(Inspect<RenderPipeProvider> provider) {
 	Text uri(provider.get().uri());
-	if (auto popup = Popup("DrawGroup##inspect_draw_group_provider")) {
+	if (auto popup = Popup("RenderPipeline##inspect_pipe_provider")) {
 		static ktl::stack_string<128> s_search;
-		TWidget<char*> search("Search##inspect_draw_group_provider", s_search.c_str(), s_search.capacity());
-		if (auto select = AssetIndex::list<DrawGroup>(s_search)) {
-			provider.get() = DrawGroupProvider::make(std::string(select.item));
+		TWidget<char*> search("Search##inspect_pipe_provider", s_search.c_str(), s_search.capacity());
+		if (auto select = AssetIndex::list<RenderPipeline>(s_search)) {
+			provider.get() = RenderPipeProvider::make(std::string(select.item));
 			popup.close();
 		}
 	}
-	if (Button("Edit...")) { Popup::open("DrawGroup##inspect_draw_group_provider"); }
+	if (Button("Edit...")) { Popup::open("RenderPipeline##inspect_pipe_provider"); }
 }
 } // namespace edi
 
@@ -593,8 +593,8 @@ Editor::Editor() {
 	m_left.tab = std::make_unique<edi::EditorTab<edi::SceneTree>>();
 	m_left.tab->attach<edi::Settings>("Settings");
 	m_right.tab = std::make_unique<edi::EditorTab<edi::Inspector>>();
-	edi::Inspector::attach<MeshProvider>(&edi::inspectMP);
-	edi::Inspector::attach<DrawGroupProvider>(&edi::inspectDGP);
+	edi::Inspector::attach<MeshProvider>(&edi::inspectMP, {}, "Mesh");
+	edi::Inspector::attach<RenderPipeProvider>(&edi::inspectRLP, {}, "RenderPipeline");
 }
 
 Editor::~Editor() noexcept { edi::Sudo::clear<edi::Inspector, edi::SceneTree>(); }

@@ -85,29 +85,6 @@ bool AssetLoader<graphics::SpirV>::load(graphics::SpirV& out_code, AssetLoadInfo
 	return true;
 }
 
-std::unique_ptr<PipelineState> AssetLoader<PipelineState>::load(AssetLoadInfo<PipelineState> const& info) const {
-	for (Hash const uri : info.m_data.shader.moduleURIs) {
-		if (!info.m_store->find<graphics::SpirV>(uri)) { return {}; }
-	}
-	return std::make_unique<PipelineState>(from(info.m_data));
-}
-
-bool AssetLoader<PipelineState>::reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const {
-	for (Hash const uri : info.m_data.shader.moduleURIs) {
-		if (!info.m_store->find<graphics::SpirV>(uri)) { return false; }
-	}
-	out_ps = from(info.m_data);
-	return true;
-}
-
-PipelineState AssetLoader<PipelineState>::from(AssetLoadData<PipelineState> const& data) {
-	PipelineState ret = graphics::PipelineFactory::spec(data.shader, data.flags);
-	ret.fixedState.mode = data.polygonMode;
-	ret.fixedState.lineWidth = data.lineWidth;
-	ret.fixedState.topology = data.topology;
-	return ret;
-}
-
 std::unique_ptr<graphics::Texture> AssetLoader<graphics::Texture>::load(AssetLoadInfo<graphics::Texture> const& info) const {
 	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
@@ -180,15 +157,17 @@ bool AssetLoader<graphics::Texture>::load(graphics::Texture& out_texture, Data c
 	return false;
 }
 
-std::unique_ptr<BitmapFont> AssetLoader<BitmapFont>::load(AssetLoadInfo<BitmapFont> const& info) const {
-	BitmapFont font;
-	if (load(font, info)) { return std::make_unique<BitmapFont>(std::move(font)); }
+std::unique_ptr<graphics::BitmapFont> AssetLoader<graphics::BitmapFont>::load(AssetLoadInfo<graphics::BitmapFont> const& info) const {
+	graphics::BitmapFont font;
+	if (load(font, info)) { return std::make_unique<graphics::BitmapFont>(std::move(font)); }
 	return {};
 }
 
-bool AssetLoader<BitmapFont>::reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const { return load(out_font, info); }
+bool AssetLoader<graphics::BitmapFont>::reload(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const {
+	return load(out_font, info);
+}
 
-bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const {
+bool AssetLoader<graphics::BitmapFont>::load(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const {
 	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return false; }
@@ -199,7 +178,7 @@ bool AssetLoader<BitmapFont>::load(BitmapFont& out_font, AssetLoadInfo<BitmapFon
 			auto const fi = io::fromJson<BitmapFontInfo>(json);
 			auto const atlas = info.resource(info.m_data.jsonURI.parent_path() / fi.atlasURI, Resource::Type::eBinary, Resources::Flag::eMonitor);
 			if (!atlas) { return false; }
-			BitmapFont::CreateInfo bci;
+			graphics::BitmapFont::CreateInfo bci;
 			bci.forceFormat = info.m_data.forceFormat;
 			bci.glyphs = fi.glyphs;
 			bci.atlas = atlas->bytes();

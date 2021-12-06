@@ -193,14 +193,6 @@ struct TWidget {
 	static_assert(false_v<T>, "Invalid type");
 };
 
-template <typename Flags>
-struct FlagsWidget {
-	using type = typename Flags::type;
-	static constexpr std::size_t size = Flags::size;
-
-	FlagsWidget(Span<std::string_view const> ids, Flags& out_flags);
-};
-
 template <typename T>
 struct TWidgetWrap {
 	T out;
@@ -331,17 +323,6 @@ template <>
 struct TWidget<std::pair<s64, s64>> : WidgetBase {
 	TWidget(std::string_view id, s64& out_t, s64 min, s64 max, s64 dt);
 };
-
-template <typename Flags>
-FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) {
-	ENSURE(ids.size() <= size, "Overflow!");
-	std::size_t idx = 0;
-	for (auto id : ids) {
-		bool bVal = flags.test((type)idx);
-		TWidget<bool> w(id, bVal);
-		flags[(type)idx++] = bVal;
-	}
-}
 
 template <typename T>
 TInspector<T>::TInspector(dens::registry& out_registry, dens::entity entity, T const* pT, std::string_view id)

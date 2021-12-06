@@ -1,8 +1,8 @@
 #pragma once
 #include <engine/assets/asset_loader.hpp>
-#include <engine/render/bitmap_font.hpp>
-#include <engine/render/draw_group.hpp>
+#include <engine/render/layer.hpp>
 #include <engine/render/model.hpp>
+#include <graphics/bitmap_font.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
@@ -22,23 +22,6 @@ struct AssetLoader<graphics::SpirV> {
 	bool reload(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
 
 	bool load(graphics::SpirV& out_code, AssetLoadInfo<graphics::SpirV> const& info) const;
-};
-
-template <>
-struct AssetLoadData<PipelineState> {
-	graphics::ShaderSpec shader;
-	vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-	graphics::PFlags flags;
-	f32 lineWidth = 1.0f;
-};
-
-template <>
-struct AssetLoader<PipelineState> {
-	std::unique_ptr<PipelineState> load(AssetLoadInfo<PipelineState> const& info) const;
-	bool reload(PipelineState& out_ps, AssetLoadInfo<PipelineState> const& info) const;
-
-	static PipelineState from(AssetLoadData<PipelineState> const& data);
 };
 
 template <>
@@ -69,7 +52,7 @@ struct AssetLoader<graphics::Texture> {
 };
 
 template <>
-struct AssetLoadData<BitmapFont> {
+struct AssetLoadData<graphics::BitmapFont> {
 	io::Path jsonURI;
 	std::optional<vk::Format> forceFormat;
 	not_null<graphics::VRAM*> vram;
@@ -79,11 +62,11 @@ struct AssetLoadData<BitmapFont> {
 };
 
 template <>
-struct AssetLoader<BitmapFont> {
-	std::unique_ptr<BitmapFont> load(AssetLoadInfo<BitmapFont> const& info) const;
-	bool reload(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const;
+struct AssetLoader<graphics::BitmapFont> {
+	std::unique_ptr<graphics::BitmapFont> load(AssetLoadInfo<graphics::BitmapFont> const& info) const;
+	bool reload(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const;
 
-	bool load(BitmapFont& out_font, AssetLoadInfo<BitmapFont> const& info) const;
+	bool load(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const;
 };
 
 template <>

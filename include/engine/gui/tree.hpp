@@ -5,7 +5,7 @@
 #include <core/utils/vbase.hpp>
 #include <engine/gui/rect.hpp>
 #include <engine/render/flex.hpp>
-#include <engine/render/mesh_view.hpp>
+#include <engine/scene/mesh_view.hpp>
 #include <engine/utils/owner.hpp>
 #include <graphics/basis.hpp>
 #include <graphics/draw_view.hpp>
@@ -13,7 +13,9 @@
 
 namespace le {
 struct Viewport;
+namespace graphics {
 class BitmapFont;
+}
 namespace input {
 struct Space;
 }
@@ -22,6 +24,7 @@ struct Space;
 namespace le::gui {
 class TreeNode;
 
+using graphics::BitmapFont;
 using graphics::DrawScissor;
 
 inline Hash defaultFontURI = "fonts/default";

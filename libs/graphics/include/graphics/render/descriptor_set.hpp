@@ -6,8 +6,14 @@
 namespace le::graphics {
 class ShaderBuffer;
 
+struct SetBindingData {
+	std::string name;
+	vk::DescriptorSetLayoutBinding binding;
+	Texture::Type textureType{};
+};
+
 struct SetLayoutData {
-	ktl::fixed_vector<vk::DescriptorSetLayoutBinding, 16> bindings;
+	ktl::fixed_vector<SetBindingData, 16> bindingData;
 	vk::DescriptorSetLayout layout;
 };
 
@@ -45,8 +51,8 @@ class DescriptorSet {
 	void update(u32 binding, Texture const& texture);
 
 	u32 setNumber() const noexcept { return m_storage.setNumber; }
-	vk::DescriptorSetLayoutBinding binding(u32 bind) const noexcept;
-	bool contains(u32 bind, vk::DescriptorType const* type = {}) const noexcept;
+	SetBindingData binding(u32 bind) const noexcept;
+	bool contains(u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) const noexcept;
 	bool unassigned() const noexcept;
 
   private:
@@ -58,6 +64,7 @@ class DescriptorSet {
 
 	struct Binding {
 		vk::DescriptorType type{};
+		Texture::Type texType{};
 		u32 count = 1;
 	};
 	struct Set {
@@ -67,7 +74,7 @@ class DescriptorSet {
 		vk::DescriptorSet set;
 	};
 	struct Storage {
-		vk::DescriptorSetLayoutBinding bindings[max_bindings_v];
+		SetBindingData bindingData[max_bindings_v];
 		RingBuffer<Set> sets;
 		vk::DescriptorSetLayout layout;
 		u32 setNumber = 0;
@@ -80,7 +87,7 @@ class DescriptorSet {
 
 struct DescriptorSet::CreateInfo {
 	vk::DescriptorSetLayout layout;
-	Span<vk::DescriptorSetLayoutBinding const> bindings;
+	Span<SetBindingData const> bindingData;
 	Buffering buffering = 2_B;
 	u32 setNumber = 0;
 };
@@ -95,7 +102,8 @@ class ShaderInput {
 	void swap();
 	bool empty() const noexcept;
 	bool contains(u32 set) const noexcept;
-	bool contains(u32 set, u32 bind, vk::DescriptorType const* type = {}) const noexcept;
+	bool contains(u32 set, u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) const noexcept;
+	Texture::Type textureType(u32 set, u32 bind) const noexcept;
 
 	void update(ShaderBuffer const& buffer, u32 set, u32 bind, std::size_t idx);
 	void clear() noexcept;
@@ -105,7 +113,7 @@ class ShaderInput {
   private:
 	struct Pool {
 		vk::DescriptorSetLayout layout;
-		ktl::fixed_vector<vk::DescriptorSetLayoutBinding, max_bindings_v> bindings;
+		ktl::fixed_vector<SetBindingData, max_bindings_v> bindingData;
 		mutable std::vector<DescriptorSet> descriptorSets;
 		u32 setNumber = 0;
 		Buffering buffering;

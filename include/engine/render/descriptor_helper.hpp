@@ -33,7 +33,8 @@ class DescriptorUpdater : public DescriptorHelper {
 	bool update(u32 bind, ShaderBuffer const& buffer);
 
   private:
-	bool check(u32 bind, vk::DescriptorType const* type = {}) noexcept;
+	bool check(u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) noexcept;
+	Texture const* safeTex(Texture const* tex, u32 bind, TextureFallback fb) const;
 
 	ktl::fixed_vector<u32, max_bindings_v> m_binds;
 	Cache const* m_cache{};
@@ -75,6 +76,7 @@ class DescriptorBinder : public DescriptorHelper {
 
 struct DescriptorHelper::Cache {
 	EnumArray<TextureFallback, not_null<Texture const*>> defaults;
+	not_null<Texture const*> cube;
 
 	static Cache make(not_null<AssetStore const*> store);
 };

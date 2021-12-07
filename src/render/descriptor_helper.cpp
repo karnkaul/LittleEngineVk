@@ -16,30 +16,37 @@ bool DescriptorUpdater::update(u32 bind, ShaderBuffer const& buffer) {
 
 bool DescriptorUpdater::update(u32 bind, Texture const& tex) {
 	if (check(bind)) {
-		m_input->set(m_setNumber, m_index).update(bind, tex);
+		m_input->set(m_setNumber, m_index).update(bind, *safeTex(&tex, bind, TextureFallback::eWhite));
 		return true;
 	}
 	return false;
 }
 
-bool DescriptorUpdater::update(u32 bind, Texture const* tex, TextureFallback tb) {
+bool DescriptorUpdater::update(u32 bind, Texture const* tex, TextureFallback fb) {
 	if (check(bind)) {
-		m_input->set(m_setNumber, m_index).update(bind, tex && tex->ready() ? *tex : *m_cache->defaults[tb]);
+		m_input->set(m_setNumber, m_index).update(bind, *safeTex(tex, bind, fb));
 		return true;
 	}
 	return false;
 }
 
-bool DescriptorUpdater::check(u32 bind, vk::DescriptorType const* type) noexcept {
+bool DescriptorUpdater::check(u32 bind, vk::DescriptorType const* type, Texture::Type const* texType) noexcept {
 	if (!valid()) { return false; }
 	for (u32 const b : m_binds) {
 		if (bind == b) { return true; }
 	}
-	if (m_input->contains(m_setNumber, bind, type)) {
+	if (m_input->contains(m_setNumber, bind, type, texType)) {
 		m_binds.push_back(bind);
 		return true;
 	}
 	return false;
+}
+
+graphics::Texture const* DescriptorUpdater::safeTex(Texture const* tex, u32 bind, TextureFallback fb) const {
+	auto const texType = m_input->textureType(m_setNumber, bind);
+	if (tex && tex->ready() && tex->type() == texType) { return tex; }
+	if (texType == Texture::Type::eCube) { return m_cache->cube; }
+	return m_cache->defaults[fb];
 }
 
 DescriptorUpdater DescriptorMap::set(u32 setNumber) {
@@ -59,6 +66,6 @@ DescriptorHelper::Cache DescriptorHelper::Cache::make(not_null<const AssetStore*
 		store->find<Texture>("textures/black").peek(),
 		store->find<Texture>("textures/magenta").peek(),
 	};
-	return Cache{defaults};
+	return Cache{defaults, store->find<Texture>("cubemaps/blank").peek()};
 }
 } // namespace le

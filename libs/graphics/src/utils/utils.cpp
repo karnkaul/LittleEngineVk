@@ -46,6 +46,7 @@ struct DescBinding {
 	std::string name;
 	u32 count = 0;
 	vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
+	vk::ImageViewType imageType = vk::ImageViewType::e2D;
 	vk::ShaderStageFlags stages;
 	bool bDummy = false;
 };
@@ -74,6 +75,15 @@ struct Extractor {
 			auto const& type = c.get_type(item.type_id);
 			db.count = type.array.empty() ? 1 : type.array[0];
 			db.name = item.name;
+			if (type.basetype == spirv_cross::SPIRType::SampledImage || type.basetype == spirv_cross::SPIRType::Image) {
+				switch (type.image.dim) {
+				case spv::Dim::Dim1D: db.imageType = vk::ImageViewType::e1D; break;
+				case spv::Dim::Dim2D:
+				default: db.imageType = vk::ImageViewType::e2D; break;
+				case spv::Dim::Dim3D: db.imageType = vk::ImageViewType::e3D; break;
+				case spv::Dim::DimCube: db.imageType = vk::ImageViewType::eCube; break;
+				}
+			}
 		}
 	}
 };
@@ -174,6 +184,7 @@ utils::SetBindings utils::extractBindings(Span<SpirV> modules) {
 				bindInfo.binding.descriptorCount = db.count;
 				bindInfo.binding.descriptorType = db.type;
 				bindInfo.name = std::move(db.name);
+				bindInfo.imageType = db.imageType;
 			} else {
 				bindInfo.binding.descriptorCount = 0;
 				bindInfo.name = fmt::format("[Unassigned_{}_{}]", s, b);

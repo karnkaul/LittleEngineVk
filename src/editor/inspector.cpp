@@ -8,7 +8,7 @@
 #include <engine/gui/widget.hpp>
 #include <engine/render/drawable.hpp>
 #include <engine/render/pipeline.hpp>
-#include <engine/scene/mesh_provider.hpp>
+#include <engine/scene/asset_provider.hpp>
 
 namespace le::edi {
 #if defined(LEVK_USE_IMGUI)

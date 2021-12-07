@@ -1,7 +1,7 @@
 #include <core/utils/expect.hpp>
 #include <engine/render/layer.hpp>
 #include <engine/render/material.hpp>
-#include <engine/scene/mesh_provider.hpp>
+#include <engine/scene/asset_provider.hpp>
 #include <graphics/mesh_primitive.hpp>
 
 namespace le {

@@ -14,12 +14,8 @@ MeshView Skybox::mesh() const {
 	if (auto store = Services::find<AssetStore>()) {
 		auto cube = store->find<MeshPrimitive>("meshes/cube");
 		if (!cube) { return {}; }
-		if (m_cubemap->ready()) {
-			m_material.map_Kd = m_cubemap;
-		} else {
-			utils::g_log.log(dl::level::warn, 2, "[Skybox] Cubemap not ready");
-			m_material.map_Kd = store->find<Cubemap>("cubemaps/blank").peek();
-		}
+		if (!m_cubemap->ready()) { return {}; }
+		m_material.map_Kd = m_cubemap;
 		return MeshObj{.primitive = &*cube, .material = &m_material};
 	}
 	return {};

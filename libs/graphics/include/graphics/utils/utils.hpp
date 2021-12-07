@@ -41,6 +41,7 @@ class STBImg : public TBitmap<Span<u8 const>> {
 
 struct BindingInfo {
 	vk::DescriptorSetLayoutBinding binding;
+	vk::ImageViewType imageType{};
 	std::string name;
 };
 

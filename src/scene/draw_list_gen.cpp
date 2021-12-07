@@ -2,8 +2,8 @@
 #include <engine/ecs/components/trigger.hpp>
 #include <engine/gui/tree.hpp>
 #include <engine/gui/view.hpp>
+#include <engine/scene/asset_provider.hpp>
 #include <engine/scene/draw_list_gen.hpp>
-#include <engine/scene/mesh_provider.hpp>
 #include <engine/scene/scene_node.hpp>
 #include <graphics/utils/utils.hpp>
 

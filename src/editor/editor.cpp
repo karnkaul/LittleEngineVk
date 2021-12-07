@@ -12,7 +12,7 @@
 #include <engine/render/model.hpp>
 #include <engine/render/pipeline.hpp>
 #include <engine/render/skybox.hpp>
-#include <engine/scene/mesh_provider.hpp>
+#include <engine/scene/asset_provider.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/renderer.hpp>
@@ -524,15 +524,15 @@ void inspectMP(Inspect<MeshProvider> provider) {
 		}
 	}
 	static ktl::stack_string<128> s_search;
-	if (auto popup = Popup("Model##inspect_mesh_provider")) {
-		TWidget<char*> search("Search##inspect_mesh_provider", s_search.c_str(), s_search.capacity());
+	if (auto popup = Popup("Model##inspect_asset_provider")) {
+		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
 		if (auto select = AssetIndex::list<Model>(s_search, s_search)) {
 			provider.get() = MeshProvider::make<Model>(std::string(select.item));
 			popup.close();
 		}
 	}
-	if (auto popup = Popup("Skybox##inspect_mesh_provider")) {
-		TWidget<char*> search("Search##inspect_mesh_provider", s_search.c_str(), s_search.capacity());
+	if (auto popup = Popup("Skybox##inspect_asset_provider")) {
+		TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
 		if (auto select = AssetIndex::list<Skybox>(s_search, s_search)) {
 			provider.get() = MeshProvider::make<Skybox>(std::string(select.item));
 			popup.close();
@@ -540,8 +540,8 @@ void inspectMP(Inspect<MeshProvider> provider) {
 	}
 	{
 		static std::string_view s_mesh, s_mat = "materials/default";
-		if (auto popup = Popup("Mesh Primitive##inspect_mesh_provider")) {
-			TWidget<char*> search("Search##inspect_mesh_provider", s_search.c_str(), s_search.capacity());
+		if (auto popup = Popup("Mesh Primitive##inspect_asset_provider")) {
+			TWidget<char*> search("Search##inspect_asset_provider", s_search.c_str(), s_search.capacity());
 			if (auto select = AssetIndex::list<MeshPrimitive>(s_search, s_mesh)) { s_mesh = select.item; }
 			if (auto select = AssetIndex::list<Material>(s_search, s_mat)) { s_mat = select.item; }
 			if (!s_mesh.empty() && !s_mat.empty() && Button("OK")) {
@@ -550,13 +550,13 @@ void inspectMP(Inspect<MeshProvider> provider) {
 			}
 		}
 		std::string_view toPopup;
-		if (auto popup = Popup("Type##inspect_mesh_provider")) {
+		if (auto popup = Popup("Type##inspect_asset_provider")) {
 			if (Selectable("Mesh Primitive")) {
-				toPopup = "Mesh Primitive##inspect_mesh_provider";
+				toPopup = "Mesh Primitive##inspect_asset_provider";
 				popup.close();
 			}
 			if (Selectable("Model")) {
-				toPopup = "Model##inspect_mesh_provider";
+				toPopup = "Model##inspect_asset_provider";
 				popup.close();
 			}
 		}
@@ -568,9 +568,9 @@ void inspectMP(Inspect<MeshProvider> provider) {
 	}
 	if (Button("Edit...")) {
 		if (type == "Skybox") {
-			Popup::open("Skybox##inspect_mesh_provider");
+			Popup::open("Skybox##inspect_asset_provider");
 		} else {
-			Popup::open("Type##inspect_mesh_provider");
+			Popup::open("Type##inspect_asset_provider");
 		}
 	}
 }

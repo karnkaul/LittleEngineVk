@@ -24,14 +24,26 @@ struct RenderInfo {
 	ktl::fixed_vector<CommandBuffer, max_secondary_cmd_v> secondary;
 	Framebuffer framebuffer;
 	RenderBegin begin;
-	vk::RenderPass pass;
+	vk::RenderPass renderPass;
 };
 
-class IDrawer {
+class RenderPass {
   public:
-	virtual void beginFrame() = 0;
-	virtual void beginPass(PipelineFactory& pf, vk::RenderPass rp) = 0;
-	virtual void draw(Span<CommandBuffer> cbs) = 0;
+	RenderPass(not_null<Device*> device, not_null<PipelineFactory*> factory, RenderInfo info);
+
+	vk::Framebuffer framebuffer() const noexcept { return m_framebuffer; }
+	vk::RenderPass renderPass() const noexcept { return m_info.renderPass; }
+	RenderInfo const& info() const noexcept { return m_info; }
+	PipelineFactory& pipelineFactory() const noexcept { return *m_factory; }
+	Span<CommandBuffer const> commandBuffers() const noexcept { return m_info.secondary; }
+
+	void render();
+
+  private:
+	RenderInfo m_info;
+	Deferred<vk::Framebuffer> m_framebuffer;
+	not_null<Device*> m_device;
+	not_null<PipelineFactory*> m_factory;
 };
 
 class ImageCache {
@@ -81,13 +93,14 @@ class Renderer {
 	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
 
 	static Deferred<vk::RenderPass> makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
-	static Deferred<vk::RenderPass> makeSingleRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
-	static void execRenderPass(not_null<Device*> device, IDrawer& out_drawer, PipelineFactory& pf, RenderInfo info);
+	static Deferred<vk::RenderPass> makeMainRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
 
-	vk::CommandBuffer render(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
+	RenderInfo mainPassInfo(RenderTarget const& colour, RenderTarget const& depth, RenderBegin const& rb) const;
+	RenderPass beginMainPass(PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
+	virtual vk::CommandBuffer endMainPass(RenderPass& out_rp);
 
 	Tech tech() const noexcept { return Tech{Approach::eForward, m_target}; }
 	bool canScale() const noexcept;
@@ -95,18 +108,18 @@ class Renderer {
 	bool renderScale(f32) noexcept;
 	bool canBlitFrame() const noexcept { return m_blitFlags.test(BlitFlag::eSrc); }
 
-	virtual vk::RenderPass renderPass() const noexcept { return m_singleRenderPass; }
-	virtual Image const* offScreen() const noexcept { return m_colourImage.peek(); }
+	vk::RenderPass mainRenderPass() const noexcept { return m_singleRenderPass; }
+	Image const* offScreenImage() const noexcept { return m_colourImage.peek(); }
 
   protected:
 	Deferred<vk::RenderPass> makeRenderPass(vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
 											Span<vk::SubpassDependency const> deps = {}) const;
 
-	virtual void doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
 	virtual void next();
 
 	ImageCache m_depthImage;
 	ImageCache m_colourImage;
+	RenderTarget m_acquired;
 	vk::Format m_colourFormat = vk::Format::eR8G8B8A8Srgb;
 	not_null<VRAM*> m_vram;
 

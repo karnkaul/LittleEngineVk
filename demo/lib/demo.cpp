@@ -22,7 +22,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
-#include <engine/render/list_drawer.hpp>
+#include <engine/render/list_renderer.hpp>
 #include <engine/render/skybox.hpp>
 #include <engine/scene/draw_list_gen.hpp>
 #include <engine/scene/scene_registry.hpp>
@@ -147,7 +147,7 @@ struct PlayerController {
 	}
 };
 
-class Drawer : public ListDrawer {
+class Renderer : public ListRenderer {
   public:
 	using Camera = graphics::Camera;
 
@@ -158,11 +158,32 @@ class Drawer : public ListDrawer {
 		glm::vec2 size{};
 	};
 
-	Scene m_scene;
-
-	Drawer(not_null<graphics::VRAM*> vram) : m_vram(vram) {
+	Renderer(not_null<graphics::VRAM*> vram) : m_vram(vram) {
 		m_view.mats = graphics::ShaderBuffer(vram, {});
 		m_view.lights = graphics::ShaderBuffer(vram, {});
+	}
+
+	void render(RenderPass& out_rp, Scene const& scene) {
+		m_view.lights.swap();
+		m_view.mats.swap();
+		if (scene.camera) {
+			auto const& cam = *scene.camera;
+			ViewMats const v{cam.view(), cam.perspective(scene.size), cam.ortho(scene.size), {cam.position, 1.0f}};
+			m_view.mats.write(v);
+		} else {
+			m_view.mats.write(ViewMats());
+		}
+		if (!scene.lights.empty()) {
+			DirLights dl;
+			for (std::size_t idx = 0; idx < scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = scene.lights[idx]; }
+			dl.count = std::min((u32)scene.lights.size(), (u32)dl.lights.size());
+			m_view.lights.write(dl);
+		} else {
+			m_view.lights.write(DirLights());
+		}
+		LayerMap map;
+		if (scene.registry) { fill(map, *scene.registry); }
+		ListRenderer::render(out_rp, map);
 	}
 
   private:
@@ -171,30 +192,6 @@ class Drawer : public ListDrawer {
 		graphics::ShaderBuffer lights;
 	} m_view;
 	not_null<graphics::VRAM*> m_vram;
-
-	void beginFrame() override {
-		m_view.lights.swap();
-		m_view.mats.swap();
-		if (m_scene.camera) {
-			auto const& cam = *m_scene.camera;
-			ViewMats const v{cam.view(), cam.perspective(m_scene.size), cam.ortho(m_scene.size), {cam.position, 1.0f}};
-			m_view.mats.write(v);
-		} else {
-			m_view.mats.write(ViewMats());
-		}
-		if (!m_scene.lights.empty()) {
-			DirLights dl;
-			for (std::size_t idx = 0; idx < m_scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = m_scene.lights[idx]; }
-			dl.count = std::min((u32)m_scene.lights.size(), (u32)dl.lights.size());
-			m_view.lights.write(dl);
-		} else {
-			m_view.lights.write(DirLights());
-		}
-	}
-
-	void populate(LayerMap& out_map) override {
-		if (m_scene.registry) { fill(out_map, *m_scene.registry); }
-	}
 
 	void writeSets(DescriptorMap map, DrawList const& list) override {
 		auto set0 = list.set(map, 0);
@@ -208,8 +205,8 @@ class Drawer : public ListDrawer {
 					static Material const s_blank;
 					Material const& mat = mesh.material ? *mesh.material : s_blank;
 					auto set2 = drawMesh.set(map, 2);
-					set2.update(0, mat.map_Kd, TextureFallback::eWhite);
-					set2.update(1, mat.map_d, TextureFallback::eWhite);
+					set2.update(0, mat.map_Kd);
+					set2.update(1, mat.map_d);
 					set2.update(2, mat.map_Ks, TextureFallback::eBlack);
 					drawMesh.set(map, 3).update(0, ShadeMat::make(mat));
 				}
@@ -392,7 +389,7 @@ class App : public input::Receiver, public SceneRegistry {
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
 	App(not_null<Engine*> eng)
-		: m_eng(eng), m_drawer(&eng->gfx().boot.vram),
+		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
 		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/default")->sampler(), colours::red, {128, 128}) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
@@ -577,7 +574,7 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		}
 
-		if (auto const frame = m_eng->gfx().context.renderer().offScreen(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
+		if (auto const frame = m_eng->gfx().context.renderer().offScreenImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
 			m_testTex.blit(m_eng->gfx().context.commands().get(), *frame);
 		}
 
@@ -613,19 +610,20 @@ class App : public input::Receiver, public SceneRegistry {
 			}
 		}
 
-		m_drawer.m_scene.camera = m_registry.find<graphics::Camera>(m_sceneRoot);
-		m_drawer.m_scene.registry = &m_registry;
-		m_drawer.m_scene.lights = m_data.dirLights;
-		m_drawer.m_scene.size = m_eng->sceneSpace();
-		// draw
 		m_tasks.rethrow();
 	}
 
 	void render() {
 		// draw
-		graphics::RenderBegin rb;
-		rb.clear = RGBA(0x777777ff, RGBA::Type::eAbsolute);
-		m_eng->render(m_drawer, rb, this);
+		if (auto rp = m_eng->beginRenderPass(this, RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
+			Renderer::Scene scene;
+			scene.registry = &m_registry;
+			scene.camera = m_registry.find<graphics::Camera>(m_sceneRoot);
+			scene.lights = m_data.dirLights;
+			scene.size = m_eng->sceneSpace();
+			m_renderer.render(*rp, scene);
+			m_eng->endRenderPass(*rp);
+		}
 	}
 
 	scheduler& sched() { return m_tasks; }
@@ -653,7 +651,7 @@ class App : public input::Receiver, public SceneRegistry {
 	scheduler m_tasks;
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
-	mutable Drawer m_drawer;
+	mutable Renderer m_renderer;
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;

@@ -1,6 +1,6 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/engine.hpp>
-#include <engine/render/list_drawer.hpp>
+#include <engine/render/list_renderer.hpp>
 #include <engine/scene/draw_list_gen.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <unordered_set>
@@ -16,11 +16,11 @@ constexpr EnumArray<Topology, vk::PrimitiveTopology> topologies = {
 };
 } // namespace
 
-void ListDrawer::add(LayerMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
+void ListRenderer::add(LayerMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor) {
 	if (!mesh.empty()) { out_map[rp].push_back({{}, model, {{}, mesh}, scissor}); }
 }
 
-graphics::PipelineSpec ListDrawer::pipelineSpec(RenderPipeline const& rp) {
+graphics::PipelineSpec ListRenderer::pipelineSpec(RenderPipeline const& rp) {
 	graphics::ShaderSpec ss;
 	for (auto const& uri : rp.shaderURIs) { ss.moduleURIs.push_back(uri); }
 	graphics::PipelineSpec ret = graphics::PipelineFactory::spec(ss, rp.layer.flags);
@@ -30,39 +30,37 @@ graphics::PipelineSpec ListDrawer::pipelineSpec(RenderPipeline const& rp) {
 	return ret;
 }
 
-void ListDrawer::beginPass(PipelineFactory& pf, vk::RenderPass rp) {
-	LayerMap map;
-	populate(map);
-	m_drawLists.clear();
-	m_drawLists.reserve(map.size());
-	for (auto& [rpipe, list] : map) {
-		if (auto pipe = pf.get(pipelineSpec(rpipe), rp); pipe.valid()) { m_drawLists.push_back(DrawList{{}, std::move(list), pipe, rpipe.layer.order}); }
-	}
-	std::sort(m_drawLists.begin(), m_drawLists.end());
-	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
-	for (auto const& list : m_drawLists) { writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list); }
-}
-
-void ListDrawer::fill(LayerMap& out_map, dens::registry const& registry) {
+void ListRenderer::fill(LayerMap& out_map, dens::registry const& registry) {
 	DrawListGen{}(out_map, registry);
 	DebugDrawListGen{}(out_map, registry);
 }
 
-void ListDrawer::draw(Span<graphics::CommandBuffer> cb) {
-	EXPECT(!cb.empty());
+void ListRenderer::render(RenderPass& out_rp, LayerMap map) {
+	EXPECT(!out_rp.commandBuffers().empty());
+	if (out_rp.commandBuffers().empty()) { return; }
+	std::vector<DrawList> drawLists;
+	drawLists.reserve(map.size());
+	for (auto& [rpipe, list] : map) {
+		if (auto pipe = out_rp.pipelineFactory().get(pipelineSpec(rpipe), out_rp.renderPass()); pipe.valid()) {
+			drawLists.push_back(DrawList{{}, std::move(list), pipe, rpipe.layer.order});
+		}
+	}
+	std::sort(drawLists.begin(), drawLists.end());
+	auto const cache = DescriptorHelper::Cache::make(Services::get<AssetStore>());
+	for (auto const& list : drawLists) { writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list); }
 	std::unordered_set<graphics::ShaderInput*> pipes;
-	for (auto const& list : m_drawLists) {
+	auto const& cb = out_rp.commandBuffers().front();
+	for (auto const& list : drawLists) {
 		EXPECT(list.pipeline.valid());
-		cb[0].m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
+		cb.m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
 		pipes.insert(list.pipeline.shaderInput);
-		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb[0]), list, cb[0]);
+		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list, cb);
 	}
 	for (auto pipe : pipes) { pipe->swap(); }
-	m_drawLists.clear();
-	Engine::drawImgui(cb[0]);
+	Engine::drawImgui(cb);
 }
 
-void ListDrawer::draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer cb) const {
+void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer const& cb) const {
 	for (u32 const set : list.sets) { bind(set); }
 	for (Drawable const& d : list.drawables) {
 		for (u32 const set : d.sets) { bind(set); }

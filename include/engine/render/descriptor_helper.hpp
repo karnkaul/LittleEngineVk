@@ -29,7 +29,7 @@ class DescriptorUpdater : public DescriptorHelper {
 	template <typename T>
 	bool update(u32 bind, T const& t, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
 	bool update(u32 bind, Texture const& tex);
-	bool update(u32 bind, Texture const* tex, TextureFallback tb);
+	bool update(u32 bind, Texture const* tex, TextureFallback tb = TextureFallback::eWhite);
 	bool update(u32 bind, ShaderBuffer const& buffer);
 
   private:

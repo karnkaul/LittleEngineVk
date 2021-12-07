@@ -99,15 +99,24 @@ void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
 
 void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
 
-bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {
-	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
-	bool ret{};
+std::optional<RenderPass> RenderContext::beginMainPass(RenderBegin const& rb, Extent2D fbSize) {
+	if (fbSize.x == 0 || fbSize.y == 0) { return std::nullopt; }
 	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
+		m_acquired = *acquired;
 		m_vram->m_device->resetFence(sync.drawn);
-		auto cb = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
-		ret = submit(cb, *acquired, fbSize);
-		m_previousFrame = acquired->image;
+		return m_renderer->beginMainPass(m_pipelineFactory, m_acquired->image, rb);
+	}
+	return std::nullopt;
+}
+
+bool RenderContext::endMainPass(RenderPass& out_rp, Extent2D fbSize) {
+	bool ret{};
+	if (m_acquired) {
+		auto cb = m_renderer->endMainPass(out_rp);
+		ret = submit(cb, *m_acquired, fbSize);
+		if (ret) { m_previousFrame = m_acquired->image; }
+		m_acquired.reset();
 	}
 	m_commandRotator.submit();
 	m_syncs.next();
@@ -119,6 +128,7 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 }
 
 bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent2D fbSize) {
+	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
 	auto const& sync = m_syncs.get();
 	m_surface.submit(cb, {sync.draw, sync.present, sync.drawn});
 	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }

@@ -195,18 +195,22 @@ bool Engine::nextFrame() {
 	return false;
 }
 
-bool Engine::render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene) {
+std::optional<graphics::RenderPass> Engine::beginRenderPass(SceneRegistry* scene, RGBA clear, ClearDepth depth) {
 	if (booted()) {
-		auto pr_ = profile("render");
+		graphics::RenderBegin rb;
+		rb.clear = clear;
+		rb.depth = depth;
 		if constexpr (levk_imgui) {
 			[[maybe_unused]] bool const imgui_begun = gfx().imgui->beginFrame();
 			EXPECT(imgui_begun);
 			rb.view = m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), *this);
 		}
-		return m_impl->gfx->context.render(out_drawer, rb, m_impl->win->framebufferSize());
+		return m_impl->gfx->context.beginMainPass(rb, m_impl->win->framebufferSize());
 	}
-	return false;
+	return std::nullopt;
 }
+
+bool Engine::endRenderPass(RenderPass& out_rp) { return booted() && m_impl->gfx->context.endMainPass(out_rp, m_impl->win->framebufferSize()); }
 
 input::Receiver::Store& Engine::receiverStore() noexcept { return m_impl->receivers; }
 input::Frame const& Engine::inputFrame() const noexcept { return m_impl->inputFrame; }

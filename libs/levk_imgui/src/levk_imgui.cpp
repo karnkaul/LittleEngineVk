@@ -133,7 +133,7 @@ DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window con
 	initInfo.ImageCount = context->surface().imageCount();
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	initInfo.DescriptorPool = static_cast<VkDescriptorPool>(m_pool.get());
-	if (!ImGui_ImplVulkan_Init(&initInfo, context->renderer().renderPass())) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
+	if (!ImGui_ImplVulkan_Init(&initInfo, context->renderer().mainRenderPass())) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	poolInfo.queueFamilyIndex = queue.familyIndex;

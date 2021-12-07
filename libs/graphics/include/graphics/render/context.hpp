@@ -36,7 +36,8 @@ class RenderContext : public NoCopy {
 	void setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept;
 
 	void waitForFrame();
-	bool render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize);
+	std::optional<RenderPass> beginMainPass(RenderBegin const& rb, Extent2D fbSize);
+	bool endMainPass(RenderPass& out_rp, Extent2D fbSize);
 	bool recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsync);
 
 	Surface const& surface() const noexcept { return m_surface; }
@@ -63,6 +64,7 @@ class RenderContext : public NoCopy {
 	PipelineFactory m_pipelineFactory;
 	CommandRotator m_commandRotator;
 	RingBuffer<Sync> m_syncs;
+	std::optional<Acquire> m_acquired;
 	RenderTarget m_previousFrame;
 	Deferred<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;

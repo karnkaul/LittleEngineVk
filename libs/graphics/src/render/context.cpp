@@ -105,8 +105,8 @@ bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D 
 	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
 		m_vram->m_device->resetFence(sync.drawn);
-		auto cmds = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
-		ret = submit(cmds, *acquired, fbSize);
+		auto cb = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
+		ret = submit(cb, *acquired, fbSize);
 		m_previousFrame = acquired->image;
 	}
 	m_commandRotator.submit();
@@ -118,9 +118,9 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 	return m_surface.makeSwapchain(fbSize, vsync.value_or(m_surface.format().vsync));
 }
 
-bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
+bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent2D fbSize) {
 	auto const& sync = m_syncs.get();
-	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
+	m_surface.submit(cb, {sync.draw, sync.present, sync.drawn});
 	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }
 	m_previousFrame = {};
 	return false;

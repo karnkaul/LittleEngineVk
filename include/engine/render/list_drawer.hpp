@@ -21,7 +21,7 @@ class ListDrawer : public graphics::IDrawer {
 	static void add(LayerMap& out_map, RenderPipeline const& rp, glm::mat4 const& model, MeshView const& mesh, DrawScissor scissor = {});
 
 	void beginPass(PipelineFactory& pf, vk::RenderPass rp) override final;
-	void draw(graphics::CommandBuffer cb) override final;
+	void draw(Span<graphics::CommandBuffer> cb) override final;
 
   protected:
 	virtual void fill(LayerMap& out_map, dens::registry const& registry);

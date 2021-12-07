@@ -57,7 +57,7 @@ class RenderContext : public NoCopy {
 	struct Sync;
 
   private:
-	bool submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize);
+	bool submit(vk::CommandBuffer cb, Acquire const& acquired, Extent2D fbSize);
 
 	Surface m_surface;
 	PipelineFactory m_pipelineFactory;

@@ -52,10 +52,11 @@ Image& ImageCache::refresh(Extent2D extent, vk::Format format) {
 	return *m_image;
 }
 
-Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device) {
+Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device, bool secondary) {
 	Cmd ret;
+	auto const level = secondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
 	ret.pool = makeDeferred<vk::CommandPool>(device, vk::CommandPoolCreateFlagBits::eTransient, QType::eGraphics);
-	ret.cb = CommandBuffer(*device, ret.pool);
+	ret.cb = CommandBuffer(*device, ret.pool, level);
 	return ret;
 }
 
@@ -127,37 +128,50 @@ Deferred<vk::RenderPass> Renderer::makeSingleRenderPass(not_null<Device*> device
 	return Renderer::makeRenderPass(device, ac, ad, deps);
 }
 
-void Renderer::render(not_null<Device*> device, IDrawer& out_drawer, PipelineFactory& pf, RenderInfo info) {
-	EXPECT(info.cb.recording() && !info.cb.rendering());
-	EXPECT(info.framebuffer.colour.image && info.pass);
+void Renderer::execRenderPass(not_null<Device*> device, IDrawer& out_drawer, PipelineFactory& pf, RenderInfo info) {
+	EXPECT(info.primary.recording() && !info.primary.rendering());
+	EXPECT(!info.secondary.empty() && info.framebuffer.colour.image && info.pass);
+	if (!info.primary.recording() || info.secondary.empty() || !info.framebuffer.colour.image || !info.pass) { return; }
 	bool const hasDepth = info.framebuffer.depth.image != vk::Image();
 	vk::ImageView const colourDepth[] = {info.framebuffer.colour.view, info.framebuffer.depth.view};
 	auto const views = hasDepth ? Span(colourDepth) : info.framebuffer.colour.view;
 	auto const extent = info.framebuffer.extent();
 	auto fb = Deferred<vk::Framebuffer>(device, device->makeFramebuffer(info.pass, views, graphics::cast(extent), 1U));
+	vk::CommandBufferInheritanceInfo inh;
+	inh.renderPass = info.pass;
+	inh.framebuffer = fb;
+	for (auto& cmd : info.secondary) { cmd.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit | vk::CommandBufferUsageFlagBits::eRenderPassContinue, &inh); }
+	info.secondary[0].setViewport(viewport(extent, info.begin.view));
+	info.secondary[0].setScissor(scissor(extent, info.begin.view));
 	out_drawer.beginPass(pf, info.pass);
+	out_drawer.draw(info.secondary);
+	for (auto& cmd : info.secondary) { cmd.end(); }
 	auto const cc = info.begin.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
-	graphics::CommandBuffer::PassInfo const passInfo{{clear, info.begin.depth}, vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-	device->m_layouts.transition(info.cb, info.framebuffer.colour.image, vIL::eColorAttachmentOptimal, LayoutStages::topColour());
-	if (hasDepth) { device->m_layouts.transition(info.cb, info.framebuffer.depth.image, vIL::eDepthStencilAttachmentOptimal, LayoutStages::topDepth()); }
-	info.cb.beginRenderPass(info.pass, fb, extent, passInfo);
-	info.cb.setViewport(viewport(extent, info.begin.view));
-	info.cb.setScissor(scissor(extent, info.begin.view));
-	out_drawer.draw(info.cb);
-	info.cb.endRenderPass();
+	device->m_layouts.transition(info.primary, info.framebuffer.colour.image, vIL::eColorAttachmentOptimal, LayoutStages::topColour());
+	if (hasDepth) { device->m_layouts.transition(info.primary, info.framebuffer.depth.image, vIL::eDepthStencilAttachmentOptimal, LayoutStages::topDepth()); }
+	graphics::CommandBuffer::PassInfo passInfo;
+	passInfo.clearValues = {clear, info.begin.depth};
+	passInfo.subpassContents = vk::SubpassContents::eSecondaryCommandBuffers;
+	passInfo.usage = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	info.primary.beginRenderPass(info.pass, fb, extent, passInfo);
+	ktl::fixed_vector<vk::CommandBuffer, max_secondary_cmd_v> secondary;
+	for (auto const& cmd : info.secondary) { secondary.push_back(cmd.m_cb); }
+	info.primary.m_cb.executeCommands((u32)secondary.size(), secondary.data());
+	info.primary.endRenderPass();
 }
 
 Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_colourImage(info.vram), m_vram(info.vram), m_target(info.target) {
 	Buffering const buffering = info.buffering < 2_B ? 2_B : info.buffering;
-	EXPECT(info.cmdPerFrame <= max_cmd_per_frame_v);
+	EXPECT(info.secondaryCmds <= max_secondary_cmd_v);
 	EXPECT(info.target == Target::eSwapchain || info.surfaceBlitFlags.test(BlitFlag::eDst));
 	if (!info.surfaceBlitFlags.test(BlitFlag::eDst)) { m_target = Target::eSwapchain; }
-	u8 const cmdPerFrame = std::clamp(info.cmdPerFrame, u8(1), max_cmd_per_frame_v);
+	u8 const secondaryCmds = std::clamp(info.secondaryCmds, u8(1), max_secondary_cmd_v);
 	for (Buffering i{0}; i < buffering; ++i.value) {
+		m_primaryCmd.push(Cmd::make(m_vram->m_device));
 		Cmds cmds;
-		for (u8 j = 0; j < cmdPerFrame; ++j) { cmds.push_back(Cmd::make(m_vram->m_device)); }
-		m_cmds.push(std::move(cmds));
+		for (u8 j = 0; j < secondaryCmds; ++j) { cmds.push_back(Cmd::make(m_vram->m_device, true)); }
+		m_secondaryCmds.push(std::move(cmds));
 	}
 	m_surfaceFormat = info.surfaceFormat;
 	m_blitFlags = info.surfaceBlitFlags;
@@ -178,12 +192,12 @@ Deferred<vk::RenderPass> Renderer::makeRenderPass(vk::Format colour, std::option
 	return makeRenderPass(m_vram->m_device, ac, ad, deps);
 }
 
-Renderer::Record Renderer::render(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb) {
+vk::CommandBuffer Renderer::render(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb) {
 	out_drawer.beginFrame();
-	for (auto& cmd : m_cmds.get()) { m_vram->m_device->resetCommandPool(cmd.pool); }
+	m_vram->m_device->resetCommandPool(m_primaryCmd.get().pool);
+	for (auto& cmd : m_secondaryCmds.get()) { m_vram->m_device->resetCommandPool(cmd.pool); }
 	doRender(out_drawer, pf, acquired, rb);
-	Record ret;
-	for (auto& cmd : m_cmds.get()) { ret.push_back(cmd.cb.m_cb); }
+	auto ret = m_primaryCmd.get().cb.m_cb;
 	next();
 	return ret;
 }
@@ -199,7 +213,7 @@ bool Renderer::renderScale(f32 rs) noexcept {
 }
 
 void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb) {
-	auto& cmd = m_cmds.get().front();
+	auto& cmd = m_primaryCmd.get();
 	Extent2D extent = acquired.extent;
 	RenderTarget colour = acquired;
 	if (m_target == Target::eOffScreen) {
@@ -211,11 +225,12 @@ void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget c
 	cmd.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 	RenderInfo ri;
 	ri.begin = rb;
-	ri.cb = cmd.cb;
+	ri.primary = cmd.cb;
+	for (auto const& cmd : m_secondaryCmds.get()) { ri.secondary.push_back(cmd.cb); }
 	ri.pass = m_singleRenderPass;
 	ri.framebuffer.colour = colour;
 	ri.framebuffer.depth = {depthImage.image(), depthImage.view(), depthImage.extent2D(), depthImage.viewFormat()};
-	render(m_vram->m_device, out_drawer, pf, std::move(ri));
+	execRenderPass(m_vram->m_device, out_drawer, pf, std::move(ri));
 	utils::Transition ltcolour{m_vram->m_device, &cmd.cb, colour.image};
 	utils::Transition ltacquired{m_vram->m_device, &cmd.cb, acquired.image};
 	if (m_target == Target::eOffScreen) {
@@ -227,5 +242,8 @@ void Renderer::doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget c
 	cmd.cb.end();
 }
 
-void Renderer::next() { m_cmds.next(); }
+void Renderer::next() {
+	m_primaryCmd.next();
+	m_secondaryCmds.next();
+}
 } // namespace le::graphics

@@ -11,6 +11,8 @@
 namespace le::graphics {
 class PipelineFactory;
 
+static constexpr u8 max_secondary_cmd_v = 8;
+
 struct RenderBegin {
 	RGBA clear;
 	ClearDepth depth = {1.0f, 0};
@@ -18,7 +20,8 @@ struct RenderBegin {
 };
 
 struct RenderInfo {
-	CommandBuffer cb;
+	CommandBuffer primary;
+	ktl::fixed_vector<CommandBuffer, max_secondary_cmd_v> secondary;
 	Framebuffer framebuffer;
 	RenderBegin begin;
 	vk::RenderPass pass;
@@ -28,7 +31,7 @@ class IDrawer {
   public:
 	virtual void beginFrame() = 0;
 	virtual void beginPass(PipelineFactory& pf, vk::RenderPass rp) = 0;
-	virtual void draw(CommandBuffer cb) = 0;
+	virtual void draw(Span<CommandBuffer> cbs) = 0;
 };
 
 class ImageCache {
@@ -58,10 +61,6 @@ class ImageCache {
 
 class Renderer {
   public:
-	static constexpr u8 max_cmd_per_frame_v = 8;
-
-	using Record = ktl::fixed_vector<vk::CommandBuffer, max_cmd_per_frame_v>;
-
 	enum class Approach { eForward, eDeferred, eOther };
 	enum class Target { eSwapchain, eOffScreen };
 
@@ -83,12 +82,12 @@ class Renderer {
 
 	static Deferred<vk::RenderPass> makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
 	static Deferred<vk::RenderPass> makeSingleRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
-	static void render(not_null<Device*> device, IDrawer& out_drawer, PipelineFactory& pf, RenderInfo info);
+	static void execRenderPass(not_null<Device*> device, IDrawer& out_drawer, PipelineFactory& pf, RenderInfo info);
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
 
-	Record render(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
+	vk::CommandBuffer render(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
 
 	Tech tech() const noexcept { return Tech{Approach::eForward, m_target}; }
 	bool canScale() const noexcept;
@@ -116,12 +115,13 @@ class Renderer {
 		Deferred<vk::CommandPool> pool;
 		CommandBuffer cb;
 
-		static Cmd make(not_null<Device*> device);
+		static Cmd make(not_null<Device*> device, bool secondary = false);
 	};
 
-	using Cmds = ktl::fixed_vector<Cmd, max_cmd_per_frame_v>;
+	using Cmds = ktl::fixed_vector<Cmd, max_secondary_cmd_v>;
 
-	RingBuffer<Cmds> m_cmds;
+	RingBuffer<Cmd> m_primaryCmd;
+	RingBuffer<Cmds> m_secondaryCmds;
 	Deferred<vk::RenderPass> m_singleRenderPass;
 	Surface::Format m_surfaceFormat;
 	TPair<f32> m_scaleLimits = {0.25f, 4.0f};
@@ -136,7 +136,7 @@ struct Renderer::CreateInfo {
 	BlitFlags surfaceBlitFlags;
 	Target target = Target::eOffScreen;
 	Buffering buffering = 2_B;
-	u8 cmdPerFrame = 1;
+	u8 secondaryCmds = 1;
 
 	CreateInfo(not_null<VRAM*> vram, Surface::Format const& surfaceFormat) : vram(vram), surfaceFormat(surfaceFormat) {}
 };

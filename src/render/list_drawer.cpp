@@ -48,17 +48,18 @@ void ListDrawer::fill(LayerMap& out_map, dens::registry const& registry) {
 	DebugDrawListGen{}(out_map, registry);
 }
 
-void ListDrawer::draw(graphics::CommandBuffer cb) {
+void ListDrawer::draw(Span<graphics::CommandBuffer> cb) {
+	EXPECT(!cb.empty());
 	std::unordered_set<graphics::ShaderInput*> pipes;
 	for (auto const& list : m_drawLists) {
 		EXPECT(list.pipeline.valid());
-		cb.m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
+		cb[0].m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);
 		pipes.insert(list.pipeline.shaderInput);
-		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb), list, cb);
+		draw(DescriptorBinder(list.pipeline.layout, list.pipeline.shaderInput, cb[0]), list, cb[0]);
 	}
 	for (auto pipe : pipes) { pipe->swap(); }
 	m_drawLists.clear();
-	Engine::drawImgui(cb);
+	Engine::drawImgui(cb[0]);
 }
 
 void ListDrawer::draw(DescriptorBinder bind, DrawList const& list, graphics::CommandBuffer cb) const {

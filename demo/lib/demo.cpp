@@ -13,7 +13,7 @@
 #include <graphics/common.hpp>
 #include <graphics/render/shader_buffer.hpp>
 #include <graphics/utils/utils.hpp>
-#include <iostream>
+#include <fstream>
 
 #include <engine/editor/editor.hpp>
 #include <engine/editor/scene_tree.hpp>
@@ -22,7 +22,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
 #include <engine/render/bitmap_text.hpp>
-#include <engine/render/list_drawer.hpp>
+#include <engine/render/list_renderer.hpp>
 #include <engine/render/skybox.hpp>
 #include <engine/scene/draw_list_gen.hpp>
 #include <engine/scene/scene_registry.hpp>
@@ -37,7 +37,6 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <engine/render/prop_provider.hpp>
 #include <ktl/async.hpp>
 
 #include <engine/ecs/components/spring_arm.hpp>
@@ -148,7 +147,7 @@ struct PlayerController {
 	}
 };
 
-class Drawer : public ListDrawer {
+class Renderer : public ListRenderer {
   public:
 	using Camera = graphics::Camera;
 
@@ -159,74 +158,57 @@ class Drawer : public ListDrawer {
 		glm::vec2 size{};
 	};
 
-	struct {
-		graphics::ShaderBuffer mats;
-		graphics::ShaderBuffer lights;
-	} m_view;
-	struct {
-		graphics::Texture const* white = {};
-		graphics::Texture const* black = {};
-		graphics::Texture const* cube = {};
-	} m_defaults;
+	Renderer(not_null<graphics::VRAM*> vram) : m_vram(vram) {
+		m_view.mats = graphics::ShaderBuffer(vram, {});
+		m_view.lights = graphics::ShaderBuffer(vram, {});
+	}
 
-	Scene m_scene;
-
-	Drawer(not_null<graphics::VRAM*> vram) noexcept : m_vram(vram) {}
-
-  private:
-	not_null<graphics::VRAM*> m_vram;
-
-	void beginFrame() override {
+	void render(RenderPass& out_rp, Scene const& scene) {
 		m_view.lights.swap();
 		m_view.mats.swap();
-		if (m_scene.camera) {
-			auto const& cam = *m_scene.camera;
-			ViewMats const v{cam.view(), cam.perspective(m_scene.size), cam.ortho(m_scene.size), {cam.position, 1.0f}};
+		if (scene.camera) {
+			auto const& cam = *scene.camera;
+			ViewMats const v{cam.view(), cam.perspective(scene.size), cam.ortho(scene.size), {cam.position, 1.0f}};
 			m_view.mats.write(v);
 		} else {
 			m_view.mats.write(ViewMats());
 		}
-		if (!m_scene.lights.empty()) {
+		if (!scene.lights.empty()) {
 			DirLights dl;
-			for (std::size_t idx = 0; idx < m_scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = m_scene.lights[idx]; }
-			dl.count = std::min((u32)m_scene.lights.size(), (u32)dl.lights.size());
+			for (std::size_t idx = 0; idx < scene.lights.size() && idx < dl.lights.size(); ++idx) { dl.lights[idx] = scene.lights[idx]; }
+			dl.count = std::min((u32)scene.lights.size(), (u32)dl.lights.size());
 			m_view.lights.write(dl);
+		} else {
+			m_view.lights.write(DirLights());
 		}
+		LayerMap map;
+		if (scene.registry) { fill(map, *scene.registry); }
+		ListRenderer::render(out_rp, map);
 	}
 
-	void buildDrawLists(PipelineFactory& pf, vk::RenderPass rp) override {
-		if (m_scene.registry) { populate<DrawListGen3D, DrawListGenUI>(*m_scene.registry, pf, rp); }
-	}
+  private:
+	struct {
+		graphics::ShaderBuffer mats;
+		graphics::ShaderBuffer lights;
+	} m_view;
+	not_null<graphics::VRAM*> m_vram;
 
-	void writeSets(DescriptorMap map, List const& list) override {
-		auto set0 = map.set(0);
+	void writeSets(DescriptorMap map, DrawList const& list) override {
+		auto set0 = list.set(map, 0);
 		set0.update(0, m_view.mats);
 		set0.update(1, m_view.lights);
 		for (Drawable const& drawable : list.drawables) {
-			if (!drawable.props.empty()) {
-				map.set(1).update(0, drawable.model);
-				for (Prop const& prop : drawable.props) {
-					Material const& mat = prop.material;
-					auto set2 = map.set(2);
-					set2.update(0, mat.map_Kd && mat.map_Kd->ready() ? *mat.map_Kd : *m_defaults.white);
-					set2.update(1, mat.map_d && mat.map_d->ready() ? *mat.map_d : *m_defaults.white);
-					set2.update(2, mat.map_Ks && mat.map_Ks->ready() ? *mat.map_Ks : *m_defaults.black);
-					map.set(3).update(0, ShadeMat::make(mat));
-				}
-			}
-		}
-	}
-
-	void draw(DescriptorBinder bind, List const& list, graphics::CommandBuffer cb) const override {
-		bind(0);
-		for (Drawable const& d : list.drawables) {
-			if (!d.props.empty()) {
-				bind(1);
-				if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
-				for (Prop const& prop : d.props) {
-					bind(2, 3);
-					ENSURE(prop.mesh, "Null mesh");
-					prop.mesh->draw(cb);
+			drawable.set(map, 1).update(0, drawable.model);
+			DrawMesh const& drawMesh = drawable.mesh;
+			for (MeshObj const& mesh : drawable.meshViews()) {
+				if (mesh.primitive) {
+					static Material const s_blank;
+					Material const& mat = mesh.material ? *mesh.material : s_blank;
+					auto set2 = drawMesh.set(map, 2);
+					set2.update(0, mat.map_Kd);
+					set2.update(1, mat.map_d);
+					set2.update(2, mat.map_Ks, TextureFallback::eBlack);
+					drawMesh.set(map, 3).update(0, ShadeMat::make(mat));
 				}
 			}
 		}
@@ -235,7 +217,7 @@ class Drawer : public ListDrawer {
 
 class TestView : public gui::View {
   public:
-	TestView(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font) : gui::View(parent, std::move(name)) {
+	TestView(not_null<gui::ViewStack*> parent, std::string name, Hash fontURI = gui::defaultFontURI) : gui::View(parent, std::move(name)) {
 		m_canvas.size.value = {1280.0f, 720.0f};
 		m_canvas.size.unit = gui::Unit::eAbsolute;
 		auto& bg = push<gui::Quad>();
@@ -253,9 +235,9 @@ class TestView : public gui::View {
 		topLeft.m_rect.anchor.norm = {-0.5f, 0.5f};
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 		topLeft.m_material.Tf = colours::magenta;
-		auto& text = bg.push<gui::Text>(font);
+		auto& text = bg.push<gui::Text>(fontURI);
 		text.set("click").size(60U);
-		m_button = &push<gui::Button>(font);
+		m_button = &push<gui::Button>(fontURI);
 		m_button->m_rect.size = {200.0f, 100.0f};
 		m_button->m_text->set("Button").size(40U);
 		m_button->refresh();
@@ -281,7 +263,7 @@ class Dialogue : public View {
 		Hash style;
 	};
 
-	Dialogue(not_null<gui::ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info);
+	Dialogue(not_null<gui::ViewStack*> parent, std::string name, CreateInfo const& info);
 
 	[[nodiscard]] Widget::OnClick::handle addButton(std::string text, Widget::OnClick::callback&& onClick);
 
@@ -307,7 +289,7 @@ class Dialogue : public View {
 	Footer m_footer;
 	ButtonInfo m_buttonInfo;
 	Button::OnClick::handle m_closeSignal;
-	not_null<BitmapFont const*> m_font;
+	Hash m_fontURI;
 };
 
 struct Dialogue::CreateInfo {
@@ -334,16 +316,17 @@ struct Dialogue::CreateInfo {
 	Content content;
 	Footer footer;
 	ButtonInfo buttonInfo;
+	Hash fontURI = defaultFontURI;
 };
 
-Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<BitmapFont const*> font, CreateInfo const& info)
-	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_font(font) {
-	m_content = &push<Button>(font, info.content.style);
+Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo const& info)
+	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_fontURI(info.fontURI) {
+	m_content = &push<Button>(m_fontURI, info.content.style);
 	m_content->m_rect.size = info.content.size;
 	m_content->m_text->set(info.content.text).size(info.content.textSize);
 	m_content->m_interact = false;
 
-	m_header.title = &m_content->push<Button>(font, info.header.style);
+	m_header.title = &m_content->push<Button>(m_fontURI, info.header.style);
 	m_header.title->m_rect.size = {info.content.size.x, info.header.height};
 	m_header.title->m_rect.anchor.norm.y = 0.5f;
 	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
@@ -351,7 +334,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 	m_header.title->m_text->set(info.header.text).size(info.header.textSize);
 	m_header.title->m_style.widget.quad.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
-	m_header.close = &m_header.title->push<Button>(font);
+	m_header.close = &m_header.title->push<Button>(m_fontURI);
 	m_header.close->m_style.widget.quad.base.Tf = colours::red;
 	m_header.close->m_style.base.text.colour = colours::white;
 	m_header.close->m_text->set("x").size(20U);
@@ -370,7 +353,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, not_null<Bitma
 }
 
 Widget::OnClick::handle Dialogue::addButton(std::string text, Widget::OnClick::callback&& onClick) {
-	auto& button = m_footer.bg->push<Button>(m_font, m_buttonInfo.style);
+	auto& button = m_footer.bg->push<Button>(m_fontURI, m_buttonInfo.style);
 	m_footer.buttons.push_back(&button);
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
@@ -406,7 +389,7 @@ class App : public input::Receiver, public SceneRegistry {
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
 	App(not_null<Engine*> eng)
-		: m_eng(eng), m_drawer(&eng->gfx().boot.vram),
+		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
 		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/default")->sampler(), colours::red, {128, 128}) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
@@ -417,7 +400,7 @@ class App : public input::Receiver, public SceneRegistry {
 		ENSURE(res > 0, "Manifest missing/empty");
 
 		/* custom meshes */ {
-			auto rQuad = m_eng->store().add<graphics::Mesh>("meshes/rounded_quad", graphics::Mesh(&m_eng->gfx().boot.vram));
+			auto rQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/rounded_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
 			rQuad->construct(graphics::makeRoundedQuad());
 		}
 
@@ -430,16 +413,93 @@ class App : public input::Receiver, public SceneRegistry {
 		edi::Inspector::attach<PlayerController>(ipc);
 		edi::Inspector::attach<gui::Dialogue>([](edi::Inspect<gui::Dialogue>) { edi::Text("Dialogue found!"); });
 
-		m_drawer.m_view.mats = graphics::ShaderBuffer(m_eng->gfx().boot.vram, {});
-		graphics::ShaderBuffer::CreateInfo info;
-		info.type = vk::DescriptorType::eStorageBuffer;
-		m_drawer.m_view.lights = graphics::ShaderBuffer(m_eng->gfx().boot.vram, {});
+		{ spawnMesh<Skybox>("skybox", "skyboxes/sky_dusk", "render_pipelines/skybox"); }
+		{
+			m_data.player = spawnMesh("player", MeshProvider::make("meshes/cube", "materials/player/cube"), "render_pipelines/lit");
+			m_registry.get<Transform>(m_data.player).position({0.0f, 0.0f, 5.0f});
+			m_registry.attach<PlayerController>(m_data.player);
+			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
+			m_onCollide = trigger.onTrigger.make_signal();
+			m_onCollide += [](auto&&) { logD("Collided!"); };
+		}
+		{
+			auto ent0 = spawnMesh<Model>("model_0_0", "models/plant", "render_pipelines/lit");
+			m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
+			m_data.entities["model_0_0"] = ent0;
+
+			auto ent1 = spawnMesh<Model>("model_0_1", "models/plant", "render_pipelines/lit");
+			auto& node = m_registry.get<Transform>(ent1);
+			node.position({-2.0f, -1.0f, 5.0f});
+			m_data.entities["model_0_1"] = ent1;
+			m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
+		}
+		{
+			auto ent0 = spawnMesh<Model>("model_1_0", "models/teapot", "render_pipelines/lit");
+			m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
+			m_data.entities["model_1_0"] = ent0;
+			auto ent = spawnMesh<Model>("model_1", "models/nanosuit", "render_pipelines/lit");
+			m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
+			m_data.entities["model_1"] = ent;
+		}
+		{
+			m_data.camera = m_registry.make_entity<FreeCam>("freecam");
+			auto [e, c] = SpringArm::attach(m_data.camera, m_registry, m_data.player);
+			auto& [spring, transform] = c;
+			edi::SceneTree::attach(m_data.camera);
+			auto& cam = m_registry.get<FreeCam>(m_data.camera);
+			cam.position = {0.0f, 0.5f, 4.0f};
+			cam.look({});
+			transform.position(cam.position);
+			spring.offset = transform.position();
+			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
+		}
+		{
+			auto ent = spawnMesh("prop_1", MeshProvider::make("meshes/cube"), "render_pipelines/basic");
+			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
+			m_data.entities["prop_1"] = ent;
+		}
+		{
+			auto ent = spawnMesh("prop_2", MeshProvider::make("meshes/cone"), "render_pipelines/tex");
+			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
+		}
+		{
+			m_testMat.map_Kd = &m_testTex;
+			if (auto primitive = m_eng->store().find<MeshPrimitive>("meshes/rounded_quad")) {
+				m_data.roundedQuad = spawnNode("prop_3");
+				m_registry.attach<RenderPipeProvider>(m_data.roundedQuad, RenderPipeProvider::make("render_pipelines/tex"));
+				m_registry.attach<MeshView>(m_data.roundedQuad, MeshObj{&*primitive, &m_testMat});
+				m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
+			}
+		}
+		{
+			Material mat;
+			mat.Tf = colours::yellow;
+			m_eng->store().add("materials/yellow", mat);
+			auto node = spawnMesh("trigger/cube", MeshProvider::make("meshes/cube", "materials/yellow"), "render_pipelines/basic");
+			m_registry.get<Transform>(node).scale(2.0f);
+			m_data.tween = node;
+			auto& trig1 = m_registry.attach<physics::Trigger>(node);
+			trig1.scale = glm::vec3(2.0f);
+			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
+			auto pos = m_registry.get<Transform>(node).position();
+			pos.x = tweener.current();
+			m_registry.get<Transform>(node).position(pos);
+		}
+		{
+			DirLight l0, l1;
+			l0.direction = {-graphics::up, 0.0f};
+			l1.direction = {-graphics::front, 0.0f};
+			l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
+			l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
+			m_data.dirLights = {l0, l1};
+		}
+		m_data.guiStack = spawn<gui::ViewStack>("gui_root", "render_pipelines/ui", &m_eng->gfx().boot.vram);
 	}
 
 	bool block(input::State const& state) override {
 		if (m_controls.editor(state)) { m_eng->editor().toggle(); }
 		if (m_controls.wireframe(state)) {
-			if (auto lit = m_eng->store().find<PipelineState>("pipelines/lit")) {
+			/*if (auto lit = m_eng->store().find<PipelineState>("pipelines/lit")) {
 				if (lit->fixedState.flags.test(graphics::PFlag::eWireframe)) {
 					lit->fixedState.flags.reset(graphics::PFlag::eWireframe);
 					lit->fixedState.lineWidth = 1.0f;
@@ -447,7 +507,7 @@ class App : public input::Receiver, public SceneRegistry {
 					lit->fixedState.flags.set(graphics::PFlag::eWireframe);
 					lit->fixedState.lineWidth = 3.0f;
 				}
-			}
+			}*/
 		}
 		if (m_controls.reboot(state)) { m_data.reboot = true; }
 		if (m_controls.unload(state)) {
@@ -459,17 +519,12 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	void init1() {
-		auto sky_test = m_eng->store().find<graphics::Texture>("cubemaps/test");
-		auto skymap = sky_test ? sky_test : m_eng->store().find<graphics::Texture>("cubemaps/sky_dusk");
 		auto font = m_eng->store().find<BitmapFont>("fonts/default");
-		m_drawer.m_defaults.black = &*m_eng->store().find<graphics::Texture>("textures/black");
-		m_drawer.m_defaults.white = &*m_eng->store().find<graphics::Texture>("textures/white");
-		m_drawer.m_defaults.cube = &*m_eng->store().find<graphics::Texture>("cubemaps/blank");
 		auto& vram = m_eng->gfx().boot.vram;
 
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
-			m_registry.attach<DrawGroup>(triggerDebug) = drawGroup("draw_groups/wireframe");
+			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
 		}
 		m_data.text = TextMesh(&vram, &*font);
 		m_data.cursor = input::TextCursor(&*font);
@@ -480,151 +535,55 @@ class App : public input::Receiver, public SceneRegistry {
 		// m_data.text->text.align = {-0.5f, 0.5f};
 		// m_data.text->set("Hi\nThere!");
 		m_data.cursor->m_text = "Hello!";
-		m_data.text->mesh.construct(m_data.cursor->generateText());
+		m_data.text->primitive.construct(m_data.cursor->generateText());
 
-		{
-			Material mat;
-			mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
-			mat.map_Ks = &*m_eng->store().find<graphics::Texture>("textures/container2/specular");
-			// d.mat.albedo.diffuse = colours::cyan.toVec3();
-			auto player = spawnMesh("player", "meshes/cube", "draw_groups/lit", mat);
-			m_registry.get<Transform>(player).position({0.0f, 0.0f, 5.0f});
-			m_data.player = player;
-			m_registry.attach<PlayerController>(m_data.player);
-			auto& trigger = m_registry.attach<physics::Trigger>(m_data.player);
-			m_onCollide = trigger.onTrigger.make_signal();
-			m_onCollide += [](auto&&) { logD("Collided!"); };
-		}
-		{
-			auto freecam = m_registry.make_entity<FreeCam>("freecam");
-			m_data.camera = freecam;
-			auto [e, c] = SpringArm::attach(freecam, m_registry, m_data.player);
-			auto& [spring, transform] = c;
-			edi::SceneTree::attach(freecam);
-			auto& cam = m_registry.get<FreeCam>(freecam);
-			cam.position = {0.0f, 0.5f, 4.0f};
-			cam.look({});
-			transform.position(cam.position);
-			spring.offset = transform.position();
-		}
-
-		auto guiStack = spawn<gui::ViewStack>("gui_root", "draw_groups/ui", &m_eng->gfx().boot.vram);
-		m_data.guiStack = guiStack;
-		auto& stack = m_registry.get<gui::ViewStack>(guiStack);
-		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view", &font.get());
+		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
+		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
 		dci.textSize = 30U;
 		dci.options = {"zero", "one", "two", "/bthree", "four"};
 		dci.selected = 2;
-		auto& dropdown = testView.push<gui::Dropdown>(&font.get(), std::move(dci));
+		auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
 		dropdown.m_rect.anchor.offset = {-300.0f, -50.0f};
 		gui::Dialogue::CreateInfo gdci;
 		gdci.header.text = "Dialogue";
 		gdci.content.text = "Content\ngoes\nhere";
-		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", &font.get(), gdci);
+		auto& dialogue = stack.push<gui::Dialogue>("test_dialogue", gdci);
 		gui::InputField::CreateInfo info;
 		// info.secret = true;
-		auto& in = dialogue.push<gui::InputField>(&font.get(), info);
+		auto& in = dialogue.push<gui::InputField>(info);
 		in.m_rect.anchor.offset.y = 60.0f;
 		in.align({-0.5f, 0.0f});
 		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
-		DirLight l0, l1;
-		l0.direction = {-graphics::up, 0.0f};
-		l1.direction = {-graphics::front, 0.0f};
-		l0.albedo = Albedo::make(colours::cyan, {0.2f, 0.5f, 0.3f, 0.0f});
-		l1.albedo = Albedo::make(colours::white, {0.4f, 1.0f, 0.8f, 0.0f});
-		m_data.dirLights = {l0, l1};
-		spawn<Skybox>("skybox", "draw_groups/skybox", &*skymap);
-		{
-			auto ent = spawnProp<graphics::Mesh>("prop_1", "meshes/cube", "draw_groups/basic");
-			m_registry.get<Transform>(ent).position({-5.0f, -1.0f, -2.0f});
-			m_data.entities["prop_1"] = ent;
-		}
-		{
-			auto ent = spawnProp<graphics::Mesh>("prop_2", "meshes/cone", "draw_groups/tex");
-			m_registry.get<Transform>(ent).position({1.0f, -2.0f, -3.0f});
-		}
-		{
-			Material mat;
-			// mat.map_Kd = &*m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
-			// auto tex = m_eng->store().find<graphics::Texture>("textures/container2/diffuse");
 
-			mat.map_Kd = &m_testTex;
-			m_data.roundedQuad = spawnMesh("prop_3", "meshes/rounded_quad", "draw_groups/tex", mat);
-			m_registry.get<Transform>(m_data.roundedQuad).position({2.0f, 0.0f, 6.0f});
-		}
-		// { spawn("ui_1", *m_eng->store().find<DrawLayer>("draw_groups/ui"), m_data.text->prop(*font)); }
-		{
-			auto ent0 = spawnProp<TextMesh>("text_2d/mesh", *m_data.text, "draw_groups/ui");
-			m_data.entities["text_2d/mesh"] = ent0;
-			auto ent = spawnProp<input::TextCursor>("text_2d/cursor", *m_data.cursor, "draw_groups/ui");
-			m_data.entities["text_2d/cursor"] = ent;
-		}
-		{
-			{
-				auto ent0 = spawnProp<Model>("model_0_0", "models/plant", "draw_groups/lit");
-				m_registry.get<Transform>(ent0).position({-2.0f, -1.0f, 2.0f});
-				m_data.entities["model_0_0"] = ent0;
-
-				auto ent1 = spawnProp<Model>("model_0_1", "models/plant", "draw_groups/lit");
-				auto& node = m_registry.get<Transform>(ent1);
-				node.position({-2.0f, -1.0f, 5.0f});
-				m_data.entities["model_0_1"] = ent1;
-				m_registry.get<SceneNode>(ent1).parent(m_registry, m_data.entities["model_0_0"]);
-			}
-			if (auto model = m_eng->store().find<Model>("models/teapot")) {
-				Prop& prop = model->propsRW().front();
-				prop.material.Tf = {0xfc4340ff, RGBA::Type::eAbsolute};
-				auto ent0 = spawnProp<Model>("model_1_0", "models/teapot", "draw_groups/lit");
-				m_registry.get<Transform>(ent0).position({2.0f, -1.0f, 2.0f});
-				m_data.entities["model_1_0"] = ent0;
-			}
-			if (m_eng->store().exists<Model>("models/nanosuit")) {
-				auto ent = spawnProp<Model>("model_1", "models/nanosuit", "draw_groups/lit");
-				m_registry.get<Transform>(ent).position({-1.0f, -2.0f, -3.0f});
-				m_data.entities["model_1"] = ent;
-			}
-		}
-		{
-			Material mat;
-			mat.Tf = colours::yellow;
-			auto node = spawnMesh("trigger/cube", "meshes/cube", "draw_groups/basic", mat);
-			m_registry.get<Transform>(node).scale(2.0f);
-			m_data.tween = node;
-			auto& trig1 = m_registry.attach<physics::Trigger>(node);
-			trig1.scale = glm::vec3(2.0f);
-			auto& tweener = m_registry.attach<Tweener>(node, -5.0f, 5.0f, 2s, utils::TweenCycle::eSwing);
-			auto pos = m_registry.get<Transform>(node).position();
-			pos.x = tweener.current();
-			m_registry.get<Transform>(node).position(pos);
-		}
+		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
-		if (auto text = m_registry.find<PropProvider>(m_data.entities["text_2d/mesh"])) {
+		if (m_data.text && m_data.cursor) {
 			graphics::Geometry geom;
-			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->mesh.construct(std::move(geom)); }
-			*text = PropProvider::make(*m_data.text);
+			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->primitive.construct(std::move(geom)); }
 			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
 			}
-			if (auto cursor = m_registry.find<PropProvider>(m_data.entities["text_2d/cursor"])) { *cursor = PropProvider::make(*m_data.cursor); }
 		}
 
-		m_testTex.blit(m_eng->gfx().context.commands().get(), m_eng->gfx().context.previousFrame());
+		if (auto const frame = m_eng->gfx().context.renderer().offScreenImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
+			m_testTex.blit(m_eng->gfx().context.commands().get(), *frame);
+		}
 
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
-		if (!m_data.unloaded && m_manifest.ready(m_tasks)) {
+		if (!m_data.unloaded) {
 			auto pr_ = Engine::profile("app::tick");
-			if (!m_data.init) { init1(); }
-			// ENSURE(m_registry.contains(m_data.entities["text_2d/mesh"]), "");
+			if (!m_data.init && m_manifest.ready(m_tasks)) { init1(); }
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
+			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 			auto& pc = m_registry.get<PlayerController>(m_data.player);
 			auto const& state = m_eng->inputFrame().state;
 			if (pc.active) {
@@ -636,14 +595,13 @@ class App : public input::Receiver, public SceneRegistry {
 			} else {
 				cam.tick(state, dt, &m_eng->window());
 			}
-			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
 			m_registry.get<Transform>(m_data.entities["prop_1"]).rotate(glm::radians(360.0f) * dt.count(), graphics::up);
 			if (auto tr = m_registry.find<Transform>(m_data.entities["model_0_0"])) { tr->rotate(glm::radians(-75.0f) * dt.count(), graphics::up); }
-			if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
+			/*if (auto tr = m_registry.find<Transform>(m_data.entities["model_1_0"])) {
 				static glm::quat s_axis = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 				s_axis = glm::rotate(s_axis, glm::radians(45.0f) * dt.count(), graphics::front);
 				tr->rotate(glm::radians(90.0f) * dt.count(), nvec3(s_axis * graphics::up));
-			}
+			}*/
 			if (auto tr = m_registry.find<Transform>(m_data.tween)) {
 				auto& tweener = m_registry.get<Tweener>(m_data.tween);
 				auto pos = tr->position();
@@ -651,20 +609,21 @@ class App : public input::Receiver, public SceneRegistry {
 				tr->position(pos);
 			}
 		}
-		// draw
-		if (m_eng->nextFrame()) { render(); }
+
 		m_tasks.rethrow();
 	}
 
 	void render() {
-		m_drawer.m_scene.camera = m_registry.find<graphics::Camera>(m_sceneRoot);
-		m_drawer.m_scene.registry = &m_registry;
-		m_drawer.m_scene.lights = m_data.dirLights;
-		m_drawer.m_scene.size = m_eng->sceneSpace();
 		// draw
-		graphics::RenderBegin rb;
-		rb.clear = RGBA(0x777777ff, RGBA::Type::eAbsolute);
-		m_eng->render(m_drawer, rb, this);
+		if (auto rp = m_eng->beginRenderPass(this, RGBA(0x777777ff, RGBA::Type::eAbsolute))) {
+			Renderer::Scene scene;
+			scene.registry = &m_registry;
+			scene.camera = m_registry.find<graphics::Camera>(m_sceneRoot);
+			scene.lights = m_data.dirLights;
+			scene.size = m_eng->sceneSpace();
+			m_renderer.render(*rp, scene);
+			m_eng->endRenderPass(*rp);
+		}
 	}
 
 	scheduler& sched() { return m_tasks; }
@@ -692,7 +651,8 @@ class App : public input::Receiver, public SceneRegistry {
 	scheduler m_tasks;
 	AssetManifest m_manifest;
 	not_null<Engine*> m_eng;
-	mutable Drawer m_drawer;
+	mutable Renderer m_renderer;
+	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
 
@@ -780,6 +740,7 @@ bool run(io::Media const& media) {
 		ktl::future<bool> bf;
 		ktl::async async;
 		while (!engine.closing()) {
+			if (!engine.nextFrame()) { continue; }
 			poll(flags, engine.poll(true).residue);
 			if (flags.test(Flag::eClosed)) {
 				reboot = false;
@@ -790,20 +751,29 @@ bool run(io::Media const& media) {
 				break;
 			}
 			app.tick(++dt);
+			app.render();
 			if (flags.test(Flag::eDebug0) && (!bf.valid() || !bf.busy())) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
-				engine.setRenderer(engine.gfx().context.defaultRenderer());
-				flags.reset(Flag::eDebug0);
-				/*bf = async(&package, "out/autobuild", false);
-				bf.then([](bool built) {
-					if (!built) {
-						logW("build failed");
-					} else {
-						logD("build success");
+				auto& ctx = engine.gfx().context;
+				if (auto src = ctx.previousFrameAsImage()) {
+					if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.commands(), *src)) {
+						if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
+							auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
+							if (written > 0) { logD("Screenshot saved to shot.ppm"); }
+						}
 					}
-				});*/
+				}
 			}
+			flags.reset(Flag::eDebug0);
+			/*bf = async(&package, "out/autobuild", false);
+			bf.then([](bool built) {
+				if (!built) {
+					logW("build failed");
+				} else {
+					logD("build success");
+				}
+			});*/
 		}
 	} while (reboot);
 	return true;

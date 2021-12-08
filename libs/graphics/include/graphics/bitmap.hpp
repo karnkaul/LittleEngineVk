@@ -14,7 +14,6 @@ struct TBitmap {
 
 	T bytes{};
 	Extent2D size{};
-	bool compressed = true;
 };
 
 using BmpBytes = std::vector<u8>;
@@ -23,5 +22,7 @@ using CubeBytes = std::array<BmpBytes, 6>;
 using Bitmap = TBitmap<BmpBytes>;
 using Cubemap = TBitmap<CubeBytes>;
 
-using ImgView = Span<u8 const>;
+using BmpView = Span<u8 const>;
+
+using ImageData = Span<std::byte const>;
 } // namespace le::graphics

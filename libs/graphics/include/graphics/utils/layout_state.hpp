@@ -1,6 +1,7 @@
 #pragma once
 #include <core/not_null.hpp>
 #include <graphics/common.hpp>
+#include <ktl/tmutex.hpp>
 #include <unordered_map>
 
 namespace le::graphics {
@@ -34,13 +35,12 @@ struct LayoutStages {
 class LayoutState {
   public:
 	vk::ImageLayout get(vk::Image img) const;
-	void transition(CommandBuffer cb, vk::Image img, vk::ImageAspectFlags aspect, vk::ImageLayout layout, StageAccess src, StageAccess dst);
 	void transition(CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls);
-	void clear() { m_map.clear(); }
+	void clear() { ktl::tlock(m_map)->clear(); }
 
 	void presented(vk::Image image) { force(image, vk::ImageLayout::ePresentSrcKHR); }
 	void drawn(vk::Image depth) { force(depth, vk::ImageLayout::eUndefined); }
-	void force(vk::Image image, vk::ImageLayout layout) { m_map[image] = layout; }
+	void force(vk::Image image, vk::ImageLayout layout) { (*ktl::tlock(m_map))[image] = layout; }
 
 	template <typename LT>
 	void transition(CommandBuffer const& cb, vk::Image image, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) {
@@ -48,6 +48,6 @@ class LayoutState {
 	}
 
   private:
-	std::unordered_map<vk::Image, vk::ImageLayout> m_map;
+	ktl::strict_tmutex<std::unordered_map<vk::Image, vk::ImageLayout>> m_map;
 };
 } // namespace le::graphics

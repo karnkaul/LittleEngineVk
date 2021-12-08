@@ -5,6 +5,9 @@
 
 namespace le {
 static constexpr auto max_bindings_v = graphics::max_bindings_v;
+class AssetStore;
+
+enum class TextureFallback { eWhite, eBlack, eMagenta, eCOUNT_ };
 
 class DescriptorHelper {
   public:
@@ -12,25 +15,29 @@ class DescriptorHelper {
 	using Texture = graphics::Texture;
 	using ShaderBuffer = graphics::ShaderBuffer;
 	using CommandBuffer = graphics::CommandBuffer;
+
+	struct Cache;
 };
 
 class DescriptorUpdater : public DescriptorHelper {
   public:
 	DescriptorUpdater() = default;
-	explicit DescriptorUpdater(not_null<ShaderInput*> input, u32 setNumber, std::size_t index) noexcept
-		: m_input(input), m_vram(input->m_vram), m_index(index), m_setNumber(setNumber) {}
+	explicit DescriptorUpdater(not_null<Cache const*> cache, not_null<ShaderInput*> input, u32 setNumber, std::size_t index);
 
 	bool valid() const noexcept { return m_input && m_vram; }
 
 	template <typename T>
 	bool update(u32 bind, T const& t, vk::DescriptorType type = vk::DescriptorType::eUniformBuffer);
-	bool update(u32 bind, Texture const& texture);
+	bool update(u32 bind, Texture const& tex);
+	bool update(u32 bind, Texture const* tex, TextureFallback tb = TextureFallback::eWhite);
 	bool update(u32 bind, ShaderBuffer const& buffer);
 
   private:
-	bool check(u32 bind, vk::DescriptorType const* type = {}) noexcept;
+	bool check(u32 bind, vk::DescriptorType const* type = {}, Texture::Type const* texType = {}) noexcept;
+	Texture const* safeTex(Texture const* tex, u32 bind, TextureFallback fb) const;
 
 	ktl::fixed_vector<u32, max_bindings_v> m_binds;
+	Cache const* m_cache{};
 	ShaderInput* m_input{};
 	graphics::VRAM* m_vram{};
 	std::size_t m_index{};
@@ -39,13 +46,14 @@ class DescriptorUpdater : public DescriptorHelper {
 
 class DescriptorMap : public DescriptorHelper {
   public:
-	explicit DescriptorMap(not_null<ShaderInput*> input) noexcept : m_input(input) {}
+	explicit DescriptorMap(not_null<Cache const*> cache, not_null<ShaderInput*> input) noexcept : m_cache(cache), m_input(input) {}
 
 	bool contains(u32 setNumber) { return m_input->contains(setNumber); }
 	DescriptorUpdater set(u32 setNumber);
 
   private:
 	u32 m_meta[max_bindings_v] = {};
+	not_null<Cache const*> m_cache;
 	not_null<ShaderInput*> m_input;
 };
 
@@ -66,6 +74,13 @@ class DescriptorBinder : public DescriptorHelper {
 	u32 m_meta[max_bindings_v] = {};
 };
 
+struct DescriptorHelper::Cache {
+	EnumArray<TextureFallback, not_null<Texture const*>> defaults;
+	not_null<Texture const*> cube;
+
+	static Cache make(not_null<AssetStore const*> store);
+};
+
 // impl
 
 template <typename T>
@@ -75,44 +90,5 @@ bool DescriptorUpdater::update(u32 bind, T const& t, vk::DescriptorType type) {
 		return true;
 	}
 	return false;
-}
-
-inline bool DescriptorUpdater::update(u32 bind, ShaderBuffer const& buffer) {
-	if (check(bind)) {
-		m_input->update(buffer, m_setNumber, bind, m_index);
-		return true;
-	}
-	return false;
-}
-
-inline bool DescriptorUpdater::update(u32 bind, Texture const& texture) {
-	if (check(bind)) {
-		m_input->set(m_setNumber, m_index).update(bind, texture);
-		return true;
-	}
-	return false;
-}
-
-inline bool DescriptorUpdater::check(u32 bind, vk::DescriptorType const* type) noexcept {
-	if (!valid()) { return false; }
-	for (u32 const b : m_binds) {
-		if (bind == b) { return true; }
-	}
-	if (m_input->contains(m_setNumber, bind, type)) {
-		m_binds.push_back(bind);
-		return true;
-	}
-	return false;
-}
-
-inline DescriptorUpdater DescriptorMap::set(u32 setNumber) {
-	return contains(setNumber) ? DescriptorUpdater(m_input, setNumber, m_meta[setNumber]++) : DescriptorUpdater();
-}
-
-inline void DescriptorBinder::operator()(u32 set) {
-	if (m_input->contains(set)) {
-		auto const& s = m_input->set(set, m_meta[set]++);
-		m_cb.bindSets(m_layout, s.get(), s.setNumber());
-	}
 }
 } // namespace le

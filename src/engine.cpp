@@ -9,6 +9,7 @@
 #include <engine/gui/view.hpp>
 #include <engine/input/driver.hpp>
 #include <engine/input/receiver.hpp>
+#include <engine/render/layer.hpp>
 #include <engine/scene/scene_registry.hpp>
 #include <engine/utils/engine_config.hpp>
 #include <engine/utils/engine_stats.hpp>
@@ -194,18 +195,22 @@ bool Engine::nextFrame() {
 	return false;
 }
 
-bool Engine::render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene) {
+std::optional<graphics::RenderPass> Engine::beginRenderPass(SceneRegistry* scene, RGBA clear, ClearDepth depth) {
 	if (booted()) {
-		auto pr_ = profile("render");
+		graphics::RenderBegin rb;
+		rb.clear = clear;
+		rb.depth = depth;
 		if constexpr (levk_imgui) {
 			[[maybe_unused]] bool const imgui_begun = gfx().imgui->beginFrame();
 			EXPECT(imgui_begun);
 			rb.view = m_impl->view = editor().update(scene ? scene->ediScene() : edi::SceneRef(), *this);
 		}
-		return m_impl->gfx->context.render(out_drawer, rb, m_impl->win->framebufferSize());
+		return m_impl->gfx->context.beginMainPass(rb, m_impl->win->framebufferSize());
 	}
-	return false;
+	return std::nullopt;
 }
+
+bool Engine::endRenderPass(RenderPass& out_rp) { return booted() && m_impl->gfx->context.endMainPass(out_rp, m_impl->win->framebufferSize()); }
 
 input::Receiver::Store& Engine::receiverStore() noexcept { return m_impl->receivers; }
 input::Frame const& Engine::inputFrame() const noexcept { return m_impl->inputFrame; }
@@ -253,27 +258,39 @@ void Engine::addDefaultAssets() {
 		store().add("textures/red", Tex(v, s, colours::red, {1, 1}));
 		store().add("textures/black", Tex(v, s, colours::black, {1, 1}));
 		store().add("textures/white", Tex(v, s, colours::white, {1, 1}));
+		store().add("textures/magenta", Tex(v, s, colours::magenta, {1, 1}));
 		store().add("textures/blank", Tex(v, s, 0x0, {1, 1}));
 		Tex blankCube(v, s);
 		blankCube.construct(Tex::unitCubemap(0x0));
 		store().add("cubemaps/blank", std::move(blankCube));
 	}
 	/* meshes */ {
-		auto cube = store().add<graphics::Mesh>("meshes/cube", graphics::Mesh(&gfx().boot.vram));
+		auto cube = store().add<graphics::MeshPrimitive>("meshes/cube", graphics::MeshPrimitive(&gfx().boot.vram));
 		cube->construct(graphics::makeCube());
-		auto cone = store().add<graphics::Mesh>("meshes/cone", graphics::Mesh(&gfx().boot.vram));
+		auto cone = store().add<graphics::MeshPrimitive>("meshes/cone", graphics::MeshPrimitive(&gfx().boot.vram));
 		cone->construct(graphics::makeCone());
-		auto wf_cube = store().add<graphics::Mesh>("wireframes/cube", graphics::Mesh(&gfx().boot.vram));
+		auto wf_cube = store().add<graphics::MeshPrimitive>("wireframes/cube", graphics::MeshPrimitive(&gfx().boot.vram));
 		wf_cube->construct(graphics::makeCube(1.0f, {}, graphics::Topology::eLineList));
+	}
+	/* materials */ { store().add("materials/default", Material{}); }
+	/* render layers */ {
+		RenderLayer layer;
+		store().add("render_layers/default", layer);
+		layer.flags = RenderFlag::eAlphaBlend;
+		layer.order = 100;
+		store().add("render_layers/ui", layer);
+		layer.flags = {};
+		layer.order = -100;
+		store().add("render_layers/skybox", layer);
 	}
 }
 
 void Engine::updateStats() {
 	m_impl->stats.update();
-	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->boot.vram.bytes(graphics::Resource::Kind::eBuffer);
-	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->boot.vram.bytes(graphics::Resource::Kind::eImage);
+	m_impl->stats.stats.gfx.bytes.buffers = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eBuffer);
+	m_impl->stats.stats.gfx.bytes.images = m_impl->gfx->boot.vram.bytes(graphics::Memory::Type::eImage);
 	m_impl->stats.stats.gfx.drawCalls = graphics::CommandBuffer::s_drawCalls.load();
-	m_impl->stats.stats.gfx.triCount = graphics::Mesh::s_trisDrawn.load();
+	m_impl->stats.stats.gfx.triCount = graphics::MeshPrimitive::s_trisDrawn.load();
 	m_impl->stats.stats.gfx.extents.window = windowSize();
 	if (m_impl->gfx) {
 		m_impl->stats.stats.gfx.extents.swapchain = m_impl->gfx->context.surface().extent();
@@ -281,6 +298,6 @@ void Engine::updateStats() {
 			Renderer::scaleExtent(m_impl->stats.stats.gfx.extents.swapchain, m_impl->gfx->context.renderer().renderScale());
 	}
 	graphics::CommandBuffer::s_drawCalls.store(0);
-	graphics::Mesh::s_trisDrawn.store(0);
+	graphics::MeshPrimitive::s_trisDrawn.store(0);
 }
 } // namespace le

@@ -3,7 +3,7 @@
 #include <ktl/enum_flags/enum_flags.hpp>
 
 namespace le::graphics {
-enum class PipelineFlag { eDepthTest, eDepthWrite, eAlphaBlend, eWireframe };
+enum class PipelineFlag { eDepthTest, eDepthWrite, eAlphaBlend, eWireframe, eCOUNT_ };
 using PipelineFlags = ktl::enum_flags<PipelineFlag, u8>;
 
 using PFlag = PipelineFlag;

@@ -8,13 +8,13 @@ class InputField : public Widget, public input::Receiver {
   public:
 	struct CreateInfo;
 
-	InputField(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo const& info, Hash style = {});
+	InputField(not_null<TreeRoot*> root, CreateInfo const& info, Hash fontURI = defaultFontURI, Hash style = {});
 
 	InputField(InputField&&) = delete;
 	InputField& operator=(InputField&&) = delete;
 
 	Status onInput(input::State const& state) override;
-	Span<Prop const> props() const noexcept override;
+	MeshView mesh() const noexcept override;
 
 	bool block(input::State const& state) override;
 
@@ -23,14 +23,14 @@ class InputField : public Widget, public input::Receiver {
 	std::string_view text() const noexcept { return m_secret ? m_exposed : m_cursor.m_text; }
 
   protected:
-	TextMesh m_mesh;
+	TextMesh m_textMesh;
 	input::TextCursor m_cursor;
 
   private:
 	void onUpdate(input::Space const& space) override;
 	void reposition() noexcept;
 
-	mutable ktl::fixed_vector<Prop, 4> m_props;
+	mutable ktl::fixed_vector<MeshObj, 4> m_meshes;
 	std::string m_exposed;
 	std::optional<Quad> m_outline;
 	f32 m_offsetX{};

@@ -1,15 +1,17 @@
 #pragma once
 #include <graphics/command_buffer.hpp>
+#include <graphics/memory.hpp>
 #include <graphics/render/buffering.hpp>
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
-#include <graphics/resources.hpp>
 #include <graphics/screen_rect.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
 class PipelineFactory;
+
+static constexpr u8 max_secondary_cmd_v = 8;
 
 struct RenderBegin {
 	RGBA clear;
@@ -18,17 +20,30 @@ struct RenderBegin {
 };
 
 struct RenderInfo {
-	CommandBuffer cb;
+	CommandBuffer primary;
+	ktl::fixed_vector<CommandBuffer, max_secondary_cmd_v> secondary;
 	Framebuffer framebuffer;
 	RenderBegin begin;
-	vk::RenderPass pass;
+	vk::RenderPass renderPass;
 };
 
-class IDrawer {
+class RenderPass {
   public:
-	virtual void beginFrame() = 0;
-	virtual void beginPass(PipelineFactory& pf, vk::RenderPass rp) = 0;
-	virtual void draw(CommandBuffer cb) = 0;
+	RenderPass(not_null<Device*> device, not_null<PipelineFactory*> factory, RenderInfo info);
+
+	vk::Framebuffer framebuffer() const noexcept { return m_framebuffer; }
+	vk::RenderPass renderPass() const noexcept { return m_info.renderPass; }
+	RenderInfo const& info() const noexcept { return m_info; }
+	PipelineFactory& pipelineFactory() const noexcept { return *m_factory; }
+	Span<CommandBuffer const> commandBuffers() const noexcept { return m_info.secondary; }
+
+	void render();
+
+  private:
+	RenderInfo m_info;
+	Deferred<vk::Framebuffer> m_framebuffer;
+	not_null<Device*> m_device;
+	not_null<PipelineFactory*> m_factory;
 };
 
 class ImageCache {
@@ -48,6 +63,7 @@ class ImageCache {
 	bool ready(Extent2D extent, vk::Format format) const noexcept;
 	Image& make(Extent2D extent, vk::Format format);
 	Image& refresh(Extent2D extent, vk::Format format);
+	Image const* peek() const noexcept { return m_image ? &*m_image : nullptr; }
 
   private:
 	Image::CreateInfo m_info;
@@ -57,10 +73,6 @@ class ImageCache {
 
 class Renderer {
   public:
-	static constexpr u8 max_cmd_per_frame_v = 8;
-
-	using Record = ktl::fixed_vector<vk::CommandBuffer, max_cmd_per_frame_v>;
-
 	enum class Approach { eForward, eDeferred, eOther };
 	enum class Target { eSwapchain, eOffScreen };
 
@@ -81,30 +93,33 @@ class Renderer {
 	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
 
 	static Deferred<vk::RenderPass> makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
-	static Deferred<vk::RenderPass> makeSingleRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
-	static void render(not_null<Device*> device, IDrawer& out_drawer, PipelineFactory& pf, RenderInfo info);
+	static Deferred<vk::RenderPass> makeMainRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
 
-	Record render(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
+	RenderInfo mainPassInfo(RenderTarget const& colour, RenderTarget const& depth, RenderBegin const& rb) const;
+	RenderPass beginMainPass(PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
+	virtual vk::CommandBuffer endMainPass(RenderPass& out_rp);
 
 	Tech tech() const noexcept { return Tech{Approach::eForward, m_target}; }
 	bool canScale() const noexcept;
 	f32 renderScale() const noexcept { return m_scale; }
 	bool renderScale(f32) noexcept;
+	bool canBlitFrame() const noexcept { return m_blitFlags.test(BlitFlag::eSrc); }
 
-	virtual vk::RenderPass renderPass() const noexcept { return m_singleRenderPass; }
+	vk::RenderPass mainRenderPass() const noexcept { return m_singleRenderPass; }
+	Image const* offScreenImage() const noexcept { return m_colourImage.peek(); }
 
   protected:
 	Deferred<vk::RenderPass> makeRenderPass(vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
 											Span<vk::SubpassDependency const> deps = {}) const;
 
-	virtual void doRender(IDrawer& out_drawer, PipelineFactory& pf, RenderTarget const& acquired, RenderBegin const& rb);
 	virtual void next();
 
 	ImageCache m_depthImage;
 	ImageCache m_colourImage;
+	RenderTarget m_acquired;
 	vk::Format m_colourFormat = vk::Format::eR8G8B8A8Srgb;
 	not_null<VRAM*> m_vram;
 
@@ -113,25 +128,28 @@ class Renderer {
 		Deferred<vk::CommandPool> pool;
 		CommandBuffer cb;
 
-		static Cmd make(not_null<Device*> device);
+		static Cmd make(not_null<Device*> device, bool secondary = false);
 	};
 
-	using Cmds = ktl::fixed_vector<Cmd, max_cmd_per_frame_v>;
+	using Cmds = ktl::fixed_vector<Cmd, max_secondary_cmd_v>;
 
-	RingBuffer<Cmds> m_cmds;
+	RingBuffer<Cmd> m_primaryCmd;
+	RingBuffer<Cmds> m_secondaryCmds;
 	Deferred<vk::RenderPass> m_singleRenderPass;
 	Surface::Format m_surfaceFormat;
 	TPair<f32> m_scaleLimits = {0.25f, 4.0f};
 	Target m_target;
+	BlitFlags m_blitFlags;
 	f32 m_scale = 1.0f;
 };
 
 struct Renderer::CreateInfo {
 	not_null<VRAM*> vram;
 	Surface::Format surfaceFormat;
+	BlitFlags surfaceBlitFlags;
 	Target target = Target::eOffScreen;
 	Buffering buffering = 2_B;
-	u8 cmdPerFrame = 1;
+	u8 secondaryCmds = 1;
 
 	CreateInfo(not_null<VRAM*> vram, Surface::Format const& surfaceFormat) : vram(vram), surfaceFormat(surfaceFormat) {}
 };

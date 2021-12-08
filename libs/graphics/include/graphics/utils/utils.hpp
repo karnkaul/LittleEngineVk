@@ -15,6 +15,8 @@
 #include <map>
 
 namespace le::graphics {
+class CommandRotator;
+
 struct ShaderResources {
 	spirv_cross::ShaderResources resources;
 	std::unique_ptr<spirv_cross::Compiler> compiler;
@@ -27,9 +29,9 @@ struct VertexInfoFactory<Vertex> {
 };
 
 namespace utils {
-class STBImg : public TBitmap<Span<u8>> {
+class STBImg : public TBitmap<Span<u8 const>> {
   public:
-	explicit STBImg(Bitmap::type const& compressed, u8 channels = 4);
+	explicit STBImg(ImageData compressed, u8 channels = 4);
 	STBImg(STBImg&& rhs) noexcept { exchg(*this, rhs); }
 	STBImg& operator=(STBImg rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~STBImg();
@@ -39,6 +41,7 @@ class STBImg : public TBitmap<Span<u8>> {
 
 struct BindingInfo {
 	vk::DescriptorSetLayoutBinding binding;
+	vk::ImageViewType imageType{};
 	std::string name;
 };
 
@@ -66,6 +69,33 @@ struct HashGen {
 	constexpr operator std::size_t() const noexcept { return hash; }
 };
 
+struct Transition {
+	not_null<Device*> device;
+	not_null<CommandBuffer*> cb;
+	vk::Image image;
+
+	void operator()(vk::ImageLayout layout, LayoutStages const& stages = LayoutStages::allCommands()) const;
+};
+
+class DualTransition {
+  public:
+	using Stages = TPair<LayoutStages>;
+
+	inline static LayoutPair const xfr_v = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal};
+	inline static Stages const ct_ac_v = {LayoutStages::colourTransfer(), LayoutStages::allCommands()};
+
+	DualTransition(not_null<Device*> device, not_null<CommandBuffer*> cb, TPair<vk::Image> images, LayoutPair layouts = xfr_v, Stages const& stages = ct_ac_v);
+	~DualTransition();
+
+	void changeStages(LayoutStages stages) noexcept { m_stages = stages; }
+
+  private:
+	Transition m_a;
+	Transition m_b;
+	LayoutPair m_layouts;
+	LayoutStages m_stages;
+};
+
 template <typename T>
 	requires(std::is_convertible_v<T, std::size_t> || std::is_enum_v<T>)
 constexpr utils::HashGen& operator<<(utils::HashGen& out, T const next);
@@ -82,14 +112,19 @@ std::optional<vk::Pipeline> makeGraphicsPipeline(Device& dv, Span<ShaderModule c
 Bitmap bitmap(std::initializer_list<Colour> pixels, u32 width, u32 height = 0);
 Bitmap bitmap(Span<Colour const> pixels, u32 width, u32 height = 0);
 void append(BmpBytes& out, Colour pixel);
-void append(BmpBytes& out, Span<std::byte const> bytes);
-BmpBytes bmpBytes(Span<std::byte const> bytes);
 
 using CubeImageURIs = std::array<std::string_view, 6>;
 constexpr CubeImageURIs cubeImageURIs = {"right", "left", "up", "down", "front", "back"};
 std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageURIs const& ids = cubeImageURIs);
 
 std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface);
+
+inline bool canBlit(Image const& src, Image const& dst) noexcept { return src.blitFlags().test(BlitFlag::eSrc) && dst.blitFlags().test(BlitFlag::eDst); }
+bool blit(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear);
+bool copy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst);
+bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear);
+std::optional<Image> makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, Image const& img);
+std::size_t writePPM(not_null<Device*> device, Image& out_img, std::ostream& out_str);
 
 constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;
 constexpr vk::Rect2D scissor(DrawScissor const& scissor) noexcept;

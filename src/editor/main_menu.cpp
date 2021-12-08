@@ -3,15 +3,19 @@
 #if defined(LEVK_USE_IMGUI)
 #include <core/services.hpp>
 #include <core/utils/string.hpp>
+#include <engine/assets/asset_store.hpp>
+#include <engine/editor/asset_index.hpp>
 #include <engine/editor/editor.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/engine_stats.hpp>
 #endif
 
 namespace le::edi {
+#define MU [[maybe_unused]]
+
 #if defined(LEVK_USE_IMGUI)
 namespace {
-enum class Flag { eStats, eProfiler, eCOUNT_ };
+enum class Flag { eStats, eProfiler, eAssetIndex, eCOUNT_ };
 static constexpr auto flag_count = static_cast<std::size_t>(Flag::eCOUNT_);
 
 struct Panes {
@@ -20,7 +24,7 @@ struct Panes {
 	bool& flag(Flag f) { return flags[static_cast<std::size_t>(f)]; }
 	bool flag(Flag f) const { return flags[static_cast<std::size_t>(f)]; }
 
-	void operator()() const;
+	void operator()();
 
 	void showStats() const;
 	template <typename T>
@@ -31,7 +35,7 @@ Panes g_panes;
 
 void Panes::showStats() const {
 	if (auto eng = Services::find<Engine>()) {
-		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats), false)) {
+		if (auto p = Pane("Engine Stats", {200.0f, 250.0f}, {200.0f, 200.0f}, &g_panes.flag(Flag::eStats))) {
 			auto const& s = eng->stats();
 			auto t = Text(CStr<32>("FPS: %u", s.frame.rate));
 			t = Text(CStr<32>("Frame #: %u", s.frame.count));
@@ -57,7 +61,7 @@ void Panes::showStats() const {
 template <typename T>
 void Panes::showProfiler() const {
 	if (auto profiler = Services::find<T>()) {
-		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler), false)) {
+		if (auto p = Pane("Profiler", {600.0f, 400.0f}, {300.0f, 300.0f}, &g_panes.flag(Flag::eProfiler))) {
 			auto const& record = profiler->m_record.back();
 			Time_s const total = record.total;
 			f32 maxLength{};
@@ -73,11 +77,14 @@ void Panes::showProfiler() const {
 }
 
 template <>
-[[maybe_unused]] void Panes::showProfiler<utils::NullProfileDB>() const {}
+MU void Panes::showProfiler<utils::NullProfileDB>() const {}
 
-void Panes::operator()() const {
+void Panes::operator()() {
 	if (flag(Flag::eStats)) { showStats(); }
 	if (flag(Flag::eProfiler)) { showProfiler<Engine::Profiler>(); }
+	if (flag(Flag::eAssetIndex)) {
+		if (auto p = Pane("Asset Index", {425.0f, 250.0f}, {50.0f, 100.0f}, &flag(Flag::eAssetIndex))) { AssetIndex::list(); }
+	}
 }
 } // namespace
 #endif
@@ -86,9 +93,10 @@ MainMenu::MainMenu() {
 #if defined(LEVK_USE_IMGUI)
 	MenuList::Tree main;
 	main.m_t.id = "File";
-	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui->m_showDemo = true; }};
+	MenuList::Menu assetIndex{"Asset Index", []() { g_panes.flag(Flag::eAssetIndex) = true; }};
 	MenuList::Menu stats{"Show Stats", []() { g_panes.flag(Flag::eStats) = true; }};
 	MenuList::Menu profiler{"Show Profiler", []() { g_panes.flag(Flag::eProfiler) = true; }};
+	MenuList::Menu imDemo{"Show ImGui Demo", []() { Services::get<Engine>()->gfx().imgui->m_showDemo = true; }};
 	MenuList::Menu close{"Close Editor", []() { Services::get<Engine>()->editor().engage(false); }, true};
 	MenuList::Menu quit{"Quit", []() { Services::get<Engine>()->window().close(); }};
 	main.push_front(std::move(quit));
@@ -96,11 +104,12 @@ MainMenu::MainMenu() {
 	main.push_front(std::move(imDemo));
 	main.push_front(std::move(profiler));
 	main.push_front(std::move(stats));
+	main.push_front(std::move(assetIndex));
 	m_main.trees.push_back(std::move(main));
 #endif
 }
 
-void MainMenu::operator()([[maybe_unused]] MenuList const& extras) const {
+void MainMenu::operator()(MU MenuList const& extras) const {
 #if defined(LEVK_USE_IMGUI)
 	if (ImGui::BeginMainMenuBar()) {
 		for (auto const& tree : m_main.trees) { MenuBar::walk(tree); }

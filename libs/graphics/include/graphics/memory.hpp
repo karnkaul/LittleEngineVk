@@ -11,12 +11,7 @@
 
 namespace le::graphics {
 class Device;
-
-struct Alloc final {
-	vk::DeviceMemory memory;
-	vk::DeviceSize offset = {};
-	vk::DeviceSize actualSize = {};
-};
+struct RenderTarget;
 
 struct QShare final {
 	vk::SharingMode desired;
@@ -27,41 +22,21 @@ struct QShare final {
 	vk::SharingMode operator()(Device const& device, QFlags queues) const;
 };
 
-class Memory;
-class Resource {
-  public:
-	enum class Kind { eBuffer, eImage, eCOUNT_ };
-
-	struct Data {
-		Alloc alloc;
-		VmaAllocation handle{};
-		QFlags queueFlags;
-		vk::SharingMode mode{};
-	};
-
-	Resource(not_null<Memory*> memory) : m_memory(memory) {}
-	Resource(Resource&&) = default;
-	Resource& operator=(Resource&&) = default;
-	virtual ~Resource() = default;
-
-	virtual Kind kind() const noexcept = 0;
-	Data const& data() const noexcept { return m_data; }
-
-  protected:
-	static void exchg(Resource& lhs, Resource& rhs) noexcept {
-		std::swap(lhs.m_data, rhs.m_data);
-		std::swap(lhs.m_memory, rhs.m_memory);
-	}
-
-	Data m_data;
-	not_null<Memory*> m_memory;
-
-  private:
-	friend class VRAM;
+struct Allocation {
+	struct {
+		vk::DeviceMemory memory;
+		vk::DeviceSize offset = {};
+		vk::DeviceSize actualSize = {};
+	} alloc;
+	VmaAllocation handle{};
+	QFlags queueFlags;
+	vk::SharingMode mode{};
 };
 
 class Memory : public Pinned {
   public:
+	enum class Type { eBuffer, eImage };
+
 	template <typename T>
 	using vAP = vk::ArrayProxy<T const> const&;
 
@@ -79,49 +54,45 @@ class Memory : public Pinned {
 	Memory(not_null<Device*> device);
 	~Memory();
 
-	u64 bytes(Resource::Kind type) const noexcept;
+	u64 bytes(Type type) const noexcept { return m_allocations[type].load(); }
 
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
-	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents,
-					 LayoutPair layouts = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal}, vk::Filter filter = vk::Filter::eLinear,
-					 TPair<vk::ImageAspectFlags> aspects = {vk::ImageAspectFlagBits::eColor, vk::ImageAspectFlagBits::eColor});
+	static void copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects);
+	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter);
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
-	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects = vk::ImageAspectFlagBits::eColor, vk::DeviceSize offset = 0,
-											   u32 layerIdx = 0, u32 layerCount = 1);
+	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx, u32 layerCount);
 
 	dl::level m_logLevel = dl::level::debug;
 	not_null<Device*> m_device;
 
   protected:
 	VmaAllocator m_allocator;
-	mutable EnumArray<Resource::Kind, std::atomic<u64>> m_allocations;
+	mutable EnumArray<Type, std::atomic<u64>, 2> m_allocations;
 
 	friend class Buffer;
 	friend class Image;
 };
 
-class Buffer : public Resource {
+class Buffer {
   public:
 	enum class Type { eCpuToGpu, eGpuOnly };
 	struct CreateInfo;
 	struct Span;
 
-	static constexpr Kind kind_v = Kind::eBuffer;
+	static constexpr auto allocation_type_v = Memory::Type::eBuffer;
 
 	Buffer(not_null<Memory*> memory, CreateInfo const& info);
-	Buffer(Buffer&& rhs) noexcept : Resource(rhs.m_memory) { exchg(*this, rhs); }
+	Buffer(Buffer&& rhs) noexcept : m_memory(rhs.m_memory) { exchg(*this, rhs); }
 	Buffer& operator=(Buffer rhs) noexcept { return (exchg(*this, rhs), *this); }
-	~Buffer() override;
-
-	virtual Kind kind() const noexcept override { return kind_v; }
+	~Buffer();
 
 	vk::Buffer buffer() const noexcept { return m_storage.buffer; }
 	vk::DeviceSize writeSize() const noexcept { return m_storage.writeSize; }
 	std::size_t writeCount() const noexcept { return m_storage.writeCount; }
 	vk::BufferUsageFlags usage() const noexcept { return m_storage.usage; }
 	Type bufferType() const noexcept { return m_storage.type; }
-	void const* mapped() const noexcept { return m_storage.pMap; }
+	void const* mapped() const noexcept { return m_storage.data; }
 
 	void const* map();
 	bool unmap();
@@ -134,14 +105,16 @@ class Buffer : public Resource {
 
   protected:
 	struct Storage {
+		Allocation allocation;
 		vk::Buffer buffer;
 		vk::DeviceSize writeSize = {};
 		std::size_t writeCount = 0;
 		vk::BufferUsageFlags usage;
 		Type type{};
-		void* pMap = nullptr;
+		void* data = nullptr;
 	};
 	Storage m_storage;
+	not_null<Memory*> m_memory;
 
 	friend class VRAM;
 };
@@ -151,65 +124,77 @@ struct Buffer::Span {
 	std::size_t size = 0;
 };
 
-class Image : public Resource {
+class Image {
   public:
 	struct CreateInfo;
 
-	static constexpr Kind kind_v = Kind::eImage;
+	static constexpr auto allocation_type_v = Memory::Type::eImage;
+
 	static constexpr vk::Format srgb_v = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::Format linear_v = vk::Format::eR8G8B8A8Unorm;
 
-	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format, bool linear);
+	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format) noexcept;
+	static CreateInfo textureInfo(Extent2D extent, vk::Format format = srgb_v, bool cubemap = false) noexcept;
+	static CreateInfo storageInfo(Extent2D extent, vk::Format format = linear_v) noexcept;
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
-	Image(Image&& rhs) noexcept : Resource(rhs.m_memory) { exchg(*this, rhs); }
+	Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format, vk::ImageUsageFlags usage);
+	Image(Image&& rhs) noexcept : m_memory(rhs.m_memory) { exchg(*this, rhs); }
 	Image& operator=(Image rhs) noexcept { return (exchg(*this, rhs), *this); }
-	~Image() override;
-
-	virtual Kind kind() const noexcept override { return kind_v; }
+	~Image();
 
 	vk::Image image() const noexcept { return m_storage.image; }
 	vk::ImageView view() const noexcept { return m_storage.view; }
 	vk::Format imageFormat() const noexcept { return m_storage.imageFormat; }
 	vk::Format viewFormat() const noexcept { return m_storage.viewFormat; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
+	BlitFlags blitFlags() const noexcept { return m_storage.blitFlags; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
 	Extent2D extent2D() const noexcept { return cast(extent()); }
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
+	void const* mapped() const noexcept { return m_storage.data; }
+
+	void const* map();
+	bool unmap();
 
   private:
 	static void exchg(Image& lhs, Image& rhs) noexcept;
 
   protected:
 	struct Storage {
+		Allocation allocation;
 		vk::Image image;
 		vk::ImageView view;
+		void* data{};
 		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
 		vk::ImageUsageFlags usage;
+		VmaMemoryUsage vmaUsage{};
 		vk::Format imageFormat{};
 		vk::Format viewFormat{};
 		u32 layerCount = 1;
+		BlitFlags blitFlags;
 	};
 	Storage m_storage;
+	not_null<Memory*> m_memory;
 
 	friend class VRAM;
 };
 
-struct ResourceCreateInfo {
+struct AllocationInfo {
 	QShare share;
 	QFlags queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	vk::MemoryPropertyFlags preferred;
 };
 
-struct Buffer::CreateInfo : ResourceCreateInfo {
+struct Buffer::CreateInfo : AllocationInfo {
 	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
 	vk::MemoryPropertyFlags properties;
 };
 
-struct Image::CreateInfo final : ResourceCreateInfo {
+struct Image::CreateInfo final : AllocationInfo {
 	vk::ImageCreateInfo createInfo;
 	struct {
 		vk::Format format{};
@@ -219,8 +204,6 @@ struct Image::CreateInfo final : ResourceCreateInfo {
 };
 
 // impl
-
-inline u64 Memory::bytes(Resource::Kind type) const noexcept { return m_allocations[type].load(); }
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {

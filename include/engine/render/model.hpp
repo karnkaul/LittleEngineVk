@@ -1,8 +1,9 @@
 #pragma once
 #include <core/hash.hpp>
 #include <core/io/path.hpp>
-#include <engine/render/prop.hpp>
-#include <graphics/mesh.hpp>
+#include <engine/render/material.hpp>
+#include <engine/scene/mesh_view.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/expected.hpp>
 
@@ -25,12 +26,7 @@ class Model {
 		eTextureNotFound,
 		eObjNotFound,
 		eMtlNotFound,
-		eTextureCreateFailure
-	};
-
-	struct Error {
-		std::string message;
-		Failcode failcode{};
+		eTextureCreateFailure,
 	};
 
 	struct TexData;
@@ -41,27 +37,38 @@ class Model {
 	using VRAM = graphics::VRAM;
 	using Sampler = graphics::Sampler;
 	using Texture = graphics::Texture;
-	using Mesh = graphics::Mesh;
+	using MeshPrimitive = graphics::MeshPrimitive;
 	template <typename T>
-	using Result = ktl::expected<T, Error>;
+	using Result = ktl::expected<T, Failcode>;
 
 	static Result<CreateInfo> load(io::Path modelID, io::Path jsonID, io::Media const& media);
 
-	Result<Span<Prop const>> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
+	Result<void> construct(not_null<VRAM*> vram, CreateInfo const& info, Sampler const& sampler, std::optional<vk::Format> forceFormat);
 
-	Span<Prop const> props() const noexcept { return m_storage.props; }
-	Span<Prop> propsRW() noexcept { return m_storage.props; }
+	MeshView mesh() const;
+
+	std::size_t textureCount() const noexcept { return m_storage.textures.size(); }
+	std::size_t materialCount() const noexcept { return m_storage.materials.size(); }
+	std::size_t primitiveCount() const noexcept { return m_storage.meshMats.size(); }
+
+	MeshPrimitive* primitive(std::size_t index);
+	Material* material(std::size_t index);
 
   private:
 	template <typename V>
 	using Map = std::unordered_map<Hash, V>;
 
+	struct MeshMat {
+		MeshPrimitive primitive;
+		Hash mat;
+	};
+
 	struct {
-		Map<graphics::Texture> textures;
+		Map<Texture> textures;
 		Map<Material> materials;
-		Map<graphics::Mesh> meshes;
-		std::vector<Prop> props;
+		std::vector<MeshMat> meshMats;
 	} m_storage;
+	mutable std::vector<MeshObj> m_meshes;
 };
 
 struct Model::TexData {

@@ -5,7 +5,7 @@
 namespace le::gui {
 class Button : public Widget {
   public:
-	Button(not_null<TreeRoot*> parent, not_null<BitmapFont const*> font, Hash style = {});
+	Button(not_null<TreeRoot*> parent, Hash fontURI = defaultFontURI, Hash style = {});
 
 	Button(Button&&) = delete;
 	Button& operator=(Button&&) = delete;

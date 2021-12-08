@@ -22,6 +22,7 @@ class Dropdown : public Button {
 			graphics::RGBA arrow = colours::white;
 		} coverColours;
 		Text::Size textSize = 40U;
+		Hash fontURI = defaultFontURI;
 		Hash style;
 	};
 
@@ -37,14 +38,13 @@ class Dropdown : public Button {
 	using OnSelect = ktl::delegate<Select>;
 
 	template <typename T = Button, typename... Args>
-	Dropdown(not_null<TreeRoot*> root, not_null<BitmapFont const*> font, CreateInfo<T> info, Args&&... args)
-		: Button(root, font, info.style), m_options(std::move(info.options)) {
+	Dropdown(not_null<TreeRoot*> root, CreateInfo<T> info, Args&&... args) : Button(root, info.fontURI, info.style), m_options(std::move(info.options)) {
 		if (!m_options.empty()) {
 			ENSURE(info.selected < m_options.size(), "Invalid index");
 			init(std::move(info));
 			for (auto [entry, index] : utils::enumerate(m_options)) {
 				bool const pad = itemPad(entry, index);
-				add(m_flexbox->add<T>(m_rect.size, pad, m_text->m_font, std::forward<Args>(args)...), entry, index);
+				add(m_flexbox->add<T>(m_rect.size, pad, m_text->m_fontURI, std::forward<Args>(args)...), entry, index);
 			}
 			refresh();
 		}

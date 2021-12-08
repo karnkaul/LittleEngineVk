@@ -2,7 +2,7 @@
 #include <core/span.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
-#include <graphics/resources.hpp>
+#include <graphics/memory.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
@@ -13,7 +13,7 @@ class ShaderBuffer {
 	struct CreateInfo;
 
 	ShaderBuffer() = default;
-	ShaderBuffer(VRAM& vram, CreateInfo const& info);
+	ShaderBuffer(not_null<VRAM*> vram, CreateInfo const& info);
 
 	template <typename T>
 	ShaderBuffer& write(T const& t, std::size_t offset = 0);

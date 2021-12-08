@@ -1,5 +1,4 @@
 #pragma once
-#include <core/io/path.hpp>
 #include <core/services.hpp>
 #include <core/utils/ratio.hpp>
 #include <core/utils/std_hash.hpp>
@@ -10,14 +9,14 @@
 namespace le {
 template <typename T>
 struct TAssetList {
-	void add(io::Path uri, T t) { map.emplace(std::move(uri), std::move(t)); }
+	void add(std::string uri, T t) { map.emplace(std::move(uri), std::move(t)); }
 	std::size_t append(TAssetList<T>& out, TAssetList<T> const& exclude) const;
 
-	std::unordered_map<io::Path, T> map;
+	std::unordered_map<std::string, T> map;
 };
 
 template <typename T>
-using AssetList = TAssetList<std::function<T()>>;
+using AssetList = TAssetList<std::function<std::unique_ptr<T>()>>;
 
 template <typename T>
 using AssetLoadList = TAssetList<AssetLoadData<T>>;
@@ -58,7 +57,7 @@ class AssetListLoader {
 
 	AssetStore& store() const { return *Services::get<AssetStore>(); }
 	template <typename T>
-	bool skip(io::Path const& uri) const noexcept {
+	bool skip(std::string_view uri) const noexcept {
 		return store().exists<T>(uri) && !m_flags.test(Flag::eOverwrite);
 	}
 

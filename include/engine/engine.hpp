@@ -35,10 +35,11 @@ class Engine {
 	using Boot = graphics::Bootstrap;
 	using VSync = graphics::VSync;
 	using VRAM = graphics::VRAM;
+	using RGBA = graphics::RGBA;
 	using Context = graphics::RenderContext;
 	using Renderer = graphics::Renderer;
-	using RenderBegin = graphics::RenderBegin;
-	using IDrawer = graphics::IDrawer;
+	using ClearDepth = graphics::ClearDepth;
+	using RenderPass = graphics::RenderPass;
 	using Stats = utils::EngineStats;
 	using Profiler = std::conditional_t<levk_debug, utils::ProfileDB<>, utils::NullProfileDB>;
 
@@ -61,15 +62,15 @@ class Engine {
 	input::Receiver::Store& receiverStore() noexcept;
 	void update(gui::ViewStack& out_stack);
 
-	bool drawReady();
-
 	void boot(Boot::CreateInfo info, std::optional<VSync> vsync = std::nullopt);
 	bool unboot() noexcept;
 	bool booted() const noexcept;
 	bool setRenderer(std::unique_ptr<Renderer>&& renderer);
 
 	bool nextFrame();
-	bool render(IDrawer& out_drawer, RenderBegin rb, SceneRegistry* scene = {});
+	std::optional<RenderPass> beginRenderPass(RGBA clear, ClearDepth depth = {1.0f, 0}) { return beginRenderPass({}, clear, depth); }
+	std::optional<RenderPass> beginRenderPass(SceneRegistry* scene, RGBA clear, ClearDepth depth = {1.0f, 0});
+	bool endRenderPass(RenderPass& out_rp);
 
 	Editor& editor() const noexcept;
 	GFX& gfx() const;

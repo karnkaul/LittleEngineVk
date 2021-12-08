@@ -1,33 +1,53 @@
 #include <engine/assets/asset_store.hpp>
 
 namespace le {
+bool AssetStore::exists(Hash uri) const noexcept { return ktl::shared_tlock<TAssets const>(m_assets)->contains(uri); }
+
+bool AssetStore::unload(Hash uri) {
+	ktl::shared_tlock<TAssets> lock(m_assets);
+	if (auto it = lock->find(uri); it != lock->end()) {
+		lock->erase(it);
+		return true;
+	}
+	return false;
+}
+
 void AssetStore::update() {
-	static constexpr u32 maxPasses = 10;
-	bool idle = false;
-	u64 total = 0;
-	u32 pass = 0;
-	ktl::shared_tlock<detail::TAssets> lock(m_assets);
-	for (; pass < maxPasses && (pass == 0 || !idle); ++pass) {
-		m_resources.update();
-		u64 reloaded = 0;
-		for (auto& [_, store] : lock->storeMap) { reloaded += store->update(*this); }
-		idle = reloaded == 0;
-		total += reloaded;
-		if (!idle) { utils::g_log.log(dl::level::debug, 2, "[Assets] [{}] Update pass: reloaded [{}]", pass, reloaded); }
+	ktl::shared_tlock<TAssets> lock(m_assets);
+	m_resources.update();
+	u64 reloaded = 0;
+	for (auto& [_, asset] : *lock) {
+		EXPECT(asset);
+		if (asset->doUpdate && asset->doUpdate(asset.get())) { ++reloaded; }
 	}
-	if (!idle && pass == maxPasses) {
-		utils::g_log.log(dl::level::warn, 0, "[Assets] Exceeded max update passes [{}], bailing out... Asset(s) stuck in reload loops?", maxPasses);
-	} else if (total > 0) {
-		utils::g_log.log(dl::level::info, 1, "[Assets] [{}] Reloads completed in [{}] passes", total, pass);
-	}
+	if (reloaded > 0) { utils::g_log.log(dl::level::info, 1, "[Assets] [{}] Reloads completed", reloaded); }
 }
 
 void AssetStore::clear() {
 	// clear assets
-	ktl::unique_tlock<detail::TAssets>(m_assets)->storeMap.clear();
-	// clear delegates
-	ktl::tlock(m_onModified)->clear();
+	ktl::unique_tlock<TAssets>(m_assets)->clear();
 	// clear resources
 	m_resources.clear();
+}
+
+AssetStore::Index AssetStore::index(Span<Sign const> signs, std::string_view filter) const {
+	ktl::shared_tlock<TAssets const> lock(m_assets);
+	std::unordered_map<Sign, std::vector<Base*>, Sign::hasher> mapped;
+	for (auto const& [hash, asset] : *lock) {
+		EXPECT(asset);
+		if (!filter.empty() && asset->uri.find(filter) == std::string_view::npos) { continue; }
+		if (!signs.empty() && std::find(signs.begin(), signs.end(), asset->sign) == signs.end()) { continue; }
+		mapped[asset->sign].push_back(asset.get());
+	}
+	Index ret;
+	ret.maps.reserve(mapped.size());
+	for (auto& [sign, assets] : mapped) {
+		Index::Map map;
+		map.type = Index::Type{assets[0]->typeName, assets[0]->sign};
+		map.uris.reserve(assets.size());
+		for (auto const asset : assets) { map.uris.push_back(asset->uri); }
+		ret.maps.push_back(std::move(map));
+	}
+	return ret;
 }
 } // namespace le

@@ -1,25 +1,21 @@
 #include <core/services.hpp>
 #include <engine/input/state.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <engine/render/bitmap_font.hpp>
-#include <engine/render/prop.hpp>
+#include <graphics/bitmap_font.hpp>
 #include <graphics/glyph_pen.hpp>
 
 namespace le::input {
 TextCursor::TextCursor(not_null<BitmapFont const*> font, Flags flags)
-	: m_flags(flags), m_mesh(Services::get<graphics::VRAM>(), graphics::Mesh::Type::eDynamic), m_font(font) {
+	: m_flags(flags), m_primitive(Services::get<graphics::VRAM>(), graphics::MeshPrimitive::Type::eDynamic), m_font(font) {
 	refresh();
 }
 
-Prop const& TextCursor::cursor() const noexcept {
-	m_prop.mesh = &m_mesh;
-	m_prop.material.Tf = m_gen.colour;
-	m_prop.material.d = m_alpha;
-	return m_prop;
-}
-
-Span<Prop const> TextCursor::props() const noexcept {
-	if (m_drawCursor) { return cursor(); }
+MeshView TextCursor::mesh() const noexcept {
+	if (m_drawCursor) {
+		m_material.Tf = m_gen.colour;
+		m_material.d = m_alpha;
+		return MeshObj{&m_primitive, &m_material};
+	}
 	return {};
 }
 
@@ -126,7 +122,7 @@ void TextCursor::refresh(graphics::Geometry* out) {
 	m_position = para.head + pen.alignOffset(extent, m_gen.align);
 	m_position.y += 0.3f * size.y;
 	graphics::GeomInfo const gi{.origin = m_position};
-	m_mesh.construct(graphics::makeQuad(size, gi));
+	m_primitive.construct(graphics::makeQuad(size, gi));
 }
 
 graphics::Geometry TextCursor::generateText() {

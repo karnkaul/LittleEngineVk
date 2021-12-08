@@ -1,18 +1,23 @@
 #include <core/services.hpp>
+#include <engine/assets/asset_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/render/skybox.hpp>
+#include <engine/utils/logger.hpp>
 #include <graphics/geometry.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>
 
 namespace le {
-Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cube(Services::get<graphics::VRAM>()), m_cubemap(cubemap) {
-	m_cube.construct(graphics::makeCube());
-	ENSURE(m_cubemap->type() == graphics::Texture::Type::eCube, "Invalid cubemap");
-}
+Skybox::Skybox(not_null<Cubemap const*> cubemap) : m_cubemap(cubemap) { ENSURE(m_cubemap->type() == graphics::Texture::Type::eCube, "Invalid cubemap"); }
 
-Prop const& Skybox::prop() const noexcept {
-	m_prop.material.map_Kd = m_cubemap;
-	m_prop.mesh = &m_cube;
-	return m_prop;
+MeshView Skybox::mesh() const {
+	if (auto store = Services::find<AssetStore>()) {
+		auto cube = store->find<MeshPrimitive>("meshes/cube");
+		if (!cube) { return {}; }
+		if (!m_cubemap->ready()) { return {}; }
+		m_material.map_Kd = m_cubemap;
+		return MeshObj{.primitive = &*cube, .material = &m_material};
+	}
+	return {};
 }
 } // namespace le

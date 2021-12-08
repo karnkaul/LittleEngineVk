@@ -35,7 +35,6 @@ PipelineFactory::PipelineFactory(not_null<VRAM*> vram, GetSpirV&& getSpirV, Buff
 Pipeline PipelineFactory::get(Spec const& spec, vk::RenderPass renderPass) {
 	EXPECT(!spec.shader.moduleURIs.empty());
 	EXPECT(!Device::default_v(renderPass));
-	EXPECT(!spec.vertexInput.bindings.empty() && !spec.vertexInput.attributes.empty());
 	auto const specHash = spec.hash();
 	auto sit = m_storage.find(specHash);
 	if (sit == m_storage.end()) {
@@ -128,8 +127,13 @@ PipelineFactory::Meta PipelineFactory::makeMeta(ShaderSpec const& shader) const 
 	std::vector<vk::DescriptorSetLayout> layouts;
 	for (auto& [set, binds] : setBindings.sets) {
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
+		ktl::fixed_vector<SetBindingData, max_bindings_v> bindingData;
 		for (auto& binding : binds) {
-			if (binding.binding.descriptorType != vk::DescriptorType()) { bindings.push_back(binding.binding); }
+			if (binding.binding.descriptorType != vk::DescriptorType()) {
+				bindings.push_back(binding.binding);
+				Texture::Type const texType = binding.imageType == vk::ImageViewType::eCube ? Texture::Type::eCube : Texture::Type::e2D;
+				bindingData.push_back({std::move(binding.name), binding.binding, texType});
+			}
 		}
 		auto const descLayout = m_vram->m_device->makeDescriptorSetLayout(bindings);
 		ret.setLayouts.push_back({m_vram->m_device, descLayout});
@@ -137,7 +141,7 @@ PipelineFactory::Meta PipelineFactory::makeMeta(ShaderSpec const& shader) const 
 		layouts.push_back(descLayout);
 
 		SetLayoutData sld;
-		sld.bindings = ret.bindings.back();
+		sld.bindingData = std::move(bindingData);
 		sld.layout = descLayout;
 		ret.spd.sets.push_back(std::move(sld));
 	}

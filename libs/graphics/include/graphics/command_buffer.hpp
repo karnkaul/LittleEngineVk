@@ -35,9 +35,9 @@ class CommandBuffer {
 
 	CommandBuffer() = default;
 	explicit CommandBuffer(vk::CommandBuffer cmd);
-	CommandBuffer(Device& device, vk::CommandPool cmd);
+	CommandBuffer(Device& device, vk::CommandPool cmd, vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
 
-	void begin(vk::CommandBufferUsageFlags usage);
+	void begin(vk::CommandBufferUsageFlags usage, vk::CommandBufferInheritanceInfo const* inheritance = {});
 	void beginRenderPass(vk::RenderPass renderPass, vk::Framebuffer framebuffer, Extent2D extent, PassInfo const& info);
 	void setViewport(vk::Viewport viewport) const;
 	void setScissor(vk::Rect2D scissor) const;

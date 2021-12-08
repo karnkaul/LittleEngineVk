@@ -1,6 +1,6 @@
-#include <engine/render/bitmap_font.hpp>
+#include <graphics/bitmap_font.hpp>
 
-namespace le {
+namespace le::graphics {
 bool BitmapFont::make(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo info) {
 	decltype(m_storage) storage;
 	storage.glyphs = graphics::GlyphMap(info.glyphs);
@@ -9,4 +9,4 @@ bool BitmapFont::make(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo i
 	m_storage = std::move(storage);
 	return true;
 }
-} // namespace le
+} // namespace le::graphics

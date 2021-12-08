@@ -53,16 +53,11 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityF
 													VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*) {
 	std::string_view const msg = pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN";
 	switch (messageSeverity) {
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
-		validationLog(lvl::error, 0, msg);
-		bool const ret = !skipError(msg);
-		ENSURE(!ret, "Validation error");
-		return ret;
-	}
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: validationLog(lvl::error, 0, msg); return !skipError(msg);
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warn, 1, msg); break;
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: validationLog(lvl::debug, 2, msg); break;
-	default:
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: validationLog(lvl::info, 1, msg); break;
+	default: break;
 	}
 	return false;
 }

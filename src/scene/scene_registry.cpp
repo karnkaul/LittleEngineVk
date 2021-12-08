@@ -7,8 +7,9 @@
 #include <engine/ecs/systems/system_groups.hpp>
 #include <engine/editor/scene_ref.hpp>
 #include <engine/engine.hpp>
+#include <engine/render/material.hpp>
 #include <engine/scene/scene_registry.hpp>
-#include <graphics/mesh.hpp>
+#include <graphics/mesh_primitive.hpp>
 #include <graphics/render/camera.hpp>
 
 namespace le {
@@ -32,12 +33,7 @@ SceneRegistry::SceneRegistry() {
 	tick.attach<SceneCleanSystem>(SceneCleanSystem::order_v);
 }
 
-void SceneRegistry::attach(dens::entity entity, DrawGroup group, PropProvider provider) {
-	m_registry.attach<DrawGroup>(entity, group);
-	m_registry.attach<PropProvider>(entity, provider);
-}
-
-void SceneRegistry::attach(dens::entity entity, DrawGroup group) { m_registry.attach<DrawGroup>(entity, group); }
+void SceneRegistry::attach(dens::entity entity, RenderPipeProvider&& rp) { m_registry.attach<RenderPipeProvider>(entity, std::move(rp)); }
 
 dens::entity SceneRegistry::spawnNode(std::string name) {
 	auto ret = makeNode(m_registry, std::move(name));
@@ -46,19 +42,23 @@ dens::entity SceneRegistry::spawnNode(std::string name) {
 	return ret;
 }
 
-dens::entity SceneRegistry::spawnProp(std::string name, Hash groupURI, PropProvider provider) {
+dens::entity SceneRegistry::spawnMesh(std::string name, MeshProvider&& provider, std::string layerURI) {
 	auto ret = spawnNode(std::move(name));
-	attach(ret, drawGroup(groupURI), provider);
+	m_registry.attach<RenderPipeProvider>(ret, RenderPipeProvider::make(std::move(layerURI)));
+	m_registry.attach<MeshProvider>(ret, std::move(provider));
 	return ret;
-};
-
-dens::entity SceneRegistry::spawnMesh(std::string name, Hash meshURI, Hash groupURI, Material material) {
-	return spawnProp(std::move(name), groupURI, PropProvider(meshURI, material));
 }
 
-DrawGroup SceneRegistry::drawGroup(Hash id) const {
+dens::entity SceneRegistry::spawnMesh(std::string name, DynamicMesh&& dynMesh, std::string layerURI) {
+	auto ret = spawnNode(std::move(name));
+	m_registry.attach<RenderPipeProvider>(ret, RenderPipeProvider::make(std::move(layerURI)));
+	m_registry.attach<DynamicMesh>(ret, std::move(dynMesh));
+	return ret;
+}
+
+Material const* SceneRegistry::defaultMaterial() const {
 	if (auto store = Services::find<AssetStore>()) {
-		if (auto group = store->find<DrawGroup>(id)) { return *group; }
+		if (auto mat = store->find<Material>("materials/default")) { return &*mat; }
 	}
 	return {};
 }

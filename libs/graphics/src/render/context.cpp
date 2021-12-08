@@ -20,9 +20,10 @@ void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
 }
 
-std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, Buffering buffering) {
+std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, BlitFlags bf, Buffering buffering) {
 	Renderer::CreateInfo rci(vram, format);
 	rci.buffering = buffering;
+	rci.surfaceBlitFlags = bf;
 	rci.target = Renderer::Target::eOffScreen;
 	return std::make_unique<Renderer>(rci);
 }
@@ -82,14 +83,14 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 
 RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
 	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
-	  m_renderer(makeRenderer(m_vram, m_surface.format(), bf)), m_buffering(bf) {
+	  m_renderer(makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), bf)), m_buffering(bf) {
 	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
 	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }
 }
 
-std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_buffering); }
+std::unique_ptr<Renderer> RenderContext::defaultRenderer() { return makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), m_buffering); }
 
 void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
 	m_vram->m_device->waitIdle();
@@ -98,15 +99,24 @@ void RenderContext::setRenderer(std::unique_ptr<Renderer>&& renderer) noexcept {
 
 void RenderContext::waitForFrame() { m_vram->m_device->waitFor(m_syncs.get().drawn); }
 
-bool RenderContext::render(IDrawer& out_drawer, RenderBegin const& rb, Extent2D fbSize) {
-	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
-	bool ret{};
+std::optional<RenderPass> RenderContext::beginMainPass(RenderBegin const& rb, Extent2D fbSize) {
+	if (fbSize.x == 0 || fbSize.y == 0) { return std::nullopt; }
 	auto& sync = m_syncs.get();
 	if (auto acquired = m_surface.acquireNextImage(fbSize, sync.draw)) {
+		m_acquired = *acquired;
 		m_vram->m_device->resetFence(sync.drawn);
-		auto cmds = m_renderer->render(out_drawer, m_pipelineFactory, acquired->image, rb);
-		ret = submit(cmds, *acquired, fbSize);
-		m_previousFrame = acquired->image;
+		return m_renderer->beginMainPass(m_pipelineFactory, m_acquired->image, rb);
+	}
+	return std::nullopt;
+}
+
+bool RenderContext::endMainPass(RenderPass& out_rp, Extent2D fbSize) {
+	bool ret{};
+	if (m_acquired) {
+		auto cb = m_renderer->endMainPass(out_rp);
+		ret = submit(cb, *m_acquired, fbSize);
+		if (ret) { m_previousFrame = m_acquired->image; }
+		m_acquired.reset();
 	}
 	m_commandRotator.submit();
 	m_syncs.next();
@@ -117,9 +127,17 @@ bool RenderContext::recreateSwapchain(Extent2D fbSize, std::optional<VSync> vsyn
 	return m_surface.makeSwapchain(fbSize, vsync.value_or(m_surface.format().vsync));
 }
 
-bool RenderContext::submit(Span<vk::CommandBuffer const> cbs, Acquire const& acquired, Extent2D fbSize) {
+bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent2D fbSize) {
+	if (fbSize.x == 0 || fbSize.y == 0) { return false; }
 	auto const& sync = m_syncs.get();
-	m_surface.submit(cbs, {sync.draw, sync.present, sync.drawn});
-	return m_surface.present(fbSize, acquired, sync.present);
+	m_surface.submit(cb, {sync.draw, sync.present, sync.drawn});
+	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }
+	m_previousFrame = {};
+	return false;
+}
+
+std::optional<Image> RenderContext::previousFrameAsImage() const {
+	if (m_previousFrame.image) { return Image(m_vram, previousFrame(), m_surface.format().colour.format, m_surface.usage()); }
+	return std::nullopt;
 }
 } // namespace le::graphics

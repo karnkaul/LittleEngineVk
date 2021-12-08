@@ -1,22 +1,11 @@
 #pragma once
-#include <core/io/path.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/glyph.hpp>
 #include <graphics/texture.hpp>
 
-namespace le {
-namespace io {
-class Media;
-}
-
+namespace le::graphics {
 class BitmapFont {
   public:
-	using Extent2D = graphics::Extent2D;
-	using VRAM = graphics::VRAM;
-	using Texture = graphics::Texture;
-	using Sampler = graphics::Sampler;
-	using Glyph = graphics::Glyph;
-
 	struct CreateInfo;
 
 	bool make(not_null<VRAM*> vram, Sampler const& sampler, CreateInfo info);
@@ -29,7 +18,7 @@ class BitmapFont {
 
   private:
 	struct {
-		graphics::GlyphMap glyphs;
+		GlyphMap glyphs;
 		std::optional<Texture> atlas;
 	} m_storage;
 };
@@ -37,11 +26,11 @@ class BitmapFont {
 struct BitmapFont::CreateInfo {
 	std::optional<vk::Format> forceFormat;
 	Span<Glyph const> glyphs;
-	graphics::BmpBytes atlas;
+	ImageData atlas;
 };
 
-inline BitmapFont::Texture const& BitmapFont::atlas() const {
+inline Texture const& BitmapFont::atlas() const {
 	ENSURE(valid(), "BitmapFont Texture not valid");
 	return *m_storage.atlas;
 }
-} // namespace le
+} // namespace le::graphics

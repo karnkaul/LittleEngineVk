@@ -33,30 +33,46 @@ void CommandRotator::Pool::release(Cmd&& cmd) {
 	m_cbs.push_back(std::move(cmd));
 }
 
-CommandRotator::CommandRotator(not_null<Device*> device, QType qtype) : m_pool(device, qtype), m_qtype(qtype), m_device(device) { updateCurrent(); }
+CommandRotator::Instant::~Instant() {
+	if (valid()) {
+		m_rotator->submit(m_cmd);
+		m_rotator->m_device->waitFor(m_cmd.fence);
+	}
+}
+
+CommandRotator::CommandRotator(not_null<Device*> device, QType qtype) : m_pool(device, qtype), m_qtype(qtype), m_device(device) { m_current = make(); }
+
+CommandRotator::Instant CommandRotator::instant() const { return {this, make()}; }
 
 void CommandRotator::submit() {
 	releaseDone();
-	m_current.cb.end();
-	vk::SubmitInfo si(0U, nullptr, {}, 1U, &m_current.cb.m_cb);
-	m_device->queues().submit(m_qtype, si, m_current.fence, true);
+	submit(m_current);
 	m_submitted.push_back(std::move(m_current));
-	updateCurrent();
+	m_current = make();
 }
 
 void CommandRotator::releaseDone() {
 	std::erase_if(m_submitted, [this](Cmd& cmd) {
 		if (m_device->signalled(vk::Fence(cmd.fence))) {
 			m_pool.release({std::move(cmd.fence), cmd.cb.m_cb});
+			cmd.promise.set_value();
 			return true;
 		}
 		return false;
 	});
 }
 
-void CommandRotator::updateCurrent() {
+CommandRotator::Cmd CommandRotator::make() const {
 	auto acquire = m_pool.acquire();
-	m_current = {CommandBuffer(acquire.cb), std::move(acquire.fence)};
-	m_current.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+	Cmd out;
+	out = {CommandBuffer(acquire.cb), std::move(acquire.fence), {}};
+	out.cb.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+	return out;
+}
+
+void CommandRotator::submit(Cmd& out) const {
+	out.cb.end();
+	vk::SubmitInfo si(0U, nullptr, {}, 1U, &out.cb.m_cb);
+	m_device->queues().submit(m_qtype, si, out.fence, true);
 }
 } // namespace le::graphics

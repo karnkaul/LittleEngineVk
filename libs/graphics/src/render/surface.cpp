@@ -51,6 +51,14 @@ constexpr VSync bestVSync(Surface::VSyncs vsyncs, std::optional<VSync> force) no
 
 constexpr EnumArray<VSync, vk::PresentModeKHR> g_modes = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eImmediate};
 
+BlitFlags getBlitFlags(vk::PhysicalDevice pd, vk::SurfaceKHR surface) {
+	BlitFlags ret;
+	auto const caps = pd.getSurfaceCapabilitiesKHR(surface);
+	if ((caps.supportedUsageFlags & vIUFB::eTransferSrc) == vIUFB::eTransferSrc) { ret.set(BlitFlag::eSrc); }
+	if ((caps.supportedUsageFlags & vIUFB::eTransferDst) == vIUFB::eTransferDst) { ret.set(BlitFlag::eDst); }
+	return ret;
+}
+
 vk::UniqueImageView makeImageView(vk::Device device, vk::Image image, vk::Format format) {
 	vk::ImageViewCreateInfo info;
 	info.viewType = vk::ImageViewType::e2D;
@@ -80,6 +88,9 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	m_createInfo.presentMode = g_modes[m_storage.format.vsync];
 	m_createInfo.imageArrayLayers = 1U;
 	m_createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc;
+	auto const bf = getBlitFlags(m_vram->m_device->physicalDevice().device, *m_surface);
+	if (bf.test(BlitFlag::eSrc)) { m_createInfo.imageUsage |= vk::ImageUsageFlagBits::eTransferSrc; }
+	if (bf.test(BlitFlag::eDst)) { m_createInfo.imageUsage |= vk::ImageUsageFlagBits::eTransferDst; }
 	m_createInfo.imageSharingMode = vk::SharingMode::eExclusive;
 	auto const queues = m_vram->m_device->queues().familyIndices(QFlags(QType::eGraphics, QType::ePresent));
 	m_createInfo.pQueueFamilyIndices = queues.data();
@@ -103,6 +114,7 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 			m_storage.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
 			m_storage.images.push_back({image, *m_storage.imageViews.back(), extent, m_createInfo.imageFormat});
 		}
+		m_storage.blitFlags = bf;
 	} else {
 		m_storage = std::exchange(m_retired, Storage());
 	}

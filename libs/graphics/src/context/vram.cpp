@@ -3,6 +3,7 @@
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
+#include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
 VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {
@@ -15,10 +16,10 @@ VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) :
 
 VRAM::~VRAM() { g_log.log(lvl::info, 1, "[{}] VRAM destroyed", g_name); }
 
-Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bHostVisible) {
+Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible) {
 	Buffer::CreateInfo bufferInfo;
 	bufferInfo.size = size;
-	if (bHostVisible) {
+	if (hostVisible) {
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		bufferInfo.queueFlags = QType::eGraphics;
@@ -34,8 +35,8 @@ Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool bH
 
 VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size) {
 	if (size == 0) { size = src.writeSize(); }
-	[[maybe_unused]] auto const& sq = src.data().queueFlags;
-	[[maybe_unused]] auto const& dq = out_dst.data().queueFlags;
+	[[maybe_unused]] auto const& sq = src.m_storage.allocation.queueFlags;
+	[[maybe_unused]] auto const& dq = out_dst.m_storage.allocation.queueFlags;
 	[[maybe_unused]] bool const bReady = sq.test(QType::eTransfer) && dq.test(QType::eTransfer);
 	ENSURE(bReady, "Transfer flag not set!");
 	bool const bSizes = out_dst.writeSize() >= size;
@@ -50,8 +51,8 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	}
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	if (indices.size() > 1) {
-		ENSURE(sq.count() <= 1 || src.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
-		ENSURE(dq.count() <= 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(sq.count() <= 1 || src.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
+		ENSURE(dq.count() <= 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Unsupported sharing mode!");
 	}
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
@@ -67,8 +68,8 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size) {
 	if (size == 0) { size = out_deviceBuffer.writeSize(); }
 	auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
-	ENSURE(indices.size() == 1 || out_deviceBuffer.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
-	bool const bQueueFlags = out_deviceBuffer.data().queueFlags.test(QType::eTransfer);
+	ENSURE(indices.size() == 1 || out_deviceBuffer.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	bool const bQueueFlags = out_deviceBuffer.m_storage.allocation.queueFlags.test(QType::eTransfer);
 	ENSURE(bQueueFlags, "Invalid queue flags!");
 	if (!bQueueFlags) {
 		g_log.log(lvl::error, 1, "[{}] Invalid queue flags on source buffer!", g_name);
@@ -92,7 +93,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return ret;
 }
 
-VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+VRAM::Future VRAM::copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
 	std::size_t imgSize = 0;
 	std::size_t layerSize = 0;
 	for (auto pixels : bitmaps) {
@@ -102,13 +103,12 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	}
 	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
-	ENSURE(indices.size() == 1 || out_dst.data().mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
+	ENSURE(indices.size() == 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
-	std::vector<bytearray> data;
-	data.reserve(bitmaps.size());
+	ktl::fixed_vector<bytearray, 8> data;
 	for (auto layer : bitmaps) {
 		bytearray bytes(layer.size(), {});
 		std::memcpy(bytes.data(), layer.data(), bytes.size());
@@ -125,7 +125,7 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 		for (auto const& pixels : d) {
 			auto const offset = layerIdx * layerSize;
 			std::memcpy((u8*)stage.buffer->mapped() + offset, pixels.data(), pixels.size());
-			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++));
+			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++, 1U));
 		}
 		ImgMeta meta;
 		meta.layouts = fromTo;
@@ -140,19 +140,70 @@ VRAM::Future VRAM::copy(Span<ImgView const> bitmaps, Image& out_dst, LayoutPair 
 	return ret;
 }
 
-void VRAM::blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter, AspectPair aspects) {
-	ENSURE((src.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
+VRAM::Future VRAM::copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+	std::size_t imgSize = 0;
+	std::size_t layerSize = 0;
+	for (auto const& img : imgs) {
+		ENSURE(layerSize == 0 || layerSize == img.bytes.size(), "Invalid image data!");
+		layerSize = img.bytes.size();
+		imgSize += layerSize;
+	}
+	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
+	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
+	ENSURE(indices.size() == 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
-	TPair<RenderTarget> targets;
-	targets.first = RenderTarget{src.image(), src.view(), src.extent2D(), src.imageFormat()};
-	targets.second = RenderTarget{out_dst.image(), out_dst.view(), out_dst.extent2D(), out_dst.imageFormat()};
-	blit(cb, targets, filter, aspects);
+	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
+	Transfer::Promise promise;
+	auto ret = promise.get_future();
+	out_dst.m_storage.layerCount = (u32)imgs.size();
+	auto f = [p = std::move(promise), imgs = std::move(imgs), i = out_dst.image(), l = out_dst.m_storage.layerCount, e = out_dst.m_storage.extent, fromTo,
+			  imgSize, layerSize, aspects, this]() mutable {
+		auto stage = m_transfer.newStage(imgSize);
+		[[maybe_unused]] bool const bResult = stage.buffer->map();
+		ENSURE(bResult, "Memory map failed");
+		u32 layerIdx = 0;
+		std::vector<vk::BufferImageCopy> copyRegions;
+		for (utils::STBImg const& img : imgs) {
+			auto const offset = layerIdx * layerSize;
+			std::memcpy((u8*)stage.buffer->mapped() + offset, img.bytes.data(), img.bytes.size());
+			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++, 1U));
+		}
+		ImgMeta meta;
+		meta.layouts = fromTo;
+		meta.stages.second = m_post.stages;
+		meta.access.second = m_post.access;
+		meta.layerCount = l;
+		copy(stage.command, stage.buffer->buffer(), i, copyRegions, meta);
+		m_transfer.addStage(std::move(stage), std::move(p));
+		m_device->m_layouts.force(i, meta.layouts.second);
+	};
+	m_transfer.m_queue.push(std::move(f));
+	return ret;
 }
 
-void VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter, AspectPair aspects) {
-	vk::Extent3D const src(cast(images.first.extent), 1);
-	vk::Extent3D const dst(cast(images.second.extent), 1);
-	blit(cb.m_cb, {images.first.image, images.second.image}, {src, dst}, blit_layouts_v, filter, aspects);
+bool VRAM::blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter, AspectPair aspects) const {
+	if ((src.usage() & vk::ImageUsageFlagBits::eTransferSrc) == vk::ImageUsageFlags()) { return false; }
+	if ((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlags()) { return false; }
+	if (!utils::canBlit(src, out_dst)) { return false; }
+	blit(cb.m_cb, {src.image(), out_dst.image()}, {src.extent(), out_dst.extent()}, aspects, filter);
+	return true;
+}
+
+bool VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter, AspectPair aspects) const {
+	if (!m_device->physicalDevice().blitCaps(images.first.format).optimal.test(BlitFlag::eSrc)) { return false; }
+	if (!m_device->physicalDevice().blitCaps(images.second.format).optimal.test(BlitFlag::eDst)) { return false; }
+	vk::Extent3D const srcExt(cast(images.first.extent), 1);
+	vk::Extent3D const dstExt(cast(images.second.extent), 1);
+	blit(cb.m_cb, {images.first.image, images.second.image}, {srcExt, dstExt}, aspects, filter);
+	return true;
+}
+
+bool VRAM::copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects) const {
+	if ((src.usage() & vk::ImageUsageFlagBits::eTransferSrc) == vk::ImageUsageFlags()) { return false; }
+	if ((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlags()) { return false; }
+	EXPECT(src.extent() == out_dst.extent());
+	copy(cb.m_cb, {src.image(), out_dst.image()}, src.extent(), aspects);
+	return true;
 }
 
 void VRAM::waitIdle() {

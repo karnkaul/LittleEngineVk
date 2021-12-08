@@ -1,9 +1,5 @@
 #pragma once
-#include <core/ref.hpp>
-#include <core/span.hpp>
-#include <core/std_types.hpp>
-#include <vulkan/vulkan.hpp>
-#include <optional>
+#include <graphics/common.hpp>
 
 namespace le::graphics {
 struct PhysicalDevice {
@@ -13,15 +9,20 @@ struct PhysicalDevice {
 	vk::PhysicalDeviceFeatures features;
 	std::vector<vk::QueueFamilyProperties> queueFamilies;
 
-	inline std::string_view name() const noexcept { return std::string_view(properties.deviceName); }
-	inline bool discreteGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu; }
-	inline bool integratedGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu; }
-	inline bool virtualGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eVirtualGpu; }
+	std::string_view name() const noexcept { return std::string_view(properties.deviceName); }
+	bool discreteGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu; }
+	bool integratedGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu; }
+	bool virtualGPU() const noexcept { return properties.deviceType == vk::PhysicalDeviceType::eVirtualGpu; }
+	bool supportsLazyAllocation() const noexcept;
 
 	bool surfaceSupport(u32 queueFamily, vk::SurfaceKHR surface) const;
-	bool supportsLazyAllocation() const noexcept;
 	vk::SurfaceCapabilitiesKHR surfaceCapabilities(vk::SurfaceKHR surface) const;
+	vk::FormatProperties formatProperties(vk::Format format) const { return device.getFormatProperties(format); }
+	BlitCaps blitCaps(vk::Format format) const;
 	std::string toString() const;
+
+  private:
+	mutable std::unordered_map<vk::Format, BlitCaps> m_blitCaps;
 };
 
 std::ostream& operator<<(std::ostream& out, PhysicalDevice const& device);

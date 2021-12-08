@@ -7,6 +7,7 @@
 #include <dens/registry.hpp>
 #include <engine/editor/scene_ref.hpp>
 #include <engine/scene/scene_node.hpp>
+#include <graphics/render/rgba.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/move_only_function.hpp>
 #include <ktl/n_tree.hpp>
@@ -89,6 +90,21 @@ struct Radio {
 	Radio(Span<std::string_view const> options, s32 preSelect = -1, bool sameLine = true);
 };
 
+struct TreeSelect {
+	struct Group {
+		std::string_view id;
+		std::vector<std::string_view> items;
+	};
+	struct Select {
+		std::string_view item;
+		std::string_view group;
+
+		explicit operator bool() const noexcept { return !item.empty(); }
+	};
+
+	static Select list(Span<Group const> groups, std::string_view selected = {});
+};
+
 struct Button final : GUIStateful {
 	Button(std::string_view id, std::optional<f32> hue = std::nullopt, bool small = false);
 };
@@ -148,8 +164,6 @@ struct TabBar : GUIStateful {
 };
 
 struct Pane : GUIStateful {
-	inline static bool s_blockResize = false;
-
 	Pane(std::string_view id, glm::vec2 size, glm::vec2 pos, bool* open, bool blockResize = true, s32 flags = 0);
 	Pane(std::string_view id, glm::vec2 size = {}, bool border = false, s32 flags = 0);
 	~Pane() override;
@@ -160,7 +174,7 @@ struct Pane : GUIStateful {
 };
 
 struct Popup : GUIStateful {
-	Popup(std::string_view id, int flags = 0);
+	Popup(std::string_view id, bool blockResize = true, int flags = 0);
 	~Popup() override;
 
 	static void open(std::string_view id);
@@ -177,14 +191,6 @@ struct WidgetBase {
 template <typename T>
 struct TWidget {
 	static_assert(false_v<T>, "Invalid type");
-};
-
-template <typename Flags>
-struct FlagsWidget {
-	using type = typename Flags::type;
-	static constexpr std::size_t size = Flags::size;
-
-	FlagsWidget(Span<std::string_view const> ids, Flags& out_flags);
 };
 
 template <typename T>
@@ -285,7 +291,12 @@ struct TWidget<std::string_view> : WidgetBase {
 
 template <>
 struct TWidget<Colour> : WidgetBase {
-	TWidget(std::string_view id, Colour& out_colour);
+	TWidget(std::string_view id, Colour& out_colour, bool alpha, bool input);
+};
+
+template <>
+struct TWidget<graphics::RGBA> : WidgetBase {
+	TWidget(std::string_view id, graphics::RGBA& out_colour, bool alpha);
 };
 
 template <>
@@ -312,17 +323,6 @@ template <>
 struct TWidget<std::pair<s64, s64>> : WidgetBase {
 	TWidget(std::string_view id, s64& out_t, s64 min, s64 max, s64 dt);
 };
-
-template <typename Flags>
-FlagsWidget<Flags>::FlagsWidget(Span<std::string_view const> ids, Flags& flags) {
-	ENSURE(ids.size() <= size, "Overflow!");
-	std::size_t idx = 0;
-	for (auto id : ids) {
-		bool bVal = flags.test((type)idx);
-		TWidget<bool> w(id, bVal);
-		flags[(type)idx++] = bVal;
-	}
-}
 
 template <typename T>
 TInspector<T>::TInspector(dens::registry& out_registry, dens::entity entity, T const* pT, std::string_view id)

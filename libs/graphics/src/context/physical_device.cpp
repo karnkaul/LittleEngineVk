@@ -21,6 +21,22 @@ vk::SurfaceCapabilitiesKHR PhysicalDevice::surfaceCapabilities(vk::SurfaceKHR su
 	return !Device::default_v(device) ? device.getSurfaceCapabilitiesKHR(surface) : vk::SurfaceCapabilitiesKHR();
 }
 
+BlitCaps PhysicalDevice::blitCaps(vk::Format format) const {
+	using vFFFB = vk::FormatFeatureFlagBits;
+	auto it = m_blitCaps.find(format);
+	if (it == m_blitCaps.end()) {
+		BlitCaps bc;
+		auto const fp = formatProperties(format);
+		if (fp.linearTilingFeatures & vFFFB::eBlitSrc) { bc.linear.set(BlitFlag::eSrc); }
+		if (fp.linearTilingFeatures & vFFFB::eBlitDst) { bc.linear.set(BlitFlag::eDst); }
+		if (fp.optimalTilingFeatures & vFFFB::eBlitSrc) { bc.optimal.set(BlitFlag::eSrc); }
+		if (fp.optimalTilingFeatures & vFFFB::eBlitDst) { bc.optimal.set(BlitFlag::eDst); }
+		auto [i, _] = m_blitCaps.emplace(format, bc);
+		it = i;
+	}
+	return it->second;
+}
+
 std::ostream& operator<<(std::ostream& out, PhysicalDevice const& device) {
 	static constexpr std::string_view discrete = " (Discrete)";
 	static constexpr std::string_view integrated = " (Integrated)";

@@ -3,13 +3,26 @@
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_list.hpp>
 #include <engine/assets/asset_loaders.hpp>
-#include <engine/render/draw_group.hpp>
+#include <engine/render/pipeline.hpp>
 #include <unordered_map>
 
 namespace le {
+class Skybox;
+
 class AssetManifest : public utils::VBase {
   public:
-	enum class Kind { eSampler, eSpirV, eTexture, ePipelineState, eDrawGroup, eBitmapFont, eModel, eCOUNT_ };
+	enum class Kind {
+		eSampler,
+		eSpirV,
+		eTexture,
+		eRenderLayer,
+		eRenderPipeline,
+		eBitmapFont,
+		eMaterial,
+		eSkybox,
+		eModel,
+		eCOUNT_,
+	};
 	using Kinds = ktl::enum_flags<Kind, u16>;
 
 	using StageID = AssetListLoader::StageID;
@@ -42,35 +55,40 @@ class AssetManifest : public utils::VBase {
 	graphics::RenderContext& context();
 	AssetStore& store();
 
+	template <typename T>
+	std::size_t unloadMap(T& map);
+
   private:
 	using Metadata = dj::ptr<dj::json>;
-	using Group = std::unordered_map<io::Path, Metadata>;
-
-	not_null<class Engine*> engine();
-
-	std::size_t add(std::string_view name, Group group);
-	std::size_t addSamplers(Group group);
-	std::size_t addSpirV(Group group);
-	std::size_t addTextures(Group group);
-	std::size_t addPipelineStates(Group group);
-	std::size_t addDrawGroups(Group group);
-	std::size_t addFonts(Group group);
-	std::size_t addBitmapFonts(Group group);
-	std::size_t addModels(Group group);
-	std::size_t unload();
-	template <typename T, typename U>
-	std::size_t unload(U& cont);
+	using Group = std::unordered_map<std::string, Metadata>;
 
 	virtual std::size_t addCustom(std::string_view, Group) { return 0; }
 	virtual void loadCustom(dts::scheduler*) {}
 	virtual std::size_t unloadCustom() { return 0; }
 
+	not_null<class Engine*> engine();
+
+	std::size_t preload(io::Path const& jsonID);
+	std::size_t add(std::string_view name, Group group);
+	std::size_t addSamplers(Group group);
+	std::size_t addSpirV(Group group);
+	std::size_t addTextures(Group group);
+	std::size_t addRenderLayers(Group group);
+	std::size_t addRenderPipelines(Group group);
+	std::size_t addBitmapFonts(Group group);
+	std::size_t addMaterials(Group group);
+	std::size_t addSkyboxes(Group group);
+	std::size_t addModels(Group group);
+	std::size_t unload();
+
 	AssetList<graphics::Sampler> m_samplers;
 	AssetLoadList<graphics::SpirV> m_spirV;
-	AssetLoadList<PipelineState> m_pipelineStates;
-	AssetList<DrawGroup> m_drawGroups;
 	AssetLoadList<graphics::Texture> m_textures;
-	AssetLoadList<BitmapFont> m_bitmapFonts;
+	AssetList<RenderLayer> m_renderLayers;
+	AssetList<RenderPipeline> m_renderPipelines;
+	AssetLoadList<graphics::BitmapFont> m_bitmapFonts;
+	AssetList<Material> m_materials;
+	AssetList<Skybox> m_skyboxes;
 	AssetLoadList<Model> m_models;
 	AssetListLoader m_loader;
 	EnumArray<Kind, StageID> m_deps = {};
@@ -85,5 +103,15 @@ AssetManifest::StageID AssetManifest::stage(TAssetList<T> lists, dts::scheduler*
 	dp.reserve(dp.size() + deps.size());
 	std::copy(deps.begin(), deps.end(), std::back_inserter(dp));
 	return m_loader.stage(std::move(lists), scheduler, dp, qid);
+}
+
+template <typename T>
+std::size_t AssetManifest::unloadMap(T& out_map) {
+	std::size_t ret{};
+	for (auto const& [uri, _] : out_map) {
+		if (store().unload(uri)) { ++ret; }
+	}
+	out_map.clear();
+	return ret;
 }
 } // namespace le

@@ -2,7 +2,7 @@
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <core/time.hpp>
-#include <graphics/resources.hpp>
+#include <graphics/memory.hpp>
 #include <ktl/async_queue.hpp>
 #include <ktl/future.hpp>
 #include <ktl/kthread.hpp>

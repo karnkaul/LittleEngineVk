@@ -17,6 +17,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 - `graphics`
   - Bootstrapped Vulkan render context
   - Customizable off-screen (forward) renderer
+  - Multiple command buffers per frame
   - Customizable device selection
   - Deferred resource release
   - Dedicated transfer queue, async transfers
@@ -28,7 +29,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
 - `engine`
   - Thread-safe `AssetStore`
     - Multi-reader single-writer API
-    - Store any `T` associated with a lightweight `io::Path` ID
+    - Store any `T` associated with a `Hash`
     - Customizable asset loaders
     - Asset hot reload support: shaders, pipelines, textures implemented
   - Customizable Editor (via Dear ImGui)
@@ -56,7 +57,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Windows 10
   - Linux: X, Wayland (untested), Raspberry Pi OS (64 bit bullseye+)
 - GPU supporting Vulkan 1.0+, its driver, and loader
-- Vulkan SDK / `glslc` (for compiling glsl shaders to SPIR-V in Debug and validation layers)
+- Vulkan SDK / `glslc` (for compiling glsl shaders to SPIR-V in Debug, and validation layers)
 
 ### Usage
 

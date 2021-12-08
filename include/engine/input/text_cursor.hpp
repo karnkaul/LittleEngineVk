@@ -1,12 +1,13 @@
 #pragma once
 #include <engine/render/bitmap_text.hpp>
 
-namespace le {
+namespace le::graphics {
 class BitmapFont;
 }
 
 namespace le::input {
 struct State;
+using graphics::BitmapFont;
 
 ///
 /// \brief Interactive text input with cursor prop
@@ -29,14 +30,7 @@ class TextCursor {
 
 	TextCursor(not_null<BitmapFont const*> font, Flags flags = {});
 
-	///
-	/// \brief Obtain prop corresponding to cursor
-	///
-	Prop const& cursor() const noexcept;
-	///
-	/// \brief Obtain cursor if active else empty Span
-	///
-	Span<Prop const> props() const noexcept;
+	MeshView mesh() const noexcept;
 
 	///
 	/// \brief Erase character one behind cursor and decrement cursor
@@ -110,8 +104,8 @@ class TextCursor {
 	f32 m_alpha = 0.85f;
 
   private:
-	graphics::Mesh m_mesh;
-	mutable Prop m_prop;
+	graphics::MeshPrimitive m_primitive;
+	mutable Material m_material;
 	glm::vec3 m_position{};
 	glm::vec2 m_offset = {0.3f, 0.3f};
 	glm::vec2 m_size = {0.1f, 1.1f};

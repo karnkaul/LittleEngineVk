@@ -63,7 +63,6 @@ class Memory : public Pinned {
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
 	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx, u32 layerCount);
 
-	dl::level m_logLevel = dl::level::debug;
 	not_null<Device*> m_device;
 
   protected:

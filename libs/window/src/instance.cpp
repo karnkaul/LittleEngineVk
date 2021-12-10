@@ -159,22 +159,22 @@ T parse(std::unordered_map<std::string_view, T> const& map, std::string_view str
 }
 } // namespace
 
-using lvl = dl::level;
+using lvl = LogLevel;
 constexpr std::string_view g_name = "Window";
 
 Manager::Manager() {
 #if defined(LEVK_USE_GLFW)
-	m_impl = std::make_unique<Impl>(&m_logger);
+	m_impl = std::make_unique<Impl>();
 	if (glfwInit() != GLFW_TRUE) {
-		m_logger.log(lvl::error, 2, "[{}] Could not initialise GLFW!", g_name);
+		log(lvl::error, LC_EndUser, "[{}] Could not initialise GLFW!", g_name);
 		m_impl.reset();
 		return;
 	} else if (glfwVulkanSupported() != GLFW_TRUE) {
-		m_logger.log(lvl::error, 2, "[{}] Vulkan not supported!", g_name);
+		log(lvl::error, LC_EndUser, "[{}] Vulkan not supported!", g_name);
 		m_impl.reset();
 		return;
 	} else {
-		m_logger.log(lvl::info, 1, "[{}] Manager initialised successfully", g_name);
+		log(lvl::info, LC_LibUser, "[{}] Manager initialised successfully", g_name);
 	}
 #endif
 }
@@ -186,7 +186,7 @@ Manager::~Manager() {
 			if (cursor.data.contains<GLFWcursor*>()) { glfwDestroyCursor(cursor.data.get<GLFWcursor*>()); }
 		}
 		glfwTerminate();
-		m_logger.log(lvl::info, 1, "[{}] Manager terminated", g_name);
+		log(lvl::info, LC_LibUser, "[{}] Manager terminated", g_name);
 	}
 #endif
 }

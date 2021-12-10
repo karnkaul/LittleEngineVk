@@ -1,8 +1,8 @@
+#include <core/log_channel.hpp>
 #include <engine/assets/asset_converters.hpp>
 #include <engine/assets/asset_manifest.hpp>
 #include <engine/engine.hpp>
 #include <engine/render/skybox.hpp>
-#include <engine/utils/logger.hpp>
 #include <graphics/context/bootstrap.hpp>
 #include <ktl/enum_flags/enumerate_enum.hpp>
 #include <ktl/stack_string.hpp>
@@ -195,7 +195,7 @@ std::size_t AssetManifest::addRenderPipelines(Group group) {
 			m_renderPipelines.add(std::move(uri), [this, st = std::move(layer), sh = std::move(shaders)]() -> std::unique_ptr<RenderPipeline> {
 				auto layer = store().find<RenderLayer>(st);
 				if (!layer) {
-					utils::g_log.log(dl::level::warn, 1, "[Asset] Failed to find RenderLayer [{}]", st);
+					logW(LC_LibUser, "[Asset] Failed to find RenderLayer [{}]", st);
 					return {};
 				}
 				RenderPipeline rp;
@@ -277,7 +277,7 @@ std::size_t AssetManifest::addSkyboxes(Group group) {
 		if (auto const cubemap = json->find("cubemap"); cubemap && cubemap->is_string()) {
 			m_skyboxes.add(uri, [this, cb = cubemap->as<std::string>(), u = std::move(uri)]() -> std::unique_ptr<Skybox> {
 				if (auto cube = store().find<Cubemap>(cb)) { return std::make_unique<Skybox>(&*cube); }
-				utils::g_log.log(dl::level::warn, 1, "[Asset] Failed to find Cubemap [{}] for Skybox [{}]", cb, u);
+				logW(LC_LibUser, "[Asset] Failed to find Cubemap [{}] for Skybox [{}]", cb, u);
 				return {};
 			});
 			++ret;

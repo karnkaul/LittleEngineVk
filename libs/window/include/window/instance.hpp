@@ -1,5 +1,5 @@
 #pragma once
-#include <core/lib_logger.hpp>
+#include <core/log_channel.hpp>
 #include <core/std_types.hpp>
 #include <window/event_queue.hpp>
 #include <memory>
@@ -25,7 +25,6 @@ class Manager {
 
   private:
 	std::unique_ptr<Impl> m_impl;
-	LibLogger m_logger;
 };
 
 enum class Style { eDecoratedWindow = 0, eBorderlessWindow, eBorderlessFullscreen, eDedicatedFullscreen, eCOUNT_ };
@@ -40,7 +39,6 @@ struct CreateInfo {
 	} config;
 
 	struct {
-		LibLogger::Verbosity verbosity = LibLogger::Verbosity::eLibUser;
 		Style style = Style::eDecoratedWindow;
 		u8 screenID = 0;
 		bool centreCursor = true;
@@ -94,7 +92,6 @@ class Instance {
   private:
 	Instance(std::unique_ptr<Impl>&& impl) noexcept;
 
-	LibLogger m_log;
 	std::unique_ptr<Impl> m_impl;
 
 	friend class Manager;

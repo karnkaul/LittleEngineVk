@@ -1,5 +1,4 @@
 #pragma once
-#include <core/lib_logger.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/context/vram.hpp>
 
@@ -18,6 +17,5 @@ struct Bootstrap : Pinned {
 struct Bootstrap::CreateInfo {
 	Device::CreateInfo device;
 	Transfer::CreateInfo transfer;
-	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
 };
 } // namespace le::graphics

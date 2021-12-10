@@ -1,3 +1,4 @@
+#include <core/log_channel.hpp>
 #include <core/utils/error.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
@@ -16,7 +17,7 @@ class Selector {
 		for (auto const& family : m_families) { found.set(family.flags); }
 		bool const valid = found.all(qflags_all);
 		ENSURE(valid, "Required queues not present");
-		if (!valid) { g_log.log(lvl::error, 0, "[{}] Required Vulkan Queues not present on selected physical device!"); }
+		if (!valid) { logE(LC_EndUser, "[{}] Required Vulkan Queues not present on selected physical device!"); }
 	}
 
 	QueueMultiplex::Family* exact(QFlags flags) {
@@ -128,8 +129,7 @@ void QueueMultiplex::setup(vk::Device device) {
 	}
 	m_familyCount = (u32)families.size();
 	m_queueCount = (u32)queues.size();
-	g_log.log(lvl::info, 1, "[{}] Multiplexing [{}] Vulkan queue(s) from [{}] queue families for [Graphics/Present, Transfer]", g_name, m_queueCount,
-			  m_familyCount);
+	logI(LC_LibUser, "[{}] Multiplexing [{}] Vulkan queue(s) from [{}] queue families for [Graphics/Present, Transfer]", g_name, m_queueCount, m_familyCount);
 }
 
 ktl::fixed_vector<u32, 3> QueueMultiplex::familyIndices(QFlags flags) const {

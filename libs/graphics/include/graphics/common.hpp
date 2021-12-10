@@ -1,5 +1,5 @@
 #pragma once
-#include <core/lib_logger.hpp>
+#include <core/std_types.hpp>
 #include <glm/vec2.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <vulkan/vulkan.hpp>
@@ -14,8 +14,6 @@ struct BlitCaps {
 	BlitFlags optimal;
 	BlitFlags linear;
 };
-
-using lvl = dl::level;
 
 template <typename T>
 using vAP = vk::ArrayProxy<T const> const&;
@@ -50,7 +48,6 @@ constexpr vk::ShaderStageFlags c = vk::ShaderStageFlagBits::eCompute;
 } // namespace stages
 
 constexpr std::string_view g_name = "Graphics";
-inline LibLogger g_log;
 
 inline std::unordered_map<vk::Result, std::string_view> g_vkResultStr = {
 	{vk::Result::eErrorOutOfHostMemory, "OutOfHostMemory"},

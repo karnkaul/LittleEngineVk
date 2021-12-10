@@ -10,6 +10,6 @@ struct SrcInfo {
 	char const* file = "(unknown)";
 	int line = 0;
 
-	void logMsg(char const* pre, char const* msg, dl::level level) const;
+	void logMsg(char const* pre, char const* msg, dlog::level level) const;
 };
 } // namespace le::utils

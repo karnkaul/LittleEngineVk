@@ -1,4 +1,5 @@
 #include <core/log.hpp>
+#include <core/log_channel.hpp>
 #include <core/maths.hpp>
 #include <core/utils/expect.hpp>
 #include <glm/gtx/transform.hpp>
@@ -16,8 +17,8 @@ namespace {
 void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 	ENSURE(images > 1_B, "Insufficient swapchain images");
 	ENSURE(buffering > 0_B, "Insufficient buffering");
-	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warn, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
-	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
+	if ((s16)buffering.value - (s16)images.value > 1) { logW(LC_LibUser, "[{}] Buffering significantly more than swapchain image count", g_name); }
+	if (buffering < 2_B) { logW(LC_LibUser, "[{}] Buffering less than double; expect hitches", g_name); }
 }
 
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, BlitFlags bf, Buffering buffering) {

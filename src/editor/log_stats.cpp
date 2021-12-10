@@ -5,6 +5,7 @@
 #include <core/array_map.hpp>
 #include <core/colour.hpp>
 #include <core/services.hpp>
+#include <dumb_log/pipe.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/engine_stats.hpp>
 #include <ktl/tmutex.hpp>
@@ -17,24 +18,23 @@ namespace {
 struct LogText {
 	std::string text;
 	ImVec4 colour;
-	dl::level level;
+	LogLevel level;
 };
 
-using lvl = dl::level;
-
-constexpr EnumArray<lvl, Colour, 4> lvlColour = {Colour(0x666666ff), Colour(0xccccccff), Colour(0xdddd22ff), Colour(0xff1111ff)};
-
-ktl::tmutex<std::deque<LogText>> g_logs;
+constexpr EnumArray<LogLevel, Colour, 4> logColour = {Colour(0x666666ff), Colour(0xccccccff), Colour(0xdddd22ff), Colour(0xff1111ff)};
 
 ImVec4 imvec4(Colour c) noexcept { return {c.r.toF32(), c.g.toF32(), c.b.toF32(), c.a.toF32()}; }
 
-void onLog(std::string_view text, dl::level level) {
-	std::string str(text);
-	ImVec4 const colour = imvec4(lvlColour[level]);
-	ktl::tlock lock(g_logs);
-	lock->push_front({std::move(str), colour, level});
-	while (lock->size() > LogStats::s_maxLines) { lock->pop_back(); }
-}
+ktl::strict_tmutex<std::deque<LogText>> g_logs;
+
+struct LogPipe : dlog::pipe {
+	void operator()(dlog::level level, std::string_view text) const override {
+		ktl::tlock lock(g_logs);
+		ImVec4 const colour = imvec4(logColour[level]);
+		lock->push_front({std::string(text), colour, level});
+		while (lock->size() > LogStats::s_maxLines) { lock->pop_back(); }
+	}
+};
 
 struct FrameTime {
 	Span<f32 const> samples;
@@ -85,7 +85,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 		{
 			static constexpr std::array levels = {"All"sv, "Info"sv, "Warning"sv, "Error"sv};
 			s32 logLevel = (s32)LogStats::s_logLevel;
-			LogStats::s_logLevel = (lvl)Radio(levels, logLevel).select;
+			LogStats::s_logLevel = (LogLevel)Radio(levels, logLevel).select;
 		}
 		{
 			Styler s(Style::eSameLine);
@@ -124,7 +124,7 @@ void drawLog(glm::vec2 fbSize, f32 logHeight, FrameTime ft) {
 
 LogStats::LogStats() {
 #if defined(LEVK_USE_IMGUI)
-	m_token = dl::config::g_on_log.add(&onLog);
+	m_handle = dlog::pipe::attach_pipe<LogPipe>();
 #endif
 }
 

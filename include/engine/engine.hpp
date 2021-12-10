@@ -109,7 +109,7 @@ struct Engine::CustomDevice {
 struct Engine::CreateInfo {
 	window::CreateInfo winInfo;
 	std::optional<io::Path> logFile = "log.txt";
-	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
+	LogChannel logChannels = log_channels_v;
 };
 
 struct Engine::GFX {

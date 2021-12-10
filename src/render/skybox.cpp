@@ -2,7 +2,6 @@
 #include <engine/assets/asset_store.hpp>
 #include <engine/engine.hpp>
 #include <engine/render/skybox.hpp>
-#include <engine/utils/logger.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <graphics/texture.hpp>

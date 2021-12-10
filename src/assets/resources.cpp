@@ -32,8 +32,8 @@ std::optional<io::FileMonitor::Status> Resource::status() const {
 }
 
 bool Resource::load(io::Media const& media, io::Path uri, Type type, bool monitor, bool silent) {
-	std::optional<dl::level> lvl;
-	if (!silent) { lvl = dl::level::warn; }
+	std::optional<LogLevel> lvl;
+	if (!silent) { lvl = LogLevel::warn; }
 	if (media.present(uri, lvl)) {
 		io::FSMedia const* fm = monitor ? dynamic_cast<io::FSMedia const*>(&media) : nullptr;
 		if (monitor && fm) {

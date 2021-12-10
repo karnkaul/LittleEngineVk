@@ -1,11 +1,11 @@
 #pragma once
+#include <core/log_channel.hpp>
 #include <core/std_types.hpp>
 #include <core/utils/expect.hpp>
 #include <core/utils/string.hpp>
 #include <dens/detail/sign.hpp>
 #include <engine/assets/asset.hpp>
 #include <engine/assets/asset_loader.hpp>
-#include <engine/utils/logger.hpp>
 #include <ktl/delegate.hpp>
 #include <ktl/shared_tmutex.hpp>
 
@@ -123,8 +123,8 @@ Asset<T> AssetStore::add(std::string uri, std::unique_ptr<T>&& t) {
 		auto tasset = std::make_unique<TAsset<T>>(std::move(uri), std::move(t));
 		TAsset<T>& ret = *tasset;
 		auto const [it, b] = lock->emplace(key, std::move(tasset));
-		if (!b) { utils::g_log.log(dl::level::warn, 0, "[Asset] Overwriting [{}]!", ret.uri); }
-		utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] added", ret.uri);
+		if (!b) { logW(LC_EndUser, "[Asset] Overwriting [{}]!", ret.uri); }
+		logI(LC_EndUser, "== [Asset] [{}] added", ret.uri);
 		return makeAsset<T>(ret);
 	}
 	return {};
@@ -146,12 +146,12 @@ Asset<T> AssetStore::load(std::string uri, AssetLoadData<T> data) {
 	auto tasset = std::make_unique<TAsset<T>>(std::move(uri), std::move(info), std::move(doUpdate));
 	auto& ret = *tasset;
 	if ((ret.t = loader.load(*ret.info)); ret.t) {
-		utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] loaded", ret.uri);
+		logI(LC_EndUser, "== [Asset] [{}] loaded", ret.uri);
 		ktl::unique_tlock<TAssets> lock(m_assets);
 		lock->emplace(key, std::move(tasset));
 		return makeAsset(ret);
 	}
-	utils::g_log.log(dl::level::warn, 0, "[Asset] Failed to load [{}]!", ret.uri);
+	logW(LC_EndUser, "[Asset] Failed to load [{}]!", ret.uri);
 	return {};
 }
 
@@ -210,7 +210,7 @@ bool AssetStore::reloadAsset(TAsset<T>& out_asset) const {
 	auto lock = reloadLock();
 	AssetLoader<T> loader;
 	if (loader.reload(*out_asset.t, *out_asset.info)) {
-		utils::g_log.log(dl::level::info, 1, "== [Asset] [{}] reloaded", out_asset.uri);
+		logI(LC_LibUser, "== [Asset] [{}] reloaded", out_asset.uri);
 		out_asset.onModified();
 		return true;
 	}

@@ -8,7 +8,7 @@ std::optional<std::string> Media::string(Path const& uri) const {
 	return std::nullopt;
 }
 
-bool Media::present(Path const& uri, std::optional<dl::level> absent) const {
+bool Media::present(Path const& uri, std::optional<LogLevel> absent) const {
 	if (!findPrefixed(uri)) {
 		if (absent) { log(*absent, "[{}] [{}] not found in {}!", utils::tName(this), uri.generic_string(), info().name); }
 		return false;

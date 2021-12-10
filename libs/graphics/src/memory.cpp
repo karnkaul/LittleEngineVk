@@ -1,3 +1,4 @@
+#include <core/log_channel.hpp>
 #include <core/utils/expect.hpp>
 #include <core/utils/string.hpp>
 #include <graphics/common.hpp>
@@ -64,12 +65,12 @@ Memory::Memory(not_null<Device*> device) : m_device(device) {
 	allocatorInfo.pVulkanFunctions = &vkFunc;
 	vmaCreateAllocator(&allocatorInfo, &m_allocator);
 	for (auto& count : m_allocations.arr) { count.store(0); }
-	g_log.log(lvl::info, 1, "[{}] Memory constructed", g_name);
+	logI(LC_LibUser, "[{}] Memory constructed", g_name);
 }
 
 Memory::~Memory() {
 	vmaDestroyAllocator(m_allocator);
-	g_log.log(lvl::info, 1, "[{}] Memory destroyed", g_name);
+	logI(LC_LibUser, "[{}] Memory destroyed", g_name);
 }
 
 void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size) {
@@ -195,7 +196,7 @@ Buffer::~Buffer() {
 
 void const* Buffer::map() {
 	if (m_storage.type != Buffer::Type::eCpuToGpu) {
-		g_log.log(lvl::error, 1, "[{}] Attempt to map GPU-only Buffer!", g_name);
+		logE(LC_LibUser, "[{}] Attempt to map GPU-only Buffer!", g_name);
 		return nullptr;
 	}
 	if (!m_storage.data && m_storage.writeSize > 0) { vmaMapMemory(m_memory->m_allocator, m_storage.allocation.handle, &m_storage.data); }
@@ -213,7 +214,7 @@ bool Buffer::unmap() {
 
 bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset) {
 	if (m_storage.type != Buffer::Type::eCpuToGpu) {
-		g_log.log(lvl::error, 1, "[{}] Attempt to write to GPU-only Buffer!", g_name);
+		logE(LC_LibUser, "[{}] Attempt to write to GPU-only Buffer!", g_name);
 		return false;
 	}
 	if (!Device::default_v(m_storage.allocation.alloc.memory) && !Device::default_v(m_storage.buffer)) {
@@ -327,7 +328,7 @@ Image::~Image() {
 
 void const* Image::map() {
 	if (!hostVisible(m_storage.vmaUsage)) {
-		g_log.log(lvl::error, 1, "[{}] Attempt to map GPU-only Buffer!", g_name);
+		logE(LC_LibUser, "[{}] Attempt to map GPU-only Buffer!", g_name);
 		return nullptr;
 	}
 	if (!m_storage.data) { vmaMapMemory(m_memory->m_allocator, m_storage.allocation.handle, &m_storage.data); }

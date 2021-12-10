@@ -1,4 +1,5 @@
 #pragma once
+#include <core/log.hpp>
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/physical_device.hpp>
 #include <graphics/context/queue_multiplex.hpp>
@@ -112,7 +113,7 @@ struct Device::CreateInfo {
 
 	Span<std::string_view const> extensions = requiredExtensions;
 	std::string_view customDeviceName;
-	dl::level logLevel = dl::level::info;
+	LogLevel validationLogLevel = LogLevel::info;
 	QSelect qselect = QSelect::eOptimal;
 };
 

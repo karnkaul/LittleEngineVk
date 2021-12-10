@@ -732,7 +732,7 @@ bool run(io::Media const& media) {
 	bool reboot = false;
 	Engine::Boot::CreateInfo bootInfo;
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
-	bootInfo.device.logLevel = dl::level::info;
+	bootInfo.device.validationLogLevel = LogLevel::info;
 	do {
 		engine.boot(bootInfo);
 		App app(&engine);

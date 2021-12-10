@@ -1,3 +1,4 @@
+#include <core/log_channel.hpp>
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
@@ -34,21 +35,21 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 				for (auto i = range.count; i > 0; --i) { m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size)); }
 			}
 		}
-		g_log.log(lvl::info, 1, "[{}] Transfer thread started", g_name);
+		logI(LC_LibUser, "[{}] Transfer thread started", g_name);
 		while (auto f = m_queue.pop()) { (*f)(); }
-		g_log.log(lvl::info, 1, "[{}] Transfer thread completed", g_name);
+		logI(LC_LibUser, "[{}] Transfer thread completed", g_name);
 	});
 	if (info.autoPollRate && *info.autoPollRate > 0ms) {
 		m_sync.poll = ktl::kthread([this, rate = *info.autoPollRate](ktl::kthread::stop_t stop) {
-			g_log.log(lvl::info, 1, "[{}] Transfer poll thread started", g_name);
+			logI(LC_LibUser, "[{}] Transfer poll thread started", g_name);
 			while (!stop.stop_requested()) {
 				update();
 				ktl::kthread::sleep_for(rate);
 			}
-			g_log.log(lvl::info, 1, "[{}] Transfer poll thread completed", g_name);
+			logI(LC_LibUser, "[{}] Transfer poll thread completed", g_name);
 		});
 	}
-	g_log.log(lvl::info, 1, "[{}] Transfer constructed", g_name);
+	logI(LC_LibUser, "[{}] Transfer constructed", g_name);
 }
 
 Transfer::~Transfer() {
@@ -64,7 +65,7 @@ Transfer::~Transfer() {
 	m_data = {};
 	m_batches = {};
 	d.waitIdle(); // force flush deferred
-	g_log.log(lvl::info, 1, "[{}] Transfer destroyed", g_name);
+	logI(LC_LibUser, "[{}] Transfer destroyed", g_name);
 }
 
 std::size_t Transfer::update() {

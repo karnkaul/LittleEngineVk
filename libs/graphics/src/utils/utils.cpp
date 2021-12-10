@@ -1,5 +1,6 @@
 #include <stb/stb_image.h>
 #include <core/log.hpp>
+#include <core/log_channel.hpp>
 #include <core/maths.hpp>
 #include <core/singleton.hpp>
 #include <core/utils/algo.hpp>
@@ -21,9 +22,9 @@ struct Spv : Singleton<Spv> {
 	Spv() {
 		if (auto compiler = Shell(fmt::format("{} --version", utils::g_compiler).data())) {
 			online = true;
-			g_log.log(lvl::info, 1, "[{}] SPIR-V compiler online: {}", g_name, compiler.output());
+			logI(LC_LibUser, "[{}] SPIR-V compiler online: {}", g_name, compiler.output());
 		} else {
-			g_log.log(lvl::warn, 1, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.output());
+			logW(LC_LibUser, "[{}] Failed to bring SPIR-V compiler [{}] online: {}", g_name, utils::g_compiler, compiler.output());
 		}
 	}
 
@@ -141,10 +142,10 @@ std::optional<io::Path> utils::compileGlsl(io::Path const& src, io::Path const& 
 	auto const flags = bDebug ? "-g" : std::string_view();
 	auto const result = Spv::inst().compile(io::absolute(prefix / src), io::absolute(prefix / d), flags);
 	if (!result.empty()) {
-		g_log.log(lvl::warn, 1, "[{}] Failed to compile GLSL [{}] to SPIR-V: {}", g_name, src.generic_string(), result);
+		logW(LC_LibUser, "[{}] Failed to compile GLSL [{}] to SPIR-V: {}", g_name, src.generic_string(), result);
 		return std::nullopt;
 	}
-	g_log.log(lvl::info, 1, "[{}] Compiled GLSL [{}] to SPIR-V [{}]", g_name, src.generic_string(), d.generic_string());
+	logI(LC_LibUser, "[{}] Compiled GLSL [{}] to SPIR-V [{}]", g_name, src.generic_string(), d.generic_string());
 	return d;
 }
 
@@ -347,7 +348,7 @@ utils::STBImg::STBImg(ImageData compressed, u8 channels) {
 	auto pIn = reinterpret_cast<stbi_uc const*>(compressed.data());
 	int w, h, ch;
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);
-	if (!pOut) { g_log.log(lvl::warn, 1, "[{}] Failed to decompress image data", g_name); }
+	if (!pOut) { logW(LC_EndUser, "[{}] Failed to decompress image data", g_name); }
 	size = {u32(w), u32(h)};
 	bytes = Span(pOut, std::size_t(size.x * size.y * channels));
 }
@@ -369,7 +370,7 @@ std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path con
 		if (auto bytes = media.bytes(path)) {
 			ret[idx++] = std::move(*bytes);
 		} else {
-			g_log.log(lvl::warn, 0, "[{}] Failed to load bytes from [{}]", g_name, path.generic_string());
+			logW(LC_EndUser, "[{}] Failed to load bytes from [{}]", g_name, path.generic_string());
 		}
 	}
 	return ret;

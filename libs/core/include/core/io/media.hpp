@@ -1,9 +1,9 @@
 #pragma once
 #include <core/io/path.hpp>
+#include <core/log.hpp>
 #include <core/span.hpp>
 #include <core/std_types.hpp>
 #include <core/utils/vbase.hpp>
-#include <dumb_log/level.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <optional>
 #include <sstream>
@@ -46,7 +46,7 @@ class Media : public utils::VBase {
 	/// \param uri URI to check
 	/// \param absent Level to log at if not present (silent if not set)
 	///
-	[[nodiscard]] bool present(Path const& uri, std::optional<dl::level> absent = dl::level::warn) const;
+	[[nodiscard]] bool present(Path const& uri, std::optional<LogLevel> absent = LogLevel::warn) const;
 	///
 	/// \brief Obtain data as `std::string`
 	///

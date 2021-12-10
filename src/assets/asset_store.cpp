@@ -20,7 +20,7 @@ void AssetStore::update() {
 		EXPECT(asset);
 		if (asset->doUpdate && asset->doUpdate(asset.get())) { ++reloaded; }
 	}
-	if (reloaded > 0) { utils::g_log.log(dl::level::info, 1, "[Assets] [{}] Reloads completed", reloaded); }
+	if (reloaded > 0) { logI(LC_LibUser, "[Assets] [{}] Reloads completed", reloaded); }
 }
 
 void AssetStore::clear() {

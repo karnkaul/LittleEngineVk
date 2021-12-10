@@ -1,3 +1,4 @@
+#include <core/log_channel.hpp>
 #include <core/utils/expect.hpp>
 #include <graphics/command_buffer.hpp>
 #include <graphics/common.hpp>
@@ -7,14 +8,14 @@
 
 namespace le::graphics {
 VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {
-	g_log.log(lvl::info, 1, "[{}] VRAM constructed", g_name);
+	logI(LC_LibUser, "[{}] VRAM constructed", g_name);
 	if (device->queues().queue(QType::eTransfer).flags.test(QType::eGraphics)) {
 		m_post.access = vk::AccessFlagBits::eShaderRead;
 		m_post.stages = vk::PipelineStageFlagBits::eFragmentShader;
 	}
 }
 
-VRAM::~VRAM() { g_log.log(lvl::info, 1, "[{}] VRAM destroyed", g_name); }
+VRAM::~VRAM() { logI(LC_LibUser, "[{}] VRAM destroyed", g_name); }
 
 Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible) {
 	Buffer::CreateInfo bufferInfo;
@@ -42,11 +43,11 @@ VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size)
 	bool const bSizes = out_dst.writeSize() >= size;
 	ENSURE(bSizes, "Invalid buffer sizes!");
 	if (!bReady) {
-		g_log.log(lvl::error, 1, "[{}] Source/destination buffers missing QType::eTransfer!", g_name);
+		logE(LC_LibUser, "[{}] Source/destination buffers missing QType::eTransfer!", g_name);
 		return {};
 	}
 	if (!bSizes) {
-		g_log.log(lvl::error, 1, "[{}] Source buffer is larger than destination buffer!", g_name);
+		logE(LC_LibUser, "[{}] Source buffer is larger than destination buffer!", g_name);
 		return {};
 	}
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
@@ -72,7 +73,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	bool const bQueueFlags = out_deviceBuffer.m_storage.allocation.queueFlags.test(QType::eTransfer);
 	ENSURE(bQueueFlags, "Invalid queue flags!");
 	if (!bQueueFlags) {
-		g_log.log(lvl::error, 1, "[{}] Invalid queue flags on source buffer!", g_name);
+		logE(LC_LibUser, "[{}] Invalid queue flags on source buffer!", g_name);
 		return {};
 	}
 	bytearray data((std::size_t)size, {});
@@ -85,7 +86,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 			copy(stage.command, stage.buffer->buffer(), dst, d.size());
 			m_transfer.addStage(std::move(stage), std::move(p));
 		} else {
-			g_log.log(lvl::error, 1, "[{}] Error staging data!", g_name);
+			logE(LC_LibUser, "[{}] Error staging data!", g_name);
 			p.set_value();
 		}
 	};
@@ -219,7 +220,7 @@ bool VRAM::update(bool force) {
 }
 
 void VRAM::shutdown() {
-	g_log.log(lvl::debug, 2, "[{}] VRAM shutting down", g_name);
+	logI(LC_Library, "[{}] VRAM shutting down", g_name);
 	m_transfer.stopTransfer();
 	m_transfer.stopPolling();
 }

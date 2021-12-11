@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)	# don't let OPTION erase above non-cache variables
+set(CMAKE_POLICY_DEFAULT_CMP0076 NEW)	# relative target_sources
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "")
 set(CMAKE_CXX_EXTENSIONS OFF CACHE INTERNAL "" FORCE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -45,7 +46,7 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 else()
   option(LEVK_EDITOR "Enable Editor" OFF)
 endif()
-if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
+if(NOT ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   set(LEVK_USE_PCH OFF CACHE BOOL "" FORCE)
 endif()
 option(LEVK_BUILD_TESTS "Build Tests" ${is_root_project})
@@ -258,26 +259,15 @@ target_link_libraries(${target_name}
     dtasks::dtasks
     clap::clap
     levk::interface
-
     dens::dens
+
   PRIVATE
     levk::compile-options
     stb-image
     tinyobjloader
 )
-if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
-  target_precompile_headers(${target_name} 
-    PUBLIC
-      <deque>
-      <string>
-      <unordered_map>
-      <vector>
-    PRIVATE
-      <vulkan/vulkan.hpp>
-      <vk_mem_alloc.h>
-      <stb/stb_image.h>
-      <tinyobjloader/tiny_obj_loader.h>
-  )
+if(LEVK_USE_PCH)
+  target_precompile_headers(${target_name} REUSE_FROM levk-graphics)
 endif()
 
 # demo

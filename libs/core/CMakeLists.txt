@@ -1,9 +1,7 @@
 project(levk-core)
 
 # Library
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.?pp")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
+add_library(${PROJECT_NAME})
 add_library(levk::core ALIAS ${PROJECT_NAME})
 
 # defines
@@ -11,9 +9,9 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_XYZW_ONLY GLM_FORCE_
 target_compile_definitions(${PROJECT_NAME} PUBLIC KTL_FIXED_ANY_THROW)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    include
   PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    src
 )
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
@@ -28,10 +26,13 @@ target_link_libraries(${PROJECT_NAME}
     physfs-static
 )
 
+add_subdirectory(include/core)
+add_subdirectory(src)
+target_source_group(${PROJECT_NAME})
+
 # PCH
-if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
+if(LEVK_USE_PCH)
   set(PRECOMPILE
-    <deque>
     <string>
     <unordered_map>
     <vector>

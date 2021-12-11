@@ -1,46 +1,42 @@
 project(levk-graphics)
 
 # Library
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.?pp")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCES})
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
+add_library(${PROJECT_NAME})
 add_library(levk::graphics ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
-	PUBLIC
-		"${CMAKE_CURRENT_SOURCE_DIR}/include"
-	PRIVATE
-		"${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
-target_include_directories(${PROJECT_NAME} SYSTEM 
-	PUBLIC
-		"${SPIRV-Cross_SOURCE}"
+  PUBLIC
+    include
+  PRIVATE
+    src
 )
 target_link_libraries(${PROJECT_NAME}
-	PUBLIC
-		vk-hpp::vk-hpp
-		spirv-cross-glsl
-		vma
-		levk::core
-	PRIVATE
-		levk::compile-options
-		stb-image
-		tinyobjloader
+  PUBLIC
+    vk-hpp::vk-hpp
+    spirv-cross-glsl
+    vma
+    levk::core
+  PRIVATE
+    levk::compile-options
+    stb-image
+    tinyobjloader
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>)
 
+add_subdirectory(include/graphics)
+add_subdirectory(src)
+target_source_group(${PROJECT_NAME})
+
 # PCH
-if(LEVK_USE_PCH AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
-	target_precompile_headers(${PROJECT_NAME} 
-		PUBLIC
-			<deque>
-			<filesystem>
-			<string>
-			<unordered_map>
-			<vector>
-			<vulkan/vulkan.hpp>
-		PRIVATE
-			<stb/stb_image.h>
-			<tinyobjloader/tiny_obj_loader.h>
-	)
+if(LEVK_USE_PCH)
+  target_precompile_headers(${PROJECT_NAME}
+    PUBLIC
+      <string>
+      <unordered_map>
+      <vector>
+      <vulkan/vulkan.hpp>
+    PRIVATE
+      <stb/stb_image.h>
+      <tinyobjloader/tiny_obj_loader.h>
+  )
 endif()

@@ -53,8 +53,8 @@ Image& ImageCache::refresh(Extent2D extent, vk::Format format) {
 
 RenderPass::RenderPass(not_null<Device*> device, not_null<PipelineFactory*> factory, RenderInfo info)
 	: m_info(std::move(info)), m_device(device), m_factory(factory) {
-	EXPECT(!m_info.secondary.empty() && m_info.framebuffer.colour.image && m_info.renderPass);
-	if (!m_info.primary.recording() || m_info.secondary.empty() || !m_info.framebuffer.colour.image || !m_info.renderPass) { return; }
+	EXPECT(m_info.primary.recording() && m_info.framebuffer.colour.image && m_info.renderPass);
+	if (!m_info.primary.recording() || !m_info.framebuffer.colour.image || !m_info.renderPass) { return; }
 	bool const hasDepth = m_info.framebuffer.depth.image != vk::Image();
 	vk::ImageView const colourDepth[] = {m_info.framebuffer.colour.view, m_info.framebuffer.depth.view};
 	auto const views = hasDepth ? Span(colourDepth) : m_info.framebuffer.colour.view;
@@ -66,12 +66,24 @@ RenderPass::RenderPass(not_null<Device*> device, not_null<PipelineFactory*> fact
 	for (auto& cmd : m_info.secondary) {
 		cmd.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit | vk::CommandBufferUsageFlagBits::eRenderPassContinue, &inh);
 	}
-	m_info.secondary[0].setViewport(Renderer::viewport(m_info.framebuffer.extent(), m_info.begin.view));
-	m_info.secondary[0].setScissor(Renderer::scissor(m_info.framebuffer.extent(), m_info.begin.view));
+	if (m_info.secondary.empty()) { beginPass(); }
 }
 
-void RenderPass::render() {
-	for (auto& cmd : m_info.secondary) { cmd.end(); }
+void RenderPass::end() {
+	if (!m_info.secondary.empty()) {
+		for (auto& cmd : m_info.secondary) { cmd.end(); }
+		beginPass();
+		ktl::fixed_vector<vk::CommandBuffer, max_secondary_cmd_v> secondary;
+		for (auto const& cmd : m_info.secondary) { secondary.push_back(cmd.m_cb); }
+		m_info.primary.m_cb.executeCommands((u32)secondary.size(), secondary.data());
+	}
+	m_info.primary.endRenderPass();
+}
+
+vk::Viewport RenderPass::viewport() const { return Renderer::viewport(framebuffer().extent(), view()); }
+vk::Rect2D RenderPass::scissor() const { return Renderer::scissor(framebuffer().extent(), view()); }
+
+void RenderPass::beginPass() {
 	auto const cc = m_info.begin.clear.toVec4();
 	vk::ClearColorValue const clear = std::array{cc.x, cc.y, cc.z, cc.w};
 	m_device->m_layouts.transition(m_info.primary, m_info.framebuffer.colour.image, vIL::eColorAttachmentOptimal, LayoutStages::topColour());
@@ -80,13 +92,9 @@ void RenderPass::render() {
 	}
 	graphics::CommandBuffer::PassInfo passInfo;
 	passInfo.clearValues = {clear, m_info.begin.depth};
-	passInfo.subpassContents = vk::SubpassContents::eSecondaryCommandBuffers;
+	passInfo.subpassContents = m_info.secondary.empty() ? vk::SubpassContents::eInline : vk::SubpassContents::eSecondaryCommandBuffers;
 	passInfo.usage = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 	m_info.primary.beginRenderPass(m_info.renderPass, m_framebuffer, m_info.framebuffer.extent(), passInfo);
-	ktl::fixed_vector<vk::CommandBuffer, max_secondary_cmd_v> secondary;
-	for (auto const& cmd : m_info.secondary) { secondary.push_back(cmd.m_cb); }
-	m_info.primary.m_cb.executeCommands((u32)secondary.size(), secondary.data());
-	m_info.primary.endRenderPass();
 }
 
 Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device, bool secondary) {
@@ -170,7 +178,7 @@ Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_colourIm
 	EXPECT(info.secondaryCmds <= max_secondary_cmd_v);
 	EXPECT(info.target == Target::eSwapchain || info.surfaceBlitFlags.test(BlitFlag::eDst));
 	if (!info.surfaceBlitFlags.test(BlitFlag::eDst)) { m_target = Target::eSwapchain; }
-	u8 const secondaryCmds = std::clamp(info.secondaryCmds, u8(1), max_secondary_cmd_v);
+	u8 const secondaryCmds = std::min(info.secondaryCmds, max_secondary_cmd_v);
 	for (Buffering i{0}; i < buffering; ++i.value) {
 		m_primaryCmd.push(Cmd::make(m_vram->m_device));
 		Cmds cmds;
@@ -227,7 +235,7 @@ RenderPass Renderer::beginMainPass(PipelineFactory& pf, RenderTarget const& acqu
 
 vk::CommandBuffer Renderer::endMainPass(RenderPass& out_rp) {
 	auto& cmd = m_primaryCmd.get();
-	out_rp.render();
+	out_rp.end();
 	auto const colour = out_rp.info().framebuffer.colour;
 	utils::Transition ltcolour{m_vram->m_device, &cmd.cb, colour.image};
 	utils::Transition ltacquired{m_vram->m_device, &cmd.cb, m_acquired.image};

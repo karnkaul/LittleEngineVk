@@ -31,15 +31,21 @@ class RenderPass {
   public:
 	RenderPass(not_null<Device*> device, not_null<PipelineFactory*> factory, RenderInfo info);
 
-	vk::Framebuffer framebuffer() const noexcept { return m_framebuffer; }
+	Framebuffer const& framebuffer() const noexcept { return m_info.framebuffer; }
+	ScreenView const& view() const noexcept { return m_info.begin.view; }
 	vk::RenderPass renderPass() const noexcept { return m_info.renderPass; }
 	RenderInfo const& info() const noexcept { return m_info; }
 	PipelineFactory& pipelineFactory() const noexcept { return *m_factory; }
-	Span<CommandBuffer const> commandBuffers() const noexcept { return m_info.secondary; }
+	Span<CommandBuffer const> commandBuffers() const noexcept { return m_info.secondary.empty() ? Span(m_info.primary) : m_info.secondary; }
 
-	void render();
+	vk::Viewport viewport() const;
+	vk::Rect2D scissor() const;
+
+	void end();
 
   private:
+	void beginPass();
+
 	RenderInfo m_info;
 	Deferred<vk::Framebuffer> m_framebuffer;
 	not_null<Device*> m_device;

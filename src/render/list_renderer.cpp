@@ -50,6 +50,7 @@ void ListRenderer::render(RenderPass& out_rp, LayerMap map) {
 	for (auto const& list : drawLists) { writeSets(DescriptorMap(&cache, list.pipeline.shaderInput), list); }
 	std::unordered_set<graphics::ShaderInput*> pipes;
 	auto const& cb = out_rp.commandBuffers().front();
+	cb.setViewportScissor(out_rp.viewport(), out_rp.scissor());
 	for (auto const& list : drawLists) {
 		EXPECT(list.pipeline.valid());
 		cb.m_cb.bindPipeline(vk::PipelineBindPoint::eGraphics, list.pipeline.pipeline);

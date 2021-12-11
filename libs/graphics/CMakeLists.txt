@@ -22,8 +22,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>)
-
-add_subdirectory(include/graphics)
+include(graphics_includes.cmake)
 add_subdirectory(src)
 target_source_group(${PROJECT_NAME})
 

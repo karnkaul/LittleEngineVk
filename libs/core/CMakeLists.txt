@@ -25,8 +25,7 @@ target_link_libraries(${PROJECT_NAME}
     levk::compile-options
     physfs-static
 )
-
-add_subdirectory(include/core)
+include(core_includes.cmake)
 add_subdirectory(src)
 target_source_group(${PROJECT_NAME})
 

@@ -168,7 +168,7 @@ bool AssetLoader<graphics::BitmapFont>::reload(graphics::BitmapFont& out_font, A
 }
 
 bool AssetLoader<graphics::BitmapFont>::load(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const {
-	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
+	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/font" : info.m_data.samplerURI;
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return false; }
 	if (auto text = info.resource(info.m_data.jsonURI, Resource::Type::eText, Resources::Flag::eMonitor)) {

@@ -55,7 +55,7 @@ class CommandBuffer {
 	void draw(u32 vertexCount, u32 instanceCount = 1, u32 firstInstance = 0, u32 firstVertex = 0) const;
 
 	void transitionImage(Image const& image, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
-	void transitionImage(vk::Image image, u32 layerCount, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
+	void transitionImage(vk::Image im, u32 lc, u32 mc, u32 fm, vk::ImageAspectFlags as, Layouts tr, Access ac, Stages st) const;
 
 	void endRenderPass();
 	void end();

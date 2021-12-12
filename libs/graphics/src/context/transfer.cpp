@@ -102,6 +102,7 @@ std::size_t Transfer::update() {
 Transfer::Stage Transfer::newStage(vk::DeviceSize bufferSize) { return Stage{nextBuffer(bufferSize), nextCommand()}; }
 
 void Transfer::addStage(Stage&& stage, Promise&& promise) {
+	stage.command.end();
 	std::scoped_lock lock(m_sync.mutex);
 	m_batches.active.entries.emplace_back(std::move(stage), std::move(promise));
 }
@@ -119,17 +120,24 @@ std::optional<Buffer> Transfer::nextBuffer(vk::DeviceSize size) {
 	return makeStagingBuffer(*m_memory, size);
 }
 
+vk::CommandBuffer beginCb(vk::CommandBuffer cb) {
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	cb.begin(beginInfo);
+	return cb;
+}
+
 vk::CommandBuffer Transfer::nextCommand() {
 	std::scoped_lock lock(m_sync.mutex);
 	if (!m_data.commands.empty()) {
 		auto ret = m_data.commands.back();
 		m_data.commands.pop_back();
-		return ret;
+		return beginCb(ret);
 	}
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = m_data.pool;
-	return m_memory->m_device->device().allocateCommandBuffers(commandBufferInfo).front();
+	return beginCb(m_memory->m_device->device().allocateCommandBuffers(commandBufferInfo).front());
 }
 
 void Transfer::scavenge(Stage&& stage, vk::Fence fence) {

@@ -349,8 +349,8 @@ utils::STBImg::STBImg(ImageData compressed, u8 channels) {
 	int w, h, ch;
 	auto pOut = stbi_load_from_memory(pIn, (int)compressed.size(), &w, &h, &ch, (int)channels);
 	if (!pOut) { logW(LC_EndUser, "[{}] Failed to decompress image data", g_name); }
-	size = {u32(w), u32(h)};
-	bytes = Span(pOut, std::size_t(size.x * size.y * channels));
+	extent = {u32(w), u32(h)};
+	bytes = Span(pOut, std::size_t(extent.x * extent.y * channels));
 }
 
 utils::STBImg::~STBImg() {

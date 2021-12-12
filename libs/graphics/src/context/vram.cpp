@@ -7,10 +7,78 @@
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
+namespace {
+struct PData {
+	void const* ptr;
+	std::size_t size;
+
+	PData(bytearray const& bytes) noexcept : ptr(bytes.data()), size(bytes.size()) {}
+	PData(utils::STBImg const& img) noexcept : ptr(img.bytes.data()), size(img.bytes.size()) {}
+};
+
+template <typename T>
+TPair<std::size_t> getLayerImageSize(T const& images) {
+	TPair<std::size_t> ret;
+	for (auto const& image : images) {
+		PData const data(image);
+		ENSURE(ret.first == 0 || ret.first == data.size, "Invalid image data!");
+		ret.first = data.size;
+		ret.second += ret.first;
+	}
+	ENSURE(ret.first > 0 && ret.second > 0, "Invalid image data!");
+	return ret;
+}
+} // namespace
+
+template <typename T>
+struct VRAM::ImageCopier {
+	using Imgs = ktl::fixed_vector<T, 6>;
+
+	Imgs imgs;
+	VRAM& vram;
+	mutable Transfer::Promise pr;
+	TPair<std::size_t> layerImageSize;
+	vk::Extent3D extent;
+	vk::Image image;
+	u32 layerCount;
+	vk::ImageAspectFlags aspects;
+	LayoutPair fromTo;
+
+	ImageCopier(VRAM& vram, Imgs&& imgs, Transfer::Promise&& pr, Image const& img, vk::ImageAspectFlags aspects, LayoutPair fromTo)
+		: imgs(std::move(imgs)), vram(vram), pr(std::move(pr)), aspects(aspects), fromTo(fromTo) {
+		image = img.image();
+		layerCount = img.layerCount();
+		extent = img.extent();
+		layerImageSize = getLayerImageSize(this->imgs);
+	}
+
+	void operator()() const {
+		auto stage = vram.m_transfer.newStage(layerImageSize.second);
+		[[maybe_unused]] bool const bResult = stage.buffer->map();
+		ENSURE(bResult, "Memory map failed");
+		u32 layerIdx = 0;
+		std::vector<vk::BufferImageCopy> copyRegions;
+		for (auto const& img : imgs) {
+			auto const offset = layerIdx * layerImageSize.first;
+			PData const pd(img);
+			std::memcpy((u8*)stage.buffer->mapped() + offset, pd.ptr, pd.size);
+			copyRegions.push_back(bufferImageCopy(extent, aspects, offset, (u32)layerIdx++));
+		}
+		ImgMeta meta;
+		meta.layouts = fromTo;
+		meta.stages.second = vram.m_post.stages;
+		meta.access.second = vram.m_post.access;
+		meta.layerCount = layerCount;
+		copy(stage.command, stage.buffer->buffer(), image, copyRegions, meta);
+		vram.m_transfer.addStage(std::move(stage), std::move(pr));
+		vram.m_device->m_layouts.force(image, meta.layouts.second);
+	}
+};
+
 VRAM::VRAM(not_null<Device*> device, Transfer::CreateInfo const& transferInfo) : Memory(device), m_device(device), m_transfer(this, transferInfo) {
 	logI(LC_LibUser, "[{}] VRAM constructed", g_name);
 	if (device->queues().queue(QType::eTransfer).flags.test(QType::eGraphics)) {
-		m_post.access = vk::AccessFlagBits::eShaderRead;
+		m_post.access |= vk::AccessFlagBits::eShaderRead;
 		m_post.stages = vk::PipelineStageFlagBits::eFragmentShader;
 	}
 }
@@ -95,61 +163,24 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 }
 
 VRAM::Future VRAM::copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
-	std::size_t imgSize = 0;
-	std::size_t layerSize = 0;
-	for (auto pixels : bitmaps) {
-		ENSURE(layerSize == 0 || layerSize == pixels.size(), "Invalid image data!");
-		layerSize = pixels.size();
-		imgSize += layerSize;
-	}
-	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	ENSURE(indices.size() == 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
-	ktl::fixed_vector<bytearray, 8> data;
+	ktl::fixed_vector<bytearray, 6> imgs;
 	for (auto layer : bitmaps) {
 		bytearray bytes(layer.size(), {});
 		std::memcpy(bytes.data(), layer.data(), bytes.size());
-		data.push_back(std::move(bytes));
+		imgs.push_back(std::move(bytes));
 	}
-	out_dst.m_storage.layerCount = (u32)data.size();
-	auto f = [p = std::move(promise), d = std::move(data), i = out_dst.image(), l = out_dst.m_storage.layerCount, e = out_dst.m_storage.extent, fromTo, imgSize,
-			  layerSize, aspects, this]() mutable {
-		auto stage = m_transfer.newStage(imgSize);
-		[[maybe_unused]] bool const bResult = stage.buffer->map();
-		ENSURE(bResult, "Memory map failed");
-		u32 layerIdx = 0;
-		std::vector<vk::BufferImageCopy> copyRegions;
-		for (auto const& pixels : d) {
-			auto const offset = layerIdx * layerSize;
-			std::memcpy((u8*)stage.buffer->mapped() + offset, pixels.data(), pixels.size());
-			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++, 1U));
-		}
-		ImgMeta meta;
-		meta.layouts = fromTo;
-		meta.stages.second = m_post.stages;
-		meta.access.second = m_post.access;
-		meta.layerCount = l;
-		copy(stage.command, stage.buffer->buffer(), i, copyRegions, meta);
-		m_transfer.addStage(std::move(stage), std::move(p));
-		m_device->m_layouts.force(i, meta.layouts.second);
-	};
-	m_transfer.m_queue.push(std::move(f));
+	out_dst.m_storage.layerCount = (u32)imgs.size();
+	m_transfer.m_queue.push(ImageCopier<bytearray>(*this, std::move(imgs), std::move(promise), out_dst, aspects, fromTo));
 	return ret;
 }
 
 VRAM::Future VRAM::copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
-	std::size_t imgSize = 0;
-	std::size_t layerSize = 0;
-	for (auto const& img : imgs) {
-		ENSURE(layerSize == 0 || layerSize == img.bytes.size(), "Invalid image data!");
-		layerSize = img.bytes.size();
-		imgSize += layerSize;
-	}
-	ENSURE(layerSize > 0 && imgSize > 0, "Invalid image data!");
 	[[maybe_unused]] auto const indices = m_device->queues().familyIndices(QFlags(QType::eGraphics) | QType::eTransfer);
 	ENSURE(indices.size() == 1 || out_dst.m_storage.allocation.mode == vk::SharingMode::eConcurrent, "Exclusive queues!");
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
@@ -157,28 +188,7 @@ VRAM::Future VRAM::copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::Im
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
 	out_dst.m_storage.layerCount = (u32)imgs.size();
-	auto f = [p = std::move(promise), imgs = std::move(imgs), i = out_dst.image(), l = out_dst.m_storage.layerCount, e = out_dst.m_storage.extent, fromTo,
-			  imgSize, layerSize, aspects, this]() mutable {
-		auto stage = m_transfer.newStage(imgSize);
-		[[maybe_unused]] bool const bResult = stage.buffer->map();
-		ENSURE(bResult, "Memory map failed");
-		u32 layerIdx = 0;
-		std::vector<vk::BufferImageCopy> copyRegions;
-		for (utils::STBImg const& img : imgs) {
-			auto const offset = layerIdx * layerSize;
-			std::memcpy((u8*)stage.buffer->mapped() + offset, img.bytes.data(), img.bytes.size());
-			copyRegions.push_back(bufferImageCopy(e, aspects, offset, (u32)layerIdx++, 1U));
-		}
-		ImgMeta meta;
-		meta.layouts = fromTo;
-		meta.stages.second = m_post.stages;
-		meta.access.second = m_post.access;
-		meta.layerCount = l;
-		copy(stage.command, stage.buffer->buffer(), i, copyRegions, meta);
-		m_transfer.addStage(std::move(stage), std::move(p));
-		m_device->m_layouts.force(i, meta.layouts.second);
-	};
-	m_transfer.m_queue.push(std::move(f));
+	m_transfer.m_queue.push(ImageCopier<utils::STBImg>(*this, std::move(imgs), std::move(promise), out_dst, aspects, fromTo));
 	return ret;
 }
 
@@ -205,6 +215,54 @@ bool VRAM::copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAsp
 	EXPECT(src.extent() == out_dst.extent());
 	copy(cb.m_cb, {src.image(), out_dst.image()}, src.extent(), aspects);
 	return true;
+}
+
+bool VRAM::genMipMaps(CommandBuffer cb, Image& out_img, vk::ImageAspectFlags aspects) {
+	if (out_img.m_storage.mipCount > 1U && out_img.m_storage.view && out_img.m_storage.allocatedSize > 0U) {
+		cb.transitionImage(out_img.image(), out_img.layerCount(), 1U, 0, aspects, {vIL::eShaderReadOnlyOptimal, vIL::eTransferDstOptimal}, {},
+						   {vPSFB::eTopOfPipe, vPSFB::eBottomOfPipe});
+		cb.transitionImage(out_img.image(), out_img.layerCount(), out_img.mipCount() - 1U, 1U, aspects, {vIL::eUndefined, vIL::eTransferDstOptimal}, {},
+						   {vPSFB::eTopOfPipe, vPSFB::eBottomOfPipe});
+		ImgMeta meta;
+		meta.layerCount = out_img.layerCount();
+		meta.aspects = aspects;
+		meta.access = {vAFB::eTransferWrite, vAFB::eTransferRead};
+		meta.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
+		Extent2D extent = out_img.extent2D();
+		u32 mip = 1;
+		for (; mip < out_img.m_storage.mipCount; ++mip) {
+			cb.transitionImage(out_img.image(), meta.layerCount, 1U, mip - 1, aspects, {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal}, meta.access,
+							   meta.stages);
+			vk::ImageBlit region{};
+			region.srcOffsets[0] = vk::Offset3D{0, 0, 0};
+			region.srcOffsets[1] = vk::Offset3D{int(extent.x), int(extent.y), 1};
+			region.srcSubresource.aspectMask = aspects;
+			region.srcSubresource.mipLevel = mip - 1;
+			region.srcSubresource.baseArrayLayer = 0;
+			region.srcSubresource.layerCount = out_img.layerCount();
+			region.dstOffsets[0] = vk::Offset3D{0, 0, 0};
+			region.dstOffsets[1] = vk::Offset3D{extent.x > 1 ? int(extent.x / 2) : 1, extent.y > 1 ? int(extent.y / 2) : 1, 1};
+			region.dstSubresource.aspectMask = aspects;
+			region.dstSubresource.mipLevel = mip;
+			region.dstSubresource.baseArrayLayer = 0;
+			region.dstSubresource.layerCount = out_img.layerCount();
+			cb.m_cb.blitImage(out_img.image(), vIL::eTransferSrcOptimal, out_img.image(), vIL::eTransferDstOptimal, region, vk::Filter::eLinear);
+			meta.access = {vAFB::eTransferWrite, vAFB::eShaderRead};
+			meta.stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
+			cb.transitionImage(out_img.image(), meta.layerCount, 1U, mip - 1, aspects, {vIL::eTransferSrcOptimal, vIL::eShaderReadOnlyOptimal}, meta.access,
+							   meta.stages);
+			if (extent.x > 1) { extent.x /= 2; }
+			if (extent.y > 1) { extent.y /= 2; }
+		}
+		cb.transitionImage(out_img.image(), meta.layerCount, 1U, mip - 1U, aspects, {vIL::eTransferDstOptimal, vIL::eShaderReadOnlyOptimal}, meta.access,
+						   meta.stages);
+		if (out_img.m_storage.view) {
+			m_device->defer([iv = out_img.m_storage.view, d = m_device]() mutable { d->destroy(iv); });
+			out_img.m_storage.view = m_device->makeImageView(out_img.image(), out_img.viewFormat(), aspects, out_img.viewType(), out_img.mipCount());
+		}
+		return true;
+	}
+	return false;
 }
 
 void VRAM::waitIdle() {

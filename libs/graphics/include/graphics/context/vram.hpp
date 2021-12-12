@@ -34,6 +34,7 @@ class VRAM final : public Memory {
 	bool blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
+	bool genMipMaps(CommandBuffer cb, Image& out_img, vk::ImageAspectFlags aspects = vIAFB::eColor);
 
 	template <typename Cont>
 	void wait(Cont const& futures) const;
@@ -45,10 +46,13 @@ class VRAM final : public Memory {
 	not_null<Device*> m_device;
 
   private:
+	template <typename T>
+	struct ImageCopier;
+
 	Transfer m_transfer;
 	struct {
 		vk::PipelineStageFlags stages = vk::PipelineStageFlagBits::eBottomOfPipe;
-		vk::AccessFlags access;
+		vk::AccessFlags access = vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite;
 	} m_post;
 };
 

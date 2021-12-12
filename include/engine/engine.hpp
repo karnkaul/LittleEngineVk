@@ -88,7 +88,7 @@ class Engine {
 	bool closing() const;
 
 	scene::Space m_space;
-	io::Path m_configPath = "config.json";
+	io::Path m_configPath = "levk_config.json";
 
   private:
 	void updateStats();

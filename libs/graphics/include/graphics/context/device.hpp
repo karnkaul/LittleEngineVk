@@ -48,7 +48,7 @@ class Device final : public Pinned {
 
 	vk::CommandPool makeCommandPool(vk::CommandPoolCreateFlags flags, QType qtype) const;
 	vk::ImageView makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
-								vk::ImageViewType type = vk::ImageViewType::e2D) const;
+								vk::ImageViewType type = vk::ImageViewType::e2D, u32 mipLevels = 1U) const;
 
 	vk::PipelineCache makePipelineCache() const;
 	vk::PipelineLayout makePipelineLayout(vAP<vk::PushConstantRange> pushConstants, vAP<vk::DescriptorSetLayout> setLayouts) const;

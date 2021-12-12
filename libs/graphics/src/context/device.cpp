@@ -323,7 +323,7 @@ vk::CommandPool Device::makeCommandPool(vk::CommandPoolCreateFlags flags, QType 
 	return m_device->createCommandPool(info);
 }
 
-vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
+vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type, u32 mipLevels) const {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
 	createInfo.viewType = type;
@@ -331,7 +331,7 @@ vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::Imag
 	createInfo.components.r = createInfo.components.g = createInfo.components.b = createInfo.components.a = vk::ComponentSwizzle::eIdentity;
 	createInfo.subresourceRange.aspectMask = aspectFlags;
 	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = 1;
+	createInfo.subresourceRange.levelCount = mipLevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = type == vk::ImageViewType::eCube ? 6 : 1;
 	return m_device->createImageView(createInfo);

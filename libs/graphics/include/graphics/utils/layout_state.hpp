@@ -35,7 +35,7 @@ struct LayoutStages {
 class LayoutState {
   public:
 	vk::ImageLayout get(vk::Image img) const;
-	void transition(CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls);
+	void transition(CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls, u32 layers = 1U, u32 mips = 1U);
 	void clear() { ktl::tlock(m_map)->clear(); }
 
 	void presented(vk::Image image) { force(image, vk::ImageLayout::ePresentSrcKHR); }

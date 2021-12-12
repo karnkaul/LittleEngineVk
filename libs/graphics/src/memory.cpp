@@ -74,20 +74,13 @@ Memory::~Memory() {
 }
 
 void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size) {
-	vk::CommandBufferBeginInfo beginInfo;
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	cb.begin(beginInfo);
 	vk::BufferCopy copyRegion;
 	copyRegion.size = size;
 	cb.copyBuffer(src, dst, copyRegion);
-	cb.end();
 }
 
 void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta) {
 	using vkstg = vk::PipelineStageFlagBits;
-	vk::CommandBufferBeginInfo beginInfo;
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	cb.begin(beginInfo);
 	ImgMeta first = meta, second = meta;
 	first.layouts.second = vk::ImageLayout::eTransferDstOptimal;
 	first.access.second = second.access.first = vk::AccessFlagBits::eTransferWrite;
@@ -97,7 +90,6 @@ void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::B
 	imageBarrier(cb, dst, first);
 	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);
 	imageBarrier(cb, dst, second);
-	cb.end();
 }
 
 void Memory::copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects) {
@@ -138,15 +130,15 @@ void Memory::imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& 
 	cb.pipelineBarrier(meta.stages.first, meta.stages.second, {}, {}, {}, barrier);
 }
 
-vk::BufferImageCopy Memory::bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx, u32 layerCount) {
+vk::BufferImageCopy Memory::bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx) {
 	vk::BufferImageCopy ret;
 	ret.bufferOffset = offset;
 	ret.bufferRowLength = 0;
 	ret.bufferImageHeight = 0;
 	ret.imageSubresource.aspectMask = aspects;
-	ret.imageSubresource.mipLevel = 0;
+	ret.imageSubresource.mipLevel = 0U;
 	ret.imageSubresource.baseArrayLayer = layerIdx;
-	ret.imageSubresource.layerCount = layerCount;
+	ret.imageSubresource.layerCount = 1U;
 	ret.imageOffset = vk::Offset3D(0, 0, 0);
 	ret.imageExtent = extent;
 	return ret;
@@ -250,13 +242,17 @@ Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::Im
 	return ret;
 }
 
-Image::CreateInfo Image::textureInfo(Extent2D extent, vk::Format format, bool cubemap) noexcept {
+Image::CreateInfo Image::textureInfo(Extent2D extent, vk::Format format, bool mips) noexcept {
 	auto ret = info(extent, Texture::usage_v, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format);
-	if (cubemap) {
-		ret.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
-		ret.createInfo.arrayLayers = 6U;
-		ret.view.type = vk::ImageViewType::eCube;
-	}
+	ret.mipMaps = mips;
+	return ret;
+}
+
+Image::CreateInfo Image::cubemapInfo(Extent2D extent, vk::Format format) noexcept {
+	auto ret = info(extent, Texture::usage_v, vk::ImageAspectFlagBits::eColor, VMA_MEMORY_USAGE_GPU_ONLY, format);
+	ret.createInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+	ret.createInfo.arrayLayers = 6U;
+	ret.view.type = vk::ImageViewType::eCube;
 	return ret;
 }
 
@@ -266,6 +262,8 @@ Image::CreateInfo Image::storageInfo(Extent2D extent, vk::Format format) noexcep
 	return ret;
 }
 
+u32 Image::mipLevels(Extent2D extent) noexcept { return static_cast<u32>(std::floor(std::log2(std::max(extent.x, extent.y)))) + 1U; }
+
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& d = *memory->m_device;
 	vk::ImageCreateInfo imageInfo = info.createInfo;
@@ -273,6 +271,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 	imageInfo.sharingMode = info.share(d, info.queueFlags);
 	imageInfo.queueFamilyIndexCount = (u32)indices.size();
 	imageInfo.pQueueFamilyIndices = indices.data();
+	imageInfo.mipLevels = info.mipMaps ? mipLevels(cast(info.createInfo.extent)) : 1U;
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = info.vmaUsage;
 	allocInfo.preferredFlags = static_cast<VkMemoryPropertyFlags>(info.preferred);
@@ -286,6 +285,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 	m_storage.usage = info.createInfo.usage;
 	m_storage.imageFormat = info.createInfo.format;
 	m_storage.vmaUsage = info.vmaUsage;
+	m_storage.mipCount = imageInfo.mipLevels;
 	auto const blitCaps = memory->m_device->physicalDevice().blitCaps(info.createInfo.format);
 	m_storage.blitFlags = info.createInfo.tiling == vk::ImageTiling::eLinear ? blitCaps.linear : blitCaps.optimal;
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
@@ -297,8 +297,9 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 	m_storage.allocation.mode = imageInfo.sharingMode;
 	memory->m_allocations[allocation_type_v].fetch_add(m_storage.allocatedSize);
 	if (info.view.aspects != vk::ImageAspectFlags() && info.view.format != vk::Format()) {
-		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type);
+		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type, info.createInfo.mipLevels);
 		m_storage.viewFormat = info.view.format;
+		m_storage.viewType = info.view.type;
 	}
 }
 

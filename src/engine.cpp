@@ -250,7 +250,13 @@ void Engine::saveConfig() const {
 void Engine::addDefaultAssets() {
 	static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
 	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
-	auto sampler = store().add("samplers/default", graphics::Sampler{&gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+	auto sampler = store().add("samplers/default", graphics::Sampler(&gfx().boot.device, {vk::Filter::eLinear, vk::Filter::eLinear}));
+	{
+		auto si = graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
+		si.mipmapMode = vk::SamplerMipmapMode::eLinear;
+		si.addressModeU = si.addressModeV = si.addressModeW = vk::SamplerAddressMode::eClampToEdge;
+		store().add("samplers/font", graphics::Sampler{&gfx().boot.device, si});
+	}
 	/*Textures*/ {
 		using Tex = graphics::Texture;
 		auto v = &gfx().boot.vram;

@@ -61,7 +61,7 @@ class Memory : public Pinned {
 	static void copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects);
 	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter);
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
-	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx, u32 layerCount);
+	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx);
 
 	not_null<Device*> m_device;
 
@@ -133,8 +133,10 @@ class Image {
 	static constexpr vk::Format linear_v = vk::Format::eR8G8B8A8Unorm;
 
 	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format) noexcept;
-	static CreateInfo textureInfo(Extent2D extent, vk::Format format = srgb_v, bool cubemap = false) noexcept;
+	static CreateInfo textureInfo(Extent2D extent, vk::Format format = srgb_v, bool mips = true) noexcept;
+	static CreateInfo cubemapInfo(Extent2D extent, vk::Format format = srgb_v) noexcept;
 	static CreateInfo storageInfo(Extent2D extent, vk::Format format = linear_v) noexcept;
+	static u32 mipLevels(Extent2D extent) noexcept;
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
 	Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format, vk::ImageUsageFlags usage);
@@ -144,9 +146,11 @@ class Image {
 
 	vk::Image image() const noexcept { return m_storage.image; }
 	vk::ImageView view() const noexcept { return m_storage.view; }
+	vk::ImageViewType viewType() const noexcept { return m_storage.viewType; }
 	vk::Format imageFormat() const noexcept { return m_storage.imageFormat; }
 	vk::Format viewFormat() const noexcept { return m_storage.viewFormat; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
+	u32 mipCount() const noexcept { return m_storage.mipCount; }
 	BlitFlags blitFlags() const noexcept { return m_storage.blitFlags; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
 	Extent2D extent2D() const noexcept { return cast(extent()); }
@@ -164,6 +168,7 @@ class Image {
 		Allocation allocation;
 		vk::Image image;
 		vk::ImageView view;
+		vk::ImageViewType viewType{};
 		void* data{};
 		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
@@ -171,7 +176,8 @@ class Image {
 		VmaMemoryUsage vmaUsage{};
 		vk::Format imageFormat{};
 		vk::Format viewFormat{};
-		u32 layerCount = 1;
+		u32 layerCount = 1U;
+		u32 mipCount = 1U;
 		BlitFlags blitFlags;
 	};
 	Storage m_storage;
@@ -200,6 +206,7 @@ struct Image::CreateInfo final : AllocationInfo {
 		vk::ImageAspectFlags aspects;
 		vk::ImageViewType type = vk::ImageViewType::e2D;
 	} view;
+	bool mipMaps = false;
 };
 
 // impl

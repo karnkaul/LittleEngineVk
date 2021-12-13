@@ -392,25 +392,6 @@ utils::DualTransition::~DualTransition() {
 	m_b(m_layouts.second, m_stages);
 }
 
-std::vector<Queues::Info> utils::queueInfos(PhysicalDevice const& device, vk::SurfaceKHR surface) {
-	using vQFB = vk::QueueFlagBits;
-	std::vector<Queues::Info> ret;
-	u32 family = 0;
-	for (vk::QueueFamilyProperties const& props : device.queueFamilies) {
-		Queues::Info info;
-		using QFlag = Queues::QFlag;
-		using QFlags = Queues::QFlags;
-		info.family = family;
-		if (props.queueFlags & vQFB::eTransfer) { info.flags.set(QFlag::eTransfer); }
-		if (props.queueFlags & vQFB::eGraphics) { info.flags.set(QFlags(QFlag::eGraphics) | QFlag::eTransfer); }
-		if (props.queueFlags & vQFB::eCompute) { info.flags.set(QFlags(QFlag::eCompute) | QFlag::eTransfer); }
-		if (device.device.getSurfaceSupportKHR(family, surface)) { info.flags.set(QFlag::ePresent); }
-		ret.push_back(info);
-		++family;
-	}
-	return ret;
-}
-
 bool utils::blit(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter) {
 	EXPECT(src.layerCount() == 1U && out_dst.layerCount() == 1U);
 	EXPECT(canBlit(src, out_dst));

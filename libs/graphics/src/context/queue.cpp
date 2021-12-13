@@ -32,6 +32,25 @@ vk::Result Queue::submit(vAP<vk::SubmitInfo> infos, vk::Fence signal) const {
 	return vk::Result::eErrorDeviceLost;
 }
 
+bool Queues::setup(vk::Device device, Select const& select) {
+	EXPECT(!select.info.empty());
+	if (select.info.empty()) { return false; }
+	auto const& primary = select.info.front().qcaps.test(QType::eGraphics) ? select.info.front() : select.info.back();
+	EXPECT(primary.qcaps.test(QType::eGraphics));
+	if (!primary.qcaps.test(QType::eGraphics)) { return false; }
+	m_primary.setup(device.getQueue(primary.family, 0U), primary.family, primary.qcaps);
+	if (select.info.size() > 1U) {
+		auto const& secondary = primary.family == select.info.front().family ? select.info.back() : select.info.front();
+		EXPECT(secondary.family != primary.family);
+		m_secondary.setup(device.getQueue(secondary.family, 0U), secondary.family, secondary.qcaps);
+		logI(LC_LibUser, "[{}] Multiplexing [2] Vulkan queue families [{}, {}] for [Graphics, Compute]", g_name, primary.family, secondary.family);
+		return true;
+	}
+	std::string_view const types = primary.qcaps.test(QType::eCompute) ? "Graphics/Compute" : "Graphics";
+	logI(LC_LibUser, "[{}] Multiplexing [1] Vulkan queue family [{}] for [{}]", g_name, primary.family, types);
+	return true;
+}
+
 bool Queues::hasCompute() const noexcept { return m_primary.capabilities().test(QType::eCompute) || m_secondary.capabilities().test(QType::eCompute); }
 
 Queue const* Queues::compute() const noexcept {
@@ -40,42 +59,35 @@ Queue const* Queues::compute() const noexcept {
 	return {};
 }
 
-ktl::fixed_vector<vk::DeviceQueueCreateInfo, 2> Queues::Selector::select(Span<Info const> infos) {
+Queues::Select Queues::select(PhysicalDevice const& device, vk::SurfaceKHR surface) {
+	using vQFB = vk::QueueFlagBits;
+	Select ret;
+	u32 family{};
 	static f32 const priority = 1.0f;
-	ktl::fixed_vector<vk::DeviceQueueCreateInfo, 2> ret;
-	auto const gpt = QFlags(QFlag::eGraphics) | QFlag::eTransfer | QFlag::ePresent;
-	for (Info const& info : infos) {
-		if (info.flags.all(gpt)) {
-			ret.push_back(vk::DeviceQueueCreateInfo({}, info.family, 1U, &priority));
-			m_primary.family = info.family;
-			m_primary.qcaps = QType::eGraphics;
-			if (info.flags.test(QFlag::eCompute)) { m_primary.qcaps.set(QType::eCompute); }
-			break;
-		}
-	}
-	EXPECT(m_primary.qcaps.test(QType::eGraphics));
-	if (!m_primary.qcaps.test(QType::eCompute)) {
-		for (Info const& info : infos) {
-			if (info.flags.all(QFlag::eCompute)) {
-				ret.push_back(vk::DeviceQueueCreateInfo({}, info.family, 1U, &priority));
-				m_secondary.family = info.family;
-				m_secondary.qcaps = QType::eCompute;
-				break;
+	bool gptFound = false;
+	for (vk::QueueFamilyProperties const& props : device.queueFamilies) {
+		bool const presentable = device.surfaceSupport(family, surface);
+		if ((ret.info.empty() || !ret.info.front().qcaps.test(QType::eGraphics)) && props.queueFlags & vQFB::eGraphics && presentable) {
+			QCaps caps = QType::eGraphics;
+			gptFound = true;
+			if (props.queueFlags & vQFB::eCompute) {
+				caps |= QType::eCompute;
+				ret.info.push_back({family, caps});
+				ret.dqci.push_back(vk::DeviceQueueCreateInfo({}, family, 1U, &priority));
+				return ret;
 			}
+			ret.info.push_back({family, caps});
+			ret.dqci.push_back(vk::DeviceQueueCreateInfo({}, family, 1U, &priority));
 		}
+		if ((ret.info.empty() || !ret.info.front().qcaps.test(QType::eCompute)) && props.queueFlags & vQFB::eCompute) {
+			QCaps caps = QType::eCompute;
+			ret.info.push_back({family, caps});
+			ret.dqci.push_back(vk::DeviceQueueCreateInfo({}, family, 1U, &priority));
+			return ret;
+		}
+		++family;
 	}
+	EXPECT(gptFound);
 	return ret;
-}
-
-void Queues::Selector::setup(vk::Device device) {
-	EXPECT(m_primary.qcaps.any());
-	m_queues.m_primary.setup(device.getQueue(m_primary.family, 0U), m_primary.family, m_primary.qcaps);
-	if (m_secondary.qcaps.any()) {
-		m_queues.m_secondary.setup(device.getQueue(m_secondary.family, 0U), m_secondary.family, m_secondary.qcaps);
-		logI(LC_LibUser, "[{}] Multiplexing [2] Vulkan queue families [{}, {}] for [Graphics, Compute]", g_name, m_primary.family, m_secondary.family);
-	} else {
-		std::string_view const types = m_primary.qcaps.test(QType::eCompute) ? "Graphics/Compute" : "Graphics";
-		logI(LC_LibUser, "[{}] Multiplexing [1] Vulkan queue family [{}] for [{}]", g_name, m_primary.family, types);
-	}
 }
 } // namespace le::graphics

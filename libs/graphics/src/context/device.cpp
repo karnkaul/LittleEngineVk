@@ -201,25 +201,25 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 	m_metadata.limits = picked.properties.limits;
 	m_metadata.lineWidth.first = picked.properties.limits.lineWidthRange[0U];
 	m_metadata.lineWidth.second = picked.properties.limits.lineWidthRange[1U];
-	Queues::Selector queueSelector(m_queues);
-	auto qci = queueSelector.select(utils::queueInfos(picked, surface));
+	m_metadata.anisotropy = picked.properties.limits.maxSamplerAnisotropy;
+	auto const queueSelect = Queues::select(picked, surface);
 	vk::PhysicalDeviceFeatures deviceFeatures;
 	deviceFeatures.fillModeNonSolid = picked.features.fillModeNonSolid;
 	deviceFeatures.wideLines = picked.features.wideLines;
+	deviceFeatures.samplerAnisotropy = picked.features.samplerAnisotropy;
 	vk::DeviceCreateInfo deviceCreateInfo;
-	deviceCreateInfo.queueCreateInfoCount = (u32)qci.size();
-	deviceCreateInfo.pQueueCreateInfos = qci.data();
+	deviceCreateInfo.queueCreateInfoCount = (u32)queueSelect.dqci.size();
+	deviceCreateInfo.pQueueCreateInfos = queueSelect.dqci.data();
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 	deviceCreateInfo.enabledLayerCount = (u32)instance.layers.size();
 	deviceCreateInfo.ppEnabledLayerNames = instance.layers.data();
 	deviceCreateInfo.enabledExtensionCount = (u32)m_metadata.extensions.size();
 	deviceCreateInfo.ppEnabledExtensionNames = m_metadata.extensions.data();
 	m_device = picked.device.createDeviceUnique(deviceCreateInfo);
-	queueSelector.setup(*m_device);
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(*m_device);
-	if (!valid(surface)) {
+	if (!valid(surface) || !m_queues.setup(*m_device, queueSelect)) {
 		m_instance->destroy(surface);
-		throw std::runtime_error("Invalid Vulkan surface");
+		throw valid(surface) ? std::runtime_error("Failed to setup Vulkan queues") : std::runtime_error("Invalid Vulkan surface");
 	}
 	logI(LC_LibUser, "[{}] Vulkan device constructed, using GPU {}", g_name, picked.toString());
 	g_validationLevel = validationLevel;
@@ -231,7 +231,7 @@ Device::~Device() {
 	logI(LC_LibUser, "[{}] Vulkan device destroyed", g_name);
 }
 
-bool Device::valid(vk::SurfaceKHR surface) const { return physicalDevice().surfaceSupport(m_queues.primary().family(), surface); }
+bool Device::valid(vk::SurfaceKHR surface) const { return physicalDevice().surfaceSupport(m_queues.graphics().family(), surface); }
 
 void Device::waitIdle() {
 	m_device->waitIdle();

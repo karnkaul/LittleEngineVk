@@ -10,7 +10,8 @@ CommandRotator::Pool::Cmd CommandRotator::Pool::Cmd::make(Device* device, vk::Co
 }
 
 CommandRotator::Pool::Pool(not_null<Device*> device, QType qtype, std::size_t batch) : m_device(device), m_batch((u32)batch) {
-	auto const& queue = qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().primary();
+	EXPECT(qtype == QType::eGraphics || m_device->queues().hasCompute());
+	auto const& queue = qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().graphics();
 	m_pool = {m_device, queue.makeCommandPool(m_device->device(), pool_flags_v)};
 }
 

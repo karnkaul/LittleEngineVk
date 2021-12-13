@@ -100,7 +100,7 @@ void RenderPass::beginPass() {
 Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device, bool secondary) {
 	Cmd ret;
 	auto const level = secondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
-	ret.pool = {device, device->queues().primary().makeCommandPool(device->device(), vk::CommandPoolCreateFlagBits::eTransient)};
+	ret.pool = {device, device->queues().graphics().makeCommandPool(device->device(), vk::CommandPoolCreateFlagBits::eTransient)};
 	ret.cb = CommandBuffer(*device, ret.pool, level);
 	return ret;
 }

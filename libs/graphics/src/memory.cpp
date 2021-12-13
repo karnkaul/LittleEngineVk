@@ -37,7 +37,7 @@ constexpr bool canMip(BlitCaps bc, vk::ImageTiling tiling) noexcept {
 }
 
 vk::SharingMode sharingMode(Queues const& queues, QCaps const caps) {
-	if (caps.all(QCaps(QType::eCompute, QType::eGraphics)) && queues.compute() != &queues.primary()) { return vk::SharingMode::eConcurrent; }
+	if (caps.all(QCaps(QType::eCompute, QType::eGraphics)) && queues.compute() != &queues.graphics()) { return vk::SharingMode::eConcurrent; }
 	return vk::SharingMode::eExclusive;
 }
 } // namespace

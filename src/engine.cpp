@@ -253,9 +253,15 @@ void Engine::addDefaultAssets() {
 	auto sampler = store().add("samplers/default", graphics::Sampler(&gfx().boot.device, {vk::Filter::eLinear, vk::Filter::eLinear}));
 	{
 		auto si = graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
+		si.maxLod = 0.0f;
+		store().add("samplers/no_mip_maps", graphics::Sampler(&gfx().boot.device, si));
+	}
+	{
+		auto si = graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
 		si.mipmapMode = vk::SamplerMipmapMode::eLinear;
-		si.addressModeU = si.addressModeV = si.addressModeW = vk::SamplerAddressMode::eClampToEdge;
-		store().add("samplers/font", graphics::Sampler{&gfx().boot.device, si});
+		si.addressModeU = si.addressModeV = si.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+		si.borderColor = vk::BorderColor::eIntOpaqueBlack;
+		store().add("samplers/font", graphics::Sampler(&gfx().boot.device, si));
 	}
 	/*Textures*/ {
 		using Tex = graphics::Texture;

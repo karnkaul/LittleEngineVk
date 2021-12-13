@@ -12,7 +12,7 @@ class Sampler {
 	using MinMag = TPair<vk::Filter>;
 	static vk::SamplerCreateInfo info(MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
 
-	Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info);
+	Sampler(not_null<Device*> device, vk::SamplerCreateInfo info);
 	Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip = vk::SamplerMipmapMode::eLinear);
 
 	vk::Sampler sampler() const noexcept { return m_sampler; }

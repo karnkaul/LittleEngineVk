@@ -6,6 +6,8 @@
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
+struct PhysicalDevice;
+
 class Queue : public Pinned {
   public:
 	void setup(vk::Queue queue, u32 family, QCaps qcaps);
@@ -33,11 +35,17 @@ class Queues : public Pinned {
 	using QFlags = ktl::enum_flags<QFlag, u8>;
 
 	struct Info;
-	class Selector;
+	struct Select;
 
-	bool hasCompute() const noexcept;
+	static Select select(PhysicalDevice const& device, vk::SurfaceKHR surface);
+	bool setup(vk::Device device, Select const& select);
+
 	Queue const& primary() const noexcept { return m_primary; }
 	Queue const& secondary() const noexcept { return m_secondary; }
+
+	bool hasCompute() const noexcept;
+	Queue const& graphics() const noexcept { return primary(); }
+	Queue const& transfer() const noexcept { return primary(); }
 	Queue const* compute() const noexcept;
 
   private:
@@ -47,24 +55,11 @@ class Queues : public Pinned {
 
 struct Queues::Info {
 	u32 family = 0;
-	QFlags flags;
+	QCaps qcaps;
 };
 
-class Queues::Selector {
-  public:
-	Selector(Queues& queues) noexcept : m_queues(queues) {}
-
-	ktl::fixed_vector<vk::DeviceQueueCreateInfo, 2> select(Span<Info const> infos);
-	void setup(vk::Device device);
-
-  private:
-	struct Select {
-		u32 family{};
-		QCaps qcaps;
-	};
-
-	Queues& m_queues;
-	Select m_primary;
-	Select m_secondary;
+struct Queues::Select {
+	ktl::fixed_vector<vk::DeviceQueueCreateInfo, 2> dqci;
+	ktl::fixed_vector<Info, 2> info;
 };
 } // namespace le::graphics

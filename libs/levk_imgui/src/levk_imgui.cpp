@@ -122,7 +122,7 @@ DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window con
 	ImGui::GetStyle().WindowRounding = 0.0f;
 	ImGui_ImplGlfw_InitForVulkan(glfwPtr(*window), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
-	auto const& queue = m_device->queues().primary();
+	auto const& queue = m_device->queues().graphics();
 	m_pool = {m_device, makePool(*m_device, (u32)descriptorCount)};
 	initInfo.Instance = m_device->instance();
 	initInfo.Device = m_device->device();

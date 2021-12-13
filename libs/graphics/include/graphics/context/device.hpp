@@ -80,6 +80,7 @@ class Device final : public Pinned {
 	vk::Instance instance() const noexcept { return *m_instance; }
 	vk::Device device() const noexcept { return *m_device; }
 	TPair<f32> lineWidthLimit() const noexcept { return m_metadata.lineWidth; }
+	f32 maxAnisotropy() const noexcept { return m_metadata.anisotropy; }
 
 	LayoutState m_layouts;
 
@@ -99,7 +100,8 @@ class Device final : public Pinned {
 		std::vector<char const*> extensions;
 		ktl::fixed_vector<PhysicalDevice, 8> available;
 		vk::PhysicalDeviceLimits limits;
-		TPair<f32> lineWidth;
+		TPair<f32> lineWidth{};
+		f32 anisotropy{};
 	} m_metadata;
 };
 

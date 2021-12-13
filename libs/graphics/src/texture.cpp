@@ -41,10 +41,22 @@ vk::SamplerCreateInfo Sampler::info(MinMag minMag, vk::SamplerMipmapMode mip) {
 	ret.mipLodBias = 0.0f;
 	ret.minLod = 0.0f;
 	ret.maxLod = VK_LOD_CLAMP_NONE;
+	ret.anisotropyEnable = true;
 	return ret;
 }
 
-Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo const& info) : m_device(device) { m_sampler = makeDeferred<vk::Sampler>(device, info); }
+Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo info) : m_device(device) {
+	info.anisotropyEnable &= device->physicalDevice().features.samplerAnisotropy;
+	if (info.anisotropyEnable) {
+		if (info.maxAnisotropy == 0.0f) {
+			info.maxAnisotropy = device->maxAnisotropy();
+		} else {
+			info.maxAnisotropy = std::min(info.maxAnisotropy, device->maxAnisotropy());
+		}
+	}
+	m_sampler = {device, device->makeSampler(info)};
+}
+
 Sampler::Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip) : Sampler(device, info(minMag, mip)) {}
 
 Cubemap Texture::unitCubemap(Colour colour) {

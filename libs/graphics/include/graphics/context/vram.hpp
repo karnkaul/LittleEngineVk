@@ -27,14 +27,13 @@ class VRAM final : public Memory {
 	template <typename T>
 	Buffer makeBO(T const& t, vk::BufferUsageFlags usage);
 
-	[[nodiscard]] Future copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size = 0);
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
-	[[nodiscard]] Future copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
-	[[nodiscard]] Future copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+	[[nodiscard]] Future copyAsync(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+	[[nodiscard]] Future copyAsync(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+
 	bool blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
-	bool genMipMaps(CommandBuffer cb, Image& out_img, vk::ImageAspectFlags aspects = vIAFB::eColor);
 
 	template <typename Cont>
 	void wait(Cont const& futures) const;

@@ -38,16 +38,18 @@ struct VRAM::ImageCopier {
 	VRAM& vram;
 	mutable Transfer::Promise pr;
 	TPair<std::size_t> layerImageSize;
-	vk::Extent3D extent;
 	vk::Image image;
-	u32 layerCount;
-	vk::ImageAspectFlags aspects;
+	vk::Extent3D extent;
 	LayoutPair fromTo;
+	u32 layerCount = 1U;
+	u32 mipCount = 1U;
+	vk::ImageAspectFlags aspects = vIAFB::eColor;
 
 	ImageCopier(VRAM& vram, Imgs&& imgs, Transfer::Promise&& pr, Image const& img, vk::ImageAspectFlags aspects, LayoutPair fromTo)
-		: imgs(std::move(imgs)), vram(vram), pr(std::move(pr)), aspects(aspects), fromTo(fromTo) {
+		: imgs(std::move(imgs)), vram(vram), pr(std::move(pr)), fromTo(fromTo), aspects(aspects) {
 		image = img.image();
 		layerCount = img.layerCount();
+		mipCount = img.mipCount();
 		extent = img.extent();
 		layerImageSize = getLayerImageSize(this->imgs);
 	}
@@ -70,8 +72,60 @@ struct VRAM::ImageCopier {
 		meta.access.second = vram.m_post.access;
 		meta.layerCount = layerCount;
 		copy(stage.command, stage.buffer->buffer(), image, copyRegions, meta);
+		if (mipCount > 1U) { makeMipMaps(stage.command); }
 		vram.m_transfer.addStage(std::move(stage), std::move(pr));
 		vram.m_device->m_layouts.force(image, meta.layouts.second);
+	}
+
+	void transition(vk::CommandBuffer cb, vk::Image image, u32 lc, u32 mc, u32 fm, vk::ImageAspectFlags as, LayoutPair tr, AccessPair ac, StagePair st) const {
+		vk::ImageMemoryBarrier barrier;
+		barrier.oldLayout = tr.first;
+		barrier.newLayout = tr.second;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image;
+		barrier.subresourceRange.aspectMask = as;
+		barrier.subresourceRange.baseMipLevel = fm;
+		barrier.subresourceRange.levelCount = mc;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = lc;
+		barrier.srcAccessMask = ac.first;
+		barrier.dstAccessMask = ac.second;
+		cb.pipelineBarrier(st.first, st.second, {}, {}, {}, barrier);
+	}
+
+	void makeMipMaps(vk::CommandBuffer cb) const {
+		AccessPair access;
+		StagePair stages = {vPSFB::eTopOfPipe, vPSFB::eBottomOfPipe};
+		transition(cb, image, layerCount, 1U, 0, aspects, {fromTo.first, vIL::eTransferDstOptimal}, {}, stages);
+		transition(cb, image, layerCount, mipCount - 1U, 1U, aspects, {vIL::eUndefined, vIL::eTransferDstOptimal}, {}, stages);
+		vk::Extent3D mipExtent = extent;
+		u32 mip = 1;
+		for (; mip < mipCount; ++mip) {
+			access = {vAFB::eTransferWrite, vAFB::eTransferRead};
+			stages = {vPSFB::eTransfer, vPSFB::eTransfer};
+			vk::Extent3D nextMipExtent = vk::Extent3D(std::max(mipExtent.width / 2, 1U), std::max(mipExtent.height / 2, 1U), 1U);
+			transition(cb, image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal}, access, stages);
+			vk::ImageBlit region{};
+			region.srcOffsets[0] = vk::Offset3D{0, 0, 0};
+			region.srcOffsets[1] = vk::Offset3D{int(mipExtent.width), int(mipExtent.height), 1};
+			region.srcSubresource.aspectMask = aspects;
+			region.srcSubresource.mipLevel = mip - 1;
+			region.srcSubresource.baseArrayLayer = 0;
+			region.srcSubresource.layerCount = layerCount;
+			region.dstOffsets[0] = vk::Offset3D{0, 0, 0};
+			region.dstOffsets[1] = vk::Offset3D{int(nextMipExtent.width), int(nextMipExtent.height), 1U};
+			region.dstSubresource.aspectMask = aspects;
+			region.dstSubresource.mipLevel = mip;
+			region.dstSubresource.baseArrayLayer = 0;
+			region.dstSubresource.layerCount = layerCount;
+			cb.blitImage(image, vIL::eTransferSrcOptimal, image, vIL::eTransferDstOptimal, region, vk::Filter::eLinear);
+			access = {vAFB::eTransferWrite, vAFB::eShaderRead};
+			stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
+			transition(cb, image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferSrcOptimal, fromTo.second}, access, stages);
+			mipExtent = nextMipExtent;
+		}
+		transition(cb, image, layerCount, 1U, mip - 1U, aspects, {vIL::eTransferDstOptimal, fromTo.second}, access, stages);
 	}
 };
 
@@ -96,33 +150,6 @@ Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool ho
 	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
 	return Buffer(this, bufferInfo);
-}
-
-VRAM::Future VRAM::copy(Buffer const& src, Buffer& out_dst, vk::DeviceSize size) {
-	if (size == 0) { size = src.writeSize(); }
-	[[maybe_unused]] auto const& sq = src.m_storage.allocation.queueFlags;
-	[[maybe_unused]] auto const& dq = out_dst.m_storage.allocation.queueFlags;
-	[[maybe_unused]] bool const ready = sq.test(QFlag::eTransfer) && dq.test(QFlag::eTransfer);
-	ENSURE(ready, "Transfer flag not set!");
-	bool const bSizes = out_dst.writeSize() >= size;
-	ENSURE(bSizes, "Invalid buffer sizes!");
-	if (!ready) {
-		logE(LC_LibUser, "[{}] Source/destination buffers missing QType::eTransfer!", g_name);
-		return {};
-	}
-	if (!bSizes) {
-		logE(LC_LibUser, "[{}] Source buffer is larger than destination buffer!", g_name);
-		return {};
-	}
-	Transfer::Promise promise;
-	auto ret = promise.get_future();
-	auto f = [p = std::move(promise), s = src.buffer(), d = out_dst.buffer(), size, this]() mutable {
-		auto stage = m_transfer.newStage(size);
-		copy(stage.command, s, d, size);
-		m_transfer.addStage(std::move(stage), std::move(p));
-	};
-	m_transfer.m_queue.push(std::move(f));
-	return ret;
 }
 
 VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size) {
@@ -151,7 +178,7 @@ VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::Device
 	return ret;
 }
 
-VRAM::Future VRAM::copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+VRAM::Future VRAM::copyAsync(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;
@@ -167,7 +194,7 @@ VRAM::Future VRAM::copy(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair 
 	return ret;
 }
 
-VRAM::Future VRAM::copy(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+VRAM::Future VRAM::copyAsync(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
 	ENSURE((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlagBits::eTransferDst, "Transfer bit not set");
 	ENSURE(m_device->m_layouts.get(out_dst.image()) == fromTo.first, "Mismatched image layouts");
 	Transfer::Promise promise;
@@ -200,54 +227,6 @@ bool VRAM::copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAsp
 	EXPECT(src.extent() == out_dst.extent());
 	copy(cb.m_cb, {src.image(), out_dst.image()}, src.extent(), aspects);
 	return true;
-}
-
-bool VRAM::genMipMaps(CommandBuffer cb, Image& out_img, vk::ImageAspectFlags aspects) {
-	if (out_img.m_storage.mipCount > 1U && out_img.m_storage.view && out_img.m_storage.allocatedSize > 0U) {
-		cb.transitionImage(out_img.image(), out_img.layerCount(), 1U, 0, aspects, {vIL::eShaderReadOnlyOptimal, vIL::eTransferDstOptimal}, {},
-						   {vPSFB::eTopOfPipe, vPSFB::eBottomOfPipe});
-		cb.transitionImage(out_img.image(), out_img.layerCount(), out_img.mipCount() - 1U, 1U, aspects, {vIL::eUndefined, vIL::eTransferDstOptimal}, {},
-						   {vPSFB::eTopOfPipe, vPSFB::eBottomOfPipe});
-		ImgMeta meta;
-		meta.layerCount = out_img.layerCount();
-		meta.aspects = aspects;
-		meta.access = {vAFB::eTransferWrite, vAFB::eTransferRead};
-		meta.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
-		Extent2D extent = out_img.extent2D();
-		u32 mip = 1;
-		for (; mip < out_img.m_storage.mipCount; ++mip) {
-			cb.transitionImage(out_img.image(), meta.layerCount, 1U, mip - 1, aspects, {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal}, meta.access,
-							   meta.stages);
-			vk::ImageBlit region{};
-			region.srcOffsets[0] = vk::Offset3D{0, 0, 0};
-			region.srcOffsets[1] = vk::Offset3D{int(extent.x), int(extent.y), 1};
-			region.srcSubresource.aspectMask = aspects;
-			region.srcSubresource.mipLevel = mip - 1;
-			region.srcSubresource.baseArrayLayer = 0;
-			region.srcSubresource.layerCount = out_img.layerCount();
-			region.dstOffsets[0] = vk::Offset3D{0, 0, 0};
-			region.dstOffsets[1] = vk::Offset3D{extent.x > 1 ? int(extent.x / 2) : 1, extent.y > 1 ? int(extent.y / 2) : 1, 1};
-			region.dstSubresource.aspectMask = aspects;
-			region.dstSubresource.mipLevel = mip;
-			region.dstSubresource.baseArrayLayer = 0;
-			region.dstSubresource.layerCount = out_img.layerCount();
-			cb.m_cb.blitImage(out_img.image(), vIL::eTransferSrcOptimal, out_img.image(), vIL::eTransferDstOptimal, region, vk::Filter::eLinear);
-			meta.access = {vAFB::eTransferWrite, vAFB::eShaderRead};
-			meta.stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
-			cb.transitionImage(out_img.image(), meta.layerCount, 1U, mip - 1, aspects, {vIL::eTransferSrcOptimal, vIL::eShaderReadOnlyOptimal}, meta.access,
-							   meta.stages);
-			if (extent.x > 1) { extent.x /= 2; }
-			if (extent.y > 1) { extent.y /= 2; }
-		}
-		cb.transitionImage(out_img.image(), meta.layerCount, 1U, mip - 1U, aspects, {vIL::eTransferDstOptimal, vIL::eShaderReadOnlyOptimal}, meta.access,
-						   meta.stages);
-		if (out_img.m_storage.view) {
-			m_device->defer([iv = out_img.m_storage.view, d = m_device]() mutable { d->destroy(iv); });
-			out_img.m_storage.view = m_device->makeImageView(out_img.image(), out_img.viewFormat(), aspects, out_img.viewType(), out_img.mipCount());
-		}
-		return true;
-	}
-	return false;
 }
 
 void VRAM::waitIdle() {

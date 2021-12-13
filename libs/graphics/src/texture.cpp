@@ -17,7 +17,7 @@ Image load(VRAM& vram, VRAM::Future& out_future, vk::Format format, Extent2D ext
 		info.view.type = vk::ImageViewType::eCube;
 	}
 	Image ret(&vram, info);
-	out_future = vram.copy(std::forward<T>(bitmaps), ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
+	out_future = vram.copyAsync(std::forward<T>(bitmaps), ret, {vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal});
 	return ret;
 }
 

@@ -20,7 +20,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Multiple command buffers per frame
   - Customizable device selection
   - Deferred resource release
-  - Dedicated transfer queue, async transfers
+  - Async transfers
   - Shader reflection via SPIR-V Cross
   - Automatic pipeline creation
   - Per pipeline descriptor set lists

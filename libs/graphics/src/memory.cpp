@@ -85,10 +85,9 @@ void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::Devi
 void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta) {
 	using vkstg = vk::PipelineStageFlagBits;
 	ImgMeta first = meta, second = meta;
-	first.layouts.second = vk::ImageLayout::eTransferDstOptimal;
+	first.layouts.second = second.layouts.first = vk::ImageLayout::eTransferDstOptimal;
 	first.access.second = second.access.first = vk::AccessFlagBits::eTransferWrite;
 	first.stages = {vkstg::eTopOfPipe | meta.stages.first, vkstg::eTransfer};
-	second.layouts.first = vk::ImageLayout::eTransferDstOptimal;
 	second.stages = {vkstg::eTransfer, vkstg::eBottomOfPipe | meta.stages.second};
 	imageBarrier(cb, dst, first);
 	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);
@@ -300,7 +299,7 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 	m_storage.allocation.mode = imageInfo.sharingMode;
 	memory->m_allocations[allocation_type_v].fetch_add(m_storage.allocatedSize);
 	if (info.view.aspects != vk::ImageAspectFlags() && info.view.format != vk::Format()) {
-		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type, info.createInfo.mipLevels);
+		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type, imageInfo.mipLevels);
 		m_storage.viewFormat = info.view.format;
 		m_storage.viewType = info.view.type;
 	}

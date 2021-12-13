@@ -398,6 +398,8 @@ std::vector<Queues::Info> utils::queueInfos(PhysicalDevice const& device, vk::Su
 	u32 family = 0;
 	for (vk::QueueFamilyProperties const& props : device.queueFamilies) {
 		Queues::Info info;
+		using QFlag = Queues::QFlag;
+		using QFlags = Queues::QFlags;
 		info.family = family;
 		if (props.queueFlags & vQFB::eTransfer) { info.flags.set(QFlag::eTransfer); }
 		if (props.queueFlags & vQFB::eGraphics) { info.flags.set(QFlags(QFlag::eGraphics) | QFlag::eTransfer); }

@@ -1,22 +1,18 @@
 #pragma once
 #include <core/span.hpp>
 #include <core/std_types.hpp>
-#include <graphics/qflags.hpp>
-#include <ktl/fixed_vector.hpp>
+#include <graphics/qtype.hpp>
 #include <ktl/tmutex.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace le::graphics {
 class Queue : public Pinned {
   public:
-	enum class Cap { eNone, eGraphics, eCompute };
-	using Caps = ktl::enum_flags<Cap, u8>;
-
-	void setup(vk::Queue queue, u32 family, Caps caps);
+	void setup(vk::Queue queue, u32 family, QCaps qcaps);
 
 	bool valid() const noexcept { return capabilities().any(); }
 	u32 family() const noexcept { return m_family; }
-	Caps capabilities() const noexcept { return m_caps; }
+	QCaps capabilities() const noexcept { return m_qcaps; }
 	vk::Queue queue() const noexcept { return m_queue.t; }
 	explicit operator bool() const noexcept { return valid(); }
 
@@ -28,18 +24,15 @@ class Queue : public Pinned {
   private:
 	ktl::tmutex<vk::Queue> m_queue;
 	u32 m_family = 0;
-	Caps m_caps;
+	QCaps m_qcaps;
 };
 
 class Queues : public Pinned {
   public:
-	using QType = Queue::Cap;
+	enum class QFlag { eGraphics, ePresent, eTransfer, eCompute, eCOUNT_ };
+	using QFlags = ktl::enum_flags<QFlag, u8>;
 
-	struct Info {
-		u32 family = 0;
-		QFlags flags;
-	};
-
+	struct Info;
 	class Selector;
 
 	bool hasCompute() const noexcept;
@@ -52,6 +45,11 @@ class Queues : public Pinned {
 	Queue m_secondary;
 };
 
+struct Queues::Info {
+	u32 family = 0;
+	QFlags flags;
+};
+
 class Queues::Selector {
   public:
 	Selector(Queues& queues) noexcept : m_queues(queues) {}
@@ -60,11 +58,9 @@ class Queues::Selector {
 	void setup(vk::Device device);
 
   private:
-	using Caps = Queue::Caps;
-
 	struct Select {
 		u32 family{};
-		Caps caps;
+		QCaps qcaps;
 	};
 
 	Queues& m_queues;

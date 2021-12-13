@@ -27,14 +27,20 @@ constexpr bool hostVisible(VmaMemoryUsage usage) noexcept {
 	return usage == VMA_MEMORY_USAGE_CPU_TO_GPU || usage == VMA_MEMORY_USAGE_GPU_TO_CPU || usage == VMA_MEMORY_USAGE_CPU_ONLY ||
 		   usage == VMA_MEMORY_USAGE_CPU_COPY;
 }
-} // namespace
 
-vk::SharingMode QShare::operator()(Device const& device, QFlags queues) const {
-	if (queues.all(QFlags(QFlag::eCompute, QFlag::eGraphics)) && device.queues().compute() != &device.queues().primary()) {
-		return vk::SharingMode::eConcurrent;
+constexpr bool canMip(BlitCaps bc, vk::ImageTiling tiling) noexcept {
+	if (tiling == vk::ImageTiling::eLinear) {
+		return bc.linear.all(BlitFlags(BlitFlag::eLinearFilter, BlitFlag::eSrc, BlitFlag::eDst));
+	} else {
+		return bc.optimal.all(BlitFlags(BlitFlag::eLinearFilter, BlitFlag::eSrc, BlitFlag::eDst));
 	}
+}
+
+vk::SharingMode sharingMode(Queues const& queues, QCaps const caps) {
+	if (caps.all(QCaps(QType::eCompute, QType::eGraphics)) && queues.compute() != &queues.primary()) { return vk::SharingMode::eConcurrent; }
 	return vk::SharingMode::eExclusive;
 }
+} // namespace
 
 Memory::Memory(not_null<Device*> device) : m_device(device) {
 	VmaAllocatorCreateInfo allocatorInfo = {};
@@ -151,7 +157,7 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memo
 	vk::BufferCreateInfo bufferInfo;
 	m_storage.writeSize = bufferInfo.size = info.size;
 	bufferInfo.usage = info.usage;
-	bufferInfo.sharingMode = info.share(device, info.queueFlags);
+	bufferInfo.sharingMode = sharingMode(device.queues(), info.qcaps);
 	bufferInfo.queueFamilyIndexCount = 1U;
 	u32 const family = device.queues().primary().family();
 	bufferInfo.pQueueFamilyIndices = &family;
@@ -163,7 +169,7 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memo
 		throw std::runtime_error("Allocation error");
 	}
 	m_storage.buffer = vk::Buffer(vkBuffer);
-	m_storage.allocation.queueFlags = info.queueFlags;
+	m_storage.allocation.qcaps = info.qcaps;
 	m_storage.allocation.mode = bufferInfo.sharingMode;
 	m_storage.usage = info.usage;
 	m_storage.type = info.vmaUsage == VMA_MEMORY_USAGE_GPU_ONLY ? Buffer::Type::eGpuOnly : Buffer::Type::eCpuToGpu;
@@ -230,12 +236,11 @@ Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::Im
 	ret.vmaUsage = vmaUsage;
 	bool const linear = vmaUsage != VMA_MEMORY_USAGE_UNKNOWN && vmaUsage != VMA_MEMORY_USAGE_GPU_ONLY && vmaUsage != VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;
 	ret.view.aspects = view;
-	ret.queueFlags = QFlag::eGraphics;
+	ret.qcaps = QType::eGraphics;
 	if (view != vk::ImageAspectFlags()) {
 		ret.view.format = format;
 		ret.view.type = vk::ImageViewType::e2D;
 	}
-	if ((usage & vk::ImageUsageFlagBits::eTransferDst) || (usage & vk::ImageUsageFlagBits::eTransferSrc)) { ret.queueFlags |= QFlag::eTransfer; }
 	ret.createInfo.format = format;
 	ret.createInfo.tiling = linear ? vk::ImageTiling::eLinear : vk::ImageTiling::eOptimal;
 	ret.createInfo.imageType = vk::ImageType::e2D;
@@ -268,12 +273,13 @@ u32 Image::mipLevels(Extent2D extent) noexcept { return static_cast<u32>(std::fl
 
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& d = *memory->m_device;
-	vk::ImageCreateInfo imageInfo = info.createInfo;
-	imageInfo.sharingMode = info.share(d, info.queueFlags);
-	imageInfo.queueFamilyIndexCount = 1U;
 	u32 const family = d.queues().primary().family();
+	vk::ImageCreateInfo imageInfo = info.createInfo;
+	imageInfo.sharingMode = sharingMode(d.queues(), info.qcaps);
+	imageInfo.queueFamilyIndexCount = 1U;
 	imageInfo.pQueueFamilyIndices = &family;
-	imageInfo.mipLevels = info.mipMaps ? mipLevels(cast(info.createInfo.extent)) : 1U;
+	auto const blitCaps = memory->m_device->physicalDevice().blitCaps(imageInfo.format);
+	imageInfo.mipLevels = info.mipMaps && canMip(blitCaps, imageInfo.tiling) ? mipLevels(cast(imageInfo.extent)) : 1U;
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = info.vmaUsage;
 	allocInfo.preferredFlags = static_cast<VkMemoryPropertyFlags>(info.preferred);
@@ -282,16 +288,15 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 	if (auto res = vmaCreateImage(memory->m_allocator, &vkImageInfo, &allocInfo, &vkImage, &m_storage.allocation.handle, nullptr); res != VK_SUCCESS) {
 		throw std::runtime_error("Allocation error");
 	}
-	m_storage.extent = info.createInfo.extent;
+	m_storage.extent = imageInfo.extent;
 	m_storage.image = vk::Image(vkImage);
-	m_storage.usage = info.createInfo.usage;
-	m_storage.imageFormat = info.createInfo.format;
+	m_storage.usage = imageInfo.usage;
+	m_storage.imageFormat = imageInfo.format;
 	m_storage.vmaUsage = info.vmaUsage;
 	m_storage.mipCount = imageInfo.mipLevels;
-	auto const blitCaps = memory->m_device->physicalDevice().blitCaps(info.createInfo.format);
-	m_storage.blitFlags = info.createInfo.tiling == vk::ImageTiling::eLinear ? blitCaps.linear : blitCaps.optimal;
+	m_storage.blitFlags = imageInfo.tiling == vk::ImageTiling::eLinear ? blitCaps.linear : blitCaps.optimal;
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
-	m_storage.allocation.queueFlags = info.queueFlags;
+	m_storage.allocation.qcaps = info.qcaps;
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(memory->m_allocator, m_storage.allocation.handle, &allocationInfo);
 	m_storage.allocation.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};

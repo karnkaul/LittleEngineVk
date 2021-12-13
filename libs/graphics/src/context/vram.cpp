@@ -77,35 +77,19 @@ struct VRAM::ImageCopier {
 		vram.m_device->m_layouts.force(image, meta.layouts.second);
 	}
 
-	void transition(vk::CommandBuffer cb, vk::Image image, u32 lc, u32 mc, u32 fm, vk::ImageAspectFlags as, LayoutPair tr, AccessPair ac, StagePair st) const {
-		vk::ImageMemoryBarrier barrier;
-		barrier.oldLayout = tr.first;
-		barrier.newLayout = tr.second;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange.aspectMask = as;
-		barrier.subresourceRange.baseMipLevel = fm;
-		barrier.subresourceRange.levelCount = mc;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = lc;
-		barrier.srcAccessMask = ac.first;
-		barrier.dstAccessMask = ac.second;
-		cb.pipelineBarrier(st.first, st.second, {}, {}, {}, barrier);
-	}
-
 	void makeMipMaps(vk::CommandBuffer cb) const {
 		AccessPair access;
 		StagePair stages = {vPSFB::eTopOfPipe, vPSFB::eBottomOfPipe};
-		transition(cb, image, layerCount, 1U, 0, aspects, {fromTo.first, vIL::eTransferDstOptimal}, {}, stages);
-		transition(cb, image, layerCount, mipCount - 1U, 1U, aspects, {vIL::eUndefined, vIL::eTransferDstOptimal}, {}, stages);
+		CommandBuffer cmd(cb, true);
+		cmd.transitionImage(image, layerCount, 1U, 0, aspects, {fromTo.first, vIL::eTransferDstOptimal}, {}, stages);
+		cmd.transitionImage(image, layerCount, mipCount - 1U, 1U, aspects, {vIL::eUndefined, vIL::eTransferDstOptimal}, {}, stages);
 		vk::Extent3D mipExtent = extent;
 		u32 mip = 1;
 		for (; mip < mipCount; ++mip) {
 			access = {vAFB::eTransferWrite, vAFB::eTransferRead};
 			stages = {vPSFB::eTransfer, vPSFB::eTransfer};
 			vk::Extent3D nextMipExtent = vk::Extent3D(std::max(mipExtent.width / 2, 1U), std::max(mipExtent.height / 2, 1U), 1U);
-			transition(cb, image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal}, access, stages);
+			cmd.transitionImage(image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal}, access, stages);
 			vk::ImageBlit region{};
 			region.srcOffsets[0] = vk::Offset3D{0, 0, 0};
 			region.srcOffsets[1] = vk::Offset3D{int(mipExtent.width), int(mipExtent.height), 1};
@@ -122,10 +106,10 @@ struct VRAM::ImageCopier {
 			cb.blitImage(image, vIL::eTransferSrcOptimal, image, vIL::eTransferDstOptimal, region, vk::Filter::eLinear);
 			access = {vAFB::eTransferWrite, vAFB::eShaderRead};
 			stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
-			transition(cb, image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferSrcOptimal, fromTo.second}, access, stages);
+			cmd.transitionImage(image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferSrcOptimal, fromTo.second}, access, stages);
 			mipExtent = nextMipExtent;
 		}
-		transition(cb, image, layerCount, 1U, mip - 1U, aspects, {vIL::eTransferDstOptimal, fromTo.second}, access, stages);
+		cmd.transitionImage(image, layerCount, 1U, mip - 1U, aspects, {vIL::eTransferDstOptimal, fromTo.second}, access, stages);
 	}
 };
 
@@ -138,15 +122,13 @@ VRAM::~VRAM() { logI(LC_LibUser, "[{}] VRAM destroyed", g_name); }
 Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible) {
 	Buffer::CreateInfo bufferInfo;
 	bufferInfo.size = size;
+	bufferInfo.qcaps = QType::eGraphics;
 	if (hostVisible) {
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-		bufferInfo.queueFlags = QFlag::eGraphics;
-		bufferInfo.share = vk::SharingMode::eExclusive;
 	} else {
 		bufferInfo.properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 		bufferInfo.vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		bufferInfo.queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
 	}
 	bufferInfo.usage = usage | vk::BufferUsageFlagBits::eTransferDst;
 	return Buffer(this, bufferInfo);
@@ -154,12 +136,6 @@ Buffer VRAM::makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool ho
 
 VRAM::Future VRAM::stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size) {
 	if (size == 0) { size = out_deviceBuffer.writeSize(); }
-	bool const qflags = out_deviceBuffer.m_storage.allocation.queueFlags.test(QFlag::eTransfer);
-	ENSURE(qflags, "Invalid queue flags!");
-	if (!qflags) {
-		logE(LC_LibUser, "[{}] Invalid queue flags on source buffer!", g_name);
-		return {};
-	}
 	bytearray data((std::size_t)size, {});
 	std::memcpy(data.data(), pData, data.size());
 	Transfer::Promise promise;

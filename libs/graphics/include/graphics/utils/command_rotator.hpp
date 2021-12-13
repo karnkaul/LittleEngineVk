@@ -1,6 +1,6 @@
 #pragma once
 #include <graphics/command_buffer.hpp>
-#include <graphics/qflags.hpp>
+#include <graphics/qtype.hpp>
 #include <graphics/utils/deferred.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 #include <ktl/future.hpp>
@@ -8,8 +8,6 @@
 namespace le::graphics {
 class CommandRotator {
   public:
-	using QType = Queue::Cap;
-
 	class Pool {
 	  public:
 		struct Cmd {

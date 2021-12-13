@@ -6,21 +6,12 @@
 #include <core/utils/error.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/common.hpp>
-#include <graphics/qflags.hpp>
+#include <graphics/qtype.hpp>
 #include <atomic>
 
 namespace le::graphics {
 class Device;
 struct RenderTarget;
-
-struct QShare final {
-	vk::SharingMode desired;
-
-	// TODO: Use exclusive queues
-	constexpr QShare(vk::SharingMode desired = vk::SharingMode::eConcurrent) : desired(desired) {}
-
-	vk::SharingMode operator()(Device const& device, QFlags queues) const;
-};
 
 struct Allocation {
 	struct {
@@ -29,7 +20,7 @@ struct Allocation {
 		vk::DeviceSize actualSize = {};
 	} alloc;
 	VmaAllocation handle{};
-	QFlags queueFlags;
+	QCaps qcaps;
 	vk::SharingMode mode{};
 };
 
@@ -187,8 +178,7 @@ class Image {
 };
 
 struct AllocationInfo {
-	QShare share;
-	QFlags queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
+	QCaps qcaps = QType::eGraphics;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	vk::MemoryPropertyFlags preferred;
 };

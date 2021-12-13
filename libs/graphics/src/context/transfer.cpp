@@ -17,7 +17,7 @@ Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
 	info.size = ceilPOT(size);
 	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-	info.queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
+	info.qcaps = QType::eGraphics;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 	return Buffer(&memory, info);
 }

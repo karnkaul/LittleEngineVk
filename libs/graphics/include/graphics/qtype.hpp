@@ -3,6 +3,6 @@
 #include <ktl/enum_flags/enum_flags.hpp>
 
 namespace le::graphics {
-enum class QFlag { eGraphics, ePresent, eTransfer, eCompute, eCOUNT_ };
-using QFlags = ktl::enum_flags<QFlag, u8>;
+enum class QType { eNone, eGraphics, eCompute };
+using QCaps = ktl::enum_flags<QType, u8>;
 } // namespace le::graphics

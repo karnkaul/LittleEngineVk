@@ -18,7 +18,10 @@ void CommandBuffer::make(std::vector<CommandBuffer>& out, not_null<Device*> devi
 	for (auto const cb : buffers) { out.push_back(CommandBuffer(cb)); }
 }
 
-CommandBuffer::CommandBuffer(vk::CommandBuffer cmd) : m_cb(cmd) { ENSURE(!Device::default_v(cmd), "Null command buffer!"); }
+CommandBuffer::CommandBuffer(vk::CommandBuffer cmd, bool recording) : m_cb(cmd) {
+	ENSURE(!Device::default_v(cmd), "Null command buffer!");
+	if (recording) { m_flags.set(Flag::eRecording); }
+}
 
 CommandBuffer::CommandBuffer(Device& device, vk::CommandPool pool, vk::CommandBufferLevel level) {
 	vk::CommandBufferAllocateInfo allocInfo(pool, level, 1U);

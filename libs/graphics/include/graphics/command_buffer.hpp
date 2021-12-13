@@ -4,7 +4,7 @@
 #include <core/utils/error.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/common.hpp>
-#include <graphics/qflags.hpp>
+#include <graphics/qtype.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <atomic>
 #include <vector>
@@ -34,7 +34,7 @@ class CommandBuffer {
 	static void make(std::vector<CommandBuffer>& out, not_null<Device*> device, vk::CommandPool pool, u32 count);
 
 	CommandBuffer() = default;
-	explicit CommandBuffer(vk::CommandBuffer cmd);
+	explicit CommandBuffer(vk::CommandBuffer cmd, bool recording = false);
 	CommandBuffer(Device& device, vk::CommandPool cmd, vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
 
 	void begin(vk::CommandBufferUsageFlags usage, vk::CommandBufferInheritanceInfo const* inheritance = {});

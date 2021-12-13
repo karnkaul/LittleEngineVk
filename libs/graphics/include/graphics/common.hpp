@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 namespace le::graphics {
-enum class BlitFlag { eSrc, eDst };
+enum class BlitFlag { eSrc, eDst, eLinearFilter };
 using BlitFlags = ktl::enum_flags<BlitFlag, u8>;
 
 struct BlitCaps {

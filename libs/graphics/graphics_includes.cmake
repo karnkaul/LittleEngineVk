@@ -9,7 +9,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/glyph.hpp
   include/graphics/memory.hpp
   include/graphics/mesh_primitive.hpp
-  include/graphics/qflags.hpp
+  include/graphics/qtype.hpp
   include/graphics/screen_rect.hpp
   include/graphics/texture.hpp
 

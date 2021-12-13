@@ -8,6 +8,8 @@
 namespace le::graphics {
 class CommandRotator {
   public:
+	using QType = Queue::Cap;
+
 	class Pool {
 	  public:
 		struct Cmd {

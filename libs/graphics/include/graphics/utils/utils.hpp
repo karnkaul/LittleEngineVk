@@ -4,7 +4,7 @@
 #include <graphics/bitmap.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/physical_device.hpp>
-#include <graphics/context/queue_multiplex.hpp>
+#include <graphics/context/queue.hpp>
 #include <graphics/draw_view.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/render/descriptor_set.hpp>
@@ -117,7 +117,7 @@ using CubeImageURIs = std::array<std::string_view, 6>;
 constexpr CubeImageURIs cubeImageURIs = {"right", "left", "up", "down", "front", "back"};
 std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageURIs const& ids = cubeImageURIs);
 
-std::vector<QueueMultiplex::Family> queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface);
+std::vector<Queues::Info> queueInfos(PhysicalDevice const& device, vk::SurfaceKHR surface);
 
 inline bool canBlit(Image const& src, Image const& dst) noexcept { return src.blitFlags().test(BlitFlag::eSrc) && dst.blitFlags().test(BlitFlag::eDst); }
 bool blit(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear);

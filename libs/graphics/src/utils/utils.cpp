@@ -392,19 +392,19 @@ utils::DualTransition::~DualTransition() {
 	m_b(m_layouts.second, m_stages);
 }
 
-std::vector<QueueMultiplex::Family> utils::queueFamilies(PhysicalDevice const& device, vk::SurfaceKHR surface) {
-	using vkqf = vk::QueueFlagBits;
-	std::vector<QueueMultiplex::Family> ret;
-	u32 fidx = 0;
+std::vector<Queues::Info> utils::queueInfos(PhysicalDevice const& device, vk::SurfaceKHR surface) {
+	using vQFB = vk::QueueFlagBits;
+	std::vector<Queues::Info> ret;
+	u32 family = 0;
 	for (vk::QueueFamilyProperties const& props : device.queueFamilies) {
-		QueueMultiplex::Family family;
-		family.familyIndex = fidx;
-		family.total = props.queueCount;
-		if ((props.queueFlags & vkqf::eTransfer) == vkqf::eTransfer) { family.flags.set(QType::eTransfer); }
-		if ((props.queueFlags & vkqf::eGraphics) == vkqf::eGraphics) { family.flags.set(QFlags(QType::eGraphics) | QType::eTransfer); }
-		if (device.device.getSurfaceSupportKHR(fidx, surface)) { family.flags.set(QType::ePresent); }
-		ret.push_back(family);
-		++fidx;
+		Queues::Info info;
+		info.family = family;
+		if (props.queueFlags & vQFB::eTransfer) { info.flags.set(QFlag::eTransfer); }
+		if (props.queueFlags & vQFB::eGraphics) { info.flags.set(QFlags(QFlag::eGraphics) | QFlag::eTransfer); }
+		if (props.queueFlags & vQFB::eCompute) { info.flags.set(QFlags(QFlag::eCompute) | QFlag::eTransfer); }
+		if (device.device.getSurfaceSupportKHR(family, surface)) { info.flags.set(QFlag::ePresent); }
+		ret.push_back(info);
+		++family;
 	}
 	return ret;
 }

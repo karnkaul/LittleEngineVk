@@ -188,7 +188,7 @@ class Image {
 
 struct AllocationInfo {
 	QShare share;
-	QFlags queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
+	QFlags queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	vk::MemoryPropertyFlags preferred;
 };

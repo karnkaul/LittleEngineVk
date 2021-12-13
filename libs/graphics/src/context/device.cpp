@@ -197,38 +197,21 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 	m_metadata.limits = picked.properties.limits;
 	m_metadata.lineWidth.first = picked.properties.limits.lineWidthRange[0U];
 	m_metadata.lineWidth.second = picked.properties.limits.lineWidthRange[1U];
-	auto families = utils::queueFamilies(picked, surface);
-	if (info.qselect == QSelect::eSingleFamily || info.qselect == QSelect::eSingleQueue) {
-		std::optional<QueueMultiplex::Family> uber;
-		for (auto const& family : families) {
-			if (family.flags.all(qflags_all)) {
-				uber = family;
-				logI(LC_LibUser, "[{}] Forcing single Vulkan queue family [{}]", g_name, family.familyIndex);
-				break;
-			}
-		}
-		if (uber) {
-			if (info.qselect == QSelect::eSingleQueue) {
-				logI(LC_LibUser, "[{}] Forcing single Vulkan queue (family supports [{}])", g_name, uber->total);
-				uber->total = 1;
-			}
-			families = {*uber};
-		}
-	}
-	auto queueCreateInfos = m_queues.select(families);
+	Queues::Selector queueSelector(m_queues);
+	auto qci = queueSelector.select(utils::queueInfos(picked, surface));
 	vk::PhysicalDeviceFeatures deviceFeatures;
 	deviceFeatures.fillModeNonSolid = picked.features.fillModeNonSolid;
 	deviceFeatures.wideLines = picked.features.wideLines;
 	vk::DeviceCreateInfo deviceCreateInfo;
-	deviceCreateInfo.queueCreateInfoCount = (u32)queueCreateInfos.size();
-	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+	deviceCreateInfo.queueCreateInfoCount = (u32)qci.size();
+	deviceCreateInfo.pQueueCreateInfos = qci.data();
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 	deviceCreateInfo.enabledLayerCount = (u32)instance.layers.size();
 	deviceCreateInfo.ppEnabledLayerNames = instance.layers.data();
 	deviceCreateInfo.enabledExtensionCount = (u32)m_metadata.extensions.size();
 	deviceCreateInfo.ppEnabledExtensionNames = m_metadata.extensions.data();
 	m_device = picked.device.createDeviceUnique(deviceCreateInfo);
-	m_queues.setup(*m_device);
+	queueSelector.setup(*m_device);
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(*m_device);
 	if (!valid(surface)) {
 		m_instance->destroy(surface);
@@ -244,7 +227,7 @@ Device::~Device() {
 	logI(LC_LibUser, "[{}] Vulkan device destroyed", g_name);
 }
 
-bool Device::valid(vk::SurfaceKHR surface) const { return physicalDevice().surfaceSupport(m_queues.familyIndex(QType::ePresent), surface); }
+bool Device::valid(vk::SurfaceKHR surface) const { return physicalDevice().surfaceSupport(m_queues.primary().family(), surface); }
 
 void Device::waitIdle() {
 	m_device->waitIdle();
@@ -316,11 +299,6 @@ void Device::resetAll(vAP<vk::Fence> validFences) const {
 bool Device::signalled(Span<vk::Fence const> fences) const {
 	auto const s = [this](vk::Fence const& fence) -> bool { return default_v(fence) || m_device->getFenceStatus(fence) == vk::Result::eSuccess; };
 	return std::all_of(fences.begin(), fences.end(), s);
-}
-
-vk::CommandPool Device::makeCommandPool(vk::CommandPoolCreateFlags flags, QType qtype) const {
-	vk::CommandPoolCreateInfo info(flags, m_queues.familyIndex(qtype));
-	return m_device->createCommandPool(info);
 }
 
 vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type, u32 mipLevels) const {

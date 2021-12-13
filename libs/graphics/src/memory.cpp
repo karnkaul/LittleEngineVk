@@ -30,7 +30,10 @@ constexpr bool hostVisible(VmaMemoryUsage usage) noexcept {
 } // namespace
 
 vk::SharingMode QShare::operator()(Device const& device, QFlags queues) const {
-	return device.queues().familyIndices(queues).size() == 1 ? vk::SharingMode::eExclusive : desired;
+	if (queues.all(QFlags(QFlag::eCompute, QFlag::eGraphics)) && device.queues().compute() != &device.queues().primary()) {
+		return vk::SharingMode::eConcurrent;
+	}
+	return vk::SharingMode::eExclusive;
 }
 
 Memory::Memory(not_null<Device*> device) : m_device(device) {
@@ -149,10 +152,10 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memo
 	vk::BufferCreateInfo bufferInfo;
 	m_storage.writeSize = bufferInfo.size = info.size;
 	bufferInfo.usage = info.usage;
-	auto const indices = device.queues().familyIndices(info.queueFlags);
 	bufferInfo.sharingMode = info.share(device, info.queueFlags);
-	bufferInfo.queueFamilyIndexCount = (u32)indices.size();
-	bufferInfo.pQueueFamilyIndices = indices.data();
+	bufferInfo.queueFamilyIndexCount = 1U;
+	u32 const family = device.queues().primary().family();
+	bufferInfo.pQueueFamilyIndices = &family;
 	VmaAllocationCreateInfo createInfo = {};
 	createInfo.usage = info.vmaUsage;
 	auto const vkBufferInfo = static_cast<VkBufferCreateInfo>(bufferInfo);
@@ -228,12 +231,12 @@ Image::CreateInfo Image::info(Extent2D extent, vk::ImageUsageFlags usage, vk::Im
 	ret.vmaUsage = vmaUsage;
 	bool const linear = vmaUsage != VMA_MEMORY_USAGE_UNKNOWN && vmaUsage != VMA_MEMORY_USAGE_GPU_ONLY && vmaUsage != VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;
 	ret.view.aspects = view;
-	ret.queueFlags = QType::eGraphics;
+	ret.queueFlags = QFlag::eGraphics;
 	if (view != vk::ImageAspectFlags()) {
 		ret.view.format = format;
 		ret.view.type = vk::ImageViewType::e2D;
 	}
-	if ((usage & vk::ImageUsageFlagBits::eTransferDst) || (usage & vk::ImageUsageFlagBits::eTransferSrc)) { ret.queueFlags |= QType::eTransfer; }
+	if ((usage & vk::ImageUsageFlagBits::eTransferDst) || (usage & vk::ImageUsageFlagBits::eTransferSrc)) { ret.queueFlags |= QFlag::eTransfer; }
 	ret.createInfo.format = format;
 	ret.createInfo.tiling = linear ? vk::ImageTiling::eLinear : vk::ImageTiling::eOptimal;
 	ret.createInfo.imageType = vk::ImageType::e2D;
@@ -267,10 +270,10 @@ u32 Image::mipLevels(Extent2D extent) noexcept { return static_cast<u32>(std::fl
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& d = *memory->m_device;
 	vk::ImageCreateInfo imageInfo = info.createInfo;
-	auto const indices = d.queues().familyIndices(info.queueFlags);
 	imageInfo.sharingMode = info.share(d, info.queueFlags);
-	imageInfo.queueFamilyIndexCount = (u32)indices.size();
-	imageInfo.pQueueFamilyIndices = indices.data();
+	imageInfo.queueFamilyIndexCount = 1U;
+	u32 const family = d.queues().primary().family();
+	imageInfo.pQueueFamilyIndices = &family;
 	imageInfo.mipLevels = info.mipMaps ? mipLevels(cast(info.createInfo.extent)) : 1U;
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = info.vmaUsage;

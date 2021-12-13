@@ -3,9 +3,6 @@
 #include <ktl/enum_flags/enum_flags.hpp>
 
 namespace le::graphics {
-enum class QType { eGraphics, ePresent, eTransfer, eCOUNT_ };
-using QFlags = ktl::enum_flags<QType, u8>;
-constexpr QFlags qflags_all = QFlags(QType::eGraphics, QType::ePresent, QType::eTransfer);
-
-static_assert(qflags_all.count() == std::size_t(QType::eCOUNT_), "Invariant violated");
+enum class QFlag { eGraphics, ePresent, eTransfer, eCompute, eCOUNT_ };
+using QFlags = ktl::enum_flags<QFlag, u8>;
 } // namespace le::graphics

@@ -3,7 +3,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   defer_queue.cpp
   device.cpp
   physical_device.cpp
-  queue_multiplex.cpp
+  queue.cpp
   transfer.cpp
   vram.cpp
 )

@@ -2,7 +2,7 @@
 #include <core/log.hpp>
 #include <graphics/context/defer_queue.hpp>
 #include <graphics/context/physical_device.hpp>
-#include <graphics/context/queue_multiplex.hpp>
+#include <graphics/context/queue.hpp>
 #include <graphics/utils/layout_state.hpp>
 #include <ktl/move_only_function.hpp>
 
@@ -46,7 +46,6 @@ class Device final : public Pinned {
 
 	bool signalled(Span<vk::Fence const> fences) const;
 
-	vk::CommandPool makeCommandPool(vk::CommandPoolCreateFlags flags, QType qtype) const;
 	vk::ImageView makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor,
 								vk::ImageViewType type = vk::ImageViewType::e2D, u32 mipLevels = 1U) const;
 
@@ -77,8 +76,7 @@ class Device final : public Pinned {
 	}
 
 	PhysicalDevice const& physicalDevice() const noexcept { return m_metadata.available[m_physicalDeviceIndex]; }
-	QueueMultiplex& queues() noexcept { return m_queues; }
-	QueueMultiplex const& queues() const noexcept { return m_queues; }
+	Queues const& queues() const noexcept { return m_queues; }
 	vk::Instance instance() const noexcept { return *m_instance; }
 	vk::Device device() const noexcept { return *m_device; }
 	TPair<f32> lineWidthLimit() const noexcept { return m_metadata.lineWidth; }
@@ -94,7 +92,7 @@ class Device final : public Pinned {
 	vk::UniqueDebugUtilsMessengerEXT m_messenger;
 	vk::UniqueDevice m_device;
 	DeferQueue m_deferred;
-	QueueMultiplex m_queues;
+	Queues m_queues;
 	std::size_t m_physicalDeviceIndex{};
 
 	struct {
@@ -149,8 +147,6 @@ T Device::make(Args&&... args) {
 		return makeRenderPass(std::forward<Args>(args)...);
 	} else if constexpr (std::is_same_v<T, vk::Framebuffer>) {
 		return makeFramebuffer(std::forward<Args>(args)...);
-	} else if constexpr (std::is_same_v<T, vk::CommandPool>) {
-		return makeCommandPool(std::forward<Args>(args)...);
 	} else if constexpr (std::is_same_v<T, vk::PipelineCache>) {
 		return makePipelineCache(std::forward<Args>(args)...);
 	} else if constexpr (std::is_same_v<T, vk::Sampler>) {

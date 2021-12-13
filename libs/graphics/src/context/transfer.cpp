@@ -17,7 +17,7 @@ Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
 	info.size = ceilPOT(size);
 	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-	info.queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
+	info.queueFlags = QFlags(QFlag::eGraphics) | QFlag::eTransfer;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 	return Buffer(&memory, info);
 }
@@ -26,7 +26,7 @@ Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
 Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	poolInfo.queueFamilyIndex = memory->m_device->queues().familyIndex(QType::eTransfer);
+	poolInfo.queueFamilyIndex = memory->m_device->queues().primary().family();
 	m_data.pool = memory->m_device->device().createCommandPool(poolInfo);
 	m_sync.staging = ktl::kthread([this, r = info.reserve]() {
 		{
@@ -92,7 +92,7 @@ std::size_t Transfer::update() {
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = (u32)commands.size();
 		submitInfo.pCommandBuffers = commands.data();
-		m_memory->m_device->queues().submit(QType::eTransfer, submitInfo, m_batches.active.done, true);
+		m_memory->m_device->queues().primary().submit(submitInfo, m_batches.active.done);
 		m_batches.submitted.push_back(std::move(m_batches.active));
 	}
 	m_batches.active = {};

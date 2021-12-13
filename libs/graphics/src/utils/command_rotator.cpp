@@ -10,7 +10,8 @@ CommandRotator::Pool::Cmd CommandRotator::Pool::Cmd::make(Device* device, vk::Co
 }
 
 CommandRotator::Pool::Pool(not_null<Device*> device, QType qtype, std::size_t batch) : m_device(device), m_batch((u32)batch) {
-	m_pool = {m_device, m_device->makeCommandPool(pool_flags_v, qtype)};
+	auto const& queue = qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().primary();
+	m_pool = {m_device, queue.makeCommandPool(m_device->device(), pool_flags_v)};
 }
 
 CommandRotator::Pool::Cmd CommandRotator::Pool::acquire() {
@@ -73,6 +74,7 @@ CommandRotator::Cmd CommandRotator::make() const {
 void CommandRotator::submit(Cmd& out) const {
 	out.cb.end();
 	vk::SubmitInfo si(0U, nullptr, {}, 1U, &out.cb.m_cb);
-	m_device->queues().submit(m_qtype, si, out.fence, true);
+	auto const& queue = m_qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().primary();
+	queue.submit(si, out.fence);
 }
 } // namespace le::graphics

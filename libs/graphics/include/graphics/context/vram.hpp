@@ -51,8 +51,8 @@ class VRAM final : public Memory {
 
 	Transfer m_transfer;
 	struct {
-		vk::PipelineStageFlags stages = vk::PipelineStageFlagBits::eBottomOfPipe;
-		vk::AccessFlags access = vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite;
+		vk::PipelineStageFlags stages = vk::PipelineStageFlagBits::eBottomOfPipe | vk::PipelineStageFlagBits::eVertexShader;
+		vk::AccessFlags access = vk::AccessFlagBits::eShaderRead;
 	} m_post;
 };
 

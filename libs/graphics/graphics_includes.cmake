@@ -12,12 +12,14 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/qflags.hpp
   include/graphics/screen_rect.hpp
   include/graphics/texture.hpp
+
   include/graphics/context/defer_queue.hpp
   include/graphics/context/device.hpp
   include/graphics/context/physical_device.hpp
-  include/graphics/context/queue_multiplex.hpp
+  include/graphics/context/queue.hpp
   include/graphics/context/transfer.hpp
   include/graphics/context/vram.hpp
+
   include/graphics/render/buffering.hpp
   include/graphics/render/camera.hpp
   include/graphics/render/context.hpp

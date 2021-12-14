@@ -4,25 +4,11 @@
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
 #include <graphics/memory.hpp>
-#include <graphics/render/target.hpp>
+#include <graphics/render/framebuffer.hpp>
 #include <graphics/texture.hpp>
 
 namespace le::graphics {
 namespace {
-vk::ImageBlit imageBlit(Memory::ImgMeta const& src, Memory::ImgMeta const& dst, TPair<vk::Offset3D> srcOff, TPair<vk::Offset3D> dstOff) {
-	vk::ImageBlit ret;
-	ret.srcSubresource = vk::ImageSubresourceLayers(src.aspects, src.firstMip, src.firstLayer, src.layerCount);
-	ret.dstSubresource = vk::ImageSubresourceLayers(dst.aspects, dst.firstMip, dst.firstLayer, dst.layerCount);
-	vk::Offset3D offsets[] = {srcOff.first, srcOff.second};
-	std::size_t idx = 0;
-	for (auto& off : ret.srcOffsets) { off = offsets[idx++]; }
-	offsets[0] = dstOff.first;
-	offsets[1] = dstOff.second;
-	idx = 0;
-	for (auto& off : ret.dstOffsets) { off = offsets[idx++]; }
-	return ret;
-}
-
 constexpr bool hostVisible(VmaMemoryUsage usage) noexcept {
 	return usage == VMA_MEMORY_USAGE_CPU_TO_GPU || usage == VMA_MEMORY_USAGE_GPU_TO_CPU || usage == VMA_MEMORY_USAGE_CPU_ONLY ||
 		   usage == VMA_MEMORY_USAGE_CPU_COPY;
@@ -112,13 +98,14 @@ void Memory::copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D ex
 	cb.copyImage(images.first, vIL::eTransferSrcOptimal, images.second, vIL::eTransferDstOptimal, region);
 }
 
-void Memory::blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter) {
+void Memory::blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, BlitFilter filter) {
 	ImgMeta msrc, mdst;
 	msrc.aspects = aspects.first;
 	mdst.aspects = aspects.second;
 	vk::Offset3D const osrc((int)extents.first.width, (int)extents.first.height, (int)extents.first.depth);
 	vk::Offset3D const odst((int)extents.second.width, (int)extents.second.height, (int)extents.second.depth);
-	cb.blitImage(images.first, vIL::eTransferSrcOptimal, images.second, vIL::eTransferDstOptimal, imageBlit(msrc, mdst, {{}, osrc}, {{}, odst}), filter);
+	auto const vkFilter = filter == BlitFilter::eNearest ? vk::Filter::eNearest : vk::Filter::eLinear;
+	cb.blitImage(images.first, vIL::eTransferSrcOptimal, images.second, vIL::eTransferDstOptimal, imageBlit({msrc, mdst}, {{}, osrc}, {{}, odst}), vkFilter);
 }
 
 void Memory::imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta) {
@@ -152,10 +139,24 @@ vk::BufferImageCopy Memory::bufferImageCopy(vk::Extent3D extent, vk::ImageAspect
 	return ret;
 }
 
+vk::ImageBlit Memory::imageBlit(TPair<Memory::ImgMeta> const& meta, TPair<vk::Offset3D> const& srcOff, TPair<vk::Offset3D> const& dstOff) noexcept {
+	vk::ImageBlit ret;
+	ret.srcSubresource = vk::ImageSubresourceLayers(meta.first.aspects, meta.first.firstMip, meta.first.firstLayer, meta.first.layerCount);
+	ret.dstSubresource = vk::ImageSubresourceLayers(meta.second.aspects, meta.second.firstMip, meta.second.firstLayer, meta.second.layerCount);
+	vk::Offset3D offsets[] = {srcOff.first, srcOff.second};
+	std::size_t idx = 0;
+	for (auto& off : ret.srcOffsets) { off = offsets[idx++]; }
+	offsets[0] = dstOff.first;
+	offsets[1] = dstOff.second;
+	idx = 0;
+	for (auto& off : ret.dstOffsets) { off = offsets[idx++]; }
+	return ret;
+}
+
 Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& device = *memory->m_device;
 	vk::BufferCreateInfo bufferInfo;
-	m_storage.writeSize = bufferInfo.size = info.size;
+	m_storage.allocation.size = bufferInfo.size = info.size;
 	bufferInfo.usage = info.usage;
 	bufferInfo.sharingMode = sharingMode(device.queues(), info.qcaps);
 	bufferInfo.queueFamilyIndexCount = 1U;
@@ -175,8 +176,8 @@ Buffer::Buffer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memo
 	m_storage.type = info.vmaUsage == VMA_MEMORY_USAGE_GPU_ONLY ? Buffer::Type::eGpuOnly : Buffer::Type::eCpuToGpu;
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(memory->m_allocator, m_storage.allocation.handle, &allocationInfo);
-	m_storage.allocation.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};
-	memory->m_allocations[allocation_type_v].fetch_add(m_storage.writeSize);
+	m_storage.allocation.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), vk::DeviceSize(allocationInfo.offset), vk::DeviceSize(allocationInfo.size)};
+	memory->m_allocations[allocation_type_v].fetch_add(m_storage.allocation.size);
 }
 
 void Buffer::exchg(Buffer& lhs, Buffer& rhs) noexcept {
@@ -186,9 +187,9 @@ void Buffer::exchg(Buffer& lhs, Buffer& rhs) noexcept {
 
 Buffer::~Buffer() {
 	Memory& m = *m_memory;
-	if (m_storage.data) { vmaUnmapMemory(m.m_allocator, m_storage.allocation.handle); }
+	if (m_storage.allocation.data) { vmaUnmapMemory(m.m_allocator, m_storage.allocation.handle); }
 	if (!Device::default_v(m_storage.buffer)) {
-		m.m_allocations[allocation_type_v].fetch_sub(m_storage.writeSize);
+		m.m_allocations[allocation_type_v].fetch_sub(m_storage.allocation.size);
 		auto del = [a = m.m_allocator, b = m_storage.buffer, h = m_storage.allocation.handle]() { vmaDestroyBuffer(a, static_cast<VkBuffer>(b), h); };
 		m.m_device->defer(del);
 	}
@@ -199,29 +200,33 @@ void const* Buffer::map() {
 		logE(LC_LibUser, "[{}] Attempt to map GPU-only Buffer!", g_name);
 		return nullptr;
 	}
-	if (!m_storage.data && m_storage.writeSize > 0) { vmaMapMemory(m_memory->m_allocator, m_storage.allocation.handle, &m_storage.data); }
+	if (!m_storage.allocation.data && m_storage.allocation.size > 0) {
+		vmaMapMemory(m_memory->m_allocator, m_storage.allocation.handle, &m_storage.allocation.data);
+	}
 	return mapped();
 }
 
 bool Buffer::unmap() {
-	if (m_storage.data) {
+	if (m_storage.allocation.data) {
 		vmaUnmapMemory(m_memory->m_allocator, m_storage.allocation.handle);
-		m_storage.data = nullptr;
+		m_storage.allocation.data = nullptr;
 		return true;
 	}
 	return false;
 }
 
-bool Buffer::write(void const* pData, vk::DeviceSize size, vk::DeviceSize offset) {
+bool Buffer::write(void const* data, vk::DeviceSize size, vk::DeviceSize offset) {
 	if (m_storage.type != Buffer::Type::eCpuToGpu) {
 		logE(LC_LibUser, "[{}] Attempt to write to GPU-only Buffer!", g_name);
 		return false;
 	}
+	EXPECT(size + offset <= m_storage.allocation.size);
+	if (size + offset > m_storage.allocation.size) { return false; }
 	if (!Device::default_v(m_storage.allocation.alloc.memory) && !Device::default_v(m_storage.buffer)) {
-		if (size == 0) { size = m_storage.writeSize - offset; }
-		if (auto pMap = map()) {
-			void* pStart = (void*)((char*)pMap + offset);
-			std::memcpy(pStart, pData, (std::size_t)size);
+		if (size == 0) { size = m_storage.allocation.size - offset; }
+		if (auto ptr = map()) {
+			char* start = (char*)ptr + offset;
+			std::memcpy(start, data, (std::size_t)size);
 			++m_storage.writeCount;
 			return true;
 		}
@@ -271,6 +276,11 @@ Image::CreateInfo Image::storageInfo(Extent2D extent, vk::Format format) noexcep
 
 u32 Image::mipLevels(Extent2D extent) noexcept { return static_cast<u32>(std::floor(std::log2(std::max(extent.x, extent.y)))) + 1U; }
 
+ImageRef Image::ref() const noexcept {
+	bool const linear = m_storage.tiling == vk::ImageTiling::eLinear;
+	return ImageRef{ImageView{m_storage.image, m_storage.view, extent2D(), m_storage.format}, linear};
+}
+
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& d = *memory->m_device;
 	u32 const family = d.queues().primary().family();
@@ -291,41 +301,30 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 	m_storage.extent = imageInfo.extent;
 	m_storage.image = vk::Image(vkImage);
 	m_storage.usage = imageInfo.usage;
-	m_storage.imageFormat = imageInfo.format;
+	m_storage.format = imageInfo.format;
 	m_storage.vmaUsage = info.vmaUsage;
 	m_storage.mipCount = imageInfo.mipLevels;
+	m_storage.tiling = imageInfo.tiling;
 	m_storage.blitFlags = imageInfo.tiling == vk::ImageTiling::eLinear ? blitCaps.linear : blitCaps.optimal;
 	auto const requirements = d.device().getImageMemoryRequirements(m_storage.image);
 	m_storage.allocation.qcaps = info.qcaps;
 	VmaAllocationInfo allocationInfo;
 	vmaGetAllocationInfo(memory->m_allocator, m_storage.allocation.handle, &allocationInfo);
-	m_storage.allocation.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), allocationInfo.offset, allocationInfo.size};
-	m_storage.allocatedSize = requirements.size;
+	m_storage.allocation.alloc = {vk::DeviceMemory(allocationInfo.deviceMemory), vk::DeviceSize(allocationInfo.offset), vk::DeviceSize(allocationInfo.size)};
+	m_storage.allocation.size = requirements.size;
 	m_storage.allocation.mode = imageInfo.sharingMode;
-	memory->m_allocations[allocation_type_v].fetch_add(m_storage.allocatedSize);
+	memory->m_allocations[allocation_type_v].fetch_add(m_storage.allocation.size);
 	if (info.view.aspects != vk::ImageAspectFlags() && info.view.format != vk::Format()) {
 		m_storage.view = d.makeImageView(m_storage.image, info.view.format, info.view.aspects, info.view.type, imageInfo.mipLevels);
-		m_storage.viewFormat = info.view.format;
 		m_storage.viewType = info.view.type;
 	}
 }
 
-Image::Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format, vk::ImageUsageFlags usage) : m_memory(memory) {
-	EXPECT(rt.image);
-	m_storage.image = rt.image;
-	m_storage.view = rt.view;
-	m_storage.extent = vk::Extent3D(rt.extent.x, rt.extent.y, 1);
-	m_storage.imageFormat = m_storage.viewFormat = format;
-	m_storage.usage = usage;
-	m_storage.blitFlags = memory->m_device->physicalDevice().blitCaps(format).optimal;
-	m_storage.allocatedSize = 0U;
-}
-
 Image::~Image() {
 	Memory& m = *m_memory;
-	if (m_storage.data) { vmaUnmapMemory(m.m_allocator, m_storage.allocation.handle); }
-	if (!Device::default_v(m_storage.image) && m_storage.allocatedSize > 0U) {
-		m.m_allocations[allocation_type_v].fetch_sub(m_storage.allocatedSize);
+	if (m_storage.allocation.data) { vmaUnmapMemory(m.m_allocator, m_storage.allocation.handle); }
+	if (!Device::default_v(m_storage.image) && m_storage.allocation.size > 0U) {
+		m.m_allocations[allocation_type_v].fetch_sub(m_storage.allocation.size);
 		auto del = [a = m.m_allocator, i = m_storage.image, h = m_storage.allocation.handle, d = m.m_device, v = m_storage.view]() mutable {
 			d->destroy(v);
 			vmaDestroyImage(a, static_cast<VkImage>(i), h);
@@ -339,14 +338,14 @@ void const* Image::map() {
 		logE(LC_LibUser, "[{}] Attempt to map GPU-only Buffer!", g_name);
 		return nullptr;
 	}
-	if (!m_storage.data) { vmaMapMemory(m_memory->m_allocator, m_storage.allocation.handle, &m_storage.data); }
+	if (!m_storage.allocation.data) { vmaMapMemory(m_memory->m_allocator, m_storage.allocation.handle, &m_storage.allocation.data); }
 	return mapped();
 }
 
 bool Image::unmap() {
-	if (m_storage.data) {
+	if (m_storage.allocation.data) {
 		vmaUnmapMemory(m_memory->m_allocator, m_storage.allocation.handle);
-		m_storage.data = nullptr;
+		m_storage.allocation.data = nullptr;
 		return true;
 	}
 	return false;

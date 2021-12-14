@@ -2,7 +2,7 @@
 #include <core/not_null.hpp>
 #include <core/span.hpp>
 #include <graphics/common.hpp>
-#include <graphics/render/target.hpp>
+#include <graphics/render/framebuffer.hpp>
 #include <ktl/enum_flags/enum_flags.hpp>
 #include <ktl/fixed_vector.hpp>
 

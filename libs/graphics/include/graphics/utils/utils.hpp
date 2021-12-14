@@ -8,7 +8,6 @@
 #include <graphics/geometry.hpp>
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/render/pipeline_spec.hpp>
-#include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <spirv_cross.hpp>
 #include <map>
@@ -116,12 +115,13 @@ using CubeImageURIs = std::array<std::string_view, 6>;
 constexpr CubeImageURIs cubeImageURIs = {"right", "left", "up", "down", "front", "back"};
 std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& prefix, std::string_view ext = ".jpg", CubeImageURIs const& ids = cubeImageURIs);
 
-inline bool canBlit(Image const& src, Image const& dst) noexcept { return src.blitFlags().test(BlitFlag::eSrc) && dst.blitFlags().test(BlitFlag::eDst); }
-bool blit(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear);
-bool copy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst);
-bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear);
-std::optional<Image> makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, Image const& img);
-std::size_t writePPM(not_null<Device*> device, Image& out_img, std::ostream& out_str);
+BlitFlags blitFlags(not_null<Device*> device, ImageRef const& img);
+bool canBlit(not_null<Device*> device, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
+bool blit(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
+bool copy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images);
+bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
+std::optional<Image> makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, ImageRef const& img);
+std::size_t writePPM(not_null<Device*> device, Image const& img, std::ostream& out_str);
 
 constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;
 constexpr vk::Rect2D scissor(DrawScissor const& scissor) noexcept;

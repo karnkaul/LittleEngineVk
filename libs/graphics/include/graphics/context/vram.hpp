@@ -1,7 +1,7 @@
 #pragma once
 #include <graphics/bitmap.hpp>
 #include <graphics/context/transfer.hpp>
-#include <graphics/render/target.hpp>
+#include <graphics/image_ref.hpp>
 
 namespace le::graphics {
 class Device;
@@ -31,9 +31,8 @@ class VRAM final : public Memory {
 	[[nodiscard]] Future copyAsync(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 	[[nodiscard]] Future copyAsync(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 
-	bool blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
-	bool blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter = vk::Filter::eLinear, AspectPair aspects = colour_aspects_v) const;
-	bool copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
+	bool blit(CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear, AspectPair aspects = colour_aspects_v) const;
+	bool copy(CommandBuffer cb, TPair<ImageRef> const& images, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
 
 	template <typename Cont>
 	void wait(Cont const& futures) const;

@@ -125,26 +125,28 @@ bool Texture::assign(Image&& image, Type type, Payload payload) {
 }
 
 bool Texture::resize(CommandBuffer cb, Extent2D extent) {
+	if (extent == m_image.extent2D()) { return true; }
 	EXPECT(extent.x > 0 && extent.y > 0);
 	if (extent.x > 0 && extent.y > 0) {
-		Image image(m_vram, Image::textureInfo(extent, m_image.imageFormat()));
+		Image image(m_vram, Image::textureInfo(extent, m_image.format()));
 		std::swap(m_image, image);
-		return blit(cb, image);
+		return utils::blit(m_vram, cb, {image.ref(), m_image.ref()}, BlitFilter::eLinear);
 	}
 	return false;
 }
 
-bool Texture::blit(CommandBuffer cb, Texture const& src, vk::Filter filter) { return blit(cb, src.image(), filter); }
-
-bool Texture::blit(CommandBuffer cb, Image const& src, vk::Filter filter) {
+bool Texture::blit(CommandBuffer cb, ImageRef const& src, BlitFilter filter) {
 	wait();
-	return utils::blit(m_vram, cb, src, m_image, filter);
+	return utils::blit(m_vram, cb, {src, m_image.ref()}, filter);
 }
 
-bool Texture::copy(CommandBuffer cb, Image const& src) {
+bool Texture::copy(CommandBuffer cb, ImageRef const& src, bool allowResize) {
 	wait();
-	if (m_image.extent2D() != src.extent2D()) { resize(cb, src.extent2D()); }
-	return utils::copy(m_vram, cb, src, m_image);
+	if (m_image.extent2D() != src.extent) {
+		if (!allowResize || src.extent.x == 0 || src.extent.y == 0) { return false; }
+		m_image = Image(m_vram, Image::textureInfo(src.extent, m_image.format()));
+	}
+	return utils::copy(m_vram, cb, {src, m_image.ref()});
 }
 
 bool Texture::constructImpl(Span<BmpView const> imgs, Extent2D extent, Payload payload, vk::Format format) {

@@ -78,38 +78,47 @@ struct VRAM::ImageCopier {
 	}
 
 	void makeMipMaps(vk::CommandBuffer cb) const {
-		AccessPair access;
-		StagePair stages = {vPSFB::eTopOfPipe, vPSFB::eBottomOfPipe};
-		CommandBuffer cmd(cb, true);
-		cmd.transitionImage(image, layerCount, 1U, 0, aspects, {fromTo.first, vIL::eTransferDstOptimal}, {}, stages);
-		cmd.transitionImage(image, layerCount, mipCount - 1U, 1U, aspects, {vIL::eUndefined, vIL::eTransferDstOptimal}, {}, stages);
+		ImgMeta pre, post;
+		pre.aspects = post.aspects = aspects;
+		pre.firstLayer = post.firstLayer = 0U;
+		pre.layerCount = post.layerCount = layerCount;
+		pre.access = {vAFB::eMemoryRead, vAFB::eTransferRead};
+		post.access = {vAFB::eTransferRead, vAFB::eTransferWrite};
+		// transition mip[0] from fromTo.first to dst, mip[1]-mip[N] from undefined to dst
+		pre.stages = {vPSFB::eTopOfPipe, vPSFB::eTransfer};
+		post.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
+		pre.mipLevels = post.firstMip = 1U;
+		post.mipLevels = mipCount - 1U;
+		pre.layouts = {fromTo.first, vIL::eTransferDstOptimal};
+		post.layouts = {vIL::eUndefined, vIL::eTransferDstOptimal};
+		VRAM::imageBarrier(cb, image, pre);
+		VRAM::imageBarrier(cb, image, post);
+		// prepare to blit mip[N-1] to mip[N]...
+		pre.access = {vAFB::eTransferWrite, vAFB::eTransferRead};
+		post.access = {vAFB::eTransferRead, vAFB::eShaderRead};
+		pre.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
+		post.stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
+		pre.mipLevels = post.mipLevels = 1U;
+		pre.layouts = {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal};
+		post.layouts = {vIL::eTransferSrcOptimal, fromTo.second};
 		vk::Extent3D mipExtent = extent;
 		u32 mip = 1;
 		for (; mip < mipCount; ++mip) {
-			access = {vAFB::eTransferWrite, vAFB::eTransferRead};
-			stages = {vPSFB::eTransfer, vPSFB::eTransfer};
 			vk::Extent3D nextMipExtent = vk::Extent3D(std::max(mipExtent.width / 2, 1U), std::max(mipExtent.height / 2, 1U), 1U);
-			cmd.transitionImage(image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal}, access, stages);
-			vk::ImageBlit region{};
-			region.srcOffsets[0] = vk::Offset3D{0, 0, 0};
-			region.srcOffsets[1] = vk::Offset3D{int(mipExtent.width), int(mipExtent.height), 1};
-			region.srcSubresource.aspectMask = aspects;
-			region.srcSubresource.mipLevel = mip - 1;
-			region.srcSubresource.baseArrayLayer = 0;
-			region.srcSubresource.layerCount = layerCount;
-			region.dstOffsets[0] = vk::Offset3D{0, 0, 0};
-			region.dstOffsets[1] = vk::Offset3D{int(nextMipExtent.width), int(nextMipExtent.height), 1U};
-			region.dstSubresource.aspectMask = aspects;
-			region.dstSubresource.mipLevel = mip;
-			region.dstSubresource.baseArrayLayer = 0;
-			region.dstSubresource.layerCount = layerCount;
+			auto const srcOffset = vk::Offset3D{int(mipExtent.width), int(mipExtent.height), 1};
+			auto const dstOffset = vk::Offset3D{int(nextMipExtent.width), int(nextMipExtent.height), 1U};
+			pre.firstMip = post.firstMip = mip - 1U;
+			auto blitMeta = pre;
+			blitMeta.firstMip = mip;
+			auto const region = VRAM::imageBlit({pre, blitMeta}, {{}, srcOffset}, {{}, dstOffset});
+			VRAM::imageBarrier(cb, image, pre); // transition mip[N-1] to dst
 			cb.blitImage(image, vIL::eTransferSrcOptimal, image, vIL::eTransferDstOptimal, region, vk::Filter::eLinear);
-			access = {vAFB::eTransferWrite, vAFB::eShaderRead};
-			stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
-			cmd.transitionImage(image, layerCount, 1U, mip - 1, aspects, {vIL::eTransferSrcOptimal, fromTo.second}, access, stages);
+			VRAM::imageBarrier(cb, image, post); // transition mip[N-1] to fromTo.second
 			mipExtent = nextMipExtent;
 		}
-		cmd.transitionImage(image, layerCount, 1U, mip - 1U, aspects, {vIL::eTransferDstOptimal, fromTo.second}, access, stages);
+		post.firstMip = mip - 1U;
+		post.layouts = {vIL::eTransferDstOptimal, fromTo.second};
+		VRAM::imageBarrier(cb, image, post); // transition mip[N] to fromTo.second
 	}
 };
 
@@ -180,15 +189,7 @@ VRAM::Future VRAM::copyAsync(Images&& imgs, Image& out_dst, LayoutPair fromTo, v
 	return ret;
 }
 
-bool VRAM::blit(CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter, AspectPair aspects) const {
-	if ((src.usage() & vk::ImageUsageFlagBits::eTransferSrc) == vk::ImageUsageFlags()) { return false; }
-	if ((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlags()) { return false; }
-	if (!utils::canBlit(src, out_dst)) { return false; }
-	blit(cb.m_cb, {src.image(), out_dst.image()}, {src.extent(), out_dst.extent()}, aspects, filter);
-	return true;
-}
-
-bool VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter, AspectPair aspects) const {
+bool VRAM::blit(CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter, AspectPair aspects) const {
 	if (!m_device->physicalDevice().blitCaps(images.first.format).optimal.test(BlitFlag::eSrc)) { return false; }
 	if (!m_device->physicalDevice().blitCaps(images.second.format).optimal.test(BlitFlag::eDst)) { return false; }
 	vk::Extent3D const srcExt(cast(images.first.extent), 1);
@@ -197,11 +198,11 @@ bool VRAM::blit(CommandBuffer cb, TPair<RenderTarget> images, vk::Filter filter,
 	return true;
 }
 
-bool VRAM::copy(CommandBuffer cb, Image const& src, Image& out_dst, vk::ImageAspectFlags aspects) const {
-	if ((src.usage() & vk::ImageUsageFlagBits::eTransferSrc) == vk::ImageUsageFlags()) { return false; }
-	if ((out_dst.usage() & vk::ImageUsageFlagBits::eTransferDst) == vk::ImageUsageFlags()) { return false; }
-	EXPECT(src.extent() == out_dst.extent());
-	copy(cb.m_cb, {src.image(), out_dst.image()}, src.extent(), aspects);
+bool VRAM::copy(CommandBuffer cb, TPair<ImageRef> const& images, vk::ImageAspectFlags aspects) const {
+	EXPECT(images.first.extent == images.second.extent);
+	if (images.first.extent != images.second.extent) { return false; }
+	auto const& ex = images.first.extent;
+	copy(cb.m_cb, {images.first.image, images.second.image}, vk::Extent3D(ex.x, ex.y, 1U), aspects);
 	return true;
 }
 

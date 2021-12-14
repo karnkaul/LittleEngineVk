@@ -7,6 +7,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/geometry.hpp
   include/graphics/glyph_pen.hpp
   include/graphics/glyph.hpp
+  include/graphics/image_ref.hpp
   include/graphics/memory.hpp
   include/graphics/mesh_primitive.hpp
   include/graphics/qtype.hpp
@@ -32,7 +33,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/render/rgba.hpp
   include/graphics/render/shader_buffer.hpp
   include/graphics/render/surface.hpp
-  include/graphics/render/target.hpp
+  include/graphics/render/framebuffer.hpp
   include/graphics/render/vertex_input.hpp
   include/graphics/utils/command_rotator.hpp
   include/graphics/utils/deferred.hpp

@@ -392,46 +392,63 @@ utils::DualTransition::~DualTransition() {
 	m_b(m_layouts.second, m_stages);
 }
 
-bool utils::blit(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter) {
-	EXPECT(src.layerCount() == 1U && out_dst.layerCount() == 1U);
-	EXPECT(canBlit(src, out_dst));
-	if (src.layerCount() > 1U || out_dst.layerCount() > 1U || !canBlit(src, out_dst)) { return false; }
-	DualTransition dt(vram->m_device, &cb, {src.image(), out_dst.image()});
-	return vram->blit(cb, src, out_dst, filter);
+BlitFlags utils::blitFlags(not_null<Device*> device, ImageRef const& img) {
+	auto const& bcs = device->physicalDevice().blitCaps(img.format);
+	return img.linear ? bcs.linear : bcs.optimal;
 }
 
-bool utils::copy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst) {
-	EXPECT(src.layerCount() == 1U && out_dst.layerCount() == 1U);
-	EXPECT(src.extent() == out_dst.extent());
-	if (src.layerCount() > 1U || out_dst.layerCount() > 1U) { return false; }
-	if (src.extent() != out_dst.extent()) { return false; }
-	DualTransition dt(vram->m_device, &cb, {src.image(), out_dst.image()});
-	return vram->copy(cb, src, out_dst);
+bool utils::canBlit(not_null<Device*> device, TPair<ImageRef> const& images, BlitFilter filter) {
+	auto const& bfs = blitFlags(device, images.first);
+	auto const& bfd = blitFlags(device, images.second);
+	if (filter == BlitFilter::eLinear) {
+		return bfs.all(BlitFlags(BlitFlag::eSrc, BlitFlag::eLinearFilter)) && bfd.all(BlitFlags(BlitFlag::eDst, BlitFlag::eLinearFilter));
+	} else {
+		return bfs.test(BlitFlag::eSrc) && bfs.test(BlitFlag::eDst);
+	}
 }
 
-bool utils::blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, Image const& src, Image& out_dst, vk::Filter filter) {
-	return canBlit(src, out_dst) ? blit(vram, cb, src, out_dst, filter) : copy(vram, cb, src, out_dst);
+bool utils::blit(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter) {
+	EXPECT(canBlit(vram->m_device, images, filter));
+	if (!canBlit(vram->m_device, images, filter)) { return false; }
+	DualTransition dt(vram->m_device, &cb, {images.first.image, images.second.image});
+	return vram->blit(cb, images, filter);
 }
 
-std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, Image const& img) {
-	vk::Format format = Image::linear_v;
-	bool const blittable = img.blitFlags().test(BlitFlag::eSrc) && vram->m_device->physicalDevice().blitCaps(format).linear.test(BlitFlag::eDst);
-	if (!blittable && Surface::bgra(img.imageFormat())) { format = vk::Format::eB8G8R8A8Unorm; }
-	Image ret(vram, Image::storageInfo(img.extent2D(), format));
+bool utils::copy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images) {
+	EXPECT(images.first.extent == images.second.extent);
+	if (images.first.extent != images.second.extent) { return false; }
+	DualTransition dt(vram->m_device, &cb, {images.first.image, images.second.image});
+	return vram->copy(cb, images);
+}
+
+bool utils::blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter) {
+	return canBlit(vram->m_device, images, filter) ? blit(vram, cb, images, filter) : copy(vram, cb, images);
+}
+
+std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, ImageRef const& img) {
+	ImageRef dst = img;
+	dst.format = vk::Format::eR8G8B8A8Unorm;
+	dst.linear = true;
+	// if image will be copied, match RGBA vs BGRA to source format
+	if (!canBlit(vram->m_device, {img, dst}) && Surface::bgra(img.format)) { dst.format = vk::Format::eB8G8R8A8Unorm; }
+	Image ret(vram, Image::storageInfo(dst.extent, dst.format));
 	if (auto cmd = cr.instant()) {
-		if (blitOrCopy(vram, cmd.cb(), img, ret)) { return ret; }
+		if (blitOrCopy(vram, cmd.cb(), {img, ret.ref()})) {
+			ret.map();
+			return ret;
+		}
 	}
 	return std::nullopt;
 }
 
-std::size_t utils::writePPM(not_null<Device*> device, Image& out_img, std::ostream& out_str) {
-	EXPECT(out_img.layerCount() == 1U);
+std::size_t utils::writePPM(not_null<Device*> device, Image const& img, std::ostream& out_str) {
+	EXPECT(img.layerCount() == 1U && img.mapped());
 	std::size_t ret{};
-	if (out_img.layerCount() == 1U) {
-		bool const swizzle = Surface::bgra(out_img.imageFormat());
-		auto const extent = out_img.extent2D();
-		auto isr = device->device().getImageSubresourceLayout(out_img.image(), vk::ImageSubresource(vIAFB::eColor));
-		u8 const* data = (u8 const*)out_img.map();
+	u8 const* data = (u8 const*)img.mapped();
+	if (img.layerCount() == 1U && data) {
+		bool const swizzle = Surface::bgra(img.format());
+		auto const extent = img.extent2D();
+		auto isr = device->device().getImageSubresourceLayout(img.image(), vk::ImageSubresource(vIAFB::eColor));
 		data += isr.offset;
 		auto const header = ktl::stack_string<256>("P6\n%u\n%u\n255\n", extent.x, extent.y);
 		out_str << header.get();

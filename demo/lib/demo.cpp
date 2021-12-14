@@ -575,7 +575,7 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 
 		if (auto const frame = m_eng->gfx().context.renderer().offScreenImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
-			m_testTex.blit(m_eng->gfx().context.commands().get(), *frame);
+			m_testTex.blit(m_eng->gfx().context.commands().get(), frame->ref());
 		}
 
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
@@ -756,12 +756,10 @@ bool run(io::Media const& media) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
 				auto& ctx = engine.gfx().context;
-				if (auto src = ctx.previousFrameAsImage()) {
-					if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.commands(), *src)) {
-						if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
-							auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
-							if (written > 0) { logD("Screenshot saved to shot.ppm"); }
-						}
+				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.commands(), ctx.previousFrame().ref())) {
+					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
+						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
+						if (written > 0) { logD("Screenshot saved to shot.ppm"); }
 					}
 				}
 			}

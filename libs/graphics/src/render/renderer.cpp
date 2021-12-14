@@ -222,10 +222,10 @@ RenderPass Renderer::beginMainPass(PipelineFactory& pf, RenderTarget const& acqu
 	if (m_target == Target::eOffScreen) {
 		extent = scaleExtent(extent, renderScale());
 		auto& img = m_colourImage.refresh(extent, m_colourFormat);
-		colour = {img.image(), img.view(), img.extent2D(), img.viewFormat()};
+		colour = RenderTarget{img.ref()};
 	}
 	auto& depthImage = m_depthImage.refresh(extent, m_surfaceFormat.depth);
-	auto const depth = RenderTarget{depthImage.image(), depthImage.view(), depthImage.extent2D(), depthImage.viewFormat()};
+	auto const depth = RenderTarget{depthImage.ref()};
 	auto& cmd = m_primaryCmd.get();
 	m_vram->m_device->resetCommandPool(cmd.pool);
 	for (auto& cmd : m_secondaryCmds.get()) { m_vram->m_device->resetCommandPool(cmd.pool); }
@@ -242,7 +242,7 @@ vk::CommandBuffer Renderer::endMainPass(RenderPass& out_rp) {
 	if (m_target == Target::eOffScreen) {
 		ltcolour(vIL::eTransferSrcOptimal, LayoutStages::colourTransfer());
 		ltacquired(vIL::eTransferDstOptimal, LayoutStages::colourTransfer());
-		m_vram->blit(cmd.cb, {colour, m_acquired});
+		m_vram->blit(cmd.cb, {colour.ref(), m_acquired.ref()});
 	}
 	ltacquired(vIL::ePresentSrcKHR, LayoutStages::transferBottom());
 	cmd.cb.end();

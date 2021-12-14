@@ -32,7 +32,6 @@ class Texture {
 	static constexpr Extent2D default_extent_v = {32U, 32U};
 
 	static Cubemap unitCubemap(Colour colour);
-	static RenderTarget makeRenderTarget(Image const& image) noexcept { return {image.image(), image.view(), image.extent2D(), image.viewFormat()}; }
 
 	Texture(not_null<VRAM*> vram, vk::Sampler sampler, Colour colour = colours::white, Extent2D extent = default_extent_v, Payload payload = Payload::eColour);
 
@@ -44,18 +43,15 @@ class Texture {
 	bool changeSampler(vk::Sampler sampler);
 	bool assign(Image&& image, Type type = Type::e2D, Payload payload = Payload::eColour);
 	bool resize(CommandBuffer cb, Extent2D extent);
-	bool blit(CommandBuffer cb, Texture const& src, vk::Filter filter = vk::Filter::eLinear);
-	bool blit(CommandBuffer cb, Image const& src, vk::Filter filter = vk::Filter::eLinear);
-	bool copy(CommandBuffer cb, Image const& src);
+	bool blit(CommandBuffer cb, ImageRef const& src, BlitFilter filter = BlitFilter::eLinear);
+	bool copy(CommandBuffer cb, ImageRef const& src, bool allowResize);
 
 	bool busy() const { return m_transfer.busy(); }
 	bool ready() const { return m_transfer.ready(); }
 	void wait() const { m_transfer.wait(); }
 
-	Extent2D extent() const noexcept { return m_image.extent2D(); }
 	vk::Sampler sampler() const noexcept { return m_sampler; }
 	Image const& image() const noexcept { return m_image; }
-	RenderTarget renderTarget() const noexcept { return makeRenderTarget(m_image); }
 	Payload payload() const noexcept { return m_payload; }
 	Type type() const noexcept { return m_type; }
 

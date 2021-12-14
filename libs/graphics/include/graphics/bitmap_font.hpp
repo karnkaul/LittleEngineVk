@@ -1,4 +1,5 @@
 #pragma once
+#include <core/utils/error.hpp>
 #include <graphics/geometry.hpp>
 #include <graphics/glyph.hpp>
 #include <graphics/texture.hpp>
@@ -14,7 +15,7 @@ class BitmapFont {
 	Texture const& atlas() const;
 
 	graphics::GlyphMap const& glyphs() const noexcept { return m_storage.glyphs; }
-	Extent2D atlasSize() const noexcept { return atlas().extent(); }
+	Extent2D atlasSize() const noexcept { return atlas().image().extent2D(); }
 
   private:
 	struct {

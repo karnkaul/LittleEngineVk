@@ -3,25 +3,30 @@
 #include <core/log.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
-#include <core/utils/error.hpp>
+#include <core/utils/expect.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/common.hpp>
+#include <graphics/image_ref.hpp>
 #include <graphics/qtype.hpp>
+#include <ktl/either.hpp>
 #include <atomic>
 
 namespace le::graphics {
 class Device;
-struct RenderTarget;
+
+enum class BlitFilter { eLinear, eNearest };
 
 struct Allocation {
 	struct {
 		vk::DeviceMemory memory;
-		vk::DeviceSize offset = {};
-		vk::DeviceSize actualSize = {};
+		vk::DeviceSize offset{};
+		vk::DeviceSize size{};
 	} alloc;
 	VmaAllocation handle{};
-	QCaps qcaps;
 	vk::SharingMode mode{};
+	vk::DeviceSize size{};
+	void* data{};
+	QCaps qcaps;
 };
 
 class Memory : public Pinned {
@@ -50,9 +55,10 @@ class Memory : public Pinned {
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
 	static void copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects);
-	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, vk::Filter filter);
+	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, BlitFilter filter);
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
 	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx);
+	static vk::ImageBlit imageBlit(TPair<Memory::ImgMeta> const& meta, TPair<vk::Offset3D> const& srcOff, TPair<vk::Offset3D> const& dstOff) noexcept;
 
 	not_null<Device*> m_device;
 
@@ -68,7 +74,6 @@ class Buffer {
   public:
 	enum class Type { eCpuToGpu, eGpuOnly };
 	struct CreateInfo;
-	struct Span;
 
 	static constexpr auto allocation_type_v = Memory::Type::eBuffer;
 
@@ -78,15 +83,15 @@ class Buffer {
 	~Buffer();
 
 	vk::Buffer buffer() const noexcept { return m_storage.buffer; }
-	vk::DeviceSize writeSize() const noexcept { return m_storage.writeSize; }
+	vk::DeviceSize writeSize() const noexcept { return m_storage.allocation.size; }
 	std::size_t writeCount() const noexcept { return m_storage.writeCount; }
 	vk::BufferUsageFlags usage() const noexcept { return m_storage.usage; }
 	Type bufferType() const noexcept { return m_storage.type; }
-	void const* mapped() const noexcept { return m_storage.data; }
 
+	void const* mapped() const noexcept { return m_storage.allocation.data; }
 	void const* map();
 	bool unmap();
-	bool write(void const* pData, vk::DeviceSize size = 0, vk::DeviceSize offset = 0);
+	bool write(void const* data, vk::DeviceSize size = 0, vk::DeviceSize offset = 0);
 	template <typename T>
 	bool writeT(T const& t, vk::DeviceSize offset = 0);
 
@@ -97,21 +102,14 @@ class Buffer {
 	struct Storage {
 		Allocation allocation;
 		vk::Buffer buffer;
-		vk::DeviceSize writeSize = {};
 		std::size_t writeCount = 0;
 		vk::BufferUsageFlags usage;
 		Type type{};
-		void* data = nullptr;
 	};
 	Storage m_storage;
 	not_null<Memory*> m_memory;
 
 	friend class VRAM;
-};
-
-struct Buffer::Span {
-	std::size_t offset = 0;
-	std::size_t size = 0;
 };
 
 class Image {
@@ -130,24 +128,23 @@ class Image {
 	static u32 mipLevels(Extent2D extent) noexcept;
 
 	Image(not_null<Memory*> memory, CreateInfo const& info);
-	Image(not_null<Memory*> memory, RenderTarget const& rt, vk::Format format, vk::ImageUsageFlags usage);
 	Image(Image&& rhs) noexcept : m_memory(rhs.m_memory) { exchg(*this, rhs); }
 	Image& operator=(Image rhs) noexcept { return (exchg(*this, rhs), *this); }
 	~Image();
 
+	ImageRef ref() const noexcept;
 	vk::Image image() const noexcept { return m_storage.image; }
 	vk::ImageView view() const noexcept { return m_storage.view; }
 	vk::ImageViewType viewType() const noexcept { return m_storage.viewType; }
-	vk::Format imageFormat() const noexcept { return m_storage.imageFormat; }
-	vk::Format viewFormat() const noexcept { return m_storage.viewFormat; }
+	vk::Format format() const noexcept { return m_storage.format; }
 	u32 layerCount() const noexcept { return m_storage.layerCount; }
 	u32 mipCount() const noexcept { return m_storage.mipCount; }
 	BlitFlags blitFlags() const noexcept { return m_storage.blitFlags; }
 	vk::Extent3D extent() const noexcept { return m_storage.extent; }
 	Extent2D extent2D() const noexcept { return cast(extent()); }
 	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
-	void const* mapped() const noexcept { return m_storage.data; }
 
+	void const* mapped() const noexcept { return m_storage.allocation.data; }
 	void const* map();
 	bool unmap();
 
@@ -160,13 +157,11 @@ class Image {
 		vk::Image image;
 		vk::ImageView view;
 		vk::ImageViewType viewType{};
-		void* data{};
-		vk::DeviceSize allocatedSize = {};
 		vk::Extent3D extent = {};
+		vk::ImageTiling tiling{};
 		vk::ImageUsageFlags usage;
 		VmaMemoryUsage vmaUsage{};
-		vk::Format imageFormat{};
-		vk::Format viewFormat{};
+		vk::Format format{};
 		u32 layerCount = 1U;
 		u32 mipCount = 1U;
 		BlitFlags blitFlags;
@@ -203,7 +198,7 @@ struct Image::CreateInfo final : AllocationInfo {
 
 template <typename T>
 bool Buffer::writeT(T const& t, vk::DeviceSize offset) {
-	ENSURE(sizeof(T) <= m_storage.writeSize, "T larger than Buffer size");
+	EXPECT(sizeof(T) + offset <= m_storage.allocation.size);
 	return write(&t, sizeof(T), offset);
 }
 } // namespace le::graphics

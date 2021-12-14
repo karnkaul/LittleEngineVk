@@ -136,9 +136,4 @@ bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent
 	m_previousFrame = {};
 	return false;
 }
-
-std::optional<Image> RenderContext::previousFrameAsImage() const {
-	if (m_previousFrame.image) { return Image(m_vram, previousFrame(), m_surface.format().colour.format, m_surface.usage()); }
-	return std::nullopt;
-}
 } // namespace le::graphics

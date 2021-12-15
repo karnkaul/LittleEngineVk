@@ -1,6 +1,8 @@
 #pragma once
 #include <graphics/bitmap.hpp>
+#include <graphics/buffer.hpp>
 #include <graphics/context/transfer.hpp>
+#include <graphics/image.hpp>
 #include <graphics/image_ref.hpp>
 
 namespace le::graphics {
@@ -28,8 +30,8 @@ class VRAM final : public Memory {
 	Buffer makeBO(T const& t, vk::BufferUsageFlags usage);
 
 	[[nodiscard]] Future stage(Buffer& out_deviceBuffer, void const* pData, vk::DeviceSize size = 0);
-	[[nodiscard]] Future copyAsync(Span<BmpView const> bitmaps, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
-	[[nodiscard]] Future copyAsync(Images&& imgs, Image& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+	[[nodiscard]] Future copyAsync(Span<BmpView const> bitmaps, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
+	[[nodiscard]] Future copyAsync(Images&& imgs, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 
 	bool blit(CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool copy(CommandBuffer cb, TPair<ImageRef> const& images, vk::ImageAspectFlags aspects = vIAFB::eColor) const;

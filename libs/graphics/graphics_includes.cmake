@@ -1,6 +1,8 @@
 target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/basis.hpp
   include/graphics/bitmap_font.hpp
+  include/graphics/bitmap.hpp
+  include/graphics/buffer.hpp
   include/graphics/command_buffer.hpp
   include/graphics/common.hpp
   include/graphics/draw_view.hpp
@@ -8,6 +10,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/glyph_pen.hpp
   include/graphics/glyph.hpp
   include/graphics/image_ref.hpp
+  include/graphics/image.hpp
   include/graphics/memory.hpp
   include/graphics/mesh_primitive.hpp
   include/graphics/qtype.hpp

@@ -1,33 +1,19 @@
 #pragma once
 #include <vk_mem_alloc.h>
-#include <core/log.hpp>
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
-#include <core/utils/expect.hpp>
 #include <graphics/bitmap.hpp>
-#include <graphics/common.hpp>
 #include <graphics/image_ref.hpp>
 #include <graphics/qtype.hpp>
 #include <ktl/either.hpp>
 #include <atomic>
+#include <optional>
 
 namespace le::graphics {
 class Device;
+class Queues;
 
 enum class BlitFilter { eLinear, eNearest };
-
-struct Allocation {
-	struct {
-		vk::DeviceMemory memory;
-		vk::DeviceSize offset{};
-		vk::DeviceSize size{};
-	} alloc;
-	VmaAllocation handle{};
-	vk::SharingMode mode{};
-	vk::DeviceSize size{};
-	void* data{};
-	QCaps qcaps;
-};
 
 class Memory : public Pinned {
   public:
@@ -35,6 +21,10 @@ class Memory : public Pinned {
 
 	template <typename T>
 	using vAP = vk::ArrayProxy<T const> const&;
+
+	struct AllocInfo;
+	struct Resource;
+	struct Deleter;
 
 	struct ImgMeta {
 		AccessPair access;
@@ -50,8 +40,7 @@ class Memory : public Pinned {
 	Memory(not_null<Device*> device);
 	~Memory();
 
-	u64 bytes(Type type) const noexcept { return m_allocations[type].load(); }
-
+	static vk::SharingMode sharingMode(Queues const& queues, QCaps const caps);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 	static void copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::BufferImageCopy> regions, ImgMeta const& meta);
 	static void copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects);
@@ -60,145 +49,44 @@ class Memory : public Pinned {
 	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx);
 	static vk::ImageBlit imageBlit(TPair<Memory::ImgMeta> const& meta, TPair<vk::Offset3D> const& srcOff, TPair<vk::Offset3D> const& dstOff) noexcept;
 
+	std::optional<Resource> makeBuffer(AllocInfo const& ai, vk::BufferCreateInfo const& bci) const;
+	std::optional<Resource> makeImage(AllocInfo const& ai, vk::ImageCreateInfo const& ici) const;
+	void defer(Resource const& resource) const;
+	void* map(Resource& out_resource) const;
+	void unmap(Resource& out_resource) const;
+
+	u64 bytes(Type type) const noexcept { return m_allocations[type].load(); }
+
 	not_null<Device*> m_device;
 
   protected:
 	VmaAllocator m_allocator;
 	mutable EnumArray<Type, std::atomic<u64>, 2> m_allocations;
-
-	friend class Buffer;
-	friend class Image;
 };
 
-class Buffer {
-  public:
-	enum class Type { eCpuToGpu, eGpuOnly };
-	struct CreateInfo;
-
-	static constexpr auto allocation_type_v = Memory::Type::eBuffer;
-
-	Buffer(not_null<Memory*> memory, CreateInfo const& info);
-	Buffer(Buffer&& rhs) noexcept : m_memory(rhs.m_memory) { exchg(*this, rhs); }
-	Buffer& operator=(Buffer rhs) noexcept { return (exchg(*this, rhs), *this); }
-	~Buffer();
-
-	vk::Buffer buffer() const noexcept { return m_storage.buffer; }
-	vk::DeviceSize writeSize() const noexcept { return m_storage.allocation.size; }
-	std::size_t writeCount() const noexcept { return m_storage.writeCount; }
-	vk::BufferUsageFlags usage() const noexcept { return m_storage.usage; }
-	Type bufferType() const noexcept { return m_storage.type; }
-
-	void const* mapped() const noexcept { return m_storage.allocation.data; }
-	void const* map();
-	bool unmap();
-	bool write(void const* data, vk::DeviceSize size = 0, vk::DeviceSize offset = 0);
-	template <typename T>
-	bool writeT(T const& t, vk::DeviceSize offset = 0);
-
-  private:
-	static void exchg(Buffer& lhs, Buffer& rhs) noexcept;
-
-  protected:
-	struct Storage {
-		Allocation allocation;
-		vk::Buffer buffer;
-		std::size_t writeCount = 0;
-		vk::BufferUsageFlags usage;
-		Type type{};
-	};
-	Storage m_storage;
-	not_null<Memory*> m_memory;
-
-	friend class VRAM;
-};
-
-class Image {
-  public:
-	struct CreateInfo;
-
-	static constexpr auto allocation_type_v = Memory::Type::eImage;
-
-	static constexpr vk::Format srgb_v = vk::Format::eR8G8B8A8Srgb;
-	static constexpr vk::Format linear_v = vk::Format::eR8G8B8A8Unorm;
-
-	static CreateInfo info(Extent2D extent, vk::ImageUsageFlags usage, vk::ImageAspectFlags view, VmaMemoryUsage vmaUsage, vk::Format format) noexcept;
-	static CreateInfo textureInfo(Extent2D extent, vk::Format format = srgb_v, bool mips = true) noexcept;
-	static CreateInfo cubemapInfo(Extent2D extent, vk::Format format = srgb_v) noexcept;
-	static CreateInfo storageInfo(Extent2D extent, vk::Format format = linear_v) noexcept;
-	static u32 mipLevels(Extent2D extent) noexcept;
-
-	Image(not_null<Memory*> memory, CreateInfo const& info);
-	Image(Image&& rhs) noexcept : m_memory(rhs.m_memory) { exchg(*this, rhs); }
-	Image& operator=(Image rhs) noexcept { return (exchg(*this, rhs), *this); }
-	~Image();
-
-	ImageRef ref() const noexcept;
-	vk::Image image() const noexcept { return m_storage.image; }
-	vk::ImageView view() const noexcept { return m_storage.view; }
-	vk::ImageViewType viewType() const noexcept { return m_storage.viewType; }
-	vk::Format format() const noexcept { return m_storage.format; }
-	u32 layerCount() const noexcept { return m_storage.layerCount; }
-	u32 mipCount() const noexcept { return m_storage.mipCount; }
-	BlitFlags blitFlags() const noexcept { return m_storage.blitFlags; }
-	vk::Extent3D extent() const noexcept { return m_storage.extent; }
-	Extent2D extent2D() const noexcept { return cast(extent()); }
-	vk::ImageUsageFlags usage() const noexcept { return m_storage.usage; }
-
-	void const* mapped() const noexcept { return m_storage.allocation.data; }
-	void const* map();
-	bool unmap();
-
-  private:
-	static void exchg(Image& lhs, Image& rhs) noexcept;
-
-  protected:
-	struct Storage {
-		Allocation allocation;
-		vk::Image image;
-		vk::ImageView view;
-		vk::ImageViewType viewType{};
-		vk::Extent3D extent = {};
-		vk::ImageTiling tiling{};
-		vk::ImageUsageFlags usage;
-		VmaMemoryUsage vmaUsage{};
-		vk::Format format{};
-		u32 layerCount = 1U;
-		u32 mipCount = 1U;
-		BlitFlags blitFlags;
-	};
-	Storage m_storage;
-	not_null<Memory*> m_memory;
-
-	friend class VRAM;
-};
-
-struct AllocationInfo {
+struct Memory::AllocInfo {
 	QCaps qcaps = QType::eGraphics;
 	VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	vk::MemoryPropertyFlags preferred;
 };
 
-struct Buffer::CreateInfo : AllocationInfo {
-	vk::DeviceSize size;
-	vk::BufferUsageFlags usage;
-	vk::MemoryPropertyFlags properties;
-};
-
-struct Image::CreateInfo final : AllocationInfo {
-	vk::ImageCreateInfo createInfo;
+struct Memory::Resource {
+	using MPFlags = vk::MemoryPropertyFlags;
 	struct {
-		vk::Format format{};
-		vk::ImageAspectFlags aspects;
-		vk::ImageViewType type = vk::ImageViewType::e2D;
-	} view;
-	bool mipMaps = false;
+		vk::DeviceMemory memory;
+		vk::DeviceSize offset{};
+		vk::DeviceSize size{};
+	} alloc;
+	ktl::either<vk::Buffer, vk::Image> resource;
+	VmaAllocator allocator{};
+	VmaAllocation handle{};
+	vk::SharingMode mode{};
+	vk::DeviceSize size{};
+	void* data{};
+	QCaps qcaps;
 };
 
-// impl
-
-template <typename T>
-bool Buffer::writeT(T const& t, vk::DeviceSize offset) {
-	EXPECT(sizeof(T) + offset <= m_storage.allocation.size);
-	return write(&t, sizeof(T), offset);
-}
+struct Memory::Deleter {
+	void operator()(not_null<Memory const*> memory, Resource const& resource) const;
+};
 } // namespace le::graphics

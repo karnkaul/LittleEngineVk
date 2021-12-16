@@ -4,7 +4,7 @@
 namespace le::graphics {
 CommandRotator::Pool::Cmd CommandRotator::Pool::Cmd::make(Device* device, vk::CommandBuffer cb) {
 	Cmd ret;
-	ret.fence = {device, device->makeFence(false)};
+	ret.fence = ret.fence.make(device->makeFence(false), device);
 	ret.cb = cb;
 	return ret;
 }
@@ -12,7 +12,7 @@ CommandRotator::Pool::Cmd CommandRotator::Pool::Cmd::make(Device* device, vk::Co
 CommandRotator::Pool::Pool(not_null<Device*> device, QType qtype, std::size_t batch) : m_device(device), m_batch((u32)batch) {
 	EXPECT(qtype == QType::eGraphics || m_device->queues().hasCompute());
 	auto const& queue = qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().graphics();
-	m_pool = {m_device, queue.makeCommandPool(m_device->device(), pool_flags_v)};
+	m_pool = m_pool.make(queue.makeCommandPool(m_device->device(), pool_flags_v), device);
 }
 
 CommandRotator::Pool::Cmd CommandRotator::Pool::acquire() {

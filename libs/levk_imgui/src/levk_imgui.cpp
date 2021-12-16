@@ -123,7 +123,7 @@ DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window con
 	ImGui_ImplGlfw_InitForVulkan(glfwPtr(*window), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
 	auto const& queue = m_device->queues().graphics();
-	m_pool = {m_device, makePool(*m_device, (u32)descriptorCount)};
+	m_pool = m_pool.make(makePool(*m_device, (u32)descriptorCount), m_device);
 	initInfo.Instance = m_device->instance();
 	initInfo.Device = m_device->device();
 	initInfo.PhysicalDevice = m_device->physicalDevice().device;
@@ -155,12 +155,12 @@ DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window con
 	m_device->waitFor(done);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 	m_device->destroy(pool, done);
-	m_del = {m_device, nullptr};
+	m_del = m_del.make(m_device);
 	logD(LC_LibUser, "[DearImGui] constructed");
 #endif
 }
 
-void DearImGui::Del::operator()(vk::Device, void*) const {
+void DearImGui::Del::operator()() const {
 #if defined(LEVK_USE_IMGUI)
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();

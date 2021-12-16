@@ -3,7 +3,6 @@
 #include <glm/vec2.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/context/vram.hpp>
-#include <graphics/utils/deferred.hpp>
 #include <ktl/fixed_vector.hpp>
 
 namespace le::graphics {
@@ -18,7 +17,7 @@ class Sampler {
 	vk::Sampler sampler() const noexcept { return m_sampler; }
 
   private:
-	Deferred<vk::Sampler> m_sampler;
+	Defer<vk::Sampler> m_sampler;
 	not_null<Device*> m_device;
 };
 

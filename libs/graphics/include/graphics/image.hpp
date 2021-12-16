@@ -1,6 +1,6 @@
 #pragma once
 #include <graphics/memory.hpp>
-#include <graphics/utils/deferred.hpp>
+#include <graphics/utils/defer.hpp>
 
 namespace le::graphics {
 class Image {
@@ -18,15 +18,11 @@ class Image {
 	static CreateInfo storageInfo(Extent2D extent, vk::Format format = linear_v) noexcept;
 	static u32 mipLevels(Extent2D extent) noexcept;
 
-	Image(not_null<Memory*> memory) noexcept;
 	Image(not_null<Memory*> memory, CreateInfo const& info);
-	Image(Image&& rhs) noexcept : Image(rhs.m_memory) { exchg(*this, rhs); }
-	Image& operator=(Image rhs) noexcept { return (exchg(*this, rhs), *this); }
-	~Image();
 
 	ImageRef ref() const noexcept;
-	vk::Image image() const noexcept { return m_image.resource.get<vk::Image>(); }
-	vk::ImageView view() const noexcept { return m_data.view; }
+	vk::Image image() const noexcept { return m_image.get().resource.get<vk::Image>(); }
+	vk::ImageView view() const noexcept { return m_view; }
 	vk::ImageViewType viewType() const noexcept { return m_data.viewType; }
 	vk::Format format() const noexcept { return m_data.format; }
 	u32 layerCount() const noexcept { return m_data.layerCount; }
@@ -36,16 +32,12 @@ class Image {
 	Extent2D extent2D() const noexcept { return cast(extent()); }
 	vk::ImageUsageFlags usage() const noexcept { return m_data.usage; }
 
-	void const* mapped() const noexcept { return m_image.data; }
+	void const* mapped() const noexcept { return m_image.get().data; }
 	void const* map();
 	bool unmap();
 
   private:
-	static void exchg(Image& lhs, Image& rhs) noexcept;
-
-  protected:
 	struct Data {
-		Deferred<vk::ImageView> view;
 		vk::ImageViewType viewType{};
 		vk::Extent3D extent = {};
 		vk::ImageTiling tiling{};
@@ -56,7 +48,8 @@ class Image {
 		u32 mipCount = 1U;
 		BlitFlags blitFlags;
 	};
-	Memory::Resource m_image;
+	Defer<Memory::Resource, Memory, Memory::Deleter> m_image;
+	Defer<vk::ImageView> m_view;
 	Data m_data;
 	not_null<Memory*> m_memory;
 

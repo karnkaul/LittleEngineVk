@@ -84,6 +84,8 @@ struct Memory::Resource {
 	vk::DeviceSize size{};
 	void* data{};
 	QCaps qcaps;
+
+	bool operator==(Resource const& rhs) const noexcept { return handle == rhs.handle; }
 };
 
 struct Memory::Deleter {

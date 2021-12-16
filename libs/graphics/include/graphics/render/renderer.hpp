@@ -5,7 +5,7 @@
 #include <graphics/render/rgba.hpp>
 #include <graphics/render/surface.hpp>
 #include <graphics/screen_rect.hpp>
-#include <graphics/utils/deferred.hpp>
+#include <graphics/utils/defer.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 
 namespace le::graphics {
@@ -47,7 +47,7 @@ class RenderPass {
 	void beginPass();
 
 	RenderInfo m_info;
-	Deferred<vk::Framebuffer> m_framebuffer;
+	Defer<vk::Framebuffer> m_framebuffer;
 	not_null<Device*> m_device;
 	not_null<PipelineFactory*> m_factory;
 };
@@ -98,8 +98,8 @@ class Renderer {
 	static vk::Viewport viewport(Extent2D extent = {0, 0}, ScreenView const& view = {}, glm::vec2 depth = {0.0f, 1.0f}) noexcept;
 	static vk::Rect2D scissor(Extent2D extent = {0, 0}, ScreenView const& view = {}) noexcept;
 
-	static Deferred<vk::RenderPass> makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
-	static Deferred<vk::RenderPass> makeMainRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
+	static Defer<vk::RenderPass> makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps);
+	static Defer<vk::RenderPass> makeMainRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps);
 
 	Renderer(CreateInfo const& info);
 	virtual ~Renderer() = default;
@@ -118,8 +118,8 @@ class Renderer {
 	Image const* offScreenImage() const noexcept { return m_colourImage.peek(); }
 
   protected:
-	Deferred<vk::RenderPass> makeRenderPass(vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
-											Span<vk::SubpassDependency const> deps = {}) const;
+	Defer<vk::RenderPass> makeRenderPass(vk::Format colour = {}, std::optional<vk::Format> depth = std::nullopt,
+										 Span<vk::SubpassDependency const> deps = {}) const;
 
 	virtual void next();
 
@@ -131,7 +131,7 @@ class Renderer {
 
   private:
 	struct Cmd {
-		Deferred<vk::CommandPool> pool;
+		Defer<vk::CommandPool> pool;
 		CommandBuffer cb;
 
 		static Cmd make(not_null<Device*> device, bool secondary = false);
@@ -141,7 +141,7 @@ class Renderer {
 
 	RingBuffer<Cmd> m_primaryCmd;
 	RingBuffer<Cmds> m_secondaryCmds;
-	Deferred<vk::RenderPass> m_singleRenderPass;
+	Defer<vk::RenderPass> m_singleRenderPass;
 	Surface::Format m_surfaceFormat;
 	TPair<f32> m_scaleLimits = {0.25f, 4.0f};
 	Target m_target;

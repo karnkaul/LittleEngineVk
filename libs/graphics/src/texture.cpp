@@ -54,7 +54,7 @@ Sampler::Sampler(not_null<Device*> device, vk::SamplerCreateInfo info) : m_devic
 			info.maxAnisotropy = std::min(info.maxAnisotropy, device->maxAnisotropy());
 		}
 	}
-	m_sampler = {device, device->makeSampler(info)};
+	m_sampler = m_sampler.make(device->makeSampler(info), device);
 }
 
 Sampler::Sampler(not_null<Device*> device, MinMag minMag, vk::SamplerMipmapMode mip) : Sampler(device, info(minMag, mip)) {}

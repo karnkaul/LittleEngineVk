@@ -39,7 +39,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/render/framebuffer.hpp
   include/graphics/render/vertex_input.hpp
   include/graphics/utils/command_rotator.hpp
-  include/graphics/utils/deferred.hpp
+  include/graphics/utils/defer.hpp
   include/graphics/utils/layout_state.hpp
   include/graphics/utils/ring_buffer.hpp
   include/graphics/utils/utils.hpp

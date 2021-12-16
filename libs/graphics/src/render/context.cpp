@@ -85,7 +85,7 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
 	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
 	  m_renderer(makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), bf)), m_buffering(bf) {
-	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
+	m_pipelineCache = m_pipelineCache.make(m_vram->m_device->makePipelineCache(), m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
 	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }

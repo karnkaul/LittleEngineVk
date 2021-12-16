@@ -65,7 +65,7 @@ class RenderContext : public NoCopy {
 	RingBuffer<Sync> m_syncs;
 	std::optional<Acquire> m_acquired;
 	RenderTarget m_previousFrame;
-	Deferred<vk::PipelineCache> m_pipelineCache;
+	Defer<vk::PipelineCache> m_pipelineCache;
 	not_null<VRAM*> m_vram;
 	std::unique_ptr<Renderer> m_renderer;
 	Buffering m_buffering;
@@ -74,15 +74,15 @@ class RenderContext : public NoCopy {
 struct RenderContext::Sync {
 	static Sync make(not_null<Device*> device) {
 		Sync ret;
-		ret.draw = makeDeferred<vk::Semaphore>(device);
-		ret.present = makeDeferred<vk::Semaphore>(device);
-		ret.drawn = makeDeferred<vk::Fence>(device, true);
+		ret.draw = ret.draw.make(device->makeSemaphore(), device);
+		ret.present = ret.present.make(device->makeSemaphore(), device);
+		ret.drawn = ret.drawn.make(device->makeFence(true), device);
 		return ret;
 	}
 
-	Deferred<vk::Semaphore> draw;
-	Deferred<vk::Semaphore> present;
-	Deferred<vk::Fence> drawn;
+	Defer<vk::Semaphore> draw;
+	Defer<vk::Semaphore> present;
+	Defer<vk::Fence> drawn;
 };
 
 struct VertexInputCreateInfo {

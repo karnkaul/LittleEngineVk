@@ -107,7 +107,7 @@ std::optional<PipelineFactory::Pipe> PipelineFactory::makePipe(SpecMap const& sp
 	// TODO
 	// in.cache = m_pipelineCache;
 	if (auto p = utils::makeGraphicsPipeline(*m_vram->m_device, sm, spec.spec, data)) {
-		ret.pipeline = Deferred<vk::Pipeline>{m_vram->m_device, *p};
+		ret.pipeline = ret.pipeline.make(*p, m_vram->m_device);
 		ret.input = ShaderInput(m_vram, spec.meta.spd);
 		return ret;
 	}
@@ -136,7 +136,7 @@ PipelineFactory::Meta PipelineFactory::makeMeta(ShaderSpec const& shader) const 
 			}
 		}
 		auto const descLayout = m_vram->m_device->makeDescriptorSetLayout(bindings);
-		ret.setLayouts.push_back({m_vram->m_device, descLayout});
+		ret.setLayouts.push_back(Defer<vk::DescriptorSetLayout>::make(descLayout, m_vram->m_device));
 		ret.bindings.push_back({bindings.begin(), bindings.end()});
 		layouts.push_back(descLayout);
 
@@ -145,7 +145,7 @@ PipelineFactory::Meta PipelineFactory::makeMeta(ShaderSpec const& shader) const 
 		sld.layout = descLayout;
 		ret.spd.sets.push_back(std::move(sld));
 	}
-	ret.layout = makeDeferred<vk::PipelineLayout>(m_vram->m_device, setBindings.push, layouts);
+	ret.layout = ret.layout.make(m_vram->m_device->makePipelineLayout(setBindings.push, layouts), m_vram->m_device);
 	return ret;
 }
 

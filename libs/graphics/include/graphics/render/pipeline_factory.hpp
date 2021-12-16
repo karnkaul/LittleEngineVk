@@ -3,7 +3,7 @@
 #include <graphics/render/descriptor_set.hpp>
 #include <graphics/render/pipeline.hpp>
 #include <graphics/render/pipeline_spec.hpp>
-#include <graphics/utils/deferred.hpp>
+#include <graphics/utils/defer.hpp>
 #include <ktl/move_only_function.hpp>
 #include <unordered_map>
 
@@ -31,7 +31,7 @@ class PipelineFactory {
 
   private:
 	struct Pipe {
-		Deferred<vk::Pipeline> pipeline;
+		Defer<vk::Pipeline> pipeline;
 		vk::PipelineLayout layout;
 		mutable ShaderInput input;
 		bool stale{};
@@ -40,8 +40,8 @@ class PipelineFactory {
 	};
 	struct Meta {
 		SetPoolsData spd;
-		Deferred<vk::PipelineLayout> layout;
-		std::vector<Deferred<vk::DescriptorSetLayout>> setLayouts;
+		Defer<vk::PipelineLayout> layout;
+		std::vector<Defer<vk::DescriptorSetLayout>> setLayouts;
 		std::vector<ktl::fixed_vector<vk::DescriptorSetLayoutBinding, 16>> bindings;
 	};
 	using PassMap = std::unordered_map<vk::RenderPass, Pipe>;

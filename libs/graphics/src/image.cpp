@@ -62,10 +62,8 @@ u32 Image::mipLevels(Extent2D extent) noexcept { return static_cast<u32>(std::fl
 
 ImageRef Image::ref() const noexcept {
 	bool const linear = m_data.tiling == vk::ImageTiling::eLinear;
-	return ImageRef{ImageView{image(), m_data.view, extent2D(), m_data.format}, linear};
+	return ImageRef{ImageView{image(), m_view, extent2D(), m_data.format}, linear};
 }
-
-Image::Image(not_null<Memory*> memory) noexcept : m_memory(memory) { m_image.resource = vk::Image(); }
 
 Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	Device& d = *memory->m_device;
@@ -85,9 +83,9 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 		m_data.tiling = imageInfo.tiling;
 		m_data.layerCount = imageInfo.arrayLayers;
 		m_data.blitFlags = imageInfo.tiling == vk::ImageTiling::eLinear ? blitCaps.linear : blitCaps.optimal;
-		m_image = *img;
+		m_image = {*img, m_memory->m_device, m_memory};
 		if (info.view.aspects != vk::ImageAspectFlags() && info.view.format != vk::Format()) {
-			m_data.view = {&d, d.makeImageView(image(), info.view.format, info.view.aspects, info.view.type, imageInfo.mipLevels)};
+			m_view = m_view.make(d.makeImageView(image(), info.view.format, info.view.aspects, info.view.type, imageInfo.mipLevels), &d);
 			m_data.viewType = info.view.type;
 		}
 	} else {
@@ -96,30 +94,20 @@ Image::Image(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory
 	}
 }
 
-Image::~Image() {
-	if (!Device::default_v(image()) && m_image.size > 0U) { m_memory->defer(m_image); }
-}
-
 void const* Image::map() {
 	if (!hostVisible(m_data.vmaUsage)) {
 		logE(LC_LibUser, "[{}] Attempt to map GPU-only Buffer!", g_name);
 		return nullptr;
 	}
-	if (!m_image.data) { m_memory->map(m_image); }
+	if (!m_image.get().data) { m_memory->map(m_image.get()); }
 	return mapped();
 }
 
 bool Image::unmap() {
-	if (m_image.data) {
-		m_memory->unmap(m_image);
+	if (m_image.get().data) {
+		m_memory->unmap(m_image.get());
 		return true;
 	}
 	return false;
-}
-
-void Image::exchg(Image& lhs, Image& rhs) noexcept {
-	std::swap(lhs.m_data, rhs.m_data);
-	std::swap(lhs.m_image, rhs.m_image);
-	std::swap(lhs.m_memory, rhs.m_memory);
 }
 } // namespace le::graphics

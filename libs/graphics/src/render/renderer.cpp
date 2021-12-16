@@ -59,7 +59,7 @@ RenderPass::RenderPass(not_null<Device*> device, not_null<PipelineFactory*> fact
 	vk::ImageView const colourDepth[] = {m_info.framebuffer.colour.view, m_info.framebuffer.depth.view};
 	auto const views = hasDepth ? Span(colourDepth) : m_info.framebuffer.colour.view;
 	auto const extent = m_info.framebuffer.extent();
-	m_framebuffer = {m_device, m_device->makeFramebuffer(m_info.renderPass, views, graphics::cast(extent), 1U)};
+	m_framebuffer = m_framebuffer.make(m_device->makeFramebuffer(m_info.renderPass, views, graphics::cast(extent), 1U), m_device);
 	vk::CommandBufferInheritanceInfo inh;
 	inh.renderPass = m_info.renderPass;
 	inh.framebuffer = m_framebuffer;
@@ -100,7 +100,7 @@ void RenderPass::beginPass() {
 Renderer::Cmd Renderer::Cmd::make(not_null<Device*> device, bool secondary) {
 	Cmd ret;
 	auto const level = secondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
-	ret.pool = {device, device->queues().graphics().makeCommandPool(device->device(), vk::CommandPoolCreateFlagBits::eTransient)};
+	ret.pool = ret.pool.make(device->queues().graphics().makeCommandPool(device->device(), vk::CommandPoolCreateFlagBits::eTransient), device);
 	ret.cb = CommandBuffer(*device, ret.pool, level);
 	return ret;
 }
@@ -122,7 +122,7 @@ vk::Rect2D Renderer::scissor(Extent2D extent, ScreenView const& view) noexcept {
 	return utils::scissor(ret);
 }
 
-Deferred<vk::RenderPass> Renderer::makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps) {
+Defer<vk::RenderPass> Renderer::makeRenderPass(not_null<Device*> device, Attachment colour, Attachment depth, Span<vk::SubpassDependency const> deps) {
 	vk::AttachmentDescription attachments[2];
 	u32 attachmentCount = 1;
 	vk::AttachmentReference colourAttachment, depthAttachment;
@@ -161,10 +161,10 @@ Deferred<vk::RenderPass> Renderer::makeRenderPass(not_null<Device*> device, Atta
 	createInfo.pSubpasses = &subpass;
 	createInfo.dependencyCount = (u32)deps.size();
 	createInfo.pDependencies = deps.data();
-	return {device, device->device().createRenderPass(createInfo)};
+	return Defer<vk::RenderPass>::make(device->device().createRenderPass(createInfo), device);
 }
 
-Deferred<vk::RenderPass> Renderer::makeMainRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps) {
+Defer<vk::RenderPass> Renderer::makeMainRenderPass(not_null<Device*> device, vk::Format colour, vk::Format depth, Span<vk::SubpassDependency const> deps) {
 	Renderer::Attachment ac, ad;
 	ac.format = colour;
 	ad.format = depth;
@@ -193,7 +193,7 @@ Renderer::Renderer(CreateInfo const& info) : m_depthImage(info.vram), m_colourIm
 	m_colourImage.setColour();
 }
 
-Deferred<vk::RenderPass> Renderer::makeRenderPass(vk::Format colour, std::optional<vk::Format> depth, Span<vk::SubpassDependency const> deps) const {
+Defer<vk::RenderPass> Renderer::makeRenderPass(vk::Format colour, std::optional<vk::Format> depth, Span<vk::SubpassDependency const> deps) const {
 	Attachment ac, ad;
 	if (colour == vk::Format()) { colour = m_surfaceFormat.colour.format; }
 	if (depth && *depth == vk::Format()) { depth = m_surfaceFormat.depth; }

@@ -13,7 +13,7 @@ void utils::OnError::dispatch(std::string_view message, SrcInfo const& source) {
 
 utils::OnError::Scoped::Scoped(std::string_view msg, SrcInfo const& src) : m_msg(msg), m_src(src) {
 	std::string_view const pre = msg.empty() ? "Error " : "Error: ";
-	src.logMsg(pre.data(), msg.data(), dl::level::error);
+	src.logMsg(pre.data(), msg.data(), LogLevel::error);
 }
 
 utils::OnError::Scoped::~Scoped() { dispatch(m_msg, m_src); }

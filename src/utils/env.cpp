@@ -5,7 +5,6 @@
 #include <core/utils/string.hpp>
 #include <engine/engine.hpp>
 #include <engine/utils/env.hpp>
-#include <engine/utils/logger.hpp>
 #include <graphics/context/physical_device.hpp>
 #include <graphics/render/surface.hpp>
 #include <iostream>

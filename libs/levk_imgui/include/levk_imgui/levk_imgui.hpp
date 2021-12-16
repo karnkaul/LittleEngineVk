@@ -2,7 +2,7 @@
 #include <core/not_null.hpp>
 #include <core/std_types.hpp>
 #include <graphics/texture.hpp>
-#include <graphics/utils/deferred.hpp>
+#include <graphics/utils/defer.hpp>
 #include <cstdint>
 
 #if defined(LEVK_USE_IMGUI)
@@ -42,15 +42,15 @@ class DearImGui final {
 
   private:
 	struct Del {
-		void operator()(vk::Device, void*) const;
+		void operator()() const;
 	};
 
 	bool next(State from, State to);
 
 #if defined(LEVK_USE_IMGUI)
 	graphics::Device* m_device = {};
-	graphics::Deferred<vk::DescriptorPool> m_pool;
-	graphics::Deferred<void*, Del> m_del;
+	graphics::Defer<vk::DescriptorPool> m_pool;
+	graphics::Defer<void, void, Del> m_del;
 #endif
 	State m_state = State::eEnd;
 };

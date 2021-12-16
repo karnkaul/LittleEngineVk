@@ -1,9 +1,9 @@
+#include <core/log_channel.hpp>
 #include <core/services.hpp>
 #include <dumb_json/json.hpp>
 #include <engine/assets/asset_converters.hpp>
 #include <engine/assets/asset_loaders.hpp>
 #include <engine/assets/asset_store.hpp>
-#include <engine/utils/logger.hpp>
 #include <graphics/render/pipeline_factory.hpp>
 #include <graphics/utils/utils.hpp>
 #include <algorithm>
@@ -24,11 +24,11 @@ template <>
 		dbg = *res;
 	} else {
 		if (media.present(dbg)) {
-			logW("[Assets] Shader compilation failed, using existing SPIR-V [{}]", dbg.generic_string());
+			logW(LC_LibUser, "[Assets] Shader compilation failed, using existing SPIR-V [{}]", dbg.generic_string());
 			return dbg;
 		}
 		if (auto rel = graphics::utils::spirVpath(glsl, false); media.present(rel)) {
-			logW("[Assets] Shader compilation failed, using existing SPIR-V [{}]", rel.generic_string());
+			logW(LC_LibUser, "[Assets] Shader compilation failed, using existing SPIR-V [{}]", rel.generic_string());
 			return rel;
 		}
 		ENSURE(false, "Failed to compile GLSL");
@@ -168,7 +168,7 @@ bool AssetLoader<graphics::BitmapFont>::reload(graphics::BitmapFont& out_font, A
 }
 
 bool AssetLoader<graphics::BitmapFont>::load(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const {
-	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/default" : info.m_data.samplerURI;
+	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/font" : info.m_data.samplerURI;
 	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
 	if (!sampler) { return false; }
 	if (auto text = info.resource(info.m_data.jsonURI, Resource::Type::eText, Resources::Flag::eMonitor)) {

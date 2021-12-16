@@ -12,36 +12,36 @@ target_link_libraries(${PROJECT_NAME}-exe INTERFACE levk::interface)
 
 # library interface
 target_compile_definitions(${PROJECT_NAME} INTERFACE
-	_UNICODE
-	$<$<NOT:$<CONFIG:Debug>>:NDEBUG LEVK_RELEASE>
-	$<$<CONFIG:Debug>:LEVK_DEBUG>
-	$<$<BOOL:${MSVC_RUNTIME}>:WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS>
-	# LEVK Flags
-	$<$<BOOL:${LEVK_PRE_RELEASE}>:LEVK_PRE_RELEASE>
+  _UNICODE
+  $<$<NOT:$<CONFIG:Debug>>:NDEBUG LEVK_RELEASE>
+  $<$<CONFIG:Debug>:LEVK_DEBUG>
+  $<$<BOOL:${MSVC_RUNTIME}>:WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS>
+  # LEVK Flags
+  $<$<BOOL:${LEVK_PRE_RELEASE}>:LEVK_PRE_RELEASE>
 )
 
 set(CLANG_COMMON -Wconversion -Wunreachable-code -Wdeprecated-declarations -Wtype-limits -Wunused)
 if(LINUX_GCC OR LINUX_CLANG OR WINDOWS_GCC OR WINDOWS_CLANG)
-	set(COMPILE_OPTS
-		-Wextra
-		-Werror=return-type
-		$<$<NOT:$<CONFIG:Debug>>:-Werror>
-		$<$<NOT:$<BOOL:${WINDOWS_CLANG}>>:-fexceptions>
-		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
-		$<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8>
-		$<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:${CLANG_COMMON}>
-		$<$<OR:$<BOOL:${LEVK_ASAN}>,$<BOOL:${LEVK_UBSAN}>>:-O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls>
-		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
-		$<$<BOOL:${LEVK_UBSAN}>:-fsanitize=undefined>
-	)
+  set(COMPILE_OPTS
+    -Wextra
+    -Werror=return-type
+    $<$<NOT:$<CONFIG:Debug>>:-Werror>
+    $<$<NOT:$<BOOL:${WINDOWS_CLANG}>>:-fexceptions>
+    $<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${LINUX_CLANG}>>:-Wall>
+    $<$<OR:$<BOOL:${LINUX_GCC}>,$<BOOL:${WINDOWS_GCC}>>:-utf-8>
+    $<$<OR:$<BOOL:${LINUX_CLANG}>,$<BOOL:${WINDOWS_CLANG}>>:${CLANG_COMMON}>
+    $<$<OR:$<BOOL:${LEVK_ASAN}>,$<BOOL:${LEVK_UBSAN}>>:-O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls>
+    $<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
+    $<$<BOOL:${LEVK_UBSAN}>:-fsanitize=undefined>
+  )
 elseif(WINDOWS_MSBUILD)
-	set(COMPILE_OPTS
-		$<$<NOT:$<CONFIG:Debug>>:/Oi /WX>
-		/MP
-	)
+  set(COMPILE_OPTS
+    $<$<NOT:$<CONFIG:Debug>>:/Oi /WX>
+    /MP
+  )
 endif()
 if(WINDOWS_CLANG AND MSVC)
-	list(APPEND COMPILE_OPTS /W4 -utf-8)
+  list(APPEND COMPILE_OPTS /W4 -utf-8)
 endif()
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
@@ -52,18 +52,18 @@ target_compile_options(${PROJECT_NAME}-options INTERFACE ${COMPILE_OPTS})
 
 # executable interface
 if(PLATFORM STREQUAL "Linux")
-	target_link_options(${PROJECT_NAME}-exe INTERFACE
-		-Wl,-z,origin   # Allow $ORIGIN in RUNPATH
-		$<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
-		$<$<BOOL:${LEVK_UBSAN}>:-fsanitize=undefined>
-	)
+  target_link_options(${PROJECT_NAME}-exe INTERFACE
+    -Wl,-z,origin   # Allow $ORIGIN in RUNPATH
+    $<$<BOOL:${LEVK_ASAN}>:-fsanitize=address>
+    $<$<BOOL:${LEVK_UBSAN}>:-fsanitize=undefined>
+  )
 elseif(PLATFORM STREQUAL "Win64" AND NOT WINDOWS_GCC)
-	if(MSVC)
-		target_link_options(${PROJECT_NAME}-exe INTERFACE
-			/ENTRY:mainCRTStartup                              # Link to main() and not WinMain()
-			/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>   # Spawn a console in Debug
-		)
-	else()
-		target_link_options(${PROJECT_NAME}-exe INTERFACE -Wl,/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>,/ENTRY:mainCRTStartup)
-	endif()
+  if(MSVC)
+    target_link_options(${PROJECT_NAME}-exe INTERFACE
+      /ENTRY:mainCRTStartup                              # Link to main() and not WinMain()
+      /SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>   # Spawn a console in Debug
+    )
+  else()
+    target_link_options(${PROJECT_NAME}-exe INTERFACE -Wl,/SUBSYSTEM:$<IF:$<CONFIG:Debug>,CONSOLE,WINDOWS>,/ENTRY:mainCRTStartup)
+  endif()
 endif()

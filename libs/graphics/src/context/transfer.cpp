@@ -1,3 +1,4 @@
+#include <core/log_channel.hpp>
 #include <core/utils/algo.hpp>
 #include <graphics/common.hpp>
 #include <graphics/context/device.hpp>
@@ -16,7 +17,7 @@ Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
 	info.size = ceilPOT(size);
 	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-	info.queueFlags = QFlags(QType::eGraphics) | QType::eTransfer;
+	info.qcaps = QType::eGraphics;
 	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 	return Buffer(&memory, info);
 }
@@ -25,7 +26,7 @@ Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
 Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	poolInfo.queueFamilyIndex = memory->m_device->queues().familyIndex(QType::eTransfer);
+	poolInfo.queueFamilyIndex = memory->m_device->queues().transfer().family();
 	m_data.pool = memory->m_device->device().createCommandPool(poolInfo);
 	m_sync.staging = ktl::kthread([this, r = info.reserve]() {
 		{
@@ -34,21 +35,21 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 				for (auto i = range.count; i > 0; --i) { m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size)); }
 			}
 		}
-		g_log.log(lvl::info, 1, "[{}] Transfer thread started", g_name);
+		logI(LC_LibUser, "[{}] Transfer thread started", g_name);
 		while (auto f = m_queue.pop()) { (*f)(); }
-		g_log.log(lvl::info, 1, "[{}] Transfer thread completed", g_name);
+		logI(LC_LibUser, "[{}] Transfer thread completed", g_name);
 	});
 	if (info.autoPollRate && *info.autoPollRate > 0ms) {
 		m_sync.poll = ktl::kthread([this, rate = *info.autoPollRate](ktl::kthread::stop_t stop) {
-			g_log.log(lvl::info, 1, "[{}] Transfer poll thread started", g_name);
+			logI(LC_LibUser, "[{}] Transfer poll thread started", g_name);
 			while (!stop.stop_requested()) {
 				update();
 				ktl::kthread::sleep_for(rate);
 			}
-			g_log.log(lvl::info, 1, "[{}] Transfer poll thread completed", g_name);
+			logI(LC_LibUser, "[{}] Transfer poll thread completed", g_name);
 		});
 	}
-	g_log.log(lvl::info, 1, "[{}] Transfer constructed", g_name);
+	logI(LC_LibUser, "[{}] Transfer constructed", g_name);
 }
 
 Transfer::~Transfer() {
@@ -64,7 +65,7 @@ Transfer::~Transfer() {
 	m_data = {};
 	m_batches = {};
 	d.waitIdle(); // force flush deferred
-	g_log.log(lvl::info, 1, "[{}] Transfer destroyed", g_name);
+	logI(LC_LibUser, "[{}] Transfer destroyed", g_name);
 }
 
 std::size_t Transfer::update() {
@@ -91,7 +92,7 @@ std::size_t Transfer::update() {
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = (u32)commands.size();
 		submitInfo.pCommandBuffers = commands.data();
-		m_memory->m_device->queues().submit(QType::eTransfer, submitInfo, m_batches.active.done, true);
+		m_memory->m_device->queues().transfer().submit(submitInfo, m_batches.active.done);
 		m_batches.submitted.push_back(std::move(m_batches.active));
 	}
 	m_batches.active = {};
@@ -101,6 +102,7 @@ std::size_t Transfer::update() {
 Transfer::Stage Transfer::newStage(vk::DeviceSize bufferSize) { return Stage{nextBuffer(bufferSize), nextCommand()}; }
 
 void Transfer::addStage(Stage&& stage, Promise&& promise) {
+	stage.command.end();
 	std::scoped_lock lock(m_sync.mutex);
 	m_batches.active.entries.emplace_back(std::move(stage), std::move(promise));
 }
@@ -118,17 +120,24 @@ std::optional<Buffer> Transfer::nextBuffer(vk::DeviceSize size) {
 	return makeStagingBuffer(*m_memory, size);
 }
 
+vk::CommandBuffer beginCb(vk::CommandBuffer cb) {
+	vk::CommandBufferBeginInfo beginInfo;
+	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	cb.begin(beginInfo);
+	return cb;
+}
+
 vk::CommandBuffer Transfer::nextCommand() {
 	std::scoped_lock lock(m_sync.mutex);
 	if (!m_data.commands.empty()) {
 		auto ret = m_data.commands.back();
 		m_data.commands.pop_back();
-		return ret;
+		return beginCb(ret);
 	}
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
 	commandBufferInfo.commandPool = m_data.pool;
-	return m_memory->m_device->device().allocateCommandBuffers(commandBufferInfo).front();
+	return beginCb(m_memory->m_device->device().allocateCommandBuffers(commandBufferInfo).front());
 }
 
 void Transfer::scavenge(Stage&& stage, vk::Fence fence) {

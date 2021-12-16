@@ -20,5 +20,5 @@ std::string_view shortPath(std::string_view path) noexcept {
 }
 } // namespace
 
-void SrcInfo::logMsg(char const* pre, char const* msg, dl::level level) const { log(level, "{}{}\n\t{}:{} [{}]", pre, msg, shortPath(file), line, function); }
+void SrcInfo::logMsg(char const* pre, char const* msg, dlog::level level) const { log(level, "{}{}\n\t{}:{} [{}]", pre, msg, shortPath(file), line, function); }
 } // namespace le::utils

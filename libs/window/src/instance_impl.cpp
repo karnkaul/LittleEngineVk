@@ -5,7 +5,7 @@
 #include <instance_impl.hpp>
 
 namespace le::window {
-using lvl = dl::level;
+using lvl = LogLevel;
 namespace {
 constexpr std::string_view g_name = "Window";
 
@@ -17,10 +17,8 @@ glm::tvec2<T> getGlfwValue(GLFWwindow* win, F func) {
 }
 } // namespace
 
-Manager::Impl::Impl(not_null<LibLogger*> logger) : m_logger(logger) {
-	static LibLogger* s_logger{};
-	s_logger = logger;
-	glfwSetErrorCallback([](int code, char const* szDesc) { s_logger->log(lvl::error, 1, "[{}] GLFW Error! [{}]: {}", g_name, code, szDesc); });
+Manager::Impl::Impl() {
+	glfwSetErrorCallback([](int code, char const* szDesc) { logE(LC_EndUser, "[{}] GLFW Error! [{}]: {}", g_name, code, szDesc); });
 }
 
 Manager::Impl::~Impl() { glfwSetErrorCallback(nullptr); }
@@ -46,13 +44,13 @@ Cursor const& Manager::Impl::cursor(CursorType type) {
 GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	Span<GLFWmonitor* const> screens = displays();
 	if (screens.empty()) {
-		log().log(lvl::error, 0, "[{}] Failed to detect screens!", g_name);
+		log(lvl::error, LC_EndUser, "[{}] Failed to detect screens!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
 	DataStore::getOrSet<utils::SysInfo>("sys_info").displayCount = screens.size();
 	GLFWvidmode const* mode = glfwGetVideoMode(screens[0]);
 	if (!mode) {
-		log().log(lvl::error, 0, "[{}] Failed to detect video mode!", g_name);
+		log(lvl::error, LC_EndUser, "[{}] Failed to detect video mode!", g_name);
 		throw std::runtime_error("Failed to create Window");
 	}
 	std::size_t const screenIdx = info.options.screenID < screens.size() ? (std::size_t)info.options.screenID : 0;
@@ -64,7 +62,7 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	default:
 	case Style::eDecoratedWindow: {
 		if (mode->width < width || mode->height < height) {
-			log().log(lvl::error, 0, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
+			log(lvl::error, LC_EndUser, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		target = nullptr;
@@ -72,7 +70,7 @@ GLFWwindow* Manager::Impl::make(CreateInfo const& info) {
 	}
 	case Style::eBorderlessWindow: {
 		if (mode->width < width || mode->height < height) {
-			log().log(lvl::error, 0, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
+			log(lvl::error, LC_EndUser, "[{}] Window size [{}x{}] too large for default screen! [{}x{}]", g_name, width, height, mode->width, mode->height);
 			throw std::runtime_error("Failed to create Window");
 		}
 		decorated = false;
@@ -349,7 +347,7 @@ void Instance::Impl::onFocus(GLFWwindow* win, int entered) {
 		event.type = Event::Type::eFocus;
 		event.payload.set = entered != 0;
 		inst.m_events.push_back(event);
-		inst.log().log(lvl::info, 1, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
+		log(lvl::info, LC_LibUser, "[{}] Window focus {}", g_name, (entered != 0) ? "gained" : "lost");
 	}
 }
 
@@ -360,7 +358,7 @@ void Instance::Impl::onWindowResize(GLFWwindow* win, int width, int height) {
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), false};
 		inst.m_events.push_back(event);
-		inst.log().log(lvl::debug, 1, "[{}] Window resized: [{}x{}]", g_name, width, height);
+		log(lvl::debug, LC_LibUser, "[{}] Window resized: [{}x{}]", g_name, width, height);
 	}
 }
 
@@ -371,7 +369,7 @@ void Instance::Impl::onFramebufferResize(GLFWwindow* win, int width, int height)
 		event.type = Event::Type::eResize;
 		event.payload.resize = {glm::ivec2(width, height), true};
 		inst.m_events.push_back(event);
-		inst.log().log(lvl::debug, 1, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
+		log(lvl::debug, LC_LibUser, "[{}] Framebuffer resized: [{}x{}]", g_name, width, height);
 	}
 }
 
@@ -382,7 +380,7 @@ void Instance::Impl::onIconify(GLFWwindow* win, int iconified) {
 		event.type = Event::Type::eSuspend;
 		event.payload.set = iconified != 0;
 		inst.m_events.push_back(event);
-		inst.log().log(lvl::info, 1, "[{}] Window {}", g_name, iconified != 0 ? "suspended" : "resumed");
+		log(lvl::info, LC_LibUser, "[{}] Window {}", g_name, iconified != 0 ? "suspended" : "resumed");
 	}
 }
 
@@ -390,7 +388,7 @@ void Instance::Impl::onClose(GLFWwindow* win) {
 	if (auto it = g_impls.find(win); it != g_impls.end()) {
 		auto& inst = *it->second;
 		inst.close();
-		inst.log().log(lvl::info, 1, "[{}] Window closed", g_name);
+		log(lvl::info, LC_LibUser, "[{}] Window closed", g_name);
 	}
 }
 

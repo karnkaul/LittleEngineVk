@@ -101,7 +101,7 @@ std::optional<Path> ZIPMedia::findPrefixed(Path const& uri) const {
 }
 
 std::optional<std::stringstream> ZIPMedia::sstream(Path const& uri) const {
-	if (present(uri, dl::level::warn)) {
+	if (present(uri, LogLevel::warn)) {
 		if (auto file = PHYSFS_openRead(uri.generic_string().data())) {
 			std::stringstream buf;
 			auto length = PHYSFS_fileLength(file);
@@ -116,7 +116,7 @@ std::optional<std::stringstream> ZIPMedia::sstream(Path const& uri) const {
 }
 
 std::optional<bytearray> ZIPMedia::bytes(Path const& uri) const {
-	if (present(uri, dl::level::warn)) {
+	if (present(uri, LogLevel::warn)) {
 		if (auto file = PHYSFS_openRead(uri.generic_string().data())) {
 			auto length = PHYSFS_fileLength(file);
 			auto buf = bytearray((std::size_t)length);

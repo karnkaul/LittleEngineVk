@@ -29,8 +29,10 @@ BlitCaps PhysicalDevice::blitCaps(vk::Format format) const {
 		auto const fp = formatProperties(format);
 		if (fp.linearTilingFeatures & vFFFB::eBlitSrc) { bc.linear.set(BlitFlag::eSrc); }
 		if (fp.linearTilingFeatures & vFFFB::eBlitDst) { bc.linear.set(BlitFlag::eDst); }
+		if (fp.linearTilingFeatures & vFFFB::eSampledImageFilterLinear) { bc.linear.set(BlitFlag::eLinearFilter); }
 		if (fp.optimalTilingFeatures & vFFFB::eBlitSrc) { bc.optimal.set(BlitFlag::eSrc); }
 		if (fp.optimalTilingFeatures & vFFFB::eBlitDst) { bc.optimal.set(BlitFlag::eDst); }
+		if (fp.optimalTilingFeatures & vFFFB::eSampledImageFilterLinear) { bc.optimal.set(BlitFlag::eLinearFilter); }
 		auto [i, _] = m_blitCaps.emplace(format, bc);
 		it = i;
 	}

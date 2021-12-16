@@ -1,18 +1,16 @@
 #pragma once
-#include <graphics/common.hpp>
+#include <graphics/image_ref.hpp>
+#include <ktl/fixed_vector.hpp>
 
 namespace le::graphics {
-struct RenderTarget {
-	vk::Image image;
-	vk::ImageView view;
-	Extent2D extent{};
-	vk::Format format{};
+struct RenderTarget : ImageView {
+	ImageRef ref() const noexcept { return {*this, false}; }
 };
 
 struct Framebuffer {
 	RenderTarget colour;
 	RenderTarget depth;
-	std::vector<RenderTarget> images;
+	ktl::fixed_vector<RenderTarget, 4> others;
 
 	constexpr Extent2D extent() const noexcept { return colour.extent; }
 };

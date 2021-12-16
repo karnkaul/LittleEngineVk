@@ -122,13 +122,13 @@ DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window con
 	ImGui::GetStyle().WindowRounding = 0.0f;
 	ImGui_ImplGlfw_InitForVulkan(glfwPtr(*window), true);
 	ImGui_ImplVulkan_InitInfo initInfo = {};
-	auto const& queue = m_device->queues().queue(QType::eGraphics);
-	m_pool = {m_device, makePool(*m_device, (u32)descriptorCount)};
+	auto const& queue = m_device->queues().graphics();
+	m_pool = m_pool.make(makePool(*m_device, (u32)descriptorCount), m_device);
 	initInfo.Instance = m_device->instance();
 	initInfo.Device = m_device->device();
 	initInfo.PhysicalDevice = m_device->physicalDevice().device;
-	initInfo.Queue = queue.queue;
-	initInfo.QueueFamily = queue.familyIndex;
+	initInfo.Queue = queue.queue();
+	initInfo.QueueFamily = queue.family();
 	initInfo.MinImageCount = context->surface().minImageCount();
 	initInfo.ImageCount = context->surface().imageCount();
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -136,7 +136,7 @@ DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window con
 	if (!ImGui_ImplVulkan_Init(&initInfo, context->renderer().mainRenderPass())) { throw std::runtime_error("ImGui_ImplVulkan_Init failed"); }
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	poolInfo.queueFamilyIndex = queue.familyIndex;
+	poolInfo.queueFamilyIndex = queue.family();
 	auto pool = m_device->device().createCommandPool(poolInfo);
 	vk::CommandBufferAllocateInfo commandBufferInfo;
 	commandBufferInfo.commandBufferCount = 1;
@@ -151,16 +151,16 @@ DearImGui::DearImGui(MU not_null<RenderContext*> context, MU not_null<Window con
 	endInfo.commandBufferCount = 1;
 	endInfo.pCommandBuffers = &commandBuffer;
 	auto done = m_device->makeFence(false);
-	queue.queue.submit(endInfo, done);
+	queue.submit(endInfo, done);
 	m_device->waitFor(done);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 	m_device->destroy(pool, done);
-	m_del = {m_device, nullptr};
-	logD("[DearImGui] constructed");
+	m_del = m_del.make(m_device);
+	logD(LC_LibUser, "[DearImGui] constructed");
 #endif
 }
 
-void DearImGui::Del::operator()(vk::Device, void*) const {
+void DearImGui::Del::operator()() const {
 #if defined(LEVK_USE_IMGUI)
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();

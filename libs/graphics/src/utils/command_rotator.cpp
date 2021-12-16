@@ -4,13 +4,15 @@
 namespace le::graphics {
 CommandRotator::Pool::Cmd CommandRotator::Pool::Cmd::make(Device* device, vk::CommandBuffer cb) {
 	Cmd ret;
-	ret.fence = {device, device->makeFence(false)};
+	ret.fence = ret.fence.make(device->makeFence(false), device);
 	ret.cb = cb;
 	return ret;
 }
 
 CommandRotator::Pool::Pool(not_null<Device*> device, QType qtype, std::size_t batch) : m_device(device), m_batch((u32)batch) {
-	m_pool = {m_device, m_device->makeCommandPool(pool_flags_v, qtype)};
+	EXPECT(qtype == QType::eGraphics || m_device->queues().hasCompute());
+	auto const& queue = qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().graphics();
+	m_pool = m_pool.make(queue.makeCommandPool(m_device->device(), pool_flags_v), device);
 }
 
 CommandRotator::Pool::Cmd CommandRotator::Pool::acquire() {
@@ -73,6 +75,7 @@ CommandRotator::Cmd CommandRotator::make() const {
 void CommandRotator::submit(Cmd& out) const {
 	out.cb.end();
 	vk::SubmitInfo si(0U, nullptr, {}, 1U, &out.cb.m_cb);
-	m_device->queues().submit(m_qtype, si, out.fence, true);
+	auto const& queue = m_qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().primary();
+	queue.submit(si, out.fence);
 }
 } // namespace le::graphics

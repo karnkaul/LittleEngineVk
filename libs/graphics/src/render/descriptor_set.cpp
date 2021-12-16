@@ -28,7 +28,7 @@ DescriptorSet::DescriptorSet(not_null<VRAM*> vram, CreateInfo const& info) : m_v
 				}
 				++idx;
 			}
-			set.pool = {m_vram->m_device, m_vram->m_device->makeDescriptorPool(poolSizes, 1U)};
+			set.pool = set.pool.make(m_vram->m_device->makeDescriptorPool(poolSizes, 1U), m_vram->m_device);
 			set.set = m_vram->m_device->allocateDescriptorSets(set.pool, m_storage.layout, 1).front();
 			m_storage.sets.emplace(std::move(set));
 		}

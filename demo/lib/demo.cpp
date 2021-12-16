@@ -390,7 +390,7 @@ class App : public input::Receiver, public SceneRegistry {
 
 	App(not_null<Engine*> eng)
 		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
-		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/default")->sampler(), colours::red, {128, 128}) {
+		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -575,7 +575,7 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 
 		if (auto const frame = m_eng->gfx().context.renderer().offScreenImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
-			m_testTex.blit(m_eng->gfx().context.commands().get(), *frame);
+			m_testTex.blit(m_eng->gfx().context.commands().get(), frame->ref());
 		}
 
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
@@ -732,7 +732,7 @@ bool run(io::Media const& media) {
 	bool reboot = false;
 	Engine::Boot::CreateInfo bootInfo;
 	if constexpr (levk_debug) { bootInfo.device.instance.validation = graphics::Validation::eOn; }
-	bootInfo.device.logLevel = dl::level::info;
+	bootInfo.device.validationLogLevel = LogLevel::info;
 	do {
 		engine.boot(bootInfo);
 		App app(&engine);
@@ -756,12 +756,10 @@ bool run(io::Media const& media) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
 				auto& ctx = engine.gfx().context;
-				if (auto src = ctx.previousFrameAsImage()) {
-					if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.commands(), *src)) {
-						if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
-							auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
-							if (written > 0) { logD("Screenshot saved to shot.ppm"); }
-						}
+				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.commands(), ctx.previousFrame().ref())) {
+					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
+						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
+						if (written > 0) { logD("Screenshot saved to shot.ppm"); }
 					}
 				}
 			}

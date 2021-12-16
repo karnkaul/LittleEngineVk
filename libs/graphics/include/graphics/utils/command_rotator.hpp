@@ -1,7 +1,7 @@
 #pragma once
 #include <graphics/command_buffer.hpp>
-#include <graphics/qflags.hpp>
-#include <graphics/utils/deferred.hpp>
+#include <graphics/qtype.hpp>
+#include <graphics/utils/defer.hpp>
 #include <graphics/utils/ring_buffer.hpp>
 #include <ktl/future.hpp>
 
@@ -11,7 +11,7 @@ class CommandRotator {
 	class Pool {
 	  public:
 		struct Cmd {
-			Deferred<vk::Fence> fence;
+			Defer<vk::Fence> fence;
 			vk::CommandBuffer cb;
 
 			static Cmd make(Device* device, vk::CommandBuffer cb);
@@ -26,7 +26,7 @@ class CommandRotator {
 
 	  private:
 		std::vector<Cmd> m_cbs;
-		Deferred<vk::CommandPool> m_pool;
+		Defer<vk::CommandPool> m_pool;
 		not_null<Device*> m_device;
 		u32 m_batch;
 	};
@@ -46,7 +46,7 @@ class CommandRotator {
   private:
 	struct Cmd {
 		CommandBuffer cb;
-		Deferred<vk::Fence> fence;
+		Defer<vk::Fence> fence;
 		mutable ktl::promise<void> promise;
 	};
 

@@ -1,3 +1,4 @@
+#include <core/log_channel.hpp>
 #include <core/utils/expect.hpp>
 #include <graphics/common.hpp>
 #include <graphics/glyph_pen.hpp>
@@ -81,7 +82,7 @@ glm::vec3 GlyphPen::writeLine(std::string_view text, Geometry* out_geom, std::si
 		if (index && *index == idx) { ret = head(); } // set head to this character
 		char const ch = text[idx];
 		if (ch == '\n') {
-			g_log.log(lvl::warn, 0, "[{}] GlyphPen2: Unexpected newline in string: [{}]", g_name, text);
+			logW(LC_EndUser, "[{}] GlyphPen2: Unexpected newline in string: [{}]", g_name, text);
 			advance(' ', out_geom);
 			return ret;
 		}

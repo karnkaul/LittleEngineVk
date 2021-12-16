@@ -1,3 +1,4 @@
+#include <core/log_channel.hpp>
 #include <core/maths.hpp>
 #include <core/utils/data_store.hpp>
 #include <core/utils/expect.hpp>
@@ -12,7 +13,7 @@
 
 namespace le::graphics {
 namespace {
-dl::level g_validationLevel = dl::level::warn;
+LogLevel g_validationLevel = LogLevel::warn;
 
 struct vkLoader {
 	vk::DynamicLoader dl;
@@ -34,9 +35,9 @@ struct vkInst {
 	std::vector<char const*> extensions;
 };
 
-void validationLog(dl::level level, int verbosity, std::string_view msg) {
+void validationLog(LogLevel level, LogChannelMask channel, std::string_view msg) {
 	static constexpr std::string_view name = "vk::validation";
-	if (level == dl::level::error || g_validationLevel <= level) { g_log.log(level, verbosity, "[{}] {}", name, msg); }
+	if (level == LogLevel::error || g_validationLevel <= level) { dlog::log(level, channel, "[{}] {}", name, msg); }
 }
 
 bool skipError(std::string_view msg) noexcept {
@@ -52,22 +53,27 @@ bool skipError(std::string_view msg) noexcept {
 VKAPI_ATTR vk::Bool32 VKAPI_CALL validationCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
 													VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*) {
 	std::string_view const msg = pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN";
+	using lvl = LogLevel;
 	switch (messageSeverity) {
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: validationLog(lvl::error, 0, msg); return !skipError(msg);
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warn, 1, msg); break;
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: validationLog(lvl::debug, 2, msg); break;
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: validationLog(lvl::info, 1, msg); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
+		validationLog(lvl::error, LC_EndUser, msg);
+		EXPECT(false);
+		return !skipError(msg);
+	}
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: validationLog(lvl::warn, LC_LibUser, msg); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: validationLog(lvl::debug, LC_Library, msg); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: validationLog(lvl::info, LC_LibUser, msg); break;
 	default: break;
 	}
 	return false;
 }
 
-bool findLayer(std::vector<vk::LayerProperties> const& available, char const* szLayer, std::optional<dl::level> log) {
+bool findLayer(std::vector<vk::LayerProperties> const& available, char const* szLayer, std::optional<LogLevel> log) {
 	std::string_view const layerName(szLayer);
 	for (auto& layer : available) {
 		if (std::string_view(layer.layerName) == layerName) { return true; }
 	}
-	if (log) { dl::log(*log, "[{}] Requested layer [{}] not available!", g_name, szLayer); }
+	if (log) { dlog::log(*log, "[{}] Requested layer [{}] not available!", g_name, szLayer); }
 	return false;
 }
 
@@ -80,11 +86,13 @@ vkInst makeInstance(Device::CreateInfo const& info) {
 	Validation validation = info.instance.validation;
 	if (auto vd = DataObject<Validation>("validation")) {
 		validation = *vd;
-		g_log.log(lvl::info, 1, "[{}] Forcing validation layers: {}", g_name, validation == Validation::eOn ? "on" : "off");
+		logI(LC_LibUser, "[{}] Forcing validation layers: {}", g_name, validation == Validation::eOn ? "on" : "off");
 	}
 	vkInst ret;
 	if (validation == Validation::eOn) {
-		if (findLayer(layerProps, szValidationLayer, dl::level::warn)) {
+		bool const validationLayerFound = findLayer(layerProps, szValidationLayer, LogLevel::warn);
+		EXPECT(validationLayerFound);
+		if (validationLayerFound) {
 			requiredExtensionsSet.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 			ret.layers.push_back(szValidationLayer);
 		} else {
@@ -116,8 +124,8 @@ vkInst makeInstance(Device::CreateInfo const& info) {
 		ENSURE(VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDebugUtilsMessengerEXT, "Function pointer is null");
 		ret.messenger = ret.instance->createDebugUtilsMessengerEXTUnique(createInfo, nullptr);
 	}
-	g_log.log(lvl::info, 1, "[{}] Vulkan instance constructed", g_name);
-	g_validationLevel = info.logLevel;
+	logI(LC_LibUser, "[{}] Vulkan instance constructed", g_name);
+	g_validationLevel = info.validationLogLevel;
 	return ret;
 }
 
@@ -174,12 +182,12 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 	m_instance = std::move(instance.instance);
 	m_messenger = std::move(instance.messenger);
 	// Prevent validation spam on Windows
-	auto const validationLevel = std::exchange(g_validationLevel, dl::level::warn);
+	auto const validationLevel = std::exchange(g_validationLevel, LogLevel::warn);
 	std::vector<std::string_view> extensions = {info.extensions.begin(), info.extensions.end()};
 	std::copy(requiredExtensions.begin(), requiredExtensions.end(), std::back_inserter(extensions));
 	ktl::fixed_vector const devices = validDevices(extensions, *m_instance, VULKAN_HPP_DEFAULT_DISPATCHER);
 	if (devices.empty()) {
-		g_log.log(lvl::error, 0, "[{}] No compatible Vulkan physical device detected!", g_name);
+		logE(LC_EndUser, "[{}] No compatible Vulkan physical device detected!", g_name);
 		throw std::runtime_error("No physical devices");
 	}
 	auto const index = deviceIndex(devices, info.customDeviceName);
@@ -193,54 +201,37 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 	m_metadata.limits = picked.properties.limits;
 	m_metadata.lineWidth.first = picked.properties.limits.lineWidthRange[0U];
 	m_metadata.lineWidth.second = picked.properties.limits.lineWidthRange[1U];
-	auto families = utils::queueFamilies(picked, surface);
-	if (info.qselect == QSelect::eSingleFamily || info.qselect == QSelect::eSingleQueue) {
-		std::optional<QueueMultiplex::Family> uber;
-		for (auto const& family : families) {
-			if (family.flags.all(qflags_all)) {
-				uber = family;
-				g_log.log(lvl::info, 1, "[{}] Forcing single Vulkan queue family [{}]", g_name, family.familyIndex);
-				break;
-			}
-		}
-		if (uber) {
-			if (info.qselect == QSelect::eSingleQueue) {
-				g_log.log(lvl::info, 1, "[{}] Forcing single Vulkan queue (family supports [{}])", g_name, uber->total);
-				uber->total = 1;
-			}
-			families = {*uber};
-		}
-	}
-	auto queueCreateInfos = m_queues.select(families);
+	m_metadata.anisotropy = picked.properties.limits.maxSamplerAnisotropy;
+	auto const queueSelect = Queues::select(picked, surface);
 	vk::PhysicalDeviceFeatures deviceFeatures;
 	deviceFeatures.fillModeNonSolid = picked.features.fillModeNonSolid;
 	deviceFeatures.wideLines = picked.features.wideLines;
+	deviceFeatures.samplerAnisotropy = picked.features.samplerAnisotropy;
 	vk::DeviceCreateInfo deviceCreateInfo;
-	deviceCreateInfo.queueCreateInfoCount = (u32)queueCreateInfos.size();
-	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+	deviceCreateInfo.queueCreateInfoCount = (u32)queueSelect.dqci.size();
+	deviceCreateInfo.pQueueCreateInfos = queueSelect.dqci.data();
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 	deviceCreateInfo.enabledLayerCount = (u32)instance.layers.size();
 	deviceCreateInfo.ppEnabledLayerNames = instance.layers.data();
 	deviceCreateInfo.enabledExtensionCount = (u32)m_metadata.extensions.size();
 	deviceCreateInfo.ppEnabledExtensionNames = m_metadata.extensions.data();
 	m_device = picked.device.createDeviceUnique(deviceCreateInfo);
-	m_queues.setup(*m_device);
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(*m_device);
-	if (!valid(surface)) {
+	if (!valid(surface) || !m_queues.setup(*m_device, queueSelect)) {
 		m_instance->destroy(surface);
-		throw std::runtime_error("Invalid Vulkan surface");
+		throw valid(surface) ? std::runtime_error("Failed to setup Vulkan queues") : std::runtime_error("Invalid Vulkan surface");
 	}
-	g_log.log(lvl::info, 0, "[{}] Vulkan device constructed, using GPU {}", g_name, picked.toString());
+	logI(LC_LibUser, "[{}] Vulkan device constructed, using GPU {}", g_name, picked.toString());
 	g_validationLevel = validationLevel;
 	m_instance->destroy(surface);
 }
 
 Device::~Device() {
 	waitIdle();
-	g_log.log(lvl::info, 1, "[{}] Vulkan device destroyed", g_name);
+	logI(LC_LibUser, "[{}] Vulkan device destroyed", g_name);
 }
 
-bool Device::valid(vk::SurfaceKHR surface) const { return physicalDevice().surfaceSupport(m_queues.familyIndex(QType::ePresent), surface); }
+bool Device::valid(vk::SurfaceKHR surface) const { return physicalDevice().surfaceSupport(m_queues.graphics().family(), surface); }
 
 void Device::waitIdle() {
 	m_device->waitIdle();
@@ -274,7 +265,7 @@ void Device::waitFor(vk::Fence optional) const {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = m_device->waitForFences(optional, true, s_wait);
 			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name); }
+			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { logE(LC_LibUser, "[{}] Fence wait failure!", g_name); }
 		} else {
 			m_device->waitForFences(optional, true, maths::max<u64>());
 		}
@@ -287,7 +278,7 @@ void Device::waitAll(vAP<vk::Fence> validFences) const {
 			static constexpr u64 s_wait = 1000ULL * 1000 * 5000;
 			auto const result = m_device->waitForFences(std::move(validFences), true, s_wait);
 			ENSURE(result != vk::Result::eTimeout && result != vk::Result::eErrorDeviceLost, "Fence wait failure!");
-			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { g_log.log(lvl::error, 1, "[{}] Fence wait failure!", g_name); }
+			if (result == vk::Result::eTimeout || result == vk::Result::eErrorDeviceLost) { logE(LC_LibUser, "[{}] Fence wait failure!", g_name); }
 		} else {
 			m_device->waitForFences(std::move(validFences), true, maths::max<u64>());
 		}
@@ -314,12 +305,7 @@ bool Device::signalled(Span<vk::Fence const> fences) const {
 	return std::all_of(fences.begin(), fences.end(), s);
 }
 
-vk::CommandPool Device::makeCommandPool(vk::CommandPoolCreateFlags flags, QType qtype) const {
-	vk::CommandPoolCreateInfo info(flags, m_queues.familyIndex(qtype));
-	return m_device->createCommandPool(info);
-}
-
-vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type) const {
+vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, vk::ImageViewType type, u32 mipLevels) const {
 	vk::ImageViewCreateInfo createInfo;
 	createInfo.image = image;
 	createInfo.viewType = type;
@@ -327,7 +313,7 @@ vk::ImageView Device::makeImageView(vk::Image image, vk::Format format, vk::Imag
 	createInfo.components.r = createInfo.components.g = createInfo.components.b = createInfo.components.a = vk::ComponentSwizzle::eIdentity;
 	createInfo.subresourceRange.aspectMask = aspectFlags;
 	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = 1;
+	createInfo.subresourceRange.levelCount = mipLevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = type == vk::ImageViewType::eCube ? 6 : 1;
 	return m_device->createImageView(createInfo);

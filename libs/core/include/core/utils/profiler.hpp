@@ -15,9 +15,9 @@ struct ProfileEntry {
 struct ProfileDevNull {};
 
 struct ProfileLogger {
-	dl::level logLevel = dl::level::debug;
+	LogLevel logLevel = LogLevel::debug;
 
-	void operator()(ProfileEntry const& entry) const { detail::logImpl(logLevel, "{:1.3f}ms [{}]", entry.dt.count() * 1000.0f, entry.name); }
+	void operator()(ProfileEntry const& entry) const { dlog::log(logLevel, "{:1.3f}ms [{}]", entry.dt.count() * 1000.0f, entry.name); }
 };
 
 template <std::size_t MaxEntries>
@@ -25,7 +25,7 @@ struct ProfileCacher {
 	static constexpr std::size_t max_entries = MaxEntries;
 	using Entries = ktl::fixed_vector<ProfileEntry, MaxEntries>;
 
-	not_null<Entries*> entries;
+	Entries* entries{};
 
 	void operator()(ProfileEntry const& entry) const;
 };
@@ -96,12 +96,14 @@ struct NullProfileDB {
 
 template <std::size_t MaxEntries>
 void ProfileCacher<MaxEntries>::operator()(ProfileEntry const& entry) const {
-	auto it = std::find_if(entries->begin(), entries->end(), [n = entry.name](ProfileEntry const& entry) { return entry.name == n; });
-	if (it != entries->end()) {
-		it->dt += entry.dt;
-		it->stamp = entry.stamp;
-	} else if (entries->has_space()) {
-		entries->push_back(entry);
+	if (entries) {
+		auto it = std::find_if(entries->begin(), entries->end(), [n = entry.name](ProfileEntry const& entry) { return entry.name == n; });
+		if (it != entries->end()) {
+			it->dt += entry.dt;
+			it->stamp = entry.stamp;
+		} else if (entries->has_space()) {
+			entries->push_back(entry);
+		}
 	}
 }
 

@@ -1,4 +1,5 @@
 #include <core/log.hpp>
+#include <core/log_channel.hpp>
 #include <core/maths.hpp>
 #include <core/utils/expect.hpp>
 #include <glm/gtx/transform.hpp>
@@ -16,8 +17,8 @@ namespace {
 void validateBuffering([[maybe_unused]] Buffering images, Buffering buffering) {
 	ENSURE(images > 1_B, "Insufficient swapchain images");
 	ENSURE(buffering > 0_B, "Insufficient buffering");
-	if ((s16)buffering.value - (s16)images.value > 1) { g_log.log(lvl::warn, 0, "[{}] Buffering significantly more than swapchain image count", g_name); }
-	if (buffering < 2_B) { g_log.log(lvl::warn, 0, "[{}] Buffering less than double; expect hitches", g_name); }
+	if ((s16)buffering.value - (s16)images.value > 1) { logW(LC_LibUser, "[{}] Buffering significantly more than swapchain image count", g_name); }
+	if (buffering < 2_B) { logW(LC_LibUser, "[{}] Buffering less than double; expect hitches", g_name); }
 }
 
 std::unique_ptr<Renderer> makeRenderer(VRAM* vram, Surface::Format const& format, BlitFlags bf, Buffering buffering) {
@@ -84,7 +85,7 @@ VertexInputInfo RenderContext::vertexInput(QuickVertexInput const& info) {
 RenderContext::RenderContext(not_null<VRAM*> vram, GetSpirV&& gs, std::optional<VSync> vsync, Extent2D fbSize, Buffering bf)
 	: m_surface(vram, fbSize, vsync), m_pipelineFactory(vram, std::move(gs), bf), m_commandRotator(vram->m_device), m_vram(vram),
 	  m_renderer(makeRenderer(m_vram, m_surface.format(), m_surface.blitFlags(), bf)), m_buffering(bf) {
-	m_pipelineCache = makeDeferred<vk::PipelineCache>(m_vram->m_device);
+	m_pipelineCache = m_pipelineCache.make(m_vram->m_device->makePipelineCache(), m_vram->m_device);
 	validateBuffering({(u8)m_surface.imageCount()}, m_buffering);
 	DeferQueue::defaultDefer = m_buffering;
 	for (Buffering i = {}; i < m_buffering; ++i.value) { m_syncs.push(Sync::make(m_vram->m_device)); }
@@ -134,10 +135,5 @@ bool RenderContext::submit(vk::CommandBuffer cb, Acquire const& acquired, Extent
 	if (m_surface.present(fbSize, acquired, sync.present)) { return true; }
 	m_previousFrame = {};
 	return false;
-}
-
-std::optional<Image> RenderContext::previousFrameAsImage() const {
-	if (m_previousFrame.image) { return Image(m_vram, previousFrame(), m_surface.format().colour.format, m_surface.usage()); }
-	return std::nullopt;
 }
 } // namespace le::graphics

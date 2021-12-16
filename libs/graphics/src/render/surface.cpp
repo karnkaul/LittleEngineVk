@@ -92,9 +92,9 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 	if (bf.test(BlitFlag::eSrc)) { m_createInfo.imageUsage |= vk::ImageUsageFlagBits::eTransferSrc; }
 	if (bf.test(BlitFlag::eDst)) { m_createInfo.imageUsage |= vk::ImageUsageFlagBits::eTransferDst; }
 	m_createInfo.imageSharingMode = vk::SharingMode::eExclusive;
-	auto const queues = m_vram->m_device->queues().familyIndices(QFlags(QType::eGraphics, QType::ePresent));
-	m_createInfo.pQueueFamilyIndices = queues.data();
-	m_createInfo.queueFamilyIndexCount = (u32)queues.size();
+	u32 const family = m_vram->m_device->queues().graphics().family();
+	m_createInfo.queueFamilyIndexCount = 1U;
+	m_createInfo.pQueueFamilyIndices = &family;
 	m_createInfo.surface = *m_surface;
 	m_storage.format.colour = bestColour(pd, *m_surface);
 	m_storage.format.depth = bestDepth(pd);
@@ -112,7 +112,7 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(*m_storage.swapchain);
 		for (auto const image : images) {
 			m_storage.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
-			m_storage.images.push_back({image, *m_storage.imageViews.back(), extent, m_createInfo.imageFormat});
+			m_storage.images.push_back(RenderTarget{image, *m_storage.imageViews.back(), extent, m_createInfo.imageFormat});
 		}
 		m_storage.blitFlags = bf;
 	} else {
@@ -143,7 +143,7 @@ void Surface::submit(Span<vk::CommandBuffer const> cbs, Sync const& sync) const 
 	submitInfo.pWaitSemaphores = &sync.wait;
 	submitInfo.signalSemaphoreCount = 1U;
 	submitInfo.pSignalSemaphores = &sync.ssignal;
-	m_vram->m_device->queues().submit(graphics::QType::eGraphics, submitInfo, sync.fsignal, true);
+	m_vram->m_device->queues().graphics().submit(submitInfo, sync.fsignal);
 }
 
 bool Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
@@ -153,7 +153,7 @@ bool Surface::present(Extent2D fbSize, Acquire acquired, vk::Semaphore wait) {
 	info.swapchainCount = 1;
 	info.pSwapchains = &*m_storage.swapchain;
 	info.pImageIndices = &acquired.index;
-	auto const result = m_vram->m_device->queues().present(info, true);
+	auto const result = m_vram->m_device->queues().graphics().present(info);
 	if (result != vk::Result::eSuccess) {
 		makeSwapchain(fbSize, format().vsync);
 		return false;

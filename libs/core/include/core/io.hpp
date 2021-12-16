@@ -1,5 +1,7 @@
 #pragma once
 #include <core/io/path.hpp>
+#include <core/log.hpp>
+#include <dumb_log/pipe.hpp>
 
 namespace le::io {
 ///
@@ -8,13 +10,9 @@ namespace le::io {
 class Service final {
   public:
 	Service() = default;
-	Service(Path logFilePath);
-	Service(Service&& rhs) noexcept { exchg(*this, rhs); }
-	Service& operator=(Service rhs) noexcept { return (exchg(*this, rhs), *this); }
-	~Service();
-	static void exchg(Service& lhs, Service& rhs) noexcept;
+	Service(Path logFilePath, LogChannel active = 0xff);
 
   private:
-	bool m_active{};
+	dlog::pipe::handle m_handle;
 };
 } // namespace le::io

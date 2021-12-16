@@ -88,7 +88,7 @@ class Engine {
 	bool closing() const;
 
 	scene::Space m_space;
-	io::Path m_configPath = "config.json";
+	io::Path m_configPath = "levk_config.json";
 
   private:
 	void updateStats();
@@ -109,7 +109,7 @@ struct Engine::CustomDevice {
 struct Engine::CreateInfo {
 	window::CreateInfo winInfo;
 	std::optional<io::Path> logFile = "log.txt";
-	LibLogger::Verbosity verbosity = LibLogger::libVerbosity;
+	LogChannel logChannels = log_channels_v;
 };
 
 struct Engine::GFX {

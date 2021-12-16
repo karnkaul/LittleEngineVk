@@ -20,7 +20,7 @@ struct ErrInfo {
 	Time_s upTime{};
 	u64 frameCount{};
 	u32 framerate{};
-	u32 logThreadID{};
+	int logThreadID{};
 
 	ErrInfo(std::string message, SrcInfo const& source = {});
 

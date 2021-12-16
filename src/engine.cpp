@@ -1,6 +1,7 @@
 #include <build_version.hpp>
 #include <core/io.hpp>
 #include <core/io/zip_media.hpp>
+#include <core/log_channel.hpp>
 #include <core/utils/data_store.hpp>
 #include <core/utils/error.hpp>
 #include <engine/assets/asset_loaders_store.hpp>
@@ -75,7 +76,7 @@ struct Engine::Impl {
 	utils::EngineStats::Counter stats;
 	utils::ErrorHandler errorHandler;
 
-	Impl(std::optional<io::Path> logPath) : io(logPath.value_or(io::Path())) {}
+	Impl(std::optional<io::Path> logPath, LogChannel active) : io(logPath.value_or("levk-log.txt"), active) {}
 };
 
 Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, AssetStore const& store, std::optional<VSync> vsync)
@@ -84,12 +85,12 @@ Engine::GFX::GFX(not_null<Window const*> winst, Boot::CreateInfo const& bci, Ass
 Version Engine::version() noexcept { return g_engineVersion; }
 
 Span<graphics::PhysicalDevice const> Engine::availableDevices() {
-	auto const verb = graphics::g_log.minVerbosity;
+	auto const channels = dlog::channels();
 	if (s_devices.empty()) {
-		graphics::g_log.minVerbosity = LibLogger::Verbosity::eEndUser;
+		dlog::set_channels({LC_EndUser});
 		s_devices = graphics::Device::physicalDevices();
 	}
-	graphics::g_log.minVerbosity = verb;
+	dlog::set_channels(channels);
 	return s_devices;
 }
 
@@ -104,9 +105,8 @@ bool Engine::drawImgui(graphics::CommandBuffer cb) {
 	return false;
 }
 
-Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_impl(std::make_unique<Impl>(std::move(info.logFile))) {
+Engine::Engine(CreateInfo const& info, io::Media const* custom) : m_impl(std::make_unique<Impl>(std::move(info.logFile), info.logChannels)) {
 	if (!m_impl->wm.ready()) { throw std::runtime_error("Window manager not ready"); }
-	utils::g_log.minVerbosity = info.verbosity;
 	if (custom) { m_impl->store.resources().media(custom); }
 	logI("LittleEngineVk v{} | {}", version().toString(false), time::format(time::sysTime(), "{:%a %F %T %Z}"));
 	logI("Platform: {} {} ({})", levk_arch_name, levk_OS_name, os::cpuID());
@@ -250,7 +250,19 @@ void Engine::saveConfig() const {
 void Engine::addDefaultAssets() {
 	static_assert(detail::reloadable_asset_v<graphics::Texture>, "ODR violation! include asset_loaders.hpp");
 	static_assert(!detail::reloadable_asset_v<int>, "ODR violation! include asset_loaders.hpp");
-	auto sampler = store().add("samplers/default", graphics::Sampler{&gfx().boot.device, graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear})});
+	auto sampler = store().add("samplers/default", graphics::Sampler(&gfx().boot.device, {vk::Filter::eLinear, vk::Filter::eLinear}));
+	{
+		auto si = graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
+		si.maxLod = 0.0f;
+		store().add("samplers/no_mip_maps", graphics::Sampler(&gfx().boot.device, si));
+	}
+	{
+		auto si = graphics::Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
+		si.mipmapMode = vk::SamplerMipmapMode::eLinear;
+		si.addressModeU = si.addressModeV = si.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+		si.borderColor = vk::BorderColor::eIntOpaqueBlack;
+		store().add("samplers/font", graphics::Sampler(&gfx().boot.device, si));
+	}
 	/*Textures*/ {
 		using Tex = graphics::Texture;
 		auto v = &gfx().boot.vram;

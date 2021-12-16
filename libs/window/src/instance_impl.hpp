@@ -21,18 +21,16 @@ inline std::unordered_map<GLFWwindow*, not_null<Instance::Impl*>> g_impls;
 class Manager::Impl {
 #if defined(LEVK_USE_GLFW)
   public:
-	Impl(not_null<LibLogger*> logger);
+	Impl();
 	~Impl();
 
 	Cursor const& cursor(CursorType type);
-	LibLogger& log() noexcept { return *m_logger; }
 	GLFWwindow* make(CreateInfo const& info);
 
 	Span<GLFWmonitor* const> displays() const;
 
   private:
 	EnumArray<CursorType, Cursor> m_cursors;
-	not_null<LibLogger*> m_logger;
 
 	friend class Manager;
 #endif
@@ -44,8 +42,6 @@ class Instance::Impl {
 	Impl(not_null<Manager::Impl*> manager, not_null<GLFWwindow*> win);
 	~Impl();
 #endif
-
-	LibLogger& log() noexcept { return m_manager->log(); }
 
 	EventQueue pollEvents();
 	bool show();

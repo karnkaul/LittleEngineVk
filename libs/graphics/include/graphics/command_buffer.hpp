@@ -4,7 +4,7 @@
 #include <core/utils/error.hpp>
 #include <glm/vec2.hpp>
 #include <graphics/common.hpp>
-#include <graphics/qflags.hpp>
+#include <graphics/qtype.hpp>
 #include <ktl/fixed_vector.hpp>
 #include <atomic>
 #include <vector>
@@ -34,7 +34,7 @@ class CommandBuffer {
 	static void make(std::vector<CommandBuffer>& out, not_null<Device*> device, vk::CommandPool pool, u32 count);
 
 	CommandBuffer() = default;
-	explicit CommandBuffer(vk::CommandBuffer cmd);
+	explicit CommandBuffer(vk::CommandBuffer cmd, bool recording = false);
 	CommandBuffer(Device& device, vk::CommandPool cmd, vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
 
 	void begin(vk::CommandBufferUsageFlags usage, vk::CommandBufferInheritanceInfo const* inheritance = {});
@@ -55,7 +55,7 @@ class CommandBuffer {
 	void draw(u32 vertexCount, u32 instanceCount = 1, u32 firstInstance = 0, u32 firstVertex = 0) const;
 
 	void transitionImage(Image const& image, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
-	void transitionImage(vk::Image image, u32 layerCount, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const;
+	void transitionImage(vk::Image im, u32 lc, u32 mc, u32 fm, vk::ImageAspectFlags as, Layouts tr, Access ac, Stages st) const;
 
 	void endRenderPass();
 	void end();

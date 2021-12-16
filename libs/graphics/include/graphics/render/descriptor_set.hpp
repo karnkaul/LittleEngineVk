@@ -70,7 +70,7 @@ class DescriptorSet {
 	struct Set {
 		Binding bindings[max_bindings_v];
 		std::optional<Buffer> buffer;
-		Deferred<vk::DescriptorPool> pool;
+		Defer<vk::DescriptorPool> pool;
 		vk::DescriptorSet set;
 	};
 	struct Storage {

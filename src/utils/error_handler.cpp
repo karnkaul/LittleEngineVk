@@ -24,7 +24,7 @@ void add(dj::json& root, std::string const& key, T value) {
 Version const ErrList::build = g_buildVersion;
 
 ErrInfo::ErrInfo(std::string message, SrcInfo const& source) : source(source), message(std::move(message)), timestamp(time::sysTime()) {
-	logThreadID = dl::config::log_thread_id();
+	logThreadID = dlog::this_thread_id();
 	if (auto engine = Services::find<Engine>()) {
 		auto const& stats = engine->stats();
 		upTime = stats.upTime;

@@ -13,7 +13,7 @@ struct TBitmap {
 	static constexpr std::size_t channels = 4;
 
 	T bytes{};
-	Extent2D size{};
+	Extent2D extent{};
 };
 
 using BmpBytes = std::vector<u8>;

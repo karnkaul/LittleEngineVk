@@ -29,10 +29,10 @@ graphics::Geometry graphics::makeQuad(glm::vec2 size, GeomInfo const& info, UVQu
 	auto const& c = info.colour;
 	// clang-format off
 	ret.vertices = {
-		{{o.x - x, o.y - y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, {uv.topLeft.x, uv.bottomRight.y}},
-		{{o.x + x, o.y - y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, uv.bottomRight},
-		{{o.x + x, o.y + y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, {uv.bottomRight.x, uv.topLeft.y}},
-		{{o.x - x, o.y + y, 0.0f}, c, {0.0f, 0.0f, 1.0f}, uv.topLeft}
+		{{o.x - x, o.y - y, o.z}, c, {0.0f, 0.0f, 1.0f}, {uv.topLeft.x, uv.bottomRight.y}},
+		{{o.x + x, o.y - y, o.z}, c, {0.0f, 0.0f, 1.0f}, uv.bottomRight},
+		{{o.x + x, o.y + y, o.z}, c, {0.0f, 0.0f, 1.0f}, {uv.bottomRight.x, uv.topLeft.y}},
+		{{o.x - x, o.y + y, o.z}, c, {0.0f, 0.0f, 1.0f}, uv.topLeft}
 	};
 	// clang-format on
 	ret.autoIndex(topo, 4);

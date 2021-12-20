@@ -12,8 +12,8 @@ struct Camera {
 	};
 
 	static constexpr f32 defaultFOV = 45.0f;
-	static constexpr Z default3Dz = {0.1f, 100.0f};
-	static constexpr Z default2Dz = {-1.0f, 1.0f};
+	static constexpr Z default3Dz = {0.1f, 10000.0f};
+	static constexpr Z default2Dz = {-100.0f, 100.0f};
 
 	glm::vec3 position{};
 	glm::quat orientation{identity};

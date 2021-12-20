@@ -22,5 +22,8 @@ MeshView TextMesh::mesh() const noexcept {
 
 BitmapText::BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram) : m_textMesh(vram, font), m_font(font) {}
 
-void BitmapText::set(std::string_view text) { m_textMesh.primitive.construct(m_textMesh.gen(m_font->atlasSize(), m_font->glyphs(), text)); }
+void BitmapText::set(std::string_view text, std::optional<f32> z) {
+	if (z) { m_textMesh.gen.position.z = *z; }
+	m_textMesh.primitive.construct(m_textMesh.gen(m_font->atlasSize(), m_font->glyphs(), text));
+}
 } // namespace le

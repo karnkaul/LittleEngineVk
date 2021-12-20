@@ -47,7 +47,7 @@ class BitmapText {
 
 	BitmapText(not_null<BitmapFont const*> font, not_null<graphics::VRAM*> vram);
 
-	virtual void set(std::string_view text);
+	virtual void set(std::string_view text, std::optional<f32> z = std::nullopt);
 	MeshView mesh() const noexcept { return m_textMesh.mesh(); }
 	TextMesh& textMesh() noexcept { return m_textMesh; }
 

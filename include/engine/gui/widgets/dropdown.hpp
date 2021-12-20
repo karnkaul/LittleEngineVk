@@ -22,6 +22,7 @@ class Dropdown : public Button {
 			graphics::RGBA arrow = colours::white;
 		} coverColours;
 		Text::Size textSize = 40U;
+		std::optional<f32> zIndex;
 		Hash fontURI = defaultFontURI;
 		Hash style;
 	};

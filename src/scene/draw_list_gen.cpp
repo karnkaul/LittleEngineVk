@@ -48,7 +48,7 @@ void DrawListGen::operator()(ListRenderer::LayerMap& map, dens::registry const& 
 		auto& [rl, view] = c;
 		if (rl.ready()) { ListRenderer::add(map, rl.get(), modelMat(e), view); }
 	}
-	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>()) {
+	for (auto& [_, c] : registry.view<RenderPipeProvider, gui::ViewStack>(exclude)) {
 		auto& [rp, stack] = c;
 		for (auto const& view : stack.views()) { addNodes(map, rp, *view); }
 	}

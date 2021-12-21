@@ -6,10 +6,6 @@ namespace le::graphics {
 class TextureAtlas {
   public:
 	struct CreateInfo;
-	struct Img {
-		UVQuad uv{};
-		Extent2D extent{};
-	};
 	using ID = u32;
 
 	TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info);
@@ -19,7 +15,7 @@ class TextureAtlas {
 	Texture const& texture() const noexcept { return m_texture; }
 
 	bool contains(ID id) const noexcept { return m_data.entries.contains(id); }
-	Img get(ID id) const noexcept;
+	QuadTex get(ID id) const noexcept;
 	std::size_t size() const noexcept { return m_data.entries.size(); }
 	bool empty() const noexcept { return m_data.entries.empty(); }
 
@@ -36,7 +32,7 @@ class TextureAtlas {
 	Texture m_texture;
 	not_null<VRAM*> m_vram;
 
-	UVQuad getUV(Entry const& entry) const noexcept;
+	QuadUV getUV(Entry const& entry) const noexcept;
 	bool prepAtlas(Extent2D extent, CommandBuffer const& cb);
 	void nextRow() noexcept;
 };

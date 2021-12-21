@@ -6,7 +6,7 @@
 namespace le::gui {
 class Text : public TreeNode {
   public:
-	using Size = graphics::Glyph::Size;
+	using Size = graphics::BitmapGlyph::Size;
 
 	Text(not_null<TreeRoot*> root, Hash fontURI = defaultFontURI) noexcept;
 

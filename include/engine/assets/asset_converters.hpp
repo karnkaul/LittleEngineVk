@@ -3,12 +3,12 @@
 #include <core/io/converters.hpp>
 #include <core/io/path.hpp>
 #include <engine/render/layer.hpp>
-#include <graphics/glyph.hpp>
+#include <graphics/bitmap_glyph.hpp>
 
 namespace le {
 struct BitmapFontInfo {
 	io::Path atlasURI;
-	std::vector<graphics::Glyph> glyphs;
+	std::vector<graphics::BitmapGlyph> glyphs;
 	u32 sizePt{};
 };
 
@@ -36,9 +36,9 @@ constexpr ArrayMap<RenderFlag, std::string_view, std::size_t(RenderFlag::eCOUNT_
 }};
 
 template <>
-struct Jsonify<graphics::Glyph> : JsonHelper {
-	dj::json operator()(graphics::Glyph const& glyph) const;
-	graphics::Glyph operator()(dj::json const& json) const;
+struct Jsonify<graphics::BitmapGlyph> : JsonHelper {
+	dj::json operator()(graphics::BitmapGlyph const& glyph) const;
+	graphics::BitmapGlyph operator()(dj::json const& json) const;
 };
 
 template <>

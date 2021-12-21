@@ -1,7 +1,7 @@
 #pragma once
 #include <engine/render/material.hpp>
 #include <engine/scene/mesh_view.hpp>
-#include <graphics/glyph.hpp>
+#include <graphics/bitmap_glyph.hpp>
 #include <graphics/mesh_primitive.hpp>
 #include <optional>
 #include <string>
@@ -16,8 +16,8 @@ using BitmapFont = graphics::BitmapFont;
 
 struct TextGen {
 	using Type = graphics::MeshPrimitive::Type;
-	using Glyphs = graphics::GlyphMap;
-	using Size = graphics::Glyph::Size;
+	using Glyphs = graphics::BitmapGlyphMap;
+	using Size = graphics::BitmapGlyph::Size;
 
 	mutable Material material;
 	glm::vec3 position{};

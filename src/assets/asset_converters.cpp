@@ -2,7 +2,7 @@
 #include <ktl/debug_trap.hpp>
 
 namespace le::io {
-dj::json Jsonify<graphics::Glyph>::operator()(graphics::Glyph const& glyph) const {
+dj::json Jsonify<graphics::BitmapGlyph>::operator()(graphics::BitmapGlyph const& glyph) const {
 	dj::json ret;
 	insert(ret, "x", glyph.topLeft.x);
 	insert(ret, "y", glyph.topLeft.y);
@@ -14,8 +14,8 @@ dj::json Jsonify<graphics::Glyph>::operator()(graphics::Glyph const& glyph) cons
 	return ret;
 }
 
-graphics::Glyph Jsonify<graphics::Glyph>::operator()(dj::json const& json) const {
-	graphics::Glyph ret;
+graphics::BitmapGlyph Jsonify<graphics::BitmapGlyph>::operator()(dj::json const& json) const {
+	graphics::BitmapGlyph ret;
 	set(ret.topLeft.x, json.get("x"));
 	set(ret.topLeft.y, json.get("y"));
 	set(ret.size.x, json.get("width"));
@@ -44,7 +44,7 @@ BitmapFontInfo Jsonify<BitmapFontInfo>::operator()(dj::json const& json) const {
 	set(ret.sizePt, json.get("size"));
 	for (auto const& [codepoint, glyph] : json.get_as<dj::map_t>("glyphs")) {
 		if (codepoint.size() == 1) {
-			ret.glyphs.push_back(to<graphics::Glyph>(*glyph));
+			ret.glyphs.push_back(to<graphics::BitmapGlyph>(*glyph));
 			ret.glyphs.back().codepoint = static_cast<u32>(codepoint[0]);
 		}
 	}

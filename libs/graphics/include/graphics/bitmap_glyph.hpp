@@ -7,8 +7,7 @@
 #include <unordered_map>
 
 namespace le::graphics {
-
-struct Glyph {
+struct BitmapGlyph {
 	using Size = ktl::either<u32, f32>;
 
 	glm::uvec2 size{};
@@ -27,38 +26,38 @@ struct Glyph {
 	}
 };
 
-class GlyphMap {
+class BitmapGlyphMap {
   public:
-	using Map = std::unordered_map<Codepoint, Glyph, std::hash<Codepoint::type>>;
+	using Map = std::unordered_map<Codepoint, BitmapGlyph, std::hash<Codepoint::type>>;
 
-	GlyphMap() = default;
+	BitmapGlyphMap() = default;
 	template <typename Cont>
-	explicit GlyphMap(Cont const& glyphs) noexcept;
+	explicit BitmapGlyphMap(Cont const& glyphs) noexcept;
 
-	Glyph makeBlank(glm::vec2 nSize = {0.4f, 0.9f}) const noexcept;
+	BitmapGlyph makeBlank(glm::vec2 nSize = {0.4f, 0.9f}) const noexcept;
 
 	Map const& map() const noexcept { return m_glyphs; }
 	glm::uvec2 bounds() const noexcept { return m_bounds; }
 	f32 lineHeight(f32 scale) const noexcept { return static_cast<f32>(m_maxHeight) * scale; }
-	Glyph const& glyph(u32 codepoint) const noexcept;
-	Glyph const& blank() const noexcept;
+	BitmapGlyph const& glyph(u32 codepoint) const noexcept;
+	BitmapGlyph const& blank() const noexcept;
 
-	Glyph& operator[](u32 codepoint) { return m_glyphs[codepoint]; }
-	bool add(u32 codepoint, Glyph const& glyph);
+	BitmapGlyph& operator[](u32 codepoint) { return m_glyphs[codepoint]; }
+	bool add(u32 codepoint, BitmapGlyph const& glyph);
 	void remove(u32 codepoint) noexcept;
 
   private:
 	void refresh();
 
 	Map m_glyphs;
-	mutable Glyph m_blank;
+	mutable BitmapGlyph m_blank;
 	glm::uvec2 m_bounds{};
 	u32 m_maxHeight{};
 };
 
 // impl
 
-constexpr glm::uvec2 Glyph::maxBounds(glm::uvec2 rhs) const noexcept {
+constexpr glm::uvec2 BitmapGlyph::maxBounds(glm::uvec2 rhs) const noexcept {
 	glm::uvec2 ret = rhs;
 	if (valid()) {
 		if (size.x > ret.x) { ret.x = size.x; }
@@ -67,7 +66,7 @@ constexpr glm::uvec2 Glyph::maxBounds(glm::uvec2 rhs) const noexcept {
 	return ret;
 }
 
-constexpr u32 Glyph::maxHeight(u32 rhs) const noexcept {
+constexpr u32 BitmapGlyph::maxHeight(u32 rhs) const noexcept {
 	u32 ret = rhs;
 	if (valid()) {
 		u32 const height = u32(maths::abs(origin.y));
@@ -77,8 +76,8 @@ constexpr u32 Glyph::maxHeight(u32 rhs) const noexcept {
 }
 
 template <typename Cont>
-GlyphMap::GlyphMap(Cont const& glyphs) noexcept {
-	for (Glyph const& glyph : glyphs) {
+BitmapGlyphMap::BitmapGlyphMap(Cont const& glyphs) noexcept {
+	for (BitmapGlyph const& glyph : glyphs) {
 		if (glyph.valid()) {
 			m_glyphs[glyph.codepoint] = glyph;
 			m_bounds = glyph.maxBounds(m_bounds);

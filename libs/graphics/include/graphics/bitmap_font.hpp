@@ -1,7 +1,7 @@
 #pragma once
 #include <core/utils/error.hpp>
+#include <graphics/bitmap_glyph.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/glyph.hpp>
 #include <graphics/texture.hpp>
 
 namespace le::graphics {
@@ -14,19 +14,19 @@ class BitmapFont {
 	bool valid() const noexcept { return m_storage.atlas.has_value(); }
 	Texture const& atlas() const;
 
-	graphics::GlyphMap const& glyphs() const noexcept { return m_storage.glyphs; }
+	graphics::BitmapGlyphMap const& glyphs() const noexcept { return m_storage.glyphs; }
 	Extent2D atlasSize() const noexcept { return atlas().image().extent2D(); }
 
   private:
 	struct {
-		GlyphMap glyphs;
+		BitmapGlyphMap glyphs;
 		std::optional<Texture> atlas;
 	} m_storage;
 };
 
 struct BitmapFont::CreateInfo {
 	std::optional<vk::Format> forceFormat;
-	Span<Glyph const> glyphs;
+	Span<BitmapGlyph const> glyphs;
 	ImageData atlas;
 };
 

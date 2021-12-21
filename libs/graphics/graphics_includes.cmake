@@ -8,7 +8,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/draw_view.hpp
   include/graphics/geometry.hpp
   include/graphics/glyph_pen.hpp
-  include/graphics/glyph.hpp
+  include/graphics/bitmap_glyph.hpp
   include/graphics/image_ref.hpp
   include/graphics/image.hpp
   include/graphics/memory.hpp
@@ -25,6 +25,9 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/context/transfer.hpp
   include/graphics/context/vram.hpp
 
+  include/graphics/font/glyph.hpp
+  include/graphics/font/face.hpp
+
   include/graphics/render/buffering.hpp
   include/graphics/render/camera.hpp
   include/graphics/render/context.hpp
@@ -39,9 +42,12 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/render/surface.hpp
   include/graphics/render/framebuffer.hpp
   include/graphics/render/vertex_input.hpp
+  
   include/graphics/utils/command_rotator.hpp
   include/graphics/utils/defer.hpp
+  include/graphics/utils/extent2d.hpp
   include/graphics/utils/layout_state.hpp
   include/graphics/utils/ring_buffer.hpp
   include/graphics/utils/utils.hpp
+  include/graphics/utils/quad_uv.hpp
 )

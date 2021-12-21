@@ -4,13 +4,14 @@
 #include <graphics/glyph_pen.hpp>
 
 namespace le::graphics {
-GlyphPen::GlyphPen(not_null<GlyphMap const*> glyphs, glm::uvec2 atlas, Size size, glm::vec3 pos, RGBA colour) noexcept : m_atlas(atlas), m_glyphs(glyphs) {
+GlyphPen::GlyphPen(not_null<BitmapGlyphMap const*> glyphs, glm::uvec2 atlas, Size size, glm::vec3 pos, RGBA colour) noexcept
+	: m_atlas(atlas), m_glyphs(glyphs) {
 	reset(pos);
 	this->colour(colour);
 	this->size(size);
 }
 
-bool GlyphPen::generate(Geometry& out_geometry, Glyph const& glyph) const {
+bool GlyphPen::generate(Geometry& out_geometry, BitmapGlyph const& glyph) const {
 	if (glyph.valid()) {
 		auto const c = m_colour.toVec4();
 		static constexpr auto normal = glm::vec3(0.0f);
@@ -33,7 +34,7 @@ bool GlyphPen::generate(Geometry& out_geometry, Glyph const& glyph) const {
 	return false;
 }
 
-Glyph const& GlyphPen::write(u32 codepoint, Geometry* out_geometry) const {
+BitmapGlyph const& GlyphPen::write(u32 codepoint, Geometry* out_geometry) const {
 	EXPECT(codepoint != '\n');
 	if (codepoint != '\n') {
 		if (auto const& gl = glyph(codepoint); gl.valid()) {
@@ -41,7 +42,7 @@ Glyph const& GlyphPen::write(u32 codepoint, Geometry* out_geometry) const {
 			return gl;
 		}
 	}
-	static constexpr Glyph blank{};
+	static constexpr BitmapGlyph blank{};
 	return blank;
 }
 

@@ -1,0 +1,64 @@
+#include <context/device_impl.hpp>
+#include <core/utils/expect.hpp>
+#include <graphics/font/face.hpp>
+#include <unordered_map>
+
+namespace le::graphics {
+using SlotMap = std::unordered_map<Codepoint, FontFace::Slot, std::hash<Codepoint::type>>;
+
+namespace {
+FontFace::Slot makeSlot(FTFace const face, Codepoint const cp) noexcept {
+	EXPECT(face);
+	FontFace::Slot ret;
+	if (face.loadGlyph(cp)) {
+		auto const& slot = *face.face->glyph;
+		ret.glyph.codepoint = cp;
+		ret.glyph.metrics.advance = {slot.advance.x >> 6, slot.advance.y >> 6};
+		ret.glyph.metrics.bearing = {slot.metrics.horiBearingX >> 6, slot.metrics.horiBearingY >> 6};
+		ret.pixmap.extent = {slot.bitmap.width, slot.bitmap.rows};
+		ret.pixmap.bytes = face.buildGlyphImage();
+		ret.pixmap.extent = face.glyphExtent();
+	}
+	return ret;
+}
+} // namespace
+
+struct FontFace::Impl {
+	SlotMap map;
+	FTUnique<FTFace> face;
+};
+
+FontFace::FontFace(not_null<Device*> device) : m_impl(std::make_unique<Impl>()), m_device(device) {}
+
+FontFace::FontFace(FontFace&&) noexcept = default;
+FontFace& FontFace::operator=(FontFace&&) noexcept = default;
+FontFace::~FontFace() noexcept = default;
+
+bool FontFace::load(Span<std::byte const> ttf, Size size) noexcept {
+	m_impl->face = FTFace::make(*m_device->impl().ftLib, ttf);
+	if (m_impl->face) {
+		auto const cs = [f = *m_impl->face](CharSize const& cs) { f.setCharSize(cs.size64, cs.resolution); };
+		auto const ps = [f = *m_impl->face](PixelSize const& ps) { f.setPixelSize(ps.size); };
+		size.visit(ktl::overloaded{cs, ps});
+		return true;
+	}
+	return false;
+}
+
+FontFace::operator bool() const noexcept { return static_cast<bool>(m_impl->face); }
+
+FontFace::Slot const& FontFace::slot(Codepoint cp) const noexcept {
+	if (auto it = m_impl->map.find(cp); it != m_impl->map.end()) { return it->second; }
+	if (m_impl->face) {
+		if (auto slot = makeSlot(*m_impl->face, cp); slot.glyph.codepoint == cp) {
+			auto [it, _] = m_impl->map.emplace(cp, slot);
+			return it->second;
+		}
+	}
+	static Slot const s_none{};
+	return s_none;
+}
+
+std::size_t FontFace::slotCount() const noexcept { return m_impl->map.size(); }
+void FontFace::clearSlots() noexcept { m_impl->map.clear(); }
+} // namespace le::graphics

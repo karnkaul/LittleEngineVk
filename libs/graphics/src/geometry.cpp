@@ -21,7 +21,7 @@ void graphics::IndexStitcher::reset(u32 index) {
 	start = pin = index;
 }
 
-graphics::Geometry graphics::makeQuad(glm::vec2 size, GeomInfo const& info, UVQuad const& uv, Topology topo) {
+graphics::Geometry graphics::makeQuad(glm::vec2 size, GeomInfo const& info, QuadUV const& uv, Topology topo) {
 	Geometry ret;
 	f32 const x = size.x * 0.5f;
 	f32 const y = size.y * 0.5f;

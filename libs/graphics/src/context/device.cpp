@@ -175,9 +175,6 @@ ktl::fixed_vector<PhysicalDevice, 8> Device::physicalDevices() {
 	return {};
 }
 
-// TODO: REMOVE
-Bitmap g_testGlyph;
-
 Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_impl(std::make_unique<Impl>()), m_makeSurface(std::move(makeSurface)) {
 	if (!m_makeSurface) { throw std::runtime_error("Invalid makeSurface instance"); }
 	auto instance = makeInstance(info);
@@ -230,17 +227,6 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_im
 	m_instance->destroy(surface);
 
 	m_impl->ftLib = FTUnique<FTLib>(FTLib::make());
-
-	// TODO: REMOVE
-	auto face = FTUnique<FTFace>(FTFace::make(*m_impl->ftLib, "test.ttf"));
-	if (face) {
-		face->setCharSize();
-		if (face->loadGlyph(static_cast<u32>('g'))) {
-			g_testGlyph.bytes = face->buildGlyphImage();
-			g_testGlyph.extent = {face->face->glyph->bitmap.width, face->face->glyph->bitmap.rows};
-		}
-	}
-	// TODO: REMOVE
 }
 
 Device::~Device() {

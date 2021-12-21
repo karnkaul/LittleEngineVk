@@ -1,8 +1,8 @@
-#include <graphics/glyph.hpp>
+#include <graphics/bitmap_glyph.hpp>
 
 namespace le::graphics {
-Glyph GlyphMap::makeBlank(glm::vec2 nSize) const noexcept {
-	Glyph ret;
+BitmapGlyph BitmapGlyphMap::makeBlank(glm::vec2 nSize) const noexcept {
+	BitmapGlyph ret;
 	ret.codepoint = codepoint_blank_v;
 	auto const bounds = glm::vec2(m_bounds);
 	ret.size = glm::uvec2(nSize * bounds);
@@ -17,17 +17,17 @@ Glyph GlyphMap::makeBlank(glm::vec2 nSize) const noexcept {
 	return ret;
 }
 
-Glyph const& GlyphMap::glyph(u32 codepoint) const noexcept {
+BitmapGlyph const& BitmapGlyphMap::glyph(u32 codepoint) const noexcept {
 	if (auto it = m_glyphs.find(codepoint); it != m_glyphs.end()) { return it->second; }
 	return blank();
 }
 
-Glyph const& GlyphMap::blank() const noexcept {
+BitmapGlyph const& BitmapGlyphMap::blank() const noexcept {
 	if (m_blank.size.x == 0 && !m_glyphs.empty()) { m_blank = makeBlank(); }
 	return m_blank;
 }
 
-bool GlyphMap::add(u32 codepoint, Glyph const& glyph) {
+bool BitmapGlyphMap::add(u32 codepoint, BitmapGlyph const& glyph) {
 	if (glyph.valid()) {
 		m_glyphs.insert_or_assign(codepoint, glyph);
 		m_bounds = glyph.maxBounds(m_bounds);
@@ -38,12 +38,12 @@ bool GlyphMap::add(u32 codepoint, Glyph const& glyph) {
 	return false;
 }
 
-void GlyphMap::remove(u32 codepoint) noexcept {
+void BitmapGlyphMap::remove(u32 codepoint) noexcept {
 	m_glyphs.erase(codepoint);
 	refresh();
 }
 
-void GlyphMap::refresh() {
+void BitmapGlyphMap::refresh() {
 	for (auto const& [_, glyph] : m_glyphs) {
 		m_bounds = glyph.maxBounds(m_bounds);
 		m_maxHeight = glyph.maxHeight(m_maxHeight);

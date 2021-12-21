@@ -1,7 +1,7 @@
 #pragma once
 #include <core/not_null.hpp>
+#include <graphics/bitmap_glyph.hpp>
 #include <graphics/geometry.hpp>
-#include <graphics/glyph.hpp>
 #include <graphics/render/rgba.hpp>
 
 namespace le::graphics {
@@ -10,7 +10,7 @@ namespace le::graphics {
 ///
 class GlyphPen {
   public:
-	using Size = Glyph::Size;
+	using Size = BitmapGlyph::Size;
 
 	static constexpr std::size_t max_lines_v = 16;
 	template <typename T>
@@ -55,17 +55,17 @@ class GlyphPen {
 		glm::vec3 head{};
 	};
 
-	GlyphPen(not_null<GlyphMap const*> glyphs, glm::uvec2 atlas, Size size, glm::vec3 pos = {}, RGBA colour = colours::black) noexcept;
+	GlyphPen(not_null<BitmapGlyphMap const*> glyphs, glm::uvec2 atlas, Size size, glm::vec3 pos = {}, RGBA colour = colours::black) noexcept;
 
 	///
 	/// \brief Append quad to geometry if valid glyph
 	/// \returns true if valud glyph
 	///
-	bool generate(Geometry& out_geometry, Glyph const& glyph) const;
+	bool generate(Geometry& out_geometry, BitmapGlyph const& glyph) const;
 	///
 	/// \brief Obtain glyph for codepoint, generate into out if not null
 	///
-	Glyph const& write(u32 codepoint, Geometry* out = {}) const;
+	BitmapGlyph const& write(u32 codepoint, Geometry* out = {}) const;
 	///
 	/// \brief Write glyph for codepoint and advance write head
 	/// \returns position of write head at end
@@ -123,8 +123,8 @@ class GlyphPen {
 	f32 advanced() const noexcept { return m_state.advanced; }
 	void reset(glm::vec3 pos) noexcept;
 
-	GlyphMap const& glyphs() const noexcept { return *m_glyphs; }
-	Glyph const& glyph(u32 codepoint) const noexcept { return m_glyphs->glyph(codepoint); }
+	BitmapGlyphMap const& glyphs() const noexcept { return *m_glyphs; }
+	BitmapGlyph const& glyph(u32 codepoint) const noexcept { return m_glyphs->glyph(codepoint); }
 	glm::vec3 head() const noexcept { return m_state.head; }
 	glm::vec2 lineExtent() const noexcept { return m_state.lineExtent; }
 	glm::vec2 extent() const noexcept { return m_state.totalExtent; }
@@ -144,7 +144,7 @@ class GlyphPen {
 	glm::uvec2 m_atlas{};
 	RGBA m_colour = colours::black;
 	f32 m_scale = 1.0f;
-	not_null<GlyphMap const*> m_glyphs;
+	not_null<BitmapGlyphMap const*> m_glyphs;
 };
 
 // impl

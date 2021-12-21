@@ -6,8 +6,8 @@ namespace le::graphics {
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
 	: m_texture(vram, info.sampler, Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {}
 
-TextureAtlas::Img TextureAtlas::get(ID id) const noexcept {
-	if (auto it = m_data.entries.find(id); it != m_data.entries.end()) { return Img{getUV(it->second), it->second.extent}; }
+QuadTex TextureAtlas::get(ID id) const noexcept {
+	if (auto it = m_data.entries.find(id); it != m_data.entries.end()) { return QuadTex{getUV(it->second), it->second.extent}; }
 	return {};
 }
 
@@ -33,12 +33,12 @@ bool TextureAtlas::setUV(ID id, Span<Vertex> quad) const noexcept {
 	return false;
 }
 
-UVQuad TextureAtlas::getUV(Entry const& entry) const noexcept {
+QuadUV TextureAtlas::getUV(Entry const& entry) const noexcept {
 	auto const& itex = m_texture.image().extent2D();
 	auto const ftex = glm::vec2(f32(itex.x), f32(itex.y));
 	auto const fextent = glm::vec2(f32(entry.extent.x), f32(entry.extent.y));
 	auto const foffset = glm::vec2(f32(entry.offset.x), f32(entry.offset.y));
-	UVQuad ret;
+	QuadUV ret;
 	ret.topLeft = foffset / ftex;
 	ret.bottomRight = (foffset + glm::vec2(fextent.x, fextent.y)) / ftex;
 	return ret;

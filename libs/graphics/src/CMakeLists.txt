@@ -4,12 +4,14 @@ target_sources(${PROJECT_NAME} PRIVATE
   command_buffer.cpp
   geometry.cpp
   glyph_pen.cpp
-  glyph.cpp
+  bitmap_glyph.cpp
   image.cpp
   memory.cpp
   mesh_primitive.cpp
   texture.cpp
   texture_atlas.cpp
+
+  font/face.cpp
 
   ft/ft.cpp
   ft/ft.hpp

@@ -1,3 +1,4 @@
+#include <context/device_impl.hpp>
 #include <core/log_channel.hpp>
 #include <core/maths.hpp>
 #include <core/utils/data_store.hpp>
@@ -174,7 +175,10 @@ ktl::fixed_vector<PhysicalDevice, 8> Device::physicalDevices() {
 	return {};
 }
 
-Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_makeSurface(std::move(makeSurface)) {
+// TODO: REMOVE
+Bitmap g_testGlyph;
+
+Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_impl(std::make_unique<Impl>()), m_makeSurface(std::move(makeSurface)) {
 	if (!m_makeSurface) { throw std::runtime_error("Invalid makeSurface instance"); }
 	auto instance = makeInstance(info);
 	auto surface = m_makeSurface(*instance.instance);
@@ -224,6 +228,19 @@ Device::Device(CreateInfo const& info, Device::MakeSurface&& makeSurface) : m_ma
 	logI(LC_LibUser, "[{}] Vulkan device constructed, using GPU {}", g_name, picked.toString());
 	g_validationLevel = validationLevel;
 	m_instance->destroy(surface);
+
+	m_impl->ftLib = FTUnique<FTLib>(FTLib::make());
+
+	// TODO: REMOVE
+	auto face = FTUnique<FTFace>(FTFace::make(*m_impl->ftLib, "test.ttf"));
+	if (face) {
+		face->setCharSize();
+		if (face->loadGlyph(static_cast<u32>('g'))) {
+			g_testGlyph.bytes = face->buildGlyphImage();
+			g_testGlyph.extent = {face->face->glyph->bitmap.width, face->face->glyph->bitmap.rows};
+		}
+	}
+	// TODO: REMOVE
 }
 
 Device::~Device() {
@@ -385,4 +402,9 @@ bool Device::setDebugUtilsName(u64 handle, vk::ObjectType type, std::string_view
 void Device::defer(DeferQueue::Callback&& callback, Buffering defer) { m_deferred.defer(std::move(callback), defer); }
 
 void Device::decrementDeferred() { m_deferred.decrement(); }
+
+Device::Impl& Device::impl() const noexcept {
+	EXPECT(m_impl != nullptr);
+	return *m_impl;
+}
 } // namespace le::graphics

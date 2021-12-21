@@ -8,7 +8,6 @@
 
 namespace le::graphics {
 enum class Validation { eOn, eOff };
-class CommandBuffer;
 
 class Device final : public Pinned {
   public:
@@ -85,10 +84,12 @@ class Device final : public Pinned {
 
 	LayoutState m_layouts;
 
-  private:
-	CommandBuffer beginCmd();
-	void endCmd(CommandBuffer cb);
+	// for internal use
+	struct Impl;
+	Impl& impl() const noexcept;
 
+  private:
+	std::unique_ptr<Impl> m_impl;
 	MakeSurface m_makeSurface;
 	vk::UniqueInstance m_instance;
 	vk::UniqueDebugUtilsMessengerEXT m_messenger;

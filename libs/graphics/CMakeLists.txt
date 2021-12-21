@@ -19,6 +19,7 @@ target_link_libraries(${PROJECT_NAME}
     levk::compile-options
     stb-image
     tinyobjloader
+    freetype
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${LEVK_USE_IMGUI}>:LEVK_USE_IMGUI>)

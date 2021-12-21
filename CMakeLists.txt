@@ -155,6 +155,7 @@ if(LINUX_CLANG OR LINUX_GCC OR WINDOWS_CLANG OR WINDOWS_GCC)
 elseif(PLATFORM STREQUAL Win64)
   target_compile_definitions(spirv-cross-core PUBLIC _CRT_SECURE_NO_WARNINGS NO_MIN_MAX)
 endif()
+add_subdirectory(ext/freetype)
 
 # engine
 set(LEVK_LIBRARY_TYPE STATIC CACHE STRING "levk library type (STATIC/SHARED)")

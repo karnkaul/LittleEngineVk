@@ -6,12 +6,12 @@ namespace le::graphics {
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
 	: m_texture(vram, info.sampler, Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {}
 
-TextureAtlas::Img TextureAtlas::get(int id) const noexcept {
+TextureAtlas::Img TextureAtlas::get(ID id) const noexcept {
 	if (auto it = m_data.entries.find(id); it != m_data.entries.end()) { return Img{getUV(it->second), it->second.extent}; }
 	return {};
 }
 
-bool TextureAtlas::add(int id, Bitmap const& bitmap, CommandBuffer const& cb) {
+bool TextureAtlas::add(ID id, Bitmap const& bitmap, CommandBuffer const& cb) {
 	if (!prepAtlas(bitmap.extent, cb)) { return false; }
 	utils::copySub(m_vram, cb, bitmap, m_texture.image(), m_data.head);
 	Entry entry{bitmap.extent, m_data.head};
@@ -21,7 +21,7 @@ bool TextureAtlas::add(int id, Bitmap const& bitmap, CommandBuffer const& cb) {
 	return true;
 }
 
-bool TextureAtlas::setUV(int id, Span<Vertex> quad) const noexcept {
+bool TextureAtlas::setUV(ID id, Span<Vertex> quad) const noexcept {
 	EXPECT(quad.size() >= 4U);
 	if (auto img = get(id); img.extent.x > 0U && quad.size() >= 4U) {
 		quad[0].texCoord = {img.uv.topLeft.x, img.uv.bottomRight.y};

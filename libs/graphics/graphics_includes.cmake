@@ -16,6 +16,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/qtype.hpp
   include/graphics/screen_rect.hpp
   include/graphics/texture.hpp
+  include/graphics/texture_atlas.hpp
 
   include/graphics/context/defer_queue.hpp
   include/graphics/context/device.hpp

@@ -98,10 +98,11 @@ std::array<bytearray, 6> loadCubemap(io::Media const& media, io::Path const& pre
 
 BlitFlags blitFlags(not_null<Device*> device, ImageRef const& img);
 bool canBlit(not_null<Device*> device, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
-bool blit(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
-bool copy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images);
-bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear);
-std::optional<Image> makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, ImageRef const& img);
+bool blit(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter = BlitFilter::eLinear);
+bool copy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst);
+bool blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Image const& out_dst, BlitFilter filter = BlitFilter::eLinear);
+bool copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap, Image const& out_dst, glm::ivec2 offset);
+std::optional<Image> makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, ImageRef const& src);
 std::size_t writePPM(not_null<Device*> device, Image const& img, std::ostream& out_str);
 
 constexpr vk::Viewport viewport(DrawViewport const& viewport) noexcept;

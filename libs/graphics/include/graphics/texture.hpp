@@ -41,7 +41,8 @@ class Texture {
 
 	bool changeSampler(vk::Sampler sampler);
 	bool assign(Image&& image, Type type = Type::e2D, Payload payload = Payload::eColour);
-	bool resize(CommandBuffer cb, Extent2D extent);
+	bool resizeBlit(CommandBuffer cb, Extent2D extent);
+	bool resizeCopy(CommandBuffer cb, Extent2D extent);
 	bool blit(CommandBuffer cb, ImageRef const& src, BlitFilter filter = BlitFilter::eLinear);
 	bool copy(CommandBuffer cb, ImageRef const& src, bool allowResize);
 
@@ -57,6 +58,7 @@ class Texture {
   private:
 	bool constructImpl(Span<BmpView const> bmps, Extent2D extent, Payload payload, vk::Format format);
 	bool constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format format);
+	bool resize(CommandBuffer cb, Extent2D extent, bool viaBlit);
 
 	Image m_image;
 	VRAM::Future m_transfer;

@@ -124,20 +124,23 @@ bool Texture::assign(Image&& image, Type type, Payload payload) {
 	return false;
 }
 
-bool Texture::resize(CommandBuffer cb, Extent2D extent) {
+bool Texture::resizeBlit(CommandBuffer cb, Extent2D extent) {
 	if (extent == m_image.extent2D()) { return true; }
 	EXPECT(extent.x > 0 && extent.y > 0);
-	if (extent.x > 0 && extent.y > 0) {
-		Image image(m_vram, Image::textureInfo(extent, m_image.format()));
-		std::swap(m_image, image);
-		return utils::blit(m_vram, cb, {image.ref(), m_image.ref()}, BlitFilter::eLinear);
-	}
+	if (extent.x > 0 && extent.y > 0) { return resize(cb, extent, true); }
+	return false;
+}
+
+bool Texture::resizeCopy(CommandBuffer cb, Extent2D extent) {
+	if (extent == m_image.extent2D()) { return true; }
+	EXPECT(extent.x > 0 && extent.y > 0);
+	if (extent.x > 0 && extent.y > 0) { return resize(cb, extent, false); }
 	return false;
 }
 
 bool Texture::blit(CommandBuffer cb, ImageRef const& src, BlitFilter filter) {
 	wait();
-	return utils::blit(m_vram, cb, {src, m_image.ref()}, filter);
+	return utils::blit(m_vram, cb, src, m_image, filter);
 }
 
 bool Texture::copy(CommandBuffer cb, ImageRef const& src, bool allowResize) {
@@ -146,7 +149,7 @@ bool Texture::copy(CommandBuffer cb, ImageRef const& src, bool allowResize) {
 		if (!allowResize || src.extent.x == 0 || src.extent.y == 0) { return false; }
 		m_image = Image(m_vram, Image::textureInfo(src.extent, m_image.format()));
 	}
-	return utils::copy(m_vram, cb, {src, m_image.ref()});
+	return utils::copy(m_vram, cb, src, m_image);
 }
 
 bool Texture::constructImpl(Span<BmpView const> imgs, Extent2D extent, Payload payload, vk::Format format) {
@@ -169,5 +172,16 @@ bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format for
 	auto const extent = imgs.front().extent;
 	m_image = load(*m_vram, m_transfer, format, extent, std::move(imgs));
 	return true;
+}
+
+bool Texture::resize(CommandBuffer cb, Extent2D extent, bool viaBlit) {
+	wait();
+	Image image(m_vram, Image::textureInfo(extent, m_image.format()));
+	std::swap(m_image, image);
+	if (viaBlit) {
+		return utils::blit(m_vram, cb, image.ref(), m_image, BlitFilter::eLinear);
+	} else {
+		return utils::copy(m_vram, cb, image.ref(), m_image);
+	}
 }
 } // namespace le::graphics

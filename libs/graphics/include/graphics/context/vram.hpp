@@ -26,6 +26,8 @@ class VRAM final : public Memory {
 	~VRAM();
 
 	Buffer makeBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, bool hostVisible);
+	Buffer makeStagingBuffer(vk::DeviceSize size) const { return m_transfer.makeStagingBuffer(size); }
+
 	template <typename T>
 	Buffer makeBO(T const& t, vk::BufferUsageFlags usage);
 
@@ -35,6 +37,7 @@ class VRAM final : public Memory {
 
 	bool blit(CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter = BlitFilter::eLinear, AspectPair aspects = colour_aspects_v) const;
 	bool copy(CommandBuffer cb, TPair<ImageRef> const& images, vk::ImageAspectFlags aspects = vIAFB::eColor) const;
+	static bool makeMipMaps(CommandBuffer cb, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects = vIAFB::eColor);
 
 	template <typename Cont>
 	void wait(Cont const& futures) const;

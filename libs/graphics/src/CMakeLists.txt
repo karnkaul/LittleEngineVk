@@ -9,6 +9,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   memory.cpp
   mesh_primitive.cpp
   texture.cpp
+  texture_atlas.cpp
 )
 
 add_subdirectory(context)

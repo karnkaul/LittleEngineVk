@@ -28,6 +28,56 @@ TPair<std::size_t> getLayerImageSize(T const& images) {
 	ENSURE(ret.first > 0 && ret.second > 0, "Invalid image data!");
 	return ret;
 }
+
+bytearray toBytearray(BmpView bmp) {
+	bytearray ret(bmp.size(), {});
+	std::memcpy(ret.data(), bmp.data(), ret.size());
+	return ret;
+}
+
+void doMakeMipMaps(vk::CommandBuffer cb, vk::Image img, vk::Extent3D ex, vk::ImageAspectFlags as, u32 lc, u32 mc, LayoutPair lp) {
+	VRAM::ImgMeta pre, post;
+	pre.aspects = post.aspects = as;
+	pre.layerMip.layer.first = post.layerMip.layer.first = 0U;
+	pre.layerMip.layer.count = post.layerMip.layer.count = lc;
+	pre.access = {vAFB::eMemoryRead, vAFB::eTransferRead};
+	post.access = {vAFB::eTransferRead, vAFB::eTransferWrite};
+	// transition mip[0] from fromTo.first to dst, mip[1]-mip[N] from undefined to dst
+	pre.stages = {vPSFB::eTopOfPipe, vPSFB::eTransfer};
+	post.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
+	pre.layerMip.mip.count = post.layerMip.mip.first = 1U;
+	post.layerMip.mip.count = mc - 1U;
+	pre.layouts = {lp.first, vIL::eTransferDstOptimal};
+	post.layouts = {vIL::eUndefined, vIL::eTransferDstOptimal};
+	VRAM::imageBarrier(cb, img, pre);
+	VRAM::imageBarrier(cb, img, post);
+	// prepare to blit mip[N-1] to mip[N]...
+	pre.access = {vAFB::eTransferWrite, vAFB::eTransferRead};
+	post.access = {vAFB::eTransferRead, vAFB::eShaderRead};
+	pre.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
+	post.stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
+	pre.layerMip.mip.count = post.layerMip.mip.count = 1U;
+	pre.layouts = {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal};
+	post.layouts = {vIL::eTransferSrcOptimal, lp.second};
+	vk::Extent3D mipExtent = ex;
+	u32 mip = 1;
+	for (; mip < mc; ++mip) {
+		vk::Extent3D nextMipExtent = vk::Extent3D(std::max(mipExtent.width / 2, 1U), std::max(mipExtent.height / 2, 1U), 1U);
+		auto const srcOffset = vk::Offset3D{int(mipExtent.width), int(mipExtent.height), 1};
+		auto const dstOffset = vk::Offset3D{int(nextMipExtent.width), int(nextMipExtent.height), 1U};
+		pre.layerMip.mip.first = post.layerMip.mip.first = mip - 1U;
+		auto blitMeta = pre;
+		blitMeta.layerMip.mip.first = mip;
+		auto const region = VRAM::imageBlit({pre, blitMeta}, {{}, srcOffset}, {{}, dstOffset});
+		VRAM::imageBarrier(cb, img, pre); // transition mip[N-1] to dst
+		cb.blitImage(img, vIL::eTransferSrcOptimal, img, vIL::eTransferDstOptimal, region, vk::Filter::eLinear);
+		VRAM::imageBarrier(cb, img, post); // transition mip[N-1] to fromTo.second
+		mipExtent = nextMipExtent;
+	}
+	post.layerMip.mip.first = mip - 1U;
+	post.layouts = {vIL::eTransferDstOptimal, lp.second};
+	VRAM::imageBarrier(cb, img, post); // transition mip[N] to fromTo.second
+}
 } // namespace
 
 template <typename T>
@@ -41,12 +91,13 @@ struct VRAM::ImageCopier {
 	vk::Image image;
 	vk::Extent3D extent;
 	LayoutPair fromTo;
+	glm::ivec2 ioffset{};
 	u32 layerCount = 1U;
 	u32 mipCount = 1U;
 	vk::ImageAspectFlags aspects = vIAFB::eColor;
 
-	ImageCopier(VRAM& vram, Imgs&& imgs, Transfer::Promise&& pr, Image const& img, vk::ImageAspectFlags aspects, LayoutPair fromTo)
-		: imgs(std::move(imgs)), vram(vram), pr(std::move(pr)), fromTo(fromTo), aspects(aspects) {
+	ImageCopier(VRAM& vram, Imgs&& imgs, Transfer::Promise&& pr, Image const& img, vk::ImageAspectFlags aspects, LayoutPair fromTo, glm::ivec2 ioffset)
+		: imgs(std::move(imgs)), vram(vram), pr(std::move(pr)), fromTo(fromTo), ioffset(ioffset), aspects(aspects) {
 		image = img.image();
 		layerCount = img.layerCount();
 		mipCount = img.mipCount();
@@ -64,61 +115,17 @@ struct VRAM::ImageCopier {
 			auto const offset = layerIdx * layerImageSize.first;
 			PData const pd(img);
 			std::memcpy((u8*)data + offset, pd.ptr, pd.size);
-			copyRegions.push_back(bufferImageCopy(extent, aspects, offset, (u32)layerIdx++));
+			copyRegions.push_back(bufferImageCopy(extent, aspects, offset, ioffset, (u32)layerIdx++));
 		}
 		ImgMeta meta;
 		meta.layouts = fromTo;
 		meta.stages.second = vram.m_post.stages;
 		meta.access.second = vram.m_post.access;
-		meta.layerCount = layerCount;
+		meta.layerMip.layer.count = layerCount;
 		copy(stage.command, stage.buffer->buffer(), image, copyRegions, meta);
-		if (mipCount > 1U) { makeMipMaps(stage.command); }
+		if (mipCount > 1U) { doMakeMipMaps(stage.command, image, extent, aspects, layerCount, mipCount, fromTo); }
 		vram.m_transfer.addStage(std::move(stage), std::move(pr));
 		vram.m_device->m_layouts.force(image, meta.layouts.second);
-	}
-
-	void makeMipMaps(vk::CommandBuffer cb) const {
-		ImgMeta pre, post;
-		pre.aspects = post.aspects = aspects;
-		pre.firstLayer = post.firstLayer = 0U;
-		pre.layerCount = post.layerCount = layerCount;
-		pre.access = {vAFB::eMemoryRead, vAFB::eTransferRead};
-		post.access = {vAFB::eTransferRead, vAFB::eTransferWrite};
-		// transition mip[0] from fromTo.first to dst, mip[1]-mip[N] from undefined to dst
-		pre.stages = {vPSFB::eTopOfPipe, vPSFB::eTransfer};
-		post.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
-		pre.mipLevels = post.firstMip = 1U;
-		post.mipLevels = mipCount - 1U;
-		pre.layouts = {fromTo.first, vIL::eTransferDstOptimal};
-		post.layouts = {vIL::eUndefined, vIL::eTransferDstOptimal};
-		VRAM::imageBarrier(cb, image, pre);
-		VRAM::imageBarrier(cb, image, post);
-		// prepare to blit mip[N-1] to mip[N]...
-		pre.access = {vAFB::eTransferWrite, vAFB::eTransferRead};
-		post.access = {vAFB::eTransferRead, vAFB::eShaderRead};
-		pre.stages = {vPSFB::eTransfer, vPSFB::eTransfer};
-		post.stages = {vPSFB::eTransfer, vPSFB::eAllCommands};
-		pre.mipLevels = post.mipLevels = 1U;
-		pre.layouts = {vIL::eTransferDstOptimal, vIL::eTransferSrcOptimal};
-		post.layouts = {vIL::eTransferSrcOptimal, fromTo.second};
-		vk::Extent3D mipExtent = extent;
-		u32 mip = 1;
-		for (; mip < mipCount; ++mip) {
-			vk::Extent3D nextMipExtent = vk::Extent3D(std::max(mipExtent.width / 2, 1U), std::max(mipExtent.height / 2, 1U), 1U);
-			auto const srcOffset = vk::Offset3D{int(mipExtent.width), int(mipExtent.height), 1};
-			auto const dstOffset = vk::Offset3D{int(nextMipExtent.width), int(nextMipExtent.height), 1U};
-			pre.firstMip = post.firstMip = mip - 1U;
-			auto blitMeta = pre;
-			blitMeta.firstMip = mip;
-			auto const region = VRAM::imageBlit({pre, blitMeta}, {{}, srcOffset}, {{}, dstOffset});
-			VRAM::imageBarrier(cb, image, pre); // transition mip[N-1] to dst
-			cb.blitImage(image, vIL::eTransferSrcOptimal, image, vIL::eTransferDstOptimal, region, vk::Filter::eLinear);
-			VRAM::imageBarrier(cb, image, post); // transition mip[N-1] to fromTo.second
-			mipExtent = nextMipExtent;
-		}
-		post.firstMip = mip - 1U;
-		post.layouts = {vIL::eTransferDstOptimal, fromTo.second};
-		VRAM::imageBarrier(cb, image, post); // transition mip[N] to fromTo.second
 	}
 };
 
@@ -170,12 +177,8 @@ VRAM::Future VRAM::copyAsync(Span<BmpView const> bitmaps, Image const& out_dst, 
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
 	ktl::fixed_vector<bytearray, 6> imgs;
-	for (auto layer : bitmaps) {
-		bytearray bytes(layer.size(), {});
-		std::memcpy(bytes.data(), layer.data(), bytes.size());
-		imgs.push_back(std::move(bytes));
-	}
-	m_transfer.m_queue.push(ImageCopier<bytearray>(*this, std::move(imgs), std::move(promise), out_dst, aspects, fromTo));
+	for (auto layer : bitmaps) { imgs.push_back(toBytearray(layer)); }
+	m_transfer.m_queue.push(ImageCopier<bytearray>(*this, std::move(imgs), std::move(promise), out_dst, aspects, fromTo, {}));
 	return ret;
 }
 
@@ -185,7 +188,7 @@ VRAM::Future VRAM::copyAsync(Images&& imgs, Image const& out_dst, LayoutPair fro
 	ENSURE(out_dst.layerCount() == imgs.size(), "Invalid image");
 	Transfer::Promise promise;
 	auto ret = promise.get_future();
-	m_transfer.m_queue.push(ImageCopier<utils::STBImg>(*this, std::move(imgs), std::move(promise), out_dst, aspects, fromTo));
+	m_transfer.m_queue.push(ImageCopier<utils::STBImg>(*this, std::move(imgs), std::move(promise), out_dst, aspects, fromTo, {}));
 	return ret;
 }
 
@@ -199,11 +202,17 @@ bool VRAM::blit(CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filt
 }
 
 bool VRAM::copy(CommandBuffer cb, TPair<ImageRef> const& images, vk::ImageAspectFlags aspects) const {
-	EXPECT(images.first.extent == images.second.extent);
-	if (images.first.extent != images.second.extent) { return false; }
 	auto const& ex = images.first.extent;
 	copy(cb.m_cb, {images.first.image, images.second.image}, vk::Extent3D(ex.x, ex.y, 1U), aspects);
 	return true;
+}
+
+bool VRAM::makeMipMaps(CommandBuffer cb, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+	if (out_dst.mipCount() > 1U) {
+		doMakeMipMaps(cb.m_cb, out_dst.image(), out_dst.extent(), aspects, out_dst.layerCount(), out_dst.mipCount(), fromTo);
+		return true;
+	}
+	return false;
 }
 
 void VRAM::waitIdle() {

@@ -8,6 +8,7 @@
 
 namespace le::graphics {
 enum class Validation { eOn, eOff };
+class CommandBuffer;
 
 class Device final : public Pinned {
   public:

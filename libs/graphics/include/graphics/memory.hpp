@@ -27,14 +27,11 @@ class Memory : public Pinned {
 	struct Deleter;
 
 	struct ImgMeta {
+		LayerMip layerMip;
 		AccessPair access;
 		StagePair stages;
 		LayoutPair layouts;
 		vk::ImageAspectFlags aspects = vk::ImageAspectFlagBits::eColor;
-		u32 firstLayer = 0;
-		u32 layerCount = 1;
-		u32 firstMip = 0;
-		u32 mipLevels = 1;
 	};
 
 	Memory(not_null<Device*> device);
@@ -46,7 +43,7 @@ class Memory : public Pinned {
 	static void copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects);
 	static void blit(vk::CommandBuffer cb, TPair<vk::Image> images, TPair<vk::Extent3D> extents, TPair<vk::ImageAspectFlags> aspects, BlitFilter filter);
 	static void imageBarrier(vk::CommandBuffer cb, vk::Image image, ImgMeta const& meta);
-	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize offset, u32 layerIdx);
+	static vk::BufferImageCopy bufferImageCopy(vk::Extent3D extent, vk::ImageAspectFlags aspects, vk::DeviceSize bo, glm::ivec2 io, u32 layerIdx);
 	static vk::ImageBlit imageBlit(TPair<Memory::ImgMeta> const& meta, TPair<vk::Offset3D> const& srcOff, TPair<vk::Offset3D> const& dstOff) noexcept;
 
 	std::optional<Resource> makeBuffer(AllocInfo const& ai, vk::BufferCreateInfo const& bci) const;

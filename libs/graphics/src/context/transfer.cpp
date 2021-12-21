@@ -11,16 +11,6 @@ constexpr vk::DeviceSize ceilPOT(vk::DeviceSize size) noexcept {
 	while (ret < size) { ret <<= 1; }
 	return ret;
 }
-
-Buffer makeStagingBuffer(Memory& memory, vk::DeviceSize size) {
-	Buffer::CreateInfo info;
-	info.size = ceilPOT(size);
-	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
-	info.qcaps = QType::eGraphics;
-	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
-	return Buffer(&memory, info);
-}
 } // namespace
 
 Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(memory) {
@@ -32,7 +22,7 @@ Transfer::Transfer(not_null<Memory*> memory, CreateInfo const& info) : m_memory(
 		{
 			std::scoped_lock lock(m_sync.mutex);
 			for (auto const& range : r) {
-				for (auto i = range.count; i > 0; --i) { m_data.buffers.push_back(makeStagingBuffer(*m_memory, range.size)); }
+				for (auto i = range.count; i > 0; --i) { m_data.buffers.push_back(makeStagingBuffer(range.size)); }
 			}
 		}
 		logI(LC_LibUser, "[{}] Transfer thread started", g_name);
@@ -66,6 +56,16 @@ Transfer::~Transfer() {
 	m_batches = {};
 	d.waitIdle(); // force flush deferred
 	logI(LC_LibUser, "[{}] Transfer destroyed", g_name);
+}
+
+Buffer Transfer::makeStagingBuffer(vk::DeviceSize size) const {
+	Buffer::CreateInfo info;
+	info.size = ceilPOT(size);
+	info.properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+	info.usage = vk::BufferUsageFlagBits::eTransferSrc;
+	info.qcaps = QType::eGraphics;
+	info.vmaUsage = VMA_MEMORY_USAGE_CPU_ONLY;
+	return Buffer(m_memory, info);
 }
 
 std::size_t Transfer::update() {
@@ -117,7 +117,7 @@ std::optional<Buffer> Transfer::nextBuffer(vk::DeviceSize size) {
 			return ret;
 		}
 	}
-	return makeStagingBuffer(*m_memory, size);
+	return makeStagingBuffer(size);
 }
 
 vk::CommandBuffer beginCb(vk::CommandBuffer cb) {

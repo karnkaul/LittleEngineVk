@@ -376,20 +376,8 @@ std::array<bytearray, 6> utils::loadCubemap(io::Media const& media, io::Path con
 	return ret;
 }
 
-void utils::Transition::operator()(vk::ImageLayout layout, LayoutStages const& stages) const {
-	if (layout != vIL::eUndefined) { device->m_layouts.transition(*cb, image, layout, stages); }
-}
-
-utils::DualTransition::DualTransition(not_null<Device*> device, not_null<CommandBuffer*> cb, TPair<vk::Image> images, LayoutPair layouts, Stages const& stages)
-	: m_a{device, cb, images.first}, m_b{device, cb, images.second}, m_stages(stages.second) {
-	m_layouts = {device->m_layouts.get(images.first), device->m_layouts.get(images.second)};
-	m_a(layouts.first, stages.first);
-	m_b(layouts.second, stages.first);
-}
-
-utils::DualTransition::~DualTransition() {
-	m_a(m_layouts.first, m_stages);
-	m_b(m_layouts.second, m_stages);
+void utils::Transition::operator()(vk::ImageLayout layout, LayerMip const& lm, LayoutStages const& ls) const {
+	if (layout != vIL::eUndefined) { device->m_layouts.transition(cb->m_cb, image, layout, ls, lm); }
 }
 
 BlitFlags utils::blitFlags(not_null<Device*> device, ImageRef const& img) {
@@ -407,18 +395,31 @@ bool utils::canBlit(not_null<Device*> device, TPair<ImageRef> const& images, Bli
 	}
 }
 
+namespace {
+template <typename F>
+auto xferImage(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, F func) {
+	LayoutPair const layouts = {vram->m_device->m_layouts.get(images.first.image), vram->m_device->m_layouts.get(images.second.image)};
+	utils::Transition src{vram->m_device, &cb, images.first.image};
+	utils::Transition dst{vram->m_device, &cb, images.second.image};
+	src(vIL::eTransferSrcOptimal, {}, LayoutStages::colourTransfer());
+	dst(vIL::eTransferDstOptimal, {}, LayoutStages::colourTransfer());
+	auto const ret = func();
+	src(layouts.first);
+	dst(layouts.second);
+	return ret;
+}
+} // namespace
+
 bool utils::blit(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter) {
 	EXPECT(canBlit(vram->m_device, images, filter));
 	if (!canBlit(vram->m_device, images, filter)) { return false; }
-	DualTransition dt(vram->m_device, &cb, {images.first.image, images.second.image});
-	return vram->blit(cb, images, filter);
+	return xferImage(vram, cb, images, [vram, cb, images, filter] { return vram->blit(cb, images, filter); });
 }
 
 bool utils::copy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images) {
 	EXPECT(images.first.extent == images.second.extent);
 	if (images.first.extent != images.second.extent) { return false; }
-	DualTransition dt(vram->m_device, &cb, {images.first.image, images.second.image});
-	return vram->copy(cb, images);
+	return xferImage(vram, cb, images, [vram, cb, images] { return vram->copy(cb, images); });
 }
 
 bool utils::blitOrCopy(not_null<VRAM*> vram, CommandBuffer cb, TPair<ImageRef> const& images, BlitFilter filter) {

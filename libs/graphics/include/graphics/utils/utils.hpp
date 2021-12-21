@@ -72,26 +72,7 @@ struct Transition {
 	not_null<CommandBuffer*> cb;
 	vk::Image image;
 
-	void operator()(vk::ImageLayout layout, LayoutStages const& stages = LayoutStages::allCommands()) const;
-};
-
-class DualTransition {
-  public:
-	using Stages = TPair<LayoutStages>;
-
-	inline static LayoutPair const xfr_v = {vIL::eTransferSrcOptimal, vIL::eTransferDstOptimal};
-	inline static Stages const ct_ac_v = {LayoutStages::colourTransfer(), LayoutStages::allCommands()};
-
-	DualTransition(not_null<Device*> device, not_null<CommandBuffer*> cb, TPair<vk::Image> images, LayoutPair layouts = xfr_v, Stages const& stages = ct_ac_v);
-	~DualTransition();
-
-	void changeStages(LayoutStages stages) noexcept { m_stages = stages; }
-
-  private:
-	Transition m_a;
-	Transition m_b;
-	LayoutPair m_layouts;
-	LayoutStages m_stages;
+	void operator()(vk::ImageLayout layout, LayerMip const& lm = {}, LayoutStages const& ls = {}) const;
 };
 
 template <typename T>

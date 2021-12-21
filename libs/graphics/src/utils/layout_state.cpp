@@ -1,4 +1,5 @@
 #include <graphics/command_buffer.hpp>
+#include <graphics/memory.hpp>
 #include <graphics/utils/layout_state.hpp>
 
 namespace le::graphics {
@@ -8,16 +9,23 @@ vk::ImageLayout LayoutState::get(vk::Image img) const {
 	return vk::ImageLayout::eUndefined;
 }
 
-void LayoutState::transition(CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls, u32 layers, u32 mips) {
+void LayoutState::transition(vk::CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls, LayerMip const& lm) {
 	vk::ImageLayout prev = vk::ImageLayout::eUndefined;
 	auto lock = ktl::tlock(m_map);
 	auto it = lock->find(img);
-	if (it != lock->end()) { prev = it->second; }
-	cb.transitionImage(img, layers, mips, 0, ls.aspects, {prev, layout}, {ls.src.second, ls.dst.second}, {ls.src.first, ls.dst.first});
-	if (it != lock->end()) {
-		it->second = layout;
+	if (it == lock->end()) {
+		auto [i, _] = lock->emplace(img, prev);
+		it = i;
 	} else {
-		lock->emplace(img, layout);
+		prev = it->second;
 	}
+	Memory::ImgMeta im;
+	im.stages = {ls.src.first, ls.dst.first};
+	im.access = {ls.src.second, ls.dst.second};
+	im.aspects = ls.aspects;
+	im.layouts = {prev, layout};
+	im.layerMip = lm;
+	Memory::imageBarrier(cb, img, im);
+	it->second = layout;
 }
 } // namespace le::graphics

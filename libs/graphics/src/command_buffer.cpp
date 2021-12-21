@@ -106,28 +106,6 @@ void CommandBuffer::draw(u32 vertexCount, u32 instanceCount, u32 firstInstance, 
 	s_drawCalls.fetch_add(1);
 }
 
-void CommandBuffer::transitionImage(Image const& image, vk::ImageAspectFlags aspect, Layouts transition, Access access, Stages stages) const {
-	transitionImage(image.image(), image.layerCount(), image.mipCount(), 0, aspect, transition, access, stages);
-}
-
-void CommandBuffer::transitionImage(vk::Image image, u32 lc, u32 mc, u32 fm, vk::ImageAspectFlags as, Layouts tr, Access ac, Stages st) const {
-	ENSURE(recording(), "Command buffer not recording!");
-	vk::ImageMemoryBarrier barrier;
-	barrier.oldLayout = tr.first;
-	barrier.newLayout = tr.second;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = image;
-	barrier.subresourceRange.aspectMask = as;
-	barrier.subresourceRange.baseMipLevel = fm;
-	barrier.subresourceRange.levelCount = mc;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = lc;
-	barrier.srcAccessMask = ac.first;
-	barrier.dstAccessMask = ac.second;
-	m_cb.pipelineBarrier(st.first, st.second, {}, {}, {}, barrier);
-}
-
 void CommandBuffer::endRenderPass() {
 	ENSURE(rendering(), "Command buffer not rendering!");
 	m_cb.endRenderPass();

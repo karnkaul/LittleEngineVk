@@ -15,6 +15,18 @@ struct BlitCaps {
 	BlitFlags linear;
 };
 
+struct LayerMip {
+	struct Range {
+		u32 first = 0U;
+		u32 count = 1U;
+	};
+
+	Range layer;
+	Range mip;
+
+	static LayerMip make(u32 mipCount, u32 firstMip = 0U) noexcept { return LayerMip{{}, {firstMip, mipCount}}; }
+};
+
 template <typename T>
 using vAP = vk::ArrayProxy<T const> const&;
 

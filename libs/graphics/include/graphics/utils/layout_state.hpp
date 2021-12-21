@@ -5,8 +5,6 @@
 #include <unordered_map>
 
 namespace le::graphics {
-class CommandBuffer;
-
 using StageAccess = TPair<vk::PipelineStageFlags, vk::AccessFlags>;
 
 struct LayoutStages {
@@ -20,9 +18,9 @@ struct LayoutStages {
 	static constexpr StageAccess sa_colour_v = {vPSFB::eColorAttachmentOutput, vAFB::eColorAttachmentWrite};
 	static constexpr StageAccess sa_transfer_v = {vPSFB::eTransfer, vAFB::eTransferWrite | vAFB::eTransferRead};
 
-	StageAccess src;
-	StageAccess dst;
-	vk::ImageAspectFlags aspects;
+	StageAccess src = sa_all_commands_v;
+	StageAccess dst = sa_all_commands_v;
+	vk::ImageAspectFlags aspects = af_colour_v;
 
 	static constexpr LayoutStages allCommands(vk::ImageAspectFlags aspects = af_colour_v) noexcept { return {sa_all_commands_v, sa_all_commands_v, aspects}; }
 	static constexpr LayoutStages topBottom(vk::ImageAspectFlags aspects = af_colour_v) noexcept { return {sa_top_v, sa_bottom_v, aspects}; }
@@ -35,17 +33,12 @@ struct LayoutStages {
 class LayoutState {
   public:
 	vk::ImageLayout get(vk::Image img) const;
-	void transition(CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls, u32 layers = 1U, u32 mips = 1U);
+	void transition(vk::CommandBuffer cb, vk::Image img, vk::ImageLayout layout, LayoutStages const& ls = {}, LayerMip const& lm = {});
 	void clear() { ktl::tlock(m_map)->clear(); }
 
 	void presented(vk::Image image) { force(image, vk::ImageLayout::ePresentSrcKHR); }
 	void drawn(vk::Image depth) { force(depth, vk::ImageLayout::eUndefined); }
 	void force(vk::Image image, vk::ImageLayout layout) { (*ktl::tlock(m_map))[image] = layout; }
-
-	template <typename LT>
-	void transition(CommandBuffer const& cb, vk::Image image, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) {
-		transition(cb, image, aspect, LT::layout, LT::src, LT::dst);
-	}
 
   private:
 	ktl::strict_tmutex<std::unordered_map<vk::Image, vk::ImageLayout>> m_map;

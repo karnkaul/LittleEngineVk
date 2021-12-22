@@ -27,6 +27,7 @@ class TextureAtlas {
 	struct {
 		std::unordered_map<ID, Entry> entries;
 		Extent2D head{};
+		glm::uvec2 pad{};
 		u32 rowHeight = 0;
 	} m_data;
 	Texture m_texture;
@@ -38,8 +39,9 @@ class TextureAtlas {
 };
 
 struct TextureAtlas::CreateInfo {
+	glm::uvec2 pad = {1U, 1U};
 	vk::Sampler sampler;
-	u32 maxWidth = 1024U;
-	u32 initialHeight = 256U;
+	u32 maxWidth = 512U;
+	u32 initialHeight = 64U;
 };
 } // namespace le::graphics

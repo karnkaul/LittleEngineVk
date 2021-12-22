@@ -4,7 +4,9 @@
 
 namespace le::graphics {
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
-	: m_texture(vram, info.sampler, Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {}
+	: m_texture(vram, info.sampler, Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {
+	m_data.pad = info.pad;
+}
 
 QuadTex TextureAtlas::get(ID id) const noexcept {
 	if (auto it = m_data.entries.find(id); it != m_data.entries.end()) { return QuadTex{getUV(it->second), it->second.extent}; }
@@ -15,7 +17,7 @@ bool TextureAtlas::add(ID id, Bitmap const& bitmap, CommandBuffer const& cb) {
 	if (!prepAtlas(bitmap.extent, cb)) { return false; }
 	utils::copySub(m_vram, cb, bitmap, m_texture.image(), m_data.head);
 	Entry entry{bitmap.extent, m_data.head};
-	m_data.head.x += bitmap.extent.x;
+	m_data.head.x += bitmap.extent.x + m_data.pad.x;
 	m_data.rowHeight = std::max(m_data.rowHeight, bitmap.extent.y);
 	m_data.entries.insert_or_assign(id, entry);
 	return true;
@@ -63,11 +65,12 @@ bool TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer const& cb) {
 		ret = m_texture.resizeCopy(cb, {itex.x, itex.y * 2U});
 		if (ret) { nextRow(); }
 	}
+	m_texture.wait();
 	return ret;
 }
 
 void TextureAtlas::nextRow() noexcept {
-	m_data.head.y += m_data.rowHeight;
+	m_data.head.y += m_data.rowHeight + m_data.pad.y;
 	m_data.head.x = m_data.rowHeight = 0;
 }
 } // namespace le::graphics

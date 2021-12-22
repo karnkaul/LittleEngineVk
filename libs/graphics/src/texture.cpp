@@ -177,11 +177,19 @@ bool Texture::constructImpl(VRAM::Images&& imgs, Payload payload, vk::Format for
 bool Texture::resize(CommandBuffer cb, Extent2D extent, bool viaBlit) {
 	wait();
 	Image image(m_vram, Image::textureInfo(extent, m_image.format()));
-	std::swap(m_image, image);
+	bool ret{};
 	if (viaBlit) {
-		return utils::blit(m_vram, cb, image.ref(), m_image, BlitFilter::eLinear);
+		ret = utils::blit(m_vram, cb, m_image.ref(), image, BlitFilter::eLinear);
 	} else {
-		return utils::copy(m_vram, cb, image.ref(), m_image);
+		ret = utils::copy(m_vram, cb, m_image.ref(), image);
 	}
+	if (ret) {
+		LayerMip lm;
+		lm.layer.count = image.layerCount();
+		lm.mip.count = image.mipCount();
+		utils::Transition{m_vram->m_device, &cb, image.image()}(vIL::eShaderReadOnlyOptimal, lm);
+		std::swap(m_image, image);
+	}
+	return ret;
 }
 } // namespace le::graphics

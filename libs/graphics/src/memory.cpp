@@ -62,10 +62,9 @@ void Memory::copy(vk::CommandBuffer cb, vk::Buffer src, vk::Image dst, vAP<vk::B
 	first.access.second = second.access.first = vk::AccessFlagBits::eTransferWrite;
 	first.stages = {vkstg::eTopOfPipe | meta.stages.first, vkstg::eTransfer};
 	second.stages = {vkstg::eTransfer, vkstg::eBottomOfPipe | meta.stages.second};
-	if (second.layouts.second == vIL::eUndefined) { second.layouts.second = vIL::eShaderReadOnlyOptimal; }
 	imageBarrier(cb, dst, first);
 	cb.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, regions);
-	imageBarrier(cb, dst, second);
+	if (second.layouts.second != vIL::eUndefined) { imageBarrier(cb, dst, second); }
 }
 
 void Memory::copy(vk::CommandBuffer cb, TPair<vk::Image> images, vk::Extent3D extent, vk::ImageAspectFlags aspects) {

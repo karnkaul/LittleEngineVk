@@ -38,6 +38,7 @@
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
 #include <graphics/font/atlas.hpp>
+#include <graphics/utils/instant_command.hpp>
 #include <ktl/async.hpp>
 
 #include <engine/ecs/components/spring_arm.hpp>
@@ -392,8 +393,8 @@ class App : public input::Receiver, public SceneRegistry {
 	static graphics::FontAtlas::CreateInfo atlasInfo(Engine const& eng) {
 		graphics::FontAtlas::CreateInfo ret;
 		ret.atlas.sampler = eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler();
-		ret.atlas.maxWidth = 512U;
-		ret.atlas.initialHeight = 256U;
+		// ret.atlas.maxWidth = 512U;
+		// ret.atlas.initialHeight = 128U;
 		return ret;
 	}
 
@@ -579,14 +580,14 @@ class App : public input::Receiver, public SceneRegistry {
 
 		auto ttf = m_eng->store().resources().load("fonts/vera_serif.ttf", Resource::Type::eBinary);
 		if (ttf) {
-			auto inst = m_eng->gfx().context.commands().instant();
+			auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
 			m_atlas.load(inst.cb(), ttf->bytes());
 			auto atlasQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/atlas_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
 			Material atlasMat;
 			atlasMat.map_Kd = &m_atlas.texture();
 			m_eng->store().add<Material>("materials/atlas_quad", atlasMat);
-			for (Codepoint cp = 33; cp.value < 127; ++cp.value) { m_atlas.build(inst.cb(), cp); }
-			auto quad = graphics::makeQuad(m_atlas.texture().image().extent2D());
+			// for (Codepoint cp = 33; cp.value < 127; ++cp.value) { m_atlas.build(inst.cb(), cp); }
+			auto quad = graphics::makeQuad({512.0f, 512.0f});
 			atlasQuad->construct(std::move(quad));
 			/*auto ent =*/spawnMesh("atlas", MeshProvider::make("meshes/atlas_quad", "materials/atlas_quad"), "render_pipelines/ui");
 		}
@@ -604,12 +605,18 @@ class App : public input::Receiver, public SceneRegistry {
 		}
 
 		if (auto const frame = m_eng->gfx().context.renderer().offScreenImage(); frame && m_eng->gfx().context.renderer().canBlitFrame()) {
-			m_testTex.blit(m_eng->gfx().context.commands().get(), frame->ref());
+			auto cmd = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+			m_testTex.blit(cmd.cb(), frame->ref());
 		}
 
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded) {
 			auto pr_ = Engine::profile("app::tick");
+			if (m_data.init && m_built.value < 128) {
+				auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+				m_atlas.build(inst.cb(), m_built.value++);
+				m_eng->store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
+			}
 			if (!m_data.init && m_manifest.ready(m_tasks)) { init1(); }
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;
@@ -685,6 +692,8 @@ class App : public input::Receiver, public SceneRegistry {
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
 	graphics::FontAtlas m_atlas;
+	ktl::kthread m_thread;
+	Codepoint m_built = 33;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};
@@ -786,7 +795,7 @@ bool run(io::Media const& media) {
 				// app.sched().enqueue([]() { ENSURE(false, "test"); });
 				// app.sched().enqueue([]() { ENSURE(false, "test2"); });
 				auto& ctx = engine.gfx().context;
-				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.commands(), ctx.previousFrame().ref())) {
+				if (auto img = graphics::utils::makeStorage(&ctx.vram(), ctx.previousFrame().ref())) {
 					if (auto file = std::ofstream("shot.ppm", std::ios::out | std::ios::binary)) {
 						auto const written = graphics::utils::writePPM(ctx.vram().m_device, *img, file);
 						if (written > 0) { logD("Screenshot saved to shot.ppm"); }

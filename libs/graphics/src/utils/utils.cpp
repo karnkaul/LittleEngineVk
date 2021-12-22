@@ -8,7 +8,7 @@
 #include <core/utils/shell.hpp>
 #include <graphics/common.hpp>
 #include <graphics/render/context.hpp>
-#include <graphics/utils/command_rotator.hpp>
+#include <graphics/utils/instant_command.hpp>
 #include <graphics/utils/utils.hpp>
 #include <ktl/stack_string.hpp>
 
@@ -405,10 +405,9 @@ auto xferImage(not_null<VRAM*> vram, CommandBuffer cb, ImageRef const& src, Imag
 	tsrc(vIL::eTransferSrcOptimal, {}, LayoutStages::colourTransfer());
 	tdst(vIL::eTransferDstOptimal, {}, LayoutStages::colourTransfer());
 	auto const ret = func();
-	auto const ldst = layouts.second == vIL::eUndefined ? vIL::eShaderReadOnlyOptimal : layouts.second;
 	tsrc(layouts.first, {}, {});
-	tdst(ldst, {}, {});
-	if (out_dst.mipCount() > 1U) { vram->makeMipMaps(cb, out_dst, {ldst, ldst}); }
+	if (layouts.second != vIL::eUndefined) { tdst(layouts.second, {}, {}); }
+	if (out_dst.mipCount() > 1U) { vram->makeMipMaps(cb, out_dst, {layouts.second, layouts.second}); }
 	return ret;
 }
 } // namespace
@@ -447,18 +446,17 @@ bool utils::copySub(not_null<VRAM*> vram, CommandBuffer cb, Bitmap const& bitmap
 	return true;
 }
 
-std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, CommandRotator const& cr, ImageRef const& src) {
+std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, ImageRef const& src) {
 	ImageRef dst = src;
 	dst.format = vk::Format::eR8G8B8A8Unorm;
 	dst.linear = true;
 	// if image will be copied, match RGBA vs BGRA to source format
 	if (!canBlit(vram->m_device, {src, dst}) && Surface::bgra(src.format)) { dst.format = vk::Format::eB8G8R8A8Unorm; }
 	Image ret(vram, Image::storageInfo(dst.extent, dst.format));
-	if (auto cmd = cr.instant()) {
-		if (blitOrCopy(vram, cmd.cb(), src, ret)) {
-			ret.map();
-			return ret;
-		}
+	auto cmd = InstantCommand(vram);
+	if (blitOrCopy(vram, cmd.cb(), src, ret)) {
+		ret.map();
+		return ret;
 	}
 	return std::nullopt;
 }

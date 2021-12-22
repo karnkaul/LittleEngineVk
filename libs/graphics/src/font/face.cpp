@@ -13,7 +13,7 @@ FontFace::Slot makeSlot(FTFace const face, Codepoint const cp) noexcept {
 	FTFace::ID const id = cp == Codepoint{} ? 0 : face.glyphIndex(cp);
 	if (face.loadGlyph(id)) {
 		auto const& slot = *face.face->glyph;
-		ret.codepoint = cp;
+		ret.codepoint = id == 0 ? Codepoint{} : cp;
 		ret.advance = {slot.advance.x >> 6, slot.advance.y >> 6};
 		ret.pixmap.extent = {slot.bitmap.width, slot.bitmap.rows};
 		ret.pixmap.bytes = face.buildGlyphImage();
@@ -52,10 +52,9 @@ FontFace::operator bool() const noexcept { return static_cast<bool>(m_impl->face
 FontFace::Slot const& FontFace::slot(Codepoint cp) const noexcept {
 	if (auto it = m_impl->map.find(cp); it != m_impl->map.end()) { return it->second; }
 	if (m_impl->face) {
-		if (auto slot = makeSlot(*m_impl->face, cp); slot.codepoint == cp) {
-			auto [it, _] = m_impl->map.emplace(cp, slot);
-			return it->second;
-		}
+		auto slot = makeSlot(*m_impl->face, cp);
+		auto [it, _] = m_impl->map.emplace(cp, slot);
+		return it->second;
 	}
 	static Slot const s_none{};
 	return s_none;

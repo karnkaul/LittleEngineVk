@@ -15,7 +15,11 @@ bool FontAtlas::load(CommandBuffer const& cb, Span<std::byte const> const ttf, S
 		m_atlas = TextureAtlas(m_vram, m_atlasInfo);
 		m_glyphs.clear();
 		auto slot = m_face.slot({});
-		if (m_atlas.add({}, slot.pixmap, cb)) { m_glyphs.emplace(Codepoint{}, toGlyph(slot)); }
+		if (m_atlas.add({}, slot.pixmap, cb)) {
+			m_glyphs.emplace(Codepoint{}, toGlyph(slot));
+		} else {
+			logW(LC_LibUser, "[Graphics] Failed to get zero glyph");
+		}
 		return true;
 	}
 	return false;
@@ -31,6 +35,7 @@ Glyph const& FontAtlas::build(CommandBuffer const& cb, Codepoint const cp, bool 
 	}
 	auto slot = m_face.slot(cp);
 	static Glyph const s_none;
+	EXPECT(cp != Codepoint{});
 	if (slot.codepoint == cp) {
 		auto glyph = toGlyph(slot);
 		if (glyph.textured) {

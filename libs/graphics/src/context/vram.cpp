@@ -35,7 +35,7 @@ bytearray toBytearray(BmpView bmp) {
 	return ret;
 }
 
-void doMakeMipMaps(vk::CommandBuffer cb, vk::Image img, vk::Extent3D ex, vk::ImageAspectFlags as, u32 lc, u32 mc, LayoutPair lp) {
+vk::ImageLayout doMakeMipMaps(vk::CommandBuffer cb, vk::Image img, vk::Extent3D ex, vk::ImageAspectFlags as, u32 lc, u32 mc, LayoutPair lp) {
 	if (lp.second == vIL::eUndefined) { lp.second = vIL::eShaderReadOnlyOptimal; }
 	VRAM::ImgMeta pre, post;
 	pre.aspects = post.aspects = as;
@@ -78,6 +78,7 @@ void doMakeMipMaps(vk::CommandBuffer cb, vk::Image img, vk::Extent3D ex, vk::Ima
 	post.layerMip.mip.first = mip - 1U;
 	post.layouts = {vIL::eTransferDstOptimal, lp.second};
 	VRAM::imageBarrier(cb, img, post); // transition mip[N] to fromTo.second
+	return lp.second;
 }
 } // namespace
 
@@ -124,7 +125,7 @@ struct VRAM::ImageCopier {
 		meta.access.second = vram.m_post.access;
 		meta.layerMip.layer.count = layerCount;
 		copy(stage.command, stage.buffer->buffer(), image, copyRegions, meta);
-		if (mipCount > 1U) { doMakeMipMaps(stage.command, image, extent, aspects, layerCount, mipCount, fromTo); }
+		if (mipCount > 1U) { meta.layouts.second = doMakeMipMaps(stage.command, image, extent, aspects, layerCount, mipCount, fromTo); }
 		vram.m_transfer.addStage(std::move(stage), std::move(pr));
 		vram.m_device->m_layouts.force(image, meta.layouts.second);
 	}
@@ -208,12 +209,20 @@ bool VRAM::copy(CommandBuffer cb, TPair<ImageRef> const& images, vk::ImageAspect
 	return true;
 }
 
-bool VRAM::makeMipMaps(CommandBuffer cb, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) {
+bool VRAM::makeMipMaps(CommandBuffer cb, Image const& out_dst, LayoutPair fromTo, vk::ImageAspectFlags aspects) const {
 	if (out_dst.mipCount() > 1U) {
-		doMakeMipMaps(cb.m_cb, out_dst.image(), out_dst.extent(), aspects, out_dst.layerCount(), out_dst.mipCount(), fromTo);
+		auto const layout = doMakeMipMaps(cb.m_cb, out_dst.image(), out_dst.extent(), aspects, out_dst.layerCount(), out_dst.mipCount(), fromTo);
+		m_device->m_layouts.force(out_dst.image(), layout);
 		return true;
 	}
 	return false;
+}
+
+CommandPool& VRAM::commandPool() {
+	auto lock = ktl::tlock(m_commandPools);
+	if (auto it = lock->find(std::this_thread::get_id()); it != lock->end()) { return it->second; }
+	auto [it, _] = lock->emplace(std::this_thread::get_id(), m_device);
+	return it->second;
 }
 
 void VRAM::waitIdle() {

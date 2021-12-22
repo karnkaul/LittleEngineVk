@@ -46,13 +46,15 @@ bool FTFace::setPixelSize(glm::uvec2 const size) const noexcept {
 	return true;
 }
 
-bool FTFace::loadGlyph(u32 codepoint, FT_Render_Mode mode) const noexcept {
-	if (FT_Load_Glyph(face, FT_Get_Char_Index(face, codepoint), FT_LOAD_DEFAULT)) {
-		logW("[Graphics] Failed to load glyph for codepoint [{} ({})]", static_cast<unsigned char>(codepoint), codepoint);
+FTFace::ID FTFace::glyphIndex(u32 codepoint) const noexcept { return FT_Get_Char_Index(face, codepoint); }
+
+bool FTFace::loadGlyph(ID index, FT_Render_Mode mode) const noexcept {
+	if (FT_Load_Glyph(face, index, FT_LOAD_DEFAULT)) {
+		logW("[Graphics] Failed to load glyph for index [{}]", index);
 		return false;
 	}
 	if (FT_Render_Glyph(face->glyph, mode)) {
-		logW("[Graphics] Failed to render glyph for codepoint [{} ({})]", static_cast<unsigned char>(codepoint), codepoint);
+		logW("[Graphics] Failed to render glyph for index [{}]", index);
 		return false;
 	}
 	return true;

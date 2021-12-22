@@ -25,6 +25,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/context/transfer.hpp
   include/graphics/context/vram.hpp
 
+  include/graphics/font/atlas.hpp
   include/graphics/font/glyph.hpp
   include/graphics/font/face.hpp
 

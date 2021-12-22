@@ -20,6 +20,8 @@ struct FTLib {
 };
 
 struct FTFace {
+	using ID = u32;
+
 	FT_Face face{};
 
 	static FTFace make(FTLib const& lib, Span<std::byte const> bytes) noexcept;
@@ -30,7 +32,9 @@ struct FTFace {
 
 	bool setCharSize(glm::uvec2 size = {0U, 16U * 64U}, glm::uvec2 res = {300U, 300U}) const noexcept;
 	bool setPixelSize(glm::uvec2 size = {0U, 16U}) const noexcept;
-	bool loadGlyph(u32 codepoint, FT_Render_Mode mode = FT_RENDER_MODE_NORMAL) const noexcept;
+
+	ID glyphIndex(u32 codepoint) const noexcept;
+	bool loadGlyph(ID index, FT_Render_Mode mode = FT_RENDER_MODE_NORMAL) const noexcept;
 	Extent2D glyphExtent() const;
 	std::vector<u8> buildGlyphImage() const;
 };

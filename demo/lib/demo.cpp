@@ -37,6 +37,7 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
+#include <graphics/font/atlas.hpp>
 #include <ktl/async.hpp>
 
 #include <engine/ecs/components/spring_arm.hpp>
@@ -388,9 +389,18 @@ class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
+	static graphics::FontAtlas::CreateInfo atlasInfo(Engine const& eng) {
+		graphics::FontAtlas::CreateInfo ret;
+		ret.atlas.sampler = eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler();
+		ret.atlas.maxWidth = 512U;
+		ret.atlas.initialHeight = 256U;
+		return ret;
+	}
+
 	App(not_null<Engine*> eng)
 		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
-		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}) {
+		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
+		  m_atlas(&eng->gfx().boot.vram, atlasInfo(*eng)) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -536,6 +546,11 @@ class App : public input::Receiver, public SceneRegistry {
 		// m_data.text->set("Hi\nThere!");
 		m_data.cursor->m_text = "Hello!";
 		m_data.text->primitive.construct(m_data.cursor->generateText());
+		{
+			auto ent = spawnNode("text");
+			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make<TextMesh>(&*m_data.text));
+			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+		}
 
 		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
 		[[maybe_unused]] auto& testView = stack.push<TestView>("test_view");
@@ -561,6 +576,20 @@ class App : public input::Receiver, public SceneRegistry {
 
 		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
+
+		auto ttf = m_eng->store().resources().load("fonts/vera_serif.ttf", Resource::Type::eBinary);
+		if (ttf) {
+			auto inst = m_eng->gfx().context.commands().instant();
+			m_atlas.load(inst.cb(), ttf->bytes());
+			auto atlasQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/atlas_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
+			Material atlasMat;
+			atlasMat.map_Kd = &m_atlas.texture();
+			m_eng->store().add<Material>("materials/atlas_quad", atlasMat);
+			for (Codepoint cp = 33; cp.value < 127; ++cp.value) { m_atlas.build(inst.cb(), cp); }
+			auto quad = graphics::makeQuad(m_atlas.texture().image().extent2D());
+			atlasQuad->construct(std::move(quad));
+			/*auto ent =*/spawnMesh("atlas", MeshProvider::make("meshes/atlas_quad", "materials/atlas_quad"), "render_pipelines/ui");
+		}
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
@@ -655,6 +684,7 @@ class App : public input::Receiver, public SceneRegistry {
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
+	graphics::FontAtlas m_atlas;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};

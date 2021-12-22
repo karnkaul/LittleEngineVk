@@ -1,15 +1,13 @@
 #pragma once
 #include <core/codepoint.hpp>
-#include <graphics/utils/extent2d.hpp>
+#include <graphics/utils/quad_uv.hpp>
 
 namespace le::graphics {
 struct Glyph {
-	struct Metrics {
-		glm::ivec2 bearing{};
-		glm::ivec2 advance{};
-	};
-
-	Metrics metrics;
+	QuadTex quad;
+	glm::ivec2 topLeft{};
+	glm::ivec2 advance{};
 	Codepoint codepoint;
+	bool textured{};
 };
 } // namespace le::graphics

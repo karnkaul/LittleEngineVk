@@ -22,8 +22,12 @@ class FontFace {
   public:
 	using Size = ktl::either<CharSize, PixelSize>;
 	struct Slot {
-		Glyph glyph;
 		Bitmap pixmap;
+		glm::ivec2 topLeft{};
+		glm::ivec2 advance{};
+		Codepoint codepoint;
+
+		bool hasBitmap() const noexcept { return pixmap.extent.x > 0 && pixmap.extent.y > 0; }
 	};
 
 	FontFace(not_null<Device*> device);
@@ -35,7 +39,6 @@ class FontFace {
 	explicit operator bool() const noexcept;
 
 	Slot const& slot(Codepoint cp) const noexcept;
-	Glyph const& glyph(Codepoint cp) const noexcept { return slot(cp).glyph; }
 
 	std::size_t slotCount() const noexcept;
 	void clearSlots() noexcept;

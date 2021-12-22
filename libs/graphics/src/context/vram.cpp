@@ -36,6 +36,7 @@ bytearray toBytearray(BmpView bmp) {
 }
 
 void doMakeMipMaps(vk::CommandBuffer cb, vk::Image img, vk::Extent3D ex, vk::ImageAspectFlags as, u32 lc, u32 mc, LayoutPair lp) {
+	if (lp.second == vIL::eUndefined) { lp.second = vIL::eShaderReadOnlyOptimal; }
 	VRAM::ImgMeta pre, post;
 	pre.aspects = post.aspects = as;
 	pre.layerMip.layer.first = post.layerMip.layer.first = 0U;

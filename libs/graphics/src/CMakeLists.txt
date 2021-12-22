@@ -11,6 +11,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   texture.cpp
   texture_atlas.cpp
 
+  font/atlas.cpp
   font/face.cpp
 
   ft/ft.cpp

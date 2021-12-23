@@ -13,6 +13,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 
   font/atlas.cpp
   font/face.cpp
+  font/font.cpp
 
   ft/ft.cpp
   ft/ft.hpp

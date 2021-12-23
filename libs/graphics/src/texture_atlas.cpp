@@ -3,8 +3,18 @@
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
+namespace {
+vk::SamplerCreateInfo samplerInfo() {
+	auto ret = Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
+	ret.mipmapMode = vk::SamplerMipmapMode::eLinear;
+	ret.addressModeU = ret.addressModeV = ret.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+	ret.borderColor = vk::BorderColor::eIntOpaqueBlack;
+	return ret;
+}
+} // namespace
+
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
-	: m_texture(vram, info.sampler, Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {
+	: m_sampler(vram->m_device, samplerInfo()), m_texture(vram, m_sampler.sampler(), Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {
 	m_data.pad = info.pad;
 	m_data.head += m_data.pad;
 }

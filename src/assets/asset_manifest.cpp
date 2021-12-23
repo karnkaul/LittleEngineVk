@@ -37,6 +37,7 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eRenderPipeline] = m_loader.stage(std::move(m_renderPipelines), scheduler, m_deps[Kind::eSpirV], m_jsonQIDs[Kind::eRenderPipeline]);
 	m_deps[Kind::eMaterial] = m_loader.stage(std::move(m_materials), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eMaterial]);
 	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eBitmapFont]);
+	m_deps[Kind::eFont] = m_loader.stage(std::move(m_fonts), scheduler, {}, m_jsonQIDs[Kind::eFont]);
 	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eSkybox]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
 	static_assert(__LINE__ - start_ - 1 == int(Kind::eCOUNT_));
@@ -91,10 +92,11 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "render_layers") { return addRenderLayers(std::move(group)); }
 	if (groupName == "render_pipelines") { return addRenderPipelines(std::move(group)); }
-	if (groupName == "models") { return addModels(std::move(group)); }
+	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
+	if (groupName == "fonts") { return addFonts(std::move(group)); }
 	if (groupName == "materials") { return addMaterials(std::move(group)); }
 	if (groupName == "skyboxes") { return addSkyboxes(std::move(group)); }
-	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
+	if (groupName == "models") { return addModels(std::move(group)); }
 	static_assert(__LINE__ - start_ - 1 == int(Kind::eCOUNT_));
 	return addCustom(groupName, std::move(group));
 }
@@ -226,6 +228,22 @@ std::size_t AssetManifest::addBitmapFonts(Group group) {
 	return ret;
 }
 
+std::size_t AssetManifest::addFonts(Group group) {
+	std::size_t ret{};
+	for (auto& [uri, json] : group) {
+		AssetLoadData<graphics::Font> data(&vram());
+		if (auto file = json->find("file"); file && file->is_string()) {
+			data.ttfURI = file->as<std::string_view>();
+		} else {
+			io::Path path(uri);
+			data.ttfURI = path / path.filename() + ".ttf";
+		}
+		m_fonts.add(std::move(uri), std::move(data));
+		++ret;
+	}
+	return ret;
+}
+
 namespace {
 graphics::RGBA parseRGBA(dj::json const& json, graphics::RGBA fallback) {
 	if (json.is_string()) {
@@ -312,6 +330,7 @@ std::size_t AssetManifest::unload() {
 	ret += unloadMap(m_renderLayers.map);
 	ret += unloadMap(m_renderPipelines.map);
 	ret += unloadMap(m_bitmapFonts.map);
+	ret += unloadMap(m_fonts.map);
 	ret += unloadMap(m_materials.map);
 	ret += unloadMap(m_skyboxes.map);
 	ret += unloadMap(m_models.map);

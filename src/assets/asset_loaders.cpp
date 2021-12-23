@@ -188,6 +188,26 @@ bool AssetLoader<graphics::BitmapFont>::load(graphics::BitmapFont& out_font, Ass
 	return false;
 }
 
+std::unique_ptr<graphics::Font> AssetLoader<graphics::Font>::load(AssetLoadInfo<graphics::Font> const& info) const {
+	if (auto ttf = info.resource(info.m_data.ttfURI, Resource::Type::eBinary, {})) {
+		auto fi = info.m_data.info;
+		fi.ttf = ttf->bytes();
+		if (fi.name.empty()) { fi.name = info.m_data.ttfURI.filename().string(); }
+		return std::make_unique<graphics::Font>(info.m_data.vram, fi);
+	}
+	return {};
+}
+
+bool AssetLoader<graphics::Font>::reload(graphics::Font& out_font, AssetLoadInfo<graphics::Font> const& info) const {
+	if (auto ttf = info.resource(info.m_data.ttfURI, Resource::Type::eBinary, Resources::Flag::eReload)) {
+		auto fi = info.m_data.info;
+		fi.ttf = ttf->bytes();
+		if (fi.name.empty()) { fi.name = info.m_data.ttfURI.filename().string(); }
+		return out_font.load(std::move(fi));
+	}
+	return false;
+}
+
 std::unique_ptr<Model> AssetLoader<Model>::load(AssetLoadInfo<Model> const& info) const {
 	static Hash const defaultSampler = "samplers/default";
 	auto const samplerURI = info.m_data.samplerURI == Hash{} ? defaultSampler : info.m_data.samplerURI;

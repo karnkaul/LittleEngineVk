@@ -148,5 +148,11 @@
 			"uri": "models/fox",
 			"file": "models/test/fox/fox.json"
 		}
+	],
+	"fonts": [
+		{
+			"uri": "fonts/vera_serif",
+			"file": "fonts/vera_serif.ttf"
+		}
 	]
 }

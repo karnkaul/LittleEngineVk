@@ -28,6 +28,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/font/atlas.hpp
   include/graphics/font/glyph.hpp
   include/graphics/font/face.hpp
+  include/graphics/font/font.hpp
 
   include/graphics/render/buffering.hpp
   include/graphics/render/camera.hpp

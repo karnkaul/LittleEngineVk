@@ -30,6 +30,7 @@ class TextureAtlas {
 		glm::uvec2 pad{};
 		u32 rowHeight = 0;
 	} m_data;
+	Sampler m_sampler;
 	Texture m_texture;
 	not_null<VRAM*> m_vram;
 
@@ -40,7 +41,6 @@ class TextureAtlas {
 
 struct TextureAtlas::CreateInfo {
 	glm::uvec2 pad = {1U, 1U};
-	vk::Sampler sampler;
 	u32 maxWidth = 512U;
 	u32 initialHeight = 64U;
 };

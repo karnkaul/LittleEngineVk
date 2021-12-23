@@ -37,7 +37,7 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <graphics/font/atlas.hpp>
+#include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
 #include <ktl/async.hpp>
 
@@ -390,18 +390,9 @@ class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
-	static graphics::FontAtlas::CreateInfo atlasInfo(Engine const& eng) {
-		graphics::FontAtlas::CreateInfo ret;
-		ret.atlas.sampler = eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler();
-		// ret.atlas.maxWidth = 512U;
-		// ret.atlas.initialHeight = 512U;
-		return ret;
-	}
-
 	App(not_null<Engine*> eng)
 		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
-		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
-		  m_atlas(&eng->gfx().boot.vram, atlasInfo(*eng)) {
+		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -578,29 +569,19 @@ class App : public input::Receiver, public SceneRegistry {
 		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
 
-		auto ttf = m_eng->store().resources().load("fonts/vera_serif.ttf", Resource::Type::eBinary);
-		if (ttf) {
-			auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
-			m_atlas.load(inst.cb(), ttf->bytes());
+		if (auto font = m_eng->store().find<graphics::Font>("fonts/vera_serif")) {
 			auto atlasQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/atlas_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
 			Material atlasMat;
-			atlasMat.map_Kd = &m_atlas.texture();
+			atlasMat.map_Kd = &font->atlas().texture();
 			m_eng->store().add<Material>("materials/atlas_quad", atlasMat);
-			for (Codepoint cp = 33; cp.value < 128; ++cp.value) { m_atlas.build(inst.cb(), cp); }
-			auto quad = graphics::makeQuad({512.0f, 512.0f});
+			auto quad = graphics::makeQuad(font->atlas().texture().image().extent2D());
 			atlasQuad->construct(std::move(quad));
 			/*auto ent =*/spawnMesh("atlas", MeshProvider::make("meshes/atlas_quad", "materials/atlas_quad"), "render_pipelines/ui");
 
 			graphics::Geometry geom;
-			glm::vec3 pen = {};
-			pen.y += 100.0f;
-			pen.x -= f32(m_atlas.extent(inst.cb(), "freetype B)").x) * 0.5f;
+			graphics::Font::Pen pen(&*font, &geom, {}, 0.5f);
 			std::string_view const str = "freetype B)";
-			for (char const ch : str) {
-				auto const& glyph = m_atlas.build(inst.cb(), static_cast<u32>(ch));
-				m_atlas.write(geom, pen, glyph);
-				pen += glm::vec3{glyph.advance, 0.0f};
-			}
+			pen.write(str, glm::vec3());
 			graphics::MeshPrimitive mesh(&m_eng->gfx().boot.vram, graphics::MeshPrimitive::Type::eDynamic);
 			mesh.construct(geom);
 			m_eng->store().add<graphics::MeshPrimitive>("meshes/text", std::move(mesh));
@@ -713,9 +694,6 @@ class App : public input::Receiver, public SceneRegistry {
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
-	graphics::FontAtlas m_atlas;
-	ktl::kthread m_thread;
-	Codepoint m_built = 33;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};

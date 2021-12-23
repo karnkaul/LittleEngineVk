@@ -6,6 +6,7 @@ namespace le::graphics {
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
 	: m_texture(vram, info.sampler, Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {
 	m_data.pad = info.pad;
+	m_data.head += m_data.pad;
 }
 
 QuadTex TextureAtlas::get(ID id) const noexcept {
@@ -70,7 +71,9 @@ bool TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer const& cb) {
 }
 
 void TextureAtlas::nextRow() noexcept {
-	m_data.head.y += m_data.rowHeight + m_data.pad.y;
-	m_data.head.x = m_data.rowHeight = 0;
+	m_data.head.y += m_data.rowHeight;
+	m_data.head.x = 0;
+	m_data.head += m_data.pad;
+	m_data.rowHeight = 0U;
 }
 } // namespace le::graphics

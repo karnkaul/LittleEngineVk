@@ -394,7 +394,7 @@ class App : public input::Receiver, public SceneRegistry {
 		graphics::FontAtlas::CreateInfo ret;
 		ret.atlas.sampler = eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler();
 		// ret.atlas.maxWidth = 512U;
-		// ret.atlas.initialHeight = 128U;
+		// ret.atlas.initialHeight = 512U;
 		return ret;
 	}
 
@@ -586,10 +586,25 @@ class App : public input::Receiver, public SceneRegistry {
 			Material atlasMat;
 			atlasMat.map_Kd = &m_atlas.texture();
 			m_eng->store().add<Material>("materials/atlas_quad", atlasMat);
-			// for (Codepoint cp = 33; cp.value < 127; ++cp.value) { m_atlas.build(inst.cb(), cp); }
+			for (Codepoint cp = 33; cp.value < 128; ++cp.value) { m_atlas.build(inst.cb(), cp); }
 			auto quad = graphics::makeQuad({512.0f, 512.0f});
 			atlasQuad->construct(std::move(quad));
 			/*auto ent =*/spawnMesh("atlas", MeshProvider::make("meshes/atlas_quad", "materials/atlas_quad"), "render_pipelines/ui");
+
+			graphics::Geometry geom;
+			glm::vec3 pen = {};
+			pen.y += 100.0f;
+			pen.x -= f32(m_atlas.extent(inst.cb(), "freetype B)").x) * 0.5f;
+			std::string_view const str = "freetype B)";
+			for (char const ch : str) {
+				auto const& glyph = m_atlas.build(inst.cb(), static_cast<u32>(ch));
+				m_atlas.write(geom, pen, glyph);
+				pen += glm::vec3{glyph.advance, 0.0f};
+			}
+			graphics::MeshPrimitive mesh(&m_eng->gfx().boot.vram, graphics::MeshPrimitive::Type::eDynamic);
+			mesh.construct(geom);
+			m_eng->store().add<graphics::MeshPrimitive>("meshes/text", std::move(mesh));
+			spawnMesh("test_text", MeshProvider::make("meshes/text", "materials/atlas_quad"), "render_pipelines/ui");
 		}
 	}
 
@@ -612,11 +627,18 @@ class App : public input::Receiver, public SceneRegistry {
 		updateSystems(m_tasks, dt, &m_eng->inputFrame());
 		if (!m_data.unloaded) {
 			auto pr_ = Engine::profile("app::tick");
-			if (m_data.init && m_built.value < 128) {
-				auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
-				m_atlas.build(inst.cb(), m_built.value++);
-				m_eng->store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
-			}
+			// static constexpr u32 max_cp = 128;
+			// if (m_data.init && m_built.value < max_cp && !m_thread.active()) {
+			// 	m_thread = ktl::kthread([this] {
+			// 		auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+			// 		while (m_built.value < max_cp) { m_atlas.build(inst.cb(), m_built.value++); }
+			// 		// m_eng->store().find<Material>("materials/atlas_quad")->map_Kd = &m_atlas.texture();
+			// 	});
+			// }
+			// if (m_data.init && m_built.value < max_cp) {
+			// 	auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
+			// 	m_atlas.build(inst.cb(), m_built.value++);
+			// }
 			if (!m_data.init && m_manifest.ready(m_tasks)) { init1(); }
 			auto& cam = m_registry.get<FreeCam>(m_data.camera);
 			m_registry.get<graphics::Camera>(m_sceneRoot) = cam;

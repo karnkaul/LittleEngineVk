@@ -262,6 +262,11 @@ void Device::resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const {
 	}
 }
 
+bool Device::isBusy(vk::Fence optional) const {
+	if (optional) { return m_device->getFenceStatus(optional) == vk::Result::eNotReady; }
+	return false;
+}
+
 void Device::waitFor(vk::Fence optional) const {
 	if (!default_v(optional)) {
 		if constexpr (levk_debug) {

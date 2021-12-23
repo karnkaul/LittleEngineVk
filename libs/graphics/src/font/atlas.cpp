@@ -1,4 +1,5 @@
 #include <core/log_channel.hpp>
+#include <core/utils/enumerate.hpp>
 #include <graphics/font/atlas.hpp>
 #include <algorithm>
 
@@ -56,17 +57,20 @@ Glyph const& FontAtlas::build(CommandBuffer const& cb, Codepoint const cp, bool 
 
 Extent2D FontAtlas::extent(CommandBuffer const& cb, std::string_view line) {
 	glm::ivec2 ret{};
-	for (char const ch : line) {
+	for (auto const [ch, idx] : le::utils::enumerate(line)) {
 		if (ch == '\n' || ch == '\r') {
 			logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
 			return ret;
 		}
-		EXPECT(!std::isspace(static_cast<int>(ch)));
 		Codepoint const cp{u32(ch)};
 		bool const valid = Codepoint::Validate<>{}(cp);
 		auto gl = valid ? build(cb, cp) : build(cb, {});
 		if (valid && gl.codepoint != cp) { gl = build(cb, {}); }
-		ret.x += gl.advance.x;
+		if (idx + 1 == line.size()) {
+			ret += gl.quad.extent.x;
+		} else {
+			ret.x += gl.advance.x;
+		}
 		ret.y = std::max(ret.y, int(gl.quad.extent.y));
 	}
 	ret.x = std::abs(ret.x);
@@ -76,7 +80,8 @@ Extent2D FontAtlas::extent(CommandBuffer const& cb, std::string_view line) {
 bool FontAtlas::write(Geometry& out, glm::vec3 const origin, Glyph const& glyph) const {
 	if (glyph.textured) {
 		GeomInfo gi;
-		gi.origin = origin + glm::vec3(glyph.topLeft, 0.0f);
+		auto const hs = glm::vec2(glyph.quad.extent) * 0.5f;
+		gi.origin = origin + glm::vec3(hs.x, -hs.y, 0.0f) + glm::vec3(glyph.topLeft, 0.0f);
 		out.append(makeQuad(glyph.quad.extent, gi, glyph.quad.uv));
 		return true;
 	}

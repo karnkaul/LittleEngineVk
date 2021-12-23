@@ -38,6 +38,7 @@ class Device final : public Pinned {
 	vk::Semaphore makeSemaphore() const;
 	vk::Fence makeFence(bool bSignalled) const;
 	void resetOrMakeFence(vk::Fence& out_fence, bool bSignalled) const;
+	bool isBusy(vk::Fence optional) const;
 	void waitFor(vk::Fence optional) const;
 	void waitAll(vAP<vk::Fence> validFences) const;
 	void resetFence(vk::Fence optional) const;

@@ -10,10 +10,10 @@ class InstantCommand {
 	explicit InstantCommand(not_null<VRAM*> vram);
 	~InstantCommand();
 
-	CommandBuffer const& cb() const noexcept { return m_cmd.cb; }
+	CommandBuffer const& cb() const noexcept { return m_cb; }
 
   private:
 	not_null<CommandPool*> m_pool;
-	CommandPool::Cmd m_cmd;
+	CommandBuffer m_cb;
 };
 } // namespace le::graphics

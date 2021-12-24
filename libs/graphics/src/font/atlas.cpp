@@ -15,7 +15,8 @@ bool FontAtlas::load(CommandBuffer const& cb, Span<std::byte const> const ttf, S
 		m_atlas.clear();
 		m_glyphs.clear();
 		auto slot = m_face.slot({});
-		if (auto res = m_atlas.add({}, slot.pixmap, cb); res == TextureAtlas::Result::eOk) {
+		if (auto res = m_atlas.add({}, slot.pixmap, cb); res == TextureAtlas::Result::eOk || res == TextureAtlas::Result::eInvalidSize) {
+			if (res == TextureAtlas::Result::eInvalidSize) { logW(LC_LibUser, "[Graphics] Zero glyph is missing texture"); }
 			m_glyphs.emplace(Codepoint{}, toGlyph(slot));
 		} else {
 			logW(LC_LibUser, "[Graphics] Failed to get zero glyph");

@@ -14,8 +14,9 @@
 namespace le {
 struct Viewport;
 namespace graphics {
-class BitmapFont;
-}
+class VRAM;
+class Font;
+} // namespace graphics
 namespace input {
 struct Space;
 }
@@ -24,8 +25,8 @@ struct Space;
 namespace le::gui {
 class TreeNode;
 
-using graphics::BitmapFont;
 using graphics::DrawScissor;
+using graphics::Font;
 
 inline Hash defaultFontURI = "fonts/default";
 
@@ -41,7 +42,8 @@ class TreeRoot : public utils::VBase, public utils::Owner<TreeNode> {
 
 	container_t const& nodes() const noexcept { return m_ts; }
 
-	BitmapFont const* findFont(Hash uri = defaultFontURI) const;
+	not_null<graphics::VRAM*> vram() const;
+	Font* findFont(Hash uri = defaultFontURI) const;
 
 	template <typename T, typename Ret, typename... Args>
 		requires(is_derived_v<T>)

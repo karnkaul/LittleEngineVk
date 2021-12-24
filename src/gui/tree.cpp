@@ -3,7 +3,7 @@
 #include <engine/gui/tree.hpp>
 #include <engine/input/space.hpp>
 #include <engine/render/viewport.hpp>
-#include <graphics/bitmap_font.hpp>
+#include <graphics/font/font.hpp>
 #include <algorithm>
 
 namespace le::gui {
@@ -11,9 +11,11 @@ DrawScissor scissor(input::Space const& space, glm::vec2 centre, glm::vec2 halfS
 	return {space.project(centre - halfSize, normalised) * space.render.scale + 0.5f, space.project(centre + halfSize, normalised) * space.render.scale + 0.5f};
 }
 
-BitmapFont const* TreeRoot::findFont(Hash uri) const {
+not_null<graphics::VRAM*> TreeRoot::vram() const { return Services::get<graphics::VRAM>(); }
+
+graphics::Font* TreeRoot::findFont(Hash uri) const {
 	if (auto store = Services::find<AssetStore>()) {
-		if (auto font = store->find<BitmapFont>(uri)) { return &*font; }
+		if (auto font = store->find<Font>(uri)) { return &*font; }
 	}
 	return {};
 }

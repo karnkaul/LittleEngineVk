@@ -5,7 +5,7 @@
 namespace le::graphics {
 class TextureAtlas {
   public:
-	enum class Result { eOk, eOverflowX, eSizeLocked, eResizeFail };
+	enum class Result { eOk, eOverflowX, eSizeLocked, eResizeFail, eInvalidSize };
 
 	struct CreateInfo;
 	using ID = u32;
@@ -50,5 +50,6 @@ struct TextureAtlas::CreateInfo {
 	glm::uvec2 pad = {1U, 1U};
 	u32 maxWidth = 512U;
 	u32 initialHeight = 64U;
+	bool mipMaps = true;
 };
 } // namespace le::graphics

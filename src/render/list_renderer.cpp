@@ -67,8 +67,11 @@ void ListRenderer::draw(DescriptorBinder bind, DrawList const& list, graphics::C
 		for (u32 const set : d.sets) { bind(set); }
 		if (d.scissor.set) { cb.setScissor(cast(d.scissor)); }
 		for (MeshObj const& mesh : d.mesh.mesh.meshViews()) {
-			for (u32 const set : d.mesh.sets) { bind(set); }
-			mesh.primitive->draw(cb);
+			EXPECT(mesh.primitive);
+			if (mesh.primitive) {
+				for (u32 const set : d.mesh.sets) { bind(set); }
+				mesh.primitive->draw(cb);
+			}
 		}
 	}
 }

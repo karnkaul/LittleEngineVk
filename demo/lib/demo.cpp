@@ -240,10 +240,10 @@ class TestView : public gui::View {
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 		topLeft.m_material.Tf = colours::magenta;
 		auto& text = bg.push<gui::Text>(fontURI);
-		text.set("click").size(60U);
+		text.set("click").height(60U);
 		m_button = &push<gui::Button>(fontURI);
 		m_button->m_rect.size = {200.0f, 100.0f};
-		m_button->m_text->set("Button").size(40U);
+		m_button->m_text->set("Button").height(40U);
 		m_button->refresh();
 		m_onClick = m_button->onClick();
 		m_onClick += [this]() { setDestroyed(); };
@@ -263,7 +263,7 @@ class Dialogue : public View {
 	struct CreateInfo;
 	struct ButtonInfo {
 		glm::vec2 size = {150.0f, 40.0f};
-		Text::Size textSize = 25U;
+		u32 textHeight = 25U;
 		Hash style;
 	};
 
@@ -300,14 +300,14 @@ struct Dialogue::CreateInfo {
 	struct Content {
 		std::string text;
 		glm::vec2 size = {500.0f, 200.0f};
-		Text::Size textSize = 25U;
+		u32 textHeight = 25U;
 		Hash style;
 	};
 	struct Header {
 		std::string text;
 		f32 height = 50.0f;
 		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
-		Text::Size textSize = 30U;
+		u32 textHeight = 30U;
 		Hash style;
 	};
 	struct Footer {
@@ -327,7 +327,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_fontURI(info.fontURI) {
 	m_content = &push<Button>(m_fontURI, info.content.style);
 	m_content->m_rect.size = info.content.size;
-	m_content->m_text->set(info.content.text).size(info.content.textSize);
+	m_content->m_text->set(info.content.text).height(info.content.textHeight);
 	m_content->m_interact = false;
 
 	m_header.title = &m_content->push<Button>(m_fontURI, info.header.style);
@@ -335,13 +335,13 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 	m_header.title->m_rect.anchor.norm.y = 0.5f;
 	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
 	m_header.title->m_style.widget.quad.base.Tf = info.header.background;
-	m_header.title->m_text->set(info.header.text).size(info.header.textSize);
+	m_header.title->m_text->set(info.header.text).height(info.header.textHeight);
 	m_header.title->m_style.widget.quad.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
 	m_header.close = &m_header.title->push<Button>(m_fontURI);
 	m_header.close->m_style.widget.quad.base.Tf = colours::red;
 	m_header.close->m_style.base.text.colour = colours::white;
-	m_header.close->m_text->set("x").size(20U);
+	m_header.close->m_text->set("x").height(20U);
 	m_header.close->m_rect.size = {20.0f, 20.0f};
 	m_header.close->m_rect.anchor.norm.x = 0.5f;
 	m_header.close->m_rect.anchor.offset.x = -20.0f;
@@ -362,7 +362,7 @@ Widget::OnClick::handle Dialogue::addButton(std::string text, Widget::OnClick::c
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
 	button.m_cornerRadius = 10.0f;
-	button.m_text->set(std::move(text)).size(m_buttonInfo.textSize);
+	button.m_text->set(std::move(text)).height(m_buttonInfo.textHeight);
 	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
 	f32 offset = pad + m_buttonInfo.size.x * 0.5f;
 	for (auto btn : m_footer.buttons) {
@@ -558,7 +558,7 @@ class App : public input::Receiver, public SceneRegistry {
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
-		dci.textSize = 30U;
+		dci.textHeight = 30U;
 		dci.options = {"zero", "one", "two", "/bthree", "four"};
 		dci.selected = 2;
 		auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
@@ -571,7 +571,6 @@ class App : public input::Receiver, public SceneRegistry {
 		// info.secret = true;
 		auto& in = dialogue.push<gui::InputField>(info);
 		in.m_rect.anchor.offset.y = 60.0f;
-		in.align({-0.5f, 0.0f});
 		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 

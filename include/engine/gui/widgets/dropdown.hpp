@@ -21,7 +21,7 @@ class Dropdown : public Button {
 			graphics::RGBA cover = {Colour(0x88888888), graphics::RGBA::Type::eAbsolute};
 			graphics::RGBA arrow = colours::white;
 		} coverColours;
-		Text::Size textSize = 40U;
+		u32 textHeight = 40U;
 		std::optional<f32> zIndex;
 		Hash fontURI = defaultFontURI;
 		Hash style;

@@ -14,7 +14,8 @@ vk::SamplerCreateInfo samplerInfo() {
 } // namespace
 
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
-	: m_sampler(vram->m_device, samplerInfo()), m_texture(vram, m_sampler.sampler(), Colour(), {info.maxWidth, info.initialHeight}), m_pad(info.pad),
+	: m_sampler(vram->m_device, samplerInfo()),
+	  m_texture(vram, m_sampler.sampler(), Colour(), {info.maxWidth, info.initialHeight}, Texture::Payload::eColour, info.mipMaps), m_pad(info.pad),
 	  m_vram(vram) {
 	m_data.head += m_pad;
 }
@@ -50,7 +51,8 @@ void TextureAtlas::clear() {
 	if (!m_data.entries.empty()) {
 		m_data = {};
 		auto const extent = m_texture.image().extent2D();
-		m_texture = Texture(m_vram, m_sampler.sampler(), Colour(), extent);
+		auto const mips = m_texture.image().mipCount() > 1U;
+		m_texture = Texture(m_vram, m_sampler.sampler(), Colour(), extent, Texture::Payload::eColour, mips);
 	}
 }
 
@@ -66,14 +68,15 @@ QuadUV TextureAtlas::getUV(Entry const& entry) const noexcept {
 }
 
 TextureAtlas::Result TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer const& cb) {
+	if (extent.x == 0 || extent.y == 0) { return Result::eInvalidSize; }
 	auto const& itex = m_texture.image().extent2D();
 	if (extent.x > itex.x) { return Result::eOverflowX; }
 	auto const remain = itex - m_data.head;
 	bool resize = false;
-	if (extent.y > remain.y) { // y overflow
+	if (extent.y + m_pad.y > remain.y) { // y overflow
 		resize = true;
-	} else if (extent.x > remain.x) {				  // x overflow
-		if (extent.y + m_data.rowHeight > remain.y) { // insufficient y
+	} else if (extent.x + m_pad.x > remain.x) {					// x overflow
+		if (extent.y + m_pad.y + m_data.rowHeight > remain.y) { // insufficient y
 			resize = true;
 		} else {
 			nextRow();
@@ -85,6 +88,8 @@ TextureAtlas::Result TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer cons
 		nextRow();
 	}
 	m_texture.wait();
+	EXPECT(m_data.head.x + extent.x + m_pad.x <= m_texture.image().extent2D().x);
+	EXPECT(m_data.head.y + extent.y + m_pad.y <= m_texture.image().extent2D().y);
 	return Result::eOk;
 }
 

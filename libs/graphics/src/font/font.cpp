@@ -48,7 +48,8 @@ glm::vec2 Font::Pen::extent(std::string_view const line) const {
 	glm::vec2 ret{};
 	for (auto const [ch, idx] : le::utils::enumerate(line)) {
 		if (ch == '\n' || ch == '\r') {
-			logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
+			// TODO: fix
+			// logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
 			return ret;
 		}
 		auto const& gl = glyph(Codepoint(static_cast<u32>(ch)));
@@ -63,17 +64,28 @@ glm::vec2 Font::Pen::extent(std::string_view const line) const {
 	return ret;
 }
 
-void Font::Pen::align(std::string_view const line, glm::vec2 const pivot) { m_head -= glm::vec3(extent(line) * (pivot + 0.5f), 0.0f); }
+void Font::Pen::align(std::string_view const line, glm::vec2 pivot) {
+	glm::vec3 ex{};
+	pivot += 0.5f;
+	if (line.empty()) {
+		ex.y = f32(glyph('A').quad.extent.y) * pivot.y * m_scale;
+	} else {
+		ex = glm::vec3(extent(line) * pivot, 0.0f);
+	}
+	m_head -= ex;
+}
 
 glm::vec3 Font::Pen::write(std::string_view const line, std::optional<glm::vec2> const realign, std::size_t const* retIdx) {
 	if (realign) { align(line, *realign); }
 	glm::vec3 idxPos = m_head;
 	for (auto const [ch, idx] : le::utils::enumerate(line)) {
 		if (retIdx && *retIdx == idx) { idxPos = m_head; }
-		EXPECT(ch != '\n' && ch != '\r');
+		// TODO: fix
+		// EXPECT(ch != '\n' && ch != '\r');
 		Codepoint const cp(static_cast<u32>(ch));
 		if (ch == '\n' || ch == '\r') {
-			logW("[Graphics] Unexpected newline (Font: {})", m_font->m_name);
+			// TODO: fix
+			// logW("[Graphics] Unexpected newline (Font: {})", m_font->m_name);
 			return retIdx ? idxPos : m_head;
 		}
 		if (ch == '\t') {

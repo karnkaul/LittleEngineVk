@@ -118,11 +118,6 @@
 			"map_Ks": "textures/container2/specular"
 		}
 	],
-	"bitmap_fonts": [
-		{
-			"uri": "fonts/default"
-		}
-	],
 	"skyboxes": [
 		{
 			"uri": "skyboxes/sky_dusk",
@@ -152,7 +147,12 @@
 	"fonts": [
 		{
 			"uri": "fonts/vera_serif",
-			"file": "fonts/vera_serif.ttf"
+			"file": "fonts/VeraSe.ttf"
+		},
+		{
+			"uri": "fonts/default",
+			"file": "fonts/Vera.ttf",
+			"mip_maps": true
 		}
 	]
 }

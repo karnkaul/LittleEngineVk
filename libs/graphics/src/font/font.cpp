@@ -4,7 +4,7 @@
 #include <graphics/utils/instant_command.hpp>
 
 namespace le::graphics {
-Font::Font(not_null<VRAM*> const vram, Info info) : m_atlas(vram, info.atlas), m_name(std::move(info.name)), m_vram(vram) {
+Font::Font(not_null<VRAM*> const vram, Info info) : m_vram(vram), m_atlas(vram, info.atlas), m_name(std::move(info.name)) {
 	if (m_name.empty()) { m_name = "(untitled)"; }
 	load(std::move(info));
 }
@@ -19,6 +19,8 @@ bool Font::load(Info info) {
 	if (!info.name.empty()) { m_name = std::move(info.name); }
 	return true;
 }
+
+f32 Font::scale(u32 height) const noexcept { return f32(height) / f32(m_atlas.face().size().height); }
 
 bool Font::write(Geometry& out, Glyph const& glyph, glm::vec3 const m_head, f32 const scale) const {
 	if (glyph.textured && scale > 0.0f) {

@@ -112,7 +112,7 @@ bool Surface::makeSwapchain(Extent2D fbSize, std::optional<VSync> vsync) {
 		auto const images = m_vram->m_device->device().getSwapchainImagesKHR(*m_storage.swapchain);
 		for (auto const image : images) {
 			m_storage.imageViews.push_back(makeImageView(m_vram->m_device->device(), image, m_createInfo.imageFormat));
-			m_storage.images.push_back(RenderTarget{image, *m_storage.imageViews.back(), extent, m_createInfo.imageFormat});
+			m_storage.images.push_back(RenderTarget{{image, *m_storage.imageViews.back(), extent, m_createInfo.imageFormat}});
 		}
 		m_storage.blitFlags = bf;
 	} else {

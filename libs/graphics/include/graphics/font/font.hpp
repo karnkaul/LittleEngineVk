@@ -5,23 +5,30 @@
 namespace le::graphics {
 class Font {
   public:
+	enum class Align { eMin, eCentre, eMax };
+
 	using Size = FontFace::Size;
-	struct Info;
 	class Pen;
+	struct Info;
 
 	Font(not_null<VRAM*> vram, Info info);
 
 	bool load(Info info);
 
+	FontFace const& face() const noexcept { return m_atlas.face(); }
 	FontAtlas const& atlas() const noexcept { return m_atlas; }
 	std::string_view name() const noexcept { return m_name; }
 
+	static constexpr glm::vec2 pivot(Align horz = Align::eMin, Align vert = Align::eMin) noexcept;
+	f32 scale(u32 height) const noexcept;
+
 	bool write(Geometry& out, Glyph const& glyph, glm::vec3 origin = {}, f32 scale = 1.0f) const;
+
+	not_null<VRAM*> m_vram;
 
   private:
 	FontAtlas m_atlas;
 	std::string m_name;
-	not_null<VRAM*> m_vram;
 };
 
 class Font::Pen {
@@ -52,7 +59,21 @@ struct Font::Info {
 	FontAtlas::CreateInfo atlas;
 	std::string name;
 	Span<std::byte const> ttf;
-	Size size = CharSize();
 	TPair<Codepoint> preload = {33U, 128U};
+	Size size;
 };
+
+// impl
+
+constexpr glm::vec2 Font::pivot(Align horz, Align vert) noexcept {
+	auto const f = [](Align al) {
+		switch (al) {
+		default:
+		case Align::eMin: return -0.5f;
+		case Align::eCentre: return 0.0f;
+		case Align::eMax: return 0.5f;
+		}
+	};
+	return {f(horz), f(vert)};
+}
 } // namespace le::graphics

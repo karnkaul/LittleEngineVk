@@ -15,7 +15,7 @@ MeshView TextGen::mesh(graphics::MeshPrimitive const& primitive, graphics::Textu
 	return MeshObj{&primitive, &material};
 }
 
-MeshView TextMesh::mesh() const noexcept {
+MeshView TextGenMesh::mesh() const noexcept {
 	if (font) { return gen.mesh(primitive, font->atlas()); }
 	return {};
 }

@@ -31,12 +31,12 @@ struct TextGen {
 	graphics::Geometry operator()(glm::uvec2 atlas, Glyphs const& glyphs, std::string_view text) const;
 };
 
-struct TextMesh {
+struct TextGenMesh {
 	graphics::MeshPrimitive primitive;
 	TextGen gen;
 	graphics::BitmapFont const* font{};
 
-	TextMesh(not_null<graphics::VRAM*> vram, graphics::BitmapFont const* font) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic), font(font) {}
+	TextGenMesh(not_null<graphics::VRAM*> vram, graphics::BitmapFont const* font) : primitive(vram, graphics::MeshPrimitive::Type::eDynamic), font(font) {}
 
 	MeshView mesh() const noexcept;
 };
@@ -49,10 +49,10 @@ class BitmapText {
 
 	virtual void set(std::string_view text, std::optional<f32> z = std::nullopt);
 	MeshView mesh() const noexcept { return m_textMesh.mesh(); }
-	TextMesh& textMesh() noexcept { return m_textMesh; }
+	TextGenMesh& textMesh() noexcept { return m_textMesh; }
 
   protected:
-	TextMesh m_textMesh;
+	TextGenMesh m_textMesh;
 	not_null<BitmapFont const*> m_font;
 };
 } // namespace le

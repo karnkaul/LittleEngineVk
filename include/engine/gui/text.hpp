@@ -29,7 +29,7 @@ class Text : public TreeNode {
 
 	void write();
 
-	TextMesh m_textMesh;
+	TextGenMesh m_textMesh;
 	std::string m_str;
 	bool m_dirty = false;
 };

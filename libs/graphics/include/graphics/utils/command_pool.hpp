@@ -24,7 +24,7 @@ class CommandPool {
 	CommandPool(not_null<Device*> device, QType qtype = QType::eGraphics, std::size_t batch = 4);
 
 	CommandBuffer acquire();
-	void release(CommandBuffer&& cmd);
+	void release(CommandBuffer&& cmd, bool block);
 
   private:
 	struct Cmd {

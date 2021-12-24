@@ -37,6 +37,7 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
+#include <engine/render/text_mesh.hpp>
 #include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
 #include <ktl/async.hpp>
@@ -521,26 +522,20 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	void init1() {
-		auto font = m_eng->store().find<BitmapFont>("fonts/default");
-		auto& vram = m_eng->gfx().boot.vram;
-
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
 			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
 		}
-		m_data.text = TextMesh(&vram, &*font);
-		m_data.cursor = input::TextCursor(&*font);
-		m_data.cursor->m_gen.size = 80U;
-		m_data.cursor->m_gen.colour = colours::yellow;
-		m_data.cursor->m_gen.position = {0.0f, 200.0f, 0.0f};
-		m_data.text->gen = m_data.cursor->m_gen;
-		// m_data.text->text.align = {-0.5f, 0.5f};
-		// m_data.text->set("Hi\nThere!");
-		m_data.cursor->m_text = "Hello!";
-		m_data.text->primitive.construct(m_data.cursor->generateText());
-		{
+
+		if (auto font = m_eng->store().find<graphics::Font>("fonts/vera_serif")) {
+			m_data.text.emplace(&*font);
+			m_data.text->m_info.colour = colours::yellow;
+			m_data.text->m_info.scale = font->scale(80U);
+			m_data.text->m_info.origin.y = 200.0f;
+			m_data.text->m_info.pivot = font->pivot(graphics::Font::Align::eCentre, graphics::Font::Align::eCentre);
+			m_data.text->m_line = "Hello!";
 			auto ent = spawnNode("text");
-			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make<TextMesh>(&*m_data.text));
+			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
 			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
 		}
 
@@ -568,33 +563,14 @@ class App : public input::Receiver, public SceneRegistry {
 
 		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
-
-		if (auto font = m_eng->store().find<graphics::Font>("fonts/vera_serif")) {
-			auto atlasQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/atlas_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
-			Material atlasMat;
-			atlasMat.map_Kd = &font->atlas().texture();
-			m_eng->store().add<Material>("materials/atlas_quad", atlasMat);
-			auto quad = graphics::makeQuad(font->atlas().texture().image().extent2D());
-			atlasQuad->construct(std::move(quad));
-			/*auto ent =*/spawnMesh("atlas", MeshProvider::make("meshes/atlas_quad", "materials/atlas_quad"), "render_pipelines/ui");
-
-			graphics::Geometry geom;
-			graphics::Font::Pen pen(&*font, &geom, {}, 0.5f);
-			std::string_view const str = "freetype B)";
-			pen.write(str, glm::vec3());
-			graphics::MeshPrimitive mesh(&m_eng->gfx().boot.vram, graphics::MeshPrimitive::Type::eDynamic);
-			mesh.construct(geom);
-			m_eng->store().add<graphics::MeshPrimitive>("meshes/text", std::move(mesh));
-			spawnMesh("test_text", MeshProvider::make("meshes/text", "materials/atlas_quad"), "render_pipelines/ui");
-		}
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
-		if (m_data.text && m_data.cursor) {
+		if (m_data.tgMesh && m_data.cursor) {
 			graphics::Geometry geom;
-			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->primitive.construct(std::move(geom)); }
+			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
 			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
 				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
 			}
@@ -671,6 +647,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct Data {
 		std::unordered_map<Hash, dens::entity> entities;
 
+		std::optional<TextGenMesh> tgMesh;
 		std::optional<TextMesh> text;
 		std::optional<input::TextCursor> cursor;
 		std::vector<DirLight> dirLights;

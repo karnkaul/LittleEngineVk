@@ -55,7 +55,7 @@ CommandBuffer CommandPool::acquire() {
 	return ret;
 }
 
-void CommandPool::release(CommandBuffer&& cb) {
+void CommandPool::release(CommandBuffer&& cb, bool block) {
 	EXPECT(!std::any_of(m_cbs.begin(), m_cbs.end(), [c = cb.m_cb](Cmd const& cmd) { return cmd.cb == c; }));
 	cb.end();
 	Cmd cmd{cb.m_cb, m_fencePool.next()};
@@ -63,5 +63,6 @@ void CommandPool::release(CommandBuffer&& cb) {
 	auto const& queue = m_qtype == QType::eCompute ? *m_device->queues().compute() : m_device->queues().primary();
 	queue.submit(si, cmd.fence);
 	m_cbs.push_back(std::move(cmd));
+	if (block) { m_device->waitFor(cmd.fence); }
 }
 } // namespace le::graphics

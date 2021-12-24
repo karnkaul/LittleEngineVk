@@ -1,7 +1,7 @@
 #pragma once
 #include <engine/gui/widget.hpp>
 #include <engine/input/receiver.hpp>
-#include <engine/input/text_cursor2.hpp>
+#include <engine/input/text_cursor.hpp>
 #include <graphics/font/font.hpp>
 
 namespace le::gui {

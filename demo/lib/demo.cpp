@@ -37,7 +37,6 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <engine/input/text_cursor2.hpp>
 #include <engine/render/text_mesh.hpp>
 #include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
@@ -667,9 +666,7 @@ class App : public input::Receiver, public SceneRegistry {
 	struct Data {
 		std::unordered_map<Hash, dens::entity> entities;
 
-		std::optional<TextGenMesh> tgMesh;
 		std::optional<TextMesh> text;
-		std::optional<input::TextCursor> tgCursor;
 		std::optional<input::TextCursor2> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::handle> btnSignals;

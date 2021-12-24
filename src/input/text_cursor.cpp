@@ -1,96 +1,101 @@
-#include <core/services.hpp>
 #include <engine/input/state.hpp>
 #include <engine/input/text_cursor.hpp>
 #include <graphics/bitmap_font.hpp>
+#include <graphics/font/font.hpp>
 #include <graphics/glyph_pen.hpp>
 
 namespace le::input {
-TextCursor::TextCursor(not_null<BitmapFont const*> font, Flags flags)
-	: m_flags(flags), m_primitive(Services::get<graphics::VRAM>(), graphics::MeshPrimitive::Type::eDynamic), m_font(font) {
-	refresh();
-}
+TextCursor2::TextCursor2(not_null<Font*> font, Flags flags) : m_flags(flags), m_primitive(font->m_vram), m_font(font) { refresh(); }
 
-MeshView TextCursor::mesh() const noexcept {
+MeshView TextCursor2::mesh() const noexcept {
 	if (m_drawCursor) {
-		m_material.Tf = m_gen.colour;
+		m_material.Tf = m_colour;
 		m_material.d = m_alpha;
 		return MeshObj{&m_primitive, &m_material};
 	}
 	return {};
 }
 
-void TextCursor::backspace(graphics::Geometry* out) {
-	if (m_text.empty() || m_index == 0) {
+void TextCursor2::backspace(graphics::Geometry* out) {
+	if (m_line.empty() || m_index == 0) {
 		refresh(out);
 		return;
 	}
-	if (m_index - 1 >= m_text.size()) {
-		m_text.pop_back();
+	if (m_index - 1 >= m_line.size()) {
+		m_line.pop_back();
 		if (m_index > 0) { --m_index; }
 	} else {
-		m_text.erase(m_index-- - 1, 1);
+		m_line.erase(m_index-- - 1, 1);
 	}
 	refresh();
 }
 
-void TextCursor::deleteFront(graphics::Geometry* out) {
-	if (!m_text.empty() && m_index < m_text.size()) { m_text.erase(m_index, 1); }
+void TextCursor2::deleteFront(graphics::Geometry* out) {
+	if (!m_line.empty() && m_index < m_line.size()) { m_line.erase(m_index, 1); }
 	refresh(out);
 }
 
-void TextCursor::insert(char ch, graphics::Geometry* out) {
-	if (m_index >= m_text.size()) {
-		m_text += ch;
+void TextCursor2::insert(char ch, graphics::Geometry* out) {
+	if (m_index >= m_line.size()) {
+		m_line += ch;
 		if (m_index < npos) { ++m_index; }
 	} else {
-		m_text.insert(m_index++, 1, ch);
+		m_line.insert(m_index++, 1, ch);
 	}
 	refresh(out);
 }
 
-bool TextCursor::update(State const& state, graphics::Geometry* out) {
+bool TextCursor2::update(State const& state, graphics::Geometry* out, bool clearGeom) {
 	if (state.pressed(Key::eEscape)) { setActive(false); }
 	if (!m_flags.test(Flag::eActive)) {
 		// hide cursor and ignore input
 		m_drawCursor = false;
 		return false;
 	}
-	bool refr = {};
+	bool regen = {};
 	if (state.pressOrRepeat(Key::eBackspace)) {
 		backspace(nullptr);
-		refr = true;
+		regen = true;
 	}
 	if (state.pressOrRepeat(Key::eDelete)) {
 		deleteFront(nullptr);
-		refr = true;
+		regen = true;
 	}
-	if (!m_flags.test(Flag::eNoNewLine) && state.pressOrRepeat(Key::eEnter)) {
-		insert('\n', nullptr);
-		refr = true;
-	}
+	// if (!m_flags.test(Flag::eNoNewLine) && state.pressOrRepeat(Key::eEnter)) {
+	// 	insert('\n', nullptr);
+	// 	refr = true;
+	// }
 	if (state.pressOrRepeat(Key::eLeft)) {
-		if (m_index >= m_text.size()) {
+		if (m_index >= m_line.size()) {
 			// reset to size - 1 if beyond it
-			m_index = m_text.size() - 1;
+			m_index = m_line.size() - 1;
 		} else if (m_index > 0) {
 			// decrement if > 0
 			--m_index;
 		}
-		refr = true;
+		regen = true;
 	}
 	if (state.pressOrRepeat(Key::eRight)) {
 		// increment if less than size
-		if (m_index <= m_text.size()) { ++m_index; }
-		refr = true;
+		if (m_index <= m_line.size()) { ++m_index; }
+		regen = true;
+	}
+	if (state.pressed(Key::eHome)) {
+		m_index = 0U;
+		regen = true;
+	}
+	if (state.pressed(Key::eEnd)) {
+		m_index = npos;
+		regen = true;
 	}
 	for (u32 const codepoint : state.codepoints) {
 		if (Codepoint::Validate{}(codepoint)) {
 			insert(static_cast<char>(codepoint), nullptr);
-			refr = true;
+			regen = true;
 		}
 	}
 	if (!m_flags.test(Flag::eNoAutoBlink)) {
-		if (refr) {
+		if (regen) {
 			m_lastBlink = time::now();
 			m_drawCursor = true;
 		}
@@ -102,44 +107,46 @@ bool TextCursor::update(State const& state, graphics::Geometry* out) {
 			m_lastBlink = lastBlink;
 		}
 	}
-	if (refr) {
-		refresh(out);
-		return true;
-	}
-	return false;
+	refresh(out, clearGeom, regen);
+	return regen;
 }
 
-void TextCursor::refresh(graphics::Geometry* out) {
-	using Pen = graphics::GlyphPen;
-	Pen pen(&m_font->glyphs(), m_font->atlasSize(), m_gen.size, m_gen.position, m_gen.colour);
-	auto const lines = pen.splitLines(m_text);
-	auto const lineIndex = pen.lineIndex(lines, m_index);
-	Pen::LineInfo const info{.nLinePad = m_gen.nLinePad, .produceGeometry = out != nullptr, .returnIndex = &m_index};
-	auto para = pen.writeLines(lines, info);
-	pen.alignLines(para.lines, m_gen.align, out);
-	glm::vec2 const extent = para.lines.size() <= lineIndex.line ? glm::vec2(0.0f, pen.lineHeight()) : para.lines[lineIndex.line].extent;
-	auto const size = pen.scale() * m_size * glm::vec2(pen.glyphs().bounds());
-	m_position = para.head + pen.alignOffset(extent, m_gen.align);
-	m_position.y += 0.3f * size.y;
-	graphics::GeomInfo const gi{.origin = m_position};
-	m_primitive.construct(graphics::makeQuad(size, gi));
-}
+void TextCursor2::refresh(graphics::Geometry* out, bool clearGeom) { refresh(out, clearGeom, true); }
 
-graphics::Geometry TextCursor::generateText() {
+graphics::Geometry TextCursor2::generateText() {
 	graphics::Geometry ret;
 	refresh(&ret);
 	return ret;
 }
 
-void TextCursor::setActive(bool active) noexcept {
+void TextCursor2::setActive(bool active) noexcept {
 	m_drawCursor = active;
 	m_flags.assign(Flag::eActive, active);
 }
 
-void TextCursor::index(std::size_t index) {
+void TextCursor2::index(std::size_t index) {
 	if (index != m_index) {
 		m_index = index;
 		refresh();
+	}
+}
+
+void TextCursor2::refresh(graphics::Geometry* out, bool clearGeom, bool regen) {
+	if (out) {
+		if (clearGeom) { *out = {}; }
+		out->reserve(u32(m_line.size() * 4U), u32(m_line.size() * 6U));
+	}
+	if (out || regen) {
+		m_layout.pivot.y = -0.5f;
+		Font::Pen pen(m_font, out, m_layout.origin, m_layout.scale);
+		auto const size = m_layout.scale * m_size * glm::vec2(f32(m_font->face().height()));
+		auto const head = pen.write(m_line, m_layout.pivot, &m_index);
+		if (regen) {
+			m_position = head;
+			m_position.y += 0.3f * size.y;
+			graphics::GeomInfo const gi{.origin = m_position};
+			m_primitive.construct(graphics::makeQuad(size, gi));
+		}
 	}
 }
 } // namespace le::input

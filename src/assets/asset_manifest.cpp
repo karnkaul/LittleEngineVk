@@ -36,7 +36,6 @@ void AssetManifest::stage(dts::scheduler* scheduler) {
 	m_deps[Kind::eRenderLayer] = m_loader.stage(std::move(m_renderLayers), scheduler, {}, m_jsonQIDs[Kind::eRenderLayer]);
 	m_deps[Kind::eRenderPipeline] = m_loader.stage(std::move(m_renderPipelines), scheduler, m_deps[Kind::eSpirV], m_jsonQIDs[Kind::eRenderPipeline]);
 	m_deps[Kind::eMaterial] = m_loader.stage(std::move(m_materials), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eMaterial]);
-	m_deps[Kind::eBitmapFont] = m_loader.stage(std::move(m_bitmapFonts), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eBitmapFont]);
 	m_deps[Kind::eFont] = m_loader.stage(std::move(m_fonts), scheduler, {}, m_jsonQIDs[Kind::eFont]);
 	m_deps[Kind::eSkybox] = m_loader.stage(std::move(m_skyboxes), scheduler, m_deps[Kind::eTexture], m_jsonQIDs[Kind::eSkybox]);
 	m_deps[Kind::eModel] = m_loader.stage(std::move(m_models), scheduler, {}, m_jsonQIDs[Kind::eModel]);
@@ -92,7 +91,6 @@ std::size_t AssetManifest::add(std::string_view groupName, Group group) {
 	if (groupName == "textures") { return addTextures(std::move(group)); }
 	if (groupName == "render_layers") { return addRenderLayers(std::move(group)); }
 	if (groupName == "render_pipelines") { return addRenderPipelines(std::move(group)); }
-	if (groupName == "bitmap_fonts") { return addBitmapFonts(std::move(group)); }
 	if (groupName == "fonts") { return addFonts(std::move(group)); }
 	if (groupName == "materials") { return addMaterials(std::move(group)); }
 	if (groupName == "skyboxes") { return addSkyboxes(std::move(group)); }
@@ -211,23 +209,6 @@ std::size_t AssetManifest::addRenderPipelines(Group group) {
 	return ret;
 }
 
-std::size_t AssetManifest::addBitmapFonts(Group group) {
-	std::size_t ret{};
-	for (auto& [uri, json] : group) {
-		AssetLoadData<graphics::BitmapFont> data(&vram());
-		if (auto file = json->find("file"); file && file->is_string()) {
-			data.jsonURI = file->as<std::string_view>();
-		} else {
-			io::Path path(uri);
-			data.jsonURI = path / path.filename() + ".json";
-		}
-		data.samplerURI = json->get_as<std::string_view>("sampler");
-		m_bitmapFonts.add(std::move(uri), std::move(data));
-		++ret;
-	}
-	return ret;
-}
-
 std::size_t AssetManifest::addFonts(Group group) {
 	std::size_t ret{};
 	for (auto& [uri, json] : group) {
@@ -330,7 +311,6 @@ std::size_t AssetManifest::unload() {
 	ret += unloadMap(m_textures.map);
 	ret += unloadMap(m_renderLayers.map);
 	ret += unloadMap(m_renderPipelines.map);
-	ret += unloadMap(m_bitmapFonts.map);
 	ret += unloadMap(m_fonts.map);
 	ret += unloadMap(m_materials.map);
 	ret += unloadMap(m_skyboxes.map);

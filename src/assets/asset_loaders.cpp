@@ -157,37 +157,6 @@ bool AssetLoader<graphics::Texture>::load(graphics::Texture& out_texture, Data c
 	return false;
 }
 
-std::unique_ptr<graphics::BitmapFont> AssetLoader<graphics::BitmapFont>::load(AssetLoadInfo<graphics::BitmapFont> const& info) const {
-	graphics::BitmapFont font;
-	if (load(font, info)) { return std::make_unique<graphics::BitmapFont>(std::move(font)); }
-	return {};
-}
-
-bool AssetLoader<graphics::BitmapFont>::reload(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const {
-	return load(out_font, info);
-}
-
-bool AssetLoader<graphics::BitmapFont>::load(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const {
-	auto const samplerURI = info.m_data.samplerURI == Hash{} ? "samplers/font" : info.m_data.samplerURI;
-	auto const sampler = info.m_store->find<graphics::Sampler>(samplerURI);
-	if (!sampler) { return false; }
-	if (auto text = info.resource(info.m_data.jsonURI, Resource::Type::eText, Resources::Flag::eMonitor)) {
-		dj::json json;
-		auto result = json.read(text->string());
-		if (result && result.errors.empty()) {
-			auto const fi = io::fromJson<BitmapFontInfo>(json);
-			auto const atlas = info.resource(info.m_data.jsonURI.parent_path() / fi.atlasURI, Resource::Type::eBinary, Resources::Flag::eMonitor);
-			if (!atlas) { return false; }
-			graphics::BitmapFont::CreateInfo bci;
-			bci.forceFormat = info.m_data.forceFormat;
-			bci.glyphs = fi.glyphs;
-			bci.atlas = atlas->bytes();
-			if (out_font.make(info.m_data.vram, *sampler, bci)) { return true; }
-		}
-	}
-	return false;
-}
-
 std::unique_ptr<graphics::Font> AssetLoader<graphics::Font>::load(AssetLoadInfo<graphics::Font> const& info) const {
 	if (auto ttf = info.resource(info.m_data.ttfURI, Resource::Type::eBinary, {})) {
 		auto fi = info.m_data.info;

@@ -2,7 +2,6 @@
 #include <engine/assets/asset_loader.hpp>
 #include <engine/render/layer.hpp>
 #include <engine/render/model.hpp>
-#include <graphics/bitmap_font.hpp>
 #include <graphics/font/font.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/texture.hpp>
@@ -50,24 +49,6 @@ struct AssetLoader<graphics::Texture> {
 
 	bool load(graphics::Texture& out_texture, Data const& data, vk::Sampler sampler, std::optional<vk::Format> format) const;
 	std::optional<Data> data(AssetLoadInfo<graphics::Texture> const& info) const;
-};
-
-template <>
-struct AssetLoadData<graphics::BitmapFont> {
-	io::Path jsonURI;
-	std::optional<vk::Format> forceFormat;
-	not_null<graphics::VRAM*> vram;
-	Hash samplerURI;
-
-	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
-};
-
-template <>
-struct AssetLoader<graphics::BitmapFont> {
-	std::unique_ptr<graphics::BitmapFont> load(AssetLoadInfo<graphics::BitmapFont> const& info) const;
-	bool reload(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const;
-
-	bool load(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const;
 };
 
 template <>

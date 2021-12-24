@@ -1,8 +1,6 @@
 #include <engine/input/state.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <graphics/bitmap_font.hpp>
 #include <graphics/font/font.hpp>
-#include <graphics/glyph_pen.hpp>
 
 namespace le::input {
 TextCursor2::TextCursor2(not_null<Font*> font, Flags flags) : m_flags(flags), m_primitive(font->m_vram), m_font(font) { refresh(); }

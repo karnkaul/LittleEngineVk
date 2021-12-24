@@ -2,7 +2,6 @@
 #include <engine/gui/text.hpp>
 #include <engine/input/space.hpp>
 #include <graphics/font/font.hpp>
-#include <graphics/glyph_pen.hpp>
 
 namespace le::gui {
 Text::Text(not_null<TreeRoot*> const root, Hash const fontURI) noexcept : TreeNode(root), m_font(findFont(fontURI)), m_fontURI(fontURI), m_textMesh(m_font) {}

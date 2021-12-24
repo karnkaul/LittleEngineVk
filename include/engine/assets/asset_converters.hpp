@@ -3,15 +3,8 @@
 #include <core/io/converters.hpp>
 #include <core/io/path.hpp>
 #include <engine/render/layer.hpp>
-#include <graphics/bitmap_glyph.hpp>
 
 namespace le {
-struct BitmapFontInfo {
-	io::Path atlasURI;
-	std::vector<graphics::BitmapGlyph> glyphs;
-	u32 sizePt{};
-};
-
 namespace io {
 constexpr ArrayMap<PolygonMode, std::string_view, std::size_t(PolygonMode::eCOUNT_)> polygonModes = {{
 	{PolygonMode::eFill, "fill"},
@@ -34,18 +27,6 @@ constexpr ArrayMap<RenderFlag, std::string_view, std::size_t(RenderFlag::eCOUNT_
 	{RenderFlag::eAlphaBlend, "alpha_blend"},
 	{RenderFlag::eWireframe, "wireframe"},
 }};
-
-template <>
-struct Jsonify<graphics::BitmapGlyph> : JsonHelper {
-	dj::json operator()(graphics::BitmapGlyph const& glyph) const;
-	graphics::BitmapGlyph operator()(dj::json const& json) const;
-};
-
-template <>
-struct Jsonify<BitmapFontInfo> : JsonHelper {
-	dj::json operator()(BitmapFontInfo const& info) const;
-	BitmapFontInfo operator()(dj::json const& json) const;
-};
 
 template <>
 struct Jsonify<RenderFlags> : JsonHelper {

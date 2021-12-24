@@ -21,7 +21,6 @@
 #include <engine/gui/text.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
-#include <engine/render/bitmap_text.hpp>
 #include <engine/render/list_renderer.hpp>
 #include <engine/render/skybox.hpp>
 #include <engine/scene/draw_list_gen.hpp>

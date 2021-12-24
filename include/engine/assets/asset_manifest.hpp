@@ -17,7 +17,6 @@ class AssetManifest : public utils::VBase {
 		eTexture,
 		eRenderLayer,
 		eRenderPipeline,
-		eBitmapFont,
 		eFont,
 		eMaterial,
 		eSkybox,
@@ -76,7 +75,6 @@ class AssetManifest : public utils::VBase {
 	std::size_t addTextures(Group group);
 	std::size_t addRenderLayers(Group group);
 	std::size_t addRenderPipelines(Group group);
-	std::size_t addBitmapFonts(Group group);
 	std::size_t addFonts(Group group);
 	std::size_t addMaterials(Group group);
 	std::size_t addSkyboxes(Group group);
@@ -88,7 +86,6 @@ class AssetManifest : public utils::VBase {
 	AssetLoadList<graphics::Texture> m_textures;
 	AssetList<RenderLayer> m_renderLayers;
 	AssetList<RenderPipeline> m_renderPipelines;
-	AssetLoadList<graphics::BitmapFont> m_bitmapFonts;
 	AssetLoadList<graphics::Font> m_fonts;
 	AssetList<Material> m_materials;
 	AssetList<Skybox> m_skyboxes;

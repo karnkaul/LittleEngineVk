@@ -37,6 +37,7 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
+#include <engine/input/text_cursor2.hpp>
 #include <engine/render/text_mesh.hpp>
 #include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
@@ -529,14 +530,27 @@ class App : public input::Receiver, public SceneRegistry {
 
 		if (auto font = m_eng->store().find<graphics::Font>("fonts/vera_serif")) {
 			m_data.text.emplace(&*font);
-			m_data.text->m_info.colour = colours::yellow;
-			m_data.text->m_info.scale = font->scale(80U);
-			m_data.text->m_info.origin.y = 200.0f;
-			m_data.text->m_info.pivot = font->pivot(graphics::Font::Align::eCentre, graphics::Font::Align::eCentre);
-			m_data.text->m_line = "Hello!";
+			m_data.text->m_colour = colours::yellow;
+			TextMesh::Line line;
+			line.layout.scale = font->scale(80U);
+			line.layout.origin.y = 200.0f;
+			line.layout.pivot = font->pivot(graphics::Font::Align::eCentre, graphics::Font::Align::eCentre);
+			line.line = "Hello!";
+			m_data.text->m_info = std::move(line);
 			auto ent = spawnNode("text");
 			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
 			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+
+			m_data.cursor.emplace(&*font);
+			m_data.cursor->m_colour = colours::yellow;
+			m_data.cursor->m_layout.scale = font->scale(80U);
+			m_data.cursor->m_layout.origin.y = 200.0f;
+			m_data.cursor->m_layout.pivot = font->pivot(graphics::Font::Align::eCentre, graphics::Font::Align::eCentre);
+			m_data.cursor->m_line = "Hello!";
+			m_data.text->m_info = m_data.cursor->generateText();
+			auto ent1 = spawnNode("text_cursor");
+			m_registry.attach<DynamicMesh>(ent1, DynamicMesh::make(&*m_data.cursor));
+			m_registry.attach<RenderPipeProvider>(ent1, RenderPipeProvider::make("render_pipelines/ui"));
 		}
 
 		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
@@ -568,11 +582,18 @@ class App : public input::Receiver, public SceneRegistry {
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
-		if (m_data.tgMesh && m_data.cursor) {
-			graphics::Geometry geom;
-			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
-			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
-				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
+		// if (m_data.tgMesh && m_data.tgCursor) {
+		// 	graphics::Geometry geom;
+		// 	if (m_data.tgCursor->update(m_eng->inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
+		// 	if (!m_data.tgCursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+		// 		m_data.tgCursor->m_flags.set(input::TextCursor::Flag::eActive);
+		// 	}
+		// }
+
+		if (m_data.text && m_data.cursor) {
+			m_data.cursor->update(m_eng->inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
+			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+				m_data.cursor->m_flags.set(input::TextCursor2::Flag::eActive);
 			}
 		}
 
@@ -649,7 +670,8 @@ class App : public input::Receiver, public SceneRegistry {
 
 		std::optional<TextGenMesh> tgMesh;
 		std::optional<TextMesh> text;
-		std::optional<input::TextCursor> cursor;
+		std::optional<input::TextCursor> tgCursor;
+		std::optional<input::TextCursor2> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::handle> btnSignals;
 

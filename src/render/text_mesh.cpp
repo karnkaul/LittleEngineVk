@@ -4,20 +4,25 @@
 namespace le {
 TextMesh::Obj TextMesh::Obj::make(not_null<graphics::VRAM*> vram) { return Obj{{vram, graphics::MeshPrimitive::Type::eDynamic}, {}}; }
 
-MeshView TextMesh::Obj::mesh(graphics::Font& font, std::string_view line, Info const& info) {
-	graphics::Geometry geom;
-	graphics::Font::Pen pen(&font, &geom, info.origin, info.scale);
-	pen.write(line, info.pivot);
-	primitive.construct(geom);
-	material.Tf = info.colour;
+MeshView TextMesh::Obj::mesh(Font& font, graphics::Geometry const& geometry, RGBA const colour) {
+	primitive.construct(geometry);
+	material.Tf = colour;
 	material.map_Kd = &font.atlas().texture();
 	return MeshObj{&primitive, &material};
+}
+
+MeshView TextMesh::Obj::mesh(graphics::Font& font, std::string_view line, RGBA const colour, TextLayout const& layout) {
+	graphics::Geometry geom;
+	graphics::Font::Pen pen(&font, &geom, layout.origin, layout.scale);
+	pen.write(line, layout.pivot);
+	return mesh(font, geom, colour);
 }
 
 TextMesh::TextMesh(not_null<Font*> font) noexcept : m_obj(Obj::make(font->m_vram)), m_font(font) {}
 
 MeshView TextMesh::mesh() const {
-	if (!m_line.empty()) { return m_obj.mesh(*m_font, m_line, m_info); }
+	if (auto geom = m_info.get_if<graphics::Geometry>()) { return m_obj.mesh(*m_font, *geom, m_colour); }
+	if (auto line = m_info.get<Line>(); !line.line.empty()) { return m_obj.mesh(*m_font, line.line, m_colour, line.layout); }
 	return {};
 }
 } // namespace le

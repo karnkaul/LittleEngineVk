@@ -33,6 +33,8 @@ class Font {
 
 class Font::Pen {
   public:
+	static constexpr std::size_t npos = std::string::npos;
+
 	Pen(not_null<Font*> font, Geometry* out = {}, glm::vec3 head = {}, f32 scale = 1.0f);
 
 	glm::vec2 extent(std::string_view line) const;
@@ -40,7 +42,7 @@ class Font::Pen {
 	Glyph const& glyph(Codepoint cp) const;
 	void advance(Glyph const& glyph) noexcept { m_head += glm::vec3(glyph.advance, 0.0f) * m_scale; }
 	void align(std::string_view line, glm::vec2 pivot = {-0.5f, -0.5f});
-	glm::vec3 const& write(std::string_view line, std::optional<glm::vec2> realign = std::nullopt);
+	glm::vec3 write(std::string_view line, std::optional<glm::vec2> realign = std::nullopt, std::size_t const* retIdx = {});
 
 	glm::vec3 const& head() const noexcept { return m_head; }
 	void head(glm::vec3 pos) noexcept { m_head = pos; }

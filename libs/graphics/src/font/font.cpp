@@ -65,14 +65,16 @@ glm::vec2 Font::Pen::extent(std::string_view const line) const {
 
 void Font::Pen::align(std::string_view const line, glm::vec2 const pivot) { m_head -= glm::vec3(extent(line) * (pivot + 0.5f), 0.0f); }
 
-glm::vec3 const& Font::Pen::write(std::string_view const line, std::optional<glm::vec2> const realign) {
+glm::vec3 Font::Pen::write(std::string_view const line, std::optional<glm::vec2> const realign, std::size_t const* retIdx) {
 	if (realign) { align(line, *realign); }
-	for (char const ch : line) {
+	glm::vec3 idxPos = m_head;
+	for (auto const [ch, idx] : le::utils::enumerate(line)) {
+		if (retIdx && *retIdx == idx) { idxPos = m_head; }
 		EXPECT(ch != '\n' && ch != '\r');
 		Codepoint const cp(static_cast<u32>(ch));
 		if (ch == '\n' || ch == '\r') {
 			logW("[Graphics] Unexpected newline (Font: {})", m_font->m_name);
-			return m_head;
+			return retIdx ? idxPos : m_head;
 		}
 		if (ch == '\t') {
 			Glyph const& glyph = m_font->m_atlas.build(m_cmd.cb(), Codepoint(static_cast<u32>(' ')));
@@ -83,7 +85,7 @@ glm::vec3 const& Font::Pen::write(std::string_view const line, std::optional<glm
 		if (m_geom) { m_font->write(*m_geom, gl, m_head, m_scale); }
 		advance(gl);
 	}
-	return m_head;
+	return !retIdx || *retIdx >= line.size() ? m_head : idxPos;
 }
 
 void Font::Pen::scale(f32 const s) noexcept {

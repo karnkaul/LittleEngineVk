@@ -136,9 +136,10 @@ void TextCursor2::refresh(graphics::Geometry* out, bool clearGeom, bool regen) {
 	}
 	if (out || regen) {
 		m_layout.pivot.y = -0.5f;
-		Font::Pen pen(m_font, out, m_layout.origin, m_layout.scale);
+		Font::PenInfo const info{m_layout.origin, m_layout.scale, m_layout.lineSpacing, out};
+		Font::Pen pen(m_font, info);
 		auto const size = m_layout.scale * m_size * glm::vec2(f32(m_font->face().height()));
-		auto const head = pen.write(m_line, m_layout.pivot, &m_index);
+		auto const head = pen.writeLine(m_line, m_layout.pivot, &m_index);
 		if (regen) {
 			m_position = head;
 			m_position.y += 0.3f * size.y;

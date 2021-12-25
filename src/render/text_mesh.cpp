@@ -13,8 +13,9 @@ MeshView TextMesh::Obj::mesh(Font& font, graphics::Geometry const& geometry, RGB
 
 MeshView TextMesh::Obj::mesh(graphics::Font& font, std::string_view line, RGBA const colour, TextLayout const& layout) {
 	graphics::Geometry geom;
-	graphics::Font::Pen pen(&font, &geom, layout.origin, layout.scale);
-	pen.write(line, layout.pivot);
+	graphics::Font::PenInfo const info{layout.origin, layout.scale, layout.lineSpacing, &geom};
+	graphics::Font::Pen pen(&font, info);
+	pen.writeText(line, layout.pivot);
 	return mesh(font, geom, colour);
 }
 

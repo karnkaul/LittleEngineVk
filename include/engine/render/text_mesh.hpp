@@ -13,6 +13,7 @@ struct TextLayout {
 	glm::vec3 origin{};
 	glm::vec2 pivot{};
 	f32 scale = 1.0f;
+	f32 lineSpacing = 1.0f;
 };
 
 class TextMesh {

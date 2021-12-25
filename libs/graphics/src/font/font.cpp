@@ -33,9 +33,9 @@ bool Font::write(Geometry& out, Glyph const& glyph, glm::vec3 const m_head, f32 
 	return false;
 }
 
-Font::Pen::Pen(not_null<Font*> font, Geometry* const geom, glm::vec3 const head, f32 const scale)
-	: m_cmd(&font->m_vram->commandPool()), m_head(head), m_scale(scale), m_geom(geom), m_font(font) {
-	if (m_scale <= 0.0f) { m_scale = 1.0f; }
+Font::Pen::Pen(not_null<Font*> font, PenInfo const& info)
+	: m_cmd(&font->m_vram->commandPool()), m_info(info), m_head(info.origin), m_begin(info.origin), m_font(font) {
+	if (m_info.scale <= 0.0f) { m_info.scale = 1.0f; }
 }
 
 Glyph const& Font::Pen::glyph(Codepoint cp) const {
@@ -44,23 +44,41 @@ Glyph const& Font::Pen::glyph(Codepoint cp) const {
 	return *ret;
 }
 
-glm::vec2 Font::Pen::extent(std::string_view const line) const {
+glm::vec2 Font::Pen::lineExtent(std::string_view const line) const {
 	glm::vec2 ret{};
 	for (auto const [ch, idx] : le::utils::enumerate(line)) {
 		if (ch == '\n' || ch == '\r') {
-			// TODO: fix
-			// logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
+			logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
 			return ret;
 		}
 		auto const& gl = glyph(Codepoint(static_cast<u32>(ch)));
 		if (idx + 1 == line.size()) {
-			ret.x += f32(gl.quad.extent.x) * m_scale;
+			ret.x += f32(gl.quad.extent.x) * m_info.scale;
 		} else {
-			ret.x += f32(gl.advance.x) * m_scale;
+			ret.x += f32(gl.advance.x) * m_info.scale;
 		}
-		ret.y = std::max(ret.y, f32(gl.quad.extent.y) * m_scale);
+		ret.y = std::max(ret.y, f32(gl.quad.extent.y) * m_info.scale);
 	}
 	ret.x = std::abs(ret.x);
+	return ret;
+}
+
+glm::vec2 Font::Pen::textExtent(std::string_view text) const {
+	glm::vec2 ret{};
+	auto const update = [&ret, this](std::string_view line) {
+		auto const le = lineExtent(line);
+		ret.x = std::max(ret.x, le.x);
+		ret.y += le.y;
+	};
+	auto remain = text;
+	auto idx = remain.find('\n');
+	while (idx != std::string_view::npos) {
+		auto const line = remain.substr(0, idx);
+		remain = remain.substr(idx + 1);
+		update(line);
+		idx = remain.find('\n');
+	}
+	if (!remain.empty()) { update(remain); }
 	return ret;
 }
 
@@ -68,39 +86,57 @@ void Font::Pen::align(std::string_view const line, glm::vec2 pivot) {
 	glm::vec3 ex{};
 	pivot += 0.5f;
 	if (line.empty()) {
-		ex.y = f32(glyph('A').quad.extent.y) * pivot.y * m_scale;
+		ex.y = f32(glyph('A').quad.extent.y) * pivot.y * m_info.scale;
 	} else {
-		ex = glm::vec3(extent(line) * pivot, 0.0f);
+		ex = glm::vec3(lineExtent(line) * pivot, 0.0f);
 	}
 	m_head -= ex;
 }
 
-glm::vec3 Font::Pen::write(std::string_view const line, std::optional<glm::vec2> const realign, std::size_t const* retIdx) {
+glm::vec3 Font::Pen::writeLine(std::string_view const line, std::optional<glm::vec2> const realign, std::size_t const* retIdx) {
 	if (realign) { align(line, *realign); }
 	glm::vec3 idxPos = m_head;
 	for (auto const [ch, idx] : le::utils::enumerate(line)) {
 		if (retIdx && *retIdx == idx) { idxPos = m_head; }
-		// TODO: fix
-		// EXPECT(ch != '\n' && ch != '\r');
 		Codepoint const cp(static_cast<u32>(ch));
-		if (ch == '\n' || ch == '\r') {
-			// TODO: fix
-			// logW("[Graphics] Unexpected newline (Font: {})", m_font->m_name);
-			return retIdx ? idxPos : m_head;
-		}
+		bool const newLine = ch == '\r' || ch == '\n';
+		EXPECT(!newLine);
+		if (newLine) { return retIdx ? idxPos : m_head; }
 		if (ch == '\t') {
 			Glyph const& glyph = m_font->m_atlas.build(m_cmd.cb(), Codepoint(static_cast<u32>(' ')));
 			for (int i = 0; i < 4; ++i) { m_head += glm::vec3(glyph.advance, 0.0f); }
-			continue;
+		} else {
+			auto const& gl = glyph(cp);
+			if (m_info.out_geometry) { m_font->write(*m_info.out_geometry, gl, m_head, m_info.scale); }
+			advance(gl);
 		}
-		auto const& gl = glyph(cp);
-		if (m_geom) { m_font->write(*m_geom, gl, m_head, m_scale); }
-		advance(gl);
 	}
 	return !retIdx || *retIdx >= line.size() ? m_head : idxPos;
 }
 
+glm::vec3 Font::Pen::writeText(std::string_view text, std::optional<glm::vec2> const realign) {
+	auto remain = text;
+	auto idx = remain.find('\n');
+	while (idx != std::string_view::npos) {
+		auto const line = remain.substr(0, idx);
+		remain = remain.substr(idx + 1);
+		writeLine(line, realign);
+		lineFeed();
+		idx = remain.find('\n');
+	}
+	if (!remain.empty()) { writeLine(remain, realign); }
+	return m_head;
+}
+
+void Font::Pen::lineFeed() noexcept {
+	m_head = m_begin;
+	auto const h = f32(m_font->face().size().height);
+	auto const dy = (m_info.lineSpacing - 0.5f) * h;
+	m_head.y -= dy;
+	m_begin.y -= dy;
+}
+
 void Font::Pen::scale(f32 const s) noexcept {
-	if (s > 0.0f) { m_scale = s; }
+	if (s > 0.0f) { m_info.scale = s; }
 }
 } // namespace le::graphics

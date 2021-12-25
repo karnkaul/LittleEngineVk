@@ -10,6 +10,7 @@ class Font {
 	using Size = FontFace::Size;
 	class Pen;
 	struct Info;
+	struct PenInfo;
 
 	Font(not_null<VRAM*> vram, Info info);
 
@@ -31,29 +32,40 @@ class Font {
 	std::string m_name;
 };
 
+struct Font::PenInfo {
+	glm::vec3 origin{};
+	f32 scale = 1.0f;
+	f32 lineSpacing = 1.0f;
+	Geometry* out_geometry{};
+};
+
 class Font::Pen {
   public:
 	static constexpr std::size_t npos = std::string::npos;
 
-	Pen(not_null<Font*> font, Geometry* out = {}, glm::vec3 head = {}, f32 scale = 1.0f);
+	Pen(not_null<Font*> font, PenInfo const& info = {});
 
-	glm::vec2 extent(std::string_view line) const;
+	glm::vec2 lineExtent(std::string_view line) const;
+	glm::vec2 textExtent(std::string_view text) const;
 
 	Glyph const& glyph(Codepoint cp) const;
-	void advance(Glyph const& glyph) noexcept { m_head += glm::vec3(glyph.advance, 0.0f) * m_scale; }
+	void advance(Glyph const& glyph) noexcept { m_head += glm::vec3(glyph.advance, 0.0f) * m_info.scale; }
 	void align(std::string_view line, glm::vec2 pivot = {-0.5f, -0.5f});
-	glm::vec3 write(std::string_view line, std::optional<glm::vec2> realign = std::nullopt, std::size_t const* retIdx = {});
+	glm::vec3 writeLine(std::string_view line, std::optional<glm::vec2> realign = std::nullopt, std::size_t const* retIdx = {});
+	glm::vec3 writeText(std::string_view text, std::optional<glm::vec2> realign = std::nullopt);
+
+	void lineFeed() noexcept;
 
 	glm::vec3 const& head() const noexcept { return m_head; }
 	void head(glm::vec3 pos) noexcept { m_head = pos; }
-	f32 scale() const noexcept { return m_scale; }
+	f32 scale() const noexcept { return m_info.scale; }
 	void scale(f32 s) noexcept;
 
   private:
 	InstantCommand m_cmd;
+	PenInfo m_info;
 	glm::vec3 m_head;
-	f32 m_scale;
-	Geometry* m_geom;
+	glm::vec3 m_begin;
 	not_null<Font*> m_font;
 };
 

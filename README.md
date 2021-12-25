@@ -26,6 +26,7 @@ A simple C++20 3D game engine using a customizable Vulkan renderer.
   - Per pipeline descriptor set lists
   - Stall-less API (including swapchain recreation)
   - sRGB and linear colour spaces
+  - TrueType font support via dynamic texture atlases
 - `engine`
   - Thread-safe `AssetStore`
     - Multi-reader single-writer API
@@ -88,6 +89,7 @@ LittleEngineVk (`levk-engine`) is a library intended to be built from source and
 - [VulkanHPP](https://github.com/KhronosGroup/Vulkan-Hpp)
 - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
 - [SPIR-V Cross](https://github.com/KhronosGroup/SPIRV-Cross)
+- [freetype](https://gitlab.freedesktop.org/freetype/freetype.git)
 
 ### CMake submodules
 

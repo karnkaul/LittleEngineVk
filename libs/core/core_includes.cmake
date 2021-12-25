@@ -45,5 +45,6 @@ include/core/utils/string.hpp
 include/core/utils/sys_info.hpp
 include/core/utils/tween.hpp
 include/core/utils/unique.hpp
+include/core/utils/value.hpp
 include/core/utils/vbase.hpp
 )

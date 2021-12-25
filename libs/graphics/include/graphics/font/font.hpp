@@ -6,9 +6,11 @@
 namespace le::graphics {
 class Font {
   public:
+	static constexpr f32 default_spacing_v = 1.5f;
+
 	enum class Align { eMin, eCentre, eMax };
 
-	using Size = FontFace::Size;
+	using Height = FontFace::Height;
 	class Pen;
 	struct PenInfo;
 
@@ -17,30 +19,30 @@ class Font {
 		std::string name;
 		Span<std::byte const> ttf;
 		TPair<Codepoint> preload = {33U, 128U};
-		Size size;
+		Height height;
 	};
 
 	Font(not_null<VRAM*> vram, Info info);
 
-	bool add(Size size);
-	bool contains(Size size) const noexcept { return m_atlases.contains(size.height); }
-	bool remove(Size size);
+	bool add(Height height);
+	bool contains(Height height) const noexcept { return m_atlases.contains(height); }
+	bool remove(Height height);
 	std::size_t sizeCount() const noexcept { return m_atlases.size(); }
-	std::vector<Size> sizes() const;
+	std::vector<Height> sizes() const;
 
 	std::string_view name() const noexcept { return m_info.name; }
-	FontFace const& face(Opt<Size const> size = {}) const noexcept { return atlas(size).face(); }
-	FontAtlas const& atlas(Opt<Size const> size = {}) const noexcept;
+	FontFace const& face(Opt<Height const> size = {}) const noexcept { return atlas(size).face(); }
+	FontAtlas const& atlas(Opt<Height const> size = {}) const noexcept;
 
 	static constexpr glm::vec2 pivot(Align horz = Align::eMin, Align vert = Align::eMin) noexcept;
-	f32 scale(u32 height, Opt<Size const> size = {}) const noexcept;
+	f32 scale(u32 height, Opt<Height const> size = {}) const noexcept;
 
 	bool write(Geometry& out, Glyph const& glyph, glm::vec3 origin = {}, f32 scale = 1.0f) const;
 
 	not_null<VRAM*> m_vram;
 
   private:
-	bool load(FontAtlas& out, Size size);
+	bool load(FontAtlas& out, Height size);
 
 	std::unordered_map<u32, FontAtlas> m_atlases;
 	Info m_info;
@@ -49,9 +51,9 @@ class Font {
 struct Font::PenInfo {
 	glm::vec3 origin{};
 	f32 scale = 1.0f;
-	f32 lineSpacing = 1.0f;
+	f32 lineSpacing = default_spacing_v;
 	Opt<Geometry> out_geometry{};
-	Opt<Size const> customSize{};
+	Opt<Height const> customSize{};
 };
 
 class Font::Pen {

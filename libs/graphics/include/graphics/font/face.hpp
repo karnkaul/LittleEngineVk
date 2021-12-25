@@ -1,6 +1,7 @@
 #pragma once
 #include <core/not_null.hpp>
 #include <core/span.hpp>
+#include <core/utils/value.hpp>
 #include <graphics/bitmap.hpp>
 #include <graphics/font/glyph.hpp>
 #include <memory>
@@ -12,9 +13,7 @@ constexpr Codepoint codepoint_ellipses_v = Codepoint(0x2026);
 
 class FontFace {
   public:
-	struct Size {
-		u32 height = 64U;
-	};
+	using Height = le::utils::Value<u32, 64U>;
 
 	struct Slot {
 		Bitmap pixmap;
@@ -30,12 +29,11 @@ class FontFace {
 	FontFace& operator=(FontFace&&) noexcept;
 	~FontFace() noexcept;
 
-	bool load(Span<std::byte const> ttf, Size size) noexcept;
+	bool load(Span<std::byte const> ttf, Height height) noexcept;
 	explicit operator bool() const noexcept;
 
 	Slot const& slot(Codepoint cp) noexcept;
-	Size size() const noexcept;
-	u32 height() const noexcept;
+	Height height() const noexcept;
 
 	std::size_t slotCount() const noexcept;
 	void clearSlots() noexcept;

@@ -10,8 +10,8 @@ Glyph toGlyph(FontFace::Slot const& slot) noexcept { return {{}, slot.topLeft, s
 
 FontAtlas::FontAtlas(not_null<VRAM*> const vram, CreateInfo const& info) : m_atlas(vram, info), m_face(vram->m_device), m_vram(vram) {}
 
-bool FontAtlas::load(CommandBuffer const& cb, Span<std::byte const> const ttf, Size const size) noexcept {
-	if (m_face.load(ttf, size)) {
+bool FontAtlas::load(CommandBuffer const& cb, Span<std::byte const> const ttf, Height const height) noexcept {
+	if (m_face.load(ttf, height)) {
 		m_atlas.clear();
 		m_glyphs.clear();
 		auto slot = m_face.slot({});

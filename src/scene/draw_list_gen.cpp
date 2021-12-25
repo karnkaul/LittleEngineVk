@@ -11,7 +11,7 @@ namespace le {
 namespace {
 DrawScissor cast(vk::Rect2D r) noexcept { return {{r.extent.width, r.extent.height}, {r.offset.x, r.offset.y}, true}; }
 
-void addNodes(ListRenderer::LayerMap& map, RenderPipeProvider const& rp, gui::TreeRoot const& root) {
+void addNodes(ListRenderer::DrawableMap& map, RenderPipeProvider const& rp, gui::TreeRoot const& root) {
 	for (auto& node : root.nodes()) {
 		if (node->m_active && rp.ready()) {
 			if (auto mesh = node->mesh(); !mesh.empty()) {
@@ -26,7 +26,7 @@ void addNodes(ListRenderer::LayerMap& map, RenderPipeProvider const& rp, gui::Tr
 }
 } // namespace
 
-void DrawListGen::operator()(ListRenderer::LayerMap& map, dens::registry const& registry) const {
+void DrawListGen::operator()(ListRenderer::DrawableMap& map, dens::registry const& registry) const {
 	static constexpr auto exclude = dens::exclude<NoDraw>();
 	auto modelMat = [&registry](dens::entity e) {
 		if (auto n = registry.find<SceneNode>(e)) {
@@ -54,7 +54,7 @@ void DrawListGen::operator()(ListRenderer::LayerMap& map, dens::registry const& 
 	}
 }
 
-void DebugDrawListGen::operator()(ListRenderer::LayerMap& map, dens::registry const& registry) const {
+void DebugDrawListGen::operator()(ListRenderer::DrawableMap& map, dens::registry const& registry) const {
 	static constexpr auto exclude = dens::exclude<NoDraw>();
 	if (populate_v) {
 		for (auto [_, c] : registry.view<RenderPipeProvider, physics::Trigger::Debug>(exclude)) {

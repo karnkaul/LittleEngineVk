@@ -5,12 +5,12 @@
 namespace le::graphics {
 class FontAtlas {
   public:
-	using Size = FontFace::Size;
+	using Height = FontFace::Height;
 	using CreateInfo = TextureAtlas::CreateInfo;
 
 	FontAtlas(not_null<VRAM*> vram, CreateInfo const& info);
 
-	bool load(CommandBuffer const& cb, Span<std::byte const> ttf, Size size = {}) noexcept;
+	bool load(CommandBuffer const& cb, Span<std::byte const> ttf, Height height = {}) noexcept;
 
 	Glyph const& build(CommandBuffer const& cb, Codepoint cp, bool rebuild = false);
 

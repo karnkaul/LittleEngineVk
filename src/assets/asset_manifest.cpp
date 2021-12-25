@@ -219,7 +219,8 @@ std::size_t AssetManifest::addFonts(Group group) {
 			io::Path path(uri);
 			data.ttfURI = path / path.filename() + ".ttf";
 		}
-		data.info.atlas.mipMaps = json->get_as<bool>("mip_maps", true);
+		data.info.atlas.mipMaps = json->get_as<bool>("mip_maps", data.info.atlas.mipMaps);
+		data.info.height = graphics::Font::Height{json->get_as<u32>("height", data.info.height)};
 		m_fonts.add(std::move(uri), std::move(data));
 		++ret;
 	}

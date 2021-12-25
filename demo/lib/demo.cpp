@@ -183,7 +183,7 @@ class Renderer : public ListRenderer {
 		} else {
 			m_view.lights.write(DirLights());
 		}
-		LayerMap map;
+		DrawableMap map;
 		if (scene.registry) { fill(map, *scene.registry); }
 		ListRenderer::render(out_rp, map);
 	}

@@ -27,8 +27,7 @@ FontFace::Slot makeSlot(FTFace const face, Codepoint const cp) noexcept {
 struct FontFace::Impl {
 	SlotMap map;
 	FTUnique<FTFace> face;
-	Size size;
-	u32 height{};
+	Height height;
 };
 
 FontFace::FontFace(not_null<Device*> device) : m_impl(std::make_unique<Impl>()), m_device(device) {}
@@ -37,12 +36,11 @@ FontFace::FontFace(FontFace&&) noexcept = default;
 FontFace& FontFace::operator=(FontFace&&) noexcept = default;
 FontFace::~FontFace() noexcept = default;
 
-bool FontFace::load(Span<std::byte const> ttf, Size size) noexcept {
+bool FontFace::load(Span<std::byte const> ttf, Height height) noexcept {
 	m_impl->face = FTFace::make(*m_device->impl().ftLib, ttf);
 	if (m_impl->face) {
-		m_impl->size = size;
-		m_impl->face->setPixelSize({0U, size.height});
-		m_impl->height = static_cast<u32>(m_impl->face->face->size->metrics.height >> 6);
+		m_impl->height = height;
+		m_impl->face->setPixelSize({0U, height});
 		m_impl->map.emplace(Codepoint{}, makeSlot(*m_impl->face, {}));
 		return true;
 	}
@@ -62,8 +60,7 @@ FontFace::Slot const& FontFace::slot(Codepoint cp) noexcept {
 	return s_none;
 }
 
-FontFace::Size FontFace::size() const noexcept { return m_impl->size; }
-u32 FontFace::height() const noexcept { return m_impl->height; }
+FontFace::Height FontFace::height() const noexcept { return m_impl->height; }
 std::size_t FontFace::slotCount() const noexcept { return m_impl->map.size(); }
 void FontFace::clearSlots() noexcept { m_impl->map.clear(); }
 } // namespace le::graphics

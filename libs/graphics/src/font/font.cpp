@@ -42,46 +42,46 @@ glm::vec3 alignExtent(Font::Pen const& pen, f32 const scale, std::string_view co
 
 Font::Font(not_null<VRAM*> const vram, Info info) : m_vram(vram), m_info(std::move(info)) {
 	if (m_info.name.empty()) { m_info.name = "(untitled)"; }
-	auto [it, _] = m_atlases.emplace(m_info.size.height, FontAtlas(m_vram, m_info.atlas));
-	load(it->second, m_info.size);
+	auto [it, _] = m_atlases.emplace(m_info.height, FontAtlas(m_vram, m_info.atlas));
+	load(it->second, m_info.height);
 }
 
-bool Font::add(Size size) {
-	if (contains(size)) { return false; }
+bool Font::add(Height height) {
+	if (contains(height)) { return false; }
 	FontAtlas at(m_vram, m_info.atlas);
-	if (load(at, size)) {
-		m_atlases.emplace(size.height, std::move(at));
+	if (load(at, height)) {
+		m_atlases.emplace(height, std::move(at));
 		return true;
 	}
 	return false;
 }
 
-bool Font::remove(Size size) {
-	if (size.height == m_info.size.height) {
-		logW(LC_LibUser, "[Graphics] Cannot remove main size [{}] from Font [{}]", size.height, name());
+bool Font::remove(Height height) {
+	if (height == m_info.height) {
+		logW(LC_LibUser, "[Graphics] Cannot remove main size [{}] from Font [{}]", height, name());
 		return false;
 	}
-	if (auto it = m_atlases.find(size.height); it != m_atlases.end()) {
+	if (auto it = m_atlases.find(height); it != m_atlases.end()) {
 		m_atlases.erase(it);
 		return true;
 	}
 	return false;
 }
 
-std::vector<Font::Size> Font::sizes() const {
-	std::vector<Size> ret;
+std::vector<Font::Height> Font::sizes() const {
+	std::vector<Height> ret;
 	ret.reserve(sizeCount());
-	for (auto const& [height, _] : m_atlases) { ret.push_back(Size{height}); }
+	for (auto const& [height, _] : m_atlases) { ret.push_back(Height{height}); }
 	return ret;
 }
 
-FontAtlas const& Font::atlas(Opt<Size const> size) const noexcept {
-	auto it = m_atlases.find(size ? size->height : m_info.size.height);
+FontAtlas const& Font::atlas(Opt<Height const> height) const noexcept {
+	auto it = m_atlases.find(height ? *height : m_info.height);
 	EXPECT(it != m_atlases.end());
 	return it->second;
 }
 
-f32 Font::scale(u32 height, Opt<Size const> size) const noexcept { return f32(height) / f32(atlas(size).face().size().height); }
+f32 Font::scale(u32 height, Opt<Height const> h) const noexcept { return f32(height) / f32(atlas(h).face().height()); }
 
 bool Font::write(Geometry& out, Glyph const& glyph, glm::vec3 const m_head, f32 const scale) const {
 	if (glyph.textured && scale > 0.0f) {
@@ -94,9 +94,9 @@ bool Font::write(Geometry& out, Glyph const& glyph, glm::vec3 const m_head, f32 
 	return false;
 }
 
-bool Font::load(FontAtlas& out, Size size) {
+bool Font::load(FontAtlas& out, Height height) {
 	auto inst = InstantCommand(&m_vram->commandPool());
-	if (!out.load(inst.cb(), m_info.ttf, size)) {
+	if (!out.load(inst.cb(), m_info.ttf, height)) {
 		logE(LC_EndUser, "[Graphics] Failed to load Font [{}]!", m_info.name);
 		return false;
 	}
@@ -204,8 +204,8 @@ glm::vec3 Font::Pen::writeText(std::string_view text, Opt<glm::vec2 const> reali
 
 void Font::Pen::lineFeed() noexcept {
 	m_head = m_begin;
-	auto const h = f32(m_font->face().size().height);
-	auto const dy = (m_info.lineSpacing - 0.5f) * h;
+	auto const h = f32(glyph('A').quad.extent.y);
+	auto const dy = m_info.lineSpacing * h * m_info.scale;
 	m_head.y -= dy;
 	m_begin.y -= dy;
 }
@@ -215,7 +215,7 @@ void Font::Pen::scale(f32 const s) noexcept {
 }
 
 FontAtlas& Font::Pen::atlas() const {
-	auto it = m_font->m_atlases.find(m_info.customSize ? m_info.customSize->height : m_font->m_info.size.height);
+	auto it = m_font->m_atlases.find(m_info.customSize ? *m_info.customSize : m_font->m_info.height);
 	EXPECT(it != m_font->m_atlases.end());
 	return it->second;
 }

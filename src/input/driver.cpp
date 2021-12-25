@@ -13,8 +13,10 @@ void Driver::KeyQueue::insert(KeyEvent event) noexcept {
 void Driver::KeyQueue::collapse(KeyDB& out) noexcept {
 	out.mods = {};
 	for (auto const& key : keys) {
-		out.mods[key.key][key.action] = key.mods;
-		out.held[key.key] = key.action == Action::ePress || key.action == Action::eRepeat;
+		if (static_cast<std::size_t>(key.key) < sizeof(TKeyDB<Key>::arr)) {
+			out.mods[key.key][key.action] = key.mods;
+			out.held[key.key] = key.action == Action::ePress || key.action == Action::eRepeat;
+		}
 	}
 	keys.clear();
 }

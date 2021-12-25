@@ -172,7 +172,8 @@ bool AssetLoader<graphics::Font>::reload(graphics::Font& out_font, AssetLoadInfo
 		auto fi = info.m_data.info;
 		fi.ttf = ttf->bytes();
 		if (fi.name.empty()) { fi.name = info.m_data.ttfURI.filename().string(); }
-		return out_font.load(std::move(fi));
+		out_font = graphics::Font(out_font.m_vram, std::move(fi));
+		return true;
 	}
 	return false;
 }

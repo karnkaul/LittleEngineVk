@@ -1,6 +1,7 @@
 #pragma once
 #include <graphics/font/atlas.hpp>
 #include <graphics/utils/instant_command.hpp>
+#include <vector>
 
 namespace le::graphics {
 class Font {
@@ -9,34 +10,48 @@ class Font {
 
 	using Size = FontFace::Size;
 	class Pen;
-	struct Info;
 	struct PenInfo;
+
+	struct Info {
+		FontAtlas::CreateInfo atlas;
+		std::string name;
+		Span<std::byte const> ttf;
+		TPair<Codepoint> preload = {33U, 128U};
+		Size size;
+	};
 
 	Font(not_null<VRAM*> vram, Info info);
 
-	bool load(Info info);
+	bool add(Size size);
+	bool contains(Size size) const noexcept { return m_atlases.contains(size.height); }
+	bool remove(Size size);
+	std::size_t sizeCount() const noexcept { return m_atlases.size(); }
+	std::vector<Size> sizes() const;
 
-	FontFace const& face() const noexcept { return m_atlas.face(); }
-	FontAtlas const& atlas() const noexcept { return m_atlas; }
-	std::string_view name() const noexcept { return m_name; }
+	std::string_view name() const noexcept { return m_info.name; }
+	FontFace const& face(Opt<Size const> size = {}) const noexcept { return atlas(size).face(); }
+	FontAtlas const& atlas(Opt<Size const> size = {}) const noexcept;
 
 	static constexpr glm::vec2 pivot(Align horz = Align::eMin, Align vert = Align::eMin) noexcept;
-	f32 scale(u32 height) const noexcept;
+	f32 scale(u32 height, Opt<Size const> size = {}) const noexcept;
 
 	bool write(Geometry& out, Glyph const& glyph, glm::vec3 origin = {}, f32 scale = 1.0f) const;
 
 	not_null<VRAM*> m_vram;
 
   private:
-	FontAtlas m_atlas;
-	std::string m_name;
+	bool load(FontAtlas& out, Size size);
+
+	std::unordered_map<u32, FontAtlas> m_atlases;
+	Info m_info;
 };
 
 struct Font::PenInfo {
 	glm::vec3 origin{};
 	f32 scale = 1.0f;
 	f32 lineSpacing = 1.0f;
-	Geometry* out_geometry{};
+	Opt<Geometry> out_geometry{};
+	Opt<Size const> customSize{};
 };
 
 class Font::Pen {
@@ -52,8 +67,8 @@ class Font::Pen {
 	void advance(Glyph const& glyph) noexcept { m_head += glm::vec3(glyph.advance, 0.0f) * m_info.scale; }
 	std::string_view truncate(std::string_view line, f32 maxWidth) const;
 	void align(std::string_view line, glm::vec2 pivot = {-0.5f, -0.5f});
-	glm::vec3 writeLine(std::string_view line, glm::vec2 const* realign = {}, std::size_t const* retIdx = {}, f32 const* maxWidth = {});
-	glm::vec3 writeText(std::string_view text, glm::vec2 const* realign = {});
+	glm::vec3 writeLine(std::string_view line, Opt<glm::vec2 const> realign = {}, Opt<std::size_t const> retIdx = {}, Opt<f32 const> maxWidth = {});
+	glm::vec3 writeText(std::string_view text, Opt<glm::vec2 const> realign = {});
 
 	void lineFeed() noexcept;
 
@@ -63,19 +78,13 @@ class Font::Pen {
 	void scale(f32 s) noexcept;
 
   private:
+	FontAtlas& atlas() const;
+
 	InstantCommand m_cmd;
 	PenInfo m_info;
 	glm::vec3 m_head;
 	glm::vec3 m_begin;
 	not_null<Font*> m_font;
-};
-
-struct Font::Info {
-	FontAtlas::CreateInfo atlas;
-	std::string name;
-	Span<std::byte const> ttf;
-	TPair<Codepoint> preload = {33U, 128U};
-	Size size;
 };
 
 // impl

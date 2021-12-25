@@ -3,10 +3,21 @@
 #include <graphics/utils/utils.hpp>
 
 namespace le::graphics {
+namespace {
+vk::SamplerCreateInfo samplerInfo() {
+	auto ret = Sampler::info({vk::Filter::eLinear, vk::Filter::eLinear});
+	ret.mipmapMode = vk::SamplerMipmapMode::eLinear;
+	ret.addressModeU = ret.addressModeV = ret.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+	ret.borderColor = vk::BorderColor::eIntOpaqueBlack;
+	return ret;
+}
+} // namespace
+
 TextureAtlas::TextureAtlas(not_null<VRAM*> vram, CreateInfo const& info)
-	: m_texture(vram, info.sampler, Colour(), {info.maxWidth, info.initialHeight}), m_vram(vram) {
-	m_data.pad = info.pad;
-	m_data.head += m_data.pad;
+	: m_sampler(vram->m_device, samplerInfo()),
+	  m_texture(vram, m_sampler.sampler(), Colour(), {info.maxWidth, info.initialHeight}, Texture::Payload::eColour, info.mipMaps), m_pad(info.pad),
+	  m_vram(vram) {
+	m_data.head += m_pad;
 }
 
 QuadTex TextureAtlas::get(ID id) const noexcept {
@@ -14,14 +25,14 @@ QuadTex TextureAtlas::get(ID id) const noexcept {
 	return {};
 }
 
-bool TextureAtlas::add(ID id, Bitmap const& bitmap, CommandBuffer const& cb) {
-	if (!prepAtlas(bitmap.extent, cb)) { return false; }
+TextureAtlas::Result TextureAtlas::add(ID id, Bitmap const& bitmap, CommandBuffer const& cb) {
+	if (auto res = prepAtlas(bitmap.extent, cb); res != Result::eOk) { return res; }
 	utils::copySub(m_vram, cb, bitmap, m_texture.image(), m_data.head);
 	Entry entry{bitmap.extent, m_data.head};
-	m_data.head.x += bitmap.extent.x + m_data.pad.x;
+	m_data.head.x += bitmap.extent.x + m_pad.x;
 	m_data.rowHeight = std::max(m_data.rowHeight, bitmap.extent.y);
 	m_data.entries.insert_or_assign(id, entry);
-	return true;
+	return Result::eOk;
 }
 
 bool TextureAtlas::setUV(ID id, Span<Vertex> quad) const noexcept {
@@ -36,6 +47,15 @@ bool TextureAtlas::setUV(ID id, Span<Vertex> quad) const noexcept {
 	return false;
 }
 
+void TextureAtlas::clear() {
+	if (!m_data.entries.empty()) {
+		m_data = {};
+		auto const extent = m_texture.image().extent2D();
+		auto const mips = m_texture.image().mipCount() > 1U;
+		m_texture = Texture(m_vram, m_sampler.sampler(), Colour(), extent, Texture::Payload::eColour, mips);
+	}
+}
+
 QuadUV TextureAtlas::getUV(Entry const& entry) const noexcept {
 	auto const& itex = m_texture.image().extent2D();
 	auto const ftex = glm::vec2(f32(itex.x), f32(itex.y));
@@ -47,33 +67,36 @@ QuadUV TextureAtlas::getUV(Entry const& entry) const noexcept {
 	return ret;
 }
 
-bool TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer const& cb) {
+TextureAtlas::Result TextureAtlas::prepAtlas(Extent2D extent, CommandBuffer const& cb) {
+	if (extent.x == 0 || extent.y == 0) { return Result::eInvalidSize; }
 	auto const& itex = m_texture.image().extent2D();
-	if (extent.x > itex.x) { return false; }
+	if (extent.x > itex.x) { return Result::eOverflowX; }
 	auto const remain = itex - m_data.head;
 	bool resize = false;
-	if (extent.y > remain.y) { // y overflow
+	if (extent.y + m_pad.y > remain.y) { // y overflow
 		resize = true;
-	} else if (extent.x > remain.x) {				  // x overflow
-		if (extent.y + m_data.rowHeight > remain.y) { // insufficient y
+	} else if (extent.x + m_pad.x > remain.x) {					// x overflow
+		if (extent.y + m_pad.y + m_data.rowHeight > remain.y) { // insufficient y
 			resize = true;
 		} else {
 			nextRow();
 		}
 	}
-	bool ret = true;
 	if (resize) {
-		ret = m_texture.resizeCopy(cb, {itex.x, itex.y * 2U});
-		if (ret) { nextRow(); }
+		if (m_locked) { return Result::eSizeLocked; }
+		if (!m_texture.resizeCopy(cb, {itex.x, itex.y * 2U})) { return Result::eResizeFail; }
+		nextRow();
 	}
 	m_texture.wait();
-	return ret;
+	EXPECT(m_data.head.x + extent.x + m_pad.x <= m_texture.image().extent2D().x);
+	EXPECT(m_data.head.y + extent.y + m_pad.y <= m_texture.image().extent2D().y);
+	return Result::eOk;
 }
 
 void TextureAtlas::nextRow() noexcept {
 	m_data.head.y += m_data.rowHeight;
 	m_data.head.x = 0;
-	m_data.head += m_data.pad;
+	m_data.head += m_pad;
 	m_data.rowHeight = 0U;
 }
 } // namespace le::graphics

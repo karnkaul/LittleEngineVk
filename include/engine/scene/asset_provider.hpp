@@ -69,7 +69,7 @@ class DynamicMesh {
 
 	static DynamicMesh make(GetMesh&& getMesh);
 	template <MeshAPI T>
-	static DynamicMesh make(not_null<T const*> source);
+	static DynamicMesh make(T const* source);
 
 	bool active() const noexcept { return m_getMesh.has_value(); }
 	MeshView mesh() const { return m_getMesh ? m_getMesh() : MeshView{}; }
@@ -103,7 +103,8 @@ MeshProvider MeshProvider::make(std::string assetURI) {
 }
 
 template <MeshAPI T>
-DynamicMesh DynamicMesh::make(not_null<T const*> source) {
+DynamicMesh DynamicMesh::make(T const* source) {
+	EXPECT(source);
 	return make([source]() { return source->mesh(); });
 }
 

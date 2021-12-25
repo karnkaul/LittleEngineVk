@@ -453,7 +453,7 @@ std::optional<Image> utils::makeStorage(not_null<VRAM*> vram, ImageRef const& sr
 	// if image will be copied, match RGBA vs BGRA to source format
 	if (!canBlit(vram->m_device, {src, dst}) && Surface::bgra(src.format)) { dst.format = vk::Format::eB8G8R8A8Unorm; }
 	Image ret(vram, Image::storageInfo(dst.extent, dst.format));
-	auto cmd = InstantCommand(vram);
+	auto cmd = BlockingCommand(vram);
 	if (blitOrCopy(vram, cmd.cb(), src, ret)) {
 		ret.map();
 		return ret;
@@ -469,7 +469,7 @@ std::size_t utils::writePPM(not_null<Device*> device, Image const& img, std::ost
 		bool const swizzle = Surface::bgra(img.format());
 		auto const extent = img.extent2D();
 		auto isr = device->device().getImageSubresourceLayout(img.image(), vk::ImageSubresource(vIAFB::eColor));
-		data += isr.offset;
+		if (isr.offset < extent.x * extent.y * 4U) { data += isr.offset; }
 		auto const header = ktl::stack_string<256>("P6\n%u\n%u\n255\n", extent.x, extent.y);
 		out_str << header.get();
 		for (u32 y = 0; y < extent.y; ++y) {

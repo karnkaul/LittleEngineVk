@@ -52,6 +52,9 @@ using bytearray = std::vector<std::byte>;
 
 using namespace std::string_view_literals;
 
+template <typename T>
+using Opt = T*;
+
 template <typename Enum, typename Ty, std::size_t N = (std::size_t)Enum::eCOUNT_>
 	requires std::is_enum_v<Enum>
 struct EnumArray {

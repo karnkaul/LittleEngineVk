@@ -2,7 +2,7 @@
 #include <engine/assets/asset_loader.hpp>
 #include <engine/render/layer.hpp>
 #include <engine/render/model.hpp>
-#include <graphics/bitmap_font.hpp>
+#include <graphics/font/font.hpp>
 #include <graphics/render/context.hpp>
 #include <graphics/texture.hpp>
 #include <ktl/fixed_vector.hpp>
@@ -52,21 +52,18 @@ struct AssetLoader<graphics::Texture> {
 };
 
 template <>
-struct AssetLoadData<graphics::BitmapFont> {
-	io::Path jsonURI;
-	std::optional<vk::Format> forceFormat;
+struct AssetLoadData<graphics::Font> {
+	graphics::Font::Info info;
+	io::Path ttfURI;
 	not_null<graphics::VRAM*> vram;
-	Hash samplerURI;
 
 	AssetLoadData(not_null<graphics::VRAM*> vram) : vram(vram) {}
 };
 
 template <>
-struct AssetLoader<graphics::BitmapFont> {
-	std::unique_ptr<graphics::BitmapFont> load(AssetLoadInfo<graphics::BitmapFont> const& info) const;
-	bool reload(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const;
-
-	bool load(graphics::BitmapFont& out_font, AssetLoadInfo<graphics::BitmapFont> const& info) const;
+struct AssetLoader<graphics::Font> {
+	std::unique_ptr<graphics::Font> load(AssetLoadInfo<graphics::Font> const& info) const;
+	bool reload(graphics::Font& out_font, AssetLoadInfo<graphics::Font> const& info) const;
 };
 
 template <>

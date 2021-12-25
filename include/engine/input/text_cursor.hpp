@@ -1,20 +1,21 @@
 #pragma once
-#include <engine/render/bitmap_text.hpp>
+#include <engine/render/text_mesh.hpp>
 
 namespace le::graphics {
-class BitmapFont;
+class Font;
 }
 
 namespace le::input {
 struct State;
-using graphics::BitmapFont;
+using graphics::Font;
+using graphics::RGBA;
 
 ///
 /// \brief Interactive text input with cursor prop
 ///
 /// Regular calls to update() are required (preferably every frame) for consistent and lag-free response
 ///
-class TextCursor {
+class TextCursor2 {
   public:
 	enum class Flag {
 		// Ignore new lines
@@ -28,7 +29,7 @@ class TextCursor {
 
 	static constexpr std::size_t npos = std::string_view::npos;
 
-	TextCursor(not_null<BitmapFont const*> font, Flags flags = {});
+	TextCursor2(not_null<Font*> font, Flags flags = {});
 
 	MeshView mesh() const noexcept;
 
@@ -52,11 +53,11 @@ class TextCursor {
 	/// \brief Update input, and cursor (if eNoAutoBlink is not set)
 	/// \returns true if refreshed
 	///
-	bool update(State const& state, graphics::Geometry* out = {});
+	bool update(State const& state, graphics::Geometry* out = {}, bool clearGeom = true);
 	///
 	/// \brief Refresh cursor
 	///
-	void refresh(graphics::Geometry* out = {});
+	void refresh(graphics::Geometry* out = {}, bool clearGeom = true);
 	///
 	/// \brief Generate text geometry
 	///
@@ -97,21 +98,24 @@ class TextCursor {
 	///
 	glm::vec2 cursorSize() const noexcept { return m_size; }
 
-	std::string m_text;
-	TextGen m_gen;
+	std::string m_line;
+	TextLayout m_layout;
+	RGBA m_colour = colours::black;
 	Flags m_flags;
 	Time_s m_blinkRate = 500ms;
 	f32 m_alpha = 0.85f;
 
   private:
+	void refresh(graphics::Geometry* out, bool clearGeom, bool regen);
+
 	graphics::MeshPrimitive m_primitive;
 	mutable Material m_material;
 	glm::vec3 m_position{};
 	glm::vec2 m_offset = {0.3f, 0.3f};
-	glm::vec2 m_size = {0.1f, 1.1f};
+	glm::vec2 m_size = {0.07f, 1.1f};
 	time::Point m_lastBlink;
 	std::size_t m_index = npos;
-	not_null<BitmapFont const*> m_font;
+	not_null<Font*> m_font;
 	bool m_drawCursor = true;
 };
 } // namespace le::input

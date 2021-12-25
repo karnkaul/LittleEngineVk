@@ -1,14 +1,11 @@
 target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/basis.hpp
-  include/graphics/bitmap_font.hpp
   include/graphics/bitmap.hpp
   include/graphics/buffer.hpp
   include/graphics/command_buffer.hpp
   include/graphics/common.hpp
   include/graphics/draw_view.hpp
   include/graphics/geometry.hpp
-  include/graphics/glyph_pen.hpp
-  include/graphics/bitmap_glyph.hpp
   include/graphics/image_ref.hpp
   include/graphics/image.hpp
   include/graphics/memory.hpp
@@ -28,6 +25,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/graphics/font/atlas.hpp
   include/graphics/font/glyph.hpp
   include/graphics/font/face.hpp
+  include/graphics/font/font.hpp
 
   include/graphics/render/buffering.hpp
   include/graphics/render/camera.hpp

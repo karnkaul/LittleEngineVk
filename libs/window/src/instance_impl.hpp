@@ -7,6 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <core/not_null.hpp>
 #include <ktl/fixed_any.hpp>
+#include <unordered_map>
 
 namespace le::window {
 struct Cursor {

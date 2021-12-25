@@ -21,7 +21,6 @@
 #include <engine/gui/text.hpp>
 #include <engine/gui/view.hpp>
 #include <engine/gui/widget.hpp>
-#include <engine/render/bitmap_text.hpp>
 #include <engine/render/list_renderer.hpp>
 #include <engine/render/skybox.hpp>
 #include <engine/scene/draw_list_gen.hpp>
@@ -37,7 +36,8 @@
 #include <core/utils/tween.hpp>
 #include <engine/gui/widgets/input_field.hpp>
 #include <engine/input/text_cursor.hpp>
-#include <graphics/font/atlas.hpp>
+#include <engine/render/text_mesh.hpp>
+#include <graphics/font/font.hpp>
 #include <graphics/utils/instant_command.hpp>
 #include <ktl/async.hpp>
 
@@ -238,10 +238,10 @@ class TestView : public gui::View {
 		topLeft.offset({25.0f, 25.0f}, {1.0f, -1.0f});
 		topLeft.m_material.Tf = colours::magenta;
 		auto& text = bg.push<gui::Text>(fontURI);
-		text.set("click").size(60U);
+		text.set("click").height(60U);
 		m_button = &push<gui::Button>(fontURI);
 		m_button->m_rect.size = {200.0f, 100.0f};
-		m_button->m_text->set("Button").size(40U);
+		m_button->m_text->set("Button").height(40U);
 		m_button->refresh();
 		m_onClick = m_button->onClick();
 		m_onClick += [this]() { setDestroyed(); };
@@ -261,7 +261,7 @@ class Dialogue : public View {
 	struct CreateInfo;
 	struct ButtonInfo {
 		glm::vec2 size = {150.0f, 40.0f};
-		Text::Size textSize = 25U;
+		u32 textHeight = 25U;
 		Hash style;
 	};
 
@@ -298,14 +298,14 @@ struct Dialogue::CreateInfo {
 	struct Content {
 		std::string text;
 		glm::vec2 size = {500.0f, 200.0f};
-		Text::Size textSize = 25U;
+		u32 textHeight = 25U;
 		Hash style;
 	};
 	struct Header {
 		std::string text;
 		f32 height = 50.0f;
 		graphics::RGBA background = {0x999999ff, graphics::RGBA::Type::eAbsolute};
-		Text::Size textSize = 30U;
+		u32 textHeight = 30U;
 		Hash style;
 	};
 	struct Footer {
@@ -325,7 +325,7 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 	: View(parent, std::move(name), Block::eBlock), m_buttonInfo(info.buttonInfo), m_fontURI(info.fontURI) {
 	m_content = &push<Button>(m_fontURI, info.content.style);
 	m_content->m_rect.size = info.content.size;
-	m_content->m_text->set(info.content.text).size(info.content.textSize);
+	m_content->m_text->set(info.content.text).height(info.content.textHeight);
 	m_content->m_interact = false;
 
 	m_header.title = &m_content->push<Button>(m_fontURI, info.header.style);
@@ -333,13 +333,13 @@ Dialogue::Dialogue(not_null<ViewStack*> parent, std::string name, CreateInfo con
 	m_header.title->m_rect.anchor.norm.y = 0.5f;
 	m_header.title->m_rect.anchor.offset.y = info.header.height * 0.5f;
 	m_header.title->m_style.widget.quad.base.Tf = info.header.background;
-	m_header.title->m_text->set(info.header.text).size(info.header.textSize);
+	m_header.title->m_text->set(info.header.text).height(info.header.textHeight);
 	m_header.title->m_style.widget.quad.reset(InteractStatus::eHover);
 	// m_header.title->m_interact = false;
 	m_header.close = &m_header.title->push<Button>(m_fontURI);
 	m_header.close->m_style.widget.quad.base.Tf = colours::red;
 	m_header.close->m_style.base.text.colour = colours::white;
-	m_header.close->m_text->set("x").size(20U);
+	m_header.close->m_text->set("x").height(20U);
 	m_header.close->m_rect.size = {20.0f, 20.0f};
 	m_header.close->m_rect.anchor.norm.x = 0.5f;
 	m_header.close->m_rect.anchor.offset.x = -20.0f;
@@ -360,7 +360,7 @@ Widget::OnClick::handle Dialogue::addButton(std::string text, Widget::OnClick::c
 	button.m_rect.anchor.norm.x = -0.5f;
 	button.m_rect.size = m_buttonInfo.size;
 	button.m_cornerRadius = 10.0f;
-	button.m_text->set(std::move(text)).size(m_buttonInfo.textSize);
+	button.m_text->set(std::move(text)).height(m_buttonInfo.textHeight);
 	f32 const pad = (m_content->m_rect.size.x - f32(m_footer.buttons.size()) * m_buttonInfo.size.x) / f32(m_footer.buttons.size() + 1);
 	f32 offset = pad + m_buttonInfo.size.x * 0.5f;
 	for (auto btn : m_footer.buttons) {
@@ -390,18 +390,9 @@ class App : public input::Receiver, public SceneRegistry {
   public:
 	using Tweener = utils::Tweener<f32, utils::TweenEase>;
 
-	static graphics::FontAtlas::CreateInfo atlasInfo(Engine const& eng) {
-		graphics::FontAtlas::CreateInfo ret;
-		ret.atlas.sampler = eng.store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler();
-		// ret.atlas.maxWidth = 512U;
-		// ret.atlas.initialHeight = 512U;
-		return ret;
-	}
-
 	App(not_null<Engine*> eng)
 		: m_eng(eng), m_renderer(&eng->gfx().boot.vram),
-		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}),
-		  m_atlas(&eng->gfx().boot.vram, atlasInfo(*eng)) {
+		  m_testTex(&eng->gfx().boot.vram, eng->store().find<graphics::Sampler>("samplers/no_mip_maps")->sampler(), colours::red, {128, 128}) {
 		// auto const io = m_tasks.add_queue();
 		// m_tasks.add_agent({io, 0});
 		// m_manifest.m_jsonQID = io;
@@ -530,27 +521,34 @@ class App : public input::Receiver, public SceneRegistry {
 	}
 
 	void init1() {
-		auto font = m_eng->store().find<BitmapFont>("fonts/default");
-		auto& vram = m_eng->gfx().boot.vram;
-
 		if constexpr (levk_debug) {
 			auto triggerDebug = m_registry.make_entity<physics::Trigger::Debug>("trigger_debug");
 			m_registry.attach<RenderPipeProvider>(triggerDebug, RenderPipeProvider::make("render_pipelines/wireframe"));
 		}
-		m_data.text = TextMesh(&vram, &*font);
-		m_data.cursor = input::TextCursor(&*font);
-		m_data.cursor->m_gen.size = 80U;
-		m_data.cursor->m_gen.colour = colours::yellow;
-		m_data.cursor->m_gen.position = {0.0f, 200.0f, 0.0f};
-		m_data.text->gen = m_data.cursor->m_gen;
-		// m_data.text->text.align = {-0.5f, 0.5f};
-		// m_data.text->set("Hi\nThere!");
-		m_data.cursor->m_text = "Hello!";
-		m_data.text->primitive.construct(m_data.cursor->generateText());
-		{
+
+		if (auto font = m_eng->store().find<graphics::Font>("fonts/vera_serif")) {
+			m_data.text.emplace(&*font);
+			m_data.text->m_colour = colours::yellow;
+			TextMesh::Line line;
+			line.layout.scale = font->scale(80U);
+			line.layout.origin.y = 200.0f;
+			line.layout.pivot = font->pivot(graphics::Font::Align::eCentre, graphics::Font::Align::eCentre);
+			line.line = "Hello!";
+			m_data.text->m_info = std::move(line);
 			auto ent = spawnNode("text");
-			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make<TextMesh>(&*m_data.text));
+			m_registry.attach<DynamicMesh>(ent, DynamicMesh::make(&*m_data.text));
 			m_registry.attach<RenderPipeProvider>(ent, RenderPipeProvider::make("render_pipelines/ui"));
+
+			m_data.cursor.emplace(&*font);
+			m_data.cursor->m_colour = colours::yellow;
+			m_data.cursor->m_layout.scale = font->scale(80U);
+			m_data.cursor->m_layout.origin.y = 200.0f;
+			m_data.cursor->m_layout.pivot = font->pivot(graphics::Font::Align::eCentre, graphics::Font::Align::eCentre);
+			m_data.cursor->m_line = "Hello!";
+			m_data.text->m_info = m_data.cursor->generateText();
+			auto ent1 = spawnNode("text_cursor");
+			m_registry.attach<DynamicMesh>(ent1, DynamicMesh::make(&*m_data.cursor));
+			m_registry.attach<RenderPipeProvider>(ent1, RenderPipeProvider::make("render_pipelines/ui"));
 		}
 
 		auto& stack = m_registry.get<gui::ViewStack>(m_data.guiStack);
@@ -558,7 +556,7 @@ class App : public input::Receiver, public SceneRegistry {
 		gui::Dropdown::CreateInfo dci;
 		dci.flexbox.background.Tf = RGBA(0x888888ff, RGBA::Type::eAbsolute);
 		// dci.quadStyle.at(gui::InteractStatus::eHover).Tf = colours::cyan;
-		dci.textSize = 30U;
+		dci.textHeight = 30U;
 		dci.options = {"zero", "one", "two", "/bthree", "four"};
 		dci.selected = 2;
 		auto& dropdown = testView.push<gui::Dropdown>(std::move(dci));
@@ -571,51 +569,28 @@ class App : public input::Receiver, public SceneRegistry {
 		// info.secret = true;
 		auto& in = dialogue.push<gui::InputField>(info);
 		in.m_rect.anchor.offset.y = 60.0f;
-		in.align({-0.5f, 0.0f});
 		m_data.btnSignals.push_back(dialogue.addButton("OK", [&dialogue]() { dialogue.setDestroyed(); }));
 		m_data.btnSignals.push_back(dialogue.addButton("Cancel", [&dialogue]() { dialogue.setDestroyed(); }));
 
 		if (auto model = m_eng->store().find<Model>("models/teapot")) { model->material(0)->Tf = {0xfc4340ff, RGBA::Type::eAbsolute}; }
 		m_data.init = true;
-
-		auto ttf = m_eng->store().resources().load("fonts/vera_serif.ttf", Resource::Type::eBinary);
-		if (ttf) {
-			auto inst = graphics::InstantCommand(&m_eng->gfx().boot.vram);
-			m_atlas.load(inst.cb(), ttf->bytes());
-			auto atlasQuad = m_eng->store().add<graphics::MeshPrimitive>("meshes/atlas_quad", graphics::MeshPrimitive(&m_eng->gfx().boot.vram));
-			Material atlasMat;
-			atlasMat.map_Kd = &m_atlas.texture();
-			m_eng->store().add<Material>("materials/atlas_quad", atlasMat);
-			for (Codepoint cp = 33; cp.value < 128; ++cp.value) { m_atlas.build(inst.cb(), cp); }
-			auto quad = graphics::makeQuad({512.0f, 512.0f});
-			atlasQuad->construct(std::move(quad));
-			/*auto ent =*/spawnMesh("atlas", MeshProvider::make("meshes/atlas_quad", "materials/atlas_quad"), "render_pipelines/ui");
-
-			graphics::Geometry geom;
-			glm::vec3 pen = {};
-			pen.y += 100.0f;
-			pen.x -= f32(m_atlas.extent(inst.cb(), "freetype B)").x) * 0.5f;
-			std::string_view const str = "freetype B)";
-			for (char const ch : str) {
-				auto const& glyph = m_atlas.build(inst.cb(), static_cast<u32>(ch));
-				m_atlas.write(geom, pen, glyph);
-				pen += glm::vec3{glyph.advance, 0.0f};
-			}
-			graphics::MeshPrimitive mesh(&m_eng->gfx().boot.vram, graphics::MeshPrimitive::Type::eDynamic);
-			mesh.construct(geom);
-			m_eng->store().add<graphics::MeshPrimitive>("meshes/text", std::move(mesh));
-			spawnMesh("test_text", MeshProvider::make("meshes/text", "materials/atlas_quad"), "render_pipelines/ui");
-		}
 	}
 
 	bool reboot() const noexcept { return m_data.reboot; }
 
 	void tick(Time_s dt) {
+		// if (m_data.tgMesh && m_data.tgCursor) {
+		// 	graphics::Geometry geom;
+		// 	if (m_data.tgCursor->update(m_eng->inputFrame().state, &geom)) { m_data.tgMesh->primitive.construct(std::move(geom)); }
+		// 	if (!m_data.tgCursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+		// 		m_data.tgCursor->m_flags.set(input::TextCursor::Flag::eActive);
+		// 	}
+		// }
+
 		if (m_data.text && m_data.cursor) {
-			graphics::Geometry geom;
-			if (m_data.cursor->update(m_eng->inputFrame().state, &geom)) { m_data.text->primitive.construct(std::move(geom)); }
-			if (!m_data.cursor->m_flags.test(input::TextCursor::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
-				m_data.cursor->m_flags.set(input::TextCursor::Flag::eActive);
+			m_data.cursor->update(m_eng->inputFrame().state, &m_data.text->m_info.get<graphics::Geometry>());
+			if (!m_data.cursor->m_flags.test(input::TextCursor2::Flag::eActive) && m_eng->inputFrame().state.pressed(input::Key::eEnter)) {
+				m_data.cursor->m_flags.set(input::TextCursor2::Flag::eActive);
 			}
 		}
 
@@ -691,7 +666,7 @@ class App : public input::Receiver, public SceneRegistry {
 		std::unordered_map<Hash, dens::entity> entities;
 
 		std::optional<TextMesh> text;
-		std::optional<input::TextCursor> cursor;
+		std::optional<input::TextCursor2> cursor;
 		std::vector<DirLight> dirLights;
 		std::vector<gui::Widget::OnClick::handle> btnSignals;
 
@@ -713,9 +688,6 @@ class App : public input::Receiver, public SceneRegistry {
 	Material m_testMat;
 	graphics::Texture m_testTex;
 	physics::OnTrigger::handle m_onCollide;
-	graphics::FontAtlas m_atlas;
-	ktl::kthread m_thread;
-	Codepoint m_built = 33;
 
 	struct {
 		input::Trigger editor = {input::Key::eE, input::Action::ePress, input::Mod::eCtrl};

@@ -32,8 +32,8 @@ bool Dropdown::itemPad(std::string& out_text, std::size_t index) const noexcept 
 void Dropdown::init(CreateInfoBase info) {
 	if (info.zIndex) { m_zIndex = *info.zIndex; }
 	m_selected = info.selected;
-	m_style.base.text.size = info.textSize;
-	m_text->size(m_style.base.text.size);
+	m_style.base.text.height = info.textHeight;
+	m_text->height(m_style.base.text.height);
 	m_rect.size = info.size;
 	m_textColours = info.textColours;
 	m_cover = &push<Quad>(false);
@@ -61,7 +61,7 @@ void Dropdown::init(CreateInfoBase info) {
 }
 
 void Dropdown::add(Button& item, std::string_view text, std::size_t index) {
-	item.m_text->set(std::string(text)).size(m_style.base.text.size).colour(m_style.base.text.colour).align(m_style.base.text.align);
+	item.m_text->set(std::string(text)).height(m_style.base.text.height).colour(m_style.base.text.colour).align(m_style.base.text.pivot);
 	item.m_style = m_style;
 	auto signal = item.onClick();
 	signal += [this, index]() { select(index); };

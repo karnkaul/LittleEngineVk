@@ -50,9 +50,10 @@ class Font::Pen {
 
 	Glyph const& glyph(Codepoint cp) const;
 	void advance(Glyph const& glyph) noexcept { m_head += glm::vec3(glyph.advance, 0.0f) * m_info.scale; }
+	std::string_view truncate(std::string_view line, f32 maxWidth) const;
 	void align(std::string_view line, glm::vec2 pivot = {-0.5f, -0.5f});
-	glm::vec3 writeLine(std::string_view line, std::optional<glm::vec2> realign = std::nullopt, std::size_t const* retIdx = {});
-	glm::vec3 writeText(std::string_view text, std::optional<glm::vec2> realign = std::nullopt);
+	glm::vec3 writeLine(std::string_view line, glm::vec2 const* realign = {}, std::size_t const* retIdx = {}, f32 const* maxWidth = {});
+	glm::vec3 writeText(std::string_view text, glm::vec2 const* realign = {});
 
 	void lineFeed() noexcept;
 

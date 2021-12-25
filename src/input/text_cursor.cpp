@@ -48,6 +48,7 @@ bool TextCursor2::update(State const& state, graphics::Geometry* out, bool clear
 	if (!m_flags.test(Flag::eActive)) {
 		// hide cursor and ignore input
 		m_drawCursor = false;
+		refresh(out);
 		return false;
 	}
 	bool regen = {};
@@ -139,7 +140,8 @@ void TextCursor2::refresh(graphics::Geometry* out, bool clearGeom, bool regen) {
 		Font::PenInfo const info{m_layout.origin, m_layout.scale, m_layout.lineSpacing, out};
 		Font::Pen pen(m_font, info);
 		auto const size = m_layout.scale * m_size * glm::vec2(f32(m_font->face().height()));
-		auto const head = pen.writeLine(m_line, m_layout.pivot, &m_index);
+		f32 const tmp = 400.0f;
+		auto const head = pen.writeLine(m_line, &m_layout.pivot, &m_index, &tmp);
 		if (regen) {
 			m_position = head;
 			m_position.y += 0.3f * size.y;

@@ -4,6 +4,42 @@
 #include <graphics/utils/instant_command.hpp>
 
 namespace le::graphics {
+namespace {
+constexpr bool dummy(glm::vec2 const, std::size_t const) noexcept { return true; }
+
+template <typename F = decltype(&dummy)>
+glm::vec2 iterate(Font::Pen const& pen, f32 const scale, std::string_view line, F func = &dummy) {
+	glm::vec2 ret{};
+	for (auto const [ch, idx] : le::utils::enumerate(line)) {
+		if (ch == '\n' || ch == '\r') {
+			logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
+			return ret;
+		}
+		auto const& gl = pen.glyph(Codepoint(static_cast<u32>(ch)));
+		if (idx + 1 == line.size()) {
+			ret.x += f32(gl.quad.extent.x) * scale;
+		} else {
+			ret.x += f32(gl.advance.x) * scale;
+		}
+		ret.y = std::max(ret.y, f32(gl.quad.extent.y) * scale);
+		if (!func(ret, idx)) { return ret; }
+	}
+	ret.x = std::abs(ret.x);
+	return ret;
+}
+
+glm::vec3 alignExtent(Font::Pen const& pen, f32 const scale, std::string_view const line, glm::vec2 pivot, glm::vec2 offset) {
+	glm::vec3 ex{};
+	pivot += 0.5f;
+	if (line.empty()) {
+		ex.y = f32(pen.glyph('A').quad.extent.y) * pivot.y * scale;
+	} else {
+		ex = glm::vec3((pen.lineExtent(line) + offset) * pivot, 0.0f);
+	}
+	return ex;
+}
+} // namespace
+
 Font::Font(not_null<VRAM*> const vram, Info info) : m_vram(vram), m_atlas(vram, info.atlas), m_name(std::move(info.name)) {
 	if (m_name.empty()) { m_name = "(untitled)"; }
 	load(std::move(info));
@@ -44,24 +80,7 @@ Glyph const& Font::Pen::glyph(Codepoint cp) const {
 	return *ret;
 }
 
-glm::vec2 Font::Pen::lineExtent(std::string_view const line) const {
-	glm::vec2 ret{};
-	for (auto const [ch, idx] : le::utils::enumerate(line)) {
-		if (ch == '\n' || ch == '\r') {
-			logW(LC_LibUser, "[Graphics] Unexpected EOL in line [{}]", line);
-			return ret;
-		}
-		auto const& gl = glyph(Codepoint(static_cast<u32>(ch)));
-		if (idx + 1 == line.size()) {
-			ret.x += f32(gl.quad.extent.x) * m_info.scale;
-		} else {
-			ret.x += f32(gl.advance.x) * m_info.scale;
-		}
-		ret.y = std::max(ret.y, f32(gl.quad.extent.y) * m_info.scale);
-	}
-	ret.x = std::abs(ret.x);
-	return ret;
-}
+glm::vec2 Font::Pen::lineExtent(std::string_view const line) const { return iterate(*this, m_info.scale, line); }
 
 glm::vec2 Font::Pen::textExtent(std::string_view text) const {
 	glm::vec2 ret{};
@@ -82,19 +101,37 @@ glm::vec2 Font::Pen::textExtent(std::string_view text) const {
 	return ret;
 }
 
-void Font::Pen::align(std::string_view const line, glm::vec2 pivot) {
-	glm::vec3 ex{};
-	pivot += 0.5f;
-	if (line.empty()) {
-		ex.y = f32(glyph('A').quad.extent.y) * pivot.y * m_info.scale;
-	} else {
-		ex = glm::vec3(lineExtent(line) * pivot, 0.0f);
-	}
-	m_head -= ex;
+std::string_view Font::Pen::truncate(std::string_view line, f32 maxWidth) const {
+	auto const ellipsesWidth = f32(glyph(codepoint_ellipses_v).quad.extent.x) * m_info.scale;
+	auto func = [maxWidth, ellipsesWidth, &line](glm::vec2 const ex, std::size_t const idx) {
+		if (ex.x + ellipsesWidth > maxWidth) {
+			line = line.substr(0, idx);
+			return false;
+		}
+		return true;
+	};
+	iterate(*this, m_info.scale, line, func);
+	return line;
 }
 
-glm::vec3 Font::Pen::writeLine(std::string_view const line, std::optional<glm::vec2> const realign, std::size_t const* retIdx) {
-	if (realign) { align(line, *realign); }
+void Font::Pen::align(std::string_view const line, glm::vec2 pivot) { m_head -= alignExtent(*this, m_info.scale, line, pivot, {}); }
+
+glm::vec3 Font::Pen::writeLine(std::string_view line, glm::vec2 const* realign, std::size_t const* retIdx, f32 const* maxWidth) {
+	bool truncated = false;
+	if (maxWidth) {
+		auto const org = line.size();
+		line = truncate(line, *maxWidth);
+		truncated = line.size() < org;
+	}
+	if (realign) {
+		f32 const offset = truncated ? f32(glyph(codepoint_ellipses_v).quad.extent.x) * m_info.scale : 0.0f;
+		m_head -= alignExtent(*this, m_info.scale, line, *realign, {offset, 0.0f});
+	}
+	auto write = [this](Codepoint const cp) {
+		auto const& gl = glyph(cp);
+		if (m_info.out_geometry) { m_font->write(*m_info.out_geometry, gl, m_head, m_info.scale); }
+		advance(gl);
+	};
 	glm::vec3 idxPos = m_head;
 	for (auto const [ch, idx] : le::utils::enumerate(line)) {
 		if (retIdx && *retIdx == idx) { idxPos = m_head; }
@@ -106,15 +143,14 @@ glm::vec3 Font::Pen::writeLine(std::string_view const line, std::optional<glm::v
 			Glyph const& glyph = m_font->m_atlas.build(m_cmd.cb(), Codepoint(static_cast<u32>(' ')));
 			for (int i = 0; i < 4; ++i) { m_head += glm::vec3(glyph.advance, 0.0f); }
 		} else {
-			auto const& gl = glyph(cp);
-			if (m_info.out_geometry) { m_font->write(*m_info.out_geometry, gl, m_head, m_info.scale); }
-			advance(gl);
+			write(cp);
 		}
 	}
+	if (truncated) { write(codepoint_ellipses_v); }
 	return !retIdx || *retIdx >= line.size() ? m_head : idxPos;
 }
 
-glm::vec3 Font::Pen::writeText(std::string_view text, std::optional<glm::vec2> const realign) {
+glm::vec3 Font::Pen::writeText(std::string_view text, glm::vec2 const* realign) {
 	auto remain = text;
 	auto idx = remain.find('\n');
 	while (idx != std::string_view::npos) {
